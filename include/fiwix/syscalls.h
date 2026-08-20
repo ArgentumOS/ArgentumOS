@@ -176,9 +176,13 @@ int sys_fdatasync(int);
 int sys_nanosleep(const struct timespec *, struct timespec *);
 int sys_chown(const char *, __uid_t, __gid_t);
 int sys_getcwd(char *, __size_t);
-#ifdef CONFIG_MMAP2
+#if defined(CONFIG_MMAP2) || defined(__x86_64__)
+#ifdef __x86_64__
+int sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, struct sigcontext *);
+#else
 int sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, unsigned int);
-#endif /* CONFIG_MMAP2 */
+#endif
+#endif /* CONFIG_MMAP2 || __x86_64__ */
 int sys_truncate64(const char *, __loff_t);
 int sys_ftruncate64(unsigned int, __loff_t);
 int sys_stat64(const char *, struct stat64 *);

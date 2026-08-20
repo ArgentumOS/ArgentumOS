@@ -402,7 +402,7 @@ void *syscall_table[] = {
 	NULL,
 	sys_fork,			/* 190 (sys_vfork) */
 	NULL,
-#ifdef CONFIG_MMAP2
+#if defined(CONFIG_MMAP2) || defined(__x86_64__)
 	sys_mmap2,
 #else
 	NULL,

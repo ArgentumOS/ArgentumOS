@@ -12,15 +12,14 @@
 #include <fiwix/fcntl.h>
 #include <fiwix/errno.h>
 #include <fiwix/string.h>
+#include <fiwix/sigcontext.h>
 
 #ifdef __DEBUG__
 #include <fiwix/stdio.h>
 #include <fiwix/process.h>
 #endif /*__DEBUG__ */
 
-#ifdef CONFIG_SYSCALL_6TH_ARG
-#ifdef CONFIG_MMAP2
-int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
+static int do_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
 {
 	unsigned int page;
 	struct inode *i;
@@ -49,5 +48,23 @@ int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsign
 #endif /*__DEBUG__ */
 	return page;
 }
+
+#ifdef CONFIG_SYSCALL_6TH_ARG
+#ifdef CONFIG_MMAP2
+int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
+{
+	return do_mmap2(start, length, prot, user_flags, fd, offset);
+}
 #endif /* CONFIG_MMAP2 */
 #endif /* CONFIG_SYSCALL_6TH_ARG */
+
+#ifdef __x86_64__
+/* Fiwix64 (M6 userland): musl/glibc i386 mmap() uses mmap2(192). The 64-bit
+ * syscall dispatch (syscall80_handler) passes 5 register args + the
+ * sigcontext, so the 6th arg (offset, in the user's ebp) is read from sc.
+ * This is what backs musl's static TLS area, so it must exist. */
+int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, struct sigcontext *sc)
+{
+	return do_mmap2(start, length, prot, user_flags, fd, (unsigned int)sc->ebp);
+}
+#endif /* __x86_64__ */

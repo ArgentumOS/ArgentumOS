@@ -587,6 +587,24 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 		return -ENOEXEC;
 	}
 
+#ifdef __x86_64__
+	/* Fiwix64: elf_create_stack() below writes argc/argv/envp/auxv and the
+	 * argv strings to the stack pages directly. In the 64-bit build those
+	 * low addresses are covered by the supervisor 2MB identity pages (the
+	 * 0-4GB identity map), so the writes would land on non-RAM physical
+	 * pages and be LOST - the exec'd program would read garbage argv/envp.
+	 * Demand-map the stack range to real RAM first (splits the huge pages,
+	 * like the fault path does). */
+	{
+		extern int fiwix64_fault_user_pages(addr_t, unsigned int);
+
+		if(fiwix64_fault_user_pages(sp & PAGE_MASK, length)) {
+			send_sig(current, SIGSEGV);
+			return -ENOEXEC;
+		}
+	}
+#endif /* __x86_64__ */
+
 	elf_create_stack(barg, (unsigned int *)sp, str, at_base, elf32_h, phdr_addr);
 
 	/* set %esp to point to 'argc' */
