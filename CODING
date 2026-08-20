@@ -1,0 +1,68 @@
+Fiwix kernel coding standards
+-------------------------------------------------------------------------------
+It's easier on everyone if all authors working on a shared code base are
+consistent in the way they write their programs. Fiwix has the following
+conventions in its code:
+
+- Keep lines length to a maximum of 80 characters (some exceptions accepted).
+
+- Use of snake_case (multi-word names are lower_case_with_underscores) for
+  everything except for macro in #define directives.
+
+- No space after the name of a function in a call.
+  For example, printk("hello") not printk ("hello").
+
+- Optional space after keywords "if", "for", "while", "switch".
+  For example, if(x) or if (x).
+
+- Space before braces (except in function declarations).
+  For example, if(x) { not if(x){.
+
+- Space between operands.
+  For example, for(n = 0; n < 10; n++), not for(n=0;n<10;n++).
+
+- Beginning-of-line indentation via tabs, not spaces.
+
+- Preprocessor macros are always UPPERCASE.
+
+- Pointer types have spaces: (uint16_t *), not (uint16_t*).
+
+- The pointer qualifier, '*', should be with the variable name rather than with
+  the type.
+
+- Comments in code are always in C-Style (as in C89) /* ... */.
+
+- Only the comments that span multiple lines start always with a capital letter
+  and the last sentence ends with a period. Also the open and close tags must go
+  in separate lines. Just like this:
+  /*
+   * Comment line 1
+   * comment line 2
+   * comment line 3.
+   */
+
+- Comments in a single line must not start with a capital letter and must not
+  end with a period.
+
+- Functions that take no arguments are declared as f(void), not f().
+
+- The open parenthesis is always on the same line as the function name.
+
+- There is never a space between the function name and the open parenthesis.
+
+- There is never a space between the parentheses and the parameters.
+
+- The open curly brace is always at the next line of the function declaration.
+
+- Conditionals should always include curly braces, even if there is only a
+  single statement within the conditional.
+
+- The parameters in function prototypes don't need to have a name to reference
+  them by.
+
+- Case statements should be indented one from switch keyword indentation.
+
+Recommended for reading
+-------------------------------------------------------------------------------
+- http://skull.piratehaven.org/~bapper/298c/cstyle.html
+

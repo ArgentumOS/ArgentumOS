@@ -1,0 +1,765 @@
+Fiwix: 64-bit long mode + direct UEFI boot
+===========================================
+
+Design document for porting the Fiwix kernel (32-bit i386) to run natively in
+x86-64 long mode, booted directly from UEFI firmware without GRUB.
+
+Status: initial design (2026-08). Decisions marked [D] were confirmed with the
+project owner; the rest are proposals to be validated during implementation.
+
+
+1. Goal and scope
+-----------------
+Goal: Fiwix boots on x86-64 UEFI firmware (QEMU/OVMF first, real hardware
+later) as a long-mode kernel, keeping all existing 32-bit user space working.
+
+Confirmed decisions:
+  [D] User-space ABI: 32-bit. The kernel runs in long mode; user processes run
+      in compatibility mode (CS with L=0) using the existing int 0x80 ABI.
+      This is the Linux IA32-emulation model and preserves the whole FiwixOS /
+      newlib / SVGAlib 32-bit ecosystem and Fiwix's "Linux 2.0 i386 ABI"
+      compatibility feature.
+  [D] Boot method: EFI-stub style. The kernel image itself is a PE32+ UEFI
+      application (like Linux's EFI stub). One artifact, no separate loader.
+  [D] Session plan: design doc + QEMU/OVMF harness + -m64 type-model sweep
+      first; boot code (UEFI stub, long-mode MM) in later milestones.
+
+Non-goals (for now): SMP, 64-bit user space, UEFI Runtime Services, ACPI
+tables, IOMMU, KASLR, >4GB RAM support.
+
+Why it is possible: almost all device drivers are pure C + port I/O, the VFS
+and filesystems are ISA-neutral, and the scheduler logic is portable. What is
+not portable: the boot path, the paging layer, the GDT/IDT/TSS layout, the
+syscall entry, and every place a pointer is squeezed into a 32-bit integer.
+
+
+2. Current architecture (what gets replaced)
+--------------------------------------------
+- Boot: kernel/boot.S - Multiboot v1 header, temporary GDT, enables paging
+  (CR0 PG/WP/AM/NE/MP), calls bss_init(), gdt_init(), then start_kernel() in
+  kernel/main.c. Kernel linked at physical 1MB (KERNEL_ADDR), virtual
+  PAGE_OFFSET (0xC0000000 = 3GB/1GB, or 0x80000000 with CONFIG_VM_SPLIT22),
+  see include/fiwix/linker.h and fiwix.ld.
+- Boot info: kernel/multiboot.c parses the Multiboot info structure: cmdline,
+  E820-style mmap (consumed by mm/bios_map.c bios_map_init()), initrd modules,
+  ELF section headers (kernel symbol table), VBE framebuffer info.
+- Paging: 2-level (10-bit PD / 10-bit PT indices), 4KB pages only, whole RAM
+  identity-mapped at PAGE_OFFSET. mm/memory.c (kpage_dir, P2V/V2P),
+  mm/page.c (page cache), mm/fault.c (demand paging + CoW), mm/mmap.c.
+- Segments: GDT with flat 32-bit code/data + TSS (kernel/gdt.c, idt.c).
+- Syscall ABI: int 0x80, Linux 2.0 i386. Entry in kernel/core386.S: the
+  SAVE_ALL frame (gs,fs,es,ds,edi,esi,ebp,esp,ebx,edx,ecx,eax + CPU-pushed
+  err,eip,cs,eflags,oldesp,oldss) IS struct sigcontext (include/fiwix/
+  sigcontext.h), so do_syscall() and trap_handler() overlay the frame.
+- Context switch: kernel/sched.c context_switch() -> do_switch() in
+  core386.S: pusha/pushfl, saves ESP/EIP to the software struct i386tss
+  (inside struct proc), ltr + reload CR3. Not a hardware task switch.
+- User ABI structs: sigcontext, old_stat/new_stat/stat64, fd_set, iovec,
+  syscall numbers - all sized for 32-bit userland.
+- ELF loader: fs/elf.c loads ELF32 (EM_386) executables only.
+
+Everything above except the user ABI structs and the filesystems/drivers is
+replaced or rewritten in this port.
+
+
+3. Target architecture
+----------------------
+
+3.1 Boot: UEFI EFI-stub entry
+- The kernel is linked as ELF64 and converted to PE32+ (objcopy --oformat
+  pei-x86-64 / ld -m i386pep) with a UEFI application entry point (new
+  .S/.c stub, e.g. kernel/efi_stub.c + kernel/boot64.S).
+- The firmware starts us in long mode with paging on (identity map),
+  interrupts possibly enabled, and a UEFI stack. The stub must not assume
+  anything about the firmware's page tables or GDT.
+- Stub responsibilities, in order:
+  1. Set up its own stack (fixed physical area, e.g. the old kernel stack
+     region at 0x10000..0x20000).
+  2. Query the environment: GetMemoryMap(), GetImageInfo, LoadOptions
+     (command line), GOP frame buffer info if present, system table pointer.
+  3. Build the handoff structure: translate EFI memory descriptors into the
+     E820-style map bios_map_init() expects (type mapping table below), copy
+     the command line, record framebuffer info, save the initrd location if
+     provided (documented but optional in M1).
+  4. Relocate the kernel image to its linked physical base (KERNEL_ADDR,
+     1MB) with AllocatePages(AllocateAddress) or a copy after ExitBootServices
+     when we own all memory.
+  5. Install our own 4-level page tables (identity map for low physical +
+     high mapping of the kernel at its virtual base), a GDT64 with flat
+     64-bit kernel segments, TSS, and an IDT64 with the exception/IRQ gates
+     (this is the M3 milestone; until then the stub keeps a minimal IDT).
+  6. Disable interrupts, call ExitBootServices(ImageHandle, MemoryMapKey)
+     with the map from step 2, and enter the C entry point
+     start_kernel() (reused) or start_kernel64() with the handoff struct.
+- Memory map type translation (EFI -> E820):
+    EfiConventionalMemory / EfiBootServicesCode|Data -> AVAILABLE
+    EfiReservedMemoryType / EfiMemoryMappedIO / ...       -> RESERVED
+    EfiACPIReclaimMemory                                  -> ACPI_RECLAIMABLE
+    EfiACPIMemoryNVS                                      -> NVS
+  (Multiboot constants: MULTIBOOT_MEMORY_AVAILABLE=1, _RESERVED=2,
+   _ACPI_RECLAIMABLE=3, _NVS=4.)
+- Early console: reuse the existing VGA text console (identity-mapped
+  0xB8000) exactly as today; GOP support is optional polish later. Serial
+  console (console=/dev/ttyS0) keeps working.
+- The old Multiboot path (boot.S, multiboot_header) and the multiboot parsing
+  are kept for the 32-bit build and kexec only, and may be dropped (or moved
+  behind CONFIG_LEGACY_MULTIBOOT) once the 64-bit build is self-hosting.
+  kexec is CONFIG_KEXEC=off today; decide in M7 whether to port or drop it.
+
+3.2 Paging (long mode)
+- Move from 2-level to 4-level paging: PML4/PDPT/PD/PT, 4KB pages (2MB pages
+  optional later for the kernel mapping).
+- Kernel virtual base for the 64-bit build: PAGE_OFFSET becomes
+  0xFFFFFFFF80000000 (canonical -2GB), keeping the "kernel at high addresses,
+  P2V/V2P translation" idea. V2P(addr) = addr - PAGE_OFFSET still works as
+  wraparound unsigned arithmetic on 64-bit addresses.
+  CONFIG_VM_SPLIT22 is a 32-bit-only concept and is dropped in 64-bit mode.
+- mm/memory.c's page-table code is rewritten as the 64-bit variant (new file
+  mm/memory64.c or #ifdef'd); the rest of the MM layer (page cache, buddy,
+  fault, mmap, CoW, kswapd) carries over with type widening only.
+- Demand paging and Copy-on-Write work unchanged at 4KB granularity.
+- Reserve a small identity-mapped low window for legacy BIOS data area (EBDA,
+  0x400..0x1000), the ATA/BIOS hacks that touch low memory, and the VGA
+  framebuffer.
+
+3.3 GDT / IDT / TSS
+- GDT64: null, 64-bit kernel code (L=1), kernel data, 32-bit user code
+  (L=0, DB=1, DPL=3), user data (DPL=3), TSS. Long-mode segments are flat and
+  base/limit are ignored for code/data; only the TSS descriptor carries real
+  info (64-bit base, 16-bit limit - different layout from the 32-bit
+  descriptor, see SD_TSSPRESENT handling in kernel/gdt.c).
+- IDT64: 16-byte gate descriptors (offset 64-bit). The int 0x80 gate becomes
+  a long-mode interrupt gate whose handler is the compat syscall entry.
+- TSS64: rsp0 (64-bit kernel stack pointer), plus I/O bitmap. The software
+  struct i386tss in struct proc becomes a 64-bit register save area
+  (struct kernel_frame or similar) - see 3.5.
+
+3.4 Syscall ABI with 32-bit user space (compat mode)
+- User code runs in compatibility mode (32-bit CS). All existing 32-bit
+  binaries and the existing syscall numbers/structures keep working.
+- Entry: int 0x80 from compat mode. In IA-32e mode the CPU always pushes the
+  64-bit interrupt frame (SS,RSP,RFLAGS,CS,RIP + err), regardless of the
+  caller's mode. The handler must translate that into the frame the C code
+  expects. Two options:
+    a) Keep struct sigcontext as the kernel frame and write an entry stub
+       that builds it from the 64-bit frame (move rbx->ebx, ..., 32-bit
+       eip/rsp from the compat frame). Minimal changes to signal.c,
+       sys_sigreturn(), fork().
+    b) Introduce a 64-bit kernel frame struct and adapt all consumers.
+  Recommendation: (a) for M4 - smallest diff, since sigcontext is the 32-bit
+  ABI anyway and stays 32-bit-layout.
+- The kernel itself does not need the syscall instruction: its internal calls
+  are direct. USER_SYSCALL (asm.h) is only used by init_trampoline() in
+  kernel/init.c, which executes in user mode; in the 64-bit build that
+  trampoline must run as 32-bit code. Plan: compile init.c's trampoline (or a
+  copy) as a separate -m32 object and map it into the INIT process, or build
+  init.c as -m32 (the rest of the kernel is -m64; a small mixed-TU build rule
+  is needed). Decision deferred to M4.
+- int 0x80 vs syscall: keep int 0x80 only; it is simple and fully sufficient
+  for compat mode. (syscall/sysenter for 64-bit user space is a non-goal.)
+- verify_address() in kernel/syscalls.c must treat compat user addresses as
+  < PAGE_OFFSET (32-bit range); the vma-based logic carries over with
+  addr_t widening.
+
+3.5 Scheduler / process / context switch
+- do_switch() is rewritten for 64-bit (SysV x86-64 calling convention):
+  save/restore rbx, rbp, r12-r15, rsp, rip (no pusha in 64-bit); reload CR3;
+  ltr stays a no-op reload. tss.rsp0 holds each process' kernel stack top.
+- struct proc and struct vma address fields widen to addr_t (see section 4).
+- struct i386tss (software save area) is replaced by a 64-bit register frame;
+  the GDT TSS descriptor is updated per-process (base 64-bit) in set_tss().
+
+3.6 printk
+- Add real length modifiers: l = long, ll = long long, for %d/%u/%x/%X.
+  Today the 'l' flag only triggers under CONFIG_PRINTK64 and reads long long;
+  there are zero call sites using %ld/%lu, so redefining is safe on both
+  ABIs. Addresses print with %lx + (unsigned long) cast; never %x with a
+  pointer. (A %p specifier is deliberately not added - explicit casts are
+  greppable and keep call sites portable.)
+
+3.7 Drivers
+- Port I/O helpers (inport_*/outport_* in core386.S) move to a 64-bit asm
+  helper file; they are register-width independent (in/out are the same).
+- PIT, PIC (8259), keyboard, PS/2, serial, VGA console, floppy, ATA/ATAPI
+  (PIO + bus-master DMA), ramdisk, framebuffer: pure C + port I/O, port with
+  type widening only. BGA/VBE code needs the GOP handoff info (or stays
+  legacy VGA on OVMF).
+- PCI config space access is port I/O based; unchanged.
+
+3.8 ELF loading
+- Userland stays ELF32 (EM_386) - the loader's *file format* logic is
+  unchanged. The bug to fix regardless of ABI: include/fiwix/i386elf.h
+  typedefs Elf32_Addr/Off/Word as 'unsigned long', which silently becomes
+  8 bytes under -m64 and corrupts every offset. They must be fixed-width
+  (__u32/__u16). Internal address variables in fs/elf.c widen to addr_t.
+
+
+4. Type-model policy (the contract for the whole port)
+------------------------------------------------------
+A new kernel-internal type makes the port mechanical and keeps the 32-bit
+build byte-identical (ILP32: long = 32 bits):
+
+    typedef unsigned long addr_t;   /* kernel-internal address */
+
+Widen to addr_t (safe on 32-bit, correct on 64-bit):
+- struct proc: entry_address, end_code, brk, brk_lower, sp, rss, vma_table
+  (pointer field is already a pointer), sigcontext sp slot is ABI-fixed (no).
+- struct vma: start, end.
+- struct i386tss (and its 64-bit successor): esp0/rsp0, cr3, eip/rip, esp/rsp.
+- kpage_dir (unsigned long *), kmalloc()/kfree()/bl_malloc()/bl_free()
+  signatures, all P2V()/V2P()/PAGE_ALIGN()/GET_PGDIR()/GET_PGTBL() operands.
+- Kernel pointer round-trips: every (unsigned int)ptr / (unsigned int)&x
+  cast becomes (unsigned long)ptr / (unsigned long)&x.
+- printk/sprintk/snprintk sites printing addresses: %x -> %lx.
+
+Keep fixed-width (explicit __u8/16/32/64 or plain unsigned int/short, which
+are 32-bit on both ABIs):
+- Hardware/ABI layouts: multiboot info + mmap entries, VBE controller/mode
+  (currently 'unsigned long' in multiboot1.h - must become unsigned int),
+  PCI config, ATA identify, Elf32_* (after fix), linuxboot/kexec structs.
+- 32-bit user ABI: struct sigcontext, old_stat/new_stat/stat64, fd_set
+  (already unsigned int bits), struct iovec (iov_base is void* -> must become
+  a fixed 32-bit layout via a compat_iovec or keep iov_base as __u32 until
+  the M6 conversion pass), syscall numbers/args.
+- __off_t/__size_t/__time_t/__ino_t/... stay __u32: they are the 32-bit user
+  ABI. Consequence: kernel-internal file offsets stay 32-bit; >4GB file
+  support is explicitly out of scope.
+
+Verification: every milestone must keep `make` (32-bit) green; the -m64
+compile-check target (make compile64, section 5) must have zero errors.
+The 32-bit build is the reference oracle for behaviour during the port.
+
+
+5. Build system / harness
+-------------------------
+- Default `make` keeps producing the 32-bit kernel (fiwix) - always green.
+- `make compile64`: compile all C sources with the 64-bit flags
+  (-m64 -march=x86-64 -mno-red-zone -mno-sse -mno-sse2 ...) into
+  .build/64/*.o without linking - the type-sweep verifier.
+- `make build64` (M1+): link fiwix64 ELF64, convert to PE32+
+  (fiwix64.efi), plus the handoff.
+- `make ovmf`: fetch OVMF without root: apt-get download ovmf, dpkg-deb -x
+  into .build/ovmf (no sudo needed; the container has no root).
+- `make run`: QEMU smoke test of the current 32-bit kernel (QEMU's built-in
+  Multiboot loader via -kernel, no GRUB needed for development).
+- `make run-uefi`: QEMU with -bios OVMF.fd (baseline: proves firmware runs;
+  from M1 on it boots the PE32+ kernel placed as EFI/BOOT/BOOTX64.EFI on a
+  FAT drive image).
+- QEMU binary: ~/.local/share/fiwix-qemu-tools/usr/bin/qemu-system-x86_64
+  run directly (the PATH wrapper needs flatpak-spawn and is broken); env:
+  LD_LIBRARY_PATH=<toolroot>/usr/lib/x86_64-linux-gnu,
+  -L <toolroot>/usr/share/qemu.
+
+
+6. Milestones (each ends with a working, demonstrable state)
+------------------------------------------------------------
+M0 (2026-08 session): DONE.
+   Delivered: this design doc; QEMU/OVMF harness (make run, make ovmf,
+   make run-uefi, make compile64); type-model sweep (addr_t introduced,
+   fixed-width ELF32/VBE types, printk %l/%ll modifiers, 64-bit-safe
+   SAVE_FLAGS/GET_CR2/GET_ESP, offsetof fix, ~300 pointer-cast sites
+   converted to addr_t). Acceptance: make run shows the kernel banner
+   (multiboot smoke test) - VERIFIED; make compile64 reports no errors and
+   no -Wpointer-to-int-cast warnings - VERIFIED. The 32-bit build is
+   byte-identical in behavior (same binary size).
+   NOTE: CONFIG_NET was turned off (#undef) in include/fiwix/config.h to
+   unblock the default build - the net layer's ext_* driver hooks are still
+   missing (in-progress v1.8.0 work). Re-enable when a driver lands.
+   Remaining cosmetic noise under -m64: ~140 -Wint-to-pointer-cast
+   warnings from the sanctioned "(void *)kmalloc()" pattern - benign.
+M1 - 64-bit boot: build64 produces a PE32+ kernel; it boots under OVMF on
+   QEMU and prints the banner from a long-mode C entry. Acceptance: banner +
+   "Safe to Power Off" reachable via UEFI.
+   STATUS (2026-08 session): DONE. kernel64/efi_stub.c collects the EFI
+   memory map (GetMemoryMap x2 + AllocatePool), masks the PICs, calls
+   ExitBootServices(), and enters kernel64_main() (kernel64/main64.c) which
+   prints the banner, firmware vendor/rev, and the full memory map over COM1
+   at 115200, then halts ("M1 OK: Fiwix64 booted from UEFI into long mode").
+   VERIFIED under QEMU/OVMF (make run-uefi path; run headless via
+   tools/qemu.sh with -nographic -monitor none). The stub keeps the
+   firmware's identity-mapped page tables (no own paging until M2).
+   M1 lessons (all verified by debugging the boot):
+   - The EFI stub MUST be compiled -fPIC (RIP-relative). With -fno-pie gcc
+     hardcodes absolute 32-bit addresses for string literals; PE base
+     relocations cannot fix up immediates, so the image only works when
+     loaded at the preferred ImageBase, which UEFI does not guarantee.
+     Also -fno-semantic-interposition (avoids a GOT in the PE) and: never
+     take the address of a non-static function, and do not use non-static
+     globals, in stub code - gcc routes both through the GOT and
+     ld -m i386pep resolves GOTPCREL by loading FROM the symbol's address
+     (e.g. &efi_main read the first 8 bytes of the function's code).
+     Use get_rip() (lea 0(%%rip)) for self-addresses and pass the system
+     table as a parameter instead of a global.
+   - EFI_SYSTEM_TABLE layout: Signature(0), Revision(0x10),
+     FirmwareBuildNumber(0x14), FirmwareVendor(0x18), FirmwareRevision(0x20),
+     ... BootServices(0x60), NumberOfTableEntries(0x68), ConfigurationTable
+     (0x70). The struct in include/fiwix/efi.h originally had a bogus
+     HeaderSize/CRC32/Reserved block (that is EFI_TABLE_HEADER, not part of
+     the system table) which shifted every field by 8 and made BootServices
+     read NumberOfTableEntries -> calls through garbage (boot crashed with
+     #UD at a garbage RIP).
+   - EFI error statuses carry bit 63 (EFI_ERROR_MASK): EFI_BUFFER_TOO_SMALL
+     is 0x8000000000000005, not 5. Compare against EFI_SUCCESS or mask.
+   - EFIAPI functions follow the MS x64 ABI: RDI/RSI/RBX/RBP/R12-R15 are
+     callee-saved, so the compiler may keep C locals (e.g. &desc_size) in
+     RDI across boot-services calls - do not assume SysV clobbering.
+   - The 32-bit build and make compile64 are unaffected (efi.h is only
+     included by kernel64/).
+M2 - long-mode MM: 4-level paging, kpage_dir -> pml4, P2V/V2P, demand paging
+   + CoW working under the 64-bit build. Acceptance: page faults handled,
+   kmalloc/mmap exercised, mem_stats sane.
+   STATUS (2026-08 session, phase A DONE): kernel64/paging64.c installs the
+   stub's own 4-level page tables after ExitBootServices(): PML4[0] and
+   PML4[511] share a PDPT whose entries 0 and 510 (PDPT_INDEX of
+   PAGE_OFFSET64) share a PD covering the low 1GB in 2MB pages. This gives
+   an identity map of the low 1GB plus the same memory at PAGE_OFFSET64
+   (0xFFFFFFFF80000000); CR3 is switched and execution jumps to the
+   high-half alias of a static high_entry() (get_rip() then reports
+   0xFFFFFFFF86xxxxxx), demos P2V64/V2P64 (round-trip 0x100000 <-> 0xFFFFFFFF80100000),
+   and re-enters kernel64_main(), whose direct call lands at the high alias
+   too - so the whole banner/memory-map output runs from the high half.
+   VERIFIED under QEMU/OVMF: 'M2-A OK: 4-level paging active, kernel mapped
+   at PAGE_OFFSET64 (0xFFFFFFFF80000000), halting.' Page tables live in the
+   stub's .bss (physical == runtime address under the firmware identity
+   map); the mapping is fixed low-1GB (2MB pages) - no dynamic allocation
+   yet.
+   STATUS (2026-08 session, phase B DONE): kernel64/mm64.c adds dynamic
+   4KB-page mapping and a physical page allocator. The allocator is a
+   first-fit bitmap over usable RAM below 1GB (EfiConventionalMemory /
+   EfiBootServicesCode / EfiBootServicesData, all free after
+   ExitBootServices), with the low 1MB, the loader image span (LoaderCode +
+   LoaderData including the gap pages that hold the stub's .bss tables), and
+   the current stack window marked used. map_page64()/unmap_page64()/
+   virt_to_phys64() walk PML4->PDPT->PD->PT and allocate intermediate table
+   pages on demand; the demo maps 4 pages at 0xFFFFFFFFC0000000 (PDPT entry
+   511, beyond the fixed 1GB map - the whole hierarchy is built
+   dynamically), writes/reads a byte pattern, cross-checks virt_to_phys64,
+   unmaps and frees. VERIFIED under QEMU/OVMF: 'M2-B OK: 4KB-page allocator
+   and dynamic mapping verified, halting.' (free pages 30948 -> 30946 after
+   the demo: 4 data pages freed, 2 intermediate table pages stay mapped -
+   accounting is exact). Shared serial/asm helpers moved to
+   kernel64/serial64.h (static, __attribute__((unused))).
+   STATUS (2026-08 session, phase C DONE): kernel64/idt64.c installs an
+   IDT64 for vectors 0-31: 32 tiny asm stubs (ISR_NOERR/ISR_ERR gas macros,
+   16-byte aligned) push a unified error-code slot + the vector number and
+   jump to isr_common64, which saves the 15 GPRs, calls isr64_dispatch(),
+   restores them and iretq's. The dispatcher handles #PF specially: if CR2
+   is the known demand page (0xFFFFFFFFD0000000) it allocates a page and
+   maps it via mm64.c, then returns so iretq retries the faulting access
+   (real demand paging); any other vector/fault prints vector, error, rip,
+   cr2, rsp and halts. The stub addresses are hidden-visibility externs
+   (visibility("hidden") -> RIP-relative, no GOT) collected into a static
+   stub_addr[32] table whose absolute values get PE base relocations (the
+   .reloc section is back, 0x48 bytes, and OVMF applies it). kmalloc64()/
+   kfree64() were added to mm64.c (page allocator -> P2V64 kernel-virtual
+   addresses). VERIFIED under QEMU/OVMF: 'M2-C OK: IDT64 + page-fault
+   demand paging + kmalloc64 verified, halting.' (kmalloc64(8192)
+   write/read OK; first touch of the demand page faulted, was mapped, and
+   the retried access read back 0x5A with the expected phys).
+   STATUS (2026-08 session, phase D DONE): map_page64() now splits a 2MB
+   huge page on demand (allocates a PT, fills 512 entries from the 2MB
+   physical base with the huge entry's flags minus PS, replaces the PD
+   entry, flushes the TLB) - so 4KB pages can be placed anywhere, including
+   inside the initially 2MB-mapped low-1GB regions. MMIO above 1GB maps
+   through the normal on-demand path (demo: local APIC at 0xFEE00000 via
+   PML4[0] -> PDPT[3] -> PD -> PT, APIC ID read from 0xFEE00020). mem stats
+   (total/free pages) printed. VERIFIED under QEMU/OVMF: 'M2-D OK: 4KB
+   pages inside 2MB regions, MMIO above 1GB, mem stats verified, halting.'
+   (split demo at 0xFFFFFFFF80800000 -> allocated page 0x102000, walk
+   confirms; APIC ID 0x00000000; total 31141 / free 30935 pages).
+   STATUS (2026-08 session, phase E DONE): kmalloc64/kfree64 upgraded to a
+   slab allocator over the bitmap page allocator - size classes 16..2048
+   (8 buckets), each slab page carved into fixed slots linked through a
+   free list, with a 16-byte kmem_hdr {magic,bucket,npages} at each page
+   start; requests > 2048 bytes take whole pages (KMEM_HUGE header).
+   kfree64(void*) recovers the size/bucket from the header (bad-magic
+   panics) instead of taking a page count. kmem_stats64() prints per-class
+   pages/free slots. VERIFIED under QEMU/OVMF: 'M2-E OK: slab kmalloc/kfree
+   with size tracking verified, halting.' (8/40/200/1000/3000/9000-byte
+   objects land in classes 16/64/256/1024/huge/huge with exact slot counts,
+   e.g. class 16: 255 slots 1 used; after reverse-order free the counts
+   return to full).
+   STATUS (2026-08 session, phase F DONE): copy-on-write. paging64_init()
+   now sets CR0.WP (supervisor writes to read-only pages fault). The #PF
+   handler in idt64.c distinguishes cases by the error code: write to a
+   read-only page (P and W set) at COW_VA -> allocate a page, copy the old
+   contents, remap the VA read-write, flush the TLB (drop the stale RO TLB
+   entry) and return so iretq retries the write into the detached copy;
+   not-present access (P clear) at DEMAND_VA -> demand-map a fresh page;
+   anything else panics. VERIFIED under QEMU/OVMF: 'M2-F OK: copy-on-write
+   + demand paging verified, halting.' (write to 0xFFFFFFFFD0200000 faulted,
+   moved to a new phys 0x10d000, read back 0xEE, original page's seed
+   0xA5/0x5A intact - detached).
+   M2 acceptance is now met: 4-level paging, P2V/V2P, demand paging AND
+   copy-on-write working, page faults handled, kmalloc exercised, mem_stats
+   sane. Remaining M2-side work is code migration: porting mm/memory.c to a
+   64-bit variant (mm/memory64.c or #ifdef) when the real kernel starts
+   linking in the 64-bit build (M3); user-space faults and IRQ gates 32-255
+   need the M3 TSS/IDT work.
+M3 - interrupts/scheduling: GDT64/IDT64/TSS64, PIC, PIT, timer ticks,
+   64-bit context switch; kswapd + kbdflushd run round-robin. Acceptance:
+   kernel threads schedule; clock advances.
+   STATUS (2026-08 session, M3 DONE - acceptance met): GDT64 (8-byte slots:
+   NULL/kcode/kdata/ucode/udata/fw-data@0x30/fw-code@0x38/TSS@0x40) + TSS64
+   (packed, RSP0 at SDM offset 4; base = identity alias of the static TSS)
+   installed with lgdt+ltr; the firmware's CS=0x38/SS=0x30 selectors are
+   kept (cached) - matching 0x30/0x38 descriptors are provided so the IDT
+   gates (programmed with the runtime CS) and any selector reload work.
+   PIC remapped (IRQ0-7 -> 0x20-0x27, IRQ8-15 -> 0x28-0x2F), PIT at 100 Hz,
+   only IRQ0 unmasked; IDT64 now covers vectors 0-47 (exceptions 0-31,
+   IRQ gates 32-47; #BP/#OF/#BR are DPL3). irq64.c: EOI + tick counter +
+   sched64_tick() on IRQ0. sched64.c: thread64 array, thread_create64()
+   (frame: [fn][trampoline][6 zero slots], rsp at the top), round-robin
+   schedule64() with a 10-tick (100 ms) quantum, switch_to64() in
+   switch64.S (push rbx..r15, save rsp, switch, pop, ret); the trampoline
+   sti's before the thread body (first switch happens inside the IRQ
+   handler with IF=0). Policy: the idle (thread 0) only runs when no
+   worker is runnable - switching back INTO the idle's interrupted hlt
+   corrupts its iretq frame (latent bug for M4). VERIFIED under QEMU/OVMF:
+   M3-A ticks 50/100 through the real IDT; M3-B T1/T2 alternate every
+   100 ms ("[T1] slice at tick 130", "[T2] slice at tick 140", ...) with
+   the clock advancing; single boot, no faults.
+   Gotchas hit: (1) GDT descriptors MUST sit in 8-byte slots (selector x 8);
+   16-byte is only the TSS/LDT descriptor spanning two slots. (2) A far
+   jump to reload CS via `ljmp *mem` assembles as m16:32 in gas (no REX.W)
+   - the selector is read from the wrong offset and high-half targets are
+   untruncatable anyway; lretq/ljmp are unnecessary here (see above).
+   (3) `-fPIC` routes extern FUNCTION addresses through a GOT-style load
+   (`mov reg, [rip+sym]`) which ld -m i386pep resolves by loading the
+   symbol's CODE BYTES; use `visibility("hidden")` on extern declarations
+   whose ADDRESS is taken. (4) `ltr` requires the 8-byte slot layout (see
+   1); TSS limit >= 0x67. (5) `__asm__ __volatile__("" ::: "memory")`
+   after the switch call prevents the compiler from tail-calling
+   switch_to64 (which would discard the scheduler frame mid-switch).
+M4 - compat user mode: 32-bit init_trampoline, fork/exec of a 32-bit static
+   ELF, int 0x80 entry + frame translation. Acceptance: a 32-bit test binary
+   prints via sys_write; signals delivered.
+   STATUS (2026-08 session, phase A DONE): the full 32-bit->64-bit trap
+   mechanism is proven on the stub kernel. GDT64 gained 32-bit user
+   segments (ucode32@0x50/L=0/D=1/DPL3, udata32@0x58; selectors 0x53/0x5B);
+   the IDT64 gained a DPL3 int 0x80 gate (vector 0x80 -> isr_stub_128 ->
+   isr_common64 -> syscall80_handler); mm64.c gained map_user_page64()
+   (leaf + PML4/PDPT/PD U/S propagation). The demo (main64.c): maps user
+   pages at 0x300000 (identity), copies a hand-assembled 32-bit blob
+   (tools/m4a_sc.S), iretq's into compat CPL3 (SS=0x5B/ESP=0x301000/
+   EFLAGS=0x202/CS=0x53/EIP=0x300000); the blob fills a {nr,fd,buf,count}
+   struct at 0x300200 and int 0x80's; the handler prints the write and
+   iretq returns to the user loop. VERIFIED under QEMU/OVMF: 3x
+   "int 0x80: write(fd=1, buf='Hello from 32-bit user!', count=23)" then
+   "M4-A OK: ... halting."; single boot, no faults. The TSS RSP0 stack
+   switch (compat CPL3 -> CPL0) is exercised by both the syscall and the
+   timer IRQ during the user blob.
+   GOTCHA: QEMU's compat->64-bit-gate transition DROPS 32-bit register
+   writes - the CPU state at `int $0x80` is correct (verified via -d int:
+   EAX=0x11223344 from the blob's mov) but the 64-bit stub's `push rax`
+   captures the kernel's pre-iretq register leftovers. The demo therefore
+   passes syscall args through MEMORY. The real 32-bit Fiwix kernel won't
+   hit this (its syscall handler runs in 32-bit mode); if the 64-bit
+   kernel later needs register args from compat user code, revisit.
+   Remaining M4 work: the real-kernel integration (start_kernel +
+   task_struct/fork/exec in 64-bit), 32-bit init_trampoline, compat
+   syscall translation, signals.
+   STATUS (same session, phase B DONE - real kernel BOOTS in 64-bit mode):
+   kernel/mm/fs/lib/drivers C sources now COMPILE as -m64 and LINK with the
+   kernel64 primitives into the PE32+ (`make build64real`; `build64` now
+   builds this; the stub/demo kernel is `build64demo`). The real
+   start_kernel() runs and reaches the INIT/fs path:
+     banner + DEVICE table + cpu_init + multiboot + pic_init + irq_init +
+     dev_init + tty_init + mem_init (proc_table check PASSES) + pci_init
+     (full i440FX bus scan) + video_init/console_init ("VGA color 80x25")
+   then crashes in the mount path (no initrd/modules in the synthesized
+   Multiboot info). Boot log visible via printk's QEMU_DEBUGCON path
+   (port 0xE9 -> QEMU -debugcon, mirrored to COM1 for the serial console).
+   STATUS (same session, phase C DONE - initrd + timer, boot reaches the
+   scheduler): the synthesized Multiboot info now carries a REAL memory map
+   (0-1MB reserved, 1MB-128MB available, 128MB+ reserved) and a 1024KB
+   minix-v1 INITRD (tools/mkinitrd.py: root + /bin + /bin/init, the latter
+   a 8.7KB static i386 ELF from .build/initrd/init.S; embedded in the PE as
+   kernel64/initrd64.c). The kernel detects it ("initrd ... file='fiwixinitrd'
+   size=1024KB") and the boot proceeds cleanly through the FULL device
+   init: 12 virtual consoles, clock (PIT 100Hz), ps/2 keyboard, psaux.
+   FIXES LANDED IN PHASE C (all needed to get here):
+   * mm/alloc.c: the buddy_low (DMA) allocator is BYPASSED under __x86_64__
+     - its block headers overlap allocated objects (the tty driver_data at
+     the slab block's +0x90 was being clobbered, so the vconsole reset read
+     vc=NULL and the console columns stayed 0, then vgacon_get_curpos
+     divided by 0). With the main buddy used for everything the ttys work.
+   * GDT64 restructured to the REAL kernel's selector layout: KERNEL_CS=0x08
+     (L=1), KERNEL_DS=0x10, USER_CS=0x18 (32-bit, D=1), USER_DS=0x20,
+     TSS=0x28 (16-byte descriptor, slots 5-6), fw code 0x38 (runtime CS),
+     fw data 0x40 (runtime SS; the kernel's SS is switched 0x30->0x40 after
+     lgdt), M4-A demo segments stay at 0x50/0x58. The real kernel's
+     load_tr(TSS=0x28) now finds its TSS.
+   * kernel64/gdt64.c gdt64_ltr(): the CPU sets the TSS descriptor's busy
+     bit (type 9->11) on every ltr, so the gdt64_init's ltr made the real
+     kernel's load_tr(0x28) #GP (busy TSS). load_tr (kernel64/asm64.c) now
+     clears the busy bit (bit 41) before ltr.
+   * kernel/pic.c: the real pic_init masks IRQ0 (0xFB); under __x86_64__ it
+     keeps IRQ0 unmasked (0xFA) so the PIT tick reaches the IDT64.
+   * kernel64/irq64.c: on IRQ0 the handler now also drives the REAL kernel's
+     timer machinery - irq_handler(0, sc) (irq_timer: CURRENT_TICKS +
+     timer BH) then do_bh(sc) (irq_timer_bh: accounting, callouts,
+     need_resched) with sc.cs=KERNEL_CS - so cpu_idle()'s do_sched() runs.
+   BOOT NOW HANGS (not crashes) at the FIRST do_sched(): the real kernel's
+   context switch is the 32-bit do_switch in kernel/core386.S (pusha/
+   pushfl/ret with 32-bit operands) which cannot execute in 64-bit mode -
+   the PUSHA opcode (0x60) is invalid in long mode. A 64-BIT context switch
+   (kernel64) wired into context_switch()/do_sched is the next milestone.
+   STATUS (M5, 2026-08 session - scheduler + IRQ dispatch + root mount DONE,
+   INIT spawned; next is the 64-bit user-mode transition):
+   * kernel64/switch64.S now provides a 64-bit do_switch() (push rbp; save
+     rsp->prev->tss.esp; lea resume-label->prev->tss.eip; mov next->tss.esp
+     to rsp; push next->tss.eip; ret). The real scheduler's first switches
+     (cpu_idle -> kswapd -> ...) work; kernel/process.c's kernel_process
+     adds a full PAGE_SIZE to tss.esp0 under __x86_64__ so the 64-bit ABI's
+     16-byte RSP alignment holds after do_switch's push+ret.
+   * kernel64/irq64.c: the 64-bit handler now dispatches EVERY hardware IRQ
+     (vectors 0x20-0x2F) to the real kernel's irq_handler(irq, sc) +
+     do_bh(sc) with sc.cs=KERNEL_CS, exactly like the 32-bit core386.S IRQ
+     entry (the 64-bit side still EOIs first; the real kernel's
+     ack_pic_irq sends a second, idempotent EOI). Without this the serial
+     IRQ (IRQ4) never reached irq_serial, the tty write_q never drained and
+     flush_log_buf() spun forever on -EAGAIN right after serial_init.
+   * The minix root mount now works. Fixes:
+     - cmdline in kreal64.c: "fiwix console=/dev/ttyS0 initrd=fiwixinitrd
+       root=/dev/ram0 rootfstype=minix" (kparms.rootdev + minix fs type).
+     - CONFIG_FS_MINIX is passed via CC64K (-DCONFIG_FS_MINIX) and
+       include/fiwix/config.h only #undefs it when not already defined, so
+       the stock 32-bit config is untouched.
+     - tools/mkinitrd.py: minix stores inode N at slot N-1 (root = slot 0)
+       and the i_zone[] values must be ABSOLUTE BLOCK numbers
+       (minix_balloc() adds s_firstdatazone-1; the driver breads i_zone
+       directly), so data zone z lives at block FIRSTDATAZONE-1+z and that
+       BLOCK is what goes in i_zone[]. The initrd now has /sbin/init
+       (Fiwix's INIT_PROGRAM), embedded as kernel64/initrd64.c via
+       "python3 tools/mkinitrd.py .build/initrd/init .build/initrd/initrd.img kernel64/initrd64.c".
+   * kernel/init.c init_init(): the init_trampoline page was declared
+     "unsigned int page" - map_page() returns a P2V address, so the 64-bit
+     value was TRUNCATED to 32 bits and the INIT process's tss.esp pointed
+     into the 2-3GB alias (non-RAM). do_switch then pushed onto a garbage
+     stack and the first switch to INIT jumped to 0x0 (walked the zero
+     pages -> #UD 0x06 at 0xb0001, or a garbled "KERNEL EXCEPTION vector
+     0x80" serial flood). Fixed: addr_t page.
+   BOOT NOW STOPS (stable, no exceptions) with "mounted root device
+   (minix filesystem)." - kswapd mounts the initrd, init_init() spawns the
+   INIT process (PID 1) and the scheduler switches to it; the process parks
+   in the asm64 switch_to_user_mode() stub (cli; hlt). The remaining work
+   is M6: a real 64-bit switch_to_user_mode() that builds a 32-bit compat
+   user-mode frame (USER_CS 0x18 / USER_DS 0x20) onto the init_trampoline
+   at PAGE_OFFSET-PAGE_SIZE and iretq's into it, plus the int 0x80 compat
+   syscall path (the 64-bit kernel's own page tables must also map the
+   process space - do_switch currently ignores next_cr3).
+   BUILD-SYSTEM BLOCKERS SOLVED (all empirical, all documented here because
+   they cost the most time):
+   * gcc 14.2 -fPIC -fvisibility=hidden: extern DATA access compiles as
+     `mov sym(%rip),%rax` (a LOAD) instead of `lea` - i.e. it loads the
+     symbol's VALUE as a pointer. tools/patch_pic_data.py fixes it in the
+     objects: for every GOTPCREL(9)/REX_GOTPCRELX(0x2a)/PC32(2) reloc in
+     .text against an UNDEFINED non-function symbol, patch 0x8b->0x8d
+     (mov->lea), KEEPING the relocation type (ld -m i386pep rejects a
+     plain PC32 in .text; with the -4 GOTPCREL addend the lea resolves to
+     exactly the symbol). MUST run on the kernel64/*.o too (kreal64.o's
+     `&_end` was missed for many boot sessions).
+   * The real kernel's include/fiwix/stdarg.h is the i386 stack-walking
+     va_list (typedef char *va_list) - fundamentally broken in long mode
+     (varargs travel in registers). __x86_64__ now #includes <stdarg.h>.
+   * -fno-pie is FATAL for the PE link (confirmed twice: the kernel floods
+     0xFF on serial, never executes) - absolute addressing cannot be
+     relocated by ld -m i386pep/OVMF for this image.
+   * start_kernel's `last_boot_addr` was `unsigned int` (32-bit) -
+     truncated the high-half address; now unsigned long. Same for the
+     `_last_data_addr` global (now addr_t).
+   * mem_init's kpage_dir is 1024 x 8-byte entries = 8KB in 64-bit, but
+     only PAGE_SIZE was reserved (the pgdir 0x200+ overlapped the pgtbl);
+     mem_init now reserves 2 pages under __x86_64__.
+   * The 32-bit link's `cpp` is the HOST cpp which predefines __x86_64__;
+     the 32-bit Makefile CPP now passes -U__x86_64__ so fiwix.ld takes the
+     32-bit PAGE_OFFSET branch.
+   * idt_init() is neutralized under __x86_64__ (the 32-bit 8-byte gates
+     cannot be loaded in long mode; the IDT64 stays).
+   * The identity map now covers 0-4GB (pd_page2, 1GB-4GB at 2MB pages)
+     so the real kernel can touch PCI MMIO (VGA BAR at 0x80000000 etc.).
+   NEXT (M4 phase C): provide an initrd/ramdisk to the synthesized
+   Multiboot info so the root mount succeeds, then continue through
+   sched_init/INIT; the real kernel's IRQ handling (irq_table) must be
+   wired to the IDT64 dispatch, and the real mm's activate_kpage_dir must
+   eventually build 4-level tables (currently a no-op - the 2-level kpage_dir
+   is written but never activated, which is correct for now).
+M5 - drivers + root fs: console, keyboard, serial, PS/2, ATA, ramdisk/initrd;
+   mount root from an initrd or disk image. Acceptance: FiwixOS userland
+   reaches /sbin/init and a shell prompt (under OVMF).
+M6 - compat syscall conversion pass: iovec/readv/writev, stat64, fcntl64,
+   select etc. where user/kernel layouts differ; signal delivery polish.
+   Acceptance: `make run` boots FiwixOS; ls/ps/sh work.
+   STATUS (2026-08 session, M6-next - per-process 4-level page tables DONE):
+   * Each user process now gets its OWN pml4: kernel64/mm64.c
+     create_pml4_64() deep-copies the low-4GB identity/user hierarchy
+     (private PDPT + the 4 PD pages, so splits never touch the kernel's or
+     another process's tables) and keeps PML4[511] (kernel high half)
+     SHARED; free_pml4_64() releases the pml4 + PDPT + PDs + any split PTs.
+     map_page64_in()/map_user_page64_in() take the target pml4 as an
+     argument (the boot-time identity path still maps via paging64_pml4()).
+   * struct proc gained `addr_t cr3_64` (the per-process pml4 PHYSICAL);
+     do_switch in kernel64/switch64.S now does `mov %r8, %cr3` (context_switch
+     passes next->cr3_64; kernel processes share paging64_pml4_phys()).
+   * Lifecycle wiring: kernel_process/main.c (kernel procs + boot = kernel
+     pml4), init_init (INIT = create_pml4_64), fork (child = create_pml4_64),
+     exec (fs/elf.c frees the old pml4, creates a fresh one and reloads CR3
+     mid-exec - safe, both pml4s share the high half), remove_zombie
+     (free_pml4_64 on the zombie - safe, the reaper's CR3 is not the zombie's).
+   * map_page_flags (mm/memory.c) and fiwix64_fault_user_pages (mm/fault.c)
+     now map into the TARGET process's p->cr3_64 / current->cr3_64 instead of
+     the shared kernel tables - the psig demand-maps and the COW/fault paths
+     never touch the kernel's ACTIVE tables anymore.
+   * REAL BUG FIX (caught by this milestone): paging64_pml4() returns
+     &pml4_page, which is the HIGH-HALF alias of the .bss page (0xffffffff...
+     via RIP-relative addressing), NOT a physical. Loading it into CR3 walks
+     garbage and hangs on the first context switch. Added
+     paging64_pml4_phys() = &pml4_page - PAGE_OFFSET64 and every cr3_64 /
+     CR3 site uses the physical.
+   * The Makefile compiles kernel64/switch64.S with plain `gcc -c` (no
+     $(M6DEBUG)); fixed so M6_* guards actually apply to the asm.
+   * A3 demo status: fork + SA_RESETHAND SIGILL child still runs to the
+     handler ("handler ran") and then dies in the reap window (issig's
+     `mov 0x25c4(%rdi)` faults with current corrupted to
+     0xffffffff00000400, or - depending on timing - a corrupted return on
+     the boot stack jumps into .rodata). NOT fixed by per-process tables:
+     the corrupting write is a pre-existing, timing-dependent wrong-target
+     write in the psig/exit/reap window (QEMU monitor `info registers`
+     shows the hung kernel executing at the IDENTITY alias 0x5d9xxxx with
+     mixed identity/high-half return addresses on the stack - the two
+     aliases of the image are both mapped and the RIP-relative patching
+     makes globals resolve to either, so any stored function pointer can
+     end up in the wrong half). Debug tooling for the next session: a
+     hardware write-breakpoint on &current (DR0/DR7, #DB trap in
+     isr64_dispatch prints the writer RIP - gated by M6_SIG_DEBUG +
+     !M6_NO_DR) and the -monitor unix: socket for `info registers` /
+     `x/..gx` on the hung guest.
+   * A3 FIXED (root cause): the 64-bit do_switch (kernel64/switch64.S)
+     saved ONLY rbp and relied on the SysV callee-saved convention to keep
+     rbx/r12-r15 across the coroutine switch. That convention only holds
+     for a *function call*, not a switch: when a process is resumed,
+     do_switch restored rbp alone and left r12-r15 holding whatever the
+     last-running process had in them. sys_wait4 keeps its `status` local
+     in r13 (or r15, depending on register allocation) LIVE across the
+     sleep() call, protected only by its entry push/pop at function
+     exit - so after the sleep/resume the register came back as the
+     previous process's `&current` (do_sched's `lea current(%rip)`), and
+     the zombie branch's `*status = p->exit_code` then wrote the child's
+     exit code into the `current` POINTER -> current = 0xffffffff00000400
+     -> issig faults. FIX: do_switch now pushes/pops the full callee-saved
+     set (rbx, rbp, r12, r13, r14, r15), matching switch_to64() and the
+     32-bit core386.S do_switch (pusha). The first-switch-into-a-fresh-
+     process path (`pushq %rcx; ret` -> return_from_syscall /
+     switch_to_user_mode / fn) is unchanged. The `orq $PAGE_OFFSET64`
+     resume-label normalize was a no-op and is removed. A3 demo now runs
+     "handler ran" -> child SIGILL-exit -> parent reaps -> clean
+     "Safe to Power Off" in both M6_SIG_DEBUG and clean builds.
+   * Hardening pass (same session): a broader stress test
+     (.build/initrd/stress.S: 3 forks - SIGILL-handler death, SIGSEGV-default
+     death, clean exit(7) - parent waitpid-reaps all three) exposed a SECOND
+     bug: the INIT process's first user-mode WRITE to its stack faulted
+     (error 0x07 = present+write+user) and looped on "last page ... NOT
+     marked for CoW". Root cause: the 64-bit 0-4GB identity map covers the
+     user stack (0x7ffff000, in the 2-3GB range) with a 2MB SUPERVISOR page,
+     so a user write "looks present" and do_page_fault misclassified it as a
+     CoW protection violation instead of demand-paging it (the write-path
+     analog of the read/fetch case already special-cased at mm/fault.c
+     do_page_fault). FIX: in mm/fault.c page_protection_violation, a user
+     write violation on a page NOT marked PAGE_COW with a writable vma now
+     falls through to page_not_present() (demand-map, which splits the huge
+     page) under __x86_64__; non-writable vmas still SIGSEGV. Both the A3
+     demo and the stress test now reach "Safe to Power Off".
+   * Cleanup (same session): all M6_SIG_DEBUG / M6_SYSCALL_DEBUG /
+     M6_PF_DEBUG / M6_NO_DR instrumentation removed (the DR0/DR7 write
+     breakpoint on `current`, the #DB trap + m6db_* globals in
+     isr64_dispatch, the [ctx]/[sched]/[exit]/[sig64]/[psig] printks, the
+     m6db_w4_*/m6db_sc_* recorders, DBG_CUR/psig_dbg helpers). The A3 bug
+     they were built to hunt is fixed; the tree is now clean.
+
+   NEXT (M6 userland - the concrete plan, 2026-08):
+   Goal: real ELF32 static tools (sh/ls/ps/cat) running under the 64-bit
+   kernel, i.e. the M6 acceptance "ls/ps/sh work" on the UEFI port.
+
+   VERIFIED against musl source (third_party/musl, submodule at f21a9653):
+   - musl i386 fork() -> _Fork() -> SYS_fork(2) (src/process/_Fork.c has a
+     #ifdef SYS_fork path and arch/i386 defines __NR_fork=2), NOT clone.
+     So clone(120) is NOT needed for single-threaded tools (pthreads only).
+   - musl sigaction() -> SYS_rt_sigaction(174) + SYS_rt_sigprocmask(175),
+     unconditionally (src/signal/sigaction.c). The rt mask is 64-bit
+     (struct k_sigaction: handler, flags, restorer, mask[2]).
+   - musl exit() -> SYS_exit_group(252) then falls back to SYS_exit(1).
+   - musl fork child calls SYS_set_tid_address(258) (result ignored when
+     single-threaded) - a no-op returning 0 is enough.
+   - rt_sigreturn(173) is NOT needed: Fiwix's psig() delivers via its own
+     fiwix64_trampoline (signal.c) which calls sigreturn(119), ignoring
+     sa_restorer. Only musl's own __restore_rt would call 173, and Fiwix
+     never jumps to it.
+
+   KERNEL MODIFICATIONS (all under __x86_64__, translations of the existing
+   sig* syscalls; ~1-2 days):
+   1. kernel/syscalls/rt_sigaction.c (new): sys_rt_sigaction(signum, act,
+      oldact, sigsetsize=8). The i386 rt_sigaction struct is {u32 handler,
+      u32 flags, u32 restorer, u64 mask}; translate to Fiwix's internal
+      struct sigaction (32-bit mask, sa_flags - the SA_* bit values already
+      match Linux: SA_RESTART 0x10000000, SA_NODEFER 0x40000000,
+      SA_RESETHAND 0x80000000). Reuse sys_sigaction's SIGKILL/SIGSTOP +
+      SIG_IGN/SIG_DFL sigpending-clearing logic. Ignore sa_restorer (psig
+      uses its own trampoline).
+   2. kernel/syscalls/rt_sigprocmask.c (new): sys_rt_sigprocmask(how, set,
+      oldset, sigsetsize=8) - 64-bit mask <-> 32-bit, wrap sys_sigprocmask.
+   3. kernel/syscalls/rt_sigpending.c (new): same mask translation.
+   4. kernel/syscalls/rt_sigsuspend.c (new): same mask translation.
+   5. kernel/syscalls/exit_group.c (new): alias to sys_exit (optional -
+      musl falls back to exit(1) on -ENOSYS).
+   6. kernel/syscalls/set_tid_address.c (new): return 0 (no-op).
+   7. kernel/syscalls.c: add table entries - 174 rt_sigaction, 175
+      rt_sigprocmask, 176 rt_sigpending, 179 rt_sigsuspend, 252 exit_group,
+      258 set_tid_address. (173 rt_sigreturn and 120 clone stay NULL.)
+   8. include/fiwix/syscalls.h: declare the new sys_* handlers.
+
+   TOOLCHAIN/USERLAND (after the syscalls land):
+   - musl is vendored as third_party/musl (git submodule, url
+     git://git.musl-libc.org/musl). Build: ./configure --target=i386-linux-
+     musl && make, then musl-gcc -m32 -static.
+   - first smoke test: a static hello/sh under musl; then dash (BSD sh) or
+     busybox/toybox as the toolset.
+   - generalize tools/mkinitrd.py to pack a real tree (/bin,/etc,/dev,
+     /proc) instead of the hard-coded 3-file layout.
+   - then fix the compat struct layouts (stat64/getdents64/ioctl-terminal)
+     in the order the tools fault.
+
+M7 - hardening/cleanup: drop or gate the Multiboot path, decide kexec fate,
+   remove dead 32-bit-only code, update README/docs. Acceptance: clean build
+   with -Wall, no warnings; both builds pass smoke tests.
+
+Dependencies: M1 needs M0 types. M2 needs M1. M3 needs M2. M4 needs M3.
+M5/M6 can partially overlap M4.
+
+
+7. Risks and open questions
+---------------------------
+- int 0x80 frame translation in compat mode is the trickiest ABI bit; option
+  (a) in 3.4 keeps the blast radius small but the asm must be right.
+- The 'l' printk redefinition must be verified on the 32-bit build output
+  (it is invisible today because no call site uses %ld/%lu).
+- Firmware memory map edge cases: kernel image placed above 4GB by the
+  firmware, low-1MB reserved regions, ACPI reclaimable vs NVS handling,
+  EBDA preservation (Fiwix already saves 256 bytes of BDA).
+- Non-canonical addresses: all 64-bit pointer arithmetic must stay below
+  2^47; mistakes produce GP faults that are hard to debug without a serial
+  console - plan to enable CONFIG_QEMU_DEBUGCON early in M1.
+- QEMU/OVMF vs real hardware differences (GOP, RSDP, PCI topology).
+- Mixed -m32/-m64 translation units (the init trampoline) need a Makefile
+  rule that does not disturb the default 32-bit build.
+- struct iovec: decide between a compat_iovec conversion at the syscall
+  boundary (Linux-style) and keeping the ABI struct 32-bit-layout internally.
+
+
+8. References
+-------------
+- Linux IA32 emulation: arch/x86/entry/entry_64.S (int 0x80 path),
+  arch/x86/ia32/*, arch/x86/include/asm/ia32.h.
+- OSDev wiki: UEFI, Long Mode, x86-64, 4-level paging, TSS.
+- EDK2 OVMF (firmware used for QEMU testing).
+- Intel SDM Vol 3: 3.4 (IA-32e mode), 5.14 (IDT), 6.14 (TSS), 7.x (paging).

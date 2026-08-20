@@ -1,0 +1,517 @@
+/*
+ * fiwix/mm/memory.c
+ *
+ * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
+ * Portions Copyright 2024, Greg Haerr.
+ * Distributed under the terms of the Fiwix License.
+ */
+
+#include <fiwix/kernel.h>
+#include <fiwix/asm.h>
+#include <fiwix/multiboot1.h>
+#include <fiwix/kparms.h>
+#include <fiwix/mm.h>
+#include <fiwix/mman.h>
+#include <fiwix/bios.h>
+#include <fiwix/ramdisk.h>
+#include <fiwix/process.h>
+#include <fiwix/buffer.h>
+#include <fiwix/fs.h>
+#include <fiwix/kexec.h>
+#include <fiwix/stdio.h>
+#include <fiwix/string.h>
+
+#define KERNEL_TEXT_SIZE	((addr_t)_etext - (PAGE_OFFSET + KERNEL_ADDR))
+#define KERNEL_DATA_SIZE	((addr_t)_edata - (addr_t)_etext)
+#define KERNEL_BSS_SIZE		((addr_t)_end - (addr_t)_edata)
+
+addr_t *kpage_dir;
+
+unsigned int proc_table_size = 0;
+unsigned int buffer_hash_table_size = 0;
+unsigned int inode_table_size = 0;
+unsigned int inode_hash_table_size = 0;
+unsigned int fd_table_size = 0;
+unsigned int page_table_size = 0;
+unsigned int page_hash_table_size = 0;
+
+addr_t map_kaddr(addr_t *page_dir, unsigned int from, unsigned int to, unsigned int addr, int flags)
+{
+	unsigned int n;
+	unsigned int paddr;
+	unsigned int *pgtbl;
+	unsigned int pde, pte;
+
+	paddr = addr;
+	for(n = from; n < to; n += PAGE_SIZE) {
+		pde = GET_PGDIR(n);
+		pte = GET_PGTBL(n);
+		if(!(page_dir[pde] & ~PAGE_MASK)) {
+			if (!addr) {
+				paddr = kmalloc(PAGE_SIZE);
+				if (!paddr) {
+					printk("%s(): no memory\n", __FUNCTION__);
+					return 0;
+				}
+				paddr = V2P(paddr);
+			}
+			page_dir[pde] = paddr | flags;
+			memset_b((void *)(paddr + PAGE_OFFSET), 0, PAGE_SIZE);
+			paddr += PAGE_SIZE;
+		}
+		pgtbl = (unsigned int *)((page_dir[pde] & PAGE_MASK) + PAGE_OFFSET);
+		pgtbl[pte] = n | flags;
+	}
+
+	return paddr;
+}
+
+void bss_init(void)
+{
+	memset_b((void *)((addr_t)_edata), 0, KERNEL_BSS_SIZE);
+}
+
+/*
+ * This function creates a Page Directory covering all physical memory
+ * pages and places it at the end of the memory. This ensures that it
+ * won't be clobbered by a large initrd image.
+ *
+ * It returns the address of the PD to be activated by the CR3 register.
+ */
+unsigned int setup_tmp_pgdir(unsigned int magic, unsigned int info)
+{
+	int n, pd;
+	unsigned int addr, memksize;
+	unsigned int *pgtbl;
+	struct multiboot_info *mbi;
+
+	if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+		/* 4MB of memory assumed */
+		memksize = 4096 - 1024;	/* mem_upper */
+	} else {
+		mbi = (struct multiboot_info *)(PAGE_OFFSET + info);
+		if(!(mbi->flags & MULTIBOOT_INFO_MEMORY)) {
+			/* 4MB of memory assumed */
+			memksize = 4096 - 1024;	/* mem_upper */
+		} else {
+			memksize = (unsigned int)mbi->mem_upper;
+			/* CONFIG_VM_SPLIT22 marks the maximum physical memory supported */
+			if(memksize > ((0xFFFFFFFF - PAGE_OFFSET) / 1024)) {
+				memksize = (0xFFFFFFFF - PAGE_OFFSET) / 1024;
+			}
+		}
+	}
+
+	addr = PAGE_OFFSET + (memksize * 1024) - memksize;
+	addr = PAGE_ALIGN(addr);
+
+	kpage_dir = (addr_t *)addr;
+	memset_b(kpage_dir, 0, PAGE_SIZE);
+
+	addr += PAGE_SIZE;
+	pgtbl = (unsigned int *)addr;
+	memset_b(pgtbl, 0, memksize);
+
+	for(n = 0; n < (memksize + 1024) / sizeof(unsigned int); n++) {
+		pgtbl[n] = (n << PAGE_SHIFT) | PAGE_PRESENT | PAGE_RW;
+		if(!(n % 1024)) {
+			pd = n / 1024;
+			kpage_dir[pd] = (addr_t)(addr + (PAGE_SIZE * pd) + GDT_BASE) | PAGE_PRESENT | PAGE_RW;
+			kpage_dir[GET_PGDIR(PAGE_OFFSET) + pd] = (addr_t)(addr + (PAGE_SIZE * pd) + GDT_BASE) | PAGE_PRESENT | PAGE_RW;
+		}
+	}
+	return (addr_t)kpage_dir - PAGE_OFFSET;
+}
+
+/* returns the mapped address of a virtual address */
+addr_t get_mapped_addr(struct proc *p, addr_t addr)
+{
+	unsigned int *pgdir, *pgtbl;
+	unsigned int pde, pte;
+
+	pgdir = (unsigned int *)P2V(p->tss.cr3);
+	pde = GET_PGDIR(addr);
+	pte = GET_PGTBL(addr);
+	pgtbl = (unsigned int *)P2V((pgdir[pde] & PAGE_MASK));
+	return pgtbl[pte];
+}
+
+int clone_pages(struct proc *child)
+{
+	unsigned int *src_pgdir, *dst_pgdir;
+	unsigned int *src_pgtbl, *dst_pgtbl;
+	unsigned int pde, pte;
+	unsigned int p_addr, c_addr;
+	unsigned int n, pages;
+	struct page *pg;
+	struct vma *vma;
+
+	src_pgdir = (unsigned int *)P2V(current->tss.cr3);
+	dst_pgdir = (unsigned int *)P2V(child->tss.cr3);
+	vma = current->vma_table;
+	pages = 0;
+
+	while(vma) {
+		if(vma->flags & MAP_SHARED) {
+			vma = vma->next;
+			continue;
+		}
+		for(n = vma->start; n < vma->end; n += PAGE_SIZE) {
+			pde = GET_PGDIR(n);
+			pte = GET_PGTBL(n);
+			if(src_pgdir[pde] & PAGE_PRESENT) {
+				src_pgtbl = (unsigned int *)P2V((src_pgdir[pde] & PAGE_MASK));
+				if(!(dst_pgdir[pde] & PAGE_PRESENT)) {
+					if(!(c_addr = kmalloc(PAGE_SIZE))) {
+						printk("%s(): returning 0!\n", __FUNCTION__);
+						return 0;
+					}
+					current->rss++;
+					pages++;
+					dst_pgdir[pde] = V2P(c_addr) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
+					memset_b((void *)c_addr, 0, PAGE_SIZE);
+				}
+				dst_pgtbl = (unsigned int *)P2V((dst_pgdir[pde] & PAGE_MASK));
+				if(src_pgtbl[pte] & PAGE_PRESENT) {
+					if (src_pgtbl[pte] & PAGE_NOALLOC) {
+						dst_pgtbl[pte] = src_pgtbl[pte];
+						continue;
+					}
+					p_addr = src_pgtbl[pte] >> PAGE_SHIFT;
+					pg = &page_table[p_addr];
+					if(pg->flags & PAGE_RESERVED) {
+						continue;
+					}
+					src_pgtbl[pte] &= ~PAGE_RW;
+					/* mark writable pages as copy-on-write */
+					if(vma->prot & PROT_WRITE) {
+						pg->flags |= PAGE_COW;
+					}
+					dst_pgtbl[pte] = src_pgtbl[pte];
+					if(!is_valid_page((dst_pgtbl[pte] & PAGE_MASK) >> PAGE_SHIFT)) {
+						PANIC("%s: missing page %d during copy-on-write process.\n", __FUNCTION__, (dst_pgtbl[pte] & PAGE_MASK) >> PAGE_SHIFT);
+					}
+					pg = &page_table[(dst_pgtbl[pte] & PAGE_MASK) >> PAGE_SHIFT];
+					pg->count++;
+				}
+			}
+		}
+		vma = vma->next;
+	}
+	return pages;
+}
+
+int free_page_tables(struct proc *p)
+{
+	unsigned int *pgdir;
+	int n, count;
+
+	pgdir = (unsigned int *)P2V(p->tss.cr3);
+	for(n = 0, count = 0; n < PD_ENTRIES; n++) {
+		if((pgdir[n] & (PAGE_PRESENT | PAGE_RW | PAGE_USER)) == (PAGE_PRESENT | PAGE_RW | PAGE_USER)) {
+			kfree(P2V(pgdir[n]) & PAGE_MASK);
+			pgdir[n] = 0;
+			count++;
+		}
+	}
+	return count;
+}
+
+addr_t map_page(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot)
+{
+	return map_page_flags(p, vaddr, addr, prot, 0);
+}
+
+addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot, int flags)
+{
+	unsigned int *pgdir, *pgtbl;
+	unsigned int newaddr;
+	int pde, pte;
+
+	pgdir = (unsigned int *)P2V(p->tss.cr3);
+	pde = GET_PGDIR(vaddr);
+	pte = GET_PGTBL(vaddr);
+
+	if(!(pgdir[pde] & PAGE_PRESENT)) {	/* allocating page table */
+		if(!(newaddr = kmalloc(PAGE_SIZE))) {
+			return 0;
+		}
+		p->rss++;
+		pgdir[pde] = V2P(newaddr) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
+		memset_b((void *)newaddr, 0, PAGE_SIZE);
+	}
+	pgtbl = (unsigned int *)P2V((pgdir[pde] & PAGE_MASK));
+	if(!(pgtbl[pte] & PAGE_PRESENT)) {	/* allocating page */
+		if(!addr) {
+			if(!(addr = kmalloc(PAGE_SIZE))) {
+				return 0;
+			}
+			addr = V2P(addr);
+			p->rss++;
+		}
+		pgtbl[pte] = addr | PAGE_PRESENT | PAGE_USER | flags;
+	}
+	if(prot & PROT_WRITE) {
+		pgtbl[pte] |= PAGE_RW;
+	}
+#ifdef __x86_64__
+	/* Fiwix64 (M6): the process's 2-level pgdir copy is never activated -
+	 * map the page (user, RW) in the process's OWN 4-level tables instead
+	 * (per-process pml4, current->cr3_64), so the INIT trampoline and
+	 * exec'd 32-bit programs actually run.
+	 * Fiwix64 (A3 fix): when the 2-level entry was ALREADY present (e.g. a
+	 * page COW-shared from the parent at fork), 'addr' is still 0 and the
+	 * old code remapped the page to PHYSICAL 0 (the IVT/BDA) - use the
+	 * existing entry's physical address instead.
+	 * Fiwix64 (M6-next): map into current->cr3_64, never the shared
+	 * kernel tables. */
+	{
+		extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
+		extern unsigned long paging64_pml4(void);
+		unsigned long pml4 = p->cr3_64 ? p->cr3_64 : paging64_pml4();
+		map_user_page64_in(pml4, (unsigned long)vaddr,
+				(unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
+	}
+#endif /* __x86_64__ */
+	return P2V(addr);
+}
+
+int unmap_page(addr_t vaddr)
+{
+	unsigned int *pgdir, *pgtbl;
+	unsigned int addr, desc;
+	int pde, pte;
+
+	pgdir = (unsigned int *)P2V(current->tss.cr3);
+	pde = GET_PGDIR(vaddr);
+	pte = GET_PGTBL(vaddr);
+	if(!(pgdir[pde] & PAGE_PRESENT)) {
+		printk("WARNING: %s(): trying to unmap an unallocated pde '0x%08x'\n", __FUNCTION__, vaddr);
+		return 1;
+	}
+
+	pgtbl = (unsigned int *)P2V((pgdir[pde] & PAGE_MASK));
+	if(!(pgtbl[pte] & PAGE_PRESENT)) {
+		printk("WARNING: %s(): trying to unmap an unallocated page '0x%08x'\n", __FUNCTION__, vaddr);
+		return 1;
+	}
+
+	desc = pgtbl[pte];
+	addr = desc & PAGE_MASK;
+	pgtbl[pte] = 0;
+	if (!(desc & PAGE_NOALLOC)) {
+		kfree(P2V(addr));
+	}
+	current->rss--;
+	return 0;
+}
+
+/*
+ * This function initializes and setups the kernel page directory and page
+ * tables. It also reserves areas of contiguous memory spaces for internal
+ * structures and for the RAMdisk drives.
+ */
+void mem_init(void)
+{
+	unsigned int sizek;
+	unsigned int physical_memory, physical_page_tables;
+	unsigned int *pgtbl;
+	int n, pages, last_ramdisk;
+
+	physical_page_tables = (kstat.physical_pages / 1024) + ((kstat.physical_pages % 1024) ? 1 : 0);
+	physical_memory = (kstat.physical_pages << PAGE_SHIFT);	/* in bytes */
+
+	/* align _last_data_addr to the next page */
+	_last_data_addr = PAGE_ALIGN(_last_data_addr);
+
+	/* Page Directory (1024 entries; 8 bytes each on x86-64 = 8KB) */
+	kpage_dir = (addr_t *)_last_data_addr;
+	memset_b(kpage_dir, 0,
+#ifdef __x86_64__
+		 PAGE_SIZE * 2
+#else
+		 PAGE_SIZE
+#endif
+	);
+	_last_data_addr +=
+#ifdef __x86_64__
+		PAGE_SIZE * 2
+#else
+		PAGE_SIZE
+#endif
+	;
+
+	/* Page Tables */
+	pgtbl = (unsigned int *)_last_data_addr;
+	memset_b(pgtbl, 0, physical_page_tables * PAGE_SIZE);
+	_last_data_addr += physical_page_tables * PAGE_SIZE;
+
+	/* Page Directory and Page Tables initialization */
+	for(n = 0; n < kstat.physical_pages; n++) {
+		pgtbl[n] = (n << PAGE_SHIFT) | PAGE_PRESENT | PAGE_RW;
+		if(!(n % 1024)) {
+			kpage_dir[GET_PGDIR(PAGE_OFFSET) + (n / 1024)] = (addr_t)&pgtbl[n] | PAGE_PRESENT | PAGE_RW;
+		}
+	}
+	activate_kpage_dir();
+
+	/* since Page Directory is now activated we can use virtual addresses */
+	kpage_dir = (addr_t *)P2V((addr_t)kpage_dir);
+	_last_data_addr = P2V(_last_data_addr);
+
+	/* reserve memory space for proc_table[NR_PROCS] */
+	proc_table_size = PAGE_ALIGN(sizeof(struct proc) * NR_PROCS);
+	if(!is_addr_in_bios_map(V2P(_last_data_addr) + proc_table_size)) {
+		PANIC("Not enough memory for proc_table.\n");
+	}
+	proc_table = (struct proc *)_last_data_addr;
+	_last_data_addr += proc_table_size;
+
+
+	/* reserve memory space for buffer_hash_table */
+	kstat.max_buffers_size = kstat.physical_pages * (PAGE_SIZE / 1024);
+	kstat.max_buffers_size = (kstat.max_buffers_size * BUFFER_PERCENTAGE) / 100;
+	n = (kstat.max_buffers_size * BUFFER_HASH_PERCENTAGE) / 100;
+	n = MAX(n, 10);	/* 10 buffer hashes as minimum */
+	/* buffer_hash_table is an array of pointers */
+	pages = ((n * sizeof(struct buffer *)) / PAGE_SIZE) + 1;
+	buffer_hash_table_size = pages << PAGE_SHIFT;
+	if(!is_addr_in_bios_map(V2P(_last_data_addr) + buffer_hash_table_size)) {
+		PANIC("Not enough memory for buffer_hash_table.\n");
+	}
+	buffer_hash_table = (struct buffer **)_last_data_addr;
+	_last_data_addr += buffer_hash_table_size;
+
+
+	/* calculate the inode table size */
+	sizek = physical_memory / 1024;	/* this helps to avoid overflow */
+	inode_table_size = (sizek * INODE_PERCENTAGE) / 100;
+	inode_table_size *= 1024;
+	pages = inode_table_size >> PAGE_SHIFT;
+	inode_table_size = pages << PAGE_SHIFT;
+
+	/* reserve memory space for inode_hash_table */
+	kstat.max_inodes = inode_table_size / sizeof(struct inode);
+	n = (kstat.max_inodes * INODE_HASH_PERCENTAGE) / 100;
+	n = MAX(n, 10);	/* 10 inode hash buckets as minimum */
+	/* inode_hash_table is an array of pointers */
+	pages = ((n * sizeof(struct inode *)) / PAGE_SIZE) + 1;
+	inode_hash_table_size = pages << PAGE_SHIFT;
+	if(!is_addr_in_bios_map(V2P(_last_data_addr) + inode_hash_table_size)) {
+		PANIC("Not enough memory for inode_hash_table.\n");
+	}
+	inode_hash_table = (struct inode **)_last_data_addr;
+	_last_data_addr += inode_hash_table_size;
+
+
+	/* reserve memory space for fd_table[NR_OPENS] */
+	fd_table_size = PAGE_ALIGN(sizeof(struct fd) * NR_OPENS);
+	if(!is_addr_in_bios_map(V2P(_last_data_addr) + fd_table_size)) {
+		PANIC("Not enough memory for fd_table.\n");
+	}
+	fd_table = (struct fd *)_last_data_addr;
+	_last_data_addr += fd_table_size;
+
+
+	/* reserve memory space for RAMdisk drives */
+	last_ramdisk = 0;
+	if(kparms.ramdisksize > 0 || ramdisk_table[0].addr) {
+		/*
+		 * If the 'initrd=' parameter was supplied, then the first
+		 * RAMdisk drive was already assigned to the initrd image.
+		 */
+		if(ramdisk_table[0].addr) {
+			ramdisk_table[0].addr += PAGE_OFFSET;
+			last_ramdisk = 1;
+		}
+		for(; last_ramdisk < ramdisk_minors; last_ramdisk++) {
+			if(!is_addr_in_bios_map(V2P(_last_data_addr) + (kparms.ramdisksize * 1024))) {
+				kparms.ramdisksize = 0;
+				ramdisk_minors -= RAMDISK_DRIVES;
+				printk("WARNING: RAMdisk drive disabled (not enough physical memory).\n");
+				break;
+			}
+			ramdisk_table[last_ramdisk].addr = (char *)_last_data_addr;
+			ramdisk_table[last_ramdisk].size = kparms.ramdisksize;
+			_last_data_addr += kparms.ramdisksize * 1024;
+		}
+	}
+
+	/*
+	 * FIXME: this is ugly!
+	 * It should go in console_init() once we have a proper kernel memory/page management.
+	 */
+	#include <fiwix/console.h>
+	for(n = 1; n <= NR_VCONSOLES; n++) {
+		vc_screen[n] = (short int *)_last_data_addr;
+		_last_data_addr += (video.columns * video.lines * 2);
+	}
+	/*
+	 * FIXME: this is ugly!
+	 * It should go in console_init() once we have a proper kernel memory/page management.
+	 */
+	vcbuf = (short int *)_last_data_addr;
+	_last_data_addr += (video.columns * video.lines * SCREENS_LOG * 2 * sizeof(short int));
+
+#ifdef CONFIG_KEXEC
+	if(kexec_size > 0) {
+		bios_map_reserve(KEXEC_BOOT_ADDR, KEXEC_BOOT_ADDR + (PAGE_SIZE * 2));
+		ramdisk_minors++;
+		if(last_ramdisk < ramdisk_minors) {
+			if(!is_addr_in_bios_map(V2P(_last_data_addr) + (kexec_size * 1024))) {
+				kexec_size = 0;
+				ramdisk_minors--;
+				printk("WARNING: RAMdisk drive for kexec disabled (not enough physical memory).\n");
+			} else {
+				ramdisk_table[last_ramdisk].addr = (char *)_last_data_addr;
+				ramdisk_table[last_ramdisk].size = kexec_size;
+				_last_data_addr += kexec_size * 1024;
+			}
+		}
+	}
+#endif /* CONFIG_KEXEC */
+
+	/* the last one must be the page_table structure */
+	n = (kstat.physical_pages * PAGE_HASH_PER_10K) / 10000;
+	n = MAX(n, 1);	/* 1 page for the hash table as minimum */
+	n = MIN(n, MAX_PAGES_HASH);
+	page_hash_table_size = n * PAGE_SIZE;
+	if(!is_addr_in_bios_map(V2P(_last_data_addr) + page_hash_table_size)) {
+		PANIC("Not enough memory for page_hash_table.\n");
+	}
+	page_hash_table = (struct page **)_last_data_addr;
+	_last_data_addr += page_hash_table_size;
+
+	page_table_size = PAGE_ALIGN(kstat.physical_pages * sizeof(struct page));
+	if(!is_addr_in_bios_map(V2P(_last_data_addr) + page_table_size)) {
+		PANIC("Not enough memory for page_table.\n");
+	}
+	page_table = (struct page *)_last_data_addr;
+	_last_data_addr += page_table_size;
+
+	page_init(kstat.physical_pages);
+	buddy_low_init();
+}
+
+void mem_stats(void)
+{
+	kstat.kernel_reserved <<= 2;
+	kstat.physical_reserved <<= 2;
+
+	printk("\n");
+	printk("memory: total=%dKB, user=%dKB, kernel=%dKB, reserved=%dKB\n",
+		kstat.physical_pages << 2,
+		kstat.total_mem_pages << 2,
+		kstat.kernel_reserved, kstat.physical_reserved);
+	printk("tables: procs=%d (%dKB), opens=%d (%dKB), pages=%dKB, inodes=%d\n",
+		NR_PROCS, proc_table_size / 1024,
+		NR_OPENS, fd_table_size / 1024,
+		page_table_size / 1024,
+		kstat.max_inodes);
+	printk("hash tables: buffers=%d (%dKB), inodes=%d (%dKB), pages=%d (%dKB)\n",
+		buffer_hash_table_size / sizeof(struct buffer *), buffer_hash_table_size / 1024,
+		inode_hash_table_size / sizeof(struct inode *), inode_hash_table_size / 1024,
+		page_hash_table_size / sizeof(struct page *), page_hash_table_size / 1024);
+	printk("kernel: text=%dKB, data=%dKB, bss=%dKB\n\n",
+		KERNEL_TEXT_SIZE / 1024, KERNEL_DATA_SIZE / 1024, KERNEL_BSS_SIZE / 1024);
+}
