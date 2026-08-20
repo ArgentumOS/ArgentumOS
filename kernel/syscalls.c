@@ -386,10 +386,10 @@ void *syscall_table[] = {
 	NULL,				/* sys_rt_sigreturn */	/* 173 */
 	sys_rt_sigaction,			/* 174 */
 	sys_rt_sigprocmask,			/* 175 */
+	sys_rt_sigpending,			/* 176 */
 	NULL,
 	NULL,
-	NULL,
-	NULL,
+	sys_rt_sigsuspend,			/* 179 */
 	NULL,				/* 180 */
 	NULL,
 	sys_chown,
@@ -466,13 +466,13 @@ void *syscall_table[] = {
 	NULL,
 	NULL,				/* 250 */
 	NULL,
-	NULL,
+	sys_exit,			/* sys_exit_group */	/* 252 */
 	NULL,
 	NULL,
 	NULL,				/* 255 */
 	NULL,
 	NULL,
-	NULL,
+	sys_set_tid_address,			/* 258 */
 	NULL,
 	NULL,				/* 260 */
 	NULL,
