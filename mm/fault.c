@@ -48,6 +48,16 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 	pgtbl = (unsigned int *)P2V((pgdir[pde] & PAGE_MASK));
 	page = (pgtbl[pte] & PAGE_MASK) >> PAGE_SHIFT;
 
+#ifdef __x86_64__
+	/* Fiwix64: a user write "violation" whose 2-level entry is NOT present
+	 * is really a supervisor 2MB identity page (the 64-bit pml4 covers
+	 * 0-4GB, so the CPU reports PFAULT_V even though Fiwix never mapped
+	 * this page). Demand-map it (page_not_present splits the huge page). */
+	if(!(pgtbl[pte] & PAGE_PRESENT) && (sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
+		return page_not_present(vma, cr2, sc);
+	}
+#endif /* __x86_64__ */
+
 	pg = &page_table[page];
 
 	/* Copy On Write feature */
