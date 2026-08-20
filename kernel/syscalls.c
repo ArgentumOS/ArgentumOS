@@ -383,9 +383,9 @@ void *syscall_table[] = {
 	NULL,				/* 170 */
 	NULL,
 	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 175 */
+	NULL,				/* sys_rt_sigreturn */	/* 173 */
+	sys_rt_sigaction,			/* 174 */
+	sys_rt_sigprocmask,			/* 175 */
 	NULL,
 	NULL,
 	NULL,
