@@ -17,6 +17,9 @@
 #include <fiwix/string.h>
 #include <fiwix/video.h>
 #include <fiwix/console.h>
+#ifdef __x86_64__
+#include <fiwix/gop.h>
+#endif
 #include <fiwix/pci.h>
 #include <fiwix/pic.h>
 #include <fiwix/irq.h>
@@ -65,6 +68,46 @@ static void set_default_values(void)
 	}
 }
 
+#ifdef __x86_64__
+/* Fiwix64: populate the video console from the UEFI GOP framebuffer that
+ * the EFI stub captured before ExitBootServices. Called after multiboot()
+ * (which, with no multiboot VBE info, falls back to VGA text) and before
+ * video_init(), so the console renders through fbcon instead of vgacon. */
+static void gop_video_init(void)
+{
+	int bpp, pixelwidth;
+
+	if(!fiwix_gop_fb.phys_base) {
+		return;	/* no framebuffer (headless or no graphics device) */
+	}
+
+	/* QEMU's GOP reports 32bpp BGRX (PixelBlueGreenRedReserved...);
+	 * fbcon's 32bpp set_color() writes 0x00RRGGBB, which lands in memory
+	 * as B,G,R,0 - matching that layout byte-for-byte. */
+	bpp = 32;
+	pixelwidth = bpp / 8;
+
+	video.flags = VPF_VESAFB;
+	video.address = (unsigned int *)fiwix_gop_fb.phys_base; /* identity-mapped */
+	video.port = 0;
+	video.memsize = (int)fiwix_gop_fb.size;
+	video.fb_version = 0;
+	video.fb_width = (int)fiwix_gop_fb.width;
+	video.fb_height = (int)fiwix_gop_fb.height;
+	video.fb_char_width = 8;
+	video.fb_char_height = 16;
+	video.fb_bpp = bpp;
+	video.fb_pixelwidth = pixelwidth;
+	video.fb_pitch = (int)fiwix_gop_fb.pixels_per_scanline * pixelwidth;
+	video.columns = video.fb_width / video.fb_char_width;
+	video.lines = video.fb_height / video.fb_char_height;
+	video.fb_linesize = video.fb_pitch * video.fb_char_height;
+	video.fb_size = video.fb_width * video.fb_height * pixelwidth;
+	video.fb_vsize = video.lines * video.fb_pitch * video.fb_char_height;
+	strcpy((char *)video.signature, "UEFI GOP");
+}
+#endif /* __x86_64__ */
+
 void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot_addr)
 {
 	struct proc *init;
@@ -101,6 +144,9 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 	cpu_init();
 	multiboot(magic, info);
 	set_default_values();
+#ifdef __x86_64__
+	gop_video_init();
+#endif
 	pic_init();
 	irq_init();
 	idt_init();

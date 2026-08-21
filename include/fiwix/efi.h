@@ -53,6 +53,54 @@ typedef struct {
 	UINT32 Reserved;
 } EFI_TABLE_HEADER;
 
+/* --- EFI Graphics Output Protocol (GOP), UEFI 2.x -------------------- */
+
+#define EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID \
+	{ 0x9042a9de, 0x23dc, 0x4a38, \
+	  { 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a } }
+
+typedef enum {
+	PixelRedGreenBlueReserved8BitPerColor = 0,
+	PixelBlueGreenRedReserved8BitPerColor = 1,
+	PixelBitMask = 2,
+	PixelBltOnly = 3,
+	PixelFormatMax
+} EFI_GRAPHICS_PIXEL_FORMAT;
+
+typedef struct {
+	UINT32 RedMask;
+	UINT32 GreenMask;
+	UINT32 BlueMask;
+	UINT32 ReservedMask;
+} EFI_PIXEL_BITMASK;
+
+typedef struct {
+	UINT32 Version;
+	UINT32 HorizontalResolution;
+	UINT32 VerticalResolution;
+	EFI_GRAPHICS_PIXEL_FORMAT PixelFormat;
+	EFI_PIXEL_BITMASK PixelInformation;
+	UINT32 PixelsPerScanLine;
+} EFI_GRAPHICS_OUTPUT_MODE_INFORMATION;
+
+typedef struct {
+	UINT32 MaxMode;
+	UINT32 Mode;
+	EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
+	UINTN SizeOfInfo;
+	EFI_PHYSICAL_ADDRESS FrameBufferBase;
+	UINTN FrameBufferSize;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
+
+typedef struct _EFI_GRAPHICS_OUTPUT_PROTOCOL {
+	EFI_STATUS (EFIAPI *QueryMode)(struct _EFI_GRAPHICS_OUTPUT_PROTOCOL *, UINT32, UINTN *, EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **);
+	EFI_STATUS (EFIAPI *SetMode)(struct _EFI_GRAPHICS_OUTPUT_PROTOCOL *, UINT32);
+	EFI_STATUS (EFIAPI *Blt)(struct _EFI_GRAPHICS_OUTPUT_PROTOCOL *, void *, UINTN, UINTN, UINTN, UINTN, UINTN, UINTN, UINTN);
+	EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *Mode;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL;
+
+typedef EFI_STATUS (EFIAPI *EFI_LOCATE_PROTOCOL)(EFI_GUID *, void *, void **);
+
 typedef enum {
 	EfiReservedMemoryType	= 0,
 	EfiLoaderCode		= 1,

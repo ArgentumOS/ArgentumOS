@@ -72,12 +72,12 @@ static void puts(char *buffer, int msg_level)
 
 	l = p = buffer;
 	while(*l) {
-#ifdef __x86_64__
-		/* Fiwix64: the console tty->output() path is disabled during
-		 * early boot (the tty's driver_data is being set up); the
-		 * debugcon port above already mirrors every byte. */
-#else
-		if(tty && *p) {
+		/* Fiwix64: tty->output is only valid once the console/serial
+		 * driver has initialized it (NULL during early boot), so guard
+		 * the call - otherwise the very first printks crash before the
+		 * console is up. The debugcon/serial mirror above still covers
+		 * early boot. */
+		if(tty && tty->output && *p) {
 			if(p == buffer && strlen(buffer) > 3) {
 				if(p[0] == '<' &&
 				   p[1] >= '0' && p[1] <= '7' &&
@@ -91,7 +91,6 @@ static void puts(char *buffer, int msg_level)
 			tty->output(tty);
 			p++;
 		}
-#endif /* __x86_64__ */
 		log_write &= LOG_BUF_LEN - 1;
 		log_buf[log_write++] = *l;
 		if(log_size < LOG_BUF_LEN) {

@@ -20,9 +20,13 @@
  */
 
 #include <fiwix/efi.h>
+#include <fiwix/gop.h>
 
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *);
 void kernel64_main(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN, UINTN, EFI_SYSTEM_TABLE *);
+
+/* GOP framebuffer captured by the stub, consumed later by the real kernel */
+struct fiwix_gop_fb fiwix_gop_fb;
 
 static void outb(unsigned short port, unsigned char val)
 {
@@ -126,6 +130,47 @@ static void mask_pic_irqs(void)
 	outb(0xA1, 0xFF);
 }
 
+static void query_gop(EFI_BOOT_SERVICES *bs)
+{
+	EFI_GUID gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+	EFI_LOCATE_PROTOCOL locate;
+	EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
+	EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
+
+	fiwix_gop_fb.phys_base = 0;
+	gop = NULL;
+
+	locate = (EFI_LOCATE_PROTOCOL)bs->LocateProtocol;
+	if(locate(&gop_guid, NULL, (void **)&gop) != EFI_SUCCESS || !gop) {
+		return;
+	}
+	mode = gop->Mode;
+	if(!mode || !mode->Info) {
+		return;
+	}
+
+	fiwix_gop_fb.phys_base = (unsigned long)mode->FrameBufferBase;
+	fiwix_gop_fb.size = (unsigned long)mode->FrameBufferSize;
+	fiwix_gop_fb.width = mode->Info->HorizontalResolution;
+	fiwix_gop_fb.height = mode->Info->VerticalResolution;
+	fiwix_gop_fb.pixels_per_scanline = mode->Info->PixelsPerScanLine;
+	fiwix_gop_fb.pixel_format = (unsigned int)mode->Info->PixelFormat;
+
+	serial_puts("[GOP] framebuffer ");
+	serial_hex(fiwix_gop_fb.phys_base);
+	serial_puts(" size=");
+	serial_hex(fiwix_gop_fb.size);
+	serial_puts(" ");
+	serial_hex((UINT64)fiwix_gop_fb.width);
+	serial_puts("x");
+	serial_hex((UINT64)fiwix_gop_fb.height);
+	serial_puts(" pitch=");
+	serial_hex((UINT64)fiwix_gop_fb.pixels_per_scanline);
+	serial_puts(" fmt=");
+	serial_hex((UINT64)fiwix_gop_fb.pixel_format);
+	serial_puts("\n");
+}
+
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	EFI_BOOT_SERVICES *bs;
@@ -166,6 +211,9 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 	 * interrupt handlers are no longer guaranteed to be active.
 	 */
 	mask_pic_irqs();
+
+	/* grab the GOP framebuffer before boot services go away */
+	query_gop(bs);
 
 	st = bs->ExitBootServices(ImageHandle, map_key);
 	if(st != EFI_SUCCESS) {

@@ -32,7 +32,7 @@ S_IFCHR = 0o020000
 
 # (path relative to root) -> device number (MKDEV(maj,min) = (maj << 8) | min)
 DEVICES = {
-    'dev/console': 0x440,   # (4 << 8) | 64   serial ttyS0
+    'dev/console': 0x501,   # SYSCON_DEV (5 << 8) | 1 -> follows kernel console= param
     'dev/null':    0x103,   # (1 << 8) | 3
     'dev/zero':    0x105,   # (1 << 8) | 5
     'dev/tty':     0x500,   # (5 << 8) | 0
