@@ -120,7 +120,7 @@ run: fiwix
 		./tools/qemu.sh -nographic -m 128M -kernel fiwix -append "console=/dev/ttyS0" $(QEMU_EXTRA); \
 	fi
 
-run-uefi: .build/ovmf/OVMF.fd build64
+run-uefi: .build/ovmf/OVMF.fd userland build64
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
 		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw $(QEMU_EXTRA); \
@@ -129,6 +129,41 @@ run-uefi: .build/ovmf/OVMF.fd build64
 	else \
 		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw $(QEMU_EXTRA); \
 	fi
+
+# --- Fiwix64 static musl i386 userland (init + sh), packed into the initrd ---
+# `make userland` builds /sbin/init + /bin/sh under .build/rootfs and
+# regenerates kernel64/initrd64.c (the embedded minix-v1 initrd) with
+# tools/mkinitrd.py. `make run-uefi` does this automatically.
+# musl is a vendored submodule (third_party/musl); dash must be cloned into
+# third_party/dash (git.kernel.org) or the tree built once with `make dash`.
+MUSL_PREFIX = .build/musl
+MUSL_SPECS  = $(MUSL_PREFIX)/lib/musl-gcc.specs
+MUSL_CC     = gcc -m32 -static -Wl,-m,elf_i386 -specs $(MUSL_SPECS)
+ROOTFS      = .build/rootfs
+DASH_BIN    = third_party/dash/src/dash
+
+.PHONY: userland musl dash
+
+musl: $(MUSL_SPECS)
+$(MUSL_SPECS):
+	cd third_party/musl && \
+		CC="gcc -m32" ./configure --target=i386 --prefix=$(CURDIR)/$(MUSL_PREFIX) && \
+		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
+		$(MAKE) && $(MAKE) install
+
+dash: $(DASH_BIN)
+$(DASH_BIN):
+	cd third_party/dash && ./autogen.sh && \
+		CC="$(CURDIR)/tools/musl-gcc.sh" ./configure --host=i386-linux --disable-fnmatch --disable-glob && \
+		$(MAKE) && strip src/dash
+
+userland: $(MUSL_SPECS) $(DASH_BIN)
+	@mkdir -p $(ROOTFS)/sbin $(ROOTFS)/bin $(ROOTFS)/dev
+	$(MUSL_CC) userland/init.c -o $(ROOTFS)/sbin/init
+	cp $(DASH_BIN) $(ROOTFS)/bin/sh
+	touch $(ROOTFS)/dev/console
+	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c
+	@echo "userland: initrd regenerated from $(ROOTFS)"
 
 ovmf: .build/ovmf/OVMF.fd
 
