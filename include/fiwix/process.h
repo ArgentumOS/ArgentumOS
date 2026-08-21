@@ -108,6 +108,7 @@ struct proc {
 	struct i386tss tss;
 #ifdef __x86_64__
 	addr_t cr3_64;	/* Fiwix64: per-process 4-level pml4 (physical) */
+	unsigned long tls_base;	/* Fiwix64: per-process TLS (%gs) descriptor base */
 #endif /* __x86_64__ */
 	struct proc *ppid;		/* pointer to parent process */
 	__pid_t pid;			/* process ID */

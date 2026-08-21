@@ -8,3 +8,7 @@ include/fiwix/custom_system.h
 
 # Fiwix64 build artifacts
 .build/
+
+# dash is cloned into third_party/dash (see Makefile 'dash' target); musl is a
+# submodule, dash is fetched locally and not committed.
+/third_party/dash/

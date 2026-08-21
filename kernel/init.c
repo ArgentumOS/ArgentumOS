@@ -72,8 +72,9 @@ void init_init(void)
 		 * of the low-4GB identity/user hierarchy + shared kernel half).
 		 * The init_trampoline page (PAGE_OFFSET - PAGE_SIZE) lives in the
 		 * shared high half, so map_page() below still reaches it. */
-		extern unsigned long create_pml4_64(void);
-		if(!(init->cr3_64 = create_pml4_64())) {
+		extern unsigned long create_pml4_64(unsigned long);
+		extern unsigned long paging64_pml4_phys(void);
+		if(!(init->cr3_64 = create_pml4_64(paging64_pml4_phys()))) {
 			goto init_init__die;
 		}
 	}

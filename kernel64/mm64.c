@@ -50,6 +50,7 @@
 #define V2P64(a)	((unsigned long)(a) - PAGE_OFFSET64)
 
 unsigned long paging64_pml4(void);
+unsigned long paging64_pml4_phys(void);
 void tlb_flush64(void);
 
 static unsigned char page_bitmap[BITMAP_BYTES];
@@ -340,13 +341,24 @@ int map_user_page64(unsigned long vaddr, unsigned long paddr, unsigned long flag
  * another process's tables), while PML4[511] (the kernel high half) stays
  * SHARED with the kernel. Returns the new pml4's PHYSICAL address (0 on
  * failure). */
-unsigned long create_pml4_64(void)
-{
-	unsigned long *kml4, *pml4, *kpdpt, *pdpt, *kpd, *pd;
-	unsigned long pml4_phys, pdpt_phys, pd_phys;
-	int i, j;
+void free_pml4_64(unsigned long pml4_phys);
 
-	kml4 = (unsigned long *)P2V64(paging64_pml4());
+unsigned long create_pml4_64(unsigned long src_pml4_phys)
+{
+	unsigned long *src4, *pml4, *spdpt, *pdpt, *spd, *pd, *spt, *pt;
+	unsigned long pml4_phys, pdpt_phys, pd_phys, pt_phys;
+	unsigned long e;
+	extern unsigned long paging64_pml4_phys(void);
+	int is_fork, i, j, k;
+
+	src4 = (unsigned long *)P2V64(src_pml4_phys);
+
+	/* Fork passes the PARENT's pml4; INIT/exec pass the shared KERNEL
+	 * pml4. Only the fork case may make the source's writable user leaves
+	 * read-only (CoW) - the kernel pml4 is SHARED, and its low-4GB may
+	 * hold stale user mappings (e.g. the INIT trampoline stack) that the
+	 * kernel itself still needs to reach read-write via the high half. */
+	is_fork = (src_pml4_phys != paging64_pml4_phys());
 
 	pml4_phys = alloc_table_page();
 	if(!pml4_phys) {
@@ -355,17 +367,22 @@ unsigned long create_pml4_64(void)
 	pml4 = (unsigned long *)P2V64(pml4_phys);
 	pml4[0] = 0;
 
-	/* deep-copy the low-4GB hierarchy (kernel PML4[0] -> PDPT -> PDs) */
-	if(kml4[0] & X86_PTE_P) {
+	/* Deep-copy the low-4GB hierarchy (src PML4[0] -> PDPT -> PDs -> PTs).
+	 * Copying the PARENT's pml4 (not the kernel identity map) means a fork
+	 * child inherits every demand-mapped page - text/data/stack/TLS - so it
+	 * does not start "cold" and lose its stack return address. USER leaf
+	 * pages are mapped read-only (CoW), mirroring clone_pages()'s 2-level
+	 * PAGE_COW, so a later user write faults into the copy-on-write path. */
+	if(src4[0] & X86_PTE_P) {
 		pdpt_phys = alloc_table_page();
 		if(!pdpt_phys) {
 			free_pages64(pml4_phys, 1);
 			return 0;
 		}
 		pdpt = (unsigned long *)P2V64(pdpt_phys);
-		kpdpt = (unsigned long *)P2V64(kml4[0] & PAGE_MASK64);
+		spdpt = (unsigned long *)P2V64(src4[0] & PAGE_MASK64);
 		for(i = 0; i < 512; i++) {
-			pdpt[i] = kpdpt[i];
+			pdpt[i] = spdpt[i];
 		}
 		/* the low 4GB (PDPT[0..3]) gets PRIVATE PD pages */
 		for(i = 0; i < 4; i++) {
@@ -379,17 +396,47 @@ unsigned long create_pml4_64(void)
 				return 0;
 			}
 			pd = (unsigned long *)P2V64(pd_phys);
-			kpd = (unsigned long *)P2V64(pdpt[i] & PAGE_MASK64);
+			spd = (unsigned long *)P2V64(spdpt[i] & PAGE_MASK64);
 			for(j = 0; j < 512; j++) {
-				pd[j] = kpd[j];
+				e = spd[j];
+				if((e & (X86_PTE_P | X86_PTE_PS)) == X86_PTE_P) {
+					/* split 4KB page: private PT, user leaves CoW */
+					pt_phys = alloc_table_page();
+					if(!pt_phys) {
+						free_pml4_64(pml4_phys);
+						return 0;
+					}
+					pd[j] = pt_phys | (e & 0xFFFUL);
+					pt = (unsigned long *)P2V64(pt_phys);
+					spt = (unsigned long *)P2V64(e & PAGE_MASK64);
+					for(k = 0; k < 512; k++) {
+						unsigned long leaf = spt[k];
+						/* CoW: a writable USER leaf is shared
+						 * read-only in BOTH the child (copy) and the
+						 * fork source (parent), so the first write by
+						 * either side faults into the copy-on-write
+						 * path. Supervisor leaves (the kernel identity
+						 * map) stay shared untouched. Only done for a
+						 * fork source (never the shared kernel pml4). */
+						if((leaf & X86_PTE_US) && (leaf & X86_PTE_RW)) {
+							leaf &= ~X86_PTE_RW;
+							if(is_fork) {
+								spt[k] = leaf;
+							}
+						}
+						pt[k] = leaf;
+					}
+				} else {
+					pd[j] = e;
+				}
 			}
 			pdpt[i] = pd_phys | (pdpt[i] & 0xFFFUL);
 		}
-		pml4[0] = pdpt_phys | (kml4[0] & 0xFFFUL);
+		pml4[0] = pdpt_phys | (src4[0] & 0xFFFUL);
 	}
 	/* everything else (kernel high half etc.) stays shared */
 	for(i = 1; i < 512; i++) {
-		pml4[i] = kml4[i];
+		pml4[i] = src4[i];
 	}
 	return pml4_phys;
 }
@@ -402,7 +449,7 @@ void free_pml4_64(unsigned long pml4_phys)
 	unsigned long *pml4, *pdpt, *pd, *pt;
 	int i, j;
 
-	if(!pml4_phys || pml4_phys == paging64_pml4()) {
+	if(!pml4_phys || pml4_phys == paging64_pml4_phys()) {
 		return;
 	}
 	pml4 = (unsigned long *)P2V64(pml4_phys);

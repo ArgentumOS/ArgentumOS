@@ -85,6 +85,18 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		current->rss++;
 		memcpy_b((void *)addr, (void *)P2V((page << PAGE_SHIFT)), PAGE_SIZE);
 		pgtbl[pte] = V2P(addr) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
+#ifdef __x86_64__
+		{
+			/* Fiwix64: mirror the CoW result in the ACTIVE 4-level
+			 * tables (the 2-level pgdir copy is never loaded into
+			 * CR3), or the CPU keeps faulting on the stale read-only
+			 * leaf. */
+			extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
+			extern unsigned long paging64_pml4(void);
+			unsigned long pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
+			map_user_page64_in(pml4, cr2, (unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
+		}
+#endif /* __x86_64__ */
 		kfree(P2V((page << PAGE_SHIFT)));
 		current->rss--;
 		invalidate_tlb();
@@ -107,6 +119,17 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 				return 0;
 			}
 			pgtbl[pte] = (page << PAGE_SHIFT) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
+#ifdef __x86_64__
+			{
+				/* Fiwix64: mirror the last-CoW-page result in the
+				 * ACTIVE 4-level tables (see the pg->count > 1 branch
+				 * above). */
+				extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
+				extern unsigned long paging64_pml4(void);
+				unsigned long pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
+				map_user_page64_in(pml4, cr2, (unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
+			}
+#endif /* __x86_64__ */
 			invalidate_tlb();
 			return 0;
 		}
@@ -121,8 +144,8 @@ static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc)
 	struct page *pg;
 
 	if(!vma) {
-		if(cr2 >= (sc->oldesp - 32) && cr2 < PAGE_OFFSET) {
-			if(!(vma = find_vma_region(PAGE_OFFSET - 1))) {
+		if(cr2 >= (sc->oldesp - 32) && cr2 < USER_STACK_TOP) {
+			if(!(vma = find_vma_region(USER_STACK_TOP - 1))) {
 				printk("WARNING: %s(): process %d doesn't have an stack region in vma_table!\n", __FUNCTION__, current->pid);
 				send_sigsegv(sc);
 				return 0;
@@ -373,6 +396,21 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 		/* in user mode */
 		if(sc->err & PFAULT_U) {
 			if(sc->err & PFAULT_V) {	/* violation */
+#ifdef __x86_64__
+				/* Fiwix64: with no vma, a user "violation" (read OR
+				 * write) below the stack top is stack growth below
+				 * the stack vma - the 0-4GB identity map makes the
+				 * not-present page look present (V bit set). Route
+				 * it to page_not_present(), which grows the stack
+				 * (it re-checks the stack heuristic and SIGSEGVs if
+				 * the address isn't stack-like). */
+				if(cr2 < USER_STACK_TOP) {
+					if((page_not_present(vma, cr2, sc))) {
+						send_sig(current, SIGKILL);
+					}
+					return;
+				}
+#endif /* __x86_64__ */
 				send_sigsegv(sc);
 			} else {			/* stack? */
 				if((page_not_present(vma, cr2, sc))) {
@@ -405,7 +443,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 			usc += 1;
 
 			/* does it look like a user stack address? */
-			if(cr2 >= (usc->oldesp - 32) && cr2 < PAGE_OFFSET) {
+			if(cr2 >= (usc->oldesp - 32) && cr2 < USER_STACK_TOP) {
 				if((!page_not_present(vma, cr2, usc))) {
 					return;
 				}

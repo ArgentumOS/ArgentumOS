@@ -141,8 +141,8 @@ __pid_t remove_zombie(struct proc *p)
 		 * The reaper runs on its own CR3; the zombie's pml4 is not
 		 * active, so freeing it is safe. */
 		extern void free_pml4_64(unsigned long);
-		extern unsigned long paging64_pml4(void);
-		if(p->cr3_64 && p->cr3_64 != paging64_pml4()) {
+		extern unsigned long paging64_pml4_phys(void);
+		if(p->cr3_64 && p->cr3_64 != paging64_pml4_phys()) {
 			free_pml4_64(p->cr3_64);
 		}
 		p->cr3_64 = 0;

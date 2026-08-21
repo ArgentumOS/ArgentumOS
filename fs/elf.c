@@ -477,14 +477,14 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 		 * kernel's low-4GB hierarchy. The kernel high half is shared and
 		 * mapped in both, so the mid-execution CR3 switch is safe; the
 		 * new binary's demand-maps repopulate the low half. */
-		extern unsigned long create_pml4_64(void);
+		extern unsigned long create_pml4_64(unsigned long);
 		extern void free_pml4_64(unsigned long);
-		extern unsigned long paging64_pml4(void);
-		unsigned long new_pml4 = create_pml4_64();
+		extern unsigned long paging64_pml4_phys(void);
+		unsigned long new_pml4 = create_pml4_64(paging64_pml4_phys());
 		if(!new_pml4) {
 			PANIC("exec: unable to allocate the new page tables.\n");
 		}
-		if(current->cr3_64 && current->cr3_64 != paging64_pml4()) {
+		if(current->cr3_64 && current->cr3_64 != paging64_pml4_phys()) {
 			free_pml4_64(current->cr3_64);
 		}
 		current->cr3_64 = new_pml4;
@@ -603,13 +603,13 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 	current->brk = start;
 
 	/* setup the STACK section */
-	sp = PAGE_OFFSET - 4;	/* formerly 0xBFFFFFFC */
+	sp = USER_STACK_TOP - 4;	/* formerly 0xBFFFFFFC */
 	sp -= ae_str_len;
 	str = sp;	/* this is the address of the first string (argv[0]) */
 	sp &= ~3;
 	sp -= (AT_ITEMS * 2) * sizeof(unsigned int);
 	sp -= ae_ptr_len;
-	length = PAGE_OFFSET - (sp & PAGE_MASK);
+	length = USER_STACK_TOP - (sp & PAGE_MASK);
 	errno = do_mmap(NULL, sp & PAGE_MASK, length, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED, 0, P_STACK, 0, NULL);
 	if(errno < 0 && errno > -PAGE_SIZE) {
 		send_sig(current, SIGSEGV);

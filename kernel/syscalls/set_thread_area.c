@@ -42,6 +42,7 @@ int sys_set_thread_area(struct user_desc *u_info)
 
 		gdt64_set_tls_base((unsigned long)base);
 	}
+	current->tls_base = (unsigned long)base;
 
 	/* single-threaded: always the fixed slot; musl computes the selector
 	 * as (entry_number << 3) | 3 == 0x63 */

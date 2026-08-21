@@ -18,6 +18,23 @@
 #include <fiwix/stdio.h>
 #endif /*__DEBUG__ */
 
+/*
+ * Fiwix64: the exec'd user programs are 32-bit (compat) ELFs, so their
+ * argv[]/envp[] arrays hold 32-bit pointers; the INIT trampoline (which has
+ * no vma_table) is the only 64-bit caller and passes native 64-bit pointers
+ * (init_argv/init_envp in the kernel data segment). Read each element at the
+ * right width and zero-extend. On a 32-bit build this is just arr[n].
+ */
+static char *get_user_ptr(char **arr, int n)
+{
+#ifdef __x86_64__
+	if(current->vma_table) {
+		return (char *)(unsigned long)((unsigned int *)arr)[n];
+	}
+#endif /* __x86_64__ */
+	return arr[n];
+}
+
 static int initialize_barg(struct binargs *barg, char *argv[], char *envp[])
 {
 	int n, errno;
@@ -27,19 +44,19 @@ static int initialize_barg(struct binargs *barg, char *argv[], char *envp[])
 	}
 	barg->argv_len = barg->envp_len = 0;
 
-	for(n = 0; argv[n]; n++) {
-		if((errno = check_user_area(VERIFY_READ, argv[n], sizeof(char *)))) {
+	for(n = 0; get_user_ptr(argv, n); n++) {
+		if((errno = check_user_area(VERIFY_READ, get_user_ptr(argv, n), sizeof(char *)))) {
 			return errno;
 		}
-		barg->argv_len += strlen(argv[n]) + 1;
+		barg->argv_len += strlen(get_user_ptr(argv, n)) + 1;
 	}
 	barg->argc = n;
 
-	for(n = 0; envp[n]; n++) {
-		if((errno = check_user_area(VERIFY_READ, envp[n], sizeof(char *)))) {
+	for(n = 0; get_user_ptr(envp, n); n++) {
+		if((errno = check_user_area(VERIFY_READ, get_user_ptr(envp, n), sizeof(char *)))) {
 			return errno;
 		}
-		barg->envp_len += strlen(envp[n]) + 1;
+		barg->envp_len += strlen(get_user_ptr(envp, n)) + 1;
 	}
 	barg->envc = n;
 
@@ -196,7 +213,7 @@ static int copy_strings(struct binargs *barg, char *argv[], char *envp[])
 		}
 	}
 	for(n = 0; n < barg->argc; n++) {
-		str = argv[n];
+		str = get_user_ptr(argv, n);
 		page = (char *)barg->page[p];
 		while(*str) {
 			*(page + offset) = *str;
@@ -215,7 +232,7 @@ static int copy_strings(struct binargs *barg, char *argv[], char *envp[])
 		}
 	}
 	for(n = 0; n < barg->envc; n++) {
-		str = envp[n];
+		str = get_user_ptr(envp, n);
 		page = (char *)barg->page[p];
 		while(*str) {
 			*(page + offset) = *str;

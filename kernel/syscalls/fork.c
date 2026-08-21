@@ -87,14 +87,13 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 	child->tss.cr3 = V2P((addr_t)child_pgdir);
 #ifdef __x86_64__
 	{
-		/* Fiwix64 (M6-next): the fork child gets its own 4-level tables
-		 * (fresh copy of the kernel's low-4GB hierarchy). Its user pages
-		 * are COW-shared in the 2-level pgdir copies; the child re-faults
-		 * them and map_user_page64() maps each into the child's own pml4
-		 * via current->cr3_64 - nothing is shared with the parent's
-		 * active tables anymore. */
-		extern unsigned long create_pml4_64(void);
-		if(!(child->cr3_64 = create_pml4_64())) {
+		/* Fiwix64 (M6-next): the fork child gets its own 4-level tables,
+		 * deep-copied from the PARENT's pml4 (current->cr3_64) so it
+		 * inherits every demand-mapped user page (text/data/stack/TLS).
+		 * Writable user leaves are shared read-only (CoW), mirroring
+		 * clone_pages()'s 2-level PAGE_COW. */
+		extern unsigned long create_pml4_64(unsigned long);
+		if(!(child->cr3_64 = create_pml4_64(current->cr3_64))) {
 			kfree((addr_t)child_pgdir);
 			release_proc(child);
 			return -ENOMEM;

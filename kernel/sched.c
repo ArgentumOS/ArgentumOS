@@ -55,6 +55,20 @@ void set_tss(struct proc *p)
 		extern void gdt64_set_rsp0(unsigned long);
 		gdt64_set_rsp0(p->tss.esp0);
 	}
+	/* Fiwix64 (M6-next): the TLS descriptor (GDT slot 12, selector 0x63)
+	 * is a single SHARED slot and %gs-relative addressing reads the base
+	 * through it (and the matching GS_BASE MSR). A child's
+	 * set_thread_area() would otherwise leave the parent reading its
+	 * errno/__syscall trampoline through the child's TLS. Restore this
+	 * process's own TLS base and reload %gs on every switch. */
+	{
+		extern void gdt64_set_tls_base(unsigned long);
+		if(p->tls_base) {
+			gdt64_set_tls_base(p->tls_base);
+			__asm__ __volatile__("movw $0x63, %%ax; movw %%ax, %%gs"
+					     : : : "ax");
+		}
+	}
 #endif /* __x86_64__ */
 }
 
