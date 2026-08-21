@@ -105,6 +105,11 @@ static void gop_video_init(void)
 	video.fb_size = video.fb_width * video.fb_height * pixelwidth;
 	video.fb_vsize = video.lines * video.fb_pitch * video.fb_char_height;
 	strcpy((char *)video.signature, "UEFI GOP");
+
+	/* Clear the OVMF boot graphics out of the framebuffer before the
+	 * console first draws, so it starts on a black screen instead of
+	 * showing the firmware's leftover splash/logo. */
+	memset_b((void *)video.address, 0, video.memsize);
 }
 #endif /* __x86_64__ */
 
