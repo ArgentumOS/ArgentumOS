@@ -120,14 +120,14 @@ run: fiwix
 		./tools/qemu.sh -nographic -m 128M -kernel fiwix -append "console=/dev/ttyS0" $(QEMU_EXTRA); \
 	fi
 
-run-uefi: .build/ovmf/OVMF.fd userland build64
+run-uefi: .build/ovmf/OVMF.fd rootdisk build64
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw $(QEMU_EXTRA); \
+		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M -drive file=.build/esp.img,format=raw $(QEMU_EXTRA); \
+		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	else \
-		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw $(QEMU_EXTRA); \
+		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	fi
 
 # --- Fiwix64 static musl i386 userland (init + sh), packed into the initrd ---
@@ -164,6 +164,13 @@ userland: $(MUSL_SPECS) $(DASH_BIN)
 	touch $(ROOTFS)/dev/console
 	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c
 	@echo "userland: initrd regenerated from $(ROOTFS)"
+
+# Build a persistent ext2 root filesystem image (.build/root.img) from the
+# same rootfs tree. Attached as a second IDE disk (hdb), it becomes the boot
+# root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.
+rootdisk: userland
+	python3 tools/mkext2.py $(ROOTFS) .build/root.img 8
+	@echo "rootdisk: .build/root.img ready (ext2, 8MB)"
 
 ovmf: .build/ovmf/OVMF.fd
 

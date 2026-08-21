@@ -12,3 +12,6 @@ include/fiwix/custom_system.h
 # dash is cloned into third_party/dash (see Makefile 'dash' target); musl is a
 # submodule, dash is fetched locally and not committed.
 /third_party/dash/
+
+# Python bytecode cache (tools/mkext2.py imports tools/mkinitrd.py)
+__pycache__/

@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""
+Fiwix64: build an ext2 (revision 0, "good old" format) filesystem image from a
+directory tree, for booting the kernel off a real disk (root=/dev/hdb).
+
+Matches what Fiwix's fs/ext2 reads:
+  - superblock at block 1 (rev 0, s_rev_level=0 / s_minor_rev_level=0)
+  - 1 block group; group descriptor at block 2
+  - ext2_dir_entry_2 directory entries (inode u32, rec_len u16, name_len u8,
+    file_type u8)
+  - char device numbers live in i_block[0] (like Fiwix's minix driver)
+  - block bitmap bit b == block (s_first_data_block + b)
+
+Usage: mkext2.py <root-dir> <output.img> [size_mb]
+"""
+
+import os
+import struct
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mkinitrd import build_tree, Node, DEVICES, BLOCK, S_IFDIR, S_IFREG, S_IFCHR
+
+EXT2_SUPER_MAGIC = 0xEF53
+EXT2_ROOT_INO = 2
+EXT2_NDIR_BLOCKS = 12
+EXT2_N_BLOCKS = 15            # 12 direct + single + double + triple
+INODE_SIZE = 128
+
+# --- filesystem layout (1KB blocks, single block group) ---
+FIRST_DATA_BLOCK = 1          # block 0 is the boot block
+BGDT_BLOCK = 2
+BLOCK_BITMAP_BLOCK = 3
+INODE_BITMAP_BLOCK = 4
+INODE_TABLE_BLOCK = 5
+INODES_PER_GROUP = 128
+INODE_TABLE_BLOCKS = INODES_PER_GROUP * INODE_SIZE // BLOCK   # 16
+FIRST_FREE_BLOCK = INODE_TABLE_BLOCK + INODE_TABLE_BLOCKS     # 21
+PTRS_PER_BLOCK = BLOCK // 4                                   # 256
+
+# ext2 directory entry file types
+EXT2_FT_REG_FILE = 1
+EXT2_FT_DIR = 2
+EXT2_FT_CHRDEV = 3
+
+
+def rec_len(name_len):
+    return (name_len + 8 + 3) & ~3
+
+
+def file_type(kind):
+    return {'dir': EXT2_FT_DIR, 'reg': EXT2_FT_REG_FILE, 'chr': EXT2_FT_CHRDEV}.get(kind, 0)
+
+
+def dir_block(n, parent_inode):
+    """One directory, exactly one 1KB block (our trees are tiny)."""
+    entries = [(n.inode, b'.', EXT2_FT_DIR), (parent_inode, b'..', EXT2_FT_DIR)]
+    entries += [(c.inode, c.name, file_type(c.kind)) for c in n.children]
+    out = bytearray()
+    for i, (ino, name, ft) in enumerate(entries):
+        offset = len(out)
+        if i == len(entries) - 1:
+            rl = BLOCK - offset          # last entry fills the block
+        else:
+            rl = rec_len(len(name))
+        out += struct.pack('<IHBB', ino, rl, len(name), ft) + name
+        out += b'\0' * (rl - (8 + len(name)))
+    assert len(out) == BLOCK, 'directory %r overflowed one block' % n.name
+    return bytes(out)
+
+
+def assign_inodes(node):
+    """Ext2 root inode is 2; assign 2..N in DFS order."""
+    counter = [EXT2_ROOT_INO]
+
+    def dfs(n):
+        n.inode = counter[0]
+        counter[0] += 1
+        for c in n.children:
+            dfs(c)
+
+    dfs(node)
+    return counter[0] - 1
+
+
+def assign_blocks(node):
+    """Assign absolute data-block numbers in DFS order.
+
+    Returns (blocks, i_blocks) where blocks maps block-number -> bytes (or an
+    ('INDIRECT', [block numbers]) tuple) and i_blocks maps inode -> 15-entry
+    block list (12 direct + single + double + triple).
+    """
+    blocks = {}
+    i_blocks = {}
+    counter = [FIRST_FREE_BLOCK]
+
+    def next_block():
+        b = counter[0]
+        counter[0] += 1
+        return b
+
+    def walk(n, parent):
+        if n.kind == 'dir':
+            data = dir_block(n, parent)
+            n.size = len(data)
+            b = next_block()
+            blocks[b] = data
+            i_blocks[n.inode] = [b] + [0] * (EXT2_N_BLOCKS - 1)
+            for c in n.children:
+                walk(c, n.inode)
+        elif n.kind == 'reg':
+            nblk = (len(n.data) + BLOCK - 1) // BLOCK
+            ib = [0] * EXT2_N_BLOCKS
+            # direct blocks
+            for k in range(min(EXT2_NDIR_BLOCKS, nblk)):
+                b = next_block()
+                ib[k] = b
+                blocks[b] = n.data[k * BLOCK:(k + 1) * BLOCK]
+            # single indirect
+            if nblk > EXT2_NDIR_BLOCKS:
+                remaining = nblk - EXT2_NDIR_BLOCKS
+                assert remaining <= PTRS_PER_BLOCK, 'file too large (single indirect)'
+                ind = next_block()
+                ib[EXT2_NDIR_BLOCKS] = ind
+                ptrs = []
+                for k in range(remaining):
+                    b = next_block()
+                    ptrs.append(b)
+                    off = (EXT2_NDIR_BLOCKS + k) * BLOCK
+                    blocks[b] = n.data[off:off + BLOCK]
+                blocks[ind] = ('INDIRECT', ptrs)
+            i_blocks[n.inode] = ib
+        elif n.kind == 'chr':
+            i_blocks[n.inode] = [n.rdev] + [0] * (EXT2_N_BLOCKS - 1)
+        else:
+            raise AssertionError(n.kind)
+
+    walk(node, node.inode)      # root's parent is itself
+    return blocks, i_blocks
+
+
+def subdir_count(n):
+    return sum(1 for c in n.children if c.kind == 'dir')
+
+
+def put_inode(ino, mode, size, ib, links, nblk, now):
+    """Serialize one 128-byte ext2 inode (Linux 2.0 layout)."""
+    i = bytearray(INODE_SIZE)
+    struct.pack_into('<HH', i, 0, mode, 0)             # i_mode, i_uid
+    struct.pack_into('<I', i, 4, size)                 # i_size
+    struct.pack_into('<IIII', i, 8, now, now, now, 0)  # atime, ctime, mtime, dtime
+    struct.pack_into('<HH', i, 24, 0, links)           # i_gid, i_links_count
+    struct.pack_into('<I', i, 28, nblk * (BLOCK // 512))  # i_blocks (512B units)
+    for k, b in enumerate(ib):
+        struct.pack_into('<I', i, 40 + 4 * k, b)       # i_block[15]
+    return bytes(i)
+
+
+def main():
+    if len(sys.argv) < 3:
+        sys.stderr.write('usage: mkext2.py <root-dir> <output.img> [size_mb]\n')
+        sys.exit(2)
+    root, out = sys.argv[1], sys.argv[2]
+    size_mb = int(sys.argv[3]) if len(sys.argv) > 3 else 8
+
+    top = build_tree(root)
+    ninodes_used = assign_inodes(top)
+    assert ninodes_used <= INODES_PER_GROUP, 'too many inodes'
+    blocks, i_blocks = assign_blocks(top)
+
+    blocks_count = size_mb * 1024 * 1024 // BLOCK
+    blocks_per_group = blocks_count
+    assert blocks_count <= 8192, 'single block group caps at 8MB (1KB blocks)'
+
+    img = bytearray(BLOCK * blocks_count)
+    now = 0x5F5E100
+
+    # --- superblock (block 1, rev 0) ---
+    used_meta = FIRST_FREE_BLOCK - 1                 # blocks 1..20
+    used_data = len(blocks)
+    sb_free_blocks = blocks_count - 1 - used_meta - used_data
+    sb_free_inodes = INODES_PER_GROUP - (ninodes_used - 1)  # inode 1 unused
+
+    sb = bytearray(BLOCK)
+    struct.pack_into('<I', sb, 0, INODES_PER_GROUP)      # s_inodes_count
+    struct.pack_into('<I', sb, 4, blocks_count)          # s_blocks_count
+    struct.pack_into('<I', sb, 8, 0)                     # s_r_blocks_count
+    struct.pack_into('<I', sb, 12, sb_free_blocks)       # s_free_blocks_count
+    struct.pack_into('<I', sb, 16, sb_free_inodes)       # s_free_inodes_count
+    struct.pack_into('<I', sb, 20, FIRST_DATA_BLOCK)     # s_first_data_block
+    struct.pack_into('<I', sb, 24, 0)                    # s_log_block_size (1KB)
+    struct.pack_into('<i', sb, 28, 0)                    # s_log_frag_size
+    struct.pack_into('<I', sb, 32, blocks_per_group)     # s_blocks_per_group
+    struct.pack_into('<I', sb, 36, blocks_per_group)     # s_frags_per_group
+    struct.pack_into('<I', sb, 40, INODES_PER_GROUP)     # s_inodes_per_group
+    struct.pack_into('<I', sb, 44, now)                  # s_mtime
+    struct.pack_into('<I', sb, 48, now)                  # s_wtime
+    struct.pack_into('<H', sb, 52, 0)                    # s_mnt_count
+    struct.pack_into('<h', sb, 54, -1)                    # s_max_mnt_count (-1)
+    struct.pack_into('<H', sb, 56, EXT2_SUPER_MAGIC)     # s_magic
+    struct.pack_into('<H', sb, 58, 0x0001)               # s_state = EXT2_VALID_FS
+    struct.pack_into('<H', sb, 60, 0)                    # s_errors
+    struct.pack_into('<H', sb, 62, 0)                    # s_minor_rev_level
+    struct.pack_into('<I', sb, 64, now)                  # s_lastcheck
+    struct.pack_into('<I', sb, 68, 0)                    # s_checkinterval
+    struct.pack_into('<I', sb, 72, 0)                    # s_creator_os
+    struct.pack_into('<I', sb, 76, 0)                    # s_rev_level = 0 (good old)
+    # remaining fields (features, uuid, ...) stay zero for rev 0
+    img[BLOCK:2 * BLOCK] = sb
+
+    # --- group descriptor (block 2) ---
+    gd = bytearray(BLOCK)
+    struct.pack_into('<III', gd, 0, BLOCK_BITMAP_BLOCK, INODE_BITMAP_BLOCK, INODE_TABLE_BLOCK)
+    struct.pack_into('<HHH', gd, 12, sb_free_blocks, sb_free_inodes, subdir_count(top))
+    img[2 * BLOCK:3 * BLOCK] = gd
+
+    # --- block bitmap (block 3): bit b == block (1 + b) ---
+    bmap = bytearray(BLOCK)
+    for b in range(1, FIRST_FREE_BLOCK):
+        bmap[(b - 1) // 8] |= 1 << ((b - 1) % 8)         # metadata blocks 1..20
+    for b in blocks:
+        bmap[(b - 1) // 8] |= 1 << ((b - 1) % 8)         # data + indirect blocks
+    img[3 * BLOCK:4 * BLOCK] = bmap
+
+    # --- inode bitmap (block 4) ---
+    imap = bytearray(BLOCK)
+    for ino in range(1, ninodes_used + 1):
+        imap[(ino - 1) // 8] |= 1 << ((ino - 1) % 8)
+    img[4 * BLOCK:5 * BLOCK] = imap
+
+    # --- inode table (blocks 5..20) ---
+    inodes = [bytearray(INODE_SIZE) for _ in range(INODES_PER_GROUP)]
+
+    def emit(n):
+        if n.kind == 'dir':
+            mode = S_IFDIR | 0o755
+            links = 2 + subdir_count(n)
+            size = n.size
+            nblk = 1
+        elif n.kind == 'reg':
+            mode = S_IFREG | 0o755
+            links = 1
+            size = n.size
+            nblk = (size + BLOCK - 1) // BLOCK
+            if nblk > EXT2_NDIR_BLOCKS:
+                nblk += 1          # the single-indirect block itself
+        elif n.kind == 'chr':
+            mode = S_IFCHR | 0o600
+            links = 1
+            size = 0
+            nblk = 0
+        else:
+            raise AssertionError(n.kind)
+        inodes[n.inode - 1] = put_inode(n.inode, mode, size, i_blocks[n.inode], links, nblk, now)
+        for c in n.children:
+            emit(c)
+
+    emit(top)
+    itab = b''.join(inodes)
+    assert len(itab) == INODE_TABLE_BLOCKS * BLOCK
+    img[INODE_TABLE_BLOCK * BLOCK:(INODE_TABLE_BLOCK + INODE_TABLE_BLOCKS) * BLOCK] = itab
+
+    # --- data + indirect blocks ---
+    for b, payload in blocks.items():
+        off = b * BLOCK
+        if isinstance(payload, tuple):                     # ('INDIRECT', entries)
+            entries = payload[1]
+            blk = b''.join(struct.pack('<I', e) for e in entries)
+            blk += b'\0' * (BLOCK - len(blk))
+            img[off:off + BLOCK] = blk
+        else:
+            img[off:off + len(payload)] = payload
+
+    with open(out, 'wb') as f:
+        f.write(img)
+    print('mkext2: %s %dMB, %d inodes, %d data blocks (first=%d)' %
+          (out, size_mb, ninodes_used, used_data, FIRST_FREE_BLOCK))
+
+
+if __name__ == '__main__':
+    main()
