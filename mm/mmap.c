@@ -311,6 +311,19 @@ void free_vma_pages(struct vma *vma, unsigned int start, __size_t length)
 #endif /* CONFIG_SYSVIPC */
 				pgtbl[pte] = 0;
 
+#ifdef __x86_64__
+				/* Fiwix64: also clear the leaf from the ACTIVE 4-level
+				 * tables, or a later mmap reusing this address would
+				 * hit the stale present PTE and skip the page fault
+				 * (reading the old content instead of the new file) */
+				{
+					extern int unmap_user_page64_in(unsigned long, unsigned long);
+					extern unsigned long paging64_pml4(void);
+					unsigned long pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
+					unmap_user_page64_in(pml4, start + (n * PAGE_SIZE));
+				}
+#endif /* __x86_64__ */
+
 				/* check if a page table can be freed */
 				for(pte = 0; pte < PT_ENTRIES; pte++) {
 					if(pgtbl[pte] & PAGE_MASK) {

@@ -160,6 +160,7 @@ $(DASH_BIN):
 userland: $(MUSL_SPECS) $(DASH_BIN)
 	@mkdir -p $(ROOTFS)/sbin $(ROOTFS)/bin $(ROOTFS)/dev
 	$(MUSL_CC) userland/init.c -o $(ROOTFS)/sbin/init
+	$(MUSL_CC) userland/test_mmap.c -o $(ROOTFS)/test_mmap
 	cp $(DASH_BIN) $(ROOTFS)/bin/sh
 	touch $(ROOTFS)/dev/console
 	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c

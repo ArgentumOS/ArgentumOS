@@ -335,6 +335,40 @@ int map_user_page64(unsigned long vaddr, unsigned long paddr, unsigned long flag
 	return map_user_page64_in(paging64_pml4(), vaddr, paddr, flags);
 }
 
+/* clear the leaf PTE for a user virtual address from the given pml4 - the
+ * counterpart of map_user_page64_in. munmap/free_vma_pages use it so a freed
+ * mapping doesn't leave a stale present PTE in the ACTIVE tables (which would
+ * make a later mmap that reuses the address skip the page fault and read the
+ * old content). */
+int unmap_user_page64_in(unsigned long pml4, unsigned long vaddr)
+{
+	unsigned long *lvl;
+
+	lvl = (unsigned long *)P2V64(pml4);
+	if(!(lvl[PML4_INDEX(vaddr)] & X86_PTE_P)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(lvl[PML4_INDEX(vaddr)] & PAGE_MASK64);
+	if(!(lvl[PDPT_INDEX(vaddr)] & X86_PTE_P)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(lvl[PDPT_INDEX(vaddr)] & PAGE_MASK64);
+	if(!(lvl[PD_INDEX(vaddr)] & X86_PTE_P)) {
+		return 0;
+	}
+	if(lvl[PD_INDEX(vaddr)] & X86_PTE_PS) {
+		/* 2MB huge page - never a user demand-mapped page, but clear it
+		 * anyway so the address is truly free */
+		lvl[PD_INDEX(vaddr)] = 0;
+		tlb_flush64();
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(lvl[PD_INDEX(vaddr)] & PAGE_MASK64);
+	lvl[PT_INDEX(vaddr)] = 0;
+	tlb_flush64();
+	return 0;
+}
+
 /* Fiwix64 (M6-next): per-process page tables. Each user process gets its
  * own 4-level tables: the low-4GB identity/user hierarchy is deep-copied
  * (private PDPT + the 4 PD pages so splits never touch the kernel's or

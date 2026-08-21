@@ -21,6 +21,10 @@
 #define IPC_STAT	2		/* get options */
 #define IPC_INFO	3		/* get system-wide limits */
 
+/* glibc/musl OR this into semctl/shmctl/msgctl commands (the "ipc 64-bit
+ * ABI" flag) to select the modern struct layouts; the kernel must mask it */
+#define IPC_64		0x100
+
 #define IPC_R		0400		/* read or receive permission */
 #define IPC_W		0200		/* write or send permission */
 

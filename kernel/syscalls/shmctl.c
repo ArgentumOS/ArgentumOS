@@ -36,6 +36,8 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 		return -EINVAL;
 	}
 
+	/* musl/glibc OR IPC_64 into cmd; mask it to get the real command */
+	cmd &= ~IPC_64;
 	switch(cmd) {	
 		case IPC_STAT:
 		case SHM_STAT:

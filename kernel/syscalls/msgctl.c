@@ -36,6 +36,8 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 		return -EINVAL;
 	}
 
+	/* musl/glibc OR IPC_64 into cmd; mask it to get the real command */
+	cmd &= ~IPC_64;
 	switch(cmd) {	
 		case MSG_STAT:
 		case IPC_STAT:

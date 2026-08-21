@@ -83,6 +83,7 @@ void syscall80_handler(unsigned long *gprs)
 	sc.edx = (int)gprs[12];			/* rdx: arg3 */
 	sc.esi = (int)gprs[9];			/* rsi: arg4 */
 	sc.edi = (int)gprs[8];			/* rdi: arg5 */
+	sc.ebp = (unsigned int)gprs[10];	/* rbp: arg6 (sys_ipc/msgrcv, mmap2 offset) */
 	sc.eip = (unsigned int)f->rip;
 	sc.cs = (unsigned int)f->cs;
 	sc.eflags = (unsigned int)f->rflags;

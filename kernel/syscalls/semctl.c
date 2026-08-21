@@ -38,6 +38,8 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 		return -EINVAL;
 	}
 
+	/* musl/glibc OR IPC_64 into cmd; mask it to get the real command */
+	cmd &= ~IPC_64;
 	switch(cmd) {	
 		case IPC_STAT:
 		case SEM_STAT:

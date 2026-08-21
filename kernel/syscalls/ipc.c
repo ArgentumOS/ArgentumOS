@@ -75,7 +75,7 @@ int ipc_has_perms(struct ipc_perm *perm, int mode)
  * compatibility and the program will run successfully.
  */
 
-#ifdef CONFIG_SYSCALL_6TH_ARG
+#if defined(CONFIG_SYSCALL_6TH_ARG) || defined(__x86_64__)
 /*
  * This option adds more Linux 2.0 ABI compatibility to support the original
  * sys_ipc() system call, which requires up to 6 arguments.
@@ -95,7 +95,7 @@ int sys_ipc(unsigned int call, int first, int second, int third, void *ptr, int 
 {
 	struct sysvipc_args orig_args, *args;
 	struct ipc_kludge {
-		struct msgbuf *msgp;
+		unsigned int msgp;
 		int msgtyp;
 	} tmp;
 	int version, errno;
@@ -104,6 +104,17 @@ int sys_ipc(unsigned int call, int first, int second, int third, void *ptr, int 
 #ifdef __DEBUG__
 	printk("(pid %d) sys_ipc(%d, %d, %d, %d, 0x%08x, %d)\n", current->pid, call, first, second, third, (int)ptr, fifth);
 #endif /*__DEBUG__ */
+
+#ifdef __x86_64__
+	/* The 64-bit syscall dispatch passes (a1..a5, &sc): the 6th ABI argument
+	 * (ebp) arrives here in the sigcontext pointer, as with sys_mmap2. The
+	 * sigcontext pointer is a high-half kernel address, so sign-extending the
+	 * truncated int recovers it. */
+	{
+		struct sigcontext *sc = (struct sigcontext *)(long)fifth;
+		fifth = (int)sc->ebp;
+	}
+#endif /* __x86_64__ */
 
 	orig_args.arg1 = first;
 	orig_args.arg2 = second;
@@ -171,7 +182,7 @@ int sys_ipc(unsigned int call, struct sysvipc_args *args)
 		return errno;
 	}
 
-#endif /* CONFIG_SYSCALL_6TH_ARG */
+#endif /* CONFIG_SYSCALL_6TH_ARG || __x86_64__ */
 	switch(call) {
 		case SEMOP:
 			return sys_semop(args->arg1, args->ptr, args->arg2);
@@ -191,12 +202,12 @@ int sys_ipc(unsigned int call, struct sysvipc_args *args)
 			if((errno = sys_shmat(args->arg1, args->ptr, args->arg2, (unsigned int *)&args->arg3))) {
 				return errno;
 			}
-#ifdef CONFIG_SYSCALL_6TH_ARG
+#if defined(CONFIG_SYSCALL_6TH_ARG) || defined(__x86_64__)
 			memcpy_l((unsigned int *)third, &args->arg3, 1);
 			return 0;
 #else
 			return args->arg3;
-#endif /* CONFIG_SYSCALL_6TH_ARG */
+#endif /* CONFIG_SYSCALL_6TH_ARG || __x86_64__ */
 		case SHMDT:
 			return sys_shmdt(args->ptr);
 		case SHMGET:
