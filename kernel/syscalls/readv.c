@@ -31,28 +31,35 @@ int sys_readv(unsigned int ufd, const struct iovec *iov, int iovcnt)
 		return -EINVAL;
 	}
 	for (vi = 0; vi < iovcnt; vi++) {
-		const struct iovec *io_read = &iov[vi];
-		if((errno = check_user_area(VERIFY_WRITE, io_read->iov_base, io_read->iov_len))) {
+		struct iovec io;
+#ifdef __x86_64__
+		const struct iovec32 *io32 = (const struct iovec32 *)iov + vi;
+		io.iov_base = (void *)(unsigned long)io32->iov_base;
+		io.iov_len = io32->iov_len;
+#else
+		io = iov[vi];
+#endif /* __x86_64__ */
+		if((errno = check_user_area(VERIFY_WRITE, io.iov_base, io.iov_len))) {
 			return errno;
 		}
 		if(fd_table[current->fd[ufd]].flags & O_WRONLY) {
 			return -EBADF;
 		}
-		if(!io_read->iov_len) {
+		if(!io.iov_len) {
 			continue;
 		}
-		if(io_read->iov_len < 0) {
+		if((__ssize_t)io.iov_len < 0) {
 			return -EINVAL;
 		}
 
 		i = fd_table[current->fd[ufd]].inode;
 		if(i->fsop && i->fsop->read) {
-			errno = i->fsop->read(i, &fd_table[current->fd[ufd]], io_read->iov_base, io_read->iov_len);
+			errno = i->fsop->read(i, &fd_table[current->fd[ufd]], io.iov_base, io.iov_len);
 			if (errno < 0) {
 			    return errno;
 			}
 			bytes_read += errno;
-			if (errno < io_read->iov_len) {
+			if (errno < io.iov_len) {
 				break;
 			}
 		} else {

@@ -56,6 +56,16 @@ struct iovec {
 	__size_t iov_len;
 };
 
+#ifdef __x86_64__
+/* Fiwix64 (M6 userland): the i386 user ABI's iovec has 32-bit fields (8
+ * bytes/entry), unlike the 64-bit kernel struct iovec (16 bytes/entry).
+ * sys_readv/sys_writev translate to this layout for compat user processes. */
+struct iovec32 {
+	unsigned int iov_base;
+	unsigned int iov_len;
+};
+#endif /* __x86_64__ */
+
 #define __FD_ZERO(set)		(memset_b((void *) (set), 0, sizeof(fd_set)))
 #define __FD_SET(d, set)	((set)->fds_bits[__FDELT(d)] |= __FDMASK(d))
 #define __FD_CLR(d, set)	((set)->fds_bits[__FDELT(d)] &= ~__FDMASK(d))

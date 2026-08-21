@@ -31,22 +31,29 @@ int sys_writev(int ufd, const struct iovec *iov, int iovcnt)
 		return -EINVAL;
 	}
 	for (vi = 0; vi < iovcnt; vi++) {
-		const struct iovec *io_write = &iov[vi];
-		if(!io_write->iov_len) {
+		struct iovec io;
+#ifdef __x86_64__
+		const struct iovec32 *io32 = (const struct iovec32 *)iov + vi;
+		io.iov_base = (void *)(unsigned long)io32->iov_base;
+		io.iov_len = io32->iov_len;
+#else
+		io = iov[vi];
+#endif /* __x86_64__ */
+		if(!io.iov_len) {
 			continue;
 		}
-		if((errno = check_user_area(VERIFY_READ, io_write->iov_base, io_write->iov_len))) {
+		if((errno = check_user_area(VERIFY_READ, io.iov_base, io.iov_len))) {
 			return errno;
 		}
 		if(fd_table[current->fd[ufd]].flags & O_RDONLY) {
 			return -EBADF;
 		}
-		if(io_write->iov_len < 0) {
+		if((__ssize_t)io.iov_len < 0) {
 			return -EINVAL;
 		}
 		i = fd_table[current->fd[ufd]].inode;
 		if(i->fsop && i->fsop->write) {
-			errno = i->fsop->write(i, &fd_table[current->fd[ufd]], io_write->iov_base, io_write->iov_len);
+			errno = i->fsop->write(i, &fd_table[current->fd[ufd]], io.iov_base, io.iov_len);
 			if (errno < 0) {
 				return errno;
 			}
