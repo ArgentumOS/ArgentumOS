@@ -10,6 +10,7 @@
 #include <fiwix/limits.h>
 #include <fiwix/kparms.h>
 #include <fiwix/fs.h>
+#include <fiwix/filesystems.h>
 #include <fiwix/system.h>
 #include <fiwix/version.h>
 #include <fiwix/utsname.h>
@@ -219,6 +220,12 @@ void stop_kernel(void)
 		p->sigpending = 0;
 		p = next;
 	}
+
+	/* flush all dirty buffers, inodes and superblocks to disk so that a
+	 * process's un-synced writes survive a power-off */
+	sync_superblocks(0);
+	sync_inodes(0);
+	sync_buffers(0);
 
 #ifdef CONFIG_KEXEC
 	if(!(kstat.flags & KF_HAS_PANICKED)) {
