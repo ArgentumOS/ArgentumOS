@@ -457,7 +457,11 @@ void *syscall_table[] = {
 	NULL,				/* 240 */
 	NULL,
 	NULL,
+#ifdef __x86_64__
+	sys_set_thread_area,
+#else
 	NULL,
+#endif
 	NULL,
 	NULL,				/* 245 */
 	NULL,

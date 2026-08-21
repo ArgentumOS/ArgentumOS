@@ -30,8 +30,10 @@
 #define FWDATA_SEL	0x40
 #define DEMO_UCODE32	0x50
 #define DEMO_UDATA32	0x58
+#define TLS_SEL		0x60	/* per-process TLS data32 (set_thread_area) */
+#define TLS_SLOT	12
 
-#define NR_GDT_SLOTS	12	/* TSS occupies slots 5-6 (0x28-0x38) */
+#define NR_GDT_SLOTS	13	/* TSS occupies slots 5-6 (0x28-0x38) */
 
 struct gdtr64 {
 	unsigned short limit;
@@ -91,6 +93,15 @@ static unsigned long make_desc64(unsigned long base, unsigned int limit,
 		| (((base >> 24) & 0xFF) << 56);
 }
 
+/* Fiwix64 (M6 userland): update the per-process TLS segment base. musl and
+ * glibc call set_thread_area(243) to install their thread pointer and then
+ * load the returned selector (TLS_SLOT<<3 | 3) into %gs; errno and the
+ * thread-control block are then reached via %gs-relative addressing. */
+void gdt64_set_tls_base(unsigned long base)
+{
+	gdt64_tab[TLS_SLOT] = make_desc64(base, 0xFFFFF, 0xF2, 0xCF);
+}
+
 void gdt64_init(void)
 {
 	unsigned long tss_base;
@@ -118,6 +129,8 @@ void gdt64_init(void)
 	 * init_trampoline() is compiled as 64-bit code and runs in 64-bit
 	 * user mode; exec'd 32-bit programs switch to UCODE32 (compat) */
 	gdt64_tab[9] = make_desc64(0, 0xFFFFF, 0xFA, 0xAF);
+	/* 0x60: per-process TLS data32 (%gs); base updated by set_thread_area */
+	gdt64_tab[TLS_SLOT] = make_desc64(0, 0xFFFFF, 0xF2, 0xCF);
 
 	gdtr.limit = (unsigned short)(sizeof(gdt64_tab) - 1);
 	gdtr.base = (unsigned long)&gdt64_tab[0];

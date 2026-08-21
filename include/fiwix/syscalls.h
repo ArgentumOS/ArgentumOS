@@ -183,6 +183,8 @@ int sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, struc
 int sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, unsigned int);
 #endif
 #endif /* CONFIG_MMAP2 || __x86_64__ */
+struct user_desc;
+int sys_set_thread_area(struct user_desc *);
 int sys_truncate64(const char *, __loff_t);
 int sys_ftruncate64(unsigned int, __loff_t);
 int sys_stat64(const char *, struct stat64 *);

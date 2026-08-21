@@ -127,8 +127,11 @@ static void elf_create_stack(struct binargs *barg, unsigned int *sp, unsigned in
 	sp++;
 
 
-	/* copy the Auxiliar Table Items (dlinfo_items) */
-	if(at_base) {
+	/* copy the Auxiliar Table Items (dlinfo_items) - always emitted:
+	 * static musl/glibc binaries need AT_PHDR/AT_PHNUM/AT_PHENT for their
+	 * TLS setup and AT_PAGESZ for libc.page_size; AT_BASE is 0 when there
+	 * is no dynamic interpreter. */
+	{
 		*sp = AT_PHDR;
 #ifdef __DEBUG__
 		printk("at 0x%08x -> AT_PHDR = %d", sp, *sp);
@@ -414,6 +417,7 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 	char type;
 	unsigned int ae_ptr_len, ae_str_len;
 	unsigned int sp, str;
+	unsigned int load_addr = 0;
 
 	elf32_h = (struct elf32_hdr *)data;
 	if(check_elf(elf32_h)) {
@@ -508,6 +512,9 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 			phdr_addr = elf32_ph->p_vaddr;
 		}
 		if(elf32_ph->p_type == PT_LOAD) {
+			if(!load_addr) {
+				load_addr = elf32_ph->p_vaddr - elf32_ph->p_offset;
+			}
 			start = elf32_ph->p_vaddr & PAGE_MASK;
 			length = (elf32_ph->p_vaddr & ~PAGE_MASK) + elf32_ph->p_filesz;
 			offset = elf32_ph->p_offset - (elf32_ph->p_vaddr & ~PAGE_MASK);
@@ -533,6 +540,13 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 		}
 	}
 
+	if(!phdr_addr) {
+		/* static musl/glibc executables have no PT_PHDR segment; AT_PHDR
+		 * must still point at the program header table (musl's
+		 * static_init_tls walks it for PT_TLS). */
+		phdr_addr = load_addr + elf32_h->e_phoff;
+	}
+
 	if(!last_ptload) {
 		printk("%s(): no program headers.");
 		send_sig(current, SIGKILL);
@@ -545,6 +559,21 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 	end = PAGE_ALIGN(elf32_ph->p_vaddr + elf32_ph->p_filesz);
 	start = elf32_ph->p_vaddr + elf32_ph->p_filesz;
 	length = end - start;
+
+#ifdef __x86_64__
+	/* Fiwix64: the .bss tail shares the last DATA page; demand-map it to a
+	 * real RAM page first, otherwise the memset_b below writes to the
+	 * supervisor 2MB identity page (physical addr beyond RAM) and the
+	 * zero-fill is lost - .bss globals (e.g. musl's main_tls) stay garbage. */
+	{
+		extern int fiwix64_fault_user_pages(addr_t, unsigned int);
+
+		if(fiwix64_fault_user_pages(start & PAGE_MASK, length)) {
+			send_sig(current, SIGSEGV);
+			return -ENOEXEC;
+		}
+	}
+#endif /* __x86_64__ */
 
 	/* this will generate a page fault which will load the page in */
 	memset_b((void *)start, 0, length);
@@ -578,7 +607,7 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 	sp -= ae_str_len;
 	str = sp;	/* this is the address of the first string (argv[0]) */
 	sp &= ~3;
-	sp -= at_base ? (AT_ITEMS * 2) * sizeof(unsigned int) : 2 * sizeof(unsigned int);
+	sp -= (AT_ITEMS * 2) * sizeof(unsigned int);
 	sp -= ae_ptr_len;
 	length = PAGE_OFFSET - (sp & PAGE_MASK);
 	errno = do_mmap(NULL, sp & PAGE_MASK, length, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED, 0, P_STACK, 0, NULL);
