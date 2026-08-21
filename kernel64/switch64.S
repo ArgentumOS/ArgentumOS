@@ -166,6 +166,10 @@ return_from_syscall:
 	movw	%r10w, %ds
 	movw	%r10w, %es
 	movw	%r10w, %fs
+	/* %gs is the process's TLS selector (0x63), inherited from the parent;
+	 * resetting it to UDATA32 here would zero the thread pointer and crash
+	 * musl's fork() tail when it reads errno via %gs. */
+	movl	$0x63, %r10d		/* TLS_SEL(0x60) | RPL3 */
 	movw	%r10w, %gs
 	movl	16(%r11), %edi
 	movl	20(%r11), %esi
