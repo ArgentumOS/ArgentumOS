@@ -381,20 +381,27 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 		}
 		pdpt = (unsigned long *)P2V64(pdpt_phys);
 		spdpt = (unsigned long *)P2V64(src4[0] & PAGE_MASK64);
-		for(i = 0; i < 512; i++) {
+		/* Point pml4[0] at the PDPT up front so free_pml4_64() can walk
+		 * and free a PARTIALLY-built tree on the error paths below (the
+		 * private PD entries stay 0 until each one is allocated, and the
+		 * pd/pt pages are zeroed by alloc_table_page(), so an unbuilt
+		 * entry reads as not-present and is skipped). */
+		pml4[0] = pdpt_phys | (src4[0] & 0xFFFUL);
+		/* the shared entries (PDPT[4..511]) are copied verbatim; the low
+		 * 4GB (PDPT[0..3]) gets PRIVATE PD pages and starts zeroed */
+		for(i = 4; i < 512; i++) {
 			pdpt[i] = spdpt[i];
 		}
-		/* the low 4GB (PDPT[0..3]) gets PRIVATE PD pages */
 		for(i = 0; i < 4; i++) {
-			if(!(pdpt[i] & X86_PTE_P)) {
-				continue;
+			if(!(spdpt[i] & X86_PTE_P)) {
+				continue;	/* pdpt[i] stays 0 (not mapped) */
 			}
 			pd_phys = alloc_table_page();
 			if(!pd_phys) {
-				free_pages64(pdpt_phys, 1);
-				free_pages64(pml4_phys, 1);
+				free_pml4_64(pml4_phys);
 				return 0;
 			}
+			pdpt[i] = pd_phys | (spdpt[i] & 0xFFFUL);
 			pd = (unsigned long *)P2V64(pd_phys);
 			spd = (unsigned long *)P2V64(spdpt[i] & PAGE_MASK64);
 			for(j = 0; j < 512; j++) {
@@ -417,11 +424,21 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 						 * either side faults into the copy-on-write
 						 * path. Supervisor leaves (the kernel identity
 						 * map) stay shared untouched. Only done for a
-						 * fork source (never the shared kernel pml4). */
+						 * fork source (never the shared kernel pml4),
+						 * and only for MAP_PRIVATE pages - clone_pages()
+						 * leaves MAP_SHARED pages writable, so mirroring
+						 * them read-only here would wrongly demand-map
+						 * the next shared write. */
 						if((leaf & X86_PTE_US) && (leaf & X86_PTE_RW)) {
-							leaf &= ~X86_PTE_RW;
-							if(is_fork) {
-								spt[k] = leaf;
+							extern int vma_is_shared(unsigned long);
+							unsigned long va = ((unsigned long)i << 30)
+								| ((unsigned long)j << 21)
+								| ((unsigned long)k << 12);
+							if(!vma_is_shared(va)) {
+								leaf &= ~X86_PTE_RW;
+								if(is_fork) {
+									spt[k] = leaf;
+								}
 							}
 						}
 						pt[k] = leaf;
@@ -430,9 +447,7 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 					pd[j] = e;
 				}
 			}
-			pdpt[i] = pd_phys | (pdpt[i] & 0xFFFUL);
 		}
-		pml4[0] = pdpt_phys | (src4[0] & 0xFFFUL);
 	}
 	/* everything else (kernel high half etc.) stays shared */
 	for(i = 1; i < 512; i++) {

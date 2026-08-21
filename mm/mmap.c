@@ -363,6 +363,20 @@ struct vma *find_vma_region(addr_t addr)
 	return NULL;
 }
 
+/*
+ * Fiwix64: used by the 64-bit pml4 fork deep-copy (kernel64/mm64.c) to
+ * decide whether a user-writable page must be made read-only for
+ * copy-on-write. clone_pages() leaves MAP_SHARED pages writable, so only
+ * MAP_PRIVATE (or vma-less) pages are COW'd. Returns 1 if the address is
+ * in a MAP_SHARED vma.
+ */
+int vma_is_shared(addr_t addr)
+{
+	struct vma *vma = find_vma_region(addr);
+
+	return vma && (vma->flags & MAP_SHARED);
+}
+
 struct vma *find_vma_intersection(unsigned int start, unsigned int end)
 {
 	struct vma *vma;
