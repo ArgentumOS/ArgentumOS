@@ -632,7 +632,7 @@ void keyboard_init(void)
 {
 	struct tty *tty;
 	struct vconsole *vc;
-	int errno;
+	int errno, irq_ok;
 
 	tty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
 	vc = (struct vconsole *)tty->driver_data;
@@ -640,9 +640,11 @@ void keyboard_init(void)
 	video.cursor_blink((addr_t)vc);
 
 	add_bh(&keyboard_bh);
-	if(!register_irq(KEYBOARD_IRQ, &irq_config_keyboard)) {
-		enable_irq(KEYBOARD_IRQ);
-	}
+	/* Register the handler but keep IRQ1 MASKED until the polling-based
+	 * init below completes. On the 64-bit port the IRQ is dispatched fast
+	 * enough that irq_keyboard consumes the init response bytes before
+	 * ps2_wait_ack()/ps2_read() can read them, breaking the init. */
+	irq_ok = register_irq(KEYBOARD_IRQ, &irq_config_keyboard);
 
 	/* reset device */
 	ps2_write(PS2_DATA, PS2_DEV_RESET);
@@ -671,4 +673,9 @@ void keyboard_init(void)
 	ps2_wait_ack();
 	ps2_write(PS2_DATA, DELAY_250 | RATE_30);
 	ps2_wait_ack();
+
+	/* init complete; unmask IRQ1 so key presses start flowing again */
+	if(!irq_ok) {
+		enable_irq(KEYBOARD_IRQ);
+	}
 }

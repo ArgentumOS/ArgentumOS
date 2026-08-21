@@ -73,9 +73,22 @@ int ps2_wait_ack(void)
 {
 	int n;
 
+	/* The IRQ handler (irq_keyboard / irq_psaux) may have already read the
+	 * ACK byte out of PS2_DATA and raised the ack flag. Re-reading PS2_DATA
+	 * here would then see the NEXT byte (or nothing) and falsely report a
+	 * timeout - a race that leaves the device's init sequence incomplete
+	 * (e.g. the keyboard never gets its enable ACK). Honour the flag. */
+	if(ack) {
+		ack = 0;
+		return 0;
+	}
 	if(is_ready_to_read()) {
 		for(n = 0; n < 1000; n++) {
 			if(inport_b(PS2_DATA) == DEV_ACK) {
+				return 0;
+			}
+			if(ack) {
+				ack = 0;
 				return 0;
 			}
 			ps2_delay();
