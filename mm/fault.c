@@ -35,6 +35,77 @@ static void send_sigsegv(struct sigcontext *sc)
 
 static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcontext *sc)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native-MM): the process pml4 is the single source of truth.
+	 * A user write to a present-but-read-only leaf is copy-on-write (or a
+	 * real violation); a write to an address that is NOT user-mapped (absent
+	 * or a supervisor 2MB identity page) is demand-paging. No 2-level
+	 * shadow, no mirroring, no desync. */
+	unsigned long pml4, leaf, newaddr;
+	struct page *pg;
+	int page;
+
+	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+	extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
+	extern unsigned long paging64_pml4(void);
+
+	pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
+	leaf = user_leaf64_in(pml4, (unsigned long)cr2);
+	if(!leaf) {
+		/* not user-mapped yet (identity 2MB page or absent leaf): if the
+		 * vma allows writes, demand-map it (splits huge pages); a
+		 * non-writable vma is a genuine violation */
+		if((sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
+			return page_not_present(vma, cr2, sc);
+		}
+		send_sigsegv(sc);
+		return 0;
+	}
+
+	page = leaf >> PAGE_SHIFT;
+	pg = &page_table[page];
+
+	/* Copy On Write */
+	if(pg->count > 1) {
+		/* a page not marked as copy-on-write means it's read-only */
+		if(!(pg->flags & PAGE_COW)) {
+			send_sigsegv(sc);
+			return 0;
+		}
+		if(!(newaddr = kmalloc(PAGE_SIZE))) {
+			printk("%s(): not enough memory!\n", __FUNCTION__);
+			return 1;
+		}
+		current->rss++;
+		memcpy_b((void *)P2V(newaddr), (void *)P2V(leaf), PAGE_SIZE);
+		if(map_user_page64_in(pml4, (unsigned long)cr2,
+				(unsigned long)V2P(newaddr), 0x003)) {
+			return 1;
+		}
+		/* the other CoW process(es) still reference the old page: drop
+		 * our reference instead of freeing it */
+		pg->count--;
+		current->rss--;
+		invalidate_tlb();
+		return 0;
+	} else {
+		/* last page of Copy On Write procedure */
+		if(pg->count == 1) {
+			/* a page not marked as copy-on-write means it's read-only */
+			if(!(pg->flags & PAGE_COW)) {
+				send_sigsegv(sc);
+				return 0;
+			}
+			if(map_user_page64_in(pml4, (unsigned long)cr2, leaf, 0x003)) {
+				return 1;
+			}
+			invalidate_tlb();
+			return 0;
+		}
+	}
+	printk("WARNING: %s(): page %d with pg->count = 0!\n", __FUNCTION__, pg->page);
+	return 1;
+#else
 	unsigned int *pgdir;
 	unsigned int *pgtbl;
 	unsigned int pde, pte;
@@ -48,34 +119,12 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 	pgtbl = (unsigned int *)P2V((pgdir[pde] & PAGE_MASK));
 	page = (pgtbl[pte] & PAGE_MASK) >> PAGE_SHIFT;
 
-#ifdef __x86_64__
-	/* Fiwix64: a user write "violation" whose 2-level entry is NOT present
-	 * is really a supervisor 2MB identity page (the 64-bit pml4 covers
-	 * 0-4GB, so the CPU reports PFAULT_V even though Fiwix never mapped
-	 * this page). Demand-map it (page_not_present splits the huge page).
-	 * The page TABLE itself must exist too, or pgtbl points at P2V(0)
-	 * (garbage) and the present-bit check mis-fires. */
-	if((!(pgdir[pde] & PAGE_PRESENT) || !(pgtbl[pte] & PAGE_PRESENT)) && (sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
-		return page_not_present(vma, cr2, sc);
-	}
-#endif /* __x86_64__ */
-
 	pg = &page_table[page];
 
 	/* Copy On Write feature */
 	if(pg->count > 1) {
 		/* a page not marked as copy-on-write means it's read-only */
 		if(!(pg->flags & PAGE_COW)) {
-#ifdef __x86_64__
-			/* Fiwix64: a user write "violation" on a non-CoW page is a
-			 * supervisor 2MB identity page (0-4GB is identity-mapped so
-			 * it "looks present" to CPL0) that the user has not demand-
-			 * mapped yet - route it to demand paging (which splits the
-			 * huge page). A non-writable vma is a genuine violation. */
-			if((sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
-				return page_not_present(vma, cr2, sc);
-			}
-#endif /* __x86_64__ */
 			printk("Oops!, page %d NOT marked for CoW.\n", pg->page);
 			send_sigsegv(sc);
 			return 0;
@@ -87,18 +136,6 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		current->rss++;
 		memcpy_b((void *)addr, (void *)P2V((page << PAGE_SHIFT)), PAGE_SIZE);
 		pgtbl[pte] = V2P(addr) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
-#ifdef __x86_64__
-		{
-			/* Fiwix64: mirror the CoW result in the ACTIVE 4-level
-			 * tables (the 2-level pgdir copy is never loaded into
-			 * CR3), or the CPU keeps faulting on the stale read-only
-			 * leaf. */
-			extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
-			extern unsigned long paging64_pml4(void);
-			unsigned long pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
-			map_user_page64_in(pml4, cr2, (unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
-		}
-#endif /* __x86_64__ */
 		/* the other CoW process(es) still reference the old page: drop
 		 * our reference instead of freeing it, or the parent's next
 		 * write faults on a freed page (page 0 count 0 corruption) */
@@ -111,36 +148,18 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		if(pg->count == 1) {
 			/* a page not marked as copy-on-write means it's read-only */
 			if(!(pg->flags & PAGE_COW)) {
-#ifdef __x86_64__
-				/* Fiwix64: see the pg->count > 1 branch above - a
-				 * non-CoW user write on a writable vma is a supervisor
-				 * 2MB identity page that needs demand-mapping. */
-				if((sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
-					return page_not_present(vma, cr2, sc);
-				}
-#endif /* __x86_64__ */
 				printk("Oops!, last page %d NOT marked for CoW.\n", pg->page);
 				send_sigsegv(sc);
 				return 0;
 			}
 			pgtbl[pte] = (page << PAGE_SHIFT) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
-#ifdef __x86_64__
-			{
-				/* Fiwix64: mirror the last-CoW-page result in the
-				 * ACTIVE 4-level tables (see the pg->count > 1 branch
-				 * above). */
-				extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
-				extern unsigned long paging64_pml4(void);
-				unsigned long pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
-				map_user_page64_in(pml4, cr2, (unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
-			}
-#endif /* __x86_64__ */
 			invalidate_tlb();
 			return 0;
 		}
 	}
 	printk("WARNING: %s(): page %d with pg->count = 0!\n", __FUNCTION__, pg->page);
 	return 1;
+#endif /* __x86_64__ */
 }
 
 static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc)

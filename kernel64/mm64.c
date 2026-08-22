@@ -590,6 +590,48 @@ unsigned long virt_to_phys64(unsigned long vaddr)
 	return (e & PAGE_MASK64) + (vaddr & 0xFFF);
 }
 
+/*
+ * Fiwix64 (native-MM): the process's per-process pml4 is the SINGLE source
+ * of truth (the 2-level pgdir shadow is gone). user_leaf64_in() returns the
+ * physical address of the present USER 4KB leaf covering 'vaddr' in the
+ * given pml4, or 0 when the address is NOT user-mapped: absent anywhere in
+ * the walk, a 2MB identity/supervisor huge page, or a supervisor leaf.
+ * The MM fault path uses this to decide between demand-mapping (0) and
+ * copy-on-write / protection handling (non-0).
+ */
+unsigned long user_leaf64_in(unsigned long pml4, unsigned long vaddr)
+{
+	unsigned long *lvl, e;
+
+	lvl = (unsigned long *)P2V64(pml4);
+	e = lvl[PML4_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(e & PAGE_MASK64);
+	e = lvl[PDPT_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(e & PAGE_MASK64);
+	e = lvl[PD_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	if(e & X86_PTE_PS) {
+		return 0;	/* 2MB identity page - not a user leaf */
+	}
+	lvl = (unsigned long *)P2V64(e & PAGE_MASK64);
+	e = lvl[PT_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	if(!(e & X86_PTE_US)) {
+		return 0;	/* supervisor leaf */
+	}
+	return e & PAGE_MASK64;
+}
+
 void tlb_flush64(void)
 {
 	unsigned long cr3;

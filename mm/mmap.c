@@ -273,6 +273,54 @@ void merge_vma_regions(struct vma *a, struct vma *b)
 
 void free_vma_pages(struct vma *vma, unsigned int start, __size_t length)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native-MM): operate on the ACTIVE pml4 - no 2-level shadow,
+	 * no pte-table refcounting, so the table-empty kfree (the source of
+	 * the pde-32 table double-grant) is gone. */
+	unsigned int n, offset;
+	unsigned long pml4, leaf;
+	struct page *pg;
+
+	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+	extern int unmap_user_page64_in(unsigned long, unsigned long);
+	extern unsigned long paging64_pml4(void);
+
+	pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
+
+	for(n = 0; n < (length / PAGE_SIZE); n++) {
+		leaf = user_leaf64_in(pml4, (unsigned long)start + (n * PAGE_SIZE));
+		if(!leaf) {
+			continue;
+		}
+		pg = &page_table[leaf >> PAGE_SHIFT];
+		if(pg->flags & PAGE_RESERVED) {
+			unmap_user_page64_in(pml4, (unsigned long)start + (n * PAGE_SIZE));
+			continue;
+		}
+
+		if(vma->prot & PROT_WRITE && vma->flags & MAP_SHARED) {
+			offset = start - vma->start + vma->offset + n * PAGE_SIZE;
+			write_page(pg, vma->inode, offset, PAGE_SIZE);
+		}
+
+		if(!(leaf & PAGE_NOALLOC)) {
+			if(pg->count > 1) {
+				/* CoW / MAP_SHARED: another process still
+				 * references this page - just drop our reference */
+				pg->count--;
+			} else {
+				kfree(P2V(leaf));
+			}
+		}
+		current->rss--;
+#ifdef CONFIG_SYSVIPC
+		if(vma->object) {
+			shm_rss--;
+		}
+#endif /* CONFIG_SYSVIPC */
+		unmap_user_page64_in(pml4, (unsigned long)start + (n * PAGE_SIZE));
+	}
+#else
 	unsigned int n, offset;
 	unsigned int *pgdir, *pgtbl;
 	unsigned int pde, pte;
@@ -347,6 +395,7 @@ void free_vma_pages(struct vma *vma, unsigned int start, __size_t length)
 			}
 		}
 	}
+#endif /* __x86_64__ */
 }
 
 void release_binary(void)

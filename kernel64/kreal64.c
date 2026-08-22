@@ -36,7 +36,7 @@ void kreal64_boot(void)
 		{ 20, 0x100000, 0x7F00000, MULTIBOOT_MEMORY_AVAILABLE },
 		{ 20, 0x8000000, 0x7800000, MULTIBOOT_MEMORY_RESERVED },
 	};
-	static char cmdline[] = "fiwix console=/dev/tty0 initrd=fiwixinitrd root=/dev/hdb rootfstype=ext2";
+	static char cmdline[] = "fiwix console=/dev/ttyS0 initrd=fiwixinitrd root=/dev/hdb rootfstype=ext2";
 	static char initrd_name[] = "fiwixinitrd";
 	unsigned long last_boot_addr;
 

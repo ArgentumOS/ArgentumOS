@@ -138,6 +138,61 @@ addr_t get_mapped_addr(struct proc *p, addr_t addr)
 
 int clone_pages(struct proc *child)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native-MM): the fork child's 4-level tables were already
+	 * deep-copied with writable user leaves shared read-only by
+	 * create_pml4_64(). The 2-level clone_pages() work is gone; here we
+	 * only mirror its BOOKKEEPING: mark every shared writable user leaf
+	 * PAGE_COW (the 4-level copy never touched page_table[].flags) and
+	 * count the mapped pages for the child's rss. Returns >= 1 so the
+	 * fork's "!clone_pages() == out of memory" check never misfires. */
+	unsigned long pml4, *pdpt, *pd, *pt, e, va;
+	unsigned long i, j, k;
+	struct page *pg;
+	int pages;
+
+	extern unsigned long paging64_pml4_phys(void);
+	pml4 = child->cr3_64 ? child->cr3_64 : paging64_pml4_phys();
+	pages = 0;	pdpt = (unsigned long *)P2V(pml4);
+	if(!(pdpt[0] & 0x001)) {
+		return 1;	/* nothing mapped in the low 4GB */
+	}
+	pdpt = (unsigned long *)P2V(pdpt[0] & PAGE_MASK);
+	for(i = 0; i < 4; i++) {	/* PDPT[0..3] = low 4GB */
+		if(!(pdpt[i] & 0x001)) {
+			continue;
+		}
+		pd = (unsigned long *)P2V(pdpt[i] & PAGE_MASK);
+		for(j = 0; j < 512; j++) {
+			if(!(pd[j] & 0x001)) {
+				continue;
+			}
+			if(pd[j] & 0x080) {	/* 2MB identity page */
+				continue;
+			}
+			pt = (unsigned long *)P2V(pd[j] & PAGE_MASK);
+			for(k = 0; k < 512; k++) {
+				e = pt[k];
+				if(!(e & 0x001)) {
+					continue;
+				}
+				if(!(e & 0x004)) {
+					continue;	/* supervisor leaf */
+				}
+				va = (i << 30) | (j << 21) | (k << 12);
+				pg = &page_table[(e & PAGE_MASK) >> 12];
+				if(pg->flags & PAGE_RESERVED) {
+					continue;
+				}
+				if(!(e & 0x002)) {	/* shared read-only -> CoW */
+					pg->flags |= PAGE_COW;
+				}
+				pages++;
+			}
+		}
+	}
+	return pages ? pages : 1;
+#else
 	unsigned int *src_pgdir, *dst_pgdir;
 	unsigned int *src_pgtbl, *dst_pgtbl;
 	unsigned int pde, pte;
@@ -199,10 +254,23 @@ int clone_pages(struct proc *child)
 		vma = vma->next;
 	}
 	return pages;
+#endif /* __x86_64__ */
 }
 
 int free_page_tables(struct proc *p)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native-MM): free the process's own 4-level tables. The
+	 * caller's pml4 is not active (exit/reap), so this is safe. */
+	extern void free_pml4_64(unsigned long);
+	extern unsigned long paging64_pml4_phys(void);
+
+	if(p->cr3_64 && p->cr3_64 != paging64_pml4_phys()) {
+		free_pml4_64(p->cr3_64);
+		p->cr3_64 = 0;
+	}
+	return 0;
+#else
 	unsigned int *pgdir;
 	int n, count;
 
@@ -215,6 +283,7 @@ int free_page_tables(struct proc *p)
 		}
 	}
 	return count;
+#endif /* __x86_64__ */
 }
 
 addr_t map_page(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot)
@@ -224,6 +293,41 @@ addr_t map_page(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int pr
 
 addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot, int flags)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native-MM): the process's pml4 (p->cr3_64) is the single
+	 * source of truth - no 2-level shadow, no mirroring. Walk it, split
+	 * 2MB identity pages as needed (map_page64_in), and write the leaf.
+	 * If the address is already user-mapped, hand back the EXISTING page
+	 * (never P2V(0), and never stomp a CoW-shared leaf the caller didn't
+	 * ask to replace). */
+	unsigned long pml4, leaf;
+
+	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+	extern int map_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
+	extern unsigned long paging64_pml4(void);
+
+	pml4 = p->cr3_64 ? p->cr3_64 : paging64_pml4();
+	leaf = user_leaf64_in(pml4, (unsigned long)vaddr);
+	if(leaf) {
+		if(!addr) {
+			addr = leaf;
+		}
+	} else {
+		if(!addr) {
+			if(!(addr = kmalloc(PAGE_SIZE))) {
+				return 0;
+			}
+			addr = V2P(addr);
+			p->rss++;
+		}
+		if(map_page64_in(pml4, (unsigned long)vaddr, (unsigned long)addr,
+				(unsigned long)(flags & 0xFFF) | 0x004 /* USER */ |
+				(prot & PROT_WRITE ? 0x002 /* RW */ : 0))) {
+			return 0;
+		}
+	}
+	return P2V(addr);
+#else
 	unsigned int *pgdir, *pgtbl;
 	unsigned int newaddr;
 	int pde, pte;
@@ -260,30 +364,23 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned 
 	if(prot & PROT_WRITE) {
 		pgtbl[pte] |= PAGE_RW;
 	}
-#ifdef __x86_64__
-	/* Fiwix64 (M6): the process's 2-level pgdir copy is never activated -
-	 * map the page (user, RW) in the process's OWN 4-level tables instead
-	 * (per-process pml4, current->cr3_64), so the INIT trampoline and
-	 * exec'd 32-bit programs actually run.
-	 * Fiwix64 (A3 fix): when the 2-level entry was ALREADY present (e.g. a
-	 * page COW-shared from the parent at fork), 'addr' is still 0 and the
-	 * old code remapped the page to PHYSICAL 0 (the IVT/BDA) - use the
-	 * existing entry's physical address instead.
-	 * Fiwix64 (M6-next): map into current->cr3_64, never the shared
-	 * kernel tables. */
-	{
-		extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
-		extern unsigned long paging64_pml4(void);
-		unsigned long pml4 = p->cr3_64 ? p->cr3_64 : paging64_pml4();
-		map_user_page64_in(pml4, (unsigned long)vaddr,
-				(unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
-	}
-#endif /* __x86_64__ */
 	return P2V(addr);
+#endif /* __x86_64__ */
 }
 
 int unmap_page(addr_t vaddr)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native-MM): clear the leaf in the ACTIVE pml4 (the 2-level
+	 * shadow is gone). */
+	extern int unmap_user_page64_in(unsigned long, unsigned long);
+	extern unsigned long paging64_pml4(void);
+	unsigned long pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
+
+	unmap_user_page64_in(pml4, (unsigned long)vaddr);
+	current->rss--;
+	return 0;
+#else
 	unsigned int *pgdir, *pgtbl;
 	unsigned int addr, desc;
 	int pde, pte;
@@ -310,6 +407,7 @@ int unmap_page(addr_t vaddr)
 	}
 	current->rss--;
 	return 0;
+#endif /* __x86_64__ */
 }
 
 /*
