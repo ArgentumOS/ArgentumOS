@@ -186,3 +186,90 @@ return_from_syscall:
 	iretq
 .size return_from_syscall, .-return_from_syscall
 
+
+/*
+ * syscall_entry64: Fiwix64 native 64-bit syscall entry - the 'syscall'
+ * instruction used by musl x86_64. The CPU sets RCX = return RIP and
+ * R11 = return RFLAGS but does NOT switch stacks (unlike an interrupt
+ * gate), so we save the user RSP in a global scratch, switch to the
+ * current process's kernel stack (fiwix64_rsp0, kept in sync with the
+ * TSS RSP0 by gdt64_set_rsp0), build the SAME frame layout as
+ * isr_common64 (7-word x86_frame64 + 15 GPRs) and tail into
+ * syscall80_handler(); the iretq epilogue restores the user frame
+ * (RCX/R11/RSP were saved in the frame). Single-CPU kernel, so the
+ * global scratch is safe - a nested interrupt returns before we
+ * re-enter (it nests on the kernel stack above our frame).
+ */
+.globl syscall_entry64
+.type syscall_entry64, @function
+syscall_entry64:
+	movq	%rsp, fiwix64_syscall_userrsp(%rip)	/* save the user RSP */
+	movq	fiwix64_rsp0(%rip), %rsp		/* switch to the kernel stack */
+	/* x86_frame64 (7 words, so [gprs + 15*8] = vector like the ISR path) */
+	pushq	$0x23					/* ss  = UDATA32 | RPL3 */
+	pushq	fiwix64_syscall_userrsp(%rip)		/* rsp (user) */
+	pushq	%r11					/* rflags */
+	pushq	$0x4b					/* cs  = UCODE64 | RPL3 */
+	pushq	%rcx					/* rip (the return address) */
+	pushq	$0					/* error */
+	pushq	$0x80					/* vector */
+	/* 15 GPRs, isr_common64 order (last push = gprs[0] = r15) */
+	pushq	%rax
+	pushq	%rcx
+	pushq	%rdx
+	pushq	%rbx
+	pushq	%rbp
+	pushq	%rsi
+	pushq	%rdi
+	pushq	%r8
+	pushq	%r9
+	pushq	%r10
+	pushq	%r11
+	pushq	%r12
+	pushq	%r13
+	pushq	%r14
+	pushq	%r15
+	movq	%rsp, %rdi
+	call	syscall80_handler
+	popq	%r15
+	popq	%r14
+	popq	%r13
+	popq	%r12
+	popq	%r11
+	popq	%r10
+	popq	%r9
+	popq	%r8
+	popq	%rdi
+	popq	%rsi
+	popq	%rbp
+	popq	%rbx
+	popq	%rdx
+	popq	%rcx
+	popq	%rax
+	addq	$56, %rsp				/* drop the 7-word frame */
+	iretq
+.size syscall_entry64, .-syscall_entry64
+
+/*
+ * return_from_syscall64: Fiwix64 (native port) - the fork() child's
+ * 64-bit-mode return, mirroring return_from_syscall for the compat path.
+ * The child's kernel stack holds the copied sigcontext at RSP; reload the
+ * user data segments and iretq into the 64-bit user program (UCODE64|
+ * RPL3, UDATA32|RPL3) at sc->eip/sc->oldesp with eax=0 (set by fork.c).
+ */
+.globl return_from_syscall64
+.type return_from_syscall64, @function
+return_from_syscall64:
+	movq	%rsp, %r11		/* r11 = &sigcontext (stable base) */
+	movl	$0x23, %r10d		/* UDATA32 | RPL3 */
+	movw	%r10w, %ds
+	movw	%r10w, %es
+	movw	%r10w, %fs
+	movw	%r10w, %gs
+	pushq	$0x23			/* SS */
+	pushq	64(%r11)		/* RSP = sc->oldesp */
+	pushq	60(%r11)		/* RFLAGS */
+	pushq	$0x4b			/* CS = UCODE64 | RPL3 */
+	pushq	52(%r11)		/* RIP = sc->eip */
+	iretq
+.size return_from_syscall64, .-return_from_syscall64

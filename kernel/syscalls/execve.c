@@ -28,6 +28,13 @@
 static char *get_user_ptr(char **arr, int n)
 {
 #ifdef __x86_64__
+	/* Fiwix64: a native 64-bit program passes 64-bit pointer arrays; a
+	 * 32-bit compat program passes 32-bit ones (each element must be read
+	 * as 32-bit and zero-extended). Before the first exec the process has
+	 * no vma_table yet (the INIT trampoline passes kernel addresses). */
+	if(current->flags & PF_ELF64) {
+		return (char *)((unsigned long long *)arr)[n];
+	}
 	if(current->vma_table) {
 		return (char *)(unsigned long)((unsigned int *)arr)[n];
 	}

@@ -43,6 +43,7 @@ struct vma {
 #define PF_PEXEC	0x00000002	/* has performed a sys_execve() */
 #define PF_USEREAL	0x00000004	/* use real UID in permission checks */
 #define PF_NOTINTERRUPT	0x00000008	/* non-interruptible sleeping */
+#define PF_ELF64	0x00000010	/* Fiwix64: process runs a native ELF64 binary */
 
 #define MMAP_START	0x40000000	/* mmap()s start at 1GB */
 #define IS_SUPERUSER	(current->euid == 0)
@@ -109,6 +110,7 @@ struct proc {
 #ifdef __x86_64__
 	addr_t cr3_64;	/* Fiwix64: per-process 4-level pml4 (physical) */
 	unsigned long tls_base;	/* Fiwix64: per-process TLS (%gs) descriptor base */
+	unsigned long fs_base;	/* Fiwix64: per-process %fs base (native x86-64 TLS) */
 #endif /* __x86_64__ */
 	struct proc *ppid;		/* pointer to parent process */
 	__pid_t pid;			/* process ID */

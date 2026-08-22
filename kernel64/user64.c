@@ -27,6 +27,10 @@
 #define UCODE64_SEL	0x48
 
 extern void *syscall_table[];
+#ifdef __x86_64__
+extern void *syscall_table64[];
+#define NR_SYSCALLS64	232	/* x86_64 table: highest implemented nr + 1 */
+#endif /* __x86_64__ */
 extern void init_trampoline(void);
 extern int map_user_page64(unsigned long, unsigned long, unsigned long);
 
@@ -58,6 +62,7 @@ void user_mode_prep(void)
 	map_user_page64(code_va, code_va - PAGE_OFFSET64, 0x001);	/* P only: execute */
 	map_user_page64(stack_va, stack_va - PAGE_OFFSET64, 0x003);	/* P|RW: user stack */
 }
+
 
 /* Real int 0x80 dispatcher (replaces the M4-A demo handler). gprs points
  * at the 15 saved GPRs (gprs[0] = rax, [1] = rcx, [2] = rdx, [3] = rbx,
@@ -92,48 +97,67 @@ void syscall80_handler(unsigned long *gprs)
 	sc.oldss = (unsigned int)f->ss;
 
 	was_exec = (sc.eax == SYS_execve);
-	if(sc.eax >= NR_SYSCALLS_BOUND || !syscall_table[sc.eax]) {
-		gprs[14] = -ENOSYS;
-		return;
-	}
-
-	/* The INIT trampoline's USER_SYSCALL macro passes its arguments as
-	 * 32-bit values (lea (%rax),%ebx), so kernel-data pointers arrive
-	 * truncated (0x8xxxxxxx = low 32 bits of 0xffffffff8xxxxxxx). Before
-	 * the process has any vma (the INIT case) reconstruct them; once the
-	 * program is exec'd its real 32-bit user pointers (bit 31 clear) pass
-	 * through untouched. The call passes long (64-bit) args so pointer
-	 * parameters see the full address while int parameters read the low
-	 * 32 bits - same contract as the 32-bit do_syscall(). */
 	{
+		/* Fiwix64 (native port): a native 64-bit process (PF_ELF64) uses
+		 * the x86-64 syscall ABI (rdi/rsi/rdx/rcx/r8/r9 args, rax = nr)
+		 * and the x86_64-numbered syscall_table64; the compat path keeps
+		 * the i386 ABI (ebx/ecx/edx/esi/edi/ebp) and syscall_table. */
+		void **tbl = (current->flags & PF_ELF64) ? syscall_table64 : syscall_table;
+		unsigned long bound = (current->flags & PF_ELF64) ?
+			NR_SYSCALLS64 : NR_SYSCALLS_BOUND;
 		long a1, a2, a3, a4, a5;
 
-		a1 = sc.ebx;
-		a2 = sc.ecx;
-		a3 = sc.edx;
-		a4 = sc.esi;
-		a5 = sc.edi;
-		if(!current->vma_table) {
-			if(a1 & 0x80000000L) a1 = 0xFFFFFFFF80000000UL | (a1 & 0x7FFFFFFF);
-			if(a2 & 0x80000000L) a2 = 0xFFFFFFFF80000000UL | (a2 & 0x7FFFFFFF);
-			if(a3 & 0x80000000L) a3 = 0xFFFFFFFF80000000UL | (a3 & 0x7FFFFFFF);
-			if(a4 & 0x80000000L) a4 = 0xFFFFFFFF80000000UL | (a4 & 0x7FFFFFFF);
-			if(a5 & 0x80000000L) a5 = 0xFFFFFFFF80000000UL | (a5 & 0x7FFFFFFF);
+		if(sc.eax >= bound || !tbl[sc.eax]) {
+			gprs[14] = -ENOSYS;
+			return;
+		}
+
+		if(current->flags & PF_ELF64) {
+			/* x86-64 ABI: arg1=rdi(gprs[8]) arg2=rsi([9]) arg3=rdx([12])
+			 * arg4=rcx([13]) arg5=r8([7]); the 6th arg (r9, gprs[6]) is
+			 * stashed in sc.ebp for mmap/select-style syscalls */
+			a1 = (long)gprs[8];
+			a2 = (long)gprs[9];
+			a3 = (long)gprs[12];
+			a4 = (long)gprs[13];
+			a5 = (long)gprs[7];
+			sc.ebp = (unsigned int)gprs[6];
+		} else {
+			/* The INIT trampoline's USER_SYSCALL macro passes its
+			 * arguments as 32-bit values (lea (%rax),%ebx), so
+			 * kernel-data pointers arrive truncated (0x8xxxxxxx = low
+			 * 32 bits of 0xffffffff8xxxxxxx). Before the process has
+			 * any vma (the INIT case) reconstruct them; once the
+			 * program is exec'd its real 32-bit user pointers (bit 31
+			 * clear) pass through untouched. */
+			a1 = sc.ebx;
+			a2 = sc.ecx;
+			a3 = sc.edx;
+			a4 = sc.esi;
+			a5 = sc.edi;
+			if(!current->vma_table) {
+				if(a1 & 0x80000000L) a1 = 0xFFFFFFFF80000000UL | (a1 & 0x7FFFFFFF);
+				if(a2 & 0x80000000L) a2 = 0xFFFFFFFF80000000UL | (a2 & 0x7FFFFFFF);
+				if(a3 & 0x80000000L) a3 = 0xFFFFFFFF80000000UL | (a3 & 0x7FFFFFFF);
+				if(a4 & 0x80000000L) a4 = 0xFFFFFFFF80000000UL | (a4 & 0x7FFFFFFF);
+				if(a5 & 0x80000000L) a5 = 0xFFFFFFFF80000000UL | (a5 & 0x7FFFFFFF);
+			}
 		}
 
 		/* same dispatch as the 32-bit do_syscall(): the table entry gets
 		 * the 5 ABI args + a pointer to the (patched on exec) sigcontext */
 		current->sp = (addr_t)&sc;
 		ret = ((int (*)(long, long, long, long, long, struct sigcontext *))
-			syscall_table[sc.eax])(a1, a2, a3, a4, a5, &sc);
+			tbl[sc.eax])(a1, a2, a3, a4, a5, &sc);
 	}
 
 	if(was_exec && !ret && (current->flags & PF_PEXEC)) {
 		/* sys_execve()/elf_load() patched sc.eip/oldesp with the new
-		 * (32-bit) entry and stack: iretq into it in COMPAT mode
-		 * (UCODE32|RPL3, UDATA32|RPL3). The frame is built on the
-		 * current kernel stack and iretq never returns to the isr
-		 * epilogue. */
+		 * program entry and stack. iretq into it in COMPAT mode
+		 * (UCODE32|RPL3, UDATA32|RPL3) for a 32-bit binary, or in
+		 * native 64-bit user mode (UCODE64|RPL3) for an ELF64 binary
+		 * (the Fiwix64 port). The frame is built on the current kernel
+		 * stack and iretq never returns to the isr epilogue. */
 		__asm__ __volatile__(
 			"movw $0x23, %%ax\n\t"
 			"movw %%ax, %%ds\n\t"
@@ -141,15 +165,16 @@ void syscall80_handler(unsigned long *gprs)
 			"movw %%ax, %%fs\n\t"
 			"movw %%ax, %%gs\n\t"
 			"pushq %0\n\t"		/* SS  = UDATA32 | RPL3 */
-			"pushq %1\n\t"		/* ESP = new user stack */
-			"pushq %2\n\t"		/* EFLAGS */
-			"pushq %3\n\t"		/* CS  = UCODE32 | RPL3 */
-			"pushq %4\n\t"		/* EIP = new program entry */
+			"pushq %1\n\t"		/* ESP/RSP = new user stack */
+			"pushq %2\n\t"		/* EFLAGS/RFLAGS */
+			"pushq %3\n\t"		/* CS  = UCODE32 or UCODE64 | RPL3 */
+			"pushq %4\n\t"		/* EIP/RIP = new program entry */
 			"iretq\n\t"
 			:: "r"((unsigned long)(UDATA32_SEL | 3)),
 			   "r"((unsigned long)sc.oldesp),
 			   "r"((unsigned long)sc.eflags),
-			   "r"((unsigned long)(UCODE32_SEL | 3)),
+			   "r"((unsigned long)((current->flags & PF_ELF64) ?
+				(UCODE64_SEL | 3) : (UCODE32_SEL | 3))),
 			   "r"((unsigned long)sc.eip)
 			: "rax", "memory");
 	}

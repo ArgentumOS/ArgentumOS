@@ -28,6 +28,14 @@ static void context_switch(struct proc *next)
 	prev = current;
 	set_tss(next);
 	current = next;
+#ifdef __x86_64__
+	/* Fiwix64 (native port): reload the per-process %fs base (x86-64 TLS,
+	 * arch_prctl). The kernel does not use %fs, so this is safe here. */
+	{
+		extern void fiwix64_set_fs_base(unsigned long);
+		fiwix64_set_fs_base(next->fs_base);
+	}
+#endif /* __x86_64__ */
 	do_switch(&prev->tss.esp, &prev->tss.eip, next->tss.esp, next->tss.eip,
 #ifdef __x86_64__
 		  next->cr3_64,
@@ -35,7 +43,6 @@ static void context_switch(struct proc *next)
 		  next->tss.cr3,
 #endif /* __x86_64__ */
 		  TSS);
-	STI();
 }
 
 void set_tss(struct proc *p)

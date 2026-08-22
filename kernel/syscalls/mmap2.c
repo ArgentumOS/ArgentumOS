@@ -19,7 +19,7 @@
 #include <fiwix/process.h>
 #endif /*__DEBUG__ */
 
-static int do_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
+int do_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
 {
 	unsigned int page;
 	struct inode *i;

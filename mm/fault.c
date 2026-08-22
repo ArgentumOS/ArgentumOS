@@ -420,6 +420,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 		/* in user mode */
 		if(sc->err & PFAULT_U) {
 			if(sc->err & PFAULT_V) {	/* violation */
+
 #ifdef __x86_64__
 				/* Fiwix64: with no vma, a user "violation" (read OR
 				 * write) below the stack top is stack growth below

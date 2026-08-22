@@ -76,9 +76,24 @@ void gdt64_ltr(unsigned int selector)
  * kernel/gdt.c table). Update the active TSS's RSP0 so each process's
  * syscalls/exceptions run on its OWN kmalloc'd kernel stack; otherwise
  * every process shares the .bss kstack64 and switch contexts collide. */
+/* Fiwix64 (native port): fiwix64_rsp0 mirrors tss64.rsp0 for the 'syscall'
+ * instruction entry (switch64.S syscall_entry64), which must switch stacks
+ * itself; fiwix64_syscall_userrsp is its scratch for the incoming RSP. */
+unsigned long fiwix64_rsp0;
+unsigned long fiwix64_syscall_userrsp;
+
+/* Fiwix64 (native port): set the %fs base MSR (x86-64 TLS). The kernel
+ * itself does not use %fs, so this is only meaningful for user mode. */
+void fiwix64_set_fs_base(unsigned long base)
+{
+	__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000100),
+		"a"((unsigned long)base), "d"((unsigned long)(base >> 32)));
+}
+
 void gdt64_set_rsp0(unsigned long rsp0)
 {
 	tss64.rsp0 = rsp0;
+	fiwix64_rsp0 = rsp0;
 }
 
 /* build an 8-byte segment descriptor (base, limit, access, flags) */
@@ -120,6 +135,7 @@ void gdt64_init(void)
 	 * lives above PAGE_OFFSET64 in the high half). */
 	tss_base = ((unsigned long)&tss64) - PAGE_OFFSET64;
 	tss64.rsp0 = (unsigned long)&kstack64[sizeof(kstack64)];
+	fiwix64_rsp0 = tss64.rsp0;
 	gdt64_tab[5] = make_desc64(tss_base, sizeof(struct tss64) - 1, 0x89, 0x00);
 	gdt64_tab[6] = (unsigned long)((tss_base >> 32) & 0xFFFFFFFF);
 	/* 0x50 / 0x58: 32-bit user code/data (L=0, D=1) for M4 compat demo */

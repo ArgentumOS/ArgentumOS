@@ -312,6 +312,7 @@ void idt64_init(void)
 	}
 	/* M4: int 0x80 (compat syscall entry) as a DPL3 interrupt gate */
 	set_gate(0x80, (unsigned long)&isr_stub_128, cs, 3);
+
 	idtr.limit = (unsigned short)(sizeof(idt) - 1);
 	idtr.base = (unsigned long)idt;
 	__asm__ __volatile__("lidt %0" :: "m"(idtr));

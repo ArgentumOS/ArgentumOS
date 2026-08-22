@@ -88,6 +88,36 @@ typedef struct elf32_phdr{
   Elf32_Word	p_align;		/* Memory & file alignment */
 } Elf32_Phdr;
 
+/* Fiwix64 (native 64-bit port): minimal ELF64 definitions for the x86_64
+ * userland. Only what elf_load64() reads. */
+typedef struct elf64_hdr {
+  unsigned char	e_ident[16];
+  unsigned short	e_type;
+  unsigned short	e_machine;
+  unsigned int	e_version;
+  unsigned long long	e_entry;	/* Entry point virtual address */
+  unsigned long long	e_phoff;	/* Program header table file offset */
+  unsigned long long	e_shoff;	/* Section header table file offset */
+  unsigned int	e_flags;
+  unsigned short	e_ehsize;
+  unsigned short	e_phentsize;	/* Sizeof Phdr (Program header) */
+  unsigned short	e_phnum;
+  unsigned short	e_shentsize;
+  unsigned short	e_shnum;
+  unsigned short	e_shstrndx;
+} Elf64_Ehdr;
+
+typedef struct elf64_phdr {
+  unsigned int	p_type;
+  unsigned int	p_flags;
+  unsigned long long	p_offset;	/* File offset */
+  unsigned long long	p_vaddr;	/* Virtual address */
+  unsigned long long	p_paddr;	/* Physical address */
+  unsigned long long	p_filesz;	/* File size */
+  unsigned long long	p_memsz;	/* Memory size */
+  unsigned long long	p_align;
+} Elf64_Phdr;
+
 /* segment types stored in the image headers */
 #define PT_NULL    0
 #define PT_LOAD    1
@@ -239,6 +269,7 @@ typedef struct elf32_rela{
 #define AT_EUID   12	/* effective uid */
 #define AT_GID    13	/* real gid */
 #define AT_EGID   14	/* effective gid */
+#define AT_RANDOM 25	/* address of 16 random bytes (x86-64: pointer guard seed) */
 
 
 typedef struct dynamic{
