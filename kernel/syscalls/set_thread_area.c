@@ -44,6 +44,15 @@ int sys_set_thread_area(struct user_desc *u_info)
 	}
 	current->tls_base = (unsigned long)base;
 
+	/* Fiwix64: load the TLS selector into %gs NOW. The exec-completion
+	 * iretq leaves %gs = UDATA32 (0x23, base 0), so a freshly exec'd
+	 * musl program that calls set_thread_area would otherwise keep
+	 * reading %gs:0 through the NULL base - its very next
+	 * __errno_location() faults on the address-0 read. The CPU keeps
+	 * the kernel's %gs across the syscall return (iretq does not touch
+	 * %gs), so setting it here gives the user the 0x63 TLS selector. */
+	__asm__ __volatile__("movw $0x63, %%ax; movw %%ax, %%gs" : : : "ax");
+
 	/* single-threaded: always the fixed slot; musl computes the selector
 	 * as (entry_number << 3) | 3 == 0x63 */
 	u_info->entry_number = 12;
