@@ -45,13 +45,8 @@ static void puts(char *buffer, int msg_level)
 			if(msg_level < console_loglevel) {
 				char c = *(p++);
 				outport_b(QEMU_DEBUG_PORT, c);
-#ifdef __x86_64__
-				/* Fiwix64: mirror to COM1 (115200 8N1) so the
-				 * boot log is visible on the serial console */
-				while(!(inport_b(0x3F8 + 5) & 0x20)) {
-				}
-				outport_b(0x3F8, c);
-#endif /* __x86_64__ */
+				/* Fiwix64: console tty (ttyS0) writes COM1 below; the
+				 * old mirror doubled every byte on the UART. */
 			}
 		}
 	}

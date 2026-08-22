@@ -311,9 +311,11 @@ int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 	}
 	lvl = (unsigned long *)P2V64(*entry & PAGE_MASK64);
 	lvl[PT_INDEX(vaddr)] = (paddr & PAGE_MASK64) | (flags & 0xFFFUL) | X86_PTE_P;
-	if(split) {
-		tlb_flush64();	/* drop the stale 2MB TLB entry */
-	}
+	/* Fiwix64: flush - the CR3 reload plus an explicit invlpg for the
+	 * changed leaf. Some TCGs skip the flush when the CR3 value is
+	 * unchanged, leaving the stale 2MB/split entry cached. */
+	tlb_flush64();
+	__asm__ __volatile__("invlpg (%0)" :: "r"(vaddr) : "memory");
 	return 0;
 }
 
@@ -498,7 +500,12 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 	}
 	/* everything else (kernel high half etc.) stays shared */
 	for(i = 1; i < 512; i++) {
-		pml4[i] = src4[i];
+		/* Fiwix64 (native port): the copied high-half pml4 entries must be
+		 * USER-accessible (INIT trampoline + user stack live in the high
+		 * half; the leaves are shared, but pml4[i] is a per-process COPY
+		 * made before the US sets - without this OR the CPU's user walk
+		 * fails at the pml4 level, P+U+ID 0x15). */
+		pml4[i] = src4[i] | X86_PTE_US;
 	}
 	return pml4_phys;
 }

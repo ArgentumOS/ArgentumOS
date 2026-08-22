@@ -325,6 +325,24 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned 
 				(prot & PROT_WRITE ? 0x002 /* RW */ : 0))) {
 			return 0;
 		}
+		/* Fiwix64: propagate U/S up the walk. The leaf above got the US
+		 * bit, but the CPU requires US at EVERY level of the walk - the
+		 * pml4/pdpt/pd entries this page hangs off may still be
+		 * supervisor-only (a demand-paged page inside a split identity
+		 * region, or a fresh process pml4), and a user fetch/write then
+		 * faults P+U+ID (0x15) even though the leaf is U/S. */
+		{
+			unsigned long *lvl;
+#define P2V64x(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
+				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
+			lvl = (unsigned long *)P2V64x(pml4);
+			lvl[((unsigned long)vaddr >> 39) & 0x1FF] |= 0x004UL;	/* US */
+			lvl = (unsigned long *)P2V64x(lvl[((unsigned long)vaddr >> 39) & 0x1FF] & ~0xFFFUL);
+			lvl[((unsigned long)vaddr >> 30) & 0x1FF] |= 0x004UL;
+			lvl = (unsigned long *)P2V64x(lvl[((unsigned long)vaddr >> 30) & 0x1FF] & ~0xFFFUL);
+			lvl[((unsigned long)vaddr >> 21) & 0x1FF] |= 0x004UL;
+#undef P2V64x
+		}
 	}
 	return P2V(addr);
 #else

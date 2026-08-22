@@ -43,6 +43,7 @@ static void context_switch(struct proc *next)
 		  next->tss.cr3,
 #endif /* __x86_64__ */
 		  TSS);
+	STI();
 }
 
 void set_tss(struct proc *p)
