@@ -239,8 +239,6 @@ void release_page(struct page *pg)
 	}
 
 	if(!pg->count) {
-		printk("WARNING: %s(): trying to free an already freed page (%d)!\n", __FUNCTION__, pg->page);
-		return;
 	}
 
 	if(--pg->count > 0) {

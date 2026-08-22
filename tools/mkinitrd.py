@@ -23,12 +23,13 @@ import sys
 
 BLOCK = 1024
 NINODES = 128
-NZONES = 1024          # 1MB image
+NZONES = 1024          # 1MB image (the toybox binary lives on the ext2 disk only)
 FIRSTDATAZONE = 8      # 0 boot + 1 super + 1 imap + 1 zmap + 4 inode blocks (128 x 32B)
 MAGIC_V1 = 0x137F
 S_IFDIR = 0o040000
 S_IFREG = 0o100000
 S_IFCHR = 0o020000
+S_IFLNK = 0o120000
 
 # (path relative to root) -> device number (MKDEV(maj,min) = (maj << 8) | min)
 DEVICES = {
@@ -57,8 +58,14 @@ class Node:
         self.size = 0
 
 
-def build_tree(root):
-    """Walk the source directory into a Node tree (sorted, deterministic)."""
+def build_tree(root, with_symlinks=False, exclude=()):
+    """Walk the source directory into a Node tree (sorted, deterministic).
+
+    Symlinks are represented as 'lnk' nodes (data = target string) only when
+    with_symlinks is set; the minix initrd has no symlink support so its
+    caller leaves it off. `exclude` is a set of root-relative paths to skip
+    (e.g. the toybox binary, which only fits on the ext2 root disk).
+    """
     top = Node(b'')
 
     def walk(rel, node):
@@ -66,7 +73,14 @@ def build_tree(root):
         for entry in sorted(os.listdir(full)):
             relpath = rel + '/' + entry if rel else entry
             fullpath = os.path.join(full, entry)
+            if relpath in exclude:
+                continue
             if os.path.islink(fullpath):
+                if with_symlinks:
+                    n = Node(entry.encode()[:14], 'lnk')
+                    n.data = os.readlink(fullpath).encode()
+                    n.size = len(n.data)
+                    node.children.append(n)
                 continue
             name = entry.encode()[:14]
             if relpath in DEVICES:
@@ -167,12 +181,13 @@ def assign_zones(node):
 
 def main():
     if len(sys.argv) < 3:
-        sys.stderr.write('usage: mkinitrd.py <root-dir> <output.img> [output.c]\n')
+        sys.stderr.write('usage: mkinitrd.py <root-dir> <output.img> [output.c] [exclude]\n')
         sys.exit(2)
     root, out = sys.argv[1], sys.argv[2]
     outc = sys.argv[3] if len(sys.argv) > 3 else None
+    exclude = set(sys.argv[4].split(',')) if len(sys.argv) > 4 else set()
 
-    top = build_tree(root)
+    top = build_tree(root, exclude=exclude)
     ninodes_used = assign_inodes(top)
     assert ninodes_used <= NINODES, 'too many inodes'
     zones, i_zones = assign_zones(top)
@@ -242,6 +257,15 @@ def main():
         with open(outc, 'w') as f:
             f.write('/* Fiwix64: minix-v1 initrd (auto-generated). */\n')
             f.write('#include <fiwix/efi.h>\n')
+            f.write('\n')
+            f.write('/* Fiwix64 (M6-H): the highest .bss address in the image (this\n')
+            f.write(' * file links LAST, so its .bss follows paging64.c\'s static\n')
+            f.write(' * pml4/pd pages, the IDT and the TSS). kreal64.c hands it to\n')
+            f.write(' * start_kernel() as last_boot_addr so mem_init() places its\n')
+            f.write(' * static tables after these live structures instead of\n')
+            f.write(' * overwriting the running pml4 with the page_table array. */\n')
+            f.write('char fiwix64_bss_end;\n')
+            f.write('\n')
             f.write('const unsigned char initrd64_img[%d] = {\n' % len(img))
             for off in range(0, len(img), 16):
                 f.write('\t' + ', '.join('0x%02x' % b for b in img[off:off + 16]) + ',\n')

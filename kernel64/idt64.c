@@ -341,7 +341,8 @@ static void panic(const struct x86_frame64 *f)
 	serial_hex((UINT64)get_cr2());
 	serial_puts(" rsp=");
 	serial_hex((UINT64)f->rsp);
-	serial_puts("\n!!! halting.\n");
+	serial_puts("\n");
+	serial_puts("!!! halting.\n");
 	for(;;) {
 		__asm__ __volatile__("hlt");
 	}

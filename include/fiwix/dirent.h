@@ -12,8 +12,16 @@
 #include <fiwix/limits.h>
 
 struct dirent {
+#ifdef __x86_64__
+	/* Fiwix64: this struct crosses the 32-bit user ABI via sys_getdents.
+	 * The kernel's native __ino_t/__off_t are 8 bytes on x86-64, but the
+	 * Linux i386 `struct linux_dirent` uses 32-bit ino/off, so pin them. */
+	unsigned int d_ino;			/* inode number */
+	unsigned int d_off;			/* offset to next dirent */
+#else
 	__ino_t d_ino;			/* inode number */
 	__off_t d_off;			/* offset to next dirent */
+#endif /* __x86_64__ */
 	unsigned short int d_reclen;	/* length of this dirent */
 	char d_name[NAME_MAX + 1];	/* file name (null-terminated) */
 };

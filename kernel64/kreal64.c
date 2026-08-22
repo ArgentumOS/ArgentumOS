@@ -16,6 +16,7 @@
 #include <fiwix/asm.h>
 
 extern char _end[];
+extern char fiwix64_bss_end[];	/* Fiwix64: highest .bss (last-linked object) */
 extern void start_kernel(unsigned int magic, unsigned int info,
 			 unsigned long last_boot_addr);
 
@@ -67,7 +68,7 @@ void kreal64_boot(void)
 	mbi.mmap_addr = PHYS(mmap_tab);
 	mbi.mmap_length = sizeof(mmap_tab);
 
-	last_boot_addr = (unsigned long)&_end;	/* high address; start_kernel
+	last_boot_addr = (unsigned long)&fiwix64_bss_end;	/* high address; start_kernel
 						 * subtracts PAGE_OFFSET */
 
 	start_kernel(MULTIBOOT_BOOTLOADER_MAGIC, PHYS(&mbi), last_boot_addr);

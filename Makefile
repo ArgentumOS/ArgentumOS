@@ -141,8 +141,9 @@ MUSL_SPECS  = $(MUSL_PREFIX)/lib/musl-gcc.specs
 MUSL_CC     = gcc -m32 -static -Wl,-m,elf_i386 -specs $(MUSL_SPECS)
 ROOTFS      = .build/rootfs
 DASH_BIN    = third_party/dash/src/dash
+TOYBOX_BIN  = third_party/toybox/toybox
 
-.PHONY: userland musl dash
+.PHONY: userland musl dash toybox
 
 musl: $(MUSL_SPECS)
 $(MUSL_SPECS):
@@ -157,13 +158,19 @@ $(DASH_BIN):
 		CC="$(CURDIR)/tools/musl-gcc.sh" ./configure --host=i386-linux --disable-fnmatch --disable-glob && \
 		$(MAKE) && strip src/dash
 
-userland: $(MUSL_SPECS) $(DASH_BIN)
+toybox: $(TOYBOX_BIN)
+$(TOYBOX_BIN): tools/mktoybox.sh tools/musl-gcc.sh
+	./tools/mktoybox.sh
+
+userland: $(MUSL_SPECS) $(DASH_BIN) $(TOYBOX_BIN)
 	@mkdir -p $(ROOTFS)/sbin $(ROOTFS)/bin $(ROOTFS)/dev
+	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc.sh" install PREFIX="$(CURDIR)/$(ROOTFS)"
 	$(MUSL_CC) userland/init.c -o $(ROOTFS)/sbin/init
 	$(MUSL_CC) userland/test_mmap.c -o $(ROOTFS)/test_mmap
 	cp $(DASH_BIN) $(ROOTFS)/bin/sh
+	cp userland/test_toybox.sh $(ROOTFS)/test_toybox.sh
 	touch $(ROOTFS)/dev/console
-	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c
+	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c bin/toybox
 	@echo "userland: initrd regenerated from $(ROOTFS)"
 
 # Build a persistent ext2 root filesystem image (.build/root.img) from the

@@ -489,6 +489,23 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 		}
 		current->cr3_64 = new_pml4;
 		__asm__ __volatile__("movq %0, %%cr3" :: "r"(new_pml4) : "memory");
+
+		/* Fiwix64 (M6-H): the 2-level pgdir is the shadow that map_page()
+		 * writes (and release_binary() just freed the old one's page
+		 * tables - they get reused as user heap, so a stale pde would
+		 * make map_page() scribble PTEs into a user page). Give the
+		 * exec'd process a fresh copy of the kernel pgdir, exactly like
+		 * fork does. */
+		{
+			extern addr_t *kpage_dir;
+			unsigned int *new_pgdir;
+			if((new_pgdir = (unsigned int *)kmalloc(PAGE_SIZE))) {
+				memcpy_b(new_pgdir, kpage_dir, PAGE_SIZE);
+				current->rss++;
+				kfree(P2V(current->tss.cr3));
+				current->tss.cr3 = V2P((addr_t)new_pgdir);
+			}
+		}
 	}
 #endif /* __x86_64__ */
 

@@ -1,3 +1,6 @@
 [submodule "third_party/musl"]
 	path = third_party/musl
 	url = git://git.musl-libc.org/musl
+[submodule "third_party/toybox"]
+	path = third_party/toybox
+	url = https://github.com/landley/toybox

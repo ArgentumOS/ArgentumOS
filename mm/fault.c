@@ -52,8 +52,10 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 	/* Fiwix64: a user write "violation" whose 2-level entry is NOT present
 	 * is really a supervisor 2MB identity page (the 64-bit pml4 covers
 	 * 0-4GB, so the CPU reports PFAULT_V even though Fiwix never mapped
-	 * this page). Demand-map it (page_not_present splits the huge page). */
-	if(!(pgtbl[pte] & PAGE_PRESENT) && (sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
+	 * this page). Demand-map it (page_not_present splits the huge page).
+	 * The page TABLE itself must exist too, or pgtbl points at P2V(0)
+	 * (garbage) and the present-bit check mis-fires. */
+	if((!(pgdir[pde] & PAGE_PRESENT) || !(pgtbl[pte] & PAGE_PRESENT)) && (sc->err & PFAULT_U) && (vma->prot & PROT_WRITE)) {
 		return page_not_present(vma, cr2, sc);
 	}
 #endif /* __x86_64__ */
@@ -97,7 +99,10 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 			map_user_page64_in(pml4, cr2, (unsigned long)(pgtbl[pte] & PAGE_MASK), 0x003);
 		}
 #endif /* __x86_64__ */
-		kfree(P2V((page << PAGE_SHIFT)));
+		/* the other CoW process(es) still reference the old page: drop
+		 * our reference instead of freeing it, or the parent's next
+		 * write faults on a freed page (page 0 count 0 corruption) */
+		pg->count--;
 		current->rss--;
 		invalidate_tlb();
 		return 0;

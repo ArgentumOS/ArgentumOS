@@ -19,7 +19,7 @@ import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mkinitrd import build_tree, Node, DEVICES, BLOCK, S_IFDIR, S_IFREG, S_IFCHR
+from mkinitrd import build_tree, Node, DEVICES, BLOCK, S_IFDIR, S_IFREG, S_IFCHR, S_IFLNK
 
 EXT2_SUPER_MAGIC = 0xEF53
 EXT2_ROOT_INO = 2
@@ -33,15 +33,16 @@ BGDT_BLOCK = 2
 BLOCK_BITMAP_BLOCK = 3
 INODE_BITMAP_BLOCK = 4
 INODE_TABLE_BLOCK = 5
-INODES_PER_GROUP = 128
-INODE_TABLE_BLOCKS = INODES_PER_GROUP * INODE_SIZE // BLOCK   # 16
-FIRST_FREE_BLOCK = INODE_TABLE_BLOCK + INODE_TABLE_BLOCKS     # 21
+INODES_PER_GROUP = 256
+INODE_TABLE_BLOCKS = INODES_PER_GROUP * INODE_SIZE // BLOCK   # 32
+FIRST_FREE_BLOCK = INODE_TABLE_BLOCK + INODE_TABLE_BLOCKS     # 37
 PTRS_PER_BLOCK = BLOCK // 4                                   # 256
 
 # ext2 directory entry file types
 EXT2_FT_REG_FILE = 1
 EXT2_FT_DIR = 2
 EXT2_FT_CHRDEV = 3
+EXT2_FT_SYMLINK = 7
 
 
 def rec_len(name_len):
@@ -49,24 +50,41 @@ def rec_len(name_len):
 
 
 def file_type(kind):
-    return {'dir': EXT2_FT_DIR, 'reg': EXT2_FT_REG_FILE, 'chr': EXT2_FT_CHRDEV}.get(kind, 0)
+    return {'dir': EXT2_FT_DIR, 'reg': EXT2_FT_REG_FILE,
+            'chr': EXT2_FT_CHRDEV, 'lnk': EXT2_FT_SYMLINK}.get(kind, 0)
 
 
-def dir_block(n, parent_inode):
-    """One directory, exactly one 1KB block (our trees are tiny)."""
+def dir_blocks(n, parent_inode):
+    """Serialize a directory into one or more 1KB blocks.
+
+    Each block's last entry spans to the end of the block (rec_len = rest);
+    a zeroed entry (inode 0, rec_len = remainder) pads a full-but-not-exact
+    block. Fiwix's ext2_readdir skips inode-0 entries, so this terminates.
+    """
     entries = [(n.inode, b'.', EXT2_FT_DIR), (parent_inode, b'..', EXT2_FT_DIR)]
     entries += [(c.inode, c.name, file_type(c.kind)) for c in n.children]
-    out = bytearray()
-    for i, (ino, name, ft) in enumerate(entries):
-        offset = len(out)
-        if i == len(entries) - 1:
-            rl = BLOCK - offset          # last entry fills the block
-        else:
-            rl = rec_len(len(name))
-        out += struct.pack('<IHBB', ino, rl, len(name), ft) + name
-        out += b'\0' * (rl - (8 + len(name)))
-    assert len(out) == BLOCK, 'directory %r overflowed one block' % n.name
-    return bytes(out)
+    blocks = []
+    i = 0
+    while i < len(entries):
+        out = bytearray()
+        while i < len(entries):
+            ino, name, ft = entries[i]
+            need = rec_len(len(name))
+            if len(out) + need > BLOCK and out:
+                break                       # block full, start a new one
+            rl = BLOCK - len(out) if i == len(entries) - 1 else need
+            out += struct.pack('<IHBB', ino, rl, len(name), ft) + name
+            out += b'\0' * (rl - (8 + len(name)))
+            i += 1
+            if len(out) == BLOCK:
+                break
+        if len(out) < BLOCK:                 # broke early: zero-pad the rest
+            pad = BLOCK - len(out)
+            out += struct.pack('<IHBB', 0, pad, 0, 0)
+            out += b'\0' * (pad - 8)
+        assert len(out) == BLOCK
+        blocks.append(bytes(out))
+    return blocks
 
 
 def assign_inodes(node):
@@ -101,11 +119,14 @@ def assign_blocks(node):
 
     def walk(n, parent):
         if n.kind == 'dir':
-            data = dir_block(n, parent)
-            n.size = len(data)
-            b = next_block()
-            blocks[b] = data
-            i_blocks[n.inode] = [b] + [0] * (EXT2_N_BLOCKS - 1)
+            blks = dir_blocks(n, parent)
+            n.size = len(b''.join(blks))
+            ib = []
+            for b in blks:
+                nb = next_block()
+                ib.append(nb)
+                blocks[nb] = b
+            i_blocks[n.inode] = ib + [0] * (EXT2_N_BLOCKS - len(ib))
             for c in n.children:
                 walk(c, n.inode)
         elif n.kind == 'reg':
@@ -116,22 +137,47 @@ def assign_blocks(node):
                 b = next_block()
                 ib[k] = b
                 blocks[b] = n.data[k * BLOCK:(k + 1) * BLOCK]
-            # single indirect
+            # single + double indirect (i_block[12] and i_block[13])
             if nblk > EXT2_NDIR_BLOCKS:
-                remaining = nblk - EXT2_NDIR_BLOCKS
-                assert remaining <= PTRS_PER_BLOCK, 'file too large (single indirect)'
+                n_sing = min(nblk - EXT2_NDIR_BLOCKS, PTRS_PER_BLOCK)
                 ind = next_block()
                 ib[EXT2_NDIR_BLOCKS] = ind
                 ptrs = []
-                for k in range(remaining):
+                for k in range(n_sing):
                     b = next_block()
                     ptrs.append(b)
                     off = (EXT2_NDIR_BLOCKS + k) * BLOCK
                     blocks[b] = n.data[off:off + BLOCK]
                 blocks[ind] = ('INDIRECT', ptrs)
+                n_dind = nblk - EXT2_NDIR_BLOCKS - n_sing
+                if n_dind:
+                    assert n_dind <= PTRS_PER_BLOCK * PTRS_PER_BLOCK, \
+                        'file too large (double indirect)'
+                    dind = next_block()
+                    ib[EXT2_NDIR_BLOCKS + 1] = dind
+                    dptrs = []
+                    base = EXT2_NDIR_BLOCKS + n_sing
+                    remaining = n_dind
+                    while remaining > 0:
+                        pg = next_block()
+                        dptrs.append(pg)
+                        page = []
+                        for k in range(min(PTRS_PER_BLOCK, remaining)):
+                            b = next_block()
+                            page.append(b)
+                            off = (base + k) * BLOCK
+                            blocks[b] = n.data[off:off + BLOCK]
+                        blocks[pg] = ('INDIRECT', page)
+                        remaining -= len(page)
+                        base += len(page)
+                    blocks[dind] = ('INDIRECT', dptrs)
             i_blocks[n.inode] = ib
         elif n.kind == 'chr':
             i_blocks[n.inode] = [n.rdev] + [0] * (EXT2_N_BLOCKS - 1)
+        elif n.kind == 'lnk':
+            # fast symlink: the target (< 60B) lives inline in i_block[]
+            assert len(n.data) <= EXT2_NDIR_BLOCKS * 4, 'symlink target too long'
+            i_blocks[n.inode] = n.data + b'\0' * (EXT2_N_BLOCKS * 4 - len(n.data))
         else:
             raise AssertionError(n.kind)
 
@@ -151,8 +197,11 @@ def put_inode(ino, mode, size, ib, links, nblk, now):
     struct.pack_into('<IIII', i, 8, now, now, now, 0)  # atime, ctime, mtime, dtime
     struct.pack_into('<HH', i, 24, 0, links)           # i_gid, i_links_count
     struct.pack_into('<I', i, 28, nblk * (BLOCK // 512))  # i_blocks (512B units)
-    for k, b in enumerate(ib):
-        struct.pack_into('<I', i, 40 + 4 * k, b)       # i_block[15]
+    if isinstance(ib, (bytes, bytearray)):
+        i[40:40 + len(ib)] = ib                        # fast symlink: target inline
+    else:
+        for k, b in enumerate(ib):
+            struct.pack_into('<I', i, 40 + 4 * k, b)   # i_block[15]
     return bytes(i)
 
 
@@ -163,7 +212,7 @@ def main():
     root, out = sys.argv[1], sys.argv[2]
     size_mb = int(sys.argv[3]) if len(sys.argv) > 3 else 8
 
-    top = build_tree(root)
+    top = build_tree(root, with_symlinks=True)
     ninodes_used = assign_inodes(top)
     assert ninodes_used <= INODES_PER_GROUP, 'too many inodes'
     blocks, i_blocks = assign_blocks(top)
@@ -236,7 +285,9 @@ def main():
             mode = S_IFDIR | 0o755
             links = 2 + subdir_count(n)
             size = n.size
-            nblk = 1
+            nblk = (size + BLOCK - 1) // BLOCK
+            if not nblk:
+                nblk = 1   # empty dir still occupies its inode's first block
         elif n.kind == 'reg':
             mode = S_IFREG | 0o755
             links = 1
@@ -244,10 +295,20 @@ def main():
             nblk = (size + BLOCK - 1) // BLOCK
             if nblk > EXT2_NDIR_BLOCKS:
                 nblk += 1          # the single-indirect block itself
+                if nblk - 1 > EXT2_NDIR_BLOCKS + PTRS_PER_BLOCK:
+                    # double indirect: one double-indirect block + the
+                    # indirect pointer pages it references
+                    n_dind = (size + BLOCK - 1) // BLOCK - EXT2_NDIR_BLOCKS - PTRS_PER_BLOCK
+                    nblk += 1 + (n_dind + PTRS_PER_BLOCK - 1) // PTRS_PER_BLOCK
         elif n.kind == 'chr':
             mode = S_IFCHR | 0o600
             links = 1
             size = 0
+            nblk = 0
+        elif n.kind == 'lnk':
+            mode = S_IFLNK | 0o777
+            links = 1
+            size = n.size
             nblk = 0
         else:
             raise AssertionError(n.kind)

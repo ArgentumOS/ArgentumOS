@@ -27,7 +27,7 @@ int main(void)
 		}
 		if (pid == 0) {
 			char *argv[] = { "sh", NULL };
-			char *envp[] = { "PATH=/bin:/sbin", "HOME=/", "PS1=# ", NULL };
+			char *envp[] = { "PATH=/bin:/sbin:/usr/bin:/usr/sbin", "HOME=/", "PS1=# ", NULL };
 			execve("/bin/sh", argv, envp);
 			perror("INIT: execve /bin/sh");
 			_exit(127);

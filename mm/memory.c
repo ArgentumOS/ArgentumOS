@@ -250,6 +250,12 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned 
 			p->rss++;
 		}
 		pgtbl[pte] = addr | PAGE_PRESENT | PAGE_USER | flags;
+	} else if(!addr) {
+		/* the page is already mapped in the 2-level tables (e.g. a
+		 * CoW-shared page, or a re-fault after a 4-level desync):
+		 * never return P2V(0) - hand back the EXISTING page so
+		 * callers don't memset/kfree the kernel base page */
+		addr = pgtbl[pte] & PAGE_MASK;
 	}
 	if(prot & PROT_WRITE) {
 		pgtbl[pte] |= PAGE_RW;

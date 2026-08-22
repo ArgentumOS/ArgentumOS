@@ -138,6 +138,16 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 	if(loader_max > loader_min) {
 		mark_used(loader_min, loader_max);
 	}
+	/* Fiwix64 (M6-H): cap the bitmap's allocatable range to BELOW the
+	 * kernel image. The real kernel's mem_init() places its static tables
+	 * (kpage_dir, page_table[], buffer/inode caches) right after the image
+	 * and its allocator reserves everything from 0x100000 to _last_data_addr
+	 * (>= loader_max), so granting bitmap pages up there would collide with
+	 * live kernel structures (observed: the page-table array's refcounts got
+	 * clobbered by a 4-level table grant). Below the image the Fiwix
+	 * allocator never hands anything out, so the two allocators are
+	 * disjoint. */
+	mark_used(loader_min, LOW_LIMIT);
 	rsp = get_rsp();
 	mark_used(rsp - 0x20000, rsp + 0x1000);
 
@@ -236,6 +246,9 @@ static unsigned long alloc_table_page(void)
 {
 	unsigned long phys;
 
+	/* Allocated from the 64-bit bitmap, whose allocatable range is capped
+	 * BELOW the kernel image (see mm64_init) so it never collides with the
+	 * real kernel's kmalloc pages (static tables + user pages). */
 	phys = alloc_pages64(1);
 	if(phys) {
 		clear_page(phys);

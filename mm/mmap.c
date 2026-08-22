@@ -301,7 +301,16 @@ void free_vma_pages(struct vma *vma, unsigned int start, __size_t length)
 						write_page(pg, vma->inode, offset, PAGE_SIZE);
 					}
 
-					kfree(P2V(pgtbl[pte]) & PAGE_MASK);
+					if(pg->count > 1) {
+						/* CoW / MAP_SHARED: another process still
+						 * references this page (e.g. exec-after-fork
+						 * freeing the old binary must NOT free the
+						 * parent's shared pages) - just drop our
+						 * reference */
+						pg->count--;
+					} else {
+						kfree(P2V(pgtbl[pte]) & PAGE_MASK);
+					}
 				}
 				current->rss--;
 #ifdef CONFIG_SYSVIPC
