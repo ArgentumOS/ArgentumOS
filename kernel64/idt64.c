@@ -313,6 +313,22 @@ void idt64_init(void)
 	/* M4: int 0x80 (compat syscall entry) as a DPL3 interrupt gate */
 	set_gate(0x80, (unsigned long)&isr_stub_128, cs, 3);
 
+	/* Fiwix64 (native port): the 'syscall' instruction used by musl
+	 * x86_64. LSTAR = the entry (switch64.S syscall_entry64); STAR's
+	 * low syscall-CS field = KCODE64 (0x08) so the CPU loads CS=0x08 /
+	 * SS=0x10 for the kernel; FMASK clears IF/DF on entry (RFLAGS is
+	 * restored from R11 by the iretq epilogue). The frame the entry
+	 * builds (cs=UCODE64|RPL3, ss=UDATA32|RPL3) drives the return mode. */
+	{
+		extern void syscall_entry64(void);
+		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000081),
+			"a"((unsigned long)(0x08ULL << 32)), "d"(0));		/* STAR */
+		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000082),
+			"a"((unsigned long)syscall_entry64), "d"(0));		/* LSTAR */
+		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000084),
+			"a"((unsigned long)0x202), "d"(0));			/* FMASK */
+	}
+
 	idtr.limit = (unsigned short)(sizeof(idt) - 1);
 	idtr.base = (unsigned long)idt;
 	__asm__ __volatile__("lidt %0" :: "m"(idtr));
