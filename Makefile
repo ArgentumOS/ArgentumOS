@@ -173,6 +173,47 @@ userland: $(MUSL_SPECS) $(DASH_BIN) $(TOYBOX_BIN)
 	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c bin/toybox
 	@echo "userland: initrd regenerated from $(ROOTFS)"
 
+# ---------------------------------------------------------------------------
+# Native x86_64 userland (port phase B): same tree, LP64 ABI. Built with
+# tools/musl-gcc64.sh into .build/rootfs64. The binaries are static ELF64
+# and can be smoke-tested on the host before the kernel can exec them.
+MUSL64_PREFIX = .build/musl64
+MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
+MUSL64_CC     = gcc -static -specs $(MUSL64_SPECS)
+ROOTFS64      = .build/rootfs64
+DASH64_BIN    = third_party/dash/src/dash64
+TOYBOX64_BIN  = third_party/toybox/toybox64
+
+.PHONY: userland64 musl64 dash64 toybox64
+
+musl64: $(MUSL64_SPECS)
+$(MUSL64_SPECS):
+	cd third_party/musl && \
+		make clean >/dev/null 2>&1 || true && \
+		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
+		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
+		$(MAKE) && $(MAKE) install
+
+dash64: $(DASH64_BIN)
+$(DASH64_BIN): $(MUSL64_SPECS)
+	cd third_party/dash && ./autogen.sh && \
+		CC="$(CURDIR)/tools/musl-gcc64.sh" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
+		$(MAKE) && strip src/dash && cp src/dash $(DASH64_BIN)
+
+toybox64: $(TOYBOX64_BIN)
+$(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh
+	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64.sh" ./tools/mktoybox.sh
+	cp third_party/toybox/toybox $(TOYBOX64_BIN)
+
+userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
+	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
+	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
+	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
+	cp $(DASH64_BIN) $(ROOTFS64)/bin/sh
+	cp userland/test_toybox.sh $(ROOTFS64)/test_toybox.sh
+	touch $(ROOTFS64)/dev/console
+	@echo "userland64: native x86_64 rootfs staged in $(ROOTFS64)"
+
 # Build a persistent ext2 root filesystem image (.build/root.img) from the
 # same rootfs tree. Attached as a second IDE disk (hdb), it becomes the boot
 # root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.

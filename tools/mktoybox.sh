@@ -8,6 +8,7 @@
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CC_WRAP="${TOYBOX_CC:-$ROOT/tools/musl-gcc.sh}"
 cd "$ROOT/third_party/toybox"
 
 make defconfig
@@ -46,7 +47,7 @@ open('.config', 'w').write('\n'.join(out) + '\n')
 print("mktoybox: disabled %d applets needing kernel headers" % len(syms))
 EOF
 
-make CC="$ROOT/tools/musl-gcc.sh" CFLAGS= LDFLAGS=
+make CC="$CC_WRAP" CFLAGS= LDFLAGS=
 # toybox's build leaves the binary read-only (0555); strip needs write access
 chmod +w toybox 2>/dev/null || true
 strip toybox
