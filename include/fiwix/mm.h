@@ -13,7 +13,18 @@
 #include <fiwix/process.h>
 
 /* convert from physical to virtual the addresses below PAGE_OFFSET only */
+#ifdef __x86_64__
+/* Fiwix64 (pivot): PAGE_OFFSET is 0xFFFFFFFF80000000ULL, which is a
+ * NEGATIVE signed 64-bit value. The plain `addr < PAGE_OFFSET` test then
+ * compares signed (0x400000 < -0x80000000 is false) and the macro returns
+ * the RAW phys instead of the high-half alias - so page-table walks read
+ * through the low identity map, which user demand-maps have remapped
+ * (the phys 0x400000 = shell-binary ELF corruption). Cast to unsigned. */
+#define P2V(addr)		((unsigned long)(addr) < (unsigned long)PAGE_OFFSET ? \
+				 (unsigned long)(addr) + (unsigned long)PAGE_OFFSET : (unsigned long)(addr))
+#else
 #define P2V(addr)		(addr < PAGE_OFFSET ? addr + PAGE_OFFSET : addr)
+#endif /* __x86_64__ */
 
 #define V2P(addr)		(addr - PAGE_OFFSET)
 

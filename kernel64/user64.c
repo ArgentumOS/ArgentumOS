@@ -113,15 +113,20 @@ void syscall80_handler(unsigned long *gprs)
 		}
 
 		if(current->flags & PF_ELF64) {
-			/* x86-64 ABI: arg1=rdi(gprs[8]) arg2=rsi([9]) arg3=rdx([12])
-			 * arg4=rcx([13]) arg5=r8([7]); the 6th arg (r9, gprs[6]) is
-			 * stashed in sc.ebp for mmap/select-style syscalls */
-			a1 = (long)gprs[8];
-			a2 = (long)gprs[9];
-			a3 = (long)gprs[12];
-			a4 = (long)gprs[13];
-			a5 = (long)gprs[7];
-			sc.ebp = (unsigned int)gprs[6];
+			/* x86-64 syscall ABI: arg1=rdi arg2=rsi arg3=rdx
+			 * arg4=r10 arg5=r8. The syscall_entry64 frame saves
+			 * (gprs[14]=rax,[13]=rcx,[12]=rdx,[11]=rbx,[10]=rbp,
+			 * [9]=rsi,[8]=rdi,[7]=r8,[6]=r9,[5]=r10,[4]=r11,[3]=r12,
+			 * [2]=r13,[1]=r14,[0]=r15). NOTE rcx is the syscall
+			 * return RIP and is NOT an argument; the 4th arg is r10.
+			 * The 6th arg (r9, gprs[6]) is stashed in sc.ebp for
+			 * mmap/select-style syscalls. */
+			a1 = (long)gprs[8];		/* rdi */
+			a2 = (long)gprs[9];		/* rsi */
+			a3 = (long)gprs[12];		/* rdx */
+			a4 = (long)gprs[5];		/* r10 */
+			a5 = (long)gprs[7];		/* r8 */
+			sc.ebp = (unsigned int)gprs[6];	/* r9 (6th arg) */
 		} else {
 			/* The INIT trampoline's USER_SYSCALL macro passes its
 			 * arguments as 32-bit values (lea (%rax),%ebx), so

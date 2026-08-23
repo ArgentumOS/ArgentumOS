@@ -613,6 +613,12 @@ void mem_init(void)
 
 	page_init(kstat.physical_pages);
 	buddy_low_init();
+#ifdef __x86_64__
+	/* Fiwix64 (pivot): the static tables are carved; hand the usable pages
+	 * above them back to the single 64-bit bitmap allocator. */
+	extern void mm64_postmem_init(void);
+	mm64_postmem_init();
+#endif /* __x86_64__ */
 }
 
 void mem_stats(void)

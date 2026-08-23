@@ -96,6 +96,11 @@ static void remove_from_hash(struct page *pg)
 
 static void insert_on_free_list(struct page *pg)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (pivot): the page_head free-list is not built; pages live
+	 * in the single 64-bit bitmap. Nothing to link. */
+	return;
+#else
 	if(!page_head) {
 		pg->prev_free = pg->next_free = pg;
 		page_head = pg;
@@ -107,10 +112,15 @@ static void insert_on_free_list(struct page *pg)
 	}
 
 	kstat.free_pages++;
+#endif /* __x86_64__ */
 }
 
 static void remove_from_free_list(struct page *pg)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (pivot): nothing is ever on the page_head free-list. */
+	return;
+#else
 	if(!kstat.free_pages) {
 		return;
 	}
@@ -125,6 +135,7 @@ static void remove_from_free_list(struct page *pg)
 	if(!kstat.free_pages) {
 		page_head = NULL;
 	}
+#endif /* __x86_64__ */
 }
 
 void page_lock(struct page *pg)
@@ -156,6 +167,34 @@ void page_unlock(struct page *pg)
 
 struct page *get_free_page(void)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (pivot): the 64-bit bitmap is the single physical
+	 * allocator. The Fiwix page_head free-list is not built (page_init
+	 * skips it), so get_free_page() is a thin wrapper over the bitmap. */
+	unsigned long phys;
+	struct page *pg;
+	extern unsigned long alloc_pages64(int);
+
+	if(!(phys = alloc_pages64(1))) {
+		return NULL;
+	}
+	if(phys >> PAGE_SHIFT >= NR_PAGES) {
+		/* the bitmap may cover more RAM than page_table[] does (the
+		 * Fiwix pool is capped at GDT_BASE); release and fail */
+		extern void free_pages64(unsigned long, int);
+		free_pages64(phys, 1);
+		return NULL;
+	}
+	pg = &page_table[phys >> PAGE_SHIFT];
+	remove_from_hash(pg);	/* drop any stale page-cache reference */
+	pg->count = 1;
+	pg->inode = 0;
+	pg->offset = 0;
+	pg->dev = 0;
+	pg->flags = 0;
+	pg->data = (char *)P2V(phys);
+	return pg;
+#else
 	unsigned int flags;
 	struct page *pg;
 
@@ -206,6 +245,7 @@ repeat:
 
 	RESTORE_FLAGS(flags);
 	return pg;
+#endif /* __x86_64__ */
 }
 
 struct page *search_page_hash(struct inode *inode, __off_t offset)
@@ -232,6 +272,24 @@ struct page *search_page_hash(struct inode *inode, __off_t offset)
 
 void release_page(struct page *pg)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (pivot): return the page to the bitmap. The refcount is
+	 * the pml4/allocator usage; at zero the phys goes back to the pool.
+	 * The bitmap never hands out reserved/static pages, so no
+	 * PAGE_RESERVED handling is needed here. */
+	extern void free_pages64(unsigned long, int);
+
+	if(--pg->count > 0) {
+		return;
+	}
+	/* drop any page-cache reference BEFORE returning the phys to the
+	 * pool: a stale hash entry makes search_page_hash()/bread_page()
+	 * write file content into the page after the bitmap re-granted it
+	 * as a table page (the phys 0x400000 ELF-content corruption). */
+	remove_from_hash(pg);
+	free_pages64((unsigned long)pg->page << PAGE_SHIFT, 1);
+	return;
+#else
 	unsigned int flags;
 
 	if(!is_valid_page(pg->page)) {
@@ -268,11 +326,45 @@ void release_page(struct page *pg)
 	if(kstat.free_pages > (NR_BUF_RECLAIM * 3)) {
 		wakeup(&get_free_page);
 	}
+#endif /* __x86_64__ */
 }
 
 int is_valid_page(int page)
 {
 	return (page >= 0 && page < NR_PAGES);
+}
+
+/* Fiwix64 (pivot): refcount helpers used by the 4-level fork/exec code
+ * (kernel64/mm64.c). page_table[].count is the number of pml4 mappings
+ * (plus the allocator's own reference) on a physical page; COW decrements
+ * it when a process replaces a shared leaf with a private copy, and
+ * free_vma_pages() kfree()s the page when it hits zero. */
+void page_ref_get(unsigned long phys)
+{
+	struct page *pg;
+	unsigned long page;
+
+	page = phys >> PAGE_SHIFT;
+	if(page >= NR_PAGES) {
+		return;
+	}
+	pg = &page_table[page];
+	pg->count++;
+}
+
+void page_ref_put(unsigned long phys)
+{
+	struct page *pg;
+	unsigned long page;
+
+	page = phys >> PAGE_SHIFT;
+	if(page >= NR_PAGES) {
+		return;
+	}
+	pg = &page_table[page];
+	if(pg->count > 0) {
+		pg->count--;
+	}
 }
 
 void invalidate_inode_pages(struct inode *i)
@@ -529,7 +621,13 @@ void page_init(int pages)
 		}
 
 		pg->data = (char *)P2V(addr);
+#ifndef __x86_64__
+		/* Fiwix64 (pivot): the bitmap is the single allocator; the
+		 * page_head free-list is NOT built, so pages are NOT inserted
+		 * here. page_table[] metadata (data/refcount/flags) is still
+		 * initialized above for shmat/meminfo/free_vma_pages. */
 		insert_on_free_list(pg);
+#endif /* __x86_64__ */
 	}
 
 	kstat.total_mem_pages = kstat.free_pages;

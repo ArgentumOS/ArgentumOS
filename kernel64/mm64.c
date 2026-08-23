@@ -20,6 +20,7 @@
  */
 
 #include <fiwix/efi.h>
+#include <fiwix/kernel.h>
 #include "serial64.h"
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
@@ -56,6 +57,20 @@ void tlb_flush64(void);
 static unsigned char page_bitmap[BITMAP_BYTES];
 static unsigned long free_pages_count;
 static unsigned long total_pages_count;
+
+/* Fiwix64 (pivot): the bitmap is now the SINGLE physical allocator for the
+ * whole 64-bit kernel (page tables, user pages, kernel stacks, kmalloc).
+ * mm64_init runs BEFORE the real kernel's mem_init(), which later carves
+ * its static tables (kpage_dir, page_table[], buffer/inode caches) right
+ * after the image and computes _last_data_addr. Those carved addresses are
+ * unknown here, so mm64_init conservatively marks everything from the
+ * loader span to LOW_LIMIT used; mem_init() then calls mm64_postmem_init()
+ * to release the region above the static tables back to the bitmap. The
+ * usable spans from the EFI map are remembered so postmem can free exactly
+ * the pages mem_init() left alone. */
+#define MAX_USABLE_RANGES 32
+static unsigned long usable_ranges[MAX_USABLE_RANGES][2];	/* start, end */
+static int usable_count;
 
 static void bit_set(unsigned long p)
 {
@@ -107,6 +122,7 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 	}
 
 	/* usable pages below 1GB become free; track the loader image span */
+	usable_count = 0;
 	for(n = 0; n < count; n++) {
 		d = (EFI_MEMORY_DESCRIPTOR *)((char *)map + (n * desc_size));
 		start = (unsigned long)d->PhysicalStart;
@@ -122,6 +138,13 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 				if(p < MAX_PAGES) {
 					bit_clear(p);
 				}
+			}
+			/* remember the span so mm64_postmem_init() can free the
+			 * part above the kernel's static tables later */
+			if(usable_count < MAX_USABLE_RANGES) {
+				usable_ranges[usable_count][0] = start;
+				usable_ranges[usable_count][1] = end;
+				usable_count++;
 			}
 		} else if(d->Type == EfiLoaderCode || d->Type == EfiLoaderData) {
 			if(start < loader_min) {
@@ -172,6 +195,51 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 			total_pages_count += (end - start) >> PAGE_SHIFT64;
 		}
 	}
+}
+
+/* Fiwix64 (pivot): called from mem_init() AFTER the kernel has carved its
+ * static tables (kpage_dir, page_table[], buffer/inode caches...) right
+ * after the image and computed _last_data_addr. The bitmap is the single
+ * physical allocator, so the usable pages ABOVE the static tables - the
+ * region the Fiwix free-list used to manage - are handed back to it here.
+ * mm64_init() had conservatively marked [loader_min, LOW_LIMIT) used
+ * because _last_data_addr was not known yet. */
+void mm64_postmem_init(void)
+{
+	extern unsigned long _last_data_addr;	/* kernel memory.c */
+	extern struct kernel_stat kstat;
+	unsigned long last_data_phys, start, end;
+	int n;
+
+	last_data_phys = (unsigned long)_last_data_addr;
+	if(last_data_phys >= PAGE_OFFSET64) {
+		last_data_phys -= PAGE_OFFSET64;	/* V2P */
+	}
+	for(n = 0; n < usable_count; n++) {
+		start = usable_ranges[n][0];
+		end = usable_ranges[n][1];
+		if(end <= last_data_phys) {
+			continue;
+		}
+		if(start < last_data_phys) {
+			start = last_data_phys;
+		}
+		if(start < LOW_LIMIT && end > start) {
+			/* re-free this span (mm64_init marked it used) */
+			unsigned long p;
+			for(p = start >> PAGE_SHIFT64; p < (end >> PAGE_SHIFT64); p++) {
+				if(p < MAX_PAGES && bit_test(p)) {
+					bit_clear(p);
+					free_pages_count++;
+				}
+			}
+		}
+	}
+	/* the page_init() free-list is not built in the 64-bit build; keep
+	 * the kstat pool stats in sync with the single bitmap allocator */
+	kstat.total_mem_pages = (int)total_pages_count;
+	kstat.free_pages = (int)free_pages_count;
+	kstat.min_free_pages = (kstat.total_mem_pages * 20) / 100;
 }
 
 /* first-fit allocation of n consecutive pages; returns the physical address */
@@ -295,16 +363,28 @@ int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 		}
 		*entry = phys | X86_PTE_P | X86_PTE_RW;
 	} else if(*entry & X86_PTE_PS) {
-		/* split the 2MB huge page: cover the same phys with a 4KB PT */
+		/* split the 2MB huge page. For a HIGH-HALF (kernel) huge page
+		 * (the INIT trampoline/stack live there), the other 511 entries
+		 * MUST keep the identity phys - kernel text/data share the same
+		 * 2MB page and would vanish. For a LOW-half user huge page
+		 * (vaddr < PAGE_OFFSET64), pre-filling identity leaves maps the
+		 * phys of pages the bitmap may LATER re-grant as table pages
+		 * (e.g. a fork child's PT at 0x400000): the stale leaf then
+		 * aliases the table page and file/ELF content overwrites it. So
+		 * only the requested 4KB leaf is mapped there; the other 511
+		 * entries stay NOT-PRESENT (the PT was zeroed by
+		 * alloc_table_page). */
 		base = *entry & ~0x1FFFFFUL;
 		phys = alloc_table_page();
 		if(!phys) {
 			return 1;
 		}
 		pt = (unsigned long *)P2V64(phys);
-		for(i = 0; i < 512; i++) {
-			pt[i] = (base + ((unsigned long)i << 12)) |
-				((*entry & 0xFFFUL) & ~X86_PTE_PS) | X86_PTE_P;
+		if(vaddr >= PAGE_OFFSET64) {
+			for(i = 0; i < 512; i++) {
+				pt[i] = (base + ((unsigned long)i << 12)) |
+					((*entry & 0xFFFUL) & ~X86_PTE_PS) | X86_PTE_P;
+			}
 		}
 		*entry = phys | X86_PTE_P | X86_PTE_RW;
 		split = 1;
@@ -491,6 +571,21 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 							}
 						}
 						pt[k] = leaf;
+						/* Fiwix64 (pivot): a FORK child inherits a
+						 * reference to every user leaf it maps (the
+						 * parent's page_table[].count was set when it
+						 * allocated the page; the child now shares it).
+						 * free_vma_pages() on the child's exit sees
+						 * count > 1 and only decrements - without this
+						 * the child's exit would kfree() a page the
+						 * parent still maps (use-after-free, then
+						 * re-grant -> the low-2MB aliasing). Exec-from-
+						 * kernel (is_fork=0) copies only the kernel
+						 * identity map, which is never refcounted. */
+						if(is_fork && (leaf & X86_PTE_US) && (leaf & X86_PTE_P)) {
+							extern void page_ref_get(unsigned long);
+							page_ref_get(leaf & PAGE_MASK64);
+						}
 					}
 				} else {
 					pd[j] = e;

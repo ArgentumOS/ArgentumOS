@@ -81,20 +81,17 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		current->rss--;
 		return 1;
 	}
-	/* TEMP probe: confirm the leaf the COW just wrote (must be P+RW+US) */
+	/* Fiwix64 (pivot): the faulting process drops its reference to the
+	 * old shared (CoW) leaf - the fresh copy replaces it in THIS pml4,
+	 * while the other process(es) still map the original. create_pml4_64
+	 * incremented the count for every fork copy, so the count is now
+	 * balanced: 1 reference per pml4 mapping. Without this decrement the
+	 * original page is never freed (count leaks), and without the
+	 * create_pml4_64 increment the child's exit would free a page the
+	 * parent still maps. */
 	{
-		extern unsigned long user_leaf64_in(unsigned long, unsigned long);
-		unsigned long l = user_leaf64_in(pml4, (unsigned long)cr2);
-		unsigned long *lv;
-		unsigned long e1, e2, e3;
-		lv = (unsigned long *)P2V(pml4);
-		e1 = lv[((unsigned long)cr2 >> 39) & 0x1FFUL];
-		lv = (unsigned long *)P2V(e1 & 0x000FFFFFFFFFF000ULL);
-		e2 = lv[((unsigned long)cr2 >> 30) & 0x1FFUL];
-		lv = (unsigned long *)P2V(e2 & 0x000FFFFFFFFFF000ULL);
-		e3 = lv[((unsigned long)cr2 >> 21) & 0x1FFUL];
-		printk("[COW] cr2=0x%lx pml4e=0x%lx pdpte=0x%lx pde=0x%lx leaf=0x%lx\n",
-			(unsigned long)cr2, e1, e2, e3, l);
+		extern void page_ref_put(unsigned long);
+		page_ref_put(leaf);
 	}
 	invalidate_tlb();
 	return 0;

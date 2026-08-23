@@ -8,80 +8,23 @@ TOPDIR := $(shell if [ "$$PWD" != "" ] ; then echo $$PWD ; else pwd ; fi)
 INCLUDE = $(TOPDIR)/include
 TMPFILE := $(shell mktemp)
 
-ARCH = -m32
-CPU = -march=i386
 LANG = -std=c89
 
-# CCEXE can be overridden at the command line. For example: make CCEXE="tcc"
-# To use tcc see docs/tcc.txt
+# The 32-bit i386 build was REMOVED in the Fiwix64 pivot: this tree builds
+# only the 64-bit long-mode kernel (PE32+ UEFI application via build64real).
 CCEXE=gcc
 
-CC = $(CROSS_COMPILE)$(CCEXE) $(ARCH) $(CPU) $(LANG) -D__KERNEL__ $(CONFFLAGS) #-D__DEBUG__
-CFLAGS = -I$(INCLUDE) -O2 -fno-pie -fno-common -ffreestanding -Wall -Wstrict-prototypes #-Wextra -Wno-unused-parameter
-
-ifeq ($(CCEXE),gcc)
 LD = $(CROSS_COMPILE)ld
-CPP = $(CROSS_COMPILE)cpp -P -I$(INCLUDE) -U__x86_64__
-LIBGCC := -L$(shell dirname `$(CC) -print-libgcc-file-name`) -lgcc
-LDFLAGS = -m elf_i386
-endif
 
-ifeq ($(CCEXE),tcc)
-LD = $(CROSS_COMPILE)$(CCEXE) $(ARCH)
-LDFLAGS = -static -nostdlib -nostdinc
-# If you define CONFIG_VM_SPLIT22 this should be 0x80100000: make CCEXE="tcc" TEXTADDR="0x80100000"
-TEXTADDR = 0xC0100000
-endif
+export LD INCLUDE
 
-
-DIRS =	kernel \
-	kernel/syscalls \
-	mm \
-	fs \
-	drivers/char \
-	drivers/block \
-	drivers/pci \
-	drivers/video \
-	net \
-	lib
-
-OBJS = 	kernel/*.o \
-	kernel/syscalls/*.o \
-	mm/*.o \
-	fs/*.o \
-	fs/devpts/*.o \
-	fs/ext2/*.o \
-	fs/iso9660/*.o \
-	fs/minix/*.o \
-	fs/pipefs/*.o \
-	fs/procfs/*.o \
-	fs/sockfs/*.o \
-	drivers/char/*.o \
-	drivers/block/*.o \
-	drivers/pci/*.o \
-	drivers/video/*.o \
-	net/*.o \
-	lib/*.o
-
-export CC LD CFLAGS LDFLAGS INCLUDE
-
-all:
-	@echo "#define UTS_VERSION \"`date -u`\"" > include/fiwix/version.h
-	@for n in $(DIRS) ; do (cd $$n ; $(MAKE)) || exit ; done
-ifeq ($(CCEXE),gcc)
-	$(CPP) $(CONFFLAGS) fiwix.ld > $(TMPFILE)
-	$(LD) -N -T $(TMPFILE) $(LDFLAGS) $(OBJS) $(LIBGCC) -o fiwix
-	rm -f $(TMPFILE)
-	nm fiwix | sort | gzip -9c > System.map.gz
-endif
-ifeq ($(CCEXE),tcc)
-	$(LD) -Wl,-Ttext=$(TEXTADDR) $(LDFLAGS) $(OBJS) -o fiwix
-endif
+# Default target: the 64-bit UEFI kernel.
+all: build64real
+	@echo "make: .build/64/fiwix64.efi ready (Fiwix64, 64-bit only)"
 
 clean:
-	@for n in $(DIRS) ; do (cd $$n ; $(MAKE) clean) ; done
+	rm -rf .build/64 .build/64real
 	rm -f *.o fiwix System.map.gz
-	rm -rf .build/64
 
 # ---------------------------------------------------------------------------
 # Development harness (QEMU / UEFI). See docs/port-longmode-uefi.txt.
@@ -111,16 +54,7 @@ CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2
        -fno-pie -fno-common -ffreestanding -mno-red-zone -mno-sse -mno-sse2 \
        -fno-asynchronous-unwind-tables -Wall -Wstrict-prototypes
 
-run: fiwix
-	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		./tools/qemu.sh -display gtk -serial stdio -m 128M -kernel fiwix -append "console=/dev/ttyS0" $(QEMU_EXTRA); \
-	elif [ -t 1 ]; then \
-		./tools/qemu.sh -display curses -m 128M -kernel fiwix -append "console=/dev/ttyS0" $(QEMU_EXTRA); \
-	else \
-		./tools/qemu.sh -nographic -m 128M -kernel fiwix -append "console=/dev/ttyS0" $(QEMU_EXTRA); \
-	fi
-
-run-uefi: .build/ovmf/OVMF.fd rootdisk build64
+run: .build/ovmf/OVMF.fd rootdisk64 build64
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
 		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
@@ -130,48 +64,11 @@ run-uefi: .build/ovmf/OVMF.fd rootdisk build64
 		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	fi
 
-# --- Fiwix64 static musl i386 userland (init + sh), packed into the initrd ---
-# `make userland` builds /sbin/init + /bin/sh under .build/rootfs and
-# regenerates kernel64/initrd64.c (the embedded minix-v1 initrd) with
-# tools/mkinitrd.py. `make run-uefi` does this automatically.
-# musl is a vendored submodule (third_party/musl); dash must be cloned into
-# third_party/dash (git.kernel.org) or the tree built once with `make dash`.
-MUSL_PREFIX = .build/musl
-MUSL_SPECS  = $(MUSL_PREFIX)/lib/musl-gcc.specs
-MUSL_CC     = gcc -m32 -static -Wl,-m,elf_i386 -specs $(MUSL_SPECS)
-ROOTFS      = .build/rootfs
-DASH_BIN    = third_party/dash/src/dash
-TOYBOX_BIN  = third_party/toybox/toybox
+run-uefi: run
 
-.PHONY: userland musl dash toybox
-
-musl: $(MUSL_SPECS)
-$(MUSL_SPECS):
-	cd third_party/musl && \
-		CC="gcc -m32" ./configure --target=i386 --prefix=$(CURDIR)/$(MUSL_PREFIX) && \
-		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
-		$(MAKE) && $(MAKE) install
-
-dash: $(DASH_BIN)
-$(DASH_BIN):
-	cd third_party/dash && ./autogen.sh && \
-		CC="$(CURDIR)/tools/musl-gcc.sh" ./configure --host=i386-linux --disable-fnmatch --disable-glob && \
-		$(MAKE) && strip src/dash
-
-toybox: $(TOYBOX_BIN)
-$(TOYBOX_BIN): tools/mktoybox.sh tools/musl-gcc.sh
-	./tools/mktoybox.sh
-
-userland: $(MUSL_SPECS) $(DASH_BIN) $(TOYBOX_BIN)
-	@mkdir -p $(ROOTFS)/sbin $(ROOTFS)/bin $(ROOTFS)/dev
-	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc.sh" install PREFIX="$(CURDIR)/$(ROOTFS)"
-	$(MUSL_CC) userland/init.c -o $(ROOTFS)/sbin/init
-	$(MUSL_CC) userland/test_mmap.c -o $(ROOTFS)/test_mmap
-	cp $(DASH_BIN) $(ROOTFS)/bin/sh
-	cp userland/test_toybox.sh $(ROOTFS)/test_toybox.sh
-	touch $(ROOTFS)/dev/console
-	python3 tools/mkinitrd.py $(ROOTFS) .build/initrd/initrd.img kernel64/initrd64.c bin/toybox
-	@echo "userland: initrd regenerated from $(ROOTFS)"
+# --- Fiwix64 native x86_64 userland (port phase B): static ELF64 binaries
+# --- built with tools/musl-gcc64.sh into .build/rootfs64, packed into an
+# --- ext2 root image (.build/root.img) attached as the second IDE disk.
 
 # ---------------------------------------------------------------------------
 # Native x86_64 userland (port phase B): same tree, LP64 ABI. Built with
@@ -214,16 +111,10 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	touch $(ROOTFS64)/dev/console
 	@echo "userland64: native x86_64 rootfs staged in $(ROOTFS64)"
 
-# Build a persistent ext2 root filesystem image (.build/root.img) from the
-# same rootfs tree. Attached as a second IDE disk (hdb), it becomes the boot
+# Build the native x86_64 ext2 root filesystem image (.build/root.img) from
+# the ELF64 userland tree, so the kernel can boot /sbin/init straight off
+# hdb (no initrd). Attached as a second IDE disk (hdb), it becomes the boot
 # root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.
-rootdisk: userland
-	python3 tools/mkext2.py $(ROOTFS) .build/root.img 8
-	@echo "rootdisk: .build/root.img ready (ext2, 8MB)"
-
-# Native x86_64 root disk: the same idea as 'rootdisk' but from the ELF64
-# userland tree, so the kernel can boot /sbin/init straight off hdb without
-# any initrd (the Fiwix64 native-port milestone).
 rootdisk64: userland64
 	python3 tools/mkext2.py $(ROOTFS64) .build/root.img 8
 	@echo "rootdisk64: .build/root.img ready (ext2, 8MB, native x86_64 userland)"
@@ -235,7 +126,7 @@ ovmf: .build/ovmf/OVMF.fd
 
 compile64:
 	@rm -rf .build/64
-	@for n in $(DIRS) ; do \
+	@for n in kernel kernel/syscalls mm fs drivers/char drivers/block drivers/pci drivers/video net lib ; do \
 		for f in $$(find $$n -name '*.c') ; do \
 			o=".build/64/$${f%.c}.o" ; \
 			mkdir -p "$$(dirname "$$o")" ; \

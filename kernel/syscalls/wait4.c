@@ -80,6 +80,11 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 					if(ru) {
 						get_rusage(p, ru);
 					}
+					{
+						extern unsigned int free_proc_slots;
+						printk("[WAIT4] pid %d ZOMBIE reaping (slots=%d)\n",
+							p->pid, free_proc_slots);
+					}
 					return remove_zombie(p);
 				}			}
 			p = p->next;
