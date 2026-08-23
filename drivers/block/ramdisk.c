@@ -150,7 +150,7 @@ int ramdisk_write(__dev_t dev, __blk_t block, char *buffer, int blksize)
 	return blksize;
 }
 
-int ramdisk_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int ramdisk_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	struct hd_geometry *geom;
 	struct device *d;

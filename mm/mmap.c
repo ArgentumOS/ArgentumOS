@@ -194,7 +194,7 @@ static int can_be_merged(struct vma *a, struct vma *b)
 	return 0;
 }
 
-static int free_vma_region(struct vma *vma, unsigned int start, __ssize_t length)
+static int free_vma_region(struct vma *vma, addr_t start, __ssize_t length)
 {
 	struct vma *new;
 
@@ -271,7 +271,7 @@ void merge_vma_regions(struct vma *a, struct vma *b)
 	}
 }
 
-void free_vma_pages(struct vma *vma, unsigned int start, __size_t length)
+void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 {
 #ifdef __x86_64__
 	/* Fiwix64 (native-MM): operate on the ACTIVE pml4 - no 2-level shadow,
@@ -448,7 +448,7 @@ int vma_is_shared(addr_t addr)
 	return vma && (vma->flags & MAP_SHARED);
 }
 
-struct vma *find_vma_intersection(unsigned int start, unsigned int end)
+struct vma *find_vma_intersection(addr_t start, addr_t end)
 {
 	struct vma *vma;
 
@@ -466,7 +466,7 @@ struct vma *find_vma_intersection(unsigned int start, unsigned int end)
 	return NULL;
 }
 
-int expand_heap(unsigned int new)
+int expand_heap(addr_t new)
 {
 	struct vma *vma, *heap;
 
@@ -492,9 +492,9 @@ int expand_heap(unsigned int new)
 }
 
 /* return the first free address that matches with the size of length */
-unsigned int get_unmapped_vma_region(unsigned int length)
+addr_t get_unmapped_vma_region(addr_t length)
 {
-	unsigned int addr;
+	addr_t addr;
 	struct vma *vma;
 
 	if(!length) {
@@ -518,7 +518,7 @@ unsigned int get_unmapped_vma_region(unsigned int length)
 	return 0;
 }
 
-int do_mmap(struct inode *i, unsigned int start, unsigned int length, unsigned int prot, unsigned int flags, unsigned int offset, char type, char mode, void *object)
+long do_mmap(struct inode *i, addr_t start, addr_t length, unsigned int prot, unsigned int flags, addr_t offset, char type, char mode, void *object)
 {
 	struct vma *vma;
 	int errno;
@@ -527,7 +527,9 @@ int do_mmap(struct inode *i, unsigned int start, unsigned int length, unsigned i
 		return start;
 	}
 
-	if(start > PAGE_OFFSET || start + length > PAGE_OFFSET) {
+	/* user addresses must stay in the canonical low half (< the 128TB
+	 * user/kernel boundary, USER_STACK_TOP = 0x0000800000000000) */
+	if(start >= USER_STACK_TOP || start + length > USER_STACK_TOP) {
 		return -EINVAL;
 	}
 
@@ -617,10 +619,10 @@ int do_mmap(struct inode *i, unsigned int start, unsigned int length, unsigned i
 	return start;
 }
 
-int do_munmap(unsigned int addr, __size_t length)
+int do_munmap(addr_t addr, __size_t length)
 {
 	struct vma *vma;
-	unsigned int size;
+	addr_t size;
 
 	if(addr & ~PAGE_MASK) {
 		return -EINVAL;
@@ -647,7 +649,7 @@ int do_munmap(unsigned int addr, __size_t length)
 	return 0;
 }
 
-int do_mprotect(struct vma *vma, unsigned int addr, __size_t length, int prot)
+int do_mprotect(struct vma *vma, addr_t addr, __size_t length, int prot)
 {
 	struct vma *new;
 

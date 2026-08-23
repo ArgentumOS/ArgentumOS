@@ -19,12 +19,19 @@
 #include <fiwix/sigcontext.h>
 #include <fiwix/stdio.h>
 #include <fiwix/unistd.h>
+#include <fiwix/string.h>
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
 
 #define UCODE32_SEL	0x18
 #define UDATA32_SEL	0x20
 #define UCODE64_SEL	0x48
+
+/* x86-64 syscall numbers for the native ABI (the kernel's SYS_* constants
+ * in unistd.h are the i386 values, used by the compat syscall_table) */
+#define SYS64_execve	59
+#define SYS64_mmap	9
+#define SYS64_brk	12
 
 extern void *syscall_table[];
 #ifdef __x86_64__
@@ -48,21 +55,22 @@ struct x86_frame64 {
 	unsigned long ss;
 };
 
-/* Map the INIT trampoline code page (it executes at its original VMA) and
- * the user stack page as user-accessible in the ACTIVE shared tables (the
- * process's 2-level pgdir copy is never activated). Called with RSP =
- * current->tss.esp, right before the iretq into user mode. */
+/* Map the INIT user stack page (fixed user VA 0x101000, the page above
+ * the 0x100000 trampoline) as user-accessible in INIT's OWN pml4 (the one
+ * in CR3 after do_switch). Called with RSP = current->tss.esp0 (the
+ * kernel stack), right before the iretq into user mode. */
 void user_mode_prep(void)
 {
-	unsigned long code_va;
 	unsigned long stack_va;
+	unsigned long pml4;
 
-	code_va = ((unsigned long)&init_trampoline) & ~0xFFFUL;
-	stack_va = current->tss.esp & ~0xFFFUL;
-	map_user_page64(code_va, code_va - PAGE_OFFSET64, 0x001);	/* P only: execute */
-	map_user_page64(stack_va, stack_va - PAGE_OFFSET64, 0x003);	/* P|RW: user stack */
+	extern unsigned long paging64_pml4_phys(void);
+	extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
+
+	pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4_phys();
+	stack_va = 0x101000;
+	map_user_page64_in(pml4, stack_va, stack_va - PAGE_OFFSET64, 0x003);	/* P|RW: user stack */
 }
-
 
 /* Real int 0x80 dispatcher (replaces the M4-A demo handler). gprs points
  * at the 15 saved GPRs (gprs[0] = rax, [1] = rcx, [2] = rdx, [3] = rbx,
@@ -71,8 +79,8 @@ void syscall80_handler(unsigned long *gprs)
 {
 	struct x86_frame64 *f;
 	struct sigcontext sc;
-	int ret;
 	int was_exec;
+	long ret;
 
 	f = (struct x86_frame64 *)((char *)gprs + (15 * 8));
 	if(f->vector != 0x80) {
@@ -95,8 +103,14 @@ void syscall80_handler(unsigned long *gprs)
 	sc.esp = (unsigned int)f->rsp;
 	sc.oldesp = (unsigned int)f->rsp;
 	sc.oldss = (unsigned int)f->ss;
+	/* Fiwix64 (canonical amd64 split): the full 64-bit user RIP/RSP of
+	 * the syscall frame - fork() children iretq back to these, and they
+	 * can be anywhere in the 128TB user half (not truncated to 32 bits
+	 * like the i386-compat eip/oldesp fields). */
+	sc.rip = f->rip;
+	sc.rsp = f->rsp;
 
-	was_exec = (sc.eax == SYS_execve);
+	was_exec = (sc.eax == ((current->flags & PF_ELF64) ? SYS64_execve : SYS_execve));
 	{
 		/* Fiwix64 (native port): a native 64-bit process (PF_ELF64) uses
 		 * the x86-64 syscall ABI (rdi/rsi/rdx/rcx/r8/r9 args, rax = nr)
@@ -152,8 +166,18 @@ void syscall80_handler(unsigned long *gprs)
 		/* same dispatch as the 32-bit do_syscall(): the table entry gets
 		 * the 5 ABI args + a pointer to the (patched on exec) sigcontext */
 		current->sp = (addr_t)&sc;
-		ret = ((int (*)(long, long, long, long, long, struct sigcontext *))
-			tbl[sc.eax])(a1, a2, a3, a4, a5, &sc);
+		/* SysV x86-64 ABI: every syscall except mmap/brk returns an int
+		 * (RAX = EAX, upper bits unspecified) - read it as int and
+		 * sign-extend so -EINVAL etc. reach the caller as negative.
+		 * mmap/brk return 64-bit addresses (e.g. 0x400000000000 in the
+		 * canonical 128TB user half) and are declared long. */
+		if(sc.eax == SYS64_mmap || sc.eax == SYS64_brk) {
+			ret = ((long (*)(long, long, long, long, long, struct sigcontext *))
+				tbl[sc.eax])(a1, a2, a3, a4, a5, &sc);
+		} else {
+			ret = (long)(int)((int (*)(long, long, long, long, long, struct sigcontext *))
+				tbl[sc.eax])(a1, a2, a3, a4, a5, &sc);
+		}
 	}
 
 	if(was_exec && !ret && (current->flags & PF_PEXEC)) {
@@ -163,6 +187,10 @@ void syscall80_handler(unsigned long *gprs)
 		 * native 64-bit user mode (UCODE64|RPL3) for an ELF64 binary
 		 * (the Fiwix64 port). The frame is built on the current kernel
 		 * stack and iretq never returns to the isr epilogue. */
+		unsigned long long xrip, xrsp;
+
+		xrip = (current->flags & PF_ELF64) ? sc.rip : sc.eip;
+		xrsp = (current->flags & PF_ELF64) ? sc.rsp : sc.oldesp;
 		__asm__ __volatile__(
 			"movw $0x23, %%ax\n\t"
 			"movw %%ax, %%ds\n\t"
@@ -176,21 +204,19 @@ void syscall80_handler(unsigned long *gprs)
 			"pushq %4\n\t"		/* EIP/RIP = new program entry */
 			"iretq\n\t"
 			:: "r"((unsigned long)(UDATA32_SEL | 3)),
-			   "r"((unsigned long)sc.oldesp),
+			   "r"(xrsp),
 			   "r"((unsigned long)sc.eflags),
 			   "r"((unsigned long)((current->flags & PF_ELF64) ?
 				(UCODE64_SEL | 3) : (UCODE32_SEL | 3))),
-			   "r"((unsigned long)sc.eip)
+			   "r"(xrip)
 			: "rax", "memory");
 	}
 
 	/* plain syscall return: store the result in eax (gprs[14] = the rax
 	 * slot; gprs[0] is r15); the isr64 epilogue iretq's back to the user
 	 * frame (64-bit for the trampoline, compat for a 32-bit program - the
-	 * frame's CS selects the mode) */
-	gprs[14] = (unsigned long)(unsigned int)ret;
-	/* TEMP: trace the shell's syscalls (pid > 1, first 14 pids) */
-	if(current->pid > 1 && current->pid < 15) {
-		printk("[SC] pid %d nr %d ret %d\n", current->pid, (int)sc.eax, ret);
-	}
+	 * frame's CS selects the mode). Full 64-bit: mmap() returns addresses
+	 * in the 128TB user half (e.g. 0x400000000000) whose low 32 bits are
+	 * 0 - a 32-bit store would make the caller see a NULL mapping. */
+	gprs[14] = (unsigned long)ret;
 }

@@ -310,7 +310,7 @@ int atapi_cd_read(__dev_t dev, __blk_t block, char *buffer, int blksize)
 	return setup_transfer(BLK_READ, dev, block, buffer, blksize);
 }
 
-int atapi_cd_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int atapi_cd_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	struct ide *ide;
 	struct device *d;

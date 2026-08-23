@@ -132,7 +132,7 @@ int fb_mmap(struct inode *i, struct vma *vma)
 	return 0;
 }
 
-int fb_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int fb_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	switch (cmd) {
 		case IO_FB_XRES:

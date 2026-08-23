@@ -21,6 +21,7 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
+#include <fiwix/string.h>
 #include <fiwix/efi.h>
 #include <fiwix/sigcontext.h>
 #include "serial64.h"
@@ -30,13 +31,7 @@
 /* M4: compat syscall handler (defined in main64.c) */
 void syscall80_handler(unsigned long *gprs);
 
-#define DEMAND_VA	0xFFFFFFFFD0000000ULL	/* demand-paged demo region */
-#define COW_VA		0xFFFFFFFFD0200000ULL	/* copy-on-write demo region */
-
 #define IDT_GATE_INT	0x8E	/* present, DPL0, 64-bit interrupt gate */
-
-#define P2V64(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
-				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
 
 struct idt_entry {
 	unsigned short offset_lo;
@@ -64,10 +59,12 @@ struct x86_frame64 {
 	unsigned long ss;
 };
 
-unsigned long alloc_pages64(int);
-void free_pages64(unsigned long, int);
-int map_page64(unsigned long, unsigned long, unsigned long);
-unsigned long virt_to_phys64(unsigned long);
+/* the real kernel's page-fault path (mm/fault.c): walks current's vma_table
+ * and demand-maps / copy-on-write / SIGSEGVs; called for user-mode faults
+ * and for kernel-mode faults on vma-covered pages (K1/CoW) */
+extern struct vma *find_vma_region(unsigned long);
+extern void do_page_fault(unsigned int, struct sigcontext *);
+
 void tlb_flush64(void);
 void irq64_handler(unsigned long);
 
@@ -385,50 +382,28 @@ static void panic(const struct x86_frame64 *f)
 }
 
 /*
- * #PF: three cases, selected by the error code and CR2:
- *  - write to a read-only page (P set, W set) at COW_VA: copy-on-write -
- *    allocate a page, copy the old contents, remap RW, flush the TLB, and
- *    return so iretq retries the write (which now lands in the copy).
- *  - not-present access (P clear) at DEMAND_VA: demand-map a fresh page.
- *  - anything else: panic.
+ * #PF: handled by error code and CR2:
+ *  - fault in USER mode: the real kernel's do_page_fault() walks current's
+ *    vma_table and demand-maps (or SIGSEGVs); we return and the CPU retries.
+ *  - kernel-mode fault on a NOT-PRESENT page with a vma (K1): the process
+ *    pml4 has no low identity map in the canonical split, so a kernel write
+ *    to a not-yet-demand-mapped user page (e.g. elf_load64's BSS zero-fill)
+ *    genuinely faults; do_page_fault()'s kernel-mode path maps it and we
+ *    retry. A kernel fault with NO vma (K2) is a kernel bug - panic (do NOT
+ *    enter do_page_fault()'s 32-bit user-stack probe, which recurses on a
+ *    64-bit frame).
+ *  - anything else (present-page protection violation in kernel mode): panic.
  */
 static void handle_page_fault(const struct x86_frame64 *f)
 {
-	unsigned long cr2, paddr, new_phys, i;
-	unsigned char *src, *dst;
+	unsigned long cr2;
 
 	cr2 = get_cr2();
 	if(f->error & 0x04) {
-		/* M6: fault in USER mode (the INIT trampoline / an exec'd 32-bit
-		 * program). Let the real kernel's do_page_fault() handle it:
-		 * it walks current's vma_table and calls map_page() (which, via
-		 * map_page_flags(), also maps the page in the ACTIVE shared
-		 * tables under __x86_64__), then we return and the CPU retries
-		 * the faulting access. */
-		extern void do_page_fault(unsigned int, struct sigcontext *);
+		/* fault in USER mode: let the real kernel's do_page_fault() handle
+		 * it (vma walk + map_page(), which maps the ACTIVE tables), then
+		 * the isr epilogue iretq retries the faulting access. */
 		struct sigcontext sc;
-		unsigned long *lvl, cr3_now, pml4e, pdpte, pde, pte;
-		extern unsigned long paging64_pml4(void);
-
-#define PF_PML4_INDEX(a) (((a) >> 39) & 0x1FFUL)
-#define PF_PDPT_INDEX(a) (((a) >> 30) & 0x1FFUL)
-#define PF_PD_INDEX(a)	 (((a) >> 21) & 0x1FFUL)
-#define PF_PT_INDEX(a)	 (((a) >> 12) & 0x1FFUL)
-#define PF_PAGE_MASK	 0x000FFFFFFFFFF000ULL
-		__asm__ __volatile__("movq %%cr3, %0" : "=r"(cr3_now));
-		lvl = (unsigned long *)P2V64(paging64_pml4());
-		pml4e = lvl[PF_PML4_INDEX(cr2)];
-		pdpte = (pml4e & PF_PAGE_MASK) ?
-			((unsigned long *)P2V64(pml4e & PF_PAGE_MASK))[PF_PDPT_INDEX(cr2)] : 0;
-		pde = (pdpte & PF_PAGE_MASK) ?
-			((unsigned long *)P2V64(pdpte & PF_PAGE_MASK))[PF_PD_INDEX(cr2)] : 0;
-		pte = (pde & PF_PAGE_MASK) ?
-			((unsigned long *)P2V64(pde & PF_PAGE_MASK))[PF_PT_INDEX(cr2)] : 0;
-#undef PF_PML4_INDEX
-#undef PF_PDPT_INDEX
-#undef PF_PD_INDEX
-#undef PF_PT_INDEX
-#undef PF_PAGE_MASK
 
 		memset_b(&sc, 0, sizeof(sc));
 		sc.err = (unsigned int)f->error;
@@ -440,48 +415,45 @@ static void handle_page_fault(const struct x86_frame64 *f)
 		do_page_fault(14, &sc);
 		return;
 	}
-	if((f->error & 0x3) == 0x3) {		/* protection violation during write: copy-on-write */
-		if((cr2 & ~0xFFFUL) != (COW_VA & ~0xFFFUL)) {
+	if(!(f->error & 0x1)) {
+		/* kernel-mode fault on a NOT-PRESENT page: K1 (vma) / K2 (no vma) */
+		struct sigcontext sc;
+
+		if(!find_vma_region(cr2)) {
 			panic(f);
 		}
-		new_phys = alloc_pages64(1);
-		if(!new_phys) {
-			panic(f);
-		}
-		src = (unsigned char *)cr2;		/* still readable (RO) */
-		dst = (unsigned char *)P2V64(new_phys);
-		for(i = 0; i < 4096; i++) {
-			dst[i] = src[i];
-		}
-		if(map_page64(cr2, new_phys, 0x002)) {	/* X86_PTE_RW */
-			free_pages64(new_phys, 1);
-			panic(f);
-		}
-		tlb_flush64();	/* drop the stale RO TLB entry */
-		serial_puts("[M2-F] copy-on-write ");
-		serial_hex((UINT64)cr2);
-		serial_puts(" -> new phys ");
-		serial_hex((UINT64)new_phys);
-		serial_puts("\n");
+		memset_b(&sc, 0, sizeof(sc));
+		sc.err = (unsigned int)f->error;
+		sc.eip = (unsigned int)f->rip;
+		sc.cs = (unsigned int)f->cs;
+		sc.eflags = (unsigned int)f->rflags;
+		sc.esp = (unsigned int)f->rsp;
+		sc.oldesp = (unsigned int)f->rsp;
+		sc.oldss = (unsigned int)f->ss;
+		do_page_fault(14, &sc);
 		return;
 	}
 
-	if((cr2 & ~0xFFFUL) != (DEMAND_VA & ~0xFFFUL)) {
+	/* kernel-mode fault on a PRESENT page: a protection violation. With a
+	 * vma this is normally copy-on-write - fork demotes shared writable
+	 * leaves to RO, so a CPL0 write to an inherited page (e.g. signal
+	 * frame setup on a child's stack) faults here; do_page_fault()'s
+	 * kernel-mode path runs page_protection_violation() (copy + remap RW)
+	 * and we retry. Without a vma it is a genuine kernel bug: panic. */
+	struct sigcontext sc;
+
+	if(!find_vma_region(cr2)) {
 		panic(f);
 	}
-	paddr = alloc_pages64(1);
-	if(!paddr) {
-		panic(f);
-	}
-	if(map_page64(DEMAND_VA, paddr, 0x002)) {	/* X86_PTE_RW */
-		free_pages64(paddr, 1);
-		panic(f);
-	}
-	serial_puts("[M2-C] demand-mapped faulting page ");
-	serial_hex((UINT64)cr2);
-	serial_puts(" -> phys ");
-	serial_hex((UINT64)paddr);
-	serial_puts("\n");
+	memset_b(&sc, 0, sizeof(sc));
+	sc.err = (unsigned int)f->error;
+	sc.eip = (unsigned int)f->rip;
+	sc.cs = (unsigned int)f->cs;
+	sc.eflags = (unsigned int)f->rflags;
+	sc.esp = (unsigned int)f->rsp;
+	sc.oldesp = (unsigned int)f->rsp;
+	sc.oldss = (unsigned int)f->ss;
+	do_page_fault(14, &sc);
 }
 
 /* gprs points at the saved rax; the frame is 15 pushed GPRs above */

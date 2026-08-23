@@ -45,7 +45,10 @@ struct vma {
 #define PF_NOTINTERRUPT	0x00000008	/* non-interruptible sleeping */
 #define PF_ELF64	0x00000010	/* Fiwix64: process runs a native ELF64 binary */
 
-#define MMAP_START	0x40000000	/* mmap()s start at 1GB */
+/* Fiwix64 (canonical amd64 split): mmap()s start at 64TB - half of the
+ * 128TB user space - so heap (growing up from the binary) and mmap
+ * (growing up from here) each get ~64TB, with the stack at the top. */
+#define MMAP_START	0x0000400000000000UL	/* mmap()s start at 64TB */
 #define IS_SUPERUSER	(current->euid == 0)
 
 #define IO_BITMAP_SIZE	8192		/* 8192*8bit = all I/O address space */

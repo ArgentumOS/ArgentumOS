@@ -184,6 +184,23 @@ void invalidate_tlb(void);
 	);
 #endif
 
+#ifdef __x86_64__
+/* Fiwix64 (no 32-bit compatibility): the native 64-bit syscall entry uses
+ * the 'syscall' instruction (rax = number, rdi/rsi/rdx/r10/r8 = args),
+ * NOT int 0x80. Used by the INIT bootstrap trampoline. */
+#define USER_SYSCALL64(num, arg1, arg2, arg3)	\
+	__asm__ __volatile__(			\
+		"movq   %0, %%rax\n\t"		\
+		"movq   %1, %%rdi\n\t"		\
+		"movq   %2, %%rsi\n\t"		\
+		"movq   %3, %%rdx\n\t"		\
+		"syscall\n\t"			\
+		: /* no output */		\
+		: "r"((unsigned long)(num)), "r"((unsigned long)(addr_t)(arg1)), \
+		  "r"((unsigned long)(addr_t)(arg2)), "r"((unsigned long)(addr_t)(arg3)) \
+		: "rax", "rdi", "rsi", "rdx", "rcx", "r11", "memory");
+#endif /* __x86_64__ */
+
 /*
 static inline unsigned long long int get_rdtsc(void)
 {

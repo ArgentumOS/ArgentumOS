@@ -44,7 +44,7 @@ int sockfs_write(struct inode *i, struct fd *f, const char *buffer, __size_t cou
 	return s->ops->write(s, f, buffer, count);
 }
 
-int sockfs_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int sockfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	struct socket *s;
 

@@ -146,48 +146,54 @@ int clone_pages(struct proc *child)
 	 * PAGE_COW (the 4-level copy never touched page_table[].flags) and
 	 * count the mapped pages for the child's rss. Returns >= 1 so the
 	 * fork's "!clone_pages() == out of memory" check never misfires. */
-	unsigned long pml4, *pdpt, *pd, *pt, e, va;
+	unsigned long pml4, *pml4p, *pdpt, *pd, *pt, e;
 	unsigned long i, j, k;
+	int m;
 	struct page *pg;
 	int pages;
 
 	extern unsigned long paging64_pml4_phys(void);
 	pml4 = child->cr3_64 ? child->cr3_64 : paging64_pml4_phys();
-	pages = 0;	pdpt = (unsigned long *)P2V(pml4);
-	if(!(pdpt[0] & 0x001)) {
-		return 1;	/* nothing mapped in the low 4GB */
-	}
-	pdpt = (unsigned long *)P2V(pdpt[0] & PAGE_MASK);
-	for(i = 0; i < 4; i++) {	/* PDPT[0..3] = low 4GB */
-		if(!(pdpt[i] & 0x001)) {
+	pages = 0;
+	/* Fiwix64 (canonical amd64 split): walk the whole USER half
+	 * (pml4[0..255] = VA 0 .. 0x00007FFFFFFFFFFF, 128TB). The kernel
+	 * half (pml4[256..511]) is shared and never walked here. */
+	pml4p = (unsigned long *)P2V(pml4);
+	for(i = 0; i < 256; i++) {	/* PML4[0..255] = user half */
+		if(!(pml4p[i] & 0x001)) {
 			continue;
 		}
-		pd = (unsigned long *)P2V(pdpt[i] & PAGE_MASK);
+		pdpt = (unsigned long *)P2V(pml4p[i] & PAGE_MASK);
 		for(j = 0; j < 512; j++) {
-			if(!(pd[j] & 0x001)) {
+			if(!(pdpt[j] & 0x001)) {
 				continue;
 			}
-			if(pd[j] & 0x080) {	/* 2MB identity page */
-				continue;
-			}
-			pt = (unsigned long *)P2V(pd[j] & PAGE_MASK);
+			pd = (unsigned long *)P2V(pdpt[j] & PAGE_MASK);
 			for(k = 0; k < 512; k++) {
-				e = pt[k];
-				if(!(e & 0x001)) {
+				if(!(pd[k] & 0x001)) {
 					continue;
 				}
-				if(!(e & 0x004)) {
-					continue;	/* supervisor leaf */
-				}
-				va = (i << 30) | (j << 21) | (k << 12);
-				pg = &page_table[(e & PAGE_MASK) >> 12];
-				if(pg->flags & PAGE_RESERVED) {
+				if(pd[k] & 0x080) {	/* 2MB page */
 					continue;
 				}
-				if(!(e & 0x002)) {	/* shared read-only -> CoW */
-					pg->flags |= PAGE_COW;
+				pt = (unsigned long *)P2V(pd[k] & PAGE_MASK);
+				for(m = 0; m < 512; m++) {
+					e = pt[m];
+					if(!(e & 0x001)) {
+						continue;
+					}
+					if(!(e & 0x004)) {
+						continue;	/* supervisor leaf */
+					}
+					pg = &page_table[(e & PAGE_MASK) >> 12];
+					if(pg->flags & PAGE_RESERVED) {
+						continue;
+					}
+					if(!(e & 0x002)) {	/* shared RO -> CoW */
+						pg->flags |= PAGE_COW;
+					}
+					pages++;
 				}
-				pages++;
 			}
 		}
 	}

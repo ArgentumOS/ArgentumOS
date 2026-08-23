@@ -80,15 +80,15 @@ int sys_rmdir(const char *);
 int sys_dup(unsigned int);
 int sys_pipe(int *);
 int sys_times(struct tms *);
-int sys_brk(unsigned int);
+long sys_brk(addr_t);
 int sys_setgid(__gid_t);
 int sys_getgid(void);
 unsigned int sys_signal(__sigset_t, void(*sighandler)(int));
 int sys_geteuid(void);
 int sys_getegid(void);
 int sys_umount2(const char *, int);
-int sys_ioctl(unsigned int, int, unsigned int);
-int sys_fcntl(unsigned int, int, unsigned int);
+int sys_ioctl(unsigned int, int, addr_t);
+int sys_fcntl(unsigned int, int, addr_t);
 int sys_setpgid(__pid_t, __pid_t);
 int sys_olduname(struct oldold_utsname *);
 int sys_umask(__mode_t);
@@ -122,7 +122,7 @@ int sys_lstat(const char *, struct old_stat *);
 int sys_readlink(const char *, char *, __size_t);
 int sys_reboot(int, int, int);
 int old_mmap(struct mmap *);
-int sys_munmap(unsigned int, __size_t);
+int sys_munmap(addr_t, __size_t);
 int sys_truncate(const char *, __off_t);
 int sys_ftruncate(unsigned int, __off_t);
 int sys_fchmod(unsigned int, __mode_t);
@@ -156,7 +156,7 @@ int sys_sigreturn(unsigned int, int, int, int, int, struct sigcontext *);
 #endif /* CONFIG_SYSCALL_6TH_ARG */
 int sys_setdomainname(const char *, int);
 int sys_newuname(struct new_utsname *);
-int sys_mprotect(unsigned int, __size_t, int);
+int sys_mprotect(addr_t, __size_t, int);
 int sys_sigprocmask(int, const __sigset_t *, __sigset_t *);
 int sys_rt_sigprocmask(int, const void *, void *, int);
 int sys_set_tid_address(int *);
@@ -178,9 +178,9 @@ int sys_chown(const char *, __uid_t, __gid_t);
 int sys_getcwd(char *, __size_t);
 #if defined(CONFIG_MMAP2) || defined(__x86_64__)
 #ifdef __x86_64__
-int sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, struct sigcontext *);
+long sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, struct sigcontext *);
 #else
-int sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, unsigned int);
+long sys_mmap2(unsigned int, unsigned int, unsigned int, unsigned int, int, unsigned int);
 #endif
 #endif /* CONFIG_MMAP2 || __x86_64__ */
 struct user_desc;
@@ -192,7 +192,7 @@ int sys_lstat64(const char *, struct stat64 *);
 int sys_fstat64(unsigned int, struct stat64 *);
 int sys_chown32(const char *, unsigned int, unsigned int);
 int sys_getdents64(unsigned int, struct dirent64 *, unsigned int);
-int sys_fcntl64(unsigned int, int, unsigned int);
+int sys_fcntl64(unsigned int, int, addr_t);
 int sys_utimes(const char *, struct timeval times[2]);
 
 #endif /* _FIWIX_SYSCALLS_H */

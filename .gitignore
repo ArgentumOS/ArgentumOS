@@ -15,3 +15,4 @@ include/fiwix/custom_system.h
 
 # Python bytecode cache (tools/mkext2.py imports tools/mkinitrd.py)
 __pycache__/
+/third_party/toybox/

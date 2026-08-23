@@ -265,7 +265,7 @@ int pty_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 	return n;
 }
 
-int pty_ioctl(struct tty *tty, struct fd *f, int cmd, unsigned int arg)
+int pty_ioctl(struct tty *tty, struct fd *f, int cmd, addr_t arg)
 {
 	switch(cmd) {
 		case TIOCGPTN:

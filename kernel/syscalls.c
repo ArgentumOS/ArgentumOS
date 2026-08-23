@@ -22,7 +22,8 @@
 static int verify_address(int type, const void *addr, unsigned int size)
 {
 	struct vma *vma;
-	unsigned int start, gs;
+	addr_t start;
+	unsigned int gs;
 
 	/* no need to verify anything if the caller is the kernel */
 	GET_GS(gs);
@@ -543,15 +544,15 @@ int do_syscall(unsigned int num, int arg1, int arg2, int arg3, int arg4, int arg
 
 /* x86-64 mmap(9): the 6th arg (r9) is the file offset in BYTES; the
  * dispatcher stashes it in sc->ebp. The i386 mmap2 wants pages. */
-int sys_mmap64(unsigned int start, unsigned int length, unsigned int prot,
+long sys_mmap64(addr_t start, addr_t length, unsigned int prot,
 	unsigned int user_flags, int fd, struct sigcontext *sc)
 {
-	extern int do_mmap2(unsigned int, unsigned int, unsigned int,
-		unsigned int, int, unsigned int);
+	extern long do_mmap2(addr_t, addr_t, unsigned int,
+		unsigned int, int, addr_t);
 	/* x86-64 mmap(9): the 6th arg (r9) is the offset in BYTES (stashed in
 	 * sc->ebp); mmap2 wants pages. */
 	return do_mmap2(start, length, prot, user_flags, fd,
-		((unsigned int)sc->ebp) >> PAGE_SHIFT);
+		((addr_t)sc->ebp) >> PAGE_SHIFT);
 }
 
 /* arch_prctl(158): x86-64 TLS uses the %fs base MSR. ARCH_SET_FS stores

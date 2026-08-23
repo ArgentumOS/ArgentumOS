@@ -16,7 +16,7 @@
 #include <fiwix/process.h>
 #endif /*__DEBUG__ */
 
-int sys_mprotect(unsigned int addr, __size_t length, int prot)
+int sys_mprotect(addr_t addr, __size_t length, int prot)
 {
 	struct vma *vma;
 

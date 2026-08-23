@@ -13,7 +13,7 @@
 #include <fiwix/process.h>
 #endif /*__DEBUG__ */
 
-int sys_munmap(unsigned int addr, __size_t length)
+int sys_munmap(addr_t addr, __size_t length)
 {
 #ifdef __DEBUG__
 	printk("(pid %d) sys_munmap(0x%08x, %d)\n", current->pid, addr, length);

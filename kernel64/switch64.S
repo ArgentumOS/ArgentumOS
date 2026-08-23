@@ -20,6 +20,7 @@
  */
 
 .text
+	.align 8
 .globl switch_to64
 .type switch_to64, @function
 switch_to64:
@@ -118,21 +119,27 @@ thread_trampoline64:
 /*
  * switch_to_user_mode: Fiwix64 (M6) - the INIT process's transition into
  * 64-bit user mode, entered as the target of do_switch() (RSP has been set
- * to current->tss.esp = the init user stack top by do_switch).
+ * to current->tss.esp = the init user stack top by do_switch; INIT's
+ * per-process pml4 is already in CR3, with the bootstrap trampoline copied
+ * at user VA 0x100000 by init_init()).
  *
- * 1. user_mode_prep() maps the init_trampoline() code page (executed at its
- *    original VMA) and the user stack page as user-accessible in the
- *    ACTIVE shared page tables.
- * 2. Load the user data segments and iretq into the trampoline with
- *    UCODE64|RPL3 (64-bit user mode). The trampoline's first int 0x80 then
- *    traps to syscall80_handler() in user64.c.
+ * 1. user_mode_prep() maps the INIT user stack page as user-accessible in
+ *    the ACTIVE (INIT's) page tables.
+ * 2. Load the user data segments and iretq into the trampoline at its user
+ *    VA 0x100000 with UCODE64|RPL3 (64-bit user mode). The trampoline's
+ *    first 'syscall' then traps to syscall80_handler() in user64.c.
  */
 .globl switch_to_user_mode
 .type switch_to_user_mode, @function
 switch_to_user_mode:
-	movq	%rsp, %r12		/* r12 = user RSP (tss.esp) */
+	/* RSP is the KERNEL stack (init->tss.esp0, set by do_switch). The
+	 * user stack is a fixed user-half page (0x101000, mapped by
+	 * user_mode_prep); the trampoline code is at 0x100000. */
+	movq	$0x102000, %r12		/* r12 = INIT user stack top */
+	movq	%rsp, %r13		/* save kernel stack */
 	andq	$-16, %rsp		/* align for the C call */
 	call	user_mode_prep
+	movq	%r13, %rsp		/* restore kernel stack */
 	movq	%r12, %rax		/* user stack top */
 	movw	$0x23, %ax
 	movw	%ax, %ds
@@ -143,8 +150,8 @@ switch_to_user_mode:
 	pushq	%r12			/* RSP = user stack top */
 	pushq	$0x202			/* RFLAGS: IF = 1 */
 	pushq	$0x4B			/* CS  = UCODE64 | RPL3 */
-	leaq	init_trampoline(%rip), %rax
-	pushq	%rax			/* RIP = the trampoline's VMA */
+	movq	$0x100000, %rax		/* RIP = the trampoline's USER VA */
+	pushq	%rax
 	iretq
 .size switch_to_user_mode, .-switch_to_user_mode
 
@@ -268,12 +275,16 @@ return_from_syscall64:
 	 * by the fork child); clobbering it kills the child in
 	 * musl's __post_Fork (%fs:0 read). GS stays inherited too. */
 	pushq	$0x23			/* SS */
-	movl	64(%r11), %r9d		/* RSP = sc->oldesp (32-bit: zero-extend, never read oldss) */
+	/* Fiwix64 (canonical amd64 split): native 64-bit processes use the
+	 * 64-bit rip/rsp sigcontext fields (the 32-bit eip/oldesp are the
+	 * i386-compat layout and truncate addresses in the 128TB user
+	 * half). */
+	movq	80(%r11), %r9		/* RSP = sc->rsp (64-bit) */
 	pushq	%r9
 	movl	60(%r11), %r9d		/* RFLAGS = sc->eflags (32-bit: zero-extend) */
 	pushq	%r9
 	pushq	$0x4b			/* CS = UCODE64 | RPL3 */
-	movl	52(%r11), %r9d		/* RIP = sc->eip (32-bit: zero-extend, never read cs) */
+	movq	72(%r11), %r9		/* RIP = sc->rip (64-bit) */
 	pushq	%r9
 	movl	44(%r11), %eax		/* child's RAX = sc->eax (the fork returns 0) */
 	iretq

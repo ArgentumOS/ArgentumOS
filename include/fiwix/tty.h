@@ -54,7 +54,7 @@ struct tty {
 	void (*output)(struct tty *);
 	int (*open)(struct tty *);
 	int (*close)(struct tty *);
-	int (*ioctl)(struct tty *, struct fd *, int cmd, unsigned int);
+	int (*ioctl)(struct tty *, struct fd *, int cmd, addr_t);
 	void (*set_termios)(struct tty *);
 };
 extern struct tty *tty_table;
@@ -71,11 +71,11 @@ int tty_open(struct inode *, struct fd *);
 int tty_close(struct inode *, struct fd *);
 int tty_read(struct inode *, struct fd *, char *, __size_t);
 int tty_write(struct inode *, struct fd *, const char *, __size_t);
-int tty_ioctl(struct inode *, struct fd *, int cmd, unsigned int);
+int tty_ioctl(struct inode *, struct fd *, int cmd, addr_t);
 __loff_t tty_llseek(struct inode *, __loff_t);
 int tty_select(struct inode *, struct fd *, int);
 void tty_init(void);
 
-int vt_ioctl(struct tty *, int, unsigned int);
+int vt_ioctl(struct tty *, int, addr_t);
 
 #endif /* _FIWIX_TTY_H */

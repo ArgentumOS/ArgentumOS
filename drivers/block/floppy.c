@@ -668,7 +668,7 @@ int fdc_write(__dev_t dev, __blk_t block, char *buffer, int blksize)
 	return setup_transfer(BLK_WRITE, dev, block, buffer, blksize);
 }
 
-int fdc_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int fdc_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	unsigned char minor;
 	struct hd_geometry *geom;

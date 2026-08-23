@@ -25,20 +25,17 @@
 char *init_args;
 char *init_argv[] = { INIT_PROGRAM, NULL, NULL };
 char *init_envp[] = { "HOME=/", "TERM=linux", NULL };
+/* The INIT bootstrap trampoline (init_trampoline64.S) opens this console
+ * device; its runtime address is written into the trampoline's fixed
+ * table at user VA 0x100100 by init_init(). */
+char init_console_dev[] = "/dev/console";
 
-/* non-static: kernel64/switch64.S + user64.c need its runtime address to
- * jump the INIT process into 64-bit user mode (it runs at its own VMA so
- * its RIP-relative references to init_argv/init_envp stay valid) */
-void init_trampoline(void)
-{
-	USER_SYSCALL(SYS_open, "/dev/console", O_RDWR, 0);	/* stdin */
-	USER_SYSCALL(SYS_dup, 0, NULL, NULL);			/* stdout */
-	USER_SYSCALL(SYS_dup, 0, NULL, NULL);			/* stderr */
-	USER_SYSCALL(SYS_execve, INIT_PROGRAM, init_argv, init_envp);
-
-	/* only reached in case of error in sys_execve() */
-	USER_SYSCALL(SYS_exit, NULL, NULL, NULL);
-}
+/* The INIT bootstrap trampoline is a position-independent assembly
+ * function (kernel64/init_trampoline64.S) that uses absolute movabs
+ * addresses for the kernel symbols, so it can be COPIED to user VA
+ * 0x100000 and run at CPL3. It uses the native 'syscall' instruction
+ * with x86-64 syscall numbers (open=2, dup=32, execve=59, exit=60). */
+extern void init_trampoline(void);
 
 void init_init(void)
 {
@@ -83,7 +80,11 @@ void init_init(void)
 	init->ppid = &proc_table[IDLE];
 	init->pgid = 0;
 	init->sid = 0;
-	init->flags = 0;
+	/* Fiwix64: the INIT bootstrap trampoline is native 64-bit code (it
+	 * uses the 'syscall' instruction via USER_SYSCALL64), so INIT is a
+	 * PF_ELF64 process - the syscall dispatcher must use the x86-64 ABI
+	 * (rdi/rsi/rdx/r10/r8) and syscall_table64, not the i386 compat one. */
+	init->flags = PF_ELF64;
 	init->children = 0;
 	init->priority = DEF_PRIORITY;
 	init->start_time = CURRENT_TICKS;
@@ -114,7 +115,8 @@ void init_init(void)
 	init->rlim[RLIMIT_NPROC].rlim_max = NR_PROCS;
 	init->umask = 0022;
 
-	/* setup the stack */
+	/* setup the stack: tss.esp0 is the KERNEL stack used by do_switch to
+	 * enter switch_to_user_mode at CPL0. */
 	if(!(init->tss.esp0 = kmalloc(PAGE_SIZE))) {
 		goto init_init__die;
 	}
@@ -122,12 +124,30 @@ void init_init(void)
 	init->rss++;
 	init->tss.ss0 = KERNEL_DS;
 
-	/* setup the init_trampoline */
-	page = map_page(init, PAGE_OFFSET - PAGE_SIZE, 0, PROT_READ | PROT_WRITE);
-	memcpy_b((void *)page, init_trampoline, INIT_TRAMPOLINE_SIZE);
+	/* setup the init_trampoline in the USER half (canonical amd64
+	 * split): the bootstrap code page is copied to a fixed low user
+	 * address 0x100000, where switch_to_user_mode iretq's into it at
+	 * CPL3. The trampoline is position-independent asm
+	 * (init_trampoline64.S): it reads its 4 runtime pointers (console
+	 * path, argv, envp, INIT_PROGRAM) from the fixed table at user VA
+	 * 0x100100, which we fill here with the high-half runtime addresses
+	 * of the C globals. The user stack is the NEXT page (0x101000). */
+	page = map_page(init, 0x100000, 0, PROT_READ | PROT_WRITE | PROT_EXEC);
+	memcpy_b((void *)page, (void *)&init_trampoline, INIT_TRAMPOLINE_SIZE);
+	{
+		/* the table is at offset 0x100 into the trampoline page
+		 * (user VA 0x100100); fill the 4 u64 runtime addresses via
+		 * the P2V pointer map_page returned (CPL0, so we cannot
+		 * write the user VA directly) */
+		unsigned long *t = (unsigned long *)((char *)page + 0x100);
+		t[0] = (unsigned long)init_console_dev;
+		t[1] = (unsigned long)init_argv;
+		t[2] = (unsigned long)init_envp;
+		t[3] = (unsigned long)INIT_PROGRAM;
+	}
 
 	init->tss.eip = (addr_t)switch_to_user_mode;
-	init->tss.esp = page + PAGE_SIZE - 4;
+	init->tss.esp = init->tss.esp0;	/* kernel stack for do_switch */
 
 	runnable(init);
 	nr_processes++;

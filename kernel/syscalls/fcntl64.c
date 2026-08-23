@@ -13,7 +13,7 @@
 #include <fiwix/stdio.h>
 #include <fiwix/process.h>
 
-int sys_fcntl64(unsigned int ufd, int cmd, unsigned int arg)
+int sys_fcntl64(unsigned int ufd, int cmd, addr_t arg)
 {
 	int new_ufd;
 

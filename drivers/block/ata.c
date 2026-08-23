@@ -929,7 +929,7 @@ int ata_write(__dev_t dev, __blk_t block, char *buffer, int blksize)
 	return drive->fsop->write_block(dev, block, buffer, blksize);
 }
 
-int ata_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int ata_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	struct ide *ide;
 	struct ata_drv *drive;

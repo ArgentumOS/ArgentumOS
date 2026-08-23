@@ -19,9 +19,9 @@
 #include <fiwix/process.h>
 #endif /*__DEBUG__ */
 
-int do_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
+long do_mmap2(addr_t start, addr_t length, unsigned int prot, unsigned int user_flags, int fd, addr_t offset)
 {
-	unsigned int page;
+	addr_t page;
 	struct inode *i;
 	char flags;
 
@@ -51,7 +51,7 @@ int do_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigne
 
 #ifdef CONFIG_SYSCALL_6TH_ARG
 #ifdef CONFIG_MMAP2
-int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, unsigned int offset)
+long sys_mmap2(addr_t start, addr_t length, unsigned int prot, unsigned int user_flags, int fd, addr_t offset)
 {
 	return do_mmap2(start, length, prot, user_flags, fd, offset);
 }
@@ -63,8 +63,8 @@ int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsign
  * syscall dispatch (syscall80_handler) passes 5 register args + the
  * sigcontext, so the 6th arg (offset, in the user's ebp) is read from sc.
  * This is what backs musl's static TLS area, so it must exist. */
-int sys_mmap2(unsigned int start, unsigned int length, unsigned int prot, unsigned int user_flags, int fd, struct sigcontext *sc)
+long sys_mmap2(addr_t start, addr_t length, unsigned int prot, unsigned int user_flags, int fd, struct sigcontext *sc)
 {
-	return do_mmap2(start, length, prot, user_flags, fd, (unsigned int)sc->ebp);
+	return do_mmap2(start, length, prot, user_flags, fd, (addr_t)sc->ebp);
 }
 #endif /* __x86_64__ */

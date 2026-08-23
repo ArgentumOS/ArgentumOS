@@ -833,7 +833,7 @@ int tty_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 }
 
 /* FIXME: http://www.lafn.org/~dave/linux/termios.txt (doc/termios.txt) */
-int tty_ioctl(struct inode *i, struct fd *f, int cmd, unsigned int arg)
+int tty_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	struct proc *p;
 	struct tty *tty;

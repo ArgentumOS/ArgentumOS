@@ -12,9 +12,7 @@
  *
  * map_page64()/unmap_page64()/virt_to_phys64() walk the 4-level tables
  * installed by paging64.c (PML4 -> PDPT -> PD -> PT), allocating
- * intermediate table pages from the allocator on demand. The demo in
- * mm64_demo() maps a scratch region at 0xFFFFFFFFC0000000 (PDPT entry 511,
- * beyond the fixed 1GB high-half map) with 4KB pages.
+ * intermediate table pages from the allocator on demand.
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
@@ -32,9 +30,6 @@
 #define LOW_1MB		0x100000ULL
 #define MAX_PAGES	(LOW_LIMIT >> PAGE_SHIFT64)	/* 262144 */
 #define BITMAP_BYTES	(MAX_PAGES / 8)			/* 32768 */
-
-/* demo scratch region: PDPT[511] (0xFFFFFFFFC0000000..0xFFFFFFFFDFFFFFFF) */
-#define SCRATCH_VA	0xFFFFFFFFC0000000ULL
 
 #define PML4_INDEX(a)	(((unsigned long)(a) >> 39) & 0x1FF)
 #define PDPT_INDEX(a)	(((unsigned long)(a) >> 30) & 0x1FF)
@@ -494,47 +489,47 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 		return 0;
 	}
 	pml4 = (unsigned long *)P2V64(pml4_phys);
-	pml4[0] = 0;
 
-	/* Deep-copy the low-4GB hierarchy (src PML4[0] -> PDPT -> PDs -> PTs).
-	 * Copying the PARENT's pml4 (not the kernel identity map) means a fork
-	 * child inherits every demand-mapped page - text/data/stack/TLS - so it
-	 * does not start "cold" and lose its stack return address. USER leaf
-	 * pages are mapped read-only (CoW), mirroring clone_pages()'s 2-level
-	 * PAGE_COW, so a later user write faults into the copy-on-write path. */
-	if(src4[0] & X86_PTE_P) {
+	/* Fiwix64 (canonical amd64 split): the USER half is pml4[0..255]
+	 * (VA 0 .. 0x00007FFFFFFFFFFF, 128TB); the KERNEL half is
+	 * pml4[256..511] and is SHARED with the kernel. A FORK child
+	 * deep-copies the parent's user half (every present PML4[i] ->
+	 * PDPT -> PDs -> PTs) so it inherits all demand-mapped pages
+	 * (text/data/stack/TLS - wherever they live in the 128TB user half);
+	 * USER leaf pages are mapped read-only (CoW) so a later write faults
+	 * into the copy-on-write path. INIT/exec pass the shared KERNEL pml4
+	 * (src == kernel): its pml4[0] is the low-1GB identity map, which
+	 * must NOT be copied - the process user half starts EMPTY and every
+	 * page is demand-mapped fresh. */
+	for(i = 0; i < 256; i++) {
+		if(!is_fork) {
+			continue;	/* exec/INIT: empty user half */
+		}
+		if(!(src4[i] & X86_PTE_P)) {
+			continue;	/* pml4[i] stays 0 (not mapped) */
+		}
 		pdpt_phys = alloc_table_page();
 		if(!pdpt_phys) {
-			free_pages64(pml4_phys, 1);
+			free_pml4_64(pml4_phys);
 			return 0;
 		}
+		pml4[i] = pdpt_phys | (src4[i] & 0xFFFUL);
 		pdpt = (unsigned long *)P2V64(pdpt_phys);
-		spdpt = (unsigned long *)P2V64(src4[0] & PAGE_MASK64);
-		/* Point pml4[0] at the PDPT up front so free_pml4_64() can walk
-		 * and free a PARTIALLY-built tree on the error paths below (the
-		 * private PD entries stay 0 until each one is allocated, and the
-		 * pd/pt pages are zeroed by alloc_table_page(), so an unbuilt
-		 * entry reads as not-present and is skipped). */
-		pml4[0] = pdpt_phys | (src4[0] & 0xFFFUL);
-		/* the shared entries (PDPT[4..511]) are copied verbatim; the low
-		 * 4GB (PDPT[0..3]) gets PRIVATE PD pages and starts zeroed */
-		for(i = 4; i < 512; i++) {
-			pdpt[i] = spdpt[i];
-		}
-		for(i = 0; i < 4; i++) {
-			if(!(spdpt[i] & X86_PTE_P)) {
-				continue;	/* pdpt[i] stays 0 (not mapped) */
+		spdpt = (unsigned long *)P2V64(src4[i] & PAGE_MASK64);
+		for(j = 0; j < 512; j++) {
+			if(!(spdpt[j] & X86_PTE_P)) {
+				continue;	/* pdpt[j] stays 0 (not mapped) */
 			}
 			pd_phys = alloc_table_page();
 			if(!pd_phys) {
 				free_pml4_64(pml4_phys);
 				return 0;
 			}
-			pdpt[i] = pd_phys | (spdpt[i] & 0xFFFUL);
+			pdpt[j] = pd_phys | (spdpt[j] & 0xFFFUL);
 			pd = (unsigned long *)P2V64(pd_phys);
-			spd = (unsigned long *)P2V64(spdpt[i] & PAGE_MASK64);
-			for(j = 0; j < 512; j++) {
-				e = spd[j];
+			spd = (unsigned long *)P2V64(spdpt[j] & PAGE_MASK64);
+			for(k = 0; k < 512; k++) {
+				e = spd[k];
 				if((e & (X86_PTE_P | X86_PTE_PS)) == X86_PTE_P) {
 					/* split 4KB page: private PT, user leaves CoW */
 					pt_phys = alloc_table_page();
@@ -542,100 +537,129 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 						free_pml4_64(pml4_phys);
 						return 0;
 					}
-					pd[j] = pt_phys | (e & 0xFFFUL);
+					pd[k] = pt_phys | (e & 0xFFFUL);
 					pt = (unsigned long *)P2V64(pt_phys);
 					spt = (unsigned long *)P2V64(e & PAGE_MASK64);
-					for(k = 0; k < 512; k++) {
-						unsigned long leaf = spt[k];
-						/* CoW: a writable USER leaf is shared
-						 * read-only in BOTH the child (copy) and the
-						 * fork source (parent), so the first write by
-						 * either side faults into the copy-on-write
-						 * path. Supervisor leaves (the kernel identity
-						 * map) stay shared untouched. Only done for a
-						 * fork source (never the shared kernel pml4),
-						 * and only for MAP_PRIVATE pages - clone_pages()
-						 * leaves MAP_SHARED pages writable, so mirroring
-						 * them read-only here would wrongly demand-map
-						 * the next shared write. */
-						if((leaf & X86_PTE_US) && (leaf & X86_PTE_RW)) {
-							extern int vma_is_shared(unsigned long);
-							unsigned long va = ((unsigned long)i << 30)
-								| ((unsigned long)j << 21)
-								| ((unsigned long)k << 12);
-							if(!vma_is_shared(va)) {
-								leaf &= ~X86_PTE_RW;
-								if(is_fork) {
-									spt[k] = leaf;
+					{
+						unsigned long *s_pt = spt;
+						unsigned long *d_pt = pt;
+						int m;
+						unsigned long leaf;
+						for(m = 0; m < 512; m++) {
+							leaf = s_pt[m];
+							/* CoW: a writable USER leaf is shared
+							 * read-only in BOTH the child (copy)
+							 * and the fork source (parent), so the
+							 * first write by either side faults
+							 * into the copy-on-write path. Only for
+							 * MAP_PRIVATE pages (MAP_SHARED pages
+							 * stay writable). */
+							if((leaf & X86_PTE_US) && (leaf & X86_PTE_RW)) {
+								extern int vma_is_shared(unsigned long);
+								unsigned long va = ((unsigned long)i << 39)
+									| ((unsigned long)j << 30)
+									| ((unsigned long)k << 21)
+									| ((unsigned long)m << 12);
+								if(!vma_is_shared(va)) {
+									leaf &= ~X86_PTE_RW;
+									if(is_fork) {
+										s_pt[m] = leaf;
+									}
 								}
 							}
-						}
-						pt[k] = leaf;
-						/* Fiwix64 (pivot): a FORK child inherits a
-						 * reference to every user leaf it maps (the
-						 * parent's page_table[].count was set when it
-						 * allocated the page; the child now shares it).
-						 * free_vma_pages() on the child's exit sees
-						 * count > 1 and only decrements - without this
-						 * the child's exit would kfree() a page the
-						 * parent still maps (use-after-free, then
-						 * re-grant -> the low-2MB aliasing). Exec-from-
-						 * kernel (is_fork=0) copies only the kernel
-						 * identity map, which is never refcounted. */
-						if(is_fork && (leaf & X86_PTE_US) && (leaf & X86_PTE_P)) {
-							extern void page_ref_get(unsigned long);
-							page_ref_get(leaf & PAGE_MASK64);
+							d_pt[m] = leaf;
+							/* a FORK child inherits a reference to
+							 * every user leaf it maps; see the
+							 * pivot notes in mm64.c. */
+							if(is_fork && (leaf & X86_PTE_US) && (leaf & X86_PTE_P)) {
+								extern void page_ref_get(unsigned long);
+								page_ref_get(leaf & PAGE_MASK64);
+							}
 						}
 					}
 				} else {
-					pd[j] = e;
+					pd[k] = e;
 				}
 			}
 		}
 	}
-	/* everything else (kernel high half etc.) stays shared */
-	for(i = 1; i < 512; i++) {
-		/* Fiwix64 (native port): the copied high-half pml4 entries must be
-		 * USER-accessible (INIT trampoline + user stack live in the high
-		 * half; the leaves are shared, but pml4[i] is a per-process COPY
-		 * made before the US sets - without this OR the CPU's user walk
-		 * fails at the pml4 level, P+U+ID 0x15). */
-		pml4[i] = src4[i] | X86_PTE_US;
+	/* the kernel half (pml4[256..511]) is SHARED with the kernel; no
+	 * per-process copy, never freed by free_pml4_64(). The entries are
+	 * supervisor (the kernel high half is not user-reachable in the
+	 * canonical split; user code no longer lives there). */
+	for(i = 256; i < 512; i++) {
+		pml4[i] = src4[i];
+	}
+
+	if(!is_fork) {
+		/* Fiwix64 (canonical amd64 split): the PIC kernel image is
+		 * loaded by the firmware at load_base and EXECUTES at its
+		 * high-half alias, but every function pointer stored in kernel
+		 * DATA (syscall_table64, tty->output, IDT gates, file_operations,
+		 * ...) holds an IDENTITY address - the firmware's PE base
+		 * relocations add (load_base - image_base) to the link VMA, so
+		 * e.g. tty->output = load_base + 0x40200. A per-process pml4
+		 * must therefore ALSO map the kernel image 1:1 (supervisor 4KB),
+		 * or the first indirect call through such a pointer (the very
+		 * first printk in the syscall path -> tty->output) faults.
+		 * Only the image range is mapped: the rest of the low half stays
+		 * empty so user code (trampoline 0x100000, ELF at 0x400000,
+		 * mmap at 64TB) never aliases kernel phys. Fork children inherit
+		 * these supervisor leaves via the deep copy above. */
+		extern unsigned long fiwix64_load_base, fiwix64_image_size;
+		unsigned long va;
+
+		for(va = fiwix64_load_base;
+		    va < fiwix64_load_base + fiwix64_image_size;
+		    va += PAGE_SIZE64) {
+			if(map_page64_in(pml4_phys, va, va, X86_PTE_P | X86_PTE_RW)) {
+				free_pml4_64(pml4_phys);
+				return 0;
+			}
+		}
 	}
 	return pml4_phys;
 }
 
-/* free a per-process pml4: the private PDPT, the 4 private PDs, any split
- * PT pages under them, and the pml4 itself. Never free the kernel's own
- * pml4 (the caller must not pass it). */
+/* free a per-process pml4: every private user-half PDPT (pml4[0..255]),
+ * its PDs and split PT pages, and the pml4 itself. The kernel half
+ * (pml4[256..511]) is SHARED with the kernel and never freed. Never free
+ * the kernel's own pml4 (the caller must not pass it). */
 void free_pml4_64(unsigned long pml4_phys)
 {
-	unsigned long *pml4, *pdpt, *pd, *pt;
-	int i, j;
+	unsigned long *pml4, *pdpt, *pd;
+	int i, j, m;
 
 	if(!pml4_phys || pml4_phys == paging64_pml4_phys()) {
 		return;
 	}
-	pml4 = (unsigned long *)P2V64(pml4_phys);
-	if(!(pml4[0] & X86_PTE_P)) {
-		free_pages64(pml4_phys, 1);
-		return;
-	}
-	pdpt = (unsigned long *)P2V64(pml4[0] & PAGE_MASK64);
-	for(i = 0; i < 4; i++) {
-		if(!(pdpt[i] & X86_PTE_P)) {
+	pml4 = (unsigned long *)P2V64(pml4_phys);	for(i = 0; i < 256; i++) {
+		if(!(pml4[i] & X86_PTE_P)) {
 			continue;
 		}
-		pd = (unsigned long *)P2V64(pdpt[i] & PAGE_MASK64);
+		pdpt = (unsigned long *)P2V64(pml4[i] & PAGE_MASK64);
 		for(j = 0; j < 512; j++) {
-			if((pd[j] & X86_PTE_P) && !(pd[j] & X86_PTE_PS)) {
-				/* split 4KB table: free the PT page */
-				free_pages64(pd[j] & PAGE_MASK64, 1);
+			if(!(pdpt[j] & X86_PTE_P)) {
+				continue;
 			}
+			if(pdpt[j] & X86_PTE_PS) {
+				/* 2MB huge page: no PT page, free just the PD */
+				free_pages64(pdpt[j] & PAGE_MASK64, 1);
+				continue;
+			}
+			pd = (unsigned long *)P2V64(pdpt[j] & PAGE_MASK64);
+			/* split 4KB tables: free the PT pages; 2MB huge pages
+			 * under a PD have no PT page (their phys is user data,
+			 * freed via free_vma_pages) */
+			for(m = 0; m < 512; m++) {
+				if((pd[m] & X86_PTE_P) && !(pd[m] & X86_PTE_PS)) {
+					free_pages64(pd[m] & PAGE_MASK64, 1);
+				}
+			}
+			free_pages64(pdpt[j] & PAGE_MASK64, 1);
 		}
-		free_pages64(pdpt[i] & PAGE_MASK64, 1);
+		free_pages64(pml4[i] & PAGE_MASK64, 1);
 	}
-	free_pages64(pml4[0] & PAGE_MASK64, 1);
 	free_pages64(pml4_phys, 1);
 }
 
@@ -862,82 +886,4 @@ void kfree64(void *ptr)
 	*(unsigned long *)P2V64(phys) = slab_free_head[b];
 	slab_free_head[b] = phys;
 	slab_free_count[b]++;
-}
-
-void kmem_stats64(void)
-{
-	int b;
-
-	for(b = 0; b < KMEM_BUCKETS; b++) {
-		serial_puts("[M2-E] slab class ");
-		putdec64((UINT64)(16 << b));
-		serial_puts(": pages=");
-		putdec64((UINT64)slab_pages_count[b]);
-		serial_puts(" free=");
-		putdec64((UINT64)slab_free_count[b]);
-		serial_puts("\n");
-	}
-}
-
-/* exercise: allocate 4 pages, map them at SCRATCH_VA, write/read, verify,
- * then unmap and free */
-void mm64_demo(void)
-{
-	unsigned long paddr, vaddr, phys;
-	char *p;
-	int n, ok;
-
-	serial_puts("\n[M2-B] page allocator: free pages=");
-	putdec64((UINT64)free_pages_count);
-	serial_puts("\n");
-
-	paddr = alloc_pages64(4);
-	if(!paddr) {
-		serial_puts("[M2-B] alloc_pages64(4) FAILED\n");
-		return;
-	}
-	vaddr = SCRATCH_VA;
-	for(n = 0; n < 4; n++) {
-		if(map_page64(vaddr + (n << PAGE_SHIFT64), paddr + (n << PAGE_SHIFT64),
-			      X86_PTE_RW)) {
-			serial_puts("[M2-B] map_page64 FAILED\n");
-			return;
-		}
-	}
-
-	/* write a pattern through the 4KB mapping and read it back */
-	p = (char *)vaddr;
-	for(n = 0; n < PAGE_SIZE64; n++) {
-		p[n] = (char)(n * 7 + 1);
-	}
-	ok = 1;
-	for(n = 0; n < PAGE_SIZE64; n++) {
-		if(p[n] != (char)(n * 7 + 1)) {
-			ok = 0;
-			break;
-		}
-	}
-	serial_puts("[M2-B] mapped 4 pages at ");
-	serial_hex((UINT64)vaddr);
-	serial_puts(" -> phys ");
-	serial_hex((UINT64)paddr);
-	serial_puts(": write/read ");
-	serial_puts(ok ? "OK" : "MISMATCH");
-	serial_puts("\n");
-
-	phys = virt_to_phys64(vaddr);
-	serial_puts("[M2-B] virt_to_phys64(");
-	serial_hex((UINT64)vaddr);
-	serial_puts(") = ");
-	serial_hex((UINT64)phys);
-	serial_puts(phys == paddr ? " (match)\n" : " (MISMATCH)\n");
-
-	unmap_page64(vaddr);
-	unmap_page64(vaddr + (1 << PAGE_SHIFT64));
-	unmap_page64(vaddr + (2 << PAGE_SHIFT64));
-	unmap_page64(vaddr + (3 << PAGE_SHIFT64));
-	free_pages64(paddr, 4);
-	serial_puts("[M2-B] unmapped + freed, free pages=");
-	putdec64((UINT64)free_pages_count);
-	serial_puts("\n");
 }
