@@ -53,7 +53,7 @@ int sys_iopl(int level, int arg2, int arg3, int arg4, int arg5, struct sigcontex
 		return -EPERM;
 	}
 
-	sc->eflags = (sc->eflags & 0xFFFFCFFF) | (level << EF_IOPL);
+	sc->rflags = (sc->rflags & ~(3ULL << EF_IOPL)) | ((unsigned long long)level << EF_IOPL);
 #ifdef __DEBUG__
 	printk("0\n");
 #endif /*__DEBUG__ */

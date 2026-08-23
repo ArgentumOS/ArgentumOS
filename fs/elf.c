@@ -342,9 +342,7 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	 * 32-bit eip/oldesp are left for the i386-compat layout. */
 	sc->rip = current->entry_address;
 	sc->rsp = sp;
-	sc->oldesp = (unsigned int)sp;
-	sc->eflags = 0x202;
-	sc->eip = (unsigned int)current->entry_address;
+	sc->rflags = 0x202;
 	sc->err = 0;
 	current->flags |= PF_ELF64;
 

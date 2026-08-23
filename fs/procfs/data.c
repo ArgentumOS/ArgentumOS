@@ -847,8 +847,8 @@ int data_proc_pid_stat(char *buffer, __pid_t pid)
 		esp = eip = 0;
 		if(p->sp) {
 			sc = (struct sigcontext *)p->sp;
-			esp = sc->oldesp;
-			eip = sc->eip;
+			esp = sc->rsp;
+			eip = sc->rip;
 		}
 		size = sprintk(buffer, "%d (%s) %c %d %d %d %d %d %d %d %d %d %d %u %u %u %u %d %d %d %d %d %d %u %u %u %u %u %u %u %d %d %u %u %u\n",
 			p->pid,

@@ -74,6 +74,8 @@ int sys_access(const char *, __mode_t);
 int sys_ftime(struct timeb *);
 void sys_sync(void);
 int sys_kill(__pid_t, __sigset_t);
+int sys_tkill(int, __sigset_t);
+int sys_tgkill(int, int, __sigset_t);
 int sys_rename(const char *, const char *);
 int sys_mkdir(const char *, __mode_t);
 int sys_rmdir(const char *);
@@ -150,11 +152,7 @@ int sys_sysinfo(struct sysinfo *);
 int sys_ipc(unsigned int, struct sysvipc_args *);
 #endif /* CONFIG_SYSVIPC */
 int sys_fsync(unsigned int);
-#ifdef CONFIG_SYSCALL_6TH_ARG
-int sys_sigreturn(unsigned int, int, int, int, int, int, struct sigcontext *);
-#else
-int sys_sigreturn(unsigned int, int, int, int, int, struct sigcontext *);
-#endif /* CONFIG_SYSCALL_6TH_ARG */
+int sys_rt_sigreturn(unsigned int, int, int, int, int, struct sigcontext *);
 int sys_setdomainname(const char *, int);
 int sys_newuname(struct new_utsname *);
 int sys_mprotect(addr_t, __size_t, int);

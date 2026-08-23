@@ -406,12 +406,12 @@ static void handle_page_fault(const struct x86_frame64 *f)
 		struct sigcontext sc;
 
 		memset_b(&sc, 0, sizeof(sc));
-		sc.err = (unsigned int)f->error;
-		sc.eip = (unsigned int)f->rip;
-		sc.cs = (unsigned int)f->cs;
-		sc.eflags = (unsigned int)f->rflags;
-		sc.oldesp = (unsigned int)f->rsp;
-		sc.oldss = (unsigned int)f->ss;
+		sc.err = f->error;
+		sc.rip = f->rip;
+		sc.cs = f->cs;
+		sc.rflags = f->rflags;
+		sc.rsp = f->rsp;
+		sc.ss = f->ss;
 		do_page_fault(14, &sc);
 		return;
 	}
@@ -423,13 +423,12 @@ static void handle_page_fault(const struct x86_frame64 *f)
 			panic(f);
 		}
 		memset_b(&sc, 0, sizeof(sc));
-		sc.err = (unsigned int)f->error;
-		sc.eip = (unsigned int)f->rip;
-		sc.cs = (unsigned int)f->cs;
-		sc.eflags = (unsigned int)f->rflags;
-		sc.esp = (unsigned int)f->rsp;
-		sc.oldesp = (unsigned int)f->rsp;
-		sc.oldss = (unsigned int)f->ss;
+		sc.err = f->error;
+		sc.rip = f->rip;
+		sc.cs = f->cs;
+		sc.rflags = f->rflags;
+		sc.rsp = f->rsp;
+		sc.ss = f->ss;
 		do_page_fault(14, &sc);
 		return;
 	}
@@ -446,13 +445,12 @@ static void handle_page_fault(const struct x86_frame64 *f)
 		panic(f);
 	}
 	memset_b(&sc, 0, sizeof(sc));
-	sc.err = (unsigned int)f->error;
-	sc.eip = (unsigned int)f->rip;
-	sc.cs = (unsigned int)f->cs;
-	sc.eflags = (unsigned int)f->rflags;
-	sc.esp = (unsigned int)f->rsp;
-	sc.oldesp = (unsigned int)f->rsp;
-	sc.oldss = (unsigned int)f->ss;
+	sc.err = f->error;
+	sc.rip = f->rip;
+	sc.cs = f->cs;
+	sc.rflags = f->rflags;
+	sc.rsp = f->rsp;
+	sc.ss = f->ss;
 	do_page_fault(14, &sc);
 }
 
@@ -476,20 +474,27 @@ static void handle_user_exception(const struct x86_frame64 *f, unsigned long *gp
 	struct sigcontext sc;
 
 	memset_b(&sc, 0, sizeof(sc));
-	sc.err = (unsigned int)f->error;
-	sc.eip = (unsigned int)f->rip;
-	sc.cs = (unsigned int)f->cs;
-	sc.eflags = (unsigned int)f->rflags;
-	sc.oldesp = (unsigned int)f->rsp;
-	sc.oldss = (unsigned int)f->ss;
-	sc.eax = (unsigned int)gprs[14];	/* rax */
-	sc.ecx = (unsigned int)gprs[13];	/* rcx */
-	sc.edx = (unsigned int)gprs[12];	/* rdx */
-	sc.ebx = (unsigned int)gprs[11];	/* rbx */
-	sc.ebp = (unsigned int)gprs[10];	/* rbp */
-	sc.esi = (unsigned int)gprs[9];	/* rsi */
-	sc.edi = (unsigned int)gprs[8];	/* rdi */
-	sc.esp = (unsigned int)f->rsp;
+	sc.err = f->error;
+	sc.rip = f->rip;
+	sc.cs = f->cs;
+	sc.rflags = f->rflags;
+	sc.rsp = f->rsp;
+	sc.ss = f->ss;
+	sc.rax = gprs[14];
+	sc.rcx = gprs[13];
+	sc.rdx = gprs[12];
+	sc.rbx = gprs[11];
+	sc.rbp = gprs[10];
+	sc.rsi = gprs[9];
+	sc.rdi = gprs[8];
+	sc.r8 = gprs[7];
+	sc.r9 = gprs[6];
+	sc.r10 = gprs[5];
+	sc.r11 = gprs[4];
+	sc.r12 = gprs[3];
+	sc.r13 = gprs[2];
+	sc.r14 = gprs[1];
+	sc.r15 = gprs[0];
 
 	switch(f->vector) {
 		case 0:		do_divide_error(0, &sc);		break;
@@ -516,7 +521,7 @@ static void handle_user_exception(const struct x86_frame64 *f, unsigned long *gp
  * path does the same: build a 32-bit sigcontext from the frame, let psig()
  * rewrite it (handler trampoline or do_exit for default signals), and write
  * the result back into the iretq frame. psig() never returns on do_exit. */
-static void check_signals64(unsigned long *gprs)
+void check_signals64(unsigned long *gprs)
 {
 	struct x86_frame64 *f;
 	struct sigcontext sc;
@@ -525,36 +530,51 @@ static void check_signals64(unsigned long *gprs)
 
 	f = (struct x86_frame64 *)((char *)gprs + (15 * 8));
 	memset_b(&sc, 0, sizeof(sc));
-	sc.err = (unsigned int)f->error;
-	sc.eip = (unsigned int)f->rip;
-	sc.cs = (unsigned int)f->cs;
-	sc.eflags = (unsigned int)f->rflags;
-	sc.oldesp = (unsigned int)f->rsp;
-	sc.oldss = (unsigned int)f->ss;
-	sc.eax = (unsigned int)gprs[14];	/* rax */
-	sc.ecx = (unsigned int)gprs[13];	/* rcx */
-	sc.edx = (unsigned int)gprs[12];	/* rdx */
-	sc.ebx = (unsigned int)gprs[11];	/* rbx */
-	sc.ebp = (unsigned int)gprs[10];	/* rbp */
-	sc.esi = (unsigned int)gprs[9];	/* rsi */
-	sc.edi = (unsigned int)gprs[8];	/* rdi */
-	sc.esp = (unsigned int)f->rsp;
+	sc.err = f->error;
+	sc.rip = f->rip;
+	sc.cs = f->cs;
+	sc.rflags = f->rflags;
+	sc.rsp = f->rsp;
+	sc.ss = f->ss;
+	sc.rax = gprs[14];
+	sc.rcx = gprs[13];
+	sc.rdx = gprs[12];
+	sc.rbx = gprs[11];
+	sc.rbp = gprs[10];
+	sc.rsi = gprs[9];
+	sc.rdi = gprs[8];
+	sc.r8 = gprs[7];
+	sc.r9 = gprs[6];
+	sc.r10 = gprs[5];
+	sc.r11 = gprs[4];
+	sc.r12 = gprs[3];
+	sc.r13 = gprs[2];
+	sc.r14 = gprs[1];
+	sc.r15 = gprs[0];
 
 	if(issig()) {
 		psig(&sc);
 		/* psig() rewrote the sigcontext (or never returned: do_exit) */
-		f->rip = sc.eip;
+		f->rip = sc.rip;
 		f->cs = sc.cs;
-		f->rflags = sc.eflags;
-		f->rsp = sc.oldesp;
-		f->ss = sc.oldss;
-		gprs[14] = sc.eax;	/* rax */
-		gprs[13] = sc.ecx;	/* rcx */
-		gprs[12] = sc.edx;	/* rdx */
-		gprs[11] = sc.ebx;	/* rbx */
-		gprs[10] = sc.ebp;	/* rbp */
-		gprs[9] = sc.esi;	/* rsi */
-		gprs[8] = sc.edi;	/* rdi */
+		f->rflags = sc.rflags;
+		f->rsp = sc.rsp;
+		f->ss = sc.ss;
+		gprs[14] = sc.rax;
+		gprs[13] = sc.rcx;
+		gprs[12] = sc.rdx;
+		gprs[11] = sc.rbx;
+		gprs[10] = sc.rbp;
+		gprs[9] = sc.rsi;
+		gprs[8] = sc.rdi;
+		gprs[7] = sc.r8;
+		gprs[6] = sc.r9;
+		gprs[5] = sc.r10;
+		gprs[4] = sc.r11;
+		gprs[3] = sc.r12;
+		gprs[2] = sc.r13;
+		gprs[1] = sc.r14;
+		gprs[0] = sc.r15;
 	}
 }
 

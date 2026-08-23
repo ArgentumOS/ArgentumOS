@@ -161,12 +161,18 @@ int issig(void)
  * object so psig()'s references resolve locally. (References to the
  * external switch64.S labels from PATCH_PIC-patched objects get stale
  * RIP-relative displacements and would copy garbage/zeros.) Sequence:
- * pushl %eax; pushl %eax; call *%ecx; addl $4,%esp; popl %ebx;
- * movl $119,%eax; int $0x80; movl $1,%eax; int $0x80; ret. */
+ * mov %rax,%r12 (save signum); mov %rax,%rdi (handler arg1);
+ * call *%rcx (the handler); mov %r12,%rdi (rt_sigreturn arg1);
+ * mov $15,%eax; syscall (SYS_rt_sigreturn); mov $60,%eax; syscall
+ * (exit fallback). r12 is callee-saved so the handler preserves it. */
 static unsigned char fiwix64_trampoline[] = {
-	0x50, 0x50, 0xff, 0xd1, 0x83, 0xc4, 0x04, 0x5b,
-	0xb8, 119, 0, 0, 0, 0xcd, 0x80,
-	0xb8, 1, 0, 0, 0, 0xcd, 0x80, 0xc3
+	0x49, 0x89, 0xc4,			/* mov %rax,%r12 */
+	0x48, 0x89, 0xc7,			/* mov %rax,%rdi */
+	0xff, 0xd1,				/* call *%rcx */
+	0x4c, 0x89, 0xe7,			/* mov %r12,%rdi */
+	0xb8, 15, 0, 0, 0, 0x0f, 0x05,		/* mov $15,%eax; syscall */
+	0xb8, 60, 0, 0, 0, 0x0f, 0x05,		/* mov $60,%eax; syscall */
+	0xcc					/* int3 (never reached) */
 };
 #endif /* __x86_64__ */
 
@@ -190,9 +196,9 @@ void psig(struct sigcontext *sc)
 				 *
 				 * So, this check is needed to make sure to terminate the
 				 * process now, otherwise the kernel would panic when using
-				 * 'sc->oldesp' during the 'memcpy_b' below.
+				 * 'sc->rsp' during the 'memcpy_b' below.
 				 */
-				if(!find_vma_region(sc->oldesp)) {
+				if(!find_vma_region(sc->rsp)) {
 					printk("WARNING: %s(): no stack region in vma table for process %d. Terminated.\n", __FUNCTION__, current->pid);
 					do_exit(signum);
 				}
@@ -205,18 +211,9 @@ void psig(struct sigcontext *sc)
 				/* save the current sigcontext */
 				memcpy_b(&current->sc[signum - 1], sc, sizeof(struct sigcontext));
 				/* setup the jump to the user signal handler */
-#ifdef __x86_64__
-				/* Fiwix64 (M6-A): use the local trampoline (see above); the
-				 * extern-function-address subtraction would also codegen a
-				 * memory-load sub under gcc -O2. */
 				len = sizeof(fiwix64_trampoline);
-#else
-				len = ((addr_t)end_sighandler_trampoline - (addr_t)sighandler_trampoline);
-#endif /* __x86_64__ */
-				sc->oldesp -= len;
-				sc->oldesp -= 4;
-				sc->oldesp &= ~3;	/* round up */
-#ifdef __x86_64__
+				sc->rsp -= len;
+				sc->rsp &= ~15;	/* round down to 16 for the x86-64 ABI */
 				/* Fiwix64 (M6-A): demand-map the user stack page U/S to a
 				 * REAL RAM page BEFORE copying the trampoline. The raw
 				 * identity 2MB page at this address (the process stack sits
@@ -226,17 +223,12 @@ void psig(struct sigcontext *sc)
 				 * pages already mapped U/S. */
 				{
 					extern int fiwix64_fault_user_pages(addr_t, unsigned int);
-					fiwix64_fault_user_pages((addr_t)sc->oldesp, len);
+					fiwix64_fault_user_pages((addr_t)sc->rsp, len);
 				}
-#endif /* __x86_64__ */
-#ifdef __x86_64__
-				memcpy_b((void *)sc->oldesp, fiwix64_trampoline, len);
-#else
-				memcpy_b((void *)sc->oldesp, sighandler_trampoline, len);
-#endif /* __x86_64__ */
-				sc->ecx = (addr_t)current->sigaction[signum - 1].sa_handler;
-				sc->eax= signum;
-				sc->eip = sc->oldesp;
+				memcpy_b((void *)sc->rsp, fiwix64_trampoline, len);
+				sc->rcx = (addr_t)current->sigaction[signum - 1].sa_handler;
+				sc->rax = signum;
+				sc->rip = sc->rsp;
 
 				if(current->sigaction[signum - 1].sa_flags & SA_RESETHAND) {
 					current->sigaction[signum - 1].sa_handler = SIG_DFL;
@@ -274,9 +266,9 @@ void psig(struct sigcontext *sc)
 
 	/* coming from a system call that needs to be restarted */
 	if(sc->err > 0) {
-		if(sc->eax == -ERESTART) {
-			sc->eax = sc->err;	/* syscall was saved in 'err' */
-			sc->eip -= 2;		/* point again to 'int 0x80' */
+		if(sc->rax == -ERESTART) {
+			sc->rax = sc->err;	/* syscall was saved in 'err' */
+			sc->rip -= 2;		/* point again to 'syscall' */
 		}
 	}
 }

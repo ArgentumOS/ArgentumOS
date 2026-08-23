@@ -3,46 +3,42 @@
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
+ *
+ * Fiwix64 (pure x86-64 port, no 32-bit compatibility): the kernel-internal
+ * register-exchange format. It mirrors the isr_common64/syscall_entry64
+ * frame layout (x86_frame64: err, rip, cs, rflags, rsp, ss) followed by the
+ * 15 saved GPRs in push order (gprs[0]=r15 ... gprs[14]=rax), so building a
+ * sigcontext from the CPU frame and writing it back is a mechanical copy.
  */
 
 #ifndef _FIWIX_SIGCONTEXT_H
 #define _FIWIX_SIGCONTEXT_H
 
 struct sigcontext {
-	unsigned int gs;
-	unsigned int fs;
-	unsigned int es;
-	unsigned int ds;
-	unsigned int edi;
-	unsigned int esi;
-	unsigned int ebp;
-	unsigned int esp;
-	int ebx;
-	int edx;
-	int ecx;
-	int eax;
-	int err;
-	unsigned int eip;
-	unsigned int cs;
-	unsigned int eflags;
-	unsigned int oldesp;
-	unsigned int oldss;
-#ifdef __x86_64__
-	/* Fiwix64 (canonical amd64 split): the 32-bit eip/oldesp above are
-	 * the i386-compat layout; a NATIVE 64-bit process's entry RIP/RSP
-	 * can be anywhere in the 128TB user half, so elf_load64() stores
-	 * the full 64-bit values here and the exec iretq uses these. */
+	/* mirrors x86_frame64 (see kernel64/idt64.c) */
+	unsigned long long err;		/* error code (or vector) */
 	unsigned long long rip;
+	unsigned long long cs;
+	unsigned long long rflags;
 	unsigned long long rsp;
-	/* Fiwix64 (fork return): return_from_syscall64 iretq's the fork
-	 * child back to user mode, and the child's 64-bit user GPRs must
-	 * be restored from here (the 32-bit edi/esi/ebp/ebx/edx/ecx/eax
-	 * fields above would truncate 64-bit user pointers in the 128TB
-	 * user half). syscall80_handler() fills these from the syscall
-	 * frame; the fork child inherits them via the page copy. */
-	unsigned long long r15, r14, r13, r12, r11, r10, r9, r8;
-	unsigned long long rdi, rsi, rbp, rbx, rdx, rcx, rax;
-#endif /* __x86_64__ */
+	unsigned long long ss;
+	/* 15 GPRs, isr_common64/syscall_entry64 push order:
+	 * gprs[0]=r15 ... gprs[14]=rax */
+	unsigned long long r15;
+	unsigned long long r14;
+	unsigned long long r13;
+	unsigned long long r12;
+	unsigned long long r11;
+	unsigned long long r10;
+	unsigned long long r9;
+	unsigned long long r8;
+	unsigned long long rdi;
+	unsigned long long rsi;
+	unsigned long long rbp;
+	unsigned long long rbx;
+	unsigned long long rdx;
+	unsigned long long rcx;
+	unsigned long long rax;
 };
 
 #endif /* _FIWIX_SIGCONTEXT_H */

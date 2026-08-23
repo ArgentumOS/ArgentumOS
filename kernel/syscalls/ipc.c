@@ -112,7 +112,7 @@ int sys_ipc(unsigned int call, int first, int second, int third, void *ptr, int 
 	 * truncated int recovers it. */
 	{
 		struct sigcontext *sc = (struct sigcontext *)(long)fifth;
-		fifth = (int)sc->ebp;
+		fifth = (int)sc->r9;
 	}
 #endif /* __x86_64__ */
 

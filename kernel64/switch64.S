@@ -155,44 +155,6 @@ switch_to_user_mode:
 	iretq
 .size switch_to_user_mode, .-switch_to_user_mode
 
-/*
- * return_from_syscall: Fiwix64 (M6-E) - the fork child's first entry,
- * entered as the target of do_switch() with RSP pointing at a 32-bit
- * struct sigcontext (the fork's saved syscall frame) on the child's
- * kernel stack. Reload the user GP registers from the sigcontext and
- * iretq back into the COMPAT-mode user program (eax already 0, set by
- * fork.c). struct sigcontext offsets (all u32):
- *   gs=0 fs=4 es=8 ds=12 edi=16 esi=20 ebp=24 esp=28
- *   ebx=32 edx=36 ecx=40 eax=44 err=48 eip=52 cs=56 eflags=60 oldesp=64 oldss=68
- */
-.globl return_from_syscall
-.type return_from_syscall, @function
-return_from_syscall:
-	movq	%rsp, %r11		/* r11 = &sigcontext (stable base) */
-	movl	$0x23, %r10d		/* UDATA32 | RPL3 */
-	movw	%r10w, %ds
-	movw	%r10w, %es
-	movw	%r10w, %fs
-	/* %gs is the process's TLS selector (0x63), inherited from the parent;
-	 * resetting it to UDATA32 here would zero the thread pointer and crash
-	 * musl's fork() tail when it reads errno via %gs. */
-	movl	$0x63, %r10d		/* TLS_SEL(0x60) | RPL3 */
-	movw	%r10w, %gs
-	movl	16(%r11), %edi
-	movl	20(%r11), %esi
-	movl	24(%r11), %ebp
-	movl	32(%r11), %ebx
-	movl	36(%r11), %edx
-	movl	40(%r11), %ecx
-	movl	44(%r11), %eax		/* 0 for the fork child */
-	pushq	68(%r11)		/* SS  = UDATA32 | RPL3 */
-	pushq	64(%r11)		/* RSP = sc->oldesp */
-	pushq	60(%r11)		/* RFLAGS */
-	pushq	56(%r11)		/* CS  = UCODE32 | RPL3 */
-	pushq	52(%r11)		/* RIP = sc->eip */
-	iretq
-.size return_from_syscall, .-return_from_syscall
-
 
 /*
  * syscall_entry64: Fiwix64 native 64-bit syscall entry - the 'syscall'
@@ -238,6 +200,16 @@ syscall_entry64:
 	pushq	%r15
 	movq	%rsp, %rdi
 	call	syscall80_handler
+	/* Fiwix64 (signal delivery): the syscall itself may have queued a
+	 * signal (tkill/kill/send_sig); check_signals64() runs the psig()
+	 * trampoline + iretq path before the plain epilogue below. The
+	 * frame is still intact (15 GPRs + x86_frame64 at [rsp+15*8]).
+	 * check_signals64() rewrites gprs/frame in place; we then pop and
+	 * iretq normally. gprs[14] (rax) holds the syscall return value
+	 * unless a signal handler was installed, in which case it holds
+	 * the signum the trampoline passes to the handler. */
+	movq	%rsp, %rdi
+	call	check_signals64
 	popq	%r15
 	popq	%r14
 	popq	%r13
@@ -259,32 +231,30 @@ syscall_entry64:
 
 /*
  * return_from_syscall64: Fiwix64 (native port) - the fork() child's
- * 64-bit-mode return, mirroring return_from_syscall for the compat path.
- * The child's kernel stack holds the copied sigcontext at RSP; reload the
- * user data segments and iretq into the 64-bit user program (UCODE64|
- * RPL3, UDATA32|RPL3) at sc->eip/sc->oldesp with eax=0 (set by fork.c).
+ * 64-bit-mode return. The child's kernel stack holds the copied sigcontext
+ * at RSP; reload the user data segments and iretq into the 64-bit user
+ * program (UCODE64|RPL3, UDATA32|RPL3) at sc->rip/sc->rsp with rax=0 (set
+ * by fork.c). struct sigcontext is the 64-bit-native layout: err, rip, cs,
+ * rflags, rsp, ss, then r15..rax (see include/fiwix/sigcontext.h).
  */
 .globl return_from_syscall64
 .type return_from_syscall64, @function
 return_from_syscall64:
 	movq	%rsp, %r11		/* r11 = &sigcontext (stable base) */
-	/* Fiwix64 (fork return): restore the child's FULL 64-bit user GPRs
-	 * from the sigcontext. The 32-bit edi/esi/ebp/ebx/edx/ecx fields
-	 * would truncate 64-bit user pointers (128TB user half); syscall80_
-	 * handler() saved the full registers at sc->r15..sc->rax. r9/r10/r11
-	 * are scratch for the segment setup + iretq frame below and are
-	 * restored last. */
-	movq	88(%r11), %r15
-	movq	96(%r11), %r14
-	movq	104(%r11), %r13
-	movq	112(%r11), %r12
-	movq	144(%r11), %r8
-	movq	152(%r11), %rdi
-	movq	160(%r11), %rsi
-	movq	168(%r11), %rbp
-	movq	176(%r11), %rbx
-	movq	184(%r11), %rdx
-	movq	192(%r11), %rcx
+	/* restore the child's FULL 64-bit user GPRs (r15..rcx; rax is set
+	 * from sc->rax below, fork.c zeroes it). r9/r10/r11 are scratch for
+	 * the segment setup + iretq frame below and are restored last. */
+	movq	48(%r11), %r15
+	movq	56(%r11), %r14
+	movq	64(%r11), %r13
+	movq	72(%r11), %r12
+	movq	104(%r11), %r8
+	movq	112(%r11), %rdi
+	movq	120(%r11), %rsi
+	movq	128(%r11), %rbp
+	movq	136(%r11), %rbx
+	movq	144(%r11), %rdx
+	movq	152(%r11), %rcx
 	movl	$0x23, %r10d		/* UDATA32 | RPL3 */
 	movw	%r10w, %ds
 	movw	%r10w, %es
@@ -292,22 +262,18 @@ return_from_syscall64:
 	 * by the fork child); clobbering it kills the child in
 	 * musl's __post_Fork (%fs:0 read). GS stays inherited too. */
 	pushq	$0x23			/* SS */
-	/* Fiwix64 (canonical amd64 split): native 64-bit processes use the
-	 * 64-bit rip/rsp sigcontext fields (the 32-bit eip/oldesp are the
-	 * i386-compat layout and truncate addresses in the 128TB user
-	 * half). */
-	movq	80(%r11), %r9		/* RSP = sc->rsp (64-bit) */
+	movq	32(%r11), %r9		/* RSP = sc->rsp */
 	pushq	%r9
-	movl	60(%r11), %r9d		/* RFLAGS = sc->eflags (32-bit: zero-extend) */
+	movq	24(%r11), %r9		/* RFLAGS = sc->rflags */
 	pushq	%r9
 	pushq	$0x4b			/* CS = UCODE64 | RPL3 */
-	movq	72(%r11), %r9		/* RIP = sc->rip (64-bit) */
+	movq	8(%r11), %r9		/* RIP = sc->rip */
 	pushq	%r9
-	movl	44(%r11), %eax		/* child's RAX = sc->eax (the fork returns 0) */
+	movq	160(%r11), %rax		/* child's RAX = sc->rax (fork returns 0) */
 	/* restore the remaining user GPRs (r9/r10 were scratch above; r11
 	 * was the sigcontext base - restore it LAST) */
-	movq	136(%r11), %r9
-	movq	128(%r11), %r10
-	movq	120(%r11), %r11
+	movq	96(%r11), %r9
+	movq	88(%r11), %r10
+	movq	80(%r11), %r11
 	iretq
 .size return_from_syscall64, .-return_from_syscall64

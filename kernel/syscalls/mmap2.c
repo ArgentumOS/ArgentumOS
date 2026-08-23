@@ -59,12 +59,11 @@ long sys_mmap2(addr_t start, addr_t length, unsigned int prot, unsigned int user
 #endif /* CONFIG_SYSCALL_6TH_ARG */
 
 #ifdef __x86_64__
-/* Fiwix64 (M6 userland): musl/glibc i386 mmap() uses mmap2(192). The 64-bit
- * syscall dispatch (syscall80_handler) passes 5 register args + the
- * sigcontext, so the 6th arg (offset, in the user's ebp) is read from sc.
- * This is what backs musl's static TLS area, so it must exist. */
+/* Fiwix64 (native port): this is the i386 mmap2 adapter (syscall 192 in
+ * the i386 table); the native x86-64 mmap is SYS64_mmap -> sys_mmap64.
+ * The 6th arg (offset, in the user's r9) is read from sc. */
 long sys_mmap2(addr_t start, addr_t length, unsigned int prot, unsigned int user_flags, int fd, struct sigcontext *sc)
 {
-	return do_mmap2(start, length, prot, user_flags, fd, (addr_t)sc->ebp);
+	return do_mmap2(start, length, prot, user_flags, fd, (addr_t)sc->r9);
 }
 #endif /* __x86_64__ */

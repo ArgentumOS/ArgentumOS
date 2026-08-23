@@ -173,20 +173,11 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 	memcpy_b((unsigned int *)(child->tss.esp0 & PAGE_MASK), (void *)((addr_t)(sc) & PAGE_MASK), PAGE_SIZE);
 	stack = (struct sigcontext *)((child->tss.esp0 & PAGE_MASK) + ((addr_t)(sc) & ~PAGE_MASK));
 
-	child->tss.eip = (addr_t)return_from_syscall;
-#ifdef __x86_64__
-	if((current->flags & PF_ELF64)) {
-		/* Fiwix64 (native port): a 64-bit child must iretq into 64-bit
-		 * user mode (UCODE64), not the compat return_from_syscall.
-		 * child->flags was reset to 0 above, so re-assert PF_ELF64 from
-		 * the parent - the child inherits the 64-bit ABI. */
-		child->flags |= PF_ELF64;
-		extern void return_from_syscall64(void);
-		child->tss.eip = (addr_t)return_from_syscall64;
-	}
-#endif /* __x86_64__ */
+	extern void return_from_syscall64(void);
+	child->tss.eip = (addr_t)return_from_syscall64;
+	child->flags |= PF_ELF64;
 	child->tss.esp = (addr_t)stack;
-	stack->eax = 0;		/* child returns 0 */
+	stack->rax = 0;		/* child returns 0 */
 
 	/* increase file descriptors usage */
 	for(n = 0; n < OPEN_MAX; n++) {

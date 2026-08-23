@@ -207,332 +207,6 @@ int check_permission(int mask, struct inode *i)
 }
 
 
-/* Linux 2.0 i386 ABI system call (plus some from Linux 2.2 and Linux 2.4) */
-void *syscall_table[] = {
-	NULL,				/* 0 */	/* sys_setup (-ENOSYS) */
-	sys_exit,
-	sys_fork,
-	sys_read,
-	sys_write,
-	sys_open,			/* 5 */
-	sys_close,
-	sys_waitpid,
-	sys_creat,
-	sys_link,
-	sys_unlink,			/* 10 */
-	sys_execve,
-	sys_chdir,
-	sys_time,
-	sys_mknod,
-	sys_chmod,			/* 15 */
-	sys_lchown,
-	NULL,					/* sys_break (-ENOSYS) */
-	sys_stat,
-	sys_lseek,
-	sys_getpid,			/* 20 */
-	sys_mount,
-	sys_umount,
-	sys_setuid,
-	sys_getuid,
-	sys_stime, 			/* 25 */
-	NULL,	/* sys_ptrace */
-	sys_alarm,
-	sys_fstat,
-	sys_pause,
-	sys_utime,			/* 30 */
-	NULL,					/* sys_stty (-ENOSYS) */
-	NULL,					/* sys_gtty (-ENOSYS) */
-	sys_access,
-	NULL,	/* sys_nice */
-	sys_ftime,			/* 35 */
-	sys_sync,
-	sys_kill,
-	sys_rename,
-	sys_mkdir,
-	sys_rmdir,			/* 40 */
-	sys_dup,
-	sys_pipe,
-	sys_times,
-	NULL,	/* sys_prof */
-	sys_brk,			/* 45 */
-	sys_setgid,
-	sys_getgid,
-	sys_signal,
-	sys_geteuid,
-	sys_getegid,			/* 50 */
-	NULL,	/* sys_acct */
-	sys_umount2,
-	NULL,					/* sys_lock (-ENOSYS) */
-	sys_ioctl,
-	sys_fcntl,			/* 55 */
-	NULL,					/* sys_mpx (-ENOSYS) */
-	sys_setpgid,
-	NULL,					/* sys_ulimit (-ENOSYS) */
-	sys_olduname,
-	sys_umask,			/* 60 */
-	sys_chroot,
-	sys_ustat,
-	sys_dup2,
-	sys_getppid,
-	sys_getpgrp,			/* 65 */
-	sys_setsid,
-	sys_sigaction,
-	sys_sgetmask,
-	sys_ssetmask,
-	sys_setreuid,			/* 70 */
-	sys_setregid,
-	sys_sigsuspend,
-	sys_sigpending,
-	sys_sethostname,
-	sys_setrlimit,			/* 75 */
-	sys_getrlimit,
-	sys_getrusage,
-	sys_gettimeofday,
-	sys_settimeofday,
-	sys_getgroups,			/* 80 */
-	sys_setgroups,
-	old_select,
-	sys_symlink,
-	sys_lstat,
-	sys_readlink,			/* 85 */
-	NULL,	/* sys_uselib */
-	NULL,	/* sys_swapon */
-	sys_reboot,
-	NULL,	/* old_readdir */
-	old_mmap,			/* 90 */
-	sys_munmap,
-	sys_truncate,
-	sys_ftruncate,
-	sys_fchmod,
-	sys_fchown,			/* 95 */
-	NULL,	/* sys_getpriority */
-	NULL,	/* sys_setpriority */
-	NULL,					/* sys_profil (-ENOSYS) */
-	sys_statfs,
-	sys_fstatfs,			/* 100 */
-	sys_ioperm,
-	sys_socketcall,
-	sys_syslog,
-	sys_setitimer,
-	sys_getitimer,			/* 105 */
-	sys_newstat,
-	sys_newlstat,
-	sys_newfstat,
-	sys_uname,
-	sys_iopl,			/* 110 */
-	NULL,	/* sys_vhangup */
-	NULL,					/* sys_idle (-ENOSYS) */
-	NULL,	/* sys_vm86old */
-	sys_wait4,
-	NULL,	/* sys_swapoff */	/* 115 */
-	sys_sysinfo,
-#ifdef CONFIG_SYSVIPC
-	sys_ipc,
-#else
-	NULL,	/* sys_ipc */
-#endif /* CONFIG_SYSVIPC */
-	sys_fsync,
-	sys_sigreturn,
-	NULL,	/* sys_clone */		/* 120 */
-	sys_setdomainname,
-	sys_newuname,
-	NULL,	/* sys_modify_ldt */
-	NULL,	/* sys_adjtimex */
-	sys_mprotect,			/* 125 */
-	sys_sigprocmask,
-	NULL,	/* sys_create_module */
-	NULL,	/* sys_init_module */
-	NULL,	/* sys_delete_module */
-	NULL,	/* sys_get_kernel_syms */	/* 130 */
-	NULL,	/* sys_quotactl */
-	sys_getpgid,
-	sys_fchdir,
-	NULL,	/* sys_bdflush */
-	NULL,	/* sys_sysfs */		/* 135 */
-	sys_personality,
-	NULL,					/* afs_syscall (-ENOSYS) */
-	sys_setfsuid,
-	sys_setfsgid,
-	sys_llseek,			/* 140 */
-	sys_getdents,
-	sys_select,
-	sys_flock,
-	NULL,	/* sys_msync */
-	sys_readv,			/* 145 */
-	sys_writev,
-	sys_getsid,
-	sys_fdatasync,
-	NULL,	/* sys_sysctl */
-	NULL,	/* sys_mlock */		/* 150 */
-	NULL,	/* sys_munlock */
-	NULL,	/* sys_mlockall */
-	NULL,	/* sys_munlockall */
-	NULL,	/* sys_sched_setparam */
-	NULL,	/* sys_sched_getparam */	/* 155 */
-	NULL,	/* sys_sched_setscheduler */
-	NULL,	/* sys_sched_getscheduler */
-	NULL,	/* sys_sched_yield */
-	NULL,	/* sys_sched_get_priority_max */
-	NULL,	/* sys_sched_get_priority_min */	/* 160 */
-	NULL,	/* sys_sched_rr_get_interval */
-	sys_nanosleep,
-	NULL,	/* sys_mremap */
-	NULL,
-	NULL,				/* 165 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 170 */
-	NULL,
-	NULL,
-	NULL,				/* sys_rt_sigreturn */	/* 173 */
-	sys_rt_sigaction,			/* 174 */
-	sys_rt_sigprocmask,			/* 175 */
-	sys_rt_sigpending,			/* 176 */
-	NULL,
-	NULL,
-	sys_rt_sigsuspend,			/* 179 */
-	NULL,				/* 180 */
-	NULL,
-	sys_chown,
-	sys_getcwd,
-	NULL,
-	NULL,				/* 185 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	sys_fork,			/* 190 (sys_vfork) */
-	NULL,
-#if defined(CONFIG_MMAP2) || defined(__x86_64__)
-	sys_mmap2,
-#else
-	NULL,
-#endif
-	sys_truncate64,
-	sys_ftruncate64,
-	sys_stat64,			/* 195 */
-	sys_lstat64,
-	sys_fstat64,
-	NULL,
-	NULL,
-	NULL,				/* 200 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 205 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 210 */
-	NULL,
-	sys_chown32,
-	NULL,
-	NULL,
-	NULL,				/* 215 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	sys_getdents64,			/* 220 */
-	sys_fcntl64,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 225 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 230 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 235 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 240 */
-	NULL,
-	NULL,
-#ifdef __x86_64__
-	sys_set_thread_area,
-#else
-	NULL,
-#endif
-	NULL,
-	NULL,				/* 245 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 250 */
-	NULL,
-	sys_exit,			/* sys_exit_group */	/* 252 */
-	NULL,
-	NULL,
-	NULL,				/* 255 */
-	NULL,
-	NULL,
-	sys_set_tid_address,			/* 258 */
-	NULL,
-	NULL,				/* 260 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 265 */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,				/* 270 */
-	sys_utimes,
-};
-
-static void do_bad_syscall(unsigned int num)
-{
-#ifdef __DEBUG__
-	printk("***** (pid %d) system call %d not supported yet *****\n", current->pid, num);
-#endif /*__DEBUG__ */
-}
-
-/*
- * The argument 'struct sigcontext' is needed because there are some system
- * calls (such as sys_iopl and sys_fork) that need to get information from
- * certain registers (EFLAGS and ESP). The rest of system calls will ignore
- * such extra argument.
- */
-#ifdef CONFIG_SYSCALL_6TH_ARG
-int do_syscall(unsigned int num, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, struct sigcontext sc)
-#else
-int do_syscall(unsigned int num, int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext sc)
-#endif /* CONFIG_SYSCALL_6TH_ARG */
-{
-	int (*sys_func)(int, ...);
-
-	if(num > NR_SYSCALLS) {
-		do_bad_syscall(num);
-		return -ENOSYS;
-	}
-	sys_func = syscall_table[num];
-	if(!sys_func) {
-		do_bad_syscall(num);
-		return -ENOSYS;
-	}
-	current->sp = (addr_t)&sc;
-#ifdef CONFIG_SYSCALL_6TH_ARG
-	return sys_func(arg1, arg2, arg3, arg4, arg5, arg6, &sc);
-#else
-	return sys_func(arg1, arg2, arg3, arg4, arg5, &sc);
-#endif /* CONFIG_SYSCALL_6TH_ARG */
-}
-
 #ifdef __x86_64__
 /* =====================================================================
  * Fiwix64 (native 64-bit port): the x86_64 syscall table (musl numbers).
@@ -543,16 +217,16 @@ int do_syscall(unsigned int num, int arg1, int arg2, int arg3, int arg4, int arg
  * ===================================================================== */
 
 /* x86-64 mmap(9): the 6th arg (r9) is the file offset in BYTES; the
- * dispatcher stashes it in sc->ebp. The i386 mmap2 wants pages. */
+ * dispatcher stashes it in sc->r9. The i386 mmap2 wants pages. */
 long sys_mmap64(addr_t start, addr_t length, unsigned int prot,
 	unsigned int user_flags, int fd, struct sigcontext *sc)
 {
 	extern long do_mmap2(addr_t, addr_t, unsigned int,
 		unsigned int, int, addr_t);
 	/* x86-64 mmap(9): the 6th arg (r9) is the offset in BYTES (stashed in
-	 * sc->ebp); mmap2 wants pages. */
+	 * sc->r9); mmap2 wants pages. */
 	return do_mmap2(start, length, prot, user_flags, fd,
-		((addr_t)sc->ebp) >> PAGE_SHIFT);
+		((addr_t)sc->r9) >> PAGE_SHIFT);
 }
 
 /* arch_prctl(158): x86-64 TLS uses the %fs base MSR. ARCH_SET_FS stores
@@ -639,7 +313,9 @@ void *syscall_table64[] = {
 	[10] = sys_mprotect,		/* mprotect */
 	[11] = sys_munmap,		/* munmap */
 	[12] = sys_brk,			/* brk */
-	/* 13 rt_sigaction, 14 rt_sigprocmask, 15 rt_sigreturn: pending */
+	[13] = sys_rt_sigaction,	/* rt_sigaction */
+	[14] = sys_rt_sigprocmask,	/* rt_sigprocmask */
+	[15] = sys_rt_sigreturn,	/* rt_sigreturn */
 	[16] = sys_ioctl,		/* ioctl */
 	[19] = sys_readv,		/* readv */
 	[20] = sys_writev,		/* writev */
@@ -731,10 +407,12 @@ void *syscall_table64[] = {
 	[172] = sys_iopl,		/* iopl */
 	[173] = sys_ioperm,		/* ioperm */
 	/* 186 gettid: not implemented */
+	[200] = sys_tkill,		/* tkill */
 	[217] = sys_getdents64,		/* getdents64 */
 	[218] = sys_set_tid_address,	/* set_tid_address */
 	[228] = sys_clock_gettime64,	/* clock_gettime */
 	[229] = sys_clock_getres64,	/* clock_getres */
 	[231] = sys_exit_group64,	/* exit_group */
+	[234] = sys_tgkill,		/* tgkill */
 };
 #endif /* __x86_64__ */

@@ -333,14 +333,15 @@ int dump_registers(unsigned int trap, struct sigcontext *sc)
 		errno = 1;
 	}
 	if(sc->cs == KERNEL_CS) {
-		printk(" in '%s()'", elf_lookup_symbol(sc->eip));
+		printk(" in '%s()'", elf_lookup_symbol(sc->rip));
 	}
 	printk(".\n");
 
-	printk(" cs: 0x%04x\teip: 0x%08x\tefl: 0x%08x\t ss: 0x%08x\tesp: 0x%08x\n", sc->cs, sc->eip, sc->eflags, sc->oldss, sc->oldesp);
-	printk("eax: 0x%08x\tebx: 0x%08x\tecx: 0x%08x\tedx: 0x%08x\n", sc->eax, sc->ebx, sc->ecx, sc->edx);
-	printk("esi: 0x%08x\tedi: 0x%08x\tesp: 0x%08x\tebp: 0x%08x\n", sc->esi, sc->edi, sc->esp, sc->ebp);
-	printk(" ds: 0x%04x\t es: 0x%04x\t fs: 0x%04x\t gs: 0x%04x\n", sc->ds, sc->es, sc->fs, sc->gs);
+	printk(" cs: 0x%04x\trip: 0x%016lx\trfl: 0x%016lx\t ss: 0x%04x\trsp: 0x%016lx\n", sc->cs, sc->rip, sc->rflags, sc->ss, sc->rsp);
+	printk("rax: 0x%016lx\trbx: 0x%016lx\trcx: 0x%016lx\trdx: 0x%016lx\n", sc->rax, sc->rbx, sc->rcx, sc->rdx);
+	printk("rsi: 0x%016lx\trdi: 0x%016lx\trbp: 0x%016lx\tr8: 0x%016lx\n", sc->rsi, sc->rdi, sc->rbp, sc->r8);
+	printk(" r9: 0x%016lx\tr10: 0x%016lx\tr11: 0x%016lx\tr12: 0x%016lx\n", sc->r9, sc->r10, sc->r11, sc->r12);
+	printk("r13: 0x%016lx\tr14: 0x%016lx\tr15: 0x%016lx\n", sc->r13, sc->r14, sc->r15);
 
 	if(sc->cs == KERNEL_CS) {
 		stack_backtrace();

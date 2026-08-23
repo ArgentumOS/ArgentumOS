@@ -4,10 +4,12 @@
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64 (M6 userland): the modern rt_sigaction() syscall (Linux #174),
- * which musl/glibc emit for sigaction(). Its user struct uses a 64-bit
- * signal mask (realtime signals), unlike the classic sigaction() (#67)
- * 32-bit mask that Fiwix implements internally; translate in place.
+ * Fiwix64 (pure x86-64 port): SYS_rt_sigaction (#13) is what musl's
+ * sigaction() emits. The user struct is the x86-64 ABI layout
+ * (include/signal.h: union {sa_handler,sa_sigaction}, sigset_t sa_mask
+ * (128 bytes), int sa_flags, void *sa_restorer - 152 bytes total) and
+ * sigsetsize is sizeof(sigset_t) = 128. The kernel keeps a 32-bit
+ * __sigset_t (NSIG == 32): translate the mask and the pointer widths.
  */
 
 #include <fiwix/fs.h>
@@ -19,18 +21,19 @@
 #include <fiwix/stdio.h>
 #endif /*__DEBUG__ */
 
-/* i386 rt_sigaction() user struct: handler, flags, restorer, 64-bit mask */
-struct rt_sigaction32 {
-	unsigned int sa_handler;
-	unsigned int sa_flags;
-	unsigned int sa_restorer;
-	unsigned long long sa_mask;
+/* x86-64 ABI struct sigaction (musl): handler, mask, flags, restorer */
+struct sigaction64 {
+	unsigned long long sa_handler;
+	unsigned long long sa_mask[16];	/* sigset_t = 128 bytes */
+	int sa_flags;
+	int __pad;
+	unsigned long long sa_restorer;
 };
 
 int sys_rt_sigaction(__sigset_t signum, const void *act, void *oldact, int sigsetsize)
 {
-	const struct rt_sigaction32 *a32;
-	struct rt_sigaction32 *o32;
+	const struct sigaction64 *a64;
+	struct sigaction64 *o64;
 	struct sigaction *sa;
 	int errno;
 
@@ -44,32 +47,32 @@ int sys_rt_sigaction(__sigset_t signum, const void *act, void *oldact, int sigse
 	if(signum == SIGKILL || signum == SIGSTOP) {
 		return -EINVAL;
 	}
-	if(sigsetsize != 8) {
+	if(sigsetsize != 8 && sigsetsize != 128) {
 		return -EINVAL;
 	}
 
 	sa = &current->sigaction[signum - 1];
-	a32 = act;
-	o32 = oldact;
+	a64 = act;
+	o64 = oldact;
 
-	if(o32) {
-		if((errno = check_user_area(VERIFY_WRITE, o32, sizeof(struct rt_sigaction32)))) {
+	if(o64) {
+		if((errno = check_user_area(VERIFY_WRITE, o64, sizeof(struct sigaction64)))) {
 			return errno;
 		}
-		o32->sa_handler = (unsigned int)(unsigned long)sa->sa_handler;
-		o32->sa_flags = sa->sa_flags;
-		o32->sa_restorer = (unsigned int)(unsigned long)sa->sa_restorer;
-		o32->sa_mask = (unsigned long long)sa->sa_mask;
+		o64->sa_handler = (unsigned long long)(unsigned long)sa->sa_handler;
+		o64->sa_mask[0] = (unsigned long long)sa->sa_mask;
+		o64->sa_flags = sa->sa_flags;
+		o64->sa_restorer = (unsigned long long)(unsigned long)sa->sa_restorer;
 	}
-	if(a32) {
-		if((errno = check_user_area(VERIFY_READ, a32, sizeof(struct rt_sigaction32)))) {
+	if(a64) {
+		if((errno = check_user_area(VERIFY_READ, a64, sizeof(struct sigaction64)))) {
 			return errno;
 		}
 		/* only the low 32 signals exist in Fiwix (NSIG == 32) */
-		sa->sa_handler = (void *)(unsigned long)a32->sa_handler;
-		sa->sa_mask = (__sigset_t)(a32->sa_mask & 0xFFFFFFFFULL);
-		sa->sa_flags = a32->sa_flags;
-		sa->sa_restorer = (void *)(unsigned long)a32->sa_restorer;
+		sa->sa_handler = (void *)(unsigned long)a64->sa_handler;
+		sa->sa_mask = (__sigset_t)(a64->sa_mask[0] & 0xFFFFFFFFULL);
+		sa->sa_flags = a64->sa_flags;
+		sa->sa_restorer = (void *)(unsigned long)a64->sa_restorer;
 
 		if(sa->sa_handler == SIG_IGN) {
 			if(signum != SIGCHLD) {

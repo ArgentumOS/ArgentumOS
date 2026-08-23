@@ -158,7 +158,7 @@ static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc)
 	struct page *pg;
 
 	if(!vma) {
-		if(cr2 >= (sc->oldesp - 32) && cr2 < USER_STACK_TOP) {
+		if(cr2 >= (sc->rsp - 32) && cr2 < USER_STACK_TOP) {
 			if(!(vma = find_vma_region(USER_STACK_TOP - 1))) {
 				printk("WARNING: %s(): process %d doesn't have an stack region in vma_table!\n", __FUNCTION__, current->pid);
 				send_sigsegv(sc);
@@ -439,26 +439,27 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 			/*
 			 * The kernel may incur in a page fault when trying to
 			 * access a possible user stack address. In that case,
-			 * sc->oldesp doesn't point to the user stack, but to
+			 * sc->rsp doesn't point to the user stack, but to
 			 * the kernel stack, because the page fault was raised
 			 * in kernel mode.
 			 * We need to get the original user sigcontext struct
-			 * from the current kernel stack, in order to obtain
-			 * the user stack pointer sc->oldesp, and see if CR2
-			 * looks like a user stack address.
+			 * in order to obtain the user stack pointer sc->rsp,
+			 * and see if CR2 looks like a user stack address.
 			 */
 			struct sigcontext *usc;
 
 			/*
-			 * Since the page fault was raised in kernel mode, the
-			 * exception occurred at the same privilege level, hence
-			 * the %ss and %esp registers were not saved.
+			 * Fiwix64 (native port): syscall80_handler() keeps the
+			 * active user sigcontext at current->sp for the whole
+			 * syscall (set before dispatch), so a kernel-mode fault
+			 * inside a syscall (e.g. copy_from_user) finds the user
+			 * state there. The old i386 SAVE_ALL stack-digging
+			 * ((unsigned int *)sc->esp + 16) is 32-bit baggage.
 			 */
-			usc = (struct sigcontext *)((unsigned int *)sc->esp + 16);
-			usc += 1;
+			usc = (struct sigcontext *)current->sp;
 
 			/* does it look like a user stack address? */
-			if(cr2 >= (usc->oldesp - 32) && cr2 < USER_STACK_TOP) {
+			if(cr2 >= (usc->rsp - 32) && cr2 < USER_STACK_TOP) {
 				if((!page_not_present(vma, cr2, usc))) {
 					return;
 				}

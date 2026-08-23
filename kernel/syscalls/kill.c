@@ -48,3 +48,24 @@ int sys_kill(__pid_t pid, __sigset_t signum)
 
 	return kill_pid(pid, signum, USER);
 }
+
+/* tkill(200): signal a single thread (process) by tid == pid.
+ * tgkill(234): same, with a tgid check (ignored: single-threaded). */
+int sys_tkill(int tid, __sigset_t signum)
+{
+	if(signum > NSIG) {
+		return -EINVAL;
+	}
+	return kill_pid(tid, signum, USER);
+}
+
+int sys_tgkill(int tgid, int tid, __sigset_t signum)
+{
+	if(signum > NSIG) {
+		return -EINVAL;
+	}
+	if(tgid != tid) {
+		return -EINVAL;
+	}
+	return kill_pid(tid, signum, USER);
+}
