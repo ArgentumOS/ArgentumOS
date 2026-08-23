@@ -72,6 +72,7 @@ typedef struct elf32_hdr{
 #define ET_HIPROC 6
 
 #define EM_386    3
+#define EM_X86_64 62
 
 #define EV_NONE		0		/* e_version, EI_VERSION */
 #define EV_CURRENT	1

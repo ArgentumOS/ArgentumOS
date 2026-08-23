@@ -109,7 +109,9 @@ static void gop_video_init(void)
 
 	/* Clear the OVMF boot graphics out of the framebuffer before the
 	 * console first draws, so it starts on a black screen instead of
-	 * showing the firmware's leftover splash/logo. */
+	 * showing the firmware's leftover splash/logo. (The "clobbers the
+	 * kernel image" suspicion was disproven - the image stays intact
+	 * through the whole boot.) */
 	memset_b((void *)video.address, 0, video.memsize);
 }
 #endif /* __x86_64__ */

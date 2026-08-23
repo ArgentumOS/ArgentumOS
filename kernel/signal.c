@@ -80,11 +80,14 @@ int send_sig(struct proc *p, __sigset_t signum)
 
 	if(p->sigaction[signum - 1].sa_handler == SIG_DFL) {
 		/*
-		 * INIT process is special, it only gets signals that have the
-		 * signal handler installed. This avoids to bring down the
-		 * system accidentally.
+		 * The INIT process is special BEFORE it execs a real program:
+		 * a default signal then is dropped so a transient boot-time
+		 * fault can't take down the whole system. Once INIT has exec'd
+		 * /sbin/init (PF_PEXEC) it is an ordinary user process and
+		 * must be killable - otherwise its first fault loops forever
+		 * (iretq retries the faulting instruction).
 		 */
-		if(p->pid == INIT) {
+		if(p->pid == INIT && !(p->flags & PF_PEXEC)) {
 			return 0;
 		}
 

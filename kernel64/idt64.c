@@ -321,12 +321,31 @@ void idt64_init(void)
 	 * builds (cs=UCODE64|RPL3, ss=UDATA32|RPL3) drives the return mode. */
 	{
 		extern void syscall_entry64(void);
+		unsigned long long v;
+
+		/* STAR: SYSCALL CS=0x08 (KCODE64), SS=0x10; SYSRET CS=0x08<<48 */
+		v = 0x08ULL << 32;
 		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000081),
-			"a"((unsigned long)(0x08ULL << 32)), "d"(0));		/* STAR */
+			"a"((unsigned int)v), "d"((unsigned int)(v >> 32)));	/* STAR */
+		/* LSTAR: the FULL 64-bit high-half runtime address of
+		 * syscall_entry64 - writing only EAX would zero the high half
+		 * and the 'syscall' would enter at the low canonical alias
+		 * (identity-mapped 2.1GB MMIO hole = zeros). */
+		v = (unsigned long long)syscall_entry64;
 		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000082),
-			"a"((unsigned long)syscall_entry64), "d"(0));		/* LSTAR */
+			"a"((unsigned int)v), "d"((unsigned int)(v >> 32)));	/* LSTAR */
 		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000084),
 			"a"((unsigned long)0x202), "d"(0));			/* FMASK */
+		/* Fiwix64 (native port): enable IA32_EFER.SCE - without it the
+		 * 'syscall' instruction #UDs and a native musl program dies at
+		 * its first syscall (arch_prctl during TLS setup). */
+		{
+			unsigned int lo, hi;
+
+			__asm__ __volatile__("rdmsr" : "=a"(lo), "=d"(hi) : "c"((unsigned long)0xC0000080));
+			lo |= 0x1;	/* SCE */
+			__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000080), "a"(lo), "d"(hi));
+		}
 	}
 
 	idtr.limit = (unsigned short)(sizeof(idt) - 1);

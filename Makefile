@@ -221,6 +221,13 @@ rootdisk: userland
 	python3 tools/mkext2.py $(ROOTFS) .build/root.img 8
 	@echo "rootdisk: .build/root.img ready (ext2, 8MB)"
 
+# Native x86_64 root disk: the same idea as 'rootdisk' but from the ELF64
+# userland tree, so the kernel can boot /sbin/init straight off hdb without
+# any initrd (the Fiwix64 native-port milestone).
+rootdisk64: userland64
+	python3 tools/mkext2.py $(ROOTFS64) .build/root.img 8
+	@echo "rootdisk64: .build/root.img ready (ext2, 8MB, native x86_64 userland)"
+
 ovmf: .build/ovmf/OVMF.fd
 
 .build/ovmf/OVMF.fd:

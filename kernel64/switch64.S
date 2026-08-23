@@ -246,7 +246,7 @@ syscall_entry64:
 	popq	%rdx
 	popq	%rcx
 	popq	%rax
-	addq	$56, %rsp				/* drop the 7-word frame */
+	addq	$16, %rsp				/* drop vector+error, keep rip/cs/rflags/rsp/ss for the iretq */
 	iretq
 .size syscall_entry64, .-syscall_entry64
 
@@ -264,12 +264,17 @@ return_from_syscall64:
 	movl	$0x23, %r10d		/* UDATA32 | RPL3 */
 	movw	%r10w, %ds
 	movw	%r10w, %es
-	movw	%r10w, %fs
-	movw	%r10w, %gs
+	/* NOT fs/gs: a 64-bit process's FS is its TLS selector (inherited
+	 * by the fork child); clobbering it kills the child in
+	 * musl's __post_Fork (%fs:0 read). GS stays inherited too. */
 	pushq	$0x23			/* SS */
-	pushq	64(%r11)		/* RSP = sc->oldesp */
-	pushq	60(%r11)		/* RFLAGS */
+	movl	64(%r11), %r9d		/* RSP = sc->oldesp (32-bit: zero-extend, never read oldss) */
+	pushq	%r9
+	movl	60(%r11), %r9d		/* RFLAGS = sc->eflags (32-bit: zero-extend) */
+	pushq	%r9
 	pushq	$0x4b			/* CS = UCODE64 | RPL3 */
-	pushq	52(%r11)		/* RIP = sc->eip */
+	movl	52(%r11), %r9d		/* RIP = sc->eip (32-bit: zero-extend, never read cs) */
+	pushq	%r9
+	movl	44(%r11), %eax		/* child's RAX = sc->eax (the fork returns 0) */
 	iretq
 .size return_from_syscall64, .-return_from_syscall64

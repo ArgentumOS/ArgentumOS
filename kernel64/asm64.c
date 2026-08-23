@@ -193,6 +193,12 @@ void invalidate_tlb(void)
 	unsigned long cr3;
 
 	__asm__ __volatile__("movq %%cr3, %0" : "=r"(cr3));
+	/* QEMU-TCG quirk: a reload with the SAME cr3 value is optimized
+	 * away, leaving the stale entry cached. Hop CR3 through the kernel
+	 * pml4 (which maps this code) so the value actually changes and the
+	 * TCG flushes the whole TLB. */
+	extern unsigned long paging64_pml4(void);
+	__asm__ __volatile__("movq %0, %%cr3" :: "r"(paging64_pml4()) : "memory");
 	__asm__ __volatile__("movq %0, %%cr3" :: "r"(cr3) : "memory");
 }
 

@@ -502,7 +502,13 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	unsigned long long ae_ptr_len, ae_str_len;
 
 	e = (Elf64_Ehdr *)data;
-	if(check_elf((struct elf32_hdr *)e)) {
+	/* Fiwix64 (native port): the 32-bit check_elf() enforces EM_386 and
+	 * would reject every ELF64; validate the 64-bit header here instead
+	 * (EI_CLASS was already checked by elf_load() before routing here). */
+	if(e->e_ident[EI_MAG0] != ELFMAG0 || e->e_ident[EI_MAG1] != ELFMAG1 ||
+		e->e_ident[EI_MAG2] != ELFMAG2 || e->e_ident[EI_MAG3] != ELFMAG3 ||
+		(e->e_type != ET_EXEC && e->e_type != ET_DYN) ||
+		e->e_machine != EM_X86_64) {
 		return -ENOEXEC;
 	}
 

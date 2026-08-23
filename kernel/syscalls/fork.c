@@ -175,9 +175,12 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 
 	child->tss.eip = (addr_t)return_from_syscall;
 #ifdef __x86_64__
-	if(child->flags & PF_ELF64) {
+	if((current->flags & PF_ELF64)) {
 		/* Fiwix64 (native port): a 64-bit child must iretq into 64-bit
-		 * user mode (UCODE64), not the compat return_from_syscall. */
+		 * user mode (UCODE64), not the compat return_from_syscall.
+		 * child->flags was reset to 0 above, so re-assert PF_ELF64 from
+		 * the parent - the child inherits the 64-bit ABI. */
+		child->flags |= PF_ELF64;
 		extern void return_from_syscall64(void);
 		child->tss.eip = (addr_t)return_from_syscall64;
 	}

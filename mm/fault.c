@@ -42,8 +42,6 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 	 * or a supervisor 2MB identity page) is demand-paging. No 2-level
 	 * shadow, no mirroring, no desync. */
 	unsigned long pml4, leaf, newaddr;
-	struct page *pg;
-	int page;
 
 	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
 	extern int map_user_page64_in(unsigned long, unsigned long, unsigned long, unsigned long);
@@ -62,49 +60,44 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		return 0;
 	}
 
-	page = leaf >> PAGE_SHIFT;
-	pg = &page_table[page];
-
-	/* Copy On Write */
-	if(pg->count > 1) {
-		/* a page not marked as copy-on-write means it's read-only */
-		if(!(pg->flags & PAGE_COW)) {
-			send_sigsegv(sc);
-			return 0;
-		}
-		if(!(newaddr = kmalloc(PAGE_SIZE))) {
-			printk("%s(): not enough memory!\n", __FUNCTION__);
-			return 1;
-		}
-		current->rss++;
-		memcpy_b((void *)P2V(newaddr), (void *)P2V(leaf), PAGE_SIZE);
-		if(map_user_page64_in(pml4, (unsigned long)cr2,
-				(unsigned long)V2P(newaddr), 0x003)) {
-			return 1;
-		}
-		/* the other CoW process(es) still reference the old page: drop
-		 * our reference instead of freeing it */
-		pg->count--;
-		current->rss--;
-		invalidate_tlb();
+	/* Copy On Write (Fiwix64 native): a fork shares the writable user
+	 * leaves read-only in BOTH sides (create_pml4_64), so the first
+	 * write by either side gets a fresh private copy. Only do this for
+	 * writable PRIVATE vmas - a genuine read-only page (text/rodata,
+	 * PROT_READ mmap) must SIGSEGV, not silently become writable. */
+	if(!(vma->prot & PROT_WRITE) || (vma->flags & MAP_SHARED)) {
+		send_sigsegv(sc);
 		return 0;
-	} else {
-		/* last page of Copy On Write procedure */
-		if(pg->count == 1) {
-			/* a page not marked as copy-on-write means it's read-only */
-			if(!(pg->flags & PAGE_COW)) {
-				send_sigsegv(sc);
-				return 0;
-			}
-			if(map_user_page64_in(pml4, (unsigned long)cr2, leaf, 0x003)) {
-				return 1;
-			}
-			invalidate_tlb();
-			return 0;
-		}
 	}
-	printk("WARNING: %s(): page %d with pg->count = 0!\n", __FUNCTION__, pg->page);
-	return 1;
+	if(!(newaddr = kmalloc(PAGE_SIZE))) {
+		printk("%s(): not enough memory!\n", __FUNCTION__);
+		return 1;
+	}
+	current->rss++;
+	memcpy_b((void *)P2V(newaddr), (void *)P2V(leaf), PAGE_SIZE);
+	if(map_user_page64_in(pml4, (unsigned long)cr2,
+			(unsigned long)V2P(newaddr), 0x003)) {
+		kfree(newaddr);
+		current->rss--;
+		return 1;
+	}
+	/* TEMP probe: confirm the leaf the COW just wrote (must be P+RW+US) */
+	{
+		extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+		unsigned long l = user_leaf64_in(pml4, (unsigned long)cr2);
+		unsigned long *lv;
+		unsigned long e1, e2, e3;
+		lv = (unsigned long *)P2V(pml4);
+		e1 = lv[((unsigned long)cr2 >> 39) & 0x1FFUL];
+		lv = (unsigned long *)P2V(e1 & 0x000FFFFFFFFFF000ULL);
+		e2 = lv[((unsigned long)cr2 >> 30) & 0x1FFUL];
+		lv = (unsigned long *)P2V(e2 & 0x000FFFFFFFFFF000ULL);
+		e3 = lv[((unsigned long)cr2 >> 21) & 0x1FFUL];
+		printk("[COW] cr2=0x%lx pml4e=0x%lx pdpte=0x%lx pde=0x%lx leaf=0x%lx\n",
+			(unsigned long)cr2, e1, e2, e3, l);
+	}
+	invalidate_tlb();
+	return 0;
 #else
 	unsigned int *pgdir;
 	unsigned int *pgtbl;

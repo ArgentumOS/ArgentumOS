@@ -184,4 +184,8 @@ void syscall80_handler(unsigned long *gprs)
 	 * frame (64-bit for the trampoline, compat for a 32-bit program - the
 	 * frame's CS selects the mode) */
 	gprs[14] = (unsigned long)(unsigned int)ret;
+	/* TEMP: trace the shell's syscalls (pid > 1, first 14 pids) */
+	if(current->pid > 1 && current->pid < 15) {
+		printk("[SC] pid %d nr %d ret %d\n", current->pid, (int)sc.eax, ret);
+	}
 }

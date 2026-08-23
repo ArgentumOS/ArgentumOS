@@ -113,6 +113,11 @@ static void worker64(void)
 /* set before the first paging64_init() call so the high-half re-entry skips it */
 static int paging64_done;
 
+/* runtime physical load base of the .efi image (LoaderCode range), captured
+ * from the EFI map; the kernel's high-half aliases are
+ * PAGE_OFFSET64 + load_base + (section_offset) */
+unsigned long fiwix64_load_base;
+
 static const char *memtype_name(UINT32 type)
 {
 	switch(type) {
@@ -145,6 +150,14 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 	unsigned long paddr;
 	unsigned int apic_id;
 	int ok, st;
+
+	/* Fiwix64: the firmware leaves interrupts ENABLED after
+	 * ExitBootServices() (its 8254 PIT is still running). Until
+	 * idt64_init() installs the kernel IDT below, any IRQ vectors into
+	 * OVMF's handler, which runs firmware memcpy()s into the loaded
+	 * image (clobbering the .text tail / syscall entry). Close the
+	 * window: IF=0 now, re-enabled only by the sti after irq64_init(). */
+	__asm__ __volatile__("cli");
 
 	serial_init();
 
@@ -207,6 +220,9 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 		pages += d->NumberOfPages;
 		if(d->Type == EfiConventionalMemory) {
 			usable_pages += d->NumberOfPages;
+		}
+		if(d->Type == EfiLoaderCode && !fiwix64_load_base) {
+			fiwix64_load_base = (unsigned long)d->PhysicalStart;
 		}
 	}
 	serial_puts("\n");
