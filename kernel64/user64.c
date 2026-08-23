@@ -109,6 +109,25 @@ void syscall80_handler(unsigned long *gprs)
 	 * like the i386-compat eip/oldesp fields). */
 	sc.rip = f->rip;
 	sc.rsp = f->rsp;
+	/* Fiwix64 (fork return): save the child's full 64-bit user GPRs so
+	 * return_from_syscall64 can restore them (the 32-bit fields above
+	 * would truncate 64-bit user pointers). isr_common64/syscall_entry64
+	 * push order: gprs[0]=r15 ... gprs[14]=rax. */
+	sc.r15 = gprs[0];
+	sc.r14 = gprs[1];
+	sc.r13 = gprs[2];
+	sc.r12 = gprs[3];
+	sc.r11 = gprs[4];
+	sc.r10 = gprs[5];
+	sc.r9 = gprs[6];
+	sc.r8 = gprs[7];
+	sc.rdi = gprs[8];
+	sc.rsi = gprs[9];
+	sc.rbp = gprs[10];
+	sc.rbx = gprs[11];
+	sc.rdx = gprs[12];
+	sc.rcx = gprs[13];
+	sc.rax = gprs[14];
 
 	was_exec = (sc.eax == ((current->flags & PF_ELF64) ? SYS64_execve : SYS_execve));
 	{

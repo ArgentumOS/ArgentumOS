@@ -114,3 +114,4 @@ void thread_create64(void (*fn)(void))
 
 	nr_threads++;
 }
+

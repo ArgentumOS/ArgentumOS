@@ -28,29 +28,6 @@ int sys_newfstat(unsigned int ufd, struct new_stat *statbuf)
 		return errno;
 	}
 	i = fd_table[current->fd[ufd]].inode;
-	statbuf->st_dev = i->dev;
-	statbuf->__pad1 = 0;
-	statbuf->st_ino = i->inode;
-	statbuf->st_mode = i->i_mode;
-	statbuf->st_nlink = i->i_nlink;
-	statbuf->st_uid = i->i_uid;
-	statbuf->st_gid = i->i_gid;
-	statbuf->st_rdev = i->rdev;
-	statbuf->__pad2 = 0;
-	statbuf->st_size = i->i_size;
-	statbuf->st_blksize = i->sb->s_blocksize;
-	statbuf->st_blocks = i->i_blocks;
-	if(!i->i_blocks) {
-		statbuf->st_blocks = (i->i_size / i->sb->s_blocksize * 2);
-		statbuf->st_blocks++;
-	}
-	statbuf->st_atime = i->i_atime;
-	statbuf->__unused1 = 0;
-	statbuf->st_mtime = i->i_mtime;
-	statbuf->__unused2 = 0;
-	statbuf->st_ctime = i->i_ctime;
-	statbuf->__unused3 = 0;
-	statbuf->__unused4 = 0;
-	statbuf->__unused5 = 0;
+		fill_new_stat(i, statbuf);
 	return 0;
 }

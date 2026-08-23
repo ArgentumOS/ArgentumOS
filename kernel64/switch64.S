@@ -268,6 +268,23 @@ syscall_entry64:
 .type return_from_syscall64, @function
 return_from_syscall64:
 	movq	%rsp, %r11		/* r11 = &sigcontext (stable base) */
+	/* Fiwix64 (fork return): restore the child's FULL 64-bit user GPRs
+	 * from the sigcontext. The 32-bit edi/esi/ebp/ebx/edx/ecx fields
+	 * would truncate 64-bit user pointers (128TB user half); syscall80_
+	 * handler() saved the full registers at sc->r15..sc->rax. r9/r10/r11
+	 * are scratch for the segment setup + iretq frame below and are
+	 * restored last. */
+	movq	88(%r11), %r15
+	movq	96(%r11), %r14
+	movq	104(%r11), %r13
+	movq	112(%r11), %r12
+	movq	144(%r11), %r8
+	movq	152(%r11), %rdi
+	movq	160(%r11), %rsi
+	movq	168(%r11), %rbp
+	movq	176(%r11), %rbx
+	movq	184(%r11), %rdx
+	movq	192(%r11), %rcx
 	movl	$0x23, %r10d		/* UDATA32 | RPL3 */
 	movw	%r10w, %ds
 	movw	%r10w, %es
@@ -287,5 +304,10 @@ return_from_syscall64:
 	movq	72(%r11), %r9		/* RIP = sc->rip (64-bit) */
 	pushq	%r9
 	movl	44(%r11), %eax		/* child's RAX = sc->eax (the fork returns 0) */
+	/* restore the remaining user GPRs (r9/r10 were scratch above; r11
+	 * was the sigcontext base - restore it LAST) */
+	movq	136(%r11), %r9
+	movq	128(%r11), %r10
+	movq	120(%r11), %r11
 	iretq
 .size return_from_syscall64, .-return_from_syscall64

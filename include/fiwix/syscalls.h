@@ -134,6 +134,7 @@ int sys_socketcall(int, unsigned int *);
 int sys_syslog(int, char *, int);
 int sys_setitimer(int, const struct itimerval *, struct itimerval *);
 int sys_getitimer(int, struct itimerval *);
+void fill_new_stat(struct inode *, struct new_stat *);
 int sys_newstat(const char *, struct new_stat *);
 int sys_newlstat(const char *, struct new_stat *);
 int sys_newfstat(unsigned int, struct new_stat *);

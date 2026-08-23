@@ -165,9 +165,10 @@ build64demo: .build/64/fiwix64demo.efi
 	$(CC64K) -c -o .build/64/gdt64.o kernel64/gdt64.c
 	$(CC64K) -c -o .build/64/irq64.o kernel64/irq64.c
 	$(CC64K) -c -o .build/64/sched64.o kernel64/sched64.c
+	gcc -c -o .build/64/probe64.o kernel64/probe64.c
 	gcc -c -o .build/64/switch64.o kernel64/switch64.S
 	$(LD) -m i386pep --entry efi_main --image-base 0x1000000 -o $@ \
-		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/switch64.o
+		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/probe64.o .build/64/switch64.o
 	objcopy --remove-section .comment --subsystem 10 $@
 	@echo "build64: $@ ready (PE32+ EFI application)"
 
@@ -191,7 +192,7 @@ PATCH_PIC = tools/patch_pic_data.py
 
 build64real: .build/64/fiwix64.efi
 
-.build/64/fiwix64.efi: $(REALOBJS) kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/user64.c kernel64/kreal64.c kernel64/asm64.c kernel64/sections64.c kernel64/initrd64.c kernel64/switch64.S kernel64/init_trampoline64.S include/fiwix/efi.h kernel64/serial64.h
+.build/64/fiwix64.efi: $(REALOBJS) kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/probe64.c kernel64/user64.c kernel64/kreal64.c kernel64/asm64.c kernel64/sections64.c kernel64/initrd64.c kernel64/switch64.S kernel64/init_trampoline64.S include/fiwix/efi.h kernel64/serial64.h
 	@mkdir -p .build/64
 	$(CC64R) -c -o .build/64/efi_stub.o kernel64/efi_stub.c
 	$(CC64R) -c -o .build/64/main64.o kernel64/main64.c
@@ -201,6 +202,7 @@ build64real: .build/64/fiwix64.efi
 	$(CC64R) -c -o .build/64/gdt64.o kernel64/gdt64.c
 	$(CC64R) -c -o .build/64/irq64.o kernel64/irq64.c
 	$(CC64R) -c -o .build/64/sched64.o kernel64/sched64.c
+	$(CC64R) -c -o .build/64/probe64.o kernel64/probe64.c
 	$(CC64R) -c -o .build/64/user64.o kernel64/user64.c
 	$(CC64R) -c -o .build/64/kreal64.o kernel64/kreal64.c
 	$(CC64R) -c -o .build/64/asm64.o kernel64/asm64.c
@@ -208,10 +210,10 @@ build64real: .build/64/fiwix64.efi
 	$(CC64R) -c -o .build/64/initrd64.o kernel64/initrd64.c
 	gcc -c $(M6DEBUG) -o .build/64/switch64.o kernel64/switch64.S
 	gcc -c $(M6DEBUG) -o .build/64/init_trampoline64.o kernel64/init_trampoline64.S
-	python3 $(PATCH_PIC) .build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/user64.o .build/64/kreal64.o .build/64/asm64.o .build/64/sections64.o .build/64/initrd64.o > /dev/null
+	python3 $(PATCH_PIC) .build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/probe64.o .build/64/user64.o .build/64/kreal64.o .build/64/asm64.o .build/64/sections64.o .build/64/initrd64.o > /dev/null
 	$(LD) -m i386pep --entry efi_main --image-base 0x1000000 -o $@ \
 		$(REALOBJS) \
-		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/user64.o .build/64/kreal64.o .build/64/asm64.o .build/64/sections64.o .build/64/initrd64.o .build/64/switch64.o .build/64/init_trampoline64.o
+		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/probe64.o .build/64/user64.o .build/64/kreal64.o .build/64/asm64.o .build/64/sections64.o .build/64/initrd64.o .build/64/switch64.o .build/64/init_trampoline64.o
 	objcopy --remove-section .comment --subsystem 10 $@
 	@echo "build64real: $@ ready (PE32+ EFI application, REAL kernel + kernel64 primitives)"
 

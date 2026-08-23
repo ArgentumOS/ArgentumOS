@@ -34,6 +34,14 @@ struct sigcontext {
 	 * the full 64-bit values here and the exec iretq uses these. */
 	unsigned long long rip;
 	unsigned long long rsp;
+	/* Fiwix64 (fork return): return_from_syscall64 iretq's the fork
+	 * child back to user mode, and the child's 64-bit user GPRs must
+	 * be restored from here (the 32-bit edi/esi/ebp/ebx/edx/ecx/eax
+	 * fields above would truncate 64-bit user pointers in the 128TB
+	 * user half). syscall80_handler() fills these from the syscall
+	 * frame; the fork child inherits them via the page copy. */
+	unsigned long long r15, r14, r13, r12, r11, r10, r9, r8;
+	unsigned long long rdi, rsi, rbp, rbx, rdx, rcx, rax;
 #endif /* __x86_64__ */
 };
 

@@ -22,27 +22,30 @@ struct old_stat {
 	__time_t st_ctime;
 };
 
+/* Fiwix64: the native 64-bit syscall table (stat=4, fstat=5, lstat=6)
+ * must fill the x86-64 ABI 'struct stat' (musl arch/x86_64/bits/stat.h).
+ * The old i386 'new_stat' layout (16-bit dev/mode/nlink, 32-bit size)
+ * made userspace read garbage for st_mode (offset 24) etc., so every
+ * stat()/execvp() PATH probe failed with EACCES. */
 struct new_stat {
-	__dev_t st_dev;
-	unsigned short int __pad1;
-	__ino_t st_ino;
-	__mode_t st_mode;
-	__nlink_t st_nlink;
-	__uid_t st_uid;
-	__gid_t st_gid;
-	__dev_t st_rdev;
-	unsigned short int __pad2;
-	__off_t st_size;
-	__blk_t st_blksize;
-	__blk_t st_blocks;
-	__time_t st_atime;
-	unsigned int __unused1;
-	__time_t st_mtime;
-	unsigned int __unused2;
-	__time_t st_ctime;
-	unsigned int __unused3;
-	unsigned int __unused4;
-	unsigned int __unused5;
+	__u64 st_dev;
+	__u64 st_ino;
+	__u64 st_nlink;
+	__u32 st_mode;
+	__u32 st_uid;
+	__u32 st_gid;
+	__u32 __pad0;
+	__u64 st_rdev;
+	__s64 st_size;
+	__s64 st_blksize;
+	__s64 st_blocks;
+	__s64 st_atime;		/* struct timespec: tv_sec */
+	__s64 st_atime_nsec;	/* tv_nsec */
+	__s64 st_mtime;
+	__s64 st_mtime_nsec;
+	__s64 st_ctime;
+	__s64 st_ctime_nsec;
+	__s64 __unused[3];
 };
 
 struct stat64 {

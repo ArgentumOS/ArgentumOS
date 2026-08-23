@@ -34,15 +34,23 @@ int sys_newstat(const char *filename, struct new_stat *statbuf)
 		free_name(tmp_name);
 		return errno;
 	}
+	fill_new_stat(i, statbuf);
+	iput(i);
+	free_name(tmp_name);
+	return 0;
+}
+
+/* shared filler for the x86-64 ABI 'struct stat' (see statbuf.h) */
+void fill_new_stat(struct inode *i, struct new_stat *statbuf)
+{
 	statbuf->st_dev = i->dev;
-	statbuf->__pad1 = 0;
 	statbuf->st_ino = i->inode;
 	statbuf->st_mode = i->i_mode;
 	statbuf->st_nlink = i->i_nlink;
 	statbuf->st_uid = i->i_uid;
 	statbuf->st_gid = i->i_gid;
+	statbuf->__pad0 = 0;
 	statbuf->st_rdev = i->rdev;
-	statbuf->__pad2 = 0;
 	statbuf->st_size = i->i_size;
 	statbuf->st_blksize = i->sb->s_blocksize;
 	statbuf->st_blocks = i->i_blocks;
@@ -51,14 +59,10 @@ int sys_newstat(const char *filename, struct new_stat *statbuf)
 		statbuf->st_blocks++;
 	}
 	statbuf->st_atime = i->i_atime;
-	statbuf->__unused1 = 0;
+	statbuf->st_atime_nsec = 0;
 	statbuf->st_mtime = i->i_mtime;
-	statbuf->__unused2 = 0;
+	statbuf->st_mtime_nsec = 0;
 	statbuf->st_ctime = i->i_ctime;
-	statbuf->__unused3 = 0;
-	statbuf->__unused4 = 0;
-	statbuf->__unused5 = 0;
-	iput(i);
-	free_name(tmp_name);
-	return 0;
+	statbuf->st_ctime_nsec = 0;
+	statbuf->__unused[0] = statbuf->__unused[1] = statbuf->__unused[2] = 0;
 }
