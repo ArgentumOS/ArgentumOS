@@ -51,10 +51,6 @@ extern addr_t _last_data_addr;	/* Fiwix64: holds the high-half alias too */
 extern unsigned int _last_data_addr;
 #endif
 
-extern int kexec_proto;
-extern int kexec_size;
-extern char kexec_cmdline[NAME_MAX + 1];
-
 extern int _cputype;
 extern int _cpusignature;
 extern int _cpuflags;

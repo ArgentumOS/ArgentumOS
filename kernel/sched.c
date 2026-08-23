@@ -16,7 +16,6 @@
 #include <fiwix/stdio.h>
 #include <fiwix/string.h>
 
-extern struct seg_desc gdt[NR_GDT_ENTRIES];
 int need_resched = 0;
 
 static void context_switch(struct proc *next)
@@ -46,17 +45,11 @@ static void context_switch(struct proc *next)
 
 void set_tss(struct proc *p)
 {
-	struct seg_desc *g;
-
-	g = &gdt[TSS / sizeof(struct seg_desc)];
-
-	g->sd_lobase = (addr_t)&p->tss;
-	g->sd_loflags = SD_TSSPRESENT;
-	g->sd_hibase = (char)(((addr_t)&p->tss) >> 24);
-
 #ifdef __x86_64__
-	/* Fiwix64 (M6-E): the CPU uses gdt64.c's static 64-bit TSS; point its
-	 * RSP0 at this process's own kernel stack (see gdt64_set_rsp0). */
+	/* Fiwix64 (pure x86-64 port): there is no 32-bit GDT/TSS (the i386
+	 * gdt.c was deleted). The CPU runs the gdt64.c GDT + static 64-bit
+	 * TSS; point its RSP0 at this process's own kernel stack (see
+	 * gdt64_set_rsp0). */
 	{
 		extern void gdt64_set_rsp0(unsigned long);
 		gdt64_set_rsp0(p->tss.esp0);

@@ -66,66 +66,36 @@ addr_t map_kaddr(addr_t *page_dir, unsigned int from, unsigned int to, unsigned 
 	return paddr;
 }
 
-void bss_init(void)
-{
-	memset_b((void *)((addr_t)_edata), 0, KERNEL_BSS_SIZE);
-}
 
-/*
- * This function creates a Page Directory covering all physical memory
- * pages and places it at the end of the memory. This ensures that it
- * won't be clobbered by a large initrd image.
- *
- * It returns the address of the PD to be activated by the CR3 register.
- */
-unsigned int setup_tmp_pgdir(unsigned int magic, unsigned int info)
-{
-	int n, pd;
-	unsigned int addr, memksize;
-	unsigned int *pgtbl;
-	struct multiboot_info *mbi;
-
-	if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-		/* 4MB of memory assumed */
-		memksize = 4096 - 1024;	/* mem_upper */
-	} else {
-		mbi = (struct multiboot_info *)(PAGE_OFFSET + info);
-		if(!(mbi->flags & MULTIBOOT_INFO_MEMORY)) {
-			/* 4MB of memory assumed */
-			memksize = 4096 - 1024;	/* mem_upper */
-		} else {
-			memksize = (unsigned int)mbi->mem_upper;
-			/* CONFIG_VM_SPLIT22 marks the maximum physical memory supported */
-			if(memksize > ((0xFFFFFFFF - PAGE_OFFSET) / 1024)) {
-				memksize = (0xFFFFFFFF - PAGE_OFFSET) / 1024;
-			}
-		}
-	}
-
-	addr = PAGE_OFFSET + (memksize * 1024) - memksize;
-	addr = PAGE_ALIGN(addr);
-
-	kpage_dir = (addr_t *)addr;
-	memset_b(kpage_dir, 0, PAGE_SIZE);
-
-	addr += PAGE_SIZE;
-	pgtbl = (unsigned int *)addr;
-	memset_b(pgtbl, 0, memksize);
-
-	for(n = 0; n < (memksize + 1024) / sizeof(unsigned int); n++) {
-		pgtbl[n] = (n << PAGE_SHIFT) | PAGE_PRESENT | PAGE_RW;
-		if(!(n % 1024)) {
-			pd = n / 1024;
-			kpage_dir[pd] = (addr_t)(addr + (PAGE_SIZE * pd) + GDT_BASE) | PAGE_PRESENT | PAGE_RW;
-			kpage_dir[GET_PGDIR(PAGE_OFFSET) + pd] = (addr_t)(addr + (PAGE_SIZE * pd) + GDT_BASE) | PAGE_PRESENT | PAGE_RW;
-		}
-	}
-	return (addr_t)kpage_dir - PAGE_OFFSET;
-}
-
-/* returns the mapped address of a virtual address */
 addr_t get_mapped_addr(struct proc *p, addr_t addr)
 {
+#ifdef __x86_64__
+	/* Fiwix64 (native port): walk the process's own 4-level pml4 (the
+	 * per-process cr3_64) to translate a USER virtual address to its
+	 * PHYSICAL page. Returns the raw PHYSICAL page address; callers
+	 * apply & PAGE_MASK then V2P to read the page contents. */
+	unsigned long pml4, *lvl, e1, e2, e3, e4;
+#define P2V64x(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
+				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
+	extern unsigned long paging64_pml4_phys(void);
+	pml4 = p->cr3_64 ? p->cr3_64 : paging64_pml4_phys();
+	lvl = (unsigned long *)P2V64x(pml4);
+	if(!(e1 = lvl[((unsigned long)addr >> 39) & 0x1FF]) || !(e1 & 0x001)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64x(e1 & ~0xFFFUL);
+	if(!(e2 = lvl[((unsigned long)addr >> 30) & 0x1FF]) || !(e2 & 0x001)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64x(e2 & ~0xFFFUL);
+	if(!(e3 = lvl[((unsigned long)addr >> 21) & 0x1FF]) || !(e3 & 0x001)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64x(e3 & ~0xFFFUL);
+	e4 = lvl[((unsigned long)addr >> 12) & 0x1FF];
+#undef P2V64x
+	return (addr_t)e4;
+#else
 	unsigned int *pgdir, *pgtbl;
 	unsigned int pde, pte;
 
@@ -134,13 +104,14 @@ addr_t get_mapped_addr(struct proc *p, addr_t addr)
 	pte = GET_PGTBL(addr);
 	pgtbl = (unsigned int *)P2V((pgdir[pde] & PAGE_MASK));
 	return pgtbl[pte];
+#endif /* __x86_64__ */
 }
 
 int clone_pages(struct proc *child)
+
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): the fork child's 4-level tables were already
-	 * deep-copied with writable user leaves shared read-only by
+	/* Fiwix64 (native-MM): the fork child's 4-level tables were already	 * deep-copied with writable user leaves shared read-only by
 	 * create_pml4_64(). The 2-level clone_pages() work is gone; here we
 	 * only mirror its BOOKKEEPING: mark every shared writable user leaf
 	 * PAGE_COW (the 4-level copy never touched page_table[].flags) and

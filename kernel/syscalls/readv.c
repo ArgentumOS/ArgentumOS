@@ -32,18 +32,8 @@ int sys_readv(unsigned int ufd, const struct iovec *iov, int iovcnt)
 	}
 	for (vi = 0; vi < iovcnt; vi++) {
 		struct iovec io;
-#ifdef __x86_64__
-		if(current->flags & PF_ELF64) {
-			/* native x86_64 userland: full 64-bit struct iovec */
-			io = ((struct iovec *)iov)[vi];
-		} else {
-			const struct iovec32 *io32 = (const struct iovec32 *)iov + vi;
-			io.iov_base = (void *)(unsigned long)io32->iov_base;
-			io.iov_len = io32->iov_len;
-		}
-#else
-		io = iov[vi];
-#endif /* __x86_64__ */
+		/* Fiwix64 (native port): full 64-bit struct iovec */
+		io = ((struct iovec *)iov)[vi];
 		if((errno = check_user_area(VERIFY_WRITE, io.iov_base, io.iov_len))) {
 			return errno;
 		}

@@ -224,69 +224,6 @@ void load_idt(addr_t addr)
 	__asm__ __volatile__("lidt %0" :: "m"(*(volatile void *)addr) : "memory");
 }
 
-/* ---- inert stubs (32-bit gate/process paths, unused in the 64-bit build
- * until ported: the 64-bit kernel uses idt64.c gates and sched64.c) ---- */
 
-static void asm64_stub(void)
-{
-	__asm__ __volatile__("hlt");
-	for(;;) {
-	}
-}
-
-void except0(void) { asm64_stub(); }
-void except1(void) { asm64_stub(); }
-void except2(void) { asm64_stub(); }
-void except3(void) { asm64_stub(); }
-void except4(void) { asm64_stub(); }
-void except5(void) { asm64_stub(); }
-void except6(void) { asm64_stub(); }
-void except7(void) { asm64_stub(); }
-void except8(void) { asm64_stub(); }
-void except9(void) { asm64_stub(); }
-void except10(void) { asm64_stub(); }
-void except11(void) { asm64_stub(); }
-void except12(void) { asm64_stub(); }
-void except13(void) { asm64_stub(); }
-void except14(void) { asm64_stub(); }
-void except15(void) { asm64_stub(); }
-void except16(void) { asm64_stub(); }
-void except17(void) { asm64_stub(); }
-void except18(void) { asm64_stub(); }
-void except19(void) { asm64_stub(); }
-void except20(void) { asm64_stub(); }
-void except21(void) { asm64_stub(); }
-void except22(void) { asm64_stub(); }
-void except23(void) { asm64_stub(); }
-void except24(void) { asm64_stub(); }
-void except25(void) { asm64_stub(); }
-void except26(void) { asm64_stub(); }
-void except27(void) { asm64_stub(); }
-void except28(void) { asm64_stub(); }
-void except29(void) { asm64_stub(); }
-void except30(void) { asm64_stub(); }
-void except31(void) { asm64_stub(); }
-void irq0(void) { asm64_stub(); }
-void irq1(void) { asm64_stub(); }
-void irq2(void) { asm64_stub(); }
-void irq3(void) { asm64_stub(); }
-void irq4(void) { asm64_stub(); }
-void irq5(void) { asm64_stub(); }
-void irq6(void) { asm64_stub(); }
-void irq7(void) { asm64_stub(); }
-void irq8(void) { asm64_stub(); }
-void irq9(void) { asm64_stub(); }
-void irq10(void) { asm64_stub(); }
-void irq11(void) { asm64_stub(); }
-void irq12(void) { asm64_stub(); }
-void irq13(void) { asm64_stub(); }
-void irq14(void) { asm64_stub(); }
-void irq15(void) { asm64_stub(); }
-void unknown_irq(void) { asm64_stub(); }
-/* switch_to_user_mode is now implemented in kernel64/switch64.S (M6) */
-void syscall(void) { asm64_stub(); }
 /* return_from_syscall is now implemented in kernel64/switch64.S (M6-E) */
 
-/* M6-A: the real 32-bit signal trampoline is defined as adjacent labels
- * in kernel64/switch64.S (a C array pair would not be adjacent in the
- * link, so psig()'s end-start length would be garbage). */

@@ -41,7 +41,6 @@
 /* toggle configuration options */
 #define CONFIG_PCI
 #define CONFIG_PCI_NAMES
-#undef CONFIG_SYSCALL_6TH_ARG
 #define CONFIG_SYSVIPC
 #define CONFIG_BGA
 #undef CONFIG_KEXEC
@@ -53,7 +52,6 @@
 #else
 #undef CONFIG_FS_MINIX
 #endif
-#undef CONFIG_MMAP2
 #undef CONFIG_NET
 #define CONFIG_PRINTK64
 #define CONFIG_PSAUX

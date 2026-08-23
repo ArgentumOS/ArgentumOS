@@ -157,7 +157,6 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 #endif
 	pic_init();
 	irq_init();
-	idt_init();
 	dev_init();
 	tty_init();
 	mem_init();
