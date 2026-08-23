@@ -69,4 +69,9 @@ struct flock {
 	__pid_t l_pid;		/* PID holding the lock; returned in F_GETLK */
 };
 
+/* x86-64 *at() syscall constants */
+#define AT_FDCWD		(-100)
+#define AT_SYMLINK_NOFOLLOW	0x100
+#define AT_REMOVEDIR		0x200
+
 #endif /* _FIWIX_FCNTL_H */

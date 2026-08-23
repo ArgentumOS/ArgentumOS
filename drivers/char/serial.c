@@ -290,7 +290,10 @@ static void serial_send(struct tty *tty)
 	if(!tty->write_q.count) {
 		outport_b(s->ioaddr + UART_IER, UART_IER_RDAI);
 	}
-	wakeup(&tty_write);
+	/* wake any process blocked in tty_write() waiting for output space;
+	 * it sleeps on &tty->write_q (see tty_write/TCSETSW), so waking the
+	 * function address &tty_write would never match. */
+	wakeup(&tty->write_q);
 }
 
 static int serial_receive(struct serial *s)

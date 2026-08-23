@@ -414,5 +414,7 @@ void *syscall_table64[] = {
 	[229] = sys_clock_getres64,	/* clock_getres */
 	[231] = sys_exit_group64,	/* exit_group */
 	[234] = sys_tgkill,		/* tgkill */
+	[262] = sys_newfstatat,		/* newfstatat (musl stat/lstat/fstatat) */
+	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 };
 #endif /* __x86_64__ */

@@ -6,7 +6,10 @@
  */
 
 #include <fiwix/fs.h>
+#include <fiwix/fcntl.h>
+#include <fiwix/stat.h>
 #include <fiwix/statbuf.h>
+#include <fiwix/errno.h>
 #include <fiwix/string.h>
 
 #ifdef __DEBUG__
@@ -65,4 +68,46 @@ void fill_new_stat(struct inode *i, struct new_stat *statbuf)
 	statbuf->st_ctime = i->i_ctime;
 	statbuf->st_ctime_nsec = 0;
 	statbuf->__unused[0] = statbuf->__unused[1] = statbuf->__unused[2] = 0;
+}
+
+/* newfstatat(262): musl's stat()/lstat()/fstatat() on x86-64. dirfd is
+ * AT_FDCWD (-100) for path-based calls; flags may include
+ * AT_SYMLINK_NOFOLLOW (lstat). Absolute paths ignore dirfd. */
+int sys_newfstatat(int dirfd, const char *filename, struct new_stat *statbuf, int flags)
+{
+	struct inode *i;
+	char *tmp_name;
+	int errno;
+
+	if((errno = check_user_area(VERIFY_WRITE, statbuf, sizeof(struct new_stat)))) {
+		return errno;
+	}
+	if((errno = malloc_name(filename, &tmp_name)) < 0) {
+		return errno;
+	}
+	if(dirfd != AT_FDCWD) {
+		/* relative path against an open directory fd (ls -l stats the
+		 * dir's entries and . / .. via the dir's fd, dirfd=3): resolve
+		 * through parse_namei with the fd's inode as the base. */
+		struct inode *dir;
+
+		CHECK_UFD(dirfd);
+		dir = fd_table[current->fd[dirfd]].inode;
+		if(!S_ISDIR(dir->i_mode)) {
+			free_name(tmp_name);
+			return -ENOTDIR;
+		}
+		errno = parse_namei(tmp_name, dir, &i, NULL,
+			(flags & AT_SYMLINK_NOFOLLOW) ? !FOLLOW_LINKS : FOLLOW_LINKS);
+	} else {
+		errno = namei(tmp_name, &i, NULL,
+			(flags & AT_SYMLINK_NOFOLLOW) ? !FOLLOW_LINKS : FOLLOW_LINKS);
+	}
+	free_name(tmp_name);
+	if(errno) {
+		return errno;
+	}
+	fill_new_stat(i, statbuf);
+	iput(i);
+	return 0;
 }
