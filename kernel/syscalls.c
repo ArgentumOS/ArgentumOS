@@ -362,6 +362,10 @@ extern int sys_rt_sigsuspend(const void *, int);
 extern int sys_mknod(const char *, __mode_t, __dev_t);
 extern int sys_utimensat(int, const char *, const long *, int);
 extern int sys_poll(struct pollfd_abi *, unsigned long, int);
+extern long sys_mremap(addr_t, __size_t, __size_t, unsigned int, addr_t);
+extern int sys_msync(addr_t, __size_t, int);
+extern int sys_mincore(addr_t, __size_t, unsigned char *);
+extern int sys_madvise(addr_t, __size_t, int);
 
 /* x86_64 syscall numbers (the subset Fiwix implements); NULL = -ENOSYS */
 void *syscall_table64[] = {
@@ -388,10 +392,11 @@ void *syscall_table64[] = {
 	[22] = sys_pipe,		/* pipe */
 	[23] = sys_select,		/* select */
 	/* 24 sched_yield: not implemented */
-	/* 25 mremap: not implemented */
-	/* 26 msync: not implemented */
-	/* 27 mincore: not implemented */
-	/* 28 madvise: not implemented */
+	/* 24 sched_yield: not implemented */
+	[25] = sys_mremap,		/* mremap */
+	[26] = sys_msync,		/* msync */
+	[27] = sys_mincore,		/* mincore */
+	[28] = sys_madvise,		/* madvise */
 #ifdef CONFIG_NET
 	[41] = sys_socket,		/* socket */
 	[42] = sys_connect,		/* connect */
