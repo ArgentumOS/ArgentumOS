@@ -25,7 +25,6 @@
 #ifdef CONFIG_SYSVIPC
 int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 {
-
 	struct msqid_ds *mq;
 	struct msginfo *mi;
 	struct ipc_perm *perm;
@@ -95,6 +94,9 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 				}
 				if(!IS_SUPERUSER && u.msg_qbytes > MSGMNB) {
 					return -EPERM;
+				}
+				if(u.msg_qbytes > 0xFFFF) {
+					return -EINVAL;
 				}
 				mq->msg_qbytes = u.msg_qbytes;
 				ipc64_perm_from_user(perm, &u.msg_perm);

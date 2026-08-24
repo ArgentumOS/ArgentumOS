@@ -25,7 +25,6 @@
 #ifdef CONFIG_SYSVIPC
 int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 {
-
 	struct shmid_ds *seg;
 	struct shminfo *si;
 	struct shm_info *s_i;

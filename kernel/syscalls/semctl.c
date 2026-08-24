@@ -25,7 +25,6 @@
 #ifdef CONFIG_SYSVIPC
 int sys_semctl(int semid, int semnum, int cmd, void *arg)
 {
-
 	struct semid_ds *ss, *tmp;
 	struct seminfo *si;
 	struct sem_undo *un;
