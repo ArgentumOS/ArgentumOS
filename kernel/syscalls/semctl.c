@@ -13,6 +13,9 @@
 #include <fiwix/sched.h>
 #include <fiwix/errno.h>
 #include <fiwix/ipc.h>
+#ifdef __x86_64__
+#include <fiwix/ipc64.h>
+#endif
 #include <fiwix/sem.h>
 
 #ifdef __DEBUG__
@@ -22,6 +25,7 @@
 #ifdef CONFIG_SYSVIPC
 int sys_semctl(int semid, int semnum, int cmd, void *arg)
 {
+
 	struct semid_ds *ss, *tmp;
 	struct seminfo *si;
 	struct sem_undo *un;
@@ -43,9 +47,15 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 	switch(cmd) {	
 		case IPC_STAT:
 		case SEM_STAT:
+#ifdef __x86_64__
+			if((errno = check_user_area(VERIFY_WRITE, arg, sizeof(struct semid64_ds)))) {
+				return errno;
+			}
+#else
 			if((errno = check_user_area(VERIFY_WRITE, arg, sizeof(struct semid_ds)))) {
 				return errno;
 			}
+#endif
 			if(cmd == IPC_STAT) {
 				ss = semset[semid % SEMMNI];
 			} else {
@@ -62,10 +72,40 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			} else {
 				retval = (ss->sem_perm.seq * SEMMNI) + semid;
 			}
+#ifdef __x86_64__
+			{
+				struct semid64_ds u;
+
+				ipc64_semid_to_user(&u, ss);
+				memcpy_b(arg, &u, sizeof(u));
+			}
+#else
 			memcpy_b(arg, ss, sizeof(struct semid_ds));
+#endif
 			return retval;
 
 		case IPC_SET:
+#ifdef __x86_64__
+			{
+				struct semid64_ds u;
+
+				if((errno = check_user_area(VERIFY_READ, arg, sizeof(struct semid64_ds)))) {
+					return errno;
+				}
+				memcpy_b(&u, arg, sizeof(u));
+				ss = semset[semid % SEMMNI];
+				if(ss == IPC_UNUSED) {
+					return -EINVAL;
+				}
+				perm = &ss->sem_perm;
+				if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
+					return -EPERM;
+				}
+				ipc64_perm_from_user(perm, &u.sem_perm);
+				ss->sem_ctime = CURRENT_TIME;
+				return 0;
+			}
+#else
 			if((errno = check_user_area(VERIFY_READ, arg, sizeof(struct semid_ds)))) {
 				return errno;
 			}
@@ -83,6 +123,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			perm->mode = (perm->mode & ~0777) | (tmp->sem_perm.mode & 0777);
 			ss->sem_ctime = CURRENT_TIME;
 			return 0;
+#endif
 
 		case IPC_RMID:
 			ss = semset[semid % SEMMNI];

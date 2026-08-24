@@ -778,6 +778,9 @@ int tty_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 	int n;
 
 	tty = f->private_data;
+	if(!tty) {
+		return -EBADF;
+	}
 
 	/* only the foreground process group is allowed to write to the tty */
 	if(current->ctty == tty && current->pgid != tty->pgid) {

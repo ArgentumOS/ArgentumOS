@@ -13,6 +13,9 @@
 #include <fiwix/sched.h>
 #include <fiwix/errno.h>
 #include <fiwix/ipc.h>
+#ifdef __x86_64__
+#include <fiwix/ipc64.h>
+#endif
 #include <fiwix/shm.h>
 
 #ifdef __DEBUG__
@@ -22,6 +25,7 @@
 #ifdef CONFIG_SYSVIPC
 int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 {
+
 	struct shmid_ds *seg;
 	struct shminfo *si;
 	struct shm_info *s_i;
@@ -41,9 +45,15 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 	switch(cmd) {	
 		case IPC_STAT:
 		case SHM_STAT:
+#ifdef __x86_64__
+			if((errno = check_user_area(VERIFY_WRITE, buf, sizeof(struct shmid64_ds)))) {
+				return errno;
+			}
+#else
 			if((errno = check_user_area(VERIFY_WRITE, buf, sizeof(struct shmid_ds)))) {
 				return errno;
 			}
+#endif
 			if(cmd == SHM_STAT) {
 				if(shmid > max_segid) {
 					return -EINVAL;
@@ -58,17 +68,47 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 			if(!ipc_has_perms(&seg->shm_perm, IPC_R)) {
 				return -EACCES;
 			}
+#ifdef __x86_64__
+			{
+				struct shmid64_ds u;
+
+				ipc64_shmid_to_user(&u, seg);
+				memcpy_b(buf, &u, sizeof(u));
+			}
+#else
 			memcpy_b(buf, seg, sizeof(struct shmid_ds));
 			/* private kernel information zeroed */
 			buf->shm_npages = 0;
 			buf->shm_pages = 0;
 			buf->shm_attaches = 0;
+#endif
 			if(cmd == SHM_STAT) {
 				return (seg->shm_perm.seq * SHMMNI) + shmid;
 			}
 			return 0;
 
 		case IPC_SET:
+#ifdef __x86_64__
+			{
+				struct shmid64_ds u;
+
+				if((errno = check_user_area(VERIFY_READ, buf, sizeof(struct shmid64_ds)))) {
+					return errno;
+				}
+				memcpy_b(&u, buf, sizeof(u));
+				seg = shmseg[shmid % SHMMNI];
+				if(seg == IPC_UNUSED) {
+					return -EINVAL;
+				}
+				perm = &seg->shm_perm;
+				if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
+					return -EPERM;
+				}
+				ipc64_perm_from_user(perm, &u.shm_perm);
+				seg->shm_ctime = CURRENT_TIME;
+				return 0;
+			}
+#else
 			if((errno = check_user_area(VERIFY_READ, buf, sizeof(struct shmid_ds)))) {
 				return errno;
 			}
@@ -85,6 +125,7 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 			perm->mode = (perm->mode & ~0777) | (buf->shm_perm.mode & 0777);
 			seg->shm_ctime = CURRENT_TIME;
 			return 0;
+#endif
 
 		case IPC_RMID:
 			seg = shmseg[shmid % SHMMNI];

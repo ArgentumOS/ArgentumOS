@@ -313,6 +313,13 @@ extern int sys_msgrcv(int, void *, __size_t, int, int);
 extern int sys_msgctl(int, int, struct msqid_ds *);
 #endif /* CONFIG_SYSVIPC */
 
+extern int sys_setfsuid(__uid_t);
+extern int sys_setfsgid(__gid_t);
+extern int sys_getsid(__pid_t);
+extern int sys_rt_sigpending(void *, int);
+extern int sys_rt_sigsuspend(const void *, int);
+extern int sys_mknod(const char *, __mode_t, __dev_t);
+
 /* x86_64 syscall numbers (the subset Fiwix implements); NULL = -ENOSYS */
 void *syscall_table64[] = {
 	[0]  = sys_read,		/* read */
@@ -413,8 +420,15 @@ void *syscall_table64[] = {
 	[112] = sys_setsid,		/* setsid */
 	[113] = sys_setreuid,		/* setreuid */
 	[114] = sys_setregid,		/* setregid */
+	/* 115-116 getgroups/setgroups: 32-bit gid ABI not yet adapted */
 	/* 117-120 setresuid/getresuid/setresgid/getresgid: not implemented */
 	[121] = sys_getpgid,		/* getpgid */
+	[122] = sys_setfsuid,		/* setfsuid */
+	[123] = sys_setfsgid,		/* setfsgid */
+	[124] = sys_getsid,		/* getsid */
+	[127] = sys_rt_sigpending,	/* rt_sigpending */
+	[130] = sys_rt_sigsuspend,	/* rt_sigsuspend */
+	[133] = sys_mknod,		/* mknod */
 	[137] = sys_statfs,		/* statfs */
 	[138] = sys_fstatfs,		/* fstatfs */
 	[158] = sys_arch_prctl64,	/* arch_prctl */

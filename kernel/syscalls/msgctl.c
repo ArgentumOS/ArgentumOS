@@ -13,6 +13,9 @@
 #include <fiwix/sched.h>
 #include <fiwix/errno.h>
 #include <fiwix/ipc.h>
+#ifdef __x86_64__
+#include <fiwix/ipc64.h>
+#endif
 #include <fiwix/msg.h>
 
 #ifdef __DEBUG__
@@ -22,6 +25,7 @@
 #ifdef CONFIG_SYSVIPC
 int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 {
+
 	struct msqid_ds *mq;
 	struct msginfo *mi;
 	struct ipc_perm *perm;
@@ -41,9 +45,15 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 	switch(cmd) {	
 		case MSG_STAT:
 		case IPC_STAT:
+#ifdef __x86_64__
+			if((errno = check_user_area(VERIFY_WRITE, buf, sizeof(struct msqid64_ds)))) {
+				return errno;
+			}
+#else
 			if((errno = check_user_area(VERIFY_WRITE, buf, sizeof(struct msqid_ds)))) {
 				return errno;
 			}
+#endif
 			mq = msgque[msqid % MSGMNI];
 			if(mq == IPC_UNUSED) {
 				return -EINVAL;
@@ -51,13 +61,47 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 			if(!ipc_has_perms(&mq->msg_perm, IPC_R)) {
 				return -EACCES;
 			}
+#ifdef __x86_64__
+			{
+				struct msqid64_ds u;
+
+				ipc64_msqid_to_user(&u, mq);
+				memcpy_b(buf, &u, sizeof(u));
+			}
+#else
 			memcpy_b(buf, mq, sizeof(struct msqid_ds));
+#endif
 			if(cmd == MSG_STAT) {
 				return (mq->msg_perm.seq * MSGMNI) + msqid;
 			}
 			return 0;
 
 		case IPC_SET:
+#ifdef __x86_64__
+			{
+				struct msqid64_ds u;
+
+				if((errno = check_user_area(VERIFY_READ, buf, sizeof(struct msqid64_ds)))) {
+					return errno;
+				}
+				memcpy_b(&u, buf, sizeof(u));
+				mq = msgque[msqid % MSGMNI];
+				if(mq == IPC_UNUSED) {
+					return -EINVAL;
+				}
+				perm = &mq->msg_perm;
+				if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
+					return -EPERM;
+				}
+				if(!IS_SUPERUSER && u.msg_qbytes > MSGMNB) {
+					return -EPERM;
+				}
+				mq->msg_qbytes = u.msg_qbytes;
+				ipc64_perm_from_user(perm, &u.msg_perm);
+				mq->msg_ctime = CURRENT_TIME;
+				return 0;
+			}
+#else
 			if((errno = check_user_area(VERIFY_READ, buf, sizeof(struct msqid_ds)))) {
 				return errno;
 			}
@@ -78,6 +122,7 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 			perm->mode = (perm->mode & ~0777) | (buf->msg_perm.mode & 0777);
 			mq->msg_ctime = CURRENT_TIME;
 			return 0;
+#endif
 
 		case IPC_RMID:
 			mq = msgque[msqid % MSGMNI];
