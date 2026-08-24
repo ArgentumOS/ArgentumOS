@@ -21,9 +21,11 @@ int sys_setgid(__gid_t gid)
 
 	if(IS_SUPERUSER) {
 		current->gid = current->egid = current->sgid = gid;
+		current->fsgid = current->egid;
 	} else {
 		if((current->gid == gid) || (current->sgid == gid)) {
 			current->egid = gid;
+			current->fsgid = current->egid;
 		} else {
 			return -EPERM;
 		}

@@ -135,6 +135,8 @@ struct proc {
 	__u32 egid;			/* effective group ID */
 	__u32 suid;			/* saved user ID */
 	__u32 sgid;			/* saved group ID */
+	__u32 fsuid;			/* filesystem user ID (check_permission) */
+	__u32 fsgid;			/* filesystem group ID */
 	unsigned short int fd[OPEN_MAX];
 	unsigned char fd_flags[OPEN_MAX];
 	struct inode *root;

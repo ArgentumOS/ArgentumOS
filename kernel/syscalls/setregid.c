@@ -25,6 +25,7 @@ int sys_setregid(__gid_t gid, __gid_t egid)
 				current->sgid = egid;
 			}
 			current->egid = egid;
+		current->fsgid = current->egid;
 		}
 		if(gid != (__uid_t)-1) {
 			current->gid = gid;
@@ -35,6 +36,7 @@ int sys_setregid(__gid_t gid, __gid_t egid)
 				current->sgid = egid;
 			}
 			current->egid = egid;
+		current->fsgid = current->egid;
 		} else {
 			return -EPERM;
 		}

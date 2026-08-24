@@ -92,6 +92,7 @@ void init_init(void)
 	init->uid = init->gid = 0;
 	init->euid = init->egid = 0;
 	init->suid = init->sgid = 0;
+	init->fsuid = init->fsgid = 0;
 	memset_b(init->fd, 0, sizeof(init->fd));
 	memset_b(init->fd_flags, 0, sizeof(init->fd_flags));
 	init->root = current->root;

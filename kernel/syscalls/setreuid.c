@@ -25,6 +25,7 @@ int sys_setreuid(__uid_t uid, __uid_t euid)
 				current->suid = euid;
 			}
 			current->euid = euid;
+		current->fsuid = current->euid;
 		}
 		if(uid != (__uid_t)-1) {
 			current->uid = uid;
@@ -35,6 +36,7 @@ int sys_setreuid(__uid_t uid, __uid_t euid)
 				current->suid = euid;
 			}
 			current->euid = euid;
+		current->fsuid = current->euid;
 		} else {
 			return -EPERM;
 		}

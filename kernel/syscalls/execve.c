@@ -349,9 +349,11 @@ loop:
 	if(!errno) {
 		if(i->i_mode & S_ISUID) {
 			current->euid = i->i_uid;
+			current->fsuid = current->euid;
 		}
 		if(i->i_mode & S_ISGID) {
 			current->egid = i->i_gid;
+			current->fsgid = current->egid;
 		}
 	}
 

@@ -27,5 +27,6 @@ int sys_setuid(__uid_t uid)
 		}
 	}
 	current->euid = uid;
+	current->fsuid = current->euid;
 	return 0;
 }

@@ -41,6 +41,7 @@ int sys_setresuid(__uid_t ruid, __uid_t euid, __uid_t suid)
 	}
 	if(euid != (__uid_t)-1) {
 		current->euid = euid;
+		current->fsuid = current->euid;
 	}
 	if(suid != (__uid_t)-1) {
 		current->suid = suid;

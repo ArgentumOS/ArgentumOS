@@ -157,11 +157,8 @@ int check_group(struct inode *i)
 	int n;
 	__gid_t gid;
 
-	if(current->flags & PF_USEREAL) {
-		gid = current->gid;
-	} else {
-		gid = current->egid;
-	}
+	/* Linux semantics: group permission checks use the filesystem gid. */
+	gid = current->fsgid;
 
 	if(i->i_gid == gid) {
 		return 0;
@@ -187,11 +184,10 @@ int check_permission(int mask, struct inode *i)
 {
 	__uid_t uid;
 
-	if(current->flags & PF_USEREAL) {
-		uid = current->uid;
-	} else {
-		uid = current->euid;
-	}
+	/* Linux semantics: permission checks use the filesystem IDs. The
+	 * PF_USEREAL flag (i386 NFS real-uid mode) is not used by the
+	 * native 64-bit port. */
+	uid = current->fsuid;
 
 	if(mask & TO_EXEC) {
 		if(!(i->i_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {

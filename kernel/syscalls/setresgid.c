@@ -40,6 +40,7 @@ int sys_setresgid(__gid_t rgid, __gid_t egid, __gid_t sgid)
 	}
 	if(egid != (__gid_t)-1) {
 		current->egid = egid;
+		current->fsgid = current->egid;
 	}
 	if(sgid != (__gid_t)-1) {
 		current->sgid = sgid;
