@@ -454,7 +454,7 @@ static void handle_page_fault(const struct x86_frame64 *f)
 	do_page_fault(14, &sc);
 }
 
-/* gprs points at the saved rax; the frame is 15 pushed GPRs above */
+/* gprs points at the saved r15 (the first of 15 pushed GPRs; the frame is above) */
 static void handle_user_exception(const struct x86_frame64 *f, unsigned long *gprs)
 {
 	extern void do_divide_error(unsigned int, struct sigcontext *);
@@ -515,7 +515,7 @@ static void handle_user_exception(const struct x86_frame64 *f, unsigned long *gp
 	}
 }
 
-/* gprs points at the saved rax; the frame is 15 pushed GPRs above */
+/* gprs points at the saved r15 (the first of 15 pushed GPRs; the frame is above) */
 /* M6-E: the 32-bit kernel checks pending signals on every return to user
  * mode (core386.S CHECK_IF_SIGNALS -> issig()/psig()). The 64-bit return
  * path does the same: build a 32-bit sigcontext from the frame, let psig()
@@ -578,7 +578,7 @@ void check_signals64(unsigned long *gprs)
 	}
 }
 
-/* gprs points at the saved rax; the frame is 15 pushed GPRs above */
+/* gprs points at the saved r15 (the first of 15 pushed GPRs; the frame is above) */
 void isr64_dispatch(unsigned long *gprs)
 {
 	struct x86_frame64 *f;
