@@ -187,7 +187,7 @@ build64demo: .build/64/fiwix64demo.efi
 # patch_pic_data.py fixes the one-byte opcode (0x8b -> 0x8d) in the objects.
 CC64R = $(CC64K) -fvisibility=hidden
 REALDIR = .build/64real
-REALSRCS = $(shell find kernel mm fs lib drivers -name '*.c' 2>/dev/null | grep -v 'font-lat9-')
+REALSRCS = $(shell find kernel mm fs lib drivers net -name '*.c' 2>/dev/null | grep -v 'font-lat9-')
 REALOBJS = $(patsubst %.c,$(REALDIR)/%.o,$(REALSRCS))
 
 # gcc 14.x with -fPIC -fvisibility=hidden emits `mov sym(%rip),%rax` instead

@@ -128,8 +128,9 @@ void sock_free(struct socket *s)
 
 	ufd = -1;
 
-	/* pointer arithmetic */
-	fd = ((unsigned int)s->fd - (unsigned int)&fd_table[0]) / sizeof(struct fd);
+	/* pointer arithmetic (full 64-bit on x86-64 - the unsigned int casts
+	 * truncated the high-half kernel addresses, giving a garbage index) */
+	fd = ((addr_t)s->fd - (addr_t)&fd_table[0]) / sizeof(struct fd);
 
 	for(n = 0; n < OPEN_MAX; n++) {
 		if(current->fd[n] == fd) {
@@ -403,7 +404,18 @@ int sendto(int sd, const void *buf, __size_t len, int flags, const struct sockad
 		return errno;
 	}
 	fdt.flags = s->fd->flags | ((flags & MSG_DONTWAIT) ? O_NONBLOCK : 0);
-	return s->ops->sendto(s, &fdt, buf, len, flags, addr, addrlen);
+	/* musl's send() is sendto(fd, buf, len, flags, NULL, 0): with no
+	 * destination address on a connected socket, use the connection
+	 * send path - unix_sendto() would deref the NULL addr and fault. */
+	if(addr) {
+		/* validate the user sockaddr before unix_sendto() derefs it in
+		 * kernel mode (bind/connect do the same check) */
+		if((errno = check_user_area(VERIFY_READ, addr, addrlen))) {
+			return errno;
+		}
+		return s->ops->sendto(s, &fdt, buf, len, flags, addr, addrlen);
+	}
+	return s->ops->send(s, &fdt, buf, len, flags);
 }
 
 int recvfrom(int sd, void *buf, __size_t len, int flags, struct sockaddr *addr, int *addrlen)
@@ -425,6 +437,12 @@ int recvfrom(int sd, void *buf, __size_t len, int flags, struct sockaddr *addr, 
 		return errno;
 	}
 	fdt.flags = s->fd->flags | ((flags & MSG_DONTWAIT) ? O_NONBLOCK : 0);
+	/* musl's recv() is recvfrom(fd, buf, len, flags, NULL, NULL): with no
+	 * source-address buffer on a connected socket, use the connection
+	 * recv path - unix_recvfrom() would deref the NULL addr/addrlen. */
+	if(!addr || !addrlen) {
+		return s->ops->recv(s, &fdt, buf, len, flags);
+	}
 	memset_b(ret_addr, 0, 108);
 	if((errno = s->ops->recvfrom(s, &fdt, buf, len, flags, (struct sockaddr *)ret_addr, &ret_len)) < 0) {
 		return errno;

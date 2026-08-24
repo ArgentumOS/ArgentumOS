@@ -342,6 +342,21 @@ extern int sys_getresuid(__uid_t *, __uid_t *, __uid_t *);
 extern int sys_setresgid(__gid_t, __gid_t, __gid_t);
 extern int sys_getresgid(__gid_t *, __gid_t *, __gid_t *);
 extern int sys_getsid(__pid_t);
+#ifdef CONFIG_NET
+extern int sys_socket(int, int, int);
+extern int sys_connect(int, struct sockaddr *, int);
+extern int sys_accept(int, struct sockaddr *, unsigned int *);
+extern int sys_sendto(int, const void *, __size_t, int, const struct sockaddr *, struct sigcontext *);
+extern int sys_recvfrom(int, void *, __size_t, int, struct sockaddr *, struct sigcontext *);
+extern int sys_shutdown(int, int);
+extern int sys_bind(int, struct sockaddr *, int);
+extern int sys_listen(int, int);
+extern int sys_getsockname(int, struct sockaddr *, unsigned int *);
+extern int sys_getpeername(int, struct sockaddr *, unsigned int *);
+extern int sys_socketpair(int, int, int, int *);
+extern int sys_setsockopt(int, int, int, const void *, socklen_t);
+extern int sys_getsockopt(int, int, int, void *, socklen_t *);
+#endif /* CONFIG_NET */
 extern int sys_rt_sigpending(void *, int);
 extern int sys_rt_sigsuspend(const void *, int);
 extern int sys_mknod(const char *, __mode_t, __dev_t);
@@ -375,6 +390,24 @@ void *syscall_table64[] = {
 	/* 26 msync: not implemented */
 	/* 27 mincore: not implemented */
 	/* 28 madvise: not implemented */
+#ifdef CONFIG_NET
+	[41] = sys_socket,		/* socket */
+	[42] = sys_connect,		/* connect */
+	[43] = sys_accept,		/* accept */
+	[44] = sys_sendto,		/* sendto */
+	[45] = sys_recvfrom,		/* recvfrom */
+	/* 46-47 sendmsg/recvmsg: not implemented - musl's send()/recv() use
+	 * sendto/recvfrom with NULL addr instead; sendmsg()/recvmsg() would
+	 * get ENOSYS */
+	[48] = sys_shutdown,		/* shutdown */
+	[49] = sys_bind,		/* bind */
+	[50] = sys_listen,		/* listen */
+	[51] = sys_getsockname,		/* getsockname */
+	[52] = sys_getpeername,		/* getpeername */
+	[53] = sys_socketpair,		/* socketpair */
+	[54] = sys_setsockopt,		/* setsockopt */
+	[55] = sys_getsockopt,		/* getsockopt */
+#endif /* CONFIG_NET */
 #ifdef CONFIG_SYSVIPC
 	[29] = sys_shmget,		/* shmget */
 	[30] = sys_shmat,		/* shmat (returns the address) */
