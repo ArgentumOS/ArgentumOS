@@ -116,15 +116,47 @@ long sys_mremap(addr_t old_address, __size_t old_size, __size_t new_size, unsign
  */
 int sys_msync(addr_t addr, __size_t length, int flags)
 {
+	struct vma *vma;
+	unsigned long pml4, n, phys;
+	struct page *pg;
+	__off_t offset;
+
 	if(!length) {
 		return -EINVAL;
 	}
 	if(flags & ~(MS_ASYNC | MS_INVALIDATE | MS_SYNC)) {
 		return -EINVAL;
 	}
-	if(!find_vma_region(addr)) {
+	if(!(vma = find_vma_region(addr))) {
 		return -ENOMEM;
 	}
+
+	/* FNX: real MAP_SHARED writeback. For a file-backed MAP_SHARED vma,
+	 * the fault path maps the page-cache page directly into the user's
+	 * address space, so user writes land in pg->data. Flush every present
+	 * page in the range back to the file with write_page(). (There is no
+	 * dirty tracking; writing all present pages is idempotent.) */
+	if(!(vma->flags & MAP_SHARED) || !vma->inode) {
+		return 0;
+	}
+
+	extern unsigned long paging64_pml4_phys(void);
+	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+	pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4_phys();
+
+	length = PAGE_ALIGN(addr + length) - (addr & PAGE_MASK);
+	for(n = 0; n < length; n += PAGE_SIZE) {
+		phys = user_leaf64_in(pml4, (addr & PAGE_MASK) + n);
+		if(!phys) {
+			continue;	/* not present: nothing to flush */
+		}
+		pg = &page_table[phys >> PAGE_SHIFT];
+		offset = vma->offset + ((addr & PAGE_MASK) + n - vma->start);
+		if(write_page(pg, vma->inode, offset, PAGE_SIZE) < 0) {
+			return -EIO;
+		}
+	}
+
 	return 0;
 }
 
