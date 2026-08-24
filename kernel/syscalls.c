@@ -360,6 +360,7 @@ extern int sys_getsockopt(int, int, int, void *, socklen_t *);
 extern int sys_rt_sigpending(void *, int);
 extern int sys_rt_sigsuspend(const void *, int);
 extern int sys_mknod(const char *, __mode_t, __dev_t);
+extern int sys_utimensat(int, const char *, const long *, int);
 
 /* x86_64 syscall numbers (the subset Fiwix implements); NULL = -ENOSYS */
 void *syscall_table64[] = {
@@ -518,5 +519,6 @@ void *syscall_table64[] = {
 	[262] = sys_newfstatat,		/* newfstatat (musl stat/lstat/fstatat) */
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
+	[280] = sys_utimensat,		/* utimensat (musl utime/utimensat -> touch) */
 };
 #endif /* __x86_64__ */
