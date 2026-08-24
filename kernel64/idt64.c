@@ -586,6 +586,30 @@ void isr64_dispatch(unsigned long *gprs)
 	f = (struct x86_frame64 *)((char *)gprs + (15 * 8));
 	if(f->vector >= 32 && f->vector <= 47) {
 		irq64_handler(f->vector);
+		/* Fiwix64: consume need_resched before iretq when the IRQ
+		 * interrupted USER mode. The timer BH (irq_timer_bh via do_bh)
+		 * sets need_resched when the quantum expired; without a consumer
+		 * here a pure CPU-bound process is never preempted and freezes
+		 * the whole system (verified: a spin child starves even a
+		 * sleeping parent). Kernel-mode IRQs (timer during a syscall)
+		 * defer: the process completes the syscall and the tail check
+		 * below preempts at the CPL3 return. do_sched() may
+		 * context-switch away; on resume we continue here and the isr
+		 * epilogue iretq's back to the interrupted frame. */
+		if((f->cs & 3) == 3) {
+			extern int need_resched;
+			extern void do_sched(void);
+
+			/* A CPU-bound process makes no syscalls, so this IRQ
+			 * return is its only chance to process pending signals
+			 * (e.g. SIGKILL) - without this a killed spin loop never
+			 * dies. */
+			check_signals64(gprs);
+			if(need_resched) {
+				need_resched = 0;
+				do_sched();
+			}
+		}
 		return;
 	}
 	if(f->vector == 0x80) {
@@ -608,10 +632,9 @@ void isr64_dispatch(unsigned long *gprs)
 		 * only runs when no process is runnable, so a CPU-bound process
 		 * would never be preempted and woken children would starve on
 		 * the run queue. Gated on USER mode: kernel-mode returns (e.g. a
-		 * #PF handled during a syscall) never preempt mid-syscall, and
-		 * the IRQ path above returns early so timer IRQs don't reschedule
-		 * from inside the ISR either - preemption only happens at clean
-		 * syscall/exception-return boundaries, like the 32-bit kernel.
+		 * #PF handled during a syscall) never preempt mid-syscall; the
+		 * IRQ path above handles preemption for interrupts that hit user
+		 * mode, and this tail covers syscalls and user-mode faults.
 		 * do_sched() may context-switch away; on resume we continue here
 		 * and the isr epilogue iretq's back to the interrupted frame. */
 		{
