@@ -66,9 +66,9 @@ struct inode {
 	__mode_t	i_mode;		/* file mode */
 	__u32		i_uid;		/* owner uid */
 	__size_t	i_size;		/* size in bytes */
-	__u32		i_atime;	/* access time */
-	__u32		i_ctime;	/* creation time */
-	__u32		i_mtime;	/* modification time */
+	__time_t	i_atime;	/* access time */
+	__time_t	i_ctime;	/* creation time */
+	__time_t	i_mtime;	/* modification time */
 	__u32		i_gid;		/* group id */
 	__nlink_t	i_nlink;	/* links count */
 	__blk_t		i_blocks;	/* blocks count */
