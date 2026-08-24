@@ -303,7 +303,10 @@ int sys_exit_group64(int code, long a2, long a3, long a4, long a5, struct sigcon
 extern int sys_semget(key_t, int);
 extern int sys_semop(int, struct sembuf *, int);
 extern int sys_semctl(int, int, int, void *);
+extern addr_t sys_shmat(int, char *, int, unsigned int *);
 extern int sys_shmdt(char *);
+extern int sys_shmget(key_t, __size_t, int);
+extern int sys_shmctl(int, int, struct shmid_ds *);
 extern int sys_msgget(key_t, int);
 extern int sys_msgsnd(int, const void *, __size_t, int);
 extern int sys_msgrcv(int, void *, __size_t, int, int);
@@ -337,6 +340,13 @@ void *syscall_table64[] = {
 	/* 24 sched_yield: not implemented */
 	/* 25 mremap: not implemented */
 	/* 26 msync: not implemented */
+	/* 27 mincore: not implemented */
+	/* 28 madvise: not implemented */
+#ifdef CONFIG_SYSVIPC
+	[29] = sys_shmget,		/* shmget */
+	[30] = sys_shmat,		/* shmat (returns the address) */
+	[31] = sys_shmctl,		/* shmctl */
+#endif /* CONFIG_SYSVIPC */
 	[32] = sys_dup,			/* dup */
 	[33] = sys_dup2,		/* dup2 */
 	[34] = sys_pause,		/* pause */

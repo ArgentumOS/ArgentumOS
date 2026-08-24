@@ -35,7 +35,7 @@ struct shmid_ds *shm_get_new_seg(void)
 	for(n = 0; n < SHMMNI; n++) {
 		if(shmseg_pool[n].shm_ctime == 0) {
 			shmseg_pool[n].shm_ctime = 1;
-			if(!(shmseg_pool[n].shm_pages = (unsigned int *)kmalloc(PAGE_SIZE))) {
+			if(!(shmseg_pool[n].shm_pages = (addr_t *)kmalloc(PAGE_SIZE))) {
 				return NULL;
 			}
 			memset_b(shmseg_pool[n].shm_pages, 0, PAGE_SIZE);
@@ -123,13 +123,20 @@ int sys_shmget(key_t key, __size_t size, int shmflg)
 	if(size < 0 || size > SHMMAX) {
 		return -EINVAL;
 	}
+	/* The shm_pages array is one PAGE_SIZE allocation; each entry is an
+	 * addr_t (8 bytes on x86-64, 4 on i386). A segment larger than the
+	 * array capacity would overrun the kernel heap on the first shmat()
+	 * page fault (shm_map_page indexes shm_pages[npages-1]). */
+	npages = (size + (PAGE_SIZE - 1)) >> PAGE_SHIFT;
+	if(npages > PAGE_SIZE / sizeof(addr_t)) {
+		return -EINVAL;
+	}
 
 	if(key == IPC_PRIVATE) {
 		/* create a new segment */
 		if(size < SHMMIN) {
 			return -EINVAL;
 		}
-		npages = (size + (PAGE_SIZE - 1)) >> PAGE_SHIFT;
 		if(shm_tot + npages >= SHMALL) {
 			return -ENOSPC;
 		}
@@ -166,7 +173,6 @@ int sys_shmget(key_t key, __size_t size, int shmflg)
 		if(size < SHMMIN) {
 			return -EINVAL;
 		}
-		npages = (size + (PAGE_SIZE - 1)) >> PAGE_SHIFT;
 		if(shm_tot + npages >= SHMALL) {
 			return -ENOSPC;
 		}

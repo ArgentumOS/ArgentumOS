@@ -20,11 +20,12 @@
 #include <fiwix/stdio.h>
 
 #ifdef CONFIG_SYSVIPC
-int shm_map_page(struct vma *vma, unsigned int cr2)
+int shm_map_page(struct vma *vma, unsigned long cr2)
 {
 	struct shmid_ds *seg;
 	struct page *pg;
-	unsigned int addr, index;
+	addr_t addr;
+	unsigned long index;
 
 	seg = (struct shmid_ds *)vma->object;
 	index = (cr2 - vma->start) / PAGE_SIZE;
@@ -49,11 +50,11 @@ int shm_map_page(struct vma *vma, unsigned int cr2)
 	return 0;
 }
 
-int sys_shmat(int shmid, char *shmaddr, int shmflg, unsigned int *raddr)
+addr_t sys_shmat(int shmid, char *shmaddr, int shmflg, unsigned int *raddr)
 {
 	struct shmid_ds *seg;
 	struct vma *sega;
-	unsigned int addr;
+	addr_t addr;
 	int errno;
 
 #ifdef __DEBUG__
@@ -112,8 +113,12 @@ int sys_shmat(int shmid, char *shmaddr, int shmflg, unsigned int *raddr)
 
 	seg->shm_atime = CURRENT_TIME;
 	seg->shm_lpid = current->pid;
-	*raddr = addr;
 
-	return 0;
+	/* Fiwix64 (x86-64 ABI): musl's shmat() does
+	 * (void *)syscall(SYS_shmat, id, addr, flag) - the mapped address is
+	 * the syscall RETURN VALUE, not a *raddr output (that was the i386
+	 * sys_ipc() convention, which this port deleted). The dispatcher
+	 * (user64.c) treats shmat as a 64-bit-return syscall. */
+	return addr;
 }
 #endif /* CONFIG_SYSVIPC */

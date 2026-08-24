@@ -21,12 +21,13 @@
 
 /* system-wide limits */
 /*
- * Since the current kernel memory allocator has a granularity of page size,
- * it's not possible to go beyond 4096 pages in the array of pointers to page
- * frames (*shm_pages). Hence SHMMAX must stay to 0x1000000 (4096 * 4096).
- *
- * It will be 0x2000000 (or more) when the new kernel memory allocator be
- * implemented.
+ * The array of pointers to page frames (*shm_pages) is a single PAGE_SIZE
+ * allocation; each entry is an addr_t (8 bytes on x86-64, 4 on i386). The
+ * per-segment page count is therefore bounded by PAGE_SIZE / sizeof(addr_t):
+ * 512 pages (2 MB) on 64-bit, 1024 pages (4 MB) on 32-bit. sys_shmget()
+ * enforces this and SHMMAX stays at 0x1000000 (16 MB) as the advertised
+ * upper limit (Linux-compatible shminfo value); actual segments are capped
+ * lower by the array capacity check.
  */
 #define SHMMAX		0x1000000	/* max. segment size (in bytes) */
 
@@ -52,7 +53,7 @@ struct shmid_ds {
 	unsigned short shm_nattch;	/* num. of current attaches */
 	/* the following are for kernel only */
 	unsigned short shm_npages;	/* size of segment (in pages) */
-	unsigned int *shm_pages;	/* array of ptrs to frames -> SHMMAX */
+	addr_t *shm_pages;	/* array of ptrs to frames -> SHMMAX */
 	struct vma *shm_attaches;	/* ptr to array of attached regions */
 };
 
@@ -86,8 +87,8 @@ void shm_release_seg(struct shmid_ds *);
 void free_seg(int);
 struct vma *shm_get_new_attach(struct shmid_ds *);
 void shm_release_attach(struct vma *);
-int shm_map_page(struct vma *, unsigned int);
-int sys_shmat(int, char *, int, unsigned int *);
+int shm_map_page(struct vma *, unsigned long);
+addr_t sys_shmat(int, char *, int, unsigned int *);
 int sys_shmdt(char *);
 int sys_shmget(key_t, __size_t, int);
 int sys_shmctl(int, int, struct shmid_ds *);

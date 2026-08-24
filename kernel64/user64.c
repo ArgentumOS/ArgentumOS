@@ -33,6 +33,7 @@
 #define SYS64_rt_sigreturn 15
 #define SYS64_mmap	9
 #define SYS64_brk	12
+#define SYS64_shmat	30
 
 extern void *syscall_table[];
 #ifdef __x86_64__
@@ -148,8 +149,9 @@ void syscall80_handler(unsigned long *gprs)
 		 * (RAX = EAX, upper bits unspecified) - read it as int and
 		 * sign-extend so -EINVAL etc. reach the caller as negative.
 		 * mmap/brk return 64-bit addresses (e.g. 0x400000000000 in the
-		 * canonical 128TB user half) and are declared long. */
-		if(sc.rax == SYS64_mmap || sc.rax == SYS64_brk) {
+		 * canonical 128TB user half) and are declared long; shmat
+		 * likewise returns the mapped address (musl: (void *)ret). */
+		if(sc.rax == SYS64_mmap || sc.rax == SYS64_brk || sc.rax == SYS64_shmat) {
 			ret = ((long (*)(long, long, long, long, long, struct sigcontext *))
 				syscall_table64[sc.rax])(a1, a2, a3, a4, a5, &sc);
 		} else {
