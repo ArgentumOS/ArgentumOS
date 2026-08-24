@@ -361,6 +361,7 @@ extern int sys_rt_sigpending(void *, int);
 extern int sys_rt_sigsuspend(const void *, int);
 extern int sys_mknod(const char *, __mode_t, __dev_t);
 extern int sys_utimensat(int, const char *, const long *, int);
+extern int sys_poll(struct pollfd_abi *, unsigned long, int);
 
 /* x86_64 syscall numbers (the subset Fiwix implements); NULL = -ENOSYS */
 void *syscall_table64[] = {
@@ -371,7 +372,7 @@ void *syscall_table64[] = {
 	[4]  = sys_newstat,		/* stat */
 	[5]  = sys_newfstat,		/* fstat */
 	[6]  = sys_newlstat,		/* lstat */
-	/* 7 poll: not implemented */
+	[7] = sys_poll,			/* poll */
 	[8]  = sys_lseek,		/* lseek */
 	[9]  = sys_mmap64,		/* mmap */
 	[10] = sys_mprotect,		/* mprotect */

@@ -15,6 +15,20 @@
 #include <fiwix/stdio.h>
 #include <fiwix/string.h>
 
+/* poll(2) event/revents bits (x86-64 ABI) */
+#define POLLIN		0x001
+#define POLLPRI		0x002
+#define POLLOUT		0x004
+#define POLLERR		0x008
+#define POLLHUP		0x010
+#define POLLNVAL	0x020
+#define POLLRDNORM	0x040
+#define POLLRDBAND	0x080
+#define POLLWRNORM	0x100
+#define POLLWRBAND	0x200
+#define POLLMSG		0x400
+#define POLLRDHUP	0x2000
+
 static int check_fds(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds)
 {
 	int n, bit;
@@ -49,6 +63,97 @@ static int do_check(struct inode *i, struct fd *f, int flag)
 	}
 
 	return 0;
+}
+
+/*
+ * poll(2) ABI (x86-64): poll(struct pollfd *fds, nfds_t nfds, int timeout_ms).
+ * struct pollfd is { int fd; short events; short revents; }.
+ */
+struct pollfd_abi {
+	int fd;
+	short events;
+	short revents;
+};
+
+int sys_poll(struct pollfd_abi *fds, unsigned long nfds, int timeout)
+{
+	struct pollfd_abi pfd;
+	struct inode *i;
+	int n, count;
+
+	if(nfds > NR_OPENS) {
+		return -EINVAL;
+	}
+	if((n = check_user_area(VERIFY_WRITE, fds, nfds * sizeof(struct pollfd_abi)))) {
+		return n;
+	}
+
+	/* timeout is in milliseconds; -1 = infinite, 0 = poll once */
+	if(timeout < 0) {
+		current->timeout = INFINITE_WAIT;
+	} else {
+		struct timeval tv;
+		tv.tv_sec = timeout / 1000;
+		tv.tv_usec = (timeout % 1000) * 1000;
+		current->timeout = tv2ticks(&tv);
+	}
+
+	count = 0;
+	for(;;) {
+		count = 0;
+		for(n = 0; n < (int)nfds; n++) {
+			if((n = check_user_area(VERIFY_WRITE, &fds[n], sizeof(struct pollfd_abi)))) {
+				return n;
+			}
+			memcpy_b(&pfd, &fds[n], sizeof(struct pollfd_abi));
+			pfd.revents = 0;
+			if(pfd.fd < 0) {
+				/* negative fds are ignored */
+			} else if(pfd.fd >= NR_OPENS || !current->fd[pfd.fd]) {
+				pfd.revents |= POLLNVAL;
+				count++;
+			} else {
+				i = fd_table[current->fd[pfd.fd]].inode;
+				if(!i->fsop || !i->fsop->select) {
+					/* no select method: treat as always ready
+					 * (regular files, /dev/null, etc.) */
+					if(pfd.events & (POLLIN | POLLRDNORM | POLLPRI)) {
+						pfd.revents |= POLLIN | POLLRDNORM;
+					}
+					if(pfd.events & (POLLOUT | POLLWRNORM)) {
+						pfd.revents |= POLLOUT | POLLWRNORM;
+					}
+					if(pfd.revents) {
+						count++;
+					}
+				} else {
+					if(pfd.events & (POLLIN | POLLRDNORM)) {
+						if(do_check(i, &fd_table[current->fd[pfd.fd]], SEL_R)) {
+							pfd.revents |= POLLIN | POLLRDNORM;
+							count++;
+						}
+					}
+					if(pfd.events & (POLLOUT | POLLWRNORM)) {
+						if(do_check(i, &fd_table[current->fd[pfd.fd]], SEL_W)) {
+							pfd.revents |= POLLOUT | POLLWRNORM;
+							count++;
+						}
+					}
+				}
+			}
+			memcpy_b(&fds[n], &pfd, sizeof(struct pollfd_abi));
+		}
+
+		if(count || !current->timeout || current->sigpending & ~current->sigblocked) {
+			break;
+		}
+		if(sleep(&do_select, PROC_INTERRUPTIBLE)) {
+			return -EINTR;
+		}
+	}
+	current->timeout = 0;
+
+	return count;
 }
 
 int do_select(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, fd_set *res_rfds, fd_set *res_wfds, fd_set *res_efds)
