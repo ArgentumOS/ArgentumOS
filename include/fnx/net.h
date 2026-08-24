@@ -97,6 +97,8 @@ int send(int, const void *, __size_t, int);
 int recv(int, void *, __size_t, int);
 int sendto(int, const void *, __size_t, int, const struct sockaddr *, int);
 int recvfrom(int, void *, __size_t, int, struct sockaddr *, int *);
+int msg_send(int, const void *, __size_t, int, const struct sockaddr *, int);
+int msg_recv(int, void *, __size_t, int, struct sockaddr *, int *);
 int shutdown(int, int);
 int setsockopt(int, int, int, const void *, socklen_t);
 int getsockopt(int, int, int, void *, socklen_t *);

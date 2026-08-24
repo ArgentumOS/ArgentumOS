@@ -352,6 +352,8 @@ extern int sys_getpeername(int, struct sockaddr *, unsigned int *);
 extern int sys_socketpair(int, int, int, int *);
 extern int sys_setsockopt(int, int, int, const void *, socklen_t);
 extern int sys_getsockopt(int, int, int, void *, socklen_t *);
+extern int sys_sendmsg(int, const struct msghdr_abi *, int);
+extern int sys_recvmsg(int, struct msghdr_abi *, int);
 #endif /* CONFIG_NET */
 extern int sys_rt_sigpending(void *, int);
 extern int sys_rt_sigsuspend(const void *, int);
@@ -399,9 +401,8 @@ void *syscall_table64[] = {
 	[43] = sys_accept,		/* accept */
 	[44] = sys_sendto,		/* sendto */
 	[45] = sys_recvfrom,		/* recvfrom */
-	/* 46-47 sendmsg/recvmsg: not implemented - musl's send()/recv() use
-	 * sendto/recvfrom with NULL addr instead; sendmsg()/recvmsg() would
-	 * get ENOSYS */
+	[46] = sys_sendmsg,		/* sendmsg */
+	[47] = sys_recvmsg,		/* recvmsg */
 	[48] = sys_shutdown,		/* shutdown */
 	[49] = sys_bind,		/* bind */
 	[50] = sys_listen,		/* listen */
