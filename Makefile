@@ -114,6 +114,10 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 		$(ROOTFS64)/dev/full $(ROOTFS64)/dev/random $(ROOTFS64)/dev/urandom \
 		$(ROOTFS64)/dev/mem $(ROOTFS64)/dev/kmem $(ROOTFS64)/dev/port \
 		$(ROOTFS64)/dev/tty $(ROOTFS64)/dev/tty0
+	# /etc: passwd/group so id, ls -l and chown-by-name work
+	@mkdir -p $(ROOTFS64)/etc
+	@printf 'root:x:0:0:root:/root:/bin/sh\n' > $(ROOTFS64)/etc/passwd
+	@printf 'root:x:0:\n' > $(ROOTFS64)/etc/group
 	@echo "userland64: native x86_64 rootfs staged in $(ROOTFS64)"
 
 # Build the native x86_64 ext2 root filesystem image (.build/root.img) from
