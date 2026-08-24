@@ -337,6 +337,10 @@ extern int sys_setfsuid(__uid_t);
 extern int sys_setfsgid(__gid_t);
 extern int sys_getgroups(__ssize_t, __gid_t *);
 extern int sys_setgroups(__ssize_t, const __gid_t *);
+extern int sys_setresuid(__uid_t, __uid_t, __uid_t);
+extern int sys_getresuid(__uid_t *, __uid_t *, __uid_t *);
+extern int sys_setresgid(__gid_t, __gid_t, __gid_t);
+extern int sys_getresgid(__gid_t *, __gid_t *, __gid_t *);
 extern int sys_getsid(__pid_t);
 extern int sys_rt_sigpending(void *, int);
 extern int sys_rt_sigsuspend(const void *, int);
@@ -444,7 +448,10 @@ void *syscall_table64[] = {
 	[114] = sys_setregid,		/* setregid */
 	[115] = sys_getgroups,		/* getgroups */
 	[116] = sys_setgroups,		/* setgroups */
-	/* 117-120 setresuid/getresuid/setresgid/getresgid: not implemented */
+	[117] = sys_setresuid,		/* setresuid */
+	[118] = sys_getresuid,		/* getresuid */
+	[119] = sys_setresgid,		/* setresgid */
+	[120] = sys_getresgid,		/* getresgid */
 	[121] = sys_getpgid,		/* getpgid */
 	[122] = sys_setfsuid,		/* setfsuid */
 	[123] = sys_setfsgid,		/* setfsgid */
