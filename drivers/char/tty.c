@@ -671,9 +671,19 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 						charq_unputchar(&tty->cooked_q);
 					}
 
+					/* canonical read returns exactly ONE line: stop at
+					 * the newline/EOL delimiter, leaving any further
+					 * cooked lines in the queue for the next read.
+					 * (Without this, a read whose buffer is larger than
+					 * one line drained the whole cooked_q - e.g. the
+					 * shell read 'sleep 3 &\n' AND 'echo BG2\n' in one
+					 * call and dropped the second command.) */
 					while(n < count) {
 						if((ch = charq_getchar(&tty->cooked_q))) {
 							buffer[n++] = ch;
+							if(ch == '\n' || ch == tty->termios.c_cc[VEOL]) {
+								break;
+							}
 						} else {
 							break;
 						}
