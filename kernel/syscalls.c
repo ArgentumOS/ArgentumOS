@@ -52,6 +52,18 @@ static int verify_address(int type, const void *addr, unsigned int size)
 		if(vma) {
 			if(vma->s_type == P_STACK) {
 				if(start < vma->start && start > vma->prev->end) {
+#ifdef __x86_64__
+					/* Fiwix64: the buffer sits below the current
+					 * stack vma start (stack growth). The 32-bit
+					 * kernel let do_page_fault retry the CPL0
+					 * access; here the low identity 2MB pages
+					 * mask the not-present state, so pre-demand-map
+					 * (and grow the stack vma) instead. */
+					extern int fiwix64_fault_user_pages(addr_t, unsigned int);
+					if((fiwix64_fault_user_pages(start, size)) < 0) {
+						return -EFAULT;
+					}
+#endif /* __x86_64__ */
 					return 0;
 				}
 			}
@@ -416,5 +428,6 @@ void *syscall_table64[] = {
 	[234] = sys_tgkill,		/* tgkill */
 	[262] = sys_newfstatat,		/* newfstatat (musl stat/lstat/fstatat) */
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
+	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
 };
 #endif /* __x86_64__ */

@@ -260,22 +260,54 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 	memset_b(&sc, 0, sizeof(sc));
 	for(a = start & PAGE_MASK; a < start + (addr_t)size; a += PAGE_SIZE) {
 		page = (unsigned long)a;
+
+		/* Fiwix64: kernel-mode demand-map must grow the user stack vma
+		 * exactly like the user-mode fault path (page_not_present) does.
+		 * A syscall whose user buffer sits below the current stack vma
+		 * start (e.g. getcwd's 4096-byte buffer one page below a 1-page
+		 * stack vma) otherwise faults in CPL0 with no vma -> K2 panic. */
+		vma = find_vma_region(a);
+		if(!vma && a < USER_STACK_TOP) {
+			struct vma *s;
+
+			if((s = find_vma_region(USER_STACK_TOP - 1)) &&
+			   s->s_type == P_STACK && a < s->start &&
+			   a >= s->start - 0x20000) {
+				s->start = a & PAGE_MASK;
+				vma = s;
+			}
+		}
+
 		lvl = (unsigned long *)FIWIX64_P2V(pml4);
 		if(!(e1 = lvl[(page >> 39) & 0x1FF]) || !(e1 & 0x1)) {
+			if(vma) {
+				if(page_not_present(vma, a, &sc)) {
+					return -EFAULT;
+				}
+			}
 			continue;	/* unmapped: a CPL0 access would fault and
 					 * be handled by the K1 path, like 32-bit */
 		}
 		lvl = (unsigned long *)FIWIX64_P2V(e1 & FIWIX64_PMASK);
 		if(!(e2 = lvl[(page >> 30) & 0x1FF]) || !(e2 & 0x1)) {
+			if(vma) {
+				if(page_not_present(vma, a, &sc)) {
+					return -EFAULT;
+				}
+			}
 			continue;
 		}
 		lvl = (unsigned long *)FIWIX64_P2V(e2 & FIWIX64_PMASK);
 		if(!(e3 = lvl[(page >> 21) & 0x1FF]) || !(e3 & 0x1)) {
+			if(vma) {
+				if(page_not_present(vma, a, &sc)) {
+					return -EFAULT;
+				}
+			}
 			continue;
 		}
 		if(e3 & 0x80) {		/* 2MB huge page: supervisor identity page,
 					 * masks the not-present state for CPL0 */
-			vma = find_vma_region(a);
 			if(!vma) {
 				continue;
 			}
@@ -287,7 +319,6 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 		lvl = (unsigned long *)FIWIX64_P2V(e3 & FIWIX64_PMASK);
 		e4 = lvl[(page >> 12) & 0x1FF];
 		if(!(e4 & 0x1) || !(e4 & 0x4)) {	/* not present or not U/S */
-			vma = find_vma_region(a);
 			if(!vma) {
 				continue;
 			}

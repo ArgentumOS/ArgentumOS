@@ -73,5 +73,6 @@ struct flock {
 #define AT_FDCWD		(-100)
 #define AT_SYMLINK_NOFOLLOW	0x100
 #define AT_REMOVEDIR		0x200
+#define AT_EACCESS		0x200	/* same bit as AT_REMOVEDIR on Linux */
 
 #endif /* _FIWIX_FCNTL_H */

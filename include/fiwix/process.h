@@ -146,7 +146,7 @@ struct proc {
 	char **argv;
 	int envc;
 	char **envp;
-	char pidstr[5];			/* PID number converted to string */
+	char pidstr[6];			/* PID number converted to string */
 	struct vma *vma_table;		/* virtual memory-map addresses */
 	addr_t brk_lower;		/* lower limit of the heap section */
 	addr_t brk;			/* current limit of the heap */

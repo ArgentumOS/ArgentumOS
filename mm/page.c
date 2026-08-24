@@ -192,6 +192,7 @@ struct page *get_free_page(void)
 	pg->offset = 0;
 	pg->dev = 0;
 	pg->flags = 0;
+	pg->page = phys >> PAGE_SHIFT;	/* kmalloc() derives the VA from this */
 	pg->data = (char *)P2V(phys);
 	return pg;
 #else
@@ -514,7 +515,8 @@ int bread_page(struct page *pg, struct inode *i, __off_t offset, char prot, char
 int file_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 {
 	__size_t total_read;
-	unsigned int addr, poffset, bytes;
+	unsigned int poffset, bytes;
+	addr_t addr;
 	struct page *pg;
 
 	inode_lock(i);

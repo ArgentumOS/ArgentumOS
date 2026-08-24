@@ -108,7 +108,12 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
 	cp $(DASH64_BIN) $(ROOTFS64)/bin/sh
 	cp userland/test_toybox.sh $(ROOTFS64)/test_toybox.sh
-	touch $(ROOTFS64)/dev/console
+	# device nodes: mkext2.py converts each placeholder file under dev/ into
+	# a char device inode using the DEVICES table (see tools/mkinitrd.py).
+	@touch $(ROOTFS64)/dev/console $(ROOTFS64)/dev/ttyS0 $(ROOTFS64)/dev/null $(ROOTFS64)/dev/zero \
+		$(ROOTFS64)/dev/full $(ROOTFS64)/dev/random $(ROOTFS64)/dev/urandom \
+		$(ROOTFS64)/dev/mem $(ROOTFS64)/dev/kmem $(ROOTFS64)/dev/port \
+		$(ROOTFS64)/dev/tty $(ROOTFS64)/dev/tty0
 	@echo "userland64: native x86_64 rootfs staged in $(ROOTFS64)"
 
 # Build the native x86_64 ext2 root filesystem image (.build/root.img) from

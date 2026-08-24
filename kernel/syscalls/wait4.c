@@ -92,9 +92,14 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 			break;
 		}
 		if((signum = sleep(&sys_wait4, PROC_INTERRUPTIBLE))) {
+			/* a pending SIGCHLD is the normal reason this sleep was
+			 * interrupted (a child exited); consume it so the wait4
+			 * retry doesn't busy-loop on issig() returning the same
+			 * SIGCHLD forever (dash's waitpid retries on EINTR). */
+			current->sigpending &= ~SIG_MASK(SIGCHLD);
 			return signum;
 		}
-		current->sigpending &= SIG_MASK(SIGCHLD);
+		current->sigpending &= ~SIG_MASK(SIGCHLD);
 	}
 	return -ECHILD;
 }

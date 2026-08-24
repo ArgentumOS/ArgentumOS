@@ -98,6 +98,7 @@ int sys_setgroups(__ssize_t, const __gid_t *);
 int old_select(unsigned int *);
 int sys_symlink(const char *, const char *);
 int sys_readlink(const char *, char *, __size_t);
+int sys_faccessat(int, const char *, __mode_t, int);
 int sys_readlinkat(int, const char *, char *, __size_t);
 int sys_reboot(int, int, int);
 int old_mmap(struct mmap *);

@@ -603,5 +603,25 @@ void isr64_dispatch(unsigned long *gprs)
 	/* deliver any signal queued by the handler / syscall before iretq */
 	if((f->cs & 3) == 3) {
 		check_signals64(gprs);
+		/* Fiwix64: consume need_resched before iretq. The timer BH sets
+		 * it (quantum expired) but nothing else acts on it - cpu_idle()
+		 * only runs when no process is runnable, so a CPU-bound process
+		 * would never be preempted and woken children would starve on
+		 * the run queue. Gated on USER mode: kernel-mode returns (e.g. a
+		 * #PF handled during a syscall) never preempt mid-syscall, and
+		 * the IRQ path above returns early so timer IRQs don't reschedule
+		 * from inside the ISR either - preemption only happens at clean
+		 * syscall/exception-return boundaries, like the 32-bit kernel.
+		 * do_sched() may context-switch away; on resume we continue here
+		 * and the isr epilogue iretq's back to the interrupted frame. */
+		{
+			extern int need_resched;
+			extern void do_sched(void);
+
+			if(need_resched) {
+				need_resched = 0;
+				do_sched();
+			}
+		}
 	}
 }

@@ -9,7 +9,7 @@
 #define _FIWIX_CONFIG_H
 
 /* kernel tuning options */
-#define NR_PROCS		64	/* max. number of processes */
+#define NR_PROCS		1024	/* max. number of processes */
 #define NR_CALLOUTS		NR_PROCS	/* max. active callouts */
 #define NR_MOUNT_POINTS		8	/* max. number of mounted filesystems */
 #define NR_OPENS		1024	/* max. number of opened files */

@@ -33,10 +33,18 @@ S_IFLNK = 0o120000
 
 # (path relative to root) -> device number (MKDEV(maj,min) = (maj << 8) | min)
 DEVICES = {
-    'dev/console': 0x440,   # ttyS0 (4 << 8) | 0x40 -> serial console (dev work)
-    'dev/null':    0x103,   # (1 << 8) | 3
-    'dev/zero':    0x105,   # (1 << 8) | 5
-    'dev/tty':     0x500,   # (5 << 8) | 0
+    'dev/console':  0x440,   # ttyS0 (4 << 8) | 0x40 -> serial console (dev work)
+    'dev/tty0':     0x400,   # (4 << 8) | 0  -> current virtual console
+    'dev/tty':      0x500,   # (5 << 8) | 0  -> controlling TTY device
+    'dev/ttyS0':    0x440,   # (4 << 8) | 0x40
+    'dev/mem':      0x101,   # (1 << 8) | 1
+    'dev/kmem':     0x102,   # (1 << 8) | 2
+    'dev/null':     0x103,   # (1 << 8) | 3
+    'dev/port':     0x104,   # (1 << 8) | 4
+    'dev/zero':     0x105,   # (1 << 8) | 5
+    'dev/full':     0x107,   # (1 << 8) | 7
+    'dev/random':   0x108,   # (1 << 8) | 8
+    'dev/urandom':  0x109,   # (1 << 8) | 9
 }
 
 
