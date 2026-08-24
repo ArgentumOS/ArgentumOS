@@ -293,6 +293,26 @@ int sys_clock_getres64(unsigned int clock_id, struct timespec *tp,
 	return 0;
 }
 
+int sys_clock_settime64(unsigned int clock_id, struct timespec *tp,
+	long a3, long a4, long a5, struct sigcontext *sc)
+{
+	extern void set_system_time(__time_t);
+
+	if(!IS_SUPERUSER) {
+		return -EPERM;
+	}
+	if(check_user_area(VERIFY_READ, tp, sizeof(struct timespec))) {
+		return -EFAULT;
+	}
+	if(clock_id == 1) {	/* CLOCK_MONOTONIC: not settable */
+		return -EPERM;
+	}
+	/* CLOCK_REALTIME (0): set the system clock; set_system_time() also
+	 * writes the RTC/CMOS so the new time survives reboot */
+	set_system_time((__time_t)tp->tv_sec);
+	return 0;
+}
+
 int sys_exit_group64(int code, long a2, long a3, long a4, long a5, struct sigcontext *sc)
 {
 	extern int sys_exit(int);
@@ -450,6 +470,7 @@ void *syscall_table64[] = {
 	[200] = sys_tkill,		/* tkill */
 	[217] = sys_getdents64,		/* getdents64 */
 	[218] = sys_set_tid_address,	/* set_tid_address */
+	[227] = sys_clock_settime64,	/* clock_settime */
 	[228] = sys_clock_gettime64,	/* clock_gettime */
 	[229] = sys_clock_getres64,	/* clock_getres */
 	[231] = sys_exit_group64,	/* exit_group */
