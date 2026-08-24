@@ -1,22 +1,22 @@
 /*
- * fiwix/kernel/syscalls/shmdt.c
+ * fnx/kernel/syscalls/shmdt.c
  *
  * Copyright 2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/kernel.h>
-#include <fiwix/types.h>
-#include <fiwix/string.h>
-#include <fiwix/process.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/ipc.h>
-#include <fiwix/shm.h>
-#include <fiwix/stdio.h>
+#include <fnx/config.h>
+#include <fnx/kernel.h>
+#include <fnx/types.h>
+#include <fnx/string.h>
+#include <fnx/process.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/ipc.h>
+#include <fnx/shm.h>
+#include <fnx/stdio.h>
 
 #ifdef CONFIG_SYSVIPC
 int sys_shmdt(char *shmaddr)

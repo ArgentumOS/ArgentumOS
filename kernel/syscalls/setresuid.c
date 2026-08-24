@@ -1,21 +1,21 @@
 /*
- * fiwix/kernel/syscalls/setresuid.c
+ * fnx/kernel/syscalls/setresuid.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: setresuid(117) - set real, effective and saved user IDs.
+ * FNX: setresuid(117) - set real, effective and saved user IDs.
  * Any argument may be -1 to leave that ID unchanged. Linux semantics:
  * only superuser may set arbitrary IDs; a non-root process may only set
  * each ID to the current real/effective/saved value.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_setresuid(__uid_t ruid, __uid_t euid, __uid_t suid)

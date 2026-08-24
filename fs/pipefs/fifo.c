@@ -1,21 +1,21 @@
 /*
- * fiwix/fs/pipefs/fifo.c
+ * fnx/fs/pipefs/fifo.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_pipe.h>
-#include <fiwix/stat.h>
-#include <fiwix/mm.h>
-#include <fiwix/sleep.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/sched.h>
-#include <fiwix/stdio.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_pipe.h>
+#include <fnx/stat.h>
+#include <fnx/mm.h>
+#include <fnx/sleep.h>
+#include <fnx/fcntl.h>
+#include <fnx/sched.h>
+#include <fnx/stdio.h>
 
 int fifo_open(struct inode *i, struct fd *f)
 {

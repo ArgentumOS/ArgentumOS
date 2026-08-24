@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/getresuid.c
+ * fnx/kernel/syscalls/getresuid.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: getresuid(118) - return the real, effective and saved user
+ * FNX: getresuid(118) - return the real, effective and saved user
  * IDs. The three pointers may be NULL (Linux ignores NULL pointers).
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_getresuid(__uid_t *ruid, __uid_t *euid, __uid_t *suid)

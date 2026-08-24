@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/efi_stub.c
+ * fnx/kernel64/efi_stub.c
  *
- * Fiwix64 EFI stub (M1).
+ * FNX EFI stub (M1).
  *
  * This file IS the PE32+ UEFI application entry point. The firmware starts
  * it in long mode with paging enabled (identity map) and a working stack.
@@ -19,14 +19,14 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
-#include <fiwix/gop.h>
+#include <fnx/efi.h>
+#include <fnx/gop.h>
 
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *);
 void kernel64_main(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN, UINTN, EFI_SYSTEM_TABLE *);
 
 /* GOP framebuffer captured by the stub, consumed later by the real kernel */
-struct fiwix_gop_fb fiwix_gop_fb;
+struct fnx_gop_fb fnx_gop_fb;
 
 static void outb(unsigned short port, unsigned char val)
 {
@@ -113,7 +113,7 @@ static void debug_early(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	}
 	outb(0x3F8, 'A' + (lsr & 0x3F));
 	outb(0x3F8, '\n');
-	serial_puts("Fiwix64 EFI entry reached\n");
+	serial_puts("FNX EFI entry reached\n");
 	serial_puts("ImageHandle @ ");
 	serial_hex((UINT64)ImageHandle);
 	serial_puts("\nSystemTable @ ");
@@ -137,7 +137,7 @@ static void query_gop(EFI_BOOT_SERVICES *bs)
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
 	EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
 
-	fiwix_gop_fb.phys_base = 0;
+	fnx_gop_fb.phys_base = 0;
 	gop = NULL;
 
 	locate = (EFI_LOCATE_PROTOCOL)bs->LocateProtocol;
@@ -149,25 +149,25 @@ static void query_gop(EFI_BOOT_SERVICES *bs)
 		return;
 	}
 
-	fiwix_gop_fb.phys_base = (unsigned long)mode->FrameBufferBase;
-	fiwix_gop_fb.size = (unsigned long)mode->FrameBufferSize;
-	fiwix_gop_fb.width = mode->Info->HorizontalResolution;
-	fiwix_gop_fb.height = mode->Info->VerticalResolution;
-	fiwix_gop_fb.pixels_per_scanline = mode->Info->PixelsPerScanLine;
-	fiwix_gop_fb.pixel_format = (unsigned int)mode->Info->PixelFormat;
+	fnx_gop_fb.phys_base = (unsigned long)mode->FrameBufferBase;
+	fnx_gop_fb.size = (unsigned long)mode->FrameBufferSize;
+	fnx_gop_fb.width = mode->Info->HorizontalResolution;
+	fnx_gop_fb.height = mode->Info->VerticalResolution;
+	fnx_gop_fb.pixels_per_scanline = mode->Info->PixelsPerScanLine;
+	fnx_gop_fb.pixel_format = (unsigned int)mode->Info->PixelFormat;
 
 	serial_puts("[GOP] framebuffer ");
-	serial_hex(fiwix_gop_fb.phys_base);
+	serial_hex(fnx_gop_fb.phys_base);
 	serial_puts(" size=");
-	serial_hex(fiwix_gop_fb.size);
+	serial_hex(fnx_gop_fb.size);
 	serial_puts(" ");
-	serial_hex((UINT64)fiwix_gop_fb.width);
+	serial_hex((UINT64)fnx_gop_fb.width);
 	serial_puts("x");
-	serial_hex((UINT64)fiwix_gop_fb.height);
+	serial_hex((UINT64)fnx_gop_fb.height);
 	serial_puts(" pitch=");
-	serial_hex((UINT64)fiwix_gop_fb.pixels_per_scanline);
+	serial_hex((UINT64)fnx_gop_fb.pixels_per_scanline);
 	serial_puts(" fmt=");
-	serial_hex((UINT64)fiwix_gop_fb.pixel_format);
+	serial_hex((UINT64)fnx_gop_fb.pixel_format);
 	serial_puts("\n");
 }
 

@@ -1,22 +1,22 @@
 /*
- * fiwix/kernel/syscalls/fork.c
+ * fnx/kernel/syscalls/fork.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/types.h>
-#include <fiwix/segments.h>
-#include <fiwix/sigcontext.h>
-#include <fiwix/process.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/types.h>
+#include <fnx/segments.h>
+#include <fnx/sigcontext.h>
+#include <fnx/process.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static void free_vma_table(struct proc *p)
 {
@@ -86,7 +86,7 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 	child->tss.cr3 = V2P((addr_t)child_pgdir);
 #ifdef __x86_64__
 	{
-		/* Fiwix64 (M6-next): the fork child gets its own 4-level tables,
+		/* FNX (M6-next): the fork child gets its own 4-level tables,
 		 * deep-copied from the PARENT's pml4 (current->cr3_64) so it
 		 * inherits every demand-mapped user page (text/data/stack/TLS).
 		 * Writable user leaves are shared read-only (CoW), mirroring

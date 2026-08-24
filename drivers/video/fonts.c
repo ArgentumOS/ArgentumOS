@@ -1,12 +1,12 @@
 /*
- * fiwix/drivers/video/fonts.c
+ * fnx/drivers/video/fonts.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/string.h>
-#include <fiwix/font.h>
+#include <fnx/string.h>
+#include <fnx/font.h>
 #include "font-lat9-8x8.c"
 #include "font-lat9-8x14.c"
 #include "font-lat9-8x16.c"

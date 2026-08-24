@@ -1,23 +1,23 @@
 /*
- * fiwix/fs/super.c
+ * fnx/fs/super.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/kparms.h>
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/stat.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/mm.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/kparms.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/stat.h>
+#include <fnx/filesystems.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/mm.h>
 
 struct mount *mount_table = NULL;
 static struct resource sync_resource = { 0, 0 };

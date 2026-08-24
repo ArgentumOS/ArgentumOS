@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/process.c
+ * fnx/kernel/process.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/process.h>
-#include <fiwix/timer.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/stddef.h>
+#include <fnx/kernel.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/process.h>
+#include <fnx/timer.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/stddef.h>
 
 struct proc *proc_table;
 struct proc *current;
@@ -137,7 +137,7 @@ __pid_t remove_zombie(struct proc *p)
 	kfree(P2V(p->tss.cr3));
 #ifdef __x86_64__
 	{
-		/* Fiwix64 (M6-next): release the process's own 4-level tables.
+		/* FNX (M6-next): release the process's own 4-level tables.
 		 * The reaper runs on its own CR3; the zombie's pml4 is not
 		 * active, so freeing it is safe. */
 		extern void free_pml4_64(unsigned long);

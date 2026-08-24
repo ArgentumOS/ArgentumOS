@@ -1,14 +1,14 @@
 /*
- * fiwix/mm/alloc.c
+ * fnx/mm/alloc.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /*
  * The kmalloc() function acts like a front-end for the two
@@ -25,7 +25,7 @@ addr_t kmalloc(__size_t size)
 
 	/* check if size can be managed by buddy_low */
 #ifdef __x86_64__
-	/* Fiwix64: the buddy_low (DMA) allocator is not exercised yet; the
+	/* FNX: the buddy_low (DMA) allocator is not exercised yet; the
 	 * main buddy's pages have clean R/W mappings, while the buddy_low's
 	 * block headers overlap the allocated objects in ways that corrupt
 	 * early structures (tty driver_data). */

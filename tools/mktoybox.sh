@@ -2,7 +2,7 @@
 # Build the toybox submodule (third_party/toybox, pinned 0.8.11) as a static
 # musl i386 multi-call binary, the same way init/dash are built.
 #
-# Fiwix64's musl toolchain does not ship kernel headers, so any applet that
+# FNX's musl toolchain does not ship kernel headers, so any applet that
 # includes a <linux/*.h> or <asm/*.h> header cannot compile: those applets are
 # disabled after `make defconfig` (which enables everything else).
 set -e

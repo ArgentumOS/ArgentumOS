@@ -1,21 +1,21 @@
 /*
- * fiwix/fs/namei.c
+ * fnx/fs/namei.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/stat.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/stat.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct inode **d_res, int follow_links)
 {

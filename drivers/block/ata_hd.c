@@ -1,27 +1,27 @@
 /*
- * fiwix/drivers/block/ata_hd.c
+ * fnx/drivers/block/ata_hd.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/buffer.h>
-#include <fiwix/ata.h>
-#include <fiwix/ata_pci.h>
-#include <fiwix/ata_hd.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/devices.h>
-#include <fiwix/timer.h>
-#include <fiwix/cpu.h>
-#include <fiwix/part.h>
-#include <fiwix/mm.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/pci.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/buffer.h>
+#include <fnx/ata.h>
+#include <fnx/ata_pci.h>
+#include <fnx/ata_hd.h>
+#include <fnx/ioctl.h>
+#include <fnx/devices.h>
+#include <fnx/timer.h>
+#include <fnx/cpu.h>
+#include <fnx/part.h>
+#include <fnx/mm.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/pci.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static struct fs_operations ata_hd_driver_fsop = {
 	0,

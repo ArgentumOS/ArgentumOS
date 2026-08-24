@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/switch64.S
+ * fnx/kernel64/switch64.S
  *
- * Fiwix64 M3 (phase B): 64-bit kernel context switch.
+ * FNX M3 (phase B): 64-bit kernel context switch.
  *
  * switch_to64(unsigned long *old_rsp, unsigned long new_rsp)
  *   - saves the current kernel stack pointer into *old_rsp,
@@ -47,7 +47,7 @@ switch_to64:
  *   rdi=&prev->tss.esp, rsi=&prev->tss.eip, rdx=next_esp, rcx=next_eip,
  *   r8=next_cr3, r9=tss selector.
  *
- * Fiwix64 (M5): 64-bit replacement for the real kernel's 32-bit do_switch
+ * FNX (M5): 64-bit replacement for the real kernel's 32-bit do_switch
  * (kernel/core386.S, which uses pusha/pushfl and cannot run in long mode).
  *
  * Saves the current kernel stack pointer + a resume label into the prev
@@ -57,7 +57,7 @@ switch_to64:
  * of do_switch() (the scheduler).
  *
  * The TSS selector is deliberately IGNORED: the single TSS loaded by
- * gdt64_init()/load_tr() is shared. Fiwix64 (M6-next): next_cr3 is the
+ * gdt64_init()/load_tr() is shared. FNX (M6-next): next_cr3 is the
  * next process's per-process 4-level pml4 (physical) and IS loaded into
  * CR3; the kernel high half is mapped in every pml4 so the switch itself
  * is always safe. Kernel processes use the kernel's own pml4.
@@ -88,7 +88,7 @@ do_switch:
 	leaq	1f(%rip), %rax
 	movq	%rax, (%rsi)		/* prev->tss.eip = resume label */
 	movq	%rdx, %rsp		/* switch to the next stack */
-	movq	%r8, %cr3		/* Fiwix64 (M6-next): per-process pml4 */
+	movq	%r8, %cr3		/* FNX (M6-next): per-process pml4 */
 	pushq	%rcx			/* the next eip (return target) */
 	ret
 1:
@@ -117,7 +117,7 @@ thread_trampoline64:
 .size thread_trampoline64, .-thread_trampoline64
 
 /*
- * switch_to_user_mode: Fiwix64 (M6) - the INIT process's transition into
+ * switch_to_user_mode: FNX (M6) - the INIT process's transition into
  * 64-bit user mode, entered as the target of do_switch() (RSP has been set
  * to current->tss.esp = the init user stack top by do_switch; INIT's
  * per-process pml4 is already in CR3, with the bootstrap trampoline copied
@@ -157,11 +157,11 @@ switch_to_user_mode:
 
 
 /*
- * syscall_entry64: Fiwix64 native 64-bit syscall entry - the 'syscall'
+ * syscall_entry64: FNX native 64-bit syscall entry - the 'syscall'
  * instruction used by musl x86_64. The CPU sets RCX = return RIP and
  * R11 = return RFLAGS but does NOT switch stacks (unlike an interrupt
  * gate), so we save the user RSP in a global scratch, switch to the
- * current process's kernel stack (fiwix64_rsp0, kept in sync with the
+ * current process's kernel stack (fnx_rsp0, kept in sync with the
  * TSS RSP0 by gdt64_set_rsp0), build the SAME frame layout as
  * isr_common64 (7-word x86_frame64 + 15 GPRs) and tail into
  * syscall80_handler(); the iretq epilogue restores the user frame
@@ -172,11 +172,11 @@ switch_to_user_mode:
 .globl syscall_entry64
 .type syscall_entry64, @function
 syscall_entry64:
-	movq	%rsp, fiwix64_syscall_userrsp(%rip)	/* save the user RSP */
-	movq	fiwix64_rsp0(%rip), %rsp		/* switch to the kernel stack */
+	movq	%rsp, fnx_syscall_userrsp(%rip)	/* save the user RSP */
+	movq	fnx_rsp0(%rip), %rsp		/* switch to the kernel stack */
 	/* x86_frame64 (7 words, so [gprs + 15*8] = vector like the ISR path) */
 	pushq	$0x23					/* ss  = UDATA32 | RPL3 */
-	pushq	fiwix64_syscall_userrsp(%rip)		/* rsp (user) */
+	pushq	fnx_syscall_userrsp(%rip)		/* rsp (user) */
 	pushq	%r11					/* rflags */
 	pushq	$0x4b					/* cs  = UCODE64 | RPL3 */
 	pushq	%rcx					/* rip (the return address) */
@@ -200,7 +200,7 @@ syscall_entry64:
 	pushq	%r15
 	movq	%rsp, %rdi
 	call	syscall80_handler
-	/* Fiwix64 (signal delivery): the syscall itself may have queued a
+	/* FNX (signal delivery): the syscall itself may have queued a
 	 * signal (tkill/kill/send_sig); check_signals64() runs the psig()
 	 * trampoline + iretq path before the plain epilogue below. The
 	 * frame is still intact (15 GPRs + x86_frame64 at [rsp+15*8]).
@@ -230,12 +230,12 @@ syscall_entry64:
 .size syscall_entry64, .-syscall_entry64
 
 /*
- * return_from_syscall64: Fiwix64 (native port) - the fork() child's
+ * return_from_syscall64: FNX (native port) - the fork() child's
  * 64-bit-mode return. The child's kernel stack holds the copied sigcontext
  * at RSP; reload the user data segments and iretq into the 64-bit user
  * program (UCODE64|RPL3, UDATA32|RPL3) at sc->rip/sc->rsp with rax=0 (set
  * by fork.c). struct sigcontext is the 64-bit-native layout: err, rip, cs,
- * rflags, rsp, ss, then r15..rax (see include/fiwix/sigcontext.h).
+ * rflags, rsp, ss, then r15..rax (see include/fnx/sigcontext.h).
  */
 .globl return_from_syscall64
 .type return_from_syscall64, @function

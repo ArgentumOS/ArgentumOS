@@ -1,24 +1,24 @@
 /*
- * fiwix/fs/minix/inode.c
+ * fnx/fs/minix/inode.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_minix.h>
-#include <fiwix/fs_pipe.h>
-#include <fiwix/statfs.h>
-#include <fiwix/sleep.h>
-#include <fiwix/stat.h>
-#include <fiwix/sched.h>
-#include <fiwix/buffer.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_minix.h>
+#include <fnx/fs_pipe.h>
+#include <fnx/statfs.h>
+#include <fnx/sleep.h>
+#include <fnx/stat.h>
+#include <fnx/sched.h>
+#include <fnx/buffer.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_FS_MINIX
 int minix_read_inode(struct inode *i)

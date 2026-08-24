@@ -1,15 +1,15 @@
 /*
- * fiwix/lib/sysconsole.c
+ * fnx/lib/sysconsole.c
  *
  * Copyright 2024, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/sysconsole.h>
-#include <fiwix/tty.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/syslog.h>
+#include <fnx/sysconsole.h>
+#include <fnx/tty.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/syslog.h>
 
 struct sysconsole sysconsole_table[NR_SYSCONSOLES];
 

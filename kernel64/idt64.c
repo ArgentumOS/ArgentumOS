@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/idt64.c
+ * fnx/kernel64/idt64.c
  *
- * Fiwix64 M2 (phase C): IDT64 + exception handling + demand paging.
+ * FNX M2 (phase C): IDT64 + exception handling + demand paging.
  *
  * A minimal 64-bit IDT is installed for vectors 0-31: 32 tiny asm stubs
  * (one per vector, pushed onto the stack so the C dispatcher knows which
@@ -21,9 +21,9 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/string.h>
-#include <fiwix/efi.h>
-#include <fiwix/sigcontext.h>
+#include <fnx/string.h>
+#include <fnx/efi.h>
+#include <fnx/sigcontext.h>
 #include "serial64.h"
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
@@ -310,7 +310,7 @@ void idt64_init(void)
 	/* M4: int 0x80 (compat syscall entry) as a DPL3 interrupt gate */
 	set_gate(0x80, (unsigned long)&isr_stub_128, cs, 3);
 
-	/* Fiwix64 (native port): the 'syscall' instruction used by musl
+	/* FNX (native port): the 'syscall' instruction used by musl
 	 * x86_64. LSTAR = the entry (switch64.S syscall_entry64); STAR's
 	 * low syscall-CS field = KCODE64 (0x08) so the CPU loads CS=0x08 /
 	 * SS=0x10 for the kernel; FMASK clears IF/DF on entry (RFLAGS is
@@ -333,7 +333,7 @@ void idt64_init(void)
 			"a"((unsigned int)v), "d"((unsigned int)(v >> 32)));	/* LSTAR */
 		__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000084),
 			"a"((unsigned long)0x202), "d"(0));			/* FMASK */
-		/* Fiwix64 (native port): enable IA32_EFER.SCE - without it the
+		/* FNX (native port): enable IA32_EFER.SCE - without it the
 		 * 'syscall' instruction #UDs and a native musl program dies at
 		 * its first syscall (arch_prctl during TLS setup). */
 		{
@@ -586,7 +586,7 @@ void isr64_dispatch(unsigned long *gprs)
 	f = (struct x86_frame64 *)((char *)gprs + (15 * 8));
 	if(f->vector >= 32 && f->vector <= 47) {
 		irq64_handler(f->vector);
-		/* Fiwix64: consume need_resched before iretq when the IRQ
+		/* FNX: consume need_resched before iretq when the IRQ
 		 * interrupted USER mode. The timer BH (irq_timer_bh via do_bh)
 		 * sets need_resched when the quantum expired; without a consumer
 		 * here a pure CPU-bound process is never preempted and freezes
@@ -627,7 +627,7 @@ void isr64_dispatch(unsigned long *gprs)
 	/* deliver any signal queued by the handler / syscall before iretq */
 	if((f->cs & 3) == 3) {
 		check_signals64(gprs);
-		/* Fiwix64: consume need_resched before iretq. The timer BH sets
+		/* FNX: consume need_resched before iretq. The timer BH sets
 		 * it (quantum expired) but nothing else acts on it - cpu_idle()
 		 * only runs when no process is runnable, so a CPU-bound process
 		 * would never be preempted and woken children would starve on

@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/syscalls/lchown.c
+ * fnx/kernel/syscalls/lchown.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/kernel.h>
-#include <fiwix/fs.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/kernel.h>
+#include <fnx/fs.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_lchown(const char *filename, __uid_t owner, __gid_t group)

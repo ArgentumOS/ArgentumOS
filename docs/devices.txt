@@ -1,4 +1,4 @@
-Fiwix allocated devices
+FNX allocated devices
 =======================
 
 Character

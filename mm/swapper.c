@@ -1,30 +1,30 @@
 /*
- * fiwix/mm/swapper.c
+ * fnx/mm/swapper.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/config.h>
-#include <fiwix/process.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/ipc.h>
-#include <fiwix/memdev.h>
-#include <fiwix/serial.h>
-#include <fiwix/lp.h>
-#include <fiwix/ramdisk.h>
-#include <fiwix/floppy.h>
-#include <fiwix/ata.h>
-#include <fiwix/buffer.h>
-#include <fiwix/mm.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/pty.h>
-#include <fiwix/net.h>
-#include <fiwix/stdio.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/config.h>
+#include <fnx/process.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/ipc.h>
+#include <fnx/memdev.h>
+#include <fnx/serial.h>
+#include <fnx/lp.h>
+#include <fnx/ramdisk.h>
+#include <fnx/floppy.h>
+#include <fnx/ata.h>
+#include <fnx/buffer.h>
+#include <fnx/mm.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/pty.h>
+#include <fnx/net.h>
+#include <fnx/stdio.h>
 
 /* kswapd continues the kernel initialization */
 int kswapd(void)

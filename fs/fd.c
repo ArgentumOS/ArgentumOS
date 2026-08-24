@@ -1,16 +1,16 @@
 /*
- * fiwix/fs/fd.c
+ * fnx/fs/fd.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/errno.h>
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/sleep.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/errno.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/sleep.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 struct fd *fd_table;
 

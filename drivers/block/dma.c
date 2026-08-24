@@ -1,13 +1,13 @@
 /*
- * fiwix/drivers/block/dma.c
+ * fnx/drivers/block/dma.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/dma.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/dma.h>
+#include <fnx/string.h>
 
 /*
  *  DMA Channel  Page  Address  Count

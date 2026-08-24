@@ -1,4 +1,4 @@
-/* Fiwix64 (M6): the INIT process's user-mode entry + int 0x80 syscall
+/* FNX (M6): the INIT process's user-mode entry + int 0x80 syscall
  * dispatch into the real kernel's syscall table.
  *
  * The init_trampoline() in kernel/init.c is compiled as 64-bit code and
@@ -12,14 +12,14 @@
  * The INIT process has no vma_table, so verify_address()/check_user_area()
  * accept its kernel-address arguments (init_argv, the "/dev/console"
  * string, ...) - the same contract as the 32-bit kernel. */
-#include <fiwix/efi.h>
-#include <fiwix/errno.h>
-#include <fiwix/kernel.h>
-#include <fiwix/process.h>
-#include <fiwix/sigcontext.h>
-#include <fiwix/stdio.h>
-#include <fiwix/unistd.h>
-#include <fiwix/string.h>
+#include <fnx/efi.h>
+#include <fnx/errno.h>
+#include <fnx/kernel.h>
+#include <fnx/process.h>
+#include <fnx/sigcontext.h>
+#include <fnx/stdio.h>
+#include <fnx/unistd.h>
+#include <fnx/string.h>
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
 
@@ -77,7 +77,7 @@ void user_mode_prep(void)
 
 /* Real int 0x80 dispatcher (replaces the M4-A demo handler). gprs points
  * at the 15 saved GPRs (gprs[0] = r15, [1] = r14, ..., [14] = rax) with the
- * CPU frame right below. Fiwix64: native x86-64 syscalls only (no 32-bit
+ * CPU frame right below. FNX: native x86-64 syscalls only (no 32-bit
  * compatibility), dispatched via syscall_table64. */
 void syscall80_handler(unsigned long *gprs)
 {
@@ -119,7 +119,7 @@ void syscall80_handler(unsigned long *gprs)
 	was_exec = (sc.rax == SYS64_execve);
 	was_sigreturn = (sc.rax == SYS64_rt_sigreturn);
 	{
-		/* Fiwix64 (native port): x86-64 syscall ABI (rdi/rsi/rdx/r10/r8
+		/* FNX (native port): x86-64 syscall ABI (rdi/rsi/rdx/r10/r8
 		 * args, rax = nr) and the x86_64-numbered syscall_table64. */
 		long a1, a2, a3, a4, a5;
 

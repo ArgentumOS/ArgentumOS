@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/main64.c
+ * fnx/kernel64/main64.c
  *
- * Fiwix64 long-mode entry (M1).
+ * FNX long-mode entry (M1).
  *
  * Runs in long mode after ExitBootServices(), still on the firmware's
  * identity-mapped page tables. Prints the boot banner and a summary of the
@@ -13,7 +13,7 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
+#include <fnx/efi.h>
 #include "serial64.h"
 
 /* M4-B: boot the real Fiwix kernel (start_kernel) on top of the 64-bit
@@ -41,8 +41,8 @@ static int paging64_done;
 /* runtime physical load base of the .efi image (LoaderCode range), captured
  * from the EFI map; the kernel's high-half aliases are
  * PAGE_OFFSET64 + load_base + (section_offset) */
-unsigned long fiwix64_load_base;
-unsigned long fiwix64_image_size;	/* LoaderCode extent, bytes */
+unsigned long fnx_load_base;
+unsigned long fnx_image_size;	/* LoaderCode extent, bytes */
 
 static const char *memtype_name(UINT32 type)
 {
@@ -72,7 +72,7 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 	EFI_MEMORY_DESCRIPTOR *d;
 	UINTN n, count, pages, usable_pages;
 
-	/* Fiwix64: the firmware leaves interrupts ENABLED after
+	/* FNX: the firmware leaves interrupts ENABLED after
 	 * ExitBootServices() (its 8254 PIT is still running). Until
 	 * idt64_init() installs the kernel IDT below, any IRQ vectors into
 	 * OVMF's handler, which runs firmware memcpy()s into the loaded
@@ -90,7 +90,7 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 
 	serial_puts("\n");
 	serial_puts("================================================================\n");
-	serial_puts("Fiwix64 M1: long-mode kernel alive, booted directly from UEFI\n");
+	serial_puts("FNX M1: long-mode kernel alive, booted directly from UEFI\n");
 	serial_puts("================================================================\n");
 	serial_puts("firmware: ");
 	serial_puts16(SystemTable->FirmwareVendor);
@@ -142,9 +142,9 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 		if(d->Type == EfiConventionalMemory) {
 			usable_pages += d->NumberOfPages;
 		}
-		if(d->Type == EfiLoaderCode && !fiwix64_load_base) {
-			fiwix64_load_base = (unsigned long)d->PhysicalStart;
-			fiwix64_image_size = d->NumberOfPages << 12;
+		if(d->Type == EfiLoaderCode && !fnx_load_base) {
+			fnx_load_base = (unsigned long)d->PhysicalStart;
+			fnx_image_size = d->NumberOfPages << 12;
 		}
 	}
 	serial_puts("\n");
@@ -160,8 +160,8 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 
 	mm64_init(map, map_size, desc_size);
 
-	/* Fiwix64: install the kernel's own GDT64/TSS64, IDT64 and the
-	 * PIC/PIT interrupt path, then hand control to the real Fiwix
+	/* FNX: install the kernel's own GDT64/TSS64, IDT64 and the
+	 * PIC/PIT interrupt path, then hand control to the real FNX
 	 * kernel (start_kernel). The primitives stay active underneath. */
 	gdt64_init();
 	idt64_init();

@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/sections64.c
+ * fnx/kernel64/sections64.c
  *
- * Fiwix64 (M4-B): section-boundary symbols for the REAL kernel
+ * FNX (M4-B): section-boundary symbols for the REAL kernel
  * (_etext/_edata/_end, referenced by mm/memory.c). A PE linker script
  * corrupted ld i386pep's section headers, so these are plain C symbols:
  * their addresses sit in .bss near the end of the image, which is close

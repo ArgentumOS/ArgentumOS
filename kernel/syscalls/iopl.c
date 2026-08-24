@@ -1,5 +1,5 @@
 /*
- * fiwix/kernel/syscalls/iopl.c
+ * fnx/kernel/syscalls/iopl.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
@@ -9,7 +9,7 @@
  * Chapter Input/Output of IA-32 Intel(R) Architecture Software Developer's
  * Manual Volume 1 Basic Architecture, says the processor permits applications
  * to access I/O ports in either of two ways: by using I/O address space or by
- * using memory-mapped I/O. Linux 2.0 and Fiwix uses the first one.
+ * using memory-mapped I/O. Linux 2.0 and FNX uses the first one.
  *
  * This system call sets the IOPL field in the EFLAGS register to the value of
  * 'level' (which is pressumably zero), so the current process will have
@@ -22,13 +22,13 @@
  * kernel.
  */
 
-#include <fiwix/process.h>
-#include <fiwix/segments.h>
-#include <fiwix/sigcontext.h>
-#include <fiwix/errno.h>
+#include <fnx/process.h>
+#include <fnx/segments.h>
+#include <fnx/sigcontext.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_iopl(int level, int arg2, int arg3, int arg4, int arg5, struct sigcontext *sc)

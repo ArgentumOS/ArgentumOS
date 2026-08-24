@@ -1,22 +1,22 @@
 /*
- * fiwix/drivers/char/pty.c
+ * fnx/drivers/char/pty.c
  *
  * Copyright 2025, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/devices.h>
-#include <fiwix/errno.h>
-#include <fiwix/tty.h>
-#include <fiwix/pty.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_devpts.h>
-#include <fiwix/stat.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/devices.h>
+#include <fnx/errno.h>
+#include <fnx/tty.h>
+#include <fnx/pty.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_devpts.h>
+#include <fnx/stat.h>
+#include <fnx/ioctl.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_UNIX98_PTYS
 extern struct devpts_files *devpts_list;

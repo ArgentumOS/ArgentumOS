@@ -1,24 +1,24 @@
 /*
- * fiwix/kernel/init.c
+ * fnx/kernel/init.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/system.h>
-#include <fiwix/mm.h>
-#include <fiwix/timer.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/stat.h>
-#include <fiwix/process.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/unistd.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/system.h>
+#include <fnx/mm.h>
+#include <fnx/timer.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/fcntl.h>
+#include <fnx/stat.h>
+#include <fnx/process.h>
+#include <fnx/syscalls.h>
+#include <fnx/unistd.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define INIT_TRAMPOLINE_SIZE	256	/* max. size of init_trampoline() */
 
@@ -65,7 +65,7 @@ void init_init(void)
 	init->tss.cr3 = V2P((addr_t)pgdir);
 #ifdef __x86_64__
 	{
-		/* Fiwix64 (M6-next): INIT gets its own 4-level tables (deep copy
+		/* FNX (M6-next): INIT gets its own 4-level tables (deep copy
 		 * of the low-4GB identity/user hierarchy + shared kernel half).
 		 * The init_trampoline page (PAGE_OFFSET - PAGE_SIZE) lives in the
 		 * shared high half, so map_page() below still reaches it. */
@@ -80,7 +80,7 @@ void init_init(void)
 	init->ppid = &proc_table[IDLE];
 	init->pgid = 0;
 	init->sid = 0;
-	/* Fiwix64: the INIT bootstrap trampoline is native 64-bit code (it
+	/* FNX: the INIT bootstrap trampoline is native 64-bit code (it
 	 * uses the 'syscall' instruction via USER_SYSCALL64), so INIT is a
 	 * PF_ELF64 process - the syscall dispatcher must use the x86-64 ABI
 	 * (rdi/rsi/rdx/r10/r8) and syscall_table64, not the i386 compat one. */

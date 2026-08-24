@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/getrlimit.c
+ * fnx/kernel/syscalls/getrlimit.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/resource.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/fs.h>
+#include <fnx/resource.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_getrlimit(int resource, struct rlimit *rlim)

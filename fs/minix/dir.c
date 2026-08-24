@@ -1,20 +1,20 @@
 /*
- * fiwix/fs/minix/dir.c
+ * fnx/fs/minix/dir.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/buffer.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/stat.h>
-#include <fiwix/dirent.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/buffer.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/stat.h>
+#include <fnx/dirent.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_FS_MINIX
 struct fs_operations minix_dir_fsop = {

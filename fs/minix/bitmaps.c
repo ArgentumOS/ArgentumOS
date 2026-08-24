@@ -1,18 +1,18 @@
 /*
- * fiwix/fs/minix/bitmaps.c
+ * fnx/fs/minix/bitmaps.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_minix.h>
-#include <fiwix/buffer.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_minix.h>
+#include <fnx/buffer.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_FS_MINIX
 #define COUNT		1

@@ -1,27 +1,27 @@
 /*
- * fiwix/drivers/char/keyboard.c
+ * fnx/drivers/char/keyboard.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/limits.h>
-#include <fiwix/ps2.h>
-#include <fiwix/keyboard.h>
-#include <fiwix/reboot.h>
-#include <fiwix/console.h>
-#include <fiwix/vgacon.h>
-#include <fiwix/pic.h>
-#include <fiwix/irq.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/sleep.h>
-#include <fiwix/kd.h>
-#include <fiwix/sysrq.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/limits.h>
+#include <fnx/ps2.h>
+#include <fnx/keyboard.h>
+#include <fnx/reboot.h>
+#include <fnx/console.h>
+#include <fnx/vgacon.h>
+#include <fnx/pic.h>
+#include <fnx/irq.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/sleep.h>
+#include <fnx/kd.h>
+#include <fnx/sysrq.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define DELAY_250	0x00	/* typematic delay at 250ms (default) */
 #define DELAY_500	0x40	/* typematic delay at 500ms */

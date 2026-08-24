@@ -1,16 +1,16 @@
 /*
- * fiwix/kernel/syscalls/setitimer.c
+ * fnx/kernel/syscalls/setitimer.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/time.h>
+#include <fnx/fs.h>
+#include <fnx/time.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value)

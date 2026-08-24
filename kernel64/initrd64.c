@@ -1,13 +1,13 @@
-/* Fiwix64: minix-v1 initrd (auto-generated). */
-#include <fiwix/efi.h>
+/* FNX: minix-v1 initrd (auto-generated). */
+#include <fnx/efi.h>
 
-/* Fiwix64 (M6-H): the highest .bss address in the image (this
+/* FNX (M6-H): the highest .bss address in the image (this
  * file links LAST, so its .bss follows paging64.c's static
  * pml4/pd pages, the IDT and the TSS). kreal64.c hands it to
  * start_kernel() as last_boot_addr so mem_init() places its
  * static tables after these live structures instead of
  * overwriting the running pml4 with the page_table array. */
-char fiwix64_bss_end;
+char fnx_bss_end;
 
 const unsigned char initrd64_img[1048576] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

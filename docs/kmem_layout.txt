@@ -1,4 +1,4 @@
-Fiwix kernel memory address space on the i386 architecture
+FNX kernel memory address space on the i386 architecture
 ==========================================================
 
 	+-------------------+ \
@@ -39,7 +39,7 @@ Fiwix kernel memory address space on the i386 architecture
 	+-------------------+
 	| .data section     |
 	+-------------------+
-	| .text section     | kernel binary (fiwix)
+	| .text section     | kernel binary (fnx)
 	+-------------------+
 0x00100000
 ...

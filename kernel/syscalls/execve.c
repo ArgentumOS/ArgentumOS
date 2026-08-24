@@ -1,25 +1,25 @@
 /*
- * fiwix/kernel/syscalls/execve.c
+ * fnx/kernel/syscalls/execve.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/syscalls.h>
-#include <fiwix/stat.h>
-#include <fiwix/buffer.h>
-#include <fiwix/mm.h>
-#include <fiwix/process.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/syscalls.h>
+#include <fnx/stat.h>
+#include <fnx/buffer.h>
+#include <fnx/mm.h>
+#include <fnx/process.h>
+#include <fnx/fcntl.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 /*
- * Fiwix64: the exec'd user programs are 32-bit (compat) ELFs, so their
+ * FNX: the exec'd user programs are 32-bit (compat) ELFs, so their
  * argv[]/envp[] arrays hold 32-bit pointers; the INIT trampoline (which has
  * no vma_table) is the only 64-bit caller and passes native 64-bit pointers
  * (init_argv/init_envp in the kernel data segment). Read each element at the
@@ -28,7 +28,7 @@
 static char *get_user_ptr(char **arr, int n)
 {
 #ifdef __x86_64__
-	/* Fiwix64: a native 64-bit program passes 64-bit pointer arrays; a
+	/* FNX: a native 64-bit program passes 64-bit pointer arrays; a
 	 * 32-bit compat program passes 32-bit ones (each element must be read
 	 * as 32-bit and zero-extended). Before the first exec the process has
 	 * no vma_table yet (the INIT trampoline passes kernel addresses). */

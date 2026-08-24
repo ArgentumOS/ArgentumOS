@@ -1,18 +1,18 @@
 /*
- * fiwix/drivers/char/ps2.c
+ * fnx/drivers/char/ps2.c
  *
  * Copyright 2024, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/kparms.h>
-#include <fiwix/config.h>
-#include <fiwix/ps2.h>
-#include <fiwix/keyboard.h>
-#include <fiwix/psaux.h>
-#include <fiwix/stdio.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/kparms.h>
+#include <fnx/config.h>
+#include <fnx/ps2.h>
+#include <fnx/keyboard.h>
+#include <fnx/psaux.h>
+#include <fnx/stdio.h>
 
 /*
  * PS/2 System Control Port A bits

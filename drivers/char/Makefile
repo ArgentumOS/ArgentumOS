@@ -1,4 +1,4 @@
-# fiwix/drivers/char/Makefile
+# fnx/drivers/char/Makefile
 #
 # Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
 # Distributed under the terms of the Fiwix License.

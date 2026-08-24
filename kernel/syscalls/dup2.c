@@ -1,16 +1,16 @@
 /*
- * fiwix/kernel/syscalls/dup2.c
+ * fnx/kernel/syscalls/dup2.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/syscalls.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/syscalls.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_dup2(unsigned int old_ufd, unsigned int new_ufd)

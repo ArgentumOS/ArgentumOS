@@ -1,26 +1,26 @@
 /*
- * fiwix/net/socket.c
+ * fnx/net/socket.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/asm.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/stat.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/net.h>
-#include <fiwix/socket.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/config.h>
+#include <fnx/asm.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/stat.h>
+#include <fnx/fcntl.h>
+#include <fnx/net.h>
+#include <fnx/socket.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/process.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 #ifdef CONFIG_NET

@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/syslog.c
+ * fnx/kernel/syscalls/syslog.c
  *
  * Copyright 2025, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/syslog.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/syslog.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_syslog(int type, char *buffer, int len)

@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/mm64.c
+ * fnx/kernel64/mm64.c
  *
- * Fiwix64 M2 (phase B): physical page allocator + dynamic 4KB-page mapping.
+ * FNX M2 (phase B): physical page allocator + dynamic 4KB-page mapping.
  *
  * The page allocator is a first-fit bitmap over usable RAM below 1GB
  * (EfiConventionalMemory / EfiBootServicesCode / EfiBootServicesData, all
@@ -17,8 +17,8 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
-#include <fiwix/kernel.h>
+#include <fnx/efi.h>
+#include <fnx/kernel.h>
 #include "serial64.h"
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
@@ -53,7 +53,7 @@ static unsigned char page_bitmap[BITMAP_BYTES];
 static unsigned long free_pages_count;
 static unsigned long total_pages_count;
 
-/* Fiwix64 (pivot): the bitmap is now the SINGLE physical allocator for the
+/* FNX (pivot): the bitmap is now the SINGLE physical allocator for the
  * whole 64-bit kernel (page tables, user pages, kernel stacks, kmalloc).
  * mm64_init runs BEFORE the real kernel's mem_init(), which later carves
  * its static tables (kpage_dir, page_table[], buffer/inode caches) right
@@ -156,13 +156,13 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 	if(loader_max > loader_min) {
 		mark_used(loader_min, loader_max);
 	}
-	/* Fiwix64 (M6-H): cap the bitmap's allocatable range to BELOW the
+	/* FNX (M6-H): cap the bitmap's allocatable range to BELOW the
 	 * kernel image. The real kernel's mem_init() places its static tables
 	 * (kpage_dir, page_table[], buffer/inode caches) right after the image
 	 * and its allocator reserves everything from 0x100000 to _last_data_addr
 	 * (>= loader_max), so granting bitmap pages up there would collide with
 	 * live kernel structures (observed: the page-table array's refcounts got
-	 * clobbered by a 4-level table grant). Below the image the Fiwix
+	 * clobbered by a 4-level table grant). Below the image the FNX
 	 * allocator never hands anything out, so the two allocators are
 	 * disjoint. */
 	mark_used(loader_min, LOW_LIMIT);
@@ -192,11 +192,11 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 	}
 }
 
-/* Fiwix64 (pivot): called from mem_init() AFTER the kernel has carved its
+/* FNX (pivot): called from mem_init() AFTER the kernel has carved its
  * static tables (kpage_dir, page_table[], buffer/inode caches...) right
  * after the image and computed _last_data_addr. The bitmap is the single
  * physical allocator, so the usable pages ABOVE the static tables - the
- * region the Fiwix free-list used to manage - are handed back to it here.
+ * region the FNX free-list used to manage - are handed back to it here.
  * mm64_init() had conservatively marked [loader_min, LOW_LIMIT) used
  * because _last_data_addr was not known yet. */
 void mm64_postmem_init(void)
@@ -321,7 +321,7 @@ static unsigned long alloc_table_page(void)
 
 /* map one 4KB page at vaddr -> paddr; allocates intermediate tables on
  * demand and splits a 2MB huge page if the target PD entry has PS set.
- * Fiwix64 (M6-next): the walk starts at the GIVEN pml4 (per-process page
+ * FNX (M6-next): the walk starts at the GIVEN pml4 (per-process page
  * tables), not the kernel's shared one. */
 int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 		  unsigned long flags)
@@ -386,7 +386,7 @@ int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 	}
 	lvl = (unsigned long *)P2V64(*entry & PAGE_MASK64);
 	lvl[PT_INDEX(vaddr)] = (paddr & PAGE_MASK64) | (flags & 0xFFFUL) | X86_PTE_P;
-	/* Fiwix64: flush - the CR3 reload plus an explicit invlpg for the
+	/* FNX: flush - the CR3 reload plus an explicit invlpg for the
 	 * changed leaf. Some TCGs skip the flush when the CR3 value is
 	 * unchanged, leaving the stale 2MB/split entry cached. */
 	tlb_flush64();
@@ -459,7 +459,7 @@ int unmap_user_page64_in(unsigned long pml4, unsigned long vaddr)
 	return 0;
 }
 
-/* Fiwix64 (M6-next): per-process page tables. Each user process gets its
+/* FNX (M6-next): per-process page tables. Each user process gets its
  * own 4-level tables: the low-4GB identity/user hierarchy is deep-copied
  * (private PDPT + the 4 PD pages so splits never touch the kernel's or
  * another process's tables), while PML4[511] (the kernel high half) stays
@@ -490,7 +490,7 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 	}
 	pml4 = (unsigned long *)P2V64(pml4_phys);
 
-	/* Fiwix64 (canonical amd64 split): the USER half is pml4[0..255]
+	/* FNX (canonical amd64 split): the USER half is pml4[0..255]
 	 * (VA 0 .. 0x00007FFFFFFFFFFF, 128TB); the KERNEL half is
 	 * pml4[256..511] and is SHARED with the kernel. A FORK child
 	 * deep-copies the parent's user half (every present PML4[i] ->
@@ -592,7 +592,7 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 	}
 
 	if(!is_fork) {
-		/* Fiwix64 (canonical amd64 split): the PIC kernel image is
+		/* FNX (canonical amd64 split): the PIC kernel image is
 		 * loaded by the firmware at load_base and EXECUTES at its
 		 * high-half alias, but every function pointer stored in kernel
 		 * DATA (syscall_table64, tty->output, IDT gates, file_operations,
@@ -606,11 +606,11 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 		 * empty so user code (trampoline 0x100000, ELF at 0x400000,
 		 * mmap at 64TB) never aliases kernel phys. Fork children inherit
 		 * these supervisor leaves via the deep copy above. */
-		extern unsigned long fiwix64_load_base, fiwix64_image_size;
+		extern unsigned long fnx_load_base, fnx_image_size;
 		unsigned long va;
 
-		for(va = fiwix64_load_base;
-		    va < fiwix64_load_base + fiwix64_image_size;
+		for(va = fnx_load_base;
+		    va < fnx_load_base + fnx_image_size;
 		    va += PAGE_SIZE64) {
 			if(map_page64_in(pml4_phys, va, va, X86_PTE_P | X86_PTE_RW)) {
 				free_pml4_64(pml4_phys);
@@ -717,7 +717,7 @@ unsigned long virt_to_phys64(unsigned long vaddr)
 }
 
 /*
- * Fiwix64 (native-MM): the process's per-process pml4 is the SINGLE source
+ * FNX (native-MM): the process's per-process pml4 is the SINGLE source
  * of truth (the 2-level pgdir shadow is gone). user_leaf64_in() returns the
  * physical address of the present USER 4KB leaf covering 'vaddr' in the
  * given pml4, or 0 when the address is NOT user-mapped: absent anywhere in

@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/sched.c
+ * fnx/kernel/sched.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/sched.h>
-#include <fiwix/process.h>
-#include <fiwix/sleep.h>
-#include <fiwix/segments.h>
-#include <fiwix/timer.h>
-#include <fiwix/pic.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/sched.h>
+#include <fnx/process.h>
+#include <fnx/sleep.h>
+#include <fnx/segments.h>
+#include <fnx/timer.h>
+#include <fnx/pic.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int need_resched = 0;
 
@@ -29,8 +29,8 @@ static void context_switch(struct proc *next)
 	current = next;
 #ifdef __x86_64__
 	{
-		extern void fiwix64_set_fs_base(unsigned long);
-		fiwix64_set_fs_base(next->fs_base);
+		extern void fnx_set_fs_base(unsigned long);
+		fnx_set_fs_base(next->fs_base);
 	}
 #endif /* __x86_64__ */
 	do_switch(&prev->tss.esp, &prev->tss.eip, next->tss.esp, next->tss.eip,
@@ -46,7 +46,7 @@ static void context_switch(struct proc *next)
 void set_tss(struct proc *p)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (pure x86-64 port): there is no 32-bit GDT/TSS (the i386
+	/* FNX (pure x86-64 port): there is no 32-bit GDT/TSS (the i386
 	 * gdt.c was deleted). The CPU runs the gdt64.c GDT + static 64-bit
 	 * TSS; point its RSP0 at this process's own kernel stack (see
 	 * gdt64_set_rsp0). */
@@ -54,7 +54,7 @@ void set_tss(struct proc *p)
 		extern void gdt64_set_rsp0(unsigned long);
 		gdt64_set_rsp0(p->tss.esp0);
 	}
-	/* Fiwix64 (M6-next): the TLS descriptor (GDT slot 12, selector 0x63)
+	/* FNX (M6-next): the TLS descriptor (GDT slot 12, selector 0x63)
 	 * is a single SHARED slot and %gs-relative addressing reads the base
 	 * through it (and the matching GS_BASE MSR). A child's
 	 * set_thread_area() would otherwise leave the parent reading its

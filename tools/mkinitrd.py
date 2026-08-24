@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fiwix64: build a minix-v1 filesystem image (initrd) from a directory tree.
+FNX: build a minix-v1 filesystem image (initrd) from a directory tree.
 
 Layout (block size 1024, log_zone_size 0):
   block 0      boot block (zeros)
@@ -13,8 +13,8 @@ Layout (block size 1024, log_zone_size 0):
 Usage: mkinitrd.py <root-dir> <output.img> [output.c]
   Packs the tree under <root-dir> (".build/rootfs" by convention). Char
   devices are matched by path in the DEVICES table below (rdev is stored in
-  i_zone[0], as Fiwix's minix driver expects). The optional third argument
-  embeds the image as kernel64/initrd64.c for the Fiwix64 PE build.
+  i_zone[0], as FNX's minix driver expects). The optional third argument
+  embeds the image as kernel64/initrd64.c for the FNX PE build.
 """
 
 import os
@@ -49,7 +49,7 @@ DEVICES = {
 
 
 def block_of(zone):
-    """Fiwix's minix driver stores ABSOLUTE block numbers in i_zone[]. """
+    """FNX's minix driver stores ABSOLUTE block numbers in i_zone[]. """
     return FIRSTDATAZONE - 1 + zone
 
 
@@ -178,7 +178,7 @@ def assign_zones(node):
                 zones[ind_z] = ('INDIRECT', entries)
             i_zones[n.inode] = iz
         elif n.kind == 'chr':
-            # Fiwix's minix driver reads i_zone[0] as the device number
+            # FNX's minix driver reads i_zone[0] as the device number
             i_zones[n.inode] = [n.rdev] + [0] * 8
         else:
             raise AssertionError(n.kind)
@@ -263,16 +263,16 @@ def main():
 
     if outc:
         with open(outc, 'w') as f:
-            f.write('/* Fiwix64: minix-v1 initrd (auto-generated). */\n')
-            f.write('#include <fiwix/efi.h>\n')
+            f.write('/* FNX: minix-v1 initrd (auto-generated). */\n')
+            f.write('#include <fnx/efi.h>\n')
             f.write('\n')
-            f.write('/* Fiwix64 (M6-H): the highest .bss address in the image (this\n')
+            f.write('/* FNX (M6-H): the highest .bss address in the image (this\n')
             f.write(' * file links LAST, so its .bss follows paging64.c\'s static\n')
             f.write(' * pml4/pd pages, the IDT and the TSS). kreal64.c hands it to\n')
             f.write(' * start_kernel() as last_boot_addr so mem_init() places its\n')
             f.write(' * static tables after these live structures instead of\n')
             f.write(' * overwriting the running pml4 with the page_table array. */\n')
-            f.write('char fiwix64_bss_end;\n')
+            f.write('char fnx_bss_end;\n')
             f.write('\n')
             f.write('const unsigned char initrd64_img[%d] = {\n' % len(img))
             for off in range(0, len(img), 16):

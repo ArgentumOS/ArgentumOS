@@ -1,5 +1,5 @@
 #!/bin/sh
-# Fiwix64 toybox applet smoke test: one marker per step, sync'ed so a crash
+# FNX toybox applet smoke test: one marker per step, sync'ed so a crash
 # shows exactly which applet completed.
 echo "start" > /s0.log; sync
 ls -la / > /s1.log 2>&1; sync

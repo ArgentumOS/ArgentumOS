@@ -1,36 +1,36 @@
 /*
- * fiwix/fs/procfs/data.c
+ * fnx/fs/procfs/data.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/kparms.h>
-#include <fiwix/system.h>
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/cmos.h>
-#include <fiwix/dma.h>
-#include <fiwix/ata.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/devices.h>
-#include <fiwix/locks.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/fs_proc.h>
-#include <fiwix/cpu.h>
-#include <fiwix/irq.h>
-#include <fiwix/sched.h>
-#include <fiwix/timer.h>
-#include <fiwix/utsname.h>
-#include <fiwix/version.h>
-#include <fiwix/socket.h>
-#include <fiwix/pci.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/kparms.h>
+#include <fnx/system.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/cmos.h>
+#include <fnx/dma.h>
+#include <fnx/ata.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/devices.h>
+#include <fnx/locks.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/fs_proc.h>
+#include <fnx/cpu.h>
+#include <fnx/irq.h>
+#include <fnx/sched.h>
+#include <fnx/timer.h>
+#include <fnx/utsname.h>
+#include <fnx/version.h>
+#include <fnx/socket.h>
+#include <fnx/pci.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define FSHIFT16	16
 #define FIXED16_1	(1 << FSHIFT16)
@@ -442,7 +442,7 @@ int data_proc_uptime(char *buffer, __pid_t pid)
 
 int data_proc_fullversion(char *buffer, __pid_t pid)
 {
-	return sprintk(buffer, "Fiwix version %s %s\n", UTS_RELEASE, UTS_VERSION);
+	return sprintk(buffer, "FNX version %s %s\n", UTS_RELEASE, UTS_VERSION);
 }
 
 

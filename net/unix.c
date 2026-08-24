@@ -1,25 +1,25 @@
 /*
- * fiwix/net/unix.c
+ * fnx/net/unix.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Portions Copyright 2024, Greg Haerr.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/fs.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/socket.h>
-#include <fiwix/net.h>
-#include <fiwix/netdevice.h>
-#include <fiwix/net/unix.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/mm.h>
-#include <fiwix/string.h>
-#include <fiwix/stdio.h>
+#include <fnx/config.h>
+#include <fnx/fs.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/socket.h>
+#include <fnx/net.h>
+#include <fnx/netdevice.h>
+#include <fnx/net/unix.h>
+#include <fnx/fcntl.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/mm.h>
+#include <fnx/string.h>
+#include <fnx/stdio.h>
 
 #ifdef CONFIG_NET
 struct unix_info *unix_socket_head;

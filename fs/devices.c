@@ -1,19 +1,19 @@
 /*
- * fiwix/fs/devices.c
+ * fnx/fs/devices.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/buffer.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/mm.h>
-#include <fiwix/process.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/buffer.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/mm.h>
+#include <fnx/process.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 struct device *chr_device_table[NR_CHRDEV];
 struct device *blk_device_table[NR_BLKDEV];

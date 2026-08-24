@@ -1,21 +1,21 @@
 /*
- * fiwix/kernel/traps.c
+ * fnx/kernel/traps.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/traps.h>
-#include <fiwix/cpu.h>
-#include <fiwix/pit.h>
-#include <fiwix/mm.h>
-#include <fiwix/process.h>
-#include <fiwix/signal.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/sched.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/traps.h>
+#include <fnx/cpu.h>
+#include <fnx/pit.h>
+#include <fnx/mm.h>
+#include <fnx/process.h>
+#include <fnx/signal.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/sched.h>
 
 struct traps traps_table[NR_EXCEPTIONS] = {
 	{ "Divide Error", do_divide_error, 0 },

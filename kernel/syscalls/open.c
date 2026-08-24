@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/open.c
+ * fnx/kernel/syscalls/open.c
  *
  * Copyright 2018-2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/syscalls.h>
-#include <fiwix/stat.h>
-#include <fiwix/types.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/syscalls.h>
+#include <fnx/stat.h>
+#include <fnx/types.h>
+#include <fnx/fcntl.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int sys_open(const char *filename, int flags, __mode_t mode)
 {

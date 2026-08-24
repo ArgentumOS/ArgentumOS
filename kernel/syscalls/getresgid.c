@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/getresgid.c
+ * fnx/kernel/syscalls/getresgid.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: getresgid(120) - return the real, effective and saved group
+ * FNX: getresgid(120) - return the real, effective and saved group
  * IDs. The three pointers may be NULL (Linux ignores NULL pointers).
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_getresgid(__gid_t *rgid, __gid_t *egid, __gid_t *sgid)

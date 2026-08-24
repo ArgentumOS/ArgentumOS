@@ -1,5 +1,5 @@
 /*
- * fiwix/fs/inode.c
+ * fnx/fs/inode.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
@@ -22,17 +22,17 @@
  *    ...
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define INODE_HASH(dev, inode)	(((__dev_t)(dev) ^ (__ino_t)(inode)) % (NR_INO_HASH))
 #define NR_INO_HASH	(inode_hash_table_size / sizeof(struct inode *))

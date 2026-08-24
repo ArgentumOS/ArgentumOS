@@ -1,16 +1,16 @@
 /*
- * fiwix/kernel/syscalls/alarm.c
+ * fnx/kernel/syscalls/alarm.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/time.h>
+#include <fnx/types.h>
+#include <fnx/time.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_alarm(unsigned int secs)

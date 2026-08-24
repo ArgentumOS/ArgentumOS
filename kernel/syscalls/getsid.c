@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/getsid.c
+ * fnx/kernel/syscalls/getsid.c
  *
  * Copyright 2018-2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_getsid(__pid_t pid)

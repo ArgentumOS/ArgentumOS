@@ -1,20 +1,20 @@
 /*
- * fiwix/drivers/video/bga.c
+ * fnx/drivers/video/bga.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/kparms.h>
-#include <fiwix/config.h>
-#include <fiwix/bga.h>
-#include <fiwix/pci.h>
-#include <fiwix/console.h>
-#include <fiwix/mm.h>
-#include <fiwix/string.h>
-#include <fiwix/stdio.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/kparms.h>
+#include <fnx/config.h>
+#include <fnx/bga.h>
+#include <fnx/pci.h>
+#include <fnx/console.h>
+#include <fnx/mm.h>
+#include <fnx/string.h>
+#include <fnx/stdio.h>
 
 #ifdef CONFIG_PCI
 #ifdef CONFIG_BGA

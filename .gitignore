@@ -1,12 +1,12 @@
 *.o
-/fiwix
+/fnx
 System.map.gz
-include/fiwix/custom_config.h
-include/fiwix/custom_limits.h
-include/fiwix/custom_kernel.h
-include/fiwix/custom_system.h
+include/fnx/custom_config.h
+include/fnx/custom_limits.h
+include/fnx/custom_kernel.h
+include/fnx/custom_system.h
 
-# Fiwix64 build artifacts
+# FNX build artifacts
 .build/
 
 # dash is cloned into third_party/dash (see Makefile 'dash' target); musl is a

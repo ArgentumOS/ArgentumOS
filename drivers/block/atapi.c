@@ -1,18 +1,18 @@
 /*
- * fiwix/drivers/block/atapi.c
+ * fnx/drivers/block/atapi.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/ata.h>
-#include <fiwix/atapi_cd.h>
-#include <fiwix/timer.h>
-#include <fiwix/cpu.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/ata.h>
+#include <fnx/atapi_cd.h>
+#include <fnx/timer.h>
+#include <fnx/cpu.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int send_packet_command(unsigned char *pkt, struct ide *ide, struct ata_drv *drive, int len)
 {

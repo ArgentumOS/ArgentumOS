@@ -1,17 +1,17 @@
 /*
- * fiwix/fs/procfs/tree.c
+ * fnx/fs/procfs/tree.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/stat.h>
-#include <fiwix/fs.h>
-#include <fiwix/fs_proc.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/stat.h>
+#include <fnx/fs.h>
+#include <fnx/fs_proc.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define DIR	S_IFDIR | S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | \
 		S_IXOTH					/* dr-xr-xr-x */

@@ -1,19 +1,19 @@
 /*
- * fiwix/drivers/video/vgacon.c
+ * fnx/drivers/video/vgacon.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/config.h>
-#include <fiwix/segments.h>
-#include <fiwix/vgacon.h>
-#include <fiwix/console.h>
-#include <fiwix/timer.h>
-#include <fiwix/bios.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/config.h>
+#include <fnx/segments.h>
+#include <fnx/vgacon.h>
+#include <fnx/console.h>
+#include <fnx/timer.h>
+#include <fnx/bios.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /* ISO/IEC 8859-1:1998 (aka latin1, IBM819, CP819), same as in Linux */
 static const char *iso8859 =

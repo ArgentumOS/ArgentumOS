@@ -1,17 +1,17 @@
 /*
- * fiwix/fs/devpts/inode.c
+ * fnx/fs/devpts/inode.c
  *
  * Copyright 2025, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_devpts.h>
-#include <fiwix/statfs.h>
-#include <fiwix/stat.h>
-#include <fiwix/stdio.h>
+#include <fnx/kernel.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_devpts.h>
+#include <fnx/statfs.h>
+#include <fnx/stat.h>
+#include <fnx/stdio.h>
 
 #ifdef CONFIG_UNIX98_PTYS
 int devpts_read_inode(struct inode *i)

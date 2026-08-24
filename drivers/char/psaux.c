@@ -1,24 +1,24 @@
 /*
- * fiwix/drivers/char/psaux.c
+ * fnx/drivers/char/psaux.c
  *
  * Copyright 2024, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/errno.h>
-#include <fiwix/ps2.h>
-#include <fiwix/psaux.h>
-#include <fiwix/pic.h>
-#include <fiwix/irq.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/errno.h>
+#include <fnx/ps2.h>
+#include <fnx/psaux.h>
+#include <fnx/pic.h>
+#include <fnx/irq.h>
+#include <fnx/fcntl.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_PSAUX
 static struct fs_operations psaux_driver_fsop = {

@@ -1,4 +1,4 @@
-# fiwix/fs/sockfs/Makefile
+# fnx/fs/sockfs/Makefile
 #
 # Copyright 2023, Jordi Sanfeliu. All rights reserved.
 # Distributed under the terms of the Fiwix License.

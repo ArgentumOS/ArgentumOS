@@ -1,6 +1,6 @@
-/* Fiwix64: signal-info accessor retained for the kernel64 link. */
-#include <fiwix/process.h>
-#include <fiwix/sigcontext.h>
+/* FNX: signal-info accessor retained for the kernel64 link. */
+#include <fnx/process.h>
+#include <fnx/sigcontext.h>
 
 extern struct proc *current;
 

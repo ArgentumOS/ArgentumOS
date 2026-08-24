@@ -1,23 +1,23 @@
 /*
- * fiwix/kernel/syscalls/socketcall64.c
+ * fnx/kernel/syscalls/socketcall64.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: direct x86-64 socket syscalls (41-55). musl x86-64 uses these
+ * FNX: direct x86-64 socket syscalls (41-55). musl x86-64 uses these
  * instead of the i386 sys_socketcall() multiplexer (which this port
  * deleted). The underlying implementations live in net/socket.c and take
  * the direct arguments; these wrappers match the Linux x86-64 ABI arg
  * order (which for accept/recvfrom differs from the C function order).
  */
 
-#include <fiwix/config.h>
-#include <fiwix/net.h>
-#include <fiwix/errno.h>
-#include <fiwix/process.h>
+#include <fnx/config.h>
+#include <fnx/net.h>
+#include <fnx/errno.h>
+#include <fnx/process.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 #ifdef CONFIG_NET

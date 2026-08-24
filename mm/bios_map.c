@@ -1,16 +1,16 @@
 /*
- * fiwix/mm/bios_map.c
+ * fnx/mm/bios_map.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/kparms.h>
-#include <fiwix/mm.h>
-#include <fiwix/bios.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/kparms.h>
+#include <fnx/mm.h>
+#include <fnx/bios.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 struct bios_mem_map bios_mem_map[NR_BIOS_MM_ENT];
 struct bios_mem_map kernel_mem_map[NR_BIOS_MM_ENT];

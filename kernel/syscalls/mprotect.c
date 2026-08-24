@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/mprotect.c
+ * fnx/kernel/syscalls/mprotect.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/mman.h>
-#include <fiwix/mm.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/mman.h>
+#include <fnx/mm.h>
+#include <fnx/fcntl.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_mprotect(addr_t addr, __size_t length, int prot)

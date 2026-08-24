@@ -1,21 +1,21 @@
 /*
- * fiwix/drivers/block/blk_queue.c
+ * fnx/drivers/block/blk_queue.c
  *
  * Copyright 2024, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/irq.h>
-#include <fiwix/blk_queue.h>
-#include <fiwix/buffer.h>
-#include <fiwix/devices.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/irq.h>
+#include <fnx/blk_queue.h>
+#include <fnx/buffer.h>
+#include <fnx/devices.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /* append the request into the queue */
 void add_blk_request(struct blk_request *br)

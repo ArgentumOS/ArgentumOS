@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fiwix64: build an ext2 (revision 0, "good old" format) filesystem image from a
+FNX: build an ext2 (revision 0, "good old" format) filesystem image from a
 directory tree, for booting the kernel off a real disk (root=/dev/hdb).
 
 Matches what Fiwix's fs/ext2 reads:

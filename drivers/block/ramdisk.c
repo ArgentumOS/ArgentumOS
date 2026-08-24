@@ -1,21 +1,21 @@
 /*
- * fiwix/drivers/block/ramdisk.c
+ * fnx/drivers/block/ramdisk.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/ramdisk.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/devices.h>
-#include <fiwix/part.h>
-#include <fiwix/fs.h>
-#include <fiwix/buffer.h>
-#include <fiwix/errno.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/ramdisk.h>
+#include <fnx/ioctl.h>
+#include <fnx/devices.h>
+#include <fnx/part.h>
+#include <fnx/fs.h>
+#include <fnx/buffer.h>
+#include <fnx/errno.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int ramdisk_minors;
 struct ramdisk ramdisk_table[RAMDISK_TOTAL];

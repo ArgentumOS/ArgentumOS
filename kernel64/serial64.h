@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/serial64.h
+ * fnx/kernel64/serial64.h
  *
- * Shared serial-console and small asm helpers for the Fiwix64 EFI stub
+ * Shared serial-console and small asm helpers for the FNX EFI stub
  * (kernel64 sources). Static (one private copy per TU, marked unused so
  * -Wall stays quiet in TUs that use only a subset). COM1, 115200 8N1.
  *
@@ -11,7 +11,7 @@
 #ifndef _SERIAL64_H
 #define _SERIAL64_H
 
-#include <fiwix/efi.h>
+#include <fnx/efi.h>
 
 #define COM1		0x3F8
 

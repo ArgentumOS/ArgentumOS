@@ -1,18 +1,18 @@
 /*
- * fiwix/drivers/block/part.c
+ * fnx/drivers/block/part.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/ata.h>
-#include <fiwix/ata_hd.h>
-#include <fiwix/fs.h>
-#include <fiwix/part.h>
-#include <fiwix/buffer.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/ata.h>
+#include <fnx/ata_hd.h>
+#include <fnx/fs.h>
+#include <fnx/part.h>
+#include <fnx/buffer.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int read_msdos_partition(__dev_t dev, struct partition *part)
 {

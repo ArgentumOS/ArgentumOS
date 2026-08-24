@@ -1,17 +1,17 @@
 /*
- * fiwix/drivers/char/lp.c
+ * fnx/drivers/char/lp.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/errno.h>
-#include <fiwix/lp.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/errno.h>
+#include <fnx/lp.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 struct lp lp_table[LP_MINORS];
 

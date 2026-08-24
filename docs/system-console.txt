@@ -1,10 +1,10 @@
-Fiwix system console
+FNX system console
 ====================
 It is possible to specify multiple devices for console output. You can define
 up to NR_SYSCONSOLES 'console=' kernel command line options to select which
 device(s) to use for console output.
 
-Refer to 'include/fiwix/kparms.h' to know which devices are supported as
+Refer to 'include/fnx/kparms.h' to know which devices are supported as
 system consoles.
 
 The device '/dev/tty0' is the default when no device is specified. It is

@@ -1,16 +1,16 @@
 /*
- * fiwix/kernel/syscalls/munmap.c
+ * fnx/kernel/syscalls/munmap.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/mman.h>
+#include <fnx/types.h>
+#include <fnx/mman.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_munmap(addr_t addr, __size_t length)

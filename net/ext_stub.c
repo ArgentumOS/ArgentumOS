@@ -1,19 +1,19 @@
 /*
- * fiwix/net/ext_stub.c
+ * fnx/net/ext_stub.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: stub for the external (NIC driver) interface that net/ipv4.c
+ * FNX: stub for the external (NIC driver) interface that net/ipv4.c
  * calls. Fiwix mainline never shipped a NIC driver either - these hooks
  * were always expected to be provided by a future driver. Without a NIC,
  * every IP operation returns -ENODEV; UNIX-domain sockets (net/unix.c)
  * do not use them and work fully.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/errno.h>
-#include <fiwix/net.h>
+#include <fnx/config.h>
+#include <fnx/errno.h>
+#include <fnx/net.h>
 
 #ifdef CONFIG_NET
 

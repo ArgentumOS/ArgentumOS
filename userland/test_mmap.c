@@ -1,5 +1,5 @@
 /*
- * Fiwix64 mmap / MAP_SHARED / SysV IPC test (static musl i386).
+ * FNX mmap / MAP_SHARED / SysV IPC test (static musl i386).
  *
  * Exercises: anonymous mmap, file mmap with a non-zero offset (mmap2 pgoff),
  * MAP_SHARED across fork, and SysV shared memory (shmget/shmat/shmdt).
@@ -75,7 +75,7 @@ int main(void)
 	}
 
 	/* 3. MAP_SHARED across fork via a file mapping: child's write must be
-	 * visible to the parent (Fiwix rejects anonymous MAP_SHARED) */
+	 * visible to the parent (FNX rejects anonymous MAP_SHARED) */
 	{
 		int fd = open("/mmap_test.txt", O_RDWR);
 		report("open file for shared fork", fd >= 0);

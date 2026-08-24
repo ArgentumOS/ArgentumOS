@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/select.c
+ * fnx/kernel/syscalls/select.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/process.h>
-#include <fiwix/timer.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/process.h>
+#include <fnx/timer.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /* poll(2) event/revents bits (x86-64 ABI) */
 #define POLLIN		0x001

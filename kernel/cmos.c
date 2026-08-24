@@ -1,12 +1,12 @@
 /*
- * fiwix/kernel/cmos.c
+ * fnx/kernel/cmos.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/cmos.h>
+#include <fnx/asm.h>
+#include <fnx/cmos.h>
 
 int cmos_update_in_progress(void)
 {

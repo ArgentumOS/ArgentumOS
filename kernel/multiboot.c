@@ -1,26 +1,26 @@
 /*
- * fiwix/kernel/multiboot.c
+ * fnx/kernel/multiboot.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/kernel.h>
-#include <fiwix/multiboot1.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/limits.h>
-#include <fiwix/kparms.h>
-#include <fiwix/i386elf.h>
-#include <fiwix/ramdisk.h>
-#include <fiwix/kexec.h>
-#include <fiwix/mm.h>
-#include <fiwix/bios.h>
-#include <fiwix/vgacon.h>
-#include <fiwix/fb.h>
-#include <fiwix/fbcon.h>
-#include <fiwix/sysconsole.h>
+#include <fnx/config.h>
+#include <fnx/kernel.h>
+#include <fnx/multiboot1.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/limits.h>
+#include <fnx/kparms.h>
+#include <fnx/i386elf.h>
+#include <fnx/ramdisk.h>
+#include <fnx/kexec.h>
+#include <fnx/mm.h>
+#include <fnx/bios.h>
+#include <fnx/vgacon.h>
+#include <fnx/fb.h>
+#include <fnx/fbcon.h>
+#include <fnx/sysconsole.h>
 
 char bios_data[256];
 
@@ -426,7 +426,7 @@ void multiboot(unsigned int magic, unsigned int info)
 
 		p = (char *)mbi.cmdline;
 		len = strlen(p);
-		/* suppress 'fiwix' */
+		/* suppress 'fnx' */
 		for(n = 0; n < len; n++) {
 			c = *(p++);
 			if(c == ' ') {

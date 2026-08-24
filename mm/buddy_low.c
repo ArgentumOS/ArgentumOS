@@ -1,5 +1,5 @@
 /*
- * fiwix/mm/buddy_low.c
+ * fnx/mm/buddy_low.c
  *
  * Copyright 2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
@@ -10,10 +10,10 @@
  * than a PAGE_SIZE.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static struct bl_head *freelist[BUDDY_MAX_LEVEL + 1];
 

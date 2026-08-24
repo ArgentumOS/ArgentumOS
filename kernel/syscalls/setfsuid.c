@@ -1,11 +1,11 @@
 /*
- * fiwix/kernel/syscalls/setfsuid.c
+ * fnx/kernel/syscalls/setfsuid.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: setfsuid(122) - set the filesystem user ID used by
+ * FNX: setfsuid(122) - set the filesystem user ID used by
  * check_permission() for inode access checks. Linux semantics: the call
  * succeeds if the new value matches the real, effective, saved or current
  * filesystem UID (or the caller is privileged); it returns the PREVIOUS
@@ -14,12 +14,12 @@
  * uid even if the effective uid changed.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/process.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/process.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_setfsuid(__uid_t fsuid)

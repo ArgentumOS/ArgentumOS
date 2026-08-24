@@ -1,16 +1,16 @@
 /*
- * fiwix/lib/string.c
+ * fnx/lib/string.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/tty.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/ctype.h>
+#include <fnx/types.h>
+#include <fnx/tty.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/ctype.h>
 
 /* convert from big-endian to little-endian (word swap) */
 void swap_asc_word(char *str, int len)

@@ -1,18 +1,18 @@
 /*
- * fiwix/kernel/syscalls/readv.c
+ * fnx/kernel/syscalls/readv.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Copyright 2023, Richard R. Masters.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/errno.h>
+#include <fnx/fs.h>
+#include <fnx/fcntl.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_readv(unsigned int ufd, const struct iovec *iov, int iovcnt)
@@ -32,7 +32,7 @@ int sys_readv(unsigned int ufd, const struct iovec *iov, int iovcnt)
 	}
 	for (vi = 0; vi < iovcnt; vi++) {
 		struct iovec io;
-		/* Fiwix64 (native port): full 64-bit struct iovec */
+		/* FNX (native port): full 64-bit struct iovec */
 		io = ((struct iovec *)iov)[vi];
 		if((errno = check_user_area(VERIFY_WRITE, io.iov_base, io.iov_len))) {
 			return errno;

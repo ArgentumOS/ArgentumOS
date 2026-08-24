@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/syscalls/setresgid.c
+ * fnx/kernel/syscalls/setresgid.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: setresgid(119) - set real, effective and saved group IDs.
+ * FNX: setresgid(119) - set real, effective and saved group IDs.
  * Any argument may be -1 to leave that ID unchanged (mirror of
  * sys_setresuid with group IDs).
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_setresgid(__gid_t rgid, __gid_t egid, __gid_t sgid)

@@ -1,4 +1,4 @@
-Fiwix kernel parameters
+FNX kernel parameters
 =======================
 
 The following is a list of the current kernel parameters:

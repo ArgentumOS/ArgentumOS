@@ -1,28 +1,28 @@
 /*
- * fiwix/drivers/char/console.c
+ * fnx/drivers/char/console.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/ctype.h>
-#include <fiwix/console.h>
-#include <fiwix/devices.h>
-#include <fiwix/tty.h>
-#include <fiwix/keyboard.h>
-#include <fiwix/sleep.h>
-#include <fiwix/pit.h>
-#include <fiwix/timer.h>
-#include <fiwix/process.h>
-#include <fiwix/mm.h>
-#include <fiwix/sched.h>
-#include <fiwix/kd.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/fbcon.h>
-#include <fiwix/sysconsole.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/ctype.h>
+#include <fnx/console.h>
+#include <fnx/devices.h>
+#include <fnx/tty.h>
+#include <fnx/keyboard.h>
+#include <fnx/sleep.h>
+#include <fnx/pit.h>
+#include <fnx/timer.h>
+#include <fnx/process.h>
+#include <fnx/mm.h>
+#include <fnx/sched.h>
+#include <fnx/kd.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/fbcon.h>
+#include <fnx/sysconsole.h>
 
 #define CSI_J_CUR2END	0	/* clear from cursor to end of screen */
 #define CSI_J_STA2CUR	1	/* clear from start of screen to cursor */

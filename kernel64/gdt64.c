@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/gdt64.c
+ * fnx/kernel64/gdt64.c
  *
- * Fiwix64 M3 (phase A) / M4-C: the kernel's own 64-bit GDT + TSS.
+ * FNX M3 (phase A) / M4-C: the kernel's own 64-bit GDT + TSS.
  *
  * The GDT uses the CPU's native 8-byte descriptor slots and mirrors the
  * selectors the real (32-bit) Fiwix kernel's C code relies on:
@@ -15,7 +15,7 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
+#include <fnx/efi.h>
 #include "serial64.h"
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
@@ -71,20 +71,20 @@ void gdt64_ltr(unsigned int selector)
 	__asm__ __volatile__("ltr %%ax" :: "a"(selector));
 }
 
-/* Fiwix64 (M6-E): the CPU's active TSS is gdt64.c's static tss64, not the
+/* FNX (M6-E): the CPU's active TSS is gdt64.c's static tss64, not the
  * real kernel's per-process i386tss (set_tss() only touches the inert
  * kernel/gdt.c table). Update the active TSS's RSP0 so each process's
  * syscalls/exceptions run on its OWN kmalloc'd kernel stack; otherwise
  * every process shares the .bss kstack64 and switch contexts collide. */
-/* Fiwix64 (native port): fiwix64_rsp0 mirrors tss64.rsp0 for the 'syscall'
+/* FNX (native port): fnx_rsp0 mirrors tss64.rsp0 for the 'syscall'
  * instruction entry (switch64.S syscall_entry64), which must switch stacks
- * itself; fiwix64_syscall_userrsp is its scratch for the incoming RSP. */
-unsigned long fiwix64_rsp0;
-unsigned long fiwix64_syscall_userrsp;
+ * itself; fnx_syscall_userrsp is its scratch for the incoming RSP. */
+unsigned long fnx_rsp0;
+unsigned long fnx_syscall_userrsp;
 
-/* Fiwix64 (native port): set the %fs base MSR (x86-64 TLS). The kernel
+/* FNX (native port): set the %fs base MSR (x86-64 TLS). The kernel
  * itself does not use %fs, so this is only meaningful for user mode. */
-void fiwix64_set_fs_base(unsigned long base)
+void fnx_set_fs_base(unsigned long base)
 {
 	__asm__ __volatile__("wrmsr" :: "c"((unsigned long)0xC0000100),
 		"a"((unsigned long)base), "d"((unsigned long)(base >> 32)));
@@ -93,7 +93,7 @@ void fiwix64_set_fs_base(unsigned long base)
 void gdt64_set_rsp0(unsigned long rsp0)
 {
 	tss64.rsp0 = rsp0;
-	fiwix64_rsp0 = rsp0;
+	fnx_rsp0 = rsp0;
 }
 
 /* build an 8-byte segment descriptor (base, limit, access, flags) */
@@ -108,7 +108,7 @@ static unsigned long make_desc64(unsigned long base, unsigned int limit,
 		| (((base >> 24) & 0xFF) << 56);
 }
 
-/* Fiwix64 (M6 userland): update the per-process TLS segment base. musl and
+/* FNX (M6 userland): update the per-process TLS segment base. musl and
  * glibc call set_thread_area(243) to install their thread pointer and then
  * load the returned selector (TLS_SLOT<<3 | 3) into %gs; errno and the
  * thread-control block are then reached via %gs-relative addressing. */
@@ -135,7 +135,7 @@ void gdt64_init(void)
 	 * lives above PAGE_OFFSET64 in the high half). */
 	tss_base = ((unsigned long)&tss64) - PAGE_OFFSET64;
 	tss64.rsp0 = (unsigned long)&kstack64[sizeof(kstack64)];
-	fiwix64_rsp0 = tss64.rsp0;
+	fnx_rsp0 = tss64.rsp0;
 	gdt64_tab[5] = make_desc64(tss_base, sizeof(struct tss64) - 1, 0x89, 0x00);
 	gdt64_tab[6] = (unsigned long)((tss_base >> 32) & 0xFFFFFFFF);
 	/* 0x50 / 0x58: 32-bit user code/data (L=0, D=1) for M4 compat demo */

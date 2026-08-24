@@ -1,16 +1,16 @@
 /*
- * fiwix/drivers/pci/pci.c
+ * fnx/drivers/pci/pci.c
  *
  * Copyright 2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/config.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/pci.h>
-#include <fiwix/mm.h>
+#include <fnx/asm.h>
+#include <fnx/config.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/pci.h>
+#include <fnx/mm.h>
 
 #ifdef CONFIG_PCI
 struct pci_device *pci_device_table;

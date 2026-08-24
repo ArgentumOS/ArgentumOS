@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/kreal64.c
+ * fnx/kernel64/kreal64.c
  *
- * Fiwix64 M4 (phase B): boot the REAL Fiwix kernel (start_kernel) on top of
+ * FNX M4 (phase B): boot the REAL Fiwix kernel (start_kernel) on top of
  * the 64-bit primitives (paging64/gdt64/idt64/irq64). Synthesizes a minimal
  * Multiboot info (no bootloader is involved under UEFI) and hands control to
  * kernel/main.c's start_kernel().
@@ -9,14 +9,14 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/multiboot1.h>
-#include <fiwix/string.h>
-#include <fiwix/mm.h>
-#include <fiwix/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/multiboot1.h>
+#include <fnx/string.h>
+#include <fnx/mm.h>
+#include <fnx/asm.h>
 
 extern char _end[];
-extern char fiwix64_bss_end[];	/* Fiwix64: highest .bss (last-linked object) */
+extern char fnx_bss_end[];	/* FNX: highest .bss (last-linked object) */
 extern void start_kernel(unsigned int magic, unsigned int info,
 			 unsigned long last_boot_addr);
 
@@ -36,8 +36,8 @@ void kreal64_boot(void)
 		{ 20, 0x100000, 0x7F00000, MULTIBOOT_MEMORY_AVAILABLE },
 		{ 20, 0x8000000, 0x7800000, MULTIBOOT_MEMORY_RESERVED },
 	};
-	static char cmdline[] = "fiwix console=/dev/ttyS0 root=/dev/hdb rootfstype=ext2";
-	static char initrd_name[] = "fiwixinitrd";	/* unused (no initrd= in cmdline) */
+	static char cmdline[] = "fnx console=/dev/ttyS0 root=/dev/hdb rootfstype=ext2";
+	static char initrd_name[] = "fnxinitrd";	/* unused (no initrd= in cmdline) */
 	unsigned long last_boot_addr;
 
 	extern const unsigned char initrd64_img[];
@@ -68,7 +68,7 @@ void kreal64_boot(void)
 	mbi.mmap_addr = PHYS(mmap_tab);
 	mbi.mmap_length = sizeof(mmap_tab);
 
-	last_boot_addr = (unsigned long)&fiwix64_bss_end;	/* high address; start_kernel
+	last_boot_addr = (unsigned long)&fnx_bss_end;	/* high address; start_kernel
 						 * subtracts PAGE_OFFSET */
 
 	start_kernel(MULTIBOOT_BOOTLOADER_MAGIC, PHYS(&mbi), last_boot_addr);

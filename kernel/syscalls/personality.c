@@ -1,13 +1,13 @@
 /*
- * fiwix/kernel/syscalls/personality.c
+ * fnx/kernel/syscalls/personality.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_personality(unsigned int persona)

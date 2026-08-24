@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/mkdir.c
+ * fnx/kernel/syscalls/mkdir.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_mkdir(const char *dirname, __mode_t mode)

@@ -1,10 +1,10 @@
 /*
- * fiwix/kernel/syscalls/rt_sigaction.c
+ * fnx/kernel/syscalls/rt_sigaction.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64 (pure x86-64 port): SYS_rt_sigaction (#13) is what musl's
+ * FNX (pure x86-64 port): SYS_rt_sigaction (#13) is what musl's
  * sigaction() emits. The user struct is the x86-64 ABI layout
  * (include/signal.h: union {sa_handler,sa_sigaction}, sigset_t sa_mask
  * (128 bytes), int sa_flags, void *sa_restorer - 152 bytes total) and
@@ -12,13 +12,13 @@
  * __sigset_t (NSIG == 32): translate the mask and the pointer widths.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/fs.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 /* x86-64 ABI struct sigaction (musl): handler, mask, flags, restorer */

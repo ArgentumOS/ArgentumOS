@@ -1,21 +1,21 @@
 /*
- * fiwix/fs/iso9660/super.c
+ * fnx/fs/iso9660/super.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_iso9660.h>
-#include <fiwix/buffer.h>
-#include <fiwix/time.h>
-#include <fiwix/sched.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_iso9660.h>
+#include <fnx/buffer.h>
+#include <fnx/time.h>
+#include <fnx/sched.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 struct fs_operations iso9660_fsop = {
 	FSOP_REQUIRES_DEV,

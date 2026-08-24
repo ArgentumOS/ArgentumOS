@@ -1,21 +1,21 @@
 /*
- * fiwix/lib/printk.c
+ * fnx/lib/printk.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/syslog.h>
-#include <fiwix/tty.h>
-#include <fiwix/sysconsole.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/sleep.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/stdarg.h>
-#include <fiwix/mm.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/syslog.h>
+#include <fnx/tty.h>
+#include <fnx/sysconsole.h>
+#include <fnx/syscalls.h>
+#include <fnx/sleep.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/stdarg.h>
+#include <fnx/mm.h>
 
 #define MAX_BUF		1024	/* printk() and sprintk() size limit */
 
@@ -45,7 +45,7 @@ static void puts(char *buffer, int msg_level)
 			if(msg_level < console_loglevel) {
 				char c = *(p++);
 				outport_b(QEMU_DEBUG_PORT, c);
-				/* Fiwix64: console tty (ttyS0) writes COM1 below; the
+				/* FNX: console tty (ttyS0) writes COM1 below; the
 				 * old mirror doubled every byte on the UART. */
 			}
 		}
@@ -67,7 +67,7 @@ static void puts(char *buffer, int msg_level)
 
 	l = p = buffer;
 	while(*l) {
-		/* Fiwix64: tty->output is only valid once the console/serial
+		/* FNX: tty->output is only valid once the console/serial
 		 * driver has initialized it (NULL during early boot), so guard
 		 * the call - otherwise the very first printks crash before the
 		 * console is up. The debugcon/serial mirror above still covers
@@ -98,7 +98,7 @@ static void puts(char *buffer, int msg_level)
 		l++;
 	}
 #ifdef __x86_64__
-	/* Fiwix64: wakeup() touches the sleeping-process hash during early
+	/* FNX: wakeup() touches the sleeping-process hash during early
 	 * boot, which can corrupt memory before the scheduler is up. */
 #else
 	wakeup(&sys_syslog);
@@ -315,7 +315,7 @@ static int do_printk(char *buffer, const char *format, va_list args)
 					break;
 
 				case 'p':
-					/* Fiwix64: pointers are printed as hex, like %x
+					/* FNX: pointers are printed as hex, like %x
 					 * with a 64-bit width when the argument is wide. */
 					lunum = va_arg(args, unsigned long int);
 					ptr_s = str;

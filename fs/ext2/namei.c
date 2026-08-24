@@ -1,22 +1,22 @@
 /*
- * fiwix/fs/ext2/namei.c
+ * fnx/fs/ext2/namei.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_ext2.h>
-#include <fiwix/buffer.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/stat.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_ext2.h>
+#include <fnx/buffer.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/fcntl.h>
+#include <fnx/stat.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /* finds a new entry to fit 'name' in the directory 'dir' */
 static struct buffer *find_first_free_dir_entry(struct inode *dir, struct ext2_dir_entry_2 **d_res, char *name)

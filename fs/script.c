@@ -1,15 +1,15 @@
 /*
- * fiwix/fs/script.c
+ * fnx/fs/script.c
  *
  * Copyright 2019-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/limits.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/limits.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int script_load(char *interpreter, char *args, char *data)
 {

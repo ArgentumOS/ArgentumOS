@@ -1,15 +1,15 @@
 /*
- * fiwix/net/domains.c
+ * fnx/net/domains.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/errno.h>
-#include <fiwix/net.h>
-#include <fiwix/socket.h>
-#include <fiwix/string.h>
+#include <fnx/config.h>
+#include <fnx/errno.h>
+#include <fnx/net.h>
+#include <fnx/socket.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_NET
 struct domain_table domains[] = {

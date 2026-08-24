@@ -1,20 +1,20 @@
 /*
- * fiwix/fs/iso9660/rrip.c
+ * fnx/fs/iso9660/rrip.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/stat.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/buffer.h>
-#include <fiwix/fs_iso9660.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/stat.h>
+#include <fnx/filesystems.h>
+#include <fnx/buffer.h>
+#include <fnx/fs_iso9660.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 void check_rrip_inode(struct iso9660_directory_record *d, struct inode *i)
 {

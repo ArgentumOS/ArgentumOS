@@ -1,22 +1,22 @@
 /*
- * fiwix/kernel/syscalls/rt_sigpending.c
+ * fnx/kernel/syscalls/rt_sigpending.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64 (M6 userland): modern rt_sigpending() (Linux #176) - like
+ * FNX (M6 userland): modern rt_sigpending() (Linux #176) - like
  * rt_sigprocmask() it uses a 64-bit signal mask; report the pending
  * set in the low 32 bits.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/fs.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_rt_sigpending(void *set, int sigsetsize)

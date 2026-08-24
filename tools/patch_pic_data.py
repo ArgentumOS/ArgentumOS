@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fiwix64 (M4-B) tool: fix gcc 14.x codegen for hidden extern DATA with -fPIC.
+FNX (M4-B) tool: fix gcc 14.x codegen for hidden extern DATA with -fPIC.
 
 With `-fPIC -fvisibility=hidden`, gcc 14.2 emits the GOT-style two-step for
 extern data symbols even when the relocation is a direct PC32:

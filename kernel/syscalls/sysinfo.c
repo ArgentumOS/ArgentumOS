@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/syscalls/sysinfo.c
+ * fnx/kernel/syscalls/sysinfo.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/fs.h>
-#include <fiwix/system.h>
-#include <fiwix/sched.h>
-#include <fiwix/mm.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/fs.h>
+#include <fnx/system.h>
+#include <fnx/sched.h>
+#include <fnx/mm.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_sysinfo(struct sysinfo *info)

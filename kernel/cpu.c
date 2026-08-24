@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/cpu.c
+ * fnx/kernel/cpu.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/utsname.h>
-#include <fiwix/pic.h>
-#include <fiwix/pit.h>
-#include <fiwix/cpu.h>
-#include <fiwix/timer.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/utsname.h>
+#include <fnx/pic.h>
+#include <fnx/pit.h>
+#include <fnx/cpu.h>
+#include <fnx/timer.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 char UTS_MACHINE[_UTSNAME_LENGTH + 1];
 struct cpu cpu_table;

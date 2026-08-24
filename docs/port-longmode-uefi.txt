@@ -1,4 +1,4 @@
-Fiwix: 64-bit long mode + direct UEFI boot
+FNX: 64-bit long mode + direct UEFI boot
 ===========================================
 
 Design document for porting the Fiwix kernel (32-bit i386) to run natively in
@@ -10,7 +10,7 @@ project owner; the rest are proposals to be validated during implementation.
 
 1. Goal and scope
 -----------------
-Goal: Fiwix boots on x86-64 UEFI firmware (QEMU/OVMF first, real hardware
+Goal: FNX boots on x86-64 UEFI firmware (QEMU/OVMF first, real hardware
 later) as a long-mode kernel, keeping all existing 32-bit user space working.
 
 Confirmed decisions:
@@ -39,7 +39,7 @@ syscall entry, and every place a pointer is squeezed into a 32-bit integer.
   (CR0 PG/WP/AM/NE/MP), calls bss_init(), gdt_init(), then start_kernel() in
   kernel/main.c. Kernel linked at physical 1MB (KERNEL_ADDR), virtual
   PAGE_OFFSET (0xC0000000 = 3GB/1GB, or 0x80000000 with CONFIG_VM_SPLIT22),
-  see include/fiwix/linker.h and fiwix.ld.
+  see include/fnx/linker.h and fnx.ld.
 - Boot info: kernel/multiboot.c parses the Multiboot info structure: cmdline,
   E820-style mmap (consumed by mm/bios_map.c bios_map_init()), initrd modules,
   ELF section headers (kernel symbol table), VBE framebuffer info.
@@ -49,7 +49,7 @@ syscall entry, and every place a pointer is squeezed into a 32-bit integer.
 - Segments: GDT with flat 32-bit code/data + TSS (kernel/gdt.c, idt.c).
 - Syscall ABI: int 0x80, Linux 2.0 i386. Entry in kernel/core386.S: the
   SAVE_ALL frame (gs,fs,es,ds,edi,esi,ebp,esp,ebx,edx,ecx,eax + CPU-pushed
-  err,eip,cs,eflags,oldesp,oldss) IS struct sigcontext (include/fiwix/
+  err,eip,cs,eflags,oldesp,oldss) IS struct sigcontext (include/fnx/
   sigcontext.h), so do_syscall() and trap_handler() overlay the frame.
 - Context switch: kernel/sched.c context_switch() -> do_switch() in
   core386.S: pusha/pushfl, saves ESP/EIP to the software struct i386tss
@@ -188,7 +188,7 @@ replaced or rewritten in this port.
 
 3.8 ELF loading
 - Userland stays ELF32 (EM_386) - the loader's *file format* logic is
-  unchanged. The bug to fix regardless of ABI: include/fiwix/i386elf.h
+  unchanged. The bug to fix regardless of ABI: include/fnx/i386elf.h
   typedefs Elf32_Addr/Off/Word as 'unsigned long', which silently becomes
   8 bytes under -m64 and corrupts every offset. They must be fixed-width
   (__u32/__u16). Internal address variables in fs/elf.c widen to addr_t.
@@ -232,12 +232,12 @@ The 32-bit build is the reference oracle for behaviour during the port.
 
 5. Build system / harness
 -------------------------
-- Default `make` keeps producing the 32-bit kernel (fiwix) - always green.
+- Default `make` keeps producing the 32-bit kernel (fnx) - always green.
 - `make compile64`: compile all C sources with the 64-bit flags
   (-m64 -march=x86-64 -mno-red-zone -mno-sse -mno-sse2 ...) into
   .build/64/*.o without linking - the type-sweep verifier.
-- `make build64` (M1+): link fiwix64 ELF64, convert to PE32+
-  (fiwix64.efi), plus the handoff.
+- `make build64` (M1+): link fnx ELF64, convert to PE32+
+  (fnx.efi), plus the handoff.
 - `make ovmf`: fetch OVMF without root: apt-get download ovmf, dpkg-deb -x
   into .build/ovmf (no sudo needed; the container has no root).
 - `make run`: QEMU smoke test of the current 32-bit kernel (QEMU's built-in
@@ -245,7 +245,7 @@ The 32-bit build is the reference oracle for behaviour during the port.
 - `make run-uefi`: QEMU with -bios OVMF.fd (baseline: proves firmware runs;
   from M1 on it boots the PE32+ kernel placed as EFI/BOOT/BOOTX64.EFI on a
   FAT drive image).
-- QEMU binary: ~/.local/share/fiwix-qemu-tools/usr/bin/qemu-system-x86_64
+- QEMU binary: ~/.local/share/fnx-qemu-tools/usr/bin/qemu-system-x86_64
   run directly (the PATH wrapper needs flatpak-spawn and is broken); env:
   LD_LIBRARY_PATH=<toolroot>/usr/lib/x86_64-linux-gnu,
   -L <toolroot>/usr/share/qemu.
@@ -262,7 +262,7 @@ M0 (2026-08 session): DONE.
    (multiboot smoke test) - VERIFIED; make compile64 reports no errors and
    no -Wpointer-to-int-cast warnings - VERIFIED. The 32-bit build is
    byte-identical in behavior (same binary size).
-   NOTE: CONFIG_NET was turned off (#undef) in include/fiwix/config.h to
+   NOTE: CONFIG_NET was turned off (#undef) in include/fnx/config.h to
    unblock the default build - the net layer's ext_* driver hooks are still
    missing (in-progress v1.8.0 work). Re-enable when a driver lands.
    Remaining cosmetic noise under -m64: ~140 -Wint-to-pointer-cast
@@ -274,7 +274,7 @@ M1 - 64-bit boot: build64 produces a PE32+ kernel; it boots under OVMF on
    memory map (GetMemoryMap x2 + AllocatePool), masks the PICs, calls
    ExitBootServices(), and enters kernel64_main() (kernel64/main64.c) which
    prints the banner, firmware vendor/rev, and the full memory map over COM1
-   at 115200, then halts ("M1 OK: Fiwix64 booted from UEFI into long mode").
+   at 115200, then halts ("M1 OK: FNX booted from UEFI into long mode").
    VERIFIED under QEMU/OVMF (make run-uefi path; run headless via
    tools/qemu.sh with -nographic -monitor none). The stub keeps the
    firmware's identity-mapped page tables (no own paging until M2).
@@ -293,7 +293,7 @@ M1 - 64-bit boot: build64 produces a PE32+ kernel; it boots under OVMF on
    - EFI_SYSTEM_TABLE layout: Signature(0), Revision(0x10),
      FirmwareBuildNumber(0x14), FirmwareVendor(0x18), FirmwareRevision(0x20),
      ... BootServices(0x60), NumberOfTableEntries(0x68), ConfigurationTable
-     (0x70). The struct in include/fiwix/efi.h originally had a bogus
+     (0x70). The struct in include/fnx/efi.h originally had a bogus
      HeaderSize/CRC32/Reserved block (that is EFI_TABLE_HEADER, not part of
      the system table) which shifted every field by 8 and made BootServices
      read NumberOfTableEntries -> calls through garbage (boot crashed with
@@ -461,8 +461,8 @@ M4 - compat user mode: 32-bit init_trampoline, fork/exec of a 32-bit static
    syscall translation, signals.
    STATUS (same session, phase B DONE - real kernel BOOTS in 64-bit mode):
    kernel/mm/fs/lib/drivers C sources now COMPILE as -m64 and LINK with the
-   kernel64 primitives into the PE32+ (`make build64real`; `build64` now
-   builds this; the stub/demo kernel is `build64demo`). The real
+   kernel64 primitives into the PE32+ (`make buildfnx`; `build64` now
+   builds this; the stub/demo kernel is `buildfnxdemo`). The real
    start_kernel() runs and reaches the INIT/fs path:
      banner + DEVICE table + cpu_init + multiboot + pic_init + irq_init +
      dev_init + tty_init + mem_init (proc_table check PASSES) + pci_init
@@ -475,7 +475,7 @@ M4 - compat user mode: 32-bit init_trampoline, fork/exec of a 32-bit static
    (0-1MB reserved, 1MB-128MB available, 128MB+ reserved) and a 1024KB
    minix-v1 INITRD (tools/mkinitrd.py: root + /bin + /bin/init, the latter
    a 8.7KB static i386 ELF from .build/initrd/init.S; embedded in the PE as
-   kernel64/initrd64.c). The kernel detects it ("initrd ... file='fiwixinitrd'
+   kernel64/initrd64.c). The kernel detects it ("initrd ... file='fnxinitrd'
    size=1024KB") and the boot proceeds cleanly through the FULL device
    init: 12 virtual consoles, clock (PIT 100Hz), ps/2 keyboard, psaux.
    FIXES LANDED IN PHASE C (all needed to get here):
@@ -521,10 +521,10 @@ M4 - compat user mode: 32-bit init_trampoline, fork/exec of a 32-bit static
      IRQ (IRQ4) never reached irq_serial, the tty write_q never drained and
      flush_log_buf() spun forever on -EAGAIN right after serial_init.
    * The minix root mount now works. Fixes:
-     - cmdline in kreal64.c: "fiwix console=/dev/ttyS0 initrd=fiwixinitrd
+     - cmdline in kreal64.c: "fnx console=/dev/ttyS0 initrd=fnxinitrd
        root=/dev/ram0 rootfstype=minix" (kparms.rootdev + minix fs type).
      - CONFIG_FS_MINIX is passed via CC64K (-DCONFIG_FS_MINIX) and
-       include/fiwix/config.h only #undefs it when not already defined, so
+       include/fnx/config.h only #undefs it when not already defined, so
        the stock 32-bit config is untouched.
      - tools/mkinitrd.py: minix stores inode N at slot N-1 (root = slot 0)
        and the i_zone[] values must be ABSOLUTE BLOCK numbers
@@ -560,7 +560,7 @@ M4 - compat user mode: 32-bit init_trampoline, fork/exec of a 32-bit static
      plain PC32 in .text; with the -4 GOTPCREL addend the lea resolves to
      exactly the symbol). MUST run on the kernel64/*.o too (kreal64.o's
      `&_end` was missed for many boot sessions).
-   * The real kernel's include/fiwix/stdarg.h is the i386 stack-walking
+   * The real kernel's include/fnx/stdarg.h is the i386 stack-walking
      va_list (typedef char *va_list) - fundamentally broken in long mode
      (varargs travel in registers). __x86_64__ now #includes <stdarg.h>.
    * -fno-pie is FATAL for the PE link (confirmed twice: the kernel floods
@@ -573,7 +573,7 @@ M4 - compat user mode: 32-bit init_trampoline, fork/exec of a 32-bit static
      only PAGE_SIZE was reserved (the pgdir 0x200+ overlapped the pgtbl);
      mem_init now reserves 2 pages under __x86_64__.
    * The 32-bit link's `cpp` is the HOST cpp which predefines __x86_64__;
-     the 32-bit Makefile CPP now passes -U__x86_64__ so fiwix.ld takes the
+     the 32-bit Makefile CPP now passes -U__x86_64__ so fnx.ld takes the
      32-bit PAGE_OFFSET branch.
    * idt_init() is neutralized under __x86_64__ (the 32-bit 8-byte gates
      cannot be loaded in long mode; the IDT64 stays).
@@ -607,7 +607,7 @@ M6 - compat syscall conversion pass: iovec/readv/writev, stat64, fcntl64,
      exec (fs/elf.c frees the old pml4, creates a fresh one and reloads CR3
      mid-exec - safe, both pml4s share the high half), remove_zombie
      (free_pml4_64 on the zombie - safe, the reaper's CR3 is not the zombie's).
-   * map_page_flags (mm/memory.c) and fiwix64_fault_user_pages (mm/fault.c)
+   * map_page_flags (mm/memory.c) and fnx_fault_user_pages (mm/fault.c)
      now map into the TARGET process's p->cr3_64 / current->cr3_64 instead of
      the shared kernel tables - the psig demand-maps and the COW/fault paths
      never touch the kernel's ACTIVE tables anymore.
@@ -692,7 +692,7 @@ M6 - compat syscall conversion pass: iovec/readv/writev, stat64, fcntl64,
    - musl fork child calls SYS_set_tid_address(258) (result ignored when
      single-threaded) - a no-op returning 0 is enough.
    - rt_sigreturn(173) is NOT needed: Fiwix's psig() delivers via its own
-     fiwix64_trampoline (signal.c) which calls sigreturn(119), ignoring
+     fnx_trampoline (signal.c) which calls sigreturn(119), ignoring
      sa_restorer. Only musl's own __restore_rt would call 173, and Fiwix
      never jumps to it.
 
@@ -716,7 +716,7 @@ M6 - compat syscall conversion pass: iovec/readv/writev, stat64, fcntl64,
    7. kernel/syscalls.c: add table entries - 174 rt_sigaction, 175
       rt_sigprocmask, 176 rt_sigpending, 179 rt_sigsuspend, 252 exit_group,
       258 set_tid_address. (173 rt_sigreturn and 120 clone stay NULL.)
-   8. include/fiwix/syscalls.h: declare the new sys_* handlers.
+   8. include/fnx/syscalls.h: declare the new sys_* handlers.
 
    TOOLCHAIN/USERLAND (after the syscalls land):
    - musl is vendored as third_party/musl (git submodule, url

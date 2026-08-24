@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/irq.c
+ * fnx/kernel/irq.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/errno.h>
-#include <fiwix/irq.h>
-#include <fiwix/pic.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/sigcontext.h>
-#include <fiwix/sleep.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/errno.h>
+#include <fnx/irq.h>
+#include <fnx/pic.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/sigcontext.h>
+#include <fnx/sleep.h>
 
 struct interrupt *irq_table[NR_IRQS];
 static struct bh *bh_table = NULL;

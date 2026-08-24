@@ -1,21 +1,21 @@
 /*
- * fiwix/kernel/syscalls/rt_sigprocmask.c
+ * fnx/kernel/syscalls/rt_sigprocmask.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64 (pure x86-64 port): SYS_rt_sigprocmask (#14). musl passes a
+ * FNX (pure x86-64 port): SYS_rt_sigprocmask (#14). musl passes a
  * 128-byte sigset_t (sigsetsize = 128); the kernel keeps a 32-bit
  * __sigset_t (NSIG == 32), so translate the low word.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/fs.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_rt_sigprocmask(int how, const void *set, void *oldset, int sigsetsize)

@@ -1,47 +1,47 @@
 /*
- * fiwix/kernel/main.c
+ * fnx/kernel/main.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/limits.h>
-#include <fiwix/kparms.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/system.h>
-#include <fiwix/version.h>
-#include <fiwix/utsname.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/video.h>
-#include <fiwix/console.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/limits.h>
+#include <fnx/kparms.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/system.h>
+#include <fnx/version.h>
+#include <fnx/utsname.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/video.h>
+#include <fnx/console.h>
 #ifdef __x86_64__
-#include <fiwix/gop.h>
+#include <fnx/gop.h>
 #endif
-#include <fiwix/pci.h>
-#include <fiwix/pic.h>
-#include <fiwix/irq.h>
-#include <fiwix/segments.h>
-#include <fiwix/devices.h>
-#include <fiwix/buffer.h>
-#include <fiwix/cpu.h>
-#include <fiwix/timer.h>
-#include <fiwix/sleep.h>
-#include <fiwix/locks.h>
-#include <fiwix/ps2.h>
-#include <fiwix/keyboard.h>
-#include <fiwix/sched.h>
-#include <fiwix/mm.h>
-#include <fiwix/kexec.h>
-#include <fiwix/sysconsole.h>
+#include <fnx/pci.h>
+#include <fnx/pic.h>
+#include <fnx/irq.h>
+#include <fnx/segments.h>
+#include <fnx/devices.h>
+#include <fnx/buffer.h>
+#include <fnx/cpu.h>
+#include <fnx/timer.h>
+#include <fnx/sleep.h>
+#include <fnx/locks.h>
+#include <fnx/ps2.h>
+#include <fnx/keyboard.h>
+#include <fnx/sched.h>
+#include <fnx/mm.h>
+#include <fnx/kexec.h>
+#include <fnx/sysconsole.h>
 
 struct kernel_params kparms;
 struct kernel_stat kstat;
 #ifdef __x86_64__
-addr_t _last_data_addr;		/* Fiwix64: also holds the high-half alias */
+addr_t _last_data_addr;		/* FNX: also holds the high-half alias */
 #else
 unsigned int _last_data_addr;
 #endif
@@ -70,7 +70,7 @@ static void set_default_values(void)
 }
 
 #ifdef __x86_64__
-/* Fiwix64: populate the video console from the UEFI GOP framebuffer that
+/* FNX: populate the video console from the UEFI GOP framebuffer that
  * the EFI stub captured before ExitBootServices. Called after multiboot()
  * (which, with no multiboot VBE info, falls back to VGA text) and before
  * video_init(), so the console renders through fbcon instead of vgacon. */
@@ -78,7 +78,7 @@ static void gop_video_init(void)
 {
 	int bpp, pixelwidth;
 
-	if(!fiwix_gop_fb.phys_base) {
+	if(!fnx_gop_fb.phys_base) {
 		return;	/* no framebuffer (headless or no graphics device) */
 	}
 
@@ -89,17 +89,17 @@ static void gop_video_init(void)
 	pixelwidth = bpp / 8;
 
 	video.flags = VPF_VESAFB;
-	video.address = (unsigned int *)fiwix_gop_fb.phys_base; /* identity-mapped */
+	video.address = (unsigned int *)fnx_gop_fb.phys_base; /* identity-mapped */
 	video.port = 0;
-	video.memsize = (int)fiwix_gop_fb.size;
+	video.memsize = (int)fnx_gop_fb.size;
 	video.fb_version = 0;
-	video.fb_width = (int)fiwix_gop_fb.width;
-	video.fb_height = (int)fiwix_gop_fb.height;
+	video.fb_width = (int)fnx_gop_fb.width;
+	video.fb_height = (int)fnx_gop_fb.height;
 	video.fb_char_width = 8;
 	video.fb_char_height = 16;
 	video.fb_bpp = bpp;
 	video.fb_pixelwidth = pixelwidth;
-	video.fb_pitch = (int)fiwix_gop_fb.pixels_per_scanline * pixelwidth;
+	video.fb_pitch = (int)fnx_gop_fb.pixels_per_scanline * pixelwidth;
 	video.columns = video.fb_width / video.fb_char_width;
 	video.lines = video.fb_height / video.fb_char_height;
 	video.fb_linesize = video.fb_pitch * video.fb_char_height;
@@ -126,7 +126,7 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 
 #ifdef CONFIG_QEMU_DEBUGCON
 #ifdef __x86_64__
-	/* Fiwix64: the 0xE9 read-back probe is unreliable under QEMU's
+	/* FNX: the 0xE9 read-back probe is unreliable under QEMU's
 	 * -debugcon; the port is present whenever the device is wired up,
 	 * and writes to it are harmless otherwise. */
 	kstat.flags |= KF_HAS_DEBUGCON;
@@ -137,7 +137,7 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 #endif /* __x86_64__ */
 #endif /* CONFIG_QEMU_DEBUGCON */
 
-	printk("                       Fiwix v%s for i386 architecture\n", UTS_RELEASE);
+	printk("                       FNX v%s for x86_64 architecture\n", UTS_RELEASE);
 	printk("                     Copyright (c) 2018-2025, Jordi Sanfeliu\n");
 	printk("\n");
 #ifdef __TINYC__

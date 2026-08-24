@@ -1,21 +1,21 @@
 /*
- * fiwix/drivers/video/fbcon.c
+ * fnx/drivers/video/fbcon.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Portions Copyright 2024, Greg Haerr.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/fb.h>
-#include <fiwix/fbcon.h>
-#include <fiwix/font.h>
-#include <fiwix/console.h>
-#include <fiwix/mm.h>
-#include <fiwix/tty.h>
-#include <fiwix/timer.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/fb.h>
+#include <fnx/fbcon.h>
+#include <fnx/font.h>
+#include <fnx/console.h>
+#include <fnx/mm.h>
+#include <fnx/tty.h>
+#include <fnx/timer.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define SPACE_CHAR	32
 

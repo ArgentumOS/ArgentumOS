@@ -1,24 +1,24 @@
 /*
- * fiwix/fs/elf.c
+ * fnx/fs/elf.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/asm.h>
-#include <fiwix/types.h>
-#include <fiwix/buffer.h>
-#include <fiwix/fs.h>
-#include <fiwix/i386elf.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/fs.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/asm.h>
+#include <fnx/types.h>
+#include <fnx/buffer.h>
+#include <fnx/fs.h>
+#include <fnx/i386elf.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/fs.h>
+#include <fnx/fcntl.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define AT_ITEMS	12	/* ELF Auxiliary Vectors */
 
@@ -64,7 +64,7 @@
  */
 #ifdef __x86_64__
 /*
- * Fiwix64 (native 64-bit port): the 64-bit initial stack builder. The
+ * FNX (native 64-bit port): the 64-bit initial stack builder. The
  * SysV x86-64 ABI: at process entry RSP points at argc (unsigned long),
  * followed by argv[] (NULL-terminated), envp[] (NULL-terminated) and the
  * auxv (u64 pairs, AT_NULL-terminated), 16-byte aligned. auxv values are
@@ -158,7 +158,7 @@ static void elf_create_stack64(struct binargs *barg, unsigned long long *sp,
 
 #ifdef __x86_64__
 /*
- * Fiwix64 (native 64-bit port): ELF64 loader. The x86_64 musl static
+ * FNX (native 64-bit port): ELF64 loader. The x86_64 musl static
  * binaries are ET_EXEC non-PIE at 0x400000, so all load/stack addresses
  * stay below 4GB and the existing (32-bit) vma layer + the 32-bit
  * sigcontext fields still work; the differences are the 64-bit program
@@ -179,7 +179,7 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	unsigned long long ae_ptr_len, ae_str_len;
 
 	e = (Elf64_Ehdr *)data;
-	/* Fiwix64: native 64-bit ELF validation (EI_CLASS was already
+	/* FNX: native 64-bit ELF validation (EI_CLASS was already
 	 * checked by elf_load() before routing here). */
 	if(e->e_ident[EI_MAG0] != ELFMAG0 || e->e_ident[EI_MAG1] != ELFMAG1 ||
 		e->e_ident[EI_MAG2] != ELFMAG2 || e->e_ident[EI_MAG3] != ELFMAG3 ||
@@ -275,9 +275,9 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	start = ph->p_vaddr + ph->p_filesz;
 	length = end - start;
 	{
-		extern int fiwix64_fault_user_pages(addr_t, unsigned int);
+		extern int fnx_fault_user_pages(addr_t, unsigned int);
 
-		if(fiwix64_fault_user_pages((addr_t)(start & PAGE_MASK), (unsigned int)length)) {
+		if(fnx_fault_user_pages((addr_t)(start & PAGE_MASK), (unsigned int)length)) {
 			send_sig(current, SIGSEGV);
 			return -ENOEXEC;
 		}
@@ -326,9 +326,9 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 		return -ENOEXEC;
 	}
 	{
-		extern int fiwix64_fault_user_pages(addr_t, unsigned int);
+		extern int fnx_fault_user_pages(addr_t, unsigned int);
 
-		if(fiwix64_fault_user_pages((addr_t)(sp & PAGE_MASK), (unsigned int)length)) {
+		if(fnx_fault_user_pages((addr_t)(sp & PAGE_MASK), (unsigned int)length)) {
 			send_sig(current, SIGSEGV);
 			return -ENOEXEC;
 		}
@@ -352,7 +352,7 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 
 int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char *data)
 {
-	/* Fiwix64: NO 32-bit compatibility - this kernel is native x86_64
+	/* FNX: NO 32-bit compatibility - this kernel is native x86_64
 	 * only. The only supported user binary format is ELF64
 	 * (EI_CLASS = ELFCLASS64, e_machine = EM_X86_64); ELF32 (and any
 	 * other class) is rejected outright. */

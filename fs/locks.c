@@ -1,21 +1,21 @@
 /*
- * fiwix/fs/locks.c
+ * fnx/fs/locks.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/errno.h>
-#include <fiwix/types.h>
-#include <fiwix/locks.h>
-#include <fiwix/fs.h>
-#include <fiwix/mm.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/errno.h>
+#include <fnx/types.h>
+#include <fnx/locks.h>
+#include <fnx/fs.h>
+#include <fnx/mm.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 struct flock_file *flock_file_table = NULL;
 

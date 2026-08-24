@@ -1,6 +1,6 @@
-#include <fiwix/font.h>
+#include <fnx/font.h>
 
-/* refer to 'fiwix/docs/video/' for a visual representation of these glyphs */
+/* refer to 'fnx/docs/video/' for a visual representation of these glyphs */
 static unsigned char fontdata_8x8[] = {
 	/* 0x00        */ 0x7e, 0xc3, 0x99, 0xf3, 0xe7, 0xff, 0xe7, 0x7e,
 	/* 0x01        */ 0x00, 0x76, 0xdc, 0x00, 0x76, 0xdc, 0x00, 0x00,

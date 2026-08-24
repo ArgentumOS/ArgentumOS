@@ -1,19 +1,19 @@
 /*
- * fiwix/drivers/char/vt.c
+ * fnx/drivers/char/vt.c
  *
  * Copyright 2018-2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/console.h>
-#include <fiwix/keyboard.h>
-#include <fiwix/tty.h>
-#include <fiwix/vt.h>
-#include <fiwix/kd.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/console.h>
+#include <fnx/keyboard.h>
+#include <fnx/tty.h>
+#include <fnx/vt.h>
+#include <fnx/kd.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 int kbdmode = 0;
 

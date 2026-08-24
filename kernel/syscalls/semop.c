@@ -1,23 +1,23 @@
 /*
- * fiwix/kernel/syscalls/semop.c
+ * fnx/kernel/syscalls/semop.c
  *
  * Copyright 2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/kernel.h>
-#include <fiwix/types.h>
-#include <fiwix/string.h>
-#include <fiwix/process.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
-#include <fiwix/ipc.h>
-#include <fiwix/sem.h>
+#include <fnx/config.h>
+#include <fnx/kernel.h>
+#include <fnx/types.h>
+#include <fnx/string.h>
+#include <fnx/process.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
+#include <fnx/ipc.h>
+#include <fnx/sem.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 #ifdef CONFIG_SYSVIPC

@@ -1,22 +1,22 @@
 /*
- * fiwix/kernel/signal.c
+ * fnx/kernel/signal.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/errno.h>
-#include <fiwix/process.h>
-#include <fiwix/signal.h>
-#include <fiwix/sigcontext.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/errno.h>
+#include <fnx/process.h>
+#include <fnx/signal.h>
+#include <fnx/sigcontext.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/syscalls.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /* can process 'current' send a signal to process 'p'? */
 int can_signal(struct proc *p)
@@ -157,7 +157,7 @@ int issig(void)
 }
 
 #ifdef __x86_64__
-/* Fiwix64 (M6-A): the 32-bit compat signal trampoline, defined in this
+/* FNX (M6-A): the 32-bit compat signal trampoline, defined in this
  * object so psig()'s references resolve locally. (References to the
  * external switch64.S labels from PATCH_PIC-patched objects get stale
  * RIP-relative displacements and would copy garbage/zeros.) Sequence:
@@ -165,7 +165,7 @@ int issig(void)
  * call *%rcx (the handler); mov %r12,%rdi (rt_sigreturn arg1);
  * mov $15,%eax; syscall (SYS_rt_sigreturn); mov $60,%eax; syscall
  * (exit fallback). r12 is callee-saved so the handler preserves it. */
-static unsigned char fiwix64_trampoline[] = {
+static unsigned char fnx_trampoline[] = {
 	0x49, 0x89, 0xc4,			/* mov %rax,%r12 */
 	0x48, 0x89, 0xc7,			/* mov %rax,%rdi */
 	0xff, 0xd1,				/* call *%rcx */
@@ -211,21 +211,21 @@ void psig(struct sigcontext *sc)
 				/* save the current sigcontext */
 				memcpy_b(&current->sc[signum - 1], sc, sizeof(struct sigcontext));
 				/* setup the jump to the user signal handler */
-				len = sizeof(fiwix64_trampoline);
+				len = sizeof(fnx_trampoline);
 				sc->rsp -= len;
 				sc->rsp &= ~15;	/* round down to 16 for the x86-64 ABI */
-				/* Fiwix64 (M6-A): demand-map the user stack page U/S to a
+				/* FNX (M6-A): demand-map the user stack page U/S to a
 				 * REAL RAM page BEFORE copying the trampoline. The raw
 				 * identity 2MB page at this address (the process stack sits
 				 * at ~2GB) is the PCI MMIO hole - a CPL0 write lands in
-				 * MMIO and a CPL3 fetch reads zeros. fiwix64_fault_user_pages
+				 * MMIO and a CPL3 fetch reads zeros. fnx_fault_user_pages
 				 * maps it via the stack vma (fresh zeroed page) and skips
 				 * pages already mapped U/S. */
 				{
-					extern int fiwix64_fault_user_pages(addr_t, unsigned int);
-					fiwix64_fault_user_pages((addr_t)sc->rsp, len);
+					extern int fnx_fault_user_pages(addr_t, unsigned int);
+					fnx_fault_user_pages((addr_t)sc->rsp, len);
 				}
-				memcpy_b((void *)sc->rsp, fiwix64_trampoline, len);
+				memcpy_b((void *)sc->rsp, fnx_trampoline, len);
 				sc->rcx = (addr_t)current->sigaction[signum - 1].sa_handler;
 				sc->rax = signum;
 				sc->rip = sc->rsp;

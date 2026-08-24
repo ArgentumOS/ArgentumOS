@@ -1,7 +1,7 @@
-Fiwix kernel coding standards
+FNX kernel coding standards
 -------------------------------------------------------------------------------
 It's easier on everyone if all authors working on a shared code base are
-consistent in the way they write their programs. Fiwix has the following
+consistent in the way they write their programs. FNX has the following
 conventions in its code:
 
 - Keep lines length to a maximum of 80 characters (some exceptions accepted).

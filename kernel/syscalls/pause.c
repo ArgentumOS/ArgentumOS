@@ -1,18 +1,18 @@
 /*
- * fiwix/kernel/syscalls/pause.c
+ * fnx/kernel/syscalls/pause.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/syscalls.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/errno.h>
+#include <fnx/syscalls.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_pause(void)

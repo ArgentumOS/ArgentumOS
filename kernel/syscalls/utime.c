@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/syscalls/utime.c
+ * fnx/kernel/syscalls/utime.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/fs.h>
-#include <fiwix/utime.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/fs.h>
+#include <fnx/utime.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_utime(const char *filename, struct utimbuf *times)

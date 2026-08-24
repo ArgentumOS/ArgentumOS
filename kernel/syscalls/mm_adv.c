@@ -1,22 +1,22 @@
 /*
- * fiwix/kernel/syscalls/mm_adv.c
+ * fnx/kernel/syscalls/mm_adv.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: mremap(25), msync(26), mincore(27), madvise(28).
+ * FNX: mremap(25), msync(26), mincore(27), madvise(28).
  * The i386 mmap2() path was deleted in the pure x86-64 port; these four
  * x86-64 syscalls are implemented over the shared do_mmap()/do_munmap()
  * machinery.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/mman.h>
-#include <fiwix/mm.h>
-#include <fiwix/process.h>
-#include <fiwix/string.h>
-#include <fiwix/stdio.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/mman.h>
+#include <fnx/mm.h>
+#include <fnx/process.h>
+#include <fnx/string.h>
+#include <fnx/stdio.h>
 
 #define MREMAP_MAYMOVE		0x1
 #define MREMAP_FIXED		0x2

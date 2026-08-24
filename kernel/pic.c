@@ -1,16 +1,16 @@
 /*
- * fiwix/kernel/pic.c
+ * fnx/kernel/pic.c
  *
  * Copyright 2018-2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/config.h>
-#include <fiwix/pic.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/config.h>
+#include <fnx/pic.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /* interrupt vector base addresses */
 #define IRQ0_ADDR	0x20
@@ -98,7 +98,7 @@ void pic_init(void)
 
 	/* mask all IRQs except cascade */
 #ifdef __x86_64__
-	/* Fiwix64: keep IRQ0 (PIT timer) unmasked too; the IDT64 dispatch
+	/* FNX: keep IRQ0 (PIT timer) unmasked too; the IDT64 dispatch
 	 * drives the real kernel's timer machinery via irq64_handler(). */
 	outport_b(PIC_MASTER + DATA, ~(1 << CASCADE_IRQ) & ~1);
 #else

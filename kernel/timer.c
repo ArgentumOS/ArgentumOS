@@ -1,27 +1,27 @@
 /*
- * fiwix/kernel/timer.c
+ * fnx/kernel/timer.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/segments.h>
-#include <fiwix/cmos.h>
-#include <fiwix/pit.h>
-#include <fiwix/timer.h>
-#include <fiwix/time.h>
-#include <fiwix/irq.h>
-#include <fiwix/sched.h>
-#include <fiwix/pic.h>
-#include <fiwix/cmos.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/sleep.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/segments.h>
+#include <fnx/cmos.h>
+#include <fnx/pit.h>
+#include <fnx/timer.h>
+#include <fnx/time.h>
+#include <fnx/irq.h>
+#include <fnx/sched.h>
+#include <fnx/pic.h>
+#include <fnx/cmos.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/sleep.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 /*
  * timer.c implements a callout table using a singly linked list.

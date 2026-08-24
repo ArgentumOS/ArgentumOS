@@ -1,21 +1,21 @@
 /*
- * fiwix/drivers/char/memdev.c
+ * fnx/drivers/char/memdev.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/memdev.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/errno.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/bios.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/memdev.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/errno.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/bios.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static struct fs_operations mem_driver_fsop = {
 	0,

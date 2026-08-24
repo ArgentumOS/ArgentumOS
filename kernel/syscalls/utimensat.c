@@ -1,10 +1,10 @@
 /*
- * fiwix/kernel/syscalls/utimensat.c
+ * fnx/kernel/syscalls/utimensat.c
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: utimensat(280) - change a file's access and modification
+ * FNX: utimensat(280) - change a file's access and modification
  * timestamps. musl's utime()/utimensat() (used by toybox touch) call this.
  * x86-64 ABI: the times argument is a packed array of 4 longs
  * {atime_sec, atime_nsec, mtime_sec, mtime_nsec}; the nsec slots may be
@@ -12,18 +12,18 @@
  * leave unchanged). times == NULL means set both to the current time.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/stat.h>
-#include <fiwix/string.h>
-#include <fiwix/process.h>
-#include <fiwix/kernel.h>
+#include <fnx/config.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/fcntl.h>
+#include <fnx/stat.h>
+#include <fnx/string.h>
+#include <fnx/process.h>
+#include <fnx/kernel.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 #define UTIME_NOW	0x3fffffff

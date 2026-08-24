@@ -1,23 +1,23 @@
 /*
- * fiwix/kernel/syscalls/setfsgid.c
+ * fnx/kernel/syscalls/setfsgid.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64: setfsgid(123) - set the filesystem group ID used by
+ * FNX: setfsgid(123) - set the filesystem group ID used by
  * check_group() for inode access checks. Linux semantics mirror
  * setfsuid: succeeds if the new value matches the real, effective,
  * saved or current filesystem GID (or the caller is privileged); returns
  * the PREVIOUS fsgid.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/process.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/process.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_setfsgid(__gid_t fsgid)

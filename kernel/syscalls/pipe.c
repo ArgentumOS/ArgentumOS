@@ -1,16 +1,16 @@
 /*
- * fiwix/kernel/syscalls/pipe.c
+ * fnx/kernel/syscalls/pipe.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fcntl.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
 
 int sys_pipe(int pipefd[2])
 {

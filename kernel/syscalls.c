@@ -1,22 +1,22 @@
 /*
- * fiwix/kernel/syscalls.c
+ * fnx/kernel/syscalls.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/types.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/mm.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
-#include <fiwix/timer.h>
-#include <fiwix/kernel.h>
+#include <fnx/asm.h>
+#include <fnx/types.h>
+#include <fnx/syscalls.h>
+#include <fnx/mm.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
+#include <fnx/timer.h>
+#include <fnx/kernel.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 static int verify_address(int type, const void *addr, unsigned int size)
@@ -53,14 +53,14 @@ static int verify_address(int type, const void *addr, unsigned int size)
 			if(vma->s_type == P_STACK) {
 				if(start < vma->start && start > vma->prev->end) {
 #ifdef __x86_64__
-					/* Fiwix64: the buffer sits below the current
+					/* FNX: the buffer sits below the current
 					 * stack vma start (stack growth). The 32-bit
 					 * kernel let do_page_fault retry the CPL0
 					 * access; here the low identity 2MB pages
 					 * mask the not-present state, so pre-demand-map
 					 * (and grow the stack vma) instead. */
-					extern int fiwix64_fault_user_pages(addr_t, unsigned int);
-					if((fiwix64_fault_user_pages(start, size)) < 0) {
+					extern int fnx_fault_user_pages(addr_t, unsigned int);
+					if((fnx_fault_user_pages(start, size)) < 0) {
 						return -EFAULT;
 					}
 #endif /* __x86_64__ */
@@ -90,13 +90,13 @@ static int verify_address(int type, const void *addr, unsigned int size)
 	}
 
 #ifdef __x86_64__
-	/* Fiwix64 (M6): the low identity 2MB pages mask the not-present state
+	/* FNX (M6): the low identity 2MB pages mask the not-present state
 	 * for CPL0 accesses, so the kernel's copy would read/write garbage
 	 * (phys = vaddr, beyond RAM) instead of faulting. Pre-demand-map the
 	 * pages so the copy hits a real U/S RAM page. */
 	{
-		extern int fiwix64_fault_user_pages(addr_t, unsigned int);
-		if((fiwix64_fault_user_pages(start, size)) < 0) {
+		extern int fnx_fault_user_pages(addr_t, unsigned int);
+		if((fnx_fault_user_pages(start, size)) < 0) {
 			return -EFAULT;
 		}
 	}
@@ -217,7 +217,7 @@ int check_permission(int mask, struct inode *i)
 
 #ifdef __x86_64__
 /* =====================================================================
- * Fiwix64 (native 64-bit port): the x86_64 syscall table (musl numbers).
+ * FNX (native 64-bit port): the x86_64 syscall table (musl numbers).
  * Entries reuse the existing syscall functions with the same 5-args + sc
  * dispatch contract as the i386 table; the adapters below handle the ABI
  * differences (mmap offset in bytes, arch_prctl %fs, exit_group, the
@@ -239,7 +239,7 @@ long sys_mmap64(addr_t start, addr_t length, unsigned int prot,
 
 /* arch_prctl(158): x86-64 TLS uses the %fs base MSR. ARCH_SET_FS stores
  * the thread pointer; ARCH_GET_FS reads it back. */
-extern void fiwix64_set_fs_base(unsigned long);
+extern void fnx_set_fs_base(unsigned long);
 
 int sys_arch_prctl64(unsigned int code, unsigned long addr,
 	long a3, long a4, long a5, struct sigcontext *sc)
@@ -247,7 +247,7 @@ int sys_arch_prctl64(unsigned int code, unsigned long addr,
 	switch(code) {
 	case 0x1002:	/* ARCH_SET_FS */
 		current->fs_base = addr;
-		fiwix64_set_fs_base(addr);
+		fnx_set_fs_base(addr);
 		return 0;
 	case 0x1003:	/* ARCH_GET_FS */
 		if(!addr) {
@@ -363,7 +363,7 @@ extern int sys_msync(addr_t, __size_t, int);
 extern int sys_mincore(addr_t, __size_t, unsigned char *);
 extern int sys_madvise(addr_t, __size_t, int);
 
-/* x86_64 syscall numbers (the subset Fiwix implements); NULL = -ENOSYS */
+/* x86_64 syscall numbers (the subset FNX implements); NULL = -ENOSYS */
 void *syscall_table64[] = {
 	[0]  = sys_read,		/* read */
 	[1]  = sys_write,		/* write */

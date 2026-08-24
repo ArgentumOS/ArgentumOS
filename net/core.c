@@ -1,16 +1,16 @@
 /*
- * fiwix/net/core.c
+ * fnx/net/core.c
  *
  * Copyright 2025, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/errno.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/fs.h>
-#include <fiwix/socket.h>
-#include <fiwix/string.h>
+#include <fnx/config.h>
+#include <fnx/errno.h>
+#include <fnx/ioctl.h>
+#include <fnx/fs.h>
+#include <fnx/socket.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_NET
 int dev_ioctl(int cmd, void *arg)

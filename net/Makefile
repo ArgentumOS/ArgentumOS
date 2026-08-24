@@ -1,4 +1,4 @@
-# fiwix/net/Makefile
+# fnx/net/Makefile
 #
 # Copyright 2023, Jordi Sanfeliu. All rights reserved.
 # Distributed under the terms of the Fiwix License.

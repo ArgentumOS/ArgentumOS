@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/init_trampoline64.S
+ * fnx/kernel64/init_trampoline64.S
  *
- * Fiwix64 (no 32-bit compatibility): the INIT bootstrap trampoline.
+ * FNX (no 32-bit compatibility): the INIT bootstrap trampoline.
  *
  * Copied to user VA 0x100000 at boot (init_init) and executed at CPL3 in
  * 64-bit user mode via switch_to_user_mode. It is fully POSITION-

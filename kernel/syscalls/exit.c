@@ -1,23 +1,23 @@
 /*
- * fiwix/kernel/syscalls/exit.c
+ * fnx/kernel/syscalls/exit.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/process.h>
-#include <fiwix/sched.h>
-#include <fiwix/mman.h>
-#include <fiwix/sleep.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/buffer.h>
-#include <fiwix/filesystems.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/syscalls.h>
+#include <fnx/process.h>
+#include <fnx/sched.h>
+#include <fnx/mman.h>
+#include <fnx/sleep.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/buffer.h>
+#include <fnx/filesystems.h>
 #ifdef CONFIG_SYSVIPC
-#include <fiwix/sem.h>
+#include <fnx/sem.h>
 #endif /* CONFIG_SYSVIPC */
 
 void do_exit(int exit_code)

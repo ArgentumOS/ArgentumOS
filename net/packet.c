@@ -1,14 +1,14 @@
 /*
- * fiwix/net/packet.c
+ * fnx/net/packet.c
  *
  * Copyright 2024, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/net.h>
-#include <fiwix/net/packet.h>
-#include <fiwix/socket.h>
+#include <fnx/config.h>
+#include <fnx/net.h>
+#include <fnx/net/packet.h>
+#include <fnx/socket.h>
 
 #ifdef CONFIG_NET
 struct packet *peek_packet(struct packet *queue_head)

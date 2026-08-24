@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/asm64.c
+ * fnx/kernel64/asm64.c
  *
- * Fiwix64 M4 (phase B): 64-bit replacements for the i386 assembly symbols
+ * FNX M4 (phase B): 64-bit replacements for the i386 assembly symbols
  * that kernel/core386.S + kernel/boot.S used to provide.
  *
  * Real implementations: port I/O, CPUID / CPU identification, RDTSC, TLB
@@ -14,9 +14,9 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/string.h>
-#include <fiwix/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/string.h>
+#include <fnx/asm.h>
 
 /* CPU identification globals (kernel.h externs, formerly in core386.S) */
 int _cputype;

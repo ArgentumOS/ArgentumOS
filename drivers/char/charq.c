@@ -1,15 +1,15 @@
 /*
- * fiwix/drivers/char/charq.c
+ * fnx/drivers/char/charq.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/charq.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/charq.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
 
 /*
  * charq.c implements a queue using a static-sized doubly linked list of a

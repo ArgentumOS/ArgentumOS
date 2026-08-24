@@ -1,4 +1,4 @@
-# fiwix/fs/devpts/Makefile
+# fnx/fs/devpts/Makefile
 #
 # Copyright 2025, Jordi Sanfeliu. All rights reserved.
 # Distributed under the terms of the Fiwix License.

@@ -1,29 +1,29 @@
 /*
- * fiwix/kernel/syscalls/ipc.c
+ * fnx/kernel/syscalls/ipc.c
  *
  * Copyright 2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64 (pure x86-64 port): the i386 sys_ipc() multiplexer was deleted;
+ * FNX (pure x86-64 port): the i386 sys_ipc() multiplexer was deleted;
  * this file keeps only the shared SysV IPC helpers used by the native
  * sys_msg, sys_sem and sys_shm syscalls.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/process.h>
-#include <fiwix/string.h>
-#include <fiwix/ipc.h>
+#include <fnx/config.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/process.h>
+#include <fnx/string.h>
+#include <fnx/ipc.h>
 #ifdef __x86_64__
-#include <fiwix/ipc64.h>
+#include <fnx/ipc64.h>
 #endif
-#include <fiwix/sem.h>
-#include <fiwix/msg.h>
-#include <fiwix/shm.h>
+#include <fnx/sem.h>
+#include <fnx/msg.h>
+#include <fnx/shm.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 #ifdef CONFIG_SYSVIPC
@@ -70,7 +70,7 @@ int ipc_has_perms(struct ipc_perm *perm, int mode)
 
 #ifdef __x86_64__
 /*
- * Fiwix64: convert between the kernel's compact i386-era IPC structs and
+ * FNX: convert between the kernel's compact i386-era IPC structs and
  * the musl x86-64 (LP64) user ABI layouts. The kernel structs carry extra
  * private fields and 16/32-bit members; memcpy'ing them to/from user space
  * corrupts the ABI view (IPC_STAT returned wrong fields, IPC_SET wrote

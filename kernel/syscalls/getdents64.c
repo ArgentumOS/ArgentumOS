@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/getdents64.c
+ * fnx/kernel/syscalls/getdents64.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Copyright 2023, Richard R. Masters.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/dirent.h>
-#include <fiwix/process.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
+#include <fnx/fs.h>
+#include <fnx/dirent.h>
+#include <fnx/process.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_getdents64(unsigned int ufd, struct dirent64 *dirent, unsigned int count)

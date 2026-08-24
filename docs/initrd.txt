@@ -1,6 +1,6 @@
 Initrd image size restriction
 =============================
-The Fiwix kernel supports very large initrd images with two different maximum
+The FNX kernel supports very large initrd images with two different maximum
 sizes depending on the type of the virtual memory split. If the configuration
 option CONFIG_VM_SPLIT22 is not defined (the default case), the virtual memory
 is divided as 3GB for the user and 1GB for the kernel, in this case the maximum
@@ -8,7 +8,7 @@ size of an initrd image will be near 1GB. When CONFIG_VM_SPLIT22 is defined,
 which means 2GB for the user and 2GB for the kernel, then the maximum size can
 be near 2GB.
 
-In all, the memory layout of the Fiwix kernel imposes a small and, hopefully,
+In all, the memory layout of the FNX kernel imposes a small and, hopefully,
 harmless restriction on an specific size of the initrd image.
 
 Since the kernel Page Directory and Page Tables are placed right after the end

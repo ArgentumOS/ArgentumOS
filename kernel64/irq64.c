@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/irq64.c
+ * fnx/kernel64/irq64.c
  *
- * Fiwix64 M3 (phase A): 8259 PIC remap, PIT timer, IRQ dispatch.
+ * FNX M3 (phase A): 8259 PIC remap, PIT timer, IRQ dispatch.
  *
  * The PICs are remapped so IRQ0-7 -> vectors 0x20-0x27 and IRQ8-15 ->
  * 0x28-0x2F, and only IRQ0 (the PIT) is unmasked. The PIT ticks at 100 Hz.
@@ -11,8 +11,8 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
-#include <fiwix/sigcontext.h>
+#include <fnx/efi.h>
+#include <fnx/sigcontext.h>
 #include "serial64.h"
 
 static unsigned long ticks64;

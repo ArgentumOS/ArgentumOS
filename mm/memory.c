@@ -1,25 +1,25 @@
 /*
- * fiwix/mm/memory.c
+ * fnx/mm/memory.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Portions Copyright 2024, Greg Haerr.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/asm.h>
-#include <fiwix/multiboot1.h>
-#include <fiwix/kparms.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/bios.h>
-#include <fiwix/ramdisk.h>
-#include <fiwix/process.h>
-#include <fiwix/buffer.h>
-#include <fiwix/fs.h>
-#include <fiwix/kexec.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/asm.h>
+#include <fnx/multiboot1.h>
+#include <fnx/kparms.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/bios.h>
+#include <fnx/ramdisk.h>
+#include <fnx/process.h>
+#include <fnx/buffer.h>
+#include <fnx/fs.h>
+#include <fnx/kexec.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define KERNEL_TEXT_SIZE	((addr_t)_etext - (PAGE_OFFSET + KERNEL_ADDR))
 #define KERNEL_DATA_SIZE	((addr_t)_edata - (addr_t)_etext)
@@ -70,7 +70,7 @@ addr_t map_kaddr(addr_t *page_dir, unsigned int from, unsigned int to, unsigned 
 addr_t get_mapped_addr(struct proc *p, addr_t addr)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native port): walk the process's own 4-level pml4 (the
+	/* FNX (native port): walk the process's own 4-level pml4 (the
 	 * per-process cr3_64) to translate a USER virtual address to its
 	 * PHYSICAL page. Returns the raw PHYSICAL page address; callers
 	 * apply & PAGE_MASK then V2P to read the page contents. */
@@ -111,7 +111,7 @@ int clone_pages(struct proc *child)
 
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): the fork child's 4-level tables were already	 * deep-copied with writable user leaves shared read-only by
+	/* FNX (native-MM): the fork child's 4-level tables were already	 * deep-copied with writable user leaves shared read-only by
 	 * create_pml4_64(). The 2-level clone_pages() work is gone; here we
 	 * only mirror its BOOKKEEPING: mark every shared writable user leaf
 	 * PAGE_COW (the 4-level copy never touched page_table[].flags) and
@@ -126,7 +126,7 @@ int clone_pages(struct proc *child)
 	extern unsigned long paging64_pml4_phys(void);
 	pml4 = child->cr3_64 ? child->cr3_64 : paging64_pml4_phys();
 	pages = 0;
-	/* Fiwix64 (canonical amd64 split): walk the whole USER half
+	/* FNX (canonical amd64 split): walk the whole USER half
 	 * (pml4[0..255] = VA 0 .. 0x00007FFFFFFFFFFF, 128TB). The kernel
 	 * half (pml4[256..511]) is shared and never walked here. */
 	pml4p = (unsigned long *)P2V(pml4);
@@ -237,7 +237,7 @@ int clone_pages(struct proc *child)
 int free_page_tables(struct proc *p)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): free the process's own 4-level tables. The
+	/* FNX (native-MM): free the process's own 4-level tables. The
 	 * caller's pml4 is not active (exit/reap), so this is safe. */
 	extern void free_pml4_64(unsigned long);
 	extern unsigned long paging64_pml4_phys(void);
@@ -271,7 +271,7 @@ addr_t map_page(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int pr
 addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot, int flags)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): the process's pml4 (p->cr3_64) is the single
+	/* FNX (native-MM): the process's pml4 (p->cr3_64) is the single
 	 * source of truth - no 2-level shadow, no mirroring. Walk it, split
 	 * 2MB identity pages as needed (map_page64_in), and write the leaf.
 	 * If the address is already user-mapped, hand back the EXISTING page
@@ -302,7 +302,7 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned 
 				(prot & PROT_WRITE ? 0x002 /* RW */ : 0))) {
 			return 0;
 		}
-		/* Fiwix64: propagate U/S up the walk. The leaf above got the US
+		/* FNX: propagate U/S up the walk. The leaf above got the US
 		 * bit, but the CPU requires US at EVERY level of the walk - the
 		 * pml4/pdpt/pd entries this page hangs off may still be
 		 * supervisor-only (a demand-paged page inside a split identity
@@ -366,7 +366,7 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned 
 int unmap_page(addr_t vaddr)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): clear the leaf in the ACTIVE pml4 (the 2-level
+	/* FNX (native-MM): clear the leaf in the ACTIVE pml4 (the 2-level
 	 * shadow is gone). */
 	extern int unmap_user_page64_in(unsigned long, unsigned long);
 	extern unsigned long paging64_pml4(void);
@@ -540,7 +540,7 @@ void mem_init(void)
 	 * FIXME: this is ugly!
 	 * It should go in console_init() once we have a proper kernel memory/page management.
 	 */
-	#include <fiwix/console.h>
+	#include <fnx/console.h>
 	for(n = 1; n <= NR_VCONSOLES; n++) {
 		vc_screen[n] = (short int *)_last_data_addr;
 		_last_data_addr += (video.columns * video.lines * 2);
@@ -591,7 +591,7 @@ void mem_init(void)
 	page_init(kstat.physical_pages);
 	buddy_low_init();
 #ifdef __x86_64__
-	/* Fiwix64 (pivot): the static tables are carved; hand the usable pages
+	/* FNX (pivot): the static tables are carved; hand the usable pages
 	 * above them back to the single 64-bit bitmap allocator. */
 	extern void mm64_postmem_init(void);
 	mm64_postmem_init();

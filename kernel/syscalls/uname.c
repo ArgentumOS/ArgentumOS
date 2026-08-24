@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/uname.c
+ * fnx/kernel/syscalls/uname.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/utsname.h>
-#include <fiwix/string.h>
+#include <fnx/fs.h>
+#include <fnx/utsname.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_uname(struct old_utsname *uname)

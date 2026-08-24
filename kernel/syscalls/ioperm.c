@@ -1,15 +1,15 @@
 /*
- * fiwix/kernel/syscalls/ioperm.c
+ * fnx/kernel/syscalls/ioperm.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 /*

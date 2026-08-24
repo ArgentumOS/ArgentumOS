@@ -1,5 +1,5 @@
 /*
- * Fiwix64 /sbin/init — static musl i386 (PID 1).
+ * FNX /sbin/init — static musl i386 (PID 1).
  *
  * Built by `make userland` into .build/rootfs/sbin/init and packed into the
  * minix-v1 initrd by tools/mkinitrd.py. PID 1 already has fd 0/1/2 open to
@@ -15,7 +15,7 @@ int main(void)
 {
 	pid_t pid;
 
-	puts("INIT: Fiwix64 initrd alive");
+	puts("INIT: FNX initrd alive");
 	fflush(stdout);
 
 	for (;;) {

@@ -1,20 +1,20 @@
 /*
- * fiwix/drivers/block/atapi_cd.c
+ * fnx/drivers/block/atapi_cd.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/buffer.h>
-#include <fiwix/atapi.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/atapi_cd.h>
-#include <fiwix/devices.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/buffer.h>
+#include <fnx/atapi.h>
+#include <fnx/ioctl.h>
+#include <fnx/atapi_cd.h>
+#include <fnx/devices.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static struct fs_operations atapi_cd_driver_fsop = {
 	0,

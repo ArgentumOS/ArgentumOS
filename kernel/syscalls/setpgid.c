@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/setpgid.c
+ * fnx/kernel/syscalls/setpgid.c
  *
  * Copyright 2018-2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_setpgid(__pid_t pid, __pid_t pgid)

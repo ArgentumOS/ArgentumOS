@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/sleep.c
+ * fnx/kernel/sleep.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/limits.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/limits.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define NR_BUCKETS		(NR_PROCS >= 10 ? (NR_PROCS * 10) / 100 : 1)
 #define SLEEP_HASH(addr)	((addr) % (NR_BUCKETS))

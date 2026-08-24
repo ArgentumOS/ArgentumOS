@@ -1,15 +1,15 @@
 /*
- * fiwix/kernel/syscalls/close.c
+ * fnx/kernel/syscalls/close.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/syscalls.h>
-#include <fiwix/fd.h>
-#include <fiwix/locks.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
+#include <fnx/syscalls.h>
+#include <fnx/fd.h>
+#include <fnx/locks.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
 
 int sys_close(unsigned int ufd)
 {

@@ -1,19 +1,19 @@
 /*
- * fiwix/fs/sockfs/super.c
+ * fnx/fs/sockfs/super.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_sock.h>
-#include <fiwix/stat.h>
-#include <fiwix/mm.h>
-#include <fiwix/sched.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_sock.h>
+#include <fnx/stat.h>
+#include <fnx/mm.h>
+#include <fnx/sched.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_NET
 static unsigned int i_counter;

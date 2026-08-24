@@ -1,11 +1,11 @@
 /*
- * fiwix/lib/ctype.c
+ * fnx/lib/ctype.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/ctype.h>
+#include <fnx/ctype.h>
 
 unsigned char _ctype[] = {
 	0,

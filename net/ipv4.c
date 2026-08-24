@@ -1,23 +1,23 @@
 /*
- * fiwix/net/ipv4.c
+ * fnx/net/ipv4.c
  *
  * Copyright 2025, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/config.h>
-#include <fiwix/fs.h>
-#include <fiwix/stat.h>
-#include <fiwix/errno.h>
-#include <fiwix/socket.h>
-#include <fiwix/net.h>
-#include <fiwix/net/ipv4.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/mm.h>
-#include <fiwix/string.h>
-#include <fiwix/stdio.h>
+#include <fnx/config.h>
+#include <fnx/fs.h>
+#include <fnx/stat.h>
+#include <fnx/errno.h>
+#include <fnx/socket.h>
+#include <fnx/net.h>
+#include <fnx/net/ipv4.h>
+#include <fnx/fcntl.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/mm.h>
+#include <fnx/string.h>
+#include <fnx/stdio.h>
 
 #ifdef CONFIG_NET
 struct ipv4_info *ipv4_socket_head;

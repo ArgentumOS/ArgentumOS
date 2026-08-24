@@ -1,31 +1,31 @@
 /*
- * fiwix/drivers/char/tty.c
+ * fnx/drivers/char/tty.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/kparms.h>
-#include <fiwix/asm.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/tty.h>
-#include <fiwix/ctype.h>
-#include <fiwix/console.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/errno.h>
-#include <fiwix/sched.h>
-#include <fiwix/timer.h>
-#include <fiwix/sleep.h>
-#include <fiwix/process.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/kd.h>
-#include <fiwix/pty.h>
-#include <fiwix/fs_devpts.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/kparms.h>
+#include <fnx/asm.h>
+#include <fnx/ioctl.h>
+#include <fnx/tty.h>
+#include <fnx/ctype.h>
+#include <fnx/console.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/errno.h>
+#include <fnx/sched.h>
+#include <fnx/timer.h>
+#include <fnx/sleep.h>
+#include <fnx/process.h>
+#include <fnx/fcntl.h>
+#include <fnx/kd.h>
+#include <fnx/pty.h>
+#include <fnx/fs_devpts.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define SYSCON_DEV	MKDEV(SYSCON_MAJOR, 1)
 #define VCONSOLE_DEV	MKDEV(VCONSOLES_MAJOR, 0)

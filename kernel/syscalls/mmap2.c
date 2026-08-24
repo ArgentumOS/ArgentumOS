@@ -1,26 +1,26 @@
 /*
- * fiwix/kernel/syscalls/mmap2.c
+ * fnx/kernel/syscalls/mmap2.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Copyright 2023, Richard R. Masters. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  *
- * Fiwix64 (pure x86-64 port): the i386 mmap2() syscall was deleted; this
+ * FNX (pure x86-64 port): the i386 mmap2() syscall was deleted; this
  * file keeps only the shared do_mmap2() worker used by the native
  * x86-64 mmap (sys_mmap64, SYS64_mmap #9).
  */
 
-#include <fiwix/fs.h>
-#include <fiwix/mman.h>
-#include <fiwix/mm.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/errno.h>
-#include <fiwix/string.h>
-#include <fiwix/sigcontext.h>
+#include <fnx/fs.h>
+#include <fnx/mman.h>
+#include <fnx/mm.h>
+#include <fnx/fcntl.h>
+#include <fnx/errno.h>
+#include <fnx/string.h>
+#include <fnx/sigcontext.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 long do_mmap2(addr_t start, addr_t length, unsigned int prot, unsigned int user_flags, int fd, addr_t offset)

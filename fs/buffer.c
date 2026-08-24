@@ -1,23 +1,23 @@
 /*
- * fiwix/fs/buffer.c
+ * fnx/fs/buffer.c
  *
  * Copyright 2018-2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/buffer.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/stat.h>
-#include <fiwix/blk_queue.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/buffer.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/stat.h>
+#include <fnx/blk_queue.h>
 
 #define NR_BUF_HASH		(buffer_hash_table_size / sizeof(struct buffer *))
 #define BUFFER_HASH(dev, block)	(((__dev_t)(dev) ^ (__blk_t)(block)) % (NR_BUF_HASH))

@@ -1,7 +1,7 @@
 #!/bin/sh
-# musl-gcc wrapper for the Fiwix64 static i386 userland.
+# musl-gcc wrapper for the FNX static i386 userland.
 #
-# Fiwix64 boots static ELF32 binaries (no dynamic linker), so this always
+# FNX boots static ELF32 binaries (no dynamic linker), so this always
 # links -static against the musl installed at .build/musl. The explicit
 # -Wl,-m,elf_i386 is required because musl-gcc.specs' *link spec drops
 # gcc's %{m32:-m elf_i386} multilib clause (musl's configure was told

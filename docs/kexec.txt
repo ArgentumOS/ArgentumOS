@@ -1,12 +1,12 @@
-Fiwix kexec implementation
+FNX kexec implementation
 ==========================
 Kexec is a mechanism that let's you switch into a different kernel without
-rebooting your machine. Its implementation in Fiwix differs from the Linux
+rebooting your machine. Its implementation in FNX differs from the Linux
 kexec implementation because it doesn't need a system call nor specific
 user-space tools, and your current system will completely shutdown before
 jumping to the new kernel.
 
-The new kernel can be another Fiwix kernel or any other ELF binary kernel as
+The new kernel can be another FNX kernel or any other ELF binary kernel as
 long as it supports the Multiboot 1 Specification. It can also be a Linux Kernel
 by using the Linux Boot protocol.
 
@@ -28,7 +28,7 @@ need to specify:
   Command line to be passed to the new kernel (enclosed in double quotes).
 
 Example of a kernel command line:
-/boot/fiwix ro root=/dev/hda2 kexec_proto=multiboot1 kexec_size=500 \
+/boot/fnx ro root=/dev/hda2 kexec_proto=multiboot1 kexec_size=500 \
 kexec_cmdline="ro root=/dev/hda2"
 
 The RAMdisk drives play an important role here. You already know that they can
@@ -40,7 +40,7 @@ Kexec uses always the first unused RAMdisk drive. You'll know which one is the
 first unused depending if you specified an initrd image, or if you specified to
 have all-purpose RAMdisk drives at boot-time.
 
-Fiwix is configured by default to have the following possible RAMdisk drives
+FNX is configured by default to have the following possible RAMdisk drives
 layout:
 	- If an initrd image was specified at boot-time then the first RAMdisk
 	  drive is used for it (i.e: /dev/ram0).
@@ -95,7 +95,7 @@ Finally, when you are ready, just do a normal shutdown to switch automatically
 to the new kernel.
 
 Example:
-# cp fiwix /dev/ram0
+# cp fnx /dev/ram0
 # shutdown -h 0
 
 

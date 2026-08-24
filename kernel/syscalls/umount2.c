@@ -1,20 +1,20 @@
 /*
- * fiwix/kernel/syscalls/umount2.c
+ * fnx/kernel/syscalls/umount2.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/stat.h>
-#include <fiwix/sleep.h>
-#include <fiwix/devices.h>
-#include <fiwix/buffer.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/stat.h>
+#include <fnx/sleep.h>
+#include <fnx/devices.h>
+#include <fnx/buffer.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static struct resource umount_resource = { 0, 0 };
 

@@ -1,17 +1,17 @@
 /*
- * fiwix/drivers/block/ata_pci.c
+ * fnx/drivers/block/ata_pci.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kparms.h>
-#include <fiwix/ata.h>
-#include <fiwix/pci.h>
-#include <fiwix/mm.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/kparms.h>
+#include <fnx/ata.h>
+#include <fnx/pci.h>
+#include <fnx/mm.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_PCI
 static int setup_ata_device(struct ide *ide, struct pci_device *pci_dev)

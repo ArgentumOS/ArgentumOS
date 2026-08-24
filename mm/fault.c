@@ -1,24 +1,24 @@
 /*
- * fiwix/mm/fault.c
+ * fnx/mm/fault.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/sigcontext.h>
-#include <fiwix/asm.h>
-#include <fiwix/mm.h>
-#include <fiwix/process.h>
-#include <fiwix/traps.h>
-#include <fiwix/sched.h>
-#include <fiwix/fs.h>
-#include <fiwix/mman.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/shm.h>
+#include <fnx/kernel.h>
+#include <fnx/sigcontext.h>
+#include <fnx/asm.h>
+#include <fnx/mm.h>
+#include <fnx/process.h>
+#include <fnx/traps.h>
+#include <fnx/sched.h>
+#include <fnx/fs.h>
+#include <fnx/mman.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/syscalls.h>
+#include <fnx/shm.h>
 
 static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc);
 
@@ -36,7 +36,7 @@ static void send_sigsegv(struct sigcontext *sc)
 static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcontext *sc)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): the process pml4 is the single source of truth.
+	/* FNX (native-MM): the process pml4 is the single source of truth.
 	 * A user write to a present-but-read-only leaf is copy-on-write (or a
 	 * real violation); a write to an address that is NOT user-mapped (absent
 	 * or a supervisor 2MB identity page) is demand-paging. No 2-level
@@ -60,7 +60,7 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		return 0;
 	}
 
-	/* Copy On Write (Fiwix64 native): a fork shares the writable user
+	/* Copy On Write (FNX native): a fork shares the writable user
 	 * leaves read-only in BOTH sides (create_pml4_64), so the first
 	 * write by either side gets a fresh private copy. Only do this for
 	 * writable PRIVATE vmas - a genuine read-only page (text/rodata,
@@ -81,7 +81,7 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		current->rss--;
 		return 1;
 	}
-	/* Fiwix64 (pivot): the faulting process drops its reference to the
+	/* FNX (pivot): the faulting process drops its reference to the
 	 * old shared (CoW) leaf - the fresh copy replaces it in THIS pml4,
 	 * while the other process(es) still map the original. create_pml4_64
 	 * incremented the count for every fork copy, so the count is now
@@ -234,7 +234,7 @@ static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc)
 
 #ifdef __x86_64__
 /*
- * Fiwix64 (M6): the low-1GB identity 2MB pages make every user address in
+ * FNX (M6): the low-1GB identity 2MB pages make every user address in
  * 0-1GB look "present" to CPL0 accesses, so a kernel-side copy to/from a
  * not-yet-demand-mapped user page never faults (the 32-bit kernel relied
  * on the page-fault retry). Before the kernel copies user memory, walk the
@@ -242,10 +242,10 @@ static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc)
  * still covered by a supervisor identity huge page (or has no U/S leaf).
  * Returns 0 on success, -EFAULT if a page could not be mapped.
  */
-#define FIWIX64_P2V(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
+#define FNX64_P2V(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
 				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
-#define FIWIX64_PMASK	0x000FFFFFFFFFF000ULL
-int fiwix64_fault_user_pages(addr_t start, unsigned int size)
+#define FNX64_PMASK	0x000FFFFFFFFFF000ULL
+int fnx_fault_user_pages(addr_t start, unsigned int size)
 {
 	struct sigcontext sc;
 	struct vma *vma;
@@ -261,7 +261,7 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 	for(a = start & PAGE_MASK; a < start + (addr_t)size; a += PAGE_SIZE) {
 		page = (unsigned long)a;
 
-		/* Fiwix64: kernel-mode demand-map must grow the user stack vma
+		/* FNX: kernel-mode demand-map must grow the user stack vma
 		 * exactly like the user-mode fault path (page_not_present) does.
 		 * A syscall whose user buffer sits below the current stack vma
 		 * start (e.g. getcwd's 4096-byte buffer one page below a 1-page
@@ -278,7 +278,7 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 			}
 		}
 
-		lvl = (unsigned long *)FIWIX64_P2V(pml4);
+		lvl = (unsigned long *)FNX64_P2V(pml4);
 		if(!(e1 = lvl[(page >> 39) & 0x1FF]) || !(e1 & 0x1)) {
 			if(vma) {
 				if(page_not_present(vma, a, &sc)) {
@@ -288,7 +288,7 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 			continue;	/* unmapped: a CPL0 access would fault and
 					 * be handled by the K1 path, like 32-bit */
 		}
-		lvl = (unsigned long *)FIWIX64_P2V(e1 & FIWIX64_PMASK);
+		lvl = (unsigned long *)FNX64_P2V(e1 & FNX64_PMASK);
 		if(!(e2 = lvl[(page >> 30) & 0x1FF]) || !(e2 & 0x1)) {
 			if(vma) {
 				if(page_not_present(vma, a, &sc)) {
@@ -297,7 +297,7 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 			}
 			continue;
 		}
-		lvl = (unsigned long *)FIWIX64_P2V(e2 & FIWIX64_PMASK);
+		lvl = (unsigned long *)FNX64_P2V(e2 & FNX64_PMASK);
 		if(!(e3 = lvl[(page >> 21) & 0x1FF]) || !(e3 & 0x1)) {
 			if(vma) {
 				if(page_not_present(vma, a, &sc)) {
@@ -316,7 +316,7 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 			}
 			continue;
 		}
-		lvl = (unsigned long *)FIWIX64_P2V(e3 & FIWIX64_PMASK);
+		lvl = (unsigned long *)FNX64_P2V(e3 & FNX64_PMASK);
 		e4 = lvl[(page >> 12) & 0x1FF];
 		if(!(e4 & 0x1) || !(e4 & 0x4)) {	/* not present or not U/S */
 			if(!vma) {
@@ -329,8 +329,8 @@ int fiwix64_fault_user_pages(addr_t start, unsigned int size)
 	}
 	return 0;
 }
-#undef FIWIX64_P2V
-#undef FIWIX64_PMASK
+#undef FNX64_P2V
+#undef FNX64_PMASK
 #endif /* __x86_64__ */
 
 /*
@@ -397,7 +397,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 					return;
 				}
 #ifdef __x86_64__
-				/* Fiwix64: a user read/fetch "violation" on a present
+				/* FNX: a user read/fetch "violation" on a present
 				 * page is normally a supervisor-only 2MB identity page
 				 * that needs to be demand-mapped with the U/S bit
 				 * (the 32-bit kernel's user pages were always mapped
@@ -443,7 +443,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 			if(sc->err & PFAULT_V) {	/* violation */
 
 #ifdef __x86_64__
-				/* Fiwix64: with no vma, a user "violation" (read OR
+				/* FNX: with no vma, a user "violation" (read OR
 				 * write) below the stack top is stack growth below
 				 * the stack vma - the 0-4GB identity map makes the
 				 * not-present page look present (V bit set). Route
@@ -480,7 +480,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 			struct sigcontext *usc;
 
 			/*
-			 * Fiwix64 (native port): syscall80_handler() keeps the
+			 * FNX (native port): syscall80_handler() keeps the
 			 * active user sigcontext at current->sp for the whole
 			 * syscall (set before dispatch), so a kernel-mode fault
 			 * inside a syscall (e.g. copy_from_user) finds the user

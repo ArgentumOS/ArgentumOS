@@ -1,28 +1,36 @@
 #!/bin/sh
-# Build a bootable UEFI ESP disk image for the Fiwix64 EFI stub.
+# Build a bootable UEFI ESP disk image for the FNX EFI stub.
 #
 # Creates .build/esp.img: a 64MB disk with an MBR partition table and a
 # FAT32 partition holding EFI/BOOT/BOOTX64.EFI (plus a startup.nsh fallback
 # for the EFI shell). OVMF's BDS boots it directly as "UEFI QEMU HARDDISK".
 #
-# No root required; uses the bundled mtools from the fiwix-qemu-tools prefix.
+# No root required; uses the bundled mtools from the fnx-qemu-tools prefix.
 
 set -e
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 ESP="$REPO/.build/esp"
 IMG="$REPO/.build/esp.img"
-TOOLROOT="${FIWIX_QEMU_TOOLS:-$HOME/.local/share/fiwix-qemu-tools}"
+# The on-disk tool prefix may still be the legacy fiwix-qemu-tools name
+# (the tools dir lives on a read-only filesystem); accept both.
+if [ -n "$FNX_QEMU_TOOLS" ]; then
+	TOOLROOT="$FNX_QEMU_TOOLS"
+elif [ -d "$HOME/.local/share/fnx-qemu-tools" ]; then
+	TOOLROOT="$HOME/.local/share/fnx-qemu-tools"
+else
+	TOOLROOT="$HOME/.local/share/fiwix-qemu-tools"
+fi
 MTOOLS="env LD_LIBRARY_PATH=$TOOLROOT/usr/lib/x86_64-linux-gnu"
 
-if [ ! -f "$REPO/.build/64/fiwix64.efi" ]; then
-	echo "error: .build/64/fiwix64.efi not found; run 'make build64' first" >&2
+if [ ! -f "$REPO/.build/64/fnx.efi" ]; then
+	echo "error: .build/64/fnx.efi not found; run 'make build64' first" >&2
 	exit 1
 fi
 
 rm -rf "$ESP"
 mkdir -p "$ESP/EFI/BOOT"
-cp "$REPO/.build/64/fiwix64.efi" "$ESP/EFI/BOOT/BOOTX64.EFI"
+cp "$REPO/.build/64/fnx.efi" "$ESP/EFI/BOOT/BOOTX64.EFI"
 printf 'EFI\\BOOT\\BOOTX64.EFI\r\n' > "$ESP/startup.nsh"
 
 dd if=/dev/zero of="$IMG" bs=1M count=64 status=none

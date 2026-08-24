@@ -1,17 +1,17 @@
 /*
- * fiwix/fs/sockfs/socket.c
+ * fnx/fs/sockfs/socket.c
  *
  * Copyright 2023, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_sock.h>
-#include <fiwix/net.h>
-#include <fiwix/string.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_sock.h>
+#include <fnx/net.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_NET
 int sockfs_open(struct inode *i, struct fd *f)

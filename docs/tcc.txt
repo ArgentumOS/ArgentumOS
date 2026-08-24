@@ -1,10 +1,10 @@
-Fiwix can be built with a modified version of tcc instead of gcc.
+FNX can be built with a modified version of tcc instead of gcc.
 
-A version of tcc which has been verified to compile Fiwix can be retrieved
+A version of tcc which has been verified to compile FNX can be retrieved
 (at the time of this writing) from the following URL:
 https://download.savannah.gnu.org/releases/tinycc/tcc-0.9.27.tar.bz2
 
-Fiwix uses a linker script to specify high virtual addresses for data
+FNX uses a linker script to specify high virtual addresses for data
 structures but uses low physical addresses for the addresses to load
 the kernel sections into.
 
@@ -26,16 +26,16 @@ Must be changed to this:
                             ph->p_paddr = ph->p_paddr - 0x80000000;
 
 
-This change is specific to Fiwix and so it is unlikely to be incorporated
+This change is specific to FNX and so it is unlikely to be incorporated
 into the standard tcc compiler in the future.
 
 
 Note that tcc does not support certain constructs used by CONFIG_OFFSET64
 or CONFIG_PRINTK64, so you must undefine these options.
 
-These commands will build Fiwix with tcc:
+These commands will build FNX with tcc:
 
-echo "#undef CONFIG_OFFSET64" > include/fiwix/custom_config.h
-echo "#undef CONFIG_PRINTK64" >> include/fiwix/custom_config.h
+echo "#undef CONFIG_OFFSET64" > include/fnx/custom_config.h
+echo "#undef CONFIG_PRINTK64" >> include/fnx/custom_config.h
 make clean
 make CCEXE="tcc" CONFFLAGS="-DCUSTOM_CONFIG_H"

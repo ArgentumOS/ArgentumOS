@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/paging64.c
+ * fnx/kernel64/paging64.c
  *
- * Fiwix64 M2 (phase A): install the kernel's own 4-level page tables.
+ * FNX M2 (phase A): install the kernel's own 4-level page tables.
  *
  * After ExitBootServices() the stub still runs on the firmware's
  * identity-mapped page tables. This module replaces them with 4-level
@@ -20,7 +20,7 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
+#include <fnx/efi.h>
 #include "serial64.h"
 
 #define PAGE_OFFSET64	0xFFFFFFFF80000000ULL

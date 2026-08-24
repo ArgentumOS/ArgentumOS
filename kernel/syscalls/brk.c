@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/brk.c
+ * fnx/kernel/syscalls/brk.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/process.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/errno.h>
+#include <fnx/process.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 long sys_brk(addr_t brk)

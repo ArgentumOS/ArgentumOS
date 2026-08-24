@@ -1,19 +1,19 @@
 /*
- * fiwix/kernel/syscalls/reboot.c
+ * fnx/kernel/syscalls/reboot.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/syscalls.h>
-#include <fiwix/reboot.h>
-#include <fiwix/signal.h>
-#include <fiwix/process.h>
-#include <fiwix/errno.h>
+#include <fnx/kernel.h>
+#include <fnx/syscalls.h>
+#include <fnx/reboot.h>
+#include <fnx/signal.h>
+#include <fnx/process.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_reboot(int magic1, int magic2, int flag)

@@ -1,21 +1,21 @@
 /*
- * fiwix/fs/ext2/bitmaps.c
+ * fnx/fs/ext2/bitmaps.c
  *
  * Copyright 2019, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_ext2.h>
-#include <fiwix/buffer.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/stat.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_ext2.h>
+#include <fnx/buffer.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/stat.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static int find_first_zero(struct superblock *sb, __blk_t bmblock, struct buffer **buf)
 {

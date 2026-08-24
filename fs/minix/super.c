@@ -1,20 +1,20 @@
 /*
- * fiwix/fs/minix/super.c
+ * fnx/fs/minix/super.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/types.h>
-#include <fiwix/errno.h>
-#include <fiwix/fs.h>
-#include <fiwix/filesystems.h>
-#include <fiwix/fs_minix.h>
-#include <fiwix/buffer.h>
-#include <fiwix/sched.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/kernel.h>
+#include <fnx/types.h>
+#include <fnx/errno.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
+#include <fnx/fs_minix.h>
+#include <fnx/buffer.h>
+#include <fnx/sched.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #ifdef CONFIG_FS_MINIX
 struct fs_operations minix_fsop = {

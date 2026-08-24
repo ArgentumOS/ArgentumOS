@@ -1,22 +1,22 @@
 /*
- * fiwix/mm/mmap.c
+ * fnx/mm/mmap.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Portions Copyright 2024, Greg Haerr.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/mm.h>
-#include <fiwix/fs.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/stat.h>
-#include <fiwix/process.h>
-#include <fiwix/mman.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/shm.h>
+#include <fnx/asm.h>
+#include <fnx/mm.h>
+#include <fnx/fs.h>
+#include <fnx/fcntl.h>
+#include <fnx/stat.h>
+#include <fnx/process.h>
+#include <fnx/mman.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/shm.h>
 
 void merge_vma_regions(struct vma *, struct vma *);
 
@@ -274,7 +274,7 @@ void merge_vma_regions(struct vma *a, struct vma *b)
 void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (native-MM): operate on the ACTIVE pml4 - no 2-level shadow,
+	/* FNX (native-MM): operate on the ACTIVE pml4 - no 2-level shadow,
 	 * no pte-table refcounting, so the table-empty kfree (the source of
 	 * the pde-32 table double-grant) is gone. */
 	unsigned int n, offset;
@@ -369,7 +369,7 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 				pgtbl[pte] = 0;
 
 #ifdef __x86_64__
-				/* Fiwix64: also clear the leaf from the ACTIVE 4-level
+				/* FNX: also clear the leaf from the ACTIVE 4-level
 				 * tables, or a later mmap reusing this address would
 				 * hit the stale present PTE and skip the page fault
 				 * (reading the old content instead of the new file) */
@@ -435,7 +435,7 @@ struct vma *find_vma_region(addr_t addr)
 }
 
 /*
- * Fiwix64: used by the 64-bit pml4 fork deep-copy (kernel64/mm64.c) to
+ * FNX: used by the 64-bit pml4 fork deep-copy (kernel64/mm64.c) to
  * decide whether a user-writable page must be made read-only for
  * copy-on-write. clone_pages() leaves MAP_SHARED pages writable, so only
  * MAP_PRIVATE (or vma-less) pages are COW'd. Returns 1 if the address is

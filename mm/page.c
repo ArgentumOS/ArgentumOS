@@ -1,5 +1,5 @@
 /*
- * fiwix/mm/page.c
+ * fnx/mm/page.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
@@ -22,19 +22,19 @@
  *    ...
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/bios.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/devices.h>
-#include <fiwix/buffer.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/blk_queue.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/bios.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/devices.h>
+#include <fnx/buffer.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/blk_queue.h>
 
 #define PAGE_HASH(inode, offset)	(((__ino_t)(inode) ^ (__off_t)(offset)) % (NR_PAGE_HASH))
 #define NR_PAGES	(page_table_size / sizeof(struct page))
@@ -97,7 +97,7 @@ static void remove_from_hash(struct page *pg)
 static void insert_on_free_list(struct page *pg)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (pivot): the page_head free-list is not built; pages live
+	/* FNX (pivot): the page_head free-list is not built; pages live
 	 * in the single 64-bit bitmap. Nothing to link. */
 	return;
 #else
@@ -118,7 +118,7 @@ static void insert_on_free_list(struct page *pg)
 static void remove_from_free_list(struct page *pg)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (pivot): nothing is ever on the page_head free-list. */
+	/* FNX (pivot): nothing is ever on the page_head free-list. */
 	return;
 #else
 	if(!kstat.free_pages) {
@@ -168,7 +168,7 @@ void page_unlock(struct page *pg)
 struct page *get_free_page(void)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (pivot): the 64-bit bitmap is the single physical
+	/* FNX (pivot): the 64-bit bitmap is the single physical
 	 * allocator. The Fiwix page_head free-list is not built (page_init
 	 * skips it), so get_free_page() is a thin wrapper over the bitmap. */
 	unsigned long phys;
@@ -180,7 +180,7 @@ struct page *get_free_page(void)
 	}
 	if(phys >> PAGE_SHIFT >= NR_PAGES) {
 		/* the bitmap may cover more RAM than page_table[] does (the
-		 * Fiwix pool is capped at GDT_BASE); release and fail */
+		 * FNX pool is capped at GDT_BASE); release and fail */
 		extern void free_pages64(unsigned long, int);
 		free_pages64(phys, 1);
 		return NULL;
@@ -274,7 +274,7 @@ struct page *search_page_hash(struct inode *inode, __off_t offset)
 void release_page(struct page *pg)
 {
 #ifdef __x86_64__
-	/* Fiwix64 (pivot): return the page to the bitmap. The refcount is
+	/* FNX (pivot): return the page to the bitmap. The refcount is
 	 * the pml4/allocator usage; at zero the phys goes back to the pool.
 	 * The bitmap never hands out reserved/static pages, so no
 	 * PAGE_RESERVED handling is needed here. */
@@ -335,7 +335,7 @@ int is_valid_page(int page)
 	return (page >= 0 && page < NR_PAGES);
 }
 
-/* Fiwix64 (pivot): refcount helpers used by the 4-level fork/exec code
+/* FNX (pivot): refcount helpers used by the 4-level fork/exec code
  * (kernel64/mm64.c). page_table[].count is the number of pml4 mappings
  * (plus the allocator's own reference) on a physical page; COW decrements
  * it when a process replaces a shared leaf with a private copy, and
@@ -624,7 +624,7 @@ void page_init(int pages)
 
 		pg->data = (char *)P2V(addr);
 #ifndef __x86_64__
-		/* Fiwix64 (pivot): the bitmap is the single allocator; the
+		/* FNX (pivot): the bitmap is the single allocator; the
 		 * page_head free-list is NOT built, so pages are NOT inserted
 		 * here. page_table[] metadata (data/refcount/flags) is still
 		 * initialized above for shmat/meminfo/free_vma_pages. */

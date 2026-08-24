@@ -1,18 +1,18 @@
 /*
- * fiwix/kernel/syscalls/gettimeofday.c
+ * fnx/kernel/syscalls/gettimeofday.c
  *
  * Copyright 2018, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/kernel.h>
-#include <fiwix/fs.h>
-#include <fiwix/process.h>
-#include <fiwix/time.h>
-#include <fiwix/timer.h>
+#include <fnx/kernel.h>
+#include <fnx/fs.h>
+#include <fnx/process.h>
+#include <fnx/time.h>
+#include <fnx/timer.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_gettimeofday(struct timeval *tv, struct timezone *tz)

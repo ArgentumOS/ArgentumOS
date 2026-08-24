@@ -1,25 +1,25 @@
 /*
- * fiwix/drivers/char/fb.c
+ * fnx/drivers/char/fb.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Portions Copyright 2024, Greg Haerr.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/kernel.h>
-#include <fiwix/fb.h>
-#include <fiwix/devices.h>
-#include <fiwix/fs.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/fb.h>
-#include <fiwix/pci.h>
-#include <fiwix/mm.h>
-#include <fiwix/mman.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/bios.h>
+#include <fnx/asm.h>
+#include <fnx/kernel.h>
+#include <fnx/fb.h>
+#include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/fb.h>
+#include <fnx/pci.h>
+#include <fnx/mm.h>
+#include <fnx/mman.h>
+#include <fnx/fcntl.h>
+#include <fnx/bios.h>
 
 #define IO_FB_XRES	2	/* TODO(ghaerr): to be removed shortly */
 #define IO_FB_YRES	3

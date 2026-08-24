@@ -1,18 +1,18 @@
 /*
- * fiwix/kernel/syscalls/fcntl.c
+ * fnx/kernel/syscalls/fcntl.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/syscalls.h>
-#include <fiwix/fcntl.h>
-#include <fiwix/locks.h>
-#include <fiwix/errno.h>
+#include <fnx/syscalls.h>
+#include <fnx/fcntl.h>
+#include <fnx/locks.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_fcntl(unsigned int ufd, int cmd, addr_t arg)

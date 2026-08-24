@@ -1,28 +1,28 @@
 /*
- * fiwix/drivers/block/floppy.c
+ * fnx/drivers/block/floppy.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/floppy.h>
-#include <fiwix/ioctl.h>
-#include <fiwix/devices.h>
-#include <fiwix/part.h>
-#include <fiwix/fs.h>
-#include <fiwix/buffer.h>
-#include <fiwix/sleep.h>
-#include <fiwix/timer.h>
-#include <fiwix/sched.h>
-#include <fiwix/errno.h>
-#include <fiwix/mm.h>
-#include <fiwix/pic.h>
-#include <fiwix/irq.h>
-#include <fiwix/cmos.h>
-#include <fiwix/dma.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/floppy.h>
+#include <fnx/ioctl.h>
+#include <fnx/devices.h>
+#include <fnx/part.h>
+#include <fnx/fs.h>
+#include <fnx/buffer.h>
+#include <fnx/sleep.h>
+#include <fnx/timer.h>
+#include <fnx/sched.h>
+#include <fnx/errno.h>
+#include <fnx/mm.h>
+#include <fnx/pic.h>
+#include <fnx/irq.h>
+#include <fnx/cmos.h>
+#include <fnx/dma.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 #define WAIT_MOTOR_OFF	(3 * HZ)	/* time waiting to turn the motor off */
 #define WAIT_FDC	WAIT_MOTOR_OFF
@@ -758,7 +758,7 @@ void floppy_init(void)
 
 	/* 
 	 * Some BIOS may return the value 0x05 (for 2.88MB floppy type) which is
-	 * not supported by Fiwix. This prevents from using an unexistent type
+	 * not supported by FNX. This prevents from using an unexistent type
 	 * in the fdd_type structure if this happens.
 	 */
 	if(master > 4) {

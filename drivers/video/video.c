@@ -1,19 +1,19 @@
 /*
- * fiwix/drivers/video/video.c
+ * fnx/drivers/video/video.c
  *
  * Copyright 2021-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/config.h>
-#include <fiwix/vgacon.h>
-#include <fiwix/fb.h>
-#include <fiwix/fbcon.h>
-#include <fiwix/bga.h>
-#include <fiwix/console.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/config.h>
+#include <fnx/vgacon.h>
+#include <fnx/fb.h>
+#include <fnx/fbcon.h>
+#include <fnx/bga.h>
+#include <fnx/console.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 void video_init(void)
 {

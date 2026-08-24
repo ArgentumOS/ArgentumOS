@@ -1,17 +1,17 @@
 /*
- * fiwix/kernel/syscalls/kill.c
+ * fnx/kernel/syscalls/kill.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/process.h>
-#include <fiwix/signal.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/process.h>
+#include <fnx/signal.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
+#include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
 int sys_kill(__pid_t pid, __sigset_t signum)

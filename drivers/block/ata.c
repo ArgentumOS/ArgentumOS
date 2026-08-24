@@ -1,28 +1,28 @@
 /*
- * fiwix/drivers/block/ata.c
+ * fnx/drivers/block/ata.c
  *
  * Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/ata.h>
-#include <fiwix/ata_pci.h>
-#include <fiwix/ata_hd.h>
-#include <fiwix/atapi_cd.h>
-#include <fiwix/devices.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/cpu.h>
-#include <fiwix/pic.h>
-#include <fiwix/irq.h>
-#include <fiwix/pci.h>
-#include <fiwix/fs.h>
-#include <fiwix/blk_queue.h>
-#include <fiwix/mm.h>
-#include <fiwix/errno.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
+#include <fnx/asm.h>
+#include <fnx/ata.h>
+#include <fnx/ata_pci.h>
+#include <fnx/ata_hd.h>
+#include <fnx/atapi_cd.h>
+#include <fnx/devices.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/cpu.h>
+#include <fnx/pic.h>
+#include <fnx/irq.h>
+#include <fnx/pci.h>
+#include <fnx/fs.h>
+#include <fnx/blk_queue.h>
+#include <fnx/mm.h>
+#include <fnx/errno.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
 
 static struct fs_operations ata_driver_fsop = {
 	0,

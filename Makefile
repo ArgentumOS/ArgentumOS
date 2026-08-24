@@ -1,4 +1,4 @@
-# fiwix/Makefile
+# fnx/Makefile
 #
 # Copyright 2018-2022, Jordi Sanfeliu. All rights reserved.
 # Distributed under the terms of the Fiwix License.
@@ -10,8 +10,8 @@ TMPFILE := $(shell mktemp)
 
 LANG = -std=c89
 
-# The 32-bit i386 build was REMOVED in the Fiwix64 pivot: this tree builds
-# only the 64-bit long-mode kernel (PE32+ UEFI application via build64real).
+# The 32-bit i386 build was REMOVED in the FNX pivot: this tree builds
+# only the 64-bit long-mode kernel (PE32+ UEFI application via buildfnx).
 CCEXE=gcc
 
 LD = $(CROSS_COMPILE)ld
@@ -19,12 +19,12 @@ LD = $(CROSS_COMPILE)ld
 export LD INCLUDE
 
 # Default target: the 64-bit UEFI kernel.
-all: build64real
-	@echo "make: .build/64/fiwix64.efi ready (Fiwix64, 64-bit only)"
+all: buildfnx
+	@echo "make: .build/64/fnx.efi ready (FNX, 64-bit only)"
 
 clean:
 	rm -rf .build/64 .build/64real
-	rm -f *.o fiwix System.map.gz
+	rm -f *.o fnx System.map.gz
 
 # ---------------------------------------------------------------------------
 # Development harness (QEMU / UEFI). See docs/port-longmode-uefi.txt.
@@ -34,7 +34,7 @@ clean:
 #                   kernel stops at the expected 'root device not defined'
 #                   panic - that is the smoke test.
 #   make ovmf       fetch OVMF firmware without root (into .build/ovmf).
-#   make run-uefi   boot OVMF (UEFI) firmware with the Fiwix64 EFI stub
+#   make run-uefi   boot OVMF (UEFI) firmware with the FNX EFI stub
 #                   (PE32+ kernel from make build64).
 #   make compile64  compile every C source with 64-bit flags into .build/64
 #                   (no link) - the type-sweep verifier for the long-mode
@@ -46,8 +46,9 @@ clean:
 # display they fall back to curses; when stdout is piped (headless/CI) they
 # use -nographic.
 #
-# Overrides: QEMU_EXTRA (extra qemu args), FIWIX_QEMU_TOOLS / QEMU_TOOLS (tools prefix).
-QEMU_TOOLS ?= $(HOME)/.local/share/fiwix-qemu-tools
+# Overrides: QEMU_EXTRA (extra qemu args), FNX_QEMU_TOOLS / QEMU_TOOLS (tools prefix).
+# The on-disk tool prefix may still be the legacy fiwix-qemu-tools name.
+QEMU_TOOLS ?= $(shell if [ -d "$(HOME)/.local/share/fnx-qemu-tools" ]; then echo "$(HOME)/.local/share/fnx-qemu-tools"; else echo "$(HOME)/.local/share/fiwix-qemu-tools"; fi)
 # ---------------------------------------------------------------------------
 
 CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
@@ -57,16 +58,16 @@ CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2
 run: .build/ovmf/OVMF.fd rootdisk64 build64
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	else \
-		FIWIX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	fi
 
 run-uefi: run
 
-# --- Fiwix64 native x86_64 userland (port phase B): static ELF64 binaries
+# --- FNX native x86_64 userland (port phase B): static ELF64 binaries
 # --- built with tools/musl-gcc64.sh into .build/rootfs64, packed into an
 # --- ext2 root image (.build/root.img) attached as the second IDE disk.
 
@@ -156,15 +157,15 @@ CC64K = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ -I$(INCLUDE) -O2 \
 	-fno-stack-protector -Wall -Wstrict-prototypes \
 	-DCONFIG_FS_MINIX $(M6DEBUG)
 
-# Fiwix64: PE32+ UEFI application (EFI stub boot). See docs/port-longmode-uefi.txt.
-# M4-B: the 64-bit kernel is now the REAL Fiwix kernel + kernel64 primitives;
+# FNX: PE32+ UEFI application (EFI stub boot). See docs/port-longmode-uefi.txt.
+# M4-B: the 64-bit kernel is now the REAL FNX kernel + kernel64 primitives;
 # 'build64' builds that. The standalone stub/demo kernel (M1-M4-A demos) is
-# kept as 'build64demo'.
-build64: build64real
+# kept as 'buildfnxdemo'.
+build64: buildfnx
 
-build64demo: .build/64/fiwix64demo.efi
+buildfnxdemo: .build/64/fnxdemo.efi
 
-.build/64/fiwix64demo.efi: kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/switch64.S include/fiwix/efi.h kernel64/serial64.h
+.build/64/fnxdemo.efi: kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/switch64.S include/fnx/efi.h kernel64/serial64.h
 	@mkdir -p .build/64
 	$(CC64K) -c -o .build/64/efi_stub.o kernel64/efi_stub.c
 	$(CC64K) -c -o .build/64/main64.o kernel64/main64.c
@@ -174,14 +175,14 @@ build64demo: .build/64/fiwix64demo.efi
 	$(CC64K) -c -o .build/64/gdt64.o kernel64/gdt64.c
 	$(CC64K) -c -o .build/64/irq64.o kernel64/irq64.c
 	$(CC64K) -c -o .build/64/sched64.o kernel64/sched64.c
-	gcc -c -o .build/64/probe64.o kernel64/probe64.c
+	$(CC64K) -c -o .build/64/probe64.o kernel64/probe64.c
 	gcc -c -o .build/64/switch64.o kernel64/switch64.S
 	$(LD) -m i386pep --entry efi_main --image-base 0x1000000 -o $@ \
 		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/probe64.o .build/64/switch64.o
 	objcopy --remove-section .comment --subsystem 10 $@
 	@echo "build64: $@ ready (PE32+ EFI application)"
 
-# M4-B: 64-bit build of the REAL Fiwix kernel (kernel/mm/fs/lib/drivers C
+# M4-B: 64-bit build of the REAL FNX kernel (kernel/mm/fs/lib/drivers C
 # sources) linked with the kernel64 primitives (paging64/gdt64/idt64/irq64)
 # and the EFI stub. The real sources are compiled -m64 with
 # -fvisibility=hidden so extern globals (kstat, current, ...) resolve
@@ -199,9 +200,9 @@ REALOBJS = $(patsubst %.c,$(REALDIR)/%.o,$(REALSRCS))
 # the one-byte opcode in the objects (0x8b -> 0x8d).
 PATCH_PIC = tools/patch_pic_data.py
 
-build64real: .build/64/fiwix64.efi
+buildfnx: .build/64/fnx.efi
 
-.build/64/fiwix64.efi: $(REALOBJS) kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/probe64.c kernel64/user64.c kernel64/kreal64.c kernel64/asm64.c kernel64/sections64.c kernel64/initrd64.c kernel64/switch64.S kernel64/init_trampoline64.S include/fiwix/efi.h kernel64/serial64.h
+.build/64/fnx.efi: $(REALOBJS) kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/probe64.c kernel64/user64.c kernel64/kreal64.c kernel64/asm64.c kernel64/sections64.c kernel64/initrd64.c kernel64/switch64.S kernel64/init_trampoline64.S include/fnx/efi.h kernel64/serial64.h
 	@mkdir -p .build/64
 	$(CC64R) -c -o .build/64/efi_stub.o kernel64/efi_stub.c
 	$(CC64R) -c -o .build/64/main64.o kernel64/main64.c
@@ -224,7 +225,7 @@ build64real: .build/64/fiwix64.efi
 		$(REALOBJS) \
 		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/probe64.o .build/64/user64.o .build/64/kreal64.o .build/64/asm64.o .build/64/sections64.o .build/64/initrd64.o .build/64/switch64.o .build/64/init_trampoline64.o
 	objcopy --remove-section .comment --subsystem 10 $@
-	@echo "build64real: $@ ready (PE32+ EFI application, REAL kernel + kernel64 primitives)"
+	@echo "buildfnx: $@ ready (PE32+ EFI application, REAL kernel + kernel64 primitives)"
 
 $(REALDIR)/%.o: %.c
 	@mkdir -p $(dir $@)

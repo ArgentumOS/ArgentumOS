@@ -1,18 +1,18 @@
 /*
- * fiwix/drivers/char/sysrq.c
+ * fnx/drivers/char/sysrq.c
  *
  * Copyright 2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/asm.h>
-#include <fiwix/sysrq.h>
-#include <fiwix/traps.h>
-#include <fiwix/stdio.h>
-#include <fiwix/string.h>
-#include <fiwix/sleep.h>
-#include <fiwix/sched.h>
-#include <fiwix/mm.h>
+#include <fnx/asm.h>
+#include <fnx/sysrq.h>
+#include <fnx/traps.h>
+#include <fnx/stdio.h>
+#include <fnx/string.h>
+#include <fnx/sleep.h>
+#include <fnx/sched.h>
+#include <fnx/mm.h>
 
 static const char *pstate[] = {
 	"?",

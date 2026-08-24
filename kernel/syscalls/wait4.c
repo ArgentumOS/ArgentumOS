@@ -1,21 +1,21 @@
 /*
- * fiwix/kernel/syscalls/wait4.c
+ * fnx/kernel/syscalls/wait4.c
  *
  * Copyright 2018-2021, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/types.h>
-#include <fiwix/fs.h>
-#include <fiwix/resource.h>
-#include <fiwix/signal.h>
-#include <fiwix/sched.h>
-#include <fiwix/sleep.h>
-#include <fiwix/errno.h>
+#include <fnx/types.h>
+#include <fnx/fs.h>
+#include <fnx/resource.h>
+#include <fnx/signal.h>
+#include <fnx/sched.h>
+#include <fnx/sleep.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
-#include <fiwix/stdio.h>
-#include <fiwix/process.h>
+#include <fnx/stdio.h>
+#include <fnx/process.h>
 #endif /*__DEBUG__ */
 
 int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)

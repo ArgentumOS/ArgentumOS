@@ -1,7 +1,7 @@
 /*
- * fiwix/kernel64/sched64.c
+ * fnx/kernel64/sched64.c
  *
- * Fiwix64 M3 (phase B): minimal round-robin scheduler for kernel threads.
+ * FNX M3 (phase B): minimal round-robin scheduler for kernel threads.
  *
  * Thread 0 is the idle (main) thread; worker threads are created with
  * thread_create64(). Every SCHED_QUANTUM ticks the timer IRQ calls
@@ -13,7 +13,7 @@
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
 
-#include <fiwix/efi.h>
+#include <fnx/efi.h>
 #include "serial64.h"
 
 #define MAX_THREADS64	4
