@@ -129,12 +129,12 @@ struct proc {
 	__time_t start_time;
 	int exit_code;	
 	void *sleep_address;
-	unsigned short int uid;		/* real user ID */
-	unsigned short int gid;		/* real group ID */
-	unsigned short int euid;	/* effective user ID */
-	unsigned short int egid;	/* effective group ID */
-	unsigned short int suid;	/* saved user ID */
-	unsigned short int sgid;	/* saved group ID */
+	__u32 uid;			/* real user ID */
+	__u32 gid;			/* real group ID */
+	__u32 euid;			/* effective user ID */
+	__u32 egid;			/* effective group ID */
+	__u32 suid;			/* saved user ID */
+	__u32 sgid;			/* saved group ID */
 	unsigned short int fd[OPEN_MAX];
 	unsigned char fd_flags[OPEN_MAX];
 	struct inode *root;

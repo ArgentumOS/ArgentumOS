@@ -16,11 +16,18 @@
 
 int sys_getgroups(__ssize_t size, __gid_t *list)
 {
-	int n, errno;
+	int n, ngroups, errno;
 
 #ifdef __DEBUG__
 	printk("(pid %d) sys_getgroups(%d, 0x%08x)\n", current->pid, size, (unsigned int)list);
 #endif /*__DEBUG__ */
+
+	/* count the current supplementary groups first */
+	for(ngroups = 0; ngroups < NGROUPS_MAX; ngroups++) {
+		if(current->groups[ngroups] == -1) {
+			break;
+		}
+	}
 
 	/*
 	 * If size is 0, sys_getgroups() shall return the number of group IDs
@@ -28,27 +35,20 @@ int sys_getgroups(__ssize_t size, __gid_t *list)
 	 * to by list.
 	 */
 	if(!size) {
-		for(n = 0; n < NGROUPS_MAX; n++) {
-			if(current->groups[n] == -1) {
-				break;
-			}
-		}
-		return n;
+		return ngroups;
 	}
 
-	if((errno = check_user_area(VERIFY_WRITE, list, sizeof(__gid_t)))) {
+	if(size < 0) {
+		return -EINVAL;
+	}
+	if(size < ngroups) {
+		return -EINVAL;
+	}
+	if((errno = check_user_area(VERIFY_WRITE, list, ngroups * sizeof(__gid_t)))) {
 		return errno;
 	}
-	for(n = 0; n < NGROUPS_MAX; n++) {
-		if(current->groups[n] == -1) {
-			break;
-		}
-		if(size) {
-			if(n > size) {
-				return -EINVAL;
-			}
-			list[n] = (__gid_t)current->groups[n];
-		}
+	for(n = 0; n < ngroups; n++) {
+		list[n] = (__gid_t)current->groups[n];
 	}
-	return n;
+	return ngroups;
 }

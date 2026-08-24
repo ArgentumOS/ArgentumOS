@@ -315,6 +315,8 @@ extern int sys_msgctl(int, int, struct msqid_ds *);
 
 extern int sys_setfsuid(__uid_t);
 extern int sys_setfsgid(__gid_t);
+extern int sys_getgroups(__ssize_t, __gid_t *);
+extern int sys_setgroups(__ssize_t, const __gid_t *);
 extern int sys_getsid(__pid_t);
 extern int sys_rt_sigpending(void *, int);
 extern int sys_rt_sigsuspend(const void *, int);
@@ -420,7 +422,8 @@ void *syscall_table64[] = {
 	[112] = sys_setsid,		/* setsid */
 	[113] = sys_setreuid,		/* setreuid */
 	[114] = sys_setregid,		/* setregid */
-	/* 115-116 getgroups/setgroups: 32-bit gid ABI not yet adapted */
+	[115] = sys_getgroups,		/* getgroups */
+	[116] = sys_setgroups,		/* setgroups */
 	/* 117-120 setresuid/getresuid/setresgid/getresgid: not implemented */
 	[121] = sys_getpgid,		/* getpgid */
 	[122] = sys_setfsuid,		/* setfsuid */

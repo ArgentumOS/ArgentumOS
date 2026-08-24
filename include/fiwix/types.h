@@ -19,8 +19,8 @@ typedef unsigned long long int __u64;
 
 typedef unsigned long addr_t;	/* kernel-internal address: 32-bit on i386 (ILP32), 64-bit on x86-64 (LP64) */
 
-typedef __u16 __uid_t;
-typedef __u16 __gid_t;
+typedef __u32 __uid_t;		/* user ID: 32-bit on x86-64 (musl uid_t) */
+typedef __u32 __gid_t;		/* group ID: 32-bit on x86-64 (musl gid_t) */
 typedef __u32 __ino_t;
 typedef __u64 __ino64_t;
 typedef __u16 __mode_t;

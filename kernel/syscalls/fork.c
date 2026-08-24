@@ -71,6 +71,9 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 	memcpy_b(child, current, sizeof(struct proc));
 
 	proc_slot_init(child);
+	/* proc_slot_init() wipes groups[] to the empty (-1) state; restore the
+	 * parent's supplementary group list that memcpy_b() above inherited */
+	memcpy_b(child->groups, current->groups, sizeof(child->groups));
 	child->pid = pid;
 	sprintk(child->pidstr, "%d", child->pid);
 

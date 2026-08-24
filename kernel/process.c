@@ -327,6 +327,8 @@ struct proc *kernel_process(const char *name, int (*fn)(void))
 
 void proc_slot_init(struct proc *p)
 {
+	int n;
+
 	/* insert process at the end of proc_table */
 	lock_resource(&slot_resource);
 	if(proc_table_head == NULL) {
@@ -351,6 +353,11 @@ void proc_slot_init(struct proc *p)
 
 	p->tss.io_bitmap[IO_BITMAP_SIZE] = ~0;	/* extra byte must be all 1's */
 	p->state = PROC_IDLE;
+
+	/* supplementary groups start empty (-1 sentinel terminates the list) */
+	for(n = 0; n < NGROUPS_MAX; n++) {
+		p->groups[n] = -1;
+	}
 }
 
 void proc_init(void)
