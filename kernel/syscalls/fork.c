@@ -32,6 +32,49 @@ static void free_vma_table(struct proc *p)
 
 int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext *sc)
 {
+	return do_fork_like(sc, 0, 0, 0);
+}
+
+/*
+ * FNX: clone(2) (syscall 56). musl's pthread_create/posix_spawn use it.
+ * The kernel has no shared-address-space threads, so CLONE_VM (and the
+ * thread-only flags that require it) are rejected; the supported subset
+ * is fork-equivalent clone: SIGCHLD (and benign flags) with a child
+ * stack. The child iretq's with RSP = child_stack and R9 = fn; musl's
+ * __clone asm then does `pop %rdi; call *%r9` (arg was stored at
+ * child_stack-8), so the child runs fn(arg).
+ *
+ * x86-64 ABI: clone(flags=rdi, child_stack=rsi, ptid=rdx, tls=rcx, ctid=r8)
+ * with fn arriving in r9 (the 6th arg, stashed in sc->r9 by the dispatcher).
+ */
+#define CLONE_VM		0x00000100
+#define CLONE_FS		0x00000200
+#define CLONE_FILES		0x00000400
+#define CLONE_SIGHAND		0x00000800
+#define CLONE_PTRACE		0x00002000
+#define CLONE_VFORK		0x00004000
+#define CLONE_THREAD		0x00010000
+#define CLONE_SETTLS		0x00080000
+#define CLONE_CHILD_SETTID	0x01000000
+#define CLONE_CHILD_CLEARTID	0x00200000
+#define CLONE_SETTID		0x00100000
+
+int sys_clone(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext *sc)
+{
+	unsigned int flags = (unsigned int)arg1;
+	addr_t child_stack = (addr_t)arg2;
+	addr_t fn = (addr_t)sc->r9;
+
+	/* thread-creation flags require shared address space (CLONE_VM),
+	 * which this kernel does not implement */
+	if(flags & (CLONE_VM | CLONE_THREAD | CLONE_SIGHAND | CLONE_SETTLS)) {
+		return -EINVAL;
+	}
+	return do_fork_like(sc, flags, child_stack, fn);
+}
+
+int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_stack, addr_t fn)
+{
 	int count, pages;
 	unsigned int n;
 	unsigned int *child_pgdir;
@@ -177,6 +220,15 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 	child->flags |= PF_ELF64;
 	child->tss.esp = (addr_t)stack;
 	stack->rax = 0;		/* child returns 0 */
+
+	if(clone_flags) {
+		/* clone child: iretq with RSP = child_stack and R9 = fn so
+		 * musl's __clone asm (`pop %rdi; call *%r9`) runs fn(arg).
+		 * sc.rip is already the post-syscall user address (copied
+		 * from the parent's frame above). */
+		stack->rsp = child_stack;
+		stack->r9 = fn;
+	}
 
 	/* increase file descriptors usage */
 	for(n = 0; n < OPEN_MAX; n++) {

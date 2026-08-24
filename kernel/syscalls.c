@@ -425,6 +425,7 @@ void *syscall_table64[] = {
 	[37] = sys_alarm,		/* alarm */
 	[38] = sys_setitimer,		/* setitimer */
 	[39] = sys_getpid,		/* getpid */
+	[56] = sys_clone,		/* clone */
 	[57] = sys_fork,		/* fork */
 	[58] = sys_fork,		/* vfork -> fork */
 	[59] = sys_execve,		/* execve */

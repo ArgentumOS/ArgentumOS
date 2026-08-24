@@ -32,6 +32,7 @@ int do_syscall(unsigned int, int, int, int, int, int, struct sigcontext);
 int sys_exit(int);
 void do_exit(int);
 int sys_fork(int, int, int, int, int, struct sigcontext *);
+int sys_clone(int, int, int, int, int, struct sigcontext *);
 int sys_read(unsigned int, char *, int);
 int sys_write(unsigned int, const char *, int);
 int sys_open(const char *, int, __mode_t);
