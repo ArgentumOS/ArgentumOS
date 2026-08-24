@@ -435,6 +435,7 @@ void *syscall_table64[] = {
 	[160] = sys_setrlimit,		/* setrlimit */
 	[161] = sys_chroot,		/* chroot */
 	[162] = sys_sync,		/* sync */
+	/* 164 settimeofday: musl's settimeofday() uses clock_settime(227) */
 	[165] = sys_mount,		/* mount */
 	[166] = sys_umount,		/* umount2 */
 	[169] = sys_reboot,		/* reboot */

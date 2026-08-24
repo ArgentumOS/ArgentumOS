@@ -13,13 +13,13 @@
 #define ITIMER_PROF	2
 
 struct timespec {
-	int tv_sec;		/* seconds since 00:00:00, 1 Jan 1970 UTC */
-	int tv_nsec;		/* nanoseconds (1000000000ns = 1sec) */
+	__time_t tv_sec;	/* seconds since 00:00:00, 1 Jan 1970 UTC */
+	long tv_nsec;		/* nanoseconds (1000000000ns = 1sec) */
 };
 
 struct timeval {
-	int tv_sec;		/* seconds since 00:00:00, 1 Jan 1970 UTC */
-	int tv_usec;		/* microseconds	(1000000us = 1sec) */
+	__time_t tv_sec;	/* seconds since 00:00:00, 1 Jan 1970 UTC */
+	__suseconds_t tv_usec;	/* microseconds (1000000us = 1sec) */
 };
 
 struct timezone {
@@ -47,6 +47,6 @@ struct tm {
 unsigned int tv2ticks(const struct timeval *);
 void ticks2tv(int, struct timeval *);
 int setitimer(int, const struct itimerval *, struct itimerval *);
-unsigned int mktime(struct tm *);
+__time_t mktime(struct tm *);
 
 #endif /* _FIWIX_TIME_H */

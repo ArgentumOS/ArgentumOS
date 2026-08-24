@@ -30,7 +30,8 @@ typedef __s32 __pid_t;
 typedef __s32 __ssize_t;
 typedef __u32 __size_t;
 typedef __u32 __clock_t;
-typedef __u32 __time_t;
+typedef __u64 __time_t;		/* seconds since the Epoch: 64-bit on x86-64 (musl time_t) */
+typedef __u64 __suseconds_t;	/* microseconds: 64-bit on x86-64 (musl suseconds_t) */
 typedef __u16 __dev_t;
 typedef __u16 __key_t;
 typedef __s32 __blk_t;		/* must be signed in order to return error */

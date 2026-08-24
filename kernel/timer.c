@@ -230,10 +230,10 @@ int setitimer(int which, const struct itimerval *new_value, struct itimerval *ol
 	return 0;
 }
 
-unsigned int mktime(struct tm *tm)
+__time_t mktime(struct tm *tm)
 {
 	int n, total_days;
-	unsigned int seconds;
+	__time_t seconds;
 
 	total_days = 0;
 
@@ -248,7 +248,9 @@ unsigned int mktime(struct tm *tm)
 	}
 
 	total_days += (tm->tm_mday - 1);
-	seconds = total_days * SECS_PER_DAY;
+	/* widen BEFORE multiplying: total_days*SECS_PER_DAY overflows signed
+	 * 32-bit for dates after ~2038-01-20 (the y2038 bug) */
+	seconds = (__time_t)total_days * SECS_PER_DAY;
 	seconds += tm->tm_hour * SECS_PER_HOUR;
 	seconds += tm->tm_min * SECS_PER_MIN;
 	seconds += tm->tm_sec;
@@ -378,7 +380,8 @@ void get_system_time(void)
 
 void set_system_time(__time_t t)
 {
-	int sec, spm, min, hour, d, m, y;
+	__time_t sec, spm;
+	int min, hour, d, m, y;
 
 	sec = t;
 	y = 1970;
