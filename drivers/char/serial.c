@@ -306,17 +306,23 @@ static int serial_receive(struct serial *s)
 	tty = s->tty;
 
 	do {
-		if(!charq_room(&tty->read_q)) {
-			errno = -EAGAIN;
-			break;
-		}
 		ch = inport_b(s->ioaddr + UART_RD);
-		charq_putchar(&tty->read_q, ch);
+		if(!charq_room(&tty->read_q)) {
+			/* read_q full: drain the FIFO anyway and drop the char
+			 * (counted as an overrun below) so the UART never wedges
+			 * with pending data. Linux does the same. */
+			errno++;
+		} else {
+			charq_putchar(&tty->read_q, ch);
+		}
 		status = inport_b(s->ioaddr + UART_LSR);
 	} while(status & UART_LSR_RDA);
 
+	if(errno) {
+		printk("WARNING: %d serial char(s) dropped (%s: input queue full).\n", errno, s->name);
+	}
 	serial_bh.flags |= BH_ACTIVE;
-	return errno;
+	return 0;
 }
 
 void irq_serial(int num, struct sigcontext *sc)

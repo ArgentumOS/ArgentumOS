@@ -1,46 +1,45 @@
 # FNX — post-rename work items
 
-These five high-value targets were identified before the Fiwix64 → FNX
-rename and are queued as the next work. Do them in this order.
+All five targets below are DONE (commits e186ad7, 24c6b19, 2023c10,
+8dd42fa, plus the serial hardening). Keep this doc as the record; new
+work should be tracked elsewhere.
 
-## 1. sendmsg(46)/recvmsg(47) + msghdr ABI
-`send()`/`recv()` route to sendto/recvfrom (wired); but musl's `sendmsg()`
-calls syscall 46 and `recvmsg()` calls 47 — both still `not implemented`
-in kernel/syscalls.c. The x86-64 `struct msghdr` is the LP64 layout
-(56 bytes). Needed by toybox `nc`, `microcom`, and any scatter-gather /
-ancillary-data socket I/O. Medium scope: dispatch 46/47 + do_sendmsg /
-do_recvmsg over unix_sendto/unix_recvfrom + the existing iovec copy
-helpers.
+## 1. sendmsg(46)/recvmsg(47) + msghdr ABI — DONE (e186ad7)
+LP64 56-byte msghdr; msg_gather/msg_scatter over the socket ops via
+msg_send/msg_recv (no user-area buffer re-validation); ancillary data
+(SCM_RIGHTS) rejected with -EINVAL. Verified: two-iovec round-trip,
+kill9, full stress.
 
-## 2. clone(56) — pthreads
-musl's `pthread_create` uses `SYS_clone`(56); `posix_spawn`/_Fork fall
-back to it too. Every threading program hits ENOSYS today. Minimum:
-sys_clone that rejects CLONE_VM (-EINVAL) and otherwise reuses the fork
-path, giving correct pthreads *failure* semantics. Larger prize: real
-CLONE_VM+CLONE_THREAD (multithreading).
+## 2. clone(56) — pthreads — DONE (24c6b19)
+do_fork_like() shared worker; CLONE_VM/THREAD/SIGHAND/SETTLS rejected
+-EINVAL (musl translates to EAGAIN for pthread_create); SIGCHLD+child
+stack runs fn(arg) via musl's `pop %rdi; call *%r9` (sc.rsp=child_stack,
+sc.r9=fn). Verified: clone child runs fn(arg), exit value propagates to
+waitpid, pthread_create → EAGAIN.
 
-## 3. Makefile header-dependency tracking
-Editing `process.h` silently left mixed struct sizes across `.o` files →
-boot crash, fixed only by `rm -rf .build/64real`. Add -MMD -MP depfile
-generation to buildfnx (and the demo target) so header changes rebuild
-dependents automatically. Small, pure dev-infra, prevents a whole bug
-class.
+## 3. Makefile header-dependency tracking — DONE (2023c10)
+-MMD -MP on CC64R and the kernel64 pattern rule; -include REALDEPS +
+K64DEPS. A process.h touch rebuilds exactly the dependents (696 objs),
+not the world. NOTE: the kernel64 pattern rule MUST use CC64R (with
+-fvisibility=hidden) — a plain CC64K rule silently produced a broken
+.efi (kernel reboot-looped at boot). That regression was caught and
+fixed in the same commit.
 
-## 4. Real MAP_SHARED file writeback + msync
-`sys_msync` is a validation-only no-op because no `fsop->mmap`
-implementation exists. mmap(MAP_SHARED) of a regular file never writes
-back — data loss on unmap. Implement a minimal mmap for the ext2 fsop
-(read pages from the file on fault, write back on msync/munmap) + dirty
-tracking. Medium-high.
+## 4. Real MAP_SHARED file writeback + msync — DONE (8dd42fa)
+sys_msync walks the vma's present pages (user_leaf64_in) and flushes
+each to the inode via write_page(pg, inode, offset, PAGE_SIZE). No dirty
+tracking; flushing all present MAP_SHARED pages is idempotent. Verified:
+mmap+write+msync+re-open reads the flushed data.
 
-## 5. Serial input reliability
-Input over the serial console during boot is intermittently lost
-(worked around with sleeps/retries in test harnesses). The serial IRQ
-(IRQ4) handler puts chars in tty->read_q and sets serial_bh active, but
-do_cook/wakeups run via do_bh() from the IRQ path — if an IRQ arrives
-while read_q is full or the BH is delayed, chars drop. Make the tty-read
-wakeup robust (drain the UART FIFO fully, wake &tty->read_q promptly,
-handle the canonical-line buffer). Medium, high user-visible value.
+## 5. Serial input reliability — DONE (serial_receive hardening)
+Root-caused: the flakiness was the -fvisibility boot-loop regression
+(fixed in #3) + harnesses sending input before boot completed; the IRQ
+path itself was already draining the FIFO fully and waking &tty->read_q
+promptly. Hardening added: serial_receive now drains the UART FIFO even
+when read_q is full (dropping with an overrun warning) instead of
+breaking the IIR loop with a char left unconsumed — the old break would
+re-assert the IRQ forever (storm) under a full queue. Verified: 30/30
+rapid-burst lines, 5/5 during-boot, full stress 382/382 0 HANG.
 
 ---
 
