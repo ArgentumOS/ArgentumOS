@@ -10,7 +10,7 @@
 
 #define UTS_SYSNAME	"FNX"
 #define UTS_NODENAME	"(none)"
-#define UTS_RELEASE	"1.7.0"
+#define UTS_RELEASE	"0.0.1"
 #define UTS_DOMAINNAME	"(none)"
 
 struct sysinfo {
