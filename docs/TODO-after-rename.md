@@ -105,3 +105,13 @@ Root causes (all committed):
 - data_proc_pid_cmdline/environ truncated P2V() kernel VAs through
   'unsigned int addr' (0xffffffff80... -> 0x80... non-canonical #PF).
   Fixed to addr_t.
+
+## PTY data flow FIXED (6bc4881) - target #2 DONE
+
+The fsop-pointer relocation bug was a red herring (the pointers were
+correct). The real bug: the pty pair shares ONE tty (the slave) as
+f->private_data for both ends, but the slave fsop's write slot was
+tty_write, which outputs to write_q. The master's pty_read drains
+cooked_q, so slave->master writes sat in write_q forever and the master
+read hung. Fix: point the slave fsop's write at pty_write (routes to
+read_q -> do_cook -> cooked_q). pty_t round-trips both directions.
