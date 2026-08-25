@@ -54,7 +54,7 @@ static int check_fds(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds)
 	return 0;
 }
 
-static int do_check(struct inode *i, struct fd *f, int flag)
+int do_check(struct inode *i, struct fd *f, int flag)
 {
 	if(i->fsop && i->fsop->select) {
 		if(i->fsop->select(i, f, flag)) {

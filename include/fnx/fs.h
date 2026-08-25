@@ -20,6 +20,7 @@
 #include <fnx/fs_iso9660.h>
 #include <fnx/fs_proc.h>
 #include <fnx/fs_sock.h>
+#include <fnx/fs_epoll.h>
 
 #define BPS			512	/* bytes per sector */
 #define BLKSIZE_1K		1024	/* 1KB block size */
@@ -100,6 +101,7 @@ struct inode {
 #ifdef CONFIG_NET
 		struct sockfs_inode sockfs;
 #endif /* CONFIG_NET */
+		struct epoll_inode epoll;
 	} u;
 };
 extern struct inode *inode_table;
@@ -233,6 +235,7 @@ extern struct fs_operations devpts_dir_fsop;
 /* generic VFS function prototypes */
 void inode_lock(struct inode *);
 void inode_unlock(struct inode *);
+struct inode *get_free_inode(void);
 struct inode *ialloc(struct superblock *, int);
 struct inode *iget(struct superblock *, __ino_t);
 int bmap(struct inode *, __off_t, int);
@@ -266,5 +269,6 @@ int check_permission(int, struct inode *);
 
 int do_mknod(char *, __mode_t, __dev_t);
 int do_select(int, fd_set *, fd_set *, fd_set *, fd_set *, fd_set *, fd_set *);
+int do_check(struct inode *, struct fd *, int);
 
 #endif /* _FNX_FS_H */

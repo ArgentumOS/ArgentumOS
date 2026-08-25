@@ -311,7 +311,12 @@ int sys_clock_settime64(unsigned int clock_id, struct timespec *tp,
 
 int sys_exit_group64(int code, long a2, long a3, long a4, long a5, struct sigcontext *sc)
 {
-	extern int sys_exit(int);
+	extern int sys_epoll_create(int);
+extern int sys_epoll_create1(int);
+extern int sys_epoll_ctl(int, int, int, struct epoll_event *);
+extern int sys_epoll_wait(int, struct epoll_event *, int, int);
+extern int sys_epoll_pwait(int, struct epoll_event *, int, int, const unsigned long *, int);
+extern int sys_exit(int);
 	return sys_exit(code);
 }
 
@@ -538,6 +543,7 @@ void *syscall_table64[] = {
 	[186] = sys_gettid,		/* gettid (musl gettid) */
 	[200] = sys_tkill,		/* tkill */
 	[202] = sys_futex,		/* futex (musl mutex/cond/join) */
+	[213] = sys_epoll_create,	/* epoll_create */
 	[217] = sys_getdents64,		/* getdents64 */
 	[218] = sys_set_tid_address,	/* set_tid_address */
 	[222] = sys_timer_create,	/* timer_create */
@@ -550,6 +556,8 @@ void *syscall_table64[] = {
 	[229] = sys_clock_getres64,	/* clock_getres */
 	[230] = sys_clock_nanosleep,	/* clock_nanosleep */
 	[231] = sys_exit_group64,	/* exit_group */
+	[232] = sys_epoll_wait,		/* epoll_wait */
+	[233] = sys_epoll_ctl,		/* epoll_ctl */
 	[234] = sys_tgkill,		/* tgkill */
 	[253] = sys_inotify_init,	/* inotify_init */
 	[254] = sys_inotify_add_watch,	/* inotify_add_watch */
@@ -560,6 +568,8 @@ void *syscall_table64[] = {
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
 	[280] = sys_utimensat,		/* utimensat (musl utime/utimensat -> touch) */
+	[281] = sys_epoll_pwait,	/* epoll_pwait */
+	[291] = sys_epoll_create1,	/* epoll_create1 */
 	[292] = sys_dup3,		/* dup3 (musl dup2/posix_spawn) */
 	[293] = sys_pipe2,		/* pipe2 (musl popen/posix_spawn) */
 	[294] = sys_inotify_init1,	/* inotify_init1 (musl inotify_init) */

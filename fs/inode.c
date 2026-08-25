@@ -99,7 +99,7 @@ static void del_inode_from_pool(struct inode *i)
 	kstat.nr_inodes--;
 }
 
-static void insert_to_hash(struct inode *i)
+static void insert_inode_hash(struct inode *i)
 {
 	struct inode **h;
 	int n;
@@ -181,7 +181,7 @@ static void remove_from_free_list(struct inode *i)
 	i->prev_free = i->next_free = NULL;
 }
 
-static struct inode *get_free_inode(void)
+struct inode *get_free_inode(void)
 {
 	unsigned int flags;
 	struct inode *i;
@@ -320,7 +320,7 @@ struct inode *ialloc(struct superblock *sb, int mode)
 			return NULL;
 		}
 		i->dev = sb->dev;
-		insert_to_hash(i);
+		insert_inode_hash(i);
 		return i;
 	}
 	printk("WARNING: %s(): no more inodes on free list!\n", __FUNCTION__);
@@ -375,7 +375,7 @@ struct inode *iget(struct superblock *sb, __ino_t inode)
 			RESTORE_FLAGS(flags);
 			return NULL;
 		}
-		insert_to_hash(i);
+		insert_inode_hash(i);
 		return i;
 	}
 }

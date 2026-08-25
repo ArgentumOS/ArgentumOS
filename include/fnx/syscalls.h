@@ -29,6 +29,11 @@
 
 int do_syscall(unsigned int, int, int, int, int, int, struct sigcontext);
 
+int sys_epoll_create(int);
+int sys_epoll_create1(int);
+int sys_epoll_ctl(int, int, int, struct epoll_event *);
+int sys_epoll_wait(int, struct epoll_event *, int, int);
+int sys_epoll_pwait(int, struct epoll_event *, int, int, const unsigned long *, int);
 int sys_exit(int);
 void do_exit(int);
 int sys_fork(int, int, int, int, int, struct sigcontext *);
