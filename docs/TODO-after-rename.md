@@ -150,3 +150,19 @@ Gotchas found:
   FIFO page in the u.pipefs union slot and its ifree kfrees it): use a
   raw get_free_inode() + i_nlink=1 (skips sb->fsop->ifree) + rdev >
   FS_NODEV (frees the slot on iput).
+
+## TCP over loopback DONE (00aa108) - target #5
+
+SOCK_STREAM on AF_INET loopback: listen/connect/accept over the packet
+queue model. connect() queues the client and returns immediately (the
+connection completes when accept() links the pair - a blocking connect
+deadlocks a single-threaded accept-then-use client); accept() pops the
+backlog, allocates the server socket and sets peer links; writes
+deliver to the peer's queue; ipv4_wait_connected() blocks a connecting
+client's send/recv until accept links the peer (forked client/server
+works: early sends are not dropped). protocol 0 defaults to TCP/UDP by
+type; accept passes the real type to create(). ipv4_free() disconnects
+the peer and wakes it.
+
+Still not implemented: real NICs (see ext_stub.c), TIME_WAIT/seq
+numbers, listening on 0.0.0.0 (only 127.0.0.1 + INADDR_ANY accepted).
