@@ -403,6 +403,7 @@ int msg_send(int sd, const void *buf, __size_t len, int flags, const struct sock
 	if((errno = check_sd(sd)) < 0) {
 		return errno;
 	}
+	flags &= ~MSG_NOSIGNAL;
 	s = get_socket(sd);
 	fdt.flags = s->fd->flags | ((flags & MSG_DONTWAIT) ? O_NONBLOCK : 0);
 	if(addr) {

@@ -59,6 +59,8 @@ static __inline__ __u32 ntohl(__u32 x) { return htonl(x); }
 /* flags for send() and recv() */
 #define MSG_PEEK		0x02
 #define MSG_DONTWAIT		0x40
+#define MSG_NOSIGNAL		0x4000
+#define MSG_PEEK_SRC		0x08
 
 typedef unsigned short int sa_family_t;
 

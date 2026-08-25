@@ -194,6 +194,7 @@ int ipv4_bind(struct socket *s, const struct sockaddr *addr, int addrlen)
 	struct sockaddr_in *sin;
 	struct ipv4_info *ip4;
 
+
 	if(addrlen < (int)sizeof(struct sockaddr_in)) {
 		return -EINVAL;
 	}
@@ -248,7 +249,7 @@ int ipv4_socketpair(struct socket *s1, struct socket *s2)
 
 int ipv4_send(struct socket *s, struct fd *f, const char *buffer, __size_t count, int flags)
 {
-	if(flags & ~MSG_DONTWAIT) {
+	if(flags & ~(MSG_DONTWAIT | MSG_NOSIGNAL)) {
 		return -EINVAL;
 	}
 	return ipv4_write(s, f, buffer, count);
@@ -268,7 +269,7 @@ int ipv4_sendto(struct socket *s, struct fd *f, const char *buffer, __size_t cou
 	struct ipv4_info *ip4, *dest;
 	__u16 dport;
 
-	if(flags & ~MSG_DONTWAIT) {
+	if(flags & ~(MSG_DONTWAIT | MSG_NOSIGNAL)) {
 		return -EINVAL;
 	}
 	if(addrlen < (int)sizeof(struct sockaddr_in)) {

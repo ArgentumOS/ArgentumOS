@@ -32,11 +32,16 @@ struct inotify_watch {
 	int wd;
 	__u32 mask;
 	struct inode *inode;
+	struct inotify_instance *inst;	/* owning instance */
 	struct inotify_watch *next;
 };
 
+/* FNX: global watch list so inotify_queue() scans only watches, not
+ * the whole inode table (which grows with every file created) - the
+ * naive per-instance scan made every write/close O(inode_table). */
+static struct inotify_watch *inotify_watch_head;
+
 struct inotify_instance {
-	struct inotify_watch *watches;
 	int wd_counter;
 	/* event queue: singly-linked, count + byte total for FIONREAD */
 	struct inotify_qevent *q_head;
@@ -58,17 +63,31 @@ static __size_t event_size(struct inotify_event *ev)
 int inotifyfs_close(struct inode *i, struct fd *f)
 {
 	struct inotify_instance *inst = i->u.inotify.instance;
-	struct inotify_watch *w, *wn;
+	struct inotify_watch *w, *wn, *prev;
 	struct inotify_qevent *e, *en;
 
 	if(!inst) {
 		return 0;
 	}
-	w = inst->watches;
+	/* remove every watch owned by this instance from the global list */
+	w = inotify_watch_head;
 	while(w) {
 		wn = w->next;
-		iput(w->inode);
-		kfree((addr_t)w);
+		if(w->inst == inst) {
+			if(inotify_watch_head == w) {
+				inotify_watch_head = w->next;
+			} else {
+				prev = inotify_watch_head;
+				while(prev && prev->next != w) {
+					prev = prev->next;
+				}
+				if(prev) {
+					prev->next = w->next;
+				}
+			}
+			iput(w->inode);
+			kfree((addr_t)w);
+		}
 		w = wn;
 	}
 	e = inst->q_head;
@@ -149,45 +168,39 @@ int inotifyfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
  */
 void inotify_queue(struct inode *inode, __u32 mask, __u32 cookie, const char *name)
 {
-	struct inode *ii;
-	struct inotify_instance *inst;
 	struct inotify_watch *w;
+	struct inotify_instance *inst;
 	struct inotify_qevent *qe;
 	__size_t len;
 
-	/* iterate every inode in the inode table looking for inotifyfs
-	 * instances (cheap: the table is small) */
-	for(ii = inode_table; ii; ii = ii->next) {
-		if(ii->fsop != &inotifyfs_fsop || !ii->u.inotify.instance) {
+	/* scan the global watch list (typically a handful of watches),
+	 * not the inode table which grows with every file created */
+	for(w = inotify_watch_head; w; w = w->next) {
+		if(w->inode != inode || !(mask & w->mask)) {
 			continue;
 		}
-		inst = ii->u.inotify.instance;
-		for(w = inst->watches; w; w = w->next) {
-			if(w->inode != inode || !(mask & w->mask)) {
-				continue;
-			}
-			len = name ? strlen(name) + 1 : 0;
-			if(!(qe = (struct inotify_qevent *)kmalloc(sizeof(struct inotify_qevent) + len))) {
-				continue;
-			}
-			qe->ev.wd = w->wd;
-			qe->ev.mask = mask;
-			qe->ev.cookie = cookie;
-			qe->ev.len = len;
-			qe->next = NULL;
-			if(len) {
-				memcpy_b(qe->ev.name, name, len);
-			}
-			if(inst->q_tail) {
-				inst->q_tail->next = qe;
-			} else {
-				inst->q_head = qe;
-			}
-			inst->q_tail = qe;
-			inst->q_count++;
-			inst->q_bytes += (int)event_size(&qe->ev);
-			wakeup(&do_select);
+		inst = w->inst;
+		len = name ? strlen(name) + 1 : 0;
+		if(!(qe = (struct inotify_qevent *)kmalloc(sizeof(struct inotify_qevent) + len))) {
+			continue;
 		}
+		qe->ev.wd = w->wd;
+		qe->ev.mask = mask;
+		qe->ev.cookie = cookie;
+		qe->ev.len = len;
+		qe->next = NULL;
+		if(len) {
+			memcpy_b(qe->ev.name, name, len);
+		}
+		if(inst->q_tail) {
+			inst->q_tail->next = qe;
+		} else {
+			inst->q_head = qe;
+		}
+		inst->q_tail = qe;
+		inst->q_count++;
+		inst->q_bytes += (int)event_size(&qe->ev);
+		wakeup(&do_select);
 	}
 }
 
@@ -278,8 +291,8 @@ int sys_inotify_add_watch(int ufd, const char *pathname, __u32 mask)
 	}
 
 	/* an existing watch on this inode just gets its mask updated */
-	for(w = inst->watches; w; w = w->next) {
-		if(w->inode == target) {
+	for(w = inotify_watch_head; w; w = w->next) {
+		if(w->inst == inst && w->inode == target) {
 			w->mask = mask;
 			return w->wd;
 		}
@@ -292,8 +305,9 @@ int sys_inotify_add_watch(int ufd, const char *pathname, __u32 mask)
 	w->wd = ++inst->wd_counter;
 	w->mask = mask;
 	w->inode = target;
-	w->next = inst->watches;
-	inst->watches = w;
+	w->inst = inst;
+	w->next = inotify_watch_head;
+	inotify_watch_head = w;
 	return w->wd;
 }
 
@@ -311,12 +325,12 @@ int sys_inotify_rm_watch(int ufd, int wd)
 	inst = i->u.inotify.instance;
 
 	prev = NULL;
-	for(w = inst->watches; w; w = w->next) {
-		if(w->wd == wd) {
+	for(w = inotify_watch_head; w; w = w->next) {
+		if(w->inst == inst && w->wd == wd) {
 			if(prev) {
 				prev->next = w->next;
 			} else {
-				inst->watches = w->next;
+				inotify_watch_head = w->next;
 			}
 			iput(w->inode);
 			kfree((addr_t)w);
