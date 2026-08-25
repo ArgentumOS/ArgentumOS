@@ -22,6 +22,7 @@ struct ipv4_info {
 	int protocol;			/* IPPROTO_UDP / IPPROTO_ICMP */
 	__u16 local_port;		/* bound port (host order) */
 	__u32 local_addr;		/* bound address (host order) */
+	struct socket *peer;		/* connected peer (SOCK_STREAM) */
 	struct packet *packet_queue;	/* received datagrams */
 };
 

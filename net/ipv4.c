@@ -156,12 +156,14 @@ static int icmp_echo_reply(struct socket *s, const char *buffer, __size_t count)
 	return 0;
 }
 
+static int ipv4_wait_connected(struct socket *s);
+
 int ipv4_create(struct socket *s, int domain, int type, int protocol)
 {
 	struct ipv4_info *ip4;
 
-	if(type != SOCK_DGRAM && type != SOCK_RAW) {
-		return -EOPNOTSUPP;	/* TCP not implemented */
+	if(type != SOCK_DGRAM && type != SOCK_RAW && type != SOCK_STREAM) {
+		return -EOPNOTSUPP;
 	}
 	/* loopback only: no NIC fd */
 	s->fd_ext = -1;
@@ -170,6 +172,13 @@ int ipv4_create(struct socket *s, int domain, int type, int protocol)
 	ip4->count = 1;
 	ip4->socket = s;
 	ip4->type = type;
+	/* protocol 0 means "default for the type" (Linux semantics) */
+	if(!protocol && type == SOCK_STREAM) {
+		protocol = IPPROTO_TCP;
+	}
+	if(!protocol && type == SOCK_DGRAM) {
+		protocol = IPPROTO_UDP;
+	}
 	ip4->protocol = protocol;
 	add_ipv4_socket(ip4);
 	return 0;
@@ -177,10 +186,17 @@ int ipv4_create(struct socket *s, int domain, int type, int protocol)
 
 void ipv4_free(struct socket *s)
 {
-	struct ipv4_info *ip4;
+	struct ipv4_info *ip4, *peer4;
 	struct packet *p;
 
 	ip4 = &s->u.ipv4_info;
+	if(ip4->type == SOCK_STREAM && ip4->peer) {
+		peer4 = &ip4->peer->u.ipv4_info;
+		peer4->peer = NULL;
+		ip4->peer->state = SS_DISCONNECTING;
+		wakeup(peer4);
+		wakeup(&do_select);
+	}
 	remove_ipv4_socket(ip4);
 	while((p = remove_packet_from_queue(&ip4->packet_queue))) {
 		kfree((addr_t)p->data);
@@ -212,19 +228,122 @@ int ipv4_bind(struct socket *s, const struct sockaddr *addr, int addrlen)
 	return 0;
 }
 
+/* ephemeral port allocator for loopback clients */
+static __u16 ipv4_ephemeral_port(void)
+{
+	static __u16 next = 49152;
+
+	if(++next == 65535) {
+		next = 49152;
+	}
+	return next;
+}
+
 int ipv4_listen(struct socket *s, int backlog)
 {
-	return -EOPNOTSUPP;
+	struct ipv4_info *ip4;
+
+	if(s->type != SOCK_STREAM) {
+		return -EOPNOTSUPP;
+	}
+	ip4 = &s->u.ipv4_info;
+	if(!ip4->local_port) {
+		return -EADDRNOTAVAIL;	/* must bind() first */
+	}
+	s->flags |= SO_ACCEPTCONN;
+	s->queue_limit = backlog > 0 ? backlog : 1;
+	s->state = SS_UNCONNECTED;
+	return 0;
 }
 
 int ipv4_connect(struct socket *s, const struct sockaddr *addr, int addrlen)
 {
-	return -EOPNOTSUPP;
+	struct sockaddr_in *sin;
+	struct ipv4_info *ip4, *dest;
+	__u16 dport;
+	int errno;
+
+	if(s->type != SOCK_STREAM) {
+		return -EOPNOTSUPP;
+	}
+	if(addrlen < (int)sizeof(struct sockaddr_in)) {
+		return -EINVAL;
+	}
+	sin = (struct sockaddr_in *)addr;
+	if(sin->sin_family != AF_INET) {
+		return -EINVAL;
+	}
+	if(ntohl(sin->sin_addr) != INADDR_LOOPBACK && ntohl(sin->sin_addr) != INADDR_ANY) {
+		return -ENETUNREACH;	/* no NIC: only loopback is reachable */
+	}
+	ip4 = &s->u.ipv4_info;
+
+	dport = ntohs(sin->sin_port);
+	if(!(dest = find_loopback_socket(dport, IPPROTO_TCP)) || !(dest->socket->flags & SO_ACCEPTCONN)) {
+		return -ECONNREFUSED;
+	}
+
+	/* assign an ephemeral local port */
+	ip4->local_port = ipv4_ephemeral_port();
+	ip4->local_addr = INADDR_LOOPBACK;
+
+	s->state = SS_CONNECTING;
+	if((errno = insert_socket_to_queue(dest->socket, s))) {
+		s->state = SS_UNCONNECTED;
+		return errno;
+	}
+	/* loopback connect completes when the listener accepts; the
+	 * connection is already in the listener's backlog, so return
+	 * immediately (a blocking connect would deadlock a single
+	 * threaded client that accepts from the same process). */
+	wakeup(dest->socket);
+	wakeup(&do_select);
+	return 0;
 }
 
 int ipv4_accept(struct socket *s, struct sockaddr *addr, unsigned int *addrlen)
 {
-	return -EOPNOTSUPP;
+	int ufd;
+	struct socket *sc, *nss;
+	struct ipv4_info *ip4, *sc4, *ns4;
+	int errno;
+
+	while(!(sc = get_socket_from_queue(s))) {
+		if(s->fd->flags & O_NONBLOCK) {
+			return -EAGAIN;
+		}
+		if(sleep(s, PROC_INTERRUPTIBLE)) {
+			return -EINTR;
+		}
+	}
+
+	nss = NULL;
+	if((ufd = sock_alloc(&nss)) < 0) {
+		return ufd;
+	}
+	nss->type = s->type;
+	nss->ops = s->ops;
+	if((errno = nss->ops->create(nss, AF_INET, s->type, 0)) < 0) {
+		sock_free(nss);
+		return errno;
+	}
+
+	ip4 = &s->u.ipv4_info;
+	sc4 = &sc->u.ipv4_info;
+	ns4 = &nss->u.ipv4_info;
+
+	ns4->local_port = ip4->local_port;	/* server side */
+	ns4->local_addr = INADDR_LOOPBACK;
+	sc4->peer = nss;			/* client <-> server link */
+	ns4->peer = sc;
+	sc->state = SS_CONNECTED;
+	nss->state = SS_CONNECTED;
+	wakeup(sc);
+	wakeup(&do_select);
+	if(addr) {
+		nss->ops->getname(nss, addr, addrlen, SYS_GETPEERNAME);
+	}
+	return ufd;
 }
 
 int ipv4_getname(struct socket *s, struct sockaddr *addr, unsigned int *addrlen, int call)
@@ -268,6 +387,7 @@ int ipv4_sendto(struct socket *s, struct fd *f, const char *buffer, __size_t cou
 	struct sockaddr_in *sin;
 	struct ipv4_info *ip4, *dest;
 	__u16 dport;
+	int errno;
 
 	if(flags & ~(MSG_DONTWAIT | MSG_NOSIGNAL)) {
 		return -EINVAL;
@@ -283,6 +403,14 @@ int ipv4_sendto(struct socket *s, struct fd *f, const char *buffer, __size_t cou
 		return -ENETUNREACH;	/* no NIC: only loopback is reachable */
 	}
 	ip4 = &s->u.ipv4_info;
+
+	/* SOCK_STREAM (loopback TCP): deliver to the connected peer */
+	if(ip4->type == SOCK_STREAM) {
+		if((errno = ipv4_wait_connected(s)) < 0) {
+			return errno;
+		}
+		return loopback_deliver(ip4->peer, buffer, count);
+	}
 
 	/* ICMP ping sockets (SOCK_DGRAM|IPPROTO_ICMP, SOCK_RAW): the
 	 * kernel answers echo requests itself on loopback */
@@ -350,8 +478,41 @@ int ipv4_read(struct socket *s, struct fd *f, char *buffer, __size_t count)
 	return ipv4_recvfrom(s, f, buffer, count, 0, NULL, NULL);
 }
 
+static int ipv4_wait_connected(struct socket *s)
+{
+	struct ipv4_info *ip4;
+
+	ip4 = &s->u.ipv4_info;
+	/* loopback connect() returns once the connection is queued in the
+	 * listener's backlog; the peer is linked when the listener calls
+	 * accept(). Until then the client is SS_CONNECTING - wait (data
+	 * sent before the server accepts must not be dropped). */
+	while(s->state == SS_CONNECTING && !ip4->peer) {
+		if(s->fd->flags & O_NONBLOCK) {
+			return -EAGAIN;
+		}
+		if(sleep(s, PROC_INTERRUPTIBLE)) {
+			return -EINTR;
+		}
+	}
+	if(!ip4->peer || s->state != SS_CONNECTED) {
+		return -ENOTCONN;
+	}
+	return 0;
+}
+
 int ipv4_write(struct socket *s, struct fd *f, const char *buffer, __size_t count)
 {
+	struct ipv4_info *ip4;
+	int errno;
+
+	ip4 = &s->u.ipv4_info;
+	if(ip4->type == SOCK_STREAM) {
+		if((errno = ipv4_wait_connected(s)) < 0) {
+			return errno;
+		}
+		return loopback_deliver(ip4->peer, buffer, count);
+	}
 	/* unconnected datagram socket: nothing to send without a dest */
 	return -ENOTCONN;
 }
