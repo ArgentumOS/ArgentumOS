@@ -41,10 +41,12 @@ int sys_prlimit64(__pid_t pid, int resource, const struct rlimit64 *new_limit, s
 	if(pid == 0) {
 		p = current;
 	} else {
+		p = NULL;
 		FOR_EACH_PROCESS(p) {
 			if(p->pid == pid) {
 				break;
 			}
+			p = p->next;
 		}
 		if(!p || p->pid != pid) {
 			return -ESRCH;
