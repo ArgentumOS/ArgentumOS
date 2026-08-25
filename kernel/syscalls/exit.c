@@ -37,6 +37,28 @@ void do_exit(int exit_code)
 	}
 #endif /* CONFIG_SYSVIPC */
 
+	/* FNX: CLONE_CHILD_CLEARTID - a thread exiting clears its tid in
+	 * the shared user space and futex-wakes it (musl pthread_join
+	 * waits on this address). Threads also skip the address-space
+	 * teardown below: the address space is shared with the parent. */
+	if(current->flags & PF_THREAD) {
+		if(current->set_child_tid) {
+			if(!check_user_area(VERIFY_WRITE, current->set_child_tid, sizeof(int))) {
+				*(int *)current->set_child_tid = 0;
+			}
+			wakeup(current->set_child_tid);
+		}
+		for(n = 0; n < OPEN_MAX; n++) {
+			if(current->fd[n]) {
+				sys_close(n);
+			}
+		}
+		current->exit_code = exit_code;
+		not_runnable(current, PROC_ZOMBIE);
+		do_sched();
+		return;	/* never reached */
+	}
+
 	release_binary();
 	current->argv = NULL;
 	current->envp = NULL;

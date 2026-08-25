@@ -49,6 +49,8 @@ int sys_chmod(const char *, __mode_t);
 int sys_lchown(const char *, __uid_t, __gid_t);
 int sys_lseek(unsigned int, __off_t, unsigned int);
 int sys_getpid(void);
+int sys_gettid(void);
+int sys_futex(int *, int, int, const struct timespec *, int *, int);
 int sys_mount(const char *, const char *, const char *, unsigned int, const void *);
 int sys_umount(const char *);
 int sys_setuid(__uid_t);

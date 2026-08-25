@@ -44,6 +44,7 @@ struct vma {
 #define PF_USEREAL	0x00000004	/* use real UID in permission checks */
 #define PF_NOTINTERRUPT	0x00000008	/* non-interruptible sleeping */
 #define PF_ELF64	0x00000010	/* FNX: process runs a native ELF64 binary */
+#define PF_THREAD	0x00000020	/* FNX: CLONE_THREAD thread (shares address space) */
 
 /* FNX (canonical amd64 split): mmap()s start at 64TB - half of the
  * 128TB user space - so heap (growing up from the binary) and mmap
@@ -116,7 +117,8 @@ struct proc {
 	unsigned long fs_base;	/* FNX: per-process %fs base (native x86-64 TLS) */
 #endif /* __x86_64__ */
 	struct proc *ppid;		/* pointer to parent process */
-	__pid_t pid;			/* process ID */
+	__pid_t pid;			/* process ID (thread ID for threads) */
+	__pid_t tgid;			/* thread group ID (== pid unless CLONE_THREAD) */
 	__pid_t pgid;			/* process group ID */
 	__pid_t sid;			/* session ID */
 	int flags;
@@ -128,7 +130,8 @@ struct proc {
 	int priority;
 	int cpu_count;			/* time of process running */
 	__time_t start_time;
-	int exit_code;	
+	int exit_code;
+	void *set_child_tid;		/* CLONE_CHILD_CLEARTID: user addr to clear on exit */
 	void *sleep_address;
 	__u32 uid;			/* real user ID */
 	__u32 gid;			/* real group ID */

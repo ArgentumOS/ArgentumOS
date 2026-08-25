@@ -32,7 +32,7 @@ static void free_vma_table(struct proc *p)
 
 int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext *sc)
 {
-	return do_fork_like(sc, 0, 0, 0);
+	return do_fork_like(sc, 0, 0, 0, 0, 0, 0);
 }
 
 /*
@@ -57,30 +57,36 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 #define CLONE_SETTLS		0x00080000
 #define CLONE_CHILD_SETTID	0x01000000
 #define CLONE_CHILD_CLEARTID	0x00200000
-#define CLONE_SETTID		0x00100000
+#define CLONE_PARENT_SETTID	0x00100000
 
 /* NOTE: arg1/arg2 are long, not int - the dispatcher passes 64-bit
  * registers (the child_stack is a user address like 0x7ffffffffxxx); an
- * int prototype truncates it and sign-extends to a kernel address. */
+ * int prototype truncates it and sign-extends to a kernel address.
+ *
+ * musl __clone asm (pthread_create): clone(func, stack, flags, arg,
+ * ptid, tls, ctid). After the register shuffle the syscall sees
+ * rdi=flags rsi=stack rdx=ptid r10=ctid r8=tls, and r9 (6th arg) = func.
+ * The dispatcher maps rdi/rsi/rdx/r10/r8 to a1..a5, so:
+ *   arg1 = flags, arg2 = child_stack, arg3 = ptid, arg4 = ctid,
+ *   arg5 = tls, sc->r9 = func. */
 int sys_clone(long arg1, long arg2, long arg3, long arg4, long arg5, struct sigcontext *sc)
 {
 	unsigned int flags = (unsigned int)arg1;
 	addr_t child_stack = (addr_t)arg2;
+	addr_t ptid = (addr_t)arg3;
+	addr_t ctid = (addr_t)arg4;
+	addr_t tls = (addr_t)arg5;
 	addr_t fn = (addr_t)sc->r9;
 
-	/* CLONE_VM (with or without CLONE_VFORK) is the vfork-style
-	 * optimization used by musl's posix_spawn: the child execs
-	 * immediately, so a COW fork is a correct (and safe) realization -
-	 * the child's copy of the args lives in its own stack. True
-	 * thread-creation flags (shared address space + signal handling)
-	 * are still rejected: pthread_create fails with EAGAIN. */
-	if(flags & (CLONE_THREAD | CLONE_SIGHAND | CLONE_SETTLS)) {
-		return -EINVAL;
-	}
-	return do_fork_like(sc, flags, child_stack, fn);
+	/* CLONE_VM without CLONE_THREAD is the vfork-style optimization
+	 * used by musl's posix_spawn: the child execs immediately, so a
+	 * COW fork is a correct (and safe) realization - the child's copy
+	 * of the args lives in its own stack. CLONE_THREAD (real threads)
+	 * is handled by do_fork_like() sharing the parent's address space. */
+	return do_fork_like(sc, flags, child_stack, fn, ptid, ctid, tls);
 }
 
-int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_stack, addr_t fn)
+int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_stack, addr_t fn, addr_t ptid, addr_t ctid, addr_t tls)
 {
 	int count, pages;
 	unsigned int n;
@@ -89,6 +95,7 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 	struct proc *child, *p;
 	struct vma *vma, *child_vma;
 	__pid_t pid;
+	int is_thread = (clone_flags & CLONE_VM) ? 1 : 0;
 
 #ifdef __DEBUG__
 	printk("(pid %d) sys_fork()\n", current->pid);
@@ -127,58 +134,90 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 	child->pid = pid;
 	sprintk(child->pidstr, "%d", child->pid);
 
-	if(!(child_pgdir = (void *)kmalloc(PAGE_SIZE))) {
-		release_proc(child);
-		return -ENOMEM;
-	}
-	child->rss++;
-	memcpy_b(child_pgdir, kpage_dir, PAGE_SIZE);
-	child->tss.cr3 = V2P((addr_t)child_pgdir);
-#ifdef __x86_64__
-	{
-		/* FNX (M6-next): the fork child gets its own 4-level tables,
-		 * deep-copied from the PARENT's pml4 (current->cr3_64) so it
-		 * inherits every demand-mapped user page (text/data/stack/TLS).
-		 * Writable user leaves are shared read-only (CoW), mirroring
-		 * clone_pages()'s 2-level PAGE_COW. */
-		extern unsigned long create_pml4_64(unsigned long);
-		if(!(child->cr3_64 = create_pml4_64(current->cr3_64))) {
-			kfree((addr_t)child_pgdir);
+	if(is_thread) {
+		/* FNX: real thread (CLONE_VM). Share the parent's address
+		 * space: same pml4, same vma table, no page copies. The
+		 * thread's stack was mmap'd by the parent, so it is already
+		 * mapped in this shared space. PF_THREAD marks the child so
+		 * do_exit() does not tear down the shared address space. */
+		child->cr3_64 = current->cr3_64;
+		child->tss.cr3 = current->tss.cr3;
+		child->vma_table = current->vma_table;
+		child->flags |= PF_THREAD;
+		if(clone_flags & CLONE_THREAD) {
+			child->tgid = current->tgid;
+		} else {
+			child->tgid = pid;
+		}
+		if(clone_flags & CLONE_SETTLS) {
+			/* x86-64 musl: TLS lives above the thread pointer, read
+			 * via %fs (__get_tp = mov %%fs:0). The tls arg is
+			 * TP_ADJ(new) = new+sizeof(struct pthread)+TP_OFFSET;
+			 * set the thread's fs_base so the context switch loads
+			 * this thread's own TLS (not the parent's). */
+			child->fs_base = tls;
+		}
+		child_pgdir = NULL;
+		pages = 0;
+	} else {
+		if(!(child_pgdir = (void *)kmalloc(PAGE_SIZE))) {
 			release_proc(child);
 			return -ENOMEM;
 		}
-	}
+		child->rss++;
+		memcpy_b(child_pgdir, kpage_dir, PAGE_SIZE);
+		child->tss.cr3 = V2P((addr_t)child_pgdir);
+#ifdef __x86_64__
+		{
+			/* FNX (M6-next): the fork child gets its own 4-level tables,
+			 * deep-copied from the PARENT's pml4 (current->cr3_64) so it
+			 * inherits every demand-mapped user page (text/data/stack/TLS).
+			 * Writable user leaves are shared read-only (CoW), mirroring
+			 * clone_pages()'s 2-level PAGE_COW. */
+			extern unsigned long create_pml4_64(unsigned long);
+			if(!(child->cr3_64 = create_pml4_64(current->cr3_64))) {
+				kfree((addr_t)child_pgdir);
+				release_proc(child);
+				return -ENOMEM;
+			}
+		}
 #endif /* __x86_64__ */
+		child->tgid = pid;
+	}
 
 	child->ppid = current;
-	child->flags = 0;
+	child->flags = is_thread ? PF_THREAD : 0;
 	child->children = 0;
 	child->cpu_count = (current->cpu_count >>= 1);
 	child->start_time = CURRENT_TICKS;
 	child->sleep_address = NULL;
 
-	vma = current->vma_table;
-	child->vma_table = NULL;
-	while(vma) {
-		if(!(child_vma = (struct vma *)kmalloc(sizeof(struct vma)))) {
-			kfree((addr_t)child_pgdir);
-			free_vma_table(child);
-			release_proc(child);
-			return -ENOMEM;
+	if(is_thread) {
+		/* threads share the vma table; no copy */
+	} else {
+		vma = current->vma_table;
+		child->vma_table = NULL;
+		while(vma) {
+			if(!(child_vma = (struct vma *)kmalloc(sizeof(struct vma)))) {
+				kfree((addr_t)child_pgdir);
+				free_vma_table(child);
+				release_proc(child);
+				return -ENOMEM;
+			}
+			*child_vma = *vma;
+			child_vma->prev = child_vma->next = NULL;
+			if(child_vma->inode) {
+				child_vma->inode->count++;
+			}
+			if(!child->vma_table) {
+				child->vma_table = child_vma;
+			} else {
+				child_vma->prev = child->vma_table->prev;
+				child->vma_table->prev->next = child_vma;
+			}
+			child->vma_table->prev = child_vma;
+			vma = vma->next;
 		}
-		*child_vma = *vma;
-		child_vma->prev = child_vma->next = NULL;
-		if(child_vma->inode) {
-			child_vma->inode->count++;
-		}
-		if(!child->vma_table) {
-			child->vma_table = child_vma;
-		} else {
-			child_vma->prev = child->vma_table->prev;
-			child->vma_table->prev->next = child_vma;
-		}
-		child->vma_table->prev = child_vma;
-		vma = vma->next;
 	}
 
 	child->sigpending = 0;
@@ -198,22 +237,29 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 
 
 	if(!(child->tss.esp0 = kmalloc(PAGE_SIZE))) {
-		kfree((addr_t)child_pgdir);
-		free_vma_table(child);
+		if(!is_thread) {
+			kfree((addr_t)child_pgdir);
+			free_vma_table(child);
+		}
 		release_proc(child);
 		return -ENOMEM;
 	}
 
-	if(!(pages = clone_pages(child))) {
-		printk("WARNING: %s(): not enough memory when cloning pages.\n", __FUNCTION__);
-		free_page_tables(child);
-		kfree((addr_t)child_pgdir);
-		free_vma_table(child);
-		release_proc(child);
-		return -ENOMEM;
+	if(is_thread) {
+		/* threads run in the parent's mapped address space; no page
+		 * copies needed */
+	} else {
+		if(!(pages = clone_pages(child))) {
+			printk("WARNING: %s(): not enough memory when cloning pages.\n", __FUNCTION__);
+			free_page_tables(child);
+			kfree((addr_t)child_pgdir);
+			free_vma_table(child);
+			release_proc(child);
+			return -ENOMEM;
+		}
+		child->rss += pages;
+		invalidate_tlb();
 	}
-	child->rss += pages;
-	invalidate_tlb();
 
 	child->tss.esp0 += PAGE_SIZE - 4;
 	child->rss++;
@@ -235,6 +281,19 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 		 * from the parent's frame above). */
 		stack->rsp = child_stack;
 		stack->r9 = fn;
+	}
+
+	/* CLONE_PARENT_SETTID: write the child's tid to *ptid (musl
+	 * pthread_create stores the new thread's id here). */
+	if((clone_flags & CLONE_PARENT_SETTID) && ptid) {
+		if(!check_user_area(VERIFY_WRITE, (void *)ptid, sizeof(int))) {
+			*(int *)ptid = pid;
+		}
+	}
+	/* CLONE_CHILD_CLEARTID: the child clears *ctid (0) on exit and the
+	 * kernel futex-wakes it - musl pthread_join() waits on this. */
+	if((clone_flags & CLONE_CHILD_CLEARTID) && ctid) {
+		child->set_child_tid = (void *)ctid;
 	}
 
 	/* increase file descriptors usage */

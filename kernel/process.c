@@ -293,6 +293,7 @@ struct proc *kernel_process(const char *name, int (*fn)(void))
 	p = get_proc_free();
 	proc_slot_init(p);
 	p->pid = get_unused_pid();
+	p->tgid = p->pid;
 	p->ppid = &proc_table[IDLE];
 	p->flags |= PF_KPROC;
 	p->priority = DEF_PRIORITY;

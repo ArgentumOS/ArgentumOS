@@ -514,8 +514,9 @@ void *syscall_table64[] = {
 	[171] = sys_setdomainname,	/* setdomainname */
 	[172] = sys_iopl,		/* iopl */
 	[173] = sys_ioperm,		/* ioperm */
-	/* 186 gettid: not implemented */
+	[186] = sys_gettid,		/* gettid (musl gettid) */
 	[200] = sys_tkill,		/* tkill */
+	[202] = sys_futex,		/* futex (musl mutex/cond/join) */
 	[217] = sys_getdents64,		/* getdents64 */
 	[218] = sys_set_tid_address,	/* set_tid_address */
 	[227] = sys_clock_settime64,	/* clock_settime */
