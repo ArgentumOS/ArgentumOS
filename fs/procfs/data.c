@@ -601,7 +601,7 @@ int data_proc_pid_cmdline(char *buffer, __pid_t pid)
 {
 	int n, size;
 	char *arg, **argv;
-	unsigned int addr,offset;
+	addr_t addr, offset;
 	struct proc *p;
 
 	size = 0;
@@ -650,7 +650,7 @@ int data_proc_pid_environ(char *buffer, __pid_t pid)
 {
 	int n, size;
 	char *env, **envp;
-	unsigned int addr, offset;
+	addr_t addr, offset;
 	struct proc *p;
 
 	size = 0;

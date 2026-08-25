@@ -36,6 +36,7 @@ int sys_clone(long, long, long, long, long, struct sigcontext *);
 int sys_read(unsigned int, char *, int);
 int sys_write(unsigned int, const char *, int);
 int sys_open(const char *, int, __mode_t);
+int sys_openat(int, const char *, int, __mode_t);
 int sys_close(unsigned int);
 int sys_waitpid(__pid_t, int *, int);
 int sys_creat(const char *, __mode_t);

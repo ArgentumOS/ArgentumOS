@@ -14,7 +14,22 @@
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 
+static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode);
+
 int sys_open(const char *filename, int flags, __mode_t mode)
+{
+	return do_sys_open(AT_FDCWD, filename, flags, mode);
+}
+
+/* openat(257): like open, but resolve relative paths against the
+ * directory referenced by dirfd (musl openat, toybox dirtree).
+ * dirfd == AT_FDCWD (-100) means relative to the current working dir. */
+int sys_openat(int dirfd, const char *filename, int flags, __mode_t mode)
+{
+	return do_sys_open(dirfd, filename, flags, mode);
+}
+
+static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode)
 {
 	int fd, ufd;
 	struct inode *i, *dir;
@@ -30,13 +45,44 @@ int sys_open(const char *filename, int flags, __mode_t mode)
 	}
 
 	basename = get_basename(tmp_name);
-	if((errno = namei(tmp_name, &i, &dir, follow_links))) {
-		if(!dir) {
-			free_name(tmp_name);
-			if(flags & O_CREAT) {
-				return -ENOENT;
+	/* namei() NULLs both result pointers before parse_namei(); do the same
+	 * or the error path iput(*d_res) reads uninitialized stack garbage. */
+	i = NULL;
+	dir = NULL;
+	if(dirfd == AT_FDCWD) {
+		if((errno = parse_namei(tmp_name, NULL, &i, &dir, follow_links))) {
+			if(!dir) {
+				free_name(tmp_name);
+				if(flags & O_CREAT) {
+					return -ENOENT;
+				}
+				return errno;
 			}
-			return errno;
+		}
+	} else {
+		struct inode *base_dir;
+
+		if(dirfd < 0) {
+			free_name(tmp_name);
+			return -EBADF;
+		}
+		CHECK_UFD(dirfd);
+		base_dir = fd_table[current->fd[dirfd]].inode;
+		if(!S_ISDIR(base_dir->i_mode)) {
+			free_name(tmp_name);
+			return -ENOTDIR;
+		}
+		/* dir (the d_res out-param) must stay NULL here: parse_namei /
+		 * do_namei rely on it being NULL on entry, or the first
+		 * iteration iputs the fd's reference (double-free). */
+		if((errno = parse_namei(tmp_name, base_dir, &i, &dir, follow_links))) {
+			if(!dir) {
+				free_name(tmp_name);
+				if(flags & O_CREAT) {
+					return -ENOENT;
+				}
+				return errno;
+			}
 		}
 	}
 

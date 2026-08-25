@@ -78,8 +78,9 @@ void init_init(void)
 #endif /* __x86_64__ */
 
 	init->ppid = &proc_table[IDLE];
-	init->pgid = 0;
-	init->sid = 0;
+	init->pgid = INIT;	/* init is a session leader: SESS_LEADER() */
+	init->sid = INIT;	/* requires pid == pgid == sid, so the console */
+				/* open in tty_open() assigns it a ctty */
 	/* FNX: the INIT bootstrap trampoline is native 64-bit code (it
 	 * uses the 'syscall' instruction via USER_SYSCALL64), so INIT is a
 	 * PF_ELF64 process - the syscall dispatcher must use the x86-64 ABI

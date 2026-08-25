@@ -375,6 +375,18 @@ static void panic(const struct x86_frame64 *f)
 	serial_puts(" rsp=");
 	serial_hex((UINT64)f->rsp);
 	serial_puts("\n");
+	/* dump the kernel stack return addresses (top 16 words) */
+	{
+		unsigned long *sp = (unsigned long *)(f->rsp & ~0xfUL);
+		int k;
+		for(k = 0; k < 16; k++) {
+			serial_puts("  [sp+");
+			puthex32((unsigned int)(k * 8));
+			serial_puts("]=");
+			serial_hex(sp[k]);
+			serial_puts("\n");
+		}
+	}
 	serial_puts("!!! halting.\n");
 	for(;;) {
 		__asm__ __volatile__("hlt");
