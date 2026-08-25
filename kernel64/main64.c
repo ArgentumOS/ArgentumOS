@@ -170,6 +170,23 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 
 	kreal64_boot();
 	for(;;) {
+		/* FNX: IDLE never returns to user mode, so the CPL3 IRQ tail
+		 * can never preempt on its behalf. When every process sleeps,
+		 * do_sched() switches here; the timer BH then wakes a process
+		 * (timeout expiry, serial input, ...) and sets need_resched,
+		 * but with the IRQ in kernel mode the CPL3 consumer is
+		 * skipped - without this check the woken process starves on
+		 * the run queue forever and the system freezes (a DNS
+		 * resolver polling with a timeout + a shell on serial input).
+		 * Consume it here in normal context (switching from the IRQ
+		 * frame itself is unsafe). */
+		extern int need_resched;
+		extern void do_sched(void);
+
+		if(need_resched) {
+			need_resched = 0;
+			do_sched();
+		}
 		__asm__ __volatile__("hlt");
 	}
 }

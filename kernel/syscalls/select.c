@@ -102,8 +102,9 @@ int sys_poll(struct pollfd_abi *fds, unsigned long nfds, int timeout)
 	for(;;) {
 		count = 0;
 		for(n = 0; n < (int)nfds; n++) {
-			if((n = check_user_area(VERIFY_WRITE, &fds[n], sizeof(struct pollfd_abi)))) {
-				return n;
+			int err;
+			if((err = check_user_area(VERIFY_WRITE, &fds[n], sizeof(struct pollfd_abi)))) {
+				return err;
 			}
 			memcpy_b(&pfd, &fds[n], sizeof(struct pollfd_abi));
 			pfd.revents = 0;
