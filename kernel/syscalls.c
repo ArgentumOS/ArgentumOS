@@ -425,6 +425,7 @@ void *syscall_table64[] = {
 	[37] = sys_alarm,		/* alarm */
 	[38] = sys_setitimer,		/* setitimer */
 	[39] = sys_getpid,		/* getpid */
+	[40] = sys_sendfile,		/* sendfile (toybox httpd/ftpget) */
 	[56] = sys_clone,		/* clone */
 	[57] = sys_fork,		/* fork */
 	[58] = sys_fork,		/* vfork -> fork */
@@ -536,5 +537,6 @@ void *syscall_table64[] = {
 	[293] = sys_pipe2,		/* pipe2 (musl popen/posix_spawn) */
 	[294] = sys_inotify_init1,	/* inotify_init1 (musl inotify_init) */
 	[302] = sys_prlimit64,		/* prlimit64 (musl getrlimit/setrlimit) */
+	[318] = sys_getrandom,		/* getrandom (musl getrandom/getentropy) */
 };
 #endif /* __x86_64__ */

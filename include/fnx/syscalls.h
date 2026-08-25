@@ -87,6 +87,8 @@ int sys_dup3(unsigned int, unsigned int, int);
 int sys_getpriority(int, int);
 int sys_setpriority(int, int, int);
 int sys_sched_yield(void);
+int sys_sendfile(int, int, __off_t *, __size_t);
+int sys_getrandom(char *, __size_t, unsigned int);
 int sys_inotify_init(void);
 int sys_inotify_init1(int);
 int sys_inotify_add_watch(int, const char *, __u32);
