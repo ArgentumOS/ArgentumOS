@@ -389,8 +389,7 @@ void *syscall_table64[] = {
 	[21] = sys_access,		/* access */
 	[22] = sys_pipe,		/* pipe */
 	[23] = sys_select,		/* select */
-	/* 24 sched_yield: not implemented */
-	/* 24 sched_yield: not implemented */
+	[24] = sys_sched_yield,		/* sched_yield */
 	[25] = sys_mremap,		/* mremap */
 	[26] = sys_msync,		/* msync */
 	[27] = sys_mincore,		/* mincore */
@@ -419,6 +418,7 @@ void *syscall_table64[] = {
 #endif /* CONFIG_SYSVIPC */
 	[32] = sys_dup,			/* dup */
 	[33] = sys_dup2,		/* dup2 */
+	/* 34 = pause (no x86-64 nice syscall; musl nice() uses setpriority) */
 	[34] = sys_pause,		/* pause */
 	[35] = sys_nanosleep,		/* nanosleep */
 	[36] = sys_getitimer,		/* getitimer */
@@ -499,6 +499,8 @@ void *syscall_table64[] = {
 	[133] = sys_mknod,		/* mknod */
 	[137] = sys_statfs,		/* statfs */
 	[138] = sys_fstatfs,		/* fstatfs */
+	[140] = sys_getpriority,	/* getpriority (musl/toybox nice, renice) */
+	[141] = sys_setpriority,	/* setpriority */
 	[158] = sys_arch_prctl64,	/* arch_prctl */
 	[159] = sys_getrlimit,		/* getrlimit (x86-64 slot) */
 	[160] = sys_setrlimit,		/* setrlimit */

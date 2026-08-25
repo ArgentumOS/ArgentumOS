@@ -124,6 +124,7 @@ struct proc {
 	int children;			/* number of children */
 	struct tty *ctty;		/* controlling terminal */
 	int state;			/* process state */
+	int nice;			/* nice value: -20..19 (0 = default) */
 	int priority;
 	int cpu_count;			/* time of process running */
 	__time_t start_time;
