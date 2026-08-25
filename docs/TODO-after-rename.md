@@ -131,3 +131,22 @@ resolver hits the network) froze the whole system. Two root causes:
 Verified: backgrounded dnsbg + shell stays responsive (ALIVE checks
 print), dnsbg completes (h_errno=2, errno=111), full stress 382/382
 0 HANG with the resolver running concurrently.
+
+## epoll DONE (63ae85d) - target #4
+
+epoll_create(213), epoll_wait(232), epoll_ctl(233), epoll_pwait(281),
+epoll_create1(291) over the existing select/poll machinery: each
+instance is an anonymous inode holding a watched-fd list; epoll_wait
+reuses do_check() + the sleep-on-&do_select timeout pattern.
+
+Gotchas found:
+- x86-64 syscall numbers: epoll_create1=291 (NOT 232 - that is
+  epoll_wait); epoll_wait=232; epoll_ctl=233; epoll_pwait=281;
+  tgkill=234.
+- Inserting table entries out of ascending order makes GNU LD's PE
+  .reloc generator silently ZERO the table slots in a gap (clock_
+  nanosleep and friends broke: sleep 1 hung). Keep the table ascending.
+- The epoll inode must NOT come from pipefs's ialloc (it allocates a
+  FIFO page in the u.pipefs union slot and its ifree kfrees it): use a
+  raw get_free_inode() + i_nlink=1 (skips sb->fsop->ifree) + rdev >
+  FS_NODEV (frees the slot on iput).
