@@ -89,3 +89,19 @@ Order of work: 1, 3, 4, 5 (2 deferred). Each is committed as it lands.
   pty.c's specific codegen. A pty_t master->slave write hangs the
   reader. Needs a dedicated session (the fsop slots in .data.rel.local
   with R_X86_64_64 relocations are the suspect).
+
+## ps fixed (004c301) - target #1 DONE
+
+Root causes (all committed):
+- sys_openat(257) was ENOSYS - toybox dirtree's openat() failed, dirtree
+  treated dirfd=-1 as "no fd", and closedir(NULL) crashed. Implemented
+  openat via parse_namei with the base dir in a separate variable (the
+  d_res out-param must start NULL or do_namei's first iteration iputs the
+  fd's inode - a double-free that freed the /proc root while open).
+- INIT wasn't a session leader (pgid=sid=0), so tty_open() never assigned
+  a ctty and /proc/<pid>/stat's tty_nr stayed 0. toybox ps's default
+  filter (TT.tty == tty_nr) dropped every process -> "ps" exited 1 with
+  no rows. INIT is now pgid=sid=1.
+- data_proc_pid_cmdline/environ truncated P2V() kernel VAs through
+  'unsigned int addr' (0xffffffff80... -> 0x80... non-canonical #PF).
+  Fixed to addr_t.
