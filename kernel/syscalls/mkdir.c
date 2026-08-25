@@ -78,8 +78,7 @@ int sys_mkdirat(int dirfd, const char *dirname, __mode_t mode)
 	int errno;
 
 #ifdef __DEBUG__
-	printk("(pid %d) sys_mkdirat(%d, '%s', %o)
-", current->pid, dirfd, dirname, mode);
+	printk("(pid %d) sys_mkdirat(%d, '%s', %o)\n", current->pid, dirfd, dirname, mode);
 #endif /*__DEBUG__ */
 
 	if((errno = malloc_name(dirname, &tmp_dirname)) < 0) {
