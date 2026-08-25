@@ -166,3 +166,34 @@ the peer and wakes it.
 
 Still not implemented: real NICs (see ext_stub.c), TIME_WAIT/seq
 numbers, listening on 0.0.0.0 (only 127.0.0.1 + INADDR_ANY accepted).
+
+## Real NIC step 1 DONE (675a81e) - target #6 (part)
+
+Legacy virtio-net PCI driver (drivers/net/virtio_net.c) + ARP/IP framing
+(net/ext_net.c) + non-loopback routing in ipv4.c. The NIC probes and
+initializes (MAC 52:54:00:12:34:56, IRQ 11, two 256-desc virtqueues)
+and TX demonstrably leaves the guest (QEMU logs the notify; the ARP
+request frame is correct). Loopback + full stress still pass.
+
+OPEN: the RX used ring never advances. Root causes found while
+debugging:
+- The legacy queue layout is size-dependent: 256 descs span ~6.7KB
+  (desc 4096 + avail 518 + used 2054), so the rings need 2 contiguous
+  pages - a single 4K kmalloc is too small (the device DMA'd past it
+  and set FAILED).
+- kmalloc refuses sizes > PAGE_SIZE ("buddy_high pending"), so the
+  queue pages come from the kernel64 bitmap alloc_pages64(), which
+  spans the EFI's multi-GB map: pages >= 128MB (QEMU -m 128M) are not
+  writable and the first 1MB is protected from virtio DMA. The queue
+  alloc skips both ranges, but the bitmap's free 2-page runs inside
+  [1MB, 128MB] are scarce (the real kernel's buddy manages the same RAM
+  independently) and the alloc can fail; RX then silently never gets a
+  buffer and the used ring stays empty.
+- The IRQ story: this QEMU's legacy transport routes queue interrupts
+  to MSIX vectors (never programmed), so RX must poll the used ring
+  (ext_recvfrom does), and unmasking the master cascade (IRQ2) wedges
+  the boot - only the slave line is unmasked.
+
+Follow-up: a DMA allocator that reserves NIC pages in BOTH the bitmap
+and the buddy (or the modern virtio-pci transport, whose queues are not
+constrained to contiguous legacy pages), then ping 10.0.2.2 completes.
