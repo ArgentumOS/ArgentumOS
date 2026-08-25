@@ -165,8 +165,14 @@ int ipv4_create(struct socket *s, int domain, int type, int protocol)
 	if(type != SOCK_DGRAM && type != SOCK_RAW && type != SOCK_STREAM) {
 		return -EOPNOTSUPP;
 	}
-	/* loopback only: no NIC fd */
-	s->fd_ext = -1;
+	/* external-capable when a NIC is present (loopback sockets are
+	 * switched back to -1 by ipv4_bind/ipv4_connect) */
+	extern int ext_net_present(void);
+	if(ext_net_present()) {
+		s->fd_ext = 0;
+	} else {
+		s->fd_ext = -1;	/* loopback only */
+	}
 	ip4 = &s->u.ipv4_info;
 	memset_b(ip4, 0, sizeof(struct ipv4_info));
 	ip4->count = 1;
@@ -225,6 +231,9 @@ int ipv4_bind(struct socket *s, const struct sockaddr *addr, int addrlen)
 	ip4 = &s->u.ipv4_info;
 	ip4->local_port = ntohs(sin->sin_port);
 	ip4->local_addr = ntohl(sin->sin_addr);
+	if(ntohl(sin->sin_addr) == INADDR_LOOPBACK) {
+		s->fd_ext = -1;	/* loopback-bound: internal delivery */
+	}
 	return 0;
 }
 
@@ -277,6 +286,7 @@ int ipv4_connect(struct socket *s, const struct sockaddr *addr, int addrlen)
 		return -ENETUNREACH;	/* no NIC: only loopback is reachable */
 	}
 	ip4 = &s->u.ipv4_info;
+	s->fd_ext = -1;	/* loopback connection: internal delivery */
 
 	dport = ntohs(sin->sin_port);
 	if(!(dest = find_loopback_socket(dport, IPPROTO_TCP)) || !(dest->socket->flags & SO_ACCEPTCONN)) {
@@ -399,10 +409,16 @@ int ipv4_sendto(struct socket *s, struct fd *f, const char *buffer, __size_t cou
 	if(sin->sin_family != AF_INET) {
 		return -EINVAL;
 	}
-	if(ntohl(sin->sin_addr) != INADDR_LOOPBACK && ntohl(sin->sin_addr) != INADDR_ANY) {
-		return -ENETUNREACH;	/* no NIC: only loopback is reachable */
-	}
 	ip4 = &s->u.ipv4_info;
+	if(ntohl(sin->sin_addr) != INADDR_LOOPBACK && ntohl(sin->sin_addr) != INADDR_ANY) {
+		/* external destination: send via the real NIC */
+		extern int ext_net_send_ip(unsigned int, int, const void *, __size_t);
+		extern int ext_net_present(void);
+		if(!ext_net_present()) {
+			return -ENETUNREACH;	/* no NIC */
+		}
+		return ext_net_send_ip(sin->sin_addr, ip4->protocol, buffer, count);
+	}
 
 	/* SOCK_STREAM (loopback TCP): deliver to the connected peer */
 	if(ip4->type == SOCK_STREAM) {
@@ -436,6 +452,30 @@ int ipv4_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 	int size;
 
 	ip4 = &s->u.ipv4_info;
+
+	if(s->fd_ext != -1 && ip4->local_addr != INADDR_LOOPBACK) {
+		/* external socket: receive an IP datagram from the NIC */
+		extern int ext_net_recv_ip(unsigned int, int, void *, __size_t, unsigned int *);
+		extern int ext_net_present(void);
+		struct sockaddr_in *rsin = (struct sockaddr_in *)addr;
+		unsigned int from = 0;
+		int n;
+
+		if(!ext_net_present()) {
+			return -ENODEV;
+		}
+		n = ext_net_recv_ip(0, ip4->protocol, buffer, count, &from);
+		if(n < 0) {
+			return n;
+		}
+		if(rsin && addrlen) {
+			rsin->sin_family = AF_INET;
+			rsin->sin_port = 0;
+			rsin->sin_addr = from;
+			*addrlen = sizeof(struct sockaddr_in);
+		}
+		return n;
+	}
 
 	lock_resource(&packet_resource);
 	while(!(p = peek_packet(ip4->packet_queue))) {
