@@ -850,37 +850,59 @@ int data_proc_pid_stat(char *buffer, __pid_t pid)
 			esp = sc->rsp;
 			eip = sc->rip;
 		}
-		size = sprintk(buffer, "%d (%s) %c %d %d %d %d %d %d %d %d %d %d %u %u %u %u %d %d %d %d %d %d %u %u %u %u %u %u %u %d %d %u %u %u\n",
-			p->pid,
-			p->argv0,
-			pstate[p->state][0],
-			p->ppid->pid, p->pgid, p->sid,
-			p->ctty ? p->ctty->dev : 0,
-			p->ctty ? p->ctty->pgid : - 1,
-			0,			/* flags */
-			0, 0, 0, 0,		/* minflt, cminflt, majflt, cmajflt */
-			tv2ticks(&p->usage.ru_utime),
-			tv2ticks(&p->usage.ru_stime),
-			tv2ticks(&p->cusage.ru_utime),
-			tv2ticks(&p->cusage.ru_stime),
-			0,			/* counter */
-			0,			/* priority */
-			0,			/* timeout */
-			0,			/* itrealvalue */
-			p->start_time,
-			text + data + stack + mmap,
-			p->rss,
-			0x7FFFFFFF,		/* rlim */
-			p->entry_address & PAGE_MASK,
-			p->end_code,
-			PAGE_OFFSET - 1,	/* startstack */
-			esp,			/* kstkesp */
-			eip,			/* kstkeip */
-			p->sigpending,
-			p->sigblocked,
-			sigignored,
-			sigcaught,
-			p->sleep_address
+		/* Linux fs/proc/array.c do_task_stat() layout: 52 fields.
+		 * toybox ps indexes these positions; a wrong field count made
+		 * it read past the line into a NULL pointer (user #PF). */
+		size = sprintk(buffer,
+			"%d (%s) %c %d %d %d %d %d %u %u %u %u %u %u "
+			"%ld %ld %ld %ld %ld %ld %ld %u %u %u %u %u %u "
+			"%ld %ld %ld %ld %ld %ld %ld %ld %d %d %u %u "
+			"%llu %lu %ld %lu %lu %lu %lu %lu %d %d %u %u %u\n",
+			p->pid,			/* 1  pid */
+			p->argv0,		/* 2  comm */
+			pstate[p->state][0],	/* 3  state */
+			p->ppid->pid,		/* 4  ppid */
+			p->pgid,		/* 5  pgrp */
+			p->sid,			/* 6  session */
+			p->ctty ? p->ctty->dev : 0,	/* 7  tty_nr */
+			p->ctty ? p->ctty->pgid : -1,	/* 8  tpgid */
+			(unsigned int)p->flags,	/* 9  flags */
+			0, 0, 0, 0,		/* 10-13 minflt cminflt majflt cmajflt */
+			(long)tv2ticks(&p->usage.ru_utime),	/* 14 utime */
+			(long)tv2ticks(&p->usage.ru_stime),	/* 15 stime */
+			(long)tv2ticks(&p->cusage.ru_utime),	/* 16 cutime */
+			(long)tv2ticks(&p->cusage.ru_stime),	/* 17 cstime */
+			0L,			/* 18 priority */
+			0L,			/* 19 nice */
+			0L,			/* 20 num_threads */
+			0L,			/* 21 itrealvalue */
+			(unsigned int)p->start_time,	/* 22 starttime */
+			(unsigned int)(text + data + stack + mmap),	/* 23 vsize */
+			(unsigned int)p->rss,	/* 24 rss */
+			0x7FFFFFFF,		/* 25 rsslim */
+			(unsigned int)(p->entry_address & PAGE_MASK),	/* 26 startcode */
+			(unsigned int)p->end_code,	/* 27 endcode */
+			(unsigned int)(PAGE_OFFSET - 1),	/* 28 startstack */
+			esp,			/* 29 kstkesp */
+			eip,			/* 30 kstkeip */
+			0L,			/* 31 signal */
+			0L,			/* 32 blocked */
+			0L,			/* 33 sigignore */
+			0L,			/* 34 sigcatch */
+			0L,			/* 35 wchan */
+			0L,			/* 36 nswap */
+			0L,			/* 37 cnswap */
+			0,			/* 38 exit_signal */
+			0,			/* 39 processor */
+			0,			/* 40 rt_priority */
+			0,			/* 41 policy */
+			(unsigned long long)0,	/* 42 delayacct_blkio_ticks */
+			(unsigned long)p->start_time,	/* 43 guest_time */
+			(long)0,		/* 44 cguest_time */
+			0UL, 0UL, 0UL, 0UL,	/* 45-48 start_data end_data start_brk arg_start */
+			0UL, 0UL,		/* 49-50 arg_end env_start env_end */
+			0, 0,			/* 51-52 exit_code exit_signal? */
+			(unsigned int)p->sigpending	/* padding */
 		);
 	}
 	return size;
