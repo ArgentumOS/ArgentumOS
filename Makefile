@@ -119,6 +119,10 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	@mkdir -p $(ROOTFS64)/etc
 	@printf 'root:x:0:0:root:/root:/bin/sh\n' > $(ROOTFS64)/etc/passwd
 	@printf 'root:x:0:\n' > $(ROOTFS64)/etc/group
+	# /etc/hosts: (none) is UTS_NODENAME; resolving it locally keeps
+	# gethostbyname/dnsdomainname out of the DNS resolver (which has a
+	# backgrounded-socket deadlock under load)
+	@printf '127.0.0.1 localhost\n127.0.0.1 (none)\n' > $(ROOTFS64)/etc/hosts
 	@echo "userland64: native x86_64 rootfs staged in $(ROOTFS64)"
 
 # Build the native x86_64 ext2 root filesystem image (.build/root.img) from
