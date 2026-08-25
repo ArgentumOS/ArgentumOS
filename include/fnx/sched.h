@@ -25,6 +25,18 @@
 
 #define DEF_PRIORITY	(20 * HZ / 100)	/* 200ms of time slice */
 
+/* scheduling policies (Linux sched.h) */
+#define SCHED_OTHER	0
+#define SCHED_FIFO	1
+#define SCHED_RR	2
+#define SCHED_RT_MAX_PRIO	99
+
+/* user ABI (musl <sched.h>): int sched_priority, rest reserved */
+struct sched_param {
+	int sched_priority;
+	char sched_pad[4];
+};
+
 extern int need_resched;
 
 #define SI_LOAD_SHIFT   16

@@ -87,6 +87,32 @@ void do_sched(void)
 		count = -1;
 		selected = &proc_table[IDLE];
 
+		/* FNX: real-time processes (SCHED_FIFO/SCHED_RR) dominate:
+		 * the runnable RT process with the highest rt_priority wins
+		 * (ties broken by cpu_count for RR round-robin; FIFO keeps its
+		 * quantum high so it runs to completion). SCHED_OTHER runs
+		 * only when no RT process is runnable. */
+		FOR_EACH_PROCESS_RUNNING(p) {
+			if(p->policy != SCHED_OTHER) {
+				if(selected->policy == SCHED_OTHER || p->rt_priority > selected->rt_priority ||
+				   (p->rt_priority == selected->rt_priority && p->cpu_count > selected->cpu_count)) {
+					selected = p;
+				}
+			}
+			p = p->next_run;
+		}
+		if(selected->policy != SCHED_OTHER) {
+			/* an RT process is runnable; FIFO never exhausts its
+			 * quantum, RR consumes it (round-robin) */
+			if(selected->policy == SCHED_RR && selected->cpu_count <= 0) {
+				selected->cpu_count = selected->priority;
+			}
+			if(current != selected) {
+				context_switch(selected);
+			}
+			return;
+		}
+
 		FOR_EACH_PROCESS_RUNNING(p) {
 			if(p->cpu_count > count) {
 				count = p->cpu_count;

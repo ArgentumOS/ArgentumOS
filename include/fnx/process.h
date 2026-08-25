@@ -127,6 +127,8 @@ struct proc {
 	int children;			/* number of children */
 	struct tty *ctty;		/* controlling terminal */
 	int state;			/* process state */
+	int policy;			/* SCHED_OTHER (0) / SCHED_FIFO (1) / SCHED_RR (2) */
+	int rt_priority;		/* real-time priority 1..99 */
 	int nice;			/* nice value: -20..19 (0 = default) */
 	int priority;
 	int cpu_count;			/* time of process running */

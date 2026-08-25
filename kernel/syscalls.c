@@ -316,6 +316,13 @@ int sys_exit_group64(int code, long a2, long a3, long a4, long a5, struct sigcon
 }
 
 #ifdef CONFIG_SYSVIPC
+extern int sys_sched_setparam(int, const struct sched_param *);
+extern int sys_sched_getparam(int, struct sched_param *);
+extern int sys_sched_setscheduler(int, int, const struct sched_param *);
+extern int sys_sched_getscheduler(int);
+extern int sys_sched_get_priority_max(int);
+extern int sys_sched_get_priority_min(int);
+extern int sys_sched_rr_get_interval(int, struct timespec *);
 extern int sys_timer_create(int, const void *, int *);
 extern int sys_timer_settime(int, int, const void *, void *);
 extern int sys_timer_gettime(int, void *);
@@ -508,6 +515,13 @@ void *syscall_table64[] = {
 	[138] = sys_fstatfs,		/* fstatfs */
 	[140] = sys_getpriority,	/* getpriority (musl/toybox nice, renice) */
 	[141] = sys_setpriority,	/* setpriority */
+	[142] = sys_sched_setparam,	/* sched_setparam */
+	[143] = sys_sched_getparam,	/* sched_getparam */
+	[144] = sys_sched_setscheduler,	/* sched_setscheduler */
+	[145] = sys_sched_getscheduler,	/* sched_getscheduler */
+	[146] = sys_sched_get_priority_max,	/* sched_get_priority_max */
+	[147] = sys_sched_get_priority_min,	/* sched_get_priority_min */
+	[148] = sys_sched_rr_get_interval,	/* sched_rr_get_interval */
 	[158] = sys_arch_prctl64,	/* arch_prctl */
 	[159] = sys_getrlimit,		/* getrlimit (x86-64 slot) */
 	[160] = sys_setrlimit,		/* setrlimit */
