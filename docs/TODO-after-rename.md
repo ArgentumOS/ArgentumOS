@@ -50,3 +50,28 @@ rapid-burst lines, 5/5 during-boot, full stress 382/382 0 HANG.
 - SysV IPC_STAT/IPC_SET ABI, musl syscall deltas, networking
   (UNIX-domain sockets), uid/gid/time 32→64-bit widening, scheduler
   starvation / wait4 busy-loop / NR_SYSCALLS64 fixes
+
+---
+
+## Next batch (this session)
+
+Five more targets were identified (verified by running the system):
+
+1. Filesystems table (NR_FILESYSTEMS=7, but 8 fs_init() calls: minix,
+   ext2, pipefs, inotifyfs, iso9660, procfs, sockfs, devpts) - devpts
+   fails to register, /proc is unusable ("ls /proc: No such file").
+2. TCP over loopback (SOCK_STREAM on 127.0.0.1) - **DEFERRED to a later
+   session.** ipv4_create() returns -EOPNOTSUPP for SOCK_STREAM; UDP +
+   ICMP + SOCK_RAW on loopback are done, TCP needs a minimal state
+   machine (listen/accept/connect, SYN/SYN-ACK/ACK, sequence numbers)
+   and is tracked here so it is not forgotten.
+3. PTYs - drivers/char/pty.c + pty_init() exist but devpts cannot
+   register (same table-full bug as #1), so there are no /dev/pts
+   nodes and openpty(3) cannot work.
+4. clock_nanosleep(230) + POSIX timers (222-226) - none wired; musl
+   routes nanosleep/timed-waits through clock_nanosleep.
+5. Real-time scheduling classes (sched_setscheduler 144 / getscheduler
+   145 / get_priority_max 146 / get_priority_min 147 / rr_get_interval
+   148) - none wired; completes the setpriority/nice work.
+
+Order of work: 1, 3, 4, 5 (2 deferred). Each is committed as it lands.
