@@ -75,3 +75,17 @@ Five more targets were identified (verified by running the system):
    148) - none wired; completes the setpriority/nice work.
 
 Order of work: 1, 3, 4, 5 (2 deferred). Each is committed as it lands.
+
+## PTY status (this session)
+
+- devpts now REGISTERS + MOUNTS (was blocked by the NR_FILESYSTEMS table
+  full bug - fixed in the /proc commit). /dev/ptmx mknod c 5 2 works,
+  open() allocates the slave, /dev/pts readdir64 lists slave nodes,
+  TIOCGPTN/TIOCSPTLCK ioctls work, pty_read consumes cooked_q (was
+  write_q, which never saw data).
+- OPEN ISSUE: the pty slave's fsop function pointers resolve to the
+  wrong functions at runtime (write_page/zero_write instead of
+  pty_write/pty_read) - a PE-base-relocation/PATCH_PIC interaction in
+  pty.c's specific codegen. A pty_t master->slave write hangs the
+  reader. Needs a dedicated session (the fsop slots in .data.rel.local
+  with R_X86_64_64 relocations are the suspect).
