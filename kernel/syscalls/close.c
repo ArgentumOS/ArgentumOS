@@ -8,7 +8,10 @@
 #include <fnx/syscalls.h>
 #include <fnx/fd.h>
 #include <fnx/locks.h>
+#include <fnx/types.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
+#include <fnx/string.h>
 #include <fnx/stdio.h>
 
 int sys_close(unsigned int ufd)
@@ -30,6 +33,11 @@ int sys_close(unsigned int ufd)
 	i = fd_table[fd].inode;
 	flock_release_inode(i);
 	if(i->fsop && i->fsop->close) {
+		if(fd_table[fd].flags & (O_WRONLY | O_RDWR)) {
+			inotify_queue(i, IN_CLOSE_WRITE, 0, NULL);
+		} else {
+			inotify_queue(i, IN_CLOSE_NOWRITE, 0, NULL);
+		}
 		i->fsop->close(i, &fd_table[fd]);
 		release_fd(fd);
 		iput(i);

@@ -523,12 +523,17 @@ void *syscall_table64[] = {
 	[229] = sys_clock_getres64,	/* clock_getres */
 	[231] = sys_exit_group64,	/* exit_group */
 	[234] = sys_tgkill,		/* tgkill */
+	[253] = sys_inotify_init,	/* inotify_init */
+	[254] = sys_inotify_add_watch,	/* inotify_add_watch */
+	[255] = sys_inotify_rm_watch,	/* inotify_rm_watch */
+	[258] = sys_mkdirat,		/* mkdirat (toybox mkdir -p, musl) */
 	[262] = sys_newfstatat,		/* newfstatat (musl stat/lstat/fstatat) */
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
 	[280] = sys_utimensat,		/* utimensat (musl utime/utimensat -> touch) */
 	[292] = sys_dup3,		/* dup3 (musl dup2/posix_spawn) */
 	[293] = sys_pipe2,		/* pipe2 (musl popen/posix_spawn) */
+	[294] = sys_inotify_init1,	/* inotify_init1 (musl inotify_init) */
 	[302] = sys_prlimit64,		/* prlimit64 (musl getrlimit/setrlimit) */
 };
 #endif /* __x86_64__ */

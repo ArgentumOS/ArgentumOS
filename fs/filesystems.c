@@ -73,6 +73,9 @@ void fs_init(void)
 	if(pipefs_init()) {
 		printk("%s(): unable to register 'pipefs' filesystem.\n", __FUNCTION__);
 	}
+	if(inotifyfs_init()) {
+		printk("%s(): unable to register 'inotifyfs' filesystem.\n", __FUNCTION__);
+	}
 	if(iso9660_init()) {
 		printk("%s(): unable to register 'iso9660' filesystem.\n", __FUNCTION__);
 	}

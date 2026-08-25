@@ -8,6 +8,8 @@
 #include <fnx/fs.h>
 #include <fnx/stat.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
+#include <fnx/string.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -75,6 +77,10 @@ int sys_rmdir(const char *dirname)
 		errno = i->fsop->rmdir(dir, i);
 	} else {
 		errno = -EPERM;
+	}
+	if(!errno) {
+		inotify_queue(dir, IN_DELETE | IN_ISDIR, 0, get_basename(dirname));
+		inotify_queue(i, IN_DELETE_SELF, 0, NULL);
 	}
 	iput(i);
 	iput(dir);

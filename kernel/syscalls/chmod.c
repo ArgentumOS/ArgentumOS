@@ -10,6 +10,7 @@
 #include <fnx/fs.h>
 #include <fnx/stat.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/string.h>
 
 #ifdef __DEBUG__
@@ -50,6 +51,7 @@ int sys_chmod(const char *filename, __mode_t mode)
 	i->i_mode |= mode & ~S_IFMT;
 	i->i_ctime = CURRENT_TIME;
 	i->state |= INODE_DIRTY;
+	inotify_queue(i, IN_ATTRIB, 0, NULL);
 	iput(i);
 	free_name(tmp_name);
 	return 0;

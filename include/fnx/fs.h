@@ -16,6 +16,7 @@
 #include <fnx/fs_minix.h>
 #include <fnx/fs_ext2.h>
 #include <fnx/fs_pipe.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/fs_iso9660.h>
 #include <fnx/fs_proc.h>
 #include <fnx/fs_sock.h>
@@ -93,6 +94,7 @@ struct inode {
 #endif /* CONFIG_FS_MINIX */
 		struct ext2_i_info ext2;
 		struct pipefs_inode pipefs;
+		struct inotifyfs_inode inotify;
 		struct iso9660_inode iso9660;
 		struct procfs_inode procfs;
 #ifdef CONFIG_NET

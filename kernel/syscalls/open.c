@@ -10,6 +10,7 @@
 #include <fnx/types.h>
 #include <fnx/fcntl.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 
@@ -103,6 +104,7 @@ int sys_open(const char *filename, int flags, __mode_t mode)
 					free_name(tmp_name);
 					return errno;
 				}
+				inotify_queue(dir, IN_CREATE, 0, basename);
 			} else {
 				iput(dir);
 				free_name(tmp_name);
@@ -169,6 +171,7 @@ int sys_open(const char *filename, int flags, __mode_t mode)
 		current->fd_flags[ufd] |= FD_CLOEXEC;
 	}
 	if(i->fsop && i->fsop->open) {
+		inotify_queue(i, IN_OPEN, 0, NULL);
 		if((errno = i->fsop->open(i, &fd_table[fd])) < 0) {
 			release_fd(fd);
 			release_user_fd(ufd);

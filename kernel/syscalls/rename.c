@@ -8,6 +8,7 @@
 #include <fnx/fs.h>
 #include <fnx/stat.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/string.h>
 
 #ifdef __DEBUG__
@@ -104,6 +105,10 @@ int sys_rename(const char *oldpath, const char *newpath)
 		errno = dir_new->fsop->rename(i, dir, i_new, dir_new, oldbasename, newbasename);
 	} else {
 		errno = -EPERM;
+	}
+	if(!errno) {
+		inotify_queue(dir, IN_MOVED_FROM, 0, oldbasename);
+		inotify_queue(dir_new, IN_MOVED_TO, 0, newbasename);
 	}
 
 end:

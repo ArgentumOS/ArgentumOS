@@ -10,6 +10,7 @@
 #include <fnx/fs.h>
 #include <fnx/stat.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/string.h>
 
 #ifdef __DEBUG__
@@ -62,6 +63,7 @@ int sys_chown(const char *filename, __uid_t owner, __gid_t group)
 	i->i_uid = owner;
 	i->i_gid = group;
 	i->state |= INODE_DIRTY;
+	inotify_queue(i, IN_ATTRIB, 0, NULL);
 	iput(i);
 	free_name(tmp_name);
 	return 0;

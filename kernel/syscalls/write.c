@@ -8,6 +8,8 @@
 #include <fnx/fs.h>
 #include <fnx/fcntl.h>
 #include <fnx/errno.h>
+#include <fnx/string.h>
+#include <fnx/fs_inotify.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -43,6 +45,9 @@ int sys_write(unsigned int ufd, const char *buf, int count)
 #ifdef __DEBUG__
 		printk("%d\n", errno);
 #endif /*__DEBUG__ */
+		if(errno >= 0) {
+			inotify_queue(i, IN_MODIFY, 0, NULL);
+		}
 		return errno;
 	}
 	return -EINVAL;

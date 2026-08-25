@@ -9,6 +9,7 @@
 #include <fnx/syscalls.h>
 #include <fnx/stat.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/string.h>
 
 #ifdef __DEBUG__
@@ -70,6 +71,10 @@ int sys_unlink(const char *filename)
 		errno = dir->fsop->unlink(dir, i, basename);
 	} else {
 		errno = -EPERM;
+	}
+	if(!errno) {
+		inotify_queue(dir, IN_DELETE, 0, basename);
+		inotify_queue(i, IN_DELETE_SELF, 0, NULL);
 	}
 	iput(i);
 	iput(dir);

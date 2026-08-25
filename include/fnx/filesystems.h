@@ -11,7 +11,7 @@
 #include <fnx/types.h>
 #include <fnx/limits.h>
 
-#define NR_FILESYSTEMS		6	/* supported filesystems */
+#define NR_FILESYSTEMS		7	/* supported filesystems */
 
 /* special device numbers for nodev filesystems */
 enum {

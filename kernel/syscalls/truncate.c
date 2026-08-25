@@ -9,6 +9,7 @@
 #include <fnx/fs.h>
 #include <fnx/stat.h>
 #include <fnx/errno.h>
+#include <fnx/fs_inotify.h>
 #include <fnx/string.h>
 
 #ifdef __DEBUG__
@@ -56,6 +57,9 @@ int sys_truncate(const char *path, __off_t length)
 		inode_lock(i);
 		errno = i->fsop->truncate(i, length);
 		inode_unlock(i);
+		if(!errno) {
+			inotify_queue(i, IN_MODIFY, 0, NULL);
+		}
 		iput(i);
 		return errno;
 	}
