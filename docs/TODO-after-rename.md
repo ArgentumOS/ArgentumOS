@@ -115,3 +115,19 @@ tty_write, which outputs to write_q. The master's pty_read drains
 cooked_q, so slave->master writes sat in write_q forever and the master
 read hung. Fix: point the slave fsop's write at pty_write (routes to
 read_q -> do_cook -> cooked_q). pty_t round-trips both directions.
+
+## DNS-resolver deadlock FIXED (396c62e) - target #3 DONE
+
+A backgrounded gethostbyname() of a name NOT in /etc/hosts (so the
+resolver hits the network) froze the whole system. Two root causes:
+1. sys_poll() clobbered its loop counter: 'if((n = check_user_area(...)))'
+   reset n=0 on success, so with nfds>=2 the fd loop spun forever
+   re-processing fds[0]. musl's resolver polls the UDP socket + a second
+   fd, so the 2-fd poll wedged the kernel. Fixed with a separate err var.
+2. IDLE never returns to user mode, so the CPL3 IRQ tail can't preempt on
+   its behalf; when every process sleeps, the timer BH's wakeups set
+   need_resched and the woken process starved forever. IDLE's hlt loop
+   now consumes need_resched and calls do_sched() in normal context.
+Verified: backgrounded dnsbg + shell stays responsive (ALIVE checks
+print), dnsbg completes (h_errno=2, errno=111), full stress 382/382
+0 HANG with the resolver running concurrently.
