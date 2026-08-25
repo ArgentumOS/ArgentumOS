@@ -163,7 +163,7 @@ int socket(int domain, int type, int protocol)
 	printk("(pid %d) socket(%d, %d, %d)\n", current->pid, domain, type, protocol);
 #endif /*__DEBUG__ */
 
-	if(type != SOCK_STREAM && type != SOCK_DGRAM) {
+	if(type != SOCK_STREAM && type != SOCK_DGRAM && type != SOCK_RAW) {
 		return -EINVAL;
 	}
 

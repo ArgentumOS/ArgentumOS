@@ -17,6 +17,12 @@ struct ipv4_info {
 	int count;
 	struct socket *socket;
 	struct ipv4_info *next;
+	/* FNX: loopback support */
+	int type;			/* SOCK_DGRAM / SOCK_RAW */
+	int protocol;			/* IPPROTO_UDP / IPPROTO_ICMP */
+	__u16 local_port;		/* bound port (host order) */
+	__u32 local_addr;		/* bound address (host order) */
+	struct packet *packet_queue;	/* received datagrams */
 };
 
 extern struct ipv4_info *ipv4_socket_head;

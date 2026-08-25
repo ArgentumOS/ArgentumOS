@@ -25,6 +25,24 @@
 /* types */
 #define SOCK_STREAM	1
 #define SOCK_DGRAM	2
+#define SOCK_RAW	3
+
+/* IP protocols */
+#define IPPROTO_IP	0
+#define IPPROTO_ICMP	1
+#define IPPROTO_TCP	6
+#define IPPROTO_UDP	17
+#define IPPROTO_RAW	255
+
+/* loopback address (network byte order: 127.0.0.1) */
+#define INADDR_LOOPBACK	((__u32)0x7f000001)
+#define INADDR_ANY	0
+
+/* byte-order helpers (x86 is little-endian) */
+static __inline__ __u16 htons(__u16 x) { return ((x & 0xff) << 8) | ((x >> 8) & 0xff); }
+static __inline__ __u16 ntohs(__u16 x) { return htons(x); }
+static __inline__ __u32 htonl(__u32 x) { return ((x & 0xff) << 24) | ((x & 0xff00) << 8) | ((x >> 8) & 0xff00) | ((x >> 24) & 0xff); }
+static __inline__ __u32 ntohl(__u32 x) { return htonl(x); }
 
 /* maximum queue length specifiable by listen() */
 #define SOMAXCONN	128
@@ -55,6 +73,14 @@ struct sockaddr {
 struct sockaddr_un {
         sa_family_t sun_family;		/* AF_UNIX */
         char sun_path[108];		/* socket filename */
+};
+
+/* IPv4 socket address structure (user ABI, 16 bytes) */
+struct sockaddr_in {
+	sa_family_t sin_family;		/* AF_INET */
+	__u16 sin_port;			/* port in network byte order */
+	__u32 sin_addr;			/* address in network byte order */
+	char sin_zero[8];
 };
 
 #endif /* _FNX_SOCKET_H */
