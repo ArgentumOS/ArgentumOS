@@ -211,6 +211,11 @@ int pty_close(struct tty *tty)
 	return 0;
 }
 
+/* FNX: both ends of a pty pair share the slave tty as f->private_data
+ * (set in tty_open's PTMX_DEV block), so ALL data - master writes AND
+ * slave writes - lands in that tty's read_q and is cooked into cooked_q
+ * by do_cook. Reading must therefore consume cooked_q (like tty_read),
+ * not write_q, or a read on either end never sees the other's data. */
 int pty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 {
 	struct tty *tty;
@@ -219,10 +224,11 @@ int pty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 
 	tty = f->private_data;
 
+
 	n = 0;
 	while(n < count) {
-		if(tty->write_q.count > 0) {
-			ch = charq_getchar(&tty->write_q);
+		if(tty->cooked_q.count > 0) {
+			ch = charq_getchar(&tty->cooked_q);
 			buffer[n++] = ch;
 			continue;
 		}
@@ -238,7 +244,7 @@ int pty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 			break;
 		}
 	}
-	wakeup(&tty->write_q);
+	wakeup(&tty->cooked_q);
 	wakeup(&do_select);
 	return n;
 }
@@ -262,6 +268,7 @@ int pty_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 	}
 	tty->input(tty);
 	wakeup(&do_select);
+	wakeup(&pty_read);
 	return n;
 }
 

@@ -15,6 +15,8 @@
 #include <fnx/string.h>
 
 #ifdef CONFIG_UNIX98_PTYS
+int devpts_readdir64(struct inode *, struct fd *, struct dirent64 *, __size_t);
+
 struct fs_operations devpts_dir_fsop = {
 	0,
 	0,
@@ -26,7 +28,7 @@ struct fs_operations devpts_dir_fsop = {
 	NULL,			/* ioctl */
 	NULL,			/* llseek */
 	devpts_readdir,
-	NULL,			/* readdir64 */
+	devpts_readdir64,
 	NULL,			/* mmap */
 	NULL,			/* select */
 
@@ -114,6 +116,61 @@ int devpts_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_
 			memcpy_b(dirent->d_name, name, name_len);
 			dirent->d_name[name_len] = 0;
 			dirent = (struct dirent *)((char *)dirent + rec_len);
+			total_read += rec_len;
+			count -= rec_len;
+		} else {
+			count = 0;
+		}
+		offset++;
+	}
+	f->offset = offset;
+	return total_read;
+}
+/* FNX: getdents64 view of /dev/pts (the 32-bit devpts_readdir above is
+ * only used by the i386 ABI; native x86-64 userspace needs dirent64). */
+int devpts_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __size_t count)
+{
+	unsigned int offset;
+	int rec_len, name_len, type;
+	__size_t total_read;
+	int base_dirent_len;
+	char *name, numstr[10 + 1];
+
+	base_dirent_len = sizeof(dirent->d_ino) + sizeof(dirent->d_off) +
+		sizeof(dirent->d_reclen) + sizeof(dirent->d_type);
+
+	offset = f->offset;
+	total_read = 0;
+	memset_b(numstr, 0, sizeof(numstr));
+
+	while(offset < NR_PTYS && count > 0) {
+		if(offset == 0) {
+			name = ".";
+			dirent->d_ino = DEVPTS_ROOT_INO;
+		} else if(offset == 1) {
+			name = "..";
+			dirent->d_ino = DEVPTS_ROOT_INO;
+		} else {
+			if(devpts_list[offset - 2].count) {
+				dirent->d_ino = devpts_list[offset - 2].inode->inode;
+				sprintk(numstr, "%d", offset - 2);
+				name = numstr;
+			} else {
+				offset++;
+				continue;
+			}
+		}
+		name_len = strlen(name);
+		rec_len = (base_dirent_len + (name_len + 1)) + 3;
+		rec_len &= ~3;	/* round up */
+		if(total_read + rec_len < count) {
+			dirent->d_off = offset;
+			dirent->d_reclen = rec_len;
+			type = (offset < 2) ? DT_DIR : DT_CHR;
+			dirent->d_type = type;
+			memcpy_b(dirent->d_name, name, name_len);
+			dirent->d_name[name_len] = 0;
+			dirent = (struct dirent64 *)((char *)dirent + rec_len);
 			total_read += rec_len;
 			count -= rec_len;
 		} else {

@@ -385,6 +385,7 @@ void do_cook(struct tty *tty)
 	unsigned char ch;
 	struct cblock *cb;
 
+
 	while(tty->read_q.count > 0) {
 		ch = charq_getchar(&tty->read_q);
 
