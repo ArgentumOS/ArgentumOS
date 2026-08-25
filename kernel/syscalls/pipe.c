@@ -14,6 +14,20 @@
 
 int sys_pipe(int pipefd[2])
 {
+	return do_pipe(pipefd, 0);
+}
+
+/* pipe2(293): pipe with flags (O_CLOEXEC | O_NONBLOCK) */
+int sys_pipe2(int pipefd[2], int flags)
+{
+	if(flags & ~(O_CLOEXEC | O_NONBLOCK)) {
+		return -EINVAL;
+	}
+	return do_pipe(pipefd, flags);
+}
+
+int do_pipe(int pipefd[2], int flags)
+{
 	int rfd, rufd;
 	int wfd, wufd;
 	struct filesystems *fs;
@@ -61,8 +75,12 @@ int sys_pipe(int pipefd[2])
 	pipefd[1] = wufd;
 	current->fd[rufd] = rfd;
 	current->fd[wufd] = wfd;
-	fd_table[rfd].flags = O_RDONLY;
-	fd_table[wfd].flags = O_WRONLY;
+	fd_table[rfd].flags = O_RDONLY | (flags & O_NONBLOCK);
+	fd_table[wfd].flags = O_WRONLY | (flags & O_NONBLOCK);
+	if(flags & O_CLOEXEC) {
+		current->fd_flags[rufd] |= FD_CLOEXEC;
+		current->fd_flags[wufd] |= FD_CLOEXEC;
+	}
 
 #ifdef __DEBUG__
 	printk(" -> inode=%d, rufd=%d wufd=%d (rfd=%d wfd=%d)\n", i->inode, rufd, wufd, rfd, wfd);

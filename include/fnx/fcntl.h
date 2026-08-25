@@ -27,6 +27,7 @@
 #define O_NONBLOCK	  04000
 #define O_NDELAY	O_NONBLOCK
 #define O_SYNC		 010000
+#define O_CLOEXEC	02000000 /* close-on-exec (x86-64 value, octal) */
 
 #define F_DUPFD		0	/* duplicate file descriptor */
 #define F_GETFD		1	/* get file descriptor flags */

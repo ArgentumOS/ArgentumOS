@@ -525,6 +525,8 @@ void *syscall_table64[] = {
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
 	[280] = sys_utimensat,		/* utimensat (musl utime/utimensat -> touch) */
+	[292] = sys_dup3,		/* dup3 (musl dup2/posix_spawn) */
+	[293] = sys_pipe2,		/* pipe2 (musl popen/posix_spawn) */
 	[302] = sys_prlimit64,		/* prlimit64 (musl getrlimit/setrlimit) */
 };
 #endif /* __x86_64__ */

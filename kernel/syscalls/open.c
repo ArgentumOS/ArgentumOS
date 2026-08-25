@@ -163,8 +163,11 @@ int sys_open(const char *filename, int flags, __mode_t mode)
 	printk("\t(ufd = %d)\n", ufd);
 #endif /*__DEBUG__ */
 
-	fd_table[fd].flags = flags;
+	fd_table[fd].flags = flags & ~O_CLOEXEC;
 	current->fd[ufd] = fd;
+	if(flags & O_CLOEXEC) {
+		current->fd_flags[ufd] |= FD_CLOEXEC;
+	}
 	if(i->fsop && i->fsop->open) {
 		if((errno = i->fsop->open(i, &fd_table[fd])) < 0) {
 			release_fd(fd);

@@ -59,15 +59,22 @@ int sys_fork(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext
 #define CLONE_CHILD_CLEARTID	0x00200000
 #define CLONE_SETTID		0x00100000
 
-int sys_clone(int arg1, int arg2, int arg3, int arg4, int arg5, struct sigcontext *sc)
+/* NOTE: arg1/arg2 are long, not int - the dispatcher passes 64-bit
+ * registers (the child_stack is a user address like 0x7ffffffffxxx); an
+ * int prototype truncates it and sign-extends to a kernel address. */
+int sys_clone(long arg1, long arg2, long arg3, long arg4, long arg5, struct sigcontext *sc)
 {
 	unsigned int flags = (unsigned int)arg1;
 	addr_t child_stack = (addr_t)arg2;
 	addr_t fn = (addr_t)sc->r9;
 
-	/* thread-creation flags require shared address space (CLONE_VM),
-	 * which this kernel does not implement */
-	if(flags & (CLONE_VM | CLONE_THREAD | CLONE_SIGHAND | CLONE_SETTLS)) {
+	/* CLONE_VM (with or without CLONE_VFORK) is the vfork-style
+	 * optimization used by musl's posix_spawn: the child execs
+	 * immediately, so a COW fork is a correct (and safe) realization -
+	 * the child's copy of the args lives in its own stack. True
+	 * thread-creation flags (shared address space + signal handling)
+	 * are still rejected: pthread_create fails with EAGAIN. */
+	if(flags & (CLONE_THREAD | CLONE_SIGHAND | CLONE_SETTLS)) {
 		return -EINVAL;
 	}
 	return do_fork_like(sc, flags, child_stack, fn);
