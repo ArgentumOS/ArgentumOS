@@ -13,6 +13,11 @@
 #include <fnx/sched.h>
 #include <fnx/sleep.h>
 #include <fnx/errno.h>
+#include <fnx/kernel.h>
+
+#ifndef TIMER_ABSTIME
+#define TIMER_ABSTIME	1
+#endif
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -57,6 +62,67 @@ int sys_nanosleep(const struct timespec *req, struct timespec *rem)
 		current->timeout = timeout;
 		sleep(&sys_nanosleep, PROC_INTERRUPTIBLE);
 		RESTORE_FLAGS(flags);
+		if(current->timeout) {
+			if(rem) {
+				if((errno = check_user_area(VERIFY_WRITE, rem, sizeof(struct timespec)))) {
+					return errno;
+				}
+				rem->tv_sec = current->timeout / HZ;
+				rem->tv_nsec = (current->timeout % HZ) * 1000000000L / HZ;
+			}
+			return -EINTR;
+		}
+	}
+	return 0;
+}
+
+/* clock_nanosleep(230): sleep with a clock id + TIMER_ABSTIME support */
+int sys_clock_nanosleep(int clock_id, int flags, const struct timespec *req, struct timespec *rem)
+{
+	struct timespec r, abst;
+	int errno, nsec;
+	unsigned int timeout, uflags;
+
+	if((errno = check_user_area(VERIFY_READ, req, sizeof(struct timespec)))) {
+		return errno;
+	}
+	if(req->tv_sec < 0 || req->tv_nsec >= 1000000000L || req->tv_nsec < 0) {
+		return -EINVAL;
+	}
+	if(flags & ~TIMER_ABSTIME) {
+		return -EINVAL;
+	}
+
+	if(flags & TIMER_ABSTIME) {
+		/* relative = abs - now (only CLOCK_REALTIME/MONOTONIC) */
+		unsigned int now;
+
+		now = (clock_id == 1) ? CURRENT_TICKS : CURRENT_TIME * HZ;
+		if(clock_id == 0) {
+			now = CURRENT_TIME * HZ + (CURRENT_TICKS % HZ);
+		}
+		abst = *req;
+		{
+			unsigned int ns = abst.tv_nsec;
+			if(ns < 10000000L) {
+				ns *= 10;
+			}
+			timeout = (abst.tv_sec * HZ) + (ns * HZ / 1000000000L);
+		}
+		timeout = (timeout > now) ? (timeout - now) : 0;
+	} else {
+		nsec = req->tv_nsec;
+		if(nsec < 10000000L) {
+			nsec *= 10;
+		}
+		timeout = (req->tv_sec * HZ) + (nsec * HZ / 1000000000L);
+	}
+
+	if(timeout) {
+		SAVE_FLAGS(uflags); CLI();
+		current->timeout = timeout;
+		sleep(&sys_nanosleep, PROC_INTERRUPTIBLE);
+		RESTORE_FLAGS(uflags);
 		if(current->timeout) {
 			if(rem) {
 				if((errno = check_user_area(VERIFY_WRITE, rem, sizeof(struct timespec)))) {

@@ -316,6 +316,12 @@ int sys_exit_group64(int code, long a2, long a3, long a4, long a5, struct sigcon
 }
 
 #ifdef CONFIG_SYSVIPC
+extern int sys_timer_create(int, const void *, int *);
+extern int sys_timer_settime(int, int, const void *, void *);
+extern int sys_timer_gettime(int, void *);
+extern int sys_timer_getoverrun(int);
+extern int sys_timer_delete(int);
+extern int sys_clock_nanosleep(int, int, const struct timespec *, struct timespec *);
 extern int sys_semget(key_t, int);
 extern int sys_semop(int, struct sembuf *, int);
 extern int sys_semctl(int, int, int, void *);
@@ -520,9 +526,15 @@ void *syscall_table64[] = {
 	[202] = sys_futex,		/* futex (musl mutex/cond/join) */
 	[217] = sys_getdents64,		/* getdents64 */
 	[218] = sys_set_tid_address,	/* set_tid_address */
+	[222] = sys_timer_create,	/* timer_create */
+	[223] = sys_timer_settime,	/* timer_settime */
+	[224] = sys_timer_gettime,	/* timer_gettime */
+	[225] = sys_timer_getoverrun,	/* timer_getoverrun */
+	[226] = sys_timer_delete,	/* timer_delete */
 	[227] = sys_clock_settime64,	/* clock_settime */
 	[228] = sys_clock_gettime64,	/* clock_gettime */
 	[229] = sys_clock_getres64,	/* clock_getres */
+	[230] = sys_clock_nanosleep,	/* clock_nanosleep */
 	[231] = sys_exit_group64,	/* exit_group */
 	[234] = sys_tgkill,		/* tgkill */
 	[253] = sys_inotify_init,	/* inotify_init */

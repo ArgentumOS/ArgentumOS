@@ -9,6 +9,7 @@
 #define _FNX_PROCESS_H
 
 #include <fnx/types.h>
+#include <fnx/posix_timer.h>
 
 struct vma {
 	addr_t start;
@@ -168,6 +169,7 @@ struct proc {
 	unsigned int it_virt_interval, it_virt_value;
 	unsigned int it_prof_interval, it_prof_value;
 	unsigned int timeout;
+	struct posix_timer *ptimers;	/* POSIX timers (timer_create) */
 	struct rlimit rlim[RLIM_NLIMITS];
 	unsigned int rss;
 	__mode_t umask;

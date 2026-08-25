@@ -12,6 +12,7 @@
 #include <fnx/pit.h>
 #include <fnx/timer.h>
 #include <fnx/time.h>
+#include <fnx/posix_timer.h>
 #include <fnx/irq.h>
 #include <fnx/sched.h>
 #include <fnx/pic.h>
@@ -314,6 +315,9 @@ void irq_timer_bh(struct sigcontext *sc)
 				p->it_real_value = p->it_real_interval;
 				send_sig(p, SIGALRM);
 			}
+		}
+		if(p->ptimers) {
+			posix_timer_tick(p);
 		}
 		p = p->next;
 	}
