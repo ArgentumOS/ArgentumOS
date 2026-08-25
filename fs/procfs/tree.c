@@ -26,6 +26,7 @@
  * the PROC_ARRAY_ENTRIES value defined in fs_proc.h.
  */
 struct procfs_dir_entry procfs_array[][PROC_ARRAY_ENTRIES + 1] = {
+	/* (defined below) */
    {	/* [lev 0] / */
 	{ 1,     DIR,    2, 0, 1,  ".",   NULL },
 	{ 2,     DIR,    2, 0, 2,  "..",  NULL },
@@ -123,6 +124,17 @@ struct procfs_dir_entry procfs_array[][PROC_ARRAY_ENTRIES + 1] = {
 	{ 0, 0, 0, 0, 0, NULL, NULL }
    }
 };
+
+/* FNX: &procfs_array[lev]. A real function (not an inline array index)
+ * so the extern-array base is loaded through the GOT (relocated by the
+ * PE loader); gcc's `add sym(%rip),%reg` for direct PC32 indexing is
+ * not base-relocated reliably in this dual-mapping kernel. */
+struct procfs_dir_entry *procfs_array_row(int lev)
+{
+	struct procfs_dir_entry (*a)[PROC_ARRAY_ENTRIES + 1] = procfs_array;
+
+	return a[lev];
+}
 
 struct procfs_dir_entry *get_procfs_by_inode(struct inode *i)
 {

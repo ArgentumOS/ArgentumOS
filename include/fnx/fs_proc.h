@@ -11,6 +11,7 @@
 #include <fnx/types.h>
 
 #define PROC_ROOT_INO		1	/* root inode */
+#define PROC_SELF_INO		21	/* /proc/self symlink inode */
 #define PROC_KMSG_INO		13	/* /proc/kmsg inode */
 #define PROC_SUPER_MAGIC	0x9FA0	/* same as in Linux */
 
@@ -51,6 +52,7 @@ struct procfs_dir_entry {
 };
 
 extern struct procfs_dir_entry procfs_array[][PROC_ARRAY_ENTRIES + 1];
+struct procfs_dir_entry *procfs_array_row(int);
 extern struct fs_operations procfs_kmsg_fsop;
 
 int data_proc_buddyinfo(char *, __pid_t);

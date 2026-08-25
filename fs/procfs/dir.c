@@ -16,6 +16,8 @@
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 
+int procfs_readdir64(struct inode *, struct fd *, struct dirent64 *, __size_t);
+
 struct fs_operations procfs_dir_fsop = {
 	0,
 	0,
@@ -27,7 +29,7 @@ struct fs_operations procfs_dir_fsop = {
 	NULL,			/* ioctl */
 	NULL,			/* llseek */
 	procfs_readdir,
-	NULL,			/* readdir64 */
+	procfs_readdir64,
 	NULL,			/* mmap */
 	NULL,			/* select */
 
@@ -174,7 +176,7 @@ static int dir_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 	lev = i->u.procfs.i_lev;
 
 	/* calculate the size of the level without the last entry (NULL) */
-	bytes = sizeof(procfs_array[lev]) - sizeof(struct procfs_dir_entry);
+	bytes = sizeof(procfs_array[0]) - sizeof(struct procfs_dir_entry);
 
 	if((len + bytes) > (count - 1)) {
 		printk("WARNING: %s(): len (%d) > count (%d).\n", __FUNCTION__, len, count);
@@ -182,7 +184,7 @@ static int dir_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 		kfree((addr_t)buf);
 		return 0;
 	}
-	memcpy_b(buf + len, (char *)&procfs_array[lev], bytes);
+	memcpy_b(buf + len, (char *)procfs_array_row(lev), bytes);
 	len += bytes;
 	total_read = f->offset = len;
 	memcpy_b(buffer, buf, len);
@@ -249,6 +251,94 @@ int procfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_
 			memcpy_b(dirent->d_name, d->name, d->name_len);
 			dirent->d_name[d->name_len] = 0;
 			dirent = (struct dirent *)((char *)dirent + dirent_len);
+			dirent_offset += dirent_len;
+		} else {
+			break;
+		}
+		if((d->inode & 0xF0000000) == PROC_FD_INO) {
+			kfree((addr_t)d->name);
+		}
+	}
+	f->offset = boffset;
+	kfree((addr_t)buffer);
+	return dirent_offset;
+}
+
+/* procfs_readdir64: getdents64() view of a procfs directory (the i386
+ * procfs_readdir above only matches the 32-bit struct dirent, which the
+ * native x86-64 userspace never uses). */
+int procfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __size_t count)
+{
+	unsigned int offset, boffset, dirent_offset, doffset;
+	int dirent_len;
+	__size_t total_read;
+	struct procfs_dir_entry *d;
+	int base_dirent_len;
+	char *buffer;
+	int type;
+
+	if(!(buffer = (void *)kmalloc(PAGE_SIZE))) {
+		return -ENOMEM;
+	}
+
+	base_dirent_len = sizeof(dirent->d_ino) + sizeof(dirent->d_off) +
+		sizeof(dirent->d_reclen) + sizeof(dirent->d_type);
+
+	offset = f->offset;
+	boffset = dirent_offset = doffset = 0;
+
+	boffset = offset & (PAGE_SIZE - 1);	/* mod PAGE_SIZE */
+
+	total_read = dir_read(i, f, buffer, PAGE_SIZE);
+	if((count = MIN(total_read, count)) == 0) {
+		kfree((addr_t)buffer);
+		return dirent_offset;
+	}
+
+	while(boffset < f->offset) {
+		d = (struct procfs_dir_entry *)(buffer + boffset);
+		if(!d->inode) {
+			break;
+		}
+		dirent_len = (base_dirent_len + (d->name_len + 1)) + 3;
+		dirent_len &= ~3;	/* round up */
+		if((doffset + dirent_len) <= count) {
+			boffset += sizeof(struct procfs_dir_entry);
+			offset += sizeof(struct procfs_dir_entry);
+			doffset += dirent_len;
+			dirent->d_ino = d->inode;
+			dirent->d_off = offset;
+			dirent->d_reclen = dirent_len;
+			switch(d->mode & S_IFMT) {
+				case S_IFDIR:
+					type = DT_DIR;
+					break;
+				case S_IFREG:
+					type = DT_REG;
+					break;
+				case S_IFLNK:
+					type = DT_LNK;
+					break;
+				case S_IFCHR:
+					type = DT_CHR;
+					break;
+				case S_IFBLK:
+					type = DT_BLK;
+					break;
+				case S_IFIFO:
+					type = DT_FIFO;
+					break;
+				case S_IFSOCK:
+					type = DT_SOCK;
+					break;
+				default:
+					type = DT_UNKNOWN;
+					break;
+			}
+			dirent->d_type = type;
+			memcpy_b(dirent->d_name, d->name, d->name_len);
+			dirent->d_name[d->name_len] = 0;
+			dirent = (struct dirent64 *)((char *)dirent + dirent_len);
 			dirent_offset += dirent_len;
 		} else {
 			break;

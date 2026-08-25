@@ -122,6 +122,9 @@ int procfs_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
 			iput(i);
 			return -ENOENT;
 		}
+	} else if(i->inode == PROC_SELF_INO) {
+		/* /proc/self - the symlink's target is the calling process */
+		p = current;
 	}
 
 	if((i->inode & 0xF0000000) == PROC_FD_INO) {

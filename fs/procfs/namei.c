@@ -70,7 +70,7 @@ int procfs_lookup(const char *name, struct inode *dir, struct inode **i_res)
 		}
 	}
 
-	pdirent = procfs_array[lev];
+	pdirent = procfs_array_row(lev);
 	while(pdirent->inode && !inode) {
 		if(len == pdirent->name_len) {
 			if(!(strcmp(pdirent->name, name))) {

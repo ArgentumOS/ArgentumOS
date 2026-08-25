@@ -54,7 +54,11 @@ void do_exit(int exit_code)
 			}
 		}
 		current->exit_code = exit_code;
+		/* FNX: CLONE_THREAD threads are auto-reaped (Linux semantics):
+		 * no zombie, no SIGCHLD to the creating thread. Release the
+		 * slot now; the scheduler switches away and never returns. */
 		not_runnable(current, PROC_ZOMBIE);
+		release_proc(current);
 		do_sched();
 		return;	/* never reached */
 	}
