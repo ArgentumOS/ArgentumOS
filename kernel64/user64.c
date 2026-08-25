@@ -39,7 +39,7 @@
 extern void *syscall_table[];
 #ifdef __x86_64__
 extern void *syscall_table64[];
-#define NR_SYSCALLS64	281	/* x86_64 table: highest implemented nr + 1 */
+#define NR_SYSCALLS64	303	/* x86_64 table: highest implemented nr + 1 */
 #endif /* __x86_64__ */
 extern void init_trampoline(void);
 extern int map_user_page64(unsigned long, unsigned long, unsigned long);

@@ -500,6 +500,7 @@ void *syscall_table64[] = {
 	[137] = sys_statfs,		/* statfs */
 	[138] = sys_fstatfs,		/* fstatfs */
 	[158] = sys_arch_prctl64,	/* arch_prctl */
+	[159] = sys_getrlimit,		/* getrlimit (x86-64 slot) */
 	[160] = sys_setrlimit,		/* setrlimit */
 	[161] = sys_chroot,		/* chroot */
 	[162] = sys_sync,		/* sync */
@@ -524,5 +525,6 @@ void *syscall_table64[] = {
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
 	[280] = sys_utimensat,		/* utimensat (musl utime/utimensat -> touch) */
+	[302] = sys_prlimit64,		/* prlimit64 (musl getrlimit/setrlimit) */
 };
 #endif /* __x86_64__ */

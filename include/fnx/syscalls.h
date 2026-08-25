@@ -91,6 +91,7 @@ int sys_rt_sigpending(void *, int);
 int sys_sethostname(const char *, int);
 int sys_setrlimit(int, const struct rlimit *);
 int sys_getrlimit(int, struct rlimit *);
+int sys_prlimit64(int, int, const struct rlimit64 *, struct rlimit64 *);
 int sys_getrusage(int, struct rusage *);
 int sys_gettimeofday(struct timeval *, struct timezone *);
 int sys_settimeofday(const struct timeval *, const struct timezone *);

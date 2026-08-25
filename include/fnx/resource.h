@@ -78,4 +78,10 @@ struct rlimit {
 	int rlim_max;			/* the maximum (hard) limit */
 };
 
+/* LP64 ABI used by prlimit64(302) and musl's getrlimit/setrlimit */
+struct rlimit64 {
+	unsigned long long rlim_cur;	/* the current (soft) limit */
+	unsigned long long rlim_max;	/* the maximum (hard) limit */
+};
+
 #endif /* _FNX_RESOURCE_H */
