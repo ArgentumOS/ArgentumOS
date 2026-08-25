@@ -71,7 +71,8 @@ static struct fs_operations pty_slave_driver_fsop = {
 	tty_open,
 	tty_close,
 	tty_read,
-	tty_write,
+	pty_write,	/* slave writes must land in read_q/cooked_q, not
+			 * write_q - the master's pty_read drains cooked_q */
 	tty_ioctl,
 	tty_llseek,
 	NULL,			/* readdir */
@@ -142,6 +143,7 @@ int pty_open(struct tty *tty)
 	struct filesystems *fs;
 	struct inode *i;
 	int n, minor;
+
 
 	if(tty->flags & TTY_PTY_LOCK) {
 		return -EIO;
@@ -256,6 +258,7 @@ int pty_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 	int n;
 
 	tty = f->private_data;
+
 
 	n = 0;
 	while(n < count) {
