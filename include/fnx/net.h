@@ -48,6 +48,7 @@ struct socket {
 	union {
 		struct unix_info unix_info;
 		struct ipv4_info ipv4_info;
+		struct packet_info packet_info;
 	} u;
 };
 

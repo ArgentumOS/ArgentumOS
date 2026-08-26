@@ -117,6 +117,10 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
 	cp $(DASH64_BIN) $(ROOTFS64)/bin/sh
 	cp userland/test_toybox.sh $(ROOTFS64)/test_toybox.sh
+	# DHCP event script for toybox's dhcp client (default location)
+	@mkdir -p $(ROOTFS64)/usr/share/dhcp
+	@cp userland/dhcp_script.sh $(ROOTFS64)/usr/share/dhcp/default.script
+	@chmod +x $(ROOTFS64)/usr/share/dhcp/default.script
 	# device nodes: mkext2.py converts each placeholder file under dev/ into
 	# a char device inode using the DEVICES table (see tools/mkinitrd.py).
 	@touch $(ROOTFS64)/dev/console $(ROOTFS64)/dev/ttyS0 $(ROOTFS64)/dev/null $(ROOTFS64)/dev/zero \

@@ -44,7 +44,7 @@ int ipv4_sendto(struct socket *, struct fd *, const char *, __size_t, int, const
 int ipv4_recvfrom(struct socket *, struct fd *, char *, __size_t, int, struct sockaddr *, int *);
 int ipv4_read(struct socket *, struct fd *, char *, __size_t);
 int ipv4_write(struct socket *, struct fd *, const char *, __size_t);
-int ipv4_ioctl(struct socket *, struct fd *, int, unsigned int);
+int ipv4_ioctl(struct socket *, struct fd *, int, addr_t);
 int ipv4_select(struct socket *, int);
 int ipv4_shutdown(struct socket *, int);
 int ipv4_setsockopt(struct socket *, int, int, const void *, unsigned int);

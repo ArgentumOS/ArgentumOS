@@ -582,7 +582,7 @@ int ipv4_write(struct socket *s, struct fd *f, const char *buffer, __size_t coun
 	return -ENOTCONN;
 }
 
-int ipv4_ioctl(struct socket *s, struct fd *f, int cmd, unsigned int arg)
+int ipv4_ioctl(struct socket *s, struct fd *f, int cmd, addr_t arg)
 {
 	return dev_ioctl(cmd, (void *)arg);
 }

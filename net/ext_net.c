@@ -502,4 +502,21 @@ int ext_net_present(void)
 	return (ext_fd >= 0) ? 1 : 0;
 }
 
+/* exported accessors for dev_ioctl (interface ioctls) and the AF_PACKET
+ * socket domain (which needs our MAC as the Ethernet source) */
+unsigned int ext_net_get_ip(void)
+{
+	return ext_ip;	/* network byte order */
+}
+
+void ext_net_set_ip(unsigned int ip)
+{
+	ext_ip = ip;	/* network byte order */
+}
+
+void ext_net_get_mac(unsigned char *mac)
+{
+	memcpy_b(mac, ext_mac, 6);
+}
+
 #endif /* CONFIG_NET */

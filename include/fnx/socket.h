@@ -16,11 +16,13 @@
 #define AF_UNIX		1		/* UNIX domain socket */
 #define AF_LOCAL	AF_UNIX		/* POSIX name for AF_UNIX */
 #define AF_INET		2		/* IPv4 Internet domain socket */
+#define AF_PACKET	17		/* packet (raw Ethernet) domain */
 
 /* protocol families */
 #define PF_UNIX		AF_UNIX
 #define PF_LOCAL	AF_LOCAL
 #define PF_INET		AF_INET
+#define PF_PACKET	AF_PACKET
 
 /* types */
 #define SOCK_STREAM	1
@@ -83,6 +85,25 @@ struct sockaddr_in {
 	__u16 sin_port;			/* port in network byte order */
 	__u32 sin_addr;			/* address in network byte order */
 	char sin_zero[8];
+};
+
+/* packet socket address structure (user ABI, 20 bytes, matches Linux) */
+struct sockaddr_ll {
+	unsigned short sll_family;	/* AF_PACKET */
+	unsigned short sll_protocol;	/* ETH_P_* in network byte order */
+	int sll_ifindex;		/* interface index (1 = eth0) */
+	unsigned short sll_hatype;	/* ARPHRD_* */
+	unsigned char sll_pkttype;	/* packet type */
+	unsigned char sll_halen;	/* length of sll_addr */
+	unsigned char sll_addr[8];	/* physical layer address (MAC) */
+};
+
+/* AF_PACKET socket state */
+struct packet_info {
+	int protocol;			/* ETH_P_* in network byte order */
+	int ifindex;			/* bound ifindex */
+	unsigned char halen;		/* bound dest MAC length */
+	unsigned char addr[8];		/* bound dest MAC (for write()) */
 };
 
 #endif /* _FNX_SOCKET_H */

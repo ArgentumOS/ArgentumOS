@@ -246,6 +246,48 @@ Follow-up (unchanged): a DMA allocator that reserves NIC pages in BOTH
 the bitmap and the buddy (or the modern virtio-pci transport, whose
 queues are not constrained to contiguous legacy pages).
 
+## toybox dhcp client (userland DHCP) DONE - AF_PACKET + eth0 ioctls
+
+The in-kernel DHCP client leases 10.0.2.15 at boot, but toybox's
+`dhcp` (a udhcpc-style client) can now do it from userland too:
+
+- **AF_PACKET socket domain** (net/af_packet.c, registered in
+  net/domains.c): SOCK_DGRAM sockets wrap the user payload in an
+  Ethernet frame (sockaddr_ll carries the dest MAC + protocol; our MAC
+  comes from the ext NIC) for TX and strip the 14-byte header on RX,
+  filling sockaddr_ll with the source MAC. sendto/recvfrom/read/write/
+  bind/getname/select/setsockopt(accept-and-ignore)/ioctl/shutdown are
+  implemented; select delegates to ext_poll, recvfrom goes through
+  ext_recvfrom. This is what `dhcp` uses for its
+  DISCOVER/OFFER/REQUEST/ACK exchange (mode_raw).
+- **Interface ioctls** (net/core.c dev_ioctl, struct ifreq +
+  SIOCGIF*/SIOCSIF* in include/fnx/netdev.h): the ext NIC is exposed as
+  a fixed pseudo-interface `eth0` (ifindex 1). SIOCGIFFLAGS reports
+  IFF_UP|BROADCAST|RUNNING|MULTICAST; SIOCGIFINDEX/SIOCGIFHWADDR/
+  SIOCGIFADDR/SIOCGIFNETMASK/SIOCGIFMTU/SIOCGIFBRDADDR return the
+  eth0 values; SIOCSIFADDR writes the leased address into the kernel's
+  ext_ip (via new ext_net_get_ip/set_ip/get_mac accessors), which is
+  what makes userland-ping work after a userland lease.
+- **ioctl arg is addr_t**: ipv4_ioctl (and packet_ioctl) declared the
+  ioctl arg as `unsigned int`, truncating the 64-bit user pointer to
+  32 bits (ioctl returned EFAULT). The proto_ops ioctl slot is addr_t;
+  both were fixed.
+- **DHCP event script**: userland/dhcp_script.sh is staged as
+  /usr/share/dhcp/default.script; the `bound|renew` event runs
+  `ifconfig "$interface" "$ip" netmask "$subnet"` (toybox ifconfig
+  needs no /proc for the set path), pushing the lease into ext_ip.
+- **Known limitation**: the ext NIC has ONE RX queue shared by every
+  reader (packet sockets and ipv4 sockets drain it directly), so two
+  concurrent readers race for frames. `dhcp` must be run with `-f`
+  (no daemonize) and killed after binding - a daemonized dhcp's packet
+  socket steals frames from normal traffic. (toybox dhcp daemonizes
+  after the lease unless -f; killall/pidof need /proc, which FNX does
+  not provide, so `kill $!` is the clean way.)
+
+Verify: `dhcp -i eth0 -f & sleep 5; kill $!; ping -c 3 10.0.2.2` ->
+lease obtained + ping 3/3, 0% loss; loopback ping and TCP loopback
+still pass; full stress passes.
+
 ## Pending: rtl8139 NIC driver (target #6 follow-up)
 
 Add a second real-NIC driver for QEMU's `rtl8139` (PCI vendor 0x10EC,

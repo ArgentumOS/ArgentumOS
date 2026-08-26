@@ -8,6 +8,7 @@
 #include <fnx/config.h>
 #include <fnx/errno.h>
 #include <fnx/net.h>
+#include <fnx/net/af_packet.h>
 #include <fnx/socket.h>
 #include <fnx/string.h>
 
@@ -15,6 +16,7 @@
 struct domain_table domains[] = {
         { AF_UNIX, "AF_UNIX", &unix_ops },
         { AF_INET, "AF_INET", &ipv4_ops },
+        { AF_PACKET, "AF_PACKET", &packet_ops },
         { 0, 0, 0 }
 };
 
