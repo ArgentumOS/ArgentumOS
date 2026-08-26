@@ -394,6 +394,47 @@ NE2000 semantics learned (QEMU ne2000.c / real 8390):
   on real 8390 silicon (QEMU routes the port unconditionally, so it is
   a no-op there but required on HW).
 
+## DONE: e1000 NIC driver (Intel 82540EM)
+
+A sixth real-NIC driver for QEMU's `e1000` (Intel 82540EM, PCI
+8086:100E) behind the ext_* dispatcher (drivers/net/e1000.c, probed
+after pcnet). The full-featured Intel descriptor NIC: MMIO-only
+register space + 16-byte descriptors in guest RAM + 64-bit DMA.
+Verified: ping 10.0.2.2 3/3, userland DHCP lease, TCP loopback, full
+stress ALL DONE 0 HANG; virtio/rtl8139/ne2k/tulip/pcnet regressions
+all pass.
+
+82540EM semantics learned (QEMU e1000.c / e1000x_regs.h / Linux e1000):
+- **MMIO-only**: BAR0 is the 0x20000-byte register space; the I/O BAR
+  is a DUMMY (reads 0, ignores writes). The kernel's identity map only
+  covers the low 1GB + the RAM, and the BAR lands in the 2GB+ PCI hole
+  (e.g. 0x81040000) - the first register access page-faults the kernel
+  (vector 0xe, cr2 = BAR+offset). FIX: map the region into a fixed
+  kernel VA (0xFFFFC00000000000, pml4[510], unused) with map_page64
+  (flags 0x003 = P|RW) before touching any register.
+- Registers: CTRL=0x00, STATUS=0x08, ICR=0xC0 (cause, read + w1c),
+  IMS=0xD0 (mask set), IMC=0xD8 (mask clear), RCTL=0x100 (EN=0x2,
+  BAM=0x8000, buffer size 2048 = the SZ bits 0), TCTL=0x400 (EN=0x2,
+  PSP=0x8, CT<<4), RDBAL=0x2800/RDLEN/RDH/RDT, TDBAL=0x3800/.../TDT,
+  RA=0x5400 (the MAC + the AV bit at RA+1 bit 31 - the reset
+  PRE-LOADS both, so the driver reads them, no EEPROM needed).
+- 16-byte descriptor: u64 buffer_addr | u32 word2 | u32 word3. TX:
+  word2 = (len & 0xffff) | (EOP|RS|IFCS) << 24; the chip SETS word3
+  bit 0 (DD) when sent - **the DD is chip-set, so the driver must
+  clear word3 after the completion poll or the slot-free check of the
+  next send (which waits for DD clear) deadlocks after 16 sends**. RX:
+  the chip writes the length into word2 + DD into word3 byte 0.
+- Rings: TDBAL/RDBAL = the ring phys (the high dwords 0 - the rings
+  sit below 4GB); TDLEN/RDLEN = 16 * 16 = 256; TDH/RDH = 0. TX kick =
+  write TDT (the set_tctl handler runs start_xmit). RX tail: the chip
+  owns [RDH, RDT) - the driver keeps RDT = next-to-clean + ring length
+  so the refilled descriptors stay in the hardware's window; writing
+  RDT also flushes queued packets. The chip's RDH wraps at the ring
+  length; the driver's raw RDT value can exceed it (the chip mods it).
+- The MAC read from RA works because the reset sets RA + the AV bit -
+  the physical filter matches against it (the driver must NOT clear
+  the AV bit when re-writing the RA).
+
 ## DONE: pcnet NIC driver (AMD LANCE / Am79C970A)
 
 A fifth real-NIC driver for QEMU's `pcnet` (AMD Lance, PCI 1022:2000)

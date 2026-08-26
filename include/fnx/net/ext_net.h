@@ -41,6 +41,7 @@ struct ext_net_ops *rtl8139_probe(void);
 struct ext_net_ops *ne2k_probe(void);
 struct ext_net_ops *tulip_probe(void);
 struct ext_net_ops *pcnet_probe(void);
+struct ext_net_ops *e1000_probe(void);
 
 /* the ext_* dispatcher (drivers/net/ext_dev.c) */
 int ext_init(void);
