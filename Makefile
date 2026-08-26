@@ -46,9 +46,17 @@ clean:
 # display they fall back to curses; when stdout is piped (headless/CI) they
 # use -nographic.
 #
-# Overrides: QEMU_EXTRA (extra qemu args), FNX_QEMU_TOOLS / QEMU_TOOLS (tools prefix).
+# A legacy virtio-net NIC is attached by default (see QEMU_NET below), so
+# `ping 10.0.2.2` works inside the guest after the init-time DHCP handshake.
+#
+# Overrides: QEMU_EXTRA (extra qemu args), FNX_QEMU_TOOLS / QEMU_TOOLS (tools prefix),
+#            QEMU_NET (NIC args; set QEMU_NET= to boot without the NIC).
 # The on-disk tool prefix may still be the legacy fiwix-qemu-tools name.
 QEMU_TOOLS ?= $(shell if [ -d "$(HOME)/.local/share/fnx-qemu-tools" ]; then echo "$(HOME)/.local/share/fnx-qemu-tools"; else echo "$(HOME)/.local/share/fiwix-qemu-tools"; fi)
+# Attach the legacy virtio-net NIC by default (real-NIC support, target #6):
+# the init-time DHCP handshake leases 10.0.2.15 from SLIRP, so
+# `ping 10.0.2.2` works out of the box. Set QEMU_NET= to boot without it.
+QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n1
 # ---------------------------------------------------------------------------
 
 CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
@@ -58,11 +66,11 @@ CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2
 run: .build/ovmf/OVMF.fd rootdisk64 build64
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	else \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
 	fi
 
 run-uefi: run
