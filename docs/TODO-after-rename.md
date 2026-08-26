@@ -278,15 +278,38 @@ The in-kernel DHCP client leases 10.0.2.15 at boot, but toybox's
   needs no /proc for the set path), pushing the lease into ext_ip.
 - **Known limitation**: the ext NIC has ONE RX queue shared by every
   reader (packet sockets and ipv4 sockets drain it directly), so two
-  concurrent readers race for frames. `dhcp` must be run with `-f`
-  (no daemonize) and killed after binding - a daemonized dhcp's packet
-  socket steals frames from normal traffic. (toybox dhcp daemonizes
-  after the lease unless -f; killall/pidof need /proc, which FNX does
-  not provide, so `kill $!` is the clean way.)
+  concurrent readers race for frames. Run dhcp with `-f` and kill it
+  after binding, or let it daemonize and `killall dhcp` (FNX now
+  provides /proc with per-PID cmdline/comm, so killall/pidof work).
 
-Verify: `dhcp -i eth0 -f & sleep 5; kill $!; ping -c 3 10.0.2.2` ->
+Verify: `dhcp -i eth0 & sleep 5; killall dhcp; ping -c 3 10.0.2.2` ->
 lease obtained + ping 3/3, 0% loss; loopback ping and TCP loopback
 still pass; full stress passes.
+
+## /proc + procfs mounted at boot DONE
+
+procfs existed (fs/procfs/) but was never mounted: init.c didn't mount
+it and the root image had no /proc mount point, so killall/pidof and
+`ifconfig` (display) failed with "No such file or directory". Fixed:
+
+- **userland/init.c**: PID 1 mounts `proc` on /proc and `devpts` on
+  /dev/pts before spawning the shell (the fstype string is `"proc"`,
+  not "procfs" - that is the name procfs registers).
+- **Makefile userland64**: the root image now ships /proc, /tmp and
+  /dev/pts mount points, plus a /dev/ptmx char device (5,2) in the
+  DEVICES table (tools/mkinitrd.py) so devpts PTYs are reachable.
+- **/proc/net/dev** (fs/procfs data.c + tree.c): the /net tree gets a
+  `dev` file emitting the Linux two-header format with an eth0 line,
+  which is what toybox ifconfig's display path parses.
+- **/proc/<pid>/comm** (fs/procfs data.c + tree.c): basename of
+  argv[0] (truncated to 15 chars + '\n'), which toybox killall/pidof
+  read first (killall uses scripts=1 and SKIPS every process whose
+  /proc/<pid>/comm is missing).
+
+Verify: `cat /proc/1/comm` -> init; `pidof sh` -> a pid;
+`killall dhcp` kills a daemonized dhcp; `ifconfig eth0` prints the
+link/MAC line; /proc/uptime, /proc/meminfo, /proc/1/cmdline all read;
+`/pty_t` opens /dev/ptmx (devpts mounted). Full stress passes.
 
 ## Pending: rtl8139 NIC driver (target #6 follow-up)
 

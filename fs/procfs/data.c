@@ -446,6 +446,24 @@ int data_proc_fullversion(char *buffer, __pid_t pid)
 }
 
 
+int data_proc_net_dev(char *buffer, __pid_t pid)
+{
+#ifdef CONFIG_NET
+	int size;
+
+	/* Linux /proc/net/dev format (toybox ifconfig skips the 2 header
+	 * lines and parses "  eth0: <16 counters>"); the ext NIC keeps no
+	 * byte counters, so the values are zeros */
+	size = sprintk(buffer,
+		"Inter-|   Receive                                                |  Transmit\n"
+		" face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n"
+		"  eth0:       0        0    0    0    0     0          0         0        0    0    0    0    0     0       0          0\n");
+	return size;
+#else
+	return 0;
+#endif /* CONFIG_NET */
+}
+
 int data_proc_unix(char *buffer, __pid_t pid)
 {
 #ifdef CONFIG_NET
@@ -621,6 +639,41 @@ int data_proc_pid_cmdline(char *buffer, __pid_t pid)
 			} else {
 				break;
 			}
+		}
+	}
+	return size;
+}
+
+int data_proc_pid_comm(char *buffer, __pid_t pid)
+{
+	int size, len;
+	char *base, *p, *arg;
+	addr_t addr, offset;
+	struct proc *proc;
+
+	/* Linux comm: basename of the executable (argv[0]), max 15 chars,
+	 * terminated with '\n'; toybox killall/pidof match on it */
+	size = 0;
+	if((proc = get_proc_by_pid(pid))) {
+		offset = (addr_t)proc->argv & ~PAGE_MASK;
+		addr = get_mapped_addr(proc, (addr_t)proc->argv) & PAGE_MASK;
+		addr = P2V(addr);
+		arg = *(char **)(addr + offset);	/* argv[0] */
+		if(arg) {
+			offset = (addr_t)arg & ~PAGE_MASK;
+			addr = get_mapped_addr(proc, (addr_t)arg) & PAGE_MASK;
+			addr = P2V(addr);
+			base = (char *)(addr + offset);
+			if((p = strrchr(base, '/')) && p[1]) {
+				base = p + 1;
+			}
+			len = strlen(base);
+			if(len > 15) {
+				len = 15;
+			}
+			memcpy_b(buffer, base, len);
+			buffer[len] = '\n';
+			size = len + 1;
 		}
 	}
 	return size;

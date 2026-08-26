@@ -26,6 +26,7 @@
 enum pid_dir_inodes {
 	PROC_PID_FD = PROC_PID_INO + 1001,
 	PROC_PID_CMDLINE,
+	PROC_PID_COMM,
 	PROC_PID_CWD,
 	PROC_PID_ENVIRON,
 	PROC_PID_EXE,
@@ -74,6 +75,7 @@ int data_proc_stat(char *, __pid_t);
 int data_proc_uptime(char *, __pid_t);
 int data_proc_fullversion(char *, __pid_t);
 int data_proc_unix(char *, __pid_t);
+int data_proc_net_dev(char *, __pid_t);
 int data_proc_pci_devices(char *, __pid_t);
 int data_proc_buffernr(char *, __pid_t);
 int data_proc_domainname(char *, __pid_t);
@@ -90,6 +92,7 @@ int data_proc_dirty_background_ratio(char *, __pid_t);
 /* PID related functions */
 int data_proc_pid_fd(char *, __pid_t, __ino_t);
 int data_proc_pid_cmdline(char *, __pid_t);
+int data_proc_pid_comm(char *, __pid_t);
 int data_proc_pid_cwd(char *, __pid_t);
 int data_proc_pid_environ(char *, __pid_t);
 int data_proc_pid_exe(char *, __pid_t);

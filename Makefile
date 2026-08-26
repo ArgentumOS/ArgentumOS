@@ -126,7 +126,9 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	@touch $(ROOTFS64)/dev/console $(ROOTFS64)/dev/ttyS0 $(ROOTFS64)/dev/null $(ROOTFS64)/dev/zero \
 		$(ROOTFS64)/dev/full $(ROOTFS64)/dev/random $(ROOTFS64)/dev/urandom \
 		$(ROOTFS64)/dev/mem $(ROOTFS64)/dev/kmem $(ROOTFS64)/dev/port \
-		$(ROOTFS64)/dev/tty $(ROOTFS64)/dev/tty0
+		$(ROOTFS64)/dev/tty $(ROOTFS64)/dev/tty0 $(ROOTFS64)/dev/ptmx
+	# mount points for the virtual filesystems init mounts (procfs, devpts)
+	@mkdir -p $(ROOTFS64)/proc $(ROOTFS64)/tmp $(ROOTFS64)/dev/pts
 	# /etc: passwd/group so id, ls -l and chown-by-name work
 	@mkdir -p $(ROOTFS64)/etc
 	@printf 'root:x:0:0:root:/root:/bin/sh\n' > $(ROOTFS64)/etc/passwd

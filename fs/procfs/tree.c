@@ -59,6 +59,7 @@ struct procfs_dir_entry procfs_array[][PROC_ARRAY_ENTRIES + 1] = {
 	{ 1,     DIR,  2, 0, 2,  "..",  NULL },
 	{ PROC_PID_FD,      DIRFD,  2, 2, 2,  "fd",       NULL },
 	{ PROC_PID_CMDLINE, REG,    1, 1, 7,  "cmdline",  data_proc_pid_cmdline },
+	{ PROC_PID_COMM,    REG,    1, 1, 4,  "comm",     data_proc_pid_comm },
 	{ PROC_PID_CWD,     LNKPID, 1, 1, 3,  "cwd",      data_proc_pid_cwd },
 	{ PROC_PID_ENVIRON, REGUSR, 1, 1, 7,  "environ",  data_proc_pid_environ },
 	{ PROC_PID_EXE,     LNKPID, 1, 1, 3,  "exe",      data_proc_pid_exe },
@@ -87,6 +88,7 @@ struct procfs_dir_entry procfs_array[][PROC_ARRAY_ENTRIES + 1] = {
 	{ 4,     DIR,  2, 4, 1,  ".",   NULL },
 	{ 1,     DIR,  2, 0, 2,  "..",  NULL },
 	{ 4001,  REG,  1, 4, 4, "unix", data_proc_unix },
+	{ 4002,  REG,  1, 4, 3, "dev",  data_proc_net_dev },
 	{ 0, 0, 0, 0, 0, NULL, NULL }
    },
    {	/* [lev 5] /sys/ */

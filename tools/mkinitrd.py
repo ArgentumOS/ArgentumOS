@@ -45,6 +45,7 @@ DEVICES = {
     'dev/full':     0x107,   # (1 << 8) | 7
     'dev/random':   0x108,   # (1 << 8) | 8
     'dev/urandom':  0x109,   # (1 << 8) | 9
+    'dev/ptmx':     0x502,   # (5 << 8) | 2 -> PTY multiplexer
 }
 
 
