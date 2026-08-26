@@ -243,7 +243,11 @@ int ext_net_send_ip(unsigned int ip, int proto, const void *payload, __size_t le
 	ip4->csum = 0;
 	ip4->saddr = ext_ip;
 	ip4->daddr = ip;
-	ip4->csum = htons(ip_csum(ip4, 20));
+	/* the checksum sums the header's 16-bit words as native u16 loads
+	 * of network-order bytes, so the result is already byte-swapped -
+	 * storing it with htons() would swap it a second time and every
+	 * router would drop the packet */
+	ip4->csum = ip_csum(ip4, 20);
 
 	errno = ext_sendto(ext_fd, frame, flen, NULL, 0);
 	kfree((addr_t)frame);
@@ -299,6 +303,184 @@ int ext_net_recv_ip(unsigned int want_ip, int want_proto,
 }
 
 /* configure the NIC (IP/gateway) - called by the driver on init */
+/* ---- minimal DHCP client: SLIRP only answers ICMP to a host it has
+ * leased, so the guest must complete a DISCOVER/OFFER/REQUEST/ACK
+ * handshake for 10.0.2.15 before the gateway will reply to pings. ---- */
+
+#define DHCP_SERVER_PORT	67
+#define DHCP_CLIENT_PORT	68
+#define DHCP_MAGIC		0x63825363
+#define DHCP_DISCOVER		1
+#define DHCP_OFFER		2
+#define DHCP_REQUEST		3
+#define DHCP_ACK		5
+
+static unsigned int dhcp_xid;
+
+static int ext_net_send_dhcp(unsigned int msgtype, unsigned int yiaddr,
+			     unsigned int server_id)
+{
+	unsigned char frame[1280];
+	struct eth_hdr *eth = (struct eth_hdr *)frame;
+	struct ip_hdr *ip4 = (struct ip_hdr *)(frame + 14);
+	unsigned int *udp_len;
+	unsigned char *udp = frame + 34;
+	unsigned char *dhcp = udp + 8;
+	unsigned char *o;
+	int dhcp_len, udplen, flen;
+
+	/* Ethernet: broadcast */
+	memset_b(eth->dst, 0xFF, 6);
+	memcpy_b(eth->src, ext_mac, 6);
+	eth->proto = htons(ETH_P_IP);
+
+	/* IP header (20 bytes) */
+	memset_b(ip4, 0, 20);
+	ip4->ver_ihl = 0x45;
+	ip4->frag_off = htons(0x4000);	/* DF */
+	ip4->ttl = 64;
+	ip4->proto = 17;		/* UDP */
+	ip4->saddr = 0;			/* 0.0.0.0 */
+	ip4->daddr = 0xFFFFFFFF;	/* 255.255.255.255 */
+
+	/* UDP header (8 bytes) */
+	udp[0] = 0; udp[1] = DHCP_CLIENT_PORT;		/* src 68 */
+	udp[2] = 0; udp[3] = DHCP_SERVER_PORT;		/* dst 67 */
+	udp_len = (unsigned int *)(udp + 4);
+	udp[6] = 0; udp[7] = 0;				/* csum 0 */
+
+	/* DHCP payload */
+	memset_b(dhcp, 0, 236 + 32);
+	dhcp[0] = 1;			/* BOOTREQUEST */
+	dhcp[1] = 1;			/* htype Ethernet */
+	dhcp[2] = 6;			/* hlen */
+	dhcp[3] = 0;			/* hops */
+	dhcp[4] = dhcp_xid >> 24;
+	dhcp[5] = dhcp_xid >> 16;
+	dhcp[6] = dhcp_xid >> 8;
+	dhcp[7] = dhcp_xid;
+	dhcp[8] = 0; dhcp[9] = 0;	/* secs */
+	dhcp[10] = 0x80; dhcp[11] = 0x00;	/* broadcast flag */
+	memcpy_b(dhcp + 28, ext_mac, 6);	/* chaddr */
+	dhcp[236] = 0x63; dhcp[237] = 0x82; dhcp[238] = 0x53; dhcp[239] = 0x63;	/* magic */
+	o = dhcp + 240;
+	*o++ = 53; *o++ = 1; *o++ = msgtype;			/* message type */
+	if(msgtype == DHCP_DISCOVER) {
+		*o++ = 55; *o++ = 1; *o++ = 1;			/* param req: subnet */
+	} else {
+		*o++ = 50; *o++ = 4;				/* requested IP */
+		*o++ = yiaddr & 0xFF; *o++ = (yiaddr >> 8) & 0xFF;
+		*o++ = (yiaddr >> 16) & 0xFF; *o++ = (yiaddr >> 24) & 0xFF;
+		*o++ = 54; *o++ = 4;				/* server id */
+		*o++ = server_id & 0xFF; *o++ = (server_id >> 8) & 0xFF;
+		*o++ = (server_id >> 16) & 0xFF; *o++ = (server_id >> 24) & 0xFF;
+	}
+	*o++ = 255;					/* end */
+	dhcp_len = (int)(o - dhcp);
+	udplen = 8 + dhcp_len;
+	*udp_len = htons(udplen);
+	ip4->tot_len = htons(20 + udplen);
+	/* compute the IP checksum LAST, once every field is final */
+	ip4->csum = ip_csum(ip4, 20);
+	flen = 14 + 20 + udplen;
+
+	return ext_sendto(ext_fd, frame, flen, NULL, 0);
+}
+
+/* wait for a DHCP message of the given type; returns the yiaddr or 0 */
+static unsigned int ext_net_dhcp_wait(unsigned int want)
+{
+	unsigned char frame[2048];
+	int n, tries;
+
+	for(tries = 0; tries < 100; tries++) {
+		/* poll the NIC for a UDP packet to port 68 */
+		n = ext_recvfrom(ext_fd, frame, sizeof(frame), NULL, NULL);
+		if(n < 14 + 20 + 8) {
+			continue;
+		}
+		if(ntohs(((struct eth_hdr *)frame)->proto) != ETH_P_IP) {
+			continue;
+		}
+		if(n < 14 + 20 + 8 + 240) {
+			continue;
+		}
+		{
+			struct ip_hdr *ip4 = (struct ip_hdr *)(frame + 14);
+			unsigned char *dhcp = frame + 14 + 20 + 8;
+
+			if(ip4->proto != 17) {
+				continue;
+			}
+			if(dhcp[0] != 2) {	/* BOOTREPLY */
+				continue;
+			}
+			if(dhcp[236] != 0x63 || dhcp[237] != 0x82 ||
+			   dhcp[238] != 0x53 || dhcp[239] != 0x63) {
+				continue;
+			}
+			if((dhcp[4] << 24 | dhcp[5] << 16 | dhcp[6] << 8 | dhcp[7]) != dhcp_xid) {
+				continue;
+			}
+			/* find option 53 (message type) */
+			{
+				unsigned char *o = dhcp + 240;
+				int mt = 0;
+				while(o < dhcp + n - (14 + 20 + 8) && *o != 255) {
+					if(*o == 53 && o[1] == 1) {
+						mt = o[2];
+					}
+					o += 2 + o[1];
+				}
+				if(mt == want) {
+					/* the yiaddr bytes (0a 00 02 0f) go into the IP
+					 * header's u32 as-is (little-endian store), so
+					 * the value must be byte-reversed */
+					unsigned int yiaddr =
+						(dhcp[16] << 0) | (dhcp[17] << 8) |
+						(dhcp[18] << 16) | (dhcp[19] << 24);
+					return yiaddr;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+static int ext_net_dhcp(void)
+{
+	extern unsigned long get_ticks64(void);
+	unsigned int offer, server_id, ack;
+	int tries;
+
+	dhcp_xid = ((unsigned int)get_ticks64() << 1) ^ 0x1234ABCD;
+	if(!dhcp_xid) dhcp_xid = 0x13572468;
+
+	/* DISCOVER */
+	ext_net_send_dhcp(DHCP_DISCOVER, 0, 0);
+	offer = 0;
+	for(tries = 0; tries < 10 && !offer; tries++) {
+		offer = ext_net_dhcp_wait(DHCP_OFFER);
+	}
+	if(!offer) {
+		return -1;
+	}
+	/* the server id is the gateway (10.0.2.2) for SLIRP */
+	server_id = gateway_ip;
+
+	/* REQUEST */
+	ext_net_send_dhcp(DHCP_REQUEST, offer, server_id);
+	ack = 0;
+	for(tries = 0; tries < 10 && !ack; tries++) {
+		ack = ext_net_dhcp_wait(DHCP_ACK);
+	}
+	if(!ack) {
+		return -1;
+	}
+	ext_ip = ack;
+	return 0;
+}
+
 int ext_net_configure(const unsigned char *mac, unsigned int ip, unsigned int gw)
 {
 	memcpy_b(ext_mac, mac, 6);
@@ -307,6 +489,10 @@ int ext_net_configure(const unsigned char *mac, unsigned int ip, unsigned int gw
 	arp_valid = 0;
 	if(ext_fd < 0) {
 		ext_fd = ext_open(0, 0, 0);
+	}
+	if(ext_fd >= 0) {
+		/* establish the DHCP lease so SLIRP answers ICMP to us */
+		ext_net_dhcp();
 	}
 	return 0;
 }

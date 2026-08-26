@@ -194,6 +194,54 @@ debugging:
   (ext_recvfrom does), and unmasking the master cascade (IRQ2) wedges
   the boot - only the slave line is unmasked.
 
-Follow-up: a DMA allocator that reserves NIC pages in BOTH the bitmap
-and the buddy (or the modern virtio-pci transport, whose queues are not
-constrained to contiguous legacy pages), then ping 10.0.2.2 completes.
+## Real NIC RX + ping DONE - target #6
+
+`ping 10.0.2.2` completes: 3/3, 0% loss; loopback ping and TCP
+loopback still pass; full stress passes. Root causes fixed:
+
+- **Legacy vring layout was 4K-aligned, not 2-byte**: the used ring for
+  a 256-desc queue is at 8192 (align of 18*num+4), not 4614 - the old
+  VQ_USED offset read padding, so the used ring "never advanced". The
+  queue now allocates 3 contiguous pages (12288 bytes) and VQ_USED
+  aligns to 4096. (The device really reports 256 descs; the "16" seen
+  in an old comment was a misread of the ring-num register semantics.)
+- **virtio_net_hdr**: the device prepends a 10-byte header (all zeros =
+  no offloads) to every packet; TX prepends it, RX skips it.
+- **RX buffer re-arm**: consumed RX descriptors are re-armed under
+  their original used-ring id (vnet_rx_readd_buffer), so a long stream
+  cannot exhaust the descriptor table.
+- **Used-ring idx must be read volatile AND consumed immediately**:
+  -O2 hoisted a plain field read out of the poll loop, and even a
+  volatile read kept in a register got clobbered by the inlined re-arm
+  (back-edge compared 0x80000000 != used_consumed, spinning forever).
+  The poll reads idx into a local and tests it before any body code.
+- **IRQ handler must not poll**: INTx does fire (this QEMU routes
+  queue interrupts to the PIC after all). vnet_irq_handler calling
+  vnet_rx_poll raced with ext_recvfrom's poll on the shared
+  used_consumed/avail_idx state - both consumed the same entries,
+  used_consumed ran ahead of the device and the poll never terminated.
+  The handler now only ACKs the ISR (deasserting INTx) and wakes
+  sleepers; the recv path always polls.
+- **ICMP checksum for ping**: Linux computes it in-kernel for
+  SOCK_DGRAM|IPPROTO_ICMP; toybox 0.8.11's pingchksum() is broken (no
+  one's complement + a spurious end-around carry) and Linux masks it.
+  FNX now recomputes the ICMP checksum in ipv4_sendto for external ping
+  sends (into a scratch copy - the send path passes the user buffer
+  through unchecked).
+- **poll() on external sockets**: ipv4_select only checked the loopback
+  packet_queue, so toybox ping's poll() (which gates its recvmsg)
+  never reported POLLIN for NIC frames; it now delegates to ext_poll
+  (which polls the used ring) when the socket is external and no
+  loopback data is queued. ipv4_recvfrom likewise serves queued
+  loopback data before polling the NIC.
+- **IP checksum byte order**: ip_csum() sums native u16 loads, so the
+  result is already in wire order - the extra htons() was double-
+  swapping and every router dropped the packets.
+- **DHCP client**: SLIRP only answers ICMP to a leased host, so the
+  driver runs a minimal DISCOVER/OFFER/REQUEST/ACK handshake
+  (net/ext_net.c) at init to obtain 10.0.2.15; yiaddr and the option-50
+  requested IP are stored network-order.
+
+Follow-up (unchanged): a DMA allocator that reserves NIC pages in BOTH
+the bitmap and the buddy (or the modern virtio-pci transport, whose
+queues are not constrained to contiguous legacy pages).

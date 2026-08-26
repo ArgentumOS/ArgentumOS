@@ -417,6 +417,27 @@ int ipv4_sendto(struct socket *s, struct fd *f, const char *buffer, __size_t cou
 		if(!ext_net_present()) {
 			return -ENETUNREACH;	/* no NIC */
 		}
+		/* Linux computes the ICMP checksum in-kernel for ping sockets
+		 * (SOCK_DGRAM|IPPROTO_ICMP): the socket layer hands the user
+		 * buffer straight through here (no kernel copy), so recompute
+		 * into a scratch buffer. toybox 0.8.11's pingchksum() is broken
+		 * (no one's complement + a spurious end-around carry), and
+		 * without this its echo requests leave the NIC with a bad
+		 * checksum that every peer drops. SOCK_RAW senders own their
+		 * checksum and are left untouched, as on Linux. */
+		if(ip4->type == SOCK_DGRAM && ip4->protocol == IPPROTO_ICMP && count >= 8) {
+			unsigned char *tmp;
+
+			if(!(tmp = (unsigned char *)kmalloc(count))) {
+				return -ENOMEM;
+			}
+			memcpy_b(tmp, buffer, count);
+			tmp[2] = tmp[3] = 0;	/* checksum field */
+			((__u16 *)(tmp + 2))[0] = htons(ip_checksum(tmp, count));
+			errno = ext_net_send_ip(sin->sin_addr, ip4->protocol, tmp, count);
+			kfree((addr_t)tmp);
+			return (errno < 0) ? errno : (int)count;
+		}
 		return ext_net_send_ip(sin->sin_addr, ip4->protocol, buffer, count);
 	}
 
@@ -453,8 +474,12 @@ int ipv4_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 
 	ip4 = &s->u.ipv4_info;
 
-	if(s->fd_ext != -1 && ip4->local_addr != INADDR_LOOPBACK) {
-		/* external socket: receive an IP datagram from the NIC */
+	if(s->fd_ext != -1 && ip4->local_addr != INADDR_LOOPBACK &&
+	   !peek_packet(ip4->packet_queue)) {
+		/* external socket with no loopback data waiting: receive an IP
+		 * datagram from the NIC. The packet_queue check first lets a
+		 * socket that can address both (unbound ping) drain loopback
+		 * replies before polling the NIC. */
 		extern int ext_net_recv_ip(unsigned int, int, void *, __size_t, unsigned int *);
 		extern int ext_net_present(void);
 		struct sockaddr_in *rsin = (struct sockaddr_in *)addr;
@@ -568,7 +593,16 @@ int ipv4_select(struct socket *s, int flag)
 
 	ip4 = &s->u.ipv4_info;
 	if(flag == SEL_R) {
-		return (ip4->packet_queue != NULL) ? 1 : 0;
+		if(ip4->packet_queue) {
+			return 1;	/* loopback data waiting */
+		}
+		if(s->fd_ext != -1 && ip4->local_addr != INADDR_LOOPBACK) {
+			/* external socket: the data comes from the NIC's receive
+			 * queue, not the loopback packet_queue */
+			extern int ext_poll(int, int);
+			return ext_poll(s->fd_ext, SEL_R);
+		}
+		return 0;
 	}
 	return 0;
 }

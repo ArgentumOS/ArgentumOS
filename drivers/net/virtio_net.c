@@ -25,6 +25,7 @@
 #include <fnx/mm.h>
 #include <fnx/pci.h>
 #include <fnx/sched.h>
+#include <fnx/sleep.h>
 #include <fnx/irq.h>
 #include <fnx/net.h>
 #include <fnx/socket.h>
@@ -33,6 +34,10 @@
 
 #define VIRTIO_PCI_VENDOR	0x1AF4
 #define VIRTIO_PCI_DEVICE_NET	0x1000
+
+/* the virtio-net device prepends a 10-byte virtio_net_hdr to every
+ * packet (all zeros = no offloads); the Ethernet frame goes after it */
+#define VNET_HDR_SIZE	10
 
 /* legacy virtio-pci I/O registers (BAR0) */
 #define VPCI_HOST_FEATURES	0x00
@@ -57,7 +62,7 @@
 #define VRING_DESC_F_NEXT	1
 #define VRING_DESC_F_WRITE	2
 
-#define VNET_QUEUE_SIZE		64	/* descs per queue (fits one 4K page) */
+#define VNET_QUEUE_SIZE		256	/* max descs per queue (device-reported) */
 #define VNET_RXBUF_SIZE		2048	/* per-frame buffer (MTU friendly) */
 #define VNET_RX_POOL		16	/* pre-queued RX buffers */
 
@@ -71,7 +76,7 @@ struct virtq_desc {
 struct virtq_avail {
 	__u16 flags;
 	__u16 idx;
-	__u16 ring[256];
+	__u16 ring[VNET_QUEUE_SIZE];
 };
 
 struct virtq_used_elem {
@@ -82,23 +87,22 @@ struct virtq_used_elem {
 struct virtq_used {
 	__u16 flags;
 	__u16 idx;
-	struct virtq_used_elem ring[256];
+	struct virtq_used_elem ring[VNET_QUEUE_SIZE];
 };
 
-/* the three ring structures packed into one 4K page (legacy layout):
- * descriptor table (16*Q), available ring (6+2*Q), used ring (6+8*Q) */
-#define VNET_DESC_BYTES		(VNET_QUEUE_SIZE * 16)
-#define VNET_AVAIL_BYTES	(6 + 2 * VNET_QUEUE_SIZE)
-#define VNET_USED_OFF		((VNET_DESC_BYTES + VNET_AVAIL_BYTES + 1) & ~1)
-#define VNET_USED_BYTES		(6 + 8 * VNET_QUEUE_SIZE)
+/* The legacy vring layout ALIGNS each section to 4096: desc@0,
+ * avail@16*num, then the used ring at the next 4K boundary. For
+ * num=256 the used ring is at 8192 and the whole queue spans
+ * 8192 + 6 + 8*256 = 10246 bytes (3 pages). VQ_DESC/VQ_AVAIL/VQ_USED
+ * compute the offsets from the device-reported qsz. */
 
 struct virtq_page {
-	__u8 raw[8192];		/* a 256-desc legacy queue needs ~6.7KB */
+	__u8 raw[12288];	/* 3 pages: desc + avail + aligned used ring */
 };
 
 #define VQ_DESC(qp, qsz)	((struct virtq_desc *)((char *)(qp) + 0))
 #define VQ_AVAIL(qp, qsz)	((struct virtq_avail *)((char *)(qp) + 16 * (qsz)))
-#define VQ_USED(qp, qsz)	((struct virtq_used *)((char *)(qp) + 					(((16 * (qsz)) + (6 + 2 * (qsz)) + 1) & ~1)))
+#define VQ_USED(qp, qsz)	((struct virtq_used *)((char *)(qp) + 					(((16 * (qsz)) + (6 + 2 * (qsz)) + 4095) & ~4095)))
 
 struct virtq {
 	struct virtq_page *page;	/* kernel VA of the queue page */
@@ -172,32 +176,53 @@ static void vnet_set_status(__u8 st)
 	vnet_iow8(VPCI_STATUS, st);
 }
 
-/* alloc the queue area (2 CONTIGUOUS pages: a 256-desc legacy queue
- * spans ~6.7KB) via the kernel64 bitmap allocator, which returns a
- * physical address (already the phys, not a page index). The high-half
- * alias is the kernel VA - mapped in every process's pml4. */
+/* Allocate the queue's 3 CONTIGUOUS pages (a 256-desc legacy vring
+ * spans 10246 bytes; the used ring is 4K-aligned at 8192) via the
+ * kernel64 bitmap allocator, which returns a physical address. The
+ * high-half alias is the kernel VA - mapped in every process's pml4.
+ * The bitmap hands out the lowest free page each call, so consecutive
+ * calls return adjacent pages when the low region is dense; take the
+ * trio only when contiguous. Keep the pages in real RAM (QEMU -m 128M)
+ * and above the DMA-protected first megabyte. */
 static unsigned long vnet_alloc_page(addr_t *phys)
 {
 	extern unsigned long alloc_pages64(int);
 	extern void free_pages64(unsigned long, int);
+	unsigned long a, b, c;
 	int n;
 
-	for(n = 0; n < 64; n++) {
-		*phys = alloc_pages64(2);
-		if(!*phys) {
+	/* the legacy vring spans 3 pages (used ring is 4K-aligned at 8192);
+	 * allocate single pages and take them when they are contiguous */
+	for(n = 0; n < 32; n++) {
+		a = alloc_pages64(1);
+		if(!a) {
 			return 0;
 		}
-		/* keep the queue inside real RAM (QEMU -m 128M) and above the
-		 * protected first megabyte. Do NOT free a rejected page: the
-		 * allocator always returns the lowest free one, so freeing
-		 * would hand back the same page forever. */
-		if(*phys < 0x100000) {
+		if(a < 0x100000 || a >= 0x8000000) {
+			continue;	/* out of range: leak it, try the next */
+		}
+		b = alloc_pages64(1);
+		if(!b) {
+			return 0;
+		}
+		if(b < 0x100000 || b >= 0x8000000) {
+			free_pages64(b, 1);
 			continue;
 		}
-		if(*phys > 0x7FFE000) {
+		c = alloc_pages64(1);
+		if(!c) {
+			return 0;
+		}
+		if(c < 0x100000 || c >= 0x8000000) {
+			free_pages64(c, 1);
 			continue;
 		}
-		return P2V(*phys);
+		if(b == a + 0x1000 && c == a + 0x2000) {
+			*phys = a;
+			return P2V(a);	/* 3 contiguous pages: the queue lives here */
+		}
+		free_pages64(b, 1);
+		free_pages64(c, 1);
 	}
 	return 0;
 }
@@ -227,6 +252,27 @@ static int vnet_rx_add_buffer(struct vnet_device *v, unsigned char *buf)
 	__asm__ __volatile__("" ::: "memory");
 	VQ_AVAIL(q->page, q->size)->idx = q->avail_idx;
 	return 0;
+}
+
+/* re-arm a consumed RX buffer under its ORIGINAL desc id (the used ring
+ * returns it); unlike vnet_rx_add_buffer this does not consume a fresh
+ * desc slot, so a long-running stream cannot exhaust the descriptor
+ * table and silently stop receiving */
+static void vnet_rx_readd_buffer(struct vnet_device *v, unsigned int id,
+				 unsigned char *buf)
+{
+	struct virtq *q = &v->rxq;
+	unsigned int a;
+
+	a = q->avail_idx++ % q->size;
+	VQ_DESC(q->page, q->size)[id].addr = V2P((addr_t)buf);
+	VQ_DESC(q->page, q->size)[id].len = VNET_RXBUF_SIZE;
+	VQ_DESC(q->page, q->size)[id].flags = VRING_DESC_F_WRITE;
+	VQ_DESC(q->page, q->size)[id].next = 0;
+	VQ_AVAIL(q->page, q->size)->ring[a] = id;
+	q->buffers[id] = (unsigned long)buf;
+	__asm__ __volatile__("" ::: "memory");
+	VQ_AVAIL(q->page, q->size)->idx = q->avail_idx;
 }
 
 static int vnet_rx_refill(struct vnet_device *v, int want)
@@ -274,7 +320,7 @@ static int vnet_tx_send(const void *frame, unsigned int len)
 	unsigned char *buf;
 
 
-	if(!v->present || len > VNET_RXBUF_SIZE) {
+	if(!v->present || len + VNET_HDR_SIZE > VNET_RXBUF_SIZE) {
 		return -ENODEV;
 	}
 	if(q->next_free >= q->size - 1) {
@@ -283,7 +329,11 @@ static int vnet_tx_send(const void *frame, unsigned int len)
 	if(!(buf = (unsigned char *)kmalloc(VNET_RXBUF_SIZE))) {
 		return -ENOMEM;
 	}
-	memcpy_b(buf, frame, len);
+	/* the device expects a 10-byte virtio_net_hdr (all zeros = no
+	 * offloads) before the Ethernet frame */
+	memset_b(buf, 0, VNET_HDR_SIZE);
+	memcpy_b(buf + VNET_HDR_SIZE, frame, len);
+	len += VNET_HDR_SIZE;
 
 	d = q->next_free++;
 	a = q->avail_idx++ % q->size;
@@ -306,6 +356,7 @@ static int vnet_tx_send(const void *frame, unsigned int len)
 static void vnet_rx_poll(struct vnet_device *v)
 {
 	struct virtq *q = &v->rxq;
+	struct virtq_used *u;
 	struct vnet_rxbuf *rb;
 	unsigned int i;
 
@@ -313,14 +364,38 @@ static void vnet_rx_poll(struct vnet_device *v)
 		return;	/* RX queue not set up (alloc failed) */
 	}
 
-	while(v->rxq.used_consumed != VQ_USED(q->page, q->size)->idx) {
+	/* The device advances the used ring asynchronously (DMA), so its
+	 * idx must be re-read through a volatile access on every iteration.
+	 * The value must also be CONSUMED immediately (in the exit test)
+	 * before any body code runs: -O2 kept the read value in a register
+	 * across the loop and the inlined re-arm clobbered it, so the
+	 * back-edge compared garbage and the poll never terminated. */
+	u = VQ_USED(q->page, q->size);
+	for(;;) {
+		unsigned int cur_idx = *(volatile __u16 *)&u->idx;
+
+		/* the device's idx is 16-bit and wraps at 65536, while
+		 * used_consumed is a monotonic u32: compare the low 16 bits */
+		if((v->rxq.used_consumed & 0xFFFF) == cur_idx) {
+			break;
+		}
 		i = q->used_consumed % q->size;
+		/* sanity: a used entry must reference a descriptor we own */
+		if(u->ring[i].id >= q->size) {
+			break;	/* corrupt/raced entry: stop consuming */
+		}
 		rb = (struct vnet_rxbuf *)kmalloc(sizeof(struct vnet_rxbuf));
 		if(!rb) {
 			break;
 		}
-		rb->len = VQ_USED(q->page, q->size)->ring[i].len;
-		rb->data = (unsigned char *)q->buffers[VQ_USED(q->page, q->size)->ring[i].id];
+		rb->len = u->ring[i].len;
+		rb->data = (unsigned char *)q->buffers[u->ring[i].id];
+		/* the device wrote the 10-byte virtio_net_hdr first; the
+		 * Ethernet frame starts after it */
+		if(rb->len > VNET_HDR_SIZE) {
+			rb->data += VNET_HDR_SIZE;
+			rb->len -= VNET_HDR_SIZE;
+		}
 		rb->next = NULL;
 		q->used_consumed++;
 		if(v->rx_tail) {
@@ -330,8 +405,11 @@ static void vnet_rx_poll(struct vnet_device *v)
 		}
 		v->rx_tail = rb;
 		v->rx_count++;
-		/* the buffer is consumed; give it back to the device */
-		vnet_rx_add_buffer(v, rb->data);
+		/* the buffer is consumed; give it back to the device under
+		 * its original desc id (the raw buffer start: rb->data may
+		 * have been advanced past the virtio_net_hdr) */
+		vnet_rx_readd_buffer(v, u->ring[i].id,
+				     (unsigned char *)q->buffers[u->ring[i].id]);
 	}
 	if(v->rx_count) {
 		vnet_iow16(VPCI_QUEUE_SEL, 0);
@@ -342,21 +420,20 @@ static void vnet_rx_poll(struct vnet_device *v)
 static void vnet_irq_handler(int num, struct sigcontext *sc)
 {
 	struct vnet_device *v = &vnet;
-	__u8 isr;
-
 
 	if(!v->present) {
 		return;
 	}
-	isr = vnet_ior8(VPCI_ISR);
-	if(isr & 0x01) {
-		vnet_rx_poll(v);
-		wakeup(&v->rx_head);
-		wakeup(&do_select);
-	}
+	/* The receive path polls the used ring itself, so from IRQ context
+	 * we only ACK the interrupt (reading the ISR deasserts INTx) and
+	 * wake sleepers. Polling here would race with ext_recvfrom()'s poll
+	 * on the shared used_consumed/avail_idx/queue state: both would
+	 * consume the same used-ring entries, used_consumed would run ahead
+	 * of the device and the poll would never terminate. */
+	(void)vnet_ior8(VPCI_ISR);
+	wakeup(&v->rx_head);
+	wakeup(&do_select);
 }
-
-/* ------------------------------------------------------------------ */
 
 int ext_init(void)
 {
@@ -414,7 +491,6 @@ int ext_init(void)
 	}
 
 	if(vnet_init_queues()) {
-		/* FNX debug: no FAILED write */
 		return 0;
 	}
 
@@ -423,10 +499,11 @@ int ext_init(void)
 	if(vnet.irq) {
 		static struct interrupt irq_config_vnet = { 0, "virtio-net", &vnet_irq_handler, NULL };
 		register_irq(vnet.irq, &irq_config_vnet);
-		/* FNX: irq64_init() masks everything except the PIT. Read the
-		 * ISR to drop any pending config/queue interrupt, then unmask
+		/* irq64_init() masks everything except the PIT. Read the ISR
+		 * to drop any pending config/queue interrupt, then unmask
 		 * only this line on the slave (NOT the master cascade - that
-		 * wedges the boot). */
+		 * wedges the boot). The handler ACKs the ISR and wakes sleepers;
+		 * it must NOT poll the rings (races with the recv path). */
 		vnet_ior8(VPCI_ISR);
 		vnet_ior8(VPCI_ISR);
 		if(vnet.irq >= 8) {
@@ -461,19 +538,18 @@ static int vnet_init_queues(void)
 	memset_b(&v->txq, 0, sizeof(struct virtq));
 	memset_b(&v->rxq, 0, sizeof(struct virtq));
 
-	/* the device reports its queue size; the legacy layout must use it.
-	 * Read into locals first: the compiler is free to hoist a check on
-	 * the struct fields above the volatile I/O (and did - it tested the
-	 * memset-zeroed values and every valid size was rejected). */
-	/* the device reports its queue size (QEMU legacy: 16); use it
-	 * directly - a validation check kept miscompiling under -O2 (it
-	 * rejected every valid size), so trust the device. */
+	/* the device reports its queue size; the legacy layout uses it
+	 * for the ring offsets */
 	vnet_iow16(VPCI_QUEUE_SEL, 0);
 	v->rxq.size = vnet_ior16(VPCI_QUEUE_NUM);
 	vnet_iow16(VPCI_QUEUE_SEL, 1);
 	v->txq.size = vnet_ior16(VPCI_QUEUE_NUM);
 
-	/* RX queue (queue 0) */	vnet_iow16(VPCI_QUEUE_SEL, 0);
+	/* RX queue (queue 0) */
+	if(!(v->rxq.page = (struct virtq_page *)vnet_alloc_page(&v->rxq.page_phys))) {
+		return -ENOMEM;
+	}
+	vnet_iow16(VPCI_QUEUE_SEL, 0);
 	vnet_iow32(VPCI_QUEUE_PFN, (__u32)(v->rxq.page_phys >> 12));
 
 	/* TX queue (queue 1) */
@@ -544,11 +620,11 @@ int ext_sendto(int fd_ext, const void *buffer, __size_t count, const struct sock
 	return vnet_tx_send(buffer, count);
 }
 
-/* receive one Ethernet frame (blocks if none). The queue interrupts
- * never reach the PIC in this QEMU's legacy transport (they go to MSIX
- * vectors we do not program), so POLL the RX used ring instead of
- * waiting for the IRQ - the device DMA's the frame into a queued RX
- * buffer and marks it in the used ring on its own. */
+/* receive one Ethernet frame (blocks if none). We POLL the RX used
+ * ring instead of relying on the IRQ: the INTx line does fire (the IRQ
+ * handler ACKs it and wakes sleepers, but never touches the ring, so it
+ * cannot race with the poll). The device DMA's the frame into a queued
+ * RX buffer and marks it in the used ring on its own. */
 int ext_recvfrom(int fd_ext, void *buffer, __size_t count, struct sockaddr *addr, int *addrlen)
 {
 	struct vnet_device *v = &vnet;
@@ -567,14 +643,32 @@ int ext_recvfrom(int fd_ext, void *buffer, __size_t count, struct sockaddr *addr
 		}
 		/* brief busy-wait before sleeping so a frame arriving right
 		 * now is picked up without a wakeup we never get */
-		for(spin = 0; spin < 2000 && !v->rx_head; spin++) {
+		for(spin = 0; spin < 10000 && !v->rx_head; spin++) {
 			vnet_rx_poll(v);
 		}
 		if(v->rx_head) {
 			break;
 		}
-		if(sleep(&v->rx_head, PROC_INTERRUPTIBLE)) {
-			return -EINTR;
+		/* the IRQ handler only wakes sleepers (it must not poll), so a
+		 * sleep here is woken either by the IRQ or by this short timeout -
+		 * give up if it expires with no frame (the caller retries) */
+		{
+			extern unsigned int tv2ticks(const struct timeval *);
+			struct timeval tv;
+			int woken;
+
+			tv.tv_sec = 0;
+			tv.tv_usec = 50000;	/* 50 ms */
+			current->timeout = tv2ticks(&tv);
+			woken = sleep(&v->rx_head, PROC_INTERRUPTIBLE);
+			if(!current->timeout) {
+				current->timeout = 0;
+				return -EAGAIN;	/* timed out, no frame */
+			}
+			current->timeout = 0;
+			if(woken) {
+				return -EINTR;	/* interrupted by a signal */
+			}
 		}
 	}
 	rb = v->rx_head;
@@ -610,6 +704,11 @@ int ext_poll(int fd_ext, int flag)
 		return 0;
 	}
 	if(flag == SEL_R) {
+		/* the queue interrupts never reach the PIC in this QEMU's
+		 * legacy transport, so pull completed frames out of the used
+		 * ring before reporting readability - otherwise poll() on an
+		 * external socket never sees an arriving frame */
+		vnet_rx_poll(v);
 		return (v->rx_head != NULL) ? 1 : 0;
 	}
 	return 1;
