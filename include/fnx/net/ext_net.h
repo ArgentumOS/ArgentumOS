@@ -38,6 +38,7 @@ struct ext_net_ops {
  * and initialized (and the network framing is configured), NULL otherwise */
 struct ext_net_ops *virtio_net_probe(void);
 struct ext_net_ops *rtl8139_probe(void);
+struct ext_net_ops *ne2k_probe(void);
 
 /* the ext_* dispatcher (drivers/net/ext_dev.c) */
 int ext_init(void);

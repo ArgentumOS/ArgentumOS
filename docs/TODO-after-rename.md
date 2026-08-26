@@ -356,6 +356,44 @@ buffer is LEAKED - never free under the chip - and -EAGAIN returned);
 IMR only when an INTx line exists; the IRQ handler only ACKs the ISR
 and wakes sleepers - the RX path always polls the ring.
 
+## DONE: ne2k_pci NIC driver
+
+A third real-NIC driver for QEMU's `ne2k_pci` (RealTek 8029, PCI
+10EC:8029) behind the same ext_* dispatcher (drivers/net/ne2k.c, probed
+after virtio-net and rtl8139). The NE2000 is a DP8390 with the 16KB
+SRAM ring ON THE CARD: every data move goes through the Remote DMA port
+(programmed I/O), so there is no guest-RAM DMA at all - a nice contrast
+to the two descriptor-based NICs. Verified: ping 10.0.2.2 3/3, userland
+DHCP lease, TCP loopback, full stress 0 HANG.
+
+NE2000 semantics learned (QEMU ne2000.c / real 8390):
+- I/O map (BAR0, 0x100): 0x00-0x0F page-selectable registers (CR bits
+  6-7), 0x10 = RDMAP port, 0x1F = reset (a READ pulses it).
+- The physical-address filter matches the EEPROM MAC the reset
+  autoloads into the card SRAM with each byte duplicated
+  (mem[0..11] = mac0 mac0 mac1 mac1 ...): read the MAC via Remote DMA
+  from address 0 and take the even bytes; PAR writes (page 1 reg 0x01)
+  are for real hardware only. RCR bits: 0x04 = accept broadcast, 0x08
+  = multicast, 0x10 = promiscuous; physical is always matched.
+- RX ring: circular 256-byte pages PSTART..PSTOP; chip writes at CURR
+  (page 1 reg 0x07), driver reads from BNRY (page 0 reg 0x03); the
+  ring is empty when CURR == BNRY (init both to PSTART). Each packet:
+  4-byte header (status bit 0 = OK, next page, len-lo, len-hi where
+  len = frame size + 4) then the frame; the RDMAP wraps PSTOP->PSTART.
+- TX: Remote DMA-write the frame into the SRAM at TPSR, set TBCR, then
+  CR = NODMA|START|TRANS - QEMU sends synchronously and sets TSR bit 0
+  (PTX). Poll TSR, NOT ISR bit 1: the IRQ handler clears ISR bits, so
+  an ISR poll races it (the DISCOVER "timed out" even though the frame
+  went out - and the DHCP proceeded anyway, hiding the bug).
+- **CR page-state discipline**: a CURR read leaves CR on page 1; the
+  next page-0 register write (BNRY, TPSR, TBCR, ...) then lands in the
+  wrong registers - the ARP request went out with tcnt=0 (nothing on
+  the wire) because TPSR/TBCR were misdirected to the PAR area. ne2k_curr
+  restores page 0, tx_send forces CR_NODMA, the IRQ handler pins page 0.
+- The remote DMA needs the direction bits (CR_RREAD/CR_RWRITE + START)
+  on real 8390 silicon (QEMU routes the port unconditionally, so it is
+  a no-op there but required on HW).
+
 ## Pending: OpenBFS (BeOS BFS) filesystem - DECIDED, DEFERRED
 
 Chosen (over XFS) as FNX's next real filesystem; explicitly deferred -

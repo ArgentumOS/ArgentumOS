@@ -29,6 +29,9 @@ int ext_init(void)
 	if((ext_ops = rtl8139_probe())) {
 		goto configured;
 	}
+	if((ext_ops = ne2k_probe())) {
+		goto configured;
+	}
 	return 0;	/* no NIC: loopback only */
 configured:
 	/* the probe cannot configure the framing itself (the dispatcher's
