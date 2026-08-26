@@ -394,6 +394,65 @@ NE2000 semantics learned (QEMU ne2000.c / real 8390):
   on real 8390 silicon (QEMU routes the port unconditionally, so it is
   a no-op there but required on HW).
 
+## DONE: pcnet NIC driver (AMD LANCE / Am79C970A)
+
+A fifth real-NIC driver for QEMU's `pcnet` (AMD Lance, PCI 1022:2000)
+behind the ext_* dispatcher (drivers/net/pcnet.c, probed after tulip).
+The Lance is the classic 24-bit DMA NIC: an init block in guest RAM
+(mode, MAC, multicast filter, ring bases) + two rings of 8-byte
+descriptors. Verified: ping 10.0.2.2 3/3, userland DHCP lease, TCP
+loopback, full stress 0 HANG; virtio/rtl8139/ne2k/tulip regressions
+pass.
+
+Lance semantics learned (QEMU pcnet.c / pcnet-pci.c / Linux pcnet32):
+- The I/O map is DECEIVING: offsets 0x00-0x0F are the APROM (the MAC
+  PROM - the MAC is directly readable as 6 bytes at I/O+0x00 in 16-bit
+  mode). The RAP/RDP indirect ports are at 0x10-0x1F: RDP = 0x10 (the
+  data), RAP = 0x12 (the register number), a READ at 0x14 resets. The
+  classic driver docs say RAP=0x00/RDP=0x02 - wrong for the PCI model.
+- 16-bit register access via RAP/RDP (write the number to RAP, then
+  read/write RDP). CSR0: INIT=0x0001 (reads the init block), STRT=0x2,
+  STOP=0x4, TDMD=0x8 (TX kick), INEA=0x40; the status bits are w1c
+  (write them back to clear): IDON=0x100, TINT=0x200, RINT=0x400,
+  MERR=0x800. The IRQ asserts when (csr0 & ~csr3) & 0x5f00 - CSR3 is
+  the interrupt mask (0 = unmasked). CSR1/2 = the init block address.
+- Init block (24 bytes, phys < 16MB): u16 mode (0x0000 = accept
+  physical + broadcast), u16 padr[3] (the MAC - the physical filter
+  matches this), u16 ladrf[4] (multicast, zeros), u32 rdra = rx ring
+  base | (rlen << 29), u32 tdra = tx ring base | (tlen << 29); the
+  ring has 1 << rlen descriptors (rlen = 4 = 16). CSR0 = INIT, then
+  CSR0 = STRT starts.
+- 8-byte descriptor: u32 word0 = 24-bit buffer phys | (status bits
+  8-15) << 16 - the OWN/STP/ENP bits live at BITS 24-31 (byte 3) of
+  the word, NOT bits 16-23! A bit-23 OWN looked right in the debug
+  dump (the chip's status read = (word >> 16) & 0xff00 maps word bit
+  23 to status bit 7, which is NOT OWN) and silently disabled RX until
+  the driver's bogus-length refill self-healed the ring. u16 length =
+  0xf000 | BCNT (the 0xf ONES nibble is sanity-checked); the RX buffer
+  is (4096 - BCNT) bytes, the TX frame is (4096 - BCNT) bytes; the RX
+  msg_length (bytes 6-7) = frame + 4 (strip 4).
+- TX: descriptor OWN|STP|ENP + length, kick with CSR0 = TDMD|INEA; the
+  chip clears OWN when sent. RX: the chip walks the ring in order
+  (RCVRC 16->1 wrapping) as long as descriptors stay OWN; if the ring
+  runs out it scans for the last free descriptor - the driver refills
+  immediately after each dequeue so the scan never triggers. The MAC
+  read needs no reset: the APROM is always readable.
+- DMA window: EVERYTHING below 16MB. The Lance's PHYSADDR macro adds
+  (0xff00 & csr2) << 16 to every 24-bit address - csr2 bits 8-15 must
+  stay 0 (the init block < 16MB guarantees it); otherwise descriptor
+  addresses get corrupted with the double-shifted high bits.
+- **The low DMA window exhausts under the full stress**: after ~370
+  commands the pages below 16MB are all live, alloc_pages64 returns the
+  SAME high page (e.g. 0x2e95000) on every call, and even a 32-retry
+  loop fails - the per-send TX-buffer alloc then silently broke every
+  DHCP DISCOVER (the driver returned -ENOMEM, the userland client
+  retried forever, and the stress's 2s watchdog kill wedged the guest).
+  FIX: pre-allocate the 4 TX buffers at probe time (the window is free
+  at boot); the in-order OWN poll guarantees the chip is done before a
+  buffer is reused. The RX scan in the dequeue (the chip can pick
+  descriptors out of order when the ring runs low) was a second
+  stress-only fix.
+
 ## DONE: tulip NIC driver (DEC 21143)
 
 A fourth real-NIC driver for QEMU's `tulip` (DEC 21143, PCI 1011:0019)
