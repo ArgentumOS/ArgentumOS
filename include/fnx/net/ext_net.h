@@ -2,7 +2,7 @@
  * fnx/include/fnx/net/ext_net.h
  *
  * The ext_* API: raw Ethernet-frame access over whichever real NIC is
- * present (virtio-net first, then rtl8139). One driver is active at a
+ * present (virtio-net, rtl8139, ne2k, tulip). One driver is active at a
  * time; net/ext_net.c, net/ipv4.c and net/af_packet.c call the ext_*
  * functions in drivers/net/ext_dev.c, which forward to the active
  * driver's ops table.
@@ -39,6 +39,7 @@ struct ext_net_ops {
 struct ext_net_ops *virtio_net_probe(void);
 struct ext_net_ops *rtl8139_probe(void);
 struct ext_net_ops *ne2k_probe(void);
+struct ext_net_ops *tulip_probe(void);
 
 /* the ext_* dispatcher (drivers/net/ext_dev.c) */
 int ext_init(void);

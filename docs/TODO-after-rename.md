@@ -394,6 +394,46 @@ NE2000 semantics learned (QEMU ne2000.c / real 8390):
   on real 8390 silicon (QEMU routes the port unconditionally, so it is
   a no-op there but required on HW).
 
+## DONE: tulip NIC driver (DEC 21143)
+
+A fourth real-NIC driver for QEMU's `tulip` (DEC 21143, PCI 1011:0019)
+behind the ext_* dispatcher (drivers/net/tulip.c, probed after ne2k).
+The classic descriptor-ring NIC: RX + TX rings of 16-byte descriptors
+(status, control, buf_addr1, buf_addr2) in guest RAM, the chip DMA's
+frames through them, and the address filter is programmed by a 192-byte
+SETUP frame sent through the TX ring (16 x 12-byte entries, MAC bytes
+at offsets 0-1, 4-5, 8-9). Verified: ping 10.0.2.2 3/3, userland DHCP
+lease, TCP loopback, full stress 0 HANG; virtio/rtl8139/ne2k regressions
+pass.
+
+21143 semantics learned (QEMU tulip.c / Linux tulip):
+- CSRs (32-bit, BAR0 I/O + BAR1 MMIO, 8-byte spacing): CSR0=0x00 (SWR
+  software reset), CSR1=0x08 (write = start the TX poll), CSR2=0x10
+  (write = flush queued RX), CSR3=0x18 / CSR4=0x20 (RX/TX ring bases),
+  CSR5=0x28 (status w1c; TI/RI bits; the IRQ asserts when a masked bit
+  sets CSR5_NIS/AIS and the summary bit is masked-enabled in CSR7),
+  CSR6=0x30 (SR bit 1 start RX, ST bit 13 start TX; writing ST also
+  auto-runs the first TX poll), CSR7=0x38 (mask: 0x000180C5).
+- RX descriptor: driver sets status OWN (bit 31); the chip clears it
+  when filled. FL = frame length + 4 (bits 16-29) - the buffer holds
+  the frame WITHOUT the CRC, so copy (FL - 4) bytes. Control = buf1
+  size (bits 0-10, max 2047!) | RER (bit 25) on the last ring entry.
+  After cleaning + refilling a descriptor, write CSR2 to restart a
+  stalled receive poll (RU).
+- TX descriptor: status OWN set by the driver, control = buf1 size |
+  FS (bit 29) | LS (bit 30) | TER on the last; chip clears OWN when the
+  frame is out. Kick with a CSR1 write. On a completion timeout, hand
+  the descriptor back (clear OWN) - a stuck OWN wedges the in-order
+  ring forever.
+- The MAC is in the on-board EEPROM at words 10-12 (each a LE u16),
+  read via the CSR9 SROM bit-bang (93C46 Microwire: CS low->high, clock
+  in 0,1,10 + 6 address bits, then 16 data bits MSB first on SK rising
+  edges, DO via CSR9_SR_DO). QEMU emulates the eeprom93xx bit-bang, so
+  no MAC hardcoding needed.
+- Setup frame: TX descriptor with TDES1_SET + FS|LS; QEMU fills its
+  filter table from it, so physical matches come from the setup frame
+  (no autoloaded filter like the ne2k/rtl8139).
+
 ## Pending: OpenBFS (BeOS BFS) filesystem - DECIDED, DEFERRED
 
 Chosen (over XFS) as FNX's next real filesystem; explicitly deferred -

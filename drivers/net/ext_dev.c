@@ -2,8 +2,8 @@
  * fnx/drivers/net/ext_dev.c
  *
  * The ext_* dispatcher: holds the active NIC driver's ops table and
- * forwards the raw-Ethernet API to it. Probing is ordered - virtio-net
- * first, then rtl8139 - and only one driver is active at a time, so
+ * forwards the raw-Ethernet API to it. Probing is ordered - virtio-net,
+ * rtl8139, ne2k, tulip - and only one driver is active at a time, so
  * the kernel-side framing in net/ext_net.c (ARP/IP/DHCP) and the
  * sockets in net/ipv4.c / net/af_packet.c are driver-independent.
  *
@@ -30,6 +30,9 @@ int ext_init(void)
 		goto configured;
 	}
 	if((ext_ops = ne2k_probe())) {
+		goto configured;
+	}
+	if((ext_ops = tulip_probe())) {
 		goto configured;
 	}
 	return 0;	/* no NIC: loopback only */
