@@ -245,3 +245,28 @@ loopback still pass; full stress passes. Root causes fixed:
 Follow-up (unchanged): a DMA allocator that reserves NIC pages in BOTH
 the bitmap and the buddy (or the modern virtio-pci transport, whose
 queues are not constrained to contiguous legacy pages).
+
+## Pending: rtl8139 NIC driver (target #6 follow-up)
+
+Add a second real-NIC driver for QEMU's `rtl8139` (PCI vendor 0x10EC,
+device 0x8139) behind the same ext_* API (ext_open/ext_sendto/
+ext_recvfrom/ext_poll), so the kernel-side framing in net/ext_net.c
+(ARP/IP/DHCP) and the network stack are untouched. It is PIO-only
+(single I/O BAR), has one INTx line and simple TX/RX rings - the
+classic second NIC for OS projects, and much simpler than e1000's
+descriptor format. QEMU: `-device rtl8139,netdev=n1 -netdev user,id=n1`
+(swap in for the virtio-net default in Makefile QEMU_NET).
+
+Notes:
+- The 8139's RX ring is a fixed-size circular buffer (8K/16K/32K/64K
+  via CONFIG1/CMD); the driver owns the ring via a kmalloc'd buffer,
+  not a virtio-style descriptor table. TX is a ring of 4 TXDs.
+- EEPROM autoload gives the MAC at offset 0x00 (same access pattern as
+  the virtio driver's config read); IRQ is INTx A on the slave PIC.
+- The IRQ handler must follow the same rule as virtio-net: ACK the ISR
+  (read ISR 0x3E / clear the relevant bits) and wake sleepers, but the
+  RX path polls (RECV+RF0..RF3 / CMD) - never touch the RX ring from
+  IRQ context.
+- Consider probing both NICs (virtio-net first, then rtl8139) and
+  preferring whichever is present, or making the driver selectable;
+  keep the ext_fd/ext_* indirection so only one is active at a time.
