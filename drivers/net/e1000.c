@@ -45,6 +45,9 @@
 
 #define E1000_VENDOR	0x8086	/* Intel */
 #define E1000_DEVICE	0x100E	/* 82540EM */
+/* the same 8254x driver also serves the two -nic variants */
+#define E1000_DEVICE_82544GC	0x100C
+#define E1000_DEVICE_82545EM	0x100F
 
 #define E1000_CTRL	0x00000
 #define E1000_STATUS	0x00008
@@ -375,7 +378,10 @@ struct ext_net_ops *e1000_probe(void)
 
 	pd = pci_device_table;
 	while(pd) {
-		if(pd->vendor_id == E1000_VENDOR && pd->device_id == E1000_DEVICE) {
+		if(pd->vendor_id == E1000_VENDOR &&
+		   (pd->device_id == E1000_DEVICE ||
+		    pd->device_id == E1000_DEVICE_82544GC ||
+		    pd->device_id == E1000_DEVICE_82545EM)) {
 			break;
 		}
 		pd = pd->next;
@@ -463,7 +469,7 @@ struct ext_net_ops *e1000_probe(void)
 	}
 
 	printk("e1000: NIC %x:%x at 0x%lx, IRQ %d, MAC %02x:%02x:%02x:%02x:%02x:%02x\n",
-		E1000_VENDOR, E1000_DEVICE, mmio, e1000.irq,
+		E1000_VENDOR, pd->device_id, mmio, e1000.irq,
 		e1000.mac[0], e1000.mac[1], e1000.mac[2],
 		e1000.mac[3], e1000.mac[4], e1000.mac[5]);
 	e1000.present = 1;
