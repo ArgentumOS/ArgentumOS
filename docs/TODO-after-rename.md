@@ -335,3 +335,49 @@ Notes:
 - Consider probing both NICs (virtio-net first, then rtl8139) and
   preferring whichever is present, or making the driver selectable;
   keep the ext_fd/ext_* indirection so only one is active at a time.
+
+## Pending: OpenBFS (BeOS BFS) filesystem - DECIDED, DEFERRED
+
+Chosen (over XFS) as FNX's next real filesystem; explicitly deferred -
+do NOT start until this section is picked up as the active task. The
+existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
+
+Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
+"second filesystem" (Giampaolo, "Practical File System Design with the
+Be File System"). One B+tree engine (index/directory/stream nodes)
+powers everything - even free space is a B+tree of block runs, not a
+bitmap. XFS was the alternative: production-grade but 2-3x the scope
+(AGs, 3 btree variants, 5 directory formats, log).
+
+Milestones (each independently verifiable):
+- M0 - tools/mkbfs.py image builder (like mkext2.py): 1KB blocks, a
+  few AGs, superblock, journal extent, root-dir stream, a few files.
+  Cross-check layout against Linux fs/befs headers (include/fnx/bfs.h).
+  GOTCHA: /sbin/mkfs.bfs on Linux makes the SCO UnixWare boot fs
+  (magic 0x1badface), NOT BeOS BFS (magic 0x42465331) - we must write
+  our own builder; there is no Linux mkfs for BeOS BFS.
+- M1 - Read-only driver: register 'bfs' (bump NR_FILESYSTEMS in
+  include/fnx/filesystems.h, fs/filesystems.c), mount (superblock at
+  512B, AG geometry, journal state), read inodes (256B, small-data
+  runs -> indirect stream), walk the root-dir B+tree (hash-keyed
+  lookup + readdir), read files via the buffer cache (bread/bwrite
+  already take an arbitrary size). Deliverable: mount a BFS data disk
+  in the guest, ls/cat work. This is where the B+tree engine gets
+  built (node types, keys, leaf reads).
+- M2 - Write support: free-space run B+tree insert/delete (split/
+  merge), inode alloc/free, file create/write/extend, mkdir/rmdir/
+  unlink/rename/symlink, dir-entry insert/delete.
+- M3 - Journaling: mount-time replay (recover unclean state) +
+  metadata transaction logging.
+- M4 - Stretch: attributes/queries (BeOS signature feature), and/or
+  make BFS the ROOT filesystem (mkbfs.py root image + mount-before-
+  userland; the ext2 root path and mkext2.py then become optional).
+
+Framing: first milestone mounts BFS as a SECOND filesystem (data
+disk, e.g. a second QEMU drive) while ext2 stays the root - lower
+risk, reuses the boot path. Move the root over only in M4.
+
+References: fs/befs (Linux, read-only) for the on-disk format; Haiku's
+BFS implementation (MIT) as a behavioral reference; buffer cache
+supports arbitrary block sizes (bread(dev, blk, size)); in-guest
+verification via a bfstest.sh like the other targets.
