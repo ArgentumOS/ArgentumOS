@@ -534,6 +534,39 @@ pass.
   filter table from it, so physical matches come from the setup frame
   (no autoloaded filter like the ne2k/rtl8139).
 
+## DONE: eepro100 NIC driver (Intel i8255x / PRO100)
+
+A seventh real-NIC driver for QEMU's `eepro100` family (PCI 8086:1229 =
+i82557/8/9, 8086:1209 = i82559er/i82562, 8086:2449 = i82801) behind the
+ext_* dispatcher (drivers/net/eepro100.c, probed after ne2k_isa; QEMU:
+`-device i82559er,netdev=n1`). SCB (system control block) registers in
+MMIO (BAR0 is memory), 93C46 EEPROM bit-bang for the MAC, simplified-mode
+TCB TX (frame at TCB+0x10) and an RFD ring RX. Verified: ping 10.0.2.2
+3/3, userland DHCP lease, TCP loopback, full stress 0 HANG; all 7 NIC
+regressions (virtio/rtl8139/ne2k/tulip/pcnet/e1000/ne2k_isa) pass.
+
+eepro100 semantics learned (QEMU eepro100.c):
+- **TCB `tcb_bytes` lives at +12, NOT +14** (struct is status,
+  command, link, tbd_array_addr, tcb_bytes, tx_threshold, tbd_count).
+  Writing it at +14 makes QEMU read `tcb_bytes = 0` and send a
+  0-length frame - the ARP request "went out" but SLIRP never saw it,
+  so RX never fired ("Host is unreachable").
+- **RX: QEMU writes the frame at RFD+16** (right after the 16-byte
+  descriptor), ignoring `rx_buf_addr`; the buffer area must live in
+  the RFD page, and the driver must dequeue from RFD+16.
+- **ACK bits differ from the classic encoding**: QEMU ORs CX=0x80,
+  CNA=0x20, FR=0x40, RNR=0x10 into the SCB ACK byte - the driver must
+  wake sleepers on FR|RNR using those bits.
+- RFD ring: 16 entries x one 4K page (RFD at 0, frame area at +16),
+  circular link; RU_START (cmd 0x01) with SCBPointer = rfd_phys[0]
+  suffices - `ru_base` stays 0. RU state in the status word bits 5-2
+  (0x10 = ru_ready).
+- TX: single TCB with I|CmdTx|EL + tbd_array=0xffffffff (simplified
+  mode), CU_START per frame, spin on STATUS_C. Init: CU list of
+  CmdConfigure (22 zero bytes at TCB+8) -> CmdIASetup (MAC at TCB+8)
+  with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
+  via the 93C46 bit-bang (words 0-2, LE).
+
 ## Pending: OpenBFS (BeOS BFS) filesystem - DECIDED, DEFERRED
 
 Chosen (over XFS) as FNX's next real filesystem; explicitly deferred -

@@ -3,7 +3,8 @@
  *
  * The ext_* dispatcher: holds the active NIC driver's ops table and
  * forwards the raw-Ethernet API to it. Probing is ordered - virtio-net,
- * rtl8139, ne2k, tulip, pcnet, e1000 - and only one driver is active at a time, so
+ * rtl8139, ne2k, tulip, pcnet, e1000, ne2k_isa, eepro100 - and only one driver
+ * is active at a time, so
  * the kernel-side framing in net/ext_net.c (ARP/IP/DHCP) and the
  * sockets in net/ipv4.c / net/af_packet.c are driver-independent.
  *
@@ -42,6 +43,9 @@ int ext_init(void)
 		goto configured;
 	}
 	if((ext_ops = ne2k_isa_probe())) {
+		goto configured;
+	}
+	if((ext_ops = eepro100_probe())) {
 		goto configured;
 	}
 	return 0;	/* no NIC: loopback only */
