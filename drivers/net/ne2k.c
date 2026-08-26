@@ -39,6 +39,8 @@
 
 #define NE2K_VENDOR	0x10EC	/* RealTek */
 #define NE2K_DEVICE	0x8029	/* RTL8029AS PCI NE2000 clone */
+#define NE2K_ISA_IOBASE	0x300	/* the ISA NE2000's fixed I/O port */
+#define NE2K_ISA_IRQ	9	/* and its default IRQ */
 
 /* 8390 registers (I/O offsets; pages selected by CR bits 6-7) */
 #define N_CR		0x00	/* command register (all pages) */
@@ -388,49 +390,26 @@ struct ext_net_ops ne2k_ops = {
 	ne2k_ext_poll,
 };
 
-struct ext_net_ops *ne2k_probe(void)
+/* shared DP8390 setup: reset, MAC, rings, IRQ, banner. Returns the ops
+ * table when the device answers, NULL otherwise. */
+static struct ext_net_ops *ne2k_setup(void)
 {
-	struct pci_device *pd;
-	unsigned short iobase;
 	unsigned char prom[12];
 	int n, spin;
 
 	ne2k.present = 0;
 
-	/* find the RealTek 8029 PCI NE2000 clone */
-	pd = pci_device_table;
-	while(pd) {
-		if(pd->vendor_id == NE2K_VENDOR && pd->device_id == NE2K_DEVICE) {
-			break;
-		}
-		pd = pd->next;
-	}
-	if(!pd) {
-		return NULL;
-	}
-
-	/* PIO-only: BAR0 is I/O space */
-	iobase = (unsigned short)(pd->bar[0] & 0xFFFC);
-	if(!iobase) {
-		return NULL;
-	}
-	ne2k.iobase = iobase;
-	ne2k.irq = pd->irq;
-
-	/* command: IO | MASTER */
-	pci_write_short(pd, 0x04, 0x0005);
-
 	/* reset the chip (reading the reset port pulses it), then stop */
-	inport_b(iobase + N_RESET);
+	inport_b(ne2k.iobase + N_RESET);
 	for(spin = 0; spin < 100000; spin++) {
-		if(inport_b(iobase + N_ISR) & 0x80) {	/* ENISR_RESET */
+		if(inport_b(ne2k.iobase + N_ISR) & 0x80) {	/* ENISR_RESET */
 			break;
 		}
 	}
-	outport_b(iobase + N_CR, CR_STOP);
+	outport_b(ne2k.iobase + N_CR, CR_STOP);
 
 	/* 8-bit remote DMA transfers */
-	outport_b(iobase + N_DCFG, 0x48);
+	outport_b(ne2k.iobase + N_DCFG, 0x48);
 
 	/* read the MAC: the reset autoloads it into the card SRAM with
 	 * each byte duplicated (mem[0..11] = mac0 mac0 mac1 mac1 ...),
@@ -441,52 +420,108 @@ struct ext_net_ops *ne2k_probe(void)
 	}
 
 	/* physical address filter (page 1 is selected in CR) */
-	outport_b(iobase + N_CR, CR_NODMA | CR_PAGE1);
+	outport_b(ne2k.iobase + N_CR, CR_NODMA | CR_PAGE1);
 	for(n = 0; n < 6; n++) {
-		outport_b(iobase + N1_PHYS + n, ne2k.mac[n]);
+		outport_b(ne2k.iobase + N1_PHYS + n, ne2k.mac[n]);
 	}
 
 	/* RX ring: pages RX_START..RX_STOP-1; start the chip with the
 	 * read pointer at PSTART (CURR=PSTART too, so the ring is empty) */
-	outport_b(iobase + N_CR, CR_NODMA);
-	outport_b(iobase + N_STARTPG, RX_START);
-	outport_b(iobase + N_STOPPG, RX_STOP);
-	outport_b(iobase + N_BOUNDARY, RX_START);
-	outport_b(iobase + N_CR, CR_NODMA | CR_PAGE1);
-	outport_b(iobase + N1_CURPAG, RX_START);
-	outport_b(iobase + N_CR, CR_NODMA);
+	outport_b(ne2k.iobase + N_CR, CR_NODMA);
+	outport_b(ne2k.iobase + N_STARTPG, RX_START);
+	outport_b(ne2k.iobase + N_STOPPG, RX_STOP);
+	outport_b(ne2k.iobase + N_BOUNDARY, RX_START);
+	outport_b(ne2k.iobase + N_CR, CR_NODMA | CR_PAGE1);
+	outport_b(ne2k.iobase + N1_CURPAG, RX_START);
+	outport_b(ne2k.iobase + N_CR, CR_NODMA);
 	ne2k.bnry = RX_START;
 
 	/* receive config: accept broadcast + physical (physical has no
 	 * enable bit on the 8390 - it is always matched) */
-	outport_b(iobase + N_RXCR, RXCR_AB);
+	outport_b(ne2k.iobase + N_RXCR, RXCR_AB);
 
 	/* TX buffer location */
-	outport_b(iobase + N_TPSR, TX_PAGE);
+	outport_b(ne2k.iobase + N_TPSR, TX_PAGE);
 
 	/* clear pending interrupts, then unmask only this line */
 	if(ne2k.irq) {
 		static struct interrupt irq_config_ne2k = { 0, "ne2k", &ne2k_irq_handler, NULL };
 		register_irq(ne2k.irq, &irq_config_ne2k);
-		outport_b(iobase + N_ISR, 0x7F);
+		outport_b(ne2k.iobase + N_ISR, 0x7F);
 		if(ne2k.irq >= 8) {
 			outport_b(0xA1, 0xFF & ~(1 << (ne2k.irq - 8)));
 		} else {
 			outport_b(0x21, 0xFE & ~(1 << ne2k.irq));
 		}
-		outport_b(iobase + N_IMR, ISR_INT_EN);
+		outport_b(ne2k.iobase + N_IMR, ISR_INT_EN);
 	}
 
 	/* start the chip (also clears the reset bit) */
-	outport_b(iobase + N_CR, CR_NODMA | CR_START);
+	outport_b(ne2k.iobase + N_CR, CR_NODMA | CR_START);
 
-	printk("ne2k: NIC %x:%x at 0x%x, IRQ %d, MAC %02x:%02x:%02x:%02x:%02x:%02x\n",
-		NE2K_VENDOR, NE2K_DEVICE, iobase, ne2k.irq,
+	printk("ne2k: NIC at 0x%x, IRQ %d, MAC %02x:%02x:%02x:%02x:%02x:%02x\n",
+		ne2k.iobase, ne2k.irq,
 		ne2k.mac[0], ne2k.mac[1], ne2k.mac[2],
 		ne2k.mac[3], ne2k.mac[4], ne2k.mac[5]);
 	ne2k.present = 1;
 	memcpy_b(ne2k_ops.mac, ne2k.mac, 6);
 	return &ne2k_ops;
+}
+
+/* the PCI NE2000 clone (RealTek 8029) */
+struct ext_net_ops *ne2k_probe(void)
+{
+	struct pci_device *pd;
+	unsigned short iobase;
+
+	pd = pci_device_table;
+	while(pd) {
+		if(pd->vendor_id == NE2K_VENDOR && pd->device_id == NE2K_DEVICE) {
+			break;
+		}
+		pd = pd->next;
+	}
+	if(!pd) {
+		return NULL;
+	}
+	iobase = (unsigned short)(pd->bar[0] & 0xFFFC);
+	if(!iobase) {
+		return NULL;
+	}
+	ne2k.iobase = iobase;
+	ne2k.irq = pd->irq;
+	pci_write_short(pd, 0x04, 0x0005);	/* IO | MASTER */
+	return ne2k_setup();
+}
+
+/* the ISA NE2000 (QEMU's ne2k_isa, fixed I/O 0x300 + IRQ 9). Detection:
+ * the reset pulse + the MAC read; an absent device returns all-ones */
+struct ext_net_ops *ne2k_isa_probe(void)
+{
+	unsigned char prom[12];
+	int n, spin;
+
+	ne2k.iobase = NE2K_ISA_IOBASE;
+	ne2k.irq = NE2K_ISA_IRQ;
+
+	inport_b(ne2k.iobase + N_RESET);
+	for(spin = 0; spin < 100000; spin++) {
+		if(inport_b(ne2k.iobase + N_ISR) & 0x80) {
+			break;
+		}
+	}
+	outport_b(ne2k.iobase + N_CR, CR_STOP);
+	outport_b(ne2k.iobase + N_DCFG, 0x48);
+	ne2k_rdma_read(0, prom, 12);
+	for(n = 0; n < 6; n++) {
+		if(prom[2 * n] != 0xFF) {
+			break;
+		}
+	}
+	if(n == 6) {
+		return NULL;	/* no ISA NE2000 at the port */
+	}
+	return ne2k_setup();
 }
 
 #endif /* CONFIG_NET */
