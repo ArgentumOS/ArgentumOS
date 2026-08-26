@@ -17,10 +17,14 @@ python3 - <<'EOF'
 import os, re
 offenders = []
 # applets that need kernel headers (musl has none); android + pending are
-# disabled wholesale (android is bionic-specific, pending is unfinished)
+# disabled wholesale (android is bionic-specific, pending is unfinished),
+# EXCEPT toys/pending/dhcp.c: FNX vendors the linux headers it needs
+# (tools/kernel-headers) so the DHCP client can be built.
 for d in ('toys/android', 'toys/pending'):
     for f in os.listdir(d):
         if f.endswith('.c'):
+            if d == 'toys/pending' and f == 'dhcp.c':
+                continue
             offenders.append(os.path.join(d, f))
 offenders += [
     'toys/net/rfkill.c', 'toys/net/tunctl.c',
@@ -43,6 +47,9 @@ for line in lines:
         out.append('# CONFIG_%s is not set' % line[7:-2])
     else:
         out.append(line)
+# re-enable the toybox DHCP client (pending applet, default n; it now has
+# the linux headers it needs via tools/kernel-headers)
+out = [l if l != '# CONFIG_DHCP is not set' else 'CONFIG_DHCP=y' for l in out]
 open('.config', 'w').write('\n'.join(out) + '\n')
 print("mktoybox: disabled %d applets needing kernel headers" % len(syms))
 EOF

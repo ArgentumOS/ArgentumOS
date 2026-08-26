@@ -7,4 +7,7 @@
 # because FNX has no dynamic linker.
 set -e
 MUSL="$(cd "$(dirname "$0")/.." && pwd)/.build/musl64"
-exec gcc -static -specs "$MUSL/lib/musl-gcc.specs" "$@"
+# -I kernel-headers: FNX ships no kernel headers, so userland tools (e.g.
+# toybox's dhcp applet) that include <linux/*.h> get the minimal
+# Linux-uapi-compatible subset from tools/kernel-headers.
+exec gcc -static -I"$(dirname "$0")/kernel-headers" -specs "$MUSL/lib/musl-gcc.specs" "$@"

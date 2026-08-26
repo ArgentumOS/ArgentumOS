@@ -10,4 +10,7 @@
 # Usage: tools/musl-gcc.sh [flags] source.c... -o OUTPUT
 set -e
 MUSL="$(cd "$(dirname "$0")/.." && pwd)/.build/musl"
-exec gcc -m32 -static -Wl,-m,elf_i386 -specs "$MUSL/lib/musl-gcc.specs" "$@"
+# -I kernel-headers: see tools/musl-gcc64.sh - userland tools that include
+# <linux/*.h> get the minimal Linux-uapi-compatible subset from
+# tools/kernel-headers.
+exec gcc -m32 -static -Wl,-m,elf_i386 -I"$(dirname "$0")/kernel-headers" -specs "$MUSL/lib/musl-gcc.specs" "$@"
