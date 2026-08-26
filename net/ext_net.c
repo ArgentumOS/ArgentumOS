@@ -134,7 +134,7 @@ static int ext_net_send_arp(unsigned int ip)
 /* process an incoming ARP frame; returns 1 if it answered our request */
 static int ext_net_handle_arp(const unsigned char *frame, int len)
 {
-	const struct eth_hdr *eth = (const struct eth_hdr *)frame;
+
 	const struct arp_pkt *arp;
 	int r = 0;
 
@@ -491,8 +491,22 @@ int ext_net_configure(const unsigned char *mac, unsigned int ip, unsigned int gw
 		ext_fd = ext_open(0, 0, 0);
 	}
 	if(ext_fd >= 0) {
-		/* establish the DHCP lease so SLIRP answers ICMP to us */
-		ext_net_dhcp();
+		/* establish the DHCP lease so SLIRP answers ICMP to us
+		 * (skipped with "nodhcp" on the kernel cmdline: the userland
+		 * client then owns the lease) */
+		extern char kernel_cmdline[NAME_MAX + 1];
+		const char *nodhcp = "nodhcp";
+		int found = 0;
+		int i, j;
+		for(i = 0; kernel_cmdline[i] && !found; i++) {
+			for(j = 0; nodhcp[j] && kernel_cmdline[i + j] == nodhcp[j]; j++);
+			if(!nodhcp[j]) {
+				found = 1;
+			}
+		}
+		if(!found) {
+			ext_net_dhcp();
+		}
 	}
 	return 0;
 }

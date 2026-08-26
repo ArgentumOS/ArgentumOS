@@ -311,30 +311,50 @@ Verify: `cat /proc/1/comm` -> init; `pidof sh` -> a pid;
 link/MAC line; /proc/uptime, /proc/meminfo, /proc/1/cmdline all read;
 `/pty_t` opens /dev/ptmx (devpts mounted). Full stress passes.
 
-## Pending: rtl8139 NIC driver (target #6 follow-up)
+## DONE: rtl8139 NIC driver (target #6 follow-up)
 
-Add a second real-NIC driver for QEMU's `rtl8139` (PCI vendor 0x10EC,
-device 0x8139) behind the same ext_* API (ext_open/ext_sendto/
-ext_recvfrom/ext_poll), so the kernel-side framing in net/ext_net.c
-(ARP/IP/DHCP) and the network stack are untouched. It is PIO-only
-(single I/O BAR), has one INTx line and simple TX/RX rings - the
-classic second NIC for OS projects, and much simpler than e1000's
-descriptor format. QEMU: `-device rtl8139,netdev=n1 -netdev user,id=n1`
-(swap in for the virtio-net default in Makefile QEMU_NET).
+A second real-NIC driver for QEMU's `rtl8139` (PCI vendor 0x10EC,
+device 0x8139) behind the ext_* API, with an **ext_* dispatcher**
+(drivers/net/ext_dev.c): the active NIC's ops table (include/fnx/net/
+ext_net.h, `struct ext_net_ops` with a `mac[6]` member) is probed in
+order - virtio-net first, then rtl8139 - and net/ext_net.c, net/ipv4.c
+and net/af_packet.c are driver-independent. Only one NIC is active at
+a time. QEMU: `-device rtl8139,netdev=n1 -netdev user,id=n1` (swap in
+for the virtio-net default in Makefile QEMU_NET); both NICs verified:
+ping 10.0.2.2 3/3, userland DHCP lease, TCP loopback, full stress.
 
-Notes:
-- The 8139's RX ring is a fixed-size circular buffer (8K/16K/32K/64K
-  via CONFIG1/CMD); the driver owns the ring via a kmalloc'd buffer,
-  not a virtio-style descriptor table. TX is a ring of 4 TXDs.
-- EEPROM autoload gives the MAC at offset 0x00 (same access pattern as
-  the virtio driver's config read); IRQ is INTx A on the slave PIC.
-- The IRQ handler must follow the same rule as virtio-net: ACK the ISR
-  (read ISR 0x3E / clear the relevant bits) and wake sleepers, but the
-  RX path polls (RECV+RF0..RF3 / CMD) - never touch the RX ring from
-  IRQ context.
-- Consider probing both NICs (virtio-net first, then rtl8139) and
-  preferring whichever is present, or making the driver selectable;
-  keep the ext_fd/ext_* indirection so only one is active at a time.
+Root causes found while bringing it up (QEMU 10.0.11 semantics):
+- **The TxStatus bit 13 (0x2000) is `TxHostOwns` - the HOST owns the
+  descriptor. The driver submits by CLEARING it (write size only) and
+  the NIC sets it back (+0x8000 TxStatOK) when done**; the inverted
+  assumption (set it to submit) made the chip ignore every frame.
+- **The RxConfig accept bits are the LOW bits** - AcceptBroadcast=0x08,
+  AcceptMulticast=0x04, AcceptMyPhys=0x02 (NOT 0x10/0x20, which are
+  AcceptRunt/AcceptErr); with the wrong bits set, unicast frames were
+  silently dropped by the MAC filter (RxERR tally, not RxMissed).
+- **QEMU's CAPR (0x38) write handler adds 0x10 headroom** ("this value
+  is off by 16"): the driver must write `next_pos - 0x10`, or avail
+  becomes 16 and every later frame "overflows" (dropped). The RCR
+  write's reset_rxring zeroes the pointers, so the first frame lands at
+  offset 0.
+- **QEMU's transmitter only processes the descriptor at its internal
+  currTxDesc (in-order 0,1,2,3,0,...)**: a free-slot scan silently
+  loses frames (transmit_one returns early on host-owned); keep the
+  in-order `tx_cur % 4` assignment.
+- The RX ring packet header is 32-bit: low 16 = status, **high 16 =
+  frame size + 4** (the +4 covers the trailing CRC; the driver advances
+  `off + 4 + len` which equals the chip's aligned span).
+- QEMU resets the 4 TxStatus regs to TxHostOwns (0x2000); assert it in
+  the probe (idempotent) so a device that powers up as 0 can't wedge
+  the first send.
+
+Driver notes: RX ring = 8K DMA buffer (2 contiguous bitmap pages, phys
+in [1MB,128MB)), wrapped split-copy on dequeue, CAPR re-asserted on
+every poll (flushes QEMU's queued frames); TX = 4 in-order descriptors,
+per-send kmalloc buffer freed after the completion spin (on timeout the
+buffer is LEAKED - never free under the chip - and -EAGAIN returned);
+IMR only when an INTx line exists; the IRQ handler only ACKs the ISR
+and wakes sleepers - the RX path always polls the ring.
 
 ## Pending: OpenBFS (BeOS BFS) filesystem - DECIDED, DEFERRED
 

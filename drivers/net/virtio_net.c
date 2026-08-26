@@ -28,6 +28,9 @@
 #include <fnx/sleep.h>
 #include <fnx/irq.h>
 #include <fnx/net.h>
+#include <fnx/net/ext_net.h>
+
+extern struct ext_net_ops virtio_ops;
 #include <fnx/socket.h>
 
 #ifdef CONFIG_NET
@@ -435,7 +438,7 @@ static void vnet_irq_handler(int num, struct sigcontext *sc)
 	wakeup(&do_select);
 }
 
-int ext_init(void)
+struct ext_net_ops *virtio_net_probe(void)
 {
 	struct pci_device *pd;
 	__u32 features;
@@ -453,13 +456,13 @@ int ext_init(void)
 		pd = pd->next;
 	}
 	if(!pd) {
-		return 0;	/* no NIC: loopback only */
+		return NULL;	/* no virtio-net NIC */
 	}
 
 	/* legacy transport: BAR0 is I/O space */
 	iobase = (__u16)(pd->bar[0] & 0xFFFC);
 	if(!iobase) {
-		return 0;
+		return NULL;
 	}
 	vnet.iobase = iobase;
 	vnet.irq = pd->irq;
@@ -481,7 +484,7 @@ int ext_init(void)
 	vnet_set_status(VSTATUS_ACKNOWLEDGE | VSTATUS_DRIVER | VSTATUS_FEATURES_OK);
 
 	if(!(vnet_ior8(VPCI_STATUS) & VSTATUS_FEATURES_OK)) {
-		return 0;
+		return NULL;
 	}
 
 	/* read the MAC from the device config (offset 0x14 in QEMU's
@@ -491,7 +494,7 @@ int ext_init(void)
 	}
 
 	if(vnet_init_queues()) {
-		return 0;
+		return NULL;
 	}
 
 	vnet_set_status(VSTATUS_ACKNOWLEDGE | VSTATUS_DRIVER | VSTATUS_FEATURES_OK | VSTATUS_DRIVER_OK);
@@ -521,13 +524,8 @@ int ext_init(void)
 		vnet.mac[0], vnet.mac[1], vnet.mac[2],
 		vnet.mac[3], vnet.mac[4], vnet.mac[5]);
 	vnet.present = 1;
-	/* FNX: configure the external IP path with the SLIRP defaults
-	 * (static config; DHCP is a follow-up). */
-	{
-		extern int ext_net_configure(const unsigned char *, unsigned int, unsigned int);
-		ext_net_configure(vnet.mac, 0x0F02000A /*10.0.2.15*/, 0x0202000A /*10.0.2.2*/);
-	}
-	return 0;
+	memcpy_b(virtio_ops.mac, vnet.mac, 6);
+	return &virtio_ops;
 }
 
 static int vnet_init_queues(void)
@@ -568,7 +566,7 @@ static int vnet_init_queues(void)
 
 /* ---- ext_* API: raw Ethernet frame access over the NIC ---- */
 
-int ext_open(int domain, int type, int protocol)
+static int virtio_ext_open(int domain, int type, int protocol)
 {
 	(void)domain; (void)type; (void)protocol;
 	if(!vnet.present) {
@@ -577,44 +575,44 @@ int ext_open(int domain, int type, int protocol)
 	return 0;	/* one raw "socket": all frames */
 }
 
-int ext_close(int fd_ext)
+static int virtio_ext_close(int fd_ext)
 {
 	(void)fd_ext;
 	return 0;
 }
 
-int ext_bind(int fd_ext, const struct sockaddr *addr, int addrlen)
+static int virtio_ext_bind(int fd_ext, const struct sockaddr *addr, int addrlen)
 {
 	(void)fd_ext; (void)addr; (void)addrlen;
 	return 0;
 }
 
-int ext_listen(int fd_ext, int backlog)
+static int virtio_ext_listen(int fd_ext, int backlog)
 {
 	(void)fd_ext; (void)backlog;
 	return -EOPNOTSUPP;
 }
 
-int ext_connect(int fd_ext, const struct sockaddr *addr, int addrlen)
+static int virtio_ext_connect(int fd_ext, const struct sockaddr *addr, int addrlen)
 {
 	(void)fd_ext; (void)addr; (void)addrlen;
 	return 0;
 }
 
-int ext_accept(int fd_ext, struct sockaddr *addr, unsigned int *addrlen)
+static int virtio_ext_accept(int fd_ext, struct sockaddr *addr, unsigned int *addrlen)
 {
 	(void)fd_ext; (void)addr; (void)addrlen;
 	return -EOPNOTSUPP;
 }
 
-int ext_ioctl(int fd_ext, int cmd, void *arg)
+static int virtio_ext_ioctl(int fd_ext, int cmd, void *arg)
 {
 	(void)fd_ext; (void)cmd; (void)arg;
 	return -EOPNOTSUPP;
 }
 
 /* send a complete Ethernet frame */
-int ext_sendto(int fd_ext, const void *buffer, __size_t count, const struct sockaddr *addr, int addrlen)
+static int virtio_ext_sendto(int fd_ext, const void *buffer, __size_t count, const struct sockaddr *addr, int addrlen)
 {
 	(void)fd_ext; (void)addr; (void)addrlen;
 	return vnet_tx_send(buffer, count);
@@ -625,7 +623,7 @@ int ext_sendto(int fd_ext, const void *buffer, __size_t count, const struct sock
  * handler ACKs it and wakes sleepers, but never touches the ring, so it
  * cannot race with the poll). The device DMA's the frame into a queued
  * RX buffer and marks it in the used ring on its own. */
-int ext_recvfrom(int fd_ext, void *buffer, __size_t count, struct sockaddr *addr, int *addrlen)
+static int virtio_ext_recvfrom(int fd_ext, void *buffer, __size_t count, struct sockaddr *addr, int *addrlen)
 {
 	struct vnet_device *v = &vnet;
 	struct vnet_rxbuf *rb;
@@ -683,19 +681,19 @@ int ext_recvfrom(int fd_ext, void *buffer, __size_t count, struct sockaddr *addr
 	return n;
 }
 
-int ext_read(int fd_ext, void *buffer, __size_t count)
+static int virtio_ext_read(int fd_ext, void *buffer, __size_t count)
 {
 	(void)fd_ext;
-	return ext_recvfrom(0, buffer, count, NULL, NULL);
+	return virtio_ext_recvfrom(0, buffer, count, NULL, NULL);
 }
 
-int ext_write(int fd_ext, const void *buffer, __size_t count)
+static int virtio_ext_write(int fd_ext, const void *buffer, __size_t count)
 {
 	(void)fd_ext;
 	return vnet_tx_send(buffer, count);
 }
 
-int ext_poll(int fd_ext, int flag)
+static int virtio_ext_poll(int fd_ext, int flag)
 {
 	struct vnet_device *v = &vnet;
 
@@ -713,5 +711,22 @@ int ext_poll(int fd_ext, int flag)
 	}
 	return 1;
 }
+
+/* the virtio-net ops table (the active NIC dispatcher uses this when
+ * the virtio device is present) */
+struct ext_net_ops virtio_ops = {
+	virtio_ext_open,
+	virtio_ext_close,
+	virtio_ext_bind,
+	virtio_ext_listen,
+	virtio_ext_connect,
+	virtio_ext_accept,
+	virtio_ext_ioctl,
+	virtio_ext_sendto,
+	virtio_ext_recvfrom,
+	virtio_ext_read,
+	virtio_ext_write,
+	virtio_ext_poll,
+};
 
 #endif /* CONFIG_NET */
