@@ -868,3 +868,69 @@ MSI/MSI-X over INTx (many real chips disable legacy INTx). Honor
 HCCPARAMS1.AC64 for DMA addressing. USB2 vs USB3 port speed handling
 (PORTSC.SPEED/PLS). This is the largest planned work item: ~2.5-4x
 the AHCI effort (three layers vs one driver).
+
+## Pending: SCSI (hard disk) — PLANNED, not started
+
+Boot a SCSI disk in QEMU. Do NOT implement until picked up. This is
+the SMALLEST of the three pending block plans (AHCI, XHCI, SCSI):
+the SCSI command set already exists in FNX — the ATAPI packet
+interface (`drivers/block/atapi.c`) IS SCSI CDBs over an ATA packet
+transport. Only the host-adapter transport + block integration are
+new. Verified against `qemu-10.0.11+ds/hw/scsi/` and the FNX tree.
+
+**The shared SCSI device side (HBA-independent):** QEMU's
+`scsi-bus.c`/`scsi-disk.c` accept the standard CDBs: TEST UNIT READY
+(0x00), REQUEST SENSE (0x03), INQUIRY (0x12), READ CAPACITY(10)
+(0x25), READ(10) (0x28), WRITE(10) (0x2A). FNX already builds/parses
+all of these in `atapi.c` (`atapi_cmd_testunit`, `atapi_cmd_reqsense`,
+`atapi_cmd_get_capacity`, `atapi_cmd_read10`, `atapi_cmd_startstop`,
+`atapi_cmd_mediumrm`) — the CDB encode/decode is reusable verbatim;
+only the transport (where the packet goes) differs.
+
+**HBA options in QEMU 10.0.11 (hw/scsi/), by complexity:**
+- **vmw_pvscsi (15AD:07C0)** — VMware paravirtual SCSI, ring-based
+  (req/cmp rings, PPN lists, MMIO doorbell + shared-memory state page)
+  — the same design family as the vmxnet3 driver FNX already has.
+  RECOMMENDED first target: fastest path, reuses vmxnet3 patterns
+  (MMIO map_page64, ring PPNs, doorbell kick, IRQ). Hypervisor-only
+  device (no real silicon), fine for QEMU.
+- esp / Am53C974 (1022:2020, `pciespscsi`/`esp-pci`) — real SCSI
+  chip, simpler FIFO/register model (PDMA/ESP regs, no SCRIPTS).
+  Best "real hardware" credibility among the simple options.
+- virtio-scsi (1AF4:1004) — reuses the virtio-net virtqueue
+  infrastructure already in the tree (negotiation + rings), but needs
+  the virtio 1.0 feature/sg handling; medium complexity.
+- lsi53c895a (1000:0012) / mptsas (1000:0054) / megasas (1028:0014) —
+  classic but complex (LSI SCRIPTS processor / MPT firmware / MFI);
+  NOT recommended as the first target.
+
+**FNX integration (same as AHCI plan — all verified):** new block
+major + `/dev/sdX` nodes + `root=` table entry in `kernel/multiboot.c`;
+`fsop->read_block/write_block` + `register_device(BLK_DEV)` — the
+buffer cache (`fs/buffer.c`) calls those, no core change; reuse
+`read_msdos_partition` + `assign_minors` + `block2sector` +
+`ata_hd_ioctl` patterns; DMA buffers via kmalloc/V2P (QEMU SCSI HBAs
+DMA anywhere in the 64-bit AS).
+
+**Milestones (pvscsi path):**
+- M0: probe 15AD:07C0 (class 0x0100), MMIO map, SETUP_RINGS msg +
+  shared state page, req/cmp ring init, INTx IRQ.
+- M1: CDB transport — INQUIRY, TEST UNIT READY, READ CAPACITY(10),
+  READ(10)/WRITE(10), REQUEST SENSE on error; sense handling.
+- M2: block integration — new major, fsop read/write, partitions,
+  `root=/dev/sda` ext2 boot, shutdown flush.
+- M3 (optional): READ(16)/WRITE(16) for >2TB, multi-target/LUN scan,
+  esp or virtio-scsi second transport.
+
+**Real-hardware notes:** same lesson as AHCI — QEMU is lenient where
+silicon isn't: honor the HBA's ring/queue limits, do proper request-
+completion accounting, never assume instant device-ready (spin on
+TEST UNIT READY). pvscsi has no real-silicon counterpart (it's a
+hypervisor device); for physical SCSI controllers the esp/lsi paths
+are the ones that matter, and lsi53c895a in particular needs its
+SCRIPTS processor semantics — treat as a separate effort.
+
+**Verification:** `-device pvscsi,id=scsi -device scsi-hd,drive=disk,bus=scsi.0`;
+mkext2 + mount + touch/cp on /dev/sda1; boot `root=/dev/sda
+rootfstype=ext2`; `halt` flushes; regression: existing IDE root
+(`root=/dev/hdb`) still boots.
