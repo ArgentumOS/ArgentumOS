@@ -79,6 +79,11 @@ void add_bh(struct bh *new)
 
 	b = &bh_table;
 	while(*b) {
+		if(*b == new) {
+			/* already queued: keep the list acyclic */
+			RESTORE_FLAGS(flags);
+			return;
+		}
 		b = &(*b)->next;
 	}
 	*b = new;

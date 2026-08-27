@@ -1545,3 +1545,58 @@ M3 item.
   slot 2 (epid 3, mps 8)" -> sendkeys type "hi" (executed: "hi: not found")
 - device_add usb-mouse,port=1.2 -> slot 3, reports delivered (ps2 synth)
 - device_del usb-kbd -> re-add -> the new slot types again ("x")
+
+## DONE: XHCI M4a — hub driver real-hardware hardening (commit pending)
+
+**Why:** the M3 part 2 hub driver was QEMU-tested but leaned on QEMU's
+tolerance in places real hubs enforce: no port power, no PORT_RESET, no
+timing, a single hub instance, USB2-only speed decode.
+
+**What changed (drivers/usb/usb-hub.c + xhci.c + irq.c):**
+- **Port power**: wHubCharacteristics bits 1-0 are now checked; ports are
+  powered with SetPortFeature(PORT_POWER) only when the hub says it has
+  power switching (QEMU: 0x000A = no power switching -> skipped).
+- **Port reset**: on a connect the driver now issues
+  SetPortFeature(PORT_RESET), waits (NOP-count delay, since the bottom
+  half runs with interrupts disabled so a tick-based delay would spin
+  forever), polls GetPortStatus until PORT_STAT_RESET clears and
+  PORT_STAT_ENABLE sets, then reads the speed (valid only after reset).
+- **Change-word hygiene**: C_PORT_CONNECTION(16)/C_PORT_ENABLE(17)/
+  C_PORT_RESET(20)/C_PORT_OVERCURRENT(19) are the correct USB feature
+  values (C_PORT_ENABLE is 17, NOT 2 = PORT_SUSPEND!). The driver clears
+  connection+enable on every pass and reset+enable after the reset, and
+  reports+clears overcurrent changes. Clearing C_ENABLE matters: it
+  latches on reset AND on detach, and if left set the EP1 IN re-fires
+  instantly forever (event-ring flood that also starves the serial
+  console output).
+- **Multi-hub**: `static struct usb_hub hub` -> `hubs[MAX_HUBS=4]`; the
+  transfer callback gets the hub pointer via the cb data arg; the BH walks
+  all hubs.
+- **SuperSpeed**: a hub whose own xhci slot enumerated at speed 3 decodes
+  the port speed from the USB3 PORT_LINK_STATE bits (5-8) instead of the
+  USB2 LOW/HIGH bits.
+- **CR_RESET_EP bug (real)**: the endpoint id for Reset Endpoint goes in
+  the CR_TRB control bits 16-23 (TRB_CR_EPID_SHIFT), NOT dwTRBParameter -
+  QEMU returned CC_TRB_ERROR before. Also xhci_slot_speed() helper.
+- **add_bh() bug (real)**: kernel/irq.c add_bh() appended the same struct
+  bh to the list again on every call, which makes do_bh()'s `b = b->next`
+  walk self-loop (a second change while the BH was queued would hang the
+  machine). It is now idempotent (skips a node already in the list).
+
+**QEMU gotchas (all verified):**
+- The bottom half runs inside the ISR with interrupts disabled: any
+  timer-tick-based delay deadlocks; use NOP-count spins (~2e6 ~ 10ms).
+- QEMU's PORT_RESET sets+clears PORT_STAT_RESET instantly and sets ENABLE,
+  so the wait loop completes immediately.
+- monitor `device_del usb-kbd` does NOT work: anon device_add'd devices
+  live under /peripheral-anon and have no resolvable id. Use
+  `device_add usb-kbd,id=kb,port=1.1` then `device_del kb`. (The M3 part 1
+  "removal" tests that used `device_del usb-kbd` silently failed and the
+  re-add actually enumerated a second root-port device.)
+
+**Tests (QEMU):**
+- hub + kbd(id=kb,port=1.1): 8 ports -> "device on port 1 (speed 1)" ->
+  boot keyboard slot 2 -> "hi" typed; `device_del kb` -> "device removed
+  from port 1 (slot 2)"; re-add -> slot 2 again -> "x" typed.
+- root-port regression: usb-storage 16384 sectors + kbd + mouse boot;
+  e1000e NIC 2/2 pings (irq.c change sanity).

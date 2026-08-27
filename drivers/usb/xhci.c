@@ -1045,8 +1045,8 @@ void xhci_reset_ep0(int slotid)
 		return;
 	}
 	memset_b(&t, 0, sizeof(t));
-	t.parameter = (unsigned long)(1 << 0);	/* EP0 = endpoint id 1 */
 	t.control = (CR_RESET_EP << TRB_TYPE_SHIFT) |
+		    (1UL << 16) |	/* endpoint id 1 (EP0) */
 		    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
 	xhci_cmd(&t, NULL, NULL);
 }
@@ -1057,6 +1057,15 @@ int xhci_slot_root_port(int slotid)
 		return 0;
 	}
 	return xhci->devs[slotid].port;
+}
+
+/* the speed a slot's device enumerated at (0=low 1=full 2=high 3=super) */
+int xhci_slot_speed(int slotid)
+{
+	if(slotid < 1 || slotid >= MAX_SLOTS) {
+		return 0;
+	}
+	return xhci->devs[slotid].speed;
 }
 
 void xhci_disable_slot(int slotid)

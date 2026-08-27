@@ -75,4 +75,5 @@ void xhci_poll(void);
 int xhci_enumerate(int root_port, int route, int speed);
 void xhci_disable_slot(int slotid);
 int xhci_slot_root_port(int slotid);
+int xhci_slot_speed(int slotid);
 void xhci_reset_ep0(int slotid);
