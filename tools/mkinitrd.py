@@ -29,6 +29,7 @@ MAGIC_V1 = 0x137F
 S_IFDIR = 0o040000
 S_IFREG = 0o100000
 S_IFCHR = 0o020000
+S_IFBLK = 0o060000
 S_IFLNK = 0o120000
 
 # (path relative to root) -> device number (MKDEV(maj,min) = (maj << 8) | min)
@@ -46,6 +47,7 @@ DEVICES = {
     'dev/random':   0x108,   # (1 << 8) | 8
     'dev/urandom':  0x109,   # (1 << 8) | 9
     'dev/ptmx':     0x502,   # (5 << 8) | 2 -> PTY multiplexer
+    'dev/sda':     0x800,   # (8 << 8) | 0 -> USB mass-storage disk
 }
 
 
@@ -93,7 +95,8 @@ def build_tree(root, with_symlinks=False, exclude=()):
                 continue
             name = entry.encode()[:14]
             if relpath in DEVICES:
-                n = Node(name, 'chr')
+                # block majors: 1 (ramdisk), 3 (IDE0), 8 (usb-storage), 22 (IDE1)
+                n = Node(name, 'blk' if (DEVICES[relpath] >> 8) in (1, 3, 8, 22) else 'chr')
                 n.rdev = DEVICES[relpath]
                 node.children.append(n)
             elif os.path.isdir(fullpath):

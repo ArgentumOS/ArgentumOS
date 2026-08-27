@@ -36,6 +36,7 @@
 #include <fnx/xhci.h>
 
 int usb_kbd_init(int slotid, unsigned char *configdesc);
+int usb_storage_init(int slotid, unsigned char *configdesc);
 
 /* ---------------- MMIO layout (QEMU) ---------------- */
 #define XHCI_MMIO_VA		0xFFFFBC0000000000UL	/* pml4[505] */
@@ -545,9 +546,11 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 	if((ret = xhci_submit(slotid, epid, dir_in, buf, len, ring)) < 0) {
 		return ret;
 	}
+	xhci_sync_waiting = 1;
 
 	for(;;) {
 		if((ret = xhci_event_wait(&ev, 2000000)) < 0) {
+			xhci_sync_waiting = 0;
 			return ret;
 		}
 		if(((ev.control >> TRB_TYPE_SHIFT) & TRB_TYPE_MASK) !=
@@ -559,8 +562,10 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 		   ((ev.control >> 16) & 0xFF) == (unsigned int)epid) {
 			if(((ev.status >> TRB_CCODE_SHIFT) &
 			    TRB_CCODE_MASK) != CC_SUCCESS) {
+				xhci_sync_waiting = 0;
 				return -EIO;
 			}
+			xhci_sync_waiting = 0;
 			return 0;
 		}
 	}
@@ -885,11 +890,13 @@ int xhci_probe(void)
 		}
 
 		/* M2: class drivers - fetch the config descriptor and hand
-		 * the device to usb-kbd if it is a boot keyboard */
+		 * the device to usb-kbd / usb-storage */
 		if(!xhci_control(slotid, 1, USB_REQ_GET_DESCRIPTOR,
 				 USB_DT_CONFIG << 8, 0, 64,
 				 xhci.devs[slotid].configdesc)) {
-			usb_kbd_init(slotid, xhci.devs[slotid].configdesc);
+			if(usb_kbd_init(slotid, xhci.devs[slotid].configdesc) < 0) {
+				usb_storage_init(slotid, xhci.devs[slotid].configdesc);
+			}
 		}
 	}
 

@@ -19,7 +19,7 @@ import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mkinitrd import build_tree, Node, DEVICES, BLOCK, S_IFDIR, S_IFREG, S_IFCHR, S_IFLNK
+from mkinitrd import build_tree, Node, DEVICES, BLOCK, S_IFDIR, S_IFREG, S_IFCHR, S_IFBLK, S_IFLNK
 
 EXT2_SUPER_MAGIC = 0xEF53
 EXT2_ROOT_INO = 2
@@ -42,7 +42,8 @@ PTRS_PER_BLOCK = BLOCK // 4                                   # 256
 EXT2_FT_REG_FILE = 1
 EXT2_FT_DIR = 2
 EXT2_FT_CHRDEV = 3
-EXT2_FT_SYMLINK = 7
+EXT2_FT_BLKDEV = 7
+EXT2_FT_SYMLINK = 8
 
 
 def rec_len(name_len):
@@ -51,7 +52,8 @@ def rec_len(name_len):
 
 def file_type(kind):
     return {'dir': EXT2_FT_DIR, 'reg': EXT2_FT_REG_FILE,
-            'chr': EXT2_FT_CHRDEV, 'lnk': EXT2_FT_SYMLINK}.get(kind, 0)
+            'chr': EXT2_FT_CHRDEV, 'blk': EXT2_FT_BLKDEV,
+            'lnk': EXT2_FT_SYMLINK}.get(kind, 0)
 
 
 def dir_blocks(n, parent_inode):
@@ -172,7 +174,7 @@ def assign_blocks(node):
                         base += len(page)
                     blocks[dind] = ('INDIRECT', dptrs)
             i_blocks[n.inode] = ib
-        elif n.kind == 'chr':
+        elif n.kind in ('chr', 'blk'):
             i_blocks[n.inode] = [n.rdev] + [0] * (EXT2_N_BLOCKS - 1)
         elif n.kind == 'lnk':
             # fast symlink: the target (< 60B) lives inline in i_block[]
@@ -302,6 +304,11 @@ def main():
                     nblk += 1 + (n_dind + PTRS_PER_BLOCK - 1) // PTRS_PER_BLOCK
         elif n.kind == 'chr':
             mode = S_IFCHR | 0o600
+            links = 1
+            size = 0
+            nblk = 0
+        elif n.kind == 'blk':
+            mode = S_IFBLK | 0o600
             links = 1
             size = 0
             nblk = 0

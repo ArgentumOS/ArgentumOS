@@ -1412,3 +1412,24 @@ behind is IMPLEMENTED and tested.
 
 ### Pending
 - M2b: usb-storage (BOT) -> block device; M2c: usb-mouse; M3: hub/hotplug.
+
+## DONE: usb-storage BOT -> block device (M2b)
+
+- `drivers/usb/usb-storage.c` — USB mass-storage Bulk-Only Transport (BOT)
+  class driver: config-descriptor parse (SCSI/BOT interface, bulk EP1 OUT/IN),
+  SET_CONFIGURATION, Configure Endpoint (bulk OUT xhci EP2 + bulk IN EP3),
+  CBW(31)/data/CSW(13) transfers, SCSI INQUIRY / TEST UNIT READY / READ
+  CAPACITY / READ(10) / WRITE(10). Registers major 8 (`/dev/sda`) and
+  implements read_block/write_block through the FNX buffer cache.
+- `drivers/usb/xhci.c` — `xhci_transfer()` now sets `xhci_sync_waiting`
+  (bulk transfers must not race the timer-BH `xhci_poll`).
+- Tools: `mkinitrd.py`/`mkext2.py` gain a 'blk' device kind (S_IFBLK inodes,
+  EXT2_FT_BLKDEV) so `/dev/sda` exists in the root image; Makefile adds the
+  node + `/mnt` mount point.
+- Verified: `mount /dev/sda /mnt` (ext2) works, `cat /mnt/usbtest.txt`
+  reads, `echo X > /mnt/f` writes + `cat` reads back + `sync`; kbd + storage
+  coexist on two slots; 11-NIC regression green.
+
+### Pending
+- M2c: usb-mouse/tablet (HID -> psaux-synth); M3: external hub + hotplug;
+  M4 (optional): MSI-X multi-vector per-queue, AC64, SuperSpeed.
