@@ -174,6 +174,7 @@ struct xhci_event {
 #define EVT_RING_TRBS	128
 #define XFER_RING_TRBS	16
 #define MAX_SLOTS	16
+#define XHCI_MAX_PORTS	16
 
 struct xhci_dev {
 	int slotid;
@@ -203,6 +204,8 @@ static struct xhci_state {
 	unsigned long dcbaa_phys;	/* device context base addr array */
 	int run;
 	unsigned char irq;
+	int pending_port;
+	int pending_port_valid;
 	struct xhci_dev devs[MAX_SLOTS];
 } *xhci;
 
@@ -269,6 +272,8 @@ unsigned long xhci_ring_put(struct xhci_ring *r, struct xhci_trb *t)
 
 /* ---------------- event ring ---------------- */
 static void xhci_dispatch_event(struct xhci_event *ev);	/* fwd */
+static void xhci_port_probe(int port);	/* fwd (boot + hotplug re-entry) */
+static void xhci_hotplug_port(int port);	/* fwd */
 
 static int xhci_event_wait(struct xhci_event *ev, int timeout)
 {
@@ -624,8 +629,15 @@ static void xhci_dispatch_event(struct xhci_event *ev)
 	int type, slotid, epid, n;
 
 	type = (ev->control >> TRB_TYPE_SHIFT) & TRB_TYPE_MASK;
+	if(type == ER_PORT_STATUS_CHANGE) {
+		/* a device appeared/disappeared while a sync waiter owned
+		 * the ring: re-queue it for the poll's hotplug pass */
+		xhci->pending_port = (ev->parameter >> 24) & 0xFF;
+		xhci->pending_port_valid = 1;
+		return;
+	}
 	if(type != ER_TRANSFER) {
-		return;	/* commands/port-status are consumed by the sync paths */
+		return;	/* command completions are consumed by the sync paths */
 	}
 	slotid = (ev->control >> TRB_SLOTID_SHIFT) & TRB_SLOTID_MASK;
 	epid = (ev->control >> 16) & 0xFF;
@@ -650,8 +662,78 @@ void xhci_poll(void)
 	if(xhci_sync_waiting) {
 		return;
 	}
-	while(!xhci_event_wait(&ev, 1)) {
-		xhci_dispatch_event(&ev);
+	{
+		int ports[XHCI_MAX_PORTS], nports = 0;
+		int i;
+
+		/* drain ALL pending events first, then act: a port status
+		 * change that arrives while the probe for the same port is
+		 * still queued would otherwise be swallowed by the probe's
+		 * synchronous event waits (or acted on before the drain) */
+		while(!xhci_event_wait(&ev, 1)) {
+			int type = (ev.control >> TRB_TYPE_SHIFT) & TRB_TYPE_MASK;
+			if(type == ER_PORT_STATUS_CHANGE) {
+				int port = (ev.parameter >> 24) & 0xFF;
+				if(nports < XHCI_MAX_PORTS && port >= 1 &&
+				   port <= xhci->numports) {
+					ports[nports++] = port;
+				}
+				continue;
+			}
+			xhci_dispatch_event(&ev);
+		}
+		for(i = 0; i < nports; i++) {
+			xhci_hotplug_port(ports[i]);
+		}
+		if(xhci->pending_port_valid) {
+			int p = xhci->pending_port;
+			xhci->pending_port_valid = 0;
+			if(p >= 1 && p <= xhci->numports) {
+				xhci_hotplug_port(p);
+			}
+		}
+	}
+}
+
+/* root-port hotplug: a device was added or removed on `port`.
+ * (Re)runs the per-port enumeration; disables a stale slot on remove. */
+static void xhci_hotplug_port(int port)
+{
+	unsigned int ps;
+	int slotid;
+
+	if(port < 1 || port > xhci->numports) {
+		return;
+	}
+	ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
+
+	if(ps & PORT_CCS) {
+		/* connected (or a new device): (re)enumerate */
+		xhci_port_probe(port);
+		return;
+	}
+
+	/* disconnected: find and disable the slot on this port */
+	for(slotid = 1; slotid < MAX_SLOTS; slotid++) {
+		if(xhci->devs[slotid].slotid == slotid &&
+		   xhci->devs[slotid].port == port) {
+			struct xhci_trb t;
+			int n;
+
+			printk("xhci: port %d: device removed (slot %d)\n",
+				port, slotid);
+			for(n = 0; n < XHCI_MAX_CB; n++) {
+				if(xhci_cbs[n].used && xhci_cbs[n].slotid == slotid) {
+					xhci_cbs[n].used = 0;
+				}
+			}
+			memset_b(&t, 0, sizeof(t));
+			t.control = (CR_DISABLE_SLOT << TRB_TYPE_SHIFT) |
+				    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
+			xhci_cmd(&t, NULL, NULL);
+			xhci->devs[slotid].slotid = 0;
+			break;
+		}
 	}
 }
 
@@ -887,30 +969,45 @@ int xhci_probe(void)
 
 	/* scan ports: reset any connected device and bring up a slot */
 	for(port = 1; port <= xhci->numports; port++) {
-		unsigned int ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
-		if(!(ps & PORT_CCS)) {
-			continue;
-		}
-		printk("xhci: port %d: device connected\n", port);
+		xhci_port_probe(port);
+	}
 
-		/* port reset */
-		xhci_reg_w(0x440 + 0x10 * (port - 1), PORT_PR);
-		if((ret = xhci_port_wait_enabled(port - 1, 2000000)) < 0) {
-			printk("xhci: port %d reset timeout\n", port);
-			continue;
-		}
+	xhci->present = 1;
+	return 0;
+}
+
+/* enumerate (or re-enumerate after a hotplug) one root port: reset,
+ * address, fetch descriptors, hand off to the class drivers */
+static void xhci_port_probe(int port)
+{
+	unsigned long phys;
+	int slotid, ret;
+	unsigned int ps;
+
+	ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
+	if(!(ps & PORT_CCS)) {
+		return;
+	}
+	printk("xhci: port %d: device connected\n", port);
+
+	/* port reset */
+	xhci_reg_w(0x440 + 0x10 * (port - 1), PORT_PR);
+	if((ret = xhci_port_wait_enabled(port - 1, 2000000)) < 0) {
+		printk("xhci: port %d reset timeout\n", port);
+		return;
+	}
 		ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
 		printk("xhci: port %d enabled\n", port);
 
-		/* enable a slot for the device */
-		if((ret = xhci_enable_slot(&slotid)) < 0) {
-			printk("xhci: enable slot failed (%d)\n", ret);
-			continue;
-		}
-		if(slotid < 1 || slotid > MAX_SLOTS) {
-			printk("xhci: bad slot %d\n", slotid);
-			continue;
-		}
+	/* enable a slot for the device */
+	if((ret = xhci_enable_slot(&slotid)) < 0) {
+		printk("xhci: enable slot failed (%d)\n", ret);
+		return;
+	}
+	if(slotid < 1 || slotid > MAX_SLOTS) {
+		printk("xhci: bad slot %d\n", slotid);
+		return;
+	}
 
 		xhci->devs[slotid].slotid = slotid;
 		xhci->devs[slotid].port = port;
@@ -919,24 +1016,32 @@ int xhci_probe(void)
 			(ps & PORT_SPEED_MASK) == PORT_SPEED_SUPER ? 3 : 0;
 
 		if(xhci_ring_init(&xhci->devs[slotid].ep0, XFER_RING_TRBS) < 0) {
-			continue;
+			return;
 		}
 		if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
-			continue;
+			return;
 		}
 		memset_b((void *)P2V(phys), 0, 4096);
 		xhci->devs[slotid].octx_phys = phys;
 		xhci->devs[slotid].octx = (unsigned char *)P2V(phys);
 		if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
-			continue;
+			return;
 		}
 		memset_b((void *)P2V(phys), 0, 4096);
 		xhci->devs[slotid].ictx_phys = phys;
 		xhci->devs[slotid].ictx = (unsigned char *)P2V(phys);
 
 		if((ret = xhci_address_device(&xhci->devs[slotid])) < 0) {
+			struct xhci_trb t;
+
 			printk("xhci: address device failed (%d)\n", ret);
-			continue;
+			/* the device went away mid-probe: drop the partial slot */
+			memset_b(&t, 0, sizeof(t));
+			t.control = (CR_DISABLE_SLOT << TRB_TYPE_SHIFT) |
+				    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
+			xhci_cmd(&t, NULL, NULL);
+			xhci->devs[slotid].slotid = 0;
+			return;
 		}
 		xhci->devs[slotid].addr = slotid;
 		printk("xhci: slot %d addressed (port %d, speed %d)\n",
@@ -970,8 +1075,28 @@ int xhci_probe(void)
 				}
 			}
 		}
-	}
 
-	xhci->present = 1;
-	return 0;
+	/* the device may have been unplugged while we probed it */
+	if(!(xhci_reg_r(0x440 + 0x10 * (port - 1)) & PORT_CCS)) {
+		struct xhci_trb t;
+		int n;
+
+		printk("xhci: port %d: device vanished during probe\n", port);
+		for(slotid = 1; slotid < MAX_SLOTS; slotid++) {
+			if(xhci->devs[slotid].slotid == slotid &&
+			   xhci->devs[slotid].port == port) {
+				for(n = 0; n < XHCI_MAX_CB; n++) {
+					if(xhci_cbs[n].used && xhci_cbs[n].slotid == slotid) {
+						xhci_cbs[n].used = 0;
+					}
+				}
+				memset_b(&t, 0, sizeof(t));
+				t.control = (CR_DISABLE_SLOT << TRB_TYPE_SHIFT) |
+					    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
+				xhci_cmd(&t, NULL, NULL);
+				xhci->devs[slotid].slotid = 0;
+				break;
+			}
+		}
+	}
 }

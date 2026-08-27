@@ -1469,3 +1469,28 @@ behind is IMPLEMENTED and tested.
 
 - M3: external usb-hub + hotplug (port status change events -> re-probe)
 - M4: MSI-X multi-vector, 64-byte contexts (AC64), SuperSpeed
+
+## DONE: root-port hotplug (M3 part 1)
+
+- xhci_poll now handles ER_PORT_STATUS_CHANGE: QEMU encodes the port
+  number in the event parameter (portnr << 24). The poll drains ALL
+  pending events first, then runs the per-port hotplug, so a connect
+  followed quickly by a disconnect is not acted on mid-probe.
+- xhci_port_probe() extracted from the boot scan: same code path for
+  the boot scan and hotplug (re)enumeration. Re-checks the port's CCS
+  after enumerating (device unplugged mid-probe -> slot disabled) and
+  cleans up the partial slot when Address Device fails.
+- Removal: a port with no CCS disables the slot + deregisters its
+  async callbacks; the disable-slot command is issued.
+- Verified with the QEMU monitor: `device_add usb-kbd` (types into the
+  shell), `device_del usb-kbd`, `device_add usb-kbd` again (new slot,
+  types again), all without a reboot. The sync event loops also route
+  port-status changes to the hotplug instead of swallowing them
+  (pending_port hand-off to the poll).
+
+## Pending: XHCI USB (M3 part 2)
+
+- External usb-hub: class-9 hub enumeration (hub descriptor 0x29,
+  GetPortStatus/SetPortFeature per port, EP1 IN change endpoint), then
+  (re)enumeration of devices on the hub's ports via the same
+  xhci_port_probe-style path (new slots behind the hub).
