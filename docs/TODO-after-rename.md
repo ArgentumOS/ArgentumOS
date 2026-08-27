@@ -1222,3 +1222,129 @@ probe by class 0x0805 rather than only the RedHat ID.
 -format=raw -device sd-card,drive=sd0`; mkext2 + mount + touch/cp on
 /dev/mmcblk0p1; boot `root=/dev/mmcblk0 rootfstype=ext2`; `halt`
 flushes; regression: existing IDE root (`root=/dev/hdb`) still boots.
+
+## Pending: virtio family (blk / rng / 9p / scsi) — PLANNED, not started
+
+The highest-value/lowest-cost addition: FNX already has virtio-net
+working (`drivers/net/virtio_net.c`), which contains the entire
+virtqueue transport (legacy split vrings: descriptor table + avail +
+used rings in 3 contiguous low-DMA pages, ISR status port, queue
+notify, IRQ draining). Every other virtio device speaks the SAME
+transport — only the device-specific request format and the config
+space differ. Do NOT implement until picked up. Verified against
+`qemu-10.0.11+ds/hw/virtio/` + `include/standard-headers/linux/`.
+
+**M0 — refactor (the enabler):** pull the virtqueue machinery out of
+`virtio_net.c` into a shared `drivers/virtio/virtio.c` core
+(vring setup from 3 contiguous pages, descriptor chain building,
+avail kick, used-ring drain, IRQ handler hook, device/queue config
+space access). virtio_net.c becomes a thin client. No behavior
+change; full 11-NIC regression must stay green.
+
+**M1 — virtio-blk (1AF4:1001):** the payoff. Legacy config space:
+capacity (u64, 512-byte sectors), VIRTIO_BLK_F_* feature bits, single
+request queue. Request: 16-byte virtio_blk_req header (type u32,
+reserved u32, sector u64) + data + status byte; types VIRTIO_BLK_T_IN
+(0) / OUT (1) / FLUSH (4); status VIRTIO_BLK_S_OK/IOERR. Block
+integration identical to the AHCI/SCSI/NVMe recipe: new major +
+/dev/vdX (or sdX) + fsop->read_block/write_block + register_device +
+partitions + root= entry. DMA: buffers in the low-window pages the
+vring core already allocates (QEMU virtio DMAs the full 64-bit AS but
+the existing low-window allocation is proven).
+Also note: **virtio-blk supports DISCARD/TRIM natively**
+(VIRTIO_BLK_F_DISCARD) — this is the easiest place to implement the
+TRIM plan's device side (no ATA DSM/UNMAP fiddling).
+
+**M2 — virtio-rng (1AF4:1005):** single queue, requests are just a
+buffer to fill with entropy; device returns random bytes in the used
+ring. Wire to the existing /dev/random (memdev.c) backend.
+
+**M3 — virtio-9p (1AF4:1009):** the dev-convenience win: host
+filesystem sharing. Needs a 9p2000 protocol client (Tversion/Tattach/
+Twalk/Topen/Tread/Twrite/Tclunk) on a character device, plus the
+virtio-9p config (tag). Medium effort — a real protocol stack, but
+self-contained. Alternative: skip and use virtio-blk with a shared
+host disk image instead.
+
+**M4 — optional extras on the same core:** virtio-scsi (1AF4:1004,
+alternative transport for the SCSI plan), virtio-console (1AF4:1003),
+virtio-input (1AF4:1112), virtio-snd (1AF4:105B — see the audio
+plan), virtio-gpu (1AF4:1050), virtio-balloon (1AF4:1002).
+
+**Real-hardware notes:** virtio is a paravirtual (hypervisor-only)
+family — no real silicon, but it IS the standard on cloud/KVM; the
+value is dev speed, not real-hardware reach. Legacy (non-negotiated)
+virtio is what virtio_net.c already uses — keep using legacy mode
+(feature bit 0 = VIRTIO_F_NOTIFY_ON_EMPTY? no — modern=bit 32;
+staying legacy avoids the 64-bit feature/negotiation work).
+
+**Verification:** virtio-blk boots `root=/dev/vda` ext2; virtio-rng
+fills /dev/random; virtio-9p mounts a host dir; 11-NIC regression
+still green after the M0 refactor.
+
+## Pending: PCI serial (pci-serial / multi-serial) — PLANNED, not started
+
+More debug consoles via QEMU's PCI UARTs. Small, self-contained.
+Do NOT implement until picked up. Verified against
+`qemu-10.0.11+ds/hw/char/serial-pci.c` + `serial-pci-multi.c`.
+
+**Hardware (QEMU 10.0.11):** three RedHat devices, class 0x0700
+(PCI_CLASS_COMMUNICATION_SERIAL):
+- `pci-serial` (1B36:0002, "pci-serial") — 1 port, I/O BAR0 = 8 bytes
+  of 16550 registers, INTx (pin A, PCI-allocated IRQ).
+- 2-port (1B36:0003) and 4-port (1B36:0004) variants — one I/O BAR,
+  8 bytes per port, single muxed INTx line (any port's interrupt
+  raises it; driver must read all ports to find the source).
+
+**FNX integration:** the 16550 register set is EXACTLY what
+`drivers/char/serial.c` already drives (four fixed I/O bases 0x3F8/
+0x2F8/0x3E8/0x2E8 + fixed IRQs 3/4). Two options:
+- Minimal: probe the PCI devices, map their BARs into the existing
+  serial port table (up to 4 more ttyS4-7), IRQ from PCI config —
+  a small refactor of serial.c to take base+irq from PCI instead of
+  the fixed table.
+- Cleaner: keep the fixed ISA table as-is, add a `serial_pci()`
+  probe (mirror of `ata_pci()`) that registers additional `struct
+  device` entries for the PCI ports.
+Minor register note: the muxed multi-serial IRQ means the handler
+must scan all ports (already the pattern in serial.c's shared-IRQ
+handling for 1&3 / 2&4).
+
+**Verification:** `-device pci-serial -device pci-serial-2x -device
+pci-serial-4x`; getty-style input/output on each new ttyS; kernel
+console (`console=ttyS4` via kparms) on a PCI port; regression:
+the four ISA ports still work.
+
+## Pending: audio (OSS /dev/dsp API) — PLANNED, not started
+
+Sound output. Do NOT implement until picked up. Decision: implement
+the **OSS userspace API** (`/dev/dsp` + `SNDCTL_DSP_*` ioctls —
+4Front's spec, the classic hobby-OS sound interface), NOT any OSSv4
+kernel driver code (OSSv4 is GPL and written against Linux kernel
+infrastructure — unusable/not-portable; the API is the portable
+part). Write our own card driver from QEMU's emulation source, like
+every other driver.
+
+**Card choice (QEMU 10.0.11 hw/audio/):**
+- **virtio-snd (1AF4:105B)** — RECOMMENDED first: rides the shared
+  virtqueue core from the virtio plan (M0 refactor); PCM stream =
+  queue request with header (PCM_RELEASE/PCM_TRANSFER) + buffers.
+- ES1370 (1274:1371) — PCI, 4 I/O BARs, moderate; a "real" card path.
+- AC97 (8086:2415) — Intel 82801AA, NAM/NABMB codec access, moderate.
+- Intel HDA (8086:2668/293E) — CORB/RIRB verbs + SDIF stream
+  descriptors; most complex, defer.
+- SB16 (ISA 0x220, IRQ 5/7, DMA 1/5) — the classic OSS card but the
+  DSP command set + DMA is fiddly; only for retro authenticity.
+- pcspk — trivial ISA PC speaker; a good /dev/dsp smoke test.
+
+**FNX integration:** new char major + `/dev/dsp` (+ optional
+/dev/mixer); OSS ioctls SNDCTL_DSP_SETFMT (AFMT_U8/S16_LE),
+SNDCTL_DSP_SPEED, SNDCTL_DSP_CHANNELS, SNDCTL_DSP_STEREO; write() of
+PCM bytes; blocking on full buffer (mixer/volume via /dev/mixer
+SNDCTL_MIXER_WRITE later). ~200 lines of char device + the card
+driver. QEMU: `-audiodev pa,id=au -device intel-hda` / `-device
+AC97` / `-device virtio-snd-pci`.
+
+**Verification:** a tiny wav player (or `dd` of a generated tone)
+to /dev/dsp audibly plays (QEMU -audiodev pa/spice); ioctl roundtrip
+of fmt/speed/channels; regression: no effect on the rest of the tree.
