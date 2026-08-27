@@ -1348,3 +1348,32 @@ AC97` / `-device virtio-snd-pci`.
 **Verification:** a tiny wav player (or `dd` of a generated tone)
 to /dev/dsp audibly plays (QEMU -audiodev pa/spice); ioctl roundtrip
 of fmt/speed/channels; regression: no effect on the rest of the tree.
+
+## DONE: MSI-X infrastructure (commit 17b656b)
+
+The cross-cutting MSI-X item that real-hardware NVMe and XHCI park
+behind is IMPLEMENTED and tested.
+
+- `kernel/msix.c`: `msix_table[16]` + `register_msix()`/`unregister_msix()`
+  mirroring `irq.c`; local APIC bring-up (IA32_APIC_BASE MSR 0x1B EN
+  bit, SVR software-enable, LVT0 = ExtINT so the 8259 PIC path keeps
+  working); APIC EOI write after each message.
+- `kernel64/idt64.c` + `kernel64/msix64.c`: IDT stubs + gates for
+  vectors **0x30-0x3F** (NR_MSIX_VECS=16); `isr64_dispatch` routes them
+  to `msix64_handler()` -> kernel `msix_handler()` + `do_bh()`. No
+  8259 EOI (edge-triggered messages).
+- `drivers/pci/msix.c`: `msix_pci_setup(pd, idt_vector)` — walks the
+  PCI capability list for cap 0x11, maps the MSI-X table BAR (fixed
+  VA 0xFFFFBD0000000000, pml4[506]), programs entry 0 (addr =
+  0xFEE00000, data = IDT vector, unmasked), enables MSI-X + clears
+  function mask. Table size comes from the message-control field, NOT
+  `pd->size[]` (that is a char array — a 16KB BAR reads back 0).
+- Test vehicle: **e1000e now prefers MSI-X** (IVAR RXQ0 -> vector 0
+  + VALID, IMS = RXQ0, handler checks RXQ0 cause), with INTx
+  fallback if the device has no MSI-X cap.
+- Verification: e1000e MSI-X ping 2/2 + DHCP lease + TCP2-DONE;
+  11-NIC regression green (10 INTx NICs + e1000e MSI-X on one ESP).
+- API for future drivers (NVMe, XHCI, igb...): `msix_pci_setup(pd,
+  0x30)` then `register_msix(0, &irq_config_xxx)`; keep the old
+  `register_irq` as the INTx fallback. Vectors 0x31-0x3F are free
+  for multi-vector devices (per-queue NVMe/XHCI interrupters).
