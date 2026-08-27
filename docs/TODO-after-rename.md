@@ -707,3 +707,52 @@ Regression (commits 86156e2..c089191): every NIC boots, resolves ARP
 and pings 10.0.2.2 2/2 with 0% loss on one ESP build; each of
 vmxnet3/e1000e/igb additionally passed userland DHCP, the TCP loopback
 test and the full stress suite (0 HANG).
+
+## Pending: AHCI (SATA) block devices — PLANNED, not started
+
+Support QEMU's ICH9 AHCI controller (8086:2922, the `ich9-ahci` /
+`ahci` / q35 built-in) as a block device, so `root=/dev/sda` boots a
+SATA disk. Do NOT implement until picked up. Full plan (verified
+against `qemu-10.0.11+ds/hw/ide/ahci.c` + the FNX block layer):
+
+**Hardware (QEMU 10.0.11 ICH9):** PCI 8086:2922 class 0x0106 prog-if
+0x01; MMIO BAR5 0x1000 (map into a fixed kernel VA with `map_page64`
+like the NIC drivers); INTx pin 1 (or MSI at 0x80) -> use INTx +
+`register_irq`; 6 ports (PI), 32 command slots, PRDT entries are
+64-bit addresses (QEMU `le64_to_cpu(tbl[i].addr)`) so DMA buffers can
+be anywhere kmalloc puts them. Port regs at 0x100 + n*0x80 (PxCLB/CLBU,
+PxFB/FBU, PxIS, PxIE, PxCMD, PxTFD, PxSIG, PxSSTS, PxCI); global regs
+at 0x00 (CAP, GHC, IS, PI, VS). Command header 32B (prdtl, flags C/W,
+tbl_addr), command table 0x80 (H2D FIS 0x27 at +0, PRDT at +0x80, PRD
+= 64-bit addr + 0-based size, DBC bit31 = irq-on-completion). QEMU
+gates command issue on `PxCMD.START` only; FIS RX (FRE) optional for
+completion (PxIS.DHRS/TFES is enough; D2H FIS writeback needs FRE).
+
+**Kernel integration (all reuse verified):** new block major (Linux
+compatible 8) + `/dev/sda-sdd` + `root=` table entries in
+`kernel/multiboot.c` (IDE pattern: 0x300/0x340); `drivers/block/ahci.c`
+probe + HBA reset (GHC.HR) + AE + port init (PxCLB/PxFB, PxCMD.FRE,
+wait FR, PxCMD.ST, wait PxSSTS DET=3/IPM=1, PxIE); fsop registered via
+`register_device(BLK_DEV)` exactly like `ata_hd.c` (the buffer cache in
+`fs/buffer.c` calls `d->fsop->read_block/write_block` — no core change);
+reuse `struct ata_drv_ident` (IDENTIFY 0xEC returns the same 512B
+layout), `read_msdos_partition` + `assign_minors` (part.c/devices.h),
+`block2sector` partition-offset logic, the `xfer_data` multi-sector
+loop, and `ata_hd_ioctl` (HDIO_GETGEO/BLKGETSIZE/BLKFLSBUF/BLKRRPART).
+
+**Commands:** IDENTIFY 0xEC, READ/WRITE DMA EXT 0x25/0x35 (48-bit LBA
+— new; the IDE path is 28-bit only), SET FEATURES (optional), ATAPI
+PACKET 0xA0 (ATAPI bit in cmd header flags + H2D FIS) for CDs.
+
+**Milestones:**
+- M0: probe + port init + IDENTIFY + partition summary print
+- M1: read/write fsop + minors + `root=/dev/sda` ext2 boot + shutdown
+  flush (parallel to the existing `root=/dev/hdb` flow)
+- M2: ATAPI CD-ROM over AHCI (mirror `atapi_cd.c`)
+- M3: LBA48 capacity (IDENTIFY words 100-103) + widen `nr_sects`
+- M4 (optional): MSI, NCQ (PxSACT / READ FPDMA 0x60), multi-port
+
+**Verification:** `-device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0`;
+mkext2 + mount + touch/cp on /dev/sda1; boot `root=/dev/sda
+rootfstype=ext2`; `halt` flushes; regression: existing IDE root
+(`root=/dev/hdb`) still boots.
