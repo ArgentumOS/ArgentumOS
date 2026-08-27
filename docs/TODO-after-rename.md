@@ -756,3 +756,43 @@ PACKET 0xA0 (ATAPI bit in cmd header flags + H2D FIS) for CDs.
 mkext2 + mount + touch/cp on /dev/sda1; boot `root=/dev/sda
 rootfstype=ext2`; `halt` flushes; regression: existing IDE root
 (`root=/dev/hdb`) still boots.
+
+**Real-hardware compatibility notes (QEMU is lenient where silicon
+isn't):** QEMU's `hw/ide/ahci.c` is a generic AHCI 1.0 core (VS=1.0)
+with ICH9-only PCI glue, so the register/descriptor interface is
+spec-generic across ALL real AHCI controllers (Intel ICH8/9/10/PCH,
+AMD SB6xx+, NVIDIA MCP, JMicron, Silicon Image, Marvell, VIA). The
+compatibility risk is driver strictness, not the interface:
+- **Alignment (the big trap):** spec requires CLB 1024B-aligned, FIS
+  buffer 256B-aligned, command table 128B-aligned. QEMU's `map_page`
+  accepts any address — it will never catch a misaligned allocator;
+  real controllers silently corrupt or abort. M0 must allocate these
+  aligned (a dedicated aligned-alloc helper or page-offset trick).
+- **Honor CAP, don't assume it:** QEMU always sets NCQ + S64A
+  (64-bit PRD). Real controllers may lack S64A -> DMA buffers must be
+  constrained <4GB (or bounced) when the bit is clear; NCQ absence is
+  fine (DMA EXT 0x25/0x35 works on every SATA device). Read CAP/ISS;
+  CAP2/CCC/EM/DEVSLP registers vary by revision — never touch them.
+- **BIOS/OS handoff (BOHC):** QEMU leaves BOHC=0. Real firmware may
+  own the controller (SMM/option ROM); per AHCI spec 10.6.2 the driver
+  must request ownership (BOHC.OS=1, wait BOHC.OOS then BOS clears)
+  before touching ports, or real boots can hang.
+- **Port timing:** QEMU ports are STATE_RUN/DET=3 at reset. Real SATA
+  needs link training + spin-up (seconds; staggered spin-up if
+  CAP.SSS). Poll PxSSTS (DET=3/IPM=1) per port with a timeout, scan PI
+  for implemented ports, handle device-absent.
+- **PxCMD sequencing:** QEMU gates command issue on PxCMD.START only.
+  Real controllers need FRE->FR and ST->CR waits both on bring-up and
+  teardown before reconfiguring; a sloppy driver that skips them works
+  in QEMU and wedges real ports.
+- **Port reset:** real devices need PxSCTL.DET=1 reset + signature
+  (PxSIG) wait before IDENTIFY is reliable; QEMU doesn't require it.
+- **Probe by class, not vendor ID:** match PCI class 0x0106 with
+  prog-if 0x01 (any vendor), like Linux's ahci driver — the register
+  interface is identical but IDs differ (AMD 0x1022, JMicron 0x197B,
+  Marvell 0x11AB, ...). Keep 8086:2922 as the known-good QEMU case.
+  BIOS SATA mode: IDE-legacy (0x8A) is the existing IDE driver's
+  territory; RAID (0x04) is out of scope.
+- **Interrupt:** INTx is universal (already the plan's choice); MSI is
+  optional everywhere, MSI-X is NOT part of the AHCI spec (vendor
+  extensions only) — don't implement it.
