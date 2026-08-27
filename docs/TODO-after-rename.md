@@ -1155,3 +1155,70 @@ actually work on real hardware with plain INTx).
 typing into the console + mouse movement; then `-device ich9-usb-ehci1
 -device usb-kbd` with the companion path; regression: PS/2 keyboard
 still works.
+
+## Pending: eMMC / SD via SDHCI — PLANNED, not started
+
+Boot an SD/eMMC card in QEMU. Do NOT implement until picked up.
+Verified against `qemu-10.0.11+ds/hw/sd/` (sdhci.c, sdhci-pci.c,
+sd.c, sdmmc-internal.h). Note: on x86 QEMU you attach an **SD card**
+(`-device sd-card`) to the SDHCI host; the full eMMC device
+(`TYPE_EMMC`, JEDEC 84-A43, `sd_proto_emmc`) exists but is
+`user_creatable = false` ("soldered on board") and only board-wired
+on ARM machines. So the plan covers the SDHCI host + MMC/SD card
+protocol; the same driver handles real SDHCI hosts (Realtek
+RTS5xxx etc.) and eMMC if ever exposed.
+
+**Hardware (QEMU 10.0.11):** `sdhci-pci` = RedHat 1B36:0007, class
+0x0805 (SDHCI), prog-if 0x01, BAR0 MMIO, INTx pin A. Registers
+(sdhci-internal.h): SYSAD(0x00) [SDMA/ADMA addr], BLKSIZE(0x04),
+ARGUMENT(0x08), TRNMOD(0x0C), CMDREG(0x0E), RESP0-3(0x10-0x18),
+STATE(0x20) [cmd-inhibit/data-inhibit bits], HOSTCTL(0x28) [bus
+width], PWRCON(0x29), BLKGAP(0x2A), WAKECON(0x2B), CLKCON(0x2C),
+TIMEOUTCON(0x2E), SWRST(0x2F), NORINTSTS(0x30) [cmd complete /
+transfer complete / card insert], ERRINTSTS(0x32), NORMALINTEN(0x34),
+ERRINTEN(0x36), CAPAB(0x40). Data via SDMA (SYSAD -> memory, BLKSIZE
+x BLKCNT) or ADMA2 descriptors. Command flow: write ARGUMENT, write
+CMDREG (index + response-type + data-present), poll STATE, read RESP,
+service NORINTSTS.
+
+**Card protocol (sd_proto_emmc / SD):** CMD0 GO_IDLE, CMD1 SEND_OP_COND
+(OCR), CMD2 ALL_SEND_CID, CMD3 SET_RELATIVE_ADDR, CMD7 SELECT, CMD8
+SEND_EXT_CSD (512B; capacity = SEC_COUNT at offset 212), CMD9 SEND_CSD,
+CMD16 SET_BLOCKLEN 512, CMD23 SET_BLOCK_COUNT, CMD17/18 READ (single/
+multiple), CMD24/25 WRITE (single/multiple). 512-byte sectors, 1/4/8-bit
+bus.
+
+**FNX integration (same recipe as the other block plans — verified):**
+new block major + `/dev/mmcblk0` (+ partitions) + `root=` table
+entries in `kernel/multiboot.c`; `fsop->read_block/write_block` +
+`register_device(BLK_DEV)`; reuse `read_msdos_partition` +
+`assign_minors` + `block2sector` + ioctl patterns. DMA via SDMA SYSAD
+(kmalloc page, any phys — QEMU SDHCI DMAs the full 64-bit AS);
+BLKSIZE must be 512 and blocks map 1:1 to sectors.
+
+**Milestones:**
+- M0: probe 1B36:0007 (class 0x0805), map BAR0, SWRST software
+  reset, clock enable (CLKCON), power on (PWRCON), INTx IRQ, wait
+  card-insert interrupt.
+- M1: card init — CMD0/CMD1/CMD2/CMD3/CMD7 + CMD8 EXT_CSD -> capacity
+  and block size; CMD16 SET_BLOCKLEN 512.
+- M2: data path — CMD17/18 read + CMD24/25 write via SDMA, CMD23
+  block count, NORINTSTS completion handling.
+- M3: block integration — new major, fsop read/write, partitions,
+  `root=/dev/mmcblk0` ext2 boot, shutdown flush.
+- M4 (optional): ADMA2 descriptors, 4/8-bit bus width, card-detect
+  + write-protect.
+
+**Real-hardware notes (same lesson — QEMU lenient, silicon isn't):**
+honor CAPAB (bus width support, clock ranges), proper SWRST -> clock
+-> power -> CMD0 sequencing, response-type correctness (R1/R2/R3/R6),
+card-init timeouts (CMD1 polling, not instant), and the 1ms
+clock-domain handshake on real hosts. INTx is native to SDHCI (no
+MSI-X dependency). Real x86 hardware: SDHCI shows up as a PCIe
+Realtek/JMicron host (e.g. 10EC:5229) with the same register set —
+probe by class 0x0805 rather than only the RedHat ID.
+
+**Verification:** `-device sdhci-pci -drive file=sd.img,if=none,id=sd0
+-format=raw -device sd-card,drive=sd0`; mkext2 + mount + touch/cp on
+/dev/mmcblk0p1; boot `root=/dev/mmcblk0 rootfstype=ext2`; `halt`
+flushes; regression: existing IDE root (`root=/dev/hdb`) still boots.
