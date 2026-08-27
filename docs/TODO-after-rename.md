@@ -1009,3 +1009,76 @@ file=...,if=none,id=nvme0,format=raw -device
 nvme-ns,drive=nvme0`; mkext2 + mount + touch/cp on /dev/nvme0n1p1;
 boot `root=/dev/nvme0n1 rootfstype=ext2`; `halt` flushes; regression:
 existing IDE root (`root=/dev/hdb`) still boots.
+
+## Pending: SSD TRIM / discard support — PLANNED, not started
+
+Issue TRIM (discard/UNMAP/deallocate) so SSD-backed QEMU disks keep
+their free space reclaimed. Do NOT implement until picked up. This is
+a FEATURE spanning fs -> block layer -> device (not a new driver).
+Verified against `qemu-10.0.11+ds` device emulation and the FNX tree.
+
+**Device-side TRIM in QEMU (all supported):**
+- IDE/ATA (the current boot path!): `ide-hd` defaults
+  `discard_granularity=512` -> IDENTIFY word 69 bit 14 (determinate
+  TRIM) -> ATA DATASET MANAGEMENT (cmd 0x06, feature 0x01) via
+  `ide_sector_start_dma(s, IDE_DMA_TRIM)`: a DMA command whose PRDT
+  points at an 8-byte range list (48-bit LBA + 16-bit count, packed).
+- NVMe: DSM (0x09) with the Deallocate bit; `NvmeDsmRange` = 16B
+  (slba u64, nlb u32, rsvd u32).
+- SCSI: UNMAP (0x42); scsi-disk advertises it in INQUIRY (0xe0 flag),
+  max_unmap_size 1GiB, max_unmap_descr 255.
+- virtio-blk: VIRTIO_BLK_F_DISCARD — but FNX has no virtio-blk driver
+  (only virtio-net), so virtio-blk TRIM is moot until that driver
+  exists; ignore for now.
+
+**FNX integration points (verified):**
+- `ext2_bfree(sb, block)` in `fs/ext2/bitmaps.c:279` is THE single
+  funnel for every freed data block (truncate, free_dblock,
+  free_indblock, unlink, rmdir... all call it) — the natural hook.
+- Block interface: `struct fs_operations` (include/fnx/fs.h:138) has
+  `read_block`/`write_block` (lines 170-171); add a parallel
+  `int (*discard_block)(__dev_t, __blk_t, int)` for the device layer.
+- Partition mapping: `block2sector()` (ata_hd.c:97) already converts
+  1KB blocks to device-absolute sectors with partition offset — TRIM
+  ranges must use the same mapping (discard is sector-addressed).
+- ioctl path: `ata_hd_ioctl` already handles HDIO_GETGEO/BLKGETSIZE/
+  BLKFLSBUF/BLKRRPART — BLKDISCARD (Linux _IO(0x12,119) with a range
+  struct) slots in there for a userland fstrim-style tool.
+- ext2 blocksize is 1KB -> one block = 2 sectors.
+
+**Design decision — discard strategy (Linux separates these; FNX
+should too):**
+1. **ioctl only (fstrim-style, minimal)**: BLKDISCARD via the block
+   ioctl + a tiny userland tool; no FS changes. Recommended FIRST
+   milestone — proves the whole device path.
+2. **ext2 bfree batching (like Linux "discard" mount option)**:
+   collect freed blocks per superblock and flush one batched DSM/
+   UNMAP at sync/unmount/truncate-end. Never issue per-bfree
+   discards (tiny-range storms wear SSDs and spam QEMU). Gate behind
+   a mount flag (`discard` in kernel-parameters / mount opts).
+
+**Per-driver work:**
+- ATA: parse IDENTIFY word 69 bit 14 (`struct ata_drv_ident` has
+  `reserved69` there — add the field); build the 8-byte LBA48+count
+  range list and issue 0x06/0x01 over the existing DMA machinery
+  (ide_sector_start_dma path); skip silently when word 69 bit 14 is
+  clear or drive is ATAPI.
+- NVMe: DSM cmd (deallocate) with NvmeDsmRange list via PRP.
+- SCSI: UNMAP (0x42) descriptor list (16B: lba u64 + count u32).
+
+**Milestones:**
+- M0: BLKDISCARD ioctl + fsop `discard_block` field (NULL in all
+  existing fsops) + ATA DSM/TRIM implementation + userland fstrim
+  tool; verify with QEMU discard traces.
+- M1: ext2 `discard` mount option — batch freed blocks in
+  `ext2_bfree`, flush at sync/unmount/truncate-end.
+- M2: NVMe DSM + SCSI UNMAP behind the same fsop (once those drivers
+  exist; the interface is driver-agnostic).
+
+**Verification:** QEMU `-trace blk_co_pdiscard` shows the exact
+ranges; `qemu-img map` on a sparse qcow2 confirms holes after
+discard; fstrim tool frees a file's blocks then `qemu-img map` shows
+them unallocated; non-TRIM device (ide-hd with discard_granularity=0)
+must reject BLKDISCARD gracefully (ENOTSUP/EOPNOTSUPP) without
+erroring the FS. Regression: full stress on the ext2 root still
+passes with discard=on.
