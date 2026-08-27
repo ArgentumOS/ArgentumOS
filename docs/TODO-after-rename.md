@@ -680,3 +680,30 @@ QEMU 10.0.11 igb-core differences vs the e1000e core
 
 Verified: ping 10.0.2.2 3/3, userland DHCP lease, TCP loopback, full
 stress 0 HANG.
+
+## DONE: all QEMU NIC models covered (11/11)
+
+Every PCI NIC that QEMU 10.0.11 can emulate now has a FNX ext_* driver
+(probe order in drivers/net/ext_dev.c):
+
+| QEMU -device | driver file | PCI ID |
+|---|---|---|
+| virtio-net-pci | drivers/net/virtio_net.c | 1AF4:1000 |
+| rtl8139 | drivers/net/rtl8139.c | 10EC:8139 |
+| ne2k_pci | drivers/net/ne2k.c | 10EC:8029 |
+| tulip | drivers/net/tulip.c | 1011:0022 (DEC 21143) |
+| pcnet | drivers/net/pcnet.c | 1022:2000 (Am79C970A) |
+| e1000 | drivers/net/e1000.c | 8086:100E/100C/100F |
+| ne2k_isa | drivers/net/ne2k.c (ISA I/O 0x300) | - |
+| eepro100 (i82559c) | drivers/net/eepro100.c | 8086:1229 |
+| vmxnet3 | drivers/net/vmxnet3.c | 15AD:07B0 |
+| e1000e | drivers/net/e1000e.c | 8086:10D3 (82574L) |
+| igb | drivers/net/igb.c | 8086:10C9 (82576) |
+
+usb-net and xen-net-device are deliberately out of scope (no USB stack,
+no Xen).
+
+Regression (commits 86156e2..c089191): every NIC boots, resolves ARP
+and pings 10.0.2.2 2/2 with 0% loss on one ESP build; each of
+vmxnet3/e1000e/igb additionally passed userland DHCP, the TCP loopback
+test and the full stress suite (0 HANG).
