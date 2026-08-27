@@ -1082,3 +1082,76 @@ them unallocated; non-TRIM device (ide-hd with discard_granularity=0)
 must reject BLKDISCARD gracefully (ENOTSUP/EOPNOTSUPP) without
 erroring the FS. Regression: full stress on the ext2 root still
 passes with discard=on.
+
+## Pending: EHCI + UHCI (USB 2.0 / 1.1) — PLANNED, not started
+
+Legacy USB host controllers. Do NOT implement until picked up.
+These are ALTERNATE TRANSPORTS for the USB stack planned under XHCI
+(device model, enumeration, class drivers = XHCI M1/M2) — they do NOT
+need a new USB core, only a new host-controller-driver (HCD) layer.
+Verified against `qemu-10.0.11+ds/hw/usb/` (hcd-ehci.c, hcd-uhci.c,
+ehci-regs.h, uhci-regs.h).
+
+**Why plan them at all:** (a) the i440fx default machine and real
+pre-2010 PCs have UHCI/EHCI (not xHCI); (b) on real ICH9 (and QEMU's
+`ich9-usb-ehci1/2` with companion=true) the EHCI hands full/low-speed
+devices to a companion UHCI — so a real EHCI driver implies UHCI too;
+(c) UHCI is the SIMPLEST USB HCD to write (I/O ports + 1ms frame
+list), a good first step before the XHCI work. Priority: UHCI first,
+then EHCI. OHCI (Apple 106B:003F, QEMU hcd-ohci.c) is the same-shaped
+third sibling — defer unless a target needs it.
+
+**UHCI (USB 1.1, 12Mbps) — simplest:**
+- QEMU models: `piix3-usb-uhci` (8086:7020), `piix4-usb-uhci`
+  (8086:7112), `ich9-usb-uhci1/2/3` (8086:2934/35/36),
+  `vt82c686b-usb-uhci` (VIA 1106:3038). Class 0x0C0300 prog-if 0x00.
+- **I/O ports, NOT MMIO**: 0x20 bytes at BAR4: USBCMD(0), USBSTS(2),
+  USBINTR(4), USBFRNUM(6), USBFRBASEADD(8), USBSOFMOD(0xC),
+  USB1PORTSC1..4 (0x10-0x16). INTx IRQ.
+- Frame list: 1024 entries at FRBASEADD (one per 1ms frame); each
+  entry links a TD or QH; HC walks it every frame. UHCI_TD = link +
+  token (device/endpoint/PID/speed) + buffer + status; QH for
+  interrupt/isoc. No split transactions, no MMIO, no async/periodic
+  split — just the frame list.
+- Effort: ~300-400 lines HCD on top of the shared USB core.
+
+**EHCI (USB 2.0, 480Mbps) — moderate:**
+- QEMU models: `usb-ehci` (Intel 8086:24CD "ich4", handles all speeds
+  itself), `ich9-usb-ehci1/2` (8086:293A/293C, companion=true ->
+  FS/LS handed to companion UHCI). Class 0x0C0320 prog-if 0x20.
+- MMIO: CAPLENGTH(0x00), HCSPARAMS(0x04), HCCPARAMS(0x08); OP regs at
+  CAPLENGTH: USBCMD(0: RUNSTOP/HCRESET/PSE/ASE/IAAD), USBSTS(4),
+  USBINTR(8), FRINDEX, CTRLDSSEGMENT, PERIODICLISTBASE,
+  ASYNCLISTBASE, CONFIGFLAG, PORTSC. INTx IRQ.
+- Schedules: async list (doubly-linked QH/TD for control+bulk) and
+  periodic list (frame list of iTD/siTD/QH for isoc/interrupt).
+  QEMU's plain `usb-ehci` accepts FS/LS devices directly; real
+  silicon + `ich9-usb-ehci*` need companion handoff (PORTSC owner bit)
+  or split transactions.
+- Effort: ~600-800 lines HCD (QH/TD list + periodic schedule +
+  companion handling).
+
+**Milestones (UHCI first):**
+- M0: UHCI HCD — probe by class 0x0C0300, I/O-port BAR, HCRESET,
+  FRBASEADD frame list, PORTSC enable, USBCMD.RUNSTOP, INTx; reuse
+  XHCI-plan USB core (enumeration, control transfers) once it exists.
+- M1: UHCI class drivers — usb-kbd/mouse via the shared HID path
+  (proves the core on the simplest HCD).
+- M2: EHCI HCD — MMIO map, async QH/TD list, periodic list, PORTSC,
+  companion handoff for `ich9-usb-ehci*`; same class drivers.
+- M3: optional — split transactions, OHCI, EHCI->UHCI companion
+  routing on real ICH9.
+
+**Real-hardware notes (QEMU is lenient, silicon isn't):** honor
+HCSPARAMS/HCCPARAMS (port count, 64-bit addr bit), correct PORTSC
+reset/enable/power sequencing, frame-list walk timing on real UHCI
+(1ms), companion routing semantics on real EHCI (the PORTSC owner bit
+handoff protocol), and the same MSI/INTx story as XHCI (these legacy
+HCDs are INTx-native, so no MSI-X dependency here — UHCI/EHCI
+actually work on real hardware with plain INTx).
+
+**Verification:** `-device piix3-usb-uhci -device usb-kbd` and
+`-device usb-ehci -device usb-kbd` (plus usb-mouse/usb-storage);
+typing into the console + mouse movement; then `-device ich9-usb-ehci1
+-device usb-kbd` with the companion path; regression: PS/2 keyboard
+still works.
