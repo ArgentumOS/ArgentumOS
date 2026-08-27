@@ -93,3 +93,7 @@ Major | Minor | Device name   | Description
 	67	/dev/hdd3	third partition
 	68	/dev/hdd4	fourth partition
 
+
+The hardware behind these device nodes (controller chipsets, PCI IDs,
+I/O ports and IRQs) is documented in `docs/hardware.txt`.
+

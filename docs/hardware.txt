@@ -1,0 +1,110 @@
+FNX hardware support
+=====================
+
+This document enumerates the hardware FNX drives. The UEFI build
+(`make buildfnx` -> `.build/64/fnx.efi`) runs on x86-64 QEMU with
+OVMF; the classic Fiwix 32-bit PC build is still supported by the same
+driver layer. Device nodes (major/minor) are listed separately in
+`docs/devices.txt`.
+
+Driver source lives under `drivers/`; configuration knobs are in
+`include/fnx/config.h` (CONFIG_* below).
+
+
+Block devices
+-------------
+
+| Device            | Hardware                    | I/O / interface              | IRQ | Driver |
+|-------------------|-----------------------------|------------------------------|-----|--------|
+| IDE hard disks    | PATA/SATA (IDE mode)        | primary 0x1F0, secondary 0x170 (plus 0x3F6/0x376); PCI IDE controllers also probed via BAR/IRQ | 14 / 15 | drivers/block/ata.c, ata_pci.c, ata_hd.c |
+| ATAPI CD-ROM      | IDE CD drives               | same IDE controllers         | 14 / 15 | drivers/block/atapi.c, atapi_cd.c |
+| Floppy            | 82077AA-style FDC           | 0x3F0-0x3F7                  | 6      | drivers/block/floppy.c |
+| DMA controller    | 8237                        | DMA channels                 | -      | drivers/block/dma.c |
+| Ramdisk           | in-memory                   | -                            | -      | drivers/block/ramdisk.c |
+| Partition table   | MBR                        | -                            | -      | drivers/block/part.c |
+
+- ext2 is the on-disk root filesystem on the ATA/IDE disk (`hda`/`hdb`);
+  minixfs is compiled out (`CONFIG_FS_MINIX` undef).
+- The block layer (`blk_queue.c`) provides a cache with a shutdown flush.
+- Partitioned IDE disks are supported (part.c).
+
+
+Network devices (11/11 QEMU NIC models)
+---------------------------------------
+
+All NICs are PCI except ne2k_isa; the driver core is shared (Ethernet
+framing, ARP/IP/ICMP/UDP/TCP, DHCP client, AF_PACKET in
+`net/ext_net.c`, `net/ipv4.c`, `net/af_packet.c`). Probe order is fixed
+in `drivers/net/ext_dev.c`; only one NIC driver is active at a time.
+
+| QEMU -device   | Chipset                | PCI ID        | I/O                          | IRQ | Driver |
+|----------------|------------------------|---------------|------------------------------|-----|--------|
+| virtio-net-pci | virtio-net             | 1AF4:1000     | BAR0 I/O + BAR1 MMIO        | PCI | drivers/net/virtio_net.c |
+| rtl8139        | RealTek RTL8139        | 10EC:8139     | BAR0 I/O (PCI-assigned)     | PCI | drivers/net/rtl8139.c |
+| ne2k_pci       | RTL8029AS (NE2000 clone)| 10EC:8029    | BAR0 I/O                    | PCI | drivers/net/ne2k.c |
+| ne2k_isa       | NE2000 (ISA)           | -             | 0x300                       | 9   | drivers/net/ne2k.c |
+| tulip          | DEC 21143              | 1011:0019     | MMIO                        | PCI | drivers/net/tulip.c |
+| pcnet          | AMD Am79C970A (LANCE)  | 1022:2000     | BAR0 I/O                    | PCI | drivers/net/pcnet.c |
+| e1000          | Intel 82540EM/44GC/45EM| 8086:100E/100C/100F | MMIO 128KiB (BAR)    | PCI | drivers/net/e1000.c |
+| eepro100       | Intel i8255x/59er/62, 82801BA | 8086:1229/1209/2449 | MMIO (BAR0)    | PCI | drivers/net/eepro100.c |
+| vmxnet3        | VMware PV Ethernet v3  | 15AD:07B0     | BAR0/BAR1 MMIO              | PCI | drivers/net/vmxnet3.c |
+| e1000e         | Intel 82574L            | 8086:10D3     | MMIO 128KiB (BAR)           | PCI | drivers/net/e1000e.c |
+| igb            | Intel 82576             | 8086:10C9     | MMIO 128KiB (BAR)           | PCI | drivers/net/igb.c |
+
+Notes:
+- eepro100's QEMU model name is a variant such as `i82559c` (not
+  `eepro100`).
+- All NIC drivers use MMIO/iomem mapped at fixed high VAs
+  (0xFFFFBF0000000000 family) and IRQ 11 by default (BAR/PCI IRQ
+  otherwise).
+- 802.3 framing, broadcast/unicast/multicast filtering and a loopback
+  interface complete the stack. `CONFIG_NET` gates all of it.
+- QEMU's `usb-net` and `xen-net-device` are deliberately unsupported
+  (no USB stack, no Xen).
+
+
+Character / console devices
+---------------------------
+
+| Device             | Hardware                     | I/O / interface | IRQ | Driver |
+|--------------------|------------------------------|-----------------|-----|--------|
+| PS/2 keyboard      | 8042                         | 0x60/0x64       | 1   | drivers/char/keyboard.c, ps2.c |
+| PS/2 mouse         | 8042 aux channel             | 0x60/0x64       | 12  | drivers/char/psaux.c, ps2.c (CONFIG_PSAUX) |
+| Serial ports 1-4   | 16550 UART                   | 0x3F8/0x2F8/0x3E8/0x2E8 | 4 (1&3), 3 (2&4) | drivers/char/serial.c |
+| Parallel port      | PC-style LPT                 | 0x378 (also 0x3BC, 0x278 compile-time) | - | drivers/char/lp.c |
+| VGA text console   | VGA                          | 0x3D4/0x3D5, text 0xB8000 | - | drivers/video/vgacon.c |
+| Framebuffer console| BGA/VBE (bochs-display)      | 0x01CE/0x01CF  | -   | drivers/video/bga.c, fbcon.c (CONFIG_BGA) |
+| TTY / VT / PTY     | virtual                      | -              | -   | drivers/char/tty.c, vt.c, pty.c (CONFIG_UNIX98_PTYS) |
+| Memory devices     | virtual (/dev/mem, /dev/zero, ...) | -         | -   | drivers/char/memdev.c |
+| SysRq              | keyboard-triggered           | -              | -   | drivers/char/sysrq.c |
+| char queues        | kernel abstraction           | -              | -   | drivers/char/charq.c |
+
+Notes:
+- On the UEFI build, the console comes up on the GOP framebuffer
+  (identity-mapped `video.address` from `kernel/main.c` `gop_video_init()`);
+  serial is the reliable debug/log console (`CONFIG_QEMU_DEBUGCON`).
+- `fb.c` exposes `/dev/fb0` (major 29) with mmap support.
+- Defkeymap provides the US layout; 8x14/8x16/8x8 fonts are built in.
+
+
+Platform
+--------
+
+| Component    | Hardware        | I/O / interface       | Notes |
+|--------------|-----------------|-----------------------|-------|
+| PCI bus      | PCI config space| 0xCF8/0xCFC           | drivers/pci/pci.c; CONFIG_PCI + CONFIG_PCI_NAMES |
+| PIC          | 8259A           | 0x20/0xA0             | include/fnx/pic.h |
+| PIT          | 8254 timer      | 0x40-0x43             | include/fnx/pit.h |
+| RTC / CMOS   | MC146818        | 0x70/0x71             | include/fnx/cmos.h (time/date) |
+| UEFI         | OVMF (64-bit)   | EFI services + GOP    | kernel/main.c, kernel64/ (64-bit UEFI port) |
+
+
+Not supported (explicitly out of scope for now)
+-----------------------------------------------
+
+- USB (no host controller or stack) -> no usb-net, no USB storage/input
+- Xen (no xen-net-device)
+- AHCI/SATA-native mode (ATA/IDE emulation only)
+- Sound cards
+- SCSI / virtio-blk / virtio-scsi (virtio-net only)
+- Wireless
