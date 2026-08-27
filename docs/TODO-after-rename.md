@@ -796,3 +796,75 @@ compatibility risk is driver strictness, not the interface:
 - **Interrupt:** INTx is universal (already the plan's choice); MSI is
   optional everywhere, MSI-X is NOT part of the AHCI spec (vendor
   extensions only) — don't implement it.
+
+## Pending: XHCI USB — PLANNED, not started
+
+Full USB support via QEMU's xHCI controller (and real xHCI 1.x
+hardware). Do NOT implement until picked up. Unlike AHCI this is a
+whole USB stack (host driver + device model + class drivers), not a
+single driver — plan verified against `qemu-10.0.11+ds/hw/usb/` and
+the FNX integration points. FNX currently has ZERO USB code.
+
+**Hardware (QEMU 10.0.11):** `qemu-xhci` = RedHat 1B36:000D,
+`nec-usb-xhci` = NEC 1033:0194 (uPD720200); class 0x0C0330 prog-if
+0x30. MMIO BAR0: CAP regs 0x00-0x3F read-only (CAPLENGTH,
+HCSPARAMS1/2, HCCPARAMS1/2, DBOFF, RTSOFF), OP regs at CAPLENGTH
+(USBCMD, USBSTS, CRCR, DCBAAP, CONFIG, PORTSC x N), Runtime at RTSOFF
+(IMAN/IMOD/ERSTSZ/ERSTBA/ERDP per interrupter), Doorbell at DBOFF (per
+slot+EP). QEMU defaults: p2=4, p3=4 ports, 1 interrupter, slots up to
+64. Driver init: HCRST -> wait USBSTS.HCH -> program CRCR + DCBAAP +
+CONFIG.MaxSlotsEn -> ERSTBA/ERSTSZ/ERDP + IMAN.IE -> USBCMD.RS -> wait
+HCH clear -> per-port: wait CCS, set PED. Commands on the command
+ring: Enable Slot, Address Device (EP0 ctx), Configure Endpoint.
+Transfers: Normal TRBs on per-EP transfer rings, doorbell kick,
+completion via transfer events on the event ring. QEMU DMA's anything
+(64-bit AS), but real hw: honor HCCPARAMS1.AC64 (else <4GB buffers).
+
+**QEMU devices to target:** usb-kbd / usb-mouse / usb-tablet (HID
+boot reports: kbd = modifiers + 6 keycodes, mouse = buttons+dx+dy,
+tablet = absolute), usb-storage (BOT: CBW/CSW bulk-only), usb-net
+(CDC-ECM config 1, RNDIS config 2), usb-hub (real external-hub
+emulation with port timers).
+
+**FNX integration points (verified):**
+- MMIO mapping: `map_page64` fixed kernel VA (NIC pattern);
+  IRQ via `register_irq` (QEMU works on INTx; real xHCI prefers
+  MSI/MSI-X — FNX has no MSI-X infra, document as real-hw gap).
+- Keyboard: PS/2 scancode path (`irq_keyboard` -> `keyboard_bh` ->
+  vt). USB HID gives usage codes, NOT scancodes: need a HID-usage ->
+  keycode translation that feeds the same vt/tty console path.
+- Mouse: `psaux` char device speaks PS/2 protocol — USB mouse must
+  synthesize PS/2 packets into that queue (or add a parallel input).
+- Block: usb-storage reuses the AHCI-style integration: new block
+  major + `fsop->read_block/write_block` + `register_device(BLK_DEV)`
+  + `root=` table entry in `kernel/multiboot.c` + pre-mknod'd nodes
+  in the rootfs (no udev).
+- Net: usb-net (CDC-ECM) plugs into the `ext_net_ops` dispatcher as
+  the 12th NIC (closes the old "usb-net out of scope" note).
+
+**Milestones:**
+- M0: xHCI HCD core — probe by class 0x0C0330 (IDs 1B36:000D,
+  1033:0194), read CAPLENGTH/DBOFF/RTSOFF (never hardcode QEMU's
+  0x40/0x1000/0x2000), HCRST, command+event rings + ERST, RS run,
+  port status change events; INTx.
+- M1: USB core + enumeration — device/EP model, control transfers on
+  EP0 (GET_DESCRIPTOR/SET_ADDRESS/SET_CONFIGURATION), interrupt &
+  bulk transfer rings, root-hub port scan.
+- M2: class drivers — usb-kbd (HID -> vt console), usb-mouse/tablet
+  (HID -> psaux-synth), usb-storage (BOT -> block major, root=/dev/sdX),
+  usb-net (CDC-ECM -> ext_net_ops).
+- M3: external usb-hub support (port power/reset/status change) +
+  hot-plug.
+- M4 (optional, real-hw hardening): MSI-X/MSI, AC64 64-bit contexts,
+  event-ring-full handling, SuperSpeed (usb3) endpoints, streams/uas.
+
+**Real-hardware compatibility notes (same lesson as AHCI — QEMU is
+lenient, silicon isn't):** never hardcode port/slot/interrupter counts
+or MMIO offsets (read HCSPARAMS1/2 + CAPLENGTH/DBOFF/RTSOFF); QEMU
+defaults p2=4/p3=4/intrs=1 but real controllers vary (Renesas, Intel,
+AMD, ASMedia). Real xHCI requires proper ERDP advancement + IMOD
+moderation + event-ring-full handling and strongly prefers
+MSI/MSI-X over INTx (many real chips disable legacy INTx). Honor
+HCCPARAMS1.AC64 for DMA addressing. USB2 vs USB3 port speed handling
+(PORTSC.SPEED/PLS). This is the largest planned work item: ~2.5-4x
+the AHCI effort (three layers vs one driver).
