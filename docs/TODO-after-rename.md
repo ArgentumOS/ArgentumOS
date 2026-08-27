@@ -644,3 +644,39 @@ QEMU 10.0.11 semantics that differ from the classic e1000 core
 
 Verified: ping 10.0.2.2 3/3, userland DHCP lease, TCP loopback, full
 stress 0 HANG.
+
+## DONE: igb NIC driver (Intel 82576, eleventh ext_* NIC)
+
+`-device igb` (PCI 8086:10C9) now works via `drivers/net/igb.c`, an
+adaptation of the e1000e driver with the igb's advanced-RX-descriptor
+layout. MSI-X not enabled; legacy INTx line used (ICR read+w1c).
+
+QEMU 10.0.11 igb-core differences vs the e1000e core
+(hw/net/igb_core.c, igb_regs.h):
+
+- **The igb ALWAYS uses advanced (union e1000_adv_rx_desc, 16B) RX
+  descriptors** - `igb_rx_use_legacy_descriptor()` is hardcoded false.
+  Read/writeback overlap in the union: the driver writes pkt_addr
+  (buffer PA) at +0, the chip DMA's the frame there, then overwrites
+  all 16 bytes with pkt_info/rss at +0..7, status_error at +8 (DD =
+  bit 0), length at +12 (bits 0-15), vlan at +14. So DD is read from
+  word2 and length from word3 - SWAPPED vs the legacy layout - and
+  the buffer PA must come from the driver's own array (pkt_addr is
+  clobbered by the writeback).
+- **The igb STATUS reset has NO LU bit** (e1000e's has it). RX stays
+  disabled (`e1000x_rx_ready()` gates on STATUS LU) until the 500ms
+  autoneg timer completes. Arm it by writing the PHY BMCR with
+  ANRESTART via the MDIC register (E1000_MDIC=0x20: phy=1<<21,
+  reg=MII_BMCR, OP_WRITE, BMCR=SPEED1000|FD|AUTOEN|ANRESTART); the
+  driver spins on STATUS LU before returning from probe.
+- TX accepts the classic legacy descriptors: with DEXT clear,
+  `igb_process_tx_desc()` falls through to the fragment-add code, so
+  the e1000e TX path (word2 = len|EOP|RS|IFCS) works unchanged. DD
+  writeback lands in wb.status at +12 (the driver's word3).
+- Same wrapped RDT/TDT semantics as e1000e (ring_empty treats
+  RDT/TDT >= dlen/16 as empty) and same E1000_RCTL_SECRC requirement
+  (FCS pad to a second descriptor otherwise). TARC0/TXDCTL0 queue
+  enable are set at reset; RXDCTL0 QUEUE_ENABLE is set at reset.
+
+Verified: ping 10.0.2.2 3/3, userland DHCP lease, TCP loopback, full
+stress 0 HANG.

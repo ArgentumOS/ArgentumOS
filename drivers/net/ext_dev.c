@@ -54,6 +54,9 @@ int ext_init(void)
 	if((ext_ops = e1000e_probe())) {
 		goto configured;
 	}
+	if((ext_ops = igb_probe())) {
+		goto configured;
+	}
 	return 0;	/* no NIC: loopback only */
 configured:
 	/* the probe cannot configure the framing itself (the dispatcher's
