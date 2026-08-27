@@ -151,7 +151,7 @@ int usb_mouse_init(int slotid, unsigned char *configdesc)
 	m->tablet = tmp.tablet;
 	m->last_x = m->last_y = 0;
 
-	if((ret = xhci_control(slotid, 0, USB_REQ_SET_CONFIGURATION, 1, 0,
+	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-mouse: SET_CONFIGURATION failed (%d)\n", ret);
 		return ret;

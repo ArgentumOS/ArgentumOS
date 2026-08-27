@@ -1494,3 +1494,54 @@ behind is IMPLEMENTED and tested.
   GetPortStatus/SetPortFeature per port, EP1 IN change endpoint), then
   (re)enumeration of devices on the hub's ports via the same
   xhci_port_probe-style path (new slots behind the hub).
+
+## DONE: XHCI M3 part 2 — external usb-hub + behind-hub devices (commit pending)
+
+**Why:** complete the XHCI milestone (M0 HCD, M1 USB core, M2a kbd, M2b storage,
+M2c mouse, M3 part 1 root-port hotplug all done); the external hub was the last
+M3 item.
+
+**What was built:**
+- `drivers/usb/usb-hub.c`: class-9 hub driver. Enumerates the hub (hub desc
+  type 0x29, nports), polls its EP1 IN interrupt endpoint for the port-change
+  bitmap, and per changed port: GetPortStatus + ClearPortFeature(C_PORT_CONNECTION)
+  + (re)enumerates the behind-hub device as a NEW xhci slot carrying the
+  hub-port route string. Port processing is deferred to a bottom half (the
+  sync controls cannot run inside the event dispatch, and the change must be
+  cleared before re-arming the EP1 IN, else QEMU completes the re-submitted
+  transfer instantly and floods the event ring).
+- `drivers/usb/xhci.c`: `xhci_enumerate(root_port, route, speed)` extracted
+  from the root-port probe (shared by root + behind-hub enumeration); the
+  slot context carries the route string (word 0 bits 0-19) + the root port;
+  `xhci_disable_slot()` / `xhci_slot_root_port()` / `xhci_reset_ep0()`
+  helpers; hotplug now clears the PORTSC change bits and ignores port events
+  for ports that already have a slot (the PRC re-probe loop bug); EP0 transfer
+  rings enlarged to 64 TRBs.
+- `include/fnx/xhci.h`: the new helpers + `usb_hub_init`.
+
+**Gotchas (QEMU 10.0.11 hw/usb/dev-hub.c):**
+- The hub class requests use bmRequestType 0xA3/0x23 (recipient OTHER), NOT
+  0xA0/0x20: GetPortStatus = 0xA300, ClearPortFeature/SetPortFeature = 0x2300.
+  Using 0xA0 makes the guest's "GetPortStatus" hit the GetHubStatus case
+  (returns 4 zero bytes) and ClearPortFeature fall through to STALL (halting
+  EP0 and killing every later control).
+- The EP1 IN change bitmap: bit N = port N (bit 0 is reserved for the hub).
+- QEMU's hub has port_power=false (no power switching): a
+  SetPortFeature(PORT_POWER) is pointless (and its STALL halts EP0) — skip it.
+- A plain `device_add usb-kbd` after `device_add usb-hub` does NOT land behind
+  the hub: QEMU's free-port list keeps root ports first. Use the explicit path
+  `device_add usb-kbd,port=1.1` (the hub sits on USB bus port 1; the xhci
+  "port 5" the guest sees is a different numbering).
+- Behind-hub devices: the slot context route string is 5 x 4-bit nibbles;
+  QEMU's xhci_lookup_uport matches them to the USB port path ("5.1").
+- sendkey/mouse_move hit BOTH the PS/2 and the USB input devices — proving a
+  behind-hub kbd/mouse needs the enumeration log lines, not just typed output.
+- /dev/psaux must be a real char node in the root image (S_IFCHR 10:1) or
+  reads get ENXIO/empty and the synth drops packets (the count stays 0).
+
+**Tests (QEMU, FNX_QEMU_BIOS=ovmf):**
+- device_add usb-hub -> "usb-hub: 8 ports on slot 1 (root port 5)"
+- device_add usb-kbd,port=1.1 -> "device on port 1" -> "boot keyboard on
+  slot 2 (epid 3, mps 8)" -> sendkeys type "hi" (executed: "hi: not found")
+- device_add usb-mouse,port=1.2 -> slot 3, reports delivered (ps2 synth)
+- device_del usb-kbd -> re-add -> the new slot types again ("x")

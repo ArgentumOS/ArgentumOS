@@ -38,6 +38,7 @@
 int usb_kbd_init(int slotid, unsigned char *configdesc);
 int usb_mouse_init(int slotid, unsigned char *configdesc);
 int usb_storage_init(int slotid, unsigned char *configdesc);
+int usb_hub_init(int slotid, unsigned char *configdesc);
 
 /* ---------------- MMIO layout (QEMU) ---------------- */
 #define XHCI_MMIO_VA		0xFFFFBC0000000000UL	/* pml4[505] */
@@ -80,7 +81,9 @@ int usb_storage_init(int slotid, unsigned char *configdesc);
 #define PORT_PR			0x00000010
 #define PORT_PP			0x00000200
 #define PORT_CSC		0x00020000
+#define PORT_PEC		0x00040000
 #define PORT_PRC		0x00200000
+#define PORT_OCC		0x00100000
 #define PORT_SPEED_MASK		0x00003C00
 #define PORT_SPEED_FULL		0x00000400
 #define PORT_SPEED_LOW		0x00000800
@@ -172,13 +175,14 @@ struct xhci_event {
 /* ---------------- driver state ---------------- */
 #define CMD_RING_TRBS	32
 #define EVT_RING_TRBS	128
-#define XFER_RING_TRBS	16
+#define XFER_RING_TRBS	64
 #define MAX_SLOTS	16
 #define XHCI_MAX_PORTS	16
 
 struct xhci_dev {
 	int slotid;
-	int port;
+	int port;		/* root port (the hub's root port for behind-hub devices) */
+	int route;		/* route string (hub port path; 0 = root-port device) */
 	int speed;		/* 0=low 1=full 2=high 3=super */
 	int addr;
 	struct xhci_ring ep0;
@@ -274,6 +278,7 @@ unsigned long xhci_ring_put(struct xhci_ring *r, struct xhci_trb *t)
 static void xhci_dispatch_event(struct xhci_event *ev);	/* fwd */
 static void xhci_port_probe(int port);	/* fwd (boot + hotplug re-entry) */
 static void xhci_hotplug_port(int port);	/* fwd */
+int xhci_enumerate(int root_port, int route, int speed);	/* fwd */
 
 static int xhci_event_wait(struct xhci_event *ev, int timeout)
 {
@@ -386,22 +391,25 @@ static int xhci_port_wait_enabled(int port, int timeout)
 /* ---------------- M1: USB core ---------------- */
 
 /* EP0 control transfer on a slot's transfer ring.
- * dir_in: 1 = device-to-host (IN). wLength > 0 implies a data stage. */
-int xhci_control(int slotid, int dir_in, unsigned char bRequest,
-			unsigned short wValue, unsigned short wIndex,
-			unsigned short wLength, void *data)
+ * bmRequestType: the full setup byte (0x80/0x00 standard, 0xA0/0x20
+ * class). wLength > 0 implies a data stage. */
+int xhci_control(int slotid, unsigned char bmRequestType,
+			unsigned char bRequest, unsigned short wValue,
+			unsigned short wIndex, unsigned short wLength,
+			void *data)
 {
 	struct xhci_ring *r = &xhci->devs[slotid].ep0;
 	struct xhci_trb t;
 	struct xhci_event ev;
 	unsigned long setup;
+	int dir_in = (bmRequestType & 0x80) != 0;
 	int ret;
 
 	if(xhci->devs[slotid].slotid != slotid) {
 		return -EINVAL;
 	}
 
-	setup = dir_in ? USB_DIR_IN : USB_DIR_OUT;
+	setup = bmRequestType;
 	setup |= (unsigned long)bRequest << 8;
 	setup |= (unsigned long)wValue << 16;
 	setup |= (unsigned long)wIndex << 32;
@@ -707,8 +715,22 @@ static void xhci_hotplug_port(int port)
 	}
 	ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
 
+	/* clear the latched change bits (write-1-to-clear) */
+	xhci_reg_w(0x440 + 0x10 * (port - 1),
+		   ps & (PORT_CSC | PORT_PEC | PORT_PRC | PORT_OCC));
+	ps &= ~(PORT_CSC | PORT_PEC | PORT_PRC | PORT_OCC);
+
+	/* a slot already exists for this port? (device stays put) */
+	for(slotid = 1; slotid < MAX_SLOTS; slotid++) {
+		if(xhci->devs[slotid].slotid == slotid &&
+		   xhci->devs[slotid].port == port &&
+		   xhci->devs[slotid].route == 0) {
+			return;	/* reset/overcurrent etc.: nothing to do */
+		}
+	}
+
 	if(ps & PORT_CCS) {
-		/* connected (or a new device): (re)enumerate */
+		/* a NEW device appeared: enumerate */
 		xhci_port_probe(port);
 		return;
 	}
@@ -831,7 +853,8 @@ static int xhci_address_device(struct xhci_dev *d)
 
 	/* slot context (at ictx + 32) */
 	sctx = (volatile unsigned int *)(P2V(d->ictx_phys) + 32);
-	sctx[0] = 1 << SLOT_CTX_ENTRIES_SHIFT;	/* 1 context (slot) */
+	sctx[0] = 1 << SLOT_CTX_ENTRIES_SHIFT |	/* 1 context (slot) */
+		 (d->route & 0xFFFFF);		/* route string (0 = root port) */
 	sctx[1] = (d->speed & SLOT_CTX_SPEED_MASK) << SLOT_CTX_SPEED_SHIFT |
 		  (d->port & SLOT_CTX_PORT_MASK) << SLOT_CTX_PORT_SHIFT;
 	sctx[2] = 0 << SLOT_CTX_INTR_SHIFT;	/* interrupter 0 */
@@ -999,21 +1022,84 @@ static void xhci_port_probe(int port)
 		ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
 		printk("xhci: port %d enabled\n", port);
 
+	xhci_enumerate(port, 0, (ps & PORT_SPEED_MASK) == PORT_SPEED_HIGH ?
+		2 : (ps & PORT_SPEED_MASK) == PORT_SPEED_FULL ? 1 :
+		(ps & PORT_SPEED_MASK) == PORT_SPEED_SUPER ? 3 : 0);
+}
+
+/* shared enumeration core: enable a slot, address the device, fetch the
+ * descriptors, hand it to the class drivers. root_port = the xhci root
+ * port; route = the hub port path (0 for a root-port device); speed =
+ * the xhci speed encoding (0=low 1=full 2=high 3=super). */
+/* disable a slot + drop its async callbacks (used on hotplug removal,
+ * including devices behind a hub) */
+/* the root port a slot's device is attached to (the hub's root port
+ * for devices behind a hub) */
+/* reset EP0 after a stall so the hub's control pipe works again */
+void xhci_reset_ep0(int slotid)
+{
+	struct xhci_trb t;
+
+	if(slotid < 1 || slotid >= MAX_SLOTS ||
+	   xhci->devs[slotid].slotid != slotid) {
+		return;
+	}
+	memset_b(&t, 0, sizeof(t));
+	t.parameter = (unsigned long)(1 << 0);	/* EP0 = endpoint id 1 */
+	t.control = (CR_RESET_EP << TRB_TYPE_SHIFT) |
+		    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
+	xhci_cmd(&t, NULL, NULL);
+}
+
+int xhci_slot_root_port(int slotid)
+{
+	if(slotid < 1 || slotid >= MAX_SLOTS) {
+		return 0;
+	}
+	return xhci->devs[slotid].port;
+}
+
+void xhci_disable_slot(int slotid)
+{
+	struct xhci_trb t;
+	int n;
+
+	if(slotid < 1 || slotid >= MAX_SLOTS ||
+	   xhci->devs[slotid].slotid != slotid) {
+		return;
+	}
+	for(n = 0; n < XHCI_MAX_CB; n++) {
+		if(xhci_cbs[n].used && xhci_cbs[n].slotid == slotid) {
+			xhci_cbs[n].used = 0;
+		}
+	}
+	memset_b(&t, 0, sizeof(t));
+	t.control = (CR_DISABLE_SLOT << TRB_TYPE_SHIFT) |
+		    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
+	xhci_cmd(&t, NULL, NULL);
+	xhci->devs[slotid].slotid = 0;
+	xhci->devs[slotid].route = 0;
+}
+
+int xhci_enumerate(int root_port, int route, int speed)
+{
+	unsigned long phys;
+	int slotid, ret;
+
 	/* enable a slot for the device */
 	if((ret = xhci_enable_slot(&slotid)) < 0) {
 		printk("xhci: enable slot failed (%d)\n", ret);
-		return;
+		return ret;
 	}
 	if(slotid < 1 || slotid > MAX_SLOTS) {
 		printk("xhci: bad slot %d\n", slotid);
-		return;
+		return -EINVAL;
 	}
 
-		xhci->devs[slotid].slotid = slotid;
-		xhci->devs[slotid].port = port;
-		xhci->devs[slotid].speed = (ps & PORT_SPEED_MASK) == PORT_SPEED_HIGH ?
-			2 : (ps & PORT_SPEED_MASK) == PORT_SPEED_FULL ? 1 :
-			(ps & PORT_SPEED_MASK) == PORT_SPEED_SUPER ? 3 : 0;
+	xhci->devs[slotid].slotid = slotid;
+	xhci->devs[slotid].port = root_port;
+	xhci->devs[slotid].route = route;
+	xhci->devs[slotid].speed = speed;
 
 		if(xhci_ring_init(&xhci->devs[slotid].ep0, XFER_RING_TRBS) < 0) {
 			return;
@@ -1045,10 +1131,10 @@ static void xhci_port_probe(int port)
 		}
 		xhci->devs[slotid].addr = slotid;
 		printk("xhci: slot %d addressed (port %d, speed %d)\n",
-			slotid, port, xhci->devs[slotid].speed);
+			slotid, root_port, xhci->devs[slotid].speed);
 
 		/* M1: read the device descriptor (control transfer) */
-		if(!xhci_control(slotid, 1, USB_REQ_GET_DESCRIPTOR,
+		if(!xhci_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
 				 USB_DT_DEVICE << 8, 0, 18,
 				 xhci->devs[slotid].devdesc)) {
 			printk("xhci: device descriptor: idVendor %x idProduct %x "
@@ -1066,25 +1152,29 @@ static void xhci_port_probe(int port)
 
 		/* M2: class drivers - fetch the config descriptor and hand
 		 * the device to usb-kbd / usb-storage */
-		if(!xhci_control(slotid, 1, USB_REQ_GET_DESCRIPTOR,
+		if(!xhci_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
 				 USB_DT_CONFIG << 8, 0, 64,
 				 xhci->devs[slotid].configdesc)) {
 			if(usb_kbd_init(slotid, xhci->devs[slotid].configdesc) < 0) {
 				if(usb_mouse_init(slotid, xhci->devs[slotid].configdesc) < 0) {
-					usb_storage_init(slotid, xhci->devs[slotid].configdesc);
+					if(usb_storage_init(slotid, xhci->devs[slotid].configdesc) < 0) {
+						usb_hub_init(slotid, xhci->devs[slotid].configdesc);
+					}
 				}
 			}
 		}
 
-	/* the device may have been unplugged while we probed it */
-	if(!(xhci_reg_r(0x440 + 0x10 * (port - 1)) & PORT_CCS)) {
+	/* root-port probes only: the device may have been unplugged
+	 * while we probed it (behind-hub devices are checked by the hub) */
+	if(!route && !(xhci_reg_r(0x440 + 0x10 * (root_port - 1)) & PORT_CCS)) {
 		struct xhci_trb t;
 		int n;
 
-		printk("xhci: port %d: device vanished during probe\n", port);
+		printk("xhci: port %d: device vanished during probe\n", root_port);
 		for(slotid = 1; slotid < MAX_SLOTS; slotid++) {
 			if(xhci->devs[slotid].slotid == slotid &&
-			   xhci->devs[slotid].port == port) {
+			   xhci->devs[slotid].port == root_port &&
+			   xhci->devs[slotid].route == 0) {
 				for(n = 0; n < XHCI_MAX_CB; n++) {
 					if(xhci_cbs[n].used && xhci_cbs[n].slotid == slotid) {
 						xhci_cbs[n].used = 0;

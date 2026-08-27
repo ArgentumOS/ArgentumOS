@@ -231,7 +231,7 @@ int usb_kbd_init(int slotid, unsigned char *configdesc)
 	k->config = configdesc;
 
 	/* SET_CONFIGURATION(1) */
-	if((ret = xhci_control(slotid, 0, USB_REQ_SET_CONFIGURATION, 1, 0,
+	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-kbd: SET_CONFIGURATION failed (%d)\n", ret);
 		return ret;

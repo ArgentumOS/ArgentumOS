@@ -37,7 +37,8 @@ int xhci_ring_init(struct xhci_ring *r, int trbs);
 unsigned long xhci_ring_put(struct xhci_ring *r, struct xhci_trb *t);
 
 /* EP0 control transfer; returns 0 on success */
-int xhci_control(int slotid, int dir_in, unsigned char bRequest,
+int xhci_control(int slotid, unsigned char bmRequestType,
+		   unsigned char bRequest,
 		 unsigned short wValue, unsigned short wIndex,
 		 unsigned short wLength, void *data);
 
@@ -69,3 +70,9 @@ void xhci_poll(void);
 #define XHCI_V2P(a)	V2P((addr_t)(a))
 
 #endif /* _FNX_XHCI_H */
+
+/* hub support (drivers/usb/usb-hub.c + xhci.c) */
+int xhci_enumerate(int root_port, int route, int speed);
+void xhci_disable_slot(int slotid);
+int xhci_slot_root_port(int slotid);
+void xhci_reset_ep0(int slotid);
