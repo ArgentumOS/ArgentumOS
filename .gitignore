@@ -16,3 +16,8 @@ include/fnx/custom_system.h
 # Python bytecode cache (tools/mkext2.py imports tools/mkinitrd.py)
 __pycache__/
 /third_party/toybox/
+
+# QEMU source tree + Debian source package (extracted for driver reference)
+/qemu-10.0.11+ds/
+/qemu_10.0.11+ds*.tar.xz
+/qemu_10.0.11+ds*.dsc

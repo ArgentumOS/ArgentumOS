@@ -612,3 +612,35 @@ References: fs/befs (Linux, read-only) for the on-disk format; Haiku's
 BFS implementation (MIT) as a behavioral reference; buffer cache
 supports arbitrary block sizes (bread(dev, blk, size)); in-guest
 verification via a bfstest.sh like the other targets.
+
+## DONE: e1000e NIC driver (Intel 82574L, tenth ext_* NIC)
+
+`-device e1000e` (PCI 8086:10D3) now works via `drivers/net/e1000e.c`,
+an adaptation of the classic e1000 driver (same legacy 16-byte
+descriptors, same register offsets: RDBAL0/RDLEN0/RDH0/RDT0/TDBAL0/
+TDLEN0/TDH0/TDT0). MSI-X is not enabled; the legacy INTx line is used.
+
+QEMU 10.0.11 semantics that differ from the classic e1000 core
+(hw/net/e1000e_core.c vs hw/net/e1000.c):
+
+- **RDT must be a wrapped index < dlen/16.** The e1000e's
+  `e1000e_ring_empty()` returns true when `dt >= dlen/16`, so the
+  classic driver's `RDT = rx_cur + RING_ENTRIES` (16 at init) makes
+  the ring look permanently empty and RX silently drops everything.
+  Write `RDT = (rx_cur + RING_ENTRIES - 1) % RING_ENTRIES` after each
+  dequeue and `RDT = RING_ENTRIES - 1` at init. Same for TX:
+  `TDT = (tx_cur + 1) % RING_ENTRIES` (the classic core tolerated
+  unbounded TDT; the e1000e core stops at `dt >= dlen/16`).
+- **Set E1000_RCTL_SECRC (0x04000000) to strip the CRC.** Without it,
+  `e1000x_fcs_len()` pads `total_size` by 4 and the e1000e's receive
+  loop writes those 4 FCS bytes into a SECOND descriptor (length=4,
+  EOP set) - the driver would otherwise see a bogus 4-byte frame
+  after every real frame (the classic core writes FCS inside the same
+  descriptor). With SECRC set, one descriptor per frame.
+- Everything else matches the classic e1000: RCTL EN|BAM, TCTL
+  EN|PSP|CT, TARC0 is TX-enabled at reset, RFCTL_EXTEN clear at reset
+  (legacy descriptors), the MAC is preloaded into RA/RA+1 by
+  `e1000x_reset_mac_addr`, and ICR read clears the INTx line.
+
+Verified: ping 10.0.2.2 3/3, userland DHCP lease, TCP loopback, full
+stress 0 HANG.
