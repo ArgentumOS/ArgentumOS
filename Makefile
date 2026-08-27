@@ -183,7 +183,7 @@ build64: buildfnx
 
 buildfnxdemo: .build/64/fnxdemo.efi
 
-.build/64/fnxdemo.efi: kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/switch64.S include/fnx/efi.h kernel64/serial64.h
+.build/64/fnxdemo.efi: kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/msix64.c kernel64/sched64.c kernel64/switch64.S include/fnx/efi.h kernel64/serial64.h
 	@mkdir -p .build/64
 	$(CC64K) -c -o .build/64/efi_stub.o kernel64/efi_stub.c
 	$(CC64K) -c -o .build/64/main64.o kernel64/main64.c
@@ -192,6 +192,7 @@ buildfnxdemo: .build/64/fnxdemo.efi
 	$(CC64K) -c -o .build/64/idt64.o kernel64/idt64.c
 	$(CC64K) -c -o .build/64/gdt64.o kernel64/gdt64.c
 	$(CC64K) -c -o .build/64/irq64.o kernel64/irq64.c
+	$(CC64K) -c -o .build/64/msix64.o kernel64/msix64.c
 	$(CC64K) -c -o .build/64/sched64.o kernel64/sched64.c
 	$(CC64K) -c -o .build/64/probe64.o kernel64/probe64.c
 	gcc -c -o .build/64/switch64.o kernel64/switch64.S
@@ -225,7 +226,7 @@ REALDEPS = $(patsubst %.o,%.d,$(REALOBJS))
 # the one-byte opcode in the objects (0x8b -> 0x8d).
 PATCH_PIC = tools/patch_pic_data.py
 
-K64SRCS = kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/sched64.c kernel64/probe64.c kernel64/user64.c kernel64/kreal64.c kernel64/asm64.c kernel64/sections64.c kernel64/initrd64.c kernel64/switch64.S kernel64/init_trampoline64.S
+K64SRCS = kernel64/efi_stub.c kernel64/main64.c kernel64/paging64.c kernel64/mm64.c kernel64/idt64.c kernel64/gdt64.c kernel64/irq64.c kernel64/msix64.c kernel64/sched64.c kernel64/probe64.c kernel64/user64.c kernel64/kreal64.c kernel64/asm64.c kernel64/sections64.c kernel64/initrd64.c kernel64/switch64.S kernel64/init_trampoline64.S
 K64OBJS = $(patsubst kernel64/%.c,$(OBJDIR64)/%.o,$(filter %.c,$(K64SRCS))) \
           $(patsubst kernel64/%.S,$(OBJDIR64)/%.o,$(filter %.S,$(K64SRCS)))
 # PATCH_PIC only applies to the C-compiled objects (the .S ones are asm)

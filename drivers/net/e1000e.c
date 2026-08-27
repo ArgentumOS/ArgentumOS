@@ -34,6 +34,7 @@
 #include <fnx/asm.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/msix.h>
 #include <fnx/mm.h>
 #include <fnx/sleep.h>
 #include <fnx/sched.h>
@@ -74,6 +75,9 @@
 #define E1000_ICR_TXDW	0x00000001
 #define E1000_ICR_LSC	0x00000004
 #define E1000_ICR_RXT0	0x00000080
+#define E1000_ICR_RXQ0	0x00100000	/* per-queue RX cause (MSI-X) */
+#define E1000_IVAR	0x000E4		/* interrupt vector allocation */
+#define E1000_IVAR_VALID	0x8	/* entry valid bit */
 
 #define E1000_TXD_CMD_EOP	0x01000000
 #define E1000_TXD_CMD_IFCS	0x02000000
@@ -97,6 +101,7 @@ struct e1000e_device {
 	int present;
 	unsigned long mmio;		/* kernel VA of the mapped BAR0 */
 	unsigned char irq;
+	int msix;			/* using MSI-X instead of INTx */
 	unsigned char mac[6];
 	struct e1000e_desc *rx_ring;	/* kernel VA of the RX ring */
 	struct e1000e_desc *tx_ring;	/* kernel VA of the TX ring */
@@ -129,7 +134,7 @@ static void e1000e_irq_handler(int num, struct sigcontext *sc)
 	cause = e1000e_reg_r(E1000_ICR);
 	if(cause) {
 		e1000e_reg_w(E1000_ICR, cause);	/* w1c */
-		if(cause & E1000_ICR_RXT0) {
+		if(cause & (e1000e.msix ? E1000_ICR_RXQ0 : E1000_ICR_RXT0)) {
 			wakeup(&e1000e.rx_wait);
 		}
 	}
@@ -463,14 +468,24 @@ struct ext_net_ops *e1000e_probe(void)
 
 	if(e1000e.irq) {
 		static struct interrupt irq_config_e1000e = { 0, "e1000e", &e1000e_irq_handler, NULL };
-		register_irq(e1000e.irq, &irq_config_e1000e);
-		e1000e_reg_w(E1000_ICR, 0xFFFFFFFF);	/* clear pending */
-		if(e1000e.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (e1000e.irq - 8)));
+		if(!msix_pci_setup(pd, MSIX_VEC_BASE)) {
+			/* MSI-X: RXQ0 -> vector 0 (IDT 0x30), no 8259 involvement */
+			register_msix(MSIX_VEC_BASE - MSIX_VEC_BASE, &irq_config_e1000e);
+			e1000e.msix = 1;
+			printk("e1000e: MSI-X active on IDT vector 0x%x\n", MSIX_VEC_BASE);
+			e1000e_reg_w(E1000_IVAR, (0 << 0) | E1000_IVAR_VALID);	/* RXQ0 */
+			e1000e_reg_w(E1000_ICR, 0xFFFFFFFF);	/* clear pending */
+			e1000e_reg_w(E1000_IMS, E1000_ICR_RXQ0);
 		} else {
-			outport_b(0x21, 0xFE & ~(1 << e1000e.irq));
+			register_irq(e1000e.irq, &irq_config_e1000e);
+			e1000e_reg_w(E1000_ICR, 0xFFFFFFFF);	/* clear pending */
+			if(e1000e.irq >= 8) {
+				outport_b(0xA1, 0xFF & ~(1 << (e1000e.irq - 8)));
+			} else {
+				outport_b(0x21, 0xFE & ~(1 << e1000e.irq));
+			}
+			e1000e_reg_w(E1000_IMS, E1000_ICR_RXT0);
 		}
-		e1000e_reg_w(E1000_IMS, E1000_ICR_RXT0);
 	}
 
 	printk("e1000e: NIC %x:%x at 0x%lx, IRQ %d, MAC %02x:%02x:%02x:%02x:%02x:%02x\n",

@@ -139,6 +139,22 @@ __asm__(
 	"ISR_NOERR 45\n"
 	"ISR_NOERR 46\n"
 	"ISR_NOERR 47\n"
+	"ISR_NOERR 48\n"
+	"ISR_NOERR 49\n"
+	"ISR_NOERR 50\n"
+	"ISR_NOERR 51\n"
+	"ISR_NOERR 52\n"
+	"ISR_NOERR 53\n"
+	"ISR_NOERR 54\n"
+	"ISR_NOERR 55\n"
+	"ISR_NOERR 56\n"
+	"ISR_NOERR 57\n"
+	"ISR_NOERR 58\n"
+	"ISR_NOERR 59\n"
+	"ISR_NOERR 60\n"
+	"ISR_NOERR 61\n"
+	"ISR_NOERR 62\n"
+	"ISR_NOERR 63\n"
 	"ISR_NOERR 128\n"
 	"isr_common64:\n"
 	"pushq %rax\n"
@@ -228,10 +244,26 @@ DECL_STUB(44)
 DECL_STUB(45)
 DECL_STUB(46)
 DECL_STUB(47)
+DECL_STUB(48)
+DECL_STUB(49)
+DECL_STUB(50)
+DECL_STUB(51)
+DECL_STUB(52)
+DECL_STUB(53)
+DECL_STUB(54)
+DECL_STUB(55)
+DECL_STUB(56)
+DECL_STUB(57)
+DECL_STUB(58)
+DECL_STUB(59)
+DECL_STUB(60)
+DECL_STUB(61)
+DECL_STUB(62)
+DECL_STUB(63)
 DECL_STUB(128)
 
 /* absolute addresses of the stubs (PE base-relocated on load) */
-static unsigned long stub_addr[48] = {
+static unsigned long stub_addr[64] = {
 	(unsigned long)&isr_stub_0,
 	(unsigned long)&isr_stub_1,
 	(unsigned long)&isr_stub_2,
@@ -279,7 +311,23 @@ static unsigned long stub_addr[48] = {
 	(unsigned long)&isr_stub_44,
 	(unsigned long)&isr_stub_45,
 	(unsigned long)&isr_stub_46,
-	(unsigned long)&isr_stub_47
+	(unsigned long)&isr_stub_47,
+	(unsigned long)&isr_stub_48,
+	(unsigned long)&isr_stub_49,
+	(unsigned long)&isr_stub_50,
+	(unsigned long)&isr_stub_51,
+	(unsigned long)&isr_stub_52,
+	(unsigned long)&isr_stub_53,
+	(unsigned long)&isr_stub_54,
+	(unsigned long)&isr_stub_55,
+	(unsigned long)&isr_stub_56,
+	(unsigned long)&isr_stub_57,
+	(unsigned long)&isr_stub_58,
+	(unsigned long)&isr_stub_59,
+	(unsigned long)&isr_stub_60,
+	(unsigned long)&isr_stub_61,
+	(unsigned long)&isr_stub_62,
+	(unsigned long)&isr_stub_63
 };
 
 static void set_gate(int vec, unsigned long handler, unsigned short cs, int dpl)
@@ -302,7 +350,7 @@ void idt64_init(void)
 	int n, dpl;
 
 	__asm__ __volatile__("mov %%cs, %0" : "=r"(cs));
-	for(n = 0; n < 48; n++) {
+	for(n = 0; n < 64; n++) {
 		/* DPL3 for the user-catchable vectors: #BP, #OF, #BR */
 		dpl = (n == 3 || n == 4 || n == 17) ? 3 : 0;
 		set_gate(n, stub_addr[n], cs, dpl);
@@ -596,6 +644,12 @@ void isr64_dispatch(unsigned long *gprs)
 	struct x86_frame64 *f;
 
 	f = (struct x86_frame64 *)((char *)gprs + (15 * 8));
+	if(f->vector >= 0x30 && f->vector <= 0x3F) {
+		/* MSI-X vectors: delivered by the local APIC, no 8259 EOI */
+		extern void msix64_handler(unsigned long);
+		msix64_handler(f->vector);
+		return;
+	}
 	if(f->vector >= 32 && f->vector <= 47) {
 		irq64_handler(f->vector);
 		/* FNX: consume need_resched before iretq when the IRQ

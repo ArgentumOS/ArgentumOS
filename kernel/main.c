@@ -24,6 +24,7 @@
 #include <fnx/pci.h>
 #include <fnx/pic.h>
 #include <fnx/irq.h>
+#include <fnx/msix.h>
 #include <fnx/segments.h>
 #include <fnx/devices.h>
 #include <fnx/buffer.h>
@@ -157,6 +158,7 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 #endif
 	pic_init();
 	irq_init();
+	msix_init();
 	dev_init();
 	tty_init();
 	mem_init();
