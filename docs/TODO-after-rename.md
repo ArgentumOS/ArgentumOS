@@ -934,3 +934,78 @@ SCRIPTS processor semantics — treat as a separate effort.
 mkext2 + mount + touch/cp on /dev/sda1; boot `root=/dev/sda
 rootfstype=ext2`; `halt` flushes; regression: existing IDE root
 (`root=/dev/hdb`) still boots.
+
+## Pending: NVMe — PLANNED, not started
+
+Boot an NVMe drive in QEMU. Do NOT implement until picked up.
+Comparable effort to the AHCI plan (single driver + block
+integration); simpler than SCSI-in-transport terms because NVMe has no
+ATAPI-style legacy, but it is the only one of the four block plans
+whose real hardware practically REQUIRES MSI-X (QEMU is lenient).
+Verified against `qemu-10.0.11+ds/hw/nvme/` + `include/block/nvme.h`
+and the FNX tree.
+
+**Hardware (QEMU 10.0.11):** `-device nvme` = Intel 8086:5845
+(class 0x0108 PCI_CLASS_STORAGE_EXPRESS; RedHat 1B36:0010 variant).
+64-bit MMIO BAR0: CAP (0x00, 8B), VS (0x08), INTMS/INTMC (0x0C/0x10),
+CC (0x14), CSTS (0x1C), NSSR (0x20), AQA (0x24), ASQ (0x28, 8B), ACQ
+(0x30, 8B), doorbells at 0x1000 (SQTDBL/CQHDBL per queue, stride
+4 << CAP.DSTRD). CAP fields: MQES, CQR, AMS, TO (timeout), DSTRD
+(doorbell stride), NSSRS, CSS. CC: EN, CSS, MPS, AMS, SHN, IOSQES,
+IOCQES. CSTS: RDY, CFS, SHST. Admin queue base addresses are written
+to ASQ/ACQ BEFORE CC.EN (no CREATE for admin pair); IO queues come
+from admin cmds CREATE_SQ (0x01)/CREATE_CQ (0x05). Other admin cmds:
+IDENTIFY (0x06), SET/GET_FEATURES (0x09/0x0A), ASYNC_EV_REQ (0x0C).
+IO cmds: WRITE (0x01), READ (0x02), FLUSH (0x00), WRITE_ZEROES
+(0x08), DSM/trim (0x09). Data transfers use PRPs (64-bit page-aligned
+entries; PRP1/PRP2 in the command dptr; PRP2 doubles as PRP-list
+pointer for >2 pages). Completion queue entries are 16B with a
+**phase-tag bit** (bit 0 of the status word flips each wrap) — no
+generation counter elsewhere. SQ entry 64B: opcode/flags/cid/nsid/
+cdw2/cdw3/mptr/dptr.prp1/prp2/cdw10-15.
+
+**Interrupt (KEY):** QEMU sets PCI_INTERRUPT_PIN=1 and
+`nvme_irq_assert()` falls back to `pci_irq_assert` when MSI-X is not
+enabled — so FNX's INTx `register_irq` path works on QEMU with zero
+new infra. REAL NVMe controllers/SSDs practically REQUIRE MSI-X
+(INTx is optional in the spec and usually not wired on consumer
+silicon) — real-hardware NVMe is blocked on the same `register_msix()`
+infrastructure noted in the XHCI plan (M4 hardening bucket).
+
+**FNX integration (same recipe as AHCI/SCSI — verified):** new block
+major + `/dev/nvme0n1` (+n1p1.. partitions) + `root=` table entries in
+`kernel/multiboot.c`; `fsop->read_block/write_block` +
+`register_device(BLK_DEV)`; reuse `read_msdos_partition` +
+`assign_minors` + `block2sector` + ioctl patterns. DMA: kmalloc pages
+are page-aligned (PRPs need that); NVMe is inherently 64-bit
+addressing — no DMA window constraint. Block size from IDENTIFY
+namespace data (lbads), default 512.
+
+**Milestones:**
+- M0: probe 8086:5845 (class 0x0108), map BAR0 (64-bit MMIO via
+  map_page64), read CAP (honor MQES/DSTRD/TO), CC.EN=0, program
+  AQA/ASQ/ACQ, CC.EN=1 (IOSQES=6/IOCQES=4), wait CSTS.RDY, INTx IRQ
+  on admin CQ.
+- M1: admin path — IDENTIFY controller (CNS=1) + namespace (CNS=0,
+  nsze/lbads), CREATE_CQ/CREATE_SQ for one IO pair, phase-tag
+  completion polling.
+- M2: IO path — READ/WRITE with PRPs (single page + PRP-list chain),
+  SQTDBL kick, CQ phase-tag completion via IRQ; block integration:
+  new major, fsop read/write, partitions, `root=/dev/nvme0n1` ext2
+  boot, shutdown flush.
+- M3 (optional): FLUSH/DSM (trim)/WRITE_ZEROES, multi-queue (more IO
+  pairs), namespace scan (multiple /dev/nvme0nX).
+
+**Real-hardware notes (QEMU is lenient, silicon isn't):** honor
+CAP.MQES/DSTRD/TO and CC.MPS (page size); PRPs must be page-aligned
+with the controller's MPS; correct phase-tag handling + CQHDBL update
+order (read all completions BEFORE advancing the head doorbell);
+admin queue setup must complete before CC.EN=1; the big one — real
+NVMe needs MSI-X (QEMU's INTx fallback will not exist on real
+silicon), so real-hardware NVMe is parked behind the MSI-X work item.
+
+**Verification:** `-device nvme,serial=deadbeef -drive
+file=...,if=none,id=nvme0,format=raw -device
+nvme-ns,drive=nvme0`; mkext2 + mount + touch/cp on /dev/nvme0n1p1;
+boot `root=/dev/nvme0n1 rootfstype=ext2`; `halt` flushes; regression:
+existing IDE root (`root=/dev/hdb`) still boots.
