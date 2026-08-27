@@ -152,6 +152,7 @@ void set_leds(unsigned char);
 void irq_keyboard(int num, struct sigcontext *);
 void irq_keyboard_bh(struct sigcontext *);
 void keyboard_init(void);
+void kbd_process_scancode(unsigned char scode, int is_ext);
 
 #endif /* __KERNEL__ */
 

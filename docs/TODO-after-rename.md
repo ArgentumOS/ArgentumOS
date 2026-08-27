@@ -1377,3 +1377,38 @@ behind is IMPLEMENTED and tested.
   0x30)` then `register_msix(0, &irq_config_xxx)`; keep the old
   `register_irq` as the INTx fallback. Vectors 0x31-0x3F are free
   for multi-vector devices (per-queue NVMe/XHCI interrupters).
+
+## DONE: XHCI host controller + USB core + usb-kbd (M0-M2a)
+
+- `drivers/usb/xhci.c` — xHCI HCD (QEMU qemu-xhci 1B36:000D / nec-usb-xhci
+  1033:0194, class 0x0C0330): CAP/OP/runtime/doorbell regs, HCRST, command +
+  event rings (LINK wrap, ERST segment size = TRBs), DCBAA, RS run, port reset,
+  Enable Slot, Address Device, EP0 control transfers (SETUP/DATA/STATUS),
+  per-endpoint Configure Endpoint, async transfer submit + event dispatch
+  from the timer BH, MSI-X (vec 0x30) with INTx fallback.
+- `drivers/pci/pci.c` — fix: 64-bit BARs now capture the high dword into
+  bar[n+1] (the size probe returns 0xFFFFFFFF and was previously skipped;
+  this also unbreaks msix_pci_setup on 64-bit BARs like the xhci's 0xC000000000).
+- `drivers/usb/usb-kbd.c` — HID boot keyboard: config-descriptor parse,
+  SET_CONFIGURATION, EP1 IN interrupt ring, HID usage -> set-1 scancode map
+  (incl. modifiers 0xE0-0xE7), 6-key rollover diff (press/release), re-submit.
+- `drivers/char/keyboard.c` — `kbd_process_scancode(scode, is_ext)` seam for
+  non-PS/2 keyboards; `kbd_target_tty()` routes keyboard input to the system
+  console (serial ttyS0 on headless boots, else the current vconsole) and
+  wakes the reader (tty->input for serial, keyboard BH for vc).
+- Verified: `echo hi` typed on the USB kbd drives the FNX shell (output on
+  serial); 11-NIC regression green.
+
+### QEMU xhci gotchas (qemu-10.0.11+ds/hw/usb/hcd-xhci.c)
+- ERSTSZ must be 1; the ERST segment size field = TRBs (not segments).
+- Input-context control is NOT spec order: Address Device wants ictl[0]=0,
+  ictl[1]=0x3; Configure Endpoint wants ictl[0]=0, ictl[1]=0x1|(1<<epid).
+- TRB bits: C=1, TC=2, IOC=5, IDT=6, DIR=16 (bit 2 is NOT the direction).
+- bmRequestType must be USB_DIR_IN (0x80), not the raw dir flag.
+- The xhci BAR0 is 64-bit at 0xC000000000 (above 4GB).
+- OVMF enumerates the controller first; the driver re-initializes via HCRST.
+- Commands complete only after the doorbell; events are polled synchronously
+  during probe (xhci_sync_waiting) and drained by xhci_poll() afterwards.
+
+### Pending
+- M2b: usb-storage (BOT) -> block device; M2c: usb-mouse; M3: hub/hotplug.

@@ -8,7 +8,9 @@
 #include <fnx/asm.h>
 #include <fnx/kernel.h>
 #include <fnx/limits.h>
+#include <fnx/kparms.h>
 #include <fnx/ps2.h>
+#include <fnx/serial.h>
 #include <fnx/keyboard.h>
 #include <fnx/reboot.h>
 #include <fnx/console.h>
@@ -64,6 +66,8 @@ static int sysrq_op = 0;
 static unsigned char kb_identify[2] = {0, 0};
 static unsigned char is_ps2 = 0;
 static unsigned char orig_scan_set = 0;
+
+static void process_scancode(unsigned char scode, int is_ext);
 volatile unsigned char ack = 0;
 
 static char do_switch_console = -1;
@@ -270,15 +274,13 @@ void set_leds(unsigned char led_status)
 
 void irq_keyboard(int num, struct sigcontext *sc)
 {
-	__key_t key, type;
-	unsigned char scode, mod;
+	unsigned char scode;
 	struct tty *tty;
 	struct vconsole *vc;
-	unsigned char c;
-	int n;
 
 	tty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
 	vc = (struct vconsole *)tty->driver_data;
+	(void)vc;
 
 	scode = inport_b(PS2_DATA);
 
@@ -301,7 +303,38 @@ void irq_keyboard(int num, struct sigcontext *sc)
 		return;
 	}
 	
-	if(extkey) {
+	process_scancode(scode, extkey);
+	extkey = 0;
+}
+/* keyboard input goes to the active console: the serial tty when the
+ * system console is a serial device (headless boots), else the current
+ * virtual console (desktop framebuffer boots) */
+static struct tty *kbd_target_tty(void)
+{
+	struct tty *tty;
+
+	if(kparms.syscondev && MAJOR(kparms.syscondev) == SERIAL_MAJOR) {
+		if((tty = get_tty(kparms.syscondev))) {
+			return tty;
+		}
+	}
+	return get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
+}
+
+static void process_scancode(unsigned char scode, int is_ext)
+{
+	struct tty *tty;
+	struct vconsole *vc;
+	__key_t key, type;
+	unsigned char c;
+	int n;
+	int mod;
+
+	tty = kbd_target_tty();
+	vc = (struct vconsole *)get_tty(
+		MKDEV(VCONSOLES_MAJOR, current_cons))->driver_data;
+
+	if(is_ext) {
 		key = e0_keys[scode & 0x7F];
 	} else {
 		key = scode & 0x7F;
@@ -309,7 +342,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 
 	if(tty->kbd.mode == K_MEDIUMRAW) {
 		putc(tty, key | (scode & 0x80));
-		extkey = 0;
+		is_ext = 0;
 		return;
 	}
 
@@ -324,7 +357,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 				ctrl = 0;
 				break;
 			case ALT:
-				if(!extkey) {
+				if(!is_ext) {
 					alt = 0;
 					altsysrq = 0;
 				} else {
@@ -334,7 +367,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 			case SHIFT:
 			case LSHIFT:
 			case RSHIFT:
-				if(!extkey) {
+				if(!is_ext) {
 					shift = 0;
 				}
 				break;
@@ -344,7 +377,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 				leds = 0;
 				break;
 		}
-		extkey = 0;
+		is_ext = 0;
 		return;
 	}
 
@@ -381,7 +414,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 			ctrl = 1;
 			return;
 		case ALT:
-			if(!extkey) {
+			if(!is_ext) {
 				alt = 1;
 			} else {
 				altgr = 1;
@@ -391,7 +424,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 		case LSHIFT:
 		case RSHIFT:
 			shift = 1;
-			extkey = 0;
+			is_ext = 0;
 			return;
 	}
 
@@ -410,7 +443,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 	if(vc->capslock && (keymap_line[MOD_BASE] & LETTER_KEYS)) {
 		mod = !vc->capslock ? shift : vc->capslock - shift;
 	} else {
-		if(shift && !extkey) {
+		if(shift && !is_ext) {
 			mod = 1;
 		}
 	}
@@ -441,7 +474,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 		return;
 	}
 
-	if(extkey && (scode == SLASH_NPAD)) {
+	if(is_ext && (scode == SLASH_NPAD)) {
 		key = SLASH;
 	}
 
@@ -566,6 +599,7 @@ void irq_keyboard(int num, struct sigcontext *sc)
 	deadkey = 0;
 }
 
+
 void irq_keyboard_bh(struct sigcontext *sc)
 {
 	struct tty *tty;
@@ -625,6 +659,30 @@ void irq_keyboard_bh(struct sigcontext *sc)
 			tty->input(tty);
 			unlock_area(AREA_TTY_READ);
 		}
+	}
+}
+
+
+/* Public seam: feed set-1 scancodes from a non-PS/2 source (e.g. USB
+ * HID keyboard). is_ext marks E0-prefixed keys. */
+void kbd_process_scancode(unsigned char scode, int is_ext)
+{
+	struct tty *tty;
+
+	process_scancode(scode, is_ext);
+	/* wake the console tty readers (the PS/2 ISR path does this via
+	 * the keyboard bottom-half; a non-PS/2 keyboard must too) */
+	tty = kbd_target_tty();
+	if(MAJOR(tty->dev) == SERIAL_MAJOR) {
+		/* mirror the serial ISR: cook the read queue (canonical
+		 * processing) and wake the reader */
+		if(can_lock_area(AREA_SERIAL_READ)) {
+			tty->input(tty);
+			unlock_area(AREA_SERIAL_READ);
+		}
+	} else {
+		keyboard_bh.flags |= BH_ACTIVE;
+		add_bh(&keyboard_bh);
 	}
 }
 

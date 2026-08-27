@@ -199,6 +199,15 @@ static void scan_bus(void)
 				} 
 				if((addr & PCI_BASE_ADDR_TYPE_MASK) == PCI_BASE_ADDR_TYPE_64) {
 					pd->flags[n] |= PCI_F_ADDR_MEM_64;
+					/* 64-bit BAR: the high dword's size probe
+					 * returns 0xFFFFFFFF and would be skipped;
+					 * capture it here into bar[n+1] so drivers
+					 * can combine (and the n+1 iteration's
+					 * `continue` leaves it intact). */
+					pd->bar[n + 1] =
+						pci_read_long(pd, reg + 4) &
+						PCI_BASE_ADDR_MEM_MASK;
+					pd->flags[n + 1] |= PCI_F_ADDR_MEM_64;
 				} 
 				addr &= PCI_BASE_ADDR_MEM_MASK;
 				pd->flags[n] |= PCI_F_ADDR_SPACE_MEM;

@@ -25,6 +25,7 @@
 #include <fnx/pic.h>
 #include <fnx/irq.h>
 #include <fnx/msix.h>
+#include <fnx/usb.h>
 #include <fnx/segments.h>
 #include <fnx/devices.h>
 #include <fnx/buffer.h>
@@ -165,6 +166,7 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 
 #ifdef CONFIG_PCI
 	pci_init();
+	usb_init();
 #endif /* CONFIG_PCI */
 
 	video_init();
