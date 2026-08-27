@@ -76,7 +76,11 @@ static struct device psaux_device = {
 	NULL
 };
 
-struct psaux psaux_table;
+struct psaux *psaux_table;	/* heap: FNX64 maps kernel code/data at both
+					 * low-identity and high-half VAs; static
+					 * objects get two addresses, so the psaux
+					 * state (used as a sleep/wakeup key) must
+					 * live on the heap (like tty_table) */
 
 static struct interrupt irq_config_psaux = { 0, "psaux", &irq_psaux, NULL };
 
@@ -132,11 +136,30 @@ void irq_psaux(int num, struct sigcontext *sc)
 	if(ch == DEV_ACK) {
 		ack = 1;
 	}
-	if(!psaux_table.count) {
+	if(!psaux_table->count) {
 		return;
 	}
-	charq_putchar(&psaux_table.read_q, ch);
-	wakeup(&psaux_read);
+	charq_putchar(&psaux_table->read_q, ch);
+	/* NB: wake on a DATA address; FNX64 maps the kernel code at both
+	 * the low identity and high-half VAs, so function-address sleep
+	 * keys do not match across contexts (e.g. syscall vs timer BH) */
+	wakeup(&psaux_table->read_q);
+	wakeup(&do_select);
+}
+
+/* feed a synthesized PS/2 mouse packet (from a USB mouse) into the
+ * psaux input queue and wake the readers */
+void psaux_synth_packet(unsigned char *pkt, int len)
+{
+	int n;
+
+	if(!psaux_table->count) {
+		return;
+	}
+	for(n = 0; n < len; n++) {
+		charq_putchar(&psaux_table->read_q, pkt[n]);
+	}
+	wakeup(&psaux_table->read_q);
 	wakeup(&do_select);
 }
 
@@ -148,11 +171,11 @@ int psaux_open(struct inode *i, struct fd *f)
 	if(!TEST_MINOR(psaux_device.minors, minor)) {
 		return -ENXIO;
 	}
-	if(psaux_table.count++) {
+	if(psaux_table->count++) {
 		return 0;
 	}
-	memset_b(&psaux_table.read_q, 0, sizeof(struct clist));
-	memset_b(&psaux_table.write_q, 0, sizeof(struct clist));
+	memset_b(&psaux_table->read_q, 0, sizeof(struct clist));
+	memset_b(&psaux_table->write_q, 0, sizeof(struct clist));
 	return 0;
 }
 
@@ -164,7 +187,7 @@ int psaux_close(struct inode *i, struct fd *f)
 	if(!TEST_MINOR(psaux_device.minors, minor)) {
 		return -ENXIO;
 	}
-	psaux_table.count--;
+	psaux_table->count--;
 	return 0;
 }
 
@@ -178,18 +201,18 @@ int psaux_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 		return -ENXIO;
 	}
 
-	while(!psaux_table.read_q.count) {
+	while(!psaux_table->read_q.count) {
 		if(f->flags & O_NONBLOCK) {
 			return -EAGAIN;
 		}
-		if(sleep(&psaux_read, PROC_INTERRUPTIBLE)) {
+		if(sleep(&psaux_table->read_q, PROC_INTERRUPTIBLE)) {
 			return -EINTR;
 		}
 	}
 	bytes_read = 0;
 	while(bytes_read < count) {
-		if(psaux_table.read_q.count) {
-			ch = charq_getchar(&psaux_table.read_q);
+		if(psaux_table->read_q.count) {
+			ch = charq_getchar(&psaux_table->read_q);
 			buffer[bytes_read++] = ch;
 			continue;
 		}
@@ -233,7 +256,7 @@ int psaux_select(struct inode *i, struct fd *f, int flag)
 
 	switch(flag) {
 		case SEL_R:
-			if(psaux_table.read_q.count) {
+			if(psaux_table->read_q.count) {
 				return 1;
 			}
 			break;
@@ -244,6 +267,22 @@ int psaux_select(struct inode *i, struct fd *f, int flag)
 void psaux_init(void)
 {
 	int errno;
+
+	/* register /dev/psaux unconditionally: a USB mouse synthesizes
+	 * PS/2 packets into it even when no PS/2 mouse is attached.
+	 * psaux_table is heap-allocated: FNX64 maps kernel code/data at
+	 * both low-identity and high-half VAs, so static objects get two
+	 * addresses and cannot serve as sleep/wakeup keys (tty_table is
+	 * a heap pointer for the same reason). */
+	if(!(psaux_table = (struct psaux *)kmalloc(sizeof(struct psaux)))) {
+		printk("psaux: no memory\n");
+		return;
+	}
+	memset_b(psaux_table, 0, sizeof(struct psaux));
+	SET_MINOR(psaux_device.minors, PSAUX_MINOR);
+	if(register_device(CHR_DEV, &psaux_device)) {
+		printk("WARNING: %s(): unable to register psaux device.\n", __FUNCTION__);
+	}
 
 	/* reset device */
 	psaux_command_write(PS2_DEV_RESET);
@@ -284,10 +323,5 @@ void psaux_init(void)
 			break;
 	}
 	printk("\n");
-	memset_b(&psaux_table, 0, sizeof(struct psaux));
-	SET_MINOR(psaux_device.minors, PSAUX_MINOR);
-	if(register_device(CHR_DEV, &psaux_device)) {
-		printk("WARNING: %s(): unable to register psaux device.\n", __FUNCTION__);
-	}
 }
 #endif /* CONFIG_PSAUX */

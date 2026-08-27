@@ -33,6 +33,10 @@ S_IFBLK = 0o060000
 S_IFLNK = 0o120000
 
 # (path relative to root) -> device number (MKDEV(maj,min) = (maj << 8) | min)
+BLOCK_DEVICES = {
+    'dev/sda',
+}
+
 DEVICES = {
     'dev/console':  0x440,   # ttyS0 (4 << 8) | 0x40 -> serial console (dev work)
     'dev/tty0':     0x400,   # (4 << 8) | 0  -> current virtual console
@@ -48,6 +52,7 @@ DEVICES = {
     'dev/urandom':  0x109,   # (1 << 8) | 9
     'dev/ptmx':     0x502,   # (5 << 8) | 2 -> PTY multiplexer
     'dev/sda':     0x800,   # (8 << 8) | 0 -> USB mass-storage disk
+    'dev/psaux':    0x0A01,  # (10 << 8) | 1 -> PS/2 mouse port
 }
 
 
@@ -95,8 +100,9 @@ def build_tree(root, with_symlinks=False, exclude=()):
                 continue
             name = entry.encode()[:14]
             if relpath in DEVICES:
-                # block majors: 1 (ramdisk), 3 (IDE0), 8 (usb-storage), 22 (IDE1)
-                n = Node(name, 'blk' if (DEVICES[relpath] >> 8) in (1, 3, 8, 22) else 'chr')
+                # block nodes are named explicitly (major 1 is shared with
+                # the mem char devices: null/zero/full are 1:3..1:7)
+                n = Node(name, 'blk' if relpath in BLOCK_DEVICES else 'chr')
                 n.rdev = DEVICES[relpath]
                 node.children.append(n)
             elif os.path.isdir(fullpath):

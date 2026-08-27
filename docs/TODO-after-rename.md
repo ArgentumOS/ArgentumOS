@@ -1433,3 +1433,39 @@ behind is IMPLEMENTED and tested.
 ### Pending
 - M2c: usb-mouse/tablet (HID -> psaux-synth); M3: external hub + hotplug;
   M4 (optional): MSI-X multi-vector per-queue, AC64, SuperSpeed.
+
+## DONE: usb-mouse / usb-tablet (HID pointer -> psaux-synth) (M2c)
+
+- drivers/usb/usb-mouse.c: HID boot mouse (iface proto 0x02, 4-byte report:
+  buttons + X/Y deltas) and usb-tablet (proto 0x00, 8-byte absolute report)
+  both configure EP1 IN (interrupt) and translate reports into standard
+  3-byte PS/2 packets (Y axis flipped: HID down = positive -> PS/2 up).
+  Delivered to /dev/psaux via psaux_synth_packet(); verified with
+  `dd if=/dev/psaux | od` + monitor `mouse_move` (0x28 0x0A 0xFB etc.).
+- xhci_set_transfer_cb() now takes (slotid, epid, fn, data): per-endpoint
+  async callbacks so kbd + mouse + (future) devices coexist.
+- Class-driver probes parse the config into a LOCAL struct and only touch
+  the shared device struct after the class match: the kbd check runs first
+  for every port, and a mouse/storage port was clobbering a live keyboard's
+  slotid/epid (kbd reports silently dropped -> "only first key typed").
+- psaux_table is heap-allocated (like tty_table): FNX64 maps kernel
+  statics at BOTH the low-identity and high-half VAs (different physical
+  copies!), so a static struct gets two addresses and cannot serve as a
+  sleep/wakeup key across contexts (syscall vs timer BH).
+- xhci_state is heap-allocated for the SAME reason: the sync flag and
+  event-ring enq/ccs must be one object; with a static, the timer-BH poll
+  saw its own copy and stole the sync paths' events (mount failed with
+  xhci_event_wait timeouts at enq=0 ccs=0).
+- Sync-flag ordering: xhci_transfer() sets xhci_sync_waiting BEFORE the
+  doorbell (was after) - the poll must not run between the doorbell and
+  the flag set or it consumes the sync's completion event.
+- Event ring enlarged to 128 TRBs: the 3-device probe (~40 events) wrapped
+  the 32-TRB ring and QEMU's er_ep_idx did not wrap with it -> events
+  landed out of bounds and the guest's ccs desynced. Verified with kbd +
+  mouse + storage all active: typing, mouse packets, and mount/read work
+  simultaneously with zero event-ring timeouts.
+
+## Pending: XHCI USB
+
+- M3: external usb-hub + hotplug (port status change events -> re-probe)
+- M4: MSI-X multi-vector, 64-byte contexts (AC64), SuperSpeed

@@ -679,6 +679,8 @@ void kbd_process_scancode(unsigned char scode, int is_ext)
 		if(can_lock_area(AREA_SERIAL_READ)) {
 			tty->input(tty);
 			unlock_area(AREA_SERIAL_READ);
+		} else {
+			printk("kbd: serial lock busy, chars queued\n");
 		}
 	} else {
 		keyboard_bh.flags |= BH_ACTIVE;

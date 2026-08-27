@@ -85,6 +85,7 @@ static void usb_kbd_submit(struct usb_kbd *k)
 {
 	int i;
 
+
 	/* fresh report buffer (must be DMA-visible kernel VA) */
 	for(i = 0; i < HID_REPORT_SIZE; i++) {
 		k->buf[i] = 0;
@@ -109,6 +110,8 @@ static void usb_kbd_cb(int slotid, int epid, int ccode, void *data)
 {
 	struct usb_kbd *k = &kbd;
 	int i, j, sc, changed;
+
+
 
 if(slotid != k->slotid || epid != k->epid) {
 		return;
@@ -210,14 +213,22 @@ static int usb_kbd_parse_config(struct usb_kbd *k)
 int usb_kbd_init(int slotid, unsigned char *configdesc)
 {
 	struct usb_kbd *k = &kbd;
+	struct usb_kbd tmp;
 	int ret;
 
-	k->slotid = slotid;
-	k->config = configdesc;
-
-	if(!usb_kbd_parse_config(k)) {
+	/* parse into a LOCAL first: the probe calls this for every
+	 * device (the kbd class check is the first in the chain), so
+	 * touching the shared struct before the class match would let a
+	 * later device (mouse/storage) clobber a live keyboard's state */
+	memset_b(&tmp, 0, sizeof(tmp));
+	tmp.config = configdesc;
+	if(!usb_kbd_parse_config(&tmp)) {
 		return -ENODEV;
 	}
+	k->slotid = slotid;
+	k->epid = tmp.epid;
+	k->mps = tmp.mps;
+	k->config = configdesc;
 
 	/* SET_CONFIGURATION(1) */
 	if((ret = xhci_control(slotid, 0, USB_REQ_SET_CONFIGURATION, 1, 0,
@@ -240,7 +251,7 @@ int usb_kbd_init(int slotid, unsigned char *configdesc)
 		return ret;
 	}
 
-	xhci_set_transfer_cb(usb_kbd_cb, NULL);
+	xhci_set_transfer_cb(slotid, k->epid, usb_kbd_cb, NULL);
 	memset_b(k->prev, 0, sizeof(k->prev));
 	usb_kbd_submit(k);
 	printk("usb-kbd: boot keyboard on slot %d (epid %d, mps %d)\n",

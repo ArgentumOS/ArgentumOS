@@ -57,8 +57,10 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 /* kick an endpoint (doorbell); used to re-queue after a completion */
 void xhci_kick_ep(int slotid, int epid);
 
-/* async transfer completion callback: (slotid, epid, ccode, data) */
-void xhci_set_transfer_cb(void (*fn)(int, int, int, void *), void *data);
+/* async transfer completion callback for one (slotid, epid):
+ * fn(slotid, epid, ccode, data) */
+void xhci_set_transfer_cb(int slotid, int epid,
+			  void (*fn)(int, int, int, void *), void *data);
 
 /* drain the event ring (timer BH hook); no-op when no xHCI is present */
 void xhci_poll(void);

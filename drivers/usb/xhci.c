@@ -1,12 +1,12 @@
 /*
- * fnx/drivers/usb/xhci.c
+ * fnx/drivers/usb/xhci->c
  *
  * xHCI host controller driver (QEMU qemu-xhci 1B36:000D / nec-usb-xhci
  * 1033:0194, class 0x0C0330 prog-if 0x30). M0 (HCD bring-up:
  * caps, HCRST, command + event rings, RS run, ports, IRQ) + M1 (USB
  * core: device model, EP0 control transfers, enumeration).
  *
- * The QEMU contract (qemu-10.0.11+ds/hw/usb/hcd-xhci.c):
+ * The QEMU contract (qemu-10.0.11+ds/hw/usb/hcd-xhci->c):
  * - CAP 0x00-0x3F, OP at CAPLENGTH (0x40), runtime at RTSOFF (0x1000),
  *   doorbells at DBOFF (0x2000); BAR0 is 64-bit, 0x4000 bytes.
  * - Command ring: TRBs written with cycle bit; QEMU reads from its own
@@ -36,6 +36,7 @@
 #include <fnx/xhci.h>
 
 int usb_kbd_init(int slotid, unsigned char *configdesc);
+int usb_mouse_init(int slotid, unsigned char *configdesc);
 int usb_storage_init(int slotid, unsigned char *configdesc);
 
 /* ---------------- MMIO layout (QEMU) ---------------- */
@@ -170,7 +171,7 @@ struct xhci_event {
 
 /* ---------------- driver state ---------------- */
 #define CMD_RING_TRBS	32
-#define EVT_RING_TRBS	32
+#define EVT_RING_TRBS	128
 #define XFER_RING_TRBS	16
 #define MAX_SLOTS	16
 
@@ -203,7 +204,7 @@ static struct xhci_state {
 	int run;
 	unsigned char irq;
 	struct xhci_dev devs[MAX_SLOTS];
-} xhci;
+} *xhci;
 
 /* set while a synchronous command/control waiter owns the event ring */
 static int xhci_sync_waiting;
@@ -213,11 +214,11 @@ extern int map_page64(unsigned long, unsigned long, unsigned long);
 /* ---------------- MMIO accessors ---------------- */
 static unsigned int xhci_reg_r(unsigned long off)
 {
-	return *(volatile unsigned int *)(xhci.mmio + off);
+	return *(volatile unsigned int *)(xhci->mmio + off);
 }
 static void xhci_reg_w(unsigned long off, unsigned int val)
 {
-	*(volatile unsigned int *)(xhci.mmio + off) = val;
+	*(volatile unsigned int *)(xhci->mmio + off) = val;
 }
 
 /* ---------------- rings ---------------- */
@@ -267,30 +268,32 @@ unsigned long xhci_ring_put(struct xhci_ring *r, struct xhci_trb *t)
 }
 
 /* ---------------- event ring ---------------- */
+static void xhci_dispatch_event(struct xhci_event *ev);	/* fwd */
+
 static int xhci_event_wait(struct xhci_event *ev, int timeout)
 {
 	volatile struct xhci_trb *t;
 	int idx;
 	unsigned long spin;
 
-	idx = xhci.evt.enq;
+	idx = xhci->evt.enq;
 	for(spin = 0; spin < (unsigned long)timeout; spin++) {
-		t = &((volatile struct xhci_trb *)xhci.evt.trbs)[idx];
-		if(((t->control >> 0) & 1) == xhci.evt.ccs) {
+		t = &((volatile struct xhci_trb *)xhci->evt.trbs)[idx];
+		if(((t->control >> 0) & 1) == xhci->evt.ccs) {
 			ev->parameter = t->parameter;
 			ev->status = t->status;
 			ev->control = t->control;
 			idx++;
-			if(idx == xhci.evt.size) {
+			if(idx == xhci->evt.size) {
 				idx = 0;
-				xhci.evt.ccs ^= 1;
+				xhci->evt.ccs ^= 1;
 			}
-			xhci.evt.enq = idx;
+			xhci->evt.enq = idx;
 			/* re-arm: ERDP = next slot, with EHB set */
-			xhci_reg_w(xhci.rtoff + RT_ERDP_L,
-				   (unsigned int)(xhci.evt.phys + idx * 16) | 0x8);
-			xhci_reg_w(xhci.rtoff + RT_ERDP_H,
-				   (unsigned int)((xhci.evt.phys + idx * 16) >> 32));
+			xhci_reg_w(xhci->rtoff + RT_ERDP_L,
+				   (unsigned int)(xhci->evt.phys + idx * 16) | 0x8);
+			xhci_reg_w(xhci->rtoff + RT_ERDP_H,
+				   (unsigned int)((xhci->evt.phys + idx * 16) >> 32));
 			return 0;
 		}
 	}
@@ -300,12 +303,12 @@ static int xhci_event_wait(struct xhci_event *ev, int timeout)
 static void xhci_event_clear_pending(void)
 {
 	/* clear the interrupter pending bit + re-arm EHB */
-	xhci_reg_w(xhci.rtoff + RT_IMAN,
-		   xhci_reg_r(xhci.rtoff + RT_IMAN) & ~1);
-	xhci_reg_w(xhci.rtoff + RT_ERDP_L,
-		   (unsigned int)(xhci.evt.phys + xhci.evt.enq * 16) | 0x8);
-	xhci_reg_w(xhci.rtoff + RT_ERDP_H,
-		   (unsigned int)((xhci.evt.phys + xhci.evt.enq * 16) >> 32));
+	xhci_reg_w(xhci->rtoff + RT_IMAN,
+		   xhci_reg_r(xhci->rtoff + RT_IMAN) & ~1);
+	xhci_reg_w(xhci->rtoff + RT_ERDP_L,
+		   (unsigned int)(xhci->evt.phys + xhci->evt.enq * 16) | 0x8);
+	xhci_reg_w(xhci->rtoff + RT_ERDP_H,
+		   (unsigned int)((xhci->evt.phys + xhci->evt.enq * 16) >> 32));
 }
 
 /* ---------------- IRQ ---------------- */
@@ -323,14 +326,15 @@ static int xhci_cmd(struct xhci_trb *trb, int *ccode_out, int *slotid_out)
 	unsigned long trb_addr;
 	int ret;
 
-	if(!(trb_addr = xhci_ring_put(&xhci.cmd, trb))) {
+	if(!(trb_addr = xhci_ring_put(&xhci->cmd, trb))) {
 		return -EAGAIN;
 	}
-	xhci_sync_waiting = 0;
 
-	/* ring the command doorbell */
+	/* the flag must be set BEFORE the doorbell: a timer-BH xhci_poll
+	 * running in the window would steal this command's completion
+	 * event and the sync wait would time out */
 	xhci_sync_waiting = 1;
-	xhci_reg_w(xhci.dboff + DB_CMD, 0);
+	xhci_reg_w(xhci->dboff + DB_CMD, 0);
 
 	/* wait for the matching command-completion event */
 	for(;;) {
@@ -340,7 +344,10 @@ static int xhci_cmd(struct xhci_trb *trb, int *ccode_out, int *slotid_out)
 		}
 		if(((ev.control >> TRB_TYPE_SHIFT) & TRB_TYPE_MASK) !=
 		   ER_COMMAND_COMPLETE) {
-			continue;	/* port status change etc. */
+			/* transfer completions for async devices must still
+			 * reach their callbacks (kbd/mouse) */
+			xhci_dispatch_event(&ev);
+			continue;
 		}
 		if(ev.parameter != trb_addr) {
 			continue;	/* not our command */
@@ -379,13 +386,13 @@ int xhci_control(int slotid, int dir_in, unsigned char bRequest,
 			unsigned short wValue, unsigned short wIndex,
 			unsigned short wLength, void *data)
 {
-	struct xhci_ring *r = &xhci.devs[slotid].ep0;
+	struct xhci_ring *r = &xhci->devs[slotid].ep0;
 	struct xhci_trb t;
 	struct xhci_event ev;
 	unsigned long setup;
 	int ret;
 
-	if(xhci.devs[slotid].slotid != slotid) {
+	if(xhci->devs[slotid].slotid != slotid) {
 		return -EINVAL;
 	}
 
@@ -426,7 +433,7 @@ int xhci_control(int slotid, int dir_in, unsigned char bRequest,
 
 	/* kick the endpoint (EP0 = endpoint id 1) */
 	xhci_sync_waiting = 1;
-	xhci_reg_w(xhci.dboff + DB_DEV(slotid), DB_TARGET(1));
+	xhci_reg_w(xhci->dboff + DB_DEV(slotid), DB_TARGET(1));
 
 	/* wait for the transfer-completion event */
 	for(;;) {
@@ -440,10 +447,13 @@ int xhci_control(int slotid, int dir_in, unsigned char bRequest,
 			   (unsigned int)slotid) {
 				if(((ev.status >> TRB_CCODE_SHIFT) &
 				    TRB_CCODE_MASK) != CC_SUCCESS) {
+					xhci_sync_waiting = 0;
 					return -EIO;
 				}
+				xhci_sync_waiting = 0;
 				return 0;
 			}
+			xhci_dispatch_event(&ev);
 		}
 	}
 }
@@ -462,7 +472,7 @@ int xhci_configure_ep(int slotid, int epid, int type, int mps,
 	if(slotid < 1 || slotid >= MAX_SLOTS || epid < 2 || epid > 31) {
 		return -EINVAL;
 	}
-	d = &xhci.devs[slotid];
+	d = &xhci->devs[slotid];
 	if(d->slotid != slotid) {
 		return -EINVAL;
 	}
@@ -500,19 +510,47 @@ int xhci_configure_ep(int slotid, int epid, int type, int mps,
 }
 
 /* ---------------- async transfers (class drivers) ---------------- */
-static void (*xhci_tcb)(int, int, int, void *);
-static void *xhci_tcb_data;
+#define XHCI_MAX_CB	8
 
-void xhci_set_transfer_cb(void (*fn)(int, int, int, void *), void *data)
+struct xhci_cb {
+	int slotid;
+	int epid;
+	void (*fn)(int, int, int, void *);
+	void *data;
+	int used;
+};
+static struct xhci_cb xhci_cbs[XHCI_MAX_CB];
+
+/* register an async completion callback for one (slotid, epid) */
+void xhci_set_transfer_cb(int slotid, int epid, void (*fn)(int, int, int, void *),
+			  void *data)
 {
-	xhci_tcb = fn;
-	xhci_tcb_data = data;
+	int n;
+
+	for(n = 0; n < XHCI_MAX_CB; n++) {
+		if(xhci_cbs[n].used && xhci_cbs[n].slotid == slotid &&
+		   xhci_cbs[n].epid == epid) {
+			xhci_cbs[n].fn = fn;
+			xhci_cbs[n].data = data;
+			return;
+		}
+	}
+	for(n = 0; n < XHCI_MAX_CB; n++) {
+		if(!xhci_cbs[n].used) {
+			xhci_cbs[n].slotid = slotid;
+			xhci_cbs[n].epid = epid;
+			xhci_cbs[n].fn = fn;
+			xhci_cbs[n].data = data;
+			xhci_cbs[n].used = 1;
+			return;
+		}
+	}
 }
 
 /* re-kick an endpoint after a completion */
 void xhci_kick_ep(int slotid, int epid)
 {
-	xhci_reg_w(xhci.dboff + DB_DEV(slotid), DB_TARGET(epid));
+	xhci_reg_w(xhci->dboff + DB_DEV(slotid), DB_TARGET(epid));
 }
 
 int xhci_submit(int slotid, int epid, int dir_in, void *buf, int len,
@@ -533,7 +571,7 @@ int xhci_submit(int slotid, int epid, int dir_in, void *buf, int len,
 		return -EAGAIN;
 	}
 
-	xhci_reg_w(xhci.dboff + DB_DEV(slotid), DB_TARGET(epid));
+	xhci_reg_w(xhci->dboff + DB_DEV(slotid), DB_TARGET(epid));
 	return 0;
 }
 
@@ -543,10 +581,14 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 	struct xhci_event ev;
 	int ret;
 
+	/* the flag must be set BEFORE the doorbell (see xhci_cmd): a
+	 * timer-BH xhci_poll running in the window would consume this
+	 * transfer's completion event and the sync wait would time out */
+	xhci_sync_waiting = 1;
 	if((ret = xhci_submit(slotid, epid, dir_in, buf, len, ring)) < 0) {
+		xhci_sync_waiting = 0;
 		return ret;
 	}
-	xhci_sync_waiting = 1;
 
 	for(;;) {
 		if((ret = xhci_event_wait(&ev, 2000000)) < 0) {
@@ -568,33 +610,48 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 			xhci_sync_waiting = 0;
 			return 0;
 		}
+		/* someone else's transfer completed (async kbd/mouse):
+		 * deliver it to its callback so it can re-submit */
+		xhci_dispatch_event(&ev);
 	}
 }
 
 /* drain the event ring and dispatch async transfer completions.
  * Called from the timer BH; skips while a synchronous waiter owns the
  * ring (probe-time commands/control transfers). */
+static void xhci_dispatch_event(struct xhci_event *ev)
+{
+	int type, slotid, epid, n;
+
+	type = (ev->control >> TRB_TYPE_SHIFT) & TRB_TYPE_MASK;
+	if(type != ER_TRANSFER) {
+		return;	/* commands/port-status are consumed by the sync paths */
+	}
+	slotid = (ev->control >> TRB_SLOTID_SHIFT) & TRB_SLOTID_MASK;
+	epid = (ev->control >> 16) & 0xFF;
+	for(n = 0; n < XHCI_MAX_CB; n++) {
+		if(xhci_cbs[n].used && xhci_cbs[n].slotid == slotid &&
+		   xhci_cbs[n].epid == epid) {
+			xhci_cbs[n].fn(slotid, epid,
+				(ev->status >> TRB_CCODE_SHIFT) & TRB_CCODE_MASK,
+				xhci_cbs[n].data);
+			break;
+		}
+	}
+}
+
 void xhci_poll(void)
 {
 	struct xhci_event ev;
-	int type, slotid, epid;
 
-	if(!xhci.present || xhci_sync_waiting) {
+	if(!xhci->present) {
+		return;
+	}
+	if(xhci_sync_waiting) {
 		return;
 	}
 	while(!xhci_event_wait(&ev, 1)) {
-		type = (ev.control >> TRB_TYPE_SHIFT) & TRB_TYPE_MASK;
-		if(type == ER_TRANSFER) {
-			slotid = (ev.control >> TRB_SLOTID_SHIFT) & TRB_SLOTID_MASK;
-			epid = (ev.control >> 16) & 0xFF;
-			if(xhci_tcb) {
-				xhci_tcb(slotid, epid,
-					 (ev.status >> TRB_CCODE_SHIFT) & TRB_CCODE_MASK,
-					 xhci_tcb_data);
-			}
-		}
-		/* ER_COMMAND_COMPLETE / ER_PORT_STATUS_CHANGE are consumed
-		 * by the synchronous paths */
+		xhci_dispatch_event(&ev);
 	}
 }
 
@@ -603,6 +660,7 @@ static int xhci_init_hcd(void)
 {
 	unsigned long spin;
 	int ret;
+
 
 	/* host controller reset */
 	xhci_reg_w(0x40 + OP_USBCMD, CMD_HCRST);
@@ -617,30 +675,30 @@ static int xhci_init_hcd(void)
 	}
 
 	/* event ring segment table (ERSTSZ = 1) */
-	*(volatile unsigned long *)((unsigned long)xhci.evt.trbs -
-		((unsigned long)xhci.evt.trbs & 0)) = 0;	/* no-op guard */
+	*(volatile unsigned long *)((unsigned long)xhci->evt.trbs -
+		((unsigned long)xhci->evt.trbs & 0)) = 0;	/* no-op guard */
 	/* ERST: 16 bytes at erst_phys: addr_low, addr_high, size, rsvd */
-	*(volatile unsigned int *)P2V(xhci.erst_phys) =
-		(unsigned int)xhci.evt_phys;
-	*(volatile unsigned int *)(P2V(xhci.erst_phys) + 4) =
-		(unsigned int)(xhci.evt_phys >> 32);
-	*(volatile unsigned int *)(P2V(xhci.erst_phys) + 8) =
+	*(volatile unsigned int *)P2V(xhci->erst_phys) =
+		(unsigned int)xhci->evt_phys;
+	*(volatile unsigned int *)(P2V(xhci->erst_phys) + 4) =
+		(unsigned int)(xhci->evt_phys >> 32);
+	*(volatile unsigned int *)(P2V(xhci->erst_phys) + 8) =
 		EVT_RING_TRBS;	/* segment size in TRBs */
-	*(volatile unsigned int *)(P2V(xhci.erst_phys) + 12) = 0;
+	*(volatile unsigned int *)(P2V(xhci->erst_phys) + 12) = 0;
 
-	xhci_reg_w(xhci.rtoff + RT_ERSTSZ, 1);
-	xhci_reg_w(xhci.rtoff + RT_ERSTBA_L, (unsigned int)xhci.erst_phys);
-	xhci_reg_w(xhci.rtoff + RT_ERSTBA_H, (unsigned int)(xhci.erst_phys >> 32));
-	xhci_reg_w(xhci.rtoff + RT_ERDP_L, (unsigned int)xhci.evt_phys | 0x8);
-	xhci_reg_w(xhci.rtoff + RT_ERDP_H, (unsigned int)(xhci.evt_phys >> 32));
-	xhci_reg_w(xhci.rtoff + RT_IMAN, 0x2);	/* IE = 1 */
-	xhci_reg_w(xhci.rtoff + RT_IMOD, 0);
+	xhci_reg_w(xhci->rtoff + RT_ERSTSZ, 1);
+	xhci_reg_w(xhci->rtoff + RT_ERSTBA_L, (unsigned int)xhci->erst_phys);
+	xhci_reg_w(xhci->rtoff + RT_ERSTBA_H, (unsigned int)(xhci->erst_phys >> 32));
+	xhci_reg_w(xhci->rtoff + RT_ERDP_L, (unsigned int)xhci->evt_phys | 0x8);
+	xhci_reg_w(xhci->rtoff + RT_ERDP_H, (unsigned int)(xhci->evt_phys >> 32));
+	xhci_reg_w(xhci->rtoff + RT_IMAN, 0x2);	/* IE = 1 */
+	xhci_reg_w(xhci->rtoff + RT_IMOD, 0);
 
 	/* command ring (RCS = 1), DCBAA, max slots */
-	xhci_reg_w(0x40 + OP_CRCR_L, (unsigned int)xhci.cmd.phys | CRCR_RCS);
-	xhci_reg_w(0x40 + OP_CRCR_H, (unsigned int)(xhci.cmd.phys >> 32));
-	xhci_reg_w(0x40 + OP_DCBAAP_L, (unsigned int)xhci.dcbaa_phys);
-	xhci_reg_w(0x40 + OP_DCBAAP_H, (unsigned int)(xhci.dcbaa_phys >> 32));
+	xhci_reg_w(0x40 + OP_CRCR_L, (unsigned int)xhci->cmd.phys | CRCR_RCS);
+	xhci_reg_w(0x40 + OP_CRCR_H, (unsigned int)(xhci->cmd.phys >> 32));
+	xhci_reg_w(0x40 + OP_DCBAAP_L, (unsigned int)xhci->dcbaa_phys);
+	xhci_reg_w(0x40 + OP_DCBAAP_H, (unsigned int)(xhci->dcbaa_phys >> 32));
 	xhci_reg_w(0x40 + OP_CONFIG, 1);	/* MaxSlotsEn = 1 */
 
 	/* run + interrupt enable */
@@ -654,7 +712,7 @@ static int xhci_init_hcd(void)
 		printk("xhci: RUN timeout\n");
 		return -EIO;
 	}
-	xhci.run = 1;
+	xhci->run = 1;
 	ret = 0;
 	return ret;
 }
@@ -707,7 +765,7 @@ static int xhci_address_device(struct xhci_dev *d)
 	ep0[4] = 0;
 
 	/* DCBAA[slotid] = output context (zeroed device context) */
-	*(volatile unsigned long *)P2V(xhci.dcbaa_phys + 8 * d->slotid) =
+	*(volatile unsigned long *)P2V(xhci->dcbaa_phys + 8 * d->slotid) =
 		d->octx_phys;
 
 	memset_b(&t, 0, sizeof(t));
@@ -731,6 +789,18 @@ int xhci_probe(void)
 	unsigned long phys;
 	int i, port, slotid, ret;
 
+	/* the HCD state must live on the HEAP: FNX64 maps the kernel image
+	 * at both the low-identity and high-half VAs (different physical
+	 * copies of the statics!), so a static xhci_state would give the
+	 * sync paths and the timer-BH poll two independent states (the
+	 * sync flag + event-ring enq/ccs would diverge and the poll would
+	 * steal the syncs' events). Same fix as psaux_table/tty_table. */
+	if(!(xhci = (struct xhci_state *)kmalloc(sizeof(struct xhci_state)))) {
+		printk("xhci: no memory\n");
+		return -ENOMEM;
+	}
+	memset_b(xhci, 0, sizeof(struct xhci_state));
+
 	/* find the xHCI controller (class 0x0C0330) */
 	pd = pci_device_table;
 	while(pd) {
@@ -750,7 +820,7 @@ int xhci_probe(void)
 		bar |= (unsigned long)pd->bar[1] << 32;
 	}
 	irq = pd->irq;
-	xhci.irq = irq;
+	xhci->irq = irq;
 
 	/* map BAR0 (0x4000 bytes) at a fixed kernel VA */
 	for(i = 0; i < XHCI_MMIO_SIZE / 4096; i++) {
@@ -759,38 +829,38 @@ int xhci_probe(void)
 			return -ENOMEM;
 		}
 	}
-	xhci.mmio = XHCI_MMIO_VA;
+	xhci->mmio = XHCI_MMIO_VA;
 
 	/* read capabilities */
-	xhci.caps[0] = xhci_reg_r(CAP_HCSPARAMS1);
-	xhci.numports = (xhci.caps[0] >> 24) & 0xFF;
-	xhci.numintrs = (xhci.caps[0] >> 8) & 0xFF;
-	xhci.numslots = xhci.caps[0] & 0xFF;
-	xhci.dboff = xhci_reg_r(CAP_DBOFF);
-	xhci.rtoff = xhci_reg_r(CAP_RTSOFF);
+	xhci->caps[0] = xhci_reg_r(CAP_HCSPARAMS1);
+	xhci->numports = (xhci->caps[0] >> 24) & 0xFF;
+	xhci->numintrs = (xhci->caps[0] >> 8) & 0xFF;
+	xhci->numslots = xhci->caps[0] & 0xFF;
+	xhci->dboff = xhci_reg_r(CAP_DBOFF);
+	xhci->rtoff = xhci_reg_r(CAP_RTSOFF);
 
 	printk("xhci: xHCI at 0x%lx, %d ports, %d slots, %d intrs\n",
-		bar, xhci.numports, xhci.numslots, xhci.numintrs);
+		bar, xhci->numports, xhci->numslots, xhci->numintrs);
 
 	/* allocate rings + contexts (page-aligned, DMA-visible) */
-	if(xhci_ring_init(&xhci.cmd, CMD_RING_TRBS) < 0) {
+	if(xhci_ring_init(&xhci->cmd, CMD_RING_TRBS) < 0) {
 		return -ENOMEM;
 	}
-	if(xhci_ring_init(&xhci.evt, EVT_RING_TRBS) < 0) {
+	if(xhci_ring_init(&xhci->evt, EVT_RING_TRBS) < 0) {
 		return -ENOMEM;
 	}
-	xhci.evt_phys = xhci.evt.phys;
+	xhci->evt_phys = xhci->evt.phys;
 
 	if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
 		return -ENOMEM;
 	}
 	memset_b((void *)P2V(phys), 0, 4096);
-	xhci.erst_phys = phys;
+	xhci->erst_phys = phys;
 	if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
 		return -ENOMEM;
 	}
 	memset_b((void *)P2V(phys), 0, 4096);
-	xhci.dcbaa_phys = phys;
+	xhci->dcbaa_phys = phys;
 
 	if((ret = xhci_init_hcd()) < 0) {
 		return ret;
@@ -816,7 +886,7 @@ int xhci_probe(void)
 	}
 
 	/* scan ports: reset any connected device and bring up a slot */
-	for(port = 1; port <= xhci.numports; port++) {
+	for(port = 1; port <= xhci->numports; port++) {
 		unsigned int ps = xhci_reg_r(0x440 + 0x10 * (port - 1));
 		if(!(ps & PORT_CCS)) {
 			continue;
@@ -842,49 +912,49 @@ int xhci_probe(void)
 			continue;
 		}
 
-		xhci.devs[slotid].slotid = slotid;
-		xhci.devs[slotid].port = port;
-		xhci.devs[slotid].speed = (ps & PORT_SPEED_MASK) == PORT_SPEED_HIGH ?
+		xhci->devs[slotid].slotid = slotid;
+		xhci->devs[slotid].port = port;
+		xhci->devs[slotid].speed = (ps & PORT_SPEED_MASK) == PORT_SPEED_HIGH ?
 			2 : (ps & PORT_SPEED_MASK) == PORT_SPEED_FULL ? 1 :
 			(ps & PORT_SPEED_MASK) == PORT_SPEED_SUPER ? 3 : 0;
 
-		if(xhci_ring_init(&xhci.devs[slotid].ep0, XFER_RING_TRBS) < 0) {
+		if(xhci_ring_init(&xhci->devs[slotid].ep0, XFER_RING_TRBS) < 0) {
 			continue;
 		}
 		if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
 			continue;
 		}
 		memset_b((void *)P2V(phys), 0, 4096);
-		xhci.devs[slotid].octx_phys = phys;
-		xhci.devs[slotid].octx = (unsigned char *)P2V(phys);
+		xhci->devs[slotid].octx_phys = phys;
+		xhci->devs[slotid].octx = (unsigned char *)P2V(phys);
 		if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
 			continue;
 		}
 		memset_b((void *)P2V(phys), 0, 4096);
-		xhci.devs[slotid].ictx_phys = phys;
-		xhci.devs[slotid].ictx = (unsigned char *)P2V(phys);
+		xhci->devs[slotid].ictx_phys = phys;
+		xhci->devs[slotid].ictx = (unsigned char *)P2V(phys);
 
-		if((ret = xhci_address_device(&xhci.devs[slotid])) < 0) {
+		if((ret = xhci_address_device(&xhci->devs[slotid])) < 0) {
 			printk("xhci: address device failed (%d)\n", ret);
 			continue;
 		}
-		xhci.devs[slotid].addr = slotid;
+		xhci->devs[slotid].addr = slotid;
 		printk("xhci: slot %d addressed (port %d, speed %d)\n",
-			slotid, port, xhci.devs[slotid].speed);
+			slotid, port, xhci->devs[slotid].speed);
 
 		/* M1: read the device descriptor (control transfer) */
 		if(!xhci_control(slotid, 1, USB_REQ_GET_DESCRIPTOR,
 				 USB_DT_DEVICE << 8, 0, 18,
-				 xhci.devs[slotid].devdesc)) {
+				 xhci->devs[slotid].devdesc)) {
 			printk("xhci: device descriptor: idVendor %x idProduct %x "
 				"bcdUSB %x class %x\n",
-				xhci.devs[slotid].devdesc[8] |
-					(xhci.devs[slotid].devdesc[9] << 8),
-				xhci.devs[slotid].devdesc[10] |
-					(xhci.devs[slotid].devdesc[11] << 8),
-				xhci.devs[slotid].devdesc[2] |
-					(xhci.devs[slotid].devdesc[3] << 8),
-				xhci.devs[slotid].devdesc[4]);
+				xhci->devs[slotid].devdesc[8] |
+					(xhci->devs[slotid].devdesc[9] << 8),
+				xhci->devs[slotid].devdesc[10] |
+					(xhci->devs[slotid].devdesc[11] << 8),
+				xhci->devs[slotid].devdesc[2] |
+					(xhci->devs[slotid].devdesc[3] << 8),
+				xhci->devs[slotid].devdesc[4]);
 		} else {
 			printk("xhci: GET_DESCRIPTOR failed\n");
 		}
@@ -893,13 +963,15 @@ int xhci_probe(void)
 		 * the device to usb-kbd / usb-storage */
 		if(!xhci_control(slotid, 1, USB_REQ_GET_DESCRIPTOR,
 				 USB_DT_CONFIG << 8, 0, 64,
-				 xhci.devs[slotid].configdesc)) {
-			if(usb_kbd_init(slotid, xhci.devs[slotid].configdesc) < 0) {
-				usb_storage_init(slotid, xhci.devs[slotid].configdesc);
+				 xhci->devs[slotid].configdesc)) {
+			if(usb_kbd_init(slotid, xhci->devs[slotid].configdesc) < 0) {
+				if(usb_mouse_init(slotid, xhci->devs[slotid].configdesc) < 0) {
+					usb_storage_init(slotid, xhci->devs[slotid].configdesc);
+				}
 			}
 		}
 	}
 
-	xhci.present = 1;
+	xhci->present = 1;
 	return 0;
 }
