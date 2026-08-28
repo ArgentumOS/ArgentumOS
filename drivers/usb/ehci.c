@@ -600,9 +600,9 @@ int ehci_enumerate(int root_port, int route, int speed)
 	unsigned char *devdesc, *configdesc;
 	int dev = 1, ret, i;
 
-	if(route) {
-		return -EINVAL;
-	}
+	/* behind-hub devices work through the same control path (the hub
+	 * driver already reset the downstream port); root_port is the hub's
+	 * root port for hotplug bookkeeping */
 	devdesc = e->desc18;
 	configdesc = e->desc64;
 

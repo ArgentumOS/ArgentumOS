@@ -144,6 +144,9 @@ static struct uhci_state {
 	unsigned char status_in[64];
 	unsigned char desc18[18];
 	unsigned char desc64[64];
+	/* speed of the device being enumerated (used for the SET_ADDRESS
+	 * control, whose target dev 0 is not yet in the devs[] table) */
+	int enum_speed;
 	struct uhci_ep eps[UHCI_MAX_EPS];
 	struct uhci_cb cbs[UHCI_MAX_CB];
 	struct {
@@ -200,6 +203,14 @@ static unsigned long uhci_build_td(unsigned int pid, int dev, int ep,
 	td_phys = uhci_slot_phys(td);
 	td->link = (unsigned int)next_link;
 	td->ctrl = TD_CTRL_ACTIVE | TD_CTRL_ERR;
+	/* low-speed devices need the LS bit in every TD (the HC uses it for
+	 * the 1.5Mbps handshake); dev 0 (SET_ADDRESS) takes the speed of the
+	 * device being enumerated */
+	if((dev >= 1 && dev < UHCI_MAX_DEVS && u->devs[dev].port &&
+	    u->devs[dev].speed == 0) ||
+	   (dev == 0 && u->enum_speed == 0)) {
+		td->ctrl |= TD_CTRL_LS;
+	}
 	td->token = (unsigned int)pid |
 		    ((unsigned int)(dev & 0x7f) << 8) |
 		    ((unsigned int)(ep & 0xf) << 15) |
@@ -589,10 +600,14 @@ int uhci_enumerate(int root_port, int route, int speed)
 	unsigned char *devdesc, *configdesc;
 	int dev = 1, ret, i;
 
-	if(route) {
-		/* USB 1.1 hub enumeration not implemented yet */
-		return -EINVAL;
-	}
+	/* the speed of the device being enumerated (the SET_ADDRESS control
+	 * targets dev 0, which is not yet in the devs[] table; the LS bit in
+	 * its TDs must match the device). For a behind-hub device the hub
+	 * driver already reset the downstream port, so the control path
+	 * below is identical to a root-port device (addr-0 packets are
+	 * routed to the newly reset port); root_port is the hub's root port,
+	 * kept for hotplug bookkeeping. */
+	u->enum_speed = speed;
 
 	/* the descriptor buffers must be DMA-visible kernel VAs (the kmalloc'd
 	 * state, not the stack: V2P() of a stack address is wrong) */
