@@ -23,49 +23,72 @@ static struct ext_net_ops *ext_ops;
 
 int ext_init(void)
 {
-	ext_ops = NULL;
-	if((ext_ops = virtio_net_probe())) {
+	struct ext_net_ops *nic;
+
+	/* a NIC may already be registered: the USB CDC-ECM adapter
+	 * enumerates during usb_init() (start_kernel), which runs BEFORE
+	 * net_init() probes the PCI NICs here. A found PCI NIC overrides
+	 * it (PCI is the primary); otherwise the USB NIC stays. */
+	nic = NULL;
+	if((nic = virtio_net_probe())) {
 		goto configured;
 	}
-	if((ext_ops = rtl8139_probe())) {
+	if((nic = rtl8139_probe())) {
 		goto configured;
 	}
-	if((ext_ops = ne2k_probe())) {
+	if((nic = ne2k_probe())) {
 		goto configured;
 	}
-	if((ext_ops = tulip_probe())) {
+	if((nic = tulip_probe())) {
 		goto configured;
 	}
-	if((ext_ops = pcnet_probe())) {
+	if((nic = pcnet_probe())) {
 		goto configured;
 	}
-	if((ext_ops = e1000_probe())) {
+	if((nic = e1000_probe())) {
 		goto configured;
 	}
-	if((ext_ops = ne2k_isa_probe())) {
+	if((nic = ne2k_isa_probe())) {
 		goto configured;
 	}
-	if((ext_ops = eepro100_probe())) {
+	if((nic = eepro100_probe())) {
 		goto configured;
 	}
-	if((ext_ops = vmxnet3_probe())) {
+	if((nic = vmxnet3_probe())) {
 		goto configured;
 	}
-	if((ext_ops = e1000e_probe())) {
+	if((nic = e1000e_probe())) {
 		goto configured;
 	}
-	if((ext_ops = igb_probe())) {
+	if((nic = igb_probe())) {
 		goto configured;
 	}
-	return 0;	/* no NIC: loopback only */
+	return 0;	/* no PCI NIC: keep any already-registered USB NIC */
 configured:
 	/* the probe cannot configure the framing itself (the dispatcher's
 	 * ops pointer is only set once it returns), so do it here: SLIRP
-	 * defaults, and the in-kernel DHCP lease so ICMP is answered */
+	 * defaults, and the in-kernel DHCP lease so ICMP is answered.
+	 * A PCI NIC overrides a previously-registered USB NIC. */
+	ext_ops = nic;
 	{
 		extern int ext_net_configure(const unsigned char *, unsigned int, unsigned int);
 		ext_net_configure(ext_ops->mac, 0x0F02000A /*10.0.2.15*/, 0x0202000A /*10.0.2.2*/);
 	}
+	return 0;
+}
+
+/* runtime NIC registration (e.g. the USB CDC-ECM adapter enumerated by the
+ * xhci after boot). The ext_* dispatcher supports one NIC: take it only
+ * when none is configured yet, then wire the SLIRP defaults like above. */
+int ext_net_register_nic(struct ext_net_ops *ops)
+{
+	extern int ext_net_configure(const unsigned char *, unsigned int, unsigned int);
+
+	if(ext_ops) {
+		return -EBUSY;
+	}
+	ext_ops = ops;
+	ext_net_configure(ops->mac, 0x0F02000A /*10.0.2.15*/, 0x0202000A /*10.0.2.2*/);
 	return 0;
 }
 

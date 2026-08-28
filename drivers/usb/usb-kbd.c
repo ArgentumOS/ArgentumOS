@@ -106,7 +106,7 @@ static unsigned char usb_kbd_hid2sc(unsigned char usage)
 }
 
 /* transfer completion callback (runs from xhci_poll / timer BH) */
-static void usb_kbd_cb(int slotid, int epid, int ccode, void *data)
+static void usb_kbd_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_kbd *k = &kbd;
 	int i, j, sc, changed;

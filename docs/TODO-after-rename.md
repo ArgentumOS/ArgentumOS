@@ -1600,3 +1600,58 @@ timing, a single hub instance, USB2-only speed decode.
   from port 1 (slot 2)"; re-add -> slot 2 again -> "x" typed.
 - root-port regression: usb-storage 16384 sectors + kbd + mouse boot;
   e1000e NIC 2/2 pings (irq.c change sanity).
+
+## DONE: XHCI M2d — usb-net (CDC-ECM) as the 12th NIC
+
+`drivers/usb/usb-net.c` implements QEMU's `usb-net` gadget (vendor
+0x0525 product 0xa4a2, device class 0x02 = COMM) over the xhci bulk
+pipes and registers it as the 12th `ext_*` NIC via
+`ext_net_register_nic()` when no PCI NIC is configured. Closes the old
+"usb-net out of scope" note from the original XHCI plan.
+
+**QEMU contract (qemu-10.0.11+ds/hw/usb/dev-network.c):**
+- TWO configurations listed in `confs[]`: **index 0 = RNDIS**
+  (bConfigurationValue 2, 67 bytes, listed first), **index 1 = CDC**
+  (bConfigurationValue 1, 80 bytes). The guest MUST `SetConfiguration(1)`
+  to get plain CDC-ECM; reading config index 0 silently parses as a
+  non-ECM config (no Ethernet functional descriptor -> macstr 0 ->
+  -ENODEV with no diagnostic).
+- CDC config: iface 0 = class 0x02/0x06 Ethernet (class descriptors
+  Header/Union/Ethernet; the Ethernet descriptor's iMACAddress string) +
+  iface 1 = class 0x0A data with alt 0 (no EPs) and alt 1 (bulk IN 0x82 +
+  bulk OUT 0x02, mps 64). The guest MUST `SetInterface(1,1)` to activate
+  the bulk endpoints - and SetInterface is an INTERFACE-scope request
+  (bmRequestType 0x01), device-scope 0x00 is rejected with a STALL.
+- The MAC comes from the iMACAddress string descriptor (string 3) - QEMU
+  overrides the static table entry with the NIC's real MAC
+  (`qemu_macaddr_default_if_unset` -> "52:54:00:12:34:56" by default).
+- TX (bulk OUT): a transfer flushes a frame only when its size is NOT a
+  64-multiple (or is zero); 64-multiple frames need a trailing
+  zero-length transfer. `xhci_submit()` rejects len<=0, so the ZLP is
+  queued directly (new `xhci_transfer_zlp()`).
+- RX (bulk IN): one ethernet frame per transfer completion; NAKs when
+  idle. A short-packet completion event reports the RESIDUAL length
+  (bytes NOT transferred) - the frame size is TRB_size - residual.
+
+**Bugs found while bringing it up (all fixed):**
+1. Config index 0 vs 1 (RNDIS vs CDC) - the silent `macstr==0` return.
+2. Stack buffers passed to `xhci_control`/`xhci_transfer` get a garbage
+   V2P (kernel stack VA is below PAGE_OFFSET -> underflow to a bogus
+   high phys); ALL control/data buffers must be kmalloc'd. Fixed the
+   header read, and TX now copies the caller's frame into a driver-owned
+   kmalloc'd txbuf (the network stack hands over stack frames).
+3. `ext_init()` in `net/domains.c` ran AFTER usb_init() and reset
+   `ext_ops = NULL`, silently dropping the registered USB NIC. It now
+   probes the PCI NICs into a local and only overrides an already
+   registered NIC when one is actually found (PCI remains primary).
+4. RX short-packet residual-length bug (see contract above) - the boot
+   DHCP tolerated the over-long copy, userland `dhcp` did not.
+
+**Verification (QEMU):**
+- `-device qemu-xhci -device usb-net,netdev=n1 -netdev user,id=n1`:
+  boot log "usb-net: CDC-ECM on slot 1 (52:54:00:12:34:56)"; ping
+  10.0.2.2 2/2 0% loss; userland `dhcp -i eth0 -f` -> "Lease of
+  10.0.2.15 obtained"; `/tcp2` -> TCP2-DONE.
+- 12-NIC regression: all 11 PCI NICs (virtio-net-pci, rtl8139,
+  ne2k_pci, tulip, pcnet, e1000, ne2k_isa, i82559er, e1000e, igb,
+  vmxnet3) + usb-net: 2/2 pings each.

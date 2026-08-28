@@ -51,7 +51,7 @@ static void usb_mouse_submit(struct usb_mouse *m)
 }
 
 /* transfer completion callback (runs from xhci_poll / timer BH) */
-static void usb_mouse_cb(int slotid, int epid, int ccode, void *data)
+static void usb_mouse_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_mouse *m = &mouse;
 	unsigned char pkt[3];

@@ -210,7 +210,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 }
 
 /* transfer completion callback (runs from xhci_poll / timer BH) */
-static void usb_hub_cb(int slotid, int epid, int ccode, void *data)
+static void usb_hub_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_hub *h = (struct usb_hub *)data;
 

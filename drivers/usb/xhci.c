@@ -39,6 +39,7 @@ int usb_kbd_init(int slotid, unsigned char *configdesc);
 int usb_mouse_init(int slotid, unsigned char *configdesc);
 int usb_storage_init(int slotid, unsigned char *configdesc);
 int usb_hub_init(int slotid, unsigned char *configdesc);
+int usb_net_init(int slotid, unsigned char *configdesc);
 
 /* ---------------- MMIO layout (QEMU) ---------------- */
 #define XHCI_MMIO_VA		0xFFFFBC0000000000UL	/* pml4[505] */
@@ -528,14 +529,14 @@ int xhci_configure_ep(int slotid, int epid, int type, int mps,
 struct xhci_cb {
 	int slotid;
 	int epid;
-	void (*fn)(int, int, int, void *);
+	void (*fn)(int, int, int, int, void *);	/* (slotid, epid, ccode, length, data) */
 	void *data;
 	int used;
 };
 static struct xhci_cb xhci_cbs[XHCI_MAX_CB];
 
 /* register an async completion callback for one (slotid, epid) */
-void xhci_set_transfer_cb(int slotid, int epid, void (*fn)(int, int, int, void *),
+void xhci_set_transfer_cb(int slotid, int epid, void (*fn)(int, int, int, int, void *),
 			  void *data)
 {
 	int n;
@@ -629,6 +630,22 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 	}
 }
 
+/* queue a zero-length transfer on an endpoint ring (flushes a
+ * 64-multiple frame on QEMU's usb-net gadget). xhci_submit refuses
+ * len <= 0, so build the TR_NORMAL directly and kick the endpoint. */
+int xhci_transfer_zlp(int slotid, int epid, struct xhci_ring *ring)
+{
+	struct xhci_trb t;
+
+	memset_b(&t, 0, sizeof(t));
+	t.control = (TR_NORMAL << TRB_TYPE_SHIFT) | TRB_IOC;
+	if(!xhci_ring_put(ring, &t)) {
+		return -EAGAIN;
+	}
+	xhci_reg_w(xhci->dboff + DB_DEV(slotid), DB_TARGET(epid));
+	return 0;
+}
+
 /* drain the event ring and dispatch async transfer completions.
  * Called from the timer BH; skips while a synchronous waiter owns the
  * ring (probe-time commands/control transfers). */
@@ -654,6 +671,7 @@ static void xhci_dispatch_event(struct xhci_event *ev)
 		   xhci_cbs[n].epid == epid) {
 			xhci_cbs[n].fn(slotid, epid,
 				(ev->status >> TRB_CCODE_SHIFT) & TRB_CCODE_MASK,
+				ev->status & 0xFFFFFF,	/* transferred length */
 				xhci_cbs[n].data);
 			break;
 		}
@@ -1160,14 +1178,16 @@ int xhci_enumerate(int root_port, int route, int speed)
 		}
 
 		/* M2: class drivers - fetch the config descriptor and hand
-		 * the device to usb-kbd / usb-storage */
+		 * the device to the class drivers */
 		if(!xhci_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
 				 USB_DT_CONFIG << 8, 0, 64,
 				 xhci->devs[slotid].configdesc)) {
 			if(usb_kbd_init(slotid, xhci->devs[slotid].configdesc) < 0) {
 				if(usb_mouse_init(slotid, xhci->devs[slotid].configdesc) < 0) {
 					if(usb_storage_init(slotid, xhci->devs[slotid].configdesc) < 0) {
-						usb_hub_init(slotid, xhci->devs[slotid].configdesc);
+						if(usb_hub_init(slotid, xhci->devs[slotid].configdesc) < 0) {
+							usb_net_init(slotid, xhci->devs[slotid].configdesc);
+						}
 					}
 				}
 			}

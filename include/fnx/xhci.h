@@ -55,13 +55,16 @@ int xhci_submit(int slotid, int epid, int dir_in, void *buf, int len,
 int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 		  struct xhci_ring *ring);
 
+/* queue a zero-length transfer on an endpoint ring (bulk flush) */
+int xhci_transfer_zlp(int slotid, int epid, struct xhci_ring *ring);
+
 /* kick an endpoint (doorbell); used to re-queue after a completion */
 void xhci_kick_ep(int slotid, int epid);
 
 /* async transfer completion callback for one (slotid, epid):
- * fn(slotid, epid, ccode, data) */
+ * fn(slotid, epid, ccode, length, data) - length = bytes transferred */
 void xhci_set_transfer_cb(int slotid, int epid,
-			  void (*fn)(int, int, int, void *), void *data);
+			  void (*fn)(int, int, int, int, void *), void *data);
 
 /* drain the event ring (timer BH hook); no-op when no xHCI is present */
 void xhci_poll(void);

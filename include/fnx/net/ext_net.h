@@ -66,3 +66,6 @@ int ext_poll(int, int);
 #endif /* _FNX_NET_EXT_NET_H */
 
 #endif /* CONFIG_NET */
+
+/* runtime NIC registration (USB CDC-ECM etc.); -EBUSY when set */
+int ext_net_register_nic(struct ext_net_ops *);
