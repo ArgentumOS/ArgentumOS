@@ -1126,10 +1126,11 @@ usb-mouse on QEMU, including devices behind a hub (QEMU puts the second
 then the HCD enumerates the device with the same control path (UHCI
 fixed in 0514385; the EHCI guard was removed too but its control path
 still stalls on a SECOND device's SET_ADDRESS - pre-existing, see
-below). Remaining follow-ups: EHCI 2nd-device enumeration stall
-(after one device's ~4 controls the next control's qTDs are not
-processed - separate from the guard removal), EHCI companion-mode
-routing (ich9-usb-ehci1/2), and OHCI.
+below). Remaining follow-ups: EHCI companion-mode
+routing (ich9-usb-ehci1/2), and OHCI. The EHCI 2nd-device enumeration
+stall was fixed in c901b35 (the periodic QH's next was left unterminated,
+making QEMU reset the HC via its itd_count>16 guard after the first
+device's interrupt endpoint was configured).
 
 Test invocations: `-machine pc,usb=off -device piix3-usb-uhci
 -device usb-kbd` / `-device usb-ehci -device usb-kbd`. The
