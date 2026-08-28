@@ -797,77 +797,65 @@ compatibility risk is driver strictness, not the interface:
   optional everywhere, MSI-X is NOT part of the AHCI spec (vendor
   extensions only) — don't implement it.
 
-## Pending: XHCI USB — PLANNED, not started
+## DONE: XHCI USB — complete (M0-M2d + M3 + M4a)
 
 Full USB support via QEMU's xHCI controller (and real xHCI 1.x
-hardware). Do NOT implement until picked up. Unlike AHCI this is a
-whole USB stack (host driver + device model + class drivers), not a
-single driver — plan verified against `qemu-10.0.11+ds/hw/usb/` and
-the FNX integration points. FNX currently has ZERO USB code.
+hardware) is DONE: host driver + USB core + class drivers +
+external-hub support + hotplug + MSI-X infra + hub hardening. See the
+per-milestone "## DONE:" sections below for details and war stories
+(commits e70b2d9 .. 5cc3a9a, listed in order at the bottom of this
+file). Plan was verified against `qemu-10.0.11+ds/hw/usb/`.
 
-**Hardware (QEMU 10.0.11):** `qemu-xhci` = RedHat 1B36:000D,
-`nec-usb-xhci` = NEC 1033:0194 (uPD720200); class 0x0C0330 prog-if
-0x30. MMIO BAR0: CAP regs 0x00-0x3F read-only (CAPLENGTH,
-HCSPARAMS1/2, HCCPARAMS1/2, DBOFF, RTSOFF), OP regs at CAPLENGTH
-(USBCMD, USBSTS, CRCR, DCBAAP, CONFIG, PORTSC x N), Runtime at RTSOFF
-(IMAN/IMOD/ERSTSZ/ERSTBA/ERDP per interrupter), Doorbell at DBOFF (per
-slot+EP). QEMU defaults: p2=4, p3=4 ports, 1 interrupter, slots up to
-64. Driver init: HCRST -> wait USBSTS.HCH -> program CRCR + DCBAAP +
-CONFIG.MaxSlotsEn -> ERSTBA/ERSTSZ/ERDP + IMAN.IE -> USBCMD.RS -> wait
-HCH clear -> per-port: wait CCS, set PED. Commands on the command
-ring: Enable Slot, Address Device (EP0 ctx), Configure Endpoint.
-Transfers: Normal TRBs on per-EP transfer rings, doorbell kick,
-completion via transfer events on the event ring. QEMU DMA's anything
-(64-bit AS), but real hw: honor HCCPARAMS1.AC64 (else <4GB buffers).
+**Stack (all committed):**
+- M0 xHCI HCD core — probe by class 0x0C0330 (IDs 1B36:000D,
+  1033:0194), CAPLENGTH/DBOFF/RTSOFF read from caps, HCRST, command +
+  event rings + ERST, RS run, port status change events; INTx.
+- M1 USB core + enumeration — device/EP model, EP0 control transfers
+  (GET_DESCRIPTOR/SET_ADDRESS/SET_CONFIGURATION), interrupt & bulk
+  transfer rings, root-hub port scan, hotplug (device_add/device_del).
+- M2 class drivers — usb-kbd (HID -> vt console), usb-mouse/usb-tablet
+  (HID -> psaux-synth), usb-storage (BOT -> /dev/sda block major),
+  usb-net (CDC-ECM -> ext_net_ops, the 12th NIC).
+- M3 external usb-hub (class 9: hub descriptor 0x29, GetPortStatus /
+  SetPortFeature, EP1 IN change endpoint) + behind-hub enumeration.
+- M4a hub real-hardware hardening (port power/reset timing, change-word
+  hygiene, multi-hub, SuperSpeed link-state decode, CR_RESET_EP fix).
+- MSI-X infrastructure (IDT vectors 0x30-0x3F, `msix_pci_setup`) used
+  by e1000e + the xhci controller.
 
-**QEMU devices to target:** usb-kbd / usb-mouse / usb-tablet (HID
-boot reports: kbd = modifiers + 6 keycodes, mouse = buttons+dx+dy,
-tablet = absolute), usb-storage (BOT: CBW/CSW bulk-only), usb-net
-(CDC-ECM config 1, RNDIS config 2), usb-hub (real external-hub
-emulation with port timers).
+**QEMU device coverage:** usb-kbd, usb-mouse, usb-tablet, usb-storage,
+usb-net (CDC-ECM config 1; RNDIS config 2 deliberately unused), usb-hub
+(external + behind-hub), root-port hotplug. Tested with `qemu-xhci`
+and `nec-usb-xhci`.
 
-**FNX integration points (verified):**
-- MMIO mapping: `map_page64` fixed kernel VA (NIC pattern);
-  IRQ via `register_irq` (QEMU works on INTx; real xHCI prefers
-  MSI/MSI-X — FNX has no MSI-X infra, document as real-hw gap).
-- Keyboard: PS/2 scancode path (`irq_keyboard` -> `keyboard_bh` ->
-  vt). USB HID gives usage codes, NOT scancodes: need a HID-usage ->
-  keycode translation that feeds the same vt/tty console path.
-- Mouse: `psaux` char device speaks PS/2 protocol — USB mouse must
-  synthesize PS/2 packets into that queue (or add a parallel input).
-- Block: usb-storage reuses the AHCI-style integration: new block
-  major + `fsop->read_block/write_block` + `register_device(BLK_DEV)`
-  + `root=` table entry in `kernel/multiboot.c` + pre-mknod'd nodes
-  in the rootfs (no udev).
-- Net: usb-net (CDC-ECM) plugs into the `ext_net_ops` dispatcher as
-  the 12th NIC (closes the old "usb-net out of scope" note).
+## Pending: XHCI USB — remaining (M4 real-hardware hardening)
 
-**Milestones:**
-- M0: xHCI HCD core — probe by class 0x0C0330 (IDs 1B36:000D,
-  1033:0194), read CAPLENGTH/DBOFF/RTSOFF (never hardcode QEMU's
-  0x40/0x1000/0x2000), HCRST, command+event rings + ERST, RS run,
-  port status change events; INTx.
-- M1: USB core + enumeration — device/EP model, control transfers on
-  EP0 (GET_DESCRIPTOR/SET_ADDRESS/SET_CONFIGURATION), interrupt &
-  bulk transfer rings, root-hub port scan.
-- M2: class drivers — usb-kbd (HID -> vt console), usb-mouse/tablet
-  (HID -> psaux-synth), usb-storage (BOT -> block major, root=/dev/sdX),
-  usb-net (CDC-ECM -> ext_net_ops).
-- M3: external usb-hub support (port power/reset/status change) +
-  hot-plug.
-- M4 (optional, real-hw hardening): MSI-X/MSI, AC64 64-bit contexts,
-  event-ring-full handling, SuperSpeed (usb3) endpoints, streams/uas.
+Do NOT implement until picked up. Everything below is invisible to
+QEMU (QEMU is lenient; real silicon isn't) — each item needs real
+hardware to verify.
 
-**Real-hardware compatibility notes (same lesson as AHCI — QEMU is
-lenient, silicon isn't):** never hardcode port/slot/interrupter counts
-or MMIO offsets (read HCSPARAMS1/2 + CAPLENGTH/DBOFF/RTSOFF); QEMU
-defaults p2=4/p3=4/intrs=1 but real controllers vary (Renesas, Intel,
-AMD, ASMedia). Real xHCI requires proper ERDP advancement + IMOD
-moderation + event-ring-full handling and strongly prefers
+- **AC64 / 64-byte contexts**: honor `HCCPARAMS1.CSZ` (QEMU defaults
+  to 32-byte context slots; real Renesas/Intel/AMD/ASMedia xHCI may
+  require 64-byte slot/EP contexts). Currently the driver assumes the
+  QEMU 32-byte layout.
+- **Event-ring-full handling + IMOD moderation**: proper ERDP
+  advancement under burst load; IMOD interrupt moderation. The event
+  ring is 128 TRBs and has no overflow path today.
+- **MSI-X multi-vector / per-interrupter**: only vector 0 is used; the
+  MSI-X infra supports 16 (see "DONE: MSI-X infrastructure") for
+  per-queue interrupters.
+- **SuperSpeed (USB3) endpoints + streams/UAS**: enumeration handles
+  SS port speeds, but endpoint setup and stream/UAS support for real
+  SS devices is not done.
+
+**Standing real-hardware notes (apply when picking any of these up):**
+never hardcode port/slot/interrupter counts or MMIO offsets (read
+HCSPARAMS1/2 + CAPLENGTH/DBOFF/RTSOFF); QEMU defaults p2=4/p3=4/intrs=1
+but real controllers vary. Real xHCI requires proper ERDP advancement +
+IMOD moderation + event-ring-full handling and strongly prefers
 MSI/MSI-X over INTx (many real chips disable legacy INTx). Honor
 HCCPARAMS1.AC64 for DMA addressing. USB2 vs USB3 port speed handling
-(PORTSC.SPEED/PLS). This is the largest planned work item: ~2.5-4x
-the AHCI effort (three layers vs one driver).
+(PORTSC.SPEED/PLS).
 
 ## Pending: SCSI (hard disk) — PLANNED, not started
 
@@ -1411,7 +1399,7 @@ behind is IMPLEMENTED and tested.
   during probe (xhci_sync_waiting) and drained by xhci_poll() afterwards.
 
 ### Pending
-- M2b: usb-storage (BOT) -> block device; M2c: usb-mouse; M3: hub/hotplug.
+- M2c: usb-mouse; M3: hub/hotplug — all DONE (see below).
 
 ## DONE: usb-storage BOT -> block device (M2b)
 
@@ -1431,8 +1419,9 @@ behind is IMPLEMENTED and tested.
   coexist on two slots; 11-NIC regression green.
 
 ### Pending
-- M2c: usb-mouse/tablet (HID -> psaux-synth); M3: external hub + hotplug;
-  M4 (optional): MSI-X multi-vector per-queue, AC64, SuperSpeed.
+- M3: external hub + hotplug; M4: MSI-X multi-vector, AC64, SuperSpeed —
+  M3 DONE, M4a (hub hardening) DONE; remaining M4 items listed in the
+  "Pending: XHCI USB — remaining" section at the top.
 
 ## DONE: usb-mouse / usb-tablet (HID pointer -> psaux-synth) (M2c)
 
@@ -1465,11 +1454,6 @@ behind is IMPLEMENTED and tested.
   mouse + storage all active: typing, mouse packets, and mount/read work
   simultaneously with zero event-ring timeouts.
 
-## Pending: XHCI USB
-
-- M3: external usb-hub + hotplug (port status change events -> re-probe)
-- M4: MSI-X multi-vector, 64-byte contexts (AC64), SuperSpeed
-
 ## DONE: root-port hotplug (M3 part 1)
 
 - xhci_poll now handles ER_PORT_STATUS_CHANGE: QEMU encodes the port
@@ -1488,14 +1472,7 @@ behind is IMPLEMENTED and tested.
   port-status changes to the hotplug instead of swallowing them
   (pending_port hand-off to the poll).
 
-## Pending: XHCI USB (M3 part 2)
-
-- External usb-hub: class-9 hub enumeration (hub descriptor 0x29,
-  GetPortStatus/SetPortFeature per port, EP1 IN change endpoint), then
-  (re)enumeration of devices on the hub's ports via the same
-  xhci_port_probe-style path (new slots behind the hub).
-
-## DONE: XHCI M3 part 2 — external usb-hub + behind-hub devices (commit pending)
+## DONE: XHCI M3 part 2 — external usb-hub + behind-hub devices
 
 **Why:** complete the XHCI milestone (M0 HCD, M1 USB core, M2a kbd, M2b storage,
 M2c mouse, M3 part 1 root-port hotplug all done); the external hub was the last
@@ -1546,7 +1523,7 @@ M3 item.
 - device_add usb-mouse,port=1.2 -> slot 3, reports delivered (ps2 synth)
 - device_del usb-kbd -> re-add -> the new slot types again ("x")
 
-## DONE: XHCI M4a — hub driver real-hardware hardening (commit pending)
+## DONE: XHCI M4a — hub driver real-hardware hardening
 
 **Why:** the M3 part 2 hub driver was QEMU-tested but leaned on QEMU's
 tolerance in places real hubs enforce: no port power, no PORT_RESET, no
