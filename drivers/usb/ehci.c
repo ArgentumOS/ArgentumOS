@@ -383,6 +383,11 @@ static int ehci_configure_ep(int dev, int epid, int type, int mps,
 		 (((unsigned int)(epid >> 1) & 0xf) << 8) |
 		 ((unsigned int)dev & 0x7f);
 	qh->epchar = epchar;
+	/* the QH's horizontal next must be terminated: a zero next makes
+	 * QEMU's periodic walk follow an ITD-at-0x0 loop until its
+	 * itd_count>16 guard fires "processing error - resetting ehci HC",
+	 * wiping the whole schedule (kills the NEXT async control) */
+	qh->next = EHCI_LINK_T;
 	qh->cur_qtd = 0;
 	qh->next_qtd = EHCI_LINK_T;
 	qh->token = 0;
