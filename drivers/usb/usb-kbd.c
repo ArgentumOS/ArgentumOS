@@ -17,7 +17,7 @@
 #include <fnx/string.h>
 #include <fnx/tty.h>
 #include <fnx/types.h>
-#include <fnx/xhci.h>
+#include <fnx/usb.h>
 
 #define USB_DIR_IN		0x80
 #define USB_DIR_OUT		0x00
@@ -75,7 +75,7 @@ struct usb_kbd {
 	int slotid;
 	int epid;		/* xhci endpoint id (3 = EP1 IN) */
 	int mps;
-	struct xhci_ring ring;
+	struct usb_ring ring;
 	unsigned char *buf;	/* 8-byte boot report (kmalloc'd) */
 	unsigned char prev[6];
 	unsigned char *config;
@@ -90,7 +90,7 @@ static void usb_kbd_submit(struct usb_kbd *k)
 	for(i = 0; i < HID_REPORT_SIZE; i++) {
 		k->buf[i] = 0;
 	}
-	xhci_submit(k->slotid, k->epid, 1, k->buf, HID_REPORT_SIZE, &k->ring);
+	usb_submit(k->slotid, k->epid, 1, k->buf, HID_REPORT_SIZE, &k->ring);
 }
 
 /* HID usage -> set-1 scancode (modifiers 0xE0-0xE7 included) */
@@ -105,7 +105,7 @@ static unsigned char usb_kbd_hid2sc(unsigned char usage)
 	return 0;
 }
 
-/* transfer completion callback (runs from xhci_poll / timer BH) */
+/* transfer completion callback (runs from usb_poll / timer BH) */
 static void usb_kbd_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_kbd *k = &kbd;
@@ -231,27 +231,27 @@ int usb_kbd_init(int slotid, unsigned char *configdesc)
 	k->config = configdesc;
 
 	/* SET_CONFIGURATION(1) */
-	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
+	if((ret = usb_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-kbd: SET_CONFIGURATION failed (%d)\n", ret);
 		return ret;
 	}
 
 	/* transfer ring + configure EP1 IN (interrupt) */
-	if(xhci_ring_init(&k->ring, 16) < 0) {
+	if(usb_ring_init(&k->ring, 16) < 0) {
 		return -ENOMEM;
 	}
 	if(!(k->buf = (unsigned char *)kmalloc(HID_REPORT_SIZE))) {
 		return -ENOMEM;
 	}
-	if((ret = xhci_configure_ep(slotid, k->epid, XHCI_EP_INTR_IN,
+	if((ret = usb_configure_ep(slotid, k->epid, USB_EP_INTR_IN,
 				    k->mps, 9 /* 2^9 * 125us = 64ms */,
 				    k->ring.phys)) < 0) {
 		printk("usb-kbd: configure EP failed (%d)\n", ret);
 		return ret;
 	}
 
-	xhci_set_transfer_cb(slotid, k->epid, usb_kbd_cb, NULL);
+	usb_set_transfer_cb(slotid, k->epid, usb_kbd_cb, NULL);
 	memset_b(k->prev, 0, sizeof(k->prev));
 	usb_kbd_submit(k);
 	printk("usb-kbd: boot keyboard on slot %d (epid %d, mps %d)\n",

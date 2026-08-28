@@ -34,7 +34,7 @@
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 #include <fnx/types.h>
-#include <fnx/xhci.h>
+#include <fnx/usb.h>
 
 #define USB_REQ_GET_DESCRIPTOR	0x06
 #define USB_REQ_SET_CONFIGURATION 0x09
@@ -56,7 +56,7 @@ struct usb_net {
 	int in_epid;	/* 5 = EP2 IN (bulk) */
 	int out_epid;	/* 4 = EP2 OUT (bulk) */
 	int mps;
-	struct xhci_ring in_ring, out_ring;
+	struct usb_ring in_ring, out_ring;
 	unsigned char *rxbuf;	/* DMA buffer for one RX frame */
 	unsigned char *txbuf;	/* DMA buffer for one TX frame (the
 				 * network stack hands us stack frames) */
@@ -75,7 +75,7 @@ static struct usb_net unet;
 static void usb_net_rx_arm(void)
 {
 	memset_b(unet.rxbuf, 0, USB_NET_MTU);
-	xhci_submit(unet.slotid, unet.in_epid, 1, unet.rxbuf, USB_NET_MTU,
+	usb_submit(unet.slotid, unet.in_epid, 1, unet.rxbuf, USB_NET_MTU,
 		    &unet.in_ring);
 }
 
@@ -158,17 +158,17 @@ static int usb_net_tx_send(const void *frame, unsigned int len)
 	/* a transfer that is a 64-byte multiple is buffered by QEMU and
 	 * must be flushed with a trailing zero-length transfer */
 	if((len % unet.mps) == 0) {
-		if((ret = xhci_transfer(unet.slotid, unet.out_epid, 0,
+		if((ret = usb_transfer(unet.slotid, unet.out_epid, 0,
 					unet.txbuf, len, &unet.out_ring))) {
 			return ret;
 		}
-		if((ret = xhci_transfer_zlp(unet.slotid, unet.out_epid,
+		if((ret = usb_transfer_zlp(unet.slotid, unet.out_epid,
 					   &unet.out_ring)) < 0) {
 			return ret;
 		}
 		return len;
 	}
-	if((ret = xhci_transfer(unet.slotid, unet.out_epid, 0,
+	if((ret = usb_transfer(unet.slotid, unet.out_epid, 0,
 				unet.txbuf, len, &unet.out_ring))) {
 		return ret;
 	}
@@ -294,7 +294,7 @@ static int usb_net_get_mac(int slotid, int macstr)
 	if(!(buf = (unsigned char *)kmalloc(64))) {
 		return -ENOMEM;
 	}
-	if(xhci_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
+	if(usb_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
 			(USB_DT_STRING << 8) | macstr, 0, 64, buf)) {
 		printk("usb-net: string descriptor failed\n");
 		kfree((addr_t)buf);
@@ -334,7 +334,7 @@ int usb_net_init(int slotid, unsigned char *configdesc)
 	if(!(hdr = (unsigned char *)kmalloc(8))) {
 		return -ENOMEM;
 	}
-	if((ret = xhci_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
+	if((ret = usb_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
 				(USB_DT_CONFIG << 8) | 1, 0, 8, hdr))) {
 		printk("usb-net: config#1 header failed (%d)\n", ret);
 		kfree((addr_t)hdr);
@@ -346,7 +346,7 @@ int usb_net_init(int slotid, unsigned char *configdesc)
 	   !(cfg = (unsigned char *)kmalloc(cfg_len))) {
 		return -ENOMEM;
 	}
-	if((ret = xhci_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
+	if((ret = usb_control(slotid, 0x80, USB_REQ_GET_DESCRIPTOR,
 				(USB_DT_CONFIG << 8) | 1, 0, cfg_len, cfg))) {
 		printk("usb-net: config#1 re-GET failed (%d)\n", ret);
 		kfree((addr_t)cfg);
@@ -369,13 +369,13 @@ int usb_net_init(int slotid, unsigned char *configdesc)
 	unet.mps = USB_NET_MPS;
 
 	/* QEMU's default config is the RNDIS (2): select the CDC (1) */
-	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION,
+	if((ret = usb_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION,
 			       CDC_CONFIG_VALUE, 0, 0, NULL)) < 0) {
 		printk("usb-net: SetConfiguration failed (%d)\n", ret);
 		return ret;
 	}
 	/* the data interface alt 1 carries the bulk endpoints */
-	if((ret = xhci_control(slotid, 0x01, USB_REQ_SET_INTERFACE,
+	if((ret = usb_control(slotid, 0x01, USB_REQ_SET_INTERFACE,
 			       CDC_DATA_ALT, CDC_DATA_IFACE, 0, NULL)) < 0) {
 		printk("usb-net: SetInterface failed (%d)\n", ret);
 		return ret;
@@ -384,8 +384,8 @@ int usb_net_init(int slotid, unsigned char *configdesc)
 		return ret;
 	}
 
-	if(xhci_ring_init(&unet.in_ring, USB_NET_RX_TRBS) < 0 ||
-	   xhci_ring_init(&unet.out_ring, USB_NET_TX_TRBS) < 0) {
+	if(usb_ring_init(&unet.in_ring, USB_NET_RX_TRBS) < 0 ||
+	   usb_ring_init(&unet.out_ring, USB_NET_TX_TRBS) < 0) {
 		if(unet.in_ring.trbs) {
 			kfree((addr_t)unet.in_ring.trbs);
 		}
@@ -405,9 +405,9 @@ int usb_net_init(int slotid, unsigned char *configdesc)
 		kfree((addr_t)unet.out_ring.trbs);
 		return -ENOMEM;
 	}
-	if((ret = xhci_configure_ep(slotid, unet.in_epid, XHCI_EP_BULK_IN,
+	if((ret = usb_configure_ep(slotid, unet.in_epid, USB_EP_BULK_IN,
 				    unet.mps, 0, unet.in_ring.phys)) < 0 ||
-	   (ret = xhci_configure_ep(slotid, unet.out_epid, XHCI_EP_BULK_OUT,
+	   (ret = usb_configure_ep(slotid, unet.out_epid, USB_EP_BULK_OUT,
 				    unet.mps, 0, unet.out_ring.phys)) < 0) {
 		printk("usb-net: configure EP failed (%d)\n", ret);
 		kfree((addr_t)unet.rxbuf);
@@ -417,7 +417,7 @@ int usb_net_init(int slotid, unsigned char *configdesc)
 		return ret;
 	}
 
-	xhci_set_transfer_cb(slotid, unet.in_epid, usb_net_rx_cb, NULL);
+	usb_set_transfer_cb(slotid, unet.in_epid, usb_net_rx_cb, NULL);
 	unet.present = 1;
 	usb_net_rx_arm();
 

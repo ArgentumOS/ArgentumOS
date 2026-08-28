@@ -25,7 +25,7 @@
 #include <fnx/string.h>
 #include <fnx/devices.h>
 #include <fnx/types.h>
-#include <fnx/xhci.h>
+#include <fnx/usb.h>
 
 #define USB_DIR_IN		0x80
 #define USB_DIR_OUT		0x00
@@ -53,8 +53,8 @@ struct usb_storage {
 	int ep_out;		/* xhci EP id for EP1 OUT (2) */
 	int ep_in;		/* xhci EP id for EP1 IN (3) */
 	int mps;
-	struct xhci_ring ring_out;
-	struct xhci_ring ring_in;
+	struct usb_ring ring_out;
+	struct usb_ring ring_in;
 	unsigned char *cbw;	/* 31-byte CBW (DMA) */
 	unsigned char *csw;	/* 13-byte CSW (DMA) */
 	unsigned char *databuf;	/* one-sector data buffer (DMA) */
@@ -92,14 +92,14 @@ static int usb_st_bot(int dir_in, unsigned char *cdb, int cdblen,
 	memcpy_b(&s->cbw[15], cdb, cdblen);
 
 	/* CBW -> bulk OUT */
-	if((ret = xhci_transfer(s->slotid, s->ep_out, 0, s->cbw, CBW_LEN,
+	if((ret = usb_transfer(s->slotid, s->ep_out, 0, s->cbw, CBW_LEN,
 				&s->ring_out)) < 0) {
 		return ret;
 	}
 
 	/* data stage */
 	if(data_len) {
-		if((ret = xhci_transfer(s->slotid, dir_in ? s->ep_in : s->ep_out,
+		if((ret = usb_transfer(s->slotid, dir_in ? s->ep_in : s->ep_out,
 					dir_in, data, data_len,
 					dir_in ? &s->ring_in : &s->ring_out)) < 0) {
 			return ret;
@@ -107,7 +107,7 @@ static int usb_st_bot(int dir_in, unsigned char *cdb, int cdblen,
 	}
 
 	/* CSW <- bulk IN */
-	if((ret = xhci_transfer(s->slotid, s->ep_in, 1, s->csw, CSW_LEN,
+	if((ret = usb_transfer(s->slotid, s->ep_in, 1, s->csw, CSW_LEN,
 				&s->ring_in)) < 0) {
 		return ret;
 	}
@@ -347,15 +347,15 @@ int usb_storage_init(int slotid, unsigned char *configdesc)
 	}
 
 	/* SET_CONFIGURATION(1) */
-	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
+	if((ret = usb_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-storage: SET_CONFIGURATION failed (%d)\n", ret);
 		return ret;
 	}
 
 	/* bulk rings + DMA buffers */
-	if(xhci_ring_init(&s->ring_out, 16) < 0 ||
-	   xhci_ring_init(&s->ring_in, 16) < 0) {
+	if(usb_ring_init(&s->ring_out, 16) < 0 ||
+	   usb_ring_init(&s->ring_in, 16) < 0) {
 		return -ENOMEM;
 	}
 	if(!(s->cbw = (unsigned char *)kmalloc(CBW_LEN)) ||
@@ -365,12 +365,12 @@ int usb_storage_init(int slotid, unsigned char *configdesc)
 	}
 
 	/* configure bulk OUT (EP2) and bulk IN (EP3) */
-	if((ret = xhci_configure_ep(slotid, s->ep_out, XHCI_EP_BULK_OUT,
+	if((ret = usb_configure_ep(slotid, s->ep_out, USB_EP_BULK_OUT,
 				    s->mps, 0, s->ring_out.phys)) < 0) {
 		printk("usb-storage: configure EP%d failed (%d)\n", s->ep_out, ret);
 		return ret;
 	}
-	if((ret = xhci_configure_ep(slotid, s->ep_in, XHCI_EP_BULK_IN,
+	if((ret = usb_configure_ep(slotid, s->ep_in, USB_EP_BULK_IN,
 				    s->mps, 0, s->ring_in.phys)) < 0) {
 		printk("usb-storage: configure EP%d failed (%d)\n", s->ep_in, ret);
 		return ret;

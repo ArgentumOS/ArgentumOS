@@ -186,7 +186,7 @@ struct xhci_dev {
 	int route;		/* route string (hub port path; 0 = root-port device) */
 	int speed;		/* 0=low 1=full 2=high 3=super */
 	int addr;
-	struct xhci_ring ep0;
+	struct usb_ring ep0;
 	unsigned char *octx;	/* output (device) context, V2P-able */
 	unsigned long octx_phys;
 	unsigned char *ictx;	/* input context */
@@ -202,8 +202,8 @@ static struct xhci_state {
 	unsigned int caps[2];		/* hcsparams1, hccparams */
 	int numports, numslots, numintrs;
 	unsigned long dboff, rtoff;
-	struct xhci_ring cmd;
-	struct xhci_ring evt;
+	struct usb_ring cmd;
+	struct usb_ring evt;
 	unsigned long evt_phys;
 	unsigned long erst_phys;	/* event ring segment table */
 	unsigned long dcbaa_phys;	/* device context base addr array */
@@ -216,6 +216,25 @@ static struct xhci_state {
 
 /* set while a synchronous command/control waiter owns the event ring */
 static int xhci_sync_waiting;
+
+/* the HCD vtable this driver registers with the USB core */
+static struct usb_hcd xhci_hcd = {
+	.name		= "xhci",
+	.control	= xhci_control,
+	.configure_ep	= xhci_configure_ep,
+	.submit		= xhci_submit,
+	.transfer	= xhci_transfer,
+	.transfer_zlp	= xhci_transfer_zlp,
+	.set_transfer_cb = xhci_set_transfer_cb,
+	.kick_ep	= xhci_kick_ep,
+	.poll		= xhci_poll,
+	.ring_init	= xhci_ring_init,
+	.reset_ep0	= xhci_reset_ep0,
+	.slot_root_port	= xhci_slot_root_port,
+	.slot_speed	= xhci_slot_speed,
+	.disable	= xhci_disable_slot,
+	.enumerate	= xhci_enumerate,
+};
 
 extern int map_page64(unsigned long, unsigned long, unsigned long);
 
@@ -230,7 +249,7 @@ static void xhci_reg_w(unsigned long off, unsigned int val)
 }
 
 /* ---------------- rings ---------------- */
-int xhci_ring_init(struct xhci_ring *r, int trbs)
+int xhci_ring_init(struct usb_ring *r, int trbs)
 {
 	int i;
 
@@ -253,7 +272,7 @@ int xhci_ring_init(struct xhci_ring *r, int trbs)
 
 /* append a TRB to a ring; returns its physical address (0 = full).
  * Sets the cycle bit; refreshes the trailing LINK on wrap. */
-unsigned long xhci_ring_put(struct xhci_ring *r, struct xhci_trb *t)
+unsigned long xhci_ring_put(struct usb_ring *r, struct xhci_trb *t)
 {
 	int slot;
 
@@ -399,7 +418,7 @@ int xhci_control(int slotid, unsigned char bmRequestType,
 			unsigned short wIndex, unsigned short wLength,
 			void *data)
 {
-	struct xhci_ring *r = &xhci->devs[slotid].ep0;
+	struct usb_ring *r = &xhci->devs[slotid].ep0;
 	struct xhci_trb t;
 	struct xhci_event ev;
 	unsigned long setup;
@@ -568,7 +587,7 @@ void xhci_kick_ep(int slotid, int epid)
 }
 
 int xhci_submit(int slotid, int epid, int dir_in, void *buf, int len,
-		struct xhci_ring *ring)
+		struct usb_ring *ring)
 {
 	struct xhci_trb t;
 
@@ -590,7 +609,7 @@ int xhci_submit(int slotid, int epid, int dir_in, void *buf, int len,
 }
 
 int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
-		  struct xhci_ring *ring)
+		  struct usb_ring *ring)
 {
 	struct xhci_event ev;
 	int ret;
@@ -633,7 +652,7 @@ int xhci_transfer(int slotid, int epid, int dir_in, void *buf, int len,
 /* queue a zero-length transfer on an endpoint ring (flushes a
  * 64-multiple frame on QEMU's usb-net gadget). xhci_submit refuses
  * len <= 0, so build the TR_NORMAL directly and kick the endpoint. */
-int xhci_transfer_zlp(int slotid, int epid, struct xhci_ring *ring)
+int xhci_transfer_zlp(int slotid, int epid, struct usb_ring *ring)
 {
 	struct xhci_trb t;
 
@@ -1008,12 +1027,17 @@ int xhci_probe(void)
 		}
 	}
 
+	/* register the HCD BEFORE the port scan: enumeration during
+	 * xhci_port_probe() routes class-driver control transfers through
+	 * the usb_* wrappers, which need the active HCD set */
+	xhci->present = 1;
+	usb_hcd_register(&xhci_hcd);
+
 	/* scan ports: reset any connected device and bring up a slot */
 	for(port = 1; port <= xhci->numports; port++) {
 		xhci_port_probe(port);
 	}
 
-	xhci->present = 1;
 	return 0;
 }
 

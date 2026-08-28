@@ -24,7 +24,7 @@
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 #include <fnx/types.h>
-#include <fnx/xhci.h>
+#include <fnx/usb.h>
 
 #define USB_DIR_IN		0x80
 #define USB_REQ_GET_DESCRIPTOR	0x06
@@ -39,7 +39,7 @@ struct usb_mouse {
 	int epid;		/* xhci EP id (3 = EP1 IN) */
 	int mps;
 	int tablet;		/* 1 = absolute 8-byte report */
-	struct xhci_ring ring;
+	struct usb_ring ring;
 	unsigned char *buf;
 	int last_x, last_y;
 } mouse;
@@ -47,10 +47,10 @@ struct usb_mouse {
 static void usb_mouse_submit(struct usb_mouse *m)
 {
 	memset_b(m->buf, 0, m->mps);
-	xhci_submit(m->slotid, m->epid, 1, m->buf, m->mps, &m->ring);
+	usb_submit(m->slotid, m->epid, 1, m->buf, m->mps, &m->ring);
 }
 
-/* transfer completion callback (runs from xhci_poll / timer BH) */
+/* transfer completion callback (runs from usb_poll / timer BH) */
 static void usb_mouse_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_mouse *m = &mouse;
@@ -151,25 +151,25 @@ int usb_mouse_init(int slotid, unsigned char *configdesc)
 	m->tablet = tmp.tablet;
 	m->last_x = m->last_y = 0;
 
-	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
+	if((ret = usb_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-mouse: SET_CONFIGURATION failed (%d)\n", ret);
 		return ret;
 	}
 
-	if(xhci_ring_init(&m->ring, 16) < 0) {
+	if(usb_ring_init(&m->ring, 16) < 0) {
 		return -ENOMEM;
 	}
 	if(!(m->buf = (unsigned char *)kmalloc(m->mps))) {
 		return -ENOMEM;
 	}
-	if((ret = xhci_configure_ep(slotid, m->epid, XHCI_EP_INTR_IN,
+	if((ret = usb_configure_ep(slotid, m->epid, USB_EP_INTR_IN,
 				    m->mps, 1, m->ring.phys)) < 0) {
 		printk("usb-mouse: configure EP failed (%d)\n", ret);
 		return ret;
 	}
 
-	xhci_set_transfer_cb(slotid, m->epid, usb_mouse_cb, NULL);
+	usb_set_transfer_cb(slotid, m->epid, usb_mouse_cb, NULL);
 	usb_mouse_submit(m);
 	printk("usb-mouse: %s on slot %d (epid %d, mps %d)\n",
 		m->tablet ? "tablet" : "mouse", slotid, m->epid, m->mps);

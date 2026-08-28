@@ -15,7 +15,7 @@
 #include <fnx/posix_timer.h>
 #include <fnx/irq.h>
 #include <fnx/sched.h>
-#include <fnx/xhci.h>
+#include <fnx/usb.h>
 #include <fnx/pic.h>
 #include <fnx/cmos.h>
 #include <fnx/signal.h>
@@ -336,7 +336,7 @@ void irq_timer_bh(struct sigcontext *sc)
 		}
 	}
 
-	xhci_poll();
+	usb_poll();
 
 	if(current->pid > IDLE && --current->cpu_count <= 0) {
 		current->cpu_count = 0;

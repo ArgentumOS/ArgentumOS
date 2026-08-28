@@ -29,7 +29,7 @@
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 #include <fnx/types.h>
-#include <fnx/xhci.h>
+#include <fnx/usb.h>
 
 #define USB_REQ_GET_DESCRIPTOR	0x06
 #define USB_REQ_SET_CONFIGURATION 0x09
@@ -63,7 +63,7 @@ struct usb_hub {
 	int mps;
 	int nports;
 	int power_ports;	/* 1 = hub needs SetPortFeature(PORT_POWER) */
-	struct xhci_ring ring;
+	struct usb_ring ring;
 	unsigned char *buf;	/* change bitmap (2 bytes) */
 	unsigned short pending;	/* latched change bitmap for the BH */
 	int child_slots[HUB_MAX_PORTS + 1];	/* behind-hub slots, 0 = none */
@@ -90,7 +90,7 @@ static void usb_hub_delay_ms(int ms)
 static void usb_hub_submit(struct usb_hub *h)
 {
 	memset_b(h->buf, 0, h->mps);
-	xhci_submit(h->slotid, h->epid, 1, h->buf, h->mps, &h->ring);
+	usb_submit(h->slotid, h->epid, 1, h->buf, h->mps, &h->ring);
 }
 
 /* decode the xhci speed from a hub port status. The speed bits are only
@@ -127,7 +127,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 	if(!(st = (unsigned char *)kmalloc(4))) {
 		return;
 	}
-	if((ret = xhci_control(h->slotid, 0xA3, USB_REQ_GET_STATUS, 0, port,
+	if((ret = usb_control(h->slotid, 0xA3, USB_REQ_GET_STATUS, 0, port,
 			      4, st))) {
 		printk("usb-hub: GetPortStatus(%d) failed (%d)\n", port, ret);
 		kfree(st);
@@ -137,7 +137,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 	/* overcurrent: report + clear, nothing else this pass */
 	if(st[2] & PORT_STAT_C_OVERCURRENT) {
 		printk("usb-hub: port %d overcurrent\n", port);
-		xhci_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
+		usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
 			     C_PORT_OVERCURRENT, port, 0, NULL);
 		kfree(st);
 		return;
@@ -149,11 +149,11 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 	 * clear it on every pass. On a failure reset EP0 so the hub's
 	 * control pipe recovers (a stalled control halts EP0 until the
 	 * Reset Endpoint command). */
-	if(xhci_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
+	if(usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
 			C_PORT_CONNECTION, port, 0, NULL) < 0 ||
-	   xhci_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
+	   usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
 			C_PORT_ENABLE, port, 0, NULL) < 0) {
-		xhci_reset_ep0(h->slotid);
+		usb_reset_ep0(h->slotid);
 	}
 
 	child = h->child_slots[port];
@@ -166,13 +166,13 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 		/* real hardware: reset the downstream port before the
 		 * device is usable; the speed is only valid afterwards.
 		 * QEMU clears PORT_STAT_RESET instantly and sets ENABLE. */
-		xhci_control(h->slotid, 0x23, USB_REQ_SET_FEATURE, PORT_RESET,
+		usb_control(h->slotid, 0x23, USB_REQ_SET_FEATURE, PORT_RESET,
 			     port, 0, NULL);
 		usb_hub_delay_ms(20);
 		deadline = 20;	/* ~200ms of polls */
 		while(deadline--) {
 			usb_hub_delay_ms(10);
-			if(xhci_control(h->slotid, 0xA3, USB_REQ_GET_STATUS,
+			if(usb_control(h->slotid, 0xA3, USB_REQ_GET_STATUS,
 					0, port, 4, st)) {
 				kfree(st);
 				return;
@@ -186,9 +186,9 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 			kfree(st);
 			return;
 		}
-		xhci_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
+		usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
 			     C_PORT_RESET, port, 0, NULL);
-		xhci_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
+		usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
 			     C_PORT_ENABLE, port, 0, NULL);
 
 		if(!(st[0] & PORT_STAT_ENABLE)) {
@@ -198,18 +198,18 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 		}
 		speed = usb_hub_speed(h, st);
 		printk("usb-hub: device on port %d (speed %d)\n", port, speed);
-		child = xhci_enumerate(h->root_port, port, speed);
+		child = usb_enumerate(h->root_port, port, speed);
 		h->child_slots[port] = child;
 	} else if(child) {
 		printk("usb-hub: device removed from port %d (slot %d)\n",
 			port, child);
-		xhci_disable_slot(child);
+		usb_disable(child);
 		h->child_slots[port] = 0;
 	}
 	kfree(st);
 }
 
-/* transfer completion callback (runs from xhci_poll / timer BH) */
+/* transfer completion callback (runs from usb_poll / timer BH) */
 static void usb_hub_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_hub *h = (struct usb_hub *)data;
@@ -310,7 +310,7 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 	h->epid = tmp.epid;
 	h->mps = tmp.mps;
 
-	if((ret = xhci_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
+	if((ret = usb_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-hub: SET_CONFIGURATION failed (%d)\n", ret);
 		h->in_use = 0;
@@ -321,7 +321,7 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 		h->in_use = 0;
 		return -ENOMEM;
 	}
-	if(xhci_control(slotid, 0xA0, USB_REQ_GET_DESCRIPTOR,
+	if(usb_control(slotid, 0xA0, USB_REQ_GET_DESCRIPTOR,
 			USB_DT_HUB << 8, 0, 10, hubdesc)) {
 		printk("usb-hub: GET_DESCRIPTOR(hub) failed\n");
 		kfree(hubdesc);
@@ -339,7 +339,7 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 	h->power_ports = (wchar & 0x3) != 0x2;
 	kfree(hubdesc);
 
-	if(xhci_ring_init(&h->ring, 16) < 0) {
+	if(usb_ring_init(&h->ring, 16) < 0) {
 		h->in_use = 0;
 		return -ENOMEM;
 	}
@@ -347,7 +347,7 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 		h->in_use = 0;
 		return -ENOMEM;
 	}
-	if((ret = xhci_configure_ep(slotid, h->epid, XHCI_EP_INTR_IN,
+	if((ret = usb_configure_ep(slotid, h->epid, USB_EP_INTR_IN,
 				    h->mps, 1, h->ring.phys)) < 0) {
 		printk("usb-hub: configure EP failed (%d)\n", ret);
 		h->in_use = 0;
@@ -356,16 +356,16 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 
 	if(h->power_ports) {
 		for(port = 1; port <= h->nports; port++) {
-			xhci_control(slotid, 0x23, USB_REQ_SET_FEATURE,
+			usb_control(slotid, 0x23, USB_REQ_SET_FEATURE,
 				     PORT_POWER, port, 0, NULL);
 		}
 		usb_hub_delay_ms(50);	/* power-on stabilization */
 	}
 
-	h->root_port = xhci_slot_root_port(slotid);
-	h->is_super = xhci_slot_speed(slotid) == 3;
+	h->root_port = usb_slot_root_port(slotid);
+	h->is_super = usb_slot_speed(slotid) == 3;
 	h->child_slots[0] = 0;
-	xhci_set_transfer_cb(slotid, h->epid, usb_hub_cb, h);
+	usb_set_transfer_cb(slotid, h->epid, usb_hub_cb, h);
 	usb_hub_submit(h);
 	printk("usb-hub: %d ports on slot %d (root port %d%s)\n",
 		h->nports, slotid, h->root_port,
