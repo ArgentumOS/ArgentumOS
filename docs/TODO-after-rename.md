@@ -1121,10 +1121,15 @@ passes with discard=on.
 Both HCDs are implemented on the shared `struct usb_hcd` vtable
 (usb.h/usb.c; xhci.c registers the same vtable). UHCI (drivers/usb/
 uhci.c) and EHCI (drivers/usb/ehci.c) both enumerate usb-kbd and
-usb-mouse on QEMU. Remaining follow-ups: hub support for UHCI
-behind-route enumeration (usb_hub_init attaches but the mouse behind
-QEMU's auto-hub is not enumerated), EHCI companion-mode routing
-(ich9-usb-ehci1/2), and OHCI.
+usb-mouse on QEMU, including devices behind a hub (QEMU puts the second
+-device behind an auto-hub): the hub driver resets the downstream port,
+then the HCD enumerates the device with the same control path (UHCI
+fixed in 0514385; the EHCI guard was removed too but its control path
+still stalls on a SECOND device's SET_ADDRESS - pre-existing, see
+below). Remaining follow-ups: EHCI 2nd-device enumeration stall
+(after one device's ~4 controls the next control's qTDs are not
+processed - separate from the guard removal), EHCI companion-mode
+routing (ich9-usb-ehci1/2), and OHCI.
 
 Test invocations: `-machine pc,usb=off -device piix3-usb-uhci
 -device usb-kbd` / `-device usb-ehci -device usb-kbd`. The
