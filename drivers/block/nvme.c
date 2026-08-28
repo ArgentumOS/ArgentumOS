@@ -559,10 +559,24 @@ int nvme_init(void)
 		}
 	}
 
-	/* DMA structures (page-aligned) */
+	/* DMA structures (page-aligned). The I/O SQ ring is 128 x 64B = 8192B
+	 * (NVME_IO_Q_ENTRIES SQEs) - allocating only 4096 (a single kmalloc
+	 * page) made SQEs 64..127 spill into the adjacent page (often the I/O
+	 * CQ ring): the overflow SQE bytes sit in CQ slots with phase bit 0,
+	 * so after the CQ phase wraps to 0 the poll loop consumed them as
+	 * FAKE completions and every read returned the previous command's
+	 * data (the intermittent shell text corruption on NVMe root).
+	 * The CQ ring is 128 x 16B = 2048B. */
+	extern unsigned long alloc_pages64(int);
+	{
+		unsigned long sq_phys = alloc_pages64(2);	/* 2 pages = 8192B */
+		if(!sq_phys) {
+			return -ENOMEM;
+		}
+		nvme.io_sq = (unsigned char *)P2V(sq_phys);
+	}
 	if(!(nvme.adm_sq = (unsigned char *)kmalloc(4096)) ||
 	   !(nvme.adm_cq = (unsigned char *)kmalloc(4096)) ||
-	   !(nvme.io_sq = (unsigned char *)kmalloc(4096)) ||
 	   !(nvme.io_cq = (unsigned char *)kmalloc(4096)) ||
 	   !(nvme.dmabuf = (unsigned char *)kmalloc(4096)) ||
 	   !(nvme.ident = (unsigned char *)kmalloc(4096))) {
@@ -570,7 +584,7 @@ int nvme_init(void)
 	}
 	memset_b(nvme.adm_sq, 0, 4096);
 	memset_b(nvme.adm_cq, 0, 4096);
-	memset_b(nvme.io_sq, 0, 4096);
+	memset_b(nvme.io_sq, 0, 8192);
 	memset_b(nvme.io_cq, 0, 4096);
 
 	/* AQA: admin SQ/CQ size-1; ASQ/ACQ: physical addresses */
