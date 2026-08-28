@@ -1116,12 +1116,38 @@ must reject BLKDISCARD gracefully (ENOTSUP/EOPNOTSUPP) without
 erroring the FS. Regression: full stress on the ext2 root still
 passes with discard=on.
 
-## Pending: EHCI + UHCI (USB 2.0 / 1.1) — PLANNED, not started
+## Pending: EHCI + UHCI (USB 2.0 / 1.1) — DONE (e960114, cf0a484, 4dcb47c)
 
-Legacy USB host controllers. Do NOT implement until picked up.
-These are ALTERNATE TRANSPORTS for the USB stack planned under XHCI
-(device model, enumeration, class drivers = XHCI M1/M2) — they do NOT
-need a new USB core, only a new host-controller-driver (HCD) layer.
+Both HCDs are implemented on the shared `struct usb_hcd` vtable
+(usb.h/usb.c; xhci.c registers the same vtable). UHCI (drivers/usb/
+uhci.c) and EHCI (drivers/usb/ehci.c) both enumerate usb-kbd and
+usb-mouse on QEMU. Remaining follow-ups: hub support for UHCI
+behind-route enumeration (usb_hub_init attaches but the mouse behind
+QEMU's auto-hub is not enumerated), EHCI companion-mode routing
+(ich9-usb-ehci1/2), and OHCI.
+
+Test invocations: `-machine pc,usb=off -device piix3-usb-uhci
+-device usb-kbd` / `-device usb-ehci -device usb-kbd`. The
+`-machine pc,usb=off` is REQUIRED: the pc machine's south bridge has a
+built-in UHCI (has-usb=on by default) whose frame timer keeps walking
+OVMF's schedule, masking the -device controller.
+
+Key gotchas found:
+- UHCI link encoding is T=bit0, Q=bit1 (terminated=1, QH link=phys|2).
+- UHCI FLBASEADD is two 16-bit ports (8 and 10); the frame list is
+  1024 x 4-BYTE entries.
+- EHCI HCRESET must go to the operational base (BAR+CAPLENGTH), not
+  BAR+0; ports need PPOWER before CCS asserts; the first async QH must
+  carry the H bit (the WAITLISTHEAD state requires it); async QH links
+  carry the QH type bits (phys|2); ASYNCLISTADDR is ignored while the
+  schedule runs (chain transfer QHs off a permanent head's next);
+  QEMU's queue caches the packet state keyed by QH address -> one fresh
+  QH per control transfer; the head's overlay next_qtd must be reset to
+  T per transfer; the config descriptor must be read with its exact
+  wTotalLength (a short read stalls QEMU's control state machine).
+- Control-transfer descriptor buffers must be DMA-visible kernel VAs
+  (kmalloc'd state, not the stack).
+
 Verified against `qemu-10.0.11+ds/hw/usb/` (hcd-ehci.c, hcd-uhci.c,
 ehci-regs.h, uhci-regs.h).
 
