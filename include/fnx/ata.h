@@ -343,5 +343,8 @@ int ata_write(__dev_t, __blk_t, char *, int);
 int ata_ioctl(struct inode *, struct fd *, int, addr_t);
 __loff_t ata_llseek(struct inode *, __loff_t);
 void ata_init(void);
+int ahci_init(void);
+int pvscsi_init(void);
+int nvme_init(void);
 
 #endif /* _FNX_ATA_H */

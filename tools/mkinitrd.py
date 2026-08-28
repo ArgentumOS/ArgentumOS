@@ -35,6 +35,7 @@ S_IFLNK = 0o120000
 # (path relative to root) -> device number (MKDEV(maj,min) = (maj << 8) | min)
 BLOCK_DEVICES = {
     'dev/sda',
+    'dev/nvme0n1',
 }
 
 DEVICES = {
@@ -52,6 +53,7 @@ DEVICES = {
     'dev/urandom':  0x109,   # (1 << 8) | 9
     'dev/ptmx':     0x502,   # (5 << 8) | 2 -> PTY multiplexer
     'dev/sda':     0x800,   # (8 << 8) | 0 -> USB mass-storage disk
+    'dev/nvme0n1': 0x900,   # (9 << 8) | 0 -> NVMe namespace 1
     'dev/psaux':    0x0A01,  # (10 << 8) | 1 -> PS/2 mouse port
 }
 

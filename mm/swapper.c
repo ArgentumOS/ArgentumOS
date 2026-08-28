@@ -52,6 +52,9 @@ int kswapd(void)
 	ramdisk_init();
 	floppy_init();
 	ata_init();
+	ahci_init();
+	pvscsi_init();
+	nvme_init();
 
 	/* starting system */
 	mem_stats();

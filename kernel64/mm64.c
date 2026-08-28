@@ -167,7 +167,16 @@ void mm64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 	 * disjoint. */
 	mark_used(loader_min, LOW_LIMIT);
 	rsp = get_rsp();
-	mark_used(rsp - 0x20000, rsp + 0x1000);
+	/* rsp is a high-half VA; the bitmap is indexed by PHYSICAL page
+	 * number (mark_used clamps to MAX_PAGES and silently drops a page
+	 * number beyond it). Without the V2P conversion the boot stack
+	 * (UEFI/start_kernel, phys ~0x147000) was never reserved and the
+	 * first-fit allocator handed that very page to the first large
+	 * kmalloc() - INIT's kernel stack in init_init() - so the boot
+	 * context's cpu_idle() and INIT's switch_to_user_mode clobbered
+	 * each other's stack frames and the scheduler wedged with
+	 * current=INIT never rescheduled. */
+	mark_used(V2P64(rsp) - 0x20000, V2P64(rsp) + 0x1000);
 
 	free_pages_count = 0;
 	total_pages_count = 0;

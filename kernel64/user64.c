@@ -90,7 +90,6 @@ void syscall80_handler(unsigned long *gprs)
 	if(f->vector != 0x80) {
 		return;
 	}
-
 	memset_b(&sc, 0, sizeof(sc));
 	/* 64-bit-native sigcontext: err, rip, cs, rflags, rsp, ss, then the 15
 	 * GPRs in isr_common64 push order (gprs[0]=r15 ... gprs[14]=rax). */
@@ -115,6 +114,7 @@ void syscall80_handler(unsigned long *gprs)
 	sc.rdx = gprs[12];
 	sc.rcx = gprs[13];
 	sc.rax = gprs[14];
+
 
 	was_exec = (sc.rax == SYS64_execve);
 	was_sigreturn = (sc.rax == SYS64_rt_sigreturn);

@@ -137,8 +137,13 @@ static void ata_identify_device(struct ide *ide, struct ata_drv *drive)
 	outport_b(ide->base + ATA_HCYL, 0);
 	ata_set_timeout(ide, WAIT_FOR_DISK, WAKEUP_AND_RETURN);
 	outport_b(ide->base + ATA_COMMAND, cmd);
-	if(ide->wait_interrupt) {
-		sleep(ide, PROC_UNINTERRUPTIBLE);
+	{
+		unsigned int flags;
+		SAVE_FLAGS(flags); CLI();
+		if(ide->wait_interrupt) {
+			sleep(ide, PROC_UNINTERRUPTIBLE);
+		}
+		RESTORE_FLAGS(flags);
 	}
 }
 
@@ -442,7 +447,6 @@ static int ata_softreset(struct ide *ide)
 	/* select drive 0 (don't care of ATA_STAT_BSY bit) */
 	outport_b(ide->base + ATA_DRVHD, ATA_CHS_MODE);
 	ata_delay();
-
 	/* prepare for an interrupt */
 	ata_set_timeout(ide, WAIT_FOR_DISK, WAKEUP_AND_RETURN);
 	outport_b(ide->ctrl + ATA_DEV_CTRL, ATA_DEVCTR_SRST);
@@ -453,8 +457,13 @@ static int ata_softreset(struct ide *ide)
 	/* select drive 0 (don't care of ATA_STAT_BSY bit) */
 	outport_b(ide->base + ATA_DRVHD, ATA_CHS_MODE);
 	ata_delay();
-	if(ide->wait_interrupt) {
-		sleep(ide, PROC_UNINTERRUPTIBLE);
+	{
+		unsigned int flags;
+		SAVE_FLAGS(flags); CLI();
+		if(ide->wait_interrupt) {
+			sleep(ide, PROC_UNINTERRUPTIBLE);
+		}
+		RESTORE_FLAGS(flags);
 	}
 
 	if(ata_wait_nobusy(ide)) {
