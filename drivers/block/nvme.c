@@ -203,7 +203,6 @@ static int nvme_admin_cmd(unsigned char opcode, unsigned int nsid,
 
 	/* the SQE must be visible before the doorbell MMIO write */
 	__asm__ __volatile__("" ::: "memory");
-
 	/* ring the doorbell */
 	nvme.adm_sq_tail++;
 	nvme_reg_w(nvme_db_sq_tail(0), nvme.adm_sq_tail & (NVME_ADMIN_Q_ENTRIES - 1));
@@ -242,7 +241,7 @@ static int nvme_setup_io_queues(void)
  * interrupt would just fire the kernel's spurious MSI-X path ("Unknown
  * MSI-X vector %d received!") with no handler and wedge the CPU. */
 if((ret = nvme_admin_cmd(NVME_OP_CREATE_CQ, 0,
-		1 | (NVME_IO_Q_ENTRIES << 16),	/* cqid=1, qsize */
+		1 | ((NVME_IO_Q_ENTRIES - 1) << 16),	/* cqid=1, qsize-1 */
 		(NVME_CQ_PC) | (0 << 16),	/* cq_flags, irq_vector */
 		0, 0,
 		nvme.io_cq, 0))) {
@@ -252,7 +251,7 @@ if((ret = nvme_admin_cmd(NVME_OP_CREATE_CQ, 0,
 /* CREATE_SQ: cdw10 = sqid | (qsize << 16), cdw11 = sq_flags | (cqid << 16),
  * prp1 = phys(sq) */
 if((ret = nvme_admin_cmd(NVME_OP_CREATE_SQ, 0,
-		1 | (NVME_IO_Q_ENTRIES << 16),	/* sqid=1, qsize */
+		1 | ((NVME_IO_Q_ENTRIES - 1) << 16),	/* sqid=1, qsize-1 */
 		NVME_SQ_PC | (1 << 16),	/* sq_flags, cqid=1 */
 		0, 0,
 		nvme.io_sq, 0))) {
