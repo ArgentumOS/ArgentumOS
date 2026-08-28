@@ -157,8 +157,10 @@ static void scan_bus(void)
 	/* get BARs */
 	pd = pci_device_table;
 	while(pd) {
-		/* only normal PCI devices (bridges are not supported) */
-		if(pd->hdr_type != PCI_HEADER_TYPE_NORMAL) {
+		/* only normal PCI devices (bridges are not supported); the
+		 * multifunction flag (bit 7) must be masked off - ich9-style
+		 * multifunction devices (USB, SATA) have it set and need BARs */
+		if((pd->hdr_type & 0x7F) != PCI_HEADER_TYPE_NORMAL) {
 			pd = pd->next;
 			continue;
 		}

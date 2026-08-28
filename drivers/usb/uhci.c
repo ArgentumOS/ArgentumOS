@@ -565,6 +565,7 @@ static int uhci_port_reset(int port)
 
 	ps = inport_w(io);
 	if(!(ps & UHCI_PORT_CCS)) {
+		printk("uhci: port %d no device (portsc=0x%x)\n", port, ps);
 		return -1;
 	}
 	/* reset the port (PR 0->1 resets the device in QEMU) */

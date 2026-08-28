@@ -127,6 +127,7 @@ static struct ehci_state {
 	unsigned char irq;
 	int present;
 	int nports;
+	int n_cc;	/* companion controller count (HCSPARAMS bits 15-12) */
 	/* periodic frame list (1024 x 4B, DMA-visible) */
 	unsigned int *framelist;
 	unsigned long framelist_phys;
@@ -694,7 +695,7 @@ int ehci_probe(void)
 {
 	struct pci_device *pd;
 	unsigned long bar;
-	unsigned int caplen, nports, i, sts;
+	unsigned int caplen, hcsparams, nports, i, sts;
 	int port, ret, irq;
 
 	/* find an EHCI controller (class 0x0C03, prog-if 0x20) */
@@ -733,10 +734,30 @@ int ehci_probe(void)
 	e->mmio = (unsigned char *)EHCI_MMIO_VA;
 
 	caplen = e->mmio[EHCI_CAPLENGTH];
-	nports = ehci_reg_r(EHCI_CAPLENGTH + EHCI_HCSPARAMS) &
-		 EHCI_HCSPARAMS_NPORTS;
+	hcsparams = ehci_reg_r(EHCI_CAPLENGTH + EHCI_HCSPARAMS);
+	nports = hcsparams & EHCI_HCSPARAMS_NPORTS;
 	e->nports = nports;
+	/* HCSPARAMS bits 15-12: number of companion controllers (the QEMU
+	 * ich9-usb-ehci1/2 register their ich9-usb-uhci companions here) */
+	e->n_cc = (hcsparams >> 12) & 0xF;
 	e->mmio += caplen;
+
+	if(e->n_cc) {
+		/* companion EHCI (ich9-usb-ehci1/2 + ich9-usb-uhci*): the QEMU
+		 * model starts with every port owned by the companion UHCIs
+		 * (PORTSC OWNER set at companion registration) and the FNX USB
+		 * core has a single active HCD with per-HCD device-address
+		 * spaces, so the EHCI must defer and let the UHCI driver own
+		 * the whole companion set (QEMU attaches even high-speed
+		 * devices to the full/low-speed ports here, so nothing is
+		 * lost). This must happen BEFORE any port-affecting write:
+		 * writing CONFIGFLAG=1 clears OWNER on all ports (EHCI spec:
+		 * "route all ports to this controller"), which would move the
+		 * devices off the companions and strand them. */
+		printk("ehci: %d companion controller(s) - deferring to the "
+			"companion UHCIs\n", e->n_cc);
+		return -ENODEV;
+	}
 
 	/* HCRESET the controller at the OPERATIONAL base (the op USBCMD is
 	 * at BAR+CAPLENGTH, not BAR+0!) - clears any stale RS/schedule state
