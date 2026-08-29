@@ -1363,18 +1363,29 @@ ttyS1.. (MMIO BARs are rejected). Verified with
 `-device pci-serial`: `ttyS1 0xc010-0xc017 11 type=16550A FIFO=yes`,
 boot to the shell 3/3 alongside ttyS0.
 
-**Known caveat (open bug, NOT the detection):** `console=/dev/ttyS1`
-hangs the boot. gdb diagnosis: the kernel reaches `cpu_idle()` (need_
-resched=0, IF=1) and never progresses - the timer/scheduler path
-stalls. The pci-serial's IRQ-driven TX also appears dead (a
-`echo > /dev/ttyS1` produced nothing on an explicit chardev). The
-"Unknown MSI-X vector 40" spurious printk (IRQ8/RTC) fires near the
-end. Root cause not found; the hang is in the serial/console/timer
-interplay (the detection + registration are fine). Load base for
-gdb/map symbol resolution on this build: text ~0x5dccae0
-(start_kernel 0x1016100 -> runtime 0xffffffff85de2be0). Debugging
-harnesses: `.build/spmon.sh` (monitor), `.build/spgdb.sh` (-s gdb
-stub), `.build/sp_vis.sh` (explicit pci-serial chardev).
+**FIXED (bc71f82): the console=/dev/ttyS1 output loss.** Root causes:
+(1) `serial_write()` (the console's tty->output) only enabled the
+THREI and let the ISR drain the 1024-byte write_q - on the pci-serial
+(IRQ 11) the drain stalled and the write_q filled permanently, so
+console output went silent after ~4KB (hiding later boot output and
+any panic). Fix: `serial_write()` now does a polled TX (Linux console
+style) - drains the write_q to the THR waiting for THRE per char; the
+baud rate paces it, the IRQ path still drains too (CLI-serialized).
+(2) Test-harness drive order: root.img was at IDE index 0 (hda) while
+root=/dev/hdb pointed at the esp.img -> mount_root PANIC (looked like
+a hang: the panic's output was being dropped by (1)). Fixed harness:
+root.img at index 1 (hdb), esp.img at index 0. Verified: console=
+/dev/ttyS1 + pci-serial boots fully through the pci-serial to
+"mounted root device (ext2 filesystem)", userland's init+shell alive;
+ttyS0 console regression clean.
+
+**RESIDUAL (uninvestigated):** the post-mount userland output (the
+init's "INIT: FNX initrd alive" + the shell prompt) appears on ttyS0
+not ttyS1 in the console=/dev/ttyS1 boots - the pci-serial's output
+stops at the mount line. The userland's /dev/console -> kparms.syscondev
+(tty.c:273-275) so it should follow the kernel console; the routing
+difference after mount_root is not yet explained. The "Unknown MSI-X
+vector 40" spurious printk (IRQ8/RTC) also still fires near boot end.
 
 **Hardware (QEMU 10.0.11):** three RedHat devices, class 0x0700:
 - `pci-serial` (1B36:0002) - 1 port, I/O BAR0 = 8 bytes, INTx.
