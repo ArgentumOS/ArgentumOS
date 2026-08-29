@@ -12,6 +12,8 @@
 #include <fnx/sleep.h>
 #include <fnx/sched.h>
 #include <fnx/ipc.h>
+#include <fnx/fs.h>
+#include <fnx/filesystems.h>
 #include <fnx/memdev.h>
 #include <fnx/serial.h>
 #include <fnx/lp.h>
@@ -60,6 +62,7 @@ int kswapd(void)
 	mem_stats();
 	fs_init();
 	mount_root();
+	devfs_boot_mount();
 	init_init();
 
 	/* make sure interrupts are enabled after initializing devices */

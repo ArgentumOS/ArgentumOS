@@ -9,6 +9,8 @@
 #include <fnx/kernel.h>
 #include <fnx/devices.h>
 #include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/errno.h>
 #include <fnx/ps2.h>
 #include <fnx/psaux.h>
@@ -283,6 +285,7 @@ void psaux_init(void)
 	if(register_device(CHR_DEV, &psaux_device)) {
 		printk("WARNING: %s(): unable to register psaux device.\n", __FUNCTION__);
 	}
+	devfs_make_node("psaux", MKDEV(PSAUX_MAJOR, PSAUX_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
 
 	/* reset device */
 	psaux_command_write(PS2_DEV_RESET);

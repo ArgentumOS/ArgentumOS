@@ -11,6 +11,8 @@
 #include <fnx/devices.h>
 #include <fnx/part.h>
 #include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/buffer.h>
 #include <fnx/errno.h>
 #include <fnx/mm.h>
@@ -211,6 +213,11 @@ void ramdisk_init(void)
 			((unsigned int *)ramdisk_device.blksize)[n] = BLKSIZE_1K;
 			((unsigned int *)ramdisk_device.device_data)[n] = ramdisk->size;
 			printk("ram%d      0x%08x-0x%08x RAMdisk of %dKB size, %dKB blocksize\n", n, ramdisk->addr, ramdisk->addr + (ramdisk->size * 1024), ramdisk->size, BLKSIZE_1K / 1024);
+			{
+				char dname[8];
+				sprintk(dname, "ram%d", n);
+				devfs_make_node(dname, MKDEV(RAMDISK_MAJOR, n), S_IFBLK | S_IRUSR | S_IWUSR);
+			}
 		}
 		register_device(BLK_DEV, &ramdisk_device);
 	}

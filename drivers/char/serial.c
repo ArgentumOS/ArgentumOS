@@ -9,6 +9,8 @@
 #include <fnx/kernel.h>
 #include <fnx/devices.h>
 #include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/errno.h>
 #include <fnx/pic.h>
 #include <fnx/irq.h>
@@ -194,7 +196,11 @@ static int serial_identify(struct serial *s)
 
 static void serial_default(struct serial *s)
 {
-	s->name = "ttyS.";
+	/* per-port name storage - the name is written by register_serial()
+	 * (s->name[4] = '0' + minor) and must NOT be a shared literal */
+	s->name = s->name_buf;
+	strncpy(s->name, "ttyS.", 5);
+	s->name[5] = '\0';
 
 	/* 9600,N,8,1 by default */
 	s->baud = 9600;
@@ -301,6 +307,7 @@ static int serial_receive(struct serial *s)
 	int status, errno;
 	unsigned char ch;
 	struct tty *tty;
+
 
 	errno = 0;
 	tty = s->tty;
@@ -524,6 +531,7 @@ static int register_serial(struct serial *s, int minor)
 	serial_default(s);
 	if((type = serial_identify(s))) {
 		s->name[4] = '0' + minor;
+		s->minor = (1 << SERIAL_MSF) + minor;
 		printk("%s	  0x%04x-0x%04x	  %3d\ttype=%s%s\n", s->name, s->ioaddr, s->ioaddr + s->iosize - 1, s->irq, serial_chip[type], s->flags & UART_HAS_FIFO ? " FIFO=yes" : "");
 		SET_MINOR(serial_device.minors, (1 << SERIAL_MSF) + minor);
 		serial_setup(s);
@@ -665,6 +673,15 @@ void serial_init(void)
 		add_bh(&serial_bh);
 		if(register_device(CHR_DEV, &serial_device)) {
 			printk("WARNING: %s(): unable to register serial device.\n", __FUNCTION__);
+		}
+
+		/* devfs node registry (FreeBSD make_dev model): one node per
+		 * registered serial (ISA ttyS0.. + PCI ttyS1..) */
+		{
+			struct serial *s;
+			for(s = serial_active; s; s = s->next) {
+				devfs_make_node(s->name, MKDEV(SERIAL_MAJOR, s->minor), S_IFCHR | S_IRUSR | S_IWUSR);
+			}
 		}
 
 		/* check if a serial tty will act as a system console */

@@ -99,7 +99,9 @@ struct serial {
 	int iosize;
 	char irq;
 	int baud;
+	int minor;		/* port minor number (64 + n) */
 	char *name;
+	char name_buf[6];	/* per-port name storage ("ttyS0"...) */
 	short int lctrl;	/* line control flags (8N1, 7E2, ...) */
 	int flags;
 	struct tty *tty;

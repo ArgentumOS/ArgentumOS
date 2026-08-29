@@ -11,6 +11,7 @@
 #include <fnx/pty.h>
 #include <fnx/filesystems.h>
 #include <fnx/fs_devpts.h>
+#include <fnx/fs_devfs.h>
 #include <fnx/stat.h>
 #include <fnx/ioctl.h>
 #include <fnx/sleep.h>
@@ -337,6 +338,9 @@ void pty_init(void)
 			unregister_tty(tty);
 			return;
 		}
+		devfs_make_node("ptmx", MKDEV(PTY_MASTER_MAJOR, PTY_MASTER_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+		/* devfs directory node that userland init mounts devpts onto */
+		devfs_make_node("pts", 0, S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		printk("ptmx      -\t\t    -\ttype=UNIX98, ptys=%d\n", NR_PTYS);
 	} else {
 		printk("WARNING: %s(): unable to register %s.\n", __FUNCTION__, pty_master_device.name);

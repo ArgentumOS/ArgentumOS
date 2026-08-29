@@ -20,6 +20,8 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/buffer.h>
 #include <fnx/devices.h>
 #include <fnx/part.h>
@@ -593,6 +595,7 @@ int pvscsi_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[0] = pvscsi.nr_sects / 2;
+	devfs_make_node("sda", MKDEV(PVSCSI_MAJOR, 0), S_IFBLK | S_IRUSR | S_IWUSR);
 
 	printk("pvscsi: %d sectors of %d bytes (%d MB)\n",
 		pvscsi.nr_sects, pvscsi.sector_size,

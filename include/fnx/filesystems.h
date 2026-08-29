@@ -11,7 +11,7 @@
 #include <fnx/types.h>
 #include <fnx/limits.h>
 
-#define NR_FILESYSTEMS		8	/* supported filesystems */
+#define NR_FILESYSTEMS		9	/* supported filesystems */
 
 /* special device numbers for nodev filesystems */
 enum {
@@ -20,6 +20,7 @@ enum {
 	PIPE_DEV,
 	PROC_DEV,
 	SOCK_DEV,
+	DEVFS_DEV,
 };
 
 struct filesystems {
@@ -195,5 +196,12 @@ void devpts_ifree(struct inode *);
 int devpts_read_superblock(__dev_t, struct superblock *);
 int devpts_init(void);
 #endif /* CONFIG_UNIX98_PTYS */
+
+/* devfs prototypes */
+int devfs_read_inode(struct inode *);
+void devfs_statfs(struct superblock *, struct statfs *);
+int devfs_read_superblock(__dev_t, struct superblock *);
+int devfs_init(void);
+int devfs_boot_mount(void);
 
 #endif /* _FNX_FILESYSTEMS_H */

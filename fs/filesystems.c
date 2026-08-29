@@ -92,4 +92,7 @@ void fs_init(void)
 		printk("%s(): unable to register 'devpts' filesystem.\n", __FUNCTION__);
 	}
 #endif /* CONFIG_UNIX98_PTYS */
+	if(devfs_init()) {
+		printk("%s(): unable to register 'devfs' filesystem.\n", __FUNCTION__);
+	}
 }

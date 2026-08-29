@@ -10,6 +10,9 @@
 #include <fnx/ctype.h>
 #include <fnx/console.h>
 #include <fnx/devices.h>
+#include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/tty.h>
 #include <fnx/keyboard.h>
 #include <fnx/sleep.h>
@@ -1035,6 +1038,17 @@ void console_init(void)
 
 	register_device(CHR_DEV, &console_device);
 	register_device(CHR_DEV, &tty_device);
+
+	/* devfs node registry (FreeBSD make_dev model) */
+	devfs_make_node("console", MKDEV(SYSCON_MAJOR, 1), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("tty", MKDEV(SYSCON_MAJOR, 0), S_IFCHR | S_IRUSR | S_IWUSR);
+	{
+		char dname[16];
+		for(n = 0; n <= NR_VCONSOLES; n++) {
+			sprintk(dname, "tty%d", n);
+			devfs_make_node(dname, MKDEV(VCONSOLES_MAJOR, n), S_IFCHR | S_IRUSR | S_IWUSR);
+		}
+	}
 
 	/* check if a vconsole will act as a system console */
 	for(n = 0, syscon = 0; n < NR_SYSCONSOLES; n++) {

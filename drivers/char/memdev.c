@@ -10,6 +10,8 @@
 #include <fnx/memdev.h>
 #include <fnx/devices.h>
 #include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/errno.h>
 #include <fnx/mm.h>
 #include <fnx/mman.h>
@@ -692,4 +694,14 @@ void memdev_init(void)
 		printk("ERROR: %s(): unable to register memory devices.\n", __FUNCTION__);
 		return;
 	}
+
+	/* devfs node registry (FreeBSD make_dev model) */
+	devfs_make_node("mem", MKDEV(MEMDEV_MAJOR, MEMDEV_MEM), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("kmem", MKDEV(MEMDEV_MAJOR, MEMDEV_KMEM), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("null", MKDEV(MEMDEV_MAJOR, MEMDEV_NULL), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("port", MKDEV(MEMDEV_MAJOR, MEMDEV_PORT), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("zero", MKDEV(MEMDEV_MAJOR, MEMDEV_ZERO), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("full", MKDEV(MEMDEV_MAJOR, MEMDEV_FULL), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("random", MKDEV(MEMDEV_MAJOR, MEMDEV_RANDOM), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("urandom", MKDEV(MEMDEV_MAJOR, MEMDEV_URANDOM), S_IFCHR | S_IRUSR | S_IWUSR);
 }

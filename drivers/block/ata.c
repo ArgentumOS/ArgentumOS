@@ -18,6 +18,8 @@
 #include <fnx/irq.h>
 #include <fnx/pci.h>
 #include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 #include <fnx/blk_queue.h>
 #include <fnx/mm.h>
 #include <fnx/errno.h>
@@ -844,6 +846,7 @@ int ata_channel_init(struct ide *ide)
 				if(!devices) {
 					register_device(BLK_DEV, &ide_device[ide->channel]);
 				}
+				devfs_make_node(drive->dev_name, MKDEV(drive->major, drv_num << drive->minor_shift), S_IFBLK | S_IRUSR | S_IWUSR);
 				if(drive->flags & DRIVE_IS_DISK) {
 					if(!ata_hd_init(ide, drive)) {
 						devices++;
