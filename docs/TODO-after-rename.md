@@ -1379,13 +1379,18 @@ root.img at index 1 (hdb), esp.img at index 0. Verified: console=
 "mounted root device (ext2 filesystem)", userland's init+shell alive;
 ttyS0 console regression clean.
 
-**RESIDUAL (uninvestigated):** the post-mount userland output (the
-init's "INIT: FNX initrd alive" + the shell prompt) appears on ttyS0
-not ttyS1 in the console=/dev/ttyS1 boots - the pci-serial's output
-stops at the mount line. The userland's /dev/console -> kparms.syscondev
-(tty.c:273-275) so it should follow the kernel console; the routing
-difference after mount_root is not yet explained. The "Unknown MSI-X
-vector 40" spurious printk (IRQ8/RTC) also still fires near boot end.
+**RESIDUAL FIXED (2bf20fe): the userland console now follows console=.**
+The rootfs /dev/console node was hardcoded to rdev 0x440 (ttyS0) in
+tools/mkinitrd.py's DEVICES table, so the init's fd 0/1/2 pinned the
+userland console to ttyS0 regardless of console=. Changed it to 0x501
+= SYSCON_DEV (MKDEV(5,1)) - get_tty() maps that to kparms.syscondev.
+Verified: console=/dev/ttyS1 + pci-serial carries the ENTIRE boot
+(kernel + mount + init's message + interactive shell prompt + echo
+round-trip); ttyS0 default console regression clean. Rebuild note:
+root.img comes from `make rootdisk64` (NOT userland64), and stale
+tools/__pycache__ bytecode silently reverts DEVICES-table edits.
+Remaining noise: the "Unknown MSI-X vector 40" spurious printk
+(IRQ8/RTC) still fires near boot end (harmless, unhandled RTC IRQ).
 
 **Hardware (QEMU 10.0.11):** three RedHat devices, class 0x0700:
 - `pci-serial` (1B36:0002) - 1 port, I/O BAR0 = 8 bytes, INTx.
