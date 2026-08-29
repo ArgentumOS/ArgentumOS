@@ -474,7 +474,23 @@ void serial_write(struct tty *tty)
 
 	SAVE_FLAGS(flags); CLI();
 	s = (struct serial *)tty->driver_data;
-	outport_b(s->ioaddr + UART_IER, UART_IER_RDAI | UART_IER_THREI);
+
+	/* FNX: polled TX for the console. Draining the write_q straight to
+	 * the THR (waiting for THRE) makes console output independent of
+	 * the TX-empty interrupt. The old code just enabled the THREI and
+	 * let the ISR drain the queue - that works for ttyS0 but strands
+	 * output on any serial whose IRQ line stalls (e.g. the pci-serial
+	 * at IRQ 11), leaving the write_q (only 1024 bytes) permanently
+	 * full and the console silent after the first ~4KB. The baud rate
+	 * paces this busy-wait; the IRQ path (serial_send) still drains
+	 * too, serialized by the CLI above. */
+	while(tty->write_q.count) {
+		while(!(inport_b(s->ioaddr + UART_LSR) & UART_LSR_THRE)) {
+		}
+		outport_b(s->ioaddr + UART_TD, charq_getchar(&tty->write_q));
+	}
+	wakeup(&tty->write_q);
+
 	RESTORE_FLAGS(flags);
 }
 
