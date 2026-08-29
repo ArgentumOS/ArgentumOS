@@ -44,7 +44,7 @@ int devfs_make_node(const char *name, __dev_t dev, __mode_t mode)
 		return 0;
 	}
 	name_len = strlen(name);
-	if(name_len > 15) {
+	if(name_len > 31) {
 		return -ENAMETOOLONG;
 	}
 
@@ -52,8 +52,8 @@ int devfs_make_node(const char *name, __dev_t dev, __mode_t mode)
 		return -ENOMEM;
 	}
 	memset_b(new, 0, sizeof(struct devfs_node));
-	strncpy(new->name, name, 15);
-	new->name[15] = '\0';
+	strncpy(new->name, name, 31);
+	new->name[31] = '\0';
 	new->dev = dev ? dev : devfs_virtual_dev++;
 	new->mode = mode;
 	if(!dev) {
@@ -77,15 +77,15 @@ int devfs_make_symlink(const char *name, const char *target, __mode_t mode)
 	if(devfs_find_node(name)) {
 		return 0;
 	}
-	if(strlen(name) > 15) {
+	if(strlen(name) > 31) {
 		return -ENAMETOOLONG;
 	}
 	if(!(n = (struct devfs_node *)kmalloc(sizeof(struct devfs_node)))) {
 		return -ENOMEM;
 	}
 	memset_b(n, 0, sizeof(struct devfs_node));
-	strncpy(n->name, name, 15);
-	n->name[15] = '\0';
+	strncpy(n->name, name, 31);
+	n->name[31] = '\0';
 	n->mode = S_IFLNK | (mode & 0777);
 	n->dev = devfs_virtual_dev++;
 	if(!(n->target = (char *)kmalloc(strlen(target) + 1))) {
@@ -174,6 +174,26 @@ struct devfs_node *devfs_find_node_dev(__dev_t dev)
 		}
 	}
 	return NULL;
+}
+
+/* the parent node of a nested node name ("disk/by-id" -> "disk"), or NULL
+ * for a top-level name (whose parent is the devfs root). */
+struct devfs_node *devfs_find_parent(const char *name)
+{
+	const char *slash;
+	char parent[32];
+	int plen;
+
+	if(!(slash = strrchr(name, '/'))) {
+		return NULL;
+	}
+	plen = (int)(slash - name);
+	if(plen >= (int)sizeof(parent)) {
+		return NULL;
+	}
+	memcpy_b(parent, name, plen);
+	parent[plen] = '\0';
+	return devfs_find_node(parent);
 }
 
 /* ---------------------------------------------------------------- */

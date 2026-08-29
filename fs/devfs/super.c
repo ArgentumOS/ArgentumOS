@@ -93,8 +93,16 @@ int devfs_read_superblock(__dev_t dev, struct superblock *sb)
  * followlink(), so the target nodes need not exist yet. */
 static void devfs_aliases(void)
 {
+	/* the classic /dev/mouse alias */
 	devfs_make_symlink("mouse", "psaux", 0777);
-	devfs_make_symlink("disk", "null", 0777);
+
+	/* /dev/disk/by-id: nested alias dirs. The dir nodes carry dev 0 so
+	 * they get virtual device numbers; the symlink targets are
+	 * devfs-relative ("hda" resolves to the top-level hda node). */
+	devfs_make_node("disk", 0, S_IFDIR | 0755);
+	devfs_make_node("disk/by-id", 0, S_IFDIR | 0755);
+	devfs_make_symlink("disk/by-id/ata-hda", "hda", 0777);
+	devfs_make_symlink("disk/by-id/ata-hdb", "hdb", 0777);
 }
 
 int devfs_init(void)

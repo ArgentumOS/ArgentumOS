@@ -25,7 +25,7 @@
  * devfs_make_node() at probe time for every device node they own; devfs
  * synthesizes /dev from this list. */
 struct devfs_node {
-	char name[16];			/* node name ("null", "ttyS0", ...) */
+	char name[32];			/* node name ("null", "ttyS0", "disk/by-id/ata-hdb", ...) */
 	__dev_t dev;			/* device number (major << 8 | minor) */
 	__mode_t mode;			/* S_IFCHR|0600, S_IFBLK|0600, ... */
 	unsigned int ino;		/* unique inode number (dev 0 nodes) */
@@ -55,6 +55,7 @@ int devfs_make_node(const char *, __dev_t, __mode_t);
 void devfs_remove_node(__dev_t);
 struct devfs_node *devfs_find_node(const char *);
 struct devfs_node *devfs_find_node_ino(unsigned int);
+struct devfs_node *devfs_find_parent(const char *);
 void devfs_remove_device(int, unsigned char);
 struct devfs_node *devfs_find_node_dev(__dev_t);
 

@@ -79,24 +79,70 @@ int devfs_dir_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 	return -EISDIR;
 }
 
-/* the node at registry index idx (0-based), or NULL */
-static struct devfs_node *devfs_node_at(unsigned int idx)
+/* the idx-th visible child entry of a devfs dir inode (0-based, children
+ * only - "." and ".." are handled by the callers). The root yields the
+ * first path components of every node (deduplicated); a nested dir node
+ * (e.g. /dev/disk) yields the next components of the names under its own
+ * prefix ("disk/by-id" -> "by-id"). *disp receives the child's display
+ * name and the returned node carries its identity (the full node, e.g.
+ * "disk/by-id", for the ino/lookup consistency). */
+static struct devfs_node *devfs_child_at(struct inode *dir, unsigned int idx, char *disp)
 {
-	struct devfs_node *n;
+	struct devfs_node *n, *m;
+	const char *rest, *slash;
+	char prefix[64];
+	int plen, dlen;
+	unsigned int count;
+	int dup;
 
-	for(n = devfs_nodes; n && idx; n = n->next) {
-		idx--;
+	if(dir->inode == DEVFS_ROOT_INO) {
+		plen = 0;
+	} else if(dir->u.devfs.node) {
+		plen = strlen(dir->u.devfs.node->name);
+		if(plen >= (int)sizeof(prefix) - 2) {
+			return NULL;
+		}
+		memcpy_b(prefix, dir->u.devfs.node->name, plen);
+		prefix[plen++] = '/';
+		prefix[plen] = '\0';
+	} else {
+		return NULL;
 	}
-	return n;
+
+	count = 0;
+	for(n = devfs_nodes; n; n = n->next) {
+		if(strncmp(n->name, prefix, plen)) {
+			continue;
+		}
+		rest = n->name + plen;
+		slash = strchr(rest, '/');
+		dlen = slash ? (int)(slash - rest) : (int)strlen(rest);
+		dup = 0;
+		for(m = devfs_nodes; m != n; m = m->next) {
+			if(!strncmp(m->name, prefix, plen) && !strncmp(m->name + plen, rest, dlen) &&
+			   (m->name[plen + dlen] == '\0' || m->name[plen + dlen] == '/')) {
+				dup = 1;
+				break;
+			}
+		}
+		if(!dup && count++ == idx) {
+			if(disp) {
+				memcpy_b(disp, rest, dlen);
+				disp[dlen] = '\0';
+			}
+			return n;
+		}
+	}
+	return NULL;
 }
 
-static unsigned int devfs_node_count(void)
+static unsigned int devfs_child_count(struct inode *dir)
 {
 	unsigned int count;
-	struct devfs_node *n;
+	int i;
 
-	for(count = 0, n = devfs_nodes; n; n = n->next) {
-		count++;
+	for(count = 0; devfs_child_at(dir, count, NULL); count++) {
+		;
 	}
 	return count;
 }
@@ -113,15 +159,11 @@ int devfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t
 
 	base_dirent_len = sizeof(dirent->d_ino) + sizeof(dirent->d_off) + sizeof(dirent->d_reclen);
 
+	char disp[32];
+
 	offset = f->offset;
 	total_read = 0;
-	ncount = devfs_node_count();
-
-	/* a non-root dir node (e.g. /dev/pts) is empty until a filesystem
-	 * is mounted on it - only "." and ".." */
-	if(i->inode != DEVFS_ROOT_INO) {
-		ncount = 0;
-	}
+	ncount = devfs_child_count(i);
 
 	while(offset < (ncount + 2) && count > 0) {
 		if(offset == 0) {
@@ -131,10 +173,10 @@ int devfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t
 			name = "..";
 			ino = DEVFS_ROOT_INO;
 		} else {
-			if(!(n = devfs_node_at(offset - 2))) {
+			if(!(n = devfs_child_at(i, offset - 2, disp))) {
 				break;
 			}
-			name = n->name;
+			name = disp;
 			ino = DEVFS_INO(n->dev, S_ISBLK(n->mode));
 		}
 		name_len = strlen(name);
@@ -171,15 +213,11 @@ int devfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __si
 	base_dirent_len = sizeof(dirent->d_ino) + sizeof(dirent->d_off) +
 		sizeof(dirent->d_reclen) + sizeof(dirent->d_type);
 
+	char disp[32];
+
 	offset = f->offset;
 	total_read = 0;
-	ncount = devfs_node_count();
-
-	/* a non-root dir node (e.g. /dev/pts) is empty until a filesystem
-	 * is mounted on it - only "." and ".." */
-	if(i->inode != DEVFS_ROOT_INO) {
-		ncount = 0;
-	}
+	ncount = devfs_child_count(i);
 
 	while(offset < (ncount + 2) && count > 0) {
 		if(offset == 0) {
@@ -191,10 +229,10 @@ int devfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __si
 			ino = DEVFS_ROOT_INO;
 			type = DT_DIR;
 		} else {
-			if(!(n = devfs_node_at(offset - 2))) {
+			if(!(n = devfs_child_at(i, offset - 2, disp))) {
 				break;
 			}
-			name = n->name;
+			name = disp;
 			ino = DEVFS_INO(n->dev, S_ISBLK(n->mode));
 			type = S_ISDIR(n->mode) ? DT_DIR : (S_ISBLK(n->mode) ? DT_BLK : DT_CHR);
 		}
