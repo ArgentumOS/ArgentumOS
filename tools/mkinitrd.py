@@ -39,7 +39,7 @@ BLOCK_DEVICES = {
 }
 
 DEVICES = {
-    'dev/console':  0x440,   # ttyS0 (4 << 8) | 0x40 -> serial console (dev work)
+    'dev/console':  0x501,   # SYSCON_DEV (5 << 8) | 1 -> get_tty() maps it to kparms.syscondev (the console= target); was 0x440 (ttyS0) which pinned the userland console to ttyS0 regardless of console=
     'dev/tty0':     0x400,   # (4 << 8) | 0  -> current virtual console
     'dev/tty':      0x500,   # (5 << 8) | 0  -> controlling TTY device
     'dev/ttyS0':    0x440,   # (4 << 8) | 0x40
