@@ -27,6 +27,11 @@
 
 struct devfs_node *devfs_nodes = NULL;
 
+/* dev-0 nodes (dirs/symlinks) get a unique virtual device number so their
+ * inodes use the normal DEVFS_INO(dev) encoding (the shared DEVFS_INO(0)
+ * made them all alias to one inode). 0x8000+ is above any real major. */
+static __dev_t devfs_virtual_dev = 0x4000;
+
 static unsigned int devfs_ino_extra = DEVFS_INO_BASE + 0x40000000;
 
 int devfs_make_node(const char *name, __dev_t dev, __mode_t mode)
@@ -49,7 +54,7 @@ int devfs_make_node(const char *name, __dev_t dev, __mode_t mode)
 	memset_b(new, 0, sizeof(struct devfs_node));
 	strncpy(new->name, name, 15);
 	new->name[15] = '\0';
-	new->dev = dev;
+	new->dev = dev ? dev : devfs_virtual_dev++;
 	new->mode = mode;
 	if(!dev) {
 		new->ino = devfs_ino_extra++;
@@ -82,7 +87,7 @@ int devfs_make_symlink(const char *name, const char *target, __mode_t mode)
 	strncpy(n->name, name, 15);
 	n->name[15] = '\0';
 	n->mode = S_IFLNK | (mode & 0777);
-	n->ino = devfs_ino_extra++;
+	n->dev = devfs_virtual_dev++;
 	if(!(n->target = (char *)kmalloc(strlen(target) + 1))) {
 		kfree((addr_t)n);
 		return -ENOMEM;

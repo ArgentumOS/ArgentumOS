@@ -1750,13 +1750,18 @@ pipes and registers it as the 12th `ext_*` NIC via
 > still apply.
 >
 > KNOWN BLOCKERS for the remaining plan items:
-> - dev-0 nodes (dirs/symlinks/clones) share DEVFS_INO(0): readlink resolves
->   the first-registered dev-0 node's target (mouse follows "null", not
->   psaux). Fix = unique per-node ino (devfs_node.ino + find_node_ino) keying
->   lookup/read_inode, but enabling it crashes the floppy path (fdc_read,
->   cr2=0, post-INIT) - root cause not yet isolated.
-> - nested alias dirs (disk/by-id/...) and the M3 clone API (ptmx -> pts/N)
->   both depend on the per-node ino fix.
+> - ~~dev-0 nodes share DEVFS_INO(0)~~ RESOLVED: dev-0 nodes (dirs/symlinks/
+>   clones) now get a unique VIRTUAL dev number (`devfs_virtual_dev`, starts
+>   0x4000 - above any real FNX major, and fits the 16-bit __dev_t: dev<<1
+>   must stay < 0x10000 inside DEVFS_INO()) so their inodes use the normal
+>   DEVFS_INO(dev) encoding. The earlier attempt (unique per-node ino +
+>   find_node_ino) crashed the floppy path (fdc_read, cr2=0, post-INIT) and
+>   was abandoned; the virtual-dev approach avoids the iget/read_inode dev-0
+>   branch entirely and boots clean (IDE 38 nodes / AHCI 30 / NVMe 32),
+>   devpts mounts on /dev/pts, and `readlink /dev/mouse` -> psaux.
+> - nested alias dirs (disk/by-id/...) need a dir-relative lookup (the M2c
+>   plan item, still pending); the M3 clone API (ptmx -> pts/N) still depends
+>   on the dev-0-node machinery.
 >
 
 Goal: a FreeBSD-like devfs that replaces the static /dev nodes in the root
