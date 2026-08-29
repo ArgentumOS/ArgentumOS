@@ -1735,3 +1735,143 @@ pipes and registers it as the 12th `ext_*` NIC via
 - 12-NIC regression: all 11 PCI NICs (virtio-net-pci, rtl8139,
   ne2k_pci, tulip, pcnet, e1000, ne2k_isa, i82559er, e1000e, igb,
   vmxnet3) + usb-net: 2/2 pings each.
+
+## Pending: devfs (FreeBSD-style device filesystem) — DECIDED, PLANNED
+
+Goal: a FreeBSD-like devfs that replaces the static /dev nodes in the root
+image with a kernel-synthesized device filesystem, auto-mounted at /dev at
+boot. Scope (user-confirmed): M0-M3 including symlinks/aliases + clone
+devices. Do NOT start implementing until this section is picked up as the
+active task.
+
+### Why devfs, and why now
+
+Today /dev is a static fiction: `tools/mkext2.py` turns placeholder files in
+`tools/mkinitrd.py`'s DEVICES table into char/block inodes at image-build
+time (Makefile:126-130 + rootdisk64 -> mkext2.py:177-178). Every new device
+(usb-storage disk, pci-serial tty, pty slave) needs a hand-edited node, and
+hotplug cannot appear. FreeBSD's model: drivers call `make_dev()` at attach;
+devfs synthesizes the tree from live driver registrations; `devfsctl`/rules
+add aliases; clone devices auto-create per-open instances (`/dev/pts/N`,
+`/dev/fd/N`). FNX already has every prerequisite: the procfs on-demand
+synthesis pattern, per-major `chr_device_table`/`blk_device_table`
+(fs/devices.c:18-19), `register_device`/`unregister_device`
+(fs/devices.c:107/155), and `def_chr_fsop`/`def_blk_fsop` dispatch
+(fs/devices.c:21-62) so a devfs inode only needs `i->rdev` + the right fsop.
+
+### Architecture (mirror fs/procfs — the on-demand synthesis model)
+
+- `fs/devfs/`: `super.c`, `inode.c`, `namei.c`, `dir.c`, `file.c`,
+  `symlink.c`, `clone.c`, `nodes.c` + `Makefile`; header
+  `include/fnx/fs_devfs.h`. fs/Makefile DIRS += devfs.
+- **Node registry (the make_dev() analog)** — `fs/devfs/nodes.c`:
+  - `struct devfs_node { char name[16]; __dev_t dev; mode_t mode;
+    unsigned int flags; /* CLONE, ALIAS */ void *(*clone_fn)(__dev_t);
+    struct devfs_node *next; }` chained per major in a devfs-owned list.
+  - `int devfs_make_node(const char *name, __dev_t dev, mode_t mode)` and
+    `void devfs_remove_node(__dev_t dev)` — called by each driver at probe
+    time (FreeBSD make_dev). `devfs_remove_node` is wired into
+    `unregister_device` (fs/devices.c:155) so hot-unplug works (M1).
+  - Synthesis = walk the node registry; the chr/blk tables remain the
+    *dispatch* source (`get_device` via `def_chr_fsop`). Node lookup falls
+    back to a per-major name generator for registered devices that have no
+    declared node (e.g. a fresh usb-storage disk -> `sdb`), so hotplug
+    appears even before a driver is taught make_dev (M1).
+- **Inode synthesis** (fs/devfs/inode.c, procfs model):
+  - Inode number encodes the device: `DEVFS_INO_BASE + (major<<8) | minor`
+    (root = `DEVFS_ROOT_INO`); identity carried in the inode number so
+    `iget()`+`read_inode()` re-synthesize on demand. Pseudo-fs inodes are
+    not cached after `iput` (fs/inode.c:451-457) -> no cache invalidation
+    on device add/remove.
+  - `read_inode`: root -> S_IFDIR + devfs_dir_fsop; node -> S_IFCHR/S_IFBLK,
+    `i->rdev = dev`, `i->fsop = &def_chr_fsop`/`&def_blk_fsop` (exactly what
+    devpts does at fs/devpts/inode.c:29); symlink nodes -> devfs_symlink_fsop;
+    clone nodes -> devfs_clone_fsop (M3).
+- **Directory ops** (fs/devfs/dir.c + namei.c): `lookup` scans the registry
+  by name -> `iget(sb, encoded_ino)`; `readdir`/`readdir64` emit `.`, `..`,
+  then one entry per registry node (getdents64 path mandatory, like
+  procfs_readdir64).
+- **Mount**:
+  - `DEVFS_DEV = 0xFFF5` in the nodev enum (include/fnx/filesystems.h:17-23;
+    FS_NODEV=0xFFF0, DEVPTS=0xFFF1, PIPE=0xFFF2, PROC=0xFFF3, SOCK=0xFFF4).
+  - **NR_FILESYSTEMS must go 8 -> 9** (filesystems.h:14) — the table is
+    currently FULL (ext2, minix, pipefs, iso9660, procfs, sockfs,
+    inotifyfs, devpts).
+  - `devfs_fsop` (fs/devfs/super.c): `flags = 0`, `fsdev = DEVFS_DEV`,
+    `read_inode/statfs/read_superblock` — register via `devfs_init()` in
+    `fs_init()` (fs/filesystems.c:61-95). Do NOT use FSOP_KERN_MOUNT:
+    `kern_mount` mounts at "none" (fs/super.c:195-212), useless for /dev.
+  - **Boot mount** — new `devfs_boot_mount()` called immediately after
+    `mount_root()` in the kswapd flow (mm/swapper.c:61-62): namei("/dev") on
+    the rootfs, `add_mount_point(DEVFS_DEV, "devfs", "/dev")`,
+    `read_superblock`, `i_target->mount_point = sb->root` (mirror
+    sys_mount's steps, kernel-side). Ordering guarantee: mount_root ->
+    devfs at /dev -> kswapd -> init_init -> the init trampoline's
+    `open("/dev/console")` (kernel64/init_trampoline64.S:31-51) resolves
+    through devfs.
+- **Driver node declarations** (pure driver-generated — nodes live with the
+  driver, not mkinitrd):
+  - memdev.c: mem(1:1) kmem(1:2) null(1:3) port(1:4) zero(1:5) full(1:7)
+    random(1:8) urandom(1:9), S_IFCHR|0600
+  - console.c: console(5:1) + tty0(4:0) + tty1..tty12(4:1..12)
+  - serial.c: ttyS0..ttyS3 (4:64..67); serial_pci adds its ttyS1.. dynamically
+  - pty.c: ptmx(5:2) (M3: pts/N clones)
+  - psaux.c: psaux(10:1)
+  - block: ata/ide hda..hdd, ahci/pvscsi sda.., nvme nvme0n1.., ramdisk,
+    floppy (all via make_dev at probe; hotplug disks at attach)
+- **Rootfs shrink**: mkext2 staging keeps only /dev + /dev/pts dirs; the
+  DEVICES table char/block entries become optional (devfs provides them
+  post-mount; the trampoline's /dev/console comes from devfs). The initrd
+  (mkinitrd.py, minix) can keep its DEVICES table untouched.
+
+### Milestones + verification
+
+- **M0 — mountable devfs at /dev, static driver nodes.** devfs_init +
+  devfs_boot_mount + node registry + readdir/lookup/open (def_chr/blk_fsop)
+  + the driver node tables above. Verify: default ttyS0 console boots to an
+  interactive shell; `ls /dev` shows the full node set; `cat /dev/zero |
+  head` works; `dd if=/dev/zero of=/dev/null`; root still mounts from
+  /dev/hdb (ata nodes must exist!); psaux mouse works; regression: AHCI root,
+  NVMe root, console=/dev/ttyS1 + pci-serial (sp_file.sh / sp_live4.py
+  harnesses), ttyS0 console.
+- **M1 — dynamic add/remove.** devfs_remove_node wired to unregister_device;
+  fallback per-major generator. Verify with the XHCI/usb-storage harness:
+  attach a second disk mid-boot -> `ls /dev` gains the node without reboot;
+  detach removes it; an already-open fd on a removed device keeps working
+  (pseudo-fs inode survives via refcount).
+- **M2 — symlinks/aliases + rules-lite.** devfs_symlink_fsop (readlink/
+  followlink, mirror fs/procfs/symlink.c) + a boot-time alias table (e.g.
+  /dev/disk/by-id -> sda, /dev/mouse -> psaux) + per-node mode/owner
+  overrides; optional devfsctl-style ioctl on the devfs root. Verify:
+  `ls -l /dev/disk`, `readlink`, aliases resolve through namei.
+- **M3 — clone devices.** Generalize the pty model (drivers/char/pty.c
+  pty_open -> devpts_ialloc) into a devfs clone API: opening a clone node
+  (ptmx) calls `clone_fn`, which allocates a fresh device, make_dev's a
+  runtime node (pts/N), and returns its fsop; node freed at close (refcount).
+  Decide: devfs provides /dev/pts/N and devpts fs is retired, or both
+  coexist. Verify with the existing PTY test battery (PTY data flow, the
+  pty/script harnesses from the 6bc4881 work).
+
+### Wiring checklist (all files)
+
+include/fnx/filesystems.h (DEVFS_DEV + NR_FILESYSTEMS 8->9 + prototypes),
+include/fnx/fs.h (union member `struct devfs_inode` at fs.h:92-105 +
+extern devfs_fsop), include/fnx/fs_devfs.h (new), include/fnx/devices.h
+(devfs_remove_node hook), fs/Makefile + fs/devfs/Makefile,
+fs/filesystems.c (fs_init call), fs/devfs/* (new), fs/devices.c
+(unregister_device -> devfs_remove_node, M1), mm/swapper.c (boot-mount
+call), each driver's init (make_dev calls), tools/mkext2.py + Makefile
+(rootfs /dev shrink).
+
+### Risks / gotchas
+
+- NR_FILESYSTEMS is exactly full (8) — bumping to 9 is a hard prerequisite.
+- kern_mount mounts at "none" — the /dev boot mount must be a custom hook,
+  and the rootfs /dev directory must exist (iget-able) when it runs.
+- devfs inodes MUST set `i->rdev` + `i->fsop = &def_chr/blk_fsop` or open()
+  dispatch breaks (chr_dev_open, fs/devices.c:235-245).
+- getdents64 is the x86-64 path — both readdir and readdir64 are required.
+- The default boot root is /dev/hdb (IDE index 1): if the ata driver's node
+  declarations are missed, devfs mounts but the root vanishes — the ata
+  nodes are M0-critical.
+- Mode default 0600 (match mkext2.py:305-309) unless a rule overrides.
