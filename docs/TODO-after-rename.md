@@ -1736,21 +1736,27 @@ pipes and registers it as the 12th `ext_*` NIC via
   ne2k_pci, tulip, pcnet, e1000, ne2k_isa, i82559er, e1000e, igb,
   vmxnet3) + usb-net: 2/2 pings each.
 
-## Pending: devfs (FreeBSD-style device filesystem) — M0 DONE (9468868), M1-M3 planned
+## Pending: devfs (FreeBSD-style device filesystem) — M0+M1+M2 DONE (9468868, f2094cb), M3 planned
 
-> STATUS: **M0 committed (9468868)**: devfs mounts at /dev at boot with a
-> kernel-side node registry (make_dev analog). 32 nodes on the default IDE
-> boot; AHCI (28) and NVMe (33) roots boot clean; `ls /dev`, `cat /dev/null`,
-> `dd if=/dev/zero` verified through the devfs inodes. Divergences from the
-> plan below (all forward-compatible): inode encoding is
-> `DEVFS_INO_BASE + (dev << 1) + is_block` (dev is u16, so this is exact and
-> separates char/block), the per-major fallback name generator (M1), the
-> `devfs_remove_node` -> `unregister_device` wiring (M1), and the
-> symlink/alias/clone machinery (M2/M3) are NOT yet implemented. `pts` is a
-> devfs directory node (empty until devpts mounts on it). Serial ports got a
-> per-port `name_buf` (the old shared `"ttyS."` literal meant registering a
-> second serial renamed the first); ata registers `dev_name` (hda/hdb), not
-> the master/slave role name.
+> STATUS: **M0 (9468868)** mounts devfs at /dev (32 nodes default IDE, 28 AHCI,
+> 33 NVMe; ls /dev + null/zero verified). **M1+M2 (f2094cb)**: device-table
+> hooks (register_device/unregister_device -> devfs_device_registered/
+> devfs_device_unregistered) + per-major fallback name generators (sdX/
+> nvme0nN/hdX/fdN/ramN) materialize/drop nodes for undeclared devices
+> (38 nodes now, the generators add hdc/hdd etc.); devfs_make_symlink +
+> devfs_symlink_fsop (readlink/followlink, devfs-relative targets) + boot-time
+> alias table (/dev/mouse -> psaux, /dev/disk). `pts` stays a devfs dir node
+> (empty until devpts mounts). Serial name_buf + ata dev_name fixes from M0
+> still apply.
+>
+> KNOWN BLOCKERS for the remaining plan items:
+> - dev-0 nodes (dirs/symlinks/clones) share DEVFS_INO(0): readlink resolves
+>   the first-registered dev-0 node's target (mouse follows "null", not
+>   psaux). Fix = unique per-node ino (devfs_node.ino + find_node_ino) keying
+>   lookup/read_inode, but enabling it crashes the floppy path (fdc_read,
+>   cr2=0, post-INIT) - root cause not yet isolated.
+> - nested alias dirs (disk/by-id/...) and the M3 clone API (ptmx -> pts/N)
+>   both depend on the per-node ino fix.
 >
 
 Goal: a FreeBSD-like devfs that replaces the static /dev nodes in the root
