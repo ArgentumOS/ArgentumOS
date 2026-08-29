@@ -32,7 +32,7 @@ struct devfs_node {
 	char *target;			/* symlink target (S_IFLNK nodes) */
 	unsigned int flags;		/* DEVFS_NODE_* */
 	int clone_count;		/* DEVFS_NODE_CLONE: open refcount */
-	void (*clone_fn)(__dev_t);	/* DEVFS_NODE_CLONE: runtime node maker */
+	int (*clone_fn)(__dev_t);	/* DEVFS_NODE_CLONE: runtime node maker */
 	struct devfs_node *next;
 };
 
@@ -47,7 +47,9 @@ extern struct devfs_node *devfs_nodes;
 extern struct fs_operations devfs_fsop;
 extern struct fs_operations devfs_dir_fsop;
 extern struct fs_operations devfs_symlink_fsop;
+extern struct fs_operations devfs_clone_fsop;
 int devfs_make_symlink(const char *, const char *, __mode_t);
+int devfs_make_clone(const char *, __dev_t, __mode_t, int (*)(__dev_t));
 int devfs_readlink(struct inode *, char *, __size_t);
 int devfs_followlink(struct inode *, struct inode *, struct inode **);
 

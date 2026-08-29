@@ -70,6 +70,40 @@ int devfs_make_node(const char *name, __dev_t dev, __mode_t mode)
 	return 0;
 }
 
+int devfs_make_clone(const char *name, __dev_t dev, __mode_t mode, int (*clone_fn)(__dev_t))
+{
+	struct devfs_node *new;
+
+	if(devfs_find_node(name)) {
+		return 0;
+	}
+	if(strlen(name) > 31) {
+		return -ENAMETOOLONG;
+	}
+	if(!(new = (struct devfs_node *)kmalloc(sizeof(struct devfs_node)))) {
+		return -ENOMEM;
+	}
+	memset_b(new, 0, sizeof(struct devfs_node));
+	strncpy(new->name, name, 31);
+	new->name[31] = '\0';
+	new->dev = dev ? dev : devfs_virtual_dev++;
+	new->mode = mode;
+	new->clone_fn = clone_fn;
+	new->flags |= DEVFS_NODE_CLONE;
+
+	/* keep the registry sorted by device number for a stable /dev listing */
+	{
+		struct devfs_node **n;
+		n = &devfs_nodes;
+		while(*n && (*n)->dev < dev) {
+			n = &(*n)->next;
+		}
+		new->next = *n;
+		*n = new;
+	}
+	return 0;
+}
+
 int devfs_make_symlink(const char *name, const char *target, __mode_t mode)
 {
 	struct devfs_node *n;

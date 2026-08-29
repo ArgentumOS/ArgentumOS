@@ -200,6 +200,7 @@ int pty_close(struct tty *tty)
 		minor = MINOR(tty->dev);
 		CLEAR_MINOR(pty_slave_device.minors, minor);
 		unregister_device(CHR_DEV, &pty_slave_device);
+		devfs_remove_node(MKDEV(PTY_SLAVE_MAJOR, minor));
 		dp = (struct devpts_files *)tty->driver_data;
 		i = (struct inode *)dp->inode;
 		if(tty->count < 2) {
@@ -325,6 +326,29 @@ int pty_select(struct inode *i, struct fd *f, int flag)
 	return 0;
 }
 
+/* devfs clone: materialize the /dev/pts/N runtime node for the pty slave
+ * the pty_open just allocated. Runs right after chr_dev_open, so the
+ * highest set minor in pty_slave_device.minors is the fresh one. The node
+ * is a plain devfs char node whose rdev dispatches through the
+ * pty_slave_device (chr_dev_open). pty_close removes it again. */
+static int pty_devfs_clone(__dev_t dev)
+{
+	char name[8];
+	int minor;
+
+	for(minor = NR_PTYS - 1; minor >= 0; minor--) {
+		if(TEST_MINOR(pty_slave_device.minors, minor)) {
+			break;
+		}
+	}
+	if(minor < 0) {
+		return -ENXIO;
+	}
+	sprintk(name, "pts/%d", minor);
+	devfs_make_node(name, MKDEV(PTY_SLAVE_MAJOR, minor), S_IFCHR | S_IRUSR | S_IWUSR);
+	return 0;
+}
+
 void pty_init(void)
 {
 	struct tty *tty;
@@ -338,7 +362,7 @@ void pty_init(void)
 			unregister_tty(tty);
 			return;
 		}
-		devfs_make_node("ptmx", MKDEV(PTY_MASTER_MAJOR, PTY_MASTER_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+		devfs_make_clone("ptmx", MKDEV(PTY_MASTER_MAJOR, PTY_MASTER_MINOR), S_IFCHR | S_IRUSR | S_IWUSR, pty_devfs_clone);
 		/* devfs directory node that userland init mounts devpts onto */
 		devfs_make_node("pts", 0, S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		printk("ptmx      -\t\t    -\ttype=UNIX98, ptys=%d\n", NR_PTYS);
