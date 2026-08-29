@@ -1354,30 +1354,33 @@ staying legacy avoids the 64-bit feature/negotiation work).
 fills /dev/random; virtio-9p mounts a host dir; 11-NIC regression
 still green after the M0 refactor.
 
-## Pending: PCI serial (pci-serial / multi-serial) — PLANNED, not started
+## Done: PCI serial (pci-serial) — DETECTION works (already implemented)
 
-More debug consoles via QEMU's PCI UARTs. Small, self-contained.
-Do NOT implement until picked up. Verified against
-`qemu-10.0.11+ds/hw/char/serial-pci.c` + `serial-pci-multi.c`.
+`drivers/char/serial.c` already has `serial_pci()` (the "cleaner"
+option below): it probes the PCI table for class 0x0700
+(PCI_CLASS_COMMUNICATION_SERIAL) and registers each I/O-BAR serial as
+ttyS1.. (MMIO BARs are rejected). Verified with
+`-device pci-serial`: `ttyS1 0xc010-0xc017 11 type=16550A FIFO=yes`,
+boot to the shell 3/3 alongside ttyS0.
 
-**Hardware (QEMU 10.0.11):** three RedHat devices, class 0x0700
-(PCI_CLASS_COMMUNICATION_SERIAL):
-- `pci-serial` (1B36:0002, "pci-serial") — 1 port, I/O BAR0 = 8 bytes
-  of 16550 registers, INTx (pin A, PCI-allocated IRQ).
-- 2-port (1B36:0003) and 4-port (1B36:0004) variants — one I/O BAR,
-  8 bytes per port, single muxed INTx line (any port's interrupt
-  raises it; driver must read all ports to find the source).
+**Known caveat (open bug, NOT the detection):** `console=/dev/ttyS1`
+hangs the boot. gdb diagnosis: the kernel reaches `cpu_idle()` (need_
+resched=0, IF=1) and never progresses - the timer/scheduler path
+stalls. The pci-serial's IRQ-driven TX also appears dead (a
+`echo > /dev/ttyS1` produced nothing on an explicit chardev). The
+"Unknown MSI-X vector 40" spurious printk (IRQ8/RTC) fires near the
+end. Root cause not found; the hang is in the serial/console/timer
+interplay (the detection + registration are fine). Load base for
+gdb/map symbol resolution on this build: text ~0x5dccae0
+(start_kernel 0x1016100 -> runtime 0xffffffff85de2be0). Debugging
+harnesses: `.build/spmon.sh` (monitor), `.build/spgdb.sh` (-s gdb
+stub), `.build/sp_vis.sh` (explicit pci-serial chardev).
 
-**FNX integration:** the 16550 register set is EXACTLY what
-`drivers/char/serial.c` already drives (four fixed I/O bases 0x3F8/
-0x2F8/0x3E8/0x2E8 + fixed IRQs 3/4). Two options:
-- Minimal: probe the PCI devices, map their BARs into the existing
-  serial port table (up to 4 more ttyS4-7), IRQ from PCI config —
-  a small refactor of serial.c to take base+irq from PCI instead of
-  the fixed table.
-- Cleaner: keep the fixed ISA table as-is, add a `serial_pci()`
-  probe (mirror of `ata_pci()`) that registers additional `struct
-  device` entries for the PCI ports.
+**Hardware (QEMU 10.0.11):** three RedHat devices, class 0x0700:
+- `pci-serial` (1B36:0002) - 1 port, I/O BAR0 = 8 bytes, INTx.
+- 2-port (1B36:0003) and 4-port (1B36:0004) - one I/O BAR, 8 bytes
+  per port, single muxed INTx line (not yet handled - the probe only
+  registers the first BAR's port).
 Minor register note: the muxed multi-serial IRQ means the handler
 must scan all ports (already the pattern in serial.c's shared-IRQ
 handling for 1&3 / 2&4).
