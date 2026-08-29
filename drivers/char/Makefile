@@ -8,7 +8,7 @@
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 OBJS = console.o tty.o charq.o vt.o ps2.o defkeymap.o keyboard.o psaux.o \
-       memdev.o serial.o lp.o fb.o sysrq.o pty.o es1370.o ac97.o virtio_snd.o
+       memdev.o serial.o lp.o fb.o sysrq.o pty.o es1370.o ac97.o virtio_snd.o hda.o
 
 all:	$(OBJS)
 
