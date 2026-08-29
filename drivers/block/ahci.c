@@ -482,6 +482,13 @@ static int ahci_port_init(void)
 	return ahci_wait_port_ready();
 }
 
+static void ahci_irq_handler(int num, struct sigcontext *sc)
+{
+	/* polled driver: the device IRQ (if any) is not serviced here, but
+	 * the handler must exist so a shared IRQ line (e.g. AC97's IRQ 11)
+	 * never dispatches a NULL pointer */
+}
+
 int ahci_init(void)
 {
 	struct pci_device *pd;
@@ -614,7 +621,7 @@ int ahci_init(void)
 
 	/* register the INTx IRQ */
 	{
-		static struct interrupt irq_config_ahci = { 0, "ahci", NULL };
+		static struct interrupt irq_config_ahci = { 0, "ahci", &ahci_irq_handler };
 		if(pd->irq) {
 			register_irq(pd->irq, &irq_config_ahci);
 		}

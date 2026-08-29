@@ -21,6 +21,7 @@
 #include <fnx/pci.h>
 #include <fnx/asm.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/sleep.h>
 #include <fnx/process.h>
 #include <fnx/sched.h>
@@ -316,7 +317,7 @@ int es1370_init(void)
 	es1370.irq = pd->irq;
 
 	/* command: I/O space */
-	pci_write_short(pd, 0x04, 0x0001);
+	pci_write_short(pd, 0x04, 0x0001 | 0x0004);	/* command: I/O space + bus master */
 
 	/* the DMA buffer: 4 contiguous pages (16KB), phys for the frame */
 	es1370.buf_phys = (unsigned int)alloc_pages64(4);
@@ -339,11 +340,7 @@ int es1370_init(void)
 	if(es1370.irq) {
 		static struct interrupt irq_config_es1370 = { 0, "es1370", &es1370_irq_handler, NULL };
 		register_irq(es1370.irq, &irq_config_es1370);
-		if(es1370.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (es1370.irq - 8)));
-		} else {
-			outport_b(0x21, 0xFE & ~(1 << es1370.irq));
-		}
+		enable_irq(es1370.irq);
 	}
 
 	/* initial control: codec + DAC1 enabled at 44100 */

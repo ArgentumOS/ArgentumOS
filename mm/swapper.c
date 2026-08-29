@@ -24,7 +24,9 @@
 #include <fnx/mm.h>
 #include <fnx/fs.h>
 #include <fnx/filesystems.h>
-#include <fnx/pty.h>#include <fnx/es1370.h>
+#include <fnx/pty.h>
+#include <fnx/es1370.h>
+#include <fnx/ac97.h>
 
 #include <fnx/net.h>
 #include <fnx/stdio.h>
@@ -45,6 +47,7 @@ int kswapd(void)
 #ifdef CONFIG_UNIX98_PTYS
 	pty_init();
 	es1370_init();
+	ac97_init();
 #endif /* CONFIG_UNIX98_PTYS */
 
 	/* network */

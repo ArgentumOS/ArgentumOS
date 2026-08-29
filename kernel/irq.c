@@ -111,7 +111,13 @@ void irq_handler(int num, struct sigcontext sc)
 	kstat.irqs++;
 	irq->ticks++;
 	do {
-		irq->handler(num, &sc);
+		/* FNX: a registered driver may legitimately have a NULL
+		 * handler (polled drivers like AHCI claim the line without
+		 * an ISR); never dispatch through a NULL pointer or a shared
+		 * IRQ like AC97's would crash the kernel */
+		if(irq->handler) {
+			irq->handler(num, &sc);
+		}
 		irq = irq->next;
 	} while(irq);
 

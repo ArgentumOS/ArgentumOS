@@ -143,7 +143,11 @@ void msix_handler(int num, struct sigcontext sc)
 
 	irq->ticks++;
 	do {
-		irq->handler(num, &sc);
+		/* FNX: same NULL-handler guard as kernel/irq.c: polled drivers
+		 * claim the line without an ISR */
+		if(irq->handler) {
+			irq->handler(num, &sc);
+		}
 		irq = irq->next;
 	} while(irq);
 
