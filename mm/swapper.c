@@ -29,6 +29,8 @@
 #include <fnx/ac97.h>
 #include <fnx/virtio_snd.h>
 #include <fnx/hda.h>
+#include <fnx/sb16.h>
+#include <fnx/gus.h>
 
 #include <fnx/net.h>
 #include <fnx/stdio.h>
@@ -52,6 +54,8 @@ int kswapd(void)
 	ac97_init();
 	virtio_snd_init();
 	hda_init();
+	sb16_init();
+	gus_init();
 #endif /* CONFIG_UNIX98_PTYS */
 
 	/* network */
