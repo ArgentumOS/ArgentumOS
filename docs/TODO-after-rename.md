@@ -1736,7 +1736,22 @@ pipes and registers it as the 12th `ext_*` NIC via
   ne2k_pci, tulip, pcnet, e1000, ne2k_isa, i82559er, e1000e, igb,
   vmxnet3) + usb-net: 2/2 pings each.
 
-## Pending: devfs (FreeBSD-style device filesystem) — DECIDED, PLANNED
+## Pending: devfs (FreeBSD-style device filesystem) — M0 DONE (9468868), M1-M3 planned
+
+> STATUS: **M0 committed (9468868)**: devfs mounts at /dev at boot with a
+> kernel-side node registry (make_dev analog). 32 nodes on the default IDE
+> boot; AHCI (28) and NVMe (33) roots boot clean; `ls /dev`, `cat /dev/null`,
+> `dd if=/dev/zero` verified through the devfs inodes. Divergences from the
+> plan below (all forward-compatible): inode encoding is
+> `DEVFS_INO_BASE + (dev << 1) + is_block` (dev is u16, so this is exact and
+> separates char/block), the per-major fallback name generator (M1), the
+> `devfs_remove_node` -> `unregister_device` wiring (M1), and the
+> symlink/alias/clone machinery (M2/M3) are NOT yet implemented. `pts` is a
+> devfs directory node (empty until devpts mounts on it). Serial ports got a
+> per-port `name_buf` (the old shared `"ttyS."` literal meant registering a
+> second serial renamed the first); ata registers `dev_name` (hda/hdb), not
+> the master/slave role name.
+>
 
 Goal: a FreeBSD-like devfs that replaces the static /dev nodes in the root
 image with a kernel-synthesized device filesystem, auto-mounted at /dev at
