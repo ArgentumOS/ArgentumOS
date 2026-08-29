@@ -39,6 +39,11 @@ extern struct device *blk_device_table[NR_BLKDEV];
 
 int register_device(int, struct device *);
 void unregister_device(int, struct device *);
+
+/* devfs hooks (fs/devfs/nodes.c): materialize/drop devfs nodes when a
+ * device registers/unregisters (FreeBSD make_dev model) */
+int devfs_device_registered(int, struct device *);
+void devfs_device_unregistered(int, unsigned char);
 struct device *get_device(int, __dev_t);
 int chr_dev_open(struct inode *, struct fd *);
 int blk_dev_open(struct inode *, struct fd *);

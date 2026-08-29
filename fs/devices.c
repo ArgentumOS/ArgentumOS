@@ -149,6 +149,10 @@ int register_device(int type, struct device *new_d)
 	}
 	*d = new_d;
 
+	/* M1: materialize devfs nodes for undeclared minors of the device
+	 * (per-major fallback generators) */
+	devfs_device_registered(type, new_d);
+
 	return 0;
 }
 
@@ -163,6 +167,9 @@ void unregister_device(int type, struct device *device)
 			return;
 		}
 	}
+
+	/* M1: drop the devfs nodes this device owned */
+	devfs_device_unregistered(type, device->major);
 
 	switch(type) {
 		case CHR_DEV:

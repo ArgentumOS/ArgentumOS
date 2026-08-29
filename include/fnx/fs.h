@@ -21,6 +21,7 @@
 #include <fnx/fs_proc.h>
 #include <fnx/fs_sock.h>
 #include <fnx/fs_epoll.h>
+#include <fnx/fs_devfs.h>
 
 #define BPS			512	/* bytes per sector */
 #define BLKSIZE_1K		1024	/* 1KB block size */
@@ -102,6 +103,7 @@ struct inode {
 		struct sockfs_inode sockfs;
 #endif /* CONFIG_NET */
 		struct epoll_inode epoll;
+		struct devfs_inode devfs;
 	} u;
 };
 extern struct inode *inode_table;

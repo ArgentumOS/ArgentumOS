@@ -38,7 +38,10 @@ int devfs_read_inode(struct inode *i)
 		}
 		mode = n->mode;
 		nlink = 1;
-		if(S_ISDIR(mode)) {
+		i->u.devfs.node = n;
+		if(S_ISLNK(mode)) {
+			i->fsop = &devfs_symlink_fsop;
+		} else if(S_ISDIR(mode)) {
 			/* directory node (e.g. /dev/pts): an empty dir until a
 			 * filesystem (devpts) is mounted on it */
 			i->fsop = &devfs_dir_fsop;

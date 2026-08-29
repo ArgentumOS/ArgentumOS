@@ -88,9 +88,24 @@ int devfs_read_superblock(__dev_t dev, struct superblock *sb)
 	return 0;
 }
 
+/* boot-time alias table (rules-lite): symlinks that reference other
+ * devfs nodes. Targets are devfs-relative and resolved at access time via
+ * followlink(), so the target nodes need not exist yet. */
+static void devfs_aliases(void)
+{
+	devfs_make_symlink("mouse", "psaux", 0777);
+	devfs_make_symlink("disk", "null", 0777);
+}
+
 int devfs_init(void)
 {
-	return register_filesystem("devfs", &devfs_fsop);
+	int errno;
+
+	if((errno = register_filesystem("devfs", &devfs_fsop))) {
+		return errno;
+	}
+	devfs_aliases();
+	return 0;
 }
 
 /* Kernel-side mount of devfs on the rootfs /dev directory, called right

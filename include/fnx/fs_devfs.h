@@ -28,16 +28,34 @@ struct devfs_node {
 	char name[16];			/* node name ("null", "ttyS0", ...) */
 	__dev_t dev;			/* device number (major << 8 | minor) */
 	__mode_t mode;			/* S_IFCHR|0600, S_IFBLK|0600, ... */
+	unsigned int ino;		/* unique inode number (dev 0 nodes) */
+	char *target;			/* symlink target (S_IFLNK nodes) */
+	unsigned int flags;		/* DEVFS_NODE_* */
+	int clone_count;		/* DEVFS_NODE_CLONE: open refcount */
+	void (*clone_fn)(__dev_t);	/* DEVFS_NODE_CLONE: runtime node maker */
 	struct devfs_node *next;
 };
+
+struct devfs_inode {
+	struct devfs_node *node;	/* the registry node backing this inode */
+};
+
+#define DEVFS_NODE_SYMLINK	0x01
+#define DEVFS_NODE_CLONE	0x02
 
 extern struct devfs_node *devfs_nodes;
 extern struct fs_operations devfs_fsop;
 extern struct fs_operations devfs_dir_fsop;
+extern struct fs_operations devfs_symlink_fsop;
+int devfs_make_symlink(const char *, const char *, __mode_t);
+int devfs_readlink(struct inode *, char *, __size_t);
+int devfs_followlink(struct inode *, struct inode *, struct inode **);
 
 int devfs_make_node(const char *, __dev_t, __mode_t);
 void devfs_remove_node(__dev_t);
 struct devfs_node *devfs_find_node(const char *);
+struct devfs_node *devfs_find_node_ino(unsigned int);
+void devfs_remove_device(int, unsigned char);
 struct devfs_node *devfs_find_node_dev(__dev_t);
 
 /* devfs filesystem operations */
