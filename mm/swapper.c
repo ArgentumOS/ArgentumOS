@@ -27,6 +27,7 @@
 #include <fnx/pty.h>
 #include <fnx/es1370.h>
 #include <fnx/ac97.h>
+#include <fnx/virtio_snd.h>
 
 #include <fnx/net.h>
 #include <fnx/stdio.h>
@@ -48,6 +49,7 @@ int kswapd(void)
 	pty_init();
 	es1370_init();
 	ac97_init();
+	virtio_snd_init();
 #endif /* CONFIG_UNIX98_PTYS */
 
 	/* network */
