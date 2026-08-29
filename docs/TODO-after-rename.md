@@ -1406,7 +1406,20 @@ pci-serial-4x`; getty-style input/output on each new ttyS; kernel
 console (`console=ttyS4` via kparms) on a PCI port; regression:
 the four ISA ports still work.
 
-## Pending: audio (OSS /dev/dsp API) — PLANNED, not started
+## Audio (OSS /dev/dsp API) — ES1370 DONE (bb4cacf), more cards pending
+
+The ENSONIQ AudioPCI ES1370 (1274:5000) driver is DONE: OSS /dev/dsp
+(char major 14) + the classic ioctls + blocking PCM write() via the DAC1
+wave-table channel (16KB DMA frame, 44100 Hz S16_LE stereo default, the
+four fixed DAC1 rates). Verified kernel-side: probe, tone completes
+(TONE-OK 22050), the QEMU trace shows the frame armed at the right guest
+physical (sine confirmed via the monitor xp) + DMA transfers + the DAC1
+interrupt firing, no guest errors. Caveat: QEMU's wav backend captures
+zeros despite the correct DMA reads (a QEMU audio capture issue, not the
+driver). Still to do (any of the other card choices): virtio-snd
+(recommended - rides the virtio core), AC97, Intel HDA, SB16, pcspk.
+QEMU: -audiodev wav/pa,id=au -device ES1370,audiodev=au; tone test in
+the rootfs (userland/tone.c, /bin/tone).
 
 Sound output. Do NOT implement until picked up. Decision: implement
 the **OSS userspace API** (`/dev/dsp` + `SNDCTL_DSP_*` ioctls —
