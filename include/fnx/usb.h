@@ -126,6 +126,7 @@ int usb_enumerate(int root_port, int route, int speed);
 int xhci_probe(void);
 int ehci_probe(void);
 int uhci_probe(void);
+int ohci_probe(void);
 void usb_init(void);
 
 #endif /* _FNX_USB_H */

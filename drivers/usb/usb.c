@@ -138,7 +138,7 @@ int usb_enumerate(int root_port, int route, int speed)
 
 void usb_init(void)
 {
-	if(!xhci_probe() || !ehci_probe() || !uhci_probe()) {
+	if(!xhci_probe() || !ehci_probe() || !uhci_probe() || !ohci_probe()) {
 		return;
 	}
 	printk("usb: no host controller found\n");
