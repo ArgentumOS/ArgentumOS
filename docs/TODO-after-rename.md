@@ -1759,9 +1759,17 @@ pipes and registers it as the 12th `ext_*` NIC via
 >   was abandoned; the virtual-dev approach avoids the iget/read_inode dev-0
 >   branch entirely and boots clean (IDE 38 nodes / AHCI 30 / NVMe 32),
 >   devpts mounts on /dev/pts, and `readlink /dev/mouse` -> psaux.
-> - nested alias dirs (disk/by-id/...) need a dir-relative lookup (the M2c
+> - ~~nested alias dirs (disk/by-id/...) need a dir-relative lookup (the M2c
 >   plan item, still pending); the M3 clone API (ptmx -> pts/N) still depends
->   on the dev-0-node machinery.
+>   on the dev-0-node machinery.~~ ALL DONE (09f02cb + eb51591): nested dirs
+>   work (name field 16->32; lookup resolves against a dir node's own prefix
+>   and ".." of a nested dir walks to its parent; readdir lists the first /
+>   next path components deduplicated; /dev/disk/by-id/ata-hd* + readlink
+>   verified). The clone API (devfs_make_clone + devfs_clone_fsop: open runs
+>   chr_dev_open then clone_fn, which materializes the runtime node; freed at
+>   close) is wired to /dev/ptmx -> /dev/pts/N (the pty slave's runtime node
+>   lives in devfs alongside devpts - both coexist; pty battery: PTY-OK
+>   /dev/pts/0). 41 nodes on the default IDE boot.
 >
 
 Goal: a FreeBSD-like devfs that replaces the static /dev nodes in the root
