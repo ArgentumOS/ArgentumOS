@@ -13,6 +13,8 @@
 
 int main2(void);
 
+static char g_buf[1024];
+
 int main(int argc, char **argv)
 {
 	int n = 3000, base = 0, i, fd, count = 0;
@@ -93,24 +95,41 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-/* mode "trunc": write 8 blocks of marker data, ftruncate to 5 blocks,
- * read back and verify the tail is gone and the first 5 blocks survive */
+/* mode "trunc": create a FRAGMENTED 8-block file (three runs: blocks
+ * 0-3, 6-7, then 4-5), ftruncate to 5 blocks, read back and verify the
+ * tail is gone and blocks 0-4 survive. The multi-run shape exercises the
+ * truncate whole-run-vs-partial free logic (a run starting before the new
+ * length must keep its in-range blocks). */
+static void put_blk(int fd, int blk, char c)
+{
+	if(lseek(fd, (off_t)blk * 1024, SEEK_SET) < 0) {
+		printf("TRUNC-SEEK-FAIL %s\n", strerror(errno));
+		exit(1);
+	}
+	memset(g_buf, c, sizeof(g_buf));
+	if(write(fd, g_buf, sizeof(g_buf)) != sizeof(g_buf)) {
+		printf("TRUNC-WRITE-FAIL %s\n", strerror(errno));
+		exit(1);
+	}
+}
+
 int main2(void)
 {
 	int fd, i, rd;
-	char buf[1024];
 	struct stat st;
 
 	if((fd = open("/mnt/trunc", O_CREAT | O_WRONLY, 0644)) < 0) {
 		printf("TRUNC-OPEN-FAIL %s\n", strerror(errno));
 		return 1;
 	}
-	for(i = 0; i < 8; i++) {
-		memset(buf, 'A' + i, sizeof(buf));
-		if(write(fd, buf, sizeof(buf)) != sizeof(buf)) {
-			printf("TRUNC-WRITE-FAIL %s\n", strerror(errno));
-			return 1;
-		}
+	for(i = 0; i < 4; i++) {
+		put_blk(fd, i, 'A' + i);
+	}
+	for(i = 6; i < 8; i++) {
+		put_blk(fd, i, 'A' + i);
+	}
+	for(i = 4; i < 6; i++) {
+		put_blk(fd, i, 'A' + i);
 	}
 	close(fd);
 	if((fd = open("/mnt/trunc", O_WRONLY)) < 0 ||
@@ -129,18 +148,18 @@ int main2(void)
 		return 1;
 	}
 	for(i = 0; i < 5; i++) {
-		rd = read(fd, buf, sizeof(buf));
-		if(rd != sizeof(buf)) {
+		rd = read(fd, g_buf, sizeof(g_buf));
+		if(rd != sizeof(g_buf)) {
 			printf("TRUNC-READ-FAIL at %d rd=%d %s\n",
 			       i, rd, strerror(errno));
 			return 1;
 		}
-		if(buf[0] != 'A' + i) {
-			printf("TRUNC-CONTENT-BAD at %d got %c\n", i, buf[0]);
+		if(g_buf[0] != 'A' + i) {
+			printf("TRUNC-CONTENT-BAD at %d got %c\n", i, g_buf[0]);
 			return 1;
 		}
 	}
-	if(read(fd, buf, sizeof(buf)) != 0) {
+	if(read(fd, g_buf, sizeof(g_buf)) != 0) {
 		printf("TRUNC-TAIL-FAIL (read past end)\n");
 		return 1;
 	}

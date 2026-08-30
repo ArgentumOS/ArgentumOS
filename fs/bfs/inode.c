@@ -520,7 +520,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 		base = (ds->direct[run].allocation_group << ag_shift)
 			+ ds->direct[run].start;
 		run_end = covered + ((__u64)len << BFS_BLOCK_SHIFT);
-		if((covered << BFS_BLOCK_SHIFT) >= (__u64)length) {
+		if(covered >= (__u64)length) {
 			/* the whole run is beyond the new size: free it */
 			__u32 n;
 			for(n = 0; n < len; n++) {
