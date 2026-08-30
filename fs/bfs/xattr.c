@@ -2,7 +2,7 @@
  * fnx/fs/bfs/xattr.c
  *
  * BFS small_data attributes (M4d). Attributes are packed into the
- * 58-byte small_data tail of the inode (raw + 198 .. raw + 256) as
+ * 24-byte small_data tail of the inode (raw + 232 .. raw + 256) as
  * consecutive records:
  *
  *	struct bfs_small_data {
