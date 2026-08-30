@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M4c DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b)
+## OpenBFS (BeOS BFS) filesystem - M0-M4d DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -584,7 +584,11 @@ fragmented-file content), `.build/rootfs64/bin/bfshuge` +
 8000-entry dir -> depth-3 tree; host walk checks exact set, sortedness,
 duplicates, inode validity, separator ranges), and
 `.build/rootfs64/bin/bfssym` (M4c: short/long/boundary symlinks,
-follow-through, reopen persistence; host check in the commit message).
+follow-through, reopen persistence), and `.build/rootfs64/bin/bfsxattr`
++ `userland/bfsxattr.c` (M4d: small_data attributes — set/get/list/
+remove via the 12 xattr syscalls, XATTR_CREATE/REPLACE, ENOSPC on the
+24-byte budget, symlink EOPNOTSUPP, dir attrs, f* via fd, reopen
+persistence; host-side verifies the packed records).
 mkbfs.py writes multi-AG bitmaps for >8MB images (num_ags per 8MB,
 bitmap at blocks 1..num_ags, journal/inodes shifted after it). M4c also
 fixed three core VFS bugs found while testing symlinks: sys_open's
@@ -595,8 +599,7 @@ leak). See project memory `fnx-openbfs-m4a-indirect-in-progress` for
 the bug list + gotchas (dd conv=notrunc, brelse-vs-bwrite, stale
 esp.img, strcmp sign, the host-verifier allocation_group trap, serial
 input needs a ~24s delay, the inode u.data.size / symlink[136..143]
-aliasing trap). Remaining: journaling (M3-plan), multi-node trees,
-small_data attrs (M4d), BFS as root fs. The existing ext2 root
+aliasing trap). Remaining: journaling (M3-plan), multi-node trees, BFS as root fs. The existing ext2 root
 (mkext2.py, rev-0, 1KB blocks) stays as-is.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
