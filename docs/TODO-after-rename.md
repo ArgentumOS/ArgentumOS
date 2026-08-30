@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M4d DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61)
+## OpenBFS (BeOS BFS) filesystem - M0-M4e DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -599,7 +599,23 @@ leak). See project memory `fnx-openbfs-m4a-indirect-in-progress` for
 the bug list + gotchas (dd conv=notrunc, brelse-vs-bwrite, stale
 esp.img, strcmp sign, the host-verifier allocation_group trap, serial
 input needs a ~24s delay, the inode u.data.size / symlink[136..143]
-aliasing trap). Remaining: journaling (M3-plan), multi-node trees, BFS as root fs. The existing ext2 root
+aliasing trap). M4e (9b5eb9f) = journaling: the faithful Haiku on-disk
+log format (run_array index block + data blocks per transaction,
+log_start/log_end as block offsets in the log_blocks extent), write-ahead
+deferred-apply commits ((1) log entry + sync, (2) on-disk superblock AND
+free-space bitmap + sync, (3) real blocks + sync), mount-time replay
+(restores uncommitted transactions, then drains the log; a partial walk
+refuses the mount), per-superblock tx-ownership lock (the commit sleeps
+on I/O, so a concurrent tx on the same sb would clobber the tx state),
+umount drains the log under the lock. mkbfs: journal extent 4 -> 16
+blocks (a split transaction needs headroom). Test: .build/rootfs64/bin/
+bfsjrnl (journaled dir/symlink/xattr writes + reopen) and .build/
+jrnl_craft.py (host-crafts a pending transaction: corrupts an inode
+block + writes a log entry + DIRTY sb; the mount must replay it — block
+restored, log drained, sb clean). Two bugs fixed on the way: a gcc -O2
+miscompile of bfs_log_commit's indexed loops (1..n shift + OOB; loops
+now walk pointers) and an interleaved write_inode tx clobbering the tx
+state mid-commit (fixed by the ownership lock). Remaining: multi-node trees, BFS as root fs. The existing ext2 root
 (mkext2.py, rev-0, 1KB blocks) stays as-is.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
