@@ -132,8 +132,11 @@ int main2(void)
 		put_blk(fd, i, 'A' + i);
 	}
 	close(fd);
+	/* truncate to 7 blocks: run1 (blocks 6-7) straddles the new EOF, so
+	 * the old bug (whole-free by disk address) would drop block 6 and the
+	 * read-back below fails on zeros */
 	if((fd = open("/mnt/trunc", O_WRONLY)) < 0 ||
-			ftruncate(fd, 5 * 1024) < 0) {
+			ftruncate(fd, 7 * 1024) < 0) {
 		printf("TRUNC-FTRUNC-FAIL %s\n", strerror(errno));
 		return 1;
 	}
@@ -142,12 +145,12 @@ int main2(void)
 		printf("TRUNC-STAT-FAIL %s\n", strerror(errno));
 		return 1;
 	}
-	printf("TRUNC-SIZE %d (expect 5120)\n", (int)st.st_size);
+	printf("TRUNC-SIZE %d (expect 7168)\n", (int)st.st_size);
 	if((fd = open("/mnt/trunc", O_RDONLY)) < 0) {
 		printf("TRUNC-REOPEN-FAIL %s\n", strerror(errno));
 		return 1;
 	}
-	for(i = 0; i < 5; i++) {
+	for(i = 0; i < 7; i++) {
 		rd = read(fd, g_buf, sizeof(g_buf));
 		if(rd != sizeof(g_buf)) {
 			printf("TRUNC-READ-FAIL at %d rd=%d %s\n",
