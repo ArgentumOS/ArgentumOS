@@ -12,6 +12,7 @@
 #include <fnx/bga.h>
 #include <fnx/pci.h>
 #include <fnx/console.h>
+#include <fnx/video.h>
 #include <fnx/mm.h>
 #include <fnx/string.h>
 #include <fnx/stdio.h>
@@ -81,7 +82,8 @@ static int setup_bga_device(struct pci_device *pci_dev)
 	video.fb_size = video.fb_width * video.fb_height * video.fb_pixelwidth;
 	video.fb_vsize = video.lines * video.fb_pitch * video.fb_char_height;
 
-	map_kaddr(kpage_dir, (addr_t)video.address, (addr_t)video.address + video.memsize, 0, PAGE_PRESENT | PAGE_RW);
+	video.fb_phys = (unsigned int)video.address;	/* the LFB phys (BAR) */
+	video_map_framebuffer(video.fb_phys, video.memsize);
 
 	bga_write_register(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
 	return 1;

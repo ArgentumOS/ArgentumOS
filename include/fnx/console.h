@@ -143,6 +143,8 @@ struct video_parms {
 	int fb_version;
 	int fb_width;
 	int fb_height;
+	unsigned int fb_phys;	/* the framebuffer's physical address (for mmap) */
+	void (*flush)(void);	/* optional display-flush hook (SVGA FIFO) */
 	int fb_char_width;
 	int fb_char_height;
 	int fb_bpp;

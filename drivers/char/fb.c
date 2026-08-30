@@ -20,6 +20,8 @@
 #include <fnx/mman.h>
 #include <fnx/fcntl.h>
 #include <fnx/bios.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/stat.h>
 
 #define IO_FB_XRES	2	/* TODO(ghaerr): to be removed shortly */
 #define IO_FB_YRES	3
@@ -91,7 +93,7 @@ int fb_close(struct inode *i, struct fd *f)
 
 int fb_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 {
-	unsigned int addr;
+	addr_t addr;
 
 	if(f->offset >= video.memsize) {
 		return 0;
@@ -106,7 +108,7 @@ int fb_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 
 int fb_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 {
-	unsigned int addr;
+	addr_t addr;
 
 	if(f->offset >= video.memsize) {
 		return -ENOSPC;
@@ -123,7 +125,7 @@ int fb_mmap(struct inode *i, struct vma *vma)
 {
 	unsigned int fbaddr, addr;
 
-	fbaddr = (addr_t)video.address;
+	fbaddr = (addr_t)video.fb_phys;
 	for (addr = vma->start; addr < vma->end; addr += 4096) {
 		/* map framebuffer physaddr into user space without page allocations */
 		map_page_flags(current, addr, fbaddr, PROT_READ|PROT_WRITE, PAGE_NOALLOC);
@@ -184,4 +186,7 @@ void fb_init(void)
 		printk("ERROR: %s(): unable to register fb device.\n", __FUNCTION__);
 		return;
 	}
+	devfs_make_node("fb0", MKDEV(FB_MAJOR, FB_MINOR),
+			S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
+			S_IROTH | S_IWOTH);
 }

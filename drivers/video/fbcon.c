@@ -180,6 +180,9 @@ void fbcon_put_char(struct vconsole *vc, unsigned char ch)
 	draw_glyph(vidmem, vc->x, vc->y, &font_data[ch * video.fb_char_height], vc->color_attr >> 8);
 	screen[(vc->y * vc->columns) + vc->x] = vc->color_attr | ch;
 	vcbuf[(video.buf_y * vc->columns) + vc->x] = vc->color_attr | ch;
+	if(video.flush) {
+		video.flush();
+	}
 }
 
 void fbcon_insert_char(struct vconsole *vc)
@@ -410,6 +413,9 @@ void fbcon_scroll_screen(struct vconsole *vc, int top, int mode)
 			}
 			memset_w(screen + (top * vc->columns), BLANK_MEM, vc->columns);
 			break;
+	}
+	if(video.flush) {
+		video.flush();
 	}
 	return;
 }

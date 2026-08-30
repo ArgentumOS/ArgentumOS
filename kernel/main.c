@@ -91,9 +91,10 @@ static void gop_video_init(void)
 	pixelwidth = bpp / 8;
 
 	video.flags = VPF_VESAFB;
-	video.address = (unsigned int *)fnx_gop_fb.phys_base; /* identity-mapped */
+	video.fb_phys = (unsigned int)fnx_gop_fb.phys_base;
 	video.port = 0;
 	video.memsize = (int)fnx_gop_fb.size;
+	video_map_framebuffer(video.fb_phys, video.memsize);
 	video.fb_version = 0;
 	video.fb_width = (int)fnx_gop_fb.width;
 	video.fb_height = (int)fnx_gop_fb.height;

@@ -117,6 +117,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
 	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
 	$(MUSL64_CC) userland/tone.c -o $(ROOTFS64)/bin/tone -lm
+	$(MUSL64_CC) userland/fbdump.c -o $(ROOTFS64)/bin/fbdump
 	cp $(DASH64_BIN) $(ROOTFS64)/bin/sh
 	cp userland/test_toybox.sh $(ROOTFS64)/test_toybox.sh
 	# DHCP event script for toybox's dhcp client (default location)
