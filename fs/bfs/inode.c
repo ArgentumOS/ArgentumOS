@@ -107,7 +107,6 @@ int bfs_write_inode(struct inode *i)
 	i->u.bfs.raw.u.data.size = i->i_size;
 	i->u.bfs.raw.last_modified_time = (__u64)i->i_mtime << 16;
 	i->u.bfs.raw.status_change_time = (__u64)i->i_ctime << 16;
-
 	memcpy_b(raw, &i->u.bfs.raw, sizeof(struct bfs_inode));
 	raw->magic1 = BFS_INODE_MAGIC;
 	raw->flags = BFS_INODE_IN_USE;
@@ -115,8 +114,9 @@ int bfs_write_inode(struct inode *i)
 	raw->inode_num.start = i->inode;
 	raw->inode_num.len = 1;
 	raw->u.data.size = i->i_size;
-	/* keep the runs consistent with the size */
-	raw->u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
+	/* max_direct_range was already copied by the memcpy above; do NOT
+	 * reset it to the full direct range here — bmap tracks the real
+	 * coverage and bfs_indirect_bmap translates offsets against it */
 	(void)ds;
 
 	bwrite(buf);
@@ -213,33 +213,58 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 	}
 
 	if(block < covered) {
-		return 0;	/* unmapped read within the direct range */
+		/* inside the direct range but not in any run: a hole. Reads
+		 * see it as unmapped (zeros); a write would have no run slot
+		 * to represent it (returning 0 would make the caller write
+		 * into block 0) */
+		if(mode == FOR_WRITING) {
+			return -EIO;
+		}
+		return 0;
+	}
+
+	if(nrun < 0) {
+		/* all 12 direct runs are used: the indirect stream covers the
+		 * file beyond them (this is where reads of the indirect region
+		 * must go too — returning 0 here would turn the tail of a
+		 * fragmented file into zeros) */
+		return bfs_indirect_bmap(i, offset, mode);
 	}
 
 	if(mode != FOR_WRITING) {
-		return 0;	/* unmapped */
+		return 0;	/* unmapped: the direct runs don't reach here */
 	}
 
-	if(block != covered) {
-		/* allocation must be sequential (the write path allocates in
-		 * order); a gap means a double-indirect stream would be
-		 * needed (12 direct runs + the indirect table exhausted) */
-		return -EIO;
-	}
+	/* Allocate file blocks [covered, block]. BFS runs are positional
+	 * (run i covers the file range after runs 0..i-1), so a sparse
+	 * write past a hole must materialize the hole: every intermediate
+	 * block gets allocated and the last run is extended, or a new run
+	 * is appended, block by block. Returns the disk block for the
+	 * requested file block ('block').
+	 */
+	while(block >= covered) {
+		__blk_t nb;
 
-	/* try to extend the last direct run with the contiguous next block */
-	if(nrun > 0 && last_len) {
-		__blk_t next = (last_ag << ag_shift) + last_start + last_len;
-		if(bfs_balloc_specific(i->sb, next) == 0) {
-			ds->direct[nrun - 1].len++;
-			ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
-			return next;
+		/* try to extend the last direct run with the contiguous next block */
+		if(nrun > 0 && last_len) {
+			nb = (last_ag << ag_shift) + last_start + last_len;
+			if(bfs_balloc_specific(i->sb, nb) == 0) {
+				ds->direct[nrun - 1].len++;
+				ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
+				last_len++;
+				covered++;
+				if(block < covered) {
+					return nb;
+				}
+				continue;
+			}
 		}
-	}
-
-	/* append a new direct run (or start the first one) */
-	if(nrun >= 0) {
-		__blk_t nb = bfs_balloc(i->sb);
+		if(nrun >= BFS_NUM_DIRECT_BLOCKS) {
+			/* all 12 direct runs are used: go indirect */
+			return bfs_indirect_bmap(i, offset, mode);
+		}
+		/* append a new direct run (or start the first one) */
+		nb = bfs_balloc(i->sb);
 		if(nb < 0) {
 			return nb;
 		}
@@ -247,11 +272,16 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 		ds->direct[nrun].start = nb & ((1 << ag_shift) - 1);
 		ds->direct[nrun].len = 1;
 		ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
-		return nb;
+		last_ag = ds->direct[nrun].allocation_group;
+		last_start = ds->direct[nrun].start;
+		last_len = 1;
+		nrun++;
+		covered++;
+		if(block < covered) {
+			return nb;
+		}
 	}
-
-	/* all 12 direct runs are used: go indirect */
-	return bfs_indirect_bmap(i, offset, mode);
+	return 0;	/* unreachable */
 }
 
 /*
@@ -290,6 +320,15 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 				if(mode == FOR_WRITING) {
 					__blk_t nb;
 
+					if(block > covered) {
+						/* sparse write into the indirect region: the
+						 * table walk can't materialize the hole across
+						 * table-block boundaries; reject loudly rather
+						 * than map the wrong file block (the direct
+						 * path handles sparse writes up to 12 runs) */
+						brelse(buf);
+						return -EIO;
+					}
 					/* try to extend the previous run */
 					if(j > 0) {
 						struct bfs_block_run *pr = &runs[j - 1];
@@ -297,7 +336,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 							+ pr->start + pr->len;
 						if(bfs_balloc_specific(i->sb, next) == 0) {
 							pr->len++;
-							brelse(buf);
+							bwrite(buf);	/* persist the table block */
 							return next;
 						}
 					}
@@ -308,7 +347,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 					runs[j].allocation_group = (__u32)(nb >> ag_shift);
 					runs[j].start = nb & ((1 << ag_shift) - 1);
 					runs[j].len = 1;
-					brelse(buf);
+					bwrite(buf);	/* persist the table block */
 					return nb;
 				}
 				brelse(buf);
@@ -329,22 +368,42 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		return 0;	/* unmapped */
 	}
 
-	/* the table is full: grow it by one block (extend the indirect run
-	 * with the contiguous next block) */
+	/* the table is full (or does not exist yet): grow it by one block */
 	{
-		__blk_t next = (ds->indirect.allocation_group << ag_shift)
-			+ ds->indirect.start + table_len;
+		__blk_t next;
+		struct buffer *zbuf;
 
-		if(bfs_balloc_specific(i->sb, next) == 0) {
+		if(table_len == 0) {
+			/* first indirect block: allocate a fresh block for the
+			 * table (there is no existing run to extend) */
+			if((next = bfs_balloc(i->sb)) < 0) {
+				return next;
+			}
+			ds->indirect.allocation_group = (__u32)(next >> ag_shift);
+			ds->indirect.start = next & ((1 << ag_shift) - 1);
+			ds->indirect.len = 1;
+		} else if(bfs_balloc_specific(i->sb, (ds->indirect.allocation_group
+				<< ag_shift) + ds->indirect.start + table_len) == 0) {
+			/* extend the indirect run with the contiguous next block */
 			ds->indirect.len++;
-			ds->max_indirect_range = ds->indirect.len
-				* arraylen << BFS_BLOCK_SHIFT;
-			/* recurse: the new table block is empty, the write
-			 * path above fills it */
-			return bfs_indirect_bmap(i, offset, mode);
+		} else {
+			return -ENOSPC;
 		}
+		/* zero the new table block so free slots read len == 0 (the
+		 * block may have been reused and hold stale run data) */
+		if(!(zbuf = bread(i->dev, (ds->indirect.allocation_group << ag_shift)
+				+ ds->indirect.start + ds->indirect.len - 1,
+				i->sb->s_blocksize))) {
+			return -EIO;
+		}
+		memset_b(zbuf->data, 0, i->sb->s_blocksize);
+		bwrite(zbuf);
+		ds->max_indirect_range = ds->indirect.len
+			* arraylen << BFS_BLOCK_SHIFT;
+		/* recurse: the new table block is empty, the write
+		 * path above fills it */
+		return bfs_indirect_bmap(i, offset, mode);
 	}
-	return -ENOSPC;
 }
 
 /*

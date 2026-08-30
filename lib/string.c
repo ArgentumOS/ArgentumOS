@@ -43,28 +43,39 @@ void swap_asc_word(char *str, int len)
 
 int strcmp(const char *str1, const char *str2)
 {
-	while(*str1) {
+	while(*str1 && *str2) {
 		if(*str1 != *str2) {
-			return 1;
+			return (*str1 < *str2) ? -1 : 1;
 		}
 		str1++;
 		str2++;
 	}
-	if(!(*str2)) {
-		return 0;
+	if(*str1 < *str2) {
+		return -1;
 	}
-	return 1;
+	if(*str1 > *str2) {
+		return 1;
+	}
+	return 0;
 }
 
 int strncmp(const char *str1, const char *str2, __ssize_t n)
 {
-	while(n > 0 && *str1) {
+	while(n > 0 && *str1 && *str2) {
 		if(*str1 != *str2) {
-			return 1;
+			return (*str1 < *str2) ? -1 : 1;
 		}
 		str1++;
 		str2++;
 		n--;
+	}
+	if(n > 0) {
+		if(*str1 < *str2) {
+			return -1;
+		}
+		if(*str1 > *str2) {
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -351,7 +362,7 @@ int memcmp(const void *str1, const void *str2, unsigned int count)
 	s2 = (const unsigned char *)str2;
 	while(count--) {
 		if(*s1 != *s2) {
-			return s1 < s2 ? -1 : 1;
+			return (*s1 < *s2) ? -1 : 1;
 		}
 		s1++;
 		s2++;

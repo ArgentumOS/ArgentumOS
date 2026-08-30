@@ -383,6 +383,10 @@ static int bfs_btree_collect(struct bfs_btree_node *n, struct bfs_btree_pair *pa
 	index = count;
 	for(i = 0; i < count; i++) {
 		int cmp = strncmp(iname, pairs[i].key, pairs[i].keylen);
+		if(cmp == 0 && !iname[pairs[i].keylen]) {
+			/* exact duplicate: the name is already in the tree */
+			return -1;
+		}
 		if(cmp < 0 || (cmp == 0 && iname[pairs[i].keylen])) {
 			index = i;
 			break;
