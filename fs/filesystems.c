@@ -79,6 +79,9 @@ void fs_init(void)
 	if(iso9660_init()) {
 		printk("%s(): unable to register 'iso9660' filesystem.\n", __FUNCTION__);
 	}
+	if(bfs_init()) {
+		printk("%s(): unable to register 'bfs' filesystem.\n", __FUNCTION__);
+	}
 	if(procfs_init()) {
 		printk("%s(): unable to register 'procfs' filesystem.\n", __FUNCTION__);
 	}
