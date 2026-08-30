@@ -64,6 +64,9 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 			if(seg == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			if(cmd == IPC_STAT) {
+				IPC_SEQ_CHECK(seg->shm_perm.seq, shmid, SHMMNI);
+			}
 			if(!ipc_has_perms(&seg->shm_perm, IPC_R)) {
 				return -EACCES;
 			}
@@ -99,6 +102,7 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 				if(seg == IPC_UNUSED) {
 					return -EINVAL;
 				}
+				IPC_SEQ_CHECK(seg->shm_perm.seq, shmid, SHMMNI);
 				perm = &seg->shm_perm;
 				if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 					return -EPERM;
@@ -115,6 +119,7 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 			if(seg == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(seg->shm_perm.seq, shmid, SHMMNI);
 			perm = &seg->shm_perm;
 			if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 				return -EPERM;
@@ -131,6 +136,7 @@ int sys_shmctl(int shmid, int cmd, struct shmid_ds *buf)
 			if(seg == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(seg->shm_perm.seq, shmid, SHMMNI);
 			perm = &seg->shm_perm;
 			if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 				return -EPERM;

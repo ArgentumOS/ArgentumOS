@@ -42,9 +42,12 @@ int ipc_has_perms(struct ipc_perm *perm, int mode)
 		return 1;
 	}
 
-	if(current->euid != perm->uid || current->euid != perm->cuid) {
+	/* the caller is treated as the owner only when the euid matches BOTH
+	 * the owner and the creator (the old '||' demoted the original owner
+	 * to group/other bits whenever an IPC_SET later changed uid) */
+	if(current->euid != perm->uid && current->euid != perm->cuid) {
 		mode >>= 3;
-		if(current->egid != perm->gid || current->egid != perm->cgid) {
+		if(current->egid != perm->gid && current->egid != perm->cgid) {
 			mode >>= 3;
 		}
 	}

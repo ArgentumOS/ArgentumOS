@@ -249,14 +249,15 @@ int sys_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, s
 	}
 
 	if(timeout) {
-		/* 'timeout' is read AND written (tv2ticks/ticks2tv) with no
-		 * check in the old code: a bogus pointer was an arbitrary
-		 * kernel read/write, an unmapped one a kernel panic */
-		if((errno = check_user_area(VERIFY_READ, timeout, sizeof(struct timeval))) ||
-		   (errno = check_user_area(VERIFY_WRITE, timeout, sizeof(struct timeval)))) {
+		struct timeval tv;
+
+		/* 'timeout' is read AND written (tv2ticks/ticks2tv): the
+		 * fault-recovering copies return -EFAULT instead of an
+		 * unchecked kernel read/write or a raced-munmap panic */
+		if((errno = copy_from_user(&tv, timeout, sizeof(struct timeval)))) {
 			return errno;
 		}
-		t = tv2ticks(timeout);
+		t = tv2ticks(&tv);
 	} else {
 		t = INFINITE_WAIT;
 	}
@@ -282,7 +283,13 @@ int sys_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, s
 		memcpy_b(exceptfds, &res_efds, sizeof(fd_set));
 	}
 	if(timeout) {
-		ticks2tv(t, timeout);
+		struct timeval tv;
+
+		tv.tv_sec = t / HZ;
+		tv.tv_usec = (t % HZ) * (1000000 / HZ);
+		if(copy_to_user(timeout, &tv, sizeof(struct timeval))) {
+			return -EFAULT;
+		}
 	}
 	return errno;
 }

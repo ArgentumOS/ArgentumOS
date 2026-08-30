@@ -68,6 +68,15 @@ extern struct resource ipcmsg_resource;
 void ipc_init(void);
 int ipc_has_perms(struct ipc_perm *, int);
 
+/* validate that a user IPC id (seq * N + slot) still refers to the
+ * current slot occupant: once a slot is recycled, an old id must fail
+ * with -EIDRM instead of silently resolving to the new object */
+#define IPC_SEQ_CHECK(seq_field, id, N) \
+	do { \
+		if((seq_field) != (unsigned short)((unsigned int)(id) / (N))) \
+			return -EIDRM; \
+	} while(0)
+
 #endif /* _FNX_IPC_H */
 
 #endif /* CONFIG_SYSVIPC */

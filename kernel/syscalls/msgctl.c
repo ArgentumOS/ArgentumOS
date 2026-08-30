@@ -57,6 +57,10 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 			if(mq == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			/* MSG_STAT takes a kernel slot id (not seq-encoded) */
+			if(cmd == IPC_STAT) {
+				IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
+			}
 			if(!ipc_has_perms(&mq->msg_perm, IPC_R)) {
 				return -EACCES;
 			}
@@ -88,6 +92,7 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 				if(mq == IPC_UNUSED) {
 					return -EINVAL;
 				}
+				IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 				perm = &mq->msg_perm;
 				if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 					return -EPERM;
@@ -111,6 +116,7 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 			if(mq == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 			perm = &mq->msg_perm;
 			if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 				return -EPERM;
@@ -131,6 +137,7 @@ int sys_msgctl(int msqid, int cmd, struct msqid_ds *buf)
 			if(mq == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 			perm = &mq->msg_perm;
 			if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 				return -EPERM;

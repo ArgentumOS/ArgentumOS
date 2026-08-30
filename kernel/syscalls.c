@@ -19,8 +19,7 @@
 #include <fnx/stdio.h>
 #endif /*__DEBUG__ */
 
-static int verify_address(int type, const void *addr, unsigned int size)
-{
+int verify_address(int type, const void *addr, unsigned int size){
 	struct vma *vma;
 	addr_t start;
 	unsigned int gs;
@@ -119,36 +118,36 @@ void free_name(const char *name)
  */
 int malloc_name(const char *string, char **name)
 {
-	char *b, *s;
-	int n, errno;
-	addr_t page_off;
-	unsigned int chunk;
+	char *b;
+	long len;
 
 	if(!(b = (char *)kmalloc(PAGE_SIZE))) {
 		return -ENOMEM;
 	}
 	*name = b;
-	s = (char *)string;
-	n = 0;
-	/* copy up to PAGE_SIZE bytes, verifying each page up to its end
-	 * (never a full page past the string: a stack-resident pathname in
-	 * the top page of the stack vma would otherwise fail the check) */
-	while(n < PAGE_SIZE) {
-		page_off = (addr_t)s & ~PAGE_MASK;
-		chunk = PAGE_SIZE - page_off;
-		if((errno = verify_address(PROT_READ, s, chunk))) {
-			kfree((addr_t)b);
-			return errno;
-		}
-		for(; n < PAGE_SIZE && chunk; n++, chunk--) {
-			if(!(*b++ = *s++)) {
-				return 0;
-			}
-		}
-	}
 
-	free_name(*name);
-	return -ENAMETOOLONG;
+	/* measure the string with the fault-recovering page-walk (never a
+	 * full page past the NUL: a stack-resident pathname in the top page
+	 * of the stack vma must not fail the check) */
+	len = strnlen_user(string, PAGE_SIZE);
+	if(len < 0) {
+		kfree((addr_t)b);
+		return -EFAULT;
+	}
+	if(len >= PAGE_SIZE) {
+		/* no NUL within a page: copy what we can and report ENAMETOOLONG */
+		if(copy_from_user(b, string, PAGE_SIZE)) {
+			kfree((addr_t)b);
+			return -EFAULT;
+		}
+		free_name(*name);
+		return -ENAMETOOLONG;
+	}
+	if(copy_from_user(b, string, len + 1)) {
+		kfree((addr_t)b);
+		return -EFAULT;
+	}
+	return 0;
 }
 
 int check_user_permission(struct inode *i)
@@ -238,6 +237,97 @@ int check_chown_permission(struct inode *i, __uid_t owner, __gid_t group)
 int check_user_area(int type, const void *addr, unsigned int size)
 {
 	return verify_address(type, addr, size);
+}
+
+/*
+ * Fault-recovering user-memory access. FNX has no SMAP and no exception
+ * tables: the kernel dereferences user pointers directly at CPL0, so a
+ * user buffer unmapped by a racing thread between verify_address() and
+ * the copy would fault in kernel mode and PANIC. These helpers install a
+ * recovery point (setjmp): if do_page_fault() cannot resolve the fault
+ * (no vma / not stack-like) it longjmps back here and the copy returns
+ * -EFAULT instead of panicking. Single-CPU kernel: only one copy is
+ * active at a time, so a single global jmp_buf is safe.
+ */
+static unsigned long user_copy_jb[16];
+static int user_copy_active;
+
+int user_copy_in_progress(void)
+{
+	return user_copy_active;
+}
+
+void user_copy_fault_recover(void)
+{
+	user_copy_active = 0;
+	__builtin_longjmp((void *)user_copy_jb, 1);
+}
+
+int copy_from_user(void *to, const void *from, unsigned int n)
+{
+	int errno;
+
+	if((errno = verify_address(VERIFY_READ, from, n))) {
+		return errno;
+	}
+	user_copy_active = 1;
+	if(__builtin_setjmp((void *)user_copy_jb)) {
+		user_copy_active = 0;
+		return -EFAULT;
+	}
+	memcpy_b(to, from, n);
+	user_copy_active = 0;
+	return 0;
+}
+
+int copy_to_user(void *to, const void *from, unsigned int n)
+{
+	int errno;
+
+	if((errno = verify_address(VERIFY_WRITE, to, n))) {
+		return errno;
+	}
+	user_copy_active = 1;
+	if(__builtin_setjmp((void *)user_copy_jb)) {
+		user_copy_active = 0;
+		return -EFAULT;
+	}
+	memcpy_b(to, from, n);
+	user_copy_active = 0;
+	return 0;
+}
+
+/* bounded user-string length: walks page by page (a stack string in the
+ * top page of the stack vma must not require a full page past the NUL)
+ * with fault recovery. Returns the length (excluding the NUL), or a
+ * negative errno; returns 'max' if no NUL was found within max bytes. */
+long strnlen_user(const char *s, unsigned int max)
+{
+	unsigned int len = 0;
+
+	user_copy_active = 1;
+	if(__builtin_setjmp((void *)user_copy_jb)) {
+		user_copy_active = 0;
+		return -EFAULT;
+	}
+	while(len < max) {
+		addr_t page_off = (addr_t)(s + len) & ~PAGE_MASK;
+		unsigned int chunk = PAGE_SIZE - page_off;
+		int k;
+
+		if(chunk > max - len) {
+			chunk = max - len;
+		}
+		for(k = 0; k < chunk; k++) {
+			if(!s[len + k]) {
+				user_copy_active = 0;
+				return len + k;
+			}
+		}
+		len += chunk;
+	}
+	user_copy_active = 0;
+	return max;
 }
 
 int check_permission(int mask, struct inode *i)

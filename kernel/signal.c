@@ -223,7 +223,13 @@ void psig(struct sigcontext *sc)
 				 * pages already mapped U/S. */
 				{
 					extern int fnx_fault_user_pages(addr_t, unsigned int);
-					fnx_fault_user_pages((addr_t)sc->rsp, len);
+					extern int check_user_area(int, const void *, unsigned int);
+					if(fnx_fault_user_pages((addr_t)sc->rsp, len) < 0 ||
+					   check_user_area(VERIFY_WRITE, (void *)sc->rsp, len)) {
+						/* the stack vma is gone: kill instead of writing
+						 * into unmapped memory (kernel panic) */
+						do_exit(SIGSEGV);
+					}
 				}
 				memcpy_b((void *)sc->rsp, fnx_trampoline, len);
 				sc->rcx = (addr_t)current->sigaction[signum - 1].sa_handler;

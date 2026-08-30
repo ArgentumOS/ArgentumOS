@@ -266,7 +266,15 @@ void free_name(const char *);
 int malloc_name(const char *, char **);
 int check_user_permission(struct inode *);
 int check_group(struct inode *);
+int in_group(__gid_t);
+int check_chown_permission(struct inode *, __uid_t, __gid_t);
 int check_user_area(int, const void *, unsigned int);
+int verify_address(int, const void *, unsigned int);
+int copy_from_user(void *, const void *, unsigned int);
+int copy_to_user(void *, const void *, unsigned int);
+long strnlen_user(const char *, unsigned int);
+int user_copy_in_progress(void);
+void user_copy_fault_recover(void);
 int check_permission(int, struct inode *);
 
 int do_mknod(char *, __mode_t, __dev_t);

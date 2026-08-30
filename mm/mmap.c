@@ -207,7 +207,10 @@ static int free_vma_region(struct vma *vma, addr_t start, __ssize_t length)
 		new->end = vma->end;
 		new->prot = vma->prot;
 		new->flags = vma->flags;
-		new->offset = vma->offset;
+		/* the tail vma's file offset must advance with its start, or a
+		 * partially-unmapped file mapping reads/writes the wrong file
+		 * bytes (and write_page would corrupt earlier file data) */
+		new->offset = vma->offset + ((start + length) - vma->start);
 		new->s_type = vma->s_type;
 		new->inode = vma->inode;
 		new->o_mode = vma->o_mode;
@@ -585,7 +588,9 @@ long do_mmap(struct inode *i, addr_t start, addr_t length, unsigned int prot, un
 	}
 
 	if(flags & MAP_FIXED) {
-		if(start & ~PAGE_MASK) {
+		/* a NULL-page mapping is never legitimate and can't even be
+		 * unmapped (find_vma_region(0) short-circuits to NULL) */
+		if(!start || (start & ~PAGE_MASK)) {
 			return -EINVAL;
 		}
 	} else {
@@ -667,19 +672,56 @@ int do_mprotect(struct vma *vma, addr_t addr, __size_t length, int prot)
 {
 	struct vma *new;
 
+	/* Change the vma's protection in place, splitting when the range is
+	 * partial. The old code inserted an OVERLAPPING vma whose merge
+	 * path free_vma_pages()-ed every present page in the range - i.e.
+	 * every mprotect() wiped the caller's data (anonymous MAP_PRIVATE
+	 * pages came back zeroed). Present PTEs keep their permissions
+	 * until re-faulted; new faults use the new prot. */
+	if(vma->start == addr && vma->end == addr + length) {
+		vma->prot = prot;
+		return 0;
+	}
+
+	if(vma->start == addr) {
+		/* protect the head [addr, addr+length); split the tail off */
+		if(!(new = (struct vma *)kmalloc(sizeof(struct vma)))) {
+			return -ENOMEM;
+		}
+		memset_b(new, 0, sizeof(struct vma));
+		new->start = addr + length;
+		new->end = vma->end;
+		new->prot = vma->prot;
+		new->flags = vma->flags;
+		new->offset = vma->offset + length;
+		new->s_type = vma->s_type;
+		new->inode = vma->inode;
+		new->o_mode = vma->o_mode;
+		new->object = vma->object;
+		vma->end = addr + length;
+		vma->prot = prot;
+		add_vma_region(new);
+		return 0;
+	}
+
+	/* protect the tail [addr, addr+length); split the head off */
 	if(!(new = (struct vma *)kmalloc(sizeof(struct vma)))) {
-                return -ENOMEM;
-        }
-        memset_b(new, 0, sizeof(struct vma));
-	new->start = addr;
-	new->end = addr + length;
-	new->prot = prot;
+		return -ENOMEM;
+	}
+	memset_b(new, 0, sizeof(struct vma));
+	new->start = vma->start;
+	new->end = addr;
+	new->prot = vma->prot;
 	new->flags = vma->flags;
 	new->offset = vma->offset;
 	new->s_type = vma->s_type;
 	new->inode = vma->inode;
 	new->o_mode = vma->o_mode;
+	new->object = vma->object;
+	/* the remaining tail's file offset advances by the bytes cut off */
+	vma->offset += addr - new->start;
+	vma->start = addr;
+	vma->prot = prot;
 	add_vma_region(new);
-
 	return 0;
 }

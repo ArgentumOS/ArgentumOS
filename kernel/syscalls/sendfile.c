@@ -59,7 +59,8 @@ int sys_sendfile(int out_fd, int in_fd, __off_t *offset, __size_t count)
 	}
 
 	if(offset) {
-		if((errno = check_user_area(VERIFY_READ, offset, sizeof(__off_t)))) {
+		/* sendfile updates *offset on return: the kernel WRITES it */
+		if((errno = check_user_area(VERIFY_WRITE, offset, sizeof(__off_t)))) {
 			return errno;
 		}
 		if(*offset < 0) {

@@ -39,12 +39,12 @@ int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 	}
 	/* the x86-64 user ABI is struct { long mtype; char mtext[]; } - the
 	 * mtype is 8 bytes and the text starts at +8, not at the kernel's
-	 * 4-byte 'int mtype' offset */
-	if((errno = check_user_area(VERIFY_READ, msgp, sizeof(void *)))) {
+	 * 4-byte 'int mtype' offset; both reads go through the
+	 * fault-recovering copy_from_user */
+	if((errno = copy_from_user(&utype, msgp, sizeof(long)))) {
 		return errno;
 	}
 	mtext = ((char *)msgp) + sizeof(long);
-	utype = *(long *)msgp;
 	if(utype < 0) {
 		return -EINVAL;
 	}
@@ -53,14 +53,12 @@ int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 	if(utype > 0x7FFFFFFF) {
 		return -EINVAL;
 	}
-	if((errno = check_user_area(VERIFY_READ, mtext, msgsz))) {
-		return errno;
-	}
 
 	mq = msgque[msqid % MSGMNI];
 	if(mq == IPC_UNUSED) {
 		return -EINVAL;
 	}
+	IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 	for(;;) {
 		if(!ipc_has_perms(&mq->msg_perm, IPC_W)) {
 			return -EACCES;
@@ -76,6 +74,7 @@ int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 		if(mq == IPC_UNUSED) {
 			return -EIDRM;
 		}
+		IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 		break;
 	}
 
@@ -88,7 +87,11 @@ int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 		msg_release_md(m);
 		return -ENOMEM;
 	}
-	memcpy_b(m->msg_spot, mtext, msgsz);
+	if((errno = copy_from_user(m->msg_spot, mtext, msgsz))) {
+		kfree((addr_t)m->msg_spot);
+		msg_release_md(m);
+		return errno;
+	}
 	m->msg_stime = CURRENT_TIME;
 	m->msg_ts = msgsz;
 	lock_resource(&ipcmsg_resource);

@@ -99,6 +99,7 @@ int sys_semop(int semid, struct sembuf *sops, int nsops)
 	if(ss == IPC_UNUSED) {
 		return -EINVAL;
 	}
+	IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 
 	/* check permissions and ranges for all semaphore operations */
 	need_alter = 0;
@@ -162,6 +163,7 @@ loop:
 				if(ss == IPC_UNUSED) {
 					return -EIDRM;
 				}
+				IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 				s->semncnt--;
 				if(errno) {
 					return -EINTR;
@@ -184,6 +186,7 @@ loop:
 				if(ss == IPC_UNUSED) {
 					return -EIDRM;
 				}
+				IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 				s->semzcnt--;
 				if(errno) {
 					return -EINTR;

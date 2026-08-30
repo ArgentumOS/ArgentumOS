@@ -497,6 +497,18 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 			}
 
 			/* no */
+
+			/* recoverable user-copy fault: the kernel was copying
+			 * to/from a user buffer that a racing thread unmapped
+			 * between verify_address() and the copy (no vma left
+			 * to demand-map). Unwind to the copy site, which
+			 * returns -EFAULT to the syscall instead of panicking. */
+			extern int user_copy_in_progress(void);
+			extern void user_copy_fault_recover(void);
+			if(user_copy_in_progress() && cr2 < USER_STACK_TOP) {
+				user_copy_fault_recover();
+				/* not reached */
+			}
 		}
 	}
 

@@ -69,6 +69,7 @@ addr_t sys_shmat(int shmid, char *shmaddr, int shmflg, unsigned int *raddr)
 	if(seg == IPC_UNUSED) {
 		return -EINVAL;
 	}
+	IPC_SEQ_CHECK(seg->shm_perm.seq, shmid, SHMMNI);
 
 	addr = (addr_t)shmaddr;
 	if(addr) {

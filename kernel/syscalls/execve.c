@@ -42,37 +42,18 @@ static char *get_user_ptr(char **arr, int n)
 	return arr[n];
 }
 
-/* verify + measure a user string at CPL0. Walks page by page, requiring
- * each page up to the NUL to be readable, and never demands a full page
- * past the NUL: stack strings live in the top page of the stack vma,
- * whose end (USER_STACK_TOP) may be less than str+PAGE_SIZE. Returns
- * -EFAULT for an unmapped page, -E2BIG past ARG_MAX bytes, else 0 with
- * the length (excluding the NUL) in *len_out. */
+/* verify + measure a user string with the fault-recovering strnlen_user
+ * (page-by-page, never demands a full page past the NUL). */
 static int user_strlen(char *str, unsigned int *len_out)
 {
-	unsigned int len = 0;
+	long len;
 
-	while(1) {
-		addr_t page_off = (addr_t)str & ~PAGE_MASK;
-		unsigned int chunk = PAGE_SIZE - page_off;
-		char *p;
-		int n, errno;
-
-		if((errno = check_user_area(VERIFY_READ, str, chunk))) {
-			return errno;
-		}
-		for(p = str, n = 0; n < chunk; n++, p++) {
-			if(!*p) {
-				*len_out = len + n;
-				return 0;
-			}
-		}
-		len += chunk;
-		if(len > ARG_MAX * PAGE_SIZE) {
-			return -E2BIG;
-		}
-		str += chunk;
+	len = strnlen_user(str, ARG_MAX * PAGE_SIZE);
+	if(len < 0) {
+		return -EFAULT;
 	}
+	*len_out = (unsigned int)len;
+	return 0;
 }
 
 static int initialize_barg(struct binargs *barg, char *argv[], char *envp[])

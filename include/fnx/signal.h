@@ -83,8 +83,10 @@ struct sigaction {
 #define SIG_UNBLOCK	1	/* for unblocking signals */
 #define SIG_SETMASK	2	/* for setting the signal mask */
 
-/* SIGKILL and SIGSTOP can't ever be set as blockable signals */
-#define SIG_BLOCKABLE	(~(1 << (SIGKILL - 1)) | (1 << (SIGSTOP - 1)))
+/* SIGKILL and SIGSTOP can't ever be set as blockable signals.
+ * NOTE: '~' binds tighter than '|', so the mask MUST parenthesize both
+ * bits - the old expression left the SIGSTOP bit SET (blockable). */
+#define SIG_BLOCKABLE	(~((1 << (SIGKILL - 1)) | (1 << (SIGSTOP - 1))))
 
 #define SIG_MASK(sig)	(~(1 << ((sig) - 1)))
 

@@ -42,6 +42,7 @@ int sys_msgrcv(int msqid, void *msgp, __size_t msgsz, int msgtyp, int msgflg)
 	if(mq == IPC_UNUSED) {
 		return -EINVAL;
 	}
+	IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 	found = 0;
 	mprev = NULL;
 	for(;;) {
@@ -88,6 +89,7 @@ int sys_msgrcv(int msqid, void *msgp, __size_t msgsz, int msgtyp, int msgflg)
 		if(mq == IPC_UNUSED) {
 			return -EIDRM;
 		}
+		IPC_SEQ_CHECK(mq->msg_perm.seq, msqid, MSGMNI);
 	}
 
 	if(msgsz < m->msg_ts) {
@@ -101,14 +103,18 @@ int sys_msgrcv(int msqid, void *msgp, __size_t msgsz, int msgtyp, int msgflg)
 
 	/* x86-64 user ABI: 8-byte long mtype, text at +8; the kernel
 	 * stores an int msg_type, so zero-extend it into the user's long.
-	 * The write target (8-byte mtype + up to count bytes of text) is
-	 * verified as a whole - the old code verified only 8 bytes and
-	 * wrote up to 4 KiB unchecked (arbitrary kernel write / panic). */
-	if((errno = check_user_area(VERIFY_WRITE, msgp, sizeof(long) + count))) {
-		return errno;
+	 * Both writes go through the fault-recovering copy_to_user (the old
+	 * code verified only 8 bytes and wrote up to 4 KiB unchecked). */
+	{
+		long utype = (long)m->msg_type;
+
+		if((errno = copy_to_user(msgp, &utype, sizeof(long)))) {
+			return errno;
+		}
+		if((errno = copy_to_user((char *)msgp + sizeof(long), m->msg_spot, count))) {
+			return errno;
+		}
 	}
-	*(long *)msgp = (long)m->msg_type;
-	memcpy_b((char *)msgp + sizeof(long), m->msg_spot, count);
 
 	lock_resource(&ipcmsg_resource);
 	kfree((addr_t)m->msg_spot);

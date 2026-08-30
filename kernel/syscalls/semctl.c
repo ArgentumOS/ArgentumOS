@@ -69,6 +69,9 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(ss == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			if(cmd == IPC_STAT) {
+				IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
+			}
 			if(!ipc_has_perms(&ss->sem_perm, IPC_R)) {
 				return -EACCES;
 			}
@@ -102,6 +105,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 				if(ss == IPC_UNUSED) {
 					return -EINVAL;
 				}
+				IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 				perm = &ss->sem_perm;
 				if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 					return -EPERM;
@@ -118,6 +122,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(ss == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 			perm = &ss->sem_perm;
 			if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 				return -EPERM;
@@ -135,6 +140,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(ss == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 			perm = &ss->sem_perm;
 			if(!IS_SUPERUSER && current->euid != perm->uid && current->euid != perm->cuid) {
 				return -EPERM;
@@ -203,6 +209,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(ss == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 			if(!ipc_has_perms(&ss->sem_perm, IPC_R)) {
 				return -EACCES;
 			}
@@ -246,6 +253,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(ss == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 			if(!ipc_has_perms(&ss->sem_perm, IPC_W)) {
 				return -EACCES;
 			}
@@ -279,6 +287,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(ss == IPC_UNUSED) {
 				return -EINVAL;
 			}
+			IPC_SEQ_CHECK(ss->sem_perm.seq, semid, SEMMNI);
 			if((errno = check_user_area(VERIFY_READ, arg, ss->sem_nsems * sizeof(short int)))) {
 				return errno;
 			}

@@ -26,7 +26,9 @@ int sys_getdents64(unsigned int ufd, struct dirent64 *dirent, unsigned int count
 #endif /*__DEBUG__ */
 
 	CHECK_UFD(ufd);
-	if((errno = check_user_area(VERIFY_WRITE, dirent, sizeof(struct dirent64)))) {
+	/* the filldir loop writes up to 'count' bytes: verifying only one
+	 * dirent64 let a short user buffer be overrun (kernel write) */
+	if((errno = check_user_area(VERIFY_WRITE, dirent, count))) {
 		return errno;
 	}
 	i = fd_table[current->fd[ufd]].inode;

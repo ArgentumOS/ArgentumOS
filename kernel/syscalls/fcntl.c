@@ -54,6 +54,11 @@ int sys_fcntl(unsigned int ufd, int cmd, addr_t arg)
 			fd_table[current->fd[ufd]].flags |= arg & (O_APPEND | O_NONBLOCK);
 			break;
 		case F_GETLK:
+			/* F_GETLK returns the lock state: the kernel WRITES arg */
+			if((errno = check_user_area(VERIFY_WRITE, (void *)arg, sizeof(struct flock)))) {
+				return errno;
+			}
+			return posix_lock(ufd, cmd, (struct flock *)arg);
 		case F_SETLK:
 		case F_SETLKW:
 			if((errno = check_user_area(VERIFY_READ, (void *)arg, sizeof(struct flock)))) {

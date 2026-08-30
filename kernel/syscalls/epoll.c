@@ -290,6 +290,12 @@ static int epoll_do_wait(int epfd, struct epoll_event *events, int maxevents,
 	if(maxevents <= 0) {
 		return -EINVAL;
 	}
+	/* check_user_area's size is 32-bit: a huge maxevents would make
+	 * sizeof * maxevents truncate to a small/zero size, then the loop
+	 * writes gigabytes into a user buffer that was never verified */
+	if((unsigned long)maxevents > (0xFFFFFFFFUL / sizeof(struct epoll_event))) {
+		return -EINVAL;
+	}
 	if((n = check_user_area(VERIFY_WRITE, events, sizeof(struct epoll_event) * maxevents))) {
 		return n;
 	}

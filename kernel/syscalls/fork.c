@@ -222,7 +222,10 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 
 	child->sigpending = 0;
 	child->sigexecuting = 0;
-	memset_b(&child->sc, 0, sizeof(struct sigcontext));
+	/* zero the WHOLE sc array: the old code zeroed only sc[0], so a
+	 * fork child inherited the parent's stale saved sigcontexts for
+	 * signals 1..31 (a later rt_sigreturn could resurrect them) */
+	memset_b(&child->sc, 0, sizeof(child->sc));
 	memset_b(&child->usage, 0, sizeof(struct rusage));
 	memset_b(&child->cusage, 0, sizeof(struct rusage));
 	child->it_real_interval = 0;
