@@ -468,11 +468,23 @@ void sync_inodes(__dev_t dev)
 	while(i) {
 		if(i->state & INODE_DIRTY) {
 			if(!dev || i->dev == dev) {
-				inode_lock(i);
-				if(write_inode(i)) {
-					printk("WARNING: %s(): can't write inode %d (%d,%d), will remain as dirty.\n", __FUNCTION__, i->inode, MAJOR(i->dev), MINOR(i->dev));
+				struct superblock *csb = get_superblock(i->dev);
+
+				if(!csb || i->sb != csb) {
+					/* the filesystem was unmounted (its mount
+					 * point, and with it the superblock, was
+					 * freed) or remounted under a new
+					 * superblock: i->sb is stale, so we must
+					 * not call write_inode() through it; just
+					 * drop the stale dirty flag */
+					i->state &= ~INODE_DIRTY;
+				} else {
+					inode_lock(i);
+					if(write_inode(i)) {
+						printk("WARNING: %s(): can't write inode %d (%d,%d), will remain as dirty.\n", __FUNCTION__, i->inode, MAJOR(i->dev), MINOR(i->dev));
+					}
+					inode_unlock(i);
 				}
-				inode_unlock(i);
 			}
 		}
 		i = i->next;
@@ -490,9 +502,33 @@ void invalidate_inodes(__dev_t dev)
 
 	while(i) {
 		if(i->dev == dev) {
+			struct inode *next = i->next;
+
+			/*
+			 * The umount path only reaches us after check_fs_busy()
+			 * (no open references) and iput(sb->root/dir), so every
+			 * inode of this device has count == 0 and sits on the
+			 * free list. The mount point (with the embedded
+			 * superblock) is freed right after this, so these
+			 * inodes MUST be dropped from the pool here — an
+			 * inode left in inode_table with a dangling i->sb
+			 * crashes the next sync_inodes()/iput() through
+			 * i->sb->fsop->write_inode().
+			 */
+			if(i->count) {
+				printk("WARNING: %s(): inode %d still has count %d (dev %d,%d).\n", __FUNCTION__, i->inode, i->count, MAJOR(i->dev), MINOR(i->dev));
+			}
 			inode_lock(i);
 			remove_from_hash(i);
+			if(!i->count) {
+				remove_from_free_list(i);
+			}
 			inode_unlock(i);
+			/* del_inode_from_pool() kfree()s the inode; nothing may
+			 * touch it afterwards */
+			del_inode_from_pool(i);
+			i = next;
+			continue;
 		}
 		i = i->next;
 	}

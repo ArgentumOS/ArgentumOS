@@ -72,7 +72,14 @@ int bfs_read_inode(struct inode *i)
 	i->i_mode = raw->mode;
 	i->i_uid = raw->uid;
 	i->i_gid = raw->gid;
-	i->i_size = raw->u.data.size;
+	if(S_ISLNK(raw->mode)) {
+		/* symlink length: pad[0] on new images; old images stored it
+		 * in u.data.size (valid for inline symlinks, whose size field
+		 * aliases the unused tail of the target) */
+		i->i_size = raw->pad[0] ? raw->pad[0] : raw->u.data.size;
+	} else {
+		i->i_size = raw->u.data.size;
+	}
 	/* BFS stores times as (seconds << 16); there is no access time */
 	i->i_atime = raw->last_modified_time >> 16;
 	i->i_ctime = raw->status_change_time >> 16;
@@ -104,7 +111,17 @@ int bfs_write_inode(struct inode *i)
 	i->u.bfs.raw.mode = i->i_mode;
 	i->u.bfs.raw.uid = i->i_uid;
 	i->u.bfs.raw.gid = i->i_gid;
-	i->u.bfs.raw.u.data.size = i->i_size;
+	if(S_ISLNK(i->i_mode)) {
+		/* the symlink length lives in pad[0]; u.data.size aliases
+		 * symlink[136..143], so writing it for an inline symlink
+		 * would corrupt the last bytes of targets >= 136 chars */
+		i->u.bfs.raw.pad[0] = i->i_size;
+		if(i->i_size > 143) {
+			i->u.bfs.raw.u.data.size = i->i_size;
+		}
+	} else {
+		i->u.bfs.raw.u.data.size = i->i_size;
+	}
 	i->u.bfs.raw.last_modified_time = (__u64)i->i_mtime << 16;
 	i->u.bfs.raw.status_change_time = (__u64)i->i_ctime << 16;
 	memcpy_b(raw, &i->u.bfs.raw, sizeof(struct bfs_inode));
@@ -113,7 +130,9 @@ int bfs_write_inode(struct inode *i)
 	raw->inode_num.allocation_group = 0;
 	raw->inode_num.start = i->inode;
 	raw->inode_num.len = 1;
-	raw->u.data.size = i->i_size;
+	if(!(S_ISLNK(i->i_mode) && i->i_size <= 143)) {
+		raw->u.data.size = i->i_size;
+	}
 	/* max_direct_range was already copied by the memcpy above; do NOT
 	 * reset it to the full direct range here — bmap tracks the real
 	 * coverage and bfs_indirect_bmap translates offsets against it */

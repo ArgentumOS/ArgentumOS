@@ -70,6 +70,9 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 		if(f->offset > i->i_size) {
 			i->i_size = f->offset;
 		}
+		/* track the stream size so bfs_ifree() truncates (frees the
+		 * data blocks) when the file is unlinked */
+		i->i_blocks = i->i_size >> 9;
 		i->i_ctime = CURRENT_TIME;
 		i->i_mtime = CURRENT_TIME;
 		i->state |= INODE_DIRTY;

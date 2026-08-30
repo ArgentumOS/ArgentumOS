@@ -36,6 +36,12 @@ static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode
 	char *tmp_name, *basename;
 	int errno, follow_links, perms;
 
+	/* open() follows symlinks (O_NOFOLLOW is handled below); this was
+	 * uninitialized stack garbage before, which made symlink following
+	 * nondeterministic (cat would read the link itself when the stack
+	 * slot happened to be zero) */
+	follow_links = FOLLOW_LINKS;
+
 #ifdef __DEBUG__
 	printk("(pid %d) sys_open('%s', %o, %o)\n", current->pid, filename, flags, mode);
 #endif /*__DEBUG__ */

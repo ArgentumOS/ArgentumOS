@@ -325,6 +325,7 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 	struct inode *i;
 	__ino_t ino;
 	int errno, n;
+	__size_t len;
 
 	if(IS_RDONLY_FS(dir)) {
 		return -EROFS;
@@ -345,26 +346,58 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 	i->dev = dir->dev;
 	i->fsop = dir->fsop;
 
+	i->i_mode = S_IFLNK | (S_IRWXU | S_IRWXG | S_IRWXO);
+	i->i_uid = current->euid;
+	i->i_gid = current->egid;
+	i->i_nlink = 1;
+	i->state |= INODE_DIRTY;
+
 	if((errno = bfs_btree_insert(dir, name, i->inode))) {
+		i->i_nlink = 0;
 		iput(i);
 		inode_unlock(dir);
 		return errno;
 	}
 
-	i->i_mode = S_IFLNK | (S_IRWXU | S_IRWXG | S_IRWXO);
-	i->i_uid = current->euid;
-	i->i_gid = current->egid;
-	i->i_nlink = 1;
-	/* store the target in the inode's symlink area (fast symlink) */
-	for(n = 0; n < 143; n++) {
-		if((i->u.bfs.raw.u.symlink[n] = oldname[n])) {
-			continue;
+	len = strlen(oldname);
+	if(len <= 143) {
+		/* fast symlink: the target lives in the inode's symlink area */
+		for(n = 0; n < len; n++) {
+			i->u.bfs.raw.u.symlink[n] = oldname[n];
 		}
-		break;
+		i->u.bfs.raw.u.symlink[n] = 0;
+		i->u.bfs.raw.pad[0] = len;
+		i->i_size = n;
+	} else {
+		/* long symlink: the target lives in the data stream */
+		__off_t offset = 0;
+
+		while(offset < len) {
+			__blk_t block;
+			struct buffer *buf;
+			unsigned int boffset, bytes;
+			int blksize = i->sb->s_blocksize;
+
+			boffset = offset & (blksize - 1);
+			if((block = bmap(i, offset, FOR_WRITING)) < 0) {
+				errno = block;
+				goto err;
+			}
+			bytes = blksize - boffset;
+			bytes = MIN(bytes, len - offset);
+			if(!(buf = bread(i->dev, block, blksize))) {
+				errno = -EIO;
+				goto err;
+			}
+			memcpy_b(buf->data + boffset, oldname + offset, bytes);
+			bwrite(buf);
+			offset += bytes;
+		}
+		i->i_size = len;
+		i->u.bfs.raw.pad[0] = len;
+		i->u.bfs.raw.u.data.size = len;
+		i->i_blocks = len >> 9;
 	}
-	i->u.bfs.raw.u.symlink[n] = 0;
-	i->i_size = n;
-	i->state |= INODE_DIRTY;
 
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
@@ -373,6 +406,13 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 	iput(i);
 	inode_unlock(dir);
 	return 0;
+
+err:
+	bfs_btree_delete(dir, name);
+	i->i_nlink = 0;
+	iput(i);
+	inode_unlock(dir);
+	return errno;
 }
 
 int bfs_rename(struct inode *i_old, struct inode *dir_old,
