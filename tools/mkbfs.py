@@ -168,7 +168,17 @@ def main():
     num_ags = (num_blocks + 8191) // 8192
     journal_start, journal_len = 1 + num_ags, 4
     next_inode = journal_start + journal_len
-    next_data = max(32, next_inode + 8)
+    # two-pass: count inodes first so data blocks never collide with inodes
+    def count_inodes(path):
+        full = os.path.join(root, path)
+        cnt = 1  # the dir's own inode
+        for name in sorted(os.listdir(full)):
+            if os.path.isdir(os.path.join(full, name)):
+                cnt += count_inodes(os.path.join(path, name) if path else name)
+            else:
+                cnt += 1
+        return cnt
+    next_data = max(32, next_inode + count_inodes(""))
     files = []          # (relpath, parent_blk, inode_blk, data_blk, data, name)
     dirs = {}           # path -> (inode_blk, header_blk, leaf_blk, entries)
 
