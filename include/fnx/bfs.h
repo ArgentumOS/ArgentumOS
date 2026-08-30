@@ -175,9 +175,15 @@ struct bfs_sb_info {
 	__u32 next_free;	/* allocation hint (volume block number) */
 };
 
+/* the packed inode struct is 232 bytes; the small_data attribute tail
+ * is the remaining 24 bytes of the 256-byte on-disk inode (the header
+ * comment saying "198" was wrong) */
+#define BFS_SMALL_DATA_SIZE	(256 - sizeof(struct bfs_inode))
+
 /* fs-private inode info (the raw on-disk inode, for bmap/readdir) */
 struct bfs_i_info {
-	struct bfs_inode raw;	/* raw on-disk inode */
+	struct bfs_inode raw;	/* raw on-disk inode (232 bytes) */
+	char small_data[BFS_SMALL_DATA_SIZE];	/* inline attributes */
 };
 
 /* block allocation (balloc.c) */

@@ -55,6 +55,10 @@ extern int bfs_readlink(struct inode *, char *, __size_t);
 extern int bfs_followlink(struct inode *, struct inode *, struct inode **);
 extern int bfs_ialloc(struct inode *, int);
 extern void bfs_ifree(struct inode *);
+extern int bfs_getxattr(struct inode *, const char *, char *, __size_t);
+extern int bfs_setxattr(struct inode *, const char *, const char *, __size_t, int);
+extern int bfs_listxattr(struct inode *, char *, __size_t);
+extern int bfs_removexattr(struct inode *, const char *);
 
 /* superblock operations */
 static void bfs_statfs(struct superblock *, struct statfs *);
@@ -103,6 +107,11 @@ struct fs_operations bfs_fsop = {
 	NULL,			/* remount_fs */
 	bfs_write_superblock,	/* write_superblock */
 	bfs_release_superblock,	/* release_superblock */
+
+	bfs_getxattr,		/* getxattr */
+	bfs_setxattr,		/* setxattr */
+	bfs_listxattr,		/* listxattr */
+	bfs_removexattr,	/* removexattr */
 };
 
 static void bfs_statfs(struct superblock *sb, struct statfs *buf)

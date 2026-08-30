@@ -537,6 +537,18 @@ extern long sys_mremap(addr_t, __size_t, __size_t, unsigned int, addr_t);
 extern int sys_msync(addr_t, __size_t, int);
 extern int sys_mincore(addr_t, __size_t, unsigned char *);
 extern int sys_madvise(addr_t, __size_t, int);
+extern int sys_setxattr(const char *, const char *, const void *, __size_t, int);
+extern int sys_lsetxattr(const char *, const char *, const void *, __size_t, int);
+extern int sys_fsetxattr(int, const char *, const void *, __size_t, int);
+extern int sys_getxattr(const char *, const char *, void *, __size_t);
+extern int sys_lgetxattr(const char *, const char *, void *, __size_t);
+extern int sys_fgetxattr(int, const char *, void *, __size_t);
+extern int sys_listxattr(const char *, char *, __size_t);
+extern int sys_llistxattr(const char *, char *, __size_t);
+extern int sys_flistxattr(int, char *, __size_t);
+extern int sys_removexattr(const char *, const char *);
+extern int sys_lremovexattr(const char *, const char *);
+extern int sys_fremovexattr(int, const char *);
 
 /* x86_64 syscall numbers (the subset FNX implements); NULL = -ENOSYS */
 void *syscall_table64[] = {
@@ -696,6 +708,18 @@ void *syscall_table64[] = {
 	[172] = sys_iopl,		/* iopl */
 	[173] = sys_ioperm,		/* ioperm */
 	[186] = sys_gettid,		/* gettid (musl gettid) */
+	[188] = sys_setxattr,		/* setxattr */
+	[189] = sys_lsetxattr,		/* lsetxattr */
+	[190] = sys_fsetxattr,		/* fsetxattr */
+	[191] = sys_getxattr,		/* getxattr */
+	[192] = sys_lgetxattr,		/* lgetxattr */
+	[193] = sys_fgetxattr,		/* fgetxattr */
+	[194] = sys_listxattr,		/* listxattr */
+	[195] = sys_llistxattr,		/* llistxattr */
+	[196] = sys_flistxattr,		/* flistxattr */
+	[197] = sys_removexattr,	/* removexattr */
+	[198] = sys_lremovexattr,	/* lremovexattr */
+	[199] = sys_fremovexattr,	/* fremovexattr */
 	[200] = sys_tkill,		/* tkill */
 	[202] = sys_futex,		/* futex (musl mutex/cond/join) */
 	[213] = sys_epoll_create,	/* epoll_create */

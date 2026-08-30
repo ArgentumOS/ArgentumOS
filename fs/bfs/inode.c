@@ -61,6 +61,8 @@ int bfs_read_inode(struct inode *i)
 		return -EINVAL;
 	}
 	memcpy_b(&i->u.bfs.raw, raw, sizeof(struct bfs_inode));
+	memcpy_b(i->u.bfs.small_data, (char *)raw + sizeof(struct bfs_inode),
+		 BFS_SMALL_DATA_SIZE);
 
 	if(S_ISDIR(raw->mode) || S_ISREG(raw->mode) || S_ISLNK(raw->mode)) {
 		i->fsop = &bfs_fsop;
@@ -134,6 +136,8 @@ int bfs_write_inode(struct inode *i)
 	i->u.bfs.raw.last_modified_time = (__u64)i->i_mtime << 16;
 	i->u.bfs.raw.status_change_time = (__u64)i->i_ctime << 16;
 	memcpy_b(raw, &i->u.bfs.raw, sizeof(struct bfs_inode));
+	memcpy_b((char *)raw + sizeof(struct bfs_inode), i->u.bfs.small_data,
+		 BFS_SMALL_DATA_SIZE);
 	raw->magic1 = BFS_INODE_MAGIC;
 	raw->flags = BFS_INODE_IN_USE;
 	raw->inode_num.allocation_group = 0;
@@ -184,6 +188,7 @@ int bfs_ialloc(struct inode *i, int mode)
 	i->i_size = 0;
 	i->i_blocks = 0;
 	memset_b(&i->u.bfs.raw, 0, sizeof(struct bfs_inode));
+	memset_b(i->u.bfs.small_data, 0, BFS_SMALL_DATA_SIZE);
 	i->u.bfs.raw.mode = mode;
 	i->u.bfs.raw.u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
 	i->i_atime = CURRENT_TIME;

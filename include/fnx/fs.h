@@ -185,6 +185,12 @@ struct fs_operations {
 	int (*remount_fs)(struct superblock *, int);
 	int (*write_superblock)(struct superblock *);
 	void (*release_superblock)(struct superblock *);
+
+/* xattr operations (M4d): small_data attributes; NULL = -EOPNOTSUPP */
+	int (*getxattr)(struct inode *, const char *, char *, __size_t);
+	int (*setxattr)(struct inode *, const char *, const char *, __size_t, int);
+	int (*listxattr)(struct inode *, char *, __size_t);
+	int (*removexattr)(struct inode *, const char *);
 };
 
 extern struct fs_operations def_chr_fsop;

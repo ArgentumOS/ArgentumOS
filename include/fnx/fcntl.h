@@ -77,4 +77,8 @@ struct flock {
 #define AT_EACCESS		0x200	/* same bit as AT_REMOVEDIR on Linux */
 #define AT_EMPTY_PATH		0x1000
 
+/* xattr syscall flags (mirrors linux/xattr.h XATTR_CREATE/REPLACE) */
+#define XATTR_CREATE		1
+#define XATTR_REPLACE		2
+
 #endif /* _FNX_FCNTL_H */
