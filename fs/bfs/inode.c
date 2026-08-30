@@ -30,6 +30,7 @@
 #include <fnx/string.h>
 
 extern struct fs_operations bfs_fsop;
+static int bfs_indirect_bmap(struct inode *, __off_t, int);
 
 /* single fsop for files and dirs: dispatch on the inode type */
 int bfs_open(struct inode *i, struct fd *f)
@@ -193,10 +194,8 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 	__u32 last_ag = 0, last_start = 0, last_len = 0;
 	int run, nrun = -1;
 
-	if(block >= BFS_NUM_DIRECT_BLOCKS) {
-		return -EIO;	/* indirect stream not supported */
-	}
-
+	/* direct runs (up to BFS_NUM_DIRECT_BLOCKS runs; the runs' total
+	 * coverage is tracked in max_direct_range) */
 	for(run = 0; run < BFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
 		if(!len) {
@@ -213,30 +212,33 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 		last_len = len;
 	}
 
+	if(block < covered) {
+		return 0;	/* unmapped read within the direct range */
+	}
+
 	if(mode != FOR_WRITING) {
 		return 0;	/* unmapped */
 	}
 
 	if(block != covered) {
-		/* allocation must be sequential (write path allocates in
-		 * order); a gap means an indirect stream would be needed */
+		/* allocation must be sequential (the write path allocates in
+		 * order); a gap means a double-indirect stream would be
+		 * needed (12 direct runs + the indirect table exhausted) */
 		return -EIO;
 	}
 
-	/* try to extend the last run with the contiguous next block */
+	/* try to extend the last direct run with the contiguous next block */
 	if(nrun > 0 && last_len) {
 		__blk_t next = (last_ag << ag_shift) + last_start + last_len;
 		if(bfs_balloc_specific(i->sb, next) == 0) {
 			ds->direct[nrun - 1].len++;
+			ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
 			return next;
 		}
 	}
 
-	/* append a new run */
-	if(nrun < 0) {
-		return -ENOSPC;
-	}
-	{
+	/* append a new direct run (or start the first one) */
+	if(nrun >= 0) {
 		__blk_t nb = bfs_balloc(i->sb);
 		if(nb < 0) {
 			return nb;
@@ -244,8 +246,105 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 		ds->direct[nrun].allocation_group = (__u32)(nb >> ag_shift);
 		ds->direct[nrun].start = nb & ((1 << ag_shift) - 1);
 		ds->direct[nrun].len = 1;
+		ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
 		return nb;
 	}
+
+	/* all 12 direct runs are used: go indirect */
+	return bfs_indirect_bmap(i, offset, mode);
+}
+
+/*
+ * Indirect streams: the data_stream.indirect run points at a table of
+ * block runs (each table block holds 128 runs at 1KB blocks); the table
+ * runs address the file data beyond the direct runs.
+ */
+static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
+{
+	struct bfs_inode *raw = &i->u.bfs.raw;
+	struct bfs_data_stream *ds = &raw->u.data;
+	__u32 block = (__u32)(offset >> BFS_BLOCK_SHIFT);
+	__u32 ag_shift = i->sb->u.bfs.ag_shift;
+	__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
+	__u64 covered = 0;
+	__u32 table_len = ds->indirect.len;
+	struct buffer *buf = NULL;
+	int t, j;
+
+	block -= (__u32)(ds->max_direct_range >> BFS_BLOCK_SHIFT);
+
+	/* walk the indirect table looking for the run covering 'block' */
+	for(t = 0; t < table_len; t++) {
+		struct bfs_block_run *runs;
+		__blk_t tbl = (ds->indirect.allocation_group << ag_shift)
+			+ ds->indirect.start + t;
+
+		if(!(buf = bread(i->dev, tbl, i->sb->s_blocksize))) {
+			return -EIO;
+		}
+		runs = (struct bfs_block_run *)buf->data;
+		for(j = 0; j < arraylen; j++) {
+			__u32 len = runs[j].len;
+			if(!len) {
+				/* free slot: only meaningful for writes */
+				if(mode == FOR_WRITING) {
+					__blk_t nb;
+
+					/* try to extend the previous run */
+					if(j > 0) {
+						struct bfs_block_run *pr = &runs[j - 1];
+						__blk_t next = (pr->allocation_group << ag_shift)
+							+ pr->start + pr->len;
+						if(bfs_balloc_specific(i->sb, next) == 0) {
+							pr->len++;
+							brelse(buf);
+							return next;
+						}
+					}
+					if((nb = bfs_balloc(i->sb)) < 0) {
+						brelse(buf);
+						return nb;
+					}
+					runs[j].allocation_group = (__u32)(nb >> ag_shift);
+					runs[j].start = nb & ((1 << ag_shift) - 1);
+					runs[j].len = 1;
+					brelse(buf);
+					return nb;
+				}
+				brelse(buf);
+				return 0;
+			}
+			if(block < covered + len) {
+				__blk_t nb = (runs[j].allocation_group << ag_shift)
+					+ runs[j].start + (block - covered);
+				brelse(buf);
+				return nb;
+			}
+			covered += len;
+		}
+		brelse(buf);
+	}
+
+	if(mode != FOR_WRITING) {
+		return 0;	/* unmapped */
+	}
+
+	/* the table is full: grow it by one block (extend the indirect run
+	 * with the contiguous next block) */
+	{
+		__blk_t next = (ds->indirect.allocation_group << ag_shift)
+			+ ds->indirect.start + table_len;
+
+		if(bfs_balloc_specific(i->sb, next) == 0) {
+			ds->indirect.len++;
+			ds->max_indirect_range = ds->indirect.len
+				* arraylen << BFS_BLOCK_SHIFT;
+			/* recurse: the new table block is empty, the write
+			 * path above fills it */
+			return bfs_indirect_bmap(i, offset, mode);
+		}
+	}
+	return -ENOSPC;
 }
 
 /*
@@ -292,6 +391,63 @@ int bfs_truncate(struct inode *i, __off_t length)
 			}
 		}
 		covered += ds->direct[run].len;
+	}
+
+	/* free the indirect table if the new size is within the direct
+	 * range; otherwise free the indirect runs beyond the new size */
+	{
+		__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
+		__u32 table_len = ds->indirect.len;
+		int t;
+
+		for(t = 0; t < table_len; t++) {
+			struct bfs_block_run *runs;
+			struct buffer *ibuf;
+			__blk_t tbl = (ds->indirect.allocation_group << ag_shift)
+				+ ds->indirect.start + t;
+			int j;
+
+			if(!(ibuf = bread(i->dev, tbl, i->sb->s_blocksize))) {
+				break;
+			}
+			runs = (struct bfs_block_run *)ibuf->data;
+			for(j = 0; j < arraylen; j++) {
+				__u32 len = runs[j].len;
+				__u64 base;
+
+				if(!len) {
+					break;
+				}
+				base = (__u64)(runs[j].allocation_group << ag_shift)
+					+ runs[j].start;
+				if((base << BFS_BLOCK_SHIFT)
+						+ ds->max_direct_range
+						>= (__u64)length) {
+					/* free the whole run */
+					__u32 n;
+					for(n = 0; n < len; n++) {
+						bfs_bfree(i->sb, (__blk_t)base + n);
+					}
+					runs[j].allocation_group = 0;
+					runs[j].start = 0;
+					runs[j].len = 0;
+				}
+			}
+			bwrite(ibuf);
+		}
+		if((__u64)length <= ds->max_direct_range) {
+			/* the whole indirect table is beyond the new size */
+			__u32 n;
+			__blk_t base = (ds->indirect.allocation_group << ag_shift)
+				+ ds->indirect.start;
+			for(n = 0; n < table_len; n++) {
+				bfs_bfree(i->sb, base + n);
+			}
+			ds->indirect.allocation_group = 0;
+			ds->indirect.start = 0;
+			ds->indirect.len = 0;
+			ds->max_indirect_range = 0;
+		}
 	}
 
 	i->i_size = length;

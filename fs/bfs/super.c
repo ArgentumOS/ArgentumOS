@@ -112,8 +112,10 @@ static void bfs_statfs(struct superblock *sb, struct statfs *buf)
 	buf->f_blocks = sb->u.bfs.num_blocks;
 	buf->f_bfree = sb->u.bfs.num_blocks - sb->u.bfs.used_blocks;
 	buf->f_bavail = buf->f_bfree;
-	buf->f_files = 0;
-	buf->f_ffree = 0;
+	/* inodes are ordinary data blocks in BFS; report the capacity and
+	 * the remaining free blocks as the inode counts */
+	buf->f_files = sb->u.bfs.num_blocks;
+	buf->f_ffree = buf->f_bfree;
 	buf->f_namelen = BFS_NAME_LEN;
 }
 

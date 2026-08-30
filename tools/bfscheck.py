@@ -33,22 +33,48 @@ def check(path):
     lb = hb * BLK
     assert u32(lb) == 0x69f6c2e8, "btree header magic"
     root_off = u64(lb+16)
-    leaf = hb + (root_off >> 10)
-    lb = leaf * BLK
-    nkeys = u16(lb+24); keylen = u16(lb+26)
-    assert nkeys < 100, "leaf sane"
-    kl_off = (28 + keylen + 7) & ~7
-    kl = [u16(lb+kl_off+2*i) for i in range(nkeys)]
-    vals_off = kl_off + 2*nkeys
-    prev = 0
-    names = []
-    for i in range(nkeys):
-        k = img[lb+28+prev : lb+28+kl[i]].decode()
-        v = u64(lb+vals_off+8*i)
-        names.append(k)
-        print("  '%s' -> inode %d" % (k, v))
-        prev = kl[i]
-    print("OK: %d entries, bitmap consistent, tree readable" % nkeys)
+    nkeys = 0
+
+    def node_pairs(off):
+        nlb = hb*BLK + off
+        c = u16(nlb+24); kl_ = u16(nlb+26)
+        koff = (28 + kl_ + 7) & ~7
+        ks = [u16(nlb+koff+2*i) for i in range(c)]
+        vo = koff + 2*c
+        prev = 0
+        out = []
+        for i in range(c):
+            out.append((img[nlb+28+prev:nlb+28+ks[i]].decode(), u64(nlb+vo+8*i)))
+            prev = ks[i]
+        return c, u64(nlb+16), out   # count, overflow, pairs
+
+    # walk the tree: collect all leaves (the keyed children of every
+    # interior node + the overflow child, then right-link chains)
+    leaves = []
+    def collect(off, depth):
+        if depth > 8: return
+        if off == 0xffffffffffffffff: return
+        c, ov, pairs = node_pairs(off)
+        if ov == 0xffffffffffffffff:
+            leaves.append(off)
+            r = u64(hb*BLK + off)
+            while r != 0xffffffffffffffff and r not in leaves:
+                leaves.append(r)
+                r = u64(hb*BLK + r)
+            return
+        for k, v in pairs:
+            collect(v, depth + 1)
+        collect(ov, depth + 1)
+    collect(root_off, 0)
+    all_names = []
+    for leaf_off in leaves:
+        c, ov, pairs = node_pairs(leaf_off)
+        for k, v in pairs:
+            all_names.append((k, v))
+    print("  tree: %d leaves, %d entries total" % (len(leaves), len(all_names)))
+    for k, v in all_names[:8]:
+        print("    '%s' -> %d" % (k, v))
+    print("OK: %d entries, bitmap consistent, tree readable" % len(all_names))
 
 if __name__ == '__main__':
     check(sys.argv[1])
