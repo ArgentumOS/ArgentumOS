@@ -11,9 +11,15 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+int main2(void);
+
 int main(int argc, char **argv)
 {
 	int n = 3000, base = 0, i, fd, count = 0;
+
+	if(argc > 1 && !strcmp(argv[1], "trunc")) {
+		return main2();
+	}
 	char name[32], path[64];
 	DIR *d;
 	struct dirent *de;
@@ -84,5 +90,61 @@ int main(int argc, char **argv)
 			printf("BFSDIR-SPREAD-OK\n");
 		}
 	}
+	return 0;
+}
+
+/* mode "trunc": write 8 blocks of marker data, ftruncate to 5 blocks,
+ * read back and verify the tail is gone and the first 5 blocks survive */
+int main2(void)
+{
+	int fd, i, rd;
+	char buf[1024];
+	struct stat st;
+
+	if((fd = open("/mnt/trunc", O_CREAT | O_WRONLY, 0644)) < 0) {
+		printf("TRUNC-OPEN-FAIL %s\n", strerror(errno));
+		return 1;
+	}
+	for(i = 0; i < 8; i++) {
+		memset(buf, 'A' + i, sizeof(buf));
+		if(write(fd, buf, sizeof(buf)) != sizeof(buf)) {
+			printf("TRUNC-WRITE-FAIL %s\n", strerror(errno));
+			return 1;
+		}
+	}
+	close(fd);
+	if((fd = open("/mnt/trunc", O_WRONLY)) < 0 ||
+			ftruncate(fd, 5 * 1024) < 0) {
+		printf("TRUNC-FTRUNC-FAIL %s\n", strerror(errno));
+		return 1;
+	}
+	close(fd);
+	if(stat("/mnt/trunc", &st) < 0) {
+		printf("TRUNC-STAT-FAIL %s\n", strerror(errno));
+		return 1;
+	}
+	printf("TRUNC-SIZE %d (expect 5120)\n", (int)st.st_size);
+	if((fd = open("/mnt/trunc", O_RDONLY)) < 0) {
+		printf("TRUNC-REOPEN-FAIL %s\n", strerror(errno));
+		return 1;
+	}
+	for(i = 0; i < 5; i++) {
+		rd = read(fd, buf, sizeof(buf));
+		if(rd != sizeof(buf)) {
+			printf("TRUNC-READ-FAIL at %d rd=%d %s\n",
+			       i, rd, strerror(errno));
+			return 1;
+		}
+		if(buf[0] != 'A' + i) {
+			printf("TRUNC-CONTENT-BAD at %d got %c\n", i, buf[0]);
+			return 1;
+		}
+	}
+	if(read(fd, buf, sizeof(buf)) != 0) {
+		printf("TRUNC-TAIL-FAIL (read past end)\n");
+		return 1;
+	}
+	close(fd);
+	printf("TRUNC-OK\n");
 	return 0;
 }

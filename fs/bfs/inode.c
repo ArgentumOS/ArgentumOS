@@ -512,13 +512,15 @@ int bfs_truncate(struct inode *i, __off_t length)
 	for(run = 0; run < BFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
 		__blk_t base;
+		__u64 run_end;
 
 		if(!len || ds->direct[run].start == 0) {
 			break;
 		}
 		base = (ds->direct[run].allocation_group << ag_shift)
 			+ ds->direct[run].start;
-		if(((__u64)base << BFS_BLOCK_SHIFT) >= (__u64)length) {
+		run_end = covered + ((__u64)len << BFS_BLOCK_SHIFT);
+		if((covered << BFS_BLOCK_SHIFT) >= (__u64)length) {
 			/* the whole run is beyond the new size: free it */
 			__u32 n;
 			for(n = 0; n < len; n++) {
@@ -527,21 +529,17 @@ int bfs_truncate(struct inode *i, __off_t length)
 			ds->direct[run].allocation_group = 0;
 			ds->direct[run].start = 0;
 			ds->direct[run].len = 0;
-		} else {
-			__u64 run_bytes = (__u64)len << BFS_BLOCK_SHIFT;
-			__u64 run_end = covered + run_bytes;
-			if(run_end > (__u64)length) {
-				/* partial run: free the tail blocks */
-				__u32 keep = ((__u32)length - (__u32)covered
-						+ BFS_BLOCK_SIZE - 1) >> BFS_BLOCK_SHIFT;
-				__u32 n;
-				for(n = keep; n < len; n++) {
-					bfs_bfree(i->sb, base + n);
-				}
-				ds->direct[run].len = keep;
+		} else if(run_end > (__u64)length) {
+			/* partial run: free the tail blocks */
+			__u64 keep = ((__u64)length - covered
+					+ BFS_BLOCK_SIZE - 1) >> BFS_BLOCK_SHIFT;
+			__u32 n;
+			for(n = (__u32)keep; n < len; n++) {
+				bfs_bfree(i->sb, base + n);
 			}
+			ds->direct[run].len = (__u32)keep;
 		}
-		covered += ds->direct[run].len;
+		covered = run_end;
 	}
 
 	/* free the indirect table if the new size is within the direct
@@ -552,6 +550,9 @@ int bfs_truncate(struct inode *i, __off_t length)
 			: ds->indirect.len + ds->double_indirect.len * arraylen;
 		int t;
 
+		/* file position of each table run = max_direct_range + covered */
+		{
+		__u64 covered = ds->max_direct_range;
 		for(t = 0; t < table_len; t++) {
 			struct bfs_block_run *runs;
 			struct buffer *ibuf;
@@ -561,45 +562,42 @@ int bfs_truncate(struct inode *i, __off_t length)
 			if(!tbl || !(ibuf = bread(i->dev, tbl, i->sb->s_blocksize))) {
 				break;
 			}
-			{
-				/* file position of each table run = max_direct_range + covered */
-				__u64 covered = ds->max_direct_range;
-				runs = (struct bfs_block_run *)ibuf->data;
-				for(j = 0; j < arraylen; j++) {
-					__u32 len = runs[j].len;
-					__u64 base, run_end;
+			runs = (struct bfs_block_run *)ibuf->data;
+			for(j = 0; j < arraylen; j++) {
+				__u32 len = runs[j].len;
+				__u64 base, run_end;
 
-					if(!len || runs[j].start == 0) {
-						break;
-					}
-					base = (__u64)(runs[j].allocation_group << ag_shift)
-						+ runs[j].start;
-					run_end = covered + ((__u64)len << BFS_BLOCK_SHIFT);
-					if(covered >= (__u64)length) {
-						/* the whole run is beyond the new size */
-						__u32 n;
-						for(n = 0; n < len; n++) {
-							bfs_bfree(i->sb, (__blk_t)base + n);
-						}
-						runs[j].allocation_group = 0;
-						runs[j].start = 0;
-						runs[j].len = 0;
-					} else if(run_end > (__u64)length) {
-						/* partial run: free the tail blocks */
-						__u32 keep = ((__u32)length - (__u32)covered
-								+ BFS_BLOCK_SIZE - 1) >> BFS_BLOCK_SHIFT;
-						__u32 n;
-						for(n = keep; n < len; n++) {
-							bfs_bfree(i->sb, (__blk_t)base + n);
-						}
-						runs[j].len = keep;
-					}
-					covered = run_end;
+				if(!len || runs[j].start == 0) {
+					break;
 				}
+				base = (__u64)(runs[j].allocation_group << ag_shift)
+					+ runs[j].start;
+				run_end = covered + ((__u64)len << BFS_BLOCK_SHIFT);
+				if(covered >= (__u64)length) {
+					/* the whole run is beyond the new size */
+					__u32 n;
+					for(n = 0; n < len; n++) {
+						bfs_bfree(i->sb, (__blk_t)base + n);
+					}
+					runs[j].allocation_group = 0;
+					runs[j].start = 0;
+					runs[j].len = 0;
+				} else if(run_end > (__u64)length) {
+					/* partial run: free the tail blocks */
+					__u64 keep = ((__u64)length - covered
+							+ BFS_BLOCK_SIZE - 1) >> BFS_BLOCK_SHIFT;
+					__u32 n;
+					for(n = (__u32)keep; n < len; n++) {
+						bfs_bfree(i->sb, (__blk_t)base + n);
+					}
+					runs[j].len = (__u32)keep;
+				}
+				covered = run_end;
 			}
 			bwrite(ibuf);
 		}
-		if((__u64)length <= ds->max_direct_range) {
+		}
+	if((__u64)length <= ds->max_direct_range) {
 			/* the whole indirect table is beyond the new size */
 			__u32 n;
 			__blk_t base = (ds->indirect.allocation_group << ag_shift)
