@@ -36,7 +36,9 @@ void kreal64_boot(void)
 		{ 20, 0x100000, 0x7F00000, MULTIBOOT_MEMORY_AVAILABLE },
 		{ 20, 0x8000000, 0x7800000, MULTIBOOT_MEMORY_RESERVED },
 	};
-	static char cmdline[] = "fnx console=/dev/ttyS0 root=/dev/sda rootfstype=ext2";
+	/* no rootfstype= on the command line: the root filesystem type is
+	 * probed by mount_root() (minix -> ext2 -> iso9660 -> bfs) */
+	static char cmdline[] = "fnx console=/dev/ttyS0 root=/dev/sda";
 	static char initrd_name[] = "fnxinitrd";	/* unused (no initrd= in cmdline) */
 	unsigned long last_boot_addr;
 

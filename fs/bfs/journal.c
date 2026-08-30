@@ -303,6 +303,12 @@ static int bfs_log_write_super(struct superblock *sb)
 	bsb->flags = sb->u.bfs.flags;
 	bwrite(buf);
 	sync_buffers(sb->dev);
+	/* the on-disk superblock now holds new log positions (a pending
+	 * transaction): mark the in-memory sb dirty so the next
+	 * sync_superblocks() drains the log (power-off / sync). Without
+	 * this the power-off drain runs BEFORE the last inode flushes,
+	 * which re-populate the log, and the final sync skips it. */
+	sb->state |= SUPERBLOCK_DIRTY;
 	return 0;
 }
 

@@ -156,6 +156,7 @@ int bfs_write_inode(struct inode *i)
 	bfs_log_begin(i->sb);
 	bfs_log_write_block(i->sb, buf->block, buf);
 	bfs_log_commit(i->sb);
+	i->state &= ~INODE_DIRTY;
 	return 0;
 }
 
@@ -234,11 +235,14 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 	int run, nrun = -1;
 
 	/* direct runs (up to BFS_NUM_DIRECT_BLOCKS runs; the runs' total
-	 * coverage is tracked in max_direct_range). A run starting at block 0
-	 * is a phantom (the superblock owns block 0) and is treated as empty. */
+	 * coverage is tracked in max_direct_range). A run pointing at
+	 * block 0 in AG 0 is a phantom (the superblock owns block 0) and
+	 * is treated as empty; a run starting at block 0 of a LATER AG
+	 * is a real run (the first block of that group). */
 	for(run = 0; run < BFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
-		if(!len || ds->direct[run].start == 0) {
+		if(!len || (ds->direct[run].allocation_group == 0
+				&& ds->direct[run].start == 0)) {
 			nrun = run;
 			break;
 		}
@@ -367,7 +371,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
 	__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
 	__u64 covered = 0;
-	__u32 table_len = (ds->indirect.start == 0) ? 0
+	__u32 table_len = !ds->indirect.len ? 0
 		: ds->indirect.len + ds->double_indirect.len
 			* (i->sb->s_blocksize / sizeof(__blk_t));
 	struct buffer *buf = NULL;
@@ -389,7 +393,8 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		runs = (struct bfs_block_run *)buf->data;
 		for(j = 0; j < arraylen; j++) {
 			__u32 len = runs[j].len;
-			if(!len || runs[j].start == 0) {
+			if(!len || (runs[j].allocation_group == 0
+					&& runs[j].start == 0)) {
 				/* free slot: only meaningful for writes */
 				if(mode == FOR_WRITING) {
 					__blk_t nb;
@@ -553,7 +558,8 @@ int bfs_truncate(struct inode *i, __off_t length)
 		__blk_t base;
 		__u64 run_end;
 
-		if(!len || ds->direct[run].start == 0) {
+		if(!len || (ds->direct[run].allocation_group == 0
+				&& ds->direct[run].start == 0)) {
 			break;
 		}
 		base = (ds->direct[run].allocation_group << ag_shift)
@@ -585,7 +591,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 	 * range; otherwise free the indirect runs beyond the new size */
 	{
 		__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
-		__u32 table_len = (ds->indirect.start == 0) ? 0
+		__u32 table_len = !ds->indirect.len ? 0
 			: ds->indirect.len + ds->double_indirect.len
 				* (i->sb->s_blocksize / sizeof(__blk_t));
 		int t;
@@ -607,7 +613,8 @@ int bfs_truncate(struct inode *i, __off_t length)
 				__u32 len = runs[j].len;
 				__u64 base, run_end;
 
-				if(!len || runs[j].start == 0) {
+				if(!len || (runs[j].allocation_group == 0
+						&& runs[j].start == 0)) {
 					break;
 				}
 				base = (__u64)(runs[j].allocation_group << ag_shift)

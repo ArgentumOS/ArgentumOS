@@ -291,11 +291,15 @@ static int bfs_btree_node_room(struct bfs_btree_node *n, int keylen)
 
 /*
  * From an interior node, pick the child offset for 'name'.
+ * Comparison is prefix-aware like bfs_btree_search_node(): a name that
+ * extends a separator key (e.g. "whoami" vs separator "who") is GREATER
+ * than the key, so it descends into the next child instead of matching
+ * the current one.
  */
 static void bfs_btree_pick_child(struct bfs_btree_node *n, const char *name,
 				 __u64 *child)
 {
-	int i, keylen;
+	int i, keylen, cmp;
 	char *key;
 	__u64 *values = bfs_btree_values(n);
 
@@ -305,7 +309,11 @@ static void bfs_btree_pick_child(struct bfs_btree_node *n, const char *name,
 	}
 
 	key = bfs_btree_key(n, n->all_key_count - 1, &keylen);
-	if(strncmp(name, key, keylen) > 0) {
+	cmp = strncmp(name, key, keylen);
+	if(cmp == 0 && name[keylen]) {
+		cmp = 1;	/* name longer than the last key */
+	}
+	if(cmp > 0) {
 		*child = (n->overflow != BFS_BTREE_NULL) ?
 			n->overflow : values[n->all_key_count - 1];
 		return;
@@ -313,7 +321,11 @@ static void bfs_btree_pick_child(struct bfs_btree_node *n, const char *name,
 
 	for(i = 0; i < n->all_key_count && i < 128; i++) {
 		key = bfs_btree_key(n, i, &keylen);
-		if(strncmp(name, key, keylen) <= 0) {
+		cmp = strncmp(name, key, keylen);
+		if(cmp == 0 && name[keylen]) {
+			cmp = 1;
+		}
+		if(cmp <= 0) {
 			*child = values[i];
 			return;
 		}

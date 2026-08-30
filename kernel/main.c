@@ -59,10 +59,8 @@ struct new_utsname sys_utsname = {
 
 static void set_default_values(void)
 {
-	/* filesystem is ext2 */
-	if(!kparms.rootfstype[0]) {
-		strcpy(kparms.rootfstype, "ext2");
-	}
+	/* no rootfstype default: mount_root() probes the disk filesystems
+	 * (minix -> ext2 -> iso9660 -> bfs) when rootfstype= is absent */
 
 	/* console is /dev/tty0 */
 	if(!kparms.syscondev) {

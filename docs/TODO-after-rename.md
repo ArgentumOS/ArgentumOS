@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M4e DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f)
+## OpenBFS (BeOS BFS) filesystem - M0-M4f DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, M4f)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -615,8 +615,42 @@ block + writes a log entry + DIRTY sb; the mount must replay it — block
 restored, log drained, sb clean). Two bugs fixed on the way: a gcc -O2
 miscompile of bfs_log_commit's indexed loops (1..n shift + OOB; loops
 now walk pointers) and an interleaved write_inode tx clobbering the tx
-state mid-commit (fixed by the ownership lock). Remaining: multi-node trees, BFS as root fs. The existing ext2 root
-(mkext2.py, rev-0, 1KB blocks) stays as-is.
+state mid-commit (fixed by the ownership lock). M4f = BFS as the ROOT
+filesystem (the "multi-node trees" item was already delivered by M4b;
+the root image now exercises it at build time — /usr/bin's 130 entries
+build a depth-2 tree). tools/mkbfs.py was upgraded to build a full root
+image: multi-block file streams (12 direct runs + indirect table of 128
+block_run entries per block + double-indirect of 256 u32 addresses per
+block — the layout the driver's bmap reads; toybox's 758 blocks become
+190 runs, the FIRST real exercise of the double-indirect read path,
+which the host verifiers previously parsed wrong at 128x8 bytes), short
+and long symlinks, multi-node directory B+trees (interior nodes with
+key[i] = last key of child[i]'s subtree, values + overflow = children,
+leaves right-linked, left always -1 as the driver writes), source
+permission preservation (the old hardcoded 0644 made /sbin/init
+EACCES), and a multi-AG-safe run allocator. tools/bfscheck.py is now a
+whole-image verifier: superblock + bitmap<->used-block agreement,
+every dir tree (multi-node walk, sortedness, right-chain integrity,
+key order), every stream byte-compared to the source tree, symlink
+targets and modes; `make rootbfs` builds + verifies .build/rootbfs.img.
+Root mounting: the kreal64 cmdline no longer bakes rootfstype= (and
+set_default_values no longer forces ext2), and mount_root probes
+minix -> ext2 -> iso9660 -> bfs when rootfstype is absent — ONE kernel
+boots both the ext2 root (`make run`) and the BFS root (`make run-bfs`
+attaches rootbfs.img as /dev/sda). statfs/fstatfs on the x86-64 table
+now use the 64-bit statfs ABI (120-byte struct, 8-byte fields), so `df`
+works on any root. Two journal bugs surfaced by the power-off path and
+fixed: bfs_log_write_super now marks the in-memory superblock dirty
+(the final sync_superblocks used to skip the drain because the last
+commit's on-disk write never set it — power-off left DIRT + a pending
+log), and bfs_write_inode now clears INODE_DIRTY (it never did, so
+every sync_inodes re-journaled all dirty inodes, re-populating the log
+after every drain). Verified: BFS root boots to the interactive dash
+shell, ls/cat/df/mkdir/ln/cksum work, toybox reads byte-perfect
+(1012972784 matches the host), writes persist, `halt -f` ends with sb
+CLEN + log drained; ext2 root still boots; regressions M4a 6/6, M4c
+S1-S8, M4d X1-X5, M4e J1-J6 + jrnl_craft replay (block restored, log
+clean). The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
 "second filesystem" (Giampaolo, "Practical File System Design with the
@@ -648,6 +682,7 @@ Milestones (each independently verifiable):
 - M4 - Stretch: attributes/queries (BeOS signature feature), and/or
   make BFS the ROOT filesystem (mkbfs.py root image + mount-before-
   userland; the ext2 root path and mkext2.py then become optional).
+  DONE (M4d attributes, M4e journaling, M4f BFS as root fs).
 
 Framing: first milestone mounts BFS as a SECOND filesystem (data
 disk, e.g. a second QEMU drive) while ext2 stays the root - lower

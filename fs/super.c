@@ -213,8 +213,9 @@ int kern_mount(__dev_t dev, struct filesystems *fs)
 
 int mount_root(void)
 {
-	struct filesystems *fs;
+	struct filesystems *fs = NULL;
 	struct mount *mp;
+	int n;
 
 	/*
 	 * FIXME: before trying to mount the filesystem, we should first
@@ -225,22 +226,52 @@ int mount_root(void)
 		PANIC("root device not defined.\n");
 	}
 
-	if(!(fs = get_filesystem(kparms.rootfstype))) {
-		printk("WARNING: %s(): '%s' is not a registered filesystem. Defaulting to 'ext2'.\n", __FUNCTION__, kparms.rootfstype);
-		if(!(fs = get_filesystem("ext2"))) {
-			PANIC("ext2 filesystem is not registered!\n");
-		}
-	}
-
 	if(!(mp = add_mount_point(kparms.rootdev, "/dev/root", "/"))) {
 		PANIC("unable to get a free mount point.\n");
 	}
-
 	if(kparms.ro) {
 		mp->sb.flags = MS_RDONLY;
 	}
-	if(fs->fsop->read_superblock(kparms.rootdev, &mp->sb)) {
-		PANIC("unable to mount root filesystem on %s.\n", kparms.rootdevname);
+
+	if(kparms.rootfstype[0]) {
+		/* explicit rootfstype= on the command line */
+		if(!(fs = get_filesystem(kparms.rootfstype))) {
+			printk("WARNING: %s(): '%s' is not a registered filesystem. Defaulting to 'ext2'.\n", __FUNCTION__, kparms.rootfstype);
+			fs = get_filesystem("ext2");
+		}
+		if(!fs) {
+			PANIC("ext2 filesystem is not registered!\n");
+		}
+		if(fs->fsop->read_superblock(kparms.rootdev, &mp->sb)) {
+			PANIC("unable to mount root filesystem on %s.\n", kparms.rootdevname);
+		}
+	} else {
+		/* no rootfstype= on the command line: probe the disk
+		 * filesystems (in a fixed order; the pseudo filesystems like
+		 * procfs/devfs would claim any device) and mount the first
+		 * one whose read_superblock recognizes the device */
+		static const char *probe[] = { "minix", "ext2", "iso9660", "bfs" };
+
+		for(n = 0; n < (int)(sizeof(probe) / sizeof(probe[0])); n++) {
+			struct filesystems *cand = get_filesystem(probe[n]);
+
+			if(!cand) {
+				continue;
+			}
+			/* a failed probe may leave stale generic sb fields;
+			 * the successful one fills in everything it uses */
+			memset_b(&mp->sb, 0, sizeof(struct superblock));
+			if(kparms.ro) {
+				mp->sb.flags = MS_RDONLY;
+			}
+			if(!cand->fsop->read_superblock(kparms.rootdev, &mp->sb)) {
+				fs = cand;
+				break;
+			}
+		}
+		if(!fs) {
+			PANIC("unable to mount root filesystem on %s.\n", kparms.rootdevname);
+		}
 	}
 
 	mp->sb.root->mount_point = mp->sb.root;

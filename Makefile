@@ -64,16 +64,26 @@ CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2
        -fno-asynchronous-unwind-tables -Wall -Wstrict-prototypes
 
 run: .build/ovmf/OVMF.fd rootdisk64 build64
-	@./tools/mkesp.sh
-	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
-	elif [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
-	else \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=.build/root.img,format=raw $(QEMU_EXTRA); \
-	fi
+	$(MAKE) run-qemu ROOTIMG=.build/root.img
 
 run-uefi: run
+
+# Boot the BFS root image (.build/rootbfs.img) as /dev/sda. The kernel's
+# cmdline carries no rootfstype=, so mount_root() probes the disk
+# filesystems (minix -> ext2 -> iso9660 -> bfs) and finds bfs; the same
+# kernel boots both the ext2 and the BFS root.
+run-bfs: .build/ovmf/OVMF.fd rootbfs build64
+	$(MAKE) run-qemu ROOTIMG=.build/rootbfs.img
+
+run-qemu:
+	@./tools/mkesp.sh
+	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=$(ROOTIMG),format=raw $(QEMU_EXTRA); \
+	elif [ -t 1 ]; then \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=$(ROOTIMG),format=raw $(QEMU_EXTRA); \
+	else \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=$(ROOTIMG),format=raw $(QEMU_EXTRA); \
+	fi
 
 # --- FNX native x86_64 userland (port phase B): static ELF64 binaries
 # --- built with tools/musl-gcc64.sh into .build/rootfs64, packed into an
@@ -150,6 +160,14 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 rootdisk64: userland64
 	python3 tools/mkext2.py $(ROOTFS64) .build/root.img 8
 	@echo "rootdisk64: .build/root.img ready (ext2, 8MB, native x86_64 userland)"
+
+# BFS root image (OpenBFS M4f): the same userland tree packed into a BeOS
+# BFS image by tools/mkbfs.py (multi-node dir trees, indirect +
+# double-indirect streams, symlinks). Boot via 'make run-bfs'.
+rootbfs: userland64
+	python3 tools/mkbfs.py $(ROOTFS64) .build/rootbfs.img 16
+	python3 tools/bfscheck.py .build/rootbfs.img $(ROOTFS64)
+	@echo "rootbfs: .build/rootbfs.img ready (BFS, 16MB, native x86_64 userland)"
 
 ovmf: .build/ovmf/OVMF.fd
 
