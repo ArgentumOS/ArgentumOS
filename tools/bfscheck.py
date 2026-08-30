@@ -59,13 +59,18 @@ def check(path, rootdir=None):
     bpa = u32(o + 0x48)
     ags = u32(o + 0x4c)
     nags = u32(o + 0x50)
+    ag_shift = ags
     flags = u32(o + 0x54)
     log_run = run(o + 0x58)
     log_start, log_end = u64(o + 0x60), u64(o + 0x68)
     root_ag, root_st, _ = run(o + 0x74)
     root_ino = (root_ag << ags) + root_st
     assert num_blocks == nblocks, "num_blocks vs image size"
-    assert bpa == 1 and ags == AG_SHIFT, "geometry"
+    assert bpa >= 1 and ags >= 1, "geometry"
+    inode_size = u32(o + 0x40)
+    assert inode_size == BLK, (
+        "inode_size %d != block_size %d (Haiku IsValid requires equality)"
+        % (inode_size, BLK))
     assert log_start == 0 and log_end == 0, "journal must be clean"
     print("sb: used=%d blocks_per_ag=%d num_ags=%d flags=%08x log=%s/%s"
           % (used, bpa, nags, flags, log_run, (log_start, log_end)))
@@ -74,11 +79,12 @@ def check(path, rootdir=None):
     # ---- bitmap ----
     bitmap = bytearray()
     for g in range(nags):
-        bitmap += img[(1 + g) * BLK:(2 + g) * BLK]
+        for bb in range(bpa):
+            bitmap += img[(1 + g * bpa + bb) * BLK:(2 + g * bpa + bb) * BLK]
     setbits = []
     for b in range(num_blocks):
-        group = b >> AG_SHIFT
-        bit = b & ((1 << AG_SHIFT) - 1)
+        group = b >> ag_shift
+        bit = b & ((1 << ag_shift) - 1)
         if bitmap[group * BLK + (bit >> 3)] & (1 << (bit & 7)):
             setbits.append(b)
     assert len(setbits) == used, "bitmap count vs used_blocks (%d != %d)" % (
@@ -107,7 +113,7 @@ def check(path, rootdir=None):
         direct, mdr, ind, max_ind, dind, max_dind, size = parse_stream(io)
         blocks = []
         for ag, st, ln in direct:
-            base = (ag << AG_SHIFT) + st
+            base = (ag << ag_shift) + st
             blocks += list(range(base, base + ln))
         covered = len(blocks)
         if ind[2] or dind[2]:
@@ -115,10 +121,10 @@ def check(path, rootdir=None):
             table_len = ind[2] + dind[2] * (BLK // 4)
             for t in range(table_len):
                 if t < ind[2]:
-                    tbl = (ind[0] << AG_SHIFT) + ind[1] + t
+                    tbl = (ind[0] << ag_shift) + ind[1] + t
                 else:
                     dslot = t - ind[2]
-                    db = (dind[0] << AG_SHIFT) + dind[1] + dslot // (BLK // 4)
+                    db = (dind[0] << ag_shift) + dind[1] + dslot // (BLK // 4)
                     if refs is not None:
                         refs.add(db)
                     tbl = u32(db * BLK + (dslot % (BLK // 4)) * 4)
@@ -181,6 +187,13 @@ def check(path, rootdir=None):
 
         entries = walk(root_ptr, 1)
         stats['max_depth'] = max(stats['max_depth'], 1)
+        # Haiku validates links against MaximumSize() - NodeSize(): the
+        # header's maximum_size must be >= the stream length
+        hdr = node_at(blocks, 0)
+        max_size = u64(hdr + 24)
+        assert max_size >= len(blocks) * BLK, (
+            "tree maximum_size %d < stream length %d (Haiku link check)"
+            % (max_size, len(blocks) * BLK))
         # verify the leaf right-link chain: descend to the leftmost leaf
         # (driver iterate semantics: values[0] until overflow == -1),
         # then follow right links; every descent-reached leaf must be on
@@ -198,6 +211,14 @@ def check(path, rootdir=None):
             n = node_at(blocks, node)
             pairs, ovf = read_pairs(n)
             assert ovf == BTREE_NULL, "iterate path hit an interior node"
+            left = u64(n)
+            if len(leaves) == 0:
+                assert left == BTREE_NULL, (
+                    "first leaf left link %d != NULL" % left)
+            else:
+                assert left == leaves[-1], (
+                    "leaf left link %d != previous leaf %d"
+                    % (left, leaves[-1]))
             leaves.append(node)
             right = u64(n + 8)
             if right == BTREE_NULL:
@@ -223,11 +244,44 @@ def check(path, rootdir=None):
     inode_blocks = set()
     dir_nodes = []
 
-    def check_inode(blk):
+    def small_data_records(io):
+        """Parse the small_data tail with the HAIKU layout: each record
+        is type(4) name_size(2) data_size(2) name + strcpy NUL + 2 pad +
+        data + NUL (8 + N + 3 + D + 1 bytes, data at name + N + 3)."""
+        sd = 232
+        recs = []
+        while sd < inode_size:
+            t = u32(io + sd)
+            ns = u16(io + sd + 4)
+            ds = u16(io + sd + 6)
+            if ns == 0:
+                break
+            need = 8 + ns + 3 + ds + 1
+            if sd + need > inode_size:
+                raise Fail("inode %d: truncated small_data record" % (io // BLK))
+            name = img[io + sd + 8:io + sd + 8 + ns]
+            data = img[io + sd + 8 + ns + 3:io + sd + 8 + ns + 3 + ds]
+            recs.append((t, ns, name, data))
+            sd += need
+        return recs
+
+    def check_inode(blk, name=None):
         io = blk * BLK
         assert u32(io) == INODE_MAGIC, "inode %d bad magic" % blk
         assert u32(io + 24) & INODE_IN_USE, "inode %d not in use" % blk
+        assert u32(io + 0x40) == BLK, (
+            "inode %d inode_size %d != block_size (Haiku InitCheck)"
+            % (blk, u32(io + 0x40)))
         mode = u32(io + 20)
+        # Haiku small_data conformance: every inode carries the file-name
+        # 0x13 record (name_size == 1, name == 0x13, data == the name)
+        recs = small_data_records(io)
+        nrec = [r for r in recs if r[1] == 1 and r[2] == b'\x13']
+        if name is not None:
+            assert nrec, "inode %d (%s): missing 0x13 name record" % (blk, name)
+            assert nrec[0][3] == name.encode('latin1'), (
+                "inode %d (%s): 0x13 record %r != name %r"
+                % (blk, name, nrec[0][3], name))
         return io, mode
 
     def check_mode(io, path, want_kind):
@@ -261,8 +315,8 @@ def check(path, rootdir=None):
             inode_blocks.add(v)
         for child_name in [k for k in keys if k not in (b'.', b'..')]:
             cino = d[child_name]
-            cio, cmode = check_inode(cino)
             child = child_name.decode('latin1')
+            cio, cmode = check_inode(cino, child)
             cpath = path + '/' + child
             if cmode & S_IFMT == S_IFDIR:
                 walk_dir(cino, ino, cpath)
@@ -292,13 +346,26 @@ def check(path, rootdir=None):
             print("  %s: %d bytes, %d stream blocks" % (path, size, len(blocks)))
 
     def check_link(ino, path):
-        io, mode = check_inode(ino)
+        io, mode = check_inode(ino, path.rsplit('/', 1)[-1])
         check_mode(io, path, S_IFLNK)
-        size = u32(io + 224) or u64(io + 208)
-        if size <= 143:
-            target = img[io + 72:io + 72 + size]
-        else:
+        flags = u32(io + 24)
+        long_flag = bool(flags & 0x40)      # INODE_LONG_SYMLINK
+        dsize = u64(io + 208)               # union data.size
+        pad0 = u32(io + 224)
+        if long_flag:
+            # stream symlink: the target lives in the data stream, its
+            # length in data.size; pad[0] is not part of the format
+            size = dsize
             target = read_stream(io, size)
+        else:
+            # inline symlink: NUL-terminated text in the symlink area
+            # (Haiku stores no length; pad[0] is our legacy extension)
+            end = img.find(b'\x00', io + 72, io + 72 + 144)
+            if end < 0:
+                end = io + 72 + 144
+            size = end - (io + 72)
+            target = img[io + 72:end]
+            assert size <= 143, "%s: inline symlink too long (%d)" % (path, size)
         if rootdir is not None:
             src = os.path.join(rootdir, path.lstrip('/'))
             exp = os.readlink(src).encode()

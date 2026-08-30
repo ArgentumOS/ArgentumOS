@@ -42,7 +42,7 @@ static int bfs_btree_descend(struct inode *, const struct bfs_btree_header *,
 static int bfs_btree_collect(struct bfs_btree_node *, struct bfs_btree_pair *,
 			     int, int, const char *, int, __u64, char *);
 static int bfs_btree_serialize(struct bfs_btree_node *, struct bfs_btree_pair *,
-			       int, __u64, __u64);
+			       int, __u64, __u64, __u64);
 static int bfs_btree_split(struct inode *, struct bfs_btree_header *,
 			   __u64 *, int, struct bfs_btree_pair *, int, int,
 			   __u64, int);
@@ -118,7 +118,9 @@ static int bfs_btree_read_header(struct inode *i, struct bfs_btree_header *heade
 	return 0;
 }
 
-/* update the tree header on disk (max_depth changes on split) */
+/* update the tree header on disk (max_depth changes on split). The
+ * maximum_size field tracks the stream length (Haiku validates links
+ * against MaximumSize() - NodeSize()) */
 static int bfs_btree_write_header(struct inode *i, struct bfs_btree_header *header)
 {
 	struct buffer *buf;
@@ -128,6 +130,7 @@ static int bfs_btree_write_header(struct inode *i, struct bfs_btree_header *head
 		return -EIO;
 	}
 	h = (struct bfs_btree_header *)buf->data;
+	header->max_size = i->i_size;
 	memcpy_b(h, header, sizeof(struct bfs_btree_header));
 	bfs_log_write_block(i->sb, buf->block, buf);
 	return 0;
@@ -419,7 +422,8 @@ static int bfs_btree_collect(struct bfs_btree_node *n, struct bfs_btree_pair *pa
 
 static int bfs_btree_serialize(struct bfs_btree_node *n,
 			       struct bfs_btree_pair *pairs, int count,
-			       __u64 interior_overflow, __u64 right)
+			       __u64 interior_overflow, __u64 right,
+			       __u64 left)
 {
 	char *keydata;
 	int total = 0, i, off = 0;
@@ -434,7 +438,7 @@ static int bfs_btree_serialize(struct bfs_btree_node *n,
 	}
 
 	memset_b(n, 0, BFS_BLOCK_SIZE);
-	n->left = BFS_BTREE_NULL;
+	n->left = left;
 	n->right = right;
 	n->overflow = interior_overflow;	/* -1 => leaf */
 	n->all_key_count = count;
@@ -457,7 +461,7 @@ static int bfs_btree_serialize(struct bfs_btree_node *n,
 
 static int bfs_btree_write_node(struct inode *dir, __u64 off,
 				struct bfs_btree_pair *pairs, int count,
-				__u64 overflow, __u64 right)
+				__u64 overflow, __u64 right, __u64 left)
 {
 	struct bfs_btree_node *n;
 	struct buffer *buf;
@@ -466,13 +470,39 @@ static int bfs_btree_write_node(struct inode *dir, __u64 off,
 		return -EIO;
 	}
 	n = (struct bfs_btree_node *)buf->data;
-	bfs_btree_serialize(n, pairs, count, overflow, right);
+	bfs_btree_serialize(n, pairs, count, overflow, right, left);
+	bfs_log_write_block(dir->sb, buf->block, buf);
+	return 0;
+}
+
+
+/*
+ * Point a leaf's left link at 'left' (the previous leaf in the stream).
+ * Called after a leaf split: the leaf that used to follow the split node
+ * now follows the new right half. Haiku keeps these links consistent,
+ * and checkfs validates them.
+ */
+static int bfs_btree_relink_left(struct inode *dir, __u64 off, __u64 left)
+{
+	struct bfs_btree_node *n;
+	struct buffer *buf;
+
+	if(off == BFS_BTREE_NULL) {
+		return 0;
+	}
+	if(!(buf = bfs_btree_read_node(dir, off))) {
+		return -EIO;
+	}
+	n = (struct bfs_btree_node *)buf->data;
+	n->left = left;
 	bfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
 
 static int bfs_btree_grow(struct inode *dir, __u64 *off)
 {
+	struct bfs_btree_header *h;
+	struct buffer *hbuf;
 	__blk_t block;
 
 	if((block = bmap(dir, dir->i_size, FOR_WRITING)) < 0) {
@@ -482,6 +512,15 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off)
 	dir->i_size += BFS_BLOCK_SIZE;
 	dir->u.bfs.raw.u.data.size = dir->i_size;
 	dir->state |= INODE_DIRTY;
+
+	/* Haiku validates node links against MaximumSize() - NodeSize(),
+	 * so the header's maximum_size must track the stream length on
+	 * EVERY grow, not just root splits */
+	if((hbuf = bfs_btree_read_node(dir, 0))) {
+		h = (struct bfs_btree_header *)hbuf->data;
+		h->max_size = dir->i_size;
+		bfs_log_write_block(dir->sb, hbuf->block, hbuf);
+	}
 	return 0;
 }
 
@@ -518,7 +557,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 	struct bfs_btree_node *n;
 	struct buffer *buf;
 	__u64 node_off = path[npath - 1];
-	__u64 old_right, left_overflow, right_overflow;
+	__u64 old_right, old_left, left_overflow, right_overflow;
 	__u64 left_off, right_off;
 	const char *sep;
 	struct bfs_btree_pair *right_pairs;
@@ -556,6 +595,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 	}
 	n = (struct bfs_btree_node *)buf->data;
 	old_right = n->right;
+	old_left = n->left;
 
 	if((res = bfs_btree_grow(dir, &right_off)) < 0) {
 		brelse(buf);
@@ -571,13 +611,20 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			return res;
 		}
 		if((res = bfs_btree_write_node(dir, left_off, pairs, split_at,
-				left_overflow, right_off)) < 0) {
+				left_overflow, right_off,
+				is_leaf ? old_left : BFS_BTREE_NULL)) < 0) {
 			brelse(buf);
 			return res;
 		}
 		if((res = bfs_btree_write_node(dir, right_off, right_pairs,
 				right_count, right_overflow,
-				is_leaf ? old_right : BFS_BTREE_NULL)) < 0) {
+				is_leaf ? old_right : BFS_BTREE_NULL,
+				is_leaf ? left_off : BFS_BTREE_NULL)) < 0) {
+			brelse(buf);
+			return res;
+		}
+		if(is_leaf && (res = bfs_btree_relink_left(dir, old_right,
+				right_off)) < 0) {
 			brelse(buf);
 			return res;
 		}
@@ -609,12 +656,19 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 	 * parent interior */
 	if((res = bfs_btree_write_node(dir, right_off, right_pairs,
 			right_count, right_overflow,
-			is_leaf ? old_right : BFS_BTREE_NULL)) < 0) {
+			is_leaf ? old_right : BFS_BTREE_NULL,
+			is_leaf ? node_off : BFS_BTREE_NULL)) < 0) {
+		brelse(buf);
+		return res;
+	}
+	if(is_leaf && (res = bfs_btree_relink_left(dir, old_right,
+			right_off)) < 0) {
 		brelse(buf);
 		return res;
 	}
 	bfs_btree_serialize(n, pairs, split_at, left_overflow,
-			    is_leaf ? right_off : BFS_BTREE_NULL);
+			    is_leaf ? right_off : BFS_BTREE_NULL,
+			    is_leaf ? old_left : BFS_BTREE_NULL);
 	bfs_log_write_block(dir->sb, buf->block, buf);
 
 	/* insert the separator into the parent, splitting the parent
@@ -712,6 +766,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 				/* the parent has room: rebuild it in place */
 				bfs_btree_serialize(parent, pp, pcount,
 						    parent_overflow,
+						    BFS_BTREE_NULL,
 						    BFS_BTREE_NULL);
 				bfs_log_write_block(dir->sb, parent_buf->block,
 						    parent_buf);
@@ -774,7 +829,8 @@ static int bfs_btree_insert_impl(struct inode *dir, const char *name,
 			brelse(buf);
 			return -EEXIST;
 		}
-		bfs_btree_serialize(n, pairs, count, BFS_BTREE_NULL, n->right);
+		bfs_btree_serialize(n, pairs, count, BFS_BTREE_NULL, n->right,
+				    n->left);
 		bfs_log_write_block(dir->sb, buf->block, buf);
 		return 0;
 	}

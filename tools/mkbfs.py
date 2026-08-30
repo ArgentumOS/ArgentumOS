@@ -29,13 +29,36 @@ import struct
 import sys
 
 BLOCK = 1024
-AG_SHIFT = 13               # 8192 blocks per allocation group
+AG_SHIFT = 13               # default (8192 blocks per allocation group)
 AG_SIZE = 1 << AG_SHIFT
+# Haiku's mkfs geometry (Volume::Initialize): start with 8192-block
+# groups and grow them until at most kDesiredAllocationGroups exist.
+# Returns (ag_shift, blocks_per_ag, num_ags). 1KB blocks keep
+# ag_shift == 13; only >1KB block sizes bump it up front.
+def haiku_geometry(num_blocks, block_size=BLOCK):
+    bits_per_block = block_size << 3
+    bitmap_blocks = (num_blocks + bits_per_block - 1) // bits_per_block
+    bpa = 1
+    ag_shift = 13
+    i = 8192
+    while i < bits_per_block:
+        ag_shift += 1
+        i *= 2
+    k_desired = 56
+    while True:
+        num_groups = (bitmap_blocks + bpa - 1) // bpa
+        if num_groups > k_desired and ag_shift < 16:
+            ag_shift += 1
+            bpa *= 2
+        else:
+            break
+    return ag_shift, bpa, num_groups
 INODE_SIZE = 256
 BTREE_NULL = 0xFFFFFFFFFFFFFFFF
 BTREE_MAGIC = 0x69f6c2e8
 INODE_MAGIC = 0x3bbe0ad9
 INODE_IN_USE = 0x00000001
+INODE_LONG_SYMLINK = 0x00000040  # Haiku inode_flags
 MAGIC1 = 0x42465331
 MAGIC2 = 0xdd121031
 MAGIC3 = 0x15b6830e
@@ -67,7 +90,8 @@ def u64(v):
     return struct.pack("<Q", v & 0xFFFFFFFFFFFFFFFF)
 
 
-def build_super(num_blocks, used, root_block, log_start, log_len, num_ags=1):
+def build_super(num_blocks, used, root_block, log_start, log_len,
+                 ag_shift, blocks_per_ag, num_ags):
     sb = bytearray(512)
     sb[0:4] = b"BFS1"
     o = 0x20
@@ -77,11 +101,11 @@ def build_super(num_blocks, used, root_block, log_start, log_len, num_ags=1):
     sb[o:o + 4] = u32(10); o += 4
     sb[o:o + 8] = u64(num_blocks); o += 8
     sb[o:o + 8] = u64(used); o += 8
-    sb[o:o + 4] = u32(INODE_SIZE); o += 4
+    sb[o:o + 4] = u32(BLOCK); o += 4      # inode_size: == block_size (Haiku)
     sb[o:o + 4] = u32(MAGIC2); o += 4
-    sb[o:o + 4] = u32(1)               # blocks_per_ag: bitmap blocks/group
+    sb[o:o + 4] = u32(blocks_per_ag)   # bitmap blocks per allocation group
     o += 4
-    sb[o:o + 4] = u32(AG_SHIFT); o += 4
+    sb[o:o + 4] = u32(ag_shift); o += 4
     sb[o:o + 4] = u32(num_ags); o += 4
     sb[o:o + 4] = u32(CLEAN); o += 4
     sb[o:o + 8] = run(0, log_start, log_len); o += 8
@@ -157,25 +181,27 @@ def table_blocks(st):
 
 
 def build_inode(block, mode, size, parent, stream, name_attr=None,
-                symlink=None):
+                symlink=None, flags=INODE_IN_USE):
     """Serialize a 256-byte inode. 'stream' is a dict with 'direct' (list
     of runs), 'mdr', 'indirect' (run or None), 'max_indirect', 'dind'
     (run or None), 'max_dind'. 'symlink' is the inline target (<= 143
-    bytes); otherwise the union holds the data stream."""
-    i = bytearray(INODE_SIZE)
+    bytes); otherwise the union holds the data stream. 'flags' defaults
+    to INODE_IN_USE; pass INODE_IN_USE|INODE_LONG_SYMLINK for stream
+    symlinks (Haiku's INODE_LONG_SYMLINK)."""
+    i = bytearray(BLOCK)  # inode_size == block_size (Haiku)
     o = 0
     i[o:o + 4] = u32(INODE_MAGIC); o += 4
     i[o:o + 8] = run(0, block); o += 8       # inode_num
     i[o:o + 4] = u32(0); o += 4              # uid
     i[o:o + 4] = u32(0); o += 4              # gid
     i[o:o + 4] = u32(mode); o += 4
-    i[o:o + 4] = u32(INODE_IN_USE); o += 4   # flags
+    i[o:o + 4] = u32(flags); o += 4          # flags
     i[o:o + 8] = u64(0); o += 8              # create_time
     i[o:o + 8] = u64(0); o += 8              # last_modified_time
     i[o:o + 8] = run(0, parent); o += 8      # parent
     i[o:o + 8] = run(0, 0); o += 8           # attributes
     i[o:o + 4] = u32(0); o += 4              # type
-    i[o:o + 4] = u32(INODE_SIZE); o += 4     # inode_size
+    i[o:o + 4] = u32(BLOCK); o += 4          # inode_size == block_size (Haiku)
     i[o:o + 4] = u32(0); o += 4              # etc
     if symlink is not None:
         assert len(symlink) <= 143
@@ -201,13 +227,18 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
     else:
         o += 8                               # pad[2]
     if name_attr is not None:
+        # Haiku file-name small_data record: name_size == 1, name == the
+        # single byte 0x13 (FILE_NAME_NAME), data = the file name, with
+        # the strcpy NUL + 2 pad before the data and a trailing NUL.
+        # Total = 8 + 1 + 3 + N + 1 (Haiku small_data::Size()).
         n = name_attr.encode()
         sd = bytearray()
-        sd += u32(0x43535452)                # 'CSTR'
-        sd += u16(0x13)                      # name_size ("name")
+        sd += u32(0x43535452)                # 'CSTR' (FILE_NAME_TYPE)
+        sd += u16(1)                         # name_size (FILE_NAME_NAME_LENGTH)
         sd += u16(len(n))                    # data_size
-        sd += b"name"
+        sd += b"\x13\x00\x00\x00"            # name + strcpy NUL + 2 pad
         sd += n
+        sd += b"\x00"                        # trailing NUL
         i[o:o + len(sd)] = bytes(sd)
     return bytes(i)
 
@@ -218,8 +249,9 @@ def main():
         sys.exit(1)
     root, img, mb = sys.argv[1], sys.argv[2], int(sys.argv[3])
     num_blocks = mb * 1024 * 1024 // BLOCK
-    num_ags = (num_blocks + AG_SIZE - 1) // AG_SIZE
-    journal_start, journal_len = 1 + num_ags, 16
+    ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks)
+    ag_size = 1 << ag_shift
+    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 16
     next_inode = journal_start + journal_len
     next_data = 0
     used = set()
@@ -252,7 +284,7 @@ def main():
         blocks = []
         left = n
         while left > 0:
-            ag_end = ((next_data >> AG_SHIFT) + 1) << AG_SHIFT
+            ag_end = ((next_data >> ag_shift) + 1) << ag_shift
             take = min(left, ag_end - next_data)
             blocks.extend(range(next_data, next_data + take))
             next_data += take
@@ -265,7 +297,7 @@ def main():
         never spans an AG boundary)."""
         runs = []
         for b in blocks:
-            ag, st = b >> AG_SHIFT, b & (AG_SIZE - 1)
+            ag, st = b >> ag_shift, b & (ag_size - 1)
             if runs and runs[-1][0] == ag and runs[-1][1] + runs[-1][2] == st:
                 runs[-1] = (ag, runs[-1][1], runs[-1][2] + 1)
             else:
@@ -287,7 +319,7 @@ def main():
             n = min(RUN_LEN, left)
             b = alloc_blocks(n)
             blocks.extend(b)
-            runs.append((b[0] >> AG_SHIFT, b[0] & (AG_SIZE - 1), n))
+            runs.append((b[0] >> ag_shift, b[0] & (ag_size - 1), n))
             left -= n
         if len(runs) <= 12:
             mdr = nblocks << 10
@@ -304,13 +336,13 @@ def main():
         # the first table block is the indirect run; the rest hang off the
         # double-indirect table (256 u32 addresses per block)
         first = tbl_blocks[0]
-        indirect = (first >> AG_SHIFT, first & (AG_SIZE - 1), 1)
+        indirect = (first >> ag_shift, first & (ag_size - 1), 1)
         dind_blocks = []
         if ntbl > 1:
             nper = BLOCK // 4
             ndind = (ntbl - 1 + nper - 1) // nper
             dind_blocks = alloc_blocks(ndind)
-        dind = ((dind_blocks[0] >> AG_SHIFT, dind_blocks[0] & (AG_SIZE - 1),
+        dind = ((dind_blocks[0] >> ag_shift, dind_blocks[0] & (ag_size - 1),
                  len(dind_blocks)) if dind_blocks else None)
         return {'direct': direct, 'mdr': mdr, 'indirect': indirect,
                 'max_indirect': nblocks << 10, 'dind': dind,
@@ -352,8 +384,10 @@ def main():
         nodes = []
         for i, leaf in enumerate(leaves):
             right = offs[i + 1] if i + 1 < len(leaves) else BTREE_NULL
+            left = offs[i - 1] if i > 0 else BTREE_NULL
             nodes.append((blocks[i], build_node([k for k, _ in leaf],
-                          [v for _, v in leaf], BTREE_NULL, right)))
+                          [v for _, v in leaf], BTREE_NULL, right,
+                          left=left)))
         maxkeys = [[k for k, _ in leaf] for leaf in leaves]
         depth = 1
         while len(leaves) > 1:
@@ -409,7 +443,7 @@ def main():
                 if len(target) <= 143:
                     write_inodes.append((ib, build_inode(
                         ib, S_IFLNK | 0o777, len(target), dblk, {},
-                        symlink=target.encode())))
+                        symlink=target.encode(), name_attr=name)))
                 else:
                     # long symlink: the target lives in the data stream
                     nblocks = (len(target) + BLOCK - 1) // BLOCK
@@ -419,7 +453,9 @@ def main():
                             (b, target[i * BLOCK:(i + 1) * BLOCK]))
                     write_blocks += table_blocks(st)
                     write_inodes.append((ib, build_inode(
-                        ib, S_IFLNK | 0o777, len(target), dblk, st)))
+                        ib, S_IFLNK | 0o777, len(target), dblk, st,
+                        flags=INODE_IN_USE | INODE_LONG_SYMLINK,
+                        name_attr=name)))
                 entries.append((name, ib))
             else:
                 with open(fp, "rb") as fh:
@@ -452,7 +488,8 @@ def main():
                   'max_dind': len(dir_blocks) << 10}
         write_inodes.append((dblk, build_inode(
             dblk, S_IFDIR | (os.stat(full).st_mode & 0o7777),
-            len(dir_blocks) << 10, parent_blk, stream)))
+            len(dir_blocks) << 10, parent_blk, stream,
+            name_attr=os.path.basename(full) if path else None)))
         dirs[path] = (dblk, hb, nblocks, entries)
         return dblk
 
@@ -469,17 +506,22 @@ def main():
     for b in range(1, journal_start + journal_len):
         used.add(b)               # bitmap blocks + journal
     sb = build_super(num_blocks, len(used), root_blk, journal_start,
-                     journal_len, num_ags)
+                     journal_len, ag_shift, blocks_per_ag, num_ags)
     img_buf[512:512 + len(sb)] = sb
 
-    # allocation bitmap: bit (group*8192 + b) <-> block b
-    bitmap = bytearray(num_ags * BLOCK)
+    # allocation bitmaps: group g lives at blocks 1 + g*blocks_per_ag
+    # (Haiku BlockAllocator layout); bit set = block in use
+    bitmap = bytearray(num_ags * blocks_per_ag * BLOCK)
     for b in used:
-        group = b >> AG_SHIFT
-        bit = b & (AG_SIZE - 1)
-        bitmap[group * BLOCK + (bit >> 3)] |= (1 << (bit & 7))
+        group = b >> ag_shift
+        bit = b & (ag_size - 1)
+        gboff = group * blocks_per_ag * BLOCK
+        bitmap[gboff + (bit >> 3)] |= (1 << (bit & 7))
     for g in range(num_ags):
-        write_block(1 + g, bytes(bitmap[g * BLOCK:(g + 1) * BLOCK]))
+        for bb in range(blocks_per_ag):
+            write_block(1 + g * blocks_per_ag + bb,
+                        bytes(bitmap[(g * blocks_per_ag + bb) * BLOCK:
+                                     (g * blocks_per_ag + bb + 1) * BLOCK]))
 
     for b, data in write_inodes:
         write_block(b, data)

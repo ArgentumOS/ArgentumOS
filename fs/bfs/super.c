@@ -216,7 +216,7 @@ static int bfs_write_superblock(struct superblock *sb)
 	bsb->block_shift = BFS_BLOCK_SHIFT;
 	bsb->num_blocks = sb->u.bfs.num_blocks;
 	bsb->used_blocks = sb->u.bfs.used_blocks;
-	bsb->inode_size = BFS_INODE_SIZE;
+	bsb->inode_size = sb->s_blocksize;
 	bsb->magic2 = BFS_SUPER_MAGIC2;
 	bsb->blocks_per_ag = sb->u.bfs.blocks_per_ag;
 	bsb->ag_shift = sb->u.bfs.ag_shift;

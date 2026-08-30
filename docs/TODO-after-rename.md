@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M4f DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2)
+## OpenBFS (BeOS BFS) filesystem - M0-M5 DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, M5)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -651,6 +651,78 @@ shell, ls/cat/df/mkdir/ln/cksum work, toybox reads byte-perfect
 CLEN + log drained; ext2 root still boots; regressions M4a 6/6, M4c
 S1-S8, M4d X1-X5, M4e J1-J6 + jrnl_craft replay (block restored, log
 clean). The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
+
+M5 = 1:1 Haiku on-disk compatibility (audit + fixes, so a volume can
+move between FNX and Haiku both ways). The audit compared every on-disk
+structure against Haiku's driver source (bfs.h, BPlusTree.h,
+Journal.h, Volume.cpp, Inode.cpp, Attribute.cpp, BlockAllocator.cpp):
+block_run, disk_super_block, bfs_data_stream, bfs_inode (232 bytes),
+bplustree_header/node + the key-area layout, directory-tree semantics
+(values = inode block numbers, unique keys, memcmp ordering with
+shorter<longer, interior key[i] = max of child[i]'s subtree — Haiku's
+_FindKey descends identically), free space (per-AG bitmaps at
+1 + i*blocks_per_ag, bit SET = in use — Haiku's BlockAllocator uses
+bitmaps, NOT the free-space B+tree the docs' "Why OpenBFS" guessed),
+and the journal (run_array {count, max_runs=127, runs[127]} + data
+blocks, log_start/log_end block offsets, log_end written before the
+data — byte-identical). SIX deviations were fixed:
+1. superblock.inode_size = 256 -> BLOCK SIZE (1024). Haiku's mkfs
+   writes inode_size = block_size and IsValid() REQUIRES them equal, so
+   Haiku previously refused to mount our disks outright. The inode's
+   own inode_size field got the same fix (Haiku Inode::InitCheck
+   compares it against the volume's) — in bfs_write_superblock, ialloc,
+   and mkbfs.py. BFS_SMALL_DATA_SIZE grew from 24 to
+   block_size - sizeof(bfs_inode) = 792 (Haiku's tail); the 24-byte
+   budget could not hold a file-name record for names > 11 chars.
+2. small_data records now use Haiku's exact layout:
+   type(4) name_size(2) data_size(2) name + strcpy NUL + 2 pad + data +
+   NUL (8 + N + 3 + D + 1 bytes, data at name + N + 3, name_size =
+   strlen WITHOUT the NUL). fs/bfs/xattr.c was rewritten around it;
+   Haiku's AttributeIterator skips the file-name record and CheckAccess
+   refuses it, and we now match (listxattr hides it, get/set/remove on
+   the 0x13 name -> EACCES).
+3. the file-name record: Haiku writes name_size=1, name = the single
+   byte 0x13 (FILE_NAME_NAME), data = the file name. Our mkbfs wrote
+   name_size=0x13 with name="name" (Haiku's Name() scan would miss it).
+   Fixed in mkbfs and added at CREATE/MKDIR/SYMLINK/RENAME in the
+   driver (new bfs_inode_set_name(), the SetName() equivalent).
+4. symlinks: long targets now set INODE_LONG_SYMLINK (0x40) in the
+   inode flags (bfs_symlink + mkbfs) — Haiku reads the flag, not the
+   size; without it Haiku would read the stream run bytes as an inline
+   target. bfs_write_inode now ORs INODE_IN_USE instead of overwriting
+   flags, preserving Haiku's permanent bits (INODE_LONG_SYMLINK,
+   INODE_LOGGED, ...) when we rewrite a foreign inode. Short-symlink
+   reads no longer trust pad[0]/data.size (Haiku stores neither — the
+   target is NUL-terminated text): read_inode NUL-scans the 144-byte
+   area when pad[0] is absent.
+5. B+tree leaf left links: the builder now links leaves both ways
+   (left[i] = leaf i-1, right[i] = leaf i+1) and the driver's leaf
+   split maintains them (serialize/write_node take a left param; the
+   old right leaf is relinked). maximum_size in the tree header now
+   tracks the stream length (Haiku validates links against
+   MaximumSize() - NodeSize()).
+6. mkbfs replicates Haiku's allocation-group sizing (Volume::Initialize
+   kDesiredAllocationGroups = 56): ag_shift starts at 13 and grows with
+   blocks_per_ag until num_ags <= 56 (1KB blocks: identical up to
+   448MB; verified equal to a reference reimplementation for 8MB..256GB).
+   The driver already read the geometry from the sb, so it mounts
+   Haiku's larger-group volumes as-is. bfscheck.py gained a Haiku
+   conformance mode (inode_size == block_size in sb and every inode,
+   every inode carries a correct 0x13 record, records parse with the
+   Haiku layout, inline symlinks NUL-terminate, long ones carry the
+   flag) and `make rootbfs` enforces it. Verified: a crafted Haiku-style
+   image (pad[0] zeroed on all 207 short symlinks, inode_size=1024)
+   boots, readlink/ls/cat work; in-guest creates write 0x13 records;
+   long symlink flags + streams byte-perfect; xattrs round-trip in the
+   Haiku layout (M4d X1-X5); M4a 6/6, M4c S1-S8, M4e J1-J6 still pass;
+   ext2 root still boots. DOCUMENTED LIMITS (safe, not 1:1): attributes
+   stored in the per-file attributes INODE (INODE_ATTR_INODE, for
+   attributes > ~792 bytes) are not read/written — files still mount
+   and read, the attrs stay untouched; sb.indices = 0 (no indices tree)
+   — Haiku mounts read-write and just logs "volume doesn't have
+   indices!"; big-endian (PPC) BFS volumes are refused. Journal replay
+   and the run_array format are already Haiku-identical, so a dirty
+   Haiku volume replays identically under FNX.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
 "second filesystem" (Giampaolo, "Practical File System Design with the

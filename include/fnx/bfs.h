@@ -36,6 +36,8 @@
 /* inode magic + flags */
 #define BFS_INODE_MAGIC		0x3bbe0ad9
 #define BFS_INODE_IN_USE	0x00000001
+/* Haiku inode_flags (permanent bits; the low 16 bits are on-disk) */
+#define BFS_INODE_LONG_SYMLINK	0x00000040	/* target in the data stream */
 
 /* inode 'type' values (attribute type of the main data stream) */
 #define BFS_FILE_TYPE_DIR	0x00000000
@@ -124,7 +126,9 @@ struct bfs_inode {
 	} u;
 	__u64 status_change_time;
 	__u32 pad[2];
-	/* small_data attributes follow (24 bytes to the 256-byte inode) */
+	/* small_data attributes follow (to the end of the block; the
+	 * superblock's inode_size == block_size, so the tail is
+	 * BFS_BLOCK_SIZE - sizeof(struct bfs_inode) bytes) */
 } __attribute__((packed));
 
 /* small_data attribute header (packed inline in the inode tail) */
@@ -196,7 +200,12 @@ struct bfs_sb_info {
 /* the packed inode struct is 232 bytes; the small_data attribute tail
  * is the remaining 24 bytes of the 256-byte on-disk inode (the header
  * comment saying "198" was wrong) */
-#define BFS_SMALL_DATA_SIZE	(256 - sizeof(struct bfs_inode))
+/* Haiku's inode_size field is the BLOCK size (Volume.cpp Initialize:
+ * "block_size = inode_size = blockSize"), so the small_data tail spans
+ * from the end of the struct to the end of the block. 24 bytes (the old
+ * 256 - 232) was too small for Haiku-compatible file-name records
+ * (8 + 1 + 3 + NAME + 1, up to 268 bytes for a 255-char name). */
+#define BFS_SMALL_DATA_SIZE	(BFS_BLOCK_SIZE - sizeof(struct bfs_inode))
 
 /* fs-private inode info (the raw on-disk inode, for bmap/readdir) */
 struct bfs_i_info {
@@ -259,5 +268,9 @@ struct bfs_run_array {
 	struct bfs_block_run runs[127];	/* the modified blocks */
 } __attribute__((packed));	/* 8 + 127*8 = 1024 = one block */
 #define BFS_LOG_MAX_RUNS	127
+
+/* write (or replace) the file-name 0x13 small_data record (Haiku
+ * Inode::SetName()); called at create/rename */
+int bfs_inode_set_name(struct inode *, const char *);
 #endif /* _FNX_BFS_H */
 

@@ -96,6 +96,9 @@ int bfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	i->i_blocks = 0;
 	i->state |= INODE_DIRTY;
 
+	/* the file-name 0x13 small_data record (Haiku SetName) */
+	bfs_inode_set_name(i, name);
+
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
 	dir->state |= INODE_DIRTY;
@@ -210,6 +213,9 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 		inode_unlock(dir);
 		return errno;
 	}
+
+	/* the file-name 0x13 small_data record (Haiku SetName) */
+	bfs_inode_set_name(i, name);
 
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
@@ -361,7 +367,8 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 
 	len = strlen(oldname);
 	if(len <= 143) {
-		/* fast symlink: the target lives in the inode's symlink area */
+		/* fast symlink: the target lives in the inode's symlink area,
+		 * NUL-terminated (Haiku reads it with strlen) */
 		for(n = 0; n < len; n++) {
 			i->u.bfs.raw.u.symlink[n] = oldname[n];
 		}
@@ -369,9 +376,12 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 		i->u.bfs.raw.pad[0] = len;
 		i->i_size = n;
 	} else {
-		/* long symlink: the target lives in the data stream */
+		/* long symlink: the target lives in the data stream; the
+		 * INODE_LONG_SYMLINK flag tells Haiku (and us) not to read
+		 * the symlink area */
 		__off_t offset = 0;
 
+		i->u.bfs.raw.flags |= BFS_INODE_LONG_SYMLINK;
 		i->i_blocks = (len + 511) >> 9;
 		while(offset < len) {
 			__blk_t block;
@@ -398,6 +408,9 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 		i->u.bfs.raw.pad[0] = len;
 		i->u.bfs.raw.u.data.size = len;
 	}
+
+	/* the file-name 0x13 small_data record (Haiku SetName) */
+	bfs_inode_set_name(i, name);
 
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
@@ -446,6 +459,9 @@ int bfs_rename(struct inode *i_old, struct inode *dir_old,
 		inode_unlock(dir_old);
 		return errno;
 	}
+
+	/* update the file-name 0x13 small_data record (Haiku SetName) */
+	bfs_inode_set_name(i_old, newpath);
 
 	dir_old->i_mtime = CURRENT_TIME;
 	dir_old->i_ctime = CURRENT_TIME;

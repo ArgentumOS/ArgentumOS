@@ -75,10 +75,20 @@ int bfs_read_inode(struct inode *i)
 	i->i_uid = raw->uid;
 	i->i_gid = raw->gid;
 	if(S_ISLNK(raw->mode)) {
-		/* symlink length: pad[0] on new images; old images stored it
-		 * in u.data.size (valid for inline symlinks, whose size field
-		 * aliases the unused tail of the target) */
-		i->i_size = raw->pad[0] ? raw->pad[0] : raw->u.data.size;
+		/* symlink length: pad[0] on our images; HAIKU inline
+		 * symlinks store neither pad[0] nor data.size (the target is
+		 * NUL-terminated text in the symlink area, data.size == 0),
+		 * so scan for the NUL. Stream symlinks carry the
+		 * INODE_LONG_SYMLINK flag and their length in data.size. */
+		if(raw->flags & BFS_INODE_LONG_SYMLINK) {
+			i->i_size = raw->u.data.size;
+		} else if(raw->pad[0]) {
+			i->i_size = raw->pad[0];
+		} else {
+			for(i->i_size = 0; i->i_size < 143
+				&& raw->u.symlink[i->i_size]; i->i_size++)
+				;
+		}
 	} else {
 		i->i_size = raw->u.data.size;
 	}
@@ -139,7 +149,9 @@ int bfs_write_inode(struct inode *i)
 	memcpy_b((char *)raw + sizeof(struct bfs_inode), i->u.bfs.small_data,
 		 BFS_SMALL_DATA_SIZE);
 	raw->magic1 = BFS_INODE_MAGIC;
-	raw->flags = BFS_INODE_IN_USE;
+	/* preserve the permanent on-disk flags (e.g. INODE_LONG_SYMLINK on
+	 * Haiku-created stream symlinks) — only IN_USE is ours to manage */
+	raw->flags |= BFS_INODE_IN_USE;
 	raw->inode_num.allocation_group = 0;
 	raw->inode_num.start = i->inode;
 	raw->inode_num.len = 1;
@@ -185,7 +197,9 @@ int bfs_ialloc(struct inode *i, int mode)
 	raw->inode_num.len = 1;
 	raw->mode = mode;
 	raw->flags = BFS_INODE_IN_USE;
-	raw->inode_size = BFS_INODE_SIZE;
+	/* inode_size == block_size: Haiku's Inode::InitCheck requires
+	 * InodeSize() == volume->InodeSize() */
+	raw->inode_size = BFS_BLOCK_SIZE;
 	raw->u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
 	bfs_log_begin(i->sb);
 	bfs_log_write_block(i->sb, buf->block, buf);
