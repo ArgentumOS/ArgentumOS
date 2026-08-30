@@ -16,7 +16,8 @@
  * fit). Values that do not fit inline are refused with -ENOSPC: larger
  * attributes would need the inode's attributes run / attribute nodes,
  * which are out of M4d scope. Symlink inodes are refused (-EOPNOTSUPP):
- * their pad[0] symlink length aliases the small_data area.
+ * the symlink length is stored in pad[0] (offset 224, inside the packed
+ * struct) and keeping the tail untouched there is simplest.
  *
  * Copyright 2026, Kyle J Cardoza. All rights reserved.
  * Distributed under the terms of the Fiwix License.
@@ -140,6 +141,12 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	}
 	if(flags & ~(XATTR_CREATE | XATTR_REPLACE)) {
 		return -EINVAL;
+	}
+	/* bound the value size BEFORE the int need/total arithmetic below:
+	 * size is __size_t (u64) and need is int, so a huge size could
+	 * wrap past the ENOSPC check and smash the stack area buffer */
+	if(size > BFS_SMALL_DATA_SIZE) {
+		return -ENOSPC;
 	}
 
 	inode_lock(i);

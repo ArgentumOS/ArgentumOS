@@ -245,6 +245,11 @@ static int do_listxattr(struct inode *i, char *list, __size_t size)
 	if(!i->fsop || !i->fsop->listxattr) {
 		return -EOPNOTSUPP;
 	}
+	if(!list) {
+		/* a NULL list is the size-query idiom regardless of size:
+		 * never write through a NULL pointer in kernel mode */
+		size = 0;
+	}
 	if(list && size) {
 		if(check_user_area(VERIFY_WRITE, list, size)) {
 			return -EFAULT;
