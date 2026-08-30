@@ -49,7 +49,7 @@ def u64(v):
     return struct.pack("<Q", v & 0xFFFFFFFFFFFFFFFF)
 
 
-def build_super(num_blocks, used, root_block, log_start, log_len):
+def build_super(num_blocks, used, root_block, log_start, log_len, num_ags=1):
     sb = bytearray(512)
     name = b"BFS1"
     sb[0:len(name)] = name
@@ -65,7 +65,7 @@ def build_super(num_blocks, used, root_block, log_start, log_len):
     sb[o:o+4] = u32(1)              # blocks_per_ag: bitmap blocks/group
     o += 4
     sb[o:o+4] = u32(AG_SHIFT); o += 4
-    sb[o:o+4] = u32(1)              # num_ags
+    sb[o:o+4] = u32(num_ags)         # num_ags
     o += 4
     sb[o:o+4] = u32(CLEAN); o += 4
     sb[o:o+8] = run(0, log_start, log_len); o += 8
@@ -134,11 +134,11 @@ def build_inode(block, mode, size, parent, data_stream, name_attr=None,
     for r in data_stream:
         i[o:o+8] = run(*r); o += 8
     for _ in range(12 - len(data_stream)):
-        i[o:o+8] = run(0, 0); o += 8
+        i[o:o+8] = run(0, 0, 0); o += 8        # empty direct slot
     i[o:o+8] = u64(12 * BLOCK); o += 8         # max_direct_range
-    i[o:o+8] = run(0, 0); o += 8               # indirect
+    i[o:o+8] = run(0, 0, 0); o += 8            # indirect (none)
     i[o:o+8] = u64(0); o += 8
-    i[o:o+8] = run(0, 0); o += 8               # double indirect
+    i[o:o+8] = run(0, 0, 0); o += 8            # double indirect (none)
     i[o:o+8] = u64(0); o += 8
     i[o:o+8] = u64(size); o += 8               # size
     i[o:o+8] = u64(0); o += 8                  # status_change_time
@@ -162,12 +162,13 @@ def main():
     root, img, mb = sys.argv[1], sys.argv[2], int(sys.argv[3])
     num_blocks = mb * 1024 * 1024 // BLOCK
 
-    # ---- deterministic layout (single AG, Haiku convention) ----
-    # 0: boot+super, 1: allocation bitmap, 2..5: journal,
-    # 6..: inode blocks, 32..: data blocks.
-    journal_start, journal_len = 2, 4
-    next_inode = 6
-    next_data = 32
+    # ---- deterministic layout (Haiku convention) ----
+    # 0: boot+super, 1..num_ags: allocation bitmap, then the journal,
+    # then inode blocks, then data blocks (32.. for small images).
+    num_ags = (num_blocks + 8191) // 8192
+    journal_start, journal_len = 1 + num_ags, 4
+    next_inode = journal_start + journal_len
+    next_data = max(32, next_inode + 8)
     files = []          # (relpath, parent_blk, inode_blk, data_blk, data, name)
     dirs = {}           # path -> (inode_blk, header_blk, leaf_blk, entries)
 
@@ -217,20 +218,24 @@ def main():
         img_buf[b*BLOCK:(b+1)*BLOCK] = data[:BLOCK].ljust(BLOCK, b"\0")
 
     used = 2 + journal_len + (next_inode - 6) + (next_data - 32)
-    sb = build_super(num_blocks, used, root_blk, journal_start, journal_len)
+    sb = build_super(num_blocks, used, root_blk, journal_start, journal_len,
+                     num_ags)
     img_buf[512:512+len(sb)] = sb
 
-    # allocation bitmap at block 1 (bit b <-> block b for group 0)
-    bitmap = bytearray(BLOCK)
+    # allocation bitmap at blocks 1..num_ags (bit (group*8192 + b) <-> block)
+    bitmap = bytearray(num_ags * BLOCK)
     def mark_used(block):
-        bitmap[block >> 3] |= (1 << (block & 7))
+        group = block >> 13
+        bit = block & 8191
+        bitmap[group * BLOCK + (bit >> 3)] |= (1 << (bit & 7))
     for b in range(journal_start + journal_len):
         mark_used(b)              # bitmap block itself + journal
     for b in range(6, next_inode):
         mark_used(b)              # inode blocks
     for b in range(32, next_data):
         mark_used(b)              # data + tree blocks
-    write_block(1, bytes(bitmap))
+    for g in range(num_ags):
+        write_block(1 + g, bytes(bitmap[g * BLOCK:(g + 1) * BLOCK]))
 
     for rel, parent_blk, ib, db, data, name in files:
         write_block(ib, build_inode(ib, 0o100644, len(data), parent_blk,

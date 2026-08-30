@@ -44,7 +44,8 @@ static int bfs_btree_collect(struct bfs_btree_node *, struct bfs_btree_pair *,
 static int bfs_btree_serialize(struct bfs_btree_node *, struct bfs_btree_pair *,
 			       int, __u64, __u64);
 static int bfs_btree_split(struct inode *, struct bfs_btree_header *,
-			   __u64 *, int, struct bfs_btree_pair *, int, int);
+			   __u64 *, int, struct bfs_btree_pair *, int, int,
+			   __u64, int);
 
 /* key-length index: cumulative end offsets of each key */
 static __u16 *bfs_btree_keylen_index(struct bfs_btree_node *n)
@@ -442,9 +443,9 @@ static int bfs_btree_serialize(struct bfs_btree_node *n,
 	return 0;
 }
 
-static int bfs_btree_write_leaf(struct inode *dir, __u64 off,
+static int bfs_btree_write_node(struct inode *dir, __u64 off,
 				struct bfs_btree_pair *pairs, int count,
-				__u64 right)
+				__u64 overflow, __u64 right)
 {
 	struct bfs_btree_node *n;
 	struct buffer *buf;
@@ -453,7 +454,7 @@ static int bfs_btree_write_leaf(struct inode *dir, __u64 off,
 		return -EIO;
 	}
 	n = (struct bfs_btree_node *)buf->data;
-	bfs_btree_serialize(n, pairs, count, BFS_BTREE_NULL, right);
+	bfs_btree_serialize(n, pairs, count, overflow, right);
 	bwrite(buf);
 	return 0;
 }
@@ -472,50 +473,99 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off)
 	return 0;
 }
 
+/*
+ * Split the node at path[npath-1] into two halves. 'pairs' holds every
+ * pair of the node plus the one being inserted (leaves: the new directory
+ * entry; interiors: the new separator + right child), 'count' = pairs
+ * count, 'split_at' = pairs kept in the left half, 'node_overflow' = the
+ * node's rightmost child (BFS_BTREE_NULL for leaves), 'depth' = the
+ * original descent depth (for the max_depth bookkeeping when the root
+ * splits).
+ *
+ * The left half stays at path[npath-1] (or moves to a fresh block when the
+ * split node is the root), the right half gets a fresh block, and the
+ * separator plus the right half's offset are inserted into the parent
+ * interior — recursively splitting the parent when it is full.
+ *
+ * For an interior node with children c0..cn (pairs[].val + overflow),
+ * pairs[i] = (key[i], c[i]) and key[i] is the separator between c[i] and
+ * c[i+1]. Splitting at 'split_at' leaves the left half with keys
+ * pairs[0..split_at) and overflow child pairs[split_at].val; the right
+ * half starts at pairs[split_at+1] (its first child is
+ * pairs[split_at+1].val, after the left's overflow) and keeps node_overflow
+ * as its own overflow; the up separator is pairs[split_at].key — the
+ * boundary between the left's overflow child and the right's first child.
+ * A leaf has no overflow: left = pairs[0..split_at), right =
+ * pairs[split_at..count), separator = pairs[split_at-1].key.
+ */
 static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			   __u64 *path, int npath, struct bfs_btree_pair *pairs,
-			   int count, int split_at)
+			   int count, int split_at, __u64 node_overflow,
+			   int depth)
 {
-	struct bfs_btree_node *n, *parent;
-	struct buffer *buf, *parent_buf;
-	__u64 leaf_off = path[npath - 1];
+	struct bfs_btree_node *n;
+	struct buffer *buf;
+	__u64 node_off = path[npath - 1];
+	__u64 old_right, left_overflow, right_overflow;
 	__u64 left_off, right_off;
-	__u64 old_right;
 	const char *sep;
-	int sep_len;
+	struct bfs_btree_pair *right_pairs;
+	int sep_len, is_leaf, right_count;
 	int res;
 
 	if(split_at < 1 || split_at >= count) {
 		return -EIO;
 	}
-	sep = pairs[split_at - 1].key;
-	sep_len = pairs[split_at - 1].keylen;
+	is_leaf = (node_overflow == BFS_BTREE_NULL);
+	if(is_leaf) {
+		/* leaf: the separator is the last key of the left half */
+		sep = pairs[split_at - 1].key;
+		sep_len = pairs[split_at - 1].keylen;
+		left_overflow = BFS_BTREE_NULL;
+		right_overflow = BFS_BTREE_NULL;
+		right_pairs = pairs + split_at;
+		right_count = count - split_at;
+	} else {
+		/* interior: children are pairs[].val plus node_overflow; the
+		 * separator is the key between the left node's overflow child
+		 * (pairs[split_at].val) and the right node's first child
+		 * (pairs[split_at + 1].val) — the right half therefore starts
+		 * at split_at + 1 and pairs[split_at] is not copied */
+		sep = pairs[split_at].key;
+		sep_len = pairs[split_at].keylen;
+		left_overflow = pairs[split_at].val;
+		right_overflow = node_overflow;
+		right_pairs = pairs + split_at + 1;
+		right_count = count - split_at - 1;
+	}
 
-	if(!(buf = bfs_btree_read_node(dir, leaf_off))) {
+	if(!(buf = bfs_btree_read_node(dir, node_off))) {
 		return -EIO;
 	}
 	n = (struct bfs_btree_node *)buf->data;
 	old_right = n->right;
 
+	if((res = bfs_btree_grow(dir, &right_off)) < 0) {
+		brelse(buf);
+		return res;
+	}
+
 	if(npath == 1) {
-		/* the leaf is the root: the root block becomes an interior
-		 * node; BOTH halves move to fresh blocks */
+		/* the split node is the root: both halves move to fresh
+		 * blocks and the root block becomes a new interior node
+		 * with one separator and two children */
 		if((res = bfs_btree_grow(dir, &left_off)) < 0) {
 			brelse(buf);
 			return res;
 		}
-		if((res = bfs_btree_grow(dir, &right_off)) < 0) {
+		if((res = bfs_btree_write_node(dir, left_off, pairs, split_at,
+				left_overflow, right_off)) < 0) {
 			brelse(buf);
 			return res;
 		}
-		if((res = bfs_btree_write_leaf(dir, left_off, pairs, split_at,
-					       right_off)) < 0) {
-			brelse(buf);
-			return res;
-		}
-		if((res = bfs_btree_write_leaf(dir, right_off, pairs + split_at,
-					       count - split_at,
-					       old_right)) < 0) {
+		if((res = bfs_btree_write_node(dir, right_off, right_pairs,
+				right_count, right_overflow,
+				is_leaf ? old_right : BFS_BTREE_NULL)) < 0) {
 			brelse(buf);
 			return res;
 		}
@@ -535,51 +585,45 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		}
 		bwrite(buf);
 
-		if(header->max_depth < 2) {
-			header->max_depth = 2;
+		if(header->max_depth < depth + 1) {
+			header->max_depth = depth + 1;
 			bfs_btree_write_header(dir, header);
 		}
 		return 0;
 	}
 
-	/* depth >= 2: the leaf keeps the lower half; the upper half goes to
-	 * a new block; insert (sep, right_off) into the parent interior */
-	if(!(parent_buf = bfs_btree_read_node(dir, path[npath - 2]))) {
-		brelse(buf);
-		return -EIO;
-	}
-	parent = (struct bfs_btree_node *)parent_buf->data;
-	if(!bfs_btree_node_room(parent, sep_len)) {
-		brelse(parent_buf);
-		brelse(buf);
-		return -ENOSPC;
-	}
-
-	if((res = bfs_btree_grow(dir, &right_off)) < 0) {
-		brelse(parent_buf);
+	/* depth >= 2: the node keeps the lower half in place; the upper
+	 * half goes to a new block; insert (sep, right_off) into the
+	 * parent interior */
+	if((res = bfs_btree_write_node(dir, right_off, right_pairs,
+			right_count, right_overflow,
+			is_leaf ? old_right : BFS_BTREE_NULL)) < 0) {
 		brelse(buf);
 		return res;
 	}
-	if((res = bfs_btree_write_leaf(dir, right_off, pairs + split_at,
-				       count - split_at, old_right)) < 0) {
-		brelse(parent_buf);
-		brelse(buf);
-		return res;
-	}
-
-	bfs_btree_serialize(n, pairs, split_at, BFS_BTREE_NULL, right_off);
+	bfs_btree_serialize(n, pairs, split_at, left_overflow,
+			    is_leaf ? right_off : BFS_BTREE_NULL);
 	bwrite(buf);
 
-	/* update the parent interior after the child split */
+	/* insert the separator into the parent, splitting the parent
+	 * (recursively) if the rebuilt parent would not fit */
 	{
-		struct bfs_btree_pair *pp = (struct bfs_btree_pair *)kmalloc(
-			128 * sizeof(struct bfs_btree_pair));
-		char *pkb = (char *)kmalloc(BFS_BLOCK_SIZE);
-		__u64 old_overflow = parent->overflow;
-		__u64 new_overflow = old_overflow;
+		struct bfs_btree_node *parent;
+		struct buffer *parent_buf;
+		struct bfs_btree_pair *pp;
+		char *pkb;
+		__u64 parent_overflow;
 		int pcount, i, j = -1;
 
-		if(!pp || !pkb) {
+		if(!(parent_buf = bfs_btree_read_node(dir, path[npath - 2]))) {
+			return -EIO;
+		}
+		parent = (struct bfs_btree_node *)parent_buf->data;
+		parent_overflow = parent->overflow;
+
+		if(!(pp = (struct bfs_btree_pair *)kmalloc(
+				128 * sizeof(struct bfs_btree_pair)))
+				|| !(pkb = (char *)kmalloc(2 * BFS_BLOCK_SIZE))) {
 			if(pp) {
 				kfree((addr_t)pp);
 			}
@@ -589,6 +633,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			brelse(parent_buf);
 			return -ENOMEM;
 		}
+
 		pcount = bfs_btree_collect(parent, pp, 128, 0, NULL, 0, 0, pkb);
 		if(pcount < 0) {
 			kfree((addr_t)pkb);
@@ -598,81 +643,87 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		}
 
 		for(i = 0; i < pcount; i++) {
-			if(pp[i].val == path[npath - 1]) {
+			if(pp[i].val == node_off) {
 				j = i;
 				break;
 			}
 		}
-
-		if(j < 0 && old_overflow != path[npath - 1]) {
+		if(j < 0 && parent_overflow != node_off) {
 			kfree((addr_t)pkb);
 			kfree((addr_t)pp);
 			brelse(parent_buf);
 			return -EIO;
 		}
 
-		if(j >= 0) {
-			int old_keylen = pp[j].keylen;
-			int room, k;
+		{
+			int klen_total = 0;
 
-			room = sizeof(struct bfs_btree_node) + sep_len
-				+ old_keylen;
-			for(k = 0; k < pcount; k++) {
-				room += pp[k].keylen;
+			for(i = 0; i < pcount; i++) {
+				klen_total += pp[i].keylen;
 			}
-			if(((room + 7) & ~7) + (pcount + 1) * 10
-					> BFS_BLOCK_SIZE) {
-				kfree((addr_t)pkb);
-				kfree((addr_t)pp);
-				brelse(parent_buf);
-				return -ENOSPC;
+			/* copy the separator to the END of the key area:
+			 * pp[j].key must not alias the existing keys (the old
+			 * code overwrote pkb[0..sep_len), corrupting the
+			 * first keys of the parent) */
+			if(j >= 0) {
+				int old_keylen = pp[j].keylen;
+				for(i = pcount; i > j + 1; i--) {
+					pp[i] = pp[i - 1];
+				}
+				pp[j + 1].key = pp[j].key;
+				pp[j + 1].keylen = old_keylen;
+				pp[j + 1].val = right_off;
+				pp[j].key = pkb + klen_total;
+				memcpy_b(pkb + klen_total, sep, sep_len);
+				pp[j].keylen = sep_len;
+				pcount++;
+			} else {
+				/* the split child is the parent's overflow */
+				pp[pcount].key = pkb + klen_total;
+				memcpy_b(pkb + klen_total, sep, sep_len);
+				pp[pcount].keylen = sep_len;
+				pp[pcount].val = node_off;
+				pcount++;
+				parent_overflow = right_off;
 			}
-			for(k = pcount; k > j + 1; k--) {
-				pp[k] = pp[k - 1];
-			}
-			pp[j + 1].key = pp[j].key;
-			pp[j + 1].keylen = old_keylen;
-			pp[j + 1].val = right_off;
-			pp[j].key = pkb;
-			memcpy_b((char *)pkb, sep, sep_len);
-			pp[j].keylen = sep_len;
-			pcount++;
-		} else {
-			int room, k, klen_total = 0;
-
-			room = sizeof(struct bfs_btree_node) + sep_len;
-			for(k = 0; k < pcount; k++) {
-				room += pp[k].keylen;
-				klen_total += pp[k].keylen;
-			}
-			if(((room + 7) & ~7) + (pcount + 1) * 10
-					> BFS_BLOCK_SIZE) {
-				kfree((addr_t)pkb);
-				kfree((addr_t)pp);
-				brelse(parent_buf);
-				return -ENOSPC;
-			}
-			pp[pcount].key = pkb + klen_total;
-			memcpy_b((char *)pkb + klen_total, sep, sep_len);
-			pp[pcount].keylen = sep_len;
-			pp[pcount].val = path[npath - 1];
-			pcount++;
-			new_overflow = right_off;
 		}
 
-		bfs_btree_serialize(parent, pp, pcount, new_overflow,
-				    BFS_BTREE_NULL);
+		{
+			int klen_total = 0;
+
+			for(i = 0; i < pcount; i++) {
+				klen_total += pp[i].keylen;
+			}
+			if(((sizeof(struct bfs_btree_node) + klen_total + 7) & ~7)
+					+ pcount * 2 + (pcount + 1) * 8
+					<= BFS_BLOCK_SIZE) {
+				/* the parent has room: rebuild it in place */
+				bfs_btree_serialize(parent, pp, pcount,
+						    parent_overflow,
+						    BFS_BTREE_NULL);
+				bwrite(parent_buf);
+				kfree((addr_t)pkb);
+				kfree((addr_t)pp);
+				return 0;
+			}
+		}
+
+		/* the parent is full: release it and split it recursively
+		 * (the recursion re-reads path[npath-2]; the pp/pkb buffers
+		 * stay alive until the recursion has serialized them) */
+		brelse(parent_buf);
+		res = bfs_btree_split(dir, header, path, npath - 1, pp, pcount,
+				      pcount / 2, parent_overflow, depth);
 		kfree((addr_t)pkb);
 		kfree((addr_t)pp);
+		return res;
 	}
-	bwrite(parent_buf);
-	return 0;
 }
 
 
 /*
  * Insert a (name, inode) pair into the directory tree. Splits a full
- * leaf; -ENOSPC when the parent interior is full too.
+ * leaf, and splits the interior parents recursively when they fill.
  */
 int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
 {
@@ -729,7 +780,7 @@ int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
 		brelse(buf);
 		buf = NULL;
 		res = bfs_btree_split(dir, &header, path, npath, pairs, count,
-				      count / 2);
+				      count / 2, BFS_BTREE_NULL, npath);
 		return res;
 	}
 }

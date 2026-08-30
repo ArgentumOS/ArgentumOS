@@ -195,10 +195,11 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 	int run, nrun = -1;
 
 	/* direct runs (up to BFS_NUM_DIRECT_BLOCKS runs; the runs' total
-	 * coverage is tracked in max_direct_range) */
+	 * coverage is tracked in max_direct_range). A run starting at block 0
+	 * is a phantom (the superblock owns block 0) and is treated as empty. */
 	for(run = 0; run < BFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
-		if(!len) {
+		if(!len || ds->direct[run].start == 0) {
 			nrun = run;
 			break;
 		}
@@ -287,8 +288,38 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 /*
  * Indirect streams: the data_stream.indirect run points at a table of
  * block runs (each table block holds 128 runs at 1KB blocks); the table
- * runs address the file data beyond the direct runs.
+ * runs address the file data beyond the direct runs. When the first table
+ * run cannot be extended contiguously (the stream is fragmented), further
+ * table blocks are recorded in the double_indirect run: each
+ * double_indirect block holds 128 __blk_t disk-block addresses of table
+ * blocks.
  */
+static __blk_t bfs_indirect_table_block(struct inode *i, __u32 t)
+{
+	struct bfs_data_stream *ds = &i->u.bfs.raw.u.data;
+	__u32 ag_shift = i->sb->u.bfs.ag_shift;
+	__u32 darray = i->sb->s_blocksize / sizeof(__blk_t);
+	struct buffer *dbuf;
+
+	if(t < ds->indirect.len) {
+		return (ds->indirect.allocation_group << ag_shift)
+			+ ds->indirect.start + t;
+	}
+	/* beyond the first table run: through the double-indirect table
+	 * (each double block holds s_blocksize/sizeof(__blk_t) addresses) */
+	t -= ds->indirect.len;
+	if(!(dbuf = bread(i->dev, (ds->double_indirect.allocation_group
+			<< ag_shift) + ds->double_indirect.start
+			+ (t / darray), i->sb->s_blocksize))) {
+		return 0;
+	}
+	{
+		__blk_t blk = ((__blk_t *)dbuf->data)[t % darray];
+		brelse(dbuf);
+		return blk;
+	}
+}
+
 static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 {
 	struct bfs_inode *raw = &i->u.bfs.raw;
@@ -297,7 +328,9 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
 	__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
 	__u64 covered = 0;
-	__u32 table_len = ds->indirect.len;
+	__u32 table_len = (ds->indirect.start == 0) ? 0
+		: ds->indirect.len + ds->double_indirect.len
+			* (i->sb->s_blocksize / sizeof(__blk_t));
 	struct buffer *buf = NULL;
 	int t, j;
 
@@ -306,16 +339,18 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 	/* walk the indirect table looking for the run covering 'block' */
 	for(t = 0; t < table_len; t++) {
 		struct bfs_block_run *runs;
-		__blk_t tbl = (ds->indirect.allocation_group << ag_shift)
-			+ ds->indirect.start + t;
+		__blk_t tbl = bfs_indirect_table_block(i, t);
 
+		if(!tbl) {
+			return -EIO;
+		}
 		if(!(buf = bread(i->dev, tbl, i->sb->s_blocksize))) {
 			return -EIO;
 		}
 		runs = (struct bfs_block_run *)buf->data;
 		for(j = 0; j < arraylen; j++) {
 			__u32 len = runs[j].len;
-			if(!len) {
+			if(!len || runs[j].start == 0) {
 				/* free slot: only meaningful for writes */
 				if(mode == FOR_WRITING) {
 					__blk_t nb;
@@ -383,23 +418,79 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			ds->indirect.start = next & ((1 << ag_shift) - 1);
 			ds->indirect.len = 1;
 		} else if(bfs_balloc_specific(i->sb, (ds->indirect.allocation_group
-				<< ag_shift) + ds->indirect.start + table_len) == 0) {
+				<< ag_shift) + ds->indirect.start
+				+ ds->indirect.len) == 0) {
 			/* extend the indirect run with the contiguous next block */
 			ds->indirect.len++;
 		} else {
-			return -ENOSPC;
+			/* the first table run is fragmented: record further table
+			 * blocks in the double-indirect table */
+			__u32 darray = i->sb->s_blocksize / sizeof(__blk_t);
+			__u32 dslot = table_len - ds->indirect.len;
+			struct buffer *dbuf;
+
+			if(dslot >= ds->double_indirect.len * darray) {
+				/* the double table is full: grow it (contiguous
+				 * only — a fragmented double table is not worth
+				 * a third level) */
+				if(ds->double_indirect.len == 0) {
+					if((next = bfs_balloc(i->sb)) < 0) {
+						return next;
+					}
+					ds->double_indirect.allocation_group =
+						(__u32)(next >> ag_shift);
+					ds->double_indirect.start =
+						next & ((1 << ag_shift) - 1);
+					ds->double_indirect.len = 1;
+				} else if(bfs_balloc_specific(i->sb,
+						(ds->double_indirect.allocation_group
+							<< ag_shift)
+						+ ds->double_indirect.start
+						+ ds->double_indirect.len) == 0) {
+					ds->double_indirect.len++;
+				} else {
+					return -ENOSPC;
+				}
+				if(!(zbuf = bread(i->dev,
+						(ds->double_indirect.allocation_group
+							<< ag_shift)
+						+ ds->double_indirect.start
+						+ ds->double_indirect.len - 1,
+						i->sb->s_blocksize))) {
+					return -EIO;
+				}
+				memset_b(zbuf->data, 0, i->sb->s_blocksize);
+				bwrite(zbuf);
+			}
+			/* allocate a fresh table block and record its address in
+			 * the double table */
+			if((next = bfs_balloc(i->sb)) < 0) {
+				return next;
+			}
+			if(!(dbuf = bread(i->dev,
+					(ds->double_indirect.allocation_group
+						<< ag_shift)
+					+ ds->double_indirect.start
+					+ (dslot / darray),
+					i->sb->s_blocksize))) {
+				return -EIO;
+			}
+			((__blk_t *)dbuf->data)[dslot % darray] = next;
+			bwrite(dbuf);
 		}
 		/* zero the new table block so free slots read len == 0 (the
 		 * block may have been reused and hold stale run data) */
-		if(!(zbuf = bread(i->dev, (ds->indirect.allocation_group << ag_shift)
-				+ ds->indirect.start + ds->indirect.len - 1,
+		if(!(zbuf = bread(i->dev, bfs_indirect_table_block(i, table_len),
 				i->sb->s_blocksize))) {
 			return -EIO;
 		}
 		memset_b(zbuf->data, 0, i->sb->s_blocksize);
 		bwrite(zbuf);
-		ds->max_indirect_range = ds->indirect.len
+		ds->max_indirect_range = (ds->indirect.len
+			+ ds->double_indirect.len
+				* (i->sb->s_blocksize / sizeof(__blk_t)))
 			* arraylen << BFS_BLOCK_SHIFT;
+		ds->max_double_indirect_range = ds->max_indirect_range;
 		/* recurse: the new table block is empty, the write
 		 * path above fills it */
 		return bfs_indirect_bmap(i, offset, mode);
@@ -414,6 +505,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 {
 	struct bfs_data_stream *ds = &i->u.bfs.raw.u.data;
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
+
 	__u64 covered = 0;
 	int run;
 
@@ -421,7 +513,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 		__u32 len = ds->direct[run].len;
 		__blk_t base;
 
-		if(!len) {
+		if(!len || ds->direct[run].start == 0) {
 			break;
 		}
 		base = (ds->direct[run].allocation_group << ag_shift)
@@ -456,17 +548,17 @@ int bfs_truncate(struct inode *i, __off_t length)
 	 * range; otherwise free the indirect runs beyond the new size */
 	{
 		__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
-		__u32 table_len = ds->indirect.len;
+		__u32 table_len = (ds->indirect.start == 0) ? 0
+			: ds->indirect.len + ds->double_indirect.len * arraylen;
 		int t;
 
 		for(t = 0; t < table_len; t++) {
 			struct bfs_block_run *runs;
 			struct buffer *ibuf;
-			__blk_t tbl = (ds->indirect.allocation_group << ag_shift)
-				+ ds->indirect.start + t;
+			__blk_t tbl = bfs_indirect_table_block(i, t);
 			int j;
 
-			if(!(ibuf = bread(i->dev, tbl, i->sb->s_blocksize))) {
+			if(!tbl || !(ibuf = bread(i->dev, tbl, i->sb->s_blocksize))) {
 				break;
 			}
 			runs = (struct bfs_block_run *)ibuf->data;
@@ -474,7 +566,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 				__u32 len = runs[j].len;
 				__u64 base;
 
-				if(!len) {
+				if(!len || runs[j].start == 0) {
 					break;
 				}
 				base = (__u64)(runs[j].allocation_group << ag_shift)
@@ -499,13 +591,37 @@ int bfs_truncate(struct inode *i, __off_t length)
 			__u32 n;
 			__blk_t base = (ds->indirect.allocation_group << ag_shift)
 				+ ds->indirect.start;
-			for(n = 0; n < table_len; n++) {
+			for(n = 0; n < ds->indirect.len; n++) {
+				bfs_bfree(i->sb, base + n);
+			}
+			base = (ds->double_indirect.allocation_group << ag_shift)
+				+ ds->double_indirect.start;
+			for(n = 0; n < ds->double_indirect.len; n++) {
+				struct buffer *dbuf;
+				__blk_t *addrs;
+				__u32 s, darray = i->sb->s_blocksize / sizeof(__blk_t);
+
+				/* free the table blocks addressed by this double block */
+				if((dbuf = bread(i->dev, base + n, i->sb->s_blocksize))) {
+					addrs = (__blk_t *)dbuf->data;
+					for(s = 0; s < darray; s++) {
+						if(addrs[s]
+							&& addrs[s] < i->sb->u.bfs.num_blocks) {
+							bfs_bfree(i->sb, addrs[s]);
+						}
+					}
+					brelse(dbuf);
+				}
 				bfs_bfree(i->sb, base + n);
 			}
 			ds->indirect.allocation_group = 0;
 			ds->indirect.start = 0;
 			ds->indirect.len = 0;
+			ds->double_indirect.allocation_group = 0;
+			ds->double_indirect.start = 0;
+			ds->double_indirect.len = 0;
 			ds->max_indirect_range = 0;
+			ds->max_double_indirect_range = 0;
 		}
 	}
 
