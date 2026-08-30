@@ -212,9 +212,14 @@ static int bfs_xattr_list_cb(struct bfs_small_data *sd, void *arg)
 {
 	struct bfs_xattr_list *l = (struct bfs_xattr_list *)arg;
 
-	if(l->list && l->total + sd->name_size <= l->size) {
+	if(l->size == 0) {
+		/* size-0 query: return the needed size, never touch the list */
+		l->total += sd->name_size;
+		return 0;
+	}
+	if(l->total + sd->name_size <= l->size) {
 		memcpy_b(l->list + l->total, sd->name, sd->name_size);
-	} else if(l->list) {
+	} else {
 		l->errno = -ERANGE;
 		return 1;
 	}

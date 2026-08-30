@@ -102,7 +102,7 @@ struct bfs_data_stream {
 /*
  * Inode: 256 bytes, one inode per block (the vfs inode number is the
  * absolute block number of the inode). PACKED size (without small_data)
- * = 198 bytes; small_data attributes follow.
+ * = 232 bytes; the 24-byte small_data attribute tail follows.
  */
 struct bfs_inode {
 	__u32 magic1;
@@ -124,7 +124,7 @@ struct bfs_inode {
 	} u;
 	__u64 status_change_time;
 	__u32 pad[2];
-	/* small_data attributes follow (58 bytes to the 256-byte inode) */
+	/* small_data attributes follow (24 bytes to the 256-byte inode) */
 } __attribute__((packed));
 
 /* small_data attribute header (packed inline in the inode tail) */
