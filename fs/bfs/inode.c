@@ -547,7 +547,8 @@ int bfs_truncate(struct inode *i, __off_t length)
 	{
 		__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
 		__u32 table_len = (ds->indirect.start == 0) ? 0
-			: ds->indirect.len + ds->double_indirect.len * arraylen;
+			: ds->indirect.len + ds->double_indirect.len
+				* (i->sb->s_blocksize / sizeof(__blk_t));
 		int t;
 
 		/* file position of each table run = max_direct_range + covered */

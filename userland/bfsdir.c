@@ -95,11 +95,12 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-/* mode "trunc": create a FRAGMENTED 8-block file (three runs: blocks
- * 0-3, 6-7, then 4-5), ftruncate to 5 blocks, read back and verify the
- * tail is gone and blocks 0-4 survive. The multi-run shape exercises the
- * truncate whole-run-vs-partial free logic (a run starting before the new
- * length must keep its in-range blocks). */
+/* mode "trunc": create an 8-block file (blocks 0-3, 6-7, then 4-5),
+ * ftruncate to 7 blocks, read back and verify blocks 0-6 survive and the
+ * tail is gone. The straddling run (blocks 6-7 vs the 7-block EOF)
+ * exercises the truncate whole-run-vs-partial free logic: a run starting
+ * before the new length must keep its in-range blocks (the old disk-addr
+ * bug dropped block 6 and the read-back failed on zeros). */
 static void put_blk(int fd, int blk, char c)
 {
 	if(lseek(fd, (off_t)blk * 1024, SEEK_SET) < 0) {
