@@ -567,11 +567,17 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## Pending: OpenBFS (BeOS BFS) filesystem - DECIDED, DEFERRED
+## OpenBFS (BeOS BFS) filesystem - M0/M1 DONE (959a4c8)
 
-Chosen (over XFS) as FNX's next real filesystem; explicitly deferred -
-do NOT start until this section is picked up as the active task. The
-existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
+Read-only driver + tools/mkbfs.py image builder committed. Mount a
+second QEMU disk (`-drive file=bfs.img,format=raw,if=ide,index=2` ->
+/dev/hdc) and `mount -t bfs /dev/hdc /mnt` works: ls (B+tree readdir),
+cat (direct-run reads), cksum, umount. See project memory
+`fnx-openbfs-m0-m1-done` for the verified on-disk layout + driver
+gotchas. The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays
+as-is. M2+ (write support, indirect streams, symlinks, multi-node
+trees) remains future work; Linux/Haiku reference files are in
+`.build/refs/`.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
 "second filesystem" (Giampaolo, "Practical File System Design with the
