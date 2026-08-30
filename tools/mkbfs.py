@@ -62,7 +62,8 @@ def build_super(num_blocks, used, root_block, log_start, log_len):
     sb[o:o+8] = u64(used); o += 8
     sb[o:o+4] = u32(INODE_SIZE); o += 4
     sb[o:o+4] = u32(MAGIC2); o += 4
-    sb[o:o+4] = u32(BLOCKS_PER_AG); o += 4
+    sb[o:o+4] = u32(1)              # blocks_per_ag: bitmap blocks/group
+    o += 4
     sb[o:o+4] = u32(AG_SHIFT); o += 4
     sb[o:o+4] = u32(1)              # num_ags
     o += 4
@@ -161,10 +162,11 @@ def main():
     root, img, mb = sys.argv[1], sys.argv[2], int(sys.argv[3])
     num_blocks = mb * 1024 * 1024 // BLOCK
 
-    # ---- deterministic layout (single AG) ----
-    # 0: boot+super, 1..4: journal, 8..: inode blocks, 32..: data blocks.
-    journal_start, journal_len = 1, 4
-    next_inode = 8
+    # ---- deterministic layout (single AG, Haiku convention) ----
+    # 0: boot+super, 1: allocation bitmap, 2..5: journal,
+    # 6..: inode blocks, 32..: data blocks.
+    journal_start, journal_len = 2, 4
+    next_inode = 6
     next_data = 32
     files = []          # (relpath, parent_blk, inode_blk, data_blk, data, name)
     dirs = {}           # path -> (inode_blk, header_blk, leaf_blk, entries)
@@ -214,9 +216,21 @@ def main():
     def write_block(b, data):
         img_buf[b*BLOCK:(b+1)*BLOCK] = data[:BLOCK].ljust(BLOCK, b"\0")
 
-    used = 1 + journal_len + (next_inode - 8) + (next_data - 32)
+    used = 2 + journal_len + (next_inode - 6) + (next_data - 32)
     sb = build_super(num_blocks, used, root_blk, journal_start, journal_len)
     img_buf[512:512+len(sb)] = sb
+
+    # allocation bitmap at block 1 (bit b <-> block b for group 0)
+    bitmap = bytearray(BLOCK)
+    def mark_used(block):
+        bitmap[block >> 3] |= (1 << (block & 7))
+    for b in range(journal_start + journal_len):
+        mark_used(b)              # bitmap block itself + journal
+    for b in range(6, next_inode):
+        mark_used(b)              # inode blocks
+    for b in range(32, next_data):
+        mark_used(b)              # data + tree blocks
+    write_block(1, bytes(bitmap))
 
     for rel, parent_blk, ib, db, data, name in files:
         write_block(ib, build_inode(ib, 0o100644, len(data), parent_blk,

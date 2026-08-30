@@ -262,3 +262,260 @@ int bfs_btree_iterate(struct inode *dir, int (*fn)(const char *, __ino_t, void *
 		brelse(buf);
 	}
 }
+
+/*
+ * Rebuild a leaf node with the given (insert or delete) change.
+ * The node is small (<= 1KB) and the pairs are re-serialized from a
+ * scratch copy, which is much less error-prone than in-place shifting.
+ * Returns 0 on success, -ENOSPC if the rebuilt node would overflow.
+ */
+static int bfs_btree_rebuild(struct bfs_btree_node *n, int do_insert,
+			     const char *iname, __ino_t ino,
+			     const char *dname)
+{
+	struct pair {
+		const char *key;
+		int keylen;
+		__u64 val;
+	} *pairs;
+	struct bfs_btree_node *copy;
+	int count = 0, i, index, total = 0;
+
+	if(!(copy = (struct bfs_btree_node *)kmalloc(BFS_BLOCK_SIZE)))
+		return -ENOMEM;
+	if(!(pairs = (struct pair *)kmalloc(64 * sizeof(struct pair)))) {
+		kfree((addr_t)copy);
+		return -ENOMEM;
+	}
+	memcpy_b(copy, n, BFS_BLOCK_SIZE);
+	if(copy->all_key_count > 64) {
+		kfree((addr_t)copy);
+		kfree((addr_t)pairs);
+		return -EIO;
+	}
+
+	/* collect existing pairs (keys point into the copy) */
+	for(i = 0; i < copy->all_key_count; i++) {
+		pairs[count].key = bfs_btree_key(copy, i, &pairs[count].keylen);
+		pairs[count].val = bfs_btree_values(copy)[i];
+		count++;
+	}
+	kfree((addr_t)copy);
+
+	/* apply the change */
+	index = count;
+	if(do_insert) {
+		for(i = 0; i < count; i++) {
+			int cmp = strncmp(iname, pairs[i].key, pairs[i].keylen);
+			if(cmp == 0 && !iname[pairs[i].keylen])
+				cmp = 0;
+			if(cmp <= 0) {
+				index = i;
+				break;
+			}
+		}
+		if(index < count) {
+			int same = (strncmp(iname, pairs[index].key,
+					pairs[index].keylen) == 0)
+				&& !iname[pairs[index].keylen];
+			if(same) {
+				kfree((addr_t)pairs);
+				return -EEXIST;
+			}
+		}
+		for(i = count; i > index; i--) {
+			pairs[i] = pairs[i - 1];
+		}
+		pairs[index].key = iname;
+		pairs[index].keylen = strlen(iname);
+		pairs[index].val = ino;
+		count++;
+	} else {
+		for(i = 0; i < count; i++) {
+			int cmp = strncmp(dname, pairs[i].key, pairs[i].keylen);
+			if(cmp == 0 && !dname[pairs[i].keylen]) {
+				index = i;
+				break;
+			}
+		}
+		if(i == count) {
+			kfree((addr_t)pairs);
+			return -ENOENT;
+		}
+		for(i = index; i < count - 1; i++) {
+			pairs[i] = pairs[i + 1];
+		}
+		count--;
+	}
+
+	/* re-serialize */
+	memset_b(n, 0, BFS_BLOCK_SIZE);
+	n->left = BFS_BTREE_NULL;
+	n->right = BFS_BTREE_NULL;
+	n->overflow = BFS_BTREE_NULL;	/* leaf */
+	n->all_key_count = count;
+	for(i = 0; i < count; i++) {
+		total += pairs[i].keylen;
+	}
+	n->all_key_length = total;
+	{
+		char *keys = (char *)n + sizeof(struct bfs_btree_node);
+		__u16 *kl = bfs_btree_keylen_index(n);
+		__u64 *values = bfs_btree_values(n);
+		int off = 0;
+		for(i = 0; i < count; i++) {
+			memcpy_b(keys + off, pairs[i].key, pairs[i].keylen);
+			off += pairs[i].keylen;
+			kl[i] = off;
+			values[i] = pairs[i].val;
+		}
+	}
+	kfree((addr_t)pairs);
+	return 0;
+}
+
+/*
+ * Insert a (name, inode) pair into the directory tree.
+ *
+ * M2 supports depth-1 trees (the root node is a leaf); node splitting
+ * for full leaves is future work (-ENOSPC).
+ */
+int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
+{
+	struct bfs_btree_header header;
+	struct bfs_btree_node *n;
+	struct buffer *buf;
+	__u64 node_off;
+	int res;
+
+	if(!name[0]) {
+		return -EINVAL;
+	}
+	if((res = bfs_btree_read_header(dir, &header))) {
+		return res;
+	}
+
+	node_off = header.root_node_ptr;
+	if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		return -EIO;
+	}
+	n = (struct bfs_btree_node *)buf->data;
+	if(n->overflow != BFS_BTREE_NULL) {
+		brelse(buf);
+		return -EIO;	/* interior root: not supported yet */
+	}
+
+	res = bfs_btree_rebuild(n, 1, name, ino, NULL);
+	if(res) {
+		brelse(buf);
+		return res;
+	}
+
+	dir->state |= INODE_DIRTY;
+	bwrite(buf);
+	return 0;
+}
+
+/*
+ * Remove the entry whose inode matches 'ino' (used by rmdir, which has
+ * no name). Returns -ENOENT if not found.
+ */
+int bfs_btree_delete_ino(struct inode *dir, __ino_t ino)
+{
+	struct bfs_btree_header header;
+	struct bfs_btree_node *n;
+	struct buffer *buf;
+	__u64 node_off;
+	__u16 *kl;
+	__u64 *values;
+	char *keys;
+	int i, res, keylen;
+
+	if((res = bfs_btree_read_header(dir, &header))) {
+		return res;
+	}
+	node_off = header.root_node_ptr;
+	if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		return -EIO;
+	}
+	n = (struct bfs_btree_node *)buf->data;
+	if(n->overflow != BFS_BTREE_NULL) {
+		brelse(buf);
+		return -EIO;
+	}
+	values = bfs_btree_values(n);
+	for(i = 0; i < n->all_key_count; i++) {
+		if(values[i] == ino) {
+			break;
+		}
+	}
+	if(i == n->all_key_count) {
+		brelse(buf);
+		return -ENOENT;
+	}
+
+	keys = (char *)n + sizeof(struct bfs_btree_node);
+	kl = bfs_btree_keylen_index(n);
+	{
+		int start = i ? kl[i - 1] : 0;
+		int key_end = kl[i];
+		int klen = key_end - start;
+		int tail = n->all_key_length - key_end;
+
+		memmove(keys + start, keys + key_end, tail);
+		{
+			int j;
+			for(j = i; j < n->all_key_count - 1; j++) {
+				kl[j] = kl[j + 1] - klen;
+			}
+		}
+		memmove(values + i, values + i + 1,
+			(n->all_key_count - i - 1) * sizeof(__u64));
+		n->all_key_count--;
+		n->all_key_length -= klen;
+		(void)keylen;
+	}
+
+	dir->state |= INODE_DIRTY;
+	bwrite(buf);
+	return 0;
+}
+
+/*
+ * Remove a (name, inode) pair from the directory tree.
+ */
+int bfs_btree_delete(struct inode *dir, const char *name)
+{
+	struct bfs_btree_header header;
+	struct bfs_btree_node *n;
+	struct buffer *buf;
+	__u64 node_off;
+	int res;
+
+	if(!name[0]) {
+		return -EINVAL;
+	}
+	if((res = bfs_btree_read_header(dir, &header))) {
+		return res;
+	}
+
+	node_off = header.root_node_ptr;
+	if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		return -EIO;
+	}
+	n = (struct bfs_btree_node *)buf->data;
+	if(n->overflow != BFS_BTREE_NULL) {
+		brelse(buf);
+		return -EIO;
+	}
+
+	res = bfs_btree_rebuild(n, 0, NULL, 0, name);
+	if(res) {
+		brelse(buf);
+		return res;
+	}
+
+	dir->state |= INODE_DIRTY;
+	bwrite(buf);
+	return 0;
+}

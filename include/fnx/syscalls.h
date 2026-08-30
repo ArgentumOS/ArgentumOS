@@ -47,6 +47,7 @@ int sys_waitpid(__pid_t, int *, int);
 int sys_creat(const char *, __mode_t);
 int sys_link(const char *, const char *);
 int sys_unlink(const char *);
+int sys_unlinkat(int, const char *, int);
 int sys_execve(const char *, char **, char **, int, int, struct sigcontext *);
 int sys_chdir(const char *);
 int sys_time(__time_t *);

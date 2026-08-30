@@ -7,7 +7,7 @@
 .c.o:
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-OBJS = super.o inode.o btree.o dir.o
+OBJS = super.o inode.o balloc.o btree.o dir.o file.o namei.o symlink.o
 
 all:	$(OBJS)
 

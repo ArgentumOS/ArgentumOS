@@ -162,17 +162,38 @@ struct bfs_btree_node {
 /* fs-private superblock info (per mounted BFS volume) */
 struct bfs_sb_info {
 	__u32 block_size;
-	__u32 blocks_per_ag;
+	__u32 blocks_per_ag;	/* bitmap blocks per allocation group */
 	__u32 ag_shift;
 	__u32 num_ags;
 	__u64 num_blocks;
 	__u32 flags;
 	__u32 root_inode;	/* block number of the root directory inode */
+	__u64 used_blocks;
+	/* free-space bitmap (all groups concatenated), cached in memory */
+	unsigned char *bitmap;	/* num_bitmap_blocks * block_size bytes */
+	__u32 bitmap_blocks;	/* total bitmap blocks on the volume */
+	__u32 next_free;	/* allocation hint (volume block number) */
 };
 
 /* fs-private inode info (the raw on-disk inode, for bmap/readdir) */
 struct bfs_i_info {
 	struct bfs_inode raw;	/* raw on-disk inode */
 };
+
+/* block allocation (balloc.c) */
+int bfs_balloc(struct superblock *);
+void bfs_bfree(struct superblock *, __blk_t);
+int bfs_balloc_specific(struct superblock *, __blk_t);
+
+/* inode.c */
+int bfs_write_inode(struct inode *);
+int bfs_ialloc(struct inode *, int);
+void bfs_ifree(struct inode *);
+int bfs_truncate(struct inode *, __off_t);
+
+/* btree.c */
+int bfs_btree_insert(struct inode *, const char *, __ino_t);
+int bfs_btree_delete(struct inode *, const char *);
+int bfs_btree_delete_ino(struct inode *, __ino_t);
 
 #endif /* _FNX_BFS_H */

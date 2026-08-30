@@ -720,6 +720,7 @@ void *syscall_table64[] = {
 	[257] = sys_openat,		/* openat */
 	[258] = sys_mkdirat,		/* mkdirat (toybox mkdir -p, musl) */
 	[262] = sys_newfstatat,		/* newfstatat (musl stat/lstat/fstatat) */
+	[263] = sys_unlinkat,		/* unlinkat */
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */
 	[269] = sys_faccessat,		/* faccessat (dash test -x/-r/-w, eaccess) */
 	[280] = sys_utimensat,		/* utimensat (musl utime/utimensat -> touch) */
