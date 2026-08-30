@@ -151,7 +151,11 @@ int bfs_write_inode(struct inode *i)
 	 * coverage and bfs_indirect_bmap translates offsets against it */
 	(void)ds;
 
-	bwrite(buf);
+	/* journal the inode write: inside an open transaction it joins it
+	 * (e.g. a dir-entry create), otherwise it is its own transaction */
+	bfs_log_begin(i->sb);
+	bfs_log_write_block(i->sb, buf->block, buf);
+	bfs_log_commit(i->sb);
 	return 0;
 }
 
@@ -182,7 +186,9 @@ int bfs_ialloc(struct inode *i, int mode)
 	raw->flags = BFS_INODE_IN_USE;
 	raw->inode_size = BFS_INODE_SIZE;
 	raw->u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
-	bwrite(buf);
+	bfs_log_begin(i->sb);
+	bfs_log_write_block(i->sb, buf->block, buf);
+	bfs_log_commit(i->sb);
 
 	i->inode = block;
 	i->i_size = 0;

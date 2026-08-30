@@ -130,9 +130,22 @@ static void bfs_statfs(struct superblock *sb, struct statfs *buf)
 
 static void bfs_release_superblock(struct superblock *sb)
 {
+	struct buffer *buf;
+	__u64 i;
+
 	if(sb->flags & MS_RDONLY) {
 		return;
 	}
+
+	/* stop journaling: from here on inode flushes write through
+	 * directly, so nothing can re-populate the log after
+	 * bfs_write_superblock drains it (the VFS flushes more inodes
+	 * after release_superblock) */
+	sb->u.bfs.log_draining = 1;
+
+	/* flush the dirty inodes now: their writes go through the
+	 * journal (still active), landing in the log before the drain */
+	sync_inodes(sb->dev);
 
 	superblock_lock(sb);
 	sb->u.bfs.flags = BFS_SUPER_CLEAN;
@@ -148,8 +161,31 @@ static int bfs_write_superblock(struct superblock *sb)
 	struct buffer *buf;
 	struct bfs_superblock *bsb;
 	__u32 i;
+	__u64 l;
 
 	superblock_lock(sb);
+
+	/* empty the log: by the time the superblock is synced every
+	 * committed transaction is already applied + synced, so the log
+	 * can be drained (log_start == log_end == 0 is the clean state).
+	 * This runs after the last dirty inode has been flushed (the
+	 * umount path iputs root/dir before sync_superblocks), so a
+	 * clean unmount leaves nothing to replay. The journal lock keeps
+	 * an in-flight commit from writing the superblock (log_end) in
+	 * the middle of the drain. */
+	bfs_log_lock(sb);
+	for(l = 0; l < sb->u.bfs.log_blocks.len; l++) {
+		if((buf = bread(sb->dev,
+				bfs_log_run_abs(sb, &sb->u.bfs.log_blocks) + l,
+				BFS_BLOCK_SIZE))) {
+			memset_b(buf->data, 0, BFS_BLOCK_SIZE);
+			bwrite(buf);
+		}
+	}
+	sb->u.bfs.log_start = 0;
+	sb->u.bfs.log_end = 0;
+	sb->u.bfs.flags = BFS_SUPER_CLEAN;
+	bfs_log_unlock(sb);
 
 	/* flush the bitmap blocks */
 	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
@@ -186,11 +222,9 @@ static int bfs_write_superblock(struct superblock *sb)
 	bsb->ag_shift = sb->u.bfs.ag_shift;
 	bsb->num_ags = sb->u.bfs.num_ags;
 	bsb->flags = sb->u.bfs.flags;
-	bsb->log_blocks.allocation_group = 0;
-	bsb->log_blocks.start = 2;
-	bsb->log_blocks.len = 4;
-	bsb->log_start = 0;
-	bsb->log_end = 0;
+	bsb->log_blocks = sb->u.bfs.log_blocks;
+	bsb->log_start = sb->u.bfs.log_start;
+	bsb->log_end = sb->u.bfs.log_end;
 	bsb->magic3 = BFS_SUPER_MAGIC3;
 	bsb->root_dir.allocation_group = 0;
 	bsb->root_dir.start = sb->u.bfs.root_inode;
@@ -254,6 +288,15 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	root_block = (root->allocation_group << bsb->ag_shift) + root->start;
 	sb->u.bfs.root_inode = root_block;
 
+	/* journal (log) state: the extent + positions come from the disk */
+	sb->u.bfs.log_blocks = bsb->log_blocks;
+	sb->u.bfs.log_start = bsb->log_start;
+	sb->u.bfs.log_end = bsb->log_end;
+	sb->u.bfs.tx_depth = 0;
+	sb->u.bfs.tx_nblocks = 0;
+	sb->u.bfs.journal_locked = 0;
+	sb->u.bfs.journal_wanted = 0;
+
 	/* load the bitmap into memory */
 	sb->u.bfs.bitmap_blocks = sb->u.bfs.num_ags * sb->u.bfs.blocks_per_ag;
 	if(!(sb->u.bfs.bitmap = (unsigned char *)kmalloc(
@@ -276,6 +319,18 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 		memcpy_b(sb->u.bfs.bitmap + (i * BFS_BLOCK_SIZE), bb->data,
 			BFS_BLOCK_SIZE);
 		brelse(bb);
+	}
+
+	/* replay any uncommitted transactions in the log before the fs
+	 * becomes usable; a partial replay (I/O error / bad entry) leaves
+	 * the log intact and refuses the mount rather than mounting on
+	 * an unrecovered filesystem */
+	if(bfs_log_replay(sb) < 0) {
+		printk("WARNING: %s(): log replay failed, refusing mount.\n",
+		       __FUNCTION__);
+		superblock_unlock(sb);
+		brelse(buf);
+		return -EIO;
 	}
 
 	if(!(sb->root = iget(sb, root_block))) {

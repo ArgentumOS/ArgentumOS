@@ -173,6 +173,24 @@ struct bfs_sb_info {
 	unsigned char *bitmap;	/* num_bitmap_blocks * block_size bytes */
 	__u32 bitmap_blocks;	/* total bitmap blocks on the volume */
 	__u32 next_free;	/* allocation hint (volume block number) */
+	/* journal (log) state */
+	struct bfs_block_run log_blocks;	/* the log extent */
+	__u64 log_start;			/* BLOCK offset of the first entry */
+	__u64 log_end;				/* BLOCK offset past the last entry */
+	/* in-memory journal transaction state */
+#define BFS_LOG_MAX_BLOCKS	15	/* count <= log size - run_array block */
+	__blk_t tx_blocks[BFS_LOG_MAX_BLOCKS];	/* blocks modified in this tx */
+	unsigned char *tx_data[BFS_LOG_MAX_BLOCKS];	/* their new content */
+	int tx_nblocks;				/* entries used in tx_blocks[] */
+	int tx_depth;				/* nesting depth (0 = no tx) */
+	int log_draining;			/* umount: write through, no journal */
+	/* journal transaction lock (serializes tx ownership): the tx
+	 * state is per-superblock but the commit sleeps on I/O, so a
+	 * concurrent tx on the same sb would clobber it. Stored as a
+	 * struct resource (fnx/sleep.h) without the include to avoid a
+	 * header cycle. */
+	char journal_locked;
+	char journal_wanted;
 };
 
 /* the packed inode struct is 232 bytes; the small_data attribute tail
@@ -197,9 +215,49 @@ int bfs_ialloc(struct inode *, int);
 void bfs_ifree(struct inode *);
 int bfs_truncate(struct inode *, __off_t);
 
+/* journal.c */
+struct buffer;	/* forward decl (fnx/buffer.h) */
+__blk_t bfs_log_run_abs(struct superblock *, struct bfs_block_run *);
+int bfs_log_replay(struct superblock *);
+int bfs_log_begin(struct superblock *);
+int bfs_log_record(struct superblock *, __blk_t, unsigned char *);
+int bfs_log_commit(struct superblock *);
+void bfs_log_write_block(struct superblock *, __blk_t, struct buffer *);
+void bfs_log_lock(struct superblock *);
+void bfs_log_unlock(struct superblock *);
+
 /* btree.c */
 int bfs_btree_insert(struct inode *, const char *, __ino_t);
 int bfs_btree_delete(struct inode *, const char *);
 int bfs_btree_delete_ino(struct inode *, __ino_t);
 
+/* ------------------------------------------------------------------ */
+/* Journal (log) — faithful Haiku BFS on-disk log-entry format (Haiku
+ * fs/bfs/Journal.cpp, run_array). The log is a sequence of entries in
+ * the extent described by the superblock's log_blocks run; the
+ * superblock's log_start/log_end are BLOCK offsets into that extent
+ * (Haiku runtime semantics); log_start == log_end means the log is
+ * empty (clean).
+ *
+ * A transaction entry is:
+ *   one run_array block:  { s32 count; s32 max_runs (127);
+ *                           block_run runs[127]; }   (1024 bytes)
+ *   followed by `count` data blocks (the raw block contents, one per
+ *   block run, in run order; every run has len == 1 — Be's replay can
+ *   only deal with length-1 runs).
+ *
+ * Replay walks log_start..log_end, writing each entry's data blocks
+ * back to their real locations, then clears the log (log_start =
+ * log_end = 0). There is no transaction id on disk: log_start/log_end
+ * ARE the commit markers (log_end is advanced in the on-disk
+ * superblock before the real blocks are written, so a crash mid-flush
+ * leaves the log covering the transaction).
+ */
+struct bfs_run_array {
+	__s32 count;		/* number of block runs in this entry */
+	__s32 max_runs;		/* 127 (max run_array capacity) */
+	struct bfs_block_run runs[127];	/* the modified blocks */
+} __attribute__((packed));	/* 8 + 127*8 = 1024 = one block */
+#define BFS_LOG_MAX_RUNS	127
 #endif /* _FNX_BFS_H */
+

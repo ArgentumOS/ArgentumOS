@@ -166,7 +166,7 @@ def main():
     # 0: boot+super, 1..num_ags: allocation bitmap, then the journal,
     # then inode blocks, then data blocks (32.. for small images).
     num_ags = (num_blocks + 8191) // 8192
-    journal_start, journal_len = 1 + num_ags, 4
+    journal_start, journal_len = 1 + num_ags, 16
     next_inode = journal_start + journal_len
     # two-pass: count inodes first so data blocks never collide with inodes
     def count_inodes(path):

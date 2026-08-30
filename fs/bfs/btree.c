@@ -129,7 +129,7 @@ static int bfs_btree_write_header(struct inode *i, struct bfs_btree_header *head
 	}
 	h = (struct bfs_btree_header *)buf->data;
 	memcpy_b(h, header, sizeof(struct bfs_btree_header));
-	bwrite(buf);
+	bfs_log_write_block(i->sb, buf->block, buf);
 	return 0;
 }
 
@@ -455,7 +455,7 @@ static int bfs_btree_write_node(struct inode *dir, __u64 off,
 	}
 	n = (struct bfs_btree_node *)buf->data;
 	bfs_btree_serialize(n, pairs, count, overflow, right);
-	bwrite(buf);
+	bfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
 
@@ -583,7 +583,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			kl[0] = sep_len;
 			values[0] = left_off;
 		}
-		bwrite(buf);
+		bfs_log_write_block(dir->sb, buf->block, buf);
 
 		if(header->max_depth < depth + 1) {
 			header->max_depth = depth + 1;
@@ -603,7 +603,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 	}
 	bfs_btree_serialize(n, pairs, split_at, left_overflow,
 			    is_leaf ? right_off : BFS_BTREE_NULL);
-	bwrite(buf);
+	bfs_log_write_block(dir->sb, buf->block, buf);
 
 	/* insert the separator into the parent, splitting the parent
 	 * (recursively) if the rebuilt parent would not fit */
@@ -701,7 +701,8 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 				bfs_btree_serialize(parent, pp, pcount,
 						    parent_overflow,
 						    BFS_BTREE_NULL);
-				bwrite(parent_buf);
+				bfs_log_write_block(dir->sb, parent_buf->block,
+						    parent_buf);
 				kfree((addr_t)pkb);
 				kfree((addr_t)pp);
 				return 0;
@@ -725,7 +726,8 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
  * Insert a (name, inode) pair into the directory tree. Splits a full
  * leaf, and splits the interior parents recursively when they fill.
  */
-int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
+static int bfs_btree_insert_impl(struct inode *dir, const char *name,
+				 __ino_t ino)
 {
 	struct bfs_btree_header header;
 	struct bfs_btree_node *n;
@@ -761,7 +763,7 @@ int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
 			return -EEXIST;
 		}
 		bfs_btree_serialize(n, pairs, count, BFS_BTREE_NULL, n->right);
-		bwrite(buf);
+		bfs_log_write_block(dir->sb, buf->block, buf);
 		return 0;
 	}
 
@@ -810,7 +812,7 @@ static void bfs_btree_remove_at(struct bfs_btree_node *n, int i)
 /*
  * Remove a (name, inode) pair from the directory tree.
  */
-int bfs_btree_delete(struct inode *dir, const char *name)
+static int bfs_btree_delete_impl(struct inode *dir, const char *name)
 {
 	struct bfs_btree_header header;
 	struct bfs_btree_node *n;
@@ -838,7 +840,7 @@ int bfs_btree_delete(struct inode *dir, const char *name)
 	}
 	bfs_btree_remove_at(n, index);
 	dir->state |= INODE_DIRTY;
-	bwrite(buf);
+	bfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
 
@@ -846,7 +848,7 @@ int bfs_btree_delete(struct inode *dir, const char *name)
  * Remove the entry whose inode matches 'ino' (used by rmdir, which has no
  * name). Searches every leaf.
  */
-int bfs_btree_delete_ino(struct inode *dir, __ino_t ino)
+static int bfs_btree_delete_ino_impl(struct inode *dir, __ino_t ino)
 {
 	struct bfs_btree_header header;
 	struct bfs_btree_node *n;
@@ -887,7 +889,7 @@ int bfs_btree_delete_ino(struct inode *dir, __ino_t ino)
 			if(bfs_btree_values(n)[i] == ino) {
 				bfs_btree_remove_at(n, i);
 				dir->state |= INODE_DIRTY;
-				bwrite(buf);
+				bfs_log_write_block(dir->sb, buf->block, buf);
 				return 0;
 			}
 		}
@@ -898,4 +900,39 @@ int bfs_btree_delete_ino(struct inode *dir, __ino_t ino)
 		node_off = n->right;
 		brelse(buf);
 	}
+}
+
+/*
+ * Transaction wrappers: every directory-tree mutation (insert/delete)
+ * runs in a single journal transaction so a crash can never leave a
+ * partially-applied tree change.
+ */
+int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
+{
+	int res;
+
+	bfs_log_begin(dir->sb);
+	res = bfs_btree_insert_impl(dir, name, ino);
+	bfs_log_commit(dir->sb);
+	return res;
+}
+
+int bfs_btree_delete(struct inode *dir, const char *name)
+{
+	int res;
+
+	bfs_log_begin(dir->sb);
+	res = bfs_btree_delete_impl(dir, name);
+	bfs_log_commit(dir->sb);
+	return res;
+}
+
+int bfs_btree_delete_ino(struct inode *dir, __ino_t ino)
+{
+	int res;
+
+	bfs_log_begin(dir->sb);
+	res = bfs_btree_delete_ino_impl(dir, ino);
+	bfs_log_commit(dir->sb);
+	return res;
 }
