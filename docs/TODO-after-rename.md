@@ -567,17 +567,22 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0/M1 DONE (959a4c8)
+## OpenBFS (BeOS BFS) filesystem - M0-M4a DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e)
 
-Read-only driver + tools/mkbfs.py image builder committed. Mount a
-second QEMU disk (`-drive file=bfs.img,format=raw,if=ide,index=2` ->
-/dev/hdc) and `mount -t bfs /dev/hdc /mnt` works: ls (B+tree readdir),
-cat (direct-run reads), cksum, umount. See project memory
-`fnx-openbfs-m0-m1-done` for the verified on-disk layout + driver
-gotchas. The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays
-as-is. M2+ (write support, indirect streams, symlinks, multi-node
-trees) remains future work; Linux/Haiku reference files are in
-`.build/refs/`.
+Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
+with free-space bitmap (M2), btree interior nodes + leaf splits +
+indirect streams + statfs (M3), and indirect-stream write/read path
+fixes verified byte-perfect (M4a). Mount a second QEMU disk
+(`-drive file=bfs.img,format=raw,if=ide,index=2` -> /dev/hdc) and
+`mount -t bfs /dev/hdc /mnt` works: ls, cat, cksum, create/write/read
+fragmented files past 12 direct runs, umount. Test harness:
+`.build/rootfs64/bin/bfsfrag` (guest) + `.build/bfsverify.py` (host
+tree/inode/runs/content verifier). See project memory
+`fnx-openbfs-m4a-indirect-in-progress` for the bug list + gotchas
+(dd conv=notrunc, brelse-vs-bwrite, stale esp.img, strcmp sign).
+Remaining: journaling (M3-plan), symlinks, multi-node trees, small_data
+attrs, BFS as root fs. The existing ext2 root (mkext2.py, rev-0, 1KB
+blocks) stays as-is.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
 "second filesystem" (Giampaolo, "Practical File System Design with the
