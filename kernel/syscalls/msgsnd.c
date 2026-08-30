@@ -25,8 +25,9 @@
 int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 {
 	struct msqid_ds *mq;
-	struct msgbuf *mb;
 	struct msg *m;
+	char *mtext;
+	long utype;
 	int errno;
 
 #ifdef __DEBUG__
@@ -36,14 +37,23 @@ int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 	if(msqid < 0 || msgsz > MSGMAX) {
 		return -EINVAL;
 	}
+	/* the x86-64 user ABI is struct { long mtype; char mtext[]; } - the
+	 * mtype is 8 bytes and the text starts at +8, not at the kernel's
+	 * 4-byte 'int mtype' offset */
 	if((errno = check_user_area(VERIFY_READ, msgp, sizeof(void *)))) {
 		return errno;
 	}
-	mb = (struct msgbuf *)msgp;
-	if(mb->mtype < 0) {
+	mtext = ((char *)msgp) + sizeof(long);
+	utype = *(long *)msgp;
+	if(utype < 0) {
 		return -EINVAL;
 	}
-	if((errno = check_user_area(VERIFY_READ, mb->mtext, msgsz))) {
+	/* the kernel stores an int msg_type; reject values that would
+	 * silently truncate and collide with small types */
+	if(utype > 0x7FFFFFFF) {
+		return -EINVAL;
+	}
+	if((errno = check_user_area(VERIFY_READ, mtext, msgsz))) {
 		return errno;
 	}
 
@@ -73,12 +83,12 @@ int sys_msgsnd(int msqid, const void *msgp, __size_t msgsz, int msgflg)
 		return -ENOMEM;
 	}
 	m->msg_next = NULL;
-	m->msg_type = mb->mtype;
+	m->msg_type = (int)utype;
 	if(!(m->msg_spot = (void *)kmalloc(PAGE_SIZE))) {
 		msg_release_md(m);
 		return -ENOMEM;
 	}
-	memcpy_b(m->msg_spot, mb->mtext, msgsz);
+	memcpy_b(m->msg_spot, mtext, msgsz);
 	m->msg_stime = CURRENT_TIME;
 	m->msg_ts = msgsz;
 	lock_resource(&ipcmsg_resource);

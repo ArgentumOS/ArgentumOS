@@ -249,6 +249,13 @@ int sys_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, s
 	}
 
 	if(timeout) {
+		/* 'timeout' is read AND written (tv2ticks/ticks2tv) with no
+		 * check in the old code: a bogus pointer was an arbitrary
+		 * kernel read/write, an unmapped one a kernel panic */
+		if((errno = check_user_area(VERIFY_READ, timeout, sizeof(struct timeval))) ||
+		   (errno = check_user_area(VERIFY_WRITE, timeout, sizeof(struct timeval)))) {
+			return errno;
+		}
 		t = tv2ticks(timeout);
 	} else {
 		t = INFINITE_WAIT;

@@ -30,10 +30,20 @@ int sys_readv(unsigned int ufd, const struct iovec *iov, int iovcnt)
 	if(iovcnt < 0 || iovcnt > UIO_MAXIOV) {
 		return -EINVAL;
 	}
+	/* the iovec ARRAY itself is user memory dereferenced at CPL0 -
+	 * verify it before the loop (an unmapped/short array panicked) */
+	if((errno = check_user_area(VERIFY_READ, iov, iovcnt * sizeof(struct iovec)))) {
+		return errno;
+	}
 	for (vi = 0; vi < iovcnt; vi++) {
 		struct iovec io;
 		/* FNX (native port): full 64-bit struct iovec */
 		io = ((struct iovec *)iov)[vi];
+		/* check_user_area's size is 32-bit: reject lengths it would
+		 * truncate so the fsop read can never run unverified */
+		if(io.iov_len > 0x7FFFFFFFULL) {
+			return -EINVAL;
+		}
 		if((errno = check_user_area(VERIFY_WRITE, io.iov_base, io.iov_len))) {
 			return errno;
 		}

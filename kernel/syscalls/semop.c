@@ -88,7 +88,10 @@ int sys_semop(int semid, struct sembuf *sops, int nsops)
 	if(nsops > SEMOPM) {
 		return -E2BIG;
 	}
-	if((errno = check_user_area(VERIFY_READ, sops, sizeof(struct sembuf)))) {
+	/* verify the WHOLE sops array, not just one element - the loop
+	 * below dereferences sops[0..nsops-1] (the old sizeof(struct
+	 * sembuf) check let a short array read past the user vma) */
+	if((errno = check_user_area(VERIFY_READ, sops, nsops * sizeof(struct sembuf)))) {
 		return errno;
 	}
 
@@ -100,7 +103,9 @@ int sys_semop(int semid, struct sembuf *sops, int nsops)
 	/* check permissions and ranges for all semaphore operations */
 	need_alter = 0;
 	for(n = 0; n < nsops; n++) {
-		if(sops[n].sem_num > ss->sem_nsems) {
+		/* bound sem_num against sem_nsems (off-by-one: the old '>'
+		 * let sem_num == sem_nsems index one struct past the set) */
+		if(sops[n].sem_num >= ss->sem_nsems) {
 			return -EFBIG;
 		}
 		/* only negative and positive operations ... */

@@ -277,8 +277,8 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 	/* FNX (native-MM): operate on the ACTIVE pml4 - no 2-level shadow,
 	 * no pte-table refcounting, so the table-empty kfree (the source of
 	 * the pde-32 table double-grant) is gone. */
-	unsigned int n, offset;
-	unsigned long pml4, leaf;
+	unsigned int offset;
+	unsigned long n, pml4, leaf;
 	struct page *pg;
 
 	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
@@ -523,12 +523,19 @@ long do_mmap(struct inode *i, addr_t start, addr_t length, unsigned int prot, un
 	struct vma *vma;
 	int errno;
 
+	/* reject absurd lengths up front: PAGE_ALIGN() would wrap them to 0
+	 * (silently returning 'start' with no mapping) and a huge
+	 * start+length could wrap the USER_STACK_TOP check */
+	if(length > USER_STACK_TOP) {
+		return -EINVAL;
+	}
 	if(!(length = PAGE_ALIGN(length))) {
 		return start;
 	}
 
 	/* user addresses must stay in the canonical low half (< the 128TB
-	 * user/kernel boundary, USER_STACK_TOP = 0x0000800000000000) */
+	 * user/kernel boundary, USER_STACK_TOP = 0x0000800000000000).
+	 * With length <= USER_STACK_TOP, start+length cannot wrap. */
 	if(start >= USER_STACK_TOP || start + length > USER_STACK_TOP) {
 		return -EINVAL;
 	}
@@ -629,6 +636,13 @@ int do_munmap(addr_t addr, __size_t length)
 	}
 
 	length = PAGE_ALIGN(length);
+
+	/* a huge length would wrap addr+length and make free_vma_pages
+	 * spin forever (32-bit loop counter vs 2^48 pages); no legitimate
+	 * unmap is larger than the whole user half */
+	if(length > USER_STACK_TOP || addr + length > USER_STACK_TOP) {
+		return -EINVAL;
+	}
 
 	while(length) {
 		if(!(vma = find_vma_region(addr))) {

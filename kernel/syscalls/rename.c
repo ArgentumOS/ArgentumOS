@@ -96,9 +96,32 @@ int sys_rename(const char *oldpath, const char *newpath)
 		}
 	}
 
+	/* the source directory must be writable too, otherwise a user
+	 * could rename files out of a write-protected directory */
+	if(check_permission(TO_EXEC | TO_WRITE, dir) < 0) {
+		errno = -EACCES;
+		goto end;
+	}
+
 	if(check_permission(TO_EXEC | TO_WRITE, dir_new) < 0) {
 		errno = -EACCES;
 		goto end;
+	}
+
+	/* sticky-bit: in a sticky source directory only the owner (or
+	 * root) may rename the file away; same for an existing target in
+	 * a sticky target directory (mirrors unlink.c) */
+	if(dir->i_mode & S_ISVTX) {
+		if(check_user_permission(i)) {
+			errno = -EPERM;
+			goto end;
+		}
+	}
+	if(dir_new->i_mode & S_ISVTX) {
+		if(i_new && check_user_permission(i_new)) {
+			errno = -EPERM;
+			goto end;
+		}
 	}
 
 	if(dir_new->fsop && dir_new->fsop->rename) {

@@ -42,28 +42,92 @@ static char *get_user_ptr(char **arr, int n)
 	return arr[n];
 }
 
+/* verify + measure a user string at CPL0. Walks page by page, requiring
+ * each page up to the NUL to be readable, and never demands a full page
+ * past the NUL: stack strings live in the top page of the stack vma,
+ * whose end (USER_STACK_TOP) may be less than str+PAGE_SIZE. Returns
+ * -EFAULT for an unmapped page, -E2BIG past ARG_MAX bytes, else 0 with
+ * the length (excluding the NUL) in *len_out. */
+static int user_strlen(char *str, unsigned int *len_out)
+{
+	unsigned int len = 0;
+
+	while(1) {
+		addr_t page_off = (addr_t)str & ~PAGE_MASK;
+		unsigned int chunk = PAGE_SIZE - page_off;
+		char *p;
+		int n, errno;
+
+		if((errno = check_user_area(VERIFY_READ, str, chunk))) {
+			return errno;
+		}
+		for(p = str, n = 0; n < chunk; n++, p++) {
+			if(!*p) {
+				*len_out = len + n;
+				return 0;
+			}
+		}
+		len += chunk;
+		if(len > ARG_MAX * PAGE_SIZE) {
+			return -E2BIG;
+		}
+		str += chunk;
+	}
+}
+
 static int initialize_barg(struct binargs *barg, char *argv[], char *envp[])
 {
 	int n, errno;
+	char *str;
+	unsigned int len;
 
 	for(n = 0; n < ARG_MAX; n++) {
 		barg->page[n] = 0;
 	}
 	barg->argv_len = barg->envp_len = 0;
 
-	for(n = 0; get_user_ptr(argv, n); n++) {
-		if((errno = check_user_area(VERIFY_READ, get_user_ptr(argv, n), sizeof(char *)))) {
+	/* The user argv/envp arrays and strings are read by the kernel at
+	 * CPL0: verify each array element before dereferencing it (an
+	 * unterminated array would walk off the mapping and panic), verify
+	 * the full page of each string (not just one word - the strlen()
+	 * below reads the whole string), and bound the total so the int
+	 * argv_len/envp_len cannot overflow the ARG_MAX*PAGE_SIZE stack
+	 * buffer in copy_strings(). */
+	for(n = 0; n < ARG_MAX; n++) {
+		if((errno = check_user_area(VERIFY_READ, &((char **)argv)[n], sizeof(char *)))) {
 			return errno;
 		}
-		barg->argv_len += strlen(get_user_ptr(argv, n)) + 1;
+		str = get_user_ptr(argv, n);
+		if(!str) {
+			break;
+		}
+		if((errno = user_strlen(str, &len))) {
+			return errno;
+		}
+		len++;
+		if(barg->argv_len + len > ARG_MAX * PAGE_SIZE) {
+			return -E2BIG;
+		}
+		barg->argv_len += len;
 	}
 	barg->argc = n;
 
-	for(n = 0; get_user_ptr(envp, n); n++) {
-		if((errno = check_user_area(VERIFY_READ, get_user_ptr(envp, n), sizeof(char *)))) {
+	for(n = 0; n < ARG_MAX; n++) {
+		if((errno = check_user_area(VERIFY_READ, &((char **)envp)[n], sizeof(char *)))) {
 			return errno;
 		}
-		barg->envp_len += strlen(get_user_ptr(envp, n)) + 1;
+		str = get_user_ptr(envp, n);
+		if(!str) {
+			break;
+		}
+		if((errno = user_strlen(str, &len))) {
+			return errno;
+		}
+		len++;
+		if(barg->envp_len + len > ARG_MAX * PAGE_SIZE) {
+			return -E2BIG;
+		}
+		barg->envp_len += len;
 	}
 	barg->envc = n;
 

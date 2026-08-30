@@ -98,7 +98,10 @@ addr_t sys_shmat(int shmid, char *shmaddr, int shmflg, unsigned int *raddr)
 
 	sega->start = addr;
 	sega->end = addr + seg->shm_segsz;
-	sega->prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+	/* SHM_RDONLY must not produce a writable mapping: the old code
+	 * mapped RWX unconditionally, so a read-only attach could still
+	 * modify the segment */
+	sega->prot = (shmflg & SHM_RDONLY) ? PROT_READ : (PROT_READ | PROT_WRITE);
 	sega->flags = MAP_PRIVATE | MAP_FIXED;
 	sega->offset = 0;
 	sega->s_type = P_SHM;
@@ -108,6 +111,10 @@ addr_t sys_shmat(int shmid, char *shmaddr, int shmflg, unsigned int *raddr)
 
 	errno = do_mmap(NULL, addr, seg->shm_segsz, sega->prot, sega->flags, sega->offset, sega->s_type, sega->o_mode, seg);
 	if(errno < 0 && errno > -PAGE_SIZE) {
+		/* do_mmap failed: release the attach record and the count or
+		 * every failed shmat leaks a slot and DoSes the segment */
+		shm_release_attach(sega);
+		seg->shm_nattch--;
 		return errno;
 	}
 

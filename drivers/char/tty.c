@@ -1114,10 +1114,13 @@ int tty_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 			break;
 		case TIOCLINUX:
 		{
-			int val = *(unsigned char *)arg;
+			int val;
+			/* check BEFORE the deref (the old order read *arg first,
+			 * so a bad pointer panicked the kernel) */
 			if((errno = check_user_area(VERIFY_READ, (void *)arg, sizeof(unsigned char)))) {
 				return errno;
 			}
+			val = *(unsigned char *)arg;
 			switch(val) {
 				case 12:	/* get current console */
 					return current_cons;
@@ -1131,6 +1134,13 @@ int tty_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		case TIOCINQ:
 		{
 			int *val = (int *)arg;
+			/* TIOCINQ (0x541B) carries no direction bits, so the
+			 * generic sys_ioctl check skips it: validate the write
+			 * target here (unchecked, a bogus arg was a 4-byte
+			 * arbitrary kernel write / panic) */
+			if((errno = check_user_area(VERIFY_WRITE, (void *)arg, sizeof(int)))) {
+				return errno;
+			}
 			if(tty->termios.c_lflag & ICANON) {
 				*val = tty->cooked_q.count;
 			} else {

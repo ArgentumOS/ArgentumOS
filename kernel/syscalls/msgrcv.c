@@ -25,7 +25,6 @@
 int sys_msgrcv(int msqid, void *msgp, __size_t msgsz, int msgtyp, int msgflg)
 {
 	struct msqid_ds *mq;
-	struct msgbuf *mb;
 	struct msg *m, *mprev;
 	int errno, found, count;
 
@@ -100,9 +99,16 @@ int sys_msgrcv(int msqid, void *msgp, __size_t msgsz, int msgtyp, int msgflg)
 		count = m->msg_ts;
 	}
 
-	mb = (struct msgbuf *)msgp;
-	mb->mtype = m->msg_type;
-	memcpy_b(mb->mtext, m->msg_spot, count);
+	/* x86-64 user ABI: 8-byte long mtype, text at +8; the kernel
+	 * stores an int msg_type, so zero-extend it into the user's long.
+	 * The write target (8-byte mtype + up to count bytes of text) is
+	 * verified as a whole - the old code verified only 8 bytes and
+	 * wrote up to 4 KiB unchecked (arbitrary kernel write / panic). */
+	if((errno = check_user_area(VERIFY_WRITE, msgp, sizeof(long) + count))) {
+		return errno;
+	}
+	*(long *)msgp = (long)m->msg_type;
+	memcpy_b((char *)msgp + sizeof(long), m->msg_spot, count);
 
 	lock_resource(&ipcmsg_resource);
 	kfree((addr_t)m->msg_spot);

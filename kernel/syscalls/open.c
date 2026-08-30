@@ -187,6 +187,12 @@ static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode
 	} else {
 		perms = TO_READ | TO_WRITE;
 	}
+	/* O_TRUNC modifies the file: it must require write permission even
+	 * when combined with O_RDONLY (a reader must not be able to zero a
+	 * file it cannot write) */
+	if(flags & O_TRUNC) {
+		perms |= TO_WRITE;
+	}
 	if((errno = check_permission(perms, i))) {
 		iput(i);
 		iput(dir);

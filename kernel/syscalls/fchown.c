@@ -19,6 +19,7 @@
 int sys_fchown(unsigned int ufd, __uid_t owner, __gid_t group)
 {
 	struct inode *i;
+	int errno;
 
 #ifdef __DEBUG__
 	printk("(pid %d) sys_fchown(%d, %d, %d)\n", current->pid, ufd, owner, group);
@@ -30,23 +31,20 @@ int sys_fchown(unsigned int ufd, __uid_t owner, __gid_t group)
 	if(IS_RDONLY_FS(i)) {
 		return -EROFS;
 	}
-	if(check_user_permission(i)) {
-		return -EPERM;
+	if((errno = check_chown_permission(i, owner, group))) {
+		return errno;
 	}
 
 	if(owner == (__uid_t)-1) {
 		owner = i->i_uid;
-	} else {
-		i->i_mode &= ~(S_ISUID);
 	}
 	if(group == (__gid_t)-1) {
 		group = i->i_gid;
-	} else {
-		i->i_mode &= ~(S_ISGID);
 	}
 
 	i->i_uid = owner;
 	i->i_gid = group;
+	i->i_ctime = CURRENT_TIME;	/* chown always updates ctime */
 	i->i_ctime = CURRENT_TIME;
 	i->state |= INODE_DIRTY;
 	return 0;

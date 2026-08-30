@@ -9,6 +9,7 @@
 #include <fnx/stat.h>
 #include <fnx/errno.h>
 #include <fnx/string.h>
+#include <fnx/process.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -24,6 +25,11 @@ int sys_chroot(const char *dirname)
 #ifdef __DEBUG__
 	printk("(pid %d) sys_chroot('%s')\n", current->pid, dirname);
 #endif /*__DEBUG__ */
+
+	/* chroot is a privileged operation (CAP_SYS_CHROOT on Linux) */
+	if(!IS_SUPERUSER) {
+		return -EPERM;
+	}
 
 	if((errno = malloc_name(dirname, &tmp_name)) < 0) {
 		return errno;

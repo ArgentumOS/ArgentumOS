@@ -25,7 +25,10 @@ int sys_syslog(int type, char *buffer, int len)
 	printk("(pid %d) sys_syslog(%d, 0x%x, %d)\n", current->pid, type, buffer, len);
 #endif /*__DEBUG__ */
 
-	if(type != SYSLOG_READ_ALL && !IS_SUPERUSER) {
+	/* reading the kernel log is privileged (CAP_SYSLOG on Linux); the
+	 * log contains addresses/state that would help build kernel-write
+	 * primitives */
+	if(!IS_SUPERUSER) {
 		return -EPERM;
 	}
 	if(type == SYSLOG_CLOSE || type == SYSLOG_OPEN) {

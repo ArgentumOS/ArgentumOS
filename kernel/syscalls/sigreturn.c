@@ -16,6 +16,7 @@
 #include <fnx/process.h>
 #include <fnx/sigcontext.h>
 #include <fnx/string.h>
+#include <fnx/errno.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -26,6 +27,14 @@ int sys_rt_sigreturn(unsigned int signum, int arg2, int arg3, int arg4, int arg5
 #ifdef __DEBUG__
 	printk("(pid %d) sys_rt_sigreturn(%d)\n", current->pid, signum);
 #endif /*__DEBUG__ */
+
+	/* signum is a raw user argument (the trampoline passes the signal
+	 * number, but a user can call syscall 15 directly): bound it or
+	 * sc[signum-1] reads past the array (kernel panic / disclosure
+	 * into the iretq frame via was_sigreturn). */
+	if(signum < 1 || signum > NSIG) {
+		return -EINVAL;
+	}
 
 	current->sigblocked &= ~current->sigexecuting;
 	current->sigexecuting = 0;

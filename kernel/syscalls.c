@@ -119,23 +119,32 @@ void free_name(const char *name)
  */
 int malloc_name(const char *string, char **name)
 {
-	char *b;
+	char *b, *s;
 	int n, errno;
-
-	if((errno = verify_address(PROT_READ, string, 0))) {
-		return errno;
-	}
+	addr_t page_off;
+	unsigned int chunk;
 
 	if(!(b = (char *)kmalloc(PAGE_SIZE))) {
 		return -ENOMEM;
 	}
 	*name = b;
-	for(n = 0; n < PAGE_SIZE; n++) {
-		if(!(*b = *string)) {
-			return 0;
+	s = (char *)string;
+	n = 0;
+	/* copy up to PAGE_SIZE bytes, verifying each page up to its end
+	 * (never a full page past the string: a stack-resident pathname in
+	 * the top page of the stack vma would otherwise fail the check) */
+	while(n < PAGE_SIZE) {
+		page_off = (addr_t)s & ~PAGE_MASK;
+		chunk = PAGE_SIZE - page_off;
+		if((errno = verify_address(PROT_READ, s, chunk))) {
+			kfree((addr_t)b);
+			return errno;
 		}
-		b++;
-		string++;
+		for(; n < PAGE_SIZE && chunk; n++, chunk--) {
+			if(!(*b++ = *s++)) {
+				return 0;
+			}
+		}
 	}
 
 	free_name(*name);
@@ -157,8 +166,13 @@ int check_group(struct inode *i)
 	int n;
 	__gid_t gid;
 
-	/* Linux semantics: group permission checks use the filesystem gid. */
-	gid = current->fsgid;
+	/* Linux semantics: group permission checks use the filesystem gid,
+	 * or the real gid when access() requested PF_USEREAL. */
+	if(current->flags & PF_USEREAL) {
+		gid = current->gid;
+	} else {
+		gid = current->fsgid;
+	}
 
 	if(i->i_gid == gid) {
 		return 0;
@@ -175,6 +189,52 @@ int check_group(struct inode *i)
 	return 1;
 }
 
+/* is 'gid' one of the caller's groups (real/effective/supplementary)? */
+int in_group(__gid_t gid)
+{
+	int n;
+
+	if(current->gid == gid || current->egid == gid) {
+		return 1;
+	}
+	for(n = 0; n < NGROUPS_MAX; n++) {
+		if(current->groups[n] == -1) {
+			break;
+		}
+		if(current->groups[n] == gid) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* chown/fchown/lchown permission gate (Linux semantics):
+ * - only root may change the owner;
+ * - a non-root owner may change the group, but only to a group the
+ *   caller belongs to;
+ * - any owner/group change by an unprivileged caller clears the
+ *   setuid/setgid mode bits. */
+int check_chown_permission(struct inode *i, __uid_t owner, __gid_t group)
+{
+	if(IS_SUPERUSER) {
+		return 0;
+	}
+	if(check_user_permission(i)) {
+		return -EPERM;
+	}
+	if(owner != (__uid_t)-1 && owner != i->i_uid) {
+		return -EPERM;
+	}
+	if(group != (__gid_t)-1 && group != i->i_gid && !in_group(group)) {
+		return -EPERM;
+	}
+	if((owner != (__uid_t)-1 && owner != i->i_uid) ||
+	   (group != (__gid_t)-1 && group != i->i_gid)) {
+		i->i_mode &= ~(S_ISUID | S_ISGID);
+	}
+	return 0;
+}
+
 int check_user_area(int type, const void *addr, unsigned int size)
 {
 	return verify_address(type, addr, size);
@@ -184,10 +244,15 @@ int check_permission(int mask, struct inode *i)
 {
 	__uid_t uid;
 
-	/* Linux semantics: permission checks use the filesystem IDs. The
-	 * PF_USEREAL flag (i386 NFS real-uid mode) is not used by the
-	 * native 64-bit port. */
-	uid = current->fsuid;
+	/* Linux semantics: permission checks use the filesystem IDs by
+	 * default; access()/faccessat() set PF_USEREAL so the REAL uid/gid
+	 * are used there (a setuid-root program must not see uid==0 when
+	 * checking the invoking user's rights). */
+	if(current->flags & PF_USEREAL) {
+		uid = current->uid;
+	} else {
+		uid = current->fsuid;
+	}
 
 	if(mask & TO_EXEC) {
 		if(!(i->i_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {

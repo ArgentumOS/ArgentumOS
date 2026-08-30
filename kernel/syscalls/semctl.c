@@ -58,6 +58,12 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(cmd == IPC_STAT) {
 				ss = semset[semid % SEMMNI];
 			} else {
+				/* SEM_STAT takes a kernel slot index; bound it like
+				 * SHM_STAT (shmctl.c) so a bogus id cannot index
+				 * past semset[SEMMNI]. */
+				if(semid > max_semid) {
+					return -EINVAL;
+				}
 				ss = semset[semid];
 			}
 			if(ss == IPC_UNUSED) {
@@ -200,12 +206,8 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(!ipc_has_perms(&ss->sem_perm, IPC_R)) {
 				return -EACCES;
 			}
-			s = ss->sem_base + semnum;
+			s = ss->sem_base;
 			switch(cmd) {
-				case GETPID:
-					return s->sempid;
-				case GETVAL:
-					return s->semval;
 				case GETALL:
 					if((errno = check_user_area(VERIFY_WRITE, arg, ss->sem_nsems * sizeof(short int)))) {
 						return errno;
@@ -216,6 +218,23 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 						p++;
 					}
 					return 0;
+				default:
+					/* GETPID/GETVAL/GETNCNT/GETZCNT index sem_base
+					 * with the raw user semnum - bound it against
+					 * sem_nsems (the OOB read disclosed arbitrary
+					 * kernel memory / panicked). GETALL ignores
+					 * semnum (Linux accepts any value there). */
+					if(semnum < 0 || semnum >= ss->sem_nsems) {
+						return -EINVAL;
+					}
+					s = ss->sem_base + semnum;
+					break;
+			}
+			switch(cmd) {
+				case GETPID:
+					return s->sempid;
+				case GETVAL:
+					return s->semval;
 				case GETNCNT:
 					return s->semncnt;
 				case GETZCNT:
@@ -234,7 +253,7 @@ int sys_semctl(int semid, int semnum, int cmd, void *arg)
 			if(val < 0 || val > SEMVMX) {
 				return -ERANGE;
 			}
-			if(semnum < 0 || semnum > ss->sem_nsems) {
+			if(semnum < 0 || semnum >= ss->sem_nsems) {
 				return -EINVAL;
 			}
 			s = ss->sem_base + semnum;

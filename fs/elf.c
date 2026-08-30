@@ -215,6 +215,16 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 
 	current->entry_address = e->e_entry;
 
+	/* the program-header table lives in the first block, copied into a
+	 * kmalloc(PAGE_SIZE) buffer: bound e_phoff/e_phnum or the phdr reads
+	 * run past the buffer (OOB kernel heap read feeding attacker-
+	 * controlled p_* values into do_mmap) */
+	if(e->e_phnum > 65536 ||
+	   e->e_phoff > PAGE_SIZE ||
+	   e->e_phnum * sizeof(Elf64_Phdr) > PAGE_SIZE - e->e_phoff) {
+		return -ENOEXEC;
+	}
+
 	last_ptload = NULL;
 	for(n = 0; n < e->e_phnum; n++) {
 		ph = (Elf64_Phdr *)(data + e->e_phoff + (sizeof(Elf64_Phdr) * n));
@@ -225,9 +235,20 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 			if(!load_addr) {
 				load_addr = ph->p_vaddr - ph->p_offset;
 			}
-			if((ph->p_vaddr + ph->p_memsz) > 0x00007FFFFFFFFFFFULL) {
+			/* overflow-safe user-half bound: p_vaddr + p_memsz must
+			 * not wrap past the canonical 128TB user boundary */
+			if(ph->p_vaddr > 0x00007FFFFFFFFFFFULL ||
+			   ph->p_memsz > 0x00007FFFFFFFFFFFULL - ph->p_vaddr) {
 				/* above the canonical user half (128TB) */
 				send_sig(current, SIGSEGV);
+				return -ENOEXEC;
+			}
+			/* the file-backed part of the segment must lie inside
+			 * the file: p_offset may not underflow the page offset
+			 * and p_offset+p_filesz may not run past EOF */
+			if(ph->p_offset < (ph->p_vaddr & ~PAGE_MASK) ||
+			   ph->p_offset > i->i_size ||
+			   ph->p_filesz > i->i_size - ph->p_offset) {
 				return -ENOEXEC;
 			}
 			start = ph->p_vaddr & PAGE_MASK;
