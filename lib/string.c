@@ -159,27 +159,34 @@ int strlen(const char *str)
 
 char *strchr(const char *str, int c)
 {
-	while(*str) {
+	/* returns a pointer to the first occurrence of c, including the
+	 * NUL terminator when c == 0, or NULL when not found (the old
+	 * implementation returned the terminator for EVERY miss, which
+	 * broke devfs/procfs path parsing and any 'if(strchr(...))') */
+	for(;;) {
 		if(*str == (char)c) {
-			break;
+			return (char *)str;
+		}
+		if(!*str) {
+			return NULL;
 		}
 		str++;
 	}
-	return (char *)str;
 }
 
 char *strrchr(const char *str, int c)
 {
-	int len;
+	const char *p;
 
-	if((len = strlen(str))) {
-		while(--len) {
-			if(str[len] == (char)c) {
-				break;
-			}
+	/* search backwards from the NUL terminator (c == 0 matches it);
+	 * returns NULL when not found (the old implementation returned
+	 * str[0] for every miss) */
+	for(p = str + strlen(str); p >= str; p--) {
+		if(*p == (char)c) {
+			return (char *)p;
 		}
 	}
-	return (char *)(str + len);
+	return NULL;
 }
 
 int strtol(const char *nptr, char **endptr, int base)
