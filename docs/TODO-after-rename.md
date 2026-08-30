@@ -567,29 +567,37 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M4b DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149)
+## OpenBFS (BeOS BFS) filesystem - M0-M4c DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
 indirect streams + statfs (M3), indirect-stream write/read path
-fixes verified byte-perfect (M4a), and interior-node overflow splits +
-double-indirect tables (M4b). Mount a second QEMU disk
-(`-drive file=bfs.img,format=raw,if=ide,index=2` -> /dev/hdc) and
-`mount -t bfs /dev/hdc /mnt` works: ls, cat, cksum, create/write/read
-fragmented files past 12 direct runs, umount. Test harnesses:
+fixes verified byte-perfect (M4a), interior-node overflow splits +
+double-indirect tables (M4b), and long symlinks (M4c). Mount a second
+QEMU disk (`-drive file=bfs.img,format=raw,if=ide,index=2` -> /dev/hdc)
+and `mount -t bfs /dev/hdc /mnt` works: ls, cat, cksum, create/write/
+read fragmented files past 12 direct runs, symlinks (short inline,
+long >143 chars in the data stream), umount/remount. Test harnesses:
 `.build/rootfs64/bin/bfsfrag` + `.build/bfsverify.py` (M4a:
-fragmented-file content) and `.build/rootfs64/bin/bfshuge` +
+fragmented-file content), `.build/rootfs64/bin/bfshuge` +
 `.build/bfsdir` (userland/bfsdir.c) + `.build/bfstree.py` (M4b:
 8000-entry dir -> depth-3 tree; host walk checks exact set, sortedness,
-duplicates, inode validity, separator ranges). mkbfs.py writes multi-AG
-bitmaps for >8MB images (num_ags per 8MB, bitmap at blocks 1..num_ags,
-journal/inodes shifted after it). See project memory
-`fnx-openbfs-m4a-indirect-in-progress` for the bug list + gotchas
-(dd conv=notrunc, brelse-vs-bwrite, stale esp.img, strcmp sign, the
-host-verifier allocation_group trap, serial input needs a ~24s delay).
-Remaining: journaling (M3-plan), symlinks, multi-node trees, small_data
-attrs, BFS as root fs. The existing ext2 root (mkext2.py, rev-0, 1KB
-blocks) stays as-is.
+duplicates, inode validity, separator ranges), and
+`.build/rootfs64/bin/bfssym` (M4c: short/long/boundary symlinks,
+follow-through, reopen persistence; host check in the commit message).
+mkbfs.py writes multi-AG bitmaps for >8MB images (num_ags per 8MB,
+bitmap at blocks 1..num_ags, journal/inodes shifted after it). M4c also
+fixed three core VFS bugs found while testing symlinks: sys_open's
+uninitialized follow_links, umount leaving inodes with dangling i->sb
+(crash in sync_inodes/iput; invalidate_inodes now drops the device's
+inodes), and bfs_file_write never setting i_blocks (unlink data-block
+leak). See project memory `fnx-openbfs-m4a-indirect-in-progress` for
+the bug list + gotchas (dd conv=notrunc, brelse-vs-bwrite, stale
+esp.img, strcmp sign, the host-verifier allocation_group trap, serial
+input needs a ~24s delay, the inode u.data.size / symlink[136..143]
+aliasing trap). Remaining: journaling (M3-plan), multi-node trees,
+small_data attrs (M4d), BFS as root fs. The existing ext2 root
+(mkext2.py, rev-0, 1KB blocks) stays as-is.
 
 Why OpenBFS: 64-bit extent-based journaling fs; the classic hobby-OS
 "second filesystem" (Giampaolo, "Practical File System Design with the
