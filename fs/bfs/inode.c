@@ -85,7 +85,16 @@ int bfs_read_inode(struct inode *i)
 	i->i_ctime = raw->status_change_time >> 16;
 	i->i_mtime = raw->last_modified_time >> 16;
 	i->i_nlink = 1;
-	i->i_blocks = 0;
+	/* gate for bfs_ifree()'s truncate-on-unlink: a file/dir/stream-
+	 * symlink with a nonzero size has allocated stream blocks and must
+	 * be truncated when unlinked (i_blocks == 0 would leak them); an
+	 * INLINE symlink has no stream, and bfs_truncate() would misread
+	 * the target text as run descriptors, so it must stay 0 */
+	if(S_ISLNK(i->i_mode)) {
+		i->i_blocks = (i->i_size > 143) ? ((i->i_size + 511) >> 9) : 0;
+	} else {
+		i->i_blocks = (i->i_size + 511) >> 9;
+	}
 	i->i_flags = 0;
 	brelse(buf);
 	return 0;
