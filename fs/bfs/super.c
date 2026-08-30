@@ -328,6 +328,8 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	if(bfs_log_replay(sb) < 0) {
 		printk("WARNING: %s(): log replay failed, refusing mount.\n",
 		       __FUNCTION__);
+		kfree((addr_t)sb->u.bfs.bitmap);
+		sb->u.bfs.bitmap = NULL;
 		superblock_unlock(sb);
 		brelse(buf);
 		return -EIO;
@@ -336,6 +338,8 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	if(!(sb->root = iget(sb, root_block))) {
 		printk("WARNING: %s(): unable to get root inode.\n",
 		       __FUNCTION__);
+		kfree((addr_t)sb->u.bfs.bitmap);
+		sb->u.bfs.bitmap = NULL;
 		superblock_unlock(sb);
 		brelse(buf);
 		return -EINVAL;
