@@ -497,6 +497,9 @@ void invalidate_inodes(__dev_t dev)
 	unsigned int flags;
 	struct inode *i;
 
+	/* serialize against sync_inodes(), which walks the same table */
+	lock_resource(&sync_resource);
+
 	i = inode_table;
 	SAVE_FLAGS(flags); CLI();
 
@@ -516,13 +519,16 @@ void invalidate_inodes(__dev_t dev)
 			 * i->sb->fsop->write_inode().
 			 */
 			if(i->count) {
+				/* referenced (should not happen after
+				 * check_fs_busy): leak-and-skip, never free
+				 * an inode that is still in use */
 				printk("WARNING: %s(): inode %d still has count %d (dev %d,%d).\n", __FUNCTION__, i->inode, i->count, MAJOR(i->dev), MINOR(i->dev));
+				i = next;
+				continue;
 			}
 			inode_lock(i);
 			remove_from_hash(i);
-			if(!i->count) {
-				remove_from_free_list(i);
-			}
+			remove_from_free_list(i);
 			inode_unlock(i);
 			/* del_inode_from_pool() kfree()s the inode; nothing may
 			 * touch it afterwards */
@@ -534,6 +540,7 @@ void invalidate_inodes(__dev_t dev)
 	}
 
 	RESTORE_FLAGS(flags);
+	unlock_resource(&sync_resource);
 }
 
 void inode_init(void)

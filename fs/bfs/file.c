@@ -71,8 +71,10 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 			i->i_size = f->offset;
 		}
 		/* track the stream size so bfs_ifree() truncates (frees the
-		 * data blocks) when the file is unlinked */
-		i->i_blocks = i->i_size >> 9;
+		 * data blocks) when the file is unlinked; 512-byte units with
+		 * rounding so any allocated block counts (i_blocks == 0 would
+		 * skip the truncate and leak the block) */
+		i->i_blocks = (i->i_size + 511) >> 9;
 		i->i_ctime = CURRENT_TIME;
 		i->i_mtime = CURRENT_TIME;
 		i->state |= INODE_DIRTY;

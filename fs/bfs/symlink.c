@@ -19,6 +19,7 @@
 #include <fnx/stat.h>
 #include <fnx/string.h>
 #include <fnx/buffer.h>
+#include <fnx/stdio.h>
 #include <fnx/limits.h>
 
 static int bfs_read_symlink_stream(struct inode *i, char *buffer,
@@ -55,6 +56,7 @@ static int bfs_read_symlink_stream(struct inode *i, char *buffer,
 int bfs_readlink(struct inode *i, char *buffer, __size_t count)
 {
 	int n;
+	__size_t bufsize = count;
 
 	if(!S_ISLNK(i->i_mode)) {
 		return 0;
@@ -73,7 +75,12 @@ int bfs_readlink(struct inode *i, char *buffer, __size_t count)
 		for(n = 0; n < count; n++) {
 			buffer[n] = i->u.bfs.raw.u.symlink[n];
 		}
-		buffer[count] = 0;
+		/* only NUL-terminate when there is room: writing buffer[count]
+		 * when count == bufsize would go one byte past the verified
+		 * user area */
+		if(count < bufsize) {
+			buffer[count] = 0;
+		}
 	}
 	inode_unlock(i);
 	return n;

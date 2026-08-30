@@ -372,6 +372,7 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 		/* long symlink: the target lives in the data stream */
 		__off_t offset = 0;
 
+		i->i_blocks = (len + 511) >> 9;
 		while(offset < len) {
 			__blk_t block;
 			struct buffer *buf;
@@ -396,7 +397,6 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 		i->i_size = len;
 		i->u.bfs.raw.pad[0] = len;
 		i->u.bfs.raw.u.data.size = len;
-		i->i_blocks = len >> 9;
 	}
 
 	dir->i_mtime = CURRENT_TIME;

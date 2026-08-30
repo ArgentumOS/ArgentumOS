@@ -39,8 +39,9 @@ static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode
 	/* open() follows symlinks (O_NOFOLLOW is handled below); this was
 	 * uninitialized stack garbage before, which made symlink following
 	 * nondeterministic (cat would read the link itself when the stack
-	 * slot happened to be zero) */
-	follow_links = FOLLOW_LINKS;
+	 * slot happened to be zero). O_NOFOLLOW must suppress the FINAL
+	 * component's following or the check below never sees the link. */
+	follow_links = (flags & O_NOFOLLOW) ? 0 : FOLLOW_LINKS;
 
 #ifdef __DEBUG__
 	printk("(pid %d) sys_open('%s', %o, %o)\n", current->pid, filename, flags, mode);
