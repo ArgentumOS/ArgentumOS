@@ -80,11 +80,13 @@ void bfs_touch_ctime(struct inode *i)
 /*
  * A directory's content changed (a create/link/unlink/rename inside):
  * its size and last_modified moved, so its index entries (Haiku
- * indexes directories too) must move with them.
+ * indexes directories too) must move with them. 'old_size' is the
+ * directory's i_size BEFORE the tree mutation (the caller captures it
+ * before bfs_btree_insert/delete) — reading i_size here would already
+ * reflect the mutation, making the size index resize a no-op.
  */
-void bfs_dir_touch(struct inode *dir)
+void bfs_dir_touch(struct inode *dir, __off_t old_size)
 {
-	__off_t old_size = dir->i_size;
 	__u64 old_mtime = dir->u.bfs.raw.last_modified_time;
 
 	bfs_touch_mtime(dir);
@@ -474,7 +476,16 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		__blk_t tbl = bfs_indirect_table_block(i, t);
 
 		if(!tbl) {
-			return -EIO;
+			/* the table ends here: a double-indirect entry that
+			 * was never set. Reads see the stream as unmapped;
+			 * writes grow the table at this slot (the phantom
+			 * table_len counts dind.len*256 slots, most of which
+			 * are empty — the walk must not treat them as
+			 * errors) */
+			if(mode != FOR_WRITING) {
+				return 0;
+			}
+			break;
 		}
 		if(!(buf = bread(i->dev, tbl, i->sb->s_blocksize))) {
 			return -EIO;
@@ -557,9 +568,13 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			ds->indirect.len++;
 		} else {
 			/* the first table run is fragmented: record further table
-			 * blocks in the double-indirect table */
+			 * blocks in the double-indirect table. The new table block
+			 * goes at slot 't' (the first unset double entry — the
+			 * walk above broke there; when every table_len slot is
+			 * set, t == table_len and the double table itself must
+			 * grow) */
 			__u32 darray = i->sb->s_blocksize / sizeof(__blk_t);
-			__u32 dslot = table_len - ds->indirect.len;
+			__u32 dslot = t - ds->indirect.len;
 			struct buffer *dbuf;
 
 			if(dslot >= ds->double_indirect.len * darray) {
@@ -612,8 +627,10 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			bwrite(dbuf);
 		}
 		/* zero the new table block so free slots read len == 0 (the
-		 * block may have been reused and hold stale run data) */
-		if(!(zbuf = bread(i->dev, bfs_indirect_table_block(i, table_len),
+		 * block may have been reused and hold stale run data).
+		 * 't' is the new table block's slot (recorded above); using
+		 * the phantom table_len here would read the wrong slot */
+		if(!(zbuf = bread(i->dev, bfs_indirect_table_block(i, t),
 				i->sb->s_blocksize))) {
 			return -EIO;
 		}

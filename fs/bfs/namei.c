@@ -81,6 +81,7 @@ int bfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	i->dev = dir->dev;
 	i->fsop = dir->fsop;
 
+	__off_t old_dir_size = dir->i_size;
 	if((errno = bfs_btree_insert(dir, name, i->inode))) {
 		i->i_nlink = 0;
 		iput(i);
@@ -101,7 +102,7 @@ int bfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	/* keep the name/size/last_modified indices in sync (Haiku) */
 	bfs_index_add(dir->sb, i, name);
 
-	bfs_dir_touch(dir);
+	bfs_dir_touch(dir, old_dir_size);
 	dir->state |= INODE_DIRTY;
 
 	*i_res = i;
@@ -212,6 +213,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 		bwrite(buf2);
 	}
 
+	__off_t old_dir_size = dir->i_size;
 	if((errno = bfs_btree_insert(dir, name, i->inode))) {
 		iput(i);
 		inode_unlock(dir);
@@ -222,7 +224,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 	bfs_inode_set_name(i, name);
 	bfs_index_add(dir->sb, i, name);
 
-	bfs_dir_touch(dir);
+	bfs_dir_touch(dir, old_dir_size);
 	dir->i_nlink++;
 	dir->state |= INODE_DIRTY;
 
@@ -248,6 +250,7 @@ int bfs_link(struct inode *i_old, struct inode *dir_new, char *name)
 		inode_unlock(dir_new);
 		return -EEXIST;
 	}
+	__off_t old_dir_size = dir_new->i_size;
 	if((errno = bfs_btree_insert(dir_new, name, i_old->inode))) {
 		inode_unlock(dir_new);
 		return errno;
@@ -257,7 +260,7 @@ int bfs_link(struct inode *i_old, struct inode *dir_new, char *name)
 	bfs_touch_ctime(i_old);
 	i_old->state |= INODE_DIRTY;
 
-	bfs_dir_touch(dir_new);
+	bfs_dir_touch(dir_new, old_dir_size);
 	dir_new->state |= INODE_DIRTY;
 
 	inode_unlock(dir_new);
@@ -275,6 +278,7 @@ int bfs_unlink(struct inode *dir, struct inode *i, char *name)
 	inode_lock(dir);
 	inode_lock(i);
 
+	__off_t old_dir_size = dir->i_size;
 	if((errno = bfs_btree_delete(dir, name))) {
 		inode_unlock(dir);
 		inode_unlock(i);
@@ -287,7 +291,7 @@ int bfs_unlink(struct inode *dir, struct inode *i, char *name)
 		/* freed when iput'd */
 	}
 	bfs_touch_ctime(i);
-	bfs_dir_touch(dir);
+	bfs_dir_touch(dir, old_dir_size);
 
 	i->state |= INODE_DIRTY;
 	dir->state |= INODE_DIRTY;
@@ -310,6 +314,7 @@ int bfs_rmdir(struct inode *dir, struct inode *i)
 
 	inode_lock(dir);
 
+	__off_t old_dir_size = dir->i_size;
 	if((errno = bfs_btree_delete_ino(dir, i->inode))) {
 		inode_unlock(i);
 		inode_unlock(dir);
@@ -326,7 +331,7 @@ int bfs_rmdir(struct inode *dir, struct inode *i)
 	dir->i_nlink--;
 
 	bfs_touch_ctime(i);
-	bfs_dir_touch(dir);
+	bfs_dir_touch(dir, old_dir_size);
 
 	i->state |= INODE_DIRTY;
 	dir->state |= INODE_DIRTY;
@@ -368,6 +373,7 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 	i->i_nlink = 1;
 	i->state |= INODE_DIRTY;
 
+	__off_t old_dir_size = dir->i_size;
 	if((errno = bfs_btree_insert(dir, name, i->inode))) {
 		i->i_nlink = 0;
 		iput(i);
@@ -426,7 +432,7 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 	bfs_inode_set_name(i, name);
 	bfs_index_add(dir->sb, i, name);
 
-	bfs_dir_touch(dir);
+	bfs_dir_touch(dir, old_dir_size);
 	dir->state |= INODE_DIRTY;
 
 	iput(i);
@@ -456,6 +462,8 @@ int bfs_rename(struct inode *i_old, struct inode *dir_old,
 		inode_lock(dir_new);
 	}
 
+	__off_t old_dir_old_size = dir_old->i_size;
+	__off_t old_dir_new_size = dir_new->i_size;
 	if((errno = bfs_btree_delete(dir_old, oldpath))) {
 		if(dir_new != dir_old) {
 			inode_unlock(dir_new);
@@ -478,10 +486,10 @@ int bfs_rename(struct inode *i_old, struct inode *dir_old,
 	bfs_index_remove(dir_old->sb, i_old, oldpath);
 	bfs_index_add(dir_old->sb, i_old, newpath);
 
-	bfs_dir_touch(dir_old);
+	bfs_dir_touch(dir_old, old_dir_old_size);
 	dir_old->state |= INODE_DIRTY;
 	if(dir_new != dir_old) {
-		bfs_dir_touch(dir_new);
+		bfs_dir_touch(dir_new, old_dir_new_size);
 		dir_new->state |= INODE_DIRTY;
 	}
 
