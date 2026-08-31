@@ -230,12 +230,19 @@ def check(path, rootdir=None):
             "right-chain leaves %d != descent leaves %d"
             % (len(leaves), stats['leaves']))
         # leaves in chain order must partition the keys in order
+        # (the sort follows the tree's data_type: INT64 keys are signed
+        # 64-bit values, so raw byte order is wrong for them)
+        dt = u32(node_at(blocks, blocks[0]) + 12)  # tree header data_type
+        if dt == 5:                                # BPLUSTREE_INT64_TYPE
+            def skey(k): return struct.unpack('<q', k)[0]
+        else:
+            def skey(k): return k
         seen = []
         for l in leaves:
             n = node_at(blocks, l)
             pairs, _ = read_pairs(n)
             seen += [k for k, _ in pairs]
-        assert seen == [k for k, _ in sorted(entries)], (
+        assert seen == [k for k, _ in sorted(entries, key=lambda e: skey(e[0]))], (
             "right chain not in key order")
         return entries, stats, leaf_order
 

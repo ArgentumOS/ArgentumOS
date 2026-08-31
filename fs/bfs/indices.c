@@ -143,12 +143,26 @@ void bfs_index_resize(struct superblock *sb, struct inode *i,
 	if(!sb->u.bfs.indices_inode) {
 		return;
 	}
-	bfs_index_del(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&osz, 8,
-		      i->inode);
-	bfs_index_put(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&nsz, 8,
-		      i->inode);
-	bfs_index_del(sb, "last_modified", BFS_BTREE_INT64_TYPE,
-		      (char *)&omt, 8, i->inode);
-	bfs_index_put(sb, "last_modified", BFS_BTREE_INT64_TYPE,
-		      (char *)&nmt, 8, i->inode);
+	/* an unlinked inode's entries were already removed by the unlink;
+	 * the final truncate-to-0 (from the last iput) must not re-add
+	 * them, or the deleted file's size/mtime entries resurrect */
+	if(i->i_nlink == 0) {
+		return;
+	}
+	/* only touch an index when its value actually changed: a
+	 * same-value resize would otherwise remove + re-insert the same
+	 * key (wasted churn, and on the last_modified index it can
+	 * resurrect an entry removed by the unlink) */
+	if(osz != nsz) {
+		bfs_index_del(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&osz, 8,
+			      i->inode);
+		bfs_index_put(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&nsz, 8,
+			      i->inode);
+	}
+	if(omt != nmt) {
+		bfs_index_del(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+			      (char *)&omt, 8, i->inode);
+		bfs_index_put(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+			      (char *)&nmt, 8, i->inode);
+	}
 }

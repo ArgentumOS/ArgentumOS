@@ -386,6 +386,9 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 		}
 		i->u.bfs.raw.u.symlink[n] = 0;
 		i->u.bfs.raw.pad[0] = len;
+		/* the data.size union field carries the logical size so the
+		 * on-disk inode, stat and the size index all agree */
+		i->u.bfs.raw.u.data.size = n;
 		i->i_size = n;
 	} else {
 		/* long symlink: the target lives in the data stream; the
