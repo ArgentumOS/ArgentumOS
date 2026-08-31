@@ -41,10 +41,28 @@
 #define BFS_INODE_ATTR_INODE	0x00000004	/* legacy BeOS: attribute node */
 
 /* Haiku stat.h extended mode bits (stored in the HIGH 16 bits of the
- * on-disk inode mode; invisible to 16-bit i_mode) */
-#define BFS_S_STR_INDEX		0x08000000	/* string-indexed B+tree */
-#define BFS_S_ATTR_DIR		0x40000000	/* attribute directory inode */
-#define BFS_S_ATTR		0x80000000	/* attribute file inode */
+ * on-disk inode mode; invisible to 16-bit i_mode). Values are the
+ * octal constants from Haiku's <sys/stat.h> truncated to 32 bits:
+ * 01000000000 -> 0x08000000, etc. */
+#define BFS_S_DOUBLE_INDEX	0x00040000	/* double index */
+#define BFS_S_ALLOW_DUPS	0x00080000	/* allow duplicates (unused) */
+#define BFS_S_LONG_LONG_INDEX	0x00200000	/* int64 index */
+#define BFS_S_ULONG_LONG_INDEX	0x00400000	/* uint64 index */
+#define BFS_S_FLOAT_INDEX	0x00800000	/* float index */
+#define BFS_S_STR_INDEX		0x01000000	/* string index */
+#define BFS_S_INT_INDEX		0x02000000	/* int32 index */
+#define BFS_S_UINT_INDEX	0x04000000	/* uint32 index */
+#define BFS_S_ATTR_DIR		0x08000000	/* attribute directory */
+#define BFS_S_ATTR		0x10000000	/* attribute */
+#define BFS_S_INDEX_DIR		0x20000000	/* index (or index directory) */
+
+/* duplicate-key value links (the top two bits of a leaf value; the low
+ * 10 bits carry the fragment index) — Haiku's BPlusTree encoding */
+#define BFS_BTREE_DUPLICATE_NODE	2
+#define BFS_BTREE_DUPLICATE_FRAGMENT	3
+#define BFS_BTREE_NUM_FRAGMENT_VALUES	7	/* values per fragment */
+#define BFS_BTREE_NUM_DUPLICATE_VALUES	125	/* values per duplicate node */
+#define BFS_BTREE_MAX_FRAGMENTS		16	/* 1024 / ((7+1)*8) */
 
 /* inode 'type' values (attribute type of the main data stream) */
 #define BFS_FILE_TYPE_DIR	0x00000000
@@ -56,6 +74,14 @@
 #define BFS_BTREE_NULL		(-1LL)
 #define BFS_BTREE_FREE		(-2LL)
 #define BFS_BTREE_STRING_TYPE	0
+#define BFS_BTREE_INT8_TYPE	1
+#define BFS_BTREE_INT16_TYPE	2
+#define BFS_BTREE_INT32_TYPE	3
+#define BFS_BTREE_UINT32_TYPE	4
+#define BFS_BTREE_INT64_TYPE	5
+#define BFS_BTREE_UINT64_TYPE	6
+#define BFS_BTREE_FLOAT_TYPE	7
+#define BFS_BTREE_DOUBLE_TYPE	8
 #define BFS_BTREE_MAX_KEY_LEN	256
 
 /* small_data attribute types */
@@ -179,6 +205,7 @@ struct bfs_sb_info {
 	__u64 num_blocks;
 	__u32 flags;
 	__u32 root_inode;	/* block number of the root directory inode */
+	__u32 indices_inode;	/* block number of the indices dir inode (0 = none) */
 	__u64 used_blocks;
 	/* free-space bitmap (all groups concatenated), cached in memory */
 	unsigned char *bitmap;	/* num_bitmap_blocks * block_size bytes */
@@ -279,6 +306,18 @@ struct bfs_run_array {
 /* write (or replace) the file-name 0x13 small_data record (Haiku
  * Inode::SetName()); called at create/rename */
 int bfs_inode_set_name(struct inode *, const char *);
+int bfs_inode_get_name(struct inode *, char *, int);
+
+/* the indices tree (Haiku's directory of index B+trees) - fs/bfs/indices.c */
+void bfs_index_add(struct superblock *, struct inode *, const char *);
+void bfs_index_remove(struct superblock *, struct inode *, const char *);
+void bfs_index_resize(struct superblock *, struct inode *, __off_t, __u64);
+
+/* the typed index-tree API (duplicate-key aware); 'dtype' is one of
+ * the BFS_BTREE_*_TYPE constants from the tree header */
+int bfs_btree_insert_value(struct inode *, const char *, int, int, __u64);
+int bfs_btree_find_value(struct inode *, const char *, int, int, __u64 *);
+int bfs_btree_delete_value(struct inode *, const char *, int, int, __u64);
 
 /* attribute inodes (Haiku's per-file attributes B+tree) - see
  * fs/bfs/attribute.c */

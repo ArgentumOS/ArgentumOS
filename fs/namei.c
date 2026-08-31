@@ -41,7 +41,10 @@ static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct 
 		ptr_name = name;
 		while(*path != '\0' && *path != '/') {
 			if(ptr_name > (name + NAME_MAX)) {
-				break;
+				/* B_FILE_NAME_LENGTH = 255 (Haiku); reject, do
+				 * not silently truncate */
+				kfree((addr_t)name);
+				return -ENAMETOOLONG;
 			}
 			*ptr_name++ = *path++;
 		}

@@ -98,6 +98,8 @@ int bfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
 	bfs_inode_set_name(i, name);
+	/* keep the name/size/last_modified indices in sync (Haiku) */
+	bfs_index_add(dir->sb, i, name);
 
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
@@ -216,6 +218,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
 	bfs_inode_set_name(i, name);
+	bfs_index_add(dir->sb, i, name);
 
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
@@ -278,6 +281,8 @@ int bfs_unlink(struct inode *dir, struct inode *i, char *name)
 		return errno;
 	}
 
+	bfs_index_remove(dir->sb, i, name);
+
 	if(!--i->i_nlink) {
 		/* freed when iput'd */
 	}
@@ -310,6 +315,13 @@ int bfs_rmdir(struct inode *dir, struct inode *i)
 		inode_unlock(i);
 		inode_unlock(dir);
 		return errno;
+	}
+	{
+		char namebuf[256];
+
+		if(bfs_inode_get_name(i, namebuf, 255) >= 0) {
+			bfs_index_remove(dir->sb, i, namebuf);
+		}
 	}
 	i->i_nlink = 0;
 	dir->i_nlink--;
@@ -411,6 +423,7 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
 	bfs_inode_set_name(i, name);
+	bfs_index_add(dir->sb, i, name);
 
 	dir->i_mtime = CURRENT_TIME;
 	dir->i_ctime = CURRENT_TIME;
@@ -462,6 +475,8 @@ int bfs_rename(struct inode *i_old, struct inode *dir_old,
 
 	/* update the file-name 0x13 small_data record (Haiku SetName) */
 	bfs_inode_set_name(i_old, newpath);
+	bfs_index_remove(dir_old->sb, i_old, oldpath);
+	bfs_index_add(dir_old->sb, i_old, newpath);
 
 	dir_old->i_mtime = CURRENT_TIME;
 	dir_old->i_ctime = CURRENT_TIME;

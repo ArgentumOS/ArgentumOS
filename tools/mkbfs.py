@@ -91,7 +91,7 @@ def u64(v):
 
 
 def build_super(num_blocks, used, root_block, log_start, log_len,
-                 ag_shift, blocks_per_ag, num_ags):
+                 ag_shift, blocks_per_ag, num_ags, indices_block=0):
     sb = bytearray(512)
     sb[0:4] = b"BFS1"
     o = 0x20
@@ -113,16 +113,17 @@ def build_super(num_blocks, used, root_block, log_start, log_len,
     sb[o:o + 8] = u64(0); o += 8       # log_end
     sb[o:o + 4] = u32(MAGIC3); o += 4
     sb[o:o + 8] = run(0, root_block); o += 8   # root_dir
-    sb[o:o + 8] = run(0, 0)                    # indices
+    sb[o:o + 8] = run(0, indices_block); o += 8  # indices
     return bytes(sb)
 
 
-def build_btree_header(root_off, max_depth, max_size=1 << 20):
+def build_btree_header(root_off, max_depth, max_size=1 << 20,
+                        data_type=0):
     h = bytearray(40)
     h[0:4] = u32(BTREE_MAGIC)
     h[4:8] = u32(BLOCK)
     h[8:12] = u32(max_depth)
-    h[12:16] = u32(0)                # data_type: string
+    h[12:16] = u32(data_type)        # BPLUSTREE_*_TYPE
     h[16:24] = u64(root_off)         # root node byte offset in the stream
     h[24:32] = u64(BTREE_NULL)       # free_node_ptr
     h[32:40] = u64(max_size)
@@ -181,7 +182,7 @@ def table_blocks(st):
 
 
 def build_inode(block, mode, size, parent, stream, name_attr=None,
-                symlink=None, flags=INODE_IN_USE):
+                symlink=None, flags=INODE_IN_USE, itype=0):
     """Serialize a 256-byte inode. 'stream' is a dict with 'direct' (list
     of runs), 'mdr', 'indirect' (run or None), 'max_indirect', 'dind'
     (run or None), 'max_dind'. 'symlink' is the inline target (<= 143
@@ -200,7 +201,7 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
     i[o:o + 8] = u64(0); o += 8              # last_modified_time
     i[o:o + 8] = run(0, parent); o += 8      # parent
     i[o:o + 8] = run(0, 0, 0); o += 8        # attributes: the zero run
-    i[o:o + 4] = u32(0); o += 4              # type
+    i[o:o + 4] = u32(itype); o += 4          # type ('CSTR'/'LLNG' for indices)
     i[o:o + 4] = u32(BLOCK); o += 4          # inode_size == block_size (Haiku)
     i[o:o + 4] = u32(0); o += 4              # etc
     if symlink is not None:
@@ -268,7 +269,7 @@ def main():
                 cnt += 1
         return cnt
 
-    next_data = max(32, next_inode + count_inodes(""))
+    next_data = max(32, next_inode + count_inodes("") + 5)   # + the 5 indices inodes
 
     def alloc_inode():
         nonlocal next_inode
@@ -379,6 +380,9 @@ def main():
                 cur.append(e)
         if cur:
             leaves.append(cur)
+        if not leaves:
+            # an empty tree: a single empty leaf
+            leaves = [[]]
         blocks = alloc_blocks(len(leaves))
         offs = [(b - hb) << 10 for b in blocks]
         nodes = []
@@ -495,6 +499,53 @@ def main():
 
     root_blk = build_dir("", 0)
 
+    # ---- the indices tree (Haiku's standard indices) ----
+    # The indices root (mode S_INDEX_DIR|S_STR_INDEX|S_IFDIR|0700) holds
+    # a STRING tree of index name -> index file. Each index file is a
+    # container inode whose stream is a B+tree over the indexed values
+    # (data_type = the index type; the size/last_modified keys are INT64).
+    IDX_INDEX_DIR = 0x20000000
+    IDX_STR_INDEX = 0x01000000
+    IDX_LL_INDEX = 0x00200000
+    CSTR = 0x43535452
+    LLNG = 0x4c4c4e47
+
+    indices_blk = alloc_inode()
+    idx_entries = []
+    for iname, itype, imode, dt in [
+            ("name", CSTR, IDX_STR_INDEX, 0),
+            ("BEOS:APP_SIG", CSTR, IDX_STR_INDEX, 0),
+            ("last_modified", LLNG, IDX_LL_INDEX, 5),
+            ("size", LLNG, IDX_LL_INDEX, 5)]:
+        iib = alloc_inode()
+        hb2 = alloc_blocks(1)[0]
+        nb2, root2, dep2, nodes2 = build_tree([], hb2)
+        write_blocks.append((hb2, build_btree_header(root2, dep2,
+                                                     data_type=dt)))
+        write_blocks += nodes2
+        idx_blocks = [hb2] + [b for b, _ in nodes2]
+        istream = {'direct': runs_of(idx_blocks),
+                   'mdr': len(idx_blocks) << 10, 'indirect': None,
+                   'max_indirect': len(idx_blocks) << 10, 'dind': None,
+                   'max_dind': len(idx_blocks) << 10}
+        write_inodes.append((iib, build_inode(
+            iib, IDX_INDEX_DIR | S_IFDIR | imode | 0o700,
+            len(idx_blocks) << 10, indices_blk, istream, itype=itype)))
+        idx_entries.append((iname, iib))
+    idx_entries.sort(key=lambda e: e[0].encode())
+    hb3 = alloc_blocks(1)[0]
+    nb3, root3, dep3, nodes3 = build_tree(idx_entries, hb3)
+    write_blocks.append((hb3, build_btree_header(root3, dep3)))
+    write_blocks += nodes3
+    idxr_blocks = [hb3] + [b for b, _ in nodes3]
+    irstream = {'direct': runs_of(idxr_blocks),
+                'mdr': len(idxr_blocks) << 10, 'indirect': None,
+                'max_indirect': len(idxr_blocks) << 10, 'dind': None,
+                'max_dind': len(idxr_blocks) << 10}
+    write_inodes.append((indices_blk, build_inode(
+        indices_blk, IDX_INDEX_DIR | IDX_STR_INDEX | S_IFDIR | 0o700,
+        len(idxr_blocks) << 10, 0, irstream)))
+
     # ---- write the image ----
     img_buf = bytearray(num_blocks * BLOCK)
 
@@ -506,7 +557,8 @@ def main():
     for b in range(1, journal_start + journal_len):
         used.add(b)               # bitmap blocks + journal
     sb = build_super(num_blocks, len(used), root_blk, journal_start,
-                     journal_len, ag_shift, blocks_per_ag, num_ags)
+                     journal_len, ag_shift, blocks_per_ag, num_ags,
+                     indices_block=indices_blk)
     img_buf[512:512 + len(sb)] = sb
 
     # allocation bitmaps: group g lives at blocks 1 + g*blocks_per_ag

@@ -333,6 +333,41 @@ int bfs_inode_set_name(struct inode *i, const char *name)
 	return 0;
 }
 
+/*
+ * Read the file-name 0x13 small_data record (the name set at create/
+ * rename). Returns the length, or -ENOENT. Used by rmdir (which has no
+ * name argument) to remove the name-index entry.
+ */
+int bfs_inode_get_name(struct inode *i, char *buf, int size)
+{
+	char *p = bfs_xattr_area(i);
+	int left = BFS_SMALL_DATA_SIZE;
+	int nlen;
+
+	while(left >= BFS_SD_HDR) {
+		struct bfs_small_data *sd = (struct bfs_small_data *)p;
+		int need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+
+		if(sd->name_size == 1 && sd->data_size
+				&& (sd->type == BFS_FILE_NAME_TYPE)) {
+			char *n = p + BFS_SD_HDR + 4;	/* after 0x13/NUL/pad */
+			nlen = sd->data_size;
+			if(nlen > size) {
+				nlen = size;
+			}
+			memcpy_b(buf, n, nlen);
+			buf[nlen] = 0;
+			return nlen;
+		}
+		if(need <= 0) {
+			break;
+		}
+		p += need;
+		left -= need;
+	}
+	return -ENOENT;
+}
+
 struct bfs_xattr_list {
 	char *list;
 	__size_t size;

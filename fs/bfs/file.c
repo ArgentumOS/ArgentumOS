@@ -36,10 +36,15 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 	struct buffer *buf;
 	__loff_t offset;
 
+	__off_t old_size;
+	__u64 old_mtime;
+
 	inode_lock(i);
 
 	blksize = i->sb->s_blocksize;
 	retval = total_written = 0;
+	old_size = i->i_size;
+	old_mtime = i->i_mtime;
 
 	if(f->flags & O_APPEND) {
 		f->offset = i->i_size;
@@ -78,6 +83,7 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 		i->i_ctime = CURRENT_TIME;
 		i->i_mtime = CURRENT_TIME;
 		i->state |= INODE_DIRTY;
+		bfs_index_resize(i->sb, i, old_size, old_mtime);
 	}
 
 	inode_unlock(i);

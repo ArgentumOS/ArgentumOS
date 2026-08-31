@@ -229,6 +229,17 @@ static int bfs_write_superblock(struct superblock *sb)
 	bsb->root_dir.allocation_group = 0;
 	bsb->root_dir.start = sb->u.bfs.root_inode;
 	bsb->root_dir.len = 1;
+	/* preserve the indices directory run (Haiku keeps it across
+	 * unmount; the in-memory form is the indices inode's block) */
+	if(sb->u.bfs.indices_inode) {
+		bsb->indices.allocation_group = 0;
+		bsb->indices.start = sb->u.bfs.indices_inode;
+		bsb->indices.len = 1;
+	} else {
+		bsb->indices.allocation_group = 0;
+		bsb->indices.start = 0;
+		bsb->indices.len = 0;
+	}
 	bwrite(buf);
 
 	sb->state &= ~SUPERBLOCK_DIRTY;
@@ -287,6 +298,14 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	root = &bsb->root_dir;
 	root_block = (root->allocation_group << bsb->ag_shift) + root->start;
 	sb->u.bfs.root_inode = root_block;
+
+	/* the indices directory (0 when the volume has none) */
+	if(bsb->indices.len) {
+		sb->u.bfs.indices_inode = (bsb->indices.allocation_group
+			<< bsb->ag_shift) + bsb->indices.start;
+	} else {
+		sb->u.bfs.indices_inode = 0;
+	}
 
 	/* journal (log) state: the extent + positions come from the disk */
 	sb->u.bfs.log_blocks = bsb->log_blocks;

@@ -318,6 +318,16 @@ def check(path, rootdir=None):
             child = child_name.decode('latin1')
             cio, cmode = check_inode(cino, child)
             cpath = path + '/' + child
+            cio2, _ = check_inode(cino, child)
+            csize = parse_stream(cio2)[6]
+            cmtime = u64(cio2 + 36)
+            # only files touched by a driver that maintains indices are
+            # indexed (the image builder creates the indices empty, like
+            # Haiku's mkfs; mkbfs-created files carry last_modified 0)
+            if cmtime != 0:
+                expect_name.append((child.encode('latin1'), cino))
+                expect_size.setdefault(csize, set()).add(cino)
+                expect_mtime.setdefault(cmtime, set()).add(cino)
             if cmode & S_IFMT == S_IFDIR:
                 walk_dir(cino, ino, cpath)
             elif cmode & S_IFMT == S_IFREG:
@@ -375,7 +385,11 @@ def check(path, rootdir=None):
         else:
             print("  %s -> %s" % (path, target.decode('latin1')))
 
-    # walk the tree from the root inode
+    # walk the tree from the root inode (also collects the expected
+    # name/size/last_modified index entries)
+    expect_name = []
+    expect_size = {}
+    expect_mtime = {}
     walk_dir(root_ino, root_ino, '')
 
     # ---- attributes inodes (Haiku's per-file attributes tree) ----
@@ -383,8 +397,11 @@ def check(path, rootdir=None):
     # inode: mode carries S_ATTR_DIR, its stream is a STRING B+tree with
     # no "." / ".." whose values are attribute-file inodes (mode carries
     # S_ATTR, stream = the value); the run must never dangle
-    S_ATTR_DIR = 0x40000000
-    S_ATTR = 0x80000000
+    S_ATTR_DIR = 0x08000000
+    S_ATTR = 0x10000000
+    S_INDEX_DIR = 0x20000000
+    S_STR_INDEX = 0x01000000
+    S_LONG_LONG_INDEX = 0x00200000
     n_attr = 0
     for blk in list(inode_blocks):
         io = blk * BLK
@@ -422,6 +439,103 @@ def check(path, rootdir=None):
         n_attr += 1
         print("attrs: inode %d -> attrs inode %d, %d attribute(s) (%d leaves, %d interiors)"
               % (blk, ablk, len(aentries), astats['leaves'], astats['interiors']))
+
+    # ---- the indices tree (Haiku's standard indices) ----
+    # sb.indices (offset 0x74) -> the indices dir inode: mode carries
+    # S_INDEX_DIR, its stream is a STRING tree of index name -> index
+    # file (no dots); each index file is a container inode (S_INDEX_DIR
+    # | S_IFDIR | S_*_INDEX) whose stream is a B+tree whose data_type
+    # matches the index type. The index trees are empty in fresh images.
+    iag, ist, iln = run(512 + 0x7c)   # superblock 'indices' field
+    if iln:
+        iblk = (iag << ag_shift) + ist
+        iio = iblk * BLK
+        assert u32(iio) == INODE_MAGIC, (
+            "indices run -> block %d not an inode" % iblk)
+        imode = u32(iio + 20)
+        assert imode & S_INDEX_DIR, (
+            "indices dir %d missing S_INDEX_DIR (mode %08x)" % (iblk, imode))
+        ientries, istats, _ = read_tree(iio, referenced)
+        assert not any(k in (b'.', b'..') for k, _ in ientries), (
+            "indices dir tree has '.'/'..'")
+        inode_blocks.add(iblk)
+        for _, v in ientries:
+            vio = v * BLK
+            assert v in range(num_blocks) and u32(vio) == INODE_MAGIC, (
+                "indices tree: value %d not an inode" % v)
+            vmode = u32(vio + 20)
+            assert vmode & S_INDEX_DIR, (
+                "index file %d missing S_INDEX_DIR (mode %08x)" % (v, vmode))
+            assert vmode & S_IFMT == S_IFDIR, (
+                "index file %d not a container (mode %08x)" % (v, vmode))
+            vtype = u32(vio + 60)
+            if vmode & S_LONG_LONG_INDEX:
+                assert vtype == 0x4c4c4e47, (
+                    "index file %d: INT64 index has type %08x" % (v, vtype))
+                expect_dt = 5          # BPLUSTREE_INT64_TYPE
+            else:
+                assert vtype == 0x43535452, (
+                    "index file %d: STRING index has type %08x" % (v, vtype))
+                expect_dt = 0          # BPLUSTREE_STRING_TYPE
+            tblocks = stream_blocks(vio, None)
+            dt = u32(node_at(tblocks, 0) + 12)   # tree header data_type
+            assert dt == expect_dt, (
+                "index file %d: tree data_type %d != %d" % (v, dt, expect_dt))
+            referenced.update(stream_blocks(vio, referenced))
+            inode_blocks.add(v)
+        print("indices: dir %d, %d index file(s) (%d leaves, %d interiors)"
+              % (iblk, len(ientries), istats['leaves'], istats['interiors']))
+
+        # ---- index contents: expand the duplicate chains and compare ----
+        def dup_values(vio, value):
+            lt = value >> 62
+            if lt in (0, 1):
+                return [value & 0x3fffffffffffffff]
+            noff = value & 0x3ffffffffffffc00
+            vblocks = stream_blocks(vio, None)
+            if lt == 3:                        # fragment slot
+                arr = node_at(vblocks, noff) + (value & 0x3ff) * 64
+                cnt = u64(arr)
+                return [u64(arr + 8 + i * 8) for i in range(cnt)]
+            out = []                           # duplicate-node chain
+            while noff != BTREE_NULL:
+                arr = node_at(vblocks, noff) + 16
+                cnt = u64(arr)
+                for i in range(cnt):
+                    out.append(u64(arr + 8 + i * 8))
+                noff = u64(node_at(vblocks, noff) + 8)
+            return out
+
+        for iname_b, v in ientries:
+            vio = v * BLK
+            vmode = u32(vio + 20)
+            keys2, _, _ = read_tree(vio, referenced)
+            got = {}
+            for k, val in keys2:
+                for dv in dup_values(vio, val):
+                    got.setdefault(k, set()).add(dv)
+            if vmode & S_LONG_LONG_INDEX:
+                exp = {}
+                for k, st in expect_size.items():
+                    exp.setdefault(struct.pack('<q', k), set()).update(st)
+                if iname_b == b'last_modified':
+                    exp = {}
+                    for k, st in expect_mtime.items():
+                        exp.setdefault(struct.pack('<q', k), set()).update(st)
+                assert got == exp, (
+                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
+            elif iname_b == b'name':
+                exp = {}
+                for k, st in expect_name:
+                    exp.setdefault(k, set()).add(st)
+                assert got == exp, (
+                    "name index mismatch: got %s want %s" % (got, exp))
+            else:
+                assert not keys2, (
+                    "BEOS:APP_SIG index should be empty, got %s" % keys2)
+        print("indices: contents verified")
+    else:
+        print("indices: none")
 
     # ---- referenced-blocks == bitmap used set ----
     # reserved areas: block 0 (boot + superblock), the per-AG bitmaps and

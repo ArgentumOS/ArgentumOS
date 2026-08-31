@@ -150,6 +150,8 @@ int bfs_write_inode(struct inode *i)
 	}
 	i->u.bfs.raw.last_modified_time = (__u64)i->i_mtime << 16;
 	i->u.bfs.raw.status_change_time = (__u64)i->i_ctime << 16;
+	if(i->inode >= 23 && i->inode <= 27) {
+			}
 	memcpy_b(raw, &i->u.bfs.raw, sizeof(struct bfs_inode));
 	memcpy_b((char *)raw + sizeof(struct bfs_inode), i->u.bfs.small_data,
 		 BFS_SMALL_DATA_SIZE);
@@ -220,6 +222,9 @@ int bfs_ialloc(struct inode *i, int mode)
 	 * buffer from i->u.bfs.raw, which ialloc leaves zeroed */
 	i->u.bfs.raw.inode_size = BFS_BLOCK_SIZE;
 	i->u.bfs.raw.u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
+	/* creation time: Haiku encodes (seconds << 16) | subsecond; we
+	 * have no subsecond clock, so the low 16 bits stay 0 */
+	i->u.bfs.raw.create_time = (__u64)CURRENT_TIME << 16;
 	i->i_atime = CURRENT_TIME;
 	i->i_mtime = CURRENT_TIME;
 	i->i_ctime = CURRENT_TIME;
@@ -575,6 +580,8 @@ int bfs_truncate(struct inode *i, __off_t length)
 {
 	struct bfs_data_stream *ds = &i->u.bfs.raw.u.data;
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
+	__off_t old_size = i->i_size;
+	__u64 old_mtime = i->i_mtime;
 
 	__u64 covered = 0;
 	int run;
@@ -711,6 +718,8 @@ int bfs_truncate(struct inode *i, __off_t length)
 
 	i->i_size = length;
 	i->u.bfs.raw.u.data.size = length;
+	i->i_mtime = CURRENT_TIME;
 	i->state |= INODE_DIRTY;
+	bfs_index_resize(i->sb, i, old_size, old_mtime);
 	return 0;
 }
