@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M6 DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0)
+## OpenBFS (BeOS BFS) filesystem - M0-M7 DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -651,6 +651,39 @@ shell, ls/cat/df/mkdir/ln/cksum work, toybox reads byte-perfect
 CLEN + log drained; ext2 root still boots; regressions M4a 6/6, M4c
 S1-S8, M4d X1-X5, M4e J1-J6 + jrnl_craft replay (block restored, log
 clean). The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
+
+M7 (fad774c) = the indices tree (BeOS's signature feature) + the
+duplicate-key B+tree engine. mkbfs creates the standard indices
+(name, BEOS:APP_SIG, last_modified, size) as a directory of container
+inodes under sb.indices; the driver maintains name/size/last_modified
+on create/rename/write/truncate/unlink when the volume has them (Haiku
+itself logs "no indices!" on volumes without). The index trees need
+duplicate keys (files share sizes and last_modified seconds), so the
+engine implements Haiku's exact encoding: leaf values are links (top
+two bits) to fragment slots (64-byte arrays in dedicated nodes) or to
+duplicate nodes ({left, right, count@16, values[125]@24} chained by
+right links), with direct -> fragment -> duplicate-node promotion and
+demotion. Three root causes found while testing: the in-place
+fragment->duplicate-node conversion used memcpy over overlapping
+regions (Haiku uses memmove) and corrupted the array; deleting a
+fragment's sole value left an empty fragment + dangling key; and the
+driver's superblock rewrite dropped the indices run. bfscheck gained a
+full indices pass (modes, tree data_type, no dots, and content checks
+that expand fragment/duplicate chains against the dir walk). Behavioral
+1:1 edges: create_time now written at ialloc ((sec << 16)), over-long
+names return ENAMETOOLONG (B_FILE_NAME_LENGTH = 255), and the root
+split keeps the left half in place so interior root splits orphan
+nothing. RESIDUAL (documented, not fixed): a metadata write issued in
+the last transaction before power-off can be lost for the last_modified
+fragment/leaf — the in-memory state is correct (the del/put returns
+success and a second op sees the change) but the disk lags; the image
+also shows occasional 0xFF-filled buffers (an unread buffer-cache slot)
+under the eviction pressure of the index-op tx burst. The remaining
+1:1 gaps after M7: big-endian (PPC) volumes are still refused at mount
+(deliberate; converting every field access to a swap layer is huge and
+untestable without BE BFS disks), and the real-Haiku cross-mount test
+(boot a Haiku VM, mount our images there, and mkfs a volume under
+Haiku for FNX to mount).
 
 M5 = 1:1 Haiku on-disk compatibility (audit + fixes, so a volume can
 move between FNX and Haiku both ways). The audit compared every on-disk
