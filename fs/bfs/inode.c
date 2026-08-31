@@ -551,6 +551,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 	{
 		__blk_t next;
 		struct buffer *zbuf;
+		__u32 new_slot;	/* the table slot that receives the new block */
 
 		if(table_len == 0) {
 			/* first indirect block: allocate a fresh block for the
@@ -561,11 +562,20 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			ds->indirect.allocation_group = (__u32)(next >> ag_shift);
 			ds->indirect.start = next & ((1 << ag_shift) - 1);
 			ds->indirect.len = 1;
-		} else if(bfs_balloc_specific(i->sb, (ds->indirect.allocation_group
-				<< ag_shift) + ds->indirect.start
-				+ ds->indirect.len) == 0) {
-			/* extend the indirect run with the contiguous next block */
+			new_slot = 0;
+		} else if(ds->double_indirect.len == 0
+				&& bfs_balloc_specific(i->sb,
+					(ds->indirect.allocation_group
+						<< ag_shift)
+					+ ds->indirect.start
+					+ ds->indirect.len) == 0) {
+			/* extend the indirect run with the contiguous next block.
+			 * Only valid while the double table is empty: extending
+			 * past existing double entries would renumber them
+			 * (slot indirect.len already maps through the double
+			 * table) and orphan them */
 			ds->indirect.len++;
+			new_slot = ds->indirect.len - 1;
 		} else {
 			/* the first table run is fragmented: record further table
 			 * blocks in the double-indirect table. The new table block
@@ -577,6 +587,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			__u32 dslot = t - ds->indirect.len;
 			struct buffer *dbuf;
 
+			new_slot = t;
 			if(dslot >= ds->double_indirect.len * darray) {
 				/* the double table is full: grow it (contiguous
 				 * only — a fragmented double table is not worth
@@ -627,10 +638,11 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			bwrite(dbuf);
 		}
 		/* zero the new table block so free slots read len == 0 (the
-		 * block may have been reused and hold stale run data).
-		 * 't' is the new table block's slot (recorded above); using
-		 * the phantom table_len here would read the wrong slot */
-		if(!(zbuf = bread(i->dev, bfs_indirect_table_block(i, t),
+		 * block may have been reused and hold stale run data). The
+		 * slot depends on the branch above: 0 for the first table
+		 * block, indirect.len-1 for a contiguous extension, 't' for
+		 * a double-table block — never the phantom table_len */
+		if(!(zbuf = bread(i->dev, bfs_indirect_table_block(i, new_slot),
 				i->sb->s_blocksize))) {
 			return -EIO;
 		}
