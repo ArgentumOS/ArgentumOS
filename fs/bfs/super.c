@@ -33,6 +33,7 @@ extern int bfs_open(struct inode *, struct fd *);
 extern int bfs_close(struct inode *, struct fd *);
 extern int file_read(struct inode *, struct fd *, char *, __size_t);
 extern int bfs_file_write(struct inode *, struct fd *, const char *, __size_t);
+extern int bfs_ioctl(struct inode *, struct fd *, int, addr_t);
 extern __loff_t bfs_file_llseek(struct inode *, __loff_t);
 extern int bfs_dir_read(struct inode *, struct fd *, char *, __size_t);
 extern int bfs_readdir(struct inode *, struct fd *, struct dirent *, __size_t);
@@ -74,7 +75,7 @@ struct fs_operations bfs_fsop = {
 	bfs_close,		/* close */
 	file_read,		/* read */
 	bfs_file_write,		/* write */
-	NULL,			/* ioctl */
+	bfs_ioctl,		/* ioctl */
 	bfs_file_llseek,	/* llseek */
 	bfs_readdir,		/* readdir */
 	bfs_readdir64,		/* readdir64 */

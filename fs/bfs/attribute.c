@@ -224,7 +224,7 @@ static int bfs_attr_write_stream(struct inode *attr, const char *value,
  * record first, then create the file, then write its stream).
  */
 int bfs_attr_set(struct inode *i, const char *name, const char *value,
-		 __size_t size)
+		 __size_t size, __u32 type)
 {
 	struct inode *ai, *attr;
 	int res;
@@ -255,7 +255,9 @@ int bfs_attr_set(struct inode *i, const char *name, const char *value,
 		attr->i_blocks = 0;
 		attr->u.bfs.raw.mode = BFS_S_ATTR | S_IFREG | 0666;
 		attr->u.bfs.raw.flags = BFS_INODE_IN_USE | BFS_INODE_ATTR_INODE;
-		attr->u.bfs.raw.type = BFS_FILE_NAME_TYPE;	/* 'CSTR' */
+		/* 'CSTR' unless the caller migrated a typed inline record
+		 * into the tree (Haiku's CreateAttribute carries the type) */
+		attr->u.bfs.raw.type = type ? type : BFS_FILE_NAME_TYPE;
 		attr->u.bfs.raw.parent.allocation_group = 0;
 		attr->u.bfs.raw.parent.start = ai->inode;
 		attr->u.bfs.raw.parent.len = 1;

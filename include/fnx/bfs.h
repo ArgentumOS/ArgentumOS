@@ -87,6 +87,20 @@
 /* small_data attribute types */
 #define BFS_FILE_NAME_TYPE	0x43535452	/* 'CSTR' */
 
+/* BFS attribute-type ioctls (FNX extension: the Linux xattr ABI has no
+ * type field, but Haiku's fs_stat_attr / BNode::WriteAttr carry one, so
+ * a volume can move between FNX and Haiku without losing types). */
+#define BFS_ATTR_NAME_MAX	255
+
+struct bfs_attr_info {
+	char name[BFS_ATTR_NAME_MAX + 1];
+	__u32 type;			/* on GET: the record's type */
+	__u64 size;			/* on GET: the value's size */
+};
+
+#define BFS_IOC_GET_ATTR_INFO	0x42530001	/* 'BS' + 1 */
+#define BFS_IOC_SET_ATTR_TYPE	0x42530002
+
 /* block run: allocation_group << ag_shift + start = absolute block */
 struct bfs_block_run {
 	__u32 allocation_group;
@@ -323,7 +337,9 @@ int bfs_btree_delete_value(struct inode *, const char *, int, int, __u64);
  * fs/bfs/attribute.c */
 int bfs_attr_find(struct inode *, const char *, struct inode **);
 int bfs_attr_get(struct inode *, const char *, char *, __size_t);
-int bfs_attr_set(struct inode *, const char *, const char *, __size_t);
+int bfs_attr_set(struct inode *, const char *, const char *, __size_t, __u32);
+int bfs_attr_info(struct inode *, struct bfs_attr_info *);
+int bfs_attr_set_type(struct inode *, const char *, __u32);
 int bfs_attr_list(struct inode *, char *, __size_t, int);
 int bfs_attr_remove(struct inode *, const char *);
 void bfs_attr_free_all(struct inode *);

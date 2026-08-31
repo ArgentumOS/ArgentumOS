@@ -168,7 +168,8 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	char *q = area;
 	char *p = bfs_xattr_area(i);
 	int left = BFS_SMALL_DATA_SIZE;
-	int nlen, need, total, found;
+	int nlen, need, total, found, tree_found = 0;
+	__u32 attr_type = BFS_FILE_NAME_TYPE;
 	struct bfs_small_data *sd;
 
 	if(bfs_xattr_refuse_name(name)) {
@@ -198,22 +199,29 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 		inode_unlock(i);
 		return -EEXIST;
 	}
-	if(!found && (flags & XATTR_REPLACE)) {
-		inode_unlock(i);
-		return -ENODATA;
-	}
-	if(!found && (flags & (XATTR_CREATE | XATTR_REPLACE))) {
-		/* the attribute may live in the attributes tree; the flags
-		 * must see it there too (Haiku checks both layers) */
+	if(found) {
+		/* preserve the type of an attribute being replaced (Haiku
+		 * keeps the caller's type: 'MIME' for BEOS:TYPE, int32, ...
+		 * — the Linux xattr ABI has no type field, so overwriting
+		 * must not clobber a type a Haiku-written record carries) */
+		attr_type = f.found->type;
+	} else {
+		/* not inline: the attribute may live in the attributes tree
+		 * (a bigger value migrated it there). A plain set must see
+		 * it too: carry its type across the migration back into the
+		 * small_data section and drop the stale tree entry below
+		 * (Haiku checks both layers for the CREATE/REPLACE flags) */
 		struct inode *attr;
 		int tres = bfs_attr_find(i, name, &attr);
 		if(tres == 0) {
-			iput(attr);
 			if(flags & XATTR_CREATE) {
+				iput(attr);
 				inode_unlock(i);
 				return -EEXIST;
 			}
-			found = 1;
+			attr_type = attr->u.bfs.raw.type;
+			iput(attr);
+			tree_found = 1;
 		} else if(flags & XATTR_REPLACE) {
 			inode_unlock(i);
 			return -ENODATA;
@@ -242,12 +250,12 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	total = (q - area) + need;
 	if((__u64)total > BFS_SMALL_DATA_SIZE) {
 		/* no room inline: Haiku moves the attribute into the
-		 * per-file attributes tree */
+		 * per-file attributes tree, carrying the record's type */
 		inode_unlock(i);
-		return bfs_attr_set(i, name, value, size);
+		return bfs_attr_set(i, name, value, size, attr_type);
 	}
 
-	*(__u32 *)(q + 0) = BFS_FILE_NAME_TYPE;
+	*(__u32 *)(q + 0) = attr_type;
 	*(__u16 *)(q + 4) = nlen;
 	*(__u16 *)(q + 6) = size;
 	memcpy_b(q + 8, name, nlen);
@@ -268,7 +276,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	 * the attributes tree (a bigger value), remove the stale tree
 	 * entry so the two copies do not diverge (Haiku's WriteAttribute
 	 * migrates back to the small_data section the same way) */
-	if(!found) {
+	if(tree_found) {
 		bfs_attr_remove(i, name);
 	}
 	return 0;
@@ -542,4 +550,105 @@ int bfs_xattr_remove_sd(struct inode *i, const char *name)
 	i->state |= INODE_DIRTY;
 	inode_unlock(i);
 	return 0;
+}
+
+/*
+ * BFS attribute-type ioctl (FNX extension). The Linux xattr ABI has no
+ * type field, but the on-disk record and Haiku's fs_stat_attr /
+ * BNode::WriteAttr carry one, so a volume moving between FNX and Haiku
+ * must be able to set and query types. The name is the xattr name as
+ * passed to setxattr/getxattr.
+ */
+int bfs_attr_info(struct inode *i, struct bfs_attr_info *info)
+{
+	struct bfs_xattr_find f;
+	struct inode *attr;
+	int res;
+
+	inode_lock(i);
+
+	f.name = info->name;
+	f.name_size = strlen(info->name);
+	f.found = NULL;
+	bfs_xattr_walk(i, bfs_xattr_find_cb, &f);
+	if(f.found) {
+		info->type = f.found->type;
+		info->size = f.found->data_size;
+		inode_unlock(i);
+		return 0;
+	}
+	inode_unlock(i);
+
+	if((res = bfs_attr_find(i, info->name, &attr)) < 0) {
+		return res;
+	}
+	info->type = attr->u.bfs.raw.type;
+	info->size = attr->i_size;
+	iput(attr);
+	return 0;
+}
+
+int bfs_attr_set_type(struct inode *i, const char *name, __u32 type)
+{
+	struct bfs_xattr_find f;
+	struct inode *attr;
+	int res;
+
+	inode_lock(i);
+
+	f.name = name;
+	f.name_size = strlen(name);
+	f.found = NULL;
+	bfs_xattr_walk(i, bfs_xattr_find_cb, &f);
+	if(f.found) {
+		f.found->type = type;
+		i->state |= INODE_DIRTY;
+		inode_unlock(i);
+		return 0;
+	}
+	inode_unlock(i);
+
+	if((res = bfs_attr_find(i, name, &attr)) < 0) {
+		return res;
+	}
+	attr->u.bfs.raw.type = type;
+	attr->state |= INODE_DIRTY;
+	iput(attr);
+	return 0;
+}
+
+int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
+{
+	struct bfs_attr_info info;
+	int errno;
+
+	switch(cmd) {
+	case BFS_IOC_GET_ATTR_INFO:
+		if(copy_from_user(&info, (void *)arg, sizeof(info))) {
+			return -EFAULT;
+		}
+		info.name[BFS_ATTR_NAME_MAX] = 0;
+		if((errno = bfs_attr_info(i, &info)) < 0) {
+			return errno;
+		}
+		if(copy_to_user((void *)arg, &info, sizeof(info))) {
+			return -EFAULT;
+		}
+		return 0;
+
+	case BFS_IOC_SET_ATTR_TYPE:
+		if(copy_from_user(&info, (void *)arg, sizeof(info))) {
+			return -EFAULT;
+		}
+		info.name[BFS_ATTR_NAME_MAX] = 0;
+		errno = bfs_attr_set_type(i, info.name, info.type);
+		if(errno < 0) {
+			return errno;
+		}
+		if(copy_to_user((void *)arg, &info, sizeof(info))) {
+			return -EFAULT;
+		}
+		return 0;
+	}
+	return -ENOTTY;
 }
