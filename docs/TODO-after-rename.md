@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8)
+## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED, QUERY + 2048-byte blocks DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8, f867338, bc44a31)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -708,11 +708,21 @@ correct parse. Inline symlinks also now store the logical length in
 data.size (stat, the on-disk inode and the size index agree), and
 bfscheck sorts chains by the tree data_type (INT64 keys are signed
 64-bit — raw byte order misordered the size index). The remaining
-1:1 gaps after M7: big-endian (PPC) volumes are still refused at mount
+1:1 gaps: big-endian (PPC) volumes are still refused at mount
 (deliberate; converting every field access to a swap layer is huge and
-untestable without BE BFS disks), and the real-Haiku cross-mount test
+untestable without BE BFS disks), the real-Haiku cross-mount test
 (boot a Haiku VM, mount our images there, and mkfs a volume under
-Haiku for FNX to mount).
+Haiku for FNX to mount), and 4096-byte-block volumes (the per-inode
+small_data tail must fit in one kmalloc'd struct inode, kmalloc caps
+at PAGE_SIZE, so 4096 needs a VFS destroy-inode hook for a separately
+allocated tail — 1024/2048 work, bc44a31).
+
+Query engine (f867338): Haiku-style BQuery via the BFS_IOC_QUERY ioctl
++ userland bfsquery/bfsqtest; the btree compares numeric keys
+natively (INT8..UINT64/FLOAT/DOUBLE, host LE order). Verified by the
+guest battery (BFSQTEST ALL-OK: STRING wildcards, size/last_modified,
+&&/||/!, and the 6 typed demo indices) at both 1024 and 2048-byte
+blocks.
 
 M5 = 1:1 Haiku on-disk compatibility (audit + fixes, so a volume can
 move between FNX and Haiku both ways). The audit compared every on-disk
