@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M7 DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c)
+## OpenBFS (BeOS BFS) filesystem - M0-M7a DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -673,12 +673,20 @@ that expand fragment/duplicate chains against the dir walk). Behavioral
 1:1 edges: create_time now written at ialloc ((sec << 16)), over-long
 names return ENAMETOOLONG (B_FILE_NAME_LENGTH = 255), and the root
 split keeps the left half in place so interior root splits orphan
-nothing. RESIDUAL (documented, not fixed): a metadata write issued in
-the last transaction before power-off can be lost for the last_modified
-fragment/leaf — the in-memory state is correct (the del/put returns
-success and a second op sees the change) but the disk lags; the image
-also shows occasional 0xFF-filled buffers (an unread buffer-cache slot)
-under the eviction pressure of the index-op tx burst. The remaining
+nothing. RESIDUAL FIXED (M7a, ae12b29): the last_modified
+last-write-before-power-off was the unlink's truncate-to-0 re-running
+bfs_index_resize(), which re-added the deleted file's entry at a new
+mtime key (the mtime changed), so the entry the unlink just removed
+resurrected on disk. bfs_index_resize() now skips nlink==0 inodes and
+skips same-value del/put entirely. A follow-up scare that the frag
+battery showed lost writes / AG1 garbage runs was a verification-parser
+bug (the direct runs are 8-byte packed structs — a 6-byte stride
+misaligned every later run; the data.size field lives at +208, not
++180); the fragA/fragB/seqA/sparse battery is byte-exact with the
+correct parse. Inline symlinks also now store the logical length in
+data.size (stat, the on-disk inode and the size index agree), and
+bfscheck sorts chains by the tree data_type (INT64 keys are signed
+64-bit — raw byte order misordered the size index). The remaining
 1:1 gaps after M7: big-endian (PPC) volumes are still refused at mount
 (deliberate; converting every field access to a swap layer is huge and
 untestable without BE BFS disks), and the real-Haiku cross-mount test
