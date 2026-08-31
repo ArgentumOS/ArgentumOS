@@ -28,9 +28,9 @@
  * (btree node, small_data tail, indirect table slot count) uses the
  * volume's size at runtime. */
 #define BFS_MIN_BLOCK_SIZE	1024
-#define BFS_MAX_BLOCK_SIZE	2048
+#define BFS_MAX_BLOCK_SIZE	4096
 #define BFS_MIN_BLOCK_SHIFT	10
-#define BFS_MAX_BLOCK_SHIFT	11
+#define BFS_MAX_BLOCK_SHIFT	12
 #define BFS_INODE_SIZE		256
 #define BFS_INODES_PER_BLOCK	(BFS_BLOCK_SIZE / BFS_INODE_SIZE)
 #define BFS_BLOCKS_PER_AG	8192
@@ -96,6 +96,11 @@
 #define BFS_BTREE_FLOAT_TYPE	7
 #define BFS_BTREE_DOUBLE_TYPE	8
 #define BFS_BTREE_MAX_KEY_LEN	256
+/* structural cap on pairs per node (a 4096-byte leaf could hold ~370
+ * short-key pairs, but the pair-collect arrays are sized to 128; the
+ * room check splits a node when it would exceed this, so every array
+ * stays bounded) */
+#define BFS_BTREE_MAX_PAIRS	128
 
 /* small_data attribute types */
 #define BFS_FILE_NAME_TYPE	0x43535452	/* 'CSTR' */
@@ -297,9 +302,16 @@ struct bfs_sb_info {
 #define BFS_SMALL_DATA_SIZE	(BFS_MAX_BLOCK_SIZE - sizeof(struct bfs_inode))
 
 /* fs-private inode info (the raw on-disk inode, for bmap/readdir) */
+#define BFS_II_MAGIC	0x4b425349	/* 'KBSI' — marks a union holding a BFS inode */
+
 struct bfs_i_info {
 	struct bfs_inode raw;	/* raw on-disk inode (232 bytes) */
-	char small_data[BFS_SMALL_DATA_SIZE];	/* inline attributes */
+	unsigned char *small_data;	/* kmalloc'd inline-attribute tail,
+				 * sized to the volume's block size - inode;
+				 * freed via fsop->destroy_inode (the tail
+				 * can be 3864 bytes at 4096-byte blocks, too
+				 * big to embed in the kmalloc'd struct inode) */
+	__u32 magic;		/* BFS_II_MAGIC while the union is ours */
 };
 
 /* block allocation (balloc.c) */
@@ -311,6 +323,7 @@ int bfs_balloc_specific(struct superblock *, __blk_t);
 int bfs_write_inode(struct inode *);
 int bfs_ialloc(struct inode *, int);
 void bfs_ifree(struct inode *);
+void bfs_destroy_inode(struct inode *);
 int bfs_truncate(struct inode *, __off_t);
 
 /* journal.c */

@@ -145,6 +145,16 @@ static void remove_from_hash(struct inode *i)
 		}
 		h = &(*h)->next_hash;
 	}
+
+	/* the inode leaves the cache: release fs-private per-inode state
+	 * (e.g. BFS's kmalloc'd small_data tail). Every cache-exit path
+	 * flows here — iput of a deleted inode, get_free_inode() reusing
+	 * the struct for another filesystem, and the unmount inode drop —
+	 * and a count-0-but-hashed inode is NOT removed, so its state
+	 * survives the iget hash-hit reuse. */
+	if(i->sb && i->sb->fsop && i->sb->fsop->destroy_inode) {
+		i->sb->fsop->destroy_inode(i);
+	}
 }
 
 static void insert_on_free_list(struct inode *i)

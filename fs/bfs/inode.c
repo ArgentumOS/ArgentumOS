@@ -98,6 +98,7 @@ int bfs_read_inode(struct inode *i)
 {
 	struct buffer *buf;
 	struct bfs_inode *raw;
+	__u32 tail;
 
 	if(!(buf = bread(i->dev, i->inode, i->sb->s_blocksize))) {
 		return -EIO;
@@ -110,12 +111,19 @@ int bfs_read_inode(struct inode *i)
 	memcpy_b(&i->u.bfs.raw, raw, sizeof(struct bfs_inode));
 	/* the on-disk small_data tail is block_size - inode; the in-memory
 	 * copy is sized for the largest block, so zero the rest */
+	tail = i->sb->s_blocksize - sizeof(struct bfs_inode);
+	if(!i->u.bfs.small_data) {
+		if(!(i->u.bfs.small_data = (unsigned char *)kmalloc(
+				BFS_SMALL_DATA_SIZE))) {
+			brelse(buf);
+			return -ENOMEM;
+		}
+	}
+	i->u.bfs.magic = BFS_II_MAGIC;
 	memcpy_b(i->u.bfs.small_data, (char *)raw + sizeof(struct bfs_inode),
-		 i->sb->s_blocksize - sizeof(struct bfs_inode));
-	memset_b(i->u.bfs.small_data + i->sb->s_blocksize
-			- sizeof(struct bfs_inode), 0,
-		BFS_SMALL_DATA_SIZE - (i->sb->s_blocksize
-				- sizeof(struct bfs_inode)));
+		 tail);
+	memset_b(i->u.bfs.small_data + tail, 0,
+		BFS_SMALL_DATA_SIZE - tail);
 
 	if(S_ISDIR(raw->mode) || S_ISREG(raw->mode) || S_ISLNK(raw->mode)) {
 		i->fsop = &bfs_fsop;
@@ -282,6 +290,14 @@ int bfs_ialloc(struct inode *i, int mode)
 	i->i_size = 0;
 	i->i_blocks = 0;
 	memset_b(&i->u.bfs.raw, 0, sizeof(struct bfs_inode));
+	if(!i->u.bfs.small_data) {
+		if(!(i->u.bfs.small_data = (unsigned char *)kmalloc(
+				BFS_SMALL_DATA_SIZE))) {
+			bfs_bfree(i->sb, block);
+			return -ENOMEM;
+		}
+	}
+	i->u.bfs.magic = BFS_II_MAGIC;
 	memset_b(i->u.bfs.small_data, 0, BFS_SMALL_DATA_SIZE);
 	i->u.bfs.raw.mode = mode;
 	/* keep the in-memory copy in sync: bfs_write_inode() rewrites the
@@ -297,8 +313,7 @@ int bfs_ialloc(struct inode *i, int mode)
 	return 0;
 }
 
-void bfs_ifree(struct inode *i)
-{
+void bfs_ifree(struct inode *i){
 	if(!i->inode || i->inode >= i->sb->u.bfs.num_blocks) {
 		return;
 	}
@@ -311,6 +326,28 @@ void bfs_ifree(struct inode *i)
 		bfs_truncate(i, 0);
 	}
 	bfs_bfree(i->sb, i->inode);
+}
+
+/*
+ * The VFS calls this via fsop->destroy_inode when the inode leaves the
+ * cache (remove_from_hash): release the kmalloc'd small_data tail. The
+ * struct itself is recycled by get_free_inode(), so read_inode/ialloc
+ * re-allocate on the next use.
+ */
+void bfs_destroy_inode(struct inode *i)
+{
+	/* the union may have been repurposed by another filesystem (e.g.
+	 * the mount_root probe reuses one superblock struct, so a minix
+	 * inode can carry i->sb->fsop == bfs_fsop); only act while the
+	 * union actually holds a BFS inode */
+	if(i->u.bfs.magic != BFS_II_MAGIC) {
+		return;
+	}
+	if(i->u.bfs.small_data) {
+		kfree((addr_t)i->u.bfs.small_data);
+		i->u.bfs.small_data = NULL;
+	}
+	i->u.bfs.magic = 0;
 }
 
 /*

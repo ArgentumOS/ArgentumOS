@@ -113,6 +113,7 @@ struct fs_operations bfs_fsop = {
 	bfs_setxattr,		/* setxattr */
 	bfs_listxattr,		/* listxattr */
 	bfs_removexattr,	/* removexattr */
+	bfs_destroy_inode,	/* destroy_inode (kept last) */
 };
 
 static void bfs_statfs(struct superblock *sb, struct statfs *buf)

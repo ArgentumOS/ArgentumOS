@@ -191,6 +191,11 @@ struct fs_operations {
 	int (*setxattr)(struct inode *, const char *, const char *, __size_t, int);
 	int (*listxattr)(struct inode *, char *, __size_t);
 	int (*removexattr)(struct inode *, const char *);
+
+/* inode-destruction hook (kept LAST: positional fsop initializers of
+ * other filesystems stop at the trailing xattr fields; adding fields in
+ * the middle would shift their read_superblock etc. into garbage) */
+	void (*destroy_inode)(struct inode *);
 };
 
 extern struct fs_operations def_chr_fsop;

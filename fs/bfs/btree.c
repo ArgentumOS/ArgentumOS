@@ -524,6 +524,12 @@ static int bfs_btree_node_room(struct bfs_btree_node *n, int keylen,
 	int used = sizeof(struct bfs_btree_node) + n->all_key_length + keylen;
 	int cnt = n->all_key_count + 1;
 
+	/* the pair-count cap matters at 4096-byte blocks (a leaf could
+	 * otherwise exceed the 128+1 slot collect arrays) */
+	if(cnt > BFS_BTREE_MAX_PAIRS + 1) {
+		return 0;
+	}
+
 	return ((used + 7) & ~7) + cnt * 2 + cnt * 8 <= bsize;
 }
 
@@ -554,7 +560,7 @@ static void bfs_btree_pick_child_t(struct bfs_btree_node *n, const char *key,
 		return;
 	}
 
-	for(i = 0; i < n->all_key_count && i < 128; i++) {
+	for(i = 0; i < n->all_key_count && i <= BFS_BTREE_MAX_PAIRS + 1; i++) {
 		k = bfs_btree_key(n, i, &klen);
 		cmp = bfs_btree_key_cmp(dtype, key, keylen, k, klen);
 		if(cmp <= 0) {
@@ -592,7 +598,8 @@ static int bfs_btree_descend_t(struct inode *dir,
 			return -EIO;
 		}
 		n = (struct bfs_btree_node *)buf->data;
-		if(n->all_key_count > 128 || n->all_key_length > 900) {
+		if(n->all_key_count > BFS_BTREE_MAX_PAIRS + 2
+		   || n->all_key_length > dir->sb->s_blocksize - sizeof(struct bfs_btree_node)) {
 			brelse(buf);
 			return -EIO;
 		}
@@ -948,7 +955,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		parent_overflow = parent->overflow;
 
 		if(!(pp = (struct bfs_btree_pair *)kmalloc(
-				128 * sizeof(struct bfs_btree_pair)))
+				(BFS_BTREE_MAX_PAIRS + 2) * sizeof(struct bfs_btree_pair)))
 				|| !(pkb = (char *)kmalloc(
 					dir->sb->s_blocksize))) {
 			if(pp) {
@@ -961,7 +968,8 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			return -ENOMEM;
 		}
 
-		pcount = bfs_btree_collect_t(parent, pp, 128, 0, NULL, 0, 0,
+		pcount = bfs_btree_collect_t(parent, pp, BFS_BTREE_MAX_PAIRS + 2,
+					0, NULL, 0, 0,
 					     dtype, pkb);
 		if(pcount < 0) {
 			kfree((addr_t)pkb);
@@ -1103,11 +1111,12 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 
 	if(bfs_btree_node_room(n, keylen, dir->sb->s_blocksize)) {
 		/* the leaf has room: rebuild it in place */
-		static struct bfs_btree_pair spairs[128];
+		static struct bfs_btree_pair spairs[BFS_BTREE_MAX_PAIRS + 2];
 		static char skb[BFS_MAX_BLOCK_SIZE];
 		pairs = spairs;
-		count = bfs_btree_collect_t(n, pairs, 128, 1, key, keylen,
-					    value, dtype, skb);
+		count = bfs_btree_collect_t(n, pairs, BFS_BTREE_MAX_PAIRS + 2,
+					1, key, keylen,
+					value, dtype, skb);
 		if(count < 0) {
 			brelse(buf);
 			return -EEXIST;
@@ -1120,11 +1129,12 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 
 	/* the leaf is full: collect everything + the new pair, then split */
 	{
-		static struct bfs_btree_pair spairs[128];
+		static struct bfs_btree_pair spairs[BFS_BTREE_MAX_PAIRS + 2];
 		static char skb[BFS_MAX_BLOCK_SIZE];
 		pairs = spairs;
-		count = bfs_btree_collect_t(n, pairs, 128, 1, key, keylen,
-					    value, dtype, skb);
+		count = bfs_btree_collect_t(n, pairs, BFS_BTREE_MAX_PAIRS + 2,
+					1, key, keylen,
+					value, dtype, skb);
 		if(count < 0) {
 			brelse(buf);
 			return -EEXIST;
