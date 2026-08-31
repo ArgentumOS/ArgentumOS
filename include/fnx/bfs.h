@@ -100,6 +100,32 @@ struct bfs_attr_info {
 
 #define BFS_IOC_GET_ATTR_INFO	0x42530001	/* 'BS' + 1 */
 #define BFS_IOC_SET_ATTR_TYPE	0x42530002
+#define BFS_IOC_QUERY		0x42530003	/* 'BS' + 3 */
+
+/* volume query (Haiku's BQuery): evaluate a query expression against
+ * the volume's indices and return the matching inode numbers.
+ * count in = capacity of inodes[] (0 = probe, just get the count);
+ * count out = the total number of matches. The kernel never copies
+ * more than min(matches, capacity) results. */
+#define BFS_QUERY_MAX_LEN	512
+#define BFS_QUERY_MAX_RESULTS	65536
+struct bfs_query {
+	char query[BFS_QUERY_MAX_LEN];
+	__u32 count;
+	__u32 inodes[BFS_QUERY_MAX_RESULTS];
+};
+#define BFS_QUERY_INODES_OFF	((unsigned long)&((struct bfs_query *)0)->inodes)
+
+/* the query expression grammar (Haiku's QueryParser):
+ *   expr   := orexpr
+ *   orexpr := andexpr | orexpr '||' andexpr
+ *   andexpr:= term | andexpr '&&' term
+ *   term   := '(' expr ')' | '!' term | equation
+ *   equation := attr op value
+ *   op     := '=' | '!=' | '>' | '>=' | '<' | '<='
+ * '!' only negates a parenthesized term (DeMorgan); values are quoted
+ * with ' or " or run to the next operator/')'; '*' '?' '[' are
+ * wildcards for '=' / '!=' on STRING indices only. */
 
 /* block run: allocation_group << ag_shift + start = absolute block */
 struct bfs_block_run {
@@ -335,6 +361,8 @@ void bfs_dir_touch(struct inode *, __off_t);
 int bfs_btree_insert_value(struct inode *, const char *, int, int, __u64);
 int bfs_btree_find_value(struct inode *, const char *, int, int, __u64 *);
 int bfs_btree_delete_value(struct inode *, const char *, int, int, __u64);
+int bfs_btree_iterate_values(struct inode *, int,
+	int (*)(const char *, int, __ino_t, void *), void *);
 
 /* attribute inodes (Haiku's per-file attributes B+tree) - see
  * fs/bfs/attribute.c */
@@ -343,6 +371,7 @@ int bfs_attr_get(struct inode *, const char *, char *, __size_t);
 int bfs_attr_set(struct inode *, const char *, const char *, __size_t, __u32);
 int bfs_attr_info(struct inode *, struct bfs_attr_info *);
 int bfs_attr_set_type(struct inode *, const char *, __u32);
+int bfs_query(struct superblock *, const char *, __u32 *, __u32);
 int bfs_attr_list(struct inode *, char *, __size_t, int);
 int bfs_attr_remove(struct inode *, const char *);
 void bfs_attr_free_all(struct inode *);

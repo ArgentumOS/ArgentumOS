@@ -269,7 +269,9 @@ def main():
                 cnt += 1
         return cnt
 
-    next_data = max(32, next_inode + count_inodes("") + 5)   # + the 5 indices inodes
+    next_data = max(32, next_inode + count_inodes("") + 11)
+    # + the 11 index inodes (name, BEOS:APP_SIG, last_modified, size,
+    #   the 6 typed demo indices, and the indices root)
 
     def alloc_inode():
         nonlocal next_inode
@@ -432,9 +434,10 @@ def main():
     nfiles = 0
 
     def build_dir(path, parent_blk):
-        nonlocal nfiles, write_inodes, write_blocks
+        nonlocal nfiles, write_inodes, write_blocks, all_inos
         full = os.path.join(root, path)
         dblk = alloc_inode()
+        all_inos.append(dblk)
         entries = []
         for name in sorted(os.listdir(full)):
             fp = os.path.join(full, name)
@@ -444,6 +447,7 @@ def main():
             elif os.path.islink(fp):
                 target = os.readlink(fp)
                 ib = alloc_inode()
+                all_inos.append(ib)
                 if len(target) <= 143:
                     write_inodes.append((ib, build_inode(
                         ib, S_IFLNK | 0o777, len(target), dblk, {},
@@ -465,6 +469,7 @@ def main():
                 with open(fp, "rb") as fh:
                     data = fh.read()
                 ib = alloc_inode()
+                all_inos.append(ib)
                 mode = S_IFREG | (os.stat(fp).st_mode & 0o7777)
                 nblocks = (len(data) + BLOCK - 1) // BLOCK
                 st = build_stream(nblocks)
@@ -497,6 +502,9 @@ def main():
         dirs[path] = (dblk, hb, nblocks, entries)
         return dblk
 
+    # all inodes the image contains (files + dirs + symlinks), in
+    # allocation order; the typed demo indices (below) are keyed on them
+    all_inos = []
     root_blk = build_dir("", 0)
 
     # ---- the indices tree (Haiku's standard indices) ----
@@ -520,6 +528,52 @@ def main():
         iib = alloc_inode()
         hb2 = alloc_blocks(1)[0]
         nb2, root2, dep2, nodes2 = build_tree([], hb2)
+        write_blocks.append((hb2, build_btree_header(root2, dep2,
+                                                     data_type=dt)))
+        write_blocks += nodes2
+        idx_blocks = [hb2] + [b for b, _ in nodes2]
+        istream = {'direct': runs_of(idx_blocks),
+                   'mdr': len(idx_blocks) << 10, 'indirect': None,
+                   'max_indirect': len(idx_blocks) << 10, 'dind': None,
+                   'max_dind': len(idx_blocks) << 10}
+        write_inodes.append((iib, build_inode(
+            iib, IDX_INDEX_DIR | S_IFDIR | imode | 0o700,
+            len(idx_blocks) << 10, indices_blk, istream, itype=itype)))
+        idx_entries.append((iname, iib))
+
+    # ---- typed demo indices (gap-4 verification) ------------------
+    # Six indices with every fixed-size key type beyond STRING/INT64,
+    # populated with one entry per image inode: the key is the inode
+    # number packed as the index's type. bfscheck validates the trees
+    # (per-type sort + exact mapping) and the guest's bfsquery tool
+    # cross-checks queries against stat st_ino.
+    IDX_INT_INDEX = 0x02000000
+    IDX_UINT_INDEX = 0x04000000
+    IDX_ULL_INDEX = 0x00400000
+    IDX_FLOAT_INDEX = 0x00800000
+    IDX_DOUBLE_INDEX = 0x00040000
+    LONG = 0x4c4f4e47
+    ULNG = 0x554c4e47
+    ULLG = 0x554c4c47
+    FLTG = 0x464c5447
+    DBLG = 0x44424c47
+
+    def typed_key(fmt, ino):
+        return struct.pack(fmt, ino)
+
+    for iname, itype, imode, dt, fmt, numkey in [
+            ("qint32", LONG, IDX_INT_INDEX, 3, '<i', lambda x: x),
+            ("quint32", ULNG, IDX_UINT_INDEX, 4, '<I', lambda x: x),
+            ("qint64", LLNG, IDX_LL_INDEX, 5, '<q', lambda x: x),
+            ("quint64", ULLG, IDX_ULL_INDEX, 6, '<Q', lambda x: x),
+            ("qfloat", FLTG, IDX_FLOAT_INDEX, 7, '<f', lambda x: float(x)),
+            ("qdouble", DBLG, IDX_DOUBLE_INDEX, 8, '<d', lambda x: float(x))]:
+        entries = sorted(
+            ((struct.pack(fmt, numkey(ino)), ino) for ino in all_inos),
+            key=lambda e: (numkey(struct.unpack(fmt, e[0])[0]), e[1]))
+        iib = alloc_inode()
+        hb2 = alloc_blocks(1)[0]
+        nb2, root2, dep2, nodes2 = build_tree(entries, hb2)
         write_blocks.append((hb2, build_btree_header(root2, dep2,
                                                      data_type=dt)))
         write_blocks += nodes2

@@ -655,6 +655,69 @@ int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 			return -EFAULT;
 		}
 		return 0;
+
+	case BFS_IOC_QUERY: {
+		/* volume query: evaluate the expression against the
+		 * indices and return the matching inode numbers (a probe
+		 * with count == 0 only fetches the total). The user
+		 * struct is { query[512]; count; inodes[65536] }; the
+		 * kernel only ever touches the 516-byte prefix + the
+		 * inodes at the fixed offset, so use a compact prefix
+		 * struct (a full copy would blow the 4KB kernel stack). */
+		struct {
+			char query[BFS_QUERY_MAX_LEN];
+			__u32 count;
+		} hdr;
+		__u32 *inos = NULL;
+		int total, n;
+
+		if(copy_from_user(&hdr, (void *)arg,
+				  BFS_QUERY_INODES_OFF)) {
+			return -EFAULT;
+		}
+		hdr.query[BFS_QUERY_MAX_LEN - 1] = 0;
+		if(hdr.count > BFS_QUERY_MAX_RESULTS) {
+			hdr.count = BFS_QUERY_MAX_RESULTS;
+		}
+		/* kmalloc caps at PAGE_SIZE (4096): at most 1024 inodes fit in
+		 * one allocation, so clamp the buffer (the total is still
+		 * returned in hdr.count; a probe with count == 0 skips the
+		 * allocation entirely) */
+		if(hdr.count > 4096 / sizeof(__u32)) {
+			hdr.count = 4096 / sizeof(__u32);
+		}
+		if(hdr.count) {
+			if(!(inos = (__u32 *)kmalloc(hdr.count * sizeof(__u32)))) {
+				return -ENOMEM;
+			}
+		}
+		total = bfs_query(i->sb, hdr.query, inos, hdr.count);
+		if(total < 0) {
+			if(inos) {
+				kfree((addr_t)inos);
+			}
+			return total;
+		}
+		n = (hdr.count < (__u32)total) ? hdr.count : total;
+		hdr.count = (__u32)total;
+		if(n) {
+			if(copy_to_user((void *)arg
+					+ BFS_QUERY_INODES_OFF,
+					inos, n * sizeof(__u32))) {
+				kfree((addr_t)inos);
+				return -EFAULT;
+			}
+		}
+		if(copy_to_user((void *)arg, &hdr,
+				  BFS_QUERY_INODES_OFF)) {
+			kfree((addr_t)inos);
+			return -EFAULT;
+		}
+		if(inos) {
+			kfree((addr_t)inos);
+		}
+		return 0;
+	}
 	}
 	return -ENOTTY;
 }

@@ -318,8 +318,10 @@ def check(path, rootdir=None):
               % (path, len(entries), stats['leaves'], stats['interiors'],
                  stats['max_depth']))
         inode_blocks.add(ino)
+        expect_all_inos.add(ino)
         for _, v in entries:
             inode_blocks.add(v)
+            expect_all_inos.add(v)
         for child_name in [k for k in keys if k not in (b'.', b'..')]:
             cino = d[child_name]
             child = child_name.decode('latin1')
@@ -398,6 +400,7 @@ def check(path, rootdir=None):
     expect_name = []
     expect_size = {}
     expect_mtime = {}
+    expect_all_inos = set()
     walk_dir(root_ino, root_ino, '')
 
     # ---- attributes inodes (Haiku's per-file attributes tree) ----
@@ -410,6 +413,11 @@ def check(path, rootdir=None):
     S_INDEX_DIR = 0x20000000
     S_STR_INDEX = 0x01000000
     S_LONG_LONG_INDEX = 0x00200000
+    S_ULONG_LONG_INDEX = 0x00400000
+    S_FLOAT_INDEX = 0x00800000
+    S_INT_INDEX = 0x02000000
+    S_UINT_INDEX = 0x04000000
+    S_DOUBLE_INDEX = 0x00040000
     n_attr = 0
     for blk in list(inode_blocks):
         io = blk * BLK
@@ -481,6 +489,26 @@ def check(path, rootdir=None):
                 assert vtype == 0x4c4c4e47, (
                     "index file %d: INT64 index has type %08x" % (v, vtype))
                 expect_dt = 5          # BPLUSTREE_INT64_TYPE
+            elif vmode & S_ULONG_LONG_INDEX:
+                assert vtype == 0x554c4c47, (
+                    "index file %d: UINT64 index has type %08x" % (v, vtype))
+                expect_dt = 6
+            elif vmode & S_INT_INDEX:
+                assert vtype == 0x4c4f4e47, (
+                    "index file %d: INT32 index has type %08x" % (v, vtype))
+                expect_dt = 3
+            elif vmode & S_UINT_INDEX:
+                assert vtype == 0x554c4e47, (
+                    "index file %d: UINT32 index has type %08x" % (v, vtype))
+                expect_dt = 4
+            elif vmode & S_FLOAT_INDEX:
+                assert vtype == 0x464c5447, (
+                    "index file %d: FLOAT index has type %08x" % (v, vtype))
+                expect_dt = 7
+            elif vmode & S_DOUBLE_INDEX:
+                assert vtype == 0x44424c47, (
+                    "index file %d: DOUBLE index has type %08x" % (v, vtype))
+                expect_dt = 8
             else:
                 assert vtype == 0x43535452, (
                     "index file %d: STRING index has type %08x" % (v, vtype))
@@ -522,14 +550,27 @@ def check(path, rootdir=None):
             for k, val in keys2:
                 for dv in dup_values(vio, val):
                     got.setdefault(k, set()).add(dv)
+            # The typed demo indices are a build-time fixture: mkbfs
+            # keys every file present at build time by its inode number
+            # (as the index's type). Files a driver creates afterwards
+            # go into the standard indices (name/size/last_modified)
+            # only — they have no attribute for the typed indices, so
+            # they must NOT be expected there. Driver-touched files are
+            # exactly those with a name-index entry (expect_name).
+            touched = set(v for _, v in expect_name)
+            build_inos = [k for k in expect_all_inos if k not in touched]
             if vmode & S_LONG_LONG_INDEX:
-                exp = {}
-                for k, st in expect_size.items():
-                    exp.setdefault(struct.pack('<q', k), set()).update(st)
-                if iname_b == b'last_modified':
+                if iname_b == b'size':
+                    exp = {}
+                    for k, st in expect_size.items():
+                        exp.setdefault(struct.pack('<q', k), set()).update(st)
+                elif iname_b == b'last_modified':
                     exp = {}
                     for k, st in expect_mtime.items():
                         exp.setdefault(struct.pack('<q', k), set()).update(st)
+                else:
+                    exp = {struct.pack('<q', k): {k}
+                           for k in build_inos}
                 assert got == exp, (
                     "index %s mismatch: got %s want %s" % (iname_b, got, exp))
             elif iname_b == b'name':
@@ -538,6 +579,28 @@ def check(path, rootdir=None):
                     exp.setdefault(k, set()).add(st)
                 assert got == exp, (
                     "name index mismatch: got %s want %s" % (got, exp))
+            elif vmode & S_INT_INDEX:
+                exp = {struct.pack('<i', k): {k} for k in build_inos}
+                assert got == exp, (
+                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
+            elif vmode & S_UINT_INDEX:
+                exp = {struct.pack('<I', k): {k} for k in build_inos}
+                assert got == exp, (
+                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
+            elif vmode & S_ULONG_LONG_INDEX:
+                exp = {struct.pack('<Q', k): {k} for k in build_inos}
+                assert got == exp, (
+                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
+            elif vmode & S_FLOAT_INDEX:
+                exp = {struct.pack('<f', float(k)): {k}
+                       for k in build_inos}
+                assert got == exp, (
+                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
+            elif vmode & S_DOUBLE_INDEX:
+                exp = {struct.pack('<d', float(k)): {k}
+                       for k in build_inos}
+                assert got == exp, (
+                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
             else:
                 assert not keys2, (
                     "BEOS:APP_SIG index should be empty, got %s" % keys2)

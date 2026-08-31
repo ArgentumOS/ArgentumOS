@@ -52,6 +52,11 @@ static int bfs_btree_split(struct inode *, struct bfs_btree_header *,
 			   __u64, int, int);
 static int bfs_btree_insert_dup(struct inode *, struct buffer *, int, __u64);
 static int bfs_btree_remove_dup(struct inode *, struct buffer *, int, __u64);
+static int bfs_dup_link_type(__u64);
+static __u64 bfs_dup_link_off(__u64);
+static int bfs_dup_link_frag(__u64);
+static __u64 *bfs_dup_array(struct buffer *, int);
+static __u64 *bfs_dup_node_array(struct bfs_btree_node *);
 
 /* key-length index: cumulative end offsets of each key */
 static __u16 *bfs_btree_keylen_index(struct bfs_btree_node *n)
@@ -148,27 +153,50 @@ static int bfs_btree_write_header(struct inode *i, struct bfs_btree_header *head
  * or -ENOENT with *index = the insertion point (first key > name).
  */
 /* compare a search key against a stored key. STRING trees use the
- * prefix-aware byte order; the INT64 index trees compare signed 64-bit
- * values (Haiku's QueryParser::compareKeys) */
+ * prefix-aware byte order; the fixed-size index trees compare the
+ * native (little-endian, host-order) values numerically — exactly
+ * Haiku's QueryParser::compareKeys (no canonical byte-swap; the tree
+ * stores numeric keys in host byte order) */
 static int bfs_btree_key_cmp(int dtype, const char *k1, int l1,
 			     const char *k2, int l2)
 {
-	if(dtype == BFS_BTREE_INT64_TYPE) {
-		__s64 v1, v2;
+#define BFS_CMP_INT(_t) do {						\
+	_t v1, v2;							\
+	if(l1 != (int)sizeof(_t) || l2 != (int)sizeof(_t)) {		\
+		return l1 - l2;						\
+	}								\
+	memcpy_b(&v1, k1, sizeof(_t));					\
+	memcpy_b(&v2, k2, sizeof(_t));					\
+	if(v1 < v2) {							\
+		return -1;						\
+	}								\
+	if(v1 > v2) {							\
+		return 1;						\
+	}								\
+	return 0;							\
+} while(0)
 
-		if(l1 != 8 || l2 != 8) {
-			return l1 - l2;
-		}
-		memcpy_b(&v1, k1, 8);
-		memcpy_b(&v2, k2, 8);
-		if(v1 < v2) {
-			return -1;
-		}
-		if(v1 > v2) {
-			return 1;
-		}
-		return 0;
+	switch(dtype) {
+	case BFS_BTREE_INT32_TYPE:
+		BFS_CMP_INT(__s32);
+	case BFS_BTREE_UINT32_TYPE:
+		BFS_CMP_INT(__u32);
+	case BFS_BTREE_INT64_TYPE:
+		BFS_CMP_INT(__s64);
+	case BFS_BTREE_UINT64_TYPE:
+		BFS_CMP_INT(__u64);
+	case BFS_BTREE_FLOAT_TYPE:
+		BFS_CMP_INT(float);
+	case BFS_BTREE_DOUBLE_TYPE:
+		BFS_CMP_INT(double);
+	case BFS_BTREE_INT8_TYPE:
+		BFS_CMP_INT(__s8);
+	case BFS_BTREE_INT16_TYPE:
+		BFS_CMP_INT(__s16);
+	default:
+		break;
 	}
+#undef BFS_CMP_INT
 	/* STRING and anything else: byte order with the prefix rule */
 	{
 		int cmp = strncmp(k1, k2, (l1 < l2) ? l1 : l2);
@@ -311,6 +339,169 @@ int bfs_btree_iterate(struct inode *dir, int (*fn)(const char *, __ino_t, void *
 				brelse(buf);
 				return 0;
 			}
+		}
+		if(n->right == BFS_BTREE_NULL) {
+			brelse(buf);
+			return 0;
+		}
+		node_off = n->right;
+		brelse(buf);
+	}
+}
+
+/*
+ * Iterate every (key, keylen, inode) pair of a tree in key order,
+ * EXPANDING the duplicate-key machinery: a leaf value is a direct
+ * inode, a fragment link (BFS_BTREE_DUPLICATE_FRAGMENT) or a
+ * duplicate-node link (BFS_BTREE_DUPLICATE_NODE, a right-link chain);
+ * each expanded value is reported once. This is the query engine's
+ * view of an index tree (Haiku's BQuery walks the same structures).
+ */
+int bfs_btree_iterate_values(struct inode *dir, int dtype,
+			     int (*fn)(const char *, int, __ino_t, void *),
+			     void *arg)
+{
+	struct bfs_btree_header header;
+	struct bfs_btree_node *n;
+	struct buffer *buf;
+	__u64 node_off;
+	int index, keylen, res;
+
+	if((res = bfs_btree_read_header(dir, &header))) {
+		return res;
+	}
+	if(header.data_type != dtype && dtype != BFS_BTREE_STRING_TYPE
+			&& dtype != -1) {
+		/* the caller asked for one type but the tree is another
+		 * (e.g. STRING name index vs an INT64 index); refuse to
+		 * mis-decode the keys. -1 matches any type */
+		return -EINVAL;
+	}
+	(void)dtype;
+
+	/* descend to the leftmost leaf, then iterate right via the links */
+	node_off = header.root_node_ptr;
+	for(;;) {
+		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+			return -EIO;
+		}
+		n = (struct bfs_btree_node *)buf->data;
+		if(n->overflow != BFS_BTREE_NULL) {
+			node_off = n->all_key_count ?
+				bfs_btree_values(n)[0] : n->overflow;
+			brelse(buf);
+			continue;
+		}
+		brelse(buf);
+		break;
+	}
+
+	for(;;) {
+		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+			return -EIO;
+		}
+		n = (struct bfs_btree_node *)buf->data;
+		if(n->overflow != BFS_BTREE_NULL) {
+			brelse(buf);
+			return -EIO;
+		}
+		for(index = 0; index < n->all_key_count; index++) {
+			char keybuf[BFS_BTREE_MAX_KEY_LEN];
+			__u64 value;
+			keylen = 0;
+			{
+				char *key = bfs_btree_key(n, index, &keylen);
+				if(keylen >= BFS_BTREE_MAX_KEY_LEN) {
+					brelse(buf);
+					return -EIO;
+				}
+				memcpy_b(keybuf, key, keylen);
+			}
+			keybuf[keylen] = 0;
+			value = bfs_btree_values(n)[index];
+
+			/* direct value */
+			if(bfs_dup_link_type(value) <= 1) {
+				if(fn(keybuf, keylen, (__ino_t)value, arg)) {
+					brelse(buf);
+					return 0;
+				}
+				continue;
+			}
+			if(bfs_dup_link_type(value) == BFS_BTREE_DUPLICATE_FRAGMENT) {
+				/* a fragment slot: {count, values[7]} */
+				struct buffer *fb;
+				__u64 *arr;
+				int s;
+
+				if(!(fb = bfs_btree_read_node(dir,
+						bfs_dup_link_off(value)))) {
+					brelse(buf);
+					return -EIO;
+				}
+				arr = bfs_dup_array(fb, bfs_dup_link_frag(value));
+				if(arr[0] > 7) {
+					/* a fragment slot holds at most 7
+					 * values; refuse a corrupt count */
+					brelse(fb);
+					brelse(buf);
+					return -EIO;
+				}
+				for(s = 0; s < (int)arr[0]; s++) {
+					if(fn(keybuf, keylen, (__ino_t)arr[1 + s],
+					    arg)) {
+						brelse(fb);
+						brelse(buf);
+						return 0;
+					}
+				}
+				brelse(fb);
+				continue;
+			}
+			if(bfs_dup_link_type(value) == BFS_BTREE_DUPLICATE_NODE) {
+				/* a duplicate-node chain: {left, right,
+				 * count@16, values[125]@24} */
+				__u64 noff = bfs_dup_link_off(value);
+				int hops = 0;
+
+				while(noff != (__u64)BFS_BTREE_NULL) {
+					if(++hops > 4096) {
+						/* a corrupt next link would
+						 * walk forever */
+						brelse(buf);
+						return -EIO;
+					}
+					struct bfs_btree_node *dn;
+					struct buffer *db;
+					__u64 *arr;
+					int s;
+
+					if(!(db = bfs_btree_read_node(dir,
+							noff))) {
+						brelse(buf);
+						return -EIO;
+					}
+					dn = (struct bfs_btree_node *)db->data;
+					arr = bfs_dup_node_array(dn);
+					if(arr[0] > 125) {
+						brelse(db);
+						brelse(buf);
+						return -EIO;
+					}
+					for(s = 0; s < (int)arr[0]; s++) {
+						if(fn(keybuf, keylen,
+						    (__ino_t)arr[1 + s], arg)) {
+							brelse(db);
+							brelse(buf);
+							return 0;
+						}
+					}
+					noff = dn->right;
+					brelse(db);
+				}
+				continue;
+			}
+			/* unknown link type: skip (defensive) */
 		}
 		if(n->right == BFS_BTREE_NULL) {
 			brelse(buf);
