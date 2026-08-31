@@ -83,10 +83,14 @@ static int bfs_index_del(struct superblock *sb, const char *idx, int dtype,
 	return res;
 }
 
-/* the "name" + "size" + "last_modified" index keys for an inode */
+/* the "name" + "size" + "last_modified" index keys for an inode.
+ * The mtime key is the FULL stored value (seconds << 16 | subsecond),
+ * set by bfs_touch_mtime() into the in-memory raw inode — the same
+ * value bfs_write_inode() puts on disk, so Haiku's index and our
+ * verifier agree. */
 static __s64 bfs_index_mtime_key(struct inode *i)
 {
-	return (__s64)((__u64)i->i_mtime << 16);
+	return (__s64)i->u.bfs.raw.last_modified_time;
 }
 
 /*
@@ -135,9 +139,11 @@ void bfs_index_remove(struct superblock *sb, struct inode *i,
 void bfs_index_resize(struct superblock *sb, struct inode *i,
 		      __off_t old_size, __u64 old_mtime)
 {
+	/* old_mtime is the FULL old stored key (sec << 16 | subsecond),
+	 * captured from the raw inode before the update */
 	__s64 osz = (__s64)old_size;
 	__s64 nsz = (__s64)i->i_size;
-	__s64 omt = (__s64)((__u64)old_mtime << 16);
+	__s64 omt = (__s64)old_mtime;
 	__s64 nmt = bfs_index_mtime_key(i);
 
 	if(!sb->u.bfs.indices_inode) {
@@ -152,17 +158,23 @@ void bfs_index_resize(struct superblock *sb, struct inode *i,
 	/* only touch an index when its value actually changed: a
 	 * same-value resize would otherwise remove + re-insert the same
 	 * key (wasted churn, and on the last_modified index it can
-	 * resurrect an entry removed by the unlink) */
+	 * resurrect an entry removed by the unlink). The put follows the
+	 * del: a del of a key that was never indexed (the root and the
+	 * mkbfs-created dirs are not in the driver's indices) must not
+	 * add the inode out of nowhere — Haiku indexes only inodes it
+	 * creates. */
 	if(osz != nsz) {
-		bfs_index_del(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&osz, 8,
-			      i->inode);
-		bfs_index_put(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&nsz, 8,
-			      i->inode);
+		if(bfs_index_del(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&osz,
+				 8, i->inode) == 0) {
+			bfs_index_put(sb, "size", BFS_BTREE_INT64_TYPE,
+				      (char *)&nsz, 8, i->inode);
+		}
 	}
 	if(omt != nmt) {
-		bfs_index_del(sb, "last_modified", BFS_BTREE_INT64_TYPE,
-			      (char *)&omt, 8, i->inode);
-		bfs_index_put(sb, "last_modified", BFS_BTREE_INT64_TYPE,
-			      (char *)&nmt, 8, i->inode);
+		if(bfs_index_del(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+				 (char *)&omt, 8, i->inode) == 0) {
+			bfs_index_put(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+				      (char *)&nmt, 8, i->inode);
+		}
 	}
 }

@@ -164,6 +164,12 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 		 __size_t size, int flags)
 {
 	struct bfs_xattr_find f;
+
+	/* Haiku's B_ATTR_NAME_LENGTH (255); refusing keeps volumes we
+	 * create writable by Haiku */
+	if(strlen(name) > BFS_ATTR_NAME_MAX) {
+		return -ENAMETOOLONG;
+	}
 	char area[BFS_SMALL_DATA_SIZE];
 	char *q = area;
 	char *p = bfs_xattr_area(i);

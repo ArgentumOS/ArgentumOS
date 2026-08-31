@@ -101,8 +101,7 @@ int bfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	/* keep the name/size/last_modified indices in sync (Haiku) */
 	bfs_index_add(dir->sb, i, name);
 
-	dir->i_mtime = CURRENT_TIME;
-	dir->i_ctime = CURRENT_TIME;
+	bfs_dir_touch(dir);
 	dir->state |= INODE_DIRTY;
 
 	*i_res = i;
@@ -201,10 +200,13 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 			values[1] = dir->inode;
 		}
 		i->i_size = 2 * BFS_BLOCK_SIZE;
+		/* the two bmap() calls above already built the runs; the
+		 * second block is only contiguous when the extension of the
+		 * first run succeeds (block2 == block + 1). Hardcoding
+		 * len = 2 here would claim a block the allocator may have
+		 * given to something else (the hello.txt at block 32 in the
+		 * mkbfs layout), corrupting the new directory's tree. */
 		raw = &i->u.bfs.raw;
-		raw->u.data.direct[0].allocation_group = 0;
-		raw->u.data.direct[0].start = block;
-		raw->u.data.direct[0].len = 2;
 		raw->u.data.size = 2 * BFS_BLOCK_SIZE;
 		i->state |= INODE_DIRTY;
 		bwrite(buf2);
@@ -220,8 +222,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 	bfs_inode_set_name(i, name);
 	bfs_index_add(dir->sb, i, name);
 
-	dir->i_mtime = CURRENT_TIME;
-	dir->i_ctime = CURRENT_TIME;
+	bfs_dir_touch(dir);
 	dir->i_nlink++;
 	dir->state |= INODE_DIRTY;
 
@@ -253,11 +254,10 @@ int bfs_link(struct inode *i_old, struct inode *dir_new, char *name)
 	}
 
 	i_old->i_nlink++;
-	i_old->i_ctime = CURRENT_TIME;
+	bfs_touch_ctime(i_old);
 	i_old->state |= INODE_DIRTY;
 
-	dir_new->i_mtime = CURRENT_TIME;
-	dir_new->i_ctime = CURRENT_TIME;
+	bfs_dir_touch(dir_new);
 	dir_new->state |= INODE_DIRTY;
 
 	inode_unlock(dir_new);
@@ -286,9 +286,8 @@ int bfs_unlink(struct inode *dir, struct inode *i, char *name)
 	if(!--i->i_nlink) {
 		/* freed when iput'd */
 	}
-	i->i_ctime = CURRENT_TIME;
-	dir->i_mtime = CURRENT_TIME;
-	dir->i_ctime = CURRENT_TIME;
+	bfs_touch_ctime(i);
+	bfs_dir_touch(dir);
 
 	i->state |= INODE_DIRTY;
 	dir->state |= INODE_DIRTY;
@@ -326,9 +325,8 @@ int bfs_rmdir(struct inode *dir, struct inode *i)
 	i->i_nlink = 0;
 	dir->i_nlink--;
 
-	i->i_ctime = CURRENT_TIME;
-	dir->i_mtime = CURRENT_TIME;
-	dir->i_ctime = CURRENT_TIME;
+	bfs_touch_ctime(i);
+	bfs_dir_touch(dir);
 
 	i->state |= INODE_DIRTY;
 	dir->state |= INODE_DIRTY;
@@ -428,8 +426,7 @@ int bfs_symlink(struct inode *dir, char *name, char *oldname)
 	bfs_inode_set_name(i, name);
 	bfs_index_add(dir->sb, i, name);
 
-	dir->i_mtime = CURRENT_TIME;
-	dir->i_ctime = CURRENT_TIME;
+	bfs_dir_touch(dir);
 	dir->state |= INODE_DIRTY;
 
 	iput(i);
@@ -481,12 +478,10 @@ int bfs_rename(struct inode *i_old, struct inode *dir_old,
 	bfs_index_remove(dir_old->sb, i_old, oldpath);
 	bfs_index_add(dir_old->sb, i_old, newpath);
 
-	dir_old->i_mtime = CURRENT_TIME;
-	dir_old->i_ctime = CURRENT_TIME;
+	bfs_dir_touch(dir_old);
 	dir_old->state |= INODE_DIRTY;
 	if(dir_new != dir_old) {
-		dir_new->i_mtime = CURRENT_TIME;
-		dir_new->i_ctime = CURRENT_TIME;
+		bfs_dir_touch(dir_new);
 		dir_new->state |= INODE_DIRTY;
 	}
 

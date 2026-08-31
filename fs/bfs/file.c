@@ -44,7 +44,7 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 	blksize = i->sb->s_blocksize;
 	retval = total_written = 0;
 	old_size = i->i_size;
-	old_mtime = i->i_mtime;
+	old_mtime = i->u.bfs.raw.last_modified_time;
 
 	if(f->flags & O_APPEND) {
 		f->offset = i->i_size;
@@ -80,8 +80,8 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 		 * rounding so any allocated block counts (i_blocks == 0 would
 		 * skip the truncate and leak the block) */
 		i->i_blocks = (i->i_size + 511) >> 9;
-		i->i_ctime = CURRENT_TIME;
-		i->i_mtime = CURRENT_TIME;
+		bfs_touch_mtime(i);
+		bfs_touch_ctime(i);
 		i->state |= INODE_DIRTY;
 		bfs_index_resize(i->sb, i, old_size, old_mtime);
 	}

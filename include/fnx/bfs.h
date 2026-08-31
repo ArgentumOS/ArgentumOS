@@ -326,6 +326,9 @@ int bfs_inode_get_name(struct inode *, char *, int);
 void bfs_index_add(struct superblock *, struct inode *, const char *);
 void bfs_index_remove(struct superblock *, struct inode *, const char *);
 void bfs_index_resize(struct superblock *, struct inode *, __off_t, __u64);
+void bfs_touch_mtime(struct inode *);
+void bfs_touch_ctime(struct inode *);
+void bfs_dir_touch(struct inode *);
 
 /* the typed index-tree API (duplicate-key aware); 'dtype' is one of
  * the BFS_BTREE_*_TYPE constants from the tree header */

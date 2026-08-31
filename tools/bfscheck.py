@@ -373,7 +373,8 @@ def check(path, rootdir=None):
             # stream symlink: the target lives in the data stream, its
             # length in data.size; pad[0] is not part of the format
             size = dsize
-            target = read_stream(io, size)
+            target = read_stream(io, size, referenced)
+            referenced.update(stream_blocks(io, referenced))
         else:
             # inline symlink: NUL-terminated text in the symlink area
             # (Haiku stores no length; pad[0] is our legacy extension)

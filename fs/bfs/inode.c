@@ -22,6 +22,7 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
+#include <fnx/timer.h>
 #include <fnx/bfs.h>
 #include <fnx/buffer.h>
 #include <fnx/fcntl.h>
@@ -45,6 +46,50 @@ int bfs_open(struct inode *i, struct fd *f)
 int bfs_close(struct inode *i, struct fd *f)
 {
 	return 0;
+}
+
+/*
+ * Haiku stores times as (seconds << 16) | subsecond (the low 16 bits
+ * are a 65536th-of-a-second fraction). The subsecond comes from the
+ * tick clock (HZ = 100), the same source gettimeofday uses.
+ */
+static __u16 bfs_subsecond(void)
+{
+	return (__u16)(((__u64)(CURRENT_TICKS % HZ) * 65536) / HZ);
+}
+
+/*
+ * Set the modification / status-change times, storing the full
+ * (sec << 16) | subsecond value in the in-memory raw inode (the same
+ * value the last_modified index key and bfs_write_inode() use).
+ */
+void bfs_touch_mtime(struct inode *i)
+{
+	i->i_mtime = CURRENT_TIME;
+	i->u.bfs.raw.last_modified_time =
+		((__u64)i->i_mtime << 16) | bfs_subsecond();
+}
+
+void bfs_touch_ctime(struct inode *i)
+{
+	i->i_ctime = CURRENT_TIME;
+	i->u.bfs.raw.status_change_time =
+		((__u64)i->i_ctime << 16) | bfs_subsecond();
+}
+
+/*
+ * A directory's content changed (a create/link/unlink/rename inside):
+ * its size and last_modified moved, so its index entries (Haiku
+ * indexes directories too) must move with them.
+ */
+void bfs_dir_touch(struct inode *dir)
+{
+	__off_t old_size = dir->i_size;
+	__u64 old_mtime = dir->u.bfs.raw.last_modified_time;
+
+	bfs_touch_mtime(dir);
+	bfs_touch_ctime(dir);
+	bfs_index_resize(dir->sb, dir, old_size, old_mtime);
 }
 
 int bfs_read_inode(struct inode *i)
@@ -148,8 +193,21 @@ int bfs_write_inode(struct inode *i)
 	} else {
 		i->u.bfs.raw.u.data.size = i->i_size;
 	}
-	i->u.bfs.raw.last_modified_time = (__u64)i->i_mtime << 16;
-	i->u.bfs.raw.status_change_time = (__u64)i->i_ctime << 16;
+	{
+		__u64 lm = i->u.bfs.raw.last_modified_time;
+		__u64 sc = i->u.bfs.raw.status_change_time;
+		/* the raw fields already carry (sec << 16) | subsecond from
+		 * the touch; only rewrite when the seconds moved directly
+		 * (e.g. utimensat), in which case there is no subsecond */
+		i->u.bfs.raw.last_modified_time =
+			((lm >> 16) == (__u64)i->i_mtime)
+			? ((__u64)i->i_mtime << 16) | (lm & 0xFFFF)
+			: ((__u64)i->i_mtime << 16);
+		i->u.bfs.raw.status_change_time =
+			((sc >> 16) == (__u64)i->i_ctime)
+			? ((__u64)i->i_ctime << 16) | (sc & 0xFFFF)
+			: ((__u64)i->i_ctime << 16);
+	}
 	if(i->inode >= 23 && i->inode <= 27) {
 			}
 	memcpy_b(raw, &i->u.bfs.raw, sizeof(struct bfs_inode));
@@ -222,12 +280,12 @@ int bfs_ialloc(struct inode *i, int mode)
 	 * buffer from i->u.bfs.raw, which ialloc leaves zeroed */
 	i->u.bfs.raw.inode_size = BFS_BLOCK_SIZE;
 	i->u.bfs.raw.u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
-	/* creation time: Haiku encodes (seconds << 16) | subsecond; we
-	 * have no subsecond clock, so the low 16 bits stay 0 */
-	i->u.bfs.raw.create_time = (__u64)CURRENT_TIME << 16;
+	/* creation time: Haiku encodes (seconds << 16) | subsecond */
+	i->u.bfs.raw.create_time =
+		((__u64)CURRENT_TIME << 16) | bfs_subsecond();
 	i->i_atime = CURRENT_TIME;
-	i->i_mtime = CURRENT_TIME;
-	i->i_ctime = CURRENT_TIME;
+	bfs_touch_mtime(i);
+	bfs_touch_ctime(i);
 	return 0;
 }
 
@@ -581,7 +639,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 	struct bfs_data_stream *ds = &i->u.bfs.raw.u.data;
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
 	__off_t old_size = i->i_size;
-	__u64 old_mtime = i->i_mtime;
+	__u64 old_mtime = i->u.bfs.raw.last_modified_time;
 
 	__u64 covered = 0;
 	int run;
@@ -718,7 +776,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 
 	i->i_size = length;
 	i->u.bfs.raw.u.data.size = length;
-	i->i_mtime = CURRENT_TIME;
+	bfs_touch_mtime(i);
 	i->state |= INODE_DIRTY;
 	bfs_index_resize(i->sb, i, old_size, old_mtime);
 	return 0;
