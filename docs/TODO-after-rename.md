@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482)
+## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -653,7 +653,7 @@ S1-S8, M4d X1-X5, M4e J1-J6 + jrnl_craft replay (block restored, log
 clean). The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
 
 The m4b residual (last_modified index silently stopping at ~755 of 8000
-entries) is FIXED (797d482) with TWO root causes:
+entries) is FIXED (797d482 + ef7bbc8) with TWO root causes:
 1. bfs_indirect_bmap returned -EIO at the first *unset* double-indirect
    entry: the walk iterated to the phantom table_len (indirect.len +
    dind.len*256), so when the last_modified tree's stream passed
@@ -661,7 +661,11 @@ entries) is FIXED (797d482) with TWO root causes:
    failed and bfs_index_add (which ignores insert errors) dropped the
    entries. An unset double entry is now the end of the table (reads:
    unmapped; writes: grow at that slot), and the grow records the new
-   table block + zeroes it at the real slot 't', not table_len.
+   table block + zeroes it at the real slot ('new_slot': 0 for the
+   first table block, indirect.len-1 for a contiguous extension — which
+   is guarded to dind.len == 0, else the extension would renumber the
+   double entries — and 't' for a double-table block), never the
+   phantom table_len.
 2. bfs_dir_touch read i_size AFTER the dir-tree mutation, so
    osz == nsz and a directory's size index entry never moved past its
    mkdir-time size. Callers now pass the pre-mutation size.
