@@ -26,8 +26,6 @@
 #include <fnx/buffer.h>
 #include <fnx/string.h>
 
-#define BFS_BITS_PER_BLOCK	(BFS_BLOCK_SIZE << 3)
-
 /* block number -> (group, bit-in-group) */
 static __u32 bfs_group(struct superblock *sb, __blk_t block)
 {
@@ -44,7 +42,7 @@ static int bfs_bitmap_test(struct superblock *sb, __blk_t block)
 	__u32 bit = bfs_group_bit(sb, block);
 	unsigned char *bm = sb->u.bfs.bitmap
 		+ ((__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-			* BFS_BLOCK_SIZE);
+			* sb->u.bfs.block_size);
 
 	return bm[bit >> 3] & (1 << (bit & 7));
 }
@@ -54,7 +52,7 @@ static void bfs_bitmap_set(struct superblock *sb, __blk_t block)
 	__u32 bit = bfs_group_bit(sb, block);
 	unsigned char *bm = sb->u.bfs.bitmap
 		+ ((__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-			* BFS_BLOCK_SIZE);
+			* sb->u.bfs.block_size);
 
 	bm[bit >> 3] |= (1 << (bit & 7));
 }
@@ -64,7 +62,7 @@ static void bfs_bitmap_clear(struct superblock *sb, __blk_t block)
 	__u32 bit = bfs_group_bit(sb, block);
 	unsigned char *bm = sb->u.bfs.bitmap
 		+ ((__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-			* BFS_BLOCK_SIZE);
+			* sb->u.bfs.block_size);
 
 	bm[bit >> 3] &= ~(1 << (bit & 7));
 }

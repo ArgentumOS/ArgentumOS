@@ -46,7 +46,7 @@ static int bfs_btree_search_node_t(struct bfs_btree_node *, const char *, int,
 static int bfs_btree_collect_t(struct bfs_btree_node *, struct bfs_btree_pair *,
 			      int, int, const char *, int, __u64, int, char *);
 static int bfs_btree_serialize(struct bfs_btree_node *, struct bfs_btree_pair *,
-			       int, __u64, __u64, __u64);
+			       int, __u64, __u64, __u64, __u32);
 static int bfs_btree_split(struct inode *, struct bfs_btree_header *,
 			   __u64 *, int, struct bfs_btree_pair *, int, int,
 			   __u64, int, int);
@@ -92,7 +92,7 @@ static struct buffer *bfs_btree_read_node(struct inode *i, __u64 off)
 	__blk_t block;
 	struct buffer *buf;
 
-	if(off & (BFS_BLOCK_SIZE - 1)) {
+	if(off & (i->sb->s_blocksize - 1)) {
 		return NULL;	/* nodes are block aligned */
 	}
 		if((block = bfs_bmap(i, (__off_t)off, FOR_READING)) < 0) {
@@ -101,7 +101,7 @@ static struct buffer *bfs_btree_read_node(struct inode *i, __u64 off)
 		if(!block) {
 		return NULL;
 	}
-	if(!(buf = bread(i->dev, block, BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(i->dev, block, i->sb->s_blocksize))) {
 				return NULL;
 	}
 		return buf;
@@ -120,7 +120,7 @@ static int bfs_btree_read_header(struct inode *i, struct bfs_btree_header *heade
 		return -EIO;
 	}
 	h = (struct bfs_btree_header *)buf->data;
-	if(h->magic != BFS_BTREE_MAGIC || h->node_size != BFS_BLOCK_SIZE) {
+	if(h->magic != BFS_BTREE_MAGIC || h->node_size != i->sb->s_blocksize) {
 		brelse(buf);
 		return -EINVAL;
 	}
@@ -518,12 +518,13 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
  * scratch copy, which is much less error-prone than in-place shifting.
  * Returns 0 on success, -ENOSPC if the rebuilt node would overflow.
  */
-static int bfs_btree_node_room(struct bfs_btree_node *n, int keylen)
+static int bfs_btree_node_room(struct bfs_btree_node *n, int keylen,
+			      __u32 bsize)
 {
 	int used = sizeof(struct bfs_btree_node) + n->all_key_length + keylen;
 	int cnt = n->all_key_count + 1;
 
-	return ((used + 7) & ~7) + cnt * 2 + cnt * 8 <= BFS_BLOCK_SIZE;
+	return ((used + 7) & ~7) + cnt * 2 + cnt * 8 <= bsize;
 }
 
 /*
@@ -669,12 +670,12 @@ static int bfs_btree_collect_t(struct bfs_btree_node *n,
 static int bfs_btree_serialize(struct bfs_btree_node *n,
 			       struct bfs_btree_pair *pairs, int count,
 			       __u64 interior_overflow, __u64 right,
-			       __u64 left)
+			       __u64 left, __u32 bsize)
 {
 	char *keydata;
 	int total = 0, i, off = 0;
 
-	if(!(keydata = (char *)kmalloc(BFS_BLOCK_SIZE))) {
+	if(!(keydata = (char *)kmalloc(bsize))) {
 		return -ENOMEM;
 	}
 	for(i = 0; i < count; i++) {
@@ -683,7 +684,7 @@ static int bfs_btree_serialize(struct bfs_btree_node *n,
 		total += pairs[i].keylen;
 	}
 
-	memset_b(n, 0, BFS_BLOCK_SIZE);
+	memset_b(n, 0, bsize);
 	n->left = left;
 	n->right = right;
 	n->overflow = interior_overflow;	/* -1 => leaf */
@@ -716,7 +717,8 @@ static int bfs_btree_write_node(struct inode *dir, __u64 off,
 		return -EIO;
 	}
 	n = (struct bfs_btree_node *)buf->data;
-	bfs_btree_serialize(n, pairs, count, overflow, right, left);
+	bfs_btree_serialize(n, pairs, count, overflow, right, left,
+			       dir->sb->s_blocksize);
 	bfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
@@ -755,7 +757,7 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off)
 		return block;
 	}
 		*off = dir->i_size;
-	dir->i_size += BFS_BLOCK_SIZE;
+	dir->i_size += dir->sb->s_blocksize;
 	dir->u.bfs.raw.u.data.size = dir->i_size;
 	dir->state |= INODE_DIRTY;
 
@@ -871,7 +873,8 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		/* the left half stays in the old root block */
 		bfs_btree_serialize(n, pairs, split_at, left_overflow,
 				    is_leaf ? right_off : BFS_BTREE_NULL,
-				    is_leaf ? old_left : BFS_BTREE_NULL);
+				    is_leaf ? old_left : BFS_BTREE_NULL,
+				    dir->sb->s_blocksize);
 		bfs_log_write_block(dir->sb, buf->block, buf);
 
 		/* a new root block: one separator, two children */
@@ -883,7 +886,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			return -EIO;
 		}
 		n = (struct bfs_btree_node *)buf->data;
-		memset_b(n, 0, BFS_BLOCK_SIZE);
+		memset_b(n, 0, dir->sb->s_blocksize);
 		n->left = BFS_BTREE_NULL;
 		n->right = BFS_BTREE_NULL;
 		n->overflow = right_off;
@@ -924,7 +927,8 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 	}
 	bfs_btree_serialize(n, pairs, split_at, left_overflow,
 			    is_leaf ? right_off : BFS_BTREE_NULL,
-			    is_leaf ? old_left : BFS_BTREE_NULL);
+			    is_leaf ? old_left : BFS_BTREE_NULL,
+			    dir->sb->s_blocksize);
 	bfs_log_write_block(dir->sb, buf->block, buf);
 
 	/* insert the separator into the parent, splitting the parent
@@ -945,7 +949,8 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 
 		if(!(pp = (struct bfs_btree_pair *)kmalloc(
 				128 * sizeof(struct bfs_btree_pair)))
-				|| !(pkb = (char *)kmalloc(2 * BFS_BLOCK_SIZE))) {
+				|| !(pkb = (char *)kmalloc(
+					dir->sb->s_blocksize))) {
 			if(pp) {
 				kfree((addr_t)pp);
 			}
@@ -1019,12 +1024,13 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			}
 			if(((sizeof(struct bfs_btree_node) + klen_total + 7) & ~7)
 					+ pcount * 2 + (pcount + 1) * 8
-					<= BFS_BLOCK_SIZE) {
+					<= dir->sb->s_blocksize) {
 				/* the parent has room: rebuild it in place */
 				bfs_btree_serialize(parent, pp, pcount,
 						    parent_overflow,
 						    BFS_BTREE_NULL,
-						    BFS_BTREE_NULL);
+						    BFS_BTREE_NULL,
+						    dir->sb->s_blocksize);
 				bfs_log_write_block(dir->sb, parent_buf->block,
 						    parent_buf);
 				kfree((addr_t)pkb);
@@ -1095,10 +1101,10 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 		return (res < 0) ? res : 0;
 	}
 
-	if(bfs_btree_node_room(n, keylen)) {
+	if(bfs_btree_node_room(n, keylen, dir->sb->s_blocksize)) {
 		/* the leaf has room: rebuild it in place */
 		static struct bfs_btree_pair spairs[128];
-		static char skb[BFS_BLOCK_SIZE];
+		static char skb[BFS_MAX_BLOCK_SIZE];
 		pairs = spairs;
 		count = bfs_btree_collect_t(n, pairs, 128, 1, key, keylen,
 					    value, dtype, skb);
@@ -1107,7 +1113,7 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 			return -EEXIST;
 		}
 		bfs_btree_serialize(n, pairs, count, BFS_BTREE_NULL, n->right,
-				    n->left);
+				    n->left, dir->sb->s_blocksize);
 		bfs_log_write_block(dir->sb, buf->block, buf);
 		return 0;
 	}
@@ -1115,7 +1121,7 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 	/* the leaf is full: collect everything + the new pair, then split */
 	{
 		static struct bfs_btree_pair spairs[128];
-		static char skb[BFS_BLOCK_SIZE];
+		static char skb[BFS_MAX_BLOCK_SIZE];
 		pairs = spairs;
 		count = bfs_btree_collect_t(n, pairs, 128, 1, key, keylen,
 					    value, dtype, skb);
@@ -1282,7 +1288,7 @@ static int bfs_dup_find_fragment(struct inode *dir, struct bfs_btree_node *n,
 	if(!(*nb = bfs_btree_read_node(dir, *off))) {
 		return -EIO;
 	}
-	memset_b((*nb)->data, 0, BFS_BLOCK_SIZE);
+	memset_b((*nb)->data, 0, dir->sb->s_blocksize);
 	*slot = 0;
 	return 0;
 }
@@ -1371,7 +1377,7 @@ static int bfs_btree_dup_fragment_add(struct inode *dir, struct buffer *buf,
 		brelse(nb);
 		return -EIO;
 	}
-	memset_b(ndb->data, 0, BFS_BLOCK_SIZE);
+	memset_b(ndb->data, 0, dir->sb->s_blocksize);
 	dn = (struct bfs_btree_node *)ndb->data;
 	dn->left = BFS_BTREE_NULL;
 	dn->right = BFS_BTREE_NULL;
@@ -1432,7 +1438,7 @@ static int bfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
 			brelse(nb);
 			return -EIO;
 		}
-		memset_b(ndb->data, 0, BFS_BLOCK_SIZE);
+		memset_b(ndb->data, 0, dir->sb->s_blocksize);
 		dn = (struct bfs_btree_node *)ndb->data;
 		dn->left = noff;
 		dn->right = BFS_BTREE_NULL;

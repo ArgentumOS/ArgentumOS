@@ -114,7 +114,7 @@ int bfs_log_replay(struct superblock *sb)
 		struct bfs_run_array *array;
 		int i;
 
-		if(!(buf = bread(sb->dev, bfs_log_block(sb, pos), BFS_BLOCK_SIZE))) {
+		if(!(buf = bread(sb->dev, bfs_log_block(sb, pos), sb->u.bfs.block_size))) {
 			printk("WARNING: %s(): I/O error reading log at block %lu.\n",
 			       __FUNCTION__, (unsigned long)pos);
 			/* do NOT clear the log: the un-replayed tail must
@@ -161,16 +161,16 @@ int bfs_log_replay(struct superblock *sb)
 				brelse(buf);
 				return -EIO;
 			}
-			if(!(db = bread(sb->dev, dbuf_blk, BFS_BLOCK_SIZE))) {
+			if(!(db = bread(sb->dev, dbuf_blk, sb->u.bfs.block_size))) {
 				brelse(buf);
 				return -EIO;
 			}
-			if(!(rb = bread(sb->dev, real, BFS_BLOCK_SIZE))) {
+			if(!(rb = bread(sb->dev, real, sb->u.bfs.block_size))) {
 				brelse(db);
 				brelse(buf);
 				return -EIO;
 			}
-			memcpy_b(rb->data, db->data, BFS_BLOCK_SIZE);
+			memcpy_b(rb->data, db->data, sb->u.bfs.block_size);
 			bwrite(rb);
 			brelse(db);
 			replayed++;
@@ -229,7 +229,7 @@ int bfs_log_record(struct superblock *sb, __blk_t blk, unsigned char *data)
 	/* dedupe: a block modified twice records its final content once */
 	for(i = 0; i < sb->u.bfs.tx_nblocks; i++) {
 		if(sb->u.bfs.tx_blocks[i] == blk) {
-			memcpy_b(sb->u.bfs.tx_data[i], data, BFS_BLOCK_SIZE);
+			memcpy_b(sb->u.bfs.tx_data[i], data, sb->u.bfs.block_size);
 			return 0;
 		}
 	}
@@ -238,10 +238,10 @@ int bfs_log_record(struct superblock *sb, __blk_t blk, unsigned char *data)
 	}
 	/* kmalloc a scratch copy (the caller's buffer may be reused) */
 	if(!(sb->u.bfs.tx_data[sb->u.bfs.tx_nblocks] =
-			(unsigned char *)kmalloc(BFS_BLOCK_SIZE))) {
+			(unsigned char *)kmalloc(sb->u.bfs.block_size))) {
 		return -ENOMEM;
 	}
-	memcpy_b(sb->u.bfs.tx_data[sb->u.bfs.tx_nblocks], data, BFS_BLOCK_SIZE);
+	memcpy_b(sb->u.bfs.tx_data[sb->u.bfs.tx_nblocks], data, sb->u.bfs.block_size);
 	sb->u.bfs.tx_blocks[sb->u.bfs.tx_nblocks] = blk;
 	sb->u.bfs.tx_nblocks++;
 	return 0;
@@ -278,11 +278,11 @@ static int bfs_log_write_bitmap(struct superblock *sb)
 	__u32 i;
 
 	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
-		if(!(bb = bread(sb->dev, 1 + i, BFS_BLOCK_SIZE))) {
+		if(!(bb = bread(sb->dev, 1 + i, sb->u.bfs.block_size))) {
 			return -EIO;
 		}
-		memcpy_b(bb->data, sb->u.bfs.bitmap + (i * BFS_BLOCK_SIZE),
-			 BFS_BLOCK_SIZE);
+		memcpy_b(bb->data, sb->u.bfs.bitmap + (i * sb->u.bfs.block_size),
+			 sb->u.bfs.block_size);
 		bwrite(bb);
 	}
 	return 0;
@@ -293,7 +293,7 @@ static int bfs_log_write_super(struct superblock *sb)
 	struct buffer *buf;
 	struct bfs_superblock *bsb;
 
-	if(!(buf = bread(sb->dev, 0, BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(sb->dev, 0, sb->u.bfs.block_size))) {
 		return -EIO;
 	}
 	bsb = (struct bfs_superblock *)(buf->data + 512);
@@ -351,10 +351,10 @@ int bfs_log_commit(struct superblock *sb)
 		bfs_log_write_bitmap(sb);
 		bfs_log_write_super(sb);
 		for(i = 0; i < n; i++, bp++, dp++) {
-			if(!(buf = bread(sb->dev, *bp, BFS_BLOCK_SIZE))) {
+			if(!(buf = bread(sb->dev, *bp, sb->u.bfs.block_size))) {
 				continue;
 			}
-			memcpy_b(buf->data, *dp, BFS_BLOCK_SIZE);
+			memcpy_b(buf->data, *dp, sb->u.bfs.block_size);
 			bwrite(buf);
 		}
 		sync_buffers(sb->dev);
@@ -376,8 +376,8 @@ int bfs_log_commit(struct superblock *sb)
 		for(i = 0; i < sb->u.bfs.log_blocks.len; i++) {
 			if((buf = bread(sb->dev,
 					bfs_log_run_abs(sb, &sb->u.bfs.log_blocks) + i,
-					BFS_BLOCK_SIZE))) {
-				memset_b(buf->data, 0, BFS_BLOCK_SIZE);
+					sb->u.bfs.block_size))) {
+				memset_b(buf->data, 0, sb->u.bfs.block_size);
 				bwrite(buf);
 			}
 		}
@@ -395,13 +395,13 @@ int bfs_log_commit(struct superblock *sb)
 	 * indexed forms here (a recurring FNX -O2 bounds miscompile),
 	 * shifting the induction variable to 1..n and reading/writing
 	 * one past the arrays. */
-	if(!(buf = bread(sb->dev, bfs_log_block(sb, entry_pos), BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(sb->dev, bfs_log_block(sb, entry_pos), sb->u.bfs.block_size))) {
 		bfs_log_free_tx(sb);
 		sb->u.bfs.tx_nblocks = 0;
 		unlock_resource(bfs_log_resource(sb));
 		return -EIO;
 	}
-	memset_b(buf->data, 0, BFS_BLOCK_SIZE);
+	memset_b(buf->data, 0, sb->u.bfs.block_size);
 	array = (struct bfs_run_array *)buf->data;
 	array->count = n;
 	array->max_runs = BFS_LOG_MAX_RUNS;
@@ -420,13 +420,13 @@ int bfs_log_commit(struct superblock *sb)
 		unsigned char **dp = sb->u.bfs.tx_data;
 		for(i = 0; i < n; i++, dp++) {
 			if(!(buf = bread(sb->dev, bfs_log_block(sb, entry_pos + 1 + i),
-					 BFS_BLOCK_SIZE))) {
+					 sb->u.bfs.block_size))) {
 				bfs_log_free_tx(sb);
 				sb->u.bfs.tx_nblocks = 0;
 				unlock_resource(bfs_log_resource(sb));
 				return -EIO;
 			}
-			memcpy_b(buf->data, *dp, BFS_BLOCK_SIZE);
+			memcpy_b(buf->data, *dp, sb->u.bfs.block_size);
 			bwrite(buf);
 		}
 	}
@@ -448,10 +448,10 @@ int bfs_log_commit(struct superblock *sb)
 		__blk_t *bp = sb->u.bfs.tx_blocks;
 		unsigned char **dp = sb->u.bfs.tx_data;
 		for(i = 0; i < n; i++, bp++, dp++) {
-			if(!(buf = bread(sb->dev, *bp, BFS_BLOCK_SIZE))) {
+			if(!(buf = bread(sb->dev, *bp, sb->u.bfs.block_size))) {
 				continue;
 			}
-			memcpy_b(buf->data, *dp, BFS_BLOCK_SIZE);
+			memcpy_b(buf->data, *dp, sb->u.bfs.block_size);
 			bwrite(buf);
 		}
 	}
@@ -492,10 +492,10 @@ void bfs_log_write_block(struct superblock *sb, __blk_t blk,
 			       __FUNCTION__);
 			for(i = 0; i < sb->u.bfs.tx_nblocks; i++) {
 				if((wb = bread(sb->dev, sb->u.bfs.tx_blocks[i],
-					       BFS_BLOCK_SIZE))) {
+					       sb->u.bfs.block_size))) {
 					memcpy_b(wb->data,
 						 sb->u.bfs.tx_data[i],
-						 BFS_BLOCK_SIZE);
+						 sb->u.bfs.block_size);
 					bwrite(wb);
 				}
 			}

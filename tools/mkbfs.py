@@ -28,9 +28,8 @@ import os
 import struct
 import sys
 
-BLOCK = 1024
-AG_SHIFT = 13               # default (8192 blocks per allocation group)
-AG_SIZE = 1 << AG_SHIFT
+BLOCK = 1024               # volume block size (1024/2048/4096)
+BLOCK_SHIFT = 10
 # Haiku's mkfs geometry (Volume::Initialize): start with 8192-block
 # groups and grow them until at most kDesiredAllocationGroups exist.
 # Returns (ag_shift, blocks_per_ag, num_ags). 1KB blocks keep
@@ -98,7 +97,7 @@ def build_super(num_blocks, used, root_block, log_start, log_len,
     sb[o:o + 4] = u32(MAGIC1); o += 4
     sb[o:o + 4] = u32(BYTEORDER); o += 4
     sb[o:o + 4] = u32(BLOCK); o += 4
-    sb[o:o + 4] = u32(10); o += 4
+    sb[o:o + 4] = u32(BLOCK_SHIFT); o += 4
     sb[o:o + 8] = u64(num_blocks); o += 8
     sb[o:o + 8] = u64(used); o += 8
     sb[o:o + 4] = u32(BLOCK); o += 4      # inode_size: == block_size (Haiku)
@@ -245,12 +244,20 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
 
 
 def main():
-    if len(sys.argv) != 4:
-        print("usage: mkbfs.py <rootdir> <image> <size-MB>")
+    block_size = 1024
+    args = list(sys.argv[1:])
+    if len(args) >= 2 and args[0] == '--block-size':
+        block_size = int(args[1])
+        args = args[2:]
+    if len(args) != 3 or block_size not in (1024, 2048, 4096):
+        print("usage: mkbfs.py [--block-size 1024|2048|4096] <rootdir> <image> <size-MB>")
         sys.exit(1)
-    root, img, mb = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    root, img, mb = args[0], args[1], int(args[2])
+    global BLOCK, BLOCK_SHIFT
+    BLOCK = block_size
+    BLOCK_SHIFT = block_size.bit_length() - 1
     num_blocks = mb * 1024 * 1024 // BLOCK
-    ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks)
+    ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
     journal_start, journal_len = 1 + num_ags * blocks_per_ag, 16
     next_inode = journal_start + journal_len
@@ -325,14 +332,14 @@ def main():
             runs.append((b[0] >> ag_shift, b[0] & (ag_size - 1), n))
             left -= n
         if len(runs) <= 12:
-            mdr = nblocks << 10
+            mdr = nblocks * BLOCK
             return {'direct': runs, 'mdr': mdr, 'indirect': None,
                     'max_indirect': mdr, 'dind': None, 'max_dind': mdr,
                     'blocks': blocks, 'truns': [], 'tbl_blocks': [],
                     'dind_blocks': []}
         direct = runs[:12]
         truns = runs[12:]
-        mdr = sum(r[2] for r in direct) << 10
+        mdr = sum(r[2] for r in direct) * BLOCK
         per_tbl = 128
         ntbl = (len(truns) + per_tbl - 1) // per_tbl
         tbl_blocks = alloc_blocks(ntbl)
@@ -348,8 +355,8 @@ def main():
         dind = ((dind_blocks[0] >> ag_shift, dind_blocks[0] & (ag_size - 1),
                  len(dind_blocks)) if dind_blocks else None)
         return {'direct': direct, 'mdr': mdr, 'indirect': indirect,
-                'max_indirect': nblocks << 10, 'dind': dind,
-                'max_dind': nblocks << 10, 'blocks': blocks,
+                'max_indirect': nblocks * BLOCK, 'dind': dind,
+                'max_dind': nblocks * BLOCK, 'blocks': blocks,
                 'truns': truns, 'tbl_blocks': tbl_blocks,
                 'dind_blocks': dind_blocks}
 
@@ -386,7 +393,7 @@ def main():
             # an empty tree: a single empty leaf
             leaves = [[]]
         blocks = alloc_blocks(len(leaves))
-        offs = [(b - hb) << 10 for b in blocks]
+        offs = [(b - hb) * BLOCK for b in blocks]
         nodes = []
         for i, leaf in enumerate(leaves):
             right = offs[i + 1] if i + 1 < len(leaves) else BTREE_NULL
@@ -410,7 +417,7 @@ def main():
             if cur:
                 parents.append(cur)
             pblocks = alloc_blocks(len(parents))
-            poffs = [(b - hb) << 10 for b in pblocks]
+            poffs = [(b - hb) * BLOCK for b in pblocks]
             new_maxkeys = []
             new_offs = []
             for i, parent in enumerate(parents):
@@ -492,12 +499,12 @@ def main():
         write_blocks += nodes
         dir_blocks = [hb] + [b for b, _ in nodes]
         stream = {'direct': runs_of(dir_blocks),
-                  'mdr': len(dir_blocks) << 10, 'indirect': None,
-                  'max_indirect': len(dir_blocks) << 10, 'dind': None,
-                  'max_dind': len(dir_blocks) << 10}
+                  'mdr': len(dir_blocks) * BLOCK, 'indirect': None,
+                  'max_indirect': len(dir_blocks) * BLOCK, 'dind': None,
+                  'max_dind': len(dir_blocks) * BLOCK}
         write_inodes.append((dblk, build_inode(
             dblk, S_IFDIR | (os.stat(full).st_mode & 0o7777),
-            len(dir_blocks) << 10, parent_blk, stream,
+            len(dir_blocks) * BLOCK, parent_blk, stream,
             name_attr=os.path.basename(full) if path else None)))
         dirs[path] = (dblk, hb, nblocks, entries)
         return dblk
@@ -533,12 +540,12 @@ def main():
         write_blocks += nodes2
         idx_blocks = [hb2] + [b for b, _ in nodes2]
         istream = {'direct': runs_of(idx_blocks),
-                   'mdr': len(idx_blocks) << 10, 'indirect': None,
-                   'max_indirect': len(idx_blocks) << 10, 'dind': None,
-                   'max_dind': len(idx_blocks) << 10}
+                   'mdr': len(idx_blocks) * BLOCK, 'indirect': None,
+                   'max_indirect': len(idx_blocks) * BLOCK, 'dind': None,
+                   'max_dind': len(idx_blocks) * BLOCK}
         write_inodes.append((iib, build_inode(
             iib, IDX_INDEX_DIR | S_IFDIR | imode | 0o700,
-            len(idx_blocks) << 10, indices_blk, istream, itype=itype)))
+            len(idx_blocks) * BLOCK, indices_blk, istream, itype=itype)))
         idx_entries.append((iname, iib))
 
     # ---- typed demo indices (gap-4 verification) ------------------
@@ -579,12 +586,12 @@ def main():
         write_blocks += nodes2
         idx_blocks = [hb2] + [b for b, _ in nodes2]
         istream = {'direct': runs_of(idx_blocks),
-                   'mdr': len(idx_blocks) << 10, 'indirect': None,
-                   'max_indirect': len(idx_blocks) << 10, 'dind': None,
-                   'max_dind': len(idx_blocks) << 10}
+                   'mdr': len(idx_blocks) * BLOCK, 'indirect': None,
+                   'max_indirect': len(idx_blocks) * BLOCK, 'dind': None,
+                   'max_dind': len(idx_blocks) * BLOCK}
         write_inodes.append((iib, build_inode(
             iib, IDX_INDEX_DIR | S_IFDIR | imode | 0o700,
-            len(idx_blocks) << 10, indices_blk, istream, itype=itype)))
+            len(idx_blocks) * BLOCK, indices_blk, istream, itype=itype)))
         idx_entries.append((iname, iib))
     idx_entries.sort(key=lambda e: e[0].encode())
     hb3 = alloc_blocks(1)[0]
@@ -593,12 +600,12 @@ def main():
     write_blocks += nodes3
     idxr_blocks = [hb3] + [b for b, _ in nodes3]
     irstream = {'direct': runs_of(idxr_blocks),
-                'mdr': len(idxr_blocks) << 10, 'indirect': None,
-                'max_indirect': len(idxr_blocks) << 10, 'dind': None,
-                'max_dind': len(idxr_blocks) << 10}
+                'mdr': len(idxr_blocks) * BLOCK, 'indirect': None,
+                'max_indirect': len(idxr_blocks) * BLOCK, 'dind': None,
+                'max_dind': len(idxr_blocks) * BLOCK}
     write_inodes.append((indices_blk, build_inode(
         indices_blk, IDX_INDEX_DIR | IDX_STR_INDEX | S_IFDIR | 0o700,
-        len(idxr_blocks) << 10, 0, irstream)))
+        len(idxr_blocks) * BLOCK, 0, irstream)))
 
     # ---- write the image ----
     img_buf = bytearray(num_blocks * BLOCK)

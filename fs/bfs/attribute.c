@@ -107,7 +107,7 @@ static struct inode *bfs_attr_dir_create(struct inode *i)
 		iput(ai);
 		return NULL;
 	}
-	if((block2 = bmap(ai, BFS_BLOCK_SIZE, FOR_WRITING)) < 0) {
+	if((block2 = bmap(ai, ai->sb->s_blocksize, FOR_WRITING)) < 0) {
 		ai->i_nlink = 0;
 		iput(ai);
 		return NULL;
@@ -119,12 +119,12 @@ static struct inode *bfs_attr_dir_create(struct inode *i)
 	}
 	h = (struct bfs_btree_header *)buf->data;
 	h->magic = BFS_BTREE_MAGIC;
-	h->node_size = BFS_BLOCK_SIZE;
+	h->node_size = ai->sb->s_blocksize;
 	h->max_depth = 1;
 	h->data_type = BFS_BTREE_STRING_TYPE;
-	h->root_node_ptr = BFS_BLOCK_SIZE;
+	h->root_node_ptr = ai->sb->s_blocksize;
 	h->free_node_ptr = BFS_BTREE_NULL;
-	h->max_size = 2 * BFS_BLOCK_SIZE;
+	h->max_size = 2 * ai->sb->s_blocksize;
 	bwrite(buf);
 
 	if(!(buf2 = bread(ai->dev, block2, ai->sb->s_blocksize))) {
@@ -149,7 +149,7 @@ static struct inode *bfs_attr_dir_create(struct inode *i)
 	ai->u.bfs.raw.parent.allocation_group = 0;
 	ai->u.bfs.raw.parent.start = i->inode;
 	ai->u.bfs.raw.parent.len = 1;
-	ai->i_size = 2 * BFS_BLOCK_SIZE;
+	ai->i_size = 2 * ai->sb->s_blocksize;
 	ai->i_blocks = (ai->i_size + 511) >> 9;
 	ai->state |= INODE_DIRTY;
 

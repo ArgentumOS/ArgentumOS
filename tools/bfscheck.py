@@ -42,6 +42,10 @@ class Fail(Exception):
 
 def check(path, rootdir=None):
     img = open(path, 'rb').read()
+    # the volume's block size (== inode size) comes from the superblock
+    # (offset 512+0x28); every structure below spans one block
+    global BLK
+    BLK = struct.unpack_from('<I', img, 512 + 0x28)[0]
     nblocks = len(img) // BLK
 
     def u16(o): return struct.unpack_from('<H', img, o)[0]
@@ -148,7 +152,7 @@ def check(path, rootdir=None):
 
     # ---- tree reader ----
     def node_at(dir_blocks, off):
-        b = dir_blocks[off >> 10]
+        b = dir_blocks[off // BLK]
         return b * BLK
 
     def read_pairs(n):

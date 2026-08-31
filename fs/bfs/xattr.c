@@ -67,7 +67,10 @@ typedef int (*bfs_xattr_cb)(struct bfs_small_data *, void *);
 static int bfs_xattr_walk(struct inode *i, bfs_xattr_cb cb, void *arg)
 {
 	char *p = bfs_xattr_area(i);
-	int left = BFS_SMALL_DATA_SIZE;
+	/* the meaningful tail is block_size - inode; the in-memory copy
+	 * is sized for the largest block and zeroed past the tail, so
+	 * the walk would stop at the first zero record either way */
+	int left = i->sb->s_blocksize - sizeof(struct bfs_inode);
 	int res;
 
 	while(left >= BFS_SD_HDR) {
@@ -170,10 +173,10 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	if(strlen(name) > BFS_ATTR_NAME_MAX) {
 		return -ENAMETOOLONG;
 	}
-	char area[BFS_SMALL_DATA_SIZE];
-	char *q = area;
-	char *p = bfs_xattr_area(i);
-	int left = BFS_SMALL_DATA_SIZE;
+	char *area;
+	char *q;
+	char *p;
+	int left;
 	int nlen, need, total, found, tree_found = 0;
 	__u32 attr_type = BFS_FILE_NAME_TYPE;
 	struct bfs_small_data *sd;
@@ -191,6 +194,13 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	if(size > 0x7FFFFFFF) {
 		return -ENOSPC;
 	}
+	if(!(area = (char *)kmalloc(i->sb->s_blocksize
+				- sizeof(struct bfs_inode)))) {
+		return -ENOMEM;
+	}
+	q = area;
+	p = bfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct bfs_inode);
 
 	inode_lock(i);
 
@@ -203,6 +213,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 
 	if(found && (flags & XATTR_CREATE)) {
 		inode_unlock(i);
+		kfree((addr_t)area);
 		return -EEXIST;
 	}
 	if(found) {
@@ -223,6 +234,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 			if(flags & XATTR_CREATE) {
 				iput(attr);
 				inode_unlock(i);
+				kfree((addr_t)area);
 				return -EEXIST;
 			}
 			attr_type = attr->u.bfs.raw.type;
@@ -230,6 +242,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 			tree_found = 1;
 		} else if(flags & XATTR_REPLACE) {
 			inode_unlock(i);
+			kfree((addr_t)area);
 			return -ENODATA;
 		}
 	}
@@ -254,10 +267,11 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 
 	need = BFS_SD_SIZE(nlen, size);
 	total = (q - area) + need;
-	if((__u64)total > BFS_SMALL_DATA_SIZE) {
+	if((__u64)total > i->sb->s_blocksize - sizeof(struct bfs_inode)) {
 		/* no room inline: Haiku moves the attribute into the
 		 * per-file attributes tree, carrying the record's type */
 		inode_unlock(i);
+		kfree((addr_t)area);
 		return bfs_attr_set(i, name, value, size, attr_type);
 	}
 
@@ -277,6 +291,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	i->state |= INODE_DIRTY;
 
 	inode_unlock(i);
+	kfree((addr_t)area);
 
 	/* the value now fits inline: if the attribute previously lived in
 	 * the attributes tree (a bigger value), remove the stale tree
@@ -296,12 +311,20 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
  */
 int bfs_inode_set_name(struct inode *i, const char *name)
 {
-	char area[BFS_SMALL_DATA_SIZE];
-	char *q = area;
-	char *p = bfs_xattr_area(i);
-	int left = BFS_SMALL_DATA_SIZE;
+	char *area;
+	char *q;
+	char *p;
+	int left;
 	int nlen, need, total;
 	struct bfs_small_data *sd;
+
+	if(!(area = (char *)kmalloc(i->sb->s_blocksize
+				- sizeof(struct bfs_inode)))) {
+		return -ENOMEM;
+	}
+	q = area;
+	p = bfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct bfs_inode);
 
 	inode_lock(i);
 
@@ -325,8 +348,9 @@ int bfs_inode_set_name(struct inode *i, const char *name)
 
 	need = BFS_SD_SIZE(1, nlen);
 	total = (q - area) + need;
-	if(total > BFS_SMALL_DATA_SIZE) {
+	if(total > i->sb->s_blocksize - sizeof(struct bfs_inode)) {
 		inode_unlock(i);
+		kfree((addr_t)area);
 		return -ENOSPC;
 	}
 
@@ -344,6 +368,7 @@ int bfs_inode_set_name(struct inode *i, const char *name)
 	i->state |= INODE_DIRTY;
 
 	inode_unlock(i);
+	kfree((addr_t)area);
 	return 0;
 }
 
@@ -355,7 +380,7 @@ int bfs_inode_set_name(struct inode *i, const char *name)
 int bfs_inode_get_name(struct inode *i, char *buf, int size)
 {
 	char *p = bfs_xattr_area(i);
-	int left = BFS_SMALL_DATA_SIZE;
+	int left = i->sb->s_blocksize - sizeof(struct bfs_inode);
 	int nlen;
 
 	while(left >= BFS_SD_HDR) {
@@ -478,7 +503,7 @@ int bfs_removexattr(struct inode *i, const char *name)
 
 	/* compact: shift the records after the removed one down */
 	p = bfs_xattr_area(i);
-	left = BFS_SMALL_DATA_SIZE;
+	left = i->sb->s_blocksize - sizeof(struct bfs_inode);
 	while(left >= BFS_SD_HDR) {
 		struct bfs_small_data *sd = (struct bfs_small_data *)p;
 

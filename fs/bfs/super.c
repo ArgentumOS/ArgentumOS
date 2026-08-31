@@ -178,8 +178,8 @@ static int bfs_write_superblock(struct superblock *sb)
 	for(l = 0; l < sb->u.bfs.log_blocks.len; l++) {
 		if((buf = bread(sb->dev,
 				bfs_log_run_abs(sb, &sb->u.bfs.log_blocks) + l,
-				BFS_BLOCK_SIZE))) {
-			memset_b(buf->data, 0, BFS_BLOCK_SIZE);
+				sb->u.bfs.block_size))) {
+			memset_b(buf->data, 0, sb->u.bfs.block_size);
 			bwrite(buf);
 		}
 	}
@@ -191,17 +191,18 @@ static int bfs_write_superblock(struct superblock *sb)
 	/* flush the bitmap blocks */
 	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
 		struct buffer *bb;
-		if(!(bb = bread(sb->dev, 1 + i, BFS_BLOCK_SIZE))) {
+		if(!(bb = bread(sb->dev, 1 + i, sb->u.bfs.block_size))) {
 			superblock_unlock(sb);
 			return -EIO;
 		}
-		memcpy_b(bb->data, sb->u.bfs.bitmap + (i * BFS_BLOCK_SIZE),
-			BFS_BLOCK_SIZE);
+		memcpy_b(bb->data,
+			sb->u.bfs.bitmap + (i * sb->u.bfs.block_size),
+			sb->u.bfs.block_size);
 		bwrite(bb);
 	}
 
 	/* rebuild the superblock */
-	if(!(buf = bread(sb->dev, 0, BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(sb->dev, 0, sb->u.bfs.block_size))) {
 		superblock_unlock(sb);
 		return -EIO;
 	}
@@ -214,7 +215,7 @@ static int bfs_write_superblock(struct superblock *sb)
 	bsb->magic1 = BFS_SUPER_MAGIC1;
 	bsb->fs_byte_order = BFS_SUPER_BYTEORDER;
 	bsb->block_size = sb->u.bfs.block_size;
-	bsb->block_shift = BFS_BLOCK_SHIFT;
+	bsb->block_shift = sb->s_blocksize_bits;
 	bsb->num_blocks = sb->u.bfs.num_blocks;
 	bsb->used_blocks = sb->u.bfs.used_blocks;
 	bsb->inode_size = sb->s_blocksize;
@@ -257,6 +258,10 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	__u32 i;
 
 	superblock_lock(sb);
+	/* the volume's block size is unknown yet; the 512-byte superblock
+	 * lives in the first 1024 bytes of block 0 for every valid size,
+	 * so a 1KB probe read gets it (the block_size field decides the
+	 * size of every later read) */
 	if(!(buf = bread(dev, 0, BFS_BLOCK_SIZE))) {
 		printk("WARNING: %s(): I/O error on device %d,%d.\n",
 		       __FUNCTION__, MAJOR(dev), MINOR(dev));
@@ -275,9 +280,19 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 		return -EINVAL;
 	}
 
-	if(bsb->block_size != BFS_BLOCK_SIZE) {
+	if(bsb->block_size < BFS_MIN_BLOCK_SIZE
+	   || bsb->block_size > BFS_MAX_BLOCK_SIZE
+	   || (bsb->block_size & (bsb->block_size - 1))) {
 		printk("WARNING: %s(): unsupported BFS block size %d.\n",
 		       __FUNCTION__, bsb->block_size);
+		superblock_unlock(sb);
+		brelse(buf);
+		return -EINVAL;
+	}
+	/* inode_size must equal block_size (Haiku's IsValid) */
+	if(bsb->inode_size != bsb->block_size) {
+		printk("WARNING: %s(): inode_size %d != block_size %d.\n",
+		       __FUNCTION__, bsb->inode_size, bsb->block_size);
 		superblock_unlock(sb);
 		brelse(buf);
 		return -EINVAL;
@@ -285,8 +300,11 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 
 	sb->dev = dev;
 	sb->fsop = &bfs_fsop;
-	sb->s_blocksize_bits = BFS_BLOCK_SHIFT;
-	sb->s_blocksize = BFS_BLOCK_SIZE;
+	sb->s_blocksize_bits = BFS_MIN_BLOCK_SHIFT;
+	while((1u << sb->s_blocksize_bits) < bsb->block_size) {
+		sb->s_blocksize_bits++;
+	}
+	sb->s_blocksize = bsb->block_size;
 	sb->u.bfs.block_size = bsb->block_size;
 	sb->u.bfs.blocks_per_ag = bsb->blocks_per_ag;
 	sb->u.bfs.ag_shift = bsb->ag_shift;
@@ -320,7 +338,7 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	/* load the bitmap into memory */
 	sb->u.bfs.bitmap_blocks = sb->u.bfs.num_ags * sb->u.bfs.blocks_per_ag;
 	if(!(sb->u.bfs.bitmap = (unsigned char *)kmalloc(
-			sb->u.bfs.bitmap_blocks * BFS_BLOCK_SIZE))) {
+			sb->u.bfs.bitmap_blocks * sb->u.bfs.block_size))) {
 		printk("WARNING: %s(): unable to allocate the bitmap.\n",
 		       __FUNCTION__);
 		superblock_unlock(sb);
@@ -329,15 +347,15 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	}
 	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
 		struct buffer *bb;
-		if(!(bb = bread(dev, 1 + i, BFS_BLOCK_SIZE))) {
+		if(!(bb = bread(dev, 1 + i, sb->u.bfs.block_size))) {
 			kfree((addr_t)sb->u.bfs.bitmap);
 			sb->u.bfs.bitmap = NULL;
 			superblock_unlock(sb);
 			brelse(buf);
 			return -EIO;
 		}
-		memcpy_b(sb->u.bfs.bitmap + (i * BFS_BLOCK_SIZE), bb->data,
-			BFS_BLOCK_SIZE);
+		memcpy_b(sb->u.bfs.bitmap + (i * sb->u.bfs.block_size),
+			bb->data, sb->u.bfs.block_size);
 		brelse(bb);
 	}
 

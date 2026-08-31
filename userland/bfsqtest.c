@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #define BFS_QUERY_MAX_LEN	512
 #define BFS_QUERY_MAX_RESULTS	65536
@@ -78,19 +79,42 @@ int main(void)
 	fails += check("!(name=f0*)", 1);	/* only 'big' in the index */
 	fails += check("name=nosuchfile*", 0);
 
-	/* typed demo indices (mkbfs-built, keyed on inode number;
-	 * image inodes 19 (root) .. 22 (data.bin)) */
-	fails += check("qint32=19", 1);
-	fails += check("qint32>=19", 4);
-	fails += check("qint32>=21", 2);
-	fails += check("qint32>=100", 0);
-	fails += check("quint32<21", 2);
-	fails += check("qint64>=20", 3);
-	fails += check("qint64>22", 0);
-	fails += check("quint64>19", 3);
-	fails += check("qfloat>=20.5", 2);
-	fails += check("qdouble<20.5", 2);
-	fails += check("qdouble>=21", 2);
+	/* typed demo indices (mkbfs-built, keyed on inode number:
+	 * the root-tree inodes are consecutive, root .. root+3). The
+	 * root inode differs between images (19 at 1024-byte blocks,
+	 * 18 at 2048), so derive the key range from stat("/mnt"). */
+	{
+		struct stat st;
+		char buf[128];
+		unsigned int r0;
+
+		if(fstat(fd, &st) < 0) {
+			fprintf(stderr, "fstat: %s\n", strerror(errno));
+			return 1;
+		}
+		r0 = (unsigned int)st.st_ino;
+		sprintf(buf, "qint32=%u", r0);
+		fails += check(buf, 1);
+		sprintf(buf, "qint32>=%u", r0);
+		fails += check(buf, 4);
+		sprintf(buf, "qint32>=%u", r0 + 2);
+		fails += check(buf, 2);
+		fails += check("qint32>=100", 0);
+		sprintf(buf, "quint32<%u", r0 + 2);
+		fails += check(buf, 2);
+		sprintf(buf, "qint64>=%u", r0 + 1);
+		fails += check(buf, 3);
+		sprintf(buf, "qint64>%u", r0 + 3);
+		fails += check(buf, 0);
+		sprintf(buf, "quint64>%u", r0);
+		fails += check(buf, 3);
+		sprintf(buf, "qfloat>=%u.5", r0 + 1);
+		fails += check(buf, 2);
+		sprintf(buf, "qdouble<%u.5", r0 + 1);
+		fails += check(buf, 2);
+		sprintf(buf, "qdouble>=%u", r0 + 2);
+		fails += check(buf, 2);
+	}
 
 	printf("BFSQTEST: %s\n", fails ? "FAIL" : "ALL-OK");
 	close(fd);

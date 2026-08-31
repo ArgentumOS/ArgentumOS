@@ -16,8 +16,21 @@
 
 #include <fnx/types.h>
 
-#define BFS_BLOCK_SIZE		1024
+#define BFS_BLOCK_SIZE		1024	/* the reference/default block size */
 #define BFS_BLOCK_SHIFT		10
+/* a volume's block size (== inode size, Haiku requires them equal) may
+ * be 1024 or 2048 — the buffer cache caps bread() at PAGE_SIZE and the
+ * per-inode small_data tail must fit inside a single kmalloc'd
+ * struct inode (kmalloc caps at PAGE_SIZE), so a 4096-byte block
+ * would need a VFS destroy-inode hook for a separately allocated
+ * tail (documented as remaining). The on-disk size is read from the
+ * superblock at mount; every driver structure that spans a block
+ * (btree node, small_data tail, indirect table slot count) uses the
+ * volume's size at runtime. */
+#define BFS_MIN_BLOCK_SIZE	1024
+#define BFS_MAX_BLOCK_SIZE	2048
+#define BFS_MIN_BLOCK_SHIFT	10
+#define BFS_MAX_BLOCK_SHIFT	11
 #define BFS_INODE_SIZE		256
 #define BFS_INODES_PER_BLOCK	(BFS_BLOCK_SIZE / BFS_INODE_SIZE)
 #define BFS_BLOCKS_PER_AG	8192
@@ -278,8 +291,10 @@ struct bfs_sb_info {
  * "block_size = inode_size = blockSize"), so the small_data tail spans
  * from the end of the struct to the end of the block. 24 bytes (the old
  * 256 - 232) was too small for Haiku-compatible file-name records
- * (8 + 1 + 3 + NAME + 1, up to 268 bytes for a 255-char name). */
-#define BFS_SMALL_DATA_SIZE	(BFS_BLOCK_SIZE - sizeof(struct bfs_inode))
+ * (8 + 1 + 3 + NAME + 1, up to 268 bytes for a 255-char name). The
+ * in-memory copy is sized for the LARGEST possible tail; the on-disk
+ * tail for a given volume is block_size - sizeof(struct bfs_inode). */
+#define BFS_SMALL_DATA_SIZE	(BFS_MAX_BLOCK_SIZE - sizeof(struct bfs_inode))
 
 /* fs-private inode info (the raw on-disk inode, for bmap/readdir) */
 struct bfs_i_info {

@@ -150,7 +150,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 		inode_unlock(dir);
 		return block;
 	}
-	if((block2 = bmap(i, BFS_BLOCK_SIZE, FOR_WRITING)) < 0) {
+	if((block2 = bmap(i, i->sb->s_blocksize, FOR_WRITING)) < 0) {
 		iput(i);
 		inode_unlock(dir);
 		return block2;
@@ -163,10 +163,10 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 	{
 		struct bfs_btree_header *h = (struct bfs_btree_header *)buf->data;
 		h->magic = BFS_BTREE_MAGIC;
-		h->node_size = BFS_BLOCK_SIZE;
+		h->node_size = dir->sb->s_blocksize;
 		h->max_depth = 1;
 		h->data_type = BFS_BTREE_STRING_TYPE;
-		h->root_node_ptr = BFS_BLOCK_SIZE;
+		h->root_node_ptr = dir->sb->s_blocksize;
 		h->free_node_ptr = BFS_BTREE_NULL;
 		h->max_size = 1 << 20;
 		bwrite(buf);
@@ -181,7 +181,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 			return -EIO;
 		}
 		n = (struct bfs_btree_node *)buf2->data;
-		memset_b(n, 0, BFS_BLOCK_SIZE);
+		memset_b(n, 0, dir->sb->s_blocksize);
 		n->left = BFS_BTREE_NULL;
 		n->right = BFS_BTREE_NULL;
 		n->overflow = BFS_BTREE_NULL;
@@ -200,7 +200,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 			kl[1] = 3;
 			values[1] = dir->inode;
 		}
-		i->i_size = 2 * BFS_BLOCK_SIZE;
+		i->i_size = 2 * i->sb->s_blocksize;
 		/* the two bmap() calls above already built the runs; the
 		 * second block is only contiguous when the extension of the
 		 * first run succeeds (block2 == block + 1). Hardcoding
@@ -208,7 +208,7 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 		 * given to something else (the hello.txt at block 32 in the
 		 * mkbfs layout), corrupting the new directory's tree. */
 		raw = &i->u.bfs.raw;
-		raw->u.data.size = 2 * BFS_BLOCK_SIZE;
+		raw->u.data.size = 2 * dir->sb->s_blocksize;
 		i->state |= INODE_DIRTY;
 		bwrite(buf2);
 	}

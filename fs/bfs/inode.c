@@ -99,7 +99,7 @@ int bfs_read_inode(struct inode *i)
 	struct buffer *buf;
 	struct bfs_inode *raw;
 
-	if(!(buf = bread(i->dev, i->inode, BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(i->dev, i->inode, i->sb->s_blocksize))) {
 		return -EIO;
 	}
 	raw = (struct bfs_inode *)buf->data;
@@ -108,8 +108,14 @@ int bfs_read_inode(struct inode *i)
 		return -EINVAL;
 	}
 	memcpy_b(&i->u.bfs.raw, raw, sizeof(struct bfs_inode));
+	/* the on-disk small_data tail is block_size - inode; the in-memory
+	 * copy is sized for the largest block, so zero the rest */
 	memcpy_b(i->u.bfs.small_data, (char *)raw + sizeof(struct bfs_inode),
-		 BFS_SMALL_DATA_SIZE);
+		 i->sb->s_blocksize - sizeof(struct bfs_inode));
+	memset_b(i->u.bfs.small_data + i->sb->s_blocksize
+			- sizeof(struct bfs_inode), 0,
+		BFS_SMALL_DATA_SIZE - (i->sb->s_blocksize
+				- sizeof(struct bfs_inode)));
 
 	if(S_ISDIR(raw->mode) || S_ISREG(raw->mode) || S_ISLNK(raw->mode)) {
 		i->fsop = &bfs_fsop;
@@ -170,7 +176,7 @@ int bfs_write_inode(struct inode *i)
 	struct bfs_inode *raw;
 	struct bfs_data_stream *ds;
 
-	if(!(buf = bread(i->dev, i->inode, BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(i->dev, i->inode, i->sb->s_blocksize))) {
 		return -EIO;
 	}
 	raw = (struct bfs_inode *)buf->data;
@@ -214,7 +220,7 @@ int bfs_write_inode(struct inode *i)
 			}
 	memcpy_b(raw, &i->u.bfs.raw, sizeof(struct bfs_inode));
 	memcpy_b((char *)raw + sizeof(struct bfs_inode), i->u.bfs.small_data,
-		 BFS_SMALL_DATA_SIZE);
+		 i->sb->s_blocksize - sizeof(struct bfs_inode));
 	raw->magic1 = BFS_INODE_MAGIC;
 	/* preserve the permanent on-disk flags (e.g. INODE_LONG_SYMLINK on
 	 * Haiku-created stream symlinks) — only IN_USE is ours to manage */
@@ -252,11 +258,11 @@ int bfs_ialloc(struct inode *i, int mode)
 	if((block = bfs_balloc(i->sb)) < 0) {
 		return block;
 	}
-	if(!(buf = bread(i->sb->dev, block, BFS_BLOCK_SIZE))) {
+	if(!(buf = bread(i->sb->dev, block, i->sb->s_blocksize))) {
 		bfs_bfree(i->sb, block);
 		return -EIO;
 	}
-	memset_b(buf->data, 0, BFS_BLOCK_SIZE);
+	memset_b(buf->data, 0, i->sb->s_blocksize);
 	raw = (struct bfs_inode *)buf->data;
 	raw->magic1 = BFS_INODE_MAGIC;
 	raw->inode_num.allocation_group = 0;
@@ -266,8 +272,8 @@ int bfs_ialloc(struct inode *i, int mode)
 	raw->flags = BFS_INODE_IN_USE;
 	/* inode_size == block_size: Haiku's Inode::InitCheck requires
 	 * InodeSize() == volume->InodeSize() */
-	raw->inode_size = BFS_BLOCK_SIZE;
-	raw->u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
+	raw->inode_size = i->sb->s_blocksize;
+	raw->u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * i->sb->s_blocksize;
 	bfs_log_begin(i->sb);
 	bfs_log_write_block(i->sb, buf->block, buf);
 	bfs_log_commit(i->sb);
@@ -280,8 +286,8 @@ int bfs_ialloc(struct inode *i, int mode)
 	i->u.bfs.raw.mode = mode;
 	/* keep the in-memory copy in sync: bfs_write_inode() rewrites the
 	 * buffer from i->u.bfs.raw, which ialloc leaves zeroed */
-	i->u.bfs.raw.inode_size = BFS_BLOCK_SIZE;
-	i->u.bfs.raw.u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
+	i->u.bfs.raw.inode_size = i->sb->s_blocksize;
+	i->u.bfs.raw.u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * i->sb->s_blocksize;
 	/* creation time: Haiku encodes (seconds << 16) | subsecond */
 	i->u.bfs.raw.create_time =
 		((__u64)CURRENT_TIME << 16) | bfs_subsecond();
@@ -319,7 +325,7 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 {
 	struct bfs_inode *raw = &i->u.bfs.raw;
 	struct bfs_data_stream *ds = &raw->u.data;
-	__u32 block = (__u32)(offset >> BFS_BLOCK_SHIFT);
+	__u32 block = (__u32)(offset >> i->sb->s_blocksize_bits);
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
 	__u64 covered = 0;
 	__u32 last_ag = 0, last_start = 0, last_len = 0;
@@ -385,7 +391,7 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 			nb = (last_ag << ag_shift) + last_start + last_len;
 			if(bfs_balloc_specific(i->sb, nb) == 0) {
 				ds->direct[nrun - 1].len++;
-				ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
+				ds->max_direct_range = (covered + 1) << i->sb->s_blocksize_bits;
 				last_len++;
 				covered++;
 				if(block < covered) {
@@ -406,7 +412,7 @@ int bfs_bmap(struct inode *i, __off_t offset, int mode)
 		ds->direct[nrun].allocation_group = (__u32)(nb >> ag_shift);
 		ds->direct[nrun].start = nb & ((1 << ag_shift) - 1);
 		ds->direct[nrun].len = 1;
-		ds->max_direct_range = (covered + 1) << BFS_BLOCK_SHIFT;
+		ds->max_direct_range = (covered + 1) << i->sb->s_blocksize_bits;
 		last_ag = ds->direct[nrun].allocation_group;
 		last_start = ds->direct[nrun].start;
 		last_len = 1;
@@ -458,7 +464,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 {
 	struct bfs_inode *raw = &i->u.bfs.raw;
 	struct bfs_data_stream *ds = &raw->u.data;
-	__u32 block = (__u32)(offset >> BFS_BLOCK_SHIFT);
+	__u32 block = (__u32)(offset >> i->sb->s_blocksize_bits);
 	__u32 ag_shift = i->sb->u.bfs.ag_shift;
 	__u32 arraylen = i->sb->s_blocksize / sizeof(struct bfs_block_run);
 	__u64 covered = 0;
@@ -468,7 +474,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 	struct buffer *buf = NULL;
 	int t, j;
 
-	block -= (__u32)(ds->max_direct_range >> BFS_BLOCK_SHIFT);
+	block -= (__u32)(ds->max_direct_range >> i->sb->s_blocksize_bits);
 
 	/* walk the indirect table looking for the run covering 'block' */
 	for(t = 0; t < table_len; t++) {
@@ -651,7 +657,7 @@ static int bfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		ds->max_indirect_range = (ds->indirect.len
 			+ ds->double_indirect.len
 				* (i->sb->s_blocksize / sizeof(__blk_t)))
-			* arraylen << BFS_BLOCK_SHIFT;
+			* arraylen << i->sb->s_blocksize_bits;
 		ds->max_double_indirect_range = ds->max_indirect_range;
 		/* recurse: the new table block is empty, the write
 		 * path above fills it */
@@ -684,7 +690,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 		}
 		base = (ds->direct[run].allocation_group << ag_shift)
 			+ ds->direct[run].start;
-		run_end = covered + ((__u64)len << BFS_BLOCK_SHIFT);
+		run_end = covered + ((__u64)len << i->sb->s_blocksize_bits);
 		if(covered >= (__u64)length) {
 			/* the whole run is beyond the new size: free it */
 			__u32 n;
@@ -697,7 +703,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 		} else if(run_end > (__u64)length) {
 			/* partial run: free the tail blocks */
 			__u64 keep = ((__u64)length - covered
-					+ BFS_BLOCK_SIZE - 1) >> BFS_BLOCK_SHIFT;
+					+ i->sb->s_blocksize - 1) >> i->sb->s_blocksize_bits;
 			__u32 n;
 			for(n = (__u32)keep; n < len; n++) {
 				bfs_bfree(i->sb, base + n);
@@ -739,7 +745,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 				}
 				base = (__u64)(runs[j].allocation_group << ag_shift)
 					+ runs[j].start;
-				run_end = covered + ((__u64)len << BFS_BLOCK_SHIFT);
+				run_end = covered + ((__u64)len << i->sb->s_blocksize_bits);
 				if(covered >= (__u64)length) {
 					/* the whole run is beyond the new size */
 					__u32 n;
@@ -752,7 +758,7 @@ int bfs_truncate(struct inode *i, __off_t length)
 				} else if(run_end > (__u64)length) {
 					/* partial run: free the tail blocks */
 					__u64 keep = ((__u64)length - covered
-							+ BFS_BLOCK_SIZE - 1) >> BFS_BLOCK_SHIFT;
+							+ i->sb->s_blocksize - 1) >> i->sb->s_blocksize_bits;
 					__u32 n;
 					for(n = (__u32)keep; n < len; n++) {
 						bfs_bfree(i->sb, (__blk_t)base + n);
