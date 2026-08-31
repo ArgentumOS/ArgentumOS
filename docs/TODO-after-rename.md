@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M5 DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189)
+## OpenBFS (BeOS BFS) filesystem - M0-M6 DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -2074,3 +2074,66 @@ call), each driver's init (make_dev calls), tools/mkext2.py + Makefile
   declarations are missed, devfs mounts but the root vanishes — the ata
   nodes are M0-critical.
 - Mode default 0600 (match mkext2.py:305-309) unless a rule overrides.
+
+M6 = the attributes INODE (INODE_ATTR_INODE): the per-file attributes
+B+tree, closing the one remaining data-loss gap from M5 (attributes
+bigger than the small_data tail were not readable and — worse — their
+blocks were leaked on unlink). Implemented exactly like Haiku's
+Inode.cpp CreateAttribute/_RemoveAttribute/WriteAttribute:
+- the FILE's inode.attributes run -> the ATTRIBUTES INODE (mode
+  S_ATTR_DIR(0x40000000) | S_IFDIR | S_STR_INDEX(0x08000000) | 0666,
+  flags IN_USE | INODE_ATTR_INODE(0x4), parent = the file, type = 0);
+  its data stream is a STRING B+tree with NO "." / ".." and NO 0x13
+  record (IsRegularNode() is false for extended-type modes), keys =
+  attribute names, values = attribute-file inode block numbers.
+- each ATTRIBUTE FILE inode: mode S_ATTR(0x80000000) | S_IFREG | 0666,
+  flags IN_USE | INODE_ATTR_INODE, type = the attribute type ('CSTR'),
+  parent = the attributes inode; its stream is the value. No name
+  record: the name lives in the tree key.
+- fs/bfs/attribute.c implements bfs_attr_set/get/list/remove +
+  bfs_attr_free_all, reusing the directory btree engine unchanged (the
+  attributes tree IS a directory tree without dots). Write path: the
+  small_data fit test fails -> bfs_attr_set removes the inline record
+  (Haiku's _RemoveSmallData), creates the attributes inode + attribute
+  file + tree entry, and writes the value stream. Remove: small_data
+  first, else the tree; when the tree empties the attributes inode is
+  freed and the file's run cleared. Unlink: bfs_ifree now calls
+  bfs_attr_free_all() before truncating, so every attribute file
+  (stream + inode block), the tree stream and the attributes inode are
+  freed (verified: the post-unlink bitmap returns exactly to the
+  fresh-image baseline). xattr.c also now ALLOWS attributes on symlinks
+  (Haiku does; the small_data tail starts at 232, after the 144-byte
+  symlink area, so there is no aliasing — the M4d EOPNOTSUPP test
+  expectation was updated to match). bfscheck.py gained an attributes
+  conformance pass (every nonzero attributes run resolves to an
+  S_ATTR_DIR inode whose tree values are S_ATTR inodes; attrs tree has
+  no dots and is sorted; the value streams count in the bitmap).
+  THREE latent bugs found by the new verifier + fixed:
+  1. bfs_btree_remove_at corrupted leaf nodes whenever removing a key
+     shrank all_key_length across an 8-byte alignment boundary (the
+     key-length index and values stayed at the old aligned offset, and
+     the removed key's stale index entry sat between them). It now
+     relocates index + values to the exact layout implied by the new
+     all_key_length. This is a real data-corruption fix for any delete
+     (rm/unlink) on a leaf whose keys cross the boundary.
+  2. bfs_ialloc never populated the in-memory raw.inode_size (only the
+     disk buffer), and write_inode memcpys the raw — so EVERY newly
+     created inode was written back with inode_size=0 (Haiku
+     InitCheck failure) the first time it was flushed. Now set after
+     the in-memory memset.
+  3. mkbfs's build_inode wrote run(0, 0) for the attributes field,
+     which with run()'s default len=1 produced a phantom (0,0,1) run
+     on every inode. Now run(0, 0, 0).
+  Verified: bfsattr (userland/bfsattr.c) sets a 900-byte attribute
+  (overflows small_data -> attributes tree), reads it back, lists
+  small+tree attrs together, sizes it, removes it (attrs inode freed
+  on empty tree), and unlinks with a tree attribute present (bitmap
+  accounting host-verified); host-side parses of the image confirm the
+  attrs inode mode/flags/type/parent and the value bytes exactly in
+  Haiku's layout; M4a 6/6, M4c S1-S8, M4d X1-X5 (updated for the
+  792-byte budget + symlink xattrs), M4e J1-J6 + jrnl_craft replay,
+  ext2 root and BFS root still boot. Remaining after M6: the stream
+  B+tree / indices + queries (needs duplicate-key support in the
+  engine), big-endian volumes, and the real-Haiku cross-mount test
+  (boot an actual Haiku VM against rootbfs.img, and mount a
+  Haiku-mkfs'd volume under FNX).

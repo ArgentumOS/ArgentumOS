@@ -199,7 +199,7 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
     i[o:o + 8] = u64(0); o += 8              # create_time
     i[o:o + 8] = u64(0); o += 8              # last_modified_time
     i[o:o + 8] = run(0, parent); o += 8      # parent
-    i[o:o + 8] = run(0, 0); o += 8           # attributes
+    i[o:o + 8] = run(0, 0, 0); o += 8        # attributes: the zero run
     i[o:o + 4] = u32(0); o += 4              # type
     i[o:o + 4] = u32(BLOCK); o += 4          # inode_size == block_size (Haiku)
     i[o:o + 4] = u32(0); o += 4              # etc

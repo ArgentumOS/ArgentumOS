@@ -861,20 +861,41 @@ static void bfs_btree_remove_at(struct bfs_btree_node *n, int i)
 	__u16 *kl = bfs_btree_keylen_index(n);
 	__u64 *values = bfs_btree_values(n);
 	char *keys = (char *)n + sizeof(struct bfs_btree_node);
+	int old_count = n->all_key_count;
 	int start = i ? kl[i - 1] : 0;
 	int key_end = kl[i];
 	int klen = key_end - start;
 	int tail = n->all_key_length - key_end;
+	int old_align = (sizeof(struct bfs_btree_node)
+		+ n->all_key_length + 7) & ~7;
+	int new_align;
 	int j;
 
 	memmove(keys + start, keys + key_end, tail);
-	for(j = i; j < n->all_key_count - 1; j++) {
+	for(j = i; j < old_count - 1; j++) {
 		kl[j] = kl[j + 1] - klen;
 	}
 	memmove(values + i, values + i + 1,
-		(n->all_key_count - i - 1) * sizeof(__u64));
+		(old_count - i - 1) * sizeof(__u64));
 	n->all_key_count--;
 	n->all_key_length -= klen;
+
+	/* relocate the index and values to the layout implied by the NEW
+	 * all_key_length: the index directly after the key area (aligned),
+	 * the values directly after the index. In-place deletion leaves
+	 * the removed key's stale index entry between them, and a klen
+	 * shrink across an 8-byte boundary moves the whole array (the
+	 * insert path rebuilds nodes with serialize(); delete patches in
+	 * place, so the relocation lives here) */
+	new_align = (sizeof(struct bfs_btree_node)
+		+ n->all_key_length + 7) & ~7;
+	if(new_align != old_align) {
+		memmove((char *)n + new_align, (char *)n + old_align,
+			old_count * sizeof(__u16));
+	}
+	memmove((char *)n + new_align + n->all_key_count * sizeof(__u16),
+		(char *)n + old_align + old_count * sizeof(__u16),
+		n->all_key_count * sizeof(__u64));
 }
 
 /*

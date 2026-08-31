@@ -151,11 +151,13 @@ int bfs_getxattr(struct inode *i, const char *name, char *buffer,
 	if(sd) {
 		memcpy_b(buffer, BFS_SD_DATA(sd), sd->data_size);
 		dsize = sd->data_size;
-	} else {
-		dsize = -ENODATA;
+		inode_unlock(i);
+		return dsize;
 	}
 	inode_unlock(i);
-	return dsize;
+
+	/* not inline: the attribute may live in the attributes tree */
+	return bfs_attr_get(i, name, buffer, size);
 }
 
 int bfs_setxattr(struct inode *i, const char *name, const char *value,
@@ -172,16 +174,14 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	if(bfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
-	if(S_ISLNK(i->i_mode)) {
-		return -EOPNOTSUPP;
-	}
 	if(flags & ~(XATTR_CREATE | XATTR_REPLACE)) {
 		return -EINVAL;
 	}
-	/* bound the value size BEFORE the int need/total arithmetic below:
-	 * __size_t is u32, but guard anyway so a huge size can never wrap
-	 * past the ENOSPC check and smash the stack area buffer */
-	if(size > BFS_SMALL_DATA_SIZE) {
+	/* Values bigger than the small_data section fall through to the
+	 * attributes tree (bfs_attr_set) below; the fit test below uses
+	 * u64 arithmetic so a huge size can never wrap into the 792-byte
+	 * stack area. */
+	if(size > 0x7FFFFFFF) {
 		return -ENOSPC;
 	}
 
@@ -201,6 +201,23 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	if(!found && (flags & XATTR_REPLACE)) {
 		inode_unlock(i);
 		return -ENODATA;
+	}
+	if(!found && (flags & (XATTR_CREATE | XATTR_REPLACE))) {
+		/* the attribute may live in the attributes tree; the flags
+		 * must see it there too (Haiku checks both layers) */
+		struct inode *attr;
+		int tres = bfs_attr_find(i, name, &attr);
+		if(tres == 0) {
+			iput(attr);
+			if(flags & XATTR_CREATE) {
+				inode_unlock(i);
+				return -EEXIST;
+			}
+			found = 1;
+		} else if(flags & XATTR_REPLACE) {
+			inode_unlock(i);
+			return -ENODATA;
+		}
 	}
 
 	/* copy every record except the one being replaced, then append
@@ -223,9 +240,11 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 
 	need = BFS_SD_SIZE(nlen, size);
 	total = (q - area) + need;
-	if(total > BFS_SMALL_DATA_SIZE) {
+	if((__u64)total > BFS_SMALL_DATA_SIZE) {
+		/* no room inline: Haiku moves the attribute into the
+		 * per-file attributes tree */
 		inode_unlock(i);
-		return -ENOSPC;
+		return bfs_attr_set(i, name, value, size);
 	}
 
 	*(__u32 *)(q + 0) = BFS_FILE_NAME_TYPE;
@@ -244,6 +263,14 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	i->state |= INODE_DIRTY;
 
 	inode_unlock(i);
+
+	/* the value now fits inline: if the attribute previously lived in
+	 * the attributes tree (a bigger value), remove the stale tree
+	 * entry so the two copies do not diverge (Haiku's WriteAttribute
+	 * migrates back to the small_data section the same way) */
+	if(!found) {
+		bfs_attr_remove(i, name);
+	}
 	return 0;
 }
 
@@ -325,16 +352,17 @@ static int bfs_xattr_list_cb(struct bfs_small_data *sd, void *arg)
 
 	if(l->size == 0) {
 		/* size-0 query: return the needed size, never touch the list */
-		l->total += nlen;
+		l->total += nlen + 1;
 		return 0;
 	}
-	if(l->total + nlen <= l->size) {
+	if(l->total + nlen + 1 <= l->size) {
 		memcpy_b(l->list + l->total, sd->name, nlen);
+		l->list[l->total + nlen] = 0;	/* NUL-separated names */
 	} else {
 		l->errno = -ERANGE;
 		return 1;
 	}
-	l->total += nlen;
+	l->total += nlen + 1;
 	return 0;
 }
 
@@ -342,10 +370,6 @@ int bfs_listxattr(struct inode *i, char *list, __size_t size)
 {
 	struct bfs_xattr_list l;
 	int res;
-
-	if(S_ISLNK(i->i_mode)) {
-		return -EOPNOTSUPP;
-	}
 
 	l.list = list;
 	l.size = size;
@@ -357,7 +381,15 @@ int bfs_listxattr(struct inode *i, char *list, __size_t size)
 	if(res && l.errno) {
 		return l.errno;
 	}
-	return l.total;
+	if(l.size && l.errno) {
+		return l.errno;
+	}
+	/* the attributes tree names follow the small_data ones */
+	res = bfs_attr_list(i, list, size, l.total);
+	if(res < 0) {
+		return res;
+	}
+	return l.total + res;
 }
 
 static int bfs_xattr_remove_cb(struct bfs_small_data *sd, void *arg)
@@ -383,9 +415,6 @@ int bfs_removexattr(struct inode *i, const char *name)
 	if(bfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
-	if(S_ISLNK(i->i_mode)) {
-		return -EOPNOTSUPP;
-	}
 
 	inode_lock(i);
 
@@ -394,7 +423,8 @@ int bfs_removexattr(struct inode *i, const char *name)
 	found = bfs_xattr_walk(i, bfs_xattr_remove_cb, &r);
 	if(!found) {
 		inode_unlock(i);
-		return -ENODATA;
+		/* not inline: remove from the attributes tree */
+		return bfs_attr_remove(i, name);
 	}
 
 	/* compact: shift the records after the removed one down */
@@ -412,6 +442,57 @@ int bfs_removexattr(struct inode *i, const char *name)
 			/* remove: shift the tail down by 'need'; 'left'
 			 * still includes this record, so the bytes after
 			 * it are (left - need) */
+			tail = left - need;
+			if(tail > 0) {
+				memmove(p, p + need, tail);
+			}
+			memset_b(p + tail, 0, need);
+			break;
+		}
+		p += need;
+		left -= need;
+	}
+
+	i->state |= INODE_DIRTY;
+	inode_unlock(i);
+	return 0;
+}
+
+/*
+ * Remove one small_data record by name (no unlock, no tree fallback).
+ * Used by bfs_attr_set() so an attribute that moved into the attributes
+ * tree leaves the small_data section (Haiku's _RemoveSmallData).
+ */
+int bfs_xattr_remove_sd(struct inode *i, const char *name)
+{
+	struct bfs_xattr_remove r;
+	char *p;
+	int left, need, found, tail;
+
+	if(bfs_xattr_refuse_name(name)) {
+		return 0;
+	}
+
+	inode_lock(i);
+	r.name = name;
+	r.name_size = strlen(name);
+	found = bfs_xattr_walk(i, bfs_xattr_remove_cb, &r);
+	if(!found) {
+		inode_unlock(i);
+		return -ENODATA;
+	}
+
+	p = bfs_xattr_area(i);
+	left = BFS_SMALL_DATA_SIZE;
+	while(left >= BFS_SD_HDR) {
+		struct bfs_small_data *sd = (struct bfs_small_data *)p;
+
+		need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+		if(!sd->name_size || need > left) {
+			break;
+		}
+		if(sd->name_size == r.name_size &&
+		   !memcmp(sd->name, r.name, r.name_size)) {
 			tail = left - need;
 			if(tail > 0) {
 				memmove(p, p + need, tail);

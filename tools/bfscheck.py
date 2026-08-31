@@ -378,6 +378,51 @@ def check(path, rootdir=None):
     # walk the tree from the root inode
     walk_dir(root_ino, root_ino, '')
 
+    # ---- attributes inodes (Haiku's per-file attributes tree) ----
+    # every inode with a nonzero attributes run points at an attributes
+    # inode: mode carries S_ATTR_DIR, its stream is a STRING B+tree with
+    # no "." / ".." whose values are attribute-file inodes (mode carries
+    # S_ATTR, stream = the value); the run must never dangle
+    S_ATTR_DIR = 0x40000000
+    S_ATTR = 0x80000000
+    n_attr = 0
+    for blk in list(inode_blocks):
+        io = blk * BLK
+        aag, ast, aln = run(io + 52)         # the attributes run
+        if not aln:
+            continue
+        ablk = (aag << ag_shift) + ast
+        assert ablk in range(num_blocks), (
+            "inode %d: attributes run out of range" % blk)
+        aio = ablk * BLK
+        assert u32(aio) == INODE_MAGIC, (
+            "inode %d: attributes run -> block %d not an inode" % (blk, ablk))
+        amode = u32(aio + 20)
+        assert amode & S_ATTR_DIR, (
+            "inode %d: attrs inode %d missing S_ATTR_DIR (mode %08x)"
+            % (blk, ablk, amode))
+        aentries, astats, _ = read_tree(aio, referenced)
+        assert not any(k in (b'.', b'..') for k, _ in aentries), (
+            "attrs tree of inode %d has '.'/'..'" % blk)
+        keys = [k for k, _ in aentries]
+        assert keys == sorted(keys), "attrs tree of inode %d not sorted" % blk
+        inode_blocks.add(ablk)
+        for _, v in aentries:
+            vio = v * BLK
+            assert v in range(num_blocks) and u32(vio) == INODE_MAGIC, (
+                "attrs tree of inode %d: value %d not an inode" % (blk, v))
+            vmode = u32(vio + 20)
+            assert vmode & S_ATTR, (
+                "attrs tree of inode %d: file %d missing S_ATTR" % (blk, v))
+            assert vmode & S_IFMT == S_IFREG, (
+                "attrs tree of inode %d: file %d not regular" % (blk, v))
+            _, _, _, _, _, _, vsize = parse_stream(vio)
+            referenced.update(stream_blocks(vio, referenced))
+            inode_blocks.add(v)
+        n_attr += 1
+        print("attrs: inode %d -> attrs inode %d, %d attribute(s) (%d leaves, %d interiors)"
+              % (blk, ablk, len(aentries), astats['leaves'], astats['interiors']))
+
     # ---- referenced-blocks == bitmap used set ----
     # reserved areas: block 0 (boot + superblock), the per-AG bitmaps and
     # the journal extent

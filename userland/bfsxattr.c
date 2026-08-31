@@ -50,16 +50,19 @@ static int do_set(void)
 	for(i = 0; i < 30; i++) {
 		big[i] = 'A' + (i % 26);
 	}
+	for(i = 0; i < 60; i++) {
+		huge[i] = 'h';
+	}
 
-	/* 24-byte small_data budget: the record is 8 + name_size + data.
-	 * user.c (7 name) + 9 data = 24, exactly full. */
+	/* the small_data budget is 792 bytes (Haiku: inode_size == block
+	 * size); a first inline attribute always fits */
 	r = set_one("user.c", "hello att", 9, 0);
 	report("set user.c", r == 0);
 
-	/* a second attribute does not fit -> ENOSPC */
+	/* a second attribute fits inline too (user.n + user.c < 792) */
 	errno = 0;
 	r = set_one("user.n", num, 4, 0);
-	report("set user.n (full) -> ENOSPC", r < 0 && errno == ENOSPC);
+	report("set user.n", r == 0);
 
 	/* XATTR_CREATE on an existing attr -> EEXIST */
 	errno = 0;
@@ -84,10 +87,16 @@ static int do_set(void)
 	r = set_one("user.c", "replaced", 8, 0);
 	report("set user.c = replaced", r == 0);
 
-	/* value too big for the small_data area -> ENOSPC */
+	/* a 60-byte value still fits inline */
 	errno = 0;
 	r = set_one("user.huge", huge, 60, 0);
-	report("set user.huge 60B -> ENOSPC", r < 0 && errno == ENOSPC);
+	report("set user.huge 60B", r == 0);
+	{
+		char hb[64];
+		errno = 0;
+		r = getxattr(path, "user.huge", hb, sizeof(hb));
+		report("get user.huge", r == 60 && !memcmp(hb, huge, 60));
+	}
 
 	/* attributes on a DIRECTORY (short name to fit 24 bytes) */
 	{
@@ -99,12 +108,19 @@ static int do_set(void)
 		report("getxattr dir value", rr == 9 && !memcmp(d, "dirvalue", 9));
 	}
 
-	/* attributes on a SYMLINK -> EOPNOTSUPP (the symlink length in
-	 * pad[0] aliases the small_data area); lsetxattr must NOT follow
+	/* attributes on a SYMLINK are ALLOWED (Haiku: every inode supports
+	 * attributes; the small_data tail starts at 232, after the 144-byte
+	 * symlink area, so there is no aliasing); lsetxattr must NOT follow
 	 * the link */
 	errno = 0;
 	r = lsetxattr("/mnt/short", "user.onlink", "x", 1, 0);
-	report("lsetxattr on symlink -> EOPNOTSUPP", r < 0 && errno == EOPNOTSUPP);
+	report("lsetxattr on symlink", r == 0);
+	{
+		char d2[32];
+		errno = 0;
+		r = lgetxattr("/mnt/short", "user.onlink", d2, sizeof(d2));
+		report("lgetxattr on symlink", r == 1 && d2[0] == 'x');
+	}
 
 	/* empty name -> EINVAL */
 	errno = 0;
@@ -175,16 +191,22 @@ static int check_one(const char *name, const void *exp, size_t size)
 static int do_check(void)
 {
 	char list[256];
+	unsigned char nbuf[4] = {1, 2, 3, 4};
+	char hbuf[60];
 	int ok = 1;
 	ssize_t n;
+	int i;
+
+	for(i = 0; i < 60; i++) {
+		hbuf[i] = 'h';
+	}
 
 	ok &= check_one("user.c", "replaced", 8);
+	ok &= check_one("user.n", nbuf, 4);
+	ok &= check_one("user.huge", hbuf, 60);
 
-	/* user.n never fit: must be ENODATA after the reopen */
-	errno = 0;
-	n = getxattr(path, "user.n", NULL, 0);
-	report("user.n absent after reopen -> ENODATA", n < 0 && errno == ENODATA);
-
+	/* all three attributes fit the 792-byte small_data section, so
+	 * they survive the reopen */
 	n = listxattr(path, list, sizeof(list));
 	fprintf(out, "listxattr len=%ld\n", (long)n);
 	fprintf(stdout, "listxattr len=%ld\n", (long)n);
@@ -196,12 +218,12 @@ static int do_check(void)
 			fprintf(stdout, "  attr: %s\n", p);
 			p += strlen(p) + 1;
 		}
-		ok &= (n == 7);		/* only user.c(6 + NUL) survives */
-		fprintf(out, "list total %s\n", (n == 7) ? "OK" : "FAIL");
-		fprintf(stdout, "list total %s\n", (n == 7) ? "OK" : "FAIL");
+		ok &= (n == 24);	/* user.c(6) + user.n(6) + user.huge(9) + 3 NULs */
+		fprintf(out, "list total %s\n", (n == 24) ? "OK" : "FAIL");
+		fprintf(stdout, "list total %s\n", (n == 24) ? "OK" : "FAIL");
 	}
 
-	/* too-small list buffer -> ERANGE (the 7-byte list does not fit
+	/* too-small list buffer -> ERANGE (the 24-byte list does not fit
 	 * in 4 bytes) */
 	errno = 0;
 	n = listxattr(path, list, 4);
@@ -209,7 +231,7 @@ static int do_check(void)
 
 	/* size query */
 	n = listxattr(path, NULL, 0);
-	report("listxattr size query = 7", n == 7);
+	report("listxattr size query = 24", n == 24);
 
 	return ok;
 }

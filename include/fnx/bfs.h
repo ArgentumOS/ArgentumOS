@@ -38,6 +38,13 @@
 #define BFS_INODE_IN_USE	0x00000001
 /* Haiku inode_flags (permanent bits; the low 16 bits are on-disk) */
 #define BFS_INODE_LONG_SYMLINK	0x00000040	/* target in the data stream */
+#define BFS_INODE_ATTR_INODE	0x00000004	/* legacy BeOS: attribute node */
+
+/* Haiku stat.h extended mode bits (stored in the HIGH 16 bits of the
+ * on-disk inode mode; invisible to 16-bit i_mode) */
+#define BFS_S_STR_INDEX		0x08000000	/* string-indexed B+tree */
+#define BFS_S_ATTR_DIR		0x40000000	/* attribute directory inode */
+#define BFS_S_ATTR		0x80000000	/* attribute file inode */
 
 /* inode 'type' values (attribute type of the main data stream) */
 #define BFS_FILE_TYPE_DIR	0x00000000
@@ -272,5 +279,14 @@ struct bfs_run_array {
 /* write (or replace) the file-name 0x13 small_data record (Haiku
  * Inode::SetName()); called at create/rename */
 int bfs_inode_set_name(struct inode *, const char *);
+
+/* attribute inodes (Haiku's per-file attributes B+tree) - see
+ * fs/bfs/attribute.c */
+int bfs_attr_find(struct inode *, const char *, struct inode **);
+int bfs_attr_get(struct inode *, const char *, char *, __size_t);
+int bfs_attr_set(struct inode *, const char *, const char *, __size_t);
+int bfs_attr_list(struct inode *, char *, __size_t, int);
+int bfs_attr_remove(struct inode *, const char *);
+void bfs_attr_free_all(struct inode *);
 #endif /* _FNX_BFS_H */
 

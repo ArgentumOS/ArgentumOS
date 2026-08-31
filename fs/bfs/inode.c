@@ -129,7 +129,12 @@ int bfs_write_inode(struct inode *i)
 	raw = (struct bfs_inode *)buf->data;
 	ds = &i->u.bfs.raw.u.data;
 
-	i->u.bfs.raw.mode = i->i_mode;
+	/* the VFS owns the low 16 bits (type + permissions); the high 16
+	 * bits carry Haiku's extended mode bits (S_ATTR, S_ATTR_DIR,
+	 * S_STR_INDEX, ...) which a 16-bit i_mode cannot hold — preserve
+	 * them so rewriting a Haiku attribute/index inode keeps them */
+	i->u.bfs.raw.mode = (i->u.bfs.raw.mode & 0xFFFF0000u)
+		| (i->i_mode & 0xFFFFu);
 	i->u.bfs.raw.uid = i->i_uid;
 	i->u.bfs.raw.gid = i->i_gid;
 	if(S_ISLNK(i->i_mode)) {
@@ -211,6 +216,9 @@ int bfs_ialloc(struct inode *i, int mode)
 	memset_b(&i->u.bfs.raw, 0, sizeof(struct bfs_inode));
 	memset_b(i->u.bfs.small_data, 0, BFS_SMALL_DATA_SIZE);
 	i->u.bfs.raw.mode = mode;
+	/* keep the in-memory copy in sync: bfs_write_inode() rewrites the
+	 * buffer from i->u.bfs.raw, which ialloc leaves zeroed */
+	i->u.bfs.raw.inode_size = BFS_BLOCK_SIZE;
 	i->u.bfs.raw.u.data.max_direct_range = BFS_NUM_DIRECT_BLOCKS * BFS_BLOCK_SIZE;
 	i->i_atime = CURRENT_TIME;
 	i->i_mtime = CURRENT_TIME;
@@ -223,6 +231,10 @@ void bfs_ifree(struct inode *i)
 	if(!i->inode || i->inode >= i->sb->u.bfs.num_blocks) {
 		return;
 	}
+	/* free any attribute inodes (tree + attribute files) first, so
+	 * their blocks are not leaked when a Haiku file with attributes
+	 * is unlinked */
+	bfs_attr_free_all(i);
 	if(i->i_blocks) {
 		invalidate_inode_pages(i);
 		bfs_truncate(i, 0);
