@@ -161,6 +161,21 @@ struct bfs_block_run {
 typedef struct bfs_block_run bfs_inode_addr;
 
 /*
+ * Encode an ABSOLUTE block number as an on-disk (allocation_group,
+ * start) block_run. The start field is u16: storing the absolute block
+ * there truncates beyond block 65535 (Haiku's root sits at block
+ * 131072), so every run must be split as (block >> ag_shift, block &
+ * mask). The volume's ag_shift is 13..15 (mkbfs 1024-byte volumes keep
+ * 13; Haiku picks 13..15 by size).
+ */
+static __inline__ void bfs_run_encode(struct bfs_block_run *run, __blk_t block,
+				      __u32 ag_shift)
+{
+	run->allocation_group = block >> ag_shift;
+	run->start = block & ((1u << ag_shift) - 1);
+}
+
+/*
  * Superblock: 512 bytes at offset 512 of block 0 (the first 512 bytes
  * of block 0 are the boot block). PACKED size = 126 bytes; the rest of
  * the 512-byte area is unused/reserved.
@@ -271,8 +286,10 @@ struct bfs_sb_info {
 	__u32 root_inode;	/* block number of the root directory inode */
 	__u32 indices_inode;	/* block number of the indices dir inode (0 = none) */
 	__u64 used_blocks;
-	/* free-space bitmap (all groups concatenated), cached in memory */
-	unsigned char *bitmap;	/* num_bitmap_blocks * block_size bytes */
+	/* free-space bitmap (all groups concatenated), cached in memory as
+	 * PAGE_SIZE chunks (a volume's bitmap can exceed the kmalloc cap) */
+	unsigned char **bitmap;	/* chunk pointers */
+	__u32 bitmap_chunks;	/* number of PAGE_SIZE chunks */
 	__u32 bitmap_blocks;	/* total bitmap blocks on the volume */
 	__u32 next_free;	/* allocation hint (volume block number) */
 	/* journal (log) state */

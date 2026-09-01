@@ -130,6 +130,22 @@ static void bfs_statfs(struct superblock *sb, struct statfs *buf)
 	buf->f_namelen = BFS_NAME_LEN;
 }
 
+static void bfs_free_bitmap(struct superblock *sb)
+{
+	__u32 i;
+
+	if(!sb->u.bfs.bitmap) {
+		return;
+	}
+	for(i = 0; i < sb->u.bfs.bitmap_chunks; i++) {
+		if(sb->u.bfs.bitmap[i]) {
+			kfree((addr_t)sb->u.bfs.bitmap[i]);
+		}
+	}
+	kfree((addr_t)sb->u.bfs.bitmap);
+	sb->u.bfs.bitmap = NULL;
+}
+
 static void bfs_release_superblock(struct superblock *sb)
 {
 	struct buffer *buf;
@@ -153,6 +169,8 @@ static void bfs_release_superblock(struct superblock *sb)
 	sb->u.bfs.flags = BFS_SUPER_CLEAN;
 	sb->state = SUPERBLOCK_DIRTY;
 	superblock_unlock(sb);
+
+	bfs_free_bitmap(sb);
 }
 
 /*
@@ -189,17 +207,22 @@ static int bfs_write_superblock(struct superblock *sb)
 	sb->u.bfs.flags = BFS_SUPER_CLEAN;
 	bfs_log_unlock(sb);
 
-	/* flush the bitmap blocks */
-	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
-		struct buffer *bb;
-		if(!(bb = bread(sb->dev, 1 + i, sb->u.bfs.block_size))) {
-			superblock_unlock(sb);
-			return -EIO;
+	/* flush the bitmap blocks (skipped once the mount's bitmap was
+	 * freed at release — the VFS may write the superblock again
+	 * after release_superblock) */
+	if(sb->u.bfs.bitmap) {
+		for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
+			struct buffer *bb;
+			__u32 chunk = (i * sb->u.bfs.block_size) >> 12;
+			__u32 coff = (i * sb->u.bfs.block_size) & (PAGE_SIZE - 1);
+			if(!(bb = bread(sb->dev, 1 + i, sb->u.bfs.block_size))) {
+				superblock_unlock(sb);
+				return -EIO;
+			}
+			memcpy_b(bb->data, sb->u.bfs.bitmap[chunk] + coff,
+				sb->u.bfs.block_size);
+			bwrite(bb);
 		}
-		memcpy_b(bb->data,
-			sb->u.bfs.bitmap + (i * sb->u.bfs.block_size),
-			sb->u.bfs.block_size);
-		bwrite(bb);
 	}
 
 	/* rebuild the superblock */
@@ -229,14 +252,17 @@ static int bfs_write_superblock(struct superblock *sb)
 	bsb->log_start = sb->u.bfs.log_start;
 	bsb->log_end = sb->u.bfs.log_end;
 	bsb->magic3 = BFS_SUPER_MAGIC3;
-	bsb->root_dir.allocation_group = 0;
-	bsb->root_dir.start = sb->u.bfs.root_inode;
+	/* the in-memory root/indices inode numbers are ABSOLUTE blocks;
+	 * the on-disk block_run stores them split into (ag, start) —
+	 * an absolute number in the u16 start field truncates at block
+	 * 65535 (Haiku's root sits at block 131072: 0x20000 -> 0). */
+	bfs_run_encode(&bsb->root_dir, sb->u.bfs.root_inode, sb->u.bfs.ag_shift);
 	bsb->root_dir.len = 1;
 	/* preserve the indices directory run (Haiku keeps it across
 	 * unmount; the in-memory form is the indices inode's block) */
 	if(sb->u.bfs.indices_inode) {
-		bsb->indices.allocation_group = 0;
-		bsb->indices.start = sb->u.bfs.indices_inode;
+		bfs_run_encode(&bsb->indices, sb->u.bfs.indices_inode,
+			       sb->u.bfs.ag_shift);
 		bsb->indices.len = 1;
 	} else {
 		bsb->indices.allocation_group = 0;
@@ -336,26 +362,45 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	sb->u.bfs.journal_locked = 0;
 	sb->u.bfs.journal_wanted = 0;
 
-	/* load the bitmap into memory */
+	/* load the bitmap into memory (chunked: a large volume's bitmap is
+	 * many times the kmalloc cap of one page) */
 	sb->u.bfs.bitmap_blocks = sb->u.bfs.num_ags * sb->u.bfs.blocks_per_ag;
-	if(!(sb->u.bfs.bitmap = (unsigned char *)kmalloc(
-			sb->u.bfs.bitmap_blocks * sb->u.bfs.block_size))) {
-		printk("WARNING: %s(): unable to allocate the bitmap.\n",
+	sb->u.bfs.bitmap_chunks =
+		((sb->u.bfs.bitmap_blocks * sb->u.bfs.block_size)
+		 + PAGE_SIZE - 1) / PAGE_SIZE;
+	if(!(sb->u.bfs.bitmap = (unsigned char **)kmalloc(
+			sb->u.bfs.bitmap_chunks * sizeof(unsigned char *)))) {
+		printk("WARNING: %s(): unable to allocate the bitmap table.\n",
 		       __FUNCTION__);
 		superblock_unlock(sb);
 		brelse(buf);
 		return -ENOMEM;
 	}
-	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
+	for(i = 0; i < (int)sb->u.bfs.bitmap_chunks; i++) {
+		sb->u.bfs.bitmap[i] = NULL;
+	}
+	for(i = 0; i < (int)sb->u.bfs.bitmap_blocks; i++) {
 		struct buffer *bb;
+		__u32 chunk = (i * sb->u.bfs.block_size) >> 12;
+		__u32 coff = (i * sb->u.bfs.block_size) & (PAGE_SIZE - 1);
+		if(!sb->u.bfs.bitmap[chunk]) {
+			if(!(sb->u.bfs.bitmap[chunk] =
+					(unsigned char *)kmalloc(PAGE_SIZE))) {
+				printk("WARNING: %s(): unable to allocate the bitmap.\n",
+				       __FUNCTION__);
+				bfs_free_bitmap(sb);
+				superblock_unlock(sb);
+				brelse(buf);
+				return -ENOMEM;
+			}
+			memset_b(sb->u.bfs.bitmap[chunk], 0, PAGE_SIZE);
+		}
 		if(!(bb = bread(dev, 1 + i, sb->u.bfs.block_size))) {
-			kfree((addr_t)sb->u.bfs.bitmap);
-			sb->u.bfs.bitmap = NULL;
 			superblock_unlock(sb);
 			brelse(buf);
 			return -EIO;
 		}
-		memcpy_b(sb->u.bfs.bitmap + (i * sb->u.bfs.block_size),
+		memcpy_b(sb->u.bfs.bitmap[chunk] + coff,
 			bb->data, sb->u.bfs.block_size);
 		brelse(bb);
 	}
@@ -367,8 +412,7 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	if(bfs_log_replay(sb) < 0) {
 		printk("WARNING: %s(): log replay failed, refusing mount.\n",
 		       __FUNCTION__);
-		kfree((addr_t)sb->u.bfs.bitmap);
-		sb->u.bfs.bitmap = NULL;
+		bfs_free_bitmap(sb);
 		superblock_unlock(sb);
 		brelse(buf);
 		return -EIO;
@@ -377,8 +421,7 @@ static int bfs_read_superblock(__dev_t dev, struct superblock *sb)
 	if(!(sb->root = iget(sb, root_block))) {
 		printk("WARNING: %s(): unable to get root inode.\n",
 		       __FUNCTION__);
-		kfree((addr_t)sb->u.bfs.bitmap);
-		sb->u.bfs.bitmap = NULL;
+		bfs_free_bitmap(sb);
 		superblock_unlock(sb);
 		brelse(buf);
 		return -EINVAL;

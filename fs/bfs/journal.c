@@ -42,6 +42,7 @@
 #include <fnx/fs.h>
 #include <fnx/buffer.h>
 #include <fnx/bfs.h>
+#include <fnx/mm.h>
 #include <fnx/string.h>
 #include <fnx/errno.h>
 #include <fnx/stdio.h>
@@ -287,10 +288,12 @@ static int bfs_log_write_bitmap(struct superblock *sb)
 	__u32 i;
 
 	for(i = 0; i < sb->u.bfs.bitmap_blocks; i++) {
+		__u32 chunk = (i * sb->u.bfs.block_size) >> 12;
+		__u32 coff = (i * sb->u.bfs.block_size) & (PAGE_SIZE - 1);
 		if(!(bb = bread(sb->dev, 1 + i, sb->u.bfs.block_size))) {
 			return -EIO;
 		}
-		memcpy_b(bb->data, sb->u.bfs.bitmap + (i * sb->u.bfs.block_size),
+		memcpy_b(bb->data, sb->u.bfs.bitmap[chunk] + coff,
 			 sb->u.bfs.block_size);
 		bwrite(bb);
 	}

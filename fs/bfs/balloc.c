@@ -23,6 +23,7 @@
 #include <fnx/errno.h>
 #include <fnx/fs.h>
 #include <fnx/bfs.h>
+#include <fnx/mm.h>
 #include <fnx/buffer.h>
 #include <fnx/string.h>
 
@@ -37,34 +38,46 @@ static __u32 bfs_group_bit(struct superblock *sb, __blk_t block)
 	return block & ((1 << sb->u.bfs.ag_shift) - 1);
 }
 
+/* the bitmap byte for a block, split into its PAGE_SIZE chunk + offset */
+static void bfs_bitmap_byte(struct superblock *sb, __blk_t block,
+			    unsigned char **chunk, __u32 *byte)
+{
+	__u64 off = (__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
+		* sb->u.bfs.block_size
+		+ (bfs_group_bit(sb, block) >> 3);
+
+	*chunk = sb->u.bfs.bitmap[off >> 12];
+	*byte = off & (PAGE_SIZE - 1);
+}
+
 static int bfs_bitmap_test(struct superblock *sb, __blk_t block)
 {
+	unsigned char *chunk;
+	__u32 byte;
 	__u32 bit = bfs_group_bit(sb, block);
-	unsigned char *bm = sb->u.bfs.bitmap
-		+ ((__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-			* sb->u.bfs.block_size);
 
-	return bm[bit >> 3] & (1 << (bit & 7));
+	bfs_bitmap_byte(sb, block, &chunk, &byte);
+	return chunk[byte] & (1 << (bit & 7));
 }
 
 static void bfs_bitmap_set(struct superblock *sb, __blk_t block)
 {
+	unsigned char *chunk;
+	__u32 byte;
 	__u32 bit = bfs_group_bit(sb, block);
-	unsigned char *bm = sb->u.bfs.bitmap
-		+ ((__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-			* sb->u.bfs.block_size);
 
-	bm[bit >> 3] |= (1 << (bit & 7));
+	bfs_bitmap_byte(sb, block, &chunk, &byte);
+	chunk[byte] |= (1 << (bit & 7));
 }
 
 static void bfs_bitmap_clear(struct superblock *sb, __blk_t block)
 {
+	unsigned char *chunk;
+	__u32 byte;
 	__u32 bit = bfs_group_bit(sb, block);
-	unsigned char *bm = sb->u.bfs.bitmap
-		+ ((__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-			* sb->u.bfs.block_size);
 
-	bm[bit >> 3] &= ~(1 << (bit & 7));
+	bfs_bitmap_byte(sb, block, &chunk, &byte);
+	chunk[byte] &= ~(1 << (bit & 7));
 }
 
 /*

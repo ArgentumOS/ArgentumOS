@@ -147,16 +147,14 @@ static struct inode *bfs_attr_dir_create(struct inode *i)
 	ai->u.bfs.raw.mode = BFS_S_ATTR_DIR | BFS_S_STR_INDEX | S_IFDIR | 0666;
 	ai->u.bfs.raw.flags = BFS_INODE_IN_USE | BFS_INODE_ATTR_INODE;
 	ai->u.bfs.raw.type = 0;
-	ai->u.bfs.raw.parent.allocation_group = 0;
-	ai->u.bfs.raw.parent.start = i->inode;
+	bfs_run_encode(&ai->u.bfs.raw.parent, i->inode, i->sb->u.bfs.ag_shift);
 	ai->u.bfs.raw.parent.len = 1;
 	ai->i_size = 2 * BFS_BTREE_NODE_SIZE;
 	ai->i_blocks = (ai->i_size + 511) >> 9;
 	ai->state |= INODE_DIRTY;
 
 	/* point the file's attributes run at the new inode */
-	i->u.bfs.raw.attributes.allocation_group = 0;
-	i->u.bfs.raw.attributes.start = ai->inode;
+	bfs_run_encode(&i->u.bfs.raw.attributes, ai->inode, i->sb->u.bfs.ag_shift);
 	i->u.bfs.raw.attributes.len = 1;
 	i->state |= INODE_DIRTY;
 	return ai;
@@ -259,8 +257,7 @@ int bfs_attr_set(struct inode *i, const char *name, const char *value,
 		/* 'CSTR' unless the caller migrated a typed inline record
 		 * into the tree (Haiku's CreateAttribute carries the type) */
 		attr->u.bfs.raw.type = type ? type : BFS_FILE_NAME_TYPE;
-		attr->u.bfs.raw.parent.allocation_group = 0;
-		attr->u.bfs.raw.parent.start = ai->inode;
+		bfs_run_encode(&attr->u.bfs.raw.parent, ai->inode, i->sb->u.bfs.ag_shift);
 		attr->u.bfs.raw.parent.len = 1;
 		attr->state |= INODE_DIRTY;
 

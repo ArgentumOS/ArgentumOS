@@ -233,8 +233,7 @@ int bfs_write_inode(struct inode *i)
 	/* preserve the permanent on-disk flags (e.g. INODE_LONG_SYMLINK on
 	 * Haiku-created stream symlinks) — only IN_USE is ours to manage */
 	raw->flags |= BFS_INODE_IN_USE;
-	raw->inode_num.allocation_group = 0;
-	raw->inode_num.start = i->inode;
+	bfs_run_encode(&raw->inode_num, i->inode, i->sb->u.bfs.ag_shift);
 	raw->inode_num.len = 1;
 	if(!(S_ISLNK(i->i_mode) && i->i_size <= 143)) {
 		raw->u.data.size = i->i_size;
@@ -273,8 +272,7 @@ int bfs_ialloc(struct inode *i, int mode)
 	memset_b(buf->data, 0, i->sb->s_blocksize);
 	raw = (struct bfs_inode *)buf->data;
 	raw->magic1 = BFS_INODE_MAGIC;
-	raw->inode_num.allocation_group = 0;
-	raw->inode_num.start = block;
+	bfs_run_encode(&raw->inode_num, block, i->sb->u.bfs.ag_shift);
 	raw->inode_num.len = 1;
 	raw->mode = mode;
 	raw->flags = BFS_INODE_IN_USE;
