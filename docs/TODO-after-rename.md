@@ -567,7 +567,7 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED, QUERY + 2048/4096-byte blocks DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8, f867338, bc44a31, e8f6e20)
+## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED, QUERY + 2048/4096-byte blocks DONE, HAIKU-COMPAT NODE SIZE DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8, f867338, bc44a31, e8f6e20, 8f042ac)
 
 Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
@@ -722,7 +722,25 @@ guest battery (BFSQTEST ALL-OK: STRING wildcards, size/last_modified,
 
 Block sizes (bc44a31, e8f6e20): FNX mounts 1024/2048/4096-byte
 volumes (Haiku's mkfs default is 2048; inode_size == block_size is
-mandatory per Haiku's IsValid). 4096 needed the VFS destroy_inode hook
+mandatory per Haiku's IsValid). 4096 needed the VFS destroy_inode hook.
+
+Haiku node size (8f042ac): Haiku hard-codes its B+tree NODE size to
+1024 bytes regardless of the block size (BPLUSTREE_NODE_SIZE), so the
+old node==block format was Haiku-incompatible. Nodes now pack at
+1024-byte offsets in the stream at every block size (2-4 per block);
+the tree header + first node share block 0. Packed nodes made the
+header/leaf/fragment/dup-node blocks overlap, which collided with the
+buffer cache's sleeping-lock model (breading a node whose block a held
+leaf already owned deadlocked on its own lock). Fixed across the
+dup/split/iterate/remove machinery: held-buffer borrowing (write
+deferred to the buffer owner), insert_dup writes the leaf whenever a
+dup touched its block, remove_dup releases the leaf on every exit, the
+journal tx-overflow write-through skips caller-held blocks
+(buffer_locked), the split's parent/right-node/relink same-block reads,
+and a fail-fast guard in bfs_btree_read_node. Verified at
+1024/2048/4096: 2000-file batteries + BFSQTEST ALL-OK, S/X/J regressions
+pass (0 FAIL), and bfscheck parses a real Haiku nightly volume
+(397 inodes, 239793 blocks, indices verified).
 (fsop->destroy_inode, kept as the trailing fsop field so positional
 initializers stay valid; fired from remove_from_hash on cache exit) so
 the per-inode small_data tail (3864 bytes at 4096) can be a separate
