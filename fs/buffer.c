@@ -421,6 +421,18 @@ static int sync_one_buffer(struct buffer *buf)
 	return 0;
 }
 
+static struct buffer *search_buffer_hash(__dev_t, __blk_t, int);
+
+int buffer_locked(__dev_t dev, __blk_t block, int size)
+{
+	struct buffer *buf;
+
+	if((buf = search_buffer_hash(dev, block, size))) {
+		return !!(buf->flags & BUFFER_LOCKED);
+	}
+	return 0;
+}
+
 static struct buffer *search_buffer_hash(__dev_t dev, __blk_t block, int size)
 {
 	struct buffer *buf;

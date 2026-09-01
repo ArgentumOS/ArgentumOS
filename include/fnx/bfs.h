@@ -96,6 +96,12 @@
 #define BFS_BTREE_FLOAT_TYPE	7
 #define BFS_BTREE_DOUBLE_TYPE	8
 #define BFS_BTREE_MAX_KEY_LEN	256
+/* Haiku's BPlusTree node size is a hard-coded 1024 bytes REGARDLESS of
+ * the volume block size (BPlusTree.cpp: "the node size is hard-coded to
+ * 1024 bytes"; the duplicate-fragment handling is likewise). The tree
+ * nodes are addressed at 1024-byte offsets within the inode's stream —
+ * with 2048/4096-byte blocks several nodes pack into one block. */
+#define BFS_BTREE_NODE_SIZE	1024
 /* structural cap on pairs per node (a 4096-byte leaf could hold ~370
  * short-key pairs, but the pair-collect arrays are sized to 128; the
  * room check splits a node when it would exceed this, so every array
@@ -280,6 +286,11 @@ struct bfs_sb_info {
 	int tx_nblocks;				/* entries used in tx_blocks[] */
 	int tx_depth;				/* nesting depth (0 = no tx) */
 	int log_draining;			/* umount: write through, no journal */
+	int log_flushing;			/* log reset: nested writes go
+						 * straight through so the reset's
+						 * sync_buffers() write-backs cannot
+						 * journal (the log is mid-reset and
+						 * would recurse) */
 	/* journal transaction lock (serializes tx ownership): the tx
 	 * state is per-superblock but the commit sleeps on I/O, so a
 	 * concurrent tx on the same sb would clobber it. Stored as a

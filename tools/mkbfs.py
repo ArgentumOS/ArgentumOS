@@ -29,6 +29,9 @@ import struct
 import sys
 
 BLOCK = 1024               # volume block size (1024/2048/4096)
+NODE = 1024                # btree node size — Haiku hard-codes 1024
+                           # regardless of the block size; nodes pack at
+                           # 1024-byte offsets inside the stream blocks
 BLOCK_SHIFT = 10
 # Haiku's mkfs geometry (Volume::Initialize): start with 8192-block
 # groups and grow them until at most kDesiredAllocationGroups exist.
@@ -120,7 +123,7 @@ def build_btree_header(root_off, max_depth, max_size=1 << 20,
                         data_type=0):
     h = bytearray(40)
     h[0:4] = u32(BTREE_MAGIC)
-    h[4:8] = u32(BLOCK)
+    h[4:8] = u32(NODE)
     h[8:12] = u32(max_depth)
     h[12:16] = u32(data_type)        # BPLUSTREE_*_TYPE
     h[16:24] = u64(root_off)         # root node byte offset in the stream
@@ -136,7 +139,7 @@ def build_node(keys, values, overflow, right, left=BTREE_NULL):
     keys[i] = the last key of child i's subtree)."""
     assert len(keys) == len(values)
     keys = [k.encode() if isinstance(k, str) else k for k in keys]
-    node = bytearray(BLOCK)
+    node = bytearray(NODE)
     node[0:8] = u64(left)
     node[8:16] = u64(right)
     node[16:24] = u64(overflow)
@@ -363,7 +366,7 @@ def main():
     def node_room(keys, count_extra):
         klen = sum(len(k) for k in keys)
         cnt = len(keys) + count_extra
-        return cnt <= 128 and ((28 + klen + 7) & ~7) + cnt * 2 + cnt * 8 <= BLOCK
+        return cnt <= 128 and ((28 + klen + 7) & ~7) + cnt * 2 + cnt * 8 <= NODE
 
     def interior_fits(children):
         """children: list of (maxkey, offset); an interior with k children
@@ -372,12 +375,17 @@ def main():
         if k < 2 or k > 129:
             return False
         klen = sum(len(c[0]) for c in children[:-1])
-        return ((28 + klen + 7) & ~7) + (k - 1) * 2 + k * 8 <= BLOCK
+        return ((28 + klen + 7) & ~7) + (k - 1) * 2 + k * 8 <= NODE
 
-    def build_tree(entries, hb):
-        """Serialize the entries into a B+tree over blocks hb+1...
-        Returns (nblocks, root_off, max_depth, nodes) where nodes =
-        [(block, bytes)] in stream order."""
+    def build_tree(entries, hb, header, data_type=0):
+        """Serialize the entries into a B+tree. The header block is hb
+        (the 40-byte 'header' lives at stream offset 0, its own second
+        half holds node 0 at 1024-byte blocks); the tree's NODE-sized
+        nodes pack at 1024-byte offsets inside the stream blocks,
+        matching Haiku's hard-coded 1024-byte btree node size (several
+        nodes per block at larger block sizes). Returns
+        (nblocks, root_off, max_depth, blocks) where blocks =
+        [(block, bytes)] in stream order (block hb included)."""
         # pack entries into leaves (greedy)
         leaves = []
         cur = []
@@ -390,49 +398,83 @@ def main():
         if cur:
             leaves.append(cur)
         if not leaves:
-            # an empty tree: a single empty leaf
-            leaves = [[]]
-        blocks = alloc_blocks(len(leaves))
-        offs = [(b - hb) * BLOCK for b in blocks]
-        nodes = []
-        for i, leaf in enumerate(leaves):
-            right = offs[i + 1] if i + 1 < len(leaves) else BTREE_NULL
-            left = offs[i - 1] if i > 0 else BTREE_NULL
-            nodes.append((blocks[i], build_node([k for k, _ in leaf],
-                          [v for _, v in leaf], BTREE_NULL, right,
-                          left=left)))
+            leaves = [[]]   # an empty tree: a single empty leaf
+
+        # levels[0] = the leaves; levels[l>0] = interior nodes whose
+        # entries are (maxkey, 0) placeholders (offsets filled below)
+        levels = [leaves]
         maxkeys = [[k for k, _ in leaf] for leaf in leaves]
-        depth = 1
-        while len(leaves) > 1:
-            # pack this level's nodes into interior parents
+        while len(levels[-1]) > 1:
+            level = levels[-1]
             parents = []
             cur = []
-            for i, _ in enumerate(leaves):
-                cand = (maxkeys[i][-1], offs[i])
-                if cur and not interior_fits(cur + [cand]):
+            for i in range(len(level)):
+                cand = maxkeys[i][-1]
+                if cur and not interior_fits([(m, 0) for m in cur]
+                                             + [(cand, 0)]):
                     parents.append(cur)
-                    cur = [cand]
-                else:
-                    cur.append(cand)
+                    cur = []
+                cur.append(cand)
             if cur:
                 parents.append(cur)
-            pblocks = alloc_blocks(len(parents))
-            poffs = [(b - hb) * BLOCK for b in pblocks]
-            new_maxkeys = []
-            new_offs = []
-            for i, parent in enumerate(parents):
-                keys = [c[0] for c in parent[:-1]]
-                vals = [c[1] for c in parent[:-1]]
-                nodes.append((pblocks[i], build_node(keys, vals,
-                              parent[-1][1], BTREE_NULL)))
-                new_maxkeys.append(parent[-1][0])
-                new_offs.append(poffs[i])
-            leaves = parents
-            maxkeys = new_maxkeys
-            offs = new_offs
-            depth += 1
-        nodes.sort(key=lambda nb: nb[0])
-        return 1 + len(nodes), offs[0], depth, nodes
+            levels.append(parents)
+            maxkeys = [[p[-1]] for p in parents]
+
+        counts = [len(level) for level in levels]
+        base = []
+        acc = 0
+        for c in counts:
+            base.append(acc)
+            acc += c
+        def node_offset(idx):
+            return (idx + 1) * NODE
+
+        # the first BLOCK stream bytes are the header block hb; data
+        # blocks only cover the node bytes beyond it (a single node can
+        # fit inside the header block's spare half at larger block sizes)
+        extra = max(0, (acc + 1) * NODE - BLOCK)
+        ndata_blocks = (extra + BLOCK - 1) // BLOCK
+        blocks = alloc_blocks(ndata_blocks)
+        merged = {}
+        def put_node(idx, data):
+            off = node_offset(idx)
+            # stream bytes [0, BLOCK) are the header block hb; the data
+            # blocks hold stream bytes [BLOCK, ...)
+            if off < BLOCK:
+                blk = hb
+            else:
+                blk = blocks[(off - BLOCK) // BLOCK]
+            merged.setdefault(blk, bytearray(BLOCK))
+            merged[blk][off % BLOCK:off % BLOCK + len(data)] = data
+        # the header occupies stream offset 0 (block hb); build it here
+        # (root_off is known only after the layout)
+        merged.setdefault(hb, bytearray(BLOCK))
+        merged[hb][0:40] = build_btree_header(node_offset(0), len(levels),
+                                              data_type=data_type)
+
+        # leaves
+        for i, leaf in enumerate(leaves):
+            right = node_offset(i + 1) if i + 1 < counts[0] else BTREE_NULL
+            left = node_offset(i - 1) if i > 0 else BTREE_NULL
+            put_node(i, build_node([k for k, _ in leaf],
+                                   [v for _, v in leaf],
+                                   BTREE_NULL, right, left=left))
+
+        # interiors: level l node j has k = len(entries)+1 children, the
+        # consecutive level-(l-1) nodes starting at child base + j*k
+        for l in range(1, len(levels)):
+            prev_base = base[l - 1]
+            parent_base = base[l]
+            for j, parent in enumerate(levels[l]):
+                k = len(parent) + 1
+                cstart = prev_base + j * k
+                child_offs = [node_offset(cstart + t) for t in range(k)]
+                data = build_node(parent[:-1], child_offs[:-1],
+                                  child_offs[-1], BTREE_NULL)
+                put_node(parent_base + j, data)
+
+        out = sorted((b, bytes(d)) for b, d in merged.items())
+        return 1 + len(out), node_offset(0), len(levels), out
 
     # ---- walk the tree, allocating inodes + streams ----
     write_inodes = []   # (block, bytes)
@@ -494,10 +536,9 @@ def main():
         entries.insert(0, ('..', parent_blk if parent_blk else dblk))
         entries.sort(key=lambda e: e[0].encode())
         hb = alloc_blocks(1)[0]
-        nblocks, root_off, depth, nodes = build_tree(entries, hb)
-        write_blocks.append((hb, build_btree_header(root_off, depth)))
+        nblocks, root_off, depth, nodes = build_tree(entries, hb, None)
         write_blocks += nodes
-        dir_blocks = [hb] + [b for b, _ in nodes]
+        dir_blocks = [b for b, _ in nodes]
         stream = {'direct': runs_of(dir_blocks),
                   'mdr': len(dir_blocks) * BLOCK, 'indirect': None,
                   'max_indirect': len(dir_blocks) * BLOCK, 'dind': None,
@@ -534,11 +575,9 @@ def main():
             ("size", LLNG, IDX_LL_INDEX, 5)]:
         iib = alloc_inode()
         hb2 = alloc_blocks(1)[0]
-        nb2, root2, dep2, nodes2 = build_tree([], hb2)
-        write_blocks.append((hb2, build_btree_header(root2, dep2,
-                                                     data_type=dt)))
+        nb2, root2, dep2, nodes2 = build_tree([], hb2, None, data_type=dt)
         write_blocks += nodes2
-        idx_blocks = [hb2] + [b for b, _ in nodes2]
+        idx_blocks = [b for b, _ in nodes2]
         istream = {'direct': runs_of(idx_blocks),
                    'mdr': len(idx_blocks) * BLOCK, 'indirect': None,
                    'max_indirect': len(idx_blocks) * BLOCK, 'dind': None,
@@ -580,11 +619,10 @@ def main():
             key=lambda e: (numkey(struct.unpack(fmt, e[0])[0]), e[1]))
         iib = alloc_inode()
         hb2 = alloc_blocks(1)[0]
-        nb2, root2, dep2, nodes2 = build_tree(entries, hb2)
-        write_blocks.append((hb2, build_btree_header(root2, dep2,
-                                                     data_type=dt)))
+        nb2, root2, dep2, nodes2 = build_tree(entries, hb2, None,
+                                               data_type=dt)
         write_blocks += nodes2
-        idx_blocks = [hb2] + [b for b, _ in nodes2]
+        idx_blocks = [b for b, _ in nodes2]
         istream = {'direct': runs_of(idx_blocks),
                    'mdr': len(idx_blocks) * BLOCK, 'indirect': None,
                    'max_indirect': len(idx_blocks) * BLOCK, 'dind': None,
@@ -595,10 +633,9 @@ def main():
         idx_entries.append((iname, iib))
     idx_entries.sort(key=lambda e: e[0].encode())
     hb3 = alloc_blocks(1)[0]
-    nb3, root3, dep3, nodes3 = build_tree(idx_entries, hb3)
-    write_blocks.append((hb3, build_btree_header(root3, dep3)))
+    nb3, root3, dep3, nodes3 = build_tree(idx_entries, hb3, None)
     write_blocks += nodes3
-    idxr_blocks = [hb3] + [b for b, _ in nodes3]
+    idxr_blocks = [b for b, _ in nodes3]
     irstream = {'direct': runs_of(idxr_blocks),
                 'mdr': len(idxr_blocks) * BLOCK, 'indirect': None,
                 'max_indirect': len(idxr_blocks) * BLOCK, 'dind': None,

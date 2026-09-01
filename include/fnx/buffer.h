@@ -50,6 +50,10 @@ struct buffer *bread(__dev_t, __blk_t, int);
 void bwrite(struct buffer *);
 void brelse(struct buffer *);
 void sync_buffers(__dev_t);
+/* 1 if the block is cached and currently LOCKED (held by some context);
+ * used by the journal's write-through abort to avoid breading a buffer
+ * the caller still holds (which would sleep on its own lock) */
+int buffer_locked(__dev_t, __blk_t, int);
 void invalidate_buffers(__dev_t);
 int reclaim_buffers(void);
 int kbdflushd(void);

@@ -202,6 +202,15 @@ int bfs_log_replay(struct superblock *sb)
  */
 int bfs_log_begin(struct superblock *sb)
 {
+	if(sb->u.bfs.log_flushing) {
+		/* the log reset's sync_buffers() is running write-backs:
+		 * they must NOT take the journal lock (the committing
+		 * outer transaction holds it and is blocked in that very
+		 * sync — taking the lock would deadlock), nor record;
+		 * everything below writes straight through */
+		sb->u.bfs.tx_depth++;
+		return 0;
+	}
 	if(sb->u.bfs.tx_depth == 0) {
 		/* outermost transaction: take the journal lock so no other
 		 * context can interleave a transaction on this superblock
@@ -332,6 +341,13 @@ int bfs_log_commit(struct superblock *sb)
 		return 0;
 	}
 	n = sb->u.bfs.tx_nblocks;
+	if(sb->u.bfs.log_flushing) {
+		/* a write-back tx that ran during the reset: nothing was
+		 * recorded (all writes went through); do not touch the
+		 * journal lock — the reset's outer tx owns it */
+		bfs_log_free_tx(sb);
+		return 0;
+	}
 	if(n == 0) {
 		bfs_log_free_tx(sb);
 		unlock_resource(bfs_log_resource(sb));
@@ -372,7 +388,9 @@ int bfs_log_commit(struct superblock *sb)
 		 * and commit step (2) would make replay walk the stale
 		 * on-disk log_end into the new entry's data blocks. */
 		printk("BFS-LOG: log full, resetting.\n");
+		sb->u.bfs.log_flushing = 1;
 		sync_buffers(sb->dev);
+		sb->u.bfs.log_flushing = 0;
 		for(i = 0; i < sb->u.bfs.log_blocks.len; i++) {
 			if((buf = bread(sb->dev,
 					bfs_log_run_abs(sb, &sb->u.bfs.log_blocks) + i,
@@ -474,10 +492,11 @@ void bfs_log_write_block(struct superblock *sb, __blk_t blk,
 {
 	int i;
 
-	if(sb->u.bfs.log_draining) {
-		/* unmount: stop journaling, write through directly (the
-		 * log was already drained; anything after the last sb
-		 * sync must not re-populate it) */
+	if(sb->u.bfs.log_draining || sb->u.bfs.log_flushing) {
+		/* unmount / log reset: stop journaling, write through
+		 * directly (during a reset's sync_buffers() the write-backs
+		 * must not re-enter the journal — the log is mid-reset and
+		 * a nested commit would recurse into another reset) */
 		bwrite(buf);
 		return;
 	}
@@ -491,6 +510,23 @@ void bfs_log_write_block(struct superblock *sb, __blk_t blk,
 			printk("WARNING: %s(): journal tx overflow, aborting (write-through).\n",
 			       __FUNCTION__);
 			for(i = 0; i < sb->u.bfs.tx_nblocks; i++) {
+				if(sb->u.bfs.tx_blocks[i] == blk) {
+					/* this block is the buffer we are
+					 * already holding — breading it
+					 * would sleep on our own lock; it is
+					 * written via 'buf' below */
+					continue;
+				}
+				if(buffer_locked(sb->dev, sb->u.bfs.tx_blocks[i],
+						 sb->u.bfs.block_size)) {
+					/* the caller holds another buffer for
+					 * this block too (e.g. a tree leaf
+					 * sharing a block with the header):
+					 * breading it would deadlock. The
+					 * caller's own write records/flushes
+					 * it after the abort. */
+					continue;
+				}
 				if((wb = bread(sb->dev, sb->u.bfs.tx_blocks[i],
 					       sb->u.bfs.block_size))) {
 					memcpy_b(wb->data,
