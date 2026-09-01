@@ -180,6 +180,7 @@ static int bfs_write_superblock(struct superblock *sb)
 {
 	struct buffer *buf;
 	struct bfs_superblock *bsb;
+	unsigned char bsb_name[32];
 	__u32 i;
 	__u64 l;
 
@@ -231,11 +232,16 @@ static int bfs_write_superblock(struct superblock *sb)
 		return -EIO;
 	}
 	bsb = (struct bfs_superblock *)(buf->data + 512);
-	memset_b(bsb, 0, 512);
-	bsb->name[0] = 'B';
-	bsb->name[1] = 'F';
-	bsb->name[2] = 'S';
-	bsb->name[3] = '1';
+	/* clear only the struct (0..0x84); the superblock's reserved area
+	 * (0x84..0x200) is NOT ours to zero — on real Haiku volumes it
+	 * holds the boot loader's second stage (stage1 reads it), so a
+	 * full memset here breaks booting the volume under Haiku */
+	memcpy_b(bsb_name, bsb->name, 32);
+	memset_b(bsb, 0, 0x84);
+	/* preserve the on-disk volume name (mkbfs volumes keep "BFS1",
+	 * Haiku volumes keep e.g. "Haiku" — clobbering it changes the
+	 * label Haiku displays) */
+	memcpy_b(bsb->name, bsb_name, 32);
 	bsb->magic1 = BFS_SUPER_MAGIC1;
 	bsb->fs_byte_order = BFS_SUPER_BYTEORDER;
 	bsb->block_size = sb->u.bfs.block_size;
