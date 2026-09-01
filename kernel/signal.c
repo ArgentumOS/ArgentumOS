@@ -30,7 +30,7 @@ int can_signal(struct proc *p)
 
 int send_sig(struct proc *p, __sigset_t signum)
 {
-	if(signum > NSIG || !p) {
+	if(signum >= NSIG || !p) {
 		return -EINVAL;
 	}
 

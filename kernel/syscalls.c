@@ -305,11 +305,9 @@ long strnlen_user(const char *s, unsigned int max)
 {
 	unsigned int len = 0;
 
-	user_copy_active = 1;
-	if(__builtin_setjmp((void *)user_copy_jb)) {
-		user_copy_active = 0;
-		return -EFAULT;
-	}
+	/* never deref a user pointer without verifying the page first: a
+	 * bogus pointer (e.g. open((void *)0x1)) would raise a kernel-mode
+	 * page fault, and the exception path has no reliable recovery. */
 	while(len < max) {
 		addr_t page_off = (addr_t)(s + len) & ~PAGE_MASK;
 		unsigned int chunk = PAGE_SIZE - page_off;
@@ -318,15 +316,16 @@ long strnlen_user(const char *s, unsigned int max)
 		if(chunk > max - len) {
 			chunk = max - len;
 		}
+		if(verify_address(VERIFY_READ, s + len, chunk)) {
+			return -EFAULT;
+		}
 		for(k = 0; k < chunk; k++) {
 			if(!s[len + k]) {
-				user_copy_active = 0;
 				return len + k;
 			}
 		}
 		len += chunk;
 	}
-	user_copy_active = 0;
 	return max;
 }
 

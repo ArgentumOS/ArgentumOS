@@ -166,6 +166,13 @@ int socket(int domain, int type, int protocol)
 	if(type != SOCK_STREAM && type != SOCK_DGRAM && type != SOCK_RAW) {
 		return -EINVAL;
 	}
+	/* raw sockets and packet (AF_PACKET) sockets can sniff and inject
+	 * traffic: root-only (Linux requires CAP_NET_RAW for these) */
+	if(!IS_SUPERUSER) {
+		if(type == SOCK_RAW || domain == AF_PACKET) {
+			return -EPERM;
+		}
+	}
 
 	s = NULL;
 	if((ufd = sock_alloc(&s)) < 0) {
@@ -282,6 +289,15 @@ int getname(int sd, struct sockaddr *addr, unsigned int *addrlen, int call)
 		return errno;
 	}
 	s = get_socket(sd);
+	/* the protocol getname handlers (ipv4_getname in particular) write
+	 * the address and length straight into these user pointers in
+	 * kernel mode: verify both ranges or a bogus pointer panics */
+	if((errno = check_user_area(VERIFY_WRITE, addr, sizeof(struct sockaddr_un)))) {
+		return errno;
+	}
+	if((errno = check_user_area(VERIFY_WRITE, addrlen, sizeof(unsigned int)))) {
+		return errno;
+	}
 	return s->ops->getname(s, addr, addrlen, call);
 }
 
@@ -297,6 +313,11 @@ int socketpair(int domain, int type, int protocol, int sockfd[2])
 
 	if((errno = check_user_area(VERIFY_WRITE, sockfd, sizeof(int) * 2))) {
 		return errno;
+	}
+	if(!IS_SUPERUSER) {
+		if(type == SOCK_RAW || domain == AF_PACKET) {
+			return -EPERM;
+		}
 	}
 
 	/* create first socket */
@@ -416,7 +437,7 @@ int msg_recv(int sd, void *buf, __size_t len, int flags, struct sockaddr *addr, 
 {
 	struct socket *s;
 	struct fd fdt;
-	char ret_addr[108];
+	char ret_addr[sizeof(struct sockaddr_un)];
 	int errno, ret_len, bytes_read;
 
 	if((errno = check_sd(sd)) < 0) {
@@ -427,7 +448,7 @@ int msg_recv(int sd, void *buf, __size_t len, int flags, struct sockaddr *addr, 
 	if(!addr || !addrlen) {
 		return s->ops->recv(s, &fdt, buf, len, flags);
 	}
-	memset_b(ret_addr, 0, 108);
+	memset_b(ret_addr, 0, sizeof(ret_addr));
 	if((errno = s->ops->recvfrom(s, &fdt, buf, len, flags, (struct sockaddr *)ret_addr, &ret_len)) < 0) {
 		return errno;
 	}
@@ -474,7 +495,7 @@ int recvfrom(int sd, void *buf, __size_t len, int flags, struct sockaddr *addr, 
 {
 	struct socket *s;
 	struct fd fdt;
-	char ret_addr[108];
+	char ret_addr[sizeof(struct sockaddr_un)];
 	int errno, ret_len, bytes_read;
 #ifdef __DEBUG__
 	printk("(pid %d) recvfrom(%d, 0x%08x, %d, %d, 0x%08x, 0x%08x)\n", current->pid, sd, (int)buf, len, flags, (int)addr, addrlen);
@@ -494,7 +515,7 @@ int recvfrom(int sd, void *buf, __size_t len, int flags, struct sockaddr *addr, 
 	if(!addr || !addrlen) {
 		return s->ops->recv(s, &fdt, buf, len, flags);
 	}
-	memset_b(ret_addr, 0, 108);
+	memset_b(ret_addr, 0, sizeof(ret_addr));
 	if((errno = s->ops->recvfrom(s, &fdt, buf, len, flags, (struct sockaddr *)ret_addr, &ret_len)) < 0) {
 		return errno;
 	}

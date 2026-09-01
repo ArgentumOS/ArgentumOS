@@ -23,7 +23,7 @@ int sys_kill(__pid_t pid, __sigset_t signum)
 	printk("(pid %d) sys_kill(%d, %d)\n", current->pid, pid, signum);
 #endif /*__DEBUG__ */
 
-	if(signum > NSIG) {
+	if(signum >= NSIG) {
 		return -EINVAL;
 	}
 	if(pid == -1) {
@@ -53,7 +53,7 @@ int sys_kill(__pid_t pid, __sigset_t signum)
  * tgkill(234): same, with a tgid check (ignored: single-threaded). */
 int sys_tkill(int tid, __sigset_t signum)
 {
-	if(signum > NSIG) {
+	if(signum >= NSIG) {
 		return -EINVAL;
 	}
 	return kill_pid(tid, signum, USER);
@@ -61,7 +61,7 @@ int sys_tkill(int tid, __sigset_t signum)
 
 int sys_tgkill(int tgid, int tid, __sigset_t signum)
 {
-	if(signum > NSIG) {
+	if(signum >= NSIG) {
 		return -EINVAL;
 	}
 	if(tgid != tid) {

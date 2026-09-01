@@ -27,7 +27,10 @@ int procfs_read_inode(struct inode *i)
 	struct procfs_dir_entry *d;
 
 	if((i->inode & 0xF0000FFF) == PROC_PID_INO) {	/* dynamic PID dir */
-		mode = S_IFDIR | S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+		/* owner-only: a user must not list/read another user's
+		 * /proc/PID/{cmdline,maps,stat,environ,...} — Linux
+		 * hides those behind ptrace/uid rules too */
+		mode = S_IFDIR | S_IRWXU;
 		nlink = 3;
 		lev = PROC_PID_LEV;
 	} else {
@@ -46,7 +49,14 @@ int procfs_read_inode(struct inode *i)
 	}
 
 	i->i_mode = mode;
-	i->i_uid = 0;
+	/* a /proc/PID directory is owned by the target process (mode above
+	 * is owner-only); everything else in procfs is root-owned */
+	if((i->inode & 0xF0000FFF) == PROC_PID_INO) {
+		struct proc *p = get_proc_by_pid((i->inode >> 12) & 0xFFFF);
+		i->i_uid = p ? p->euid : 0;
+	} else {
+		i->i_uid = 0;
+	}
 	i->i_size = 0;
 	if(S_ISLNK(i->i_mode)) {
 		i->i_size = 64;

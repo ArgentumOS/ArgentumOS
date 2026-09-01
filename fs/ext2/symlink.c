@@ -123,14 +123,31 @@ int ext2_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
 		buf = NULL;
 		name = (char *)i->u.ext2.i_data;
 	}
-	inode_unlock(i);
+	/* snapshot the target into a stable kernel buffer: parse_namei()
+	 * below runs after brelse()/iput(), when buf->data and i_data may
+	 * already be freed and reused (symlink-target TOCTOU) */
+	{
+		char *tmp_name;
+		if(!(tmp_name = (char *)kmalloc(i->i_size + 1))) {
+			inode_unlock(i);
+			if(buf) {
+				brelse(buf);
+			}
+			iput(i);
+			return -ENOMEM;
+		}
+		memcpy_b(tmp_name, name, i->i_size);
+		tmp_name[i->i_size] = 0;
+		inode_unlock(i);
 
-	current->loopcnt++;
-	iput(i);
-	if(buf) {
-		brelse(buf);
+		current->loopcnt++;
+		iput(i);
+		if(buf) {
+			brelse(buf);
+		}
+		errno = parse_namei(tmp_name, dir, i_res, NULL, FOLLOW_LINKS);
+		kfree((addr_t)tmp_name);
+		current->loopcnt--;
 	}
-	errno = parse_namei(name, dir, i_res, NULL, FOLLOW_LINKS);
-	current->loopcnt--;
 	return errno;
 }

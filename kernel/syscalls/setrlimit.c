@@ -37,6 +37,23 @@ int sys_setrlimit(int resource, const struct rlimit *rlim)
 			return -EPERM;
 		}
 	}
-	memcpy_b(&current->rlim[resource], rlim, sizeof(struct rlimit));
+	/* copy the whole struct through the fault-recovering helper: the
+	 * value is re-read below, so a TOCTOU against the check above could
+	 * smuggle a larger hard limit past a non-root caller */
+	{
+		struct rlimit new_rlim;
+		if((errno = copy_from_user(&new_rlim, rlim, sizeof(struct rlimit))) < 0) {
+			return errno;
+		}
+		if(new_rlim.rlim_cur > new_rlim.rlim_max) {
+			return -EINVAL;
+		}
+		if(!IS_SUPERUSER) {
+			if(new_rlim.rlim_max > current->rlim[resource].rlim_max) {
+				return -EPERM;
+			}
+		}
+		memcpy_b(&current->rlim[resource], &new_rlim, sizeof(struct rlimit));
+	}
 	return 0;
 }

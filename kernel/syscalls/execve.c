@@ -434,6 +434,11 @@ int sys_execve(const char *filename, char *argv[], char *envp[], int arg4, int a
 
 	current->suid = current->euid;
 	current->sgid = current->egid;
+	/* reset fsuid/fsgid to the effective ids: otherwise a process that
+	 * called setfsuid(0) (with suid 0) keeps fsuid 0 across exec even
+	 * after dropping euid — stale-root privilege retention */
+	current->fsuid = current->euid;
+	current->fsgid = current->egid;
 	current->sigpending = 0;
 	current->sigexecuting = 0;
 	for(n = 0; n < NSIG; n++) {

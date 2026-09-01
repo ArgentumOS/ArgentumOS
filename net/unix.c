@@ -410,7 +410,11 @@ int unix_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 
 	sun = (struct sockaddr_un *)addr;
 	sun->sun_family = AF_UNIX;
-	memcpy_b(sun->sun_path, up->sun->sun_path, up->sun_len);
+	/* the path field is 108 bytes but a malicious peer can bind with a
+	 * sun_len up to sizeof(sockaddr_un)=110: copy at most the field
+	 * size so we never write/read past sun_path (recvfrom()'s ret_addr
+	 * is exactly sizeof(struct sockaddr_un) bytes) */
+	memcpy_b(sun->sun_path, up->sun->sun_path, MIN(up->sun_len, sizeof(sun->sun_path)));
 	*addrlen = up->sun_len;
 	return size;
 }

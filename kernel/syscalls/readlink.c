@@ -48,7 +48,10 @@ int sys_readlink(const char *filename, char *buffer, __size_t bufsize)
 	}
 
 	if(i->fsop && i->fsop->readlink) {
-		errno = i->fsop->readlink(i, buffer, bufsize);
+		/* bufsize-1: the fsop NUL-terminates at buffer[count]; passing
+		 * the full bufsize would write one byte past the user buffer
+		 * when the link is longer than the buffer */
+		errno = i->fsop->readlink(i, buffer, bufsize - 1);
 		iput(i);
 		return errno;
 	}
@@ -98,7 +101,10 @@ int sys_readlinkat(int dirfd, const char *filename, char *buffer, __size_t bufsi
 	}
 
 	if(i->fsop && i->fsop->readlink) {
-		errno = i->fsop->readlink(i, buffer, bufsize);
+		/* bufsize-1: the fsop NUL-terminates at buffer[count]; passing
+		 * the full bufsize would write one byte past the user buffer
+		 * when the link is longer than the buffer */
+		errno = i->fsop->readlink(i, buffer, bufsize - 1);
 	} else {
 		errno = -EINVAL;
 	}

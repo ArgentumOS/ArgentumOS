@@ -91,6 +91,11 @@ int procfs_file_read(struct inode *i, struct fd *f, char *buffer, __size_t count
 	}
 
 	size = d->data_fn(buf, (i->inode >> 12) & 0xFFFF);
+	if(size > PAGE_SIZE) {
+		/* belt-and-braces: no handler may ever produce more than the
+		 * kmalloc'd buffer holds (all handlers are bounded above) */
+		size = PAGE_SIZE;
+	}
 	blksize = i->sb->s_blocksize;
 	if(f->offset > size) {
 		f->offset = size;

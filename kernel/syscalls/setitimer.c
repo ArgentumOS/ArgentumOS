@@ -26,6 +26,21 @@ int sys_setitimer(int which, const struct itimerval *new_value, struct itimerval
 			return errno;
 		}
 	}
+	if((addr_t)new_value) {
+		if((errno = check_user_area(VERIFY_READ, new_value, sizeof(struct itimerval)))) {
+			return errno;
+		}
+		return setitimer(which, new_value, old_value);
+	}
 
-	return setitimer(which, new_value, old_value);
+	/* new_value == NULL cancels the timer (Linux semantics): kernel
+	 * setitimer() derefs the struct, so pass a zeroed one */
+	{
+		struct itimerval cancel;
+		cancel.it_interval.tv_sec = 0;
+		cancel.it_interval.tv_usec = 0;
+		cancel.it_value.tv_sec = 0;
+		cancel.it_value.tv_usec = 0;
+		return setitimer(which, &cancel, old_value);
+	}
 }

@@ -32,7 +32,7 @@ int sys_rt_sigreturn(unsigned int signum, int arg2, int arg3, int arg4, int arg5
 	 * number, but a user can call syscall 15 directly): bound it or
 	 * sc[signum-1] reads past the array (kernel panic / disclosure
 	 * into the iretq frame via was_sigreturn). */
-	if(signum < 1 || signum > NSIG) {
+	if(signum < 1 || signum >= NSIG) {
 		return -EINVAL;
 	}
 

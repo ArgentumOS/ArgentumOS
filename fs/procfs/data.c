@@ -279,6 +279,11 @@ int data_proc_mounts(char *buffer, __pid_t pid)
 	mp = mount_table;
 
 	while(mp) {
+		/* dirname can be PATH_MAX chars: keep well inside the caller's
+		 * PAGE_SIZE buffer (an unbounded line would overrun the kmalloc) */
+		if(size >= PAGE_SIZE - PATH_MAX - 64) {
+			break;
+		}
 		if(mp->fs->fsop->flags != FSOP_KERN_MOUNT) {
 			flag = mp->sb.flags & MS_RDONLY ? "ro" : "rw";
 			size += sprintk(buffer + size, "%s %s %s %s 0 0\n", mp->devname, mp->dirname, mp->fs->name, flag);
@@ -767,6 +772,12 @@ int data_proc_pid_maps(char *buffer, __pid_t pid)
 	if((p = get_proc_by_pid(pid))) {
 		vma = p->vma_table;
 		while(vma) {
+			/* the caller's buffer is PAGE_SIZE: stop writing once the
+			 * output could exceed it (thousands of VMAs would
+			 * otherwise overrun the kmalloc and corrupt the heap) */
+			if(size >= PAGE_SIZE - 80) {
+				break;
+			}
 			r = vma->prot & PROT_READ ? 'r' : '-';
 			w = vma->prot & PROT_WRITE ? 'w' : '-';
 			x = vma->prot & PROT_EXEC ? 'x' : '-';
@@ -820,6 +831,9 @@ int data_proc_pid_mountinfo(char *buffer, __pid_t pid)
 	mp = mount_table;
 
 	while(mp) {
+		if(size >= PAGE_SIZE - PATH_MAX - 64) {
+			break;	/* keep within the caller's PAGE_SIZE buffer */
+		}
 		if(mp->fs->fsop->flags != FSOP_KERN_MOUNT) {
 			flag = mp->sb.flags & MS_RDONLY ? "ro" : "rw";
 			devname = mp->devname;

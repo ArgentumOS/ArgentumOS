@@ -26,6 +26,8 @@ int sys_getitimer(int which, struct itimerval *curr_value)
 		if((errno = check_user_area(VERIFY_WRITE, curr_value, sizeof(struct itimerval)))) {
 			return errno;
 		}
+	} else {
+		return -EFAULT;
 	}
 
 	switch(which) {

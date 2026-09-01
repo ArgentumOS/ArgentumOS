@@ -412,6 +412,8 @@ static unsigned long get_cr2(void)
 
 static void panic(const struct x86_frame64 *f)
 {
+	unsigned long a, b, c, d, si, di, r8, r9, r10, r11, r12, r13, r14, r15;
+
 	serial_puts("\n!!! KERNEL EXCEPTION vector 0x");
 	puthex32((unsigned int)f->vector);
 	serial_puts(" error=0x");
@@ -422,6 +424,40 @@ static void panic(const struct x86_frame64 *f)
 	serial_hex((UINT64)get_cr2());
 	serial_puts(" rsp=");
 	serial_hex((UINT64)f->rsp);
+	__asm__ __volatile__("mov %%rax,%0; mov %%rbx,%1; mov %%rcx,%2; mov %%rdx,%3"
+		: "=r"(a), "=r"(b), "=r"(c), "=r"(d));
+	__asm__ __volatile__("mov %%rsi,%0; mov %%rdi,%1; mov %%r8,%2; mov %%r9,%3; mov %%r10,%4; mov %%r11,%5"
+		: "=r"(si), "=r"(di), "=r"(r8), "=r"(r9), "=r"(r10), "=r"(r11));
+	__asm__ __volatile__("mov %%r12,%0; mov %%r13,%1; mov %%r14,%2; mov %%r15,%3"
+		: "=r"(r12), "=r"(r13), "=r"(r14), "=r"(r15));
+	serial_puts(" rax=");
+	serial_hex(a);
+	serial_puts(" rbx=");
+	serial_hex(b);
+	serial_puts(" rcx=");
+	serial_hex(c);
+	serial_puts(" rdx=");
+	serial_hex(d);
+	serial_puts("\n rsi=");
+	serial_hex(si);
+	serial_puts(" rdi=");
+	serial_hex(di);
+	serial_puts(" r8=");
+	serial_hex(r8);
+	serial_puts(" r9=");
+	serial_hex(r9);
+	serial_puts(" r10=");
+	serial_hex(r10);
+	serial_puts(" r11=");
+	serial_hex(r11);
+	serial_puts("\n r12=");
+	serial_hex(r12);
+	serial_puts(" r13=");
+	serial_hex(r13);
+	serial_puts(" r14=");
+	serial_hex(r14);
+	serial_puts(" r15=");
+	serial_hex(r15);
 	serial_puts("\n");
 	/* dump the kernel stack return addresses (top 16 words) */
 	{
@@ -480,6 +516,28 @@ static void handle_page_fault(const struct x86_frame64 *f)
 		struct sigcontext sc;
 
 		if(!find_vma_region(cr2)) {
+			/* K2. Before declaring a kernel bug, check the fault-
+			 * recovering user-copy machinery: a syscall copying
+			 * to/from a user pointer with NO vma (a bogus pointer
+			 * such as open((void *)0x1)) faults here, and must
+			 * unwind to -EFAULT instead of panicking. Route through
+			 * the real kernel's do_page_fault() (its no-vma branch
+			 * runs the same user-copy check); only panic if that
+			 * path declines. */
+			extern int user_copy_in_progress(void);
+			if(user_copy_in_progress() && cr2 < 0x0000800000000000UL) {
+				struct sigcontext sc;
+
+				memset_b(&sc, 0, sizeof(sc));
+				sc.err = f->error;
+				sc.rip = f->rip;
+				sc.cs = f->cs;
+				sc.rflags = f->rflags;
+				sc.rsp = f->rsp;
+				sc.ss = f->ss;
+				do_page_fault(14, &sc);
+				return;
+			}
 			panic(f);
 		}
 		memset_b(&sc, 0, sizeof(sc));
@@ -502,6 +560,14 @@ static void handle_page_fault(const struct x86_frame64 *f)
 	struct sigcontext sc;
 
 	if(!find_vma_region(cr2)) {
+		/* same user-copy escape hatch as the not-present K2 case: a
+		 * present page whose vma vanished mid-copy must not panic */
+		extern int user_copy_in_progress(void);
+		extern void user_copy_fault_recover(void);
+		if(user_copy_in_progress() && cr2 < 0x0000800000000000UL) {
+			user_copy_fault_recover();
+			/* not reached */
+		}
 		panic(f);
 	}
 	memset_b(&sc, 0, sizeof(sc));

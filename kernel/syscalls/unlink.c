@@ -66,11 +66,11 @@ int sys_unlinkat(int dirfd, const char *filename, int flags)
 		return errno;
 	}
 
-	if(S_ISDIR(i->i_mode) && (flags & AT_REMOVEDIR)) {
+	if(S_ISDIR(i->i_mode)) {
 		iput(i);
 		iput(dir);
 		free_name(tmp_name);
-		return -EPERM;	/* sys_rmdir is the real AT_REMOVEDIR path */
+		return -EPERM;	/* Linux returns -EISDIR; sys_rmdir is the dir path */
 	}
 	if(flags && !(flags & AT_REMOVEDIR)) {
 		iput(i);
@@ -90,6 +90,17 @@ int sys_unlinkat(int dirfd, const char *filename, int flags)
 		iput(dir);
 		free_name(tmp_name);
 		return -EACCES;
+	}
+
+	/* check sticky permission bit (missing here let any user in a
+	 * sticky directory unlink other users' files) */
+	if(dir->i_mode & S_ISVTX) {
+		if(check_user_permission(i)) {
+			iput(i);
+			iput(dir);
+			free_name(tmp_name);
+			return -EPERM;
+		}
 	}
 
 	basename = get_basename(tmp_name);

@@ -11,6 +11,7 @@
 #include <fnx/fs.h>
 #include <fnx/filesystems.h>
 #include <fnx/stat.h>
+#include <fnx/mm.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 
@@ -130,11 +131,26 @@ int minix_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
 	name = buf->data;
 	inode_unlock(i);
 
-	current->loopcnt++;
-	iput(i);
-	brelse(buf);
-	errno = parse_namei(name, dir, i_res, NULL, FOLLOW_LINKS);
-	current->loopcnt--;
+	/* snapshot the target into a stable kernel buffer: parse_namei()
+	 * below runs after brelse()/iput(), when buf->data may already be
+	 * freed and reused (symlink-target TOCTOU) */
+	{
+		char *tmp_name;
+		if(!(tmp_name = (char *)kmalloc(i->i_size + 1))) {
+			brelse(buf);
+			iput(i);
+			return -ENOMEM;
+		}
+		memcpy_b(tmp_name, name, i->i_size);
+		tmp_name[i->i_size] = 0;
+
+		current->loopcnt++;
+		iput(i);
+		brelse(buf);
+		errno = parse_namei(tmp_name, dir, i_res, NULL, FOLLOW_LINKS);
+		kfree((addr_t)tmp_name);
+		current->loopcnt--;
+	}
 	return errno;
 }
 #endif /* CONFIG_FS_MINIX */

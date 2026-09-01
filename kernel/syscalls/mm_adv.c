@@ -60,6 +60,24 @@ long sys_mremap(addr_t old_address, __size_t old_size, __size_t new_size, unsign
 		return vma->start;
 	}
 
+	/* validate the target size before any arithmetic: PAGE_ALIGN() of a
+	 * size near ULONG_MAX wraps (a user-supplied 64-bit new_size), and
+	 * the new end must stay inside the user address space. an unchecked
+	 * wrap here corrupts the vma (grow) or maps pages beyond a tiny
+	 * vma (MAYMOVE) — kernel memory corruption from userland. */
+	if(new_size > USER_STACK_TOP) {
+		return -ENOMEM;
+	}
+	if(PAGE_ALIGN(new_size) < new_size) {
+		return -ENOMEM;	/* size + PAGE_SIZE-1 wrapped */
+	}
+	if(vma->start + PAGE_ALIGN(new_size) < vma->start) {
+		return -ENOMEM;	/* start + size wrapped */
+	}
+	if(vma->start + PAGE_ALIGN(new_size) > USER_STACK_TOP) {
+		return -ENOMEM;	/* mapping would cross into kernel space */
+	}
+
 	/* grow in place: the next vma must not overlap */
 	n = vma->next;
 	if(!n || vma->end + PAGE_ALIGN(new_size) <= n->start) {

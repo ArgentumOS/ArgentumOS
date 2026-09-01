@@ -114,8 +114,8 @@ int minix_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t
 				if(d->inode) {
 					dirent_len = (base_dirent_len + (strlen(d->name) + 1)) + 3;
 					dirent_len &= ~3;	/* round up */
-					dirent->d_ino = d->inode;
 					if((size + dirent_len) < count) {
+						dirent->d_ino = d->inode;
 						dirent->d_off = doffset;
 						dirent->d_reclen = dirent_len;
 						memcpy_b(dirent->d_name, d->name, strlen(d->name));

@@ -113,8 +113,8 @@ int ext2_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t 
 				if(d->inode) {
 					dirent_len = (base_dirent_len + (d->name_len + 1)) + 3;
 					dirent_len &= ~3;	/* round up */
-					dirent->d_ino = d->inode;
 					if((size + dirent_len) < count) {
+						dirent->d_ino = d->inode;
 						dirent->d_off = doffset;
 						dirent->d_reclen = dirent_len;
 						memcpy_b(dirent->d_name, d->name, d->name_len);
@@ -180,9 +180,9 @@ int ext2_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __siz
 				if(d->inode) {
 					dirent_len = (base_dirent_len + (d->name_len + 1)) + 3;
 					dirent_len &= ~3;	/* round up */
-					dirent->d_ino = d->inode;
 					if((size + dirent_len) < count) {
-						struct inode *dirent_inode = iget(i->sb, dirent->d_ino);
+						dirent->d_ino = d->inode;
+						struct inode *dirent_inode = iget(i->sb, d->inode);
 						dirent->d_off = doffset;
 						dirent->d_reclen = dirent_len;
 						memcpy_b(dirent->d_name, d->name, d->name_len);

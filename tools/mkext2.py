@@ -69,21 +69,28 @@ def dir_blocks(n, parent_inode):
     i = 0
     while i < len(entries):
         out = bytearray()
+        last_rl_off = -1		# rec_len field offset of the last entry written
         while i < len(entries):
             ino, name, ft = entries[i]
             need = rec_len(len(name))
             if len(out) + need > BLOCK and out:
                 break                       # block full, start a new one
-            rl = BLOCK - len(out) if i == len(entries) - 1 else need
-            out += struct.pack('<IHBB', ino, rl, len(name), ft) + name
-            out += b'\0' * (rl - (8 + len(name)))
+            last_rl_off = len(out) + 4
+            out += struct.pack('<IHBB', ino, need, len(name), ft) + name
+            out += b'\0' * (need - (8 + len(name)))
             i += 1
-            if len(out) == BLOCK:
-                break
-        if len(out) < BLOCK:                 # broke early: zero-pad the rest
-            pad = BLOCK - len(out)
-            out += struct.pack('<IHBB', 0, pad, 0, 0)
-            out += b'\0' * (pad - 8)
+        if len(out) < BLOCK:
+            if BLOCK - len(out) >= 8:
+                pad = BLOCK - len(out)
+                out += struct.pack('<IHBB', 0, pad, 0, 0)
+                out += b'\0' * (pad - 8)
+            else:
+                # 1-7 bytes free: no room for a zeroed pad entry, so
+                # extend the previous entry's rec_len over the rest
+                extend = BLOCK - len(out)
+                rl = struct.unpack_from('<I', out, last_rl_off)[0]
+                struct.pack_into('<I', out, last_rl_off, rl + extend)
+                out += b'\0' * extend
         assert len(out) == BLOCK
         blocks.append(bytes(out))
     return blocks

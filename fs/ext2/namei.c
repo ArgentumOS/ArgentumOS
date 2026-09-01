@@ -549,7 +549,7 @@ int ext2_mkdir(struct inode *dir, char *name, __mode_t mode)
 		return -ENOSPC;
 	}
 
-	i->i_mode = ((mode & (S_IRWXU | S_IRWXG | S_IRWXO)) & ~current->umask);
+	i->i_mode = ((mode & (S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX)) & ~current->umask);	/* keep the sticky bit (mkdir 01777) */
 	i->i_mode |= S_IFDIR;
 	i->i_uid = current->euid;
 	i->i_gid = current->egid;

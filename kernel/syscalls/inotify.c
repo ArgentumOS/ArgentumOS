@@ -43,6 +43,7 @@ static struct inotify_watch *inotify_watch_head;
 
 struct inotify_instance {
 	int wd_counter;
+	int watch_count;	/* per-instance watch cap (Linux: 128) */
 	/* event queue: singly-linked, count + byte total for FIONREAD */
 	struct inotify_qevent *q_head;
 	struct inotify_qevent *q_tail;
@@ -283,7 +284,18 @@ int sys_inotify_add_watch(int ufd, const char *pathname, __u32 mask)
 	}
 	inst = i->u.inotify.instance;
 
-	if((errno = namei(pathname, &target, &dir, 1))) {
+	/* pathname is a user pointer: copy it into kernel memory first —
+	 * namei() derefs the string in kernel mode and would fault on a
+	 * bogus/unmapped address */
+	{
+		char *tmp_name;
+		if((errno = malloc_name(pathname, &tmp_name)) < 0) {
+			return errno;
+		}
+		errno = namei(tmp_name, &target, &dir, 1);
+		free_name(tmp_name);
+	}
+	if(errno) {
 		return errno;
 	}
 	if(dir) {
@@ -294,8 +306,16 @@ int sys_inotify_add_watch(int ufd, const char *pathname, __u32 mask)
 	for(w = inotify_watch_head; w; w = w->next) {
 		if(w->inst == inst && w->inode == target) {
 			w->mask = mask;
+			iput(target);
 			return w->wd;
 		}
+	}
+
+	/* Linux caps watches at 128 per instance; without a cap a user can
+	 * kmalloc an unbounded number of watch structs (memory DoS) */
+	if(inst->watch_count >= 128) {
+		iput(target);
+		return -ENOSPC;
 	}
 
 	if(!(w = (struct inotify_watch *)kmalloc(sizeof(struct inotify_watch)))) {
@@ -308,6 +328,7 @@ int sys_inotify_add_watch(int ufd, const char *pathname, __u32 mask)
 	w->inst = inst;
 	w->next = inotify_watch_head;
 	inotify_watch_head = w;
+	inst->watch_count++;
 	return w->wd;
 }
 
@@ -334,6 +355,7 @@ int sys_inotify_rm_watch(int ufd, int wd)
 			}
 			iput(w->inode);
 			kfree((addr_t)w);
+			inst->watch_count--;
 			return 0;
 		}
 		prev = w;
