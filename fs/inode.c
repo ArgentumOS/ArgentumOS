@@ -442,13 +442,16 @@ void iput(struct inode *i)
 			i->sb->fsop->ifree(i);
 		}
 		remove_from_hash(i);
-	}
-	if(i->state & INODE_DIRTY) {
+		/* the object is gone: ifree freed its disk state (inode
+		 * block, attributes) and remove_from_hash released the
+		 * fs-private in-memory state (bfs_destroy_inode frees the
+		 * kmalloc'd small_data tail). Writing the inode now would
+		 * memcpy from the freed tail into a freed block - the dirty
+		 * bits are stale, drop them instead of writing. */
+		i->state &= ~INODE_DIRTY;
+	} else if(i->state & INODE_DIRTY) {
 		if(write_inode(i)) {
 			printk("WARNING: %s(): can't write inode %d (%d,%d), will remain as dirty.\n", __FUNCTION__, i->inode, MAJOR(i->dev), MINOR(i->dev));
-			if(!i->i_nlink) {
-				remove_from_hash(i);
-			}
 			i->count++;
 			inode_unlock(i);
 			return;
