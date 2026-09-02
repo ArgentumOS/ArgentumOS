@@ -148,12 +148,57 @@ static int do_setxattr(struct inode *i, const char *name, const void *value,
 			kfree((addr_t)kbuf);
 			return errno;	/* a bad ACL never reaches the fs */
 		}
-		errno = i->fsop->setxattr(i, name, kbuf, size, flags);
-		if(!errno && is_acl_xattr(name) == 1) {
-			/* the access ACL is the permissions model: keep the
-			 * mode bits a true view of it (owner << 6, group
-			 * class = mask, other) */
-			acl_sync_mode(i, kbuf, size);
+		if(is_acl_xattr(name) == 1) {
+			__u16 amode;
+
+			if(acl_equiv_mode(kbuf, size, &amode)) {
+				/* a trivial access ACL carries no information
+				 * beyond the mode bits: compress it away (and
+				 * drop any previously stored ACL) rather than
+				 * persist it, applying the mode change. The
+				 * XATTR_CREATE/REPLACE semantics still apply:
+				 * a trivial set must not silently delete an
+				 * existing ACL under XATTR_CREATE, nor succeed
+				 * under XATTR_REPLACE when nothing is stored. */
+				errno = 0;
+				if(flags & (XATTR_CREATE | XATTR_REPLACE)) {
+					int have = 0;
+
+					if(i->fsop->getxattr) {
+						int pn = i->fsop->getxattr(i, name, NULL, 0);
+						have = pn >= 0;
+					}
+					if((flags & XATTR_CREATE) && have) {
+						errno = -EEXIST;
+					} else if((flags & XATTR_REPLACE) && !have) {
+						errno = -ENODATA;
+					}
+				}
+				if(!errno) {
+					if(i->fsop->removexattr) {
+						errno = i->fsop->removexattr(i, name);
+						if(errno == -ENODATA || errno == -EOPNOTSUPP) {
+							errno = 0;
+						}
+					}
+				}
+				if(!errno) {
+					i->i_mode = (i->i_mode &
+						~(S_IRWXU | S_IRWXG | S_IRWXO)) | amode;
+					i->i_ctime = CURRENT_TIME;
+					i->state |= INODE_DIRTY;
+				}
+			} else {
+				errno = i->fsop->setxattr(i, name, kbuf, size, flags);
+				if(!errno) {
+					/* the access ACL is the permissions model:
+					 * keep the mode bits a true view of it
+					 * (owner << 6, group class = mask, other) */
+					acl_sync_mode(i, kbuf, size);
+				}
+			}
+		} else {
+			errno = i->fsop->setxattr(i, name, kbuf, size, flags);
 		}
 		kfree((addr_t)kbuf);
 	} else {
@@ -222,17 +267,52 @@ int sys_fsetxattr(int ufd, const char *name, const void *value,
 static int do_getxattr(struct inode *i, const char *name, void *value,
 		       __size_t size)
 {
+	struct acl_xattr_entry e[3];
 	int errno;
 
+	if(is_acl_xattr(name)) {
+		/* anyone may read the ACL metadata (it is the access model),
+		 * unlike generic attribute data which needs read access */
+		if(value && size) {
+			if(check_user_area(VERIFY_WRITE, value, size)) {
+				return -EFAULT;
+			}
+		}
+		errno = (!i->fsop || !i->fsop->getxattr) ? -ENODATA
+			: i->fsop->getxattr(i, name, (char *)value, size);
+		if(errno == -ENODATA || errno == -EOPNOTSUPP) {
+			if(is_acl_xattr(name) != 1) {
+				return -ENODATA;	/* default ACLs are not synthesized */
+			}
+			/* no stored access ACL (or no xattr storage at all):
+			 * the mode bits are the ACL - synthesize the trivial
+			 * three-entry ACL so userland always sees a model */
+			e[0].e_tag = ACL_USER_OBJ;
+			e[0].e_perm = (i->i_mode >> 6) & 7;
+			e[0].e_id = ACL_UNDEFINED_ID;
+			e[1].e_tag = ACL_GROUP_OBJ;
+			e[1].e_perm = (i->i_mode >> 3) & 7;
+			e[1].e_id = ACL_UNDEFINED_ID;
+			e[2].e_tag = ACL_OTHER;
+			e[2].e_perm = i->i_mode & 7;
+			e[2].e_id = ACL_UNDEFINED_ID;
+			if(!value || !size) {
+				return sizeof(e);	/* size query */
+			}
+			if(size < sizeof(e)) {
+				return -ERANGE;
+			}
+			memcpy_b(value, e, sizeof(e));
+			return sizeof(e);
+		}
+		return errno;
+	}
 	if(!i->fsop || !i->fsop->getxattr) {
 		return -EOPNOTSUPP;
 	}
-	if(!is_acl_xattr(name)) {
-		/* anyone may read the ACL metadata (it is the access model),
-		 * unlike generic attribute data which needs read access */
-		if((errno = check_permission(TO_READ, i))) {
-			return errno;
-		}
+	/* generic attribute data needs read access to the object */
+	if((errno = check_permission(TO_READ, i))) {
+		return errno;
 	}
 	if(value && size) {
 		if(check_user_area(VERIFY_WRITE, value, size)) {

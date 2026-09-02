@@ -12,6 +12,7 @@
 #include <fnx/errno.h>
 #include <fnx/fs_inotify.h>
 #include <fnx/string.h>
+#include <fnx/acl.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -45,6 +46,14 @@ int sys_chmod(const char *filename, __mode_t mode)
 		iput(i);
 		free_name(tmp_name);
 		return -EPERM;
+	}
+
+	/* the access ACL (if any) is the permissions model: chmod edits
+	 * its owner/other/mask entries, not just the mode projection */
+	if((errno = acl_chmod(i, mode))) {
+		iput(i);
+		free_name(tmp_name);
+		return errno;
 	}
 
 	i->i_mode &= S_IFMT;

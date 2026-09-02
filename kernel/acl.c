@@ -164,6 +164,100 @@ void acl_sync_mode(struct inode *i, const void *buf, __size_t size)
 		(owner << 6) | (mask << 3) | other;
 }
 
+/* 1 when an access ACL carries no information beyond the mode bits: no
+ * named user/group entries, and a MASK (if present) equal to the
+ * owning-group perms. Such an ACL is never stored - setxattr compresses
+ * it away and applies the mode change. *mode receives the projection. */
+int acl_equiv_mode(const void *buf, __size_t size, __u16 *mode)
+{
+	const struct acl_xattr_entry *e;
+	int n, nents;
+	__u16 owner = 0, group = 0, mask = 0, other = 0;
+	int have_mask = 0;
+
+	if(!buf || !size || size % sizeof(struct acl_xattr_entry) ||
+	   size < 3 * sizeof(struct acl_xattr_entry)) {
+		return 0;
+	}
+	nents = size / sizeof(struct acl_xattr_entry);
+	for(n = 0; n < nents; n++) {
+		e = &((const struct acl_xattr_entry *)buf)[n];
+		switch(e->e_tag) {
+			case ACL_USER_OBJ: owner = e->e_perm; break;
+			case ACL_GROUP_OBJ: group = e->e_perm; break;
+			case ACL_MASK: mask = e->e_perm; have_mask = 1; break;
+			case ACL_OTHER: other = e->e_perm; break;
+			default: return 0;	/* a named entry: not trivial */
+		}
+	}
+	if(have_mask && mask != group) {
+		return 0;
+	}
+	if(mode) {
+		*mode = (owner << 6) | (group << 3) | other;
+	}
+	return 1;
+}
+
+/* chmod on an inode that has a stored access ACL edits those same
+ * entries: the new owner bits go to USER_OBJ, the new other bits to
+ * OTHER, and the new group-class bits to the MASK when one exists (the
+ * mask is what stat() shows as the group class) else to GROUP_OBJ.
+ * Mode-only inodes (no stored ACL) need no work: the mode change itself
+ * is the ACL change. Returns 0 or a negative errno; the mode bits are
+ * left untouched on failure. */
+int acl_chmod(struct inode *i, __mode_t mode)
+{
+	char buf[ACL_XATTR_SZ];
+	struct acl_xattr_entry *e;
+	__u16 uperm = (mode >> 6) & 7;
+	__u16 gperm = (mode >> 3) & 7;
+	__u16 operm = mode & 7;
+	int n, nents, err, have_mask = 0, i2;
+
+	if(!i->fsop || !i->fsop->getxattr || !i->fsop->setxattr) {
+		return 0;	/* no xattr storage: the mode is the ACL */
+	}
+	n = i->fsop->getxattr(i, XATTR_ACL_ACCESS, buf, sizeof(buf));
+	if(n < 0) {
+		if(n == -ENODATA || n == -EOPNOTSUPP) {
+			return 0;	/* no stored ACL: mode-only */
+		}
+		return n;
+	}
+	if(n == 0 || n % sizeof(struct acl_xattr_entry)) {
+		return -EIO;
+	}
+	nents = n / sizeof(struct acl_xattr_entry);
+	if(nents > ACL_MAX_ENTRIES) {
+		return -EIO;
+	}
+	if((err = acl_validate(buf, n))) {
+		return -EIO;	/* corrupted on disk - do not guess */
+	}
+	for(i2 = 0; i2 < nents; i2++) {
+		e = &((struct acl_xattr_entry *)buf)[i2];
+		if(e->e_tag == ACL_MASK) {
+			have_mask = 1;
+			break;
+		}
+	}
+	for(i2 = 0; i2 < nents; i2++) {
+		e = &((struct acl_xattr_entry *)buf)[i2];
+		switch(e->e_tag) {
+			case ACL_USER_OBJ: e->e_perm = uperm; break;
+			case ACL_GROUP_OBJ:
+				if(!have_mask) {
+					e->e_perm = gperm;
+				}
+				break;
+			case ACL_MASK: e->e_perm = gperm; break;
+			case ACL_OTHER: e->e_perm = operm; break;
+		}
+	}
+	return i->fsop->setxattr(i, XATTR_ACL_ACCESS, buf, n, 0);
+}
+
 /* ---- the permission algorithm -------------------------------------- */
 
 /* one in-memory ACL entry (the wire entries are already in canonical
@@ -212,6 +306,16 @@ static int acl_check_entries(const struct acl_entry *e, int nents,
 
 	uid = (current->flags & PF_USEREAL) ? current->uid : current->fsuid;
 
+	/* the MASK limits the named users AND the group class (acl(5): it
+	 * is the maximum that ACL_USER, ACL_GROUP_OBJ and ACL_GROUP can
+	 * grant). The owner is not masked. */
+	for(n = 0; n < nents; n++) {
+		if(e[n].tag == ACL_MASK) {
+			mperm = e[n].perm;
+			break;
+		}
+	}
+
 	/* 1. the object owner -> owner entry */
 	if(i->i_uid == uid) {
 		for(n = 0; n < nents; n++) {
@@ -222,10 +326,11 @@ static int acl_check_entries(const struct acl_entry *e, int nents,
 		return -EACCES;
 	}
 
-	/* 2. a named-user entry matching the caller */
+	/* 2. a named-user entry matching the caller (masked: chmod of the
+	 * group-class bits must also shrink what a named user can do) */
 	for(n = 0; n < nents; n++) {
 		if(e[n].tag == ACL_USER && e[n].id == uid) {
-			return ((e[n].perm & mask) == mask) ? 0 : -EACCES;
+			return ((mperm & e[n].perm & mask) == mask) ? 0 : -EACCES;
 		}
 	}
 
@@ -236,12 +341,6 @@ static int acl_check_entries(const struct acl_entry *e, int nents,
 	 * matched. In particular a masked-out group class must NOT fall
 	 * through to OTHER, or the mask could be bypassed by setting OTHER
 	 * permissive while blocking the group class. */
-	for(n = 0; n < nents; n++) {
-		if(e[n].tag == ACL_MASK) {
-			mperm = e[n].perm;
-			break;
-		}
-	}
 	matched_groups = 0;
 	gperms = 0;
 	for(n = 0; n < nents; n++) {

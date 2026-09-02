@@ -139,6 +139,19 @@ static int check_readable(void)		/* uid 1000: named-user rw */
 	return 0;
 }
 
+static int check_r_only(void)		/* uid 1000: read only */
+{
+	if(access("/mnt/aclt_d/grant", R_OK) != 0) {
+		printf("child: uid 1000 read denied by ACL: %d\n", errno);
+		return 1;
+	}
+	if(access("/mnt/aclt_d/grant", W_OK) == 0) {
+		printf("child: uid 1000 write unexpectedly allowed\n");
+		return 1;
+	}
+	return 0;
+}
+
 int main(void)
 {
 	struct aclx acl[8];
@@ -469,6 +482,180 @@ int main(void)
 		fail("uid 1000 not denied after ACL removal");
 	} else {
 		ok("removexattr restores trivial projection (uid 1000 denied)");
+	}
+
+	/* ---- M2: chmod <-> ACL two-way sync --------------------------- */
+
+	/* 9. chmod edits the stored ACL's entries: set a named-user ACL on
+	 * a 0600 file, then chmod 0640 -> the MASK becomes 4 (the new
+	 * group-class bits), so the named user is limited to read even
+	 * though its own entry still says rw; chmod 0600 -> mask 0 */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_USER, 6, 1000 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	chmod("/mnt/aclt_d/grant", 0600);
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != 0) {
+		fail("M2 setup: setxattr chmod-target ACL");
+		return 1;
+	}
+	if(chmod("/mnt/aclt_d/grant", 0640) != 0) {
+		fail("chmod 0640 on ACL'd file");
+	} else {
+		struct stat st;
+		stat("/mnt/aclt_d/grant", &st);
+		if((st.st_mode & 0777) != 0640) {
+			printf("FAIL: mode not 0640 after chmod (got %o)\n",
+				st.st_mode & 0777);
+			fails++;
+		} else {
+			ok("chmod 0640 updates the mode projection");
+		}
+		if(as_user(1000, 1000, check_r_only) != 0) {
+			fail("uid 1000 denied after chmod 0640 (mask 4)");
+		} else {
+			ok("chmod 0640 limits the named user via the mask (rw -> r)");
+		}
+		if(fork() == 0) {
+			setgid(1001);
+			setuid(1001);
+			if(access("/mnt/aclt_d/grant", W_OK) == 0) {
+				printf("FAIL: uid 1001 write after chmod 0640\n");
+				_exit(1);
+			}
+			_exit(0);
+		} else {
+			int st2;
+			wait(&st2);
+			if(st2) {
+				fails++;
+			}
+		}
+	}
+	/* the stored ACL must still carry the named user (chmod does not
+	 * drop it); its rw entry is now masked down to the chmod bits */
+	{
+		char abuf[8 * 8];
+		ssize_t sz = getxattr("/mnt/aclt_d/grant", XA_ACCESS, abuf, sizeof(abuf));
+		int named = 0;
+
+		if(sz != 5 * 8) {
+			printf("FAIL: ACL size after chmod (%d)\n", (int)sz);
+			fails++;
+		} else {
+			int k;
+			for(k = 0; k < (int)(sz / 8); k++) {
+				struct aclx *e = (struct aclx *)&abuf[k * 8];
+				if(e->tag == ACL_USER && e->id == 1000 && e->perm == 6) {
+					named = 1;	/* entry kept; mask now limits */
+				}
+				if(e->tag == ACL_MASK && e->perm != 4) {
+					printf("FAIL: MASK not 4 after chmod 0640 (got %d)\n",
+						e->perm);
+					fails++;
+				}
+				if(e->tag == ACL_OTHER && e->perm != 0) {
+					printf("FAIL: OTHER not 0 after chmod 0640\n");
+					fails++;
+				}
+			}
+			if(!named) {
+				printf("FAIL: chmod dropped the named-user entry\n");
+				fails++;
+			} else {
+				ok("chmod rewrites MASK/OTHER, keeps the named entry");
+			}
+		}
+	}
+	if(chmod("/mnt/aclt_d/grant", 0600) != 0) {
+		fail("chmod 0600 on ACL'd file");
+	} else if(fork() == 0) {
+		setuid(1000);
+		if(access("/mnt/aclt_d/grant", R_OK) == 0) {
+			printf("FAIL: uid 1000 read after chmod 0600 (mask 0)\n");
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st2;
+		wait(&st2);
+		if(st2) {
+			fails++;
+		} else {
+			ok("chmod 0600 masks the named user out (mask 0)");
+		}
+	}
+	removexattr("/mnt/aclt_d/grant", XA_ACCESS);
+	chmod("/mnt/aclt_d/grant", 0600);
+
+	/* 10. getxattr on a trivial (mode-only) file synthesizes the
+	 * three-entry ACL from the mode bits */
+	chmod("/mnt/aclt_d/plain", 0644);
+	{
+		struct aclx e[8];
+		ssize_t sz = getxattr("/mnt/aclt_d/plain", XA_ACCESS, e, sizeof(e));
+		int good = (sz == 3 * 8);
+
+		if(good) {
+			good = e[0].tag == ACL_USER_OBJ && e[0].perm == 6 &&
+				e[1].tag == ACL_GROUP_OBJ && e[1].perm == 4 &&
+				e[2].tag == ACL_OTHER && e[2].perm == 4;
+		}
+		if(!good) {
+			printf("FAIL: trivial getxattr (sz %d)\n", (int)sz);
+			fails++;
+		} else {
+			ok("getxattr synthesizes the trivial ACL from the mode");
+		}
+	}
+	/* and the size query works on a mode-only file (even on the ext2
+	 * root, which has no xattr storage) */
+	if(getxattr("/etc/passwd", XA_ACCESS, NULL, 0) != 3 * 8) {
+		printf("FAIL: trivial size query on ext2 root (%d)\n",
+			(int)getxattr("/etc/passwd", XA_ACCESS, NULL, 0));
+		fails++;
+	} else {
+		ok("trivial size query works without xattr storage");
+	}
+
+	/* 11. setting a trivial ACL compresses it away: after setxattr with
+	 * the mode-equivalent ACL the file has no stored ACL, and a later
+	 * non-trivial set that is then compressed by a mode-equal ACL set
+	 * removes the stored one (mode becomes the projection) */
+	{
+		struct aclx e[8];
+		int k;
+
+		n = 0;
+		acl[n++] = (struct aclx){ ACL_USER_OBJ, 6, 0 };
+		acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 4, 0 };
+		acl[n++] = (struct aclx){ ACL_OTHER, 4, 0 };
+		if(set_acl("/mnt/aclt_d/plain", XA_ACCESS, acl, n) != 0) {
+			fail("set trivial ACL (0644-equivalent)");
+		} else {
+			/* compressed: a getxattr still sees the trivial ACL, but a
+			 * listxattr must not show a stored system.posix_acl_access */
+			char lbuf[512];
+			ssize_t lsz = listxattr("/mnt/aclt_d/plain", lbuf, sizeof(lbuf));
+			int stored = 0;
+
+			for(k = 0; k < lsz; k += strlen(&lbuf[k]) + 1) {
+				if(!strcmp(&lbuf[k], XA_ACCESS)) {
+					stored = 1;
+				}
+			}
+			if(stored) {
+				printf("FAIL: trivial ACL was stored (listxattr shows it)\n");
+				fails++;
+			} else if(getxattr("/mnt/aclt_d/plain", XA_ACCESS, e, sizeof(e))
+				  != 3 * 8) {
+				fail("trivial getxattr after compression");
+			} else {
+				ok("trivial ACL set is compressed away (not stored)");
+			}
+		}
 	}
 
 	printf("ACLTEST: %d failure(s)\n", fails);

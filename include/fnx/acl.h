@@ -56,4 +56,26 @@ int acl_validate(const char *buf, __size_t size);
  * Returns 0 if the requested mask is granted, else -EACCES. */
 int acl_permission(struct inode *i, int mask);
 
+/* Keep i_mode a true view of a stored access ACL after a validated
+ * setxattr: owner bits from the owner entry, the group-class bits from
+ * the MASK when one exists else the owning-group entry, other bits from
+ * other. The type/suid/sgid/sticky bits are preserved. */
+void acl_sync_mode(struct inode *i, const void *buf, __size_t size);
+
+/* 1 when an access ACL is equivalent to plain mode bits (no named
+ * entries, and a MASK, if present, equal to the owning-group perms) -
+ * such an ACL carries no information beyond the mode and is compressed
+ * away on set. When trivial, *mode receives the projection
+ * (owner << 6 | group << 3 | other). */
+int acl_equiv_mode(const void *buf, __size_t size, __u16 *mode);
+
+/* chmod on an inode that has a stored access ACL edits those same
+ * entries (Linux posix_acl_chmod semantics): the new owner bits go to
+ * USER_OBJ, the new other bits to OTHER, and the new group-class bits
+ * to the MASK when one exists (the mask is what stat() shows as the
+ * group class) else to GROUP_OBJ. Inodes without a stored ACL need no
+ * work (the mode change itself is the ACL change). Returns 0 or a
+ * negative errno; on failure the mode bits are left untouched. */
+int acl_chmod(struct inode *i, __mode_t mode);
+
 #endif /* _FNX_ACL_H */
