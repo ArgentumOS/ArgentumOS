@@ -24,6 +24,7 @@
 #include <fnx/process.h>
 #include <fnx/kernel.h>
 #include <fnx/mm.h>
+#include <fnx/acl.h>
 
 #define XATTR_NAME_MAX	255
 
@@ -80,6 +81,33 @@ static int xattr_name(const char *uname, char *name)
 	return 0;
 }
 
+/* ---- ACL xattrs ------------------------------------------------------ */
+
+/* returns 1 for the access ACL name, 2 for the default ACL, else 0 */
+static int is_acl_xattr(const char *name)
+{
+	if(!strcmp(name, XATTR_ACL_ACCESS)) {
+		return 1;
+	}
+	if(!strcmp(name, XATTR_ACL_DEFAULT)) {
+		return 2;
+	}
+	return 0;
+}
+
+/* chmod-style ownership gate for ACL writes, plus the default-ACL
+ * directory rule; returns 0 when the caller may proceed */
+static int acl_xattr_gate(struct inode *i, const char *name)
+{
+	if(check_user_permission(i)) {
+		return -EPERM;
+	}
+	if(is_acl_xattr(name) == 2 && !S_ISDIR(i->i_mode)) {
+		return -EINVAL;	/* only directories carry a default ACL */
+	}
+	return 0;
+}
+
 /* ---- setxattr ------------------------------------------------------ */
 
 static int do_setxattr(struct inode *i, const char *name, const void *value,
@@ -94,8 +122,16 @@ static int do_setxattr(struct inode *i, const char *name, const void *value,
 	if(IS_RDONLY_FS(i)) {
 		return -EROFS;
 	}
-	if((errno = check_permission(TO_WRITE, i))) {
-		return errno;
+	if(is_acl_xattr(name)) {
+		/* ACLs are access metadata: chmod semantics (owner/root may
+		 * write), not write access to the object */
+		if((errno = acl_xattr_gate(i, name))) {
+			return errno;
+		}
+	} else {
+		if((errno = check_permission(TO_WRITE, i))) {
+			return errno;
+		}
 	}
 	if(size) {
 		if(!value) {
@@ -108,9 +144,22 @@ static int do_setxattr(struct inode *i, const char *name, const void *value,
 			kfree((addr_t)kbuf);
 			return -EFAULT;
 		}
+		if(is_acl_xattr(name) && (errno = acl_validate(kbuf, size))) {
+			kfree((addr_t)kbuf);
+			return errno;	/* a bad ACL never reaches the fs */
+		}
 		errno = i->fsop->setxattr(i, name, kbuf, size, flags);
+		if(!errno && is_acl_xattr(name) == 1) {
+			/* the access ACL is the permissions model: keep the
+			 * mode bits a true view of it (owner << 6, group
+			 * class = mask, other) */
+			acl_sync_mode(i, kbuf, size);
+		}
 		kfree((addr_t)kbuf);
 	} else {
+		if(is_acl_xattr(name)) {
+			return -EINVAL;	/* an ACL payload is never empty */
+		}
 		errno = i->fsop->setxattr(i, name, NULL, 0, flags);
 	}
 	return errno;
@@ -178,8 +227,12 @@ static int do_getxattr(struct inode *i, const char *name, void *value,
 	if(!i->fsop || !i->fsop->getxattr) {
 		return -EOPNOTSUPP;
 	}
-	if((errno = check_permission(TO_READ, i))) {
-		return errno;
+	if(!is_acl_xattr(name)) {
+		/* anyone may read the ACL metadata (it is the access model),
+		 * unlike generic attribute data which needs read access */
+		if((errno = check_permission(TO_READ, i))) {
+			return errno;
+		}
 	}
 	if(value && size) {
 		if(check_user_area(VERIFY_WRITE, value, size)) {
@@ -319,8 +372,14 @@ static int do_removexattr(struct inode *i, const char *name)
 	if(IS_RDONLY_FS(i)) {
 		return -EROFS;
 	}
-	if((errno = check_permission(TO_WRITE, i))) {
-		return errno;
+	if(is_acl_xattr(name)) {
+		if((errno = acl_xattr_gate(i, name))) {
+			return errno;
+		}
+	} else {
+		if((errno = check_permission(TO_WRITE, i))) {
+			return errno;
+		}
 	}
 	return i->fsop->removexattr(i, name);
 }

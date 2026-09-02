@@ -14,6 +14,7 @@
 #include <fnx/string.h>
 #include <fnx/timer.h>
 #include <fnx/kernel.h>
+#include <fnx/acl.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -343,29 +344,17 @@ int check_permission(int mask, struct inode *i)
 		uid = current->fsuid;
 	}
 
-	if(mask & TO_EXEC) {
-		if(!(i->i_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-			return -EACCES;
-		}
-	}
 	if(uid == 0) {
 		return 0;
 	}
-	if(i->i_uid == uid) {
-		if((((i->i_mode >> 6) & 7) & mask) == mask) {
-			return 0;
-		}
-	}
-	if(!check_group(i)) {
-		if((((i->i_mode >> 3) & 7) & mask) == mask) {
-			return 0;
-		}
-	}
-	if(((i->i_mode & 7) & mask) == mask) {
-		return 0;
-	}
-
-	return -EACCES;
+	/* The ACL is the single permissions model: run the POSIX ACL
+	 * algorithm (owner -> named user -> group class through the mask
+	 * -> other). Inodes without a stored access ACL get the trivial
+	 * ACL projected from the mode bits, so the algorithm is always
+	 * the check. (No i_mode pre-gate here: a stored ACL may grant
+	 * exec on a file whose mode bits carry none, and the trivial
+	 * projection already denies exec when no entry has x.) */
+	return acl_permission(i, mask);
 }
 
 

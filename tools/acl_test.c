@@ -1,0 +1,476 @@
+/* acl_test.c — POSIX ACL kernel probe for FNX (M0/M1).
+ *
+ * Verifies on a BFS root (the only filesystem with xattr support):
+ *   - setxattr/getxattr/removexattr of system.posix_acl_access observe
+ *     chmod-style ownership (owner/root) and validate the payload;
+ *   - check_permission() runs the ACL algorithm: a named-user entry
+ *     grants access a 0600 root-owned file would otherwise deny, a
+ *     stranger is still denied, and the mask limits the group class;
+ *   - inodes without an ACL xattr behave exactly per their mode bits
+ *     (the trivial-ACL projection).
+ * Wire-format definitions mirror include/fnx/acl.h (8-byte entries).
+ * Prints PASS/FAIL per check; exit code = number of failures.
+ */
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/xattr.h>
+
+#define XA_ACCESS	"system.posix_acl_access"
+#define XA_DEFAULT	"system.posix_acl_default"
+
+#define ACL_USER_OBJ	0x01
+#define ACL_USER	0x02
+#define ACL_GROUP_OBJ	0x04
+#define ACL_GROUP	0x08
+#define ACL_MASK	0x10
+#define ACL_OTHER	0x20
+
+struct aclx {
+	unsigned short tag;
+	unsigned short perm;
+	unsigned int id;
+};
+
+static int fails;
+
+static void fail(const char *what)
+{
+	printf("FAIL: %s (errno %d)\n", what, errno);
+	fails++;
+}
+
+static void ok(const char *what)
+{
+	printf("PASS: %s\n", what);
+}
+
+/* ---- helpers ------------------------------------------------------- */
+
+/* run fn in a child that has dropped to uid/gid 1001 */
+static int as_user(unsigned int uid, unsigned int gid, int (*fn)(void))
+{
+	pid_t p;
+	int st;
+
+	p = fork();
+	if(p < 0) {
+		perror("fork");
+		return -1;
+	}
+	if(p == 0) {
+		if(setgid(gid) || setuid(uid)) {
+			printf("child setuid/setgid failed: %d\n", errno);
+			_exit(2);
+		}
+		_exit(fn());
+	}
+	waitpid(p, &st, 0);
+	if(!WIFEXITED(st)) {
+		printf("child crashed\n");
+		return -1;
+	}
+	return WEXITSTATUS(st);
+}
+
+/* the BFS disk persists across runs. The old test directory may linger
+ * with a wrong mode or stale ACL xattrs, so: force 0755 (traversable by
+ * the test's non-root children) and drop any stale ACL on the fixed
+ * file names instead of deleting (recursive deletes flood the BFS
+ * journal's small log and trip its reset path). */
+static void reset_dir(const char *dir)
+{
+	chmod(dir, 0755);
+	removexattr(dir, XA_DEFAULT);
+	removexattr(dir, XA_ACCESS);
+}
+
+static void reset_file(const char *path)
+{
+	removexattr(path, XA_ACCESS);
+	removexattr(path, XA_DEFAULT);
+}
+
+static int make_file(const char *path, mode_t mode)
+{	int fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, mode);
+
+	if(fd < 0) {
+		return -1;
+	}
+	close(fd);
+	chmod(path, mode);	/* ensure the mode survived umask */
+	return 0;
+}
+
+static int set_acl(const char *path, const char *name,
+		   const struct aclx *e, int n)
+{
+	return setxattr(path, name, e, n * sizeof(struct aclx), 0);
+}
+
+/* ---- checks -------------------------------------------------------- */
+
+static int check_deny(void)		/* uid 1001: no access */
+{
+	if(access("/mnt/aclt_d/grant", R_OK) == 0) {
+		printf("child: uid 1001 unexpectedly allowed\n");
+		return 1;
+	}
+	if(errno != EACCES) {
+		printf("child: expected EACCES got %d\n", errno);
+		return 1;
+	}
+	return 0;
+}
+
+static int check_readable(void)		/* uid 1000: named-user rw */
+{
+	if(access("/mnt/aclt_d/grant", R_OK | W_OK) != 0) {
+		printf("child: uid 1000 denied by ACL: %d\n", errno);
+		return 1;
+	}
+	return 0;
+}
+
+int main(void)
+{
+	struct aclx acl[8];
+	int n;
+
+	/* Boot runs from a reliable ext2 root; the BFS filesystem (the
+	 * only one with xattr support) is attached as an IDE slave and
+	 * mounted here so the checks below run against real BFS inodes. */
+	if(mkdir("/mnt", 0755) < 0 && errno != EEXIST) {
+		perror("mkdir /mnt");
+		return 1;
+	}
+	if(mount("/dev/hdb", "/mnt", "bfs", 0, NULL) < 0) {
+		perror("mount /dev/hdb (bfs)");
+		return 1;
+	}
+	printf("ACLTEST: bfs mounted on /mnt\n");
+
+	reset_dir("/mnt/aclt_d");
+	if(mkdir("/mnt/aclt_d", 0755) < 0 && errno != EEXIST) {
+		perror("mkdir /mnt/aclt_d");
+		return 1;
+	}
+	reset_dir("/mnt/aclt_d");
+	if(make_file("/mnt/aclt_d/grant", 0600) < 0) {
+		perror("create grant");
+		return 1;
+	}
+	reset_file("/mnt/aclt_d/grant");
+	if(make_file("/mnt/aclt_d/plain", 0644) < 0) {
+		perror("create plain");
+		return 1;
+	}
+	reset_file("/mnt/aclt_d/plain");
+	if(make_file("/mnt/aclt_d/nope", 0600) < 0) {
+		perror("create nope");
+		return 1;
+	}
+	reset_file("/mnt/aclt_d/nope");
+
+	/* 1. trivial projection: mode 0644 grants uid 1001 read, mode 0600
+	 * does not (both without any stored ACL) */
+	if(fork() == 0) {
+		setgid(1001);
+		setuid(1001);
+		if(access("/mnt/aclt_d/plain", R_OK) != 0) {
+			printf("FAIL: trivial 0644 read denied (%d)\n", errno);
+			_exit(1);
+		}
+		if(access("/mnt/aclt_d/plain", W_OK) == 0) {
+			printf("FAIL: trivial 0644 write allowed\n");
+			_exit(1);
+		}
+		if(access("/mnt/aclt_d/nope", R_OK) == 0) {
+			printf("FAIL: trivial 0600 read allowed\n");
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st;
+		wait(&st);
+		if(st) {
+			fails++;
+		} else {
+			ok("trivial mode projection (0644 r, no w; 0600 denied)");
+		}
+	}
+
+	/* 2. bad ACLs are rejected with -EINVAL */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_USER, 7, 1000 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	errno = 0;
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != -1 || errno != EINVAL) {
+		fail("missing mask must be EINVAL");
+	} else {
+		ok("missing mask rejected");
+	}
+
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 0, 0 };	/* duplicate owner */
+	errno = 0;
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != -1 || errno != EINVAL) {
+		fail("duplicate owner must be EINVAL");
+	} else {
+		ok("duplicate owner rejected");
+	}
+
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_USER, 8, 1000 };	/* perm bit 3 set */
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	errno = 0;
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != -1 || errno != EINVAL) {
+		fail("perm>7 must be EINVAL");
+	} else {
+		ok("out-of-range perm rejected");
+	}
+
+	/* 3. a valid ACL granting uid 1000 rw on a 0600 root file (exec is
+	 * governed by the mode's x bits, so rw is the clean demonstration) */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_USER, 6, 1000 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != 0) {
+		fail("setxattr valid ACL");
+		return 1;
+	}
+	ok("setxattr valid ACL");
+
+	if(as_user(1000, 1000, check_readable) != 0) {
+		fail("uid 1000 access via named-user entry");
+	} else {
+		ok("named-user entry grants uid 1000 rw");
+	}
+	if(as_user(1001, 1001, check_deny) != 0) {
+		fail("uid 1001 must stay denied");
+	} else {
+		ok("stranger still denied");
+	}
+
+	/* 4. the mask limits the group class: group::rwx but mask::r --
+	 * a member of the owning group gets only r */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 4, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	chmod("/mnt/aclt_d/grant", 0000);
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != 0) {
+		fail("setxattr mask ACL");
+	} else {
+		ok("setxattr mask-limited ACL");
+	}
+	/* child stays in root's group (gid 0): owning-group candidate */
+	if(fork() == 0) {
+		setuid(1001);	/* keep gid 0: in the owning group */
+		if(access("/mnt/aclt_d/grant", R_OK) != 0) {
+			printf("FAIL: group read denied by mask (errno %d)\n", errno);
+			_exit(1);
+		}
+		if(access("/mnt/aclt_d/grant", W_OK) == 0) {
+			printf("FAIL: mask::r should deny group write\n");
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st;
+		wait(&st);
+		if(st) {
+			fails++;
+		} else {
+			ok("mask limits the group class (r allowed, w denied)");
+		}
+	}
+	chmod("/mnt/aclt_d/grant", 0600);
+
+	/* 4b. a group-class denial must NOT fall through to OTHER: the
+	 * owning group is masked out (MASK 0) while OTHER is permissive -
+	 * a member of the owning group gets nothing, not OTHER's access */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 7, 0 };
+	chmod("/mnt/aclt_d/grant", 0000);
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != 0) {
+		fail("setxattr mask-deny ACL");
+		return 1;
+	}
+	if(fork() == 0) {		/* keep gid 0: in the owning group */
+		setuid(1001);
+		if(access("/mnt/aclt_d/grant", R_OK) == 0) {
+			printf("FAIL: masked group must not reach OTHER (errno %d)\n", errno);
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st;
+		wait(&st);
+		if(st) {
+			fails++;
+		} else {
+			ok("masked group class denied (no OTHER fall-through)");
+		}
+	}
+	chmod("/mnt/aclt_d/grant", 0600);
+
+	/* 4c. a supplementary group grants group-class access: child joins
+	 * group 2000 via setgroups, a named ACL group entry for 2000 with
+	 * rwx grants it (mask 4 limits to r) */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_GROUP, 7, 2000 };
+	acl[n++] = (struct aclx){ ACL_MASK, 4, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	chmod("/mnt/aclt_d/grant", 0000);
+	if(set_acl("/mnt/aclt_d/grant", XA_ACCESS, acl, n) != 0) {
+		fail("setxattr supplementary-group ACL");
+		return 1;
+	}
+	if(fork() == 0) {
+		gid_t g = 2000;
+		if(setgroups(1, &g)) {
+			printf("child: setgroups failed (%d)\n", errno);
+			_exit(1);
+		}
+		setuid(1001);	/* keep gid 0; group 2000 now supplementary */
+		if(access("/mnt/aclt_d/grant", R_OK) != 0) {
+			printf("FAIL: supplementary group denied (errno %d)\n", errno);
+			_exit(1);
+		}
+		if(access("/mnt/aclt_d/grant", W_OK) == 0) {
+			printf("FAIL: mask::r should deny supplementary write\n");
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st;
+		wait(&st);
+		if(st) {
+			fails++;
+		} else {
+			ok("supplementary group honored through the mask");
+		}
+	}
+	chmod("/mnt/aclt_d/grant", 0600);
+
+	/* 5. getxattr needs no read permission on the object */
+	if(make_file("/mnt/aclt_d/metadata", 0600) < 0) {
+		perror("create metadata");
+		return 1;
+	}
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_USER, 4, 1000 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+	acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	if(set_acl("/mnt/aclt_d/metadata", XA_ACCESS, acl, n) != 0) {
+		fail("setxattr metadata ACL");
+		return 1;
+	}
+	if(fork() == 0) {
+		char buf[256];
+		setgid(1001);
+		setuid(1001);
+		if(getxattr("/mnt/aclt_d/metadata", XA_ACCESS, buf, sizeof(buf)) < 0) {
+			printf("FAIL: getxattr denied on 0600 file (%d)\n", errno);
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st;
+		wait(&st);
+		if(st) {
+			fails++;
+		} else {
+			ok("getxattr readable without read permission");
+		}
+	}
+
+	/* 6. a non-owner cannot set or remove an ACL */
+	if(fork() == 0) {
+		struct aclx a2[4];
+		setgid(1001);
+		setuid(1001);
+		a2[0] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+		a2[1] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+		a2[2] = (struct aclx){ ACL_OTHER, 0, 0 };
+		a2[3] = (struct aclx){ ACL_MASK, 7, 0 };
+		if(setxattr("/mnt/aclt_d/metadata", XA_ACCESS, a2, sizeof(a2), 0) != -1 ||
+		   errno != EPERM) {
+			printf("FAIL: non-owner setxattr (errno %d)\n", errno);
+			_exit(1);
+		}
+		if(removexattr("/mnt/aclt_d/metadata", XA_ACCESS) != -1 ||
+		   errno != EPERM) {
+			printf("FAIL: non-owner removexattr (errno %d)\n", errno);
+			_exit(1);
+		}
+		_exit(0);
+	} else {
+		int st;
+		wait(&st);
+		if(st) {
+			fails++;
+		} else {
+			ok("non-owner set/remove rejected (-EPERM)");
+		}
+	}
+
+	/* 7. default ACLs are directory-only */
+	n = 0;
+	acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 7, 0 };
+	acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+	errno = 0;
+	if(set_acl("/mnt/aclt_d/metadata", XA_DEFAULT, acl, n) == 0 ||
+	   errno != EINVAL) {
+		fail("default ACL on a regular file must be EINVAL");
+	} else {
+		ok("default ACL rejected on a regular file (-EINVAL)");
+	}
+	if(set_acl("/mnt/aclt_d", XA_DEFAULT, acl, n) != 0) {
+		fail("default ACL on a directory");
+	} else {
+		ok("default ACL accepted on a directory");
+	}
+	removexattr("/mnt/aclt_d", XA_DEFAULT);
+
+	/* 8. owner can remove the ACL, restoring the trivial projection */
+	if(removexattr("/mnt/aclt_d/grant", XA_ACCESS) != 0) {
+		fail("owner removexattr");
+	} else if(as_user(1000, 1000, check_deny) != 0) {
+		fail("uid 1000 not denied after ACL removal");
+	} else {
+		ok("removexattr restores trivial projection (uid 1000 denied)");
+	}
+
+	printf("ACLTEST: %d failure(s)\n", fails);
+	return fails ? 1 : 0;
+}
