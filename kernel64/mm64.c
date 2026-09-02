@@ -601,31 +601,14 @@ unsigned long create_pml4_64(unsigned long src_pml4_phys)
 	}
 
 	if(!is_fork) {
-		/* FNX (canonical amd64 split): the PIC kernel image is
-		 * loaded by the firmware at load_base and EXECUTES at its
-		 * high-half alias, but every function pointer stored in kernel
-		 * DATA (syscall_table64, tty->output, IDT gates, file_operations,
-		 * ...) holds an IDENTITY address - the firmware's PE base
-		 * relocations add (load_base - image_base) to the link VMA, so
-		 * e.g. tty->output = load_base + 0x40200. A per-process pml4
-		 * must therefore ALSO map the kernel image 1:1 (supervisor 4KB),
-		 * or the first indirect call through such a pointer (the very
-		 * first printk in the syscall path -> tty->output) faults.
-		 * Only the image range is mapped: the rest of the low half stays
-		 * empty so user code (trampoline 0x100000, ELF at 0x400000,
-		 * mmap at 64TB) never aliases kernel phys. Fork children inherit
-		 * these supervisor leaves via the deep copy above. */
-		extern unsigned long fnx_load_base, fnx_image_size;
-		unsigned long va;
-
-		for(va = fnx_load_base;
-		    va < fnx_load_base + fnx_image_size;
-		    va += PAGE_SIZE64) {
-			if(map_page64_in(pml4_phys, va, va, X86_PTE_P | X86_PTE_RW)) {
-				free_pml4_64(pml4_phys);
-				return 0;
-			}
-		}
+		/* FNX (single-alias): the boot stub re-biases every absolute
+		 * pointer in kernel DATA to the high-half alias (see
+		 * rebase_image_data in kernel64/paging64.c), so all indirect
+		 * calls (syscall_table64, tty->output, file_operations, ...)
+		 * stay in the high half. The kernel image therefore needs NO
+		 * identity mapping in process pml4s: the user half stays empty
+		 * (every page is demand-mapped fresh) and the kernel half
+		 * (pml4[256..511], copied above) covers the high-half alias. */
 	}
 	return pml4_phys;
 }

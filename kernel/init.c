@@ -150,7 +150,6 @@ void init_init(void)
 
 	init->tss.eip = (addr_t)switch_to_user_mode;
 	init->tss.esp = init->tss.esp0;	/* kernel stack for do_switch */
-
 	runnable(init);
 	nr_processes++;
 	return;

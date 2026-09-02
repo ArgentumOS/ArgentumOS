@@ -131,9 +131,15 @@ void gdt64_init(void)
 	gdt64_tab[8] = make_desc64(0, 0xFFFFF, 0x92, 0xCF);	/* 0x40 fw data (runtime SS) */
 
 	/* 0x28 TSS (16-byte descriptor: lower qword at 0x28, upper at 0x30).
-	 * The base is the TSS's identity linear address (the static TSS
-	 * lives above PAGE_OFFSET64 in the high half). */
-	tss_base = ((unsigned long)&tss64) - PAGE_OFFSET64;
+	 * The base MUST be the HIGH-HALF linear address of the static TSS:
+	 * the CPU reads RSP0 from the TSS on every user->kernel privilege
+	 * switch, i.e. while the CURRENT process pml4 is active. Process
+	 * pml4s map the kernel high half (pml4[256..511] shared with the
+	 * kernel) but NOT the low identity alias (the boot stub re-biases
+	 * all data pointers high, so the identity image map was dropped) -
+	 * an identity base here faults the moment the first timer IRQ or
+	 * syscall fires in a process (observed CR2 = tss64+4, e=0000). */
+	tss_base = (unsigned long)&tss64;
 	tss64.rsp0 = (unsigned long)&kstack64[sizeof(kstack64)];
 	fnx_rsp0 = tss64.rsp0;
 	gdt64_tab[5] = make_desc64(tss_base, sizeof(struct tss64) - 1, 0x89, 0x00);

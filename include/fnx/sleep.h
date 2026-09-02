@@ -11,21 +11,13 @@
 #include <fnx/process.h>
 #include <fnx/linker.h>
 
-/* FNX: the kernel image is PIC and executes from BOTH the identity alias
- * (phys == VA, reached through identity function pointers stored in kernel
- * DATA - syscall_table64, tty->output, file_operations, ...) and the
- * high-half alias (PAGE_OFFSET + phys, the direct call/return path). A
- * kernel symbol such as &sys_wait4 therefore resolves to a DIFFERENT value
- * depending on which alias the referencing code runs from, so a
- * sleep_address stored by one call chain may not match the same symbol
- * compared by another (a parent in wait4() is never woken when the child's
- * do_exit() compares its high-half &sys_wait4 against the parent's stored
- * identity value -> waitpid() hangs forever). Normalize to the identity
- * value before storing/hashing/comparing: values >= PAGE_OFFSET are the
- * high-half alias (subtract PAGE_OFFSET), everything below (identity
- * alias, kmalloc heap, user addresses) is already canonical. */
-#define SLEEP_ADDR(a)	(((addr_t)(a) >= PAGE_OFFSET) ? \
-			 ((addr_t)(a) - PAGE_OFFSET) : (addr_t)(a))
+/* FNX (single-alias): the kernel image executes from ONE address space -
+ * the high-half alias (PAGE_OFFSET + phys) - because the boot stub
+ * re-biases every absolute pointer in kernel DATA to the high half (see
+ * rebase_image_data in kernel64/paging64.c). Sleep addresses are plain
+ * kernel pointers; SLEEP_ADDR is kept as an identity macro so the
+ * sleep()/wakeup()/wait4() code reads the same everywhere. */
+#define SLEEP_ADDR(a)	((addr_t)(a))
 
 #define AREA_BH			0x00000001
 #define AREA_CALLOUT		0x00000002

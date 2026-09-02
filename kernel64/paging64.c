@@ -38,6 +38,95 @@
 				((unsigned long)(a) + PAGE_OFFSET64) : (unsigned long)(a))
 #define V2P64(a)	((unsigned long)(a) - PAGE_OFFSET64)
 
+/* PE32+ base-relocation types (image base relocation directory) */
+#define PE_REL_BASED_DIR64	10	/* 64-bit absolute address */
+
+/*
+ * FNX (single-alias): the firmware loads the PE image at a low physical
+ * base and applies base relocations, so every absolute pointer in the
+ * image DATA (syscall_table64, file_operations, IDT-adjacent tables, ...)
+ * holds an IDENTITY (low) address. The kernel executes from the high-half
+ * alias after the switch below; those low data pointers then dispatch
+ * indirect calls back into the identity alias, so the SAME symbol
+ * (&sys_wait4, &pml4_page, ...) has two runtime addresses and every
+ * cross-alias pointer comparison (sleep_address matching, CR3 pml4 loads,
+ * ...) is a latent bug. Re-bias every relocated 64-bit absolute by
+ * PAGE_OFFSET64 so ALL pointers reference the high-half alias: the kernel
+ * then executes from a single address space.
+ *
+ * Safety: must run AFTER the identity phase's last data write (the paging
+ * tables above) and BEFORE the jump to the high-half entry; between the
+ * re-bias and the jump the code only moves register arguments. The EFI
+ * memory map and the PE headers are read at their identity addresses, and
+ * the relocation TABLE (.reloc) is never itself a relocation target.
+ */
+static void rebase_image_data(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
+			      UINTN desc_size)
+{
+	unsigned long base = 0, pe_off, opt, reloc_rva, reloc_size;
+	unsigned long off, end;
+	UINTN i, count;
+	EFI_MEMORY_DESCRIPTOR *d;
+
+	count = map_size / desc_size;
+	for(i = 0; i < count; i++) {
+		d = (EFI_MEMORY_DESCRIPTOR *)((char *)map + (i * desc_size));
+		if(d->Type == EfiLoaderCode) {
+			base = (unsigned long)d->PhysicalStart;
+			break;
+		}
+	}
+	if(!base) {
+		serial_puts("WARNING: rebase_image_data(): no LoaderCode range, image stays identity\n");
+		return;
+	}
+
+	/* PE headers: DOS e_lfanew -> "PE\0\0" -> COFF -> optional header */
+	pe_off = base + *(unsigned int *)(base + 0x3C);
+	if(*(unsigned int *)pe_off != 0x00004550) {	/* "PE\0\0" */
+		serial_puts("WARNING: rebase_image_data(): bad PE signature\n");
+		return;
+	}
+	opt = pe_off + 4 + 20;
+	if(*(unsigned short *)opt != 0x20B) {		/* PE32+ */
+		serial_puts("WARNING: rebase_image_data(): not PE32+\n");
+		return;
+	}
+
+	/* data directory 5 = base relocation table {rva, size} */
+	reloc_rva = *(unsigned int *)(opt + 112 + 5 * 8);
+	reloc_size = *(unsigned int *)(opt + 112 + 5 * 8 + 4);
+	if(!reloc_size) {
+		serial_puts("WARNING: rebase_image_data(): no base reloc directory\n");
+		return;
+	}
+
+	off = base + reloc_rva;
+	end = off + reloc_size;
+	while(off + 8 <= end) {
+		unsigned long page_rva = *(unsigned int *)off;
+		unsigned int block_size = *(unsigned int *)(off + 4);
+		unsigned int nent, k;
+
+		if(block_size < 8 || off + block_size > end) {
+			break;
+		}
+		nent = (block_size - 8) / 2;
+		for(k = 0; k < nent; k++) {
+			unsigned int w = *(unsigned short *)(off + 8 + k * 2);
+			unsigned int type = w >> 12;
+			unsigned int rel = w & 0xFFF;
+			if(type == PE_REL_BASED_DIR64) {
+				*(unsigned long *)(base + page_rva + rel) += PAGE_OFFSET64;
+			}
+			/* type 0 (ABS) and others: no fixup needed */
+		}
+		off += block_size;
+	}
+
+	serial_puts("[M2-A] re-biased image data pointers to the high half\n");
+}
+
 /* page-table pages, 4K-aligned, in the stub's .bss (identity-mapped) */
 static unsigned long pml4_page[512] __attribute__((aligned(4096)));
 static unsigned long pdpt_page[512] __attribute__((aligned(4096)));
@@ -62,14 +151,11 @@ unsigned long paging64_pml4(void)
  * pointer - every kernel DATA pointer holds an identity address). Neither
  * &pml4_page (high-half VA) nor &pml4_page - PAGE_OFFSET64 (which is
  * &pml4_page + 0x80000000 when &pml4_page is already the identity value)
- * is the physical address in both cases; the identity value IS the phys, so
- * normalize: anything >= PAGE_OFFSET64 is a high-half VA (subtract),
- * anything below is already physical (keep). */
+ * is the physical address; the kernel now executes from a single
+ * address space (the high-half alias), so plain subtraction is exact. */
 unsigned long paging64_pml4_phys(void)
 {
-	unsigned long va = (unsigned long)&pml4_page;
-
-	return (va >= PAGE_OFFSET64) ? (va - PAGE_OFFSET64) : va;
+	return (unsigned long)&pml4_page - PAGE_OFFSET64;
 }
 
 /*
@@ -142,6 +228,14 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	serial_puts("\n");
 
 	__asm__ __volatile__("mov %0, %%cr3" :: "r"(cr3) : "memory");
+
+	/* Re-bias the image's absolute data pointers to the high-half alias
+	 * (see rebase_image_data). After this, ALL pointers in kernel DATA
+	 * reference the high half, so the kernel executes from a single
+	 * address space once we jump below. Runs BEFORE CR0.WP is set: the
+	 * walk writes every DIR64 relocation target, and some may live in
+	 * sections the loader mapped read-only. */
+	rebase_image_data(map, map_size, desc_size);
 
 	/* CR0.WP: enforce read-only pages in supervisor mode (needed for CoW) */
 	{
