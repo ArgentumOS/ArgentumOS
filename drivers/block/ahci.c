@@ -178,7 +178,12 @@ static int ahci_wait_cmd_done(void)
 	unsigned long spin;
 	unsigned int is;
 
-	for(spin = 0; spin < 0x7FFFFFFF; spin++) {
+	/* the poll is bounded: a lost DHRS (seen intermittently during the
+	 * boot-time probes) must surface as an error within a couple of
+	 * seconds so the caller (a read_superblock probe, the buffer
+	 * layer) can fail and the boot move on - an unbounded spin wedges
+	 * the boot for ~30 minutes instead. */
+	for(spin = 0; spin < 0x1000000; spin++) {
 		is = ahci_port_reg(PXIS);
 		if(is & PXIS_DHRS) {
 			ahci_port_reg_w(PXIS, PXIS_DHRS);
@@ -192,9 +197,11 @@ static int ahci_wait_cmd_done(void)
 			return -EIO;
 		}
 	}
+	printk("AHCI-TMO: cmd done never seen: PXIS %x PXCI %x PXTFD %x (port %d)\n",
+		ahci_port_reg(PXIS), ahci_port_reg(PXCI),
+		ahci_port_reg(PXTFD), ahci.port);
 	return -EAGAIN;
 }
-
 /* issue a single non-NCQ command. dir_in: 1 = device->host (read/identify).
  * lba/count are LBA48 (count = sectors). buffer is the DMA buffer. */
 static int ahci_cmd(unsigned char cmd, int dir_in, unsigned long long lba,
