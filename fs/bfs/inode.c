@@ -189,6 +189,19 @@ int bfs_write_inode(struct inode *i)
 	}
 	raw = (struct bfs_inode *)buf->data;
 	ds = &i->u.bfs.raw.u.data;
+	if(!i->u.bfs.small_data) {
+		/* defensive: a dirty inode must always be writable. Every
+		 * creation path (ialloc, read_inode) allocates the tail, but
+		 * recycled inode structs can carry a NULL here (get_free_inode
+		 * zeroes the union) - allocate rather than memcpy from NULL. */
+		printk("BWI-NULLSD: ino %d dirty %x\n", i->inode, i->state);
+		if(!(i->u.bfs.small_data = (unsigned char *)kmalloc(
+				BFS_SMALL_DATA_SIZE))) {
+			brelse(buf);
+			return -ENOMEM;
+		}
+		memset_b(i->u.bfs.small_data, 0, BFS_SMALL_DATA_SIZE);
+	}
 
 	/* the VFS owns the low 16 bits (type + permissions); the high 16
 	 * bits carry Haiku's extended mode bits (S_ATTR, S_ATTR_DIR,
