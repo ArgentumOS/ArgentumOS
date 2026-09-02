@@ -29,16 +29,13 @@ int video_map_framebuffer(unsigned int phys, unsigned int memsize)
 	extern int map_page64(unsigned long, unsigned long, unsigned long);
 	unsigned int i, pages = (memsize + 4095) >> 12;
 
-	printk("VIDEO-MAP: phys=%x mem=%x pages=%d\n", phys, memsize, pages);
 	for(i = 0; i < pages; i++) {
 		if(map_page64(FB_MMIO_VA + i * 4096, phys + i * 4096, 0x003)) {
-			printk("VIDEO-MAP: page %d FAILED\n", i);
 			return -1;
 		}
 	}
 	video.fb_phys = phys;
 	video.address = (unsigned int *)FB_MMIO_VA;
-	printk("VIDEO-MAP: address=%lx\n", (unsigned long)video.address);
 	return 0;
 }
 
