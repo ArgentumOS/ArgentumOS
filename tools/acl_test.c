@@ -658,6 +658,225 @@ int main(void)
 		}
 	}
 
+	/* ---- M3: default-ACL inheritance ------------------------------ */
+
+	/* 12. a default ACL on a directory seeds files created there: the
+	 * default intersected with the create mode; umask is bypassed */
+	umask(022);
+	{
+		char d[80], f[96];
+		struct stat st;
+		int fd, i2, mkattempt;
+
+		/* the BFS disk persists across runs: pick a dir name that
+		 * cannot collide with a stale one from a crashed run */
+		for(mkattempt = 0; mkattempt < 16; mkattempt++) {
+			snprintf(d, sizeof(d), "/mnt/aclt_d/m3_%d_%d",
+				(int)getpid(), mkattempt);
+			if(mkdir(d, 0755) == 0) {
+				break;
+			}
+			if(errno != EEXIST) {
+				break;
+			}
+		}
+		if(access(d, F_OK)) {
+			fail("M3 mkdir parent");
+		} else {
+			/* access ACL on the parent (root-owned): named user 1000
+			 * gets rwx HERE so it can traverse the directory to reach
+			 * the inherited files; the DEFAULT ACL (below) grants the
+			 * files rw */
+			n = 0;
+			acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+			acl[n++] = (struct aclx){ ACL_USER, 7, 1000 };
+			acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+			acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+			acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+			if(set_acl(d, XA_ACCESS, acl, n) != 0) {
+				fail("M3 set parent access ACL");
+			} else {
+				n = 0;
+				acl[n++] = (struct aclx){ ACL_USER_OBJ, 7, 0 };
+				acl[n++] = (struct aclx){ ACL_USER, 6, 1000 };
+				acl[n++] = (struct aclx){ ACL_GROUP_OBJ, 0, 0 };
+				acl[n++] = (struct aclx){ ACL_MASK, 7, 0 };
+				acl[n++] = (struct aclx){ ACL_OTHER, 0, 0 };
+				if(set_acl(d, XA_DEFAULT, acl, n) != 0) {
+					fail("M3 set parent default ACL");
+				} else {
+				struct aclx e2[8];
+				int got_mask = -1, got_user = -1;
+				ssize_t sz;
+
+				/* create with mode 0666: owner 7&6=6, other 0,
+				 * mask 7&6=6 (umask 022 must NOT bite -> group
+				 * class stays 6) */
+				snprintf(f, sizeof(f), "%s/inh", d);
+				fd = open(f, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+				if(fd < 0) {
+					fail("M3 open inherited file");
+				} else {
+					close(fd);
+					stat(f, &st);
+					if((st.st_mode & 0777) != 0660) {
+						printf("FAIL: inherited mode %o != 0660\n",
+							st.st_mode & 0777);
+						fails++;
+					} else {
+						ok("M3 file inherits mode 0660 (umask bypassed)");
+					}
+					sz = getxattr(f, XA_ACCESS, e2, sizeof(e2));
+					for(i2 = 0; i2 < (int)(sz / 8) && sz > 0; i2++) {
+						if(e2[i2].tag == ACL_MASK) {
+							got_mask = e2[i2].perm;
+						}
+						if(e2[i2].tag == ACL_USER &&
+						   e2[i2].id == 1000) {
+							got_user = e2[i2].perm;
+						}
+					}
+					if(sz != 5 * 8 || got_mask != 6 || got_user != 6) {
+						printf("FAIL: inherited ACL (sz %d mask %d user %d)\n",
+							(int)sz, got_mask, got_user);
+						fails++;
+					} else {
+						ok("M3 file inherits the default ACL (mask 6, named user kept)");
+					}
+					/* uid 1000 can read+write via the named entry */
+					if(fork() == 0) {
+						setgid(1001);
+						setuid(1000);
+						if(access(f, R_OK | W_OK) != 0) {
+							printf("FAIL: uid 1000 denied on inherited file (%d)\n",
+								errno);
+							_exit(1);
+						}
+						_exit(0);
+					} else {
+						int ws;
+						wait(&ws);
+						if(ws) {
+							fails++;
+						} else {
+							ok("M3 named user 1000 has rw on the inherited file");
+						}
+					}
+					unlink(f);
+				}
+
+				/* a restrictive create mode (0600) intersects the
+				 * default: mask -> 0, the named user gets nothing */
+				snprintf(f, sizeof(f), "%s/restrict", d);
+				fd = open(f, O_CREAT | O_WRONLY | O_TRUNC, 0600);
+				if(fd >= 0) {
+					close(fd);
+					stat(f, &st);
+					if((st.st_mode & 0777) != 0600) {
+						printf("FAIL: restrictive mode %o != 0600\n",
+							st.st_mode & 0777);
+						fails++;
+					}
+					if(fork() == 0) {
+						setuid(1000);
+						if(access(f, R_OK) == 0) {
+							printf("FAIL: uid 1000 read on 0600-created file\n");
+							_exit(1);
+						}
+						_exit(0);
+					} else {
+						int ws;
+						wait(&ws);
+						if(ws) {
+							fails++;
+						} else {
+							ok("M3 restrictive create mode masks the named user out");
+						}
+					}
+					unlink(f);
+				} else {
+					fail("M3 open restrictive file");
+				}
+
+				/* 13. a subdirectory inherits the access ACL AND copies
+				 * the default ACL so the inheritance continues */
+				{
+					char sub[96], subf[110];
+					snprintf(sub, sizeof(sub), "%s/sub", d);
+					if(mkdir(sub, 0777) != 0) {
+						fail("M3 mkdir subdir");
+					} else {
+						sz = getxattr(sub, XA_ACCESS, e2, sizeof(e2));
+						got_mask = -1;
+						for(i2 = 0; i2 < (int)(sz / 8) && sz > 0; i2++) {
+							if(e2[i2].tag == ACL_MASK) {
+								got_mask = e2[i2].perm;
+							}
+						}
+						if(sz != 5 * 8 || got_mask != 7) {
+							printf("FAIL: subdir access ACL (sz %d mask %d)\n",
+								(int)sz, got_mask);
+							fails++;
+						} else {
+							ok("M3 subdir inherits the access ACL");
+						}
+						sz = getxattr(sub, XA_DEFAULT, e2, sizeof(e2));
+						if(sz != 5 * 8) {
+							printf("FAIL: subdir default ACL not copied (sz %d)\n",
+								(int)sz);
+							fails++;
+						} else {
+							ok("M3 subdir copies the default ACL");
+						}
+						/* a file in the subdir inherits again */
+						snprintf(subf, sizeof(subf), "%s/grand", sub);
+						fd = open(subf, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+						if(fd >= 0) {
+							close(fd);
+							stat(subf, &st);
+							if((st.st_mode & 0777) != 0660) {
+								printf("FAIL: grandchild mode %o != 0660\n",
+									st.st_mode & 0777);
+								fails++;
+							} else {
+								ok("M3 inheritance continues one level down");
+							}
+							unlink(subf);
+						} else {
+							fail("M3 open grandchild");
+						}
+						rmdir(sub);
+					}
+				}
+
+				/* 14. removing the default ACL restores umask semantics */
+				if(removexattr(d, XA_DEFAULT) != 0) {
+					fail("M3 removexattr default");
+				} else {
+					snprintf(f, sizeof(f), "%s/plain", d);
+					fd = open(f, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+					if(fd >= 0) {
+						close(fd);
+						stat(f, &st);
+						if((st.st_mode & 0777) != 0644) {
+							printf("FAIL: no-default mode %o != 0644\n",
+								st.st_mode & 0777);
+							fails++;
+						} else {
+							ok("M3 no default ACL: umask applies (0644)");
+						}
+						unlink(f);
+					} else {
+						fail("M3 open plain file");
+					}
+				}
+				removexattr(d, XA_ACCESS);
+				rmdir(d);
+				}
+			}
+		}
+	}
+
 	printf("ACLTEST: %d failure(s)\n", fails);
 	return fails ? 1 : 0;
 }

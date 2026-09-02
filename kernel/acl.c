@@ -24,8 +24,8 @@
 #include <fnx/string.h>
 #include <fnx/fs.h>
 #include <fnx/syscalls.h>
+#include <fnx/kernel.h>
 
-#define ACL_XATTR_SZ	(ACL_MAX_ENTRIES * sizeof(struct acl_xattr_entry))
 
 /*
  * Validate an ACL payload. Canonical order is enforced so the parser in
@@ -256,6 +256,121 @@ int acl_chmod(struct inode *i, __mode_t mode)
 		}
 	}
 	return i->fsop->setxattr(i, XATTR_ACL_ACCESS, buf, n, 0);
+}
+
+/* ---- default-ACL inheritance (M3) ---------------------------------- */
+
+/* POSIX default-ACL inheritance for a freshly created object (Linux
+ * posix_acl_create_masq): start from the parent directory's default
+ * ACL and intersect each class's entry with the create mode's bits,
+ * folding the result back into the mode so the two agree:
+ *   owner := default USER_OBJ & mode-owner bits (mode-owner := that)
+ *   other := default OTHER & mode-other bits  (mode-other := that)
+ *   group := default MASK (or GROUP_OBJ when no mask) & mode-group
+ *           (mode-group := that)
+ * Named entries are inherited unchanged - the (intersected) mask is
+ * what limits them. *nontrivial is set when the result carries named
+ * entries or a mask and therefore must be stored rather than folded
+ * into the mode. The suid/sgid/sticky bits of the mode are preserved.
+ * out must hold at least dflsz bytes. */
+void acl_default_masq(const void *dfl, __size_t dflsz, __mode_t mode,
+		      __mode_t *mode_out, void *out, __size_t outsz,
+		      int *nontrivial)
+{
+	struct acl_xattr_entry *e, *group_obj = NULL, *mask_obj = NULL;
+	int n, nents;
+	__mode_t rwx;
+
+	*nontrivial = 0;
+	if(!dfl || dflsz < 3 * sizeof(struct acl_xattr_entry) ||
+	   dflsz % sizeof(struct acl_xattr_entry) ||
+	   outsz < dflsz) {
+		*mode_out = mode;
+		return;
+	}
+	memcpy_b(out, dfl, dflsz);
+	nents = dflsz / sizeof(struct acl_xattr_entry);
+	rwx = mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+
+	for(n = 0; n < nents; n++) {
+		e = &((struct acl_xattr_entry *)out)[n];
+		switch(e->e_tag) {
+			case ACL_USER_OBJ:
+				e->e_perm &= (rwx >> 6) & 7;
+				rwx = (rwx & ~S_IRWXU) | (e->e_perm << 6);
+				break;
+			case ACL_OTHER:
+				e->e_perm &= rwx & 7;
+				rwx = (rwx & ~S_IRWXO) | e->e_perm;
+				break;
+			case ACL_GROUP_OBJ:
+				group_obj = e;
+				break;
+			case ACL_MASK:
+				mask_obj = e;
+				*nontrivial = 1;
+				break;
+			case ACL_USER:
+			case ACL_GROUP:
+				*nontrivial = 1;	/* inherited, unmasked here */
+				break;
+		}
+	}
+	if(mask_obj) {
+		mask_obj->e_perm &= (rwx >> 3) & 7;
+		rwx = (rwx & ~S_IRWXG) | (mask_obj->e_perm << 3);
+	} else if(group_obj) {
+		group_obj->e_perm &= (rwx >> 3) & 7;
+		rwx = (rwx & ~S_IRWXG) | (group_obj->e_perm << 3);
+	}
+	*mode_out = (mode & ~(S_IRWXU | S_IRWXG | S_IRWXO)) | rwx;
+}
+
+/* Apply POSIX default-ACL inheritance after dir->fsop->create/mkdir
+ * produced the new object i. When the parent carries a
+ * system.posix_acl_default, the new access ACL is that default
+ * intersected with the create mode (acl_default_masq) and the mode
+ * bits are folded to match - this also overrides the umask the
+ * filesystem applied, which POSIX says is ignored when a default ACL
+ * exists. A new directory additionally copies the parent's default ACL
+ * verbatim so the inheritance continues. Storage is best-effort: a
+ * failed xattr write only loses named grants, never over-grants (the
+ * folded mode stays correct). Returns 1 when an ACL was inherited,
+ * else 0 (no default ACL: umask rules apply). */
+int acl_inherit_default(struct inode *dir, struct inode *i, __mode_t mode,
+			int is_dir)
+{
+	char dfl[ACL_XATTR_SZ], acc[ACL_XATTR_SZ];
+	__mode_t fmode;
+	int n, non_trivial;
+
+	/* symlinks never carry ACLs; only an xattr-capable parent can
+	 * have a default ACL */
+	if(S_ISLNK(i->i_mode) || !dir->fsop || !dir->fsop->getxattr) {
+		return 0;
+	}
+	n = dir->fsop->getxattr(dir, XATTR_ACL_DEFAULT, dfl, sizeof(dfl));
+	if(n <= 0 || n % sizeof(struct acl_xattr_entry)) {
+		/* -ENODATA/-EOPNOTSUPP or an unreadable payload: nothing
+		 * to inherit - the filesystem's umask result stands */
+		return 0;
+	}
+	acl_default_masq(dfl, n, mode, &fmode, acc, sizeof(acc), &non_trivial);
+
+	i->i_mode = (i->i_mode & ~(S_IRWXU | S_IRWXG | S_IRWXO)) |
+		(fmode & (S_IRWXU | S_IRWXG | S_IRWXO));
+	i->i_ctime = CURRENT_TIME;
+	i->state |= INODE_DIRTY;
+
+	if(i->fsop && i->fsop->setxattr) {
+		if(non_trivial) {
+			i->fsop->setxattr(i, XATTR_ACL_ACCESS, acc, n, 0);
+		}
+		if(is_dir) {
+			i->fsop->setxattr(i, XATTR_ACL_DEFAULT, dfl, n, 0);
+		}
+	}
+	return 1;
 }
 
 /* ---- the permission algorithm -------------------------------------- */

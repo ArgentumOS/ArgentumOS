@@ -12,6 +12,7 @@
 #include <fnx/errno.h>
 #include <fnx/fs_inotify.h>
 #include <fnx/string.h>
+#include <fnx/acl.h>
 
 #ifdef __DEBUG__
 #include <fnx/stdio.h>
@@ -63,6 +64,14 @@ int sys_mkdir(const char *dirname, __mode_t mode)
 		errno = -EPERM;
 	}
 	if(!errno) {
+		/* M3: the new dir inherits the parent's default ACL (and
+		 * copies it so the inheritance continues); re-resolve it */
+		struct inode *i2 = NULL;
+
+		if(!parse_namei(basename, dir, &i2, NULL, !FOLLOW_LINKS) && i2) {
+			acl_inherit_default(dir, i2, mode, 1);
+			iput(i2);
+		}
 		inotify_queue(dir, IN_CREATE | IN_ISDIR, 0, basename);
 	}
 	iput(dir);
@@ -134,6 +143,14 @@ int sys_mkdirat(int dirfd, const char *dirname, __mode_t mode)
 		errno = -EPERM;
 	}
 	if(!errno) {
+		/* M3: the new dir inherits the parent's default ACL (and
+		 * copies it so the inheritance continues); re-resolve it */
+		struct inode *i2 = NULL;
+
+		if(!parse_namei(basename, dir, &i2, NULL, !FOLLOW_LINKS) && i2) {
+			acl_inherit_default(dir, i2, mode, 1);
+			iput(i2);
+		}
 		inotify_queue(dir, IN_CREATE | IN_ISDIR, 0, basename);
 	}
 	iput(dir);

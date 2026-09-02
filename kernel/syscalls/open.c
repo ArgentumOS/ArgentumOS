@@ -13,6 +13,7 @@
 #include <fnx/fs_inotify.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
+#include <fnx/acl.h>
 
 static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode);
 
@@ -157,6 +158,9 @@ static int do_sys_open(int dirfd, const char *filename, int flags, __mode_t mode
 					free_name(tmp_name);
 					return errno;
 				}
+				/* M3: a default ACL on the parent dir overrides the
+				 * umask and seeds the new file's ACL */
+				acl_inherit_default(dir, i, mode, 0);
 				inotify_queue(dir, IN_CREATE, 0, basename);
 			} else {
 				iput(dir);

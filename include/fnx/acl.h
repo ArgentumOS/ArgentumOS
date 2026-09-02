@@ -44,6 +44,9 @@ struct acl_xattr_entry {
 /* largest sane ACL: comfortably inside the BFS small_data cap */
 #define ACL_MAX_ENTRIES	32
 
+/* full-size buffer for one ACL payload */
+#define ACL_XATTR_SZ	(ACL_MAX_ENTRIES * sizeof(struct acl_xattr_entry))
+
 /* Validate an ACL xattr payload: canonical entry order, exactly one
  * owner/owning-group/other, at most one mask (mandatory when any named
  * entry exists), valid tags/perms. Returns 0 or a negative errno. */
@@ -77,5 +80,21 @@ int acl_equiv_mode(const void *buf, __size_t size, __u16 *mode);
  * work (the mode change itself is the ACL change). Returns 0 or a
  * negative errno; on failure the mode bits are left untouched. */
 int acl_chmod(struct inode *i, __mode_t mode);
+
+/* POSIX default-ACL inheritance (see kernel/acl.c for the full rule):
+ * intersect the parent's default ACL with the create mode and fold the
+ * result back into the mode; *nontrivial says whether the result must
+ * be stored. */
+void acl_default_masq(const void *dfl, __size_t dflsz, __mode_t mode,
+		      __mode_t *mode_out, void *out, __size_t outsz,
+		      int *nontrivial);
+
+/* POSIX default-ACL inheritance for a freshly created object (see
+ * kernel/acl.c): parent's system.posix_acl_default -> the new access
+ * ACL intersected with the create mode (mode folded to match, umask
+ * overridden); directories copy the default ACL too. Best-effort
+ * storage. Returns 1 when an ACL was inherited, else 0. */
+int acl_inherit_default(struct inode *dir, struct inode *i, __mode_t mode,
+			int is_dir);
 
 #endif /* _FNX_ACL_H */
