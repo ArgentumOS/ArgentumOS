@@ -96,14 +96,11 @@ void pic_init(void)
 	outport_b(PIC_SLAVE + DATA, CASCADE_IRQ);	/* ICW3 */
 	outport_b(PIC_SLAVE + DATA, ICW4_8086EOI);
 
-	/* mask all IRQs except cascade */
-#ifdef __x86_64__
-	/* FNX: keep IRQ0 (PIT timer) unmasked too; the IDT64 dispatch
-	 * drives the real kernel's timer machinery via irq64_handler(). */
-	outport_b(PIC_MASTER + DATA, ~(1 << CASCADE_IRQ) & ~1);
-#else
+	/* mask all IRQs except cascade. IRQ0 (the PIT timer) stays masked
+	 * here: timer_init() links the timer handler and then calls
+	 * enable_irq(TIMER_IRQ), so the timer cannot fire (and race the
+	 * real kernel's setup) before its handler exists. */
 	outport_b(PIC_MASTER + DATA, ~(1 << CASCADE_IRQ));
-#endif /* __x86_64__ */
 
 	/* mask all IRQs */
 	outport_b(PIC_SLAVE + DATA, OCW1);

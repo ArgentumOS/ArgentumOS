@@ -4,7 +4,10 @@
  * FNX M3 (phase A): 8259 PIC remap, PIT timer, IRQ dispatch.
  *
  * The PICs are remapped so IRQ0-7 -> vectors 0x20-0x27 and IRQ8-15 ->
- * 0x28-0x2F, and only IRQ0 (the PIT) is unmasked. The PIT ticks at 100 Hz.
+ * 0x28-0x2F, and all IRQs are masked. The PIT ticks at 100 Hz but its
+ * IRQ stays masked here: the real kernel's timer_init() links the timer
+ * handler and only then calls enable_irq(TIMER_IRQ), so the timer cannot
+ * fire (and race the real kernel's setup) before its handler exists.
  * irq64_handler() is called from isr64_dispatch() (kernel64/idt64.c) for
  * vectors 32-47; it sends the EOI and bumps the tick counter for IRQ0.
  *
@@ -72,7 +75,10 @@ void irq64_init(void)
 	outb(0xA1, 0x02);	/* ICW3: cascade identity */
 	outb(0x21, 0x01);	/* ICW4: 8086 mode */
 	outb(0xA1, 0x01);
-	outb(0x21, 0xFE);	/* mask: only IRQ0 (timer) unmasked */
+	outb(0x21, 0xFF);	/* mask all: drivers enable their own IRQs;
+				 * the PIT timer is enabled by the real
+				 * kernel's timer_init() once its handler
+				 * is linked (see kernel/pic.c) */
 	outb(0xA1, 0xFF);
 
 	/* PIT channel 0: 100 Hz square wave (divisor 11931 = 1193182/100) */
@@ -80,5 +86,5 @@ void irq64_init(void)
 	outb(0x40, 0x9B);	/* divisor low */
 	outb(0x40, 0x2E);	/* divisor high */
 
-	serial_puts("[M3-A] PIC remapped (IRQ0=0x20..IRQ15=0x2F), PIT 100 Hz, IRQ0 unmasked\n");
+	serial_puts("[M3-A] PIC remapped (IRQ0=0x20..IRQ15=0x2F), PIT 100 Hz, IRQs masked\n");
 }
