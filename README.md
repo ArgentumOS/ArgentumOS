@@ -4,75 +4,101 @@ FNX (pronounced "phoenix" or "fee-nicks") is the 64-bit long-mode continuation o
 
 FNX is derived from [Fiwix](https://www.fiwix.org), the original 32-bit i386 kernel created by Jordi Sanfeliu. The Fiwix project can be found at <https://www.fiwix.org> (source: <https://github.com/mikaku/Fiwix>).
 
+FNX is **64-bit only**: it boots as a PE32+ EFI application from UEFI firmware, enters x86-64 long mode with 4-level paging, and runs a single-address-space kernel mapped at the high-half (the UEFI stub re-biases the PE base relocations so every kernel pointer resolves to the high-half alias). There is no 32-bit compatibility mode, no ELF32 support, and no legacy BIOS boot path.
+
 Features
 --------
- - Written in ANSI C language (Assembly used only in the needed parts).
- - Native x86-64 long mode, booted directly from UEFI firmware (PE32+).
- - For x86-64 processors (amd64).
- - Preemptive multitasking.
- - POSIX-compliant (mostly).
- - Process groups, sessions and job control.
- - Interprocess communication with pipes, signals and UNIX-domain sockets.
- - UNIX System V IPC (semaphores, message queues and shared memory).
- - BSD file locking mechanism (POSIX restricted to file and advisory only).
- - Native x86-64 ABI system calls compatibility (mostly).
- - Demand paging with Copy-On-Write feature.
- - ELF-x86-64 executable format support (statically and dynamically linked).
- - Round Robin based scheduler algorithm (no priorities yet).
- - VFS abstraction layer.
- - Kexec support.
- - EXT2 filesystem support with 1KB, 2KB and 4KB block sizes.
- - Minix v1 and v2 filesystem support.
- - Linux-like PROC filesystem support (read only).
- - PIPE pseudo-filesystem support.
- - ISO9660 filesystem support with Rock Ridge extensions.
- - RAMdisk device support.
- - Initial RAMdisk (initrd) image support.
- - SVGAlib based applications support.
- - PCI local bus support.
-   - QEMU/Bochs Graphics Adapter support.
- - UNIX98 pseudoterminals (pty) and devpts filesystem support.
- - Virtual consoles support (up to 12).
- - Keyboard driver with Linux keymaps support.
- - PS/2 mouse support.
- - Framebuffer device support for VESA VBE 2.0+ compliant graphic cards.
- - Framebuffer console (fbcon) support.
- - Serial port (RS-232) driver support.
- - Remote serial console support.
- - QEMU Bochs-style debug console support.
- - Parallel port printer driver support.
- - Basic implementation of a Pseudo-Random Number Generator.
- - Floppy disk device driver and DMA management.
- - IDE/ATA ATAPI CD-ROM device driver.
- - IDE/ATA hard disk device driver.
+### Core
+ - Written in ANSI C (Assembly only where needed: UEFI entry, paging, syscall/IRQ entry).
+ - Native x86-64 long mode, booted directly from UEFI firmware (PE32+ EFI application, no multiboot/BIOS dependency).
+ - 4-level (PML4/PDPT/PD/PT) paging; the kernel executes from a single high-half address space (PAGE_OFFSET64 + phys); process page tables carry no identity image mapping.
+ - Preemptive multitasking, Round Robin scheduler, process groups, sessions and job control.
+ - POSIX-compliant (mostly) with a native x86-64 ABI syscall interface (no 32-bit compatibility).
+ - Demand paging with Copy-On-Write; `mmap`/`munmap`/`mprotect`/`mremap`/`msync`/`mincore`/`madvise`; `MAP_SHARED` with CoW fork semantics.
+ - 64-bit `time_t` (y2038-safe) and 32-bit `uid_t`/`gid_t` (matches the x86-64 userland ABI).
+ - Signals (incl. `rt_sigaction`/`rt_sigreturn`), `wait4`/`waitpid`, `clone`, `fork`/`execve`.
+ - `getrandom` syscall and `/dev/random`, `/dev/urandom` devices; `kexec` support.
+ - UNIX System V IPC (semaphores, message queues and shared memory) over the 64-bit ABI; pipes; BSD file locking (POSIX advisory only).
+ - ELF-x86-64 executables, statically and dynamically linked.
+ - Kernel security hardening: fault-recovering `copy_from_user`, verified `strnlen_user`, and multi-round audits of the syscall/fs/net/ipc paths.
+
+### Filesystems
+ - EXT2 (1KB/2KB/4KB block sizes).
+ - Minix v1/v2.
+ - OpenBFS: a read/write, Haiku BFS-compatible filesystem (btree directories, extents, volume queries, 2048/4096-byte blocks, Haiku-interoperable images).
+ - Linux-like PROC filesystem (read-only), mounted at `/proc` at boot.
+ - devfs mounted at `/dev` (nested alias directories, device-node registry, clone API).
+ - devpts (UNIX98 pseudoterminals), pipefs, ISO9660 (+Rock Ridge), sockfs (AF_UNIX), inotifyfs.
+
+### Block storage
+ - RAMdisk and Initial RAMdisk (initrd) support.
+ - Floppy driver with DMA management.
+ - IDE/ATA hard disk and ATAPI CD-ROM (legacy + PCI).
+ - AHCI (SATA), VMware PVSCSI, and NVMe controllers.
+ - Disk partition support; persistent EXT2 root on an ATA disk (block cache flushed on shutdown).
+
+### USB
+ - UHCI, OHCI, EHCI (with companion-controller routing) and XHCI host controllers.
+ - USB hubs (multi-port, behind-hub and external-hub paths).
+ - USB keyboard, mouse, mass-storage, and Ethernet.
+
+### Networking
+ - NIC drivers: ne2k, pcnet, rtl8139, eepro100, tulip, e1000, e1000e, igb, vmxnet3, virtio-net, USB Ethernet.
+ - IPv4 + TCP/UDP, AF_UNIX, AF_PACKET, socket domains; MSI-X for capable devices; DNS/epoll-based userland networking works out of the box.
+
+### Audio (OSS `/dev/dsp`)
+ - AC97, ES1370, Intel HDA, SB16, GUS, and virtio-snd (modern virtio-1 transport) drivers.
+
+### Display & input
+ - UEFI GOP framebuffer console (fbcon) and `/dev/fb0`, mapped at a kernel-high VA so it works from any process context.
+ - VGA text console; QEMU/Bochs SVGA and BGA; ATI Rage XL native framebuffer driver.
+ - Virtual consoles (up to 12), UNIX98 pty/devpts.
+ - PS/2 keyboard with Linux keymaps, PS/2 mouse (psaux).
+
+### Character devices
+ - Serial port (16550A UART), including a polled-TX PCI serial console (`console=/dev/ttyS1` is a full interactive console).
+ - Parallel port printer driver, `memdev`, sysrq, tty layer, QEMU Bochs debug console.
+
+Requirements
+------------
+ - x86-64 CPU, UEFI firmware (OVMF under QEMU).
+ - 128MB of RAM recommended.
+ - For the QEMU harness: `qemu-system-x86_64` and the OVMF firmware image (fetched by `tools/fetch-ovmf.sh` or `make ovmf`).
 
 Compiling
 ---------
-The command needed to build the FNX kernel is `make clean ; make`.  This will create the file in the root directory of the source code tree: **fnx** (the kernel itself) and **System.map.gz** (the symbol table).
+The kernel is 64-bit only and is built as a PE32+ EFI application:
 
-Before compiling you might want to tweak the kernel configuration by changing the default values in `include/fnx/config.h` and `include/fnx/limits.h`.
+    make                 # same as `make buildfnx` -> .build/64/fnx.efi
 
-Keep in mind that the kernel doesn't do anything on its own, you need to create a user-space environment to make use of it. Upon booting, the kernel mounts the root filesystem and tries to run `/sbin/init` on it, so you would need to provide this program yourself.  Fortunately, [FiwixOS](https://www.fiwix.org/downloads.html) provides a full user-space UNIX-like environment to test the FNX kernel.
+This produces the kernel image `.build/64/fnx.efi` (a native x86-64, UEFI-bootable kernel). There is no 32-bit build and no multiboot image.
 
-Installing
-----------
-You can proceed to install FiwixOS on a hard disk either by booting from the CD-ROM or from a floppy. If you chosen the latter, you will also need the Installation CD-ROM inserted in order to install the packages that form all the system environment.
+Before compiling you may want to tweak the kernel configuration in `include/fnx/config.h` and `include/fnx/limits.h`.
 
-Let the system boot and when you are ready, just type `install.sh`.
+The kernel needs a user-space environment: at boot it mounts the root filesystem and runs `/sbin/init`. FNX ships with a small native userland built from musl, dash and toybox:
 
-The minimal hardware requirements are as follows:
+    make userland64          # musl libc + dash + toybox, staged under .build/rootfs64
+    make rootdisk64          # packs .build/root.img (ext2, staged under tools/mkext2.py)
 
- - Standard IBM PC-AT architecture.
- - i386 processor (with floating-point processor).
- - 4MB of RAM memory (128MB recommended).
- - IDE/ATAPI CD-ROM or floppy disk (3.5", 1.44MB).
- - 1GB ATA hard disk.
+Running under QEMU
+------------------
+The stock harness boots the ESP image under OVMF and attaches the EXT2 root disk over AHCI:
 
-Please keep in mind that this is a kernel in its very early stages and may well have serious bugs and broken features which have not yet been identified or resolved.
+    make run-uefi            # OVMF + esp.img + root.img (rootdisk64) + a virtio-net NIC
 
-Let me repeat that.
+By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf` is exported. The ESP image is written by `./tools/mkesp.sh` (run automatically by the Makefile). A root filesystem formatted as OpenBFS can be booted instead with `make run-bfs`.
 
-Please keep in mind that this is a kernel in its very early stages and may well have serious bugs and broken features which have not yet been identified or resolved.
+Once the shell is up, the following in-guest checks are useful:
+ - `sec_test`  - 24-pass kernel smoke test (fork/exec/CoW/TLS/wait4/security paths).
+ - `forkkill`  - fork + `kill(SIGKILL)` + `waitpid` stress (10 rounds).
+ - `ipc_smoke` - System V IPC (semaphores/message queues/shared memory).
+ - `echo hi > /dev/tty0`  - exercises the framebuffer console from process context.
+
+Notes / design decisions
+------------------------
+ - The kernel boots to a single high-half address space: `rebase_image_data()` in `kernel64/paging64.c` walks the PE base-relocation table at boot and re-biases every absolute data pointer by `PAGE_OFFSET64` before the jump to the high-half entry, so indirect calls (syscall table, tty output, file operations) never execute at the identity alias. Process pml4s therefore map no kernel identity pages, and the TSS descriptor base must be the high-half address (see `kernel64/gdt64.c`).
+ - Headless runs use the serial console (ttyS0); the GOP framebuffer console is exercised via `/dev/tty0` and `/dev/fb0`.
+ - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
 
 			*****************************
 			*** USE AT YOUR OWN RISK! ***
@@ -95,4 +121,3 @@ Credits
 FNX is derived from Fiwix, created by [Jordi Sanfeliu](https://www.fibranet.cat).  
 You can contact me at [jordi@fibranet.cat](mailto:jordi@fibranet.cat).
 See also the LICENSE file for a list of contributors.
-
