@@ -126,6 +126,12 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
 	$(MUSL64_CC) userland/acl.c -o $(ROOTFS64)/bin/acl
+	$(MUSL64_CC) -Iinclude userland/config.c userland/libconfig.c -o $(ROOTFS64)/bin/config
+	# config's three scope directories (docs/config-design.md; the FSH
+	# spells them /System, /Shared, Users/$USER). The guest has one
+	# user (root).
+	@mkdir -p $(ROOTFS64)/System/Configuration $(ROOTFS64)/Shared/Configuration \
+		$(ROOTFS64)/Users/root/Configuration
 	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
 	$(MUSL64_CC) userland/bfsquery.c -o $(ROOTFS64)/bin/bfsquery
 	$(MUSL64_CC) userland/bfsqtest.c -o $(ROOTFS64)/bin/bfsqtest
