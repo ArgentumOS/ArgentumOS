@@ -21,11 +21,12 @@ Features
  - UNIX System V IPC (semaphores, message queues and shared memory) over the 64-bit ABI; pipes; BSD file locking (POSIX advisory only).
  - ELF-x86-64 executables, statically and dynamically linked.
  - Kernel security hardening: fault-recovering `copy_from_user`, verified `strnlen_user`, and multi-round audits of the syscall/fs/net/ipc paths.
+ - POSIX ACLs as the single canonical permissions model: one ACL per object (owner, named users, owning group, named groups, mask, other), with the mode bits kept in sync as its trivial projection and default ACLs on directories driving inheritance at create/mkdir. Stored as `system.posix_acl_access` / `system.posix_acl_default` xattrs; edited with the `acl` tool (see Notes).
 
 ### Filesystems
  - EXT2 (1KB/2KB/4KB block sizes).
  - Minix v1/v2.
- - OpenBFS: a read/write, Haiku BFS-compatible filesystem (btree directories, extents, volume queries, 2048/4096-byte blocks, Haiku-interoperable images).
+ - OpenBFS: a read/write, Haiku BFS-compatible filesystem (btree directories, extents, volume queries, 2048/4096-byte blocks, Haiku-interoperable images). Images are produced by `tools/mkbfs.py` (multi-leaf btree trees included) and cross-checked by `tools/bfscheck.py`.
  - Linux-like PROC filesystem (read-only), mounted at `/proc` at boot.
  - devfs mounted at `/dev` (nested alias directories, device-node registry, clone API).
  - devpts (UNIX98 pseudoterminals), pipefs, ISO9660 (+Rock Ridge), sockfs (AF_UNIX), inotifyfs.
@@ -92,10 +93,14 @@ Once the shell is up, the following in-guest checks are useful:
  - `sec_test`  - 24-pass kernel smoke test (fork/exec/CoW/TLS/wait4/security paths).
  - `forkkill`  - fork + `kill(SIGKILL)` + `waitpid` stress (10 rounds).
  - `ipc_smoke` - System V IPC (semaphores/message queues/shared memory).
+ - `acl_test`  - 32-check POSIX ACL kernel regression (mounts the BFS disk on `/mnt`).
+ - `acl get/set/default/--mask/remove <path> ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed BFS).
  - `echo hi > /dev/tty0`  - exercises the framebuffer console from process context.
 
 Notes / design decisions
 ------------------------
+ - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only BFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs BFS. Full design: `docs/permissions-acl.md`; the `acl` tool lives at `/bin/acl`.
+ - Boot and storage reliability: the PIT IRQ stays masked until the real kernel's timer handler is linked (no early timer storms); the AHCI command-completion poll is bounded so a lost completion surfaces as an error instead of wedging the boot for minutes; and `iput()` never writes back a deleted inode (the root cause of the BFS NULL-`small_data` crash on unlinking a dirty inode).
  - The kernel boots to a single high-half address space: `rebase_image_data()` in `kernel64/paging64.c` walks the PE base-relocation table at boot and re-biases every absolute data pointer by `PAGE_OFFSET64` before the jump to the high-half entry, so indirect calls (syscall table, tty output, file operations) never execute at the identity alias. Process pml4s therefore map no kernel identity pages, and the TSS descriptor base must be the high-half address (see `kernel64/gdt64.c`).
  - Headless runs use the serial console (ttyS0); the GOP framebuffer console is exercised via `/dev/tty0` and `/dev/fb0`.
  - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
