@@ -448,8 +448,11 @@ def main():
             merged[blk][off % BLOCK:off % BLOCK + len(data)] = data
         # the header occupies stream offset 0 (block hb); build it here
         # (root_off is known only after the layout)
+        # the tree's root is the single top-level node (node index
+        # base[-1]); with one leaf that is node 0 itself
+        root_off = node_offset(base[-1])
         merged.setdefault(hb, bytearray(BLOCK))
-        merged[hb][0:40] = build_btree_header(node_offset(0), len(levels),
+        merged[hb][0:40] = build_btree_header(root_off, len(levels),
                                               data_type=data_type)
 
         # leaves
@@ -460,21 +463,25 @@ def main():
                                    [v for _, v in leaf],
                                    BTREE_NULL, right, left=left))
 
-        # interiors: level l node j has k = len(entries)+1 children, the
-        # consecutive level-(l-1) nodes starting at child base + j*k
+        # interiors: each parent entry lists ALL its children's max keys
+        # (len(parent) entries -> the node stores len-1 keys + overflow).
+        # The parents are greedily packed so they can differ in length;
+        # each parent's children start right after the previous parent's
+        # (the child tiling must accumulate, not assume equal lengths).
         for l in range(1, len(levels)):
             prev_base = base[l - 1]
             parent_base = base[l]
+            cstart = prev_base
             for j, parent in enumerate(levels[l]):
-                k = len(parent) + 1
-                cstart = prev_base + j * k
+                k = len(parent)
                 child_offs = [node_offset(cstart + t) for t in range(k)]
                 data = build_node(parent[:-1], child_offs[:-1],
                                   child_offs[-1], BTREE_NULL)
                 put_node(parent_base + j, data)
+                cstart += k
 
         out = sorted((b, bytes(d)) for b, d in merged.items())
-        return 1 + len(out), node_offset(0), len(levels), out
+        return 1 + len(out), root_off, len(levels), out
 
     # ---- walk the tree, allocating inodes + streams ----
     write_inodes = []   # (block, bytes)
