@@ -129,6 +129,7 @@ int sys_munmap(addr_t, __size_t);
 int sys_truncate(const char *, __off_t);
 int sys_ftruncate(unsigned int, __off_t);
 int sys_fchmod(unsigned int, __mode_t);
+int sys_fchmodat(int, const char *, __mode_t);
 int sys_fchown(unsigned int, __uid_t, __gid_t);
 int sys_statfs(const char *, struct statfs *);
 int sys_statfs64(const char *, struct fnx_statfs64 *);

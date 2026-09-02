@@ -731,6 +731,7 @@ void *syscall_table64[] = {
 	[255] = sys_inotify_rm_watch,	/* inotify_rm_watch */
 	[257] = sys_openat,		/* openat */
 	[258] = sys_mkdirat,		/* mkdirat (toybox mkdir -p, musl) */
+	[268] = sys_fchmodat,		/* fchmodat (toybox chmod) */
 	[262] = sys_newfstatat,		/* newfstatat (musl stat/lstat/fstatat) */
 	[263] = sys_unlinkat,		/* unlinkat */
 	[267] = sys_readlinkat,		/* readlinkat (musl readlink, ls -l targets) */

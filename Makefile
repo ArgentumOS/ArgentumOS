@@ -125,6 +125,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
+	$(MUSL64_CC) userland/acl.c -o $(ROOTFS64)/bin/acl
 	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
 	$(MUSL64_CC) userland/bfsquery.c -o $(ROOTFS64)/bin/bfsquery
 	$(MUSL64_CC) userland/bfsqtest.c -o $(ROOTFS64)/bin/bfsqtest
