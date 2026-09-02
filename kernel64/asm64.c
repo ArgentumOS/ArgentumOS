@@ -196,9 +196,21 @@ void invalidate_tlb(void)
 	/* QEMU-TCG quirk: a reload with the SAME cr3 value is optimized
 	 * away, leaving the stale entry cached. Hop CR3 through the kernel
 	 * pml4 (which maps this code) so the value actually changes and the
-	 * TCG flushes the whole TLB. */
-	extern unsigned long paging64_pml4(void);
-	__asm__ __volatile__("movq %0, %%cr3" :: "r"(paging64_pml4()) : "memory");
+	 * TCG flushes the whole TLB.
+	 *
+	 * The hop target MUST be the PHYSICAL address of the kernel pml4.
+	 * paging64_pml4() returns &pml4_page, which - because the kernel64
+	 * code uses RIP-relative (PIC) addressing and executes from a mix of
+	 * the identity and the high-half alias - resolves to a virtual
+	 * address, never a usable CR3. Loading a VA into CR3 feeds the CPU a
+	 * non-RAM physical address: QEMU-TCG hangs hard at the mov %cr3
+	 * (observed: a killed sleeping child wedges in
+	 * do_exit->release_binary->invalidate_tlb, so the parent's waitpid()
+	 * hangs forever), and real hardware would #GP (CR3[63:52] set) or
+	 * #PF. paging64_pml4_phys() normalizes &pml4_page to its physical
+	 * address regardless of which alias the code runs from. */
+	extern unsigned long paging64_pml4_phys(void);
+	__asm__ __volatile__("movq %0, %%cr3" :: "r"(paging64_pml4_phys()) : "memory");
 	__asm__ __volatile__("movq %0, %%cr3" :: "r"(cr3) : "memory");
 }
 

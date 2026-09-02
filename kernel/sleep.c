@@ -82,7 +82,11 @@ int sleep(void *address, int state)
 		return 0;
 	}
 
-	i = SLEEP_HASH((addr_t)address);
+	/* FNX: canonicalize the address so a symbol (&sys_wait4, &do_select,
+	 * ...) hashes and matches the SAME value regardless of which image
+	 * alias (identity vs high-half) the caller ran from; see SLEEP_ADDR
+	 * in include/fnx/sleep.h. */
+	i = SLEEP_HASH(SLEEP_ADDR(address));
 	h = &sleep_hash_table[i];
 
 	/* insert process in the head */
@@ -95,7 +99,7 @@ int sleep(void *address, int state)
 		(*h)->prev_sleep = current;
 		*h = current;
 	}
-	current->sleep_address = address;
+	current->sleep_address = (void *)SLEEP_ADDR(address);
 	if(state == PROC_UNINTERRUPTIBLE) {
 		current->flags |= PF_NOTINTERRUPT;
 	}
@@ -119,12 +123,16 @@ void wakeup(void *address)
 	int i, found;
 
 	SAVE_FLAGS(flags); CLI();
-	i = SLEEP_HASH((addr_t)address);
+	/* FNX: canonicalize the address so a symbol (&sys_wait4, &do_select,
+	 * ...) hashes and matches the SAME value regardless of which image
+	 * alias (identity vs high-half) the caller ran from; see SLEEP_ADDR
+	 * in include/fnx/sleep.h. */
+	i = SLEEP_HASH(SLEEP_ADDR(address));
 	h = &sleep_hash_table[i];
 	found = 0;
 
 	while(*h) {
-		if((*h)->sleep_address == address) {
+		if((*h)->sleep_address == (void *)SLEEP_ADDR(address)) {
 			(*h)->sleep_address = NULL;
 			(*h)->flags &= ~PF_NOTINTERRUPT;
 			(*h)->cpu_count = (*h)->priority;

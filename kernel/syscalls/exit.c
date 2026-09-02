@@ -86,7 +86,7 @@ void do_exit(int exit_code)
 			current->children--;
 			if(p->state == PROC_ZOMBIE) {
 				send_sig(init, SIGCHLD);
-				if(init->sleep_address == &sys_wait4) {
+				if(init->sleep_address == (void *)SLEEP_ADDR(&sys_wait4)) {
 					wakeup_proc(init);
 				}
 			}
@@ -118,12 +118,13 @@ void do_exit(int exit_code)
 		stop_kernel();
 	}
 
-	/* notify the parent about the child's death */
-	p = current->ppid;
-	send_sig(p, SIGCHLD);
-	if(p->sleep_address == &sys_wait4) {
-		wakeup_proc(p);
-	}
+	/* become a zombie FIRST, then notify the parent: a parent blocked
+	 * in wait4() is woken by the address-match wakeup below and
+	 * re-scans the child list immediately. If it runs before the
+	 * PROC_ZOMBIE transition it finds nothing, re-sleeps, and is never
+	 * re-woken (send_sig() drops SIGCHLD when the parent has it at
+	 * SIG_DFL) -> waitpid() hangs forever. */
+	not_runnable(current, PROC_ZOMBIE);
 
 	current->sigpending = 0;
 	current->sigblocked = 0;
@@ -134,7 +135,13 @@ void do_exit(int exit_code)
 		current->sigaction[n].sa_handler = SIG_IGN;
 	}
 
-	not_runnable(current, PROC_ZOMBIE);
+	/* notify the parent about the child's death */
+	p = current->ppid;
+	send_sig(p, SIGCHLD);
+	if(p->sleep_address == (void *)SLEEP_ADDR(&sys_wait4)) {
+		wakeup_proc(p);
+	}
+
 	do_sched();
 }
 

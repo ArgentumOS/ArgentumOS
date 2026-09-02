@@ -55,11 +55,21 @@ unsigned long paging64_pml4(void)
 }
 
 /* physical address of the kernel's PML4 for CR3. The page itself lives in
- * the image .bss (high half), so &pml4_page is NOT a valid CR3; its
- * physical is the uniform-map offset below PAGE_OFFSET64. */
+ * the image .bss; &pml4_page resolves via RIP-relative (PIC) addressing, so
+ * its value depends on which alias the code executes from: the high-half
+ * alias (PAGE_OFFSET64 + phys, after the boot switch) OR the identity alias
+ * (phys, when the call chain was entered through an identity function
+ * pointer - every kernel DATA pointer holds an identity address). Neither
+ * &pml4_page (high-half VA) nor &pml4_page - PAGE_OFFSET64 (which is
+ * &pml4_page + 0x80000000 when &pml4_page is already the identity value)
+ * is the physical address in both cases; the identity value IS the phys, so
+ * normalize: anything >= PAGE_OFFSET64 is a high-half VA (subtract),
+ * anything below is already physical (keep). */
 unsigned long paging64_pml4_phys(void)
 {
-	return (unsigned long)&pml4_page - PAGE_OFFSET64;
+	unsigned long va = (unsigned long)&pml4_page;
+
+	return (va >= PAGE_OFFSET64) ? (va - PAGE_OFFSET64) : va;
 }
 
 /*
