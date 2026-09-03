@@ -45,13 +45,14 @@ int ttf_glyph_index(ttf_face_t *f, unsigned int codepoint);
 /* horizontal advance of a glyph in pixels at 'size' (rounded) */
 int ttf_advance_px(ttf_face_t *f, int glyph, int size);
 
-/* render a glyph at 'size' pixels into a fresh 1-bit bitmap.
+/* render a glyph at 'size' pixels into a fresh 8-bit coverage bitmap
+ * (4x4-supersampled anti-aliasing; 0 = transparent, 255 = solid ink).
  * Returns 0 on success and sets:
- *   *out = malloc'd bitmap, w*h bytes, 1 = ink
+ *   *out = malloc'd bitmap, w*h bytes
  *   *w,*h = bitmap size (includes side bearings)
  *   *x0,*y0 = glyph origin offset: the glyph's pen position is at
- *   (x0, y0) top-left of the bitmap, i.e. advance past the bitmap by
- *   (w - (x0 + advance)) ... callers normally draw at pen + (x0, y0).
+ *   (x0, y0) top-left of the bitmap, i.e. the advance is past the pen
+ *   by advance - (x0 + w).
  * Returns -1 if the glyph is empty (nothing drawn; *out = NULL). */
 int ttf_render(ttf_face_t *f, int glyph, int size,
 	       unsigned char **out, int *w, int *h, int *x0, int *y0);

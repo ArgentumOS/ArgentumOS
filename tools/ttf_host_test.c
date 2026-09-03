@@ -48,11 +48,31 @@ static void dump_pgm(const char *path, const unsigned char *bm,
 	fprintf(fp, "P1\n%d %d\n", w, h);
 	for(y = 0; y < h; y++) {
 		for(x = 0; x < w; x++) {
-			fprintf(fp, "%c", bm[y * w + x] ? '1' : '0');
+			fprintf(fp, "%c", bm[y * w + x] > 127 ? '1' : '0');
 		}
 		fputc('\n', fp);
 	}
 	fclose(fp);
+}
+
+/* print a small coverage ASCII-art of a glyph (for the log) */
+static void dump_ascii(const unsigned char *bm, int w, int h)
+{
+	int x, y;
+
+	for(y = 0; y < h; y++) {
+		char line[128];
+		int n = 0;
+
+		for(x = 0; x < w && n < 120; x++) {
+			int c = bm[y * w + x];
+
+			line[n++] = c > 200 ? '#' : c > 100 ? '+' :
+				   c > 20 ? '.' : ' ';
+		}
+		line[n] = 0;
+		printf("  |%s|\n", line);
+	}
 }
 
 int main(int argc, char **argv)
@@ -125,20 +145,35 @@ int main(int argc, char **argv)
 				fails++;
 				continue;
 			}
+			int soft = 0;
+
 			for(y = 0; y < h; y++) {
 				for(x = 0; x < w; x++) {
-					if(bm[y * w + x]) {
+					if(bm[y * w + x] > 127) {
 						ink++;
+					}
+					if(bm[y * w + x] > 0 &&
+					   bm[y * w + x] < 255) {
+						soft++;
 					}
 				}
 			}
-			printf("U+%04x glyph %d: %dx%d at +%d,+%d ink %d\n",
-			       cp, g, w, h, x0, y0, ink);
+			printf("U+%04x glyph %d: %dx%d at +%d,+%d solid %d "
+			       "soft %d\n", cp, g, w, h, x0, y0, ink, soft);
 			snprintf(name, sizeof(name),
 				 ".build/ttf_U%04x.pgm", cp);
 			dump_pgm(name, bm, w, h);
+			if(cp == 'A' || cp == 'o' || cp == 0xE9) {
+				printf("  shape (thresholded):\n");
+				dump_ascii(bm, w, h);
+			}
 			if(ink < 8) {
 				printf("FAIL: U+%04x too little ink\n", cp);
+				fails++;
+			}
+			if(soft == 0) {
+				printf("FAIL: U+%04x no anti-aliased pixels\n",
+				       cp);
 				fails++;
 			}
 			free(bm);
@@ -154,7 +189,9 @@ int main(int argc, char **argv)
 				cx = w / 2;
 				cy = h / 2;
 				if(bm[cy * w + cx]) {
-					printf("FAIL: 'o' counter filled\n");
+					printf("FAIL: 'o' counter filled "
+					       "(cov %d)\n",
+					       bm[cy * w + cx]);
 					fails++;
 				} else {
 					printf("'o' counter: empty at "

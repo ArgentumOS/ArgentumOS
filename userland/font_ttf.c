@@ -758,11 +758,11 @@ static int glyph_decode(ttf_face_t *f, unsigned int glyph, long tol,
 
 /* ---- rasterization -------------------------------------------------- */
 
-/* scanline even-odd fill of the segment list, scaled to 'size' px.
- * Design y is up; screen y is down. */
-static unsigned char *rasterize(ttf_face_t *f, ttf_seg *segs, int nsegs,
-				int size, int *out_w, int *out_h,
-				int *out_x0, int *out_y0)
+/* scanline even-odd fill of the segment list, scaled to 'size' px
+ * (1-bit output). Design y is up; screen y is down. */
+static unsigned char *rasterize_1bit(ttf_face_t *f, ttf_seg *segs,
+				     int nsegs, int size, int *out_w,
+				     int *out_h, int *out_x0, int *out_y0)
 {
 	double s = (double)size / (double)f->upem;
 	double minx = 1e30, miny = 1e30, maxx = -1e30, maxy = -1e30;
@@ -912,6 +912,68 @@ static unsigned char *rasterize(ttf_face_t *f, ttf_seg *segs, int nsegs,
 	return bm;
 }
 
+/* 4x4-supersampled anti-aliasing: rasterize 1-bit at SS*size and box-
+ * downsample SS x SS blocks to 8-bit coverage (0 = transparent). */
+static unsigned char *rasterize_aa(ttf_face_t *f, ttf_seg *segs,
+				   int nsegs, int size, int *out_w,
+				   int *out_h, int *out_x0, int *out_y0)
+{
+	enum { SS = 4 };
+	unsigned char *hi;
+	int hw = 0, hh = 0, hx0 = 0, hy0 = 0;
+	unsigned char *out;
+	int ow, oh, x, y;
+
+	hi = rasterize_1bit(f, segs, nsegs, size * SS, &hw, &hh,
+			    &hx0, &hy0);
+	if(!hi) {
+		return NULL;
+	}
+	ow = (hw + SS - 1) / SS;
+	oh = (hh + SS - 1) / SS;
+	if(ow <= 0 || oh <= 0) {
+		free(hi);
+		return NULL;
+	}
+	out = calloc((size_t)ow * oh, 1);
+	if(!out) {
+		free(hi);
+		return NULL;
+	}
+	for(y = 0; y < oh; y++) {
+		for(x = 0; x < ow; x++) {
+			int cov = 0, sy, sx, cnt = 0;
+
+			for(sy = 0; sy < SS; sy++) {
+				int yy = y * SS + sy;
+
+				if(yy >= hh) {
+					continue;
+				}
+				for(sx = 0; sx < SS; sx++) {
+					int xx = x * SS + sx;
+
+					if(xx >= hw) {
+						continue;
+					}
+					if(hi[(size_t)yy * hw + xx]) {
+						cov++;
+					}
+					cnt++;
+				}
+			}
+			out[(size_t)y * ow + x] = cnt ?
+				(unsigned char)((cov * 255) / cnt) : 0;
+		}
+	}
+	free(hi);
+	*out_w = ow;
+	*out_h = oh;
+	*out_x0 = hx0 / SS;
+	*out_y0 = hy0 / SS;
+	return out;
+}
+
 int ttf_render(ttf_face_t *f, int glyph, int size,
 	       unsigned char **out, int *w, int *h, int *x0, int *y0)
 {
@@ -937,10 +999,10 @@ int ttf_render(ttf_face_t *f, int glyph, int size,
 		free(segs);
 		return -1;
 	}
-	bm = rasterize(f, segs, nsegs, size, w, h, x0, y0);
+	bm = rasterize_aa(f, segs, nsegs, size, w, h, x0, y0);
 	free(segs);
 	if(!bm) {
-		return (*w == 0) ? -1 : -1;
+		return -1;
 	}
 	*out = bm;
 	return 0;
