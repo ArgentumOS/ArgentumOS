@@ -87,6 +87,11 @@
 #define UHCI_MAX_CB	8
 #define UHCI_MAX_DEVS	16
 
+/* free-list header stored inside a released pool slot */
+struct uhci_free {
+	struct uhci_free *next;
+};
+
 struct uhci_td {
 	unsigned int link;
 	unsigned int ctrl;
@@ -139,6 +144,7 @@ static struct uhci_state {
 	unsigned char *pool;
 	unsigned long pool_phys;
 	int pool_next;
+	struct uhci_free *free_head;
 	/* scratch areas (must be DMA-visible kernel VAs) */
 	unsigned char setup[8];
 	unsigned char status_in[64];
@@ -159,8 +165,17 @@ static struct uhci_state {
 
 static void *uhci_alloc_slot(void)
 {
+	struct uhci_free *f;
 	void *p;
 
+	/* reuse a released slot first (same discipline as ehci: the mouse's
+	 * per-packet TDs must not bump-allocate until the pool is gone) */
+	if(u->free_head) {
+		f = u->free_head;
+		u->free_head = f->next;
+		memset_b(f, 0, 16);
+		return f;
+	}
 	if(u->pool_next + 16 > 4096) {
 		return NULL;
 	}
@@ -173,6 +188,14 @@ static void *uhci_alloc_slot(void)
 static unsigned long uhci_slot_phys(void *p)
 {
 	return u->pool_phys + ((unsigned long)p - (unsigned long)u->pool);
+}
+
+static void uhci_free_slot(unsigned long phys)
+{
+	struct uhci_free *f = (struct uhci_free *)P2V(phys);
+
+	f->next = u->free_head;
+	u->free_head = f;
 }
 
 /* ---------------- TD helpers ---------------- */
@@ -289,6 +312,7 @@ static int uhci_control(int dev, unsigned char bmRequestType,
 		t_data = uhci_build_td(dir_in ? TD_PID_IN : TD_PID_OUT,
 				       dev, 0, wLength - 1, data, t_status);
 		if(!t_data) {
+			uhci_free_slot(t_status);
 			return -ENOMEM;
 		}
 		t_setup = uhci_build_td(TD_PID_SETUP, dev, 0, 7, u->setup,
@@ -298,6 +322,10 @@ static int uhci_control(int dev, unsigned char bmRequestType,
 					t_status);
 	}
 	if(!t_setup) {
+		if(wLength) {
+			uhci_free_slot(t_data);
+		}
+		uhci_free_slot(t_status);
 		return -ENOMEM;
 	}
 
@@ -315,6 +343,14 @@ static int uhci_control(int dev, unsigned char bmRequestType,
 	if((td->ctrl & TD_CTRL_ERR) != TD_CTRL_ERR) {
 		return -EIO;
 	}
+	/* release the one-shot chain; the async QH must not keep pointing
+	 * at a recycled slot */
+	u->async_qh->el_link = UHCI_LINK_T;
+	uhci_free_slot(t_status);
+	if(wLength) {
+		uhci_free_slot(t_data);
+	}
+	uhci_free_slot(t_setup);
 	return 0;
 }
 
@@ -325,6 +361,7 @@ static int uhci_transfer(int dev, int epid, int dir_in, void *buf, int len,
 	unsigned long first = 0, prev = 0, td_phys;
 	int epnum = epid >> 1;
 	int remaining = len, off = 0, chunk;
+	int ret;
 
 	while(remaining > 0) {
 		chunk = remaining > UHCI_MAX_PKT ? UHCI_MAX_PKT : remaining;
@@ -347,7 +384,18 @@ static int uhci_transfer(int dev, int epid, int dir_in, void *buf, int len,
 	if(!first) {
 		return -EINVAL;
 	}
-	return uhci_async_wait(first, prev);
+	ret = uhci_async_wait(first, prev);
+	if(ret == 0) {
+		u->async_qh->el_link = UHCI_LINK_T;
+		td_phys = first;
+		while(td_phys) {
+			unsigned long nxt =
+				((struct uhci_td *)P2V(td_phys))->link;
+			uhci_free_slot(td_phys);
+			td_phys = nxt;
+		}
+	}
+	return ret;
 }
 
 /* ---------------- interrupt endpoints ---------------- */
@@ -450,6 +498,7 @@ static int uhci_submit(int dev, int epid, int dir_in, void *buf, int len,
 		 * the async list synchronously */
 		uhci_async_wait(td_phys, td_phys);
 		ep->active_td = 0;
+		uhci_free_slot(td_phys);
 	}
 	return 0;
 }
@@ -475,6 +524,7 @@ static void uhci_set_transfer_cb(int dev, int epid,
 static void uhci_poll(void)
 {
 	int i, len;
+	unsigned long done_td;
 	volatile struct uhci_td *td;
 
 	for(i = 0; i < UHCI_MAX_EPS; i++) {
@@ -489,6 +539,7 @@ static void uhci_poll(void)
 			continue;	/* still pending */
 		}
 		len = (td->ctrl & 0x7ff) + 1;
+		done_td = ep->active_td;
 		ep->active_td = 0;
 		/* the QH's element was written back to T by the HC */
 		for(i = 0; i < UHCI_MAX_CB; i++) {
@@ -499,6 +550,9 @@ static void uhci_poll(void)
 				break;
 			}
 		}
+		/* the callback re-armed with a fresh TD; release the retired
+		 * one (same pool-recycling discipline as ehci) */
+		uhci_free_slot(done_td);
 	}
 }
 

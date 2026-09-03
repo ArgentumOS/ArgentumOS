@@ -82,6 +82,11 @@
 #define EHCI_MAX_CB	8
 #define EHCI_MAX_DEVS	16
 
+/* free-list header stored inside a released pool slot */
+struct ehci_free {
+	struct ehci_free *next;
+};
+
 struct ehci_qh {
 	unsigned int next;	/* async: next QH phys | T */
 	unsigned int epchar;
@@ -138,6 +143,7 @@ static struct ehci_state {
 	unsigned char *pool;
 	unsigned long pool_phys;
 	int pool_next;
+	struct ehci_free *free_head;
 	/* scratch (DMA-visible) */
 	unsigned char setup[8];
 	unsigned char status_in[64];
@@ -165,8 +171,19 @@ static void ehci_reg_w(unsigned long off, unsigned int val)
 
 static void *ehci_alloc_slot(void)
 {
+	struct ehci_free *f;
 	void *p;
 
+	/* reuse a released slot first: the mouse's per-packet qTDs would
+	 * otherwise bump-allocate until the pool (128 x 32B) is exhausted
+	 * and the interrupt re-arm silently dies - the classic
+	 * "mouse works for a bit then freezes" */
+	if(e->free_head) {
+		f = e->free_head;
+		e->free_head = f->next;
+		memset_b(f, 0, 32);
+		return f;
+	}
 	if(e->pool_next + 32 > 4096) {
 		return NULL;
 	}
@@ -179,6 +196,17 @@ static void *ehci_alloc_slot(void)
 static unsigned long ehci_slot_phys(void *p)
 {
 	return e->pool_phys + ((unsigned long)p - (unsigned long)e->pool);
+}
+
+/* give a qTD/QH slot back to the pool. The caller must have made sure
+ * the HC no longer references it (the transfer completed and the
+ * schedule was advanced past it). */
+static void ehci_free_slot(unsigned long phys)
+{
+	struct ehci_free *f = (struct ehci_free *)P2V(phys);
+
+	f->next = e->free_head;
+	e->free_head = f;
 }
 
 /* ---------------- qTD/QH helpers ---------------- */
@@ -231,6 +259,7 @@ static int ehci_control(int dev, unsigned char bmRequestType,
 			void *data)
 {
 	unsigned long t_setup, t_data = 0, t_status;
+	struct ehci_qh *qh;
 	int dir_in = (bmRequestType & 0x80) != 0;
 	volatile struct ehci_qtd *td;
 	int ret;
@@ -259,6 +288,7 @@ static int ehci_control(int dev, unsigned char bmRequestType,
 		t_data = ehci_build_qtd(dir_in ? QTD_PID_IN : QTD_PID_OUT,
 					wLength, data, t_status);
 		if(!t_data) {
+			ehci_free_slot(t_status);
 			return -ENOMEM;
 		}
 		t_setup = ehci_build_qtd(QTD_PID_SETUP, 8, e->setup, t_data);
@@ -266,6 +296,10 @@ static int ehci_control(int dev, unsigned char bmRequestType,
 		t_setup = ehci_build_qtd(QTD_PID_SETUP, 8, e->setup, t_status);
 	}
 	if(!t_setup) {
+		if(wLength) {
+			ehci_free_slot(t_data);
+		}
+		ehci_free_slot(t_status);
 		return -ENOMEM;
 	}
 
@@ -278,8 +312,13 @@ static int ehci_control(int dev, unsigned char bmRequestType,
 	 * is CHAINED off the permanent head QH's next field (ASYNCLISTADDR
 	 * cannot be changed while the async schedule is enabled). */
 	{
-		struct ehci_qh *qh = ehci_alloc_slot();
+		qh = ehci_alloc_slot();
 		if(!qh) {
+			if(wLength) {
+				ehci_free_slot(t_data);
+			}
+			ehci_free_slot(t_status);
+			ehci_free_slot(t_setup);
 			return -ENOMEM;
 		}
 		qh->next = EHCI_LINK_T;
@@ -312,6 +351,16 @@ static int ehci_control(int dev, unsigned char bmRequestType,
 	if(td->token & (QTD_HALT | (1 << 3) | (1 << 4))) {
 		return -EIO;
 	}
+	/* the transfer QH + its qTDs are one-shot: unlink + release them
+	 * (the async head walks its next chain every frame, so a recycled
+	 * slot must never stay linked) */
+	e->async_qh->next = EHCI_LINK_T;
+	ehci_free_slot(ehci_slot_phys(qh));
+	ehci_free_slot(t_status);
+	if(wLength) {
+		ehci_free_slot(t_data);
+	}
+	ehci_free_slot(t_setup);
 	return 0;
 }
 
@@ -322,6 +371,7 @@ static int ehci_transfer(int dev, int epid, int dir_in, void *buf, int len,
 	unsigned long first = 0, prev = 0, qtd_phys;
 	int epnum = epid >> 1;
 	int remaining = len, off = 0, chunk;
+	int ret;
 
 	while(remaining > 0) {
 		chunk = remaining > EHCI_MAX_PKT ? EHCI_MAX_PKT : remaining;
@@ -349,7 +399,21 @@ static int ehci_transfer(int dev, int epid, int dir_in, void *buf, int len,
 	 * For now route bulk through the async QH as EP0-style (storage
 	 * uses control-sized transfers). */
 	e->async_qh->next_qtd = (unsigned int)first;
-	return ehci_wait_qtd(prev, 20000000);
+	ret = ehci_wait_qtd(prev, 20000000);
+	if(ret == 0) {
+		/* the chain completed: advance past it and release the qTDs */
+		qtd_phys = first;
+		while(qtd_phys) {
+			unsigned long nxt =
+				((struct ehci_qtd *)P2V(qtd_phys))->next;
+			ehci_free_slot(qtd_phys);
+			qtd_phys = nxt;
+		}
+		e->async_qh->cur_qtd = 0;
+		e->async_qh->next_qtd = EHCI_LINK_T;
+		e->async_qh->token = 0;
+	}
+	return ret;
 }
 
 /* ---------------- interrupt endpoints ---------------- */
@@ -456,7 +520,12 @@ static int ehci_submit(int dev, int epid, int dir_in, void *buf, int len,
 	} else {
 		/* bulk without a persistent QH: run through the async QH */
 		e->async_qh->next_qtd = (unsigned int)qtd_phys;
-		ehci_wait_qtd(qtd_phys, 20000000);
+		if(ehci_wait_qtd(qtd_phys, 20000000) == 0) {
+			e->async_qh->cur_qtd = 0;
+			e->async_qh->next_qtd = EHCI_LINK_T;
+			e->async_qh->token = 0;
+			ehci_free_slot(qtd_phys);
+		}
 		ep->active_qtd = 0;
 	}
 	return 0;
@@ -483,6 +552,7 @@ static void ehci_set_transfer_cb(int dev, int epid,
 static void ehci_poll(void)
 {
 	int i, len;
+	unsigned long done_qtd;
 	volatile struct ehci_qtd *qtd;
 
 	for(i = 0; i < EHCI_MAX_EPS; i++) {
@@ -498,6 +568,7 @@ static void ehci_poll(void)
 		}
 		/* QEMU writes the actual length into the token */
 		len = 0x4000 - ((qtd->token >> QTD_TBYTES_SH) & 0x7fff);
+		done_qtd = ep->active_qtd;
 		ep->active_qtd = 0;
 		for(i = 0; i < EHCI_MAX_CB; i++) {
 			if(e->cbs[i].used && e->cbs[i].dev == ep->dev &&
@@ -507,6 +578,11 @@ static void ehci_poll(void)
 				break;
 			}
 		}
+		/* the callback re-armed with a fresh qTD; the completed one is
+		 * retired (the HC advanced past it), so its slot can return
+		 * to the pool - without this the pool drains in ~128 mouse
+		 * packets and the re-arm silently dies */
+		ehci_free_slot(done_qtd);
 	}
 }
 
