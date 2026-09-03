@@ -10,8 +10,6 @@
 #include <fnx/vgacon.h>
 #include <fnx/fb.h>
 #include <fnx/fbcon.h>
-#include <fnx/bga.h>
-#include <fnx/ati.h>
 #include <fnx/console.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
@@ -40,35 +38,20 @@ int video_map_framebuffer(unsigned int phys, unsigned int memsize)
 
 void video_init(void)
 {
-	/* Native display adapters first: they provide a linear framebuffer
-	 * even when the firmware's GOP could not (e.g. the ATI Rage XL,
-	 * which OVMF has no driver for - the boot would otherwise fall
-	 * back to the VGA text console with no /dev/fb0 at all). They
-	 * probe for their specific PCI device and leave the GOP setup
-	 * untouched when absent. (The vmware-svga driver was removed:
-	 * QEMU's vmsvga swaps the VRAM/FIFO BARs vs the SVGA spec and
-	 * never executes FIFO commands, so its LFB could not be scanned
-	 * out.) fbcon_init is NOT called below: the session compositor
-	 * owns the LFB and the serial port is the system console, so no
-	 * kernel text console draws on the display. */
-#ifdef CONFIG_PCI
-	if(ati_init()) {
-		video.flags = (video.flags & ~VPF_VGA) | VPF_VESAFB;
-	}
-#endif /* CONFIG_PCI */
-
+	/* GOP-only display: the UEFI GOP framebuffer (set up by
+	 * gop_video_init in main.c) is the only display path. The native
+	 * adapter drivers (vmware-svga, ATI Rage XL, Bochs BGA) were
+	 * removed: none could scan its LFB out under QEMU (vmsvga swaps
+	 * its VRAM/FIFO BARs and never runs FIFO commands; qemu's ati-vga
+	 * ignores the CRTC2 mode-set; BGA needs a boot param and a second
+	 * mode switch), so only the firmware-set GOP framebuffer is
+	 * reliable. The session compositor owns /dev/fb0 (fb_init);
+	 * fbcon_init is NOT called - no kernel text console draws on the
+	 * display (the serial port is the system console). */
 	if(video.flags & VPF_VGA) {
 		vgacon_init();
 		return;
 	}
-
-#ifdef CONFIG_PCI
-#ifdef CONFIG_BGA
-	if(video.flags & VPF_VESAFB) {
-		bga_init();
-	}
-#endif /* CONFIG_BGA */
-#endif /* CONFIG_PCI */
 
 	if(video.flags & VPF_VESAFB) {
 		fb_init();

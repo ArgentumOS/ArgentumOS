@@ -25,12 +25,6 @@
 char bios_data[256];
 
 static struct kernel_params_value kparamval_table[] = {
-#ifdef CONFIG_BGA
-	{ "bga=",
-	   { "640x480x32", "800x600x32", "1024x768x32" },
-	   { 0 }
-	},
-#endif /* CONFIG_BGA */
 	{ "console=",
 	   { "/dev/tty0", "/dev/tty1", "/dev/tty2", "/dev/tty3", "/dev/tty4",
 	     "/dev/tty5", "/dev/tty6", "/dev/tty7", "/dev/tty8", "/dev/tty9",
@@ -111,20 +105,6 @@ static int check_param(struct kernel_params_value *kpv, const char *value)
 {
 	int n;
 
-#ifdef CONFIG_PCI
-#ifdef CONFIG_BGA
-	if(!strcmp(kpv->name, "bga=")) {
-		for(n = 0; kpv->value[n]; n++) {
-			if(!strcmp(kpv->value[n], value)) {
-				strncpy(kparms.bgaresolution, value, 14);
-				kparms.bgaresolution[14] = '\0';
-				return 0;
-			}
-		}
-		return 1;
-	}
-#endif /* CONFIG_BGA */
-#endif /* CONFIG_PCI */
 	if(!strcmp(kpv->name, "console=")) {
 		for(n = 0; kpv->value[n]; n++) {
 			if(!strcmp(kpv->value[n], value)) {
@@ -296,35 +276,6 @@ static char *parse_cmdline(const char *str)
 
 	return NULL;
 }
-
-#ifdef CONFIG_BGA
-static void parse_bgaresolution(void)
-{
-	char str[5], *p;
-	int n;
-
-	n = 0;
-	for(;;) {
-		p = &str[0];
-		while(kparms.bgaresolution[n] && kparms.bgaresolution[n] != 'x') {
-			*p = kparms.bgaresolution[n];
-			p++;
-			n++;
-		}
-		*p = '\0';
-		if(!video.fb_width) {
-			video.fb_width = atoi(str);
-		} else if(!video.fb_height) {
-			video.fb_height = atoi(str);
-		} else if(!video.fb_bpp) {
-			video.fb_bpp = atoi(str);
-		} else {
-			break;
-		}
-		n++;
-	}
-}
-#endif /* CONFIG_BGA */
 
 /*
  * This function returns the last address used by kernel symbols or the value
@@ -499,16 +450,6 @@ void multiboot(unsigned int magic, unsigned int info)
 		video.fb_vsize = video.lines * video.fb_pitch * video.fb_char_height;
 	}
 
-#ifdef CONFIG_BGA
-	if(*kparms.bgaresolution) {
-		video.flags = VPF_VESAFB;
-		parse_bgaresolution();
-		video.fb_char_width = 8;
-		video.fb_char_height = 16;
-		video.columns = video.fb_width / video.fb_char_width;
-		video.lines = video.fb_height / video.fb_char_height;
-	}
-#endif /* CONFIG_BGA */
 
 	if(!video.flags) {
 		/* fallback to standard VGA */

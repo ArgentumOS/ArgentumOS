@@ -18,7 +18,6 @@
 
 struct kernel_params {
 	int flags;
-	char bgaresolution[15 + 1];
 	char initrd[DEVNAME_MAX + 1];
 	int memsize;
 	int extmemsize;
