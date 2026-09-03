@@ -35,10 +35,9 @@ struct shmid_ds *shm_get_new_seg(void)
 	for(n = 0; n < SHMMNI; n++) {
 		if(shmseg_pool[n].shm_ctime == 0) {
 			shmseg_pool[n].shm_ctime = 1;
-			if(!(shmseg_pool[n].shm_pages = (addr_t *)kmalloc(PAGE_SIZE))) {
-				return NULL;
-			}
-			memset_b(shmseg_pool[n].shm_pages, 0, PAGE_SIZE);
+			/* shm_pages is allocated by sys_shmget() once the
+			 * segment size is known (it must hold one addr_t per
+			 * segment page, so it grows with the segment) */
 			return &shmseg_pool[n];
 		}
 	}
@@ -47,7 +46,9 @@ struct shmid_ds *shm_get_new_seg(void)
 
 void shm_release_seg(struct shmid_ds *seg)
 {
-	kfree((addr_t)seg->shm_pages);
+	if(seg->shm_pages) {
+		kfree64(seg->shm_pages);
+	}
 	if(seg->shm_attaches) {
 		kfree((addr_t)seg->shm_attaches);
 	}
@@ -123,14 +124,11 @@ int sys_shmget(key_t key, __size_t size, int shmflg)
 	if(size < 0 || size > SHMMAX) {
 		return -EINVAL;
 	}
-	/* The shm_pages array is one PAGE_SIZE allocation; each entry is an
-	 * addr_t (8 bytes on x86-64, 4 on i386). A segment larger than the
-	 * array capacity would overrun the kernel heap on the first shmat()
-	 * page fault (shm_map_page indexes shm_pages[npages-1]). */
+	/* shm_pages is dynamically sized (one addr_t per page), so the only
+	 * per-segment bound is SHMMAX (enforced above) plus SHMALL (below).
+	 * The old fixed PAGE_SIZE allocation capped segments at
+	 * PAGE_SIZE/sizeof(addr_t) = 512 pages (2 MB) on 64-bit. */
 	npages = (size + (PAGE_SIZE - 1)) >> PAGE_SHIFT;
-	if(npages > PAGE_SIZE / sizeof(addr_t)) {
-		return -EINVAL;
-	}
 
 	if(key == IPC_PRIVATE) {
 		/* create a new segment */
@@ -200,6 +198,12 @@ int sys_shmget(key_t key, __size_t size, int shmflg)
 	}
 
 init:
+	seg->shm_pages = (addr_t *)kmalloc64((__size_t)npages * sizeof(addr_t));
+	if(!seg->shm_pages) {
+		shm_release_seg(seg);
+		return -ENOMEM;
+	}
+	memset_b(seg->shm_pages, 0, (__size_t)npages * sizeof(addr_t));
 	perm = &seg->shm_perm;
 	perm->key = key;
 	perm->uid = perm->cuid = current->euid;

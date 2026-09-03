@@ -98,6 +98,11 @@ void buddy_low_init(void);
 addr_t kmalloc(__size_t);
 void kfree(addr_t);
 
+/* kernel64/mm64.c - 64-bit kernel heap (high-half VAs, arbitrary sizes:
+ * slab buckets up to 2048 bytes, contiguous multi-page runs above) */
+void *kmalloc64(unsigned long);
+void kfree64(void *);
+
 /* page.c */
 void page_lock(struct page *);
 void page_unlock(struct page *);

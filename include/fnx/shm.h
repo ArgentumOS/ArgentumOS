@@ -21,15 +21,13 @@
 
 /* system-wide limits */
 /*
- * The array of pointers to page frames (*shm_pages) is a single PAGE_SIZE
- * allocation; each entry is an addr_t (8 bytes on x86-64, 4 on i386). The
- * per-segment page count is therefore bounded by PAGE_SIZE / sizeof(addr_t):
- * 512 pages (2 MB) on 64-bit, 1024 pages (4 MB) on 32-bit. sys_shmget()
- * enforces this and SHMMAX stays at 0x1000000 (16 MB) as the advertised
- * upper limit (Linux-compatible shminfo value); actual segments are capped
- * lower by the array capacity check.
+ * *shm_pages is a dynamically sized array of page-frame pointers
+ * (one addr_t per segment page) allocated with kmalloc64() at shmget
+ * time, so a segment is only limited by SHMMAX (and memory). 64 MB
+ * matches the Linux-x86 shminfo default and comfortably fits full-screen
+ * backing stores (the 1280x800x32 GOP framebuffer is 4 MB).
  */
-#define SHMMAX		0x1000000	/* max. segment size (in bytes) */
+#define SHMMAX		0x4000000	/* max. segment size (in bytes) = 64MB */
 
 #define SHMMIN		1		/* min. segment size (in bytes) */
 #define SHMMNI		128		/* max. number of shared segments */
