@@ -42,11 +42,12 @@ static view_t *g_root;		/* the window's view tree */
 static view_t *g_stage;		/* the big canvas */
 static view_t *g_status;	/* the status label */
 static view_t *g_field;		/* the text field */
+static view_t *g_sw;		/* the scrolled window row */
 static char g_status_text[96];
 static int g_win_x, g_win_y;
 
 #define GW 700			/* window size */
-#define GH 700
+#define GH 750
 
 static void set_status(const char *fmt, ...)
 {
@@ -129,6 +130,36 @@ static void on_list_select(view_t *v, int index, void *data)
 	}
 	fflush(stdout);
 }
+
+/* the scrollable surface behind the ScrolledWindow row: a grid map with
+ * a few landmarks so panning is visible */
+static void bigmap_draw(view_t *v, renderer_t *r)
+{
+	int gx, gy;
+	static const uint32_t land = 0x8C5A2B;
+
+	r->fill_rect(r, 0, 0, v->w, v->h, 0xEDE8DC);
+	for(gx = 0; gx <= v->w; gx += 24) {
+		r->fill_rect(r, gx, 0, 1, v->h, 0xC8C0B0);
+	}
+	for(gy = 0; gy <= v->h; gy += 24) {
+		r->fill_rect(r, 0, gy, v->w, 1, 0xC8C0B0);
+	}
+	/* landmarks: a river band, two lakes, a peak marker */
+	r->fill_rect(r, 240, 0, 18, v->h, 0x7FA8C8);
+	r->fill_rect(r, 40, 60, 70, 46, 0x7FA8C8);
+	r->fill_rect(r, 420, 150, 90, 60, 0x7FA8C8);
+	r->fill_rect(r, 300, 40, 40, 30, land);
+	r->fill_rect(r, 500, 220, 36, 28, land);
+	/* the peak: a triangle-ish stack */
+	r->fill_rect(r, 130, 180, 34, 6, 0x5A4630);
+	r->fill_rect(r, 138, 174, 18, 6, 0x5A4630);
+	r->fill_rect(r, 144, 168, 6, 6, 0x5A4630);
+}
+
+static const struct view_ops bigmap_ops = {
+	.draw = bigmap_draw,
+};
 
 int main(void)
 {
@@ -325,6 +356,28 @@ int main(void)
 		list_add(lst, "theta config.ini", NULL);
 	}
 
+	/* caption + ScrolledWindow (pans a big map) */
+	{
+		view_t *r = view_new(NULL, "panel");
+		view_t *sw, *map;
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 120);
+		view_add(col, r);
+		title = label_create("Scroll");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		sw = scrolledwindow_create(1, 1);
+		sw->anchor = VIEW_ANCHOR_FILLX;
+		sw->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, sw);
+		g_sw = sw;
+		map = view_new(&bigmap_ops, "canvas");
+		scrolledwindow_set_content(sw, map, 640, 320);
+	}
+
 	/* caption + PushButton + caption + ToggleButton */
 	{
 		view_t *r = view_new(NULL, "panel");
@@ -426,6 +479,7 @@ int main(void)
 			int down = ev.state == 1 ? 1 :
 				   (ev.state == 0 ? 0 : -1);
 
+
 			view_mouse(g_root, wx, wy, down);
 		}
 		if(r == 1 && ev.type == GUI_EVENT_KEY && ev.state == 1) {
@@ -443,6 +497,34 @@ int main(void)
 				view_key(g_root, ev.key);
 			}
 		}
+		/* report the scrolled window's geometry once + its scroll
+		 * whenever the user moves it */
+		if(g_sw) {
+			static int sw_reported;
+			static int lsx = -1, lsy = -1;
+			int sx = scrolledwindow_scroll_x(g_sw);
+			int sy = scrolledwindow_scroll_y(g_sw);
+
+			if(!sw_reported) {
+				int ax, ay;
+
+				view_to_root(g_sw, &ax, &ay);
+				printf("WDEMO: sw at %d,%d %dx%d (content %dx%d)\n",
+				       g_win_x + ax, g_win_y + ay,
+				       g_sw->w, g_sw->h,
+				       scrolledwindow_extent_w(g_sw),
+				       scrolledwindow_extent_h(g_sw));
+				fflush(stdout);
+				sw_reported = 1;
+			}
+			if(sx != lsx || sy != lsy) {
+				printf("WDEMO: sw scroll %d,%d\n", sx, sy);
+				fflush(stdout);
+				lsx = sx;
+				lsy = sy;
+			}
+		}
+
 		/* paint whatever the actions dirtied */
 		{
 			int dx, dy, dw, dh;

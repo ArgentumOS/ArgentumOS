@@ -941,27 +941,32 @@ view_t *view_mouse(view_t *root, int x, int y, int down)
 		}
 		return hit;
 	}
-	if(down == 0) {
-		/* a release goes to the view that grabbed the press, even if
-		 * the pointer has since moved off it (drag-off = cancel) */
+	if(down == 0 || down < 0) {
+		/* a release or a drag goes to the view that grabbed the
+		 * press, even if the pointer has since moved off it
+		 * (drag-off = cancel) */
 		hit = view_find_flag(root, VIEW_TRACKING);
 		if(hit) {
 			int ax, ay;
 
 			v_abs(hit, &ax, &ay);
-			if(hit->ops && hit->ops->mouse_up) {
+			if(down == 0 && hit->ops && hit->ops->mouse_up) {
 				hit->ops->mouse_up(hit, x - ax, y - ay);
+			} else if(down < 0 && hit->ops &&
+				  hit->ops->mouse_drag) {
+				hit->ops->mouse_drag(hit, x - ax, y - ay);
 			}
 			return hit;
 		}
+	}
+	if(down == 0) {
+		return NULL;	/* an untracked release hits nothing */
 	}
 	hit = view_at(root, x, y, &lx, &ly);
 	if(!hit || !hit->ops) {
 		return NULL;
 	}
-	if(down == 0 && hit->ops->mouse_up) {
-		hit->ops->mouse_up(hit, lx, ly);
-	} else if(down < 0 && hit->ops->mouse_drag) {
+	if(down < 0 && hit->ops->mouse_drag) {
 		hit->ops->mouse_drag(hit, lx, ly);
 	}
 	return hit;
@@ -2470,4 +2475,537 @@ void *list_row_data(view_t *v, int index)
 		return NULL;
 	}
 	return d->data[index];
+}
+
+/* ================= scrollbar + scrolled window (M2) ================= */
+
+struct scrollbar_data {
+	int vertical;
+	int pos, total, visible;	/* state inputs */
+	int track_sz, thumb_sz, thumb_off;	/* geometry */
+	int dragging;			/* 1 while the thumb is grabbed */
+	int grab;			/* grab offset inside the thumb */
+	void (*on_change)(view_t *v, int pos, void *data);
+	void *data;
+};
+
+/* compute the thumb geometry for the current track size */
+static void sb_geometry(struct scrollbar_data *d, int track)
+{
+	d->track_sz = track;
+	if(d->total <= d->visible || d->total <= 0) {
+		/* everything fits: a full (dead) thumb */
+		d->thumb_sz = track;
+		d->thumb_off = 0;
+		return;
+	}
+	d->thumb_sz = track * d->visible / d->total;
+	if(d->thumb_sz < 12) {
+		d->thumb_sz = 12;
+	}
+	if(d->thumb_sz > track) {
+		d->thumb_sz = track;
+	}
+	d->thumb_off = (int)((long long)(track - d->thumb_sz) *
+			     d->pos / (d->total - d->visible));
+}
+
+static void scrollbar_draw(view_t *v, renderer_t *r)
+{
+	struct scrollbar_data *d = v->data;
+	int tsz = d->vertical ? v->h : v->w;
+
+	if(!d) {
+		return;
+	}
+	sb_geometry(d, tsz);
+	/* the track: a sunken well */
+	r->fill_rect(r, 0, 0, v->w, v->h, WCOLOR_VIEW_DARK);
+	r->groove(r, 0, 0, v->w, v->h);
+	if(d->thumb_sz >= tsz || d->total <= 0) {
+		return;
+	}
+	/* the thumb: a raised button */
+	if(d->vertical) {
+		int y = d->thumb_off;
+
+		r->fill_rect(r, 1, y, v->w - 2, d->thumb_sz,
+			     (v->flags & VIEW_TRACKING) ?
+				WCOLOR_SELIDLE : WCOLOR_BG);
+		r->bevel(r, 1, y, v->w - 2, d->thumb_sz, 1, 2);
+	} else {
+		int x = d->thumb_off;
+
+		r->fill_rect(r, x, 1, d->thumb_sz, v->h - 2,
+			     (v->flags & VIEW_TRACKING) ?
+				WCOLOR_SELIDLE : WCOLOR_BG);
+		r->bevel(r, x, 1, d->thumb_sz, v->h - 2, 1, 2);
+	}
+}
+
+static int sb_pos_from_xy(struct scrollbar_data *d, int xy)
+{
+	int span = d->track_sz - d->thumb_sz;
+	int pos;
+
+	if(span <= 0) {
+		return 0;
+	}
+	pos = (int)((long long)(xy - d->grab) * (d->total - d->visible) /
+		    span);
+	if(pos < 0) {
+		pos = 0;
+	}
+	if(pos > d->total - d->visible) {
+		pos = d->total - d->visible;
+	}
+	return pos;
+}
+
+static void sb_fire(view_t *v, struct scrollbar_data *d, int pos)
+{
+	if(pos != d->pos) {
+		d->pos = pos;
+		view_invalidate(v);
+		if(d->on_change) {
+			d->on_change(v, pos, d->data);
+		}
+	}
+}
+
+static void scrollbar_mouse_down(view_t *v, int x, int y)
+{
+	struct scrollbar_data *d = v->data;
+	int coord = d->vertical ? y : x;
+	int tsz = d->vertical ? v->h : v->w;
+
+	if(!d) {
+		return;
+	}
+	sb_geometry(d, tsz);
+	v->flags |= VIEW_TRACKING;
+	if(coord >= d->thumb_off &&
+	   coord < d->thumb_off + d->thumb_sz) {
+		/* grab the thumb */
+		d->dragging = 1;
+		d->grab = coord - d->thumb_off;
+	} else {
+		/* track click: page toward the click */
+		int step = d->visible > 1 ? d->visible : 1;
+		int pos = d->pos;
+
+		if(coord < d->thumb_off) {
+			pos -= step;
+		} else {
+			pos += step;
+		}
+		d->dragging = 0;
+		sb_fire(v, d, pos);
+	}
+	view_invalidate(v);
+}
+
+static void scrollbar_mouse_drag(view_t *v, int x, int y)
+{
+	struct scrollbar_data *d = v->data;
+	int coord = d->vertical ? y : x;
+
+	if(!d || !d->dragging) {
+		return;
+	}
+	sb_fire(v, d, sb_pos_from_xy(d, coord));
+}
+
+static void scrollbar_mouse_up(view_t *v, int x, int y)
+{
+	struct scrollbar_data *d = v->data;
+
+	(void)x;
+	(void)y;
+	if(!d) {
+		return;
+	}
+	d->dragging = 0;
+	v->flags &= ~VIEW_TRACKING;
+	view_invalidate(v);
+}
+
+static void scrollbar_destroy(view_t *v)
+{
+	free(v->data);
+	v->data = NULL;
+}
+
+static const struct view_ops scrollbar_ops = {
+	.draw = scrollbar_draw,
+	.destroy = scrollbar_destroy,
+	.mouse_down = scrollbar_mouse_down,
+	.mouse_drag = scrollbar_mouse_drag,
+	.mouse_up = scrollbar_mouse_up,
+};
+
+view_t *scrollbar_create(int vertical,
+			 void (*on_change)(view_t *v, int pos, void *data),
+			 void *data)
+{
+	view_t *v = view_new(&scrollbar_ops, "scrollbar");
+	struct scrollbar_data *d;
+
+	if(!v) {
+		return NULL;
+	}
+	d = calloc(1, sizeof(*d));
+	if(!d) {
+		free(v);
+		return NULL;
+	}
+	d->vertical = vertical;
+	d->on_change = on_change;
+	d->data = data;
+	d->total = 1;
+	v->data = d;
+	v->bg = WCOLOR_VIEW_DARK;
+	return v;
+}
+
+void scrollbar_set_state(view_t *v, int pos, int total, int visible)
+{
+	struct scrollbar_data *d;
+
+	if(!v || v->ops != &scrollbar_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d) {
+		return;
+	}
+	if(pos < 0) {
+		pos = 0;
+	}
+	if(total < 0) {
+		total = 0;
+	}
+	if(visible < 0) {
+		visible = 0;
+	}
+	if(total > visible && pos > total - visible) {
+		pos = total - visible;
+	}
+	d->pos = pos;
+	d->total = total;
+	d->visible = visible;
+	view_invalidate(v);
+}
+
+void scrollbar_set_callback(view_t *v,
+			    void (*on_change)(view_t *v, int pos,
+					      void *data),
+			    void *data)
+{
+	struct scrollbar_data *d;
+
+	if(!v || v->ops != &scrollbar_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d) {
+		return;
+	}
+	d->on_change = on_change;
+	d->data = data;
+}
+
+int scrollbar_value(view_t *v)
+{
+	struct scrollbar_data *d;
+
+	if(!v || v->ops != &scrollbar_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->pos : 0;
+}
+
+/* ---- scrolled window ---- */
+
+struct sw_data {
+	view_t *content;
+	view_t *vbar, *hbar;
+	int cw, ch;		/* content's natural size */
+	int sx, sy;		/* scroll offsets */
+	int gap;		/* bar spacing from the content */
+};
+
+static void sw_layout(view_t *v)
+{
+	struct sw_data *d = v->data;
+	int bw = WSCROLL_W;
+	int inner_w, inner_h;
+	int vw, vh;
+	int maxx, maxy;
+
+	if(!d) {
+		return;
+	}
+	if(d->vbar && !d->vbar->parent) {
+		view_add(v, d->vbar);
+	}
+	if(d->hbar && !d->hbar->parent) {
+		view_add(v, d->hbar);
+	}
+	if(d->content && !d->content->parent) {
+		view_add(v, d->content);
+		/* the content sits below the bars: move it to the head */
+		if(v->first != d->content) {
+			view_remove(d->content);
+			d->content->parent = v;
+			d->content->prev = NULL;
+			d->content->next = v->first;
+			if(v->first) {
+				v->first->prev = d->content;
+			}
+			v->first = d->content;
+			if(!v->last) {
+				v->last = d->content;
+			}
+		}
+	}
+	inner_w = v->w - 2 * v->margin;
+	inner_h = v->h - 2 * v->margin;
+	vw = inner_w - (d->vbar ? bw + 1 : 0);
+	vh = inner_h - (d->hbar ? bw + 1 : 0);
+	if(vw < 0) {
+		vw = 0;
+	}
+	if(vh < 0) {
+		vh = 0;
+	}
+	/* pin the bars to the edges */
+	if(d->vbar) {
+		view_set_frame(d->vbar, v->w - v->margin - bw, v->margin,
+			       bw, inner_h - (d->hbar ? bw + 1 : 0));
+	}
+	if(d->hbar) {
+		view_set_frame(d->hbar, v->margin,
+			       v->h - v->margin - bw,
+			       inner_w - (d->vbar ? bw + 1 : 0), bw);
+	}
+	/* clamp the scroll to the content's extent */
+	maxx = d->cw > vw ? d->cw - vw : 0;
+	maxy = d->ch > vh ? d->ch - vh : 0;
+	if(d->sx > maxx) {
+		d->sx = maxx;
+	}
+	if(d->sy > maxy) {
+		d->sy = maxy;
+	}
+	if(d->sx < 0) {
+		d->sx = 0;
+	}
+	if(d->sy < 0) {
+		d->sy = 0;
+	}
+	/* place the content at the negative scroll */
+	if(d->content) {
+		view_set_frame(d->content, v->margin - d->sx,
+			       v->margin - d->sy, d->cw, d->ch);
+	}
+	/* sync the bars */
+	if(d->vbar) {
+		scrollbar_set_state(d->vbar, d->sy, d->ch, vh);
+	}
+	if(d->hbar) {
+		scrollbar_set_state(d->hbar, d->sx, d->cw, vw);
+	}
+}
+
+static void sw_draw(view_t *v, renderer_t *r)
+{
+	r->fill_rect(r, 0, 0, v->w, v->h, WCOLOR_VIEW);
+	r->groove(r, 0, 0, v->w, v->h);
+}
+
+static void sw_destroy(view_t *v)
+{
+	free(v->data);
+	v->data = NULL;
+}
+
+/* a bar was dragged: pan the content + keep the bar thumb in sync
+ * (the bar already moved itself; this just repositions the content) */
+static void sw_apply(view_t *v)
+{
+	struct sw_data *d = v->data;
+	int bw = WSCROLL_W;
+	int vw, vh;
+
+	if(!d || !d->content) {
+		return;
+	}
+	vw = v->w - 2 * v->margin - (d->vbar ? bw + 1 : 0);
+	vh = v->h - 2 * v->margin - (d->hbar ? bw + 1 : 0);
+	if(vw < 0) {
+		vw = 0;
+	}
+	if(vh < 0) {
+		vh = 0;
+	}
+	view_set_frame(d->content, v->margin - d->sx,
+		       v->margin - d->sy, d->cw, d->ch);
+	view_invalidate(v);
+}
+
+static void sw_vscroll_cb(view_t *bar, int pos, void *data)
+{
+	struct sw_data *d = ((view_t *)data)->data;
+
+	(void)bar;
+	if(d) {
+		d->sy = pos;
+		sw_apply((view_t *)data);
+	}
+}
+
+static void sw_hscroll_cb(view_t *bar, int pos, void *data)
+{
+	struct sw_data *d = ((view_t *)data)->data;
+
+	(void)bar;
+	if(d) {
+		d->sx = pos;
+		sw_apply((view_t *)data);
+	}
+}
+
+static const struct view_ops scrolledwin_ops = {
+	.draw = sw_draw,
+	.layout = sw_layout,
+	.destroy = sw_destroy,
+};
+
+view_t *scrolledwindow_create(int vbar, int hbar)
+{
+	view_t *v = view_new(&scrolledwin_ops, "scrolledwindow");
+	struct sw_data *d;
+
+	if(!v) {
+		return NULL;
+	}
+	d = calloc(1, sizeof(*d));
+	if(!d) {
+		free(v);
+		return NULL;
+	}
+	v->data = d;
+	v->bg = WCOLOR_VIEW;
+	v->margin = 1;
+	if(vbar) {
+		d->vbar = scrollbar_create(1, NULL, NULL);
+		scrollbar_set_callback(d->vbar, sw_vscroll_cb, v);
+	}
+	if(hbar) {
+		d->hbar = scrollbar_create(0, NULL, NULL);
+		scrollbar_set_callback(d->hbar, sw_hscroll_cb, v);
+	}
+	sw_layout(v);
+	return v;
+}
+
+void scrolledwindow_set_content(view_t *v, view_t *content, int cw, int ch)
+{
+	struct sw_data *d;
+
+	if(!v || v->ops != &scrolledwin_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d) {
+		return;
+	}
+	if(d->content && d->content != content) {
+		view_remove(d->content);
+	}
+	d->content = content;
+	d->cw = cw;
+	d->ch = ch;
+	d->sx = d->sy = 0;
+	sw_layout(v);
+}
+
+void scrolledwindow_scroll_to(view_t *v, int x, int y)
+{
+	struct sw_data *d;
+	int bw = WSCROLL_W;
+	int vw, vh;
+
+	if(!v || v->ops != &scrolledwin_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d) {
+		return;
+	}
+	vw = v->w - 2 * v->margin - (d->vbar ? bw + 1 : 0);
+	vh = v->h - 2 * v->margin - (d->hbar ? bw + 1 : 0);
+	if(x > d->cw - vw) {
+		x = d->cw - vw;
+	}
+	if(y > d->ch - vh) {
+		y = d->ch - vh;
+	}
+	if(x < 0) {
+		x = 0;
+	}
+	if(y < 0) {
+		y = 0;
+	}
+	if(x != d->sx || y != d->sy) {
+		d->sx = x;
+		d->sy = y;
+		sw_layout(v);
+	}
+}
+
+int scrolledwindow_scroll_x(view_t *v)
+{
+	struct sw_data *d;
+
+	if(!v || v->ops != &scrolledwin_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->sx : 0;
+}
+
+int scrolledwindow_scroll_y(view_t *v)
+{
+	struct sw_data *d;
+
+	if(!v || v->ops != &scrolledwin_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->sy : 0;
+}
+
+int scrolledwindow_extent_w(view_t *v)
+{
+	struct sw_data *d;
+
+	if(!v || v->ops != &scrolledwin_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->cw : 0;
+}
+
+int scrolledwindow_extent_h(view_t *v)
+{
+	struct sw_data *d;
+
+	if(!v || v->ops != &scrolledwin_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->ch : 0;
 }

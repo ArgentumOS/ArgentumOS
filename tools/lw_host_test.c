@@ -404,6 +404,148 @@ int main(void)
 		printf("list widget OK\n");
 	}
 
+	/* ---- M2 scrollbar: geometry + drag/track interaction ---- */
+	{
+		view_t *sroot, *sb;
+		static int sval = -1;
+		static uint32_t tbuf4[400 * 300];
+
+		sroot = view_new(NULL, "window");
+		view_set_frame(sroot, 0, 0, 400, 300);
+		sb = scrollbar_create(1, NULL, NULL);
+		view_set_frame(sb, 380, 20, 15, 260);
+		view_add(sroot, sb);
+		/* 200 units of content, 50 visible: 150 scrollable */
+		scrollbar_set_state(sb, 0, 200, 50);
+		if(scrollbar_value(sb) != 0) {
+			printf("FAIL: initial value\n");
+			fails++;
+		}
+		scrollbar_set_state(sb, 150, 200, 50);
+		if(scrollbar_value(sb) != 150) {
+			printf("FAIL: state set\n");
+			fails++;
+		}
+		/* click far down the track: pages +150? no - one page (50)
+		 * from 150 clamps at 150; from 0 it goes to 50 */
+		scrollbar_set_state(sb, 0, 200, 50);
+		view_mouse(sroot, 387, 250, 1);	/* near the bottom */
+		view_mouse(sroot, 387, 250, 0);
+		if(scrollbar_value(sb) != 50) {
+			printf("FAIL: track page (got %d)\n",
+			       scrollbar_value(sb));
+			fails++;
+		} else {
+			printf("track-click pages to 50 OK\n");
+		}
+		/* drag the thumb: press on the thumb (at 0..~65px),
+		 * move to y 200 -> value ~ (200-grab)*150/195 */
+		scrollbar_set_state(sb, 0, 200, 50);	/* thumb at top */
+		view_mouse(sroot, 387, 20, 1);	/* grab at thumb top */
+		view_mouse(sroot, 387, 200, -1);	/* drag down */
+		view_mouse(sroot, 387, 200, 0);
+		sval = scrollbar_value(sb);
+		if(sval < 100 || sval > 155) {
+			printf("FAIL: thumb drag (got %d)\n", sval);
+			fails++;
+		} else {
+			printf("thumb drag to %d OK\n", sval);
+		}
+		/* everything fits: full dead thumb */
+		scrollbar_set_state(sb, 0, 40, 300);
+		{
+			renderer_t fr;
+
+			renderer_init(&fr, tbuf4, 400, 300);
+			view_render(sroot, &fr, 1, &(int){0}, &(int){0},
+				    &(int){0}, &(int){0});
+		}
+		view_destroy(sb);
+		view_destroy(sroot);
+		printf("scrollbar OK\n");
+	}
+
+	/* ---- M2 scrolled window: content offset + clamp + bars ---- */
+	{
+		view_t *wroot, *sw, *map;
+		static uint32_t tbuf5[500 * 300];
+
+		wroot = view_new(NULL, "window");
+		view_set_frame(wroot, 0, 0, 500, 300);
+		sw = scrolledwindow_create(1, 1);
+		view_set_frame(sw, 20, 20, 300, 160);
+		view_add(wroot, sw);
+		map = view_new(NULL, "canvas");
+		map->bg = 0xFF0000;
+		scrolledwindow_set_content(sw, map, 640, 320);
+
+		/* initial: no scroll, content at the top-left */
+		if(scrolledwindow_scroll_x(sw) != 0 ||
+		   scrolledwindow_scroll_y(sw) != 0) {
+			printf("FAIL: initial scroll\n");
+			fails++;
+		}
+		if(map->x != sw->margin || map->y != sw->margin) {
+			printf("FAIL: content origin (got %d,%d)\n",
+			       map->x, map->y);
+			fails++;
+		}
+		/* the vbar/hbar are children of the sw */
+		if(!sw->first || !sw->last || sw->first == sw->last) {
+			printf("FAIL: bars not added\n");
+			fails++;
+		} else {
+			printf("bars present (%s first)\n",
+			       sw->first->role ? sw->first->role : "?");
+		}
+		/* scroll: the content moves negative */
+		scrolledwindow_scroll_to(sw, 100, 50);
+		if(map->x != sw->margin - 100 ||
+		   map->y != sw->margin - 50) {
+			printf("FAIL: content offset (got %d,%d)\n",
+			       map->x, map->y);
+			fails++;
+		} else {
+			printf("content at -100,-50 OK\n");
+		}
+		/* clamp: way past the extent */
+		scrolledwindow_scroll_to(sw, 10000, 10000);
+		{
+			int maxx = scrolledwindow_extent_w(sw) -
+				   (300 - 2 * sw->margin -
+				    WSCROLL_W - 1);
+			int maxy = scrolledwindow_extent_h(sw) -
+				   (160 - 2 * sw->margin -
+				    WSCROLL_W - 1);
+
+			if(scrolledwindow_scroll_x(sw) != maxx ||
+			   scrolledwindow_scroll_y(sw) != maxy) {
+				printf("FAIL: clamp (got %d,%d want %d,%d)\n",
+				       scrolledwindow_scroll_x(sw),
+				       scrolledwindow_scroll_y(sw),
+				       maxx, maxy);
+				fails++;
+			} else {
+				printf("clamp at %d,%d OK\n", maxx, maxy);
+			}
+		}
+		/* render (content + bars) */
+		{
+			renderer_t fr;
+			int dx2, dy2, dw2, dh2;
+
+			renderer_init(&fr, tbuf5, 500, 300);
+			view_render(wroot, &fr, 1, &dx2, &dy2, &dw2, &dh2);
+			if(dw2 <= 0 || dh2 <= 0) {
+				printf("FAIL: sw render\n");
+				fails++;
+			}
+		}
+		view_destroy(sw);
+		view_destroy(wroot);
+		printf("scrolled window OK\n");
+	}
+
 	/* a canvas on the root (no layout): clicks pass to it */
 	{
 		view_t *cv = canvas_create(NULL, NULL);

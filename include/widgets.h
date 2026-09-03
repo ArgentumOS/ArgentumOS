@@ -278,6 +278,38 @@ int list_cursor(view_t *v);
 void list_select(view_t *v, int index);
 void *list_row_data(view_t *v, int index);
 
+/* ---- scrollbar + scrolled window (M2) ------------------------------- */
+
+#define WSCROLL_W	15	/* scrollbar thickness */
+
+/* A scrollbar: a track with a draggable thumb. scrollbar_set_state(v,
+ * pos, total, visible) positions the thumb (pos in [0, total-visible];
+ * a full thumb when total <= visible). Dragging the thumb or clicking
+ * the track (page by one viewport) calls on_change(v, pos, data) with
+ * the new pos. */
+view_t *scrollbar_create(int vertical,
+			 void (*on_change)(view_t *v, int pos, void *data),
+			 void *data);
+void scrollbar_set_state(view_t *v, int pos, int total, int visible);
+void scrollbar_set_callback(view_t *v,
+			    void (*on_change)(view_t *v, int pos,
+					      void *data),
+			    void *data);
+int scrollbar_value(view_t *v);
+
+/* A viewport that pans one content child (natural size cw x ch) with
+ * optional edge scrollbars; the content is clipped to the viewport and
+ * may be larger than it. scrolledwindow_scroll_to clamps. The child
+ * keeps its identity (add it with scrolledwindow_set_content). */
+view_t *scrolledwindow_create(int vbar, int hbar);
+void scrolledwindow_set_content(view_t *sw, view_t *content, int cw,
+				int ch);
+void scrolledwindow_scroll_to(view_t *sw, int x, int y);
+int scrolledwindow_scroll_x(view_t *sw);
+int scrolledwindow_scroll_y(view_t *sw);
+int scrolledwindow_extent_w(view_t *sw);
+int scrolledwindow_extent_h(view_t *sw);
+
 /* ---- event dispatch (window coords) ------------------------------- */
 
 /* Route a mouse event at window-local (x, y) through the tree. down=1
