@@ -1386,9 +1386,11 @@ static void tf_draw(struct textfield_data *d, renderer_t *r,
 		    int x, int baseline, const char *s, uint32_t fg)
 {
 	if(d->font) {
+		/* the renderer ops draw view-local: add the origin the
+		 * render pass set for this view */
 		text_draw_clip(d->font, r->buf, r->w, r->h,
 			       r->clip_x, r->clip_y, r->clip_w, r->clip_h,
-			       x, baseline, s, fg);
+			       x + r->ox, baseline + r->oy, s, fg);
 		return;
 	}
 	/* 8x16 fallback */
@@ -1629,3 +1631,511 @@ void textfield_set_caret(view_t *v, int off)
 		view_invalidate(v);
 	}
 }
+
+/* ================= multi-line text (M2) ============================= */
+
+#define TXT_MAX	8192
+
+struct text_data {
+	text_font_t *font;
+	char *buf;		/* NUL-terminated UTF-8, '\n' = line break */
+	int len;		/* byte length */
+	int cap;
+	int caret;		/* byte offset 0..len */
+	int scroll_top;		/* first visible line */
+	int scroll_x;		/* px scrolled right */
+	void (*on_change)(view_t *v, void *data);
+	void *data;
+	int nlines;
+	int *lstart;		/* byte offset of each line's first char */
+	int *llen;		/* byte length of each line (no '\n') */
+};
+
+static int tx_lh(struct text_data *d)
+{
+	return d->font ? text_font_height(d->font) : 16;
+}
+
+static int tx_asc(struct text_data *d)
+{
+	return d->font ? text_font_ascent(d->font) : 12;
+}
+
+static void tx_lines(struct text_data *d)
+{
+	int n = 1, i, off = 0;
+
+	for(i = 0; i < d->len; i++) {
+		if(d->buf[i] == '\n') {
+			n++;
+		}
+	}
+	d->lstart = realloc(d->lstart, (size_t)n * sizeof(int));
+	d->llen = realloc(d->llen, (size_t)n * sizeof(int));
+	d->nlines = n;
+	for(i = 0; i < n; i++) {
+		d->lstart[i] = off;
+		while(off < d->len && d->buf[off] != '\n') {
+			off++;
+		}
+		d->llen[i] = off - d->lstart[i];
+		off++;	/* skip the '\n' (may run past len) */
+	}
+}
+
+static int tx_line_of(struct text_data *d, int off)
+{
+	int i;
+
+	for(i = 0; i < d->nlines; i++) {
+		if(off < d->lstart[i]) {
+			return i - 1;
+		}
+	}
+	return d->nlines - 1;
+}
+
+/* byte offset of the character before/after 'off' (which is on a char
+ * boundary) */
+static int tx_prev_char(struct text_data *d, int off)
+{
+	if(off <= 0) {
+		return 0;
+	}
+	off--;
+	while(off > 0 && ((unsigned char)d->buf[off] & 0xC0) == 0x80) {
+		off--;
+	}
+	return off;
+}
+
+static int tx_next_char(struct text_data *d, int off)
+{
+	unsigned int cp;
+
+	if(off >= d->len) {
+		return d->len;
+	}
+	off += utf8_decode(d->buf + off, &cp);
+	if(off > d->len) {
+		off = d->len;
+	}
+	return off;
+}
+
+/* pixel width of the line slice buf[lstart..off) */
+static int tx_prefix_w(struct text_data *d, int line, int off)
+{
+	int n = off - d->lstart[line];
+
+	if(n < 0) {
+		n = 0;
+	}
+	if(n > d->llen[line]) {
+		n = d->llen[line];
+	}
+	return d->font ? text_width_prefix(d->font, d->buf + d->lstart[line],
+					   n) : n * 8;
+}
+
+static int tx_caret_x(struct text_data *d)
+{
+	int line = tx_line_of(d, d->caret);
+
+	return tx_prefix_w(d, line, d->caret);
+}
+
+static void tx_insert(struct text_data *d, int off, const char *s, int n)
+{
+	if(n <= 0) {
+		return;
+	}
+	if(d->len + n >= d->cap) {
+		int nc = d->cap ? d->cap : 64;
+
+		while(d->len + n >= nc && nc < TXT_MAX) {
+			nc *= 2;
+		}
+		if(d->len + n >= nc) {
+			return;		/* at the cap: drop */
+		}
+		d->buf = realloc(d->buf, (size_t)nc);
+		d->cap = nc;
+	}
+	memmove(d->buf + off + n, d->buf + off, (size_t)(d->len - off) + 1);
+	memcpy(d->buf + off, s, (size_t)n);
+	d->len += n;
+}
+
+static void tx_delete(struct text_data *d, int off, int n)
+{
+	memmove(d->buf + off, d->buf + off + n,
+		(size_t)(d->len - off - n) + 1);
+	d->len -= n;
+}
+
+/* caret to (line, x) on another line: walk chars until the width
+ * reaches 'want' (or the line ends) */
+static int tx_off_at_x(struct text_data *d, int line, int want)
+{
+	int off = d->lstart[line];
+	int end = off + d->llen[line];
+	int x = 0;
+
+	if(d->font) {
+		while(off < end) {
+			unsigned int cp;
+			int n = utf8_decode(d->buf + off, &cp);
+			int a;
+
+			if(n <= 0) {
+				break;
+			}
+			a = 0;
+			{
+				int gid = ttf_glyph_index(
+					((text_font_t *)d->font)->face, cp);
+
+				if(gid > 0) {
+					a = ttf_advance_px(
+						((text_font_t *)d->font)->face,
+						gid,
+						((text_font_t *)d->font)->size);
+				}
+			}
+			if(x + a / 2 >= want) {
+				break;
+			}
+			x += a;
+			off += n;
+		}
+		return off;
+	}
+	/* 8x16 fallback */
+	off += want / 8;
+	if(off > end) {
+		off = end;
+	}
+	return off;
+}
+
+static void tx_caret_line(view_t *v, struct text_data *d, int line)
+{
+	int x = tx_caret_x(d);
+	int off;
+
+	if(line < 0) {
+		line = 0;
+	}
+	if(line >= d->nlines) {
+		line = d->nlines - 1;
+	}
+	off = tx_off_at_x(d, line, x);
+	d->caret = off;
+	view_invalidate(v);
+}
+
+static void tx_keep_visible(view_t *v, struct text_data *d)
+{
+	int line = tx_line_of(d, d->caret);
+	int lh = tx_lh(d);
+	int vis = lh > 0 ? (v->h - 4) / lh : 1;
+	int cx, right = v->w - 6;
+
+	if(vis < 1) {
+		vis = 1;
+	}
+	if(line < d->scroll_top) {
+		d->scroll_top = line;
+	}
+	if(line >= d->scroll_top + vis) {
+		d->scroll_top = line - vis + 1;
+	}
+	if(d->scroll_top < 0) {
+		d->scroll_top = 0;
+	}
+	cx = tx_caret_x(d) - d->scroll_x;
+	if(cx < 2) {
+		d->scroll_x = tx_caret_x(d) - 2;
+	}
+	if(cx > right) {
+		d->scroll_x = tx_caret_x(d) - right;
+	}
+	if(d->scroll_x < 0) {
+		d->scroll_x = 0;
+	}
+}
+
+static void txt_draw_view(view_t *v, renderer_t *r)
+{
+	struct text_data *d = v->data;
+	int lh = tx_lh(d), asc = tx_asc(d);
+	int y = 2;
+	int line;
+
+	r->fill_rect(r, 0, 0, v->w, v->h, WCOLOR_VIEW);
+	r->groove(r, 0, 0, v->w, v->h);
+	for(line = d->scroll_top;
+	    line < d->nlines && y < v->h + 4; line++) {
+		const char *s = d->buf + d->lstart[line];
+
+		if(d->font) {
+			text_draw_clip(d->font, r->buf, r->w, r->h,
+				       r->clip_x, r->clip_y, r->clip_w,
+				       r->clip_h, 3 - d->scroll_x + r->ox,
+				       y + asc + r->oy, s, WCOLOR_TEXT);
+		} else {
+			r->text(r, 3 - d->scroll_x, y, s, WCOLOR_TEXT);
+		}
+		y += lh;
+	}
+	/* the caret: a 1px bar */
+	if((v->flags & VIEW_FOCUSED) && d->caret >= 0) {
+		int line2 = tx_line_of(d, d->caret);
+		int cx = tx_caret_x(d) - d->scroll_x + 3;
+		int cy = 2 + (line2 - d->scroll_top) * lh;
+
+		if(cy + lh > 2 && cy < v->h) {
+			r->fill_rect(r, cx, cy + 1, 1, lh - 2, WCOLOR_BLACK);
+		}
+	}
+}
+
+static void text_destroy(view_t *v)
+{
+	struct text_data *d = v->data;
+
+	if(d) {
+		free(d->buf);
+		free(d->lstart);
+		free(d->llen);
+		free(d);
+	}
+	v->data = NULL;
+}
+
+static void text_key_down(view_t *v, int key)
+{
+	struct text_data *d = v->data;
+	int changed = 0;
+	int line = tx_line_of(d, d->caret);
+	int lh = tx_lh(d);
+
+	switch(key) {
+		case 8:		/* backspace */
+		case 127:
+			if(d->caret > 0) {
+				if(d->buf[d->caret - 1] == '\n') {
+					tx_delete(d, d->caret - 1, 1);
+					d->caret--;
+				} else {
+					int p = tx_prev_char(d, d->caret);
+
+					tx_delete(d, p, d->caret - p);
+					d->caret = p;
+				}
+				changed = 1;
+			}
+			break;
+		case '\r':		/* Enter */
+			if(d->len < TXT_MAX - 1) {
+				tx_insert(d, d->caret, "\n", 1);
+				d->caret++;
+				changed = 1;
+			}
+			break;
+		case GUI_KEY_LEFT:
+			if(d->caret > 0) {
+				if(d->buf[d->caret - 1] == '\n') {
+					int pl = line - 1;
+
+					d->caret = pl >= 0 ?
+						d->lstart[pl] + d->llen[pl] : 0;
+				} else {
+					d->caret = tx_prev_char(d, d->caret);
+				}
+			}
+			break;
+		case GUI_KEY_RIGHT:
+			if(d->caret < d->len) {
+				if(d->buf[d->caret] == '\n') {
+					d->caret = d->lstart[line + 1];
+				} else {
+					d->caret = tx_next_char(d, d->caret);
+				}
+			}
+			break;
+		case GUI_KEY_UP:
+			tx_caret_line(v, d, line - 1);
+			break;
+		case GUI_KEY_DOWN:
+			tx_caret_line(v, d, line + 1);
+			break;
+		case GUI_KEY_PGUP:
+			line = tx_line_of(d, d->caret);
+			tx_caret_line(v, d, line - (v->h / (lh ? lh : 1)) + 1);
+			break;
+		case GUI_KEY_PGDN:
+			line = tx_line_of(d, d->caret);
+			tx_caret_line(v, d,
+				      line + (v->h / (lh ? lh : 1)) - 1);
+			break;
+		case GUI_KEY_HOME:
+			d->caret = d->lstart[line];
+			break;
+		case GUI_KEY_END:
+			d->caret = d->lstart[line] + d->llen[line];
+			break;
+		case 0x89:	/* Delete (forward) */
+			if(d->caret < d->len) {
+				int q;
+
+				if(d->buf[d->caret] == '\n') {
+					q = d->caret + 1;
+				} else {
+					q = tx_next_char(d, d->caret);
+				}
+				tx_delete(d, d->caret, q - d->caret);
+				changed = 1;
+			}
+			break;
+		default:
+			if(key >= 0x20 && key < 0x7F && d->len < TXT_MAX - 1) {
+				char ch = (char)key;
+
+				tx_insert(d, d->caret, &ch, 1);
+				d->caret++;
+				changed = 1;
+			}
+			break;
+	}
+	if(changed) {
+		tx_lines(d);
+		if(d->on_change) {
+			d->on_change(v, d->data);
+		}
+	}
+	tx_keep_visible(v, d);
+	view_invalidate(v);
+}
+
+static void text_mouse_down(view_t *v, int x, int y)
+{
+	struct text_data *d = v->data;
+	int lh = tx_lh(d);
+	int line = d->scroll_top + (y - 2) / (lh ? lh : 1);
+	int want = x - 3 + d->scroll_x;
+
+	if(line < 0) {
+		line = 0;
+	}
+	if(line >= d->nlines) {
+		line = d->nlines - 1;
+		d->caret = d->len;
+	} else {
+		d->caret = tx_off_at_x(d, line, want);
+	}
+	tx_keep_visible(v, d);
+	view_invalidate(v);
+}
+
+static const struct view_ops text_ops = {
+	.draw = txt_draw_view,
+	.destroy = text_destroy,
+	.mouse_down = text_mouse_down,
+	.key_down = text_key_down,
+};
+
+view_t *text_create(void *font, const char *initial,
+		    void (*on_change)(view_t *v, void *data), void *data)
+{
+	view_t *v = view_new(&text_ops, "text");
+	struct text_data *d;
+
+	if(!v) {
+		return NULL;
+	}
+	d = calloc(1, sizeof(*d));
+	if(!d) {
+		free(v);
+		return NULL;
+	}
+	d->font = font;
+	d->cap = 256;
+	d->buf = malloc((size_t)d->cap);
+	if(!d->buf) {
+		free(d);
+		free(v);
+		return NULL;
+	}
+	d->buf[0] = 0;
+	if(initial) {
+		size_t n = strlen(initial);
+
+		if(n + 1 > (size_t)d->cap) {
+			n = (size_t)d->cap - 1;
+		}
+		memcpy(d->buf, initial, n);
+		d->buf[n] = 0;
+		d->len = (int)n;
+	}
+	d->caret = d->len;
+	d->on_change = on_change;
+	d->data = data;
+	v->data = d;
+	v->bg = WCOLOR_VIEW;
+	tx_lines(d);
+	return v;
+}
+
+const char *text_get_text(view_t *v)
+{
+	struct text_data *d;
+
+	if(!v || v->ops != &text_ops) {
+		return "";
+	}
+	d = v->data;
+	return d ? d->buf : "";
+}
+
+void text_set_text(view_t *v, const char *s)
+{
+	struct text_data *d;
+	size_t n;
+
+	if(!v || v->ops != &text_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d) {
+		return;
+	}
+	if(!s) {
+		s = "";
+	}
+	n = strlen(s);
+	if(n + 1 > (size_t)d->cap) {
+		d->cap = (int)n + 1;
+		d->buf = realloc(d->buf, (size_t)d->cap);
+	}
+	memcpy(d->buf, s, n + 1);
+	d->len = (int)n;
+	d->caret = d->len;
+	d->scroll_top = 0;
+	d->scroll_x = 0;
+	tx_lines(d);
+	view_invalidate(v);
+}
+
+int text_caret(view_t *v)
+{
+	struct text_data *d;
+
+	if(!v || v->ops != &text_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->caret : 0;
+}
+

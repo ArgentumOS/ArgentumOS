@@ -58,6 +58,7 @@ int utf8_encode(unsigned int cp, char out[4]);
 
 /* total advance width of a UTF-8 string in pixels */
 int text_width(text_font_t *f, const char *s);
+int text_width_prefix(text_font_t *f, const char *s, int nbytes);
 
 /* draw a UTF-8 line with the pen at (x, baseline) into a 32-bpp
  * 0x00RRGGBB buffer; AA coverage is alpha-blended over whatever is

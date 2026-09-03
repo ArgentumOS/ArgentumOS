@@ -240,6 +240,21 @@ const char *textfield_text(view_t *v);
 void textfield_set_caret(view_t *v, int off);	/* byte offset */
 int textfield_caret(view_t *v);
 
+/* ---- multi-line text (M2) ------------------------------------------ */
+
+/* A multi-line UTF-8 text editor: holds one buffer (\n = line break),
+ * renders it line by line (hard lines; word-wrap arrives with the
+ * scrollbar work) and edits it: printable keys + Enter insert,
+ * Backspace deletes, the arrows move across lines, Home/End go to the
+ * line ends, PgUp/PgDn page. The caret follows the scroll; click
+ * positions the caret. font = a text_font_t* (NULL = built-in 8x16). */
+view_t *text_create(void *font, const char *initial,
+		    void (*on_change)(view_t *v, void *data),
+		    void *data);
+const char *text_get_text(view_t *v);
+void text_set_text(view_t *v, const char *s);
+int text_caret(view_t *v);	/* byte offset */
+
 /* ---- event dispatch (window coords) ------------------------------- */
 
 /* Route a mouse event at window-local (x, y) through the tree. down=1

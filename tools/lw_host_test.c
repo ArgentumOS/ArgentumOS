@@ -218,6 +218,98 @@ int main(void)
 		printf("text field editing OK\n");
 	}
 
+	/* ---- M2 multi-line text: line edits, arrows across lines ---- */
+	{
+		view_t *troot, *tx;
+		static uint32_t tbuf2[700 * 200];
+
+		troot = view_new(NULL, "window");
+		view_set_frame(troot, 0, 0, 480, 200);
+		tx = text_create(NULL, "aa\nbb", NULL, NULL);
+		view_set_frame(tx, 0, 0, 300, 120);
+		view_add(troot, tx);
+		view_focus(troot, tx);
+
+		if(strcmp(text_get_text(tx), "aa\nbb")) {
+			printf("FAIL: initial text\n");
+			fails++;
+		} else {
+			printf("initial 'aa\\nbb' OK\n");
+		}
+		/* caret is at the very end (line 2). Home = this line's
+		 * start -> insert at the front of the last line */
+		view_key(troot, GUI_KEY_HOME);
+		view_key(troot, 'x');
+		if(strcmp(text_get_text(tx), "aa\nxbb")) {
+			printf("FAIL: home insert (got '%s')\n",
+			       text_get_text(tx));
+			fails++;
+		} else {
+			printf("home insert 'aa\\nxbb' OK\n");
+		}
+		/* Enter splits at the caret */
+		view_key(troot, '\r');
+		if(strcmp(text_get_text(tx), "aa\nx\nbb")) {
+			printf("FAIL: enter split (got '%s')\n",
+			       text_get_text(tx));
+			fails++;
+		} else {
+			printf("enter split 'aa\\nx\\nbb' OK\n");
+		}
+		/* the caret is now at line 3 start (col 0); Left should
+		 * wrap to the previous line's end, then type 'y' */
+		view_key(troot, GUI_KEY_LEFT);
+		if(strcmp(text_get_text(tx), "aa\nx\nbb") ||
+		   text_caret(tx) != 4) {
+			printf("FAIL: left wrap (caret %d)\n",
+			       text_caret(tx));
+			fails++;
+		} else {
+			printf("left wrap to line-2 end OK\n");
+		}
+		view_key(troot, 'y');
+		if(strcmp(text_get_text(tx), "aa\nxy\nbb")) {
+			printf("FAIL: type after wrap (got '%s')\n",
+			       text_get_text(tx));
+			fails++;
+		} else {
+			printf("type after wrap 'aa\\nxy\\nbb' OK\n");
+		}
+		/* Up keeps the x column; on line 0 that lands at its end
+		 * (caret 2) - verify the caret, then BS deletes the last
+		 * char of line 0 */
+		view_key(troot, GUI_KEY_UP);
+		if(text_caret(tx) != 2) {
+			printf("FAIL: up column (caret %d)\n",
+			       text_caret(tx));
+			fails++;
+		} else {
+			printf("up keeps column (caret 2) OK\n");
+		}
+		view_key(troot, 127);
+		if(strcmp(text_get_text(tx), "a\nxy\nbb")) {
+			printf("FAIL: bs on line 0 (got '%s')\n",
+			       text_get_text(tx));
+			fails++;
+		} else {
+			printf("backspace 'a\\nxy\\nbb' OK\n");
+		}
+		{
+			renderer_t fr;
+			int dx2, dy2, dw2, dh2;
+
+			renderer_init(&fr, tbuf2, 480, 200);
+			view_render(troot, &fr, 1, &dx2, &dy2, &dw2, &dh2);
+			if(dw2 <= 0 || dh2 <= 0) {
+				printf("FAIL: text widget render\n");
+				fails++;
+			}
+		}
+		view_destroy(tx);
+		view_destroy(troot);
+		printf("multi-line text OK\n");
+	}
+
 	/* a canvas on the root (no layout): clicks pass to it */
 	{
 		view_t *cv = canvas_create(NULL, NULL);

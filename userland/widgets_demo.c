@@ -238,7 +238,7 @@ int main(void)
 
 		r->bg = WCOLOR_BG;
 		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
-		view_set_frame(r, 0, 0, 0, 210);
+		view_set_frame(r, 0, 0, 0, 150);
 		view_add(col, r);
 		title = label_create("Canvas");
 		title->anchor = VIEW_ANCHOR_FILLY;
@@ -265,6 +265,28 @@ int main(void)
 		g_field = textfield_create(font, "FNX", on_field_change, NULL);
 		g_field->anchor = VIEW_ANCHOR_FILLX;
 		view_add(r, g_field);
+	}
+
+	/* caption + Text (a small multi-line editor) */
+	{
+		view_t *r = view_new(NULL, "panel");
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 110);
+		view_add(col, r);
+		title = label_create("Text");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		view_t *txt = text_create(font,
+			"line one of the text widget\n"
+			"line two - type to edit, arrows move\n"
+			"line three: Caf\xC3\xA9 \xE2\x82\xAC", NULL, NULL);
+
+		txt->anchor = VIEW_ANCHOR_FILLX;
+		txt->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, txt);
 	}
 
 	/* caption + PushButton + caption + ToggleButton */
@@ -331,6 +353,50 @@ int main(void)
 		g_status->anchor = VIEW_ANCHOR_FILLX;
 		g_status->anchor |= VIEW_ANCHOR_FILLY;
 		view_add(r, g_status);
+	}
+
+	/* debug: where is the Text widget + how much content */
+	{
+		view_t *txtv = NULL;
+
+		/* find the text widget in the tree (role == "text") */
+		{
+			/* the demo keeps no handle; walk from g_root */
+			view_t *stack[128], *vv;
+			int sp = 0, i;
+
+			stack[sp++] = g_root;
+			while(sp && !txtv) {
+				vv = stack[--sp];
+				if(vv->role && !strcmp(vv->role, "text")) {
+					txtv = vv;
+					break;
+				}
+				for(i = 0; i < 128 && vv->first; i++) {
+					/* push all children */
+				}
+				{
+					view_t *c;
+					int n = 0;
+
+					for(c = vv->first; c && n < 200;
+					    c = c->next) {
+						if(sp < 1000) {
+							stack[sp++] = c;
+						}
+						n++;
+					}
+				}
+			}
+		}
+		if(txtv) {
+			printf("WDEMO: text view frame %dx%d at %d,%d "
+			       "content %d bytes\n",
+			       txtv->w, txtv->h, txtv->x, txtv->y,
+			       (int)strlen(text_get_text(txtv)));
+		} else {
+			printf("WDEMO: text view NOT FOUND\n");
+		}
 	}
 
 	/* the desktop starts with the keyboard focus in the name field */

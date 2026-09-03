@@ -257,6 +257,11 @@ int text_width(text_font_t *f, const char *s)
 	return string_advance(f, s, -1);
 }
 
+int text_width_prefix(text_font_t *f, const char *s, int nbytes)
+{
+	return string_advance(f, s, nbytes);
+}
+
 int text_draw_clip(text_font_t *f, uint32_t *buf, int bw, int bh,
 		    int cx, int cy, int cw, int ch, int x, int baseline,
 		    const char *s, uint32_t color)
