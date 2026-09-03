@@ -51,9 +51,9 @@ Features
  - AC97, ES1370, Intel HDA, SB16, GUS, and virtio-snd (modern virtio-1 transport) drivers.
 
 ### Display & input
- - UEFI GOP framebuffer console (fbcon) and `/dev/fb0`, mapped at a kernel-high VA so it works from any process context.
- - VGA text console; QEMU/Bochs SVGA and BGA; ATI Rage XL native framebuffer driver.
- - Virtual consoles (up to 12), UNIX98 pty/devpts.
+ - UEFI GOP framebuffer exposed as `/dev/fb0` (kernel-high VA map) and owned by the userland session compositor.
+ - The session compositor (`/bin/compositor`, socket + SysV-shm transport in `include/gui.h`) + `gui_demo`: `make run-uefi` boots straight into an animated three-window desktop. Userland can `mmap` `/dev/fb0` directly for zero-copy blits.
+ - No kernel text console on the display: virtual consoles (tty0-N) and fbcon are disabled and the display is the compositor's; the serial port is the system console.
  - PS/2 keyboard with Linux keymaps, PS/2 mouse (psaux).
 
 ### Character devices
@@ -95,14 +95,14 @@ Once the shell is up, the following in-guest checks are useful:
  - `ipc_smoke` - System V IPC (semaphores/message queues/shared memory).
  - `acl_test`  - 32-check POSIX ACL kernel regression (mounts the BFS disk on `/mnt`).
  - `acl get/set/default/--mask/remove <path> ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed BFS).
- - `echo hi > /dev/tty0`  - exercises the framebuffer console from process context.
+ - `gui_demo` runs at boot when `/dev/fb0` is present (the animated desktop); Ctrl-C stops it and the compositor keeps the display.
 
 Notes / design decisions
 ------------------------
  - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only BFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs BFS. Full design: `docs/permissions-acl.md`; the `acl` tool lives at `/bin/acl`.
  - Boot and storage reliability: the PIT IRQ stays masked until the real kernel's timer handler is linked (no early timer storms); the AHCI command-completion poll is bounded so a lost completion surfaces as an error instead of wedging the boot for minutes; and `iput()` never writes back a deleted inode (the root cause of the BFS NULL-`small_data` crash on unlinking a dirty inode).
  - The kernel boots to a single high-half address space: `rebase_image_data()` in `kernel64/paging64.c` walks the PE base-relocation table at boot and re-biases every absolute data pointer by `PAGE_OFFSET64` before the jump to the high-half entry, so indirect calls (syscall table, tty output, file operations) never execute at the identity alias. Process pml4s therefore map no kernel identity pages, and the TSS descriptor base must be the high-half address (see `kernel64/gdt64.c`).
- - Headless runs use the serial console (ttyS0); the GOP framebuffer console is exercised via `/dev/tty0` and `/dev/fb0`.
+ - The serial console (ttyS0) is the system console on every boot; the display shows the compositor's desktop (`/dev/fb0`).
  - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
 
 			*****************************
