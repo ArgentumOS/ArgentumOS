@@ -279,7 +279,6 @@ static void send_event(int win_id, gui_event_type_t type,
 	if(fd < 0) {
 		return;
 	}
-	payload[0] = GUI_MSG_EVENT;
 	{
 		gui_event_t *e = (gui_event_t *)(payload + 1);
 
@@ -291,7 +290,10 @@ static void send_event(int win_id, gui_event_type_t type,
 		e->button = button;
 		e->state = state;
 	}
-	msg_send(fd, payload, 1 + sizeof(gui_event_t));
+	if(msg_send(fd, payload, 1 + sizeof(gui_event_t))) {
+		fprintf(stderr, "CEV: mouse send FAILED (win %d)\n",
+			win_id);
+	}
 }
 
 /* send a KEY event (keysym + modifiers) to window id's owner */
