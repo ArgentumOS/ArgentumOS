@@ -1,9 +1,9 @@
-/* widgets_demo.c - the M1 toolkit showcase: a live control panel built
- * from libwidgets (labels, separator, canvas, frame, push + toggle
- * buttons) inside one window, driven by real mouse input from the
- * session compositor (/dev/psaux). Clicking "Bump" redraws the canvas;
- * "Glow" toggles its background. This is the milestone M1 demo of
- * docs/gui-e-toolkit.md.
+/* widgets_demo.c - the widget gallery: one row per widget type in the
+ * M1+M2 catalog (Label, Separator, Canvas, Frame, PushButton,
+ * ToggleButton, TextField), each with a caption identifying it, driven
+ * by real mouse + keyboard input from the session compositor. The
+ * stage canvas, the name field, Bump and Glow stay live so the input
+ * chain can be asserted end to end.
  *
  * Prints its control positions at startup ("WDEMO: bump@x,y") and every
  * action ("WDEMO: bump N") so a test harness can click the buttons via
@@ -41,8 +41,12 @@ static struct panel_state g_state;
 static view_t *g_root;		/* the window's view tree */
 static view_t *g_stage;		/* the big canvas */
 static view_t *g_status;	/* the status label */
-static char g_status_text[64];
+static view_t *g_field;		/* the text field */
+static char g_status_text[96];
 static int g_win_x, g_win_y;
+
+#define GW 700			/* window size */
+#define GH 560
 
 static void set_status(const char *fmt, ...)
 {
@@ -137,13 +141,13 @@ int main(void)
 		fprintf(stderr, "WDEMO: no compositor: %s\n", strerror(errno));
 		return 1;
 	}
-	win = window_create(d, "widgets", 40, 40, 480, 360, 0);
+	win = window_create(d, "gallery", 20, 20, GW, GH, 0);
 	if(!win) {
 		fprintf(stderr, "WDEMO: window_create: %s\n", strerror(errno));
 		return 1;
 	}
-	g_win_x = 40;
-	g_win_y = 40;
+	g_win_x = 20;
+	g_win_y = 20;
 	buf = window_buffer(win);
 	if(!buf) {
 		fprintf(stderr, "WDEMO: no backing buffer\n");
@@ -158,72 +162,179 @@ int main(void)
 		printf("WDEMO: no font (falling back to 8x16)\n");
 	}
 	g_font = font;
-	renderer_init(&rnd, buf, 480, 360);
+	renderer_init(&rnd, buf, GW, GH);
 	rnd.font = font;
 
-	/* ---- the view tree ---- */
+	/* ---- the view tree: one captioned row per widget type ---- */
 	g_root = view_new(NULL, "window");
 	g_root->bg = WCOLOR_BG;
-	view_set_frame(g_root, 0, 0, 480, 360);
+	view_set_frame(g_root, 0, 0, GW, GH);
 
 	col = view_new(NULL, "panel");
 	col->bg = WCOLOR_BG;
-	view_set_layout(col, VIEW_LAYOUT_COLUMN, 10, 6);
-	view_set_frame(col, 0, 0, 480, 360);
+	view_set_layout(col, VIEW_LAYOUT_COLUMN, 10, 5);
+	view_set_frame(col, 0, 0, GW, GH);
 	view_add(g_root, col);
 
-	/* the title bar: a raised frame holding one dark label */
-	frame = frame_create(1);
-	view_set_frame(frame, 0, 0, 0, 30);
-	view_add(col, frame);
-	title = label_create("FNX Widgets - milestone M1");
-	view_set_bg(title, 0x00DCDCD4);
-	view_add(frame, title);
+	/* a caption column entry: a right-side name label for a row */
+	{
+		/* the title bar: a raised Frame holding one dark Label */
+		view_t *bar = frame_create(1);
 
-	sep = separator_create(0);
-	view_add(col, sep);
+		view_set_frame(bar, 0, 0, 0, 30);
+		view_add(col, bar);
+		title = label_create("FNX widget gallery - every M1/M2 widget");
+		view_set_bg(title, 0x00DCDCD4);
+		view_add(bar, title);
+	}
+	{
+		view_t *s = separator_create(0);
 
-	/* the stage: a big canvas showing the panel state */
-	g_stage = canvas_create(stage_paint, &g_state);
-	view_set_frame(g_stage, 0, 0, 0, 160);
-	view_add(col, g_stage);
+		view_add(col, s);
+	}
 
-	/* the text-entry row (M2): a label + an editable field */
-	fieldrow = view_new(NULL, "panel");
-	fieldrow->bg = WCOLOR_BG;
-	fieldrow->anchor = VIEW_ANCHOR_FILLX;
-	view_set_layout(fieldrow, VIEW_LAYOUT_ROW, 0, 6);
-	view_set_frame(fieldrow, 0, 0, 0, 26);
-	view_add(col, fieldrow);
-	title = label_create("Name:");
-	title->anchor = VIEW_ANCHOR_FILLY;
-	view_add(fieldrow, title);
-	field = textfield_create(font, "FNX", on_field_change, NULL);
-	field->anchor = VIEW_ANCHOR_FILLX;
-	view_add(fieldrow, field);
+	/* caption + Label */
+	{
+		view_t *r = view_new(NULL, "panel");
 
-	/* the control row */
-	row = view_new(NULL, "panel");
-	row->bg = WCOLOR_BG;
-	view_set_layout(row, VIEW_LAYOUT_ROW, 0, 10);
-	view_set_frame(row, 0, 0, 0, 30);
-	view_add(col, row);
-	bump = push_button_create("Bump", action_bump, &g_state);
-	view_add(row, bump);
-	glow = toggle_button_create("Glow", action_glow, &g_state);
-	view_add(row, glow);
-	/* the desktop starts with the keyboard focus in the name field */
-	view_focus(g_root, field);
-	spacer = view_new(NULL, "spacer");
-	spacer->bg = WCOLOR_BG;
-	view_add(row, spacer);
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 24);
+		view_add(col, r);
+		title = label_create("Label");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		view_t *sample = label_create("A Label: sample text, UTF-8 Caf\xC3\xA9 \xE2\x82\xAC");
+
+		sample->bg = WCOLOR_BG;
+		sample->anchor = VIEW_ANCHOR_FILLX;
+		sample->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, sample);
+	}
+
+	/* caption + Separator */
+	{
+		view_t *r = view_new(NULL, "panel");
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 24);
+		view_add(col, r);
+		title = label_create("Separator");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		view_t *s = separator_create(0);
+
+		s->anchor = VIEW_ANCHOR_FILLX;
+		s->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, s);
+	}
+
+	/* caption + Canvas (the live stage) */
+	{
+		view_t *r = view_new(NULL, "panel");
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 210);
+		view_add(col, r);
+		title = label_create("Canvas");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		g_stage = canvas_create(stage_paint, &g_state);
+		g_stage->anchor = VIEW_ANCHOR_FILLX;
+		g_stage->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, g_stage);
+	}
+
+	/* caption + TextField (editable, starts focused) */
+	{
+		view_t *r = view_new(NULL, "panel");
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 28);
+		view_add(col, r);
+		title = label_create("TextField");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		g_field = textfield_create(font, "FNX", on_field_change, NULL);
+		g_field->anchor = VIEW_ANCHOR_FILLX;
+		view_add(r, g_field);
+	}
+
+	/* caption + PushButton + caption + ToggleButton */
+	{
+		view_t *r = view_new(NULL, "panel");
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 30);
+		view_add(col, r);
+		title = label_create("PushButton");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		bump = push_button_create("Bump", action_bump, &g_state);
+		view_add(r, bump);
+		view_t *sp2 = view_new(NULL, "spacer");
+
+		sp2->bg = WCOLOR_BG;
+		view_add(r, sp2);
+		view_t *cap2 = label_create("ToggleButton");
+
+		cap2->anchor = VIEW_ANCHOR_FILLY;
+		view_add(r, cap2);
+		glow = toggle_button_create("Glow", action_glow, &g_state);
+		view_add(r, glow);
+	}
+
+	/* caption + Frame (a titled panel) */
+	{
+		view_t *r = view_new(NULL, "panel");
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 58);
+		view_add(col, r);
+		title = label_create("Frame");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		view_t *f = frame_create(1);
+
+		f->anchor = VIEW_ANCHOR_FILLX;
+		view_set_frame(f, 0, 0, 0, 0);
+		view_add(r, f);
+		view_t *fl = label_create("a raised Frame with a caption");
+
+		view_add(f, fl);
+	}
 
 	/* the status line */
-	g_status = label_create("ready");
-	view_add(col, g_status);
+	{
+		view_t *r = view_new(NULL, "panel");
 
-	sep = separator_create(0);
-	view_add(col, sep);
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 22);
+		view_add(col, r);
+		title = label_create("Status");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		g_status = label_create("ready - click Bump / Glow or type in the field");
+		g_status->anchor = VIEW_ANCHOR_FILLX;
+		g_status->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, g_status);
+	}
+
+	/* the desktop starts with the keyboard focus in the name field */
+	view_focus(g_root, g_field);
 
 	/* the harness needs the on-screen center of each control */
 	view_to_root(bump, &ax, &ay);
