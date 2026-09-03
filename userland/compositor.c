@@ -150,57 +150,103 @@ static int fb_put_rect(int x, int y, int w, int h, const uint32_t *src)
 	return 0;
 }
 
-/* paint the whole screen with the desktop background */
-static void composite_clear(void)
+/* ---- back-buffered compositing ------------------------------------
+ *
+ * The compositor keeps a full-screen back buffer (system RAM). A frame is
+ * assembled there and only the damaged rects are pushed to the LFB, so a
+ * damage no longer repaints the whole screen and each present is a single
+ * coherent copy of the changed area. The UEFI GOP framebuffer itself has
+ * no hardware double buffering - this is the software equivalent. */
+
+#define DESKTOP_COLOR	0x00303030
+
+static uint32_t *bbuf;		/* full-screen composited back buffer */
+
+/* clip a screen rect to the framebuffer; returns 0 if empty */
+static int rect_clip(int *rx, int *ry, int *rw, int *rh)
 {
-	static uint32_t *row;
+	if(*rx < 0) {
+		*rw += *rx;
+		*rx = 0;
+	}
+	if(*ry < 0) {
+		*rh += *ry;
+		*ry = 0;
+	}
+	if(*rx + *rw > fb_w) {
+		*rw = fb_w - *rx;
+	}
+	if(*ry + *rh > fb_h) {
+		*rh = fb_h - *ry;
+	}
+	return *rw > 0 && *rh > 0;
+}
+
+/* recomposite a screen rect into the back buffer: desktop fill, then
+ * every visible window bottom-to-top (the array order is the z-order,
+ * higher windows overwrite lower ones - correct occlusion) */
+static void composite_rect(int rx, int ry, int rw, int rh)
+{
 	int i, y;
 
-	if(!row) {
-		row = malloc((size_t)fb_w * 4);
-		if(!row) {
-			return;
-		}
-		for(i = 0; i < fb_w; i++) {
-			row[i] = 0x303030;
-		}
-	}
-	for(y = 0; y < fb_h; y++) {
-		fb_put_rect(0, y, fb_w, 1, row);
-	}
-}
-
-/* blit window w's full visible area onto the screen */
-static void composite_window(struct window *w)
-{
-	int dx0 = w->x < 0 ? 0 : w->x;
-	int dy0 = w->y < 0 ? 0 : w->y;
-	int dx1 = w->x + w->w > fb_w ? fb_w : w->x + w->w;
-	int dy1 = w->y + w->h > fb_h ? fb_h : w->y + w->h;
-	const uint32_t *src = w->backing;
-	int y;
-
-	if(!w->visible || !w->backing || dx1 <= dx0 || dy1 <= dy0) {
+	if(!bbuf || !rect_clip(&rx, &ry, &rw, &rh)) {
 		return;
 	}
-	for(y = dy0; y < dy1; y++) {
-		const uint32_t *row = src + (size_t)(y - w->y) * w->w +
-				      (dx0 - w->x);
-		fb_put_rect(dx0, y, dx1 - dx0, 1, row);
+	for(y = ry; y < ry + rh; y++) {
+		uint32_t *dst = bbuf + (size_t)y * fb_w + rx;
+		int n;
+
+		for(n = 0; n < rw; n++) {
+			dst[n] = DESKTOP_COLOR;
+		}
+	}
+	for(i = 0; i < MAX_WINDOWS; i++) {
+		struct window *w = &windows[i];
+		int ix0, iy0, ix1, iy1;
+
+		if(!w->used || !w->visible || !w->backing) {
+			continue;
+		}
+		ix0 = w->x > rx ? w->x : rx;
+		iy0 = w->y > ry ? w->y : ry;
+		ix1 = (w->x + w->w < rx + rw) ? (w->x + w->w) : (rx + rw);
+		iy1 = (w->y + w->h < ry + rh) ? (w->y + w->h) : (ry + rh);
+		if(ix1 <= ix0 || iy1 <= iy0) {
+			continue;
+		}
+		for(y = iy0; y < iy1; y++) {
+			const uint32_t *src = (const uint32_t *)w->backing +
+					      (size_t)(y - w->y) * w->w +
+					      (ix0 - w->x);
+			uint32_t *dst = bbuf + (size_t)y * fb_w + ix0;
+
+			memcpy(dst, src, (size_t)(ix1 - ix0) * 4);
+		}
 	}
 }
 
-/* bottom -> top over the visible windows */
-static void composite_all(void)
+/* push a back-buffer rect to the LFB */
+static void present_rect(int rx, int ry, int rw, int rh)
 {
-	int i;
+	int y;
 
-	composite_clear();
-	for(i = 0; i < MAX_WINDOWS; i++) {
-		if(windows[i].used && windows[i].visible) {
-			composite_window(&windows[i]);
-		}
+	if(!bbuf || !rect_clip(&rx, &ry, &rw, &rh)) {
+		return;
 	}
+	for(y = 0; y < rh; y++) {
+		fb_put_rect(rx, ry + y, rw, 1,
+			    bbuf + (size_t)(ry + y) * fb_w + rx);
+	}
+}
+
+/* the single screen-write op: recomposite a rect + present it */
+static void screen_damage(int rx, int ry, int rw, int rh)
+{
+	if(!rect_clip(&rx, &ry, &rw, &rh)) {
+		return;
+	}
+	composite_rect(rx, ry, rw, rh);
+	present_rect(rx, ry, rw, rh);
 }
 
 /* ---- shm backings -------------------------------------------------- */
@@ -388,7 +434,9 @@ static void handle_msg(struct client *c, const unsigned char *p, size_t len)
 		}
 		printf("COMP: damage win %d rect %d,%d %dx%d\n",
 		       op->win, op->x, op->y, op->w, op->h);
-		composite_all();
+		/* damage rects are window-relative: composite only the
+		 * affected screen area instead of repainting everything */
+		screen_damage(w->x + op->x, w->y + op->y, op->w, op->h);
 		reply_ack(c, op->req, 0, 0);
 		return;
 	}
@@ -408,23 +456,38 @@ static void handle_msg(struct client *c, const unsigned char *p, size_t len)
 		case GUI_MSG_WINDOW_SHOW:
 			w->visible = 1;
 			printf("COMP: show win %d\n", w->id);
+			screen_damage(w->x, w->y, w->w, w->h);
 			break;
 		case GUI_MSG_WINDOW_HIDE:
 			w->visible = 0;
 			printf("COMP: hide win %d\n", w->id);
+			/* restore what is beneath the window */
+			screen_damage(w->x, w->y, w->w, w->h);
 			break;
-		case GUI_MSG_WINDOW_MOVE:
+		case GUI_MSG_WINDOW_MOVE: {
+			int ox = w->x, oy = w->y;
+
 			w->x = op->x;
 			w->y = op->y;
 			printf("COMP: move win %d to %d,%d\n", w->id,
 			       w->x, w->y);
+			/* restore the old spot, paint the new one */
+			screen_damage(ox, oy, w->w, w->h);
+			screen_damage(w->x, w->y, w->w, w->h);
 			break;
+		}
 		case GUI_MSG_WINDOW_RESIZE: {
 			/* v1: resize by re-allocating the backing; the new
 			 * shmid travels in the ack so the client can
 			 * re-attach */
 			int nid = -1;
 			void *nb = NULL;
+			int ox, oy, ow, oh;
+
+			ox = w->x;
+			oy = w->y;
+			ow = w->w;
+			oh = w->h;
 
 			if(op->w > 0 && op->h > 0 && op->w <= 4096 &&
 			   op->h <= 4096) {
@@ -450,7 +513,8 @@ static void handle_msg(struct client *c, const unsigned char *p, size_t len)
 			w->h = op->h;
 			printf("COMP: resize win %d to %dx%d (shm %d)\n",
 			       w->id, w->w, w->h, w->shmid);
-			composite_all();
+			screen_damage(ox, oy, ow, oh);
+			screen_damage(w->x, w->y, w->w, w->h);
 			reply_ack(c, op->req, 0, nid);
 			return;
 		}
@@ -481,20 +545,23 @@ static void handle_msg(struct client *c, const unsigned char *p, size_t len)
 				w = &windows[hi];
 			}
 			printf("COMP: raise win %d\n", w->id);
+			/* only the raised window's rect can change: it now
+			 * stacks above whatever it overlaps */
+			screen_damage(w->x, w->y, w->w, w->h);
 			break;
 		}
-		case GUI_MSG_WINDOW_CLOSE:
+		case GUI_MSG_WINDOW_CLOSE: {
+			int cx = w->x, cy = w->y, cw = w->w, ch = w->h;
+
 			printf("COMP: close win %d\n", w->id);
 			window_destroy(w);
-			composite_all();
+			screen_damage(cx, cy, cw, ch);
 			reply_ack(c, op->req, 0, 0);
 			return;
+		}
 		default:
 			err = EINVAL;
 			break;
-		}
-		if(!err) {
-			composite_all();
 		}
 		reply_ack(c, op->req, err, 0);
 		return;
@@ -666,7 +733,15 @@ int main(void)
 	for(i = 0; i < MAX_WINDOWS; i++) {
 		windows[i].shmid = -1;
 	}
+	bbuf = malloc((size_t)fb_w * fb_h * 4);
+	if(!bbuf) {
+		perror("compositor: back buffer");
+		return 1;
+	}
 	printf("COMP: listening on %s (%dx%d fb)\n", sockpath, fb_w, fb_h);
+
+	/* own the display: clear it to the desktop before any client */
+	screen_damage(0, 0, fb_w, fb_h);
 
 	while(1) {
 		fd_set rfds;
@@ -704,6 +779,7 @@ int main(void)
 				}
 				if(slot >= 0) {
 					clients[slot].used = 1;
+					clients[slot].dead = 0;
 					clients[slot].fd = cfd;
 					clients[slot].have = 0;
 				} else {
@@ -723,16 +799,22 @@ int main(void)
 
 				close(clients[i].fd);
 				clients[i].used = 0;
+				clients[i].dead = 0;
 				for(j = 0; j < MAX_WINDOWS; j++) {
 					if(windows[j].used &&
 					   windows[j].client == i) {
+						int dx = windows[j].x;
+						int dy = windows[j].y;
+						int dw = windows[j].w;
+						int dh = windows[j].h;
+
 						printf("COMP: drop win %d "
 						       "(client gone)\n",
 						       windows[j].id);
 						window_destroy(&windows[j]);
+						screen_damage(dx, dy, dw, dh);
 					}
 				}
-				composite_all();
 			}
 		}
 	}
