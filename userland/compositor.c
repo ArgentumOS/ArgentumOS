@@ -84,6 +84,9 @@ static int next_id = 1;
 /* ---- forward decls (defined below the fb helpers) ------------------ */
 static struct window *window_find(int id);
 static int msg_send(int fd, const void *payload, size_t len);
+static int fb_put_rect(int x, int y, int w, int h, const uint32_t *src);
+static void present_rect(int rx, int ry, int rw, int rh);
+static uint32_t *bbuf;
 
 /* ---- pointer input (PS/2 mouse on /dev/psaux) ---------------------- */
 
@@ -94,6 +97,147 @@ static int mouse_grab;		/* window id capturing the pointer, -1 */
 static int focus_win;		/* window id holding keyboard focus, -1 */
 static unsigned char mouse_pkt[3];
 static int mouse_pkt_n;
+
+/* ---- the pointer cursor (an fb-only overlay, never in bbuf) ------- */
+
+#define CUR_W	12
+#define CUR_H	16
+
+static int cur_vis;		/* a mouse is present */
+static int cur_drawn;		/* the cursor is on the fb */
+static int cur_ox, cur_oy;	/* where it was last painted */
+/* per-pixel colors; 0xFFFFFFFF = transparent (show bbuf) */
+static uint32_t cur_px[CUR_H][CUR_W];
+
+static const char *cur_mask[CUR_H] = {
+	"#...........",
+	"##..........",
+	"#.#.........",
+	"#..#........",
+	"#...#.......",
+	"#....#......",
+	"#.....#.....",
+	"#......#....",
+	"#.......#...",
+	"#........#..",
+	"#........#..",
+	"#...#####...",
+	"#..#........",
+	"#.#.........",
+	"##..........",
+	"#...........",
+};
+
+static void cursor_init(void)
+{
+	int y, x;
+
+	for(y = 0; y < CUR_H; y++) {
+		for(x = 0; x < CUR_W; x++) {
+			cur_px[y][x] = 0xFFFFFFFF;
+		}
+	}
+	/* black body first */
+	for(y = 0; y < CUR_H; y++) {
+		for(x = 0; x < CUR_W; x++) {
+			if(cur_mask[y][x] == '#') {
+				cur_px[y][x] = 0x00000000;
+			}
+		}
+	}
+	/* then a white outline on the 4-neighbours of the body so the
+	 * cursor reads on any background */
+	for(y = 0; y < CUR_H; y++) {
+		for(x = 0; x < CUR_W; x++) {
+			int dy, dx2;
+
+			if(cur_px[y][x] != 0xFFFFFFFF) {
+				continue;
+			}
+			for(dy = -1; dy <= 1; dy++) {
+				for(dx2 = -1; dx2 <= 1; dx2++) {
+					int ny = y + dy, nx = x + dx2;
+
+					if(dy == 0 && dx2 == 0) {
+						continue;
+					}
+					if(ny >= 0 && ny < CUR_H &&
+					   nx >= 0 && nx < CUR_W &&
+					   cur_mask[ny][nx] == '#') {
+						cur_px[y][x] = 0x00FFFFFF;
+					}
+				}
+			}
+		}
+	}
+}
+
+/* draw the cursor at the pointer position (hotspot = its top-left tip) */
+static void cursor_paint(void)
+{
+	uint32_t rowbuf[CUR_W];
+	int x0 = mouse_x;
+	int y0 = mouse_y;
+	int vw = CUR_W;
+	int y, x;
+
+	if(!cur_vis || !bbuf) {
+		return;
+	}
+	if(x0 < 0) {
+		x0 = 0;
+	}
+	if(y0 < 0) {
+		y0 = 0;
+	}
+	if(x0 + vw > fb_w) {
+		vw = fb_w - x0;
+	}
+	if(vw <= 0) {
+		return;
+	}
+	for(y = 0; y < CUR_H; y++) {
+		int sy = y0 + y;
+
+		if(sy >= fb_h) {
+			break;
+		}
+		for(x = 0; x < vw; x++) {
+			uint32_t c = cur_px[y][x];
+
+			if(c == 0xFFFFFFFF) {
+				rowbuf[x] = bbuf[(size_t)sy * fb_w + x0 + x];
+			} else {
+				rowbuf[x] = c;
+			}
+		}
+		fb_put_rect(x0, sy, vw, 1, rowbuf);
+	}
+	cur_ox = x0;
+	cur_oy = y0;
+	cur_drawn = 1;
+}
+
+/* restore the fb under the cursor from the back buffer */
+static void cursor_restore(void)
+{
+	if(cur_drawn) {
+		present_rect(cur_ox, cur_oy, CUR_W, CUR_H);
+		cur_drawn = 0;
+	}
+}
+
+/* after any screen damage, keep the cursor on top of the rect */
+static void cursor_repaint_rect(int rx, int ry, int rw, int rh)
+{
+	if(!cur_drawn || !cur_vis) {
+		return;
+	}
+	if(rx < cur_ox + CUR_W && rx + rw > cur_ox &&
+	   ry < cur_oy + CUR_H && ry + rh > cur_oy) {
+		cursor_paint();
+	}
+}
 
 /* topmost visible window containing (x, y), or NULL */
 static struct window *window_at(int x, int y)
@@ -175,19 +319,29 @@ static void input_process_packet(unsigned char b0, unsigned char b1,
 	dx = (int)(signed char)b1;
 	dy = (int)(signed char)b2;
 	/* PS/2 dy is positive down (toward the user) */
-	mouse_x += dx;
-	mouse_y += dy;
-	if(mouse_x < 0) {
-		mouse_x = 0;
-	}
-	if(mouse_y < 0) {
-		mouse_y = 0;
-	}
-	if(mouse_x >= fb_w) {
-		mouse_x = fb_w - 1;
-	}
-	if(mouse_y >= fb_h) {
-		mouse_y = fb_h - 1;
+	{
+		int px = mouse_x, py = mouse_y;
+
+		mouse_x += dx;
+		mouse_y += dy;
+		if(mouse_x < 0) {
+			mouse_x = 0;
+		}
+		if(mouse_y < 0) {
+			mouse_y = 0;
+		}
+		if(mouse_x >= fb_w) {
+			mouse_x = fb_w - 1;
+		}
+		if(mouse_y >= fb_h) {
+			mouse_y = fb_h - 1;
+		}
+		if(mouse_x != px || mouse_y != py) {
+			/* slide the overlay: uncover the old spot, draw
+			 * the new one */
+			cursor_restore();
+			cursor_paint();
+		}
 	}
 
 	if(buttons != mouse_buttons) {
@@ -287,12 +441,15 @@ static void input_open_mouse(void)
 	focus_win = -1;
 	mouse_buttons = 0;
 	mouse_pkt_n = 0;
+	cursor_init();
 	if(mouse_fd >= 0) {
 		mouse_x = fb_w / 2;
 		mouse_y = fb_h / 2;
-		printf("COMP: mouse on /dev/psaux\n");
+		cur_vis = 1;
+		printf("COMP: mouse on %s\n", src);
 	} else {
 		mouse_fd = -1;
+		cur_vis = 0;
 		printf("COMP: no mouse (%s)\n", strerror(errno));
 	}
 }
@@ -377,7 +534,7 @@ static int fb_put_rect(int x, int y, int w, int h, const uint32_t *src)
 
 #define DESKTOP_COLOR	0x00303030
 
-static uint32_t *bbuf;		/* full-screen composited back buffer */
+/* bbuf: full-screen composited back buffer (forward-declared above) */
 
 /* clip a screen rect to the framebuffer; returns 0 if empty */
 static int rect_clip(int *rx, int *ry, int *rw, int *rh)
@@ -464,6 +621,8 @@ static void screen_damage(int rx, int ry, int rw, int rh)
 	}
 	composite_rect(rx, ry, rw, rh);
 	present_rect(rx, ry, rw, rh);
+	/* the pointer cursor floats above the damage */
+	cursor_repaint_rect(rx, ry, rw, rh);
 }
 
 /* ---- shm backings -------------------------------------------------- */
@@ -960,8 +1119,10 @@ int main(void)
 	/* own the display: clear it to the desktop before any client */
 	screen_damage(0, 0, fb_w, fb_h);
 
-	/* the pointer: /dev/psaux (raw PS/2 stream) */
+	/* the pointer: /dev/psaux (raw PS/2 stream); the cursor starts
+	 * at the display centre */
 	input_open_mouse();
+	cursor_paint();
 
 	while(1) {
 		fd_set rfds;
