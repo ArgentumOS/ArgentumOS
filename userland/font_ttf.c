@@ -189,6 +189,11 @@ int ttf_units_per_em(ttf_face_t *f)
 	return (int)f->upem;
 }
 
+int ttf_num_glyphs(ttf_face_t *f)
+{
+	return (int)f->num_glyphs;
+}
+
 int ttf_ascender(ttf_face_t *f)
 {
 	return f->ascender;

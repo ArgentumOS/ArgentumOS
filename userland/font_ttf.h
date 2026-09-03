@@ -34,6 +34,7 @@ void ttf_close(ttf_face_t *f);
 
 /* font-wide metrics (design units unless _px) */
 int ttf_units_per_em(ttf_face_t *f);
+int ttf_num_glyphs(ttf_face_t *f);
 int ttf_ascender(ttf_face_t *f);
 int ttf_descender(ttf_face_t *f);	/* negative */
 int ttf_linegap(ttf_face_t *f);
