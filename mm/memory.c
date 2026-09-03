@@ -156,6 +156,15 @@ int clone_pages(struct proc *child)
 					if(!(e & 0x004)) {
 						continue;	/* supervisor leaf */
 					}
+					/* OS-managed / device pages (e.g. the
+					 * framebuffer): their phys is outside
+					 * RAM, so indexing page_table with it
+					 * is out of bounds (and setting
+					 * PAGE_COW would corrupt memory) -
+					 * never count or CoW them. */
+					if(e & PAGE_NOALLOC) {
+						continue;
+					}
 					pg = &page_table[(e & PAGE_MASK) >> 12];
 					if(pg->flags & PAGE_RESERVED) {
 						continue;
@@ -263,12 +272,12 @@ int free_page_tables(struct proc *p)
 #endif /* __x86_64__ */
 }
 
-addr_t map_page(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot)
+addr_t map_page(struct proc *p, addr_t vaddr, addr_t addr, unsigned int prot)
 {
 	return map_page_flags(p, vaddr, addr, prot, 0);
 }
 
-addr_t map_page_flags(struct proc *p, addr_t vaddr, unsigned int addr, unsigned int prot, int flags)
+addr_t map_page_flags(struct proc *p, addr_t vaddr, addr_t addr, unsigned int prot, int flags)
 {
 #ifdef __x86_64__
 	/* FNX (native-MM): the process's pml4 (p->cr3_64) is the single

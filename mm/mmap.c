@@ -281,23 +281,37 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 	 * no pte-table refcounting, so the table-empty kfree (the source of
 	 * the pde-32 table double-grant) is gone. */
 	unsigned int offset;
-	unsigned long n, pml4, leaf;
+	unsigned long n, pml4, pte, leaf, addr;
 	struct page *pg;
 
-	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+	extern unsigned long user_pte64_in(unsigned long, unsigned long);
 	extern int unmap_user_page64_in(unsigned long, unsigned long);
 	extern unsigned long paging64_pml4(void);
 
 	pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4();
 
 	for(n = 0; n < (length / PAGE_SIZE); n++) {
-		leaf = user_leaf64_in(pml4, (unsigned long)start + (n * PAGE_SIZE));
-		if(!leaf) {
+		addr = (unsigned long)start + (n * PAGE_SIZE);
+		/* user_pte64_in() returns the RAW leaf (phys | flags);
+		 * user_leaf64_in() masks the flags off, which would make the
+		 * PAGE_NOALLOC check below dead code. */
+		pte = user_pte64_in(pml4, addr);
+		if(!pte) {
 			continue;
 		}
+		/* OS-managed / device pages (e.g. the framebuffer mapped by
+		 * fb_mmap with PAGE_NOALLOC): the physical page belongs to a
+		 * device - it must never be indexed into page_table (its phys
+		 * is outside RAM, so &page_table[leaf >> PAGE_SHIFT] is out of
+		 * bounds) nor written back to the device inode. Just unmap. */
+		if(pte & PAGE_NOALLOC) {
+			unmap_user_page64_in(pml4, addr);
+			continue;
+		}
+		leaf = pte & PAGE_MASK64;
 		pg = &page_table[leaf >> PAGE_SHIFT];
 		if(pg->flags & PAGE_RESERVED) {
-			unmap_user_page64_in(pml4, (unsigned long)start + (n * PAGE_SIZE));
+			unmap_user_page64_in(pml4, addr);
 			continue;
 		}
 
@@ -306,14 +320,12 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 			write_page(pg, vma->inode, offset, PAGE_SIZE);
 		}
 
-		if(!(leaf & PAGE_NOALLOC)) {
-			if(pg->count > 1) {
-				/* CoW / MAP_SHARED: another process still
-				 * references this page - just drop our reference */
-				pg->count--;
-			} else {
-				kfree(P2V(leaf));
-			}
+		if(pg->count > 1) {
+			/* CoW / MAP_SHARED: another process still
+			 * references this page - just drop our reference */
+			pg->count--;
+		} else {
+			kfree(P2V(leaf));
 		}
 		current->rss--;
 #ifdef CONFIG_SYSVIPC
@@ -321,7 +333,7 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 			shm_rss--;
 		}
 #endif /* CONFIG_SYSVIPC */
-		unmap_user_page64_in(pml4, (unsigned long)start + (n * PAGE_SIZE));
+		unmap_user_page64_in(pml4, addr);
 	}
 #else
 	unsigned int n, offset;

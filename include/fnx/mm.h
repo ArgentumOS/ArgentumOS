@@ -31,6 +31,7 @@
 #define PAGE_SIZE		4096
 #define PAGE_SHIFT		0x0C
 #define PAGE_MASK		~(PAGE_SIZE - 1)	/* 0xFFFFF000 */
+#define PAGE_MASK64		~(4096UL - 1)		/* 0xFFFFFFFFFFFFF000 */
 #define PAGE_ALIGN(addr)	(((addr) + (PAGE_SIZE - 1)) & PAGE_MASK)
 #define PT_ENTRIES		(PAGE_SIZE / sizeof(unsigned int))
 #define PD_ENTRIES		(PAGE_SIZE / sizeof(unsigned int))
@@ -119,8 +120,8 @@ unsigned int setup_tmp_pgdir(unsigned int, unsigned int);
 addr_t get_mapped_addr(struct proc *, addr_t);
 int clone_pages(struct proc *);
 int free_page_tables(struct proc *);
-addr_t map_page(struct proc *, addr_t, unsigned int, unsigned int);
-addr_t map_page_flags(struct proc *, addr_t, unsigned int, unsigned int, int);
+addr_t map_page(struct proc *, addr_t, addr_t, unsigned int);
+addr_t map_page_flags(struct proc *, addr_t, addr_t, unsigned int, int);
 int unmap_page(addr_t);
 void mem_init(void);
 void mem_stats(void);

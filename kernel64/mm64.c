@@ -750,6 +750,44 @@ unsigned long user_leaf64_in(unsigned long pml4, unsigned long vaddr)
 	return e & PAGE_MASK64;
 }
 
+/* Like user_leaf64_in(), but returns the RAW present user 4KB leaf entry
+ * (phys | flags) instead of the masked physical frame. The flags matter to
+ * free_vma_pages(), which must distinguish OS-managed/device pages
+ * (PAGE_NOALLOC) from heap pages before indexing page_table or writing
+ * back. */
+unsigned long user_pte64_in(unsigned long pml4, unsigned long vaddr)
+{
+	unsigned long *lvl, e;
+
+	lvl = (unsigned long *)P2V64(pml4);
+	e = lvl[PML4_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(e & PAGE_MASK64);
+	e = lvl[PDPT_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	lvl = (unsigned long *)P2V64(e & PAGE_MASK64);
+	e = lvl[PD_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	if(e & X86_PTE_PS) {
+		return 0;	/* 2MB identity page - not a user leaf */
+	}
+	lvl = (unsigned long *)P2V64(e & PAGE_MASK64);
+	e = lvl[PT_INDEX(vaddr)];
+	if(!(e & X86_PTE_P)) {
+		return 0;
+	}
+	if(!(e & X86_PTE_US)) {
+		return 0;	/* supervisor leaf */
+	}
+	return e;
+}
+
 void tlb_flush64(void)
 {
 	unsigned long cr3;

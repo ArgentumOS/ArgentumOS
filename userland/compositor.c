@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <gui.h>
 #include <gui_proto.h>
@@ -70,6 +71,8 @@ struct window {
 
 static int fb_fd = -1;
 static int fb_w, fb_h;
+static uint32_t *fb_map;	/* userland mmap of /dev/fb0 (kernel-fixed) */
+static int fb_map_ok;
 
 static int listen_fd = -1;
 static struct client clients[MAX_CLIENTS];
@@ -80,6 +83,8 @@ static int next_id = 1;
 
 static int fb_open_device(void)
 {
+	size_t len;
+
 	fb_fd = open("/dev/fb0", O_RDWR);
 	if(fb_fd < 0) {
 		perror("open /dev/fb0");
@@ -93,16 +98,36 @@ static int fb_open_device(void)
 		return -1;
 	}
 	printf("COMP: fb0 %dx%d %d-bpp\n", fb_w, fb_h, FB_BPP);
+	/* map the framebuffer for direct pixel access */
+	len = (size_t)fb_w * fb_h * 4;
+	fb_map = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED,
+		      fb_fd, 0);
+	if(fb_map != MAP_FAILED) {
+		fb_map_ok = 1;
+		printf("COMP: fb mapped at %p\n", (void *)fb_map);
+	} else {
+		fb_map = NULL;
+		fb_map_ok = 0;
+		printf("COMP: fb mmap failed (%s); using pwrite\n",
+		       strerror(errno));
+	}
 	return 0;
 }
 
-/* blit a w x h pixel rect to the screen at (x, y) via the fb device
- * (userland mmap of /dev/fb0 is not exercised on FNX yet; the char
- * device's read/write path is the proven kernel route) */
+/* blit a w x h pixel rect to the screen at (x, y): direct memcpy into
+ * the mmap'd framebuffer, falling back to per-row writes on the fb
+ * device when the mmap is unavailable */
 static int fb_put_rect(int x, int y, int w, int h, const uint32_t *src)
 {
 	int dy;
 
+	if(fb_map_ok) {
+		for(dy = 0; dy < h; dy++) {
+			memcpy(fb_map + (size_t)(y + dy) * fb_w + x,
+			       src + (size_t)dy * w, (size_t)w * 4);
+		}
+		return 0;
+	}
 	for(dy = 0; dy < h; dy++) {
 		off_t off = ((off_t)(y + dy) * fb_w + x) * 4;
 		ssize_t n;
@@ -532,13 +557,75 @@ int main(void)
 	if(getenv("GUI_FBTEST")) {
 		int r = fb_open_device();
 		uint32_t px = 0x00FF0000;
+		uint32_t rb;
 
 		printf("COMP: fbtest rc=%d (%dx%d)\n", r, fb_w, fb_h);
 		if(!r) {
 			r = fb_put_rect(0, 0, 1, 1, &px);
-			printf("COMP: fbtest pwrite rc=%d\n", r);
+			printf("COMP: fbtest blit rc=%d (%s)\n", r,
+			       fb_map_ok ? "direct-mmap" : "pwrite");
+			if(!r && fb_map_ok) {
+				rb = fb_map[0];
+				printf("COMP: fbtest readback %06x %s\n", rb,
+				       rb == px ? "MATCH" : "MISMATCH");
+			}
 		}
 		return r ? 1 : 0;
+	}
+	if(getenv("GUI_FBMMAPTEST")) {
+		/* exercise the userland fb mmap path (kernel debug);
+		 * mode = which teardown steps to run */
+		const char *mode = getenv("GUI_FBMMAPTEST");
+		int r = fb_open_device();
+		void *m;
+
+		printf("COMP: fbmmap mode=%s rc=%d (%dx%d)\n", mode, r,
+		       fb_w, fb_h);
+		m = mmap(NULL, (size_t)fb_w * fb_h * 4, PROT_READ | PROT_WRITE,
+			 MAP_SHARED, fb_fd, 0);
+		printf("COMP: fbmmap mmap=%p errno=%d\n", m, errno);
+		if(m == MAP_FAILED) {
+			return 1;
+		}
+		if(strchr(mode, 'w')) {
+			uint32_t *p = m;
+
+			p[0] = 0x00FF0000;
+			p[100] = 0x0000FF00;
+			printf("COMP: fbmmap wrote pixels\n");
+		}
+		if(strchr(mode, 'r')) {
+			uint32_t *p = m;
+
+			printf("COMP: fbmmap readback %08x\n", p[0]);
+		}
+		if(strchr(mode, 'F')) {
+			/* fork while the fb is mapped: the child must survive
+			 * the fork's pml4 copy + its own exit teardown */
+			pid_t c = fork();
+			uint32_t *p = m;
+
+			if(c == 0) {
+				printf("COMP: fbmmap child sees %06x\n",
+				       p[0]);
+				_exit(0);
+			}
+			if(c > 0) {
+				int st;
+
+				waitpid(c, &st, 0);
+				printf("COMP: fbmmap fork child reaped\n");
+			}
+		}
+		if(strchr(mode, 'u')) {
+			if(munmap(m, (size_t)fb_w * fb_h * 4)) {
+				printf("COMP: fbmmap munmap errno=%d\n", errno);
+			} else {
+				printf("COMP: fbmmap munmap ok\n");
+			}
+		}
+		printf("COMP: fbmmap done\n");
+		return 0;
 	}
 	if(!sockpath || !*sockpath) {
 		sockpath = GUI_SOCKET_DEFAULT;

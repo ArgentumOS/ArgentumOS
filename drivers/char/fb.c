@@ -123,7 +123,17 @@ int fb_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
 
 int fb_mmap(struct inode *i, struct vma *vma)
 {
-	unsigned int fbaddr, addr;
+	/* 64-bit widths: vma->start/end are full user addresses
+	 * (e.g. 0x400000000000); a 32-bit loop variable truncates to 0
+	 * and runs until the address wraps - an unbounded map loop that
+	 * stomps the process's low mappings. */
+	addr_t fbaddr, addr;
+
+	/* a mapping longer than the framebuffer would walk fbaddr past
+	 * the device window and eventually wrap the physical address */
+	if(vma->end - vma->start > video.memsize) {
+		return -EINVAL;
+	}
 
 	fbaddr = (addr_t)video.fb_phys;
 	for (addr = vma->start; addr < vma->end; addr += 4096) {
