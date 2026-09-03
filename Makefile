@@ -150,6 +150,10 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	# user (root).
 	@mkdir -p $(ROOTFS64)/System/Configuration $(ROOTFS64)/Shared/Configuration \
 		$(ROOTFS64)/Users/root/Configuration
+	# system fonts (the GUI's TrueType backend; license in the tree at
+	# userland/fonts/licenses)
+	@mkdir -p $(ROOTFS64)/System/Fonts
+	@cp userland/fonts/DejaVuSans.ttf $(ROOTFS64)/System/Fonts/DejaVuSans.ttf
 	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
 	$(MUSL64_CC) userland/bfsquery.c -o $(ROOTFS64)/bin/bfsquery
 	$(MUSL64_CC) userland/bfsqtest.c -o $(ROOTFS64)/bin/bfsqtest
