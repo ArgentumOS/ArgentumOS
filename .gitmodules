@@ -4,6 +4,3 @@
 [submodule "third_party/toybox"]
 	path = third_party/toybox
 	url = https://github.com/landley/toybox
-[submodule "third_party/fltk"]
-	path = third_party/fltk
-	url = https://github.com/fltk/fltk

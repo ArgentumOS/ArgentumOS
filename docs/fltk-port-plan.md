@@ -1,9 +1,32 @@
 # FLTK → FNX compositor: native port plan
 
-Status: PLAN — for execution. Ports the FLTK 1.4 toolkit to run **natively
-on the FNX compositor**: FLTK becomes a libgui client and a custom FLTK
-platform driver maps windows, drawing, damage and input onto the FNX
-windowing protocol. No X11, no Wayland, no X server.
+**STATUS: FAILED — ABANDONED 2026-09.** The FLTK 1.4 native-port direction
+was discarded after a measured P1 start. The FLTK submodule and the
+`userland/fltk/x11-shadow` headers were removed from the tree. Kept below
+as a post-mortem so the findings are not re-derived. The GUI direction is
+open again; the surviving alternative is LVGL (C, integration-callbacks
+not driver classes) — see the C++ toolchain plan
+(`docs/cpp-toolchain-plan.md`), which remains valid regardless.
+
+**Why it failed (measured, not estimated):** FLTK 1.4's platform-neutral
+core refuses to compile without a concrete platform driver. Its core
+(`src/Fl.cxx` etc.) uses `Fl_X::first`/`Fl_X::flx()`, and `struct Fl_X`
+is only ever defined inside platform driver code — so even M1 ("a
+compiling `libfltk.a`") required scaffolding the full FNX window driver
+(`Fl_X` + the four `new*Driver()` classes) and, from there, the software
+`Fl_Graphics_Driver` and a font engine. That fused P1 into P2 and kept
+the port at its 8–14-person-week floor with no shortcut. Additionally,
+the core includes `FL/x11.H` via `FL/platform.H` (quoted, same-dir → not
+shadowable), pulling `<X11/Xlib.h>`; a minimal X11-header shadow was
+built and worked, but the driver-skeleton requirement is what sank the
+effort-vs-payoff, not the header.
+
+**What was tried (now removed):** FLTK release-1.4.5 as a pristine
+submodule; config headers via a trimmed cmake configure; the ~156-file
+core source list; `userland/fltk/x11-shadow/X11/{Xlib,Xutil,Xatom}.h`
+minimal compat headers.
+
+Original plan text follows for the record.
 
 Scope note: this is the concrete port chosen from the GUI-toolkit survey
 (FLTK-direct). Earlier exploration is parked but not abandoned: LVGL
