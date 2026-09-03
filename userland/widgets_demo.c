@@ -355,50 +355,6 @@ int main(void)
 		view_add(r, g_status);
 	}
 
-	/* debug: where is the Text widget + how much content */
-	{
-		view_t *txtv = NULL;
-
-		/* find the text widget in the tree (role == "text") */
-		{
-			/* the demo keeps no handle; walk from g_root */
-			view_t *stack[128], *vv;
-			int sp = 0, i;
-
-			stack[sp++] = g_root;
-			while(sp && !txtv) {
-				vv = stack[--sp];
-				if(vv->role && !strcmp(vv->role, "text")) {
-					txtv = vv;
-					break;
-				}
-				for(i = 0; i < 128 && vv->first; i++) {
-					/* push all children */
-				}
-				{
-					view_t *c;
-					int n = 0;
-
-					for(c = vv->first; c && n < 200;
-					    c = c->next) {
-						if(sp < 1000) {
-							stack[sp++] = c;
-						}
-						n++;
-					}
-				}
-			}
-		}
-		if(txtv) {
-			printf("WDEMO: text view frame %dx%d at %d,%d "
-			       "content %d bytes\n",
-			       txtv->w, txtv->h, txtv->x, txtv->y,
-			       (int)strlen(text_get_text(txtv)));
-		} else {
-			printf("WDEMO: text view NOT FOUND\n");
-		}
-	}
-
 	/* the desktop starts with the keyboard focus in the name field */
 	view_focus(g_root, g_field);
 
