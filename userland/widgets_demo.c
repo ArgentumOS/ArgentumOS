@@ -216,6 +216,21 @@ int main(void)
 
 			view_mouse(g_root, wx, wy, down);
 		}
+		if(r == 1 && ev.type == GUI_EVENT_KEY && ev.state == 1) {
+			if(ev.key == '\t') {
+				view_t *nv = view_focus_next(g_root);
+
+				/* keyboard focus needs a repaint (the focus
+				 * indicator moved) */
+				if(nv) {
+					view_invalidate(nv);
+				}
+			} else {
+				/* Enter/Space activate the focused button;
+				 * other keys go to the focused widget */
+				view_key(g_root, ev.key);
+			}
+		}
 		/* paint whatever the actions dirtied */
 		{
 			int dx, dy, dw, dh;

@@ -12,6 +12,7 @@
 #include <fnx/ps2.h>
 #include <fnx/serial.h>
 #include <fnx/keyboard.h>
+#include <fnx/kbdaux.h>
 #include <fnx/reboot.h>
 #include <fnx/console.h>
 #include <fnx/vgacon.h>
@@ -277,6 +278,7 @@ void set_leds(unsigned char led_status)
 void irq_keyboard(int num, struct sigcontext *sc)
 {
 	unsigned char scode;
+
 	struct tty *tty;
 	struct vconsole *vc;
 
@@ -343,6 +345,84 @@ static struct vconsole *kbd_vc(void)
 		return (struct vconsole *)tty->driver_data;
 	}
 	return &kbd_dummy_vc;
+}
+
+/* Normalize a resolved key (after the keymap lookup) into a /dev/kbd
+ * keysym + modifiers and emit it. Returns 1 when an event was queued. */
+static int kbdaux_gui_emit(__key_t key, int vc_capslock, int vc_numlock)
+{
+	static const unsigned char pad_sem[10] = {
+		KB_KEY_INS, KB_KEY_END, KB_KEY_DOWN, KB_KEY_PGDN, KB_KEY_LEFT,
+		0,		KB_KEY_RIGHT, KB_KEY_HOME, KB_KEY_UP,
+		KB_KEY_PGUP
+	};
+	int type = key & 0xFF00;
+	int c = key & 0xFF;
+	int nkey = -1;
+	unsigned char mods = 0;
+
+	if(shift) {
+		mods |= KB_MOD_SHIFT;
+	}
+	if(ctrl) {
+		mods |= KB_MOD_CTRL;
+	}
+	if(alt) {
+		mods |= KB_MOD_ALT;
+	}
+	if(altgr) {
+		mods |= KB_MOD_ALTGR;
+	}
+	if(vc_capslock) {
+		mods |= KB_MOD_CAPS;
+	}
+	if(vc_numlock) {
+		mods |= KB_MOD_NUM;
+	}
+
+	switch(type) {
+		case 0:			/* plain char / control */
+		case LETTER_KEYS:
+			if(c < 0x80) {
+				nkey = c;
+			}
+			break;
+		case META_KEYS:		/* Alt+key (mods.alt already set) */
+			if(c < 0x80) {
+				nkey = c;
+			}
+			break;
+		case SPEC_KEYS:
+			if(key == CR) {
+				nkey = '\r';
+			}
+			break;
+		case FN_KEYS:
+			if(c <= 11) {
+				nkey = KB_KEY_F1 + c;
+			}
+			break;
+		case PAD_KEYS:
+			if(c <= 9) {
+				if(vc_numlock) {
+					nkey = pad_chars[c];
+				} else {
+					nkey = pad_sem[c];
+				}
+			} else if(c == 16) {		/* ./Del key */
+				nkey = vc_numlock ? '.' : KB_KEY_DEL;
+			} else if(c >= 10 && c <= 15) {
+				nkey = pad_chars[c];	/* + - * / CR , */
+			}
+			break;
+		default:
+			break;	/* DEAD/CONS keys: not GUI keys */
+	}
+	if(nkey < 0) {
+		return 0;
+	}
+	kbdaux_event(nkey, mods, 1);
+	return 1;
 }
 
 static void process_scancode(unsigned char scode, int is_ext)
@@ -515,6 +595,15 @@ static void process_scancode(unsigned char scode, int is_ext)
 	if(altsysrq) {
 		/* treat 0-9 and a-z keys as normal */
 		type &= ~META_KEYS;
+	}
+
+	/* the GUI keyboard (/dev/kbd): when the session compositor has it
+	 * open it owns the keyboard - normalize the resolved key into a
+	 * /dev/kbd event and skip the console emission entirely (no chars
+	 * leak into the serial console, no dead-key/console state here) */
+	if(kbdaux_active()) {
+		kbdaux_gui_emit(key, vc->capslock, vc->numlock);
+		return;
 	}
 
 	switch(type) {

@@ -1175,31 +1175,50 @@ static void button_mouse_down(view_t *v, int x, int y)
 	view_invalidate(v);
 }
 
-static void button_mouse_up(view_t *v, int x, int y)
+/* fire a button's action + toggle latch (shared by mouse release and
+ * the keyboard-activation path) */
+static void button_activate(view_t *v)
 {
 	struct button_data *d = v->data;
+
+	if(d) {
+		if(d->action) {
+			d->action(v, d->data);
+		}
+		if(d->toggle) {
+			int on = (v->flags & VIEW_LATCHED) == 0;
+
+			if(on) {
+				v->flags |= VIEW_LATCHED;
+			} else {
+				v->flags &= ~VIEW_LATCHED;
+			}
+			d->toggle(v, d->data, on);
+		}
+	}
+	view_invalidate(v);
+}
+
+static void button_mouse_up(view_t *v, int x, int y)
+{
 	int inside = x >= 0 && y >= 0 && x < v->w && y < v->h;
 	int was_tracking = (v->flags & VIEW_TRACKING) != 0;
 
 	v->flags &= ~VIEW_TRACKING;
 	if(was_tracking && inside) {
-		if(d) {
-			if(d->action) {
-				d->action(v, d->data);
-			}
-			if(d->toggle) {
-				int on = (v->flags & VIEW_LATCHED) == 0;
-
-				if(on) {
-					v->flags |= VIEW_LATCHED;
-				} else {
-					v->flags &= ~VIEW_LATCHED;
-				}
-				d->toggle(v, d->data, on);
-			}
-		}
+		button_activate(v);
 	}
-	view_invalidate(v);
+}
+
+/* keyboard activation: Enter or Space on the focused button acts like a
+ * click-release on it */
+static void button_key_down(view_t *v, int key)
+{
+	if(key == '\r' || key == ' ') {
+		v->flags |= VIEW_TRACKING;
+		view_invalidate(v);
+		button_activate(v);
+	}
 }
 
 static void button_destroy(view_t *v)
@@ -1218,6 +1237,7 @@ static const struct view_ops button_ops = {
 	.destroy = button_destroy,
 	.mouse_down = button_mouse_down,
 	.mouse_up = button_mouse_up,
+	.key_down = button_key_down,
 };
 
 static const struct view_ops toggle_ops = {
@@ -1225,6 +1245,7 @@ static const struct view_ops toggle_ops = {
 	.destroy = button_destroy,
 	.mouse_down = button_mouse_down,
 	.mouse_up = button_mouse_up,
+	.key_down = button_key_down,
 };
 
 static view_t *button_create_common(const char *text, const char *role,

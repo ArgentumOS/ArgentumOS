@@ -12,6 +12,7 @@
 #include <fnx/ps2.h>
 #include <fnx/keyboard.h>
 #include <fnx/psaux.h>
+#include <fnx/kbdaux.h>
 #include <fnx/stdio.h>
 
 /*
@@ -228,6 +229,9 @@ void ps2_init(void)
 	/* enable device(s) */
 	ps2_write(PS2_COMMAND, PS2_CMD_ENABLE_CH1);
 	keyboard_init();
+#ifdef CONFIG_KBDAUX
+	kbdaux_init();
+#endif /* CONFIG_KBDAUX */
 #ifdef CONFIG_PSAUX
 	if(supp_ports > 1) {
 		ps2_write(PS2_COMMAND, PS2_CMD_ENABLE_CH2);

@@ -68,6 +68,30 @@ int window_damage(gui_window_t *window, int x, int y, int w, int h);
 
 /* ---- input --------------------------------------------------------- */
 
+/* keyboard keysyms (mirror the /dev/kbd codes): 0x00-0x7F = ASCII
+ * char/control ('a', 'A', '1', '\t' = 9, '\r' = 13, ESC = 27, BS = 127);
+ * 0x80+ = semantic keys */
+#define GUI_KEY_UP	0x80
+#define GUI_KEY_DOWN	0x81
+#define GUI_KEY_LEFT	0x82
+#define GUI_KEY_RIGHT	0x83
+#define GUI_KEY_HOME	0x84
+#define GUI_KEY_END	0x85
+#define GUI_KEY_PGUP	0x86
+#define GUI_KEY_PGDN	0x87
+#define GUI_KEY_INS	0x88
+#define GUI_KEY_DEL	0x89
+#define GUI_KEY_F1	0x8A
+#define GUI_KEY_F12	(GUI_KEY_F1 + 11)
+
+/* key modifiers (KEY events) */
+#define GUI_MOD_SHIFT	0x01
+#define GUI_MOD_CTRL	0x02
+#define GUI_MOD_ALT	0x04
+#define GUI_MOD_ALTGR	0x08
+#define GUI_MOD_CAPS	0x10
+#define GUI_MOD_NUM	0x20
+
 typedef enum gui_event_type {
 	GUI_EVENT_NONE = 0,
 	GUI_EVENT_KEY,		/* v.win focused; v.key = keycode */
@@ -82,8 +106,10 @@ typedef struct gui_event {
 	int win;		/* window id (-1 = desktop) */
 	int x, y, w, h;		/* mouse pos (screen) / resize size */
 	int key;		/* keycode for KEY events */
+	int mods;		/* KEY: modifier bitmask (GUI_MOD_*) */
 	int button;		/* MOUSE: 0 none / 1 left / 2 right / 4 middle */
-	int state;		/* MOUSE: 0 released / 1 pressed / 2 motion */
+	int state;		/* MOUSE: 0 released / 1 pressed / 2 motion;
+				 * KEY: 1 press / 0 release */
 } gui_event_t;
 
 /* Poll the display for one event. Waits up to timeout_ms (0 = poll,

@@ -94,6 +94,7 @@ static int mouse_fd = -1;
 static int mouse_x, mouse_y;	/* pointer position (screen) */
 static int mouse_buttons;	/* current button state */
 static int mouse_grab;		/* window id capturing the pointer, -1 */
+static int kbd_fd = -1;		/* /dev/kbd (key events) */
 static int focus_win;		/* window id holding keyboard focus, -1 */
 static unsigned char mouse_pkt[3];
 static int mouse_pkt_n;
@@ -293,6 +294,34 @@ static void send_event(int win_id, gui_event_type_t type,
 	msg_send(fd, payload, 1 + sizeof(gui_event_t));
 }
 
+/* send a KEY event (keysym + modifiers) to window id's owner */
+static void send_key_event(int win_id, int key, int mods, int state)
+{
+	struct window *w = window_find(win_id);
+	unsigned char payload[1 + sizeof(gui_event_t)];
+	int fd;
+
+	if(!w) {
+		return;
+	}
+	fd = window_owner_fd(w);
+	if(fd < 0) {
+		return;
+	}
+	payload[0] = GUI_MSG_EVENT;
+	{
+		gui_event_t *e = (gui_event_t *)(payload + 1);
+
+		memset(e, 0, sizeof(*e));
+		e->type = GUI_EVENT_KEY;
+		e->win = win_id;
+		e->key = key;
+		e->mods = mods;
+		e->state = state;
+	}
+	msg_send(fd, payload, 1 + sizeof(gui_event_t));
+}
+
 /* move the keyboard focus to the window's owner (FOCUS events) */
 static void set_focus_win(int win_id)
 {
@@ -451,6 +480,59 @@ static void input_open_mouse(void)
 		mouse_fd = -1;
 		cur_vis = 0;
 		printf("COMP: no mouse (%s)\n", strerror(errno));
+	}
+}
+
+/* ---- keyboard input (/dev/kbd: 4-byte {key, mods, state, pad}) ----- */
+
+static void kbd_process_record(unsigned char *r)
+{
+	int key = r[0];
+	int mods = r[1];
+	int state = r[2];
+
+	/* keys go to the window holding the keyboard focus */
+	if(focus_win >= 0) {
+		send_key_event(focus_win, key, mods, state);
+	}
+}
+
+static void kbd_drain(void)
+{
+	unsigned char buf[64];
+	ssize_t n;
+
+	while((n = read(kbd_fd, buf, sizeof(buf))) > 0) {
+		int i;
+
+		for(i = 0; i + 3 < n; i += 4) {
+			kbd_process_record(buf + i);
+		}
+	}
+}
+
+static void input_open_keyboard(void)
+{
+	const char *src = getenv("GUI_KBD");
+
+	if(!src || !*src) {
+		src = "/dev/kbd";
+	}
+	kbd_fd = open(src, O_RDONLY | O_NONBLOCK);
+	if(kbd_fd >= 0 && isatty(kbd_fd)) {
+		struct termios raw;
+
+		/* test sources ride a serial line: raw 8-bit bytes */
+		if(tcgetattr(kbd_fd, &raw) == 0) {
+			cfmakeraw(&raw);
+			tcsetattr(kbd_fd, TCSANOW, &raw);
+		}
+	}
+	if(kbd_fd >= 0) {
+		printf("COMP: keyboard on %s\n", src);
+	} else {
+		kbd_fd = -1;
+		printf("COMP: no keyboard (%s)\n", strerror(errno));
 	}
 }
 
@@ -841,6 +923,12 @@ static void handle_msg(struct client *c, const unsigned char *p, size_t len)
 			w->visible = 1;
 			printf("COMP: show win %d\n", w->id);
 			screen_damage(w->x, w->y, w->w, w->h);
+			/* a newly shown window takes the keyboard focus
+			 * when nothing else has it (the desktop is
+			 * keyboard-usable without a prior mouse click) */
+			if(focus_win < 0) {
+				set_focus_win(w->id);
+			}
 			break;
 		case GUI_MSG_WINDOW_HIDE:
 			w->visible = 0;
@@ -1131,6 +1219,7 @@ int main(void)
 	 * at the display centre */
 	input_open_mouse();
 	cursor_paint();
+	input_open_keyboard();
 
 	while(1) {
 		fd_set rfds;
@@ -1143,6 +1232,12 @@ int main(void)
 			FD_SET(mouse_fd, &rfds);
 			if(mouse_fd > maxfd) {
 				maxfd = mouse_fd;
+			}
+		}
+		if(kbd_fd >= 0) {
+			FD_SET(kbd_fd, &rfds);
+			if(kbd_fd > maxfd) {
+				maxfd = kbd_fd;
 			}
 		}
 		for(i = 0; i < MAX_CLIENTS; i++) {
@@ -1195,7 +1290,10 @@ int main(void)
 		}
 		/* service requests first so a client waiting on an ack can
 		 * make progress; only then generate new events from the
-		 * mouse (with non-blocking sends this cannot deadlock) */
+		 * mouse and keyboard (non-blocking sends cannot deadlock) */
+		if(kbd_fd >= 0 && FD_ISSET(kbd_fd, &rfds)) {
+			kbd_drain();
+		}
 		if(mouse_fd >= 0 && FD_ISSET(mouse_fd, &rfds)) {
 			input_drain();
 		}

@@ -54,6 +54,7 @@
 #define CONFIG_NET
 #define CONFIG_PRINTK64
 #define CONFIG_PSAUX
+#define CONFIG_KBDAUX
 #define CONFIG_UNIX98_PTYS
 
 
