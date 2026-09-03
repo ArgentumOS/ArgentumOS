@@ -1,0 +1,46 @@
+
+
+/
+    Applications/
+
+    System/
+        Configuration/
+        Devices/
+            Disk/
+                AHCI/
+                    Disk0/
+                        Partition0
+                        Partition1
+                        Partition2
+            USB/
+                Keyboard
+                Mouse
+        Documentation/
+            HTML/
+                FNX/
+                    index.html
+            PDF/
+                FNX/
+                    FNX.pdf
+        Libraries/
+            libc.so
+            libz.so
+        Processes/
+            ${PID}
+        Resources/
+            Fonts/
+            Images/
+                Icons/
+                Wallpaper/
+            Sounds/
+            Videos/
+        Source Code/
+        Temporary Files/
+        Tools/
+        Variable Data/
+    
+    Users/
+        Admin/
+        $USER/
+    
+    Volumes/
