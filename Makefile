@@ -141,7 +141,6 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	$(MUSL64_CC) -Iinclude userland/compositor.c -o $(ROOTFS64)/bin/compositor
 	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o $(ROOTFS64)/bin/gui_smoke
 	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o $(ROOTFS64)/bin/gui_demo
-	$(MUSL64_CC) -Iinclude -Iuserland userland/widgets_demo.c userland/libwidgets.c userland/font8x16.c userland/font_ttf.c userland/text.c userland/libgui.c -o $(ROOTFS64)/bin/widgets_demo
 	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o $(ROOTFS64)/bin/shm_leak_test
 	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o $(ROOTFS64)/bin/shm_resize_test
 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o $(ROOTFS64)/bin/shm_cap_test
@@ -150,10 +149,6 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	# user (root).
 	@mkdir -p $(ROOTFS64)/System/Configuration $(ROOTFS64)/Shared/Configuration \
 		$(ROOTFS64)/Users/root/Configuration
-	# system fonts (the GUI's TrueType backend; license in the tree at
-	# userland/fonts/licenses)
-	@mkdir -p $(ROOTFS64)/System/Fonts
-	@cp userland/fonts/DejaVuSans.ttf $(ROOTFS64)/System/Fonts/DejaVuSans.ttf
 	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
 	$(MUSL64_CC) userland/bfsquery.c -o $(ROOTFS64)/bin/bfsquery
 	$(MUSL64_CC) userland/bfsqtest.c -o $(ROOTFS64)/bin/bfsqtest
