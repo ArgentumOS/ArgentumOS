@@ -202,6 +202,7 @@ int unix_connect(struct socket *sc, const struct sockaddr *addr, int addrlen)
 		return errno;
 	}
 	wakeup(up->socket);
+	wakeup(&do_select);	/* a select()-ing listener must re-check */
 	sleep(sc, PROC_INTERRUPTIBLE);
 	return 0;
 }
