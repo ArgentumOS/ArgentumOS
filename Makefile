@@ -57,6 +57,11 @@ QEMU_TOOLS ?= $(shell if [ -d "$(HOME)/.local/share/fnx-qemu-tools" ]; then echo
 # the init-time DHCP handshake leases 10.0.2.15 from SLIRP, so
 # `ping 10.0.2.2` works out of the box. Set QEMU_NET= to boot without it.
 QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n1
+# The root disk must sit on an AHCI controller: the kernel registers block
+# major 8 (/dev/sda) only for AHCI, and root=/dev/sda is baked into the
+# kernel cmdline. The ESP stays on the PIIX IDE (index 0) so OVMF can boot
+# it. Set QEMU_DRIVES= to override.
+QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=$(ROOTIMG),format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 # ---------------------------------------------------------------------------
 
 CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
@@ -78,11 +83,11 @@ run-bfs: .build/ovmf/OVMF.fd rootbfs build64
 run-qemu:
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=$(ROOTIMG),format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=$(ROOTIMG),format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_EXTRA); \
 	else \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) -drive file=.build/esp.img,format=raw -drive file=$(ROOTIMG),format=raw $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_EXTRA); \
 	fi
 
 # --- FNX native x86_64 userland (port phase B): static ELF64 binaries
