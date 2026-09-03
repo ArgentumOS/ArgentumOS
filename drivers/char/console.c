@@ -133,15 +133,6 @@ unsigned short int ansi_color_table[] = {
 	COLOR_WHITE
 };
 
-static int is_vconsole(__dev_t dev)
-{
-	if(MAJOR(dev) == VCONSOLES_MAJOR && MINOR(dev) <= NR_VCONSOLES) {
-		return 1;
-	}
-
-	return 0;
-}
-
 static void adjust(struct vconsole *vc, int x, int y)
 {
 	if(x < 0) {
@@ -977,9 +968,6 @@ void vconsole_deltab(struct tty *tty)
 
 void console_init(void)
 {
-	int syscon, n;
-	struct tty *tty;
-
 	if(video.flags & VPF_VGA) {
 		printk("console   0x%04x-0x%04x     -\t%s\n", video.port, video.port + 1, video.signature);
 	}
@@ -987,83 +975,16 @@ void console_init(void)
 		printk("console                     -\tcolor framebuffer, screen=%dx%d, font=%dx%d\n", video.columns, video.lines, video.fb_char_width, video.fb_char_height);
 	}
 
-	for(n = 1; n <= NR_VCONSOLES; n++) {
-		if((tty = register_tty(MKDEV(VCONSOLES_MAJOR, n)))) {
-			tty->driver_data = (void *)&vc[n];
-			tty->stop = vconsole_stop;
-			tty->start = vconsole_start;
-			tty->deltab = vconsole_deltab;
-			tty->reset = vconsole_reset;
-			tty->input = do_cook;
-			tty->output = vconsole_write;
-			vc[n].tty = tty;
-			if(video.flags & VPF_VGA) {
-				vc[n].screen = (short int *)kmalloc(PAGE_SIZE);
-			}
-			if(video.flags & VPF_VESAFB) {
-				vc[n].screen = vc_screen[n];
-			}
-			vc[n].vidmem = NULL;
-			memset_w(vc[n].screen, BLANK_MEM, SCREEN_SIZE);
-			vconsole_reset(tty);
-		}
-	}
-	printk("\t\t\t\t%d virtual consoles\n", NR_VCONSOLES);
+	/* Virtual consoles are DISABLED: the session compositor owns the
+	 * framebuffer and the kernel console is the serial (ttyS0). No
+	 * tty0-N vconsoles, no vc[] screens, no fbcon/vgacon text driver -
+	 * nothing kernel-side draws on the display. */
 
-#ifdef CONFIG_QEMU_DEBUGCON
-	if(kstat.flags & KF_HAS_DEBUGCON) {
-		printk("\t\t\t\tQEMU Bochs-style debug console emulation enabled\n");
-	}
-#endif /* CONFIG_QEMU_DEBUGCON */
-
-	current_cons = 1;
-	video.show_cursor(&vc[current_cons], ON);
-	vc[current_cons].vidmem = (unsigned char *)video.address;
-	vc[current_cons].flags |= CONSOLE_HAS_FOCUS;
-
-	if(video.flags & VPF_VGA) {
-		memcpy_w(vc[current_cons].screen, video.address, SCREEN_SIZE);
-	}
-
-	video.get_curpos(&vc[current_cons]);
-	video.update_curpos(&vc[current_cons]);
-	video.buf_y = vc[current_cons].y;
-	video.buf_top = 0;
-
-	SET_MINOR(console_device.minors, 0);
-	SET_MINOR(console_device.minors, 1);
-	for(n = 0; n <= NR_VCONSOLES; n++) {
-		SET_MINOR(tty_device.minors, n);
-	}
-
+	SET_MINOR(console_device.minors, 0);	/* /dev/tty */
+	SET_MINOR(console_device.minors, 1);	/* /dev/console */
 	register_device(CHR_DEV, &console_device);
-	register_device(CHR_DEV, &tty_device);
 
 	/* devfs node registry (FreeBSD make_dev model) */
 	devfs_make_node("console", MKDEV(SYSCON_MAJOR, 1), S_IFCHR | S_IRUSR | S_IWUSR);
 	devfs_make_node("tty", MKDEV(SYSCON_MAJOR, 0), S_IFCHR | S_IRUSR | S_IWUSR);
-	{
-		char dname[16];
-		for(n = 0; n <= NR_VCONSOLES; n++) {
-			sprintk(dname, "tty%d", n);
-			devfs_make_node(dname, MKDEV(VCONSOLES_MAJOR, n), S_IFCHR | S_IRUSR | S_IWUSR);
-		}
-	}
-
-	/* check if a vconsole will act as a system console */
-	for(n = 0, syscon = 0; n < NR_SYSCONSOLES; n++) {
-		if(is_vconsole(sysconsole_table[n].dev)) {
-			if((tty = get_tty(sysconsole_table[n].dev))) {
-				if(!syscon) {
-					syscon = tty->dev;
-				}
-				register_console(tty);
-			}
-		}
-	}
-	if(syscon) {
-		/* flush early log into the first console */
-		tty = get_tty(syscon);
-		flush_log_buf(tty);
-	}
 }

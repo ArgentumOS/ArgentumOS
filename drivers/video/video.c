@@ -41,33 +41,18 @@ int video_map_framebuffer(unsigned int phys, unsigned int memsize)
 
 void video_init(void)
 {
-#ifdef CONFIG_PCI
-	/* native display adapters first: they provide a linear framebuffer
-	 * even when the firmware's GOP could not (e.g. the ATI Rage XL,
-	 * which OVMF has no driver for - the boot would otherwise fall
-	 * back to the VGA text console with no /dev/fb0 at all). */
-	if(svga_init()) {
-		video.flags = (video.flags & ~VPF_VGA) | VPF_VESAFB;
-	} else if(ati_init()) {
-		video.flags = (video.flags & ~VPF_VGA) | VPF_VESAFB;
-	}
-#endif /* CONFIG_PCI */
-
+	/* GOP-only display: the native adapter drivers (svga/ati/bga) are
+	 * disabled - the UEFI GOP framebuffer (set up by gop_video_init in
+	 * main.c) is used directly and the session compositor owns it. The
+	 * native drivers were suspects for hijacking the display state; the
+	 * compositor needs /dev/fb0 (fb_init) but no kernel text console on
+	 * the same LFB (fbcon_init is skipped for the same reason). */
 	if(video.flags & VPF_VGA) {
 		vgacon_init();
 		return;
 	}
 
-#ifdef CONFIG_PCI
-#ifdef CONFIG_BGA
-	if(video.flags & VPF_VESAFB) {
-		bga_init();
-	}
-#endif /* CONFIG_BGA */
-#endif /* CONFIG_PCI */
-
 	if(video.flags & VPF_VESAFB) {
 		fb_init();
-		fbcon_init();
 	}
 }

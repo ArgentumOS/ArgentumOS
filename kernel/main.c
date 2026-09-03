@@ -18,6 +18,7 @@
 #include <fnx/string.h>
 #include <fnx/video.h>
 #include <fnx/console.h>
+#include <fnx/serial.h>
 #ifdef __x86_64__
 #include <fnx/gop.h>
 #endif
@@ -62,9 +63,12 @@ static void set_default_values(void)
 	/* no rootfstype default: mount_root() probes the disk filesystems
 	 * (minix -> ext2 -> iso9660 -> bfs) when rootfstype= is absent */
 
-	/* console is /dev/tty0 */
+	/* console defaults to /dev/tty0, but virtual consoles are disabled
+	 * in this build (the session compositor owns the display and the
+	 * console is the serial), so a boot without console= falls back
+	 * to the first serial port (ttyS0) */
 	if(!kparms.syscondev) {
-		kparms.syscondev = MKDEV(VCONSOLES_MAJOR, 0);
+		kparms.syscondev = MKDEV(SERIAL_MAJOR, 1 << SERIAL_MSF);
 		add_sysconsoledev(kparms.syscondev);
 	}
 }

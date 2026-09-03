@@ -82,6 +82,8 @@ char any_key_to_reboot = 0;
 
 static struct bh keyboard_bh = { 0, &irq_keyboard_bh, NULL };
 static struct interrupt irq_config_keyboard = { 0, "keyboard", &irq_keyboard, NULL };
+static struct tty *kbd_target_tty(void);
+static struct vconsole *kbd_vc(void);
 
 struct diacritic *diacr;
 static char *diacr_chars = "`'^~\"";
@@ -278,9 +280,15 @@ void irq_keyboard(int num, struct sigcontext *sc)
 	struct tty *tty;
 	struct vconsole *vc;
 
-	tty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
-	vc = (struct vconsole *)tty->driver_data;
+	tty = kbd_target_tty();
+	vc = kbd_vc();
 	(void)vc;
+	if(!tty) {
+		/* no console at all (vconsoles disabled and no serial):
+		 * nothing to feed */
+		inport_b(PS2_DATA);
+		return;
+	}
 
 	scode = inport_b(PS2_DATA);
 
@@ -321,6 +329,22 @@ static struct tty *kbd_target_tty(void)
 	return get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
 }
 
+/* the current virtual console, or a static zeroed fallback when virtual
+ * consoles are disabled (serial-only console): key state (caps/num/scroll)
+ * still works, the cooked output goes to kbd_target_tty() */
+static struct vconsole kbd_dummy_vc;
+
+static struct vconsole *kbd_vc(void)
+{
+	struct tty *tty;
+
+	tty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
+	if(tty) {
+		return (struct vconsole *)tty->driver_data;
+	}
+	return &kbd_dummy_vc;
+}
+
 static void process_scancode(unsigned char scode, int is_ext)
 {
 	struct tty *tty;
@@ -331,8 +355,10 @@ static void process_scancode(unsigned char scode, int is_ext)
 	int mod;
 
 	tty = kbd_target_tty();
-	vc = (struct vconsole *)get_tty(
-		MKDEV(VCONSOLES_MAJOR, current_cons))->driver_data;
+	vc = kbd_vc();
+	if(!tty) {
+		return;
+	}
 
 	if(is_ext) {
 		key = e0_keys[scode & 0x7F];
@@ -602,32 +628,46 @@ static void process_scancode(unsigned char scode, int is_ext)
 
 void irq_keyboard_bh(struct sigcontext *sc)
 {
-	struct tty *tty;
+	struct tty *vtty, *tty;
 	struct vconsole *vc;
 	char value;
 
-	tty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
-	vc = (struct vconsole *)tty->driver_data;
+	vtty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
+	vc = kbd_vc();
 
-	video.screen_on(vc);
-
-	if(do_switch_console >= 0) {
-		value = do_switch_console;
-		do_switch_console = -1;
-		vconsole_select(value);
+	if(video.screen_on) {
+		video.screen_on(vc);
 	}
 
-	if(do_buf_scroll) {
-		value = do_buf_scroll;
-		do_buf_scroll = 0;
-		video.buf_scroll(vc, value);
+	/* console switching + scrollback need a real virtual console; with
+	 * vconsoles disabled (serial-only, compositor owns the display)
+	 * those keys are inert. */
+	if(vtty && vc) {
+		if(do_switch_console >= 0) {
+			value = do_switch_console;
+			do_switch_console = -1;
+			vconsole_select(value);
+		}
+
+		if(do_buf_scroll) {
+			value = do_buf_scroll;
+			do_buf_scroll = 0;
+			video.buf_scroll(vc, value);
+		}
 	}
 
-	if(do_setleds) {
+	/* keyboard LEDs track the lock state even without a video console */
+	if(do_setleds && vc) {
 		do_setleds = 0;
 		set_leds(vc->led_status);
 	}
 
+	/* scroll-lock flow control applies to the output tty (the serial
+	 * console when vconsoles are disabled) */
+	tty = kbd_target_tty();
+	if(!tty) {
+		return;
+	}
 	if(do_tty_start) {
 		do_tty_start = do_tty_stop = 0;
 		tty->start(tty);
@@ -694,10 +734,18 @@ void keyboard_init(void)
 	struct vconsole *vc;
 	int errno, irq_ok;
 
+	/* virtual consoles may be disabled (serial-only console): the
+	 * keyboard then has no vc to drive, so skip the video hooks */
 	tty = get_tty(MKDEV(VCONSOLES_MAJOR, current_cons));
-	vc = (struct vconsole *)tty->driver_data;
-	video.screen_on(vc);
-	video.cursor_blink((addr_t)vc);
+	if(tty) {
+		vc = (struct vconsole *)tty->driver_data;
+		if(video.screen_on) {
+			video.screen_on(vc);
+		}
+		if(video.cursor_blink) {
+			video.cursor_blink((addr_t)vc);
+		}
+	}
 
 	add_bh(&keyboard_bh);
 	/* Register the handler but keep IRQ1 MASKED until the polling-based

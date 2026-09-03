@@ -8,6 +8,7 @@
  */
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
 #include <stdlib.h>
@@ -16,6 +17,43 @@ static void try_mount(const char *fstype, const char *target)
 {
 	if (mount(fstype, target, fstype, 0, NULL) < 0)
 		fprintf(stderr, "INIT: mount %s on %s: %m\n", fstype, target);
+}
+
+/* start the session compositor (owns /dev/fb0) + the animated demo as
+ * daemons, so `make run-uefi` shows the desktop without any typing.
+ * The demo runs attach-only (GUI_NO_SPAWN): init started the compositor,
+ * so it must never fork a second one. */
+static void start_gui(void)
+{
+	pid_t pid;
+
+	if (access("/dev/fb0", F_OK) < 0)
+		return;	/* no framebuffer: nothing to paint */
+
+	pid = fork();
+	if (pid == 0) {
+		char *argv[] = { "compositor", NULL };
+		char *envp[] = { "HOME=/", NULL };
+		int fd;
+
+		/* keep the serial console clean: the compositor is a
+		 * display server, not a console client */
+		fd = open("/dev/null", O_WRONLY);
+		if (fd >= 0) {
+			dup2(fd, 1);
+			dup2(fd, 2);
+		}
+		execve("/bin/compositor", argv, envp);
+		_exit(127);
+	}
+	pid = fork();
+	if (pid == 0) {
+		char *argv[] = { "gui_demo", NULL };
+		char *envp[] = { "HOME=/", "GUI_NO_SPAWN=1", NULL };
+
+		execve("/bin/gui_demo", argv, envp);
+		_exit(127);
+	}
 }
 
 int main(void)
@@ -28,6 +66,9 @@ int main(void)
 	/* the mount points exist in the root image (Makefile userland64) */
 	try_mount("proc", "/proc");
 	try_mount("devpts", "/dev/pts");
+
+	/* graphical boots: the compositor + demo paint the display */
+	start_gui();
 
 	for (;;) {
 		pid = fork();

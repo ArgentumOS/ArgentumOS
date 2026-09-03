@@ -33,6 +33,7 @@
 #include <gui.h>
 #include <gui_proto.h>
 
+
 /* /dev/fb0 geometry: the kernel exposes width/height via these custom
  * ioctls (drivers/char/fb.c); v1 assumes a 32-bpp framebuffer (the
  * UEFI GOP mapping used by FNX). */
@@ -555,6 +556,9 @@ int main(void)
 	const char *sockpath = getenv("GUI_SOCKET");
 	struct sockaddr_un addr;
 	int i;
+
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 
 	if(getenv("GUI_SELFCHECK")) {
 		printf("COMP: selfcheck ok\n");

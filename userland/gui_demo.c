@@ -18,9 +18,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/select.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include <gui.h>
+#include <gui_proto.h>
 
 static int g_running = 1;
 
@@ -119,17 +122,62 @@ int main(int argc, char **argv)
 	signal(SIGINT, on_signal);
 	signal(SIGTERM, on_signal);
 
-	/* attach to a running compositor if there is one, else spawn */
+	/* attach to a running compositor if there is one, else spawn
+	 * (GUI_NO_SPAWN=1: attach-only - init has already started the
+	 * compositor, so never fork a second one) */
 	d = display_connect("demo");
-	if(!d) {
+	if(!d && !getenv("GUI_NO_SPAWN")) {
 		comp = spawn_compositor();
 		if(comp < 0) {
 			printf("DEMO: could not start compositor\n");
 			return 1;
 		}
-		while(!d && retries++ < 50) {
-			usleep(100000);
-			d = display_connect("demo");
+	}
+	if(!d) {
+		/* the compositor's startup (fb open + 4MB mmap + socket bind)
+		 * can take several seconds under emulation; wait for its
+		 * socket file to appear, then connect */
+		{
+			const char *sp = getenv("GUI_SOCKET");
+			struct stat st;
+			int waited = 0;
+
+			if(!sp || !*sp) {
+				sp = GUI_SOCKET_DEFAULT;
+			}
+			while(waited < 300) {	/* up to 30s */
+				if(stat(sp, &st) == 0) {
+					int k;
+
+					/* the compositor has bound its socket
+					 * but may not be in accept() yet;
+					 * retry patiently until it is */
+					for(k = 0; k < 200 && !d; k++) {
+						struct timeval tv = {
+							.tv_sec = 0,
+							.tv_usec = 50000
+						};
+
+						d = display_connect("demo");
+						if(!d) {
+							select(0, NULL, NULL,
+							       NULL, &tv);
+						}
+					}
+					break;
+				}
+				/* FNX usleep/nanosleep is unreliable
+				 * (timer granularity); a select timeout is
+				 * the dependable way to pause */
+				{
+					struct timeval tv = {
+						.tv_sec = 0,
+						.tv_usec = 100000
+					};
+					select(0, NULL, NULL, NULL, &tv);
+				}
+				waited++;
+			}
 		}
 	}
 	if(!d) {
