@@ -80,8 +80,10 @@ typedef enum gui_event_type {
 typedef struct gui_event {
 	gui_event_type_t type;
 	int win;		/* window id (-1 = desktop) */
-	int x, y, w, h;		/* mouse pos / resize size */
+	int x, y, w, h;		/* mouse pos (screen) / resize size */
 	int key;		/* keycode for KEY events */
+	int button;		/* MOUSE: 0 none / 1 left / 2 right / 4 middle */
+	int state;		/* MOUSE: 0 released / 1 pressed / 2 motion */
 } gui_event_t;
 
 /* Poll the display for one event. Waits up to timeout_ms (0 = poll,

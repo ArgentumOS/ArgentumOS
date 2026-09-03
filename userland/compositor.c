@@ -23,6 +23,7 @@
 #include <sys/ipc.h>
 #include <sys/mman.h>
 #include <sys/select.h>
+#include <termios.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -79,6 +80,222 @@ static int listen_fd = -1;
 static struct client clients[MAX_CLIENTS];
 static struct window windows[MAX_WINDOWS];
 static int next_id = 1;
+
+/* ---- forward decls (defined below the fb helpers) ------------------ */
+static struct window *window_find(int id);
+static int msg_send(int fd, const void *payload, size_t len);
+
+/* ---- pointer input (PS/2 mouse on /dev/psaux) ---------------------- */
+
+static int mouse_fd = -1;
+static int mouse_x, mouse_y;	/* pointer position (screen) */
+static int mouse_buttons;	/* current button state */
+static int mouse_grab;		/* window id capturing the pointer, -1 */
+static int focus_win;		/* window id holding keyboard focus, -1 */
+static unsigned char mouse_pkt[3];
+static int mouse_pkt_n;
+
+/* topmost visible window containing (x, y), or NULL */
+static struct window *window_at(int x, int y)
+{
+	int i;
+
+	for(i = MAX_WINDOWS - 1; i >= 0; i--) {
+		if(windows[i].used && windows[i].visible &&
+		   x >= windows[i].x && y >= windows[i].y &&
+		   x < windows[i].x + windows[i].w &&
+		   y < windows[i].y + windows[i].h) {
+			return &windows[i];
+		}
+	}
+	return NULL;
+}
+
+static int window_owner_fd(struct window *w)
+{
+	if(!w || w->client < 0 || !clients[w->client].used) {
+		return -1;
+	}
+	return clients[w->client].fd;
+}
+
+/* send a gui_event_t to the owner of window id */
+static void send_event(int win_id, gui_event_type_t type,
+		       int x, int y, int button, int state)
+{
+	struct window *w = window_find(win_id);
+	unsigned char payload[1 + sizeof(gui_event_t)];
+	int fd;
+
+	if(!w) {
+		return;
+	}
+	fd = window_owner_fd(w);
+	if(fd < 0) {
+		return;
+	}
+	payload[0] = GUI_MSG_EVENT;
+	{
+		gui_event_t *e = (gui_event_t *)(payload + 1);
+
+		memset(e, 0, sizeof(*e));
+		e->type = type;
+		e->win = win_id;
+		e->x = x;
+		e->y = y;
+		e->button = button;
+		e->state = state;
+	}
+	msg_send(fd, payload, 1 + sizeof(gui_event_t));
+}
+
+/* move the keyboard focus to the window's owner (FOCUS events) */
+static void set_focus_win(int win_id)
+{
+	if(focus_win == win_id) {
+		return;
+	}
+	if(focus_win >= 0) {
+		send_event(focus_win, GUI_EVENT_FOCUS, 0, 0, 0, 0);
+	}
+	focus_win = win_id;
+	if(focus_win >= 0) {
+		send_event(focus_win, GUI_EVENT_FOCUS, 0, 0, 0, 0);
+	}
+}
+
+/* one complete 3-byte PS/2 packet */
+static void input_process_packet(unsigned char b0, unsigned char b1,
+				 unsigned char b2)
+{
+	int dx, dy;
+	int buttons = b0 & 7;
+	struct window *w;
+
+	dx = (int)(signed char)b1;
+	dy = (int)(signed char)b2;
+	/* PS/2 dy is positive down (toward the user) */
+	mouse_x += dx;
+	mouse_y += dy;
+	if(mouse_x < 0) {
+		mouse_x = 0;
+	}
+	if(mouse_y < 0) {
+		mouse_y = 0;
+	}
+	if(mouse_x >= fb_w) {
+		mouse_x = fb_w - 1;
+	}
+	if(mouse_y >= fb_h) {
+		mouse_y = fb_h - 1;
+	}
+
+	if(buttons != mouse_buttons) {
+		/* a button changed: press focuses + grabs the window;
+		 * release goes to the grab even off-window */
+		if(mouse_grab >= 0) {
+			send_event(mouse_grab, GUI_EVENT_MOUSE, mouse_x,
+				   mouse_y, buttons & 7,
+				   (buttons & 7) ? 1 : 0);
+			if(!(buttons & 7)) {
+				mouse_grab = -1;
+			}
+		} else if(buttons & 7) {
+			w = window_at(mouse_x, mouse_y);
+			if(w) {
+				set_focus_win(w->id);
+				mouse_grab = w->id;
+				send_event(w->id, GUI_EVENT_MOUSE, mouse_x,
+					   mouse_y, buttons & 7, 1);
+			}
+		}
+		mouse_buttons = buttons & 7;
+		return;
+	}
+	/* pure motion: route to the grab, else the window under the
+	 * pointer (only bother clients when the pointer is over them) */
+	if(mouse_grab >= 0) {
+		send_event(mouse_grab, GUI_EVENT_MOUSE, mouse_x, mouse_y,
+			   mouse_buttons, 2);
+		return;
+	}
+	w = window_at(mouse_x, mouse_y);
+	if(w) {
+		send_event(w->id, GUI_EVENT_MOUSE, mouse_x, mouse_y, 0, 2);
+	}
+}
+
+/* feed raw bytes from /dev/psaux through the packet assembler */
+static void input_feed(const unsigned char *buf, int n)
+{
+	int i;
+
+	for(i = 0; i < n; i++) {
+		unsigned char b = buf[i];
+
+		if(mouse_pkt_n == 0) {
+			/* first byte of a packet has bit 3 set; drop
+			 * stray bytes until we find it */
+			if(!(b & 0x08)) {
+				continue;
+			}
+			mouse_pkt[0] = b;
+			mouse_pkt_n = 1;
+		} else if(mouse_pkt_n == 1) {
+			mouse_pkt[1] = b;
+			mouse_pkt_n = 2;
+		} else {
+			mouse_pkt[2] = b;
+			mouse_pkt_n = 0;
+			input_process_packet(mouse_pkt[0], mouse_pkt[1],
+					     mouse_pkt[2]);
+		}
+	}
+}
+
+static void input_drain(void)
+{
+	unsigned char buf[64];
+	ssize_t n;
+
+	while((n = read(mouse_fd, buf, sizeof(buf))) > 0) {
+		input_feed(buf, (int)n);
+	}
+}
+
+static void input_open_mouse(void)
+{
+	const char *src = getenv("GUI_MOUSE");
+
+	/* GUI_MOUSE overrides the source (test harnesses feed PS/2
+	 * packets through a serial line); default = the PS/2 mouse */
+	if(!src || !*src) {
+		src = "/dev/psaux";
+	}
+	mouse_fd = open(src, O_RDONLY | O_NONBLOCK);
+	if(mouse_fd >= 0 && isatty(mouse_fd)) {
+		struct termios raw;
+
+		/* test sources ride a serial line: no echo, no
+		 * canonical buffering - raw 8-bit bytes */
+		if(tcgetattr(mouse_fd, &raw) == 0) {
+			cfmakeraw(&raw);
+			tcsetattr(mouse_fd, TCSANOW, &raw);
+		}
+	}
+	mouse_grab = -1;
+	focus_win = -1;
+	mouse_buttons = 0;
+	mouse_pkt_n = 0;
+	if(mouse_fd >= 0) {
+		mouse_x = fb_w / 2;
+		mouse_y = fb_h / 2;
+		printf("COMP: mouse on /dev/psaux\n");
+	} else {
+		mouse_fd = -1;
+		printf("COMP: no mouse (%s)\n", strerror(errno));
+	}
+}
 
 /* ---- fb helpers ---------------------------------------------------- */
 
@@ -743,6 +960,9 @@ int main(void)
 	/* own the display: clear it to the desktop before any client */
 	screen_damage(0, 0, fb_w, fb_h);
 
+	/* the pointer: /dev/psaux (raw PS/2 stream) */
+	input_open_mouse();
+
 	while(1) {
 		fd_set rfds;
 		int maxfd = listen_fd;
@@ -750,6 +970,12 @@ int main(void)
 
 		FD_ZERO(&rfds);
 		FD_SET(listen_fd, &rfds);
+		if(mouse_fd >= 0) {
+			FD_SET(mouse_fd, &rfds);
+			if(mouse_fd > maxfd) {
+				maxfd = mouse_fd;
+			}
+		}
 		for(i = 0; i < MAX_CLIENTS; i++) {
 			if(clients[i].used) {
 				FD_SET(clients[i].fd, &rfds);
@@ -765,6 +991,9 @@ int main(void)
 			}
 			perror("select");
 			break;
+		}
+		if(mouse_fd >= 0 && FD_ISSET(mouse_fd, &rfds)) {
+			input_drain();
 		}
 		if(FD_ISSET(listen_fd, &rfds)) {
 			int cfd = accept(listen_fd, NULL, NULL);

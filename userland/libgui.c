@@ -24,6 +24,10 @@
 struct gui_display {
 	int fd;
 	int w, h;
+	/* unsolicited GUI_MSG_EVENTs that arrived during a blocking
+	 * request are queued here and drained by event_poll() */
+	gui_event_t queue[64];
+	int q_head, q_tail, q_count;
 };
 
 struct gui_window {
@@ -109,6 +113,38 @@ static int msg_recv(int fd, unsigned char **payload, size_t *len)
 	return 0;
 }
 
+/* ---- event queue --------------------------------------------------- */
+
+static void queue_event(gui_display_t *d, const gui_event_t *e)
+{
+	if(d->q_count < 64) {
+		d->queue[d->q_head] = *e;
+		d->q_head = (d->q_head + 1) % 64;
+		d->q_count++;
+	}
+}
+
+static int dequeue_event(gui_display_t *d, gui_event_t *e)
+{
+	if(!d->q_count) {
+		return 0;
+	}
+	*e = d->queue[d->q_tail];
+	d->q_tail = (d->q_tail + 1) % 64;
+	d->q_count--;
+	return 1;
+}
+
+/* parse one GUI_MSG_EVENT payload into an event (payload[0] = type) */
+static int parse_event(const unsigned char *m, size_t ml, gui_event_t *e)
+{
+	if(ml < 1 + (int)sizeof(*e)) {
+		return 0;
+	}
+	memcpy(e, m + 1, sizeof(*e));
+	return 1;
+}
+
 /* request()/reply: send a payload whose second field is the request
  * id, then wait for the matching reply message type. */
 static int request_msg(gui_display_t *d, const void *payload, size_t plen,
@@ -130,7 +166,13 @@ static int request_msg(gui_display_t *d, const void *payload, size_t plen,
 			return 0;
 		}
 		if(ml >= 1 && m[0] == GUI_MSG_EVENT) {
-			/* no event queue yet in v1; ignore */
+			gui_event_t e;
+
+			/* a mouse event raced the reply: keep it for
+			 * event_poll() instead of dropping it */
+			if(parse_event(m, ml, &e)) {
+				queue_event(d, &e);
+			}
 		}
 		free(m);
 	}
@@ -415,6 +457,10 @@ int event_poll(gui_display_t *display, gui_event_t *event, int timeout_ms)
 		return -1;
 	}
 	event->type = GUI_EVENT_NONE;
+	/* queued events (from racing a blocking request) come first */
+	if(dequeue_event(display, event)) {
+		return 1;
+	}
 	if(timeout_ms >= 0) {
 		tv.tv_sec = timeout_ms / 1000;
 		tv.tv_usec = (timeout_ms % 1000) * 1000;
@@ -436,9 +482,7 @@ int event_poll(gui_display_t *display, gui_event_t *event, int timeout_ms)
 		if(msg_recv(display->fd, &m, &ml) || ml < 1) {
 			return -1;
 		}
-		if(m[0] == GUI_MSG_EVENT && ml >= sizeof(gui_event_t) + 1) {
-			memcpy(event, m + 1, sizeof(gui_event_t));
-		} else if(m[0] == GUI_MSG_EVENT) {
+		if(!parse_event(m, ml, event)) {
 			event->type = GUI_EVENT_NONE;
 		}
 		free(m);

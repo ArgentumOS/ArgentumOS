@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <sys/mount.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void try_mount(const char *fstype, const char *target)
 {
@@ -23,10 +24,29 @@ static void try_mount(const char *fstype, const char *target)
  * daemons, so `make run-uefi` shows the desktop without any typing.
  * The demo runs attach-only (GUI_NO_SPAWN): init started the compositor,
  * so it must never fork a second one. */
+/* the widgets_demo needs the real mouse; "nogui" on the kernel
+ * cmdline boots headless for input-chain tests */
+static int boot_has_nogui(void)
+{
+	FILE *f = fopen("/proc/cmdline", "r");
+	char buf[256];
+
+	if (!f)
+		return 0;
+	if (!fgets(buf, sizeof(buf), f)) {
+		fclose(f);
+		return 0;
+	}
+	fclose(f);
+	return strstr(buf, "nogui") != NULL;
+}
+
 static void start_gui(void)
 {
 	pid_t pid;
 
+	if (boot_has_nogui())
+		return;
 	if (access("/dev/fb0", F_OK) < 0)
 		return;	/* no framebuffer: nothing to paint */
 
@@ -48,10 +68,10 @@ static void start_gui(void)
 	}
 	pid = fork();
 	if (pid == 0) {
-		char *argv[] = { "gui_demo", NULL };
+		char *argv[] = { "widgets_demo", NULL };
 		char *envp[] = { "HOME=/", "GUI_NO_SPAWN=1", NULL };
 
-		execve("/bin/gui_demo", argv, envp);
+		execve("/bin/widgets_demo", argv, envp);
 		_exit(127);
 	}
 }
