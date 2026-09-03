@@ -36,6 +36,9 @@ extern "C" {
 #define WCOLOR_TEXT_DISABLED	0x909090
 #define WCOLOR_TITLE		0x24456E
 #define WCOLOR_ACCENT		0x0088FF
+#define WCOLOR_SEL		0x24456E	/* selected row / focus */
+#define WCOLOR_SELIDLE		0xB0B8C8	/* selected, unfocused */
+#define WCOLOR_SELTEXT		0xFFFFFF
 
 /* ---- renderer (the §8 acceleration seam) -------------------------- */
 
@@ -254,6 +257,26 @@ view_t *text_create(void *font, const char *initial,
 const char *text_get_text(view_t *v);
 void text_set_text(view_t *v, const char *s);
 int text_caret(view_t *v);	/* byte offset */
+
+/* ---- list (M2) ------------------------------------------------------ */
+
+/* A vertical list of UTF-8 items with a keyboard cursor (the focused
+ * view shows it) and a single selection. Rows are font-height tall;
+ * the cursor follows the scroll automatically. Clicking a row selects
+ * it; Up/Down/Home/End/PgUp/PgDn move the cursor and change the
+ * selection; Enter fires on_select. on_select(v, index, data) is
+ * called whenever the selection changes. font = text_font_t* (NULL =
+ * built-in 8x16). */
+view_t *list_create(void *font,
+		    void (*on_select)(view_t *v, int index, void *data),
+		    void *data);
+void list_add(view_t *v, const char *text, void *data);
+void list_clear(view_t *v);
+int list_count(view_t *v);
+int list_selection(view_t *v);	/* -1 = none */
+int list_cursor(view_t *v);
+void list_select(view_t *v, int index);
+void *list_row_data(view_t *v, int index);
 
 /* ---- event dispatch (window coords) ------------------------------- */
 

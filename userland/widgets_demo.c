@@ -46,7 +46,7 @@ static char g_status_text[96];
 static int g_win_x, g_win_y;
 
 #define GW 700			/* window size */
-#define GH 560
+#define GH 700
 
 static void set_status(const char *fmt, ...)
 {
@@ -118,6 +118,15 @@ static void on_field_change(view_t *v, void *data)
 	(void)data;
 	set_status("Field: '%s'", textfield_text(v));
 	printf("WDEMO: field '%s'\n", textfield_text(v));
+	fflush(stdout);
+}
+
+static void on_list_select(view_t *v, int index, void *data)
+{
+	(void)data;
+	if(index >= 0) {
+		printf("WDEMO: list sel %d\n", index);
+	}
 	fflush(stdout);
 }
 
@@ -238,7 +247,7 @@ int main(void)
 
 		r->bg = WCOLOR_BG;
 		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
-		view_set_frame(r, 0, 0, 0, 150);
+		view_set_frame(r, 0, 0, 0, 110);
 		view_add(col, r);
 		title = label_create("Canvas");
 		title->anchor = VIEW_ANCHOR_FILLY;
@@ -273,7 +282,7 @@ int main(void)
 
 		r->bg = WCOLOR_BG;
 		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
-		view_set_frame(r, 0, 0, 0, 110);
+		view_set_frame(r, 0, 0, 0, 90);
 		view_add(col, r);
 		title = label_create("Text");
 		title->anchor = VIEW_ANCHOR_FILLY;
@@ -287,6 +296,33 @@ int main(void)
 		txt->anchor = VIEW_ANCHOR_FILLX;
 		txt->anchor |= VIEW_ANCHOR_FILLY;
 		view_add(r, txt);
+	}
+
+	/* caption + List */
+	{
+		view_t *r = view_new(NULL, "panel");
+		view_t *lst;
+
+		r->bg = WCOLOR_BG;
+		view_set_layout(r, VIEW_LAYOUT_ROW, 0, 8);
+		view_set_frame(r, 0, 0, 0, 120);
+		view_add(col, r);
+		title = label_create("List");
+		title->anchor = VIEW_ANCHOR_FILLY;
+		view_set_frame(title, 0, 0, 110, 0);
+		view_add(r, title);
+		lst = list_create(font, on_list_select, NULL);
+		lst->anchor = VIEW_ANCHOR_FILLX;
+		lst->anchor |= VIEW_ANCHOR_FILLY;
+		view_add(r, lst);
+		list_add(lst, "alpha document.txt", NULL);
+		list_add(lst, "beta folder/", NULL);
+		list_add(lst, "gamma report.pdf", NULL);
+		list_add(lst, "delta image.png", NULL);
+		list_add(lst, "epsilon notes.txt", NULL);
+		list_add(lst, "zeta archive.tar", NULL);
+		list_add(lst, "eta script.sh", NULL);
+		list_add(lst, "theta config.ini", NULL);
 	}
 
 	/* caption + PushButton + caption + ToggleButton */

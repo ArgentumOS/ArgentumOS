@@ -2139,3 +2139,335 @@ int text_caret(view_t *v)
 	return d ? d->caret : 0;
 }
 
+
+/* ================= list (M2) ======================================== */
+
+#define LIST_MAX	1024
+
+struct list_data {
+	text_font_t *font;
+	char **items;
+	void **data;
+	int n, cap;
+	int cursor;		/* keyboard cursor row (-1 = none) */
+	int sel;		/* selected row (-1 = none) */
+	int top;		/* first visible row */
+	int row_h;
+	void (*on_select)(view_t *v, int index, void *data);
+	void *udata;
+};
+
+static void list_fire(view_t *v, struct list_data *d)
+{
+	if(d->on_select) {
+		d->on_select(v, d->sel, d->udata);
+	}
+}
+
+static void list_keep_cursor(view_t *v, struct list_data *d)
+{
+	int vis = d->row_h > 0 ? (v->h - 4) / d->row_h : 1;
+
+	if(vis < 1) {
+		vis = 1;
+	}
+	if(d->cursor < d->top) {
+		d->top = d->cursor;
+	}
+	if(d->cursor >= d->top + vis) {
+		d->top = d->cursor - vis + 1;
+	}
+	if(d->top < 0) {
+		d->top = 0;
+	}
+	if(d->n == 0) {
+		d->top = 0;
+	}
+}
+
+static void list_draw(view_t *v, renderer_t *r)
+{
+	struct list_data *d = v->data;
+	int row;
+	int first = d->top;
+	int last = first + ((v->h - 4) / (d->row_h ? d->row_h : 1)) + 1;
+
+	r->fill_rect(r, 0, 0, v->w, v->h, WCOLOR_VIEW);
+	r->groove(r, 0, 0, v->w, v->h);
+	if(!d->font) {
+		return;
+	}
+	if(last > d->n) {
+		last = d->n;
+	}
+	for(row = first; row < last; row++) {
+		int rowy = 2 + (row - d->top) * d->row_h;
+		uint32_t fg = WCOLOR_TEXT;
+		uint32_t bg = WCOLOR_VIEW;
+
+		if(row == d->sel) {
+			bg = (row == d->cursor &&
+			      (v->flags & VIEW_FOCUSED)) ?
+				WCOLOR_SEL : WCOLOR_SELIDLE;
+		}
+		if(row == d->cursor && (v->flags & VIEW_FOCUSED)) {
+			bg = WCOLOR_SEL;
+		}
+		if(bg != WCOLOR_VIEW) {
+			r->fill_rect(r, 1, rowy - 1, v->w - 2,
+				     d->row_h, bg);
+			fg = WCOLOR_SELTEXT;
+		}
+		text_draw_clip(d->font, r->buf, r->w, r->h,
+			       r->clip_x, r->clip_y, r->clip_w, r->clip_h,
+			       4 + r->ox, rowy - 1 + d->row_h / 2 +
+			       text_font_height(d->font) / 2 -
+			       text_font_descent(d->font) + r->oy,
+			       d->items[row], fg);
+	}
+}
+
+static void list_destroy(view_t *v)
+{
+	struct list_data *d = v->data;
+	int i;
+
+	if(d) {
+		for(i = 0; i < d->n; i++) {
+			free(d->items[i]);
+		}
+		free(d->items);
+		free(d->data);
+		free(d);
+	}
+	v->data = NULL;
+}
+
+static void list_mouse_down(view_t *v, int x, int y)
+{
+	struct list_data *d = v->data;
+	int row = d->top + (y - 2) / (d->row_h ? d->row_h : 1);
+	(void)x;
+
+	if(row < 0) {
+		row = 0;
+	}
+	if(row >= d->n) {
+		row = d->n - 1;
+	}
+	if(d->n == 0) {
+		row = -1;
+	}
+	d->cursor = row;
+	d->sel = row;
+	view_invalidate(v);
+	list_fire(v, d);
+}
+
+static void list_key_down(view_t *v, int key)
+{
+	struct list_data *d = v->data;
+	int vis = d->row_h > 0 ? (v->h - 4) / d->row_h : 1;
+	int old = d->cursor;
+
+	if(d->n == 0) {
+		return;
+	}
+	switch(key) {
+		case GUI_KEY_UP:
+			d->cursor = d->cursor > 0 ? d->cursor - 1 : 0;
+			break;
+		case GUI_KEY_DOWN:
+			d->cursor = d->cursor < d->n - 1 ?
+				d->cursor + 1 : d->n - 1;
+			break;
+		case GUI_KEY_HOME:
+			d->cursor = 0;
+			break;
+		case GUI_KEY_END:
+			d->cursor = d->n - 1;
+			break;
+		case GUI_KEY_PGUP:
+			d->cursor -= vis - 1;
+			if(d->cursor < 0) {
+				d->cursor = 0;
+			}
+			break;
+		case GUI_KEY_PGDN:
+			d->cursor += vis - 1;
+			if(d->cursor >= d->n) {
+				d->cursor = d->n - 1;
+			}
+			break;
+		case '\r':
+			break;	/* Enter: selection already follows */
+		default:
+			return;
+	}
+	if(d->cursor != old) {
+		d->sel = d->cursor;
+		list_keep_cursor(v, d);
+		view_invalidate(v);
+		list_fire(v, d);
+	}
+}
+
+static const struct view_ops list_ops = {
+	.draw = list_draw,
+	.destroy = list_destroy,
+	.mouse_down = list_mouse_down,
+	.key_down = list_key_down,
+};
+
+view_t *list_create(void *font,
+		    void (*on_select)(view_t *v, int index, void *data),
+		    void *data)
+{
+	view_t *v = view_new(&list_ops, "list");
+	struct list_data *d;
+
+	if(!v) {
+		return NULL;
+	}
+	d = calloc(1, sizeof(*d));
+	if(!d) {
+		free(v);
+		return NULL;
+	}
+	d->font = font;
+	d->cursor = -1;
+	d->sel = -1;
+	d->row_h = font ? text_font_height(font) + 2 : 18;
+	d->on_select = on_select;
+	d->udata = data;
+	v->data = d;
+	v->bg = WCOLOR_VIEW;
+	return v;
+}
+
+void list_add(view_t *v, const char *text, void *data)
+{
+	struct list_data *d;
+	char *copy;
+
+	if(!v || v->ops != &list_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d || !text || d->n >= LIST_MAX) {
+		return;
+	}
+	copy = strdup(text);
+	if(!copy) {
+		return;
+	}
+	if(d->n >= d->cap) {
+		int nc = d->cap ? d->cap * 2 : 16;
+
+		char **ni = realloc(d->items, (size_t)nc * sizeof(char *));
+		void **nd = realloc(d->data, (size_t)nc * sizeof(void *));
+
+		if(!ni || !nd) {
+			free(copy);
+			return;
+		}
+		d->items = ni;
+		d->data = nd;
+		d->cap = nc;
+	}
+	d->items[d->n] = copy;
+	d->data[d->n] = data;
+	d->n++;
+	if(d->cursor < 0 && d->n == 1) {
+		d->cursor = 0;
+	}
+	view_invalidate(v);
+}
+
+void list_clear(view_t *v)
+{
+	struct list_data *d;
+	int i;
+
+	if(!v || v->ops != &list_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d) {
+		return;
+	}
+	for(i = 0; i < d->n; i++) {
+		free(d->items[i]);
+	}
+	d->n = 0;
+	d->cursor = -1;
+	d->sel = -1;
+	d->top = 0;
+	view_invalidate(v);
+}
+
+int list_count(view_t *v)
+{
+	struct list_data *d;
+
+	if(!v || v->ops != &list_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->n : 0;
+}
+
+int list_selection(view_t *v)
+{
+	struct list_data *d;
+
+	if(!v || v->ops != &list_ops) {
+		return -1;
+	}
+	d = v->data;
+	return d ? d->sel : -1;
+}
+
+int list_cursor(view_t *v)
+{
+	struct list_data *d;
+
+	if(!v || v->ops != &list_ops) {
+		return -1;
+	}
+	d = v->data;
+	return d ? d->cursor : -1;
+}
+
+void list_select(view_t *v, int index)
+{
+	struct list_data *d;
+
+	if(!v || v->ops != &list_ops) {
+		return;
+	}
+	d = v->data;
+	if(!d || index < -1 || index >= d->n) {
+		return;
+	}
+	d->cursor = index;
+	d->sel = index;
+	if(index >= 0) {
+		list_keep_cursor(v, d);
+	}
+	view_invalidate(v);
+}
+
+void *list_row_data(view_t *v, int index)
+{
+	struct list_data *d;
+
+	if(!v || v->ops != &list_ops) {
+		return NULL;
+	}
+	d = v->data;
+	if(!d || index < 0 || index >= d->n) {
+		return NULL;
+	}
+	return d->data[index];
+}

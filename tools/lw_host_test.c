@@ -310,6 +310,100 @@ int main(void)
 		printf("multi-line text OK\n");
 	}
 
+	/* ---- M2 list: rows, cursor, selection, keyboard ---- */
+	{
+		view_t *lroot, *ls;
+		static int fired[32];
+		int nfires = 0;
+		static uint32_t tbuf3[700 * 200];
+
+		/* track callbacks */
+		(void)fired;
+		(void)nfires;
+
+		lroot = view_new(NULL, "window");
+		view_set_frame(lroot, 0, 0, 480, 200);
+		ls = list_create(NULL, NULL, NULL);
+		view_set_frame(ls, 0, 0, 300, 120);
+		view_add(lroot, ls);
+		view_focus(lroot, ls);
+
+		if(list_count(ls) != 0) {
+			printf("FAIL: empty list count\n");
+			fails++;
+		}
+		list_add(ls, "one", NULL);
+		list_add(ls, "two", NULL);
+		list_add(ls, "three", NULL);
+		if(list_count(ls) != 3) {
+			printf("FAIL: count after adds\n");
+			fails++;
+		}
+		/* the first add arms the cursor at row 0 */
+		if(list_cursor(ls) != 0) {
+			printf("FAIL: initial cursor\n");
+			fails++;
+		}
+		/* click row 2 (rows are 18px tall in the 8x16 fallback:
+		 * y = 2 + 2*18 = 38) */
+		view_mouse(lroot, 10, 38, 1);
+		if(list_selection(ls) != 2) {
+			printf("FAIL: click select (got %d)\n",
+			       list_selection(ls));
+			fails++;
+		} else {
+			printf("click select row 2 OK\n");
+		}
+		/* keyboard navigation */
+		view_key(lroot, GUI_KEY_UP);
+		if(list_selection(ls) != 1) {
+			printf("FAIL: up\n");
+			fails++;
+		}
+		view_key(lroot, GUI_KEY_UP);
+		view_key(lroot, GUI_KEY_UP);	/* clamp at 0 */
+		if(list_selection(ls) != 0) {
+			printf("FAIL: up clamp\n");
+			fails++;
+		}
+		view_key(lroot, GUI_KEY_END);
+		view_key(lroot, GUI_KEY_DOWN);	/* clamp at 2 */
+		if(list_selection(ls) != 2) {
+			printf("FAIL: end/down clamp\n");
+			fails++;
+		}
+		view_key(lroot, GUI_KEY_HOME);
+		if(list_selection(ls) != 0) {
+			printf("FAIL: home\n");
+			fails++;
+		}
+		/* render with a selection highlighted */
+		{
+			renderer_t fr;
+			int dx2, dy2, dw2, dh2;
+
+			renderer_init(&fr, tbuf3, 480, 200);
+			view_render(lroot, &fr, 1, &dx2, &dy2, &dw2, &dh2);
+			if(dw2 <= 0 || dh2 <= 0) {
+				printf("FAIL: list render\n");
+				fails++;
+			}
+		}
+		list_select(ls, 1);
+		if(list_selection(ls) != 1) {
+			printf("FAIL: list_select\n");
+			fails++;
+		}
+		list_clear(ls);
+		if(list_count(ls) != 0 || list_selection(ls) != -1) {
+			printf("FAIL: clear\n");
+			fails++;
+		}
+		view_destroy(ls);
+		view_destroy(lroot);
+		printf("list widget OK\n");
+	}
+
 	/* a canvas on the root (no layout): clicks pass to it */
 	{
 		view_t *cv = canvas_create(NULL, NULL);
