@@ -98,18 +98,24 @@ static int fb_open_device(void)
 		return -1;
 	}
 	printf("COMP: fb0 %dx%d %d-bpp\n", fb_w, fb_h, FB_BPP);
-	/* map the framebuffer for direct pixel access */
-	len = (size_t)fb_w * fb_h * 4;
-	fb_map = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED,
-		      fb_fd, 0);
-	if(fb_map != MAP_FAILED) {
-		fb_map_ok = 1;
-		printf("COMP: fb mapped at %p\n", (void *)fb_map);
-	} else {
+	/* map the framebuffer for direct pixel access (skip when
+	 * GUI_PWRITE=1 forces the char-device path - kernel-copy blit) */
+	if(!getenv("GUI_PWRITE")) {
+		len = (size_t)fb_w * fb_h * 4;
+		fb_map = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED,
+			      fb_fd, 0);
+		if(fb_map != MAP_FAILED) {
+			fb_map_ok = 1;
+			printf("COMP: fb mapped at %p\n", (void *)fb_map);
+			return 0;
+		}
 		fb_map = NULL;
 		fb_map_ok = 0;
 		printf("COMP: fb mmap failed (%s); using pwrite\n",
 		       strerror(errno));
+	} else {
+		fb_map_ok = 0;
+		printf("COMP: fb blit forced to pwrite (GUI_PWRITE)\n");
 	}
 	return 0;
 }
