@@ -107,11 +107,18 @@ run-qemu:
 MUSL64_PREFIX = .build/musl64
 MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
 MUSL64_CC     = gcc -static -specs $(MUSL64_SPECS)
+# C++: LLVM libc++/libc++abi/libunwind via tools/musl-g++64.sh
+# (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
+MUSL64_CXX    = $(CURDIR)/tools/musl-g++64.sh
+LLVM_CXX_SRC    = .build/llvm-src
+LLVM_CXX_CFG    = .build/llvm-cxx/Makefile
+LLVM_CXX_PREFIX = .build/llvm-cxx-prefix
+LLVM_CXX_STAMP  = .build/llvm-cxx/.installed
 ROOTFS64      = .build/rootfs64
 DASH64_BIN    = third_party/dash/src/dash64
 TOYBOX64_BIN  = third_party/toybox/toybox64
 
-.PHONY: userland64 musl64 dash64 toybox64
+.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx
 
 musl64: $(MUSL64_SPECS)
 $(MUSL64_SPECS):
@@ -120,6 +127,39 @@ $(MUSL64_SPECS):
 		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
 		$(MAKE) && $(MAKE) install
+
+# LLVM C++ runtimes (docs/cpp-toolchain-plan.md P0+P1): pinned fetch via
+# tools/fetch-llvm.sh, then a cmake build of static libc++/libc++abi/
+# libunwind against musl (specs-based; see the plan for the measured
+# gotchas: no CMAKE_SYSROOT, -I tools/kernel-headers for linux/futex.h).
+llvm-cxx: $(LLVM_CXX_STAMP)
+
+$(LLVM_CXX_SRC)/libcxx/CMakeLists.txt: tools/fetch-llvm.sh
+	./tools/fetch-llvm.sh
+
+$(LLVM_CXX_CFG): $(LLVM_CXX_SRC)/libcxx/CMakeLists.txt
+	rm -rf .build/llvm-cxx $(LLVM_CXX_PREFIX)
+	cmake -G "Unix Makefiles" -S $(LLVM_CXX_SRC)/runtimes -B .build/llvm-cxx \
+	  -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
+	  -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	  -DCMAKE_C_FLAGS="-static -I$(CURDIR)/tools/kernel-headers -specs $(CURDIR)/$(MUSL64_SPECS)" \
+	  -DCMAKE_CXX_FLAGS="-static -I$(CURDIR)/tools/kernel-headers -specs $(CURDIR)/$(MUSL64_SPECS)" \
+	  -DCMAKE_EXE_LINKER_FLAGS=-static \
+	  -DCMAKE_INSTALL_PREFIX=$(CURDIR)/$(LLVM_CXX_PREFIX) \
+	  -DCMAKE_BUILD_TYPE=Release \
+	  -DLIBCXX_ENABLE_SHARED=OFF -DLIBCXXABI_ENABLE_SHARED=OFF \
+	  -DLIBUNWIND_ENABLE_SHARED=OFF \
+	  -DLIBCXX_ENABLE_STATIC=ON -DLIBCXXABI_ENABLE_STATIC=ON \
+	  -DLIBUNWIND_ENABLE_STATIC=ON \
+	  -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \
+	  -DLIBCXX_INCLUDE_TESTS=OFF -DLIBCXXABI_INCLUDE_TESTS=OFF \
+	  -DLIBUNWIND_INCLUDE_TESTS=OFF \
+	  -DLIBCXX_HAS_MUSL_LIBC=ON
+
+$(LLVM_CXX_STAMP): $(LLVM_CXX_CFG)
+	cmake --build .build/llvm-cxx -j$$(nproc)
+	cmake --install .build/llvm-cxx
+	touch $(LLVM_CXX_STAMP)
 
 dash64: $(DASH64_BIN)
 $(DASH64_BIN): $(MUSL64_SPECS)
@@ -132,10 +172,11 @@ $(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh
 	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64.sh" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $(TOYBOX64_BIN)
 
-userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
+userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP)
 	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
+	$(MUSL64_CXX) userland/cpp_smoke.cpp -o $(ROOTFS64)/bin/cpp_smoke
 	$(MUSL64_CC) userland/acl.c -o $(ROOTFS64)/bin/acl
 	$(MUSL64_CC) -Iinclude userland/config.c userland/libconfig.c -o $(ROOTFS64)/bin/config
 	$(MUSL64_CC) -Iinclude userland/compositor.c -o $(ROOTFS64)/bin/compositor
