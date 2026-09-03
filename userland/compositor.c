@@ -684,6 +684,14 @@ static int send_all(int fd, const void *buf, size_t len)
 	while(len) {
 		ssize_t n = write(fd, p, len);
 
+		if(n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+			/* the client's socket is full (it is busy in a
+			 * request/ack exchange). Events are loss-tolerant;
+			 * dropping here is what keeps the compositor from
+			 * deadlocking against a client waiting for an ack
+			 * it will never get while we block writing. */
+			return -1;
+		}
 		if(n <= 0) {
 			return -1;
 		}
@@ -1153,14 +1161,17 @@ int main(void)
 			perror("select");
 			break;
 		}
-		if(mouse_fd >= 0 && FD_ISSET(mouse_fd, &rfds)) {
-			input_drain();
-		}
 		if(FD_ISSET(listen_fd, &rfds)) {
 			int cfd = accept(listen_fd, NULL, NULL);
 			int slot = -1;
 
 			if(cfd >= 0) {
+				int fl = fcntl(cfd, F_GETFL, 0);
+
+				if(fl >= 0) {
+					fcntl(cfd, F_SETFL,
+					      fl | O_NONBLOCK);
+				}
 				for(i = 0; i < MAX_CLIENTS; i++) {
 					if(!clients[i].used) {
 						slot = i;
@@ -1181,6 +1192,12 @@ int main(void)
 			if(clients[i].used && FD_ISSET(clients[i].fd, &rfds)) {
 				service_client(&clients[i]);
 			}
+		}
+		/* service requests first so a client waiting on an ack can
+		 * make progress; only then generate new events from the
+		 * mouse (with non-blocking sends this cannot deadlock) */
+		if(mouse_fd >= 0 && FD_ISSET(mouse_fd, &rfds)) {
+			input_drain();
 		}
 		/* reap dead clients + their windows */
 		for(i = 0; i < MAX_CLIENTS; i++) {

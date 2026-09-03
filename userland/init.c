@@ -41,6 +41,24 @@ static int boot_has_nogui(void)
 	return strstr(buf, "nogui") != NULL;
 }
 
+/* gui_debug on the kernel cmdline routes the compositor's input trace
+ * (button transitions + routed events) to the serial console so clicks
+ * can be diagnosed on a real display */
+static int boot_has_gui_debug(void)
+{
+	FILE *f = fopen("/proc/cmdline", "r");
+	char buf[256];
+
+	if (!f)
+		return 0;
+	if (!fgets(buf, sizeof(buf), f)) {
+		fclose(f);
+		return 0;
+	}
+	fclose(f);
+	return strstr(buf, "gui_debug") != NULL;
+}
+
 static void start_gui(void)
 {
 	pid_t pid;
@@ -57,8 +75,12 @@ static void start_gui(void)
 		int fd;
 
 		/* keep the serial console clean: the compositor is a
-		 * display server, not a console client */
-		fd = open("/dev/null", O_WRONLY);
+		 * display server, not a console client (unless gui_debug) */
+		if (boot_has_gui_debug()) {
+			fd = open("/dev/console", O_WRONLY);
+		} else {
+			fd = open("/dev/null", O_WRONLY);
+		}
 		if (fd >= 0) {
 			dup2(fd, 1);
 			dup2(fd, 2);
