@@ -79,10 +79,13 @@ static void usb_mouse_cb(int slotid, int epid, int ccode, int length, void *data
 		dy = (signed char)m->buf[2];
 	}
 
-	/* PS/2 packet: Y up = positive, so negate the HID Y delta */
+	/* PS/2 packet: positive Y = down (toward the user). QEMU's usb-mouse
+	 * already feeds screen-convention deltas (positive Y = down), so the
+	 * HID y-up negation must NOT be applied here - doing so flips the
+	 * vertical axis (moving up moves the cursor down). */
 	{
 		int xd = dx;
-		int yd = -dy;
+		int yd = dy;
 
 		pkt[0] = 0x08 |
 			 ((yd & 0x80) ? 0x20 : 0) |

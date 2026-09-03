@@ -269,6 +269,7 @@ int psaux_select(struct inode *i, struct fd *f, int flag)
 void psaux_init(void)
 {
 	int errno;
+	int irq_registered = 0;
 
 	/* register /dev/psaux unconditionally: a USB mouse synthesizes
 	 * PS/2 packets into it even when no PS/2 mouse is attached.
@@ -297,9 +298,13 @@ void psaux_init(void)
 		is_ps2 = 1;
 	}
 
-	if(!register_irq(PSAUX_IRQ, &irq_config_psaux)) {
-		enable_irq(PSAUX_IRQ);
-	}
+	/* Register the handler but keep IRQ12 MASKED until the polling
+	 * init below completes (the same race as the keyboard: on the
+	 * 64-bit port the IRQ is dispatched fast enough that irq_psaux
+	 * consumes the init response bytes before ps2_read() can, breaking
+	 * the enable handshake and leaving the mouse silent). Unmasked at
+	 * the end of the function. */
+	irq_registered = !register_irq(PSAUX_IRQ, &irq_config_psaux);
 
 	ps2_clear_buffer();
 	psaux_identify();
@@ -326,5 +331,10 @@ void psaux_init(void)
 			break;
 	}
 	printk("\n");
+
+	/* init complete; unmask IRQ12 so motion packets start flowing */
+	if(irq_registered) {
+		enable_irq(PSAUX_IRQ);
+	}
 }
 #endif /* CONFIG_PSAUX */
