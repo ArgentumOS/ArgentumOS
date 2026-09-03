@@ -195,6 +195,21 @@ resize handling hardening; optional `WINDOW_BORDER` client-drawn chrome.
 - **M0**: C++ toolchain green (cpp-toolchain-plan M1/M2) — **DONE
   2026-09**: `make llvm-cxx` builds the runtimes and `cpp_smoke` runs
   under FNX.
+- **M1 (P1, IN PROGRESS 2026-09)**: FLTK release-1.4.5 cloned at
+  `third_party/fltk` (submodule, tag a9b1113); trimmed cmake configure
+  generates the config headers into `.build/fltk-cfg`; the generic core
+  list is ~156 `.cxx` (`.build/fltk_core_files.txt`). **Measured:** core
+  includes `FL/x11.H` via `FL/platform.H` (quoted, same-dir → cannot be
+  shadowed) which pulls `<X11/Xlib.h>` etc. Pivot adopted: shadow the
+  **X11 system headers** instead (`userland/fltk/x11-shadow/X11/{Xlib,
+  Xutil,Xatom}.h`, minimal opaque types) so the vendored FLTK stays
+  pristine. **Next blocker (measured):** core needs the concrete platform
+  window driver — `struct Fl_X` (static `first`/`flx()` members used by
+  `Fl.cxx`) is only ever defined inside platform driver code, so the
+  "pure core archive" shortcut does not exist; M1 requires scaffolding a
+  minimal FNX window driver (`Fl_X`, the four `new*Driver()` classes),
+  i.e. P2's skeleton pulled forward into P1. Then compile the ~156 core
+  `.cxx` with `tools/musl-g++64.sh` into `libfltk.a`.
 - **M1**: `libfltk.a` builds static against FNX musl + libc++ (host).
 - **M2**: one `Fl_Window` renders into a compositor window under QEMU
   (screendump-verified).
