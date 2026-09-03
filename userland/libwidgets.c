@@ -8,11 +8,14 @@
 
 #include <widgets.h>
 #include "font8x16.h"
+#include "text.h"
+#include <gui.h>
 
 /* forward decls (v_preferred + button_draw compare ops pointers) */
 static const struct view_ops label_ops;
 static const struct view_ops button_ops;
 static const struct view_ops toggle_ops;
+static const struct view_ops textfield_ops;
 
 /* ================= renderer (the §8 acceleration seam) ============= */
 
@@ -62,6 +65,15 @@ static void r_text(renderer_t *r, int x, int y, const char *s, uint32_t fg)
 	unsigned char *g;
 	int gx, gy;
 
+	if(r->font) {
+		/* TrueType text: the pen sits at the top-left of the
+		 * first line; the engine draws from the baseline */
+		text_draw_clip(r->font, r->buf, r->w, r->h,
+			       r->clip_x, r->clip_y, r->clip_w, r->clip_h,
+			       x + r->ox, y + r->oy +
+			       text_font_ascent(r->font), s, fg);
+		return;
+	}
 	x += r->ox;
 	y += r->oy;
 	for(; *s; s++) {
@@ -87,13 +99,17 @@ static void r_text(renderer_t *r, int x, int y, const char *s, uint32_t fg)
 
 static int r_text_width(renderer_t *r, const char *s)
 {
-	(void)r;
+	if(r->font) {
+		return text_width(r->font, s);
+	}
 	return (int)strlen(s) * FONT8X16_W;
 }
 
 static int r_text_height(renderer_t *r)
 {
-	(void)r;
+	if(r->font) {
+		return text_font_height(r->font);
+	}
 	return FONT8X16_H;
 }
 
@@ -146,6 +162,7 @@ void renderer_init(renderer_t *r, uint32_t *buf, int w, int h)
 	r->text = r_text;
 	r->text_width = r_text_width;
 	r->text_height = r_text_height;
+	r->font = NULL;
 	r->bevel = r_bevel;
 	r->groove = r_groove;
 }
@@ -471,6 +488,13 @@ static void v_preferred(view_t *v, renderer_t *mr, int *pw, int *ph)
 		}
 		if(*ph <= 0) {
 			*ph = FONT8X16_H + 6;
+		}
+	} else if(v->ops == &textfield_ops) {
+		if(*pw <= 0) {
+			*pw = 120;	/* default field width */
+		}
+		if(*ph <= 0) {
+			*ph = 24;
 		}
 	}
 }
@@ -967,7 +991,7 @@ static void label_draw(view_t *v, renderer_t *r)
 		WCOLOR_TEXT : WCOLOR_TEXT_DISABLED;
 
 	r->fill_rect(r, 0, 0, v->w, v->h, v->bg);
-	r->text(r, 2, (v->h - FONT8X16_H) / 2, s, fg);
+	r->text(r, 2, (v->h - r->text_height(r)) / 2, s, fg);
 }
 
 static void label_destroy(view_t *v)
@@ -1157,7 +1181,7 @@ static void button_draw(view_t *v, renderer_t *r)
 		     sunken ? WCOLOR_VIEW_DARK : WCOLOR_VIEW);
 	r->bevel(r, 0, 0, v->w, v->h, sunken ? 0 : 1, 2);
 	tx = (v->w - r->text_width(r, s)) / 2 + (sunken ? 1 : 0);
-	ty = (v->h - FONT8X16_H) / 2 + (sunken ? 1 : 0);
+	ty = (v->h - r->text_height(r)) / 2 + (sunken ? 1 : 0);
 	r->text(r, tx, ty, s, fg);
 	if(v->flags & VIEW_FOCUSED) {
 		r->fill_rect(r, 2, 2, 1, 1, WCOLOR_ACCENT);
@@ -1326,5 +1350,282 @@ void view_set_text(view_t *v, const char *text)
 			v->a11y_label = ld->text;
 			view_invalidate(v);
 		}
+	}
+}
+
+/* ================= text field (M2) ================================= */
+
+#define TF_MAX	256
+
+struct textfield_data {
+	text_font_t *font;	/* may be NULL = built-in 8x16 metrics */
+	char *text;
+	int caret;		/* byte offset into text */
+	int xscroll;		/* px scrolled left when the text overflows */
+	void (*on_change)(view_t *v, void *data);
+	void *data;
+};
+
+static int tf_off_x(struct textfield_data *d, const char *s, int off)
+{
+	return d->font ? text_offset_to_x(d->font, s, off) : off * 8;
+}
+
+static int tf_x_off(struct textfield_data *d, const char *s, int x)
+{
+	if(d->font) {
+		return text_x_to_offset(d->font, s, x);
+	}
+	if(x <= 0) {
+		return 0;
+	}
+	return x / 8 > (int)strlen(s) ? (int)strlen(s) : x / 8;
+}
+
+static void tf_draw(struct textfield_data *d, renderer_t *r,
+		    int x, int baseline, const char *s, uint32_t fg)
+{
+	if(d->font) {
+		text_draw_clip(d->font, r->buf, r->w, r->h,
+			       r->clip_x, r->clip_y, r->clip_w, r->clip_h,
+			       x, baseline, s, fg);
+		return;
+	}
+	/* 8x16 fallback */
+	{
+		const unsigned char *g;
+		int gx, gy;
+
+		for(; *s; s++) {
+			g = (unsigned char *)font8x16_data +
+			    (unsigned char)*s * 16;
+			for(gy = 0; gy < 16; gy++) {
+				unsigned char row = g[gy];
+
+				for(gx = 0; gx < 8; gx++) {
+					int px = x + gx;
+					int py = baseline - 12 + gy;
+
+					if((row & (0x80 >> gx)) &&
+					   px >= r->clip_x &&
+					   px < r->clip_x + r->clip_w &&
+					   py >= r->clip_y &&
+					   py < r->clip_y + r->clip_h) {
+						r->buf[(size_t)py * r->w +
+						       px] = fg;
+					}
+				}
+			}
+			x += 8;
+		}
+	}
+}
+
+static void tf_caret_visible(view_t *v, struct textfield_data *d)
+{
+	int cx, right = v->w - 4;
+
+	cx = tf_off_x(d, d->text, d->caret) - d->xscroll;
+	if(cx < 2) {
+		d->xscroll = tf_off_x(d, d->text, d->caret) - 2;
+	}
+	if(cx > right) {
+		d->xscroll = tf_off_x(d, d->text, d->caret) - right;
+	}
+	if(d->xscroll < 0) {
+		d->xscroll = 0;
+	}
+}
+
+static void textfield_draw(view_t *v, renderer_t *r)
+{
+	struct textfield_data *d = v->data;
+	int lh = d->font ? text_font_height(d->font) : 16;
+	int asc = d->font ? text_font_ascent(d->font) : 12;
+	int ty = (v->h - lh) / 2 + asc;
+	int tx = 3 - d->xscroll;
+	int cx;
+
+	r->fill_rect(r, 0, 0, v->w, v->h, WCOLOR_VIEW);
+	r->groove(r, 0, 0, v->w, v->h);
+	tf_draw(d, r, tx, ty, d->text, WCOLOR_TEXT);
+	/* the caret: a 1px bar at the caret when focused */
+	if((v->flags & VIEW_FOCUSED)) {
+		cx = tf_off_x(d, d->text, d->caret) - d->xscroll + 3;
+		r->fill_rect(r, cx, 2, 1, v->h - 4, WCOLOR_BLACK);
+	}
+}
+
+static void textfield_destroy(view_t *v)
+{
+	struct textfield_data *d = v->data;
+
+	if(d) {
+		free(d->text);
+		free(d);
+	}
+	v->data = NULL;
+}
+
+static void textfield_key_down(view_t *v, int key)
+{
+	struct textfield_data *d = v->data;
+	int len;
+	int changed = 0;
+
+	len = (int)strlen(d->text);
+	switch(key) {
+		case 8:			/* backspace */
+		case 127:		/* the console's BS */
+			if(d->caret > 0) {
+				int off = d->caret;
+
+				while(off > 1 &&
+				      ((unsigned char)d->text[off - 1] &
+				       0xC0) == 0x80) {
+					off--;
+				}
+				off--;
+				memmove(d->text + off, d->text + d->caret,
+					(size_t)(len - d->caret) + 1);
+				d->caret = off;
+				changed = 1;
+			}
+			break;
+		case GUI_KEY_LEFT:
+			if(d->caret > 0) {
+				d->caret--;
+				while(d->caret > 0 &&
+				      ((unsigned char)d->text[d->caret] &
+				       0xC0) == 0x80) {
+					d->caret--;
+				}
+			}
+			break;
+		case GUI_KEY_RIGHT:
+			if(d->caret < len) {
+				d->caret++;
+				while(d->caret < len &&
+				      ((unsigned char)d->text[d->caret] &
+				       0xC0) == 0x80) {
+					d->caret++;
+				}
+			}
+			break;
+		case GUI_KEY_HOME:
+			d->caret = 0;
+			break;
+		case GUI_KEY_END:
+			d->caret = len;
+			break;
+		default:
+			/* printable ASCII inserts at the caret */
+			if(key >= 0x20 && key < 0x7F && len < TF_MAX - 1) {
+				memmove(d->text + d->caret + 1,
+					d->text + d->caret,
+					(size_t)(len - d->caret) + 1);
+				d->text[d->caret] = (char)key;
+				d->caret++;
+				changed = 1;
+			}
+			break;
+	}
+	if(changed && d->on_change) {
+		d->on_change(v, d->data);
+	}
+	tf_caret_visible(v, d);
+	view_invalidate(v);
+}
+
+static void textfield_mouse_down(view_t *v, int x, int y)
+{
+	struct textfield_data *d = v->data;
+
+	(void)y;
+	d->caret = tf_x_off(d, d->text, x - 3 + d->xscroll);
+	tf_caret_visible(v, d);
+	view_invalidate(v);
+}
+
+static const struct view_ops textfield_ops = {
+	.draw = textfield_draw,
+	.destroy = textfield_destroy,
+	.mouse_down = textfield_mouse_down,
+	.key_down = textfield_key_down,
+};
+
+view_t *textfield_create(void *font, const char *initial,
+			 void (*on_change)(view_t *v, void *data),
+			 void *data)
+{
+	view_t *v = view_new(&textfield_ops, "textfield");
+	struct textfield_data *d;
+
+	if(!v) {
+		return NULL;
+	}
+	d = calloc(1, sizeof(*d));
+	if(!d) {
+		free(v);
+		return NULL;
+	}
+	d->font = font;
+	d->text = initial ? strdup(initial) : strdup("");
+	if(!d->text) {
+		free(d);
+		free(v);
+		return NULL;
+	}
+	d->caret = (int)strlen(d->text);
+	d->on_change = on_change;
+	d->data = data;
+	v->data = d;
+	v->bg = WCOLOR_VIEW;
+	v->a11y_label = d->text;
+	return v;
+}
+
+const char *textfield_text(view_t *v)
+{
+	struct textfield_data *d;
+
+	if(!v || v->ops != &textfield_ops) {
+		return "";
+	}
+	d = v->data;
+	return d ? d->text : "";
+}
+
+int textfield_caret(view_t *v)
+{
+	struct textfield_data *d;
+
+	if(!v || v->ops != &textfield_ops) {
+		return 0;
+	}
+	d = v->data;
+	return d ? d->caret : 0;
+}
+
+void textfield_set_caret(view_t *v, int off)
+{
+	struct textfield_data *d;
+
+	if(!v || v->ops != &textfield_ops) {
+		return;
+	}
+	d = v->data;
+	if(d) {
+		int len = (int)strlen(d->text);
+
+		if(off < 0) {
+			off = 0;
+		}
+		if(off > len) {
+			off = len;
+		}
+		d->caret = off;
+		tf_caret_visible(v, d);
+		view_invalidate(v);
 	}
 }

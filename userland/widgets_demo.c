@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -43,9 +44,13 @@ static view_t *g_status;	/* the status label */
 static char g_status_text[64];
 static int g_win_x, g_win_y;
 
-static void set_status(const char *fmt, int n)
+static void set_status(const char *fmt, ...)
 {
-	snprintf(g_status_text, sizeof(g_status_text), fmt, n);
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(g_status_text, sizeof(g_status_text), fmt, ap);
+	va_end(ap);
 	view_set_text(g_status, g_status_text);
 }
 
@@ -102,15 +107,27 @@ static void action_glow(view_t *v, void *data, int on)
 	fflush(stdout);
 }
 
+static text_font_t *g_font;
+
+static void on_field_change(view_t *v, void *data)
+{
+	(void)data;
+	set_status("Field: '%s'", textfield_text(v));
+	printf("WDEMO: field '%s'\n", textfield_text(v));
+	fflush(stdout);
+}
+
 int main(void)
 {
 	gui_display_t *d;
 	gui_window_t *win;
 	view_t *col, *row;
 	view_t *frame, *title, *bump, *glow, *sep, *spacer;
+	view_t *field, *fieldrow;
 	renderer_t rnd;
 	uint32_t *buf;
 	int ax = 0, ay = 0;
+	text_font_t *font;
 
 	signal(SIGINT, on_signal);
 	signal(SIGTERM, on_signal);
@@ -132,7 +149,17 @@ int main(void)
 		fprintf(stderr, "WDEMO: no backing buffer\n");
 		return 1;
 	}
+	/* the TTF text engine: all widget text switches to DejaVu Sans;
+	 * the field needs the font for its caret/click maths */
+	font = text_font_open("/System/Fonts/DejaVuSans.ttf", 14);
+	if(font) {
+		printf("WDEMO: DejaVu Sans 14px loaded\n");
+	} else {
+		printf("WDEMO: no font (falling back to 8x16)\n");
+	}
+	g_font = font;
 	renderer_init(&rnd, buf, 480, 360);
+	rnd.font = font;
 
 	/* ---- the view tree ---- */
 	g_root = view_new(NULL, "window");
@@ -161,6 +188,20 @@ int main(void)
 	view_set_frame(g_stage, 0, 0, 0, 160);
 	view_add(col, g_stage);
 
+	/* the text-entry row (M2): a label + an editable field */
+	fieldrow = view_new(NULL, "panel");
+	fieldrow->bg = WCOLOR_BG;
+	fieldrow->anchor = VIEW_ANCHOR_FILLX;
+	view_set_layout(fieldrow, VIEW_LAYOUT_ROW, 0, 6);
+	view_set_frame(fieldrow, 0, 0, 0, 26);
+	view_add(col, fieldrow);
+	title = label_create("Name:");
+	title->anchor = VIEW_ANCHOR_FILLY;
+	view_add(fieldrow, title);
+	field = textfield_create(font, "FNX", on_field_change, NULL);
+	field->anchor = VIEW_ANCHOR_FILLX;
+	view_add(fieldrow, field);
+
 	/* the control row */
 	row = view_new(NULL, "panel");
 	row->bg = WCOLOR_BG;
@@ -171,6 +212,8 @@ int main(void)
 	view_add(row, bump);
 	glow = toggle_button_create("Glow", action_glow, &g_state);
 	view_add(row, glow);
+	/* the desktop starts with the keyboard focus in the name field */
+	view_focus(g_root, field);
 	spacer = view_new(NULL, "spacer");
 	spacer->bg = WCOLOR_BG;
 	view_add(row, spacer);

@@ -13,6 +13,8 @@
 #ifndef FNX_WIDGETS_H
 #define FNX_WIDGETS_H
 
+#include <text.h>
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -51,6 +53,10 @@ struct renderer {
 	/* draw text at (x, y) = top-left of the first glyph */
 	void (*text)(renderer_t *r, int x, int y, const char *s,
 		     uint32_t fg);
+	/* the active glyph source: a text_font_t* (loaded via text.h) or
+	 * NULL for the built-in 8x16 bitmap font. Set by the caller
+	 * after renderer_init; r->text/text_width/text_height honour it. */
+	void *font;
 	int (*text_width)(renderer_t *r, const char *s);
 	int (*text_height)(renderer_t *r);
 	/* a beveled panel border (raised = light top/left, dark bottom/
@@ -220,6 +226,19 @@ view_t *toggle_button_create(const char *text,
 
 /* text accessors (labels/buttons) */
 void view_set_text(view_t *v, const char *text);
+
+/* ---- text field (M2) ---------------------------------------------- */
+
+/* A single-line editable box. Takes the keyboard focus (Tab or click)
+ * and edits with printable keys, Backspace, Left/Right, Home/End.
+ * font = a text_font_t* (may be NULL = built-in 8x16). on_change, if
+ * set, fires after every edit. */
+view_t *textfield_create(void *font, const char *initial,
+			 void (*on_change)(view_t *v, void *data),
+			 void *data);
+const char *textfield_text(view_t *v);
+void textfield_set_caret(view_t *v, int off);	/* byte offset */
+int textfield_caret(view_t *v);
 
 /* ---- event dispatch (window coords) ------------------------------- */
 

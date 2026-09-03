@@ -64,6 +64,10 @@ int text_width(text_font_t *f, const char *s);
  * there. Returns the advance (end x). */
 int text_draw(text_font_t *f, uint32_t *buf, int bw, int bh,
 	      int x, int baseline, const char *s, uint32_t color);
+/* same, but clip to (cx, cy, cw, ch) instead of the whole buffer */
+int text_draw_clip(text_font_t *f, uint32_t *buf, int bw, int bh,
+		   int cx, int cy, int cw, int ch, int x, int baseline,
+		   const char *s, uint32_t color);
 
 /* Word-wrap s to at most 'maxw' pixels. Fills 'breaks' with the byte
  * offsets where each line starts (breaks[0] = 0); returns the line

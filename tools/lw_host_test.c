@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <widgets.h>
+#include <gui.h>
 
 static uint32_t buf[480 * 320];
 
@@ -135,6 +136,87 @@ int main(void)
 		fails++;
 	}
 	view_render(root, &r, 0, &dx, &dy, &dw, &dh);	/* drain again */
+
+	/* ---- M2 text field: typing, caret moves, backspace ---- */
+	{
+		view_t *tfroot, *tf;
+		static uint32_t tbuf[480 * 120];
+
+		tfroot = view_new(NULL, "window");
+		view_set_frame(tfroot, 0, 0, 480, 40);
+		tf = textfield_create(NULL, "", NULL, NULL);
+		view_set_frame(tf, 0, 0, 300, 24);
+		view_add(tfroot, tf);
+		view_focus(tfroot, tf);
+
+		view_key(tfroot, 'H');
+		view_key(tfroot, 'i');
+		if(strcmp(textfield_text(tf), "Hi")) {
+			printf("FAIL: typing (got '%s')\n", textfield_text(tf));
+			fails++;
+		} else {
+			printf("typed 'Hi' OK\n");
+		}
+		if(textfield_caret(tf) != 2) {
+			printf("FAIL: caret after typing\n");
+			fails++;
+		}
+		view_key(tfroot, GUI_KEY_LEFT);
+		view_key(tfroot, '!');
+		if(strcmp(textfield_text(tf), "H!i")) {
+			printf("FAIL: mid insert (got '%s')\n",
+			       textfield_text(tf));
+			fails++;
+		} else {
+			printf("mid-insert 'H!i' OK\n");
+		}
+		view_key(tfroot, GUI_KEY_HOME);
+		view_key(tfroot, '>');
+		if(strcmp(textfield_text(tf), ">H!i")) {
+			printf("FAIL: home insert\n");
+			fails++;
+		}
+		view_key(tfroot, 127);	/* backspace (caret is at 1) */
+		if(strcmp(textfield_text(tf), "H!i")) {
+			printf("FAIL: backspace (got '%s')\n",
+			       textfield_text(tf));
+			fails++;
+		} else if(textfield_caret(tf) != 0) {
+			printf("FAIL: caret after backspace\n");
+			fails++;
+		} else {
+			printf("backspace 'H!i' caret 0 OK\n");
+		}
+		view_key(tfroot, 127);	/* at 0: no-op */
+		if(strcmp(textfield_text(tf), "H!i")) {
+			printf("FAIL: backspace at 0\n");
+			fails++;
+		}
+		view_key(tfroot, GUI_KEY_END);
+		view_key(tfroot, '.');
+		if(strcmp(textfield_text(tf), "H!i.")) {
+			printf("FAIL: end insert (got '%s')\n",
+			       textfield_text(tf));
+			fails++;
+		} else {
+			printf("end insert 'H!i.' OK\n");
+		}
+		/* a render with the field's caret (solid when focused) */
+		{
+			renderer_t fr;
+			int dx2, dy2, dw2, dh2;
+
+			renderer_init(&fr, tbuf, 480, 40);
+			view_render(tfroot, &fr, 1, &dx2, &dy2, &dw2, &dh2);
+			if(dw2 <= 0 || dh2 <= 0) {
+				printf("FAIL: field render\n");
+				fails++;
+			}
+		}
+		view_destroy(tf);
+		view_destroy(tfroot);
+		printf("text field editing OK\n");
+	}
 
 	/* a canvas on the root (no layout): clicks pass to it */
 	{

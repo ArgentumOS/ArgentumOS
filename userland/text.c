@@ -257,10 +257,15 @@ int text_width(text_font_t *f, const char *s)
 	return string_advance(f, s, -1);
 }
 
-int text_draw(text_font_t *f, uint32_t *buf, int bw, int bh,
-	      int x, int baseline, const char *s, uint32_t color)
+int text_draw_clip(text_font_t *f, uint32_t *buf, int bw, int bh,
+		    int cx, int cy, int cw, int ch, int x, int baseline,
+		    const char *s, uint32_t color)
 {
 	int pen = x;
+	int x0 = cx < 0 ? 0 : cx;
+	int y0 = cy < 0 ? 0 : cy;
+	int x1 = cx + cw > bw ? bw : cx + cw;
+	int y1 = cy + ch > bh ? bh : cy + ch;
 	int off = 0;
 	uint32_t r = (color >> 16) & 0xFF;
 	uint32_t g = (color >> 8) & 0xFF;
@@ -282,7 +287,7 @@ int text_draw(text_font_t *f, uint32_t *buf, int bw, int bh,
 			for(py = 0; py < gl->h; py++) {
 				int yy = gy + py;
 
-				if(yy < 0 || yy >= bh) {
+				if(yy < y0 || yy >= y1) {
 					continue;
 				}
 				for(px = 0; px < gl->w; px++) {
@@ -290,7 +295,7 @@ int text_draw(text_font_t *f, uint32_t *buf, int bw, int bh,
 					unsigned int cov;
 					uint32_t *d;
 
-					if(xx < 0 || xx >= bw) {
+					if(xx < x0 || xx >= x1) {
 						continue;
 					}
 					cov = gl->px[(size_t)py * gl->w +
@@ -326,6 +331,13 @@ int text_draw(text_font_t *f, uint32_t *buf, int bw, int bh,
 		off += n;
 	}
 	return pen;
+}
+
+int text_draw(text_font_t *f, uint32_t *buf, int bw, int bh,
+	      int x, int baseline, const char *s, uint32_t color)
+{
+	return text_draw_clip(f, buf, bw, bh, 0, 0, bw, bh,
+			      x, baseline, s, color);
 }
 
 /* ---- wrapping / caret ---------------------------------------------- */
