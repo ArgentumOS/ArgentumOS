@@ -221,7 +221,7 @@ def main():
     root, out = sys.argv[1], sys.argv[2]
     size_mb = int(sys.argv[3]) if len(sys.argv) > 3 else 8
 
-    top = build_tree(root, with_symlinks=True)
+    top = build_tree(root, with_symlinks=True, name_max=255)
     ninodes_used = assign_inodes(top)
     assert ninodes_used <= INODES_PER_GROUP, 'too many inodes'
     blocks, i_blocks = assign_blocks(top)

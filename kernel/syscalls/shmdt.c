@@ -23,7 +23,7 @@ int sys_shmdt(char *shmaddr)
 {
 	struct vma *vma;
 	struct shmid_ds *seg;
-	unsigned int addr;
+	addr_t addr;
 	int n;
 
 #ifdef __DEBUG__
@@ -50,6 +50,26 @@ int sys_shmdt(char *shmaddr)
 			do_munmap(addr, seg->shm_attaches[n].end - seg->shm_attaches[n].start);
 			shm_release_attach(&seg->shm_attaches[n]);
 			seg->shm_nattch--;
+		}
+	}
+
+	/* IPC_RMID (SHM_DEST) while attached must free the segment when the
+	 * last attach detaches - otherwise every detach of a destroyed-but-
+	 * still-attached segment leaks it forever (e.g. the compositor's
+	 * resize: it RMIDs the old backing while the client still holds its
+	 * attach, and the client's shmdt on the resize ack is the last
+	 * detach) */
+	if((seg->shm_perm.mode & SHM_DEST) && !seg->shm_nattch) {
+		int shmid = -1;
+
+		for(n = 0; n < SHMMNI; n++) {
+			if(shmseg[n] == seg) {
+				shmid = (seg->shm_perm.seq * SHMMNI) + n;
+				break;
+			}
+		}
+		if(shmid >= 0) {
+			free_seg(shmid);
 		}
 	}
 

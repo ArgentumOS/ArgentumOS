@@ -76,13 +76,16 @@ class Node:
         self.size = 0
 
 
-def build_tree(root, with_symlinks=False, exclude=()):
+def build_tree(root, with_symlinks=False, exclude=(), name_max=14):
     """Walk the source directory into a Node tree (sorted, deterministic).
 
     Symlinks are represented as 'lnk' nodes (data = target string) only when
     with_symlinks is set; the minix initrd has no symlink support so its
     caller leaves it off. `exclude` is a set of root-relative paths to skip
-    (e.g. the toybox binary, which only fits on the ext2 root disk).
+    (e.g. the toybox binary, which only fits on the ext2 root disk). Names
+    are truncated to `name_max` bytes: the minix initrd format is limited to
+    14-char names, but the ext2 writer (mkext2.py) passes 255 so its names
+    are preserved in full.
     """
     top = Node(b'')
 
@@ -95,12 +98,12 @@ def build_tree(root, with_symlinks=False, exclude=()):
                 continue
             if os.path.islink(fullpath):
                 if with_symlinks:
-                    n = Node(entry.encode()[:14], 'lnk')
+                    n = Node(entry.encode()[:name_max], 'lnk')
                     n.data = os.readlink(fullpath).encode()
                     n.size = len(n.data)
                     node.children.append(n)
                 continue
-            name = entry.encode()[:14]
+            name = entry.encode()[:name_max]
             if relpath in DEVICES:
                 # block nodes are named explicitly (major 1 is shared with
                 # the mem char devices: null/zero/full are 1:3..1:7)

@@ -135,6 +135,8 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN)
 	$(MUSL64_CC) -Iinclude userland/compositor.c -o $(ROOTFS64)/bin/compositor
 	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o $(ROOTFS64)/bin/gui_smoke
 	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o $(ROOTFS64)/bin/gui_demo
+	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o $(ROOTFS64)/bin/shm_leak_test
+	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o $(ROOTFS64)/bin/shm_resize_test
 	# config's three scope directories (docs/config-design.md; the FSH
 	# spells them /System, /Shared, Users/$USER). The guest has one
 	# user (root).
