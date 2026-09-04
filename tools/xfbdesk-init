@@ -13,8 +13,7 @@ mkdir -p /var/log
 # killed session's /tmp/.X0-lock + /tmp/.X11-unix can come back with a
 # now-reused PID - Xfb would refuse to start ("Server is already active
 # for display 0"). Clear them before starting.
-rm -f /tmp/.X0-lock
-rm -rf /tmp/.X11-unix
+rm -rf /tmp/.X0-lock /tmp/.tX0-lock /tmp/.X11-unix
 
 echo "XDESK: starting Xfb :0 on the framebuffer"
 /bin/Xfb :0 -ac > /var/log/Xfb.log 2>&1 &
