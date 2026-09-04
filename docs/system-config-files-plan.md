@@ -3,8 +3,9 @@
 Status: DRAFT — awaiting review. Companion to `docs/config-design.md`
 (the `.conf` grammar, scopes, and libconfig contract) and
 `docs/fsh-proposal.md` (the FSH layout these files live in). **Supersedes
-config-design §2/§5/Q-F** (scope roles + precedence — see D4) and
-amends §10 (grammar) with group records.
+config-design §2/§5/Q-F** (scope roles + precedence — see D4), refines
+§8 (namespace: `system.config` = first-party *global system settings* —
+see §5.0), and amends §10 (grammar) with group records.
 
 Scope: move the traditional Unix configuration files FNX still carries
 in legacy formats — account/password data (`passwd`, `group`), resolver
@@ -203,10 +204,34 @@ as today); nobody can shadow it because a shadow is never consulted.
 ## 5. The domains
 
 Files move from legacy names/formats to `<domain>.conf` in
-`/System/Configuration` (authoritative, D4). Names below use the
-first-party `system.config.*` prefix per config-design §2/§8; the
-*defaults* that a fresh image ships for overridable domains go to
-`/Shared/Configuration` (M2).
+`/System/Configuration` (authoritative, D4). The *defaults* a fresh
+image ships for overridable domains go to `/Shared/Configuration`
+(M2).
+
+### 5.0 Namespace convention
+
+**`system.config` is reserved by convention for the global system
+settings of FNX's own (first-party) software** — e.g.
+`system.config.passwd`, `system.config.mounts`, `system.config.xfb`.
+It is a reserved root, not reverse-DNS (config-design §8): third-party
+software never uses it and instead keeps its own reverse-DNS domain
+(`com.example.<app>`).
+
+Under D4 the convention lines up with scope placement:
+
+- The **authoritative value** of a `system.config.*` setting lives in
+  `/System/Configuration` — the global, non-overridable tier.
+- Its **shipped default** (if any) lives in `/Shared/Configuration` as
+  the overridable baseline for that same domain.
+- A **per-user first-party preference** is not itself a global setting:
+  it may exist only as a user-scope override of a `system.config.*`
+  domain's *default* — it can never override the System value (see Q1
+  for whether purely-personal first-party prefs should use a different
+  reserved root instead).
+
+The domains in this plan (`passwd`, `group`, `shells`, `hosts`,
+`mounts`) are all first-party global system settings, which is exactly
+what the reserved namespace is for.
 
 ### 5.1 `system.config.passwd.conf` / `system.config.group.conf`
 
@@ -362,9 +387,10 @@ System value.
 `shells` domain land in `/System/Configuration` (identity, D4) and
 replace the Makefile legacy `printf`s (Makefile userland64); the
 `Admin` account re-expressed as the `admin` record. Separately, the
-*defaults* staging target changes: shipped first-party default domains
-(Xfb today, more later) are staged into `/Shared/Configuration` as the
-overridable baseline (config-design role change).
+*defaults* staging target changes: the shipped defaults of first-party
+global settings (`system.config.xfb` today, more later) are staged into
+`/Shared/Configuration` as the overridable baseline for those domains
+(config-design role change).
 Acceptance: `config read system.config.passwd user.admin.uid` → `0`;
 images build without legacy `passwd`/`group`/`shells` files; Xfb's
 default domain reads from Shared and a System copy overrides it.
@@ -407,11 +433,13 @@ third_party patches.
 
 ## 8. Open items (Q)
 
-- **Q1** — Per-user prefs for domains the OS also configures: with
-  System authoritative, a user can no longer tune an OS-set value. Is
-  that intended for *all* `system.config.*` domains, or should
-  per-user values still win for cosmetic keys (e.g. UI prefs) via an
-  opt-out (an explicit "user-overridable" marker on such domains)?
+- **Q1** — Per-user first-party preferences: with `system.config.*`
+  reserved for *global* system settings (System-scope, authoritative),
+  purely-personal first-party prefs have no natural home in that
+  namespace. Should they (a) remain user-scope `system.config.*`
+  overrides of Shared defaults for cosmetic keys (never overriding
+  System), or (b) get their own reserved first-party root (e.g.
+  `user.config.<app>`)?
 - **Q2** — Shadow folding (hash in the record, §5.1) vs. a separate
   System `system.config.shadow.conf` with `x` indirection.
 - **Q3** — toybox `mount`/`umount` consuming the mount table in M6 or
