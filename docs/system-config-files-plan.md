@@ -208,8 +208,9 @@ as today); nobody can shadow it because a shadow is never consulted.
 - **Existing per-user files that shadowed system domains** stop having
   effect (e.g. a user-scope `system.config.xfb.conf` that once tuned the
   OS default now tunes nothing — the OS default itself moved to Shared,
-  which the user *can* still override). Migration of stale user/shared
-  shadows is Q6.
+  which the user *can* still override). `config` warns on read when a
+  user/shared value is shadowed by a System value; stale files stay in
+  place (Q6).
 - Identity and boot-policy files (accounts, shells, mount table) are
   machine state, not defaults: they live in System only (no Shared
   baseline to ship).
@@ -364,8 +365,8 @@ mount = {
 - `userland/init.c` replaces its hardcoded `try_mount()` calls with an
   ordered mount of this domain (record order = mount order), so the
   boot mount set becomes machine configuration.
-- Q3: whether toybox `mount`/`umount` (no-args = mount the table /
-  unmount table entries) should consume it in this plan or a follow-up.
+- toybox `mount`/`umount` consume it in M6b (no-args `mount` = mount
+  the table / unmount table entries), a follow-up after init's M6 (Q3).
 
 ## 6. Consumers to patch (D3)
 
