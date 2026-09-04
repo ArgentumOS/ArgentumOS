@@ -51,7 +51,9 @@ struct client {
 	int fd;
 	int used;
 	unsigned char buf[GUI_PROTO_MAX + 4];
-	size_t have;		/* bytes buffered */
+	size_t have;		/* bytes buffered (input) */
+	unsigned char obuf[GUI_PROTO_MAX + 4];	/* pending output bytes */
+	size_t olen;		/* unsent bytes in obuf (frame-coherent) */
 	int dead;
 };
 
@@ -83,7 +85,9 @@ static int next_id = 1;
 
 /* ---- forward decls (defined below the fb helpers) ------------------ */
 static struct window *window_find(int id);
-static int msg_send(int fd, const void *payload, size_t len);
+static int flush_client(struct client *c);
+static void client_send(struct client *c, const void *payload, size_t len,
+			int drop);
 static int fb_put_rect(int x, int y, int w, int h, const uint32_t *src);
 static void present_rect(int rx, int ry, int rw, int rh);
 static uint32_t *bbuf;
@@ -256,27 +260,14 @@ static struct window *window_at(int x, int y)
 	return NULL;
 }
 
-static int window_owner_fd(struct window *w)
-{
-	if(!w || w->client < 0 || !clients[w->client].used) {
-		return -1;
-	}
-	return clients[w->client].fd;
-}
-
 /* send a gui_event_t to the owner of window id */
 static void send_event(int win_id, gui_event_type_t type,
 		       int x, int y, int button, int state)
 {
 	struct window *w = window_find(win_id);
 	unsigned char payload[1 + sizeof(gui_event_t)];
-	int fd;
 
-	if(!w) {
-		return;
-	}
-	fd = window_owner_fd(w);
-	if(fd < 0) {
+	if(!w || w->client < 0 || !clients[w->client].used) {
 		return;
 	}
 	payload[0] = GUI_MSG_EVENT;
@@ -291,10 +282,7 @@ static void send_event(int win_id, gui_event_type_t type,
 		e->button = button;
 		e->state = state;
 	}
-	if(msg_send(fd, payload, 1 + sizeof(gui_event_t))) {
-		fprintf(stderr, "CEV: mouse send FAILED (win %d)\n",
-			win_id);
-	}
+	client_send(&clients[w->client], payload, 1 + sizeof(gui_event_t), 1);
 }
 
 /* send a KEY event (keysym + modifiers) to window id's owner */
@@ -302,13 +290,8 @@ static void send_key_event(int win_id, int key, int mods, int state)
 {
 	struct window *w = window_find(win_id);
 	unsigned char payload[1 + sizeof(gui_event_t)];
-	int fd;
 
-	if(!w) {
-		return;
-	}
-	fd = window_owner_fd(w);
-	if(fd < 0) {
+	if(!w || w->client < 0 || !clients[w->client].used) {
 		return;
 	}
 	payload[0] = GUI_MSG_EVENT;
@@ -322,7 +305,7 @@ static void send_key_event(int win_id, int key, int mods, int state)
 		e->mods = mods;
 		e->state = state;
 	}
-	msg_send(fd, payload, 1 + sizeof(gui_event_t));
+	client_send(&clients[w->client], payload, 1 + sizeof(gui_event_t), 1);
 }
 
 /* move the keyboard focus to the window's owner (FOCUS events) */
@@ -761,39 +744,74 @@ static void window_destroy(struct window *w)
 }
 
 /* ---- socket plumbing ----------------------------------------------- */
+/* All compositor -> client traffic is queued per client and flushed when
+ * the socket is writable, so the compositor NEVER blocks writing to a
+ * client (that would stall the input sources and deadlock against a
+ * client busy in a request/ack exchange). Bytes are written in order
+ * from obuf and a frame is never partially discarded, so the client's
+ * [len][payload] framing can never desync. */
 
-static int send_all(int fd, const void *buf, size_t len)
+/* write as much pending output as the socket will take; nonblocking */
+static int flush_client(struct client *c)
 {
-	const char *p = buf;
+	while(c->olen) {
+		ssize_t w = write(c->fd, c->obuf, c->olen);
 
-	while(len) {
-		ssize_t n = write(fd, p, len);
-
-		if(n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-			/* the client's socket is full (it is busy in a
-			 * request/ack exchange). Events are loss-tolerant;
-			 * dropping here is what keeps the compositor from
-			 * deadlocking against a client waiting for an ack
-			 * it will never get while we block writing. */
-			return -1;
+		if(w > 0) {
+			memmove(c->obuf, c->obuf + w, c->olen - (size_t)w);
+			c->olen -= (size_t)w;
+			continue;
 		}
-		if(n <= 0) {
-			return -1;
+		if(w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+			return 0;	/* retried when the fd is writable */
 		}
-		p += n;
-		len -= (size_t)n;
+		if(w < 0 && errno == EINTR) {
+			continue;
+		}
+		c->dead = 1;		/* EPIPE etc.: client gone */
+		return -1;
 	}
 	return 0;
 }
 
-static int msg_send(int fd, const void *payload, size_t len)
+/* Queue one [u32 len][payload] frame for c. Events (drop=1) may be
+ * dropped whole when the client is not draining and the queue is full;
+ * replies (drop=0) are never dropped: the queue always drains because a
+ * client is reading while it awaits its reply. */
+static void client_send(struct client *c, const void *payload, size_t len,
+			int drop)
 {
 	uint32_t hdr = (uint32_t)len;
+	size_t framelen = len + sizeof(hdr);
 
-	if(send_all(fd, &hdr, sizeof(hdr)) || send_all(fd, payload, len)) {
-		return -1;
+	if(!c->used || c->dead || len > GUI_PROTO_MAX) {
+		return;
 	}
-	return 0;
+	flush_client(c);
+	if(framelen > sizeof(c->obuf)) {
+		return;
+	}
+	if(c->olen + framelen > sizeof(c->obuf)) {
+		if(drop) {
+			return;		/* whole-frame drop */
+		}
+		/* reply: wait for queue space (the client is reading) */
+		while(c->olen + framelen > sizeof(c->obuf) && !c->dead) {
+			fd_set wfds;
+
+			FD_ZERO(&wfds);
+			FD_SET(c->fd, &wfds);
+			select(c->fd + 1, NULL, &wfds, NULL, NULL);
+			flush_client(c);
+		}
+		if(c->dead) {
+			return;
+		}
+	}
+	memcpy(c->obuf + c->olen, &hdr, sizeof(hdr));
+	memcpy(c->obuf + c->olen + sizeof(hdr), payload, len);
+	c->olen += framelen;
+	flush_client(c);
 }
 
 static void reply_created(struct client *c, int req, int win, int shmid,
@@ -807,7 +825,7 @@ static void reply_created(struct client *c, int req, int win, int shmid,
 	m.win = win;
 	m.shmid = shmid;
 	m.err = err;
-	msg_send(c->fd, &m, sizeof(m));
+	client_send(c, &m, sizeof(m), 0);
 }
 
 static void reply_ack(struct client *c, int req, int err, int shmid)
@@ -819,7 +837,7 @@ static void reply_ack(struct client *c, int req, int err, int shmid)
 	m.req = req;
 	m.err = err;
 	m.shmid = shmid;
-	msg_send(c->fd, &m, sizeof(m));
+	client_send(c, &m, sizeof(m), 0);
 }
 
 /* ---- message handling ---------------------------------------------- */
@@ -846,7 +864,7 @@ static void handle_msg(struct client *c, const unsigned char *p, size_t len)
 			m.type = GUI_MSG_CONNECTED;
 			m.w = fb_w;
 			m.h = fb_h;
-			msg_send(c->fd, &m, sizeof(m));
+			client_send(c, &m, sizeof(m), 0);
 		}
 		return;
 	}
@@ -1225,11 +1243,12 @@ int main(void)
 	input_open_keyboard();
 
 	while(1) {
-		fd_set rfds;
+		fd_set rfds, wfds;
 		int maxfd = listen_fd;
 		int nsel;
 
 		FD_ZERO(&rfds);
+		FD_ZERO(&wfds);
 		FD_SET(listen_fd, &rfds);
 		if(mouse_fd >= 0) {
 			FD_SET(mouse_fd, &rfds);
@@ -1250,8 +1269,11 @@ int main(void)
 					maxfd = clients[i].fd;
 				}
 			}
+			if(clients[i].used && clients[i].olen) {
+				FD_SET(clients[i].fd, &wfds);
+			}
 		}
-		nsel = select(maxfd + 1, &rfds, NULL, NULL, NULL);
+		nsel = select(maxfd + 1, &rfds, &wfds, NULL, NULL);
 		if(nsel < 0) {
 			if(errno == EINTR) {
 				continue;
@@ -1281,6 +1303,7 @@ int main(void)
 					clients[slot].dead = 0;
 					clients[slot].fd = cfd;
 					clients[slot].have = 0;
+					clients[slot].olen = 0;
 				} else {
 					close(cfd);
 				}
@@ -1299,6 +1322,15 @@ int main(void)
 		}
 		if(mouse_fd >= 0 && FD_ISSET(mouse_fd, &rfds)) {
 			input_drain();
+		}
+		/* flush queued output to any client whose socket is writable
+		 * (all writes are nonblocking; the select on POLLOUT above
+		 * wakes us when a client that was not draining starts to) */
+		for(i = 0; i < MAX_CLIENTS; i++) {
+			if(clients[i].used && clients[i].olen &&
+			   FD_ISSET(clients[i].fd, &wfds)) {
+				flush_client(&clients[i]);
+			}
 		}
 		/* reap dead clients + their windows */
 		for(i = 0; i < MAX_CLIENTS; i++) {
