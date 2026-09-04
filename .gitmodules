@@ -25,6 +25,12 @@
 [submodule "third_party/x11/libXdmcp"]
 	path = third_party/x11/libXdmcp
 	url = https://gitlab.freedesktop.org/xorg/lib/libXdmcp.git
+[submodule "third_party/x11/xcbproto"]
+	path = third_party/x11/xcbproto
+	url = https://gitlab.freedesktop.org/xorg/proto/xcbproto.git
+[submodule "third_party/x11/libxcb"]
+	path = third_party/x11/libxcb
+	url = https://gitlab.freedesktop.org/xorg/lib/libxcb.git
 [submodule "third_party/x11/libX11"]
 	path = third_party/x11/libX11
 	url = https://gitlab.freedesktop.org/xorg/lib/libX11.git
