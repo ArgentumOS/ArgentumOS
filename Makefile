@@ -172,7 +172,25 @@ $(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh
 	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64.sh" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $(TOYBOX64_BIN)
 
-userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP)
+# --- LVGL (third_party/lvgl) static lib for the compositor GUI spike. The
+# config lives in include/lv_conf.h (copied from lv_conf_template.h).
+LVGL_SRC      = third_party/lvgl/src
+LVGL64        = .build/lvgl64/liblvgl.a
+LVGL64_OBJ    = .build/lvgl64/src
+LVGL64_SRCS   = $(shell find $(LVGL_SRC) -name '*.c')
+LVGL64_OBJS   = $(patsubst $(LVGL_SRC)/%.c,$(LVGL64_OBJ)/%.o,$(LVGL64_SRCS))
+LVGL64_CFLAGS = -O2 -Iinclude -Ithird_party/lvgl -Ithird_party/lvgl/src \
+		-DLV_CONF_INCLUDE_SIMPLE
+
+.PHONY: lvgl64
+lvgl64: $(LVGL64)
+$(LVGL64): $(LVGL64_OBJS)
+	ar rcs $@ $^
+$(LVGL64_OBJ)/%.o: $(LVGL_SRC)/%.c include/lv_conf.h
+	@mkdir -p $(dir $@)
+	$(MUSL64_CC) $(LVGL64_CFLAGS) -c $< -o $@
+
+userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64)
 	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
