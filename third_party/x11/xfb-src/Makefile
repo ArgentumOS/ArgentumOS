@@ -32,6 +32,12 @@ INC += -Irender
 INC += -Ixfixes
 INC += -Ixkb
 INC += -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
+
+# FNX libconfig (com.fnx.xfb): repo include dir + the userland source.
+# Only configargs.c and libconfig.c need these; they are applied on the
+# per-file rules below, not to the whole build.
+FNXINC  ?= $(CURDIR)/../../../include
+FNXCONF ?= $(CURDIR)/../../../userland/libconfig.c
 DEFS  = -DHAVE_DIX_CONFIG_H -D_FILE_OFFSET_BITS=64 -D_DEFAULT_SOURCE
 DEFS += -D_BSD_SOURCE -DHAS_FCHOWN -DHAS_STICKY_DIR_BIT
 CPPFLAGS = $(DEFS) $(INC)
@@ -116,8 +122,8 @@ $(BUILD)/libxserver_xkb_stubs.a: $(BUILD)/xserver_xkb_stubs__xkb_ddxKillSrv.c.o 
 	ar rcs $@ $(BUILD)/xserver_xkb_stubs__xkb_ddxKillSrv.c.o $(BUILD)/xserver_xkb_stubs__xkb_ddxPrivate.c.o $(BUILD)/xserver_xkb_stubs__xkb_ddxVT.c.o
 $(BUILD)/libxserver_xi_stubs.a: $(BUILD)/xserver_xi_stubs__Xi_stubs.c.o
 	ar rcs $@ $(BUILD)/xserver_xi_stubs__Xi_stubs.c.o
-$(BUILD)/libxfb.a: $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__hw_xfb_fnxinput.c.o $(BUILD)/xfb__mi_miinitext.c.o
-	ar rcs $@ $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__hw_xfb_fnxinput.c.o $(BUILD)/xfb__mi_miinitext.c.o
+$(BUILD)/libxfb.a: $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__hw_xfb_fnxinput.c.o $(BUILD)/xfb__hw_xfb_configargs.c.o $(BUILD)/xfb__fnx_libconfig.c.o $(BUILD)/xfb__mi_miinitext.c.o
+	ar rcs $@ $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__hw_xfb_fnxinput.c.o $(BUILD)/xfb__hw_xfb_configargs.c.o $(BUILD)/xfb__fnx_libconfig.c.o $(BUILD)/xfb__mi_miinitext.c.o
 $(BUILD)/xserver_main__dix_stubmain.c.o: dix/stubmain.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
@@ -916,6 +922,12 @@ $(BUILD)/xfb__hw_xfb_InitOutput.c.o: hw/xfb/InitOutput.c
 $(BUILD)/xfb__hw_xfb_fnxinput.c.o: hw/xfb/fnxinput.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+$(BUILD)/xfb__hw_xfb_configargs.c.o: hw/xfb/configargs.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) -I$(FNXINC) $(CFLAGS) -c $< -o $@
+$(BUILD)/xfb__fnx_libconfig.c.o: $(FNXCONF)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) -I$(FNXINC) $(CFLAGS) -c $< -o $@
 $(BUILD)/xfb__mi_miinitext.c.o: mi/miinitext.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@

@@ -667,10 +667,17 @@ static const char *defaultNoListenList[] = {
  * and allows ddx to handle additional fields.  It is not allowed to modify
  * argc or any of the strings pointed to by argv.
  */
+extern void xfb_config_args(int *, char ***);	/* FNX: com.fnx.xfb */
+
 void
 ProcessCommandLine(int argc, char *argv[])
 {
     int i, skip;
+
+    /* FNX: prepend config-derived option tokens (the com.fnx.xfb domain
+     * supplies defaults; a real occurrence of an option overrides its
+     * config key, then the last-wins parse below applies). */
+    xfb_config_args(&argc, &argv);
 
     defaultKeyboardControl.autoRepeat = TRUE;
 
