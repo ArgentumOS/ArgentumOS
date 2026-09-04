@@ -1,0 +1,46 @@
+encparse.lo: encparse.c ../config.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/string.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/features.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/bits/alltypes.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/strings.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/stdio.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/stdlib.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/alloca.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/fcntl.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/bits/fcntl.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/zlib.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/zconf.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/stddef.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/limits.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/bits/limits.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/sys/types.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/endian.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/sys/select.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/stdarg.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/unistd.h \
+ ../include/X11/fonts/fontenc.h fontencI.h reallocarray.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xfuncproto.h
+../config.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/string.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/features.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/bits/alltypes.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/strings.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stdio.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stdlib.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/alloca.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/fcntl.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/bits/fcntl.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/zlib.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/zconf.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stddef.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/limits.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/bits/limits.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/sys/types.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/endian.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/sys/select.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stdarg.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/unistd.h:
+../include/X11/fonts/fontenc.h:
+fontencI.h:
+reallocarray.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xfuncproto.h:
