@@ -57,8 +57,10 @@ clean:
 QEMU_TOOLS ?= $(shell if [ -d "$(HOME)/.local/share/fnx-qemu-tools" ]; then echo "$(HOME)/.local/share/fnx-qemu-tools"; else echo "$(HOME)/.local/share/fiwix-qemu-tools"; fi)
 # Attach the legacy virtio-net NIC by default (real-NIC support, target #6):
 # the init-time DHCP handshake leases 10.0.2.15 from SLIRP, so
-# `ping 10.0.2.2` works out of the box. Set QEMU_NET= to boot without it.
-QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n1
+# `ping 10.0.2.2` works out of the box. hostfwd=6000 lets a host X client
+# reach the guest's Xfb :0 at 127.0.0.1:6000 (M1 TCP bring-up).
+# Set QEMU_NET= to boot without it.
+QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n1,hostfwd=tcp:127.0.0.1:6000-:6000
 # The root disk must sit on an AHCI controller: the kernel registers block
 # major 8 (/dev/sda) only for AHCI, and root=/dev/sda is baked into the
 # kernel cmdline. The ESP stays on the PIIX IDE (index 0) so OVMF can boot
@@ -211,14 +213,20 @@ xvfb64:
 # --- Xfb: FNX fork of Xvfb (see third_party/x11/xfb-src/README.md)
 XFB_SRC = third_party/x11/xfb-src
 XFB_OUT = .build/x11/xfb
+XFB_BIN = $(XFB_OUT)/Xfb
 
 .PHONY: xfb64
-xfb64:
+xfb64: $(XFB_BIN)
+$(XFB_BIN):
 	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
 
-userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64)
+userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN)
 	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
+	# X server (Xfb) + its runtime helper/data locations on the FNX root
+	cp $(XFB_BIN) $(ROOTFS64)/bin/Xfb
+	cp .build/x11-prefix/bin/xkbcomp $(ROOTFS64)/bin/xkbcomp
+	@mkdir -p $(ROOTFS64)/usr/share/X11/xkb/compiled
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
 	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
 	$(MUSL64_CXX) userland/cpp_smoke.cpp -o $(ROOTFS64)/bin/cpp_smoke

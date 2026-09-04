@@ -56,6 +56,7 @@ from The Open Group.
 #include <sys/stat.h>
 #include <errno.h>
 #ifndef WIN32
+#include <sys/ioctl.h>
 #include <sys/param.h>
 #endif
 #include <X11/XWDFile.h>
@@ -91,10 +92,12 @@ typedef struct {
     Pixel blackPixel;
     Pixel whitePixel;
     unsigned int lineBias;
+    Bool use_fbdev;         /* FNX fork: screen memory is mmap(/dev/fb0) */
     CloseScreenProcPtr closeScreen;
 
 #ifdef HAVE_MMAP
     int mmap_fd;
+    int fbdev_fd;           /* FNX fork: open fd of /dev/fb0 */
     char mmap_file[MAXPATHLEN];
 #endif
 
@@ -159,6 +162,16 @@ vfbBitsPerPixel(int depth)
 static void
 freeScreenInfo(vfbScreenInfoPtr pvfb)
 {
+    /* FNX fork: the fb0 mapping is munmap'd + the device closed; there is
+     * no XWD header block to free. */
+    if (pvfb->use_fbdev) {
+#ifdef HAVE_MMAP
+        munmap(pvfb->pfbMemory, pvfb->sizeInBytes);
+        close(pvfb->fbdev_fd);
+#endif
+        return;
+    }
+
     switch (fbmemtype) {
 #ifdef HAVE_MMAP
     case MMAPPED_FILE_FB:
@@ -384,48 +397,54 @@ vfbInstallColormap(ColormapPtr pmap)
     ColormapPtr oldpmap = GetInstalledmiColormap(pmap->pScreen);
 
     if (pmap != oldpmap) {
-        int entries;
         XWDFileHeader *pXWDHeader;
         VisualPtr pVisual;
-        Pixel *ppix;
-        xrgb *prgb;
-        xColorItem *defs;
-        int i;
 
         miInstallColormap(pmap);
 
-        entries = pmap->pVisual->ColormapEntries;
         pXWDHeader = vfbScreens[pmap->pScreen->myNum].pXWDHeader;
         pVisual = pmap->pVisual;
 
-        swapcopy32(pXWDHeader->visual_class, pVisual->class);
-        swapcopy32(pXWDHeader->red_mask, pVisual->redMask);
-        swapcopy32(pXWDHeader->green_mask, pVisual->greenMask);
-        swapcopy32(pXWDHeader->blue_mask, pVisual->blueMask);
-        swapcopy32(pXWDHeader->bits_per_rgb, pVisual->bitsPerRGBValue);
-        swapcopy32(pXWDHeader->colormap_entries, pVisual->ColormapEntries);
+        /* FNX fork: the visual/XWD-colormap bookkeeping below only feeds
+         * the xwd-style capture preamble, which a real fb has none of. */
+        if (pXWDHeader) {
+            int entries;
+            Pixel *ppix;
+            xrgb *prgb;
+            xColorItem *defs;
+            int i;
 
-        ppix = xallocarray(entries, sizeof(Pixel));
-        prgb = xallocarray(entries, sizeof(xrgb));
-        defs = xallocarray(entries, sizeof(xColorItem));
+            entries = pmap->pVisual->ColormapEntries;
 
-        for (i = 0; i < entries; i++)
-            ppix[i] = i;
-        /* XXX truecolor */
-        QueryColors(pmap, entries, ppix, prgb, serverClient);
+            swapcopy32(pXWDHeader->visual_class, pVisual->class);
+            swapcopy32(pXWDHeader->red_mask, pVisual->redMask);
+            swapcopy32(pXWDHeader->green_mask, pVisual->greenMask);
+            swapcopy32(pXWDHeader->blue_mask, pVisual->blueMask);
+            swapcopy32(pXWDHeader->bits_per_rgb, pVisual->bitsPerRGBValue);
+            swapcopy32(pXWDHeader->colormap_entries, pVisual->ColormapEntries);
 
-        for (i = 0; i < entries; i++) { /* convert xrgbs to xColorItems */
-            defs[i].pixel = ppix[i] & 0xff;     /* change pixel to index */
-            defs[i].red = prgb[i].red;
-            defs[i].green = prgb[i].green;
-            defs[i].blue = prgb[i].blue;
-            defs[i].flags = DoRed | DoGreen | DoBlue;
+            ppix = xallocarray(entries, sizeof(Pixel));
+            prgb = xallocarray(entries, sizeof(xrgb));
+            defs = xallocarray(entries, sizeof(xColorItem));
+
+            for (i = 0; i < entries; i++)
+                ppix[i] = i;
+            /* XXX truecolor */
+            QueryColors(pmap, entries, ppix, prgb, serverClient);
+
+            for (i = 0; i < entries; i++) { /* convert xrgbs to xColorItems */
+                defs[i].pixel = ppix[i] & 0xff;     /* change pixel to index */
+                defs[i].red = prgb[i].red;
+                defs[i].green = prgb[i].green;
+                defs[i].blue = prgb[i].blue;
+                defs[i].flags = DoRed | DoGreen | DoBlue;
+            }
+            (*pmap->pScreen->StoreColors) (pmap, entries, defs);
+
+            free(ppix);
+            free(prgb);
+            free(defs);
         }
-        (*pmap->pScreen->StoreColors) (pmap, entries, defs);
-
-        free(ppix);
-        free(prgb);
-        free(defs);
     }
 }
 
@@ -641,6 +660,10 @@ vfbWriteXWDFileHeader(ScreenPtr pScreen)
     unsigned long swaptest = 1;
     int i;
 
+    /* FNX fork: with a real framebuffer there is no XWD preamble block. */
+    if (!pXWDHeader)
+        return;
+
     needswap = *(char *) &swaptest;
 
     pXWDHeader->header_size =
@@ -855,6 +878,60 @@ vfbRandRInit(ScreenPtr pScreen)
     return TRUE;
 }
 
+#ifdef HAVE_MMAP
+/* FNX fork (M2): bind screen 0 to the real framebuffer device.
+ *
+ * FNX /dev/fb0 (GOP framebuffer): 32-bpp XRGB8888, no padding, pixels at
+ * mmap offset 0, geometry via the two custom ioctls (2 = xres, 3 = yres;
+ * same convention userland/compositor.c uses). Depth 24 / bpp 32 with the
+ * 0xff0000/0x00ff00/0x0000ff masks matches the device byte-for-byte.
+ *
+ * On success pvfb->pfbMemory points at the mapping (pixels only — no XWD
+ * preamble), pvfb->pXWDHeader stays NULL and use_fbdev is set; callers
+ * that maintained the capture header are guarded on pXWDHeader. */
+static void
+vfbTryFbdev(vfbScreenInfoPtr pvfb)
+{
+#define FBDEV_IO_XRES 2
+#define FBDEV_IO_YRES 3
+    int fd, w, h;
+    char *map;
+    size_t len;
+
+    if ((fd = open("/dev/fb0", O_RDWR)) < 0)
+        return;                 /* no real fb: keep the in-memory screen */
+    w = ioctl(fd, FBDEV_IO_XRES, 0);
+    h = ioctl(fd, FBDEV_IO_YRES, 0);
+    if (w <= 0 || h <= 0) {
+        ErrorF("fbdev: bad /dev/fb0 geometry %dx%d\n", w, h);
+        close(fd);
+        return;
+    }
+    len = (size_t) w * h * 4;
+    map = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (map == MAP_FAILED) {
+        ErrorF("fbdev: mmap /dev/fb0 %dx%d failed: %s\n", w, h,
+               strerror(errno));
+        close(fd);
+        return;
+    }
+
+    ErrorF("fbdev: /dev/fb0 %dx%d bpp32 mapped at %p\n", w, h, map);
+    pvfb->fbdev_fd = fd;
+    pvfb->width = w;
+    pvfb->height = h;
+    pvfb->depth = 24;
+    pvfb->bitsPerPixel = 32;
+    pvfb->paddedBytesWidth = w * 4;
+    pvfb->paddedWidth = w;
+    pvfb->sizeInBytes = len;
+    pvfb->ncolors = 256;        /* unused without the XWD preamble */
+    pvfb->pfbMemory = map;
+    pvfb->pXWDHeader = NULL;
+    pvfb->use_fbdev = TRUE;
+}
+#endif                          /* HAVE_MMAP */
+
 static Bool
 vfbScreenInit(ScreenPtr pScreen, int argc, char **argv)
 {
@@ -869,13 +946,27 @@ vfbScreenInit(ScreenPtr pScreen, int argc, char **argv)
     if (dpiy == 0)
         dpiy = 100;
 
-    pvfb->paddedBytesWidth = PixmapBytePad(pvfb->width, pvfb->depth);
-    pvfb->bitsPerPixel = vfbBitsPerPixel(pvfb->depth);
-    if (pvfb->bitsPerPixel >= 8)
-        pvfb->paddedWidth = pvfb->paddedBytesWidth / (pvfb->bitsPerPixel / 8);
-    else
-        pvfb->paddedWidth = pvfb->paddedBytesWidth * 8;
-    pbits = vfbAllocateFramebufferMemory(pvfb);
+    /* FNX fork (M2): screen 0 renders into the real /dev/fb0 when it is
+     * present (32-bpp XRGB, stride == width*4). The device geometry
+     * replaces any -screen setting; otherwise we fall back to the
+     * in-memory Xvfb screen below. */
+    pvfb->use_fbdev = FALSE;
+#ifdef HAVE_MMAP
+    if (pScreen->myNum == 0)
+        vfbTryFbdev(pvfb);
+#endif
+
+    if (!pvfb->use_fbdev) {
+        pvfb->paddedBytesWidth = PixmapBytePad(pvfb->width, pvfb->depth);
+        pvfb->bitsPerPixel = vfbBitsPerPixel(pvfb->depth);
+        if (pvfb->bitsPerPixel >= 8)
+            pvfb->paddedWidth =
+                pvfb->paddedBytesWidth / (pvfb->bitsPerPixel / 8);
+        else
+            pvfb->paddedWidth = pvfb->paddedBytesWidth * 8;
+    }
+    pbits = pvfb->use_fbdev ? pvfb->pfbMemory
+                            : vfbAllocateFramebufferMemory(pvfb);
     if (!pbits)
         return FALSE;
 

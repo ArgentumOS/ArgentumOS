@@ -79,7 +79,11 @@
 
 #define HAVE_DLFCN_H 1
 
-#define HAVE_EPOLL_CREATE1 1
+/* FNX fork (M1): the epoll backend is disabled so os/ospoll.c compiles
+ * its POLL backend, which is xserver_poll() — a poll() emulation built
+ * on select(). FNX's select() handles sockets; the epoll path stalled
+ * servicing X11 clients on this kernel. */
+#undef HAVE_EPOLL_CREATE1
 
 #undef HAVE_EXECINFO_H
 
