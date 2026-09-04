@@ -2,16 +2,18 @@
 
 Status: DRAFT — awaiting review. Companion to `docs/config-design.md`
 (the `.conf` grammar, scopes, and libconfig contract) and
-`docs/fsh-proposal.md` (the FSH layout these files live in). Amends
-config-design §10 (grammar) and §5 (precedence) with the group-record
-records extension and the `/System/Configuration/Global` tier this plan
-introduces.
+`docs/fsh-proposal.md` (the FSH layout these files live in). **Supersedes
+config-design §2/§5/Q-F** (scope roles + precedence — see D4) and
+amends §10 (grammar) with group records.
 
 Scope: move the traditional Unix configuration files FNX still carries
 in legacy formats — account/password data (`passwd`, `group`), resolver
-identity (`hosts`, `hostname`/`shells`) and the boot mount table (there
+identity (`hosts`, hostname, `shells`) and the boot mount table (there
 is no `fstab` today; userland init hardcodes its mounts) — into
-**non-overridable** `system.config.*` domains in the `.conf` grammar.
+`system.config.*` domains in the `.conf` grammar. System identity and
+boot-policy files live in `/System/Configuration`, which is
+**authoritative**: resolution checks it first, so nothing can override
+it. First-party *defaults* (Xfb etc.) live in `/Shared/Configuration`.
 
 Decisions in this document were made by the project owner (2026):
 D1–D4 below.
@@ -45,6 +47,12 @@ D1–D4 below.
     nodename* — configured at boot, not read from a file. The legacy
     "hostname file" therefore reduces to "who calls `sethostname` at
     boot".
+- **The current precedence is the inverse of what this plan needs.**
+  config-design §5/§9 Q-F (decided, and implemented in libconfig P0):
+  reads resolve **user → shared → system**, and `/Shared/Configuration`
+  is "third parties, machine-wide". That is why identity files were
+  shadowable and why a non-overridable tier was even needed; D4
+  re-decides the order.
 - **The config machinery to build on** (config-design.md, done): flat
   dot-nested `key = value` grammar (§10, normative), three scopes with
   roots `/System/Configuration`, `/Shared/Configuration`,
@@ -69,17 +77,19 @@ D1–D4 below.
   records** (§3 below). Real nested block values, normative in §10.
 - **D2 — Scope of this plan: full sweep** — account identity (`passwd`,
   `group`, with shadow folded in, see §5.1), resolver identity
-  (`hosts`, hostname), and the boot mount table (§5.4).
+  (`hosts`, hostname, `shells`), and the boot mount table (§5.4).
 - **D3 — Consumers: hard-swap.** `third_party/musl` passwd/group and
   the toybox applets are patched to read the config domains; the
   legacy-format files disappear (M7). No compatibility generator.
-- **D4 — Non-overridable = location.** Configs stored under
-  `/System/Configuration/Global/` cannot be overridden at all — no
-  shared- or user-scope file can shadow them and no non-root write can
-  change them (a "better idea" replacing an earlier per-file trusted
-  key; see §4). Ordinary domains (e.g. the current Xfb domain) keep
-  today's user-overridable resolution by simply living outside
-  Global/.
+- **D4 — Precedence inversion (owner, latest):** reads resolve
+  **system → user → shared** — `/System/Configuration` is checked
+  first, so a value there **cannot be overridden at all**; the person
+  (`Users/<u>/Configuration`) next, overriding *defaults* only; then
+  `/Shared/Configuration`, which becomes the home of **overridable
+  defaults** (first-party shipped defaults *and* third-party). This
+  supersedes config-design §5/Q-F ("user → shared → system") and makes
+  any separate non-overridable tier (a `Global/` dir or a trusted key —
+  earlier drafts) unnecessary: system scope *is* the rule.
 
 ## 3. Grammar amendment (§10): group records
 
@@ -136,69 +146,72 @@ Source order is what the canonical writer preserves (it never reorders
 records). Consumers that need Unix orderings (getpwent by uid) sort
 themselves; see §5.1.
 
-## 4. Non-overridable configuration: `/System/Configuration/Global` (D4)
+## 4. The precedence model (D4)
 
-Non-overridable domains live in a dedicated subdirectory of the system
-scope: `/System/Configuration/Global/`. A config stored there **cannot
-be overridden at all** — no shared-scope file and no user-scope file can
-shadow it, and no non-root write can change it. Overridability is
-decided by *where the system file lives*, not by a marker inside it.
+### 4.1 The order
 
-### 4.1 The rule
+Reads resolve **system → user → shared**:
 
-For a domain D, look up its system-scope file:
+1. `/System/Configuration/<D>.conf` — the machine's configuration.
+   Checked **first**, so whatever is here wins outright: no user or
+   shared file can override it, ever.
+2. `Users/<u>/Configuration/<D>.conf` — the person. Consulted when
+   System has no value for the key; overrides *defaults*, never System.
+3. `/Shared/Configuration/<D>.conf` — **overridable defaults** (what
+   FNX ships and what third parties ship). Weakest tier; used only when
+   neither System nor the person set the key.
+4. The app's compiled-in default.
 
-- `/System/Configuration/Global/<D>.conf` → **global**: authoritative.
-  libconfig resolution (config-design §5) never consults Shared or user
-  scope for D; any stale shared/user files for D are ignored on reads.
-- `/System/Configuration/<D>.conf` → **ordinary**: today's user →
-  shared → system per-key resolution, unchanged.
+Roles shift accordingly:
 
-A domain is global iff its system file is in `Global/`. Root promotes
-or demotes a domain by moving the file — no content change, no flags.
+| Scope | Old role (config-design §2/§5) | New role |
+|---|---|---|
+| system | OS defaults, weakest | the machine's real config — authoritative, non-overridable |
+| shared | third parties, machine-wide | overridable defaults (first- + third-party) |
+| user | wins over everything | the person; overrides defaults, never System |
 
-### 4.2 Semantics honored by libconfig and the `config` CLI
+### 4.2 Why this is the non-overridable rule
 
-For a global domain (system file under `Global/`):
+No flag, no `Global/` directory, no reserved key: `/System/Configuration`
+is authoritative *by construction* — it is the first place resolution
+looks. Root/admin machine config goes there (root-only writes, atomic
+as today); nobody can shadow it because a shadow is never consulted.
 
-- **Reads are locked to the Global file** — resolution short-circuits
-  after system; shared and user scope are never consulted.
-- **`config write`/`config delete` to the shared or user scope for the
-  domain are refused** with `ACCESS` (you may not shadow a Global
-  domain from an overridable scope).
-- **Writes to the Global file are root-only** (`/System/Configuration`
-  is root-writable per the FSH; `Global/` is the same) and go through
-  the normal atomic writer (temp + rename, inside `Global/`).
+- `config -s write` = edit the machine config (root-only, unchanged).
+- `config -u`/`-g` writes can never touch a System file's effect: user
+  and shared files simply sit lower in the order.
 - Privileged consumers (musl, M3) read the literal
-  `/System/Configuration/Global/<domain>.conf` path, so the rule cannot
-  be bypassed through a non-system configuration tree, a symlink, or a
-  stale scope file.
+  `/System/Configuration/<domain>.conf` path and need no scope logic —
+  the System file is the only file that matters to them.
 
-### 4.3 Why a directory, not a flag
+### 4.3 Consequences for today's content
 
-- **No new file syntax**: nothing to parse, and nothing a non-root
-  writer could forge *inside* a file — the location is what
-  root controls.
-- **Scales to any domain**: Xfb's `system.config.xfb` stays overridable
-  exactly where it is; the identity and mount domains move into
-  `Global/` when this plan lands.
-- **Visible in the filesystem**: `config list` and `ls` show the tier
-  directly; the FSH promise ("all machine settings in one place", no
-  `/etc` split) is kept, with a documented second tier inside
-  `/System/Configuration`.
-- `kernel.conf` (§12, read through its symlink) is boot identity: it
-  belongs in `Global/` (Q5 covers symlinks under Global).
+- **Shipped first-party defaults move System → Shared**: the default
+  `system.config.xfb` etc. (and the legacy identity *defaults* that a
+  fresh image seeds) ship under `/Shared/Configuration` as the
+  overridable baseline; a machine that wants different values writes
+  them to System. (M2.)
+- **Existing per-user files that shadowed system domains** stop having
+  effect (e.g. a user-scope `system.config.xfb.conf` that once tuned the
+  OS default now tunes nothing — the OS default itself moved to Shared,
+  which the user *can* still override). Migration of stale user/shared
+  shadows is Q6.
+- Identity and boot-policy files (accounts, shells, mount table) are
+  machine state, not defaults: they live in System only (no Shared
+  baseline to ship).
 
 ## 5. The domains
 
-Files move from legacy names/formats to `<domain>.conf`. Identity and
-boot-policy domains live under `/System/Configuration/Global/` (D4);
-ordinary domains stay at `/System/Configuration/`. Names below use the
-first-party `system.config.*` prefix per config-design §2/§8.
+Files move from legacy names/formats to `<domain>.conf` in
+`/System/Configuration` (authoritative, D4). Names below use the
+first-party `system.config.*` prefix per config-design §2/§8; the
+*defaults* that a fresh image ships for overridable domains go to
+`/Shared/Configuration` (M2).
 
 ### 5.1 `system.config.passwd.conf` / `system.config.group.conf`
 
-Live at `/System/Configuration/Global/` (identity, D4).
+At `/System/Configuration/` — machine state, not defaults (no Shared
+baseline ships).
 
 ```
 user = {
@@ -223,9 +236,9 @@ group = {
 (`members` empty = no members; `password = ""` = no password — see Q2.)
 
 - **Shadow folded in** (deviation from Unix, proposed): the password
-  hash lives in the record's `password` key. `Global/` is root-only, so
-  the separate 0600 shadow file + `x` indirection buys nothing and
-  costs a second file. Marked Q2.
+  hash lives in the record's `password` key. `/System/Configuration` is
+  root-writable only, so the separate 0600 shadow file + `x`
+  indirection buys nothing and costs a second file. Marked Q2.
 - Field naming follows `struct passwd`/`struct group` (uid, gid, gecos,
   home, shell; members) so the musl shim in M3 is a straight field map.
 - **Lookup + iteration semantics** for musl: name lookup (`getpwnam`,
@@ -233,8 +246,8 @@ group = {
   reads. Sequential iteration (`getpwent`/`getgrent`) enumerates
   records and sorts by uid/gid — deterministic, and it makes the
   "first entry is root/Admin" convention unnecessary.
-- `shells` is a plain list domain (§5.3), also under `Global/`;
-  `chsh` validates against it.
+- `shells` is a plain list domain (§5.3), in the System scope like
+  passwd; `chsh` validates against it.
 
 ### 5.2 `system.config.hosts.conf` / hostname
 
@@ -262,8 +275,8 @@ own.)
 
 ### 5.3 `system.config.shells.conf`
 
-Lives at `/System/Configuration/Global/` (login policy — the valid
-shells bound accounts to, same tier as passwd).
+At `/System/Configuration/` (login policy — the valid shells accounts
+bind to, same tier as passwd).
 
 ```
 shells = /System/Tools/sh, /bin/sh, …
@@ -274,7 +287,7 @@ A plain list domain replacing the legacy `shells` line file; `chsh` +
 
 ### 5.4 Mount table: `system.config.mounts.conf` (new "fstab")
 
-Lives at `/System/Configuration/Global/` (boot policy, D4).
+At `/System/Configuration/` (boot policy, D4).
 
 ```
 mount = {
@@ -306,7 +319,7 @@ mount = {
   - `src/network/lookup_name.c` hosts branch.
   - musl needs a small **libc-internal reader**: a read-only subset of
     the grammar (flat + block values, strings/ints/bools/arrays) plus
-    the fixed Global paths (§4.2). It deliberately does not link
+    the fixed System-scope paths (§4.2). It deliberately does not link
     `userland/libconfig.c` — libc cannot depend on the userland config
     library, and libc reads only the system files so no scope logic is
     needed. Shared source with the userland parser where practical
@@ -314,12 +327,13 @@ mount = {
     parser; this is the same principle).
 - **`third_party/toybox`** — `su`, `passwd`, `chsh`, `useradd`,
   `userdel`, `groupadd`, `groupdel`, `id`: read through libconfig
-  (Global rules, §4) and write through the atomic writer; `passwd`
+  (system-first rules, §4) and write through the atomic writer; `passwd`
   becomes a libconfig domain editor. `hostname` needs no patch (it
   uses the `sethostname`/`gethostname` syscalls).
 - **`userland/init.c`** — mount-table consumption (§5.4).
 - **`config` CLI + `userland/libconfig.c`** — group-record
-  parsing/writing/enumeration (M0) + the Global tier (M1). No change
+  parsing/writing/enumeration (M0) + the precedence inversion (M1).
+  No change
   needed in the kernel parser (§12 stays flat, §3.2).
 
 ## 7. Milestones
@@ -332,22 +346,28 @@ duplicate-record-name parse error, `{`-prefixed bare value error).
 Acceptance: nested-spelling files parse and read back identically;
 flat domains unchanged; no kernel changes.
 
-### M1 — Global tier (libconfig + config CLI)
-Resolution consults `Global/` first: a domain whose system file is
-under `/System/Configuration/Global/` is locked to that file (no
-shared/user fallback) and `config write`/`delete` to -u/-g scopes for
-it are refused with `ACCESS` (§4); `config read` reports the tier.
-Acceptance: a domain moved into `Global/` cannot be shadowed from
-Shared or user scope; a domain outside it keeps the §5 resolution.
+### M1 — Precedence inversion (libconfig + config CLI)
+Flip resolution to system → user → shared (§4.1): a key present in
+`/System/Configuration` always wins; user files override Shared
+defaults only; Shared is consulted last. `config read` shows which
+tier produced each value. This supersedes config-design §5/Q-F and the
+libconfig P0 resolution order.
+Acceptance: with the same value in all three scopes, `config read`
+returns the system one; with it only in user + shared, the user one;
+only in shared, the shared one; a user `-u` write no longer shadows a
+System value.
 
-### M2 — Account domains ship + migrate
-`system.config.passwd.conf` + `system.config.group.conf` + the
-`shells` domain ship under `/System/Configuration/Global/` (identity)
-and replace the Makefile legacy `printf`s (Makefile
-userland64); `Admin` account re-expressed as the `admin` record; a
-first-boot/root scaffold validates them with `config`.
+### M2 — Domains ship + defaults move to Shared
+`system.config.passwd.conf`, `system.config.group.conf` and the
+`shells` domain land in `/System/Configuration` (identity, D4) and
+replace the Makefile legacy `printf`s (Makefile userland64); the
+`Admin` account re-expressed as the `admin` record. Separately, the
+*defaults* staging target changes: shipped first-party default domains
+(Xfb today, more later) are staged into `/Shared/Configuration` as the
+overridable baseline (config-design role change).
 Acceptance: `config read system.config.passwd user.admin.uid` → `0`;
-images build without legacy `passwd`/`group`/`shells` files.
+images build without legacy `passwd`/`group`/`shells` files; Xfb's
+default domain reads from Shared and a System copy overrides it.
 
 ### M3 — musl identity readers (hard-swap)
 Patch `src/passwd/*` + the libc-internal reader; rebuild musl + the
@@ -359,7 +379,7 @@ Acceptance: guest tests — `getpwnam("admin")`,
 
 ### M4 — toybox account tools on the domains
 `passwd`, `useradd`, `userdel`, `groupadd`, `groupdel`, `chsh`, `su`
-read/write through libconfig; `passwd` writes hashes into the Global
+read/write through libconfig; `passwd` writes hashes into the System
 domain atomically.
 Acceptance: guest `useradd` then `su`/login flow works against the
 domain; shadow-folding decision (Q2) resolved.
@@ -372,7 +392,7 @@ Acceptance: guest `getaddrinfo("localhost")` reflects the domain and
 `hostname` prints the domain's name after boot; no hosts legacy file.
 
 ### M6 — Mount table
-`userland/init.c` mounts from the Global `system.config.mounts.conf`; Q3 decision
+`userland/init.c` mounts from the System `system.config.mounts.conf`; Q3 decision
 on toybox `mount`/`umount`.
 Acceptance: boot mounts proc + devpts from the domain (edit the domain,
 reboot, observe); init logs a clear error on a malformed table.
@@ -387,21 +407,24 @@ third_party patches.
 
 ## 8. Open items (Q)
 
-- **Q1** — Are `Global/` files also non-writable to root-through-
-  libconfig users (a `config -s` write policy beyond "root can"), or is
-  the file permission the only write gate?
+- **Q1** — Per-user prefs for domains the OS also configures: with
+  System authoritative, a user can no longer tune an OS-set value. Is
+  that intended for *all* `system.config.*` domains, or should
+  per-user values still win for cosmetic keys (e.g. UI prefs) via an
+  opt-out (an explicit "user-overridable" marker on such domains)?
 - **Q2** — Shadow folding (hash in the record, §5.1) vs. a separate
-  Global `system.config.shadow.conf` with `x` indirection.
+  System `system.config.shadow.conf` with `x` indirection.
 - **Q3** — toybox `mount`/`umount` consuming the mount table in M6 or
   a follow-up.
 - **Q4** — `hostname` as a key inside `system.config.hosts` vs. its own
   `system.config.network`/`hostname` domain.
-- **Q6** — Should `Shared/Configuration` gain its own non-overridable
-  `Global/` for third-party machine-wide settings, or is
-  `/System/Configuration/Global` the only tier for now?
-- **Q5** — Symlinks under `Global/` (the §12 `system.config.kernel`
-  symlink to the ESP `kernel.conf`): allowed as global domains
-  (the rule follows the resolved target's location), or rejected?
+- **Q5** — The §12 `system.config.kernel` symlink to the ESP
+  `kernel.conf`: unchanged under system-first (it already resolves in
+  System scope) — confirm it needs no special handling.
+- **Q6** — Migration of *stale* user/shared scope files that shadowed
+  system domains under the old precedence (they silently stop having
+  effect; should `config` detect and warn/delete them on read or in a
+  one-shot sweep?)
 
 ## 9. References
 
