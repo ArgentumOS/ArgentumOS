@@ -155,3 +155,20 @@ route pays it) and M4's libX11/app data plumbing.
 - Not replacing the compositor project — X is an additional, alternative
   desktop path (and if it lands, it answers the toolkit question for
   good: every X toolkit just works).
+
+## Update (M0.5): standalone plain-make build — meson is no longer required
+
+Building Xvfb no longer needs meson/ninja/autotools at all. The 265
+server sources + generated config headers are extracted into
+`third_party/x11/xvfb-src/` (committed, a8fd657) with one plain Makefile;
+`make xvfb64` from the repo root produces `.build/x11/xvfb/Xvfb` (static
+musl ELF64, host-smoke verified: X client reads screen=640x480 depth=24).
+
+- Regenerate the tree with `tools/x11-extract-xvfb.py` (reads the meson
+  build.ninja at `.build/x11/xserver` only as a source-of-truth graph).
+- Per-module archives + `--start-group` are load-bearing (xi/xi_stubs,
+  xkb/xkb_stubs member semantics); do not flatten to one object list.
+- Third-party deps still come from `.build/x11-prefix` (pixman, xkbfile,
+  xfont2, libsha1, Xau, Xdmcp) built by `tools/x11-deps-build.sh`.
+- The vendored `third_party/x11/xserver` (meson) tree is kept as the
+  upstream source of truth for extraction/upgrades.
