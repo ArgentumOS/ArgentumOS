@@ -190,6 +190,17 @@ $(LVGL64_OBJ)/%.o: $(LVGL_SRC)/%.c include/lv_conf.h
 	@mkdir -p $(dir $@)
 	$(MUSL64_CC) $(LVGL64_CFLAGS) -c $< -o $@
 
+# --- standalone Xvfb (no meson/ninja): sources extracted into
+# third_party/x11/xvfb-src (see tools/x11-extract-xvfb.py); deps from the
+# static-musl X11 prefix at .build/x11-prefix (see tools/x11-deps-build.sh).
+XVFB_SRC = third_party/x11/xvfb-src
+XVFB_OUT = .build/x11/xvfb
+
+.PHONY: xvfb64
+xvfb64:
+	$(MAKE) -C $(XVFB_SRC) OUT="$(CURDIR)/$(XVFB_OUT)" \
+		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
+
 userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64)
 	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
