@@ -119,10 +119,10 @@ int sys_poll(struct pollfd_abi *fds, unsigned long nfds, int timeout)
 					/* no select method: treat as always ready
 					 * (regular files, /dev/null, etc.) */
 					if(pfd.events & (POLLIN | POLLRDNORM | POLLPRI)) {
-						pfd.revents |= POLLIN | POLLRDNORM;
+						pfd.revents |= POLLIN;
 					}
 					if(pfd.events & (POLLOUT | POLLWRNORM)) {
-						pfd.revents |= POLLOUT | POLLWRNORM;
+						pfd.revents |= POLLOUT;
 					}
 					if(pfd.revents) {
 						count++;
@@ -130,13 +130,13 @@ int sys_poll(struct pollfd_abi *fds, unsigned long nfds, int timeout)
 				} else {
 					if(pfd.events & (POLLIN | POLLRDNORM)) {
 						if(do_check(i, &fd_table[current->fd[pfd.fd]], SEL_R)) {
-							pfd.revents |= POLLIN | POLLRDNORM;
+							pfd.revents |= POLLIN;
 							count++;
 						}
 					}
 					if(pfd.events & (POLLOUT | POLLWRNORM)) {
 						if(do_check(i, &fd_table[current->fd[pfd.fd]], SEL_W)) {
-							pfd.revents |= POLLOUT | POLLWRNORM;
+							pfd.revents |= POLLOUT;
 							count++;
 						}
 					}

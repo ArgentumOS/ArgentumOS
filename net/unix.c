@@ -333,8 +333,19 @@ int unix_accept(struct socket *ss, struct sockaddr *addr, unsigned int *addrlen)
 		return -ENOMEM;
 	}
 	us->data = uc->data;
-	us->sun = uc->sun;
-	us->sun_len = uc->sun_len;
+	/* FNX: the accepted socket carries the LISTENER's bound name, so
+	 * getsockname()/getpeername() on the connection return the address
+	 * the client connected to (Linux semantics; libxcb checks the peer
+	 * name via getpeername after connect). The old code copied the
+	 * client's (unbound) sun, yielding an empty peer address. */
+	if(ss->u.unix_info.sun) {
+		if(!(us->sun = (struct sockaddr_un *)kmalloc(sizeof(struct sockaddr_un)))) {
+			sock_free(nss);
+			return -ENOMEM;
+		}
+		memcpy_b(us->sun, ss->u.unix_info.sun, sizeof(struct sockaddr_un));
+		us->sun_len = ss->u.unix_info.sun_len;
+	}
 	us->peer = uc;
 	us->count++;
 	uc->peer = us;	/* server socket */
