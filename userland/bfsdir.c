@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
 	for(i = base; i < base + n; i++) {
 		snprintf(name, sizeof(name), "f%05d", i);
-		snprintf(path, sizeof(path), "/mnt/big/%s", name);
+		snprintf(path, sizeof(path), "/Volumes/big/%s", name);
 		if((fd = open(path, O_CREAT | O_WRONLY, 0644)) < 0) {
 			fprintf(stderr, "create %s: %s\n", path, strerror(errno));
 			return 1;
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	}
 	printf("BFSDIR-CREATED %d (%d..%d)\n", n, base, base + n - 1);
 
-	if(!(d = opendir("/mnt/big"))) {
+	if(!(d = opendir("/Volumes/big"))) {
 		fprintf(stderr, "opendir: %s\n", strerror(errno));
 		return 1;
 	}
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 
 		for(i = 0; i < 3; i++) {
 			snprintf(name, sizeof(name), "f%05d", probes[i]);
-			snprintf(path, sizeof(path), "/mnt/big/%s", name);
+			snprintf(path, sizeof(path), "/Volumes/big/%s", name);
 			if(stat(path, &st) < 0) {
 				printf("BFSDIR-STAT-MISS %s (%s)\n", name,
 				       strerror(errno));
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 		ok = 1;
 		for(i = 0; i < n; i += (n > 100 ? n / 100 : 1)) {
 			snprintf(name, sizeof(name), "f%05d", base + i);
-			snprintf(path, sizeof(path), "/mnt/big/%s", name);
+			snprintf(path, sizeof(path), "/Volumes/big/%s", name);
 			if(stat(path, &st) < 0) {
 				printf("BFSDIR-SPREAD-MISS %s (%s)\n", name,
 				       strerror(errno));
@@ -119,7 +119,7 @@ int main2(void)
 	int fd, i, rd;
 	struct stat st;
 
-	if((fd = open("/mnt/trunc", O_CREAT | O_WRONLY, 0644)) < 0) {
+	if((fd = open("/Volumes/trunc", O_CREAT | O_WRONLY, 0644)) < 0) {
 		printf("TRUNC-OPEN-FAIL %s\n", strerror(errno));
 		return 1;
 	}
@@ -136,18 +136,18 @@ int main2(void)
 	/* truncate to 7 blocks: run1 (blocks 6-7) straddles the new EOF, so
 	 * the old bug (whole-free by disk address) would drop block 6 and the
 	 * read-back below fails on zeros */
-	if((fd = open("/mnt/trunc", O_WRONLY)) < 0 ||
+	if((fd = open("/Volumes/trunc", O_WRONLY)) < 0 ||
 			ftruncate(fd, 7 * 1024) < 0) {
 		printf("TRUNC-FTRUNC-FAIL %s\n", strerror(errno));
 		return 1;
 	}
 	close(fd);
-	if(stat("/mnt/trunc", &st) < 0) {
+	if(stat("/Volumes/trunc", &st) < 0) {
 		printf("TRUNC-STAT-FAIL %s\n", strerror(errno));
 		return 1;
 	}
 	printf("TRUNC-SIZE %d (expect 7168)\n", (int)st.st_size);
-	if((fd = open("/mnt/trunc", O_RDONLY)) < 0) {
+	if((fd = open("/Volumes/trunc", O_RDONLY)) < 0) {
 		printf("TRUNC-REOPEN-FAIL %s\n", strerror(errno));
 		return 1;
 	}

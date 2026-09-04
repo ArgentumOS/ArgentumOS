@@ -6,7 +6,8 @@
  * and may change freely. Public API: include/gui.h.
  *
  * Transport: one AF_UNIX SOCK_STREAM connection per client to the
- * compositor's socket ($GUI_SOCKET or /tmp/gui.sock). Framing: every
+ * compositor's socket ($GUI_SOCKET or /System/Temporary Files/gui.sock).
+ * Framing: every
  * message is [u32 len][payload...] where len = payload bytes (native
  * endian) and the payload begins with a u8 message type. Window
  * backing stores are System V shared memory segments created by the
@@ -23,7 +24,7 @@
 extern "C" {
 #endif
 
-#define GUI_SOCKET_DEFAULT	"/tmp/gui.sock"
+#define GUI_SOCKET_DEFAULT	"/System/Temporary Files/gui.sock"
 #define GUI_PROTO_MAX		4096	/* largest message payload */
 
 /* Message types (both directions). */

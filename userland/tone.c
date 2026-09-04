@@ -11,7 +11,7 @@ int main(void)
 	short buf[512];
 	int nsamples = 22050;   /* 0.5 s */
 
-	dsp = open("/dev/dsp", O_WRONLY);
+	dsp = open("/System/Devices/dsp", O_WRONLY);
 	if(dsp < 0) { printf("TONE-FAIL open: %m\n"); return 1; }
 	if(ioctl(dsp, 0xc0045005, &(int){0x10})) { printf("TONE-FAIL setfmt: %m\n"); return 1; }
 	if(ioctl(dsp, 0xc0045002, &(int){44100})) { printf("TONE-FAIL speed: %m\n"); return 1; }

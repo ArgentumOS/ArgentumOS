@@ -43,14 +43,14 @@ static pid_t spawn_compositor(void)
 		return -1;
 	}
 	if(p == 0) {
-		int fd = open("/tmp/comp.log",
+		int fd = open("/System/Temporary Files/comp.log",
 			      O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
 		if(fd >= 0) {
 			dup2(fd, 1);
 			dup2(fd, 2);
 		}
-		execl("/bin/compositor", "compositor", (char *)NULL);
+		execl("/System/Tools/compositor", "compositor", (char *)NULL);
 		_exit(127);
 	}
 	return p;

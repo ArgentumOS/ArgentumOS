@@ -30,13 +30,13 @@ struct bfs_attr_info {
 #define BFS_IOC_GET_ATTR_INFO	0x42530001	/* 'BS' + 1 */
 #define BFS_IOC_SET_ATTR_TYPE	0x42530002
 
-static const char *path = "/mnt/hello.txt";
+static const char *path = "/Volumes/hello.txt";
 static char g_buf[4096];
 
 static void report(const char *name, int ok)
 {
 	printf("%s %s\n", name, ok ? "OK" : "FAIL");
-	FILE *f = fopen("/mnt/XR", "a");
+	FILE *f = fopen("/Volumes/XR", "a");
 	if(f) {
 		fprintf(f, "%s %s\n", name, ok ? "OK" : "FAIL");
 		fclose(f);

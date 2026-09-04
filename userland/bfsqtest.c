@@ -59,7 +59,7 @@ int main(void)
 {
 	int fails = 0;
 
-	if((fd = open("/mnt", O_RDONLY)) < 0) {
+	if((fd = open("/Volumes", O_RDONLY)) < 0) {
 		fprintf(stderr, "open /mnt: %s\n", strerror(errno));
 		return 1;
 	}
@@ -82,7 +82,7 @@ int main(void)
 	/* typed demo indices (mkbfs-built, keyed on inode number:
 	 * the root-tree inodes are consecutive, root .. root+3). The
 	 * root inode differs between images (19 at 1024-byte blocks,
-	 * 18 at 2048), so derive the key range from stat("/mnt"). */
+	 * 18 at 2048), so derive the key range from stat("/Volumes"). */
 	{
 		struct stat st;
 		char buf[128];

@@ -18,7 +18,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-static const char *path = "/mnt/hello.txt";
+static const char *path = "/Volumes/hello.txt";
 static FILE *out;
 
 static void report(const char *what, int ok)
@@ -101,10 +101,10 @@ static int do_set(void)
 	/* attributes on a DIRECTORY (short name to fit 24 bytes) */
 	{
 		char d[32];
-		int rr = setxattr("/mnt/subdir", "d", "dirvalue", 9, 0);
+		int rr = setxattr("/Volumes/subdir", "d", "dirvalue", 9, 0);
 		report("setxattr on dir", rr == 0);
 		errno = 0;
-		rr = getxattr("/mnt/subdir", "d", d, sizeof(d));
+		rr = getxattr("/Volumes/subdir", "d", d, sizeof(d));
 		report("getxattr dir value", rr == 9 && !memcmp(d, "dirvalue", 9));
 	}
 
@@ -113,12 +113,12 @@ static int do_set(void)
 	 * symlink area, so there is no aliasing); lsetxattr must NOT follow
 	 * the link */
 	errno = 0;
-	r = lsetxattr("/mnt/short", "user.onlink", "x", 1, 0);
+	r = lsetxattr("/Volumes/short", "user.onlink", "x", 1, 0);
 	report("lsetxattr on symlink", r == 0);
 	{
 		char d2[32];
 		errno = 0;
-		r = lgetxattr("/mnt/short", "user.onlink", d2, sizeof(d2));
+		r = lgetxattr("/Volumes/short", "user.onlink", d2, sizeof(d2));
 		report("lgetxattr on symlink", r == 1 && d2[0] == 'x');
 	}
 
@@ -241,7 +241,7 @@ int main(int argc, char **argv)
 	const char *mode = argc > 1 ? argv[1] : "set";
 	int r;
 
-	if(!(out = fopen("/mnt/XR", "a"))) {
+	if(!(out = fopen("/Volumes/XR", "a"))) {
 		perror("fopen /mnt/XR");
 		return 1;
 	}
