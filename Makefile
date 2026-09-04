@@ -217,19 +217,8 @@ $(LVGL64_OBJ)/%.o: $(LVGL_SRC)/%.c include/lv_conf.h
 	@mkdir -p $(dir $@)
 	$(MUSL64_CC) $(LVGL64_CFLAGS) -c $< -o $@
 
-# --- standalone Xvfb (no meson/ninja): sources extracted into
-# third_party/x11/xvfb-src (see tools/x11-extract-xvfb.py); deps from the
-# static-musl X11 prefix at .build/x11-prefix (see tools/x11-deps-build.sh).
-XVFB_SRC = third_party/x11/xvfb-src
-XVFB_OUT = .build/x11/xvfb
-
-.PHONY: xvfb64
-xvfb64:
-	$(MAKE) -C $(XVFB_SRC) OUT="$(CURDIR)/$(XVFB_OUT)" \
-		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
-
-# --- Xfb: FNX's native X server (fork of Xvfb; pristine upstream in
-# third_party/x11/xvfb-src, see userland/xfb/README.md)
+# --- Xfb: FNX's native X server (fork of Xvfb; the pristine upstream is
+# not vendored - regenerate it on demand, see userland/xfb/README.md)
 XFB_SRC = userland/xfb
 XFB_OUT = .build/x11/xfb
 XFB_BIN = $(XFB_OUT)/Xfb

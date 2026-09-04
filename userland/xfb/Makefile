@@ -1,7 +1,8 @@
 # Xfb build (plain make, no meson/ninja/autotools) - FNX userland.
-# Sources forked from xserver 21.1.24 (pristine baseline:
-# third_party/x11/xvfb-src) into this tree by ../../tools/x11-extract-xfb.py
-# (layout preserved, so relative #include "..." works). Generated config
+# Sources forked from xserver 21.1.24 (pristine baseline regenerated on
+# demand as third_party/x11/xvfb-src by ../../tools/x11-extract-xvfb.py,
+# then re-copied + re-branded; layout preserved, so relative
+# #include "..." works). Generated config
 # headers (dix-config.h, xkb-config.h, xorg-config.h, version-config.h,
 # xorg-server.h) live in include/.
 # Third-party libs come from the static-musl prefix set via X11PREFIX.

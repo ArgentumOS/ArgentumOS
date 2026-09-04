@@ -158,11 +158,14 @@ route pays it) and M4's libX11/app data plumbing.
 
 ## Update (M0.5): standalone plain-make build — meson is no longer required
 
-Building Xvfb no longer needs meson/ninja/autotools at all. The 265
-server sources + generated config headers are extracted into
-`third_party/x11/xvfb-src/` (committed, a8fd657) with one plain Makefile;
-`make xvfb64` from the repo root produces `.build/x11/xvfb/Xvfb` (static
-musl ELF64, host-smoke verified: X client reads screen=640x480 depth=24).
+Building the server no longer needs meson/ninja/autotools: the 265
+sources + generated config headers are built by one plain Makefile. The
+plain-make build now **lives on in `userland/xfb`** (the FNX fork,
+promoted out of third_party); the pristine `third_party/x11/xvfb-src`
+tree and the `make xvfb64` target were **removed** (the fork is the
+component; a pristine baseline is regenerated on demand, see
+`userland/xfb/README.md`). The original extraction was host-smoke
+verified (X client reads screen=640x480 depth=24).
 
 - Regenerate the tree with `tools/x11-extract-xvfb.py` (reads the meson
   build.ninja at `.build/x11/xserver` only as a source-of-truth graph).
@@ -276,8 +279,9 @@ token** `r`), `-retro`, `-terminate` (optional numeric delay), `-tst`,
 
 ### Build and integration
 
-- `userland/xfb` is the FNX-native fork (diverges from pristine
-  `third_party/x11/xvfb-src`, see its README for the delta); add
+- `userland/xfb` is the FNX-native fork (its FNX delta is listed in
+  `userland/xfb/README.md`; a pristine baseline is regenerated on demand
+  with `tools/x11-extract-xvfb.py`, not kept in the tree); add
   `userland/libconfig.c` to its Makefile and `-I<repo>/include` for
   `libconfig.h` — the same two-file link the `config` CLI uses.
 - The config read runs once at startup, before `ProcessCommandLine`;

@@ -2,14 +2,12 @@
 
 **Xfb is a native FNX userland component.** It is not a vendored upstream:
 it is the FNX-maintained fork of Xvfb — a first-party userland program
-(`/bin/Xfb` in the root image) whose upstream core is synced from a
-pristine mirror. The split is:
-
-- `userland/xfb/` (this tree) — the FNX X server: the whole buildable
-  server, forked once from Xvfb and diverged from there. Contains ~260
-  pristine-upstream files plus the small FNX delta below.
-- `third_party/x11/xvfb-src/` — the **pristine** upstream Xvfb build tree
-  (extracted from xserver 21.1.24), kept untouched as the sync baseline.
+(`/bin/Xfb` in the root image). This tree contains the whole buildable
+server: ~260 files forked once from Xserver 21.1.24's Xvfb build, plus
+the small FNX delta below. The pristine upstream is **not kept in the
+tree** — the fork is the component, and a pristine baseline is
+regenerated on demand when a sync is wanted (see "Upstream sync"
+below).
 
 The fork is mechanical: same files, same layout, DDX renamed `hw/vfb` →
 `hw/xfb`, binary/output names `Xvfb` → `Xfb`. The directory layout
@@ -34,11 +32,23 @@ Upstream files FNX has modified:
 - `fb/fbfill.c`, `include/dix-config.h`, `include/xkb-config.h`,
   `Makefile` — FNX build and render config.
 
-Everything else in this tree is byte-identical to `xvfb-src`. To sync
-upstream fixes: apply them to `xvfb-src`, re-extract there, then
-re-copy + re-rebrand (the rename is: dir `hw/vfb`→`hw/xfb`, text
-`Xvfb`→`Xfb`, `xvfb`→`xfb`, `hw/vfb`→`hw/xfb`, `hw_vfb`→`hw_xfb` in
-Makefile object names), and re-apply the delta above.
+Everything else in this tree is byte-identical to the pristine Xvfb
+sources.
+
+## Upstream sync (regenerate a pristine baseline on demand)
+
+An upstream upgrade means: fetch xorg-server from freedesktop gitlab,
+apply `third_party/x11/xserver-fnx.patch` (the archived FNX-local meson
+changes), meson-configure an xvfb-only build (options recorded in
+`docs/x11-xvfb-fb-plan.md`), run `tools/x11-extract-xvfb.py` to
+regenerate `third_party/x11/xvfb-src` (the pristine mirror), then
+re-copy + re-rebrand into this tree (the rename is: dir `hw/vfb`→
+`hw/xfb`, text `Xvfb`→`Xfb`, `xvfb`→`xfb`, `hw/vfb`→`hw/xfb`,
+`hw_vfb`→`hw_xfb` in Makefile object names), and re-apply the delta
+above. Diffing this tree against the regenerated `xvfb-src` shows
+exactly the FNX delta. (Older pristine versions are also recoverable
+from this repo's git history, which contains the pre-promotion
+`third_party/x11/xvfb-src`.)
 
 ## Contents
 
@@ -70,16 +80,6 @@ the static-musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
 
 Outputs land under `$(OUT)` (default `build/` inside this dir); the repo
 target sends them to `.build/x11/xfb`.
-
-## Upstream / regeneration background
-
-The Xorg source tree is not vendored in this repo; `xvfb-src`
-(`third_party/x11/xvfb-src`) is the canonical Xvfb build input, and the
-FNX-local meson patch is archived at `third_party/x11/xserver-fnx.patch`.
-An xserver upgrade means: fetch xorg-server from freedesktop gitlab, apply
-that patch, meson-configure an xvfb-only build (options recorded in
-`docs/x11-xvfb-fb-plan.md`), run `tools/x11-extract-xvfb.py` to regenerate
-`xvfb-src`, then re-fork into this tree as described above.
 
 Version note: sources + configs correspond to xserver 21.1.24 with the
 FNX-local meson patches applied.
