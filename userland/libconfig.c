@@ -343,6 +343,8 @@ static config_err_t infer_scalar(const char *tok, config_value_t *out)
 
 /* ---- the .conf parser ---------------------------------------------- */
 
+static void entries_free(struct entry *list);
+
 /* parse a quoted string at *pp; on success *pp points past the closing
  * quote and *out holds a malloc'd string. */
 static config_err_t parse_quoted(const char **pp, char **out)
@@ -509,7 +511,6 @@ static config_err_t parse_array_body(const char **pp, config_value_t *first,
 static config_err_t parse_value(const char *text, config_value_t *out)
 {
 	const char *p = text;
-
 	while(*p == ' ' || *p == '\t') {
 		p++;
 	}
@@ -565,19 +566,114 @@ static config_err_t parse_value(const char *text, config_value_t *out)
 	}
 }
 
+/* ---- group-record containers (docs §3.1) --------------------------- */
+
+/* One open container while parsing. The top level is a container with
+ * prefix "" that never pops. `records` = the names of the blocks opened
+ * directly in this container (for duplicate-record-name detection). */
+struct pctx {
+	char *prefix;
+	struct pctx *up;
+	char **records;
+	int nrecords, crecords;
+};
+
+/* free a heap container (not the stack-allocated top level) */
+static void pctx_destroy(struct pctx *c)
+{
+	int i;
+
+	for(i = 0; i < c->nrecords; i++) {
+		free(c->records[i]);
+	}
+	free(c->records);
+	free(c->prefix);
+	free(c);
+}
+
+static void pctx_free_chain(struct pctx *c)
+{
+	while(c) {
+		struct pctx *up = c->up;
+
+		pctx_destroy(c);
+		c = up;
+	}
+}
+
+/* Bind a block (record) name in container c. Returns
+ * CONFIG_ERR_PARSE on a duplicate record name (docs §3.1). */
+static config_err_t pctx_bind_record(struct pctx *c, const char *name)
+{
+	int i;
+
+	for(i = 0; i < c->nrecords; i++) {
+		if(!strcmp(c->records[i], name)) {
+			return CONFIG_ERR_PARSE;	/* duplicate record */
+		}
+	}
+	if(c->nrecords == c->crecords) {
+		int cap = c->crecords ? c->crecords * 2 : 4;
+		char **nr = realloc(c->records, cap * sizeof(char *));
+
+		if(!nr) {
+			return CONFIG_ERR_NOMEM;
+		}
+		c->records = nr;
+		c->crecords = cap;
+	}
+	c->records[c->nrecords++] = strdup(name);
+	return c->records[c->nrecords - 1] ? CONFIG_OK : CONFIG_ERR_NOMEM;
+}
+
+static void blocks_free(char **blocks, int n)
+{
+	int i;
+
+	if(!blocks) {
+		return;
+	}
+	for(i = 0; i < n; i++) {
+		free(blocks[i]);
+	}
+	free(blocks);
+}
+
 /* Parse whole-file text into an entry list (duplicate keys: last
- * occurrence wins, keeping the first occurrence's position). */
+ * occurrence wins, keeping the first occurrence's position). When
+ * blocks/nblocks (when provided) receive the names of the top-level
+ * explicit blocks (record domains) in the file, which the canonical
+ * writer uses to choose nested spelling. */
 static config_err_t parse_conf(const char *text, size_t len,
-			       struct entry **list)
+			       struct entry **list, char ***blocks,
+			       int *nblocks)
 {
 	size_t off = 0;
 	struct entry *head = NULL, *tail = NULL;
+	struct pctx *top;
+	struct pctx *cur;
+	char **explicit = NULL;
 
+	top = calloc(1, sizeof(*top));
+	if(!top) {
+		return CONFIG_ERR_NOMEM;
+	}
+	cur = top;
+	int nexp = 0, cexp = 0;
+	config_err_t rc = CONFIG_OK;
+
+	*list = NULL;
+	if(blocks) {
+		*blocks = NULL;
+	}
+	if(nblocks) {
+		*nblocks = 0;
+	}
 	if(len >= 3 && (unsigned char)text[0] == 0xEF &&
 	   (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) {
 		off = 3;	/* skip a UTF-8 BOM */
 	}
-	while(off < len) {
+	while(off < len && !rc) {
 		char line[CONF_MAX_LINE + 1];
 		size_t n = 0;
 		char *p;
@@ -588,7 +684,8 @@ static config_err_t parse_conf(const char *text, size_t len,
 		if(off < len && text[off] == '\n') {
 			off++;	/* consume the newline */
 		} else if(n == CONF_MAX_LINE && off < len) {
-			return CONFIG_ERR_PARSE;	/* line too long */
+			rc = CONFIG_ERR_PARSE;	/* line too long */
+			break;
 		}
 		line[n] = '\0';
 		/* strip a trailing CR (CRLF tolerance) + trailing WS */
@@ -603,17 +700,36 @@ static config_err_t parse_conf(const char *text, size_t len,
 		if(!*p || *p == '#') {
 			continue;	/* empty or full-line comment */
 		}
+		if(*p == '}') {
+			/* close a group (only whitespace may follow) */
+			char *q = p + 1;
+
+			while(*q == ' ' || *q == '\t') {
+				q++;
+			}
+			if(*q || cur == top) {
+				rc = CONFIG_ERR_PARSE;
+				break;
+			}
+			{
+				struct pctx *pop = cur;
+
+				cur = pop->up;
+				pop->up = NULL;
+				pctx_destroy(pop);
+			}
+			continue;
+		}
 		{
 			char *eq = strchr(p, '=');
 			char *keyend;
 			char *val;
-			char *key;
-			config_value_t v;
+			char *rel;
 			config_err_t e;
-			struct entry *en, *cur;
 
 			if(!eq) {
-				return CONFIG_ERR_PARSE;	/* no '=' */
+				rc = CONFIG_ERR_PARSE;	/* no '=' */
+				break;
 			}
 			keyend = eq;
 			while(keyend > p && (keyend[-1] == ' ' ||
@@ -621,57 +737,230 @@ static config_err_t parse_conf(const char *text, size_t len,
 				keyend--;
 			}
 			if(keyend == p) {
-				return CONFIG_ERR_PARSE;
+				rc = CONFIG_ERR_PARSE;
+				break;
 			}
 			*keyend = '\0';
-			if(!config_valid_key(p)) {
-				return CONFIG_ERR_PARSE;
+			rel = p;
+			if(!config_valid_key(rel)) {
+				rc = CONFIG_ERR_PARSE;
+				break;
 			}
 			val = eq + 1;
 			while(*val == ' ' || *val == '\t') {
 				val++;
 			}
-			key = strdup(p);
-			if(!key) {
-				return CONFIG_ERR_NOMEM;
-			}
-			e = parse_value(val, &v);
-			if(e) {
-				free(key);
-				return e;
-			}
-			/* duplicate key: replace in place (last wins) */
-			for(cur = head; cur; cur = cur->next) {
-				if(!strcmp(cur->key, key)) {
-					value_free(&cur->val);
-					cur->val = v;
-					free(key);
-					goto next_line;
-				}
-			}
-			en = malloc(sizeof(struct entry));
-			if(!en) {
-				value_free(&v);
-				free(key);
-				return CONFIG_ERR_NOMEM;
-			}
-			en->key = key;
-			en->val = v;
-			en->next = NULL;
-			if(tail) {
-				tail->next = en;
-			} else {
-				head = en;
-			}
-			tail = en;
-		}
-next_line:
-		;
-	}
-	*list = head;
-	return CONFIG_OK;
-}
+			if(*val == '{') {
+				/* group open. The record name is a single
+				 * segment; "key = {" opens a multi-line
+				 * group, "key = {}" is an empty group. */
+				char *q = val + 1;
+				int empty = 0;
 
+				if(!valid_segment(rel, strlen(rel))) {
+					rc = CONFIG_ERR_PARSE;
+					break;
+				}
+				while(*q == ' ' || *q == '\t') {
+					q++;
+				}
+				if(*q == '}') {
+					empty = 1;
+					q++;
+					while(*q == ' ' || *q == '\t') {
+						q++;
+					}
+					if(*q) {
+						rc = CONFIG_ERR_PARSE;
+						break;
+					}
+				} else if(*q) {
+					/* a bare value may not begin with
+					 * '{' (docs §3.1) */
+					rc = CONFIG_ERR_PARSE;
+					break;
+				}
+				e = pctx_bind_record(cur, rel);
+				if(e) {
+					rc = e;
+					break;
+				}
+				if(cur == top) {
+					/* remember top-level explicit
+					 * blocks for the writer */
+					char **nx;
+					char *dup;
+
+					if(nexp == cexp) {
+						int cap = cexp ? cexp * 2 : 4;
+
+						nx = realloc(explicit,
+							      cap * sizeof(char *));
+						if(!nx) {
+							rc = CONFIG_ERR_NOMEM;
+							break;
+						}
+						explicit = nx;
+						cexp = cap;
+					}
+					dup = strdup(rel);
+					if(!dup) {
+						rc = CONFIG_ERR_NOMEM;
+						break;
+					}
+					explicit[nexp++] = dup;
+				}
+				if(!empty) {
+					/* push the new container */
+					struct pctx *pc = calloc(1,
+								 sizeof(*pc));
+					size_t pl = cur->prefix ?
+						    strlen(cur->prefix) : 0;
+					size_t rl = strlen(rel);
+
+					if(!pc) {
+						rc = CONFIG_ERR_NOMEM;
+						break;
+					}
+					pc->prefix = malloc(pl + rl + 2);
+					if(!pc->prefix) {
+						free(pc);
+						rc = CONFIG_ERR_NOMEM;
+						break;
+					}
+					if(pl) {
+						memcpy(pc->prefix, cur->prefix,
+						       pl);
+						pc->prefix[pl] = '.';
+						memcpy(pc->prefix + pl + 1,
+						       rel, rl + 1);
+					} else {
+						memcpy(pc->prefix, rel, rl + 1);
+					}
+					pc->up = cur;
+					cur = pc;
+				}
+				continue;
+			}
+			{
+				/* a plain assignment: full key = the
+				 * container prefix + the relative key */
+				size_t pl = cur->prefix ?
+					    strlen(cur->prefix) : 0;
+				size_t rl = strlen(rel);
+				char *full;
+				config_value_t v;
+				struct entry *cur2, *en;
+
+				if(pl + rl + 2 > CONF_MAX_KEY + 1) {
+					rc = CONFIG_ERR_PARSE;
+					break;
+				}
+				full = malloc(pl + rl + 2);
+				if(!full) {
+					rc = CONFIG_ERR_NOMEM;
+					break;
+				}
+				if(pl) {
+					memcpy(full, cur->prefix, pl);
+					full[pl] = '.';
+					memcpy(full + pl + 1, rel, rl + 1);
+				} else {
+					memcpy(full, rel, rl + 1);
+				}
+				if(!config_valid_key(full)) {
+					free(full);
+					rc = CONFIG_ERR_PARSE;
+					break;
+				}
+				e = parse_value(val, &v);
+				if(e) {
+					free(full);
+					rc = e;
+					break;
+				}
+				/* A name may not be both a stored scalar
+				 * and a container (docs §3.1: records are
+				 * identity-bearing). Exact duplicates are
+				 * last-wins. */
+				for(cur2 = head; cur2; cur2 = cur2->next) {
+					size_t fl = strlen(full);
+					size_t el = strlen(cur2->key);
+
+					if(!strcmp(cur2->key, full)) {
+						value_free(&cur2->val);
+						cur2->val = v;
+						free(full);
+						goto next_line;
+					}
+					if(el > fl &&
+					   !strncmp(cur2->key, full, fl) &&
+					   cur2->key[fl] == '.') {
+						/* a container already exists
+						 * under this leaf key */
+						value_free(&v);
+						free(full);
+						rc = CONFIG_ERR_PARSE;
+						break;
+					}
+					if(el < fl &&
+					   !strncmp(full, cur2->key, el) &&
+					   full[el] == '.') {
+						/* this key needs an existing
+						 * leaf as a container */
+						value_free(&v);
+						free(full);
+						rc = CONFIG_ERR_PARSE;
+						break;
+					}
+				}
+				if(rc) {
+					break;
+				}
+				en = malloc(sizeof(struct entry));
+				if(!en) {
+					value_free(&v);
+					free(full);
+					rc = CONFIG_ERR_NOMEM;
+					break;
+				}
+				en->key = full;
+				en->val = v;
+				en->next = NULL;
+				if(tail) {
+					tail->next = en;
+				} else {
+					head = en;
+				}
+				tail = en;
+			}
+next_line:
+			;
+		}
+	}
+	if(!rc && cur != top) {
+		rc = CONFIG_ERR_PARSE;	/* unbalanced '{' */
+	}
+	/* hand ownership out on success, clean up on error. The chain of
+	 * still-open containers (always including the heap `top`) is freed
+	 * uniformly; containers closed during the parse were already
+	 * destroyed at their '}' */
+	if(!rc) {
+		*list = head;
+		if(blocks) {
+			*blocks = explicit;
+		}
+		if(nblocks) {
+			*nblocks = nexp;
+		}
+		pctx_free_chain(cur);
+		return CONFIG_OK;
+	}
+	entries_free(head);
+	pctx_free_chain(cur);
+	blocks_free(explicit, nexp);
+	return rc;
+}
 static void entries_free(struct entry *list)
 {
 	while(list) {
@@ -685,9 +974,11 @@ static void entries_free(struct entry *list)
 }
 
 /* Load + parse a scope's domain file. *found is 1 when the file
- * existed (even if empty). */
+ * existed (even if empty). blocks/nblocks (either may be NULL) return
+ * the top-level explicit-block names for the canonical writer. */
 static config_err_t load_entries(config_scope_t scope, const char *domain,
-				 struct entry **list, int *found)
+				 struct entry **list, int *found,
+				 char ***blocks, int *nblocks)
 {
 	char path[PATH_MAX];
 	char *text;
@@ -698,6 +989,12 @@ static config_err_t load_entries(config_scope_t scope, const char *domain,
 
 	*found = 0;
 	*list = NULL;
+	if(blocks) {
+		*blocks = NULL;
+	}
+	if(nblocks) {
+		*nblocks = 0;
+	}
 	rc = domain_path(scope, domain, path, sizeof(path));
 	if(rc) {
 		return rc;
@@ -739,7 +1036,7 @@ static config_err_t load_entries(config_scope_t scope, const char *domain,
 	}
 	close(fd);
 	text[n] = '\0';
-	e = parse_conf(text, n, list);
+	e = parse_conf(text, n, list, blocks, nblocks);
 	free(text);
 	return e;
 }
@@ -762,7 +1059,8 @@ static config_err_t read_scope_internal(config_scope_t scope,
 {
 	struct entry *list;
 	int found;
-	config_err_t e = load_entries(scope, domain, &list, &found);
+	config_err_t e = load_entries(scope, domain, &list, &found,
+				      NULL, NULL);
 	struct entry *en;
 
 	if(e) {
@@ -962,7 +1260,7 @@ config_err_t config_get_all(const char *domain, const char *prefix,
 		int found;
 		struct entry *en;
 		config_err_t e = load_entries((config_scope_t)s, domain,
-					      &lists[s], &found);
+					      &lists[s], &found, NULL, NULL);
 
 		if(e == CONFIG_ERR_NOT_FOUND) {
 			continue;
@@ -1062,6 +1360,137 @@ void config_free_keys(char **keys, config_value_t *values, size_t count)
 		}
 		free(values);
 	}
+}
+
+/* ---- record enumeration (group records, docs §3) ------------------- */
+
+/* Enumerate the records of `group` in one scope's domain file, in
+ * source order. A record is an immediate child of the group that is
+ * itself a container (has descendant keys); group "" means the top
+ * level. `prev` is the previously returned record (NULL = first):
+ * config_record_first()/config_record_next() are thin wrappers. Returns
+ * CONFIG_ERR_NOT_FOUND when there is no (further) record; a `prev` that
+ * is not a record of the group is CONFIG_ERR_INVALID. */
+static config_err_t record_walk(config_scope_t scope, const char *domain,
+				const char *group, const char *prev,
+				char **name)
+{
+	struct entry *list = NULL;
+	char **cands = NULL;
+	size_t nc = 0, cap = 0;
+	int found;
+	size_t plen = group ? strlen(group) : 0;
+	struct entry *en;
+	size_t i;
+	config_err_t e = CONFIG_OK;
+
+	*name = NULL;
+	if(scope < CONFIG_SCOPE_USER || scope > CONFIG_SCOPE_SYSTEM ||
+	   !domain || !name || !config_valid_domain(domain) ||
+	   (group && *group && !config_valid_key(group))) {
+		return CONFIG_ERR_INVALID;
+	}
+	e = load_entries(scope, domain, &list, &found, NULL, NULL);
+	if(e) {
+		return e;	/* NOT_FOUND when the domain file is absent */
+	}
+	for(en = list; en; en = en->next) {
+		const char *k = en->key;
+		const char *seg;
+		size_t slen;
+		size_t j;
+
+		if(plen) {
+			if(strncmp(k, group, plen) || k[plen] != '.') {
+				continue;
+			}
+			seg = k + plen + 1;
+		} else {
+			seg = k;
+		}
+		slen = strcspn(seg, ".");
+		if(!seg[slen]) {
+			continue;	/* the child itself is a leaf */
+		}
+		for(j = 0; j < nc; j++) {
+			if(!strncmp(cands[j], seg, slen) && !cands[j][slen]) {
+				break;
+			}
+		}
+		if(j < nc) {
+			continue;
+		}
+		if(nc == cap) {
+			char **nn;
+
+			cap = cap ? cap * 2 : 8;
+			nn = realloc(cands, cap * sizeof(char *));
+			if(!nn) {
+				e = CONFIG_ERR_NOMEM;
+				goto out;
+			}
+			cands = nn;
+		}
+		cands[nc] = strndup(seg, slen);
+		if(!cands[nc]) {
+			e = CONFIG_ERR_NOMEM;
+			goto out;
+		}
+		nc++;
+	}
+	if(prev) {
+		for(i = 0; i < nc; i++) {
+			if(!strcmp(cands[i], prev)) {
+				break;
+			}
+		}
+		if(i == nc) {
+			e = CONFIG_ERR_INVALID;	/* prev is not a record */
+			goto out;
+		}
+		i++;
+		if(i == nc) {
+			e = CONFIG_ERR_NOT_FOUND;
+			goto out;
+		}
+	} else {
+		if(!nc) {
+			e = CONFIG_ERR_NOT_FOUND;
+			goto out;
+		}
+		i = 0;
+	}
+	*name = strdup(cands[i]);
+	if(!*name) {
+		e = CONFIG_ERR_NOMEM;
+	}
+out:
+	if(e && *name) {
+		free(*name);
+		*name = NULL;
+	}
+	for(i = 0; i < nc; i++) {
+		free(cands[i]);
+	}
+	free(cands);
+	entries_free(list);
+	return e;
+}
+
+config_err_t config_record_first(config_scope_t scope, const char *domain,
+				 const char *group, char **name)
+{
+	return record_walk(scope, domain, group, NULL, name);
+}
+
+config_err_t config_record_next(config_scope_t scope, const char *domain,
+				const char *group, const char *prev,
+				char **name)
+{
+	if(!prev) {
+		return CONFIG_ERR_INVALID;
+	}
+	return record_walk(scope, domain, group, prev, name);
 }
 
 /* ---- value serialization (docs §10 write canonicalization) --------- */
@@ -1199,10 +1628,260 @@ static config_err_t mkdir_p(const char *dir)
 	return CONFIG_OK;
 }
 
+/* ---- canonical writer (group records, docs §3.1) ------------------- */
+
+static void indent_of(int depth, char *out, size_t outsz)
+{
+	size_t i, n = (size_t)depth * 4;
+
+	if(n >= outsz) {
+		n = outsz ? outsz - 1 : 0;
+	}
+	for(i = 0; i < n; i++) {
+		out[i] = ' ';
+	}
+	out[n] = '\0';
+}
+
+static config_err_t write_indented(int fd, const char *indent,
+				   const char *relkey, const char *rhs)
+{
+	char line[CONF_MAX_KEY + CONF_MAX_LINE + 384];
+	size_t len;
+
+	len = snprintf(line, sizeof(line), "%s%s = %s\n", indent, relkey,
+		       rhs);
+	if(len >= sizeof(line)) {
+		return CONFIG_ERR_PARSE;
+	}
+	if(write(fd, line, len) != (ssize_t)len) {
+		return CONFIG_ERR_IO;
+	}
+	return CONFIG_OK;
+}
+
+/* Emit the children of container `prefix` ("" = the top level) in
+ * first-seen order: leaf children as "name = value", container children
+ * as nested "name = { ... }" blocks (4-space indentation per level). */
+static config_err_t emit_children(int fd, struct entry *list,
+				  const char *prefix, int depth)
+{
+	char ind[384];
+	char **kids = NULL;
+	size_t n = 0, cap = 0;
+	size_t plen = prefix ? strlen(prefix) : 0;
+	struct entry *en;
+	size_t i;
+	config_err_t e = CONFIG_OK;
+
+	indent_of(depth, ind, sizeof(ind));
+	for(en = list; en && !e; en = en->next) {
+		const char *k = en->key;
+		const char *seg;
+		size_t slen;
+		char **nk;
+		int dup = 0;
+
+		if(plen) {
+			if(strncmp(k, prefix, plen) || k[plen] != '.') {
+				continue;
+			}
+			seg = k + plen + 1;
+		} else {
+			seg = k;
+		}
+		slen = strcspn(seg, ".");
+		for(i = 0; i < n; i++) {
+			if(!strncmp(kids[i], seg, slen) && !kids[i][slen]) {
+				dup = 1;
+				break;
+			}
+		}
+		if(dup) {
+			continue;
+		}
+		if(n == cap) {
+			cap = cap ? cap * 2 : 8;
+			nk = realloc(kids, cap * sizeof(char *));
+			if(!nk) {
+				e = CONFIG_ERR_NOMEM;
+				break;
+			}
+			kids = nk;
+		}
+		kids[n] = strndup(seg, slen);
+		if(!kids[n]) {
+			e = CONFIG_ERR_NOMEM;
+			break;
+		}
+		n++;
+	}
+	for(i = 0; i < n && !e; i++) {
+		size_t fl = (plen ? plen + 1 : 0) + strlen(kids[i]);
+		char *full = malloc(fl + 1);
+		struct entry *leaf;
+		char *tv = NULL;
+
+		if(!full) {
+			e = CONFIG_ERR_NOMEM;
+			break;
+		}
+		if(plen) {
+			memcpy(full, prefix, plen);
+			full[plen] = '.';
+			strcpy(full + plen + 1, kids[i]);
+		} else {
+			strcpy(full, kids[i]);
+		}
+		leaf = entry_find(list, full);
+		if(leaf) {
+			/* a leaf child: "name = value" */
+			e = value_to_text(&leaf->val, &tv);
+			if(!e) {
+				e = write_indented(fd, ind, kids[i], tv);
+			}
+			free(tv);
+		} else {
+			/* a container child: nested block */
+			e = write_indented(fd, ind, kids[i], "{");
+			if(!e) {
+				e = emit_children(fd, list, full, depth + 1);
+			}
+			if(!e) {
+				char close[384];
+				size_t cl;
+
+				cl = snprintf(close, sizeof(close), "%s}\n",
+					      ind);
+				if(cl >= sizeof(close)) {
+					e = CONFIG_ERR_PARSE;
+				} else if(write(fd, close, cl) != (ssize_t)cl) {
+					e = CONFIG_ERR_IO;
+				}
+			}
+		}
+		free(full);
+	}
+	for(i = 0; i < n; i++) {
+		free(kids[i]);
+	}
+	free(kids);
+	return e;
+}
+
+/* Record-domain (nested) emission used when the file has at least one
+ * top-level explicit block. */
+static config_err_t emit_grouped(int fd, struct entry *list,
+				 char **blocks, int nblocks)
+{
+	char **tops = NULL;
+	size_t n = 0, cap = 0;
+	struct entry *en;
+	size_t i;
+	config_err_t e = CONFIG_OK;
+
+	/* top-level names in first-seen order */
+	for(en = list; en && !e; en = en->next) {
+		size_t slen = strcspn(en->key, ".");
+		char **nt;
+		size_t k;
+
+		for(k = 0; k < n; k++) {
+			if(!strncmp(tops[k], en->key, slen) &&
+			   !tops[k][slen]) {
+				break;
+			}
+		}
+		if(k < n) {
+			continue;
+		}
+		if(n == cap) {
+			cap = cap ? cap * 2 : 8;
+			nt = realloc(tops, cap * sizeof(char *));
+			if(!nt) {
+				e = CONFIG_ERR_NOMEM;
+				break;
+			}
+			tops = nt;
+		}
+		tops[n] = strndup(en->key, slen);
+		if(!tops[n]) {
+			e = CONFIG_ERR_NOMEM;
+			break;
+		}
+		n++;
+	}
+	for(i = 0; i < n && !e; i++) {
+		int expl = 0;
+		int b;
+
+		for(b = 0; b < nblocks; b++) {
+			if(!strcmp(blocks[b], tops[i])) {
+				expl = 1;
+				break;
+			}
+		}
+		if(entry_find(list, tops[i])) {
+			/* a top-level leaf */
+			struct entry *leaf = entry_find(list, tops[i]);
+			char *tv = NULL;
+
+			e = value_to_text(&leaf->val, &tv);
+			if(!e) {
+				e = write_indented(fd, "", tops[i], tv);
+			}
+			free(tv);
+		} else if(expl) {
+			/* an explicit top-level block: nested spelling */
+			e = write_indented(fd, "", tops[i], "{");
+			if(!e) {
+				e = emit_children(fd, list, tops[i], 1);
+			}
+			if(!e) {
+				static const char close[] = "}\n";
+
+				if(write(fd, close, 2) != 2) {
+					e = CONFIG_ERR_IO;
+				}
+			}
+		} else {
+			/* a plain dotted domain under this name: keep the
+			 * flat "full.key = value" spelling (unchanged) */
+			for(en = list; en && !e; en = en->next) {
+				size_t tl = strlen(tops[i]);
+
+				if(strncmp(en->key, tops[i], tl) ||
+				   en->key[tl] != '.') {
+					continue;
+				}
+				{
+					char *tv = NULL;
+
+					e = value_to_text(&en->val, &tv);
+					if(!e) {
+						e = write_indented(fd, "",
+								   en->key, tv);
+					}
+					free(tv);
+				}
+			}
+		}
+	}
+	for(i = 0; i < n; i++) {
+		free(tops[i]);
+	}
+	free(tops);
+	return e;
+}
+
 /* Serialize an entry list to the domain file atomically. When
- * remove_if_empty and the list has no entries, the file is deleted. */
+ * remove_if_empty and the list has no entries, the file is deleted.
+ * blocks/nblocks carry the top-level explicit-block names from the
+ * parse: when present, the file is written in nested record spelling;
+ * otherwise (a pure flat domain) exactly as before. */
 static config_err_t write_entries(config_scope_t scope, const char *domain,
-				  struct entry *list, bool remove_if_empty)
+				  struct entry *list, bool remove_if_empty,
+				  char **blocks, int nblocks)
 {
 	char path[PATH_MAX];
 	char tmp[PATH_MAX + 32];
@@ -1244,29 +1923,35 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 	if(fd < 0) {
 		return errno == EACCES ? CONFIG_ERR_ACCESS : CONFIG_ERR_IO;
 	}
-	for(en = list; en; en = en->next) {
-		char *tv = NULL;
-		char line[CONF_MAX_KEY + CONF_MAX_LINE + 64];
-		size_t len;
+	if(blocks && nblocks > 0) {
+		e = emit_grouped(fd, list, blocks, nblocks);
+	} else {
+		for(en = list; en; en = en->next) {
+			char *tv = NULL;
+			char line[CONF_MAX_KEY + CONF_MAX_LINE + 64];
+			size_t len;
 
-		e = value_to_text(&en->val, &tv);
-		if(e) {
-			close(fd);
-			unlink(tmp);
-			return e;
+			e = value_to_text(&en->val, &tv);
+			if(e) {
+				break;
+			}
+			len = snprintf(line, sizeof(line), "%s = %s\n",
+				       en->key, tv);
+			free(tv);
+			if(len >= sizeof(line)) {
+				e = CONFIG_ERR_PARSE;
+				break;
+			}
+			if(write(fd, line, len) != (ssize_t)len) {
+				e = CONFIG_ERR_IO;
+				break;
+			}
 		}
-		len = snprintf(line, sizeof(line), "%s = %s\n", en->key, tv);
-		free(tv);
-		if(len >= sizeof(line)) {
-			close(fd);
-			unlink(tmp);
-			return CONFIG_ERR_PARSE;
-		}
-		if(write(fd, line, len) != (ssize_t)len) {
-			close(fd);
-			unlink(tmp);
-			return CONFIG_ERR_IO;
-		}
+	}
+	if(e) {
+		close(fd);
+		unlink(tmp);
+		return e;
 	}
 	if(fsync(fd)) {
 		close(fd);
@@ -1282,10 +1967,12 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 }
 
 /* Generic single-key write: load, replace/append, write back. */
+static config_err_t set_key_replace(struct entry **listp, const char *key,
+				    const config_value_t *v);
 static config_err_t set_key(config_scope_t scope, const char *domain,
 			    const char *key, const config_value_t *v)
 {
-	struct entry *list = NULL, *en;
+	struct entry *list = NULL;
 	int found;
 	config_err_t e;
 
@@ -1294,30 +1981,52 @@ static config_err_t set_key(config_scope_t scope, const char *domain,
 	   !config_valid_key(key)) {
 		return CONFIG_ERR_INVALID;
 	}
-	e = load_entries(scope, domain, &list, &found);
-	if(e && e != CONFIG_ERR_NOT_FOUND) {
-		return e;
+	{
+		char **blocks = NULL;
+		int nblocks = 0;
+		config_err_t e2;
+
+		e = load_entries(scope, domain, &list, &found, &blocks,
+				 &nblocks);
+		if(e && e != CONFIG_ERR_NOT_FOUND) {
+			return e;
+		}
+		e2 = set_key_replace(&list, key, v);
+		if(!e2) {
+			e2 = write_entries(scope, domain, list, false,
+					   blocks, nblocks);
+		}
+		blocks_free(blocks, nblocks);
+		entries_free(list);
+		return e2;
 	}
+}
+
+/* helper shared by config_set_* and friends (appends when the key is
+ * new; *listp is updated on first insertion) */
+static config_err_t set_key_replace(struct entry **listp, const char *key,
+				    const config_value_t *v)
+{
+	struct entry *list = *listp;
+	struct entry *en, *t;
+
 	en = entry_find(list, key);
 	if(en) {
 		value_free(&en->val);
 	} else {
-		struct entry *t = list;
-
+		t = list;
 		en = malloc(sizeof(struct entry));
 		if(!en) {
-			entries_free(list);
 			return CONFIG_ERR_NOMEM;
 		}
 		en->key = strdup(key);
 		if(!en->key) {
 			free(en);
-			entries_free(list);
 			return CONFIG_ERR_NOMEM;
 		}
 		en->next = NULL;
 		if(!list) {
-			list = en;
+			*listp = en;
 		} else {
 			while(t->next) {
 				t = t->next;
@@ -1325,15 +2034,8 @@ static config_err_t set_key(config_scope_t scope, const char *domain,
 			t->next = en;
 		}
 	}
-	if((e = value_copy(&en->val, v))) {
-		entries_free(list);
-		return e;
-	}
-	e = write_entries(scope, domain, list, false);
-	entries_free(list);
-	return e;
+	return value_copy(&en->val, v);
 }
-
 config_err_t config_set_string(config_scope_t scope, const char *domain,
 			       const char *key, const char *value)
 {
@@ -1404,30 +2106,39 @@ config_err_t config_unset(config_scope_t scope, const char *domain,
 	   !config_valid_key(key)) {
 		return CONFIG_ERR_INVALID;
 	}
-	e = load_entries(scope, domain, &list, &found);
-	if(e == CONFIG_ERR_NOT_FOUND) {
-		return CONFIG_OK;	/* nothing to unset */
-	}
-	if(e) {
-		return e;
-	}
-	for(en = list; en; prev = en, en = en->next) {
-		if(!strcmp(en->key, key)) {
-			if(prev) {
-				prev->next = en->next;
-			} else {
-				list = en->next;
-			}
-			free(en->key);
-			value_free(&en->val);
-			free(en);
-			e = write_entries(scope, domain, list, true);
-			entries_free(list);
+	{
+		char **blocks = NULL;
+		int nblocks = 0;
+
+		e = load_entries(scope, domain, &list, &found, &blocks,
+				 &nblocks);
+		if(e == CONFIG_ERR_NOT_FOUND) {
+			return CONFIG_OK;	/* nothing to unset */
+		}
+		if(e) {
 			return e;
 		}
+		for(en = list; en; prev = en, en = en->next) {
+			if(!strcmp(en->key, key)) {
+				if(prev) {
+					prev->next = en->next;
+				} else {
+					list = en->next;
+				}
+				free(en->key);
+				value_free(&en->val);
+				free(en);
+				e = write_entries(scope, domain, list, true,
+						  blocks, nblocks);
+				blocks_free(blocks, nblocks);
+				entries_free(list);
+				return e;
+			}
+		}
+		blocks_free(blocks, nblocks);
+		entries_free(list);
+		return CONFIG_OK;	/* key absent: idempotent */
 	}
-	entries_free(list);
-	return CONFIG_OK;	/* key absent: idempotent */
 }
 
 config_err_t config_remove_domain(config_scope_t scope, const char *domain)

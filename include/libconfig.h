@@ -124,6 +124,18 @@ config_err_t config_get_all(const char *domain, const char *prefix,
 			    size_t *count);
 void config_free_keys(char **keys, config_value_t *values, size_t count);
 
+/* Record enumeration (group records, docs §3): the immediate children
+ * of `group` that are containers (records) in one scope's domain file,
+ * in source order. `group` may be "" for the top level. On success
+ * *name is a malloc'd record name the caller frees. CONFIG_ERR_NOT_FOUND
+ * when there is no (further) record; for config_record_next, a `prev`
+ * that is not a record of the group is CONFIG_ERR_INVALID. */
+config_err_t config_record_first(config_scope_t scope, const char *domain,
+				 const char *group, char **name);
+config_err_t config_record_next(config_scope_t scope, const char *domain,
+				const char *group, const char *prev,
+				char **name);
+
 /* ------------------------------------------------------------------ */
 /* Writing — explicit scope, atomic (temp + fsync + rename)           */
 /* ------------------------------------------------------------------ */

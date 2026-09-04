@@ -398,13 +398,15 @@ mount = {
 
 ## 7. Milestones
 
-### M0 — Grammar: group records (libconfig + config CLI)
-Extend the parser, canonical writer, and key model per §3; add
-`config_record_first/next`; unit tests via the `config` CLI (write a
-record domain, list, read a nested key, round-trip canonically,
-duplicate-record-name parse error, `{`-prefixed bare value error).
-Acceptance: nested-spelling files parse and read back identically;
-flat domains unchanged; no kernel changes.
+### M0 — Grammar: group records (libconfig + config CLI) — DONE
+Parser, canonical writer, and key model extended per §3 (config-design
+§10.1 is the normative home); `config_record_first/next` added. Unit
+tests via the `config` CLI (write a record domain, list, read a nested
+key, round-trip canonically, duplicate-record-name parse error,
+`{`-prefixed bare value error): `tools/config_m0_test.c` (library) and
+`tools/config_m0_cli_test.sh` (CLI) both pass; the P0 34-check
+regression (`tools/config_test.c`) still passes. Flat domains are
+written byte-for-byte as before; no kernel changes.
 
 ### M1 — Precedence inversion (libconfig + config CLI)
 Flip resolution to system → user → shared (§4.1): a key present in

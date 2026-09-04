@@ -155,10 +155,13 @@ The design has no open items.
 
 ```
 .conf      := (line EOL)*
-line       := empty | comment | assignment
+line       := empty | comment | assignment | close-brace
 empty      := WS*
 comment    := WS* '#' any-char*            -- full-line comments only
 assignment := WS* key WS* '=' WS* value WS*
+            | WS* key WS* '{' group-line* close-brace WS*   (block value)
+group-line := empty | comment | assignment
+close-brace:= WS* '}' WS*                  -- on its own line
 key        := segment ('.' segment)*       -- dot-separated, no empty segments
 segment    := [A-Za-z_] [A-Za-z0-9_-]*
 value      := boolean | integer | float | quoted-string | array
@@ -201,6 +204,46 @@ WS         := ' ' | '\t'
 - **Writing** canonicalizes: bool → `true`/`false`, int → decimal,
   float → decimal, string → bare when it contains no whitespace/`#`/`=`/
   `,`/`"`, else quoted, array → comma-joined with per-element quoting.
+  A file whose top level contains explicit blocks is written in the
+  nested (block) spelling; a pure flat file keeps its flat spelling
+  byte-for-byte (§10.1).
+
+## 10.1 Group records (block values)
+
+Block values make a **record domain** expressible: `key = { … }` opens
+a group whose lines are relative to the key (`user = { admin = { uid =
+0 } }` spells the key `user.admin.uid`). Blocks may nest arbitrarily and
+empty blocks (`x = {}`) are valid. Blocks are a *file spelling*: the
+in-memory model stays a flat dot-key map, and flat and nested spellings
+of the same keys may be mixed in one file (reads never care which
+spelling produced a key). This amendment is the normative home of
+docs/system-config-files-plan.md §3.
+
+Rules and edge cases:
+
+- A block value opens when the first non-WS char after `=` is `{`, and
+  `}` closes the innermost open group. Both appear on their own lines in
+  canonical files (`key = {` … `}`); an inline `}` right after `{`
+  (`key = {}`) is an empty group. Anything else after `{` on the line is
+  a parse error, so a *bare value beginning with `{` is no longer
+  legal* — quote it: `key = "{notablock"`. (A `{` elsewhere in a value,
+  e.g. `key = a{b`, is untouched.) An unclosed group at EOF or a stray
+  `}` is a parse error.
+- A block's name is a single segment (a dotted block key is a parse
+  error). Full keys stay ≤ 255 chars and relative keys follow the key
+  grammar.
+- **Duplicate record names in one block are a parse error** — records
+  are identity-bearing and must not silently collapse. Duplicate leaf
+  keys keep the existing rule (last occurrence wins), whether flat or
+  inside a block.
+- A name may not be **both a stored scalar and a container**: `a = 1`
+  with `a.b = 2` (either order, either spelling) is a parse error.
+- **Writing**: the canonical writer emits record domains (files with an
+  explicit top-level block) in the nested spelling with 4-space
+  indentation, and flat domains exactly as before — the two forms
+  round-trip byte-for-byte after a rewrite.
+- The kernel parser (§12) is a flat subset and is unchanged: `kernel.conf`
+  is a flat domain and only record domains use the nested spelling.
 
 ## 11. libconfig header
 
