@@ -222,18 +222,43 @@ Rules:
 
 - The file is read **early in boot** (before the BFS root is mounted),
   via early ESP access — the FAT32 driver, or UEFI boot-services file
-  I/O before `ExitBootServices` until then.
+  I/O before `ExitBootServices` until then. The early read is a plain
+  `\kernel.conf` on the ESP: no symlinks, no `/System` mount yet.
 - The kernel cmdline, when present, **overrides individual keys**.
 - The kernel needs a **small kernel-side `.conf` parser** implementing
   the same grammar (flat/dot-nested keys; string/int/bool values; the
   §10 rules). It is a lean read-only subset — no writes, no scopes, no
-  arrays needed in v1. The grammar stays identical so a file works
-  everywhere; the parser is shared source between kernel and userland
-  where practical.
-- The ESP is mounted at `/System/ESP` later in boot (FSH Q2), so
-  `kernel.conf` is visible and editable in the tree (e.g. via the
-  Disks/ESP write path or the Settings app, when those land).
+  arrays needed in v1. Because `config`/Settings rewrite the file
+  **canonically** (§10 "Writing"), the kernel parser must accept
+  canonical output (bare-or-quoted strings, `true`/`false`, ints incl.
+  `0x`, empty `key =`, duplicate-key last-wins). The grammar stays
+  identical so a file works everywhere; the parser is shared source
+  between kernel and userland where practical.
+
+Editing (decided): the kernel is an ordinary config domain.
+`/System/Configuration/com.fnx.kernel.conf` is a **symlink** to
+`/System/ESP/kernel.conf` (the ESP is mounted at `/System/ESP` from FSH
+Q2), so `config read|write|delete com.fnx.kernel …` reaches the real
+file with no CLI/API changes:
+
+- **Reads** follow the symlink naturally (`open` does).
+- **Writes** require the libconfig atomic writer to **resolve the final
+  path component before temp+rename**, and create the temp file in the
+  *resolved target's* directory — `rename(2)` does not follow a symlink
+  as its destination (it would silently swap in a regular file and leave
+  the real `kernel.conf` stale), and rename cannot cross filesystems
+  (the ESP is a separate mount from the root). ~10 lines in
+  `userland/libconfig.c::write_entries`.
+- **`config delete com.fnx.kernel`** removes the symlink only — it never
+  follows it into deleting the ESP's `kernel.conf`.
+- The symlink is created by the first-boot `/System` scaffold (BFS
+  supports symlinks, `fs/bfs/symlink.c`); it dangles until the ESP is
+  mounted. `config` aborts on IO error rather than falling through
+  (libconfig resolution rules), so an unmounted ESP surfaces the kernel
+  domain as unavailable — acceptable, since userland runs post-mount.
+- The ESP file remains canonical: it is what boot consumes and what
+  `config` edits through the link.
 
 This gives the kernel a self-contained boot identity: `FNX.efi` + its
-config live together on the ESP, and the running system can inspect and
-edit the kernel's options from the filesystem.
+config live together on the ESP, inspectable and editable through the
+normal `config` domain machinery once `/System/ESP` is mounted.
