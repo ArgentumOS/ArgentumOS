@@ -11,6 +11,18 @@ mkdir -p /var/log
 
 echo "XDESK: starting Xfb :0 on the framebuffer"
 /bin/Xfb :0 -ac > /var/log/Xfb.log 2>&1 &
+
+# wait for the server's unix listener before launching clients: under TCG
+# the bind can lag, and XOpenDisplay "Connection refused" would kill the
+# demo clients for good
+n=0
+while [ $n -lt 15 ]; do
+	if [ -S /tmp/.X11-unix/X0 ]; then
+		break
+	fi
+	sleep 1
+	n=$((n + 1))
+done
 sleep 1
 
 DISPLAY=:0 /bin/xdraw 100 100 400 300 &
