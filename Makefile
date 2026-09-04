@@ -35,7 +35,9 @@ clean:
 #                   panic - that is the smoke test.
 #   make ovmf       fetch OVMF firmware without root (into .build/ovmf).
 #   make run-uefi   boot OVMF (UEFI) firmware with the FNX EFI stub
-#                   (PE32+ kernel from make build64).
+#                   (PE32+ kernel from make build64) on the BFS root image
+#                   (.build/rootbfs.img) — BFS is the default root device.
+#   make run-ext2    same, but booting the legacy ext2 root (.build/root.img).
 #   make compile64  compile every C source with 64-bit flags into .build/64
 #                   (no link) - the type-sweep verifier for the long-mode
 #                   port.
@@ -74,17 +76,22 @@ CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2
        -fno-pie -fno-common -ffreestanding -mno-red-zone -mno-sse -mno-sse2 \
        -fno-asynchronous-unwind-tables -Wall -Wstrict-prototypes
 
-run: .build/ovmf/OVMF.fd rootdisk64 build64
-	$(MAKE) run-qemu ROOTIMG=.build/root.img
+run: .build/ovmf/OVMF.fd rootbfs build64
+	$(MAKE) run-qemu
 
 run-uefi: run
+
+# Legacy ext2 root (mkext2.py, rev-0, 1KB blocks): the pre-BFS default,
+# kept as an optional boot path (M4f made BFS the root fs).
+run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
+	$(MAKE) run-qemu ROOTIMG=.build/root.img
 
 # Boot the BFS root image (.build/rootbfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
 # filesystems (minix -> ext2 -> iso9660 -> bfs) and finds bfs; the same
 # kernel boots both the ext2 and the BFS root.
-run-bfs: .build/ovmf/OVMF.fd rootbfs build64
-	$(MAKE) run-qemu ROOTIMG=.build/rootbfs.img
+ROOTIMG ?= .build/rootbfs.img
+run-bfs: run
 
 run-qemu:
 	@./tools/mkesp.sh
@@ -270,11 +277,13 @@ rootdisk64: userland64
 
 # BFS root image (OpenBFS M4f): the same userland tree packed into a BeOS
 # BFS image by tools/mkbfs.py (multi-node dir trees, indirect +
-# double-indirect streams, symlinks). Boot via 'make run-bfs'.
+# double-indirect streams, symlinks). BFS is the DEFAULT root device
+# (make run / run-uefi); 64MB leaves headroom for the X11 userland (Xfb
+# is a ~16MB static binary).
 rootbfs: userland64
-	python3 tools/mkbfs.py $(ROOTFS64) .build/rootbfs.img 16
+	python3 tools/mkbfs.py $(ROOTFS64) .build/rootbfs.img 64
 	python3 tools/bfscheck.py .build/rootbfs.img $(ROOTFS64)
-	@echo "rootbfs: .build/rootbfs.img ready (BFS, 16MB, native x86_64 userland)"
+	@echo "rootbfs: .build/rootbfs.img ready (BFS, 64MB, native x86_64 userland)"
 
 ovmf: .build/ovmf/OVMF.fd
 

@@ -79,15 +79,19 @@ Before compiling you may want to tweak the kernel configuration in `include/fnx/
 The kernel needs a user-space environment: at boot it mounts the root filesystem and runs `/sbin/init`. FNX ships with a small native userland built from musl, dash and toybox:
 
     make userland64          # musl libc + dash + toybox, staged under .build/rootfs64
-    make rootdisk64          # packs .build/root.img (ext2, staged under tools/mkext2.py)
+    make rootbfs             # packs .build/rootbfs.img (OpenBFS, the default root)
+    make rootdisk64          # optional legacy ext2 root: .build/root.img (tools/mkext2.py)
 
 Running under QEMU
 ------------------
-The stock harness boots the ESP image under OVMF and attaches the EXT2 root disk over AHCI:
+The stock harness boots the ESP image under OVMF and attaches the OpenBFS
+root disk over AHCI (BFS is the default root device; the kernel probes
+minix -> ext2 -> iso9660 -> bfs):
 
-    make run-uefi            # OVMF + esp.img + root.img (rootdisk64) + a virtio-net NIC
+    make run-uefi            # OVMF + esp.img + rootbfs.img + a virtio-net NIC
+    make run-ext2            # same, but booting the legacy ext2 root (.build/root.img)
 
-By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf` is exported. The ESP image is written by `./tools/mkesp.sh` (run automatically by the Makefile). A root filesystem formatted as OpenBFS can be booted instead with `make run-bfs`.
+By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf` is exported. The ESP image is written by `./tools/mkesp.sh` (run automatically by the Makefile).
 
 Once the shell is up, the following in-guest checks are useful:
  - `sec_test`  - 24-pass kernel smoke test (fork/exec/CoW/TLS/wait4/security paths).
