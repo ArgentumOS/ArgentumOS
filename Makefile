@@ -218,14 +218,16 @@ $(LVGL64_OBJ)/%.o: $(LVGL_SRC)/%.c include/lv_conf.h
 	$(MUSL64_CC) $(LVGL64_CFLAGS) -c $< -o $@
 
 # --- Xfb: FNX's native X server (fork of Xvfb; the pristine upstream is
-# not vendored - regenerate it on demand, see userland/xfb/README.md)
+# not vendored - regenerate it on demand, see userland/xfb/README.md).
+# xfb64 is phony and always delegates: the inner per-file rules own the
+# incremental rebuild (a file-prerequisite here would go stale forever,
+# since .build/x11/xfb/Xfb has no source deps at this level).
 XFB_SRC = userland/xfb
 XFB_OUT = .build/x11/xfb
 XFB_BIN = $(XFB_OUT)/Xfb
 
 .PHONY: xfb64
-xfb64: $(XFB_BIN)
-$(XFB_BIN):
+xfb64:
 	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
 
