@@ -50,6 +50,82 @@ static int vfbMousePktN = 0;
 /* current X button bitmask: bit0 left, bit1 middle, bit2 right */
 static int vfbMouseButtons = 0;
 
+
+/* ---- direct-fb pointer cursor ----------------------------------------
+ * The X sprite machinery is cursorless in this server, so the pointer
+ * cursor is an overlay drawn straight into the /dev/fb0 mapping (same
+ * memory the X server renders into). fnxinput tracks the absolute pointer
+ * from the same PS/2 stream it feeds mieq, so the overlay follows X's
+ * pointer. No-op when there is no real framebuffer. */
+#define CUR_SZ 13
+static uint32_t vfbCurSaved[CUR_SZ * CUR_SZ];
+static int vfbCurX = -1, vfbCurY = -1;
+
+int vfbFbdevGet(int *w, int *h);
+uint32_t *vfbFbdevBase(void);
+
+static void
+vfbCurRestore(void)
+{
+    uint32_t *base;
+    int w, h, i, j;
+
+    if (vfbCurX < 0 || !vfbFbdevGet(&w, &h))
+        return;
+    base = vfbFbdevBase();
+    if (!base)
+        return;
+    for (j = 0; j < CUR_SZ; j++)
+        for (i = 0; i < CUR_SZ; i++)
+            base[(vfbCurY + j) * w + (vfbCurX + i)] =
+                vfbCurSaved[j * CUR_SZ + i];
+    vfbCurX = -1;
+}
+
+static void
+vfbCurDraw(int px, int py)
+{
+    uint32_t *base;
+    int w, h, i, j, x0, y0;
+
+    if (!vfbFbdevGet(&w, &h))
+        return;
+    base = vfbFbdevBase();
+    if (!base)
+        return;
+    vfbCurRestore();
+    x0 = px - CUR_SZ / 2;
+    y0 = py - CUR_SZ / 2;
+    if (x0 < 0)
+        x0 = 0;
+    if (y0 < 0)
+        y0 = 0;
+    if (x0 + CUR_SZ > w)
+        x0 = w - CUR_SZ;
+    if (y0 + CUR_SZ > h)
+        y0 = h - CUR_SZ;
+    if (x0 < 0 || y0 < 0)
+        return;
+    for (j = 0; j < CUR_SZ; j++)
+        for (i = 0; i < CUR_SZ; i++)
+            vfbCurSaved[j * CUR_SZ + i] =
+                base[(y0 + j) * w + (x0 + i)];
+    vfbCurX = x0;
+    vfbCurY = y0;
+    for (j = 0; j < CUR_SZ; j++) {
+        for (i = 0; i < CUR_SZ; i++) {
+            uint32_t c;
+            if (i == 0 || j == 0 || i == CUR_SZ - 1 || j == CUR_SZ - 1)
+                c = 0x000000;   /* 1px black outline */
+            else if (i == j || i == CUR_SZ - 1 - j)
+                c = 0xffffff;   /* white X */
+            else
+                continue;
+            base[(y0 + j) * w + (x0 + i)] = c;
+        }
+    }
+}
+
 /* ---- mouse ----------------------------------------------------------- */
 
 static void
@@ -87,6 +163,9 @@ vfbFeedMouseByte(unsigned char b)
          * through as relative motion */
         vfbPtrX += dx;
         vfbPtrY += dy;
+
+        if (dx || dy)
+            vfbCurDraw(vfbPtrX, vfbPtrY);
 
         valuator_mask_zero(&mask);
         valuator_mask_set(&mask, 0, dx);
@@ -167,6 +246,16 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
 
     vfbMouseDev = pMouse;
     vfbKbdDev = pKbd;
+
+    {
+        int fbw = 0, fbh = 0;
+
+        if (vfbFbdevGet(&fbw, &fbh)) {
+            vfbPtrX = fbw / 2;
+            vfbPtrY = fbh / 2;
+            vfbCurDraw(vfbPtrX, vfbPtrY);
+        }
+    }
 
     src = getenv("XFB_MOUSE");
     if (!src || !*src)

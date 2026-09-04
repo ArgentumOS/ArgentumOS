@@ -121,15 +121,14 @@ fbFill(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int width, int height)
 
     switch (pGC->fillStyle) {
     case FillSolid:
-#ifndef FB_ACCESS_WRAPPER
-        if (pPriv->and || !pixman_fill((uint32_t *) dst, dstStride, dstBpp,
-                                       x + dstXoff, y + dstYoff,
-                                       width, height, pPriv->xor))
-#endif
-            fbSolid(dst + (y + dstYoff) * dstStride,
-                    dstStride,
-                    (x + dstXoff) * dstBpp,
-                    dstBpp, width * dstBpp, height, pPriv->and, pPriv->xor);
+        /* FNX: pixman_fill() expects its stride in 32-bit words but the fb
+         * passes an FbStride (64-bit FbBits units on x86-64), so the fast
+         * path silently wrote every scanline at half its row offset. Use
+         * fbSolid(), whose row arithmetic is in FbBits and is correct. */
+        fbSolid(dst + (y + dstYoff) * dstStride,
+                dstStride,
+                (x + dstXoff) * dstBpp,
+                dstBpp, width * dstBpp, height, pPriv->and, pPriv->xor);
         break;
     case FillStippled:
     case FillOpaqueStippled:{
