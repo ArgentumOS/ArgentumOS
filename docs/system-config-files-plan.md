@@ -61,9 +61,9 @@ D1–D4 below.
   per key (§5), `include/libconfig.h` + `userland/libconfig.c`
   (typed getters, scope-explicit writes, atomic write temp+fsync+
   rename, §11), the `config` CLI (`userland/config.c`), and the
-  kernel-domain precedent (§12: `/System/ESP/kernel.conf` read through
-  a `/System/Configuration/system.config.kernel.conf` **symlink**,
-  canonical writer resolving the final path component). All config
+  kernel-domain precedent (§12: `system.config.kernel` is a pinned
+  single-file domain aliased to `/System/ESP/kernel.conf` — no symlink,
+  no scope layering). All config
   values are scalars or arrays — **there is no way to express a list of
   records** (passwd users, mounts) today.
 - **No `fstab` exists.** `userland/init.c` (PID 1) hardcodes
@@ -474,7 +474,7 @@ Acceptance: full rebuild from clean + guest boot; grep sweep for
 `/etc/passwd`, `/etc/group`, `/etc/hosts`, colon-parsing passwd code in
 third_party patches.
 
-## 8. Questions (owner review, resolved except Q5)
+## 8. Questions (owner review, resolved)
 
 - **Q2 — Fold.** `password_hash` is a field of the user record in
   `system.config.passwd.conf` (§5.1); no shadow domain exists.
@@ -482,9 +482,10 @@ third_party patches.
   domain in M6b, after init (M6).
 - **Q4 — `system.config.network.conf`.** `hostname` lives in its own
   network domain (§5.3), a home for future network settings.
-- **Q5 — OPEN.** The §12 `system.config.kernel` symlink to the ESP
-  `kernel.conf`: unchanged under system-first (it already resolves in
-  System scope) — kept open for further discussion.
+- **Q5 — Pin it.** `system.config.kernel` is a pinned single-file
+  domain aliased to the ESP's `/System/ESP/kernel.conf`: no symlink, no
+  user/shared layering (boot config is System-authoritative by nature),
+  normal atomic writes in the ESP directory (config-design §12).
 - **Q6 — Warn on read.** `config` warns when a user/shared value is
   shadowed by a System value; stale files are left in place (no
   deletion).
@@ -492,7 +493,7 @@ third_party patches.
 ## 9. References
 
 - `docs/config-design.md` — grammar (§10), scopes/precedence (§5),
-  libconfig (§11), kernel.conf + symlink domain precedent (§12).
+  libconfig (§11), the pinned kernel.conf domain (§12).
 - `docs/fsh-proposal.md` — `/System/Configuration` etc. + the
   `Configuration/` policy in §3.
 - `Makefile` userland64 — today's legacy file generation.
