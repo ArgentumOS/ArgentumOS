@@ -1,0 +1,44 @@
+From b5923190c275ae40ce68e8b4e739ce2c78dde0ba Mon Sep 17 00:00:00 2001
+From: Kyle J Cardoza <Kyle.Cardoza@icloud.com>
+Date: Fri, 4 Sep 2026 00:48:36 -0400
+Subject: [PATCH] FNX: -Dtests option + no test build; xkbfile required; xkb
+ dirs configurable
+
+Tests were disabled because they link libxcb without libXau (static);
+the build is xvfb-only (xorg/xephyr/glamor/glx/dri*/udev/systemd all
+off, secure-rpc off, sha1=libsha1, default_font_path=/usr/share/fonts/X11).
+xkb_bin_dir/xkb_dir are configure-time (defaults to the FNX prefix).
+---
+ meson.build       | 2 +-
+ meson_options.txt | 2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/meson.build b/meson.build
+index 9bee32c99..9feab910e 100644
+--- a/meson.build
++++ b/meson.build
+@@ -756,7 +756,7 @@ libxserver += libxserver_dri3
+ 
+ subdir('hw')
+ 
+-if host_machine.system() != 'windows'
++if host_machine.system() != 'windows' and get_option('tests')
+     subdir('test')
+ endif
+ 
+diff --git a/meson_options.txt b/meson_options.txt
+index 536e15d32..89b3caa48 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -8,6 +8,8 @@ option('xnest', type: 'combo', choices: ['true', 'false', 'auto'], value: 'auto'
+        description: 'Enable Xnest nested X server')
+ option('xvfb', type: 'boolean', value: true,
+        description: 'Enable Xvfb X server')
++option('tests', type: 'boolean', value: true,
++       description: 'Build the server test programs (FNX: disabled; they link libxcb without libXau)')
+ option('xwin', type: 'combo', choices: ['true', 'false', 'auto'], value: 'auto',
+        description: 'Enable XWin X server')
+ option('xquartz', type: 'combo', choices: ['true', 'false', 'auto'], value: 'auto',
+-- 
+2.47.3
+

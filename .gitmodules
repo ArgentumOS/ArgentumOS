@@ -16,9 +16,7 @@
 [submodule "third_party/x11/pixman"]
 	path = third_party/x11/pixman
 	url = https://gitlab.freedesktop.org/pixman/pixman.git
-[submodule "third_party/x11/xserver"]
-	path = third_party/x11/xserver
-	url = https://gitlab.freedesktop.org/xorg/xserver.git
+
 [submodule "third_party/x11/libXau"]
 	path = third_party/x11/libXau
 	url = https://gitlab.freedesktop.org/xorg/lib/libXau.git

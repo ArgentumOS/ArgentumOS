@@ -170,5 +170,7 @@ musl ELF64, host-smoke verified: X client reads screen=640x480 depth=24).
   xkb/xkb_stubs member semantics); do not flatten to one object list.
 - Third-party deps still come from `.build/x11-prefix` (pixman, xkbfile,
   xfont2, libsha1, Xau, Xdmcp) built by `tools/x11-deps-build.sh`.
-- The vendored `third_party/x11/xserver` (meson) tree is kept as the
-  upstream source of truth for extraction/upgrades.
+- The upstream Xorg tree is **no longer vendored** (removed to save
+  ~81 MB; see the commit log). For an upgrade, fetch xorg-server from
+  freedesktop gitlab, apply `third_party/x11/xserver-fnx.patch` (the
+  archived FNX-local meson changes), then re-extract as above.

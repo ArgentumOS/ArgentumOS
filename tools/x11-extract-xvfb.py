@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
-"""Extract the source subset needed to build Xvfb out of the xserver tree
+"""Extract the source subset needed to build Xvfb out of an xserver tree
 into a standalone directory with a plain Makefile (no meson/ninja).
 
-The file set is derived from the meson build.ninja of the (working)
-Xvfb build at .build/x11/xserver — every .c that Xvfb links. The
-extracted tree keeps the original relative layout so `#include "…"`
-(including ../-style) works unchanged. Generated config headers
-(dix-config.h, xkb-config.h, xorg-config.h) are copied from the build
-dir. Protocol/third-party headers are NOT copied — they come from the
-musl64 prefix at .build/x11-prefix/include at build time.
+The file set is derived from the meson build.ninja of a (working) Xvfb
+build at .build/x11/xserver — every .c that Xvfb links. The extracted
+tree keeps the original relative layout so `#include "…"` (including
+../-style) works unchanged. Generated config headers (dix-config.h,
+xkb-config.h, xorg-config.h, version-config.h, xorg-server.h,
+xwin-config.h) are copied from the build dir. Protocol/third-party
+headers are NOT copied — they come from the musl64 prefix at
+.build/x11-prefix/include at build time.
+
+The upstream xserver tree is NOT vendored in the FNX repo anymore.
+Regeneration is only needed for an xserver upgrade: fetch
+https://gitlab.freedesktop.org/xorg/xserver (tag xorg-server-21.1.24),
+apply third_party/x11/xserver-fnx.patch, meson-configure an xvfb-only
+build (see docs/x11-xvfb-fb-plan.md), then run this script. Both SRC
+and BUILD below must exist.
 
 Usage: python3 tools/x11-extract-xvfb.py
 """

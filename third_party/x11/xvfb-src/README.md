@@ -1,9 +1,13 @@
 # Standalone Xvfb source tree (plain make, no meson/ninja)
 
 This tree contains **only** the source files needed to build an Xvfb server,
-extracted from the xserver 21.1.24 tree at `../xserver/`. The directory
-layout mirrors the original so all `#include "…"` / `../`-style includes
-work unchanged.
+extracted from xserver 21.1.24. The directory layout mirrors the original
+xserver tree so all `#include "…"` / `../`-style includes work unchanged.
+
+The full Xorg source tree is **not** vendored in this repo — this snapshot
+is the canonical build input. The only surviving trace of the upstream tree
+is the FNX-local meson patch at `../xserver-fnx.patch` (needed only if you
+ever re-extract from a fresh upstream fetch; see Regenerating).
 
 ## Contents
 
@@ -34,14 +38,20 @@ the static-musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
 Outputs land under `$(OUT)` (default `build/` inside this dir); the repo
 target sends them to `.build/x11/xvfb`.
 
-## Regenerating
+## Regenerating (only needed for an xserver upgrade)
 
-`tools/x11-extract-xvfb.py` rebuilds this tree from `../xserver/`
-(a working meson build at `.build/x11/xserver` supplies the exact object
-graph + generated config headers). The per-archive source lists in the
-Makefile were derived from that build's `build.ninja` — archive granularity
-matters because some modules (`xi`/`xi_stubs`, `xkb`/`xkb_stubs`) only link
-correctly as archives with `--start-group`, not as one flat object list.
+1. Fetch upstream: `git clone https://gitlab.freedesktop.org/xorg/xserver`
+   and check out tag `xorg-server-21.1.24` (or newer — expect drift).
+2. Apply the FNX meson patches: `git apply ../xserver-fnx.patch`.
+3. Meson-configure an xvfb-only build (options recorded in
+   `docs/x11-xvfb-fb-plan.md`) so `.build/x11/xserver/build.ninja` exists.
+4. Run `tools/x11-extract-xvfb.py`, which rebuilds this tree from that
+   source + build graph, then re-commit the snapshot.
+
+The per-archive source lists in the Makefile are derived from the build's
+`build.ninja` — archive granularity matters because some modules
+(`xi`/`xi_stubs`, `xkb`/`xkb_stubs`) only link correctly as archives with
+`--start-group`, not as one flat object list.
 
 Version note: sources + configs correspond to xserver 21.1.24 with the FNX
-local meson patches already applied (see `../xserver` git history).
+local meson patches applied.
