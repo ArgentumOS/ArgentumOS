@@ -408,16 +408,22 @@ key, round-trip canonically, duplicate-record-name parse error,
 regression (`tools/config_test.c`) still passes. Flat domains are
 written byte-for-byte as before; no kernel changes.
 
-### M1 — Precedence inversion (libconfig + config CLI)
-Flip resolution to system → user → shared (§4.1): a key present in
-`/System/Configuration` always wins; user files override Shared
-defaults only; Shared is consulted last. `config read` shows which
-tier produced each value. This supersedes config-design §5/Q-F and the
-libconfig P0 resolution order.
+### M1 — Precedence inversion (libconfig + config CLI) — DONE
+Resolution flipped to system → user → shared (§4.1): `config_read` and
+`config_get_all` walk an explicit scope_order (the enum is
+USER<SHARED<SYSTEM, so it is not a simple loop); `/System/Configuration`
+wins whenever it holds the key, user files override Shared defaults
+only, Shared resolves last. `config read` (merged whole-domain and
+prefix listings) annotates the winning tier per value as
+`key = value (scope)`; scoped and single-key raw reads are unchanged.
+config-design §5/Q-F/§7/§11 and the header/file comments now state the
+new order.
 Acceptance: with the same value in all three scopes, `config read`
 returns the system one; with it only in user + shared, the user one;
 only in shared, the shared one; a user `-u` write no longer shadows a
-System value.
+System value — all covered by `tools/config_m1_test.c` (15 checks) and
+`tools/config_m1_cli_test.sh` (8 checks); P0 `config_test.c` rewritten
+for the new order (0 failures) and the M0 suites still pass.
 
 ### M2 — Domains ship + defaults move to Shared
 `system.config.passwd.conf`, `system.config.group.conf` and the

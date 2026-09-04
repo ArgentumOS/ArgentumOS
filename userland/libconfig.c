@@ -2,7 +2,7 @@
  *
  * One plain-text "key = value" file per reverse-DNS domain in a
  * Configuration/ directory at each of the three scopes; reads resolve
- * user -> shared -> system; writes go to an explicit scope atomically
+ * system -> user -> shared; writes go to an explicit scope atomically
  * (temp + fsync + rename). Grammar: docs/config-design.md §10.
  *
  * Scope roots are absolute under the filesystem root:
@@ -1087,16 +1087,27 @@ config_err_t config_read_scope(config_scope_t scope, const char *domain,
 	return read_scope_internal(scope, domain, key, out);
 }
 
+/* resolution order: system -> user -> shared (docs plan D4; the enum
+ * values are USER=0 < SHARED=1 < SYSTEM=2, so it is not a simple walk) */
+static const config_scope_t scope_order[] = {
+	CONFIG_SCOPE_SYSTEM,
+	CONFIG_SCOPE_USER,
+	CONFIG_SCOPE_SHARED,
+};
+
 config_err_t config_read(const char *domain, const char *key,
 			 config_scope_t *found_scope, config_value_t *out)
 {
+	size_t k;
 	config_scope_t s;
 
 	if(!domain || !key || !out || !config_valid_domain(domain) ||
 	   !config_valid_key(key)) {
 		return CONFIG_ERR_INVALID;
 	}
-	for(s = CONFIG_SCOPE_USER; s <= CONFIG_SCOPE_SYSTEM; s++) {
+	/* full precedence: system -> user -> shared (docs plan D4) */
+	for(k = 0; k < 3; k++) {
+		s = scope_order[k];
 		config_err_t e = read_scope_internal(s, domain, key, out);
 
 		if(e == CONFIG_ERR_NOT_FOUND) {
@@ -1247,7 +1258,7 @@ config_err_t config_get_all(const char *domain, const char *prefix,
 	struct entry *lists[3] = { NULL, NULL, NULL };
 	char **ks = NULL;
 	config_value_t *vs = NULL;
-	size_t n = 0, cap = 0, plen;
+	size_t n = 0, cap = 0, plen, k;
 	int i, s;
 
 	if(!domain || !keys || !values || !count ||
@@ -1256,7 +1267,8 @@ config_err_t config_get_all(const char *domain, const char *prefix,
 		return CONFIG_ERR_INVALID;
 	}
 	plen = prefix ? strlen(prefix) : 0;
-	for(s = CONFIG_SCOPE_USER; s <= CONFIG_SCOPE_SYSTEM; s++) {
+	for(k = 0; k < 3; k++) {
+		s = scope_order[k];
 		int found;
 		struct entry *en;
 		config_err_t e = load_entries((config_scope_t)s, domain,

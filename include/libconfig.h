@@ -7,7 +7,8 @@
  *    (third-party apps keep reverse-DNS domains such as com.example.x)
  *  - three scopes: user (/Shared/, system) per the FSH origin model
  *  - plain-text "key = value" lines, types inferred, dot-nested keys
- *  - resolution precedence: user -> shared -> system
+ *  - resolution precedence: system -> user -> shared
+ *    (system is authoritative; user overrides shared defaults)
  *
  * This header is userland-only (the kernel does not include it). v1 is
  * single-threaded; no global state is shared between calls, but the
@@ -85,7 +86,7 @@ struct config_value {
 };
 
 /* ------------------------------------------------------------------ */
-/* Reading — resolve user -> shared -> system                         */
+/* Reading — resolve system -> user -> shared                        */
 /* ------------------------------------------------------------------ */
 
 /*

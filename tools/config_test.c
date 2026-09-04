@@ -166,30 +166,50 @@ int main(void)
 		config_free_keys(keys, vals, n);
 	}
 
-	/* ---- scope precedence ----------------------------------------- */
+	/* ---- scope precedence (system -> user -> shared, D4) ---------- */
 	e = config_set_int(CONFIG_SCOPE_SYSTEM, DOM, "theme.size", 11);
 	check(e, "set system theme.size");
 	e = config_resolve(DOM, "theme.size", &scope);
 	if(!e && scope == CONFIG_SCOPE_SYSTEM) {
-		ok("resolve falls back to system");
+		ok("resolve finds system");
 	} else {
-		fail("resolve falls back to system");
+		fail("resolve finds system");
 	}
 	e = config_set_int(CONFIG_SCOPE_SHARED, DOM, "theme.size", 12);
 	check(e, "set shared theme.size");
 	e = config_resolve(DOM, "theme.size", &scope);
-	if(!e && scope == CONFIG_SCOPE_SHARED) {
-		ok("shared overrides system");
+	if(!e && scope == CONFIG_SCOPE_SYSTEM) {
+		ok("system wins over shared");
 	} else {
-		fail("shared overrides system");
+		fail("system wins over shared");
 	}
 	e = config_set_int(CONFIG_SCOPE_USER, DOM, "theme.size", 13);
 	check(e, "set user theme.size");
 	e = config_get_int(DOM, "theme.size", &i);
-	if(!e && i == 13) {
-		ok("user overrides shared/system (13)");
+	if(!e && i == 11) {
+		ok("system wins over user (11)");
 	} else {
-		fail("user overrides shared/system");
+		fail("system wins over user");
+	}
+	/* a user write cannot shadow a System value: the value is still 11 */
+	e = config_unset(CONFIG_SCOPE_USER, DOM, "theme.size");
+	check(e, "unset user theme.size");
+	/* with no System value: user overrides shared */
+	e = config_set_string(CONFIG_SCOPE_SHARED, DOM, "theme.color", "red");
+	check(e, "set shared theme.color");
+	e = config_resolve(DOM, "theme.color", &scope);
+	if(!e && scope == CONFIG_SCOPE_SHARED) {
+		ok("shared value resolves alone");
+	} else {
+		fail("shared value resolves alone");
+	}
+	e = config_set_string(CONFIG_SCOPE_USER, DOM, "theme.color", "blue");
+	check(e, "set user theme.color");
+	e = config_get_string(DOM, "theme.color", &s);
+	if(!e && s && !strcmp(s, "blue")) {
+		ok("user overrides shared");
+	} else {
+		fail("user overrides shared");
 	}
 	/* scope-isolated reads see the raw scopes */
 	e = config_read_scope(CONFIG_SCOPE_SYSTEM, DOM, "theme.size", &v);
@@ -220,12 +240,19 @@ int main(void)
 	e = config_remove_domain(CONFIG_SCOPE_SHARED, DOM);
 	check(e, "remove shared domain");
 	e = config_read(DOM, "theme.size", NULL, &v);
-	if(!e && v.v.integer == 13) {
-		ok("shared removal leaves user value");
+	if(!e && v.v.integer == 11) {
+		ok("shared removal leaves system value");
 	} else {
-		fail("shared removal leaves user value");
+		fail("shared removal leaves system value");
 	}
 	config_value_free(&v);
+	/* theme.color lived in shared + user only: the user override stays */
+	e = config_get_string(DOM, "theme.color", &s);
+	if(!e && s && !strcmp(s, "blue")) {
+		ok("shared removal leaves the user override");
+	} else {
+		fail("shared removal leaves the user override");
+	}
 	e = config_remove_domain(CONFIG_SCOPE_USER, DOM);
 	check(e, "remove user domain");
 	e = config_read(DOM, "theme.size", NULL, &v);
@@ -235,6 +262,12 @@ int main(void)
 		fail("user removal reveals system 11");
 	}
 	config_value_free(&v);
+	e = config_read(DOM, "theme.color", NULL, &v);
+	if(e == CONFIG_ERR_NOT_FOUND) {
+		ok("user removal drops the user-only color");
+	} else {
+		fail("user removal drops the user-only color");
+	}
 
 	/* ---- validation ----------------------------------------------- */
 	if(config_valid_domain("system.config.ok") && !config_valid_domain("..bad") &&

@@ -77,7 +77,7 @@ config delete [-s|-g|-u] <domain> [key]
 
 - Default scope is `-u` (user). `config read dock` → user's
   `system.config.dock.conf`; if the domain is absent there, resolution falls
-  back per precedence (Q-F).
+  back per precedence (Q-F, superseded — see §5).
 - `config read` with no key prints the whole domain as `key = value`
   lines; with a key, prints just the value (so it composes in scripts:
   `x=$(config read dock tile-size)`).
@@ -87,12 +87,19 @@ config delete [-s|-g|-u] <domain> [key]
   fsync, rename over the target. A failed write never leaves a
   half-written config.
 
-## 5. Precedence (decided)
+## 5. Precedence (decided; owner review 2026 supersedes the original
+order — docs/system-config-files-plan.md D4)
 
-**Resolve user → shared → system** when reading a key: the person's
-setting wins, then the third-party machine-wide value, then the OS
-default. The OS itself never reads `Shared/`; third-party apps never
-write `System/`.
+**Resolve system → user → shared** when reading a key: a value in
+`/System/Configuration` is checked first and **cannot be overridden at
+all**; the person's file (`Users/<u>/Configuration`) is consulted next
+and overrides *defaults*, never System; `/Shared/Configuration` holds
+overridable defaults and is checked last. Beneath all file scopes sits
+the software's compiled-in default (docs plan D5): a value in any scope
+overrides it. Roles: system = the machine's real configuration
+(authoritative), shared = overridable shipped defaults (first- and
+third-party), user = the person. This supersedes config-design's earlier
+"user → shared → system" (Q-F).
 
 ## 6. Validation and defaults
 
@@ -107,7 +114,7 @@ default). No per-domain schema registry in v1.
 shelling out to the `config` binary or parsing files by hand:
 
 - typed getters: `config_get_bool/string/int/float/array(domain, key, &out)`;
-- scope resolution built in (user → shared → system) with a
+- scope resolution built in (system → user → shared) with a
   `config_get_user_override()`-style query when an app needs to know
   *where* a value came from;
 - prefix reads for dot-nested keys (`config_get_all(domain, "window")`);
@@ -141,8 +148,11 @@ place.
   reverse-DNS); third parties keep reverse-DNS (`com.example.<app>`).
 - **Q-E — libconfig: built now.** Typed getters, scope resolution,
   prefix reads, atomic writes; apps link it instead of shelling out.
-- **Q-F — Precedence: user → shared → system.** Person wins, then
-  third-party machine-wide, then OS default.
+- **Q-F — Precedence: system → user → shared.** `/System/Configuration`
+  is authoritative (checked first — nothing overrides it); the person
+  wins over third-party machine-wide defaults; then the OS default.
+  (Original order superseded by owner review — see §5 and
+  docs/system-config-files-plan.md D4.)
 
 The design has no open items.
 
@@ -249,7 +259,7 @@ Rules and edge cases:
 
 The library API is provided as a real header, `include/libconfig.h`
 (userland; the kernel does not include it). It follows the grammar above:
-typed getters with user → shared → system resolution, scope-explicit
+typed getters with system → user → shared resolution, scope-explicit
 reads/writes, atomic writes (temp + fsync + rename), domain/key
 validation, and error codes for NOT_FOUND / TYPE / PARSE / IO / INVALID /
 ACCESS / NOMEM. See the header for the full contract.

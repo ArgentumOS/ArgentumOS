@@ -8,7 +8,8 @@
  *   config delete [-s|-g|-u] <domain> [key]   delete a key or a domain
  *
  * Default scope is -u (user). `read` without a scope flag resolves
- * user -> shared -> system per key; with a flag it reads only that
+ * system -> user -> shared per key and (whole-domain reads) prints the
+ * winning scope next to each value; with a flag it reads only that
  * scope. `write`/`delete` always act on the one requested scope.
  * Without -type, write infers the type exactly as reading does. */
 #include <stdbool.h>
@@ -30,7 +31,8 @@ static void usage(void)
 "  %s write [-s|-g|-u] <domain> <key> <value> [-type bool|int|float|string|array]\n"
 "  %s delete [-s|-g|-u] <domain> [key]\n"
 "scopes: -u user (default)  -g shared  -s system\n"
-"`read` with no flag resolves user -> shared -> system.\n", prog, prog,
+"`read` with no flag resolves system -> user -> shared (whole-domain\n"
+"reads annotate the winning scope).\n", prog, prog,
 	    prog, prog);
 }
 
@@ -560,9 +562,18 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 			}
 			for(i = 0; i < n; i++) {
 				char out[512];
+				config_value_t v;
+				config_scope_t fs;
 
 				display_text(&vals[i], out, sizeof(out));
-				printf("%s = %s\n", keys[i], out);
+				e = config_read(domain, keys[i], &fs, &v);
+				if(!e) {
+					printf("%s = %s (%s)\n", keys[i], out,
+					       config_scope_name(fs));
+					config_value_free(&v);
+				} else {
+					printf("%s = %s\n", keys[i], out);
+				}
 			}
 			config_free_keys(keys, vals, n);
 			return 0;
@@ -593,9 +604,18 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 		}
 		for(i = 0; i < n; i++) {
 			char out[512];
+			config_value_t v;
+			config_scope_t fs;
 
 			display_text(&vals[i], out, sizeof(out));
-			printf("%s = %s\n", keys[i], out);
+			e = config_read(domain, keys[i], &fs, &v);
+			if(!e) {
+				printf("%s = %s (%s)\n", keys[i], out,
+				       config_scope_name(fs));
+				config_value_free(&v);
+			} else {
+				printf("%s = %s\n", keys[i], out);
+			}
 		}
 		config_free_keys(keys, vals, n);
 		return 0;
