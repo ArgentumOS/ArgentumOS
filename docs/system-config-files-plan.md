@@ -210,28 +210,39 @@ image ships for overridable domains go to `/Shared/Configuration`
 
 ### 5.0 Namespace convention
 
-**`system.config` is reserved by convention for the global system
-settings of FNX's own (first-party) software** — e.g.
-`system.config.passwd`, `system.config.mounts`, `system.config.xfb`.
-It is a reserved root, not reverse-DNS (config-design §8): third-party
-software never uses it and instead keeps its own reverse-DNS domain
-(`com.example.<app>`).
+**`system.config` is reserved by convention for FNX's own (first-party)
+software's settings** — both the overridable kind (which live in
+`/Shared/Configuration`) and the global system settings (which live in
+`/System/Configuration`), e.g. `system.config.passwd`,
+`system.config.mounts`, `system.config.xfb`. It is a reserved root, not
+reverse-DNS (config-design §8): third-party software never uses it and
+instead keeps its own reverse-DNS domain (`com.example.<app>`).
 
-Under D4 the convention lines up with scope placement:
+Under D4 the convention decides scope placement by *setting kind*
+(owner, latest): **overridable first-party settings go in
+`system.config.<app>` domains whose files live in
+`/Shared/Configuration`**, where the person may override them from the
+user scope; **non-overridable first-party global system settings** have
+their files in `/System/Configuration`, where system-first resolution
+makes them authoritative.
 
-- The **authoritative value** of a `system.config.*` setting lives in
-  `/System/Configuration` — the global, non-overridable tier.
-- Its **shipped default** (if any) lives in `/Shared/Configuration` as
-  the overridable baseline for that same domain.
-- A **per-user first-party preference** is not itself a global setting:
-  it may exist only as a user-scope override of a `system.config.*`
-  domain's *default* — it can never override the System value (see Q1
-  for whether purely-personal first-party prefs should use a different
-  reserved root instead).
+- **Overridable** first-party settings (an app's shipped defaults,
+  cosmetic/tunable values): `/Shared/Configuration/system.config.<app>.conf`
+  — overridable from the user scope (D4 order: user > shared).
+  A machine admin who wants to *lock* one writes the same domain into
+  `/System/Configuration`, where it wins.
+- **Non-overridable** first-party settings (identity, boot policy,
+  hostname): `/System/Configuration/system.config.<domain>.conf` — no
+  Shared file ships, nothing overrides it.
+- **Per-user first-party preferences** are user-scope overrides of a
+  Shared `system.config.*` domain's values (see Q1 for whether
+  purely-personal prefs deserve their own reserved root).
 
 The domains in this plan (`passwd`, `group`, `shells`, `hosts`,
-`mounts`) are all first-party global system settings, which is exactly
-what the reserved namespace is for.
+`mounts`) are non-overridable first-party global system settings —
+their files live in `/System/Configuration` and no Shared baseline
+ships. Overridable first-party examples (`system.config.xfb` and its
+kind) ship in `/Shared/Configuration` instead.
 
 ### 5.1 `system.config.passwd.conf` / `system.config.group.conf`
 
@@ -387,10 +398,11 @@ System value.
 `shells` domain land in `/System/Configuration` (identity, D4) and
 replace the Makefile legacy `printf`s (Makefile userland64); the
 `Admin` account re-expressed as the `admin` record. Separately, the
-*defaults* staging target changes: the shipped defaults of first-party
-global settings (`system.config.xfb` today, more later) are staged into
-`/Shared/Configuration` as the overridable baseline for those domains
-(config-design role change).
+staging target for *overridable* first-party settings changes per
+§5.0: `system.config.xfb` (today) and later first-party apps ship
+their overridable settings to `/Shared/Configuration` (their domain
+files' home by convention), not to `/System/Configuration` (config-design
+role change).
 Acceptance: `config read system.config.passwd user.admin.uid` → `0`;
 images build without legacy `passwd`/`group`/`shells` files; Xfb's
 default domain reads from Shared and a System copy overrides it.
