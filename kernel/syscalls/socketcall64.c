@@ -192,6 +192,128 @@ static int msg_scatter(struct msghdr_abi *mh, char *src, __size_t len)
 	return off;
 }
 
+/* FNX: msghdr iovec totals can exceed PAGE_SIZE, but kmalloc is
+ * single-page. The stream sendmsg/recvmsg paths process the iov list in
+ * <= PAGE_SIZE windows instead of bouncing the whole total (streams have
+ * no message atomicity; datagrams can never exceed a page on FNX). */
+
+/* sum + bounds-check the iovec list (bases are verified during the copy) */
+static int msg_iov_total(struct msghdr_abi *mh, __size_t *total_out)
+{
+	struct iovec io;
+	__size_t total;
+	int vi, errno;
+
+	if(mh->msg_iovlen < 0 || mh->msg_iovlen > UIO_MAXIOV) {
+		return -EINVAL;
+	}
+	total = 0;
+	for(vi = 0; vi < mh->msg_iovlen; vi++) {
+		if((errno = check_user_area(VERIFY_READ,
+			(struct iovec *)mh->msg_iov + vi, sizeof(struct iovec)))) {
+			return errno;
+		}
+		io = ((struct iovec *)mh->msg_iov)[vi];
+		if(io.iov_len > 0x7FFFFFFFULL) {
+			return -EINVAL;
+		}
+		total += io.iov_len;
+	}
+	*total_out = total;
+	return 0;
+}
+
+/* copy up to len bytes from the user iov list starting at global byte
+ * offset 'off'; returns bytes copied (normally == len) or a -errno */
+static __ssize_t msg_gather_win(struct msghdr_abi *mh, __size_t off,
+				char *dst, __size_t len)
+{
+	struct iovec io;
+	__size_t pos = 0, done = 0;
+	int vi, errno;
+
+	for(vi = 0; vi < mh->msg_iovlen && done < len; vi++) {
+		if((errno = check_user_area(VERIFY_READ,
+			(struct iovec *)mh->msg_iov + vi, sizeof(struct iovec)))) {
+			return errno;
+		}
+		io = ((struct iovec *)mh->msg_iov)[vi];
+		if(!io.iov_len) {
+			continue;
+		}
+		if((errno = check_user_area(VERIFY_READ, io.iov_base, io.iov_len))) {
+			return errno;
+		}
+		if(pos + io.iov_len <= off) {
+			pos += io.iov_len;
+			continue;
+		}
+		if(pos < off) {
+			__size_t skip = off - pos;
+			__size_t n = io.iov_len - skip;
+			if(n > len - done) {
+				n = len - done;
+			}
+			memcpy_b(dst + done, (char *)io.iov_base + skip, n);
+			done += n;
+		} else {
+			__size_t n = io.iov_len;
+			if(n > len - done) {
+				n = len - done;
+			}
+			memcpy_b(dst + done, io.iov_base, n);
+			done += n;
+		}
+		pos += io.iov_len;
+	}
+	return done;
+}
+
+/* scatter len bytes from src into the user iov list at byte offset 'off' */
+static __ssize_t msg_scatter_win(struct msghdr_abi *mh, __size_t off,
+				 const char *src, __size_t len)
+{
+	struct iovec io;
+	__size_t pos = 0, done = 0;
+	int vi, errno;
+
+	for(vi = 0; vi < mh->msg_iovlen && done < len; vi++) {
+		if((errno = check_user_area(VERIFY_READ,
+			(struct iovec *)mh->msg_iov + vi, sizeof(struct iovec)))) {
+			return errno;
+		}
+		io = ((struct iovec *)mh->msg_iov)[vi];
+		if(!io.iov_len) {
+			continue;
+		}
+		if((errno = check_user_area(VERIFY_WRITE, io.iov_base, io.iov_len))) {
+			return errno;
+		}
+		if(pos + io.iov_len <= off) {
+			pos += io.iov_len;
+			continue;
+		}
+		if(pos < off) {
+			__size_t skip = off - pos;
+			__size_t n = io.iov_len - skip;
+			if(n > len - done) {
+				n = len - done;
+			}
+			memcpy_b((char *)io.iov_base + skip, src + done, n);
+			done += n;
+		} else {
+			__size_t n = io.iov_len;
+			if(n > len - done) {
+				n = len - done;
+			}
+			memcpy_b(io.iov_base, src + done, n);
+			done += n;
+		}
+		pos += io.iov_len;
+	}
+	return done;
+}
+
 int sys_sendmsg(int sd, const struct msghdr_abi *msg, int flags)
 {
 	struct msghdr_abi mh;
@@ -203,21 +325,61 @@ int sys_sendmsg(int sd, const struct msghdr_abi *msg, int flags)
 		return errno;
 	}
 	memcpy_b(&mh, msg, sizeof(struct msghdr_abi));
+	/* ancillary data (SCM_RIGHTS etc.) is not implemented */
+	if(mh.msg_controllen) {
+		return -EINVAL;
+	}
+	/* validate the destination address like sendto() does before the
+	 * kernel derefs it */
+	if(mh.msg_name) {
+		if((errno = check_user_area(VERIFY_READ, mh.msg_name, mh.msg_namelen)) < 0) {
+			return errno;
+		}
+	}
+
+	/* FNX: stream sockets with an iovec total above PAGE_SIZE are sent
+	 * in <= PAGE_SIZE windows (kmalloc is single-page; streams have no
+	 * atomicity so chunking is transparent). */
+	if(!mh.msg_name && sock_is_stream(sd) == 1) {
+		__size_t off = 0;
+		__ssize_t n;
+
+		if((errno = msg_iov_total(&mh, &total)) < 0) {
+			return errno;
+		}
+		if(total > PAGE_SIZE) {
+			if(!(kbuf = (char *)kmalloc(PAGE_SIZE))) {
+				return -ENOMEM;
+			}
+			while(off < total) {
+				__size_t want = total - off;
+				if(want > PAGE_SIZE) {
+					want = PAGE_SIZE;
+				}
+				n = msg_gather_win(&mh, off, kbuf, want);
+				if(n < 0) {
+					kfree((addr_t)kbuf);
+					return (int)n;
+				}
+				if(n == 0) {
+					break;
+				}
+				ret = msg_send(sd, kbuf, (__size_t)n, flags, NULL, 0);
+				if(ret < 0) {
+					kfree((addr_t)kbuf);
+					return ret;
+				}
+				off += (__size_t)n;
+			}
+			kfree((addr_t)kbuf);
+			return (int)off;
+		}
+	}
+
 	if((errno = msg_gather(&mh, &kbuf, &total))) {
 		return errno;
 	}
-	/* ancillary data (SCM_RIGHTS etc.) is not implemented */
-	if(mh.msg_controllen) {
-		kfree((addr_t)kbuf);
-		return -EINVAL;
-	}
-	/* user sockaddr was validated by msg_gather's iov walk? No - validate
-	 * the destination address like sendto() does before the kernel derefs it */
 	if(mh.msg_name) {
-		if((errno = check_user_area(VERIFY_READ, mh.msg_name, mh.msg_namelen)) < 0) {
-			kfree((addr_t)kbuf);
-			return errno;
-		}
 		ret = msg_send(sd, kbuf, total, flags, (struct sockaddr *)mh.msg_name, mh.msg_namelen);
 	} else {
 		ret = msg_send(sd, kbuf, total, flags, NULL, 0);
@@ -239,32 +401,78 @@ int sys_recvmsg(int sd, struct msghdr_abi *msg, int flags)
 	}
 	memcpy_b(&mh, msg, sizeof(struct msghdr_abi));
 
-	total = 0;
-	{
-		struct iovec io;
-		int vi;
-		if(mh.msg_iovlen < 0 || mh.msg_iovlen > UIO_MAXIOV) {
-			return -EINVAL;
-		}
-		for(vi = 0; vi < mh.msg_iovlen; vi++) {
-			if((errno = check_user_area(VERIFY_READ, (struct iovec *)mh.msg_iov + vi, sizeof(struct iovec)))) {
-				return errno;
-			}
-			io = ((struct iovec *)mh.msg_iov)[vi];
-			total += io.iov_len;
-		}
+	if((errno = msg_iov_total(&mh, &total))) {
+		return errno;
 	}
-	if(!(kbuf = (char *)kmalloc(total ? total : 1))) {
-		return -ENOMEM;
+
+	/* FNX: windowed receive for big stream iovec totals (see sys_sendmsg).
+	 * Datagrams go through the single-bounce path below, capped at a page
+	 * (FNX datagrams can never exceed PAGE_SIZE). */
+	if(!mh.msg_name && sock_is_stream(sd) == 1 && total > PAGE_SIZE) {
+		__size_t off = 0;
+		__ssize_t n;
+
+		if(!(kbuf = (char *)kmalloc(PAGE_SIZE))) {
+			return -ENOMEM;
+		}
+		while(off < total) {
+			__size_t want = total - off;
+			if(want > PAGE_SIZE) {
+				want = PAGE_SIZE;
+			}
+			n = msg_recv(sd, kbuf, want, flags, NULL, NULL);
+			if(n < 0) {
+				kfree((addr_t)kbuf);
+				return off ? (int)off : (int)n;
+			}
+			if(n == 0) {
+				break;	/* EOF */
+			}
+			msg_scatter_win(&mh, off, kbuf, (__size_t)n);
+			off += (__size_t)n;
+			if(n < (__ssize_t)want) {
+				break;	/* short read: hand back what we have */
+			}
+		}
+		kfree((addr_t)kbuf);
+		addrlen = 0;
+		if(mh.msg_name) {
+			if((ret = check_user_area(VERIFY_WRITE, &msg->msg_namelen, sizeof(int))) < 0) {
+				return ret;
+			}
+			((struct msghdr_abi *)msg)->msg_namelen = 0;
+		}
+		return (int)off;
+	}
+
+	/* single-bounce path; a >PAGE_SIZE total can only mean a datagram
+	 * recvmsg with a generous user buffer, so cap the kernel buffer */
+	{
+		__size_t alloc = total;
+		if(alloc > PAGE_SIZE) {
+			alloc = PAGE_SIZE;
+		}
+		if(alloc == 0) {
+			alloc = 1;
+		}
+		if(!(kbuf = (char *)kmalloc(alloc))) {
+			return -ENOMEM;
+		}
 	}
 
 	/* source address: msg_recv fills a kernel-side sockaddr; copy it back
 	 * to the user msg_name below */
 	addrlen = sizeof(struct sockaddr);
-	if(mh.msg_name) {
-		ret = msg_recv(sd, kbuf, total, flags, &ret_addr, &addrlen);
-	} else {
-		ret = msg_recv(sd, kbuf, total, flags, NULL, NULL);
+	{
+		__size_t rlen = total > PAGE_SIZE ? PAGE_SIZE : total;
+		if(rlen == 0) {
+			rlen = 1;
+		}
+		if(mh.msg_name) {
+			ret = msg_recv(sd, kbuf, rlen, flags, &ret_addr, &addrlen);
+		} else {
+			ret = msg_recv(sd, kbuf, rlen, flags, NULL, NULL);
+		}
 	}
 	if(ret < 0) {
 		kfree((addr_t)kbuf);

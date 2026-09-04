@@ -47,6 +47,7 @@ extern int bfs_lookup(const char *, struct inode *, struct inode **);
 extern int bfs_truncate(struct inode *, __off_t);
 extern int bfs_create(struct inode *, char *, int, __mode_t, struct inode **);
 extern int bfs_mkdir(struct inode *, char *, __mode_t);
+extern int bfs_mknod(struct inode *, char *, __mode_t, __dev_t);
 extern int bfs_link(struct inode *, struct inode *, char *);
 extern int bfs_unlink(struct inode *, struct inode *, char *);
 extern int bfs_rmdir(struct inode *, struct inode *);
@@ -91,7 +92,7 @@ struct fs_operations bfs_fsop = {
 	bfs_unlink,		/* unlink */
 	bfs_symlink,		/* symlink */
 	bfs_mkdir,		/* mkdir */
-	NULL,			/* mknod */
+	bfs_mknod,		/* mknod */
 	bfs_truncate,		/* truncate */
 	bfs_create,		/* create */
 	bfs_rename,		/* rename */

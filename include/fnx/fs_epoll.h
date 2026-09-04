@@ -2,8 +2,13 @@
  * fnx/include/fnx/fs_epoll.h
  *
  * FNX epoll(7) support: a minimal epoll instance stored in the inode
- * union. The x86-64 struct epoll_event is the LP64 layout (events u32 +
- * data u64 = 16 bytes), which is what musl's <sys/epoll.h> expects.
+ * union. The x86-64 struct epoll_event ABI is PACKED: events u32 +
+ * data u64 with no padding (sizeof == 12), matching Linux's
+ * __EPOLL_PACKED and musl's <sys/epoll.h>. The earlier unpacked
+ * definition (sizeof 16) made every epoll_wait verify maxevents*16
+ * bytes against the user buffer — a stack buffer at the top of the
+ * address space (the X server's 256-entry array on the last page)
+ * then failed check_user_area with EFAULT.
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
@@ -34,7 +39,7 @@
 struct epoll_event {
 	__u32 events;		/* EPOLL* bitmask */
 	__u64 data;		/* user data */
-};
+} __attribute__((packed));
 
 /* one watched fd inside an epoll instance */
 struct epoll_item {

@@ -45,6 +45,23 @@ static struct socket *get_socket(int fd)
 	return &i->u.sockfs.sock;
 }
 
+/* FNX: sendmsg/recvmsg window their iovec bounce per page (kmalloc is
+ * single-page); the socketcall64 wrappers need to know whether the socket
+ * is a stream, where per-window chunking preserves semantics. */
+int sock_is_stream(int sd)
+{
+	struct socket *s;
+	struct inode *i;
+
+	CHECK_UFD(sd);
+	i = fd_table[current->fd[sd]].inode;
+	if(!i || !S_ISSOCK(i->i_mode)) {
+		return 0;
+	}
+	s = &i->u.sockfs.sock;
+	return s->type == SOCK_STREAM;
+}
+
 struct socket *get_socket_from_queue(struct socket *ss)
 {
 	unsigned int flags;
@@ -163,22 +180,33 @@ int socket(int domain, int type, int protocol)
 	printk("(pid %d) socket(%d, %d, %d)\n", current->pid, domain, type, protocol);
 #endif /*__DEBUG__ */
 
-	if(type != SOCK_STREAM && type != SOCK_DGRAM && type != SOCK_RAW) {
-		return -EINVAL;
-	}
-	/* raw sockets and packet (AF_PACKET) sockets can sniff and inject
-	 * traffic: root-only (Linux requires CAP_NET_RAW for these) */
-	if(!IS_SUPERUSER) {
-		if(type == SOCK_RAW || domain == AF_PACKET) {
-			return -EPERM;
+	/* SOCK_CLOEXEC/SOCK_NONBLOCK ride on the type argument (Linux ABI);
+	 * strip them so the type tests below pass, then apply them as fd
+	 * flags (their values equal O_CLOEXEC/O_NONBLOCK) */
+	{
+		unsigned int sflags = type & (O_NONBLOCK | O_CLOEXEC);
+		type &= ~(O_NONBLOCK | O_CLOEXEC);
+
+		if(type != SOCK_STREAM && type != SOCK_DGRAM && type != SOCK_RAW) {
+			return -EINVAL;
+		}
+		/* raw sockets and packet (AF_PACKET) sockets can sniff and inject
+		 * traffic: root-only (Linux requires CAP_NET_RAW for these) */
+		if(!IS_SUPERUSER) {
+			if(type == SOCK_RAW || domain == AF_PACKET) {
+				return -EPERM;
+			}
+		}
+
+		s = NULL;
+		if((ufd = sock_alloc(&s)) < 0) {
+			return ufd;
+		}
+		s->type = type;
+		if(sflags) {
+			fd_table[ufd].flags |= sflags;
 		}
 	}
-
-	s = NULL;
-	if((ufd = sock_alloc(&s)) < 0) {
-		return ufd;
-	}
-	s->type = type;
 	if(assign_proto(s, domain)) {
 		sock_free(s);
 		return -EINVAL;

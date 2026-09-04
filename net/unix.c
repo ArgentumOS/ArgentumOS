@@ -58,6 +58,47 @@ static void remove_unix_socket(struct unix_info *u)
 	}
 }
 
+/* FNX: abstract-socket names are sun_path starting with '\\0'; the name is
+ * the bytes up to the second NUL (or the stored length). Compare two
+ * bound/connecting abstract names for equality. */
+/* FNX: abstract-socket names are sun_path[0] == '\\0'; the meaningful name
+ * runs from sun_path[0] to the second NUL (or the end of the stored/passed
+ * address). u is a BOUND abstract socket; su/addrlen is the connect() or
+ * bind() side. Returns 1 when both name the same abstract socket. */
+static int unix_abstract_match(struct unix_info *u, struct sockaddr_un *su, int addrlen)
+{
+	struct sockaddr_un *su2 = u->sun;
+	int len, len2, i;
+
+	if(!su2 || su2->sun_path[0] != '\0' || su->sun_path[0] != '\0') {
+		return 0;
+	}
+	len = addrlen - 2;
+	len2 = u->sun_len - 2;
+	if(len > 0 && len < (int)sizeof(su->sun_path) &&
+	   len2 > 0 && len2 < (int)sizeof(su2->sun_path)) {
+		/* cut both at their first NUL beyond the leading one so a
+		 * full-length sockaddr_un (trailing NUL padding) matches a
+		 * length-exact connect address */
+		for(i = 1; i < len; i++) {
+			if(su->sun_path[i] == '\0') {
+				len = i;
+				break;
+			}
+		}
+		for(i = 1; i < len2; i++) {
+			if(su2->sun_path[i] == '\0') {
+				len2 = i;
+				break;
+			}
+		}
+		if(len == len2 && !memcmp(su2->sun_path, su->sun_path, len)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static struct unix_info *lookup_unix_socket(char *path, struct inode *i)
 {
 	struct unix_info *u;
@@ -72,6 +113,24 @@ static struct unix_info *lookup_unix_socket(char *path, struct inode *i)
 		u = u->next;
 	}
 
+	return NULL;
+}
+
+/* FNX: find a socket bound in the abstract namespace with the same name */
+static struct unix_info *lookup_unix_abstract(struct sockaddr_un *su, int addrlen)
+{
+	struct unix_info *u;
+
+	if(su->sun_path[0] != '\0') {
+		return NULL;
+	}
+	u = unix_socket_head;
+	while(u) {
+		if(u->socket && unix_abstract_match(u, su, addrlen)) {
+			return u;
+		}
+		u = u->next;
+	}
 	return NULL;
 }
 
@@ -125,6 +184,7 @@ int unix_bind(struct socket *s, const struct sockaddr *addr, int addrlen)
 {
 	struct inode *i;
 	struct sockaddr_un *su;
+	struct unix_info *u;
 	int errno;
 
 	su = (struct sockaddr_un *)addr;
@@ -144,6 +204,24 @@ int unix_bind(struct socket *s, const struct sockaddr *addr, int addrlen)
 	memset_b(s->u.unix_info.sun, 0, sizeof(struct sockaddr_un));
 	memcpy_b(s->u.unix_info.sun, su, addrlen);
 	s->u.unix_info.sun_len = addrlen;
+
+	/* FNX: abstract sockets (sun_path[0] == '\\0') live in the abstract
+	 * namespace: no filesystem node, matched by name at connect(). This
+	 * is what libxcb/X clients use by default (they connect to the
+	 * abstract form of /tmp/.X11-unix/X0). */
+	if(su->sun_path[0] == '\0') {
+		u = unix_socket_head;
+		while(u) {
+			if(u != &s->u.unix_info && u->socket &&
+			   unix_abstract_match(u, su, addrlen)) {
+				kfree((addr_t)s->u.unix_info.sun);
+				s->u.unix_info.sun = NULL;
+				return -EADDRINUSE;
+			}
+			u = u->next;
+		}
+		return 0;
+	}
 
 	errno = do_mknod((char *)su->sun_path, S_IFSOCK | (S_IRWXU | S_IRWXG | S_IRWXO), 0);
 	if(errno < 0) {
@@ -184,6 +262,17 @@ int unix_connect(struct socket *sc, const struct sockaddr *addr, int addrlen)
                 return -EINVAL;
 	}
 
+	/* FNX: abstract connect - match a bound abstract socket by name */
+	if(su->sun_path[0] == '\0') {
+		struct unix_info *u;
+
+		if(!(u = lookup_unix_abstract(su, addrlen))) {
+			return -ENOENT;
+		}
+		up = u;
+		goto do_queue;
+	}
+
 	if((errno = malloc_name(su->sun_path, &tmp_name)) < 0) {
 		return errno;
 	}
@@ -198,6 +287,7 @@ int unix_connect(struct socket *sc, const struct sockaddr *addr, int addrlen)
 	}
 	iput(i);
 	free_name(tmp_name);
+do_queue:
 	if((errno = insert_socket_to_queue(up->socket, sc))) {
 		return errno;
 	}
@@ -592,12 +682,63 @@ int unix_shutdown(struct socket *s, int how)
 
 int unix_setsockopt(struct socket *s, int level, int optname, const void *optval, socklen_t optlen)
 {
+	/* FNX: accept the usual stream-socket options as no-ops so common
+	 * clients (libxcb, etc.) don't fail their setup. All AF_UNIX options
+	 * are advisory on Linux anyway. */
+	switch(level) {
+		case SOL_SOCKET:
+			switch(optname) {
+				case SO_SNDBUF:
+				case SO_RCVBUF:
+				case SO_SNDLOWAT:
+				case SO_RCVLOWAT:
+				case SO_SNDTIMEO:
+				case SO_RCVTIMEO:
+				case SO_REUSEADDR:
+				case SO_KEEPALIVE:
+				case SO_BROADCAST:
+				case SO_OOBINLINE:
+				case SO_PRIORITY:
+					return 0;
+			}
+			break;
+	}
 	return -EOPNOTSUPP;
 }
 
 int unix_getsockopt(struct socket *s, int level, int optname, void *optval, socklen_t *optlen)
 {
-	return -EOPNOTSUPP;
+	int errno, val = 0, size = sizeof(int);
+
+	switch(level) {
+		case SOL_SOCKET:
+			switch(optname) {
+				case SO_ERROR:
+					val = 0;	/* no pending async errors */
+					break;
+				case SO_TYPE:
+					val = s->type;
+					break;
+				case SO_SNDBUF:
+				case SO_RCVBUF:
+					val = PIPE_BUF;
+					break;
+				default:
+					return -EOPNOTSUPP;
+			}
+			break;
+		default:
+			return -EOPNOTSUPP;
+	}
+	if((errno = check_user_area(VERIFY_READ, optlen, sizeof(int)))) {
+		return errno;
+	}
+	if((errno = check_user_area(VERIFY_WRITE, optval, size))) {
+		return errno;
+	}
+	memcpy_b(optval, &val, size);
+	memcpy_b(optlen, &size, sizeof(int));
+	return 0;
 }
 
 int unix_init(void)

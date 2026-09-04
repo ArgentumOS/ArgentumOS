@@ -125,7 +125,11 @@ int bfs_read_inode(struct inode *i)
 	memset_b(i->u.bfs.small_data + tail, 0,
 		BFS_SMALL_DATA_SIZE - tail);
 
-	if(S_ISDIR(raw->mode) || S_ISREG(raw->mode) || S_ISLNK(raw->mode)) {
+	if(S_ISDIR(raw->mode) || S_ISREG(raw->mode) || S_ISLNK(raw->mode)
+	   || S_ISSOCK(raw->mode) || S_ISFIFO(raw->mode)) {
+		/* socket/fifo nodes are data-less inodes whose type lives in
+		 * i_mode (bfs_mknod) — bfs_fsop is right for them since they
+		 * are never opened through the filesystem */
 		i->fsop = &bfs_fsop;
 	} else {
 		/* unsupported inode type */

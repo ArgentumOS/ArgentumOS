@@ -110,6 +110,76 @@ int bfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	return 0;
 }
 
+/* FNX: BFS had no mknod (do_mknod fell back to -EPERM), which broke
+ * every path-based AF_UNIX socket on a BFS root (X11, the compositor's
+ * /tmp/gui.sock, ...). Socket/fifo/regular nodes are stored as ordinary
+ * data-less inodes whose i_mode carries the type bits — the same trick
+ * Linux ext2 uses. Char/block devices stay unsupported (devfs owns /dev). */
+int bfs_mknod(struct inode *dir, char *name, __mode_t mode, __dev_t dev)
+{
+	struct inode *i;
+	__ino_t ino;
+	__off_t old_dir_size;
+	int errno;
+
+	if(IS_RDONLY_FS(dir)) {
+		return -EROFS;
+	}
+
+	switch(mode & S_IFMT) {
+		case S_IFSOCK:
+		case S_IFIFO:
+		case S_IFREG:
+			break;
+		default:
+			/* S_IFCHR / S_IFBLK (and garbage): not representable */
+			return -EPERM;
+	}
+
+	inode_lock(dir);
+
+	if(!(errno = bfs_btree_find(dir, name, &ino))) {
+		inode_unlock(dir);
+		return -EEXIST;
+	}
+
+	if(!(i = ialloc(dir->sb, S_IFREG))) {
+		inode_unlock(dir);
+		return -ENOSPC;
+	}
+	i->count = 1;
+	i->dev = dir->dev;
+	i->fsop = dir->fsop;
+
+	old_dir_size = dir->i_size;
+	if((errno = bfs_btree_insert(dir, name, i->inode))) {
+		i->i_nlink = 0;
+		iput(i);
+		inode_unlock(dir);
+		return errno;
+	}
+
+	/* keep the type bits (S_IFSOCK/...) so the inode reads back right */
+	i->i_mode = (mode & ~current->umask);
+	i->i_uid = current->euid;
+	i->i_gid = current->egid;
+	i->i_nlink = 1;
+	i->i_blocks = 0;
+	i->state |= INODE_DIRTY;
+
+	/* the file-name 0x13 small_data record (Haiku SetName) */
+	bfs_inode_set_name(i, name);
+	/* keep the name/size/last_modified indices in sync (Haiku) */
+	bfs_index_add(dir->sb, i, name);
+
+	bfs_dir_touch(dir, old_dir_size);
+	dir->state |= INODE_DIRTY;
+
+	iput(i);
+	inode_unlock(dir);
+	return 0;
+}
+
 int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 {
 	struct inode *i;
