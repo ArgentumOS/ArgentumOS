@@ -136,7 +136,8 @@ int main(int argc, char *argv[])
 	}
 	setenv("FNX_CONFIG_ROOT", root, 1);
 
-	/* system scope: the shipped defaults (userland/com.fnx.xfb.conf) */
+	/* system scope: the shipped defaults
+	 * (userland/configuration/com.fnx.xfb.conf) */
 	write_conf(root, "System/Configuration",
 		   "display = \"0\"\nac = true\nnolisten = \"tcp\"\n");
 

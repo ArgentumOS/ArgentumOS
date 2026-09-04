@@ -289,7 +289,8 @@ token** `r`), `-retro`, `-terminate` (optional numeric delay), `-tst`,
   argv" and a serial/log notice — a broken `com.fnx.xfb.conf` must never
   stop X from starting.
 - Shipped defaults live in the system domain as
-  `userland/com.fnx.xfb.conf` (installed to
+  `userland/configuration/com.fnx.xfb.conf` (the dedicated home for
+  shipped system-wide default configs; installed to
   `/System/Configuration/com.fnx.xfb.conf` in the root image):
   `ac = true`, `nolisten = "tcp"`, `display = "0"`, matching today's
   `xfbdesk-init` launch; `screen` is deliberately unset so geometry keeps

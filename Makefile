@@ -252,7 +252,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	# user (root).
 	@mkdir -p $(ROOTFS64)/System/Configuration $(ROOTFS64)/Shared/Configuration \
 		$(ROOTFS64)/Users/root/Configuration
-	@cp userland/com.fnx.xfb.conf $(ROOTFS64)/System/Configuration/com.fnx.xfb.conf
+	@cp userland/configuration/com.fnx.xfb.conf $(ROOTFS64)/System/Configuration/com.fnx.xfb.conf
 	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
 	$(MUSL64_CC) userland/bfsquery.c -o $(ROOTFS64)/bin/bfsquery
 	$(MUSL64_CC) userland/bfsqtest.c -o $(ROOTFS64)/bin/bfsqtest
