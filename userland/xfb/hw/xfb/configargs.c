@@ -1,7 +1,7 @@
 /*
  * hw/xfb/configargs.c — FNX: Xfb configuration via libconfig.
  *
- * Every Xfb command-line option has a config key in the com.fnx.xfb
+ * Every Xfb command-line option has a config key in the system.config.xfb
  * domain whose value is the option's *default* (docs/x11-xvfb-fb-plan.md,
  * "Update (decided): Xfb configuration via libconfig"). A real
  * command-line occurrence of an option suppresses its config-derived
@@ -20,7 +20,7 @@
 
 #include <libconfig.h>
 
-#define XFB_DOMAIN "com.fnx.xfb"
+#define XFB_DOMAIN "system.config.xfb"
 
 /*
  * Emission kinds (docs/x11-xvfb-fb-plan.md "Arity table"):
@@ -165,7 +165,7 @@ static int display_in_argv(int argc, char *argv[])
  * command line; on return they may point at a new, long-lived array
  * (config tokens first, then the real argv). Falls back to the original
  * argv unchanged on any config problem (fail-open: a broken
- * com.fnx.xfb.conf must never stop X from starting).
+ * system.config.xfb.conf must never stop X from starting).
  */
 void
 xfb_config_args(int *argcp, char ***argvp)
@@ -185,7 +185,7 @@ xfb_config_args(int *argcp, char ***argvp)
 		return;			/* domain not installed: server defaults */
 	}
 	if (e != CONFIG_OK) {
-		fprintf(stderr, "Xfb: com.fnx.xfb unreadable (%s); "
+		fprintf(stderr, "Xfb: system.config.xfb unreadable (%s); "
 			"using command line only\n", config_strerror(e));
 		return;
 	}
@@ -254,7 +254,7 @@ xfb_config_args(int *argcp, char ***argvp)
 			ntok = 2;
 		} else {		/* K_FLAG / K_PAIR: need a bool */
 			if (values[found].type != CONFIG_TYPE_BOOL) {
-				fprintf(stderr, "Xfb: com.fnx.xfb %s should be "
+				fprintf(stderr, "Xfb: system.config.xfb %s should be "
 					"a boolean, ignored\n", ok->key);
 				continue;
 			}
@@ -312,7 +312,7 @@ xfb_config_args(int *argcp, char ***argvp)
 			}
 		}
 		if (!known) {
-			fprintf(stderr, "Xfb: unknown com.fnx.xfb key '%s' "
+			fprintf(stderr, "Xfb: unknown system.config.xfb key '%s' "
 				"ignored\n", keys[i]);
 		}
 	}

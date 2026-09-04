@@ -16,9 +16,13 @@ command-line layer over them.
 
 ## 2. Storage model (decided)
 
-- **One file per app domain**, reverse-DNS named, `.conf` extension:
-  `com.example.HelloWorld.conf`. A domain is the app's namespace — the
-  same idea as a `defaults` domain.
+- **One file per app domain**, `.conf` extension. A domain is the app's
+  namespace — the same idea as a `defaults` domain.
+- **Reserved pseudo-domain for first-party apps**: FNX's own apps use
+  `system.config.<app>` (e.g. `system.config.dock`, `system.config.xfb`,
+  `system.config.kernel`); the `system.config` root is reserved and is
+  not reverse-DNS. Third-party apps keep reverse-DNS domains
+  (`com.example.HelloWorld.conf`).
 - Files live in a `Configuration/` directory at the **three scopes** of
   the origin model (decided):
 
@@ -29,9 +33,9 @@ command-line layer over them.
   | system | `-s` | `/System/Configuration/` | the OS |
 
   ```
-  /System/Configuration/com.fnx.dock.conf
+  /System/Configuration/system.config.dock.conf
   /Shared/Configuration/com.example.HelloWorld.conf
-  Users/$USER/Configuration/com.fnx.shell.conf
+  Users/$USER/Configuration/system.config.shell.conf
   ```
 
   (`/Shared/Configuration/` is a new FSH directory added by this design;
@@ -72,7 +76,7 @@ config delete [-s|-g|-u] <domain> [key]
 ```
 
 - Default scope is `-u` (user). `config read dock` → user's
-  `com.fnx.dock.conf`; if the domain is absent there, resolution falls
+  `system.config.dock.conf`; if the domain is absent there, resolution falls
   back per precedence (Q-F).
 - `config read` with no key prints the whole domain as `key = value`
   lines; with a key, prints just the value (so it composes in scripts:
@@ -132,6 +136,9 @@ place.
 
 - **Q-D — Key structure: flat + dot-nested.** No INI sections; hierarchy
   via dot-separated keys (`window.x`); prefix reads for nested groups.
+- **Q-N — First-party domain namespace: reserved pseudo-domain
+  `system.config`.** FNX's own apps are `system.config.<app>` (not
+  reverse-DNS); third parties keep reverse-DNS (`com.example.<app>`).
 - **Q-E — libconfig: built now.** Typed getters, scope resolution,
   prefix reads, atomic writes; apps link it instead of shelling out.
 - **Q-F — Precedence: user → shared → system.** Person wins, then
@@ -236,9 +243,9 @@ Rules:
   between kernel and userland where practical.
 
 Editing (decided): the kernel is an ordinary config domain.
-`/System/Configuration/com.fnx.kernel.conf` is a **symlink** to
+`/System/Configuration/system.config.kernel.conf` is a **symlink** to
 `/System/ESP/kernel.conf` (the ESP is mounted at `/System/ESP` from FSH
-Q2), so `config read|write|delete com.fnx.kernel …` reaches the real
+Q2), so `config read|write|delete system.config.kernel …` reaches the real
 file with no CLI/API changes:
 
 - **Reads** follow the symlink naturally (`open` does).
@@ -249,7 +256,7 @@ file with no CLI/API changes:
   the real `kernel.conf` stale), and rename cannot cross filesystems
   (the ESP is a separate mount from the root). ~10 lines in
   `userland/libconfig.c::write_entries`.
-- **`config delete com.fnx.kernel`** removes the symlink only — it never
+- **`config delete system.config.kernel`** removes the symlink only — it never
   follows it into deleting the ESP's `kernel.conf`.
 - The symlink is created by the first-boot `/System` scaffold (BFS
   supports symlinks, `fs/bfs/symlink.c`); it dangles until the ESP is

@@ -129,7 +129,7 @@ right edge — sized to the icons, presenting:
 - **Actions** — context menu per icon (Open, Hide, Quit, Remove from
   Dock), and a "running" dot; dragging reorders pins.
 
-User configuration (config domain `com.fnx.workspace.conf`, per-user
+User configuration (config domain `system.config.workspace.conf`, per-user
 scope by default):
 
 ```

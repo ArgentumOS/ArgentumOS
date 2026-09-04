@@ -2,7 +2,9 @@
  * libconfig.h — universal configuration access for the FNX OS userland.
  *
  * Design: docs/config-design.md
- *  - one reverse-DNS .conf file per app domain in a Configuration/ dir
+ *  - one .conf file per app domain in a Configuration/ dir; FNX's own
+ *    apps use the reserved first-party pseudo-domain system.config.<app>
+ *    (third-party apps keep reverse-DNS domains such as com.example.x)
  *  - three scopes: user (/Shared/, system) per the FSH origin model
  *  - plain-text "key = value" lines, types inferred, dot-nested keys
  *  - resolution precedence: user -> shared -> system
@@ -14,6 +16,11 @@
 
 #ifndef FNX_LIBCONFIG_H
 #define FNX_LIBCONFIG_H
+
+/* Reserved first-party pseudo-domain root (docs/config-design.md §2):
+ * FNX's own apps are system.config.<app>; third parties keep reverse-DNS
+ * domains (com.example.<app>). This namespace is never handed out. */
+#define LIBCONFIG_SYSTEM_DOMAIN	"system.config"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -164,8 +171,8 @@ const char *config_strerror(config_err_t err);
 const char *config_scope_name(config_scope_t scope);
 
 /* Resolve the on-disk path for a domain in a scope, for debugging:
- * e.g. CONFIG_SCOPE_USER, "com.fnx.dock" ->
- *      "Users/kyle/Configuration/com.fnx.dock.conf". */
+ * e.g. CONFIG_SCOPE_USER, "system.config.dock" ->
+ *      "Users/kyle/Configuration/system.config.dock.conf". */
 config_err_t config_path(config_scope_t scope, const char *domain,
 			 char *buf, size_t buflen);
 
