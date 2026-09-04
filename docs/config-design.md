@@ -242,30 +242,39 @@ Rules:
   identical so a file works everywhere; the parser is shared source
   between kernel and userland where practical.
 
-Editing (decided): the kernel is an ordinary config domain.
-`/System/Configuration/system.config.kernel.conf` is a **symlink** to
-`/System/ESP/kernel.conf` (the ESP is mounted at `/System/ESP` from FSH
-Q2), so `config read|write|delete system.config.kernel …` reaches the real
-file with no CLI/API changes:
+Editing (decided, Q5 owner review): `system.config.kernel` is a
+**pinned single-file domain**. It is the one config domain whose file
+lives outside the three scope roots — physically on the ESP, next to
+the kernel. libconfig carries a small built-in alias table:
+`system.config.kernel` → `/System/ESP/kernel.conf` (the ESP is mounted
+at `/System/ESP` from FSH Q2). No `/System/Configuration` file or
+symlink exists for it.
 
-- **Reads** follow the symlink naturally (`open` does).
-- **Writes** require the libconfig atomic writer to **resolve the final
-  path component before temp+rename**, and create the temp file in the
-  *resolved target's* directory — `rename(2)` does not follow a symlink
-  as its destination (it would silently swap in a regular file and leave
-  the real `kernel.conf` stale), and rename cannot cross filesystems
-  (the ESP is a separate mount from the root). ~10 lines in
-  `userland/libconfig.c::write_entries`.
-- **`config delete system.config.kernel`** removes the symlink only — it never
-  follows it into deleting the ESP's `kernel.conf`.
-- The symlink is created by the first-boot `/System` scaffold (BFS
-  supports symlinks, `fs/bfs/symlink.c`); it dangles until the ESP is
-  mounted. `config` aborts on IO error rather than falling through
-  (libconfig resolution rules), so an unmounted ESP surfaces the kernel
-  domain as unavailable — acceptable, since userland runs post-mount.
+- The alias is **System-authoritative and exempt from layering**: a
+  read of `system.config.kernel.*` loads only the ESP file; user/shared
+  scope files named `system.config.kernel.conf` are not consulted
+  (boot config is machine state — a user-scope value could only ever
+  claim to set something the kernel never saw). Resolution for this
+  domain is: ESP file value, else the kernel's compiled-in default
+  (D5-style), else nothing — never a user/shared merge.
+- **Reads/writes/keys** go straight to `/System/ESP/kernel.conf` like
+  any ordinary file domain: the existing atomic writer (temp + fsync +
+  rename) needs no symlink or cross-filesystem special-casing, since
+  temp and target share the ESP directory.
+- **Unavailability** is explicit: an unmounted ESP makes the alias
+  resolve to a missing file, which `config` surfaces as the kernel
+  domain being unavailable (IO error, per libconfig resolution rules) —
+  acceptable, since userland runs post-mount.
 - The ESP file remains canonical: it is what boot consumes and what
-  `config` edits through the link.
+  `config` edits in place.
+
+Implementation note: `userland/libconfig.c` derives every domain path
+from the three scope roots today; the alias is a small lookup before
+that derivation (a `domain_path` short-circuit), plus the read path
+skipping the scope merge for this one domain. The kernel-side early
+read (plain `\kernel.conf` on the ESP, before the root is mounted)
+is unchanged.
 
 This gives the kernel a self-contained boot identity: `FNX.efi` + its
 config live together on the ESP, inspectable and editable through the
-normal `config` domain machinery once `/System/ESP` is mounted.
+normal `config` CLI/API once `/System/ESP` is mounted.
