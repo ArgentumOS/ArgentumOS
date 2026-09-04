@@ -347,18 +347,9 @@ static struct vconsole *kbd_vc(void)
 	return &kbd_dummy_vc;
 }
 
-/* Normalize a resolved key (after the keymap lookup) into a /dev/kbd
- * keysym + modifiers and emit it. Returns 1 when an event was queued. */
-static int kbdaux_gui_emit(__key_t key, int vc_capslock, int vc_numlock)
+/* the modifier bitmask currently held (globals + lock state) */
+static unsigned char kbd_gui_mods(int vc_capslock, int vc_numlock)
 {
-	static const unsigned char pad_sem[10] = {
-		KB_KEY_INS, KB_KEY_END, KB_KEY_DOWN, KB_KEY_PGDN, KB_KEY_LEFT,
-		0,		KB_KEY_RIGHT, KB_KEY_HOME, KB_KEY_UP,
-		KB_KEY_PGUP
-	};
-	int type = key & 0xFF00;
-	int c = key & 0xFF;
-	int nkey = -1;
 	unsigned char mods = 0;
 
 	if(shift) {
@@ -379,6 +370,24 @@ static int kbdaux_gui_emit(__key_t key, int vc_capslock, int vc_numlock)
 	if(vc_numlock) {
 		mods |= KB_MOD_NUM;
 	}
+	return mods;
+}
+
+/* Normalize a resolved key (after the keymap lookup) into a /dev/kbd
+ * keysym + modifiers and emit it (state 1 = press, 0 = release).
+ * Returns 1 when an event was queued. */
+static int kbdaux_gui_emit(__key_t key, int vc_capslock, int vc_numlock,
+			   int state)
+{
+	static const unsigned char pad_sem[10] = {
+		KB_KEY_INS, KB_KEY_END, KB_KEY_DOWN, KB_KEY_PGDN, KB_KEY_LEFT,
+		0,		KB_KEY_RIGHT, KB_KEY_HOME, KB_KEY_UP,
+		KB_KEY_PGUP
+	};
+	int type = key & 0xFF00;
+	int c = key & 0xFF;
+	int nkey = -1;
+	unsigned char mods = kbd_gui_mods(vc_capslock, vc_numlock);
 
 	switch(type) {
 		case 0:			/* plain char / control */
@@ -421,12 +430,13 @@ static int kbdaux_gui_emit(__key_t key, int vc_capslock, int vc_numlock)
 	if(nkey < 0) {
 		return 0;
 	}
-	kbdaux_event(nkey, mods, 1);
+	kbdaux_event(nkey, mods, state);
 	return 1;
 }
 
 static void process_scancode(unsigned char scode, int is_ext)
 {
+
 	struct tty *tty;
 	struct vconsole *vc;
 	__key_t key, type;
@@ -456,6 +466,9 @@ static void process_scancode(unsigned char scode, int is_ext)
 
 	/* bit 7 enabled means a key has been released */
 	if(scode & NR_SCODES) {
+		static int dbr3;
+		int is_mod = 1;
+
 		switch(key) {
 			case CTRL:
 			case LCTRL:
@@ -481,7 +494,68 @@ static void process_scancode(unsigned char scode, int is_ext)
 			case NUMS:
 			case SCRL:
 				leds = 0;
+				is_mod = 0;
 				break;
+			default:
+				is_mod = 0;
+				break;
+		}
+		if(kbdaux_active()) {
+			unsigned char m = kbd_gui_mods(vc->capslock, vc->numlock);
+
+			if(is_mod) {
+				int ks;
+
+				switch(key) {
+					case CTRL:
+					case LCTRL:
+					case RCTRL:
+						ks = (key == RCTRL) ?
+							KB_KEY_RCTRL : KB_KEY_LCTRL;
+						break;
+					case ALT:
+						ks = is_ext ? KB_KEY_RALT :
+							KB_KEY_LALT;
+						break;
+					case SHIFT:
+					case LSHIFT:
+					case RSHIFT:
+						ks = (key == RSHIFT) ?
+							KB_KEY_RSHIFT : KB_KEY_LSHIFT;
+						break;
+					default:
+						ks = -1;
+						break;
+				}
+				if(ks >= 0) {
+					kbdaux_event(ks, m, 0);
+				}
+			} else {
+				/* normal key: re-resolve with the modifiers
+				 * still held and emit the release */
+				keymap_line = &keymap[(scode & 0x7F) * NR_MODIFIERS];
+				mod = 0;
+				if(vc->capslock &&
+				   (keymap_line[MOD_BASE] & LETTER_KEYS)) {
+					mod = !vc->capslock ? shift :
+						vc->capslock - shift;
+				} else {
+					if(shift && !is_ext) {
+						mod = 1;
+					}
+				}
+				if(altgr) {
+					mod = 2;
+				}
+				if(ctrl) {
+					mod = 4;
+				}
+				if(alt) {
+					mod = 8;
+				}
+				kbdaux_gui_emit(keymap_line[mod],
+						vc->capslock, vc->numlock, 0);
+			}
 		}
 		is_ext = 0;
 		return;
@@ -518,18 +592,37 @@ static void process_scancode(unsigned char scode, int is_ext)
 		case LCTRL:
 		case RCTRL:
 			ctrl = 1;
+			if(kbdaux_active()) {
+				kbdaux_event((key == RCTRL) ? KB_KEY_RCTRL : KB_KEY_LCTRL,
+					     kbd_gui_mods(vc->capslock, vc->numlock), 1);
+			}
 			return;
 		case ALT:
 			if(!is_ext) {
 				alt = 1;
+				if(kbdaux_active()) {
+					kbdaux_event(KB_KEY_LALT,
+						     kbd_gui_mods(vc->capslock,
+								vc->numlock), 1);
+				}
 			} else {
 				altgr = 1;
+				if(kbdaux_active()) {
+					kbdaux_event(KB_KEY_RALT,
+						     kbd_gui_mods(vc->capslock,
+								vc->numlock), 1);
+				}
 			}
 			return;
 		case SHIFT:
 		case LSHIFT:
 		case RSHIFT:
 			shift = 1;
+			if(kbdaux_active()) {
+				kbdaux_event((key == RSHIFT) ? KB_KEY_RSHIFT :
+					     KB_KEY_LSHIFT,
+					     kbd_gui_mods(vc->capslock, vc->numlock), 1);
+			}
 			is_ext = 0;
 			return;
 	}
@@ -602,7 +695,9 @@ static void process_scancode(unsigned char scode, int is_ext)
 	 * /dev/kbd event and skip the console emission entirely (no chars
 	 * leak into the serial console, no dead-key/console state here) */
 	if(kbdaux_active()) {
-		kbdaux_gui_emit(key, vc->capslock, vc->numlock);
+		{
+		}
+		kbdaux_gui_emit(key, vc->capslock, vc->numlock, 1);
 		return;
 	}
 

@@ -141,7 +141,16 @@ InitInput(int argc, char *argv[])
     xiclass = MakeAtom(XI_KEYBOARD, sizeof(XI_KEYBOARD) - 1, TRUE);
     AssignTypeAndName(k, xiclass, "Xfb keyboard");
     (void) mieqInit();
-    vfbFnxInputInit(p, k);
+    /* FNX: feed real input. The events must travel through the virtual
+     * core pointer/keyboard for core (non-XI) clients to see them, so
+     * attach the Xfb devices as their slaves and enable them. */
+    if (p != inputInfo.pointer)
+        AttachDevice(serverClient, p, inputInfo.pointer);
+    if (k != inputInfo.keyboard)
+        AttachDevice(serverClient, k, inputInfo.keyboard);
+    EnableDevice(p, TRUE);
+    EnableDevice(k, TRUE);
+    vfbFnxInputInit(inputInfo.pointer, inputInfo.keyboard);
 }
 
 void

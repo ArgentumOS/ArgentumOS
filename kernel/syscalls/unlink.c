@@ -67,10 +67,41 @@ int sys_unlinkat(int dirfd, const char *filename, int flags)
 	}
 
 	if(S_ISDIR(i->i_mode)) {
+		int rerrno;
+
+		if(!(flags & AT_REMOVEDIR)) {
+			iput(i);
+			iput(dir);
+			free_name(tmp_name);
+			return -EPERM;	/* Linux returns -EISDIR; sys_rmdir is the dir path */
+		}
+		/* AT_REMOVEDIR: rm -rf removes directories through
+		 * unlinkat(AT_REMOVEDIR); do the sys_rmdir checks here with
+		 * the already-resolved inodes */
+		if(i == current->root || i->mount_point) {
+			rerrno = -EBUSY;
+		} else if(IS_RDONLY_FS(i)) {
+			rerrno = -EROFS;
+		} else if(i == dir) {
+			rerrno = -EPERM;
+		} else if(check_permission(TO_EXEC | TO_WRITE, dir) < 0) {
+			rerrno = -EACCES;
+		} else if((dir->i_mode & S_ISVTX) && check_user_permission(i)) {
+			rerrno = -EPERM;
+		} else if(i->fsop && i->fsop->rmdir) {
+			rerrno = i->fsop->rmdir(dir, i);
+			if(!rerrno) {
+				inotify_queue(dir, IN_DELETE | IN_ISDIR, 0,
+					      get_basename(tmp_name));
+				inotify_queue(i, IN_DELETE_SELF, 0, NULL);
+			}
+		} else {
+			rerrno = -EPERM;
+		}
 		iput(i);
 		iput(dir);
 		free_name(tmp_name);
-		return -EPERM;	/* Linux returns -EISDIR; sys_rmdir is the dir path */
+		return rerrno;
 	}
 	if(flags && !(flags & AT_REMOVEDIR)) {
 		iput(i);

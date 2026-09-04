@@ -43,6 +43,15 @@
 #define KB_KEY_F1	0x8A
 #define KB_KEY_F12	(KB_KEY_F1 + 11)
 
+/* modifier keys (0x96+, past F12): delivered as press/release events so a
+ * raw keyboard consumer (the X server) can track modifier state itself */
+#define KB_KEY_LSHIFT	0x96
+#define KB_KEY_RSHIFT	0x97
+#define KB_KEY_LCTRL	0x98
+#define KB_KEY_RCTRL	0x99
+#define KB_KEY_LALT	0x9A
+#define KB_KEY_RALT	0x9B	/* right alt = AltGr */
+
 /* modifier bitmask */
 #define KB_MOD_SHIFT	0x01
 #define KB_MOD_CTRL	0x02
