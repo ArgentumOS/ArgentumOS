@@ -315,33 +315,33 @@ void fs_repair_tmpdir(void)
 
 	tmp = NULL;
 	dir = NULL;
-	errno = parse_namei("/tmp", NULL, &tmp, &dir, !FOLLOW_LINKS);
+	errno = parse_namei("/System/Temporary Files", NULL, &tmp, &dir, !FOLLOW_LINKS);
 
 	if(!errno && tmp && S_ISDIR(tmp->i_mode)) {
-		/* healthy /tmp: the init scripts clear the stale contents */
+		/* healthy tmp dir: the init scripts clear the stale contents */
 		iput(tmp);
 		iput(dir);
 		return;
 	}
-	printk("WARNING: %s(): /tmp not a directory at mount (errno %d, mode %o); recreating.\n",
+	printk("WARNING: %s(): /System/Temporary Files not a directory at mount (errno %d, mode %o); recreating.\n",
 	       __FUNCTION__, -errno, tmp ? tmp->i_mode : 0);
 
-	/* /tmp exists but is not a directory (journal replay residue):
-	 * remove it so a real directory can be created in its place */
+	/* the tmp dir exists but is not a directory (journal replay
+	 * residue): remove it so a real directory can be created in its
+	 * place */
 	if(!errno && tmp) {
 		if(dir && !IS_RDONLY_FS(dir) && dir->fsop && dir->fsop->unlink) {
-			dir->fsop->unlink(dir, tmp, "tmp");
+			dir->fsop->unlink(dir, tmp, "Temporary Files");
 		}
 		iput(tmp);
 	}
 
-	/* recreate /tmp. dir is the parent of /tmp (the root directory,
-	 * ref'd) both when /tmp was a non-directory and when the final
-	 * component was missing (parse_namei returns the parent on
-	 * ENOENT) */
+	/* recreate it. dir is the parent (/System, ref'd) both when the
+	 * entry was a non-directory and when the final component was
+	 * missing (parse_namei returns the parent on ENOENT) */
 	if(dir && !IS_RDONLY_FS(dir) && dir->fsop && dir->fsop->mkdir) {
-		if(dir->fsop->mkdir(dir, "tmp", 01777)) {
-			printk("WARNING: %s(): unable to create /tmp.\n",
+		if(dir->fsop->mkdir(dir, "Temporary Files", 01777)) {
+			printk("WARNING: %s(): unable to create /System/Temporary Files.\n",
 			       __FUNCTION__);
 		}
 	}

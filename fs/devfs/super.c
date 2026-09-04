@@ -116,12 +116,12 @@ int devfs_init(void)
 	return 0;
 }
 
-/* Kernel-side mount of devfs on the rootfs /dev directory, called right
- * after mount_root() in the kswapd boot flow (before init runs), so the
- * init trampoline's open("/dev/console") resolves through devfs. Mirrors
- * sys_mount()'s steps but runs in kernel context. Fails soft (warn, no
- * panic): an initrd root has no /dev directory and simply boots without
- * devfs. */
+/* Kernel-side mount of devfs on the rootfs /System/Devices directory,
+ * called right after mount_root() in the kswapd boot flow (before init
+ * runs), so the init trampoline's open("/System/Devices/console")
+ * resolves through devfs. Mirrors sys_mount()'s steps but runs in
+ * kernel context. Fails soft (warn, no panic): a root without
+ * /System/Devices simply boots without devfs. */
 int devfs_boot_mount(void)
 {
 	struct inode *i_target;
@@ -134,8 +134,8 @@ int devfs_boot_mount(void)
 		return -ENODEV;
 	}
 
-	if((errno = namei("/dev", &i_target, NULL, FOLLOW_LINKS))) {
-		printk("devfs: cannot find /dev on the root filesystem (%d).\n", errno);
+	if((errno = namei("/System/Devices", &i_target, NULL, FOLLOW_LINKS))) {
+		printk("devfs: cannot find /System/Devices on the root filesystem (%d).\n", errno);
 		return errno;
 	}
 	if(!S_ISDIR(i_target->i_mode)) {
@@ -143,7 +143,7 @@ int devfs_boot_mount(void)
 		return -ENOTDIR;
 	}
 
-	if(!(mp = add_mount_point(DEVFS_DEV, "devfs", "/dev"))) {
+	if(!(mp = add_mount_point(DEVFS_DEV, "devfs", "/System/Devices"))) {
 		iput(i_target);
 		return -EBUSY;
 	}
@@ -170,7 +170,7 @@ int devfs_boot_mount(void)
 		for(n = devfs_nodes; n; n = n->next) {
 			count++;
 		}
-		printk("devfs mounted on /dev. (%d nodes)\n", count);
+		printk("devfs mounted on /System/Devices. (%d nodes)\n", count);
 	}
 	return 0;
 }

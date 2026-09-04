@@ -24,11 +24,11 @@
 
 char *init_args;
 char *init_argv[] = { INIT_PROGRAM, NULL, NULL };
-char *init_envp[] = { "HOME=/", "TERM=linux", NULL };
+char *init_envp[] = { "HOME=/Users/Admin", "TERM=linux", NULL };
 /* The INIT bootstrap trampoline (init_trampoline64.S) opens this console
  * device; its runtime address is written into the trampoline's fixed
  * table at user VA 0x100100 by init_init(). */
-char init_console_dev[] = "/dev/console";
+char init_console_dev[] = "/System/Devices/console";
 
 /* The INIT bootstrap trampoline is a position-independent assembly
  * function (kernel64/init_trampoline64.S) that uses absolute movabs
