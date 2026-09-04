@@ -91,6 +91,14 @@ D1–D4 below.
   supersedes config-design §5/Q-F ("user → shared → system") and makes
   any separate non-overridable tier (a `Global/` dir or a trusted key —
   earlier drafts) unnecessary: system scope *is* the rule.
+- **D5 — Internal defaults (owner, latest):** every first-party setting
+  has an internal (compiled-in) default baked into the software. A
+  user-scope `system.config.<app>` value may therefore stand alone: it
+  overrides the internal default, giving purely-personal first-party
+  prefs a natural home in the reserved namespace with no Shared or
+  System file behind them. A `/Shared/Configuration` file ships only
+  when the *shipped* baseline should itself be editable at the Shared
+  tier (machine-wide defaults, §5.0).
 
 ## 3. Grammar amendment (§10): group records
 
@@ -148,6 +156,11 @@ records). Consumers that need Unix orderings (getpwent by uid) sort
 themselves; see §5.1.
 
 ## 4. The precedence model (D4)
+
+Beneath all three file scopes sits the **internal default** (D5): if no
+file scope holds a value, the software's compiled-in default applies.
+A value in any scope overrides it; System > user > Shared decide which
+scope value wins when several exist.
 
 ### 4.1 The order
 
@@ -234,9 +247,10 @@ makes them authoritative.
 - **Non-overridable** first-party settings (identity, boot policy,
   hostname): `/System/Configuration/system.config.<domain>.conf` — no
   Shared file ships, nothing overrides it.
-- **Per-user first-party preferences** are user-scope overrides of a
-  Shared `system.config.*` domain's values (see Q1 for whether
-  purely-personal prefs deserve their own reserved root).
+- **Per-user first-party preferences** are user-scope `system.config.*`
+  values that override the software's **internal (compiled-in)
+  default** (D5) — they may stand alone, with no Shared or System file
+  behind them.
 
 The domains in this plan (`passwd`, `group`, `shells`, `hosts`,
 `mounts`) are non-overridable first-party global system settings —
@@ -445,13 +459,6 @@ third_party patches.
 
 ## 8. Open items (Q)
 
-- **Q1** — Per-user first-party preferences: with `system.config.*`
-  reserved for *global* system settings (System-scope, authoritative),
-  purely-personal first-party prefs have no natural home in that
-  namespace. Should they (a) remain user-scope `system.config.*`
-  overrides of Shared defaults for cosmetic keys (never overriding
-  System), or (b) get their own reserved first-party root (e.g.
-  `user.config.<app>`)?
 - **Q2** — Shadow folding (hash in the record, §5.1) vs. a separate
   System `system.config.shadow.conf` with `x` indirection.
 - **Q3** — toybox `mount`/`umount` consuming the mount table in M6 or
