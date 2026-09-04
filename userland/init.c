@@ -22,11 +22,10 @@ static void try_mount(const char *fstype, const char *target)
 
 /* Fork+exec a GUI process on the desktop. If quiet, stdout/stderr go to
  * /dev/null (the compositor spams per-damage lines on the console). */
-static void spawn_gui(const char *path, char *const argv[], int quiet)
+static void spawn_gui(const char *path, char *const argv[], char *const envp[],
+		      int quiet)
 {
 	pid_t p = fork();
-	char *envp[] = { "PATH=/bin:/sbin:/usr/bin:/usr/sbin", "HOME=/",
-			 "PS1=# ", NULL };
 
 	if (p == 0) {
 		if (quiet) {
@@ -44,16 +43,31 @@ static void spawn_gui(const char *path, char *const argv[], int quiet)
 }
 
 /* The LVGL desktop: system compositor + two demo windows (each its own
- * app process). Mouse input is the emulated PS/2 / USB mouse (/dev/psaux);
- * the demos retry their connect until the compositor is ready. */
+ * app process). The compositor's mouse source: /dev/ttyS1 when a second
+ * serial port exists (test harnesses feed PS/2 packets over it), else the
+ * emulated PS/2 / USB mouse on /dev/psaux (interactive QEMU). */
 static void start_gui(void)
 {
-	spawn_gui("/bin/compositor",
-		  (char *const[]) { "compositor", NULL }, 1);
+	char *gui_env[] = { "PATH=/bin:/sbin:/usr/bin:/usr/sbin", "HOME=/",
+			    "GUI_MOUSE=/dev/ttyS1", NULL };
+	char *sh_env[] = { "PATH=/bin:/sbin:/usr/bin:/usr/sbin", "HOME=/",
+			   "PS1=# ", NULL };
+
+	if (access("/dev/ttyS1", F_OK) == 0) {
+		spawn_gui("/bin/compositor",
+			  (char *const[]) { "compositor", NULL },
+			  gui_env, 1);
+	} else {
+		spawn_gui("/bin/compositor",
+			  (char *const[]) { "compositor", NULL },
+			  sh_env, 1);
+	}
 	spawn_gui("/bin/lv_demo",
-		  (char *const[]) { "lv_demo", "A", "40", "40", NULL }, 0);
+		  (char *const[]) { "lv_demo", "A", "40", "40", NULL },
+		  sh_env, 0);
 	spawn_gui("/bin/lv_demo",
-		  (char *const[]) { "lv_demo", "B", "760", "320", NULL }, 0);
+		  (char *const[]) { "lv_demo", "B", "760", "320", NULL },
+		  sh_env, 0);
 }
 
 int main(void)

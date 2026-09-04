@@ -51,9 +51,11 @@ class ConsoleReader:
         nb = needle.encode()
         t0 = time.time()
         while time.time() - t0 < timeout:
+            # scan the queued lines; consume ONLY the matched line so lines
+            # that arrived before it (other apps' markers) stay available
             for i, ln in enumerate(self.lines):
                 if nb in ln:
-                    self.lines = self.lines[i + 1:]
+                    del self.lines[i]
                     return ln.decode("utf-8", "replace")
             r, _, _ = select.select([self.fd], [], [], 0.25)
             if r:
@@ -259,12 +261,8 @@ def main():
 
     try:
         out("boot", "INIT: FNX initrd alive", 60)
-        # shell prompt; run the GUI stack
-        send_cmd(p.stdin, 'export GUI_MOUSE=/dev/ttyS1')
-        send_cmd(p.stdin, '/bin/compositor &')
-        send_cmd(p.stdin, '/bin/lv_demo A 40 40 480 320 &')
-        send_cmd(p.stdin, '/bin/lv_demo B 760 320 480 320 &')
-        out("mouse", "COMP: mouse on /dev/ttyS1", 30)
+        # init auto-starts the GUI: compositor + lv_demo A/B (the compositor
+        # runs quiet, so the demo "window up" lines are the boot markers)
         out("A-up", "A: window up at 40,40 480x320", 30)
         out("B-up", "B: window up at 760,320 480x320", 30)
         print("boot + both apps up: OK")
