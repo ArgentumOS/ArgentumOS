@@ -98,18 +98,11 @@ static void gop_video_init(void)
 	video.memsize = (int)fnx_gop_fb.size;
 	video_map_framebuffer(video.fb_phys, video.memsize);
 	video.fb_version = 0;
-	video.fb_width = (int)fnx_gop_fb.width;
-	video.fb_height = (int)fnx_gop_fb.height;
-	video.fb_char_width = 8;
-	video.fb_char_height = 16;
-	video.fb_bpp = bpp;
-	video.fb_pixelwidth = pixelwidth;
-	video.fb_pitch = (int)fnx_gop_fb.pixels_per_scanline * pixelwidth;
-	video.columns = video.fb_width / video.fb_char_width;
-	video.lines = video.fb_height / video.fb_char_height;
-	video.fb_linesize = video.fb_pitch * video.fb_char_height;
-	video.fb_size = video.fb_width * video.fb_height * pixelwidth;
-	video.fb_vsize = video.lines * video.fb_pitch * video.fb_char_height;
+	/* shared field computation (also used by runtime mode switches) */
+	video_gop_geometry((unsigned int)fnx_gop_fb.width,
+			   (unsigned int)fnx_gop_fb.height, bpp,
+			   (unsigned int)fnx_gop_fb.pixels_per_scanline *
+			   pixelwidth);
 	strcpy((char *)video.signature, "UEFI GOP");
 
 	/* Clear the OVMF boot graphics out of the framebuffer before the

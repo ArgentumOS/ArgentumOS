@@ -22,9 +22,8 @@
 #include <fnx/bios.h>
 #include <fnx/fs_devfs.h>
 #include <fnx/stat.h>
+#include <fnx/video.h>
 
-#define IO_FB_XRES	2	/* TODO(ghaerr): to be removed shortly */
-#define IO_FB_YRES	3
 
 static struct fs_operations fb_driver_fsop = {
 	0,
@@ -130,8 +129,11 @@ int fb_mmap(struct inode *i, struct vma *vma)
 	addr_t fbaddr, addr;
 
 	/* a mapping longer than the framebuffer would walk fbaddr past
-	 * the device window and eventually wrap the physical address */
-	if(vma->end - vma->start > video.memsize) {
+	 * the device window and eventually wrap the physical address.
+	 * Compare against the page-rounded size: the kernel rounds a map
+	 * length up to a page, so non-page-multiple framebuffers (e.g.
+	 * 800x600x32 = 1,920,000 B) would otherwise always be rejected */
+	if(vma->end - vma->start > ((video.memsize + 4095) & ~4095)) {
 		return -EINVAL;
 	}
 
@@ -146,11 +148,39 @@ int fb_mmap(struct inode *i, struct vma *vma)
 
 int fb_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
+	struct fb_mode mode;
+	int errno;
+
 	switch (cmd) {
 		case IO_FB_XRES:
 			return video.fb_width;
 		case IO_FB_YRES:
 			return video.fb_height;
+		case IO_FB_GETMODE:
+			if((errno = check_user_area(VERIFY_WRITE, (void *)arg,
+						    sizeof(struct fb_mode)))) {
+				return errno;
+			}
+			mode.width = video.fb_width;
+			mode.height = video.fb_height;
+			mode.bpp = video.fb_bpp;
+			mode.pitch = video.fb_pitch;
+			if((errno = copy_to_user((void *)arg, &mode,
+						 sizeof(struct fb_mode)))) {
+				return errno;
+			}
+			return 0;
+		case IO_FB_SETMODE:
+			if((errno = check_user_area(VERIFY_READ, (void *)arg,
+						    sizeof(struct fb_mode)))) {
+				return errno;
+			}
+			if((errno = copy_from_user(&mode, (void *)arg,
+						   sizeof(struct fb_mode)))) {
+				return errno;
+			}
+			return video_gop_set_mode(mode.width, mode.height,
+						  mode.bpp);
 		default:
 			return -EINVAL;
 	}
