@@ -1,0 +1,533 @@
+diff --git a/src/env/__libc_start_main.c b/src/env/__libc_start_main.c
+index c5b277bd..73ba0780 100644
+--- a/src/env/__libc_start_main.c
++++ b/src/env/__libc_start_main.c
+@@ -51,7 +51,7 @@ void __init_libc(char **envp, char *pn)
+ #endif
+ 	if (r<0) a_crash();
+ 	for (i=0; i<3; i++) if (pfd[i].revents&POLLNVAL)
+-		if (__sys_open("/dev/null", O_RDWR)<0)
++		if (__sys_open("/System/Devices/null", O_RDWR)<0)
+ 			a_crash();
+ 	libc.secure = 1;
+ }
+diff --git a/src/internal/procfdname.c b/src/internal/procfdname.c
+index fd7306ab..e2d9a573 100644
+--- a/src/internal/procfdname.c
++++ b/src/internal/procfdname.c
+@@ -3,7 +3,7 @@
+ void __procfdname(char *buf, unsigned fd)
+ {
+ 	unsigned i, j;
+-	for (i=0; (buf[i] = "/proc/self/fd/"[i]); i++);
++	for (i=0; (buf[i] = "/System/Processes/self/fd/"[i]); i++);
+ 	if (!fd) {
+ 		buf[i] = '0';
+ 		buf[i+1] = 0;
+diff --git a/src/ldso/dl_iterate_phdr.c b/src/ldso/dl_iterate_phdr.c
+index 9546dd36..3919d045 100644
+--- a/src/ldso/dl_iterate_phdr.c
++++ b/src/ldso/dl_iterate_phdr.c
+@@ -29,7 +29,7 @@ static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size
+ 			tls_phdr = phdr;
+ 	}
+ 	info.dlpi_addr  = base;
+-	info.dlpi_name  = "/proc/self/exe";
++	info.dlpi_name  = "/System/Processes/self/exe";
+ 	info.dlpi_phdr  = (void *)aux[AT_PHDR];
+ 	info.dlpi_phnum = aux[AT_PHNUM];
+ 	info.dlpi_adds  = 0;
+diff --git a/src/legacy/daemon.c b/src/legacy/daemon.c
+index 1568b1dc..22e59941 100644
+--- a/src/legacy/daemon.c
++++ b/src/legacy/daemon.c
+@@ -8,7 +8,7 @@ int daemon(int nochdir, int noclose)
+ 		return -1;
+ 	if (!noclose) {
+ 		int fd, failed = 0;
+-		if ((fd = open("/dev/null", O_RDWR)) < 0) return -1;
++		if ((fd = open("/System/Devices/null", O_RDWR)) < 0) return -1;
+ 		if (dup2(fd, 0) < 0 || dup2(fd, 1) < 0 || dup2(fd, 2) < 0)
+ 			failed++;
+ 		if (fd > 2) close(fd);
+diff --git a/src/legacy/getpass.c b/src/legacy/getpass.c
+index d51286c0..01bce16e 100644
+--- a/src/legacy/getpass.c
++++ b/src/legacy/getpass.c
+@@ -12,7 +12,7 @@ char *getpass(const char *prompt)
+ 	ssize_t l;
+ 	static char password[128];
+ 
+-	if ((fd = open("/dev/tty", O_RDWR|O_NOCTTY|O_CLOEXEC)) < 0) return 0;
++	if ((fd = open("/System/Devices/tty", O_RDWR|O_NOCTTY|O_CLOEXEC)) < 0) return 0;
+ 
+ 	tcgetattr(fd, &t);
+ 	s = t;
+diff --git a/src/legacy/getusershell.c b/src/legacy/getusershell.c
+index 1c5d98ec..c0a64cf2 100644
+--- a/src/legacy/getusershell.c
++++ b/src/legacy/getusershell.c
+@@ -2,7 +2,7 @@
+ #include <stdio.h>
+ #include <unistd.h>
+ 
+-static const char defshells[] = "/bin/sh\n/bin/csh\n";
++static const char defshells[] = "/System/Tools/sh\n/System/Tools/csh\n";
+ 
+ static char *line;
+ static size_t linesize;
+@@ -16,7 +16,7 @@ void endusershell(void)
+ 
+ void setusershell(void)
+ {
+-	if (!f) f = fopen("/etc/shells", "rbe");
++	if (!f) f = fopen("/System/Configuration/shells", "rbe");
+ 	if (!f) f = fmemopen((void *)defshells, sizeof defshells - 1, "rb");
+ }
+ 
+diff --git a/src/misc/fmtmsg.c b/src/misc/fmtmsg.c
+index 69170b25..649c3851 100644
+--- a/src/misc/fmtmsg.c
++++ b/src/misc/fmtmsg.c
+@@ -39,7 +39,7 @@ int fmtmsg(long classification, const char *label, int severity,
+ 	else if (severity == MM_INFO) errstring = "INFO: ";
+ 
+ 	if (classification & MM_CONSOLE) {
+-		consolefd = open("/dev/console", O_WRONLY);
++		consolefd = open("/System/Devices/console", O_WRONLY);
+ 		if (consolefd < 0) {
+ 			ret = MM_NOCON;
+ 		} else {
+diff --git a/src/misc/openpty.c b/src/misc/openpty.c
+index c1074060..f6498309 100644
+--- a/src/misc/openpty.c
++++ b/src/misc/openpty.c
+@@ -12,7 +12,7 @@ int openpty(int *pm, int *ps, char *name, const struct termios *tio, const struc
+ 	int m, s, n=0, cs;
+ 	char buf[20];
+ 
+-	m = open("/dev/ptmx", O_RDWR|O_NOCTTY);
++	m = open("/System/Devices/ptmx", O_RDWR|O_NOCTTY);
+ 	if (m < 0) return -1;
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+@@ -21,7 +21,7 @@ int openpty(int *pm, int *ps, char *name, const struct termios *tio, const struc
+ 		goto fail;
+ 
+ 	if (!name) name = buf;
+-	snprintf(name, sizeof buf, "/dev/pts/%d", n);
++	snprintf(name, sizeof buf, "/System/Devices/pts/%d", n);
+ 	if ((s = open(name, O_RDWR|O_NOCTTY)) < 0)
+ 		goto fail;
+ 
+diff --git a/src/misc/pty.c b/src/misc/pty.c
+index a0577147..fdef27d6 100644
+--- a/src/misc/pty.c
++++ b/src/misc/pty.c
+@@ -7,7 +7,7 @@
+ 
+ int posix_openpt(int flags)
+ {
+-	int r = open("/dev/ptmx", flags);
++	int r = open("/System/Devices/ptmx", flags);
+ 	if (r < 0 && errno == ENOSPC) errno = EAGAIN;
+ 	return r;
+ }
+@@ -28,7 +28,7 @@ int __ptsname_r(int fd, char *buf, size_t len)
+ 	int pty, err;
+ 	if (!buf) len = 0;
+ 	if ((err = __syscall(SYS_ioctl, fd, TIOCGPTN, &pty))) return -err;
+-	if (snprintf(buf, len, "/dev/pts/%d", pty) >= len) return ERANGE;
++	if (snprintf(buf, len, "/System/Devices/pts/%d", pty) >= len) return ERANGE;
+ 	return 0;
+ }
+ 
+diff --git a/src/misc/syslog.c b/src/misc/syslog.c
+index 710202f9..0775075a 100644
+--- a/src/misc/syslog.c
++++ b/src/misc/syslog.c
+@@ -35,7 +35,7 @@ static const struct {
+ 	char sun_path[9];
+ } log_addr = {
+ 	AF_UNIX,
+-	"/dev/log"
++	"/System/Devices/log"
+ };
+ 
+ void closelog(void)
+@@ -115,7 +115,7 @@ static void _vsyslog(int priority, const char *message, va_list ap)
+ 		    || connect(log_fd, (void *)&log_addr, sizeof log_addr) < 0
+ 		    || send(log_fd, buf, l, 0) < 0)
+ 		    && (log_opt & LOG_CONS)) {
+-			fd = open("/dev/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
++			fd = open("/System/Devices/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
+ 			if (fd >= 0) {
+ 				dprintf(fd, "%.*s", l-hlen, buf+hlen);
+ 				close(fd);
+diff --git a/src/misc/wordexp.c b/src/misc/wordexp.c
+index db83a69f..be1fc899 100644
+--- a/src/misc/wordexp.c
++++ b/src/misc/wordexp.c
+@@ -108,7 +108,7 @@ static int do_wordexp(const char *s, wordexp_t *we, int flags)
+ 	if (!pid) {
+ 		if (p[1] == 1) fcntl(1, F_SETFD, 0);
+ 		else dup2(p[1], 1);
+-		execl("/bin/sh", "sh", "-c",
++		execl("/System/Tools/sh", "sh", "-c",
+ 			"eval \"printf %s\\\\\\\\0 x $1 $2\"",
+ 			"sh", s, redir, (char *)0);
+ 		_exit(1);
+diff --git a/src/mman/shm_open.c b/src/mman/shm_open.c
+index 79784bd3..21108dc4 100644
+--- a/src/mman/shm_open.c
++++ b/src/mman/shm_open.c
+@@ -19,7 +19,7 @@ char *__shm_mapname(const char *name, char *buf)
+ 		errno = ENAMETOOLONG;
+ 		return 0;
+ 	}
+-	memcpy(buf, "/dev/shm/", 9);
++	memcpy(buf, "/System/Temporary Files/shm/", sizeof "/System/Temporary Files/shm/" - 1);
+ 	memcpy(buf+9, name, p-name+1);
+ 	return buf;
+ }
+diff --git a/src/network/getnameinfo.c b/src/network/getnameinfo.c
+index 133c15b3..6e2f35d6 100644
+--- a/src/network/getnameinfo.c
++++ b/src/network/getnameinfo.c
+@@ -47,7 +47,7 @@ static void reverse_hosts(char *buf, const unsigned char *a, unsigned scopeid, i
+ 	char line[512], *p, *z;
+ 	unsigned char _buf[1032], atmp[16];
+ 	struct address iplit;
+-	FILE _f, *f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
+ 	if (!f) return;
+ 	if (family == AF_INET) {
+ 		memcpy(atmp+12, a, 4);
+@@ -88,7 +88,7 @@ static void reverse_services(char *buf, int port, int dgram)
+ 	unsigned long svport;
+ 	char line[128], *p, *z;
+ 	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/etc/services", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("/System/Configuration/services", &_f, _buf, sizeof _buf);
+ 	if (!f) return;
+ 	while (fgets(line, sizeof line, f)) {
+ 		if ((p=strchr(line, '#'))) *p++='\n', *p=0;
+diff --git a/src/network/lookup_name.c b/src/network/lookup_name.c
+index 35218185..dbde7473 100644
+--- a/src/network/lookup_name.c
++++ b/src/network/lookup_name.c
+@@ -52,7 +52,7 @@ static int name_from_hosts(struct address buf[static MAXADDRS], char canon[stati
+ 	size_t l = strlen(name);
+ 	int cnt = 0, badfam = 0, have_canon = 0;
+ 	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff --git a/src/network/lookup_serv.c b/src/network/lookup_serv.c
+index ae382778..d2a70e6b 100644
+--- a/src/network/lookup_serv.c
++++ b/src/network/lookup_serv.c
+@@ -70,7 +70,7 @@ int __lookup_serv(struct service buf[static MAXSERVS], const char *name, int pro
+ 	size_t l = strlen(name);
+ 
+ 	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/etc/services", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("/System/Configuration/services", &_f, _buf, sizeof _buf);
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff --git a/src/network/resolvconf.c b/src/network/resolvconf.c
+index ceabf080..8b2aaf2d 100644
+--- a/src/network/resolvconf.c
++++ b/src/network/resolvconf.c
+@@ -18,7 +18,7 @@ int __get_resolv_conf(struct resolvconf *conf, char *search, size_t search_sz)
+ 	conf->attempts = 2;
+ 	if (search) *search = 0;
+ 
+-	f = __fopen_rb_ca("/etc/resolv.conf", &_f, _buf, sizeof _buf);
++	f = __fopen_rb_ca("/System/Configuration/resolv.conf", &_f, _buf, sizeof _buf);
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff --git a/src/passwd/getgr_a.c b/src/passwd/getgr_a.c
+index 84550404..bfd79f35 100644
+--- a/src/passwd/getgr_a.c
++++ b/src/passwd/getgr_a.c
+@@ -26,7 +26,7 @@ int __getgr_a(const char *name, gid_t gid, struct group *gr, char **buf, size_t
+ 	*res = 0;
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+-	f = fopen("/etc/group", "rbe");
++	f = fopen("/System/Configuration/group", "rbe");
+ 	if (!f) {
+ 		rv = errno;
+ 		goto done;
+diff --git a/src/passwd/getgrent.c b/src/passwd/getgrent.c
+index 835b9ab5..6e9f09e1 100644
+--- a/src/passwd/getgrent.c
++++ b/src/passwd/getgrent.c
+@@ -16,7 +16,7 @@ struct group *getgrent()
+ {
+ 	struct group *res;
+ 	size_t size=0, nmem=0;
+-	if (!f) f = fopen("/etc/group", "rbe");
++	if (!f) f = fopen("/System/Configuration/group", "rbe");
+ 	if (!f) return 0;
+ 	__getgrent_a(f, &gr, &line, &size, &mem, &nmem, &res);
+ 	return res;
+diff --git a/src/passwd/getgrouplist.c b/src/passwd/getgrouplist.c
+index 301824ce..dd125495 100644
+--- a/src/passwd/getgrouplist.c
++++ b/src/passwd/getgrouplist.c
+@@ -43,7 +43,7 @@ int getgrouplist(const char *user, gid_t gid, gid_t *groups, int *ngroups)
+ 	}
+ 	fclose(f);
+ 
+-	f = fopen("/etc/group", "rbe");
++	f = fopen("/System/Configuration/group", "rbe");
+ 	if (!f && errno != ENOENT && errno != ENOTDIR)
+ 		goto cleanup;
+ 
+diff --git a/src/passwd/getpw_a.c b/src/passwd/getpw_a.c
+index 15a70c03..c8ea4074 100644
+--- a/src/passwd/getpw_a.c
++++ b/src/passwd/getpw_a.c
+@@ -27,7 +27,7 @@ int __getpw_a(const char *name, uid_t uid, struct passwd *pw, char **buf, size_t
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+ 
+-	f = fopen("/etc/passwd", "rbe");
++	f = fopen("/System/Configuration/passwd", "rbe");
+ 	if (!f) {
+ 		rv = errno;
+ 		goto done;
+diff --git a/src/passwd/getpwent.c b/src/passwd/getpwent.c
+index f2bd516e..549b8aba 100644
+--- a/src/passwd/getpwent.c
++++ b/src/passwd/getpwent.c
+@@ -16,7 +16,7 @@ weak_alias(setpwent, endpwent);
+ struct passwd *getpwent()
+ {
+ 	struct passwd *res;
+-	if (!f) f = fopen("/etc/passwd", "rbe");
++	if (!f) f = fopen("/System/Configuration/passwd", "rbe");
+ 	if (!f) return 0;
+ 	__getpwent_a(f, &pw, &line, &size, &res);
+ 	return res;
+diff --git a/src/passwd/getspnam_r.c b/src/passwd/getspnam_r.c
+index 541e8531..38bf4e6b 100644
+--- a/src/passwd/getspnam_r.c
++++ b/src/passwd/getspnam_r.c
+@@ -80,7 +80,7 @@ int getspnam_r(const char *name, struct spwd *sp, char *buf, size_t size, struct
+ 		return errno = ERANGE;
+ 
+ 	/* Protect against truncation */
+-	if (snprintf(path, sizeof path, "/etc/tcb/%s/shadow", name) >= sizeof path)
++	if (snprintf(path, sizeof path, "/System/Configuration/tcb/%s/shadow", name) >= sizeof path)
+ 		return errno = EINVAL;
+ 
+ 	fd = open(path, O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+@@ -96,7 +96,7 @@ int getspnam_r(const char *name, struct spwd *sp, char *buf, size_t size, struct
+ 	} else {
+ 		if (errno != ENOENT && errno != ENOTDIR)
+ 			return errno;
+-		f = fopen("/etc/shadow", "rbe");
++		f = fopen("/System/Configuration/shadow", "rbe");
+ 		if (!f) {
+ 			if (errno != ENOENT && errno != ENOTDIR)
+ 				return errno;
+diff --git a/src/passwd/nscd_query.c b/src/passwd/nscd_query.c
+index dc3406b8..c57089c5 100644
+--- a/src/passwd/nscd_query.c
++++ b/src/passwd/nscd_query.c
+@@ -12,7 +12,7 @@ static const struct {
+ 	char sun_path[21];
+ } addr = {
+ 	AF_UNIX,
+-	"/var/run/nscd/socket"
++	"/System/Variable Data/nscd/socket"
+ };
+ 
+ FILE *__nscd_query(int32_t req, const char *key, int32_t *buf, size_t len, int *swap)
+@@ -42,7 +42,7 @@ retry:
+ 	fd = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+ 	if (fd < 0) {
+ 		if (errno == EAFNOSUPPORT) {
+-			f = fopen("/dev/null", "re");
++			f = fopen("/System/Devices/null", "re");
+ 			if (f)
+ 				errno = errno_save;
+ 			return f;
+diff --git a/src/process/execvp.c b/src/process/execvp.c
+index ef3b9dd5..f8e62e1e 100644
+--- a/src/process/execvp.c
++++ b/src/process/execvp.c
+@@ -18,7 +18,7 @@ int __execvpe(const char *file, char *const argv[], char *const envp[])
+ 	if (strchr(file, '/'))
+ 		return execve(file, argv, envp);
+ 
+-	if (!path) path = "/usr/local/bin:/bin:/usr/bin";
++	if (!path) path = "/System/Tools:/Applications";
+ 	k = strnlen(file, NAME_MAX+1);
+ 	if (k > NAME_MAX) {
+ 		errno = ENAMETOOLONG;
+diff --git a/src/process/system.c b/src/process/system.c
+index 5af59b80..2ca6a263 100644
+--- a/src/process/system.c
++++ b/src/process/system.c
+@@ -32,7 +32,7 @@ int system(const char *cmd)
+ 	posix_spawnattr_setsigmask(&attr, &old);
+ 	posix_spawnattr_setsigdefault(&attr, &reset);
+ 	posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF|POSIX_SPAWN_SETSIGMASK);
+-	ret = posix_spawn(&pid, "/bin/sh", 0, &attr,
++	ret = posix_spawn(&pid, "/System/Tools/sh", 0, &attr,
+ 		(char *[]){"sh", "-c", (char *)cmd, 0}, __environ);
+ 	posix_spawnattr_destroy(&attr);
+ 
+diff --git a/src/stdio/popen.c b/src/stdio/popen.c
+index 3ec83394..6148bb2f 100644
+--- a/src/stdio/popen.c
++++ b/src/stdio/popen.c
+@@ -38,7 +38,7 @@ FILE *popen(const char *cmd, const char *mode)
+ 			if (l->pipe_pid && posix_spawn_file_actions_addclose(&fa, l->fd))
+ 				goto fail;
+ 		if (!posix_spawn_file_actions_adddup2(&fa, p[1-op], 1-op)) {
+-			if (!(e = posix_spawn(&pid, "/bin/sh", &fa, 0,
++			if (!(e = posix_spawn(&pid, "/System/Tools/sh", &fa, 0,
+ 			    (char *[]){ "sh", "-c", (char *)cmd, 0 }, __environ))) {
+ 				posix_spawn_file_actions_destroy(&fa);
+ 				f->pipe_pid = pid;
+diff --git a/src/stdio/tmpfile.c b/src/stdio/tmpfile.c
+index 2fa8803f..f1d2712d 100644
+--- a/src/stdio/tmpfile.c
++++ b/src/stdio/tmpfile.c
+@@ -7,7 +7,7 @@
+ 
+ FILE *tmpfile(void)
+ {
+-	char s[] = "/tmp/tmpfile_XXXXXX";
++	char s[] = "/System/Temporary Files/tmpfile_XXXXXX";
+ 	int fd;
+ 	FILE *f;
+ 	int try;
+diff --git a/src/stdio/tmpnam.c b/src/stdio/tmpnam.c
+index 71dc8bb1..64c457d5 100644
+--- a/src/stdio/tmpnam.c
++++ b/src/stdio/tmpnam.c
+@@ -11,7 +11,7 @@
+ char *tmpnam(char *buf)
+ {
+ 	static char internal[L_tmpnam];
+-	char s[] = "/tmp/tmpnam_XXXXXX";
++	char s[] = "/System/Temporary Files/tmpnam_XXXXXX";
+ 	int try;
+ 	int r;
+ 	for (try=0; try<MAXTRIES; try++) {
+diff --git a/src/thread/pthread_getname_np.c b/src/thread/pthread_getname_np.c
+index 85504e45..a44f3fdb 100644
+--- a/src/thread/pthread_getname_np.c
++++ b/src/thread/pthread_getname_np.c
+@@ -8,14 +8,14 @@
+ int pthread_getname_np(pthread_t thread, char *name, size_t len)
+ {
+ 	int fd, cs, status = 0;
+-	char f[sizeof "/proc/self/task//comm" + 3*sizeof(int)];
++	char f[sizeof "/System/Processes/self/task//comm" + 3*sizeof(int)];
+ 
+ 	if (len < 16) return ERANGE;
+ 
+ 	if (thread == pthread_self())
+ 		return prctl(PR_GET_NAME, (unsigned long)name, 0UL, 0UL, 0UL) ? errno : 0;
+ 
+-	snprintf(f, sizeof f, "/proc/self/task/%d/comm", thread->tid);
++	snprintf(f, sizeof f, "/System/Processes/self/task/%d/comm", thread->tid);
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+ 	if ((fd = open(f, O_RDONLY|O_CLOEXEC)) < 0 || (len = read(fd, name, len)) == -1) status = errno;
+ 	else name[len-1] = 0; /* remove trailing new line only if successful */
+diff --git a/src/thread/pthread_setname_np.c b/src/thread/pthread_setname_np.c
+index fc2d2306..53eddfda 100644
+--- a/src/thread/pthread_setname_np.c
++++ b/src/thread/pthread_setname_np.c
+@@ -9,7 +9,7 @@
+ int pthread_setname_np(pthread_t thread, const char *name)
+ {
+ 	int fd, cs, status = 0;
+-	char f[sizeof "/proc/self/task//comm" + 3*sizeof(int)];
++	char f[sizeof "/System/Processes/self/task//comm" + 3*sizeof(int)];
+ 	size_t len;
+ 
+ 	if ((len = strnlen(name, 16)) > 15) return ERANGE;
+@@ -17,7 +17,7 @@ int pthread_setname_np(pthread_t thread, const char *name)
+ 	if (thread == pthread_self())
+ 		return prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL) ? errno : 0;
+ 
+-	snprintf(f, sizeof f, "/proc/self/task/%d/comm", thread->tid);
++	snprintf(f, sizeof f, "/System/Processes/self/task/%d/comm", thread->tid);
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+ 	if ((fd = open(f, O_WRONLY|O_CLOEXEC)) < 0 || write(fd, name, len) < 0) status = errno;
+ 	if (fd >= 0) close(fd);
+diff --git a/src/thread/sem_open.c b/src/thread/sem_open.c
+index 0ad29de9..71100538 100644
+--- a/src/thread/sem_open.c
++++ b/src/thread/sem_open.c
+@@ -115,7 +115,7 @@ sem_t *sem_open(const char *name, int flags, ...)
+ 		/* Create a temp file with the new semaphore contents
+ 		 * and attempt to atomically link it as the new name */
+ 		clock_gettime(CLOCK_REALTIME, &ts);
+-		snprintf(tmp, sizeof(tmp), "/dev/shm/tmp-%d", (int)ts.tv_nsec);
++		snprintf(tmp, sizeof(tmp), "/System/Temporary Files/shm/tmp-%d", (int)ts.tv_nsec);
+ 		fd = open(tmp, O_CREAT|O_EXCL|FLAGS, mode);
+ 		if (fd < 0) {
+ 			if (errno == EEXIST) continue;
+diff --git a/src/time/__tz.c b/src/time/__tz.c
+index cfce268e..32c0fdc4 100644
+--- a/src/time/__tz.c
++++ b/src/time/__tz.c
+@@ -129,10 +129,10 @@ static void do_tzset()
+ 	const unsigned char *map = 0;
+ 	size_t i;
+ 	static const char search[] =
+-		"/usr/share/zoneinfo/\0/share/zoneinfo/\0/etc/zoneinfo/\0";
++		"/System/Shared/zoneinfo/\0";
+ 
+ 	s = getenv("TZ");
+-	if (!s) s = "/etc/localtime";
++	if (!s) s = "/System/Configuration/localtime";
+ 	if (!*s) s = __utc;
+ 
+ 	if (old_tz && !strcmp(s, old_tz)) return;
+@@ -171,7 +171,7 @@ static void do_tzset()
+ 	if (!posix_form) {
+ 		if (*s == ':') s++;
+ 		if (*s == '/' || *s == '.') {
+-			if (!libc.secure || !strcmp(s, "/etc/localtime"))
++			if (!libc.secure || !strcmp(s, "/System/Configuration/localtime"))
+ 				map = __map_file(s, &map_size);
+ 		} else {
+ 			size_t l = strlen(s);
+diff --git a/src/unistd/ctermid.c b/src/unistd/ctermid.c
+index 1612770a..0007a2e3 100644
+--- a/src/unistd/ctermid.c
++++ b/src/unistd/ctermid.c
+@@ -3,5 +3,5 @@
+ 
+ char *ctermid(char *s)
+ {
+-	return s ? strcpy(s, "/dev/tty") : "/dev/tty";
++	return s ? strcpy(s, "/System/Devices/tty") : "/System/Devices/tty";
+ }
+diff --git a/src/unistd/ttyname_r.c b/src/unistd/ttyname_r.c
+index 82acb75e..d81a7c80 100644
+--- a/src/unistd/ttyname_r.c
++++ b/src/unistd/ttyname_r.c
+@@ -6,7 +6,7 @@
+ int ttyname_r(int fd, char *name, size_t size)
+ {
+ 	struct stat st1, st2;
+-	char procname[sizeof "/proc/self/fd/" + 3*sizeof(int) + 2];
++	char procname[sizeof "/System/Processes/self/fd/" + 3*sizeof(int) + 2];
+ 	ssize_t l;
+ 
+ 	if (!isatty(fd)) return errno;

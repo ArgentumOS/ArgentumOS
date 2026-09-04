@@ -148,9 +148,10 @@ TOYBOX64_BIN  = third_party/toybox/toybox64
 .PHONY: userland64 musl64 dash64 toybox64 llvm-cxx
 
 musl64: $(MUSL64_SPECS)
-$(MUSL64_SPECS):
+$(MUSL64_SPECS): third_party/musl-fsh.patch
 	cd third_party/musl && \
 		make clean >/dev/null 2>&1 || true && \
+		git apply $(CURDIR)/third_party/musl-fsh.patch && \
 		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
 		$(MAKE) && $(MAKE) install
@@ -192,7 +193,7 @@ dash64: $(DASH64_BIN)
 $(DASH64_BIN): $(MUSL64_SPECS)
 	cd third_party/dash && ./autogen.sh && \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
-		$(MAKE) && strip src/dash && cp src/dash $(DASH64_BIN)
+		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_BIN)
 
 toybox64: $(TOYBOX64_BIN)
 $(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh
@@ -231,65 +232,108 @@ xfb64:
 	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
 
+
+# ---------------------------------------------------------------------------
+# userland64: stage the native x86_64 root in the FNX hierarchy
+# (docs/fsh-proposal.md). The root contains exactly the five top-level
+# entries: Applications/, Shared/, System/, Users/, Volumes/. Tools live in
+# System/Tools, machine config in System/Configuration, device nodes come
+# from devfs at /System/Devices (boot-time kernel mount), and the
+# virtual-fs mount points (/System/Processes, devpts under Devices) exist
+# as directories.
+# ---------------------------------------------------------------------------
+# toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
+# stage into a scratch root and merge every applet dir into System/Tools.
+TOYBOX64_STAGE = .build/toybox-root
 userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN)
-	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
-	# X server (Xfb) + its runtime helper/data locations on the FNX root
-	cp $(XFB_BIN) $(ROOTFS64)/bin/Xfb
-	cp .build/x11-prefix/bin/xkbcomp $(ROOTFS64)/bin/xkbcomp
-	@mkdir -p $(ROOTFS64)/usr/share/X11/xkb/compiled
-	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
-	$(MUSL64_CC) userland/init.c -o $(ROOTFS64)/sbin/init
-	$(MUSL64_CXX) userland/cpp_smoke.cpp -o $(ROOTFS64)/bin/cpp_smoke
-	$(MUSL64_CC) userland/acl.c -o $(ROOTFS64)/bin/acl
-	$(MUSL64_CC) -Iinclude userland/config.c userland/libconfig.c -o $(ROOTFS64)/bin/config
-	$(MUSL64_CC) -Iinclude userland/compositor.c -o $(ROOTFS64)/bin/compositor
-	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o $(ROOTFS64)/bin/gui_smoke
-	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o $(ROOTFS64)/bin/gui_demo
-	$(MUSL64_CC) $(LVGL64_CFLAGS) -Iuserland userland/lv_demo.c userland/lvapp.c userland/libgui.c $(LVGL64) -o $(ROOTFS64)/bin/lv_demo
-	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o $(ROOTFS64)/bin/shm_leak_test
-	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o $(ROOTFS64)/bin/shm_resize_test
-	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o $(ROOTFS64)/bin/shm_cap_test
-	# config's three scope directories (docs/config-design.md; the FSH
-	# spells them /System, /Shared, Users/$USER). The guest has one
-	# user (root).
-	@mkdir -p $(ROOTFS64)/System/Configuration $(ROOTFS64)/Shared/Configuration \
-		$(ROOTFS64)/Users/root/Configuration
-	@cp userland/configuration/system.config.xfb.conf $(ROOTFS64)/System/Configuration/system.config.xfb.conf
-	$(MUSL64_CC) userland/pty_test.c -o $(ROOTFS64)/bin/pty_test
-	$(MUSL64_CC) userland/bfsquery.c -o $(ROOTFS64)/bin/bfsquery
-	$(MUSL64_CC) userland/bfsqtest.c -o $(ROOTFS64)/bin/bfsqtest
-	$(MUSL64_CC) userland/tone.c -o $(ROOTFS64)/bin/tone -lm
-	$(MUSL64_CC) userland/fbdump.c -o $(ROOTFS64)/bin/fbdump
-	cp $(DASH64_BIN) $(ROOTFS64)/bin/sh
-	cp userland/test_toybox.sh $(ROOTFS64)/test_toybox.sh
-	# DHCP event script for toybox's dhcp client (default location)
-	@mkdir -p $(ROOTFS64)/usr/share/dhcp
-	@cp userland/dhcp_script.sh $(ROOTFS64)/usr/share/dhcp/default.script
-	@chmod +x $(ROOTFS64)/usr/share/dhcp/default.script
-	# device nodes: mkext2.py converts each placeholder file under dev/ into
-	# a char device inode using the DEVICES table (see tools/mkinitrd.py).
-	@touch $(ROOTFS64)/dev/console $(ROOTFS64)/dev/ttyS0 $(ROOTFS64)/dev/null $(ROOTFS64)/dev/zero \
-		$(ROOTFS64)/dev/full $(ROOTFS64)/dev/random $(ROOTFS64)/dev/urandom \
-		$(ROOTFS64)/dev/mem $(ROOTFS64)/dev/kmem $(ROOTFS64)/dev/port \
-		$(ROOTFS64)/dev/tty $(ROOTFS64)/dev/tty0 $(ROOTFS64)/dev/ptmx \
-		$(ROOTFS64)/dev/sda $(ROOTFS64)/dev/psaux $(ROOTFS64)/dev/nvme0n1 \
-		$(ROOTFS64)/dev/ttyS1
-	# mount points for the virtual filesystems init mounts (procfs, devpts)
-	@mkdir -p $(ROOTFS64)/proc $(ROOTFS64)/tmp $(ROOTFS64)/dev/pts $(ROOTFS64)/mnt
-	# /etc: passwd/group so id, ls -l and chown-by-name work
-	@mkdir -p $(ROOTFS64)/etc
-	@printf 'root:x:0:0:root:/root:/bin/sh\n' > $(ROOTFS64)/etc/passwd
-	@printf 'root:x:0:\n' > $(ROOTFS64)/etc/group
-	# /etc/hosts: (none) is UTS_NODENAME; resolving it locally keeps
-	# gethostbyname/dnsdomainname out of the DNS resolver (which has a
-	# backgrounded-socket deadlock under load)
-	@printf '127.0.0.1 localhost\n127.0.0.1 (none)\n' > $(ROOTFS64)/etc/hosts
+	rm -rf $(ROOTFS64)
+	@mkdir -p $(ROOTFS64)
+	# --- the FSH skeleton (spaced names verbatim, Q7) ---
+	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
+	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
+		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
+		"$(ROOTFS64)/Shared/Sounds" "$(ROOTFS64)/Shared/Videos" \
+		"$(ROOTFS64)/Shared/Documentation"
+	@mkdir -p "$(ROOTFS64)/System/Tools" "$(ROOTFS64)/System/Libraries" \
+		"$(ROOTFS64)/System/Configuration" "$(ROOTFS64)/System/Devices" \
+		"$(ROOTFS64)/System/Devices/pts" "$(ROOTFS64)/System/Processes" \
+		"$(ROOTFS64)/System/ESP" "$(ROOTFS64)/System/Documentation/HTML/FNX" \
+		"$(ROOTFS64)/System/Documentation/PDF/FNX" \
+		"$(ROOTFS64)/System/Source Code" "$(ROOTFS64)/System/Shared/Fonts" \
+		"$(ROOTFS64)/System/Shared/Images/Icons" \
+		"$(ROOTFS64)/System/Shared/Images/Wallpaper" \
+		"$(ROOTFS64)/System/Shared/Sounds" "$(ROOTFS64)/System/Shared/Videos" \
+		"$(ROOTFS64)/System/Shared/X11/xkb" \
+		"$(ROOTFS64)/System/Temporary Files" \
+		"$(ROOTFS64)/System/Variable Data/X11/xkb/compiled" \
+		"$(ROOTFS64)/System/User Template/Configuration" \
+		"$(ROOTFS64)/System/User Template/Applications" \
+		"$(ROOTFS64)/System/User Template/Documents" \
+		"$(ROOTFS64)/System/User Template/Desktop" \
+		"$(ROOTFS64)/System/User Template/Music" \
+		"$(ROOTFS64)/System/User Template/Pictures" \
+		"$(ROOTFS64)/System/User Template/Videos" \
+		"$(ROOTFS64)/System/User Template/Shared/Libraries" \
+		"$(ROOTFS64)/System/User Template/Shared/Fonts" \
+		"$(ROOTFS64)/System/User Template/Shared/Images" \
+		"$(ROOTFS64)/System/User Template/Shared/Sounds" \
+		"$(ROOTFS64)/System/User Template/Shared/Videos" \
+		"$(ROOTFS64)/System/User Template/Shared/Documentation" \
+		"$(ROOTFS64)/System/User Template/Temporary Files" \
+		"$(ROOTFS64)/System/User Template/Variable Data"
+	# --- tools (executables) ---
+	rm -rf $(TOYBOX64_STAGE)
+	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(TOYBOX64_STAGE)"
+	@for d in bin sbin usr/bin usr/sbin; do \
+		if [ -d "$(TOYBOX64_STAGE)/$$d" ]; then \
+			cp -a $(TOYBOX64_STAGE)/$$d/. "$(ROOTFS64)/System/Tools/"; \
+		fi; \
+	done
+	# toybox install links applets with PREFIX-relative targets that break
+	# once bin/sbin/usr/bin are flattened into one Tools dir: point every
+	# symlink at the toybox binary sitting next to it.
+	@cd "$(ROOTFS64)/System/Tools" && for l in *; do \
+		if [ -L "$$l" ]; then ln -sfn toybox "$$l"; fi; \
+	done
+	$(MUSL64_CC) userland/init.c -o "$(ROOTFS64)/System/Tools/init"
+	$(MUSL64_CXX) userland/cpp_smoke.cpp -o "$(ROOTFS64)/System/Tools/cpp_smoke"
+	$(MUSL64_CC) userland/acl.c -o "$(ROOTFS64)/System/Tools/acl"
+	$(MUSL64_CC) -Iinclude userland/config.c userland/libconfig.c -o "$(ROOTFS64)/System/Tools/config"
+	$(MUSL64_CC) -Iinclude userland/compositor.c -o "$(ROOTFS64)/System/Tools/compositor"
+	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/gui_smoke"
+	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/gui_demo"
+	$(MUSL64_CC) $(LVGL64_CFLAGS) -Iuserland userland/lv_demo.c userland/lvapp.c userland/libgui.c $(LVGL64) -o "$(ROOTFS64)/System/Tools/lv_demo"
+	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o "$(ROOTFS64)/System/Tools/shm_leak_test"
+	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/shm_resize_test"
+	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
+	$(MUSL64_CC) userland/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
+	$(MUSL64_CC) userland/bfsquery.c -o "$(ROOTFS64)/System/Tools/bfsquery"
+	$(MUSL64_CC) userland/bfsqtest.c -o "$(ROOTFS64)/System/Tools/bfsqtest"
+	$(MUSL64_CC) userland/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm
+	$(MUSL64_CC) userland/fbdump.c -o "$(ROOTFS64)/System/Tools/fbdump"
+	cp $(DASH64_BIN) "$(ROOTFS64)/System/Tools/sh"
+	cp $(XFB_BIN) "$(ROOTFS64)/System/Tools/Xfb"
+	cp .build/x11-prefix/bin/xkbcomp "$(ROOTFS64)/System/Tools/xkbcomp"
+	@cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh" 2>/dev/null || \
+		{ mkdir -p "$(ROOTFS64)/System/Shared/tests" && \
+		  cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
+	@chmod +x "$(ROOTFS64)/System/Tools/sh" "$(ROOTFS64)/System/Tools/init"
+	# --- machine configuration (System/Configuration; Q9 accounts) ---
+	@printf 'Admin:x:0:0:Admin:/Users/Admin:/System/Tools/sh\n' > "$(ROOTFS64)/System/Configuration/passwd"
+	@printf 'Admin:x:0:\n' > "$(ROOTFS64)/System/Configuration/group"
+	@printf '127.0.0.1 localhost\n127.0.0.1 (none)\n' > "$(ROOTFS64)/System/Configuration/hosts"
+	@printf '/System/Tools/sh\n' > "$(ROOTFS64)/System/Configuration/shells"
+	@cp userland/configuration/system.config.xfb.conf "$(ROOTFS64)/System/Configuration/system.config.xfb.conf"
+	# --- the Admin home: the User Template, copied (Q9) ---
+	rm -rf "$(ROOTFS64)/Users"
+	@mkdir -p "$(ROOTFS64)/Users"
+	cp -a "$(ROOTFS64)/System/User Template" "$(ROOTFS64)/Users/Admin"
 	@echo "userland64: native x86_64 rootfs staged in $(ROOTFS64)"
 
 # Build the native x86_64 ext2 root filesystem image (.build/root.img) from
-# the ELF64 userland tree, so the kernel can boot /sbin/init straight off
-# hdb (no initrd). Attached as a second IDE disk (hdb), it becomes the boot
-# root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.
+# the ELF64 userland tree, so the kernel can boot /System/Tools/init straight
+# off hdb (no initrd). Attached as a second IDE disk (hdb), it becomes the
+# boot root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.
 rootdisk64: userland64
 	python3 tools/mkext2.py $(ROOTFS64) .build/root.img 8
 	@echo "rootdisk64: .build/root.img ready (ext2, 8MB, native x86_64 userland)"
