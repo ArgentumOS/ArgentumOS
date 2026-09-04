@@ -394,6 +394,21 @@ int bfs_log_commit(struct superblock *sb)
 		sb->u.bfs.log_flushing = 1;
 		sync_buffers(sb->dev);
 		sb->u.bfs.log_flushing = 0;
+		/* CRASH-ATOMICITY: publish the empty log positions (0,0) on
+		 * disk BEFORE zeroing the extent. If the guest is killed
+		 * between the two, the stale on-disk log_end would make the
+		 * next mount's replay walk the just-zeroed blocks as
+		 * run_arrays and restore garbage over real blocks (observed
+		 * as intermittent on-disk corruption, e.g. /tmp's inode
+		 * clobbered by another file's inode). With the superblock
+		 * written first, a kill anywhere after this point leaves an
+		 * empty log on disk (no replay), and a kill before it
+		 * leaves the untouched old entries, which re-replay
+		 * idempotently (the sync above already applied them). */
+		sb->u.bfs.log_start = 0;
+		sb->u.bfs.log_end = 0;
+		bfs_log_write_super(sb);
+			/* positions 0 are on disk before the log is cleared */
 		for(i = 0; i < sb->u.bfs.log_blocks.len; i++) {
 			if((buf = bread(sb->dev,
 					bfs_log_run_abs(sb, &sb->u.bfs.log_blocks) + i,
@@ -402,10 +417,6 @@ int bfs_log_commit(struct superblock *sb)
 				bwrite(buf);
 			}
 		}
-		sb->u.bfs.log_start = 0;
-		sb->u.bfs.log_end = 0;
-		bfs_log_write_super(sb);
-			/* positions 0 are on disk before the new entry */
 	}
 
 	entry_pos = sb->u.bfs.log_end;

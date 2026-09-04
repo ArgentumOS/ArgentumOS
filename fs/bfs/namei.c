@@ -295,7 +295,9 @@ int bfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 	bfs_index_add(dir->sb, i, name);
 
 	bfs_dir_touch(dir, old_dir_size);
-	dir->i_nlink++;
+	/* directory nlink does not count subdirectories (no on-disk link
+	 * count field; read_inode reconstructs nlink per-inode), so a
+	 * subdir's later removal can never free its parent */
 	dir->state |= INODE_DIRTY;
 
 	iput(i);
@@ -398,8 +400,12 @@ int bfs_rmdir(struct inode *dir, struct inode *i)
 		}
 	}
 	i->i_nlink = 0;
-	dir->i_nlink--;
-
+	/* do NOT decrement the parent: a directory read back from disk has
+	 * nlink 2 (see bfs_read_inode) regardless of its subdirectories, so
+	 * removing a subdir must not be able to drive the parent to 0 and
+	 * free it (that was freeing /tmp whenever a replayed /tmp/.X11-unix
+	 * was rmdir'd - the parent's inode block then got recycled for the
+	 * next file, corrupting the tree) */
 	bfs_touch_ctime(i);
 	bfs_dir_touch(dir, old_dir_size);
 

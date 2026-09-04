@@ -161,7 +161,12 @@ int bfs_read_inode(struct inode *i)
 	i->i_atime = raw->last_modified_time >> 16;
 	i->i_ctime = raw->status_change_time >> 16;
 	i->i_mtime = raw->last_modified_time >> 16;
-	i->i_nlink = 1;
+	/* nlink is per-inode, never a subdir count of the parent: BFS has
+	 * no on-disk link field, so a dir read back from disk must carry a
+	 * stable base count (2 = '.' + '..') that its own mkdir/rmdir
+	 * history cannot drive to 0 - otherwise removing a subdirectory of
+	 * a just-mounted/replayed directory frees the directory inode */
+	i->i_nlink = S_ISDIR(raw->mode) ? 2 : 1;
 	/* gate for bfs_ifree()'s truncate-on-unlink: a file/dir/stream-
 	 * symlink with a nonzero size has allocated stream blocks and must
 	 * be truncated when unlinked (i_blocks == 0 would leak them); an
