@@ -1025,7 +1025,8 @@ vfbScreenInit(ScreenPtr pScreen, int argc, char **argv)
     pScreen->InstallColormap = vfbInstallColormap;
     pScreen->StoreColors = vfbStoreColors;
 
-    miDCInitialize(pScreen, &vfbPointerCursorFuncs);
+    if (!miDCInitialize(pScreen, &vfbPointerCursorFuncs))
+        ErrorF("Xfb: miDCInitialize FAILED (no cursor sprite)\n");
 
     vfbWriteXWDFileHeader(pScreen);
 

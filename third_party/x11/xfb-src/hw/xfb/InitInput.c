@@ -57,6 +57,10 @@ DDXRingBell(int volume, int pitch, int duration)
 #define VFB_MIN_KEY 8
 #define VFB_MAX_KEY 255
 
+/* FNX real-input backend (hw/xfb/fnxinput.c): opens /dev/psaux + /dev/kbd
+ * and feeds mieq. */
+extern void vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd);
+
 static int
 vfbKeybdProc(DeviceIntPtr pDevice, int onoff)
 {
@@ -137,6 +141,7 @@ InitInput(int argc, char *argv[])
     xiclass = MakeAtom(XI_KEYBOARD, sizeof(XI_KEYBOARD) - 1, TRUE);
     AssignTypeAndName(k, xiclass, "Xfb keyboard");
     (void) mieqInit();
+    vfbFnxInputInit(p, k);
 }
 
 void

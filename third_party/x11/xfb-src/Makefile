@@ -116,8 +116,8 @@ $(BUILD)/libxserver_xkb_stubs.a: $(BUILD)/xserver_xkb_stubs__xkb_ddxKillSrv.c.o 
 	ar rcs $@ $(BUILD)/xserver_xkb_stubs__xkb_ddxKillSrv.c.o $(BUILD)/xserver_xkb_stubs__xkb_ddxPrivate.c.o $(BUILD)/xserver_xkb_stubs__xkb_ddxVT.c.o
 $(BUILD)/libxserver_xi_stubs.a: $(BUILD)/xserver_xi_stubs__Xi_stubs.c.o
 	ar rcs $@ $(BUILD)/xserver_xi_stubs__Xi_stubs.c.o
-$(BUILD)/libxfb.a: $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__mi_miinitext.c.o
-	ar rcs $@ $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__mi_miinitext.c.o
+$(BUILD)/libxfb.a: $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__hw_xfb_fnxinput.c.o $(BUILD)/xfb__mi_miinitext.c.o
+	ar rcs $@ $(BUILD)/xfb__hw_xfb_InitInput.c.o $(BUILD)/xfb__hw_xfb_InitOutput.c.o $(BUILD)/xfb__hw_xfb_fnxinput.c.o $(BUILD)/xfb__mi_miinitext.c.o
 $(BUILD)/xserver_main__dix_stubmain.c.o: dix/stubmain.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
@@ -911,6 +911,9 @@ $(BUILD)/xfb__hw_xfb_InitInput.c.o: hw/xfb/InitInput.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 $(BUILD)/xfb__hw_xfb_InitOutput.c.o: hw/xfb/InitOutput.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+$(BUILD)/xfb__hw_xfb_fnxinput.c.o: hw/xfb/fnxinput.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 $(BUILD)/xfb__mi_miinitext.c.o: mi/miinitext.c
