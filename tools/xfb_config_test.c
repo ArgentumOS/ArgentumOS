@@ -1,5 +1,5 @@
 /* xfb_config_test.c — host test for Xfb's config-argv synthesis
- * (third_party/x11/xfb-src/hw/xfb/configargs.c, domain com.fnx.xfb).
+ * (userland/xfb/hw/xfb/configargs.c, domain com.fnx.xfb).
  *
  * Run with $FNX_CONFIG_ROOT pointing at a scratch tree:
  *   cc -D_DEFAULT_SOURCE -Iinclude hw/xfb/configargs.c userland/libconfig.c \

@@ -193,7 +193,7 @@ then the ~53-option core chain, then the positional `:N` display. Xfb (the
 FNX fork) therefore needs **no parser surgery**:
 
 1. Link FNX libconfig into the server (compile `userland/libconfig.c` +
-   `include/libconfig.h` into `xfb-src`, exactly like the `config` CLI
+   `include/libconfig.h` into `userland/xfb`, exactly like the `config` CLI
    build pattern).
 2. Before `ProcessCommandLine` runs, read the `com.fnx.xfb` domain and
    build a **config-derived argv prefix**: each set key becomes its
@@ -276,7 +276,8 @@ token** `r`), `-retro`, `-terminate` (optional numeric delay), `-tst`,
 
 ### Build and integration
 
-- `xfb-src` is the FNX fork (diverges from pristine `xvfb-src`); add
+- `userland/xfb` is the FNX-native fork (diverges from pristine
+  `third_party/x11/xvfb-src`, see its README for the delta); add
   `userland/libconfig.c` to its Makefile and `-I<repo>/include` for
   `libconfig.h` — the same two-file link the `config` CLI uses.
 - The config read runs once at startup, before `ProcessCommandLine`;

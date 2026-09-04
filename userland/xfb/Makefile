@@ -1,12 +1,13 @@
-# Standalone Xfb build (no meson/ninja/autotools).
-# Sources extracted from xserver 21.1.24 into this tree by
-# ../../../tools/x11-extract-xfb.py (layout preserved, so relative
-# #include "..." works). Generated config headers (dix-config.h, xkb-config.h,
-# xorg-config.h, version-config.h, xorg-server.h) live in include/.
+# Xfb build (plain make, no meson/ninja/autotools) - FNX userland.
+# Sources forked from xserver 21.1.24 (pristine baseline:
+# third_party/x11/xvfb-src) into this tree by ../../tools/x11-extract-xfb.py
+# (layout preserved, so relative #include "..." works). Generated config
+# headers (dix-config.h, xkb-config.h, xorg-config.h, version-config.h,
+# xorg-server.h) live in include/.
 # Third-party libs come from the static-musl prefix set via X11PREFIX.
 
 CC        ?= gcc
-X11PREFIX ?= $(CURDIR)/../../../.build/x11-prefix
+X11PREFIX ?= $(CURDIR)/../../.build/x11-prefix
 OUT       ?= $(CURDIR)/build
 BUILD     := $(OUT)/obj
 CFLAGS    ?= -std=gnu99 -O2 -g -fno-strict-aliasing -pthread
@@ -36,8 +37,8 @@ INC += -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
 # FNX libconfig (com.fnx.xfb): repo include dir + the userland source.
 # Only configargs.c and libconfig.c need these; they are applied on the
 # per-file rules below, not to the whole build.
-FNXINC  ?= $(CURDIR)/../../../include
-FNXCONF ?= $(CURDIR)/../../../userland/libconfig.c
+FNXINC  ?= $(CURDIR)/../../include
+FNXCONF ?= $(CURDIR)/../../userland/libconfig.c
 DEFS  = -DHAVE_DIX_CONFIG_H -D_FILE_OFFSET_BITS=64 -D_DEFAULT_SOURCE
 DEFS += -D_BSD_SOURCE -DHAS_FCHOWN -DHAS_STICKY_DIR_BIT
 CPPFLAGS = $(DEFS) $(INC)

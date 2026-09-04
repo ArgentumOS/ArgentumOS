@@ -228,8 +228,9 @@ xvfb64:
 	$(MAKE) -C $(XVFB_SRC) OUT="$(CURDIR)/$(XVFB_OUT)" \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
 
-# --- Xfb: FNX fork of Xvfb (see third_party/x11/xfb-src/README.md)
-XFB_SRC = third_party/x11/xfb-src
+# --- Xfb: FNX's native X server (fork of Xvfb; pristine upstream in
+# third_party/x11/xvfb-src, see userland/xfb/README.md)
+XFB_SRC = userland/xfb
 XFB_OUT = .build/x11/xfb
 XFB_BIN = $(XFB_OUT)/Xfb
 
