@@ -631,6 +631,11 @@ int unix_write(struct socket *s, struct fd *f, const char *buffer, __size_t coun
 				return -EINTR;
 			}
 		} else {
+			/* nonblocking: report the partial bytes actually copied
+			 * (POSIX); only EAGAIN when nothing fit */
+			if(bytes_written) {
+				return bytes_written;
+			}
 			return -EAGAIN;
 		}
 	}
