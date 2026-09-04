@@ -897,7 +897,6 @@ vfbTryFbdev(vfbScreenInfoPtr pvfb)
     int fd, w, h;
     char *map;
     size_t len;
-    void vfbFbdevSet(int w, int h, char *map);
 
     if ((fd = open("/dev/fb0", O_RDWR)) < 0)
         return;                 /* no real fb: keep the in-memory screen */
@@ -930,45 +929,8 @@ vfbTryFbdev(vfbScreenInfoPtr pvfb)
     pvfb->pfbMemory = map;
     pvfb->pXWDHeader = NULL;
     pvfb->use_fbdev = TRUE;
-    vfbFbdevSet(w, h, map);
 }
 
-/* ---- FNX direct-fb cursor (M3) ----------------------------------------
- *
- * The X cursor machinery (miSprite/miDC) never surfaces a sprite on this
- * server (upstream Xvfb is cursorless too), so the pointer cursor is drawn
- * straight into the /dev/fb0 mapping by the DDX input backend (fnxinput.c),
- * outside the X cursor stack: fnxinput tracks the absolute pointer position
- * from the same PS/2 stream it feeds mieq, so this overlay always follows
- * X's pointer. Empty when there is no real framebuffer (host/fallback). */
-
-static char *vfbFb0Map = NULL;
-static int vfbFb0W = 0;
-static int vfbFb0H = 0;
-
-void
-vfbFbdevSet(int w, int h, char *map)
-{
-    vfbFb0Map = map;
-    vfbFb0W = w;
-    vfbFb0H = h;
-}
-
-int
-vfbFbdevGet(int *w, int *h)
-{
-    if (!vfbFb0Map)
-        return 0;
-    *w = vfbFb0W;
-    *h = vfbFb0H;
-    return 1;
-}
-
-uint32_t *
-vfbFbdevBase(void)
-{
-    return (uint32_t *) vfbFb0Map;
-}
 
 #endif                          /* HAVE_MMAP */
 
