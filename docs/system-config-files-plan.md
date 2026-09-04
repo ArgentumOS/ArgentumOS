@@ -78,7 +78,7 @@ D1–D4 below.
   records** (§3 below). Real nested block values, normative in §10.
 - **D2 — Scope of this plan: full sweep** — account identity (`passwd`,
   `group`, with shadow folded in, see §5.1), resolver identity
-  (`hosts`, hostname, `shells`), and the boot mount table (§5.4).
+  (`hosts`, hostname, `shells`), and the boot mount table (§5.5).
 - **D3 — Consumers: hard-swap.** `third_party/musl` passwd/group and
   the toybox applets are patched to read the config domains; the
   legacy-format files disappear (M7). No compatibility generator.
@@ -283,12 +283,12 @@ group = {
 }
 ```
 
-(`members` empty = no members; `password = ""` = no password — see Q2.)
+(`members` empty = no members; `password = ""` = no password.)
 
 - **Shadow folded in** (deviation from Unix, proposed): the password
   hash lives in the record's `password` key. `/System/Configuration` is
   root-writable only, so the separate 0600 shadow file + `x`
-  indirection buys nothing and costs a second file. Marked Q2.
+  indirection buys nothing and costs a second file (Q2: fold — decided).
 - Field naming follows `struct passwd`/`struct group` (uid, gid, gecos,
   home, shell; members) so the musl shim in M3 is a straight field map.
 - **Lookup + iteration semantics** for musl: name lookup (`getpwnam`,
@@ -296,10 +296,10 @@ group = {
   reads. Sequential iteration (`getpwent`/`getgrent`) enumerates
   records and sorts by uid/gid — deterministic, and it makes the
   "first entry is root/Admin" convention unnecessary.
-- `shells` is a plain list domain (§5.3), in the System scope like
+- `shells` is a plain list domain (§5.4), in the System scope like
   passwd; `chsh` validates against it.
 
-### 5.2 `system.config.hosts.conf` / hostname
+### 5.2 `system.config.hosts.conf`
 
 ```
 hosts = {
@@ -308,22 +308,31 @@ hosts = {
         aliases =
     }
 }
-hostname = fnx
 ```
 
 (`aliases` empty = none; §10 forbids trailing comments, so notes live
 in the doc, not the examples.)
 
-The record per hostname keeps aliases beside addresses. `hosts` is
-consumed by musl's name resolution (`lookup_name.c` hosts backend).
+The record per hostname keeps aliases beside addresses. Consumed by
+musl's name resolution (`lookup_name.c` hosts backend). The machine
+name itself lives in `system.config.network.conf` (§5.3, Q4).
+
+### 5.3 `system.config.network.conf`
+
+At `/System/Configuration/` — the machine's network identity; a home
+for `hostname` now and future network settings (Q4).
+
+```
+hostname = fnx
+```
+
 `hostname` is not a file to parse — it names the machine: at boot,
 `userland/init.c` reads this key and calls `sethostname(2)`, which
 feeds `uname`/`gethostname`/toybox `hostname`. A kernel-side early
 name (before userland) stays a `kernel.conf`/cmdline matter, out of
-scope here. (Q4: whether `hostname` stays a key in this domain or its
-own.)
+scope here.
 
-### 5.3 `system.config.shells.conf`
+### 5.4 `system.config.shells.conf`
 
 At `/System/Configuration/` (login policy — the valid shells accounts
 bind to, same tier as passwd).
@@ -335,7 +344,7 @@ shells = /System/Tools/sh, /bin/sh, …
 A plain list domain replacing the legacy `shells` line file; `chsh` +
 `su` validate against it.
 
-### 5.4 Mount table: `system.config.mounts.conf` (new "fstab")
+### 5.5 Mount table: `system.config.mounts.conf` (new "fstab")
 
 At `/System/Configuration/` (boot policy, D4).
 
@@ -380,7 +389,7 @@ mount = {
   (system-first rules, §4) and write through the atomic writer; `passwd`
   becomes a libconfig domain editor. `hostname` needs no patch (it
   uses the `sethostname`/`gethostname` syscalls).
-- **`userland/init.c`** — mount-table consumption (§5.4).
+- **`userland/init.c`** — mount-table consumption (§5.5).
 - **`config` CLI + `userland/libconfig.c`** — group-record
   parsing/writing/enumeration (M0) + the precedence inversion (M1).
   No change
@@ -434,7 +443,7 @@ Acceptance: guest tests — `getpwnam("admin")`,
 read/write through libconfig; `passwd` writes hashes into the System
 domain atomically.
 Acceptance: guest `useradd` then `su`/login flow works against the
-domain; shadow-folding decision (Q2) resolved.
+domain; shadow folding decided: hash lives in the user record (Q2).
 
 ### M5 — hosts / hostname
 Patch musl `lookup_name.c` (hosts backend). `userland/init.c` sets the
@@ -443,35 +452,41 @@ boot (toybox `hostname` already works through the syscalls).
 Acceptance: guest `getaddrinfo("localhost")` reflects the domain and
 `hostname` prints the domain's name after boot; no hosts legacy file.
 
-### M6 — Mount table
-`userland/init.c` mounts from the System `system.config.mounts.conf`; Q3 decision
-on toybox `mount`/`umount`.
+### M6 — Mount table (init)
+`userland/init.c` mounts from the System `system.config.mounts.conf`.
 Acceptance: boot mounts proc + devpts from the domain (edit the domain,
 reboot, observe); init logs a clear error on a malformed table.
+
+### M6b — Mount table (toybox)
+toybox `mount`/`umount` consume the `system.config.mounts.conf` domain
+(no-args `mount` = mount the table) in a follow-up after M6 (Q3).
+Acceptance: `mount` with no args prints the domain's entries; explicit
+mounts/umounts update the domain via the atomic writer.
 
 ### M7 — Decommission + sweep
 Remove every legacy-format file and parser reference (Makefile, images,
 docs); delete `/etc` remnants; confirm no consumer still parses a colon
 file; update config-design.md (§5/§10/§12) + this doc to *implemented*.
+`config` **warns on read** whenever a user/shared value has no effect
+because a System value wins — no deletion (Q6).
 Acceptance: full rebuild from clean + guest boot; grep sweep for
 `/etc/passwd`, `/etc/group`, `/etc/hosts`, colon-parsing passwd code in
 third_party patches.
 
-## 8. Open items (Q)
+## 8. Questions (owner review, resolved except Q5)
 
-- **Q2** — Shadow folding (hash in the record, §5.1) vs. a separate
-  System `system.config.shadow.conf` with `x` indirection.
-- **Q3** — toybox `mount`/`umount` consuming the mount table in M6 or
-  a follow-up.
-- **Q4** — `hostname` as a key inside `system.config.hosts` vs. its own
-  `system.config.network`/`hostname` domain.
-- **Q5** — The §12 `system.config.kernel` symlink to the ESP
+- **Q2 — Fold.** `password_hash` is a field of the user record in
+  `system.config.passwd.conf` (§5.1); no shadow domain exists.
+- **Q3 — M6 follow-up.** toybox `mount`/`umount` consume the mounts
+  domain in M6b, after init (M6).
+- **Q4 — `system.config.network.conf`.** `hostname` lives in its own
+  network domain (§5.3), a home for future network settings.
+- **Q5 — OPEN.** The §12 `system.config.kernel` symlink to the ESP
   `kernel.conf`: unchanged under system-first (it already resolves in
-  System scope) — confirm it needs no special handling.
-- **Q6** — Migration of *stale* user/shared scope files that shadowed
-  system domains under the old precedence (they silently stop having
-  effect; should `config` detect and warn/delete them on read or in a
-  one-shot sweep?)
+  System scope) — kept open for further discussion.
+- **Q6 — Warn on read.** `config` warns when a user/shared value is
+  shadowed by a System value; stale files are left in place (no
+  deletion).
 
 ## 9. References
 
