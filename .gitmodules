@@ -7,3 +7,15 @@
 [submodule "third_party/lvgl"]
 	path = third_party/lvgl
 	url = https://github.com/lvgl/lvgl
+[submodule "third_party/x11/xorgproto"]
+	path = third_party/x11/xorgproto
+	url = https://gitlab.freedesktop.org/xorg/proto/xorgproto.git
+[submodule "third_party/x11/libxkbfile"]
+	path = third_party/x11/libxkbfile
+	url = https://gitlab.freedesktop.org/xorg/lib/libxkbfile.git
+[submodule "third_party/x11/pixman"]
+	path = third_party/x11/pixman
+	url = https://gitlab.freedesktop.org/pixman/pixman.git
+[submodule "third_party/x11/xserver"]
+	path = third_party/x11/xserver
+	url = https://gitlab.freedesktop.org/xorg/xserver.git
