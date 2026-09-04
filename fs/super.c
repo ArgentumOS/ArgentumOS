@@ -293,3 +293,59 @@ int mount_root(void)
 	printk(".\n");
 	return 0;
 }
+
+/*
+ * Make sure /tmp is a real, empty-able directory on the freshly mounted
+ * root filesystem. Called right after mount_root(), i.e. after the root
+ * fs's journal has been replayed.
+ *
+ * Why: the BFS journal replays a killed session's uncommitted writes at
+ * mount time, and a session killed mid-write can leave /tmp replayed in
+ * a state no userland cleanup can fix (observed: /tmp itself restored
+ * as a regular file - every access inside it then fails ENOTDIR, so the
+ * init scripts' rm -rf of the stale X locks cannot work and Xfb refuses
+ * to start). The kernel repairs /tmp here (drop + recreate when it is
+ * not a directory); the init scripts then clear whatever stale content
+ * a healthy-but-dirty /tmp was replayed with.
+ */
+void fs_repair_tmpdir(void)
+{
+	struct inode *tmp, *dir;
+	int errno;
+
+	tmp = NULL;
+	dir = NULL;
+	errno = parse_namei("/tmp", NULL, &tmp, &dir, !FOLLOW_LINKS);
+
+	if(!errno && tmp && S_ISDIR(tmp->i_mode)) {
+		/* healthy /tmp: the init scripts clear the stale contents */
+		iput(tmp);
+		iput(dir);
+		return;
+	}
+	printk("WARNING: %s(): /tmp not a directory at mount (errno %d, mode %o); recreating.\n",
+	       __FUNCTION__, -errno, tmp ? tmp->i_mode : 0);
+
+	/* /tmp exists but is not a directory (journal replay residue):
+	 * remove it so a real directory can be created in its place */
+	if(!errno && tmp) {
+		if(dir && !IS_RDONLY_FS(dir) && dir->fsop && dir->fsop->unlink) {
+			dir->fsop->unlink(dir, tmp, "tmp");
+		}
+		iput(tmp);
+	}
+
+	/* recreate /tmp. dir is the parent of /tmp (the root directory,
+	 * ref'd) both when /tmp was a non-directory and when the final
+	 * component was missing (parse_namei returns the parent on
+	 * ENOENT) */
+	if(dir && !IS_RDONLY_FS(dir) && dir->fsop && dir->fsop->mkdir) {
+		if(dir->fsop->mkdir(dir, "tmp", 01777)) {
+			printk("WARNING: %s(): unable to create /tmp.\n",
+			       __FUNCTION__);
+		}
+	}
+	if(dir) {
+		iput(dir);
+	}
+}

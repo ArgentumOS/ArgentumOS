@@ -49,6 +49,7 @@ struct superblock *get_superblock(__dev_t);
 void sync_superblocks(__dev_t);
 int kern_mount(__dev_t, struct filesystems *);
 int mount_root(void);
+void fs_repair_tmpdir(void);
 
 
 /* minix prototypes */

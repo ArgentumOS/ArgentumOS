@@ -75,6 +75,10 @@ int kswapd(void)
 	mem_stats();
 	fs_init();
 	mount_root();
+	/* after the root fs's journal replay: /tmp may have been replayed
+	 * as a non-directory by a killed session - repair it so init can
+	 * clear/use it */
+	fs_repair_tmpdir();
 	devfs_boot_mount();
 	init_init();
 
