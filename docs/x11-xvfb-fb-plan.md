@@ -174,3 +174,129 @@ musl ELF64, host-smoke verified: X client reads screen=640x480 depth=24).
   ~81 MB; see the commit log). For an upgrade, fetch xorg-server from
   freedesktop gitlab, apply `third_party/x11/xserver-fnx.patch` (the
   archived FNX-local meson changes), then re-extract as above.
+
+## Update (decided): Xfb configuration via libconfig — `com.fnx.xfb`
+
+Xfb takes **all** of its configuration from FNX libconfig; every
+command-line option has a config key, `com.fnx.xfb.<key>`, whose value is
+the option's **default**. The real command line overrides the config (same
+precedence rule as `kernel.conf`, docs/config-design.md §12). Domain is
+`com.fnx.xfb` per the repo convention (`com.fnx.*`, §2 of
+config-design.md) — the `org.example.fnx.xfb.$OPT` naming sketch maps onto
+it unchanged.
+
+### Mechanism: config-derived argv, zero parser changes
+
+All server options are parsed in one place: `ProcessCommandLine()`
+(`os/utils.c:671`) — DDX hook first (`hw/xfb/InitOutput.c::ddxProcessArgument`),
+then the ~53-option core chain, then the positional `:N` display. Xfb (the
+FNX fork) therefore needs **no parser surgery**:
+
+1. Link FNX libconfig into the server (compile `userland/libconfig.c` +
+   `include/libconfig.h` into `xfb-src`, exactly like the `config` CLI
+   build pattern).
+2. Before `ProcessCommandLine` runs, read the `com.fnx.xfb` domain and
+   build a **config-derived argv prefix**: each set key becomes its
+   canonical tokens via the arity table below.
+3. Run the normal parse over *config-argv + real argv*.
+
+Real-cmdline-wins is not left to parser last-wins semantics: for every
+configured option, if the same option occurs in the real argv, the
+config-derived occurrence is **suppressed** (per-key override). This
+matters for accumulating options such as `-screen`/`+extension`, where two
+occurrences would add two screens/extensions instead of overriding.
+
+Scope resolution is the standard libconfig chain (user → shared → system),
+so a per-user `com.fnx.xfb` overrides the system default — for free.
+
+### Key naming and types
+
+- Key = the option token, lowercased, leading sign stripped
+  (`-screen`→`screen`, `-ac`→`ac`, `-fbdir`→`fbdir`).
+- `+foo`/`-foo` polarity pairs collapse to **one boolean key** named after
+  the enable form (`render`, `xinerama`, `bs`, `iglx`, `dpms`,
+  `byteswappedclients`, `autorepeat`, `blanking`, `pn`, `reset`).
+- Flag options are booleans (`ac = true` emits `-ac`); value options are
+  strings or ints; the synthesizer emits exactly the token(s) the parser
+  matches (including the legacy bare-token enable forms below).
+- **Excluded from the map** (they are actions or boot context, not
+  defaults): `-help`/`-version` (print+exit), the positional `ttyN`
+  (Xorg VT switching — meaningless under Xfb), and `-I` (ignored by the
+  parser). `-displayfd` is mapped but discouraged (it is a launcher
+  handshake, not a preference).
+
+### Arity table (what the synthesizer emits per key)
+
+**A. Display, screen and DDX options (the surface FNX actually uses)**
+
+| Option(s) | Key | Type | Synthesized argv | Notes |
+|---|---|---|---|---|
+| `:N` (positional) | `display` | string | `:<value>` | `xfbdesk-init` starts `:0`; `display = "0"` is the shipped default |
+| `-screen N WxHxD` | `screen` | string | `-screen 0 <value>` | screen number fixed to 0 under FNX; when the key is **absent**, Xfb keeps today's behavior (geometry read from `/dev/fb0`) — see open items |
+| `-pixdepths list` | `pixdepths` | string | `-pixdepths <value>` | |
+| `+render` / `-render` | `render` | bool | true→`+render`, false→`-render` | RENDER ext on/off |
+| `-blackpixel n` | `blackpixel` | int | `-blackpixel <n>` | |
+| `-whitepixel n` | `whitepixel` | int | `-whitepixel <n>` | |
+| `-linebias n` | `linebias` | int | `-linebias <n>` | |
+| `-fbdir dir` | `fbdir` | string | `-fbdir <dir>` | Xvfb memory-file dir |
+| `-shmem` | `shmem` | bool | true→`-shmem` | shared-mem framebuffer |
+| `-ac` | `ac` | bool | true→`-ac` | FNX boots with `-ac` (xfbdesk-init); shipped default `ac = true` |
+
+**B. Core server options with real effect under Xfb**
+
+| Option(s) | Key | Type | Notes |
+|---|---|---|---|
+| `-auth file` | `auth` | string | X authority file |
+| `-nolisten trans` / `-listen trans` | `nolisten` / `listen` | string | transports (`tcp`/`unix`); `nolisten` shipped default |
+| `-noreset` / `-reset` | `reset` | bool | true→`-noreset` (keep clients across last-disconnect) |
+| `-fp path` | `fp` | string | font path |
+| `-dpi n` | `dpi` | int | |
+| `-cc class` | `cc` | int | default visual class |
+| `-deferglyphs mode` | `deferglyphs` | string | |
+| `-background none\|color` | `background` | string | `none` = keep Xvfb's default black root |
+| `-maxclients n` | `maxclients` | int | |
+| `-maxbigreqsize n` | `maxbigreqsize` | int | |
+| `-seat id` | `seat` | string | |
+| `-fakescreenfps n` | `fakescreenfps` | int | |
+| `-audit n` | `audit` | int | |
+| `-a n` / `-t n` / `-f n` | `a` / `t` / `f` | int | pointer accel num/threshold, bell volume |
+| `-p n` / `-s n` | `p` / `s` | int | screensaver interval / timeout (minutes; parser multiplies) |
+| `-displayfd n` | `displayfd` | int | launcher handshake; mapped but not a preference |
+
+**C. Parseable but vestigial under Xfb** — accepted by the parser, no
+effect on an fb server; still given keys so *every* option obeys the rule
+(marked no-op so nobody relies on them):
+
+`-br`, `bs` (+/-), `byteswappedclients` (+/-), `-core`, `-nocursor`,
+`dpms` (+/-), `iglx` (+/-), `-nolock`, `pn` (-/nopn), `-pogo`,
+`autorepeat` (`r` bare/-r — note the parser's enable form is the **bare
+token** `r`), `-retro`, `-terminate` (optional numeric delay), `-tst`,
+`blanking` (`v` bare/-v), `-wr`, `-dumbSched`, `-sigstop`,
+`-schedInterval`, `-schedMax`, `xinerama` (+/-), `-disablexineramaextension`.
+
+### Build and integration
+
+- `xfb-src` is the FNX fork (diverges from pristine `xvfb-src`); add
+  `userland/libconfig.c` to its Makefile and `-I<repo>/include` for
+  `libconfig.h` — the same two-file link the `config` CLI uses.
+- The config read runs once at startup, before `ProcessCommandLine`;
+  failures (missing domain, parse error) degrade to "no config-derived
+  argv" and a serial/log notice — a broken `com.fnx.xfb.conf` must never
+  stop X from starting.
+- Shipped defaults live in the system domain as
+  `userland/com.fnx.xfb.conf` (installed to
+  `/System/Configuration/com.fnx.xfb.conf` in the root image):
+  `ac = true`, `nolisten = "tcp"`, `display = "0"`, matching today's
+  `xfbdesk-init` launch; `screen` is deliberately unset so geometry keeps
+  coming from `/dev/fb0` (see open items).
+
+### Open items
+
+- **`screen` vs the fb0 auto-geometry**: when `screen` is absent Xfb
+  reads `/dev/fb0` geometry; when set, `-screen 0 WxHxD` is emitted and
+  must win over the fb0 auto-detect (the FNX fb0 integration currently
+  sizes its screen from the device — the interaction needs one decision
+  in implementation: config `screen` overrides device geometry entirely).
+- Key spelling for legacy pairs with bare enable tokens (`r`, `v`,
+  `dpms`, `c`) is kept literal-but-documented rather than renamed, to keep
+  `$OPT` derivable; revisit only if a real user-facing option needs it.
