@@ -20,6 +20,41 @@ static void try_mount(const char *fstype, const char *target)
 		fprintf(stderr, "INIT: mount %s on %s: %m\n", fstype, target);
 }
 
+/* Fork+exec a GUI process on the desktop. If quiet, stdout/stderr go to
+ * /dev/null (the compositor spams per-damage lines on the console). */
+static void spawn_gui(const char *path, char *const argv[], int quiet)
+{
+	pid_t p = fork();
+	char *envp[] = { "PATH=/bin:/sbin:/usr/bin:/usr/sbin", "HOME=/",
+			 "PS1=# ", NULL };
+
+	if (p == 0) {
+		if (quiet) {
+			int fd = open("/dev/null", O_WRONLY);
+
+			if (fd >= 0) {
+				dup2(fd, 1);
+				dup2(fd, 2);
+				close(fd);
+			}
+		}
+		execve(path, argv, envp);
+		_exit(127);
+	}
+}
+
+/* The LVGL desktop: system compositor + two demo windows (each its own
+ * app process). Mouse input is the emulated PS/2 / USB mouse (/dev/psaux);
+ * the demos retry their connect until the compositor is ready. */
+static void start_gui(void)
+{
+	spawn_gui("/bin/compositor",
+		  (char *const[]) { "compositor", NULL }, 1);
+	spawn_gui("/bin/lv_demo",
+		  (char *const[]) { "lv_demo", "A", "40", "40", NULL }, 0);
+	spawn_gui("/bin/lv_demo",
+		  (char *const[]) { "lv_demo", "B", "760", "320", NULL }, 0);
+}
 
 int main(void)
 {
@@ -31,6 +66,8 @@ int main(void)
 	/* the mount points exist in the root image (Makefile userland64) */
 	try_mount("proc", "/proc");
 	try_mount("devpts", "/dev/pts");
+
+	start_gui();
 
 	for (;;) {
 		pid = fork();

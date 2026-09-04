@@ -43,6 +43,7 @@ DEVICES = {
     'dev/tty0':     0x400,   # (4 << 8) | 0  -> current virtual console
     'dev/tty':      0x500,   # (5 << 8) | 0  -> controlling TTY device
     'dev/ttyS0':    0x440,   # (4 << 8) | 0x40
+    'dev/ttyS1':    0x441,   # (4 << 8) | 0x41 -> compositor GUI_MOUSE seam
     'dev/mem':      0x101,   # (1 << 8) | 1
     'dev/kmem':     0x102,   # (1 << 8) | 2
     'dev/null':     0x103,   # (1 << 8) | 3
