@@ -234,7 +234,7 @@ OsSignal(int sig, OsSigHandlerPtr handler)
  * server at a time.  This keeps the servers from stomping on each other
  * if the user forgets to give them different display numbers.
  */
-#define LOCK_DIR "/tmp"
+#define LOCK_DIR "/System/Temporary Files"
 #define LOCK_TMP_PREFIX "/.tX"
 #define LOCK_PREFIX "/.X"
 #define LOCK_SUFFIX "-lock"
@@ -1405,7 +1405,7 @@ System(const char *command)
             _exit(127);
         if (setuid(getuid()) == -1)
             _exit(127);
-        execl("/bin/sh", "sh", "-c", command, (char *) NULL);
+        execl("/System/Tools/sh", "sh", "-c", command, (char *) NULL);
         _exit(127);
     default:                   /* parent */
         do {
@@ -1491,7 +1491,7 @@ Popen(const char *command, const char *type)
             }
             close(pdes[1]);
         }
-        execl("/bin/sh", "sh", "-c", command, (char *) NULL);
+        execl("/System/Tools/sh", "sh", "-c", command, (char *) NULL);
         _exit(127);
     }
 
@@ -1569,7 +1569,7 @@ Fopen(const char *file, const char *type)
             }
             close(pdes[1]);
         }
-        execl("/bin/cat", "cat", file, (char *) NULL);
+        execl("/System/Tools/cat", "cat", file, (char *) NULL);
         _exit(127);
     }
 
@@ -1690,7 +1690,7 @@ Win32TempDir(void)
     else if (getenv("TMP") != NULL)
         return getenv("TMP");
     else
-        return "/tmp";
+        return "/System/Temporary Files";
 }
 
 int

@@ -154,7 +154,8 @@ $(MUSL64_SPECS): third_party/musl-fsh.patch
 		git apply $(CURDIR)/third_party/musl-fsh.patch && \
 		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
-		$(MAKE) && $(MAKE) install
+		$(MAKE) && $(MAKE) install && \
+		git checkout -- .
 
 # LLVM C++ runtimes (docs/cpp-toolchain-plan.md P0+P1): pinned fetch via
 # tools/fetch-llvm.sh, then a cmake build of static libc++/libc++abi/

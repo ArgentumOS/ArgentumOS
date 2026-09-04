@@ -10,9 +10,9 @@
 
 #pragma once
 
-#define XKB_BASE_DIRECTORY "/usr/share/X11/xkb"
+#define XKB_BASE_DIRECTORY "/System/Shared/X11/xkb"
 
-#define XKB_BIN_DIRECTORY "/bin"
+#define XKB_BIN_DIRECTORY "/System/Tools"
 
 #define XKB_DFLT_LAYOUT "us"
 
@@ -24,5 +24,5 @@
 
 #define XKB_DFLT_VARIANT ""
 
-#define XKM_OUTPUT_DIR "/usr/share/X11/xkb/compiled/"
+#define XKM_OUTPUT_DIR "/System/Variable Data/X11/xkb/compiled/"
 

@@ -387,7 +387,7 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
 
     src = getenv("XFB_MOUSE");
     if (!src || !*src)
-        src = "/dev/psaux";
+        src = "/System/Devices/psaux";
     vfbMouseFd = open(src, O_RDONLY | O_NONBLOCK);
     if (vfbMouseFd >= 0) {
         vfbSetRaw(vfbMouseFd);
@@ -400,7 +400,7 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
 
     src = getenv("XFB_KBD");
     if (!src || !*src)
-        src = "/dev/kbd";
+        src = "/System/Devices/kbd";
     vfbKbdFd = open(src, O_RDONLY | O_NONBLOCK);
     if (vfbKbdFd >= 0) {
         vfbSetRaw(vfbKbdFd);

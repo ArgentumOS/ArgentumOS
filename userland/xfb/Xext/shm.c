@@ -1208,8 +1208,8 @@ shm_tmpfile(void)
 {
     const char *shmdirs[] = {
         "/run/shm",
-        "/var/tmp",
-        "/tmp",
+        "/System/Temporary Files",
+        "/System/Temporary Files",
     };
     int	fd;
 

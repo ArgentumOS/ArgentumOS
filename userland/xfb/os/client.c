@@ -294,7 +294,7 @@ DetermineClientCmd(pid_t pid, const char **cmdname, const char **cmdargs)
 
     /* Check if /proc/pid/cmdline exists. It's not supported on all
      * operating systems. */
-    if (snprintf(path, sizeof(path), "/proc/%d/cmdline", pid) < 0)
+    if (snprintf(path, sizeof(path), "/System/Processes/%d/cmdline", pid) < 0)
         return;
     fd = open(path, O_RDONLY);
     if (fd < 0)
@@ -345,7 +345,7 @@ DetermineClientCmd(pid_t pid, const char **cmdname, const char **cmdargs)
     /* Solaris prior to 11.3.5 does not support /proc/pid/cmdline, but
      * makes information similar to what ps shows available in a binary
      * structure in the /proc/pid/psinfo file. */
-    if (snprintf(path, sizeof(path), "/proc/%d/psinfo", pid) < 0)
+    if (snprintf(path, sizeof(path), "/System/Processes/%d/psinfo", pid) < 0)
         return;
     fd = open(path, O_RDONLY);
     if (fd < 0) {

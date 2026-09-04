@@ -898,7 +898,7 @@ vfbTryFbdev(vfbScreenInfoPtr pvfb)
     char *map;
     size_t len;
 
-    if ((fd = open("/dev/fb0", O_RDWR)) < 0)
+    if ((fd = open("/System/Devices/fb0", O_RDWR)) < 0)
         return;                 /* no real fb: keep the in-memory screen */
     w = ioctl(fd, FBDEV_IO_XRES, 0);
     h = ioctl(fd, FBDEV_IO_YRES, 0);

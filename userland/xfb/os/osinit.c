@@ -72,7 +72,7 @@ SOFTWARE.
 #endif
 
 #ifndef ADMPATH
-#define ADMPATH "/usr/adm/X%smsgs"
+#define ADMPATH "/System/Variable Data/X%smsgs"
 #endif
 
 #ifdef RLIMIT_DATA
@@ -165,7 +165,7 @@ OsInit(void)
 {
     static Bool been_here = FALSE;
 #ifndef XQUARTZ
-    static const char *devnull = "/dev/null";
+    static const char *devnull = "/System/Devices/null";
     char fname[PATH_MAX];
 #endif
 

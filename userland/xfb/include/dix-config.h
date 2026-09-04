@@ -13,7 +13,7 @@
 
 #define BUSFAULT 1
 
-#define COMPILEDDEFAULTFONTPATH "/usr/share/fonts/X11"
+#define COMPILEDDEFAULTFONTPATH "/System/Shared/Fonts"
 
 #define COMPOSITE 1
 

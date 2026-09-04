@@ -964,7 +964,7 @@ ResetHosts(const char *display)
 #if defined WIN32 && defined __MINGW32__
 #define ETC_HOST_PREFIX "X"
 #else
-#define ETC_HOST_PREFIX "/etc/X"
+#define ETC_HOST_PREFIX "/System/Configuration/X"
 #endif
 #define ETC_HOST_SUFFIX ".hosts"
     fnamelen = strlen(ETC_HOST_PREFIX) + strlen(ETC_HOST_SUFFIX) +
