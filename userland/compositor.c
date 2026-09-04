@@ -279,6 +279,7 @@ static void send_event(int win_id, gui_event_type_t type,
 	if(fd < 0) {
 		return;
 	}
+	payload[0] = GUI_MSG_EVENT;
 	{
 		gui_event_t *e = (gui_event_t *)(payload + 1);
 

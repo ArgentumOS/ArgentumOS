@@ -58,6 +58,10 @@ int window_raise(gui_window_t *window);
  * backing store). The window object must not be used afterwards. */
 int window_close(gui_window_t *window);
 
+/* The window's compositor-assigned id, as delivered in gui_event.win.
+ * An app with several windows uses it to filter its own events. */
+int window_id(gui_window_t *window);
+
 /* The window's backing bitmap: w*h 32-bit pixels (0x00RRGGBB native
  * endian). Valid from creation until window_close or window_resize. */
 void *window_buffer(gui_window_t *window);

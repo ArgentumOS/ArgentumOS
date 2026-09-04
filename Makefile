@@ -200,6 +200,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) -Iinclude userland/compositor.c -o $(ROOTFS64)/bin/compositor
 	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o $(ROOTFS64)/bin/gui_smoke
 	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o $(ROOTFS64)/bin/gui_demo
+	$(MUSL64_CC) $(LVGL64_CFLAGS) -Iuserland userland/lv_demo.c userland/lvapp.c userland/libgui.c $(LVGL64) -o $(ROOTFS64)/bin/lv_demo
 	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o $(ROOTFS64)/bin/shm_leak_test
 	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o $(ROOTFS64)/bin/shm_resize_test
 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o $(ROOTFS64)/bin/shm_cap_test

@@ -422,6 +422,11 @@ void *window_buffer(gui_window_t *window)
 	return window ? window->backing : NULL;
 }
 
+int window_id(gui_window_t *window)
+{
+	return window ? window->id : -1;
+}
+
 int window_damage(gui_window_t *window, int x, int y, int w, int h)
 {
 	if(!window) {
