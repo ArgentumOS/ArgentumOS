@@ -201,6 +201,15 @@ xvfb64:
 	$(MAKE) -C $(XVFB_SRC) OUT="$(CURDIR)/$(XVFB_OUT)" \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
 
+# --- Xfb: FNX fork of Xvfb (see third_party/x11/xfb-src/README.md)
+XFB_SRC = third_party/x11/xfb-src
+XFB_OUT = .build/x11/xfb
+
+.PHONY: xfb64
+xfb64:
+	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
+		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
+
 userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64)
 	@mkdir -p $(ROOTFS64)/sbin $(ROOTFS64)/bin $(ROOTFS64)/dev
 	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(ROOTFS64)"
