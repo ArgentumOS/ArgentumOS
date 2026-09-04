@@ -1,0 +1,10 @@
+prefix=/home/kyle/Development/Fiwix/.build/x11-prefix
+exec_prefix=${prefix}
+bindir=${exec_prefix}/bin
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+xkbconfigdir=${datadir}/X11/xkb
+
+Name: xkbcomp
+Description: XKB keymap compiler
+Version: 1.4.7

@@ -34,3 +34,6 @@
 [submodule "third_party/x11/libX11"]
 	path = third_party/x11/libX11
 	url = https://gitlab.freedesktop.org/xorg/lib/libX11.git
+[submodule "third_party/x11/xkeyboard-config"]
+	path = third_party/x11/xkeyboard-config
+	url = https://gitlab.freedesktop.org/xkeyboard-config/xkeyboard-config.git

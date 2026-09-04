@@ -1,0 +1,66 @@
+alias.o: alias.c xkbcomp.h config.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xlib.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/sys/types.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/features.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/bits/alltypes.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/endian.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/sys/select.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/X.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xfuncproto.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xosdefs.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/stddef.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/XKBlib.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKBstr.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKB.h \
+ utils.h /home/kyle/Development/Fiwix/.build/musl64/include/stdio.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/stdlib.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/alloca.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xos.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/string.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/strings.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/fcntl.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/bits/fcntl.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/unistd.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/sys/time.h \
+ /home/kyle/Development/Fiwix/.build/musl64/include/time.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xarch.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xfuncs.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKM.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKBfile.h \
+ misc.h alias.h keycodes.h \
+ /home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKBgeom.h
+xkbcomp.h:
+config.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xlib.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/sys/types.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/features.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/bits/alltypes.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/endian.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/sys/select.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/X.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xfuncproto.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xosdefs.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stddef.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/XKBlib.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKBstr.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKB.h:
+utils.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stdio.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/stdlib.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/alloca.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xos.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/string.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/strings.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/fcntl.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/bits/fcntl.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/unistd.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/sys/time.h:
+/home/kyle/Development/Fiwix/.build/musl64/include/time.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xarch.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/Xfuncs.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKM.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKBfile.h:
+misc.h:
+alias.h:
+keycodes.h:
+/home/kyle/Development/Fiwix/.build/x11-prefix/include/X11/extensions/XKBgeom.h:
