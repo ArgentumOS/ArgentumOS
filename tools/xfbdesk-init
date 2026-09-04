@@ -1,0 +1,26 @@
+#!/bin/sh
+# Interactive Xfb desktop session (make run-xfb):
+#   - Xfb :0 on the real framebuffer (/dev/fb0 = the QEMU window)
+#   - demo windows: xdraw (red 400x300 at 100,100), xkey (input echo)
+#   - console shell on the serial terminal for launching more clients
+# Input: the QEMU window's PS/2 keyboard + USB mouse reach the guest via
+# /dev/kbd + /dev/psaux (Xfb's defaults); nothing is exported here.
+mount -t proc proc /proc 2>/dev/null
+mount -t devpts devpts /dev/pts 2>/dev/null
+mkdir -p /var/log
+
+echo "XDESK: starting Xfb :0 on the framebuffer"
+/bin/Xfb :0 -ac > /var/log/Xfb.log 2>&1 &
+sleep 1
+
+DISPLAY=:0 /bin/xdraw 100 100 400 300 &
+echo "XDESK: xdraw window up (red 400x300 at 100,100), pid $!"
+
+DISPLAY=:0 /bin/xkey &
+echo "XDESK: xkey echo window up, pid $!"
+
+echo "XDESK: ready."
+echo "  * click the QEMU window and type  -> xkey echoes keysyms on this console"
+echo "  * move/click in the window        -> cursor + xkey button/enter lines"
+echo "  * try from here: DISPLAY=:0 /bin/xdraw 600 200 500 400"
+/bin/sh

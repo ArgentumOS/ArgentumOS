@@ -88,6 +88,24 @@ run-uefi: run
 run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 	$(MAKE) run-qemu ROOTIMG=.build/root.img
 
+# --- Interactive Xfb desktop: boots Xfb :0 on the framebuffer (the QEMU
+# --- window) with demo windows + a console shell. Run from a terminal with
+# --- DISPLAY set so the GOP fb is shown in a GTK window:
+# ---     make run-xfb
+XFBROOT ?= .build/xfbdesk-root
+XFBIMG  ?= .build/rootbfs-xfbdesk.img
+xfbdesk-root:
+	rm -rf $(XFBROOT)
+	cp -a .build/xfbtest-root $(XFBROOT)
+	cp .build/x11/xfb/Xfb $(XFBROOT)/bin/Xfb
+	cp tools/xfbdesk-init $(XFBROOT)/sbin/init
+	chmod +x $(XFBROOT)/sbin/init
+xfbdesk: xfbdesk-root
+	python3 tools/mkbfs.py $(XFBROOT) $(XFBIMG) 64
+	python3 tools/bfscheck.py $(XFBIMG) $(XFBROOT)
+run-xfb: .build/ovmf/OVMF.fd xfbdesk build64
+	$(MAKE) run-qemu ROOTIMG=$(XFBIMG)
+
 # Boot the BFS root image (.build/rootbfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
 # filesystems (minix -> ext2 -> iso9660 -> bfs) and finds bfs; the same
