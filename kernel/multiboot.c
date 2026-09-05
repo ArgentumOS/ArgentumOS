@@ -29,12 +29,17 @@ static struct kernel_params_value kparamval_table[] = {
 	   { "/dev/tty0", "/dev/tty1", "/dev/tty2", "/dev/tty3", "/dev/tty4",
 	     "/dev/tty5", "/dev/tty6", "/dev/tty7", "/dev/tty8", "/dev/tty9",
 	     "/dev/tty10", "/dev/tty11", "/dev/tty12",
-	     "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3"
+	     "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3",
+	     "/System/Devices/Serial/Port0", "/System/Devices/Serial/Port1",
+	     "/System/Devices/Serial/Port2", "/System/Devices/Serial/Port3",
+	     "/System/Devices/TTY/console", "/System/Devices/TTY/tty"
 	   },
 	   { 0x400, 0x401, 0x402, 0x403, 0x404,
 	     0x405, 0x406, 0x407, 0x408, 0x409,
 	     0x40A, 0x40B, 0x40C,
-	     0x440, 0x441, 0x442, 0x443
+	     0x440, 0x441, 0x442, 0x443,
+	     0x440, 0x441, 0x442, 0x443,
+	     0x501, 0x500
 	   }
 	},
 	{ "ide_nodma",
@@ -79,6 +84,10 @@ static struct kernel_params_value kparamval_table[] = {
 	     "/dev/hdd", "/dev/hdd1", "/dev/hdd2", "/dev/hdd3", "/dev/hdd4",
 	     "/dev/sda", "/dev/sda1", "/dev/sda2", "/dev/sda3", "/dev/sda4",
 	     "/dev/nvme0n1",
+	     "/System/Devices/Disk/AHCI/Disk0", "/System/Devices/Disk/SCSI/Disk0",
+	     "/System/Devices/Disk/USB/Disk0", "/System/Devices/Disk/IDE/Disk0",
+	     "/System/Devices/Disk/NVMe/Disk0", "/System/Devices/Disk/Floppy/Disk0",
+	     "/System/Devices/Disk/RAM/Disk0",
 	   },
 	   { 0x100, 0x200, 0x201,
 	     0x300, 0x301, 0x302, 0x303, 0x304,
@@ -87,6 +96,7 @@ static struct kernel_params_value kparamval_table[] = {
 	     0x1640, 0x1641, 0x1642, 0x1643, 0x1644,
 	     0x800, 0x801, 0x802, 0x803, 0x804,
 	     0x900,
+	     0x800, 0x800, 0x800, 0x300, 0x900, 0x200, 0x100,
 	   }
 	},
 	{ "rootfstype=",

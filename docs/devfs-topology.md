@@ -1,11 +1,13 @@
 # /System/Devices topology tree (FSH §8 Q3) — design + migration
 
-Status: **in progress**. Owner decisions: clean break (flat real nodes are
-replaced by the topology tree), single-level layout (topology dirs and the
-flat-name role symlinks share `/System/Devices/`), full per-bus disk
-topology with a `by-identity/` layer, and **all consumers migrate** to the
-topology paths this milestone (the top-level symlinks are pure
-compatibility).
+Status: **in progress — kernel devfs tree done (commits 23965e2 design,
+6bb5e90 devfs topology + role symlinks, kernel cmdline/console migration);
+musl + userland consumer migration remains**. Owner decisions: clean break
+(flat real nodes are replaced by the topology tree), single-level layout
+(topology dirs and the flat-name role symlinks share `/System/Devices/`),
+full per-bus disk topology with a `by-identity/` layer, and **all
+consumers migrate** to the topology paths this milestone (the top-level
+symlinks are pure compatibility).
 
 ## Target tree (real nodes)
 
@@ -64,10 +66,12 @@ because the bus/unit mapping is only known at probe time).
 ## Consumers to migrate (this milestone)
 
 1. Kernel boot: `console=` / `root=` resolution table in
-   kernel/multiboot.c + the EFI `kreal64.c` cmdline
-   (`root=/System/Devices/Disk/AHCI/Disk0`, `console=/System/Devices/
-   Serial/Port0`), `kernel/init.c init_console_dev`, the `/dev/root`
-   pseudo mount-point label kept internal.
+   kernel/multiboot.c now accepts the topology paths (Serial/PortN,
+   TTY/console, TTY/tty, Disk/AHCI|SCSI|USB|IDE|NVMe|Floppy|RAM/Disk0)
+   mapped to the same device numbers; the EFI `kreal64.c` cmdline is now
+   `console=/System/Devices/Serial/Port0
+   root=/System/Devices/Disk/AHCI/Disk0`; `kernel/init.c init_console_dev`
+   is `/System/Devices/TTY/console`. DONE.
 2. musl fsh patch (regen): `/System/Devices/{null,tty,console,ptmx,pts/N}`
    → `/System/Devices/{Memory/null,TTY/tty,TTY/console,PTS/ptmx,
    PTS/pts/N}` and any `/System/Devices/log` handling.
