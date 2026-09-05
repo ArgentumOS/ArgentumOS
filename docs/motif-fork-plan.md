@@ -4,6 +4,9 @@ Status: **SKETCH (2026-09) — proposal for discussion, nothing vendored or
 implemented.** Supersedes `docs/cde-fork-plan.md` as the chosen base (that
 doc is kept for its reasoning and demoted to reference).
 
+Working name: **Momo** — "MOdern MOtif" (the doublet is intentional:
+Motif/motive, modern/motif; see §6. A working name, may change).
+
 ## 1. Why Motif instead of CDE
 
 The GUI doctrine: FNX ships only apps built against **one native
@@ -92,7 +95,10 @@ order:
 
 ## 6. Open decisions
 
-- The fork's FNX name (naming precedent: XBFS "the ex-Be").
+- The fork's FNX name — working name **Momo** ("Modern Motif": MO(dern)
+  MO(tif)); not yet final — candidates considered and set aside included
+  MMTK (Modern Motif Toolkit, descriptive but keeps Motif as the
+  headline), MTK / Motive (own-identity, heritage in the backstory).
 - Where it lives in the tree (third_party/motif? userland/motif? the
   Xfb/userland pattern).
 - Vendor base: Open Motif 2.3.8 release tarball vs the Motif project's
