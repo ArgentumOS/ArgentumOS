@@ -193,10 +193,16 @@ walked because the range is tight, D2).
   notes, both orthogonal to the journal reclaim: (1) plain `halt`
   (toybox) uses the SysV `kill(1, SIGUSR1)` init protocol, which FNX's
   init does not handle — `halt -f` / `reboot -f` are the working forms;
-  (2) `xbfscheck` flags a `last_modified` index mismatch after churning
-  files in a directory (the directory's own index entry goes missing) —
-  reproduces with **zero wraps** on a fresh image + clean halt, so it is
-  a pre-existing index-maintenance quirk, not a journal defect.
+  (2) `xbfscheck` flagged a `last_modified` index mismatch after churning
+  files in a directory (a session-modified build-time inode's entry went
+  missing) — reproduces with **zero wraps**, so it was an index-
+  maintenance issue, not a journal defect. Resolved: mkxbfs now backfills
+  the name/size/last_modified indices over the whole tree it builds
+  (Haiku-mkfs parity, duplicate keys via chained duplicate nodes), the
+  driver moves keys on modification even for never-indexed inodes
+  (index-on-modify, mirroring Haiku's `Index::Update`), and xbfscheck
+  expects that model (see docs/xbfs-enhancements.md A.2 / the mkxbfs
+  backfill notes).
 
 ## 10. Risks / gotchas
 

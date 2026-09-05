@@ -34,6 +34,7 @@ S_IFMT = 0o170000
 S_IFDIR = 0o040000
 S_IFREG = 0o100000
 S_IFLNK = 0o120000
+S_IFSOCK = 0o140000
 
 
 class Fail(Exception):
@@ -329,6 +330,14 @@ def check(path, rootdir=None, allow_dirty_log=False):
         io, mode = check_inode(ino)
         check_mode(io, path, S_IFDIR)
         assert mode & S_IFMT == S_IFDIR, "%s: not a dir" % path
+        # the root inode: mkxbfs leaves it at mtime 0 (not backfilled),
+        # but the driver indexes it (size + last_modified) on the first
+        # modification, so expect it once it carries a nonzero mtime
+        if ino == root_ino:
+            rmtime = u64(io + 36)
+            if rmtime != 0:
+                expect_size.setdefault(u64(io + 208), set()).add(ino)
+                expect_mtime.setdefault(rmtime, set()).add(ino)
         entries, stats, leaf_order = read_tree(io, referenced)
         keys = [k for k, _ in entries]
         assert keys == sorted(keys), "%s: entries not sorted" % path
@@ -351,21 +360,29 @@ def check(path, rootdir=None, allow_dirty_log=False):
             cio, cmode = check_inode(cino, child)
             cpath = path + '/' + child
             cio2, _ = check_inode(cino, child)
-            csize = parse_stream(cio2)[6]
+            if cmode & S_IFMT == S_IFLNK:
+                # symlinks: length is pad[0] on inline (driver rule) or
+                # data.size for INODE_LONG_SYMLINK stream symlinks
+                lng = bool(u32(cio2 + 24) & 0x40)
+                csize = u64(cio2 + 208) if lng else u32(cio2 + 224)
+            else:
+                csize = parse_stream(cio2)[6]
             cmtime = u64(cio2 + 36)
-            # only files touched by a driver that maintains indices are
-            # indexed (the image builder creates the indices empty, like
-            # Haiku's mkfs; mkxbfs-created files carry last_modified 0)
-            if cmtime != 0:
-                expect_name.append((child.encode('latin1'), cino))
-                expect_size.setdefault(csize, set()).add(cino)
-                expect_mtime.setdefault(cmtime, set()).add(cino)
+            # mkxbfs backfills the name/size/last_modified indices over
+            # the whole tree it builds (Haiku-mkfs parity), and the
+            # driver moves keys on modification (index-on-modify), so
+            # every directory entry is expected in all three indices
+            expect_name.append((child.encode('latin1'), cino))
+            expect_size.setdefault(csize, set()).add(cino)
+            expect_mtime.setdefault(cmtime, set()).add(cino)
             if cmode & S_IFMT == S_IFDIR:
                 walk_dir(cino, ino, cpath)
             elif cmode & S_IFMT == S_IFREG:
                 check_file(cino, cpath)
             elif cmode & S_IFMT == S_IFLNK:
                 check_link(cino, cpath)
+            elif cmode & S_IFMT == S_IFSOCK:
+                pass        # sockets carry no file content to verify
             else:
                 raise Fail("%s: unknown mode %o" % (cpath, cmode))
 
@@ -587,54 +604,65 @@ def check(path, rootdir=None, allow_dirty_log=False):
                                 b'qdouble') for i in ientries)
             if not demo:
                 continue
-            touched = set(v for _, v in expect_name)
-            build_inos = [k for k in expect_all_inos if k not in touched]
-            if vmode & S_LONG_LONG_INDEX:
-                if iname_b == b'size':
-                    exp = {}
-                    for k, st in expect_size.items():
-                        exp.setdefault(struct.pack('<q', k), set()).update(st)
-                elif iname_b == b'last_modified':
-                    exp = {}
-                    for k, st in expect_mtime.items():
-                        exp.setdefault(struct.pack('<q', k), set()).update(st)
-                else:
-                    exp = {struct.pack('<q', k): {k}
-                           for k in build_inos}
-                assert got == exp, (
-                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
-            elif iname_b == b'name':
+            # maintained indices (name/size/last_modified): mkxbfs
+            # backfills them over the whole tree and the driver moves
+            # keys on modification, so every walked entry is expected in
+            # all three - the comparison is exact
+            if iname_b == b'name':
                 exp = {}
                 for k, st in expect_name:
                     exp.setdefault(k, set()).add(st)
                 assert got == exp, (
                     "name index mismatch: got %s want %s" % (got, exp))
-            elif vmode & S_INT_INDEX:
-                exp = {struct.pack('<i', k): {k} for k in build_inos}
+                continue
+            if iname_b == b'size' or iname_b == b'last_modified':
+                exp = {}
+                for k, st in (expect_size.items()
+                              if iname_b == b'size' else
+                              expect_mtime.items()):
+                    exp.setdefault(struct.pack('<q', k), set()).update(st)
                 assert got == exp, (
                     "index %s mismatch: got %s want %s" % (iname_b, got, exp))
-            elif vmode & S_UINT_INDEX:
-                exp = {struct.pack('<I', k): {k} for k in build_inos}
-                assert got == exp, (
-                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
-            elif vmode & S_ULONG_LONG_INDEX:
-                exp = {struct.pack('<Q', k): {k} for k in build_inos}
-                assert got == exp, (
-                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
-            elif vmode & S_FLOAT_INDEX:
-                exp = {struct.pack('<f', float(k)): {k}
-                       for k in build_inos}
-                assert got == exp, (
-                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
-            elif vmode & S_DOUBLE_INDEX:
-                exp = {struct.pack('<d', float(k)): {k}
-                       for k in build_inos}
-                assert got == exp, (
-                    "index %s mismatch: got %s want %s" % (iname_b, got, exp))
-            else:
+                continue
+            # typed demo fixtures: one entry per BUILD-TIME inode (the
+            # inode number keyed as the index's type). A booted session
+            # legitimately diverges the tree - the init removes the
+            # static live-directory inodes (/Volumes, the per-user home
+            # dirs) and mounts live ones, and session-created inodes are
+            # allocated above the fixture's contiguous build range - so
+            # the fixture is only exact on a pristine image. Verify the
+            # sound direction on any image: every walked inode whose
+            # number falls within the fixture's own key range is indexed
+            # by it (walked inodes outside the range are either build
+            # inodes the session removed or session inodes the fixture
+            # never knew).
+            fmts = {S_LONG_LONG_INDEX: '<q', S_INT_INDEX: '<i',
+                    S_UINT_INDEX: '<I', S_ULONG_LONG_INDEX: '<Q',
+                    S_FLOAT_INDEX: '<f', S_DOUBLE_INDEX: '<d'}
+            fmt = next((f for m, f in fmts.items() if vmode & m), None)
+            if fmt is None:
                 assert not keys2, (
                     "BEOS:APP_SIG index should be empty, got %s" % keys2)
-        print("indices: contents verified")
+                continue
+            if got:
+                ks = sorted(struct.unpack(fmt, k)[0] for k in got)
+                lo, hi = ks[0], ks[-1]
+            else:
+                lo = hi = None
+            if fmt in ('<f', '<d'):
+                exp = {struct.pack(fmt, float(k)): {k}
+                       for k in expect_all_inos
+                       if lo is not None and lo <= k <= hi}
+            else:
+                exp = {struct.pack(fmt, k): {k}
+                       for k in expect_all_inos
+                       if lo is not None and lo <= k <= hi}
+            miss = set(exp) - set(got)
+            assert not miss, (
+                "index %s: %d walked inodes in the fixture's key range "
+                "are not indexed: %s" % (iname_b, len(miss),
+                                         sorted(miss)[:6]))
+
     else:
         print("indices: none")
 

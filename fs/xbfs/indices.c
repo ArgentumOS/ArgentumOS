@@ -158,23 +158,29 @@ void xbfs_index_resize(struct superblock *sb, struct inode *i,
 	/* only touch an index when its value actually changed: a
 	 * same-value resize would otherwise remove + re-insert the same
 	 * key (wasted churn, and on the last_modified index it can
-	 * resurrect an entry removed by the unlink). The put follows the
-	 * del: a del of a key that was never indexed (the root and the
-	 * mkxbfs-created dirs are not in the driver's indices) must not
-	 * add the inode out of nowhere — Haiku indexes only inodes it
-	 * creates. */
+	 * resurrect an entry removed by the unlink).
+	 *
+	 * Remove the old key, then insert the new one unconditionally —
+	 * exactly Haiku's Index::Update(): a missing old key (an inode
+	 * that was never indexed: the root and the mkxbfs/foreign-created
+	 * files whose indices the image builder starts empty) is
+	 * tolerated, and the inode is silently added on its first
+	 * modification ("index-on-modify"). Gating the put on the del
+	 * succeeding left such inodes unindexed forever even after a
+	 * session modified them, which xbfscheck flagged (and which Haiku
+	 * would not). Unlinked inodes are already excluded above (the
+	 * i_nlink == 0 early return), so this cannot resurrect a deleted
+	 * file's entries. */
 	if(osz != nsz) {
-		if(xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
-				 8, i->inode) == 0) {
-			xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE,
-				      (char *)&nsz, 8, i->inode);
-		}
+		xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
+			       8, i->inode);
+		xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&nsz,
+			       8, i->inode);
 	}
 	if(omt != nmt) {
-		if(xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
-				 (char *)&omt, 8, i->inode) == 0) {
-			xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
-				      (char *)&nmt, 8, i->inode);
-		}
+		xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
+			       (char *)&omt, 8, i->inode);
+		xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
+			       (char *)&nmt, 8, i->inode);
 	}
 }

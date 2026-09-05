@@ -185,7 +185,12 @@ def table_blocks(st):
 
 
 def build_inode(block, mode, size, parent, stream, name_attr=None,
-                symlink=None, flags=INODE_IN_USE, itype=0):
+                symlink=None, flags=INODE_IN_USE, itype=0, mtime=0):
+    # 'mtime' = the host st_mtime (seconds) of the source tree entry; the
+    # on-disk raw times store the index-key form (sec << 16 | subsecond),
+    # which xbfs_touch_mtime uses and the guest derives i_mtime from
+    # (raw >> 16). Indexed tree entries carry their source time; synthetic
+    # inodes (indices, index files, the root) keep 0.
     """Serialize a 256-byte inode. 'stream' is a dict with 'direct' (list
     of runs), 'mdr', 'indirect' (run or None), 'max_indirect', 'dind'
     (run or None), 'max_dind'. 'symlink' is the inline target (<= 143
@@ -200,8 +205,9 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
     i[o:o + 4] = u32(0); o += 4              # gid
     i[o:o + 4] = u32(mode); o += 4
     i[o:o + 4] = u32(flags); o += 4          # flags
-    i[o:o + 8] = u64(0); o += 8              # create_time
-    i[o:o + 8] = u64(0); o += 8              # last_modified_time
+    mt = (mtime << 16) if mtime else 0
+    i[o:o + 8] = u64(mt); o += 8             # create_time
+    i[o:o + 8] = u64(mt); o += 8             # last_modified_time
     i[o:o + 8] = run(0, parent); o += 8      # parent
     i[o:o + 8] = run(0, 0, 0); o += 8        # attributes: the zero run
     i[o:o + 4] = u32(itype); o += 4          # type ('CSTR'/'LLNG' for indices)
@@ -224,7 +230,7 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
         i[o:o + 8] = run(*dind); o += 8
         i[o:o + 8] = u64(stream.get('max_dind', 0)); o += 8
         i[o:o + 8] = u64(size); o += 8
-    i[o:o + 8] = u64(0); o += 8              # status_change_time
+    i[o:o + 8] = u64(mt); o += 8             # status_change_time
     if symlink is not None:
         i[o:o + 4] = u32(size); o += 4       # pad[0]: symlink length
         i[o:o + 4] = u32(0); o += 4
@@ -497,10 +503,153 @@ def main():
         out = sorted((b, bytes(d)) for b, d in merged.items())
         return 1 + len(out), root_off, len(levels), out
 
+    def build_index(entries, hb, data_type):
+        """Index tree over (key, ino) entries, duplicate keys allowed.
+        Distinct keys pack into the B+tree exactly as in build_tree();
+        each leaf entry value is a direct inode number (unique key) or a
+        link to a duplicate node (type 2, XBFS_BTREE_DUPLICATE_NODE:
+        {left @0, right @8, count @16, values[125] @24}, chained by right
+        links when a key has > 125 values). mkxbfs does not emit fragment
+        slots (type 3): a duplicate node is valid for any count >= 2 and
+        the driver + xbfscheck both read it. Returns
+        (nblocks, root_off, max_depth, blocks) with any duplicate-node
+        blocks appended to the tree's stream (their stream offsets are
+        what the links point at). data_type 5 (LLNG) sorts keys as signed
+        INT64; 0 (CSTR) sorts by raw bytes."""
+        def ksort(kb):
+            if data_type == 5:
+                return struct.unpack('<q', kb)[0]
+            return kb
+        entries = sorted(entries, key=lambda e: (ksort(e[0]), e[1]))
+        groups = []
+        for kb, ino in entries:
+            if groups and groups[-1][0] == kb:
+                groups[-1][1].append(ino)
+            else:
+                groups.append([kb, [ino]])
+        keys = [g[0] for g in groups]
+        # greedy leaf packing over the distinct keys (identical to
+        # build_tree; values are fixed 8B each, so dup content costs the
+        # leaf nothing)
+        leaves = []
+        cur = []
+        for kb in keys:
+            if cur and not node_room(cur + [kb], 0):
+                leaves.append(cur)
+                cur = [kb]
+            else:
+                cur.append(kb)
+        if cur:
+            leaves.append(cur)
+        if not leaves:
+            leaves = [[]]
+        levels = [leaves]
+        maxkeys = [[k for k in leaf] for leaf in leaves]
+        while len(levels[-1]) > 1:
+            level = levels[-1]
+            parents = []
+            cur = []
+            for i in range(len(level)):
+                cand = maxkeys[i][-1]
+                if cur and not interior_fits([(m, 0) for m in cur]
+                                             + [(cand, 0)]):
+                    parents.append(cur)
+                    cur = []
+                cur.append(cand)
+            if cur:
+                parents.append(cur)
+            levels.append(parents)
+            maxkeys = [[p[-1]] for p in parents]
+        counts = [len(level) for level in levels]
+        base = []
+        acc = 0
+        for c in counts:
+            base.append(acc)
+            acc += c
+        def node_offset(idx):
+            return (idx + 1) * NODE
+        assert BLOCK == NODE, "dup-block layout assumes 1024-byte blocks"
+        extra = max(0, (acc + 1) * NODE - BLOCK)
+        ndata = (extra + BLOCK - 1) // BLOCK
+        blocks = alloc_blocks(ndata)
+        merged = {}
+        dup_blocks = []
+        def put_node(idx, data):
+            off = node_offset(idx)
+            if off < BLOCK:
+                blk = hb
+            else:
+                blk = blocks[(off - BLOCK) // BLOCK]
+            merged.setdefault(blk, bytearray(BLOCK))
+            merged[blk][off % BLOCK:off % BLOCK + len(data)] = data
+        # allocate one dup node per chunk of 125 values, chained; each
+        # node's stream offset is (acc + 1 + dup_index) * NODE
+        value_of = {}
+        for g in groups:
+            inos = g[1]
+            if len(inos) == 1:
+                value_of[g[0]] = inos[0]
+                continue
+            first_off = None
+            prev_idx = None
+            for start in range(0, len(inos), 125):
+                chunk = inos[start:start + 125]
+                # stream offset of the dup node = its slot after the tree
+                # nodes; the PHYSICAL block is a fresh allocation whose
+                # address the stream's block list carries (the link in
+                # the leaf points at the stream offset, not the block)
+                ablk = alloc_blocks(1)[0]
+                off = (acc + 1 + len(dup_blocks)) * NODE
+                node = bytearray(NODE)
+                node[8:16] = u64(0xFFFFFFFFFFFFFFFF)  # right (BTREE_NULL)
+                node[16:24] = u64(len(chunk))
+                for j, v in enumerate(chunk):
+                    node[24 + j * 8:32 + j * 8] = u64(v)
+                dup_blocks.append((ablk, off, node))
+                if prev_idx is not None:
+                    # point the previous node's right link at this one
+                    pblk, poff, pnode = dup_blocks[prev_idx]
+                    arr = bytearray(pnode)
+                    arr[8:16] = u64(off)
+                    dup_blocks[prev_idx] = (pblk, poff, bytes(arr))
+                if first_off is None:
+                    first_off = off
+                prev_idx = len(dup_blocks) - 1
+            value_of[g[0]] = (2 << 62) | (first_off & 0x3ffffffffffffc00)
+        # serialize the leaves + interiors with the real values
+        for i, leaf in enumerate(leaves):
+            right = node_offset(i + 1) if i + 1 < counts[0] else BTREE_NULL
+            left = node_offset(i - 1) if i > 0 else BTREE_NULL
+            vals = [value_of[kb] for kb in leaf]
+            put_node(i, build_node(leaf, vals, BTREE_NULL, right, left=left))
+        for l in range(1, len(levels)):
+            prev_base = base[l - 1]
+            parent_base = base[l]
+            cstart = prev_base
+            for j, parent in enumerate(levels[l]):
+                k = len(parent)
+                child_offs = [node_offset(cstart + t) for t in range(k)]
+                data = build_node(parent[:-1], child_offs[:-1],
+                                  child_offs[-1], BTREE_NULL)
+                put_node(parent_base + j, data)
+                cstart += k
+        root_off = node_offset(base[-1])
+        merged.setdefault(hb, bytearray(BLOCK))
+        merged[hb][0:40] = build_btree_header(root_off, len(levels),
+                                              data_type=data_type)
+        out = sorted((b, bytes(d)) for b, d in merged.items())
+        # the dup nodes are separate stream blocks: their physical
+        # blocks come from the allocator and the stream's run list (the
+        # index file's stream covers tree + dup blocks in stream order,
+        # so the leaf links, which use stream offsets, resolve to them)
+        out += [(ablk, bytes(node)) for ablk, _off, node in dup_blocks]
+        return 1 + len(out), root_off, len(levels), out
+
     # ---- walk the tree, allocating inodes + streams ----
     write_inodes = []   # (block, bytes)
     write_blocks = []   # (block, bytes)
     dirs = {}           # path -> (dblk, hb, nblocks, entries)
+    idx_rows = []       # (name, ino, mtime, size) of every / tree entry
     nfiles = 0
 
     def build_dir(path, parent_blk):
@@ -516,42 +665,47 @@ def main():
                 entries.append((name, build_dir(rel, dblk)))
             elif os.path.islink(fp):
                 target = os.readlink(fp)
+                st = os.lstat(fp)
                 ib = alloc_inode()
                 all_inos.append(ib)
                 if len(target) <= 143:
                     write_inodes.append((ib, build_inode(
                         ib, S_IFLNK | 0o777, len(target), dblk, {},
-                        symlink=target.encode(), name_attr=name)))
+                        symlink=target.encode(), name_attr=name,
+                        mtime=int(st.st_mtime))))
                 else:
                     # long symlink: the target lives in the data stream
                     nblocks = (len(target) + BLOCK - 1) // BLOCK
-                    st = build_stream(nblocks)
-                    for i, b in enumerate(st['blocks']):
+                    st2 = build_stream(nblocks)
+                    for i, b in enumerate(st2['blocks']):
                         write_blocks.append(
                             (b, target[i * BLOCK:(i + 1) * BLOCK]))
-                    write_blocks += table_blocks(st)
+                    write_blocks += table_blocks(st2)
                     write_inodes.append((ib, build_inode(
-                        ib, S_IFLNK | 0o777, len(target), dblk, st,
+                        ib, S_IFLNK | 0o777, len(target), dblk, st2,
                         flags=INODE_IN_USE | INODE_LONG_SYMLINK,
-                        name_attr=name)))
+                        name_attr=name, mtime=int(st.st_mtime))))
                 entries.append((name, ib))
+                idx_rows.append((name, ib, int(st.st_mtime), len(target)))
             else:
                 with open(fp, "rb") as fh:
                     data = fh.read()
+                st = os.stat(fp)
                 ib = alloc_inode()
                 all_inos.append(ib)
-                mode = S_IFREG | (os.stat(fp).st_mode & 0o7777)
+                mode = S_IFREG | (st.st_mode & 0o7777)
                 nblocks = (len(data) + BLOCK - 1) // BLOCK
-                st = build_stream(nblocks)
-                for i, b in enumerate(st['blocks']):
+                st2 = build_stream(nblocks)
+                for i, b in enumerate(st2['blocks']):
                     write_blocks.append(
                         (b, data[i * BLOCK:(i + 1) * BLOCK]))
-                write_blocks += table_blocks(st)
+                write_blocks += table_blocks(st2)
                 write_inodes.append((ib, build_inode(
-                    ib, mode, len(data), dblk, st,
-                    name_attr=name)))
+                    ib, mode, len(data), dblk, st2, name_attr=name,
+                    mtime=int(st.st_mtime))))
                 nfiles += 1
                 entries.append((name, ib))
+                idx_rows.append((name, ib, int(st.st_mtime), len(data)))
         entries.insert(0, ('.', dblk))
         # the root's '..' points at itself
         entries.insert(0, ('..', parent_blk if parent_blk else dblk))
@@ -564,11 +718,19 @@ def main():
                   'mdr': len(dir_blocks) * BLOCK, 'indirect': None,
                   'max_indirect': len(dir_blocks) * BLOCK, 'dind': None,
                   'max_dind': len(dir_blocks) * BLOCK}
+        st = os.stat(full)
+        # the root inode stays at mtime 0: it is not a tree entry with a
+        # parent name, so mkxbfs never backfills it; the driver adds it
+        # to the indices on its first real modification (index-on-modify)
         write_inodes.append((dblk, build_inode(
-            dblk, S_IFDIR | (os.stat(full).st_mode & 0o7777),
+            dblk, S_IFDIR | (st.st_mode & 0o7777),
             len(dir_blocks) * BLOCK, parent_blk, stream,
-            name_attr=os.path.basename(full) if path else None)))
+            name_attr=os.path.basename(full) if path else None,
+            mtime=int(st.st_mtime) if path else 0)))
         dirs[path] = (dblk, hb, nblocks, entries)
+        if path:
+            idx_rows.append((os.path.basename(full), dblk,
+                             int(st.st_mtime), len(dir_blocks) * BLOCK))
         return dblk
 
     # all inodes the image contains (files + dirs + symlinks), in
@@ -589,6 +751,17 @@ def main():
 
     indices_blk = alloc_inode()
     idx_entries = []
+    # backfill sets per standard index: name (STRING, byte order) over
+    # every directory entry, size + last_modified (INT64, signed order)
+    # over every tree entry at the inode's stamped size/mtime — Haiku
+    # mkfs parity (mkfs-built volumes are fully indexed; see
+    # docs/xbfs-enhancements.md A.2 / the xbfscheck expectations).
+    backfill = {}
+    backfill['name'] = [(n.encode('latin1'), ino) for n, ino, _, _ in idx_rows]
+    backfill['last_modified'] = [
+        (struct.pack('<q', mt << 16), ino) for _, ino, mt, _ in idx_rows]
+    backfill['size'] = [(struct.pack('<q', sz), ino)
+                        for _, ino, _, sz in idx_rows]
     for iname, itype, imode, dt in [
             ("name", CSTR, IDX_STR_INDEX, 0),
             ("BEOS:APP_SIG", CSTR, IDX_STR_INDEX, 0),
@@ -596,7 +769,12 @@ def main():
             ("size", LLNG, IDX_LL_INDEX, 5)]:
         iib = alloc_inode()
         hb2 = alloc_blocks(1)[0]
-        nb2, root2, dep2, nodes2 = build_tree([], hb2, None, data_type=dt)
+        entries2 = backfill.get(iname, [])
+        if entries2:
+            nb2, root2, dep2, nodes2 = build_index(entries2, hb2, dt)
+        else:
+            nb2, root2, dep2, nodes2 = build_tree([], hb2, None,
+                                                  data_type=dt)
         write_blocks += nodes2
         idx_blocks = [b for b, _ in nodes2]
         istream = {'direct': runs_of(idx_blocks),
@@ -665,6 +843,7 @@ def main():
         indices_blk, IDX_INDEX_DIR | IDX_STR_INDEX | S_IFDIR | 0o700,
         len(idxr_blocks) * BLOCK, 0, irstream)))
 
+    print("DBG len(used) after indices:", len(used), file=sys.stderr)
     # ---- write the image ----
     img_buf = bytearray(num_blocks * BLOCK)
 
@@ -682,12 +861,16 @@ def main():
 
     # allocation bitmaps: group g lives at blocks 1 + g*blocks_per_ag
     # (Haiku BlockAllocator layout); bit set = block in use
+    print("DBG used at bitmap build:", len(used),
+          "max:", max(used) if used else None, file=sys.stderr)
     bitmap = bytearray(num_ags * blocks_per_ag * BLOCK)
     for b in used:
         group = b >> ag_shift
         bit = b & (ag_size - 1)
         gboff = group * blocks_per_ag * BLOCK
         bitmap[gboff + (bit >> 3)] |= (1 << (bit & 7))
+    print("DBG bitmap bytes 700:760:", bytes(bitmap[700:760]).hex(),
+          "len:", len(bitmap), "usedmax:", max(used), file=sys.stderr)
     for g in range(num_ags):
         for bb in range(blocks_per_ag):
             write_block(1 + g * blocks_per_ag + bb,
