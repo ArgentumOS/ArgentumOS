@@ -190,11 +190,14 @@ symlinks) so unlink never walks the empty stream. Truncate-to-0
   soak `resets=0 wraps=56 clean_halt=True log_clean=True
   struct_ok=True`; R-M2 crash states 3/6 verified (mounted + files
   served + batch replay).
-- Note (pre-existing, not X-SSD6): `xbfscheck` reports a
-  `last_modified` index mismatch after sessions that `mkdir` into
-  mkxbfs-era directories (A/B-verified on the pre-inline kernel; plain
-  boots + create-only churn are clean) — the parent-dir mtime bump at
-  mkdir is not re-indexed. Separate follow-up.
+- Note: a `last_modified` index mismatch after `mkdir` sessions was
+  root-caused to `xbfs_dup_array()` pointer arithmetic — `+ slot*64` was
+  added to a `struct xbfs_btree_node *` (28-byte units), so every
+  fragment slot > 0 landed ~3.4KB out of bounds and its value was never
+  journaled. Slot 0 masked it until a same-tick pair (mkdir'd dir +
+  parent sharing one key) put a second value in an existing fragment.
+  Fixed by byte-casting (commit FIX-COMMIT); one-mkdir repro, the full
+  session, churn soak, and crash legs all check clean.
 - Effort: small-medium.
 
 #### X-SSD7 — Async writeback daemon

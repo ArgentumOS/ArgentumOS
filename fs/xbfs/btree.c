@@ -1322,8 +1322,12 @@ static int xbfs_dup_link_frag(__u64 v)
  * node size it is not at the start of the block buffer) */
 static __u64 *xbfs_dup_array(struct buffer *nb, __u64 noff, int slot)
 {
-	return (__u64 *)(xbfs_btree_node_buf(nb, noff)
-		+ slot * 8 * (XBFS_BTREE_NUM_FRAGMENT_VALUES + 1));
+	/* NOTE: the slot offset must be BYTES, so the base pointer is
+	 * cast to unsigned char * first - xbfs_btree_node_buf() returns a
+	 * struct pointer and adding to it would advance in struct units
+	 * (28 bytes here), putting every slot > 0 far out of bounds */
+	return (__u64 *)((unsigned char *)xbfs_btree_node_buf(nb, noff)
+		+ (unsigned long)slot * 8 * (XBFS_BTREE_NUM_FRAGMENT_VALUES + 1));
 }
 
 /* the {count, values[125]} array of a duplicate node (offset 16, the
