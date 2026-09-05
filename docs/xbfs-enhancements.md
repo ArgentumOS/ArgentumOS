@@ -26,7 +26,7 @@ checksum/scrub one (X-SSD4).
 X-SSD4 scheduled as a format-version milestone and X-SSD7 folded into
 X-SSD2. **X-SSD1 (TRIM/discard on free) is DONE** (commit 500d19a),
 **X-SSD2 (group commit + targeted flush) is DONE** (commit 4ad7a21) and
-**X-SSD6 (inline file data) is DONE** (commit X-SSD6-COMMIT); the
+**X-SSD6 (inline file data) is DONE** (commit 5edc498); the
 remaining milestones are implementation-pending.
 
 ### A.1 Where XBFS stands relative to SSD behavior
