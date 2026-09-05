@@ -6,6 +6,13 @@ added to make it SSD-appropriate, ranked by value/effort, each as a
 sizable milestone with acceptance criteria. No format change is required
 for any item except the checksum/scrub one.
 
+Update (format identity, c0386ea): the superblock magic1 is now
+**0x58424653 ('XBFS')**, not BFS's 0x42465331 ('BFS1'), and mounts are
+strict XBFS-only (legacy 'BFS1' volumes are rejected). The layout stays
+BFS-derived, but the format identity has already diverged — relevant to
+X-SSD4's format-version question in §4, which now has this change as
+precedent.
+
 ## 1. Where XBFS stands relative to SSD behavior
 
 Grounded in the current tree (fs/xbfs/, tools/mkxbfs.py, include/fnx/xbfs.h):
