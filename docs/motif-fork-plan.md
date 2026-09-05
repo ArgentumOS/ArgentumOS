@@ -92,6 +92,40 @@ order:
    bindings, retained-object rendering / one-window-per-top-level, if
    "own every layer" reaches the intrinsics.
 
+### API shape — GTK+-style idioms (decided)
+
+The Momo API should feel like GTK+, not like Motif/Xt. GTK+ is the
+reference for the *shape* (idioms, naming, object model) — not its code,
+and not its dated parts. The mapping:
+
+- **Naming**: `gtk_<widget>_new()`-style constructors → `momo_*`
+  (`momo_button_new()`, `momo_window_new()`), per the full-prefix rule.
+- **Object model**: one object per widget, plain C (no GObject
+  boilerplate — no type-registration macros, no `GObject` inheritance
+  machinery); containers pack children (`momo_box_pack_start`,
+  `momo_grid_attach`-style), layout via boxes/grids rather than Xt
+  geometry managers.
+- **Main loop**: an `momo_main()` / `momo_init()` pair, GTK-style,
+  instead of Xt's event model.
+- **Lifetime**: explicit create/destroy + reference counting, GTK-like.
+- **Configuration**: typed property accessors and per-widget descriptors
+  — never `g_object_set`-style stringly varargs, never X resources.
+
+Deliberate improvements over GTK+ itself (keeping the earlier rules):
+
+- **Typed callbacks, no casts**: GTK+ still uses stringly signal names +
+  `G_CALLBACK` casts (`g_signal_connect(btn, "clicked", G_CALLBACK(fn),
+  data)`). Momo's handlers are typed functions registered at creation or
+  via typed slots — the compiler checks the payload, no casts, no
+  reason-code checks.
+- **Creation-time wiring**: handlers belong in the constructor /
+  descriptor, not a post-hoc `g_signal_connect` step.
+- **No UI-description language**: GTK+'s own declarative cousin
+  (GtkBuilder/glade/`.ui` files) is excluded like UIL — code is the only
+  UI description.
+- **No GTK settings/CSS-theming machinery**: theming is the `.conf`
+  domain (item 2); GTK+ 3/4's CSS engine is not imported.
+
 ## 4. Milestones (sketch)
 
 - **M0 — Vendor + build recon.** Vendor Open Motif 2.3.x + stock
