@@ -6,7 +6,7 @@ Usage: mkbfs.py <rootdir> <image> <size-MB>
 1KB blocks, 8MB allocation groups. Layout (Haiku convention):
   block 0: boot block + 512-byte superblock at offset 512
   blocks 1..num_ags: allocation bitmaps (one block per AG)
-  journal extent (512 blocks, clean: log_start == log_end == 0)
+  journal extent (1024 blocks; see the sizing rationale below)
   inode blocks (one 256-byte inode per block)
   data blocks (directory trees, file/symlink streams, indirect tables)
 
@@ -262,7 +262,18 @@ def main():
     num_blocks = mb * 1024 * 1024 // BLOCK
     ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
-    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 512
+    # Journal size (blocks): sized for the heaviest *bounded* metadata
+    # phase measured on this tree (fs/bfs/journal.c reset counters).
+    # Method: set this to 64, boot each workload, and sum the per-cycle
+    # "resetting after N journaled block(s)" prints - that is the phase's
+    # total journaled-block demand. Measured envelope (64MB image, 1KB
+    # blocks): standard boot <64, run-xfb X11 desktop ~500. 1024 = ~2x
+    # headroom over the X11 desktop so a busy phase fits in <=1 reset.
+    # Sustained metadata streams (mass file create/delete) journal
+    # unbounded blocks and reset periodically at ANY size - only the
+    # frequency changes; eliminating those resets needs log-space
+    # reclaim (advance log_start / wrap), not a bigger log.
+    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 1024
     next_inode = journal_start + journal_len
     next_data = 0
     used = set()

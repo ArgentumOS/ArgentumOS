@@ -390,7 +390,14 @@ int bfs_log_commit(struct superblock *sb)
 		 * the old blocks: otherwise a crash between the entry write
 		 * and commit step (2) would make replay walk the stale
 		 * on-disk log_end into the new entry's data blocks. */
-		printk("BFS-LOG: log full, resetting.\n");
+		sb->u.bfs.log_since_reset += (n + 1);
+		if(sb->u.bfs.log_since_reset > sb->u.bfs.log_peak) {
+			sb->u.bfs.log_peak = sb->u.bfs.log_since_reset;
+		}
+		printk("BFS-LOG: log full, resetting after %lu journaled block(s) (peak %lu).\n",
+		       (unsigned long)sb->u.bfs.log_since_reset,
+		       (unsigned long)sb->u.bfs.log_peak);
+		sb->u.bfs.log_since_reset = 0;
 		sb->u.bfs.log_flushing = 1;
 		sync_buffers(sb->dev);
 		sb->u.bfs.log_flushing = 0;
@@ -471,6 +478,10 @@ int bfs_log_commit(struct superblock *sb)
 	 * repair the blocks; the bitmap must be on disk too or the next
 	 * allocation could reuse a replayed block */
 	sb->u.bfs.log_end = entry_pos + n + 1;
+	sb->u.bfs.log_since_reset += (n + 1);
+	if(sb->u.bfs.log_since_reset > sb->u.bfs.log_peak) {
+		sb->u.bfs.log_peak = sb->u.bfs.log_since_reset;
+	}
 	sb->u.bfs.flags = BFS_SUPER_DIRTY;
 	bfs_log_write_bitmap(sb);
 	bfs_log_write_super(sb);
