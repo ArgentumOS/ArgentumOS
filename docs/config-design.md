@@ -26,16 +26,22 @@ command-line layer over them.
 - Files live in a `Configuration/` directory at the **three scopes** of
   the origin model (decided):
 
-  | Scope | Flag | Location | Owner |
+  | Scope | Flag | Location | Role (docs plan D4/§5.0) |
   |---|---|---|---|
-  | user | `-u` (default) | `Users/$USER/Configuration/` | the person |
-  | shared | `-g` | `/Shared/Configuration/` | third parties, machine-wide |
-  | system | `-s` | `/System/Configuration/` | the OS |
+  | system | `-s` | `/System/Configuration/` | the machine's real configuration — authoritative |
+  | user | `-u` (default) | `Users/$USER/Configuration/` | the person (overrides defaults, never System) |
+  | shared | `-g` | `/Shared/Configuration/` | overridable defaults (first- + third-party) |
+
+  Placement follows setting kind (plan §5.0): non-overridable global
+  settings (identity, boot policy) live in System scope; overridable
+  first-party settings ship in Shared under `system.config.<app>`; a
+  System copy of the same domain locks a value. See §5.
 
   ```
-  /System/Configuration/system.config.dock.conf
-  /Shared/Configuration/com.example.HelloWorld.conf
-  Users/$USER/Configuration/system.config.shell.conf
+  /System/Configuration/system.config.passwd.conf     (identity: authoritative)
+  /Shared/Configuration/system.config.xfb.conf        (overridable first-party default)
+  /Shared/Configuration/com.example.HelloWorld.conf   (third-party)
+  Users/$USER/Configuration/system.config.shell.conf  (the person)
   ```
 
   (`/Shared/Configuration/` is a new FSH directory added by this design;

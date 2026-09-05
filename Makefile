@@ -320,11 +320,16 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 		  cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
 	@chmod +x "$(ROOTFS64)/System/Tools/sh" "$(ROOTFS64)/System/Tools/init"
 	# --- machine configuration (System/Configuration; Q9 accounts) ---
-	@printf 'Admin:x:0:0:Admin:/Users/Admin:/System/Tools/sh\n' > "$(ROOTFS64)/System/Configuration/passwd"
-	@printf 'Admin:x:0:\n' > "$(ROOTFS64)/System/Configuration/group"
+	# Identity + login policy are record domains shipped in System scope
+	# (docs/system-config-files-plan.md M2). The legacy colon/line files
+	# (passwd, group, shells) are gone; hosts stays legacy until M5.
+	@cp userland/configuration/system.config.passwd.conf "$(ROOTFS64)/System/Configuration/system.config.passwd.conf"
+	@cp userland/configuration/system.config.group.conf "$(ROOTFS64)/System/Configuration/system.config.group.conf"
+	@cp userland/configuration/system.config.shells.conf "$(ROOTFS64)/System/Configuration/system.config.shells.conf"
 	@printf '127.0.0.1 localhost\n127.0.0.1 (none)\n' > "$(ROOTFS64)/System/Configuration/hosts"
-	@printf '/System/Tools/sh\n' > "$(ROOTFS64)/System/Configuration/shells"
-	@cp userland/configuration/system.config.xfb.conf "$(ROOTFS64)/System/Configuration/system.config.xfb.conf"
+	# Overridable first-party defaults ship in Shared (plan §5.0); a
+	# System copy overrides them (Xfb reads via resolved libconfig reads).
+	@cp userland/configuration/system.config.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.config.xfb.conf"
 	# --- the Admin home: the User Template, copied (Q9) ---
 	rm -rf "$(ROOTFS64)/Users"
 	@mkdir -p "$(ROOTFS64)/Users"
