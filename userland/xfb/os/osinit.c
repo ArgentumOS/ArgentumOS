@@ -165,7 +165,7 @@ OsInit(void)
 {
     static Bool been_here = FALSE;
 #ifndef XQUARTZ
-    static const char *devnull = "/System/Devices/null";
+    static const char *devnull = "/System/Devices/Memory/null";
     char fname[PATH_MAX];
 #endif
 

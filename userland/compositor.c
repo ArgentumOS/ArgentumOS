@@ -439,7 +439,7 @@ static void input_open_mouse(void)
 	/* GUI_MOUSE overrides the source (test harnesses feed PS/2
 	 * packets through a serial line); default = the PS/2 mouse */
 	if(!src || !*src) {
-		src = "/System/Devices/psaux";
+		src = "/System/Devices/PS2/Mouse";
 	}
 	mouse_fd = open(src, O_RDONLY | O_NONBLOCK);
 	if(mouse_fd >= 0 && isatty(mouse_fd)) {
@@ -502,7 +502,7 @@ static void input_open_keyboard(void)
 	const char *src = getenv("GUI_KBD");
 
 	if(!src || !*src) {
-		src = "/System/Devices/kbd";
+		src = "/System/Devices/PS2/Keyboard";
 	}
 	kbd_fd = open(src, O_RDONLY | O_NONBLOCK);
 	if(kbd_fd >= 0 && isatty(kbd_fd)) {
@@ -528,7 +528,7 @@ static int fb_open_device(void)
 {
 	size_t len;
 
-	fb_fd = open("/System/Devices/fb0", O_RDWR);
+	fb_fd = open("/System/Devices/Display/fb0", O_RDWR);
 	if(fb_fd < 0) {
 		perror("open /dev/fb0");
 		return -1;

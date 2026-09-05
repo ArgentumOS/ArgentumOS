@@ -316,7 +316,7 @@ GenerateRandomData(int len, char *buf)
 #else
     int fd;
 
-    fd = open("/System/Devices/urandom", O_RDONLY);
+    fd = open("/System/Devices/Memory/urandom", O_RDONLY);
     read(fd, buf, len);
     close(fd);
 #endif

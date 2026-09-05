@@ -3,7 +3,7 @@
  *
  * Built by `make userland64` into .build/rootfs64/System/Tools/init and
  * packed into the BFS root image. PID 1 already has fd 0/1/2 open to
- * /System/Devices/console. It mounts the virtual filesystems the
+ * /System/Devices/TTY/console. It mounts the virtual filesystems the
  * userland tools expect (/System/Processes, devpts under Devices) and
  * then spawns a shell on /System/Tools/sh, restarting it when it exits.
  * The layout is the FNX hierarchy (docs/fsh-proposal.md): the root has
@@ -214,7 +214,7 @@ static void mount_from_table(void)
 }
 
 /* Fork+exec a GUI process on the desktop. If quiet, stdout/stderr go to
- * /System/Devices/null (the compositor spams per-damage lines on the
+ * /System/Devices/Memory/null (the compositor spams per-damage lines on the
  * console). */
 static void spawn_gui(const char *path, char *const argv[], char *const envp[],
 		      int quiet)
@@ -223,7 +223,7 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[],
 
 	if (p == 0) {
 		if (quiet) {
-			int fd = open("/System/Devices/null", O_WRONLY);
+			int fd = open("/System/Devices/Memory/null", O_WRONLY);
 
 			if (fd >= 0) {
 				dup2(fd, 1);
@@ -238,16 +238,16 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[],
 
 /* The LVGL desktop: system compositor + two demo windows (each its own
  * app process). The compositor's mouse source: the second serial port
- * (/System/Devices/ttyS1) when a test harness feeds PS/2 packets over
+ * (/System/Devices/Serial/Port1) when a test harness feeds PS/2 packets over
  * it, else the emulated PS/2 / USB mouse (Devices/psaux, interactive
  * QEMU). */
 static void start_gui(void)
 {
 	char *gui_env[] = { "PATH=" PATH_DEFAULT, "HOME=/",
-			    "GUI_MOUSE=/System/Devices/ttyS1", NULL };
+			    "GUI_MOUSE=/System/Devices/Serial/Port1", NULL };
 	char *sh_env[] = { "PATH=" PATH_DEFAULT, "HOME=/", "PS1=# ", NULL };
 
-	if (access("/System/Devices/ttyS1", F_OK) == 0) {
+	if (access("/System/Devices/Serial/Port1", F_OK) == 0) {
 		spawn_gui("/System/Tools/compositor",
 			  (char *const[]) { "compositor", NULL },
 			  gui_env, 1);

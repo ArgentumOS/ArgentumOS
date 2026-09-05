@@ -1,8 +1,9 @@
 # /System/Devices topology tree (FSH §8 Q3) — design + migration
 
-Status: **in progress — kernel devfs tree done (commits 23965e2 design,
-6bb5e90 devfs topology + role symlinks, kernel cmdline/console migration);
-musl + userland consumer migration remains**. Owner decisions: clean break
+Status: **DONE**. Kernel + musl + userland consumers all use the
+topology paths (commits 23965e2 design, 6bb5e90 kernel devfs topology +
+role symlinks, 7da55b3 kernel boot cmdline/tables, and the full musl +
+userland migration). Top-level symlinks remain purely as compatibility. Owner decisions: clean break
 (flat real nodes are replaced by the topology tree), single-level layout
 (topology dirs and the flat-name role symlinks share `/System/Devices/`),
 full per-bus disk topology with a `by-identity/` layer, and **all
@@ -76,13 +77,14 @@ because the bus/unit mapping is only known at probe time).
    → `/System/Devices/{Memory/null,TTY/tty,TTY/console,PTS/ptmx,
    PTS/pts/N}` and any `/System/Devices/log` handling.
 3. devpts boot mount: `system.mounts.conf` target
-   `/System/Devices/pts` → `/System/Devices/PTS/pts`; init's
-   `mount_from_table` default file unchanged (target comes from the
-   domain); the pty driver registers `PTS/pts` as the mount dir.
-4. Userland: Xfb (fb0 + PS2 kbd/mouse + null/urandom), compositor
-   (fb0, PS2), init trampoline (`/System/Devices/console`), audio/pty
-   test tools, the guest harnesses' `ls /System/Devices` expectations,
-   `tools/kernel-headers`/docs path references.
+   `/System/Devices/pts` → `/System/Devices/PTS/pts`; the pty driver
+   registers `PTS/pts` as the mount dir. DONE (verified: devpts shows on
+   `/System/Devices/PTS/pts`).
+4. Userland: Xfb (Display/fb0 + PS2/* + Memory/urandom|null), compositor
+   (Display/fb0, PS2), init trampoline (`/System/Devices/TTY/console`),
+   audio/pty tools, musl fsh patch (`Memory/null`, `TTY/tty`,
+   `TTY/console`, `PTS/ptmx`, `PTS/pts/N`), `system.mounts.conf` target,
+   `GUI_MOUSE` seam (`Serial/Port1`). DONE.
 
 ## Verification
 

@@ -10,7 +10,7 @@ int main(void)
 	int fd, n, total = 0, nonzero = 0;
 	long long off = 0;
 
-	fd = open("/System/Devices/fb0", O_RDONLY);
+	fd = open("/System/Devices/Display/fb0", O_RDONLY);
 	if(fd < 0) { perror("open /dev/fb0"); return 1; }
 	while((n = read(fd, buf, sizeof(buf))) > 0) {
 		int i;
@@ -26,7 +26,7 @@ int main(void)
 		unsigned char big[4096 * 4];
 		int rows = 0, k;
 		unsigned char *p = big;
-		int fd2 = open("/System/Devices/fb0", O_RDONLY);
+		int fd2 = open("/System/Devices/Display/fb0", O_RDONLY);
 		if(fd2 >= 0) {
 			for(k = 0; k < 48; k++) {
 				if(read(fd2, big, 16 * 1024) != 16 * 1024) break;

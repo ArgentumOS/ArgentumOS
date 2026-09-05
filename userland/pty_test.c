@@ -20,11 +20,11 @@ int main(void)
 	char name[32];
 	char buf[8] = "PTY!";
 
-	m = open("/System/Devices/ptmx", O_RDWR);
+	m = open("/System/Devices/PTS/ptmx", O_RDWR);
 	if(m < 0) { printf("PTY-FAIL ptmx: %m\n"); return 1; }
 	if(ioctl(m, TIOCGPTN, &n)) { printf("PTY-FAIL TIOCGPTN: %m\n"); return 1; }
 	{ int zero = 0; if(ioctl(m, TIOCSPTLCK, &zero)) { printf("PTY-FAIL unlock: %m\n"); return 1; } }
-	snprintf(name, sizeof(name), "/System/Devices/pts/%d", n);
+	snprintf(name, sizeof(name), "/System/Devices/PTS/pts/%d", n);
 	s = open(name, O_RDWR);
 	if(s < 0) { printf("PTY-FAIL %s: %m\n", name); return 1; }
 	/* the pty data flow is a pre-existing subsystem; here we verify the

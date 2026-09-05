@@ -7,7 +7,7 @@ index c5b277bd..73ba0780 100644
  	if (r<0) a_crash();
  	for (i=0; i<3; i++) if (pfd[i].revents&POLLNVAL)
 -		if (__sys_open("/dev/null", O_RDWR)<0)
-+		if (__sys_open("/System/Devices/null", O_RDWR)<0)
++		if (__sys_open("/System/Devices/Memory/null", O_RDWR)<0)
  			a_crash();
  	libc.secure = 1;
  }
@@ -46,7 +46,7 @@ index 1568b1dc..22e59941 100644
  	if (!noclose) {
  		int fd, failed = 0;
 -		if ((fd = open("/dev/null", O_RDWR)) < 0) return -1;
-+		if ((fd = open("/System/Devices/null", O_RDWR)) < 0) return -1;
++		if ((fd = open("/System/Devices/Memory/null", O_RDWR)) < 0) return -1;
  		if (dup2(fd, 0) < 0 || dup2(fd, 1) < 0 || dup2(fd, 2) < 0)
  			failed++;
  		if (fd > 2) close(fd);
@@ -59,7 +59,7 @@ index d51286c0..01bce16e 100644
  	static char password[128];
  
 -	if ((fd = open("/dev/tty", O_RDWR|O_NOCTTY|O_CLOEXEC)) < 0) return 0;
-+	if ((fd = open("/System/Devices/tty", O_RDWR|O_NOCTTY|O_CLOEXEC)) < 0) return 0;
++	if ((fd = open("/System/Devices/TTY/tty", O_RDWR|O_NOCTTY|O_CLOEXEC)) < 0) return 0;
  
  	tcgetattr(fd, &t);
  	s = t;
@@ -94,7 +94,7 @@ index 69170b25..649c3851 100644
  
  	if (classification & MM_CONSOLE) {
 -		consolefd = open("/dev/console", O_WRONLY);
-+		consolefd = open("/System/Devices/console", O_WRONLY);
++		consolefd = open("/System/Devices/TTY/console", O_WRONLY);
  		if (consolefd < 0) {
  			ret = MM_NOCON;
  		} else {
@@ -107,7 +107,7 @@ index c1074060..f6498309 100644
  	char buf[20];
  
 -	m = open("/dev/ptmx", O_RDWR|O_NOCTTY);
-+	m = open("/System/Devices/ptmx", O_RDWR|O_NOCTTY);
++	m = open("/System/Devices/PTS/ptmx", O_RDWR|O_NOCTTY);
  	if (m < 0) return -1;
  
  	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
@@ -116,7 +116,7 @@ index c1074060..f6498309 100644
  
  	if (!name) name = buf;
 -	snprintf(name, sizeof buf, "/dev/pts/%d", n);
-+	snprintf(name, sizeof buf, "/System/Devices/pts/%d", n);
++	snprintf(name, sizeof buf, "/System/Devices/PTS/pts/%d", n);
  	if ((s = open(name, O_RDWR|O_NOCTTY)) < 0)
  		goto fail;
  
@@ -129,7 +129,7 @@ index a0577147..fdef27d6 100644
  int posix_openpt(int flags)
  {
 -	int r = open("/dev/ptmx", flags);
-+	int r = open("/System/Devices/ptmx", flags);
++	int r = open("/System/Devices/PTS/ptmx", flags);
  	if (r < 0 && errno == ENOSPC) errno = EAGAIN;
  	return r;
  }
@@ -138,7 +138,7 @@ index a0577147..fdef27d6 100644
  	if (!buf) len = 0;
  	if ((err = __syscall(SYS_ioctl, fd, TIOCGPTN, &pty))) return -err;
 -	if (snprintf(buf, len, "/dev/pts/%d", pty) >= len) return ERANGE;
-+	if (snprintf(buf, len, "/System/Devices/pts/%d", pty) >= len) return ERANGE;
++	if (snprintf(buf, len, "/System/Devices/PTS/pts/%d", pty) >= len) return ERANGE;
  	return 0;
  }
  
@@ -160,7 +160,7 @@ index 710202f9..0775075a 100644
  		    || send(log_fd, buf, l, 0) < 0)
  		    && (log_opt & LOG_CONS)) {
 -			fd = open("/dev/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
-+			fd = open("/System/Devices/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
++			fd = open("/System/Devices/TTY/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
  			if (fd >= 0) {
  				dprintf(fd, "%.*s", l-hlen, buf+hlen);
  				close(fd);
@@ -356,7 +356,7 @@ index dc3406b8..c57089c5 100644
  	if (fd < 0) {
  		if (errno == EAFNOSUPPORT) {
 -			f = fopen("/dev/null", "re");
-+			f = fopen("/System/Devices/null", "re");
++			f = fopen("/System/Devices/Memory/null", "re");
  			if (f)
  				errno = errno_save;
  			return f;
@@ -516,7 +516,7 @@ index 1612770a..0007a2e3 100644
  char *ctermid(char *s)
  {
 -	return s ? strcpy(s, "/dev/tty") : "/dev/tty";
-+	return s ? strcpy(s, "/System/Devices/tty") : "/System/Devices/tty";
++	return s ? strcpy(s, "/System/Devices/TTY/tty") : "/System/Devices/TTY/tty";
  }
 diff --git a/src/unistd/ttyname_r.c b/src/unistd/ttyname_r.c
 index 82acb75e..d81a7c80 100644

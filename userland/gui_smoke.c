@@ -53,7 +53,7 @@ static void paint(void *buf, int w, int h, uint32_t base)
 /* read one pixel back from /dev/fb0 (via the char device) */
 static int fb_pixel(int sx, int sy, uint32_t *out)
 {
-	int fd = open("/System/Devices/fb0", O_RDWR);
+	int fd = open("/System/Devices/Display/fb0", O_RDWR);
 	int w;
 
 	if(fd < 0) {
