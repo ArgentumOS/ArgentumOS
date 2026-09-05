@@ -136,7 +136,7 @@ struct nvme_cqe {
 struct nvme {
 	unsigned long mmio;
 	struct device *dev;
-	struct partition part[NR_PARTITIONS];
+	struct partition part[MAX_PARTITIONS];
 	unsigned char *adm_sq;		/* admin SQ, phys-aligned */
 	unsigned char *adm_cq;		/* admin CQ, phys-aligned */
 	unsigned char *io_sq;		/* I/O SQ */
@@ -417,6 +417,30 @@ static int nvme_close(struct inode *i, struct fd *f)
 	return 0;
 }
 
+/* scan the partition table on the whole disk and publish minors + nodes */
+static void nvme_scan_partitions(struct device *d)
+{
+	int n, np;
+
+	for(n = 1; n < MAX_PARTITIONS; n++) {
+		if(TEST_MINOR(d->minors, n)) {
+			devfs_remove_node(MKDEV(NVME_MAJOR, n));
+		}
+		CLEAR_MINOR(d->minors, n);
+	}
+	np = read_partitions(MKDEV(NVME_MAJOR, NVME_MINOR_DISK), nvme.part,
+			     MAX_PARTITIONS);
+	for(n = 1; n <= np; n++) {
+		if(!nvme.part[n - 1].type) {
+			continue;
+		}
+		SET_MINOR(d->minors, n);
+		((unsigned int *)d->blksize)[n] = BLKSIZE_1K;
+		((unsigned int *)d->device_data)[n] = nvme.part[n - 1].nr_sects / 2;
+		devfs_partition_node("NVMe", 0, n, MKDEV(NVME_MAJOR, n));
+	}
+}
+
 static int nvme_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	int n;
@@ -445,20 +469,8 @@ static int nvme_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 			if(MINOR(i->rdev)) {
 				return -EINVAL;
 			}
-			for(n = 0; n < NR_PARTITIONS; n++) {
-				CLEAR_MINOR(d->minors, n + 1);
-			}
 			invalidate_buffers(i->rdev);
-			if(!read_msdos_partition(i->rdev, nvme.part)) {
-				for(n = 0; n < NR_PARTITIONS; n++) {
-					if(nvme.part[n].type) {
-						SET_MINOR(d->minors, n + 1);
-						((unsigned int *)d->blksize)[n + 1] = BLKSIZE_1K;
-						((unsigned int *)d->device_data)[n + 1] =
-							nvme.part[n].nr_sects / 2;
-					}
-				}
-			}
+			nvme_scan_partitions(d);
 			break;
 		default:
 			return -EINVAL;
@@ -482,7 +494,7 @@ static int nvme_read_block(__dev_t dev, __blk_t block, char *buffer, int blksize
 	lba = (unsigned long long)block * (blksize / nvme.sector_size);
 	count = blksize / nvme.sector_size;
 
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = nvme.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -502,7 +514,7 @@ static int nvme_write_block(__dev_t dev, __blk_t block, char *buffer, int blksiz
 	lba = (unsigned long long)block * (blksize / nvme.sector_size);
 	count = blksize / nvme.sector_size;
 
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = nvme.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -521,7 +533,7 @@ static int nvme_discard_blocks(__dev_t dev, __blk_t block, __blk_t count,
 	unsigned int offset;
 
 	lba = (unsigned long long)block * (blksize / nvme.sector_size);
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = nvme.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -692,6 +704,7 @@ int nvme_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[NVME_MINOR_DISK] = nvme.nr_sects / 2;
+	nvme_scan_partitions(d);
 
 	printk("nvme: %d sectors of %d bytes (%d MB)\n",
 		nvme.nr_sects, nvme.sector_size,

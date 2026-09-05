@@ -171,7 +171,11 @@ static void xbfs_release_superblock(struct superblock *sb)
 	sb->state = SUPERBLOCK_DIRTY;
 	superblock_unlock(sb);
 
-	xbfs_free_bitmap(sb);
+	/* keep the bitmap: the final write_superblock drain must flush it
+	 * (a mid-session write-through can leave the on-disk bitmap at an
+	 * intermediate state that the drain would otherwise skip - the
+	 * release_superblock bitmap free used to orphan the last frees).
+	 * write_superblock frees it once the drain has flushed. */
 }
 
 /*
@@ -209,9 +213,10 @@ static int xbfs_write_superblock(struct superblock *sb)
 	sb->u.xbfs.flags = XBFS_SUPER_CLEAN;
 	xbfs_log_unlock(sb);
 
-	/* flush the bitmap blocks (skipped once the mount's bitmap was
-	 * freed at release — the VFS may write the superblock again
-	 * after release_superblock) */
+	/* flush the bitmap blocks. The bitmap lives until the umount
+	 * drain flushes it (release_superblock no longer frees it), so
+	 * this always runs and the on-disk bitmap matches the final
+	 * used_blocks counter. */
 	if(sb->u.xbfs.bitmap) {
 		for(i = 0; i < sb->u.xbfs.bitmap_blocks; i++) {
 			struct buffer *bb;
@@ -224,6 +229,10 @@ static int xbfs_write_superblock(struct superblock *sb)
 			memcpy_b(bb->data, sb->u.xbfs.bitmap[chunk] + coff,
 				sb->u.xbfs.block_size);
 			bwrite(bb);
+		}
+		/* final drain: the bitmap is no longer needed */
+		if(sb->u.xbfs.log_draining) {
+			xbfs_free_bitmap(sb);
 		}
 	}
 

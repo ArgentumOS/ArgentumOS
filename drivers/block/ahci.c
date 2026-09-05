@@ -125,7 +125,7 @@ struct ahci {
 	unsigned long mmio;
 	unsigned int pi;
 	struct device *dev;
-	struct partition part[NR_PARTITIONS];
+	struct partition part[MAX_PARTITIONS];
 	unsigned char *cmd_list;	/* phys-aligned 1024B */
 	unsigned char *fis;		/* phys-aligned 256B */
 	unsigned char *cmd_table;	/* phys-aligned 128B+ */
@@ -301,6 +301,29 @@ static int ahci_close(struct inode *i, struct fd *f)
 	return 0;
 }
 
+/* scan the partition table on the whole disk and publish minors + nodes */
+static void ahci_scan_partitions(struct device *d)
+{
+	int n, np;
+
+	for(n = 1; n < MAX_PARTITIONS; n++) {
+		if(TEST_MINOR(d->minors, n)) {
+			devfs_remove_node(MKDEV(AHCI_MAJOR, n));
+		}
+		CLEAR_MINOR(d->minors, n);
+	}
+	np = read_partitions(MKDEV(AHCI_MAJOR, 0), ahci.part, MAX_PARTITIONS);
+	for(n = 1; n <= np; n++) {
+		if(!ahci.part[n - 1].type) {
+			continue;
+		}
+		SET_MINOR(d->minors, n);
+		((unsigned int *)d->blksize)[n] = BLKSIZE_1K;
+		((unsigned int *)d->device_data)[n] = ahci.part[n - 1].nr_sects / 2;
+		devfs_partition_node("AHCI", 0, n, MKDEV(AHCI_MAJOR, n));
+	}
+}
+
 static int ahci_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	int n;
@@ -330,20 +353,8 @@ static int ahci_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 				return -EINVAL;
 			}
 			/* re-read the partition table */
-			for(n = 0; n < NR_PARTITIONS; n++) {
-				CLEAR_MINOR(d->minors, n + 1);
-			}
 			invalidate_buffers(i->rdev);
-			if(!read_msdos_partition(i->rdev, ahci.part)) {
-				for(n = 0; n < NR_PARTITIONS; n++) {
-					if(ahci.part[n].type) {
-						SET_MINOR(d->minors, n + 1);
-						((unsigned int *)d->blksize)[n + 1] = BLKSIZE_1K;
-						((unsigned int *)d->device_data)[n + 1] =
-							ahci.part[n].nr_sects / 2;
-					}
-				}
-			}
+			ahci_scan_partitions(d);
 			break;
 		default:
 			return -EINVAL;
@@ -369,7 +380,7 @@ static int ahci_read_block(__dev_t dev, __blk_t block, char *buffer, int blksize
 	count = blksize / ahci.sector_size;
 
 	/* partition offset (minor >= 1) */
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = ahci.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -389,7 +400,7 @@ static int ahci_write_block(__dev_t dev, __blk_t block, char *buffer, int blksiz
 	lba = (unsigned long long)block * (blksize / ahci.sector_size);
 	count = blksize / ahci.sector_size;
 
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = ahci.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -437,7 +448,7 @@ static int ahci_discard_blocks(__dev_t dev, __blk_t block, __blk_t count,
 	unsigned int offset;
 
 	lba = (unsigned long long)block * (blksize / ahci.sector_size);
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = ahci.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -646,6 +657,7 @@ int ahci_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[0] = ahci.nr_sects / 2;
+	ahci_scan_partitions(d);
 
 	printk("ahci: %d sectors of %d bytes (%d MB) on port %d\n",
 		ahci.nr_sects, ahci.sector_size,

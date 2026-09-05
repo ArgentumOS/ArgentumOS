@@ -53,6 +53,10 @@ extern struct fs_operations devfs_symlink_fsop;
 extern struct fs_operations devfs_clone_fsop;
 int devfs_make_symlink(const char *, const char *, __mode_t);
 int devfs_make_clone(const char *, __dev_t, __mode_t, int (*)(__dev_t));
+
+/* partition node under an existing Disk/<bus>/Disk<unit> container, plus
+ * the by-identity P<part> link (partition numbering = the scan's, 1+). */
+int devfs_partition_node(const char *, int, int, __dev_t);
 int devfs_readlink(struct inode *, char *, __size_t);
 int devfs_followlink(struct inode *, struct inode *, struct inode **);
 

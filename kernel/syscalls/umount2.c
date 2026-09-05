@@ -103,11 +103,23 @@ int sys_umount2(const char *target, int flags)
 	iput(sb->root);
 	iput(sb->dir);
 
-	sync_superblocks(dev);
+	/* flush the remaining inodes + buffers BEFORE the superblock is
+	 * written: release_superblock has stopped journaling (write-
+	 * through), so the last iputs here can still allocate/free bitmap
+	 * blocks. Writing the superblock first left its used_blocks
+	 * counter behind the bitmap on disk (deterministic on a second
+	 * mount after an rm, xbfscheck 'bitmap count vs used_blocks'). */
 	sync_inodes(dev);
 	sync_buffers(dev);
+	sync_superblocks(dev);
 	invalidate_buffers(dev);
 	invalidate_inodes(dev);
+	/* invalidate_inodes releases the last cached inodes (index trees,
+	 * ...), whose write-through frees can dirty the bitmap again;
+	 * reconcile the superblock once more so used_blocks matches the
+	 * final bitmap on disk */
+	sync_buffers(dev);
+	sync_superblocks(dev);
 
 	del_mount_point(mp);
 	unlock_resource(&umount_resource);

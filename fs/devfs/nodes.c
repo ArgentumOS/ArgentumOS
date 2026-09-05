@@ -130,6 +130,24 @@ int devfs_block_node(const char *bus, int unit, const char *legacy, __dev_t dev)
 	return 0;
 }
 
+int devfs_partition_node(const char *bus, int unit, int part, __dev_t dev)
+{
+	char path[48], target[48];
+
+	if(sprintk(path, "Disk/%s/Disk%d/Partition%d", bus, unit, part) < 0) {
+		return -ENAMETOOLONG;
+	}
+	devfs_make_node(path, dev, S_IFBLK | S_IRUSR | S_IWUSR);
+	if(sprintk(path, "Disk/by-identity/%s-Disk%dP%d", bus, unit, part) < 0) {
+		return -ENAMETOOLONG;
+	}
+	if(sprintk(target, "Disk/%s/Disk%d/Partition%d", bus, unit, part) < 0) {
+		return -ENAMETOOLONG;
+	}
+	devfs_make_symlink(path, target, 0777);
+	return 0;
+}
+
 int devfs_make_clone(const char *name, __dev_t dev, __mode_t mode, int (*clone_fn)(__dev_t))
 {
 	struct devfs_node *new;

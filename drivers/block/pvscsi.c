@@ -121,7 +121,7 @@ struct pvscsi_ring_cmp_desc {
 struct pvscsi {
 	unsigned long mmio;
 	struct device *dev;
-	struct partition part[NR_PARTITIONS];
+	struct partition part[MAX_PARTITIONS];
 	unsigned char *state;		/* rings state page (4096) */
 	unsigned char *req_ring;	/* req ring page (4096) */
 	unsigned char *cmp_ring;	/* cmp ring page (4096) */
@@ -353,6 +353,30 @@ static int pvscsi_close(struct inode *i, struct fd *f)
 	return 0;
 }
 
+/* scan the partition table on the whole disk and publish minors + nodes */
+static void pvscsi_scan_partitions(struct device *d)
+{
+	int n, np;
+
+	for(n = 1; n < MAX_PARTITIONS; n++) {
+		if(TEST_MINOR(d->minors, n)) {
+			devfs_remove_node(MKDEV(PVSCSI_MAJOR, n));
+		}
+		CLEAR_MINOR(d->minors, n);
+	}
+	np = read_partitions(MKDEV(PVSCSI_MAJOR, 0), pvscsi.part,
+			     MAX_PARTITIONS);
+	for(n = 1; n <= np; n++) {
+		if(!pvscsi.part[n - 1].type) {
+			continue;
+		}
+		SET_MINOR(d->minors, n);
+		((unsigned int *)d->blksize)[n] = BLKSIZE_1K;
+		((unsigned int *)d->device_data)[n] = pvscsi.part[n - 1].nr_sects / 2;
+		devfs_partition_node("SCSI", 0, n, MKDEV(PVSCSI_MAJOR, n));
+	}
+}
+
 static int pvscsi_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
 	int n;
@@ -381,20 +405,8 @@ static int pvscsi_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 			if(MINOR(i->rdev)) {
 				return -EINVAL;
 			}
-			for(n = 0; n < NR_PARTITIONS; n++) {
-				CLEAR_MINOR(d->minors, n + 1);
-			}
 			invalidate_buffers(i->rdev);
-			if(!read_msdos_partition(i->rdev, pvscsi.part)) {
-				for(n = 0; n < NR_PARTITIONS; n++) {
-					if(pvscsi.part[n].type) {
-						SET_MINOR(d->minors, n + 1);
-						((unsigned int *)d->blksize)[n + 1] = BLKSIZE_1K;
-						((unsigned int *)d->device_data)[n + 1] =
-							pvscsi.part[n].nr_sects / 2;
-					}
-				}
-			}
+			pvscsi_scan_partitions(d);
 			break;
 		default:
 			return -EINVAL;
@@ -418,7 +430,7 @@ static int pvscsi_read_block(__dev_t dev, __blk_t block, char *buffer, int blksi
 	lba = block * (blksize / pvscsi.sector_size);
 	count = blksize / pvscsi.sector_size;
 
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = pvscsi.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -438,7 +450,7 @@ static int pvscsi_write_block(__dev_t dev, __blk_t block, char *buffer, int blks
 	lba = block * (blksize / pvscsi.sector_size);
 	count = blksize / pvscsi.sector_size;
 
-	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+	if(MINOR(dev) && MINOR(dev) < MAX_PARTITIONS) {
 		offset = pvscsi.part[MINOR(dev) - 1].startsect;
 		lba += offset;
 	}
@@ -597,6 +609,7 @@ int pvscsi_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[0] = pvscsi.nr_sects / 2;
+	pvscsi_scan_partitions(d);
 
 	printk("pvscsi: %d sectors of %d bytes (%d MB)\n",
 		pvscsi.nr_sects, pvscsi.sector_size,
