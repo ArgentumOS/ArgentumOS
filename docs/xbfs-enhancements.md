@@ -2,7 +2,7 @@
 
 Home document for XBFS improvements that go beyond bug work. Each area is
 a self-contained section with its own milestones and acceptance criteria;
-new areas get appended as sections (see §C). Nothing here is implemented
+new areas get appended as sections (see §H). Nothing here is implemented
 yet unless a section says otherwise.
 
 Supersedes `docs/xbfs-ssd-plan.md` (efe77aa, b74390d), whose content is
@@ -112,9 +112,9 @@ Per-metadata-block CRC (inode, B+tree nodes, run arrays, superblock
 copies) verified on read and on journal replay; an offline
 `xbfscheck --scrub` that reads all metadata and reports/repairs.
 
-- Format: **requires a version/flags bump** or a new field — the only
-  candidate that changes the on-disk layout (besides §B's live-directory
-  marker, if D1 chooses an on-disk flag).
+- Format: **requires a version/flags bump** or a new field — a format
+  claimant, alongside §B D1's live-directory marker, §D-3's reflink
+  refcounts, and §G's compression/encryption flags (see A.4).
 - Acceptance: corrupt one metadata block in an image on the host, boot →
   read returns an error or repairs; scrub reports the flipped block.
 - Effort: medium-high.
@@ -174,7 +174,9 @@ a separate design doc, not an additive plan.
   (device model in `drivers/`, block I/O path used by `bread`/`bwrite`).
 - Whether X-SSD4 deserves the format bump now (before the on-disk layout
   settles further) or later — the magic divergence (c0386ea) is now
-  precedent for format change; §B D1 may also claim format space.
+  precedent for format change; §B D1, §D-3 (reflink refcounts) and §G
+  (compression/encryption) also claim format space. Settle the full set of
+  format claimants once, then bump once.
 
 ## B. Live Directories (query-backed)
 
@@ -272,10 +274,181 @@ Effort: medium.
 - What `unlink`/`create`/`mkdir` inside a live dir mean (D3), and whether
   member order is the index order or sorted by name.
 
-## C. Future areas and related docs
+## C. Integrity & repair
 
-Append new enhancement areas as sections here (SSD = §A, Live
-Directories = §B). Related design/history docs that these sections build
-on: docs/bfs-journal-reclaim.md (wrap-journal invariant, R-M2 harness),
-docs/xbfs-ssd-plan.md (history of §A — superseded, kept in git),
-docs/devfs-topology.md. Kernel design docs live alongside in docs/.
+Proposed; nothing implemented. Pairs with the journal/durability work
+(R-M2/R-M3 harness, dual-copy sequenced superblock f12fa35): those make
+crashes safe, these make the volume self-healing.
+
+### C-1 — Offline index rebuild (`xbfscheck --rebuild-indices`)
+
+Indices are derived data. The index-on-modify + `mkxbfs` backfill work
+(e01b81e) already proved an inode scan can regenerate them; a
+rebuild-from-scan option makes a corrupted, aged, or user-dropped index a
+non-event instead of a re-mkfs.
+
+- No format change; reuses the scan + `xbfs_index_put` machinery.
+- Milestone: `xbfscheck` option scans every inode and rebuilds the
+  `name`/`size`/`last_modified` + attribute indices from scratch,
+  verifying the rebuilt trees against the existing ones and reporting
+  any divergence before replacing them.
+- Acceptance: corrupt or drop an index tree on the host → rebuild →
+  `xbfsquery` battery green and query results identical to a fresh
+  volume.
+- Effort: small-medium (port of the backfill logic into xbfscheck).
+
+### C-2 — Repair-mode fsck (`xbfscheck --fix`)
+
+`xbfscheck` verifies today (superblock, bitmap vs block-run references,
+tree consistency) and reports; a fix mode reconciles what it finds:
+bitmap-vs-referenced mismatches (adopt the referenced or free the
+leaked), journal-tail leftovers, and orphaned inodes. Ties into X-SSD4's
+scrub as "detect" (X-SSD4) + "repair" (this).
+
+- No format change.
+- Acceptance: induce known damage on a host image (clear bitmap bits,
+  unlink a tree leaf) → `--fix` repairs it and `xbfscheck` comes back
+  clean; guest churn suite and the R-M harness are unaffected.
+- Effort: medium.
+
+## D. Desktop semantics (kernel/VFS)
+
+Proposed; nothing implemented. FNX is desktop-first (bundles, updates,
+live browsing); these are the kernel surfaces that desktop software ends
+up begging for.
+
+### D-1 — fs-notify / change notification
+
+A VFS-wide watch surface (directory/file events) fed from the dir-mutation
+hooks and the index hooks — `xbfs_index_add/remove/resize` already fire on
+every meaningful change. Substrate for Live-Directory L-D2 (§B), the
+compositor's file browsing, and backup.
+
+- Kernel-wide API decision needed (watch-descriptor surface vs an
+  FNX-native event directory).
+- Milestones: create/delete/modify/rename events on watched dirs;
+  recursive watches; overflow queue.
+- Acceptance: guest watcher prints events for touch/rm/attr-set; `poll`
+  wakes; L-D2 later consumes the same events.
+- Effort: medium-high.
+
+### D-2 — renameat2 (NOREPLACE / EXCHANGE)
+
+Atomic replace for app-bundle updates and save-over patterns — no
+create-temp + unlink dance. Extends the existing rename path with the two
+flag semantics.
+
+- Pure VFS + per-fs op extension (a filesystem may reject a flag); no
+  format change.
+- Acceptance: guest atomic-update loop never exposes a partial state;
+  NOREPLACE returns EEXIST on a live target.
+- Effort: small-medium.
+
+### D-3 — Reflink / copy_file_range
+
+Copy-on-write run sharing between inodes — `cp` of a large bundle becomes
+O(metadata) — and kernel-side cross-file copies via `copy_file_range`.
+Needs per-run reference counts → **format claim** (coordinate with
+X-SSD4 and §G so the format changes once).
+
+- Milestones: same-volume reflink ioctl; `copy_file_range` for xbfs.
+- Acceptance: reflink of a 100 MB file is O(metadata) (disk usage
+  unchanged); post-write divergence is correct CoW; `xbfscheck` clean.
+- Effort: medium-high + format.
+
+### D-4 — Background deletion
+
+`rm -rf` of a huge tree stalls the desktop while every block is freed.
+Mark a subtree for deletion and reap it lazily/asynchronously, with the
+intent recorded so a crash mid-reap leaves no leak (journal-backed or a
+pending-delete record).
+
+- No format change (intent lives in the journal or a hidden record).
+- Acceptance: `rm` of a huge tree returns promptly; reclamation completes
+  in the background; power-cut mid-reap → next mount finishes
+  reclamation or `xbfscheck` is clean.
+- Effort: medium.
+
+## E. Space & accounting
+
+Proposed; nothing implemented.
+
+### E-1 — Per-user/group quotas
+
+FSH is multiuser (/Users/Admin). Usage derived from an inode-ownership
+scan at mount (cached, index-accelerated if an owner index is added) with
+enforcement on the balloc write path; soft/hard limits, EDQUOT on
+exceed.
+
+- No format change if usage is derived (scan at mount + incremental
+  accounting on alloc/free).
+- Acceptance: guest `dd` past the hard limit fails with EDQUOT; per-user
+  usage report matches a from-scratch scan.
+- Effort: medium.
+
+### E-2 — Root-reserved space
+
+Guaranteed headroom (fixed MB or a small percentage) so a full user
+volume cannot wedge boot, system updates, or the desktop. `balloc`
+refuses below the reserve unless the caller is privileged.
+
+- No format change.
+- Acceptance: fill the volume as a user → privileged/system writes still
+  succeed; `df` shows the reserve.
+- Effort: small.
+
+## F. Performance, VFS-wide
+
+### F-1 — Path-name cache (dcache)
+
+`parse_namei` re-looks-up every component on every syscall; there is no
+component cache. A VFS-level name→inode cache (with negative entries)
+would make shell/GUI churn — and the `/System/...` and `@` shorthand
+lookups — near-free. Coherence is the work: invalidation on
+mkdir/rm/rename across every filesystem, hooked from the existing
+dir-mutation points and the xbfs index hooks.
+
+- Kernel-wide, not XBFS-specific; no format change.
+- Acceptance: churn micro-benchmark syscall time drops measurably;
+  create/rename/unlink storm battery stays green.
+- Effort: medium-high (cache-coherence discipline is the risk).
+
+## G. Deferred big-ticket (format space)
+
+Proposed; nothing implemented. Both claim on-disk space — write design
+docs before X-SSD4's bump so the format changes once (see A.4 and §B D4).
+
+### G-1 — Transparent per-file compression
+
+lz4/zstd on the run stream behind an inode flag: reads decompress,
+writes compress; stat size is uncompressed, disk usage shrinks.
+Transparency to the journal is the design crux (compressed data still
+journals as plain data blocks).
+
+- Format: inode flag (+ any per-run metadata).
+- Acceptance: guest writes a compressible file → block usage drops;
+  reads are byte-identical; `xbfscheck` clean.
+- Effort: high.
+
+### G-2 — Volume/user encryption
+
+Whole-volume or per-user encryption. FNX has no keyring/TPM story yet, so
+this needs a design doc first; likely volume-level with a passphrase at
+mount. Heavy interplay with the journal and any scrub (X-SSD4).
+
+- Format: yes.
+- Acceptance: encrypted volume mounts only with the key; at-rest
+  inspection yields no plaintext.
+- Effort: very high.
+
+## H. Future areas and related docs
+
+Append new enhancement areas as thematic `##` sections (SSD = §A, Live
+Directories = §B, Integrity = §C, Desktop = §D, Space = §E, Performance
+= §F, Deferred format = §G). New areas should follow the house style:
+status line, grounding in the current tree, milestones + acceptance, and
+an explicit format-change flag. Related design/history docs these
+sections build on: docs/bfs-journal-reclaim.md (wrap-journal invariant,
+R-M2/R-M3 harness), docs/devfs-topology.md, docs/xbfs-ssd-plan.md
+(history of §A — superseded, kept in git). Kernel design docs live
+alongside in docs/.
