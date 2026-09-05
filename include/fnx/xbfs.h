@@ -366,6 +366,9 @@ int xbfs_log_commit(struct superblock *);
 void xbfs_log_write_block(struct superblock *, __blk_t, struct buffer *);
 void xbfs_log_lock(struct superblock *);
 void xbfs_log_unlock(struct superblock *);
+/* R-M2 crash injection: arm a deliberate halt at journal commit state
+ * 1..7 on the COUNT-th hit (docs/bfs-journal-reclaim.md) */
+void xbfs_crash_set(int state, int count);
 
 /* btree.c */
 int xbfs_btree_insert(struct inode *, const char *, __ino_t);

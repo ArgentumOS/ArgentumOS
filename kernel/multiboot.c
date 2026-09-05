@@ -21,6 +21,7 @@
 #include <fnx/fb.h>
 #include <fnx/fbcon.h>
 #include <fnx/sysconsole.h>
+#include <fnx/xbfs.h>
 
 char bios_data[256];
 
@@ -47,6 +48,10 @@ static struct kernel_params_value kparamval_table[] = {
 	   { 0 }
 	},
 	{ "initrd=",
+	   { 0 },
+	   { 0 }
+	},
+	{ "xbfscrash=",
 	   { 0 },
 	   { 0 }
 	},
@@ -130,6 +135,22 @@ static int check_param(struct kernel_params_value *kpv, const char *value)
 			}
 		}
 		return 1;
+	}
+	if(!strcmp(kpv->name, "xbfscrash=")) {
+		int state, count = 1;
+		const char *colon = value ? strchr(value, ':') : NULL;
+		if(!value || !value[0]) {
+			return 1;
+		}
+		state = atoi(value);
+		if(colon) {
+			count = atoi(colon + 1);
+		}
+		if(state < 1 || state > 7 || count < 1) {
+			return 1;
+		}
+		xbfs_crash_set(state, count);
+		return 0;
 	}
 	if(!strcmp(kpv->name, "ide_nodma")) {
 		kparms.flags |= KPARMS_IDE_NODMA;

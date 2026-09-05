@@ -249,12 +249,16 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
 
 def main():
     block_size = 1024
+    journal_len = 1024
     args = list(sys.argv[1:])
     if len(args) >= 2 and args[0] == '--block-size':
         block_size = int(args[1])
         args = args[2:]
+    if len(args) >= 2 and args[0] == '--journal':
+        journal_len = int(args[1])
+        args = args[2:]
     if len(args) != 3 or block_size not in (1024, 2048, 4096):
-        print("usage: mkxbfs.py [--block-size 1024|2048|4096] <rootdir> <image> <size-MB>")
+        print("usage: mkxbfs.py [--block-size 1024|2048|4096] [--journal <blocks>] <rootdir> <image> <size-MB>")
         sys.exit(1)
     root, img, mb = args[0], args[1], int(args[2])
     global BLOCK, BLOCK_SHIFT
@@ -274,7 +278,7 @@ def main():
     # unbounded blocks and reset periodically at ANY size - only the
     # frequency changes; eliminating those resets needs log-space
     # reclaim (advance log_start / wrap), not a bigger log.
-    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 1024
+    journal_start = 1 + num_ags * blocks_per_ag
     next_inode = journal_start + journal_len
     next_data = 0
     used = set()

@@ -42,6 +42,7 @@
 #include <fnx/fs.h>
 #include <fnx/buffer.h>
 #include <fnx/xbfs.h>
+#include <fnx/asm.h>
 #include <fnx/mm.h>
 #include <fnx/string.h>
 #include <fnx/errno.h>
@@ -320,12 +321,49 @@ static int xbfs_log_write_super(struct superblock *sb)
  * ordering (log entry, then on-disk superblock with log_end advanced,
  * then the real blocks).
  */
+/* R-M2 crash injection (docs/bfs-journal-reclaim.md 5/8). xbfscrash=
+ * STATE[,COUNT] on the boot cmdline arms a deliberate halt when the
+ * journal reaches STATE for the COUNT-th time (default 1), so a harness
+ * can crash the machine at a precise commit-state boundary and verify
+ * the next mount's replay. States: 1 commit start; 2/5 after the log
+ * entry write, contiguous/wrap; 3/6 after the range publish,
+ * contiguous/wrap; 4 after the wrap orphan-publish; 7 after the commit
+ * fully syncs (clean crash, nothing to replay). */
+static int xbfs_crash_state;
+static int xbfs_crash_count = 1;
+static int xbfs_crash_seen;
+
+void xbfs_crash_set(int state, int count)
+{
+	xbfs_crash_state = state;
+	xbfs_crash_count = count > 0 ? count : 1;
+	xbfs_crash_seen = 0;
+	printk("CRASH-INJ: XBFS journal injection armed at state %d (hit %d).\n",
+	       state, count);
+}
+
+static void xbfs_crash_inject(int state)
+{
+	if(!xbfs_crash_state || xbfs_crash_state != state) {
+		return;
+	}
+	if(++xbfs_crash_seen < xbfs_crash_count) {
+		return;
+	}
+	printk("CRASH-INJ: XBFS journal state %d reached (hit %d) - halting.\n",
+	       state, xbfs_crash_seen);
+	CLI();
+	for(;;) {
+		HLT();
+	}
+}
+
 int xbfs_log_commit(struct superblock *sb)
 {
 	struct buffer *buf;
 	struct xbfs_run_array *array;
 	__u64 log_size, entry_pos;
-	int n, i;
+	int n, i, wrapped = 0;
 
 	if(sb->u.xbfs.tx_depth <= 0) {
 		return 0;
@@ -366,6 +404,7 @@ int xbfs_log_commit(struct superblock *sb)
 		return 0;
 	}
 
+	xbfs_crash_inject(1);
 	if((__u64)(sb->u.xbfs.log_end + n + 1) > log_size) {
 		/* wrap: the log holds only the previous transaction's entry
 		 * (commit publishes log_start = entry_pos, D2), and that
@@ -389,6 +428,8 @@ int xbfs_log_commit(struct superblock *sb)
 		sb->u.xbfs.log_start = 0;
 		sb->u.xbfs.log_end = 0;
 		xbfs_log_write_super(sb);
+		xbfs_crash_inject(4);
+		wrapped = 1;
 	}
 
 	entry_pos = sb->u.xbfs.log_end;
@@ -436,6 +477,7 @@ int xbfs_log_commit(struct superblock *sb)
 	}
 	sync_buffers(sb->dev);
 		/* the log entry is on disk now */
+	xbfs_crash_inject(wrapped ? 5 : 2);
 
 	/* (2) publish the tight single-entry range [entry_pos, log_end)
 	 * and write the on-disk superblock and the bitmap BEFORE the real
@@ -455,6 +497,7 @@ int xbfs_log_commit(struct superblock *sb)
 	sb->u.xbfs.flags = XBFS_SUPER_DIRTY;
 	xbfs_log_write_bitmap(sb);
 	xbfs_log_write_super(sb);
+	xbfs_crash_inject(wrapped ? 6 : 3);
 
 	/* (3) apply the real blocks */
 	{
@@ -470,6 +513,7 @@ int xbfs_log_commit(struct superblock *sb)
 	}
 	sync_buffers(sb->dev);
 		/* the transaction is complete on disk */
+	xbfs_crash_inject(7);
 
 	xbfs_log_free_tx(sb);
 	unlock_resource(xbfs_log_resource(sb));

@@ -1,6 +1,6 @@
 # XBFS journal: log-space reclaim (wrap commit) — spec
 
-Status: **implemented (R-M1, commit below); R-M2/R-M3 pending**. Sizing alone (tools/mkxbfs.py,
+Status: **implemented (R-M1 + R-M2); R-M3 pending**. Sizing alone (tools/mkxbfs.py,
 1024 blocks, commit 3c745e1) bounds *reset storms for bounded busy phases*;
 this spec kills the resets for *sustained metadata streams*, which no log
 size can fix. Reference: fs/xbfs/journal.c (+ xbfs.h, mkxbfs.py).
@@ -161,8 +161,28 @@ walked because the range is tight, D2).
   wraps, verify=1, count=400**; a killed session replays its single
   in-flight entry cleanly on the next boot; the 1024-log desktop boots
   with 0 resets and 0 wraps.
-- **R-M2**: crash-injection harness (kill at each state — instrument with
-  temporary `XBFS-LOG: state` prints if needed) + criteria 3–4.
+- **R-M2 — DONE**: deterministic crash-injection harness. Kernel support:
+  an `xbfscrash=STATE[,COUNT]` boot parameter (kernel/multiboot.c) arms a
+  deliberate halt (`xbfs_crash_set`/`xbfs_crash_inject` in fs/xbfs/journal.c)
+  when the journal reaches one of §5's states for the COUNT-th time
+  (1 = commit start, 2/5 = after the entry write contiguous/wrap, 3/6 =
+  after the range publish contiguous/wrap, 4 = after the wrap orphan
+  publish, 7 = after the full commit syncs). `tools/mkxbfs.py` gained
+  `--journal <blocks>` so a small (64-block) log makes wrap states cheap.
+  Harness: `.build/rm2_harness.py` (crash state esp per state, pristine
+  image per run, churn until the halt, reboot + verify). Results:
+  **21/21 deterministic crashes hit their exact state** (S1–S7 ×3); every
+  reboot mounted clean with the churn file(s) read back and a sane replay
+  (1–2 blocks for S1–S3/S6–S7; S4–S5 leave the log range empty — nothing
+  to replay, as designed). **6/6 random qemu kills** mid-churn recovered
+  with all four file probes intact. No unmountable volume, no replay-
+  restoring-garbage, and no `magic1`/btree/inode `xbfscheck` failures in
+  the whole matrix. Criteria 3–4 pass. Residual (not reproduced, but
+  theoretically open): the superblock itself is still a single copy
+  rewritten in place at each publish; a qemu-level kill *during* the sb
+  write could tear it (one organic `magic1` failure predates this matrix
+  and did not reproduce in 27 crash events) — a dual-copy sequenced sb
+  would close that window if it ever shows up again.
 - **R-M3**: soak test (criterion 2) + docs update (mkxbfs.py sizing comment
   now notes sustained streams are handled structurally).
 
