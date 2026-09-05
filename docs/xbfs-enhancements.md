@@ -27,7 +27,9 @@ X-SSD4 scheduled as a format-version milestone and X-SSD7 folded into
 X-SSD2. **X-SSD1 (TRIM/discard on free) is DONE** (commit 500d19a),
 **X-SSD2 (group commit + targeted flush) is DONE** (commit 4ad7a21),
 **X-SSD6 (inline file data) is DONE** (commit 5edc498) and
-**X-SSD5(a) (delayed allocation) is DONE** (commit 98e3a69); X-SSD5(b)
+**X-SSD5(a) (delayed allocation) is DONE** (commit 98e3a69),
+**X-SSD3(a) (configurable block sizes 2048/4096) is DONE** (commit
+4f147b8) — see the X-SSD3 split below; X-SSD5(b)
 temperature AGs and X-SSD5(c) fallocate remain.
 
 ### A.1 Where XBFS stands relative to SSD behavior
@@ -127,19 +129,56 @@ durable at the next barrier, not at its own commit.
   post-kill check was tightened to that).
 - Effort: medium; touched journal.c, super.c, buffer.c (+ fsync/sync).
 
-#### X-SSD3 — Configurable block size + multi-page I/O
-`mkxbfs` 4/8/16 KB images (superblock already carries `block_size`; most
-of the tree already indexes by it) and scatter-gather block I/O
-(multi-block bios) in the buffer layer instead of one `bread`/`bwrite`
-per 1 KB block.
+#### X-SSD3(a) — Configurable block size (2048/4096)
 
-- Format: block_size is a create-time parameter (existing field); larger
-  defaults only affect new volumes.
-- Acceptance: 4 KB and 16 KB images mount/boot/churn cleanly (guest
-  suite); `xbfscheck` clean; measured fewer, larger device I/Os for the
-  same workload (device-side counters if exposed, else read/write syscall
-  counts).
-- Effort: medium-high (buffer-layer change is the risky part).
+`mkxbfs --block-size` already took 1024/2048/4096, but the builder's
+index dup-node layout assumed 1024-byte blocks and the indirect/dind
+table slot counts were hardcoded 128/256 while the driver used
+`block_size/8` and `block_size/4`. Both are now parametric (commit
+4f147b8) and `xbfscheck` decodes indirect runs with the superblock's
+`ag_shift`. The driver and on-disk format were already block-size-
+runtime (btree nodes stay Haiku-fixed at 1024, packing several per
+larger stream block).
+
+- Acceptance (passed 4f147b8): 1024/2048/4096 images build and
+  `xbfscheck` clean; a 4096-byte root image boots/mounts/churns in the
+  guest and checks clean. The churn acceptance also exposed and fixed a
+  pre-existing rmdir block leak (xbfs_mkdir never set i_blocks, so
+  `xbfs_ifree` skipped the truncate-on-unlink of session-created
+  directories).
+- Known residuals (pre-existing, not block-size related; both repro at
+  1024): a random kill between a create's ialloc tx and its dir-link
+  leaves an orphaned half-initialized inode, and dup-heavy same-tick
+  churn can leave a stale `last_modified` index entry after a
+  re-index delete+insert (xbfscheck "index last_modified mismatch").
+- Effort: done; larger defaults only affect new volumes.
+
+#### X-SSD3(b) — Multi-page / scatter-gather I/O (8/16 KB blocks)
+
+8192/16384-byte blocks are blocked by a family of PAGE_SIZE = 4096 caps
+in the core, not by the XBFS format (the superblock carries block_size
+and every driver structure indexes by it):
+- the buffer cache allocates one page per buffer and keys free/dirty
+  lists by `size/1024-1` (only 1K/2K/4K valid) — fs/buffer.c
+  `create_buffers()`/`BUFHEAD_INDEX`; a >4K buffer cannot exist;
+- `bread`/`bwrite` feed the block drivers one buffer of ≤4K; AHCI PRDs
+  and the NVMe driver's fixed `kmalloc(4096)` bounce would need
+  scatter-gather / multi-page handling;
+- the per-inode `small_data` tail and the journal's tx copies are
+  kmalloc'd at `XBFS_SMALL_DATA_SIZE = 4096 - 232` (the kmalloc
+  PAGE_SIZE cap);
+- the generic page cache issues one on-disk block per request
+  (`bread_page`), so a block larger than a cached page breaks the
+  read/write path.
+
+- Scope: multi-page buffers in fs/buffer.c (+ hash/dirty-list heads),
+  scatter-gather device I/O in ahci/nvme, vmalloc (or a separate-
+  allocation hook) for the small_data tail + journal tx scratch, and
+  block-sized page-cache I/O.
+- Acceptance: 8192 and 16384 images mount/boot/churn cleanly;
+  `xbfscheck` clean; measured fewer, larger device I/Os for the same
+  workload.
+- Effort: high (the doc's original "risky part").
 
 #### X-SSD4 — Metadata checksums + scrub
 Per-metadata-block CRC (inode, B+tree nodes, run arrays, superblock
