@@ -19,6 +19,7 @@
 
 #define PATH_DEFAULT	"/System/Tools:/Applications"
 #define NETWORK_DOMAIN	"/System/Configuration/system.network.conf"
+#define MOUNTS_DOMAIN	"/System/Configuration/system.mounts.conf"
 
 static void try_mount(const char *fstype, const char *target)
 {
@@ -82,6 +83,142 @@ static void set_hostname_from_domain(void)
 	fclose(f);
 }
 
+/* M6: mount the boot table from system.mounts.conf (plan §5.5). The
+ * container is `mount`; each record is one filesystem with fstype +
+ * target; record order is mount order; the mount source is the
+ * filesystem type. A record missing fstype/target is skipped with a
+ * clear error; structural problems (unknown container, nesting,
+ * unbalanced braces) stop the parse with an error. The old hardcoded
+ * try_mount calls are gone: the boot mount set is machine config. */
+static void mount_from_table(void)
+{
+	FILE *f;
+	char line[256];
+	char cur[64], fstype[64], target[256];
+	int depth = 0, saw_mount = 0, bad = 0;
+
+	f = fopen(MOUNTS_DOMAIN, "r");
+	if (!f) {
+		fprintf(stderr, "INIT: mounts: %s: %m\n", MOUNTS_DOMAIN);
+		return;
+	}
+	cur[0] = fstype[0] = target[0] = 0;
+	while (fgets(line, sizeof line, f)) {
+		char *p, *end, *eq, *v;
+
+		for (p = line; *p == ' ' || *p == '\t'; p++)
+			;
+		end = p + strlen(p);
+		while (end > p && (end[-1] == '\n' || end[-1] == '\r' ||
+				    end[-1] == ' ' || end[-1] == '\t'))
+			*--end = 0;
+		if (!*p || *p == '#')
+			continue;
+		if (*p == '}') {
+			if (depth == 2) {	/* end of a record: mount it */
+				if (fstype[0] && target[0])
+					try_mount(fstype, target);
+				else
+					fprintf(stderr,
+						"INIT: mounts: record '%s': missing %s\n",
+						cur, fstype[0] ? "target" : "fstype");
+				cur[0] = fstype[0] = target[0] = 0;
+			}
+			depth--;
+			if (depth < 0) {
+				fprintf(stderr,
+					"INIT: mounts: unbalanced '}'\n");
+				bad = 1;
+				break;
+			}
+			continue;
+		}
+		eq = strchr(p, '=');
+		if (!eq) {
+			fprintf(stderr, "INIT: mounts: malformed line: %s\n",
+				p);
+			bad = 1;
+			break;
+		}
+		*eq = 0;
+		end = eq - 1;
+		while (end > p && (*end == ' ' || *end == '\t'))
+			*end-- = 0;
+		v = eq + 1;
+		while (*v == ' ' || *v == '\t')
+			v++;
+		if (*v == '{') {	/* container / record open */
+			if (!depth) {
+				if (strcmp(p, "mount")) {
+					fprintf(stderr,
+						"INIT: mounts: unknown container '%s'\n",
+						p);
+					bad = 1;
+					break;
+				}
+				saw_mount = 1;
+			} else if (depth == 1) {
+				if (strlen(p) >= sizeof cur) {
+					fprintf(stderr,
+						"INIT: mounts: record name too long\n");
+					bad = 1;
+					break;
+				}
+				strcpy(cur, p);
+				fstype[0] = target[0] = 0;
+			} else {
+				fprintf(stderr,
+					"INIT: mounts: nested '%s' unsupported\n",
+					p);
+				bad = 1;
+				break;
+			}
+			depth++;
+			if (depth > 2) {
+				bad = 1;
+				break;
+			}
+			continue;
+		}
+		/* assignment inside a record */
+		if (depth == 2) {
+			char *dst = !strcmp(p, "fstype") ? fstype :
+				    !strcmp(p, "target") ? target : NULL;
+			char *w;
+
+			if (!dst) {
+				fprintf(stderr,
+					"INIT: mounts: record '%s': unknown field '%s'\n",
+					cur, p);
+				bad = 1;
+				break;
+			}
+			w = dst;
+			if (*v == '"') {
+				v++;
+				while (*v && *v != '"') {
+					if (*v == '\\' && v[1])
+						v++;
+					if (w < dst + 250)
+						*w++ = *v;
+					v++;
+				}
+			} else {
+				while (*v && *v != '#' && w < dst + 250)
+					*w++ = *v++;
+			}
+			*w = 0;
+		}
+	}
+	if (!bad && depth) {
+		fprintf(stderr, "INIT: mounts: unbalanced '{'\n");
+		bad = 1;
+	}
+	if (!saw_mount)
+		fprintf(stderr, "INIT: mounts: no 'mount' container\n");
+	fclose(f);
+}
+
 /* Fork+exec a GUI process on the desktop. If quiet, stdout/stderr go to
  * /System/Devices/null (the compositor spams per-damage lines on the
  * console). */
@@ -140,9 +277,8 @@ int main(void)
 	puts("INIT: FNX userland alive");
 	fflush(stdout);
 
-	/* the mount points exist in the root image (Makefile userland64) */
-	try_mount("proc", "/System/Processes");
-	try_mount("devpts", "/System/Devices/pts");
+	/* boot mount set comes from the system.mounts domain (M6) */
+	mount_from_table();
 
 	/* the network domain is authoritative for the machine name */
 	set_hostname_from_domain();

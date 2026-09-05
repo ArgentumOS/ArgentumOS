@@ -340,6 +340,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@cp userland/configuration/system.shells.conf "$(ROOTFS64)/System/Configuration/system.shells.conf"
 	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
 	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
+	@cp userland/configuration/system.mounts.conf "$(ROOTFS64)/System/Configuration/system.mounts.conf"
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
 	@cp userland/configuration/system.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.xfb.conf"

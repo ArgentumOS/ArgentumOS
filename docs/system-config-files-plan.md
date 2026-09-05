@@ -523,10 +523,23 @@ against the domain gets `getaddrinfo("localhost")` → `::1` +
 `127.0.0.1` and `gethostbyname` works; no `/System/Configuration/hosts`
 file exists.
 
-### M6 — Mount table (init)
-`userland/init.c` mounts from the System `system.mounts.conf`.
-Acceptance: boot mounts proc + devpts from the domain (edit the domain,
-reboot, observe); init logs a clear error on a malformed table.
+### M6 — Mount table (init) — DONE
+`system.mounts.conf` ships in System scope (`userland/configuration/`,
+staged by `userland64`): container `mount`, one record per filesystem
+with `fstype` + `target` (record order = mount order; the mount source
+is the fstype). `userland/init.c`'s `mount_from_table()` replaces the
+hardcoded `try_mount` calls: a record missing fstype/target is skipped
+with a clear error (`INIT: mounts: record '<name>': missing <field>`);
+structural problems (unknown container, nesting, unbalanced braces)
+stop the parse with an error. Grammar subset parser lives in init.c
+(line-oriented, matching config-design §10: `#` comments, block
+values, quoted strings, single-segment keys).
+
+Verified in-guest with three rootfs variants: (A) stock table → proc +
+devpts both mounted (visible in /System/Processes/mounts); (B) pts
+record dropped → devpts absent after reboot; (C) pts record missing
+`fstype` → init prints the clear error, proc still mounts, devpts does
+not. M6b (toybox mount/umount) is next.
 
 ### M6b — Mount table (toybox)
 toybox `mount`/`umount` consume the `system.mounts.conf` domain
