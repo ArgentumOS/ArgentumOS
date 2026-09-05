@@ -22,8 +22,11 @@
 #define DEVFS_INO(dev, is_blk)	(DEVFS_INO_BASE + ((__dev_t)(dev) << 1) + ((is_blk) ? 1 : 0))
 
 /* devfs node registry - the make_dev() analog. Drivers call
- * devfs_make_node() at probe time for every device node they own; devfs
+ * devfs_make_node() at probe time for every device node they own;
  * synthesizes /dev from this list. */
+int devfs_make_node(const char *, __dev_t, __mode_t);
+int devfs_make_dir(const char *);
+int devfs_block_node(const char *, int, const char *, __dev_t);
 struct devfs_node {
 	char name[32];			/* node name ("null", "ttyS0", "disk/by-id/ata-hdb", ...) */
 	__dev_t dev;			/* device number (major << 8 | minor) */
@@ -53,7 +56,6 @@ int devfs_make_clone(const char *, __dev_t, __mode_t, int (*)(__dev_t));
 int devfs_readlink(struct inode *, char *, __size_t);
 int devfs_followlink(struct inode *, struct inode *, struct inode **);
 
-int devfs_make_node(const char *, __dev_t, __mode_t);
 void devfs_remove_node(__dev_t);
 struct devfs_node *devfs_find_node(const char *);
 struct devfs_node *devfs_find_node_ino(unsigned int);

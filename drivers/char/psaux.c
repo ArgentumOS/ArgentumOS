@@ -286,7 +286,7 @@ void psaux_init(void)
 	if(register_device(CHR_DEV, &psaux_device)) {
 		printk("WARNING: %s(): unable to register psaux device.\n", __FUNCTION__);
 	}
-	devfs_make_node("psaux", MKDEV(PSAUX_MAJOR, PSAUX_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("PS2/Mouse", MKDEV(PSAUX_MAJOR, PSAUX_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
 
 	/* reset device */
 	psaux_command_write(PS2_DEV_RESET);

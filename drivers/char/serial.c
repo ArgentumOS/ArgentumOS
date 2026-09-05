@@ -680,7 +680,21 @@ void serial_init(void)
 		{
 			struct serial *s;
 			for(s = serial_active; s; s = s->next) {
-				devfs_make_node(s->name, MKDEV(SERIAL_MAJOR, s->minor), S_IFCHR | S_IRUSR | S_IWUSR);
+				{
+					char topo[32], role[32];
+					int port;
+
+					/* Q3: the node lives under Serial/PortN; the
+					 * device-table name stays ttyS%d (console=
+					 * resolution + drivers use it). A top-level
+					 * ttyS%d symlink keeps old paths resolving.
+					 * s->minor = (1 << SERIAL_MSF) + port. */
+					port = s->minor - (1 << SERIAL_MSF);
+					sprintk(topo, "Serial/Port%d", port);
+					devfs_make_node(topo, MKDEV(SERIAL_MAJOR, s->minor), S_IFCHR | S_IRUSR | S_IWUSR);
+					sprintk(role, "ttyS%d", port);
+					devfs_make_symlink(role, topo, 0777);
+				}
 			}
 		}
 

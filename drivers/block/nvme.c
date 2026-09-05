@@ -628,7 +628,9 @@ int nvme_init(void)
 		return ret;
 	}
 
-	/* register the block device (major 9 = /dev/nvme0n1) */
+	/* register the node first so the device-table fallback (which
+	 * cannot know the bus) does not pre-empt it */
+	devfs_block_node("NVMe", 0, "nvme0n1", MKDEV(NVME_MAJOR, NVME_MINOR_DISK));
 	SET_MINOR(nvme_device.minors, NVME_MINOR_DISK);
 	if(!(d = get_device(BLK_DEV, MKDEV(NVME_MAJOR, NVME_MINOR_DISK)))) {
 		if(register_device(BLK_DEV, &nvme_device)) {
@@ -640,7 +642,6 @@ int nvme_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[NVME_MINOR_DISK] = nvme.nr_sects / 2;
-	devfs_make_node("nvme0n1", MKDEV(NVME_MAJOR, NVME_MINOR_DISK), S_IFBLK | S_IRUSR | S_IWUSR);
 
 	printk("nvme: %d sectors of %d bytes (%d MB)\n",
 		nvme.nr_sects, nvme.sector_size,

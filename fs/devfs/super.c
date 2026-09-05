@@ -93,16 +93,48 @@ int devfs_read_superblock(__dev_t dev, struct superblock *sb)
  * followlink(), so the target nodes need not exist yet. */
 static void devfs_aliases(void)
 {
-	/* the classic /dev/mouse alias */
-	devfs_make_symlink("mouse", "psaux", 0777);
+	/* Q3 topology skeleton (docs/devfs-topology.md): real nodes live
+	 * under bus/role dirs; the flat /dev names survive as top-level
+	 * symlinks (role aliases) so kernel + userland keep resolving
+	 * while consumers migrate to the topology paths. */
+	devfs_make_dir("Memory");
+	devfs_make_dir("TTY");
+	devfs_make_dir("Serial");
+	devfs_make_dir("PTS");
+	devfs_make_dir("PS2");
+	devfs_make_dir("USB");
+	devfs_make_dir("Display");
+	devfs_make_dir("Audio");
+	devfs_make_dir("Disk");
+	devfs_make_dir("Disk/IDE");
+	devfs_make_dir("Disk/AHCI");
+	devfs_make_dir("Disk/SCSI");
+	devfs_make_dir("Disk/USB");
+	devfs_make_dir("Disk/NVMe");
+	devfs_make_dir("Disk/Floppy");
+	devfs_make_dir("Disk/RAM");
+	devfs_make_dir("Disk/by-identity");
 
-	/* /dev/disk/by-id: nested alias dirs. The dir nodes carry dev 0 so
-	 * they get virtual device numbers; the symlink targets are
-	 * devfs-relative ("hda" resolves to the top-level hda node). */
-	devfs_make_node("disk", 0, S_IFDIR | 0755);
-	devfs_make_node("disk/by-id", 0, S_IFDIR | 0755);
-	devfs_make_symlink("disk/by-id/ata-hda", "hda", 0777);
-	devfs_make_symlink("disk/by-id/ata-hdb", "hdb", 0777);
+	/* role aliases: fixed-name symlinks into the topology. The block
+	 * unit symlinks (hda.., sda.., fd0, ram0, nvme0n1) are created by
+	 * the per-bus block registration (probe-time mapping). */
+	devfs_make_symlink("console", "TTY/console", 0777);
+	devfs_make_symlink("tty", "TTY/tty", 0777);
+	devfs_make_symlink("ptmx", "PTS/ptmx", 0777);
+	devfs_make_symlink("pts", "PTS/pts", 0777);
+	devfs_make_symlink("kbd", "PS2/Keyboard", 0777);
+	devfs_make_symlink("mouse", "PS2/Mouse", 0777);
+	devfs_make_symlink("psaux", "PS2/Mouse", 0777);
+	devfs_make_symlink("fb0", "Display/fb0", 0777);
+	devfs_make_symlink("dsp", "Audio/dsp", 0777);
+	devfs_make_symlink("mem", "Memory/mem", 0777);
+	devfs_make_symlink("kmem", "Memory/kmem", 0777);
+	devfs_make_symlink("null", "Memory/null", 0777);
+	devfs_make_symlink("port", "Memory/port", 0777);
+	devfs_make_symlink("zero", "Memory/zero", 0777);
+	devfs_make_symlink("full", "Memory/full", 0777);
+	devfs_make_symlink("random", "Memory/random", 0777);
+	devfs_make_symlink("urandom", "Memory/urandom", 0777);
 }
 
 int devfs_init(void)

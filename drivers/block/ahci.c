@@ -609,7 +609,10 @@ int ahci_init(void)
 	}
 
 	/* register the block device (major 8 = /dev/sda) */
-	SET_MINOR(ahci_device.minors, 0);	/* /dev/sda */
+	/* register the node first so the device-table fallback (which
+	 * cannot know the bus) does not pre-empt it */
+	devfs_block_node("AHCI", 0, "sda", MKDEV(AHCI_MAJOR, 0));
+	SET_MINOR(ahci_device.minors, 0);	/* Disk/AHCI/Disk0 */
 	if(!(d = get_device(BLK_DEV, MKDEV(AHCI_MAJOR, 0)))) {
 		if(register_device(BLK_DEV, &ahci_device)) {
 			printk("ahci: register_device failed\n");
@@ -620,7 +623,6 @@ int ahci_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[0] = ahci.nr_sects / 2;
-	devfs_make_node("sda", MKDEV(AHCI_MAJOR, 0), S_IFBLK | S_IRUSR | S_IWUSR);
 
 	printk("ahci: %d sectors of %d bytes (%d MB) on port %d\n",
 		ahci.nr_sects, ahci.sector_size,

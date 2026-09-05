@@ -344,7 +344,7 @@ static int pty_devfs_clone(__dev_t dev)
 	if(minor < 0) {
 		return -ENXIO;
 	}
-	sprintk(name, "pts/%d", minor);
+	sprintk(name, "PTS/pts/%d", minor);
 	devfs_make_node(name, MKDEV(PTY_SLAVE_MAJOR, minor), S_IFCHR | S_IRUSR | S_IWUSR);
 	return 0;
 }
@@ -362,9 +362,9 @@ void pty_init(void)
 			unregister_tty(tty);
 			return;
 		}
-		devfs_make_clone("ptmx", MKDEV(PTY_MASTER_MAJOR, PTY_MASTER_MINOR), S_IFCHR | S_IRUSR | S_IWUSR, pty_devfs_clone);
+		devfs_make_clone("PTS/ptmx", MKDEV(PTY_MASTER_MAJOR, PTY_MASTER_MINOR), S_IFCHR | S_IRUSR | S_IWUSR, pty_devfs_clone);
 		/* devfs directory node that userland init mounts devpts onto */
-		devfs_make_node("pts", 0, S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		devfs_make_node("PTS/pts", 0, S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		printk("ptmx      -\t\t    -\ttype=UNIX98, ptys=%d\n", NR_PTYS);
 	} else {
 		printk("WARNING: %s(): unable to register %s.\n", __FUNCTION__, pty_master_device.name);

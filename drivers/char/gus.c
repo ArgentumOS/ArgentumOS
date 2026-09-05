@@ -380,7 +380,7 @@ int gus_init(void)
 		printk("WARNING: %s(): unable to register 'dsp' device.\n", __FUNCTION__);
 		return -EINVAL;
 	}
-	devfs_make_node("dsp", MKDEV(DSP_MAJOR, DSP_MINOR),
+	devfs_make_node("Audio/dsp", MKDEV(DSP_MAJOR, DSP_MINOR),
 			S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
 			S_IROTH | S_IWOTH);
 

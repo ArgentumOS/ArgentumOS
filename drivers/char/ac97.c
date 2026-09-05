@@ -325,7 +325,7 @@ int ac97_init(void)
 		printk("WARNING: %s(): unable to register 'dsp' device.\n", __FUNCTION__);
 		return -EINVAL;
 	}
-	devfs_make_node("dsp", MKDEV(DSP_MAJOR, DSP_MINOR), S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	devfs_make_node("Audio/dsp", MKDEV(DSP_MAJOR, DSP_MINOR), S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if(ac97.irq) {
 		static struct interrupt irq_config_ac97 = { 0, "ac97", &ac97_irq_handler, NULL };
 		register_irq(ac97.irq, &irq_config_ac97);

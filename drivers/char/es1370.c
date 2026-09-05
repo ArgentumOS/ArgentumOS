@@ -335,7 +335,7 @@ int es1370_init(void)
 		printk("WARNING: %s(): unable to register 'dsp' device.\n", __FUNCTION__);
 		return -EINVAL;
 	}
-	devfs_make_node("dsp", MKDEV(DSP_MAJOR, DSP_MINOR), S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	devfs_make_node("Audio/dsp", MKDEV(DSP_MAJOR, DSP_MINOR), S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
 	if(es1370.irq) {
 		static struct interrupt irq_config_es1370 = { 0, "es1370", &es1370_irq_handler, NULL };

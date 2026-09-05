@@ -226,7 +226,7 @@ void fb_init(void)
 		printk("ERROR: %s(): unable to register fb device.\n", __FUNCTION__);
 		return;
 	}
-	devfs_make_node("fb0", MKDEV(FB_MAJOR, FB_MINOR),
+	devfs_make_node("Display/fb0", MKDEV(FB_MAJOR, FB_MINOR),
 			S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
 			S_IROTH | S_IWOTH);
 }

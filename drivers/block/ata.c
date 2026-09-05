@@ -843,10 +843,12 @@ int ata_channel_init(struct ide *ide)
 				show_capabilities(ide, drive);
 				SET_MINOR(ide_device[ide->channel].minors, drv_num << drive->minor_shift);
 				ide_device[ide->channel].blksize[drv_num << drive->minor_shift] = BLKSIZE_1K;
+				/* node first: the device-table fallback must not claim
+				 * this dev (it cannot know the bus/unit) */
+				devfs_block_node("IDE", ide->channel * 2 + drv_num, drive->dev_name, MKDEV(drive->major, drv_num << drive->minor_shift));
 				if(!devices) {
 					register_device(BLK_DEV, &ide_device[ide->channel]);
 				}
-				devfs_make_node(drive->dev_name, MKDEV(drive->major, drv_num << drive->minor_shift), S_IFBLK | S_IRUSR | S_IWUSR);
 				if(drive->flags & DRIVE_IS_DISK) {
 					if(!ata_hd_init(ide, drive)) {
 						devices++;

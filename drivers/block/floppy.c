@@ -826,9 +826,9 @@ void floppy_init(void)
 			printk("WARNING: %s(): fd%d: unable to register DMA channel on %s.\n", __FUNCTION__, current_fdd, floppy_device.name);
 		} else  {
 			if(!register_device(BLK_DEV, &floppy_device)) {
-				devfs_make_node("fd0", MKDEV(FDC_MAJOR, 0), S_IFBLK | S_IRUSR | S_IWUSR);
+				devfs_block_node("Floppy", 0, "fd0", MKDEV(FDC_MAJOR, 0));
 				if(slave) {
-					devfs_make_node("fd1", MKDEV(FDC_MAJOR, 1), S_IFBLK | S_IRUSR | S_IWUSR);
+					devfs_block_node("Floppy", 1, "fd1", MKDEV(FDC_MAJOR, 1));
 				}
 				do_motor_off(current_fdd);
 			}

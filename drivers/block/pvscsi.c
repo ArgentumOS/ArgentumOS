@@ -583,8 +583,10 @@ int pvscsi_init(void)
 		return -EIO;
 	}
 
-	/* register the block device (major 8 = /dev/sda) */
-	SET_MINOR(pvscsi_device.minors, 0);	/* /dev/sda */
+	/* register the node first so the device-table fallback (which
+	 * cannot know the bus) does not pre-empt it */
+	devfs_block_node("SCSI", 0, "sda", MKDEV(PVSCSI_MAJOR, 0));
+	SET_MINOR(pvscsi_device.minors, 0);	/* Disk/SCSI/Disk0 */
 	if(!(d = get_device(BLK_DEV, MKDEV(PVSCSI_MAJOR, 0)))) {
 		if(register_device(BLK_DEV, &pvscsi_device)) {
 			printk("pvscsi: register_device failed\n");
@@ -595,7 +597,6 @@ int pvscsi_init(void)
 		}
 	}
 	((unsigned int *)d->device_data)[0] = pvscsi.nr_sects / 2;
-	devfs_make_node("sda", MKDEV(PVSCSI_MAJOR, 0), S_IFBLK | S_IRUSR | S_IWUSR);
 
 	printk("pvscsi: %d sectors of %d bytes (%d MB)\n",
 		pvscsi.nr_sects, pvscsi.sector_size,

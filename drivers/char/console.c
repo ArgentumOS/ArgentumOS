@@ -985,6 +985,6 @@ void console_init(void)
 	register_device(CHR_DEV, &console_device);
 
 	/* devfs node registry (FreeBSD make_dev model) */
-	devfs_make_node("console", MKDEV(SYSCON_MAJOR, 1), S_IFCHR | S_IRUSR | S_IWUSR);
-	devfs_make_node("tty", MKDEV(SYSCON_MAJOR, 0), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("TTY/console", MKDEV(SYSCON_MAJOR, 1), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("TTY/tty", MKDEV(SYSCON_MAJOR, 0), S_IFCHR | S_IRUSR | S_IWUSR);
 }

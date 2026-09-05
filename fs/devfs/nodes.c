@@ -70,6 +70,68 @@ int devfs_make_node(const char *name, __dev_t dev, __mode_t mode)
 	return 0;
 }
 
+/* create a directory node and all its ancestors ("Disk/IDE" makes
+ * "Disk" and "Disk/IDE"). Q3 topology dirs are dev-0 dir nodes. */
+int devfs_make_dir(const char *name)
+{
+	char tmp[64];
+	int cur;
+
+	tmp[0] = 0;
+	while(name && *name) {
+		const char *slash = strchr(name, '/');
+		int len = slash ? (int)(slash - name) : (int)strlen(name);
+
+		cur = (int)strlen(tmp);
+		if(cur && cur < (int)sizeof(tmp) - 1) {
+			tmp[cur++] = '/';
+		}
+		if(cur + len >= (int)sizeof(tmp)) {
+			return -ENAMETOOLONG;
+		}
+		memcpy_b(tmp + cur, name, len);
+		tmp[cur + len] = 0;
+		devfs_make_node(tmp, 0, S_IFDIR | 0755);
+		if(!slash) {
+			break;
+		}
+		name = slash + 1;
+	}
+	return 0;
+}
+
+/* Q3 block registration: the real node lives at Disk/<bus>/Disk<unit>;
+ * the legacy flat name (hda, sda...) survives as a top-level symlink. */
+int devfs_block_node(const char *bus, int unit, const char *legacy, __dev_t dev)
+{
+	char path[40], target[40];
+
+	if(sprintk(path, "Disk/%s", bus) < 0) {
+		return -ENAMETOOLONG;
+	}
+	devfs_make_dir(path);
+	if(sprintk(path, "Disk/%s/Disk%d", bus, unit) < 0) {
+		return -ENAMETOOLONG;
+	}
+	devfs_make_node(path, dev, S_IFBLK | S_IRUSR | S_IWUSR);
+	if(legacy && *legacy) {
+		if(sprintk(target, "Disk/%s/Disk%d", bus, unit) < 0) {
+			return -ENAMETOOLONG;
+		}
+		devfs_make_symlink(legacy, target, 0777);
+	}
+	/* identity link: Disk/by-identity/<bus>-Disk<unit>. The bus/unit is
+	 * the stable identity until drivers report model/serial. */
+	if(sprintk(path, "Disk/by-identity/%s-Disk%d", bus, unit) < 0) {
+		return -ENAMETOOLONG;
+	}
+	if(sprintk(target, "Disk/%s/Disk%d", bus, unit) < 0) {
+		return -ENAMETOOLONG;
+	}
+	devfs_make_symlink(path, target, 0777);
+	return 0;
+}
+
 int devfs_make_clone(const char *name, __dev_t dev, __mode_t mode, int (*clone_fn)(__dev_t))
 {
 	struct devfs_node *new;
@@ -296,40 +358,70 @@ static int devfs_ram_gen(int minor, char *name)
 	return 0;
 }
 
+/* fallback block registration: bus per device major; the old per-major
+ * letter generator only provides the legacy top-level symlink name. */
+static const char *devfs_bus_for_major(int major)
+{
+	switch(major) {
+	case 8:					/* only usb-storage falls through; ahci/pvscsi register explicitly */
+		return "USB";
+	case 9:
+		return "NVMe";
+	case IDE0_MAJOR:
+	case IDE1_MAJOR:
+		return "IDE";
+	case FDC_MAJOR:
+		return "Floppy";
+	case RAMDISK_MAJOR:
+		return "RAM";
+	}
+	return 0;
+}
+
 int devfs_device_registered(int type, struct device *d)
 {
-	char name[16];
-	int minor;
+	char legacy[16];
+	struct devfs_node *n;
+	const char *bus;
+	char prefix[32];
+	int minor, unit = 0;
+	int plen;
 
+	if(type != BLK_DEV || !(bus = devfs_bus_for_major(d->major))) {
+		return 0;
+	}
 	for(minor = 0; minor < 256; minor++) {
 		if(!TEST_MINOR(d->minors, minor)) {
 			continue;
 		}
-		/* already declared? */
+		/* already declared (explicit driver registration)? */
 		if(devfs_find_node_dev(MKDEV(d->major, minor))) {
 			continue;
 		}
-		if(d->major == 8 && type == BLK_DEV) {
-			if(!devfs_sd_gen(minor, name)) {
-				devfs_make_node(name, MKDEV(d->major, minor), S_IFBLK | S_IRUSR | S_IWUSR);
+		if(d->major == 8) {
+			if(devfs_sd_gen(minor, legacy)) {
+				continue;
 			}
-		} else if(d->major == 9 && type == BLK_DEV) {
-			if(!devfs_nvme_gen(minor, name)) {
-				devfs_make_node(name, MKDEV(d->major, minor), S_IFBLK | S_IRUSR | S_IWUSR);
+		} else if(d->major == 9) {
+			if(devfs_nvme_gen(minor, legacy)) {
+				continue;
 			}
-		} else if((d->major == IDE0_MAJOR || d->major == IDE1_MAJOR) && type == BLK_DEV) {
-			if(!devfs_ide_gen(d->major, minor, name)) {
-				devfs_make_node(name, MKDEV(d->major, minor), S_IFBLK | S_IRUSR | S_IWUSR);
-			}
-		} else if(d->major == FDC_MAJOR && type == BLK_DEV) {
-			if(!devfs_fd_gen(minor, name)) {
-				devfs_make_node(name, MKDEV(d->major, minor), S_IFBLK | S_IRUSR | S_IWUSR);
-			}
-		} else if(d->major == RAMDISK_MAJOR && type == BLK_DEV) {
-			if(!devfs_ram_gen(minor, name)) {
-				devfs_make_node(name, MKDEV(d->major, minor), S_IFBLK | S_IRUSR | S_IWUSR);
+		} else if(d->major == IDE0_MAJOR || d->major == IDE1_MAJOR) {
+			devfs_ide_gen(d->major, minor, legacy);
+		} else if(d->major == FDC_MAJOR) {
+			devfs_fd_gen(minor, legacy);
+		} else {
+			devfs_ram_gen(minor, legacy);
+		}
+		/* unit = the next free index under Disk/<bus> */
+		plen = sprintk(prefix, "Disk/%s/Disk", bus);
+		for(unit = 0, n = devfs_nodes; n; n = n->next) {
+			if(!strncmp(n->name, prefix, plen) && n->name[plen] >= '0'
+				&& n->name[plen] <= '9' && unit <= atoi(n->name + plen)) {
+				unit = atoi(n->name + plen) + 1;
 			}
 		}
+		devfs_block_node(bus, unit, legacy, MKDEV(d->major, minor));
 	}
 	return 0;
 }

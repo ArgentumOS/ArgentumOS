@@ -203,7 +203,7 @@ void kbdaux_init(void)
 	if(register_device(CHR_DEV, &kbdaux_device)) {
 		printk("WARNING: %s(): unable to register kbd device.\n", __FUNCTION__);
 	}
-	devfs_make_node("kbd", MKDEV(KBD_MAJOR, KBD_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_node("PS2/Keyboard", MKDEV(KBD_MAJOR, KBD_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
 	printk("kbdaux    /dev/kbd        -\tGUI keyboard device\n");
 }
 #endif /* CONFIG_KBDAUX */
