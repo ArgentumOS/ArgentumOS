@@ -1,31 +1,3 @@
-diff --git a/src/network/lookup_name.c b/src/network/lookup_name.c
-index dbde7473..efbd44bf 100644
---- a/src/network/lookup_name.c
-+++ b/src/network/lookup_name.c
-@@ -13,6 +13,7 @@
- #include <resolv.h>
- #include "lookup.h"
- #include "stdio_impl.h"
-+#include "../passwd/pwconf.h"
- #include "syscall.h"
- 
- static int is_valid_hostname(const char *host)
-@@ -51,8 +52,11 @@ static int name_from_hosts(struct address buf[static MAXADDRS], char canon[stati
- 	char line[512];
- 	size_t l = strlen(name);
- 	int cnt = 0, badfam = 0, have_canon = 0;
--	unsigned char _buf[1032];
--	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
-+	/* M5: hosts are served from the system.hosts domain (the
-+	 * legacy /System/Configuration/hosts line file is gone). The
-+	 * renderer returns classic hosts lines over a self-contained
-+	 * stream, so the line parser below is unchanged. */
-+	FILE *f = __pwconf_hosts_fopen();
- 	if (!f) switch (errno) {
- 	case ENOENT:
- 	case ENOTDIR:
-diff --git a/src/passwd/pwconf.c b/src/passwd/pwconf.c
-index 1d45ac87..25987358 100644
 --- a/src/passwd/pwconf.c
 +++ b/src/passwd/pwconf.c
 @@ -29,6 +29,7 @@
@@ -36,19 +8,134 @@ index 1d45ac87..25987358 100644
  
  /* one parsed key = raw right-hand-side text (verbatim: quotes and
   * commas are kept; interpretation happens at render time) */
-@@ -852,3 +853,132 @@ out:
- 	}
- 	return f;
+@@ -554,6 +555,110 @@
+ 	return 0;
  }
+ 
++/* collect records stored at the domain root (no wrapper container):
++ * pwconf emits only assignment entries, keyed with dotted paths, so a
++ * flat file's record is the first key segment (localhost.addresses ->
++ * record 'localhost', field 'addresses'). Used by record-kind domains
++ * whose name already says what the records are (system.hosts,
++ * system.mounts), where a wrapper container would only duplicate the
++ * noun. Records keep source order (first appearance). */
++static int pwdb_build_flat(struct pwdb *db, struct pwentry *head)
++{
++	struct pwentry *e;
++
++	db->recs = NULL;
++	db->nrecs = 0;
++	for(e = head; e; e = e->next) {
++		const char *dot = strchr(e->key, '.');
++		size_t nl = dot ? (size_t)(dot - e->key) : strlen(e->key);
++		struct pwrec *r = NULL;
++		struct pwrec *cur;
++
++		if(!nl) {
++			continue;	/* no record name (empty key) */
++		}
++		for(cur = db->recs; cur; cur = cur->next) {
++			if(strlen(cur->name) == nl &&
++			   !strncmp(cur->name, e->key, nl)) {
++				r = cur;
++				break;
++			}
++		}
++		if(!r) {
++			struct pwrec *nr = calloc(1, sizeof(*nr));
++
++			if(!nr) {
++				return ENOMEM;
++			}
++			nr->name = strndup(e->key, nl);
++			if(!nr->name) {
++				free(nr);
++				return ENOMEM;
++			}
++			if(db->recs) {
++				struct pwrec *t = db->recs;
++
++				while(t->next) {
++					t = t->next;
++				}
++				t->next = nr;
++			} else {
++				db->recs = nr;
++			}
++			db->nrecs++;
++			r = nr;
++		}
++		if(!dot) {
++			continue;	/* root scalar, not a field */
++		}
++		/* add/replace the field entry */
++		{
++			const char *field = dot + 1;
++			struct pwentry *fe;
++			struct pwentry *prev;
++
++			prev = NULL;
++			for(fe = r->fields; fe; prev = fe, fe = fe->next) {
++				if(!strcmp(fe->key, field)) {
++					break;
++				}
++			}
++			if(fe) {
++				char *nv = strdup(e->val);
++
++				if(!nv) {
++					return ENOMEM;
++				}
++				free(fe->val);
++				fe->val = nv;
++			} else {
++				fe = calloc(1, sizeof(*fe));
++				if(!fe) {
++					return ENOMEM;
++				}
++				fe->key = strdup(field);
++				if(!fe->key) {
++					free(fe);
++					return ENOMEM;
++				}
++				fe->val = strdup(e->val);
++				if(!fe->val) {
++					free(fe->key);
++					free(fe);
++					return ENOMEM;
++				}
++				if(prev) {
++					prev->next = fe;
++				} else {
++					r->fields = fe;
++				}
++				r->nfields++;
++			}
++		}
++	}
++	return 0;
++}
++
+ static void pwdb_free(struct pwdb *db)
+ {
+ 	struct pwrec *r = db->recs;
+@@ -850,5 +955,136 @@
+ 	if(in) {
+ 		fclose(in);
+ 	}
++	return f;
++}
 +
 +/* Render the hosts domain (system.hosts.conf) as classic hosts
 + * lines ("address name [alias ...]") so musl's name_from_hosts
-+ * (lookup_name.c) keeps its line parser unchanged. Each record of the
-+ * `hosts` container is one host: `addresses` is the comma list of IPs,
-+ * `aliases` the extra names. Records render in source order, one line
-+ * per address. Same FILE contract as __pwconf_passwd_fopen (a
-+ * self-contained fmemopen stream). Returns NULL with errno set when
-+ * the domain cannot be read (ENOENT = no hosts = no file). */
++ * (lookup_name.c) keeps its line parser unchanged. The domain is
++ * dedicated to host records, so each top-level record is one host
++ * (no `hosts` container wrapper - system.hosts.localhost, not
++ * system.hosts.hosts.localhost): `addresses` is the comma list of
++ * IPs, `aliases` the extra names. Records render in source order,
++ * one line per address. Same FILE contract as __pwconf_passwd_fopen
++ * (a self-contained fmemopen stream). Returns NULL with errno set
++ * when the domain cannot be read (ENOENT = no hosts = no file). */
 +FILE *__pwconf_hosts_fopen(void)
 +{
 +	struct pwdb db = { NULL, 0 };
@@ -82,7 +169,7 @@ index 1d45ac87..25987358 100644
 +	}
 +	text[n] = '\0';
 +	if(pwconf_parse(text, (size_t)n, &entries) ||
-+	   pwdb_build(&db, entries, "hosts")) {
++	   pwdb_build_flat(&db, entries)) {
 +		errno = EIO;
 +		goto out;
 +	}
@@ -167,10 +254,32 @@ index 1d45ac87..25987358 100644
 +	if(in) {
 +		fclose(in);
 +	}
-+	return f;
-+}
-diff --git a/src/passwd/pwconf.h b/src/passwd/pwconf.h
-index a1cbcfbf..bd6a9bd4 100644
+ 	return f;
+ }
+--- a/src/network/lookup_name.c
++++ b/src/network/lookup_name.c
+@@ -13,6 +13,7 @@
+ #include <resolv.h>
+ #include "lookup.h"
+ #include "stdio_impl.h"
++#include "../passwd/pwconf.h"
+ #include "syscall.h"
+ 
+ static int is_valid_hostname(const char *host)
+@@ -51,8 +52,11 @@
+ 	char line[512];
+ 	size_t l = strlen(name);
+ 	int cnt = 0, badfam = 0, have_canon = 0;
+-	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
++	/* M5: hosts are served from the system.hosts domain (the
++	 * legacy /System/Configuration/hosts line file is gone). The
++	 * renderer returns classic hosts lines over a self-contained
++	 * stream, so the line parser below is unchanged. */
++	FILE *f = __pwconf_hosts_fopen();
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
 --- a/src/passwd/pwconf.h
 +++ b/src/passwd/pwconf.h
 @@ -17,5 +17,6 @@

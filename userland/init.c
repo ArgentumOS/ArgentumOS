@@ -21,10 +21,11 @@
 #define NETWORK_DOMAIN	"/System/Configuration/system.network.conf"
 #define MOUNTS_DOMAIN	"/System/Configuration/system.mounts.conf"
 
-static void try_mount(const char *fstype, const char *target)
+static void try_mount(const char *source, const char *fstype,
+		      const char *target)
 {
-	if (mount(fstype, target, fstype, 0, NULL) < 0)
-		fprintf(stderr, "INIT: mount %s on %s: %m\n", fstype, target);
+	if (mount(source, target, fstype, 0, NULL) < 0)
+		fprintf(stderr, "INIT: mount %s on %s: %m\n", source, target);
 }
 
 /* M5: set the kernel nodename from the network domain (plan §5.3).
@@ -84,25 +85,27 @@ static void set_hostname_from_domain(void)
 }
 
 /* M6: mount the boot table from system.mounts.conf (plan §5.5). The
- * container is `mount`; each record is one filesystem with fstype +
- * target; record order is mount order; the mount source is the
- * filesystem type. A record missing fstype/target is skipped with a
- * clear error; structural problems (unknown container, nesting,
- * unbalanced braces) stop the parse with an error. The old hardcoded
- * try_mount calls are gone: the boot mount set is machine config. */
+ * domain is dedicated to mount records, so each top-level group is one
+ * record (system.mounts.processes - no 'mount' container wrapper, the
+ * domain name already says it). Record order is mount order; the mount
+ * source defaults to the filesystem type. A record missing
+ * fstype/target is skipped with a clear error; structural problems
+ * (nesting, unbalanced braces) stop the parse with an error. The old
+ * hardcoded try_mount calls are gone: the boot mount set is machine
+ * config. */
 static void mount_from_table(void)
 {
 	FILE *f;
 	char line[256];
-	char cur[64], fstype[64], target[256];
-	int depth = 0, saw_mount = 0, bad = 0;
+	char cur[64], fstype[64], source[256], target[256];
+	int depth = 0, bad = 0;
 
 	f = fopen(MOUNTS_DOMAIN, "r");
 	if (!f) {
 		fprintf(stderr, "INIT: mounts: %s: %m\n", MOUNTS_DOMAIN);
 		return;
 	}
-	cur[0] = fstype[0] = target[0] = 0;
+	cur[0] = fstype[0] = source[0] = target[0] = 0;
 	while (fgets(line, sizeof line, f)) {
 		char *p, *end, *eq, *v;
 
@@ -115,14 +118,15 @@ static void mount_from_table(void)
 		if (!*p || *p == '#')
 			continue;
 		if (*p == '}') {
-			if (depth == 2) {	/* end of a record: mount it */
+			if (depth == 1) {	/* end of a record: mount it */
 				if (fstype[0] && target[0])
-					try_mount(fstype, target);
+					try_mount(source[0] ? source : fstype,
+						  fstype, target);
 				else
 					fprintf(stderr,
 						"INIT: mounts: record '%s': missing %s\n",
 						cur, fstype[0] ? "target" : "fstype");
-				cur[0] = fstype[0] = target[0] = 0;
+				cur[0] = fstype[0] = source[0] = target[0] = 0;
 			}
 			depth--;
 			if (depth < 0) {
@@ -147,17 +151,8 @@ static void mount_from_table(void)
 		v = eq + 1;
 		while (*v == ' ' || *v == '\t')
 			v++;
-		if (*v == '{') {	/* container / record open */
-			if (!depth) {
-				if (strcmp(p, "mount")) {
-					fprintf(stderr,
-						"INIT: mounts: unknown container '%s'\n",
-						p);
-					bad = 1;
-					break;
-				}
-				saw_mount = 1;
-			} else if (depth == 1) {
+		if (*v == '{') {	/* record open (top level, no wrapper) */
+			if (depth == 0) {
 				if (strlen(p) >= sizeof cur) {
 					fprintf(stderr,
 						"INIT: mounts: record name too long\n");
@@ -165,7 +160,7 @@ static void mount_from_table(void)
 					break;
 				}
 				strcpy(cur, p);
-				fstype[0] = target[0] = 0;
+				fstype[0] = source[0] = target[0] = 0;
 			} else {
 				fprintf(stderr,
 					"INIT: mounts: nested '%s' unsupported\n",
@@ -174,15 +169,16 @@ static void mount_from_table(void)
 				break;
 			}
 			depth++;
-			if (depth > 2) {
+			if (depth > 1) {
 				bad = 1;
 				break;
 			}
 			continue;
 		}
 		/* assignment inside a record */
-		if (depth == 2) {
+		if (depth == 1) {
 			char *dst = !strcmp(p, "fstype") ? fstype :
+				    !strcmp(p, "source") ? source :
 				    !strcmp(p, "target") ? target : NULL;
 			char *w;
 
@@ -214,8 +210,6 @@ static void mount_from_table(void)
 		fprintf(stderr, "INIT: mounts: unbalanced '{'\n");
 		bad = 1;
 	}
-	if (!saw_mount)
-		fprintf(stderr, "INIT: mounts: no 'mount' container\n");
 	fclose(f);
 }
 

@@ -302,12 +302,14 @@ group = {
 
 ### 5.2 `system.hosts.conf`
 
+The domain is dedicated to host records, so each top-level group is one
+host (no `hosts` container wrapper: `system.hosts.localhost`, not
+`system.hosts.hosts.localhost`):
+
 ```
-hosts = {
-    localhost = {
-        addresses = 127.0.0.1, ::1
-        aliases =
-    }
+localhost = {
+    addresses = 127.0.0.1, ::1
+    aliases =
 }
 ```
 
@@ -350,15 +352,13 @@ A plain list domain replacing the legacy `shells` line file; `chsh` +
 At `/System/Configuration/` (boot policy, D4).
 
 ```
-mount = {
-    processes = {
-        fstype = proc
-        target = "/System/Processes"
-    }
-    pts = {
-        fstype = devpts
-        target = "/System/Devices/pts"
-    }
+processes = {
+    fstype = proc
+    target = "/System/Processes"
+}
+pts = {
+    fstype = devpts
+    target = "/System/Devices/pts"
 }
 ```
 
@@ -525,13 +525,15 @@ file exists.
 
 ### M6 — Mount table (init) — DONE
 `system.mounts.conf` ships in System scope (`userland/configuration/`,
-staged by `userland64`): container `mount`, one record per filesystem
-with `fstype` + `target` (record order = mount order; the mount source
-is the fstype). `userland/init.c`'s `mount_from_table()` replaces the
-hardcoded `try_mount` calls: a record missing fstype/target is skipped
-with a clear error (`INIT: mounts: record '<name>': missing <field>`);
-structural problems (unknown container, nesting, unbalanced braces)
-stop the parse with an error. Grammar subset parser lives in init.c
+staged by `userland64`): the domain is dedicated to mount records, so
+records sit at the top level (no `mount` container wrapper -
+system.mounts.processes, not system.mounts.mount.processes): one record
+per filesystem with `fstype` + `target` (record order = mount order; the
+mount source is the fstype). `userland/init.c`'s `mount_from_table()`
+replaces the hardcoded `try_mount` calls: a record missing fstype/target
+is skipped with a clear error (`INIT: mounts: record '<name>': missing
+<field>`); structural problems (nesting, unbalanced braces) stop the
+parse with an error. Grammar subset parser lives in init.c
 (line-oriented, matching config-design §10: `#` comments, block
 values, quoted strings, single-segment keys).
 
