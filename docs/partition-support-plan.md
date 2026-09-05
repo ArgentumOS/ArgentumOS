@@ -1,7 +1,7 @@
 # Partition support: GPT + MBR (design + milestones)
 
-Status: M0 (parsers) and M1 (topology + consumer migration) DONE
-(2729f26 + M1 below); M2+ pending.
+Status: M0 (parsers), M1 (topology), M2 (scans + nodes + partition
+mount) DONE (2729f26, 74a3a8f, 81c7449); M3/M4 pending.
 
 ## Survey — what exists
 
@@ -115,12 +115,14 @@ MAX_PARTITIONS; the per-driver global `part[]` becomes `part[MAX_PARTITIONS]`.
   Root= table entries + kreal64 cmdline migrated to .../WholeDisk; boot
   verified green (root mounts, topology listing shows WholeDisk as
   brw 8,0, clean halt).
-- **M2 — driver scan + partition nodes + mount.** ata/ahci/pvscsi/nvme probe
-  scans through the shared layer; `Partition<k>` nodes appear; a partition is
-  mountable (`mount -t xbfs .../Partition1 /nv`) and discard ranges carry the
-  partition offset. Acceptance: create an MBR and a GPT partitioned image with
-  an XBFS partition on p1 + a second on p2, mount both, read/write, clean
-  xbfscheck + churn.
+- **M2 — driver scan + partition nodes + mount. DONE.** ahci/nvme/pvscsi
+  probe-scan through the shared parser (part[] -> MAX_PARTITIONS), publish
+  Partition<k> + by-identity P<k> nodes (devfs_partition_node), re-scan on
+  BLKRRPART. MBR and GPT disks with two XBFS partitions each: both mount,
+  read, rm; post-session xbfscheck clean. Exposed + fixed a real xbfs
+  umount bug (release freed the bitmap before the drain could flush it ->
+  stale on-disk bitmap; bitmap now lives until the log_draining drain).
+  Whole-disk harness + churn soak stay green.
 - **M3 — single GPT disk boot.** `tools/mkgpt.py`, single-drive harness,
   OVMF boot of ESP p1, root from p2; make run target boots it; old two-drive
   default retired. Acceptance: boot to userland prompt with root on a
