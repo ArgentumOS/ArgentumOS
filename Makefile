@@ -148,12 +148,13 @@ TOYBOX64_BIN  = third_party/toybox/toybox64
 .PHONY: userland64 musl64 dash64 toybox64 llvm-cxx
 
 musl64: $(MUSL64_SPECS)
-$(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch
+$(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_party/musl-hosts.patch
 	cd third_party/musl && \
 		make clean >/dev/null 2>&1 || true && \
 		rm -f src/passwd/pwconf.c src/passwd/pwconf.h && \
 		git apply $(CURDIR)/third_party/musl-fsh.patch && \
 		git apply $(CURDIR)/third_party/musl-pwconf.patch && \
+		git apply $(CURDIR)/third_party/musl-hosts.patch && \
 		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
 		$(MAKE) && $(MAKE) install && \
@@ -331,13 +332,14 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 		  cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
 	@chmod +x "$(ROOTFS64)/System/Tools/sh" "$(ROOTFS64)/System/Tools/init"
 	# --- machine configuration (System/Configuration; Q9 accounts) ---
-	# Identity + login policy are record domains shipped in System scope
-	# (docs/system-config-files-plan.md M2). The legacy colon/line files
-	# (passwd, group, shells) are gone; hosts stays legacy until M5.
+	# Identity, name resolution and machine identity are record domains
+	# shipped in System scope (docs/system-config-files-plan.md M2/M5).
+	# No legacy colon/line files exist (passwd, group, shells, hosts).
 	@cp userland/configuration/system.config.passwd.conf "$(ROOTFS64)/System/Configuration/system.config.passwd.conf"
 	@cp userland/configuration/system.config.group.conf "$(ROOTFS64)/System/Configuration/system.config.group.conf"
 	@cp userland/configuration/system.config.shells.conf "$(ROOTFS64)/System/Configuration/system.config.shells.conf"
-	@printf '127.0.0.1 localhost\n127.0.0.1 (none)\n' > "$(ROOTFS64)/System/Configuration/hosts"
+	@cp userland/configuration/system.config.hosts.conf "$(ROOTFS64)/System/Configuration/system.config.hosts.conf"
+	@cp userland/configuration/system.config.network.conf "$(ROOTFS64)/System/Configuration/system.config.network.conf"
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
 	@cp userland/configuration/system.config.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.config.xfb.conf"

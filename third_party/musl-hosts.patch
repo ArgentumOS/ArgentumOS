@@ -1,0 +1,182 @@
+diff --git a/src/network/lookup_name.c b/src/network/lookup_name.c
+index dbde7473..efbd44bf 100644
+--- a/src/network/lookup_name.c
++++ b/src/network/lookup_name.c
+@@ -13,6 +13,7 @@
+ #include <resolv.h>
+ #include "lookup.h"
+ #include "stdio_impl.h"
++#include "../passwd/pwconf.h"
+ #include "syscall.h"
+ 
+ static int is_valid_hostname(const char *host)
+@@ -51,8 +52,11 @@ static int name_from_hosts(struct address buf[static MAXADDRS], char canon[stati
+ 	char line[512];
+ 	size_t l = strlen(name);
+ 	int cnt = 0, badfam = 0, have_canon = 0;
+-	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
++	/* M5: hosts are served from the system.config.hosts domain (the
++	 * legacy /System/Configuration/hosts line file is gone). The
++	 * renderer returns classic hosts lines over a self-contained
++	 * stream, so the line parser below is unchanged. */
++	FILE *f = __pwconf_hosts_fopen();
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff --git a/src/passwd/pwconf.c b/src/passwd/pwconf.c
+index 1d45ac87..25987358 100644
+--- a/src/passwd/pwconf.c
++++ b/src/passwd/pwconf.c
+@@ -29,6 +29,7 @@
+ #define PWCONF_MAX_LINE		4096
+ #define PWCONF_PASSWD_PATH	"/System/Configuration/system.config.passwd.conf"
+ #define PWCONF_GROUP_PATH	"/System/Configuration/system.config.group.conf"
++#define PWCONF_HOSTS_PATH	"/System/Configuration/system.config.hosts.conf"
+ 
+ /* one parsed key = raw right-hand-side text (verbatim: quotes and
+  * commas are kept; interpretation happens at render time) */
+@@ -852,3 +853,132 @@ out:
+ 	}
+ 	return f;
+ }
++
++/* Render the hosts domain (system.config.hosts.conf) as classic hosts
++ * lines ("address name [alias ...]") so musl's name_from_hosts
++ * (lookup_name.c) keeps its line parser unchanged. Each record of the
++ * `hosts` container is one host: `addresses` is the comma list of IPs,
++ * `aliases` the extra names. Records render in source order, one line
++ * per address. Same FILE contract as __pwconf_passwd_fopen (a
++ * self-contained fmemopen stream). Returns NULL with errno set when
++ * the domain cannot be read (ENOENT = no hosts = no file). */
++FILE *__pwconf_hosts_fopen(void)
++{
++	struct pwdb db = { NULL, 0 };
++	struct pwentry *entries = NULL;
++	FILE *f = NULL;
++	char *buf = NULL;
++	size_t len = 0;
++	FILE *in;
++	char *text = NULL;
++	long n;
++	struct pwrec *r;
++
++	in = fopen(PWCONF_HOSTS_PATH, "rbe");
++	if(!in) {
++		return NULL;	/* errno from fopen (ENOENT etc.) */
++	}
++	if(fseek(in, 0, SEEK_END) || (n = ftell(in)) < 0 ||
++	   (unsigned long)n > PWCONF_MAX_FILE) {
++		errno = EFBIG;
++		goto out;
++	}
++	rewind(in);
++	text = malloc((size_t)n + 1);
++	if(!text) {
++		errno = ENOMEM;
++		goto out;
++	}
++	if(fread(text, 1, (size_t)n, in) != (size_t)n) {
++		errno = EIO;
++		goto out;
++	}
++	text[n] = '\0';
++	if(pwconf_parse(text, (size_t)n, &entries) ||
++	   pwdb_build(&db, entries, "hosts")) {
++		errno = EIO;
++		goto out;
++	}
++	f = open_memstream(&buf, &len);
++	if(!f) {
++		errno = ENOMEM;
++		goto out;
++	}
++	for(r = db.recs; r; r = r->next) {
++		char **addrs = NULL, **aliases = NULL;
++		int na, nali, i;
++
++		na = pwconf_members(pwrec_field(r, "addresses"), &addrs);
++		nali = pwconf_members(pwrec_field(r, "aliases"), &aliases);
++		if(na < 0 || nali < 0) {
++			errno = ENOMEM;
++			if(na >= 0 && addrs) {
++				for(i = 0; i < na; i++) {
++					free(addrs[i]);
++				}
++			}
++			if(nali >= 0 && aliases) {
++				for(i = 0; i < nali; i++) {
++					free(aliases[i]);
++				}
++			}
++			free(addrs);
++			free(aliases);
++			fclose(f);
++			f = NULL;
++			goto out;
++		}
++		for(i = 0; i < na; i++) {
++			int j;
++
++			fprintf(f, "%s %s", addrs[i], r->name);
++			for(j = 0; j < nali; j++) {
++				fprintf(f, " %s", aliases[j]);
++			}
++			fputc('\n', f);
++		}
++		for(i = 0; i < na; i++) {
++			free(addrs[i]);
++		}
++		for(i = 0; i < nali; i++) {
++			free(aliases[i]);
++		}
++		free(addrs);
++		free(aliases);
++	}
++	if(fflush(f) || ferror(f)) {
++		fclose(f);
++		f = NULL;
++		errno = EIO;
++		goto out;
++	}
++	{
++		FILE *rf = fmemopen(NULL, len, "w+");
++
++		if(!rf) {
++			errno = ENOMEM;
++			fclose(f);
++			f = NULL;
++			goto out;
++		}
++		if(fwrite(buf, 1, len, rf) != len ||
++		   fflush(rf) || ferror(rf)) {
++			fclose(rf);
++			fclose(f);
++			f = NULL;
++			errno = EIO;
++			goto out;
++		}
++		rewind(rf);
++		fclose(f);	/* frees the memstream buffer */
++		f = rf;
++	}
++out:
++	free(text);
++	pwconf_entries_free(entries);
++	pwdb_free(&db);
++	if(in) {
++		fclose(in);
++	}
++	return f;
++}
+diff --git a/src/passwd/pwconf.h b/src/passwd/pwconf.h
+index a1cbcfbf..bd6a9bd4 100644
+--- a/src/passwd/pwconf.h
++++ b/src/passwd/pwconf.h
+@@ -17,5 +17,6 @@
+ 
+ hidden FILE *__pwconf_passwd_fopen(void);
+ hidden FILE *__pwconf_group_fopen(void);
++hidden FILE *__pwconf_hosts_fopen(void);
+ 
+ #endif

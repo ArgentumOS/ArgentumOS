@@ -18,11 +18,68 @@
 #include <string.h>
 
 #define PATH_DEFAULT	"/System/Tools:/Applications"
+#define NETWORK_DOMAIN	"/System/Configuration/system.config.network.conf"
 
 static void try_mount(const char *fstype, const char *target)
 {
 	if (mount(fstype, target, fstype, 0, NULL) < 0)
 		fprintf(stderr, "INIT: mount %s on %s: %m\n", fstype, target);
+}
+
+/* M5: set the kernel nodename from the network domain (plan §5.3).
+ * `hostname` = value may be bare or quoted; comments (#) and other
+ * assignments are ignored. A read failure or an empty value leaves the
+ * kernel default ("(none)") in place. */
+static void set_hostname_from_domain(void)
+{
+	FILE *f;
+	char line[256];
+	char name[128];
+
+	f = fopen(NETWORK_DOMAIN, "r");
+	if (!f)
+		return;
+	while (fgets(line, sizeof line, f)) {
+		char *p, *eq, *v, *end;
+
+		for (p = line; *p == ' ' || *p == '\t'; p++)
+			;
+		if (*p == '#' || !*p)
+			continue;
+		if (strncmp(p, "hostname", 8) ||
+		    (p[8] != '=' && p[8] != ' ' && p[8] != '\t'))
+			continue;
+		v = p + 8;
+		while (*v == ' ' || *v == '\t')
+			v++;
+		if (*v != '=')
+			continue;
+		v++;
+		while (*v == ' ' || *v == '\t')
+			v++;
+		if (*v == '"') {
+			v++;
+			end = strchr(v, '"');
+			if (end)
+				*end = 0;
+		} else {
+			end = v + strlen(v);
+			while (end > v && (end[-1] == '\n' || end[-1] == '\r' ||
+					    end[-1] == ' ' || end[-1] == '\t'))
+				*--end = 0;
+		}
+		if (!*v)
+			break;
+		if (strlen(v) >= sizeof name)
+			break;
+		strcpy(name, v);
+		if (sethostname(name, strlen(name)) == 0) {
+			fprintf(stderr, "INIT: hostname '%s' (network domain)\n",
+				name);
+		}
+		break;
+	}
+	fclose(f);
 }
 
 /* Fork+exec a GUI process on the desktop. If quiet, stdout/stderr go to
@@ -86,6 +143,9 @@ int main(void)
 	/* the mount points exist in the root image (Makefile userland64) */
 	try_mount("proc", "/System/Processes");
 	try_mount("devpts", "/System/Devices/pts");
+
+	/* the network domain is authoritative for the machine name */
+	set_hostname_from_domain();
 
 	start_gui();
 

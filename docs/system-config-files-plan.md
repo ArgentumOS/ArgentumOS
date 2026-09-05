@@ -503,12 +503,25 @@ are staged 0755 (never suid).
 Acceptance: guest `useradd` then `su`/login flow works against the
 domain; shadow folding decided: hash lives in the user record (Q2).
 
-### M5 — hosts / hostname
-Patch musl `lookup_name.c` (hosts backend). `userland/init.c` sets the
-kernel nodename from the domain's `hostname` key via `sethostname` at
-boot (toybox `hostname` already works through the syscalls).
-Acceptance: guest `getaddrinfo("localhost")` reflects the domain and
-`hostname` prints the domain's name after boot; no hosts legacy file.
+### M5 — hosts / hostname — DONE
+The hosts + machine-identity domains ship in System scope
+(`system.config.hosts.conf`, `system.config.network.conf` staged by
+`userland64`; the legacy `/System/Configuration/hosts` line file is
+gone). musl's hosts backend serves name resolution from the hosts
+domain: `third_party/musl-hosts.patch` (applied by the `musl64` rule
+after fsh + pwconf) appends a `__pwconf_hosts_fopen()` renderer to the
+libc-internal reader (each `hosts` record renders classic
+"address name [alias...]" lines over a self-contained fmemopen stream)
+and `lookup_name.c name_from_hosts` reads that stream instead of a
+file — its line parser is untouched. `userland/init.c` parses the
+network domain's `hostname` key at boot and calls `sethostname(2)`
+(the kernel syscall + `sys_utsname.nodename` already existed).
+
+Verified in-guest: `hostname`/`uname -n` print the domain name after
+boot ("INIT: hostname 'fnx' (network domain)"); a musl probe resolving
+against the domain gets `getaddrinfo("localhost")` → `::1` +
+`127.0.0.1` and `gethostbyname` works; no `/System/Configuration/hosts`
+file exists.
 
 ### M6 — Mount table (init)
 `userland/init.c` mounts from the System `system.config.mounts.conf`.
