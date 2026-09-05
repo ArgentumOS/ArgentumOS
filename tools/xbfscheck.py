@@ -54,11 +54,27 @@ def check(path, rootdir=None, allow_dirty_log=False):
     def u64(o): return struct.unpack_from('<Q', img, o)[0]
     def run(o): return struct.unpack_from('<IHH', img, o)
 
-    # ---- superblock ----
-    o = 512
+    # ---- superblock (dual copy: @512 = A, @0 = B; take the valid one
+    # with the highest sequence, mirroring the driver) ----
+    def copy_valid(off):
+        if u32(off + 0x20) != MAGIC1: return None
+        if u32(off + 0x44) != MAGIC2: return None
+        if u32(off + 0x70) != MAGIC3: return None
+        seq = u64(off + 0x84)
+        if seq == 0:
+            return (0, off)     # pre-dual-copy format
+        cksum = sum(struct.unpack('<I', img[off + j:off + j + 4])[0]
+                    for j in range(0, 0x84, 4)) & 0xFFFFFFFF
+        if cksum != u32(off + 0x8C):
+            return None
+        return (seq, off)
+    cands = [c for c in (copy_valid(0), copy_valid(512)) if c]
+    assert cands, "superblock: neither copy valid (magic1)"
+    seq, o = max(cands)
+    if o == 0 and seq:
+        print("NOTE: superblock copy B (block 0 @0, seq %d) in use "
+              "(copy A torn)" % seq)
     assert u32(o + 0x20) == MAGIC1, "magic1"
-    assert u32(o + 0x44) == MAGIC2, "magic2"
-    assert u32(o + 0x70) == MAGIC3, "magic3"
     num_blocks = u64(o + 0x30)
     used = u64(o + 0x38)
     bpa = u32(o + 0x48)

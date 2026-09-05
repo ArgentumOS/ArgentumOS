@@ -300,13 +300,12 @@ static int xbfs_log_write_super(struct superblock *sb)
 	if(!(buf = bread(sb->dev, 0, sb->u.xbfs.block_size))) {
 		return -EIO;
 	}
-	bsb = (struct xbfs_superblock *)(buf->data + 512);
+	bsb = (struct xbfs_superblock *)(buf->data + XBFS_SB_A_OFF);
 	bsb->log_blocks = sb->u.xbfs.log_blocks;
 	bsb->log_start = sb->u.xbfs.log_start;
 	bsb->log_end = sb->u.xbfs.log_end;
 	bsb->flags = sb->u.xbfs.flags;
-	bwrite(buf);
-	sync_buffers(sb->dev);
+	xbfs_sb_dual_write(sb, buf);
 	/* the on-disk superblock now holds new log positions (a pending
 	 * transaction): mark the in-memory sb dirty so the next
 	 * sync_superblocks() drains the log (power-off / sync). Without

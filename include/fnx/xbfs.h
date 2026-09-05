@@ -207,6 +207,22 @@ struct xbfs_superblock {
 	xbfs_inode_addr indices;
 } __attribute__((packed));
 
+/* Dual-copy superblock (a torn write of the single copy left the volume
+ * unmountable; each 512-byte copy sits in its own sector so a kill
+ * between the two sector writes can tear at most one). Copy A lives at
+ * offset 512 of block 0 (the on-disk struct, as always); copy B at
+ * offset 0 of block 0 (the boot-block sector, unused on XBFS volumes —
+ * FNX boots from the ESP, and mkxbfs writes no boot code). The struct
+ * (0x84 bytes) is followed by a u64 sequence and a u32 checksum of
+ * [0, 0x8C); a copy is valid when its magics match and, for new-format
+ * copies (seq != 0), the checksum does too. Mounts take the valid copy
+ * with the highest sequence. */
+#define XBFS_SB_A_OFF		512
+#define XBFS_SB_B_OFF		0
+#define XBFS_SB_SEQ_OFF		0x84
+#define XBFS_SB_CKSUM_OFF	0x8C
+#define XBFS_SB_COPY_LEN	0x90
+
 /* data stream: direct runs + indirect + double indirect + size */
 struct xbfs_data_stream {
 	struct xbfs_block_run direct[XBFS_NUM_DIRECT_BLOCKS];
@@ -317,6 +333,7 @@ struct xbfs_sb_info {
 	 * header cycle. */
 	char journal_locked;
 	char journal_wanted;
+	__u64 sb_seq;			/* superblock copy sequence (dual-copy) */
 };
 
 /* the packed inode struct is 232 bytes; the small_data attribute tail
@@ -369,6 +386,10 @@ void xbfs_log_unlock(struct superblock *);
 /* R-M2 crash injection: arm a deliberate halt at journal commit state
  * 1..7 on the COUNT-th hit (docs/bfs-journal-reclaim.md) */
 void xbfs_crash_set(int state, int count);
+/* dual-copy superblock flush: the caller built the copy-A struct at
+ * XBFS_SB_A_OFF in buf->data; stamp the sequence + checksum on both
+ * copies, write the block and sync (fs/xbfs/super.c) */
+int xbfs_sb_dual_write(struct superblock *sb, struct buffer *buf);
 
 /* btree.c */
 int xbfs_btree_insert(struct inode *, const char *, __ino_t);

@@ -177,12 +177,19 @@ walked because the range is tight, D2).
   to replay, as designed). **6/6 random qemu kills** mid-churn recovered
   with all four file probes intact. No unmountable volume, no replay-
   restoring-garbage, and no `magic1`/btree/inode `xbfscheck` failures in
-  the whole matrix. Criteria 3–4 pass. Residual (not reproduced, but
-  theoretically open): the superblock itself is still a single copy
-  rewritten in place at each publish; a qemu-level kill *during* the sb
-  write could tear it (one organic `magic1` failure predates this matrix
-  and did not reproduce in 27 crash events) — a dual-copy sequenced sb
-  would close that window if it ever shows up again.
+  the whole matrix. Criteria 3–4 pass. Residual closed: the superblock is now a **dual-copy sequenced sb**
+  (copy A @ block 0 offset 512, copy B @ block 0 offset 0, each in its
+  own 512-byte sector, with a per-copy u64 sequence + u32 checksum in
+  the struct's reserved tail). Every sb write (the light publish + the
+  drain) stamps both copies with a fresh sequence; the mount takes the
+  valid copy with the highest sequence, so a qemu/host-level kill
+  between the two sector writes (which can tear at most one) is
+  recovered on the next mount, and the next sb write repairs the torn
+  copy. Old single-copy images (seq 0) mount as before. Verified: a
+  deliberately torn copy A is recovered via copy B (kernel prints
+  "superblock copy B ... recovered a torn copy A"), the session + clean
+  halt repair it, crash states S3/S6 still hit exactly and recover
+  clean, and the soak stays struct_ok.
 - **R-M3 — DONE**: soak test (criterion 2). Sustained create/delete churn
   (backgrounded, 40-name cycle) for 60-90s on both a 64-block and a
   1024-block log: **0** `log full, resetting` prints, the log wrapped

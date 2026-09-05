@@ -276,10 +276,44 @@ static int xbfs_write_superblock(struct superblock *sb)
 		bsb->indices.start = 0;
 		bsb->indices.len = 0;
 	}
-	bwrite(buf);
+	xbfs_sb_dual_write(sb, buf);
 
 	sb->state &= ~SUPERBLOCK_DIRTY;
 	superblock_unlock(sb);
+	return 0;
+}
+
+/* Dual-copy superblock flush: the caller filled the copy-A struct at
+ * XBFS_SB_A_OFF in buf->data; stamp both copies with the same new
+ * sequence + a checksum of the struct, then write the block + sync.
+ * Each copy is its own 512-byte sector, so a host/device-level kill
+ * between the two sector writes can tear only the later one; the mount
+ * (xbfs_read_superblock) takes the valid copy with the highest
+ * sequence. */
+int xbfs_sb_dual_write(struct superblock *sb, struct buffer *buf)
+{
+	unsigned char *a, *b;
+	__u64 seq;
+	__u32 cksum;
+	int j;
+
+	a = buf->data + XBFS_SB_A_OFF;
+	b = buf->data + XBFS_SB_B_OFF;
+	seq = ++sb->u.xbfs.sb_seq;
+	/* the struct is identical in both copies; re-stamp the tail */
+	memcpy_b(b, a, 512);
+	memset_b(a + XBFS_SB_SEQ_OFF, 0, 512 - XBFS_SB_SEQ_OFF);
+	memset_b(b + XBFS_SB_SEQ_OFF, 0, 512 - XBFS_SB_SEQ_OFF);
+	cksum = 0;
+	for(j = 0; j < XBFS_SB_SEQ_OFF; j += 4) {
+		cksum += *(const __u32 *)(a + j);
+	}
+	*(__u64 *)(a + XBFS_SB_SEQ_OFF) = seq;
+	*(__u64 *)(b + XBFS_SB_SEQ_OFF) = seq;
+	*(__u32 *)(a + XBFS_SB_CKSUM_OFF) = cksum;
+	*(__u32 *)(b + XBFS_SB_CKSUM_OFF) = cksum;
+	bwrite(buf);
+	sync_buffers(sb->dev);
 	return 0;
 }
 
@@ -303,15 +337,67 @@ static int xbfs_read_superblock(__dev_t dev, struct superblock *sb)
 		return -EIO;
 	}
 
-	bsb = (struct xbfs_superblock *)(buf->data + 512);
-	if(bsb->magic1 != XBFS_SUPER_MAGIC1 ||
-	   bsb->magic2 != XBFS_SUPER_MAGIC2 ||
-	   bsb->magic3 != XBFS_SUPER_MAGIC3) {
-		printk("WARNING: %s(): invalid filesystem type or bad superblock on device %d,%d.\n",
-		       __FUNCTION__, MAJOR(dev), MINOR(dev));
-		superblock_unlock(sb);
-		brelse(buf);
-		return -EINVAL;
+	/* dual-copy superblock: both 512-byte copies sit inside block 0
+	 * (copy A @512, copy B @0 = the boot sector, free on XBFS
+	 * volumes). Validate both and take the valid one with the highest
+	 * sequence; a torn write can damage only the copy it was
+	 * mid-write on (each copy is its own sector), so the other copy
+	 * recovers the mount. */
+	bsb = (struct xbfs_superblock *)(buf->data + XBFS_SB_A_OFF);
+	{
+		__u32 best_seq = 0, i;
+		int best = -1;
+		struct xbfs_superblock *cand;
+		for(i = 0; i < 2; i++) {
+			unsigned char *area = buf->data +
+				(i ? XBFS_SB_B_OFF : XBFS_SB_A_OFF);
+			__u32 cksum = 0, stored;
+			int j;
+			cand = (struct xbfs_superblock *)area;
+			if(cand->magic1 != XBFS_SUPER_MAGIC1 ||
+			   cand->magic2 != XBFS_SUPER_MAGIC2 ||
+			   cand->magic3 != XBFS_SUPER_MAGIC3) {
+				continue;
+			}
+			for(j = 0; j < XBFS_SB_SEQ_OFF; j += 4) {
+				cksum += *(const __u32 *)(area + j);
+			}
+			stored = *(const __u32 *)(area + XBFS_SB_CKSUM_OFF);
+			if(*(const __u64 *)(area + XBFS_SB_SEQ_OFF) == 0) {
+				/* pre-dual-copy format: no checksum */
+				if(best < 0) {
+					best = i;
+				}
+				continue;
+			}
+			if(cksum != stored) {
+				continue;
+			}
+			if(*(const __u64 *)(area + XBFS_SB_SEQ_OFF) > best_seq) {
+				best_seq = *(const __u64 *)(area + XBFS_SB_SEQ_OFF);
+				best = i;
+			}
+		}
+		if(best < 0) {
+			printk("WARNING: %s(): invalid filesystem type or bad superblock on device %d,%d.\n",
+			       __FUNCTION__, MAJOR(dev), MINOR(dev));
+			superblock_unlock(sb);
+			brelse(buf);
+			return -EINVAL;
+		}
+		if(best == 1 && best_seq > 0) {
+			printk("XBFS: superblock copy B (block 0, seq %lu) recovered "
+			       "a torn copy A.\n", best_seq);
+		}
+		bsb = (struct xbfs_superblock *)(buf->data + XBFS_SB_A_OFF);
+		if(best == 1) {
+			/* mount from copy B: mirror it into copy A's slot so the
+			 * in-memory state and every later write start from it */
+			memcpy_b(buf->data + XBFS_SB_A_OFF, buf->data + XBFS_SB_B_OFF,
+				 512);
+			bsb = (struct xbfs_superblock *)(buf->data + XBFS_SB_A_OFF);
+		}
+		sb->u.xbfs.sb_seq = best_seq;
 	}
 
 	if(bsb->block_size < XBFS_MIN_BLOCK_SIZE

@@ -117,6 +117,14 @@ def build_super(num_blocks, used, root_block, log_start, log_len,
     sb[o:o + 4] = u32(MAGIC3); o += 4
     sb[o:o + 8] = run(0, root_block); o += 8   # root_dir
     sb[o:o + 8] = run(0, indices_block); o += 8  # indices
+    # dual-copy superblock: a u64 sequence + u32 checksum (of the
+    # struct, bytes [0, SEQ_OFF)) follow the struct in the copy area;
+    # mkxbfs writes the identical copy twice (block 0 @0x200 and @0x0)
+    assert o <= 0x84
+    sb[0x84:0x8C] = u64(1)                # sequence (new-format marker)
+    cksum = sum(struct.unpack('<I', sb[j:j + 4])[0]
+                for j in range(0, 0x84, 4)) & 0xFFFFFFFF
+    sb[0x8C:0x90] = u32(cksum)
     return bytes(sb)
 
 
@@ -857,6 +865,10 @@ def main():
     sb = build_super(num_blocks, len(used), root_blk, journal_start,
                      journal_len, ag_shift, blocks_per_ag, num_ags,
                      indices_block=indices_blk)
+    # copy A @ offset 512 (as always) and copy B @ offset 0 (the boot
+    # sector, free on XBFS data volumes); each copy is its own 512-byte
+    # sector, so a torn write can only damage one (see xbfs.h)
+    img_buf[0:512] = sb
     img_buf[512:512 + len(sb)] = sb
 
     # allocation bitmaps: group g lives at blocks 1 + g*blocks_per_ag
