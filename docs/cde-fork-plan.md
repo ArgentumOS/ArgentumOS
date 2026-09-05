@@ -1,7 +1,18 @@
 # CDE fork plan — the FNX desktop from the Common Desktop Environment
 
-Status: **SKETCH (2026-09) — proposal for discussion, nothing vendored or
-implemented.** Decisions requested before code starts.
+Status: **SUPERSEDED / REJECTED as a fork base (2026-09).** The direction
+moved to forking **Motif (libXm) itself** — see `docs/motif-fork-plan.md`.
+This document is kept as the captured reasoning: CDE's desktop shell
+architecture (front panel, session manager, file-manager integration)
+remains the *reference* for the future FNX-native desktop shell, but CDE
+is not the base. Rejection rationale, in brief: with unlimited time, the
+CDE fork's only real virtue — "the desktop arrives whole, borrowed and
+restyled" — buys nothing, while its costs (≈2M lines of inherited 1990s
+desktop machinery, the amputation list, shaping around legacy) are pure
+downside. The toolkit (Motif) is the keystone the one-toolkit doctrine
+actually needs; the desktop shell is built natively on it later.
+
+Original status and content follow, unchanged, for reference.
 
 ## 0. Why this document exists
 

@@ -112,7 +112,7 @@ Notes / design decisions
  - The serial console (ttyS0) is the system console on every boot; the display is the GUI session's (`desktop = "xfb"` in `/System/Configuration/session.conf` selects the X11 desktop, else the native GUI compositor).
  - The filesystem hierarchy (FSH) is FNX's own: five top-level directories (`Applications`, `Shared`, `System`, `Users`, `Volumes`) with configuration under `/System/Configuration` (the `.conf` domains edited by the `config` tool), device nodes under `/System/Devices`, tools under `/System/Tools`, and libraries split between `/System/Libraries` (first-party) and `/Shared/Libraries` (third-party).
  - Device-name shorthand: any path whose first component starts with `@` resolves under `/System/Devices` (`2>@null`, `@TTY/console`); it is a pure kernel namei rule, so `@` is not a directory and files named `@x` stay reachable as `./@x`.
- - Design documents live in `docs/` (OS profile: `docs/os-profile.md`; shared libraries: `docs/shared-libraries-plan.md`; filesystem enhancements: `docs/xbfs-enhancements.md`; GUI/desktop direction: `docs/x11-xvfb-fb-plan.md` and the stowed `docs/cde-fork-plan.md`).
+ - Design documents live in `docs/` (OS profile: `docs/os-profile.md`; shared libraries: `docs/shared-libraries-plan.md`; filesystem enhancements: `docs/xbfs-enhancements.md`; GUI/desktop direction: `docs/x11-xvfb-fb-plan.md`, the `docs/motif-fork-plan.md` toolkit fork — CDE-fork plan superseded, kept as reference).
  - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
 
 			*****************************
