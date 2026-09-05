@@ -279,6 +279,10 @@ int xbfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 		 * the header's block). */
 		raw = &i->u.xbfs.raw;
 		raw->u.data.size = 2 * XBFS_BTREE_NODE_SIZE;
+		/* the size-based gate xbfs_read_inode would have set, so a
+		 * session-created dir truncated at unlink frees its tree
+		 * (xbfs_ifree skips the truncate while i_blocks == 0) */
+		i->i_blocks = (i->i_size + 511) >> 9;
 		i->state |= INODE_DIRTY;
 		bwrite(buf2);
 	}

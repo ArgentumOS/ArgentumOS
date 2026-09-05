@@ -408,7 +408,14 @@ void xbfs_ifree(struct inode *i){
 	 * their blocks are not leaked when a Haiku file with attributes
 	 * is unlinked */
 	xbfs_attr_free_all(i);
-	if(i->i_blocks) {
+	if(i->i_blocks
+	   /* a session-created directory whose tree outgrew its initial
+	    * i_blocks (or was never counted): any nonzero stream size
+	    * means allocated runs that must be freed on unlink; inline
+	    * data and short symlinks have no stream and stay excluded */
+	   || ((S_ISREG(i->i_mode) || S_ISDIR(i->i_mode))
+	       && !(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA)
+	       && i->i_size)) {
 		invalidate_inode_pages(i);
 		xbfs_truncate(i, 0);
 	}

@@ -176,7 +176,7 @@ def table_blocks(st):
     (block, bytes) pairs ready for the image writer."""
     out = []
     for t, tb in enumerate(st['tbl_blocks']):
-        chunk = st['truns'][t * 128:(t + 1) * 128]
+        chunk = st['truns'][t * (BLOCK // 8):(t + 1) * (BLOCK // 8)]
         tdata = bytearray(BLOCK)
         for j, (ag, s, ln) in enumerate(chunk):
             tdata[j * 8:j * 8 + 8] = run(ag, s, ln)
@@ -185,7 +185,7 @@ def table_blocks(st):
         addrs = st['tbl_blocks'][1:]
         for i, db in enumerate(st['dind_blocks']):
             ddata = bytearray(BLOCK)
-            chunk = addrs[i * 256:(i + 1) * 256]
+            chunk = addrs[i * (BLOCK // 4):(i + 1) * (BLOCK // 4)]
             for j, a in enumerate(chunk):
                 ddata[j * 4:j * 4 + 4] = u32(a)
             out.append((db, bytes(ddata)))
@@ -371,7 +371,7 @@ def main():
         direct = runs[:12]
         truns = runs[12:]
         mdr = sum(r[2] for r in direct) * BLOCK
-        per_tbl = 128
+        per_tbl = BLOCK // 8
         ntbl = (len(truns) + per_tbl - 1) // per_tbl
         tbl_blocks = alloc_blocks(ntbl)
         # the first table block is the indirect run; the rest hang off the
@@ -576,60 +576,69 @@ def main():
             acc += c
         def node_offset(idx):
             return (idx + 1) * NODE
-        assert BLOCK == NODE, "dup-block layout assumes 1024-byte blocks"
-        extra = max(0, (acc + 1) * NODE - BLOCK)
-        ndata = (extra + BLOCK - 1) // BLOCK
+
+        # The stream's node bytes are packed at NODE (1024) offsets from
+        # stream byte 0 (block hb); at block sizes > NODE several nodes
+        # share a block (put_node writes each node at off % BLOCK of its
+        # stream block). Dup nodes sit right after the tree's nodes at
+        # (acc + 1 + i) * NODE. Two passes: count the dup nodes so the
+        # stream's data-block count is known, then place every node.
+        ndup = sum((len(inos) + 124) // 125 for _kb, inos in groups
+                   if len(inos) > 1)
+        span = (acc + 1 + ndup) * NODE
+        ndata = max(0, (span + BLOCK - 1) // BLOCK - 1)
         blocks = alloc_blocks(ndata)
         merged = {}
-        dup_blocks = []
-        def put_node(idx, data):
-            off = node_offset(idx)
+        def put_node(off, data):
             if off < BLOCK:
                 blk = hb
             else:
                 blk = blocks[(off - BLOCK) // BLOCK]
             merged.setdefault(blk, bytearray(BLOCK))
             merged[blk][off % BLOCK:off % BLOCK + len(data)] = data
-        # allocate one dup node per chunk of 125 values, chained; each
-        # node's stream offset is (acc + 1 + dup_index) * NODE
+        # duplicate keys: one dup node per chunk of 125 values, chained
+        # by right links; each node's stream offset is its slot after the
+        # tree nodes. The leaf's value is a type-2 link to the first.
         value_of = {}
+        dup_index = 0
         for g in groups:
-            inos = g[1]
+            kb, inos = g
             if len(inos) == 1:
-                value_of[g[0]] = inos[0]
+                value_of[kb] = inos[0]
                 continue
             first_off = None
-            prev_idx = None
+            prev_off = None
             for start in range(0, len(inos), 125):
                 chunk = inos[start:start + 125]
-                # stream offset of the dup node = its slot after the tree
-                # nodes; the PHYSICAL block is a fresh allocation whose
-                # address the stream's block list carries (the link in
-                # the leaf points at the stream offset, not the block)
-                ablk = alloc_blocks(1)[0]
-                off = (acc + 1 + len(dup_blocks)) * NODE
+                off = (acc + 1 + dup_index) * NODE
                 node = bytearray(NODE)
-                node[8:16] = u64(0xFFFFFFFFFFFFFFFF)  # right (BTREE_NULL)
+                node[8:16] = u64(0xFFFFFFFFFFFFFFFF)  # right = BTREE_NULL
                 node[16:24] = u64(len(chunk))
                 for j, v in enumerate(chunk):
                     node[24 + j * 8:32 + j * 8] = u64(v)
-                dup_blocks.append((ablk, off, node))
-                if prev_idx is not None:
-                    # point the previous node's right link at this one
-                    pblk, poff, pnode = dup_blocks[prev_idx]
-                    arr = bytearray(pnode)
-                    arr[8:16] = u64(off)
-                    dup_blocks[prev_idx] = (pblk, poff, bytes(arr))
+                if prev_off is not None:
+                    # point the previous node's right link at this one:
+                    # re-read only the node's NODE bytes (a block may
+                    # hold several nodes when BLOCK > NODE)
+                    pblk = hb if prev_off < BLOCK                         else blocks[(prev_off - BLOCK) // BLOCK]
+                    pnode = bytearray(
+                        merged[pblk][prev_off % BLOCK:
+                                     prev_off % BLOCK + NODE])
+                    pnode[8:16] = u64(off)
+                    put_node(prev_off, bytes(pnode))
+                put_node(off, bytes(node))
                 if first_off is None:
                     first_off = off
-                prev_idx = len(dup_blocks) - 1
-            value_of[g[0]] = (2 << 62) | (first_off & 0x3ffffffffffffc00)
+                prev_off = off
+                dup_index += 1
+            value_of[kb] = (2 << 62) | (first_off & 0x3ffffffffffffc00)
         # serialize the leaves + interiors with the real values
         for i, leaf in enumerate(leaves):
             right = node_offset(i + 1) if i + 1 < counts[0] else BTREE_NULL
             left = node_offset(i - 1) if i > 0 else BTREE_NULL
             vals = [value_of[kb] for kb in leaf]
-            put_node(i, build_node(leaf, vals, BTREE_NULL, right, left=left))
+            put_node(node_offset(i),
+                     build_node(leaf, vals, BTREE_NULL, right, left=left))
         for l in range(1, len(levels)):
             prev_base = base[l - 1]
             parent_base = base[l]
@@ -639,18 +648,13 @@ def main():
                 child_offs = [node_offset(cstart + t) for t in range(k)]
                 data = build_node(parent[:-1], child_offs[:-1],
                                   child_offs[-1], BTREE_NULL)
-                put_node(parent_base + j, data)
+                put_node(node_offset(parent_base + j), data)
                 cstart += k
         root_off = node_offset(base[-1])
         merged.setdefault(hb, bytearray(BLOCK))
         merged[hb][0:40] = build_btree_header(root_off, len(levels),
                                               data_type=data_type)
         out = sorted((b, bytes(d)) for b, d in merged.items())
-        # the dup nodes are separate stream blocks: their physical
-        # blocks come from the allocator and the stream's run list (the
-        # index file's stream covers tree + dup blocks in stream order,
-        # so the leaf links, which use stream offsets, resolve to them)
-        out += [(ablk, bytes(node)) for ablk, _off, node in dup_blocks]
         return 1 + len(out), root_off, len(levels), out
 
     # ---- walk the tree, allocating inodes + streams ----

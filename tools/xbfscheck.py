@@ -159,7 +159,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
                     ag, st, ln = struct.unpack_from('<IHH', img, tbl * BLK + j * 8)
                     if not ln or (ag == 0 and st == 0):
                         break
-                    base = (ag << AG_SHIFT) + st
+                    base = (ag << ag_shift) + st
                     blocks += list(range(base, base + ln))
         return blocks
 
