@@ -22,10 +22,10 @@ section documents what could be added to make it SSD-appropriate, ranked
 by value/effort. No format change is required for any item except the
 checksum/scrub one (X-SSD4).
 
-**Adopted order (decision, not yet implemented): X-SSD1 → X-SSD2 →
-X-SSD6 → X-SSD5(a) → X-SSD3**, with X-SSD4 scheduled as a format-version
-milestone and X-SSD7 folded into X-SSD2. **X-SSD1 is the agreed first
-milestone** (implementation pending).
+**Adopted order: X-SSD1 → X-SSD2 → X-SSD6 → X-SSD5(a) → X-SSD3**, with
+X-SSD4 scheduled as a format-version milestone and X-SSD7 folded into
+X-SSD2. **X-SSD1 (TRIM/discard on free) is DONE** (commit 500d19a); the
+remaining milestones are implementation-pending.
 
 ### A.1 Where XBFS stands relative to SSD behavior
 
@@ -65,11 +65,19 @@ per-free (free is hot).
 
 - Pure addition; no format change; removes the deletion
   write-amplification tax.
-- Acceptance: guest `rm -rf` of a large tree then an `xbfscheck` +
-  host-side QEMU block-dirty inspection shows discard reaches the device
+- Acceptance (passed 500d19a): guest `rm -rf` of a staged 12 MB tree on
+  a second XBFS volume (QEMU nvme, `discard=unmap` on both blockdev
+  nodes) punches 3 host-side holes totalling 12.02 MB in the image file;
+  post-session `xbfscheck` clean; churn soak `resets=0 struct_ok=True`.
+  QEMU gotchas recorded in the commit: IDE-trim is silently dropped by
+  this QEMU (NVMe is the evidence path), and the DSM deallocate
+  attribute is bit 2 (0x04) with a cattr/nlb/slba range layout.
   (trace/`blktrace`-style or a QEMU `-device` with a discard-capable
   drive + monitor command); no regression on the churn suite.
-- Effort: small. **Adopted first (not yet implemented).**
+- Effort: small. **DONE (500d19a)** — the discard plumbing (fs.h
+  `discard_blocks`), the per-AG pending-extent batching + commit-tail
+  flush, and the ahci (ATA DSM) + nvme (deallocate DSM) driver commands
+  landed together; acceptance below passed with host-side holes.
 
 #### X-SSD2 — Group commit + targeted flush
 Batch N metadata transactions behind one barrier and flush only the
