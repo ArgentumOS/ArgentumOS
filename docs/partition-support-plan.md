@@ -1,7 +1,7 @@
 # Partition support: GPT + MBR (design + milestones)
 
-Status: M0 (parsers), M1 (topology), M2 (scans + nodes + partition
-mount) DONE (2729f26, 74a3a8f, 81c7449); M3/M4 pending.
+Status: **ALL MILESTONES DONE** (M0 2729f26, M1 74a3a8f, M2 81c7449,
+M3 89b15b2, M4 <m4>).
 
 ## Survey — what exists
 
@@ -127,9 +127,23 @@ MAX_PARTITIONS; the per-driver global `part[]` becomes `part[MAX_PARTITIONS]`.
   OVMF boot of ESP p1, root from p2; make run target boots it; old two-drive
   default retired. Acceptance: boot to userland prompt with root on a
   partition; halt clean; second boot replays the journal cleanly.
-- **M4 — BLKRRPART sync + docs.** Re-scan updates/removes partition nodes;
-  partition summary print at probe (per-disk); update devfs-topology.md +
-  this doc to DONE; record QEMU/OVMF GPT gotchas.
+- **M4 — BLKRRPART sync + docs. DONE.** The per-driver scan helpers
+  devfs_remove_node() stale Partition nodes and republish on every rescan
+  (probe and BLKRRPART); each scan prints a per-disk partition summary
+  ("nvme: partition summary: p1(@2048,49152) p2(@53248,49152)"). Docs to
+  DONE + gotchas recorded.
+
+Gotchas recorded along the way (QEMU/OVMF + kernel):
+- OVMF boots a GPT disk's ESP (p1) directly off an AHCI device — one
+  drive replaces the esp.img + root-disk pair (tools/mkgpt.py).
+- kernel/multiboot.c root= string/sysval tables are parallel arrays sized
+  by CMDL_NUM_VALUES: the root= table already exceeded 30 before
+  partition entries (a silent overflow); bumped to 64.
+- xbfs umount bug the partition sessions exposed deterministically:
+  release_superblock freed the in-memory bitmap before the drain could
+  flush it -> stale on-disk bitmap (bitmap now lives until the
+  log_draining drain; umount2 syncs inodes/buffers before the final
+  superblock write).
 
 ## Open items
 
