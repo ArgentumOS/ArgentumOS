@@ -286,8 +286,8 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 		"$(ROOTFS64)/System/User Template/Temporary Files" \
 		"$(ROOTFS64)/System/User Template/Variable Data"
 	# --- tools (executables) ---
-	rm -rf $(TOYBOX64_STAGE)
-	$(MAKE) -C third_party/toybox CC="$(CURDIR)/tools/musl-gcc64.sh" install PREFIX="$(CURDIR)/$(TOYBOX64_STAGE)"
+	# toybox is built + installed by mktoybox.sh (fresh config + the
+	# libconfig link); userland64 only flattens the staged applet dirs.
 	@for d in bin sbin usr/bin usr/sbin; do \
 		if [ -d "$(TOYBOX64_STAGE)/$$d" ]; then \
 			cp -a $(TOYBOX64_STAGE)/$$d/. "$(ROOTFS64)/System/Tools/"; \
@@ -299,6 +299,13 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@cd "$(ROOTFS64)/System/Tools" && for l in *; do \
 		if [ -L "$$l" ]; then ln -sfn toybox "$$l"; fi; \
 	done
+	# suid root: the kernel honors S_ISUID at exec, and toybox drops to
+	# the real uid for every applet except the account tools
+	# (TOYFLAG_STAYROOT/ROOTONLY) — that is what lets non-root `su`
+	# authenticate and switch users (M4).
+	@chmod 4755 "$(ROOTFS64)/System/Tools/toybox"
+	@chmod 0755 "$(ROOTFS64)/System/Tools/config" \
+		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
 	$(MUSL64_CC) userland/init.c -o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/cpp_smoke.cpp -o "$(ROOTFS64)/System/Tools/cpp_smoke"
 	$(MUSL64_CC) userland/acl.c -o "$(ROOTFS64)/System/Tools/acl"

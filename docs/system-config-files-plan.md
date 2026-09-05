@@ -456,10 +456,50 @@ Acceptance: guest `getpwnam("admin")` (all fields), `getpwuid(0)`,
 `tools/config_m3_test.c`; toybox `id` → `uid=0(admin) gid=0(admin)
 groups=0(admin)`; musl + dash + toybox + userland64 rebuild cleanly.
 
-### M4 — toybox account tools on the domains
-`passwd`, `useradd`, `userdel`, `groupadd`, `groupdel`, `chsh`, `su`
-read/write through libconfig; `passwd` writes hashes into the System
-domain atomically.
+### M4 — toybox account tools on the domains — DONE
+All seven applets (`passwd`, `useradd`, `userdel`, `groupadd`,
+`groupdel`, `chsh`, `su`) are enabled and read identity through libc
+(getpw*/getgr* serve the domains since M3); writes go through libconfig
+into the System-scope domains via one shared toybox helper
+(`lib/configedit.c`, `third_party/toybox-m4.patch` — applied + rolled
+back by `tools/mktoybox.sh` like the musl patches). `passwd` crypts and
+writes the hash into the record's `password` key (there is no shadow
+file); `su` and `chsh` authenticate against that hash (empty/`!`/`*`
+entries deny; any crypt hash, DES included, verifies); useradd creates
+`/Users/<name>` from `/System/User Template` with auto uid/gid and the
+shells-domain default shell; group memberships live in the `members`
+key.
+
+Verified in-guest on the rebuilt rootbfs: `useradd alice` (home owned
+500:500), `passwd alice` interactive → "Success" (hash in the domain),
+`su alice -c id` from root AND non-root (`su alice -c 'su alice -c id'`
+after typing the password) → `uid=500(alice)`, `groupadd alice dev` →
+`groups=500(alice),501(dev)`, `groupdel alice dev`, `userdel -r alice`
+→ record + home gone, `chsh` writes the shell field.
+
+Two pre-existing kernel bugs surfaced and were fixed in-tree (they
+blocked *any* in-guest account-domain write):
+1. `fs/bfs/namei.c bfs_rename` returned EEXIST when the target existed
+   (the btree rejects the duplicate) — broken rename-over-existing,
+   which is exactly what libconfig's atomic temp+rename needs. Now
+   replaces the target (unlink semantics for files, rmdir semantics for
+   empty directories).
+2. musl `chown`/`lchown` are `fchownat` (260), which was missing
+   (ENOSYS) — `sys_fchownat` added (kernel/syscalls/fchownat.c).
+
+**Non-root `su` = setuid install (Q7).** `su` is `TOYFLAG_ROOTONLY`
+(= STAYROOT|NEEDROOT) like upstream; the FNX kernel already honors
+S_ISUID at exec, and `userland64` now stages the toybox multi-call
+binary **4755 root** so a non-root caller gets euid 0 through su's
+password gate and `xsetuser` can switch. toybox drops to the real uid
+for every applet without TOYFLAG_STAYROOT, so the suid bit does not
+privilege `ls` & co; `passwd`/`chsh` are STAYROOT and keep root for
+their System-domain writes.
+
+Also: `tools/mkbfs.py` journal length 16 → 64 blocks (fewer benign
+"BFS-LOG: log full, resetting" cycles; format unchanged). `config`/`init`
+are staged 0755 (never suid).
+
 Acceptance: guest `useradd` then `su`/login flow works against the
 domain; shadow folding decided: hash lives in the user record (Q2).
 

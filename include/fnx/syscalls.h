@@ -172,6 +172,7 @@ int sys_getsid(__pid_t);
 int sys_fdatasync(int);
 int sys_nanosleep(const struct timespec *, struct timespec *);
 int sys_chown(const char *, __uid_t, __gid_t);
+int sys_fchownat(int, const char *, __uid_t, __gid_t, int);
 int sys_getcwd(char *, __size_t);
 struct user_desc;
 int sys_getdents64(unsigned int, struct dirent64 *, unsigned int);

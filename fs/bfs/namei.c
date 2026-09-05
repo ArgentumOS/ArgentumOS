@@ -540,6 +540,48 @@ int bfs_rename(struct inode *i_old, struct inode *dir_old,
 
 	__off_t old_dir_old_size = dir_old->i_size;
 	__off_t old_dir_new_size = dir_new->i_size;
+	/* POSIX rename replaces an existing target: unlink/rmdir it first.
+	 * The VFS (sys_rename) already rejected a regular file onto a dir
+	 * (EISDIR) and a dir onto a non-dir (ENOTDIR); a directory target
+	 * must be empty (rmdir semantics). Without this, rename(2) over an
+	 * existing file returned EEXIST (the btree rejects the duplicate),
+	 * breaking libconfig's atomic temp+rename writes. */
+	if(i_new) {
+		if(S_ISDIR(i_new->i_mode)) {
+			if(!bfs_dir_empty(i_new)) {
+				errno = -ENOTEMPTY;
+				if(dir_new != dir_old) {
+					inode_unlock(dir_new);
+				}
+				inode_unlock(dir_old);
+				return errno;
+			}
+			errno = bfs_btree_delete_ino(dir_new, i_new->inode);
+		} else {
+			errno = bfs_btree_delete(dir_new, newpath);
+		}
+		if(errno) {
+			if(dir_new != dir_old) {
+				inode_unlock(dir_new);
+			}
+			inode_unlock(dir_old);
+			return errno;
+		}
+		{
+			char namebuf[256];
+
+			if(bfs_inode_get_name(i_new, namebuf, 255) >= 0) {
+				bfs_index_remove(dir_new->sb, i_new, namebuf);
+			}
+		}
+		if(S_ISDIR(i_new->i_mode)) {
+			i_new->i_nlink = 0;
+		} else if(i_new->i_nlink) {
+			i_new->i_nlink--;
+		}
+		bfs_touch_ctime(i_new);
+		i_new->state |= INODE_DIRTY;
+	}
 	if((errno = bfs_btree_delete(dir_old, oldpath))) {
 		if(dir_new != dir_old) {
 			inode_unlock(dir_new);

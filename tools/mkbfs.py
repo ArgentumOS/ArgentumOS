@@ -262,7 +262,7 @@ def main():
     num_blocks = mb * 1024 * 1024 // BLOCK
     ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
-    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 16
+    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 64
     next_inode = journal_start + journal_len
     next_data = 0
     used = set()

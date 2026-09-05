@@ -11,6 +11,25 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CC_WRAP="${TOYBOX_CC:-$ROOT/tools/musl-gcc.sh}"
 cd "$ROOT/third_party/toybox"
 
+# The M4 account tools (passwd/chsh/useradd/userdel/groupadd/groupdel)
+# write the .conf identity domains through libconfig (userland/libconfig.c),
+# which is compiled once and linked into the toybox binary via LDFLAGS.
+mkdir -p "$ROOT/.build"
+"$CC_WRAP" -I"$ROOT/include" -c "$ROOT/userland/libconfig.c" \
+  -o "$ROOT/.build/toybox-libconfig.o"
+
+# Source patches (third_party/toybox-m4.patch when present) are applied to
+# the clean checkout before building and rolled back afterwards, so the
+# submodule stays pristine; with no patch file the tree is built as-is
+# (the development loop).
+PATCHED=
+if [ -f "$ROOT/third_party/toybox-m4.patch" ]; then
+  git checkout -- . 2>/dev/null || true
+  rm -f lib/configedit.c   # patch-added file would block git apply
+  git apply "$ROOT/third_party/toybox-m4.patch"
+  PATCHED=1
+fi
+
 make defconfig
 
 python3 - <<'EOF'
@@ -23,7 +42,11 @@ offenders = []
 for d in ('toys/android', 'toys/pending'):
     for f in os.listdir(d):
         if f.endswith('.c'):
-            if d == 'toys/pending' and f == 'dhcp.c':
+            if d == 'toys/pending' and f in (
+                    'dhcp.c',           # FNX vendors its linux headers
+                    'chsh.c',           # M4: account tools on the domains
+                    'useradd.c', 'userdel.c',
+                    'groupadd.c', 'groupdel.c'):
                 continue
             offenders.append(os.path.join(d, f))
 offenders += [
@@ -47,15 +70,34 @@ for line in lines:
         out.append('# CONFIG_%s is not set' % line[7:-2])
     else:
         out.append(line)
-# re-enable the toybox DHCP client (pending applet, default n; it now has
-# the linux headers it needs via tools/kernel-headers)
-out = [l if l != '# CONFIG_DHCP is not set' else 'CONFIG_DHCP=y' for l in out]
+# re-enable the applets FNX supports: the toybox DHCP client (pending,
+# default n; it now has the linux headers it needs via tools/kernel-headers)
+# and the M4 account tools (chsh + the user/group add/del applets), which
+# are read/write against the .conf identity domains through libconfig.
+renable = ['DHCP', 'PASSWD', 'CHSH', 'USERADD', 'USERDEL', 'GROUPADD', 'GROUPDEL']
+for sym in renable:
+    out = [l if l != '# CONFIG_%s is not set' % sym else 'CONFIG_%s=y' % sym
+           for l in out]
 open('.config', 'w').write('\n'.join(out) + '\n')
 print("mktoybox: disabled %d applets needing kernel headers" % len(syms))
 EOF
 
-make CC="$CC_WRAP" CFLAGS= LDFLAGS=
+make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
+  LDFLAGS="$ROOT/.build/toybox-libconfig.o"
 # toybox's build leaves the binary read-only (0555); strip needs write access
 chmod +w toybox 2>/dev/null || true
 strip toybox
+# Install the applets into the stage dir now (fresh config + flags), so the
+# userland64 target can just copy this tree instead of re-running toybox's
+# make (which would rebuild against the reverted checkout and old config).
+rm -rf "$ROOT/.build/toybox-root"
+make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
+  LDFLAGS="$ROOT/.build/toybox-libconfig.o" \
+  install PREFIX="$ROOT/.build/toybox-root" >/dev/null 2>&1 || \
+  make CC="$CC_WRAP" install PREFIX="$ROOT/.build/toybox-root"
+if [ -n "$PATCHED" ]; then
+  git checkout -- . 2>/dev/null || true
+  rm -f lib/configedit.c   # untracked patch-added file
+fi
+rm -f toybox64            # cp artifact from the top-level Makefile
 echo "mktoybox: $(file -b toybox)"

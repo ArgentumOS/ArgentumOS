@@ -1,0 +1,721 @@
+diff --git a/lib/configedit.c b/lib/configedit.c
+new file mode 100644
+index 00000000..0194ba7e
+--- /dev/null
++++ b/lib/configedit.c
+@@ -0,0 +1,194 @@
++/* configedit.c - shared account-record editor over the FNX .conf identity
++ * domains (docs/system-config-files-plan.md M4).
++ *
++ * The account tools (passwd, useradd, userdel, groupadd, groupdel, chsh)
++ * read identity through libc getpwnam/getpwuid and getgrnam/getgrgid
++ * (musl serves them from the domains since M3) and write through this helper: every change is a
++ * libconfig atomic write into the System-scope domains
++ * (system.config.passwd.conf: records of container "user";
++ * system.config.group.conf: records of container "group").
++ *
++ * There is no /etc/shadow and no legacy account file: the password hash
++ * lives in the passwd record's "password" key; group memberships live in
++ * the group record's "members" comma list.
++ */
++
++#include "toys.h"
++#include <libconfig.h>
++
++#define ACCT_PW_DOM	"system.config.passwd"
++#define ACCT_GR_DOM	"system.config.group"
++#define ACCT_SH_DOM	"system.config.shells"
++
++/* set a record field to a string (or int via acct_set_ll) */
++int acct_set_str(const char *dom, const char *container, const char *rec,
++		 const char *field, const char *val)
++{
++	char key[320];
++
++	if (!val) val = "";
++	if (snprintf(key, sizeof key, "%s.%s.%s", container, rec, field)
++	    >= (int)sizeof key) {
++		errno = ENAMETOOLONG;
++		return -1;
++	}
++	if (config_set_string(CONFIG_SCOPE_SYSTEM, dom, key, val))
++		return -1;
++	return 0;
++}
++
++int acct_set_ll(const char *dom, const char *container, const char *rec,
++		const char *field, long long val)
++{
++	char key[320];
++
++	if (snprintf(key, sizeof key, "%s.%s.%s", container, rec, field)
++	    >= (int)sizeof key) {
++		errno = ENAMETOOLONG;
++		return -1;
++	}
++	if (config_set_int(CONFIG_SCOPE_SYSTEM, dom, key, val))
++		return -1;
++	return 0;
++}
++
++/* remove a whole record (every key under container.rec). Leaves other
++ * records and the container structure alone (empty containers drop out
++ * of the canonical file automatically). */
++int acct_del_record(const char *dom, const char *container, const char *rec)
++{
++	char prefix[300];
++	char **keys = NULL;
++	config_value_t *vals = NULL;
++	size_t n, i;
++	config_err_t e;
++	int rc = 0;
++
++	if (snprintf(prefix, sizeof prefix, "%s.%s", container, rec)
++	    >= (int)sizeof prefix) {
++		errno = ENAMETOOLONG;
++		return -1;
++	}
++	e = config_get_all(dom, prefix, &keys, &vals, &n);
++	if (e == CONFIG_ERR_NOT_FOUND) return 0;	/* nothing to do */
++	if (e) {
++		errno = EIO;
++		return -1;
++	}
++	for (i = 0; i < n; i++) {
++		e = config_unset(CONFIG_SCOPE_SYSTEM, dom, keys[i]);
++		if (e && e != CONFIG_ERR_NOT_FOUND) {
++			errno = EIO;
++			rc = -1;
++			break;
++		}
++	}
++	config_free_keys(keys, vals, n);
++	return rc;
++}
++
++/* write a group's member list from a NULL-terminated array of names */
++int acct_group_members_set(const char *group, char **members)
++{
++	size_t n = 0, len = 0, i;
++	char *csv, *p;
++
++	while (members && members[n]) len += strlen(members[n++]) + 1;
++	if (!n) {
++		if (acct_set_str(ACCT_GR_DOM, "group", group, "members", ""))
++			return -1;
++		return 0;
++	}
++	csv = p = xmalloc(len);
++	for (i = 0; i < n; i++) {
++		if (i) *p++ = ',';
++		p = stpcpy(p, members[i]);
++	}
++	i = acct_set_str(ACCT_GR_DOM, "group", group, "members", csv);
++	free(csv);
++	return i;
++}
++
++/* drop one member from a group's member list */
++int acct_group_member_del(const char *group, const char *user)
++{
++	struct group *gr = getgrnam(group);
++	char **keep = NULL;
++	size_t n = 0, cap = 0, i;
++	int rc = 0;
++
++	if (gr && gr->gr_mem) for (i = 0; gr->gr_mem[i]; i++) {
++		if (!strcmp(gr->gr_mem[i], user)) continue;
++		if (n == cap) {
++			cap = cap ? cap * 2 : 4;
++			keep = xrealloc(keep, cap * sizeof(char *));
++		}
++		keep[n++] = gr->gr_mem[i];
++	}
++	if (n) keep[n] = NULL;
++	if (acct_group_members_set(group, n ? keep : NULL)) rc = -1;
++	if (CFG_TOYBOX_FREE) free(keep);
++	return rc;
++}
++
++/* user + group record writers used by passwd/chsh/useradd */
++int acct_user_password_set(const char *user, const char *hash)
++{
++	return acct_set_str(ACCT_PW_DOM, "user", user, "password", hash);
++}
++
++int acct_user_shell_set(const char *user, const char *shell)
++{
++	return acct_set_str(ACCT_PW_DOM, "user", user, "shell", shell);
++}
++
++int acct_user_add(const char *user, uid_t uid, gid_t gid, const char *gecos,
++		  const char *home, const char *shell, const char *pass)
++{
++	if (acct_set_ll(ACCT_PW_DOM, "user", user, "uid", uid) ||
++	    acct_set_ll(ACCT_PW_DOM, "user", user, "gid", gid) ||
++	    acct_set_str(ACCT_PW_DOM, "user", user, "gecos",
++			 gecos ? gecos : "FNX User") ||
++	    acct_set_str(ACCT_PW_DOM, "user", user, "home", home) ||
++	    acct_set_str(ACCT_PW_DOM, "user", user, "shell", shell) ||
++	    acct_set_str(ACCT_PW_DOM, "user", user, "password",
++			 pass ? pass : "!"))
++		return -1;
++	return 0;
++}
++
++int acct_user_del(const char *user)
++{
++	return acct_del_record(ACCT_PW_DOM, "user", user);
++}
++
++int acct_group_add(const char *group, gid_t gid)
++{
++	if (acct_set_ll(ACCT_GR_DOM, "group", group, "gid", gid) ||
++	    acct_set_str(ACCT_GR_DOM, "group", group, "members", ""))
++		return -1;
++	return 0;
++}
++
++int acct_group_del(const char *group)
++{
++	return acct_del_record(ACCT_GR_DOM, "group", group);
++}
++
++/* is `shell` listed in the shells domain (system.config.shells, key
++ * "shells")? The value may be a single string or a comma array. */
++int acct_shell_allowed(const char *shell)
++{
++	const char *str;
++	config_value_t *items = 0;
++	size_t n = 0, i;
++	config_err_t e = config_get_string(ACCT_SH_DOM, "shells", &str);
++
++	if (!e && !strcmp(str, shell)) return 1;
++	e = config_get_array(ACCT_SH_DOM, "shells", &items, &n);
++	if (e) return 0;
++	for (i = 0; i < n; i++)
++		if (items[i].type == CONFIG_TYPE_STRING &&
++		    !strcmp(items[i].v.string, shell)) return 1;
++	return 0;
++}
+diff --git a/lib/lib.h b/lib/lib.h
+index da20dd10..bef28dbc 100644
+--- a/lib/lib.h
++++ b/lib/lib.h
+@@ -370,6 +370,27 @@ int read_password(char *buff, int buflen, char *mesg);
+ char **get_userline(char *filename, char *username);
+ int update_password(char *filename, char *username, char *entry, int pos);
+ 
++// configedit.c — FNX .conf identity-domain editor (docs plan M4). The
++// account tools write through libconfig into the System-scope domains:
++// passwd records (container "user") in system.config.passwd, group
++// records (container "group") in system.config.group. No shadow file:
++// hashes live in the record's "password" key; memberships in "members".
++int acct_set_str(const char *dom, const char *container, const char *rec,
++                 const char *field, const char *val);
++int acct_set_ll(const char *dom, const char *container, const char *rec,
++                const char *field, long long val);
++int acct_del_record(const char *dom, const char *container, const char *rec);
++int acct_group_members_set(const char *group, char **members);
++int acct_group_member_del(const char *group, const char *user);
++int acct_user_password_set(const char *user, const char *hash);
++int acct_user_shell_set(const char *user, const char *shell);
++int acct_user_add(const char *user, uid_t uid, gid_t gid, const char *gecos,
++                  const char *home, const char *shell, const char *pass);
++int acct_user_del(const char *user);
++int acct_group_add(const char *group, gid_t gid);
++int acct_group_del(const char *group);
++int acct_shell_allowed(const char *shell);
++
+ // commas.c
+ void comma_args(struct arg_list *al, void *data, char *err,
+   char *(*callback)(void *data, char *str, int len));
+diff --git a/toys/lsb/passwd.c b/toys/lsb/passwd.c
+index 86921409..e3ccf0d4 100644
+--- a/toys/lsb/passwd.c
++++ b/toys/lsb/passwd.c
+@@ -55,7 +55,6 @@ void passwd_main(void)
+ {
+   uid_t myuid = getuid();
+   struct passwd *pw = 0;
+-  struct spwd *sp;
+   char *pass, *name, *encrypted = 0, salt[32];
+ 
+   // If we're root or not -lud, load specified user. Exit if not allowed.
+@@ -65,10 +64,10 @@ void passwd_main(void)
+   }
+   if (!pw || (myuid && myuid != pw->pw_uid)) error_exit("Not root");
+ 
+-  // Get password from /etc/passwd or /etc/shadow
+-  // TODO: why still support non-shadow passwords...?
++  // M4: no shadow file — the hash lives in the passwd record and musl
++  // serves it in pw->pw_passwd from the system.config.passwd domain.
+   name = pw->pw_name;
+-  if (*(pass = pw->pw_passwd)=='x' && (sp = getspnam(name))) pass = sp->sp_pwdp;
++  pass = pw->pw_passwd;
+ 
+   if (FLAG(l)) {
+     if (*pass=='!') error_exit("already locked");
+@@ -87,11 +86,12 @@ void passwd_main(void)
+ 
+     printf("Changing password for %s\n", name);
+     if (myuid) {
+-      if (*pass=='!') error_exit("'%s' locked", name);
+-
+-      if (read_password(toybuf+2048, 2048, "Old password:")) return;
+-      pass = crypt(toybuf+2048, pw->pw_passwd);
+-      if (!pass || strcmp(pass, pw->pw_passwd)) error_exit("No");
++      if (*pass=='!' || *pass=='*') error_exit("'%s' locked", name);
++      if (*pass) {
++        if (read_password(toybuf+2048, 2048, "Old password:")) return;
++        pass = crypt(toybuf+2048, pw->pw_passwd);
++        if (!pass || strcmp(pass, pw->pw_passwd)) error_exit("No");
++      }
+     }
+ 
+     if (read_password(toybuf, 2048, "New password:")) return;
+@@ -103,9 +103,10 @@ void passwd_main(void)
+     encrypted = crypt(toybuf, salt);
+   }
+ 
+-  // Update the passwd
+-  if (update_password(*pw->pw_passwd=='x' ? "/etc/shadow" : "/etc/passwd",
+-    name, encrypted, 1)) error_msg("Failure");
++  // Update the passwd record atomically (libconfig, System scope).
++  // -u hands us a pointer into the passwd buffer, so always own a copy.
++  if (!(toys.optflags & FLAG_l)) encrypted = xstrdup(encrypted ? : "");
++  if (acct_user_password_set(name, encrypted)) error_msg("Failure");
+   else fprintf(stderr, "Success\n");
+ 
+   memset(toybuf, 0, sizeof(toybuf));
+diff --git a/toys/lsb/su.c b/toys/lsb/su.c
+index 78717221..7ae62997 100644
+--- a/toys/lsb/su.c
++++ b/toys/lsb/su.c
+@@ -42,7 +42,7 @@ GLOBALS(
+ 
+ void su_main()
+ {
+-  char *name, **shadow, *passhash = 0, **argu, **argv;
++  char *name, *passhash = 0, **argu, **argv;
+   struct passwd *up;
+ 
+   if (*toys.optargs && !strcmp("-", *toys.optargs)) {
+@@ -55,17 +55,20 @@ void su_main()
+ 
+   loggit(LOG_NOTICE, "%s->%s", getusername(geteuid()), name);
+ 
++  // M4: no shadow file. The hash lives in the passwd record (musl
++  // serves it in pw_passwd from the system.config.passwd domain); an
++  // empty, '!'/'*'-locked or non-crypt entry denies login.
+   if (getuid()) {
+-    if (!(shadow = get_userline("/etc/shadow", name)))
+-      perror_exit("no '%s'", name);
+-    if (*shadow[1] != '$') goto deny;
++    struct passwd *pw;
++    char *hash;
++
++    if (!(pw = xgetpwnam(name))) perror_exit("no '%s'", name);
++    hash = pw->pw_passwd;
++    if (!hash || *hash == '!' || *hash == '*') goto deny;
+     if (read_password(toybuf, sizeof(toybuf), "Password: ")) goto deny;
+-    passhash = crypt(toybuf, shadow[1]);
+-    if (!passhash || strcmp(passhash, shadow[1])) name = 0;
++    passhash = crypt(toybuf, hash);
+     memset(toybuf, 0, sizeof(toybuf));
+-    memset(shadow[1], 0, strlen(shadow[1]));
+-    if (passhash) memset(passhash, 0, strlen(passhash));
+-    if (!name) goto deny;
++    if (!passhash || strcmp(passhash, hash)) goto deny;
+   }
+   xsetuser(up = xgetpwnam(name));
+ 
+@@ -73,6 +76,9 @@ void su_main()
+     unsetenv("IFS");
+     setenv("PATH", _PATH_DEFPATH, 1);
+   } else reset_env(up, FLAG(l));
++  // FNX default path (userland/init.c PATH_DEFAULT): the su'd session
++  // must still find /System/Tools applets.
++  setenv("PATH", "/System/Tools:/Applications", 1);
+ 
+   argv = argu = xmalloc(sizeof(char *)*(toys.optc + 4));
+   *argv++ = TT.s ? : up->pw_shell;
+diff --git a/toys/pending/chsh.c b/toys/pending/chsh.c
+index 6dd28e81..83d78d8b 100644
+--- a/toys/pending/chsh.c
++++ b/toys/pending/chsh.c
+@@ -29,41 +29,47 @@ GLOBALS(
+ 
+ void chsh_main()
+ {
+-  FILE *file;
+-  char *user, *line, *shell, *encrypted;
++  char *user, *shell = 0;
+   struct passwd *passwd_info;
+-  struct spwd *shadow_info;
+-
+-  // Get uid user information, may be discarded later
++  int interactive = 0;
+ 
++  // Target user (must exist)
+   if ((user = *toys.optargs)) {
+     if (strcmp((passwd_info = xgetpwnam(user))->pw_name, user))
+       if (geteuid()) errno = EPERM, error_exit(0);
+   } else user = (passwd_info = xgetpwuid(getuid()))->pw_name;
+ 
+-  // Get a password, encrypt it, wipe it, and check it
+-  if (mlock(toybuf, sizeof(toybuf))) perror_exit("mlock");
+-  if (!(shadow_info = getspnam(passwd_info->pw_name))) perror_exit("getspnam");
+-  if (read_password(toybuf, sizeof(toybuf), "Password: ")) *toybuf = 0;
+-  if (!(encrypted = crypt(toybuf, shadow_info->sp_pwdp))) perror_exit("crypt");
+-  memset(toybuf, 0, sizeof(toybuf));
+-  munlock(toybuf, sizeof(toybuf)); // prevents memset from "optimizing" away.
+-  if (strcmp(encrypted, shadow_info->sp_pwdp)) perror_exit("Bad password");
++  // M4: no shadow file — the hash lives in the passwd record (musl
++  // serves it in pw_passwd from the system.config.passwd domain).
++  // Root changes any shell without a password; everyone else must match
++  // the account's current hash (empty/'!'-locked entries deny).
++  if (geteuid()) {
++    char *hash = passwd_info->pw_passwd;
++
++    if (!hash || *hash == '!' || *hash == '*') perror_exit("Bad password");
++    if (mlock(toybuf, sizeof(toybuf))) perror_exit("mlock");
++    if (read_password(toybuf, sizeof(toybuf), "Password: ")) *toybuf = 0;
++    shell = crypt(toybuf, hash);
++    memset(toybuf, 0, sizeof(toybuf));
++    munlock(toybuf, sizeof(toybuf)); // prevents memset from "optimizing" away.
++    if (!shell || strcmp(shell, hash)) perror_exit("Bad password");
++  }
+ 
+   // Get new shell (either -s or interactive)
+-  file = xfopen("/etc/shells", "r");
+-  if (toys.optflags) shell = TT.s;
++  if (TT.s) shell = TT.s;
+   else {
++    interactive = 1;
+     xprintf("Login shell for %s [%s]:", user, passwd_info->pw_shell);
+     if (!(shell = xgetline(stdin))) xexit();
+     if (!*shell) xexit();
+   }
+ 
+-  // Verify supplied shell in /etc/shells, or get default shell
+-  if (*shell) while ((line = xgetline(file)) && strcmp(shell, line)) free(line);
+-  else do line = xgetline(file); while (line && *line != '/');
+-  if (!line) error_exit("Shell not found in '/etc/shells'");
++  // Verify the shell is listed in the shells domain
++  if (!acct_shell_allowed(shell))
++    error_exit("Shell not found in system.config.shells");
++
++  // Update the shell field of the passwd record (libconfig, System scope)
++  if (acct_user_shell_set(user, shell)) perror_exit("config");
+ 
+-  // Update /etc/passwd
+-  if (!update_password("/etc/passwd", user, line,6)) perror_exit("/etc/passwd");
++  if (CFG_TOYBOX_FREE && interactive) free(shell);
+ }
+diff --git a/toys/pending/groupadd.c b/toys/pending/groupadd.c
+index 67c0e929..95e5df04 100644
+--- a/toys/pending/groupadd.c
++++ b/toys/pending/groupadd.c
+@@ -38,39 +38,34 @@ GLOBALS(
+ void groupadd_main(void)
+ {
+   struct group *grp = 0;
+-  char *entry = 0, *s, *gfile = "/etc/group", *gsfile = "/etc/gshadow";
+-  int i, len;
++  char *s, **members = 0;
++  int i, n = 0, cap = 0;
+ 
+-  if (TT.R) {
+-    gfile = xmprintf("%s%s", TT.R, gfile);
+-    gsfile = xmprintf("%s%s", TT.R, gsfile);
+-  }
++  if (TT.R) error_exit("no chroot (-R) support");
+ 
+   // Add user to group?
+   if (toys.optc == 2) {
+     if (FLAG(g)|FLAG(S)) help_exit("No -gS with USER+GROUP");
+     if (!(grp = getgrnam(s = toys.optargs[1]))) error_exit("no group '%s'", s);
+-    len = strlen(s)+1;
+     xgetpwnam(s = *toys.optargs);
+ 
+     // Is this user already in this group?
+     for (i = 0; grp->gr_mem[i]; i++) {
+       if (!strcmp(grp->gr_mem[i], s)) return;
+-      len += strlen(grp->gr_mem[i])+1;
+-    }
+-    s = entry = xmalloc(len);
+-    for (i = 0;; i++) {
+-      if (i) *s++ = ',';
+-      if (!grp->gr_mem[i]) {
+-        strcpy(s, toys.optargs[1]);
+-        break;
++      if (n == cap) {
++        cap = cap ? cap * 2 : 4;
++        members = xrealloc(members, cap * sizeof(char *));
+       }
+-      s = stpcpy(s, grp->gr_mem[i]);
++      members[n++] = grp->gr_mem[i];
+     }
+-    update_password(gfile, grp->gr_name, entry, 3);
+-    update_password(gsfile, grp->gr_name, entry, 3);
+-    free(entry);
++    members = xrealloc(members, (n + 2) * sizeof(char *));
++    members[n++] = s;
++    members[n] = 0;
+ 
++    // M4: rewrite the members list in the group domain
++    if (acct_group_members_set(grp->gr_name, members))
++      perror_exit("groupadd: system.config.group");
++    if (CFG_TOYBOX_FREE) free(members);
+     return;
+   }
+ 
+@@ -84,8 +79,6 @@ void groupadd_main(void)
+     while (getgrgid(TT.g)) TT.g++;
+   } else if (getgrgid(TT.g)) error_exit("group '%ld' in use", TT.g);
+ 
+-  sprintf(toybuf, "%s:x:%ld:", s, TT.g);
+-  update_password(gfile, s, toybuf, 0);
+-  sprintf(toybuf, "%s:!::", s);
+-  update_password(gsfile, s, toybuf, 0);
++  // M4: create the group record (group domain)
++  if (acct_group_add(s, TT.g)) perror_exit("groupadd: system.config.group");
+ }
+diff --git a/toys/pending/groupdel.c b/toys/pending/groupdel.c
+index 4c3eae5f..7d9b9538 100644
+--- a/toys/pending/groupdel.c
++++ b/toys/pending/groupdel.c
+@@ -23,26 +23,20 @@ config GROUPDEL
+ void groupdel_main(void)
+ {
+   struct group *grp = xgetgrnam(toys.optargs[toys.optc-1]);
+-  char *entry = 0;
+ 
+   // delete user from group
+   if (toys.optc == 2) {
+-    int i, len = 0, found = 0;
+-    char *s;
++    int i;
+ 
+     xgetpwnam(*toys.optargs);
+-    if (grp->gr_mem) for (i = 0; grp->gr_mem[i]; i++) {
+-      if (!found && !strcmp(*toys.optargs, grp->gr_mem[i])) found++;
+-      else len += strlen(grp->gr_mem[i]) + 1;
+-    }
+-    if (!found)
++    for (i = 0; grp->gr_mem[i]; i++)
++      if (!strcmp(*toys.optargs, grp->gr_mem[i])) break;
++    if (!grp->gr_mem[i])
+       error_exit("user '%s' not in group '%s'", *toys.optargs, toys.optargs[1]);
+ 
+-    entry = s = xmalloc(len);
+-    for (i = 0; grp->gr_mem[i]; ) {
+-      if (i) *(s++) = ',';
+-      s = stpcpy(s, grp->gr_mem[i]);
+-    }
++    // M4: drop the member from the group domain record
++    if (acct_group_member_del(grp->gr_name, *toys.optargs))
++      perror_exit("groupdel: system.config.group");
+ 
+   // delete group
+   } else {
+@@ -53,9 +47,9 @@ void groupdel_main(void)
+ 
+     if (pw) error_exit("can't remove primary group of user '%s'", pw->pw_name);
+     if (CFG_TOYBOX_FREE) endpwent();
+-  }
+ 
+-  update_password("/etc/group", grp->gr_name, entry, 3);
+-  update_password("/etc/gshadow", grp->gr_name, entry, 3);
+-  if (CFG_TOYBOX_FREE) free(entry);
++    // M4: remove the group record
++    if (acct_group_del(grp->gr_name))
++      perror_exit("groupdel: system.config.group");
++  }
+ }
+diff --git a/toys/pending/useradd.c b/toys/pending/useradd.c
+index 261c7e48..d254c572 100644
+--- a/toys/pending/useradd.c
++++ b/toys/pending/useradd.c
+@@ -42,7 +42,7 @@ GLOBALS(
+ // TODO user exists error
+ void useradd_main(void)
+ {
+-  char *s = *toys.optargs, *entry;
++  char *s = *toys.optargs;
+   struct passwd pwd;
+ 
+   // Act like groupadd?
+@@ -63,9 +63,11 @@ void useradd_main(void)
+   // add_user(), add a new entry in /etc/passwd, /etc/shadow files
+ 
+   pwd.pw_name = s;
+-  pwd.pw_passwd = "x";
+-  pwd.pw_gecos = TT.gecos ? TT.gecos : "Linux User,";
+-  pwd.pw_dir = TT.dir ? TT.dir : xmprintf("/home/%s", *toys.optargs);
++  // M4: the account record is the only store (no shadow file); "!"
++  // marks a locked / not-yet-set password until passwd assigns one.
++  pwd.pw_passwd = "!";
++  pwd.pw_gecos = TT.gecos ? TT.gecos : "FNX User";
++  pwd.pw_dir = TT.dir ? TT.dir : xmprintf("/Users/%s", *toys.optargs);
+ 
+   if (!TT.shell) {
+     TT.shell = getenv("SHELL");
+@@ -74,7 +76,7 @@ void useradd_main(void)
+       struct passwd *pw = getpwuid(getuid());
+ 
+       if (pw && pw->pw_shell && *pw->pw_shell) TT.shell = xstrdup(pw->pw_shell);
+-      else TT.shell = "/bin/sh";
++      else TT.shell = "/System/Tools/sh";
+     }
+   }
+   pwd.pw_shell = TT.shell;
+@@ -116,24 +118,15 @@ void useradd_main(void)
+    * 3. update the user passwd by running 'passwd' utility
+    */
+ 
+-  // 1. add an entry to /etc/passwd and /etc/shadow file
+-  entry = xmprintf("%s:%s:%ld:%ld:%s:%s:%s", pwd.pw_name, pwd.pw_passwd,
+-      (long)pwd.pw_uid, (long)pwd.pw_gid, pwd.pw_gecos, pwd.pw_dir,
+-      pwd.pw_shell);
+-  update_password("/etc/passwd", pwd.pw_name, entry, 0);
+-  free(entry);
+-
+-  if (toys.optflags & FLAG_S)
+-  entry = xmprintf("%s:!!:%u::::::", pwd.pw_name,
+-      (unsigned)(time(NULL))/(24*60*60)); //passwd is not set initially
+-  else entry = xmprintf("%s:!!:%u:0:99999:7:::", pwd.pw_name,
+-            (unsigned)(time(0))/(24*60*60)); //passwd is not set initially
+-  update_password("/etc/shadow", pwd.pw_name, entry, 0);
+-  free(entry);
++  // 1. add the user record to the passwd domain (libconfig, System)
++  if (acct_user_add(pwd.pw_name, pwd.pw_uid, pwd.pw_gid, pwd.pw_gecos,
++      pwd.pw_dir, pwd.pw_shell, "!"))
++    perror_exit("adduser: writing system.config.passwd");
++
+ 
+   // create home dir & copy skel dir to home
+   if (!(toys.optflags & (FLAG_S|FLAG_H))) {
+-    char *skel = "/etc/skel", *p = pwd.pw_dir;
++    char *skel = "/System/User Template", *p = pwd.pw_dir;
+ 
+     // Copy and change ownership
+     if (access(p, F_OK)) {
+diff --git a/toys/pending/userdel.c b/toys/pending/userdel.c
+index a77fb28e..5e7ac3bd 100644
+--- a/toys/pending/userdel.c
++++ b/toys/pending/userdel.c
+@@ -22,93 +22,36 @@ config USERDEL
+ #define FOR_userdel
+ #include "toys.h"
+ 
+-static void update_groupfiles(char *filename, char* username)
++static void update_group_memberships(char *username)
+ {
+-  char *filenamesfx = NULL, *sfx = NULL, *line = NULL;
+-  FILE *exfp, *newfp;
+-  int ulen = strlen(username);
+-  size_t allocated_length = 0;
+-  struct flock lock;
+-
+-  filenamesfx = xmprintf("%s+", filename);
+-  sfx = strchr(filenamesfx, '+');
+-  exfp = xfopen(filename, "r+");
+-
+-  *sfx = '-';
+-  unlink(filenamesfx);
+-  if (link(filename, filenamesfx)) error_msg("Can't create backup file");
+-
+-  *sfx = '+';
+-  lock.l_type = F_WRLCK;
+-  lock.l_whence = SEEK_SET;
+-  lock.l_start = lock.l_len = 0;
+-
+-  if (fcntl(fileno(exfp), F_SETLK, &lock) < 0)
+-    perror_msg("Couldn't lock file %s",filename);
+-
+-  lock.l_type = F_UNLCK; //unlocking at a later stage
+-
+-  newfp = xfopen(filenamesfx, "w+");
+-
+-  while (getline(&line, &allocated_length, exfp) > 0) {
+-    sprintf(toybuf, "%s:",username);
+-    if (strncmp(line, toybuf, ulen+1)) {
+-      char *n, *p = strrchr(line, ':');
+-
+-      if (p && *++p && (n = strstr(p, username))) {
+-        do {
+-          if (n[ulen] == ',') {
+-            *n = '\0';
+-            n += ulen + 1;
+-            fprintf(newfp, "%s%s\n", line, n);
+-            break;
+-          } else if (!n[ulen]) {
+-            if (n[-1] == ',') n[-1] = *n = '\0';
+-            if (n[-1] == ':') *n = '\0';
+-            fprintf(newfp, "%s%s\n", line, n);
+-            break;
+-          } else n += ulen;
+-        } while (*n && (n=strstr(n, username)));
+-        if (!n) fprintf(newfp, "%s\n", line);
+-      } else fprintf(newfp, "%s\n", line);
+-    }
++  struct group *gr;
++
++  // M4: drop the user from every group's members list in the group
++  // domain (system.config.group, libconfig System-scope writes).
++  while ((gr = getgrent())) {
++    int i;
++
++    if (gr->gr_mem) for (i = 0; gr->gr_mem[i]; i++)
++      if (!strcmp(gr->gr_mem[i], username)) {
++        if (acct_group_member_del(gr->gr_name, username))
++          error_msg("removing '%s' from group '%s'", username, gr->gr_name);
++        break;
++      }
+   }
+-  free(line);
+-  fcntl(fileno(exfp), F_SETLK, &lock);
+-  fclose(exfp);
+-  errno = 0;
+-  fflush(newfp);
+-  fsync(fileno(newfp));
+-  fclose(newfp);
+-  rename(filenamesfx, filename);
+-  if (errno){
+-    perror_msg("File Writing/Saving failed: ");
+-    unlink(filenamesfx);
+-  }
+-  free(filenamesfx);
++  endgrent();
+ }
+ 
+ void userdel_main(void)
+ {
+   struct passwd *pwd = xgetpwnam(*toys.optargs);
+ 
+-  update_password("/etc/passwd", pwd->pw_name, 0, 0);
+-  update_password("/etc/shadow", pwd->pw_name, 0, 0);
+-
+-  // delete the group named USER, and remove user from group.
+-  // could update_password() be used for this?
+-  // not a good idea, as update_passwd() updates one entry at a time
+-  // in this case it will be modifying the files as many times the
+-  // USER appears in group database files. So the customized version
+-  // of update_passwd() is here.
+-  update_groupfiles("/etc/group", *toys.optargs);
+-  update_groupfiles("/etc/gshadow", *toys.optargs);
++  // M4: remove the user record (passwd domain) and the memberships.
++  if (acct_user_del(pwd->pw_name)) perror_exit("userdel: system.config.passwd");
++  update_group_memberships(pwd->pw_name);
+ 
+   if (FLAG(r)) {
+-    char *arg[] = {"rm", "-fr", pwd->pw_dir, NULL, NULL};
++    char *arg[] = {"rm", "-fr", pwd->pw_dir, 0};
+ 
+-    sprintf(toybuf, "/var/spool/mail/%s",pwd->pw_name);
+-    arg[3] = toybuf;
+     xexec(arg);
+   }
+ }
