@@ -62,7 +62,13 @@ order:
    validates the engine before the surface is replaced).
 2. **The look** — cheapest visible win: colors/bevels/high-contrast into
    a theming layer driven by `.conf`, killing the hardcoded chiseled
-   gray. This is where the FNX identity starts to show.
+   gray. This is where the FNX identity starts to show. **X resources
+   (Xrm, app-defaults, Xdefaults) leave entirely, in favour of
+   libconfig** — the `.conf` domains resolved user → shared → system by
+   the `config` tool (docs/config-design.md; `userland/libconfig.c`);
+   the stringly-typed resource database is retired along with the
+   stringly-typed calling convention (item 3), and a typed API reads
+   typed config, not name lookups.
 3. **API replacement** — the centerpiece: retire the Xt/Xm calling
    convention (stringly-typed resource lists, ArgLists, XtAddCallback
    ceremony, subclass casts, XmString) and replace it with Momo's own
