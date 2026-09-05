@@ -57,16 +57,26 @@ guide for the FNX-native shell we build later, on our own toolkit.
 The actual project — "turn Motif into a better toolkit for today", in
 order:
 
-1. **Build + run** (prereq): stock libXm + Xt on Xfb; sample apps live.
+1. **Build + run** (prereq): stock libXm + Xt on Xfb; sample apps live
+   (these speak the old Xt/Xm API — they are *scaffolding* that
+   validates the engine before the surface is replaced).
 2. **The look** — cheapest visible win: colors/bevels/high-contrast into
    a theming layer driven by `.conf`, killing the hardcoded chiseled
    gray. This is where the FNX identity starts to show.
-3. **Text** — the iceberg, in Motif's own code too: replace the
+3. **API replacement** — the centerpiece: retire the Xt/Xm calling
+   convention (stringly-typed resource lists, ArgLists, XtAddCallback
+   ceremony, subclass casts, XmString) and replace it with Momo's own
+   clean typed API as the *only* supported surface. Old surface is a
+   scaffold with a demolition date: the bring-up demos/tests are
+   rewritten as the replacement lands until nothing speaks Xt/Xm.
+   Style (decided): **full prefix** — `momo_*` functions/`Momo*` types
+   on everything.
+4. **Text** — the iceberg, in Motif's own code too: replace the
    core-font/compound-string text path with a real UTF-8 pipeline
-   (XmText internals + XmString). Everything FNX-native (editor, CJK,
-   high-contrast) depends on it.
-4. **XmString removal** — migrate public APIs to plain UTF-8 C strings
-   behind compat shims (no external dependents, so it can actually die).
+   (XmText internals; the upstream fork's partial Unicode is the
+   starting point). Everything FNX-native (editor, CJK, high-contrast)
+   depends on it. Plain `char *` UTF-8 everywhere is the API
+   consequence of item 3 + this.
 5. **Catalog extension** — modern widgets (tree views, toolbars, modern
    file dialog) added *to* the proven grammar.
 6. **Xt surgery (later, optional-by-doctrine)** — typed resources, sane
