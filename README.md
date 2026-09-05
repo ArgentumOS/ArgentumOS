@@ -1,6 +1,6 @@
 FNX
 =====
-FNX (pronounced "phoenix" or "fee-nicks") is the 64-bit long-mode continuation of the Fiwix kernel, booting directly from UEFI firmware. It is an operating system kernel written from scratch, based on the UNIX architecture and fully focused on being POSIX compatible. It is designed and developed mainly as a hobby OS and, since it serves also for educational purposes, the kernel code is kept as simple as possible for the benefit of students and OS enthusiasts. It runs natively on x86-64 hardware with a small native userland built from musl, dash and toybox, and boots into a filesystem hierarchy (FSH) of its own design.
+FNX (pronounced "phoenix" or "fee-nicks") is a 64-bit long-mode Unix-like kernel, booting directly from UEFI firmware. It is designed and developed mainly as a hobby OS. It runs natively on x86-64 hardware with a small native userland built from musl, dash and toybox, and boots into a filesystem hierarchy (FSH) of its own design.
 
 FNX is derived from [Fiwix](https://www.fiwix.org), the original 32-bit i386 kernel created by Jordi Sanfeliu. The Fiwix project can be found at <https://www.fiwix.org> (source: <https://github.com/mikaku/Fiwix>).
 
