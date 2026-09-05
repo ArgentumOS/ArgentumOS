@@ -14,6 +14,11 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -236,6 +241,70 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[],
 	}
 }
 
+/* Desktop session selection: /System/Configuration/session.conf may carry
+ *   desktop = "xfb"
+ * to boot the X11 desktop (Xfb :0 over TCP + demo clients, no /tmp so the
+ * unix socket/lock dirs are skipped) instead of the LVGL compositor. */
+static int session_is_xfb(void)
+{
+	FILE *f = fopen("/System/Configuration/session.conf", "r");
+	char buf[256];
+	int xfb = 0;
+
+	if (!f)
+		return 0;
+	while (fgets(buf, sizeof buf, f)) {
+		if (strstr(buf, "desktop") && strstr(buf, "xfb")) {
+			xfb = 1;
+			break;
+		}
+	}
+	fclose(f);
+	return xfb;
+}
+
+static void start_xfb(void)
+{
+	/* the server execs xkbcomp to compile the keymap at startup, so its
+	 * PATH must reach System/Shared/X11/bin */
+	char *xpath = "PATH=" PATH_DEFAULT ":/System/Shared/X11/bin";
+	char *gui_env[] = { xpath, "HOME=/", NULL };
+	char *dpy_env[] = { xpath, "HOME=/", "DISPLAY=:0", NULL };
+	pid_t p;
+
+	mkdir("/System/Variable Data/log", 0755);
+	/* the BFS image persists across sessions: a stale lock from a
+	 * killed/previous Xfb would make the fresh server refuse to start
+	 * ("Server is already active for display 0") */
+	unlink("/System/Temporary Files/.X0-lock");
+	unlink("/System/Temporary Files/.X11-unix/X0");
+	p = fork();
+
+	if (p == 0) {
+		int fd = open("/System/Variable Data/log/Xfb.log",
+			      O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+		if (fd >= 0) {
+			dup2(fd, 1);
+			dup2(fd, 2);
+			close(fd);
+		}
+		execve("/System/Shared/X11/bin/Xfb",
+		       (char *const[]) { "Xfb", ":0", "-ac", NULL }, gui_env);
+		_exit(127);
+	}
+	/* spawn the demo clients right away: they retry XOpenDisplay until
+	 * the server is ready (Xfb takes a while to come up under TCG), so
+	 * the console shell is not gated on the server */
+	spawn_gui("/System/Shared/X11/bin/xdraw",
+		  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },
+		  dpy_env, 0);
+	spawn_gui("/System/Shared/X11/bin/xkey",
+		  (char *const[]) { "xkey", NULL }, dpy_env, 0);
+	puts("XDESK: Xfb desktop launching (xdraw + xkey retry until :0 is up)");
+	fflush(stdout);
+}
+
 /* The LVGL desktop: system compositor + two demo windows (each its own
  * app process). The compositor's mouse source: the second serial port
  * (/System/Devices/Serial/Port1) when a test harness feeds PS/2 packets over
@@ -277,7 +346,10 @@ int main(void)
 	/* the network domain is authoritative for the machine name */
 	set_hostname_from_domain();
 
-	start_gui();
+	if (session_is_xfb())
+		start_xfb();
+	else
+		start_gui();
 
 	for (;;) {
 		pid = fork();

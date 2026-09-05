@@ -2,6 +2,7 @@
  * Sets input focus to its own window so it receives the core keyboard
  * events. Pure event loop - no raw reads. */
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xlib.h>
@@ -49,10 +50,14 @@ pr(int kind, XKeyEvent *e)
 int
 main(void)
 {
-    Display *d = XOpenDisplay(NULL);
+    Display *d = 0;
     Window w;
     XEvent ev;
+    int tries;
 
+    /* Xfb takes a while to come up under TCG; retry until it accepts */
+    for (tries = 0; tries < 120 && !(d = XOpenDisplay(NULL)); tries++)
+        sleep(1);
     if (!d) {
         printf("XKEY: open failed\n");
         return 1;

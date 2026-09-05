@@ -6,7 +6,7 @@ Usage: mkbfs.py <rootdir> <image> <size-MB>
 1KB blocks, 8MB allocation groups. Layout (Haiku convention):
   block 0: boot block + 512-byte superblock at offset 512
   blocks 1..num_ags: allocation bitmaps (one block per AG)
-  journal extent (16 blocks, clean: log_start == log_end == 0)
+  journal extent (512 blocks, clean: log_start == log_end == 0)
   inode blocks (one 256-byte inode per block)
   data blocks (directory trees, file/symlink streams, indirect tables)
 
@@ -262,7 +262,7 @@ def main():
     num_blocks = mb * 1024 * 1024 // BLOCK
     ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
-    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 64
+    journal_start, journal_len = 1 + num_ags * blocks_per_ag, 512
     next_inode = journal_start + journal_len
     next_data = 0
     used = set()

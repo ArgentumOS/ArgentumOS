@@ -29,7 +29,8 @@ static int onerr(Display *d, XErrorEvent *e)
 
 int main(int argc, char **argv)
 {
-	Display *d = XOpenDisplay(NULL);
+	Display *d = 0;
+	int tries;
 	Window w;
 	GC gc;
 	XGCValues gv;
@@ -37,6 +38,9 @@ int main(int argc, char **argv)
 	Pixmap src, mask;
 	Cursor cur;
 
+	/* Xfb takes a moment to come up (TCG); retry until it accepts */
+	for (tries = 0; tries < 120 && !(d = XOpenDisplay(NULL)); tries++)
+		sleep(1);
 	if (!d) {
 		printf("XDRAW: XOpenDisplay failed: %s\n", strerror(errno));
 		return 1;
