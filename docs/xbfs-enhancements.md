@@ -196,7 +196,7 @@ symlinks) so unlink never walks the empty stream. Truncate-to-0
   fragment slot > 0 landed ~3.4KB out of bounds and its value was never
   journaled. Slot 0 masked it until a same-tick pair (mkdir'd dir +
   parent sharing one key) put a second value in an existing fragment.
-  Fixed by byte-casting (commit FIX-COMMIT); one-mkdir repro, the full
+  Fixed by byte-casting (commit 9eba7d2); one-mkdir repro, the full
   session, churn soak, and crash legs all check clean.
 - Effort: small-medium.
 
