@@ -54,9 +54,17 @@
 /* inode magic + flags */
 #define XBFS_INODE_MAGIC		0x3bbe0ad9
 #define XBFS_INODE_IN_USE	0x00000001
+#define XBFS_INODE_INLINE_DATA	0x00000080	/* file data lives in the
+						 * small_data tail (X-SSD6) */
 /* Haiku inode_flags (permanent bits; the low 16 bits are on-disk) */
 #define XBFS_INODE_LONG_SYMLINK	0x00000040	/* target in the data stream */
 #define XBFS_INODE_ATTR_INODE	0x00000004	/* legacy BeOS: attribute node */
+
+/* X-SSD6: the largest file kept inline in the inode's small_data tail.
+ * The tail is block_size - sizeof(struct xbfs_inode) bytes (792 at 1K),
+ * so an inline file never collides with the small_data attribute records
+ * (setting an xattr converts the file to a stream first). */
+#define XBFS_INLINE_MAX		512
 
 /* Haiku stat.h extended mode bits (stored in the HIGH 16 bits of the
  * on-disk inode mode; invisible to 16-bit i_mode). Values are the
@@ -461,6 +469,9 @@ void xbfs_index_add(struct superblock *, struct inode *, const char *);
 void xbfs_index_remove(struct superblock *, struct inode *, const char *);
 void xbfs_index_resize(struct superblock *, struct inode *, __off_t, __u64);
 void xbfs_touch_mtime(struct inode *);
+int xbfs_inline_expand(struct inode *);
+int xbfs_file_read(struct inode *, struct fd *, char *, __size_t);
+int xbfs_inline_base(struct inode *);
 void xbfs_touch_ctime(struct inode *);
 void xbfs_dir_touch(struct inode *, __off_t);
 

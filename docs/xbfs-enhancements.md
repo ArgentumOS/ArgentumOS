@@ -24,8 +24,9 @@ checksum/scrub one (X-SSD4).
 
 **Adopted order: X-SSD1 → X-SSD2 → X-SSD6 → X-SSD5(a) → X-SSD3**, with
 X-SSD4 scheduled as a format-version milestone and X-SSD7 folded into
-X-SSD2. **X-SSD1 (TRIM/discard on free) is DONE** (commit 500d19a) and
-**X-SSD2 (group commit + targeted flush) is DONE** (commit 4ad7a21); the
+X-SSD2. **X-SSD1 (TRIM/discard on free) is DONE** (commit 500d19a),
+**X-SSD2 (group commit + targeted flush) is DONE** (commit 4ad7a21) and
+**X-SSD6 (inline file data) is DONE** (commit X-SSD6-COMMIT); the
 remaining milestones are implementation-pending.
 
 ### A.1 Where XBFS stands relative to SSD behavior
@@ -169,8 +170,31 @@ Small files (≤ a few hundred bytes) live in the inode block instead of a
 separate data block + run — removes a whole class of tiny random writes.
 Uses an inode flag + the existing tail space pattern (cf. `small_data`).
 
-- Acceptance: create/read/truncate of sub-block files across the guest
-  suite; churn write count for tiny files drops.
+**X-SSD6 is DONE** (commit below). A file whose first write fits
+`XBFS_INLINE_MAX` (512 bytes) stores its content in the inode's
+`small_data` tail — *after* the file-name 0x13 record + its zero
+terminator (`xbfs_inline_base`), so the attribute walkers and the
+host-side checker still see the records. New `XBFS_INODE_INLINE_DATA`
+(0x80) marks it; reads copy out of the tail (`xbfs_file_read`), writes
+stay inline while they fit, and a write/truncate past the capacity or an
+`xattr` set converts to a stream file first (`xbfs_inline_expand` — the
+content is copied into freshly allocated data blocks through the normal
+bmap FOR_WRITING path). Inline files keep `i_blocks == 0` (like inline
+symlinks) so unlink never walks the empty stream. Truncate-to-0
+(O_TRUNC) and rewrite round-trips stay inline.
+
+- Acceptance evidence: guest create/read/overwrite/append/O_TRUNC of
+  sub-512B files all correct (multi-append file ends at 145 bytes);
+  host-side inode parse confirms the inline flag, 0 data blocks, and the
+  tail content; a 600-byte write correctly stays a stream file; churn
+  soak `resets=0 wraps=56 clean_halt=True log_clean=True
+  struct_ok=True`; R-M2 crash states 3/6 verified (mounted + files
+  served + batch replay).
+- Note (pre-existing, not X-SSD6): `xbfscheck` reports a
+  `last_modified` index mismatch after sessions that `mkdir` into
+  mkxbfs-era directories (A/B-verified on the pre-inline kernel; plain
+  boots + create-only churn are clean) — the parent-dir mtime bump at
+  mkdir is not re-indexed. Separate follow-up.
 - Effort: small-medium.
 
 #### X-SSD7 — Async writeback daemon

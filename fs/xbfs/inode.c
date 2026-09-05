@@ -174,6 +174,11 @@ int xbfs_read_inode(struct inode *i)
 	 * the target text as run descriptors, so it must stay 0 */
 	if(S_ISLNK(i->i_mode)) {
 		i->i_blocks = (i->i_size > 143) ? ((i->i_size + 511) >> 9) : 0;
+	} else if((raw->flags & XBFS_INODE_INLINE_DATA)) {
+		/* X-SSD6: an inline file has no stream blocks; i_blocks == 0
+		 * keeps xbfs_ifree()'s truncate-on-unlink from trying to free
+		 * run descriptors over the tail content */
+		i->i_blocks = 0;
 	} else {
 		i->i_blocks = (i->i_size + 511) >> 9;
 	}
@@ -732,6 +737,30 @@ int xbfs_truncate(struct inode *i, __off_t length)
 	__u32 ag_shift = i->sb->u.xbfs.ag_shift;
 	__off_t old_size = i->i_size;
 	__u64 old_mtime = i->u.xbfs.raw.last_modified_time;
+
+	/* X-SSD6: an inline file's size lives in the tail; truncating it
+	 * within the inline capacity never touches a stream. Growing past
+	 * the capacity converts it to a stream file first, then the normal
+	 * (grow) path below only advances the size. */
+	if(S_ISREG(i->i_mode)
+	   && (i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA)) {
+		if((__u64)length <= XBFS_INLINE_MAX) {
+			if(length < i->i_size) {
+				memset_b(i->u.xbfs.small_data
+					 + xbfs_inline_base(i) + length, 0,
+					i->i_size - length);
+			}
+			i->i_size = length;
+			i->u.xbfs.raw.u.data.size = length;
+			xbfs_touch_mtime(i);
+			i->state |= INODE_DIRTY;
+			xbfs_index_resize(i->sb, i, old_size, old_mtime);
+			return 0;
+		}
+		if(xbfs_inline_expand(i) < 0) {
+			return -ENOSPC;
+		}
+	}
 
 	__u64 covered = 0;
 	int run;

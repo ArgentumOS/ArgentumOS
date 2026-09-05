@@ -132,6 +132,11 @@ int xbfs_getxattr(struct inode *i, const char *name, char *buffer,
 	if(xbfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
+	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+		/* X-SSD6: an inline file's tail is pure content - no xattrs
+		 * can exist while inline (setxattr converts it first) */
+		return -ENODATA;
+	}
 
 	inode_lock(i);
 	nlen = strlen(name);
@@ -167,6 +172,14 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 		 __size_t size, int flags)
 {
 	struct xbfs_xattr_find f;
+
+	/* X-SSD6: an inline file's tail is pure content - converting it
+	 * to a stream frees the tail for the attribute records */
+	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+		if(xbfs_inline_expand(i) < 0) {
+			return -ENOSPC;
+		}
+	}
 
 	/* Haiku's B_ATTR_NAME_LENGTH (255); refusing keeps volumes we
 	 * create writable by Haiku */
@@ -445,6 +458,10 @@ int xbfs_listxattr(struct inode *i, char *list, __size_t size)
 	struct xbfs_xattr_list l;
 	int res;
 
+	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+		/* X-SSD6: no xattrs can exist while inline */
+		return 0;
+	}
 	l.list = list;
 	l.size = size;
 	l.total = 0;
@@ -488,6 +505,10 @@ int xbfs_removexattr(struct inode *i, const char *name)
 
 	if(xbfs_xattr_refuse_name(name)) {
 		return -EACCES;
+	}
+	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+		/* X-SSD6: no xattrs can exist while inline */
+		return -ENODATA;
 	}
 
 	inode_lock(i);

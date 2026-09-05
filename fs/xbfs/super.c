@@ -74,7 +74,7 @@ struct fs_operations xbfs_fsop = {
 
 	xbfs_open,		/* open */
 	xbfs_close,		/* close */
-	file_read,		/* read */
+	xbfs_file_read,		/* read (inline files; else generic) */
 	xbfs_file_write,		/* write */
 	xbfs_ioctl,		/* ioctl */
 	xbfs_file_llseek,	/* llseek */
