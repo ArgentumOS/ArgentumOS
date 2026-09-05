@@ -1,6 +1,6 @@
 # BFS journal: log-space reclaim (wrap commit) — spec
 
-Status: **spec — decided, not implemented**. Sizing alone (tools/mkbfs.py,
+Status: **implemented (R-M1, commit below); R-M2/R-M3 pending**. Sizing alone (tools/mkbfs.py,
 1024 blocks, commit 3c745e1) bounds *reset storms for bounded busy phases*;
 this spec kills the resets for *sustained metadata streams*, which no log
 size can fix. Reference: fs/bfs/journal.c (+ bfs.h, mkbfs.py).
@@ -155,9 +155,12 @@ walked because the range is tight, D2).
 
 ## 9. Milestones
 
-- **R-M1**: commit-path wrap (D2/D3/D4) in `fs/bfs/journal.c`; delete the
-  full-reset/zeroing block; keep counters as wrap stats. Build + churn
-  smoke (criterion 1).
+- **R-M1 — DONE**: commit-path wrap (D2/D3/D4) in `fs/bfs/journal.c`;
+  the full-reset/zeroing block and the `log_flushing` recursion guard are
+  deleted. Verified: 400-file churn on a 64-block log = **0 resets, 194
+  wraps, verify=1, count=400**; a killed session replays its single
+  in-flight entry cleanly on the next boot; the 1024-log desktop boots
+  with 0 resets and 0 wraps.
 - **R-M2**: crash-injection harness (kill at each state — instrument with
   temporary `BFS-LOG: state` prints if needed) + criteria 3–4.
 - **R-M3**: soak test (criterion 2) + docs update (mkbfs.py sizing comment

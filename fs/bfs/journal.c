@@ -203,15 +203,6 @@ int bfs_log_replay(struct superblock *sb)
  */
 int bfs_log_begin(struct superblock *sb)
 {
-	if(sb->u.bfs.log_flushing) {
-		/* the log reset's sync_buffers() is running write-backs:
-		 * they must NOT take the journal lock (the committing
-		 * outer transaction holds it and is blocked in that very
-		 * sync — taking the lock would deadlock), nor record;
-		 * everything below writes straight through */
-		sb->u.bfs.tx_depth++;
-		return 0;
-	}
 	if(sb->u.bfs.tx_depth == 0) {
 		/* outermost transaction: take the journal lock so no other
 		 * context can interleave a transaction on this superblock
@@ -344,13 +335,6 @@ int bfs_log_commit(struct superblock *sb)
 		return 0;
 	}
 	n = sb->u.bfs.tx_nblocks;
-	if(sb->u.bfs.log_flushing) {
-		/* a write-back tx that ran during the reset: nothing was
-		 * recorded (all writes went through); do not touch the
-		 * journal lock — the reset's outer tx owns it */
-		bfs_log_free_tx(sb);
-		return 0;
-	}
 	if(n == 0) {
 		bfs_log_free_tx(sb);
 		unlock_resource(bfs_log_resource(sb));
@@ -383,47 +367,28 @@ int bfs_log_commit(struct superblock *sb)
 	}
 
 	if((__u64)(sb->u.bfs.log_end + n + 1) > log_size) {
-		/* log full: everything before is already applied and
-		 * synced, so flush it all, zero the log and restart it at
-		 * 0. The on-disk superblock MUST be written with the new
-		 * positions (0) and synced BEFORE the new entry lands over
-		 * the old blocks: otherwise a crash between the entry write
-		 * and commit step (2) would make replay walk the stale
-		 * on-disk log_end into the new entry's data blocks. */
+		/* wrap: the log holds only the previous transaction's entry
+		 * (commit publishes log_start = entry_pos, D2), and that
+		 * entry was applied and synced by its own commit's step (3)
+		 * — so the whole log is dead and the new entry can go at
+		 * block 0. CRASH-ATOMICITY: publish the empty log positions
+		 * (0,0) on disk BEFORE the new entry lands over the old
+		 * blocks. A kill after this superblock write leaves an
+		 * empty log (no replay); a kill before it leaves the old
+		 * entry, which re-replays idempotently (already applied and
+		 * synced). No extent zeroing or full-device sync is needed:
+		 * stale entries outside the published range are never
+		 * walked by replay. */
 		sb->u.bfs.log_since_reset += (n + 1);
 		if(sb->u.bfs.log_since_reset > sb->u.bfs.log_peak) {
 			sb->u.bfs.log_peak = sb->u.bfs.log_since_reset;
 		}
-		printk("BFS-LOG: log full, resetting after %lu journaled block(s) (peak %lu).\n",
-		       (unsigned long)sb->u.bfs.log_since_reset,
-		       (unsigned long)sb->u.bfs.log_peak);
+		printk("BFS-LOG: journal wrapped (entry at block 0; %lu journaled block(s) since the last wrap).\n",
+		       (unsigned long)sb->u.bfs.log_since_reset);
 		sb->u.bfs.log_since_reset = 0;
-		sb->u.bfs.log_flushing = 1;
-		sync_buffers(sb->dev);
-		sb->u.bfs.log_flushing = 0;
-		/* CRASH-ATOMICITY: publish the empty log positions (0,0) on
-		 * disk BEFORE zeroing the extent. If the guest is killed
-		 * between the two, the stale on-disk log_end would make the
-		 * next mount's replay walk the just-zeroed blocks as
-		 * run_arrays and restore garbage over real blocks (observed
-		 * as intermittent on-disk corruption, e.g. /tmp's inode
-		 * clobbered by another file's inode). With the superblock
-		 * written first, a kill anywhere after this point leaves an
-		 * empty log on disk (no replay), and a kill before it
-		 * leaves the untouched old entries, which re-replay
-		 * idempotently (the sync above already applied them). */
 		sb->u.bfs.log_start = 0;
 		sb->u.bfs.log_end = 0;
 		bfs_log_write_super(sb);
-			/* positions 0 are on disk before the log is cleared */
-		for(i = 0; i < sb->u.bfs.log_blocks.len; i++) {
-			if((buf = bread(sb->dev,
-					bfs_log_run_abs(sb, &sb->u.bfs.log_blocks) + i,
-					sb->u.bfs.block_size))) {
-				memset_b(buf->data, 0, sb->u.bfs.block_size);
-				bwrite(buf);
-			}
-		}
 	}
 
 	entry_pos = sb->u.bfs.log_end;
@@ -472,11 +437,16 @@ int bfs_log_commit(struct superblock *sb)
 	sync_buffers(sb->dev);
 		/* the log entry is on disk now */
 
-	/* (2) advance log_end + write the on-disk superblock and the
-	 * bitmap BEFORE the real blocks flush: a crash between (1) and
-	 * (3) leaves the log covering the transaction, so replay can
-	 * repair the blocks; the bitmap must be on disk too or the next
-	 * allocation could reuse a replayed block */
+	/* (2) publish the tight single-entry range [entry_pos, log_end)
+	 * and write the on-disk superblock and the bitmap BEFORE the real
+	 * blocks flush: a crash between (1) and (3) leaves the log
+	 * covering the transaction, so replay can repair the blocks; the
+	 * bitmap must be on disk too or the next allocation could reuse a
+	 * replayed block. Publishing log_start here drops the previous
+	 * entry (already applied + synced by its own commit) so the log
+	 * never accumulates dead history — the wrap above is then the
+	 * only reclaim event. */
+	sb->u.bfs.log_start = entry_pos;
 	sb->u.bfs.log_end = entry_pos + n + 1;
 	sb->u.bfs.log_since_reset += (n + 1);
 	if(sb->u.bfs.log_since_reset > sb->u.bfs.log_peak) {
@@ -517,11 +487,8 @@ void bfs_log_write_block(struct superblock *sb, __blk_t blk,
 {
 	int i;
 
-	if(sb->u.bfs.log_draining || sb->u.bfs.log_flushing) {
-		/* unmount / log reset: stop journaling, write through
-		 * directly (during a reset's sync_buffers() the write-backs
-		 * must not re-enter the journal — the log is mid-reset and
-		 * a nested commit would recurse into another reset) */
+	if(sb->u.bfs.log_draining) {
+		/* unmount: stop journaling, write through directly */
 		bwrite(buf);
 		return;
 	}

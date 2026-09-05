@@ -296,7 +296,7 @@ struct bfs_sb_info {
 	struct bfs_block_run log_blocks;	/* the log extent */
 	__u64 log_start;			/* BLOCK offset of the first entry */
 	__u64 log_end;				/* BLOCK offset past the last entry */
-	__u64 log_since_reset;		/* blocks journaled since the last reset */
+	__u64 log_since_reset;		/* blocks journaled since the last wrap */
 	__u64 log_peak;				/* high-water of log_since_reset */
 	/* in-memory journal transaction state */
 #define BFS_LOG_MAX_BLOCKS	15	/* count <= log size - run_array block */
@@ -305,11 +305,6 @@ struct bfs_sb_info {
 	int tx_nblocks;				/* entries used in tx_blocks[] */
 	int tx_depth;				/* nesting depth (0 = no tx) */
 	int log_draining;			/* umount: write through, no journal */
-	int log_flushing;			/* log reset: nested writes go
-						 * straight through so the reset's
-						 * sync_buffers() write-backs cannot
-						 * journal (the log is mid-reset and
-						 * would recurse) */
 	/* journal transaction lock (serializes tx ownership): the tx
 	 * state is per-superblock but the commit sleeps on I/O, so a
 	 * concurrent tx on the same sb would clobber it. Stored as a
