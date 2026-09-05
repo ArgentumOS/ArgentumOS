@@ -375,6 +375,17 @@ static void pvscsi_scan_partitions(struct device *d)
 		((unsigned int *)d->device_data)[n] = pvscsi.part[n - 1].nr_sects / 2;
 		devfs_partition_node("SCSI", 0, n, MKDEV(PVSCSI_MAJOR, n));
 	}
+	if(np > 0) {
+		printk("pvscsi: partition summary:", "SCSI");
+		for(n = 1; n <= np; n++) {
+			if(pvscsi.part[n - 1].type) {
+				printk(" p%d(@%u,%u)", n,
+				       pvscsi.part[n - 1].startsect,
+				       pvscsi.part[n - 1].nr_sects);
+			}
+		}
+		printk("\n");
+	}
 }
 
 static int pvscsi_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)

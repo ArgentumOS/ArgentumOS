@@ -322,6 +322,17 @@ static void ahci_scan_partitions(struct device *d)
 		((unsigned int *)d->device_data)[n] = ahci.part[n - 1].nr_sects / 2;
 		devfs_partition_node("AHCI", 0, n, MKDEV(AHCI_MAJOR, n));
 	}
+	if(np > 0) {
+		printk("ahci: partition summary:", "AHCI");
+		for(n = 1; n <= np; n++) {
+			if(ahci.part[n - 1].type) {
+				printk(" p%d(@%u,%u)", n,
+				       ahci.part[n - 1].startsect,
+				       ahci.part[n - 1].nr_sects);
+			}
+		}
+		printk("\n");
+	}
 }
 
 static int ahci_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)

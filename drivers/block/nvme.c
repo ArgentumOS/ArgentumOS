@@ -439,6 +439,17 @@ static void nvme_scan_partitions(struct device *d)
 		((unsigned int *)d->device_data)[n] = nvme.part[n - 1].nr_sects / 2;
 		devfs_partition_node("NVMe", 0, n, MKDEV(NVME_MAJOR, n));
 	}
+	if(np > 0) {
+		printk("nvme: partition summary:", "NVMe");
+		for(n = 1; n <= np; n++) {
+			if(nvme.part[n - 1].type) {
+				printk(" p%d(@%u,%u)", n,
+				       nvme.part[n - 1].startsect,
+				       nvme.part[n - 1].nr_sects);
+			}
+		}
+		printk("\n");
+	}
 }
 
 static int nvme_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)

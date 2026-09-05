@@ -1,7 +1,7 @@
 # Partition support: GPT + MBR (design + milestones)
 
 Status: **ALL MILESTONES DONE** (M0 2729f26, M1 74a3a8f, M2 81c7449,
-M3 89b15b2, M4 <m4>).
+M3 89b15b2, M4 5463158).
 
 ## Survey — what exists
 
