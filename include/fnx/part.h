@@ -12,6 +12,7 @@
 #define NR_PARTITIONS		4	/* partitions in the MBR */
 #define MBR_CODE_SIZE		446
 #define ACTIVE_PART		0x80
+#define MAX_PARTITIONS		128	/* scan output cap (GPT/max minors) */
 
 struct hd_geometry {
 	unsigned char heads;
@@ -34,5 +35,18 @@ struct partition {
 };
 
 int read_msdos_partition(__dev_t, struct partition *);
+
+/* shared GPT + MBR(+EBR) parser (drivers/block/partition.c). Pure: reads
+ * 512-byte sectors through the supplied callback. out[] is indexed by
+ * partition number (out[n-1] = partition n); returns the highest
+ * partition number found, or 0 for an unpartitioned/unreadable disk. */
+typedef int (*part_sector_read_t)(void *, unsigned long long,
+				  unsigned char *);
+int partition_parse(void *ctx, part_sector_read_t rd, struct partition *out,
+		    int max);
+
+/* kernel convenience: parse the table on a whole-disk block device
+ * (drivers/block/part.c) */
+int read_partitions(__dev_t, struct partition *, int);
 
 #endif /* _FNX_PART_H */
