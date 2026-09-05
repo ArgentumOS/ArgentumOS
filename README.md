@@ -1,6 +1,6 @@
 FNX
 =====
-FNX (pronounced "phoenix" or "fee-nicks") is the 64-bit long-mode continuation of the Fiwix kernel, booting directly from UEFI firmware. It is an operating system kernel written from scratch, based on the UNIX architecture and fully focused on being POSIX compatible. It is designed and developed mainly as a hobby OS and, since it serves also for educational purposes, the kernel code is kept as simple as possible for the benefit of students and OS enthusiasts. It runs natively on x86-64 hardware and is compatible with a good base of existing GNU applications.
+FNX (pronounced "phoenix" or "fee-nicks") is the 64-bit long-mode continuation of the Fiwix kernel, booting directly from UEFI firmware. It is an operating system kernel written from scratch, based on the UNIX architecture and fully focused on being POSIX compatible. It is designed and developed mainly as a hobby OS and, since it serves also for educational purposes, the kernel code is kept as simple as possible for the benefit of students and OS enthusiasts. It runs natively on x86-64 hardware with a small native userland built from musl, dash and toybox, and boots into a filesystem hierarchy (FSH) of its own design.
 
 FNX is derived from [Fiwix](https://www.fiwix.org), the original 32-bit i386 kernel created by Jordi Sanfeliu. The Fiwix project can be found at <https://www.fiwix.org> (source: <https://github.com/mikaku/Fiwix>).
 
@@ -19,24 +19,26 @@ Features
  - Signals (incl. `rt_sigaction`/`rt_sigreturn`), `wait4`/`waitpid`, `clone`, `fork`/`execve`.
  - `getrandom` syscall and `/dev/random`, `/dev/urandom` devices; `kexec` support.
  - UNIX System V IPC (semaphores, message queues and shared memory) over the 64-bit ABI; pipes; BSD file locking (POSIX advisory only).
- - ELF-x86-64 executables, statically and dynamically linked.
+ - ELF x86-64 executables — statically linked today; the shared-library (dynamic linking) design is decided in `docs/shared-libraries-plan.md`.
  - Kernel security hardening: fault-recovering `copy_from_user`, verified `strnlen_user`, and multi-round audits of the syscall/fs/net/ipc paths.
  - POSIX ACLs as the single canonical permissions model: one ACL per object (owner, named users, owning group, named groups, mask, other), with the mode bits kept in sync as its trivial projection and default ACLs on directories driving inheritance at create/mkdir. Stored as `system.posix_acl_access` / `system.posix_acl_default` xattrs; edited with the `acl` tool (see Notes).
 
 ### Filesystems
  - EXT2 (1KB/2KB/4KB block sizes).
  - Minix v1/v2.
- - OpenBFS: a read/write, Haiku XBFS-compatible filesystem (btree directories, extents, volume queries, 2048/4096-byte blocks, Haiku-interoperable images). Images are produced by `tools/mkxbfs.py` (multi-leaf btree trees included) and cross-checked by `tools/xbfscheck.py`.
- - Linux-like PROC filesystem (read-only), mounted at `/proc` at boot.
- - devfs mounted at `/dev` (nested alias directories, device-node registry, clone API).
+ - XBFS — “the ex-Be filesystem” — the native read/write filesystem: a fork of the Be File System layout (block-run allocation, B+tree directories, per-file attribute trees, attribute indices with a live query engine, journaled metadata with crash-injection-tested recovery, dual-copy sequenced superblock, allocation windows) carrying its own superblock magic `'XBFS'` (0x58424653) and mounted strictly (legacy `'BFS1'` volumes are rejected). POSIX ACLs are stored as xattrs; 1024–4096-byte blocks. Images are produced by `tools/mkxbfs.py` and cross-checked by `tools/xbfscheck.py`.
+ - Linux-like PROC filesystem (read-only), mounted at `/System/Processes` at boot.
+ - devfs mounted at `/System/Devices` — a device *topology* tree (`Memory/`, `TTY/`, `Serial/`, `PTS/`, `PS2/`, `Display/`, `Audio/`, `Disk/<bus>/DiskN` plus `by-identity` symlinks), with a node registry and clone API.
  - devpts (UNIX98 pseudoterminals), pipefs, ISO9660 (+Rock Ridge), sockfs (AF_UNIX), inotifyfs.
+
+Path resolution knows an `@` device shorthand: a path whose first component starts with `@` resolves under `/System/Devices` — `2>@null`, `cd @`, `ls @Disk/by-identity`. It is a kernel namei rule (no `@` directory exists, no byte is reserved).
 
 ### Block storage
  - RAMdisk and Initial RAMdisk (initrd) support.
  - Floppy driver with DMA management.
  - IDE/ATA hard disk and ATAPI CD-ROM (legacy + PCI).
  - AHCI (SATA), VMware PVSCSI, and NVMe controllers.
- - Disk partition support; persistent EXT2 root on an ATA disk (block cache flushed on shutdown).
+ - Disk partition support; persistent XBFS root on an ATA/AHCI disk (block cache flushed on shutdown).
 
 ### USB
  - UHCI, OHCI, EHCI (with companion-controller routing) and XHCI host controllers.
@@ -51,9 +53,9 @@ Features
  - AC97, ES1370, Intel HDA, SB16, GUS, and virtio-snd (modern virtio-1 transport) drivers.
 
 ### Display & input
- - UEFI GOP framebuffer exposed as `/dev/fb0` (kernel-high VA map) and owned by the userland session compositor.
- - The session compositor (`/bin/compositor`, socket + SysV-shm transport in `include/gui.h`) + `gui_demo`: `make run-uefi` boots straight into an animated three-window desktop. Userland can `mmap` `/dev/fb0` directly for zero-copy blits.
- - No kernel text console on the display: virtual consoles (tty0-N) and fbcon are disabled and the display is the compositor's; the serial port is the system console.
+ - UEFI GOP framebuffer exposed as `/dev/fb0` (kernel-high VA map); userland (the X server) `mmap`s it directly for zero-copy blits.
+ - Desktop session: init reads `/System/Configuration/session.conf`; `desktop = "xfb"` boots the **X11 desktop** — Xfb, FNX's native X server (an Xvfb-core fork rendering to `/dev/fb0`, X clients over TCP `:0`), which is the forward display architecture. `make run-xfb` builds a root preconfigured for it. Without the setting, the native GUI compositor desktop is the default.
+ - No kernel text console on the display: virtual consoles and fbcon are disabled; the display is the GUI session's and the serial port is the system console.
  - PS/2 keyboard with Linux keymaps, PS/2 mouse (psaux).
 
 ### Character devices
@@ -76,7 +78,7 @@ This produces the kernel image `.build/64/fnx.efi` (a native x86-64, UEFI-bootab
 
 Before compiling you may want to tweak the kernel configuration in `include/fnx/config.h` and `include/fnx/limits.h`.
 
-The kernel needs a user-space environment: at boot it mounts the root filesystem and runs `/sbin/init`. FNX ships with a small native userland built from musl, dash and toybox:
+The kernel needs a user-space environment: at boot it mounts the root filesystem and runs `/System/Tools/init`. FNX ships with a small native userland built from musl, dash and toybox, staged into the FSH layout:
 
     make userland64          # musl libc + dash + toybox, staged under .build/rootfs64
     make rootxbfs             # packs .build/rootxbfs.img (XBFS, the default root)
@@ -84,29 +86,33 @@ The kernel needs a user-space environment: at boot it mounts the root filesystem
 
 Running under QEMU
 ------------------
-The stock harness boots the ESP image under OVMF and attaches the OpenBFS
+The stock harness boots the ESP image under OVMF and attaches the XBFS
 root disk over AHCI (XBFS is the default root device; the kernel probes
 minix -> ext2 -> iso9660 -> xbfs):
 
     make run-uefi            # OVMF + esp.img + rootxbfs.img + a virtio-net NIC
     make run-ext2            # same, but booting the legacy ext2 root (.build/root.img)
+    make run-xfb             # same, but a root preconfigured to boot the X11 (Xfb) desktop
 
 By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf` is exported. The ESP image is written by `./tools/mkesp.sh` (run automatically by the Makefile).
 
-Once the shell is up, the following in-guest checks are useful:
- - `sec_test`  - 24-pass kernel smoke test (fork/exec/CoW/TLS/wait4/security paths).
- - `forkkill`  - fork + `kill(SIGKILL)` + `waitpid` stress (10 rounds).
- - `ipc_smoke` - System V IPC (semaphores/message queues/shared memory).
- - `acl_test`  - 32-check POSIX ACL kernel regression (mounts the XBFS disk on `/mnt`).
- - `acl get/set/default/--mask/remove <path> ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed XBFS).
- - `gui_demo` runs at boot when `/dev/fb0` is present (the animated desktop); Ctrl-C stops it and the compositor keeps the display.
+Once the shell is up (the tools live under `/System/Tools`, device names use
+the `@` shorthand or `/System/Devices`, scratch mounts go under `/Volumes`):
+ - `ls /System/Tools` - the full tool set (toybox applets, dash as `sh`, plus FNX's own tools).
+ - `acl get <path>` / `acl set ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed XBFS).
+ - `xbfsquery` / `xbfsqtest` - the XBFS query engine (attribute-index queries) and its regression battery.
+ - `shm_leak_test` / `shm_resize_test` / `shm_cap_test` - SysV shared-memory regressions.
+ - Set `desktop = "xfb"` in `/System/Configuration/session.conf` and reboot to get the X11 desktop (or use `make run-xfb`).
 
 Notes / design decisions
 ------------------------
- - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only XBFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs XBFS. Full design: `docs/permissions-acl.md`; the `acl` tool lives at `/bin/acl`.
+ - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only XBFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs XBFS. Full design: `docs/permissions-acl.md`; the `acl` tool lives at `/System/Tools/acl`.
  - Boot and storage reliability: the PIT IRQ stays masked until the real kernel's timer handler is linked (no early timer storms); the AHCI command-completion poll is bounded so a lost completion surfaces as an error instead of wedging the boot for minutes; and `iput()` never writes back a deleted inode (the root cause of the XBFS NULL-`small_data` crash on unlinking a dirty inode).
  - The kernel boots to a single high-half address space: `rebase_image_data()` in `kernel64/paging64.c` walks the PE base-relocation table at boot and re-biases every absolute data pointer by `PAGE_OFFSET64` before the jump to the high-half entry, so indirect calls (syscall table, tty output, file operations) never execute at the identity alias. Process pml4s therefore map no kernel identity pages, and the TSS descriptor base must be the high-half address (see `kernel64/gdt64.c`).
- - The serial console (ttyS0) is the system console on every boot; the display shows the compositor's desktop (`/dev/fb0`).
+ - The serial console (ttyS0) is the system console on every boot; the display is the GUI session's (`desktop = "xfb"` in `/System/Configuration/session.conf` selects the X11 desktop, else the native GUI compositor).
+ - The filesystem hierarchy (FSH) is FNX's own: five top-level directories (`Applications`, `Shared`, `System`, `Users`, `Volumes`) with configuration under `/System/Configuration` (the `.conf` domains edited by the `config` tool), device nodes under `/System/Devices`, tools under `/System/Tools`, and libraries split between `/System/Libraries` (first-party) and `/Shared/Libraries` (third-party).
+ - Device-name shorthand: any path whose first component starts with `@` resolves under `/System/Devices` (`2>@null`, `@TTY/console`); it is a pure kernel namei rule, so `@` is not a directory and files named `@x` stay reachable as `./@x`.
+ - Design documents live in `docs/` (OS profile: `docs/os-profile.md`; shared libraries: `docs/shared-libraries-plan.md`; filesystem enhancements: `docs/xbfs-enhancements.md`; GUI/desktop direction: `docs/x11-xvfb-fb-plan.md` and the stowed `docs/cde-fork-plan.md`).
  - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
 
 			*****************************
