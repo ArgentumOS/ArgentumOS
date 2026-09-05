@@ -76,7 +76,10 @@ order:
    scaffold with a demolition date: the bring-up demos/tests are
    rewritten as the replacement lands until nothing speaks Xt/Xm.
    Style (decided): **full prefix** — `momo_*` functions/`Momo*` types
-   on everything.
+   on everything. **No UI-description language of any kind**: code is
+   the only way to describe a UI — no UIL (Motif's UIL/MRM machinery is
+   dropped from the fork), no XML/glade-style formats, no DSL. A UI is
+   built by calling the typed API.
 4. **Text** — the iceberg, in Motif's own code too: replace the
    core-font/compound-string text path with a real UTF-8 pipeline
    (XmText internals; the upstream fork's partial Unicode is the
@@ -133,6 +136,8 @@ order:
 ## 7. Non-goals
 
 - Not a desktop-shell project (that comes later, natively — §5).
+- No UIL or any UI-description language (no XML/glade-style UI files,
+  no DSL): UIs are described only in code, via the typed API.
 - No CDE/IRIX-app compatibility; no broader X11-app-bazaar support
   promises (users run foreign X11 things unhelped).
 - Not a from-scratch toolkit: the fork is the point.
