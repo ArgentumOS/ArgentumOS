@@ -334,6 +334,15 @@ struct xbfs_sb_info {
 	char journal_locked;
 	char journal_wanted;
 	__u64 sb_seq;			/* superblock copy sequence (dual-copy) */
+	/* X-SSD1 (TRIM): pending discard extents recorded by xbfs_bfree.
+	 * A free only becomes safe to discard once its bitmap write is
+	 * durable (committed + synced), so the pending list is flushed at
+	 * the journal commit tail - never per-free. Overflow drops the
+	 * block from the list (losing only the reclaim opportunity). */
+#define XBFS_NR_PENDING_DISCARD	256
+	__u32 ndiscard;
+	__blk_t d_start[XBFS_NR_PENDING_DISCARD];
+	__u32 d_count[XBFS_NR_PENDING_DISCARD];
 };
 
 /* the packed inode struct is 232 bytes; the small_data attribute tail
@@ -386,6 +395,9 @@ void xbfs_log_unlock(struct superblock *);
 /* R-M2 crash injection: arm a deliberate halt at journal commit state
  * 1..7 on the COUNT-th hit (docs/bfs-journal-reclaim.md) */
 void xbfs_crash_set(int state, int count);
+/* X-SSD1 (TRIM): flush pending discards to the device (must be called
+ * only after the freed blocks' bitmap is durable on disk) */
+void xbfs_flush_discards(struct superblock *);
 /* dual-copy superblock flush: the caller built the copy-A struct at
  * XBFS_SB_A_OFF in buf->data; stamp the sequence + checksum on both
  * copies, write the block and sync (fs/xbfs/super.c) */

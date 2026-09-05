@@ -25,6 +25,7 @@
 #include <fnx/xbfs.h>
 #include <fnx/mm.h>
 #include <fnx/buffer.h>
+#include <fnx/devices.h>
 #include <fnx/string.h>
 
 /* block number -> (group, bit-in-group) */
@@ -140,6 +141,26 @@ int xbfs_balloc_specific(struct superblock *sb, __blk_t block)
 /*
  * Free a block.
  */
+static void xbfs_discard_add(struct superblock *sb, __blk_t block)
+{
+	__u32 n = sb->u.xbfs.ndiscard;
+
+	/* coalesce with the previous pending extent when adjacent */
+	if(n && sb->u.xbfs.d_start[n - 1] + sb->u.xbfs.d_count[n - 1] == block) {
+		sb->u.xbfs.d_count[n - 1]++;
+		return;
+	}
+	if(n && sb->u.xbfs.d_count[n - 1] == 1) {	}
+	if(n >= XBFS_NR_PENDING_DISCARD) {
+		/* overflow: drop the extent (loses only the reclaim
+		 * opportunity; the bitmap state is authoritative) */
+		return;
+	}
+	sb->u.xbfs.d_start[n] = block;
+	sb->u.xbfs.d_count[n] = 1;
+	sb->u.xbfs.ndiscard = n + 1;
+}
+
 void xbfs_bfree(struct superblock *sb, __blk_t block)
 {
 	if(block >= sb->u.xbfs.num_blocks) {
@@ -154,6 +175,54 @@ void xbfs_bfree(struct superblock *sb, __blk_t block)
 		if(sb->u.xbfs.next_free > block) {
 			sb->u.xbfs.next_free = block;
 		}
+		xbfs_discard_add(sb, block);
 	}
 	superblock_unlock(sb);
+}
+
+/*
+ * Flush the pending discard extents to the block device. Only call this
+ * AFTER the freed blocks' bitmap state is durable on disk (the journal
+ * commit tail): a discard tells the device the blocks are unmapped, so
+ * metadata that a crash could roll back must never reference them.
+ *
+ * Each pending extent is re-checked against the in-memory bitmap at
+ * flush time and split into still-free sub-runs (a block freed and then
+ * reallocated inside the same transaction window must not be trimmed),
+ * then handed to the driver's discard op one extent at a time.
+ */
+void xbfs_flush_discards(struct superblock *sb)
+{
+	struct device *d;
+	__u32 n, i;
+	__blk_t b;
+
+	if(!sb->u.xbfs.ndiscard) {
+		return;
+	}
+	if(!(d = get_device(BLK_DEV, sb->dev))) {
+		return;	/* keep the list; retry on the next commit */
+	}
+	if(!d->fsop->discard_blocks) {
+		sb->u.xbfs.ndiscard = 0;
+		return;	/* no discard support on this device */
+	}	for(n = 0; n < sb->u.xbfs.ndiscard; n++) {
+		b = sb->u.xbfs.d_start[n];		while(b < sb->u.xbfs.d_start[n] + sb->u.xbfs.d_count[n]) {
+			__blk_t run = 0;
+
+			while(b + run < sb->u.xbfs.d_start[n] + sb->u.xbfs.d_count[n]
+			      && !xbfs_bitmap_test(sb, b + run)) {
+				run++;
+			}
+			if(run) {				d->fsop->discard_blocks(sb->dev, b, run,
+							sb->u.xbfs.block_size);
+				b += run;
+			} else {
+				b++;	/* reallocated: skip */
+			}
+		}
+	}
+	sb->u.xbfs.ndiscard = 0;
+	/* device-side discard is fire-and-forget; the caller's commit
+	 * path holds the superblock lock */
 }

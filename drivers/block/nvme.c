@@ -85,6 +85,15 @@
 #define NVME_OP_CREATE_SQ	0x01	/* admin */
 #define NVME_OP_CREATE_CQ	0x05	/* admin */
 #define NVME_OP_IDENTIFY	0x06	/* admin */
+#define NVME_OP_DSM		0x09	/* DATA SET MANAGEMENT (I/O) */
+#define NVME_DSM_ATTR_DEALLOC	0x04	/* cdw11 bit 2 (AD) */
+/* NVMe spec DSM range entry: dword0 = context attrs (0), dword1 =
+ * length (0-based), dword2-3 = starting LBA */
+struct nvme_dsm_range {
+	unsigned int cattr;
+	unsigned int nlb;		/* 0-based */
+	unsigned long long slba;
+} __attribute__((packed));
 
 /* CQ flags */
 #define NVME_CQ_PC		0x1
@@ -267,6 +276,8 @@ if((ret = nvme_admin_cmd(NVME_OP_CREATE_SQ, 0,
 }
 
 /* submit one I/O command (sq1), poll cq1 */
+static int nvme_poll_io_cq(void);
+
 static int nvme_io_cmd(unsigned char opcode, unsigned long long slba,
 		       unsigned int nlb, void *buf)
 {
@@ -299,14 +310,23 @@ static int nvme_io_cmd(unsigned char opcode, unsigned long long slba,
 	 * the doorbell value equal the queue index (not a wrap counter). */
 	nvme_reg_w(nvme_db_sq_tail(1), nvme.io_sq_tail & (NVME_IO_Q_ENTRIES - 1));
 
-	phase = nvme.io_cq_phase;
-	/* Synchronous driver: the completion MUST arrive (QEMU processes
-	 * the SQ one command at a time and only re-fills its req_list after
-	 * the guest advances the CQ head doorbell). A bounded spin that
-	 * gives up (-EAGAIN) leaves the CQE unconsumed, QEMU's req_list
-	 * fills up and nvme_process_sq stops - every later command hangs.
-	 * Poll without a bound; the command is in flight and will complete.
-	 */
+	return nvme_poll_io_cq();
+}
+
+/* Shared completion poll for I/O-queue commands (nvme_io_cmd and
+ * nvme_io_cdw both submit on sq1 and wait here). Synchronous driver: the
+ * completion MUST arrive (QEMU processes the SQ one command at a time and
+ * only re-fills its req_list after the guest advances the CQ head
+ * doorbell). A bounded spin that gives up (-EAGAIN) leaves the CQE
+ * unconsumed, QEMU's req_list fills up and nvme_process_sq stops - every
+ * later command hangs. Poll without a bound; the command is in flight and
+ * will complete. Written as ONE function shared by both callers so the
+ * -O2 build cannot miscompile a duplicated spin (see the recurring
+ * bounds-check miscompiles elsewhere in this tree).
+ */
+static int nvme_poll_io_cq(void)
+{
+	unsigned int phase = nvme.io_cq_phase;
 	for(;;) {
 		volatile struct nvme_cqe *vcqe =
 			(volatile struct nvme_cqe *)(nvme.io_cq + nvme.io_cq_head * 16);
@@ -323,6 +343,50 @@ static int nvme_io_cmd(unsigned char opcode, unsigned long long slba,
 			return 0;
 		}
 	}
+}
+
+/* submit one I/O command with arbitrary cdw10/cdw11 (the DSM path) */
+static int nvme_io_cdw(unsigned char opcode, unsigned int cdw10,
+		       unsigned int cdw11, void *prp1)
+{
+	struct nvme_sqe *sqe;
+	unsigned int tail;
+
+	tail = nvme.io_sq_tail & (NVME_IO_Q_ENTRIES - 1);
+	sqe = (struct nvme_sqe *)(nvme.io_sq + tail * 64);
+	memset_b(sqe, 0, 64);
+	nvme.cid++;
+	sqe->opcode = opcode;
+	sqe->flags = 0;
+	sqe->cid = nvme.cid;
+	sqe->nsid = 1;
+	sqe->prp1 = V2P((addr_t)prp1);
+	sqe->prp2 = 0;
+	sqe->cdw10 = cdw10;
+	sqe->cdw11 = cdw11;
+
+	__asm__ __volatile__("" ::: "memory");
+	nvme.io_sq_tail++;
+	nvme_reg_w(nvme_db_sq_tail(1),
+		   nvme.io_sq_tail & (NVME_IO_Q_ENTRIES - 1));
+	nvme_reg_w(nvme_db_sq_tail(1), nvme.io_sq_tail & (NVME_IO_Q_ENTRIES - 1));
+	return nvme_poll_io_cq();
+}
+
+/* deallocate one contiguous range of 512-byte sectors (DSM) */
+static int nvme_dsm(unsigned long long slba, unsigned int count)
+{
+	struct nvme_dsm_range *r;
+
+	if(!count) {
+		return 0;
+	}
+	r = (struct nvme_dsm_range *)nvme.dmabuf;
+	memset_b(r, 0, sizeof(*r));
+	r->slba = slba;
+	r->nlb = count - 1;	/* 0-based */
+	return nvme_io_cdw(NVME_OP_DSM, 0 /* nr-1 */,
+			   NVME_DSM_ATTR_DEALLOC, nvme.dmabuf);
 }
 
 static int nvme_identify_namespace(void)
@@ -450,47 +514,33 @@ static int nvme_write_block(__dev_t dev, __blk_t block, char *buffer, int blksiz
 	return blksize;
 }
 
+static int nvme_discard_blocks(__dev_t dev, __blk_t block, __blk_t count,
+			       int blksize)
+{
+	unsigned long long lba;
+	unsigned int offset;
+
+	lba = (unsigned long long)block * (blksize / nvme.sector_size);
+	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+		offset = nvme.part[MINOR(dev) - 1].startsect;
+		lba += offset;
+	}
+	{
+		return nvme_dsm(lba,
+				(unsigned int)count * (blksize / nvme.sector_size));
+	}
+}
+
 static struct fs_operations nvme_driver_fsop = {
-	0,
-	0,
-
-	nvme_open,
-	nvme_close,
-	NULL,			/* read */
-	NULL,			/* write */
-	nvme_ioctl,
-	nvme_llseek,
-	NULL,			/* readdir */
-	NULL,			/* readdir64 */
-	NULL,			/* mmap */
-	NULL,			/* select */
-
-	NULL,			/* readlink */
-	NULL,			/* followlink */
-	NULL,			/* bmap */
-	NULL,			/* lockup */
-	NULL,			/* rmdir */
-	NULL,			/* link */
-	NULL,			/* unlink */
-	NULL,			/* symlink */
-	NULL,			/* mkdir */
-	NULL,			/* mknod */
-	NULL,			/* truncate */
-	NULL,			/* create */
-	NULL,			/* rename */
-
-	nvme_read_block,
-	nvme_write_block,
-
-	NULL,			/* read_inode */
-	NULL,			/* write_inode */
-	NULL,			/* ialloc */
-	NULL,			/* ifree */
-	NULL,			/* stats */
-	NULL,			/* read_superblock */
-	NULL,			/* remount_fs */
-	NULL,			/* write_superblock */
-	NULL			/* release_superblock */
+	.flags = 0,
+	.fsdev = 0,
+	.open = nvme_open,
+	.close = nvme_close,
+	.ioctl = nvme_ioctl,
+	.llseek = nvme_llseek,
+	.read_block = nvme_read_block,
+	.write_block = nvme_write_block,
+	.discard_blocks = nvme_discard_blocks,
 };
 
 static struct device nvme_device = {

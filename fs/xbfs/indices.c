@@ -171,16 +171,20 @@ void xbfs_index_resize(struct superblock *sb, struct inode *i,
 	 * would not). Unlinked inodes are already excluded above (the
 	 * i_nlink == 0 early return), so this cannot resurrect a deleted
 	 * file's entries. */
-	if(osz != nsz) {
-		xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
-			       8, i->inode);
-		xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&nsz,
-			       8, i->inode);
-	}
-	if(omt != nmt) {
-		xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
-			       (char *)&omt, 8, i->inode);
-		xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
-			       (char *)&nmt, 8, i->inode);
-	}
+	/* Remove the old key, then insert the new one for every change —
+	 * and also when the value is unchanged but the entry is missing
+	 * (a never-indexed inode — the root and foreign-created files the
+	 * image builder starts unindexed — must be added on its first
+	 * session modification, or it lands in the mtime/name indices but
+	 * not the size one). A same-value del+put of an entry that IS
+	 * present is a harmless no-op net; the i_nlink == 0 guard above is
+	 * what prevents an unlinked inode's entries from resurrecting. */
+	xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
+		       8, i->inode);
+	xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&nsz,
+		       8, i->inode);
+	xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
+		       (char *)&omt, 8, i->inode);
+	xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
+		       (char *)&nmt, 8, i->inode);
 }

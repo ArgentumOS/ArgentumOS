@@ -196,6 +196,12 @@ struct fs_operations {
  * other filesystems stop at the trailing xattr fields; adding fields in
  * the middle would shift their read_superblock etc. into garbage) */
 	void (*destroy_inode)(struct inode *);
+/* discard (TRIM): freed contiguous range in fs blocks -> device.
+ * Appended LAST (after destroy_inode): every fsop initializer in the
+ * tree is positional and stops at the trailing fields, so a field in
+ * the middle would shift read_superblock & co. into garbage. NULL =
+ * no discard support (callers skip). */
+	int (*discard_blocks)(__dev_t, __blk_t, __blk_t, int);
 };
 
 extern struct fs_operations def_chr_fsop;

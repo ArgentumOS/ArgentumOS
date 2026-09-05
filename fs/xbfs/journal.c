@@ -398,6 +398,8 @@ int xbfs_log_commit(struct superblock *sb)
 			bwrite(buf);
 		}
 		sync_buffers(sb->dev);
+		/* write-through: the frees were applied directly + synced */
+		xbfs_flush_discards(sb);
 		xbfs_log_free_tx(sb);
 		unlock_resource(xbfs_log_resource(sb));
 		return 0;
@@ -513,6 +515,10 @@ int xbfs_log_commit(struct superblock *sb)
 	sync_buffers(sb->dev);
 		/* the transaction is complete on disk */
 	xbfs_crash_inject(7);
+
+	/* the freed blocks' bitmap was written + synced above, so the
+	 * pending TRIM extents can go to the device now (X-SSD1) */
+	xbfs_flush_discards(sb);
 
 	xbfs_log_free_tx(sb);
 	unlock_resource(xbfs_log_resource(sb));

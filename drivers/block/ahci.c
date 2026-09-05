@@ -95,6 +95,8 @@
 #define ATA_IDENTIFY		0xEC
 #define ATA_READ_DMA_EXT	0x25
 #define ATA_WRITE_DMA_EXT	0x35
+#define ATA_DSM			0x06	/* DATA SET MANAGEMENT */
+#define ATA_DSM_TRIM		0x01	/* feature: TRIM (non-queued) */
 
 /* command header opts */
 #define AHCI_CMD_C		0x8000	/* clear busy on error */
@@ -127,6 +129,7 @@ struct ahci {
 	unsigned char *cmd_list;	/* phys-aligned 1024B */
 	unsigned char *fis;		/* phys-aligned 256B */
 	unsigned char *cmd_table;	/* phys-aligned 128B+ */
+	unsigned char *dsm_list;	/* phys-aligned range-list buffer */
 	unsigned int nr_sects;
 	unsigned int sector_size;
 	int port;
@@ -204,8 +207,9 @@ static int ahci_wait_cmd_done(void)
 }
 /* issue a single non-NCQ command. dir_in: 1 = device->host (read/identify).
  * lba/count are LBA48 (count = sectors). buffer is the DMA buffer. */
-static int ahci_cmd(unsigned char cmd, int dir_in, unsigned long long lba,
-		    unsigned int count, void *buffer, unsigned int bufsize)
+static int ahci_cmd(unsigned char cmd, unsigned char features, int dir_in,
+		    unsigned long long lba, unsigned int count, void *buffer,
+		    unsigned int bufsize)
 {
 	struct ahci_cmd_hdr *hdr;
 	struct ahci_prd *prd;
@@ -240,6 +244,7 @@ static int ahci_cmd(unsigned char cmd, int dir_in, unsigned long long lba,
 	cfis[0] = 0x27;			/* FIS type H2D */
 	cfis[1] = 0x80;			/* C bit: command */
 	cfis[2] = cmd;
+	cfis[3] = features;				/* features 7:0 */
 	cfis[4] = (unsigned char)(lba & 0xFF);		/* LBA 7:0 */
 	cfis[5] = (unsigned char)((lba >> 8) & 0xFF);	/* LBA 15:8 */
 	cfis[6] = (unsigned char)((lba >> 16) & 0xFF);	/* LBA 23:16 */
@@ -264,7 +269,7 @@ static int ahci_identify(unsigned char *ident)
 {
 	int ret;
 
-	if((ret = ahci_cmd(ATA_IDENTIFY, 1, 0, 0, ident, 512))) {
+	if((ret = ahci_cmd(ATA_IDENTIFY, 0, 1, 0, 0, ident, 512))) {
 		return ret;
 	}
 	return 0;
@@ -273,14 +278,14 @@ static int ahci_identify(unsigned char *ident)
 static int ahci_read_sectors(unsigned long long lba, unsigned int count,
 			     void *buffer)
 {
-	return ahci_cmd(ATA_READ_DMA_EXT, 1, lba, count, buffer,
+	return ahci_cmd(ATA_READ_DMA_EXT, 0, 1, lba, count, buffer,
 			count * ahci.sector_size);
 }
 
 static int ahci_write_sectors(unsigned long long lba, unsigned int count,
 			      void *buffer)
 {
-	return ahci_cmd(ATA_WRITE_DMA_EXT, 0, lba, count, buffer,
+	return ahci_cmd(ATA_WRITE_DMA_EXT, 0, 0, lba, count, buffer,
 			count * ahci.sector_size);
 }
 
@@ -395,47 +400,60 @@ static int ahci_write_block(__dev_t dev, __blk_t block, char *buffer, int blksiz
 	return blksize;
 }
 
+/*
+ * Trim a contiguous range of 512-byte sectors (LBA48) via DATA SET
+ * MANAGEMENT. The range list (one 8-byte entry: LBA48 + count) is DMA'd
+ * out to the device; the H2D sector count is 0 for DSM and the transfer
+ * length comes from the PRD. Polled, like every other ahci command.
+ */
+static int ahci_dsm(unsigned long long lba, unsigned int count)
+{
+	unsigned long long *entry;
+	int ret;
+
+	if(!ahci.dsm_list) {
+		return -ENODEV;
+	}
+	if(!count) {
+		return 0;
+	}
+	/* QEMU's IDE/ahci emulation sizes the DSM DMA from the H2D sector
+	 * count (nsector * 512) - unlike real hardware, where the length
+	 * comes from the PRDT and count is 0. Send the range list padded
+	 * to a full 512-byte sector with count = 1 (extra entries decode
+	 * as count 0 and are skipped); this matches what QEMU's own IDE
+	 * trim test does and works on real hardware too. */
+	memset_b(ahci.dsm_list, 0, 512);
+	entry = (unsigned long long *)ahci.dsm_list;
+	*entry = lba | ((unsigned long long)count << 48);
+	return ahci_cmd(ATA_DSM, ATA_DSM_TRIM, 0, 1, 0,
+		       ahci.dsm_list, 512);
+}
+
+static int ahci_discard_blocks(__dev_t dev, __blk_t block, __blk_t count,
+			       int blksize)
+{
+	unsigned long long lba;
+	unsigned int offset;
+
+	lba = (unsigned long long)block * (blksize / ahci.sector_size);
+	if(MINOR(dev) && MINOR(dev) <= NR_PARTITIONS) {
+		offset = ahci.part[MINOR(dev) - 1].startsect;
+		lba += offset;
+	}
+	return ahci_dsm(lba, (unsigned int)count * (blksize / ahci.sector_size));
+}
+
 static struct fs_operations ahci_driver_fsop = {
-	0,
-	0,
-
-	ahci_open,
-	ahci_close,
-	NULL,			/* read */
-	NULL,			/* write */
-	ahci_ioctl,
-	ahci_llseek,
-	NULL,			/* readdir */
-	NULL,			/* readdir64 */
-	NULL,			/* mmap */
-	NULL,			/* select */
-
-	NULL,			/* readlink */
-	NULL,			/* followlink */
-	NULL,			/* bmap */
-	NULL,			/* lockup */
-	NULL,			/* rmdir */
-	NULL,			/* link */
-	NULL,			/* unlink */
-	NULL,			/* symlink */
-	NULL,			/* mkdir */
-	NULL,			/* mknod */
-	NULL,			/* truncate */
-	NULL,			/* create */
-	NULL,			/* rename */
-
-	ahci_read_block,
-	ahci_write_block,
-
-	NULL,			/* read_inode */
-	NULL,			/* write_inode */
-	NULL,			/* ialloc */
-	NULL,			/* ifree */
-	NULL,			/* stats */
-	NULL,			/* read_superblock */
-	NULL,			/* remount_fs */
-	NULL,			/* write_superblock */
-	NULL			/* release_superblock */
+	.flags = 0,
+	.fsdev = 0,
+	.open = ahci_open,
+	.close = ahci_close,
+	.ioctl = ahci_ioctl,
+	.llseek = ahci_llseek,
+	.read_block = ahci_read_block,
+	.write_block = ahci_write_block,
+	.discard_blocks = ahci_discard_blocks,
 };
 
 static struct device ahci_device = {
@@ -557,6 +575,11 @@ int ahci_init(void)
 	if(!(ahci.cmd_table = (unsigned char *)kmalloc(0x80 + 16))) {
 		return -ENOMEM;
 	}
+	/* DSM range-list scratch: one 8-byte entry per TRIM command */
+	if(!(ahci.dsm_list = (unsigned char *)kmalloc(512))) {
+		return -ENOMEM;
+	}
+	memset_b(ahci.dsm_list, 0, 512);
 
 	/* find the first implemented port with a device attached */
 	pi = ahci_reg(PI);
