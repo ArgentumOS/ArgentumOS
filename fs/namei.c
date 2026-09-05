@@ -137,13 +137,48 @@ static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct 
 int parse_namei(char *path, struct inode *base_dir, struct inode **i_res, struct inode **d_res, int follow_links)
 {
 	struct inode *dir;
-	int errno;
+	char *scratch;
+	int s, errno;
 
 	if(!path) {
 		return -EFAULT;
 	}
 	if(*path == '\0') {
 		return -ENOENT;
+	}
+
+	/*
+	 * FSH device shorthand: a leading '@' as the very first component
+	 * of the path (absolute or relative) resolves under
+	 * /System/Devices — e.g. "@null" -> /System/Devices/null,
+	 * "/@console" -> /System/Devices/console, "@" alone is the
+	 * devices root itself. Purpose: a short, namespace-pollution-free
+	 * way to name devices without typing /System/Devices each time.
+	 *
+	 * The magic is position-1-only, so it can never collide with real
+	 * files: mid-path components ("a/@b") and escaped forms
+	 * ("./@x") are ordinary names. Resolution is a fixed redirect to
+	 * the real /System/Devices directory under the process root, so
+	 * it is chroot-safe (a chroot without that tree gets ENOENT, never
+	 * an escape) and requires no per-device table.
+	 */
+	for(s = 0; path[s] == '/'; s++) {
+	}
+	if(path[s] == '@') {
+		/* scratch = "/System/Devices" + path after the '@' */
+		if(!(scratch = (char *)kmalloc(strlen(path) + 16))) {
+			return -ENOMEM;
+		}
+		strcpy(scratch, "/System/Devices");
+		if(path[s + 1]) {
+			strcat(scratch, "/");
+			strcat(scratch, path + s + 1);
+		}
+		dir = current->root;
+		dir->count++;
+		errno = do_namei(scratch, dir, i_res, d_res, follow_links);
+		kfree((addr_t)scratch);
+		return errno;
 	}
 
 	if(!(dir = base_dir)) {
