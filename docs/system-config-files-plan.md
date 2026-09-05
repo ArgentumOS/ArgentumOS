@@ -439,13 +439,22 @@ Acceptance: `config read system.config.passwd user.admin.uid` → `0`;
 images build without legacy `passwd`/`group`/`shells` files; Xfb's
 default domain reads from Shared and a System copy overrides it.
 
-### M3 — musl identity readers (hard-swap)
-Patch `src/passwd/*` + the libc-internal reader; rebuild musl + the
-static userland. Legacy `/etc` copies (where any remain) stop being
-consulted.
-Acceptance: guest tests — `getpwnam("admin")`,
-`getpwuid(0)`, `getgrnam`, `getgrouplist`, `getpwent` iteration
-(uid-sorted), `su`/`id`-style lookups all served from the domains.
+### M3 — musl identity readers (hard-swap) — DONE
+`third_party/musl-pwconf.patch` (applied after musl-fsh.patch by the
+musl64 rule) rewires `src/passwd/getpw_a.c`, `getgr_a.c`, `getpwent.c`,
+`getgrent.c`, `getgrouplist.c` to a libc-internal reader
+(`src/passwd/pwconf.{c,h}`): a read-only flat + block grammar subset
+that renders each record domain entry as a classic colon line sorted by
+uid/gid over a self-contained `fmemopen(NULL, len, "w+")` stream (musl
+`open_memstream` is write-only), so musl's line parsers work unchanged.
+It does not link `userland/libconfig.c` (libc cannot depend on userland
+code; libconfig's scope machinery calls getpwuid). Legacy `/etc` copies
+stop being consulted. fgetpwent/fgetgrent keep FILE-stream parsing.
+Acceptance: guest `getpwnam("admin")` (all fields), `getpwuid(0)`,
+`getgrnam`/`getgrgid`, `getpwent`/`getgrent` (uid/gid-sorted),
+`getgrouplist` all served from the domains — 27/27 via
+`tools/config_m3_test.c`; toybox `id` → `uid=0(admin) gid=0(admin)
+groups=0(admin)`; musl + dash + toybox + userland64 rebuild cleanly.
 
 ### M4 — toybox account tools on the domains
 `passwd`, `useradd`, `userdel`, `groupadd`, `groupdel`, `chsh`, `su`
