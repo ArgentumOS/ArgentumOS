@@ -1,6 +1,7 @@
 # Partition support: GPT + MBR (design + milestones)
 
-Status: **design** (decisions locked; nothing implemented yet).
+Status: M0 (parsers) and M1 (topology + consumer migration) DONE
+(2729f26 + M1 below); M2+ pending.
 
 ## Survey — what exists
 
@@ -107,10 +108,13 @@ MAX_PARTITIONS; the per-driver global `part[]` becomes `part[MAX_PARTITIONS]`.
   (+EBR) and GPT parsers, auto-detect, partition cap; host fixture images
   (MBR 4-primary, MBR+EBR chain, GPT 3-entry, protective MBR) pass. No boot
   behavior change. Commit alone.
-- **M1 — devfs topology + consumer migration.** DiskN dir + WholeDisk node;
-  root= tables, kreal64 cmdline, mount domain, harnesses, top symlinks,
-  devfs-topology.md all migrate. Whole-disk boot from the existing harness
-  stays green under the new paths.
+- **M1 — devfs topology + consumer migration. DONE.** devfs_block_node now
+  registers DiskN as a container dir with the WholeDisk node (minor 0)
+  inside; the legacy + identity links re-target to .../WholeDisk; the
+  device-table fallback unit counter only counts exact DiskN containers.
+  Root= table entries + kreal64 cmdline migrated to .../WholeDisk; boot
+  verified green (root mounts, topology listing shows WholeDisk as
+  brw 8,0, clean halt).
 - **M2 — driver scan + partition nodes + mount.** ata/ahci/pvscsi/nvme probe
   scans through the shared layer; `Partition<k>` nodes appear; a partition is
   mountable (`mount -t xbfs .../Partition1 /nv`) and discard ranges carry the

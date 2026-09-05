@@ -27,6 +27,7 @@ Drivers register real nodes under bus/role dirs. Prefix dirs are dev-0
     Audio/             dsp
     Disk/
         IDE/           Disk0..Disk3          (ata.c, order = channel*2+drive)
+                       + WholeDisk + Partition<k> under each DiskN
         AHCI/          Disk0..               (ahci.c)
         SCSI/          Disk0..               (pvscsi.c)
         USB/           Disk0..               (usb-storage, via device table)
@@ -41,8 +42,14 @@ Drivers register real nodes under bus/role dirs. Prefix dirs are dev-0
 The bus attribution comes from the device-table `struct device .name`
 ("ide0"/"ide1", "ahci", "pvscsi", "usb-storage", "nvme0", "ramdisk",
 "floppy") and each block driver's own probe order — never from the
-shared major number. Partition nodes are not created (FNX has no
-partition layer; disks are whole-disk filesystems).
+shared major number.
+
+Each DiskN is a container directory: the whole-disk device lives at
+Disk/<bus>/DiskN/WholeDisk (minor 0) and — once a partition table is
+scanned (docs/partition-support-plan.md, M2+) — partitions at
+Disk/<bus>/DiskN/Partition<k>. Identity links are
+Disk/by-identity/<bus>-DiskN -> .../DiskN/WholeDisk and
+<bus>-DiskN P<k> -> .../DiskN/Partition<k>.
 
 ## Top-level role symlinks (compatibility, all current names resolve)
 
@@ -51,11 +58,13 @@ console  -> TTY/console        tty   -> TTY/tty
 ttyS0..3 -> Serial/Port0..3    ptmx  -> PTS/ptmx
 kbd      -> PS2/Keyboard       mouse -> PS2/Mouse     psaux -> PS2/Mouse
 fb0      -> Display/fb0        dsp   -> Audio/dsp
-hda..hdd -> Disk/IDE/Disk0..3
-sda..    -> Disk/<AHCI|SCSI|USB>/Disk<n>   (resolved at probe time to the
-            bus that actually registered the unit; sd letters keep their
-            meaning only while the old name is still referenced)
-fd0      -> Disk/Floppy/Disk0  ram0  -> Disk/RAM/Disk0  nvme0n1 -> Disk/NVMe/Disk0
+hda..hdd -> Disk/IDE/Disk0..3/WholeDisk
+sda..    -> Disk/<AHCI|SCSI|USB>/Disk<n>/WholeDisk  (resolved at probe
+            time to the bus that actually registered the unit; sd letters
+            keep their meaning only while the old name is still referenced)
+fd0      -> Disk/Floppy/Disk0/WholeDisk
+ram0     -> Disk/RAM/Disk0/WholeDisk
+nvme0n1  -> Disk/NVMe/Disk0/WholeDisk
 mem kmem null port zero full random urandom -> Memory/<same>
 ```
 

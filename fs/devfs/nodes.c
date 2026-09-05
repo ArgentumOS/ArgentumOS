@@ -100,32 +100,30 @@ int devfs_make_dir(const char *name)
 	return 0;
 }
 
-/* Q3 block registration: the real node lives at Disk/<bus>/Disk<unit>;
- * the legacy flat name (hda, sda...) survives as a top-level symlink. */
+/* partition-aware block registration: Disk/<bus>/Disk<unit> is a
+ * container directory holding the whole-disk node WholeDisk (minor 0)
+ * and, once scanned, Partition<k> nodes. The legacy flat name (hda,
+ * sda...) and the identity link both target the WholeDisk node. */
 int devfs_block_node(const char *bus, int unit, const char *legacy, __dev_t dev)
 {
-	char path[40], target[40];
+	char path[48], target[48];
 
-	if(sprintk(path, "Disk/%s", bus) < 0) {
+	if(sprintk(path, "Disk/%s/Disk%d", bus, unit) < 0) {
 		return -ENAMETOOLONG;
 	}
-	devfs_make_dir(path);
-	if(sprintk(path, "Disk/%s/Disk%d", bus, unit) < 0) {
+	devfs_make_dir(path);	/* Disk, Disk/<bus>, Disk/<bus>/DiskN */
+	if(sprintk(path, "Disk/%s/Disk%d/WholeDisk", bus, unit) < 0) {
 		return -ENAMETOOLONG;
 	}
 	devfs_make_node(path, dev, S_IFBLK | S_IRUSR | S_IWUSR);
 	if(legacy && *legacy) {
-		if(sprintk(target, "Disk/%s/Disk%d", bus, unit) < 0) {
-			return -ENAMETOOLONG;
-		}
-		devfs_make_symlink(legacy, target, 0777);
+		devfs_make_symlink(legacy, path, 0777);
 	}
-	/* identity link: Disk/by-identity/<bus>-Disk<unit>. The bus/unit is
-	 * the stable identity until drivers report model/serial. */
+	/* identity link: Disk/by-identity/<bus>-Disk<unit> */
 	if(sprintk(path, "Disk/by-identity/%s-Disk%d", bus, unit) < 0) {
 		return -ENAMETOOLONG;
 	}
-	if(sprintk(target, "Disk/%s/Disk%d", bus, unit) < 0) {
+	if(sprintk(target, "Disk/%s/Disk%d/WholeDisk", bus, unit) < 0) {
 		return -ENAMETOOLONG;
 	}
 	devfs_make_symlink(path, target, 0777);
@@ -413,12 +411,23 @@ int devfs_device_registered(int type, struct device *d)
 		} else {
 			devfs_ram_gen(minor, legacy);
 		}
-		/* unit = the next free index under Disk/<bus> */
+		/* unit = the next free index under Disk/<bus> (container
+		 * dirs are named exactly "Disk/<bus>/Disk<n>"; nested
+		 * children like .../WholeDisk must not count) */
 		plen = sprintk(prefix, "Disk/%s/Disk", bus);
 		for(unit = 0, n = devfs_nodes; n; n = n->next) {
-			if(!strncmp(n->name, prefix, plen) && n->name[plen] >= '0'
-				&& n->name[plen] <= '9' && unit <= atoi(n->name + plen)) {
-				unit = atoi(n->name + plen) + 1;
+			int d = plen;
+			if(strncmp(n->name, prefix, plen)) {
+				continue;
+			}
+			while(n->name[d] >= '0' && n->name[d] <= '9') {
+				d++;
+			}
+			if(d > plen && n->name[d] == '\0') {
+				int u = atoi(n->name + plen);
+				if(unit <= u) {
+					unit = u + 1;
+				}
 			}
 		}
 		devfs_block_node(bus, unit, legacy, MKDEV(d->major, minor));
