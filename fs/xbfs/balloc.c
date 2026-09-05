@@ -139,6 +139,92 @@ int xbfs_balloc_specific(struct superblock *sb, __blk_t block)
 }
 
 /*
+ * Allocate a contiguous window of up to 'want' free blocks (X-SSD5(a)
+ * allocation windows). Scans forward from the next_free hint for the
+ * first free block, then takes every free block after it until 'want'
+ * are taken or the volume end is reached. Returns the first block and
+ * stores the number actually taken in *len (always >= 1); -ENOSPC when
+ * the volume is full.
+ */
+int xbfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
+{
+	__u64 num_blocks = sb->u.xbfs.num_blocks;
+	__u32 hint = sb->u.xbfs.next_free;
+	__blk_t first;
+	__u32 got, i;
+
+	superblock_lock(sb);
+
+	if(hint >= num_blocks) {
+		hint = 0;
+	}
+	first = hint;
+	while(xbfs_bitmap_test(sb, first)) {
+		first++;
+		if(first >= num_blocks) {
+			first = 0;
+		}
+		if(first == hint) {
+			/* wrapped the whole volume: nothing free */
+			superblock_unlock(sb);
+			return -ENOSPC;
+		}
+	}
+	for(got = 0; got < want; got++) {
+		__u64 b = (__u64)first + got;
+		__u32 ag_blocks = (__u32)1 << sb->u.xbfs.ag_shift;
+
+		if(b >= num_blocks) {
+			break;	/* stop at the volume end, no wrap-around */
+		}
+		/* a run never crosses an AG boundary: stop when the next block
+		 * starts a new AG (the first block of a later AG is a real
+		 * run start, not a contiguous continuation) */
+		if(b > (__u64)first && (b & (ag_blocks - 1)) == 0) {
+			break;
+		}
+		if(xbfs_bitmap_test(sb, b)) {
+			break;
+		}
+		xbfs_bitmap_set(sb, b);
+	}
+	sb->u.xbfs.used_blocks += got;
+	sb->u.xbfs.next_free = first + got;
+	if(sb->u.xbfs.next_free >= num_blocks) {
+		sb->u.xbfs.next_free = 0;
+	}
+	sb->state |= SUPERBLOCK_DIRTY;
+	superblock_unlock(sb);
+	*len = got;
+	return (int)first;
+}
+
+/*
+ * Resync sb->used_blocks from the (authoritative) bitmap. A crash between
+ * the flush's bitmap write and its superblock write leaves the counter
+ * behind the bitmap; called at every mount so the two never diverge for
+ * more than one boot. Prints when a repair was needed.
+ */
+void xbfs_resync_used_blocks(struct superblock *sb)
+{
+	__u32 count = 0;
+	__blk_t block;
+
+	for(block = 0; block < sb->u.xbfs.num_blocks; block++) {
+		if(xbfs_bitmap_test(sb, block)) {
+			count++;
+		}
+	}
+	if(count != sb->u.xbfs.used_blocks) {
+		printk("XBFS: superblock used_blocks %lu resynced to bitmap count %u.\n",
+		       (unsigned long)sb->u.xbfs.used_blocks, count);
+		sb->u.xbfs.used_blocks = count;
+		sb->state |= SUPERBLOCK_DIRTY;
+		sb->u.xbfs.flags = XBFS_SUPER_DIRTY;
+	}
+}
+
+/*
  * Free a block.
  */
 static void xbfs_discard_add(struct superblock *sb, __blk_t block)

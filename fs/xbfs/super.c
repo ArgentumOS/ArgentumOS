@@ -544,6 +544,12 @@ static int xbfs_read_superblock(__dev_t dev, struct superblock *sb)
 		return -EIO;
 	}
 
+	/* a kill between the flush's bitmap write and its superblock write
+	 * can leave the sb's used_blocks counter behind the (authoritative)
+	 * bitmap; resync the counter from the bitmap at every mount so the
+	 * two can never diverge for more than one boot */
+	xbfs_resync_used_blocks(sb);
+
 	if(!(sb->root = iget(sb, root_block))) {
 		printk("WARNING: %s(): unable to get root inode.\n",
 		       __FUNCTION__);

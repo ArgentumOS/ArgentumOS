@@ -203,6 +203,12 @@ int xbfs_write_inode(struct inode *i)
 	}
 	raw = (struct xbfs_inode *)buf->data;
 	ds = &i->u.xbfs.raw.u.data;
+
+	/* X-SSD5(a): trim the unused tail of the last run's allocation
+	 * window back to the committed size. Runs at the last close of a
+	 * file and at sync/umount, so an open append fd keeps its whole
+	 * window while a closed small file never holds dead space. */
+	xbfs_trim_prealloc(i);
 	if(!i->u.xbfs.small_data) {
 		/* defensive: a dirty inode must always be writable. Every
 		 * creation path (ialloc, read_inode) allocates the tail, but
@@ -277,6 +283,62 @@ int xbfs_write_inode(struct inode *i)
 	xbfs_log_commit(i->sb);
 	i->state &= ~INODE_DIRTY;
 	return 0;
+}
+
+/*
+ * X-SSD5(a): trim the unused tail of a file's last direct run (the part
+ * of an allocation window beyond the committed file size) back to the
+ * allocator. Runs for regular files only; the trim never touches the
+ * covered prefix, so the positional run model stays intact. Only the
+ * last run can carry the tail: all earlier runs are fully covered by
+ * the file size (a truncate already frees them, and the stream grows
+ * strictly by appending runs). Indirect streams are left alone (their
+ * tail table runs are managed by the indirect code).
+ */
+void xbfs_trim_prealloc(struct inode *i)
+{
+	struct xbfs_inode *raw = &i->u.xbfs.raw;
+	struct xbfs_data_stream *ds = &raw->u.data;
+	__u64 used, cov = 0;
+	int run, last = -1;
+	__u64 excess, base, b, cut;
+
+	if(!S_ISREG(i->i_mode) || !i->i_size
+			|| (raw->flags & XBFS_INODE_INLINE_DATA)) {
+		return;
+	}
+	used = ((__u64)i->i_size + i->sb->s_blocksize - 1)
+		>> i->sb->s_blocksize_bits;
+	for(run = 0; run < XBFS_NUM_DIRECT_BLOCKS; run++) {
+		__u32 len = ds->direct[run].len;
+
+		if(!len || (ds->direct[run].allocation_group == 0
+				&& ds->direct[run].start == 0)) {
+			break;
+		}
+		cov += len;
+		last = run;
+	}
+	if(last < 0 || cov <= used) {
+		return;
+	}
+	excess = cov - used;
+	cut = MIN(excess, ds->direct[last].len);
+	if(!cut) {
+		return;
+	}
+	base = ((__u64)ds->direct[last].allocation_group
+			<< i->sb->u.xbfs.ag_shift) + ds->direct[last].start;
+	for(b = base + ds->direct[last].len - cut; b < base + ds->direct[last].len;
+			b++) {
+		xbfs_bfree(i->sb, (__blk_t)b);
+	}
+	ds->direct[last].len = (__u16)(ds->direct[last].len - cut);
+	if(!ds->direct[last].len) {
+		/* the whole last run was excess: drop it (the phantom) */
+		ds->direct[last].allocation_group = 0;
+		ds->direct[last].start = 0;
+	}
 }
 
 /*
@@ -466,22 +528,32 @@ int xbfs_bmap(struct inode *i, __off_t offset, int mode)
 			/* all 12 direct runs are used: go indirect */
 			return xbfs_indirect_bmap(i, offset, mode);
 		}
-		/* append a new direct run (or start the first one) */
-		nb = xbfs_balloc(i->sb);
-		if(nb < 0) {
-			return nb;
-		}
-		ds->direct[nrun].allocation_group = (__u32)(nb >> ag_shift);
-		ds->direct[nrun].start = nb & ((1 << ag_shift) - 1);
-		ds->direct[nrun].len = 1;
-		ds->max_direct_range = (covered + 1) << i->sb->s_blocksize_bits;
-		last_ag = ds->direct[nrun].allocation_group;
-		last_start = ds->direct[nrun].start;
-		last_len = 1;
-		nrun++;
-		covered++;
-		if(block < covered) {
-			return nb;
+		/* append a new direct run (or start the first one): reserve a
+		 * contiguous allocation window (X-SSD5(a)) so a sequential
+		 * burst lands in one long run; the unused tail of the window
+		 * is trimmed back to the committed size by xbfs_write_inode at
+		 * the file's last close and at sync/umount */
+		{
+			__u32 wlen = 0;
+			__u32 want = XBFS_DELALLOC_WINDOW;
+
+			if((nb = xbfs_balloc_contig(i->sb, want, &wlen)) < 0) {
+				return nb;
+			}
+			ds->direct[nrun].allocation_group = (__u32)(nb >> ag_shift);
+			ds->direct[nrun].start = nb & ((1 << ag_shift) - 1);
+			ds->direct[nrun].len = (__u16)wlen;
+			ds->max_direct_range = (covered + wlen)
+				<< i->sb->s_blocksize_bits;
+			last_ag = ds->direct[nrun].allocation_group;
+			last_start = ds->direct[nrun].start;
+			last_len = wlen;
+			nrun++;
+			covered += wlen;
+			if(block < covered) {
+				return nb;
+			}
+			continue;
 		}
 	}
 	return 0;	/* unreachable */

@@ -66,6 +66,18 @@
  * (setting an xattr converts the file to a stream first). */
 #define XBFS_INLINE_MAX		512
 
+/* X-SSD5(a): allocation windows. When a file's stream must start a new
+ * run, xbfs_bmap reserves up to XBFS_DELALLOC_WINDOW contiguous blocks
+ * in one scan, so a sequential write burst (or the appends of one open
+ * fd) lands in one long run instead of one scattered block per
+ * allocation. The unused tail of the window is trimmed back to the
+ * file's committed size by xbfs_write_inode (which runs at the last
+ * close of a file and at sync/umount), so small files never hold dead
+ * space while a long-lived append fd keeps its whole window. The
+ * reserved-but-unwritten tail is valid BeOS-style preallocation on
+ * disk (the checker tolerates run coverage beyond i_size). */
+#define XBFS_DELALLOC_WINDOW	256
+
 /* Haiku stat.h extended mode bits (stored in the HIGH 16 bits of the
  * on-disk inode mode; invisible to 16-bit i_mode). Values are the
  * octal constants from Haiku's <sys/stat.h> truncated to 32 bits:
@@ -390,6 +402,9 @@ struct xbfs_i_info {
 int xbfs_balloc(struct superblock *);
 void xbfs_bfree(struct superblock *, __blk_t);
 int xbfs_balloc_specific(struct superblock *, __blk_t);
+int xbfs_balloc_contig(struct superblock *, __u32 want, __u32 *len);
+void xbfs_trim_prealloc(struct inode *);
+void xbfs_resync_used_blocks(struct superblock *);
 
 /* inode.c */
 int xbfs_write_inode(struct inode *);
