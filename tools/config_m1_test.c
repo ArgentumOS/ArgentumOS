@@ -15,7 +15,7 @@
 #include <string.h>
 #include <libconfig.h>
 
-#define DOM "system.config.m1"
+#define DOM "system.m1"
 
 static int fails;
 

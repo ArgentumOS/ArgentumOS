@@ -1,6 +1,6 @@
 /* config_m3_test.c — M3 probe: the musl identity APIs are served from
- * the FNX .conf domains (system.config.passwd.conf /
- * system.config.group.conf in /System/Configuration) instead of legacy
+ * the FNX .conf domains (system.passwd.conf /
+ * system.group.conf in /System/Configuration) instead of legacy
  * colon files (docs/system-config-files-plan.md M3).
  *
  * getpwnam/getpwuid/getgrnam/getgrgid/getpwent/getgrent/getgrouplist

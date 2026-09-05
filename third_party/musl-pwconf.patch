@@ -107,8 +107,8 @@ index 00000000..1d45ac87
 +/* pwconf.c — libc-internal reader for the FNX identity .conf domains.
 + *
 + * getpwnam/getpwuid and getgrnam/getgrgid read the record domains in
-+ * /System/Configuration (system.config.passwd.conf,
-+ * system.config.group.conf) instead of legacy colon files. Each record is rendered as a classic
++ * /System/Configuration (system.passwd.conf,
++ * system.group.conf) instead of legacy colon files. Each record is rendered as a classic
 + * "name:passwd:uid:gid:gecos:home:shell" (passwd) or
 + * "name::gid:member1,member2" (group) line over an open_memstream
 + * FILE, so musl's existing line parsers work unchanged. Records are
@@ -133,8 +133,8 @@ index 00000000..1d45ac87
 +
 +#define PWCONF_MAX_FILE		(1024 * 1024)
 +#define PWCONF_MAX_LINE		4096
-+#define PWCONF_PASSWD_PATH	"/System/Configuration/system.config.passwd.conf"
-+#define PWCONF_GROUP_PATH	"/System/Configuration/system.config.group.conf"
++#define PWCONF_PASSWD_PATH	"/System/Configuration/system.passwd.conf"
++#define PWCONF_GROUP_PATH	"/System/Configuration/system.group.conf"
 +
 +/* one parsed key = raw right-hand-side text (verbatim: quotes and
 + * commas are kept; interpretation happens at render time) */
@@ -968,8 +968,8 @@ index 00000000..a1cbcfbf
 + * records (docs/system-config-files-plan.md M3).
 + *
 + * getpwnam/getpwuid and getgrnam/getgrgid consume the record domains
-+ * in /System/Configuration (system.config.passwd.conf /
-+ * system.config.group.conf) instead of legacy colon files. Each record
++ * in /System/Configuration (system.passwd.conf /
++ * system.group.conf) instead of legacy colon files. Each record
 + * is rendered as a classic "name:passwd:uid:gid:..." line over a
 + * self-contained fmemopen stream, so the existing musl line parsers
 + * (__getpwent_a / __getgrent_a) work unchanged. Rendering sorts

@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <libconfig.h>
 
-#define DOM "system.config.configtest"
+#define DOM "systemtest"
 
 static int fails;
 
@@ -270,7 +270,7 @@ int main(void)
 	}
 
 	/* ---- validation ----------------------------------------------- */
-	if(config_valid_domain("system.config.ok") && !config_valid_domain("..bad") &&
+	if(config_valid_domain("system.ok") && !config_valid_domain("..bad") &&
 	   !config_valid_domain("com..fnx") && !config_valid_domain("a/b") &&
 	   config_valid_key("window.x.y") && !config_valid_key("window..x") &&
 	   !config_valid_key(".window") && !config_valid_key("win dow")) {

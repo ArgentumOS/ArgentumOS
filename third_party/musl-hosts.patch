@@ -16,7 +16,7 @@ index dbde7473..efbd44bf 100644
  	int cnt = 0, badfam = 0, have_canon = 0;
 -	unsigned char _buf[1032];
 -	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
-+	/* M5: hosts are served from the system.config.hosts domain (the
++	/* M5: hosts are served from the system.hosts domain (the
 +	 * legacy /System/Configuration/hosts line file is gone). The
 +	 * renderer returns classic hosts lines over a self-contained
 +	 * stream, so the line parser below is unchanged. */
@@ -30,9 +30,9 @@ index 1d45ac87..25987358 100644
 +++ b/src/passwd/pwconf.c
 @@ -29,6 +29,7 @@
  #define PWCONF_MAX_LINE		4096
- #define PWCONF_PASSWD_PATH	"/System/Configuration/system.config.passwd.conf"
- #define PWCONF_GROUP_PATH	"/System/Configuration/system.config.group.conf"
-+#define PWCONF_HOSTS_PATH	"/System/Configuration/system.config.hosts.conf"
+ #define PWCONF_PASSWD_PATH	"/System/Configuration/system.passwd.conf"
+ #define PWCONF_GROUP_PATH	"/System/Configuration/system.group.conf"
++#define PWCONF_HOSTS_PATH	"/System/Configuration/system.hosts.conf"
  
  /* one parsed key = raw right-hand-side text (verbatim: quotes and
   * commas are kept; interpretation happens at render time) */
@@ -41,7 +41,7 @@ index 1d45ac87..25987358 100644
  	return f;
  }
 +
-+/* Render the hosts domain (system.config.hosts.conf) as classic hosts
++/* Render the hosts domain (system.hosts.conf) as classic hosts
 + * lines ("address name [alias ...]") so musl's name_from_hosts
 + * (lookup_name.c) keeps its line parser unchanged. Each record of the
 + * `hosts` container is one host: `addresses` is the comma list of IPs,

@@ -11,8 +11,8 @@ index 00000000..0194ba7e
 + * read identity through libc getpwnam/getpwuid and getgrnam/getgrgid
 + * (musl serves them from the domains since M3) and write through this helper: every change is a
 + * libconfig atomic write into the System-scope domains
-+ * (system.config.passwd.conf: records of container "user";
-+ * system.config.group.conf: records of container "group").
++ * (system.passwd.conf: records of container "user";
++ * system.group.conf: records of container "group").
 + *
 + * There is no /etc/shadow and no legacy account file: the password hash
 + * lives in the passwd record's "password" key; group memberships live in
@@ -22,9 +22,9 @@ index 00000000..0194ba7e
 +#include "toys.h"
 +#include <libconfig.h>
 +
-+#define ACCT_PW_DOM	"system.config.passwd"
-+#define ACCT_GR_DOM	"system.config.group"
-+#define ACCT_SH_DOM	"system.config.shells"
++#define ACCT_PW_DOM	"system.passwd"
++#define ACCT_GR_DOM	"system.group"
++#define ACCT_SH_DOM	"system.shells"
 +
 +/* set a record field to a string (or int via acct_set_ll) */
 +int acct_set_str(const char *dom, const char *container, const char *rec,
@@ -181,7 +181,7 @@ index 00000000..0194ba7e
 +	return acct_del_record(ACCT_GR_DOM, "group", group);
 +}
 +
-+/* is `shell` listed in the shells domain (system.config.shells, key
++/* is `shell` listed in the shells domain (system.shells, key
 + * "shells")? The value may be a single string or a comma array. */
 +int acct_shell_allowed(const char *shell)
 +{
@@ -208,8 +208,8 @@ index da20dd10..bef28dbc 100644
  
 +// configedit.c — FNX .conf identity-domain editor (docs plan M4). The
 +// account tools write through libconfig into the System-scope domains:
-+// passwd records (container "user") in system.config.passwd, group
-+// records (container "group") in system.config.group. No shadow file:
++// passwd records (container "user") in system.passwd, group
++// records (container "group") in system.group. No shadow file:
 +// hashes live in the record's "password" key; memberships in "members".
 +int acct_set_str(const char *dom, const char *container, const char *rec,
 +                 const char *field, const char *val);
@@ -249,7 +249,7 @@ index 86921409..e3ccf0d4 100644
 -  // Get password from /etc/passwd or /etc/shadow
 -  // TODO: why still support non-shadow passwords...?
 +  // M4: no shadow file — the hash lives in the passwd record and musl
-+  // serves it in pw->pw_passwd from the system.config.passwd domain.
++  // serves it in pw->pw_passwd from the system.passwd domain.
    name = pw->pw_name;
 -  if (*(pass = pw->pw_passwd)=='x' && (sp = getspnam(name))) pass = sp->sp_pwdp;
 +  pass = pw->pw_passwd;
@@ -306,7 +306,7 @@ index 78717221..7ae62997 100644
    loggit(LOG_NOTICE, "%s->%s", getusername(geteuid()), name);
  
 +  // M4: no shadow file. The hash lives in the passwd record (musl
-+  // serves it in pw_passwd from the system.config.passwd domain); an
++  // serves it in pw_passwd from the system.passwd domain); an
 +  // empty, '!'/'*'-locked or non-crypt entry denies login.
    if (getuid()) {
 -    if (!(shadow = get_userline("/etc/shadow", name)))
@@ -372,7 +372,7 @@ index 6dd28e81..83d78d8b 100644
 -  munlock(toybuf, sizeof(toybuf)); // prevents memset from "optimizing" away.
 -  if (strcmp(encrypted, shadow_info->sp_pwdp)) perror_exit("Bad password");
 +  // M4: no shadow file — the hash lives in the passwd record (musl
-+  // serves it in pw_passwd from the system.config.passwd domain).
++  // serves it in pw_passwd from the system.passwd domain).
 +  // Root changes any shell without a password; everyone else must match
 +  // the account's current hash (empty/'!'-locked entries deny).
 +  if (geteuid()) {
@@ -404,7 +404,7 @@ index 6dd28e81..83d78d8b 100644
 -  if (!line) error_exit("Shell not found in '/etc/shells'");
 +  // Verify the shell is listed in the shells domain
 +  if (!acct_shell_allowed(shell))
-+    error_exit("Shell not found in system.config.shells");
++    error_exit("Shell not found in system.shells");
 +
 +  // Update the shell field of the passwd record (libconfig, System scope)
 +  if (acct_user_shell_set(user, shell)) perror_exit("config");
@@ -466,7 +466,7 @@ index 67c0e929..95e5df04 100644
  
 +    // M4: rewrite the members list in the group domain
 +    if (acct_group_members_set(grp->gr_name, members))
-+      perror_exit("groupadd: system.config.group");
++      perror_exit("groupadd: system.group");
 +    if (CFG_TOYBOX_FREE) free(members);
      return;
    }
@@ -480,7 +480,7 @@ index 67c0e929..95e5df04 100644
 -  sprintf(toybuf, "%s:!::", s);
 -  update_password(gsfile, s, toybuf, 0);
 +  // M4: create the group record (group domain)
-+  if (acct_group_add(s, TT.g)) perror_exit("groupadd: system.config.group");
++  if (acct_group_add(s, TT.g)) perror_exit("groupadd: system.group");
  }
 diff --git a/toys/pending/groupdel.c b/toys/pending/groupdel.c
 index 4c3eae5f..7d9b9538 100644
@@ -516,7 +516,7 @@ index 4c3eae5f..7d9b9538 100644
 -    }
 +    // M4: drop the member from the group domain record
 +    if (acct_group_member_del(grp->gr_name, *toys.optargs))
-+      perror_exit("groupdel: system.config.group");
++      perror_exit("groupdel: system.group");
  
    // delete group
    } else {
@@ -531,7 +531,7 @@ index 4c3eae5f..7d9b9538 100644
 -  if (CFG_TOYBOX_FREE) free(entry);
 +    // M4: remove the group record
 +    if (acct_group_del(grp->gr_name))
-+      perror_exit("groupdel: system.config.group");
++      perror_exit("groupdel: system.group");
 +  }
  }
 diff --git a/toys/pending/useradd.c b/toys/pending/useradd.c
@@ -592,7 +592,7 @@ index 261c7e48..d254c572 100644
 +  // 1. add the user record to the passwd domain (libconfig, System)
 +  if (acct_user_add(pwd.pw_name, pwd.pw_uid, pwd.pw_gid, pwd.pw_gecos,
 +      pwd.pw_dir, pwd.pw_shell, "!"))
-+    perror_exit("adduser: writing system.config.passwd");
++    perror_exit("adduser: writing system.passwd");
 +
  
    // create home dir & copy skel dir to home
@@ -664,7 +664,7 @@ index a77fb28e..5e7ac3bd 100644
 +  struct group *gr;
 +
 +  // M4: drop the user from every group's members list in the group
-+  // domain (system.config.group, libconfig System-scope writes).
++  // domain (system.group, libconfig System-scope writes).
 +  while ((gr = getgrent())) {
 +    int i;
 +
@@ -707,7 +707,7 @@ index a77fb28e..5e7ac3bd 100644
 -  update_groupfiles("/etc/group", *toys.optargs);
 -  update_groupfiles("/etc/gshadow", *toys.optargs);
 +  // M4: remove the user record (passwd domain) and the memberships.
-+  if (acct_user_del(pwd->pw_name)) perror_exit("userdel: system.config.passwd");
++  if (acct_user_del(pwd->pw_name)) perror_exit("userdel: system.passwd");
 +  update_group_memberships(pwd->pw_name);
  
    if (FLAG(r)) {

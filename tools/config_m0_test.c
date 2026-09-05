@@ -17,8 +17,8 @@
 #include <string.h>
 #include <libconfig.h>
 
-#define DOM "system.config.m0"
-#define FLATDOM "system.config.m0flat"
+#define DOM "system.m0"
+#define FLATDOM "system.m0flat"
 
 static int fails;
 

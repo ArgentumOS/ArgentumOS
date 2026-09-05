@@ -335,14 +335,14 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	# Identity, name resolution and machine identity are record domains
 	# shipped in System scope (docs/system-config-files-plan.md M2/M5).
 	# No legacy colon/line files exist (passwd, group, shells, hosts).
-	@cp userland/configuration/system.config.passwd.conf "$(ROOTFS64)/System/Configuration/system.config.passwd.conf"
-	@cp userland/configuration/system.config.group.conf "$(ROOTFS64)/System/Configuration/system.config.group.conf"
-	@cp userland/configuration/system.config.shells.conf "$(ROOTFS64)/System/Configuration/system.config.shells.conf"
-	@cp userland/configuration/system.config.hosts.conf "$(ROOTFS64)/System/Configuration/system.config.hosts.conf"
-	@cp userland/configuration/system.config.network.conf "$(ROOTFS64)/System/Configuration/system.config.network.conf"
+	@cp userland/configuration/system.passwd.conf "$(ROOTFS64)/System/Configuration/system.passwd.conf"
+	@cp userland/configuration/system.group.conf "$(ROOTFS64)/System/Configuration/system.group.conf"
+	@cp userland/configuration/system.shells.conf "$(ROOTFS64)/System/Configuration/system.shells.conf"
+	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
+	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
-	@cp userland/configuration/system.config.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.config.xfb.conf"
+	@cp userland/configuration/system.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.xfb.conf"
 	# --- the Admin home: the User Template, copied (Q9) ---
 	rm -rf "$(ROOTFS64)/Users"
 	@mkdir -p "$(ROOTFS64)/Users"

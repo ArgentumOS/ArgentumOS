@@ -19,7 +19,7 @@ includes work unchanged.
 FNX-authored files:
 
 - `hw/xfb/fnxinput.c` — FNX input backend (/dev/kbd, /dev/psaux).
-- `hw/xfb/configargs.c` — reads the `system.config.xfb` config domain
+- `hw/xfb/configargs.c` — reads the `system.xfb` config domain
   (libconfig) and synthesizes default command-line options
   (docs/x11-xvfb-fb-plan.md).
 
@@ -76,7 +76,7 @@ the static-musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
 `libXfont2`, `libsha1`, `libXau`, `libXdmcp`) — build them first with
 `tools/x11-deps-build.sh`. Override with `X11PREFIX=`. FNX libconfig
 (`include/libconfig.h` + `userland/libconfig.c`) is compiled in for the
-`system.config.xfb` config domain.
+`system.xfb` config domain.
 
 Outputs land under `$(OUT)` (default `build/` inside this dir); the repo
 target sends them to `.build/x11/xfb`.

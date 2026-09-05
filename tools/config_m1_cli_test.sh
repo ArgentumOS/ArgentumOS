@@ -18,7 +18,7 @@ fails=0
 ok()  { echo "PASS: $1"; }
 bad() { echo "FAIL: $1"; fails=$((fails + 1)); }
 
-DOM=system.config.m1
+DOM=system.m1
 
 # same value in all three scopes -> `config read` returns the system one
 "$CONF" write -s "$DOM" theme.size 11

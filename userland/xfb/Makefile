@@ -35,7 +35,7 @@ INC += -Ixfixes
 INC += -Ixkb
 INC += -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
 
-# FNX libconfig (system.config.xfb): repo include dir + the userland source.
+# FNX libconfig (system.xfb): repo include dir + the userland source.
 # Only configargs.c and libconfig.c need these; they are applied on the
 # per-file rules below, not to the whole build.
 FNXINC  ?= $(CURDIR)/../../include

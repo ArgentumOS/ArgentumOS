@@ -1,5 +1,5 @@
 /* xfb_config_test.c — host test for Xfb's config-argv synthesis
- * (userland/xfb/hw/xfb/configargs.c, domain system.config.xfb).
+ * (userland/xfb/hw/xfb/configargs.c, domain system.xfb).
  *
  * Run with $FNX_CONFIG_ROOT pointing at a scratch tree:
  *   cc -D_DEFAULT_SOURCE -Iinclude hw/xfb/configargs.c userland/libconfig.c \
@@ -20,7 +20,7 @@
 
 void xfb_config_args(int *argcp, char ***argvp);
 
-#define DOM "system.config.xfb"
+#define DOM "system.xfb"
 
 static int fails;
 
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 	setenv("FNX_CONFIG_ROOT", root, 1);
 
 	/* system scope: the shipped defaults
-	 * (userland/configuration/system.config.xfb.conf) */
+	 * (userland/configuration/system.xfb.conf) */
 	write_conf(root, "System/Configuration",
 		   "display = \"0\"\nac = true\nnolisten = \"tcp\"\n");
 

@@ -18,7 +18,7 @@
 #include <string.h>
 
 #define PATH_DEFAULT	"/System/Tools:/Applications"
-#define NETWORK_DOMAIN	"/System/Configuration/system.config.network.conf"
+#define NETWORK_DOMAIN	"/System/Configuration/system.network.conf"
 
 static void try_mount(const char *fstype, const char *target)
 {

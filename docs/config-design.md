@@ -19,8 +19,8 @@ command-line layer over them.
 - **One file per app domain**, `.conf` extension. A domain is the app's
   namespace — the same idea as a `defaults` domain.
 - **Reserved pseudo-domain for first-party apps**: FNX's own apps use
-  `system.config.<app>` (e.g. `system.config.dock`, `system.config.xfb`,
-  `system.config.kernel`); the `system.config` root is reserved and is
+  `system.<app>` (e.g. `system.dock`, `system.xfb`,
+  `system.kernel`); the `system` root is reserved and is
   not reverse-DNS. Third-party apps keep reverse-DNS domains
   (`com.example.HelloWorld.conf`).
 - Files live in a `Configuration/` directory at the **three scopes** of
@@ -34,14 +34,14 @@ command-line layer over them.
 
   Placement follows setting kind (plan §5.0): non-overridable global
   settings (identity, boot policy) live in System scope; overridable
-  first-party settings ship in Shared under `system.config.<app>`; a
+  first-party settings ship in Shared under `system.<app>`; a
   System copy of the same domain locks a value. See §5.
 
   ```
-  /System/Configuration/system.config.passwd.conf     (identity: authoritative)
-  /Shared/Configuration/system.config.xfb.conf        (overridable first-party default)
+  /System/Configuration/system.passwd.conf     (identity: authoritative)
+  /Shared/Configuration/system.xfb.conf        (overridable first-party default)
   /Shared/Configuration/com.example.HelloWorld.conf   (third-party)
-  Users/$USER/Configuration/system.config.shell.conf  (the person)
+  Users/$USER/Configuration/system.shell.conf  (the person)
   ```
 
   (`/Shared/Configuration/` is a new FSH directory added by this design;
@@ -82,7 +82,7 @@ config delete [-s|-g|-u] <domain> [key]
 ```
 
 - Default scope is `-u` (user). `config read dock` → user's
-  `system.config.dock.conf`; if the domain is absent there, resolution falls
+  `system.dock.conf`; if the domain is absent there, resolution falls
   back per precedence (Q-F, superseded — see §5).
 - `config read` with no key prints the whole domain as `key = value`
   lines; with a key, prints just the value (so it composes in scripts:
@@ -150,7 +150,7 @@ place.
 - **Q-D — Key structure: flat + dot-nested.** No INI sections; hierarchy
   via dot-separated keys (`window.x`); prefix reads for nested groups.
 - **Q-N — First-party domain namespace: reserved pseudo-domain
-  `system.config`.** FNX's own apps are `system.config.<app>` (not
+  `system`.** FNX's own apps are `system.<app>` (not
   reverse-DNS); third parties keep reverse-DNS (`com.example.<app>`).
 - **Q-E — libconfig: built now.** Typed getters, scope resolution,
   prefix reads, atomic writes; apps link it instead of shelling out.
@@ -301,17 +301,17 @@ Rules:
   identical so a file works everywhere; the parser is shared source
   between kernel and userland where practical.
 
-Editing (decided, Q5 owner review): `system.config.kernel` is a
+Editing (decided, Q5 owner review): `system.kernel` is a
 **pinned single-file domain**. It is the one config domain whose file
 lives outside the three scope roots — physically on the ESP, next to
 the kernel. libconfig carries a small built-in alias table:
-`system.config.kernel` → `/System/ESP/kernel.conf` (the ESP is mounted
+`system.kernel` → `/System/ESP/kernel.conf` (the ESP is mounted
 at `/System/ESP` from FSH Q2). No `/System/Configuration` file or
 symlink exists for it.
 
 - The alias is **System-authoritative and exempt from layering**: a
-  read of `system.config.kernel.*` loads only the ESP file; user/shared
-  scope files named `system.config.kernel.conf` are not consulted
+  read of `system.kernel.*` loads only the ESP file; user/shared
+  scope files named `system.kernel.conf` are not consulted
   (boot config is machine state — a user-scope value could only ever
   claim to set something the kernel never saw). Resolution for this
   domain is: ESP file value, else the kernel's compiled-in default

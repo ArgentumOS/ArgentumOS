@@ -49,7 +49,7 @@ future extensions (so the protocol can grow without breaking v1).
 - Server = a session process; launched at login (the compositor is "the
   desktop"). Apps from `/Applications` and `Users/$USER/Applications`;
   `Desktop/` is the workspace surface; per-user GUI config via the
-  `config` utility (`system.config.gui.conf` at all three scopes).
+  `config` utility (`system.gui.conf` at all three scopes).
 - Socket location: a session socket (e.g. under the user's
   `Temporary Files` or a fixed runtime path) — decided when built.
 

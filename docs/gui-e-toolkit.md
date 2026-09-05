@@ -256,7 +256,7 @@ The entire GUI — compositor, `libgui`, `libwidgets`, and apps — is
 ## 4. Resources → the `config` utility
 
 App defaults and per-view resources become **config domains**: view and
-app resources live in `system.config.gui.conf` (and per app, e.g.
+app resources live in `system.gui.conf` (and per app, e.g.
 `com.example.App.conf`) at the three scopes, exactly per
 `docs/config-design.md`. A view reads `view_get_resource(view,
 "font")`-style names backed by libconfig — the toolkit is the first
@@ -295,7 +295,7 @@ Q-L4.
 3. **UI strings.** The single-locale decision means no locale framework;
 the open question is whether strings stay code-embedded English
 (simplest, one-locale) or are externalized as string resources via a
-config domain (`system.config.gui.strings`) so translations can be added
+config domain (`system.gui.strings`) so translations can be added
 later without recompiling — a design choice (Q-L7). Either way: no
 ICU, no plural/collation machinery.
 4. **Explicitly deferred:** bidirectional/RTL text, complex scripts,
@@ -313,7 +313,7 @@ input methods (CJK IME) — noted as out of scope for the first GUI.
 3. **Theming / high contrast / large text via `config`**: colors, bevel
    styles, and font size are widget *resources* (Q-L4), so a
    high-contrast theme or larger-text profile is just a config profile
-   (`system.config.gui.conf`, per-user scope). This is the a11y lever that
+   (`system.gui.conf`, per-user scope). This is the a11y lever that
    costs almost nothing given the resource design.
 4. **Reduced motion**: v1 has no animations; a config "reduce motion"
    flag gates any future ones.
@@ -435,7 +435,7 @@ abstraction now is a design choice (Q-L6).
   widget set of §2 (basic views, controls, text/list, containers,
   menus, dialogs) ships together; no core-subset two-pass.
 - **Q-L4 — Resources: config-backed.** Widget/app resources live in
-  config domains (`system.config.gui.conf`, three scopes, dot-nested keys,
+  config domains (`system.gui.conf`, three scopes, dot-nested keys,
   user → shared → system precedence) per `docs/config-design.md` — the
   toolkit is libconfig's first big consumer. Hardcoded defaults are
   only fallbacks.
@@ -447,7 +447,7 @@ abstraction now is a design choice (Q-L6).
   handles, toolkit renderer vtable — ~tens of lines) are in from v1;
   a full pluggable-graphics framework is rejected as premature.
 - **Q-L7 — UI strings: config-backed string resources (decided).**
-  Strings live in `system.config.gui.strings` (+ per-app domains), three
+  Strings live in `system.gui.strings` (+ per-app domains), three
   scopes, looked up like any widget resource — translatable later
   without recompiling, no locale/ICU machinery. Consistent with Q-L4.
 - **Q-L8 — a11y: AT tree API in the first GUI (decided).**

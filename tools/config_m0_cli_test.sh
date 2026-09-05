@@ -20,7 +20,7 @@ fails=0
 ok()  { echo "PASS: $1"; }
 bad() { echo "FAIL: $1"; fails=$((fails + 1)); }
 
-DOM=system.config.m0
+DOM=system.m0
 
 # 1) start from a shipped-style nested record file; extend it via CLI
 cat > "$ROOT/System/Configuration/$DOM.conf" <<'EOF2'
@@ -60,7 +60,7 @@ cmp -s "$ROOT/before.conf" "$ROOT/System/Configuration/$DOM.conf" \
 	&& ok "canonical rewrite is byte-stable" || bad "byte-stable rewrite"
 
 # 5) pure flat dotted domain stays flat
-FLAT=system.config.m0flat
+FLAT=system.m0flat
 "$CONF" write -s "$FLAT" window.width 100
 "$CONF" write -s "$FLAT" window.height 300
 if grep -q '^window.width = 100$' "$ROOT/System/Configuration/$FLAT.conf" &&
@@ -71,7 +71,7 @@ else
 fi
 
 # 6) duplicate record names -> parse error (exit 1, malformed message)
-BAD=system.config.m0bad
+BAD=system.m0bad
 cat > "$ROOT/System/Configuration/$BAD.conf" <<'EOF2'
 user = {
     a = {
@@ -89,7 +89,7 @@ else
 fi
 
 # 7) a bare value beginning with '{' -> parse error
-BAD2=system.config.m0bad2
+BAD2=system.m0bad2
 printf 'key = {nope\n' > "$ROOT/System/Configuration/$BAD2.conf"
 if "$CONF" read -s "$BAD2" key >/dev/null 2>&1; then
 	bad "bare '{' value rejected"

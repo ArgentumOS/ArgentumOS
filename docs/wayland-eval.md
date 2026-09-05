@@ -106,7 +106,7 @@ existing keyboard/mouse drivers.
 - **Integration with the FSH**: the compositor is the window manager;
   apps launch from `/Applications` and `Users/$USER/Applications`,
   `Desktop/` is the workspace surface, per-user config via the `config`
-  utility (system.config.??? domains) — the GUI layer should speak the FSH
+  utility (system.??? domains) — the GUI layer should speak the FSH
   end to end.
 
 ## 6. Milestones (draft)

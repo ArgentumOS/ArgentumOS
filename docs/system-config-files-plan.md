@@ -4,14 +4,14 @@ Status: DRAFT — awaiting review. Companion to `docs/config-design.md`
 (the `.conf` grammar, scopes, and libconfig contract) and
 `docs/fsh-proposal.md` (the FSH layout these files live in). **Supersedes
 config-design §2/§5/Q-F** (scope roles + precedence — see D4), refines
-§8 (namespace: `system.config` = first-party *global system settings* —
+§8 (namespace: `system` = first-party *global system settings* —
 see §5.0), and amends §10 (grammar) with group records.
 
 Scope: move the traditional Unix configuration files FNX still carries
 in legacy formats — account/password data (`passwd`, `group`), resolver
 identity (`hosts`, hostname, `shells`) and the boot mount table (there
 is no `fstab` today; userland init hardcodes its mounts) — into
-`system.config.*` domains in the `.conf` grammar. System identity and
+`system.*` domains in the `.conf` grammar. System identity and
 boot-policy files live in `/System/Configuration`, which is
 **authoritative**: resolution checks it first, so nothing can override
 it. First-party *defaults* (Xfb etc.) live in `/Shared/Configuration`.
@@ -32,7 +32,7 @@ D1–D4 below.
   - `hosts` — `127.0.0.1 localhost\n127.0.0.1 (none)`
   - `shells` — `/System/Tools/sh`
   - alongside the one real domain file:
-    `system.config.xfb.conf` (shipped from `userland/configuration/`,
+    `system.xfb.conf` (shipped from `userland/configuration/`,
     c11c02b).
 - **The consumers parse those legacy formats themselves, hard-coded:
   - `third_party/musl` is the libc: `src/passwd/*` (`getpw_a.c`,
@@ -61,7 +61,7 @@ D1–D4 below.
   per key (§5), `include/libconfig.h` + `userland/libconfig.c`
   (typed getters, scope-explicit writes, atomic write temp+fsync+
   rename, §11), the `config` CLI (`userland/config.c`), and the
-  kernel-domain precedent (§12: `system.config.kernel` is a pinned
+  kernel-domain precedent (§12: `system.kernel` is a pinned
   single-file domain aliased to `/System/ESP/kernel.conf` — no symlink,
   no scope layering). All config
   values are scalars or arrays — **there is no way to express a list of
@@ -93,7 +93,7 @@ D1–D4 below.
   earlier drafts) unnecessary: system scope *is* the rule.
 - **D5 — Internal defaults (owner, latest):** every first-party setting
   has an internal (compiled-in) default baked into the software. A
-  user-scope `system.config.<app>` value may therefore stand alone: it
+  user-scope `system.<app>` value may therefore stand alone: it
   overrides the internal default, giving purely-personal first-party
   prefs a natural home in the reserved namespace with no Shared or
   System file behind them. A `/Shared/Configuration` file ships only
@@ -201,12 +201,12 @@ as today); nobody can shadow it because a shadow is never consulted.
 ### 4.3 Consequences for today's content
 
 - **Shipped first-party defaults move System → Shared**: the default
-  `system.config.xfb` etc. (and the legacy identity *defaults* that a
+  `system.xfb` etc. (and the legacy identity *defaults* that a
   fresh image seeds) ship under `/Shared/Configuration` as the
   overridable baseline; a machine that wants different values writes
   them to System. (M2.)
 - **Existing per-user files that shadowed system domains** stop having
-  effect (e.g. a user-scope `system.config.xfb.conf` that once tuned the
+  effect (e.g. a user-scope `system.xfb.conf` that once tuned the
   OS default now tunes nothing — the OS default itself moved to Shared,
   which the user *can* still override). `config` warns on read when a
   user/shared value is shadowed by a System value; stale files stay in
@@ -224,31 +224,31 @@ image ships for overridable domains go to `/Shared/Configuration`
 
 ### 5.0 Namespace convention
 
-**`system.config` is reserved by convention for FNX's own (first-party)
+**`system` is reserved by convention for FNX's own (first-party)
 software's settings** — both the overridable kind (which live in
 `/Shared/Configuration`) and the global system settings (which live in
-`/System/Configuration`), e.g. `system.config.passwd`,
-`system.config.mounts`, `system.config.xfb`. It is a reserved root, not
+`/System/Configuration`), e.g. `system.passwd`,
+`system.mounts`, `system.xfb`. It is a reserved root, not
 reverse-DNS (config-design §8): third-party software never uses it and
 instead keeps its own reverse-DNS domain (`com.example.<app>`).
 
 Under D4 the convention decides scope placement by *setting kind*
 (owner, latest): **overridable first-party settings go in
-`system.config.<app>` domains whose files live in
+`system.<app>` domains whose files live in
 `/Shared/Configuration`**, where the person may override them from the
 user scope; **non-overridable first-party global system settings** have
 their files in `/System/Configuration`, where system-first resolution
 makes them authoritative.
 
 - **Overridable** first-party settings (an app's shipped defaults,
-  cosmetic/tunable values): `/Shared/Configuration/system.config.<app>.conf`
+  cosmetic/tunable values): `/Shared/Configuration/system.<app>.conf`
   — overridable from the user scope (D4 order: user > shared).
   A machine admin who wants to *lock* one writes the same domain into
   `/System/Configuration`, where it wins.
 - **Non-overridable** first-party settings (identity, boot policy,
-  hostname): `/System/Configuration/system.config.<domain>.conf` — no
+  hostname): `/System/Configuration/system.<domain>.conf` — no
   Shared file ships, nothing overrides it.
-- **Per-user first-party preferences** are user-scope `system.config.*`
+- **Per-user first-party preferences** are user-scope `system.*`
   values that override the software's **internal (compiled-in)
   default** (D5) — they may stand alone, with no Shared or System file
   behind them.
@@ -256,10 +256,10 @@ makes them authoritative.
 The domains in this plan (`passwd`, `group`, `shells`, `hosts`,
 `mounts`) are non-overridable first-party global system settings —
 their files live in `/System/Configuration` and no Shared baseline
-ships. Overridable first-party examples (`system.config.xfb` and its
+ships. Overridable first-party examples (`system.xfb` and its
 kind) ship in `/Shared/Configuration` instead.
 
-### 5.1 `system.config.passwd.conf` / `system.config.group.conf`
+### 5.1 `system.passwd.conf` / `system.group.conf`
 
 At `/System/Configuration/` — machine state, not defaults (no Shared
 baseline ships).
@@ -300,7 +300,7 @@ group = {
 - `shells` is a plain list domain (§5.4), in the System scope like
   passwd; `chsh` validates against it.
 
-### 5.2 `system.config.hosts.conf`
+### 5.2 `system.hosts.conf`
 
 ```
 hosts = {
@@ -316,9 +316,9 @@ in the doc, not the examples.)
 
 The record per hostname keeps aliases beside addresses. Consumed by
 musl's name resolution (`lookup_name.c` hosts backend). The machine
-name itself lives in `system.config.network.conf` (§5.3, Q4).
+name itself lives in `system.network.conf` (§5.3, Q4).
 
-### 5.3 `system.config.network.conf`
+### 5.3 `system.network.conf`
 
 At `/System/Configuration/` — the machine's network identity; a home
 for `hostname` now and future network settings (Q4).
@@ -333,7 +333,7 @@ feeds `uname`/`gethostname`/toybox `hostname`. A kernel-side early
 name (before userland) stays a `kernel.conf`/cmdline matter, out of
 scope here.
 
-### 5.4 `system.config.shells.conf`
+### 5.4 `system.shells.conf`
 
 At `/System/Configuration/` (login policy — the valid shells accounts
 bind to, same tier as passwd).
@@ -345,7 +345,7 @@ shells = /System/Tools/sh, /bin/sh, …
 A plain list domain replacing the legacy `shells` line file; `chsh` +
 `su` validate against it.
 
-### 5.5 Mount table: `system.config.mounts.conf` (new "fstab")
+### 5.5 Mount table: `system.mounts.conf` (new "fstab")
 
 At `/System/Configuration/` (boot policy, D4).
 
@@ -426,16 +426,16 @@ System value — all covered by `tools/config_m1_test.c` (15 checks) and
 for the new order (0 failures) and the M0 suites still pass.
 
 ### M2 — Domains ship + defaults move to Shared
-`system.config.passwd.conf`, `system.config.group.conf` and the
+`system.passwd.conf`, `system.group.conf` and the
 `shells` domain land in `/System/Configuration` (identity, D4) and
 replace the Makefile legacy `printf`s (Makefile userland64); the
 `Admin` account re-expressed as the `admin` record. Separately, the
 staging target for *overridable* first-party settings changes per
-§5.0: `system.config.xfb` (today) and later first-party apps ship
+§5.0: `system.xfb` (today) and later first-party apps ship
 their overridable settings to `/Shared/Configuration` (their domain
 files' home by convention), not to `/System/Configuration` (config-design
 role change).
-Acceptance: `config read system.config.passwd user.admin.uid` → `0`;
+Acceptance: `config read system.passwd user.admin.uid` → `0`;
 images build without legacy `passwd`/`group`/`shells` files; Xfb's
 default domain reads from Shared and a System copy overrides it.
 
@@ -505,7 +505,7 @@ domain; shadow folding decided: hash lives in the user record (Q2).
 
 ### M5 — hosts / hostname — DONE
 The hosts + machine-identity domains ship in System scope
-(`system.config.hosts.conf`, `system.config.network.conf` staged by
+(`system.hosts.conf`, `system.network.conf` staged by
 `userland64`; the legacy `/System/Configuration/hosts` line file is
 gone). musl's hosts backend serves name resolution from the hosts
 domain: `third_party/musl-hosts.patch` (applied by the `musl64` rule
@@ -524,12 +524,12 @@ against the domain gets `getaddrinfo("localhost")` → `::1` +
 file exists.
 
 ### M6 — Mount table (init)
-`userland/init.c` mounts from the System `system.config.mounts.conf`.
+`userland/init.c` mounts from the System `system.mounts.conf`.
 Acceptance: boot mounts proc + devpts from the domain (edit the domain,
 reboot, observe); init logs a clear error on a malformed table.
 
 ### M6b — Mount table (toybox)
-toybox `mount`/`umount` consume the `system.config.mounts.conf` domain
+toybox `mount`/`umount` consume the `system.mounts.conf` domain
 (no-args `mount` = mount the table) in a follow-up after M6 (Q3).
 Acceptance: `mount` with no args prints the domain's entries; explicit
 mounts/umounts update the domain via the atomic writer.
@@ -547,12 +547,12 @@ third_party patches.
 ## 8. Questions (owner review, resolved)
 
 - **Q2 — Fold.** `password_hash` is a field of the user record in
-  `system.config.passwd.conf` (§5.1); no shadow domain exists.
+  `system.passwd.conf` (§5.1); no shadow domain exists.
 - **Q3 — M6 follow-up.** toybox `mount`/`umount` consume the mounts
   domain in M6b, after init (M6).
-- **Q4 — `system.config.network.conf`.** `hostname` lives in its own
+- **Q4 — `system.network.conf`.** `hostname` lives in its own
   network domain (§5.3), a home for future network settings.
-- **Q5 — Pin it.** `system.config.kernel` is a pinned single-file
+- **Q5 — Pin it.** `system.kernel` is a pinned single-file
   domain aliased to the ESP's `/System/ESP/kernel.conf`: no symlink, no
   user/shared layering (boot config is System-authoritative by nature),
   normal atomic writes in the ESP directory (config-design §12).

@@ -132,7 +132,7 @@ The genuinely useful UX from Extensions Manager was **sets**: define a
 known-good combination and switch wholesale. FNX gets this at the
 service level, in the config grammar:
 
-- Domain `system.config.system.startup` (system scope only), keys per service
+- Domain `system.system.startup` (system scope only), keys per service
   (`service.ntpd.enabled`, ...) plus named **sets**:
   `set.base = ["init", "compositor", "workspace"]`,
   `set.all = [...all services...]`.
@@ -213,7 +213,7 @@ a userland one (process + IPC), not an injected-code one.
   the designed ways to add hardware support; `kernel.conf` gates
   (§5.1) are the trim mechanism. A minimal loader is revisited only
   on the triggers of Q-X7.
-- **Q-X2 — Service sets: adopted.** `system.config.system.startup` (system
+- **Q-X2 — Service sets: adopted.** `system.system.startup` (system
   scope) with `service.*.enabled` keys and named sets (`set.base`,
   `set.all`, ...), read by `init` in declared order; a clean-boot
   switch is `kernel.conf` `services = base` — the Shift-at-boot

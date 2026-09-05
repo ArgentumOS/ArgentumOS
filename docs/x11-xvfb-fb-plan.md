@@ -178,13 +178,13 @@ verified (X client reads screen=640x480 depth=24).
   freedesktop gitlab, apply `third_party/x11/xserver-fnx.patch` (the
   archived FNX-local meson changes), then re-extract as above.
 
-## Update (decided): Xfb configuration via libconfig — `system.config.xfb`
+## Update (decided): Xfb configuration via libconfig — `system.xfb`
 
 Xfb takes **all** of its configuration from FNX libconfig; every
-command-line option has a config key, `system.config.xfb.<key>`, whose value is
+command-line option has a config key, `system.xfb.<key>`, whose value is
 the option's **default**. The real command line overrides the config (same
 precedence rule as `kernel.conf`, docs/config-design.md §12). Domain is
-`system.config.xfb` per the repo convention (`system.config.*`, §2 of
+`system.xfb` per the repo convention (`system.*`, §2 of
 config-design.md) — the `org.example.fnx.xfb.$OPT` naming sketch maps onto
 it unchanged.
 
@@ -198,7 +198,7 @@ FNX fork) therefore needs **no parser surgery**:
 1. Link FNX libconfig into the server (compile `userland/libconfig.c` +
    `include/libconfig.h` into `userland/xfb`, exactly like the `config` CLI
    build pattern).
-2. Before `ProcessCommandLine` runs, read the `system.config.xfb` domain and
+2. Before `ProcessCommandLine` runs, read the `system.xfb` domain and
    build a **config-derived argv prefix**: each set key becomes its
    canonical tokens via the arity table below.
 3. Run the normal parse over *config-argv + real argv*.
@@ -210,7 +210,7 @@ matters for accumulating options such as `-screen`/`+extension`, where two
 occurrences would add two screens/extensions instead of overriding.
 
 Scope resolution is the standard libconfig chain (user → shared → system),
-so a per-user `system.config.xfb` overrides the system default — for free.
+so a per-user `system.xfb` overrides the system default — for free.
 
 ### Key naming and types
 
@@ -286,12 +286,12 @@ token** `r`), `-retro`, `-terminate` (optional numeric delay), `-tst`,
   `libconfig.h` — the same two-file link the `config` CLI uses.
 - The config read runs once at startup, before `ProcessCommandLine`;
   failures (missing domain, parse error) degrade to "no config-derived
-  argv" and a serial/log notice — a broken `system.config.xfb.conf` must never
+  argv" and a serial/log notice — a broken `system.xfb.conf` must never
   stop X from starting.
 - Shipped defaults live in the system domain as
-  `userland/configuration/system.config.xfb.conf` (the dedicated home for
+  `userland/configuration/system.xfb.conf` (the dedicated home for
   shipped system-wide default configs; installed to
-  `/System/Configuration/system.config.xfb.conf` in the root image):
+  `/System/Configuration/system.xfb.conf` in the root image):
   `ac = true`, `nolisten = "tcp"`, `display = "0"`, matching today's
   `xfbdesk-init` launch; `screen` is deliberately unset so geometry keeps
   coming from `/dev/fb0` (see open items).
