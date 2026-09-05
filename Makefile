@@ -148,14 +148,17 @@ TOYBOX64_BIN  = third_party/toybox/toybox64
 .PHONY: userland64 musl64 dash64 toybox64 llvm-cxx
 
 musl64: $(MUSL64_SPECS)
-$(MUSL64_SPECS): third_party/musl-fsh.patch
+$(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch
 	cd third_party/musl && \
 		make clean >/dev/null 2>&1 || true && \
+		rm -f src/passwd/pwconf.c src/passwd/pwconf.h && \
 		git apply $(CURDIR)/third_party/musl-fsh.patch && \
+		git apply $(CURDIR)/third_party/musl-pwconf.patch && \
 		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
 		$(MAKE) && $(MAKE) install && \
-		git checkout -- .
+		git checkout -- . && \
+		rm -f src/passwd/pwconf.c src/passwd/pwconf.h
 
 # LLVM C++ runtimes (docs/cpp-toolchain-plan.md P0+P1): pinned fetch via
 # tools/fetch-llvm.sh, then a cmake build of static libc++/libc++abi/
@@ -307,6 +310,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o "$(ROOTFS64)/System/Tools/shm_leak_test"
 	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/shm_resize_test"
 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
+	$(MUSL64_CC) tools/config_m3_test.c -o "$(ROOTFS64)/System/Tools/config_m3_test"
 	$(MUSL64_CC) userland/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
 	$(MUSL64_CC) userland/bfsquery.c -o "$(ROOTFS64)/System/Tools/bfsquery"
 	$(MUSL64_CC) userland/bfsqtest.c -o "$(ROOTFS64)/System/Tools/bfsqtest"

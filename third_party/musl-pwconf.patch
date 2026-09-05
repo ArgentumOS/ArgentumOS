@@ -1,0 +1,987 @@
+diff --git a/src/passwd/getgr_a.c b/src/passwd/getgr_a.c
+index bfd79f35..b6daf9e8 100644
+--- a/src/passwd/getgr_a.c
++++ b/src/passwd/getgr_a.c
+@@ -3,6 +3,7 @@
+ #include <string.h>
+ #include <unistd.h>
+ #include "pwf.h"
++#include "pwconf.h"
+ #include "nscd.h"
+ 
+ static char *itoa(char *p, uint32_t x)
+@@ -26,7 +27,7 @@ int __getgr_a(const char *name, gid_t gid, struct group *gr, char **buf, size_t
+ 	*res = 0;
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+-	f = fopen("/System/Configuration/group", "rbe");
++	f = __pwconf_group_fopen();
+ 	if (!f) {
+ 		rv = errno;
+ 		goto done;
+diff --git a/src/passwd/getgrent.c b/src/passwd/getgrent.c
+index 6e9f09e1..1a7c43b4 100644
+--- a/src/passwd/getgrent.c
++++ b/src/passwd/getgrent.c
+@@ -1,4 +1,5 @@
+ #include "pwf.h"
++#include "pwconf.h"
+ 
+ static FILE *f;
+ static char *line, **mem;
+@@ -16,7 +17,7 @@ struct group *getgrent()
+ {
+ 	struct group *res;
+ 	size_t size=0, nmem=0;
+-	if (!f) f = fopen("/System/Configuration/group", "rbe");
++	if (!f) f = __pwconf_group_fopen();
+ 	if (!f) return 0;
+ 	__getgrent_a(f, &gr, &line, &size, &mem, &nmem, &res);
+ 	return res;
+diff --git a/src/passwd/getgrouplist.c b/src/passwd/getgrouplist.c
+index dd125495..444072cd 100644
+--- a/src/passwd/getgrouplist.c
++++ b/src/passwd/getgrouplist.c
+@@ -1,5 +1,6 @@
+ #define _GNU_SOURCE
+ #include "pwf.h"
++#include "pwconf.h"
+ #include <grp.h>
+ #include <string.h>
+ #include <limits.h>
+@@ -43,7 +44,7 @@ int getgrouplist(const char *user, gid_t gid, gid_t *groups, int *ngroups)
+ 	}
+ 	fclose(f);
+ 
+-	f = fopen("/System/Configuration/group", "rbe");
++	f = __pwconf_group_fopen();
+ 	if (!f && errno != ENOENT && errno != ENOTDIR)
+ 		goto cleanup;
+ 
+diff --git a/src/passwd/getpw_a.c b/src/passwd/getpw_a.c
+index c8ea4074..6ed4cc9c 100644
+--- a/src/passwd/getpw_a.c
++++ b/src/passwd/getpw_a.c
+@@ -3,6 +3,7 @@
+ #include <string.h>
+ #include <unistd.h>
+ #include "pwf.h"
++#include "pwconf.h"
+ #include "nscd.h"
+ 
+ static char *itoa(char *p, uint32_t x)
+@@ -27,7 +28,7 @@ int __getpw_a(const char *name, uid_t uid, struct passwd *pw, char **buf, size_t
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+ 
+-	f = fopen("/System/Configuration/passwd", "rbe");
++	f = __pwconf_passwd_fopen();
+ 	if (!f) {
+ 		rv = errno;
+ 		goto done;
+diff --git a/src/passwd/getpwent.c b/src/passwd/getpwent.c
+index 549b8aba..ed9e49d3 100644
+--- a/src/passwd/getpwent.c
++++ b/src/passwd/getpwent.c
+@@ -1,4 +1,5 @@
+ #include "pwf.h"
++#include "pwconf.h"
+ 
+ static FILE *f;
+ static char *line;
+@@ -16,7 +17,7 @@ weak_alias(setpwent, endpwent);
+ struct passwd *getpwent()
+ {
+ 	struct passwd *res;
+-	if (!f) f = fopen("/System/Configuration/passwd", "rbe");
++	if (!f) f = __pwconf_passwd_fopen();
+ 	if (!f) return 0;
+ 	__getpwent_a(f, &pw, &line, &size, &res);
+ 	return res;
+diff --git a/src/passwd/pwconf.c b/src/passwd/pwconf.c
+new file mode 100644
+index 00000000..1d45ac87
+--- /dev/null
++++ b/src/passwd/pwconf.c
+@@ -0,0 +1,854 @@
++/* pwconf.c — libc-internal reader for the FNX identity .conf domains.
++ *
++ * getpwnam/getpwuid and getgrnam/getgrgid read the record domains in
++ * /System/Configuration (system.config.passwd.conf,
++ * system.config.group.conf) instead of legacy colon files. Each record is rendered as a classic
++ * "name:passwd:uid:gid:gecos:home:shell" (passwd) or
++ * "name::gid:member1,member2" (group) line over an open_memstream
++ * FILE, so musl's existing line parsers work unchanged. Records are
++ * rendered sorted by uid (passwd) or gid (group).
++ *
++ * This is deliberately NOT userland/libconfig.c: libc cannot depend on
++ * userland code, and libconfig's scope machinery itself calls
++ * getpwuid. Grammar subset implemented here (read-only):
++ * docs/config-design.md §10 + §10.1 — flat and block values (group
++ * records), full-line comments, quoted strings with \escapes, integers,
++ * comma arrays. Input is bounded and failures leave errno set.
++ */
++
++#include <errno.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "pwf.h"
++#include "pwconf.h"
++
++#define PWCONF_MAX_FILE		(1024 * 1024)
++#define PWCONF_MAX_LINE		4096
++#define PWCONF_PASSWD_PATH	"/System/Configuration/system.config.passwd.conf"
++#define PWCONF_GROUP_PATH	"/System/Configuration/system.config.group.conf"
++
++/* one parsed key = raw right-hand-side text (verbatim: quotes and
++ * commas are kept; interpretation happens at render time) */
++struct pwentry {
++	char *key;
++	char *val;
++	struct pwentry *next;
++};
++
++/* ---- parser ------------------------------------------------------ */
++
++static void pwconf_entries_free(struct pwentry *e)
++{
++	while(e) {
++		struct pwentry *n = e->next;
++
++		free(e->key);
++		free(e->val);
++		free(e);
++		e = n;
++	}
++}
++
++/* parse whole-file text into an ordered list of full dotted keys with
++ * raw values; exact-key duplicates are last-wins keeping the first
++ * position. Returns 0 or an errno value (ENOMEM/EINVAL). */
++static int pwconf_parse(const char *text, size_t len, struct pwentry **out)
++{
++	struct pwentry *head = NULL, *tail = NULL;
++	char *stack[64];
++	int depth = 0;
++	size_t off = 0;
++	int rc = 0;
++
++	*out = NULL;
++	if(len >= 3 && (unsigned char)text[0] == 0xEF &&
++	   (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) {
++		off = 3;	/* skip a UTF-8 BOM */
++	}
++	while(off < len) {
++		char line[PWCONF_MAX_LINE + 1];
++		char *p, *eq, *keyend, *val, *full;
++		size_t n = 0, pl = 0;
++
++		while(off < len && text[off] != '\n' && n < PWCONF_MAX_LINE) {
++			line[n++] = text[off++];
++		}
++		if(off < len && text[off] == '\n') {
++			off++;
++		} else if(n == PWCONF_MAX_LINE && off < len) {
++			rc = EINVAL;	/* line too long */
++			break;
++		}
++		line[n] = '\0';
++		while(n && (line[n-1] == '\r' || line[n-1] == ' ' ||
++			    line[n-1] == '\t')) {
++			line[--n] = '\0';
++		}
++		p = line;
++		while(*p == ' ' || *p == '\t') {
++			p++;
++		}
++		if(!*p || *p == '#') {
++			continue;	/* empty or full-line comment */
++		}
++		if(*p == '}') {
++			char *q = p + 1;
++
++			while(*q == ' ' || *q == '\t') {
++				q++;
++			}
++			if(*q || !depth) {
++				rc = EINVAL;
++				break;
++			}
++			depth--;
++			continue;
++		}
++		eq = strchr(p, '=');
++		if(!eq) {
++			rc = EINVAL;
++			break;
++		}
++		keyend = eq;
++		while(keyend > p && (keyend[-1] == ' ' || keyend[-1] == '\t')) {
++			keyend--;
++		}
++		*keyend = '\0';
++		val = eq + 1;
++		while(*val == ' ' || *val == '\t') {
++			val++;
++		}
++		if(depth) {
++			struct pwentry *cur;
++
++			for(cur = head; cur; cur = cur->next) {
++				size_t dl = strlen(cur->key);
++
++				if(dl && !strncmp(cur->key, stack[depth-1], dl)
++				   && stack[depth-1][dl] == '.') {
++					rc = EINVAL;	/* nested scalar used
++							 * as container */
++					break;
++				}
++			}
++			if(rc) {
++				break;
++			}
++		}
++		pl = depth ? strlen(stack[depth-1]) + 1 : 0;
++		full = malloc(pl + strlen(p) + 1);
++		if(!full) {
++			rc = ENOMEM;
++			break;
++		}
++		if(depth) {
++			memcpy(full, stack[depth-1], pl - 1);
++			full[pl-1] = '.';
++			strcpy(full + pl, p);
++		} else {
++			strcpy(full, p);
++		}
++		if(*val == '{') {
++			/* group open: single-segment key; relative key == the
++			 * whole dotted rest is not allowed for blocks here */
++			char *q = val + 1;
++			int empty = 0;
++
++			if(strchr(p, '.')) {
++				free(full);
++				rc = EINVAL;
++				break;
++			}
++			while(*q == ' ' || *q == '\t') {
++				q++;
++			}
++			if(*q == '}') {
++				empty = 1;
++				q++;
++				while(*q == ' ' || *q == '\t') {
++					q++;
++				}
++				if(*q) {
++					free(full);
++					rc = EINVAL;
++					break;
++				}
++			} else if(*q) {
++				free(full);
++				rc = EINVAL;
++				break;
++			}
++			if(!empty) {
++				if(depth == 64) {
++					free(full);
++					rc = EINVAL;
++					break;
++				}
++				stack[depth++] = full;	/* container prefix */
++			} else {
++				free(full);
++			}
++			continue;
++		}
++		/* plain assignment */
++		{
++			struct pwentry *cur, *en;
++
++			/* reject "name used as both scalar and container" */
++			for(cur = head; cur; cur = cur->next) {
++				size_t fl = strlen(full);
++				size_t el = strlen(cur->key);
++
++				if(!strcmp(cur->key, full)) {
++					free(cur->val);
++					cur->val = strdup(val);
++					if(!cur->val) {
++						rc = ENOMEM;
++					}
++					free(full);
++					break;
++				}
++				if(el > fl && !strncmp(cur->key, full, fl) &&
++				   cur->key[fl] == '.') {
++					rc = EINVAL;
++					break;
++				}
++				if(el < fl && !strncmp(full, cur->key, el) &&
++				   full[el] == '.') {
++					rc = EINVAL;
++					break;
++				}
++			}
++			if(rc) {
++				free(full);
++				break;
++			}
++			if(cur && !rc) {
++				continue;
++			}
++			en = malloc(sizeof(*en));
++			if(!en) {
++				free(full);
++				rc = ENOMEM;
++				break;
++			}
++			en->val = strdup(val);
++			if(!en->val) {
++				free(full);
++				free(en);
++				rc = ENOMEM;
++				break;
++			}
++			en->key = full;
++			en->next = NULL;
++			if(tail) {
++				tail->next = en;
++			} else {
++				head = en;
++			}
++			tail = en;
++		}
++	}
++	if(depth) {
++		rc = EINVAL;	/* unbalanced '{' */
++	}
++	if(rc) {
++		pwconf_entries_free(head);
++		return rc;
++	}
++	*out = head;
++	return 0;
++}
++
++/* ---- value helpers ------------------------------------------------ */
++
++/* unquote a raw value; returns malloc'd content or NULL (ENOMEM).
++ * Bare tokens are copied verbatim; quoted values get \escapes applied. */
++static char *pwconf_unquote(const char *raw)
++{
++	char *out = malloc(strlen(raw) + 1);
++	size_t i, n = 0;
++	int quoted = 0;
++
++	if(!out) {
++		return NULL;
++	}
++	if(*raw == '"') {
++		quoted = 1;
++		raw++;
++	}
++	for(i = 0; raw[i]; i++) {
++		if(raw[i] == '\\' && quoted) {
++			switch(raw[++i]) {
++			case 'n': out[n++] = '\n'; break;
++			case 't': out[n++] = '\t'; break;
++			case '"': out[n++] = '"'; break;
++			case '\\': out[n++] = '\\'; break;
++			default:
++				if(!raw[i]) {
++					goto done;
++				}
++				out[n++] = raw[i];
++				break;
++			}
++		} else if(raw[i] == '"' && quoted) {
++			break;	/* closing quote */
++		} else {
++			out[n++] = raw[i];
++		}
++	}
++done:
++	out[n] = '\0';
++	return out;
++}
++
++/* integer value (raw int or quoted digits); returns 0 when absent or
++ * unparseable (then *out = 0) */
++static void pwconf_raw_int(const char *raw, unsigned *out)
++{
++	char *s;
++
++	if(!raw) {
++		*out = 0;
++		return;
++	}
++	while(*raw == ' ' || *raw == '\t') {
++		raw++;
++	}
++	if(*raw == '"') {
++		raw++;
++	}
++	s = (char *)raw;
++	*out = (unsigned)strtoul(s, &s, 10);
++}
++
++/* split a raw value on top-level commas into malloc'd member tokens
++ * (unquoted, whitespace-trimmed). Returns count (>= 0) or -1 (ENOMEM).
++ * Empty/absent raw -> 0 members, *toks = NULL. */
++static int pwconf_members(const char *raw, char ***toks)
++{
++	char *copy, *p, *q;
++	int count = 0, cap = 0, i;
++	char **arr = NULL;
++	char **na;
++
++	if(!raw || !*raw || !strcmp(raw, "\"\"")) {
++		*toks = NULL;
++		return 0;
++	}
++	copy = pwconf_unquote(raw);
++	if(!copy) {
++		return -1;
++	}
++	p = copy;
++	while(*p) {
++		char *tok = NULL;
++		size_t tl;
++
++		while(*p == ' ' || *p == '\t' || *p == ',') {
++			p++;
++		}
++		if(!*p) {
++			break;
++		}
++		q = p;
++		while(*q && *q != ',') {
++			q++;
++		}
++		tl = q - p;
++		while(tl && (p[tl-1] == ' ' || p[tl-1] == '\t')) {
++			tl--;
++		}
++		tok = malloc(tl + 1);
++		if(!tok) {
++			free(copy);
++			for(i = 0; i < count; i++) {
++				free(arr[i]);
++			}
++			free(arr);
++			return -1;
++		}
++		memcpy(tok, p, tl);
++		tok[tl] = '\0';
++		if(count == cap) {
++			cap = cap ? cap * 2 : 4;
++			na = realloc(arr, cap * sizeof(char *));
++			if(!na) {
++				free(tok);
++				free(copy);
++				for(i = 0; i < count; i++) {
++					free(arr[i]);
++				}
++				free(arr);
++				return -1;
++			}
++			arr = na;
++		}
++		arr[count++] = tok;
++		p = q;
++	}
++	free(copy);
++	if(!count) {
++		free(arr);
++		arr = NULL;
++	}
++	*toks = arr;
++	return count;
++}
++
++/* ---- record extraction -------------------------------------------- */
++
++struct pwrec {
++	char *name;		/* record name (e.g. "admin") */
++	struct pwentry *fields;	/* container.name.* entries */
++	int nfields;
++	struct pwrec *next;
++};
++
++struct pwdb {
++	struct pwrec *recs;	/* records of the container, source order */
++	int nrecs;
++};
++
++static struct pwrec *pwdb_find(struct pwdb *db, const char *name)
++{
++	struct pwrec *r;
++
++	for(r = db->recs; r; r = r->next) {
++		if(!strcmp(r->name, name)) {
++			return r;
++		}
++	}
++	return NULL;
++}
++
++/* value of a field of a record, or NULL when absent */
++static const char *pwrec_field(const struct pwrec *r, const char *field)
++{
++	struct pwentry *e;
++	size_t fl = strlen(field);
++
++	for(e = r->fields; e; e = e->next) {
++		if(strlen(e->key) == fl && !strcmp(e->key, field)) {
++			return e->val;
++		}
++	}
++	return NULL;
++}
++
++/* collect records of the top-level container `container` (e.g. "user")
++ * from the parsed entries; the container's fields may be stored flat
++ * (container.rec.field) or nested. Returns 0 / errno. */
++static int pwdb_build(struct pwdb *db, struct pwentry *head,
++		      const char *container)
++{
++	size_t cl = strlen(container);
++	struct pwentry *e;
++
++	db->recs = NULL;
++	db->nrecs = 0;
++	for(e = head; e; e = e->next) {
++		const char *rest;
++		const char *dot;
++		const char *field;
++		size_t rl, frest;
++		struct pwrec *r;
++		struct pwentry *fe;
++
++		if(strncmp(e->key, container, cl) || e->key[cl] != '.') {
++			continue;
++		}
++		rest = e->key + cl + 1;
++		dot = strchr(rest, '.');
++		if(!dot) {
++			continue;	/* a bare container leaf */
++		}
++		rl = dot - rest;
++		field = dot + 1;
++		r = pwdb_find(db, rest);	/* rest[:rl] NUL-free compare */
++		if(!r || strcmp(r->name, rest)) {
++			/* pwdb_find compared the full rest; record names
++			 * are exactly rl chars: match by prefix */
++			struct pwrec *nr;
++			struct pwrec *cur;
++
++			for(cur = db->recs; cur; cur = cur->next) {
++				if(strlen(cur->name) == rl &&
++				   !strncmp(cur->name, rest, rl)) {
++					r = cur;
++					break;
++				}
++			}
++			if(!r) {
++				nr = calloc(1, sizeof(*nr));
++				if(!nr) {
++					return ENOMEM;
++				}
++				nr->name = strndup(rest, rl);
++				if(!nr->name) {
++					free(nr);
++					return ENOMEM;
++				}
++				nr->next = NULL;
++				if(db->recs) {
++					struct pwrec *t = db->recs;
++
++					while(t->next) {
++						t = t->next;
++					}
++					t->next = nr;
++				} else {
++					db->recs = nr;
++				}
++				db->nrecs++;
++				r = nr;
++			}
++		}
++		/* add/replace the field entry */
++		frest = strlen(field);
++		for(fe = r->fields; fe; fe = fe->next) {
++			if(!strcmp(fe->key, field)) {
++				break;
++			}
++		}
++		if(fe) {
++			char *nv = strdup(e->val);
++
++			if(!nv) {
++				return ENOMEM;
++			}
++			free(fe->val);
++			fe->val = nv;
++		} else {
++			fe = calloc(1, sizeof(*fe));
++			if(!fe) {
++				return ENOMEM;
++			}
++			fe->key = strdup(field);
++			if(!fe->key) {
++				free(fe);
++				return ENOMEM;
++			}
++			fe->val = strdup(e->val);
++			if(!fe->val) {
++				free(fe->key);
++				free(fe);
++				return ENOMEM;
++			}
++			if(r->fields) {
++				struct pwentry *t = r->fields;
++
++				while(t->next) {
++					t = t->next;
++				}
++				t->next = fe;
++			} else {
++				r->fields = fe;
++			}
++			r->nfields++;
++		}
++	}
++	return 0;
++}
++
++static void pwdb_free(struct pwdb *db)
++{
++	struct pwrec *r = db->recs;
++
++	while(r) {
++		struct pwrec *n = r->next;
++
++		pwconf_entries_free(r->fields);
++		free(r->name);
++		free(r);
++		r = n;
++	}
++	db->recs = NULL;
++	db->nrecs = 0;
++}
++
++/* ---- rendering ---------------------------------------------------- */
++
++struct recidx {
++	struct pwrec *rec;
++	unsigned key;	/* uid or gid for sorting */
++};
++
++static int recidx_cmp(const void *a, const void *b)
++{
++	const struct recidx *ra = a, *rb = b;
++
++	if(ra->key != rb->key) {
++		return ra->key < rb->key ? -1 : 1;
++	}
++	return strcmp(ra->rec->name, rb->rec->name);
++}
++
++/* Render the passwd domain. All records of the `user` container, sorted
++ * by uid. Returns an open_memstream FILE positioned at the start (the
++ * buffer is freed when the stream is closed), or NULL with errno set
++ * when the domain file cannot be read. */
++FILE *__pwconf_passwd_fopen(void)
++{
++	struct pwdb db = { NULL, 0 };
++	struct pwentry *entries = NULL;
++	struct recidx *idx = NULL;
++	FILE *f = NULL;
++	char *buf = NULL;
++	size_t len = 0;
++	FILE *in;
++	char *text = NULL;
++	long n;
++	int nrec = 0, i;
++
++	in = fopen(PWCONF_PASSWD_PATH, "rbe");
++	if(!in) {
++		return NULL;	/* errno from fopen (ENOENT etc.) */
++	}
++	if(fseek(in, 0, SEEK_END) || (n = ftell(in)) < 0 ||
++	   (unsigned long)n > PWCONF_MAX_FILE) {
++		errno = EFBIG;
++		goto out;
++	}
++	rewind(in);
++	text = malloc((size_t)n + 1);
++	if(!text) {
++		errno = ENOMEM;
++		goto out;
++	}
++	if(fread(text, 1, (size_t)n, in) != (size_t)n) {
++		errno = EIO;
++		goto out;
++	}
++	text[n] = '\0';
++	if(pwconf_parse(text, (size_t)n, &entries) ||
++	   pwdb_build(&db, entries, "user")) {
++		errno = EIO;
++		goto out;
++	}
++	nrec = db.nrecs;
++	idx = calloc(nrec ? (size_t)nrec : 1, sizeof(*idx));
++	if(!idx) {
++		errno = ENOMEM;
++		goto out;
++	}
++	for(i = 0; i < nrec; i++) {
++		struct pwrec *r;
++		int k;
++
++		for(k = 0, r = db.recs; k < i; k++) {
++			r = r->next;
++		}
++		idx[i].rec = r;
++		pwconf_raw_int(pwrec_field(r, "uid"), &idx[i].key);
++	}
++	qsort(idx, (size_t)nrec, sizeof(*idx), recidx_cmp);
++
++	f = open_memstream(&buf, &len);
++	if(!f) {
++		errno = ENOMEM;
++		goto out;
++	}
++	for(i = 0; i < nrec; i++) {
++		struct pwrec *r = idx[i].rec;
++		char *passwd, *gecos, *dir, *shell;
++		unsigned uid, gid;
++
++		passwd = pwconf_unquote(pwrec_field(r, "password") ?
++					pwrec_field(r, "password") : "");
++		gecos = pwconf_unquote(pwrec_field(r, "gecos") ?
++				       pwrec_field(r, "gecos") : "");
++		dir = pwconf_unquote(pwrec_field(r, "home") ?
++				     pwrec_field(r, "home") : "");
++		shell = pwconf_unquote(pwrec_field(r, "shell") ?
++				       pwrec_field(r, "shell") : "");
++		if(!passwd || !gecos || !dir || !shell) {
++			free(passwd);
++			free(gecos);
++			free(dir);
++			free(shell);
++			errno = ENOMEM;
++			fclose(f);
++			f = NULL;
++			goto out;
++		}
++		pwconf_raw_int(pwrec_field(r, "uid"), &uid);
++		pwconf_raw_int(pwrec_field(r, "gid"), &gid);
++		fprintf(f, "%s:%s:%u:%u:%s:%s:%s\n",
++			r->name, passwd, uid, gid, gecos, dir, shell);
++		free(passwd);
++		free(gecos);
++		free(dir);
++		free(shell);
++	}
++	/* open_memstream streams are write-only in musl: copy the rendered
++	 * text into a self-contained fmemopen stream (buffer embedded in the
++	 * FILE allocation, freed at fclose) so the line parsers can read it
++	 * back without leaking the buffer. */
++	if(fflush(f) || ferror(f)) {
++		fclose(f);
++		f = NULL;
++		errno = EIO;
++		goto out;
++	}
++	{
++		FILE *rf = fmemopen(NULL, len, "w+");
++
++		if(!rf) {
++			errno = ENOMEM;
++			fclose(f);
++			f = NULL;
++			goto out;
++		}
++		if(fwrite(buf, 1, len, rf) != len ||
++		   fflush(rf) || ferror(rf)) {
++			fclose(rf);
++			fclose(f);
++			f = NULL;
++			errno = EIO;
++			goto out;
++		}
++		rewind(rf);
++		fclose(f);	/* frees the memstream buffer */
++		f = rf;
++	}
++out:
++	free(text);
++	pwconf_entries_free(entries);
++	pwdb_free(&db);
++	free(idx);
++	if(in) {
++		fclose(in);
++	}
++	return f;
++}
++
++/* Render the group domain. All records of the `group` container, sorted
++ * by gid. Same FILE contract as __pwconf_passwd_fopen. */
++FILE *__pwconf_group_fopen(void)
++{
++	struct pwdb db = { NULL, 0 };
++	struct pwentry *entries = NULL;
++	struct recidx *idx = NULL;
++	FILE *f = NULL;
++	char *buf = NULL;
++	size_t len = 0;
++	FILE *in;
++	char *text = NULL;
++	long n;
++	int nrec = 0, i;
++
++	in = fopen(PWCONF_GROUP_PATH, "rbe");
++	if(!in) {
++		return NULL;	/* errno from fopen (ENOENT etc.) */
++	}
++	if(fseek(in, 0, SEEK_END) || (n = ftell(in)) < 0 ||
++	   (unsigned long)n > PWCONF_MAX_FILE) {
++		errno = EFBIG;
++		goto out;
++	}
++	rewind(in);
++	text = malloc((size_t)n + 1);
++	if(!text) {
++		errno = ENOMEM;
++		goto out;
++	}
++	if(fread(text, 1, (size_t)n, in) != (size_t)n) {
++		errno = EIO;
++		goto out;
++	}
++	text[n] = '\0';
++	if(pwconf_parse(text, (size_t)n, &entries) ||
++	   pwdb_build(&db, entries, "group")) {
++		errno = EIO;
++		goto out;
++	}
++	nrec = db.nrecs;
++	idx = calloc(nrec ? (size_t)nrec : 1, sizeof(*idx));
++	if(!idx) {
++		errno = ENOMEM;
++		goto out;
++	}
++	for(i = 0; i < nrec; i++) {
++		struct pwrec *r;
++		int k;
++
++		for(k = 0, r = db.recs; k < i; k++) {
++			r = r->next;
++		}
++		idx[i].rec = r;
++		pwconf_raw_int(pwrec_field(r, "gid"), &idx[i].key);
++	}
++	qsort(idx, (size_t)nrec, sizeof(*idx), recidx_cmp);
++
++	f = open_memstream(&buf, &len);
++	if(!f) {
++		errno = ENOMEM;
++		goto out;
++	}
++	for(i = 0; i < nrec; i++) {
++		struct pwrec *r = idx[i].rec;
++		char **members = NULL;
++		int nm, j;
++		unsigned gid;
++
++		nm = pwconf_members(pwrec_field(r, "members"), &members);
++		if(nm < 0) {
++			errno = ENOMEM;
++			fclose(f);
++			f = NULL;
++			goto out;
++		}
++		pwconf_raw_int(pwrec_field(r, "gid"), &gid);
++		fprintf(f, "%s::%u:", r->name, gid);
++		for(j = 0; j < nm; j++) {
++			fprintf(f, "%s%s", j ? "," : "", members[j]);
++			free(members[j]);
++		}
++		free(members);
++		fprintf(f, "\n");
++	}
++	/* open_memstream streams are write-only in musl: copy the rendered
++	 * text into a self-contained fmemopen stream (buffer embedded in the
++	 * FILE allocation, freed at fclose) so the line parsers can read it
++	 * back without leaking the buffer. */
++	if(fflush(f) || ferror(f)) {
++		fclose(f);
++		f = NULL;
++		errno = EIO;
++		goto out;
++	}
++	{
++		FILE *rf = fmemopen(NULL, len, "w+");
++
++		if(!rf) {
++			errno = ENOMEM;
++			fclose(f);
++			f = NULL;
++			goto out;
++		}
++		if(fwrite(buf, 1, len, rf) != len ||
++		   fflush(rf) || ferror(rf)) {
++			fclose(rf);
++			fclose(f);
++			f = NULL;
++			errno = EIO;
++			goto out;
++		}
++		rewind(rf);
++		fclose(f);	/* frees the memstream buffer */
++		f = rf;
++	}
++out:
++	free(text);
++	pwconf_entries_free(entries);
++	pwdb_free(&db);
++	free(idx);
++	if(in) {
++		fclose(in);
++	}
++	return f;
++}
+diff --git a/src/passwd/pwconf.h b/src/passwd/pwconf.h
+new file mode 100644
+index 00000000..a1cbcfbf
+--- /dev/null
++++ b/src/passwd/pwconf.h
+@@ -0,0 +1,21 @@
++/* pwconf.h — libc-internal .conf-domain reader for the FNX identity
++ * records (docs/system-config-files-plan.md M3).
++ *
++ * getpwnam/getpwuid and getgrnam/getgrgid consume the record domains
++ * in /System/Configuration (system.config.passwd.conf /
++ * system.config.group.conf) instead of legacy colon files. Each record
++ * is rendered as a classic "name:passwd:uid:gid:..." line over a
++ * self-contained fmemopen stream, so the existing musl line parsers
++ * (__getpwent_a / __getgrent_a) work unchanged. Rendering sorts
++ * records by uid (passwd) / gid (group).
++ */
++
++#ifndef PWCONF_H
++#define PWCONF_H
++
++#include <stdio.h>
++
++hidden FILE *__pwconf_passwd_fopen(void);
++hidden FILE *__pwconf_group_fopen(void);
++
++#endif
