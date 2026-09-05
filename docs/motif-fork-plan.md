@@ -33,9 +33,16 @@ guide for the FNX-native shell we build later, on our own toolkit.
 
 ## 2. The fork target and substrate
 
-- Fork **Open Motif 2.3.x** (libXm, LGPL-2.1). Vendor → mechanical copy →
-  rename → plain-Makefile build against the X prefix, per the Xfb/XBFS
-  house pattern.
+- **Upstream: `https://github.com/thentenaar/motif`** (LGPL-2.1) — the
+  actively-maintained continuation fork of Open Motif, chosen over the
+  abandoned SourceForge upstream (no activity 2+ years, dead admins, bug
+  tracker gone). It already carries modernization the plan would
+  otherwise have to re-derive: basic Unicode around XmString, Xcursor
+  (SVG/PNG cursors), Xft, JPEG/PNG, Xrandr/Xinerama, transparent Xdnd,
+  optional GL drawing-area widget; autotools build (`autogen.sh &&
+  make` — no imake), CI, and a `check`-based test suite. Vendor →
+  mechanical copy → rename → plain-Makefile build against the X prefix,
+  per the Xfb/XBFS house pattern.
 - **Xt (libXt) comes from X.org, stock first**: libXm is built against
   the X toolkit intrinsics, which we have not vendored yet. Add stock
   libXt (and libXmu as needed) to `.build/x11-prefix` like any other X
@@ -101,8 +108,8 @@ order:
   headline), MTK / Motive (own-identity, heritage in the backstory).
 - Where it lives in the tree (third_party/motif? userland/motif? the
   Xfb/userland pattern).
-- Vendor base: Open Motif 2.3.8 release tarball vs the Motif project's
-  SCM head.
+- Vendor base: **`thentenaar/motif` master** (decided) — the maintained
+  continuation fork; pin a commit at M0.
 - Whether Xt eventually joins the fork (doctrine lean: yes, later).
 - Sample-app set for the bring-up milestone (Motif's own demos vs a
   minimal FNX-native sample).
