@@ -6,6 +6,7 @@
  */
 
 #include <fnx/fs.h>
+#include <fnx/xbfs.h>
 #include <fnx/filesystems.h>
 #include <fnx/process.h>
 #include <fnx/stat.h>
@@ -34,6 +35,7 @@ int sys_fsync(unsigned int ufd)
 	}
 	sync_superblocks(i->dev);
 	sync_inodes(i->dev);
+	xbfs_flush_all();
 	sync_buffers(i->dev);
 	return 0;
 }

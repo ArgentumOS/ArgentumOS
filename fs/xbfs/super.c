@@ -149,6 +149,7 @@ static void xbfs_free_bitmap(struct superblock *sb)
 
 static void xbfs_release_superblock(struct superblock *sb)
 {
+	xbfs_unreg_sb(sb);
 	struct buffer *buf;
 	__u64 i;
 
@@ -190,6 +191,12 @@ static int xbfs_write_superblock(struct superblock *sb)
 	__u64 l;
 
 	superblock_lock(sb);
+
+	/* close any pending group-commit batch before the drain: its log
+	 * entries + real blocks must be published + synced first, or the
+	 * drain would zero the log over transactions that were never made
+	 * durable */
+	xbfs_log_flush(sb);
 
 	/* empty the log: by the time the superblock is synced every
 	 * committed transaction is already applied + synced, so the log
@@ -299,7 +306,13 @@ static int xbfs_write_superblock(struct superblock *sb)
  * between the two sector writes can tear only the later one; the mount
  * (xbfs_read_superblock) takes the valid copy with the highest
  * sequence. */
-int xbfs_sb_dual_write(struct superblock *sb, struct buffer *buf)
+/* stamp both superblock copies + write the buffer. With flush=1 the
+ * write is barriered by a full sync_buffers (the tear-atomic publish
+ * used by the wrap and the write-through path); with flush=0 the
+ * caller owns the barrier (the group-commit flush selectively syncs
+ * the sb + bitmap BEFORE the real metadata blocks, which are already
+ * dirty in the cache). */
+static void xbfs_sb_dual_stamp(struct superblock *sb, struct buffer *buf)
 {
 	unsigned char *a, *b;
 	__u64 seq;
@@ -322,7 +335,18 @@ int xbfs_sb_dual_write(struct superblock *sb, struct buffer *buf)
 	*(__u32 *)(a + XBFS_SB_CKSUM_OFF) = cksum;
 	*(__u32 *)(b + XBFS_SB_CKSUM_OFF) = cksum;
 	bwrite(buf);
+}
+
+int xbfs_sb_dual_write(struct superblock *sb, struct buffer *buf)
+{
+	xbfs_sb_dual_stamp(sb, buf);
 	sync_buffers(sb->dev);
+	return 0;
+}
+
+int xbfs_sb_dual_write_nosync(struct superblock *sb, struct buffer *buf)
+{
+	xbfs_sb_dual_stamp(sb, buf);
 	return 0;
 }
 
@@ -534,6 +558,7 @@ static int xbfs_read_superblock(__dev_t dev, struct superblock *sb)
 		sb->state |= SUPERBLOCK_DIRTY;
 	}
 	brelse(buf);
+	xbfs_reg_sb(sb);
 	superblock_unlock(sb);
 	return 0;
 }

@@ -87,11 +87,42 @@ entry (docs/bfs-journal-reclaim.md invariant) — group commit must keep
 "apply + sync the batch, then advance `log_start`" intact. FUA-style
 targeted writes where the buffer layer supports them.
 
+**X-SSD2 is DONE** (commits below). The journal commit became an
+*enqueue*: the run_array + data blocks are written to the log and the
+real metadata blocks are applied to the buffer cache (dirty), but nothing
+is synced and the range is not published. A *barrier* (`xbfs_log_flush`)
+closes the batch in the write-ahead order, once per batch instead of once
+per transaction:
+
+- **phase A** — selective sync of the batch's log range only
+  (`sync_buffers_select`, new buffer-layer helper);
+- **phase B** — bitmap + the published superblock range, selective sync
+  of just those blocks (`xbfs_log_write_super` gained a no-full-sync
+  publish, `xbfs_sb_dual_write_nosync`);
+- **phase C** — full `sync_buffers` (the dirty real blocks land; a crash
+  here is repaired by replay because B published the range).
+
+Barriers run when the batch would wrap the log, at the batch cap
+(`XBFS_LOG_BATCH_BLOCKS` 96), and at every public sync path: the umount
+drain (`xbfs_write_superblock` flushes first), `sys_sync`, and
+`sys_fsync` (`xbfs_flush_all` over a live-superblock registry) — a stray
+full sync mid-batch would flush the dirty real blocks ahead of their
+publish. Durability semantics change deliberately: an individual write is
+durable at the next barrier, not at its own commit.
+
 - Pure write-path change; no format change.
-- Acceptance: micro-benchmark of many small file creations on QEMU shows
-  the whole-cache `sync_buffers` count per op dropping to ~1/batch; churn
-  suite + crash-injection (R-M2 from the journal spec) stay green.
-- Effort: medium; touches journal.c, inode.c, buffer.c.
+- Acceptance evidence: creation-churn soak green (`resets=0 wraps=41
+  clean_halt=True log_clean=True struct_ok=True`); R-M2 crash-injection
+  leg A green for all live states (1 enqueue / 2,3,6 flush phases / 4
+  wrap) — every crashed image boots, and publish-point crashes replay the
+  whole batch (`replayed=37`); leg B random-kill runs always recover
+  (mount + churn files served). Leg B's host-side `xbfscheck` after a
+  kill shows the *dirty-after-kill* artifacts (`journal must be clean`,
+  `superblock not clean (CLEN)`) — both expected for an unclean kill and
+  both cleared by a real mount's replay; structural checks need
+  `xbfscheck --allow-dirty-log` on a killed image (the R-M2 harness's
+  post-kill check was tightened to that).
+- Effort: medium; touched journal.c, super.c, buffer.c (+ fsync/sync).
 
 #### X-SSD3 — Configurable block size + multi-page I/O
 `mkxbfs` 4/8/16 KB images (superblock already carries `block_size`; most

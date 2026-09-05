@@ -292,7 +292,7 @@ static int xbfs_log_write_bitmap(struct superblock *sb)
 	return 0;
 }
 
-static int xbfs_log_write_super(struct superblock *sb)
+static int xbfs_log_write_super(struct superblock *sb, int flush)
 {
 	struct buffer *buf;
 	struct xbfs_superblock *bsb;
@@ -305,7 +305,11 @@ static int xbfs_log_write_super(struct superblock *sb)
 	bsb->log_start = sb->u.xbfs.log_start;
 	bsb->log_end = sb->u.xbfs.log_end;
 	bsb->flags = sb->u.xbfs.flags;
-	xbfs_sb_dual_write(sb, buf);
+	if(flush) {
+		xbfs_sb_dual_write(sb, buf);
+	} else {
+		xbfs_sb_dual_write_nosync(sb, buf);
+	}
 	/* the on-disk superblock now holds new log positions (a pending
 	 * transaction): mark the in-memory sb dirty so the next
 	 * sync_superblocks() drains the log (power-off / sync). Without
@@ -357,6 +361,133 @@ static void xbfs_crash_inject(int state)
 	}
 }
 
+/*
+ * The group-commit barrier. The pending batch (entries written + real
+ * blocks applied to the cache, none of it synced) is made durable in
+ * three ordered phases, mirroring the write-ahead order of a single
+ * commit but once per BATCH:
+ *
+ *   A: sync ONLY the batch's log entries (selective flush of the log
+ *      range) - replay can restore the batch if we crash later;
+ *   B: write the bitmap + publish the batch range in the on-disk
+ *      superblock (selective flush of sb + bitmap blocks only). The
+ *      real metadata blocks are ALREADY dirty in the cache but are NOT
+ *      flushed here, so a crash in B leaves them old on disk and the
+ *      published log repairs them;
+ *   C: full sync - the real metadata blocks land. A crash here is
+ *      repaired by replay (the batch range was published in B).
+ *
+ * A stray full sync_buffers() between the enqueues and this barrier
+ * would flush the dirty real blocks before the publish, so every public
+ * sync path (xbfs_write_superblock drain, xbfs_log_sync) closes the
+ * batch first.
+ */
+#define XBFS_LOG_BATCH_BLOCKS	96	/* close the batch after this many
+					 * pending log blocks (bounds the
+					 * dirty-cache footprint + the
+					 * durability latency) */
+
+static void xbfs_log_flush_locked(struct superblock *sb)
+{
+	__u64 first, len;
+
+	if(!sb->u.xbfs.log_pending) {
+		return;
+	}
+	first = sb->u.xbfs.log_start;
+	len = sb->u.xbfs.log_pend_blocks;
+
+	sb->u.xbfs.log_since_reset += len;
+	if(sb->u.xbfs.log_since_reset > sb->u.xbfs.log_peak) {
+		sb->u.xbfs.log_peak = sb->u.xbfs.log_since_reset;
+	}
+
+	/* phase A: the batch's entries on disk (selective) */
+	sync_buffers_select(sb->dev, xbfs_log_block(sb, first),
+			    (__blk_t)len, sb->u.xbfs.block_size);
+	xbfs_crash_inject(2);
+
+	/* phase B: bitmap + published superblock (selective) */
+	sb->u.xbfs.flags = XBFS_SUPER_DIRTY;
+	xbfs_log_write_bitmap(sb);
+	/* log_end already points past the batch; publish log_start */
+	xbfs_log_write_super(sb, 0);
+	sync_buffers_select(sb->dev, 0,
+			    1 + (__blk_t)sb->u.xbfs.bitmap_blocks,
+			    sb->u.xbfs.block_size);
+	xbfs_crash_inject(3);
+
+	/* phase C: the real metadata blocks (full sync) */
+	sync_buffers(sb->dev);
+	xbfs_crash_inject(6);
+
+	xbfs_flush_discards(sb);
+
+	sb->u.xbfs.log_pending = 0;
+	sb->u.xbfs.log_pend_blocks = 0;
+}
+
+/* exported: close the pending batch (used by the drain + sync paths) */
+void xbfs_log_flush(struct superblock *sb)
+{
+	xbfs_log_lock(sb);
+	xbfs_log_flush_locked(sb);
+	xbfs_log_unlock(sb);
+}
+
+/* exported: flush a pending batch, then a full device sync (fsync/sync
+ * on a device with an open xbfs journal) */
+void xbfs_log_sync(struct superblock *sb)
+{
+	xbfs_log_lock(sb);
+	xbfs_log_flush_locked(sb);
+	xbfs_log_unlock(sb);
+	sync_buffers(sb->dev);
+}
+
+/* live-xbfs registry so the generic fsync()/sync() paths can close any
+ * pending group-commit batch before a device-wide buffer sync (a full
+ * sync_buffers() mid-batch would flush the dirty real blocks ahead of
+ * the batch's publish). Mounts/umounts register/unregister. */
+#define XBFS_MAX_LIVE	8
+static struct superblock *xbfs_live[XBFS_MAX_LIVE];
+
+void xbfs_reg_sb(struct superblock *sb)
+{
+	int i;
+
+	for(i = 0; i < XBFS_MAX_LIVE; i++) {
+		if(!xbfs_live[i]) {
+			xbfs_live[i] = sb;
+			return;
+		}
+	}
+}
+
+void xbfs_unreg_sb(struct superblock *sb)
+{
+	int i;
+
+	for(i = 0; i < XBFS_MAX_LIVE; i++) {
+		if(xbfs_live[i] == sb) {
+			xbfs_live[i] = NULL;
+			return;
+		}
+	}
+}
+
+/* close the pending batch on every live xbfs journal (fsync/sync) */
+void xbfs_flush_all(void)
+{
+	int i;
+
+	for(i = 0; i < XBFS_MAX_LIVE; i++) {
+		if(xbfs_live[i] && xbfs_live[i]->u.xbfs.log_pending) {
+			xbfs_log_flush(xbfs_live[i]);
+		}
+	}
+}
+
 int xbfs_log_commit(struct superblock *sb)
 {
 	struct buffer *buf;
@@ -389,7 +520,7 @@ int xbfs_log_commit(struct superblock *sb)
 		       __FUNCTION__, n, (unsigned long)log_size);
 		sb->u.xbfs.flags = XBFS_SUPER_DIRTY;
 		xbfs_log_write_bitmap(sb);
-		xbfs_log_write_super(sb);
+		xbfs_log_write_super(sb, 1);
 		for(i = 0; i < n; i++, bp++, dp++) {
 			if(!(buf = bread(sb->dev, *bp, sb->u.xbfs.block_size))) {
 				continue;
@@ -405,20 +536,23 @@ int xbfs_log_commit(struct superblock *sb)
 		return 0;
 	}
 
-	xbfs_crash_inject(1);
-	if((__u64)(sb->u.xbfs.log_end + n + 1) > log_size) {
-		/* wrap: the log holds only the previous transaction's entry
-		 * (commit publishes log_start = entry_pos, D2), and that
-		 * entry was applied and synced by its own commit's step (3)
-		 * — so the whole log is dead and the new entry can go at
-		 * block 0. CRASH-ATOMICITY: publish the empty log positions
-		 * (0,0) on disk BEFORE the new entry lands over the old
-		 * blocks. A kill after this superblock write leaves an
-		 * empty log (no replay); a kill before it leaves the old
-		 * entry, which re-replays idempotently (already applied and
-		 * synced). No extent zeroing or full-device sync is needed:
-		 * stale entries outside the published range are never
-		 * walked by replay. */
+	/* make room: close the pending batch when this entry would wrap
+	 * the log or exceed the batch cap */
+	for(;;) {
+		if((__u64)(sb->u.xbfs.log_end + n + 1) <= log_size) {
+			break;
+		}
+		if(sb->u.xbfs.log_pending) {
+			xbfs_log_flush_locked(sb);
+			continue;
+		}
+		/* wrap: the log is full of applied + published history (the
+		 * flush closed the previous batch); publish the empty log
+		 * positions (0,0) BEFORE the new entry lands over the old
+		 * blocks. CRASH-ATOMICITY: a kill after this superblock
+		 * write leaves an empty log (no replay); a kill before it
+		 * leaves the previous published range, which re-replays
+		 * idempotently (already applied + synced). */
 		sb->u.xbfs.log_since_reset += (n + 1);
 		if(sb->u.xbfs.log_since_reset > sb->u.xbfs.log_peak) {
 			sb->u.xbfs.log_peak = sb->u.xbfs.log_since_reset;
@@ -428,16 +562,27 @@ int xbfs_log_commit(struct superblock *sb)
 		sb->u.xbfs.log_since_reset = 0;
 		sb->u.xbfs.log_start = 0;
 		sb->u.xbfs.log_end = 0;
-		xbfs_log_write_super(sb);
+		xbfs_log_write_super(sb, 1);
 		xbfs_crash_inject(4);
 		wrapped = 1;
+		break;
+	}
+	if(sb->u.xbfs.log_pending &&
+	   (sb->u.xbfs.log_pend_blocks + n + 1 > XBFS_LOG_BATCH_BLOCKS)) {
+		xbfs_log_flush_locked(sb);
 	}
 
 	entry_pos = sb->u.xbfs.log_end;
+	if(!sb->u.xbfs.log_pending) {
+		sb->u.xbfs.log_start = entry_pos;
+		sb->u.xbfs.log_pending = 1;
+	}
 
-	/* (1) write the run_array block + the data blocks to the log.
+	xbfs_crash_inject(1);
+
+	/* write the run_array block + the data blocks to the log.
 	 * NOTE: the loops below deliberately walk POINTERS (bp/dp) rather
-	 * than indexing tx_blocks[i]/tx_data[i] — gcc -O2 miscompiles the
+	 * than indexing tx_blocks[i]/tx_data[i] - gcc -O2 miscompiles the
 	 * indexed forms here (a recurring FNX -O2 bounds miscompile),
 	 * shifting the induction variable to 1..n and reading/writing
 	 * one past the arrays. */
@@ -476,31 +621,11 @@ int xbfs_log_commit(struct superblock *sb)
 			bwrite(buf);
 		}
 	}
-	sync_buffers(sb->dev);
-		/* the log entry is on disk now */
-	xbfs_crash_inject(wrapped ? 5 : 2);
 
-	/* (2) publish the tight single-entry range [entry_pos, log_end)
-	 * and write the on-disk superblock and the bitmap BEFORE the real
-	 * blocks flush: a crash between (1) and (3) leaves the log
-	 * covering the transaction, so replay can repair the blocks; the
-	 * bitmap must be on disk too or the next allocation could reuse a
-	 * replayed block. Publishing log_start here drops the previous
-	 * entry (already applied + synced by its own commit) so the log
-	 * never accumulates dead history — the wrap above is then the
-	 * only reclaim event. */
-	sb->u.xbfs.log_start = entry_pos;
-	sb->u.xbfs.log_end = entry_pos + n + 1;
-	sb->u.xbfs.log_since_reset += (n + 1);
-	if(sb->u.xbfs.log_since_reset > sb->u.xbfs.log_peak) {
-		sb->u.xbfs.log_peak = sb->u.xbfs.log_since_reset;
-	}
-	sb->u.xbfs.flags = XBFS_SUPER_DIRTY;
-	xbfs_log_write_bitmap(sb);
-	xbfs_log_write_super(sb);
-	xbfs_crash_inject(wrapped ? 6 : 3);
-
-	/* (3) apply the real blocks */
+	/* apply the real blocks to the cache NOW (dirty, unsynced): later
+	 * transactions in the batch must see them. They hit the disk only
+	 * at the barrier's phase C, after the bitmap + the published
+	 * superblock. */
 	{
 		__blk_t *bp = sb->u.xbfs.tx_blocks;
 		unsigned char **dp = sb->u.xbfs.tx_data;
@@ -512,16 +637,19 @@ int xbfs_log_commit(struct superblock *sb)
 			bwrite(buf);
 		}
 	}
-	sync_buffers(sb->dev);
-		/* the transaction is complete on disk */
-	xbfs_crash_inject(7);
 
-	/* the freed blocks' bitmap was written + synced above, so the
-	 * pending TRIM extents can go to the device now (X-SSD1) */
-	xbfs_flush_discards(sb);
+	sb->u.xbfs.log_end = entry_pos + n + 1;
+	sb->u.xbfs.log_pend_blocks += n + 1;
+
+	/* close the batch when it reached the cap (bounds durability
+	 * latency + the dirty-cache footprint) */
+	if(sb->u.xbfs.log_pend_blocks >= XBFS_LOG_BATCH_BLOCKS) {
+		xbfs_log_flush_locked(sb);
+	}
 
 	xbfs_log_free_tx(sb);
 	unlock_resource(xbfs_log_resource(sb));
+	(void)wrapped;
 	return 0;
 }
 

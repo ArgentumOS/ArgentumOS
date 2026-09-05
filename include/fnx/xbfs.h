@@ -319,6 +319,14 @@ struct xbfs_sb_info {
 	__u64 log_end;				/* BLOCK offset past the last entry */
 	__u64 log_since_reset;		/* blocks journaled since the last wrap */
 	__u64 log_peak;				/* high-water of log_since_reset */
+	int log_pending;			/* group commit: a batch of entries is
+					 * written + the real blocks applied, but
+					 * not yet published/synced (the barrier
+					 * has not run). log_start is then the
+					 * batch's first entry */
+	__u32 log_pend_blocks;		/* size of the pending batch, in log
+					 * blocks (the barrier runs when this
+					 * reaches the batch cap) */
 	/* in-memory journal transaction state */
 #define XBFS_LOG_MAX_BLOCKS	15	/* count <= log size - run_array block */
 	__blk_t tx_blocks[XBFS_LOG_MAX_BLOCKS];	/* blocks modified in this tx */
@@ -402,6 +410,12 @@ void xbfs_flush_discards(struct superblock *);
  * XBFS_SB_A_OFF in buf->data; stamp the sequence + checksum on both
  * copies, write the block and sync (fs/xbfs/super.c) */
 int xbfs_sb_dual_write(struct superblock *sb, struct buffer *buf);
+int xbfs_sb_dual_write_nosync(struct superblock *sb, struct buffer *buf);
+void xbfs_log_flush(struct superblock *sb);
+void xbfs_log_sync(struct superblock *sb);
+void xbfs_reg_sb(struct superblock *sb);
+void xbfs_unreg_sb(struct superblock *sb);
+void xbfs_flush_all(void);
 
 /* btree.c */
 int xbfs_btree_insert(struct inode *, const char *, __ino_t);

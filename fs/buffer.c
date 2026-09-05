@@ -624,6 +624,27 @@ void sync_buffers(__dev_t dev)
 	unlock_resource(&sync_resource);
 }
 
+/* Flush the dirty cache buffers for the CONTIGUOUS block range
+ * [first, first+count) at the given size, leaving every other dirty
+ * buffer untouched. Used by the XBFS journal's group-commit barrier to
+ * order the on-disk writes: log entries first, then the bitmap +
+ * superblock, while the real metadata blocks stay dirty until the final
+ * full sync_buffers() (a crash in that last phase is repaired by replay,
+ * because the batch range was already published). */
+void sync_buffers_select(__dev_t dev, __blk_t first, __blk_t count, int size)
+{
+	__blk_t block;
+
+	for(block = first; block < first + count; block++) {
+		struct buffer *buf = search_buffer_hash(dev, block, size);
+
+		if(buf && (buf->flags & BUFFER_DIRTY) &&
+		   !(buf->flags & BUFFER_LOCKED)) {
+			sync_one_buffer(buf);
+		}
+	}
+}
+
 void invalidate_buffers(__dev_t dev)
 {
 	unsigned int flags;
