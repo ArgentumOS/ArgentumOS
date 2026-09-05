@@ -835,7 +835,7 @@ Milestones (each independently verifiable):
   few AGs, superblock, journal extent, root-dir stream, a few files.
   Cross-check layout against Linux fs/befs headers (include/fnx/xbfs.h).
   GOTCHA: /sbin/mkfs.xbfs on Linux makes the SCO UnixWare boot fs
-  (magic 0x1badface), NOT BeOS XBFS (magic 0x42465331) - we must write
+  (magic 0x1badface), NOT the Be-derived XBFS (magic 0x58424653 today; historical BFS used 0x42465331) - we must write
   our own builder; there is no Linux mkfs for BeOS XBFS.
 - M1 - Read-only driver: register 'xbfs' (bump NR_FILESYSTEMS in
   include/fnx/filesystems.h, fs/filesystems.c), mount (superblock at

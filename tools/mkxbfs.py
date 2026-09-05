@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build a BeOS XBFS (magic 0x42465331) filesystem image (FNX mkxbfs).
+"""Build an XBFS image (FNX mkxbfs; superblock magic 0x58424653 'XBFS',
+the ex-Be filesystem — layout still follows the Haiku BFS conventions).
 
 Usage: mkxbfs.py <rootdir> <image> <size-MB>
 
@@ -61,7 +62,7 @@ BTREE_MAGIC = 0x69f6c2e8
 INODE_MAGIC = 0x3bbe0ad9
 INODE_IN_USE = 0x00000001
 INODE_LONG_SYMLINK = 0x00000040  # Haiku inode_flags
-MAGIC1 = 0x42465331
+MAGIC1 = 0x58424653   # 'XBFS' (our own; BFS used 0x42465331 'BFS1')
 MAGIC2 = 0xdd121031
 MAGIC3 = 0x15b6830e
 BYTEORDER = 0x42494745
@@ -95,7 +96,7 @@ def u64(v):
 def build_super(num_blocks, used, root_block, log_start, log_len,
                  ag_shift, blocks_per_ag, num_ags, indices_block=0):
     sb = bytearray(512)
-    sb[0:4] = b"BFS1"
+    sb[0:4] = b"XBFS"   # default volume name
     o = 0x20
     sb[o:o + 4] = u32(MAGIC1); o += 4
     sb[o:o + 4] = u32(BYTEORDER); o += 4

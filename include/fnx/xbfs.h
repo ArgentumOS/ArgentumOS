@@ -2,9 +2,10 @@
  * fnx/include/fnx/xbfs.h
  *
  * XBFS ("the ex-Be filesystem"): forked from the Be File System. The
- * on-disk structures are the BeOS/Haiku BFS layout (superblock magic
- * 'BFS1', block_run allocation, B+tree directories, attribute indexes)
- * kept unchanged, so the format stays byte-compatible with BFS.
+ * on-disk structures follow the BeOS/Haiku BFS layout (block_run
+ * allocation, B+tree directories, attribute indexes), but the
+ * superblock magic is our own 'XBFS' — XBFS volumes no longer present
+ * as BFS, and BFS readers reject them.
  *
  * Cross-checked against Linux fs/befs (befs_fs_types.h, btree.c) and
  * Haiku src/add-ons/kernel/file_systems/bfs (bfs.h, BPlusTree.h).
@@ -41,8 +42,9 @@
 #define XBFS_NUM_DIRECT_BLOCKS	12
 #define XBFS_NAME_LEN		255
 
-/* superblock magic values */
-#define XBFS_SUPER_MAGIC1	0x42465331	/* 'BFS1' */
+/* superblock magic values (magic1 is our own 'XBFS'; magic2/magic3
+ * stay BFS's fixed validation constants) */
+#define XBFS_SUPER_MAGIC1	0x58424653	/* 'XBFS' */
 #define XBFS_SUPER_MAGIC2	0xdd121031
 #define XBFS_SUPER_MAGIC3	0x15b6830e
 #define XBFS_SUPER_BYTEORDER	0x42494745	/* 'BIGE' (LE disk) */

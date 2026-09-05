@@ -239,9 +239,9 @@ static int xbfs_write_superblock(struct superblock *sb)
 	 * full memset here breaks booting the volume under Haiku */
 	memcpy_b(bsb_name, bsb->name, 32);
 	memset_b(bsb, 0, 0x84);
-	/* preserve the on-disk volume name (mkxbfs volumes keep "BFS1",
-	 * Haiku volumes keep e.g. "Haiku" — clobbering it changes the
-	 * label Haiku displays) */
+	/* preserve the on-disk volume name (mkxbfs volumes keep "XBFS",
+	 * Haiku BFS volumes keep e.g. "Haiku" — clobbering it changes the
+	 * label Haiku displays on volumes we mount read-write) */
 	memcpy_b(bsb->name, bsb_name, 32);
 	bsb->magic1 = XBFS_SUPER_MAGIC1;
 	bsb->fs_byte_order = XBFS_SUPER_BYTEORDER;
