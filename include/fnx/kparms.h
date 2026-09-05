@@ -11,7 +11,7 @@
 #include <fnx/limits.h>
 
 #define CMDL_ARG_LEN	100	/* max. length of cmdline argument */
-#define CMDL_NUM_VALUES	30	/* max. values of cmdline parameter */
+#define CMDL_NUM_VALUES	64	/* max. values of cmdline parameter */
 
 #define KPARMS_IDE_NODMA	0x01	/* disable DMA in all ATA drives */
 #define KPARMS_PS2_NORESET	0x02	/* disable PS/2 controller reset */
