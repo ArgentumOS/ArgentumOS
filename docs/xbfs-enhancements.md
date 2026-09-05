@@ -2,7 +2,7 @@
 
 Home document for XBFS improvements that go beyond bug work. Each area is
 a self-contained section with its own milestones and acceptance criteria;
-new areas get appended as sections (see §H). Nothing here is implemented
+new areas get appended as sections (see §I). Nothing here is implemented
 yet unless a section says otherwise.
 
 Supersedes `docs/xbfs-ssd-plan.md` (efe77aa, b74390d), whose content is
@@ -441,14 +441,58 @@ mount. Heavy interplay with the journal and any scrub (X-SSD4).
   inspection yields no plaintext.
 - Effort: very high.
 
-## H. Future areas and related docs
+## H. Raw / whole-disk I/O surface (rdisk analog)
+
+Proposed; nothing implemented. Today every disk is a single `S_IFBLK`
+devfs node served through the buffer cache (`bread`/`bwrite` → per-major
+device table → driver `read_block`; fs/devices.c, fs/buffer.c). There is
+no char-mode twin, no `O_DIRECT` (undefined in include/fnx/fcntl.h), no
+mmap of block nodes, and the disk ioctl set stops at
+`BLKSSZGET`/`BLKBSZGET`/`HDIO_GETGEO` — the macOS/BSD block-vs-raw
+(`disk0` vs `rdisk0`) distinction does not exist in the stack.
+
+### H-1 — Raw whole-disk access
+
+A direct-I/O surface for whole-disk (or, later, partition) access that
+bypasses fs/buffer.c and hands caller buffers straight to the driver's
+`read_block`/`write_block` via `do_blk_request` — sector-aligned, which
+the drivers already assume (`block2sector`). Two shapes to decide:
+(a) a second devfs node kind (a raw twin per disk, `clone_fn`-generated
+like other node types; the inode encoding `dev<<1 | is_block` already
+separates kinds), or (b) a raw-open mode on the existing block node
+(open flag or ioctl), keeping one node per disk.
+
+- No format change (device layer only).
+- Policy is the crux, same as macOS: raw is coherent only while the
+  volume is unmounted (or after the cache is flushed); dirty cached
+  buffers + raw writes alias and corrupt. The shutdown flush already
+  drains the cache, so the primitive exists.
+- Motivations: guest-side whole-disk/repair tools (`xbfscheck --fix`,
+  `--rebuild-indices`, §C-1/C-2 — today no guest tool opens a Disk
+  node at all; mkfs/flash/copy inside the guest), and a natural host
+  for `BLKDISCARD`-style control ioctls (X-SSD1's §A.4 discard-plumbing
+  decision). Per-partition raw becomes relevant once
+  docs/partition-support-plan.md's `WholeDisk`/`PartitionN` nodes land.
+- Acceptance: guest `dd` from a raw handle of an unmounted image volume
+  is byte-identical to the host image; in-guest `xbfscheck --fix` on an
+  unmounted volume works with no buffer-cache aliasing; raw open of a
+  mounted volume is refused (or requires an explicit flush first).
+- Effort: small-medium (devfs node + devices.c path + the mounted?
+  guard).
+
+Open: node-twin vs raw-mode; where the mounted? guard lives (devfs open
+vs the fs mount registry); O_DIRECT-style semantics for future userland
+(dd/flash).
+
+## I. Future areas and related docs
 
 Append new enhancement areas as thematic `##` sections (SSD = §A, Live
 Directories = §B, Integrity = §C, Desktop = §D, Space = §E, Performance
-= §F, Deferred format = §G). New areas should follow the house style:
-status line, grounding in the current tree, milestones + acceptance, and
-an explicit format-change flag. Related design/history docs these
-sections build on: docs/bfs-journal-reclaim.md (wrap-journal invariant,
-R-M2/R-M3 harness), docs/devfs-topology.md, docs/xbfs-ssd-plan.md
-(history of §A — superseded, kept in git). Kernel design docs live
-alongside in docs/.
+= §F, Deferred format = §G, Raw device access = §H). New areas should
+follow the house style: status line, grounding in the current tree,
+milestones + acceptance, and an explicit format-change flag. Related
+design/history docs these sections build on: docs/bfs-journal-reclaim.md
+(wrap-journal invariant, R-M2/R-M3 harness), docs/devfs-topology.md,
+docs/partition-support-plan.md (WholeDisk/PartitionN nodes — the raw
+surface's per-partition future), docs/xbfs-ssd-plan.md (history of §A —
+superseded, kept in git). Kernel design docs live alongside in docs/.
