@@ -1,0 +1,26 @@
+diff --git a/src/main.c b/src/main.c
+index 2ab506c..4c647fc 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -150,7 +150,7 @@ main(int argc, char **argv)
+ 	login = procargs(argv);
+ 	if (login) {
+ 		state = 1;
+-		read_profile("/etc/profile");
++		read_profile("/System/Configuration/profile");
+ state1:
+ 		state = 2;
+ 		read_profile("$HOME/.profile");
+diff --git a/src/var.c b/src/var.c
+index e76abe3..6946bc4 100644
+--- a/src/var.c
++++ b/src/var.c
+@@ -75,7 +75,7 @@ struct localvar_list {
+ MKINIT struct localvar_list *localvar_stack;
+ 
+ const char defpathvar[] =
+-	"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
++	"PATH=/System/Tools:/System/Applications:/Shared";
+ char defifsvar[] = "IFS= \t\n";
+ MKINIT char defoptindvar[] = "OPTIND=1";
+ 

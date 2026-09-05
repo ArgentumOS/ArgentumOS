@@ -57,6 +57,13 @@ offenders += [
     'toys/other/openvt.c', 'toys/other/rtcwake.c', 'toys/other/vconfig.c',
     'toys/other/hwclock.c', 'toys/other/losetup.c', 'toys/other/mix.c',
     'toys/other/watchdog.c',
+    # Q1 (porting gate): these applets read Linux-only kernel interfaces
+    # FNX does not provide, so they cannot work and do not ship:
+    'toys/lsb/dmesg.c',     # /dev/kmsg (no kmsg node; add one when the
+                            # kernel exposes the log ring in procfs)
+    'toys/other/lsusb.c',   # sysfs + usb.ids/pci.ids data files
+    'toys/other/modinfo.c', # /lib/modules (FNX has no module loader)
+    'toys/other/sysctl.c',  # /proc/sys (kernel has no sysctl tree)
 ]
 syms = set()
 for f in offenders:

@@ -531,3 +531,54 @@ index 82acb75e..d81a7c80 100644
  	ssize_t l;
  
  	if (!isatty(fd)) return errno;
+diff --git a/include/paths.h b/include/paths.h
+index 67de6b3c..333f95c5 100644
+--- a/include/paths.h
++++ b/include/paths.h
+@@ -1,23 +1,23 @@
+ #ifndef _PATHS_H
+ #define _PATHS_H
+ 
+-#define	_PATH_DEFPATH "/usr/local/bin:/bin:/usr/bin"
+-#define	_PATH_STDPATH "/bin:/usr/bin:/sbin:/usr/sbin"
++#define	_PATH_DEFPATH "/System/Tools:/System/Applications"
++#define	_PATH_STDPATH "/System/Tools"
+ 
+-#define	_PATH_BSHELL	"/bin/sh"
+-#define	_PATH_CONSOLE	"/dev/console"
+-#define	_PATH_DEVNULL	"/dev/null"
++#define	_PATH_BSHELL	"/System/Tools/sh"
++#define	_PATH_CONSOLE	"/System/Devices/TTY/console"
++#define	_PATH_DEVNULL	"/System/Devices/Memory/null"
+ #define	_PATH_KLOG	"/proc/kmsg"
+ #define	_PATH_LASTLOG	"/var/log/lastlog"
+ #define	_PATH_MAILDIR	"/var/mail"
+ #define	_PATH_MAN	"/usr/share/man"
+-#define	_PATH_MNTTAB	"/etc/fstab"
+-#define	_PATH_MOUNTED	"/etc/mtab"
+-#define	_PATH_NOLOGIN	"/etc/nologin"
++#define	_PATH_MNTTAB	"/System/Configuration/mounts"
++#define	_PATH_MOUNTED	"/System/Processes/mounts"
++#define	_PATH_NOLOGIN	"/System/Configuration/nologin"
+ #define	_PATH_SENDMAIL	"/usr/sbin/sendmail"
+ #define	_PATH_SHADOW	"/etc/shadow"
+-#define	_PATH_SHELLS	"/etc/shells"
+-#define	_PATH_TTY	"/dev/tty"
++#define	_PATH_SHELLS	"/System/Configuration/shells"
++#define	_PATH_TTY	"/System/Devices/TTY/tty"
+ #define _PATH_UTMP	"/dev/null/utmp"
+ #define	_PATH_VI	"/usr/bin/vi"
+ #define _PATH_WTMP	"/dev/null/wtmp"
+diff --git a/src/conf/confstr.c b/src/conf/confstr.c
+index 3d417284..01eef007 100644
+--- a/src/conf/confstr.c
++++ b/src/conf/confstr.c
+@@ -6,7 +6,7 @@ size_t confstr(int name, char *buf, size_t len)
+ {
+ 	const char *s = "";
+ 	if (!name) {
+-		s = "/bin:/usr/bin";
++		s = "/System/Tools";
+ 	} else if ((name&~4U)!=1 && name-_CS_POSIX_V6_ILP32_OFF32_CFLAGS>35U) {
+ 		errno = EINVAL;
+ 		return 0;

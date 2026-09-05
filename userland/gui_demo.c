@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 		}
 	}
 	if(!d) {
-		printf("DEMO: no compositor (is /dev/fb0 present?)\n");
+		printf("DEMO: no compositor (is fb0 present?)\n");
 		if(comp > 0) {
 			kill(comp, SIGTERM);
 		}

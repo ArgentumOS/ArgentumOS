@@ -381,10 +381,54 @@ index da20dd10..7f5f087b 100644
  // commas.c
  void comma_args(struct arg_list *al, void *data, char *err,
    char *(*callback)(void *data, char *str, int len));
+diff --git a/lib/portability.c b/lib/portability.c
+index 83382d1d..54a64899 100644
+--- a/lib/portability.c
++++ b/lib/portability.c
+@@ -133,7 +133,7 @@ struct mtab_list *xgetmountlist(char *path)
+   struct mtab_list *mtlist = 0, *mt;
+   struct mntent *me;
+   FILE *fp;
+-  char *p = path ? path : "/proc/mounts";
++  char *p = path ? path : "/System/Processes/mounts";
+ 
+   if (!(fp = setmntent(p, "r"))) perror_exit("bad %s", p);
+ 
+diff --git a/lib/portability.h b/lib/portability.h
+index cb4725b8..4741cdf5 100644
+--- a/lib/portability.h
++++ b/lib/portability.h
+@@ -372,7 +372,7 @@ void xgetrandom(void *buf, unsigned len);
+ #define _CS_PATH	0
+ #define _CS_V7_ENV	1
+ #include <string.h>
+-static inline void confstr(int a, char *b, int c) {strcpy(b, a ? "POSIXLY_CORRECT=1" : "/bin:/usr/bin");}
++static inline void confstr(int a, char *b, int c) {strcpy(b, a ? "POSIXLY_CORRECT=1" : "/System/Tools");}
+ #endif
+ 
+ // Paper over the differences between BSD kqueue and Linux inotify for tail.
 diff --git a/toys/lsb/mount.c b/toys/lsb/mount.c
-index ff0b7e12..4be5de9c 100644
+index ff0b7e12..878f3882 100644
 --- a/toys/lsb/mount.c
 +++ b/toys/lsb/mount.c
+@@ -23,7 +23,7 @@ config MOUNT
+     Mount new filesystem(s) on directories. With no arguments, display existing
+     mounts.
+ 
+-    -a	Mount all entries in /etc/fstab (with -t, only entries of that TYPE)
++    -a	Mount all entries in the mount table (with -t, only entries of that TYPE)
+     -O	Only mount -a entries that have this option
+     -f	Fake it (don't actually mount)
+     -r	Read only (same as -o ro)
+@@ -36,7 +36,7 @@ config MOUNT
+ 
+     Autodetects loopback mounts (a file on a directory) and bind mounts (file
+     on file, directory on directory), so you don't need to say --bind or --loop.
+-    You can also "mount -a /path" to mount everything in /etc/fstab under /path,
++    You can also "mount -a /path" to mount everything in the mount table under /path,
+     even if it's noauto. DEVICE starting with UUID= is identified by blkid -U.
+ 
+ #config SMBMOUNT
 @@ -270,6 +270,40 @@ static void mount_filesystem(char *dev, char *dir, char *type,
    if (fp) fclose(fp);
  }
@@ -441,9 +485,30 @@ index ff0b7e12..4be5de9c 100644
  // TODO
  // remount
  //   - overmounts
-@@ -370,39 +412,27 @@ void mount_main(void)
+@@ -309,7 +351,7 @@ void mount_main(void)
+   // in reverse order. (Yes I'm using remount as a boolean for a bit here,
+   // the double cast is to get gcc to shut up about it.)
+   remount = (void *)(long)comma_scan(opts, "remount", 0);
+-  if ((FLAG(a) && !access("/proc/mounts", R_OK)) || remount) {
++  if ((FLAG(a) && !access("/System/Processes/mounts", R_OK)) || remount) {
+     mm = dlist_terminate(mtl = mtl2 = xgetmountlist(0));
+     if (remount) remount = mm;
+   }
+@@ -317,7 +359,7 @@ void mount_main(void)
+   // Do we need to do an /etc/fstab trawl?
+   // This covers -a, -o remount, one argument, all user mounts
+   if (FLAG(a) || (dev && (!dir || getuid() || remount))) {
+-    if (!remount) dlist_terminate(mtl = xgetmountlist("/etc/fstab"));
++    if (!remount) dlist_terminate(mtl = xgetmountlist(0));
+ 
+     for (mm = remount ? remount : mtl; mm; mm = (remount ? mm->prev : mm->next))
+     {
+@@ -368,41 +410,29 @@ void mount_main(void)
+     }
+     if (!mm && !FLAG(a))
        error_exit("'%s' not in %s", dir ? dir : dev,
-                  remount ? "/proc/mounts" : "fstab");
+-                 remount ? "/proc/mounts" : "fstab");
++                 remount ? "/System/Processes/mounts" : "fstab");
  
 -  // show mounts from /proc/mounts
 +  // no arguments: display the configured mount table (the domain)
@@ -556,9 +621,27 @@ index 86921409..a5ef8224 100644
  
    memset(toybuf, 0, sizeof(toybuf));
 diff --git a/toys/lsb/su.c b/toys/lsb/su.c
-index 78717221..b90d12e9 100644
+index 78717221..294bf440 100644
 --- a/toys/lsb/su.c
 +++ b/toys/lsb/su.c
+@@ -17,7 +17,7 @@ config SU
+ 
+     Switch user, prompting for password of new user when not run as root.
+ 
+-    With one argument, switch to USER and run user's shell from /etc/passwd.
++    With one argument, switch to USER and run user's shell from the passwd database.
+     With no arguments, USER is root. If COMMAND line provided after USER,
+     exec() it as new USER (bypassing shell). If -u or -g specified, first
+     argument (if any) isn't USER (it's COMMAND).
+@@ -25,7 +25,7 @@ config SU
+     first argument is USER name to switch to (which must exist).
+     Non-root users are prompted for new user's password.
+ 
+-    -s	Shell to use (default is user's shell from /etc/passwd)
++    -s	Shell to use (default is user's shell from the passwd database)
+     -c	Command line to pass to -s shell (ala sh -c "CMD")
+     -l	Reset environment as if new login.
+     -u	Switch to UID instead of USER
 @@ -42,7 +42,7 @@ GLOBALS(
  
  void su_main()
@@ -608,9 +691,23 @@ index 78717221..b90d12e9 100644
    argv = argu = xmalloc(sizeof(char *)*(toys.optc + 4));
    *argv++ = TT.s ? : up->pw_shell;
 diff --git a/toys/lsb/umount.c b/toys/lsb/umount.c
-index 19fd5274..43fc847b 100644
+index 19fd5274..87822e70 100644
 --- a/toys/lsb/umount.c
 +++ b/toys/lsb/umount.c
+@@ -18,11 +18,11 @@ config UMOUNT
+ 
+     Unmount the listed filesystems.
+ 
+-    -a	Unmount all mounts in /proc/mounts instead of command line list
++    -a	Unmount all mounts in the mount table instead of the command line list
+     -D	Don't free loopback device(s)
+     -f	Force unmount
+     -l	Lazy unmount (detach from filesystem now, close when last user does)
+-    -n	Don't use /proc/mounts
++    -n	Don't read the mount table
+     -r	Remount read only if unmounting fails
+     -t	Restrict "all" to mounts of TYPE (or use "noTYPE" to skip)
+     -v	Verbose
 @@ -48,7 +48,7 @@ GLOBALS(
  // TODO
  // swapon, swapoff
@@ -629,7 +726,7 @@ index 19fd5274..43fc847b 100644
      }
    }
  
-@@ -91,17 +91,32 @@ static void do_umount(char *dir, char *dev, int flags)
+@@ -91,22 +91,37 @@ static void do_umount(char *dir, char *dev, int flags)
        }
      }
  
@@ -664,6 +761,12 @@ index 19fd5274..43fc847b 100644
  }
  
  void umount_main(void)
+ {
+-  char **optargs, *pm = "/proc/mounts";
++  char **optargs, *pm = "/System/Processes/mounts";
+   struct mtab_list *mlsave = 0, *mlrev = 0, *ml;
+   int flags=0;
+ 
 @@ -121,18 +136,11 @@ void umount_main(void)
    if (!(toys.optflags & FLAG_n) && !access(pm, R_OK))
      mlrev = dlist_terminate(mlsave = xgetmountlist(pm));
@@ -709,10 +812,93 @@ index 19fd5274..43fc847b 100644
      if (ml && abs != ml->dir) free(abs);
    }
  }
+diff --git a/toys/net/netcat.c b/toys/net/netcat.c
+index 4e76fa7f..cca450a7 100644
+--- a/toys/net/netcat.c
++++ b/toys/net/netcat.c
+@@ -18,7 +18,7 @@ config NETCAT
+     -4	Force IPv4
+     -6	Force IPv6
+     -E	Forward stderr
+-    -f	Use FILENAME (ala /dev/ttyS0) instead of network
++    -f	Use FILENAME (e.g. a serial port) instead of network
+     -L	Listen and background each incoming connection (server mode)
+     -l	Listen for one incoming connection, then exit
+     -n	No DNS lookup
+@@ -41,7 +41,7 @@ config NETCAT
+     For a quick-and-dirty server, try something like:
+     netcat -s 127.0.0.1 -p 1234 -tL sh -l
+ 
+-    Or use "stty 115200 -F /dev/ttyS0 && stty raw -echo -ctlecho" with
++    Or use "stty 115200 -F /System/Devices/Serial/Port0 && stty raw -echo -ctlecho" with
+     netcat -f to connect to a serial port.
+ */
+ 
+diff --git a/toys/net/ping.c b/toys/net/ping.c
+index 3c00e0c2..30566616 100644
+--- a/toys/net/ping.c
++++ b/toys/net/ping.c
+@@ -175,7 +175,7 @@ void ping_main(void)
+     perror_msg("socket SOCK_DGRAM %x", len);
+     if (errno == EACCES) {
+       fprintf(stderr, "Kernel bug workaround:\n"
+-        "echo 0 99999999 | sudo tee /proc/sys/net/ipv4/ping_group_range\n");
++        "run ping as root or allow unprivileged ping in the kernel\n");
+     }
+     xexit();
+   }
+diff --git a/toys/other/chroot.c b/toys/other/chroot.c
+index d791f34a..4dd198cf 100644
+--- a/toys/other/chroot.c
++++ b/toys/other/chroot.c
+@@ -15,7 +15,7 @@ config CHROOT
+   help
+     usage: chroot NEWROOT [COMMAND [ARG...]]
+ 
+-    Run command within a new root directory. If no command, run /bin/sh.
++    Run command within a new root directory. If no command, run the default shell.
+ */
+ 
+ #include "toys.h"
+diff --git a/toys/other/oneit.c b/toys/other/oneit.c
+index 45eb1fb5..38c1a8f2 100644
+--- a/toys/other/oneit.c
++++ b/toys/other/oneit.c
+@@ -13,7 +13,7 @@ config ONEIT
+     Simple init program that runs a single supplied command line with a
+     controlling tty (so CTRL-C can kill it).
+ 
+-    -c	Which console device to use (/dev/console doesn't do CTRL-C, etc)
++    -c	Which console device to use (no CTRL-C handling, etc)
+     -p	Power off instead of rebooting when command exits
+     -r	Restart child when it exits
+     -n	No reboot, just relaunch command line
+diff --git a/toys/other/switch_root.c b/toys/other/switch_root.c
+index 1c750608..ac5128c6 100644
+--- a/toys/other/switch_root.c
++++ b/toys/other/switch_root.c
+@@ -8,7 +8,7 @@ config SWITCH_ROOT
+   bool "switch_root"
+   default y
+   help
+-    usage: switch_root [-c /dev/console] NEW_ROOT NEW_INIT...
++    usage: switch_root [-c CONSOLE] NEW_ROOT NEW_INIT...
+ 
+     Use from PID 1 under initramfs to free initramfs, chroot to NEW_ROOT,
+     and exec NEW_INIT.
 diff --git a/toys/pending/chsh.c b/toys/pending/chsh.c
-index 6dd28e81..1d81dc55 100644
+index 6dd28e81..5848ee08 100644
 --- a/toys/pending/chsh.c
 +++ b/toys/pending/chsh.c
+@@ -17,7 +17,7 @@ config CHSH
+     -s	Use SHELL instead of prompting
+     -R	Act on CHROOT_DIR instead of host
+ 
+-    Non-root users can only change their own shell to one listed in /etc/shells.
++    Non-root users can only change their own shell to one in the system.shells domain.
+ */
+ 
+ #define FOR_chsh
 @@ -29,41 +29,47 @@ GLOBALS(
  
  void chsh_main()
@@ -782,6 +968,28 @@ index 6dd28e81..1d81dc55 100644
 -  if (!update_password("/etc/passwd", user, line,6)) perror_exit("/etc/passwd");
 +  if (CFG_TOYBOX_FREE && interactive) free(shell);
  }
+diff --git a/toys/pending/dhcp.c b/toys/pending/dhcp.c
+index d90f9a2b..fd73a2c7 100644
+--- a/toys/pending/dhcp.c
++++ b/toys/pending/dhcp.c
+@@ -18,7 +18,7 @@ config DHCP
+ 
+       -i Interface to use (default eth0)
+       -p Create pidfile
+-      -s Run PROG at DHCP events (default /usr/share/dhcp/default.script)
++      -s Run PROG at DHCP events (default /System/Shared/scripts/dhcp/default.script)
+       -B Request broadcast replies
+       -t Send up to N discover packets
+       -T Pause between packets (default 3 seconds)
+@@ -532,7 +532,7 @@ static void run_script(dhcpc_result_t *res,  char *name)
+   char *argv[3];
+   struct stat sts;
+   char *script = (toys.optflags & FLAG_s) ? TT.script
+-    : "/usr/share/dhcp/default.script";
++    : "/System/Shared/scripts/dhcp/default.script";
+ 
+   if (stat(script, &sts) == -1 && errno == ENOENT) return;
+   if (fill_envp(res)) {
 diff --git a/toys/pending/groupadd.c b/toys/pending/groupadd.c
 index 67c0e929..6791de2a 100644
 --- a/toys/pending/groupadd.c
@@ -1088,3 +1296,75 @@ index a77fb28e..a5ce0064 100644
      xexec(arg);
    }
  }
+diff --git a/toys/posix/file.c b/toys/posix/file.c
+index 30d22495..b858ebc6 100644
+--- a/toys/posix/file.c
++++ b/toys/posix/file.c
+@@ -472,7 +472,7 @@ static void do_regular_file(int fd, char *name)
+     if (len>3 && strstart(&s, "#!")) {
+       // Whitespace is allowed between the #! and the interpreter
+       while (isspace(*s)) s++;
+-      if (strstart(&s, "/usr/bin/env")) while (isspace(*s)) s++;
++      if (strstart(&s, "/System/Tools/env")) while (isspace(*s)) s++;
+       for (what = s; *s && !isspace(*s); s++);
+       strcpy(s, " script");
+ 
+diff --git a/toys/posix/nohup.c b/toys/posix/nohup.c
+index 48eb38c6..45f4b1c7 100644
+--- a/toys/posix/nohup.c
++++ b/toys/posix/nohup.c
+@@ -14,7 +14,7 @@ config NOHUP
+ 
+     Run a command that survives the end of its terminal.
+ 
+-    Redirect tty on stdin to /dev/null, tty on stdout to "nohup.out".
++    Redirect the stdin tty to the null device, stdout tty to "nohup.out".
+ */
+ 
+ #include "toys.h"
+diff --git a/toys/posix/patch.c b/toys/posix/patch.c
+index bbc260fb..de6d3e4d 100644
+--- a/toys/posix/patch.c
++++ b/toys/posix/patch.c
+@@ -38,7 +38,7 @@ config PATCH
+     modifies files when all hunks to that file apply. Prints failed hunks
+     to stderr, and exits with nonzero status if any hunks fail.
+ 
+-    Files compared against /dev/null (or with a date <= the unix epoch) are
++    Files compared against the null device (or with a date <= the unix epoch) are
+     created/deleted as appropriate. Default -F value is the number of
+     leading/trailing context lines minus one (usually 2).
+ */
+diff --git a/toys/posix/ps.c b/toys/posix/ps.c
+index 676bfcb9..89963648 100644
+--- a/toys/posix/ps.c
++++ b/toys/posix/ps.c
+@@ -346,12 +346,12 @@ struct typography {
+   {"TTY", "Controlling terminal", -8, -2},
+   {"WCHAN", "Wait location in kernel", -6, -3},
+   {"LABEL", "Security label", -30, -4},
+-  {"COMM", "EXE filename (/proc/PID/exe)", -27, -5},
++  {"COMM", "EXE filename (process exe link)", -27, -5},
+   {"NAME", "Process name (PID's argv[0])", -27, -7},
+-  {"COMMAND", "EXE path (/proc/PID/exe)", -27, -5},
++  {"COMMAND", "EXE path (process exe link)", -27, -5},
+   {"CMDLINE", "Command line (argv[])", -27, -6},
+   {"ARGS", "CMDLINE minus initial path", -27, -6},
+-  {"CMD", "Thread name (/proc/TID/stat:2)", -15, -1},
++  {"CMD", "Thread name (thread stat field 2)", -15, -1},
+ 
+   // user/group (may call getpwuid() or similar)
+   {"UID", "User id", 5, SLOT_uid},
+diff --git a/toys/posix/xargs.c b/toys/posix/xargs.c
+index c2a1f02d..28242719 100644
+--- a/toys/posix/xargs.c
++++ b/toys/posix/xargs.c
+@@ -24,7 +24,7 @@ config XARGS
+     -0	Each argument is NULL terminated, no whitespace or quote processing
+     -E	Stop at line matching string
+     -n	Max number of arguments per command
+-    -o	Open tty for COMMAND's stdin (default /dev/null)
++    -o	Open tty for COMMAND's stdin (default: the null device)
+     -P	Parallel processes (default 1)
+     -p	Prompt for y/n from tty before running each command
+     -r	Don't run with empty input (otherwise always run command once)

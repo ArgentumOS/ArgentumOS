@@ -145,7 +145,11 @@ ROOTFS64      = .build/rootfs64
 DASH64_BIN    = third_party/dash/src/dash64
 TOYBOX64_BIN  = third_party/toybox/toybox64
 
-.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx
+.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx fshlint
+
+# FSH porting linter gate (proposal 6.1/Q1): zero-allow on System/Tools.
+fshlint:
+	python3 tools/fshlint.py $(ROOTFS64)
 
 musl64: $(MUSL64_SPECS)
 $(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_party/musl-hosts.patch
@@ -195,10 +199,12 @@ $(LLVM_CXX_STAMP): $(LLVM_CXX_CFG)
 	touch $(LLVM_CXX_STAMP)
 
 dash64: $(DASH64_BIN)
-$(DASH64_BIN): $(MUSL64_SPECS)
-	cd third_party/dash && ./autogen.sh && \
+$(DASH64_BIN): $(MUSL64_SPECS) third_party/dash-fsh.patch
+	cd third_party/dash && git apply $(CURDIR)/third_party/dash-fsh.patch && \
+		./autogen.sh && \
 		CC="$(CURDIR)/tools/musl-gcc64.sh" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
-		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_BIN)
+		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_BIN) && \
+		git checkout -- .
 
 toybox64: $(TOYBOX64_BIN)
 $(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh
@@ -253,6 +259,8 @@ TOYBOX64_STAGE = .build/toybox-root
 userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
+	# third-party X11 + toolchain tests live under System/Shared
+	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
 	# --- the FSH skeleton (spaced names verbatim, Q7) ---
 	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
@@ -308,7 +316,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@chmod 0755 "$(ROOTFS64)/System/Tools/config" \
 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
 	$(MUSL64_CC) userland/init.c -o "$(ROOTFS64)/System/Tools/init"
-	$(MUSL64_CXX) userland/cpp_smoke.cpp -o "$(ROOTFS64)/System/Tools/cpp_smoke"
+	$(MUSL64_CXX) userland/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
 	$(MUSL64_CC) userland/acl.c -o "$(ROOTFS64)/System/Tools/acl"
 	$(MUSL64_CC) -Iinclude userland/config.c userland/libconfig.c -o "$(ROOTFS64)/System/Tools/config"
 	$(MUSL64_CC) -Iinclude userland/compositor.c -o "$(ROOTFS64)/System/Tools/compositor"
@@ -325,12 +333,18 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) userland/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm
 	$(MUSL64_CC) userland/fbdump.c -o "$(ROOTFS64)/System/Tools/fbdump"
 	cp $(DASH64_BIN) "$(ROOTFS64)/System/Tools/sh"
-	cp $(XFB_BIN) "$(ROOTFS64)/System/Tools/Xfb"
-	cp .build/x11-prefix/bin/xkbcomp "$(ROOTFS64)/System/Tools/xkbcomp"
+	# third-party X11 lives under System/Shared/X11 (outside the
+	# zero-allow System/Tools lint scope); System/Tools stays first-party
+	# + ported toybox only.
+	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
+	cp $(XFB_BIN) "$(ROOTFS64)/System/Shared/X11/bin/Xfb"
+	cp .build/x11-prefix/bin/xkbcomp "$(ROOTFS64)/System/Shared/X11/bin/xkbcomp"
 	@cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh" 2>/dev/null || \
 		{ mkdir -p "$(ROOTFS64)/System/Shared/tests" && \
 		  cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
 	@chmod +x "$(ROOTFS64)/System/Tools/sh" "$(ROOTFS64)/System/Tools/init"
+	@mkdir -p "$(ROOTFS64)/System/Shared/scripts/dhcp" && \
+		cp userland/dhcp_script.sh "$(ROOTFS64)/System/Shared/scripts/dhcp/default.script" 2>/dev/null || true
 	# --- machine configuration (System/Configuration; Q9 accounts) ---
 	# Identity, name resolution and machine identity are record domains
 	# shipped in System scope (docs/system-config-files-plan.md M2/M5).

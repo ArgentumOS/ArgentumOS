@@ -11,7 +11,7 @@ int main(void)
 	long long off = 0;
 
 	fd = open("/System/Devices/Display/fb0", O_RDONLY);
-	if(fd < 0) { perror("open /dev/fb0"); return 1; }
+	if(fd < 0) { perror("open Display/fb0"); return 1; }
 	while((n = read(fd, buf, sizeof(buf))) > 0) {
 		int i;
 		for(i = 0; i < n; i++) {

@@ -530,7 +530,7 @@ static int fb_open_device(void)
 
 	fb_fd = open("/System/Devices/Display/fb0", O_RDWR);
 	if(fb_fd < 0) {
-		perror("open /dev/fb0");
+		perror("open Display/fb0");
 		return -1;
 	}
 	fb_w = ioctl(fb_fd, FB_XRES, 0);
