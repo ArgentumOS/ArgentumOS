@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build a BeOS BFS (magic 0x42465331) filesystem image (FNX mkbfs).
+"""Build a BeOS XBFS (magic 0x42465331) filesystem image (FNX mkxbfs).
 
-Usage: mkbfs.py <rootdir> <image> <size-MB>
+Usage: mkxbfs.py <rootdir> <image> <size-MB>
 
 1KB blocks, 8MB allocation groups. Layout (Haiku convention):
   block 0: boot block + 512-byte superblock at offset 512
@@ -14,10 +14,10 @@ Files with <= 12 runs use only the direct runs; larger files use the
 indirect stream: an indirect run of table blocks (128 block_run entries
 per table block) and, when the table spills past the first table run,
 the double-indirect table (256 u32 block addresses per block). This is
-the exact layout the FNX bfs driver's bmap reads (fs/bfs/inode.c).
+the exact layout the FNX xbfs driver's bmap reads (fs/xbfs/inode.c).
 
 Directories whose entries do not fit one leaf get a multi-node B+tree
-matching fs/bfs/btree.c: interior nodes carry key[i] = the LAST key of
+matching fs/xbfs/btree.c: interior nodes carry key[i] = the LAST key of
 child[i]'s subtree, values[i] = child[i]'s stream offset and overflow =
 the rightmost child; leaves are right-linked (left always -1, as the
 driver writes). Everything is byte-lexicographically sorted, which is
@@ -133,7 +133,7 @@ def build_btree_header(root_off, max_depth, max_size=1 << 20,
 
 
 def build_node(keys, values, overflow, right, left=BTREE_NULL):
-    """One BFS btree node. For a leaf: overflow == BTREE_NULL, values =
+    """One XBFS btree node. For a leaf: overflow == BTREE_NULL, values =
     inode block numbers. For an interior: values[0..k-1] = child stream
     offsets and overflow = the rightmost child (values[i] holds child i,
     keys[i] = the last key of child i's subtree)."""
@@ -253,7 +253,7 @@ def main():
         block_size = int(args[1])
         args = args[2:]
     if len(args) != 3 or block_size not in (1024, 2048, 4096):
-        print("usage: mkbfs.py [--block-size 1024|2048|4096] <rootdir> <image> <size-MB>")
+        print("usage: mkxbfs.py [--block-size 1024|2048|4096] <rootdir> <image> <size-MB>")
         sys.exit(1)
     root, img, mb = args[0], args[1], int(args[2])
     global BLOCK, BLOCK_SHIFT
@@ -263,7 +263,7 @@ def main():
     ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
     # Journal size (blocks): sized for the heaviest *bounded* metadata
-    # phase measured on this tree (fs/bfs/journal.c reset counters).
+    # phase measured on this tree (fs/xbfs/journal.c reset counters).
     # Method: set this to 64, boot each workload, and sum the per-cycle
     # "resetting after N journaled block(s)" prints - that is the phase's
     # total journaled-block demand. Measured envelope (64MB image, 1KB
@@ -608,8 +608,8 @@ def main():
     # ---- typed demo indices (gap-4 verification) ------------------
     # Six indices with every fixed-size key type beyond STRING/INT64,
     # populated with one entry per image inode: the key is the inode
-    # number packed as the index's type. bfscheck validates the trees
-    # (per-type sort + exact mapping) and the guest's bfsquery tool
+    # number packed as the index's type. xbfscheck validates the trees
+    # (per-type sort + exact mapping) and the guest's xbfsquery tool
     # cross-checks queries against stat st_ino.
     IDX_INT_INDEX = 0x02000000
     IDX_UINT_INDEX = 0x04000000
@@ -698,7 +698,7 @@ def main():
 
     with open(img, "wb") as fh:
         fh.write(bytes(img_buf))
-    print("mkbfs: %s %dMB (%d blocks), %d files, %d dirs, %d used, "
+    print("mkxbfs: %s %dMB (%d blocks), %d files, %d dirs, %d used, "
           "root inode %d" % (img, mb, num_blocks, nfiles, len(dirs),
                              len(used), root_blk))
 

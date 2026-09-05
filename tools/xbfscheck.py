@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Host-side cross-check of a BFS image (FNX mkbfs/bfs driver compatibility).
+"""Host-side cross-check of a XBFS image (FNX mkxbfs/xbfs driver compatibility).
 
-Usage: bfscheck.py <image> [rootdir]
+Usage: xbfscheck.py <image> [rootdir]
 
 Structural checks (always): superblock, bitmap <-> used-block agreement,
 inode validity, every directory B+tree (multi-node: sortedness, . / ..,
@@ -13,7 +13,7 @@ Content checks (when <rootdir> is given): every file's stream reads back
 byte-identical to the source tree, every symlink target matches.
 
 The double-indirect table uses 256 u32 block addresses per block
-(s_blocksize / sizeof(__blk_t) in the FNX driver, fs/bfs/inode.c) and
+(s_blocksize / sizeof(__blk_t) in the FNX driver, fs/xbfs/inode.c) and
 the indirect table blocks hold 128 block_run entries each.
 """
 
@@ -240,7 +240,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
             % (len(leaves), stats['leaves']))
         # leaves in chain order must partition the keys in order
         # (the sort follows the tree's data_type: numeric keys compare
-        # numerically like the driver's bfs_btree_key_cmp; STRING keys
+        # numerically like the driver's xbfs_btree_key_cmp; STRING keys
         # are raw bytes)
         dt = u32(node_at(blocks, 0) + 12)  # tree header data_type
         sizes = {1: ('<b', 1), 2: ('<h', 2), 3: ('<i', 4), 4: ('<I', 4),
@@ -355,7 +355,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
             cmtime = u64(cio2 + 36)
             # only files touched by a driver that maintains indices are
             # indexed (the image builder creates the indices empty, like
-            # Haiku's mkfs; mkbfs-created files carry last_modified 0)
+            # Haiku's mkfs; mkxbfs-created files carry last_modified 0)
             if cmtime != 0:
                 expect_name.append((child.encode('latin1'), cino))
                 expect_size.setdefault(csize, set()).add(cino)
@@ -578,7 +578,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
                 for dv in dup_values(vio, val):
                     got.setdefault(k, set()).add(dv)
             # The typed demo indices are a build-time fixture of our
-            # mkbfs images (keyed by inode number as the index's type).
+            # mkxbfs images (keyed by inode number as the index's type).
             # Foreign volumes (e.g. a real Haiku image) have their own
             # index set with different semantics — only verify the
             # contents when the q* demo indices are present.
@@ -662,7 +662,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
 if __name__ == '__main__':
     args = sys.argv[1:]
     if not args:
-        print("usage: bfscheck.py <image> [rootdir]")
+        print("usage: xbfscheck.py <image> [rootdir]")
         sys.exit(1)
     try:
         dirty = '--allow-dirty-log' in args

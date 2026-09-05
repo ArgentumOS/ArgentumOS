@@ -1,7 +1,7 @@
 /*
- * fnx/fs/bfs/file.c
+ * fnx/fs/xbfs/file.c
  *
- * BFS file operations: write (with block allocation via bmap
+ * XBFS file operations: write (with block allocation via bmap
  * FOR_WRITING) and llseek. Reads use the generic page-cache file_read.
  *
  * Copyright 2024, the FNX project.
@@ -12,7 +12,7 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/buffer.h>
 #include <fnx/fcntl.h>
 #include <fnx/mm.h>
@@ -21,12 +21,12 @@
 
 extern int file_read(struct inode *, struct fd *, char *, __size_t);
 
-__loff_t bfs_file_llseek(struct inode *i, __loff_t offset)
+__loff_t xbfs_file_llseek(struct inode *i, __loff_t offset)
 {
 	return offset;
 }
 
-int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
+int xbfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 		   __size_t count)
 {
 	__blk_t block;
@@ -44,7 +44,7 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 	blksize = i->sb->s_blocksize;
 	retval = total_written = 0;
 	old_size = i->i_size;
-	old_mtime = i->u.bfs.raw.last_modified_time;
+	old_mtime = i->u.xbfs.raw.last_modified_time;
 
 	if(f->flags & O_APPEND) {
 		f->offset = i->i_size;
@@ -75,15 +75,15 @@ int bfs_file_write(struct inode *i, struct fd *f, const char *buffer,
 		if(f->offset > i->i_size) {
 			i->i_size = f->offset;
 		}
-		/* track the stream size so bfs_ifree() truncates (frees the
+		/* track the stream size so xbfs_ifree() truncates (frees the
 		 * data blocks) when the file is unlinked; 512-byte units with
 		 * rounding so any allocated block counts (i_blocks == 0 would
 		 * skip the truncate and leak the block) */
 		i->i_blocks = (i->i_size + 511) >> 9;
-		bfs_touch_mtime(i);
-		bfs_touch_ctime(i);
+		xbfs_touch_mtime(i);
+		xbfs_touch_ctime(i);
 		i->state |= INODE_DIRTY;
-		bfs_index_resize(i->sb, i, old_size, old_mtime);
+		xbfs_index_resize(i->sb, i, old_size, old_mtime);
 	}
 
 	inode_unlock(i);

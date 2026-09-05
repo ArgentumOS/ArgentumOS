@@ -2,7 +2,7 @@
  * FNX /System/Tools/init — static musl x86_64 (PID 1).
  *
  * Built by `make userland64` into .build/rootfs64/System/Tools/init and
- * packed into the BFS root image. PID 1 already has fd 0/1/2 open to
+ * packed into the XBFS root image. PID 1 already has fd 0/1/2 open to
  * /System/Devices/TTY/console. It mounts the virtual filesystems the
  * userland tools expect (/System/Processes, devpts under Devices) and
  * then spawns a shell on /System/Tools/sh, restarting it when it exits.
@@ -273,7 +273,7 @@ static void start_xfb(void)
 	pid_t p;
 
 	mkdir("/System/Variable Data/log", 0755);
-	/* the BFS image persists across sessions: a stale lock from a
+	/* the XBFS image persists across sessions: a stale lock from a
 	 * killed/previous Xfb would make the fresh server refuse to start
 	 * ("Server is already active for display 0") */
 	unlink("/System/Temporary Files/.X0-lock");

@@ -567,34 +567,34 @@ eepro100 semantics learned (QEMU eepro100.c):
   with EL; then RU_START. The EEPROM MAC (52:54:00:12:34:56) is read
   via the 93C46 bit-bang (words 0-2, LE).
 
-## OpenBFS (BeOS BFS) filesystem - M0-M7c DONE, m4b residual FIXED, QUERY + 2048/4096-byte blocks DONE, HAIKU-COMPAT NODE SIZE DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8, f867338, bc44a31, e8f6e20, 8f042ac)
+## OpenBFS (BeOS XBFS) filesystem - M0-M7c DONE, m4b residual FIXED, QUERY + 2048/4096-byte blocks DONE, HAIKU-COMPAT NODE SIZE DONE (959a4c8, e54cbd5, 21bbf5e, ff9f78e, 9113149, 058e88b, 4a26a61, 9b5eb9f, 6fe9be2, 40dc189, ec23cb0, 15afffb, fad774c, ae12b29, 6db15a7, 8dbf253, 797d482, ef7bbc8, f867338, bc44a31, e8f6e20, 8f042ac)
 
-Read-only driver + tools/mkbfs.py image builder (M0/M1), write support
+Read-only driver + tools/mkxbfs.py image builder (M0/M1), write support
 with free-space bitmap (M2), btree interior nodes + leaf splits +
 indirect streams + statfs (M3), indirect-stream write/read path
 fixes verified byte-perfect (M4a), interior-node overflow splits +
 double-indirect tables (M4b), and long symlinks (M4c). Mount a second
-QEMU disk (`-drive file=bfs.img,format=raw,if=ide,index=2` -> /dev/hdc)
-and `mount -t bfs /dev/hdc /mnt` works: ls, cat, cksum, create/write/
+QEMU disk (`-drive file=xbfs.img,format=raw,if=ide,index=2` -> /dev/hdc)
+and `mount -t xbfs /dev/hdc /mnt` works: ls, cat, cksum, create/write/
 read fragmented files past 12 direct runs, symlinks (short inline,
 long >143 chars in the data stream), umount/remount. Test harnesses:
 `.build/rootfs64/bin/bfsfrag` + `.build/bfsverify.py` (M4a:
 fragmented-file content), `.build/rootfs64/bin/bfshuge` +
-`.build/bfsdir` (userland/bfsdir.c) + `.build/bfstree.py` (M4b:
+`.build/xbfsdir` (userland/xbfsdir.c) + `.build/bfstree.py` (M4b:
 8000-entry dir -> depth-3 tree; host walk checks exact set, sortedness,
 duplicates, inode validity, separator ranges), and
 `.build/rootfs64/bin/bfssym` (M4c: short/long/boundary symlinks,
-follow-through, reopen persistence), and `.build/rootfs64/bin/bfsxattr`
-+ `userland/bfsxattr.c` (M4d: small_data attributes — set/get/list/
+follow-through, reopen persistence), and `.build/rootfs64/bin/xbfsxattr`
++ `userland/xbfsxattr.c` (M4d: small_data attributes — set/get/list/
 remove via the 12 xattr syscalls, XATTR_CREATE/REPLACE, ENOSPC on the
 24-byte budget, symlink EOPNOTSUPP, dir attrs, f* via fd, reopen
 persistence; host-side verifies the packed records).
-mkbfs.py writes multi-AG bitmaps for >8MB images (num_ags per 8MB,
+mkxbfs.py writes multi-AG bitmaps for >8MB images (num_ags per 8MB,
 bitmap at blocks 1..num_ags, journal/inodes shifted after it). M4c also
 fixed three core VFS bugs found while testing symlinks: sys_open's
 uninitialized follow_links, umount leaving inodes with dangling i->sb
 (crash in sync_inodes/iput; invalidate_inodes now drops the device's
-inodes), and bfs_file_write never setting i_blocks (unlink data-block
+inodes), and xbfs_file_write never setting i_blocks (unlink data-block
 leak). See project memory `fnx-openbfs-m4a-indirect-in-progress` for
 the bug list + gotchas (dd conv=notrunc, brelse-vs-bwrite, stale
 esp.img, strcmp sign, the host-verifier allocation_group trap, serial
@@ -607,18 +607,18 @@ free-space bitmap + sync, (3) real blocks + sync), mount-time replay
 (restores uncommitted transactions, then drains the log; a partial walk
 refuses the mount), per-superblock tx-ownership lock (the commit sleeps
 on I/O, so a concurrent tx on the same sb would clobber the tx state),
-umount drains the log under the lock. mkbfs: journal extent 4 -> 16
+umount drains the log under the lock. mkxbfs: journal extent 4 -> 16
 blocks (a split transaction needs headroom). Test: .build/rootfs64/bin/
 bfsjrnl (journaled dir/symlink/xattr writes + reopen) and .build/
 jrnl_craft.py (host-crafts a pending transaction: corrupts an inode
 block + writes a log entry + DIRTY sb; the mount must replay it — block
 restored, log drained, sb clean). Two bugs fixed on the way: a gcc -O2
-miscompile of bfs_log_commit's indexed loops (1..n shift + OOB; loops
+miscompile of xbfs_log_commit's indexed loops (1..n shift + OOB; loops
 now walk pointers) and an interleaved write_inode tx clobbering the tx
-state mid-commit (fixed by the ownership lock). M4f = BFS as the ROOT
+state mid-commit (fixed by the ownership lock). M4f = XBFS as the ROOT
 filesystem (the "multi-node trees" item was already delivered by M4b;
 the root image now exercises it at build time — /usr/bin's 130 entries
-build a depth-2 tree). tools/mkbfs.py was upgraded to build a full root
+build a depth-2 tree). tools/mkxbfs.py was upgraded to build a full root
 image: multi-block file streams (12 direct runs + indirect table of 128
 block_run entries per block + double-indirect of 256 u32 addresses per
 block — the layout the driver's bmap reads; toybox's 758 blocks become
@@ -628,24 +628,24 @@ and long symlinks, multi-node directory B+trees (interior nodes with
 key[i] = last key of child[i]'s subtree, values + overflow = children,
 leaves right-linked, left always -1 as the driver writes), source
 permission preservation (the old hardcoded 0644 made /sbin/init
-EACCES), and a multi-AG-safe run allocator. tools/bfscheck.py is now a
+EACCES), and a multi-AG-safe run allocator. tools/xbfscheck.py is now a
 whole-image verifier: superblock + bitmap<->used-block agreement,
 every dir tree (multi-node walk, sortedness, right-chain integrity,
 key order), every stream byte-compared to the source tree, symlink
-targets and modes; `make rootbfs` builds + verifies .build/rootbfs.img.
+targets and modes; `make rootxbfs` builds + verifies .build/rootxbfs.img.
 Root mounting: the kreal64 cmdline no longer bakes rootfstype= (and
 set_default_values no longer forces ext2), and mount_root probes
-minix -> ext2 -> iso9660 -> bfs when rootfstype is absent — ONE kernel
-boots both the ext2 root (`make run`) and the BFS root (`make run-bfs`
-attaches rootbfs.img as /dev/sda). statfs/fstatfs on the x86-64 table
+minix -> ext2 -> iso9660 -> xbfs when rootfstype is absent — ONE kernel
+boots both the ext2 root (`make run`) and the XBFS root (`make run-xbfs`
+attaches rootxbfs.img as /dev/sda). statfs/fstatfs on the x86-64 table
 now use the 64-bit statfs ABI (120-byte struct, 8-byte fields), so `df`
 works on any root. Two journal bugs surfaced by the power-off path and
-fixed: bfs_log_write_super now marks the in-memory superblock dirty
+fixed: xbfs_log_write_super now marks the in-memory superblock dirty
 (the final sync_superblocks used to skip the drain because the last
 commit's on-disk write never set it — power-off left DIRT + a pending
-log), and bfs_write_inode now clears INODE_DIRTY (it never did, so
+log), and xbfs_write_inode now clears INODE_DIRTY (it never did, so
 every sync_inodes re-journaled all dirty inodes, re-populating the log
-after every drain). Verified: BFS root boots to the interactive dash
+after every drain). Verified: XBFS root boots to the interactive dash
 shell, ls/cat/df/mkdir/ln/cksum work, toybox reads byte-perfect
 (1012972784 matches the host), writes persist, `halt -f` ends with sb
 CLEN + log drained; ext2 root still boots; regressions M4a 6/6, M4c
@@ -654,11 +654,11 @@ clean). The existing ext2 root (mkext2.py, rev-0, 1KB blocks) stays as-is.
 
 The m4b residual (last_modified index silently stopping at ~755 of 8000
 entries) is FIXED (797d482 + ef7bbc8) with TWO root causes:
-1. bfs_indirect_bmap returned -EIO at the first *unset* double-indirect
+1. xbfs_indirect_bmap returned -EIO at the first *unset* double-indirect
    entry: the walk iterated to the phantom table_len (indirect.len +
    dind.len*256), so when the last_modified tree's stream passed
    block 273 (13 direct + 128+128 runs) every split/dup-node grow
-   failed and bfs_index_add (which ignores insert errors) dropped the
+   failed and xbfs_index_add (which ignores insert errors) dropped the
    entries. An unset double entry is now the end of the table (reads:
    unmapped; writes: grow at that slot), and the grow records the new
    table block + zeroes it at the real slot ('new_slot': 0 for the
@@ -666,7 +666,7 @@ entries) is FIXED (797d482 + ef7bbc8) with TWO root causes:
    is guarded to dind.len == 0, else the extension would renumber the
    double entries — and 't' for a double-table block), never the
    phantom table_len.
-2. bfs_dir_touch read i_size AFTER the dir-tree mutation, so
+2. xbfs_dir_touch read i_size AFTER the dir-tree mutation, so
    osz == nsz and a directory's size index entry never moved past its
    mkdir-time size. Callers now pass the pre-mutation size.
 Verified: the 8000-file battery ends with "indices: contents verified"
@@ -674,7 +674,7 @@ Verified: the 8000-file battery ends with "indices: contents verified"
 S1-S8 / X1-X5 / J1-J6 / frag suites still pass.
 
 M7 (fad774c) = the indices tree (BeOS's signature feature) + the
-duplicate-key B+tree engine. mkbfs creates the standard indices
+duplicate-key B+tree engine. mkxbfs creates the standard indices
 (name, BEOS:APP_SIG, last_modified, size) as a directory of container
 inodes under sb.indices; the driver maintains name/size/last_modified
 on create/rename/write/truncate/unlink when the volume has them (Haiku
@@ -688,7 +688,7 @@ demotion. Three root causes found while testing: the in-place
 fragment->duplicate-node conversion used memcpy over overlapping
 regions (Haiku uses memmove) and corrupted the array; deleting a
 fragment's sole value left an empty fragment + dangling key; and the
-driver's superblock rewrite dropped the indices run. bfscheck gained a
+driver's superblock rewrite dropped the indices run. xbfscheck gained a
 full indices pass (modes, tree data_type, no dots, and content checks
 that expand fragment/duplicate chains against the dir walk). Behavioral
 1:1 edges: create_time now written at ialloc ((sec << 16)), over-long
@@ -696,9 +696,9 @@ names return ENAMETOOLONG (B_FILE_NAME_LENGTH = 255), and the root
 split keeps the left half in place so interior root splits orphan
 nothing. RESIDUAL FIXED (M7a, ae12b29): the last_modified
 last-write-before-power-off was the unlink's truncate-to-0 re-running
-bfs_index_resize(), which re-added the deleted file's entry at a new
+xbfs_index_resize(), which re-added the deleted file's entry at a new
 mtime key (the mtime changed), so the entry the unlink just removed
-resurrected on disk. bfs_index_resize() now skips nlink==0 inodes and
+resurrected on disk. xbfs_index_resize() now skips nlink==0 inodes and
 skips same-value del/put entirely. A follow-up scare that the frag
 battery showed lost writes / AG1 garbage runs was a verification-parser
 bug (the direct runs are 8-byte packed structs — a 6-byte stride
@@ -706,18 +706,18 @@ misaligned every later run; the data.size field lives at +208, not
 +180); the fragA/fragB/seqA/sparse battery is byte-exact with the
 correct parse. Inline symlinks also now store the logical length in
 data.size (stat, the on-disk inode and the size index agree), and
-bfscheck sorts chains by the tree data_type (INT64 keys are signed
+xbfscheck sorts chains by the tree data_type (INT64 keys are signed
 64-bit — raw byte order misordered the size index). The remaining
 1:1 gaps: big-endian (PPC) volumes are still refused at mount
 (deliberate; converting every field access to a swap layer is huge and
-untestable without BE BFS disks) and the real-Haiku cross-mount test
+untestable without BeOS BFS disks) and the real-Haiku cross-mount test
 (boot a Haiku VM, mount our images there, and mkfs a volume under
 Haiku for FNX to mount).
 
-Query engine (f867338): Haiku-style BQuery via the BFS_IOC_QUERY ioctl
-+ userland bfsquery/bfsqtest; the btree compares numeric keys
+Query engine (f867338): Haiku-style BQuery via the XBFS_IOC_QUERY ioctl
++ userland xbfsquery/xbfsqtest; the btree compares numeric keys
 natively (INT8..UINT64/FLOAT/DOUBLE, host LE order). Verified by the
-guest battery (BFSQTEST ALL-OK: STRING wildcards, size/last_modified,
+guest battery (XBFSQTEST ALL-OK: STRING wildcards, size/last_modified,
 &&/||/!, and the 6 typed demo indices) at 1024/2048/4096-byte blocks.
 
 Block sizes (bc44a31, e8f6e20): FNX mounts 1024/2048/4096-byte
@@ -737,15 +737,15 @@ deferred to the buffer owner), insert_dup writes the leaf whenever a
 dup touched its block, remove_dup releases the leaf on every exit, the
 journal tx-overflow write-through skips caller-held blocks
 (buffer_locked), the split's parent/right-node/relink same-block reads,
-and a fail-fast guard in bfs_btree_read_node. Verified at
-1024/2048/4096: 2000-file batteries + BFSQTEST ALL-OK, S/X/J regressions
-pass (0 FAIL), and bfscheck parses a real Haiku nightly volume
+and a fail-fast guard in xbfs_btree_read_node. Verified at
+1024/2048/4096: 2000-file batteries + XBFSQTEST ALL-OK, S/X/J regressions
+pass (0 FAIL), and xbfscheck parses a real Haiku nightly volume
 (397 inodes, 239793 blocks, indices verified).
 (fsop->destroy_inode, kept as the trailing fsop field so positional
 initializers stay valid; fired from remove_from_hash on cache exit) so
 the per-inode small_data tail (3864 bytes at 4096) can be a separate
 kmalloc'd buffer instead of an embedded array. The btree gained
-BFS_BTREE_MAX_PAIRS 128 as a structural cap: a 4096-byte leaf can hold
+XBFS_BTREE_MAX_PAIRS 128 as a structural cap: a 4096-byte leaf can hold
 ~370 short keys, which overran the 128-slot collect arrays (the 129th
 insert failed with -EEXIST and index updates were silently dropped);
 the room check now splits before the cap. Verified by the full battery
@@ -753,9 +753,9 @@ the room check now splits before the cap. Verified by the full battery
 
 M5 = 1:1 Haiku on-disk compatibility (audit + fixes, so a volume can
 move between FNX and Haiku both ways). The audit compared every on-disk
-structure against Haiku's driver source (bfs.h, BPlusTree.h,
+structure against Haiku's driver source (xbfs.h, BPlusTree.h,
 Journal.h, Volume.cpp, Inode.cpp, Attribute.cpp, BlockAllocator.cpp):
-block_run, disk_super_block, bfs_data_stream, bfs_inode (232 bytes),
+block_run, disk_super_block, xbfs_data_stream, xbfs_inode (232 bytes),
 bplustree_header/node + the key-area layout, directory-tree semantics
 (values = inode block numbers, unique keys, memcmp ordering with
 shorter<longer, interior key[i] = max of child[i]'s subtree — Haiku's
@@ -769,26 +769,26 @@ data — byte-identical). SIX deviations were fixed:
    writes inode_size = block_size and IsValid() REQUIRES them equal, so
    Haiku previously refused to mount our disks outright. The inode's
    own inode_size field got the same fix (Haiku Inode::InitCheck
-   compares it against the volume's) — in bfs_write_superblock, ialloc,
-   and mkbfs.py. BFS_SMALL_DATA_SIZE grew from 24 to
-   block_size - sizeof(bfs_inode) = 792 (Haiku's tail); the 24-byte
+   compares it against the volume's) — in xbfs_write_superblock, ialloc,
+   and mkxbfs.py. XBFS_SMALL_DATA_SIZE grew from 24 to
+   block_size - sizeof(xbfs_inode) = 792 (Haiku's tail); the 24-byte
    budget could not hold a file-name record for names > 11 chars.
 2. small_data records now use Haiku's exact layout:
    type(4) name_size(2) data_size(2) name + strcpy NUL + 2 pad + data +
    NUL (8 + N + 3 + D + 1 bytes, data at name + N + 3, name_size =
-   strlen WITHOUT the NUL). fs/bfs/xattr.c was rewritten around it;
+   strlen WITHOUT the NUL). fs/xbfs/xattr.c was rewritten around it;
    Haiku's AttributeIterator skips the file-name record and CheckAccess
    refuses it, and we now match (listxattr hides it, get/set/remove on
    the 0x13 name -> EACCES).
 3. the file-name record: Haiku writes name_size=1, name = the single
-   byte 0x13 (FILE_NAME_NAME), data = the file name. Our mkbfs wrote
+   byte 0x13 (FILE_NAME_NAME), data = the file name. Our mkxbfs wrote
    name_size=0x13 with name="name" (Haiku's Name() scan would miss it).
-   Fixed in mkbfs and added at CREATE/MKDIR/SYMLINK/RENAME in the
-   driver (new bfs_inode_set_name(), the SetName() equivalent).
+   Fixed in mkxbfs and added at CREATE/MKDIR/SYMLINK/RENAME in the
+   driver (new xbfs_inode_set_name(), the SetName() equivalent).
 4. symlinks: long targets now set INODE_LONG_SYMLINK (0x40) in the
-   inode flags (bfs_symlink + mkbfs) — Haiku reads the flag, not the
+   inode flags (xbfs_symlink + mkxbfs) — Haiku reads the flag, not the
    size; without it Haiku would read the stream run bytes as an inline
-   target. bfs_write_inode now ORs INODE_IN_USE instead of overwriting
+   target. xbfs_write_inode now ORs INODE_IN_USE instead of overwriting
    flags, preserving Haiku's permanent bits (INODE_LONG_SYMLINK,
    INODE_LOGGED, ...) when we rewrite a foreign inode. Short-symlink
    reads no longer trust pad[0]/data.size (Haiku stores neither — the
@@ -800,16 +800,16 @@ data — byte-identical). SIX deviations were fixed:
    old right leaf is relinked). maximum_size in the tree header now
    tracks the stream length (Haiku validates links against
    MaximumSize() - NodeSize()).
-6. mkbfs replicates Haiku's allocation-group sizing (Volume::Initialize
+6. mkxbfs replicates Haiku's allocation-group sizing (Volume::Initialize
    kDesiredAllocationGroups = 56): ag_shift starts at 13 and grows with
    blocks_per_ag until num_ags <= 56 (1KB blocks: identical up to
    448MB; verified equal to a reference reimplementation for 8MB..256GB).
    The driver already read the geometry from the sb, so it mounts
-   Haiku's larger-group volumes as-is. bfscheck.py gained a Haiku
+   Haiku's larger-group volumes as-is. xbfscheck.py gained a Haiku
    conformance mode (inode_size == block_size in sb and every inode,
    every inode carries a correct 0x13 record, records parse with the
    Haiku layout, inline symlinks NUL-terminate, long ones carry the
-   flag) and `make rootbfs` enforces it. Verified: a crafted Haiku-style
+   flag) and `make rootxbfs` enforces it. Verified: a crafted Haiku-style
    image (pad[0] zeroed on all 207 short symlinks, inode_size=1024)
    boots, readlink/ls/cat work; in-guest creates write 0x13 records;
    long symlink flags + streams byte-perfect; xattrs round-trip in the
@@ -819,7 +819,7 @@ data — byte-identical). SIX deviations were fixed:
    attributes > ~792 bytes) are not read/written — files still mount
    and read, the attrs stay untouched; sb.indices = 0 (no indices tree)
    — Haiku mounts read-write and just logs "volume doesn't have
-   indices!"; big-endian (PPC) BFS volumes are refused. Journal replay
+   indices!"; big-endian (PPC) XBFS volumes are refused. Journal replay
    and the run_array format are already Haiku-identical, so a dirty
    Haiku volume replays identically under FNX.
 
@@ -831,18 +831,18 @@ bitmap. XFS was the alternative: production-grade but 2-3x the scope
 (AGs, 3 btree variants, 5 directory formats, log).
 
 Milestones (each independently verifiable):
-- M0 - tools/mkbfs.py image builder (like mkext2.py): 1KB blocks, a
+- M0 - tools/mkxbfs.py image builder (like mkext2.py): 1KB blocks, a
   few AGs, superblock, journal extent, root-dir stream, a few files.
-  Cross-check layout against Linux fs/befs headers (include/fnx/bfs.h).
-  GOTCHA: /sbin/mkfs.bfs on Linux makes the SCO UnixWare boot fs
-  (magic 0x1badface), NOT BeOS BFS (magic 0x42465331) - we must write
-  our own builder; there is no Linux mkfs for BeOS BFS.
-- M1 - Read-only driver: register 'bfs' (bump NR_FILESYSTEMS in
+  Cross-check layout against Linux fs/befs headers (include/fnx/xbfs.h).
+  GOTCHA: /sbin/mkfs.xbfs on Linux makes the SCO UnixWare boot fs
+  (magic 0x1badface), NOT BeOS XBFS (magic 0x42465331) - we must write
+  our own builder; there is no Linux mkfs for BeOS XBFS.
+- M1 - Read-only driver: register 'xbfs' (bump NR_FILESYSTEMS in
   include/fnx/filesystems.h, fs/filesystems.c), mount (superblock at
   512B, AG geometry, journal state), read inodes (256B, small-data
   runs -> indirect stream), walk the root-dir B+tree (hash-keyed
   lookup + readdir), read files via the buffer cache (bread/bwrite
-  already take an arbitrary size). Deliverable: mount a BFS data disk
+  already take an arbitrary size). Deliverable: mount a XBFS data disk
   in the guest, ls/cat work. This is where the B+tree engine gets
   built (node types, keys, leaf reads).
 - M2 - Write support: free-space run B+tree insert/delete (split/
@@ -851,16 +851,16 @@ Milestones (each independently verifiable):
 - M3 - Journaling: mount-time replay (recover unclean state) +
   metadata transaction logging.
 - M4 - Stretch: attributes/queries (BeOS signature feature), and/or
-  make BFS the ROOT filesystem (mkbfs.py root image + mount-before-
+  make XBFS the ROOT filesystem (mkxbfs.py root image + mount-before-
   userland; the ext2 root path and mkext2.py then become optional).
-  DONE (M4d attributes, M4e journaling, M4f BFS as root fs).
+  DONE (M4d attributes, M4e journaling, M4f XBFS as root fs).
 
-Framing: first milestone mounts BFS as a SECOND filesystem (data
+Framing: first milestone mounts XBFS as a SECOND filesystem (data
 disk, e.g. a second QEMU drive) while ext2 stays the root - lower
 risk, reuses the boot path. Move the root over only in M4.
 
 References: fs/befs (Linux, read-only) for the on-disk format; Haiku's
-BFS implementation (MIT) as a behavioral reference; buffer cache
+XBFS implementation (MIT) as a behavioral reference; buffer cache
 supports arbitrary block sizes (bread(dev, blk, size)); in-guest
 verification via a bfstest.sh like the other targets.
 
@@ -2189,41 +2189,41 @@ Inode.cpp CreateAttribute/_RemoveAttribute/WriteAttribute:
   flags IN_USE | INODE_ATTR_INODE, type = the attribute type ('CSTR'),
   parent = the attributes inode; its stream is the value. No name
   record: the name lives in the tree key.
-- fs/bfs/attribute.c implements bfs_attr_set/get/list/remove +
-  bfs_attr_free_all, reusing the directory btree engine unchanged (the
+- fs/xbfs/attribute.c implements xbfs_attr_set/get/list/remove +
+  xbfs_attr_free_all, reusing the directory btree engine unchanged (the
   attributes tree IS a directory tree without dots). Write path: the
-  small_data fit test fails -> bfs_attr_set removes the inline record
+  small_data fit test fails -> xbfs_attr_set removes the inline record
   (Haiku's _RemoveSmallData), creates the attributes inode + attribute
   file + tree entry, and writes the value stream. Remove: small_data
   first, else the tree; when the tree empties the attributes inode is
-  freed and the file's run cleared. Unlink: bfs_ifree now calls
-  bfs_attr_free_all() before truncating, so every attribute file
+  freed and the file's run cleared. Unlink: xbfs_ifree now calls
+  xbfs_attr_free_all() before truncating, so every attribute file
   (stream + inode block), the tree stream and the attributes inode are
   freed (verified: the post-unlink bitmap returns exactly to the
   fresh-image baseline). xattr.c also now ALLOWS attributes on symlinks
   (Haiku does; the small_data tail starts at 232, after the 144-byte
   symlink area, so there is no aliasing — the M4d EOPNOTSUPP test
-  expectation was updated to match). bfscheck.py gained an attributes
+  expectation was updated to match). xbfscheck.py gained an attributes
   conformance pass (every nonzero attributes run resolves to an
   S_ATTR_DIR inode whose tree values are S_ATTR inodes; attrs tree has
   no dots and is sorted; the value streams count in the bitmap).
   THREE latent bugs found by the new verifier + fixed:
-  1. bfs_btree_remove_at corrupted leaf nodes whenever removing a key
+  1. xbfs_btree_remove_at corrupted leaf nodes whenever removing a key
      shrank all_key_length across an 8-byte alignment boundary (the
      key-length index and values stayed at the old aligned offset, and
      the removed key's stale index entry sat between them). It now
      relocates index + values to the exact layout implied by the new
      all_key_length. This is a real data-corruption fix for any delete
      (rm/unlink) on a leaf whose keys cross the boundary.
-  2. bfs_ialloc never populated the in-memory raw.inode_size (only the
+  2. xbfs_ialloc never populated the in-memory raw.inode_size (only the
      disk buffer), and write_inode memcpys the raw — so EVERY newly
      created inode was written back with inode_size=0 (Haiku
      InitCheck failure) the first time it was flushed. Now set after
      the in-memory memset.
-  3. mkbfs's build_inode wrote run(0, 0) for the attributes field,
+  3. mkxbfs's build_inode wrote run(0, 0) for the attributes field,
      which with run()'s default len=1 produced a phantom (0,0,1) run
      on every inode. Now run(0, 0, 0).
-  Verified: bfsattr (userland/bfsattr.c) sets a 900-byte attribute
+  Verified: xbfsattr (userland/xbfsattr.c) sets a 900-byte attribute
   (overflows small_data -> attributes tree), reads it back, lists
   small+tree attrs together, sizes it, removes it (attrs inode freed
   on empty tree), and unlinks with a tree attribute present (bitmap
@@ -2231,8 +2231,8 @@ Inode.cpp CreateAttribute/_RemoveAttribute/WriteAttribute:
   attrs inode mode/flags/type/parent and the value bytes exactly in
   Haiku's layout; M4a 6/6, M4c S1-S8, M4d X1-X5 (updated for the
   792-byte budget + symlink xattrs), M4e J1-J6 + jrnl_craft replay,
-  ext2 root and BFS root still boot. Remaining after M6: the stream
+  ext2 root and XBFS root still boot. Remaining after M6: the stream
   B+tree / indices + queries (needs duplicate-key support in the
   engine), big-endian volumes, and the real-Haiku cross-mount test
-  (boot an actual Haiku VM against rootbfs.img, and mount a
+  (boot an actual Haiku VM against rootxbfs.img, and mount a
   Haiku-mkfs'd volume under FNX).

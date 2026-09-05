@@ -1,7 +1,7 @@
 /*
- * fnx/fs/bfs/dir.c
+ * fnx/fs/xbfs/dir.c
  *
- * BFS directory operations (read-only): readdir, lookup.
+ * XBFS directory operations (read-only): readdir, lookup.
  *
  * Directory entries are stored in the B+tree; each entry is a
  * (name, inode-block-number) pair. The readdir implementation walks
@@ -17,21 +17,21 @@
 #include <fnx/errno.h>
 #include <fnx/fs.h>
 #include <fnx/stat.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/fd.h>
 #include <fnx/dirent.h>
 #include <fnx/string.h>
 
-extern int bfs_bmap(struct inode *, __off_t, int);
-extern int bfs_btree_find(struct inode *, const char *, __ino_t *);
-extern int bfs_btree_iterate(struct inode *, int (*)(const char *, __ino_t, void *), void *);
+extern int xbfs_bmap(struct inode *, __off_t, int);
+extern int xbfs_btree_find(struct inode *, const char *, __ino_t *);
+extern int xbfs_btree_iterate(struct inode *, int (*)(const char *, __ino_t, void *), void *);
 
-int bfs_dir_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
+int xbfs_dir_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 {
 	return -EISDIR;
 }
 
-struct bfs_readdir_arg {
+struct xbfs_readdir_arg {
 	struct dirent *dirent;		/* 32-bit packing target */
 	struct dirent64 *dirent64;	/* 64-bit packing target */
 	unsigned int size;		/* bytes packed so far */
@@ -41,9 +41,9 @@ struct bfs_readdir_arg {
 	int is64;
 };
 
-static int bfs_readdir_entry(const char *name, __ino_t ino, void *arg)
+static int xbfs_readdir_entry(const char *name, __ino_t ino, void *arg)
 {
-	struct bfs_readdir_arg *a = (struct bfs_readdir_arg *)arg;
+	struct xbfs_readdir_arg *a = (struct xbfs_readdir_arg *)arg;
 	int name_len = 0;
 	int dirent_len, base_dirent_len;
 
@@ -95,9 +95,9 @@ static int bfs_readdir_entry(const char *name, __ino_t ino, void *arg)
 	return 0;
 }
 
-int bfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t count)
+int xbfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t count)
 {
-	struct bfs_readdir_arg arg;
+	struct xbfs_readdir_arg arg;
 
 	if(!(S_ISDIR(i->i_mode))) {
 		return -EBADF;
@@ -115,7 +115,7 @@ int bfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t c
 	arg.f = f;
 	arg.is64 = 0;
 
-	if(bfs_btree_iterate(i, bfs_readdir_entry, &arg)) {
+	if(xbfs_btree_iterate(i, xbfs_readdir_entry, &arg)) {
 		return -EIO;
 	}
 
@@ -123,9 +123,9 @@ int bfs_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_t c
 	return arg.size;
 }
 
-int bfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __size_t count)
+int xbfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __size_t count)
 {
-	struct bfs_readdir_arg arg;
+	struct xbfs_readdir_arg arg;
 
 	if(!(S_ISDIR(i->i_mode))) {
 		return -EBADF;
@@ -143,7 +143,7 @@ int bfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __size
 	arg.f = f;
 	arg.is64 = 1;
 
-	if(bfs_btree_iterate(i, bfs_readdir_entry, &arg)) {
+	if(xbfs_btree_iterate(i, xbfs_readdir_entry, &arg)) {
 		return -EIO;
 	}
 
@@ -151,14 +151,14 @@ int bfs_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __size
 	return arg.size;
 }
 
-int bfs_lookup(const char *name, struct inode *dir, struct inode **i_res)
+int xbfs_lookup(const char *name, struct inode *dir, struct inode **i_res)
 {
 	__ino_t ino;
 
 	if(!(S_ISDIR(dir->i_mode))) {
 		return -ENOTDIR;
 	}
-	if(bfs_btree_find(dir, name, &ino)) {
+	if(xbfs_btree_find(dir, name, &ino)) {
 		iput(dir);
 		return -ENOENT;
 	}

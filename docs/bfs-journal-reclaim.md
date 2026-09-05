@@ -1,9 +1,9 @@
-# BFS journal: log-space reclaim (wrap commit) — spec
+# XBFS journal: log-space reclaim (wrap commit) — spec
 
-Status: **implemented (R-M1, commit below); R-M2/R-M3 pending**. Sizing alone (tools/mkbfs.py,
+Status: **implemented (R-M1, commit below); R-M2/R-M3 pending**. Sizing alone (tools/mkxbfs.py,
 1024 blocks, commit 3c745e1) bounds *reset storms for bounded busy phases*;
 this spec kills the resets for *sustained metadata streams*, which no log
-size can fix. Reference: fs/bfs/journal.c (+ bfs.h, mkbfs.py).
+size can fix. Reference: fs/xbfs/journal.c (+ xbfs.h, mkxbfs.py).
 
 ## 1. Problem
 
@@ -53,7 +53,7 @@ declaring it all dead at once.
   (the previous commit already synced).
 - **D4 — The full-reset path is deleted.** A "log full" reset can no
   longer trigger: the only remaining hard bound is a *single transaction*
-  not fitting, which is impossible for any log ≥ `BFS_LOG_MAX_BLOCKS + 1`
+  not fitting, which is impossible for any log ≥ `XBFS_LOG_MAX_BLOCKS + 1`
   (= 16; a tx records ≤ 15 blocks). The existing write-through branch
   (`transaction larger than the log`) stays as the degenerate guard.
 
@@ -68,7 +68,7 @@ if proposed + s > log_size:
     # still published; a new entry at 0 may overwrite it, so orphan it
     # first (publish an empty log), then write at 0.
     sb.log_start = sb.log_end = 0
-    bfs_log_write_super(sb)                 # + sync (positions 0 on disk)
+    xbfs_log_write_super(sb)                 # + sync (positions 0 on disk)
     entry_pos = 0
 else:
     entry_pos = proposed
@@ -82,7 +82,7 @@ else:
 The counters (`log_since_reset`, `log_peak`) stay; the reset print becomes
 an optional wrap stat (`log_end` wrapped at position 0). `log_start ==
 log_end` remains the "empty log" convention everywhere it is already
-tested (replay, umount drain, mkbfs clean check).
+tested (replay, umount drain, mkxbfs clean check).
 
 ## 5. Crash-atomicity (every window)
 
@@ -121,7 +121,7 @@ walked because the range is tight, D2).
   validation (`pos + 1 + count > log_size` → bail) still holds. Clears to
   (0,0) + marks CLEAN exactly as today.
 - **Umount / power-off drain** (`log_draining` write-through +
-  `bfs_write_superblock`): unaffected; with the tight range the drained
+  `xbfs_write_superblock`): unaffected; with the tight range the drained
   superblock already carries empty or single-entry positions.
 - **Old images**: an image with a dirty multi-entry linear log replays and
   clears on first mount (current code path); thereafter writes use the
@@ -135,18 +135,18 @@ walked because the range is tight, D2).
   one extra sync per ~64 ops instead of 229 full resets.
 - Bounded phases: unchanged (no wraps at all).
 - Log-size sensitivity disappears for sustained streams (64 and 1024
-  behave the same modulo wrap frequency); the mkbfs size stays as the
+  behave the same modulo wrap frequency); the mkxbfs size stays as the
   measured-headroom value for bounded phases.
 
 ## 8. Acceptance criteria
 
 1. Churn regression (the 400-file create/delete guest loop): **0** `log
-   full, resetting` prints (any journal size ≥ 16); `bfscheck` clean after.
+   full, resetting` prints (any journal size ≥ 16); `xbfscheck` clean after.
 2. Continuous-write soak (e.g. `while`-loop file churn for 60s): no reset
    prints; `log_end` wraps repeatedly without error; clean shutdown leaves
    an empty log.
 3. Crash-injection matrix: qemu `kill -9` at each of §5's states (repeat
-   ~10× each), reboot → `bfscheck` clean and the previously observed
+   ~10× each), reboot → `xbfscheck` clean and the previously observed
    corruption class (replay restoring garbage over real blocks, e.g. the
    `/tmp` inode clobber) must not reproduce.
 4. Old-image compat: mount an image left dirty by a killed pre-change
@@ -155,15 +155,15 @@ walked because the range is tight, D2).
 
 ## 9. Milestones
 
-- **R-M1 — DONE**: commit-path wrap (D2/D3/D4) in `fs/bfs/journal.c`;
+- **R-M1 — DONE**: commit-path wrap (D2/D3/D4) in `fs/xbfs/journal.c`;
   the full-reset/zeroing block and the `log_flushing` recursion guard are
   deleted. Verified: 400-file churn on a 64-block log = **0 resets, 194
   wraps, verify=1, count=400**; a killed session replays its single
   in-flight entry cleanly on the next boot; the 1024-log desktop boots
   with 0 resets and 0 wraps.
 - **R-M2**: crash-injection harness (kill at each state — instrument with
-  temporary `BFS-LOG: state` prints if needed) + criteria 3–4.
-- **R-M3**: soak test (criterion 2) + docs update (mkbfs.py sizing comment
+  temporary `XBFS-LOG: state` prints if needed) + criteria 3–4.
+- **R-M3**: soak test (criterion 2) + docs update (mkxbfs.py sizing comment
   now notes sustained streams are handled structurally).
 
 ## 10. Risks / gotchas
@@ -176,7 +176,7 @@ walked because the range is tight, D2).
   the order silently reintroduces the corruption class §8.3 guards
   against. Keep the two steps adjacent with a comment.
 - `log_start == log_end` is load-bearing as "empty" in replay, the drain,
-  and the mkbfs clean check — never let a wrapped-but-nonempty state
+  and the mkxbfs clean check — never let a wrapped-but-nonempty state
   produce equal positions except the true empty case.
 
 ## 11. Open items

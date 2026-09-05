@@ -1,11 +1,11 @@
 /*
- * fnx/userland/bfsxattr.c
+ * fnx/userland/xbfsxattr.c
  *
- * M4d test: exercise the xattr syscalls on BFS (small_data attributes).
+ * M4d test: exercise the xattr syscalls on XBFS (small_data attributes).
  *
  * Usage:
- *	bfsxattr set		create the attributes + checks
- *	bfsxattr check		read back + list (after reopen)
+ *	xbfsxattr set		create the attributes + checks
+ *	xbfsxattr check		read back + list (after reopen)
  *
  * All results are printed to stdout AND appended to /mnt/XR so the host
  * can verify them independently of the serial.

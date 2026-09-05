@@ -1,5 +1,5 @@
 /*
- * fs/bfs/indices.c - Haiku's indices tree.
+ * fs/xbfs/indices.c - Haiku's indices tree.
  *
  * The superblock's 'indices' run points at the indices directory: a
  * container inode (mode S_INDEX_DIR|S_STR_INDEX|S_IFDIR) whose stream is
@@ -9,7 +9,7 @@
  * file names (STRING), the "size" and "last_modified" index keys are
  * INT64 (bytes of the signed value). Many files share a key, so the
  * index trees use the duplicate-key machinery (fragments / duplicate
- * nodes) in fs/bfs/btree.c.
+ * nodes) in fs/xbfs/btree.c.
  *
  * The driver maintains the indices on create/rename/write/truncate/
  * unlink only when the volume has them (sb.indices.len != 0); volumes
@@ -21,7 +21,7 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/buffer.h>
 #include <fnx/stat.h>
 #include <fnx/string.h>
@@ -31,104 +31,104 @@
  * Add 'value' to the index 'idx' under 'key' (a no-op when the volume
  * has no indices).
  */
-static struct inode *bfs_index_dir(struct superblock *sb)
+static struct inode *xbfs_index_dir(struct superblock *sb)
 {
-	if(!sb->u.bfs.indices_inode) {
+	if(!sb->u.xbfs.indices_inode) {
 		return NULL;
 	}
-	return iget(sb, sb->u.bfs.indices_inode);
+	return iget(sb, sb->u.xbfs.indices_inode);
 }
 
-static int bfs_index_put(struct superblock *sb, const char *idx, int dtype,
+static int xbfs_index_put(struct superblock *sb, const char *idx, int dtype,
 			 const char *key, int keylen, __u64 value)
 {
 	struct inode *dir, *ti = NULL;
 	__ino_t ino;
 	int res = -ENOENT;
 
-	if(!(dir = bfs_index_dir(sb))) {
+	if(!(dir = xbfs_index_dir(sb))) {
 		return -ENOENT;
 	}
-	if(bfs_btree_find(dir, idx, &ino) == 0) {
+	if(xbfs_btree_find(dir, idx, &ino) == 0) {
 		ti = iget(sb, ino);
 	}
 	iput(dir);
 	if(!ti) {
 		return -ENOENT;
 	}
-	res = bfs_btree_insert_value(ti, key, keylen, dtype, value);
+	res = xbfs_btree_insert_value(ti, key, keylen, dtype, value);
 		iput(ti);
 	return res;
 }
 
-static int bfs_index_del(struct superblock *sb, const char *idx, int dtype,
+static int xbfs_index_del(struct superblock *sb, const char *idx, int dtype,
 			 const char *key, int keylen, __u64 value)
 {
 	struct inode *dir, *ti = NULL;
 	__ino_t ino;
 	int res = -ENOENT;
 
-	if(!(dir = bfs_index_dir(sb))) {
+	if(!(dir = xbfs_index_dir(sb))) {
 		return -ENOENT;
 	}
-	if(bfs_btree_find(dir, idx, &ino) == 0) {
+	if(xbfs_btree_find(dir, idx, &ino) == 0) {
 		ti = iget(sb, ino);
 	}
 	iput(dir);
 	if(!ti) {
 		return -ENOENT;
 	}
-		res = bfs_btree_delete_value(ti, key, keylen, dtype, value);
+		res = xbfs_btree_delete_value(ti, key, keylen, dtype, value);
 		iput(ti);
 	return res;
 }
 
 /* the "name" + "size" + "last_modified" index keys for an inode.
  * The mtime key is the FULL stored value (seconds << 16 | subsecond),
- * set by bfs_touch_mtime() into the in-memory raw inode — the same
- * value bfs_write_inode() puts on disk, so Haiku's index and our
+ * set by xbfs_touch_mtime() into the in-memory raw inode — the same
+ * value xbfs_write_inode() puts on disk, so Haiku's index and our
  * verifier agree. */
-static __s64 bfs_index_mtime_key(struct inode *i)
+static __s64 xbfs_index_mtime_key(struct inode *i)
 {
-	return (__s64)i->u.bfs.raw.last_modified_time;
+	return (__s64)i->u.xbfs.raw.last_modified_time;
 }
 
 /*
  * Index a freshly created/renamed entry (Haiku's Inode::_AddIndexes).
  */
-void bfs_index_add(struct superblock *sb, struct inode *i, const char *name)
+void xbfs_index_add(struct superblock *sb, struct inode *i, const char *name)
 {
 	__s64 sz = (__s64)i->i_size;
-	__s64 mt = bfs_index_mtime_key(i);
+	__s64 mt = xbfs_index_mtime_key(i);
 
-	if(!sb->u.bfs.indices_inode) {
+	if(!sb->u.xbfs.indices_inode) {
 		return;
 	}
-	bfs_index_put(sb, "name", BFS_BTREE_STRING_TYPE, name, strlen(name),
+	xbfs_index_put(sb, "name", XBFS_BTREE_STRING_TYPE, name, strlen(name),
 		      i->inode);
-	bfs_index_put(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&sz, 8,
+	xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&sz, 8,
 		      i->inode);
-	bfs_index_put(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+	xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 		      (char *)&mt, 8, i->inode);
 }
 
 /*
  * Remove 'i' from every index (Haiku's Inode::_RemoveIndexes).
  */
-void bfs_index_remove(struct superblock *sb, struct inode *i,
+void xbfs_index_remove(struct superblock *sb, struct inode *i,
 		      const char *name)
 {
 	__s64 sz = (__s64)i->i_size;
-	__s64 mt = bfs_index_mtime_key(i);
+	__s64 mt = xbfs_index_mtime_key(i);
 
-	if(!sb->u.bfs.indices_inode) {
+	if(!sb->u.xbfs.indices_inode) {
 		return;
 	}
-	bfs_index_del(sb, "name", BFS_BTREE_STRING_TYPE, name, strlen(name),
+	xbfs_index_del(sb, "name", XBFS_BTREE_STRING_TYPE, name, strlen(name),
 		      i->inode);
-	bfs_index_del(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&sz, 8,
+	xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&sz, 8,
 		      i->inode);
-	bfs_index_del(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+	xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 		      (char *)&mt, 8, i->inode);
 }
 
@@ -136,7 +136,7 @@ void bfs_index_remove(struct superblock *sb, struct inode *i,
  * Move the size + last_modified index entries after a write/truncate
  * (the keys changed; the "name" entry is untouched).
  */
-void bfs_index_resize(struct superblock *sb, struct inode *i,
+void xbfs_index_resize(struct superblock *sb, struct inode *i,
 		      __off_t old_size, __u64 old_mtime)
 {
 	/* old_mtime is the FULL old stored key (sec << 16 | subsecond),
@@ -144,9 +144,9 @@ void bfs_index_resize(struct superblock *sb, struct inode *i,
 	__s64 osz = (__s64)old_size;
 	__s64 nsz = (__s64)i->i_size;
 	__s64 omt = (__s64)old_mtime;
-	__s64 nmt = bfs_index_mtime_key(i);
+	__s64 nmt = xbfs_index_mtime_key(i);
 
-	if(!sb->u.bfs.indices_inode) {
+	if(!sb->u.xbfs.indices_inode) {
 		return;
 	}
 	/* an unlinked inode's entries were already removed by the unlink;
@@ -160,20 +160,20 @@ void bfs_index_resize(struct superblock *sb, struct inode *i,
 	 * key (wasted churn, and on the last_modified index it can
 	 * resurrect an entry removed by the unlink). The put follows the
 	 * del: a del of a key that was never indexed (the root and the
-	 * mkbfs-created dirs are not in the driver's indices) must not
+	 * mkxbfs-created dirs are not in the driver's indices) must not
 	 * add the inode out of nowhere — Haiku indexes only inodes it
 	 * creates. */
 	if(osz != nsz) {
-		if(bfs_index_del(sb, "size", BFS_BTREE_INT64_TYPE, (char *)&osz,
+		if(xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
 				 8, i->inode) == 0) {
-			bfs_index_put(sb, "size", BFS_BTREE_INT64_TYPE,
+			xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE,
 				      (char *)&nsz, 8, i->inode);
 		}
 	}
 	if(omt != nmt) {
-		if(bfs_index_del(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+		if(xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 				 (char *)&omt, 8, i->inode) == 0) {
-			bfs_index_put(sb, "last_modified", BFS_BTREE_INT64_TYPE,
+			xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 				      (char *)&nmt, 8, i->inode);
 		}
 	}

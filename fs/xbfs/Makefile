@@ -1,4 +1,4 @@
-# fnx/fs/bfs/Makefile
+# fnx/fs/xbfs/Makefile
 #
 # Copyright 2024, the FNX project.
 # Distributed under the terms of the Fiwix License.

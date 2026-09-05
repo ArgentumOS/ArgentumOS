@@ -1,11 +1,11 @@
-/* bfsquery.c: OpenBFS query tool - the userland face of Haiku's BQuery.
- * Usage: bfsquery <mountpoint> '<query>'
+/* xbfsquery.c: OpenBFS query tool - the userland face of Haiku's BQuery.
+ * Usage: xbfsquery <mountpoint> '<query>'
  * The query expression follows Haiku's QueryParser syntax:
  *   attr op value  with op = | != > >= < <=
  *   combined with && (tighter) and ||, parentheses, and !( ... )
  *   values quoted with ' or " or bare; * ? [ are wildcards for
  *   = and != on STRING indices.
- * The tool issues the BFS_IOC_QUERY ioctl on the mountpoint, then
+ * The tool issues the XBFS_IOC_QUERY ioctl on the mountpoint, then
  * resolves the returned inode numbers to paths by walking the volume
  * tree (stat st_ino == inode number) and prints the matches. */
 #include <stdio.h>
@@ -18,14 +18,14 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#define BFS_QUERY_MAX_LEN	512
-#define BFS_QUERY_MAX_RESULTS	65536
-struct bfs_query {
-	char query[BFS_QUERY_MAX_LEN];
+#define XBFS_QUERY_MAX_LEN	512
+#define XBFS_QUERY_MAX_RESULTS	65536
+struct xbfs_query {
+	char query[XBFS_QUERY_MAX_LEN];
 	unsigned int count;
-	unsigned int inodes[BFS_QUERY_MAX_RESULTS];
+	unsigned int inodes[XBFS_QUERY_MAX_RESULTS];
 };
-#define BFS_IOC_QUERY		0x42530003	/* 'BS' + 3 */
+#define XBFS_IOC_QUERY		0x42530003	/* 'BS' + 3 */
 
 static unsigned int *g_match;
 static unsigned int g_nmatch;
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 {
 	const char *mnt, *expr;
 	int fd, total, n, i;
-	struct bfs_query *q;
+	struct xbfs_query *q;
 	size_t sz;
 
 	if(argc != 3) {
@@ -98,16 +98,16 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	sz = sizeof(struct bfs_query);
-	if(!(q = (struct bfs_query *)malloc(sz))) {
+	sz = sizeof(struct xbfs_query);
+	if(!(q = (struct xbfs_query *)malloc(sz))) {
 		return 1;
 	}
 
 	/* probe: count the matches */
 	memset(q, 0, sz);
-	strncpy(q->query, expr, BFS_QUERY_MAX_LEN - 1);
+	strncpy(q->query, expr, XBFS_QUERY_MAX_LEN - 1);
 	q->count = 0;
-	if(ioctl(fd, BFS_IOC_QUERY, q) < 0) {
+	if(ioctl(fd, XBFS_IOC_QUERY, q) < 0) {
 		fprintf(stderr, "query '%s': %s\n", expr, strerror(errno));
 		return 1;
 	}
@@ -116,17 +116,17 @@ int main(int argc, char **argv)
 		printf("(no matches)\n");
 		return 0;
 	}
-	if(total > BFS_QUERY_MAX_RESULTS) {
+	if(total > XBFS_QUERY_MAX_RESULTS) {
 		fprintf(stderr, "warning: %d matches, showing the first %d\n",
-			total, BFS_QUERY_MAX_RESULTS);
-		total = BFS_QUERY_MAX_RESULTS;
+			total, XBFS_QUERY_MAX_RESULTS);
+		total = XBFS_QUERY_MAX_RESULTS;
 	}
 
 	/* fetch the matches */
 	memset(q, 0, sz);
-	strncpy(q->query, expr, BFS_QUERY_MAX_LEN - 1);
+	strncpy(q->query, expr, XBFS_QUERY_MAX_LEN - 1);
 	q->count = total;
-	if(ioctl(fd, BFS_IOC_QUERY, q) < 0) {
+	if(ioctl(fd, XBFS_IOC_QUERY, q) < 0) {
 		fprintf(stderr, "query '%s': %s\n", expr, strerror(errno));
 		return 1;
 	}
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 	g_nmatch = (unsigned int)n;
 	g_printed = 0;
 
-	printf("BFSQUERY: %d match(es) for: %s\n", n, expr);
+	printf("XBFSQUERY: %d match(es) for: %s\n", n, expr);
 	walk(mnt);
 
 	close(fd);

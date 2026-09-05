@@ -1,7 +1,7 @@
 /*
- * fnx/fs/bfs/symlink.c
+ * fnx/fs/xbfs/symlink.c
  *
- * BFS symlink operations. Targets that fit in the inode's 144-byte
+ * XBFS symlink operations. Targets that fit in the inode's 144-byte
  * symlink area are stored inline (fast symlink); longer targets are
  * stored in the inode's data stream (the union member used for regular
  * files), discriminated by i_size > 143.
@@ -14,7 +14,7 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/sched.h>
 #include <fnx/stat.h>
 #include <fnx/string.h>
@@ -22,7 +22,7 @@
 #include <fnx/stdio.h>
 #include <fnx/limits.h>
 
-static int bfs_read_symlink_stream(struct inode *i, char *buffer,
+static int xbfs_read_symlink_stream(struct inode *i, char *buffer,
 				   __size_t count)
 {
 	__blk_t block;
@@ -36,13 +36,13 @@ static int bfs_read_symlink_stream(struct inode *i, char *buffer,
 	while(total < count) {
 		boffset = offset & (blksize - 1);
 		if((block = bmap(i, offset, FOR_READING)) < 0) {
-			printk("BFS-SYMSTREAM bmap fail %d\n", block);
+			printk("XBFS-SYMSTREAM bmap fail %d\n", block);
 			return block;
 		}
 		bytes = blksize - boffset;
 		bytes = MIN(bytes, count - total);
 		if(!(buf = bread(i->dev, block, blksize))) {
-			printk("BFS-SYMSTREAM bread fail blk %d\n", block);
+			printk("XBFS-SYMSTREAM bread fail blk %d\n", block);
 			return -EIO;
 		}
 		memcpy_b(buffer + total, buf->data + boffset, bytes);
@@ -53,7 +53,7 @@ static int bfs_read_symlink_stream(struct inode *i, char *buffer,
 	return total;
 }
 
-int bfs_readlink(struct inode *i, char *buffer, __size_t count)
+int xbfs_readlink(struct inode *i, char *buffer, __size_t count)
 {
 	int n;
 	__size_t bufsize = count;
@@ -65,7 +65,7 @@ int bfs_readlink(struct inode *i, char *buffer, __size_t count)
 	inode_lock(i);
 	if(i->i_size > 143) {
 		/* long symlink: the target lives in the data stream */
-		n = bfs_read_symlink_stream(i, buffer, count);
+		n = xbfs_read_symlink_stream(i, buffer, count);
 		if(n >= 0 && n < count) {
 			buffer[n] = 0;
 		}
@@ -73,7 +73,7 @@ int bfs_readlink(struct inode *i, char *buffer, __size_t count)
 		count = MIN(count, i->i_size);
 		count = MIN(count, 143);
 		for(n = 0; n < count; n++) {
-			buffer[n] = i->u.bfs.raw.u.symlink[n];
+			buffer[n] = i->u.xbfs.raw.u.symlink[n];
 		}
 		/* only NUL-terminate when there is room: writing buffer[count]
 		 * when count == bufsize would go one byte past the verified
@@ -86,7 +86,7 @@ int bfs_readlink(struct inode *i, char *buffer, __size_t count)
 	return n;
 }
 
-int bfs_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
+int xbfs_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
 {
 	char name[PATH_MAX + 1];
 	int n, errno;
@@ -104,7 +104,7 @@ int bfs_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
 
 	if(i->i_size > 143) {
 		/* long symlink: the target lives in the data stream */
-		n = bfs_read_symlink_stream(i, name, sizeof(name) - 1);
+		n = xbfs_read_symlink_stream(i, name, sizeof(name) - 1);
 		if(n < 0) {
 			iput(i);
 			return n;
@@ -112,7 +112,7 @@ int bfs_followlink(struct inode *dir, struct inode *i, struct inode **i_res)
 		name[n] = 0;
 	} else {
 		for(n = 0; n < 143; n++) {
-			if((name[n] = i->u.bfs.raw.u.symlink[n])) {
+			if((name[n] = i->u.xbfs.raw.u.symlink[n])) {
 				continue;
 			}
 			break;

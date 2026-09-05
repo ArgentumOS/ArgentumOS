@@ -35,8 +35,8 @@ clean:
 #                   panic - that is the smoke test.
 #   make ovmf       fetch OVMF firmware without root (into .build/ovmf).
 #   make run-uefi   boot OVMF (UEFI) firmware with the FNX EFI stub
-#                   (PE32+ kernel from make build64) on the BFS root image
-#                   (.build/rootbfs.img) — BFS is the default root device.
+#                   (PE32+ kernel from make build64) on the XBFS root image
+#                   (.build/rootxbfs.img) — XBFS is the default root device.
 #   make run-ext2    same, but booting the legacy ext2 root (.build/root.img).
 #   make compile64  compile every C source with 64-bit flags into .build/64
 #                   (no link) - the type-sweep verifier for the long-mode
@@ -78,40 +78,51 @@ CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2
        -fno-pie -fno-common -ffreestanding -mno-red-zone -mno-sse -mno-sse2 \
        -fno-asynchronous-unwind-tables -Wall -Wstrict-prototypes
 
-run: .build/ovmf/OVMF.fd rootbfs build64
+run: .build/ovmf/OVMF.fd rootxbfs build64
 	$(MAKE) run-qemu
 
 run-uefi: run
 
-# Legacy ext2 root (mkext2.py, rev-0, 1KB blocks): the pre-BFS default,
-# kept as an optional boot path (M4f made BFS the root fs).
+# Legacy ext2 root (mkext2.py, rev-0, 1KB blocks): the pre-XBFS default,
+# kept as an optional boot path (M4f made XBFS the root fs).
 run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 	$(MAKE) run-qemu ROOTIMG=.build/root.img
 
 # --- Interactive Xfb desktop: boots Xfb :0 on the framebuffer (the QEMU
-# --- window) with demo windows + a console shell. Run from a terminal with
-# --- DISPLAY set so the GOP fb is shown in a GTK window:
+# --- window) with demo windows + a console shell, from the real FSH root.
+# --- The image is the standard FSH rootfs plus a session.conf asking init
+# --- for the X11 desktop (init.c session_is_xfb -> start_xfb). Run from a
+# --- terminal with DISPLAY set so the GOP fb is shown in a GTK window:
 # ---     make run-xfb
 XFBROOT ?= .build/xfbdesk-root
-XFBIMG  ?= .build/rootbfs-xfbdesk.img
-xfbdesk-root:
+XFBIMG  ?= .build/rootxbfs-xfbdesk.img
+XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
+
+.build/x11/xdraw: userland/xdraw.c
+	$(MUSL64_CC) -static -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
+		userland/xdraw.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
+.build/x11/xkey: userland/xkey.c
+	$(MUSL64_CC) -static -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
+		userland/xkey.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
+
+xfbdesk-root: $(XFB_DEMO_BIN)
 	rm -rf $(XFBROOT)
-	cp -a .build/xfbtest-root $(XFBROOT)
-	cp .build/x11/xfb/Xfb $(XFBROOT)/bin/Xfb
-	cp tools/xfbdesk-init $(XFBROOT)/sbin/init
-	chmod +x $(XFBROOT)/sbin/init
+	cp -a $(ROOTFS64) $(XFBROOT)
+	cp .build/x11/xdraw "$(XFBROOT)/System/Shared/X11/bin/xdraw"
+	cp .build/x11/xkey "$(XFBROOT)/System/Shared/X11/bin/xkey"
+	printf 'desktop = "xfb"\n' > "$(XFBROOT)/System/Configuration/session.conf"
 xfbdesk: xfbdesk-root
-	python3 tools/mkbfs.py $(XFBROOT) $(XFBIMG) 64
-	python3 tools/bfscheck.py $(XFBIMG) $(XFBROOT)
+	python3 tools/mkxbfs.py $(XFBROOT) $(XFBIMG) 64
+	python3 tools/xbfscheck.py $(XFBIMG) $(XFBROOT)
 run-xfb: .build/ovmf/OVMF.fd xfbdesk build64
 	$(MAKE) run-qemu ROOTIMG=$(XFBIMG)
 
-# Boot the BFS root image (.build/rootbfs.img) as /dev/sda. The kernel's
+# Boot the XBFS root image (.build/rootxbfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
-# filesystems (minix -> ext2 -> iso9660 -> bfs) and finds bfs; the same
-# kernel boots both the ext2 and the BFS root.
-ROOTIMG ?= .build/rootbfs.img
-run-bfs: run
+# filesystems (minix -> ext2 -> iso9660 -> xbfs) and finds xbfs; the same
+# kernel boots both the ext2 and the XBFS root.
+ROOTIMG ?= .build/rootxbfs.img
+run-xbfs: run
 
 run-qemu:
 	@./tools/mkesp.sh
@@ -328,8 +339,8 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
 	$(MUSL64_CC) tools/config_m3_test.c -o "$(ROOTFS64)/System/Tools/config_m3_test"
 	$(MUSL64_CC) userland/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
-	$(MUSL64_CC) userland/bfsquery.c -o "$(ROOTFS64)/System/Tools/bfsquery"
-	$(MUSL64_CC) userland/bfsqtest.c -o "$(ROOTFS64)/System/Tools/bfsqtest"
+	$(MUSL64_CC) userland/xbfsquery.c -o "$(ROOTFS64)/System/Tools/xbfsquery"
+	$(MUSL64_CC) userland/xbfsqtest.c -o "$(ROOTFS64)/System/Tools/xbfsqtest"
 	$(MUSL64_CC) userland/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm
 	$(MUSL64_CC) userland/fbdump.c -o "$(ROOTFS64)/System/Tools/fbdump"
 	cp $(DASH64_BIN) "$(ROOTFS64)/System/Tools/sh"
@@ -339,6 +350,14 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
 	cp $(XFB_BIN) "$(ROOTFS64)/System/Shared/X11/bin/Xfb"
 	cp .build/x11-prefix/bin/xkbcomp "$(ROOTFS64)/System/Shared/X11/bin/xkbcomp"
+	# xkb data for the runtime XKB compile (Xfb's libxkbfile default is
+	# System/Shared/X11/xkb). Host xkeyboard-config is the established
+	# source (bundled data mismatches the server's xkbcomp).
+	@if [ -d /usr/share/X11/xkb/rules ]; then \
+		cp -r /usr/share/X11/xkb/. "$(ROOTFS64)/System/Shared/X11/xkb/"; \
+	else \
+		echo "WARNING: /usr/share/X11/xkb missing - Xfb keyboard init will fail"; \
+	fi
 	@cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh" 2>/dev/null || \
 		{ mkdir -p "$(ROOTFS64)/System/Shared/tests" && \
 		  cp userland/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
@@ -372,15 +391,15 @@ rootdisk64: userland64
 	python3 tools/mkext2.py $(ROOTFS64) .build/root.img 8
 	@echo "rootdisk64: .build/root.img ready (ext2, 8MB, native x86_64 userland)"
 
-# BFS root image (OpenBFS M4f): the same userland tree packed into a BeOS
-# BFS image by tools/mkbfs.py (multi-node dir trees, indirect +
-# double-indirect streams, symlinks). BFS is the DEFAULT root device
+# XBFS root image (OpenBFS M4f): the same userland tree packed into a BeOS
+# XBFS image by tools/mkxbfs.py (multi-node dir trees, indirect +
+# double-indirect streams, symlinks). XBFS is the DEFAULT root device
 # (make run / run-uefi); 64MB leaves headroom for the X11 userland (Xfb
 # is a ~16MB static binary).
-rootbfs: userland64
-	python3 tools/mkbfs.py $(ROOTFS64) .build/rootbfs.img 64
-	python3 tools/bfscheck.py .build/rootbfs.img $(ROOTFS64)
-	@echo "rootbfs: .build/rootbfs.img ready (BFS, 64MB, native x86_64 userland)"
+rootxbfs: userland64
+	python3 tools/mkxbfs.py $(ROOTFS64) .build/rootxbfs.img 64
+	python3 tools/xbfscheck.py .build/rootxbfs.img $(ROOTFS64)
+	@echo "rootxbfs: .build/rootxbfs.img ready (XBFS, 64MB, native x86_64 userland)"
 
 ovmf: .build/ovmf/OVMF.fd
 

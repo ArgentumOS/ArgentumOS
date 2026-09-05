@@ -1,7 +1,7 @@
 /*
- * fnx/fs/bfs/balloc.c
+ * fnx/fs/xbfs/balloc.c
  *
- * BFS free-space management.
+ * XBFS free-space management.
  *
  * Each allocation group has a bit bitmap stored in the FIRST blocks of
  * the group, right after the superblock (Haiku's disk_super_block
@@ -11,8 +11,8 @@
  * boot block + superblock), the bitmap blocks themselves, and the log
  * area are reserved by setting their bits.
  *
- * The whole bitmap is cached in memory (sb->u.bfs.bitmap); changes are
- * flushed by bfs_write_superblock (via sync_superblocks).
+ * The whole bitmap is cached in memory (sb->u.xbfs.bitmap); changes are
+ * flushed by xbfs_write_superblock (via sync_superblocks).
  *
  * Copyright 2024, the FNX project.
  * Distributed under the terms of the Fiwix License.
@@ -22,71 +22,71 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/mm.h>
 #include <fnx/buffer.h>
 #include <fnx/string.h>
 
 /* block number -> (group, bit-in-group) */
-static __u32 bfs_group(struct superblock *sb, __blk_t block)
+static __u32 xbfs_group(struct superblock *sb, __blk_t block)
 {
-	return block >> sb->u.bfs.ag_shift;
+	return block >> sb->u.xbfs.ag_shift;
 }
 
-static __u32 bfs_group_bit(struct superblock *sb, __blk_t block)
+static __u32 xbfs_group_bit(struct superblock *sb, __blk_t block)
 {
-	return block & ((1 << sb->u.bfs.ag_shift) - 1);
+	return block & ((1 << sb->u.xbfs.ag_shift) - 1);
 }
 
 /* the bitmap byte for a block, split into its PAGE_SIZE chunk + offset */
-static void bfs_bitmap_byte(struct superblock *sb, __blk_t block,
+static void xbfs_bitmap_byte(struct superblock *sb, __blk_t block,
 			    unsigned char **chunk, __u32 *byte)
 {
-	__u64 off = (__u64)bfs_group(sb, block) * sb->u.bfs.blocks_per_ag
-		* sb->u.bfs.block_size
-		+ (bfs_group_bit(sb, block) >> 3);
+	__u64 off = (__u64)xbfs_group(sb, block) * sb->u.xbfs.blocks_per_ag
+		* sb->u.xbfs.block_size
+		+ (xbfs_group_bit(sb, block) >> 3);
 
-	*chunk = sb->u.bfs.bitmap[off >> 12];
+	*chunk = sb->u.xbfs.bitmap[off >> 12];
 	*byte = off & (PAGE_SIZE - 1);
 }
 
-static int bfs_bitmap_test(struct superblock *sb, __blk_t block)
+static int xbfs_bitmap_test(struct superblock *sb, __blk_t block)
 {
 	unsigned char *chunk;
 	__u32 byte;
-	__u32 bit = bfs_group_bit(sb, block);
+	__u32 bit = xbfs_group_bit(sb, block);
 
-	bfs_bitmap_byte(sb, block, &chunk, &byte);
+	xbfs_bitmap_byte(sb, block, &chunk, &byte);
 	return chunk[byte] & (1 << (bit & 7));
 }
 
-static void bfs_bitmap_set(struct superblock *sb, __blk_t block)
+static void xbfs_bitmap_set(struct superblock *sb, __blk_t block)
 {
 	unsigned char *chunk;
 	__u32 byte;
-	__u32 bit = bfs_group_bit(sb, block);
+	__u32 bit = xbfs_group_bit(sb, block);
 
-	bfs_bitmap_byte(sb, block, &chunk, &byte);
+	xbfs_bitmap_byte(sb, block, &chunk, &byte);
 	chunk[byte] |= (1 << (bit & 7));
 }
 
-static void bfs_bitmap_clear(struct superblock *sb, __blk_t block)
+static void xbfs_bitmap_clear(struct superblock *sb, __blk_t block)
 {
 	unsigned char *chunk;
 	__u32 byte;
-	__u32 bit = bfs_group_bit(sb, block);
+	__u32 bit = xbfs_group_bit(sb, block);
 
-	bfs_bitmap_byte(sb, block, &chunk, &byte);
+	xbfs_bitmap_byte(sb, block, &chunk, &byte);
 	chunk[byte] &= ~(1 << (bit & 7));
 }
 
 /*
  * Allocate a free block. Returns the block number or a negative errno.
  */
-int bfs_balloc(struct superblock *sb)
+int xbfs_balloc(struct superblock *sb)
 {
-	__u64 num_blocks = sb->u.bfs.num_blocks;
-	__u32 hint = sb->u.bfs.next_free;
+	__u64 num_blocks = sb->u.xbfs.num_blocks;
+	__u32 hint = sb->u.xbfs.next_free;
 	__blk_t block;
 
 	superblock_lock(sb);
@@ -96,10 +96,10 @@ int bfs_balloc(struct superblock *sb)
 	}
 	block = hint;
 	do {
-		if(!bfs_bitmap_test(sb, block)) {
-			bfs_bitmap_set(sb, block);
-			sb->u.bfs.used_blocks++;
-			sb->u.bfs.next_free = block + 1;
+		if(!xbfs_bitmap_test(sb, block)) {
+			xbfs_bitmap_set(sb, block);
+			sb->u.xbfs.used_blocks++;
+			sb->u.xbfs.next_free = block + 1;
 			sb->state |= SUPERBLOCK_DIRTY;
 			superblock_unlock(sb);
 			return block;
@@ -119,19 +119,19 @@ int bfs_balloc(struct superblock *sb)
  * Returns 0 if the block was free (now marked used), -EEXIST if it was
  * already in use.
  */
-int bfs_balloc_specific(struct superblock *sb, __blk_t block)
+int xbfs_balloc_specific(struct superblock *sb, __blk_t block)
 {
-	if(block >= sb->u.bfs.num_blocks) {
+	if(block >= sb->u.xbfs.num_blocks) {
 		return -EINVAL;
 	}
 
 	superblock_lock(sb);
-	if(bfs_bitmap_test(sb, block)) {
+	if(xbfs_bitmap_test(sb, block)) {
 		superblock_unlock(sb);
 		return -EEXIST;
 	}
-	bfs_bitmap_set(sb, block);
-	sb->u.bfs.used_blocks++;
+	xbfs_bitmap_set(sb, block);
+	sb->u.xbfs.used_blocks++;
 	sb->state |= SUPERBLOCK_DIRTY;
 	superblock_unlock(sb);
 	return 0;
@@ -140,19 +140,19 @@ int bfs_balloc_specific(struct superblock *sb, __blk_t block)
 /*
  * Free a block.
  */
-void bfs_bfree(struct superblock *sb, __blk_t block)
+void xbfs_bfree(struct superblock *sb, __blk_t block)
 {
-	if(block >= sb->u.bfs.num_blocks) {
+	if(block >= sb->u.xbfs.num_blocks) {
 		return;
 	}
 
 	superblock_lock(sb);
-	if(bfs_bitmap_test(sb, block)) {
-		bfs_bitmap_clear(sb, block);
-		sb->u.bfs.used_blocks--;
+	if(xbfs_bitmap_test(sb, block)) {
+		xbfs_bitmap_clear(sb, block);
+		sb->u.xbfs.used_blocks--;
 		sb->state |= SUPERBLOCK_DIRTY;
-		if(sb->u.bfs.next_free > block) {
-			sb->u.bfs.next_free = block;
+		if(sb->u.xbfs.next_free > block) {
+			sb->u.xbfs.next_free = block;
 		}
 	}
 	superblock_unlock(sb);

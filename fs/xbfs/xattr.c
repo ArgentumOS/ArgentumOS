@@ -1,11 +1,11 @@
 /*
- * fnx/fs/bfs/xattr.c
+ * fnx/fs/xbfs/xattr.c
  *
- * BFS small_data attributes. Attributes are packed into the small_data
- * tail of the inode (raw + sizeof(struct bfs_inode) .. raw + inode_size)
- * as consecutive records in the HAIKU on-disk layout (bfs.h):
+ * XBFS small_data attributes. Attributes are packed into the small_data
+ * tail of the inode (raw + sizeof(struct xbfs_inode) .. raw + inode_size)
+ * as consecutive records in the HAIKU on-disk layout (xbfs.h):
  *
- *	struct bfs_small_data {
+ *	struct xbfs_small_data {
  *		__u32 type;		attribute type ('CSTR' for xattrs)
  *		__u16 name_size;	strlen(name), WITHOUT the NUL
  *		__u16 data_size;
@@ -36,24 +36,24 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/fcntl.h>
 #include <fnx/stat.h>
 #include <fnx/string.h>
 
 /* record size excluding the name/data payload (type + 2 x u16) */
-#define BFS_SD_HDR		8
+#define XBFS_SD_HDR		8
 /* Haiku small_data layout: name + strcpy NUL + 2 pad, then the data,
  * then a trailing NUL */
-#define BFS_SD_SIZE(n, d)	(BFS_SD_HDR + (n) + 3 + (d) + 1)
-#define BFS_SD_DATA(sd)		((sd)->name + (sd)->name_size + 3)
+#define XBFS_SD_SIZE(n, d)	(XBFS_SD_HDR + (n) + 3 + (d) + 1)
+#define XBFS_SD_DATA(sd)		((sd)->name + (sd)->name_size + 3)
 
 /* the file-name record: one byte 0x13 (Haiku FILE_NAME_NAME) */
-#define BFS_SD_IS_NAME(sd)	((sd)->name_size == 1 && (sd)->name[0] == 0x13)
+#define XBFS_SD_IS_NAME(sd)	((sd)->name_size == 1 && (sd)->name[0] == 0x13)
 
-static char *bfs_xattr_area(struct inode *i)
+static char *xbfs_xattr_area(struct inode *i)
 {
-	return i->u.bfs.small_data;
+	return i->u.xbfs.small_data;
 }
 
 /*
@@ -62,20 +62,20 @@ static char *bfs_xattr_area(struct inode *i)
  * to the caller). Returns the cb result, or 0 when the area is
  * exhausted.
  */
-typedef int (*bfs_xattr_cb)(struct bfs_small_data *, void *);
+typedef int (*xbfs_xattr_cb)(struct xbfs_small_data *, void *);
 
-static int bfs_xattr_walk(struct inode *i, bfs_xattr_cb cb, void *arg)
+static int xbfs_xattr_walk(struct inode *i, xbfs_xattr_cb cb, void *arg)
 {
-	char *p = bfs_xattr_area(i);
+	char *p = xbfs_xattr_area(i);
 	/* the meaningful tail is block_size - inode; the in-memory copy
 	 * is sized for the largest block and zeroed past the tail, so
 	 * the walk would stop at the first zero record either way */
-	int left = i->sb->s_blocksize - sizeof(struct bfs_inode);
+	int left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
 	int res;
 
-	while(left >= BFS_SD_HDR) {
-		struct bfs_small_data *sd = (struct bfs_small_data *)p;
-		int need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= XBFS_SD_HDR) {
+		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
+		int need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(!sd->name_size || need > left) {
 			break;
@@ -89,22 +89,22 @@ static int bfs_xattr_walk(struct inode *i, bfs_xattr_cb cb, void *arg)
 	return 0;
 }
 
-struct bfs_xattr_find {
+struct xbfs_xattr_find {
 	const char *name;
 	int name_size;		/* strlen (no NUL) */
-	struct bfs_small_data *found;
+	struct xbfs_small_data *found;
 };
 
-struct bfs_xattr_remove {
+struct xbfs_xattr_remove {
 	const char *name;
 	int name_size;		/* strlen (no NUL) */
 };
 
-static int bfs_xattr_find_cb(struct bfs_small_data *sd, void *arg)
+static int xbfs_xattr_find_cb(struct xbfs_small_data *sd, void *arg)
 {
-	struct bfs_xattr_find *f = (struct bfs_xattr_find *)arg;
+	struct xbfs_xattr_find *f = (struct xbfs_xattr_find *)arg;
 
-	if(BFS_SD_IS_NAME(sd)) {
+	if(XBFS_SD_IS_NAME(sd)) {
 		return 0;
 	}
 	if(sd->name_size == f->name_size &&
@@ -116,20 +116,20 @@ static int bfs_xattr_find_cb(struct bfs_small_data *sd, void *arg)
 }
 
 /* the file-name record is not accessible through the xattr API (it is
- * written at create/rename via bfs_inode_set_name()) */
-static int bfs_xattr_refuse_name(const char *name)
+ * written at create/rename via xbfs_inode_set_name()) */
+static int xbfs_xattr_refuse_name(const char *name)
 {
 	return name[0] == 0x13 && name[1] == 0;
 }
 
-int bfs_getxattr(struct inode *i, const char *name, char *buffer,
+int xbfs_getxattr(struct inode *i, const char *name, char *buffer,
 		 __size_t size)
 {
-	struct bfs_xattr_find f;
-	struct bfs_small_data *sd;
+	struct xbfs_xattr_find f;
+	struct xbfs_small_data *sd;
 	int nlen, dsize;
 
-	if(bfs_xattr_refuse_name(name)) {
+	if(xbfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
 
@@ -138,7 +138,7 @@ int bfs_getxattr(struct inode *i, const char *name, char *buffer,
 	f.name = name;
 	f.name_size = nlen;
 	f.found = NULL;
-	bfs_xattr_walk(i, bfs_xattr_find_cb, &f);
+	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
 	sd = f.found;
 	if(sd && (!buffer || size == 0)) {
 		/* size query: report without copying */
@@ -152,7 +152,7 @@ int bfs_getxattr(struct inode *i, const char *name, char *buffer,
 		return dsize;
 	}
 	if(sd) {
-		memcpy_b(buffer, BFS_SD_DATA(sd), sd->data_size);
+		memcpy_b(buffer, XBFS_SD_DATA(sd), sd->data_size);
 		dsize = sd->data_size;
 		inode_unlock(i);
 		return dsize;
@@ -160,17 +160,17 @@ int bfs_getxattr(struct inode *i, const char *name, char *buffer,
 	inode_unlock(i);
 
 	/* not inline: the attribute may live in the attributes tree */
-	return bfs_attr_get(i, name, buffer, size);
+	return xbfs_attr_get(i, name, buffer, size);
 }
 
-int bfs_setxattr(struct inode *i, const char *name, const char *value,
+int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 		 __size_t size, int flags)
 {
-	struct bfs_xattr_find f;
+	struct xbfs_xattr_find f;
 
 	/* Haiku's B_ATTR_NAME_LENGTH (255); refusing keeps volumes we
 	 * create writable by Haiku */
-	if(strlen(name) > BFS_ATTR_NAME_MAX) {
+	if(strlen(name) > XBFS_ATTR_NAME_MAX) {
 		return -ENAMETOOLONG;
 	}
 	char *area;
@@ -178,29 +178,29 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	char *p;
 	int left;
 	int nlen, need, total, found, tree_found = 0;
-	__u32 attr_type = BFS_FILE_NAME_TYPE;
-	struct bfs_small_data *sd;
+	__u32 attr_type = XBFS_FILE_NAME_TYPE;
+	struct xbfs_small_data *sd;
 
-	if(bfs_xattr_refuse_name(name)) {
+	if(xbfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
 	if(flags & ~(XATTR_CREATE | XATTR_REPLACE)) {
 		return -EINVAL;
 	}
 	/* Values bigger than the small_data section fall through to the
-	 * attributes tree (bfs_attr_set) below; the fit test below uses
+	 * attributes tree (xbfs_attr_set) below; the fit test below uses
 	 * u64 arithmetic so a huge size can never wrap into the 792-byte
 	 * stack area. */
 	if(size > 0x7FFFFFFF) {
 		return -ENOSPC;
 	}
 	if(!(area = (char *)kmalloc(i->sb->s_blocksize
-				- sizeof(struct bfs_inode)))) {
+				- sizeof(struct xbfs_inode)))) {
 		return -ENOMEM;
 	}
 	q = area;
-	p = bfs_xattr_area(i);
-	left = i->sb->s_blocksize - sizeof(struct bfs_inode);
+	p = xbfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
 
 	inode_lock(i);
 
@@ -208,7 +208,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	f.name = name;
 	f.name_size = nlen;
 	f.found = NULL;
-	bfs_xattr_walk(i, bfs_xattr_find_cb, &f);
+	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
 	found = (f.found != NULL);
 
 	if(found && (flags & XATTR_CREATE)) {
@@ -229,7 +229,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 		 * small_data section and drop the stale tree entry below
 		 * (Haiku checks both layers for the CREATE/REPLACE flags) */
 		struct inode *attr;
-		int tres = bfs_attr_find(i, name, &attr);
+		int tres = xbfs_attr_find(i, name, &attr);
 		if(tres == 0) {
 			if(flags & XATTR_CREATE) {
 				iput(attr);
@@ -237,7 +237,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 				kfree((addr_t)area);
 				return -EEXIST;
 			}
-			attr_type = attr->u.bfs.raw.type;
+			attr_type = attr->u.xbfs.raw.type;
 			iput(attr);
 			tree_found = 1;
 		} else if(flags & XATTR_REPLACE) {
@@ -249,9 +249,9 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 
 	/* copy every record except the one being replaced, then append
 	 * the new one */
-	while(left >= BFS_SD_HDR) {
-		sd = (struct bfs_small_data *)p;
-		need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= XBFS_SD_HDR) {
+		sd = (struct xbfs_small_data *)p;
+		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(!sd->name_size || need > left) {
 			break;
@@ -265,14 +265,14 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 		left -= need;
 	}
 
-	need = BFS_SD_SIZE(nlen, size);
+	need = XBFS_SD_SIZE(nlen, size);
 	total = (q - area) + need;
-	if((__u64)total > i->sb->s_blocksize - sizeof(struct bfs_inode)) {
+	if((__u64)total > i->sb->s_blocksize - sizeof(struct xbfs_inode)) {
 		/* no room inline: Haiku moves the attribute into the
 		 * per-file attributes tree, carrying the record's type */
 		inode_unlock(i);
 		kfree((addr_t)area);
-		return bfs_attr_set(i, name, value, size, attr_type);
+		return xbfs_attr_set(i, name, value, size, attr_type);
 	}
 
 	*(__u32 *)(q + 0) = attr_type;
@@ -286,8 +286,8 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	}
 	q[8 + nlen + 3 + size] = 0;		/* trailing NUL */
 
-	memset_b(bfs_xattr_area(i), 0, BFS_SMALL_DATA_SIZE);
-	memcpy_b(bfs_xattr_area(i), area, total);
+	memset_b(xbfs_xattr_area(i), 0, XBFS_SMALL_DATA_SIZE);
+	memcpy_b(xbfs_xattr_area(i), area, total);
 	i->state |= INODE_DIRTY;
 
 	inode_unlock(i);
@@ -298,7 +298,7 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
 	 * entry so the two copies do not diverge (Haiku's WriteAttribute
 	 * migrates back to the small_data section the same way) */
 	if(tree_found) {
-		bfs_attr_remove(i, name);
+		xbfs_attr_remove(i, name);
 	}
 	return 0;
 }
@@ -309,36 +309,36 @@ int bfs_setxattr(struct inode *i, const char *name, const char *value,
  * expects in the inode. Works for symlinks too (the name record lives in
  * the small_data tail, not the data union).
  */
-int bfs_inode_set_name(struct inode *i, const char *name)
+int xbfs_inode_set_name(struct inode *i, const char *name)
 {
 	char *area;
 	char *q;
 	char *p;
 	int left;
 	int nlen, need, total;
-	struct bfs_small_data *sd;
+	struct xbfs_small_data *sd;
 
 	if(!(area = (char *)kmalloc(i->sb->s_blocksize
-				- sizeof(struct bfs_inode)))) {
+				- sizeof(struct xbfs_inode)))) {
 		return -ENOMEM;
 	}
 	q = area;
-	p = bfs_xattr_area(i);
-	left = i->sb->s_blocksize - sizeof(struct bfs_inode);
+	p = xbfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
 
 	inode_lock(i);
 
 	nlen = strlen(name);
 
 	/* copy every record except an existing file-name record */
-	while(left >= BFS_SD_HDR) {
-		sd = (struct bfs_small_data *)p;
-		need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= XBFS_SD_HDR) {
+		sd = (struct xbfs_small_data *)p;
+		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(!sd->name_size || need > left) {
 			break;
 		}
-		if(!BFS_SD_IS_NAME(sd)) {
+		if(!XBFS_SD_IS_NAME(sd)) {
 			memcpy_b(q, p, need);
 			q += need;
 		}
@@ -346,15 +346,15 @@ int bfs_inode_set_name(struct inode *i, const char *name)
 		left -= need;
 	}
 
-	need = BFS_SD_SIZE(1, nlen);
+	need = XBFS_SD_SIZE(1, nlen);
 	total = (q - area) + need;
-	if(total > i->sb->s_blocksize - sizeof(struct bfs_inode)) {
+	if(total > i->sb->s_blocksize - sizeof(struct xbfs_inode)) {
 		inode_unlock(i);
 		kfree((addr_t)area);
 		return -ENOSPC;
 	}
 
-	*(__u32 *)(q + 0) = BFS_FILE_NAME_TYPE;
+	*(__u32 *)(q + 0) = XBFS_FILE_NAME_TYPE;
 	*(__u16 *)(q + 4) = 1;
 	*(__u16 *)(q + 6) = nlen;
 	q[8] = 0x13;				/* FILE_NAME_NAME */
@@ -363,8 +363,8 @@ int bfs_inode_set_name(struct inode *i, const char *name)
 	memcpy_b(q + 12, name, nlen);
 	q[12 + nlen] = 0;			/* trailing NUL */
 
-	memset_b(bfs_xattr_area(i), 0, BFS_SMALL_DATA_SIZE);
-	memcpy_b(bfs_xattr_area(i), area, total);
+	memset_b(xbfs_xattr_area(i), 0, XBFS_SMALL_DATA_SIZE);
+	memcpy_b(xbfs_xattr_area(i), area, total);
 	i->state |= INODE_DIRTY;
 
 	inode_unlock(i);
@@ -377,19 +377,19 @@ int bfs_inode_set_name(struct inode *i, const char *name)
  * rename). Returns the length, or -ENOENT. Used by rmdir (which has no
  * name argument) to remove the name-index entry.
  */
-int bfs_inode_get_name(struct inode *i, char *buf, int size)
+int xbfs_inode_get_name(struct inode *i, char *buf, int size)
 {
-	char *p = bfs_xattr_area(i);
-	int left = i->sb->s_blocksize - sizeof(struct bfs_inode);
+	char *p = xbfs_xattr_area(i);
+	int left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
 	int nlen;
 
-	while(left >= BFS_SD_HDR) {
-		struct bfs_small_data *sd = (struct bfs_small_data *)p;
-		int need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= XBFS_SD_HDR) {
+		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
+		int need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(sd->name_size == 1 && sd->data_size
-				&& (sd->type == BFS_FILE_NAME_TYPE)) {
-			char *n = p + BFS_SD_HDR + 4;	/* after 0x13/NUL/pad */
+				&& (sd->type == XBFS_FILE_NAME_TYPE)) {
+			char *n = p + XBFS_SD_HDR + 4;	/* after 0x13/NUL/pad */
 			nlen = sd->data_size;
 			if(nlen > size) {
 				nlen = size;
@@ -407,19 +407,19 @@ int bfs_inode_get_name(struct inode *i, char *buf, int size)
 	return -ENOENT;
 }
 
-struct bfs_xattr_list {
+struct xbfs_xattr_list {
 	char *list;
 	__size_t size;
 	int total;
 	int errno;
 };
 
-static int bfs_xattr_list_cb(struct bfs_small_data *sd, void *arg)
+static int xbfs_xattr_list_cb(struct xbfs_small_data *sd, void *arg)
 {
-	struct bfs_xattr_list *l = (struct bfs_xattr_list *)arg;
+	struct xbfs_xattr_list *l = (struct xbfs_xattr_list *)arg;
 	int nlen = sd->name_size;
 
-	if(BFS_SD_IS_NAME(sd)) {
+	if(XBFS_SD_IS_NAME(sd)) {
 		/* the file-name record is not exposed */
 		return 0;
 	}
@@ -440,9 +440,9 @@ static int bfs_xattr_list_cb(struct bfs_small_data *sd, void *arg)
 	return 0;
 }
 
-int bfs_listxattr(struct inode *i, char *list, __size_t size)
+int xbfs_listxattr(struct inode *i, char *list, __size_t size)
 {
-	struct bfs_xattr_list l;
+	struct xbfs_xattr_list l;
 	int res;
 
 	l.list = list;
@@ -450,7 +450,7 @@ int bfs_listxattr(struct inode *i, char *list, __size_t size)
 	l.total = 0;
 	l.errno = 0;
 	inode_lock(i);
-	res = bfs_xattr_walk(i, bfs_xattr_list_cb, &l);
+	res = xbfs_xattr_walk(i, xbfs_xattr_list_cb, &l);
 	inode_unlock(i);
 	if(res && l.errno) {
 		return l.errno;
@@ -459,18 +459,18 @@ int bfs_listxattr(struct inode *i, char *list, __size_t size)
 		return l.errno;
 	}
 	/* the attributes tree names follow the small_data ones */
-	res = bfs_attr_list(i, list, size, l.total);
+	res = xbfs_attr_list(i, list, size, l.total);
 	if(res < 0) {
 		return res;
 	}
 	return l.total + res;
 }
 
-static int bfs_xattr_remove_cb(struct bfs_small_data *sd, void *arg)
+static int xbfs_xattr_remove_cb(struct xbfs_small_data *sd, void *arg)
 {
-	struct bfs_xattr_remove *r = (struct bfs_xattr_remove *)arg;
+	struct xbfs_xattr_remove *r = (struct xbfs_xattr_remove *)arg;
 
-	if(BFS_SD_IS_NAME(sd)) {
+	if(XBFS_SD_IS_NAME(sd)) {
 		return 0;
 	}
 	if(sd->name_size == r->name_size &&
@@ -480,13 +480,13 @@ static int bfs_xattr_remove_cb(struct bfs_small_data *sd, void *arg)
 	return 0;
 }
 
-int bfs_removexattr(struct inode *i, const char *name)
+int xbfs_removexattr(struct inode *i, const char *name)
 {
-	struct bfs_xattr_remove r;
+	struct xbfs_xattr_remove r;
 	char *p;
 	int left, need, found, tail;
 
-	if(bfs_xattr_refuse_name(name)) {
+	if(xbfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
 
@@ -494,20 +494,20 @@ int bfs_removexattr(struct inode *i, const char *name)
 
 	r.name = name;
 	r.name_size = strlen(name);
-	found = bfs_xattr_walk(i, bfs_xattr_remove_cb, &r);
+	found = xbfs_xattr_walk(i, xbfs_xattr_remove_cb, &r);
 	if(!found) {
 		inode_unlock(i);
 		/* not inline: remove from the attributes tree */
-		return bfs_attr_remove(i, name);
+		return xbfs_attr_remove(i, name);
 	}
 
 	/* compact: shift the records after the removed one down */
-	p = bfs_xattr_area(i);
-	left = i->sb->s_blocksize - sizeof(struct bfs_inode);
-	while(left >= BFS_SD_HDR) {
-		struct bfs_small_data *sd = (struct bfs_small_data *)p;
+	p = xbfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
+	while(left >= XBFS_SD_HDR) {
+		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
 
-		need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
 		if(!sd->name_size || need > left) {
 			break;
 		}
@@ -534,34 +534,34 @@ int bfs_removexattr(struct inode *i, const char *name)
 
 /*
  * Remove one small_data record by name (no unlock, no tree fallback).
- * Used by bfs_attr_set() so an attribute that moved into the attributes
+ * Used by xbfs_attr_set() so an attribute that moved into the attributes
  * tree leaves the small_data section (Haiku's _RemoveSmallData).
  */
-int bfs_xattr_remove_sd(struct inode *i, const char *name)
+int xbfs_xattr_remove_sd(struct inode *i, const char *name)
 {
-	struct bfs_xattr_remove r;
+	struct xbfs_xattr_remove r;
 	char *p;
 	int left, need, found, tail;
 
-	if(bfs_xattr_refuse_name(name)) {
+	if(xbfs_xattr_refuse_name(name)) {
 		return 0;
 	}
 
 	inode_lock(i);
 	r.name = name;
 	r.name_size = strlen(name);
-	found = bfs_xattr_walk(i, bfs_xattr_remove_cb, &r);
+	found = xbfs_xattr_walk(i, xbfs_xattr_remove_cb, &r);
 	if(!found) {
 		inode_unlock(i);
 		return -ENODATA;
 	}
 
-	p = bfs_xattr_area(i);
-	left = BFS_SMALL_DATA_SIZE;
-	while(left >= BFS_SD_HDR) {
-		struct bfs_small_data *sd = (struct bfs_small_data *)p;
+	p = xbfs_xattr_area(i);
+	left = XBFS_SMALL_DATA_SIZE;
+	while(left >= XBFS_SD_HDR) {
+		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
 
-		need = BFS_SD_SIZE(sd->name_size, sd->data_size);
+		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
 		if(!sd->name_size || need > left) {
 			break;
 		}
@@ -584,15 +584,15 @@ int bfs_xattr_remove_sd(struct inode *i, const char *name)
 }
 
 /*
- * BFS attribute-type ioctl (FNX extension). The Linux xattr ABI has no
+ * XBFS attribute-type ioctl (FNX extension). The Linux xattr ABI has no
  * type field, but the on-disk record and Haiku's fs_stat_attr /
  * BNode::WriteAttr carry one, so a volume moving between FNX and Haiku
  * must be able to set and query types. The name is the xattr name as
  * passed to setxattr/getxattr.
  */
-int bfs_attr_info(struct inode *i, struct bfs_attr_info *info)
+int xbfs_attr_info(struct inode *i, struct xbfs_attr_info *info)
 {
-	struct bfs_xattr_find f;
+	struct xbfs_xattr_find f;
 	struct inode *attr;
 	int res;
 
@@ -601,7 +601,7 @@ int bfs_attr_info(struct inode *i, struct bfs_attr_info *info)
 	f.name = info->name;
 	f.name_size = strlen(info->name);
 	f.found = NULL;
-	bfs_xattr_walk(i, bfs_xattr_find_cb, &f);
+	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
 	if(f.found) {
 		info->type = f.found->type;
 		info->size = f.found->data_size;
@@ -610,18 +610,18 @@ int bfs_attr_info(struct inode *i, struct bfs_attr_info *info)
 	}
 	inode_unlock(i);
 
-	if((res = bfs_attr_find(i, info->name, &attr)) < 0) {
+	if((res = xbfs_attr_find(i, info->name, &attr)) < 0) {
 		return res;
 	}
-	info->type = attr->u.bfs.raw.type;
+	info->type = attr->u.xbfs.raw.type;
 	info->size = attr->i_size;
 	iput(attr);
 	return 0;
 }
 
-int bfs_attr_set_type(struct inode *i, const char *name, __u32 type)
+int xbfs_attr_set_type(struct inode *i, const char *name, __u32 type)
 {
-	struct bfs_xattr_find f;
+	struct xbfs_xattr_find f;
 	struct inode *attr;
 	int res;
 
@@ -630,7 +630,7 @@ int bfs_attr_set_type(struct inode *i, const char *name, __u32 type)
 	f.name = name;
 	f.name_size = strlen(name);
 	f.found = NULL;
-	bfs_xattr_walk(i, bfs_xattr_find_cb, &f);
+	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
 	if(f.found) {
 		f.found->type = type;
 		i->state |= INODE_DIRTY;
@@ -639,27 +639,27 @@ int bfs_attr_set_type(struct inode *i, const char *name, __u32 type)
 	}
 	inode_unlock(i);
 
-	if((res = bfs_attr_find(i, name, &attr)) < 0) {
+	if((res = xbfs_attr_find(i, name, &attr)) < 0) {
 		return res;
 	}
-	attr->u.bfs.raw.type = type;
+	attr->u.xbfs.raw.type = type;
 	attr->state |= INODE_DIRTY;
 	iput(attr);
 	return 0;
 }
 
-int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
+int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
-	struct bfs_attr_info info;
+	struct xbfs_attr_info info;
 	int errno;
 
 	switch(cmd) {
-	case BFS_IOC_GET_ATTR_INFO:
+	case XBFS_IOC_GET_ATTR_INFO:
 		if(copy_from_user(&info, (void *)arg, sizeof(info))) {
 			return -EFAULT;
 		}
-		info.name[BFS_ATTR_NAME_MAX] = 0;
-		if((errno = bfs_attr_info(i, &info)) < 0) {
+		info.name[XBFS_ATTR_NAME_MAX] = 0;
+		if((errno = xbfs_attr_info(i, &info)) < 0) {
 			return errno;
 		}
 		if(copy_to_user((void *)arg, &info, sizeof(info))) {
@@ -667,12 +667,12 @@ int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		}
 		return 0;
 
-	case BFS_IOC_SET_ATTR_TYPE:
+	case XBFS_IOC_SET_ATTR_TYPE:
 		if(copy_from_user(&info, (void *)arg, sizeof(info))) {
 			return -EFAULT;
 		}
-		info.name[BFS_ATTR_NAME_MAX] = 0;
-		errno = bfs_attr_set_type(i, info.name, info.type);
+		info.name[XBFS_ATTR_NAME_MAX] = 0;
+		errno = xbfs_attr_set_type(i, info.name, info.type);
 		if(errno < 0) {
 			return errno;
 		}
@@ -681,7 +681,7 @@ int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		}
 		return 0;
 
-	case BFS_IOC_QUERY: {
+	case XBFS_IOC_QUERY: {
 		/* volume query: evaluate the expression against the
 		 * indices and return the matching inode numbers (a probe
 		 * with count == 0 only fetches the total). The user
@@ -690,19 +690,19 @@ int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		 * inodes at the fixed offset, so use a compact prefix
 		 * struct (a full copy would blow the 4KB kernel stack). */
 		struct {
-			char query[BFS_QUERY_MAX_LEN];
+			char query[XBFS_QUERY_MAX_LEN];
 			__u32 count;
 		} hdr;
 		__u32 *inos = NULL;
 		int total, n;
 
 		if(copy_from_user(&hdr, (void *)arg,
-				  BFS_QUERY_INODES_OFF)) {
+				  XBFS_QUERY_INODES_OFF)) {
 			return -EFAULT;
 		}
-		hdr.query[BFS_QUERY_MAX_LEN - 1] = 0;
-		if(hdr.count > BFS_QUERY_MAX_RESULTS) {
-			hdr.count = BFS_QUERY_MAX_RESULTS;
+		hdr.query[XBFS_QUERY_MAX_LEN - 1] = 0;
+		if(hdr.count > XBFS_QUERY_MAX_RESULTS) {
+			hdr.count = XBFS_QUERY_MAX_RESULTS;
 		}
 		/* kmalloc caps at PAGE_SIZE (4096): at most 1024 inodes fit in
 		 * one allocation, so clamp the buffer (the total is still
@@ -716,7 +716,7 @@ int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 				return -ENOMEM;
 			}
 		}
-		total = bfs_query(i->sb, hdr.query, inos, hdr.count);
+		total = xbfs_query(i->sb, hdr.query, inos, hdr.count);
 		if(total < 0) {
 			if(inos) {
 				kfree((addr_t)inos);
@@ -727,14 +727,14 @@ int bfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		hdr.count = (__u32)total;
 		if(n) {
 			if(copy_to_user((void *)arg
-					+ BFS_QUERY_INODES_OFF,
+					+ XBFS_QUERY_INODES_OFF,
 					inos, n * sizeof(__u32))) {
 				kfree((addr_t)inos);
 				return -EFAULT;
 			}
 		}
 		if(copy_to_user((void *)arg, &hdr,
-				  BFS_QUERY_INODES_OFF)) {
+				  XBFS_QUERY_INODES_OFF)) {
 			kfree((addr_t)inos);
 			return -EFAULT;
 		}

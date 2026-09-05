@@ -149,7 +149,7 @@ void iso9660_statfs(struct superblock *, struct statfs *);
 int iso9660_read_superblock(__dev_t, struct superblock *);
 void iso9660_release_superblock(struct superblock *);
 int iso9660_init(void);
-int bfs_init(void);
+int xbfs_init(void);
 
 /* procfs prototypes */
 int procfs_file_open(struct inode *, struct fd *);

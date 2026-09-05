@@ -3,8 +3,8 @@
  *
  * xattr syscalls (setxattr/getxattr/listxattr/removexattr + the l* and
  * f* variants). The filesystem hooks live in fsop->{get,set,list,
- * remove}xattr; BFS implements them with inline small_data attributes
- * (fs/bfs/xattr.c). Musl's <sys/xattr.h> provides the libc wrappers.
+ * remove}xattr; XBFS implements them with inline small_data attributes
+ * (fs/xbfs/xattr.c). Musl's <sys/xattr.h> provides the libc wrappers.
  *
  * ABI notes (x86-64): setxattr takes 5 args (path, name, value, size,
  * flags) -> rdi/rsi/rdx/r10/r8; getxattr/listxattr take 4.

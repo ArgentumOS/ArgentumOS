@@ -235,17 +235,17 @@ Ground truth from the current code:
 - ESP mount: the EFI System Partition, which UEFI used to load the
   kernel, is mounted at `/System/ESP/` so the kernel image, its
   `kernel.conf`, and firmware are visible in the tree (decided, §8
-  Q2). No initrd — the kernel boots the BFS root directly (§9.2 Q8).
+  Q2). No initrd — the kernel boots the XBFS root directly (§9.2 Q8).
 - `tools/mkinitrd.py` is **removed with the initrd**; the root tree is
   staged directly at the new paths (Makefile `ROOTFS64` staging,
-  `userland64`/`rootdisk64` targets become a BFS root build).
+  `userland64`/`rootdisk64` targets become a XBFS root build).
 - devpts (UNIX98 ptys) mount point follows `/dev` → `/System/Devices/pts/`.
 - `root=` kernel cmdline probing is *unaffected* — it addresses disks, not
   paths. `console=` keeps working if the Devices tree exposes a
   role-based view (e.g. `Devices/Serial/Port0` + `console=` resolver).
 
 The VFS layer, syscalls (`open`, `chdir`, `getcwd`, `chroot`, ...),
-filesystems (BFS/ISO9660), and the procfs *content* all stay
+filesystems (XBFS/ISO9660), and the procfs *content* all stay
 put — only the mount points and the boot-time path constants move. That is
 the entire kernel-side price of the redesign.
 
@@ -312,7 +312,7 @@ that the OS's namespace is its own, and software that runs on it has been
 2. **Toolchain + staging rebuild (userland)**: bake the new paths into the
    FNX musl toolchain; restructure the `rootfs64` staging tree
    (`bin/ sbin/ usr/ etc/ var/ tmp/` → `System/{Tools,Libraries,
-   Configuration,Variable Data,Temporary Files}`); build the BFS root
+   Configuration,Variable Data,Temporary Files}`); build the XBFS root
    staging (Makefile `ROOTFS64`/`rootdisk64` targets; `mkinitrd.py` is
    removed with the initrd). Devfs registry becomes hierarchical.
 3. **Port the userland + enforce**: port `init` and the toybox applets to
@@ -368,18 +368,18 @@ Six further design areas surfaced during review and are all resolved here.
 
 ### 9.1 Q7 — Naming + filesystem policy — DECIDED
 
-**Spaced phrases verbatim; BFS is the root filesystem.**
+**Spaced phrases verbatim; XBFS is the root filesystem.**
 
 - Naming: the notes' names are kept exactly — `Variable Data`,
   `Temporary Files`, `Source Code` — spaces and all. Shell quoting is
   accepted as part of the design. There is **no initrd constraint**: the
-  whole tree lives on the BFS root, where 255-char names fit spaced
+  whole tree lives on the XBFS root, where 255-char names fit spaced
   phrases comfortably. `Single-token CamelCase` and `hyphenated` were
   considered and rejected: the former loses the human-readable
   phrases, the latter adds a third naming style.
-- Root filesystem: **BFS (OpenBFS)** — the native writable filesystem.
+- Root filesystem: **XBFS** — the native writable filesystem.
   ext2 and minix support are removed as part of the release. The
-  supported-filesystem roster: **BFS** (native, system volumes),
+  supported-filesystem roster: **XBFS** (native, system volumes),
   **FAT32** and **ExFAT** (compatibility and removable media — the ESP
   is FAT32), **ISO9660** (read-only, install media). FAT32/ExFAT
   drivers also fill the ESP mount/write gap (Q2/Q8) and extend the
@@ -388,7 +388,7 @@ Six further design areas surfaced during review and are all resolved here.
 
 ### 9.2 Q8 — Boot flow — DECIDED
 
-**No initrd — the kernel boots the BFS root directly.** ext2, minix,
+**No initrd — the kernel boots the XBFS root directly.** ext2, minix,
 and initrd support are removed as part of the release. The boot
 sequence:
 
@@ -400,7 +400,7 @@ sequence:
    until then. The kernel cmdline, when present, overrides
    individual keys.
 3. The kernel boots (long mode, page tables, drivers) and mounts the
-   BFS system root directly (`root=` from the kernel config).
+   XBFS system root directly (`root=` from the kernel config).
 4. The kernel mounts devfs at `/System/Devices`, procfs at
    `/System/Processes`, devpts under Devices, and the ESP at
    `/System/ESP` (Q2 — FAT32 driver, planned).

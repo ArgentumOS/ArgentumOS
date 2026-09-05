@@ -147,7 +147,7 @@ static void remove_from_hash(struct inode *i)
 	}
 
 	/* the inode leaves the cache: release fs-private per-inode state
-	 * (e.g. BFS's kmalloc'd small_data tail). Every cache-exit path
+	 * (e.g. XBFS's kmalloc'd small_data tail). Every cache-exit path
 	 * flows here — iput of a deleted inode, get_free_inode() reusing
 	 * the struct for another filesystem, and the unmount inode drop —
 	 * and a count-0-but-hashed inode is NOT removed, so its state
@@ -444,7 +444,7 @@ void iput(struct inode *i)
 		remove_from_hash(i);
 		/* the object is gone: ifree freed its disk state (inode
 		 * block, attributes) and remove_from_hash released the
-		 * fs-private in-memory state (bfs_destroy_inode frees the
+		 * fs-private in-memory state (xbfs_destroy_inode frees the
 		 * kmalloc'd small_data tail). Writing the inode now would
 		 * memcpy from the freed tail into a freed block - the dirty
 		 * bits are stale, drop them instead of writing. */

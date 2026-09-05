@@ -1,8 +1,8 @@
 /*
- * fnx/fs/bfs/query.c - the volume query engine (Haiku's BQuery).
+ * fnx/fs/xbfs/query.c - the volume query engine (Haiku's BQuery).
  *
  * Linux's ABI has no BeOS fs_query syscall, so the query surface is a
- * BFS ioctl (BFS_IOC_QUERY) + a userland tool. The engine follows
+ * XBFS ioctl (XBFS_IOC_QUERY) + a userland tool. The engine follows
  * Haiku's QueryParser semantics:
  *
  *   expr   := orexpr
@@ -33,13 +33,13 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/buffer.h>
 #include <fnx/string.h>
 #include <fnx/stat.h>
 
-extern int bfs_btree_find(struct inode *, const char *, __ino_t *);
-extern int bfs_btree_iterate_values(struct inode *, int,
+extern int xbfs_btree_find(struct inode *, const char *, __ino_t *);
+extern int xbfs_btree_iterate_values(struct inode *, int,
 	int (*)(const char *, int, __ino_t, void *), void *);
 
 /* ---- the parsed expression tree -------------------------------- */
@@ -60,13 +60,13 @@ enum {
 	BQ_OP_LESS_THAN_OR_EQUAL
 };
 
-struct bfs_qnode {
+struct xbfs_qnode {
 	int type;
 	int op;					/* BQ_FORMULA: the comparison op */
-	char attr[BFS_BTREE_MAX_KEY_LEN];
+	char attr[XBFS_BTREE_MAX_KEY_LEN];
 	int vlen;
-	char value[BFS_BTREE_MAX_KEY_LEN];	/* raw value text */
-	struct bfs_qnode *l, *r;		/* BQ_AND / BQ_OR children */
+	char value[XBFS_BTREE_MAX_KEY_LEN];	/* raw value text */
+	struct xbfs_qnode *l, *r;		/* BQ_AND / BQ_OR children */
 };
 
 /* ---- an inode set: a sorted list of inode numbers -----------------
@@ -76,26 +76,26 @@ struct bfs_qnode {
  * sorted at insert time (binary search + memmove, with a cascade
  * overflow into the next chunk), so AND/OR remain sorted merges. */
 
-#define BFS_QCHUNK_CAP	1020	/* inos[1020] is the overflow slot;
+#define XBFS_QCHUNK_CAP	1020	/* inos[1020] is the overflow slot;
 				 * 1021*4 + 4 + 8 = 4096 == PAGE_SIZE */
 
-struct bfs_qchunk {
-	__u32 inos[BFS_QCHUNK_CAP + 1];	/* inos[CAP] = overflow slot */
+struct xbfs_qchunk {
+	__u32 inos[XBFS_QCHUNK_CAP + 1];	/* inos[CAP] = overflow slot */
 	__u32 count;
-	struct bfs_qchunk *next;
+	struct xbfs_qchunk *next;
 };
 
-struct bfs_qset {
-	struct bfs_qchunk *head, *tail;
+struct xbfs_qset {
+	struct xbfs_qchunk *head, *tail;
 	__u32 count;			/* total entries across all chunks */
 };
 
-static void bfs_qset_free(struct bfs_qset *s)
+static void xbfs_qset_free(struct xbfs_qset *s)
 {
-	struct bfs_qchunk *c = s->head;
+	struct xbfs_qchunk *c = s->head;
 
 	while(c) {
-		struct bfs_qchunk *n = c->next;
+		struct xbfs_qchunk *n = c->next;
 
 		kfree((addr_t)c);
 		c = n;
@@ -104,11 +104,11 @@ static void bfs_qset_free(struct bfs_qset *s)
 	s->count = 0;
 }
 
-static struct bfs_qchunk *bfs_qchunk_new(void)
+static struct xbfs_qchunk *xbfs_qchunk_new(void)
 {
-	struct bfs_qchunk *c;
+	struct xbfs_qchunk *c;
 
-	if(!(c = (struct bfs_qchunk *)kmalloc(sizeof(struct bfs_qchunk)))) {
+	if(!(c = (struct xbfs_qchunk *)kmalloc(sizeof(struct xbfs_qchunk)))) {
 		return NULL;
 	}
 	c->count = 0;
@@ -117,7 +117,7 @@ static struct bfs_qchunk *bfs_qchunk_new(void)
 }
 
 /* binary search within one chunk: the insert offset for 'ino' */
-static __u32 bfs_qchunk_bsearch(const struct bfs_qchunk *c, __u32 ino)
+static __u32 xbfs_qchunk_bsearch(const struct xbfs_qchunk *c, __u32 ino)
 {
 	__u32 lo = 0, hi = c->count, mid;
 
@@ -136,7 +136,7 @@ static __u32 bfs_qchunk_bsearch(const struct bfs_qchunk *c, __u32 ino)
  * into the next chunk (creating it when needed). The pushed element
  * is the chunk's old maximum, so it always lands at the front of the
  * next chunk (the set is deduplicated, so it cannot collide there). */
-static int bfs_qchunk_insert(struct bfs_qset *s, struct bfs_qchunk *c,
+static int xbfs_qchunk_insert(struct xbfs_qset *s, struct xbfs_qchunk *c,
 			     __u32 off, __u32 ino)
 {
 	for(;;) {
@@ -147,17 +147,17 @@ static int bfs_qchunk_insert(struct bfs_qset *s, struct bfs_qchunk *c,
 		c->inos[off] = ino;
 		c->count++;
 		s->count++;
-		if(c->count <= BFS_QCHUNK_CAP) {
+		if(c->count <= XBFS_QCHUNK_CAP) {
 			return 0;
 		}
 		/* overflow: the last element falls into the next chunk */
-		tailv = c->inos[BFS_QCHUNK_CAP];
-		c->count = BFS_QCHUNK_CAP;
+		tailv = c->inos[XBFS_QCHUNK_CAP];
+		c->count = XBFS_QCHUNK_CAP;
 		s->count--;
 		if(!c->next) {
-			struct bfs_qchunk *n;
+			struct xbfs_qchunk *n;
 
-			if(!(n = bfs_qchunk_new())) {
+			if(!(n = xbfs_qchunk_new())) {
 				return -ENOMEM;
 			}
 			c->next = n;
@@ -170,16 +170,16 @@ static int bfs_qchunk_insert(struct bfs_qset *s, struct bfs_qchunk *c,
 }
 
 /* insert, keeping the set sorted + deduplicated */
-static int bfs_qset_add(struct bfs_qset *s, __u32 ino)
+static int xbfs_qset_add(struct xbfs_qset *s, __u32 ino)
 {
-	struct bfs_qchunk *c;
+	struct xbfs_qchunk *c;
 	__u32 off;
 
 	if(!ino) {
 		return 0;
 	}
 	if(!s->head) {
-		if(!(c = bfs_qchunk_new())) {
+		if(!(c = xbfs_qchunk_new())) {
 			return -ENOMEM;
 		}
 		s->head = s->tail = c;
@@ -195,31 +195,31 @@ static int bfs_qset_add(struct bfs_qset *s, __u32 ino)
 	}
 	if(c->inos[c->count - 1] < ino) {
 		/* append past the tail */
-		if(c->count < BFS_QCHUNK_CAP) {
+		if(c->count < XBFS_QCHUNK_CAP) {
 			c->inos[c->count++] = ino;
 			s->count++;
 			return 0;
 		}
-		if(!(c->next = bfs_qchunk_new())) {
+		if(!(c->next = xbfs_qchunk_new())) {
 			return -ENOMEM;
 		}
 		s->tail = c->next;
 		c = c->next;
 		off = 0;
 	} else {
-		off = bfs_qchunk_bsearch(c, ino);
+		off = xbfs_qchunk_bsearch(c, ino);
 		if(off < c->count && c->inos[off] == ino) {
 			return 0;	/* already there */
 		}
 	}
-	return bfs_qchunk_insert(s, c, off, ino);
+	return xbfs_qchunk_insert(s, c, off, ino);
 }
 
 /* s1 AND s2 -> s1 (in place; the result fits in s1's own chunks) */
-static void bfs_qset_and(struct bfs_qset *s1, struct bfs_qset *s2)
+static void xbfs_qset_and(struct xbfs_qset *s1, struct xbfs_qset *s2)
 {
-	struct bfs_qchunk *c1 = s1->head, *c2 = s2->head;
-	struct bfs_qchunk *w = s1->head, *lastw = NULL;
+	struct xbfs_qchunk *c1 = s1->head, *c2 = s2->head;
+	struct xbfs_qchunk *w = s1->head, *lastw = NULL;
 	__u32 i = 0, j = 0, wi = 0, n = 0;
 
 	while(c1 && c2) {
@@ -239,7 +239,7 @@ static void bfs_qset_and(struct bfs_qset *s1, struct bfs_qset *s2)
 		} else if(c1->inos[i] > c2->inos[j]) {
 			j++;
 		} else {
-			if(wi == BFS_QCHUNK_CAP) {
+			if(wi == XBFS_QCHUNK_CAP) {
 				w = w->next;
 				wi = 0;
 			}
@@ -251,15 +251,15 @@ static void bfs_qset_and(struct bfs_qset *s1, struct bfs_qset *s2)
 		}
 	}
 	if(!lastw) {
-		bfs_qset_free(s1);	/* empty result */
+		xbfs_qset_free(s1);	/* empty result */
 		return;
 	}
 	lastw->count = wi;
 	{
-		struct bfs_qchunk *c = lastw->next;
+		struct xbfs_qchunk *c = lastw->next;
 
 		while(c) {
-			struct bfs_qchunk *nxt = c->next;
+			struct xbfs_qchunk *nxt = c->next;
 
 			kfree((addr_t)c);
 			c = nxt;
@@ -271,10 +271,10 @@ static void bfs_qset_and(struct bfs_qset *s1, struct bfs_qset *s2)
 }
 
 /* s1 OR s2 -> *out (a fresh set; frees s1 and s2) */
-static int bfs_qset_or(struct bfs_qset *s1, struct bfs_qset *s2,
-		       struct bfs_qset *out)
+static int xbfs_qset_or(struct xbfs_qset *s1, struct xbfs_qset *s2,
+		       struct xbfs_qset *out)
 {
-	struct bfs_qchunk *c1 = s1->head, *c2 = s2->head, *tail = NULL;
+	struct xbfs_qchunk *c1 = s1->head, *c2 = s2->head, *tail = NULL;
 	__u32 i = 0, j = 0, wi = 0;
 
 	out->head = out->tail = NULL;
@@ -301,15 +301,15 @@ static int bfs_qset_or(struct bfs_qset *s1, struct bfs_qset *s2,
 			v = c1->inos[i++];
 			j++;		/* equal: emit once */
 		}
-		if(!tail || wi == BFS_QCHUNK_CAP) {
-			struct bfs_qchunk *n;
+		if(!tail || wi == XBFS_QCHUNK_CAP) {
+			struct xbfs_qchunk *n;
 
-			if(!(n = bfs_qchunk_new())) {
+			if(!(n = xbfs_qchunk_new())) {
 				if(tail) {
-					bfs_qset_free(out);
+					xbfs_qset_free(out);
 				}
-				bfs_qset_free(s1);
-				bfs_qset_free(s2);
+				xbfs_qset_free(s1);
+				xbfs_qset_free(s2);
 				return -ENOMEM;
 			}
 			if(tail) {
@@ -328,8 +328,8 @@ static int bfs_qset_or(struct bfs_qset *s1, struct bfs_qset *s2,
 		tail->count = wi;
 		out->tail = tail;
 	}
-	bfs_qset_free(s1);
-	bfs_qset_free(s2);
+	xbfs_qset_free(s1);
+	xbfs_qset_free(s2);
 	return 0;
 }
 
@@ -339,7 +339,7 @@ static int bfs_qset_or(struct bfs_qset *s1, struct bfs_qset *s2,
  * parsers for the query values (Haiku uses strtol/strtoul base-0 and
  * strtod) */
 
-static __u64 bfs_q_strtou64(const char *s, int base)
+static __u64 xbfs_q_strtou64(const char *s, int base)
 {
 	__u64 value = 0;
 
@@ -382,7 +382,7 @@ static __u64 bfs_q_strtou64(const char *s, int base)
 	return value;
 }
 
-static __s64 bfs_q_strto64(const char *s, int base)
+static __s64 xbfs_q_strto64(const char *s, int base)
 {
 	int neg = 0;
 
@@ -396,7 +396,7 @@ static __s64 bfs_q_strto64(const char *s, int base)
 		s++;
 	}
 	{
-		__u64 u = bfs_q_strtou64(s, base);
+		__u64 u = xbfs_q_strtou64(s, base);
 		return neg ? (__s64)(0 - u) : (__s64)u;
 	}
 }
@@ -405,7 +405,7 @@ static __s64 bfs_q_strto64(const char *s, int base)
  * -mno-sse, so a double cannot be RETURNED by value (the x86-64 ABI
  * uses xmm0) — the result goes through an out parameter (x87 handles
  * the arithmetic) */
-static void bfs_q_strtod(const char *s, double *out)
+static void xbfs_q_strtod(const char *s, double *out)
 {
 	double value = 0, frac = 0, scale = 0.1;
 	int neg = 0, exp = 0, expneg = 0;
@@ -455,20 +455,20 @@ static void bfs_q_strtod(const char *s, double *out)
 	*out = neg ? -value : value;
 }
 
-static int bfs_qtype_size(int dtype)
+static int xbfs_qtype_size(int dtype)
 {
 	switch(dtype) {
-	case BFS_BTREE_INT8_TYPE:
+	case XBFS_BTREE_INT8_TYPE:
 		return 1;
-	case BFS_BTREE_INT16_TYPE:
+	case XBFS_BTREE_INT16_TYPE:
 		return 2;
-	case BFS_BTREE_INT32_TYPE:
-	case BFS_BTREE_UINT32_TYPE:
-	case BFS_BTREE_FLOAT_TYPE:
+	case XBFS_BTREE_INT32_TYPE:
+	case XBFS_BTREE_UINT32_TYPE:
+	case XBFS_BTREE_FLOAT_TYPE:
 		return 4;
-	case BFS_BTREE_INT64_TYPE:
-	case BFS_BTREE_UINT64_TYPE:
-	case BFS_BTREE_DOUBLE_TYPE:
+	case XBFS_BTREE_INT64_TYPE:
+	case XBFS_BTREE_UINT64_TYPE:
+	case XBFS_BTREE_DOUBLE_TYPE:
 		return 8;
 	default:
 		return 0;
@@ -477,7 +477,7 @@ static int bfs_qtype_size(int dtype)
 
 /* parse the raw value text into a fixed-size key buffer of the
  * index's type (Haiku's ParseValue: strtol/strtoul base 0 / strtod) */
-static int bfs_q_parse_value(int dtype, const char *v, int vlen, char *out)
+static int xbfs_q_parse_value(int dtype, const char *v, int vlen, char *out)
 {
 	char tmp[64];
 	int n = (vlen < 63) ? vlen : 63;
@@ -486,47 +486,47 @@ static int bfs_q_parse_value(int dtype, const char *v, int vlen, char *out)
 	tmp[n] = 0;
 
 	switch(dtype) {
-	case BFS_BTREE_INT8_TYPE: {
-		__s8 x = (__s8)bfs_q_strto64(tmp, 0);
+	case XBFS_BTREE_INT8_TYPE: {
+		__s8 x = (__s8)xbfs_q_strto64(tmp, 0);
 		memcpy_b(out, &x, 1);
 		return 1;
 	}
-	case BFS_BTREE_INT16_TYPE: {
-		__s16 x = (__s16)bfs_q_strto64(tmp, 0);
+	case XBFS_BTREE_INT16_TYPE: {
+		__s16 x = (__s16)xbfs_q_strto64(tmp, 0);
 		memcpy_b(out, &x, 2);
 		return 2;
 	}
-	case BFS_BTREE_INT32_TYPE: {
-		__s32 x = (__s32)bfs_q_strto64(tmp, 0);
+	case XBFS_BTREE_INT32_TYPE: {
+		__s32 x = (__s32)xbfs_q_strto64(tmp, 0);
 		memcpy_b(out, &x, 4);
 		return 4;
 	}
-	case BFS_BTREE_UINT32_TYPE: {
-		__u32 x = (__u32)bfs_q_strtou64(tmp, 0);
+	case XBFS_BTREE_UINT32_TYPE: {
+		__u32 x = (__u32)xbfs_q_strtou64(tmp, 0);
 		memcpy_b(out, &x, 4);
 		return 4;
 	}
-	case BFS_BTREE_INT64_TYPE: {
-		__s64 x = bfs_q_strto64(tmp, 0);
+	case XBFS_BTREE_INT64_TYPE: {
+		__s64 x = xbfs_q_strto64(tmp, 0);
 		memcpy_b(out, &x, 8);
 		return 8;
 	}
-	case BFS_BTREE_UINT64_TYPE: {
-		__u64 x = bfs_q_strtou64(tmp, 0);
+	case XBFS_BTREE_UINT64_TYPE: {
+		__u64 x = xbfs_q_strtou64(tmp, 0);
 		memcpy_b(out, &x, 8);
 		return 8;
 	}
-	case BFS_BTREE_FLOAT_TYPE: {
+	case XBFS_BTREE_FLOAT_TYPE: {
 		double d;
 		float x;
-		bfs_q_strtod(tmp, &d);
+		xbfs_q_strtod(tmp, &d);
 		x = (float)d;
 		memcpy_b(out, &x, 4);
 		return 4;
 	}
-	case BFS_BTREE_DOUBLE_TYPE: {
+	case XBFS_BTREE_DOUBLE_TYPE: {
 		double x;
-		bfs_q_strtod(tmp, &x);
+		xbfs_q_strtod(tmp, &x);
 		memcpy_b(out, &x, 8);
 		return 8;
 	}
@@ -539,7 +539,7 @@ static int bfs_q_parse_value(int dtype, const char *v, int vlen, char *out)
  * '*' any run, '?' one char, '[...]' a class with ^/! inversion and
  * a-b ranges; '\\' escapes the next char) ------------------------ */
 
-static int bfs_q_class_match(const char **pp, char c)
+static int xbfs_q_class_match(const char **pp, char c)
 {
 	const char *p = *pp;
 	int invert = 0, matched = 0, first = 1;
@@ -572,7 +572,7 @@ static int bfs_q_class_match(const char **pp, char c)
 	return (invert ? !matched : matched);
 }
 
-static int bfs_q_pattern_match(const char *pat, const char *s)
+static int xbfs_q_pattern_match(const char *pat, const char *s)
 {
 	for(;;) {
 		switch(*pat) {
@@ -586,7 +586,7 @@ static int bfs_q_pattern_match(const char *pat, const char *s)
 				return 1;
 			}
 			for(; *s; s++) {
-				if(bfs_q_pattern_match(pat, s)) {
+				if(xbfs_q_pattern_match(pat, s)) {
 					return 1;
 				}
 			}
@@ -604,7 +604,7 @@ static int bfs_q_pattern_match(const char *pat, const char *s)
 			if(!*s) {
 				return 0;
 			}
-			if((m = bfs_q_class_match(&pat, *s)) < 0) {
+			if((m = xbfs_q_class_match(&pat, *s)) < 0) {
 				return 0;
 			}
 			if(!m) {
@@ -629,7 +629,7 @@ static int bfs_q_pattern_match(const char *pat, const char *s)
 	}
 }
 
-static int bfs_q_is_pattern(const char *v, int vlen)
+static int xbfs_q_is_pattern(const char *v, int vlen)
 {
 	int i;
 
@@ -643,34 +643,34 @@ static int bfs_q_is_pattern(const char *v, int vlen)
 
 /* ---- the per-equation index walk -------------------------------- */
 
-struct bfs_q_ctx {
-	struct bfs_qnode *node;
+struct xbfs_q_ctx {
+	struct xbfs_qnode *node;
 	int dtype;
-	char key[BFS_BTREE_MAX_KEY_LEN];
+	char key[XBFS_BTREE_MAX_KEY_LEN];
 	int keylen;
 	int use_pattern;
-	struct bfs_qset set;
+	struct xbfs_qset set;
 };
 
 /* does the stored key satisfy (op, value)? */
-static int bfs_q_key_matches(struct bfs_q_ctx *c, const char *key, int keylen)
+static int xbfs_q_key_matches(struct xbfs_q_ctx *c, const char *key, int keylen)
 {
-	struct bfs_qnode *n = c->node;
+	struct xbfs_qnode *n = c->node;
 	int cmp;
 
-	if(c->dtype == BFS_BTREE_STRING_TYPE) {
+	if(c->dtype == XBFS_BTREE_STRING_TYPE) {
 		if((n->op == BQ_OP_EQUAL || n->op == BQ_OP_NOT_EQUAL)
 		   && c->use_pattern) {
-			char v[BFS_BTREE_MAX_KEY_LEN + 1];
+			char v[XBFS_BTREE_MAX_KEY_LEN + 1];
 			int m;
 
 			memcpy_b(v, n->value, n->vlen);
 			v[n->vlen] = 0;
 			{
-				char k[BFS_BTREE_MAX_KEY_LEN + 1];
+				char k[XBFS_BTREE_MAX_KEY_LEN + 1];
 				memcpy_b(k, key, keylen);
 				k[keylen] = 0;
-				m = bfs_q_pattern_match(v, k);
+				m = xbfs_q_pattern_match(v, k);
 			}
 			return (n->op == BQ_OP_EQUAL) ? m : !m;
 		}
@@ -682,50 +682,50 @@ static int bfs_q_key_matches(struct bfs_q_ctx *c, const char *key, int keylen)
 		/* numeric: compare the stored key with the parsed value */
 		__s64 s1 = 0, s2 = 0;
 		__u64 u1 = 0, u2 = 0;
-		int sz = bfs_qtype_size(c->dtype);
+		int sz = xbfs_qtype_size(c->dtype);
 
 		if(keylen != sz) {
 			return 0;
 		}
 		switch(c->dtype) {
-		case BFS_BTREE_INT8_TYPE:
+		case XBFS_BTREE_INT8_TYPE:
 			memcpy_b(&s1, key, 1);
 			memcpy_b(&s2, c->key, 1);
 			cmp = (s1 < s2) ? -1 : (s1 > s2) ? 1 : 0;
 			break;
-		case BFS_BTREE_INT16_TYPE:
+		case XBFS_BTREE_INT16_TYPE:
 			memcpy_b(&s1, key, 2);
 			memcpy_b(&s2, c->key, 2);
 			cmp = (s1 < s2) ? -1 : (s1 > s2) ? 1 : 0;
 			break;
-		case BFS_BTREE_INT32_TYPE:
+		case XBFS_BTREE_INT32_TYPE:
 			memcpy_b(&s1, key, 4);
 			memcpy_b(&s2, c->key, 4);
 			cmp = (s1 < s2) ? -1 : (s1 > s2) ? 1 : 0;
 			break;
-		case BFS_BTREE_INT64_TYPE:
+		case XBFS_BTREE_INT64_TYPE:
 			memcpy_b(&s1, key, 8);
 			memcpy_b(&s2, c->key, 8);
 			cmp = (s1 < s2) ? -1 : (s1 > s2) ? 1 : 0;
 			break;
-		case BFS_BTREE_UINT32_TYPE:
+		case XBFS_BTREE_UINT32_TYPE:
 			memcpy_b(&u1, key, 4);
 			memcpy_b(&u2, c->key, 4);
 			cmp = (u1 < u2) ? -1 : (u1 > u2) ? 1 : 0;
 			break;
-		case BFS_BTREE_UINT64_TYPE:
+		case XBFS_BTREE_UINT64_TYPE:
 			memcpy_b(&u1, key, 8);
 			memcpy_b(&u2, c->key, 8);
 			cmp = (u1 < u2) ? -1 : (u1 > u2) ? 1 : 0;
 			break;
-		case BFS_BTREE_FLOAT_TYPE: {
+		case XBFS_BTREE_FLOAT_TYPE: {
 			float f1, f2;
 			memcpy_b(&f1, key, 4);
 			memcpy_b(&f2, c->key, 4);
 			cmp = (f1 < f2) ? -1 : (f1 > f2) ? 1 : 0;
 			break;
 		}
-		case BFS_BTREE_DOUBLE_TYPE: {
+		case XBFS_BTREE_DOUBLE_TYPE: {
 			double d1, d2;
 			memcpy_b(&d1, key, 8);
 			memcpy_b(&d2, c->key, 8);
@@ -754,12 +754,12 @@ static int bfs_q_key_matches(struct bfs_q_ctx *c, const char *key, int keylen)
 	return 0;
 }
 
-static int bfs_q_collect_cb(const char *key, int keylen, __ino_t ino, void *arg)
+static int xbfs_q_collect_cb(const char *key, int keylen, __ino_t ino, void *arg)
 {
-	struct bfs_q_ctx *c = (struct bfs_q_ctx *)arg;
+	struct xbfs_q_ctx *c = (struct xbfs_q_ctx *)arg;
 
-	if(bfs_q_key_matches(c, key, keylen)) {
-		return bfs_qset_add(&c->set, (__u32)ino);
+	if(xbfs_q_key_matches(c, key, keylen)) {
+		return xbfs_qset_add(&c->set, (__u32)ino);
 	}
 	return 0;
 }
@@ -767,49 +767,49 @@ static int bfs_q_collect_cb(const char *key, int keylen, __ino_t ino, void *arg)
 /* the index file's key type from its raw inode mode (Haiku's stat
  * bits). i_mode itself is only 16 bits (__mode_t) — the index type
  * bits live in the top half of the raw 32-bit mode */
-static int bfs_q_index_dtype(struct inode *idx)
+static int xbfs_q_index_dtype(struct inode *idx)
 {
-	__u32 m = idx->u.bfs.raw.mode;
+	__u32 m = idx->u.xbfs.raw.mode;
 
-	if(m & BFS_S_STR_INDEX) {
-		return BFS_BTREE_STRING_TYPE;
+	if(m & XBFS_S_STR_INDEX) {
+		return XBFS_BTREE_STRING_TYPE;
 	}
-	if(m & BFS_S_INT_INDEX) {
-		return BFS_BTREE_INT32_TYPE;
+	if(m & XBFS_S_INT_INDEX) {
+		return XBFS_BTREE_INT32_TYPE;
 	}
-	if(m & BFS_S_UINT_INDEX) {
-		return BFS_BTREE_UINT32_TYPE;
+	if(m & XBFS_S_UINT_INDEX) {
+		return XBFS_BTREE_UINT32_TYPE;
 	}
-	if(m & BFS_S_LONG_LONG_INDEX) {
-		return BFS_BTREE_INT64_TYPE;
+	if(m & XBFS_S_LONG_LONG_INDEX) {
+		return XBFS_BTREE_INT64_TYPE;
 	}
-	if(m & BFS_S_ULONG_LONG_INDEX) {
-		return BFS_BTREE_UINT64_TYPE;
+	if(m & XBFS_S_ULONG_LONG_INDEX) {
+		return XBFS_BTREE_UINT64_TYPE;
 	}
-	if(m & BFS_S_FLOAT_INDEX) {
-		return BFS_BTREE_FLOAT_TYPE;
+	if(m & XBFS_S_FLOAT_INDEX) {
+		return XBFS_BTREE_FLOAT_TYPE;
 	}
-	if(m & BFS_S_DOUBLE_INDEX) {
-		return BFS_BTREE_DOUBLE_TYPE;
+	if(m & XBFS_S_DOUBLE_INDEX) {
+		return XBFS_BTREE_DOUBLE_TYPE;
 	}
 	return -EINVAL;
 }
 
 /* resolve 'attr' to its index file inode (iget'd) */
-static struct inode *bfs_q_find_index(struct superblock *sb, const char *attr,
+static struct inode *xbfs_q_find_index(struct superblock *sb, const char *attr,
 				      int *dtype)
 {
 	struct inode *dir, *idx;
 	__ino_t ino;
 
-	if(!sb->u.bfs.indices_inode) {
+	if(!sb->u.xbfs.indices_inode) {
 		return NULL;
 	}
-	if(!(dir = iget(sb, sb->u.bfs.indices_inode))) {
+	if(!(dir = iget(sb, sb->u.xbfs.indices_inode))) {
 		return NULL;
 	}
 	ino = 0;
-	bfs_btree_find(dir, attr, &ino);
+	xbfs_btree_find(dir, attr, &ino);
 	iput(dir);
 	if(!ino) {
 		return NULL;
@@ -817,7 +817,7 @@ static struct inode *bfs_q_find_index(struct superblock *sb, const char *attr,
 	if(!(idx = iget(sb, ino))) {
 		return NULL;
 	}
-	if((*dtype = bfs_q_index_dtype(idx)) < 0) {
+	if((*dtype = xbfs_q_index_dtype(idx)) < 0) {
 		iput(idx);
 		return NULL;
 	}
@@ -829,46 +829,46 @@ static struct inode *bfs_q_find_index(struct superblock *sb, const char *attr,
  * keep the inodes whose key satisfies (op, value). A missing index
  * yields the empty set.
  */
-static int bfs_q_eval_formula(struct superblock *sb, struct bfs_qnode *n,
-			      struct bfs_qset *out)
+static int xbfs_q_eval_formula(struct superblock *sb, struct xbfs_qnode *n,
+			      struct xbfs_qset *out)
 {
 	struct inode *idx;
-	struct bfs_q_ctx c;
+	struct xbfs_q_ctx c;
 	int res;
 
 	memset_b(&c, 0, sizeof(c));
 	c.node = n;
-	c.dtype = BFS_BTREE_STRING_TYPE;
+	c.dtype = XBFS_BTREE_STRING_TYPE;
 	/* c.set is zeroed by memset_b; chunks allocate on demand */
 	res = 0;
 
-	idx = bfs_q_find_index(sb, n->attr, &c.dtype);
+	idx = xbfs_q_find_index(sb, n->attr, &c.dtype);
 	if(!idx) {
-		bfs_qset_free(&c.set);
+		xbfs_qset_free(&c.set);
 		*out = c.set;
 		return 0;	/* unknown index: empty set */
 	}
 
-	if(c.dtype == BFS_BTREE_STRING_TYPE) {
+	if(c.dtype == XBFS_BTREE_STRING_TYPE) {
 		/* string values stay raw; patterns only for = / != */
 		memcpy_b(c.key, n->value, n->vlen);
 		c.keylen = n->vlen;
 		c.use_pattern = (n->op == BQ_OP_EQUAL || n->op == BQ_OP_NOT_EQUAL)
-			&& bfs_q_is_pattern(n->value, n->vlen);
+			&& xbfs_q_is_pattern(n->value, n->vlen);
 	} else {
-		if((c.keylen = bfs_q_parse_value(c.dtype, n->value, n->vlen,
+		if((c.keylen = xbfs_q_parse_value(c.dtype, n->value, n->vlen,
 						 c.key)) < 0) {
 			iput(idx);
-			bfs_qset_free(&c.set);
+			xbfs_qset_free(&c.set);
 			return -EINVAL;
 		}
 		c.use_pattern = 0;
 	}
 
-	res = bfs_btree_iterate_values(idx, c.dtype, bfs_q_collect_cb, &c);
+	res = xbfs_btree_iterate_values(idx, c.dtype, xbfs_q_collect_cb, &c);
 	iput(idx);
 	if(res < 0) {
-		bfs_qset_free(&c.set);
+		xbfs_qset_free(&c.set);
 		return res;
 	}
 	*out = c.set;
@@ -877,7 +877,7 @@ static int bfs_q_eval_formula(struct superblock *sb, struct bfs_qnode *n,
 
 /* ---- the parser (recursive descent) ---------------------------- */
 
-static const char *bfs_q_skip(const char *p)
+static const char *xbfs_q_skip(const char *p)
 {
 	while(*p == ' ' || *p == '\t' || *p == '\n') {
 		p++;
@@ -886,13 +886,13 @@ static const char *bfs_q_skip(const char *p)
 }
 
 /* DeMorgan negation of a whole subtree (Haiku's Complement) */
-static int bfs_q_negate(struct bfs_qnode *n);
+static int xbfs_q_negate(struct xbfs_qnode *n);
 
-static struct bfs_qnode *bfs_q_new(int type)
+static struct xbfs_qnode *xbfs_q_new(int type)
 {
-	struct bfs_qnode *n;
+	struct xbfs_qnode *n;
 
-	if(!(n = (struct bfs_qnode *)kmalloc(sizeof(struct bfs_qnode)))) {
+	if(!(n = (struct xbfs_qnode *)kmalloc(sizeof(struct xbfs_qnode)))) {
 		return NULL;
 	}
 	memset_b(n, 0, sizeof(*n));
@@ -900,9 +900,9 @@ static struct bfs_qnode *bfs_q_new(int type)
 	return n;
 }
 
-static int bfs_q_negate(struct bfs_qnode *n)
+static int xbfs_q_negate(struct xbfs_qnode *n)
 {
-	struct bfs_qnode *t;
+	struct xbfs_qnode *t;
 
 	if(!n) {
 		return -ENOMEM;
@@ -931,10 +931,10 @@ static int bfs_q_negate(struct bfs_qnode *n)
 		return 0;
 	}
 	/* DeMorgan: !(A && B) = !A || !B, !(A || B) = !A && !B */
-	if((bfs_q_negate(n->l)) < 0) {
+	if((xbfs_q_negate(n->l)) < 0) {
 		return -ENOMEM;
 	}
-	if((bfs_q_negate(n->r)) < 0) {
+	if((xbfs_q_negate(n->r)) < 0) {
 		return -ENOMEM;
 	}
 	t = n->l;
@@ -944,47 +944,47 @@ static int bfs_q_negate(struct bfs_qnode *n)
 	return 0;
 }
 
-static void bfs_q_free(struct bfs_qnode *n)
+static void xbfs_q_free(struct xbfs_qnode *n)
 {
 	if(!n) {
 		return;
 	}
 	if(n->type != BQ_FORMULA) {
-		bfs_q_free(n->l);
-		bfs_q_free(n->r);
+		xbfs_q_free(n->l);
+		xbfs_q_free(n->r);
 	}
 	kfree((addr_t)n);
 }
 
-static struct bfs_qnode *bfs_q_parse_expr(const char **pp, int *err, int depth);
+static struct xbfs_qnode *xbfs_q_parse_expr(const char **pp, int *err, int depth);
 
 /* equation: attr op value */
-static struct bfs_qnode *bfs_q_parse_formula(const char **pp, int *err)
+static struct xbfs_qnode *xbfs_q_parse_formula(const char **pp, int *err)
 {
 	const char *p = *pp;
-	struct bfs_qnode *n;
+	struct xbfs_qnode *n;
 	char *q;
 	int len;
 
-	if(!(n = bfs_q_new(BQ_FORMULA))) {
+	if(!(n = xbfs_q_new(BQ_FORMULA))) {
 		*err = -ENOMEM;
 		return NULL;
 	}
 	q = n->attr;
 	while(*p && *p != '=' && *p != '!' && *p != '>' && *p != '<'
 	      && *p != ' ' && *p != '\t' && *p != '(' && *p != ')' ) {
-		if(q - n->attr >= BFS_BTREE_MAX_KEY_LEN - 1) {
+		if(q - n->attr >= XBFS_BTREE_MAX_KEY_LEN - 1) {
 			*err = -EINVAL;
-			bfs_q_free(n);
+			xbfs_q_free(n);
 			return NULL;
 		}
 		*q++ = *p++;
 	}
 	*q = 0;
-	p = bfs_q_skip(p);
+	p = xbfs_q_skip(p);
 	if(!*p) {
 		*err = -EINVAL;
-		bfs_q_free(n);
+		xbfs_q_free(n);
 		return NULL;
 	}
 	if(*p == '=') {
@@ -1007,13 +1007,13 @@ static struct bfs_qnode *bfs_q_parse_formula(const char **pp, int *err)
 		p++;
 	} else {
 		*err = -EINVAL;
-		bfs_q_free(n);
+		xbfs_q_free(n);
 		return NULL;
 	}
-	p = bfs_q_skip(p);
+	p = xbfs_q_skip(p);
 	if(!*p) {
 		*err = -EINVAL;
-		bfs_q_free(n);
+		xbfs_q_free(n);
 		return NULL;
 	}
 	/* the value: quoted (' or ") or a bare run */
@@ -1024,25 +1024,25 @@ static struct bfs_qnode *bfs_q_parse_formula(const char **pp, int *err)
 			if(*p == '\\' && p[1]) {
 				p++;
 			}
-			if(q - n->value >= BFS_BTREE_MAX_KEY_LEN - 1) {
+			if(q - n->value >= XBFS_BTREE_MAX_KEY_LEN - 1) {
 				*err = -EINVAL;
-				bfs_q_free(n);
+				xbfs_q_free(n);
 				return NULL;
 			}
 			*q++ = *p++;
 		}
 		if(*p != quote) {
 			*err = -EINVAL;
-			bfs_q_free(n);
+			xbfs_q_free(n);
 			return NULL;
 		}
 		p++;
 	} else {
 		while(*p && *p != ' ' && *p != '\t' && *p != ')'
 		      && *p != '(') {
-			if(q - n->value >= BFS_BTREE_MAX_KEY_LEN - 1) {
+			if(q - n->value >= XBFS_BTREE_MAX_KEY_LEN - 1) {
 				*err = -EINVAL;
-				bfs_q_free(n);
+				xbfs_q_free(n);
 				return NULL;
 			}
 			*q++ = *p++;
@@ -1054,10 +1054,10 @@ static struct bfs_qnode *bfs_q_parse_formula(const char **pp, int *err)
 	return n;
 }
 
-static struct bfs_qnode *bfs_q_parse_term(const char **pp, int *err, int depth)
+static struct xbfs_qnode *xbfs_q_parse_term(const char **pp, int *err, int depth)
 {
-	const char *p = bfs_q_skip(*pp);
-	struct bfs_qnode *n;
+	const char *p = xbfs_q_skip(*pp);
+	struct xbfs_qnode *n;
 
 	if(*p == '(') {
 		if(depth >= 32) {
@@ -1067,14 +1067,14 @@ static struct bfs_qnode *bfs_q_parse_term(const char **pp, int *err, int depth)
 			return NULL;
 		}
 		p++;
-		n = bfs_q_parse_expr(&p, err, depth + 1);
+		n = xbfs_q_parse_expr(&p, err, depth + 1);
 		if(!n) {
 			return NULL;
 		}
-		p = bfs_q_skip(p);
+		p = xbfs_q_skip(p);
 		if(*p != ')') {
 			*err = -EINVAL;
-			bfs_q_free(n);
+			xbfs_q_free(n);
 			return NULL;
 		}
 		p++;
@@ -1084,7 +1084,7 @@ static struct bfs_qnode *bfs_q_parse_term(const char **pp, int *err, int depth)
 	if(*p == '!') {
 		/* '!' only negates a parenthesized term (Haiku) */
 		p++;
-		p = bfs_q_skip(p);
+		p = xbfs_q_skip(p);
 		if(*p != '(') {
 			*err = -EINVAL;
 			return NULL;
@@ -1094,26 +1094,26 @@ static struct bfs_qnode *bfs_q_parse_term(const char **pp, int *err, int depth)
 			return NULL;
 		}
 		p++;
-		n = bfs_q_parse_expr(&p, err, depth + 1);
+		n = xbfs_q_parse_expr(&p, err, depth + 1);
 		if(!n) {
 			return NULL;
 		}
-		p = bfs_q_skip(p);
+		p = xbfs_q_skip(p);
 		if(*p != ')') {
 			*err = -EINVAL;
-			bfs_q_free(n);
+			xbfs_q_free(n);
 			return NULL;
 		}
 		p++;
-		if((*err = bfs_q_negate(n)) < 0) {
-			bfs_q_free(n);
+		if((*err = xbfs_q_negate(n)) < 0) {
+			xbfs_q_free(n);
 			return NULL;
 		}
 		*pp = p;
 		return n;
 	}
 	/* an equation */
-	n = bfs_q_parse_formula(&p, err);
+	n = xbfs_q_parse_formula(&p, err);
 	if(!n) {
 		return NULL;
 	}
@@ -1121,30 +1121,30 @@ static struct bfs_qnode *bfs_q_parse_term(const char **pp, int *err, int depth)
 	return n;
 }
 
-static struct bfs_qnode *bfs_q_parse_and(const char **pp, int *err, int depth)
+static struct xbfs_qnode *xbfs_q_parse_and(const char **pp, int *err, int depth)
 {
-	struct bfs_qnode *n, *r;
+	struct xbfs_qnode *n, *r;
 
-	n = bfs_q_parse_term(pp, err, depth);
+	n = xbfs_q_parse_term(pp, err, depth);
 	if(!n) {
 		return NULL;
 	}
 	for(;;) {
-		const char *p = bfs_q_skip(*pp);
+		const char *p = xbfs_q_skip(*pp);
 
 		if(p[0] == '&' && p[1] == '&') {
-			struct bfs_qnode *a;
+			struct xbfs_qnode *a;
 
 			p += 2;
 			*pp = p;
-			if(!(r = bfs_q_parse_term(pp, err, depth))) {
-				bfs_q_free(n);
+			if(!(r = xbfs_q_parse_term(pp, err, depth))) {
+				xbfs_q_free(n);
 				return NULL;
 			}
-			if(!(a = bfs_q_new(BQ_AND))) {
+			if(!(a = xbfs_q_new(BQ_AND))) {
 				*err = -ENOMEM;
-				bfs_q_free(n);
-				bfs_q_free(r);
+				xbfs_q_free(n);
+				xbfs_q_free(r);
 				return NULL;
 			}
 			a->l = n;
@@ -1157,30 +1157,30 @@ static struct bfs_qnode *bfs_q_parse_and(const char **pp, int *err, int depth)
 	return n;
 }
 
-static struct bfs_qnode *bfs_q_parse_expr(const char **pp, int *err, int depth)
+static struct xbfs_qnode *xbfs_q_parse_expr(const char **pp, int *err, int depth)
 {
-	struct bfs_qnode *n, *r;
+	struct xbfs_qnode *n, *r;
 
-	n = bfs_q_parse_and(pp, err, depth);
+	n = xbfs_q_parse_and(pp, err, depth);
 	if(!n) {
 		return NULL;
 	}
 	for(;;) {
-		const char *p = bfs_q_skip(*pp);
+		const char *p = xbfs_q_skip(*pp);
 
 		if(p[0] == '|' && p[1] == '|') {
-			struct bfs_qnode *a;
+			struct xbfs_qnode *a;
 
 			p += 2;
 			*pp = p;
-			if(!(r = bfs_q_parse_and(pp, err, depth))) {
-				bfs_q_free(n);
+			if(!(r = xbfs_q_parse_and(pp, err, depth))) {
+				xbfs_q_free(n);
 				return NULL;
 			}
-			if(!(a = bfs_q_new(BQ_OR))) {
+			if(!(a = xbfs_q_new(BQ_OR))) {
 				*err = -ENOMEM;
-				bfs_q_free(n);
-				bfs_q_free(r);
+				xbfs_q_free(n);
+				xbfs_q_free(r);
 				return NULL;
 			}
 			a->l = n;
@@ -1195,30 +1195,30 @@ static struct bfs_qnode *bfs_q_parse_expr(const char **pp, int *err, int depth)
 
 /* ---- the public entry point ------------------------------------ */
 
-static int bfs_q_eval(struct superblock *sb, struct bfs_qnode *n,
-		      struct bfs_qset *out)
+static int xbfs_q_eval(struct superblock *sb, struct xbfs_qnode *n,
+		      struct xbfs_qset *out)
 {
-	struct bfs_qset s1, s2;
+	struct xbfs_qset s1, s2;
 	int res;
 
 	if(n->type == BQ_FORMULA) {
-		return bfs_q_eval_formula(sb, n, out);
+		return xbfs_q_eval_formula(sb, n, out);
 	}
-	if((res = bfs_q_eval(sb, n->l, &s1)) < 0) {
+	if((res = xbfs_q_eval(sb, n->l, &s1)) < 0) {
 		return res;
 	}
-	if((res = bfs_q_eval(sb, n->r, &s2)) < 0) {
-		bfs_qset_free(&s1);
+	if((res = xbfs_q_eval(sb, n->r, &s2)) < 0) {
+		xbfs_qset_free(&s1);
 		return res;
 	}
 	if(n->type == BQ_AND) {
-		bfs_qset_and(&s1, &s2);
-		bfs_qset_free(&s2);
+		xbfs_qset_and(&s1, &s2);
+		xbfs_qset_free(&s2);
 		*out = s1;
 		return 0;
 	}
 	/* BQ_OR: build a fresh merged set (the result can outgrow s1) */
-	return bfs_qset_or(&s1, &s2, out);
+	return xbfs_qset_or(&s1, &s2, out);
 }
 
 /*
@@ -1226,36 +1226,36 @@ static int bfs_q_eval(struct superblock *sb, struct bfs_qnode *n,
  * (capacity 'cap', inode numbers, sorted) and returns the TOTAL number
  * of matches (which may exceed 'cap').
  */
-int bfs_query(struct superblock *sb, const char *q, __u32 *inos, __u32 cap)
+int xbfs_query(struct superblock *sb, const char *q, __u32 *inos, __u32 cap)
 {
 	const char *p = q;
-	struct bfs_qnode *tree;
-	struct bfs_qset set;
+	struct xbfs_qnode *tree;
+	struct xbfs_qset set;
 	int err, res;
 	__u32 n;
 
 	/* the value of an empty query is the empty set */
-	if(!q || !*q || !bfs_q_skip(q)[0]) {
+	if(!q || !*q || !xbfs_q_skip(q)[0]) {
 		return 0;
 	}
-	tree = bfs_q_parse_expr(&p, &err, 0);
+	tree = xbfs_q_parse_expr(&p, &err, 0);
 	if(!tree) {
 		return err;
 	}
-	p = bfs_q_skip(p);
+	p = xbfs_q_skip(p);
 	if(*p) {
-		bfs_q_free(tree);
+		xbfs_q_free(tree);
 		return -EINVAL;	/* trailing garbage */
 	}
-	if((res = bfs_q_eval(sb, tree, &set)) < 0) {
-		bfs_q_free(tree);
+	if((res = xbfs_q_eval(sb, tree, &set)) < 0) {
+		xbfs_q_free(tree);
 		return res;
 	}
-	bfs_q_free(tree);
+	xbfs_q_free(tree);
 
 	n = (set.count < cap) ? set.count : cap;
 	{
-		struct bfs_qchunk *c = set.head;
+		struct xbfs_qchunk *c = set.head;
 		__u32 done = 0;
 
 		while(c && done < n) {
@@ -1270,6 +1270,6 @@ int bfs_query(struct superblock *sb, const char *q, __u32 *inos, __u32 cap)
 		}
 	}
 	res = (int)set.count;
-	bfs_qset_free(&set);
+	xbfs_qset_free(&set);
 	return res;
 }

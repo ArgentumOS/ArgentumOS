@@ -12,7 +12,7 @@
 
 #define XKB_BASE_DIRECTORY "/System/Shared/X11/xkb"
 
-#define XKB_BIN_DIRECTORY "/System/Tools"
+#define XKB_BIN_DIRECTORY "/System/Shared/X11/bin"
 
 #define XKB_DFLT_LAYOUT "us"
 

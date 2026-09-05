@@ -39,9 +39,9 @@ mindfully-ported software.
 
 ## The kernel
 
-- x86-64, UEFI-booted, POSIX-compatible; boots straight to a **BFS
+- x86-64, UEFI-booted, POSIX-compatible; boots straight to a **XBFS
   root** (no initrd/RAMdisk), options from `/System/ESP/kernel.conf`.
-- **Filesystems**: BFS (OpenBFS) = the only writable filesystem
+- **Filesystems**: XBFS = the only writable filesystem
   (ext2/minix/initrd removed); FAT32 + ExFAT planned (ESP + removable
   media, UTF-16↔UTF-8 LFN); ISO9660 read-only.
 - **Planned**: SMP ≤ 8 vCPUs (LAPIC timers, IO-APIC, ACPI MADT, one

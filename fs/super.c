@@ -250,7 +250,7 @@ int mount_root(void)
 		 * filesystems (in a fixed order; the pseudo filesystems like
 		 * procfs/devfs would claim any device) and mount the first
 		 * one whose read_superblock recognizes the device */
-		static const char *probe[] = { "minix", "ext2", "iso9660", "bfs" };
+		static const char *probe[] = { "minix", "ext2", "iso9660", "xbfs" };
 
 		for(n = 0; n < (int)(sizeof(probe) / sizeof(probe[0])); n++) {
 			struct filesystems *cand = get_filesystem(probe[n]);
@@ -299,7 +299,7 @@ int mount_root(void)
  * root filesystem. Called right after mount_root(), i.e. after the root
  * fs's journal has been replayed.
  *
- * Why: the BFS journal replays a killed session's uncommitted writes at
+ * Why: the XBFS journal replays a killed session's uncommitted writes at
  * mount time, and a session killed mid-write can leave /tmp replayed in
  * a state no userland cleanup can fix (observed: /tmp itself restored
  * as a regular file - every access inside it then fails ENOTDIR, so the

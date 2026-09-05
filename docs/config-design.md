@@ -286,7 +286,7 @@ verbose = true
 
 Rules:
 
-- The file is read **early in boot** (before the BFS root is mounted),
+- The file is read **early in boot** (before the XBFS root is mounted),
   via early ESP access — the FAT32 driver, or UEFI boot-services file
   I/O before `ExitBootServices` until then. The early read is a plain
   `\kernel.conf` on the ESP: no symlinks, no `/System` mount yet.

@@ -1,11 +1,11 @@
-/* bfsattr.c: OpenBFS M6 test - attributes that overflow the inode's
+/* xbfsattr.c: OpenBFS M6 test - attributes that overflow the inode's
  * small_data section must land in the per-file attributes B+tree
  * (Haiku's CreateAttribute), and come back through getxattr/listxattr.
  * Also verifies small+tree attributes coexist and that removing the
  * last tree attribute frees the attributes inode.
  *
  * Results are printed to stdout AND appended to /mnt/XR so the host
- * can cross-check the on-disk layout. Usage: bfsattr set|check|rm|unlink
+ * can cross-check the on-disk layout. Usage: xbfsattr set|check|rm|unlink
  */
 #include <stdio.h>
 #include <string.h>
@@ -18,17 +18,17 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-/* the kernel's BFS attribute-type ioctl (include/fnx/bfs.h) */
-#define BFS_ATTR_NAME_MAX	255
+/* the kernel's XBFS attribute-type ioctl (include/fnx/xbfs.h) */
+#define XBFS_ATTR_NAME_MAX	255
 
-struct bfs_attr_info {
-	char name[BFS_ATTR_NAME_MAX + 1];
+struct xbfs_attr_info {
+	char name[XBFS_ATTR_NAME_MAX + 1];
 	unsigned int type;
 	unsigned long long size;
 };
 
-#define BFS_IOC_GET_ATTR_INFO	0x42530001	/* 'BS' + 1 */
-#define BFS_IOC_SET_ATTR_TYPE	0x42530002
+#define XBFS_IOC_GET_ATTR_INFO	0x42530001	/* 'BS' + 1 */
+#define XBFS_IOC_SET_ATTR_TYPE	0x42530002
 
 static const char *path = "/Volumes/hello.txt";
 static char g_buf[4096];
@@ -48,19 +48,19 @@ int main(int argc, char **argv)
 	int r;
 
 	if(argc < 2) {
-		fprintf(stderr, "usage: bfsattr set|check|rm|unlink|type|mk|val\n");
+		fprintf(stderr, "usage: xbfsattr set|check|rm|unlink|type|mk|val\n");
 		return 1;
 	}
 
 	if(!strcmp(argv[1], "type")) {
-		/* bfsattr type <name> [TYPE]: query (or set) the on-disk
-		 * attribute type via the BFS ioctl (the Linux xattr ABI
+		/* xbfsattr type <name> [TYPE]: query (or set) the on-disk
+		 * attribute type via the XBFS ioctl (the Linux xattr ABI
 		 * carries no type; Haiku's fs_stat_attr / WriteAttr do) */
-		struct bfs_attr_info info;
+		struct xbfs_attr_info info;
 		int fd, ok;
 
 		if(argc < 3) {
-			fprintf(stderr, "usage: bfsattr type <name> [TYPE]\n");
+			fprintf(stderr, "usage: xbfsattr type <name> [TYPE]\n");
 			return 1;
 		}
 		if((fd = open(path, O_RDONLY)) < 0) {
@@ -68,10 +68,10 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		memset(&info, 0, sizeof(info));
-		strncpy(info.name, argv[2], BFS_ATTR_NAME_MAX);
+		strncpy(info.name, argv[2], XBFS_ATTR_NAME_MAX);
 		if(argc >= 4) {
 			info.type = (unsigned int)strtoul(argv[3], NULL, 0);
-			r = ioctl(fd, BFS_IOC_SET_ATTR_TYPE, &info);
+			r = ioctl(fd, XBFS_IOC_SET_ATTR_TYPE, &info);
 			ok = (r == 0);
 			printf("TYPE-SET %s type=%u %s\n", argv[2], info.type,
 			       ok ? "OK" : "FAIL");
@@ -79,8 +79,8 @@ int main(int argc, char **argv)
 			return ok ? 0 : 1;
 		}
 		memset(&info, 0, sizeof(info));
-		strncpy(info.name, argv[2], BFS_ATTR_NAME_MAX);
-		r = ioctl(fd, BFS_IOC_GET_ATTR_INFO, &info);
+		strncpy(info.name, argv[2], XBFS_ATTR_NAME_MAX);
+		r = ioctl(fd, XBFS_IOC_GET_ATTR_INFO, &info);
 		ok = (r == 0);
 		printf("ATTR-INFO %s type=%u size=%llu %s\n", argv[2],
 		       info.type, info.size, ok ? "OK" : "FAIL");
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 	}
 
 	if(!strcmp(argv[1], "mk")) {
-		/* bfsattr mk <name> <size>: setxattr name to 'x'*size */
+		/* xbfsattr mk <name> <size>: setxattr name to 'x'*size */
 		int i, size = argc >= 4 ? atoi(argv[3]) : 0;
 		if(size > 4096)
 			size = 4096;
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 	}
 
 	if(!strcmp(argv[1], "val")) {
-		/* bfsattr val <name>: getxattr and print the size */
+		/* xbfsattr val <name>: getxattr and print the size */
 		r = getxattr(path, argv[2], g_buf, sizeof(g_buf));
 		printf("VAL %s %d %s\n", argv[2], r < 0 ? -1 : r,
 		       r >= 0 ? "OK" : "FAIL");

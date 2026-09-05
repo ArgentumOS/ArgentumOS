@@ -10,5 +10,5 @@ rm -f "$LOG"
       break
     fi
     sleep 2
-  done ) | FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -no-reboot -machine pc,usb=off -m 128M -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=.build/rootbfs.img,format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 > "$LOG" 2>&1 &
+  done ) | FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -no-reboot -machine pc,usb=off -m 128M -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=.build/rootxbfs.img,format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 > "$LOG" 2>&1 &
 echo "harness pid $!"

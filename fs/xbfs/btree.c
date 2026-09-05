@@ -1,11 +1,11 @@
 /*
- * fnx/fs/bfs/btree.c
+ * fnx/fs/xbfs/btree.c
  *
- * BFS B+tree access (read-only).
+ * XBFS B+tree access (read-only).
  *
  * The directory B+tree lives in the directory inode's data stream: the
- * btree header (struct bfs_btree_header) is at stream offset 0, and the
- * tree nodes (struct bfs_btree_node, node_size bytes each) are at byte
+ * btree header (struct xbfs_btree_header) is at stream offset 0, and the
+ * tree nodes (struct xbfs_btree_node, node_size bytes each) are at byte
  * offsets root_node_ptr / left / right / overflow within the stream.
  * Node links are stream byte offsets; a leaf has overflow == -1.
  *
@@ -27,56 +27,56 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/bfs.h>
+#include <fnx/xbfs.h>
 #include <fnx/buffer.h>
 #include <fnx/string.h>
 
-struct bfs_btree_pair {
+struct xbfs_btree_pair {
 	const char *key;
 	int keylen;
 	__u64 val;
 };
 
-static int bfs_btree_descend_t(struct inode *, const struct bfs_btree_header *,
+static int xbfs_btree_descend_t(struct inode *, const struct xbfs_btree_header *,
 			      const char *, int, __u64 *, int *);
-static int bfs_btree_descend(struct inode *, const struct bfs_btree_header *,
+static int xbfs_btree_descend(struct inode *, const struct xbfs_btree_header *,
 			     const char *, __u64 *, int *);
-static int bfs_btree_search_node_t(struct bfs_btree_node *, const char *, int,
+static int xbfs_btree_search_node_t(struct xbfs_btree_node *, const char *, int,
 				   int *, int);
-static int bfs_btree_collect_t(struct bfs_btree_node *, struct bfs_btree_pair *,
+static int xbfs_btree_collect_t(struct xbfs_btree_node *, struct xbfs_btree_pair *,
 			      int, int, const char *, int, __u64, int, char *);
-static int bfs_btree_serialize(struct bfs_btree_node *, struct bfs_btree_pair *,
+static int xbfs_btree_serialize(struct xbfs_btree_node *, struct xbfs_btree_pair *,
 			       int, __u64, __u64, __u64, __u32);
-static int bfs_btree_split(struct inode *, struct bfs_btree_header *,
-			   __u64 *, int, struct bfs_btree_pair *, int, int,
+static int xbfs_btree_split(struct inode *, struct xbfs_btree_header *,
+			   __u64 *, int, struct xbfs_btree_pair *, int, int,
 			   __u64, int, int);
-static int bfs_btree_insert_dup(struct inode *, __u64, int, __u64);
-static int bfs_btree_remove_dup(struct inode *, __u64, int, __u64);
-static int bfs_dup_link_type(__u64);
-static __u64 bfs_dup_link_off(__u64);
-static int bfs_dup_link_frag(__u64);
-static __u64 *bfs_dup_array(struct buffer *, __u64, int);
-static __u64 *bfs_dup_node_array(struct bfs_btree_node *);
+static int xbfs_btree_insert_dup(struct inode *, __u64, int, __u64);
+static int xbfs_btree_remove_dup(struct inode *, __u64, int, __u64);
+static int xbfs_dup_link_type(__u64);
+static __u64 xbfs_dup_link_off(__u64);
+static int xbfs_dup_link_frag(__u64);
+static __u64 *xbfs_dup_array(struct buffer *, __u64, int);
+static __u64 *xbfs_dup_node_array(struct xbfs_btree_node *);
 
 /* key-length index: cumulative end offsets of each key */
-static __u16 *bfs_btree_keylen_index(struct bfs_btree_node *n)
+static __u16 *xbfs_btree_keylen_index(struct xbfs_btree_node *n)
 {
 	return (__u16 *)((char *)n
-			+ ((sizeof(struct bfs_btree_node) + n->all_key_length + 7) & ~7));
+			+ ((sizeof(struct xbfs_btree_node) + n->all_key_length + 7) & ~7));
 }
 
 /* value array: follows the key-length index */
-static __u64 *bfs_btree_values(struct bfs_btree_node *n)
+static __u64 *xbfs_btree_values(struct xbfs_btree_node *n)
 {
-	return (__u64 *)((char *)bfs_btree_keylen_index(n)
+	return (__u64 *)((char *)xbfs_btree_keylen_index(n)
 			+ n->all_key_count * sizeof(__u16));
 }
 
 /* key i: pointer into the key area + its length */
-static char *bfs_btree_key(struct bfs_btree_node *n, int index, int *keylen)
+static char *xbfs_btree_key(struct xbfs_btree_node *n, int index, int *keylen)
 {
-	__u16 *kl = bfs_btree_keylen_index(n);
-	char *keys = (char *)n + sizeof(struct bfs_btree_node);
+	__u16 *kl = xbfs_btree_keylen_index(n);
+	char *keys = (char *)n + sizeof(struct xbfs_btree_node);
 	int prev = index ? kl[index - 1] : 0;
 
 	*keylen = kl[index] - prev;
@@ -85,29 +85,29 @@ static char *bfs_btree_key(struct bfs_btree_node *n, int index, int *keylen)
 
 /*
  * Read a btree node at stream byte offset 'off'. Returns NULL on error.
- * Nodes are BFS_BTREE_NODE_SIZE (1024) bytes, addressed at 1024-byte
+ * Nodes are XBFS_BTREE_NODE_SIZE (1024) bytes, addressed at 1024-byte
  * offsets within the inode's stream; with block sizes above 1024 several
- * nodes share one block, so the caller must use bfs_btree_node_buf() to
+ * nodes share one block, so the caller must use xbfs_btree_node_buf() to
  * find the node inside the returned buffer.
  */
-static struct buffer *bfs_btree_read_node_tagged(struct inode *, __u64,
+static struct buffer *xbfs_btree_read_node_tagged(struct inode *, __u64,
 					      const char *);
 
-static struct buffer *bfs_btree_read_node(struct inode *i, __u64 off)
+static struct buffer *xbfs_btree_read_node(struct inode *i, __u64 off)
 {
-	return bfs_btree_read_node_tagged(i, off, "?");
+	return xbfs_btree_read_node_tagged(i, off, "?");
 }
 
-static struct buffer *bfs_btree_read_node_tagged(struct inode *i, __u64 off,
+static struct buffer *xbfs_btree_read_node_tagged(struct inode *i, __u64 off,
 					      const char *tag)
 {
 	__blk_t block;
 	struct buffer *buf;
 
-	if(off % BFS_BTREE_NODE_SIZE) {
+	if(off % XBFS_BTREE_NODE_SIZE) {
 		return NULL;	/* nodes are node-size aligned */
 	}
-		if((block = bfs_bmap(i, (__off_t)off, FOR_READING)) < 0) {
+		if((block = xbfs_bmap(i, (__off_t)off, FOR_READING)) < 0) {
 				return NULL;
 	}
 		if(!block) {
@@ -123,29 +123,29 @@ static struct buffer *bfs_btree_read_node_tagged(struct inode *i, __u64 off,
 }
 
 /* the node pointer inside a read/written block buffer */
-static struct bfs_btree_node *bfs_btree_node_buf(struct buffer *buf, __u64 off)
+static struct xbfs_btree_node *xbfs_btree_node_buf(struct buffer *buf, __u64 off)
 {
-	return (struct bfs_btree_node *)(buf->data + (off % buf->size));
+	return (struct xbfs_btree_node *)(buf->data + (off % buf->size));
 }
 
 /*
  * Read the btree header (stream offset 0) and validate it.
  * Returns 0 with *header filled on success.
  */
-static int bfs_btree_read_header(struct inode *i, struct bfs_btree_header *header)
+static int xbfs_btree_read_header(struct inode *i, struct xbfs_btree_header *header)
 {
 	struct buffer *buf;
-	struct bfs_btree_header *h;
+	struct xbfs_btree_header *h;
 
-	if(!(buf = bfs_btree_read_node(i, 0))) {
+	if(!(buf = xbfs_btree_read_node(i, 0))) {
 		return -EIO;
 	}
-	h = (struct bfs_btree_header *)buf->data;
-	if(h->magic != BFS_BTREE_MAGIC || h->node_size != BFS_BTREE_NODE_SIZE) {
+	h = (struct xbfs_btree_header *)buf->data;
+	if(h->magic != XBFS_BTREE_MAGIC || h->node_size != XBFS_BTREE_NODE_SIZE) {
 		brelse(buf);
 		return -EINVAL;
 	}
-	memcpy_b(header, h, sizeof(struct bfs_btree_header));
+	memcpy_b(header, h, sizeof(struct xbfs_btree_header));
 	brelse(buf);
 	return 0;
 }
@@ -153,18 +153,18 @@ static int bfs_btree_read_header(struct inode *i, struct bfs_btree_header *heade
 /* update the tree header on disk (max_depth changes on split). The
  * maximum_size field tracks the stream length (Haiku validates links
  * against MaximumSize() - NodeSize()) */
-static int bfs_btree_write_header(struct inode *i, struct bfs_btree_header *header)
+static int xbfs_btree_write_header(struct inode *i, struct xbfs_btree_header *header)
 {
 	struct buffer *buf;
-	struct bfs_btree_header *h;
+	struct xbfs_btree_header *h;
 
-	if(!(buf = bfs_btree_read_node(i, 0))) {
+	if(!(buf = xbfs_btree_read_node(i, 0))) {
 		return -EIO;
 	}
-	h = (struct bfs_btree_header *)buf->data;
+	h = (struct xbfs_btree_header *)buf->data;
 	header->max_size = i->i_size;
-	memcpy_b(h, header, sizeof(struct bfs_btree_header));
-	bfs_log_write_block(i->sb, buf->block, buf);
+	memcpy_b(h, header, sizeof(struct xbfs_btree_header));
+	xbfs_log_write_block(i->sb, buf->block, buf);
 	return 0;
 }
 
@@ -178,10 +178,10 @@ static int bfs_btree_write_header(struct inode *i, struct bfs_btree_header *head
  * native (little-endian, host-order) values numerically — exactly
  * Haiku's QueryParser::compareKeys (no canonical byte-swap; the tree
  * stores numeric keys in host byte order) */
-static int bfs_btree_key_cmp(int dtype, const char *k1, int l1,
+static int xbfs_btree_key_cmp(int dtype, const char *k1, int l1,
 			     const char *k2, int l2)
 {
-#define BFS_CMP_INT(_t) do {						\
+#define XBFS_CMP_INT(_t) do {						\
 	_t v1, v2;							\
 	if(l1 != (int)sizeof(_t) || l2 != (int)sizeof(_t)) {		\
 		return l1 - l2;						\
@@ -198,26 +198,26 @@ static int bfs_btree_key_cmp(int dtype, const char *k1, int l1,
 } while(0)
 
 	switch(dtype) {
-	case BFS_BTREE_INT32_TYPE:
-		BFS_CMP_INT(__s32);
-	case BFS_BTREE_UINT32_TYPE:
-		BFS_CMP_INT(__u32);
-	case BFS_BTREE_INT64_TYPE:
-		BFS_CMP_INT(__s64);
-	case BFS_BTREE_UINT64_TYPE:
-		BFS_CMP_INT(__u64);
-	case BFS_BTREE_FLOAT_TYPE:
-		BFS_CMP_INT(float);
-	case BFS_BTREE_DOUBLE_TYPE:
-		BFS_CMP_INT(double);
-	case BFS_BTREE_INT8_TYPE:
-		BFS_CMP_INT(__s8);
-	case BFS_BTREE_INT16_TYPE:
-		BFS_CMP_INT(__s16);
+	case XBFS_BTREE_INT32_TYPE:
+		XBFS_CMP_INT(__s32);
+	case XBFS_BTREE_UINT32_TYPE:
+		XBFS_CMP_INT(__u32);
+	case XBFS_BTREE_INT64_TYPE:
+		XBFS_CMP_INT(__s64);
+	case XBFS_BTREE_UINT64_TYPE:
+		XBFS_CMP_INT(__u64);
+	case XBFS_BTREE_FLOAT_TYPE:
+		XBFS_CMP_INT(float);
+	case XBFS_BTREE_DOUBLE_TYPE:
+		XBFS_CMP_INT(double);
+	case XBFS_BTREE_INT8_TYPE:
+		XBFS_CMP_INT(__s8);
+	case XBFS_BTREE_INT16_TYPE:
+		XBFS_CMP_INT(__s16);
 	default:
 		break;
 	}
-#undef BFS_CMP_INT
+#undef XBFS_CMP_INT
 	/* STRING and anything else: byte order with the prefix rule */
 	{
 		int cmp = strncmp(k1, k2, (l1 < l2) ? l1 : l2);
@@ -228,7 +228,7 @@ static int bfs_btree_key_cmp(int dtype, const char *k1, int l1,
 	}
 }
 
-static int bfs_btree_search_node_t(struct bfs_btree_node *n, const char *key,
+static int xbfs_btree_search_node_t(struct xbfs_btree_node *n, const char *key,
 				   int keylen, int *index, int dtype)
 {
 	int lo, hi, mid, cmp, klen;
@@ -238,8 +238,8 @@ static int bfs_btree_search_node_t(struct bfs_btree_node *n, const char *key,
 	hi = n->all_key_count - 1;
 	while(lo <= hi) {
 		mid = (lo + hi) >> 1;
-		k = bfs_btree_key(n, mid, &klen);
-		cmp = bfs_btree_key_cmp(dtype, key, keylen, k, klen);
+		k = xbfs_btree_key(n, mid, &klen);
+		cmp = xbfs_btree_key_cmp(dtype, key, keylen, k, klen);
 		if(cmp == 0) {
 			*index = mid;
 			return 0;
@@ -254,21 +254,21 @@ static int bfs_btree_search_node_t(struct bfs_btree_node *n, const char *key,
 	return -ENOENT;
 }
 
-static int bfs_btree_search_node(struct bfs_btree_node *n, const char *name,
+static int xbfs_btree_search_node(struct xbfs_btree_node *n, const char *name,
 				 int *index)
 {
-	return bfs_btree_search_node_t(n, name, strlen(name), index,
-				       BFS_BTREE_STRING_TYPE);
+	return xbfs_btree_search_node_t(n, name, strlen(name), index,
+				       XBFS_BTREE_STRING_TYPE);
 }
 
 /*
  * Look up 'name' in the directory tree.
  * On success returns 0 and sets *ino to the inode block number.
  */
-int bfs_btree_find(struct inode *dir, const char *name, __ino_t *ino)
+int xbfs_btree_find(struct inode *dir, const char *name, __ino_t *ino)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 path[16];
 	int npath, index, res;
@@ -276,25 +276,25 @@ int bfs_btree_find(struct inode *dir, const char *name, __ino_t *ino)
 	if(!name[0]) {
 		return -ENOENT;
 	}
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		return res;
 	}
-	if((res = bfs_btree_descend_t(dir, &header, name, strlen(name),
+	if((res = xbfs_btree_descend_t(dir, &header, name, strlen(name),
 				      path, &npath))) {
 		return res;
 	}
 
-	if(!(buf = bfs_btree_read_node(dir, path[npath - 1]))) {
+	if(!(buf = xbfs_btree_read_node(dir, path[npath - 1]))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, path[npath - 1]);
+	n = xbfs_btree_node_buf(buf, path[npath - 1]);
 	if(n->all_key_count == 0 || n->all_key_length == 0) {
 		brelse(buf);
 		return -ENOENT;
 	}
-	if(bfs_btree_search_node_t(n, name, strlen(name), &index,
+	if(xbfs_btree_search_node_t(n, name, strlen(name), &index,
 				   header.data_type) == 0) {
-		*ino = (__ino_t)bfs_btree_values(n)[index];
+		*ino = (__ino_t)xbfs_btree_values(n)[index];
 		brelse(buf);
 		return 0;
 	}
@@ -305,29 +305,29 @@ int bfs_btree_find(struct inode *dir, const char *name, __ino_t *ino)
 /*
  * Iterate over all directory entries (key, value) in key order.
  */
-int bfs_btree_iterate(struct inode *dir, int (*fn)(const char *, __ino_t, void *),
+int xbfs_btree_iterate(struct inode *dir, int (*fn)(const char *, __ino_t, void *),
 		      void *arg)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 node_off;
 	int index, keylen, res;
 
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		return res;
 	}
 
 	/* descend to the leftmost leaf, then iterate right via the links */
 	node_off = header.root_node_ptr;
 	for(;;) {
-		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		if(!(buf = xbfs_btree_read_node(dir, node_off))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->overflow != BFS_BTREE_NULL) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->overflow != XBFS_BTREE_NULL) {
 			node_off = n->all_key_count ?
-				bfs_btree_values(n)[0] : n->overflow;
+				xbfs_btree_values(n)[0] : n->overflow;
 			brelse(buf);
 			continue;
 		}
@@ -336,32 +336,32 @@ int bfs_btree_iterate(struct inode *dir, int (*fn)(const char *, __ino_t, void *
 	}
 
 	for(;;) {
-		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		if(!(buf = xbfs_btree_read_node(dir, node_off))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->overflow != BFS_BTREE_NULL) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->overflow != XBFS_BTREE_NULL) {
 			brelse(buf);
 			return -EIO;
 		}
 		for(index = 0; index < n->all_key_count; index++) {
-			char keybuf[BFS_BTREE_MAX_KEY_LEN];
+			char keybuf[XBFS_BTREE_MAX_KEY_LEN];
 			keylen = 0;
 			{
-				char *key = bfs_btree_key(n, index, &keylen);
-				if(keylen >= BFS_BTREE_MAX_KEY_LEN) {
+				char *key = xbfs_btree_key(n, index, &keylen);
+				if(keylen >= XBFS_BTREE_MAX_KEY_LEN) {
 					brelse(buf);
 					return -EIO;
 				}
 				memcpy_b(keybuf, key, keylen);
 			}
 			keybuf[keylen] = 0;
-			if(fn(keybuf, (__ino_t)bfs_btree_values(n)[index], arg)) {
+			if(fn(keybuf, (__ino_t)xbfs_btree_values(n)[index], arg)) {
 				brelse(buf);
 				return 0;
 			}
 		}
-		if(n->right == BFS_BTREE_NULL) {
+		if(n->right == XBFS_BTREE_NULL) {
 			brelse(buf);
 			return 0;
 		}
@@ -373,25 +373,25 @@ int bfs_btree_iterate(struct inode *dir, int (*fn)(const char *, __ino_t, void *
 /*
  * Iterate every (key, keylen, inode) pair of a tree in key order,
  * EXPANDING the duplicate-key machinery: a leaf value is a direct
- * inode, a fragment link (BFS_BTREE_DUPLICATE_FRAGMENT) or a
- * duplicate-node link (BFS_BTREE_DUPLICATE_NODE, a right-link chain);
+ * inode, a fragment link (XBFS_BTREE_DUPLICATE_FRAGMENT) or a
+ * duplicate-node link (XBFS_BTREE_DUPLICATE_NODE, a right-link chain);
  * each expanded value is reported once. This is the query engine's
  * view of an index tree (Haiku's BQuery walks the same structures).
  */
-int bfs_btree_iterate_values(struct inode *dir, int dtype,
+int xbfs_btree_iterate_values(struct inode *dir, int dtype,
 			     int (*fn)(const char *, int, __ino_t, void *),
 			     void *arg)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 node_off;
 	int index, keylen, res;
 
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		return res;
 	}
-	if(header.data_type != dtype && dtype != BFS_BTREE_STRING_TYPE
+	if(header.data_type != dtype && dtype != XBFS_BTREE_STRING_TYPE
 			&& dtype != -1) {
 		/* the caller asked for one type but the tree is another
 		 * (e.g. STRING name index vs an INT64 index); refuse to
@@ -403,13 +403,13 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
 	/* descend to the leftmost leaf, then iterate right via the links */
 	node_off = header.root_node_ptr;
 	for(;;) {
-		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		if(!(buf = xbfs_btree_read_node(dir, node_off))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->overflow != BFS_BTREE_NULL) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->overflow != XBFS_BTREE_NULL) {
 			node_off = n->all_key_count ?
-				bfs_btree_values(n)[0] : n->overflow;
+				xbfs_btree_values(n)[0] : n->overflow;
 			brelse(buf);
 			continue;
 		}
@@ -418,44 +418,44 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
 	}
 
 	for(;;) {
-		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		if(!(buf = xbfs_btree_read_node(dir, node_off))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->overflow != BFS_BTREE_NULL) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->overflow != XBFS_BTREE_NULL) {
 			brelse(buf);
 			return -EIO;
 		}
 		for(index = 0; index < n->all_key_count; index++) {
-			char keybuf[BFS_BTREE_MAX_KEY_LEN];
+			char keybuf[XBFS_BTREE_MAX_KEY_LEN];
 			__u64 value;
 			keylen = 0;
 			{
-				char *key = bfs_btree_key(n, index, &keylen);
-				if(keylen >= BFS_BTREE_MAX_KEY_LEN) {
+				char *key = xbfs_btree_key(n, index, &keylen);
+				if(keylen >= XBFS_BTREE_MAX_KEY_LEN) {
 					brelse(buf);
 					return -EIO;
 				}
 				memcpy_b(keybuf, key, keylen);
 			}
 			keybuf[keylen] = 0;
-			value = bfs_btree_values(n)[index];
+			value = xbfs_btree_values(n)[index];
 
 			/* direct value */
-			if(bfs_dup_link_type(value) <= 1) {
+			if(xbfs_dup_link_type(value) <= 1) {
 				if(fn(keybuf, keylen, (__ino_t)value, arg)) {
 					brelse(buf);
 					return 0;
 				}
 				continue;
 			}
-			if(bfs_dup_link_type(value) == BFS_BTREE_DUPLICATE_FRAGMENT) {
+			if(xbfs_dup_link_type(value) == XBFS_BTREE_DUPLICATE_FRAGMENT) {
 				/* a fragment slot: {count, values[7]} */
 				struct buffer *fb;
 				__u64 *arr;
 				int s, shared = 0;
 
-				if(bfs_dup_link_off(value) / dir->sb->s_blocksize
+				if(xbfs_dup_link_off(value) / dir->sb->s_blocksize
 				   == node_off / dir->sb->s_blocksize) {
 					/* the fragment shares the leaf's
 					 * block (nodes pack at 1024-byte
@@ -463,14 +463,14 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
 					fb = buf;
 					shared = 1;
 				} else {
-					if(!(fb = bfs_btree_read_node(dir,
-							bfs_dup_link_off(value)))) {
+					if(!(fb = xbfs_btree_read_node(dir,
+							xbfs_dup_link_off(value)))) {
 						brelse(buf);
 						return -EIO;
 					}
 				}
-				arr = bfs_dup_array(fb, bfs_dup_link_off(value),
-						   bfs_dup_link_frag(value));
+				arr = xbfs_dup_array(fb, xbfs_dup_link_off(value),
+						   xbfs_dup_link_frag(value));
 				if(arr[0] > 7) {
 					/* a fragment slot holds at most 7
 					 * values; refuse a corrupt count */
@@ -495,20 +495,20 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
 				}
 				continue;
 			}
-			if(bfs_dup_link_type(value) == BFS_BTREE_DUPLICATE_NODE) {
+			if(xbfs_dup_link_type(value) == XBFS_BTREE_DUPLICATE_NODE) {
 				/* a duplicate-node chain: {left, right,
 				 * count@16, values[125]@24} */
-				__u64 noff = bfs_dup_link_off(value);
+				__u64 noff = xbfs_dup_link_off(value);
 				int hops = 0;
 
-				while(noff != (__u64)BFS_BTREE_NULL) {
+				while(noff != (__u64)XBFS_BTREE_NULL) {
 					if(++hops > 4096) {
 						/* a corrupt next link would
 						 * walk forever */
 						brelse(buf);
 						return -EIO;
 					}
-					struct bfs_btree_node *dn;
+					struct xbfs_btree_node *dn;
 					struct buffer *db;
 					__u64 *arr;
 					int s, shared = 0;
@@ -520,14 +520,14 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
 						db = buf;
 						shared = 1;
 					} else {
-						if(!(db = bfs_btree_read_node(dir,
+						if(!(db = xbfs_btree_read_node(dir,
 								noff))) {
 							brelse(buf);
 							return -EIO;
 						}
 					}
-					dn = bfs_btree_node_buf(db, noff);
-					arr = bfs_dup_node_array(dn);
+					dn = xbfs_btree_node_buf(db, noff);
+					arr = xbfs_dup_node_array(dn);
 					if(arr[0] > 125) {
 						if(!shared) {
 							brelse(db);
@@ -554,7 +554,7 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
 			}
 			/* unknown link type: skip (defensive) */
 		}
-		if(n->right == BFS_BTREE_NULL) {
+		if(n->right == XBFS_BTREE_NULL) {
 			brelse(buf);
 			return 0;
 		}
@@ -569,15 +569,15 @@ int bfs_btree_iterate_values(struct inode *dir, int dtype,
  * scratch copy, which is much less error-prone than in-place shifting.
  * Returns 0 on success, -ENOSPC if the rebuilt node would overflow.
  */
-static int bfs_btree_node_room(struct bfs_btree_node *n, int keylen,
+static int xbfs_btree_node_room(struct xbfs_btree_node *n, int keylen,
 			      __u32 bsize)
 {
-	int used = sizeof(struct bfs_btree_node) + n->all_key_length + keylen;
+	int used = sizeof(struct xbfs_btree_node) + n->all_key_length + keylen;
 	int cnt = n->all_key_count + 1;
 
 	/* the pair-count cap matters at 4096-byte blocks (a leaf could
 	 * otherwise exceed the 128+1 slot collect arrays) */
-	if(cnt > BFS_BTREE_MAX_PAIRS + 1) {
+	if(cnt > XBFS_BTREE_MAX_PAIRS + 1) {
 		return 0;
 	}
 
@@ -586,34 +586,34 @@ static int bfs_btree_node_room(struct bfs_btree_node *n, int keylen,
 
 /*
  * From an interior node, pick the child offset for 'name'.
- * Comparison is prefix-aware like bfs_btree_search_node(): a name that
+ * Comparison is prefix-aware like xbfs_btree_search_node(): a name that
  * extends a separator key (e.g. "whoami" vs separator "who") is GREATER
  * than the key, so it descends into the next child instead of matching
  * the current one.
  */
-static void bfs_btree_pick_child_t(struct bfs_btree_node *n, const char *key,
+static void xbfs_btree_pick_child_t(struct xbfs_btree_node *n, const char *key,
 				   int keylen, __u64 *child, int dtype)
 {
 	int i, klen, cmp;
 	char *k;
-	__u64 *values = bfs_btree_values(n);
+	__u64 *values = xbfs_btree_values(n);
 
 	if(n->all_key_count == 0) {
 		*child = n->overflow;
 		return;
 	}
 
-	k = bfs_btree_key(n, n->all_key_count - 1, &klen);
-	cmp = bfs_btree_key_cmp(dtype, key, keylen, k, klen);
+	k = xbfs_btree_key(n, n->all_key_count - 1, &klen);
+	cmp = xbfs_btree_key_cmp(dtype, key, keylen, k, klen);
 	if(cmp > 0) {
-		*child = (n->overflow != BFS_BTREE_NULL) ?
+		*child = (n->overflow != XBFS_BTREE_NULL) ?
 			n->overflow : values[n->all_key_count - 1];
 		return;
 	}
 
-	for(i = 0; i < n->all_key_count && i <= BFS_BTREE_MAX_PAIRS + 1; i++) {
-		k = bfs_btree_key(n, i, &klen);
-		cmp = bfs_btree_key_cmp(dtype, key, keylen, k, klen);
+	for(i = 0; i < n->all_key_count && i <= XBFS_BTREE_MAX_PAIRS + 1; i++) {
+		k = xbfs_btree_key(n, i, &klen);
+		cmp = xbfs_btree_key_cmp(dtype, key, keylen, k, klen);
 		if(cmp <= 0) {
 			*child = values[i];
 			return;
@@ -622,19 +622,19 @@ static void bfs_btree_pick_child_t(struct bfs_btree_node *n, const char *key,
 	*child = values[n->all_key_count - 1];
 }
 
-static void bfs_btree_pick_child(struct bfs_btree_node *n, const char *name,
+static void xbfs_btree_pick_child(struct xbfs_btree_node *n, const char *name,
 				 __u64 *child)
 {
-	bfs_btree_pick_child_t(n, name, strlen(name), child,
-			       BFS_BTREE_STRING_TYPE);
+	xbfs_btree_pick_child_t(n, name, strlen(name), child,
+			       XBFS_BTREE_STRING_TYPE);
 }
 
-static int bfs_btree_descend_t(struct inode *dir,
-			       const struct bfs_btree_header *h,
+static int xbfs_btree_descend_t(struct inode *dir,
+			       const struct xbfs_btree_header *h,
 			       const char *key, int keylen, __u64 *path,
 			       int *npath)
 {
-	struct bfs_btree_node *n;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 node_off;
 	int depth = 0;
@@ -645,40 +645,40 @@ static int bfs_btree_descend_t(struct inode *dir,
 			return -EIO;
 		}
 		path[depth++] = node_off;
-		if(!(buf = bfs_btree_read_node_tagged(dir, node_off, "bfs_btree_descend_t"))) {
+		if(!(buf = xbfs_btree_read_node_tagged(dir, node_off, "xbfs_btree_descend_t"))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->all_key_count > BFS_BTREE_MAX_PAIRS + 2
-		   || n->all_key_length > BFS_BTREE_NODE_SIZE - sizeof(struct bfs_btree_node)) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->all_key_count > XBFS_BTREE_MAX_PAIRS + 2
+		   || n->all_key_length > XBFS_BTREE_NODE_SIZE - sizeof(struct xbfs_btree_node)) {
 			brelse(buf);
 			return -EIO;
 		}
-		if(n->overflow == BFS_BTREE_NULL) {
+		if(n->overflow == XBFS_BTREE_NULL) {
 			brelse(buf);
 			*npath = depth;
 			return 0;
 		}
-		bfs_btree_pick_child_t(n, key, keylen, &node_off, h->data_type);
+		xbfs_btree_pick_child_t(n, key, keylen, &node_off, h->data_type);
 		brelse(buf);
 	}
 }
 
-static int bfs_btree_descend(struct inode *dir, const struct bfs_btree_header *h,
+static int xbfs_btree_descend(struct inode *dir, const struct xbfs_btree_header *h,
 			     const char *name, __u64 *path, int *npath)
 {
-	return bfs_btree_descend_t(dir, h, name, strlen(name), path, npath);
+	return xbfs_btree_descend_t(dir, h, name, strlen(name), path, npath);
 }
 
 /* collect a node's pairs, copying the keys into 'keybuf' (the node buffer
  * may be released before the pairs are used); optionally insert one pair */
-static int bfs_btree_collect_t(struct bfs_btree_node *n,
-			      struct bfs_btree_pair *pairs, int max,
+static int xbfs_btree_collect_t(struct xbfs_btree_node *n,
+			      struct xbfs_btree_pair *pairs, int max,
 			      int do_insert, const char *iname, int iname_len,
 			      __u64 ino, int dtype, char *keybuf)
 {
 	int count = 0, i, index, off = 0;
-	__u64 *values = bfs_btree_values(n);
+	__u64 *values = xbfs_btree_values(n);
 
 	if(n->all_key_count > max) {
 		return -1;
@@ -686,7 +686,7 @@ static int bfs_btree_collect_t(struct bfs_btree_node *n,
 	for(i = 0; i < n->all_key_count; i++) {
 		pairs[count].keylen = 0;
 		{
-			char *key = bfs_btree_key(n, i, &pairs[count].keylen);
+			char *key = xbfs_btree_key(n, i, &pairs[count].keylen);
 			memcpy_b(keybuf + off, key, pairs[count].keylen);
 		}
 		pairs[count].key = keybuf + off;
@@ -701,7 +701,7 @@ static int bfs_btree_collect_t(struct bfs_btree_node *n,
 
 	index = count;
 	for(i = 0; i < count; i++) {
-		int cmp = bfs_btree_key_cmp(dtype, iname, iname_len,
+		int cmp = xbfs_btree_key_cmp(dtype, iname, iname_len,
 					    pairs[i].key, pairs[i].keylen);
 		if(cmp == 0) {
 			/* exact duplicate: the key is already in the tree
@@ -725,8 +725,8 @@ static int bfs_btree_collect_t(struct bfs_btree_node *n,
 	return count + 1;
 }
 
-static int bfs_btree_serialize(struct bfs_btree_node *n,
-			       struct bfs_btree_pair *pairs, int count,
+static int xbfs_btree_serialize(struct xbfs_btree_node *n,
+			       struct xbfs_btree_pair *pairs, int count,
 			       __u64 interior_overflow, __u64 right,
 			       __u64 left, __u32 bsize)
 {
@@ -749,9 +749,9 @@ static int bfs_btree_serialize(struct bfs_btree_node *n,
 	n->all_key_count = count;
 	n->all_key_length = total;
 	{
-		char *keys = (char *)n + sizeof(struct bfs_btree_node);
-		__u16 *kl = bfs_btree_keylen_index(n);
-		__u64 *values = bfs_btree_values(n);
+		char *keys = (char *)n + sizeof(struct xbfs_btree_node);
+		__u16 *kl = xbfs_btree_keylen_index(n);
+		__u64 *values = xbfs_btree_values(n);
 		off = 0;
 		for(i = 0; i < count; i++) {
 			memcpy_b(keys + off, keydata + off, pairs[i].keylen);
@@ -764,12 +764,12 @@ static int bfs_btree_serialize(struct bfs_btree_node *n,
 	return 0;
 }
 
-static int bfs_btree_write_node(struct inode *dir, __u64 off,
-				struct bfs_btree_pair *pairs, int count,
+static int xbfs_btree_write_node(struct inode *dir, __u64 off,
+				struct xbfs_btree_pair *pairs, int count,
 				__u64 overflow, __u64 right, __u64 left,
 				struct buffer *held, __u64 held_off)
 {
-	struct bfs_btree_node *n;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 
 	if(held && off / dir->sb->s_blocksize
@@ -778,18 +778,18 @@ static int bfs_btree_write_node(struct inode *dir, __u64 off,
 		 * at 1024-byte offsets): serialize into the held buffer
 		 * and let the caller's own write flush the whole block
 		 * (breading it here would sleep on the caller's lock) */
-		n = bfs_btree_node_buf(held, off);
-		bfs_btree_serialize(n, pairs, count, overflow, right, left,
-				       BFS_BTREE_NODE_SIZE);
+		n = xbfs_btree_node_buf(held, off);
+		xbfs_btree_serialize(n, pairs, count, overflow, right, left,
+				       XBFS_BTREE_NODE_SIZE);
 		return 0;
 	}
-	if(!(buf = bfs_btree_read_node(dir, off))) {
+	if(!(buf = xbfs_btree_read_node(dir, off))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, off);
-	bfs_btree_serialize(n, pairs, count, overflow, right, left,
-			       BFS_BTREE_NODE_SIZE);
-	bfs_log_write_block(dir->sb, buf->block, buf);
+	n = xbfs_btree_node_buf(buf, off);
+	xbfs_btree_serialize(n, pairs, count, overflow, right, left,
+			       XBFS_BTREE_NODE_SIZE);
+	xbfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
 
@@ -800,34 +800,34 @@ static int bfs_btree_write_node(struct inode *dir, __u64 off,
  * now follows the new right half. Haiku keeps these links consistent,
  * and checkfs validates them.
  */
-static int bfs_btree_relink_left(struct inode *dir, __u64 off, __u64 left,
+static int xbfs_btree_relink_left(struct inode *dir, __u64 off, __u64 left,
 				 struct buffer *held, __u64 held_off)
 {
-	struct bfs_btree_node *n;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 
-	if(off == BFS_BTREE_NULL) {
+	if(off == XBFS_BTREE_NULL) {
 		return 0;
 	}
 	if(held && off / dir->sb->s_blocksize
 			== held_off / dir->sb->s_blocksize) {
 		/* same-block: update the held buffer, defer the write */
-		n = bfs_btree_node_buf(held, off);
+		n = xbfs_btree_node_buf(held, off);
 		n->left = left;
 		return 0;
 	}
-	if(!(buf = bfs_btree_read_node_tagged(dir, off, "bfs_btree_relink_left"))) {
+	if(!(buf = xbfs_btree_read_node_tagged(dir, off, "xbfs_btree_relink_left"))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, off);
+	n = xbfs_btree_node_buf(buf, off);
 	n->left = left;
-	bfs_log_write_block(dir->sb, buf->block, buf);
+	xbfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
 
-static int bfs_btree_grow(struct inode *dir, __u64 *off, struct buffer *held)
+static int xbfs_btree_grow(struct inode *dir, __u64 *off, struct buffer *held)
 {
-	struct bfs_btree_header *h;
+	struct xbfs_btree_header *h;
 	struct buffer *hbuf;
 	__blk_t block, hdr_block;
 
@@ -835,8 +835,8 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off, struct buffer *held)
 		return block;
 	}
 		*off = dir->i_size;
-	dir->i_size += BFS_BTREE_NODE_SIZE;
-	dir->u.bfs.raw.u.data.size = dir->i_size;
+	dir->i_size += XBFS_BTREE_NODE_SIZE;
+	dir->u.xbfs.raw.u.data.size = dir->i_size;
 	dir->state |= INODE_DIRTY;
 
 	/* Haiku validates node links against MaximumSize() - NodeSize(),
@@ -851,13 +851,13 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off, struct buffer *held)
 		return hdr_block;
 	}
 	if(held && held->block == hdr_block) {
-		((struct bfs_btree_header *)held->data)->max_size = dir->i_size;
+		((struct xbfs_btree_header *)held->data)->max_size = dir->i_size;
 		return 0;
 	}
-	if((hbuf = bfs_btree_read_node(dir, 0))) {
-		h = (struct bfs_btree_header *)hbuf->data;
+	if((hbuf = xbfs_btree_read_node(dir, 0))) {
+		h = (struct xbfs_btree_header *)hbuf->data;
 		h->max_size = dir->i_size;
-		bfs_log_write_block(dir->sb, hbuf->block, hbuf);
+		xbfs_log_write_block(dir->sb, hbuf->block, hbuf);
 	}
 	return 0;
 }
@@ -867,7 +867,7 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off, struct buffer *held)
  * pair of the node plus the one being inserted (leaves: the new directory
  * entry; interiors: the new separator + right child), 'count' = pairs
  * count, 'split_at' = pairs kept in the left half, 'node_overflow' = the
- * node's rightmost child (BFS_BTREE_NULL for leaves), 'depth' = the
+ * node's rightmost child (XBFS_BTREE_NULL for leaves), 'depth' = the
  * original descent depth (for the max_depth bookkeeping when the root
  * splits).
  *
@@ -887,31 +887,31 @@ static int bfs_btree_grow(struct inode *dir, __u64 *off, struct buffer *held)
  * A leaf has no overflow: left = pairs[0..split_at), right =
  * pairs[split_at..count), separator = pairs[split_at-1].key.
  */
-static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
-			   __u64 *path, int npath, struct bfs_btree_pair *pairs,
+static int xbfs_btree_split(struct inode *dir, struct xbfs_btree_header *header,
+			   __u64 *path, int npath, struct xbfs_btree_pair *pairs,
 			   int count, int split_at, __u64 node_overflow,
 			   int depth, int dtype)
 {
-	struct bfs_btree_node *n;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 node_off = path[npath - 1];
 	__u64 old_right, old_left, left_overflow, right_overflow;
 	__u64 left_off, right_off;
 	const char *sep;
-	struct bfs_btree_pair *right_pairs;
+	struct xbfs_btree_pair *right_pairs;
 	int sep_len, is_leaf, right_count;
 	int res;
 
 	if(split_at < 1 || split_at >= count) {
 		return -EIO;
 	}
-	is_leaf = (node_overflow == BFS_BTREE_NULL);
+	is_leaf = (node_overflow == XBFS_BTREE_NULL);
 	if(is_leaf) {
 		/* leaf: the separator is the last key of the left half */
 		sep = pairs[split_at - 1].key;
 		sep_len = pairs[split_at - 1].keylen;
-		left_overflow = BFS_BTREE_NULL;
-		right_overflow = BFS_BTREE_NULL;
+		left_overflow = XBFS_BTREE_NULL;
+		right_overflow = XBFS_BTREE_NULL;
 		right_pairs = pairs + split_at;
 		right_count = count - split_at;
 	} else {
@@ -928,14 +928,14 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		right_count = count - split_at - 1;
 	}
 
-	if(!(buf = bfs_btree_read_node_tagged(dir, node_off, "bfs_btree_split"))) {
+	if(!(buf = xbfs_btree_read_node_tagged(dir, node_off, "xbfs_btree_split"))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, node_off);
+	n = xbfs_btree_node_buf(buf, node_off);
 	old_right = n->right;
 	old_left = n->left;
 
-	if((res = bfs_btree_grow(dir, &right_off, buf)) < 0) {
+	if((res = xbfs_btree_grow(dir, &right_off, buf)) < 0) {
 		brelse(buf);
 		return res;
 	}
@@ -948,100 +948,100 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		 * [sep -> old root offset, overflow -> right half]. */
 		__u64 root_off;
 
-		if((res = bfs_btree_write_node(dir, right_off, right_pairs,
+		if((res = xbfs_btree_write_node(dir, right_off, right_pairs,
 				right_count, right_overflow,
-				is_leaf ? old_right : BFS_BTREE_NULL,
-				is_leaf ? node_off : BFS_BTREE_NULL,
+				is_leaf ? old_right : XBFS_BTREE_NULL,
+				is_leaf ? node_off : XBFS_BTREE_NULL,
 				buf, node_off)) < 0) {
 			brelse(buf);
 			return res;
 		}
-		if(is_leaf && (res = bfs_btree_relink_left(dir, old_right,
+		if(is_leaf && (res = xbfs_btree_relink_left(dir, old_right,
 				right_off, buf, node_off)) < 0) {
 			brelse(buf);
 			return res;
 		}
 		/* the left half stays in the old root block */
-		bfs_btree_serialize(n, pairs, split_at, left_overflow,
-				    is_leaf ? right_off : BFS_BTREE_NULL,
-				    is_leaf ? old_left : BFS_BTREE_NULL,
-				    BFS_BTREE_NODE_SIZE);
-		bfs_log_write_block(dir->sb, buf->block, buf);	/* consumes buf */
+		xbfs_btree_serialize(n, pairs, split_at, left_overflow,
+				    is_leaf ? right_off : XBFS_BTREE_NULL,
+				    is_leaf ? old_left : XBFS_BTREE_NULL,
+				    XBFS_BTREE_NODE_SIZE);
+		xbfs_log_write_block(dir->sb, buf->block, buf);	/* consumes buf */
 
 		/* a new root block: one separator, two children */
-		if((res = bfs_btree_grow(dir, &root_off, NULL)) < 0) {
+		if((res = xbfs_btree_grow(dir, &root_off, NULL)) < 0) {
 			return res;
 		}
-		if(!(buf = bfs_btree_read_node_tagged(dir, root_off, "bfs_btree_split"))) {
+		if(!(buf = xbfs_btree_read_node_tagged(dir, root_off, "xbfs_btree_split"))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, root_off);
-		memset_b(n, 0, BFS_BTREE_NODE_SIZE);
-		n->left = BFS_BTREE_NULL;
-		n->right = BFS_BTREE_NULL;
+		n = xbfs_btree_node_buf(buf, root_off);
+		memset_b(n, 0, XBFS_BTREE_NODE_SIZE);
+		n->left = XBFS_BTREE_NULL;
+		n->right = XBFS_BTREE_NULL;
 		n->overflow = right_off;
 		n->all_key_count = 1;
 		n->all_key_length = sep_len;
 		{
-			char *keys = (char *)n + sizeof(struct bfs_btree_node);
-			__u16 *kl = bfs_btree_keylen_index(n);
-			__u64 *values = bfs_btree_values(n);
+			char *keys = (char *)n + sizeof(struct xbfs_btree_node);
+			__u16 *kl = xbfs_btree_keylen_index(n);
+			__u64 *values = xbfs_btree_values(n);
 			memcpy_b(keys, sep, sep_len);
 			kl[0] = sep_len;
 			values[0] = node_off;
 		}
-		bfs_log_write_block(dir->sb, buf->block, buf);
+		xbfs_log_write_block(dir->sb, buf->block, buf);
 
 		header->root_node_ptr = root_off;
 		if(header->max_depth < depth + 1) {
 			header->max_depth = depth + 1;
 		}
-		bfs_btree_write_header(dir, header);
+		xbfs_btree_write_header(dir, header);
 		return 0;
 	}
 
 	/* depth >= 2: the node keeps the lower half in place; the upper
 	 * half goes to a new block; insert (sep, right_off) into the
 	 * parent interior */
-	if((res = bfs_btree_write_node(dir, right_off, right_pairs,
+	if((res = xbfs_btree_write_node(dir, right_off, right_pairs,
 			right_count, right_overflow,
-			is_leaf ? old_right : BFS_BTREE_NULL,
-			is_leaf ? node_off : BFS_BTREE_NULL,
+			is_leaf ? old_right : XBFS_BTREE_NULL,
+			is_leaf ? node_off : XBFS_BTREE_NULL,
 			buf, node_off)) < 0) {
 		brelse(buf);
 		return res;
 	}
-	if(is_leaf && (res = bfs_btree_relink_left(dir, old_right,
+	if(is_leaf && (res = xbfs_btree_relink_left(dir, old_right,
 			right_off, buf, node_off)) < 0) {
 		brelse(buf);
 		return res;
 	}
-	bfs_btree_serialize(n, pairs, split_at, left_overflow,
-			    is_leaf ? right_off : BFS_BTREE_NULL,
-			    is_leaf ? old_left : BFS_BTREE_NULL,
-			    BFS_BTREE_NODE_SIZE);
-	bfs_log_write_block(dir->sb, buf->block, buf);
+	xbfs_btree_serialize(n, pairs, split_at, left_overflow,
+			    is_leaf ? right_off : XBFS_BTREE_NULL,
+			    is_leaf ? old_left : XBFS_BTREE_NULL,
+			    XBFS_BTREE_NODE_SIZE);
+	xbfs_log_write_block(dir->sb, buf->block, buf);
 
 	/* insert the separator into the parent, splitting the parent
 	 * (recursively) if the rebuilt parent would not fit */
 	{
-		struct bfs_btree_node *parent;
+		struct xbfs_btree_node *parent;
 		struct buffer *parent_buf;
-		struct bfs_btree_pair *pp;
+		struct xbfs_btree_pair *pp;
 		char *pkb;
 		__u64 parent_overflow;
 		int pcount, i, j = -1;
 
-		if(!(parent_buf = bfs_btree_read_node_tagged(dir, path[npath - 2], "bfs_btree_split"))) {
+		if(!(parent_buf = xbfs_btree_read_node_tagged(dir, path[npath - 2], "xbfs_btree_split"))) {
 			return -EIO;
 		}
-		parent = bfs_btree_node_buf(parent_buf, path[npath - 2]);
+		parent = xbfs_btree_node_buf(parent_buf, path[npath - 2]);
 		parent_overflow = parent->overflow;
 
-		if(!(pp = (struct bfs_btree_pair *)kmalloc(
-				(BFS_BTREE_MAX_PAIRS + 2) * sizeof(struct bfs_btree_pair)))
+		if(!(pp = (struct xbfs_btree_pair *)kmalloc(
+				(XBFS_BTREE_MAX_PAIRS + 2) * sizeof(struct xbfs_btree_pair)))
 				|| !(pkb = (char *)kmalloc(
-					BFS_BTREE_NODE_SIZE))) {
+					XBFS_BTREE_NODE_SIZE))) {
 			if(pp) {
 				kfree((addr_t)pp);
 			}
@@ -1052,7 +1052,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			return -ENOMEM;
 		}
 
-		pcount = bfs_btree_collect_t(parent, pp, BFS_BTREE_MAX_PAIRS + 2,
+		pcount = xbfs_btree_collect_t(parent, pp, XBFS_BTREE_MAX_PAIRS + 2,
 					0, NULL, 0, 0,
 					     dtype, pkb);
 		if(pcount < 0) {
@@ -1114,16 +1114,16 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 			for(i = 0; i < pcount; i++) {
 				klen_total += pp[i].keylen;
 			}
-			if(((sizeof(struct bfs_btree_node) + klen_total + 7) & ~7)
+			if(((sizeof(struct xbfs_btree_node) + klen_total + 7) & ~7)
 					+ pcount * 2 + (pcount + 1) * 8
-					<= BFS_BTREE_NODE_SIZE) {
+					<= XBFS_BTREE_NODE_SIZE) {
 				/* the parent has room: rebuild it in place */
-				bfs_btree_serialize(parent, pp, pcount,
+				xbfs_btree_serialize(parent, pp, pcount,
 						    parent_overflow,
-						    BFS_BTREE_NULL,
-						    BFS_BTREE_NULL,
-						    BFS_BTREE_NODE_SIZE);
-				bfs_log_write_block(dir->sb, parent_buf->block,
+						    XBFS_BTREE_NULL,
+						    XBFS_BTREE_NULL,
+						    XBFS_BTREE_NODE_SIZE);
+				xbfs_log_write_block(dir->sb, parent_buf->block,
 						    parent_buf);
 				kfree((addr_t)pkb);
 				kfree((addr_t)pp);
@@ -1135,7 +1135,7 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
 		 * (the recursion re-reads path[npath-2]; the pp/pkb buffers
 		 * stay alive until the recursion has serialized them) */
 		brelse(parent_buf);
-		res = bfs_btree_split(dir, header, path, npath - 1, pp, pcount,
+		res = xbfs_btree_split(dir, header, path, npath - 1, pp, pcount,
 				      pcount / 2, parent_overflow, depth,
 				      header->data_type);
 		kfree((addr_t)pkb);
@@ -1151,34 +1151,34 @@ static int bfs_btree_split(struct inode *dir, struct bfs_btree_header *header,
  * reject an existing key with -EEXIST. Splits a full leaf, and splits
  * the interior parents recursively when they fill.
  */
-static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
+static int xbfs_btree_insert_impl_t(struct inode *dir, const char *key,
 				   int keylen, __u64 value, int dtype,
 				   int allow_dups)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
-	struct bfs_btree_pair *pairs;
+	struct xbfs_btree_pair *pairs;
 	__u64 path[16];
 	int npath, count, res, index;
 
 	if(!keylen) {
 		return -EINVAL;
 	}
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		return res;
 	}
-	if((res = bfs_btree_descend_t(dir, &header, key, keylen,
+	if((res = xbfs_btree_descend_t(dir, &header, key, keylen,
 				      path, &npath))) {
 		return res;
 	}
-	if(!(buf = bfs_btree_read_node_tagged(dir, path[npath - 1], "bfs_btree_insert_impl_t"))) {
+	if(!(buf = xbfs_btree_read_node_tagged(dir, path[npath - 1], "xbfs_btree_insert_impl_t"))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, path[npath - 1]);
+	n = xbfs_btree_node_buf(buf, path[npath - 1]);
 
 	if(allow_dups &&
-	   bfs_btree_search_node_t(n, key, keylen, &index, dtype) == 0) {
+	   xbfs_btree_search_node_t(n, key, keylen, &index, dtype) == 0) {
 		/* the key already exists: the new value joins the
 		 * duplicate chain (Haiku's _InsertDuplicate) */
 		/* release the leaf before the dup machinery: at block sizes
@@ -1187,34 +1187,34 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 		 * breads the header block — a held buffer would deadlock.
 		 * The dup re-breads the leaf itself and owns its write. */
 		brelse(buf);
-		res = bfs_btree_insert_dup(dir, path[npath - 1], index, value);
+		res = xbfs_btree_insert_dup(dir, path[npath - 1], index, value);
 		return (res < 0) ? res : 0;
 	}
 
-	if(bfs_btree_node_room(n, keylen, BFS_BTREE_NODE_SIZE)) {
+	if(xbfs_btree_node_room(n, keylen, XBFS_BTREE_NODE_SIZE)) {
 		/* the leaf has room: rebuild it in place */
-		static struct bfs_btree_pair spairs[BFS_BTREE_MAX_PAIRS + 2];
-		static char skb[BFS_MAX_BLOCK_SIZE];
+		static struct xbfs_btree_pair spairs[XBFS_BTREE_MAX_PAIRS + 2];
+		static char skb[XBFS_MAX_BLOCK_SIZE];
 		pairs = spairs;
-		count = bfs_btree_collect_t(n, pairs, BFS_BTREE_MAX_PAIRS + 2,
+		count = xbfs_btree_collect_t(n, pairs, XBFS_BTREE_MAX_PAIRS + 2,
 					1, key, keylen,
 					value, dtype, skb);
 		if(count < 0) {
 			brelse(buf);
 			return -EEXIST;
 		}
-		bfs_btree_serialize(n, pairs, count, BFS_BTREE_NULL, n->right,
-				    n->left, BFS_BTREE_NODE_SIZE);
-		bfs_log_write_block(dir->sb, buf->block, buf);
+		xbfs_btree_serialize(n, pairs, count, XBFS_BTREE_NULL, n->right,
+				    n->left, XBFS_BTREE_NODE_SIZE);
+		xbfs_log_write_block(dir->sb, buf->block, buf);
 		return 0;
 	}
 
 	/* the leaf is full: collect everything + the new pair, then split */
 	{
-		static struct bfs_btree_pair spairs[BFS_BTREE_MAX_PAIRS + 2];
-		static char skb[BFS_MAX_BLOCK_SIZE];
+		static struct xbfs_btree_pair spairs[XBFS_BTREE_MAX_PAIRS + 2];
+		static char skb[XBFS_MAX_BLOCK_SIZE];
 		pairs = spairs;
-		count = bfs_btree_collect_t(n, pairs, BFS_BTREE_MAX_PAIRS + 2,
+		count = xbfs_btree_collect_t(n, pairs, XBFS_BTREE_MAX_PAIRS + 2,
 					1, key, keylen,
 					value, dtype, skb);
 		if(count < 0) {
@@ -1225,32 +1225,32 @@ static int bfs_btree_insert_impl_t(struct inode *dir, const char *key,
 		 * the same node; holding it would deadlock the buffer cache) */
 		brelse(buf);
 		buf = NULL;
-		res = bfs_btree_split(dir, &header, path, npath, pairs, count,
-				      count / 2, BFS_BTREE_NULL, npath,
+		res = xbfs_btree_split(dir, &header, path, npath, pairs, count,
+				      count / 2, XBFS_BTREE_NULL, npath,
 				      header.data_type);
 		return res;
 	}
 }
 
-static int bfs_btree_insert_impl(struct inode *dir, const char *name,
+static int xbfs_btree_insert_impl(struct inode *dir, const char *name,
 				 __ino_t ino)
 {
-	return bfs_btree_insert_impl_t(dir, name, strlen(name), ino,
-				       BFS_BTREE_STRING_TYPE, 0);
+	return xbfs_btree_insert_impl_t(dir, name, strlen(name), ino,
+				       XBFS_BTREE_STRING_TYPE, 0);
 }
 
 /* remove the entry at index 'i' from the leaf in 'buf' */
-static void bfs_btree_remove_at(struct bfs_btree_node *n, int i)
+static void xbfs_btree_remove_at(struct xbfs_btree_node *n, int i)
 {
-	__u16 *kl = bfs_btree_keylen_index(n);
-	__u64 *values = bfs_btree_values(n);
-	char *keys = (char *)n + sizeof(struct bfs_btree_node);
+	__u16 *kl = xbfs_btree_keylen_index(n);
+	__u64 *values = xbfs_btree_values(n);
+	char *keys = (char *)n + sizeof(struct xbfs_btree_node);
 	int old_count = n->all_key_count;
 	int start = i ? kl[i - 1] : 0;
 	int key_end = kl[i];
 	int klen = key_end - start;
 	int tail = n->all_key_length - key_end;
-	int old_align = (sizeof(struct bfs_btree_node)
+	int old_align = (sizeof(struct xbfs_btree_node)
 		+ n->all_key_length + 7) & ~7;
 	int new_align;
 	int j;
@@ -1271,7 +1271,7 @@ static void bfs_btree_remove_at(struct bfs_btree_node *n, int i)
 	 * shrink across an 8-byte boundary moves the whole array (the
 	 * insert path rebuilds nodes with serialize(); delete patches in
 	 * place, so the relocation lives here) */
-	new_align = (sizeof(struct bfs_btree_node)
+	new_align = (sizeof(struct xbfs_btree_node)
 		+ n->all_key_length + 7) & ~7;
 	if(new_align != old_align) {
 		memmove((char *)n + new_align, (char *)n + old_align,
@@ -1296,23 +1296,23 @@ static void bfs_btree_remove_at(struct bfs_btree_node *n, int i)
 /* links chain to more nodes when a key has > 125 values).              */
 /* ------------------------------------------------------------------ */
 
-static __u64 bfs_dup_make_link(int type, __u64 off, int frag)
+static __u64 xbfs_dup_make_link(int type, __u64 off, int frag)
 {
 	return ((__u64)type << 62) | (off & 0x3ffffffffffffc00ULL)
 		| (frag & 0x3ff);
 }
 
-static int bfs_dup_link_type(__u64 v)
+static int xbfs_dup_link_type(__u64 v)
 {
 	return (int)(v >> 62);
 }
 
-static __u64 bfs_dup_link_off(__u64 v)
+static __u64 xbfs_dup_link_off(__u64 v)
 {
 	return v & 0x3ffffffffffffc00ULL;
 }
 
-static int bfs_dup_link_frag(__u64 v)
+static int xbfs_dup_link_frag(__u64 v)
 {
 	return (int)(v & 0x3ff);
 }
@@ -1320,26 +1320,26 @@ static int bfs_dup_link_frag(__u64 v)
 /* the duplicate_array at slot 's' of the fragment/duplicate node 'nb'
  * (the node lives at stream offset 'noff'; with blocks larger than the
  * node size it is not at the start of the block buffer) */
-static __u64 *bfs_dup_array(struct buffer *nb, __u64 noff, int slot)
+static __u64 *xbfs_dup_array(struct buffer *nb, __u64 noff, int slot)
 {
-	return (__u64 *)(bfs_btree_node_buf(nb, noff)
-		+ slot * 8 * (BFS_BTREE_NUM_FRAGMENT_VALUES + 1));
+	return (__u64 *)(xbfs_btree_node_buf(nb, noff)
+		+ slot * 8 * (XBFS_BTREE_NUM_FRAGMENT_VALUES + 1));
 }
 
 /* the {count, values[125]} array of a duplicate node (offset 16, the
  * overflow field) — byte cast to dodge the packed-member warning */
-static __u64 *bfs_dup_node_array(struct bfs_btree_node *dn)
+static __u64 *xbfs_dup_node_array(struct xbfs_btree_node *dn)
 {
 	return (__u64 *)((char *)dn + 16);
 }
 
 /* number of non-empty fragment slots in a fragment node */
-static int bfs_dup_fragments_used(struct buffer *nb, __u64 noff)
+static int xbfs_dup_fragments_used(struct buffer *nb, __u64 noff)
 {
 	int s, used = 0;
 
-	for(s = 0; s < BFS_BTREE_MAX_FRAGMENTS; s++) {
-		if(bfs_dup_array(nb, noff, s)[0] != 0) {
+	for(s = 0; s < XBFS_BTREE_MAX_FRAGMENTS; s++) {
+		if(xbfs_dup_array(nb, noff, s)[0] != 0) {
 			used++;
 		}
 	}
@@ -1351,34 +1351,34 @@ static int bfs_dup_fragments_used(struct buffer *nb, __u64 noff)
  * already linked from this leaf; otherwise allocate a fresh zeroed
  * block. Returns 0 with '*nb' (held) + '*slot' + '*off'.
  */
-static int bfs_dup_find_fragment(struct inode *dir, struct bfs_btree_node *n,
+static int xbfs_dup_find_fragment(struct inode *dir, struct xbfs_btree_node *n,
 				 struct buffer **nb, int *slot, __u64 *off,
 				 struct buffer *held, __u64 leaf_off)
 {
-	__u64 *values = bfs_btree_values(n);
+	__u64 *values = xbfs_btree_values(n);
 	int i, s, res;
 
 	for(i = 0; i < n->all_key_count; i++) {
-		if(bfs_dup_link_type(values[i]) != BFS_BTREE_DUPLICATE_FRAGMENT) {
+		if(xbfs_dup_link_type(values[i]) != XBFS_BTREE_DUPLICATE_FRAGMENT) {
 			continue;
 		}
 		/* at block sizes above the node size the tree's nodes pack
 		 * into shared blocks: a fragment node can share the LEAF's
 		 * block. breading it while the leaf is held would sleep on
 		 * our own lock — borrow the leaf buffer instead. */
-		if(bfs_dup_link_off(values[i]) / dir->sb->s_blocksize
+		if(xbfs_dup_link_off(values[i]) / dir->sb->s_blocksize
 		   == leaf_off / dir->sb->s_blocksize) {
 			*nb = held;
 		} else {
-			if(!(*nb = bfs_btree_read_node_tagged(dir,
-					bfs_dup_link_off(values[i]),
-					"bfs_dup_find_fragment"))) {
+			if(!(*nb = xbfs_btree_read_node_tagged(dir,
+					xbfs_dup_link_off(values[i]),
+					"xbfs_dup_find_fragment"))) {
 				continue;
 			}
 		}
-		*off = bfs_dup_link_off(values[i]);
-		for(s = 0; s < BFS_BTREE_MAX_FRAGMENTS; s++) {
-			if(bfs_dup_array(*nb, *off, s)[0] == 0) {
+		*off = xbfs_dup_link_off(values[i]);
+		for(s = 0; s < XBFS_BTREE_MAX_FRAGMENTS; s++) {
+			if(xbfs_dup_array(*nb, *off, s)[0] == 0) {
 				*slot = s;
 				return 0;
 			}
@@ -1391,106 +1391,106 @@ static int bfs_dup_find_fragment(struct inode *dir, struct bfs_btree_node *n,
 
 	/* no free slot anywhere: allocate a fresh fragment node ('held'
 	 * is the caller's leaf buffer — it may be the header's block) */
-	if((res = bfs_btree_grow(dir, off, held)) < 0) {
+	if((res = xbfs_btree_grow(dir, off, held)) < 0) {
 		return res;
 	}
 	if(*off / dir->sb->s_blocksize == leaf_off / dir->sb->s_blocksize) {
 		/* the fresh node lands in the leaf's block: borrow it */
 		*nb = held;
 	} else {
-		if(!(*nb = bfs_btree_read_node_tagged(dir, *off, "bfs_dup_find_fragment"))) {
+		if(!(*nb = xbfs_btree_read_node_tagged(dir, *off, "xbfs_dup_find_fragment"))) {
 			return -EIO;
 		}
 	}
-	memset_b(bfs_btree_node_buf(*nb, *off), 0, BFS_BTREE_NODE_SIZE);
+	memset_b(xbfs_btree_node_buf(*nb, *off), 0, XBFS_BTREE_NODE_SIZE);
 	*slot = 0;
 	return 0;
 }
 
 /* the first duplicate: promote the direct value into a fragment [old, v] */
-static int bfs_btree_dup_promote(struct inode *dir, struct buffer *buf,
+static int xbfs_btree_dup_promote(struct inode *dir, struct buffer *buf,
 				 __u64 noff, int index, __u64 old, __u64 value)
 {
-	struct bfs_btree_node *n = bfs_btree_node_buf(buf, noff);
-	__u64 *values = bfs_btree_values(n);
+	struct xbfs_btree_node *n = xbfs_btree_node_buf(buf, noff);
+	__u64 *values = xbfs_btree_values(n);
 	struct buffer *nb = NULL;
 	__u64 *arr;
 	int slot, res;
 
-	if((res = bfs_dup_find_fragment(dir, n, &nb, &slot, &noff, buf, noff)) < 0) {
+	if((res = xbfs_dup_find_fragment(dir, n, &nb, &slot, &noff, buf, noff)) < 0) {
 		return res;
 	}
-	arr = bfs_dup_array(nb, noff, slot);
+	arr = xbfs_dup_array(nb, noff, slot);
 	arr[0] = 2;
 	arr[1] = old;
 	arr[2] = value;
 	if(nb != buf) {
-		bfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
+		xbfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
 	}
 	/* when nb == buf the fragment lives in the leaf's own block: the
 	 * changes are written by the caller's final leaf write */
 
-	values[index] = bfs_dup_make_link(BFS_BTREE_DUPLICATE_FRAGMENT,
+	values[index] = xbfs_dup_make_link(XBFS_BTREE_DUPLICATE_FRAGMENT,
 					  noff, slot);
 	return 1;	/* the leaf's value link changed */
 }
 
 /* append to a fragment; promote to a duplicate node when the fragment fills */
-static int bfs_btree_dup_fragment_add(struct inode *dir, struct buffer *buf,
+static int xbfs_btree_dup_fragment_add(struct inode *dir, struct buffer *buf,
 				      __u64 leaf_off, int index, __u64 value)
 {
-	struct bfs_btree_node *n = bfs_btree_node_buf(buf, leaf_off);
-	__u64 *values = bfs_btree_values(n);
-	struct bfs_btree_node *dn;
+	struct xbfs_btree_node *n = xbfs_btree_node_buf(buf, leaf_off);
+	__u64 *values = xbfs_btree_values(n);
+	struct xbfs_btree_node *dn;
 	struct buffer *nb = NULL, *ndb;
 	__u64 noff, nd;
 	__u64 *arr;
 	int frag, res, shared = 0;
 
-	noff = bfs_dup_link_off(values[index]);
-	frag = bfs_dup_link_frag(values[index]);
+	noff = xbfs_dup_link_off(values[index]);
+	frag = xbfs_dup_link_frag(values[index]);
 	if(noff / dir->sb->s_blocksize == leaf_off / dir->sb->s_blocksize) {
 		/* the fragment shares the leaf's block: borrow it */
 		nb = buf;
 		shared = 1;
 	} else {
-		if(!(nb = bfs_btree_read_node_tagged(dir, noff, "bfs_btree_dup_fragment_add"))) {
+		if(!(nb = xbfs_btree_read_node_tagged(dir, noff, "xbfs_btree_dup_fragment_add"))) {
 			return -EIO;
 		}
 	}
-	arr = bfs_dup_array(nb, noff, frag);
-	if(arr[0] > BFS_BTREE_NUM_FRAGMENT_VALUES) {
+	arr = xbfs_dup_array(nb, noff, frag);
+	if(arr[0] > XBFS_BTREE_NUM_FRAGMENT_VALUES) {
 		/* a garbage count (an unread/corrupt buffer): the slot
 		 * cannot hold that many values — rebuild it from empty */
 		arr[0] = 0;
 	}
-	if(arr[0] < BFS_BTREE_NUM_FRAGMENT_VALUES) {
+	if(arr[0] < XBFS_BTREE_NUM_FRAGMENT_VALUES) {
 		arr[arr[0] + 1] = value;
 		arr[0]++;
 		if(!shared) {
-			bfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
+			xbfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
 		}
 		return 0;	/* the leaf's link is unchanged */
 	}
 
-	if(bfs_dup_fragments_used(nb, noff) < 2) {
+	if(xbfs_dup_fragments_used(nb, noff) < 2) {
 		/* only this array: convert the node into a duplicate
 		 * node in place (array at &overflow_link, left/right
 		 * links cleared) */
-		dn = bfs_btree_node_buf(nb, noff);
+		dn = xbfs_btree_node_buf(nb, noff);
 		/* the fragment slot (offset 0) and the dup-node array (offset
 		 * 16) OVERLAP in the same node: memmove, not memcpy, or the
 		 * copy clobbers its own source */
-		memmove(bfs_dup_node_array(dn), arr, 64);
-		dn->left = BFS_BTREE_NULL;
-		dn->right = BFS_BTREE_NULL;
-		arr = bfs_dup_node_array(dn);
+		memmove(xbfs_dup_node_array(dn), arr, 64);
+		dn->left = XBFS_BTREE_NULL;
+		dn->right = XBFS_BTREE_NULL;
+		arr = xbfs_dup_node_array(dn);
 		arr[arr[0] + 1] = value;
 		arr[0]++;
 		if(!shared) {
-			bfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
+			xbfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
 		}
-		values[index] = bfs_dup_make_link(BFS_BTREE_DUPLICATE_NODE,
+		values[index] = xbfs_dup_make_link(XBFS_BTREE_DUPLICATE_NODE,
 						  noff, 0);
 		return 1;	/* the leaf's value link changed */
 	}
@@ -1500,7 +1500,7 @@ static int bfs_btree_dup_fragment_add(struct inode *dir, struct buffer *buf,
 	 * block (the LEAF, not the fragment node). The new node can land
 	 * in the fragment's block OR the leaf's block (nodes pack at
 	 * 1024-byte offsets): reuse the held buffers in those cases. */
-		if((res = bfs_btree_grow(dir, &nd, buf)) < 0) {
+		if((res = xbfs_btree_grow(dir, &nd, buf)) < 0) {
 		if(!shared) {
 			brelse(nb);
 		}
@@ -1511,70 +1511,70 @@ static int bfs_btree_dup_fragment_add(struct inode *dir, struct buffer *buf,
 	} else if(nd / dir->sb->s_blocksize == noff / dir->sb->s_blocksize) {
 		ndb = nb;	/* shares the fragment's block */
 	} else {
-		if(!(ndb = bfs_btree_read_node_tagged(dir, nd, "bfs_btree_dup_fragment_add"))) {
+		if(!(ndb = xbfs_btree_read_node_tagged(dir, nd, "xbfs_btree_dup_fragment_add"))) {
 			if(!shared) {
 				brelse(nb);
 			}
 			return -EIO;
 		}
 	}
-	memset_b(bfs_btree_node_buf(ndb, nd), 0, BFS_BTREE_NODE_SIZE);
-	dn = bfs_btree_node_buf(ndb, nd);
-	dn->left = BFS_BTREE_NULL;
-	dn->right = BFS_BTREE_NULL;
-	memcpy_b(bfs_dup_node_array(dn), arr, 64);
-	arr = bfs_dup_node_array(dn);
+	memset_b(xbfs_btree_node_buf(ndb, nd), 0, XBFS_BTREE_NODE_SIZE);
+	dn = xbfs_btree_node_buf(ndb, nd);
+	dn->left = XBFS_BTREE_NULL;
+	dn->right = XBFS_BTREE_NULL;
+	memcpy_b(xbfs_dup_node_array(dn), arr, 64);
+	arr = xbfs_dup_node_array(dn);
 	arr[arr[0] + 1] = value;
 	arr[0]++;
 	/* free the fragment slot (same buffer when the node is in it) */
-	arr = bfs_dup_array(nb, noff, frag);
+	arr = xbfs_dup_array(nb, noff, frag);
 	memset_b(arr, 0, 64);
 	if(!shared) {
-		bfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb (+ndb) */
+		xbfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb (+ndb) */
 	}
 	if(ndb != nb && ndb != buf) {
-		bfs_log_write_block(dir->sb, ndb->block, ndb);	/* consumes ndb */
+		xbfs_log_write_block(dir->sb, ndb->block, ndb);	/* consumes ndb */
 	}
 	/* when the fragment or the new node share the leaf's block, all
 	 * the changes live in the leaf buffer and are written by the
 	 * caller's final leaf write */
 
-	values[index] = bfs_dup_make_link(BFS_BTREE_DUPLICATE_NODE, nd, 0);
+	values[index] = xbfs_dup_make_link(XBFS_BTREE_DUPLICATE_NODE, nd, 0);
 	return 1;	/* the leaf's value link changed */
 }
 
-static int bfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
+static int xbfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
 				  __u64 leaf_off, int index, __u64 value)
 {
-	struct bfs_btree_node *n = bfs_btree_node_buf(buf, leaf_off);
-	__u64 *values = bfs_btree_values(n);
-	struct bfs_btree_node *dn;
+	struct xbfs_btree_node *n = xbfs_btree_node_buf(buf, leaf_off);
+	__u64 *values = xbfs_btree_values(n);
+	struct xbfs_btree_node *dn;
 	struct buffer *nb, *ndb;
 	__u64 noff, nd;
 	__u64 *arr;
 	int res, shared = 0;
 
-	noff = bfs_dup_link_off(values[index]);
+	noff = xbfs_dup_link_off(values[index]);
 	if(noff / dir->sb->s_blocksize == leaf_off / dir->sb->s_blocksize) {
 		nb = buf;	/* the chain head shares the leaf's block */
 		shared = 1;
 	} else {
-		if(!(nb = bfs_btree_read_node_tagged(dir, noff, "bfs_btree_dup_node_add"))) {
+		if(!(nb = xbfs_btree_read_node_tagged(dir, noff, "xbfs_btree_dup_node_add"))) {
 			return -EIO;
 		}
 	}
 	for(;;) {
-		dn = bfs_btree_node_buf(nb, noff);
-		arr = bfs_dup_node_array(dn);
-		if(arr[0] < BFS_BTREE_NUM_DUPLICATE_VALUES) {
+		dn = xbfs_btree_node_buf(nb, noff);
+		arr = xbfs_dup_node_array(dn);
+		if(arr[0] < XBFS_BTREE_NUM_DUPLICATE_VALUES) {
 			arr[arr[0] + 1] = value;
 			arr[0]++;
 			if(!shared) {
-				bfs_log_write_block(dir->sb, nb->block, nb);
+				xbfs_log_write_block(dir->sb, nb->block, nb);
 			}
 			return 0;	/* the leaf's link is unchanged */
 		}
-		if(dn->right != BFS_BTREE_NULL) {
+		if(dn->right != XBFS_BTREE_NULL) {
 			noff = dn->right;
 			if(nb != buf) {
 				brelse(nb);
@@ -1584,7 +1584,7 @@ static int bfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
 				nb = buf;
 				shared = 1;
 			} else {
-				if(!(nb = bfs_btree_read_node_tagged(dir, noff, "bfs_btree_dup_node_add"))) {
+				if(!(nb = xbfs_btree_read_node_tagged(dir, noff, "xbfs_btree_dup_node_add"))) {
 					return -EIO;
 				}
 				shared = 0;
@@ -1595,7 +1595,7 @@ static int bfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
 		 * share the current dup node's block OR the leaf's block
 		 * (nodes pack at 1024-byte offsets) — reuse the held
 		 * buffers in those cases. */
-		if((res = bfs_btree_grow(dir, &nd, buf)) < 0) {
+		if((res = xbfs_btree_grow(dir, &nd, buf)) < 0) {
 			if(nb != buf) {
 				brelse(nb);
 			}
@@ -1606,27 +1606,27 @@ static int bfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
 		} else if(nd / dir->sb->s_blocksize == noff / dir->sb->s_blocksize) {
 			ndb = nb;	/* shares the current node's block */
 		} else {
-			if(!(ndb = bfs_btree_read_node_tagged(dir, nd, "bfs_btree_dup_node_add"))) {
+			if(!(ndb = xbfs_btree_read_node_tagged(dir, nd, "xbfs_btree_dup_node_add"))) {
 				if(nb != buf) {
 					brelse(nb);
 				}
 				return -EIO;
 			}
 		}
-		memset_b(bfs_btree_node_buf(ndb, nd), 0, BFS_BTREE_NODE_SIZE);
-		dn = bfs_btree_node_buf(ndb, nd);
+		memset_b(xbfs_btree_node_buf(ndb, nd), 0, XBFS_BTREE_NODE_SIZE);
+		dn = xbfs_btree_node_buf(ndb, nd);
 		dn->left = noff;
-		dn->right = BFS_BTREE_NULL;
-		arr = bfs_dup_node_array(dn);
+		dn->right = XBFS_BTREE_NULL;
+		arr = xbfs_dup_node_array(dn);
 		arr[0] = 1;
 		arr[1] = value;
-		dn = bfs_btree_node_buf(nb, noff);
+		dn = xbfs_btree_node_buf(nb, noff);
 		dn->right = nd;
 		if(nb != buf) {
-			bfs_log_write_block(dir->sb, nb->block, nb);
+			xbfs_log_write_block(dir->sb, nb->block, nb);
 		}
 		if(ndb != nb && ndb != buf) {
-			bfs_log_write_block(dir->sb, ndb->block, ndb);
+			xbfs_log_write_block(dir->sb, ndb->block, ndb);
 		}
 		/* when nb/ndb are the leaf buffer, its final write by the
 		 * caller covers the chain + new-node changes */
@@ -1634,27 +1634,27 @@ static int bfs_btree_dup_node_add(struct inode *dir, struct buffer *buf,
 	}
 }
 
-static int bfs_btree_insert_dup(struct inode *dir, __u64 noff, int index,
+static int xbfs_btree_insert_dup(struct inode *dir, __u64 noff, int index,
 			       __u64 value)
 {
 	struct buffer *buf;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_node *n;
 	__u64 *values;
 	__u64 old;
 	int res;
 
-	if(!(buf = bfs_btree_read_node_tagged(dir, noff, "bfs_btree_insert_dup"))) {
+	if(!(buf = xbfs_btree_read_node_tagged(dir, noff, "xbfs_btree_insert_dup"))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, noff);
-	values = bfs_btree_values(n);
+	n = xbfs_btree_node_buf(buf, noff);
+	values = xbfs_btree_values(n);
 	old = values[index];
-	if(bfs_dup_link_type(old) == 0) {
-		res = bfs_btree_dup_promote(dir, buf, noff, index, old, value);
-	} else if(bfs_dup_link_type(old) == BFS_BTREE_DUPLICATE_FRAGMENT) {
-		res = bfs_btree_dup_fragment_add(dir, buf, noff, index, value);
+	if(xbfs_dup_link_type(old) == 0) {
+		res = xbfs_btree_dup_promote(dir, buf, noff, index, old, value);
+	} else if(xbfs_dup_link_type(old) == XBFS_BTREE_DUPLICATE_FRAGMENT) {
+		res = xbfs_btree_dup_fragment_add(dir, buf, noff, index, value);
 	} else {
-		res = bfs_btree_dup_node_add(dir, buf, noff, index, value);
+		res = xbfs_btree_dup_node_add(dir, buf, noff, index, value);
 	}
 	if(res >= 0) {
 		/* the leaf's value link changed, or a dup node sharing
@@ -1663,7 +1663,7 @@ static int bfs_btree_insert_dup(struct inode *dir, __u64 noff, int index,
 		 * the header, and re-breading while this buffer is held
 		 * would sleep on our own lock). The tx dedupes, so an
 		 * unchanged leaf costs one extra record at most. */
-		bfs_log_write_block(dir->sb, buf->block, buf);
+		xbfs_log_write_block(dir->sb, buf->block, buf);
 		return (res > 0) ? 1 : 0;
 	}
 	brelse(buf);
@@ -1679,48 +1679,48 @@ static int bfs_btree_insert_dup(struct inode *dir, __u64 noff, int index,
  * becomes an unreferenced stream block — format-legal, and the bitmap
  * accounting stays exact (the stream counts it).
  */
-static void bfs_dup_free_node(struct inode *dir, __u64 off)
+static void xbfs_dup_free_node(struct inode *dir, __u64 off)
 {
 	(void)dir;
 	(void)off;
 }
 
-static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
+static int xbfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 			       __u64 value)
 {
 	struct buffer *buf;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_node *n;
 	__u64 *values;
 	__u64 old;
-	struct bfs_btree_node *dn;
+	struct xbfs_btree_node *dn;
 	struct buffer *nb;
 	__u64 *arr;
 	__u64 leaf_off = noff;
 	int frag, i, cnt, res = -ENOENT;
 	int shared;
 
-	if(!(buf = bfs_btree_read_node_tagged(dir, noff, "bfs_btree_remove_dup"))) {
+	if(!(buf = xbfs_btree_read_node_tagged(dir, noff, "xbfs_btree_remove_dup"))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, noff);
-	values = bfs_btree_values(n);
+	n = xbfs_btree_node_buf(buf, noff);
+	values = xbfs_btree_values(n);
 	old = values[index];
 
-	if(bfs_dup_link_type(old) == BFS_BTREE_DUPLICATE_FRAGMENT) {
-		noff = bfs_dup_link_off(old);
-		frag = bfs_dup_link_frag(old);
+	if(xbfs_dup_link_type(old) == XBFS_BTREE_DUPLICATE_FRAGMENT) {
+		noff = xbfs_dup_link_off(old);
+		frag = xbfs_dup_link_frag(old);
 		if(noff / dir->sb->s_blocksize
 		   == leaf_off / dir->sb->s_blocksize) {
 			nb = buf;	/* shares the leaf's block */
 			shared = 1;
 		} else {
-			if(!(nb = bfs_btree_read_node_tagged(dir, noff,
-					"bfs_btree_remove_dup"))) {
+			if(!(nb = xbfs_btree_read_node_tagged(dir, noff,
+					"xbfs_btree_remove_dup"))) {
 				return -EIO;
 			}
 			shared = 0;
 		}
-		arr = bfs_dup_array(nb, noff, frag);
+		arr = xbfs_dup_array(nb, noff, frag);
 		cnt = arr[0];
 				for(i = 1; i <= cnt; i++) {
 			if(arr[i] == value) {
@@ -1740,9 +1740,9 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 		}
 		cnt--;
 		arr[0] = cnt;	/* the slot's values (0 = empty) */
-		/* the node stays allocated (see bfs_dup_free_node) */
+		/* the node stays allocated (see xbfs_dup_free_node) */
 		if(!shared) {
-			bfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
+			xbfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
 		}
 		if(cnt == 1) {
 			/* demote: the remaining value becomes direct */
@@ -1752,7 +1752,7 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 		}
 		if(cnt == 0) {
 			/* the key's last value is gone: remove the key too */
-			bfs_btree_remove_at(n, index);
+			xbfs_btree_remove_at(n, index);
 			res = 1;	/* the leaf's value link changed */
 			goto leaf_done;
 		}
@@ -1761,24 +1761,24 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 	}
 
 	/* a duplicate-node chain: walk it, remove, then clean up */
-	if(bfs_dup_link_type(old) != BFS_BTREE_DUPLICATE_NODE) {
+	if(xbfs_dup_link_type(old) != XBFS_BTREE_DUPLICATE_NODE) {
 		return -ENOENT;
 	}
-	noff = bfs_dup_link_off(old);
+	noff = xbfs_dup_link_off(old);
 	if(noff / dir->sb->s_blocksize
 	   == leaf_off / dir->sb->s_blocksize) {
 		nb = buf;
 		shared = 1;
 	} else {
-		if(!(nb = bfs_btree_read_node_tagged(dir, noff,
-				"bfs_btree_remove_dup"))) {
+		if(!(nb = xbfs_btree_read_node_tagged(dir, noff,
+				"xbfs_btree_remove_dup"))) {
 			return -EIO;
 		}
 		shared = 0;
 	}
 	for(;;) {
-		dn = bfs_btree_node_buf(nb, noff);
-		arr = bfs_dup_node_array(dn);
+		dn = xbfs_btree_node_buf(nb, noff);
+		arr = xbfs_dup_node_array(dn);
 		cnt = arr[0];
 		for(i = 1; i <= cnt; i++) {
 			if(arr[i] == value) {
@@ -1789,7 +1789,7 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 		if(res == 0) {
 			break;
 		}
-		if(dn->right == BFS_BTREE_NULL) {
+		if(dn->right == XBFS_BTREE_NULL) {
 			if(nb != buf) {
 				brelse(nb);
 			}
@@ -1805,8 +1805,8 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 			nb = buf;
 			shared = 1;
 		} else {
-			if(!(nb = bfs_btree_read_node_tagged(dir, noff,
-					"bfs_btree_remove_dup"))) {
+			if(!(nb = xbfs_btree_read_node_tagged(dir, noff,
+					"xbfs_btree_remove_dup"))) {
 				brelse(buf);
 				return -EIO;
 			}
@@ -1820,7 +1820,7 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 	cnt--;
 	arr[0] = cnt;
 	if(!shared) {
-		bfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
+		xbfs_log_write_block(dir->sb, nb->block, nb);	/* consumes nb */
 	}
 
 	/* clean up empty nodes and demote a lone remaining value. The
@@ -1828,11 +1828,11 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 	 * to one value, in which case it demotes to a direct value and
 	 * every chain node is freed. */
 	{
-		__u64 chain = bfs_dup_link_off(old);
+		__u64 chain = xbfs_dup_link_off(old);
 		__u64 total = 0;
 		__u64 last = 0;
 
-		for(noff = chain; noff != BFS_BTREE_NULL;) {
+		for(noff = chain; noff != XBFS_BTREE_NULL;) {
 			struct buffer *nb2;
 			__u64 nnext;
 			int sh2;
@@ -1842,16 +1842,16 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 				nb2 = buf;
 				sh2 = 1;
 			} else {
-				if(!(nb2 = bfs_btree_read_node_tagged(dir,
+				if(!(nb2 = xbfs_btree_read_node_tagged(dir,
 						noff,
-						"bfs_btree_remove_dup"))) {
+						"xbfs_btree_remove_dup"))) {
 					brelse(buf);
 					return -EIO;
 				}
 				sh2 = 0;
 			}
-			dn = bfs_btree_node_buf(nb2, noff);
-			arr = bfs_dup_node_array(dn);
+			dn = xbfs_btree_node_buf(nb2, noff);
+			arr = xbfs_dup_node_array(dn);
 			total += arr[0];
 			if(arr[0] == 1) {
 				last = arr[1];
@@ -1866,11 +1866,11 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 			values[index] = last;
 			res = 1;	/* the leaf's value link changed */
 		} else if(total == 0) {
-			bfs_btree_remove_at(n, index);
+			xbfs_btree_remove_at(n, index);
 			res = 1;
 		}
 		if(total <= 1) {
-			for(noff = chain; noff != BFS_BTREE_NULL;) {
+			for(noff = chain; noff != XBFS_BTREE_NULL;) {
 				struct buffer *nb3;
 				__u64 nnext;
 				int sh3;
@@ -1880,18 +1880,18 @@ static int bfs_btree_remove_dup(struct inode *dir, __u64 noff, int index,
 					nb3 = buf;
 					sh3 = 1;
 				} else {
-					if(!(nb3 = bfs_btree_read_node_tagged(
+					if(!(nb3 = xbfs_btree_read_node_tagged(
 							dir, noff,
-							"bfs_btree_remove_dup"))) {
+							"xbfs_btree_remove_dup"))) {
 						break;
 					}
 					sh3 = 0;
 				}
-				nnext = bfs_btree_node_buf(nb3, noff)->right;
+				nnext = xbfs_btree_node_buf(nb3, noff)->right;
 				if(!sh3) {
 					brelse(nb3);
 				}
-				bfs_dup_free_node(dir, noff);
+				xbfs_dup_free_node(dir, noff);
 				noff = nnext;
 			}
 		}
@@ -1900,17 +1900,17 @@ leaf_done:
 	if(res > 0) {
 		/* the leaf's value link changed: write it (the caller no
 		 * longer re-breads — see insert_dup) */
-		bfs_log_write_block(dir->sb, buf->block, buf);
+		xbfs_log_write_block(dir->sb, buf->block, buf);
 	} else {
 		brelse(buf);
 	}
 	return res;
 }
 
-static int bfs_btree_delete_impl(struct inode *dir, const char *name)
+static int xbfs_btree_delete_impl(struct inode *dir, const char *name)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 path[16];
 	int npath, index, res;
@@ -1918,26 +1918,26 @@ static int bfs_btree_delete_impl(struct inode *dir, const char *name)
 	if(!name[0]) {
 		return -EINVAL;
 	}
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		return res;
 	}
-	if((res = bfs_btree_descend_t(dir, &header, name, strlen(name),
+	if((res = xbfs_btree_descend_t(dir, &header, name, strlen(name),
 				      path, &npath))) {
 		return res;
 	}
 
-	if(!(buf = bfs_btree_read_node(dir, path[npath - 1]))) {
+	if(!(buf = xbfs_btree_read_node(dir, path[npath - 1]))) {
 		return -EIO;
 	}
-	n = bfs_btree_node_buf(buf, path[npath - 1]);
-	if(bfs_btree_search_node_t(n, name, strlen(name), &index,
+	n = xbfs_btree_node_buf(buf, path[npath - 1]);
+	if(xbfs_btree_search_node_t(n, name, strlen(name), &index,
 				   header.data_type)) {
 		brelse(buf);
 		return -ENOENT;
 	}
-	bfs_btree_remove_at(n, index);
+	xbfs_btree_remove_at(n, index);
 	dir->state |= INODE_DIRTY;
-	bfs_log_write_block(dir->sb, buf->block, buf);
+	xbfs_log_write_block(dir->sb, buf->block, buf);
 	return 0;
 }
 
@@ -1945,27 +1945,27 @@ static int bfs_btree_delete_impl(struct inode *dir, const char *name)
  * Remove the entry whose inode matches 'ino' (used by rmdir, which has no
  * name). Searches every leaf.
  */
-static int bfs_btree_delete_ino_impl(struct inode *dir, __ino_t ino)
+static int xbfs_btree_delete_ino_impl(struct inode *dir, __ino_t ino)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 node_off;
 	int i, res;
 
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		return res;
 	}
 
 	node_off = header.root_node_ptr;
 	for(;;) {
-		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		if(!(buf = xbfs_btree_read_node(dir, node_off))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->overflow != BFS_BTREE_NULL) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->overflow != XBFS_BTREE_NULL) {
 			node_off = n->all_key_count ?
-				bfs_btree_values(n)[0] : n->overflow;
+				xbfs_btree_values(n)[0] : n->overflow;
 			brelse(buf);
 			continue;
 		}
@@ -1974,23 +1974,23 @@ static int bfs_btree_delete_ino_impl(struct inode *dir, __ino_t ino)
 	}
 
 	for(;;) {
-		if(!(buf = bfs_btree_read_node(dir, node_off))) {
+		if(!(buf = xbfs_btree_read_node(dir, node_off))) {
 			return -EIO;
 		}
-		n = bfs_btree_node_buf(buf, node_off);
-		if(n->overflow != BFS_BTREE_NULL) {
+		n = xbfs_btree_node_buf(buf, node_off);
+		if(n->overflow != XBFS_BTREE_NULL) {
 			brelse(buf);
 			return -EIO;
 		}
 		for(i = 0; i < n->all_key_count; i++) {
-			if(bfs_btree_values(n)[i] == ino) {
-				bfs_btree_remove_at(n, i);
+			if(xbfs_btree_values(n)[i] == ino) {
+				xbfs_btree_remove_at(n, i);
 				dir->state |= INODE_DIRTY;
-				bfs_log_write_block(dir->sb, buf->block, buf);
+				xbfs_log_write_block(dir->sb, buf->block, buf);
 				return 0;
 			}
 		}
-		if(n->right == BFS_BTREE_NULL) {
+		if(n->right == XBFS_BTREE_NULL) {
 			brelse(buf);
 			break;
 		}
@@ -2000,22 +2000,22 @@ static int bfs_btree_delete_ino_impl(struct inode *dir, __ino_t ino)
 	return -ENOENT;
 }
 
-int bfs_btree_insert_value(struct inode *dir, const char *key, int keylen,
+int xbfs_btree_insert_value(struct inode *dir, const char *key, int keylen,
 			   int dtype, __u64 value)
 {
 	int res;
 
-	bfs_log_begin(dir->sb);
-	res = bfs_btree_insert_impl_t(dir, key, keylen, value, dtype, 1);
-	bfs_log_commit(dir->sb);
+	xbfs_log_begin(dir->sb);
+	res = xbfs_btree_insert_impl_t(dir, key, keylen, value, dtype, 1);
+	xbfs_log_commit(dir->sb);
 	return res;
 }
 
-int bfs_btree_delete_value(struct inode *dir, const char *key, int keylen,
+int xbfs_btree_delete_value(struct inode *dir, const char *key, int keylen,
 			   int dtype, __u64 value)
 {
-	struct bfs_btree_header header;
-	struct bfs_btree_node *n;
+	struct xbfs_btree_header header;
+	struct xbfs_btree_node *n;
 	struct buffer *buf;
 	__u64 path[16];
 	int npath, index, res;
@@ -2024,36 +2024,36 @@ int bfs_btree_delete_value(struct inode *dir, const char *key, int keylen,
 	if(!keylen) {
 		return -ENOENT;
 	}
-	bfs_log_begin(dir->sb);
+	xbfs_log_begin(dir->sb);
 	begun = 1;
-	if((res = bfs_btree_read_header(dir, &header))) {
+	if((res = xbfs_btree_read_header(dir, &header))) {
 		goto out;
 	}
-	if((res = bfs_btree_descend_t(dir, &header, key, keylen,
+	if((res = xbfs_btree_descend_t(dir, &header, key, keylen,
 				      path, &npath))) {
 		goto out;
 	}
-	if(!(buf = bfs_btree_read_node(dir, path[npath - 1]))) {
+	if(!(buf = xbfs_btree_read_node(dir, path[npath - 1]))) {
 		res = -EIO;
 		goto out;
 	}
-	n = bfs_btree_node_buf(buf, path[npath - 1]);
-	if(bfs_btree_search_node_t(n, key, keylen, &index,
+	n = xbfs_btree_node_buf(buf, path[npath - 1]);
+	if(xbfs_btree_search_node_t(n, key, keylen, &index,
 				   header.data_type)) {
 		brelse(buf);
 		res = -ENOENT;
 		goto out;
 	}
-	if(bfs_dup_link_type(bfs_btree_values(n)[index]) == 0) {
+	if(xbfs_dup_link_type(xbfs_btree_values(n)[index]) == 0) {
 		/* a direct value: remove the whole key */
-		if(bfs_btree_values(n)[index] != value) {
+		if(xbfs_btree_values(n)[index] != value) {
 			brelse(buf);
 			res = -ENOENT;
 			goto out;
 		}
-		bfs_btree_remove_at(n, index);
+		xbfs_btree_remove_at(n, index);
 		dir->state |= INODE_DIRTY;
-		bfs_log_write_block(dir->sb, buf->block, buf);	/* consumes buf */
+		xbfs_log_write_block(dir->sb, buf->block, buf);	/* consumes buf */
 		res = 0;
 		goto out;
 	}
@@ -2062,43 +2062,43 @@ int bfs_btree_delete_value(struct inode *dir, const char *key, int keylen,
 	 * block at block sizes above the node size; the dup owns the
 	 * leaf's write) */
 	brelse(buf);
-	res = bfs_btree_remove_dup(dir, path[npath - 1], index, value);
+	res = xbfs_btree_remove_dup(dir, path[npath - 1], index, value);
 	if(res > 0) {
 		res = 0;
 	}
 out:
 	if(begun) {
-		bfs_log_commit(dir->sb);
+		xbfs_log_commit(dir->sb);
 	}
 	return res;
 }
 
-int bfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
+int xbfs_btree_insert(struct inode *dir, const char *name, __ino_t ino)
 {
 	int res;
 
-	bfs_log_begin(dir->sb);
-	res = bfs_btree_insert_impl(dir, name, ino);
-	bfs_log_commit(dir->sb);
+	xbfs_log_begin(dir->sb);
+	res = xbfs_btree_insert_impl(dir, name, ino);
+	xbfs_log_commit(dir->sb);
 	return res;
 }
 
-int bfs_btree_delete(struct inode *dir, const char *name)
+int xbfs_btree_delete(struct inode *dir, const char *name)
 {
 	int res;
 
-	bfs_log_begin(dir->sb);
-	res = bfs_btree_delete_impl(dir, name);
-	bfs_log_commit(dir->sb);
+	xbfs_log_begin(dir->sb);
+	res = xbfs_btree_delete_impl(dir, name);
+	xbfs_log_commit(dir->sb);
 	return res;
 }
 
-int bfs_btree_delete_ino(struct inode *dir, __ino_t ino)
+int xbfs_btree_delete_ino(struct inode *dir, __ino_t ino)
 {
 	int res;
 
-	bfs_log_begin(dir->sb);
-	res = bfs_btree_delete_ino_impl(dir, ino);
-	bfs_log_commit(dir->sb);
+	xbfs_log_begin(dir->sb);
+	res = xbfs_btree_delete_ino_impl(dir, ino);
+	xbfs_log_commit(dir->sb);
 	return res;
 }

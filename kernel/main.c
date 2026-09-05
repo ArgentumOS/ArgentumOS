@@ -61,7 +61,7 @@ struct new_utsname sys_utsname = {
 static void set_default_values(void)
 {
 	/* no rootfstype default: mount_root() probes the disk filesystems
-	 * (minix -> ext2 -> iso9660 -> bfs) when rootfstype= is absent */
+	 * (minix -> ext2 -> iso9660 -> xbfs) when rootfstype= is absent */
 
 	/* console defaults to /dev/tty0, but virtual consoles are disabled
 	 * in this build (the session compositor owns the display and the
