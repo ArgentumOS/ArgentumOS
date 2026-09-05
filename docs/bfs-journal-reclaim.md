@@ -1,6 +1,6 @@
 # XBFS journal: log-space reclaim (wrap commit) — spec
 
-Status: **implemented (R-M1 + R-M2); R-M3 pending**. Sizing alone (tools/mkxbfs.py,
+Status: **implemented (R-M1 + R-M2 + R-M3)**. Sizing alone (tools/mkxbfs.py,
 1024 blocks, commit 3c745e1) bounds *reset storms for bounded busy phases*;
 this spec kills the resets for *sustained metadata streams*, which no log
 size can fix. Reference: fs/xbfs/journal.c (+ xbfs.h, mkxbfs.py).
@@ -183,8 +183,20 @@ walked because the range is tight, D2).
   write could tear it (one organic `magic1` failure predates this matrix
   and did not reproduce in 27 crash events) — a dual-copy sequenced sb
   would close that window if it ever shows up again.
-- **R-M3**: soak test (criterion 2) + docs update (mkxbfs.py sizing comment
-  now notes sustained streams are handled structurally).
+- **R-M3 — DONE**: soak test (criterion 2). Sustained create/delete churn
+  (backgrounded, 40-name cycle) for 60-90s on both a 64-block and a
+  1024-block log: **0** `log full, resetting` prints, the log wrapped
+  **804× (64-block) / 33× (1024-block)** without error, and a clean
+  shutdown (`halt -f` = the direct reboot() syscall → stop_kernel's
+  sync_superblocks) left the log drained — `xbfscheck` reports
+  `log=(0,0)` with no journal FAIL on the 1024 image. Two follow-up
+  notes, both orthogonal to the journal reclaim: (1) plain `halt`
+  (toybox) uses the SysV `kill(1, SIGUSR1)` init protocol, which FNX's
+  init does not handle — `halt -f` / `reboot -f` are the working forms;
+  (2) `xbfscheck` flags a `last_modified` index mismatch after churning
+  files in a directory (the directory's own index entry goes missing) —
+  reproduces with **zero wraps** on a fresh image + clean halt, so it is
+  a pre-existing index-maintenance quirk, not a journal defect.
 
 ## 10. Risks / gotchas
 

@@ -267,17 +267,15 @@ def main():
     num_blocks = mb * 1024 * 1024 // BLOCK
     ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
-    # Journal size (blocks): sized for the heaviest *bounded* metadata
-    # phase measured on this tree (fs/xbfs/journal.c reset counters).
-    # Method: set this to 64, boot each workload, and sum the per-cycle
-    # "resetting after N journaled block(s)" prints - that is the phase's
-    # total journaled-block demand. Measured envelope (64MB image, 1KB
-    # blocks): standard boot <64, run-xfb X11 desktop ~500. 1024 = ~2x
-    # headroom over the X11 desktop so a busy phase fits in <=1 reset.
-    # Sustained metadata streams (mass file create/delete) journal
-    # unbounded blocks and reset periodically at ANY size - only the
-    # frequency changes; eliminating those resets needs log-space
-    # reclaim (advance log_start / wrap), not a bigger log.
+    # Journal size (blocks). Since R-M1 the journal wraps instead of
+    # resetting (docs/bfs-journal-reclaim.md): a full log orphan-publishes
+    # and the next entry starts at block 0, so sustained metadata streams
+    # (mass file create/delete) are handled structurally - the size is now
+    # only a wrap-frequency knob, never a correctness or stall limit.
+    # 1024 = ~2x headroom over the heaviest *bounded* phase measured on
+    # this tree (run-xfb X11 desktop ~500 journaled blocks), so ordinary
+    # sessions run without any wrap. --journal <blocks> overrides it for
+    # tests that want cheap wraps (crash matrix, soak).
     journal_start = 1 + num_ags * blocks_per_ag
     next_inode = journal_start + journal_len
     next_data = 0
