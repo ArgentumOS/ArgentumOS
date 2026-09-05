@@ -1,3 +1,55 @@
+diff --git a/src/network/getnameinfo.c b/src/network/getnameinfo.c
+index 6e2f35d6..4c62dd89 100644
+--- a/src/network/getnameinfo.c
++++ b/src/network/getnameinfo.c
+@@ -11,6 +11,7 @@
+ #include <resolv.h>
+ #include "lookup.h"
+ #include "stdio_impl.h"
++#include "../passwd/pwconf.h"
+ 
+ #define PTR_MAX (64 + sizeof ".in-addr.arpa")
+ #define RR_PTR 12
+@@ -45,9 +46,9 @@ static void mkptr6(char *s, const unsigned char *ip)
+ static void reverse_hosts(char *buf, const unsigned char *a, unsigned scopeid, int family)
+ {
+ 	char line[512], *p, *z;
+-	unsigned char _buf[1032], atmp[16];
++	unsigned char atmp[16];
+ 	struct address iplit;
+-	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
++	FILE *f = __pwconf_hosts_fopen();
+ 	if (!f) return;
+ 	if (family == AF_INET) {
+ 		memcpy(atmp+12, a, 4);
+diff --git a/src/network/lookup_name.c b/src/network/lookup_name.c
+index dbde7473..ee232b4f 100644
+--- a/src/network/lookup_name.c
++++ b/src/network/lookup_name.c
+@@ -13,6 +13,7 @@
+ #include <resolv.h>
+ #include "lookup.h"
+ #include "stdio_impl.h"
++#include "../passwd/pwconf.h"
+ #include "syscall.h"
+ 
+ static int is_valid_hostname(const char *host)
+@@ -51,8 +52,11 @@ static int name_from_hosts(struct address buf[static MAXADDRS], char canon[stati
+ 	char line[512];
+ 	size_t l = strlen(name);
+ 	int cnt = 0, badfam = 0, have_canon = 0;
+-	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
++	/* M5: hosts are served from the system.hosts domain (the
++	 * legacy /System/Configuration/hosts line file is gone). The
++	 * renderer returns classic hosts lines over a self-contained
++	 * stream, so the line parser below is unchanged. */
++	FILE *f = __pwconf_hosts_fopen();
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff --git a/src/passwd/pwconf.c b/src/passwd/pwconf.c
+index a1bfab5b..17916bac 100644
 --- a/src/passwd/pwconf.c
 +++ b/src/passwd/pwconf.c
 @@ -29,6 +29,7 @@
@@ -8,7 +60,7 @@
  
  /* one parsed key = raw right-hand-side text (verbatim: quotes and
   * commas are kept; interpretation happens at render time) */
-@@ -554,6 +555,110 @@
+@@ -554,6 +555,110 @@ static int pwdb_build(struct pwdb *db, struct pwentry *head,
  	return 0;
  }
  
@@ -119,12 +171,10 @@
  static void pwdb_free(struct pwdb *db)
  {
  	struct pwrec *r = db->recs;
-@@ -850,5 +955,136 @@
- 	if(in) {
- 		fclose(in);
+@@ -852,3 +957,134 @@ out:
  	}
-+	return f;
-+}
+ 	return f;
+ }
 +
 +/* Render the hosts domain (system.hosts.conf) as classic hosts
 + * lines ("address name [alias ...]") so musl's name_from_hosts
@@ -254,32 +304,10 @@
 +	if(in) {
 +		fclose(in);
 +	}
- 	return f;
- }
---- a/src/network/lookup_name.c
-+++ b/src/network/lookup_name.c
-@@ -13,6 +13,7 @@
- #include <resolv.h>
- #include "lookup.h"
- #include "stdio_impl.h"
-+#include "../passwd/pwconf.h"
- #include "syscall.h"
- 
- static int is_valid_hostname(const char *host)
-@@ -51,8 +52,11 @@
- 	char line[512];
- 	size_t l = strlen(name);
- 	int cnt = 0, badfam = 0, have_canon = 0;
--	unsigned char _buf[1032];
--	FILE _f, *f = __fopen_rb_ca("/System/Configuration/hosts", &_f, _buf, sizeof _buf);
-+	/* M5: hosts are served from the system.hosts domain (the
-+	 * legacy /System/Configuration/hosts line file is gone). The
-+	 * renderer returns classic hosts lines over a self-contained
-+	 * stream, so the line parser below is unchanged. */
-+	FILE *f = __pwconf_hosts_fopen();
- 	if (!f) switch (errno) {
- 	case ENOENT:
- 	case ENOTDIR:
++	return f;
++}
+diff --git a/src/passwd/pwconf.h b/src/passwd/pwconf.h
+index 4e66ccf0..ad8ec0a6 100644
 --- a/src/passwd/pwconf.h
 +++ b/src/passwd/pwconf.h
 @@ -17,5 +17,6 @@

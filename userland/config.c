@@ -471,6 +471,31 @@ static int do_list(config_scope_t only)
 	return 0;
 }
 
+
+/* Q6: when a System value wins over a user/shared value of the same key,
+ * warn that the lower value has no effect (no deletion). Only meaningful
+ * for resolved (non-scope-explicit) reads. */
+static void warn_shadowed(const char *domain, const char *key,
+			  config_scope_t winner)
+{
+	config_value_t v;
+	config_err_t e;
+
+	if(winner != CONFIG_SCOPE_SYSTEM) {
+		return;
+	}
+	e = config_read_scope(CONFIG_SCOPE_USER, domain, key, &v);
+	if(e) {
+		e = config_read_scope(CONFIG_SCOPE_SHARED, domain, key, &v);
+	}
+	if(!e) {
+		config_value_free(&v);
+		fprintf(stderr,
+			"%s: warning: '%s' also set in user/shared scope "
+			"(ignored: the System value wins)\n", prog, key);
+	}
+}
+
 static int do_read(int has_scope, config_scope_t scope, int argc,
 		   char **argv)
 {
@@ -546,7 +571,8 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 	/* full precedence */
 	if(key) {
 		config_value_t v;
-		config_err_t e = config_read(domain, key, NULL, &v);
+		config_scope_t fs;
+		config_err_t e = config_read(domain, key, &fs, &v);
 
 		if(e == CONFIG_ERR_NOT_FOUND) {
 			/* maybe a prefix of dot-nested keys */
@@ -570,6 +596,7 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 				if(!e) {
 					printf("%s = %s (%s)\n", keys[i], out,
 					       config_scope_name(fs));
+					warn_shadowed(domain, keys[i], fs);
 					config_value_free(&v);
 				} else {
 					printf("%s = %s\n", keys[i], out);
@@ -588,6 +615,7 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 
 			raw_text(&v, out, sizeof(out));
 			printf("%s\n", out);
+			warn_shadowed(domain, key, fs);
 		}
 		config_value_free(&v);
 		return 0;
@@ -612,6 +640,7 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 			if(!e) {
 				printf("%s = %s (%s)\n", keys[i], out,
 				       config_scope_name(fs));
+				warn_shadowed(domain, keys[i], fs);
 				config_value_free(&v);
 			} else {
 				printf("%s = %s\n", keys[i], out);

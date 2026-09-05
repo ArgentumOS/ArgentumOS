@@ -569,40 +569,29 @@ lists the bfs mount; `umount /Volumes/Data` unmounts and removes the
 record. (Test disk attached as legacy IDE hdc; the boot cmdline fixes
 root=/dev/sda so the root must stay on the AHCI controller.)
 
-### M7 — Decommission + sweep
-Remove every legacy-format file and parser reference (Makefile, images,
-docs); delete `/etc` remnants; confirm no consumer still parses a colon
-file; update config-design.md (§5/§10/§12) + this doc to *implemented*.
-`config` **warns on read** whenever a user/shared value has no effect
-because a System value wins — no deletion (Q6).
-Acceptance: full rebuild from clean + guest boot; grep sweep for
-`/etc/passwd`, `/etc/group`, `/etc/hosts`, colon-parsing passwd code in
-third_party patches.
+### M7 — Decommission + sweep — DONE
+No legacy account files or parsers remain. The staged rootfs has **no
+`/etc` at all** (only Applications/Shared/System/Users/Volumes) and
+`/System/Configuration` holds only the six `.conf` domains; the toybox
+and musl patches contain no `/etc/passwd|group|shadow|hosts` reads or
+colon parsing (the only match is a comment saying no shadow file
+exists). The full-rebuild chain (musl → dash → toybox → userland64 →
+rootbfs) boots clean and `id`/`hostname`/`mount`/`config read` all
+serve from the domains. `musl getnameinfo`'s reverse-hosts path was the
+last stale consumer and now reads the hosts domain via
+`__pwconf_hosts_fopen()` (musl-hosts.patch). `dash /etc/profile`,
+toybox `login`'s `/etc/nologin`/`/etc/motd` and `host`'s resolv.conf
+reads are inert: `/etc` does not exist and each skips silently.
 
-## 8. Questions (owner review, resolved)
+**Q6 — shadow warnings.** `config read` (resolved, non-scope-explicit)
+prints a warning to stderr whenever a key resolves from System but a
+user/shared value for the same key exists and is ignored — no
+deletion; explicit `-s/-g/-u` reads never warn. Verified host-side:
+system+user value → warning + the System value; whole-domain resolved
+read → per-key warning; explicit scope → silent.
 
-- **Q2 — Fold.** `password_hash` is a field of the user record in
-  `system.passwd.conf` (§5.1); no shadow domain exists.
-- **Q3 — M6 follow-up.** toybox `mount`/`umount` consume the mounts
-  domain in M6b, after init (M6).
-- **Q4 — `system.network.conf`.** `hostname` lives in its own
-  network domain (§5.3), a home for future network settings.
-- **Q5 — Pin it.** `system.kernel` is a pinned single-file
-  domain aliased to the ESP's `/System/ESP/kernel.conf`: no symlink, no
-  user/shared layering (boot config is System-authoritative by nature),
-  normal atomic writes in the ESP directory (config-design §12).
-- **Q6 — Warn on read.** `config` warns when a user/shared value is
-  shadowed by a System value; stale files are left in place (no
-  deletion).
+config-design.md: §5 (scope precedence) and §10/§10.1 (grammar +
+records) already reflect the implemented state (M1/M0); §12's
+`system.kernel` ESP alias is still design (no kernel.conf / alias
+exists) and stays marked decided.
 
-## 9. References
-
-- `docs/config-design.md` — grammar (§10), scopes/precedence (§5),
-  libconfig (§11), the pinned kernel.conf domain (§12).
-- `docs/fsh-proposal.md` — `/System/Configuration` etc. + the
-  `Configuration/` policy in §3.
-- `Makefile` userland64 — today's legacy file generation.
-- `third_party/musl/src/passwd/*`, `src/network/lookup_name.c`,
-  `third_party/toybox/toys/{lsb,pending}/…` — consumers.
-- `userland/libconfig.c`, `userland/config.c`, `userland/init.c`,
-  `include/libconfig.h` — config machinery + PID-1 mounts.
