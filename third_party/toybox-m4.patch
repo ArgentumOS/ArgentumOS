@@ -1,9 +1,9 @@
 diff --git a/lib/configedit.c b/lib/configedit.c
 new file mode 100644
-index 00000000..0194ba7e
+index 00000000..750b3929
 --- /dev/null
 +++ b/lib/configedit.c
-@@ -0,0 +1,194 @@
+@@ -0,0 +1,333 @@
 +/* configedit.c - shared account-record editor over the FNX .conf identity
 + * domains (docs/system-config-files-plan.md M4).
 + *
@@ -25,6 +25,7 @@ index 00000000..0194ba7e
 +#define ACCT_PW_DOM	"system.passwd"
 +#define ACCT_GR_DOM	"system.group"
 +#define ACCT_SH_DOM	"system.shells"
++#define ACCT_MT_DOM	"system.mounts"
 +
 +/* set a record field to a string (or int via acct_set_ll) */
 +int acct_set_str(const char *dom, const char *container, const char *rec,
@@ -198,11 +199,149 @@ index 00000000..0194ba7e
 +		    !strcmp(items[i].v.string, shell)) return 1;
 +	return 0;
 +}
++/* ---- boot mount table (system.mounts, M6b) ---------------------------
++ * The domain is dedicated to mount records, so records sit at the TOP
++ * level (no "mount" wrapper): keys are <rec>.fstype / <rec>.target /
++ * <rec>.source. struct acct_mount lives in lib.h. */
++
++static int acct_mount_set(const char *rec, const char *field, const char *val)
++{
++	char key[340];
++
++	if (snprintf(key, sizeof key, "%s.%s", rec, field) >= (int)sizeof key)
++		return -1;
++	if (config_set_string(CONFIG_SCOPE_SYSTEM, ACCT_MT_DOM, key, val))
++		return -1;
++	return 0;
++}
++
++/* one record of the mounts domain; source defaults to fstype when the
++ * record has no source field. Returns 0 / -1 (errno). */
++static int acct_mount_get(const char *rec, struct acct_mount *m)
++{
++	char key[340];
++	const char *v;
++
++	memset(m, 0, sizeof(*m));
++	snprintf(m->name, sizeof m->name, "%s", rec);
++	snprintf(key, sizeof key, "%s.fstype", rec);
++	if (!config_get_string(ACCT_MT_DOM, key, &v))
++		snprintf(m->fstype, sizeof m->fstype, "%s", v);
++	snprintf(key, sizeof key, "%s.target", rec);
++	if (!config_get_string(ACCT_MT_DOM, key, &v))
++		snprintf(m->target, sizeof m->target, "%s", v);
++	snprintf(key, sizeof key, "%s.source", rec);
++	if (config_get_string(ACCT_MT_DOM, key, &v))
++		snprintf(m->source, sizeof m->source, "%s", m->fstype);
++	else
++		snprintf(m->source, sizeof m->source, "%s", v);
++	return m->fstype[0] && m->target[0] ? 0 : -1;
++}
++
++/* iterate the top-level mounts records in source order; cb returns
++ * nonzero to stop. Returns the count or -1 (errno EIO). */
++int acct_mount_iter(int (*cb)(struct acct_mount *, void *), void *arg)
++{
++	char *cur = NULL, *nxt = NULL;
++	config_err_t e;
++	int n = 0, rc = -1;
++
++	for (;;) {
++		struct acct_mount m;
++
++		e = cur ? config_record_next(CONFIG_SCOPE_SYSTEM, ACCT_MT_DOM,
++					     "", cur, &nxt)
++			: config_record_first(CONFIG_SCOPE_SYSTEM, ACCT_MT_DOM,
++					     "", &nxt);
++		free(cur);		/* the previous name: done with it */
++		cur = NULL;
++		if (e) {			/* end of records / error */
++			rc = n;
++			break;
++		}
++		cur = nxt;
++		nxt = NULL;
++		if (!acct_mount_get(cur, &m)) {
++			n++;
++			if (cb(&m, arg)) {
++				rc = n;
++				break;		/* cur already NULL-free */
++			}
++		}
++	}
++	free(cur);
++	free(nxt);
++	return rc;
++}
++
++/* record name of the record whose target == dir (NULL when absent) */
++char *acct_mount_find_by_target(const char *dir)
++{
++	struct acct_mount m;
++	char *cur = NULL, *nxt = NULL, *hit = NULL;
++	config_err_t e;
++
++	for (;;) {
++		e = cur ? config_record_next(CONFIG_SCOPE_SYSTEM, ACCT_MT_DOM,
++					     "", cur, &nxt)
++			: config_record_first(CONFIG_SCOPE_SYSTEM, ACCT_MT_DOM,
++					     "", &nxt);
++		free(cur);
++		cur = NULL;
++		if (e) break;
++		cur = nxt;
++		nxt = NULL;
++		if (!acct_mount_get(cur, &m) && !strcmp(m.target, dir)) {
++			hit = xstrdup(cur);
++			break;		/* cur freed by the next/trailing free */
++		}
++	}
++	free(cur);
++	free(nxt);
++	return hit;
++}
++
++/* create/update one mounts record (top-level; fstype + target required,
++ * source optional, defaulting to fstype). */
++int acct_mount_record(const char *rec, const char *fstype, const char *source,
++		      const char *target)
++{
++	if (acct_mount_set(rec, "fstype", fstype) ||
++	    acct_mount_set(rec, "target", target))
++		return -1;
++	if (source && *source && acct_mount_set(rec, "source", source))
++		return -1;
++	return 0;
++}
++
++/* remove a top-level mount record (every key under <rec>.) */
++int acct_mount_del(const char *rec)
++{
++	char **keys = NULL;
++	config_value_t *vals = NULL;
++	size_t n, i;
++	config_err_t e;
++	int rc = 0;
++
++	e = config_get_all(ACCT_MT_DOM, rec, &keys, &vals, &n);
++	if (e == CONFIG_ERR_NOT_FOUND) return 0;
++	if (e) return -1;
++	for (i = 0; i < n; i++) {
++		e = config_unset(CONFIG_SCOPE_SYSTEM, ACCT_MT_DOM, keys[i]);
++		if (e && e != CONFIG_ERR_NOT_FOUND) {
++			errno = EIO;
++			rc = -1;
++			break;
++		}
++	}
++	config_free_keys(keys, vals, n);
++	return rc;
++}
 diff --git a/lib/lib.h b/lib/lib.h
-index da20dd10..bef28dbc 100644
+index da20dd10..7f5f087b 100644
 --- a/lib/lib.h
 +++ b/lib/lib.h
-@@ -370,6 +370,27 @@ int read_password(char *buff, int buflen, char *mesg);
+@@ -370,6 +370,39 @@ int read_password(char *buff, int buflen, char *mesg);
  char **get_userline(char *filename, char *username);
  int update_password(char *filename, char *username, char *entry, int pos);
  
@@ -226,12 +365,140 @@ index da20dd10..bef28dbc 100644
 +int acct_group_add(const char *group, gid_t gid);
 +int acct_group_del(const char *group);
 +int acct_shell_allowed(const char *shell);
++// configedit.c — boot mount table (system.mounts, M6b)
++struct acct_mount {
++	char name[80];
++	char fstype[80];
++	char source[80];
++	char target[256];
++};
++int acct_mount_iter(int (*cb)(struct acct_mount *, void *), void *arg);
++char *acct_mount_find_by_target(const char *dir);
++int acct_mount_record(const char *rec, const char *fstype, const char *source,
++		      const char *target);
++int acct_mount_del(const char *rec);
 +
  // commas.c
  void comma_args(struct arg_list *al, void *data, char *err,
    char *(*callback)(void *data, char *str, int len));
+diff --git a/toys/lsb/mount.c b/toys/lsb/mount.c
+index ff0b7e12..4be5de9c 100644
+--- a/toys/lsb/mount.c
++++ b/toys/lsb/mount.c
+@@ -270,6 +270,40 @@ static void mount_filesystem(char *dev, char *dir, char *type,
+   if (fp) fclose(fp);
+ }
+ 
++// M6b: the boot mount set lives in the system.mounts domain. Display
++// prints the domain's entries, -a mounts them, and an explicit mount
++// persists a record through libconfig (so the next boot replays it).
++static int mount_display_cb(struct acct_mount *m, void *arg)
++{
++  if (m->fstype[0] && m->target[0])
++    xprintf("%s on %s type %s\n", m->source, m->target, m->fstype);
++  return 0;
++}
++
++static int mount_table_cb(struct acct_mount *m, void *arg)
++{
++  if (!m->fstype[0] || !m->target[0]) return 0;
++  if (mount(m->source, m->target, m->fstype, MS_SILENT, 0) && errno != EBUSY)
++    perror_msg("'%s'->'%s'", m->source, m->target);
++  return 0;
++}
++
++// record name for a tool-written mounts record: the target's last path
++// component, sanitized to a single-segment conf key ([A-Za-z0-9._-]).
++static char *mount_rec_name(const char *dir)
++{
++  char *base = strrchr(dir, '/');
++  char *p;
++
++  if (!base) base = (char *)dir;
++  else base++;
++  if (!*base) base = (char *)"mount";
++  snprintf(toybuf, sizeof(toybuf), "%.60s", base);
++  for (p = toybuf; *p; p++)
++    if (!isalnum(*p) && *p != '.' && *p != '_' && *p != '-') *p = '_';
++  return toybuf;
++}
++
+ void mount_main(void)
+ {
+   char *opts = 0, *dev = 0, *dir = 0, **ss;
+@@ -277,6 +311,14 @@ void mount_main(void)
+   struct arg_list *o;
+   struct mtab_list *mtl, *mtl2 = 0, *mm, *remount;
+ 
++  // -a: mount every domain entry not already mounted (EBUSY = already
++  // mounted by init or an earlier mount).
++  if (FLAG(a)) {
++    if (acct_mount_iter(mount_table_cb, 0) < 0)
++      error_msg("reading system.mounts");
++    return;
++  }
++
+ // TODO
+ // remount
+ //   - overmounts
+@@ -370,39 +412,27 @@ void mount_main(void)
+       error_exit("'%s' not in %s", dir ? dir : dev,
+                  remount ? "/proc/mounts" : "fstab");
+ 
+-  // show mounts from /proc/mounts
++  // no arguments: display the configured mount table (the domain)
+   } else if (!dev) {
+-    for (mtl = xgetmountlist(0); mtl && (mm = dlist_pop(&mtl)); free(mm)) {
+-      char *s = mm->device, *ss = "", *temp;
+-      struct stat st;
+-
+-      if (TT.t && strcmp(TT.t, mm->type)) continue;
+-      if (*s == '/') {
+-        if (!stat(mm->device, &st) && S_ISBLK(st.st_mode) &&
+-            dev_major(st.st_rdev)==7)
+-        {
+-          temp = xmprintf("/sys/block/loop%d/loop/backing_file",
+-            dev_minor(st.st_rdev));
+-          s = chomp(readfile(temp, 0, 0));
+-          free(temp);
+-          if (s) {
+-            ss = xmprintf(",file=%s"+!*mm->opts, s);
+-            free(s);
+-          };
+-        }
+-        s = xabspath(mm->device, 0);
+-      }
+-      xprintf("%s on %s type %s (%s%s)\n", s, mm->dir, mm->type, mm->opts, ss);
+-      if (s != mm->device) free(s);
+-      if (*ss) free(ss);
+-    }
++    if (acct_mount_iter(mount_display_cb, 0) < 0)
++      error_msg("reading system.mounts");
+ 
+-  // two arguments
++  // two arguments: real mount + persist a record in system.mounts
+   } else {
+-    char *more = 0;
++    char *more = 0, *abs = 0;
+ 
+     flags = flag_opts(opts, flags, &more);
+-    mount_filesystem(dev, dir, TT.t, flags, more);
++    if (!TT.t) error_exit("FNX: specify the filesystem type with -t");
++    if (mount(dev, dir, TT.t, flags, more)) {
++      perror_msg("'%s'->'%s'", dev, dir);
++      toys.exitval = 1;
++    } else {
++      abs = xabspath(dir, 0);
++      if (acct_mount_record(mount_rec_name(abs ? abs : dir), TT.t, dev,
++                            abs ? abs : dir))
++        error_msg("writing system.mounts");
++    }
++    free(abs);
+     if (CFG_TOYBOX_FREE) free(more);
+   }
+ }
 diff --git a/toys/lsb/passwd.c b/toys/lsb/passwd.c
-index 86921409..e3ccf0d4 100644
+index 86921409..a5ef8224 100644
 --- a/toys/lsb/passwd.c
 +++ b/toys/lsb/passwd.c
 @@ -55,7 +55,6 @@ void passwd_main(void)
@@ -289,7 +556,7 @@ index 86921409..e3ccf0d4 100644
  
    memset(toybuf, 0, sizeof(toybuf));
 diff --git a/toys/lsb/su.c b/toys/lsb/su.c
-index 78717221..7ae62997 100644
+index 78717221..b90d12e9 100644
 --- a/toys/lsb/su.c
 +++ b/toys/lsb/su.c
 @@ -42,7 +42,7 @@ GLOBALS(
@@ -340,8 +607,110 @@ index 78717221..7ae62997 100644
  
    argv = argu = xmalloc(sizeof(char *)*(toys.optc + 4));
    *argv++ = TT.s ? : up->pw_shell;
+diff --git a/toys/lsb/umount.c b/toys/lsb/umount.c
+index 19fd5274..43fc847b 100644
+--- a/toys/lsb/umount.c
++++ b/toys/lsb/umount.c
+@@ -48,7 +48,7 @@ GLOBALS(
+ // TODO
+ // swapon, swapoff
+ 
+-static void do_umount(char *dir, char *dev, int flags)
++static int do_umount(char *dir, char *dev, int flags)
+ {
+   // is it ok for this user to umount this mount?
+   if (CFG_TOYBOX_SUID && getuid()) {
+@@ -71,7 +71,7 @@ static void do_umount(char *dir, char *dev, int flags)
+     if (!user) {
+       error_msg("not root");
+ 
+-      return;
++      return 1;
+     }
+   }
+ 
+@@ -91,17 +91,32 @@ static void do_umount(char *dir, char *dev, int flags)
+       }
+     }
+ 
+-    return;
++    return 0;
+   }
+ 
+   if (toys.optflags & FLAG_r) {
+     if (!mount("", dir, "", MS_REMOUNT|MS_RDONLY, "")) {
+       if (toys.optflags & FLAG_v) xprintf("%s remounted ro\n", dir);
+-      return;
++      return 0;
+     }
+   }
+ 
+   perror_msg_raw(dir);
++  return 1;
++}
++
++static int umount_all_cb(struct acct_mount *m, void *arg)
++{
++  int flags = 0, rc;
++
++  if (toys.optflags & FLAG_f) flags |= MNT_FORCE;
++  if (toys.optflags & FLAG_l) flags |= MNT_DETACH;
++  if (!m->target[0]) return 0;
++  rc = do_umount(m->target, m->source[0] ? m->source : 0, flags);
++  if (!rc) {
++    if (acct_mount_del(m->name)) error_msg("updating system.mounts");
++  }
++  return 0;
+ }
+ 
+ void umount_main(void)
+@@ -121,18 +136,11 @@ void umount_main(void)
+   if (!(toys.optflags & FLAG_n) && !access(pm, R_OK))
+     mlrev = dlist_terminate(mlsave = xgetmountlist(pm));
+ 
+-  // Unmount all: loop through mounted filesystems, skip -t, unmount the rest
++  // Unmount the domain table (M6b): every record's target; the record
++  // drops when the unmount succeeds.
+   if (toys.optflags & FLAG_a) {
+-    char *typestr = 0;
+-    struct arg_list *tal;
+-
+-    for (tal = TT.t; tal; tal = tal->next) comma_collate(&typestr, tal->arg);
+-    for (ml = mlrev; ml; ml = ml->prev)
+-      if (mountlist_istype(ml, typestr)) do_umount(ml->dir, ml->device, flags);
+-    if (CFG_TOYBOX_FREE) {
+-      free(typestr);
+-      llist_traverse(mlsave, free);
+-    }
++    if (acct_mount_iter(umount_all_cb, 0) < 0)
++      error_msg("reading system.mounts");
+   // TODO: under what circumstances do we umount non-absolute path?
+   } else for (optargs = toys.optargs; *optargs; optargs++) {
+     char *abs = xabspath(*optargs, 0);
+@@ -146,7 +154,20 @@ void umount_main(void)
+       }
+     }
+ 
+-    do_umount(abs ? abs : *optargs, ml ? ml->device : 0, flags);
++    {
++      int rc = do_umount(abs ? abs : *optargs, ml ? ml->device : 0, flags);
++
++      // drop the matching domain record (best-effort; a mount not in
++      // the table leaves the table untouched)
++      if (!rc) {
++        char *rec = acct_mount_find_by_target(abs ? abs : *optargs);
++
++        if (rec) {
++          if (acct_mount_del(rec)) error_msg("updating system.mounts");
++          free(rec);
++        }
++      }
++    }
+     if (ml && abs != ml->dir) free(abs);
+   }
+ }
 diff --git a/toys/pending/chsh.c b/toys/pending/chsh.c
-index 6dd28e81..83d78d8b 100644
+index 6dd28e81..1d81dc55 100644
 --- a/toys/pending/chsh.c
 +++ b/toys/pending/chsh.c
 @@ -29,41 +29,47 @@ GLOBALS(
@@ -414,7 +783,7 @@ index 6dd28e81..83d78d8b 100644
 +  if (CFG_TOYBOX_FREE && interactive) free(shell);
  }
 diff --git a/toys/pending/groupadd.c b/toys/pending/groupadd.c
-index 67c0e929..95e5df04 100644
+index 67c0e929..6791de2a 100644
 --- a/toys/pending/groupadd.c
 +++ b/toys/pending/groupadd.c
 @@ -38,39 +38,34 @@ GLOBALS(
@@ -483,7 +852,7 @@ index 67c0e929..95e5df04 100644
 +  if (acct_group_add(s, TT.g)) perror_exit("groupadd: system.group");
  }
 diff --git a/toys/pending/groupdel.c b/toys/pending/groupdel.c
-index 4c3eae5f..7d9b9538 100644
+index 4c3eae5f..2b7c1f44 100644
 --- a/toys/pending/groupdel.c
 +++ b/toys/pending/groupdel.c
 @@ -23,26 +23,20 @@ config GROUPDEL
@@ -535,7 +904,7 @@ index 4c3eae5f..7d9b9538 100644
 +  }
  }
 diff --git a/toys/pending/useradd.c b/toys/pending/useradd.c
-index 261c7e48..d254c572 100644
+index 261c7e48..4ed641e4 100644
 --- a/toys/pending/useradd.c
 +++ b/toys/pending/useradd.c
 @@ -42,7 +42,7 @@ GLOBALS(
@@ -603,7 +972,7 @@ index 261c7e48..d254c572 100644
      // Copy and change ownership
      if (access(p, F_OK)) {
 diff --git a/toys/pending/userdel.c b/toys/pending/userdel.c
-index a77fb28e..5e7ac3bd 100644
+index a77fb28e..a5ce0064 100644
 --- a/toys/pending/userdel.c
 +++ b/toys/pending/userdel.c
 @@ -22,93 +22,36 @@ config USERDEL

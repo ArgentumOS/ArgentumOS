@@ -543,11 +543,31 @@ record dropped → devpts absent after reboot; (C) pts record missing
 `fstype` → init prints the clear error, proc still mounts, devpts does
 not. M6b (toybox mount/umount) is next.
 
-### M6b — Mount table (toybox)
-toybox `mount`/`umount` consume the `system.mounts.conf` domain
-(no-args `mount` = mount the table) in a follow-up after M6 (Q3).
-Acceptance: `mount` with no args prints the domain's entries; explicit
-mounts/umounts update the domain via the atomic writer.
+### M6b — Mount table (toybox) — DONE
+toybox `mount`/`umount` consume the flat `system.mounts` domain (records
+at the top level, no wrapper — commit 728f1d5 flattened them):
+- `mount` (no args) prints the domain's entries
+  (`source on target type fstype`), like upstream displays /proc/mounts;
+- `mount -t TYPE DEV DIR` really mounts and persists a record
+  (`<basename-of-DIR>` with fstype/target/source) via libconfig's atomic
+  writer, so the next boot replays it (init's source support);
+- `mount -a` mounts every domain entry not already mounted (EBUSY is
+  silent);
+- `umount DIR` unmounts and removes the matching record; `umount -a`
+  unmounts the table entries and drops their records.
+
+Shared helpers in the toybox patch's `lib/configedit.c` (acct_mount_*:
+top-level record iteration via config_record_first/next with group "",
+acct_mount_record / acct_mount_del) — the record iterators free each
+malloc'd name exactly once (a first draft double-freed the last name
+and tripped the FNX malloc's header check in-guest).
+
+Verified in-guest: `mount` lists proc + devpts from the domain; a real
+`mount -t bfs /System/Devices/hdc /Volumes/Data` reads the disk and
+persists the record (config read shows fstype + source); `mount` then
+lists the bfs mount; `umount /Volumes/Data` unmounts and removes the
+record. (Test disk attached as legacy IDE hdc; the boot cmdline fixes
+root=/dev/sda so the root must stay on the AHCI controller.)
 
 ### M7 — Decommission + sweep
 Remove every legacy-format file and parser reference (Makefile, images,
