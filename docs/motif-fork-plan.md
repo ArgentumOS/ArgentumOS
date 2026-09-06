@@ -169,7 +169,8 @@ Deliberate improvements over GTK+ itself (keeping the earlier rules):
 
 ## 7. Non-goals
 
-- Not a desktop-shell project (that comes later, natively — §5).
+- Not a desktop-shell project (that comes later, natively — §5; its
+  window manager is the EMWM fork, docs/emwm-window-manager.md).
 - No UIL or any UI-description language (no XML/glade-style UI files,
   no DSL): UIs are described only in code, via the typed API.
 - No CDE/IRIX-app compatibility; no broader X11-app-bazaar support

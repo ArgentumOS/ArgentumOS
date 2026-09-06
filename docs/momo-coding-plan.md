@@ -166,8 +166,10 @@ the retained engine:
 - Xt surgery inside the fork (typed internals, retained rendering,
   one-window-per-top-level) if "own every layer" reaches the
   intrinsics.
-- FNX-native desktop shell (window manager, panels, file manager) built
-  on Momo, with CDE's architecture as reference (docs/cde-fork-plan.md).
+- FNX-native desktop shell (window manager = the EMWM fork,
+  docs/emwm-window-manager.md; panels/file manager later) built on
+  Momo, with CDE's architecture as reference
+  (docs/cde-fork-plan.md).
 - Shared-library **packaging** of libmomo is already the norm here
   (this plan runs post-dynamic-switch): sonames as bookkeeping, atomic
   whole-world upgrades, no ABI promises — per
