@@ -27,6 +27,16 @@ ps2_noreset	Disable PS/2 controller reset.
 
 ramdisksize=	Enable the RAM disk drive and configure its size (in KiB).
 
+recovery	Boot the static recovery shell (/System/Tools/recovery-sh)
+		instead of the dynamic init. Also used automatically when the
+		kernel's boot-time NEEDED-closure probe finds the dynamic
+		world un-bootable (a missing/corrupt /System/Libraries):
+		"the dynamic world is not bootable ... booting the static
+		recovery shell". Test harness: rebuild kreal64.o with
+		FNX_RECOVERY_PARAM=1 (make buildfnx FNX_RECOVERY_PARAM=1 after
+		rm .build/64real/kernel64/kreal64.o) to bake the param into
+		the UEFI boot cmdline (kernel64/kreal64.c).
+
 ro		Mount root device as read-only on boot.
 
 root=		Root device name.

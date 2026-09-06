@@ -18,6 +18,7 @@
 
 struct kernel_params {
 	int flags;
+	int recovery;		/* boot the static recovery shell (kernel-parameters.txt) */
 	char initrd[DEVNAME_MAX + 1];
 	int memsize;
 	int extmemsize;

@@ -390,7 +390,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@mkdir -p "$(ROOTFS64)/System/Recovery/bin"
 	@for l in $(CURDIR)/$(ROOTFS64)/System/Tools/*; do \
 		if [ -L "$$l" ] && [ "$$(readlink "$$l")" = toybox ]; then \
-			ln -sfn ../../System/Tools/recovery-toybox \
+			ln -sfn /System/Tools/recovery-toybox \
 				"$(ROOTFS64)/System/Recovery/bin/$$(basename "$$l")"; \
 		fi; \
 	done

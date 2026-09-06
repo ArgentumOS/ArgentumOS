@@ -19,12 +19,21 @@
 #include <fnx/unistd.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
+#include <fnx/kparms.h>
 
 #define INIT_TRAMPOLINE_SIZE	256	/* max. size of init_trampoline() */
 
 char *init_args;
 char *init_argv[] = { INIT_PROGRAM, NULL, NULL };
+/* PID 1's envp: the normal (dynamic) boot or the static recovery shell.
+ * The recovery envp puts /System/Recovery/bin first so repair commands
+ * resolve to the static toybox, and drops HOME to / (the Admin home may
+ * be part of what needs repairing). The kernel-side consumer reads the
+ * selected array by address, so init_envp stays a real array symbol. */
 char *init_envp[] = { "HOME=/Users/Admin", "TERM=linux", NULL };
+char *init_envp_rec[] = { "HOME=/", "TERM=linux",
+	"PATH=/System/Recovery/bin:/System/Tools", "PS1=recovery# ", NULL };
+char **init_pid1_envp = init_envp;
 /* The INIT bootstrap trampoline (init_trampoline64.S) opens this console
  * device; its runtime address is written into the trampoline's fixed
  * table at user VA 0x100100 by init_init(). */
@@ -45,11 +54,33 @@ void init_init(void)
 	unsigned int *pgdir;
 	struct proc *init;
 
-	if(namei(INIT_PROGRAM, &i, NULL, FOLLOW_LINKS)) {
-		PANIC("can't find %s.\n", INIT_PROGRAM);
+	/*
+	 * PID 1 target: the dynamic init when the world is bootable, the
+	 * STATIC recovery shell otherwise (docs/shared-libraries-plan.md
+	 * §3). A 'recovery' kernel param forces it; otherwise the
+	 * NEEDED-closure probe (elf_world_check) decides - a missing or
+	 * corrupt /System/Libraries must yield the recovery shell with a
+	 * clear message instead of a cascade of exec failures. The check
+	 * runs here, after mount_root(), so the root filesystem is up.
+	 */
+	if(kparms.recovery) {
+		printk("kernel: recovery mode requested on the command line; "
+		       "booting the static recovery shell.\n");
+		init_argv[0] = (char *)RECOVERY_PROGRAM;
+		init_pid1_envp = init_envp_rec;
+	} else if(!elf_world_check(INIT_PROGRAM)) {
+		printk("kernel: the dynamic world is not bootable "
+		       "(/System/Libraries missing or corrupt); booting the "
+		       "static recovery shell (%s).\n", RECOVERY_PROGRAM);
+		init_argv[0] = (char *)RECOVERY_PROGRAM;
+		init_pid1_envp = init_envp_rec;
+	}
+
+	if(namei(init_argv[0], &i, NULL, FOLLOW_LINKS)) {
+		PANIC("can't find %s.\n", init_argv[0]);
 	}
 	if(!S_ISREG(i->i_mode)) {
-		PANIC("%s is not a regular file.\n", INIT_PROGRAM);
+		PANIC("%s is not a regular file.\n", init_argv[0]);
 	}
 	iput(i);
 
@@ -144,8 +175,8 @@ void init_init(void)
 		unsigned long *t = (unsigned long *)((char *)page + 0x100);
 		t[0] = (unsigned long)init_console_dev;
 		t[1] = (unsigned long)init_argv;
-		t[2] = (unsigned long)init_envp;
-		t[3] = (unsigned long)INIT_PROGRAM;
+		t[2] = (unsigned long)init_pid1_envp;
+		t[3] = (unsigned long)init_argv[0];
 	}
 
 	init->tss.eip = (addr_t)switch_to_user_mode;

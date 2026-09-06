@@ -37,8 +37,14 @@ void kreal64_boot(void)
 		{ 20, 0x8000000, 0x7800000, MULTIBOOT_MEMORY_RESERVED },
 	};
 	/* no rootfstype= on the command line: the root filesystem type is
-	 * probed by mount_root() (minix -> ext2 -> iso9660 -> xbfs) */
+	 * probed by mount_root() (minix -> ext2 -> iso9660 -> xbfs).
+	 * FNX_RECOVERY_PARAM (build-time, via the kreal64.o rule) appends
+	 * the 'recovery' param for a forced-recovery test boot. */
+#ifdef FNX_RECOVERY_PARAM
+	static char cmdline[] = "fnx console=/System/Devices/Serial/Port0 root=/System/Devices/Disk/AHCI/Disk0/WholeDisk recovery";
+#else
 	static char cmdline[] = "fnx console=/System/Devices/Serial/Port0 root=/System/Devices/Disk/AHCI/Disk0/WholeDisk";
+#endif
 	static char initrd_name[] = "fnxinitrd";	/* unused (no initrd= in cmdline) */
 	unsigned long last_boot_addr;
 

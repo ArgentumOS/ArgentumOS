@@ -633,8 +633,13 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 
 	tty = f->private_data;
 
-	/* only the foreground process group is allowed to read from the tty */
-	if(current->ctty == tty && current->pgid != tty->pgid) {
+	/* only the foreground process group is allowed to read from the tty.
+	 * The session leader of the tty's session can always read: its own
+	 * pgrp is the initial foreground group and it can never be
+	 * backgrounded (a tcsetpgrp(0) from an interactive shell would
+	 * otherwise leave it blocked forever). */
+	if(current->ctty == tty && current->pgid != tty->pgid &&
+	   !(current->pid == current->sid && current->sid == tty->sid)) {
 		if(current->sigaction[SIGTTIN - 1].sa_handler == SIG_IGN || current->sigblocked & (1 << (SIGTTIN - 1)) || is_orphaned_pgrp(current->pgid)) {
 			return -EIO;
 		}
@@ -1050,14 +1055,20 @@ int tty_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		 * the value of the terminal.
 		 */
 		case TIOCSPGRP:
-			if(arg < 1) {
-				return -EINVAL;
-			}
+		{
+			__pid_t pg;
+
 			if((errno = check_user_area(VERIFY_READ, (void *)arg, sizeof(__pid_t)))) {
 				return errno;
 			}
-			memcpy_b(&tty->pgid, (void *)arg, sizeof(__pid_t));
+			memcpy_b(&pg, (void *)arg, sizeof(__pid_t));
+			/* an interactive shell may hand us pgrp 0 while it is
+			 * still setting up job control; accept it (the read
+			 * side exempts the tty's session leader, so its own
+			 * reads keep working) */
+			tty->pgid = pg;
 			break;
+		}
 
 		/*
 		 * The session ID of the terminal is fetched and stored in

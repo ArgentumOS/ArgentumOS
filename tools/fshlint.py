@@ -32,9 +32,12 @@ BUILD_ROOTS = None  # computed from the repo dir when run in-tree
 
 # The explicit static exception list (docs/shared-libraries-plan.md §2.4):
 # binaries that must run when /System/Libraries is corrupt or missing. The
-# recovery shell and the boot-time updater land here when they ship; until
-# then it stays empty and every System/Tools ELF must be dynamic.
-STATIC_ALLOW = set()
+# recovery shell (static dash) and the recovery toolset (static toybox)
+# ship here; the boot-time updater lands here when it ships.
+STATIC_ALLOW = {
+    "recovery-sh",
+    "recovery-toybox",
+}
 
 
 def build_roots():

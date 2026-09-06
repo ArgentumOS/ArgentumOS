@@ -617,3 +617,281 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 	}
 	return elf_load64(i, barg, sc, data);
 }
+
+/*
+ * elf_world_check() - the boot-time NEEDED-closure probe
+ * (docs/shared-libraries-plan.md §3): before the kernel execs the
+ * dynamic init it verifies the dynamic world is actually bootable.
+ * 'path' (the dynamic init) must be a valid x86-64 ELF whose PT_INTERP
+ * resolves to an existing ELF and whose DT_NEEDED libraries all resolve
+ * under /System/Libraries. Any failure (missing/corrupt file, malformed
+ * ELF) prints the reason and returns 0 so the caller boots the STATIC
+ * recovery shell instead of letting PID 1 die with a cascade of exec
+ * failures. Reads are boot-time-only, so a modest kmalloc budget is
+ * fine.
+ *
+ * Returns 1 (world bootable) or 0 (broken -> recovery shell).
+ */
+struct elf64_dyn_rec {
+	__s64 d_tag;
+	union {
+		__s64 d_val;
+		void *d_ptr;
+	} d_un;
+};
+
+static int elf_check_file(const char *path, int must_be_dyn)
+{
+	struct inode *i;
+	char *data;
+	Elf64_Ehdr *e;
+	int errno;
+
+	if((errno = namei((char *)path, &i, NULL, FOLLOW_LINKS)) < 0) {
+		printk("kernel: world check: missing '%s'.\n", path);
+		return 0;
+	}
+	if(!S_ISREG(i->i_mode)) {
+		printk("kernel: world check: '%s' is not a regular file.\n", path);
+		iput(i);
+		return 0;
+	}
+	if((errno = elf_read_first_block(i, &data)) < 0) {
+		printk("kernel: world check: cannot read '%s' (errno %d).\n", path, errno);
+		iput(i);
+		return 0;
+	}
+	e = (Elf64_Ehdr *)data;
+	if(e->e_ident[EI_MAG0] != ELFMAG0 || e->e_ident[EI_MAG1] != ELFMAG1 ||
+	   e->e_ident[EI_MAG2] != ELFMAG2 || e->e_ident[EI_MAG3] != ELFMAG3 ||
+	   e->e_ident[EI_CLASS] != ELFCLASS64 || e->e_machine != EM_X86_64 ||
+	   (must_be_dyn && e->e_type != ET_DYN)) {
+		printk("kernel: world check: '%s' is not a valid x86-64 %s.\n",
+		       path, must_be_dyn ? "ET_DYN" : "ELF");
+		kfree((addr_t)data);
+		iput(i);
+		return 0;
+	}
+	kfree((addr_t)data);
+	iput(i);
+	return 1;
+}
+
+/* read 'len' bytes at file offset 'off' into 'buf' (block-at-a-time) */
+static int elf_read_bytes(struct inode *i, __off_t off, void *buf, __size_t len)
+{
+	__blk_t block;
+	struct buffer *b;
+	int blksize = i->sb->s_blocksize;
+	__size_t got = 0, chunk;
+	__off_t boff;
+
+	while(got < len) {
+		boff = (off + got) % blksize;
+		/* bmap() takes a BYTE offset (it converts internally), not a
+		 * block index - every other caller passes bytes. */
+		if((block = bmap(i, off + got, FOR_READING)) < 0) {
+			return -EIO;
+		}
+		if(!(b = bread(i->dev, block, blksize))) {
+			return -EIO;
+		}
+		chunk = MIN((__size_t)(blksize - boff), len - got);
+		memcpy_b((char *)buf + got, (char *)b->data + boff, chunk);
+		brelse(b);
+		got += chunk;
+	}
+	return 0;
+}
+
+int elf_world_check(const char *path)
+{
+	Elf64_Ehdr *e;
+	Elf64_Phdr *ph;
+	struct elf64_dyn_rec *dyn;
+	struct inode *i;
+	char *data, *dynseg, *strtab, *name;
+	unsigned long long load_delta = 0, strtab_off = 0;
+	unsigned long long strsz = 0;
+	__off_t dyn_off = 0;
+	__size_t dyn_size = 0;
+	char libname[PATH_MAX + 1];
+	int n, bad = 0, need_count = 0, has_interp = 0;
+	int errno;
+
+	data = NULL;
+	if((errno = namei((char *)path, &i, NULL, FOLLOW_LINKS)) < 0 ||
+	   !S_ISREG(i->i_mode)) {
+		printk("kernel: world check: cannot resolve '%s'.\n", path);
+		if(errno >= 0) {
+			iput(i);
+		}
+		return 0;
+	}
+	if((errno = elf_read_first_block(i, &data)) < 0) {
+		iput(i);
+		return 0;
+	}
+	e = (Elf64_Ehdr *)data;
+	if(e->e_ident[EI_MAG0] != ELFMAG0 || e->e_ident[EI_MAG1] != ELFMAG1 ||
+	   e->e_ident[EI_MAG2] != ELFMAG2 || e->e_ident[EI_MAG3] != ELFMAG3 ||
+	   e->e_ident[EI_CLASS] != ELFCLASS64 || e->e_machine != EM_X86_64) {
+		printk("kernel: world check: '%s' is not a valid x86-64 ELF.\n", path);
+		bad = 1;
+		goto out;
+	}
+	if(e->e_phnum > 65536 || e->e_phoff > PAGE_SIZE ||
+	   e->e_phnum * sizeof(Elf64_Phdr) > PAGE_SIZE - e->e_phoff) {
+		printk("kernel: world check: '%s' has an invalid program-header table.\n", path);
+		bad = 1;
+		goto out;
+	}
+
+	for(n = 0; n < e->e_phnum; n++) {
+		ph = (Elf64_Phdr *)(data + e->e_phoff + (sizeof(Elf64_Phdr) * n));
+		if(ph->p_type == PT_INTERP) {
+			char ipath[PATH_MAX + 1];
+			__size_t fl = (__size_t)ph->p_filesz;
+
+			if(fl < 2 || fl > PATH_MAX ||
+			   ph->p_offset > PAGE_SIZE - fl) {
+				printk("kernel: world check: '%s' has an invalid PT_INTERP.\n", path);
+				bad = 1;
+				goto out;
+			}
+			memcpy_b(ipath, data + ph->p_offset, fl);
+			ipath[fl - 1] = 0;
+			if(ipath[0] != '/') {
+				printk("kernel: world check: '%s' has a non-absolute PT_INTERP.\n", path);
+				bad = 1;
+				goto out;
+			}
+			has_interp = 1;
+			if(!elf_check_file(ipath, 1)) {
+				bad = 1;
+				goto out;
+			}
+		} else if(ph->p_type == PT_DYNAMIC) {
+			dyn_off = ph->p_offset;
+			dyn_size = (__size_t)ph->p_filesz;
+		} else if(ph->p_type == PT_LOAD && !load_delta) {
+			load_delta = ph->p_vaddr - ph->p_offset;
+		}
+	}
+	if(!has_interp) {
+		/* a static init is not the dynamic world we boot; treat as
+		 * broken so the recovery shell (or an admin) investigates */
+		printk("kernel: world check: '%s' has no PT_INTERP.\n", path);
+		bad = 1;
+		goto out;
+	}
+	if(!dyn_size || dyn_size > 65536) {
+		printk("kernel: world check: '%s' has an invalid PT_DYNAMIC.\n", path);
+		bad = 1;
+		goto out;
+	}
+	if(!(dynseg = (char *)kmalloc((unsigned int)dyn_size))) {
+		bad = 1;
+		goto out;
+	}
+	if(elf_read_bytes(i, dyn_off, dynseg, dyn_size)) {
+		printk("kernel: world check: cannot read '%s' dynamic section.\n", path);
+		kfree((addr_t)dynseg);
+		bad = 1;
+		goto out;
+	}
+	for(n = 0; n < (int)(dyn_size / sizeof(struct elf64_dyn_rec)); n++) {
+		dyn = (struct elf64_dyn_rec *)(dynseg + (n * sizeof(struct elf64_dyn_rec)));
+		if(dyn->d_tag == DT_NULL) {
+			break;
+		}
+		if(dyn->d_tag == DT_STRTAB) {
+			strtab_off = (unsigned long long)dyn->d_un.d_val - load_delta;
+		} else if(dyn->d_tag == DT_STRSZ) {
+			strsz = (unsigned long long)dyn->d_un.d_val;
+		} else if(dyn->d_tag == DT_NEEDED) {
+			if(!need_count) {
+				if(!(strtab = (char *)kmalloc(PATH_MAX + 1))) {
+					kfree((addr_t)dynseg);
+					bad = 1;
+					goto out;
+				}
+				need_count = 1;
+			}
+		}
+	}
+	if(!need_count) {
+		/* no NEEDED libs at all: an odd but harmless init */
+		kfree((addr_t)dynseg);
+		goto out_ok;
+	}
+	if(!strtab_off || !strsz) {
+		printk("kernel: world check: '%s' has no DT_STRTAB/DT_STRSZ.\n", path);
+		kfree((addr_t)dynseg);
+		kfree((addr_t)strtab);
+		bad = 1;
+		goto out;
+	}
+	if(strsz > (unsigned long long)i->i_size) {
+		strsz = (unsigned long long)i->i_size;
+	}
+	if(strtab_off > (unsigned long long)i->i_size ||
+	   strsz < 2) {
+		printk("kernel: world check: '%s' has an implausible DT_STRTAB.\n", path);
+		kfree((addr_t)dynseg);
+		kfree((addr_t)strtab);
+		bad = 1;
+		goto out;
+	}
+	/* second pass: read each DT_NEEDED name and verify it resolves */
+	for(n = 0; n < (int)(dyn_size / sizeof(struct elf64_dyn_rec)); n++) {
+		dyn = (struct elf64_dyn_rec *)(dynseg + (n * sizeof(struct elf64_dyn_rec)));
+		if(dyn->d_tag == DT_NULL) {
+			break;
+		}
+		if(dyn->d_tag != DT_NEEDED) {
+			continue;
+		}
+		if((unsigned long long)dyn->d_un.d_val >= strsz) {
+			printk("kernel: world check: '%s' NEEDED name out of range.\n", path);
+			bad = 1;
+			break;
+		}
+		if(elf_read_bytes(i, (__off_t)strtab_off + (__off_t)dyn->d_un.d_val,
+				  strtab, PATH_MAX)) {
+			printk("kernel: world check: cannot read '%s' NEEDED name.\n", path);
+			bad = 1;
+			break;
+		}
+		strtab[PATH_MAX] = 0;
+		name = strtab;
+		while(*name && *name != '\n' && *name != '\0' &&
+		      (name - strtab) < PATH_MAX) {
+			name++;
+		}
+		*name = 0;
+		if(!*strtab) {
+			continue;
+		}
+		strcpy(libname, "/System/Libraries/");
+		strncat(libname, strtab, sizeof(libname) - 1 -
+			(__ssize_t)strlen(libname));
+		libname[sizeof(libname) - 1] = 0;
+		if(!elf_check_file(libname, 1)) {
+			bad = 1;
+			break;
+		}
+	}
+	kfree((addr_t)dynseg);
+	kfree((addr_t)strtab);
+out_ok:
+	if(!bad) {
+		iput(i);
+		kfree((addr_t)data);
+		return 1;
+	}
+out:
+	iput(i);
+	kfree((addr_t)data);
+	return 0;
+}

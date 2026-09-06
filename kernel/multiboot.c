@@ -73,6 +73,10 @@ static struct kernel_params_value kparamval_table[] = {
 	   { 0 },
 	   { 0 }
 	},
+	{ "recovery",
+	   { 0 },
+	   { 0 }
+	},
 	{ "ramdisksize=",
 	   { 0 },
 	   { 0 }
@@ -221,6 +225,12 @@ static int check_param(struct kernel_params_value *kpv, const char *value)
 #endif /* CONFIG_KEXEC */
 	if(!strcmp(kpv->name, "ps2_noreset")) {
 		kparms.flags |= KPARMS_PS2_NORESET;
+		return 0;
+	}
+	if(!strcmp(kpv->name, "recovery")) {
+		/* boot the static recovery shell instead of the dynamic world
+		 * (docs/shared-libraries-plan.md §2.4/§3) */
+		kparms.recovery = 1;
 		return 0;
 	}
 	if(!strcmp(kpv->name, "ramdisksize=")) {

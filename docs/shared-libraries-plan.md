@@ -1,7 +1,7 @@
 # Shared libraries on FNX
 
-Status: **DECIDED (design, 2026-09) + M0/M1/M2/M3 DONE — dynamic world,
-X stack and FNX libconfig shared.** All design decisions below were settled in conversation; the
+Status: **DECIDED (design, 2026-09) + M0-M4 DONE — dynamic world, X
+stack, FNX libconfig shared, and the static recovery set.** All design decisions below were settled in conversation; the
 kernel/toolchain work described is the implementation backlog. M0 shipped
 `fs/elf.c` `ET_DYN`/`PT_INTERP` loading (fixed `ELF_INTERP_BASE`, auxv
 `AT_BASE`, musl shared build with `/System/Libraries` syslibdir + loader
@@ -29,7 +29,24 @@ Xfb's configargs (the last compiled-in libconfig consumers) link
 `-L .build/fnxlib -lconfig`. Testing the M3 write path surfaced two latent
 XBFS bugs (mkdirat draining the dirfd inode ref under cp -R; inline file
 content lost when rename rewrote the inode name record) — both fixed and
-guest-verified.
+guest-verified. M4 shipped the static recovery set: `/System/Tools/
+recovery-sh` (static dash) + `recovery-toybox` (static toybox; links its
+account applets against a static `libconfig.a`) with applet links under
+`/System/Recovery/bin` (absolute symlink targets — FNX namei does not
+resolve `../..`-style relative symlinks). The kernel (kernel/init.c
+`init_init()`, running after `mount_root()` in the swapper thread) boots
+RECOVERY_PROGRAM instead of init when a `recovery` boot param is given or
+when `elf_world_check()` — a boot-time NEEDED-closure probe on init
+(PT_INTERP + every DT_NEEDED must resolve under /System/Libraries to an
+ELF) — finds the dynamic world un-bootable; both paths print a clear
+message. fshlint STATIC_ALLOW now carries the two recovery basenames. Two
+latent kernel bugs surfaced by the recovery shell: PID1 shells could not
+read the console tty because an interactive shell's own `tcsetpgrp(0)`
+while setting up job control left `tty->pgid = 0` (read-side
+foreground-pgrp guard fired on the session leader) — fixed by exempting
+the tty's session leader from the guard (drivers/char/tty.c). The
+boot-time NEEDED check is fully general per §3; the updater (same static
+set, §7) remains.
 
 ## 1. Why
 

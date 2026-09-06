@@ -35,6 +35,7 @@
 #define CURRENT_TIME	(kstat.system_time)
 #define CURRENT_TICKS	(kstat.ticks)
 #define INIT_PROGRAM	"/System/Tools/init"
+#define RECOVERY_PROGRAM	"/System/Tools/recovery-sh"
 
 /* kernel flags */
 #define KF_HAS_PANICKED		0x01	/* the kernel has panic'ed */

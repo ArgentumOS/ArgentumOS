@@ -209,6 +209,7 @@ void proc_slot_init(struct proc *);
 void proc_init(void);
 
 int elf_load(struct inode *, struct binargs *, struct sigcontext *, char *);
+int elf_world_check(const char *);
 int script_load(char *, char *, char *);
 
 #endif /* _FNX_PROCESS_H */
