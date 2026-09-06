@@ -53,19 +53,15 @@ desired.
 Long term the terminal is **wrapped in Momo UI chrome** — the window's
 app chrome (menus, preference dialogs, and any tabs/decoration) is
 Momo; the urxvt core (pty, escape-sequence engine, glyph grid,
-scrollback) is what urxvt contributes. Two shapes to weigh at that
-milestone:
+scrollback) is what urxvt contributes.
 
-- **(a) In-process chrome**: the urxvt fork links Momo; Momo draws the
-  chrome, the urxvt core renders the grid region in the same window.
-  Least disruption to the core; the two rendering paths (Momo vs raw
-  Xlib grid) must cooperate in one window.
-- **(b) Engine extraction**: port the urxvt core into Momo as a proper
-  terminal widget (a sibling of the Text widget from the Momo M5 text
-  work) that hosts pty/escape/grid/scrollback; the standalone fork then
-  becomes a thin Momo app around that widget. Cleanest long-term shape
-  — the terminal is a Momo citizen like any other app — and the
-  battle-tested vt100/pty engine is the contribution.
+**Shape (decided): (b) engine extraction.** The urxvt core is ported
+into Momo as a proper terminal widget (a sibling of the Text widget
+from the Momo M5 text work) that hosts pty/escape/grid/scrollback; the
+standalone fork then becomes a thin Momo app around that widget — the
+the terminal is a Momo citizen like any other app. The battle-tested
+vt100/pty engine is the contribution; the (a) in-process wrap is set
+aside.
 
 Until Momo exists, the standalone fork is the interim terminal (runs on
 Xfb today; §4).
@@ -94,8 +90,11 @@ Xfb today; §4).
 - Tabs/multiplexing: in-fork feature or separate (toybox `sh` sessions
   per window) decision.
 - terminfo placement under FSH.
-- Momo-chrome shape: in-process wrap (a) vs engine extraction into a
-  Momo terminal widget (b) — §5, decided at the Momo terminal milestone.
+- **Momo-chrome shape: (b) engine extraction — DECIDED.** The urxvt
+  core (pty/escape/grid/scrollback) is ported into Momo as a proper
+  terminal widget (sibling of the Text widget from the M5 text work);
+  the standalone fork becomes a thin Momo app around that widget. The
+  in-process wrap (a) is set aside.
 
 ## 8. Non-goals
 
