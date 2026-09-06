@@ -99,10 +99,10 @@ XFBIMG  ?= .build/rootxbfs-xfbdesk.img
 XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 
 .build/x11/xdraw: userland/xdraw.c
-	$(MUSL64_CC) -static -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
+	$(MUSL64_CC_STATIC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
 		userland/xdraw.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
 .build/x11/xkey: userland/xkey.c
-	$(MUSL64_CC) -static -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
+	$(MUSL64_CC_STATIC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
 		userland/xkey.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
 
 xfbdesk-root: $(XFB_DEMO_BIN)
@@ -140,11 +140,14 @@ run-qemu:
 
 # ---------------------------------------------------------------------------
 # Native x86_64 userland (port phase B): same tree, LP64 ABI. Built with
-# tools/musl-gcc64.sh into .build/rootfs64. The binaries are static ELF64
-# and can be smoke-tested on the host before the kernel can exec them.
+# tools/musl-gcc64.sh into .build/rootfs64. Since M1 the binaries are
+# DYNAMIC (non-PIE) ELF64 against /System/Libraries/ld-musl-x86_64.so.1
+# (docs/shared-libraries-plan.md); MUSL64_CC_STATIC is the explicit static
+# exception (recovery shell/updater + unconverted third-party carve-outs).
 MUSL64_PREFIX = .build/musl64
 MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
-MUSL64_CC     = gcc -static -specs $(MUSL64_SPECS)
+MUSL64_CC     = $(CURDIR)/tools/musl-gcc64.sh
+MUSL64_CC_STATIC = $(CURDIR)/tools/musl-gcc64-static.sh
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-g++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-g++64.sh
@@ -252,8 +255,11 @@ XFB_BIN = $(XFB_OUT)/Xfb
 
 .PHONY: xfb64
 xfb64:
+	# Xfb stays static for now: it links the unconverted static-musl X11
+	# prefix and its shared conversion belongs to the X-stack milestone
+	# (plan §6), not the M1 libc flip.
 	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
-		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
+		CC="$(CURDIR)/tools/musl-gcc64-static.sh" -j8
 
 
 # ---------------------------------------------------------------------------
@@ -375,19 +381,17 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
 	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
 	@cp userland/configuration/system.mounts.conf "$(ROOTFS64)/System/Configuration/system.mounts.conf"
-	# --- shared libc (docs/shared-libraries-plan.md, M0): stage the
-	# dynamic linker + libc so dynamic executables can boot. Everything
-	# else in the root stays static until the bottom-up world flip; the
-	# interpreter is a hardlink of libc.so (same inode), matching musl's
-	# own install, so the loader recognizes libc as itself.
+	# --- shared libc (docs/shared-libraries-plan.md): stage the dynamic
+	# linker + libc for the dynamic userland. The interpreter is a
+	# hardlink of libc.so (same inode), matching musl's own install, so
+	# the loader recognizes libc as itself.
 	@cp $(MUSL64_PREFIX)/lib/libc.so "$(ROOTFS64)/System/Libraries/libc.so"
 	@ln -f "$(ROOTFS64)/System/Libraries/libc.so" "$(ROOTFS64)/System/Libraries/ld-musl-x86_64.so.1"
-	# M0 acceptance binary: a dynamic (non-PIE) hello. Staged under
-	# System/Shared/tests - System/Tools stays fshlint zero-allow (R1)
-	# static until the whole-world flip.
+	# hello_dl: the dynamic-linker smoke test. Staged under
+	# System/Shared/tests - System/Tools is dynamic too since M1, but the
+	# linter carve-out keeps this one out of the zero-allow scope.
 	@mkdir -p "$(ROOTFS64)/System/Shared/tests"
-	gcc -no-pie -I$(CURDIR)/tools/kernel-headers -specs $(CURDIR)/$(MUSL64_SPECS) \
-		userland/hello_dl.c -o "$(ROOTFS64)/System/Shared/tests/hello_dl"
+	$(MUSL64_CC) userland/hello_dl.c -o "$(ROOTFS64)/System/Shared/tests/hello_dl"
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
 	@cp userland/configuration/system.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.xfb.conf"

@@ -1,11 +1,13 @@
 #!/bin/sh
 # musl-g++ wrapper for the FNX native x86_64 userland (C++).
 #
-# Same contract as tools/musl-gcc64.sh (static ELF64 against the musl at
-# .build/musl64), but for C++: headers and runtime come from the LLVM
-# C++ stack built by docs/cpp-toolchain-plan.md P1 (.build/llvm-cxx-prefix
-# — libc++, libc++abi, libunwind). libc++ (>= 20) requires Clang, so the
-# pin is llvmorg-19.1.7; see tools/fetch-llvm.sh.
+# Same contract as tools/musl-gcc64.sh for the LP64 ABI, but for C++ and
+# deliberately STATIC: headers and runtime come from the LLVM C++ stack
+# built by docs/cpp-toolchain-plan.md P1 (.build/llvm-cxx-prefix — libc++,
+# libc++abi, libunwind), which is built static-only (-static in every
+# cmake flag); the C++ world stays static until that stack goes shared.
+# libc++ (>= 20) requires Clang, so the pin is llvmorg-19.1.7; see
+# tools/fetch-llvm.sh.
 #
 # -nostdinc++ / -nostdlib++: never touch the host libstdc++ headers or
 # runtime. -lunwind must follow -lc++abi (unwind symbols it references).

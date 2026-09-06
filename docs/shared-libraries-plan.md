@@ -1,16 +1,20 @@
 # Shared libraries on FNX
 
-Status: **DECIDED (design, 2026-09) + M0 DONE — one dynamic hello boots.**
-All design decisions below were settled in conversation; the kernel/
-toolchain work described is the implementation backlog. M0 (the contained
-first slice) shipped: `fs/elf.c` loads `ET_DYN` interpreters (`PT_INTERP`)
-at a fixed base (`ELF_INTERP_BASE`, auxv `AT_BASE`), musl builds shared
-with `/System/Libraries` as its syslibdir + loader search path
-(`/System/Libraries:/Shared/Libraries`), `libc.so` + `ld-musl-x86_64.so.1`
-(hardlinked) are staged in `/System/Libraries`, and the dynamic non-PIE
-`hello_dl` (in `System/Shared/tests`, fshlint-exempt) boots and prints
-from the init console shell. Everything else in the root is still static;
-the flip targets below are M1+.
+Status: **DECIDED (design, 2026-09) + M0/M1 DONE — the whole userland is
+dynamic.** All design decisions below were settled in conversation; the
+kernel/toolchain work described is the implementation backlog. M0 shipped
+`fs/elf.c` `ET_DYN`/`PT_INTERP` loading (fixed `ELF_INTERP_BASE`, auxv
+`AT_BASE`, musl shared build with `/System/Libraries` syslibdir + loader
+search path `/System/Libraries:/Shared/Libraries`, hardlinked
+`libc.so`/`ld-musl-x86_64.so.1` staged) and one dynamic hello. M1 flipped
+the world: `tools/musl-gcc64.sh` links dynamic non-PIE by default (the
+static override is `tools/musl-gcc64-static.sh` for the recovery shell /
+updater + unconverted carve-outs), init/dash/toybox/all first-party tools
+are dynamic, fshlint R1 is now "dynamic is the norm" with an explicit
+static exception list, and the kernel auxv reports post-exec euid/egid so
+a setuid-root dynamic binary is seen as secure by musl (no LD_PRELOAD into
+root). C++ (static LLVM runtimes) and the X stack (static-musl
+x11-prefix, Xfb) remain static carve-outs until their own milestones.
 
 ## 1. Why
 

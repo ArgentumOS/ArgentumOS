@@ -73,7 +73,7 @@
  */
 static void elf_create_stack64(struct binargs *barg, unsigned long long *sp,
 	unsigned long long str_ptr, unsigned long long at_base,
-	Elf64_Ehdr *e, unsigned long long phdr_addr)
+	Elf64_Ehdr *e, unsigned long long phdr_addr, __u32 euid, __u32 egid)
 {
 	unsigned int n, first;
 	unsigned long long addr;
@@ -148,9 +148,15 @@ static void elf_create_stack64(struct binargs *barg, unsigned long long *sp,
 		*sp++ = AT_FLAGS;	*sp++ = 0;
 		*sp++ = AT_ENTRY;	*sp++ = e->e_entry;
 		*sp++ = AT_UID;		*sp++ = current->uid;
-		*sp++ = AT_EUID;	*sp++ = current->euid;
+		/* AT_EUID/AT_EGID describe the process as it will look AFTER this
+		 * exec commits (do_execve applies S_ISUID/S_ISGID only after
+		 * elf_load returns). musl derives libc.secure from the auxv id
+		 * mismatch, and a setuid-root DYNAMIC binary whose auxv still
+		 * said euid==uid would honor an attacker's LD_PRELOAD inside a
+		 * root process. */
+		*sp++ = AT_EUID;	*sp++ = euid;
 		*sp++ = AT_GID;		*sp++ = current->gid;
-		*sp++ = AT_EGID;	*sp++ = current->egid;
+		*sp++ = AT_EGID;	*sp++ = egid;
 		*sp++ = AT_RANDOM;	*sp++ = (unsigned long long)rnd;
 		*sp++ = AT_NULL;	*sp++ = 0;
 	}
@@ -332,6 +338,7 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	unsigned long long start, end, length;
 	unsigned long long load_addr = 0, phdr_addr = 0;
 	unsigned long long sp, str, at_base;
+	__u32 euid, egid;
 	char interp_path[PATH_MAX + 1];
 	struct inode *ii;
 	char *idata;
@@ -552,7 +559,18 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	}
 
 	at_base = has_interp ? ELF_INTERP_BASE : 0;
-	elf_create_stack64(barg, (unsigned long long *)sp, str, at_base, e, phdr_addr);
+	/* the auxv must describe the post-exec credentials: do_execve applies
+	 * S_ISUID/S_ISGID only after elf_load returns, but the loader consults
+	 * AT_EUID/AT_EGID at startup (see elf_create_stack64). */
+	euid = current->euid;
+	egid = current->egid;
+	if(i->i_mode & S_ISUID) {
+		euid = i->i_uid;
+	}
+	if(i->i_mode & S_ISGID) {
+		egid = i->i_gid;
+	}
+	elf_create_stack64(barg, (unsigned long long *)sp, str, at_base, e, phdr_addr, euid, egid);
 
 	/* set %rsp to point at 'argc' (16-byte aligned). Native 64-bit
 	 * processes store the full entry RIP/RSP in the 64-bit sigcontext

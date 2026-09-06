@@ -1,7 +1,10 @@
 /*
- * FNX /System/Tools/init — static musl x86_64 (PID 1).
+ * FNX /System/Tools/init — dynamic musl x86_64 (PID 1).
  *
- * Built by `make userland64` into .build/rootfs64/System/Tools/init and
+ * Dynamic since M1 (docs/shared-libraries-plan.md §2.4: the kernel mounts
+ * the root before exec'ing init, so ld.so on the root is available; no
+ * bootstrap deadlock). Built by `make userland64` into
+ * .build/rootfs64/System/Tools/init and
  * packed into the XBFS root image. PID 1 already has fd 0/1/2 open to
  * /System/Devices/TTY/console. It mounts the virtual filesystems the
  * userland tools expect (/System/Processes, devpts under Devices) and

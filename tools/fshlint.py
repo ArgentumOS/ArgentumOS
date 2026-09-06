@@ -2,7 +2,12 @@
 """FSH porting linter gate (docs/fsh-proposal.md 6.1 / Q1).
 
 Scans every regular ELF under <root>/System/Tools (zero-allow) for:
-  R1 PT_INTERP program headers            (dynamic binaries: FNX is static-only)
+  R1 PT_INTERP program headers            (dynamic is the norm since the
+                                          shared-libc flip: an ELF WITHOUT
+                                          PT_INTERP is an error unless it is
+                                          on the explicit static exception
+                                          list - the recovery shell and the
+                                          boot-time updater)
   R2 embedded legacy path strings         (tokens starting /bin /sbin /usr /etc
                                           /lib /var /tmp /dev /proc /home /mnt)
   R3 build-host path leaks                (tokens rooted at the build machine:
@@ -24,6 +29,12 @@ LEGACY = [b"/bin/", b"/sbin/", b"/usr/", b"/etc/", b"/lib/", b"/var/",
 # quote, whitespace, or shell metacharacter)
 BOUND = b' :="\'(;>\n\t'
 BUILD_ROOTS = None  # computed from the repo dir when run in-tree
+
+# The explicit static exception list (docs/shared-libraries-plan.md §2.4):
+# binaries that must run when /System/Libraries is corrupt or missing. The
+# recovery shell and the boot-time updater land here when they ship; until
+# then it stays empty and every System/Tools ELF must be dynamic.
+STATIC_ALLOW = set()
 
 
 def build_roots():
@@ -65,7 +76,9 @@ def classify(s):
 
 
 def has_interp(data):
-    if data[:4] != b'\x7fELF':
+    # an ELF header + program-header table cannot live in fewer than 64
+    # bytes; guard every slice below against short/truncated files
+    if len(data) < 64 or data[:4] != b'\x7fELF':
         return False
     if data[4] == 2:  # ELF64
         phoff = int.from_bytes(data[32:40], 'little')
@@ -108,9 +121,10 @@ def main():
     for p, d in walk_elfs(tools):
         nelf += 1
         rel = os.path.relpath(p, root)
-        if has_interp(d):
+        if not has_interp(d) and os.path.basename(p) not in STATIC_ALLOW:
             errs += 1
-            print("  [ERROR] %s: PT_INTERP (dynamic binary)" % rel)
+            print("  [ERROR] %s: static binary (dynamic is the norm; "
+                  "convert it or add it to the static exception list)" % rel)
         seen = set()
         for s in elf_strings(d):
             c = classify(s)
