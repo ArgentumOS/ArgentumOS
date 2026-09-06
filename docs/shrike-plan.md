@@ -41,7 +41,7 @@ is intact: C++ is Tier-1, clang-built, libc++-standard.
 ## 2. Architecture
 
 ```
-apps (C++)                    shrike:: apps + the window manager
+apps (C++)                    shrike:: apps + Kestrel (the WM)
   │
 shrike (C++17, libc++)        toolkit core — MIT, ours
   ├─ chrome: nine-tile bitmap engine + theme loader
@@ -95,7 +95,7 @@ leaf widgets per `docs/momo-v1-widgets.md` (button, label, check, radio,
 slider, edit, scroll, menu…). Text via Xft. Widget states (idle/hover/
 armed/disabled/focused) map one-to-one onto theme tile sets.
 
-## 5. Window manager (from-scratch; EMWM decision retired)
+## 5. Kestrel — the window manager (from-scratch; EMWM decision retired)
 
 EMWM was chosen because it was a **Motif app** — with the fork gone that
 rationale is gone. The WM is a from-scratch C++ component, built **on
@@ -110,7 +110,7 @@ focus, input, and menus before any other app exists. It is small
 - workspace/session behavior per the app-model/sessionmgr corpus
   (unchanged).
 
-The WM needs its own bird-name later (open item, §8).
+The WM is named **Kestrel** — the small falcon of the family.
 
 ## 6. Menu IPC (AF_UNIX session socket)
 
@@ -141,16 +141,16 @@ swaps by focus; picks flow back as triggers.
 - **S3 — Input & text depth**: focus/traversal, keyboard equivalents,
   edit-widget text input. *Acceptance:* the reference app is fully
   operable without a mouse.
-- **S4 — Window manager + global menubar**: the shrike WM, decorated
-  windows, EWMH focus, menubar + menu IPC end-to-end. *Acceptance:*
-  two apps; menubar swaps with focus; picks trigger app actions.
+- **S4 — Kestrel: window manager + global menubar**: the shrike-based
+  WM (decorated windows, EWMH focus), menubar + menu IPC end-to-end.
+  *Acceptance:* two apps; menubar swaps with focus; picks trigger app
+  actions.
 - **S5 — Desktop**: EMWM replacement boots as the default session
   (make run-uefi shows the shrike desktop; FSH skeleton, reference
   apps). *Acceptance:* interactive desktop on the standard image.
 
 ## 8. Open items (decided at execution, noted for the record)
 
-- **WM name** (a bird from the same family: e.g. Kestrel).
 - **Menu wire format**: framing of the AF_UNIX protocol (reuse the
   config serializer vs a small dedicated codec).
 - **Shared vs static-first for libshrike** (dynamic world suggests
