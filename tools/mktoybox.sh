@@ -13,10 +13,17 @@ cd "$ROOT/third_party/toybox"
 
 # The M4 account tools (passwd/chsh/useradd/userdel/groupadd/groupdel)
 # write the .conf identity domains through libconfig (userland/libconfig.c),
-# which is compiled once and linked into the toybox binary via LDFLAGS.
+# which is now the SHARED first-party lib .build/fnxlib/libconfig.so.1
+# (docs/shared-libraries-plan.md; staged into /System/Libraries) - toybox
+# links -lconfig instead of compiling the source in.
 mkdir -p "$ROOT/.build"
-"$CC_WRAP" -I"$ROOT/include" -c "$ROOT/userland/libconfig.c" \
-  -o "$ROOT/.build/toybox-libconfig.o"
+# toybox links -lconfig against the shared first-party lib; if it has not
+# been built yet (make userland64/toybox64 builds it via the FNXLIB_CONFIG
+# rule first), fail loudly instead of a cryptic -lconfig link error.
+if [ ! -f "$ROOT/.build/fnxlib/libconfig.so.1" ]; then
+  echo "mktoybox: missing $ROOT/.build/fnxlib/libconfig.so.1 (run 'make .build/fnxlib/libconfig.so.1')" >&2
+  exit 1
+fi
 
 # Source patches (third_party/toybox-m4.patch when present) are applied to
 # the clean checkout before building and rolled back afterwards, so the
@@ -90,7 +97,7 @@ print("mktoybox: disabled %d applets needing kernel headers" % len(syms))
 EOF
 
 make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
-  LDFLAGS="$ROOT/.build/toybox-libconfig.o"
+  LDFLAGS="-L$ROOT/.build/fnxlib -lconfig"
 # toybox's build leaves the binary read-only (0555); strip needs write access
 chmod +w toybox 2>/dev/null || true
 strip toybox
@@ -99,7 +106,7 @@ strip toybox
 # make (which would rebuild against the reverted checkout and old config).
 rm -rf "$ROOT/.build/toybox-root"
 make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
-  LDFLAGS="$ROOT/.build/toybox-libconfig.o" \
+  LDFLAGS="-L$ROOT/.build/fnxlib -lconfig" \
   install PREFIX="$ROOT/.build/toybox-root" >/dev/null 2>&1 || \
   make CC="$CC_WRAP" install PREFIX="$ROOT/.build/toybox-root"
 if [ -n "$PATCHED" ]; then

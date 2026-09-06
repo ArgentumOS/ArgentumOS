@@ -75,8 +75,9 @@ External (non-Xorg) dependencies are **not** vendored here; they come from
 the static-musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
 `libXfont2`, `libsha1`, `libXau`, `libXdmcp`) — build them first with
 `tools/x11-deps-build.sh`. Override with `X11PREFIX=`. FNX libconfig
-(`include/libconfig.h` + `userland/libconfig.c`) is compiled in for the
-`system.xfb` config domain.
+(`include/libconfig.h` + `userland/libconfig.c`) is the SHARED
+`.build/fnxlib/libconfig.so.1` since M3 (staged in `/System/Libraries`),
+linked with `-L$(FNXLIB) -lconfig` for the `system.xfb` config domain.
 
 Outputs land under `$(OUT)` (default `build/` inside this dir); the repo
 target sends them to `.build/x11/xfb`.

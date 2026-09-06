@@ -151,6 +151,16 @@ MUSL64_CC_STATIC = $(CURDIR)/tools/musl-gcc64-static.sh
 # X11 third-party dependency prefix (built by tools/x11-shared-build.sh;
 # shared .so + static .a coexist since the M2 conversion).
 X11PREFIX     = .build/x11-prefix
+# First-party shared libraries (docs/shared-libraries-plan.md): FNX code
+# built as .so's into .build/fnxlib and staged into /System/Libraries.
+FNXLIB        = .build/fnxlib
+FNXLIB_CONFIG = $(FNXLIB)/libconfig.so.1
+
+$(FNXLIB_CONFIG): userland/libconfig.c include/libconfig.h
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_CC) -fPIC -shared -Iinclude -Wl,-soname,libconfig.so.1 \
+		-o $@ userland/libconfig.c
+	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-g++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-g++64.sh
@@ -225,7 +235,7 @@ $(DASH64_BIN): $(MUSL64_SPECS) third_party/dash-fsh.patch
 		git checkout -- .
 
 toybox64: $(TOYBOX64_BIN)
-$(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh
+$(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh $(FNXLIB_CONFIG)
 	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64.sh" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $(TOYBOX64_BIN)
 
@@ -257,7 +267,7 @@ XFB_OUT = .build/x11/xfb
 XFB_BIN = $(XFB_OUT)/Xfb
 
 .PHONY: xfb64
-xfb64:
+xfb64: $(FNXLIB_CONFIG)
 	# Xfb links dynamic (M2): its third-party deps (pixman, xkbfile,
 	# Xfont2, Xau) are shared .so in /System/Libraries; the server's own
 	# archives stay in the binary. libsha1.a + the server archives are
@@ -278,7 +288,7 @@ xfb64:
 # toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
 # stage into a scratch root and merge every applet dir into System/Tools.
 TOYBOX64_STAGE = .build/toybox-root
-userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN)
+userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -340,7 +350,8 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) userland/init.c -o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
 	$(MUSL64_CC) userland/acl.c -o "$(ROOTFS64)/System/Tools/acl"
-	$(MUSL64_CC) -Iinclude userland/config.c userland/libconfig.c -o "$(ROOTFS64)/System/Tools/config"
+	$(MUSL64_CC) -Iinclude userland/config.c -L$(CURDIR)/$(FNXLIB) \
+		-lconfig -o "$(ROOTFS64)/System/Tools/config"
 	$(MUSL64_CC) -Iinclude userland/compositor.c -o "$(ROOTFS64)/System/Tools/compositor"
 	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/gui_smoke"
 	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/gui_demo"
@@ -407,6 +418,9 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 		libpixman-1.so libXfont2.so libfontenc.so libz.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
+	# FNX's own shared libconfig (first-party, .build/fnxlib): the
+	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
+	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.
