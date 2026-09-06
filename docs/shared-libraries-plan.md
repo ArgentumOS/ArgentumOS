@@ -1,7 +1,7 @@
 # Shared libraries on FNX
 
-Status: **DECIDED (design, 2026-09) + M0/M1/M2 DONE — dynamic world, X
-stack shared.** All design decisions below were settled in conversation; the
+Status: **DECIDED (design, 2026-09) + M0/M1/M2/M3 DONE — dynamic world,
+X stack and FNX libconfig shared.** All design decisions below were settled in conversation; the
 kernel/toolchain work described is the implementation backlog. M0 shipped
 `fs/elf.c` `ET_DYN`/`PT_INTERP` loading (fixed `ELF_INTERP_BASE`, auxv
 `AT_BASE`, musl shared build with `/System/Libraries` syslibdir + loader
@@ -13,7 +13,7 @@ updater + unconverted carve-outs), init/dash/toybox/all first-party tools
 are dynamic, fshlint R1 is now "dynamic is the norm" with an explicit
 static exception list, and the kernel auxv reports post-exec euid/egid so
 a setuid-root dynamic binary is seen as secure by musl (no LD_PRELOAD into
-root). C++ (static LLVM runtimes) and libconfig stay static carve-outs. M2
+root). C++ (static LLVM runtimes) stays a static carve-out. M2
 converted the X stack: `tools/x11-shared-build.sh` rebuilds the x11-prefix
 libs shared (autotools `--host` / meson `--cross-file` because dynamic
 configure test binaries cannot run on the build host), the versioned
@@ -21,7 +21,15 @@ sonames (`libX11.so.6`, `libxcb.so.1`, `libXau.so.6`, `libXdmcp.so.6`,
 `libxkbfile.so.1`, `libpixman-1.so.0`, `libXfont2.so.2`, `libfontenc.so.1`,
 `libz.so.1`) are staged in `/System/Libraries`, and Xfb (server, now ~10MB
 dynamic), xkbcomp, xdraw and xkey all link dynamic NEEDED against them.
-Xfb's own server archives + libsha1.a stay static inside the binary.
+Xfb's own server archives + libsha1.a stay static inside the binary. M3
+converted FNX's own config parser: the `FNXLIB_CONFIG` rule builds
+`.build/fnxlib/libconfig.so.1` (SONAME `libconfig.so.1`) and userland64
+stages it into `/System/Libraries`; config, toybox's account tools and
+Xfb's configargs (the last compiled-in libconfig consumers) link
+`-L .build/fnxlib -lconfig`. Testing the M3 write path surfaced two latent
+XBFS bugs (mkdirat draining the dirfd inode ref under cp -R; inline file
+content lost when rename rewrote the inode name record) — both fixed and
+guest-verified.
 
 ## 1. Why
 
