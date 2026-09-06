@@ -294,7 +294,7 @@ explicitly-listed host-tool/doc mentions).
 
 ## 8. Status
 
-### M0 — DONE (commit TBD)
+### M0 — DONE (commit 2678129)
 
 - **compiler-rt builtins**: standalone cmake of
   `.build/llvm-src/compiler-rt/lib/builtins` with
@@ -332,7 +332,7 @@ explicitly-listed host-tool/doc mentions).
 Next: **M1** — point `MUSL64_CC`/`MUSL64_CC_STATIC` at the clang
 wrappers; the gcc wrappers stay on disk until M4.
 
-### M1 — DONE (commit TBD)
+### M1 — DONE (commit 6123116)
 
 - **The flip**: `MUSL64_CC` / `MUSL64_CC_STATIC` now point at
   `tools/musl-clang64.sh` / `tools/musl-clang64-static.sh`; every
