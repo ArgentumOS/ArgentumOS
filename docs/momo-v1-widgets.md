@@ -29,10 +29,12 @@ small — everything in v1 is load-bearing for the first desktop apps
 - `momo_scroller` — viewport + scrollbars around one child (Text, lists,
   Viewer, Terminal later).
 
-**Menus** (minimal)
-- `momo_menu_bar`, `momo_menu`, `momo_menu_item`, separator/check items.
-  Menu model (wiring, accelerators) is the later app-model topic; v1
-  ships the widgets.
+**Menus** (global model, docs/motif-fork-plan.md)
+- `momo_menu`, `momo_menu_item`, separator/check items — app-side menu
+  *model*. There is **no per-window menu bar widget**: the menubar is a
+  single global bar provided by the desktop shell, which renders the
+  focused app's published menu model. Menu publishing/ownership is the
+  later app-model/desktop-shell topic.
 
 **Dialogs**
 - `momo_message` — info/warn/error/question with buttons.
@@ -139,3 +141,7 @@ surfaced the open micro-decisions below.
 - Settings is the reference call-site app for the API-shape milestone.
 - The sketch's mechanisms (typed descriptors, typed callbacks, veto
   bools, two-container layout) are the shape the M4 API must deliver.
+- **Fonts: Xft** (FreeType/fontconfig added to the X stack; no core
+  fonts, no bitmap stack).
+- **Menus: one global menubar** (NeXT/macOS model); no per-window menu
+  bars; the bar is shell-provided, apps publish their menu model.

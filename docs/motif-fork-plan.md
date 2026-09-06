@@ -145,6 +145,30 @@ geometry managers, no other layout machinery exposed to apps:
 Both are engine-backed layout; apps describe either packing order or
 springs/struts and the container does the negotiation.
 
+### Text & fonts — Xft (decided)
+
+Momo renders text with **Xft** (anti-aliased, Unicode-capable,
+FreeType-backed) — not core fonts, not the FNX bitmap stack. Coherent
+with the whole family: thentenaar/motif already carries Xft support,
+and EMWM and urxvt use it too. Build consequence: the X stack gains
+**libXft + fontconfig + FreeType** (+ libXrender; Xfb's RENDER
+support is already present).
+
+### Menus — global menubar (decided)
+
+FNX uses a **single global menubar** at the top of the screen, not
+per-window menu bars (the NeXT/macOS model): the active window/app's
+menus appear there. Consequences:
+
+- App-side widgets are `momo_menu` / `momo_menu_item` (+ separator,
+  check); there is **no per-window `momo_menu_bar`** widget.
+- The bar itself is **shell-provided** (it belongs to the future
+  desktop shell, alongside EMWM and the panel) — apps *publish* their
+  menu model; the bar renders it and swaps by focus.
+- The publishing/ownership mechanism (how an app's menu model reaches
+  the bar; how focus tracks the active window via EWMH) is an open
+  item for the app-model / desktop-shell topic, not the toolkit.
+
 ### v1 widget catalog + reference app
 
 The v1 widget set and the Settings reference call-site sketch are
