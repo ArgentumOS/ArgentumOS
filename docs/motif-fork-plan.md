@@ -145,6 +145,12 @@ geometry managers, no other layout machinery exposed to apps:
 Both are engine-backed layout; apps describe either packing order or
 springs/struts and the container does the negotiation.
 
+### v1 widget catalog + reference app
+
+The v1 widget set and the Settings reference call-site sketch are
+decided: `docs/momo-v1-widgets.md` (catalog, sketch, open
+micro-decisions, pinned decisions).
+
 ## 4. Milestones (sketch)
 
 - **M0 — Vendor + build recon.** Vendor Open Motif 2.3.x + stock
