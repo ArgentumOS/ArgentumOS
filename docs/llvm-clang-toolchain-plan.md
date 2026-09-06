@@ -280,7 +280,9 @@ explicitly-listed host-tool/doc mentions).
 
 - **Self-hosting**: compiling clang/lld under FNX is a later milestone
   (the pinned 19.1.7 source in `.build/llvm-src` is the future seed);
-  the host clang-19.1.7 is the build compiler for now.
+  the host clang-19.1.7 is the build compiler for now. The long-term
+  milestone spine (SH-0..SH-5, from cross-seed to kernel-on-FNX) lives
+  in docs/self-hosting-plan.md.
 - **LTO**: not required for the switch; thin-LTO through lld is a
   follow-on if the kernel/userland ever wants it (needs llvm-ar for
   thin archives — present at /usr/lib/llvm-19/bin).

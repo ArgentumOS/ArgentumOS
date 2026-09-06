@@ -24,7 +24,8 @@ anywhere, even if modified and vendored.
 ## 1. Long-term toolchain direction (note for the record)
 
 FNX's long-term self-hosting plan is to make **LLVM/Clang the compiler
-toolchain** for the whole OS and **musl the C standard library**:
+toolchain** for the whole OS and **musl the C standard library** (the
+milestone spine is docs/self-hosting-plan.md):
 
 - Clang, lld, compiler-rt, libc++, libc++abi and libunwind are all
   Apache-2.0-with-LLVM-exception (libc++ is additionally MIT) — one
