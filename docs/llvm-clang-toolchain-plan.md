@@ -390,3 +390,47 @@ compilers swapped, `tools/musl-clang++64.sh`); the crt `.comment`
 footprint and the recovery set then become fully clang. musl's own
 `make`/`configure` uses `CC=gcc` today via config.mak, untouched by
 M1.
+
+### M2 — DONE (commit TBD)
+
+- **musl built by clang**: the `musl64` recipe configures
+  `CC=/usr/lib/llvm-19/bin/clang` and overrides config.mak
+  `LIBCC = $(CURDIR)/.build/compiler-rt/.../libclang_rt.builtins-x86_64.a`
+  (absolute - musl's link runs inside third_party/musl - in place of
+  `-lgcc -lgcc_eh`; clang has no libgcc and musl's configure would
+  otherwise pick up the host gcc's glibc libgcc). musl's build is
+  self-contained (own headers, freestanding) so no sysroot/-isystem is
+  needed; clang's configure-generated CFLAGS_AUTO drops the gcc-only
+  flags. libc.so/crt1.o/Scrt1.o/libc.a now carry pure clang `.comment`.
+- **C++ runtimes by clang++**: the `llvm-cxx` recipe now uses
+  `CMAKE_C_COMPILER=$(MUSL64_CC_STATIC)` and
+  `CMAKE_CXX_COMPILER=tools/musl-clang++64.sh` (no more gcc/-specs
+  flags; the wrapper encodes the contract). The wrapper is
+  self-bootstrapping: it adds the libc++ include dir and
+  `-lc++ -lc++abi -lunwind` only once `.build/llvm-cxx-prefix` is
+  populated, so the runtimes build with it. libc++/libc++abi/libunwind
+  are now pure clang.
+- **tools/musl-clang++64.sh** replaces musl-g++64.sh (`MUSL64_CXX`):
+  static clang++ with the same driver contract as the C wrapper plus
+  libc++/libc++abi/libunwind, `-Wl,--eh-frame-hdr` (libunwind needs
+  .eh_frame_hdr), and compiler-rt **crtbegin.o/crtend.o** - the
+  standalone builtins cmake does not emit crt objects, and clang++
+  links need crtbegin for `__dso_handle` (libc++ locale/guard code
+  references it). Compiler-rt crtbegin/crtend sources are compiled with
+  the static wrapper into `.build/compiler-rt/lib/linux/` by new
+  Makefile rules. Two wrapper gotchas: libc++'s own include dir MUST be
+  searched before the C headers (its `<cstdio>`/`<stdio.h>` wrappers
+  `#include_next` the C library's) and the C++ archives must precede
+  `-lc` in the static link (libc++abi references pthread symbols that
+  live in musl's libc).
+- **Acceptance** (all green): in-guest `cpp_smoke` (`M2_CPP_SMOKE:
+  True` - exceptions, RTTI, string/vector, iostream, std::thread via
+  the static clang musl + clang libc++ stack; the same binary runs on
+  the build host), m1_boot + m4_recovery all modes on the clang-built
+  musl, m2_xfbdesk (the M1-era x11 `.so`'s load against the new
+  clang-built libc.so - ABI clean), fshlint 0. Every staged ELF now
+  carries pure clang `.comment` - the gcc crt footprint is gone.
+
+Next: **M3** — the kernel via clang + lld: CC64R flags verbatim
+(compile64 pattern), **PATCH_PIC gated** (clang emits `lea` for hidden
+data; gcc-14 needs the byte patch), EFI link ported to lld/llvm-objcopy.

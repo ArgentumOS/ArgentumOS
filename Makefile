@@ -146,6 +146,13 @@ run-qemu:
 # exception (recovery shell/updater + unconverted third-party carve-outs).
 MUSL64_PREFIX = .build/musl64
 MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
+# musl itself is built by clang since M2 (docs/llvm-clang-toolchain-plan.md
+# M2): the configured CC is the host clang and LIBCC points at the
+# compiler-rt builtins archive in place of -lgcc/-lgcc_eh (clang has no
+# libgcc; musl's configure would otherwise detect the host gcc's glibc
+# libgcc). musl's build is self-contained (own headers, freestanding), so
+# no sysroot or -isystem is needed.
+MUSL64_BUILD_CC = /usr/lib/llvm-19/bin/clang
 # The one system compiler is clang since M1 (docs/llvm-clang-toolchain-
 # plan.md): the wrappers below drive /usr/lib/llvm-19 clang with the same
 # musl/FSH link contract the gcc specs used to encode, plus the
@@ -178,7 +185,7 @@ $(FNXLIB_CONFIG): userland/libconfig.c include/libconfig.h
 	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-g++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
-MUSL64_CXX    = $(CURDIR)/tools/musl-g++64.sh
+MUSL64_CXX    = $(CURDIR)/tools/musl-clang++64.sh
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile
 LLVM_CXX_PREFIX = .build/llvm-cxx-prefix
@@ -201,8 +208,9 @@ $(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_
 		git apply $(CURDIR)/third_party/musl-fsh.patch && \
 		git apply $(CURDIR)/third_party/musl-pwconf.patch && \
 		git apply $(CURDIR)/third_party/musl-hosts.patch && \
-		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) --syslibdir=/System/Libraries && \
+		CC="$(MUSL64_BUILD_CC)" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) --syslibdir=/System/Libraries && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
+		sed -i 's|^LIBCC = .*|LIBCC = $(CURDIR)/$(COMPILER_RT_BUILTINS)|' config.mak && \
 		$(MAKE) && $(MAKE) install && \
 		ln -f $(CURDIR)/$(MUSL64_PREFIX)/lib/libc.so $(CURDIR)/$(MUSL64_PREFIX)/lib/ld-musl-x86_64.so.1 && \
 		git checkout -- . && \
@@ -210,8 +218,12 @@ $(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_
 
 # LLVM C++ runtimes (docs/cpp-toolchain-plan.md P0+P1): pinned fetch via
 # tools/fetch-llvm.sh, then a cmake build of static libc++/libc++abi/
-# libunwind against musl (specs-based; see the plan for the measured
-# gotchas: no CMAKE_SYSROOT, -I tools/kernel-headers for linux/futex.h).
+# libunwind against musl. Since M2 the compilers are the clang wrappers
+# (docs/llvm-clang-toolchain-plan.md M2): the static clang wrapper for C,
+# the self-bootstrapping tools/musl-clang++64.sh for C++ (it links the
+# musl crt/-lc/compiler-rt itself and only adds the libc++ pieces once
+# they are installed, so the runtimes build with it). No CMAKE_SYSROOT;
+# the wrapper flags carry -I tools/kernel-headers for linux/futex.h.
 llvm-cxx: $(LLVM_CXX_STAMP)
 
 $(LLVM_CXX_SRC)/libcxx/CMakeLists.txt: tools/fetch-llvm.sh
@@ -221,10 +233,11 @@ $(LLVM_CXX_CFG): $(LLVM_CXX_SRC)/libcxx/CMakeLists.txt
 	rm -rf .build/llvm-cxx $(LLVM_CXX_PREFIX)
 	cmake -G "Unix Makefiles" -S $(LLVM_CXX_SRC)/runtimes -B .build/llvm-cxx \
 	  -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
-	  -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-	  -DCMAKE_C_FLAGS="-static -I$(CURDIR)/tools/kernel-headers -specs $(CURDIR)/$(MUSL64_SPECS)" \
-	  -DCMAKE_CXX_FLAGS="-static -I$(CURDIR)/tools/kernel-headers -specs $(CURDIR)/$(MUSL64_SPECS)" \
-	  -DCMAKE_EXE_LINKER_FLAGS=-static \
+	  -DCMAKE_C_COMPILER=$(MUSL64_CC_STATIC) \
+	  -DCMAKE_CXX_COMPILER=$(CURDIR)/tools/musl-clang++64.sh \
+	  -DCMAKE_C_FLAGS="" \
+	  -DCMAKE_CXX_FLAGS="" \
+	  -DCMAKE_EXE_LINKER_FLAGS="" \
 	  -DCMAKE_INSTALL_PREFIX=$(CURDIR)/$(LLVM_CXX_PREFIX) \
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DLIBCXX_ENABLE_SHARED=OFF -DLIBCXXABI_ENABLE_SHARED=OFF \
@@ -264,6 +277,20 @@ $(COMPILER_RT_CFG): .build/llvm-src/compiler-rt/lib/builtins/CMakeLists.txt
 
 $(COMPILER_RT_BUILTINS): $(COMPILER_RT_CFG)
 	cmake --build .build/compiler-rt -j$$(nproc)
+
+# crtbegin.o/crtend.o for C++ (docs/llvm-clang-toolchain-plan.md M2): the
+# standalone builtins cmake does not emit crt objects, but clang++ links
+# need them - crtbegin defines __dso_handle (libc++ locale/guard code
+# references it) and registers .eh_frame, crtend closes the section.
+# Compiled from the pinned compiler-rt sources with the static wrapper.
+COMPILER_RT_CRTBEGIN = .build/compiler-rt/lib/linux/crtbegin.o
+COMPILER_RT_CRTEND   = .build/compiler-rt/lib/linux/crtend.o
+
+$(COMPILER_RT_CRTBEGIN): .build/llvm-src/compiler-rt/lib/builtins/crtbegin.c $(MUSL64_CC_STATIC)
+	$(MUSL64_CC_STATIC) -c $< -o $@
+
+$(COMPILER_RT_CRTEND): .build/llvm-src/compiler-rt/lib/builtins/crtend.c $(MUSL64_CC_STATIC)
+	$(MUSL64_CC_STATIC) -c $< -o $@
 
 # --- Clang toolchain M0 proof (docs/llvm-clang-toolchain-plan.md M0) ---
 # userland/hello.c compiled twice by the clang wrappers - dynamic and
