@@ -61,8 +61,9 @@ spine reads correctly, not duplicated here.
   libraries + a working loader on FNX, because a dynamic compiler is far
   smaller to build than a static one and the guest RAM/disk budget is
   tight; the static recovery set stays for the bootstrap-deadlock case.
-- **G3 — Build prerequisites on FNX**: a build driver (`make`, or a small
-  FNX-native build script), patch/sed/awk (toybox covers most), and
+- **G3 — Build prerequisites on FNX**: a build driver (bmake or ninja per
+  §4, or a small FNX-native build script), patch/sed/awk (toybox covers
+  most), and
   enough persistent disk for the LLVM source tree (multi-hundred-MB;
   likely a dedicated build volume, not the root image).
 - **G4 — RAM/disk budget sized**: clang/LLVM builds are memory-hungry.
@@ -133,9 +134,32 @@ toolchain yields an identical image (see §5 on reproducibility).
 
 ## 4. Cross-cutting open decisions
 
-- **Build driver**: port `make` (GNU make is GPL — a permissive-make
-  decision) or standardize on a small FNX-native build script that the
-  tree's Makefiles can be driven by. Affects SH-4/SH-5 acceptance.
+- **Build driver**: GNU make is GPL, so the system driver must be
+  permissive. Shortlist:
+  - **BSD make (`bmake`)** — BSD-2-Clause, small C, trivially
+    self-hostable, POSIX make + much GNU coverage. Not a byte drop-in:
+    the tree's Makefiles use GNU-isms (`$(shell ...)`, `:=` semantics,
+    pattern-rule edges) that need edits or a POSIX-make hygiene pass
+    (write the tree portable-POSIX so host GNU make and guest bmake both
+    drive it).
+  - **Ninja** — Apache-2.0, one small C++ binary, very portable. Reads
+    generated `.ninja` files, not makefiles — and it is what clang's own
+    build uses (`CMake + Ninja`). CMake (BSD-3-Clause) is a big C++ port
+    itself, but it can generate `.ninja` **on the host once**; the guest
+    then only needs ninja to rebuild clang, re-shipping the generated
+    files when sources change. Python/meson/SCons/redo-family and
+    JVM-based Bazel are all out (Python on FNX, Lua, or JVM
+    prerequisites that don't exist).
+  - **Custom FNX driver** — a small dependency-graph builder in C as a
+    system component; fits the educational mission and the permissive
+    roof, costs engineering, one-off syntax.
+
+  Two credible routes (not mutually exclusive): **bmake as the system
+  driver** for the tree (host dev keeps GNU make; POSIX hygiene makes
+  both work), plus **ninja for the clang bootstrap specifically**
+  (host-CMake-generated `.ninja`, guest runs ninja). Decide at
+  execution; bmake is the recommended default for the tree, ninja for
+  the LLVM stage. Affects SH-4/SH-5 acceptance.
 - **Kernel-on-FNX timing**: SH-5 is last in the spine, but the kernel
   clang build (G1) may make kernel-in-guest practical earlier — the
   milestone order is not a commitment.
