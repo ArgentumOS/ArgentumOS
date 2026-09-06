@@ -582,3 +582,16 @@ index 3d417284..01eef007 100644
  	} else if ((name&~4U)!=1 && name-_CS_POSIX_V6_ILP32_OFF32_CFLAGS>35U) {
  		errno = EINVAL;
  		return 0;
+diff --git a/ldso/dynlink.c b/ldso/dynlink.c
+index 10471b23..7a3c9c49 100644
+--- a/ldso/dynlink.c
++++ b/ldso/dynlink.c
+@@ -1161,7 +1161,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+ 					sys_path = "";
+ 				}
+ 			}
+-			if (!sys_path) sys_path = "/lib:/usr/local/lib:/usr/lib";
++			if (!sys_path) sys_path = "/System/Libraries:/Shared/Libraries";
+ 			fd = path_open(name, sys_path, buf, sizeof buf);
+ 		}
+ 		pathname = buf;

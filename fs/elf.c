@@ -15,6 +15,7 @@
 #include <fnx/mman.h>
 #include <fnx/fs.h>
 #include <fnx/fcntl.h>
+#include <fnx/stat.h>
 #include <fnx/process.h>
 #include <fnx/errno.h>
 #include <fnx/stdio.h>
@@ -158,24 +159,182 @@ static void elf_create_stack64(struct binargs *barg, unsigned long long *sp,
 
 #ifdef __x86_64__
 /*
- * FNX (native 64-bit port): ELF64 loader. The x86_64 musl static
- * binaries are ET_EXEC non-PIE at 0x400000, so all load/stack addresses
- * stay below 4GB and the existing (32-bit) vma layer + the 32-bit
- * sigcontext fields still work; the differences are the 64-bit program
- * headers, the 64-bit initial stack (u64 argv/envp/auxv, 16-byte aligned)
- * and the 64-bit user-mode entry (UCODE64, selected via PF_ELF64).
+ * FNX (native 64-bit port): ELF64 loader.
+ *
+ * Static executables are ET_EXEC non-PIE at 0x400000 (everything below
+ * 4GB). Dynamic executables (docs/shared-libraries-plan.md) are also
+ * ET_EXEC non-PIE: when the main image carries a PT_INTERP the kernel
+ * additionally maps the interpreter (ld-musl-x86_64.so.1, an ET_DYN
+ * shared object) at the fixed base ELF_INTERP_BASE and enters the process
+ * there, letting musl's ld.so self-relocate and load the dependencies.
+ * auxv keeps the SysV contract: AT_PHDR/AT_PHENT/AT_PHNUM/AT_ENTRY
+ * describe the MAIN image (the loader derives the main program's load
+ * address and entry from them), AT_BASE is the interpreter's load base.
  */
-int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, char *data)
+
+/* fixed load base for the dynamic linker. The mmap() region starts at
+ * MMAP_START (64TB) and the initial stack grows down from USER_STACK_TOP
+ * (128TB), so this slot collides with neither. Fixed (no ASLR) per the
+ * plan §2.3; randomization is a later, additive milestone. */
+#define ELF_INTERP_BASE	0x00007f0000000000ULL
+
+/* map every PT_LOAD of an image whose header lives in 'data' at
+ * base + p_vaddr (base is 0 for an ET_EXEC main image, whose p_vaddrs are
+ * absolute). Same overflow / file-range validation and do_mmap calls the
+ * static loader used for the main image. Returns 0, or -ENOEXEC (a
+ * SIGSEGV has been sent for user-half violations). On success
+ * *last_ptload points at the image's last PT_LOAD. */
+static int elf_map_loads64(struct inode *i, char *data, unsigned long long base,
+	int is_main, Elf64_Phdr **last_ptload)
 {
 	int n;
 	long errno;
 	Elf64_Ehdr *e;
-	Elf64_Phdr *ph, *last_ptload;
-	unsigned long long start, end, length, offset;
+	Elf64_Phdr *ph;
+	unsigned long long start, length, offset, vaddr;
 	unsigned long long prot;
-	unsigned long long load_addr = 0, phdr_addr = 0;
-	unsigned long long sp, str;
 	char type;
+
+	e = (Elf64_Ehdr *)data;
+	*last_ptload = NULL;
+	for(n = 0; n < e->e_phnum; n++) {
+		ph = (Elf64_Phdr *)(data + e->e_phoff + (sizeof(Elf64_Phdr) * n));
+		if(ph->p_type != PT_LOAD) {
+			continue;
+		}
+		vaddr = base + ph->p_vaddr;
+		/* overflow-safe user-half bound: base + p_vaddr + p_memsz
+		 * must not wrap past the canonical 128TB user boundary */
+		if(vaddr > 0x00007FFFFFFFFFFFULL ||
+		   ph->p_memsz > 0x00007FFFFFFFFFFFULL - vaddr) {
+			/* above the canonical user half (128TB) */
+			send_sig(current, SIGSEGV);
+			return -ENOEXEC;
+		}
+		/* the file-backed part of the segment must lie inside
+		 * the file: p_offset may not underflow the page offset
+		 * and p_offset+p_filesz may not run past EOF */
+		if(ph->p_offset < (ph->p_vaddr & ~PAGE_MASK) ||
+		   ph->p_offset > i->i_size ||
+		   ph->p_filesz > i->i_size - ph->p_offset) {
+			return -ENOEXEC;
+		}
+		start = vaddr & PAGE_MASK;
+		length = (vaddr & ~PAGE_MASK) + ph->p_filesz;
+		offset = ph->p_offset - (vaddr & ~PAGE_MASK);
+		type = P_DATA;
+		prot = 0;
+		if(ph->p_flags & PF_R) {
+			prot = PROT_READ;
+		}
+		if(ph->p_flags & PF_W) {
+			prot |= PROT_WRITE;
+		}
+		if(ph->p_flags & PF_X) {
+			prot |= PROT_EXEC;
+			type = P_TEXT;
+			if(is_main) {
+				current->end_code = (addr_t)(start + length);
+			}
+		}
+		errno = do_mmap(i, (addr_t)start, (addr_t)length,
+			(unsigned int)prot, MAP_PRIVATE | MAP_FIXED,
+			(addr_t)offset, type, O_RDONLY, NULL);
+		if(errno < 0 && errno > -PAGE_SIZE) {
+			send_sig(current, SIGSEGV);
+			return -ENOEXEC;
+		}
+		*last_ptload = ph;
+	}
+	return 0;
+}
+
+/* zero-fill the DATA tail of the image's last PT_LOAD: the fractional
+ * last page of the file mapping, then a fresh anonymous BSS vma covering
+ * the pages between the file-backed part and p_memsz. The dynamic
+ * linker's own RW segment carries .bss (libc.so), and its self-
+ * relocation in ldso/dlstart.c writes there before libc init has run. */
+static int elf_zero_tail64(Elf64_Phdr *ph, unsigned long long base)
+{
+	int errno;
+	unsigned long long start, end, length;
+	extern int fnx_fault_user_pages(addr_t, unsigned int);
+
+	/* only a writable segment can carry a zero-filled data tail; the
+	 * kernel-mode memset below would fault on an RX/RO mapping */
+	if(!(ph->p_flags & PF_W)) {
+		return 0;
+	}
+
+	/* zero-fill the fractional page of the DATA section */
+	end = PAGE_ALIGN(base + ph->p_vaddr + ph->p_filesz);
+	start = base + ph->p_vaddr + ph->p_filesz;
+	length = end - start;
+	if(length) {
+		if(fnx_fault_user_pages((addr_t)(start & PAGE_MASK), (unsigned int)length)) {
+			send_sig(current, SIGSEGV);
+			return -ENOEXEC;
+		}
+		memset_b((void *)(addr_t)start, 0, (__size_t)length);
+	}
+
+	/* setup the BSS section */
+	start = base + ph->p_vaddr + ph->p_filesz;
+	start = PAGE_ALIGN(start);
+	end = base + ph->p_vaddr + ph->p_memsz;
+	end = PAGE_ALIGN(end);
+	length = end - start;
+	if(!length) {
+		return 0;
+	}
+	errno = do_mmap(NULL, (addr_t)start, (addr_t)length,
+		PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0, P_BSS, 0, NULL);
+	if(errno < 0 && errno > -PAGE_SIZE) {
+		send_sig(current, SIGSEGV);
+		return -ENOEXEC;
+	}
+	return 0;
+}
+
+/* read the first block of a file into a fresh kernel page. Mirrors
+ * do_execve()'s read of the main image: copy + brelse immediately so the
+ * buffer cannot conflict when the same block is faulted in later. */
+static int elf_read_first_block(struct inode *i, char **out)
+{
+	__blk_t block;
+	struct buffer *buf;
+	char *data;
+
+	*out = NULL;
+	if(!(data = (void *)kmalloc(PAGE_SIZE))) {
+		return -ENOMEM;
+	}
+	if((block = bmap(i, 0, FOR_READING)) < 0) {
+		kfree((addr_t)data);
+		return block;
+	}
+	if(!(buf = bread(i->dev, block, i->sb->s_blocksize))) {
+		kfree((addr_t)data);
+		return -EIO;
+	}
+	memcpy_b(data, buf->data, i->sb->s_blocksize);
+	brelse(buf);
+	*out = data;
+	return 0;
+}
+
+int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, char *data)
+{
+	int n, has_interp;
+	long errno;
+	Elf64_Ehdr *e, *ie;
+	Elf64_Phdr *ph, *last_ptload, *ilast;
+	unsigned long long start, end, length;
+	unsigned long long load_addr = 0, phdr_addr = 0;
+	unsigned long long sp, str, at_base;
+	char interp_path[PATH_MAX + 1];
+	struct inode *ii;
+	char *idata;
 	unsigned long long ae_ptr_len, ae_str_len;
 
 	e = (Elf64_Ehdr *)data;
@@ -191,6 +350,86 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 	/* pointer area: argc + argv[] + NULL + envp[] + NULL + auxv, all u64 */
 	ae_ptr_len = (1 + (barg->argc + 1) + (barg->envc + 1)) * sizeof(unsigned long long);
 	ae_str_len = barg->argv_len + barg->envp_len;
+
+	/* the program-header table lives in the first block, copied into a
+	 * kmalloc(PAGE_SIZE) buffer: bound e_phoff/e_phnum or the phdr reads
+	 * run past the buffer (OOB kernel heap read feeding attacker-
+	 * controlled p_* values into do_mmap) */
+	if(e->e_phnum > 65536 ||
+	   e->e_phoff > PAGE_SIZE ||
+	   e->e_phnum * sizeof(Elf64_Phdr) > PAGE_SIZE - e->e_phoff) {
+		return -ENOEXEC;
+	}
+
+	/* pre-scan (still before the point of no return) for the auxv
+	 * AT_PHDR source and, for dynamic executables, the PT_INTERP path */
+	has_interp = 0;
+	ii = NULL;
+	idata = NULL;
+	for(n = 0; n < e->e_phnum; n++) {
+		ph = (Elf64_Phdr *)(data + e->e_phoff + (sizeof(Elf64_Phdr) * n));
+		if(ph->p_type == PT_PHDR) {
+			phdr_addr = ph->p_vaddr;
+		} else if(ph->p_type == PT_INTERP) {
+			/* p_filesz <= PATH_MAX, so PAGE_SIZE - p_filesz cannot
+			 * underflow; the reordered comparison avoids the u64
+			 * wrap of p_offset + p_filesz */
+			if(ph->p_filesz < 2 || ph->p_filesz > PATH_MAX ||
+			   ph->p_offset > PAGE_SIZE - ph->p_filesz) {
+				return -ENOEXEC;
+			}
+			memcpy_b(interp_path, data + ph->p_offset, (__size_t)ph->p_filesz);
+			interp_path[ph->p_filesz - 1] = 0;	/* NUL must fit in filesz */
+			if(interp_path[0] != '/') {
+				/* no PATH search for ld.so: absolute only */
+				return -ENOEXEC;
+			}
+			has_interp = 1;
+		} else if(ph->p_type == PT_LOAD) {
+			if(!load_addr) {
+				load_addr = ph->p_vaddr - ph->p_offset;
+			}
+		}
+	}
+	if(!phdr_addr) {
+		/* static musl has no PT_PHDR; AT_PHDR must still point at the
+		 * program header table (musl's static_init_tls walks it) */
+		phdr_addr = load_addr + e->e_phoff;
+	}
+
+	/* resolve + validate the interpreter while the old address space is
+	 * still intact, so a missing/corrupt ld.so is a clean exec error
+	 * (-ENOENT/-EACCES/-ENOEXEC) instead of a dead process */
+	if(has_interp) {
+		if((errno = namei(interp_path, &ii, NULL, FOLLOW_LINKS)) < 0) {
+			return errno;
+		}
+		if(!S_ISREG(ii->i_mode)) {
+			errno = -EACCES;
+			goto err_interp;
+		}
+		if(check_permission(TO_EXEC, ii) < 0) {
+			errno = -EACCES;
+			goto err_interp;
+		}
+		if((errno = elf_read_first_block(ii, &idata)) < 0) {
+			goto err_interp;
+		}
+		ie = (Elf64_Ehdr *)idata;
+		if(ie->e_ident[EI_MAG0] != ELFMAG0 || ie->e_ident[EI_MAG1] != ELFMAG1 ||
+			ie->e_ident[EI_MAG2] != ELFMAG2 || ie->e_ident[EI_MAG3] != ELFMAG3 ||
+			ie->e_ident[EI_CLASS] != ELFCLASS64 ||
+			ie->e_type != ET_DYN || ie->e_machine != EM_X86_64) {
+			errno = -ENOEXEC;
+			goto err_interp;
+		}
+		if(ie->e_phnum > 65536 ||
+		   ie->e_phoff > PAGE_SIZE ||
+		   ie->e_phnum * sizeof(Elf64_Phdr) > PAGE_SIZE - ie->e_phoff) {
+			errno = -ENOEXEC;
+			goto err_interp;
+		}
+	}
 
 	/* point of no return */
 	release_binary();
@@ -215,109 +454,63 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 
 	current->entry_address = e->e_entry;
 
-	/* the program-header table lives in the first block, copied into a
-	 * kmalloc(PAGE_SIZE) buffer: bound e_phoff/e_phnum or the phdr reads
-	 * run past the buffer (OOB kernel heap read feeding attacker-
-	 * controlled p_* values into do_mmap) */
-	if(e->e_phnum > 65536 ||
-	   e->e_phoff > PAGE_SIZE ||
-	   e->e_phnum * sizeof(Elf64_Phdr) > PAGE_SIZE - e->e_phoff) {
-		return -ENOEXEC;
+	if((errno = elf_map_loads64(i, data, 0, 1, &last_ptload)) < 0) {
+		goto err_interp;
 	}
-
-	last_ptload = NULL;
-	for(n = 0; n < e->e_phnum; n++) {
-		ph = (Elf64_Phdr *)(data + e->e_phoff + (sizeof(Elf64_Phdr) * n));
-		if(ph->p_type == PT_PHDR) {
-			phdr_addr = ph->p_vaddr;
+	if(has_interp) {
+		if((errno = elf_map_loads64(ii, idata, ELF_INTERP_BASE, 0, &ilast)) < 0) {
+			goto err_interp;
 		}
-		if(ph->p_type == PT_LOAD) {
-			if(!load_addr) {
-				load_addr = ph->p_vaddr - ph->p_offset;
-			}
-			/* overflow-safe user-half bound: p_vaddr + p_memsz must
-			 * not wrap past the canonical 128TB user boundary */
-			if(ph->p_vaddr > 0x00007FFFFFFFFFFFULL ||
-			   ph->p_memsz > 0x00007FFFFFFFFFFFULL - ph->p_vaddr) {
-				/* above the canonical user half (128TB) */
-				send_sig(current, SIGSEGV);
-				return -ENOEXEC;
-			}
-			/* the file-backed part of the segment must lie inside
-			 * the file: p_offset may not underflow the page offset
-			 * and p_offset+p_filesz may not run past EOF */
-			if(ph->p_offset < (ph->p_vaddr & ~PAGE_MASK) ||
-			   ph->p_offset > i->i_size ||
-			   ph->p_filesz > i->i_size - ph->p_offset) {
-				return -ENOEXEC;
-			}
-			start = ph->p_vaddr & PAGE_MASK;
-			length = (ph->p_vaddr & ~PAGE_MASK) + ph->p_filesz;
-			offset = ph->p_offset - (ph->p_vaddr & ~PAGE_MASK);
-			type = P_DATA;
-			prot = 0;
-			if(ph->p_flags & PF_R) {
-				prot = PROT_READ;
-			}
-			if(ph->p_flags & PF_W) {
-				prot |= PROT_WRITE;
-			}
-			if(ph->p_flags & PF_X) {
-				prot |= PROT_EXEC;
-				type = P_TEXT;
-				current->end_code = (addr_t)(start + length);
-			}
-			errno = do_mmap(i, (addr_t)start, (addr_t)length,
-				(unsigned int)prot, MAP_PRIVATE | MAP_FIXED,
-				(addr_t)offset, type, O_RDONLY, NULL);
-			if(errno < 0 && errno > -PAGE_SIZE) {
-				send_sig(current, SIGSEGV);
-				return -ENOEXEC;
-			}
-			last_ptload = ph;
+		if(!ilast) {
+			/* a valid ET_DYN with no PT_LOAD at all */
+			errno = -ENOEXEC;
+			goto err_interp;
 		}
-	}
-
-	if(!phdr_addr) {
-		/* static musl has no PT_PHDR; AT_PHDR must still point at the
-		 * program header table (musl's static_init_tls walks it) */
-		phdr_addr = load_addr + e->e_phoff;
+		if((errno = elf_zero_tail64(ilast, ELF_INTERP_BASE)) < 0) {
+			goto err_interp;
+		}
 	}
 
 	if(!last_ptload) {
 		printk("%s(): no program headers.\n", __FUNCTION__);
 		send_sig(current, SIGKILL);
-		return -ENOEXEC;
+		errno = -ENOEXEC;
+		goto err_interp;
 	}
 	ph = last_ptload;
 
-	/* zero-fill the fractional page of the DATA section */
-	end = PAGE_ALIGN(ph->p_vaddr + ph->p_filesz);
-	start = ph->p_vaddr + ph->p_filesz;
-	length = end - start;
-	{
-		extern int fnx_fault_user_pages(addr_t, unsigned int);
+	/* zero-fill the fractional page of the DATA section + setup the BSS
+	 * section. Both only apply to a writable last segment (the kernel-
+	 * mode memset would fault on an RX/RO mapping). */
+	if(ph->p_flags & PF_W) {
+		end = PAGE_ALIGN(ph->p_vaddr + ph->p_filesz);
+		start = ph->p_vaddr + ph->p_filesz;
+		length = end - start;
+		{
+			extern int fnx_fault_user_pages(addr_t, unsigned int);
 
-		if(fnx_fault_user_pages((addr_t)(start & PAGE_MASK), (unsigned int)length)) {
-			send_sig(current, SIGSEGV);
-			return -ENOEXEC;
+			if(fnx_fault_user_pages((addr_t)(start & PAGE_MASK), (unsigned int)length)) {
+				send_sig(current, SIGSEGV);
+				errno = -ENOEXEC;
+				goto err_interp;
+			}
 		}
-	}
-	memset_b((void *)(addr_t)start, 0, (__size_t)length);
+		memset_b((void *)(addr_t)start, 0, (__size_t)length);
 
-	/* setup the BSS section */
-	start = ph->p_vaddr + ph->p_filesz;
-	start = PAGE_ALIGN(start);
-	end = ph->p_vaddr + ph->p_memsz;
-	end = PAGE_ALIGN(end);
-	length = end - start;
-	errno = do_mmap(NULL, (addr_t)start, (addr_t)length,
-		PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0, P_BSS, 0, NULL);
-	if(errno < 0 && errno > -PAGE_SIZE) {
-		send_sig(current, SIGSEGV);
-		return -ENOEXEC;
+		start = ph->p_vaddr + ph->p_filesz;
+		start = PAGE_ALIGN(start);
+		end = ph->p_vaddr + ph->p_memsz;
+		end = PAGE_ALIGN(end);
+		length = end - start;
+		errno = do_mmap(NULL, (addr_t)start, (addr_t)length,
+			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0, P_BSS, 0, NULL);
+		if(errno < 0 && errno > -PAGE_SIZE) {
+			send_sig(current, SIGSEGV);
+			errno = -ENOEXEC;
+			goto err_interp;
+		}
+		current->brk_lower = (addr_t)start;
 	}
-	current->brk_lower = (addr_t)start;
 
 	/* setup the HEAP section */
 	start = ph->p_vaddr + ph->p_memsz;
@@ -327,7 +520,8 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 		PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0, P_HEAP, 0, NULL);
 	if(errno < 0 && errno > -PAGE_SIZE) {
 		send_sig(current, SIGSEGV);
-		return -ENOEXEC;
+		errno = -ENOEXEC;
+		goto err_interp;
 	}
 	current->brk = (addr_t)start;
 
@@ -344,30 +538,51 @@ int elf_load64(struct inode *i, struct binargs *barg, struct sigcontext *sc, cha
 		PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED, 0, P_STACK, 0, NULL);
 	if(errno < 0 && errno > -PAGE_SIZE) {
 		send_sig(current, SIGSEGV);
-		return -ENOEXEC;
+		errno = -ENOEXEC;
+		goto err_interp;
 	}
 	{
 		extern int fnx_fault_user_pages(addr_t, unsigned int);
 
 		if(fnx_fault_user_pages((addr_t)(sp & PAGE_MASK), (unsigned int)length)) {
 			send_sig(current, SIGSEGV);
-			return -ENOEXEC;
+			errno = -ENOEXEC;
+			goto err_interp;
 		}
 	}
 
-	elf_create_stack64(barg, (unsigned long long *)sp, str, 0, e, phdr_addr);
+	at_base = has_interp ? ELF_INTERP_BASE : 0;
+	elf_create_stack64(barg, (unsigned long long *)sp, str, at_base, e, phdr_addr);
 
 	/* set %rsp to point at 'argc' (16-byte aligned). Native 64-bit
 	 * processes store the full entry RIP/RSP in the 64-bit sigcontext
 	 * fields (the address can be anywhere in the 128TB user half); the
-	 * 32-bit eip/oldesp are left for the i386-compat layout. */
-	sc->rip = current->entry_address;
+	 * 32-bit eip/oldesp are left for the i386-compat layout. A dynamic
+	 * executable enters at the interpreter's entry (loaded at
+	 * ELF_INTERP_BASE), not at the main image's e_entry (that one goes
+	 * to the loader via auxv AT_ENTRY). */
+	sc->rip = has_interp ? (ELF_INTERP_BASE + ie->e_entry) : (unsigned long long)e->e_entry;
 	sc->rsp = sp;
 	sc->rflags = 0x202;
 	sc->err = 0;
 	current->flags |= PF_ELF64;
 
+	if(ii) {
+		iput(ii);
+	}
+	if(idata) {
+		kfree((addr_t)idata);
+	}
 	return 0;
+
+err_interp:
+	if(ii) {
+		iput(ii);
+	}
+	if(idata) {
+		kfree((addr_t)idata);
+	}
+	return errno;
 }
 #endif /* __x86_64__ */
 

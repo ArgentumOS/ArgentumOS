@@ -170,9 +170,10 @@ $(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_
 		git apply $(CURDIR)/third_party/musl-fsh.patch && \
 		git apply $(CURDIR)/third_party/musl-pwconf.patch && \
 		git apply $(CURDIR)/third_party/musl-hosts.patch && \
-		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) && \
+		CC="gcc" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) --syslibdir=/System/Libraries && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
 		$(MAKE) && $(MAKE) install && \
+		ln -f $(CURDIR)/$(MUSL64_PREFIX)/lib/libc.so $(CURDIR)/$(MUSL64_PREFIX)/lib/ld-musl-x86_64.so.1 && \
 		git checkout -- . && \
 		rm -f src/passwd/pwconf.c src/passwd/pwconf.h
 
@@ -374,6 +375,19 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
 	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
 	@cp userland/configuration/system.mounts.conf "$(ROOTFS64)/System/Configuration/system.mounts.conf"
+	# --- shared libc (docs/shared-libraries-plan.md, M0): stage the
+	# dynamic linker + libc so dynamic executables can boot. Everything
+	# else in the root stays static until the bottom-up world flip; the
+	# interpreter is a hardlink of libc.so (same inode), matching musl's
+	# own install, so the loader recognizes libc as itself.
+	@cp $(MUSL64_PREFIX)/lib/libc.so "$(ROOTFS64)/System/Libraries/libc.so"
+	@ln -f "$(ROOTFS64)/System/Libraries/libc.so" "$(ROOTFS64)/System/Libraries/ld-musl-x86_64.so.1"
+	# M0 acceptance binary: a dynamic (non-PIE) hello. Staged under
+	# System/Shared/tests - System/Tools stays fshlint zero-allow (R1)
+	# static until the whole-world flip.
+	@mkdir -p "$(ROOTFS64)/System/Shared/tests"
+	gcc -no-pie -I$(CURDIR)/tools/kernel-headers -specs $(CURDIR)/$(MUSL64_SPECS) \
+		userland/hello_dl.c -o "$(ROOTFS64)/System/Shared/tests/hello_dl"
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
 	@cp userland/configuration/system.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.xfb.conf"

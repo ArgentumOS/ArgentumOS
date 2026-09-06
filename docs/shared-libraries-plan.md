@@ -1,8 +1,16 @@
 # Shared libraries on FNX
 
-Status: **DECIDED (design, 2026-09) — nothing implemented.** All design
-decisions below were settled in conversation; kernel/toolchain work
-described is the implementation backlog, not started.
+Status: **DECIDED (design, 2026-09) + M0 DONE — one dynamic hello boots.**
+All design decisions below were settled in conversation; the kernel/
+toolchain work described is the implementation backlog. M0 (the contained
+first slice) shipped: `fs/elf.c` loads `ET_DYN` interpreters (`PT_INTERP`)
+at a fixed base (`ELF_INTERP_BASE`, auxv `AT_BASE`), musl builds shared
+with `/System/Libraries` as its syslibdir + loader search path
+(`/System/Libraries:/Shared/Libraries`), `libc.so` + `ld-musl-x86_64.so.1`
+(hardlinked) are staged in `/System/Libraries`, and the dynamic non-PIE
+`hello_dl` (in `System/Shared/tests`, fshlint-exempt) boots and prints
+from the init console shell. Everything else in the root is still static;
+the flip targets below are M1+.
 
 ## 1. Why
 
