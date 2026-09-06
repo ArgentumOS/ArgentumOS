@@ -221,51 +221,21 @@ static void mount_from_table(void)
 	fclose(f);
 }
 
-/* Fork+exec a GUI process on the desktop. If quiet, stdout/stderr go to
- * /System/Devices/Memory/null (the compositor spams per-damage lines on the
- * console). */
-static void spawn_gui(const char *path, char *const argv[], char *const envp[],
-		      int quiet)
+/* Fork+exec a desktop client. */
+static void spawn_gui(const char *path, char *const argv[], char *const envp[])
 {
 	pid_t p = fork();
 
 	if (p == 0) {
-		if (quiet) {
-			int fd = open("/System/Devices/Memory/null", O_WRONLY);
-
-			if (fd >= 0) {
-				dup2(fd, 1);
-				dup2(fd, 2);
-				close(fd);
-			}
-		}
 		execve(path, argv, envp);
 		_exit(127);
 	}
 }
 
-/* Desktop session selection: /System/Configuration/session.conf may carry
- *   desktop = "xfb"
- * to boot the X11 desktop (Xfb :0 over TCP + demo clients, no /tmp so the
- * unix socket/lock dirs are skipped) instead of the LVGL compositor. */
-static int session_is_xfb(void)
-{
-	FILE *f = fopen("/System/Configuration/session.conf", "r");
-	char buf[256];
-	int xfb = 0;
-
-	if (!f)
-		return 0;
-	while (fgets(buf, sizeof buf, f)) {
-		if (strstr(buf, "desktop") && strstr(buf, "xfb")) {
-			xfb = 1;
-			break;
-		}
-	}
-	fclose(f);
-	return xfb;
-}
-
+/* The X11 desktop: Xfb owns /dev/fb0 and is the one graphics path. The
+ * demo clients retry XOpenDisplay until the server is up (Xfb takes a
+ * while to come up under TCG), so the console shell is not gated on the
+ * server. */
 static void start_xfb(void)
 {
 	/* the server execs xkbcomp to compile the keymap at startup, so its
@@ -301,39 +271,11 @@ static void start_xfb(void)
 	 * the console shell is not gated on the server */
 	spawn_gui("/System/Shared/X11/bin/xdraw",
 		  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },
-		  dpy_env, 0);
+		  dpy_env);
 	spawn_gui("/System/Shared/X11/bin/xkey",
-		  (char *const[]) { "xkey", NULL }, dpy_env, 0);
+		  (char *const[]) { "xkey", NULL }, dpy_env);
 	puts("XDESK: Xfb desktop launching (xdraw + xkey retry until :0 is up)");
 	fflush(stdout);
-}
-
-/* The LVGL desktop: system compositor + two demo windows (each its own
- * app process). The compositor's mouse source: the second serial port
- * (/System/Devices/Serial/Port1) when a test harness feeds PS/2 packets over
- * it, else the emulated PS/2 / USB mouse (Devices/psaux, interactive
- * QEMU). */
-static void start_gui(void)
-{
-	char *gui_env[] = { "PATH=" PATH_DEFAULT, "HOME=/",
-			    "GUI_MOUSE=/System/Devices/Serial/Port1", NULL };
-	char *sh_env[] = { "PATH=" PATH_DEFAULT, "HOME=/", "PS1=# ", NULL };
-
-	if (access("/System/Devices/Serial/Port1", F_OK) == 0) {
-		spawn_gui("/System/Tools/compositor",
-			  (char *const[]) { "compositor", NULL },
-			  gui_env, 1);
-	} else {
-		spawn_gui("/System/Tools/compositor",
-			  (char *const[]) { "compositor", NULL },
-			  sh_env, 1);
-	}
-	spawn_gui("/System/Tools/lv_demo",
-		  (char *const[]) { "lv_demo", "A", "40", "40", NULL },
-		  sh_env, 0);
-	spawn_gui("/System/Tools/lv_demo",
-		  (char *const[]) { "lv_demo", "B", "760", "320", NULL },
-		  sh_env, 0);
 }
 
 int main(void)
@@ -349,10 +291,8 @@ int main(void)
 	/* the network domain is authoritative for the machine name */
 	set_hostname_from_domain();
 
-	if (session_is_xfb())
-		start_xfb();
-	else
-		start_gui();
+	/* the X11 desktop owns the display; it starts before the shell */
+	start_xfb();
 
 	for (;;) {
 		pid = fork();

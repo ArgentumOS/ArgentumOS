@@ -67,10 +67,10 @@ QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n
 # it. Set QEMU_DRIVES= to override.
 QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=$(ROOTIMG),format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
-# A USB mouse is attached by default so the GUI desktop has a working
-# pointer: QEMU 10's PS/2 mouse delivery is unreliable headless, and
-# FNX's usb-mouse driver synthesizes PS/2 packets into /dev/psaux for
-# the compositor. Set QEMU_USB= to disable.
+# A USB mouse is attached by default so the X desktop (Xfb) has a
+# working pointer: QEMU 10's PS/2 mouse delivery is unreliable headless,
+# and FNX's usb-mouse driver synthesizes PS/2 packets into /dev/psaux
+# for the X server. Set QEMU_USB= to disable.
 QEMU_USB ?= -device usb-ehci -device usb-mouse
 # ---------------------------------------------------------------------------
 
@@ -239,23 +239,39 @@ $(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh $(FNXLIB_
 	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64.sh" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $(TOYBOX64_BIN)
 
-# --- LVGL (third_party/lvgl) static lib for the compositor GUI spike. The
-# config lives in include/lv_conf.h (copied from lv_conf_template.h).
-LVGL_SRC      = third_party/lvgl/src
-LVGL64        = .build/lvgl64/liblvgl.a
-LVGL64_OBJ    = .build/lvgl64/src
-LVGL64_SRCS   = $(shell find $(LVGL_SRC) -name '*.c')
-LVGL64_OBJS   = $(patsubst $(LVGL_SRC)/%.c,$(LVGL64_OBJ)/%.o,$(LVGL64_SRCS))
-LVGL64_CFLAGS = -O2 -Iinclude -Ithird_party/lvgl -Ithird_party/lvgl/src \
-		-DLV_CONF_INCLUDE_SIMPLE
+# --- the static recovery set (docs/shared-libraries-plan.md §2.4/§3) ---
+# Static-by-choice binaries that must run when /System/Libraries is
+# corrupt or missing: a static dash (RECOVERY_PROGRAM, exec'd by the
+# kernel) + a static toybox (the repair tools; its account applets need
+# libconfig, hence the static libconfig.a). Both are built with
+# MUSL64_CC_STATIC after the dynamic world (serial make order: dash64 /
+# toybox64 above run first, so the in-tree third_party builds are not
+# clobbered out from under the dynamic outputs).
+RECOVERY64      = .build/recovery64
+DASH64_RECOVERY = $(RECOVERY64)/dash-static
+TOYBOX64_RECOVERY = $(RECOVERY64)/toybox-static
 
-.PHONY: lvgl64
-lvgl64: $(LVGL64)
-$(LVGL64): $(LVGL64_OBJS)
-	ar rcs $@ $^
-$(LVGL64_OBJ)/%.o: $(LVGL_SRC)/%.c include/lv_conf.h
-	@mkdir -p $(dir $@)
-	$(MUSL64_CC) $(LVGL64_CFLAGS) -c $< -o $@
+$(FNXLIB)/libconfig.a: $(FNXLIB_CONFIG) userland/libconfig.c include/libconfig.h
+	$(MUSL64_CC) -Iinclude -c userland/libconfig.c -o $(FNXLIB)/libconfig.o
+	ar rcs $@ $(FNXLIB)/libconfig.o
+
+$(DASH64_RECOVERY): $(MUSL64_SPECS) third_party/dash-fsh.patch
+	@mkdir -p $(RECOVERY64)
+	cd third_party/dash && git apply $(CURDIR)/third_party/dash-fsh.patch && \
+		./autogen.sh && \
+		CC="$(CURDIR)/tools/musl-gcc64-static.sh" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
+		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_RECOVERY) && \
+		git checkout -- .
+
+$(TOYBOX64_RECOVERY): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64-static.sh $(FNXLIB)/libconfig.a
+	@mkdir -p $(RECOVERY64)
+	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64-static.sh" ./tools/mktoybox.sh
+	cp third_party/toybox/toybox $@
+
+.PHONY: recovery64
+recovery64: $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+	@echo "recovery64: static recovery set built ($(DASH64_RECOVERY), $(TOYBOX64_RECOVERY))"
+
 
 # --- Xfb: FNX's native X server (fork of Xvfb; the pristine upstream is
 # not vendored - regenerate it on demand, see userland/xfb/README.md).
@@ -288,7 +304,7 @@ xfb64: $(FNXLIB_CONFIG)
 # toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
 # stage into a scratch root and merge every applet dir into System/Tools.
 TOYBOX64_STAGE = .build/toybox-root
-userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG)
+userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -352,12 +368,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) userland/acl.c -o "$(ROOTFS64)/System/Tools/acl"
 	$(MUSL64_CC) -Iinclude userland/config.c -L$(CURDIR)/$(FNXLIB) \
 		-lconfig -o "$(ROOTFS64)/System/Tools/config"
-	$(MUSL64_CC) -Iinclude userland/compositor.c -o "$(ROOTFS64)/System/Tools/compositor"
-	$(MUSL64_CC) -Iinclude userland/gui_smoke.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/gui_smoke"
-	$(MUSL64_CC) -Iinclude userland/gui_demo.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/gui_demo"
-	$(MUSL64_CC) $(LVGL64_CFLAGS) -Iuserland userland/lv_demo.c userland/lvapp.c userland/libgui.c $(LVGL64) -o "$(ROOTFS64)/System/Tools/lv_demo"
 	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o "$(ROOTFS64)/System/Tools/shm_leak_test"
-	$(MUSL64_CC) -Iinclude tools/shm_resize_test.c userland/libgui.c -o "$(ROOTFS64)/System/Tools/shm_resize_test"
 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
 	$(MUSL64_CC) tools/config_m3_test.c -o "$(ROOTFS64)/System/Tools/config_m3_test"
 	$(MUSL64_CC) userland/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
@@ -366,6 +377,23 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	$(MUSL64_CC) userland/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm
 	$(MUSL64_CC) userland/fbdump.c -o "$(ROOTFS64)/System/Tools/fbdump"
 	cp $(DASH64_BIN) "$(ROOTFS64)/System/Tools/sh"
+	# --- the static recovery set (docs/shared-libraries-plan.md §2.4/§3):
+	# insurance when /System/Libraries is corrupt or missing. The kernel
+	# boots these (RECOVERY_PROGRAM) instead of init on a 'recovery'
+	# param or a failed NEEDED-closure probe. Static dash + static
+	# toybox; the /System/Recovery/bin applet links mirror the dynamic
+	# /System/Tools set so repair commands resolve to the static toybox.
+	cp $(DASH64_RECOVERY) "$(ROOTFS64)/System/Tools/recovery-sh"
+	cp $(TOYBOX64_RECOVERY) "$(ROOTFS64)/System/Tools/recovery-toybox"
+	@chmod 0755 "$(ROOTFS64)/System/Tools/recovery-sh" \
+		"$(ROOTFS64)/System/Tools/recovery-toybox"
+	@mkdir -p "$(ROOTFS64)/System/Recovery/bin"
+	@for l in $(CURDIR)/$(ROOTFS64)/System/Tools/*; do \
+		if [ -L "$$l" ] && [ "$$(readlink "$$l")" = toybox ]; then \
+			ln -sfn ../../System/Tools/recovery-toybox \
+				"$(ROOTFS64)/System/Recovery/bin/$$(basename "$$l")"; \
+		fi; \
+	done
 	# third-party X11 lives under System/Shared/X11 (outside the
 	# zero-allow System/Tools lint scope); System/Tools stays first-party
 	# + ported toybox only.
@@ -566,6 +594,13 @@ $(REALDIR)/%.o: %.c
 $(OBJDIR64)/%.o: kernel64/%.c
 	@mkdir -p $(OBJDIR64)
 	$(CC64R) -c -o $@ $<
+
+# kreal64.c bakes the UEFI boot cmdline (kernel64/kreal64.c). A forced
+# recovery boot appends the param at build time: make buildfnx \
+#   FNX_RECOVERY_PARAM=1   (rm .build/64real/kernel64/kreal64.o first)
+$(OBJDIR64)/kreal64.o: kernel64/kreal64.c
+	@mkdir -p $(OBJDIR64)
+	$(CC64R) -c -o $@ $< $(if $(FNX_RECOVERY_PARAM),-DFNX_RECOVERY_PARAM,)
 
 $(OBJDIR64)/%.o: kernel64/%.S
 	@mkdir -p $(OBJDIR64)

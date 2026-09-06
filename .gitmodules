@@ -4,9 +4,6 @@
 [submodule "third_party/toybox"]
 	path = third_party/toybox
 	url = https://github.com/landley/toybox
-[submodule "third_party/lvgl"]
-	path = third_party/lvgl
-	url = https://github.com/lvgl/lvgl
 [submodule "third_party/x11/xorgproto"]
 	path = third_party/x11/xorgproto
 	url = https://gitlab.freedesktop.org/xorg/proto/xorgproto.git

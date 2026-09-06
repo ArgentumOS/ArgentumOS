@@ -54,7 +54,7 @@ Path resolution knows an `@` device shorthand: a path whose first component star
 
 ### Display & input
  - UEFI GOP framebuffer exposed as `/dev/fb0` (kernel-high VA map); userland (the X server) `mmap`s it directly for zero-copy blits.
- - Desktop session: init reads `/System/Configuration/session.conf`; `desktop = "xfb"` boots the **X11 desktop** — Xfb, FNX's native X server (an Xvfb-core fork rendering to `/dev/fb0`, X clients over TCP `:0`), which is the forward display architecture. `make run-xfb` builds a root preconfigured for it. Without the setting, the native GUI compositor desktop is the default.
+ - Desktop session: every graphical boot starts the **X11 desktop** — Xfb, FNX's native X server (an Xvfb-core fork rendering to `/dev/fb0`, which it owns exclusively), with X clients over TCP `:0`. It is the one graphics path: there is no compositor. `make run-xfb` is a preconfigured convenience (same desktop on the standard image).
  - No kernel text console on the display: virtual consoles and fbcon are disabled; the display is the GUI session's and the serial port is the system console.
  - PS/2 keyboard with Linux keymaps, PS/2 mouse (psaux).
 
@@ -102,14 +102,14 @@ the `@` shorthand or `/System/Devices`, scratch mounts go under `/Volumes`):
  - `acl get <path>` / `acl set ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed XBFS).
  - `xbfsquery` / `xbfsqtest` - the XBFS query engine (attribute-index queries) and its regression battery.
  - `shm_leak_test` / `shm_resize_test` / `shm_cap_test` - SysV shared-memory regressions.
- - Set `desktop = "xfb"` in `/System/Configuration/session.conf` and reboot to get the X11 desktop (or use `make run-xfb`).
+ - The default boot is the X11 desktop (Xfb on `:0`); `make run-xfb` is a preconfigured shortcut for the same thing.
 
 Notes / design decisions
 ------------------------
  - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only XBFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs XBFS. Full design: `docs/permissions-acl.md`; the `acl` tool lives at `/System/Tools/acl`.
  - Boot and storage reliability: the PIT IRQ stays masked until the real kernel's timer handler is linked (no early timer storms); the AHCI command-completion poll is bounded so a lost completion surfaces as an error instead of wedging the boot for minutes; and `iput()` never writes back a deleted inode (the root cause of the XBFS NULL-`small_data` crash on unlinking a dirty inode).
  - The kernel boots to a single high-half address space: `rebase_image_data()` in `kernel64/paging64.c` walks the PE base-relocation table at boot and re-biases every absolute data pointer by `PAGE_OFFSET64` before the jump to the high-half entry, so indirect calls (syscall table, tty output, file operations) never execute at the identity alias. Process pml4s therefore map no kernel identity pages, and the TSS descriptor base must be the high-half address (see `kernel64/gdt64.c`).
- - The serial console (ttyS0) is the system console on every boot; the display is the GUI session's (`desktop = "xfb"` in `/System/Configuration/session.conf` selects the X11 desktop, else the native GUI compositor).
+ - The serial console (ttyS0) is the system console on every boot; the display is the X11 desktop session's (Xfb renders to `/dev/fb0` — it owns the framebuffer).
  - The filesystem hierarchy (FSH) is FNX's own: five top-level directories (`Applications`, `Shared`, `System`, `Users`, `Volumes`) with configuration under `/System/Configuration` (the `.conf` domains edited by the `config` tool), device nodes under `/System/Devices`, tools under `/System/Tools`, and libraries split between `/System/Libraries` (first-party) and `/Shared/Libraries` (third-party).
  - Device-name shorthand: any path whose first component starts with `@` resolves under `/System/Devices` (`2>@null`, `@TTY/console`); it is a pure kernel namei rule, so `@` is not a directory and files named `@x` stay reachable as `./@x`.
  - Design documents live in `docs/` (OS profile: `docs/os-profile.md`; shared libraries: `docs/shared-libraries-plan.md`; filesystem enhancements: `docs/xbfs-enhancements.md`; GUI/desktop direction: `docs/x11-xvfb-fb-plan.md`, the `docs/motif-fork-plan.md` toolkit fork — CDE-fork plan superseded, kept as reference).
