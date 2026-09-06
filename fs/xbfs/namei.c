@@ -14,6 +14,13 @@
 #include <fnx/errno.h>
 #include <fnx/fs.h>
 #include <fnx/xbfs.h>
+
+/* the create-family fsops are one-journal-transaction wrappers around
+ * the *_impl bodies below (crash-atomic creates) */
+static int xbfs_create_impl(struct inode *, char *, int, __mode_t,
+			    struct inode **);
+static int xbfs_mknod_impl(struct inode *, char *, __mode_t, __dev_t);
+static int xbfs_mkdir_impl(struct inode *, char *, __mode_t);
 #include <fnx/buffer.h>
 #include <fnx/fcntl.h>
 #include <fnx/stat.h>
@@ -53,8 +60,23 @@ static int xbfs_dir_empty(struct inode *dir)
 	return xbfs_dir_count(dir) <= 2;
 }
 
+/* one transaction for the whole create: ialloc/insert/name/index each
+ * take their own (nested) tx today, so a kill between two of them
+ * replays a half-created inode (an IN_USE orphan with no name record).
+ * A single outer tx commits everything together, or nothing at all. */
 int xbfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	       struct inode **i_res)
+{
+	int res;
+
+	xbfs_log_begin(dir->sb);
+	res = xbfs_create_impl(dir, name, flags, mode, i_res);
+	xbfs_log_commit(dir->sb);
+	return res;
+}
+
+static int xbfs_create_impl(struct inode *dir, char *name, int flags,
+			    __mode_t mode, struct inode **i_res)
 {
 	struct inode *i;
 	__ino_t ino;
@@ -115,7 +137,19 @@ int xbfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
  * /tmp/gui.sock, ...). Socket/fifo/regular nodes are stored as ordinary
  * data-less inodes whose i_mode carries the type bits — the same trick
  * Linux ext2 uses. Char/block devices stay unsupported (devfs owns /dev). */
+/* one transaction for the whole mknod (see xbfs_create) */
 int xbfs_mknod(struct inode *dir, char *name, __mode_t mode, __dev_t dev)
+{
+	int res;
+
+	xbfs_log_begin(dir->sb);
+	res = xbfs_mknod_impl(dir, name, mode, dev);
+	xbfs_log_commit(dir->sb);
+	return res;
+}
+
+static int xbfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
+			   __dev_t dev)
 {
 	struct inode *i;
 	__ino_t ino;
@@ -180,7 +214,18 @@ int xbfs_mknod(struct inode *dir, char *name, __mode_t mode, __dev_t dev)
 	return 0;
 }
 
+/* one transaction for the whole mkdir (see xbfs_create) */
 int xbfs_mkdir(struct inode *dir, char *name, __mode_t mode)
+{
+	int res;
+
+	xbfs_log_begin(dir->sb);
+	res = xbfs_mkdir_impl(dir, name, mode);
+	xbfs_log_commit(dir->sb);
+	return res;
+}
+
+static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 {
 	struct inode *i;
 	struct buffer *buf;

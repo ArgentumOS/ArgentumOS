@@ -380,6 +380,14 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
 	memcpy_b(xbfs_xattr_area(i), area, total);
 	i->state |= INODE_DIRTY;
 
+	/* the in-memory small_data has changed: re-record the inode block in
+	 * the current journal transaction. The block was last recorded at
+	 * ialloc (before this name record existed), and a create that hands
+	 * the inode to an fd (no iput at the end) would otherwise flush the
+	 * pre-name content — a crash between the flush and the fd's close
+	 * replays an indexed-but-nameless IN_USE inode ("missing 0x13"). */
+	xbfs_write_inode(i);
+
 	inode_unlock(i);
 	kfree((addr_t)area);
 	return 0;

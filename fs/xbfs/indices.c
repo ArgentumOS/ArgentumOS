@@ -104,12 +104,17 @@ void xbfs_index_add(struct superblock *sb, struct inode *i, const char *name)
 	if(!sb->u.xbfs.indices_inode) {
 		return;
 	}
+	/* one transaction: a kill between the per-tree puts would replay a
+	 * partially indexed file (e.g. in "size" but not "last_modified"),
+	 * which the verifier flags as an index mismatch */
+	xbfs_log_begin(sb);
 	xbfs_index_put(sb, "name", XBFS_BTREE_STRING_TYPE, name, strlen(name),
 		      i->inode);
 	xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&sz, 8,
 		      i->inode);
 	xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 		      (char *)&mt, 8, i->inode);
+	xbfs_log_commit(sb);
 }
 
 /*
@@ -124,12 +129,14 @@ void xbfs_index_remove(struct superblock *sb, struct inode *i,
 	if(!sb->u.xbfs.indices_inode) {
 		return;
 	}
+	xbfs_log_begin(sb);
 	xbfs_index_del(sb, "name", XBFS_BTREE_STRING_TYPE, name, strlen(name),
 		      i->inode);
 	xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&sz, 8,
 		      i->inode);
 	xbfs_index_del(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 		      (char *)&mt, 8, i->inode);
+	xbfs_log_commit(sb);
 }
 
 /*
@@ -179,6 +186,7 @@ void xbfs_index_resize(struct superblock *sb, struct inode *i,
 	 * not the size one). A same-value del+put of an entry that IS
 	 * present is a harmless no-op net; the i_nlink == 0 guard above is
 	 * what prevents an unlinked inode's entries from resurrecting. */
+	xbfs_log_begin(sb);
 	xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
 		       8, i->inode);
 	xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&nsz,
@@ -187,4 +195,5 @@ void xbfs_index_resize(struct superblock *sb, struct inode *i,
 		       (char *)&omt, 8, i->inode);
 	xbfs_index_put(sb, "last_modified", XBFS_BTREE_INT64_TYPE,
 		       (char *)&nmt, 8, i->inode);
+	xbfs_log_commit(sb);
 }
