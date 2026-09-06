@@ -631,6 +631,18 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 		xbfs_touch_ctime(i_new);
 		i_new->state |= INODE_DIRTY;
 	}
+	/* update the file-name 0x13 small_data record (Haiku SetName).
+	 * Done BEFORE the btree mutations: since set_name may now expand
+	 * an inline file (ENOSPC), failing here aborts the rename with
+	 * nothing committed (the common tmp -> newpath rename has no
+	 * i_new work above, so no dir state has changed yet). */
+	if((errno = xbfs_inode_set_name(i_old, newpath))) {
+		if(dir_new != dir_old) {
+			inode_unlock(dir_new);
+		}
+		inode_unlock(dir_old);
+		return errno;
+	}
 	if((errno = xbfs_btree_delete(dir_old, oldpath))) {
 		if(dir_new != dir_old) {
 			inode_unlock(dir_new);
@@ -648,8 +660,7 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 		return errno;
 	}
 
-	/* update the file-name 0x13 small_data record (Haiku SetName) */
-	xbfs_inode_set_name(i_old, newpath);
+	/* (set_name for i_old ran above, before the btree mutations) */
 	xbfs_index_remove(dir_old->sb, i_old, oldpath);
 	xbfs_index_add(dir_old->sb, i_old, newpath);
 

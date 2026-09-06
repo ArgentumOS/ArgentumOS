@@ -140,6 +140,22 @@ int parse_namei(char *path, struct inode *base_dir, struct inode **i_res, struct
 	char *scratch;
 	int s, errno;
 
+	/*
+	 * do_namei() treats a non-NULL *d_res as the previous component's
+	 * directory and iputs it, so the result slots MUST start empty.
+	 * Some callers relied on zeroed kernel stacks (and sys_mkdirat
+	 * even seeded *d_res with its base_dir, draining the dirfd
+	 * inode's reference on every mkdir of an existing name - the
+	 * 'already freed inode' storm under cp -R). Null both here so
+	 * every caller is safe regardless of how it initializes them.
+	 */
+	if(i_res) {
+		*i_res = NULL;
+	}
+	if(d_res) {
+		*d_res = NULL;
+	}
+
 	if(!path) {
 		return -EFAULT;
 	}

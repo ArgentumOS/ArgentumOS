@@ -328,6 +328,20 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
 	char *q;
 	char *p;
 	int left;
+
+	/*
+	 * The name records and any inline file content share the small_data
+	 * tail: the rewrite below memsets the whole area, which destroys
+	 * inline data (a file's content lives right after the name record).
+	 * rename(tmp, path) of a freshly-written small file therefore made
+	 * the destination read back as NULs. Convert any inline content to
+	 * a stream first, exactly like setxattr does, so it survives.
+	 */
+	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+		if(xbfs_inline_expand(i) < 0) {
+			return -ENOSPC;
+		}
+	}
 	int nlen, need, total;
 	struct xbfs_small_data *sd;
 

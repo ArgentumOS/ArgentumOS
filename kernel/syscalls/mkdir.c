@@ -21,7 +21,7 @@
 
 int sys_mkdir(const char *dirname, __mode_t mode)
 {
-	struct inode *i, *dir;
+	struct inode *i = NULL, *dir = NULL;
 	char *tmp_dirname, *basename;
 	int errno;
 
@@ -40,6 +40,8 @@ int sys_mkdir(const char *dirname, __mode_t mode)
 		}
 	}
 	if(!errno) {
+		/* the name already exists: do_namei handed us the inode and
+		 * its directory, both with a reference to release */
 		iput(i);
 		iput(dir);
 		free_name(tmp_dirname);
@@ -64,7 +66,7 @@ int sys_mkdir(const char *dirname, __mode_t mode)
 		errno = -EPERM;
 	}
 	if(!errno) {
-		/* M3: the new dir inherits the parent's default ACL (and
+		/* the new dir inherits the parent's default ACL (and
 		 * copies it so the inheritance continues); re-resolve it */
 		struct inode *i2 = NULL;
 
@@ -82,7 +84,8 @@ int sys_mkdir(const char *dirname, __mode_t mode)
 /* mkdirat(258): create a directory relative to dirfd (AT_FDCWD = cwd) */
 int sys_mkdirat(int dirfd, const char *dirname, __mode_t mode)
 {
-	struct inode *i, *dir;
+	struct inode *i = NULL, *dir = NULL;
+	struct inode *base_dir;
 	char *tmp_dirname, *basename;
 	int errno;
 
@@ -94,26 +97,36 @@ int sys_mkdirat(int dirfd, const char *dirname, __mode_t mode)
 		return errno;
 	}
 	basename = remove_trailing_slash(tmp_dirname);
-	if(dirfd != AT_FDCWD) {
-		if(dirfd < 0) {
-			free_name(tmp_dirname);
-			return -EBADF;
-		}
-		CHECK_UFD(dirfd);
-		dir = fd_table[current->fd[dirfd]].inode;
-		if(!S_ISDIR(dir->i_mode)) {
-			free_name(tmp_dirname);
-			return -ENOTDIR;
-		}
-		errno = parse_namei(basename, dir, &i, &dir, !FOLLOW_LINKS);
-		if(errno) {
+	if(dirfd == AT_FDCWD) {
+		if((errno = namei(basename, &i, &dir, !FOLLOW_LINKS))) {
 			if(!dir) {
 				free_name(tmp_dirname);
 				return errno;
 			}
 		}
 	} else {
-		if((errno = namei(basename, &i, &dir, !FOLLOW_LINKS))) {
+		if(dirfd < 0) {
+			free_name(tmp_dirname);
+			return -EBADF;
+		}
+		CHECK_UFD(dirfd);
+		base_dir = fd_table[current->fd[dirfd]].inode;
+		if(!S_ISDIR(base_dir->i_mode)) {
+			free_name(tmp_dirname);
+			return -ENOTDIR;
+		}
+		/*
+		 * The d_res out-param ('dir') must stay NULL on entry:
+		 * do_namei treats a non-NULL *d_res as the previous
+		 * component's directory and iputs it (fs/namei.c). Seeding
+		 * it with base_dir here used to make every mkdirat over an
+		 * existing name consume the dirfd inode's reference, so the
+		 * count drained to 0 while the fd stayed open (the
+		 * 'already freed inode' storm under cp -R). base_dir is
+		 * only borrowed for the walk - it is never released here.
+		 */
+		errno = parse_namei(basename, base_dir, &i, &dir, !FOLLOW_LINKS);
+		if(errno) {
 			if(!dir) {
 				free_name(tmp_dirname);
 				return errno;
@@ -121,6 +134,8 @@ int sys_mkdirat(int dirfd, const char *dirname, __mode_t mode)
 		}
 	}
 	if(!errno) {
+		/* the name already exists: do_namei handed us the inode and
+		 * its directory, both with a reference to release */
 		iput(i);
 		iput(dir);
 		free_name(tmp_dirname);
@@ -143,7 +158,7 @@ int sys_mkdirat(int dirfd, const char *dirname, __mode_t mode)
 		errno = -EPERM;
 	}
 	if(!errno) {
-		/* M3: the new dir inherits the parent's default ACL (and
+		/* the new dir inherits the parent's default ACL (and
 		 * copies it so the inheritance continues); re-resolve it */
 		struct inode *i2 = NULL;
 
