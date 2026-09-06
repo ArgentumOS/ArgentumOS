@@ -19,7 +19,7 @@ Features
  - Signals (incl. `rt_sigaction`/`rt_sigreturn`), `wait4`/`waitpid`, `clone`, `fork`/`execve`.
  - `getrandom` syscall and `/dev/random`, `/dev/urandom` devices; `kexec` support.
  - UNIX System V IPC (semaphores, message queues and shared memory) over the 64-bit ABI; pipes; BSD file locking (POSIX advisory only).
- - ELF x86-64 executables — statically linked today; the shared-library (dynamic linking) design is decided in `docs/design/shared-libraries-plan.md`.
+ - ELF x86-64 executables with native dynamic linking: the userland (dash, toybox, the X stack, FNX's own tools) runs against the shared musl libc and shared libraries under `/System/Libraries`, loaded by the interpreter `/System/Libraries/ld-musl-x86_64.so.1`; a small statically linked recovery set survives as boot insurance when the libraries are corrupt or missing. Design + remaining carve-outs: `docs/design/shared-libraries-plan.md`.
  - Kernel security hardening: fault-recovering `copy_from_user`, verified `strnlen_user`, and multi-round audits of the syscall/fs/net/ipc paths.
  - POSIX ACLs as the single canonical permissions model: one ACL per object (owner, named users, owning group, named groups, mask, other), with the mode bits kept in sync as its trivial projection and default ACLs on directories driving inheritance at create/mkdir. Stored as `system.posix_acl_access` / `system.posix_acl_default` xattrs; edited with the `acl` tool (see Notes).
 
@@ -66,6 +66,7 @@ Requirements
 ------------
  - x86-64 CPU, UEFI firmware (OVMF under QEMU).
  - 128MB of RAM recommended.
+ - A clang 19 toolchain (one system compiler: kernel + userland build with clang only, via the `tools/musl-clang64*.sh` wrappers; see `docs/design/llvm-clang-toolchain-plan.md`. `make toolchain-gate` enforces that no gcc/g++ appears in the build definition).
  - For the QEMU harness: `qemu-system-x86_64` and the OVMF firmware image (fetched by `tools/fetch-ovmf.sh` or `make ovmf`).
 
 Compiling
@@ -83,6 +84,30 @@ The kernel needs a user-space environment: at boot it mounts the root filesystem
     make userland64          # musl libc + dash + toybox, staged under .build/rootfs64
     make rootxbfs             # packs .build/rootxbfs.img (XBFS, the default root)
     make rootdisk64          # optional legacy ext2 root: .build/root.img (tools/mkext2.py)
+
+Source tree
+-----------
+The classic Unix kernel layout, with the userland and documentation organized
+by purpose:
+
+    Makefile, mk/*.mk   top-level driver + per-area fragments (mk/00-base,
+                        10-toolchain, 20-userland, 30-images, 40-kernel)
+    kernel/             the real kernel (main.c start_kernel, init, sched,
+                        process, syscalls/, ...)
+    kernel/boot64/      the UEFI boot half: EFI entry, long-mode setup, and
+                        the handoff into kernel/main.c
+    mm/ fs/ drivers/ net/ lib/   kernel subsystems
+    include/fnx/        kernel public headers
+    userland/           first-party userland: tools/ (System/Tools programs),
+                        tests/ (proof + regression programs), demos/
+                        (xdraw/xkey), scripts/, xfb/ (the X server),
+                        libconfig.c/.h, configuration/
+    docs/               design/ eval/ reference/ archive/ history/ — start at
+                        docs/README.md for the index of every document
+    tools/              build drivers + QA: image tools (mkxbfs, xbfscheck,
+                        mkesp), fshlint, toolchain-gate, the musl-clang
+                        wrappers, host-side harnesses
+    third_party/        pinned sources (musl, dash, toybox, X11) as submodules
 
 Running under QEMU
 ------------------
@@ -112,7 +137,7 @@ Notes / design decisions
  - The serial console (ttyS0) is the system console on every boot; the display is the X11 desktop session's (Xfb renders to `/dev/fb0` — it owns the framebuffer).
  - The filesystem hierarchy (FSH) is FNX's own: five top-level directories (`Applications`, `Shared`, `System`, `Users`, `Volumes`) with configuration under `/System/Configuration` (the `.conf` domains edited by the `config` tool), device nodes under `/System/Devices`, tools under `/System/Tools`, and libraries split between `/System/Libraries` (first-party) and `/Shared/Libraries` (third-party).
  - Device-name shorthand: any path whose first component starts with `@` resolves under `/System/Devices` (`2>@null`, `@TTY/console`); it is a pure kernel namei rule, so `@` is not a directory and files named `@x` stay reachable as `./@x`.
- - Design documents live in `docs/` (OS profile: `docs/reference/os-profile.md`; shared libraries: `docs/design/shared-libraries-plan.md`; filesystem enhancements: `docs/design/xbfs-enhancements.md`; GUI/desktop direction: `docs/design/x11-xvfb-fb-plan.md`, the `docs/archive/motif-fork-plan.md` toolkit fork — CDE-fork plan superseded, kept as reference).
+ - Design documents live in `docs/` — start at `docs/README.md`, which indexes every document by category and lists the active design set. The main active plans: OS profile `docs/reference/os-profile.md`; dynamic linking `docs/design/shared-libraries-plan.md`; the one-clang-compiler migration `docs/design/llvm-clang-toolchain-plan.md`; the filesystem hierarchy `docs/design/fsh-proposal.md`; XBFS enhancements `docs/design/xbfs-enhancements.md`; the X11 desktop `docs/design/x11-xvfb-fb-plan.md`; and the GUI-toolkit direction `docs/design/shrike-plan.md` (earlier toolkit plans — motif-fork, CDE-fork, FLTK, GNUstep, Momo — are superseded/rejected and kept under `docs/archive/`).
  - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
 
 			*****************************
