@@ -1,10 +1,20 @@
 # GNUstep evaluation
 
-Status: **CANDIDATE under evaluation (2026-09)** — the toolkit direction
-is open; GNUstep is candidate B (Momo/Motif fork is candidate A,
-docs/motif-fork-plan.md / momo-coding-plan.md). Decisions recorded here
-are conditional on GNUstep being adopted; nothing is implemented and no
-probe has been run yet.
+Status: **REJECTED (2026-09)** — evaluated as candidate B and closed.
+Rationale: **"I don't want to own a GNUstep fork."** musl can host
+GNUstep (Alpine is existence proof), but the port would be ours to
+sustain alone on a libc that refuses glibc-compat shims; FreeBSD's libc
+(which would fit GNUstep) is kernel-entangled and can't sit on the
+from-scratch FNX kernel; glibc likewise. The kernel is musl-shaped and
+immovable. GNUstep therefore required owning a large foreign
+fork+runtime stack that the OS would carry forever — rejected. The
+plists/config-format and FSH/bundle decisions recorded below were
+conditional on GNUstep adoption and are now **moot** (kept for the
+record). The toolkit direction returns to candidate A (Momo/Motif fork)
+vs a from-scratch native toolkit from the momo_* spec.
+
+Toolchain doctrine is unchanged by this: one system compiler = Clang,
+languages open per subsystem (the plain-C rule stays gone).
 
 ## 1. Why it's a candidate
 
