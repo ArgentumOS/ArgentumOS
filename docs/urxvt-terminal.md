@@ -25,9 +25,9 @@ practical git upstream to fork, since upstream's home is CVS.
   optional configure features, not requirements) — it runs on Xfb with
   no toolkit dependency.
 - **Custom-drawn by nature**: a terminal renders its own glyph grid,
-  scrollback and scrollbars; it is the classic exception to
-  "toolkit-built" — its chrome (menus, preference dialogs) is where a
-  toolkit belongs, and that chrome comes later from Momo.
+  scrollback and scrollbars. The fork ships standalone (Xlib, no
+  toolkit chrome) until Momo exists — an interim, doctrine-excepted
+  state; long term the app chrome is Momo (see §5).
 - **VT100-class scope**: matches the Terminal app in the desktop/
   initial-release plan.
 - **Configure-driven trimming**: `./configure` has precise
@@ -48,7 +48,29 @@ desired.
 - Terminal-window polish (tabs? chrome/menus, pref dialogs) belongs
   with the Momo desktop-app phase.
 
-## 5. Known fork work (recorded, not scheduled)
+## 5. Long term: wrapped in Momo UI chrome (decided)
+
+Long term the terminal is **wrapped in Momo UI chrome** — the window's
+app chrome (menus, preference dialogs, and any tabs/decoration) is
+Momo; the urxvt core (pty, escape-sequence engine, glyph grid,
+scrollback) is what urxvt contributes. Two shapes to weigh at that
+milestone:
+
+- **(a) In-process chrome**: the urxvt fork links Momo; Momo draws the
+  chrome, the urxvt core renders the grid region in the same window.
+  Least disruption to the core; the two rendering paths (Momo vs raw
+  Xlib grid) must cooperate in one window.
+- **(b) Engine extraction**: port the urxvt core into Momo as a proper
+  terminal widget (a sibling of the Text widget from the Momo M5 text
+  work) that hosts pty/escape/grid/scrollback; the standalone fork then
+  becomes a thin Momo app around that widget. Cleanest long-term shape
+  — the terminal is a Momo citizen like any other app — and the
+  battle-tested vt100/pty engine is the contribution.
+
+Until Momo exists, the standalone fork is the interim terminal (runs on
+Xfb today; §4).
+
+## 6. Known fork work (recorded, not scheduled)
 
 - **Product rename** at its own milestone (FNX naming precedent),
   attribution kept (GPL-3.0 + Marc Lehmann/upstream notices).
@@ -64,7 +86,7 @@ desired.
 - **TERM/terminfo**: `TERM=rxvt-unicode` and the terminfo story need an
   FSH decision (terminfo location under /System?) — a real open item.
 
-## 6. Open items
+## 7. Open items
 
 - FNX name for the fork.
 - Vendored home (third_party/rxvt-unicode + fork in userland/?).
@@ -72,8 +94,10 @@ desired.
 - Tabs/multiplexing: in-fork feature or separate (toybox `sh` sessions
   per window) decision.
 - terminfo placement under FSH.
+- Momo-chrome shape: in-process wrap (a) vs engine extraction into a
+  Momo terminal widget (b) — §5, decided at the Momo terminal milestone.
 
-## 7. Non-goals
+## 8. Non-goals
 
 - No xterm/other-terminal compatibility obligations.
 - No perl extension ecosystem (dropped; not ported).
