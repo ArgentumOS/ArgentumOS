@@ -7,14 +7,18 @@ static C++ binary running under FNX in QEMU.
 
 **Execution status (2026-09): P0–P3 DONE.** P0+P1 built static
 libc++/libc++abi/libunwind (pin llvmorg-19.1.7, see §6.3) against
-`.build/musl64`; P2 added `tools/musl-g++64.sh` (+ Makefile `MUSL64_CXX`);
+`.build/musl64`; P2 added `tools/musl-g++64.sh` (+ Makefile `MUSL64_CXX`)
+— **superseded at LLVM M2 (docs/llvm-clang-toolchain-plan.md): the C++
+wrapper is `tools/musl-clang++64.sh` and musl is clang-built; the gcc
+wrapper was deleted at M4**;
 P3 `cpp_smoke` runs green under FNX (`CPP-SMOKE: all checks OK`, no kernel
 exceptions). Measured gotchas recorded in §P1/§P2/§6.3 below. P4 (FLTK)
 is tracked by docs/fltk-port-plan.md.
 
-Scope note: the kernel (gcc, `CC64`) and the C userland (gcc via
-`tools/musl-gcc64.sh`) are untouched by this plan. Only the *userland
-toolchain's* C++ capability is added. The C++ standard library is the LLVM
+Scope note: the kernel and the C userland were gcc at this plan's
+writing; since LLVM M1-M3 (docs/llvm-clang-toolchain-plan.md) they are
+clang-built via `tools/musl-clang64*.sh` / `$(CLANG19)`. Only the
+*userland toolchain's* C++ capability is added. The C++ standard library is the LLVM
 one, *not* libstdc++, because LLVM's C++ libraries are MIT / Apache-2.0
 (with LLVM exception) — fully compatible with FNX's MIT tree, with no GPL
 anywhere, even if modified and vendored.
@@ -48,17 +52,16 @@ sysroot and the same runtime libraries.
 
 ## 2. Current state (verified)
 
-- Userland C toolchain: `tools/musl-gcc64.sh` — `gcc -static
-  -specs $(MUSL64_PREFIX)/lib/musl-gcc.specs`, musl installed at
-  `.build/musl64` (built from `third_party/musl` by the `musl64` Makefile
-  target: `./configure --target=x86_64 --prefix=$(CURDIR)/.build/musl64`).
+- Userland C toolchain: `tools/musl-clang64.sh` — clang with the
+  musl/FSH link contract (docs/llvm-clang-toolchain-plan.md §3; the
+  M1-era gcc+specs wrapper was deleted at M4), musl installed at
+  `.build/musl64` (clang-built since M2).
 - `.build/musl64/lib` contains `libc.a`, `libm.a`, `libpthread.a`, etc. —
   **no libstdc++**, and no `g++` wrapper exists (C only today).
-- Host tooling available: `gcc/g++ 14.2`, `cmake 3.31.6`; **no ninja**
-  (use `-G "Unix Makefiles"`); no clang installed on the host (fetched
-  later if/when needed).
-- The musl build is static-only: FNX has no dynamic linker, so everything
-  must be `-static`.
+- Host tooling available: clang-19 19.1.7 at `/usr/lib/llvm-19/bin`
+  (installed), `cmake 3.31.6`; **no ninja** (use `-G "Unix Makefiles"`).
+- (Historical: at writing the host was gcc-14.2 and FNX had no dynamic
+  linker; both changed in the LLVM M0-M2 milestones.)
 - Build wiring lives in the top `Makefile`: `MUSL64_PREFIX`,
   `MUSL64_SPECS`, `MUSL64_CC`; apps staged into `.build/rootfs64` and
   packed by `make rootdisk64`.

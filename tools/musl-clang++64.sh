@@ -1,7 +1,6 @@
 #!/bin/sh
 # musl-clang++ wrapper for the FNX native x86_64 userland (C++).
 #
-# The Clang-migration counterpart of tools/musl-g++64.sh
 # (docs/llvm-clang-toolchain-plan.md M2): clang++ driving the same
 # musl/FSH link contract as tools/musl-clang64.sh, plus the LLVM C++
 # stack (libc++/libc++abi/libunwind) from .build/llvm-cxx-prefix, which
@@ -14,11 +13,11 @@
 # own build it behaves like a plain static musl clang++.
 #
 # crtbegin.o/crtend.o (compiler-rt, .build/compiler-rt/lib/linux) bracket
-# the link like gcc's do: crtbegin defines __dso_handle and registers
-# .eh_frame for libunwind.
+# the link: crtbegin defines __dso_handle and registers .eh_frame for
+# libunwind.
 # -nostdinc / -nostdinc++: never touch host glibc/libstdc++ headers.
 # -Wl,--eh-frame-hdr: without .eh_frame_hdr LLVM libunwind cannot find
-# FDEs and exceptions go uncaught (same note as musl-g++64.sh).
+# FDEs and exceptions go uncaught.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MUSL="$ROOT/.build/musl64"

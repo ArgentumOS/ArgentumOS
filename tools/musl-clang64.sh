@@ -1,20 +1,17 @@
 #!/bin/sh
 # musl-clang wrapper for the FNX native x86_64 userland (dynamic default).
 #
-# The Clang-migration counterpart of tools/musl-gcc64.sh
-# (docs/llvm-clang-toolchain-plan.md §3). GCC's musl-gcc.specs cannot be
-# consumed by clang, and its crtbegin/crtend + libgcc.a are GCC artifacts,
-# so the wrapper spells the same contract out as driver flags:
+# (docs/llvm-clang-toolchain-plan.md §3). The wrapper spells the musl/FSH
+# link contract out as driver flags (no specs file, no libgcc):
 #   - musl headers:  -nostdinc -isystem $MUSL/include (+ clang's own
 #                    builtin headers, e.g. stddef.h, which clang adds from
 #                    its resource dir even under -nostdinc)
 #   - FNX linux-uapi subset for userland tools (dhcp etc.):
 #                    -I tools/kernel-headers
 #   - start files:   musl's Scrt1.o crti.o for executables, crtn.o at the
-#                    end; -shared links get crti.o/crtn.o only (musl's
-#                    specs: %{!shared: Scrt1.o}) - the dynamic _start_c
-#                    would leave an undefined `main` a --no-undefined
-#                    meson link rejects
+#                    end; -shared links get crti.o/crtn.o only - the
+#                    dynamic _start_c would leave an undefined `main` a
+#                    --no-undefined meson link rejects
 #   - link contract: -nostdlib -Wl,-dynamic-linker,
 #                    /System/Libraries/ld-musl-x86_64.so.1 (the FSH
 #                    interpreter baked at musl install via --syslibdir)

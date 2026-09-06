@@ -12,7 +12,6 @@ LANG = -std=c89
 
 # The 32-bit i386 build was REMOVED in the FNX pivot: this tree builds
 # only the 64-bit long-mode kernel (PE32+ UEFI application via buildfnx).
-CCEXE=gcc
 
 LD = $(CROSS_COMPILE)ld
 
@@ -68,8 +67,8 @@ QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n
 QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=$(ROOTIMG),format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
 # One system compiler: the kernel builds with clang since M3
-# (docs/llvm-clang-toolchain-plan.md M3); the gcc CC64R flag set is kept
-# verbatim. PATCH_PIC stays on for clang: -fPIC extern-data access emits
+# (docs/llvm-clang-toolchain-plan.md M3); the pre-clang CC64R flag set is
+# kept verbatim. PATCH_PIC stays on: -fPIC extern-data access emits
 # R_X86_64_REX_GOTPCRELX under clang exactly as under gcc-14, and the PE
 # link cannot relax it, so the mov->lea rewrite is required for both
 # (see the REAL pattern rule for the measured #GP without it).
@@ -144,42 +143,30 @@ run-qemu:
 		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	fi
 
-# --- FNX native x86_64 userland (port phase B): static ELF64 binaries
-# --- built with tools/musl-gcc64.sh into .build/rootfs64, packed into an
-# --- ext2 root image (.build/root.img) attached as the second IDE disk.
-
 # ---------------------------------------------------------------------------
-# Native x86_64 userland (port phase B): same tree, LP64 ABI. Built with
-# tools/musl-gcc64.sh into .build/rootfs64. Since M1 the binaries are
+# Native x86_64 userland (LLVM M0-M2, docs/llvm-clang-toolchain-plan.md):
 # DYNAMIC (non-PIE) ELF64 against /System/Libraries/ld-musl-x86_64.so.1
 # (docs/shared-libraries-plan.md); MUSL64_CC_STATIC is the explicit static
 # exception (recovery shell/updater + unconverted third-party carve-outs).
+# The one system compiler is clang since M1 (kernel M3): every binary in
+# the system build goes through the tools/musl-clang64*.sh wrappers, and
+# musl itself is built by clang since M2. MUSL64_LIBC is the "musl is
+# installed" stamp the userland targets order against.
 MUSL64_PREFIX = .build/musl64
-MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
-# musl itself is built by clang since M2 (docs/llvm-clang-toolchain-plan.md
-# M2): the configured CC is the host clang and LIBCC points at the
-# compiler-rt builtins archive in place of -lgcc/-lgcc_eh (clang has no
-# libgcc; musl's configure would otherwise detect the host gcc's glibc
-# libgcc). musl's build is self-contained (own headers, freestanding), so
-# no sysroot or -isystem is needed.
+MUSL64_LIBC   = $(MUSL64_PREFIX)/lib/libc.so
+# musl's configure CC is the host clang and config.mak's LIBCC points at
+# the compiler-rt builtins archive in place of libgcc.a (clang has no
+# libgcc; musl's configure would otherwise detect the host's libgcc).
+# musl's build is self-contained (own headers, freestanding), so no
+# sysroot or -isystem is needed.
 MUSL64_BUILD_CC = /usr/lib/llvm-19/bin/clang
-# The one system compiler is clang since M1 (docs/llvm-clang-toolchain-
-# plan.md): the wrappers below drive /usr/lib/llvm-19 clang with the same
-# musl/FSH link contract the gcc specs used to encode, plus the
-# compiler-rt builtins archive (libgcc.a's replacement). The gcc wrappers
-# (tools/musl-gcc64*.sh) stay on disk as the M1..M3 fallback and are
-# deleted at M4.
 MUSL64_CC     = $(CURDIR)/tools/musl-clang64.sh
 MUSL64_CC_STATIC = $(CURDIR)/tools/musl-clang64-static.sh
-# The Clang toolchain (docs/llvm-clang-toolchain-plan.md): wrappers that
-# drive /usr/lib/llvm-19 clang with the same musl/FSH link contract the
-# gcc specs encode. COMPILER_RT_BUILTINS is the musl-targeted compiler-rt
-# builtins archive (libgcc.a's replacement); it is built by the
-# compiler-rt target from the pinned .build/llvm-src.
-MUSL64_CLANG     = $(CURDIR)/tools/musl-clang64.sh
-MUSL64_CLANG_STATIC = $(CURDIR)/tools/musl-clang64-static.sh
 COMPILER_RT_CFG     = .build/compiler-rt/CMakeCache.txt
 COMPILER_RT_BUILTINS = .build/compiler-rt/lib/linux/libclang_rt.builtins-x86_64.a
+# M0-era names still used by the m0clang target (same wrappers).
+MUSL64_CLANG     = $(CURDIR)/tools/musl-clang64.sh
+MUSL64_CLANG_STATIC = $(CURDIR)/tools/musl-clang64-static.sh
 # X11 third-party dependency prefix (built by tools/x11-shared-build.sh;
 # shared .so + static .a coexist since the M2 conversion).
 X11PREFIX     = .build/x11-prefix
@@ -193,7 +180,7 @@ $(FNXLIB_CONFIG): userland/libconfig.c include/libconfig.h
 	$(MUSL64_CC) -fPIC -shared -Iinclude -Wl,-soname,libconfig.so.1 \
 		-o $@ userland/libconfig.c
 	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
-# C++: LLVM libc++/libc++abi/libunwind via tools/musl-g++64.sh
+# C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-clang++64.sh
 LLVM_CXX_SRC    = .build/llvm-src
@@ -204,14 +191,21 @@ ROOTFS64      = .build/rootfs64
 DASH64_BIN    = third_party/dash/src/dash64
 TOYBOX64_BIN  = third_party/toybox/toybox64
 
-.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint
+.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint toolchain-gate
 
 # FSH porting linter gate (proposal 6.1/Q1): zero-allow on System/Tools.
 fshlint:
 	python3 tools/fshlint.py $(ROOTFS64)
 
-musl64: $(MUSL64_SPECS)
-$(MUSL64_SPECS): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_party/musl-hosts.patch
+# LLVM M4 gate (docs/llvm-clang-toolchain-plan.md M4): the one system
+# compiler is clang - no other compiler name may appear in the build
+# definition. Wired into buildfnx and userland64 below; run it standalone
+# as `make toolchain-gate`.
+toolchain-gate:
+	@python3 tools/toolchain-gate.py
+
+musl64: $(MUSL64_LIBC)
+$(MUSL64_LIBC): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_party/musl-hosts.patch
 	cd third_party/musl && \
 		make clean >/dev/null 2>&1 || true && \
 		rm -f src/passwd/pwconf.c src/passwd/pwconf.h && \
@@ -314,7 +308,7 @@ m0clang: userland64 $(COMPILER_RT_BUILTINS) tools/musl-clang64.sh tools/musl-cla
 	@echo "m0clang: clang-built hellos staged under System/Shared/tests"
 
 dash64: $(DASH64_BIN)
-$(DASH64_BIN): $(MUSL64_SPECS) third_party/dash-fsh.patch
+$(DASH64_BIN): $(MUSL64_LIBC) third_party/dash-fsh.patch
 	cd third_party/dash && git apply $(CURDIR)/third_party/dash-fsh.patch && \
 		./autogen.sh && \
 		CC="$(MUSL64_CC)" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
@@ -322,7 +316,7 @@ $(DASH64_BIN): $(MUSL64_SPECS) third_party/dash-fsh.patch
 		git checkout -- .
 
 toybox64: $(TOYBOX64_BIN)
-$(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh $(MUSL64_CC) $(FNXLIB_CONFIG)
+$(TOYBOX64_BIN): $(MUSL64_LIBC) tools/mktoybox.sh $(MUSL64_CC) $(FNXLIB_CONFIG)
 	TOYBOX_CC="$(MUSL64_CC)" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $(TOYBOX64_BIN)
 
@@ -342,7 +336,7 @@ $(FNXLIB)/libconfig.a: $(FNXLIB_CONFIG) userland/libconfig.c include/libconfig.h
 	$(MUSL64_CC) -Iinclude -c userland/libconfig.c -o $(FNXLIB)/libconfig.o
 	ar rcs $@ $(FNXLIB)/libconfig.o
 
-$(DASH64_RECOVERY): $(MUSL64_SPECS) third_party/dash-fsh.patch
+$(DASH64_RECOVERY): $(MUSL64_LIBC) third_party/dash-fsh.patch
 	@mkdir -p $(RECOVERY64)
 	cd third_party/dash && git apply $(CURDIR)/third_party/dash-fsh.patch && \
 		./autogen.sh && \
@@ -350,7 +344,7 @@ $(DASH64_RECOVERY): $(MUSL64_SPECS) third_party/dash-fsh.patch
 		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_RECOVERY) && \
 		git checkout -- .
 
-$(TOYBOX64_RECOVERY): $(MUSL64_SPECS) tools/mktoybox.sh $(MUSL64_CC_STATIC) $(FNXLIB)/libconfig.a
+$(TOYBOX64_RECOVERY): $(MUSL64_LIBC) tools/mktoybox.sh $(MUSL64_CC_STATIC) $(FNXLIB)/libconfig.a
 	@mkdir -p $(RECOVERY64)
 	# TOYBOX_STAGE points the static build at its own scratch root so the
 	# recovery run cannot clobber .build/toybox-root (the dynamic staging
@@ -394,7 +388,7 @@ xfb64: $(FNXLIB_CONFIG)
 # toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
 # stage into a scratch root and merge every applet dir into System/Tools.
 TOYBOX64_STAGE = .build/toybox-root
-userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -658,7 +652,7 @@ K64OBJS = $(patsubst kernel64/%.c,$(OBJDIR64)/%.o,$(filter %.c,$(K64SRCS))) \
 K64PICOBJS = $(patsubst kernel64/%.c,$(OBJDIR64)/%.o,$(filter %.c,$(K64SRCS)))
 K64DEPS = $(patsubst %.o,%.d,$(K64PICOBJS))
 
-buildfnx: .build/64/fnx.efi
+buildfnx: .build/64/fnx.efi toolchain-gate
 
 .build/64/fnx.efi: $(REALOBJS) $(K64OBJS) include/fnx/efi.h kernel64/serial64.h
 	@mkdir -p .build/64

@@ -44,70 +44,67 @@ of scope here (Non-goals, §8).
 - Languages open per subsystem (C, C++, Objective-C) — clang is the
   only front end that speaks all three from one driver.
 
-## 2. Current state (verified 2026-09)
+## 2. Current state (verified 2026-09; rewritten at M4)
 
 - **Host toolchain**: Debian clang-19 19.1.7 + lld-19 + llvm-19 packages
   installed — `/usr/lib/llvm-19/bin` holds `clang`, `clang++`,
   `ld.lld`, `llvm-objcopy`, `llvm-ar`, `llvm-ranlib`, `llvm-nm`,
   `llvm-strip`, `llvm-objdump` — version-identical to the pinned
   `llvmorg-19.1.7` source in `.build/llvm-src` (tools/fetch-llvm.sh:19).
-  The tools are **not on PATH** — wrappers/Makefile must use the full
-  path or prepend it.
-- **Userland wrappers (all `exec gcc`, gcc front ends today)**:
-  - `tools/musl-gcc64.sh`: `gcc -no-pie -I tools/kernel-headers
-    -specs $MUSL/lib/musl-gcc.specs` (dynamic ET_EXEC default, M1).
-  - `tools/musl-gcc64-static.sh`: same + `-static` (recovery set).
-  - `tools/musl-gcc.sh`: i386 legacy, unused by the 64-bit flow.
-  - `tools/musl-g++64.sh`: `exec g++ -static ... -nostdinc++ -isystem
-    $LLVM_CXX/include/c++/v1 -nostdlib++ ... -lc++ -lc++abi -lunwind`
-    (deliberately static + g++ today).
-- **The specs contract** (`.build/musl64/lib/musl-gcc.specs`, generated
-  by musl's install from `--syslibdir=/System/Libraries`): cpp
-  `-nostdinc -isystem $MUSL/include`; `*startfile`: `Scrt1.o crti.o
-  crtbeginS.o`; `*endfile`: `crtendS.o crtn.o`; `*link`:
-  `-dynamic-linker /System/Libraries/ld-musl-x86_64.so.1 -nostdlib
-  %{shared:-shared} %{static:-static}`; `*libgcc`: `libgcc.a`. The
-  startfile/endfile crtbeginS/crtendS and libgcc.a are **GCC
-  artifacts** — a clang driver cannot consume the specs file and must
-  not consume the GCC crt.
-- **musl64** (Makefile:181-194): `CC="gcc" ./configure --target=x86_64
-  --prefix=.build/musl64 --syslibdir=/System/Libraries`, make/install,
-  hardlink `libc.so → ld-musl-x86_64.so.1`.
-- **C++ runtimes** (Makefile `llvm-cxx`, 200-227): built from the
-  pinned source with `-DCMAKE_C_COMPILER=gcc
-  -DCMAKE_CXX_COMPILER=g++` + the specs flags (`-static`), all
-  `*_ENABLE_SHARED=OFF`; `.build/llvm-cxx-prefix` = static
-  libc++/libc++abi/libunwind only. No compiler-rt anywhere yet.
+  The tools are **not on PATH** — wrappers/Makefile use the full path.
+- **One system compiler — clang 19 everywhere (M0..M4)**:
+  - userland (M1): `tools/musl-clang64.sh` (dynamic non-PIE ET_EXEC
+    default) and `tools/musl-clang64-static.sh` (`-static -no-pie`,
+    the recovery set) drive `/usr/lib/llvm-19/bin/clang` and spell the
+    musl/FSH link contract out as driver flags.
+  - C++ (M2): `tools/musl-clang++64.sh` — clang++ + compiler-rt
+    crtbegin/crtend + the static LLVM libc++/libc++abi/libunwind stack.
+  - musl itself (M2): `CC=/usr/lib/llvm-19/bin/clang ./configure` +
+    `LIBCC = <compiler-rt builtins>` in config.mak (no libgcc).
+  - kernel (M3): CC64K/CC64 = `$(CLANG19)` with the pre-clang flag set
+    verbatim; the kernel64 `.S` files assemble via clang.
+  - The M1..M3 gcc wrapper scripts (`musl-gcc64*.sh`, `musl-g++64.sh`,
+    the i386-era `musl-gcc.sh`) and the musl-gcc.specs contract were
+    **deleted at M4**; `make toolchain-gate` (`tools/toolchain-gate.py`)
+    fails the build if gcc/g++/-specs reappear in Makefile/tools/.
+- **musl64** (Makefile): clang configure + clang-built libc.so; the
+  `MUSL64_LIBC` stamp orders the userland targets. The specs file is
+  gone; the startfile/endfile/-lc contract lives in the clang wrappers.
+- **C++ runtimes** (Makefile `llvm-cxx`): cmake with
+  `CMAKE_C_COMPILER=$(MUSL64_CC_STATIC)` and
+  `CMAKE_CXX_COMPILER=tools/musl-clang++64.sh` (self-bootstrapping);
+  `.build/llvm-cxx-prefix` = static libc++/libc++abi/libunwind only.
 - **Kernel**:
-  - Compile flags (CC64K, Makefile:506-510; CC64R = CC64K +
-    `-fvisibility=hidden -MMD -MP`, 546): `gcc -m64 -march=x86-64
-    -std=c89 -O2 -fPIC -fno-semantic-interposition -fno-common
-    -ffreestanding -mno-red-zone -mno-sse -mno-sse2
-    -fno-asynchronous-unwind-tables -fno-stack-protector
-    -fvisibility=hidden -DCONFIG_FS_MINIX`. No `-mcmodel` anywhere.
-    Every flag is clang-acceptable (`-fno-semantic-interposition` is
-    supported since clang 13).
-  - Inline asm is standard AT&T extended asm with numbered operands
-    (`kernel64/asm64.c`, `idt64.c` incl. a top-level `__asm__` block of
-    `.macro ISR_NOERR/ISR_ERR` + 65 expansions, `paging64.c`, `mm64.c`,
-    `efi_stub.c` incl. an RIP-read idiom) — clang's integrated assembler
-    handles `.altmacro`/`.macro`/`.type @function`; the two `.S` files
-    (`kernel64/switch64.S`, `init_trampoline64.S`) are plain AT&T gas.
-  - **PATCH_PIC is the GCC-specific hazard**: `tools/patch_pic_data.py`
-    byte-patches gcc-14 objects (`mov sym(%rip),%rax` 0x8b → `lea` 0x8d
-    for R_X86_64_PC32 relocs to hidden extern data; Makefile:561/574,
-    rationale in docs/port-longmode-uefi.txt:286). Clang emits `lea`
-    directly for that pattern, so the patch must be **gated to GCC-built
-    objects or retired** — an unconditional byte patch over clang
-    objects could corrupt unrelated `0x8b` opcodes.
-  - Kernel link (Makefile:570-579): `python3 tools/patch_pic_data.py`
+  - Compile flags (CC64K; CC64R = CC64K + `-fvisibility=hidden -MMD
+    -MP`): `clang -m64 -march=x86-64 -std=c89 -O2 -fPIC
+    -fno-semantic-interposition -fno-common -ffreestanding -mno-red-zone
+    -mno-sse -mno-sse2 -fno-asynchronous-unwind-tables
+    -fno-stack-protector -fvisibility=hidden -DCONFIG_FS_MINIX`.
+    The clang port needed source fixes where clang errors where gcc-14
+    only warned (c89 implicit decls, `"Nd"` port-I/O constraints,
+    pointer→addr_t kfree, bare returns, fn-pointer signature matches);
+    see the M3 status section below.
+  - Inline asm is standard AT&T extended asm (`asm64.c`, `idt64.c`
+    `.macro` blocks, `paging64.c`, `mm64.c`, `efi_stub.c` incl. an
+    RIP-read idiom) — clang's integrated assembler handles
+    `.altmacro`/`.macro`/`.type @function`; the two `.S` files
+    (`switch64.S`, `init_trampoline64.S`) are plain AT&T gas.
+  - **PATCH_PIC stays ON** (`tools/patch_pic_data.py`): clang emits the
+    same R_X86_64_REX_GOTPCRELX pattern as gcc-14 for -fPIC
+    hidden-extern data and GNU ld's PE link cannot relax it (measured
+    #GP in mem_init without the mov→lea patch). Clang additionally
+    FOLDS some CSE'd GOT loads into `cmp/add [rip+sym]` operands the
+    byte patch cannot reach — those are fixed with explicit
+    `visibility("hidden")` decl attributes (M3 status section).
+  - Kernel link (Makefile fnx.efi): `python3 tools/patch_pic_data.py`
     then `$(LD) -m i386pep --entry efi_main --image-base 0x1000000`
-    (GNU ld) then `objcopy --remove-section .comment --subsystem 10`
-    (GNU objcopy).
-- **Stale doc claims to correct during/after the migration**:
-  cpp-toolchain-plan.md:50-60 ("gcc -static", "no clang on the host",
-  "no dynamic linker, everything -static"), musl-g++64.sh:4-8
-  ("deliberately STATIC"), musl-gcc64.sh:1-3 (gcc wrapper header).
+    (GNU ld — lld's PE driver needs COFF inputs) then
+    `$(LLVM_OBJCOPY) --remove-section .comment
+    --subsystem=efi_application`.
+- **Stale doc claims corrected at M4**: cpp-toolchain-plan.md:50-60
+  ("gcc -static", "no clang on the host", "everything -static") and the
+  deleted musl-g++64.sh/musl-gcc64.sh headers are historical; the
+  README toolchain wording now names clang only.
 
 ## 3. The clang driver contract (replacing the specs)
 
@@ -495,3 +492,27 @@ modes green, fshlint 0, no kernel exceptions.
   stages `/tmp` (Xfb's unix-listener mkdir needed it; errno 2), and
   `xfbdesk-root` re-copies `$(XFB_BIN)` so the desktop image can't go
   stale against a rebuilt Xfb.
+
+### M4 — DONE (commit PENDING; see git log)
+
+**The gcc removal gate is closed**: `tools/musl-gcc64.sh`,
+`tools/musl-gcc64-static.sh`, `tools/musl-g++64.sh` and the i386-era
+`tools/musl-gcc.sh` are deleted; `CCEXE`, `MUSL64_SPECS` and every
+`-specs`/gcc reference are gone from the build. musl's install order is
+tracked by the `MUSL64_LIBC` stamp (the specs file the gcc wrappers
+consumed is no longer produced or referenced).
+
+- **The gate**: `make toolchain-gate` runs `tools/toolchain-gate.py`,
+  which greps Makefile + tools/ and fails on any gcc/g++/-specs mention
+  except the explicit rationale allowlist (gcc-14 / libgcc /
+  /usr/lib/gcc). Wired into `buildfnx` and `userland64` prereqs.
+- **Docs**: §2 "Current state" rewritten to the M4 reality (clang
+  everywhere, PATCH_PIC stays, GNU ld + llvm-objcopy link). The stale
+  claims in docs/cpp-toolchain-plan.md and docs/shared-libraries-plan.md
+  are marked superseded; userland/xfb/README.md's build line now names
+  tools/musl-clang64.sh.
+- **Objective-C/GNUstep evaluation is DISCARDED** (decision): not part
+  of the roadmap; no LLVM-pin move is needed for it. The pin stays at
+  19.1.7 (host clang-19.1.7 = the pinned source).
+- Acceptance: m0/m1/m2/cpp + m4_recovery all four modes green,
+  fshlint 0, `make toolchain-gate` OK.

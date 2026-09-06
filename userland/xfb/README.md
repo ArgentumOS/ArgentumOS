@@ -67,12 +67,12 @@ from this repo's git history, which contains the pre-promotion
 ```sh
 make -C userland/xfb \
      OUT="$PWD/.build/x11/xfb" \
-     CC="$PWD/tools/musl-gcc64.sh" -j8
+     CC="$PWD/tools/musl-clang64.sh" -j8
 # or from the repo root:  make xfb64
 ```
 
 External (non-Xorg) dependencies are **not** vendored here; they come from
-the static-musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
+the musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
 `libXfont2`, `libsha1`, `libXau`, `libXdmcp`) — build them first with
 `tools/x11-deps-build.sh`. Override with `X11PREFIX=`. FNX libconfig
 (`include/libconfig.h` + `userland/libconfig.c`) is the SHARED

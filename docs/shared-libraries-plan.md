@@ -7,8 +7,8 @@ kernel/toolchain work described is the implementation backlog. M0 shipped
 `AT_BASE`, musl shared build with `/System/Libraries` syslibdir + loader
 search path `/System/Libraries:/Shared/Libraries`, hardlinked
 `libc.so`/`ld-musl-x86_64.so.1` staged) and one dynamic hello. M1 flipped
-the world: `tools/musl-gcc64.sh` links dynamic non-PIE by default (the
-static override is `tools/musl-gcc64-static.sh` for the recovery shell /
+the world: `tools/musl-clang64.sh` links dynamic non-PIE by default (the
+static override is `tools/musl-clang64-static.sh` for the recovery shell /
 updater + unconverted carve-outs), init/dash/toybox/all first-party tools
 are dynamic, fshlint R1 is now "dynamic is the norm" with an explicit
 static exception list, and the kernel auxv reports post-exec euid/egid so
