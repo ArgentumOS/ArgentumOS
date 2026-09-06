@@ -35,7 +35,7 @@ unsigned char inport_b(unsigned int port)
 {
 	unsigned char v;
 
-	__asm__ __volatile__("inb %1, %0" : "=a"(v) : "Nd"(port));
+	__asm__ __volatile__("inb %1, %0" : "=a"(v) : "d"((unsigned short)(port)));
 	return v;
 }
 
@@ -51,7 +51,7 @@ unsigned int inport_l(unsigned int port)
 {
 	unsigned int v;
 
-	__asm__ __volatile__("inl %1, %0" : "=a"(v) : "Nd"(port));
+	__asm__ __volatile__("inl %1, %0" : "=a"(v) : "d"((unsigned short)(port)));
 	return v;
 }
 
@@ -75,7 +75,7 @@ void inport_sl(unsigned int port, void *addr, unsigned int count)
 
 void outport_b(unsigned int port, unsigned char value)
 {
-	__asm__ __volatile__("outb %0, %1" :: "a"(value), "Nd"(port));
+	__asm__ __volatile__("outb %0, %1" :: "a"(value), "d"((unsigned short)(port)));
 }
 
 void outport_w(unsigned int port, unsigned short int value)
@@ -85,7 +85,7 @@ void outport_w(unsigned int port, unsigned short int value)
 
 void outport_l(unsigned int port, unsigned int value)
 {
-	__asm__ __volatile__("outl %0, %1" :: "a"(value), "Nd"(port));
+	__asm__ __volatile__("outl %0, %1" :: "a"(value), "d"((unsigned short)(port)));
 }
 
 void outport_sw(unsigned int port, void *addr, unsigned int count)

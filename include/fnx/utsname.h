@@ -72,7 +72,9 @@ struct new_utsname
     char domainname[_UTSNAME_LENGTH + 1];
 };
 
-extern struct new_utsname sys_utsname;
+/* explicit hidden: clang otherwise folds &sys_utsname into a GOTPCRELX
+ * memory operand (cmp/add [rip+sym]) that the PE link cannot relax */
+extern struct new_utsname sys_utsname __attribute__((visibility("hidden")));
 extern char UTS_MACHINE[_UTSNAME_LENGTH + 1];
 
 #endif /* _FNX_UTSNAME_H */

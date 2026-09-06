@@ -170,7 +170,7 @@ static __u8 vnet_ior8(unsigned short reg)
 	__u8 v;
 
 	v = 0;
-	__asm__ __volatile__("inb %1, %0" : "=a"(v) : "Nd"(vnet.iobase + reg));
+	__asm__ __volatile__("inb %1, %0" : "=a"(v) : "d"((unsigned short)(vnet.iobase + reg)));
 	return v;
 }
 

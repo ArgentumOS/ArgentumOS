@@ -73,7 +73,7 @@ struct inotify_qevent {
 	struct inotify_event ev;
 };
 
-extern struct fs_operations inotifyfs_fsop;
+extern struct fs_operations inotifyfs_fsop __attribute__((visibility("hidden")));
 extern int inotifyfs_ialloc(struct inode *, int);
 extern void inotifyfs_ifree(struct inode *);
 extern int inotifyfs_read_superblock(__dev_t, struct superblock *);

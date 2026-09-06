@@ -67,6 +67,15 @@ QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n
 # it. Set QEMU_DRIVES= to override.
 QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=$(ROOTIMG),format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
+# One system compiler: the kernel builds with clang since M3
+# (docs/llvm-clang-toolchain-plan.md M3); the gcc CC64R flag set is kept
+# verbatim. PATCH_PIC stays on for clang: -fPIC extern-data access emits
+# R_X86_64_REX_GOTPCRELX under clang exactly as under gcc-14, and the PE
+# link cannot relax it, so the mov->lea rewrite is required for both
+# (see the REAL pattern rule for the measured #GP without it).
+CLANG19 = /usr/lib/llvm-19/bin/clang
+LLVM_OBJCOPY = /usr/lib/llvm-19/bin/llvm-objcopy
+
 # A USB mouse is attached by default so the X desktop (Xfb) has a
 # working pointer: QEMU 10's PS/2 mouse delivery is unreliable headless,
 # and FNX's usb-mouse driver synthesizes PS/2 packets into /dev/psaux
@@ -74,7 +83,7 @@ QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=
 QEMU_USB ?= -device usb-ehci -device usb-mouse
 # ---------------------------------------------------------------------------
 
-CC64 = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
+CC64 = $(CLANG19) -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
        -fno-pie -fno-common -ffreestanding -mno-red-zone -mno-sse -mno-sse2 \
        -fno-asynchronous-unwind-tables -Wall -Wstrict-prototypes
 
@@ -105,9 +114,10 @@ XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 	$(MUSL64_CC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
 		userland/xkey.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
 
-xfbdesk-root: $(XFB_DEMO_BIN)
+xfbdesk-root: $(XFB_DEMO_BIN) $(XFB_BIN)
 	rm -rf $(XFBROOT)
 	cp -a $(ROOTFS64) $(XFBROOT)
+	cp $(XFB_BIN) "$(XFBROOT)/System/Shared/X11/bin/Xfb"
 	cp .build/x11/xdraw "$(XFBROOT)/System/Shared/X11/bin/xdraw"
 	cp .build/x11/xkey "$(XFBROOT)/System/Shared/X11/bin/xkey"
 	printf 'desktop = "xfb"\n' > "$(XFBROOT)/System/Configuration/session.conf"
@@ -390,7 +400,7 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	# third-party X11 + toolchain tests live under System/Shared
 	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
 	# --- the FSH skeleton (spaced names verbatim, Q7) ---
-	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
+	@mkdir -p "$(ROOTFS64)/tmp" "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
 		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
 		"$(ROOTFS64)/Shared/Sounds" "$(ROOTFS64)/Shared/Videos" \
@@ -583,7 +593,7 @@ compile64:
 # absolute 32-bit immediates that -fno-pie would emit for string literals.
 # -fno-semantic-interposition keeps references to our own globals direct
 # (RIP-relative) so no GOT is needed in the PE.
-CC64K = gcc -m64 -march=x86-64 $(LANG) -D__KERNEL__ -I$(INCLUDE) -O2 \
+CC64K = $(CLANG19) -m64 -march=x86-64 $(LANG) -D__KERNEL__ -I$(INCLUDE) -O2 \
 	-fPIC -fno-semantic-interposition -fno-common -ffreestanding \
 	-mno-red-zone -mno-sse -mno-sse2 -fno-asynchronous-unwind-tables \
 	-fno-stack-protector -Wall -Wstrict-prototypes \
@@ -609,10 +619,10 @@ buildfnxdemo: .build/64/fnxdemo.efi
 	$(CC64K) -c -o .build/64/msix64.o kernel64/msix64.c
 	$(CC64K) -c -o .build/64/sched64.o kernel64/sched64.c
 	$(CC64K) -c -o .build/64/probe64.o kernel64/probe64.c
-	gcc -c -o .build/64/switch64.o kernel64/switch64.S
+	$(CLANG19) -c -o .build/64/switch64.o kernel64/switch64.S
 	$(LD) -m i386pep --entry efi_main --image-base 0x1000000 -o $@ \
 		.build/64/efi_stub.o .build/64/main64.o .build/64/paging64.o .build/64/mm64.o .build/64/idt64.o .build/64/gdt64.o .build/64/irq64.o .build/64/sched64.o .build/64/probe64.o .build/64/switch64.o
-	objcopy --remove-section .comment --subsystem 10 $@
+	$(LLVM_OBJCOPY) --remove-section .comment --subsystem=efi_application $@
 	@echo "build64: $@ ready (PE32+ EFI application)"
 
 # M4-B: 64-bit build of the REAL FNX kernel (kernel/mm/fs/lib/drivers C
@@ -620,9 +630,10 @@ buildfnxdemo: .build/64/fnxdemo.efi
 # and the EFI stub. The real sources are compiled -m64 with
 # -fvisibility=hidden so extern globals (kstat, current, ...) resolve
 # PC-relative instead of via the GOT (which ld -m i386pep mishandles).
-# gcc 14.x with -fPIC + -fvisibility=hidden emits `mov sym(%rip),%rax`
-# instead of `lea sym(%rip),%rax` for extern DATA addresses;
-# patch_pic_data.py fixes the one-byte opcode (0x8b -> 0x8d) in the objects.
+# gcc 14.x AND clang 19 with -fPIC + -fvisibility=hidden emit
+# `mov sym@GOTPCREL(%rip),%rax` instead of `lea sym(%rip),%rax` for extern
+# DATA addresses; patch_pic_data.py fixes the one-byte opcode (0x8b -> 0x8d)
+# in the objects (see the pattern rule below for the clang details).
 CC64R = $(CC64K) -fvisibility=hidden -MMD -MP
 REALDIR = .build/64real
 OBJDIR64 = .build/64
@@ -655,12 +666,18 @@ buildfnx: .build/64/fnx.efi
 	$(LD) -m i386pep --entry efi_main --image-base 0x1000000 -o $@ \
 		$(REALOBJS) \
 		$(K64OBJS)
-	objcopy --remove-section .comment --subsystem 10 $@
+	$(LLVM_OBJCOPY) --remove-section .comment --subsystem=efi_application $@
 	@echo "buildfnx: $@ ready (PE32+ EFI application, REAL kernel + kernel64 primitives)"
 
 $(REALDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC64R) -c -o $@ $<
+	# PATCH_PIC: with -fPIC both gcc-14 AND clang address hidden-extern
+	# data via R_X86_64_REX_GOTPCRELX (mov sym@GOTPCREL); GNU ld's PE
+	# link cannot relax that (no GOT), so the tool rewrites the mov to a
+	# lea (direct PC32, resolved by ld). Verified required for clang too
+	# - without it mem_init's _last_data_addr access #GPs on a zeroed GOT
+	# slot (see docs/llvm-clang-toolchain-plan.md M3).
 	python3 $(PATCH_PIC) $@
 
 # pull in the generated header dependencies (-MMD -MP wrote the .d files)
@@ -684,5 +701,5 @@ $(OBJDIR64)/kreal64.o: kernel64/kreal64.c
 
 $(OBJDIR64)/%.o: kernel64/%.S
 	@mkdir -p $(OBJDIR64)
-	gcc -c $(M6DEBUG) -o $@ $<
+	$(CLANG19) -c $(M6DEBUG) -o $@ $<
 

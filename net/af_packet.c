@@ -229,6 +229,19 @@ int packet_init(void)
 	return 0;
 }
 
+/* proto_ops.send/recv carry a flags argument (5 args) while this socket
+ * type's plain read/write do not (4 args); clang rejects aliasing one
+ * function to both shapes (gcc only warned), so send/recv are thin
+ * adapters that drop the flags. */
+static int packet_send(struct socket *s, struct fd *f, const char *buf, __size_t len, int flags)
+{
+	return packet_write(s, f, buf, len);
+}
+static int packet_recv(struct socket *s, struct fd *f, char *buf, __size_t len, int flags)
+{
+	return packet_read(s, f, buf, len);
+}
+
 struct proto_ops packet_ops = {
 	packet_create,
 	packet_free,
@@ -238,8 +251,8 @@ struct proto_ops packet_ops = {
 	NULL,			/* accept */
 	packet_getname,
 	NULL,			/* socketpair */
-	packet_write,		/* send */
-	packet_read,		/* recv */
+	packet_send,		/* send */
+	packet_recv,		/* recv */
 	packet_sendto,
 	packet_recvfrom,
 	packet_read,

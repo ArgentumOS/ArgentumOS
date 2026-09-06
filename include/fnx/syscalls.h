@@ -147,7 +147,7 @@ int sys_newfstat(unsigned int, struct new_stat *);
 int sys_newfstatat(int, const char *, struct new_stat *, int);
 int sys_uname(struct old_utsname *);
 int sys_iopl(int, int, int, int, int, struct sigcontext *);
-int sys_wait4(__pid_t, int *, int, struct rusage *);
+int sys_wait4(__pid_t, int *, int, struct rusage *) __attribute__((visibility("hidden")));
 int sys_sysinfo(struct sysinfo *);
 #ifdef CONFIG_SYSVIPC
 #endif /* CONFIG_SYSVIPC */

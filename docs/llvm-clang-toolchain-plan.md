@@ -434,3 +434,64 @@ M1.
 Next: **M3** — the kernel via clang + lld: CC64R flags verbatim
 (compile64 pattern), **PATCH_PIC gated** (clang emits `lea` for hidden
 data; gcc-14 needs the byte patch), EFI link ported to lld/llvm-objcopy.
+
+### M3 — DONE (commit PENDING; see git log)
+
+**The kernel builds with clang 19** (CC64K/CC64 = `$(CLANG19)`, the gcc
+CC64R flag set kept verbatim; `CLANG19`/`LLVM_OBJCOPY` vars at Makefile
+top). Acceptance on the final image: m0/m1/m2/cpp + m4_recovery all four
+modes green, fshlint 0, no kernel exceptions.
+
+- **Source fixes the clang kernel needed** (gcc warned where clang errors
+  under `-std=c89`):
+  - `newstat/newfstat/newlstat.c`: forward-declare `fill_new_stat` (the
+    c89 implicit declaration → "conflicting types" error). Decl is
+    placed BEFORE the `#ifdef __DEBUG__` block (inside it, non-debug
+    builds still failed).
+  - `drivers/net/virtio_net.c` + `kernel64/asm64.c`: `"Nd"(port)` port-I/O
+    constraints make clang emit `inb %edx,%al` (invalid); use
+    `"d"((unsigned short)(port))` (the inw/outw helpers already did).
+  - `drivers/usb/usb-hub.c`: `kfree((addr_t)st/hubdesc)` (kmalloc results
+    cast to `unsigned char *`; kfree takes `addr_t` - pointer→int
+    conversion is an error under clang).
+  - `drivers/usb/xhci.c`: bare `return;` in the int-returning
+    `xhci_enumerate` → `return -EIO;` (-Wreturn-mismatch).
+  - `net/unix.c` + `include/fnx/net/unix.h`: `unix_ioctl`'s 4th arg
+    `unsigned int` → `addr_t` (proto_ops.ioctl type; gcc only warned).
+  - `net/af_packet.c`: `packet_write/read` are 4-arg but were aliased to
+    the 5-arg `.send`/`.recv` slots (gcc warned); added thin
+    `packet_send/recv` adapters dropping the flags.
+- **PATCH_PIC stays ON for clang** (the plan's "gated off" guess was
+  wrong): clang ALSO addresses -fPIC extern data via
+  R_X86_64_REX_GOTPCRELX, and GNU ld's PE link cannot relax it (no GOT).
+  Without the patch the kernel #GP'd in mem_init's `_last_data_addr`
+  access (a zeroed GOT slot). Verified with a byte-level repro.
+- **The m2 X11 regression root cause (clang-only)**: when clang takes the
+  ADDRESS of a hidden extern and CSEs it, it can FOLD the GOT-slot load
+  into an ALU memory operand - `cmp [rip+sym],reg` / `add [rip+sym],reg`
+  (5 sites kernel-wide). PATCH_PIC only rewrites the `mov` form, and the
+  PE link resolves the folded form as a DIRECT memory access to the
+  symbol's CONTENTS (no GOT). The first site hit: `do_exit`'s wait4
+  wakeup check `p->sleep_address == &sys_wait4` never matched → Xfb's
+  wait4 (Pclose of the xkbcomp child) slept forever → the X desktop hung
+  at ActivateDevice(keyboard). Fixed by explicit
+  `__attribute__((visibility("hidden")))` on the three affected
+  declarations (`sys_wait4` in syscalls.h, `sys_utsname` in utsname.h,
+  `inotifyfs_fsop` in fs_inotify.h) - an explicit decl attribute makes
+  clang emit the direct PC32 `lea` (the compile-flag `-fvisibility=hidden`
+  alone does NOT; no flag combination removes the GOTPCRELX). The 1137
+  remaining `lea sym@GOTPCRELX(%rip),reg` + `mov (%reg),reg2` pairs are
+  BENIGN in the PE (lea resolves to `&sym`, mov reads the value). If a
+  future clang build folds a new site, extend the attribute list.
+- **objcopy → llvm-objcopy**: `$(LLVM_OBJCOPY) --remove-section .comment
+  --subsystem=efi_application` produces an identical PE (subsystem 0xa).
+  Verified booting.
+- **The EFI link stays on GNU ld (plan amendment)**: `ld.lld -m i386pep`
+  and `lld-link` require COFF object inputs; the FNX kernel is ~400 ELF
+  `.o`'s that GNU ld's BFD happily links into PE32+. lld has no
+  ELF-objects→PE output path. Porting would mean converting every kernel
+  object to COFF (llvm-objcopy per-object) - parked as a later item.
+- **Two image fixes surfaced while diagnosing m2**: the FSH skeleton now
+  stages `/tmp` (Xfb's unix-listener mkdir needed it; errno 2), and
+  `xfbdesk-root` re-copies `$(XFB_BIN)` so the desktop image can't go
+  stale against a rebuilt Xfb.

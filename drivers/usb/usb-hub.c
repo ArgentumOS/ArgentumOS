@@ -130,7 +130,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 	if((ret = usb_control(h->slotid, 0xA3, USB_REQ_GET_STATUS, 0, port,
 			      4, st))) {
 		printk("usb-hub: GetPortStatus(%d) failed (%d)\n", port, ret);
-		kfree(st);
+		kfree((addr_t)st);
 		return;
 	}
 
@@ -139,7 +139,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 		printk("usb-hub: port %d overcurrent\n", port);
 		usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
 			     C_PORT_OVERCURRENT, port, 0, NULL);
-		kfree(st);
+		kfree((addr_t)st);
 		return;
 	}
 
@@ -159,7 +159,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 	child = h->child_slots[port];
 	if(st[0] & PORT_STAT_CONNECTION) {
 		if(child) {
-			kfree(st);
+			kfree((addr_t)st);
 			return;		/* already enumerated */
 		}
 
@@ -174,7 +174,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 			usb_hub_delay_ms(10);
 			if(usb_control(h->slotid, 0xA3, USB_REQ_GET_STATUS,
 					0, port, 4, st)) {
-				kfree(st);
+				kfree((addr_t)st);
 				return;
 			}
 			if(!(st[0] & PORT_STAT_RESET)) {
@@ -183,7 +183,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 		}
 		if(st[0] & PORT_STAT_RESET) {
 			printk("usb-hub: port %d reset timeout\n", port);
-			kfree(st);
+			kfree((addr_t)st);
 			return;
 		}
 		usb_control(h->slotid, 0x23, USB_REQ_CLEAR_FEATURE,
@@ -193,7 +193,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 
 		if(!(st[0] & PORT_STAT_ENABLE)) {
 			/* reset failed or the device vanished */
-			kfree(st);
+			kfree((addr_t)st);
 			return;
 		}
 		speed = usb_hub_speed(h, st);
@@ -206,7 +206,7 @@ static void usb_hub_port_event(struct usb_hub *h, int port)
 		usb_disable(child);
 		h->child_slots[port] = 0;
 	}
-	kfree(st);
+	kfree((addr_t)st);
 }
 
 /* transfer completion callback (runs from usb_poll / timer BH) */
@@ -324,7 +324,7 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 	if(usb_control(slotid, 0xA0, USB_REQ_GET_DESCRIPTOR,
 			USB_DT_HUB << 8, 0, 10, hubdesc)) {
 		printk("usb-hub: GET_DESCRIPTOR(hub) failed\n");
-		kfree(hubdesc);
+		kfree((addr_t)hubdesc);
 		h->in_use = 0;
 		return -EIO;
 	}
@@ -337,7 +337,7 @@ int usb_hub_init(int slotid, unsigned char *configdesc)
 	 * ports when the hub says it switches power. */
 	wchar = hubdesc[3] | (hubdesc[4] << 8);
 	h->power_ports = (wchar & 0x3) != 0x2;
-	kfree(hubdesc);
+	kfree((addr_t)hubdesc);
 
 	if(usb_ring_init(&h->ring, 16) < 0) {
 		h->in_use = 0;

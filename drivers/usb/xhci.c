@@ -1153,16 +1153,16 @@ int xhci_enumerate(int root_port, int route, int speed)
 	xhci->devs[slotid].speed = speed;
 
 		if(xhci_ring_init(&xhci->devs[slotid].ep0, XFER_RING_TRBS) < 0) {
-			return;
+			return -EIO;
 		}
 		if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
-			return;
+			return -EIO;
 		}
 		memset_b((void *)P2V(phys), 0, 4096);
 		xhci->devs[slotid].octx_phys = phys;
 		xhci->devs[slotid].octx = (unsigned char *)P2V(phys);
 		if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {
-			return;
+			return -EIO;
 		}
 		memset_b((void *)P2V(phys), 0, 4096);
 		xhci->devs[slotid].ictx_phys = phys;
@@ -1178,7 +1178,7 @@ int xhci_enumerate(int root_port, int route, int speed)
 				    ((unsigned long)slotid << TRB_SLOTID_SHIFT);
 			xhci_cmd(&t, NULL, NULL);
 			xhci->devs[slotid].slotid = 0;
-			return;
+			return -EIO;
 		}
 		xhci->devs[slotid].addr = slotid;
 		printk("xhci: slot %d addressed (port %d, speed %d)\n",

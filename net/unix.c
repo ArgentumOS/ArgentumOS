@@ -642,7 +642,7 @@ int unix_write(struct socket *s, struct fd *f, const char *buffer, __size_t coun
 	return bytes_written;
 }
 
-int unix_ioctl(struct socket *s, struct fd *f, int cmd, unsigned int arg)
+int unix_ioctl(struct socket *s, struct fd *f, int cmd, addr_t arg)
 {
 	int errno;
 
