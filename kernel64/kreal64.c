@@ -51,7 +51,7 @@ void kreal64_boot(void)
 	extern const unsigned char initrd64_img[];
 	extern const unsigned int initrd64_size;
 
-	serial_puts("\n[M4-B] calling the real Fiwix kernel start_kernel()\n");
+	serial_puts("\n[M4-B] calling the real FNX kernel start_kernel()\n");
 
 	/* printk()'s debugcon path (port 0xE9) is gated on this flag; the
 	 * probe in start_kernel reads 0xE9 back, which QEMU's -debugcon
