@@ -60,9 +60,10 @@ order:
 1. **Build + run** (prereq): stock libXm + Xt on Xfb; sample apps live
    (these speak the old Xt/Xm API — they are *scaffolding* that
    validates the engine before the surface is replaced).
-2. **The look** — cheapest visible win: colors/bevels/high-contrast into
-   a theming layer driven by `.conf`, killing the hardcoded chiseled
-   gray. This is where the FNX identity starts to show. **X resources
+2. **The look — flat, modern (decided; see the Look subsection
+   below)** — the FNX identity starts to show here: colors/bevels/
+   high-contrast into a theming layer driven by `.conf`, and the
+   chiseled-gray 3D bevels are gone entirely. **X resources
    (Xrm, app-defaults, Xdefaults) leave entirely, in favour of
    libconfig** — the `.conf` domains resolved user → shared → system by
    the `config` tool (docs/config-design.md; `userland/libconfig.c`);
@@ -207,6 +208,24 @@ micro-decisions, pinned decisions).
   SVG rasterizer, no librsvg/cairo. (A tiny C rasterizer such as
   nanosvg is the named fallback only if runtime vector is ever
   genuinely wanted — 16–128 px icons don't justify it.)
+
+### Look — flat, modern (decided)
+
+Momo's default appearance is **flat**, like a modern toolkit — not the
+chiseled-gray 3D bevel look Motif is remembered for:
+
+- **No 3D bevel relief.** Raised/sunken bevel rendering (the Motif
+  relief primitives) is replaced by flat surfaces: 1px borders, subtle
+  separators, and **state conveyed by color** (hover, pressed, selected
+  via accent/background fills) rather than by light-and-shadow
+  beveling.
+- **No gradients or real-time shadows.** Depth cues stay minimal —
+  borders and color only. This is also the pragmatic choice for Xfb:
+  with no compositor, real-time shadows/transparency aren't available
+  anyway; flat needs nothing but flat rendering.
+- **Themes are `.conf` profiles.** Default = flat light; flat dark and a
+  high-contrast variant ship as named profiles switched at runtime via
+  the `config` tool (item 2). The look is data, not hardcoded paint.
 
 ## 4. Milestones (sketch)
 
