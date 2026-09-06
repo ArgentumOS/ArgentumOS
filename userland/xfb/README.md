@@ -21,7 +21,7 @@ FNX-authored files:
 - `hw/xfb/fnxinput.c` — FNX input backend (/dev/kbd, /dev/psaux).
 - `hw/xfb/configargs.c` — reads the `system.xfb` config domain
   (libconfig) and synthesizes default command-line options
-  (docs/x11-xvfb-fb-plan.md).
+  (docs/design/x11-xvfb-fb-plan.md).
 
 Upstream files FNX has modified:
 
@@ -40,7 +40,7 @@ sources.
 An upstream upgrade means: fetch xorg-server from freedesktop gitlab,
 apply `third_party/x11/xserver-fnx.patch` (the archived FNX-local meson
 changes), meson-configure an xvfb-only build (options recorded in
-`docs/x11-xvfb-fb-plan.md`), run `tools/x11-extract-xvfb.py` to
+`docs/design/x11-xvfb-fb-plan.md`), run `tools/x11-extract-xvfb.py` to
 regenerate `third_party/x11/xvfb-src` (the pristine mirror), then
 re-copy + re-rebrand into this tree (the rename is: dir `hw/vfb`→
 `hw/xfb`, text `Xvfb`→`Xfb`, `xvfb`→`xfb`, `hw/vfb`→`hw/xfb`,
@@ -75,7 +75,7 @@ External (non-Xorg) dependencies are **not** vendored here; they come from
 the musl prefix at `.build/x11-prefix` (`pixman`, `libxkbfile`,
 `libXfont2`, `libsha1`, `libXau`, `libXdmcp`) — build them first with
 `tools/x11-deps-build.sh`. Override with `X11PREFIX=`. FNX libconfig
-(`include/libconfig.h` + `userland/libconfig.c`) is the SHARED
+(`userland/libconfig.h` + `userland/libconfig.c`) is the SHARED
 `.build/fnxlib/libconfig.so.1` since M3 (staged in `/System/Libraries`),
 linked with `-L$(FNXLIB) -lconfig` for the `system.xfb` config domain.
 

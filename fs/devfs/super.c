@@ -93,7 +93,7 @@ int devfs_read_superblock(__dev_t dev, struct superblock *sb)
  * followlink(), so the target nodes need not exist yet. */
 static void devfs_aliases(void)
 {
-	/* Q3 topology skeleton (docs/devfs-topology.md): real nodes live
+	/* Q3 topology skeleton (docs/reference/devfs-topology.md): real nodes live
 	 * under bus/role dirs; the flat /dev names survive as top-level
 	 * symlinks (role aliases) so kernel + userland keep resolving
 	 * while consumers migrate to the topology paths. */

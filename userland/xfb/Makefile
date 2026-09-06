@@ -36,9 +36,10 @@ INC += -Ixkb
 INC += -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
 
 # FNX libconfig (system.xfb) is the SHARED first-party lib since M3:
-# configargs.c needs the repo include dir for <libconfig.h> and the link
-# pulls -lconfig from .build/fnxlib (staged in /System/Libraries).
-FNXINC  ?= $(CURDIR)/../../include
+# configargs.c needs repo/userland for <libconfig.h> (since the
+# tree reorg the header lives next to its source, userland/libconfig.h)
+# and the link pulls -lconfig from .build/fnxlib (staged in /System/Libraries).
+FNXINC  ?= $(CURDIR)/../..
 FNXLIB  ?= $(CURDIR)/../../.build/fnxlib
 DEFS  = -DHAVE_DIX_CONFIG_H -D_FILE_OFFSET_BITS=64 -D_DEFAULT_SOURCE
 DEFS += -D_BSD_SOURCE -DHAS_FCHOWN -DHAS_STICKY_DIR_BIT
@@ -922,7 +923,7 @@ $(BUILD)/xfb__hw_xfb_fnxinput.c.o: hw/xfb/fnxinput.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 $(BUILD)/xfb__hw_xfb_configargs.c.o: hw/xfb/configargs.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) -I$(FNXINC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) -I$(FNXINC)/userland $(CFLAGS) -c $< -o $@
 $(BUILD)/xfb__mi_miinitext.c.o: mi/miinitext.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@

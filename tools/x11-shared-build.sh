@@ -1,7 +1,7 @@
 #!/bin/sh
 # Rebuild the FNX X11 dependency prefix (.build/x11-prefix) with SHARED
 # libraries (PIC .so + sonames), for the X-stack shared conversion
-# (docs/shared-libraries-plan.md §6 / M2). The vendored trees under
+# (docs/design/shared-libraries-plan.md §6 / M2). The vendored trees under
 # third_party/x11/ keep their previous static builds; each is distcleaned
 # and rebuilt with --enable-static --enable-shared (autotools) or
 # -Ddefault_library=both (meson), so both .a and .so coexist and the

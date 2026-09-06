@@ -15,7 +15,7 @@ The upstream xserver tree is NOT vendored in the FNX repo anymore.
 Regeneration is only needed for an xserver upgrade: fetch
 https://gitlab.freedesktop.org/xorg/xserver (tag xorg-server-21.1.24),
 apply third_party/x11/xserver-fnx.patch, meson-configure an xvfb-only
-build (see docs/x11-xvfb-fb-plan.md), then run this script. Both SRC
+build (see docs/design/x11-xvfb-fb-plan.md), then run this script. Both SRC
 and BUILD below must exist.
 
 Usage: python3 tools/x11-extract-xvfb.py

@@ -2,7 +2,7 @@
  * fnx/include/fnx/acl.h
  *
  * POSIX Access Control Lists - the single canonical permissions model
- * (docs/permissions-acl.md). One ACL per object is the source of truth;
+ * (docs/design/permissions-acl.md). One ACL per object is the source of truth;
  * the classic mode bits are its trivial projection, kept in sync by the
  * POSIX rules.
  *
@@ -20,7 +20,7 @@
 #include <fnx/types.h>
 #include <fnx/fs.h>
 
-/* xattr names carrying the ACLs (see docs/permissions-acl.md) */
+/* xattr names carrying the ACLs (see docs/design/permissions-acl.md) */
 #define XATTR_ACL_ACCESS	"system.posix_acl_access"
 #define XATTR_ACL_DEFAULT	"system.posix_acl_default"
 

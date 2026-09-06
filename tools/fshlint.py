@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FSH porting linter gate (docs/fsh-proposal.md 6.1 / Q1).
+"""FSH porting linter gate (docs/design/fsh-proposal.md 6.1 / Q1).
 
 Scans every regular ELF under <root>/System/Tools (zero-allow) for:
   R1 PT_INTERP program headers            (dynamic is the norm since the
@@ -30,7 +30,7 @@ LEGACY = [b"/bin/", b"/sbin/", b"/usr/", b"/etc/", b"/lib/", b"/var/",
 BOUND = b' :="\'(;>\n\t'
 BUILD_ROOTS = None  # computed from the repo dir when run in-tree
 
-# The explicit static exception list (docs/shared-libraries-plan.md §2.4):
+# The explicit static exception list (docs/design/shared-libraries-plan.md §2.4):
 # binaries that must run when /System/Libraries is corrupt or missing. The
 # recovery shell (static dash) and the recovery toolset (static toybox)
 # ship here; the boot-time updater lands here when it ships.

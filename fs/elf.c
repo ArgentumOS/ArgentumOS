@@ -168,7 +168,7 @@ static void elf_create_stack64(struct binargs *barg, unsigned long long *sp,
  * FNX (native 64-bit port): ELF64 loader.
  *
  * Static executables are ET_EXEC non-PIE at 0x400000 (everything below
- * 4GB). Dynamic executables (docs/shared-libraries-plan.md) are also
+ * 4GB). Dynamic executables (docs/design/shared-libraries-plan.md) are also
  * ET_EXEC non-PIE: when the main image carries a PT_INTERP the kernel
  * additionally maps the interpreter (ld-musl-x86_64.so.1, an ET_DYN
  * shared object) at the fixed base ELF_INTERP_BASE and enters the process
@@ -620,7 +620,7 @@ int elf_load(struct inode *i, struct binargs *barg, struct sigcontext *sc, char 
 
 /*
  * elf_world_check() - the boot-time NEEDED-closure probe
- * (docs/shared-libraries-plan.md §3): before the kernel execs the
+ * (docs/design/shared-libraries-plan.md §3): before the kernel execs the
  * dynamic init it verifies the dynamic world is actually bootable.
  * 'path' (the dynamic init) must be a valid x86-64 ELF whose PT_INTERP
  * resolves to an existing ELF and whose DT_NEEDED libraries all resolve

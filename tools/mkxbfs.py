@@ -282,7 +282,7 @@ def main():
     ag_shift, blocks_per_ag, num_ags = haiku_geometry(num_blocks, BLOCK)
     ag_size = 1 << ag_shift
     # Journal size (blocks). Since R-M1 the journal wraps instead of
-    # resetting (docs/bfs-journal-reclaim.md): a full log orphan-publishes
+    # resetting (docs/reference/bfs-journal-reclaim.md): a full log orphan-publishes
     # and the next entry starts at block 0, so sustained metadata streams
     # (mass file create/delete) are handled structurally - the size is now
     # only a wrap-frequency knob, never a correctness or stall limit.
@@ -767,7 +767,7 @@ def main():
     # every directory entry, size + last_modified (INT64, signed order)
     # over every tree entry at the inode's stamped size/mtime — Haiku
     # mkfs parity (mkfs-built volumes are fully indexed; see
-    # docs/xbfs-enhancements.md A.2 / the xbfscheck expectations).
+    # docs/design/xbfs-enhancements.md A.2 / the xbfscheck expectations).
     backfill = {}
     backfill['name'] = [(n.encode('latin1'), ino) for n, ino, _, _ in idx_rows]
     backfill['last_modified'] = [

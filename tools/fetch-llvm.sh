@@ -1,6 +1,6 @@
 #!/bin/sh
 # Fetch the LLVM sources needed to build the FNX C++ runtime stack
-# (libc++, libc++abi, libunwind) — see docs/cpp-toolchain-plan.md P0.
+# (libc++, libc++abi, libunwind) — see docs/design/cpp-toolchain-plan.md P0.
 #
 # Precedent: tools/fetch-ovmf.sh (pinned fetch into .build/, nothing LLVM
 # is committed to git). Records the pinned tag; only the built static
@@ -11,7 +11,7 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="$REPO/.build"
 SRC="$BUILD/llvm-src"
 
-# The pinned LLVM release (docs/cpp-toolchain-plan.md §6.3, answered
+# The pinned LLVM release (docs/design/cpp-toolchain-plan.md §6.3, answered
 # 2026-09: pin 19.1.7, NOT newest stable). libc++ >= 20 (verified at
 # 23.1.0) calls Clang-only builtins (__is_bounded_array etc.) without
 # __has_builtin fallbacks, so GCC cannot compile it; the plan builds with

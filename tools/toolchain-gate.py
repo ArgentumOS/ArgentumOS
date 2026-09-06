@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FNX (LLVM M4, docs/llvm-clang-toolchain-plan.md M4): the "no GCC in the
+FNX (LLVM M4, docs/design/llvm-clang-toolchain-plan.md M4): the "no GCC in the
 system build" gate.
 
 Every compiler in the FNX build is the /usr/lib/llvm-19 clang since M1
@@ -57,7 +57,7 @@ def main():
             for n, line in hits:
                 print(f"  {f}:{n}: {line}")
         print("Only gcc-14/libgcc//usr/lib/gcc rationale mentions are allowed")
-        print("(docs/llvm-clang-toolchain-plan.md M4).")
+        print("(docs/design/llvm-clang-toolchain-plan.md M4).")
         return 1
     print("GCC-GATE: OK - no gcc/g++/-specs in the build definition")
     return 0

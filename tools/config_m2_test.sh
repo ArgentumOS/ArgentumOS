@@ -14,8 +14,8 @@ export FNX_CONFIG_ROOT="$ROOT"
 CONF="$REPO/.build/m0config"
 CFG="$REPO/userland/configuration"
 
-cc -I"$REPO/include" -o "$CONF" \
-	"$REPO/userland/config.c" "$REPO/userland/libconfig.c" || exit 2
+cc -I"$REPO/include" -I"$REPO/userland" -o "$CONF" \
+	"$REPO/userland/tools/config.c" "$REPO/userland/libconfig.c" || exit 2
 
 fails=0
 ok()  { echo "PASS: $1"; }

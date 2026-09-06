@@ -14,7 +14,7 @@ Usage: mkinitrd.py <root-dir> <output.img> [output.c]
   Packs the tree under <root-dir> (".build/rootfs" by convention). Char
   devices are matched by path in the DEVICES table below (rdev is stored in
   i_zone[0], as FNX's minix driver expects). The optional third argument
-  embeds the image as kernel64/initrd64.c for the FNX PE build.
+  embeds the image as kernel/boot64/initrd64.c for the FNX PE build.
 """
 
 import os

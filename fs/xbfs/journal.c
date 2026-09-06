@@ -324,7 +324,7 @@ static int xbfs_log_write_super(struct superblock *sb, int flush)
  * ordering (log entry, then on-disk superblock with log_end advanced,
  * then the real blocks).
  */
-/* R-M2 crash injection (docs/bfs-journal-reclaim.md 5/8). xbfscrash=
+/* R-M2 crash injection (docs/reference/bfs-journal-reclaim.md 5/8). xbfscrash=
  * STATE[,COUNT] on the boot cmdline arms a deliberate halt when the
  * journal reaches STATE for the COUNT-th time (default 1), so a harness
  * can crash the machine at a precise commit-state boundary and verify

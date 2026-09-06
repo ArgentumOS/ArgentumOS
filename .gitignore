@@ -1,5 +1,4 @@
 *.o
-/fnx
 System.map.gz
 include/fnx/custom_config.h
 include/fnx/custom_limits.h

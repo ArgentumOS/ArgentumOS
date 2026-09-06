@@ -14,7 +14,7 @@
 /* FNX (single-alias): the kernel image executes from ONE address space -
  * the high-half alias (PAGE_OFFSET + phys) - because the boot stub
  * re-biases every absolute pointer in kernel DATA to the high half (see
- * rebase_image_data in kernel64/paging64.c). Sleep addresses are plain
+ * rebase_image_data in kernel/boot64/paging64.c). Sleep addresses are plain
  * kernel pointers; SLEEP_ADDR is kept as an identity macro so the
  * sleep()/wakeup()/wait4() code reads the same everywhere. */
 #define SLEEP_ADDR(a)	((addr_t)(a))

@@ -1,9 +1,9 @@
-/* libconfig.c — implementation of include/libconfig.h (FNX userland).
+/* libconfig.c — implementation of userland/libconfig.h (FNX userland).
  *
  * One plain-text "key = value" file per reverse-DNS domain in a
  * Configuration/ directory at each of the three scopes; reads resolve
  * system -> user -> shared; writes go to an explicit scope atomically
- * (temp + fsync + rename). Grammar: docs/config-design.md §10.
+ * (temp + fsync + rename). Grammar: docs/design/config-design.md §10.
  *
  * Scope roots are absolute under the filesystem root:
  *   /System/Configuration, /Shared/Configuration,

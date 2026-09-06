@@ -15,7 +15,7 @@
 #define _FNX_SIGCONTEXT_H
 
 struct sigcontext {
-	/* mirrors x86_frame64 (see kernel64/idt64.c) */
+	/* mirrors x86_frame64 (see kernel/boot64/idt64.c) */
 	unsigned long long err;		/* error code (or vector) */
 	unsigned long long rip;
 	unsigned long long cs;

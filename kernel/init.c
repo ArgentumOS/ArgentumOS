@@ -40,7 +40,7 @@ char **init_pid1_envp = init_envp;
 char init_console_dev[] = "/System/Devices/TTY/console";
 
 /* The INIT bootstrap trampoline is a position-independent assembly
- * function (kernel64/init_trampoline64.S) that uses absolute movabs
+ * function (kernel/boot64/init_trampoline64.S) that uses absolute movabs
  * addresses for the kernel symbols, so it can be COPIED to user VA
  * 0x100000 and run at CPL3. It uses the native 'syscall' instruction
  * with x86-64 syscall numbers (open=2, dup=32, execve=59, exit=60). */
@@ -56,7 +56,7 @@ void init_init(void)
 
 	/*
 	 * PID 1 target: the dynamic init when the world is bootable, the
-	 * STATIC recovery shell otherwise (docs/shared-libraries-plan.md
+	 * STATIC recovery shell otherwise (docs/design/shared-libraries-plan.md
 	 * §3). A 'recovery' kernel param forces it; otherwise the
 	 * NEEDED-closure probe (elf_world_check) decides - a missing or
 	 * corrupt /System/Libraries must yield the recovery shell with a

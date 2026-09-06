@@ -428,7 +428,7 @@ void xbfs_log_write_block(struct superblock *, __blk_t, struct buffer *);
 void xbfs_log_lock(struct superblock *);
 void xbfs_log_unlock(struct superblock *);
 /* R-M2 crash injection: arm a deliberate halt at journal commit state
- * 1..7 on the COUNT-th hit (docs/bfs-journal-reclaim.md) */
+ * 1..7 on the COUNT-th hit (docs/reference/bfs-journal-reclaim.md) */
 void xbfs_crash_set(int state, int count);
 /* X-SSD1 (TRIM): flush pending discards to the device (must be called
  * only after the freed blocks' bitmap is durable on disk) */

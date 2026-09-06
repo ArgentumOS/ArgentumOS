@@ -1,10 +1,10 @@
 #!/bin/sh
 # musl-clang++ wrapper for the FNX native x86_64 userland (C++).
 #
-# (docs/llvm-clang-toolchain-plan.md M2): clang++ driving the same
+# (docs/design/llvm-clang-toolchain-plan.md M2): clang++ driving the same
 # musl/FSH link contract as tools/musl-clang64.sh, plus the LLVM C++
 # stack (libc++/libc++abi/libunwind) from .build/llvm-cxx-prefix, which
-# is built STATIC-only (docs/cpp-toolchain-plan.md P1).
+# is built STATIC-only (docs/design/cpp-toolchain-plan.md P1).
 #
 # Self-bootstrapping: the LLVM runtimes are built with this same wrapper
 # (the llvm-cxx cmake recipe sets CMAKE_CXX_COMPILER to it), so the

@@ -6,7 +6,7 @@
  * The local APIC delivers MSI-X messages as IDT vectors 0x30-0x3F
  * (MSIX_VEC_BASE .. +NR_MSIX_VECS-1), bypassing the 8259 PIC. The
  * driver side registers a handler here exactly like register_irq(),
- * and the kernel64 dispatcher (kernel64/msix64.c) routes vectors in
+ * and the kernel64 dispatcher (kernel/boot64/msix64.c) routes vectors in
  * that range to msix_handler(). The PIC's INTx path is untouched.
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.

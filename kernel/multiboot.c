@@ -229,7 +229,7 @@ static int check_param(struct kernel_params_value *kpv, const char *value)
 	}
 	if(!strcmp(kpv->name, "recovery")) {
 		/* boot the static recovery shell instead of the dynamic world
-		 * (docs/shared-libraries-plan.md §2.4/§3) */
+		 * (docs/design/shared-libraries-plan.md §2.4/§3) */
 		kparms.recovery = 1;
 		return 0;
 	}

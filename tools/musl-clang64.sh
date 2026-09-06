@@ -1,7 +1,7 @@
 #!/bin/sh
 # musl-clang wrapper for the FNX native x86_64 userland (dynamic default).
 #
-# (docs/llvm-clang-toolchain-plan.md §3). The wrapper spells the musl/FSH
+# (docs/design/llvm-clang-toolchain-plan.md §3). The wrapper spells the musl/FSH
 # link contract out as driver flags (no specs file, no libgcc):
 #   - musl headers:  -nostdinc -isystem $MUSL/include (+ clang's own
 #                    builtin headers, e.g. stddef.h, which clang adds from

@@ -17,7 +17,7 @@ cd "$ROOT/third_party/toybox"
 # The M4 account tools (passwd/chsh/useradd/userdel/groupadd/groupdel)
 # write the .conf identity domains through libconfig (userland/libconfig.c),
 # which is now the SHARED first-party lib .build/fnxlib/libconfig.so.1
-# (docs/shared-libraries-plan.md; staged into /System/Libraries) - toybox
+# (docs/design/shared-libraries-plan.md; staged into /System/Libraries) - toybox
 # links -lconfig instead of compiling the source in.
 mkdir -p "$ROOT/.build"
 # toybox links -lconfig against the shared first-party lib; if it has not
@@ -99,7 +99,7 @@ open('.config', 'w').write('\n'.join(out) + '\n')
 print("mktoybox: disabled %d applets needing kernel headers" % len(syms))
 EOF
 
-make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
+make CC="$CC_WRAP" CFLAGS="-I$ROOT/include -I$ROOT/userland" \
   LDFLAGS="-L$ROOT/.build/fnxlib -lconfig"
 # toybox's build leaves the binary read-only (0555); strip needs write access
 chmod +w toybox 2>/dev/null || true
@@ -113,7 +113,7 @@ strip toybox
 # clobber the dynamic staging with a static toybox.
 STAGE="${TOYBOX_STAGE:-$ROOT/.build/toybox-root}"
 rm -rf "$STAGE"
-make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
+make CC="$CC_WRAP" CFLAGS="-I$ROOT/include -I$ROOT/userland" \
   LDFLAGS="-L$ROOT/.build/fnxlib -lconfig" \
   install PREFIX="$STAGE" >/dev/null 2>&1 || \
   make CC="$CC_WRAP" install PREFIX="$STAGE"

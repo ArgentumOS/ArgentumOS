@@ -336,7 +336,7 @@ int is_valid_page(int page)
 }
 
 /* FNX (pivot): refcount helpers used by the 4-level fork/exec code
- * (kernel64/mm64.c). page_table[].count is the number of pml4 mappings
+ * (kernel/boot64/mm64.c). page_table[].count is the number of pml4 mappings
  * (plus the allocator's own reference) on a physical page; COW decrements
  * it when a process replaces a shared leaf with a private copy, and
  * free_vma_pages() kfree()s the page when it hits zero. */

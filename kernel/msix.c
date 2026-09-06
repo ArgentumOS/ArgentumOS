@@ -129,7 +129,7 @@ int unregister_msix(int num, const struct interrupt *old_irq)
 	return 0;
 }
 
-/* called from kernel64/msix64.c with interrupts disabled */
+/* called from kernel/boot64/msix64.c with interrupts disabled */
 void msix_handler(int num, struct sigcontext sc)
 {
 	struct interrupt *irq;

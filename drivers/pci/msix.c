@@ -7,7 +7,7 @@
  * the BSP's local APIC on the requested IDT vector, and enable the
  * MSI-X function.
  *
- * The kernel side (kernel/msix.c + kernel64/idt64.c) must have been
+ * The kernel side (kernel/msix.c + kernel/boot64/idt64.c) must have been
  * initialized so vectors 0x30-0x3F dispatch to msix_handler().
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.

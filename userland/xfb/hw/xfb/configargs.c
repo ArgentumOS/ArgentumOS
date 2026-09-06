@@ -2,7 +2,7 @@
  * hw/xfb/configargs.c — FNX: Xfb configuration via libconfig.
  *
  * Every Xfb command-line option has a config key in the system.xfb
- * domain whose value is the option's *default* (docs/x11-xvfb-fb-plan.md,
+ * domain whose value is the option's *default* (docs/design/x11-xvfb-fb-plan.md,
  * "Update (decided): Xfb configuration via libconfig"). A real
  * command-line occurrence of an option suppresses its config-derived
  * occurrence (per-key override), then the server's own last-wins parser
@@ -23,7 +23,7 @@
 #define XFB_DOMAIN "system.xfb"
 
 /*
- * Emission kinds (docs/x11-xvfb-fb-plan.md "Arity table"):
+ * Emission kinds (docs/design/x11-xvfb-fb-plan.md "Arity table"):
  *   K_FLAG    boolean key: emit `on` when true, nothing when false.
  *   K_PAIR    boolean key with an explicit off token: emit `on`/`off`.
  *   K_ARG     emit `on` + the value text (string/int/float).

@@ -2,7 +2,7 @@
  * fnx/kernel/acl.c
  *
  * POSIX Access Control Lists - the single canonical permissions model
- * (docs/permissions-acl.md). See include/fnx/acl.h for the wire format.
+ * (docs/design/permissions-acl.md). See include/fnx/acl.h for the wire format.
  *
  * acl_validate() runs when an ACL xattr is written (kernel/syscalls/
  * xattr.c) so a bad ACL never reaches the filesystem.
