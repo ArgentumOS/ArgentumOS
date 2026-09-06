@@ -146,8 +146,14 @@ run-qemu:
 # exception (recovery shell/updater + unconverted third-party carve-outs).
 MUSL64_PREFIX = .build/musl64
 MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
-MUSL64_CC     = $(CURDIR)/tools/musl-gcc64.sh
-MUSL64_CC_STATIC = $(CURDIR)/tools/musl-gcc64-static.sh
+# The one system compiler is clang since M1 (docs/llvm-clang-toolchain-
+# plan.md): the wrappers below drive /usr/lib/llvm-19 clang with the same
+# musl/FSH link contract the gcc specs used to encode, plus the
+# compiler-rt builtins archive (libgcc.a's replacement). The gcc wrappers
+# (tools/musl-gcc64*.sh) stay on disk as the M1..M3 fallback and are
+# deleted at M4.
+MUSL64_CC     = $(CURDIR)/tools/musl-clang64.sh
+MUSL64_CC_STATIC = $(CURDIR)/tools/musl-clang64-static.sh
 # The Clang toolchain (docs/llvm-clang-toolchain-plan.md): wrappers that
 # drive /usr/lib/llvm-19 clang with the same musl/FSH link contract the
 # gcc specs encode. COMPILER_RT_BUILTINS is the musl-targeted compiler-rt
@@ -274,13 +280,13 @@ dash64: $(DASH64_BIN)
 $(DASH64_BIN): $(MUSL64_SPECS) third_party/dash-fsh.patch
 	cd third_party/dash && git apply $(CURDIR)/third_party/dash-fsh.patch && \
 		./autogen.sh && \
-		CC="$(CURDIR)/tools/musl-gcc64.sh" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
+		CC="$(MUSL64_CC)" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
 		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_BIN) && \
 		git checkout -- .
 
 toybox64: $(TOYBOX64_BIN)
-$(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64.sh $(FNXLIB_CONFIG)
-	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64.sh" ./tools/mktoybox.sh
+$(TOYBOX64_BIN): $(MUSL64_SPECS) tools/mktoybox.sh $(MUSL64_CC) $(FNXLIB_CONFIG)
+	TOYBOX_CC="$(MUSL64_CC)" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $(TOYBOX64_BIN)
 
 # --- the static recovery set (docs/shared-libraries-plan.md §2.4/§3) ---
@@ -303,13 +309,16 @@ $(DASH64_RECOVERY): $(MUSL64_SPECS) third_party/dash-fsh.patch
 	@mkdir -p $(RECOVERY64)
 	cd third_party/dash && git apply $(CURDIR)/third_party/dash-fsh.patch && \
 		./autogen.sh && \
-		CC="$(CURDIR)/tools/musl-gcc64-static.sh" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
+		CC="$(MUSL64_CC_STATIC)" ./configure --host=x86_64-linux --disable-fnmatch --disable-glob && \
 		$(MAKE) && strip src/dash && cp src/dash $(CURDIR)/$(DASH64_RECOVERY) && \
 		git checkout -- .
 
-$(TOYBOX64_RECOVERY): $(MUSL64_SPECS) tools/mktoybox.sh tools/musl-gcc64-static.sh $(FNXLIB)/libconfig.a
+$(TOYBOX64_RECOVERY): $(MUSL64_SPECS) tools/mktoybox.sh $(MUSL64_CC_STATIC) $(FNXLIB)/libconfig.a
 	@mkdir -p $(RECOVERY64)
-	TOYBOX_CC="$(CURDIR)/tools/musl-gcc64-static.sh" ./tools/mktoybox.sh
+	# TOYBOX_STAGE points the static build at its own scratch root so the
+	# recovery run cannot clobber .build/toybox-root (the dynamic staging
+	# userland64 copies as System/Tools/toybox) with a static toybox.
+	TOYBOX_CC="$(MUSL64_CC_STATIC)" TOYBOX_STAGE="$(CURDIR)/$(RECOVERY64)/toybox-stage" ./tools/mktoybox.sh
 	cp third_party/toybox/toybox $@
 
 .PHONY: recovery64
@@ -333,7 +342,7 @@ xfb64: $(FNXLIB_CONFIG)
 	# archives stay in the binary. libsha1.a + the server archives are
 	# the only static pieces left (single-consumer FNX code).
 	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
-		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
+		CC="$(MUSL64_CC)" -j8
 
 
 # ---------------------------------------------------------------------------
@@ -641,7 +650,7 @@ $(OBJDIR64)/%.o: kernel64/%.c
 
 # kreal64.c bakes the UEFI boot cmdline (kernel64/kreal64.c). A forced
 # recovery boot appends the param at build time: make buildfnx \
-#   FNX_RECOVERY_PARAM=1   (rm .build/64real/kernel64/kreal64.o first)
+#   FNX_RECOVERY_PARAM=1   (rm .build/64/kernel64/kreal64.o first)
 $(OBJDIR64)/kreal64.o: kernel64/kreal64.c
 	@mkdir -p $(OBJDIR64)
 	$(CC64R) -c -o $@ $< $(if $(FNX_RECOVERY_PARAM),-DFNX_RECOVERY_PARAM,)

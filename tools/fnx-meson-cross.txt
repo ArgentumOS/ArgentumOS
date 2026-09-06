@@ -6,8 +6,8 @@
 # check executable" step fails with ENOENT. Cross mode keeps configure-
 # time builds runnable; the produced libraries are native x86_64 for FNX.
 [binaries]
-c = '__REPO_ROOT__/tools/musl-gcc64.sh'
-cpp = '__REPO_ROOT__/tools/musl-gcc64.sh'
+c = '__REPO_ROOT__/tools/musl-clang64.sh'
+cpp = '__REPO_ROOT__/tools/musl-clang64.sh'
 ar = 'ar'
 strip = 'strip'
 pkgconfig = 'pkg-config'

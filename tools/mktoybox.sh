@@ -1,6 +1,9 @@
 #!/bin/sh
-# Build the toybox submodule (third_party/toybox, pinned 0.8.11) as a static
-# musl i386 multi-call binary, the same way init/dash are built.
+# Build the toybox submodule (third_party/toybox, pinned 0.8.11) as a
+# native x86_64 multi-call binary against FNX's musl toolchain - DYNAMIC
+# by default (CC_WRAP = tools/musl-clang64.sh, the System/Tools toybox)
+# or STATIC (TOYBOX_CC = the clang static wrapper + TOYBOX_STAGE to a
+# private scratch root) for the recovery set.
 #
 # FNX's musl toolchain does not ship kernel headers, so any applet that
 # includes a <linux/*.h> or <asm/*.h> header cannot compile: those applets are
@@ -8,7 +11,7 @@
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CC_WRAP="${TOYBOX_CC:-$ROOT/tools/musl-gcc.sh}"
+CC_WRAP="${TOYBOX_CC:-$ROOT/tools/musl-clang64.sh}"
 cd "$ROOT/third_party/toybox"
 
 # The M4 account tools (passwd/chsh/useradd/userdel/groupadd/groupdel)
@@ -104,11 +107,16 @@ strip toybox
 # Install the applets into the stage dir now (fresh config + flags), so the
 # userland64 target can just copy this tree instead of re-running toybox's
 # make (which would rebuild against the reverted checkout and old config).
-rm -rf "$ROOT/.build/toybox-root"
+# The stage dir is a knob (TOYBOX_STAGE): the dynamic world builds into
+# .build/toybox-root (what userland64 stages as System/Tools/toybox), and
+# the static recovery build points it at its own scratch so it cannot
+# clobber the dynamic staging with a static toybox.
+STAGE="${TOYBOX_STAGE:-$ROOT/.build/toybox-root}"
+rm -rf "$STAGE"
 make CC="$CC_WRAP" CFLAGS="-I$ROOT/include" \
   LDFLAGS="-L$ROOT/.build/fnxlib -lconfig" \
-  install PREFIX="$ROOT/.build/toybox-root" >/dev/null 2>&1 || \
-  make CC="$CC_WRAP" install PREFIX="$ROOT/.build/toybox-root"
+  install PREFIX="$STAGE" >/dev/null 2>&1 || \
+  make CC="$CC_WRAP" install PREFIX="$STAGE"
 if [ -n "$PATCHED" ]; then
   git checkout -- . 2>/dev/null || true
   rm -f lib/configedit.c   # untracked patch-added file

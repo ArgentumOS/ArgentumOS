@@ -331,3 +331,62 @@ explicitly-listed host-tool/doc mentions).
 
 Next: **M1** — point `MUSL64_CC`/`MUSL64_CC_STATIC` at the clang
 wrappers; the gcc wrappers stay on disk until M4.
+
+### M1 — DONE (commit TBD)
+
+- **The flip**: `MUSL64_CC` / `MUSL64_CC_STATIC` now point at
+  `tools/musl-clang64.sh` / `tools/musl-clang64-static.sh`; every
+  hard-coded `tools/musl-gcc64*.sh` recipe reference (dash64, toybox64,
+  the recovery dash/toybox, xfb64) was replaced with the vars, and
+  `tools/x11-shared-build.sh` exports `CC=musl-clang64.sh` while the
+  meson cross file names it for `c`/`cpp`. `tools/mktoybox.sh`'s
+  fallback CC is the clang wrapper too. The gcc wrappers stay on disk
+  (M4 deletes them).
+- **Wrapper hardening found while building the X stack** (all three
+  belong in the wrappers, and the gcc specs had handled them):
+  1. start files / `-lc` / builtins are added only on **link**
+     invocations — meson/autoconf probe the compiler with
+     `clang -E -x c - -v`, and preprocessing the ELF crt objects dumped
+     ~1 GB of garbage per probe (a real meson configure hang/failure).
+  2. `-shared` links get crti.o/crtn.o but **no Scrt1.o** (musl's
+     `%{!shared: Scrt1.o}`) — Scrt1's `_start_c` leaves an undefined
+     `main` that meson's `-Wl,--no-undefined` rejects.
+  3. `-nostdinc` also drops clang's resource headers (`cpuid.h`,
+     `mmintrin.h`, …), which musl doesn't ship — the wrappers add
+     `-isystem $(clang -print-resource-dir)/include` after the musl
+     include dir (musl stays authoritative; compiler-only headers fill
+     the gaps).
+- **x11-shared-build.sh fixes**: libXfont2's `noinst_PROGRAMS`
+  (`test/utils/lsfontdir`) link against the library's
+  hidden-visibility internals, so the full `make`/`make install` fail
+  once `-fvisibility=hidden` is active (the configure probe passes
+  under clang) — the build configures then installs only the `.la` +
+  `.pc`. The `log libsha1 (static…)` / `log xkbcomp (dynamic)` lines
+  were unquoted-paren bash syntax errors that silently truncated every
+  full-script run after pixman. Run with `SHARED_ONLY=1` (the static
+  archives are not staged; meson's `--default-library both` misbehaves
+  under clang).
+- **Structural bug fixed**: `mktoybox.sh` always re-installed into
+  `.build/toybox-root` and ended with `rm -f toybox64`, so the static
+  recovery build clobbered the dynamic staging (userland64 copied a
+  STATIC `System/Tools/toybox`; lint caught it). `TOYBOX_STAGE` knob:
+  the dynamic build installs into `.build/toybox-root`, the recovery
+  build into its own scratch.
+- **Acceptance**: m1_boot green (whole dynamic world now clang-built),
+  m2_xfbdesk green (clang Xfb + the 9 clang x11 `.so`'s + clang
+  xkbcomp), m4_recovery all four modes green (forced mode needs the
+  param kernel: `rm .build/64/kreal64.o && make buildfnx
+  FNX_RECOVERY_PARAM=1 && ./tools/mkesp.sh`), m0_clang_hellos green,
+  fshlint 0 (21 ELFs, staged System/Tools/toybox dynamic again).
+  Provenance: `.comment` on the unstripped ELFs shows "clang version
+  19.1.7" (dash64, recovery-sh, Xfb, xkbcomp, all nine `.so`'s,
+  libconfig.so.1); the always-present "GCC:" line is musl's gcc-built
+  crt objects merging at link — gone when musl itself is clang-built
+  (M2).
+
+Next: **M2** — build musl + libc++/libc++abi/libunwind with clang
+(`musl64` configure `CC=clang`, the llvm-cxx cmake recipe with the
+compilers swapped, `tools/musl-clang++64.sh`); the crt `.comment`
+footprint and the recovery set then become fully clang. musl's own
+`make`/`configure` uses `CC=gcc` today via config.mak, untouched by
+M1.

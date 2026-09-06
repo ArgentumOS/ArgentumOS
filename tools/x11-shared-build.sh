@@ -27,7 +27,7 @@ else
 fi
 SHARED="--enable-shared"
 
-export CC="$R/tools/musl-gcc64.sh"
+export CC="$R/tools/musl-clang64.sh"
 export CFLAGS="-O2"
 export CPPFLAGS="-I$P/include"
 export LDFLAGS="-L$P/lib"
@@ -85,7 +85,26 @@ log fontenc
 au fontenc libfontenc $SHARED $STATIC
 
 log libXfont2
-au xfont2 libXfont2 $SHARED $STATIC --disable-freetype
+# xfont2 special case: its noinst_PROGRAMS (test/utils/lsfontdir) link
+# against the library's hidden-visibility internal symbols, so a full
+# `make` fails once -fvisibility=hidden is in effect (the configure
+# probe passes under clang). Only the library is consumed (Xfb NEEDs
+# libXfont2.so.2), so configure then build/install just the lib.
+# Configure directly off the vendored configure/Makefile.in (no
+# autogen.sh: xorg-macros is absent on the build host) and touch the
+# autotools inputs so make never fires the aclocal.m4/Makefile.in
+# remake rules.
+( cd "$R/third_party/x11/libXfont2" || exit 1
+  make distclean >/dev/null 2>&1 || true
+  ./configure --prefix="$P" --host=x86_64-unknown-linux-gnu $SHARED $STATIC \
+	  --disable-freetype > "$LOG/xfont2.log" 2>&1 || exit 1
+  touch aclocal.m4 configure Makefile.in config.h.in
+  make libXfont2.la >> "$LOG/xfont2.log" 2>&1 || exit 1
+  # `make install` would rebuild all-am (incl. lsfontdir) and fail, so
+  # install the consumed pieces directly: the shared/static lib, the .pc
+  # AND the public headers (libXfontinclude_HEADERS) - a fresh prefix
+  # needs them for Xfb's -I$(X11PREFIX)/include compiles.
+  make install-libLTLIBRARIES install-pkgconfigDATA install-libXfontincludeHEADERS >> "$LOG/xfont2.log" 2>&1 || exit 1 )
 
 log libXau
 au Xau libXau $SHARED $STATIC
@@ -101,15 +120,14 @@ au libX11 libX11 $SHARED $STATIC
 
 log libxkbfile
 mes libxkbfile libxkbfile
-
 log pixman
 mes pixman pixman -Dtests=disabled -Ddemos=disabled -Dgtk=disabled
 
-log libsha1 (static, single-consumer)
+log "libsha1 (static, single-consumer)"
 ( cd "$R/third_party/x11/libsha1" && "$CC" $CFLAGS -c sha1.c -o "$LOG/sha1.o" \
   && ar rcs "$P/lib/libsha1.a" "$LOG/sha1.o" )
 
-log xkbcomp (dynamic)
+log "xkbcomp (dynamic)"
 ( cd "$R/third_party/x11/xkbcomp" && make distclean >/dev/null 2>&1 || true
   autoreconf -fi > "$LOG/xkbcomp.log" 2>&1 || true
   ./configure --prefix="$P" --host=x86_64-unknown-linux-gnu \
