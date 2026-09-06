@@ -146,11 +146,22 @@ larger stream block).
   pre-existing rmdir block leak (xbfs_mkdir never set i_blocks, so
   `xbfs_ifree` skipped the truncate-on-unlink of session-created
   directories).
-- Known residuals (pre-existing, not block-size related; both repro at
-  1024): a random kill between a create's ialloc tx and its dir-link
-  leaves an orphaned half-initialized inode, and dup-heavy same-tick
-  churn can leave a stale `last_modified` index entry after a
-  re-index delete+insert (xbfscheck "index last_modified mismatch").
+- Fixed residuals (43df3df, crash-atomicity): a random kill between a
+  create's ialloc tx and its dir-link used to leave an orphaned
+  half-initialized inode (IN_USE, no 0x13 name record), and a tear
+  between a re-index delete and its insert left stale `last_modified` /
+  `size` entries (xbfscheck "index last_modified mismatch"). Root
+  causes: every create was three separate journal transactions, and
+  each index mutation ran its per-tree del/put as separate txs.
+  xbfs_create/mkdir/mknod now wrap the whole operation in one outer
+  transaction; xbfs_index_add/remove/resize are likewise one tx each;
+  and xbfs_inode_set_name re-records the inode block (a create hands
+  the inode to the fd, so the block had not been re-recorded since
+  ialloc — before the name record existed). legB kills no longer show
+  either class; the remaining verifier failures at the kill point are
+  torn journal tails exactly at the replay boundary (a single zeroed
+  bitmap-set block or a torn inode block), a distinct pre-existing
+  journal-boundary class tracked under R-M2's harness.
 - Effort: done; larger defaults only affect new volumes.
 
 #### X-SSD3(b) — Multi-page / scatter-gather I/O (8/16 KB blocks)
