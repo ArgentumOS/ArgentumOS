@@ -289,3 +289,43 @@ explicitly-listed host-tool/doc mentions).
 - **GNU binutils in the final build**: replaced by lld/llvm-objcopy/
   llvm-ar at M3/M4 per the doctrine's permissive roof; GNU tools remain
   acceptable only as uncommitted host utilities during the transition.
+
+## 8. Status
+
+### M0 — DONE (commit TBD)
+
+- **compiler-rt builtins**: standalone cmake of
+  `.build/llvm-src/compiler-rt/lib/builtins` with
+  `COMPILER_RT_DEFAULT_TARGET_TRIPLE=x86_64-unknown-linux-musl`, clang
+  19 / llvm-ar / llvm-ranlib, `CMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY`
+  → `.build/compiler-rt/lib/linux/libclang_rt.builtins-x86_64.a`.
+  Builtins are freestanding, so no musl sysroot is needed at configure
+  time; a 128-bit-divide smoke link confirmed `__udivti3` etc. resolve
+  from the archive. The standalone builtins build emits no
+  crtbegin/crtend objects — plain C needs none (musl runs .init_array
+  itself); the C++ milestone (M2) pulls compiler-rt's crtbegin/crtend
+  via the full-runtimes build.
+- **Wrappers** (`tools/musl-clang64.sh`, `tools/musl-clang64-static.sh`):
+  `clang -no-pie -nostdinc -isystem musl/include -I tools/kernel-headers
+  -nostdlib` + musl start files (`Scrt1.o`/`crt1.o` + `crti.o`, `crtn.o`
+  last) + `-Wl,-dynamic-linker,/System/Libraries/ld-musl-x86_64.so.1`
+  (dynamic only) + `-lc` + the compiler-rt builtins archive. clang adds
+  its own resource headers (stddef.h…) even under `-nostdinc`, so no
+  extra `-isystem` is needed. The static wrapper omits `-no-pie`
+  (`-static` already forces the fixed ET_EXEC model).
+- **Makefile**: `MUSL64_CLANG(_STATIC)` vars, `compiler-rt` target
+  (cmake configure+build), `m0clang` target staging
+  `userland/hello.c` twice under `System/Shared/tests`
+  (`clang-hello-dl`, `clang-hello-static`; lint carve-out tree).
+  `rootxbfs` chains `m0clang` — `userland64` starts with
+  `rm -rf $(ROOTFS64)`, so the clang outputs must be (re)staged after
+  it or they never reach the packed image.
+- **Acceptance**: both binaries boot and print under FNX
+  (`M0_CLANG_HELLOS: True`; pids 8/10); readelf shows the FSH
+  interpreter on the dynamic hello (NEEDED libc.so only) and none on
+  the static one (0 INTERP, 0 NEEDED, no GLIBC symbol refs); the static
+  hello also runs on the build host (musl static) — a full
+  clang+compiler-rt end-to-end check; fshlint 0.
+
+Next: **M1** — point `MUSL64_CC`/`MUSL64_CC_STATIC` at the clang
+wrappers; the gcc wrappers stay on disk until M4.

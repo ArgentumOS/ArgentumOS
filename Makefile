@@ -148,6 +148,15 @@ MUSL64_PREFIX = .build/musl64
 MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
 MUSL64_CC     = $(CURDIR)/tools/musl-gcc64.sh
 MUSL64_CC_STATIC = $(CURDIR)/tools/musl-gcc64-static.sh
+# The Clang toolchain (docs/llvm-clang-toolchain-plan.md): wrappers that
+# drive /usr/lib/llvm-19 clang with the same musl/FSH link contract the
+# gcc specs encode. COMPILER_RT_BUILTINS is the musl-targeted compiler-rt
+# builtins archive (libgcc.a's replacement); it is built by the
+# compiler-rt target from the pinned .build/llvm-src.
+MUSL64_CLANG     = $(CURDIR)/tools/musl-clang64.sh
+MUSL64_CLANG_STATIC = $(CURDIR)/tools/musl-clang64-static.sh
+COMPILER_RT_CFG     = .build/compiler-rt/CMakeCache.txt
+COMPILER_RT_BUILTINS = .build/compiler-rt/lib/linux/libclang_rt.builtins-x86_64.a
 # X11 third-party dependency prefix (built by tools/x11-shared-build.sh;
 # shared .so + static .a coexist since the M2 conversion).
 X11PREFIX     = .build/x11-prefix
@@ -172,7 +181,7 @@ ROOTFS64      = .build/rootfs64
 DASH64_BIN    = third_party/dash/src/dash64
 TOYBOX64_BIN  = third_party/toybox/toybox64
 
-.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx fshlint
+.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint
 
 # FSH porting linter gate (proposal 6.1/Q1): zero-allow on System/Tools.
 fshlint:
@@ -225,6 +234,41 @@ $(LLVM_CXX_STAMP): $(LLVM_CXX_CFG)
 	cmake --build .build/llvm-cxx -j$$(nproc)
 	cmake --install .build/llvm-cxx
 	touch $(LLVM_CXX_STAMP)
+
+# --- compiler-rt builtins (Clang toolchain M0) ------------------------
+# libgcc.a's replacement, built from the pinned llvm-src by clang against
+# the musl target triple. Builtins are freestanding, so the build needs no
+# musl sysroot - the archive (plus clang's own resource headers) is what
+# the musl-clang wrappers link. The standalone lib/builtins cmake project
+# needs no runnable configure-test binaries (TRY_COMPILE -> static lib).
+$(COMPILER_RT_CFG): .build/llvm-src/compiler-rt/lib/builtins/CMakeLists.txt
+	rm -rf .build/compiler-rt
+	cmake -G "Unix Makefiles" -S .build/llvm-src/compiler-rt/lib/builtins \
+	  -B .build/compiler-rt \
+	  -DCOMPILER_RT_DEFAULT_TARGET_TRIPLE=x86_64-unknown-linux-musl \
+	  -DCMAKE_C_COMPILER=/usr/lib/llvm-19/bin/clang \
+	  -DCMAKE_C_COMPILER_TARGET=x86_64-unknown-linux-musl \
+	  -DCMAKE_ASM_COMPILER=/usr/lib/llvm-19/bin/clang \
+	  -DCMAKE_ASM_COMPILER_TARGET=x86_64-unknown-linux-musl \
+	  -DCMAKE_AR=/usr/lib/llvm-19/bin/llvm-ar \
+	  -DCMAKE_RANLIB=/usr/lib/llvm-19/bin/llvm-ranlib \
+	  -DCMAKE_BUILD_TYPE=Release \
+	  -DCMAKE_C_FLAGS="-ffreestanding -fno-builtin -fPIC" \
+	  -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
+
+$(COMPILER_RT_BUILTINS): $(COMPILER_RT_CFG)
+	cmake --build .build/compiler-rt -j$$(nproc)
+
+# --- Clang toolchain M0 proof (docs/llvm-clang-toolchain-plan.md M0) ---
+# userland/hello.c compiled twice by the clang wrappers - dynamic and
+# static - and staged under System/Shared/tests (a lint carve-out tree,
+# so the static ELF does not trip the System/Tools zero-allow gate).
+M0CLANG_DIR = $(ROOTFS64)/System/Shared/tests
+
+m0clang: userland64 $(COMPILER_RT_BUILTINS) tools/musl-clang64.sh tools/musl-clang64-static.sh
+	$(MUSL64_CLANG) userland/hello.c -o $(M0CLANG_DIR)/clang-hello-dl
+	$(MUSL64_CLANG_STATIC) userland/hello.c -o $(M0CLANG_DIR)/clang-hello-static
+	@echo "m0clang: clang-built hellos staged under System/Shared/tests"
 
 dash64: $(DASH64_BIN)
 $(DASH64_BIN): $(MUSL64_SPECS) third_party/dash-fsh.patch
@@ -476,7 +520,7 @@ rootdisk64: userland64
 # double-indirect streams, symlinks). XBFS is the DEFAULT root device
 # (make run / run-uefi); 64MB leaves headroom for the X11 userland (Xfb
 # is a ~16MB static binary).
-rootxbfs: userland64
+rootxbfs: userland64 m0clang
 	python3 tools/mkxbfs.py $(ROOTFS64) .build/rootxbfs.img 64
 	python3 tools/xbfscheck.py .build/rootxbfs.img $(ROOTFS64)
 	@echo "rootxbfs: .build/rootxbfs.img ready (XBFS, 64MB, native x86_64 userland)"
