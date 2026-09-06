@@ -391,7 +391,7 @@ footprint and the recovery set then become fully clang. musl's own
 `make`/`configure` uses `CC=gcc` today via config.mak, untouched by
 M1.
 
-### M2 — DONE (commit TBD)
+### M2 — DONE (commit 5db8cbb)
 
 - **musl built by clang**: the `musl64` recipe configures
   `CC=/usr/lib/llvm-19/bin/clang` and overrides config.mak
