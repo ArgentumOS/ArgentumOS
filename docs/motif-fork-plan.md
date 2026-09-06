@@ -102,8 +102,7 @@ and not its dated parts. The mapping:
   (`momo_button_new()`, `momo_window_new()`), per the full-prefix rule.
 - **Object model**: one object per widget, plain C (no GObject
   boilerplate — no type-registration macros, no `GObject` inheritance
-  machinery); containers pack children (`momo_box_pack_start`,
-  `momo_grid_attach`-style), layout via boxes/grids rather than Xt
+  machinery); layout is the two-container model (below) rather than Xt
   geometry managers.
 - **Main loop**: an `momo_main()` / `momo_init()` pair, GTK-style,
   instead of Xt's event model.
@@ -125,6 +124,26 @@ Deliberate improvements over GTK+ itself (keeping the earlier rules):
   UI description.
 - **No GTK settings/CSS-theming machinery**: theming is the `.conf`
   domain (item 2); GTK+ 3/4's CSS engine is not imported.
+
+### Layout — two containers (decided)
+
+Momo has exactly two first-class layout containers; no grid, no Xt
+geometry managers, no other layout machinery exposed to apps:
+
+- **`momo_box`** — a row or column that lays out its children packed
+  (and padded) along one axis: `momo_box_new(MOMO_ROW | MOMO_COLUMN)`,
+  pack/pad/expand semantics per child. The GTK+ box, familiar and
+  predictable.
+- **A springs-and-struts layout container** — the OpenStep/NeXT model:
+  each child is anchored with *springs* (flexible edges that stretch as
+  the container resizes, with relative weights) and *struts* (fixed
+  edges that hold position/size). Content hugs, edges spring; resize
+  redistributes space by spring weight. This is where the E′-b
+  view-model's SPRINGS/FORM instincts (docs/gui-e-toolkit.md, since
+  superseded) land in Momo.
+
+Both are engine-backed layout; apps describe either packing order or
+springs/struts and the container does the negotiation.
 
 ## 4. Milestones (sketch)
 
