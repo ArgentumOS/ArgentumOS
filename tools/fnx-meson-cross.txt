@@ -1,0 +1,19 @@
+# FNX meson cross file: build with the FNX musl toolchain as a cross
+# toolchain so meson does NOT execute sanity-check/test binaries on the
+# build host. Needed since the M1 flip: musl-gcc64.sh links DYNAMIC
+# executables whose interpreter is /System/Libraries/ld-musl-x86_64.so.1
+# (not present on the build host), so native-mode meson's "run the sanity
+# check executable" step fails with ENOENT. Cross mode keeps configure-
+# time builds runnable; the produced libraries are native x86_64 for FNX.
+[binaries]
+c = '__REPO_ROOT__/tools/musl-gcc64.sh'
+cpp = '__REPO_ROOT__/tools/musl-gcc64.sh'
+ar = 'ar'
+strip = 'strip'
+pkgconfig = 'pkg-config'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'

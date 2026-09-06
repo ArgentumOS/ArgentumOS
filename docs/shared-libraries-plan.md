@@ -1,7 +1,7 @@
 # Shared libraries on FNX
 
-Status: **DECIDED (design, 2026-09) + M0/M1 DONE — the whole userland is
-dynamic.** All design decisions below were settled in conversation; the
+Status: **DECIDED (design, 2026-09) + M0/M1/M2 DONE — dynamic world, X
+stack shared.** All design decisions below were settled in conversation; the
 kernel/toolchain work described is the implementation backlog. M0 shipped
 `fs/elf.c` `ET_DYN`/`PT_INTERP` loading (fixed `ELF_INTERP_BASE`, auxv
 `AT_BASE`, musl shared build with `/System/Libraries` syslibdir + loader
@@ -13,8 +13,15 @@ updater + unconverted carve-outs), init/dash/toybox/all first-party tools
 are dynamic, fshlint R1 is now "dynamic is the norm" with an explicit
 static exception list, and the kernel auxv reports post-exec euid/egid so
 a setuid-root dynamic binary is seen as secure by musl (no LD_PRELOAD into
-root). C++ (static LLVM runtimes) and the X stack (static-musl
-x11-prefix, Xfb) remain static carve-outs until their own milestones.
+root). C++ (static LLVM runtimes) and libconfig stay static carve-outs. M2
+converted the X stack: `tools/x11-shared-build.sh` rebuilds the x11-prefix
+libs shared (autotools `--host` / meson `--cross-file` because dynamic
+configure test binaries cannot run on the build host), the versioned
+sonames (`libX11.so.6`, `libxcb.so.1`, `libXau.so.6`, `libXdmcp.so.6`,
+`libxkbfile.so.1`, `libpixman-1.so.0`, `libXfont2.so.2`, `libfontenc.so.1`,
+`libz.so.1`) are staged in `/System/Libraries`, and Xfb (server, now ~10MB
+dynamic), xkbcomp, xdraw and xkey all link dynamic NEEDED against them.
+Xfb's own server archives + libsha1.a stay static inside the binary.
 
 ## 1. Why
 

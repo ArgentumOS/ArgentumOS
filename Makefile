@@ -99,10 +99,10 @@ XFBIMG  ?= .build/rootxbfs-xfbdesk.img
 XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 
 .build/x11/xdraw: userland/xdraw.c
-	$(MUSL64_CC_STATIC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
+	$(MUSL64_CC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
 		userland/xdraw.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
 .build/x11/xkey: userland/xkey.c
-	$(MUSL64_CC_STATIC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
+	$(MUSL64_CC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
 		userland/xkey.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
 
 xfbdesk-root: $(XFB_DEMO_BIN)
@@ -148,6 +148,9 @@ MUSL64_PREFIX = .build/musl64
 MUSL64_SPECS  = $(MUSL64_PREFIX)/lib/musl-gcc.specs
 MUSL64_CC     = $(CURDIR)/tools/musl-gcc64.sh
 MUSL64_CC_STATIC = $(CURDIR)/tools/musl-gcc64-static.sh
+# X11 third-party dependency prefix (built by tools/x11-shared-build.sh;
+# shared .so + static .a coexist since the M2 conversion).
+X11PREFIX     = .build/x11-prefix
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-g++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-g++64.sh
@@ -255,11 +258,12 @@ XFB_BIN = $(XFB_OUT)/Xfb
 
 .PHONY: xfb64
 xfb64:
-	# Xfb stays static for now: it links the unconverted static-musl X11
-	# prefix and its shared conversion belongs to the X-stack milestone
-	# (plan §6), not the M1 libc flip.
+	# Xfb links dynamic (M2): its third-party deps (pixman, xkbfile,
+	# Xfont2, Xau) are shared .so in /System/Libraries; the server's own
+	# archives stay in the binary. libsha1.a + the server archives are
+	# the only static pieces left (single-consumer FNX code).
 	$(MAKE) -C $(XFB_SRC) OUT="$(CURDIR)/$(XFB_OUT)" \
-		CC="$(CURDIR)/tools/musl-gcc64-static.sh" -j8
+		CC="$(CURDIR)/tools/musl-gcc64.sh" -j8
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +391,22 @@ userland64: $(MUSL64_SPECS) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LV
 	# the loader recognizes libc as itself.
 	@cp $(MUSL64_PREFIX)/lib/libc.so "$(ROOTFS64)/System/Libraries/libc.so"
 	@ln -f "$(ROOTFS64)/System/Libraries/libc.so" "$(ROOTFS64)/System/Libraries/ld-musl-x86_64.so.1"
+	# --- shared X stack (docs/shared-libraries-plan.md §6, M2): the
+	# versioned .so files of the X11 dependency prefix. musl's loader
+	# resolves each NEEDED soname (libX11.so.6, libxcb.so.1, ...) as an
+	# exact filename against the baked /System/Libraries search path; the
+	# glob carries the soname symlink + the versioned real file (the bare
+	# dev symlink libX11.so is link-time only and skipped). Only the libs
+	# today's consumers NEED are staged - libX11-xcb and the libxcb-*
+	# extension libs are deliberately left out until something links them.
+	@if [ ! -d "$(X11PREFIX)/lib" ]; then \
+		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
+		exit 1; \
+	fi
+	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
+		libpixman-1.so libXfont2.so libfontenc.so libz.so; do \
+		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
+	done
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.

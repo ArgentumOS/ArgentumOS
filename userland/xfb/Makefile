@@ -71,12 +71,7 @@ $(OUT)/Xfb: $(BUILD)/libxserver_main.a $(BUILD)/libxserver_fb.a $(BUILD)/libxser
 		$(BUILD)/libxserver_xkb_stubs.a \
 		$(BUILD)/libxserver_xi_stubs.a \
 		$(BUILD)/libxfb.a \
-		$(X11PREFIX)/lib/libpixman-1.a \
-		$(X11PREFIX)/lib/libxkbfile.a \
-		$(X11PREFIX)/lib/libXfont2.a \
-		$(X11PREFIX)/lib/libsha1.a \
-		$(X11PREFIX)/lib/libXau.a \
-		$(X11PREFIX)/lib/libXdmcp.a \
+		-L$(X11PREFIX)/lib -lpixman-1 -lxkbfile -lXfont2 -lsha1 -lXau \
 		-Wl,--end-group -lm -ldl -lpthread
 
 clean:
