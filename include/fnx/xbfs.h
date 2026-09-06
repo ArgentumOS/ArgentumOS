@@ -348,11 +348,15 @@ struct xbfs_sb_info {
 					 * blocks (the barrier runs when this
 					 * reaches the batch cap) */
 	/* in-memory journal transaction state */
-#define XBFS_LOG_MAX_BLOCKS	15	/* count <= log size - run_array block */
+#define XBFS_LOG_MAX_BLOCKS	48	/* count <= log size - run_array block */
 	__blk_t tx_blocks[XBFS_LOG_MAX_BLOCKS];	/* blocks modified in this tx */
 	unsigned char *tx_data[XBFS_LOG_MAX_BLOCKS];	/* their new content */
 	int tx_nblocks;				/* entries used in tx_blocks[] */
 	int tx_depth;				/* nesting depth (0 = no tx) */
+	int tx_poisoned;			/* a record overflowed the tx: the rest
+					 * of this outer tx writes through so an
+					 * operation is never split across a
+					 * direct part and a journaled part */
 	int log_draining;			/* umount: write through, no journal */
 	/* journal transaction lock (serializes tx ownership): the tx
 	 * state is per-superblock but the commit sleeps on I/O, so a

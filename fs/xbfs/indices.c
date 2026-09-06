@@ -187,6 +187,14 @@ void xbfs_index_resize(struct superblock *sb, struct inode *i,
 	 * present is a harmless no-op net; the i_nlink == 0 guard above is
 	 * what prevents an unlinked inode's entries from resurrecting. */
 	xbfs_log_begin(sb);
+	/* write the inode in the same transaction as its index move: the
+	 * size/mtime change and the index del+put are otherwise separate
+	 * txs (the inode itself is flushed at the fd's close/iput), and a
+	 * kill between them replays an inode whose on-disk size/mtime does
+	 * not match its index entries ("index size/last_modified
+	 * mismatch"). The record is idempotent with the later close-time
+	 * flush. */
+	xbfs_write_inode(i);
 	xbfs_index_del(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&osz,
 		       8, i->inode);
 	xbfs_index_put(sb, "size", XBFS_BTREE_INT64_TYPE, (char *)&nsz,

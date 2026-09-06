@@ -502,6 +502,16 @@ int xbfs_log_commit(struct superblock *sb)
 		/* nested: the outermost commit does the work */
 		return 0;
 	}
+	if(sb->u.xbfs.tx_poisoned) {
+		/* the tx overflowed mid-operation and everything wrote
+		 * through; nothing was recorded. Clear the poison and
+		 * release the journal lock (the writes-through were dirty
+		 * bwrite()s — the next full sync flushes them). */
+		sb->u.xbfs.tx_poisoned = 0;
+		xbfs_log_free_tx(sb);
+		unlock_resource(xbfs_log_resource(sb));
+		return 0;
+	}
 	n = sb->u.xbfs.tx_nblocks;
 	if(n == 0) {
 		xbfs_log_free_tx(sb);
@@ -669,7 +679,7 @@ void xbfs_log_write_block(struct superblock *sb, __blk_t blk,
 		bwrite(buf);
 		return;
 	}
-	if(sb->u.xbfs.tx_depth > 0) {
+	if(sb->u.xbfs.tx_depth > 0 && !sb->u.xbfs.tx_poisoned) {
 		if(xbfs_log_record(sb, blk, buf->data)) {
 			/* the tx no longer fits (or kmalloc failed): abort
 			 * it consistently by writing through EVERY recorded
@@ -705,6 +715,18 @@ void xbfs_log_write_block(struct superblock *sb, __blk_t blk,
 				}
 			}
 			xbfs_log_free_tx(sb);
+			/* the whole outer tx is poisoned: every later block
+			 * of this operation must also write through (the
+			 * tx_poisoned flag is checked by xbfs_log_write_block
+			 * and cleared by the outermost commit). Without this
+			 * the tx would re-fill and commit later, SPLITTING
+			 * the operation across a direct write-through part
+			 * and a journaled part — that split is how a kill
+			 * mid-create replayed an inode without its
+			 * directory entry (an unreferenced IN_USE inode).
+			 * The cap (XBFS_LOG_MAX_BLOCKS) is sized so normal
+			 * metadata operations never hit this path. */
+			sb->u.xbfs.tx_poisoned = 1;
 			bwrite(buf);
 			return;
 		}
