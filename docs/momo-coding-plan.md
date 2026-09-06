@@ -4,6 +4,13 @@ Status: **PLAN to guide coding (2026-09)** — design intent in
 `docs/motif-fork-plan.md`; this document turns it into ordered,
 verifiable coding milestones. Nothing in this document is implemented.
 
+**Sequencing (decided): this plan runs AFTER the switch to dynamic
+linking** (`docs/shared-libraries-plan.md`). M0 starts from a world in
+which the kernel loads `PT_INTERP`/dynamic executables and first-party
+libraries are shared objects in `/System/Libraries` — so all Momo
+milestones below assume the dynamic toolchain and build shared
+libraries with versioned sonames (bookkeeping only; no ABI promises).
+
 ## 0. Goal and framing
 
 Fork `thentenaar/motif` (the maintained continuation of Open Motif) as
@@ -22,8 +29,9 @@ date; nothing FNX ships will speak it at the end.
 - **X client stack present (static)**: `.build/x11-prefix` holds
   libX11, libxcb, xcb-proto, Xau, Xdmcp, pixman, libxkbfile, libXfont2,
   libfontenc, xtrans, libsha1, xkbcomp/xkeyboard-config — consumed by
-  the Makefile (`$(MUSL64_CC) -static -L .build/x11-prefix/lib -lX11
-  -lxcb -lXdmcp -lXau`).
+  the Makefile. (By M0, the dynamic-linking switch has converted this
+  stack to shared objects in `/System/Libraries`; this entry describes
+  the tree as it stands today.)
 - **Missing for Motif**: `libXt` (X intrinsics), `libXmu`, and `libXm`
   (Motif). None are vendored or built.
 - **Build-recipe gap**: the `.build/x11-prefix` content exists, but the
@@ -37,9 +45,11 @@ date; nothing FNX ships will speak it at the end.
 
 ## 2. Conventions for every milestone
 
-- Builds target the static musl toolchain (shared libraries come later
-  per docs/shared-libraries-plan.md; Momo will land in
-  `/System/Libraries` as a first-party lib when it does).
+- Builds target the **dynamic toolchain** (post-switch): libraries are
+  shared objects installed to `/System/Libraries` (first-party) with
+  versioned sonames per docs/shared-libraries-plan.md; apps are dynamic
+  executables. Static is reserved for the recovery shell and updater
+  only.
 - Plain Makefiles, per-file rules with source deps (the Xfb pattern).
 - Attribution kept: LGPL-2.1 notices from upstream; the Fiwix→FNX
   license-attribution precedent applies to every renamed file.
@@ -59,25 +69,27 @@ date; nothing FNX ships will speak it at the end.
 - Vendor `thentenaar/motif` (pin a commit) into `third_party/motif`
   (submodule or pinned-tree per the third_party/x11 README pattern).
 - Vendor `libXt` and `libXmu` (x.org release tarballs, committed-tree
-  style like the other x.org libs in third_party/x11) and add them to
-  the X-prefix build.
-- Codify the `.build/x11-prefix` recipe into a repeatable script or
-  Makefile target (today it exists only as its outputs). Record the
-  exact configure/CC/specs invocation used.
-- Build libXm from the vendored tree into the prefix with the FNX CC.
-- Acceptance: `libXt.a`, `libXmu.a`, `libXm.a` compile into
-  `.build/x11-prefix/lib` for the static musl toolchain; the recipe is
-  reproducible from a clean tree; third_party/x11/README (or the new
-  target) documents the additions.
+  style like the other x.org libs in third_party/x11); by now the X
+  stack lives in `/System/Libraries` (post-dynamic-switch) — build them
+  as shared objects there with sonames.
+- Codify the library build recipe into a repeatable script or Makefile
+  target (historically the prefix was built by unrecorded host steps).
+  Record the exact configure/CC invocation used.
+- Build libXm from the vendored tree as a shared object into
+  `/System/Libraries` (`libXm.so` with a versioned soname).
+- Acceptance: `libXt.so`, `libXmu.so`, `libXm.so` install into
+  `/System/Libraries` and a dynamic executable links them at runtime;
+  the recipe is reproducible from a clean tree; the build docs record
+  the additions.
 
 ### M1 — Stock Motif brings up on Xfb
 
 - Build a minimal Motif demo (start from thentenaar's own demos — a
-  PushButton/Label/Text window — trimmed to what compiles static).
-  It speaks the old Xm API: it is **scaffolding** that validates the
-  engine before the surface is replaced.
-- Install it into the Xfb root (`/System/Shared/X11/bin`-adjacent or a
-  demo dir) and launch it as an X client of Xfb `:0`.
+  PushButton/Label/Text window — trimmed to what the dynamic toolchain
+  needs). It speaks the old Xm API: it is **scaffolding** that
+  validates the engine before the surface is replaced.
+- Install it into the Xfb root and launch it as a dynamic X client of
+  Xfb `:0`, resolving libXt/libXmu/libXm from `/System/Libraries`.
 - Acceptance: interactive Motif window in the guest — draws, takes
   keyboard, takes mouse (sendkey/serial harness); screendump shows a
   Motif window; xdraw/xkey desktop still boots.
@@ -88,7 +100,7 @@ date; nothing FNX ships will speak it at the end.
 
 - Move the tree to its fork home: `userland/momo` (the Xfb pattern:
   upstream in third_party, fork in userland/).
-- Product identity rename: library output → `libmomo.a`, include dir /
+- Product identity rename: library output → `libmomo.so`, include dir /
   guards, product strings, comments, build files. Keep upstream
   attribution.
 - **No internal symbol sweep yet**: the public Xm API is replaced in M4
@@ -156,7 +168,10 @@ the retained engine:
   intrinsics.
 - FNX-native desktop shell (window manager, panels, file manager) built
   on Momo, with CDE's architecture as reference (docs/cde-fork-plan.md).
-- Shared-library conversion of libmomo (docs/shared-libraries-plan.md).
+- Shared-library **packaging** of libmomo is already the norm here
+  (this plan runs post-dynamic-switch): sonames as bookkeeping, atomic
+  whole-world upgrades, no ABI promises — per
+  docs/shared-libraries-plan.md.
 
 ## 4. Definition of done (whole project)
 
@@ -164,7 +179,7 @@ A FNX-native app is written in pure `momo_*` C against a typed,
 GTK+-familiar API; its look comes from `.conf`; its text is UTF-8; its
 UI is described only in code; nothing first-party compiles against
 Xt/Xm, X resources, UIL, or compound strings; the toolkit is a
-first-party lib (eventually shared) in `/System/Libraries`; and a
+first-party shared library in `/System/Libraries`; and a
 stranger's first "hello window" compiles and runs on Xfb from the
 documentation alone.
 
