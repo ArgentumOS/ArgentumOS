@@ -43,6 +43,7 @@ small — everything in v1 is load-bearing for the first desktop apps
 **Future (not v1)** — catalog-extension items: `momo_tree`,
 `momo_toolbar`, `momo_terminal` (urxvt core, post-M5), tabs/notebook;
 `momo_progress`, `momo_file_chooser` are v1.1 candidates, not v1.
+`momo_browser` — see below.
 
 ## 2. Reference app — Settings (decided)
 
@@ -146,3 +147,30 @@ surfaced the open micro-decisions below.
   fonts, no bitmap stack).
 - **Menus: one global menubar** (NeXT/macOS model); no per-window menu
   bars; the bar is shell-provided, apps publish their menu model.
+
+## 5. momo_browser — the browser widget (decision)
+
+A first-party HTML/viewer widget is needed long term (local content,
+docs/help, light web). Decision on the engine:
+
+- **CEF / Chromium: evaluated and rejected.** ~30M lines of C++, needs
+  glibc (FNX is musl), wants GPU/compositing/sandbox plumbing FNX
+  deliberately lacks, and an unsandboxed Chromium is a security hole
+  against the OS profile. The embedding seam was never the problem —
+  Chromium-on-FNX is.
+- **Candidate: NetSurf core** — the browser engine whose architecture
+  fits the house pattern: the core is C (HTML/CSS/layout, no toolkit
+  deps) and it talks to a *front end* through a defined content/UI
+  API — the urxvt engine-extraction shape repeated. A Momo front end
+  would wrap NetSurf core as `momo_browser` (sibling of the Terminal
+  widget). Realistic scope: HTML4/CSS2.1-class + optional small JS —
+  the honest ceiling for a built-in viewer, not a modern-Web engine.
+- Licensing (verify at evaluation time): NetSurf core is GPL-2.0
+  (some components MIT).
+- Framing: FNX needs a first-party HTML/viewer *widget*, not a
+  Chromium-class browser; if a modern-Web engine is ever a hard
+  requirement that is a "reconsider the OS profile" conversation, not a
+  widget decision.
+
+Recorded as future work; a proper evaluation (license, core API fit,
+front-end scope) happens when the first-party Viewer/Help needs it.
