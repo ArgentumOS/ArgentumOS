@@ -32,9 +32,10 @@ small — everything in v1 is load-bearing for the first desktop apps
 **Menus** (global model, docs/motif-fork-plan.md)
 - `momo_menu`, `momo_menu_item`, separator/check items — app-side menu
   *model*. There is **no per-window menu bar widget**: the menubar is a
-  single global bar provided by the desktop shell, which renders the
-  focused app's published menu model. Menu publishing/ownership is the
-  later app-model/desktop-shell topic.
+  single global bar **owned by the window manager** (the EMWM fork
+  hosts it as its own borderless window at the top of the screen and
+  swaps the focused app's published menu model). Menu publishing/
+  ownership is the later app-model topic.
 
 **Dialogs**
 - `momo_message` — info/warn/error/question with buttons.

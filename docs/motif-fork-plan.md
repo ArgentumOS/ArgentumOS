@@ -158,16 +158,23 @@ support is already present).
 
 FNX uses a **single global menubar** at the top of the screen, not
 per-window menu bars (the NeXT/macOS model): the active window/app's
-menus appear there. Consequences:
+menus appear there.
 
 - App-side widgets are `momo_menu` / `momo_menu_item` (+ separator,
   check); there is **no per-window `momo_menu_bar`** widget.
-- The bar itself is **shell-provided** (it belongs to the future
-  desktop shell, alongside EMWM and the panel) — apps *publish* their
-  menu model; the bar renders it and swaps by focus.
-- The publishing/ownership mechanism (how an app's menu model reaches
-  the bar; how focus tracks the active window via EWMH) is an open
-  item for the app-model / desktop-shell topic, not the toolkit.
+- **The bar belongs to the window manager** (decided): the EMWM fork
+  owns it as its own borderless Momo window at the top of the screen
+  (strut-reserved), positioned by the WM itself. The WM already owns
+  the screen-top region, decorations, and active-window/focus
+  tracking, so it is the natural host — no parallel shell component
+  with duplicated focus knowledge.
+- Apps *publish* their menu model (`momo_menu`/`momo_menu_item`) to
+  the WM; the bar renders the focused app's menus and swaps by focus.
+  The publishing/ownership mechanism (menu-model protocol between app
+  and WM) is an open item for the app-model topic.
+- Consequence: the WM is the **window manager + menubar host** — the
+  first piece of the desktop shell; panels/launcher later join or
+  stay separate (see docs/emwm-window-manager.md).
 
 ### v1 widget catalog + reference app
 
