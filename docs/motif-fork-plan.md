@@ -193,6 +193,21 @@ The v1 widget set and the Settings reference call-site sketch are
 decided: `docs/momo-v1-widgets.md` (catalog, sketch, open
 micro-decisions, pinned decisions).
 
+### Icons — format decision
+
+- **PNG is the canonical icon format.** Runtime icons (window/taskbar/
+  buttons) are PNG: thentenaar/motif enables PNG/JPEG decode by default
+  (`XM_WITH_PNG`, libpng; zlib already in the X prefix), so decode is
+  upstream-native — wire it into the icon pipeline (pixmap →
+  `_NET_WM_ICON` for the WM). XPM (the legacy Motif format) is dropped —
+  no compat obligations.
+- **SVG is the authoring format, not a runtime format.** Icons are
+  authored as SVG in the bundle source (vector, resolution-independent)
+  and **rasterized to PNG at build time** into `Resources/`. No runtime
+  SVG rasterizer, no librsvg/cairo. (A tiny C rasterizer such as
+  nanosvg is the named fallback only if runtime vector is ever
+  genuinely wanted — 16–128 px icons don't justify it.)
+
 ## 4. Milestones (sketch)
 
 - **M0 — Vendor + build recon.** Vendor Open Motif 2.3.x + stock
