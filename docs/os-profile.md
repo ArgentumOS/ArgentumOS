@@ -31,9 +31,12 @@ mindfully-ported software.
   identity, bundles, and config domains; POSIX ACLs are the single
   canonical permissions model (mode bits are a projection); UTF-8 is
   the only encoding; one locale.
-- **Plain C everywhere** — kernel, GUI, apps; no Objective-C, no C++,
-  no runtime, struct-embedding vtables.
-- **Small, simple, educational** (the Fiwix lineage): readable ANSI C,
+- **One system compiler toolchain: Clang** — the same compiler builds
+  the kernel, the userland, and every first-party language; no foreign
+  compilers in the system build. Languages are open per subsystem
+  (C, C++, Objective-C as the task demands) — no runtime beyond what
+  the language needs; the OS profile no longer mandates plain C.
+- **Small, simple, educational** (the Fiwix lineage): readable code,
   single-lock scheduler, eager FPU, staged milestones with acceptance
   gates.
 
