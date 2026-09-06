@@ -230,3 +230,31 @@ walked because the range is tight, D2).
   journal silent in steady state.
 - Group commit (batching multiple metadata ops into one tx) is orthogonal
   and can further cut per-commit superblock writes; out of scope here.
+
+## 12. legB kill classes (commits 43df3df, e712f50)
+
+Crash-atomic creates (43df3df: one outer tx per create/mkdir/mknod, one tx
+per index mutation, set_name re-record) eliminated the 'missing 0x13'
+orphan. e712f50 eliminated the tx-split classes:
+
+1. XBFS_LOG_MAX_BLOCKS 15 -> 48. A create in a deep tree records 15-20
+   metadata blocks, so the cap overflowed constantly and the write-through
+   abort split the op across a direct part (which could sync) and a
+   re-filled journaled part (unpublished) — replaying an inode without its
+   directory entry, or a bitmap-set block with no content.
+2. tx_poisoned: an overflowing tx writes the REST of the outer tx through
+   too (never re-fills and commits a journaled remainder later).
+3. xbfs_index_resize writes the inode in its own transaction (the
+   size/mtime change + index del+put + inode record commit atomically;
+   the fd-close flush is an idempotent re-record).
+
+Verified: legA crash states 3+6 green; R-M3 soak resets=0; boot-sanity +
+xbfscheck clean. legB failures drop to a rare btree artifact at the kill
+boundary: the dir tree's leaf chain ends with leaves whose keys sit in the
+wrong subtree (root separator vs physical link divergence; the checker
+reports 'iterate path hit an interior node' or 'bitmap blocks not
+referenced' for the unfilled tail block). Postkill dissection shows the
+kill landed after a wrap published sb log (0,0) with the previous flushed
+batch still in the log region, and the tree shows a mixed-depth/mislinked
+shape. NOT yet root-caused to a code path; needs a deterministic repro and
+a split/right-edge-grow ordering study before the next attempt.
