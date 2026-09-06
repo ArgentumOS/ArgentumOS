@@ -1,8 +1,11 @@
 # Momo coding plan — from Motif fork to the GTK-shaped modern toolkit
 
-Status: **PLAN to guide coding (2026-09)** — design intent in
+Status: **CANDIDATE under consideration (2026-09)** — design intent in
 `docs/motif-fork-plan.md`; this document turns it into ordered,
-verifiable coding milestones. Nothing in this document is implemented.
+verifiable coding milestones. **Status update: previously treated as the
+working direction; re-opened — the Momo/Motif fork is pinned as a valid
+candidate, and alternatives are under examination (the toolkit direction
+is not final).** Nothing in this document is implemented.
 
 **Sequencing (decided): this plan runs AFTER the switch to dynamic
 linking** (`docs/shared-libraries-plan.md`). M0 starts from a world in
