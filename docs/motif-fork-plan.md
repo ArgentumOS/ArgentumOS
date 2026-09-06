@@ -169,9 +169,20 @@ menus appear there.
   tracking, so it is the natural host — no parallel shell component
   with duplicated focus knowledge.
 - Apps *publish* their menu model (`momo_menu`/`momo_menu_item`) to
-  the WM; the bar renders the focused app's menus and swaps by focus.
-  The publishing/ownership mechanism (menu-model protocol between app
-  and WM) is an open item for the app-model topic.
+  the WM; the bar renders the active app's menus and swaps by focus.
+- **Publishing mechanism — pinned (shape for later discussion)**:
+  the macOS model translated — the app owns the authoritative menu
+  model and pushes serialized, incremental updates to the WM over an
+  **AF_UNIX channel** (the well-known-socket / compositor-protocol
+  heritage); the WM is a dumb renderer (holds no menu logic); menu
+  selections round-trip back to the app, which executes them;
+  accelerators live app-side. **Activation is per-app, not per-window**
+  (macOS semantics): the bar shows the active application's menus,
+  however many windows it has.
+- Open items for the deferred protocol discussion: exact message set
+  (register / full tree / deltas) and versioning; whether bar-level
+  items (the app menu, a Window menu) are published by the app or
+  synthesized by the WM; wire details of selection round-trips.
 - Consequence: the WM is the **window manager + menubar host** — the
   first piece of the desktop shell; panels/launcher later join or
   stay separate (see docs/emwm-window-manager.md).
