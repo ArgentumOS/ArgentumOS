@@ -1,6 +1,10 @@
 # EMWM window manager — FNX's X11 window manager (fork decision)
 
-Status: **DECIDED (note, 2026-09) — nothing vendored or implemented.**
+Status: **SUPERSEDED (2026-09)** by `docs/shrike-plan.md` §5 — the window
+manager is now a from-scratch C++ component built on Shrike (the EMWM
+rationale — "it is itself a Motif app" — died with the Motif fork).
+Kept as a record of the fork evaluation. (Was: DECIDED — nothing vendored
+or implemented.
 
 Decision: FNX will **fork and extend EMWM** as its X11 window manager.
 

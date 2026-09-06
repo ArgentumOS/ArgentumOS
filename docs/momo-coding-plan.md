@@ -1,12 +1,12 @@
 # Momo coding plan — from Motif fork to the GTK-shaped modern toolkit
 
-Status: **PLAN to guide coding (2026-09) — active candidate** — design
-intent in `docs/motif-fork-plan.md`; this document turns it into
-ordered, verifiable coding milestones. **Status history: re-opened as
-"candidate under consideration" while GNUstep was examined (c7d9817);
-GNUstep rejected (be69e2e, docs/gnustep-evaluation.md); candidate A —
-the Momo/Motif fork — is resumed as the working toolkit direction.**
-Nothing in this document is implemented.
+Status: **SUPERSEDED (2026-09)** by `docs/shrike-plan.md` — the toolkit
+is now Shrike, from-scratch C++ over X11; no Motif fork, no momo API.
+Kept as a record of the coding-plan shape. (Was: PLAN to guide coding —
+active candidate. Status history: re-opened as "candidate under
+consideration" while GNUstep was examined (c7d9817); GNUstep rejected
+(be69e2e, docs/gnustep-evaluation.md); candidate A — the Momo/Motif
+fork — was resumed as the working toolkit direction.)
 
 **Sequencing (decided): this plan runs AFTER the switch to dynamic
 linking** (`docs/shared-libraries-plan.md`). M0 starts from a world in

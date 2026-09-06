@@ -1,7 +1,11 @@
-# Momo v1 widget catalog + reference app
+# Shrike v1 widget catalog + reference app (was: Momo v1)
 
-Status: **DECIDED (2026-09)** — the v1 widget set and the reference app
-sketch that exercises the API shape. Design intent: docs/motif-fork-plan.md.
+Status: **CATALOG SPEC (2026-09)** — the v1 widget set and the
+reference-app sketch. Originally DECIDED under the Motif-fork direction
+(docs/motif-fork-plan.md); it survives the pivot to Shrike
+(docs/shrike-plan.md) as the v1 catalog. The flat `momo_*` API shape is
+superseded by the C++ class model (`shrike::Widget` hierarchy); the
+widget set and reference-app intent carry over unchanged.
 
 ## 1. v1 widget catalog
 

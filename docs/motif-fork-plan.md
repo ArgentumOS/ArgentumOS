@@ -1,8 +1,11 @@
 # Motif fork plan — the FNX toolkit from Open Motif
 
-Status: **SKETCH (2026-09) — proposal for discussion, nothing vendored or
-implemented.** Supersedes `docs/cde-fork-plan.md` as the chosen base (that
-doc is kept for its reasoning and demoted to reference).
+Status: **SUPERSEDED (2026-09)** by `docs/shrike-plan.md` — the toolkit
+is now Shrike, from-scratch C++ over X11; no Motif fork. Kept as a
+record of the fork reasoning. (Was: SKETCH — proposal for discussion,
+nothing vendored or implemented. Supersedes `docs/cde-fork-plan.md` as
+the chosen base; that doc is kept for its reasoning and demoted to
+reference.)
 
 Working name: **Momo** — "MOdern MOtif" (the doublet is intentional:
 Motif/motive, modern/motif; see §6. A working name, may change).
