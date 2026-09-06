@@ -488,10 +488,14 @@ modes green, fshlint 0, no kernel exceptions.
   `.o`'s that GNU ld's BFD happily links into PE32+. lld has no
   ELF-objects→PE output path. Porting would mean converting every kernel
   object to COFF (llvm-objcopy per-object) - parked as a later item.
-- **Two image fixes surfaced while diagnosing m2**: the FSH skeleton now
-  stages `/tmp` (Xfb's unix-listener mkdir needed it; errno 2), and
-  `xfbdesk-root` re-copies `$(XFB_BIN)` so the desktop image can't go
-  stale against a rebuilt Xfb.
+- **Two image fixes surfaced while diagnosing m2**: the m2 hang was
+  initially sidestepped by staging a root `/tmp` (Xfb's Xtrans listener
+  mkdir needed it; errno 2) - later REPLACED by the FSH-consistent fix
+  (see the /tmp note below): Xfb's Xtrans X11_t UNIX_DIR and libxcb's
+  client unix_base now point at `/System/Temporary Files/.X11-unix` and
+  the root `/tmp` staging is gone. And `xfbdesk-root` re-copies
+  `$(XFB_BIN)` so the desktop image can't go stale against a rebuilt
+  Xfb.
 
 ### M4 — DONE (commit PENDING; see git log)
 
@@ -516,3 +520,18 @@ consumed is no longer produced or referenced).
   19.1.7 (host clang-19.1.7 = the pinned source).
 - Acceptance: m0/m1/m2/cpp + m4_recovery all four modes green,
   fshlint 0, `make toolchain-gate` OK.
+
+## /tmp is not part of the FSH (fixed after M4)
+
+The FSH maps `/tmp` → `/System/Temporary Files/` (docs/fsh-proposal.md);
+there is no root `/tmp` by design, fshlint bans the string, and the
+kernel's `fs_repair_tmpdir()` repairs `/System/Temporary Files` at mount.
+A root `/tmp` crept into the staging as an M3 stopgap for Xfb's
+Xorg-compiled Xtrans listener mkdir. The FSH-consistent fix (this
+commit): both halves of the X11 transport now use the FSH dir -
+`third_party/x11/xtrans/Xtranssock.c` (server X11_t UNIX_DIR/UNIX_PATH)
+and `third_party/x11/libxcb/src/xcb_util.c` (client unix_base) →
+`/System/Temporary Files/.X11-unix`, matching init.c's existing unlink.
+The root `/tmp` staging is removed; verify with
+`ls -ld /tmp` → ENOENT and `ls /System/Temporary\ Files/` showing
+`.X0-lock` + `.X11-unix/X0`.

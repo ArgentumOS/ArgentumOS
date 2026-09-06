@@ -393,8 +393,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
 	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
-	# --- the FSH skeleton (spaced names verbatim, Q7) ---
-	@mkdir -p "$(ROOTFS64)/tmp" "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
+	# --- the FSH skeleton (spaced names verbatim, Q7). No root /tmp: the
+	# FSH maps /tmp to /System/Temporary Files (staged below); fshlint
+	# bans the /tmp string in System/Tools; fs_repair_tmpdir() recreates
+	# /System/Temporary Files at mount if a kill-replay left it non-dir. ---
+	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
 		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
 		"$(ROOTFS64)/Shared/Sounds" "$(ROOTFS64)/Shared/Videos" \

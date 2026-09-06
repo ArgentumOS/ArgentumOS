@@ -215,8 +215,11 @@ is_numeric (const char *str)
 
 
 #if defined(X11_t)
-#define UNIX_PATH "/tmp/.X11-unix/X"
-#define UNIX_DIR "/tmp/.X11-unix"
+/* FNX/FSH: the display-socket dir is /System/Temporary Files (the /tmp
+ * equivalent of the FSH - there is no root /tmp). init.c unlinks
+ * /System/Temporary Files/.X11-unix/X0 to match. */
+#define UNIX_PATH "/System/Temporary Files/.X11-unix/X"
+#define UNIX_DIR "/System/Temporary Files/.X11-unix"
 #endif /* X11_t */
 #if defined(XIM_t)
 #define UNIX_PATH "/tmp/.XIM-unix/XIM"
