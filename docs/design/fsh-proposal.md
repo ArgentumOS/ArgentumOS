@@ -60,6 +60,7 @@ question "what kinds of things does this OS contain, and who owns them?"
 /
     Applications/                 user-facing programs
     Shared/                       third-party resources, shared by all apps
+        Application Support/      third-party behavioural scripts/data
         Configuration/            third-party machine-wide settings
         Libraries/                third-party shared objects
         Fonts/
@@ -103,9 +104,12 @@ question "what kinds of things does this OS contain, and who owns them?"
                                  (the /etc/skel idea, familiar from
                                  macOS's /System/Library/User Template)
         Variable Data/            /var equivalent (logs, spool, caches)
+        Application Support/      system behavioural scripts/data (policy,
+                                 config-design §0)
     Users/
         Admin/                    uid 0 (same structure as $USER)
         $USER/
+            Application Support/   this user's behavioural scripts/data
             Configuration/        per-user settings
             Applications/         per-user installed apps
             Documents/            the user's own files

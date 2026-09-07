@@ -26,6 +26,16 @@ adopted port).
   surface (`fonts.conf`, the `fcxml` front-end) is being replaced by a
   libconfig domain + loader (docs/design/fontconfig-config-plan.md) so
   no XML config exists on FNX.
+- **Behavioural scripting is NOT configuration (policy carve-out,
+  2026-09)**: scripts and behavioural/automation material (extension
+  scripts, app behaviour data) are not libconfig domains and do not
+  live in `Configuration/`. They ship in a dedicated **Application
+  Support/** directory in the system, shared, and user domains —
+  `/System/Application Support/`, `/Shared/Application Support/`,
+  `/Users/<user>/Application Support/` (FSH; macOS's
+  `~/Library/Application Support` analogue). Rule of thumb: a thing
+  you *read/write as settings* is Configuration (libconfig); a thing
+  you *run or that changes behaviour* is Application Support.
 
 ---
 
