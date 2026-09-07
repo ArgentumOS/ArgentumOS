@@ -1,11 +1,11 @@
 # Shrike v1 widget catalog + reference app (was: Momo v1)
 
-Status: **CATALOG SPEC (2026-09)** — the v1 widget set and the
-reference-app sketch. Originally DECIDED under the Motif-fork direction
-(docs/archive/motif-fork-plan.md); it survives the pivot to Shrike
-(docs/design/shrike-plan.md) as the v1 catalog. The flat `momo_*` API shape is
-superseded by the C++ class model (`shrike::Widget` hierarchy); the
-widget set and reference-app intent carry over unchanged.
+Status: **SUPERSEDED (2026-09)** by `docs/design/shrike-catalog.md` — the
+catalog target is now Snow Leopard-parallel (Tier 1 + structure in v1,
+data/rich views staged); this minimal GTK-era v1 list is kept as a
+record. (Was: CATALOG SPEC — the v1 widget set under the Shrike pivot;
+the flat `momo_*` API shape was already superseded by the C++ class
+model.)
 
 ## 1. v1 widget catalog
 

@@ -194,7 +194,7 @@ menus appear there.
 ### v1 widget catalog + reference app
 
 The v1 widget set and the Settings reference call-site sketch are
-decided: `docs/design/momo-v1-widgets.md` (catalog, sketch, open
+decided: `docs/archive/momo-v1-widgets.md` (catalog, sketch, open
 micro-decisions, pinned decisions).
 
 ### Icons — format decision

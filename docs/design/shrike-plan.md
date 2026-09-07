@@ -6,9 +6,8 @@ already owns. Working name **Shrike** (the butcher bird — small, sharp;
 the phoenix FNX gets a smaller bird of its own). Namespace `shrike::`.
 This supersedes the Motif-fork direction (`docs/archive/motif-fork-plan.md`,
 `docs/archive/momo-coding-plan.md` — kept as records) and the EMWM fork decision
-(`docs/archive/emwm-window-manager.md`); the widget catalog spec
-(`docs/design/momo-v1-widgets.md`) survives as the v1 catalog, re-expressed in
-C++.
+(`docs/archive/emwm-window-manager.md`); the view catalog is now defined by
+`docs/design/shrike-catalog.md` (Snow Leopard-parallel target).
 
 ## 1. Why (from the record)
 
@@ -144,7 +143,7 @@ drawing code.
   parameterized engine gives free; richer themes are later `.conf`
   work, not code.
 
-## 4. Widgets + layout (v1 catalog, from the momo spec)
+## 4. Widgets + layout (v1 catalog, Snow Leopard-parallel)
 
 **View model (decided):** a single `shrike::View` tree — every view can
 host subviews (`addSubview`, Cocoa-style), so there is **no separate
@@ -158,10 +157,11 @@ primitives:
    along one axis (packing order); the only arrangement widget needed
    (the NSStackView-lite analog). Boxes nest like any view.
 
-v1 catalog leaf views per `docs/design/momo-v1-widgets.md` (button, label,
-check, radio, slider, edit, scroll, menu…), all Views. Text via Xft.
-View states (idle/hover/armed/disabled/focused) map one-to-one onto
-theme tile sets.
+v1 catalog cut per `docs/design/shrike-catalog.md` (Tier 1 core
+controls + Tier 2 structure essentials + TableView-basic); the catalog
+*target* parallels AppKit circa Snow Leopard (classes/functionality, not
+visual style). View states (idle/hover/armed/disabled/focused) map
+one-to-one onto theme parameter sets.
 
 System font (resolved): the **Liberation family** ships under
 /Shared/Fonts — metric-compatible with Arial/Times, smaller footprint
@@ -247,7 +247,8 @@ ordinary decisions that surface at execution.
 | docs/design/shrike-plan.md | **this plan (DECIDED direction)** |
 | docs/archive/motif-fork-plan.md | SUPERSEDED (record kept) |
 | docs/archive/momo-coding-plan.md | SUPERSEDED (record kept) |
-| docs/design/momo-v1-widgets.md | **catalog spec survives** — C++ re-expression |
+| docs/archive/momo-v1-widgets.md | SUPERSEDED by shrike-catalog.md (archive) |
+| docs/design/shrike-catalog.md | **catalog target** — Snow Leopard-parallel, staged v1 |
 | docs/archive/emwm-window-manager.md | SUPERSEDED (WM is from-scratch shrike-based) |
 | docs/design/urxvt-terminal.md | unchanged (Xlib-only, toolkit-independent) |
 | docs/design/app-model.md, sessionmgr-design.md | unchanged (design corpus) |
