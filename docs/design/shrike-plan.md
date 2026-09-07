@@ -235,6 +235,32 @@ fontconfig picks/falls back → HarfBuzz shapes → FreeType rasterizes →
 pixman composites. The Xft-only path (basic shaping, no complex
 scripts) is not sufficient for the full-text requirement.
 
+### Accessibility — Tier 1 (decided)
+
+**Decision (2026-09): accessibility in general is a Tier 1 concern for
+Shrike** — architected into the foundation, not added later. This means:
+
+- **Every View carries accessibility metadata from the v1 catalog**:
+  role, label, value, enabled/focused state, and help — the
+  NSAccessibility analog (Cocoa-resemblant), as plain properties on
+  the view tree, not a side table. Containers expose their children;
+  the view tree *is* the accessibility tree.
+- **Native surface, no foreign stack**: the a11y tree is queryable in
+  process (and via the app's socket when a consumer exists) — no
+  AT-SPI/DBus dependency. A screen reader is a future first-party
+  tool, not a Shrike dependency.
+- **Programmatic actions** mirror NSAccessibility (perform press,
+  set value, focus) — minimal in v1 (press + focus), grown with the
+  catalog.
+- **Keyboard operation is an a11y deliverable**, not a feature: S3
+  (focus/traversal/equivalents, operable without a mouse) is already
+  in the milestone chain; visible focus is a first-class theme state.
+- **Settings (accessibility .conf domain)**: ui-scale k (decided §3);
+  a high-contrast theme variant (cheap — themes are .conf parameters);
+  reduced motion (v1 has no animation; policy recorded when it does).
+- **Tests**: the battery asserts a11y metadata (every widget exposes
+  role/label; keyboard-only pass) alongside the ui-scale screendumps.
+
 ## 5. Kestrel — the window manager (from-scratch; EMWM decision retired)
 
 EMWM was chosen because it was a **Motif app** — with the fork gone that
@@ -286,9 +312,11 @@ swaps by focus; picks flow back as triggers.
   ProgressIndicator, SegmentedControl, SearchField, ColorWell,
   LevelIndicator), **Tier 2 structure essentials** (ScrollView, SplitView,
   TabView, Box, Menu/MenuItem), and **TableView-basic** as the first
-  data view. *Acceptance:* an interactive reference app — the future
-  Settings (resolved: the S2 reference app becomes Settings per the
-  app-model corpus) — exercises every v1-cut widget.
+  data view — **every view carrying its a11y metadata** (role/label/
+  value; Tier 1, §4). *Acceptance:* an interactive reference app — the
+  future Settings (resolved: the S2 reference app becomes Settings per
+  the app-model corpus) — exercises every v1-cut widget, and the a11y
+  battery asserts role/label on each.
 - **S3 — Input & text depth**: focus/traversal, keyboard equivalents,
   edit-widget text input (TextField/secure). *Acceptance:* the
   reference app is fully operable without a mouse.
@@ -320,6 +348,7 @@ ordinary decisions that surface at execution.
 | First theme / chrome art | **Parameterized vector chrome over pixman** (supersedes the nine-tile plan) — theme = .conf parameters (colors, radii, bevels, gradients), no bitmap assets, scales free to any device scale. |
 | System font | **Liberation family** under /Shared/Fonts (metric-compatible, small footprint; weaker coverage than DejaVu accepted); swappable via theme .conf. |
 | UI scale (accessibility) | **Uniform multiplier k on all point units** — effective px/pt = k·(PPI/72), from the accessibility .conf domain; one knob scales everything equally (layout, chrome, fonts, spacing); content images excluded. |
+| Accessibility — Tier 1 | **Native a11y metadata on every View from the v1 catalog** (role/label/value/enabled/help; NSAccessibility analog); the view tree is the a11y tree; no AT-SPI/DBus; keyboard op + visible focus + high-contrast theme are a11y deliverables; ui-scale k decided. |
 | Exceptions policy | **Adopt** libc++ exceptions/RTTI for shrike (cpp_smoke-proven; no carve-out). |
 | Reference app | The S2 reference app **becomes Settings** (app-model corpus). |
 

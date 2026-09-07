@@ -15,6 +15,10 @@ cell model in v1; controls are views that draw their own chrome. Data
 views use a view-based model (SL gained these for tables in 10.7; the
 user-facing class surface is the same).
 
+Accessibility is Tier 1: **every catalog view carries a11y metadata**
+(role, label, value, enabled/focused, help) from the v1 cut —
+parallel to AppKit's NSAccessibility protocol surface (shrike-plan §4).
+
 ## Tier 1 — core controls (v1 cut)
 
 | AppKit (SL) | Shrike | Notes |
