@@ -36,6 +36,18 @@ adopted port).
   `~/Library/Application Support` analogue). Rule of thumb: a thing
   you *read/write as settings* is Configuration (libconfig); a thing
   you *run or that changes behaviour* is Application Support.
+- **Application Support uses the same domain matching pattern as
+  config (policy refinement, 2026-09)**: each app's scripts/data live
+  in a **subdirectory keyed by the app's domain name**, and the three
+  scopes resolve with the *same precedence as libconfig domains* —
+  system is the default, shared overrides it, user overrides both
+  (`/System/Application Support/<app>/` →
+  `/Shared/Application Support/<app>/` →
+  `/Users/<user>/Application Support/<app>/`). An app looks up its
+  behaviour material exactly the way it looks up its settings: by
+  domain name, walking system → shared → user. The domain-name and
+  precedence machinery is shared; only the payload kind differs
+  (settings records vs script/behaviour files).
 
 ---
 
