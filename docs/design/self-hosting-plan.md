@@ -144,10 +144,12 @@ toolchain yields an identical image (see §5 on reproducibility).
     drive it).
   - **Ninja** — Apache-2.0, one small C++ binary, very portable. Reads
     generated `.ninja` files, not makefiles — and it is what clang's own
-    build uses (`CMake + Ninja`). CMake (BSD-3-Clause) is a big C++ port
-    itself, but it can generate `.ninja` **on the host once**; the guest
-    then only needs ninja to rebuild clang, re-shipping the generated
-    files when sources change. Python/meson/SCons/redo-family and
+    build uses (`CMake + Ninja`); it executes, it does not configure.
+  - **CMake** — BSD-3-Clause, ships on-FNX (decided, package manifest):
+    it bootstraps from source with clang++ + bmake (vendored deps,
+    OpenSSL off), so the LLVM stage **configures in-guest** and in-guest
+    clang source changes need no host round-trip — the host generates
+    only the very first cross-seed. Python/meson/SCons/redo-family and
     JVM-based Bazel are all out (Python on FNX, Lua, or JVM
     prerequisites that don't exist).
   - **Custom FNX driver** — a small dependency-graph builder in C as a
@@ -156,10 +158,10 @@ toolchain yields an identical image (see §5 on reproducibility).
 
   Two credible routes (not mutually exclusive): **bmake as the system
   driver** for the tree (host dev keeps GNU make; POSIX hygiene makes
-  both work), plus **ninja for the clang bootstrap specifically**
-  (host-CMake-generated `.ninja`, guest runs ninja). Decide at
-  execution; bmake is the recommended default for the tree, ninja for
-  the LLVM stage. Affects SH-4/SH-5 acceptance.
+  both work), plus **CMake + ninja for the LLVM stage** (CMake ships
+  on-FNX and configures in-guest; ninja executes). bmake is the
+  recommended default for the tree, CMake+ninja for the LLVM stage.
+  Affects SH-4/SH-5 acceptance.
 - **Kernel-on-FNX timing**: SH-5 is last in the spine, but the kernel
   clang build (G1) may make kernel-in-guest practical earlier — the
   milestone order is not a commitment.

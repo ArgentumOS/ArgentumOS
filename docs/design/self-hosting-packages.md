@@ -47,7 +47,8 @@ the plan's G3 gate and SH-0..SH-5.
 | Driver | License | Role |
 |---|---|---|
 | **bmake** (BSD make) | BSD-2-Clause | system driver for the tree (GNU make is GPL — out) |
-| **ninja** | Apache-2.0 | the LLVM stage; `.ninja` generated host-side by CMake (cmake itself does **not** ship — regenerate on the host when LLVM sources change; long-term option: Muon) |
+| **ninja** | Apache-2.0 | the executor for the LLVM stage (and any CMake+ninja third party) |
+| **CMake** | BSD-3-Clause | the *configure* generator — ships on-FNX (decided): bootstraps with clang++ + bmake, vendored deps, OpenSSL off; host CMake is needed only for the very first cross-seed. In-guest clang source changes reconfigure in-guest — no host round-trip |
 
 ### D. Configure/build tooling
 
@@ -80,10 +81,11 @@ the plan's G3 gate and SH-0..SH-5.
    suffices.
 3. Confirm toybox coverage of diff/tar/vi/sed/grep for the configure
    toolchain.
-4. **cmake avoidance**: LLVM reconfiguration in-guest requires either
-   host regeneration (accepted v1), shipping cmake later, or Muon
-   (C, permissive) — decide when in-guest LLVM source changes first
-   matter.
+4. ~~cmake avoidance~~ **CMake ships on-FNX (decided)**: BSD-3-Clause,
+   bootstrap with clang++ + bmake (vendored deps, OpenSSL off); the
+   LLVM stage configures in-guest, so in-guest clang changes need no
+   host round-trip. (Muon remains an option only for non-CMake,
+   Meson-based packages — none currently needed.)
 5. Fonts (Liberation) are GUI content — not self-hosting-critical.
 
 Ordering note: gaps 1–2 are the *first* real blockers — they gate
@@ -104,6 +106,5 @@ clang/musl core (SH-0..SH-3 use CMake-ninja/ninja + plain rules).
 
 No package manager (a static manifest + tarballs); no runtime network;
 no GPL tool on-FNX (make→bmake, gcc→clang, pkg-config→pkgconf,
-gawk→one-true-awk, GNU patch→permissive patch); no cmake on-FNX
-initially; no source control on-FNX (source delivered as tarballs +
-patches).
+gawk→one-true-awk, GNU patch→permissive patch); no source control on
+FNX (source delivered as tarballs + patches).
