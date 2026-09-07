@@ -216,8 +216,13 @@ stack, and the Xft session configuration in Shrike:
   (`CFF`/`CFF2`) outlines. Type1/Type42, CID, PCF/BDF, PFR, and
   WINFNT loaders are **not needed** and may be trimmed from the
   build. **WOFF (v1) if available** — it is an sfnt wrapper needing
-  zlib decompression (zlib is an X-stack dep); WOFF2 would need
-  brotli and is out unless brotli ever lands. The kernel console's
+  zlib decompression (zlib is an X-stack dep). **WOFF2/brotli:
+  deferred (decided)** — brotli is MIT, pure C, portable, and a
+  ~30-minute port, but it is single-purpose (WOFF2 fonts) with no
+  current consumer: FNX ships TTF/OTF only, and WOFF1 via zlib
+  already covers compressed fonts. Brotli lands when a real font
+  source actually delivers WOFF2 (adoption records itself per the
+  manifest policy). The kernel console's
   bitmap fonts (font-lat9) are a separate, non-FreeType path and
   unaffected.
 - **Color and variable fonts**: COLR/CBDT/sbix color glyphs and
