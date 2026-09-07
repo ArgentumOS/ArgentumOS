@@ -44,7 +44,7 @@ is intact: C++ is Tier-1, clang-built, libc++-standard.
 apps (C++)                    shrike:: apps + Kestrel (the WM)
   │
 shrike (C++17, libc++)        toolkit core — MIT, ours
-  ├─ chrome: nine-tile bitmap engine + theme loader
+  ├─ chrome: pixman vector layer (fills/gradients/rounded rects) + .conf theme
   ├─ widgets: single View tree + springs/struts + row/column Box + v1 catalog
   ├─ text: Xft/FreeType, UTF-8
   ├─ session: .conf via libconfig (shared, /System/Libraries)
@@ -100,33 +100,39 @@ is drawn deliberately): no selectors or message dynamism, no KVC/KVO
 C++-idiomatic (`setTitle()` not `setTitle:`); the resemblance is in
 class roles, method verbs, and interaction patterns, not ObjC syntax.
 
-## 3. Chrome — nine-tile bitmap engine (decided design)
+## 3. Chrome — parameterized vector rendering over pixman (decided)
 
-Widget chrome is a 3×3 bitmap slicing scheme: corners fixed at native
-size, edges stretched/tiled along one axis, center fills. Look is an
-**asset**, never drawing code.
+Widget chrome is drawn by a **small vector layer over pixman** — the
+rasterizer FNX already ships shared in /System/Libraries (the X stack
+dep). No bitmaps, no nine-tile slicing, no assets: the theme is a set
+of **parameters**, and "look" is data in the theme, never per-widget
+drawing code.
 
-- Slices are defined in **logical units** on the source tile; per-slice
-  stretch/tile flags from day one (gradients need stretch regions).
-- **Density buckets**: `1x` and `2x` only (integer, no fractional
-  scales — avoids the seam/blur class of problems). Art in
-  `/Shared/Themes/<theme>/{1x,2x}`.
-- **Scale is a session property**, one knob for the whole desktop, tied
-  to `Xft.dpi` so text metrics scale with chrome. No per-widget density
-  branching.
-- **2x is testable from day one**: the test harness boots with scale=2
-  and a raised Xft.dpi and screendumps — dormant in production, alive
-  in the guest battery, so the density path never rots.
-- Engine rules: integer coordinates; adjacent tiles overlap by one
-  pixel (overdraw) to kill hairline seams; chrome draws into an
-  offscreen pixmap per tile, composited server-side.
-- A theme = the 1x/2x asset pair + colors + fonts + slice specs. First
-  theme deliberately utilitarian (solid fills, 1px bevels, small
-  radii) — consistency is what nine-tile gives free; beauty is a later
-  art task, not a code task. **First theme is a programmatic pass**
-  (resolved): the S1 engine renders the utilitarian look from
-  parameters — no bitmap assets are needed to prove nine-tile
-  correctness and 2x; real art arrives later as asset files.
+- Shape set: solid fills, **linear/radial gradients** (bevels,
+  highlights, shadows), **rounded rectangles**, 1px lines — the closed
+  set UI chrome actually needs (pixman does gradients and trapezoids
+  natively; rounded rects and polygons are a thin layer on top).
+  General cubic-bezier paths are deferred until something needs them
+  (icons/art).
+- Theme = a **.conf** (colors, radii, bevel widths, gradient stops,
+  font selection) per theme, under `/Shared/Themes/<theme>.conf`; the
+  active theme comes from the config domain. Widget states
+  (idle/hover/armed/disabled/focused) map one-to-one onto parameter
+  sets.
+- **Geometry is logical; rendering is at device scale.** Session scale
+  stays one knob tied to `Xft.dpi`, and the same code path draws at any
+  scale — **no density buckets, no 1x/2x assets** (vector scales free;
+  the earlier 2x requirement is met by construction).
+- **Scale is tested, not assumed**: the battery boots at scale=2 with a
+  raised Xft.dpi and screendumps, exercising the device-scale path so
+  it never rots.
+- Rendering rules: chrome composes into an offscreen pixmap per widget
+  via pixman (coverage antialiasing), then blits server-side through
+  XRender — same composite path as before.
+- First theme deliberately utilitarian (solid fills, 1px bevels via
+  two-stop gradients, small radii) — consistency is what a shared
+  parameterized engine gives free; richer themes are later `.conf`
+  work, not code.
 
 ## 4. Widgets + layout (v1 catalog, from the momo spec)
 
@@ -160,7 +166,7 @@ shrike** — the toolkit's first consumer, exercising windows, view trees,
 focus, input, and menus before any other app exists. It is small
 (a WM is far smaller than a toolkit) and it owns:
 
-- window decoration, drawn with shrike chrome (nine-tile),
+- window decoration, drawn with shrike chrome (vector, pixman)
 - focus tracking (EWMH `_NET_ACTIVE_WINDOW`),
 - the **global menubar** (the spec's WM-owned bar), swapping menus by
   focus,
@@ -190,10 +196,10 @@ swaps by focus; picks flow back as triggers.
   event loop; Xft/FreeType init; .conf load; libshrike.so staged.
   *Acceptance:* a shrike app opens a window on Xfb; keyboard/mouse
   events round-trip; Xft text draws.
-- **S1 — Chrome engine**: nine-tile renderer (logical slices, stretch
-  flags), theme loader from /Shared/Themes, 1x/2x buckets, session
-  scale. *Acceptance:* themed frame+button render at 1x and at 2x
-  (scale=2 boot + screendump in the battery).
+- **S1 — Chrome engine**: the pixman vector layer (fills, gradients,
+  rounded rects) + theme .conf loader; device-scale rendering (one
+  path, any scale). *Acceptance:* themed frame+button render at scale=1
+  and at scale=2 (raised Xft.dpi boot + screendump in the battery).
 - **S2 — Widget core**: the View tree + springs/struts + row/column
   Box + v1 catalog. *Acceptance:* an interactive reference app — the
   future Settings (resolved: the S2 reference app becomes Settings per
@@ -218,7 +224,7 @@ ordinary decisions that surface at execution.
 |---|---|
 | Menu wire format | **.conf/config framing** — the menu tree rides the existing config serializer (config-shaped; libconfig already shared); a dedicated codec stays possible behind the socket. |
 | libshrike distribution | **Shared `libshrike.so`** in /System/Libraries (dynamic world); static only for recovery-set carve-outs. |
-| First theme art | **Programmatic first pass** — the S1 engine renders the utilitarian theme from parameters; real bitmap art arrives later as asset files. |
+| First theme / chrome art | **Parameterized vector chrome over pixman** (supersedes the nine-tile plan) — theme = .conf parameters (colors, radii, bevels, gradients), no bitmap assets, scales free to any device scale. |
 | System font | **Liberation family** under /Shared/Fonts (metric-compatible, small footprint; weaker coverage than DejaVu accepted); swappable via theme .conf. |
 | Exceptions policy | **Adopt** libc++ exceptions/RTTI for shrike (cpp_smoke-proven; no carve-out). |
 | Reference app | The S2 reference app **becomes Settings** (app-model corpus). |
@@ -240,6 +246,8 @@ ordinary decisions that surface at execution.
 
 - No C FFI in v1; no foreign toolkit code; no compositor; no LGPL in
   the tree (all ours, MIT).
-- No fractional scaling (1x/2x only). No vector chrome.
+- No fractional *art* scales and no density buckets (vector draws at
+  device scale); no bitmap chrome assets. No vector *paths* beyond the
+  chrome shape set until something needs them (icons/art).
 - No Wayland (Xfb/X11 is the display decision).
 - The kernel stays C; shrike is userland-only.
