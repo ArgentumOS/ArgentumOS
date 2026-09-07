@@ -208,6 +208,221 @@ bool config_valid_key(const char *key)
 	return valid_dotted(key, strlen(key));
 }
 
+/*
+ * v2 key addressing (docs §10.2): `key` may carry `ident[i]` segments
+ * (and bare all-digit segments, which address an array element) mixed
+ * with plain idents, e.g. `rules[1].edits[0].value` and
+ * `rules[0].tests.1` (≡ `rules[0].tests[1]`). Plain dotted keys stay
+ * valid; array indexes are 0-based. Records are addressed by name only
+ * (no implicit ordinal keys).
+ */
+bool config_valid_address(const char *key)
+{
+	size_t i, len;
+
+	if(!key) {
+		return false;
+	}
+	len = strlen(key);
+	if(!len || len > CONF_MAX_KEY || key[0] == '.' ||
+	   key[len - 1] == '.') {
+		return false;
+	}
+	for(i = 0; i < len;) {
+		size_t start = i;
+		int digit_seg = 1;
+
+		/* one segment: ident, ident[index], or digits */
+		while(i < len && key[i] != '.') {
+			if(!(isalnum((unsigned char)key[i]) ||
+			     key[i] == '_' || key[i] == '-' ||
+			     key[i] == '[' || key[i] == ']')) {
+				return false;
+			}
+			if(!isdigit((unsigned char)key[i]) &&
+			   key[i] != '[' && key[i] != ']') {
+				digit_seg = 0;
+			}
+			i++;
+		}
+		if(i == start) {
+			return false;
+		}
+		if(digit_seg) {
+			/* bare digits: array index only */
+			size_t j;
+
+			for(j = start; j < i; j++) {
+				if(!isdigit((unsigned char)key[j])) {
+					return false;
+				}
+			}
+		} else {
+			/* ident or ident[...]: parse the segment */
+			const char *seg = key + start;
+			size_t slen = i - start;
+			size_t b = 0;
+
+			while(b < slen && seg[b] != '[') {
+				b++;
+			}
+			if(!valid_segment(seg, b)) {
+				return false;
+			}
+			/* optional [digits] suffix; no trailing junk */
+			if(b < slen) {
+				size_t j = b + 1;
+				int saw_digit = 0;
+
+				if(seg[slen - 1] != ']') {
+					return false;
+				}
+				for(; j < slen - 1; j++) {
+					if(!isdigit((unsigned char)seg[j])) {
+						return false;
+					}
+					saw_digit = 1;
+				}
+				if(!saw_digit) {
+					return false;	/* empty index */
+				}
+			}
+		}
+		if(i < len) {
+			i++;	/* '.' */
+		}
+	}
+	return true;
+}
+
+/*
+ * Addressing steps (docs §10.2). Each '.'-separated piece becomes one
+ * step: a plain ident is a record field (or a dotted-key segment), an
+ * `ident[i]` / bare `i` piece is an array index. Names + indexes may
+ * mix: `rules[0].tests.1` ≡ `rules[0].tests[1]`.
+ */
+#define ADDR_MAX_STEPS	((CONF_MAX_KEY + 1) / 2)
+
+enum addr_kind {
+	ADDR_NAME,
+	ADDR_INDEX,
+};
+
+struct addr_step {
+	enum addr_kind kind;
+	char name[CONF_MAX_SEGMENT + 1];	/* ADDR_NAME */
+	size_t index;			/* ADDR_INDEX */
+};
+
+/* Parse an addressing key into steps. Returns false on malformed input
+ * (caller should have validated with config_valid_address first). */
+static bool address_split(const char *key, struct addr_step *steps,
+			  size_t *nsteps)
+{
+	size_t n = 0;
+	const char *p = key;
+
+	while(*p) {
+		const char *e = strchr(p, '.');
+		size_t slen = e ? (size_t)(e - p) : strlen(p);
+		size_t b = 0;
+		int all_digits = 1;
+		size_t j;
+
+		if(n >= ADDR_MAX_STEPS) {
+			return false;
+		}
+		for(j = 0; j < slen; j++) {
+			if(!isdigit((unsigned char)p[j])) {
+				all_digits = 0;
+				break;
+			}
+		}
+		if(all_digits && slen) {
+			steps[n].kind = ADDR_INDEX;
+			steps[n].index = (size_t)strtoul(p, NULL, 10);
+			n++;
+			p = e ? e + 1 : p + slen;
+			continue;
+		}
+		while(b < slen && p[b] != '[') {
+			b++;
+		}
+		/* ident part */
+		if(b > CONF_MAX_SEGMENT) {
+			return false;
+		}
+		memcpy(steps[n].name, p, b);
+		steps[n].name[b] = '\0';
+		if(b == 0 || steps[n].name[0] == ']' ||
+		   steps[n].name[0] == '[') {
+			return false;
+		}
+		steps[n].kind = ADDR_NAME;
+		n++;
+		if(b < slen) {	/* ident[i]: index step follows */
+			char idx[32];
+			size_t k = b + 1;
+			size_t m = 0;
+
+			if(slen == 0 || p[slen - 1] != ']' ||
+			   k >= slen - 1) {
+				return false;
+			}
+			while(k < slen - 1) {
+				if(!isdigit((unsigned char)p[k]) ||
+				   m + 1 >= sizeof(idx)) {
+					return false;
+				}
+				idx[m++] = p[k++];
+			}
+			idx[m] = '\0';
+			if(n >= ADDR_MAX_STEPS) {
+				return false;
+			}
+			steps[n].kind = ADDR_INDEX;
+			steps[n].index = (size_t)strtoul(idx, NULL, 10);
+			n++;
+		}
+		p = e ? e + 1 : p + slen;
+	}
+	*nsteps = n;
+	return n != 0;
+}
+
+/* Index (array position) of the first ADDR_INDEX step, or nsteps. */
+static size_t first_index_step(const struct addr_step *steps, size_t nsteps)
+{
+	size_t i;
+
+	for(i = 0; i < nsteps; i++) {
+		if(steps[i].kind == ADDR_INDEX) {
+			return i;
+		}
+	}
+	return nsteps;
+}
+
+/* Build the dotted key from the leading run of ADDR_NAME steps
+ * [0,last); caller guarantees last >= 1 when there are names. */
+static void name_prefix_key(const struct addr_step *steps, size_t last,
+			    char *out, size_t outsz)
+{
+	size_t i, n = 0;
+
+	out[0] = '\0';
+	for(i = 0; i < last; i++) {
+		int r = snprintf(out + n, outsz - n, "%s%s",
+				 i ? "." : "", steps[i].name);
+
+		if(r < 0 || (size_t)r >= outsz - n) {
+			break;
+		}
+		n += (size_t)r;
+	}
+}
+
+
 /* ---- value memory -------------------------------------------------- */
 
 static void value_free(config_value_t *v)
@@ -1499,6 +1714,8 @@ next_line:
 		*list = head;
 		if(blocks) {
 			*blocks = explicit;
+		} else {
+			blocks_free(explicit, nexp);
 		}
 		if(nblocks) {
 			*nblocks = nexp;
@@ -1722,6 +1939,93 @@ static config_err_t record_from_prefix(struct entry *list, const char *key,
 
 /* ---- reading ------------------------------------------------------- */
 
+/*
+ * M1 addressing (docs §10.2): `key` may be a plain dotted key OR carry
+ * array-index segments (`rules[1].edits[0].value`, bare-digit
+ * `rules[0].tests.1`). Resolution happens in two phases:
+ *   1. the leading run of ident segments forms a *dotted base key*
+ *      resolved against the flat store exactly as a plain dotted read
+ *      (exact entry, or a record synthesized from prefix children);
+ *   2. remaining steps walk that resolved tree value: ADDR_INDEX
+ *      selects an array element, ADDR_NAME selects a record field
+ *      (inside an array-of-records / record value the fields are real
+ *      record children).
+ * A record value reached via a plain dotted key keeps its M0 read
+ * (synthesis); an ADDR_NAME after the base only occurs inside tree
+ * values whose fields are already stored (never flattened again).
+ *
+ * Returns CONFIG_ERR_TYPE when a step cannot apply (index on a
+ * non-array, name on a non-record) and CONFIG_ERR_NOT_FOUND for an
+ * out-of-range index / absent field / absent base.
+ */
+static config_err_t tree_descend(config_value_t *cur,
+				 const struct addr_step *steps, size_t n,
+				 size_t from, config_value_t *out)
+{
+	config_value_t node;
+	config_err_t e;
+
+	/* cur is owned by the caller; deep-copy it as the starting node
+	 * so we can free intermediate nodes as we walk */
+	memset(&node, 0, sizeof(node));
+	e = value_copy(&node, cur);
+	if(e) {
+		return e;
+	}
+	while(from < n) {
+		if(steps[from].kind == ADDR_INDEX) {
+			if(node.type != CONFIG_TYPE_ARRAY) {
+				value_free(&node);
+				return CONFIG_ERR_TYPE;
+			}
+			if(steps[from].index >= node.v.array.count) {
+				value_free(&node);
+				return CONFIG_ERR_NOT_FOUND;
+			}
+			{
+				config_value_t next;
+
+				memset(&next, 0, sizeof(next));
+				e = value_copy(&next,
+					       &node.v.array.items[steps[from].index]);
+				value_free(&node);
+				if(e) {
+					return e;
+				}
+				node = next;
+			}
+		} else {	/* ADDR_NAME: record field */
+			config_value_t *field = NULL;
+
+			if(node.type != CONFIG_TYPE_RECORD) {
+				value_free(&node);
+				return CONFIG_ERR_TYPE;
+			}
+			e = config_record_child(&node, steps[from].name,
+						 &field);
+			if(e) {
+				value_free(&node);
+				return e == CONFIG_ERR_NOT_FOUND ?
+				       CONFIG_ERR_NOT_FOUND : e;
+			}
+			{
+				config_value_t next;
+
+				memset(&next, 0, sizeof(next));
+				e = value_copy(&next, field);
+				value_free(&node);
+				if(e) {
+					return e;
+				}
+				node = next;
+			}
+		}
+		from++;
+	}
+	memcpy(out, &node, sizeof(node));
+	return CONFIG_OK;
+}
+
 static config_err_t read_scope_internal(config_scope_t scope,
 					const char *domain, const char *key,
 					config_value_t *out)
@@ -1731,22 +2035,70 @@ static config_err_t read_scope_internal(config_scope_t scope,
 	config_err_t e = load_entries(scope, domain, &list, &found,
 				      NULL, NULL);
 	struct entry *en;
+	struct addr_step steps[ADDR_MAX_STEPS];
+	size_t nsteps;
 
 	if(e) {
 		return e;
 	}
-	en = entry_find(list, key);
-	if(!en) {
-		/* v2: a block name reads back as a synthesized record
-		 * from its prefix children (§10.1 "reads never care
-		 * which spelling") */
-		e = record_from_prefix(list, key, out);
+	if(!address_split(key, steps, &nsteps)) {
+		entries_free(list);
+		return CONFIG_ERR_INVALID;
+	}
+	if(first_index_step(steps, nsteps) == nsteps) {
+		/* fast path: plain dotted key (no index segments) */
+		en = entry_find(list, key);
+		if(!en) {
+			/* v2: a block name reads back as a synthesized
+			 * record from its prefix children (§10.1 "reads
+			 * never care which spelling") */
+			e = record_from_prefix(list, key, out);
+			entries_free(list);
+			return e;
+		}
+		e = value_copy(out, &en->val);
 		entries_free(list);
 		return e;
 	}
-	e = value_copy(out, &en->val);
-	entries_free(list);
-	return e;
+	/* addressing key with index segments */
+	{
+		size_t base_idents = first_index_step(steps, nsteps);
+		char base[CONF_MAX_KEY + 1];
+		config_value_t baseval;
+
+		if(base_idents == 0) {
+			entries_free(list);
+			return CONFIG_ERR_INVALID;	/* no leading name */
+		}
+		name_prefix_key(steps, base_idents, base, sizeof(base));
+		en = entry_find(list, base);
+		if(!en) {
+			/* base may be a record synthesized from prefix
+			 * children; inside a flat-spelled record only
+			 * names may follow (records aren't arrays) */
+			if(!record_from_prefix(list, base, &baseval)) {
+				entries_free(list);
+				return tree_descend(&baseval, steps, nsteps,
+						    base_idents, out);
+			}
+			entries_free(list);
+			return CONFIG_ERR_NOT_FOUND;
+		}
+		/* base is an exact entry: walk its value with the
+		 * remaining steps */
+		{
+			config_err_t e2;
+
+			memset(&baseval, 0, sizeof(baseval));
+			e2 = value_copy(&baseval, &en->val);
+			entries_free(list);
+			if(e2) {
+				return e2;
+			}
+			return tree_descend(&baseval, steps, nsteps,
+					    base_idents, out);
+		}
+	}
 }
 
 config_err_t config_read_scope(config_scope_t scope, const char *domain,
@@ -1754,7 +2106,7 @@ config_err_t config_read_scope(config_scope_t scope, const char *domain,
 {
 	if(scope < CONFIG_SCOPE_USER || scope > CONFIG_SCOPE_SYSTEM ||
 	   !domain || !key || !out || !config_valid_domain(domain) ||
-	   !config_valid_key(key)) {
+	   !config_valid_address(key)) {
 		return CONFIG_ERR_INVALID;
 	}
 	return read_scope_internal(scope, domain, key, out);
@@ -1768,33 +2120,173 @@ static const config_scope_t scope_order[] = {
 	CONFIG_SCOPE_SHARED,
 };
 
+/* precedence rank: system highest */
+static int scope_rank(config_scope_t s)
+{
+	switch(s) {
+	case CONFIG_SCOPE_SYSTEM:	return 2;
+	case CONFIG_SCOPE_SHARED:	return 0;
+	default:			return 1;	/* USER */
+	}
+}
+
 config_err_t config_read(const char *domain, const char *key,
 			 config_scope_t *found_scope, config_value_t *out)
 {
-	size_t k;
-	config_scope_t s;
+	struct addr_step steps[ADDR_MAX_STEPS];
+	size_t nsteps, base_idents, k;
+	char base[CONF_MAX_KEY + 1];
+	config_value_t merged;
+	config_scope_t top_scope = CONFIG_SCOPE_USER;
+	int have = 0;
 
 	if(!domain || !key || !out || !config_valid_domain(domain) ||
-	   !config_valid_key(key)) {
+	   !config_valid_address(key)) {
 		return CONFIG_ERR_INVALID;
 	}
-	/* full precedence: system -> user -> shared (docs plan D4) */
+	if(!address_split(key, steps, &nsteps)) {
+		return CONFIG_ERR_INVALID;
+	}
+	base_idents = first_index_step(steps, nsteps);
+	if(base_idents == 0) {
+		return CONFIG_ERR_INVALID;
+	}
+	if(base_idents == nsteps) {
+		snprintf(base, sizeof(base), "%s", key);
+	} else {
+		name_prefix_key(steps, base_idents, base, sizeof(base));
+	}
+
+	/* v2 (§5-v2): arrays are additive — the effective value of an
+	 * array base key is the concatenation of every scope's list in
+	 * precedence order. Scalars/records keep v1 wholesale (highest
+	 * scope that defines the key wins). */
+	memset(&merged, 0, sizeof(merged));
 	for(k = 0; k < 3; k++) {
-		s = scope_order[k];
-		config_err_t e = read_scope_internal(s, domain, key, out);
+		config_scope_t s = scope_order[k];
+		struct entry *list;
+		int found;
+		config_err_t e = load_entries(s, domain, &list, &found,
+					      NULL, NULL);
+		struct entry *en;
 
 		if(e == CONFIG_ERR_NOT_FOUND) {
 			continue;
 		}
 		if(e) {
-			return e;	/* PARSE/IO/ACCESS abort resolution */
+			value_free(&merged);
+			return e;	/* PARSE/IO/ACCESS abort */
 		}
+		en = entry_find(list, base);
+		if(!en) {
+			config_value_t v;
+
+			if(record_from_prefix(list, base, &v)) {
+				entries_free(list);
+				continue;	/* base absent in scope */
+			}
+			/* base is a record tree in this scope */
+			entries_free(list);
+			if(!have || scope_rank(s) > scope_rank(top_scope)) {
+				value_free(&merged);
+				merged = v;
+				top_scope = s;
+				have = 1;
+			} else {
+				value_free(&v);
+			}
+			if(merged.type != CONFIG_TYPE_ARRAY) {
+				/* records/scalars: wholesale, stop */
+				break;
+			}
+			continue;
+		}
+		{
+			config_value_t ev;
+
+			memset(&ev, 0, sizeof(ev));
+			e = value_copy(&ev, &en->val);
+			entries_free(list);
+			if(e) {
+				value_free(&merged);
+				return e;
+			}
+			if(ev.type == CONFIG_TYPE_ARRAY) {
+				/* additive: append this scope's list */
+				size_t i;
+
+				if(!have) {
+					merged.type = CONFIG_TYPE_ARRAY;
+					top_scope = s;
+				} else if(merged.type != CONFIG_TYPE_ARRAY) {
+					/* higher scope had scalar/record */
+					value_free(&merged);
+					value_free(&ev);
+					return CONFIG_ERR_TYPE;
+				}
+				for(i = 0; i < ev.v.array.count; i++) {
+					config_value_t *ni, *el;
+
+					ni = realloc(merged.v.array.items
+						     ? merged.v.array.items
+						     : NULL,
+						     (merged.v.array.count + 1) *
+						     sizeof(config_value_t));
+					if(!ni) {
+						value_free(&merged);
+						value_free(&ev);
+						return CONFIG_ERR_NOMEM;
+					}
+					merged.v.array.items = ni;
+					el = &merged.v.array.items[merged.v.array.count];
+					memset(el, 0, sizeof(*el));
+					e = value_copy(el, &ev.v.array.items[i]);
+					if(e) {
+						value_free(&merged);
+						value_free(&ev);
+						return e;
+					}
+					merged.v.array.count++;
+				}
+				value_free(&ev);
+				have = 1;
+				continue;
+			}
+			/* wholesale scalar/record: highest defining scope
+			 * wins, lower scopes cannot extend it (v1) */
+			if(!have || scope_rank(s) > scope_rank(top_scope)) {
+				value_free(&merged);
+				merged = ev;
+				top_scope = s;
+				have = 1;
+			} else {
+				value_free(&ev);
+			}
+			break;	/* scalar/record never additive */
+		}
+	}
+	if(!have) {
+		return CONFIG_ERR_NOT_FOUND;
+	}
+	if(base_idents == nsteps) {
+		/* whole-key read: merged value IS the answer */
+		memcpy(out, &merged, sizeof(merged));
 		if(found_scope) {
-			*found_scope = s;
+			*found_scope = top_scope;
 		}
 		return CONFIG_OK;
 	}
-	return CONFIG_ERR_NOT_FOUND;
+	/* descend remaining index/name steps through the merged tree */
+	{
+		config_err_t e = tree_descend(&merged, steps, nsteps,
+					      base_idents, out);
+
+		value_free(&merged);
+		if(!e && found_scope) {
+			*found_scope = top_scope;
+		}
+		return e;
+	}
 }
 
 config_err_t config_resolve(const char *domain, const char *key,
@@ -2673,9 +3165,41 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 	return CONFIG_OK;
 }
 
+/* true when an addressing key uses bare-digit array indexes (`a.1`,
+ * `rules.0.tests.1`) rather than brackets. Reads accept both spellings
+ * (§10.2); writes must not persist a bare-digit key (the file grammar
+ * only accepts ident segments), so set/unset reject them. */
+static bool address_has_bare_index(const char *key)
+{
+	const char *p = key;
+
+	while(*p) {
+		const char *e = strchr(p, '.');
+		size_t slen = e ? (size_t)(e - p) : strlen(p);
+		size_t j;
+		int all_digits = slen != 0;
+
+		for(j = 0; j < slen; j++) {
+			if(!isdigit((unsigned char)p[j])) {
+				all_digits = 0;
+				break;
+			}
+		}
+		if(all_digits) {
+			return true;
+		}
+		p = e ? e + 1 : p + slen;
+	}
+	return false;
+}
+
 /* Generic single-key write: load, replace/append, write back. */
 static config_err_t set_key_replace(struct entry **listp, const char *key,
 				    const config_value_t *v);
+static config_err_t set_address_value(config_value_t *cur,
+				      const struct addr_step *steps,
+				      size_t n, size_t from,
+				      const config_value_t *v);
 static config_err_t set_key(config_scope_t scope, const char *domain,
 			    const char *key, const config_value_t *v)
 {
@@ -2685,7 +3209,7 @@ static config_err_t set_key(config_scope_t scope, const char *domain,
 
 	if(scope < CONFIG_SCOPE_USER || scope > CONFIG_SCOPE_SYSTEM ||
 	   !domain || !key || !config_valid_domain(domain) ||
-	   !config_valid_key(key)) {
+	   !config_valid_address(key) || address_has_bare_index(key)) {
 		return CONFIG_ERR_INVALID;
 	}
 	{
@@ -2698,11 +3222,43 @@ static config_err_t set_key(config_scope_t scope, const char *domain,
 		if(e && e != CONFIG_ERR_NOT_FOUND) {
 			return e;
 		}
+		if(strchr(key, '[')) {
+			/* M1: in-place bracket-path element write on an
+			 * existing stored array value */
+			struct addr_step steps[ADDR_MAX_STEPS];
+			size_t nsteps, base_idents;
+			char base[CONF_MAX_KEY + 1];
+			struct entry *en;
+
+			if(!address_split(key, steps, &nsteps) ||
+			   (base_idents = first_index_step(steps, nsteps)) == 0) {
+				e2 = CONFIG_ERR_INVALID;
+				goto out;
+			}
+			name_prefix_key(steps, base_idents, base, sizeof(base));
+			en = entry_find(list, base);
+			if(!en) {
+				e2 = CONFIG_ERR_NOT_FOUND;
+				goto out;
+			}
+			if(en->val.type != CONFIG_TYPE_ARRAY) {
+				e2 = CONFIG_ERR_TYPE;
+				goto out;
+			}
+			e2 = set_address_value(&en->val, steps, nsteps,
+					       base_idents, v);
+			if(!e2) {
+				e2 = write_entries(scope, domain, list, false,
+						   blocks, nblocks);
+			}
+			goto out;
+		}
 		e2 = set_key_replace(&list, key, v);
 		if(!e2) {
 			e2 = write_entries(scope, domain, list, false,
 					   blocks, nblocks);
 		}
+out:
 		blocks_free(blocks, nblocks);
 		entries_free(list);
 		return e2;
@@ -2742,6 +3298,67 @@ static config_err_t set_key_replace(struct entry **listp, const char *key,
 		}
 	}
 	return value_copy(&en->val, v);
+}
+
+/*
+ * M1 bracket-path set (docs §10.2): mutate an existing element of a
+ * stored array value addressed by `key` (`accept[1]`, `rules[0]`,
+ * `rules[0].edits[1].value`). Only writes whose resulting domain still
+ * serializes with the M0/M1 writer are accepted — i.e. arrays whose
+ * elements are scalars. Domains holding CONFIG_TYPE_RECORD values (or
+ * arrays containing records) still reject cleanly with
+ * CONFIG_ERR_INVALID until M2's canonical writer.
+ */
+static config_err_t set_address_value(config_value_t *cur,
+				      const struct addr_step *steps,
+				      size_t n, size_t from,
+				      const config_value_t *v)
+{
+	size_t k;
+
+	for(k = from; k < n; k++) {
+		if(steps[k].kind == ADDR_INDEX) {
+			if(cur->type != CONFIG_TYPE_ARRAY) {
+				return CONFIG_ERR_TYPE;
+			}
+			if(steps[k].index >= cur->v.array.count) {
+				/* out-of-range: cannot grow a record
+				 * array in M1 (writer can't serialize);
+				 * scalar arrays grow by set_array. */
+				return CONFIG_ERR_NOT_FOUND;
+			}
+			if(k == n - 1) {
+				if(cur->v.array.items[steps[k].index].type ==
+				   CONFIG_TYPE_RECORD) {
+					return CONFIG_ERR_INVALID;
+				}
+				value_free(&cur->v.array.items[steps[k].index]);
+				return value_copy(&cur->v.array.items[steps[k].index],
+						  v);
+			}
+			cur = &cur->v.array.items[steps[k].index];
+		} else {
+			config_value_t *field = NULL;
+			config_err_t e;
+
+			if(cur->type != CONFIG_TYPE_RECORD) {
+				return CONFIG_ERR_TYPE;
+			}
+			e = config_record_child(cur, steps[k].name, &field);
+			if(e) {
+				return e;
+			}
+			if(k == n - 1) {
+				if(field->type == CONFIG_TYPE_RECORD) {
+					return CONFIG_ERR_INVALID;
+				}
+				value_free(field);
+				return value_copy(field, v);
+			}
+			cur = field;
+		}
+	}
+	return CONFIG_ERR_INVALID;
 }
 config_err_t config_set_string(config_scope_t scope, const char *domain,
 			       const char *key, const char *value)
@@ -2807,16 +3424,15 @@ config_err_t config_unset(config_scope_t scope, const char *domain,
 	struct entry *list = NULL, *prev = NULL, *en;
 	int found;
 	config_err_t e;
+	char **blocks = NULL;
+	int nblocks = 0;
 
 	if(scope < CONFIG_SCOPE_USER || scope > CONFIG_SCOPE_SYSTEM ||
 	   !domain || !key || !config_valid_domain(domain) ||
-	   !config_valid_key(key)) {
+	   !config_valid_address(key) || address_has_bare_index(key)) {
 		return CONFIG_ERR_INVALID;
 	}
 	{
-		char **blocks = NULL;
-		int nblocks = 0;
-
 		e = load_entries(scope, domain, &list, &found, &blocks,
 				 &nblocks);
 		if(e == CONFIG_ERR_NOT_FOUND) {
@@ -2824,6 +3440,76 @@ config_err_t config_unset(config_scope_t scope, const char *domain,
 		}
 		if(e) {
 			return e;
+		}
+		if(strchr(key, '[')) {
+			/* M1: remove one element of a stored scalar
+			 * array by address (records reject until the M2
+			 * canonical writer). Only a plain `base[i]`
+			 * address is supported for unset. */
+			struct addr_step steps[ADDR_MAX_STEPS];
+			size_t nsteps, base_idents;
+			char base[CONF_MAX_KEY + 1];
+
+			if(!address_split(key, steps, &nsteps) ||
+			   (base_idents = first_index_step(steps, nsteps)) == 0 ||
+			   base_idents != nsteps - 1 ||
+			   steps[base_idents].kind != ADDR_INDEX) {
+				e = CONFIG_ERR_INVALID;
+				goto unset_out;
+			}
+			name_prefix_key(steps, base_idents, base, sizeof(base));
+			for(en = list; en; en = en->next) {
+				struct entry *pv;
+
+				if(strcmp(en->key, base)) {
+					continue;
+				}
+				if(en->val.type != CONFIG_TYPE_ARRAY ||
+				   steps[base_idents].index >=
+					   en->val.v.array.count) {
+					e = CONFIG_ERR_NOT_FOUND;
+					goto unset_out;
+				}
+				if(en->val.v.array.items[steps[base_idents].index]
+					   .type == CONFIG_TYPE_RECORD) {
+					e = CONFIG_ERR_INVALID;
+					goto unset_out;
+				}
+				{
+					size_t i = steps[base_idents].index;
+
+					value_free(&en->val.v.array.items[i]);
+					memmove(&en->val.v.array.items[i],
+						&en->val.v.array.items[i + 1],
+						(en->val.v.array.count - i - 1) *
+						sizeof(config_value_t));
+					en->val.v.array.count--;
+				}
+				if(en->val.v.array.count == 0) {
+					/* dropping the last element must
+					 * remove the entry: an empty
+					 * array serializes as "" and would
+					 * reload as an empty string */
+					for(pv = list; pv; pv = pv->next) {
+						if(pv->next == en) {
+							break;
+						}
+					}
+					if(pv && pv->next == en) {
+						pv->next = en->next;
+					} else {
+						list = en->next;
+					}
+					free(en->key);
+					value_free(&en->val);
+					free(en);
+				}
+				e = write_entries(scope, domain, list, true,
+						  blocks, nblocks);
+				goto unset_out;
+			}
+			e = CONFIG_OK;	/* array absent: idempotent */
+			goto unset_out;
 		}
 		for(en = list; en; prev = en, en = en->next) {
 			if(!strcmp(en->key, key)) {
@@ -2846,6 +3532,10 @@ config_err_t config_unset(config_scope_t scope, const char *domain,
 		entries_free(list);
 		return CONFIG_OK;	/* key absent: idempotent */
 	}
+unset_out:
+	blocks_free(blocks, nblocks);
+	entries_free(list);
+	return e;
 }
 
 config_err_t config_remove_domain(config_scope_t scope, const char *domain)
