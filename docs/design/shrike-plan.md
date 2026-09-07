@@ -395,15 +395,20 @@ libc++/libc++abi/libunwind in /System/Libraries):
 
 - **Vendored** under third_party/x11/: freetype-2.13.3 (Debian +dfsg
   repack), fontconfig-2.15.0, harfbuzz-10.0.1 (test/perf corpora
-  trimmed), libpng-1.6.47 (sbix), expat-2.6.4 (fontconfig XML).
+  trimmed), libpng-1.6.47 (sbix), expat-2.6.4 (vendored with the stock
+  fontconfig build; the XML config front-end is no longer used — the
+  fclibconf domain loader reads system.fonts.conf instead, fontconfig
+  M0 622ee83).
 - **Built SHARED** into .build/x11-prefix by tools/x11-shared-build.sh
   (new text-stack section; fontconfig uses DESTDIR staging because its
   sysconfdir is the FNX-guest /System/Configuration) and staged into
   /System/Libraries (libfontconfig.so.1, libharfbuzz.so.0,
   libfreetype.so.6, libpng16.so.16, libexpat.so.1 + real files).
-- **FSH wiring**: fonts.conf (userland/configuration/fonts.conf) staged
-  at /System/Configuration/fonts (fontconfig compiled with
-  --sysconfdir=/System/Configuration); OS fonts live in
+- **FSH wiring**: the fontconfig config is the libconfig domain
+  `system.fonts.conf` (userland/configuration/system.fonts.conf) staged
+  at /System/Configuration/system.fonts.conf and read by the fclibconf
+  loader (fontconfig M0, 622ee83 — no XML fonts.conf ships; see
+  docs/design/fontconfig-config-plan.md); OS fonts live in
   /System/Shared/Fonts (DejaVuSans.ttf — the milestone's test font;
   §8's Liberation pick remains the future system-font direction when a
   real consumer lands). fontconfig's gperf generator is patched away
