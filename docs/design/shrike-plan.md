@@ -146,13 +146,15 @@ drawing code.
   parameterized engine gives free; richer themes are later `.conf`
   work, not code.
 
-### Visual target (mockup, 2026-09)
+### Visual target — Argentum (the design language, 2026-09)
 
-**The reference look is the user's mockup (2026-09): a refined
-continuation of the classic Mac OS X / GNUstep / NeXTSTEP workstation
-aesthetic** — elegant, dense, desktop-oriented, tactile, functional.
-Not flat-modern, not mobile-style. Concrete target, expressed as theme
-parameters (provisional values set from the mockup at S1):
+**The design language is named Argentum** (Latin for *silver*, matching
+the chrome). The reference look is the user's mockup (2026-09): a
+refined continuation of the classic Mac OS X / GNUstep / NeXTSTEP
+workstation aesthetic — elegant, dense, desktop-oriented, tactile,
+functional. Not flat-modern, not mobile-style. Concrete target,
+expressed as theme parameters (provisional values set from the mockup
+at S1); the first theme *is* Argentum:
 
 - **Chrome**: light silver-grey, subtly textured/gradient surfaces;
   **thin dark-grey borders**; **small corner radii** (≈2–3 pt);
@@ -501,7 +503,7 @@ ordinary decisions that surface at execution.
 |---|---|
 | Menu wire format | **.conf/config framing** — the menu tree rides the existing config serializer (config-shaped; libconfig already shared); a dedicated codec stays possible behind the socket. |
 | libshrike distribution | **Shared `libshrike.so`** in /System/Libraries (dynamic world); static only for recovery-set carve-outs. |
-| First theme / chrome art | **Parameterized vector chrome over pixman** (supersedes the nine-tile plan) — theme = .conf parameters (colors, radii, bevels, gradients), no bitmap assets, scales free to any device scale. |
+| First theme / chrome art | **Parameterized vector chrome over pixman** (supersedes the nine-tile plan) — theme = .conf parameters (colors, radii, bevels, gradients), no bitmap assets, scales free to any device scale. **First theme = Argentum** (the design language / visual target, §3 mockup). |
 | System font | **Liberation family** under /Shared/Fonts (metric-compatible, small footprint; weaker coverage than DejaVu accepted); swappable via theme .conf. |
 | UI scale (accessibility) | **Uniform multiplier k on all point units** — effective px/pt = k·(PPI/72), from the accessibility .conf domain; one knob scales everything equally (layout, chrome, fonts, spacing); content images excluded. |
 | Accessibility — Tier 1 | **Native a11y metadata on every View from the v1 catalog** (role/label/value/enabled/help; NSAccessibility analog); the view tree is the a11y tree; no AT-SPI/DBus; keyboard op + visible focus + high-contrast theme are a11y deliverables; ui-scale k decided. |
