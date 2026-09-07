@@ -56,14 +56,15 @@ happen before implementation starts.
   checksums otherwise unchanged; volume-name default text
   "XBFS" → "AGFS" (super.c).
 - Tools: `tools/mkxbfs.py` → `mkagfs.py`, `tools/xbfscheck.py` →
-  `agfscheck.py`, `xbfs_jtest.c` → `agfs_jtest.c`; userland
-  xbfsquery/xbfsqtest/xbfsattr/xbfsxattr/xbfsdir (tools/ after the
-  reorg) → agfs*.
+  `agfscheck.py`, `tools/xbfs_jtest.c` → `agfs_jtest.c`;
+  `userland/tools/xbfsquery.c` + `xbfsqtest.c` and
+  `userland/tests/xbfsattr.c` / `xbfsxattr.c` / `xbfsdir.c` → agfs*.
 - `mk/` targets and images: `rootxbfs` → `rootagfs`,
   `.build/rootxbfs.img` → `.build/rootagfs.img` (all references,
   incl. run/xfb targets and comments).
-- Docs: `xbfs-*` docs → `agfs-*`; the XBFS-era headers keep the
-  format-identity note (magic 'BFS1' lineage).
+- Docs: `xbfs-*` docs → `agfs-*`; the AGFS format-identity note
+  records the magic lineage **'BFS1' (Be) → 'XBFS' (ex-Be) → 'AGFS'
+  (Argentum)**.
 - **Acceptance**: full rebuild (rm -f .build artifacts first — the
   header-dep rule), boot to the root on `agfs` ("mounted root device
   (agfs filesystem)."), agfscheck consistency green, `git grep -i
@@ -73,7 +74,8 @@ happen before implementation starts.
 
 - Docs: `docs/design/shrike-plan.md` → `argentum-uikit-plan.md`,
   `docs/design/shrike-catalog.md` → `argentum-uikit-catalog.md`;
-  milestone labels S0–S5 unchanged.
+  milestone labels S0–S5 unchanged. os-profile's GUI bullet
+  ("Shrike … Kestrel …") is rewritten here, not left to P5.
 - Namespace `shrike::` → `argentum::`; `libshrike.so` →
   `libargentum.so` — in the plan/catalog text now (nothing built
   yet); any future code starts life with `argentum::`.
@@ -84,6 +86,7 @@ happen before implementation starts.
 
 - Plan doc: §5/§7 references become **Argentum Workspace** (Kestrel
   retired); workspace-manager role per the NeXT/AppKit corpus.
+  os-profile's "Kestrel window manager" mention moves here too.
 - Open at S4: executable naming (candidate `workspace`) and whether a
   short code name is kept — recorded as a decision point, not made now.
 
@@ -148,7 +151,7 @@ Three distinct identifiers; staged by when they are needed:
 
 | Layer | Brand | Engineering identifier |
 |---|---|---|
-| OS (product) | Argentum OS | (product name) |
+| OS (product) | Argentum OS | — (product brand) |
 | Kernel | the Argentum kernel | **FNX** (unchanged) |
 | Filesystem hierarchy | the Argentum System Hierarchy | **FSH** |
 | Filesystem | AGFS | `agfs` |
