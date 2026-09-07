@@ -169,6 +169,18 @@ at S1); the first theme *is* Argentum:
   controls, none-for-dividers — no radius zoo). Content and 1px
   structural lines (separators, carets) are the exceptions, not
   chrome.
+- **Second core element (decided): the accent colour.** One
+  configurable accent in the theme (default: muted
+  lavender/periwinkle per the mockup) generates the state colours
+  **programmatically** — highlight/hover, prearm/armed/active,
+  selection, progress fill, active tab — via colour math
+  (lighten/darken/saturate/alpha blends), never hand-authored per
+  state. A small colour-derivation module lives in the theme engine;
+  a theme may override any derived colour explicitly, but the default
+  is: **one accent in, coherent states out** (no drift between
+  hand-picked hover/active blues). Accessibility interplay: the
+  high-contrast theme variant overrides derivations as needed (a11y
+  Tier 1).
 
 - **Chrome**: light silver-grey, subtly textured/gradient surfaces;
   **thin dark-grey borders**; **small corner radii** (≈2–3 pt);
