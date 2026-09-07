@@ -44,7 +44,7 @@ apps (C++)                    shrike:: apps + Kestrel (the WM)
   │
 shrike (C++17, libc++)        toolkit core — MIT, ours
   ├─ chrome: pixman vector layer (fills/gradients/rounded rects) + .conf theme
-  ├─ widgets: single View tree + springs/struts + row/column Box + v1 catalog
+  ├─ widgets: single View tree + springs/struts + row/column Box + SL-parallel catalog
   ├─ text: Xft/FreeType, UTF-8
   ├─ session: .conf via libconfig (shared, /System/Libraries)
   └─ menu IPC: AF_UNIX session socket protocol
@@ -71,7 +71,8 @@ X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 Cocoa as much as is practical under C++.** The design corpus already
 converged on this — global menubar = `NSApp.mainMenu`, springs/struts =
 `autoresizingMask` — and the principle now governs how the pure-C++
-API is named and shaped (the catalog re-expression in §4 follows it,
+API is named and shaped (the catalog in §4 and docs/design/shrike-catalog.md
+follows it,
 superseding any GTK-flavored naming from the momo-era spec).
 
 Mapping of Cocoa idioms onto C++ Shrike (semantics mirror Cocoa; only
@@ -160,8 +161,8 @@ primitives:
 v1 catalog cut per `docs/design/shrike-catalog.md` (Tier 1 core
 controls + Tier 2 structure essentials + TableView-basic); the catalog
 *target* parallels AppKit circa Snow Leopard (classes/functionality, not
-visual style). View states (idle/hover/armed/disabled/focused) map
-one-to-one onto theme parameter sets.
+visual style). Text via Xft. View states (idle/hover/armed/disabled/
+focused) map one-to-one onto theme parameter sets.
 
 System font (resolved): the **Liberation family** ships under
 /Shared/Fonts — metric-compatible with Arial/Times, smaller footprint
@@ -211,13 +212,19 @@ swaps by focus; picks flow back as triggers.
   conversion (physical-size derived px/pt, §3). *Acceptance:* themed
   frame+button render at the fallback factor and at a 2x px/pt
   (physical-size override boot + screendump in the battery).
-- **S2 — Widget core**: the View tree + springs/struts + row/column
-  Box + v1 catalog. *Acceptance:* an interactive reference app — the
-  future Settings (resolved: the S2 reference app becomes Settings per
-  the app-model corpus) — exercises every catalog widget.
+- **S2 — Widget core (v1 catalog cut)**: the View tree + springs/struts
+  + row/column Box + the v1 catalog cut from docs/design/shrike-catalog.md:
+  **Tier 1 core controls** (Button + Push/Checkbox/Radio types,
+  PopUpButton, Slider, Stepper, TextField + SecureTextField, ImageView,
+  ProgressIndicator, SegmentedControl, SearchField, ColorWell,
+  LevelIndicator), **Tier 2 structure essentials** (ScrollView, SplitView,
+  TabView, Box, Menu/MenuItem), and **TableView-basic** as the first
+  data view. *Acceptance:* an interactive reference app — the future
+  Settings (resolved: the S2 reference app becomes Settings per the
+  app-model corpus) — exercises every v1-cut widget.
 - **S3 — Input & text depth**: focus/traversal, keyboard equivalents,
-  edit-widget text input. *Acceptance:* the reference app is fully
-  operable without a mouse.
+  edit-widget text input (TextField/secure). *Acceptance:* the
+  reference app is fully operable without a mouse.
 - **S4 — Kestrel: window manager + global menubar**: the shrike-based
   WM (decorated windows, EWMH focus), menubar + menu IPC end-to-end.
   *Acceptance:* two apps; menubar swaps with focus; picks trigger app
@@ -225,6 +232,14 @@ swaps by focus; picks flow back as triggers.
 - **S5 — Desktop**: EMWM replacement boots as the default session
   (make run-uefi shows the shrike desktop; FSH skeleton, reference
   apps). *Acceptance:* interactive desktop on the standard image.
+
+**Catalog staging beyond S2** (per docs/design/shrike-catalog.md — *not*
+part of the S0–S5 desktop gate): Tier 3 data/rich views (TextView,
+TableView richness: editing/sorting) and window accessories (Toolbar,
+Panel) land after S2 across S3–S5 as consumers appear; OutlineView,
+CollectionView, Browser, ComboBox, TokenField, DatePicker, RuleEditor
+are post-S5 additions. Each staged class ships with its own acceptance
+(same battery pattern), keeping the desktop gate bounded.
 
 ## 8. Resolved open items (2026-09)
 
