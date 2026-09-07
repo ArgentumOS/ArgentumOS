@@ -24,6 +24,9 @@
 /* per-superblock info (struct superblock's u union): BPB-derived volume
  * geometry + the driver-side dirent table used to rebuild evicted
  * inodes (see the plan doc). */
+/* fs_type values: 12/16/32 = classic FATs, FAT_EXFAT = 64 */
+#define FAT_EXFAT		64
+
 struct fatfs_sb_info {
 	/* geometry from the boot sector / BPB */
 	__u32 total_sectors;		/* volume size in sectors */
@@ -32,6 +35,8 @@ struct fatfs_sb_info {
 	__u32 root_cluster;		/* FAT32/16/12 root dir start cluster
 					   (0 = fixed root area) */
 	__u32 data_sector;		/* first data sector */
+	__u32 fat_n_fatent;		/* FAT entry count (clusters + 2) */
+	__u32 bitmap_cluster;		/* exFAT allocation bitmap (0 = n/a) */
 	__u16 bytes_per_sector;		/* 512 */
 	__u16 root_dir_sectors;		/* FAT12/16 fixed root dir size */
 	unsigned char sects_per_cluster;
@@ -46,6 +51,7 @@ struct fatfs_sb_info {
 struct fatfs_i_info {
 	__u32 cluster;			/* first cluster (root: 0) */
 	unsigned char is_dir;		/* directory inode */
+	unsigned char contiguous;	/* exFAT stream is contiguous */
 };
 
 #endif /* _FNX_FS_FAT_H */

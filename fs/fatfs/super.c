@@ -42,7 +42,7 @@ static struct fatfs_cache *fat_cache(struct superblock *sb)
 
 int fatfs_ent_add(struct superblock *sb, __ino_t ino, __u32 cluster,
 		  __u32 size, unsigned char is_dir, __u32 parent,
-		  unsigned long slot)
+		  unsigned long slot, unsigned char contiguous)
 {
 	struct fatfs_cache *c = fat_cache(sb);
 	struct fatfs_ent *ne;
@@ -78,6 +78,7 @@ int fatfs_ent_add(struct superblock *sb, __ino_t ino, __u32 cluster,
 	ne->parent = parent;
 	ne->slot = slot;
 	ne->is_dir = is_dir;
+	ne->contiguous = contiguous;
 	ne->used = 1;
 	return 0;
 }
@@ -119,6 +120,19 @@ __u32 fat_next_cluster(struct superblock *sb, __u32 cluster)
 		val = ((__u32 *)buf->data)[cluster % 128] & 0x0FFFFFFF;
 		brelse(buf);
 		return val;
+	case FAT_EXFAT:
+		/* exFAT FAT entries are full 32-bit (no mask); the chain
+		 * terminates at 0xFFFFFFFF or an out-of-range entry */
+		sect = (__blk_t)f->fat_sector + cluster / 128;
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return FAT_CLUST_LAST;
+		}
+		val = ((__u32 *)buf->data)[cluster % 128];
+		brelse(buf);
+		if(val >= f->fat_n_fatent) {
+			return 0xFFFFFFFF;	/* EOC (free entries are 0) */
+		}
+		return val;
 	default:
 		return FAT_CLUST_LAST;
 	}
@@ -139,6 +153,7 @@ static int fat_read_inode(struct inode *inode)
 		inode->i_blocks = 0;
 		inode->u.fatfs.cluster = inode->sb->u.fatfs.root_cluster;
 		inode->u.fatfs.is_dir = 1;
+		inode->u.fatfs.contiguous = 0;
 		inode->fsop = &fatfs_fsop;
 		inode->count = 1;
 		return 0;
@@ -159,12 +174,11 @@ static int fat_read_inode(struct inode *inode)
 	inode->i_blocks = (e->size + 511) / 512;
 	inode->u.fatfs.cluster = e->cluster;
 	inode->u.fatfs.is_dir = e->is_dir;
+	inode->u.fatfs.contiguous = e->contiguous;
 	inode->fsop = e->is_dir ? &fatfs_fsop : &fatfs_file_fsop;
 	inode->count = 1;
 	return 0;
 }
-
-/* ---- mount ---- */
 
 static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 {
@@ -173,63 +187,95 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 	struct buffer *buf;
 	unsigned char *b;
 	__u16 bps, reserved, root_ents, fatsz16;
-	__u32 tot32, fatsz32, root_cluster, data_sector, cluster_cnt;
+	__u32 tot32, fatsz32, root_cluster, data_sector;
+	__u32 cluster_cnt = 0;
 	unsigned char spc, nfats;
+	int is_exfat = 0;
 
 	if(!(buf = bread(dev, 0, 512))) {
 		return -EIO;
 	}
 	b = buf->data;
-	/* boot-signature sanity + OEM check */
 	if(b[510] != 0x55 || b[511] != 0xAA) {
 		brelse(buf);
 		return -EINVAL;		/* not a FAT volume */
 	}
 	if(!memcmp(b + 3, "EXFAT   ", 8)) {
-		brelse(buf);
-		printk("fat: exFAT volumes not yet supported (M2).\n");
-		return -EINVAL;
+		/* ---- exFAT BPB: FatOffset 80, FatLength 84,
+		 * ClusterHeapOffset 88, ClusterCount 92,
+		 * RootDirCluster 96, shift fields 108/109, n_fats 110 */
+		if((b[104] | (b[105] << 8)) != 0x0100) {
+			brelse(buf);
+			printk("fat: unsupported exFAT revision.\n");
+			return -EINVAL;
+		}
+		if((1 << b[108]) != 512 || !b[109]) {
+			brelse(buf);
+			return -EINVAL;
+		}
+		if(b[110] != 1) {
+			brelse(buf);
+			return -EINVAL;		/* multi-FAT exFAT: refuse */
+		}
+		tot32 = b[72] | (b[73] << 8) | (b[74] << 16) |
+			((__u32)b[75] << 24);
+		fatsz32 = b[84] | (b[85] << 8) | (b[86] << 16) |
+			  ((__u32)b[87] << 24);
+		data_sector = b[88] | (b[89] << 8) | (b[90] << 16) |
+			      ((__u32)b[91] << 24);
+		cluster_cnt = b[92] | (b[93] << 8) | (b[94] << 16) |
+			      ((__u32)b[95] << 24);
+		root_cluster = b[96] | (b[97] << 8) | (b[98] << 16) |
+			       ((__u32)b[99] << 24);
+		bps = 512;
+		spc = (unsigned char)(1 << b[109]);
+		reserved = (__u16)(b[80] | (b[81] << 8));
+		nfats = 1;
+		root_ents = 0;
+		if(root_cluster < 2 || cluster_cnt < 2 ||
+		   data_sector + (__u64)cluster_cnt * spc > tot32) {
+			brelse(buf);
+			return -EINVAL;
+		}
+		f->fat_sector = b[80] | (b[81] << 8) | (b[82] << 16) |
+				((__u32)b[83] << 24);
+		is_exfat = 1;
+	} else {
+		bps = b[11] | (b[12] << 8);
+		spc = b[13];
+		reserved = b[14] | (b[15] << 8);
+		nfats = b[16];
+		root_ents = b[17] | (b[18] << 8);
+		fatsz16 = b[22] | (b[23] << 8);
+		tot32 = b[32] | (b[33] << 8) | (b[34] << 16) |
+			((__u32)b[35] << 24);
+		fatsz32 = b[36] | (b[37] << 8) | (b[38] << 16) |
+			  ((__u32)b[39] << 24);
+		if(bps != 512 || !spc || !nfats || !reserved) {
+			brelse(buf);
+			return -EINVAL;
+		}
+		if(!fatsz32) {
+			brelse(buf);
+			printk("fat: FAT12/16 not yet supported.\n");
+			return -EINVAL;
+		}
+		root_cluster = b[44] | (b[45] << 8) | (b[46] << 16) |
+			       ((__u32)b[47] << 24);
+		data_sector = reserved + nfats * fatsz32 +
+			      (root_ents * 32 + bps - 1) / bps;
+		if(tot32 <= data_sector) {
+			brelse(buf);
+			return -EINVAL;
+		}
+		cluster_cnt = (tot32 - data_sector) / spc;
+		if(cluster_cnt < 65525) {
+			brelse(buf);
+			return -EINVAL;
+		}
+		f->fat_sector = reserved;
 	}
-	bps = b[11] | (b[12] << 8);
-	spc = b[13];
-	reserved = b[14] | (b[15] << 8);
-	nfats = b[16];
-	root_ents = b[17] | (b[18] << 8);
-	fatsz16 = b[22] | (b[23] << 8);
-	tot32 = b[32] | (b[33] << 8) | (b[34] << 16) | ((__u32)b[35] << 24);
-	fatsz32 = b[36] | (b[37] << 8) | (b[38] << 16) | ((__u32)b[39] << 24);
-	if(bps != 512 || !spc || !nfats || !reserved) {
-		brelse(buf);
-		return -EINVAL;
-	}
-	if(!fatsz32) {
-		/* FAT12/16: fixed root area (M3) */
-		brelse(buf);
-		printk("fat: FAT12/16 not yet supported (M3).\n");
-		return -EINVAL;
-	}
-	root_cluster = b[44] | (b[45] << 8) | (b[46] << 16) |
-		       ((__u32)b[47] << 24);
-	data_sector = reserved + nfats * fatsz32 +
-		      (root_ents * 32 + bps - 1) / bps;
-	if(tot32 <= data_sector) {
-		brelse(buf);
-		return -EINVAL;
-	}
-	cluster_cnt = (tot32 - data_sector) / spc;
-	if(cluster_cnt < 65525) {
-		/* a FAT32-sized FAT with < 65525 clusters is unusual; the
-		 * media is FAT16 masquerading - refuse for now */
-		brelse(buf);
-		return -EINVAL;
-	}
-	if(!(c = (struct fatfs_cache *)kmalloc(sizeof(struct fatfs_cache)))) {
-		brelse(buf);
-		return -ENOMEM;
-	}
-	memset_b(c, 0, sizeof(struct fatfs_cache));
 	f->total_sectors = tot32;
-	f->fat_sector = reserved;
 	f->fat_sectors = fatsz32;
 	f->root_cluster = root_cluster;
 	f->data_sector = data_sector;
@@ -237,10 +283,43 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 	f->root_dir_sectors = 0;
 	f->sects_per_cluster = spc;
 	f->n_fats = nfats;
-	f->fs_type = 32;
-	f->cache = (void *)c;
+	f->fat_n_fatent = cluster_cnt + 2;
+	f->bitmap_cluster = 0;
+	f->fs_type = is_exfat ? FAT_EXFAT : 32;
 	brelse(buf);
 
+	if(is_exfat) {
+		/* locate the allocation bitmap: the root dir's first
+		 * cluster holds a 0x81 entry with its FirstCluster */
+		struct buffer *rb;
+		unsigned char *re;
+		int i;
+
+		if((rb = bread(dev, (__blk_t)f->data_sector +
+			       (__u64)(root_cluster - 2) * spc, 512))) {
+			re = rb->data;
+			for(i = 0; i < 16; i++) {
+				if(re[i * 32] == 0x00) {
+					break;
+				}
+				if(re[i * 32] == 0x81) {
+					f->bitmap_cluster =
+						re[i * 32 + 20] |
+						(re[i * 32 + 21] << 8) |
+						(re[i * 32 + 22] << 16) |
+						((__u32)re[i * 32 + 23] << 24);
+					break;
+				}
+			}
+			brelse(rb);
+		}
+	}
+
+	if(!(c = (struct fatfs_cache *)kmalloc(sizeof(struct fatfs_cache)))) {
+		return -ENOMEM;
+	}
+	memset_b(c, 0, sizeof(struct fatfs_cache));
+	f->cache = (void *)c;
 	sb->dev = dev;
 	sb->fsop = &fatfs_fsop;
 	sb->s_blocksize = 512;
@@ -249,7 +328,8 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 		f->cache = NULL;
 		return -EIO;
 	}
-	printk("fat: FAT32 detected on device %d,%d (%d MB, %u sectors, %u bytes/cluster).\n",
+	printk("fat: %s detected on device %d,%d (%d MB, %u sectors, %u bytes/cluster).\n",
+	       is_exfat ? "exFAT" : "FAT32",
 	       MAJOR(dev), MINOR(dev), tot32 / 2048, tot32,
 	       (unsigned int)spc * bps);
 	return 0;
@@ -274,6 +354,9 @@ static int fat_open(struct inode *i, struct fd *f)
 {
 	f->offset = 0;
 	if(S_ISREG(i->i_mode) && (f->flags & O_TRUNC)) {
+		if(i->sb->u.fatfs.fs_type == FAT_EXFAT) {
+			return -EROFS;	/* exFAT writes are M2b */
+		}
 		superblock_lock(i->sb);
 		if(i->u.fatfs.cluster) {
 			fat_free_chain(i->sb, i->u.fatfs.cluster);

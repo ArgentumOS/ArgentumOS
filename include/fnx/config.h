@@ -11,7 +11,7 @@
 /* kernel tuning options */
 #define NR_PROCS		1024	/* max. number of processes */
 #define NR_CALLOUTS		NR_PROCS	/* max. active callouts */
-#define NR_MOUNT_POINTS		8	/* max. number of mounted filesystems */
+#define NR_MOUNT_POINTS		16	/* max. number of mounted filesystems */
 #define NR_OPENS		1024	/* max. number of opened files */
 #define NR_FLOCKS		(NR_PROCS * 5)	/* max. number of flocks */
 

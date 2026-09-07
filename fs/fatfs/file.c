@@ -48,6 +48,40 @@ __blk_t fat_bmap(struct inode *i, __off_t offset, int mode)
 	if(mode == FOR_READING && (__off_t)offset >= i->i_size) {
 		return 0;
 	}
+	if(f->fs_type == FAT_EXFAT) {
+		/* exFAT: contiguous streams map linearly (no FAT chain);
+		 * fragmented streams walk the (full-32-bit) FAT */
+		unsigned int idx = (unsigned int)(offset / cluster_bytes);
+		unsigned int within = (unsigned int)(offset % cluster_bytes) / 512;
+
+		if(mode != FOR_READING) {
+			return -EROFS;	/* exFAT writes are M2b */
+		}
+		if(i->u.fatfs.contiguous) {
+			__u32 cl = i->u.fatfs.cluster + idx;
+
+			if(cl < 2) {
+				return 0;
+			}
+			return (__blk_t)(f->data_sector +
+					 ((__u64)(cl - 2) *
+					  f->sects_per_cluster) + within);
+		}
+		{
+			__u32 cl = i->u.fatfs.cluster;
+			unsigned int k;
+
+			for(k = 0; k < idx; k++) {
+				cl = fat_next_cluster(i->sb, cl);
+				if(cl < 2 || cl >= 0xFFFFFFFFu) {
+					return 0;
+				}
+			}
+			return (__blk_t)(f->data_sector +
+					 ((__u64)(cl - 2) *
+					  f->sects_per_cluster) + within);
+		}
+	}
 	if(!cluster) {
 		if(mode != FOR_WRITING) {
 			return 0;	/* empty file */

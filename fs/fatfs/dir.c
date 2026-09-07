@@ -56,11 +56,14 @@ static int name_ieq(const char *a, const char *b)
 struct fat_dir_it {
 	struct inode *dir;
 	__u32 cluster;
+	__u32 first;		/* first cluster (contiguous walks) */
+	unsigned long size;	/* dir byte size (contiguous bound) */
 	unsigned int sector_off;
 	unsigned int ent_off;
 	unsigned long consumed;
 	struct buffer *buf;
 	int ok;
+	int contiguous;
 };
 
 static void dir_it_close(struct fat_dir_it *it)
@@ -99,8 +102,21 @@ static int dir_next(struct fat_dir_it *it)
 			return it->buf ? 1 : (dir_it_close(it), 0);
 		}
 		it->sector_off = 0;
-		{
-			__u32 next = fat_next_cluster(it->dir->sb, it->cluster);
+		if(it->contiguous) {
+			/* no FAT chain: the next cluster is linear; the dir
+			 * byte size bounds the run */
+			unsigned long used = (unsigned long)(it->cluster -
+					       it->first + 1) *
+					       f->sects_per_cluster * 512;
+
+			if(used >= it->size) {
+				dir_it_close(it);
+				return 0;
+			}
+			it->cluster++;
+		} else {
+			__u32 next = fat_next_cluster(it->dir->sb,
+						      it->cluster);
 
 			if(next < 2 || next >= FAT_CLUST_LAST) {
 				dir_it_close(it);
@@ -130,6 +146,10 @@ static void dir_it_open(struct fat_dir_it *it, struct inode *dir)
 {
 	it->dir = dir;
 	it->cluster = dir->u.fatfs.cluster;
+	it->first = dir->u.fatfs.cluster;
+	it->size = (unsigned long)dir->i_size;
+	it->contiguous = dir->u.fatfs.contiguous &&
+			 dir->sb->u.fatfs.fs_type == FAT_EXFAT;
 	it->sector_off = 0;
 	it->ent_off = (unsigned int)-1;
 	it->consumed = 0;
@@ -220,12 +240,13 @@ static void utf16_to_utf8(const unsigned char *u, int units, char *out)
 
 struct fat_rec {
 	char name[NAME_MAX + 1];
-	unsigned char u16[NAME_MAX * 2];	/* LFN scratch (UTF-16LE) */
+	unsigned char u16[NAME_MAX * 2];	/* name scratch (UTF-16LE) */
 	unsigned char attr;
 	__u32 cluster;
 	__u32 size;
-	unsigned long slot;		/* 0-based slot of the short entry */
+	unsigned long slot;		/* 0-based slot of the last record slot */
 	int is_dot;
+	int contiguous;
 };
 
 /*
@@ -241,6 +262,7 @@ static int scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 
 	rec->name[0] = '\0';
 	rec->is_dot = 0;
+	rec->contiguous = 0;
 	for(;;) {
 		if(!dir_next(it)) {
 			return 0;
@@ -316,6 +338,84 @@ static int scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 	}
 }
 
+/* exFAT record scanner: directory entries are 32-byte entry SETS
+ * (File 0x85 + Stream 0xC0 + one or more FileName 0xC1). A set with bit
+ * 7 clear on its type byte is unused; 0x00 ends the directory. exFAT
+ * stores no "." / ".." and every set's File entry precedes its
+ * secondaries. rec->slot = index of the last slot the set consumed. */
+static int ex_scan_record(struct fat_dir_it *it, struct fat_rec *rec)
+{
+	unsigned char set[19][32];
+	unsigned char *e;
+	__u32 dlen;
+	int nsec, k, units, ci;
+
+	rec->name[0] = '\0';
+	rec->is_dot = 0;
+	rec->contiguous = 0;
+	for(;;) {
+		if(!dir_next(it)) {
+			return 0;
+		}
+		e = dir_ent(it);
+		if(e[0] == 0x00) {
+			return 0;	/* end of directory */
+		}
+		if(!(e[0] & 0x80)) {
+			continue;	/* inactive (bit 7 clear) */
+		}
+		if(e[0] != 0x85) {
+			continue;	/* bitmap/upcase/label/guid entries */
+		}
+		nsec = e[1];
+		if(nsec < 2 || nsec > 18) {
+			continue;	/* malformed: skip */
+		}
+		memcpy_b(set[0], e, 32);
+		for(k = 1; k <= nsec; k++) {
+			if(!dir_next(it)) {
+				return 0;	/* truncated set */
+			}
+			memcpy_b(set[k], dir_ent(it), 32);
+		}
+		/* set[0] = File, set[1] = Stream, set[2..] = names */
+		if(set[1][0] != 0xC0) {
+			continue;
+		}
+		rec->attr = ((set[0][4] | (set[0][5] << 8)) & 0x10) ?
+			    FAT_ATTR_DIRECTORY : FAT_ATTR_ARCHIVE;
+		rec->contiguous = (set[1][1] & 0x02) ? 1 : 0;
+		rec->cluster = set[1][20] | (set[1][21] << 8) |
+			       (set[1][22] << 16) | (set[1][23] << 24);
+		dlen = set[1][24] | (set[1][25] << 8) |
+		       (set[1][26] << 16) | (set[1][27] << 24);
+		if(dlen > 0x7FFFFFFFu) {
+			dlen = 0;	/* > 2 GB: unsupported in M2 */
+		}
+		rec->size = dlen;
+		units = set[1][3];	/* NameLength (UTF-16 code units) */
+		ci = 0;
+		for(k = 2; k <= nsec && ci < units; k++) {
+			int u;
+
+			for(u = 0; u < 15 && ci < units; u++) {
+				__u16 uc = set[k][2 + u * 2] |
+					   (set[k][3 + u * 2] << 8);
+
+				if(ci < NAME_MAX) {
+					rec->u16[ci * 2] = (unsigned char)(uc & 0xFF);
+					rec->u16[ci * 2 + 1] = (unsigned char)(uc >> 8);
+				}
+				ci++;
+			}
+		}
+		utf16_to_utf8(rec->u16, ci > NAME_MAX ? NAME_MAX : ci,
+			      rec->name);
+		rec->slot = it->consumed - 1;
+		return 1;
+	}
+}
+
 /* does the directory contain an entry matching 'name'? (create/rename
  * duplicate checks; the generic scanner matches LFN + 8.3 forms) */
 int fat_dir_has_name(struct inode *dir, const char *name)
@@ -371,7 +471,11 @@ static int fat_readdir_common(struct inode *dir, struct fd *f,
 		return 0;	/* resumed past the end */
 	}
 	for(;;) {
-		if(!scan_record(&it, &rec)) {
+		if(it.dir->sb->u.fatfs.fs_type == FAT_EXFAT) {
+			if(!ex_scan_record(&it, &rec)) {
+				break;
+			}
+		} else if(!scan_record(&it, &rec)) {
 			break;
 		}
 		if(rec.is_dot) {
@@ -432,19 +536,47 @@ int fat_lookup(const char *name, struct inode *dir, struct inode **res)
 	if(!S_ISDIR(dir->i_mode)) {
 		return -ENOTDIR;
 	}
-	if(dir->inode == FAT_ROOT_INO &&
-	   (!strcmp(name, ".") || !strcmp(name, ".."))) {
-		if(!(*res = iget(dir->sb, FAT_ROOT_INO))) {
+	if(!strcmp(name, ".")) {
+		if(!(*res = iget(dir->sb, dir->inode))) {
 			return -EIO;
 		}
 		return 0;
+	}
+	if(!strcmp(name, "..")) {
+		if(dir->inode == FAT_ROOT_INO) {
+			if(!(*res = iget(dir->sb, FAT_ROOT_INO))) {
+				return -EIO;
+			}
+			return 0;
+		}
+		/* exFAT stores no "..": resolve through the cache */
+		if(dir->sb->u.fatfs.fs_type == FAT_EXFAT) {
+			struct fatfs_ent *pe;
+			__u32 parent = 0;
+
+			if(fatfs_ent_find(dir->sb, dir->inode, &pe) && pe->used) {
+				parent = pe->parent;
+			}
+			if(parent == dir->sb->u.fatfs.root_cluster ||
+			   !parent) {
+				if(!(*res = iget(dir->sb, FAT_ROOT_INO))) {
+					return -EIO;
+				}
+				return 0;
+			}
+			if(!(*res = iget(dir->sb, (__ino_t)parent))) {
+				return -EIO;
+			}
+			return 0;
+		}
 	}
 	dir_it_open(&it, dir);
 	if(!it.ok) {
 		return -EIO;
 	}
 	while(!found) {
-		int r = scan_record(&it, &rec);
+		int r = dir->sb->u.fatfs.fs_type == FAT_EXFAT ?
+			ex_scan_record(&it, &rec) : scan_record(&it, &rec);
 
 		if(r <= 0) {
 			break;
@@ -474,7 +606,7 @@ int fat_lookup(const char *name, struct inode *dir, struct inode **res)
 	}
 	if(fatfs_ent_add(dir->sb, ino, rec.cluster, rec.size,
 			 !!(rec.attr & FAT_ATTR_DIRECTORY),
-			 dir->u.fatfs.cluster, rec.slot)) {
+			 dir->u.fatfs.cluster, rec.slot, rec.contiguous)) {
 		return -ENOMEM;
 	}
 	if(!(*res = iget(dir->sb, ino))) {

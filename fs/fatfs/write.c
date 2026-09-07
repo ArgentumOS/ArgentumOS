@@ -642,6 +642,9 @@ static int fat_create_common(struct inode *dir, char *name, __mode_t mode,
 	if(IS_RDONLY_FS(dir)) {
 		return -EROFS;
 	}
+	if(dir->sb->u.fatfs.fs_type == FAT_EXFAT) {
+		return -EROFS;	/* exFAT writes are M2b */
+	}
 	if(!S_ISDIR(dir->i_mode)) {
 		return -ENOTDIR;
 	}
@@ -705,7 +708,7 @@ static int fat_create_common(struct inode *dir, char *name, __mode_t mode,
 		}
 		fatfs_ent_add(dir->sb, ino, cluster, 0, is_dir,
 			      dir->u.fatfs.cluster,
-			      start + (need_lfn ? (units + 12) / 13 : 0));
+			      start + (need_lfn ? (units + 12) / 13 : 0), 0);
 		superblock_unlock(dir->sb);
 		if(!(i = iget(dir->sb, ino))) {
 			return -EIO;
@@ -796,7 +799,7 @@ int fat_mkdir(struct inode *dir, char *name, __mode_t mode)
 				    (need_lfn ? (units + 12) / 13 : 0);
 
 		fatfs_ent_add(dir->sb, ino, cluster, 0, 1,
-			      dir->u.fatfs.cluster, slot);
+			      dir->u.fatfs.cluster, slot, 0);
 		if(!(i = iget(dir->sb, ino))) {
 			return -EIO;
 		}
@@ -956,6 +959,9 @@ int fat_unlink(struct inode *dir, struct inode *child, char *name)
 	if(IS_RDONLY_FS(dir)) {
 		return -EROFS;
 	}
+	if(dir->sb->u.fatfs.fs_type == FAT_EXFAT) {
+		return -EROFS;	/* exFAT writes are M2b */
+	}
 	if(!fatfs_ent_find(dir->sb, child->inode, &e) || !e->used) {
 		return -ENOENT;
 	}
@@ -975,6 +981,9 @@ int fat_rmdir(struct inode *dir, struct inode *child)
 
 	if(IS_RDONLY_FS(dir)) {
 		return -EROFS;
+	}
+	if(dir->sb->u.fatfs.fs_type == FAT_EXFAT) {
+		return -EROFS;	/* exFAT writes are M2b */
 	}
 	if(!fatfs_ent_find(dir->sb, child->inode, &e) || !e->used) {
 		return -ENOENT;
@@ -1093,7 +1102,7 @@ int fat_rename(struct inode *i, struct inode *dir, struct inode *i_new,
 		}
 		fatfs_ent_add(dir_new->sb, ino, e->cluster, e->size,
 			      e->is_dir, dir_new->u.fatfs.cluster,
-			      start + (need_lfn ? (units + 12) / 13 : 0));
+			      start + (need_lfn ? (units + 12) / 13 : 0), 0);
 	}
 	superblock_unlock(dir->sb);
 	return 0;
@@ -1110,6 +1119,9 @@ int fat_truncate(struct inode *i, __off_t length)
 
 	if(IS_RDONLY_FS(i)) {
 		return -EROFS;
+	}
+	if(i->sb->u.fatfs.fs_type == FAT_EXFAT) {
+		return -EROFS;	/* exFAT writes are M2b */
 	}
 	superblock_lock(i->sb);
 	cl = i->u.fatfs.cluster;
@@ -1220,7 +1232,7 @@ int fat_write_inode(struct inode *i)
 					     NULL)) {
 			fatfs_ent_add(i->sb, (__ino_t)i->u.fatfs.cluster,
 				      i->u.fatfs.cluster, i->i_size, 0,
-				      e->parent, e->slot);
+				      e->parent, e->slot, 0);
 		}
 	}
 	e->size = i->i_size;
@@ -1239,6 +1251,9 @@ int fat_write(struct inode *i, struct fd *f, const char *buffer,
 	struct buffer *buf;
 	struct fatfs_sb_info *fs = &i->sb->u.fatfs;
 
+	if(i->sb->u.fatfs.fs_type == FAT_EXFAT) {
+		return -EROFS;	/* exFAT writes are M2b */
+	}
 	inode_lock(i);
 	if(f->flags & O_APPEND) {
 		f->offset = i->i_size;

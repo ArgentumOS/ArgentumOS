@@ -38,6 +38,7 @@ struct fatfs_ent {
 	__u32 parent;			/* parent dir first cluster (0 = n/a) */
 	unsigned long slot;		/* 0-based slot of the short entry */
 	unsigned char is_dir;
+	unsigned char contiguous;	/* exFAT stream: no FAT chain */
 	unsigned char used;
 };
 
@@ -67,7 +68,7 @@ int fatfs_init(void);
 int fatfs_ent_find(struct superblock *sb, __ino_t ino, struct fatfs_ent **out);
 int fatfs_ent_add(struct superblock *sb, __ino_t ino, __u32 cluster,
 		  __u32 size, unsigned char is_dir, __u32 parent,
-		  unsigned long slot);
+		  unsigned long slot, unsigned char contiguous);
 __u32 fat_next_cluster(struct superblock *sb, __u32 cluster);
 int fat_alloc_cluster(struct superblock *sb, __u32 *cluster);
 int fat_read_entry(struct superblock *sb, __u32 cl, __u32 *val);
