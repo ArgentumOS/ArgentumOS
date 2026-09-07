@@ -56,10 +56,18 @@ the plan's G3 gate and SH-0..SH-5.
   configure (X stack/FreeType/HarfBuzz); pkg-config (freedesktop) is
   GPL-2+ — out (docs/design/self-hosting-plan.md §4 dev-tooling note).
   Buildable on-FNX via Muon (C) or `pkgconf-lite` (`Makefile.lite`).
-- **awk** — toybox has none. **GAP**: a permissive awk is required
-  (one-true-awk, MIT-style license — the pick to confirm at adoption).
-- **patch** — permissive source required (OpenBSD patch, ISC-style;
-  confirm toybox `patch` coverage first). **GAP/pick**.
+- **awk — onetrueawk/awk (picked)** — permissive (Lucent 1997
+  attribution notice, no GPL), active, musl-clean; plain C + `-lm`.
+  Parser files are bison-generated: generate `awkgram.tab.[ch]` +
+  `proctab.c` once on the host and commit them so in-guest rebuilds
+  are plain `cc` (no bison on-FNX).
+- **patch — NetBSD `usr.bin/patch` (picked)** — Larry Wall 1986 lineage,
+  BSD 2-clause (verified headers); full unified/context/reject/fuzz
+  feature set. Needs a ~100-line compat shim on musl (bundle
+  `getopt_long`, `__RCSID`/`__dead` shims, `pathnames.h`) and
+  **replace/stub `backupfile.c`** (FSF-authored — replace with an own
+  permissive implementation of the `-b/-B/-V` backup naming). Not
+  OpenBSD's (pledge/unveil baked into `main()`).
 - **sed/grep/diff/head/tail/…, an editor** — toybox (sed/grep/diff
   present; toybox vi is the in-guest editor baseline; the future
   first-party Editor app is the long-term home).
@@ -74,13 +82,14 @@ the plan's G3 gate and SH-0..SH-5.
 
 ## 3. Gap list (picks open or to confirm at adoption)
 
-1. **awk**: permissive source (one-true-awk recommended). Blocks
-   autotools-style configure scripts in-guest (X stack/FreeType/
-   HarfBuzz all configure).
-2. **patch**: permissive source (OpenBSD patch) unless toybox coverage
-   suffices.
-3. Confirm toybox coverage of diff/tar/vi/sed/grep for the configure
-   toolchain.
+1. ~~awk~~ **Resolved**: onetrueawk/awk (permissive Lucent notice;
+   host-generated parser committed).
+2. ~~patch~~ **Resolved**: NetBSD usr.bin/patch (BSD 2-clause) with a
+   musl compat shim + own `backupfile.c` replacement.
+3. ~~Confirm toybox coverage~~ **Answered**: toybox ships `patch`
+   (unified-only), with `diff`/`vi`/`awk` under `toys/pending` (built
+   only when enabled); sed/grep present. The dedicated awk/patch picks
+   above are the build-tooling path; toybox patch stays as a fallback.
 4. ~~cmake avoidance~~ **CMake ships on-FNX (decided)**: BSD-3-Clause,
    bootstrap with clang++ + bmake (vendored deps, OpenSSL off); the
    LLVM stage configures in-guest, so in-guest clang changes need no
@@ -88,9 +97,10 @@ the plan's G3 gate and SH-0..SH-5.
    Meson-based packages — none currently needed.)
 5. Fonts (Liberation) are GUI content — not self-hosting-critical.
 
-Ordering note: gaps 1–2 are the *first* real blockers — they gate
-in-guest configure of the third-party sources (SH-2/SH-4), not the
-clang/musl core (SH-0..SH-3 use CMake-ninja/ninja + plain rules).
+Ordering note: gaps 1–2 (awk/patch) are resolved by the picks above;
+they were the first real blockers — they gate in-guest configure of the
+third-party sources (SH-2/SH-4), not the clang/musl core (SH-0..SH-3
+use CMake-ninja/ninja + plain rules).
 
 ## 4. Policy
 
