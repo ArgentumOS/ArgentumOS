@@ -58,9 +58,15 @@ the plan's G3 gate and SH-0..SH-5.
   Buildable on-FNX via Muon (C) or `pkgconf-lite` (`Makefile.lite`).
 - **awk — onetrueawk/awk (picked)** — permissive (Lucent 1997
   attribution notice, no GPL), active, musl-clean; plain C + `-lm`.
-  Parser files are bison-generated: generate `awkgram.tab.[ch]` +
-  `proctab.c` once on the host and commit them so in-guest rebuilds
-  are plain `cc` (no bison on-FNX).
+  The parser (`awkgram.y`) is regenerated **in-guest by byacc** — no
+  host-generated files committed, no bison on-FNX.
+- **byacc (Berkeley Yacc)** — **public domain** (verified: "Anyone may
+  freely distribute source or binary forms… whether unchanged or
+  modified"); the parser generator, plain small C. Covers
+  yacc-class grammars (awk's is plain yacc); bison *extensions*
+  (glr, api.pure, …) would still need the host — none in the manifest
+  set needs them. (GNU bison is GPL — out; NetBSD yacc is a
+  BSD-licensed byacc-lineage alternative.)
 - **patch — NetBSD `usr.bin/patch` (picked)** — Larry Wall 1986 lineage,
   BSD 2-clause (verified headers); full unified/context/reject/fuzz
   feature set. Needs a ~100-line compat shim on musl (bundle
@@ -82,8 +88,8 @@ the plan's G3 gate and SH-0..SH-5.
 
 ## 3. Gap list (picks open or to confirm at adoption)
 
-1. ~~awk~~ **Resolved**: onetrueawk/awk (permissive Lucent notice;
-   host-generated parser committed).
+1. ~~awk~~ **Resolved**: onetrueawk/awk (permissive Lucent notice),
+   parser regenerated in-guest with **byacc** (public domain).
 2. ~~patch~~ **Resolved**: NetBSD usr.bin/patch (BSD 2-clause) with a
    musl compat shim + own `backupfile.c` replacement.
 3. ~~Confirm toybox coverage~~ **Answered**: toybox ships `patch`
