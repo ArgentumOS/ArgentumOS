@@ -57,13 +57,32 @@ mindfully-ported software.
   Template/` copied to each new user, a classic-workstation global
   menubar (system menu, bold app menu, File/Edit/View/Window/Help,
   right-side extras, click-time menu validation).
-- **GUI**: OS-native compositor + full widget toolkit (3D bevels,
-  `view` base, `canvas`, `springs_and_struts`); no Wayland, no X11; a
-  dock, wallpaper, Miller-column file manager; app bundles
-  (`HelloWorld.app/` dirs with `.conf` manifests).
+- **GUI**: X11 desktop — **Xfb** (native X server, owns /dev/fb0)
+  with the **Shrike** from-scratch C++ toolkit (Cocoa-resemblant API,
+  pixman vector chrome, real-point units) and the **Kestrel** window
+  manager (global menubar); no Wayland; urxvt terminal fork.
+  Design: docs/design/shrike-plan.md + docs/design/shrike-catalog.md.
 - **Initial release**: eight apps — Workspace, Terminal, Editor,
   Settings, Viewer, Calculator, Installer, Disks — plus `config`,
   `acl`, and `mkfs` tools.
+
+## Memory management (decided note)
+
+- **Deterministic by default**: userland programs own their memory with
+  explicit `free` (C) or RAII (C++/Shrike) — the collector-free world.
+- **Garbage collection is opt-in, not default (decided 2026-09)**:
+  the Boehm-Demers-Weiser collector (bdwgc, MIT-style; use ≥ 8.2.12,
+  the musl-fixed release) is available as an opt-in library, linked
+  per-program via the clang wrapper (with `GC_USE_LD_WRAP`/dlopen
+  wrapping + `NO_GETENV` discipline when used). Target consumers:
+  allocation-tangled programs — a future scripting/interpreter runtime,
+  language-runtime-style code — not ordinary tools.
+- **Default-for-every-program was explicitly rejected**: invisible-root
+  hazards (pointers kept only in libc-internal or TLS storage get
+  collected), no destructor determinism (conflicts with the Shrike
+  RAII carve-out), stop-the-world pauses, per-binary static cost, and
+  per-program audit burden — bdwgc's own maintainer frames redirect
+  mode as supported-but-fragile, not turnkey.
 
 ## Tensions & risks
 
