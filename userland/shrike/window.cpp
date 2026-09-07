@@ -2,7 +2,9 @@
  *
  * S0.2: creates + maps a real X11 window and fills it with a solid
  * color through core protocol (XPutImage of a depth-24 XRGB image — no
- * XRender/Xft client lib). The event loop arrives in S0.3.
+ * XRender/Xft client lib).
+ * S0.3: selects the input events and registers in the Application's
+ * window map so run() can dispatch to the responder virtuals.
  */
 #include <shrike/shrike.h>
 #include <shrike/shrike_p.h>
@@ -19,7 +21,10 @@ Window::Window()
 
 Window::~Window()
 {
+	/* drop out of the event-dispatch map first */
 	if (impl_->dpy && impl_->xwin) {
+		Application::shared().impl_->windows.erase(
+			(unsigned long) impl_->xwin);
 		XDestroyWindow(impl_->dpy, impl_->xwin);
 	}
 	delete impl_;
@@ -38,6 +43,8 @@ Window::init(const char *title, int x, int y,
 	unsigned long black = BlackPixel(app.impl_->dpy, app.impl_->screen);
 
 	impl_->dpy = app.impl_->dpy;
+	impl_->x = x;
+	impl_->y = y;
 	impl_->width = width;
 	impl_->height = height;
 	impl_->xwin = XCreateSimpleWindow(impl_->dpy, root, x, y,
@@ -48,6 +55,16 @@ Window::init(const char *title, int x, int y,
 	if (title) {
 		XStoreName(impl_->dpy, impl_->xwin, title);
 	}
+	/* S0.3: which events the loop dispatches (keyboard, mouse
+	 * buttons, expose/redraw) */
+	XSelectInput(impl_->dpy, impl_->xwin,
+		     KeyPressMask | KeyReleaseMask |
+		     ButtonPressMask | ButtonReleaseMask |
+		     ExposureMask);
+	XSync(impl_->dpy, False);
+
+	/* register for event dispatch (idempotent on re-init) */
+	app.impl_->windows[(unsigned long) impl_->xwin] = this;
 	return true;
 }
 
@@ -58,6 +75,9 @@ Window::show()
 		return;
 	}
 	XMapWindow(impl_->dpy, impl_->xwin);
+	/* focus the window so key events reach it without a WM */
+	XSetInputFocus(impl_->dpy, impl_->xwin, RevertToParent, CurrentTime);
+	impl_->mapped = true;
 	XSync(impl_->dpy, False);
 }
 
@@ -83,6 +103,7 @@ Window::fill(std::uint32_t rgb)
 	 * X11 expects (the fb is little-endian and the 8:8:8 masks
 	 * 0xff0000/0x00ff00/0x0000ff match Xfb). */
 	std::uint32_t pixel = rgb & 0xffffff;
+
 	char *data = (char *) std::calloc((size_t) w * h, 4);
 	if (!data) {
 		return;
@@ -104,12 +125,38 @@ Window::fill(std::uint32_t rgb)
 			XFreeGC(dpy, gc);
 		}
 		/* XDestroyImage frees data (we handed it ownership) */
-		img->data = data;
 		XDestroyImage(img);
 	} else {
 		std::free(data);
 	}
 	XSync(dpy, False);
+}
+
+/* --- responder virtuals (S0.3): default = ignore ------------------ */
+
+void
+Window::keyDown(const KeyEvent &)
+{
+}
+
+void
+Window::keyUp(const KeyEvent &)
+{
+}
+
+void
+Window::mouseDown(const MouseEvent &)
+{
+}
+
+void
+Window::mouseUp(const MouseEvent &)
+{
+}
+
+void
+Window::draw()
+{
 }
 
 unsigned int
