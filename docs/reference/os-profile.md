@@ -17,14 +17,17 @@ config format, its own GUI stack, its own app packaging — and rejects
 external standards on principle, yet keeps enough POSIX surface to run
 mindfully-ported software.
 
-**Naming split (decided 2026-09)**: **FNX is the kernel** — the XNU
-analog (macOS = XNU kernel + Aqua/AppKit userland). The *OS as a
-product* — FNX kernel + FSH + userland + the Argentum desktop — is a
-separate, **still-open name slot** (candidate "Aven" parked there,
-undecided). Kernel identity stays FNX (boot banner, UTS_SYSNAME,
-env vars, docs); nothing about the product name is decided, and nothing
-about it needs to be soon. The two never compete: a product-name
-discussion is not a kernel rename.
+**Monobrand decision (2026-09)**: **Argentum** is the single house
+brand, qualified by layer — the **Argentum OS** (the product), the
+**Argentum Desktop** (GUI session), the **Argentum Design Language**
+(the visual language), and **the Argentum kernel** (the FNX kernel by
+brand). **FNX is retained as the kernel's engineering name** — the XNU
+role: boot banner, UTS_SYSNAME, `FNX_QEMU_*` env vars, and internal
+docs keep FNX, like XNU inside macOS. No separate product-name slot
+exists; earlier candidates (Aven, AvianOS, HawkOS, Eyrie, Ferrum…)
+are retired. Existing technical identifiers (FSH, XBFS, fshlint,
+Shrike, Kestrel, Finch, Argentum theme) are unchanged — the brand
+names the layers; the identifiers name the machinery.
 
 ## Philosophy & design principles
 
