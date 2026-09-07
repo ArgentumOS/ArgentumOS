@@ -38,7 +38,7 @@ the clang/LLVM integrated-assembler style already used in
 | D2 | **Local APIC timer per CPU** for preemption; the PIT remains only as the pre-APIC fallback. |
 | D3 | **Full LAPIC + IO-APIC**; **xAPIC (MMIO) first**, x2APIC (MSR) as a follow-on; the 8259 path stays as the 1-CPU fallback. |
 | D4 | **ACPI MADT walker** (RSDP → RSDT/XSDT → MADT) for LAPIC IDs + IO-APIC; no legacy MP table. |
-| D5 | Target ≤ 8 vCPUs; NUMA and hotplug out of scope. |
+| D5 | Target ≤ 8 vCPUs; **NUMA-optimality and hotplug out of scope** — NUMA hardware stays runnable as effectively-UMA (NUMA never affects correctness, only locality); memory topology (SRAT/SLIT) is not parsed. |
 | D6 | Test-and-set spinlock (`lock; xchg` with `pause`) + irqsave variants; x86 is TSO so explicit fences are rare; per-CPU area reached via GS + `swapgs`. |
 
 ## 3. Milestones
@@ -168,6 +168,11 @@ target. Order is a hard dependency chain.
 
 ## 7. Non-goals
 
-NUMA; CPU hotplug; per-CPU runqueues/load balancing (D1 deferral);
+NUMA **optimality** (node-aware allocation, first-touch policy, scheduler
+affinity, SRAT/SLIT parsing); CPU hotplug; per-CPU runqueues/load
+balancing (D1 deferral). NUMA *hardware* remains runnable as
+effectively-UMA — correctness has no NUMA dependency, only memory
+locality does; revisit optimality only post-SMP-M5 and only if real
+multi-socket hardware or a memory-bandwidth workload appears.
 x2APIC in the initial implementation; power/idle states; SMT topology
 awareness (logical CPUs are symmetric here).
