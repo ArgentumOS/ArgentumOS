@@ -1,7 +1,7 @@
 # Shrike — the FNX toolkit plan (from-scratch C++)
 
 Status: **DECIDED (direction, 2026-09).** FNX's GUI toolkit is **Shrike**:
-a from-scratch **C++ toolkit over X11/Xft**, built on the stack FNX
+a from-scratch **C++ toolkit over X11**, built on the stack FNX
 already owns. Working name **Shrike** (the butcher bird — small, sharp;
 the phoenix FNX gets a smaller bird of its own). Namespace `shrike::`.
 This supersedes the Motif-fork direction (`docs/archive/motif-fork-plan.md`,
@@ -45,14 +45,16 @@ apps (C++)                    shrike:: apps + Kestrel (the WM)
 shrike (C++17, libc++)        toolkit core — MIT, ours
   ├─ chrome: pixman vector layer (fills/gradients/rounded rects) + .conf theme
   ├─ widgets: single View tree + springs/struts + row/column Box + SL-parallel catalog
-  ├─ text: Xft/FreeType, UTF-8
+  ├─ text: fontconfig + HarfBuzz + FreeType, UTF-8 (full shaping)
   ├─ session: .conf via libconfig (shared, /System/Libraries)
   └─ menu IPC: AF_UNIX session socket protocol
   │
 X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 ```
 
-- **Display**: Xfb (unchanged). Shrike talks X11 + Xft + XRender only.
+- **Display**: Xfb (unchanged). Shrike talks X11 + XRender; text is
+  fontconfig + HarfBuzz + FreeType (full shaping, §4) — Xft remains in
+  the X stack for legacy X clients (urxvt), not in Shrike's text path.
 - **Language**: C++17, clang++, libc++ (M2-proven), with exceptions and
   RTTI adopted (resolved — `cpp_smoke` proved the stack; no
   -fno-exceptions carve-out in userland). No C FFI in v1
@@ -161,7 +163,8 @@ primitives:
 v1 catalog cut per `docs/design/shrike-catalog.md` (Tier 1 core
 controls + Tier 2 structure essentials + TableView-basic); the catalog
 *target* parallels AppKit circa Snow Leopard (classes/functionality, not
-visual style). Text via Xft. View states (idle/hover/armed/disabled/
+visual style). Text: fontconfig + HarfBuzz + FreeType (full shaping,
+see the FreeType/HarfBuzz notes below). View states (idle/hover/armed/disabled/
 focused) map one-to-one onto theme parameter sets.
 
 System font (resolved): the **Liberation family** ships under
@@ -193,6 +196,19 @@ stack, and the Xft session configuration in Shrike:
   hook. Both are adjacent open decisions, not part of this
   requirement. (The same full-feature build also serves urxvt's Xft
   text.)
+
+**Shaping (decided): HarfBuzz is the shaper, inside Shrike's text
+path.** Adopted (2026-09) to complete the full-text requirement: `TextField`/
+`TextView` run text through HarfBuzz (font, script, direction, language
+→ positioned glyphs) before FreeType rasterizes. Enables complex scripts
+(Arabic/Indic/Hebrew/Thai), OpenType GSUB/GPOS (ligatures, kerning, mark
+positioning), and proper non-Latin text. Fit: **MIT, self-contained C++
+(zero required deps — own Unicode tables; optional hb-ft for extents)**,
+porting alongside FreeType in the X stack; no Pango/ICU weight (Pango is
+LGPL and a foreign layout layer — not the FNX shape). Stack ownership:
+fontconfig picks/falls back → HarfBuzz shapes → FreeType rasterizes →
+pixman composites. The Xft-only path (basic shaping, no complex
+scripts) is not sufficient for the full-text requirement.
 
 ## 5. Kestrel — the window manager (from-scratch; EMWM decision retired)
 
@@ -229,7 +245,8 @@ swaps by focus; picks flow back as triggers.
 ## 7. Milestones (order + acceptance; not scheduled)
 
 - **S0 — Foundation**: `shrike::Application` + `Window` over X11;
-  event loop; Xft/FreeType init; .conf load; libshrike.so staged.
+  event loop; fontconfig/HarfBuzz/FreeType init; .conf load;
+  libshrike.so staged.
   *Acceptance:* a shrike app opens a window on Xfb; keyboard/mouse
   events round-trip; Xft text draws.
 - **S1 — Chrome engine**: the pixman vector layer (fills, gradients,
