@@ -1,4 +1,4 @@
-// FNX text-stack acceptance (docs/design/shrike-plan.md §4): prove the
+// FNX text-stack acceptance (docs/design/argentum-uikit-plan.md §4): prove the
 // fontconfig -> HarfBuzz -> FreeType pipeline end-to-end in the guest.
 //  1. fontconfig init against the FSH config (/System/Configuration/fonts)
 //     + a family match (exercises the dir list /System/Shared/Fonts).

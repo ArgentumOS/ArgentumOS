@@ -2,7 +2,7 @@
 
 Status: **EVALUATION (2026-09)** with a **decided direction: Finch — a
 fork of mksh as FNX's sole system shell** (working name **Finch**; the
-bird kin — FNX-phoenix family: Shrike the toolkit, Kestrel the WM,
+bird kin — FNX-phoenix family: Argentum the toolkit, Kestrel the WM,
 Finch the shell). "fsh" was considered and rejected: FSH already names
 the filesystem hierarchy (fsh-proposal, fshlint, FSH env) — a fatal
 brand collision. The live `/bin/sh` today is dash, with FSH patches.

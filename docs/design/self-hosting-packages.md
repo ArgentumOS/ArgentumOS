@@ -34,12 +34,12 @@ the plan's G3 gate and SH-0..SH-5.
 
 - **FNX kernel tree** + `mk/` build fragments.
 - **First-party userland**: tools/, tests/, demos/, scripts/, the Xfb
-  server tree, (later) Shrike/Kestrel/urxvt.
+  server tree, (later) Argentum/Kestrel/urxvt.
 - **Base userland upstreams**: dash, toybox (submodule + patches).
 - **X stack sources**: xorgproto, xcbproto/libxcb, libX11, xtrans,
   libXau/libXdmcp, pixman, libxkbfile, libXfont2/libfontenc,
   fontconfig, **FreeType**, **HarfBuzz** (full-feature build per
-  shrike-plan), and the text-stack leaves **libpng** (sbix color
+  argentum-plan), and the text-stack leaves **libpng** (sbix color
   glyphs) + **expat** (fontconfig's XML) - all vendored under
   third_party/x11/ and built shared into .build/x11-prefix by
   tools/x11-shared-build.sh (text-stack milestone).

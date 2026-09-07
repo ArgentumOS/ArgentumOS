@@ -1,13 +1,17 @@
-# Shrike — the FNX toolkit plan (from-scratch C++)
+# Argentum UIKit — the FNX toolkit plan (from-scratch C++)
 
-Status: **DECIDED (direction, 2026-09).** FNX's GUI toolkit is **Shrike**:
-a from-scratch **C++ toolkit over X11**, built on the stack FNX
-already owns. Working name **Shrike** (the butcher bird — small, sharp;
-the phoenix FNX gets a smaller bird of its own). Namespace `shrike::`.
-This supersedes the Motif-fork direction (`docs/archive/motif-fork-plan.md`,
+Status: **DECIDED (direction, 2026-09).** FNX's GUI toolkit is the
+**Argentum UIKit**: a from-scratch **C++ toolkit over X11**, built on
+the stack FNX already owns. It was conceived under the working name
+"Shrike" (the butcher bird — small, sharp), renamed to **Argentum**
+when the monobrand decision (2026-09) made Argentum the single house
+brand qualified by layer; the engineering identifiers are the
+namespace `argentum::`, `libargentum.so`, and the `userland/argentum/`
+source tree. This supersedes the Motif-fork direction
+(`docs/archive/motif-fork-plan.md`,
 `docs/archive/momo-coding-plan.md` — kept as records) and the EMWM fork decision
 (`docs/archive/emwm-window-manager.md`); the view catalog is now defined by
-`docs/design/shrike-catalog.md` (Snow Leopard-parallel target).
+`docs/design/argentum-uikit-catalog.md` (Snow Leopard-parallel target).
 
 ## 1. Why (from the record)
 
@@ -40,9 +44,9 @@ is intact: C++ is Tier-1, clang-built, libc++-standard.
 ## 2. Architecture
 
 ```
-apps (C++)                    shrike:: apps + Kestrel (the WM)
+apps (C++)                    argentum:: apps + Kestrel (the WM)
   │
-shrike (C++17, libc++)        toolkit core — MIT, ours
+argentum (C++17, libc++)        toolkit core — MIT, ours
   ├─ chrome: pixman vector layer (fills/gradients/rounded rects) + .conf theme
   ├─ widgets: single View tree + springs/struts + row/column Box + SL-parallel catalog
   ├─ text: fontconfig + HarfBuzz + FreeType, UTF-8 (full shaping)
@@ -52,15 +56,15 @@ shrike (C++17, libc++)        toolkit core — MIT, ours
 X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 ```
 
-- **Display**: Xfb (unchanged). Shrike talks X11 + XRender; text is
+- **Display**: Xfb (unchanged). Argentum talks X11 + XRender; text is
   fontconfig + HarfBuzz + FreeType (full shaping, §4) — Xft remains in
-  the X stack for legacy X clients (urxvt), not in Shrike's text path.
+  the X stack for legacy X clients (urxvt), not in Argentum's text path.
 - **Language**: C++17, clang++, libc++ (M2-proven), with exceptions and
   RTTI adopted (resolved — `cpp_smoke` proved the stack; no
   -fno-exceptions carve-out in userland). No C FFI in v1
   (decided): apps are C++; a C surface can be added when a real
   non-C++ consumer exists (Swift-later would get its own bridge then).
-- **Distribution**: `libshrike.so` in /System/Libraries (dynamic world;
+- **Distribution**: `libargentum.so` in /System/Libraries (dynamic world;
   resolved: shared — the X stack and libconfig already live there);
   static only for recovery-set carve-outs per the shared-libraries
   plan. Kernel untouched (stays C, freestanding).
@@ -73,17 +77,17 @@ X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 Cocoa as much as is practical under C++.** The design corpus already
 converged on this — global menubar = `NSApp.mainMenu`, springs/struts =
 `autoresizingMask` — and the principle now governs how the pure-C++
-API is named and shaped (the catalog in §4 and docs/design/shrike-catalog.md
+API is named and shaped (the catalog in §4 and docs/design/argentum-uikit-catalog.md
 follows it,
 superseding any GTK-flavored naming from the momo-era spec).
 
-Mapping of Cocoa idioms onto C++ Shrike (semantics mirror Cocoa; only
+Mapping of Cocoa idioms onto C++ Argentum (semantics mirror Cocoa; only
 the *mechanics* are C++):
 
-| Cocoa | Shrike C++ |
+| Cocoa | Argentum C++ |
 |---|---|
-| `NSApplication` / `NSApp` | `shrike::Application::shared()` |
-| `NSWindow`, `NSView` + `addSubview:` | `shrike::Window`, `View::addSubview()` (view tree, `removeFromSuperview`, `drawRect`) |
+| `NSApplication` / `NSApp` | `argentum::Application::shared()` |
+| `NSWindow`, `NSView` + `addSubview:` | `argentum::Window`, `View::addSubview()` (view tree, `removeFromSuperview`, `drawRect`) |
 | `frame` / `autoresizingMask` (springs/struts) | per-subview springs/struts in the view tree (§4) — same model |
 | `NSButton` `setTitle:`, controls, `setEnabled:` | catalog widgets, same verbs (`setTitle()`, `setEnabled()`) |
 | `setTarget:`/`setAction:` | `std::function` action handler (e.g. `setAction([] {…})`) |
@@ -121,7 +125,7 @@ drawing code.
   active theme comes from the config domain. Widget states
   (idle/hover/armed/disabled/focused) map one-to-one onto parameter
   sets.
-- **Units are real-world points (decided principle).** Every Shrike
+- **Units are real-world points (decided principle).** Every Argentum
   screen unit — layout geometry, chrome radii/bevels, font sizes — is
   specified in **points** (1 pt = 1/72 inch). The pixels-per-point
   factor is derived **transparently from the display's known physical
@@ -240,7 +244,7 @@ scalar on the conversion:
 
 ## 4. Widgets + layout (v1 catalog, Snow Leopard-parallel)
 
-**View model (decided):** a single `shrike::View` tree — every view can
+**View model (decided):** a single `argentum::View` tree — every view can
 host subviews (`addSubview`, Cocoa-style), so there is **no separate
 general Container class**; controls and chrome are all views. Layout
 primitives:
@@ -252,7 +256,7 @@ primitives:
    along one axis (packing order); the only arrangement widget needed
    (the NSStackView-lite analog). Boxes nest like any view.
 
-v1 catalog cut per `docs/design/shrike-catalog.md` (Tier 1 core
+v1 catalog cut per `docs/design/argentum-uikit-catalog.md` (Tier 1 core
 controls + Tier 2 structure essentials + TableView-basic); the catalog
 *target* parallels AppKit circa Snow Leopard (classes/functionality, not
 visual style). Text: fontconfig + HarfBuzz + FreeType (full shaping,
@@ -269,7 +273,7 @@ family; the font path stays a parameter so the choice is swappable.
 **User note (2026-09): full hinting and support for every bell,
 whistle, light, and gewgaw FreeType can support — if we use it, we use
 all of it.** This governs the FreeType *port* when it lands with the X
-stack, and the Xft session configuration in Shrike:
+stack, and the Xft session configuration in Argentum:
 
 - **Full hinting**: TrueType bytecode interpreter
   (`TT_CONFIG_OPTION_BYTECODE_INTERPRETER`; patent-free since 2010) +
@@ -302,7 +306,7 @@ stack, and the Xft session configuration in Shrike:
   requirement. (The same full-feature build also serves urxvt's Xft
   text.)
 
-**Shaping (decided): HarfBuzz is the shaper, inside Shrike's text
+**Shaping (decided): HarfBuzz is the shaper, inside Argentum's text
 path.** Adopted (2026-09) to complete the full-text requirement: `TextField`/
 `TextView` run text through HarfBuzz (font, script, direction, language
 → positioned glyphs) before FreeType rasterizes. Enables complex scripts
@@ -318,7 +322,7 @@ scripts) is not sufficient for the full-text requirement.
 ### Accessibility — Tier 1 (decided)
 
 **Decision (2026-09): accessibility in general is a Tier 1 concern for
-Shrike** — architected into the foundation, not added later. This means:
+Argentum** — architected into the foundation, not added later. This means:
 
 - **Every View carries accessibility metadata from the v1 catalog**:
   role, label, value, enabled/focused state, and help — the
@@ -328,7 +332,7 @@ Shrike** — architected into the foundation, not added later. This means:
 - **Native surface, no foreign stack**: the a11y tree is queryable in
   process (and via the app's socket when a consumer exists) — no
   AT-SPI/DBus dependency. A screen reader is a future first-party
-  tool, not a Shrike dependency.
+  tool, not a Argentum dependency.
 - **Programmatic actions** mirror NSAccessibility (perform press,
   set value, focus) — minimal in v1 (press + focus), grown with the
   catalog.
@@ -345,7 +349,7 @@ Shrike** — architected into the foundation, not added later. This means:
 
 Build, don't port: no ORCA/AT-SPI/DBus or BRLTTY (foreign stacks,
 GPL/LGPL, and an AT-SPI bridge would cost more than the native protocol).
-The reader is **a Shrike app that consumes other apps' a11y trees** —
+The reader is **a Argentum app that consumes other apps' a11y trees** —
 the Cocoa/VoiceOver shape. Three layers:
 
 1. **A11y protocol on the session socket (rides the menu-IPC seam, §6;
@@ -358,7 +362,7 @@ the Cocoa/VoiceOver shape. Three layers:
    engine behind one interface: **CMU Flite** (tiny, self-contained C —
    the v1 pick) or svox-pico (Apache-2, better quality); espeak-ng is
    GPL and out. Output: PCM → the existing OSS `/dev/dsp` drivers
-   (AC97/ES1370/HD-Audio done). Flite can port before Shrike — never a
+   (AC97/ES1370/HD-Audio done). Flite can port before Argentum — never a
    bottleneck.
 3. **The reader app (named post-S5 first-party app, like Settings)** —
    connects to the focused app's tree and provides the reader model:
@@ -381,11 +385,11 @@ reader app's name.
 
 EMWM was chosen because it was a **Motif app** — with the fork gone that
 rationale is gone. The WM is a from-scratch C++ component, built **on
-shrike** — the toolkit's first consumer, exercising windows, view trees,
+argentum** — the toolkit's first consumer, exercising windows, view trees,
 focus, input, and menus before any other app exists. It is small
 (a WM is far smaller than a toolkit) and it owns:
 
-- window decoration, drawn with shrike chrome (vector, pixman)
+- window decoration, drawn with argentum chrome (vector, pixman)
 - focus tracking (EWMH `_NET_ACTIVE_WINDOW`),
 - the **global menubar** (the spec's WM-owned bar), swapping menus by
   focus,
@@ -416,7 +420,7 @@ swaps by focus; picks flow back as triggers.
 
 ## 6a. Text stack — PORTED (milestone done before S0)
 
-The four text libraries Shrike's pipeline needs are built, staged and
+The four text libraries Argentum's pipeline needs are built, staged and
 verified (dynamic-C++ prerequisite landed first — the shared
 libc++/libc++abi/libunwind in /System/Libraries):
 
@@ -454,15 +458,15 @@ libc++/libc++abi/libunwind in /System/Libraries):
 
 *Execution note (2026-09): the S0–S5 milestones below are deliberately
 coarse. Work proceeds through them via the sub-milestone split in
-docs/design/shrike-milestone-split.md — each sub-milestone lands as one
+docs/design/argentum-milestone-split.md — each sub-milestone lands as one
 reviewable increment with its own guest/battery acceptance before the
 next starts.*
 
-- **S0 — Foundation**: `shrike::Application` + `Window` over X11;
+- **S0 — Foundation**: `argentum::Application` + `Window` over X11;
   event loop; fontconfig/HarfBuzz/FreeType init; .conf load;
-  libshrike.so staged.
-  *Acceptance:* a shrike app opens a window on Xfb; keyboard/mouse
-  events round-trip; text draws via Shrike's own path — fontconfig →
+  libargentum.so staged.
+  *Acceptance:* a argentum app opens a window on Xfb; keyboard/mouse
+  events round-trip; text draws via Argentum's own path — fontconfig →
   HarfBuzz → FreeType glyph bitmaps, blitted with core protocol
   (XPutImage/XCopyArea; no XRender/Xft client lib, §2/§3).
 - **S1 — Chrome engine**: the pixman vector layer (fills, gradients,
@@ -471,7 +475,7 @@ next starts.*
   frame+button render at the fallback factor and at a 2x px/pt
   (physical-size override boot + screendump in the battery).
 - **S2 — Widget core (v1 catalog cut)**: the View tree + springs/struts
-  + row/column Box + the v1 catalog cut from docs/design/shrike-catalog.md:
+  + row/column Box + the v1 catalog cut from docs/design/argentum-uikit-catalog.md:
   **Tier 1 core controls** (Button + Push/Checkbox/Radio types,
   PopUpButton, Slider, Stepper, TextField + SecureTextField, ImageView,
   ProgressIndicator, SegmentedControl, SearchField, ColorWell,
@@ -485,15 +489,15 @@ next starts.*
 - **S3 — Input & text depth**: focus/traversal, keyboard equivalents,
   edit-widget text input (TextField/secure). *Acceptance:* the
   reference app is fully operable without a mouse.
-- **S4 — Kestrel: window manager + global menubar**: the shrike-based
+- **S4 — Kestrel: window manager + global menubar**: the argentum-based
   WM (decorated windows, EWMH focus), menubar + menu IPC end-to-end.
   *Acceptance:* two apps; menubar swaps with focus; picks trigger app
   actions.
 - **S5 — Desktop**: EMWM replacement boots as the default session
-  (make run-uefi shows the shrike desktop; FSH skeleton, reference
+  (make run-uefi shows the argentum desktop; FSH skeleton, reference
   apps). *Acceptance:* interactive desktop on the standard image.
 
-**Catalog staging beyond S2** (per docs/design/shrike-catalog.md — *not*
+**Catalog staging beyond S2** (per docs/design/argentum-uikit-catalog.md — *not*
 part of the S0–S5 desktop gate): Tier 3 data/rich views (TextView,
 TableView richness: editing/sorting) and window accessories (Toolbar,
 Panel) land after S2 across S3–S5 as consumers appear; OutlineView,
@@ -576,24 +580,24 @@ ordinary decisions that surface at execution.
 | Item | Resolution |
 |---|---|
 | Menu wire format | **.conf/config framing** — the menu tree rides the existing config serializer (config-shaped; libconfig already shared); a dedicated codec stays possible behind the socket. |
-| libshrike distribution | **Shared `libshrike.so`** in /System/Libraries (dynamic world); static only for recovery-set carve-outs. |
+| libargentum distribution | **Shared `libargentum.so`** in /System/Libraries (dynamic world); static only for recovery-set carve-outs. |
 | First theme / chrome art | **Parameterized vector chrome over pixman** (supersedes the nine-tile plan) — theme = .conf parameters (colors, radii, bevels, gradients), no bitmap assets, scales free to any device scale. **First theme = Argentum** (the design language / visual target, §3 mockup). |
 | System font | **Liberation family** under /Shared/Fonts (metric-compatible, small footprint; weaker coverage than DejaVu accepted); swappable via theme .conf. |
 | UI scale (accessibility) | **Uniform multiplier k on all point units** — effective px/pt = k·(PPI/72), from the accessibility .conf domain; one knob scales everything equally (layout, chrome, fonts, spacing); content images excluded. |
 | Accessibility — Tier 1 | **Native a11y metadata on every View from the v1 catalog** (role/label/value/enabled/help; NSAccessibility analog); the view tree is the a11y tree; no AT-SPI/DBus; keyboard op + visible focus + high-contrast theme are a11y deliverables; ui-scale k decided. |
-| Exceptions policy | **Adopt** libc++ exceptions/RTTI for shrike (cpp_smoke-proven; no carve-out). |
+| Exceptions policy | **Adopt** libc++ exceptions/RTTI for argentum (cpp_smoke-proven; no carve-out). |
 | Reference app | The S2 reference app **becomes Settings** (app-model corpus). |
 
 ## 9. Relationship to prior docs
 
 | Doc | Status |
 |---|---|
-| docs/design/shrike-plan.md | **this plan (DECIDED direction)** |
+| docs/design/argentum-uikit-plan.md | **this plan (DECIDED direction)** |
 | docs/archive/motif-fork-plan.md | SUPERSEDED (record kept) |
 | docs/archive/momo-coding-plan.md | SUPERSEDED (record kept) |
-| docs/archive/momo-v1-widgets.md | SUPERSEDED by shrike-catalog.md (archive) |
-| docs/design/shrike-catalog.md | **catalog target** — Snow Leopard-parallel, staged v1 |
-| docs/archive/emwm-window-manager.md | SUPERSEDED (WM is from-scratch shrike-based) |
+| docs/archive/momo-v1-widgets.md | SUPERSEDED by argentum-uikit-catalog.md (archive) |
+| docs/design/argentum-uikit-catalog.md | **catalog target** — Snow Leopard-parallel, staged v1 |
+| docs/archive/emwm-window-manager.md | SUPERSEDED (WM is from-scratch argentum-based) |
 | docs/design/urxvt-terminal.md | unchanged (Xlib-only, toolkit-independent) |
 | docs/design/app-model.md, sessionmgr-design.md | unchanged (design corpus) |
 | docs/archive/gnustep-evaluation.md | REJECTED (record kept) |
@@ -607,4 +611,4 @@ ordinary decisions that surface at execution.
   no bitmap chrome assets. No vector *paths* beyond the
   chrome shape set until something needs them (icons/art).
 - No Wayland (Xfb/X11 is the display decision).
-- The kernel stays C; shrike is userland-only.
+- The kernel stays C; argentum is userland-only.

@@ -173,25 +173,25 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 		-o $@ userland/libconfig.c
 	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
 
-# --- Shrike (docs/design/shrike-plan.md): FNX's C++ GUI toolkit. S0.1
+# --- Argentum (docs/design/argentum-uikit-plan.md): FNX's C++ GUI toolkit. S0.1
 # skeleton = the namespace + Application/Window shells in one shared
-# libshrike.so.1 (same fnxlib staging + soname pattern as libconfig).
+# libargentum.so.1 (same fnxlib staging + soname pattern as libconfig).
 # The C++ wrapper supplies the libc++/libc++abi/libunwind NEEDEDs and
 # the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
 # the session in S0.2.
-SHRIKE_SRCS = userland/shrike/application.cpp userland/shrike/window.cpp
-FNXLIB_SHRIKE = $(FNXLIB)/libshrike.so.1
+ARGENTUM_SRCS = userland/argentum/application.cpp userland/argentum/window.cpp
+FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 
-$(FNXLIB_SHRIKE): $(SHRIKE_SRCS) userland/shrike/shrike.h userland/shrike/shrike_p.h $(MUSL64_CXX)
+$(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argentum/argentum_p.h $(MUSL64_CXX)
 	@mkdir -p $(FNXLIB)
 	@if [ ! -d "$(X11PREFIX)/include/X11" ]; then \
 		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
 		exit 1; \
 	fi
 	$(MUSL64_CXX) -fPIC -shared -Iuserland -I$(X11PREFIX)/include \
-		-L$(X11PREFIX)/lib -Wl,-soname,libshrike.so.1 \
-		-o $@ $(SHRIKE_SRCS) -lX11
-	ln -sf libshrike.so.1 $(FNXLIB)/libshrike.so
+		-L$(X11PREFIX)/lib -Wl,-soname,libargentum.so.1 \
+		-o $@ $(ARGENTUM_SRCS) -lX11
+	ln -sf libargentum.so.1 $(FNXLIB)/libargentum.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-clang++64.sh

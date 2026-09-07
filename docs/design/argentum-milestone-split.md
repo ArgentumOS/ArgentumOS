@@ -1,7 +1,7 @@
-# Shrike milestone split — small, individually verifiable sub-milestones
+# Argentum milestone split — small, individually verifiable sub-milestones
 
 Status: **DRAFT (2026-09).** Breaks the coarse S0–S5 milestones of
-docs/design/shrike-plan.md §7 into smaller sub-milestones, each of
+docs/design/argentum-uikit-plan.md §7 into smaller sub-milestones, each of
 which lands as one reviewable increment with its own acceptance that is
 verifiable in the guest/battery *before* the next sub-milestone starts.
 
@@ -24,11 +24,11 @@ the text stack: **one small gate, one commit, green before the next.**
 3. **If still too large, split again:** when a sub-milestone cannot
    land in one focused session, the working step is to sub-split *it*
    further (same discipline), not to power through an unverified gate.
-4. **Order follows dependencies**, and where docs/design/shrike-plan.md
+4. **Order follows dependencies**, and where docs/design/argentum-uikit-plan.md
    §469 already gives a finer order (L0–L7), the split adopts it,
    moving any L-piece its prerequisite milestone needs up-front.
 5. **Docs move with the code:** a sub-milestone that changes behavior
-   updates shrike-plan/catalog wording in the same commit.
+   updates argentum-plan/catalog wording in the same commit.
 
 Milestone → sub-milestone mapping (execution order):
 
@@ -40,15 +40,15 @@ S0, because S0's own acceptance already requires a window, events, and
 text. L2 (View tree) and the rest of L1 stay in S1/S2 where the plan
 places them.
 
-- **S0.1 — libshrike skeleton + staging.** `shrike::Application` +
-  `Window` class declarations compile into a shared `libshrike.so.1`
+- **S0.1 — libargentum skeleton + staging.** `argentum::Application` +
+  `Window` class declarations compile into a shared `libargentum.so.1`
   staged in /System/Libraries; an app links it dynamically.
   *Acceptance:* `make userland64` succeeds; the guest boots with
-  libshrike.so.1 present and a hello app prints its version through the
+  libargentum.so.1 present and a hello app prints its version through the
   shared lib.
 - **S0.2 — X connection + window opens.** `Application::shared()` opens
   X (Xfb), `Window` creates+maps a real X11 window.
-  *Acceptance:* a shrike app on Xfb logs "SHRIKE: window mapped" and the
+  *Acceptance:* a argentum app on Xfb logs "ARGENTUM: window mapped" and the
   screendump shows the window (core-protocol XPutImage of a solid
   background, no XRender/Xft).
 - **S0.3 — event loop round-trip.** XNextEvent dispatch to Window
@@ -58,17 +58,17 @@ places them.
   m2_xfbdesk-style serial/harness input path).
 - **S0.4 — text init + first text draw.** fontconfig/HarfBuzz/FreeType
   init at Application start; a UTF-8 string is shaped and rasterized
-  through Shrike's own path and blitted into the window.
+  through Argentum's own path and blitted into the window.
   *Acceptance:* text_pipeline-style shape/raster log lines plus a
   screendump showing the glyph pixels in the window.
-- **S0.5 — .conf load.** A `system.shrike` domain (or app domain)
+- **S0.5 — .conf load.** A `system.argentum` domain (or app domain)
   drives session values (e.g. window background, default font
   family/size) through libconfig.
   *Acceptance:* changing a domain value and re-running produces a
   different screendump/log, proving the value was read.
 - **S0.6 — S0 gate.** The original S0 acceptance, run whole:
-  *Acceptance:* a shrike app opens a window on Xfb; keyboard/mouse
-  events round-trip; text draws via Shrike's own path (fontconfig →
+  *Acceptance:* a argentum app opens a window on Xfb; keyboard/mouse
+  events round-trip; text draws via Argentum's own path (fontconfig →
   HarfBuzz → FreeType glyph bitmaps, blitted with core protocol).
 
 ## S1 — Chrome engine
@@ -130,9 +130,9 @@ reference-app + a11y gate.
 
 ## S4 — Kestrel (window manager + global menubar)
 
-- **S4.1 — WM skeleton.** Kestrel as a shrike app: decorated windows
-  via Shrike chrome, EWMH focus handling.
-  *Acceptance:* two shrike apps under Kestrel; focus follows EWMH;
+- **S4.1 — WM skeleton.** Kestrel as a argentum app: decorated windows
+  via Argentum chrome, EWMH focus handling.
+  *Acceptance:* two argentum apps under Kestrel; focus follows EWMH;
   screendump shows decoration.
 - **S4.2 — global menubar + menu IPC.** AF_UNIX session-socket protocol
   (§5/§6); menubar model published; picks dispatch to app actions.
@@ -143,7 +143,7 @@ reference-app + a11y gate.
 
 - **S5.1 — default-session boot.** Kestrel boots as the default session
   under `make run-uefi` (EMWM replacement; no demo-client fallback).
-  *Acceptance:* the standard image boots to the Shrike desktop
+  *Acceptance:* the standard image boots to the Argentum desktop
   (screendump + interactive log).
 - **S5.2 — S5 gate.** *Acceptance:* original S5 acceptance —
   interactive desktop on the standard image (FSH skeleton, reference
@@ -153,7 +153,7 @@ reference-app + a11y gate.
 
 - This split does **not** change what S0–S5 deliver — it changes *how
   work proceeds through them* (execution granularity + per-step
-  acceptance). shrike-plan §7 remains the milestone reference; this doc
+  acceptance). argentum-plan §7 remains the milestone reference; this doc
   is the working breakdown.
 - Plan §469's L0–L7 remain the canonical *class-construction* order.
   The split only re-homes their first slices: L0/L1-session and L3

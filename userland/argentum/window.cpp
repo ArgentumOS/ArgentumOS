@@ -1,4 +1,4 @@
-/* shrike/window.cpp — the Shrike Window object.
+/* argentum/window.cpp — the Argentum Window object.
  *
  * S0.2: creates + maps a real X11 window and fills it with a solid
  * color through core protocol (XPutImage of a depth-24 XRGB image — no
@@ -6,13 +6,13 @@
  * S0.3: selects the input events and registers in the Application's
  * window map so run() can dispatch to the responder virtuals.
  */
-#include <shrike/shrike.h>
-#include <shrike/shrike_p.h>
+#include <argentum/argentum.h>
+#include <argentum/argentum_p.h>
 
 #include <cstdlib>
 #include <cstring>
 
-namespace shrike {
+namespace argentum {
 
 Window::Window()
 {
@@ -171,4 +171,4 @@ Window::height() const
 	return impl_->height;
 }
 
-} /* namespace shrike */
+} /* namespace argentum */

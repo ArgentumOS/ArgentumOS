@@ -1,30 +1,30 @@
-/* shrike/shrike.h — Shrike toolkit public API.
+/* argentum/argentum.h — Argentum toolkit public API.
  *
- * Shrike is FNX's from-scratch C++ GUI toolkit (docs/design/shrike-plan.md):
+ * Argentum is FNX's from-scratch C++ GUI toolkit (docs/design/argentum-plan.md):
  * Cocoa-resemblant semantics under C++17, libc++, exceptions + RTTI.
  *
  * The public surface stays X11-free (no Xlib types in the header): the
- * session and window state live in private Impl structs (shrike_p.h,
- * compiled into libshrike.so.1). Apps include only this header and link
- * -lshrike.
+ * session and window state live in private Impl structs (argentum_p.h,
+ * compiled into libargentum.so.1). Apps include only this header and link
+ * -largentum.
  *
- * S0.2 (docs/design/shrike-milestone-split.md): Application opens the
+ * S0.2 (docs/design/argentum-milestone-split.md): Application opens the
  * X session, Window creates + maps a real X11 window, and the solid
  * background is blitted with core protocol (XPutImage — no XRender/Xft
  * client lib). Text + .conf arrive in S0.4/S0.5; the event loop in S0.3.
  */
-#ifndef FNX_SHRIKE_SHRIKE_H
-#define FNX_SHRIKE_SHRIKE_H
+#ifndef FNX_ARGENTUM_ARGENTUM_H
+#define FNX_ARGENTUM_ARGENTUM_H
 
 #include <cstdint>
 
-#define SHRIKE_VERSION_MAJOR 0
-#define SHRIKE_VERSION_MINOR 3
-#define SHRIKE_VERSION_PATCH 0
+#define ARGENTUM_VERSION_MAJOR 0
+#define ARGENTUM_VERSION_MINOR 3
+#define ARGENTUM_VERSION_PATCH 0
 
-#define SHRIKE_VERSION "0.3.0"
+#define ARGENTUM_VERSION "0.3.0"
 
-namespace shrike {
+namespace argentum {
 
 /* Mirrors NSApplication / the global NSApp. The single app object owns
  * the X session (Display connection + the event loop). Constructed on
@@ -34,7 +34,7 @@ class Application {
 public:
 	static Application &shared();
 
-	/* toolkit version, e.g. "0.3.0" (SHRIKE_VERSION) */
+	/* toolkit version, e.g. "0.3.0" (ARGENTUM_VERSION) */
 	const char *version() const;
 
 	/* Open the X session. displayName NULL uses $DISPLAY (":0" on the
@@ -70,10 +70,10 @@ private:
 /* Modifier flags carried by key/mouse events (subset of the X11
  * modifier state, translated at dispatch). */
 enum : unsigned int {
-	SHRIKE_MOD_SHIFT = 1 << 0,
-	SHRIKE_MOD_CTRL  = 1 << 1,
-	SHRIKE_MOD_ALT   = 1 << 2,
-	SHRIKE_MOD_META  = 1 << 3,
+	ARGENTUM_MOD_SHIFT = 1 << 0,
+	ARGENTUM_MOD_CTRL  = 1 << 1,
+	ARGENTUM_MOD_ALT   = 1 << 2,
+	ARGENTUM_MOD_META  = 1 << 3,
 };
 
 /* A key press or release (S0.3). keysym is the X11 keysym value (e.g.
@@ -145,6 +145,6 @@ private:
 	Impl *impl_;
 };
 
-} /* namespace shrike */
+} /* namespace argentum */
 
-#endif /* FNX_SHRIKE_SHRIKE_H */
+#endif /* FNX_ARGENTUM_ARGENTUM_H */

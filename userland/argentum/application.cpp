@@ -1,15 +1,15 @@
-/* shrike/application.cpp — the Shrike Application object.
+/* argentum/application.cpp — the Argentum Application object.
  *
  * S0.2: owns the X11 session (Display). init() opens the connection.
  * S0.3: run() dispatches X events to the registered windows' responder
  * virtuals until terminate() is called. text/.conf land in S0.4/S0.5.
  */
-#include <shrike/shrike.h>
-#include <shrike/shrike_p.h>
+#include <argentum/argentum.h>
+#include <argentum/argentum_p.h>
 
 #include <cstdlib>
 
-namespace shrike {
+namespace argentum {
 
 static Application *theApp = nullptr;
 
@@ -25,7 +25,7 @@ Application::shared()
 const char *
 Application::version() const
 {
-	return SHRIKE_VERSION;
+	return ARGENTUM_VERSION;
 }
 
 bool
@@ -49,7 +49,7 @@ Application::init(const char *displayName)
 		char buf[128];
 
 		XGetErrorText(e->display, e->error_code, buf, sizeof(buf));
-		fprintf(stderr, "SHRIKE: X error op=%d code=%d (%s) res=%lu\n",
+		fprintf(stderr, "ARGENTUM: X error op=%d code=%d (%s) res=%lu\n",
 			e->request_code, e->error_code, buf,
 			(unsigned long) e->resourceid);
 		return 0;
@@ -70,16 +70,16 @@ mods_from_state(unsigned int state)
 	unsigned int m = 0;
 
 	if (state & ShiftMask) {
-		m |= SHRIKE_MOD_SHIFT;
+		m |= ARGENTUM_MOD_SHIFT;
 	}
 	if (state & ControlMask) {
-		m |= SHRIKE_MOD_CTRL;
+		m |= ARGENTUM_MOD_CTRL;
 	}
 	if (state & Mod1Mask) {
-		m |= SHRIKE_MOD_ALT;
+		m |= ARGENTUM_MOD_ALT;
 	}
 	if (state & Mod4Mask) {
-		m |= SHRIKE_MOD_META;
+		m |= ARGENTUM_MOD_META;
 	}
 	return m;
 }
@@ -168,4 +168,4 @@ Application::~Application()
 	delete impl_;
 }
 
-} /* namespace shrike */
+} /* namespace argentum */

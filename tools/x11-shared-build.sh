@@ -140,7 +140,7 @@ ls -l "$P"/lib/libX11.so* "$P"/lib/libxcb.so* "$P"/lib/libXau.so* \
 	"$P"/lib/libXdmcp.so* "$P"/lib/libxkbfile.so* "$P"/lib/libpixman-1.so* \
 	"$P"/lib/libXfont2.so* "$P"/lib/libfontenc.so* "$P"/lib/libz.so* 2>&1
 
-# ================= text stack (Shrike, docs/design/shrike-plan.md) =====
+# ================= text stack (Argentum UIKit, docs/design/argentum-uikit-plan.md) =====
 # fontconfig -> HarfBuzz -> FreeType (+ libpng/expat leaves). Same
 # cross/prefix conventions as the X libs above: --host configure so
 # AC_TRY_RUN programs are skipped, PKG_CONFIG_PATH resolves the prefix.

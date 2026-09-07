@@ -1,15 +1,15 @@
-# Shrike catalog — Snow Leopard-parallel view inventory
+# Argentum catalog — Snow Leopard-parallel view inventory
 
-Status: **DECIDED (2026-09).** The Shrike view catalog *target* parallels
+Status: **DECIDED (2026-09).** The Argentum view catalog *target* parallels
 what AppKit offered circa macOS 10.6 (Snow Leopard) — in available
-classes and functionality, **not visual style** (FNX look is Shrike's
+classes and functionality, **not visual style** (FNX look is Argentum's
 own: pixman vector chrome, real-point units, `.conf` themes). Supersedes
 `docs/archive/momo-v1-widgets.md` (the minimal GTK-era v1 catalog) as
 the catalog reference. Naming follows the Cocoa-resemblant principle
-(docs/design/shrike-plan.md §2): class roles and semantics mirror
+(docs/design/argentum-uikit-plan.md §2): class roles and semantics mirror
 AppKit; names are C++-idiomatic.
 
-Everything is a `shrike::View` (single view tree, §4 of the plan). The
+Everything is a `argentum::View` (single view tree, §4 of the plan). The
 SL-era NSCell split is an *implementation detail we do not copy* — no
 cell model in v1; controls are views that draw their own chrome. Data
 views use a view-based model (SL gained these for tables in 10.7; the
@@ -17,11 +17,11 @@ user-facing class surface is the same).
 
 Accessibility is Tier 1: **every catalog view carries a11y metadata**
 (role, label, value, enabled/focused, help) from the v1 cut —
-parallel to AppKit's NSAccessibility protocol surface (shrike-plan §4).
+parallel to AppKit's NSAccessibility protocol surface (argentum-plan §4).
 
 ## Tier 1 — core controls (v1 cut)
 
-| AppKit (SL) | Shrike | Notes |
+| AppKit (SL) | Argentum | Notes |
 |---|---|---|
 | `NSButton` (push) | `Button` | push type |
 | checkbox / radio (`NSButton` types) | `Button::Type { Push, Checkbox, Radio }` | mirrors NSButton type semantics; radio grouping by parent Box (Cocoa's NSMatrix role) |
@@ -39,7 +39,7 @@ parallel to AppKit's NSAccessibility protocol surface (shrike-plan §4).
 
 ## Tier 2 — structure (v1 cut)
 
-| AppKit (SL) | Shrike | Notes |
+| AppKit (SL) | Argentum | Notes |
 |---|---|---|
 | `NSScrollView` | `ScrollView` | the wrapper data/rich views live in |
 | `NSSplitView` | `SplitView` | |
@@ -53,7 +53,7 @@ excluded (deprecated in later macOS; no FNX counterpart needed).
 
 ## Tier 3 — data & rich views (staged, not v1)
 
-| AppKit (SL) | Shrike | Phase | Notes |
+| AppKit (SL) | Argentum | Phase | Notes |
 |---|---|---|---|
 | `NSTableView` | `TableView` | first data view (v1-basic or immediately after) | columns, rows, selection, data-source/delegate; editing + sorting within its own milestone |
 | `NSTextView` | `TextView` | after TableView | multi-line rich text — SL's text system is large; v1 has single-line `TextField` only |

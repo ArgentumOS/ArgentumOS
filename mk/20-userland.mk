@@ -84,7 +84,7 @@ xfb64: $(FNXLIB_CONFIG)
 # toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
 # stage into a scratch root and merge every applet dir into System/Tools.
 TOYBOX64_STAGE = .build/toybox-root
-userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(FNXLIB_SHRIKE) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(FNXLIB_ARGENTUM) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -148,19 +148,19 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
 	$(MUSL64_CC) userland/tools/init.c -o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
-	# shrike_hello: Shrike S0.1 acceptance — dynamic link against the
-	# shared libshrike.so.1 (NEEDED libshrike.so.1 resolved from
+	# argentum_hello: Argentum S0.1 acceptance — dynamic link against the
+	# shared libargentum.so.1 (NEEDED libargentum.so.1 resolved from
 	# /System/Libraries at exec; no static copy).
 	$(MUSL64_CXX) -Iuserland -L$(CURDIR)/$(FNXLIB) \
-		userland/tests/shrike_hello.cpp -lshrike \
-		-o "$(ROOTFS64)/System/Shared/tests/shrike_hello"
-	# shrike_demo: Shrike S0.2 acceptance — opens a window on Xfb and
+		userland/tests/argentum_hello.cpp -largentum \
+		-o "$(ROOTFS64)/System/Shared/tests/argentum_hello"
+	# argentum_demo: Argentum S0.2 acceptance — opens a window on Xfb and
 	# blits a solid fill via core protocol (Window::fill/XPutImage).
 	# Run from the shell with DISPLAY=:0 once Xfb is up.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/shrike_demo.cpp -lshrike -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/shrike_demo"
+		userland/tests/argentum_demo.cpp -largentum -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/argentum_demo"
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
 		-I$(X11PREFIX)/include/harfbuzz \
 		-L$(X11PREFIX)/lib -L$(CURDIR)/$(FNXLIB) \
@@ -260,14 +260,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
-	# FNX's C++ GUI toolkit (first-party): libshrike.so.1 staged under
-	# the same rule — shrike_hello (S0.1) NEEDs it at runtime.
-	@cp $(FNXLIB_SHRIKE) "$(ROOTFS64)/System/Libraries/libshrike.so.1"
+	# FNX's C++ GUI toolkit (first-party): libargentum.so.1 staged under
+	# the same rule — argentum_hello (S0.1) NEEDs it at runtime.
+	@cp $(FNXLIB_ARGENTUM) "$(ROOTFS64)/System/Libraries/libargentum.so.1"
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the
 	# dynamic-C++ milestone). Same staging rule as the X stack: the glob
 	# carries the soname symlink + the versioned real file; the bare dev
-	# symlink is link-time only and skipped. cpp_smoke (and libshrike
+	# symlink is link-time only and skipped. cpp_smoke (and libargentum
 	# later) NEED these sonames at runtime.
 	@if [ ! -d "$(LLVM_CXX_PREFIX)/lib" ]; then \
 		echo "llvm-cxx prefix missing - run make llvm-cxx first"; \
@@ -276,7 +276,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@for l in libc++.so libc++abi.so libunwind.so; do \
 		cp -a $(LLVM_CXX_PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
-	# --- shared text stack (docs/design/shrike-plan.md): fontconfig +
+	# --- shared text stack (docs/design/argentum-uikit-plan.md): fontconfig +
 	# HarfBuzz + FreeType + the libpng/expat leaves, built SHARED into the
 	# X prefix. Only what a consumer NEEDs today is staged (libharfbuzz-
 	# subset/gobject are left out until something links them); the glob

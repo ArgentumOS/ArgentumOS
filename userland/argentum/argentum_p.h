@@ -1,21 +1,21 @@
-/* shrike/shrike_p.h — private Shrike internals (compiled into
- * libshrike.so.1; NOT installed / NOT part of the public API).
+/* argentum/argentum_p.h — private Argentum internals (compiled into
+ * libargentum.so.1; NOT installed / NOT part of the public API).
  *
  * The Impl structs declared in the public header are defined here so
  * the .cpp files can touch the X11 state without leaking Xlib types
- * into shrike.h. Apps never include this file.
+ * into argentum.h. Apps never include this file.
  */
-#ifndef FNX_SHRIKE_SHRIKE_P_H
-#define FNX_SHRIKE_SHRIKE_P_H
+#ifndef FNX_ARGENTUM_ARGENTUM_P_H
+#define FNX_ARGENTUM_ARGENTUM_P_H
 
-#include <shrike/shrike.h>
+#include <argentum/argentum.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
 #include <map>
 
-namespace shrike {
+namespace argentum {
 
 class Window;
 
@@ -26,7 +26,7 @@ struct Application::Impl {
 	bool running = false;		/* init() succeeded */
 	bool stopping = false;		/* terminate() requested */
 
-	/* X window id -> the shrike::Window that owns it (S0.3 event
+	/* X window id -> the argentum::Window that owns it (S0.3 event
 	 * dispatch). Window registers on init, unregisters on destroy. */
 	std::map<unsigned long, Window *> windows;
 };
@@ -42,6 +42,6 @@ struct Window::Impl {
 	bool mapped = false;
 };
 
-} /* namespace shrike */
+} /* namespace argentum */
 
-#endif /* FNX_SHRIKE_SHRIKE_P_H */
+#endif /* FNX_ARGENTUM_ARGENTUM_P_H */
