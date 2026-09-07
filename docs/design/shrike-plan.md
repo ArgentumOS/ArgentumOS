@@ -146,6 +146,31 @@ drawing code.
   parameterized engine gives free; richer themes are later `.conf`
   work, not code.
 
+### UI scale — accessibility multiplier (decided)
+
+**Decision (2026-09): for accessibility, one setting multiplies the
+physical sizes of *everything* equally.** Because every screen unit is a
+real-world point (§3 units), a uniform UI-scale factor is a single
+scalar on the conversion:
+
+- Effective pixels-per-point = **k · (PPI/72)**, where PPI/72 is the
+  true physical factor (unchanged, never corrupted by the setting) and
+  **k** is the accessibility multiplier from the accessibility `.conf`
+  domain (e.g. `accessibility.conf`: `ui-scale = 1.25`). k ≥ 1,
+  fractional allowed — vector rendering draws at any factor.
+- **Uniformity is the point**: one knob scales layout geometry, chrome
+  radii/bevels, font sizes (still points; Xft.dpi follows the
+  effective factor), spacing, and default window sizes equally — no
+  separate text/UI multipliers to drift apart.
+- Content caveat: pixel content (ImageView bitmaps) is *content*, not
+  geometry — not auto-scaled by k; content scaling stays a per-view
+  policy.
+- Scope: k is read at session start (Application::shared); a live
+  re-scale (re-derive the factor and relayout the view tree in points)
+  is a natural follow-up, not a v1 requirement.
+- Tested in the battery like the unit path: a k=2 (or k=2 with the
+  high-PPI override) boot + screendump exercises the scaled path.
+
 ## 4. Widgets + layout (v1 catalog, Snow Leopard-parallel)
 
 **View model (decided):** a single `shrike::View` tree — every view can
@@ -294,6 +319,7 @@ ordinary decisions that surface at execution.
 | libshrike distribution | **Shared `libshrike.so`** in /System/Libraries (dynamic world); static only for recovery-set carve-outs. |
 | First theme / chrome art | **Parameterized vector chrome over pixman** (supersedes the nine-tile plan) — theme = .conf parameters (colors, radii, bevels, gradients), no bitmap assets, scales free to any device scale. |
 | System font | **Liberation family** under /Shared/Fonts (metric-compatible, small footprint; weaker coverage than DejaVu accepted); swappable via theme .conf. |
+| UI scale (accessibility) | **Uniform multiplier k on all point units** — effective px/pt = k·(PPI/72), from the accessibility .conf domain; one knob scales everything equally (layout, chrome, fonts, spacing); content images excluded. |
 | Exceptions policy | **Adopt** libc++ exceptions/RTTI for shrike (cpp_smoke-proven; no carve-out). |
 | Reference app | The S2 reference app **becomes Settings** (app-model corpus). |
 
