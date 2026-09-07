@@ -17,6 +17,15 @@ config format, its own GUI stack, its own app packaging — and rejects
 external standards on principle, yet keeps enough POSIX surface to run
 mindfully-ported software.
 
+**Naming split (decided 2026-09)**: **FNX is the kernel** — the XNU
+analog (macOS = XNU kernel + Aqua/AppKit userland). The *OS as a
+product* — FNX kernel + FSH + userland + the Argentum desktop — is a
+separate, **still-open name slot** (candidate "Aven" parked there,
+undecided). Kernel identity stays FNX (boot banner, UTS_SYSNAME,
+env vars, docs); nothing about the product name is decided, and nothing
+about it needs to be soon. The two never compete: a product-name
+discussion is not a kernel rename.
+
 ## Philosophy & design principles
 
 - **Originality-first, clean break.** No X11, no FHS, no plists, no
