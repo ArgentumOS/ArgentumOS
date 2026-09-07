@@ -1,8 +1,11 @@
 # Shell evaluation — FNX system shell options
 
-Status: **EVALUATION (2026-09)** with a recorded **leaning: mksh as the
-sole system shell, with FNX modifications** — direction, revisit at
-adoption (the live `/bin/sh` today is dash, with FSH patches).
+Status: **EVALUATION (2026-09)** with a **decided direction: Finch — a
+fork of mksh as FNX's sole system shell** (working name **Finch**; the
+bird kin — FNX-phoenix family: Shrike the toolkit, Kestrel the WM,
+Finch the shell). "fsh" was considered and rejected: FSH already names
+the filesystem hierarchy (fsh-proposal, fshlint, FSH env) — a fatal
+brand collision. The live `/bin/sh` today is dash, with FSH patches.
 
 FNX has two shell jobs: `/bin/sh` (POSIX scripting, tiny, static-
 capable) and the **interactive login shell** (editing/history/
@@ -56,27 +59,37 @@ nushell LICENSE; bash COPYING; fish COPYING.
   entirely non-POSIX: no `/bin/sh` role; user-taste installs, not
   first-party ships.
 
-## Leaning: mksh as the sole system shell, with FNX modifications
+## Finch — the fork (name + scope, 2026-09)
 
-**One shell, both jobs** — mksh becomes `/bin/sh` *and* the interactive
-login shell; dash retires from the running system (its role subsumed).
-Reasons: permissive, musl-clean, single small codebase, editing built
-in, Android precedent, Korn superset means no sh-vs-interactive split
-to maintain. FNX modifications (recorded; scoped at adoption):
+**Finch = mksh core + a curated bash-like QoL layer + FNX
+modifications**, forked in the house pattern (Xfb-from-Xvfb,
+urxvt-from-rxvt): take the small permissive correct base, make it
+ours. Installed as **`finch`, aliased to `sh`** — the same binary serves
+`/bin/sh` (sh-mode via argv0) and the interactive login shell; dash
+retires from the running system (static-recovery sh during transition:
+open).
 
-- **FSH integration** (the dash-FSH patch pattern): environment,
-  home/PATH defaults under FSH (`/Users/<user>`, no `/etc`), PS1 and
-  startup defaults for the FNX desktop.
-- **sh-mode semantics**: verify mksh's behavior invoked as `sh`
-  (POSIX-mode strictness) — the sole-shell claim depends on it being a
-  correct `/bin/sh` for FNX scripts and configure runs.
-- **Init/rc under the config policy**: startup customization is
-  behaviour, not settings — lives in
-  `Application Support/` per the policy (domain-matched `<app>`
-  subdir), not a dotfile zoo.
-- **Recovery set**: a static mksh joins the static recovery carve-out
-  (replaces static dash there too, if dash is fully retired).
-- **fshlint**: zero-allow on the shell binary like all System/Tools.
+QoL layer, v1-provisional (curated; trim at adoption):
+
+- **Interactive**: tab-twice listing + a *simple* menu completion
+  (bash's full programmable-completion API is a defer); `!!`/`!$`/`!n`
+  history expansion; pre-prompt hooks (`PROMPT_COMMAND`-style);
+  bindable keys and colored-prompt helpers.
+- **Scripting**: `set -o pipefail` + `PIPESTATUS`; case modifiers
+  (`${var,,}`/`${var^^}`); herestrings `<<<`, `$(<file)`; `[[ -v var ]]`,
+  `${!prefix*}`, debug stack visibility.
+- **Deferred deliberately**: `declare -A` associative arrays (bash's
+  largest engine addition — a genuine feature project; scripts can be
+  written Korn-style), and bash's programmable-completion scripting.
+- **Guardrail**: purely additive — never breaks POSIX sh-mode (the
+  sole-shell claim depends on a correct `/bin/sh` for scripts and
+  configure runs); each addition earns its place against "one small
+  correct shell."
+
+FNX modifications (as previously scoped): FSH integration (the
+dash-FSH-patch pattern: env/home/PATH under FSH, PS1), init/rc in
+Application Support/ per the config policy (behaviour, not settings),
+static Finch in the recovery carve-out, fshlint zero-allow.
 
 ## Open items
 
