@@ -169,6 +169,31 @@ System font (resolved): the **Liberation family** ships under
 than DejaVu at the cost of weaker coverage. The theme .conf selects the
 family; the font path stays a parameter so the choice is swappable.
 
+### FreeType — full feature set (decided requirement)
+
+**User note (2026-09): full hinting and support for every bell,
+whistle, light, and gewgaw FreeType can support — if we use it, we use
+all of it.** This governs the FreeType *port* when it lands with the X
+stack, and the Xft session configuration in Shrike:
+
+- **Full hinting**: TrueType bytecode interpreter
+  (`TT_CONFIG_OPTION_BYTECODE_INTERPRETER`; patent-free since 2010) +
+  subpixel hinting (v40) + the autohinter. No hinting path disabled.
+- **Subpixel rendering**: `FT_CONFIG_OPTION_SUBPIXEL_RENDERING` +
+  LCD filtering (default filter); Xft/fontconfig session config sets
+  the rgba order and enables subpixel AA by default (interoperates
+  with the fractional px/pt unit model via lcd padding).
+- **All font formats FreeType supports**: sfnt/TrueType/CFF/Type1/
+  Type42, CID, PCF/BDF/PFR/WINFNT — nothing trimmed from the build.
+- **Color and variable fonts**: COLR/CBDT/sbix color glyphs and
+  gxvar/cffvar variable fonts enabled.
+- Honest qualifier — what "full FreeType" does *not* include: complex
+  script **shaping** (HarfBuzz) is a separate text stack outside
+  FreeType, and OT-SVG color glyphs need an external SVG renderer
+  hook. Both are adjacent open decisions, not part of this
+  requirement. (The same full-feature build also serves urxvt's Xft
+  text.)
+
 ## 5. Kestrel — the window manager (from-scratch; EMWM decision retired)
 
 EMWM was chosen because it was a **Motif app** — with the fork gone that
