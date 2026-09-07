@@ -211,10 +211,18 @@ stack, and the Xft session configuration in Shrike:
   LCD filtering (default filter); Xft/fontconfig session config sets
   the rgba order and enables subpixel AA by default (interoperates
   with the fractional px/pt unit model via lcd padding).
-- **All font formats FreeType supports**: sfnt/TrueType/CFF/Type1/
-  Type42, CID, PCF/BDF/PFR/WINFNT — nothing trimmed from the build.
+- **Font types — TTF and OTF only (exception to the full-feature
+  rule, 2026-09)**: sfnt with TrueType (`glyf`) or OpenType
+  (`CFF`/`CFF2`) outlines. Type1/Type42, CID, PCF/BDF, PFR, and
+  WINFNT loaders are **not needed** and may be trimmed from the
+  build. **WOFF (v1) if available** — it is an sfnt wrapper needing
+  zlib decompression (zlib is an X-stack dep); WOFF2 would need
+  brotli and is out unless brotli ever lands. The kernel console's
+  bitmap fonts (font-lat9) are a separate, non-FreeType path and
+  unaffected.
 - **Color and variable fonts**: COLR/CBDT/sbix color glyphs and
-  gxvar/cffvar variable fonts enabled.
+  gxvar/cffvar variable fonts enabled (both live *inside* TTF/OTF,
+  so they survive the type narrowing).
 - Honest qualifier — what "full FreeType" does *not* include: complex
   script **shaping** (HarfBuzz) is a separate text stack outside
   FreeType, and OT-SVG color glyphs need an external SVG renderer
