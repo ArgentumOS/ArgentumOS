@@ -429,7 +429,9 @@ libc++/libc++abi/libunwind in /System/Libraries):
   event loop; fontconfig/HarfBuzz/FreeType init; .conf load;
   libshrike.so staged.
   *Acceptance:* a shrike app opens a window on Xfb; keyboard/mouse
-  events round-trip; Xft text draws.
+  events round-trip; text draws via Shrike's own path — fontconfig →
+  HarfBuzz → FreeType glyph bitmaps, blitted with core protocol
+  (XPutImage/XCopyArea; no XRender/Xft client lib, §2/§3).
 - **S1 — Chrome engine**: the pixman vector layer (fills, gradients,
   rounded rects) + theme .conf loader; the points→pixels unit
   conversion (physical-size derived px/pt, §3). *Acceptance:* themed
