@@ -21,6 +21,7 @@
 
 #include <fnx/efi.h>
 #include <fnx/gop.h>
+#include <fnx/bootconf.h>
 
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *);
 void kernel64_main(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN, UINTN, EFI_SYSTEM_TABLE *);
@@ -31,17 +32,13 @@ struct fnx_gop_fb fnx_gop_fb;
 /*
  * M0 (docs/design/kernel-conf-plan.md): kernel.conf (ESP boot config) read
  * by the stub before ExitBootServices and handed to the kernel through the
- * image, like fnx_gop_fb: the real kernel reads it via the high-half alias.
- * The PE loader zero-fills .bss, so fnx_kconf.data is zeroed at entry and
- * fnx_kconf.size = 0 means "no kernel.conf" (compiled-in defaults).
- * The 8KB cap answers the plan's buffer-sizing open item: the v1 template
- * is ~1-2KB. c89: the struct must be non-static (cross-TU handoff).
+ * image, like fnx_gop_fb: the real kernel reads it via the high-half alias
+ * (struct fnx_kconf, include/fnx/bootconf.h). The PE loader zero-fills
+ * .bss, so fnx_kconf.data is zeroed at entry and fnx_kconf.size = 0 means
+ * "no kernel.conf" (compiled-in defaults). The 8KB cap answers the plan's
+ * buffer-sizing open item: the v1 template is ~1-2KB.
  */
-#define FNX_KCONF_MAX	8192
-struct fnx_kconf {
-	char data[FNX_KCONF_MAX];
-	unsigned int size;
-} fnx_kconf;
+struct fnx_kconf fnx_kconf;
 
 static void outb(unsigned short port, unsigned char val)
 {
@@ -212,7 +209,7 @@ static void putdec(unsigned int v)
  * on the boot volume, and reads it (bounded by FNX_KCONF_MAX) into the
  * fnx_kconf handoff. Absent file -> silent defaults (size stays 0).
  */
-static void esp_read_kernel_conf(EFI_HANDLE ImageHandle, EFI_BOOT_SERVICES *bs)
+static void esp_open_kernel_conf(EFI_HANDLE ImageHandle, EFI_BOOT_SERVICES *bs)
 {
 	EFI_GUID loaded_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 	EFI_GUID fs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
@@ -342,7 +339,8 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 
 	/* M0: kernel.conf read must happen before the memory map is taken -
 	 * file I/O allocations would invalidate the ExitBootServices key. */
-	esp_read_kernel_conf(ImageHandle, bs);
+	/* BISECT-B: open the file but perform no Read (size stays 0) */
+	esp_open_kernel_conf(ImageHandle, bs);
 
 	/* first call sizes the map (expected to return EFI_BUFFER_TOO_SMALL) */
 	map_size = 0;

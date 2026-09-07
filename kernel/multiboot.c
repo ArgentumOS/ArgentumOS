@@ -12,6 +12,8 @@
 #include <fnx/string.h>
 #include <fnx/limits.h>
 #include <fnx/kparms.h>
+#include <fnx/bootconf.h>
+#include "kconf.h"
 #include <fnx/i386elf.h>
 #include <fnx/ramdisk.h>
 #include <fnx/kexec.h>
@@ -526,5 +528,89 @@ void multiboot(unsigned int magic, unsigned int info)
 		video.columns = 80;
 		video.lines = 25;
 		video.memsize = 384 * 1024;
+	}
+}
+
+/*
+ * kernel_conf_apply() - apply kernel.conf (ESP boot config, M1). Runs
+ * after multiboot() has applied the compiled-in cmdline (the default
+ * layer) and before mount_root, so a kernel.conf key overrides the
+ * compiled-in default for that key; a real firmware cmdline, when one is
+ * plumbed later, will be parsed after this and win over both.
+ *
+ * The file was read by the EFI stub into fnx_kconf (bootconf.h). Keys are
+ * the flat/dot .conf keys from docs/design/config-design.md §12; each is
+ * mapped onto the same kparamval_table/check_param machinery the cmdline
+ * uses, so values are validated identically (bad value -> WARNING + the
+ * default layer survives for that key). Unknown keys warn and are
+ * ignored. Absent file (fnx_kconf.size == 0) -> no-op.
+ */
+void kernel_conf_apply(void)
+{
+	unsigned int off;
+	int nkeys;
+
+	if(!fnx_kconf.size) {
+		return;
+	}
+
+	off = 0;
+	nkeys = 0;
+	for(;;) {
+		struct kconf_kv kv;
+		int n, len, flag;
+
+		if(!kconf_next(fnx_kconf.data, fnx_kconf.size, &off, &kv)) {
+			break;
+		}
+		if(kv.kind == KCONF_KV_ERR) {
+			printk("kernel.conf: skipping malformed line.\n");
+			continue;
+		}
+
+		for(n = 0; kparamval_table[n].name; n++) {
+			len = strlen(kparamval_table[n].name);
+			flag = (kparamval_table[n].name[len - 1] != '=');
+			if(flag) {
+				if(!strcmp(kparamval_table[n].name, kv.key)) {
+					break;	/* flag key matches exactly */
+				}
+			} else if((int)strlen(kv.key) == len - 1 &&
+				  !strncmp(kv.key, kparamval_table[n].name,
+					   len - 1)) {
+				break;	/* 'root' matches the 'root=' entry */
+			}
+		}
+		if(!kparamval_table[n].name) {
+			printk("kernel.conf: unknown option '%s' ignored.\n", kv.key);
+			continue;
+		}
+
+		if(flag) {
+			/* boolean/flag option: only a true value sets it */
+			if(kv.kind == KCONF_KV_BOOL && kv.is_true) {
+				check_param(&kparamval_table[n], kv.value);
+				printk("kernel.conf: applied '%s'\n", kv.key);
+				nkeys++;
+			} else {
+				printk("kernel.conf: '%s' not set (value '%s').\n",
+				       kv.key, kv.value);
+			}
+			continue;
+		}
+
+		/* value option: same list validation the cmdline path uses
+		 * (check_param is the dispatcher's tail once the name matched) */
+		if(check_param(&kparamval_table[n], kv.value)) {
+			printk("kernel.conf: invalid value '%s' for '%s' - using default.\n",
+			       kv.value, kv.key);
+			continue;
+		}
+		printk("kernel.conf: applied '%s = %s'\n", kv.key, kv.value);
+		nkeys++;
+	}
+	if(nkeys) {
+		printk("kernel.conf: %d boot option(s) applied from the ESP file.\n",
+		       nkeys);
 	}
 }

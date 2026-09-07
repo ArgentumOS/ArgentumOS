@@ -21,6 +21,9 @@
 #include <fnx/serial.h>
 #ifdef __x86_64__
 #include <fnx/gop.h>
+#include <fnx/bootconf.h>
+
+extern void kernel_conf_apply(void);	/* kernel/multiboot.c */
 #endif
 #include <fnx/pci.h>
 #include <fnx/pic.h>
@@ -150,6 +153,10 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 	cpu_init();
 	multiboot(magic, info);
 	set_default_values();
+	/* kernel.conf (ESP boot config, M1): applied after the compiled-in
+	 * cmdline (default layer) and before mount_root. A future real
+	 * firmware cmdline will be parsed after this and win over both. */
+	kernel_conf_apply();
 #ifdef __x86_64__
 	gop_video_init();
 #endif

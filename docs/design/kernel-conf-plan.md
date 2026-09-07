@@ -1,7 +1,7 @@
 # kernel.conf — ESP boot config implementation plan
 
-Status: **PLAN (2026-09) — M0 DONE (commit in progress); M1-M3 not
-implemented. Design decided (docs/design/config-design.md §12,
+Status: **PLAN (2026-09) — M0 + M1 DONE; M2-M3 not implemented.
+Design decided (docs/design/config-design.md §12,
 docs/design/fsh-proposal.md §9.2 Q8).**
 
 ## 0. Goal
@@ -121,6 +121,41 @@ present.
 - Verified in QEMU: `kernel.conf` present → `[kernel.conf] read 127
   bytes` then a normal boot; absent → `[kernel.conf] kernel.conf not
   found (compiled-in defaults)` then a normal boot.
+
+### 3.2 M1 implementation notes (2026-09)
+
+- `kernel/kconf.c` (+ `kernel/kconf.h`): the read-only .conf subset
+  parser — line-based `key = value`, `#` comments, dot-nested keys kept
+  flat, bare/quoted strings, `true`/`false`, ints incl. `0x`, empty
+  `key =`, malformed lines skipped with a warning (never a halt). No
+  kernel dependencies: the same object builds on the host.
+- `kernel_conf_apply()` in `kernel/multiboot.c`: iterates `fnx_kconf`,
+  maps each key onto `kparamval_table` (value entries via `check_param`,
+  flags on a true value) and prints what it applied. Called from
+  `start_kernel()` after `multiboot()` + `set_default_values()` and
+  before `mount_root()`, so precedence is compiled-in cmdline (default
+  layer) < kernel.conf keys < a future real firmware cmdline. The parser
+  is generic over the whole param table: any existing kernel option
+  (root, console, rootfstype, recovery, ro, ramdisksize, ...) works from
+  the ESP file; unknown keys warn + are ignored.
+- Conformance corpus (`tools/kconf_corpus.sh` + `tools/kconf_corpus/`):
+  five files (basic, quoted, bool/int, empty, dot-keys) parsed by both
+  the kernel parser and the userland libconfig parser must produce the
+  same effective key/value listing — all-pass.
+- Guest-verified in QEMU:
+  - `recovery = true` → `kernel.conf: applied 'recovery'` → recovery
+    shell boots (an ESP file changed the boot; overrides the default
+    layer);
+  - invalid `root = /no/such/device` → `invalid value ... using default`
+    warning + normal boot with the compiled-in default root;
+  - valid `console`/`root` overrides → applied lines + normal boot.
+- v1 key note: `verbose` is not yet a kernel option (no consumer); it
+  currently lands in the unknown-key warn+ignore path. Add it when
+  something reads it.
+- Bug found by the corpus bring-up: `kconf_next()` looped forever at
+  EOF on a file not ending in a newline (EOF-on-blank fell through into
+  the parse section instead of returning 0). Fixed + covered by the
+  corpus driver's exit code.
 
 ## 4. Open items
 
