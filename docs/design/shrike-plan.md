@@ -54,11 +54,15 @@ X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 ```
 
 - **Display**: Xfb (unchanged). Shrike talks X11 + Xft + XRender only.
-- **Language**: C++17, clang++, libc++ (M2-proven). No C FFI in v1
+- **Language**: C++17, clang++, libc++ (M2-proven), with exceptions and
+  RTTI adopted (resolved — `cpp_smoke` proved the stack; no
+  -fno-exceptions carve-out in userland). No C FFI in v1
   (decided): apps are C++; a C surface can be added when a real
   non-C++ consumer exists (Swift-later would get its own bridge then).
-- **Distribution**: `libshrike.so` in /System/Libraries (dynamic world);
-  apps link it. Kernel untouched (stays C, freestanding).
+- **Distribution**: `libshrike.so` in /System/Libraries (dynamic world;
+  resolved: shared — the X stack and libconfig already live there);
+  static only for recovery-set carve-outs per the shared-libraries
+  plan. Kernel untouched (stays C, freestanding).
 - **Theming/config**: `.conf` via libconfig (already shared). No X
   resources anywhere.
 
@@ -85,7 +89,10 @@ size, edges stretched/tiled along one axis, center fills. Look is an
 - A theme = the 1x/2x asset pair + colors + fonts + slice specs. First
   theme deliberately utilitarian (solid fills, 1px bevels, small
   radii) — consistency is what nine-tile gives free; beauty is a later
-  art task, not a code task.
+  art task, not a code task. **First theme is a programmatic pass**
+  (resolved): the S1 engine renders the utilitarian look from
+  parameters — no bitmap assets are needed to prove nine-tile
+  correctness and 2x; real art arrives later as asset files.
 
 ## 4. Widgets + layout (v1 catalog, from the momo spec)
 
@@ -94,6 +101,11 @@ layout: packing order and springs/struts — the engine's two primitives);
 leaf widgets per `docs/design/momo-v1-widgets.md` (button, label, check, radio,
 slider, edit, scroll, menu…). Text via Xft. Widget states (idle/hover/
 armed/disabled/focused) map one-to-one onto theme tile sets.
+
+System font (resolved): the **Liberation family** ships under
+/Shared/Fonts — metric-compatible with Arial/Times, smaller footprint
+than DejaVu at the cost of weaker coverage. The theme .conf selects the
+family; the font path stays a parameter so the choice is swappable.
 
 ## 5. Kestrel — the window manager (from-scratch; EMWM decision retired)
 
@@ -122,8 +134,10 @@ swaps by focus; picks flow back as triggers.
 - **What flows**: menu tree (labels, item kinds action/check/radio/
   separator, enabled state, keyboard equivalents) + trigger events back
   + model diffs (enable/disable/relabel).
-- Wire format rides the existing .conf/config serializer (open item:
-  exact framing, §8).
+- Wire format rides the existing .conf/config serializer (resolved:
+  config framing — a menu tree is config-shaped and libconfig is
+  already shared; a dedicated codec stays possible behind the socket
+  without touching apps).
 
 ## 7. Milestones (order + acceptance; not scheduled)
 
@@ -136,8 +150,9 @@ swaps by focus; picks flow back as triggers.
   scale. *Acceptance:* themed frame+button render at 1x and at 2x
   (scale=2 boot + screendump in the battery).
 - **S2 — Widget core**: class hierarchy + two-container layout engine +
-  v1 catalog. *Acceptance:* an interactive reference app (Settings-ish)
-  exercises every catalog widget.
+  v1 catalog. *Acceptance:* an interactive reference app — the future
+  Settings (resolved: the S2 reference app becomes Settings per the
+  app-model corpus) — exercises every catalog widget.
 - **S3 — Input & text depth**: focus/traversal, keyboard equivalents,
   edit-widget text input. *Acceptance:* the reference app is fully
   operable without a mouse.
@@ -149,21 +164,19 @@ swaps by focus; picks flow back as triggers.
   (make run-uefi shows the shrike desktop; FSH skeleton, reference
   apps). *Acceptance:* interactive desktop on the standard image.
 
-## 8. Open items (decided at execution, noted for the record)
+## 8. Resolved open items (2026-09)
 
-- **Menu wire format**: framing of the AF_UNIX protocol (reuse the
-  config serializer vs a small dedicated codec).
-- **Shared vs static-first for libshrike** (dynamic world suggests
-  shared; static recovery-set carve-outs stay per the shared-libraries
-  plan).
-- **First theme art**: who draws the utilitarian 1x/2x set (even a
-  programmatic first pass is acceptable — chrome is asset-shaped).
-- **Fonts**: which family ships with FNX for Xft (open; system font
-  under /Shared/Fonts).
-- **Exceptions policy**: libc++ exceptions/RTTI are proven; adopt for
-  shrike (no -fno-exceptions carve-out planned in userland).
-- Whether the reference app becomes the future Settings (from the
-  app-model corpus).
+All plan-level open items are resolved; nothing remains open but the
+ordinary decisions that surface at execution.
+
+| Item | Resolution |
+|---|---|
+| Menu wire format | **.conf/config framing** — the menu tree rides the existing config serializer (config-shaped; libconfig already shared); a dedicated codec stays possible behind the socket. |
+| libshrike distribution | **Shared `libshrike.so`** in /System/Libraries (dynamic world); static only for recovery-set carve-outs. |
+| First theme art | **Programmatic first pass** — the S1 engine renders the utilitarian theme from parameters; real bitmap art arrives later as asset files. |
+| System font | **Liberation family** under /Shared/Fonts (metric-compatible, small footprint; weaker coverage than DejaVu accepted); swappable via theme .conf. |
+| Exceptions policy | **Adopt** libc++ exceptions/RTTI for shrike (cpp_smoke-proven; no carve-out). |
+| Reference app | The S2 reference app **becomes Settings** (app-model corpus). |
 
 ## 9. Relationship to prior docs
 
