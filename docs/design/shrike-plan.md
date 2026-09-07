@@ -119,13 +119,23 @@ drawing code.
   active theme comes from the config domain. Widget states
   (idle/hover/armed/disabled/focused) map one-to-one onto parameter
   sets.
-- **Geometry is logical; rendering is at device scale.** Session scale
-  stays one knob tied to `Xft.dpi`, and the same code path draws at any
-  scale — **no density buckets, no 1x/2x assets** (vector scales free;
-  the earlier 2x requirement is met by construction).
-- **Scale is tested, not assumed**: the battery boots at scale=2 with a
-  raised Xft.dpi and screendumps, exercising the device-scale path so
-  it never rots.
+- **Units are real-world points (decided principle).** Every Shrike
+  screen unit — layout geometry, chrome radii/bevels, font sizes — is
+  specified in **points** (1 pt = 1/72 inch). The pixels-per-point
+  factor is derived **transparently from the display's known physical
+  size and resolution** (px/pt = PPI/72), computed once at session
+  start from the display property (physical dimensions + mode
+  resolution; X11 `DisplayWidthMM/HeightMM` when authoritative,
+  else the display `.conf` domain for FNX-owned machines). Fallback
+  when physical size is unknown: 96 dpi (4/3 px/pt). No density
+  buckets, no 1x/2x assets, no scale knob — the same code path draws
+  at whatever px/pt the display implies, and the factor may be
+  fractional (pixman AA handles it). Xft.dpi is set to 72·px/pt so
+  text metrics agree with chrome points.
+- **The unit path is tested, not assumed**: the battery boots with a
+  display-physical-size override that forces a 2x px/pt (e.g. a
+  high-PPI panel) and screendumps, exercising the same single code
+  path at a different factor so it never rots.
 - Rendering rules: chrome composes into an offscreen pixmap per widget
   via pixman (coverage antialiasing), then blits server-side through
   XRender — same composite path as before.
@@ -197,9 +207,10 @@ swaps by focus; picks flow back as triggers.
   *Acceptance:* a shrike app opens a window on Xfb; keyboard/mouse
   events round-trip; Xft text draws.
 - **S1 — Chrome engine**: the pixman vector layer (fills, gradients,
-  rounded rects) + theme .conf loader; device-scale rendering (one
-  path, any scale). *Acceptance:* themed frame+button render at scale=1
-  and at scale=2 (raised Xft.dpi boot + screendump in the battery).
+  rounded rects) + theme .conf loader; the points→pixels unit
+  conversion (physical-size derived px/pt, §3). *Acceptance:* themed
+  frame+button render at the fallback factor and at a 2x px/pt
+  (physical-size override boot + screendump in the battery).
 - **S2 — Widget core**: the View tree + springs/struts + row/column
   Box + v1 catalog. *Acceptance:* an interactive reference app — the
   future Settings (resolved: the S2 reference app becomes Settings per
@@ -246,8 +257,9 @@ ordinary decisions that surface at execution.
 
 - No C FFI in v1; no foreign toolkit code; no compositor; no LGPL in
   the tree (all ours, MIT).
-- No fractional *art* scales and no density buckets (vector draws at
-  device scale); no bitmap chrome assets. No vector *paths* beyond the
+- No fractional *art* scales and no density buckets (points→pixels is
+  a single derived factor, fractional when the display implies it);
+  no bitmap chrome assets. No vector *paths* beyond the
   chrome shape set until something needs them (icons/art).
 - No Wayland (Xfb/X11 is the display decision).
 - The kernel stays C; shrike is userland-only.
