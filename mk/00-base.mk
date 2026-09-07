@@ -17,14 +17,6 @@ LD = $(CROSS_COMPILE)ld
 
 export LD INCLUDE
 
-# Default target: the 64-bit UEFI kernel.
-all: buildfnx
-	@echo "make: .build/64/fnx.efi ready (FNX, 64-bit only)"
-
-clean:
-	rm -rf .build/64 .build/64real
-	rm -f *.o fnx System.map.gz
-
 # ---------------------------------------------------------------------------
 # Development harness (QEMU / UEFI). See docs/port-longmode-uefi.txt.
 #

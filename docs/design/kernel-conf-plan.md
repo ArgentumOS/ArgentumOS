@@ -1,7 +1,8 @@
 # kernel.conf — ESP boot config implementation plan
 
-Status: **PLAN (2026-09) — design decided (docs/design/config-design.md §12,
-docs/design/fsh-proposal.md §9.2 Q8), nothing implemented.**
+Status: **PLAN (2026-09) — M0 DONE (commit in progress); M1-M3 not
+implemented. Design decided (docs/design/config-design.md §12,
+docs/design/fsh-proposal.md §9.2 Q8).**
 
 ## 0. Goal
 
@@ -81,6 +82,7 @@ present.
   boot-services buffer; extend the handoff to carry (ptr, size).
   Acceptance: boot logs show the file's byte count when present, and
   clean defaults when absent; verified in QEMU with a crafted ESP.
+  **DONE** — see §3.1 for the implementation notes.
 - **M1 — kernel `.conf` subset parser + kparms wiring**: parser in
   kernel/, mapping table for v1 keys, parse before `mount_root`,
   precedence per §2. Acceptance: `kernel.conf` with
@@ -97,6 +99,28 @@ present.
   (`/System/ESP/kernel.conf`) — requires the ESP mounted at
   `/System/ESP` (FSH Q2 mount, separate work). Until then the kernel
   reads the file; userland editing of it is not wired.
+
+### 3.1 M0 implementation notes (2026-09)
+
+- Reader: `esp_read_kernel_conf()` in `kernel/boot64/efi_stub.c`, called
+  from `efi_main` **before the memory map is taken** — file I/O allocates,
+  and any allocation between the map call and `ExitBootServices` would
+  invalidate the map key.
+- Handoff: `struct fnx_kconf { char data[8192]; unsigned int size; }`
+  (`.bss`, zeroed by the PE loader; `size = 0` means absent → defaults).
+  The 8KB static buffer answers the §4 pool-vs-page/sizing open item (a
+  v1 template is ~1-2KB); living in the image means no free-memory hazard
+  for the M1 parser.
+- The image's directory comes from `LoadedImageProtocol->FilePath`
+  (device-path walk, last component stripped), so multiple kernels each
+  keep their own `kernel.conf`.
+- Gotchas fixed during bring-up: `EFI_OPEN_PROTOCOL_GET_PROTOCOL` is
+  `0x02` (not `0x04`, which is TEST_PROTOCOL and does not return the
+  interface); `L"..."` literals are `wchar_t` (4-byte) under clang, so
+  CHAR16 paths are built by widening a plain char array.
+- Verified in QEMU: `kernel.conf` present → `[kernel.conf] read 127
+  bytes` then a normal boot; absent → `[kernel.conf] kernel.conf not
+  found (compiled-in defaults)` then a normal boot.
 
 ## 4. Open items
 

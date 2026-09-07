@@ -140,6 +140,9 @@ typedef EFI_STATUS (EFIAPI *EFI_ALLOCATE_POOL)(EFI_MEMORY_TYPE, UINTN, void **);
 typedef EFI_STATUS (EFIAPI *EFI_FREE_POOL)(void *);
 typedef EFI_STATUS (EFIAPI *EFI_EXIT_BOOT_SERVICES)(EFI_HANDLE, UINTN);
 
+typedef EFI_STATUS (EFIAPI *EFI_OPEN_PROTOCOL)(EFI_HANDLE, EFI_GUID *, void **, EFI_HANDLE, EFI_HANDLE, UINT32);
+#define EFI_OPEN_PROTOCOL_GET_PROTOCOL	0x02
+
 struct _EFI_BOOT_SERVICES {
 	EFI_TABLE_HEADER Header;		/* 0x00 */
 	EFI_RAISE_TPL RaiseTPL;			/* 0x18 */
@@ -205,6 +208,85 @@ typedef struct {
 	UINTN NumberOfTableEntries;		/* 0x68 */
 	void *ConfigurationTable;		/* 0x70 */
 } EFI_SYSTEM_TABLE;
+
+/* --- EFI Loaded Image Protocol (UEFI 2.x) ------------------------------ */
+
+#define EFI_LOADED_IMAGE_PROTOCOL_GUID \
+	{ 0x5b1b31a1, 0x9562, 0x11d2, \
+	  { 0x8e, 0x3f, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b } }
+
+typedef struct _EFI_LOADED_IMAGE_PROTOCOL {
+	UINT32			Revision;		/* 0x00 */
+	EFI_HANDLE		ParentHandle;		/* 0x08 */
+	EFI_SYSTEM_TABLE	*SystemTable;		/* 0x10 */
+	EFI_HANDLE		DeviceHandle;		/* 0x18: the boot volume */
+	struct _EFI_DEVICE_PATH	*FilePath;		/* 0x20: how this image was loaded */
+	void			*Reserved;		/* 0x28 */
+	UINT32			LoadOptionsSize;	/* 0x30 */
+	void			*LoadOptions;		/* 0x38 */
+	void			*ImageBase;		/* 0x40 */
+	UINT64			ImageSize;		/* 0x48 */
+	EFI_MEMORY_TYPE		ImageCodeType;		/* 0x50 */
+	EFI_MEMORY_TYPE		ImageDataType;		/* 0x58 */
+	EFI_STATUS (EFIAPI *Unload)(EFI_HANDLE);	/* 0x60 */
+} EFI_LOADED_IMAGE_PROTOCOL;
+
+/* --- EFI Simple File System + File protocols (UEFI 2.x) --------------- */
+
+#define EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID \
+	{ 0x0964e5b22, 0x6459, 0x11d2, \
+	  { 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b } }
+
+#define EFI_FILE_PROTOCOL_GUID \
+	{ 0x095e75b2d, 0x6d3f, 0x11d2, \
+	  { 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b } }
+
+#define EFI_FILE_MODE_READ	0x0000000000000001ULL
+#define EFI_FILE_MODE_WRITE	0x0000000000000002ULL
+
+typedef struct _EFI_FILE_PROTOCOL EFI_FILE_PROTOCOL;
+
+typedef EFI_STATUS (EFIAPI *EFI_FILE_OPEN)(EFI_FILE_PROTOCOL *, EFI_FILE_PROTOCOL **, CHAR16 *, UINT64, UINT64);
+typedef EFI_STATUS (EFIAPI *EFI_FILE_CLOSE)(EFI_FILE_PROTOCOL *);
+typedef EFI_STATUS (EFIAPI *EFI_FILE_READ)(EFI_FILE_PROTOCOL *, UINTN *, void *);
+typedef EFI_STATUS (EFIAPI *EFI_FILE_WRITE)(EFI_FILE_PROTOCOL *, UINTN *, void *);
+
+struct _EFI_FILE_PROTOCOL {
+	UINT64			Revision;		/* 0x00 */
+	EFI_FILE_OPEN		Open;			/* 0x08 */
+	EFI_FILE_CLOSE		Close;			/* 0x10 */
+	void			*Delete;		/* 0x18 */
+	EFI_FILE_READ		Read;			/* 0x20 */
+	EFI_FILE_WRITE		Write;			/* 0x28 */
+	void			*GetPosition;		/* 0x30 */
+	void			*SetPosition;		/* 0x38 */
+	void			*GetInfo;		/* 0x40 */
+	void			*SetInfo;		/* 0x48 */
+	void			*Flush;			/* 0x50 */
+	void			*OpenEx;		/* 0x58 */
+	void			*ReadEx;		/* 0x60 */
+	void			*WriteEx;		/* 0x68 */
+	void			*FlushEx;		/* 0x70 */
+};
+
+typedef struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
+	UINT64			Revision;		/* 0x00 */
+	EFI_STATUS (EFIAPI *OpenVolume)(struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *, EFI_FILE_PROTOCOL **);
+} EFI_SIMPLE_FILE_SYSTEM_PROTOCOL;
+
+/* --- Device path (enough to read LoadedImage->FilePath) --------------- */
+
+typedef struct _EFI_DEVICE_PATH {
+	UINT8	Type;
+	UINT8	SubType;
+	UINT16	Length;
+} EFI_DEVICE_PATH;
+
+#define DEVICE_PATH_TYPE_MEDIA		0x04
+#define MEDIA_FILEPATH_DP		0x04
+#define DEVICE_PATH_TYPE_END		0x7f
+#define END_ENTIRE_DEVICE_PATH_SUBTYPE	0xff
+
 
 typedef struct _EFI_BOOT_SERVICES EFI_BOOT_SERVICES;
 
