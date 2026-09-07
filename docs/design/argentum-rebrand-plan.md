@@ -22,9 +22,11 @@ happen before implementation starts.
   *brand* reference is "the Argentum kernel"; FNX is its codename.)
 - **FSH** (the Argentum System Hierarchy), and all identifiers that
   name machinery: Xfb, urxvt, fshlint, toybox/dash-era paths, musl.
-- **AGFS on-disk format**: the superblock magic ('BFS1'), layout, and
-  journal are unchanged — the rename is names/strings only, no format
-  bump, no migration (existing volumes mount as-is).
+- **AGFS on-disk format**: layout and journal are unchanged, but the
+  **superblock magic becomes 'AGFS'** (0x41474653) with a strict
+  mount — XBFS-magic ('XBFS', 0x58424653) volumes are rejected, the
+  same transition BFS1→XBFS already made (c0386ea). Dev-stage: no
+  migration path; existing test images are rebuilt by mkagfs.
 - Component bird-names survive only as history in archived/superseded
   docs, never in current identifiers or user-facing text.
 
@@ -47,6 +49,12 @@ happen before implementation starts.
   indices); `xbfs_init()` in `fs/filesystems.c`.
 - Fstype/mount string `"xbfs"` → `"agfs"` (kernel "mounted root
   device (agfs filesystem).", `filesystems.c` registration).
+- **Superblock magic** `XBFS_SUPER_MAGIC1` ('XBFS', 0x58424653) →
+  **'AGFS' (0x41474653)** in the driver, mkagfs.py, and agfscheck.py;
+  strict mount on 'AGFS' (XBFS-magic volumes rejected — the
+  BFS1→XBFS precedent). Inode magic and dual-copy superblock
+  checksums otherwise unchanged; volume-name default text
+  "XBFS" → "AGFS" (super.c).
 - Tools: `tools/mkxbfs.py` → `mkagfs.py`, `tools/xbfscheck.py` →
   `agfscheck.py`, `xbfs_jtest.c` → `agfs_jtest.c`; userland
   xbfsquery/xbfsqtest/xbfsattr/xbfsxattr/xbfsdir (tools/ after the
