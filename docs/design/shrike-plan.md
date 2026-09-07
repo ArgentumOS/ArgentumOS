@@ -159,6 +159,17 @@ functional. Not flat-modern, not mobile-style. Concrete target,
 expressed as theme parameters (provisional values set from the mockup
 at S1); the first theme *is* Argentum:
 
+- **Core element (decided): the rounded rectangle.** Almost every
+  Argentum UI element is drawn as one — buttons, text fields,
+  panels, tabs, progress tracks and fills, dock tiles, menubar
+  items, window chrome. The chrome engine therefore centers on
+  rounded-rect primitives (fill, gradient, outline, recessed/inset
+  variants); corner radius is the design language's most important
+  geometry token, from a small token set (base, small-for-tiny-
+  controls, none-for-dividers — no radius zoo). Content and 1px
+  structural lines (separators, carets) are the exceptions, not
+  chrome.
+
 - **Chrome**: light silver-grey, subtly textured/gradient surfaces;
   **thin dark-grey borders**; **small corner radii** (≈2–3 pt);
   gentle/restrained shadows; **subtle bevels**; recessed (inset)
