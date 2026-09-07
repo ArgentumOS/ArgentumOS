@@ -17,6 +17,75 @@ BFS-derived, but the format identity has already diverged — relevant to
 X-SSD4's format-version question in §A.4 and to §B's on-disk
 representation decision (D1).
 
+## Heritage: AGFS vs BeFS (as BeOS implemented it)
+
+What AGFS is, in one line: FNX's own from-scratch driver of the
+Be/Haiku **on-disk family** — the skeleton Be shipped in R4/R5 and Haiku
+preserved — carrying its own magic (`0x41474653`), which means the
+layout is in the family but BeOS/Haiku tools no longer mount it. Same
+architectural skeleton, different species. (Comparisons here are against
+*Be's* BeFS; Haiku's open-source driver differs from Be's in its own
+ways and is not the reference.)
+
+**Shared skeleton (what "BFS-derived" buys):** superblock at byte 512;
+allocation groups with per-AG bitmaps; `block_run {start, len}`
+allocation; the inode-as-data-block with 12 direct runs then an
+indirect stream; the inode's `small_data` resident-attribute tail;
+B+tree directories, attributes and indices; a `run_array` journal
+(`fs/agfs/journal.c` states the fidelity: "faithful Haiku on-disk
+log-entry format (run_array index blocks + data blocks)").
+
+**Where AGFS diverges from Be's BeFS:**
+
+1. **Superblock robustness — BeFS has none of this.** BeOS kept one
+   superblock at byte 512 (block 0 stayed boot code). AGFS keeps two
+   copies — copy A @512, copy B @block 0 (the boot sector, free on an
+   AGFS-only disk) — each carrying a sequence number + struct checksum,
+   with mount-time recovery of a corrupt copy A (`fs/agfs/super.c`;
+   a pre-dual-copy compat path still mounts older images). Pure FNX
+   crash-hardening, no BeOS analogue.
+2. **Block size — BeOS fixed, AGFS configurable.** BeFS shipped with
+   1024-byte blocks, not configurable. `tools/mkagfs.py` takes
+   `--block-size 1024|2048|4096` (X-SSD3(a), DONE 4f147b8). Same
+   on-disk grammar at any of the three sizes.
+3. **Journal — same format, different life.** The entry encoding
+   (run_array index block + length-1 data-block runs, log_start/log_end
+   semantics) is faithful to Be/Haiku. AGFS adds its own transaction
+   model — write-ahead, deferred apply: record the *new* content of each
+   modified block, sync the log, advance superblock log_end + DIRTY,
+   apply, clear (`fs/agfs/journal.c`) — plus a hardened log-full reset
+   path and replay fixes (e.g. dir nlink surviving remounts) that came
+   out of kill→replay cycles. Be's journal worked; it was not
+   adversarial crash-tested like AGFS's.
+4. **Indices and queries — the flagship, different master.** BeFS's
+   signature was attribute indexing + server-side queries feeding
+   Tracker's live views. AGFS implements the full engine
+   (`fs/agfs/{indices,query,attribute,xattr}.c`) but serves **POSIX
+   semantics**: extended attributes carrying posix ACLs and the like,
+   rather than BeOS's type-sniffing, attribute-centric desktop world.
+   Same machinery, different consumer. §B (Live Directories) is this
+   engine's next act on the FNX side.
+5. **Files, attributes, small_data — shared grammar, adjusted
+   priorities.** Both keep the inode in a data block, 12 direct runs +
+   indirect coverage beyond, and resident attrs in the `small_data`
+   tail (re-tuned in AGFS to `block_size − inode`); AGFS runs its own
+   allocation strategy over the per-AG bitmap (whole-bitmap caching,
+   contiguous-window search, §A's SSD work).
+6. **Context and tooling.** BeFS sat under a proprietary OS with native
+   `mkbfs`; AGFS is documented, host-side-python-tooled
+   (`mkagfs.py`, `agfscheck.py`, `agfs_jtest.c`), and crash-tested by
+   design. Dropped in the AGFS direction: BeOS/Haiku mountability (own
+   magic) and BeOS-only surface (file typing, Tracker semantics).
+   Kept and pushed: crash atomicity, configurable geometry, dual
+   superblock, and this enhancements backlog (§A–§I).
+
+The one-line summary: BeFS was the layout's *first* implementation —
+journaled, attribute-indexed, fixed-geometry, single-superblock, built
+for BeOS's metadata-centric desktop; AGFS is a *descendant*
+implementation of the same layout — configurable, dual-superblocked,
+crash-hardened, POSIX/xattr-serving, and no longer speaking Haiku's
+magic. The skeleton is Be's; the muscles are FNX's.
+
 ## A. SSD suitability
 
 The AGFS on-disk model (BeFS fork, own 'AGFS' magic) predates SSDs; this
