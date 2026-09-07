@@ -66,6 +66,40 @@ X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 - **Theming/config**: `.conf` via libconfig (already shared). No X
   resources anywhere.
 
+### API shape — Cocoa-resemblant (decided principle)
+
+**General principle (user, 2026-09): the API should resemble that of
+Cocoa as much as is practical under C++.** The design corpus already
+converged on this — global menubar = `NSApp.mainMenu`, springs/struts =
+`autoresizingMask` — and the principle now governs how the pure-C++
+API is named and shaped (the catalog re-expression in §4 follows it,
+superseding any GTK-flavored naming from the momo-era spec).
+
+Mapping of Cocoa idioms onto C++ Shrike (semantics mirror Cocoa; only
+the *mechanics* are C++):
+
+| Cocoa | Shrike C++ |
+|---|---|
+| `NSApplication` / `NSApp` | `shrike::Application::shared()` |
+| `NSWindow`, `NSView` + `addSubview:` | `shrike::Window`, `View::addSubview()` (view tree, `removeFromSuperview`, `drawRect`) |
+| `frame` / `autoresizingMask` (springs/struts) | the two-container layout engine (§4) — same model |
+| `NSButton` `setTitle:`, controls, `setEnabled:` | catalog widgets, same verbs (`setTitle()`, `setEnabled()`) |
+| `setTarget:`/`setAction:` | `std::function` action handler (e.g. `setAction([] {…})`) |
+| Delegate protocols (`NSWindowDelegate`, `NSTextFieldDelegate`) | callback interfaces (pure-virtual delegates) — same names/roles |
+| Responder chain / first responder | event virtuals (`keyDown`, `mouseDown`, …) propagating up the view tree |
+| `NSApplication` `mainMenu` | app menu model published to Kestrel (§5) |
+| `NSUserDefaults` | `.conf` domains (already the FNX config model) |
+| `NSApplicationMain` / run loop | `Application::run()` |
+| `NSNotificationCenter` | typed notification registry — v1 if a consumer appears |
+| `NSControl` action messages / target-action | `std::function` (`setAction`), as above |
+
+Carve-outs — what "practical under C++" excludes (recorded so the line
+is drawn deliberately): no selectors or message dynamism, no KVC/KVO
+(property observation), no `@property` syntax, no autorelease pools
+(RAII owns lifetime), exceptions instead of `NSException`. Naming is
+C++-idiomatic (`setTitle()` not `setTitle:`); the resemblance is in
+class roles, method verbs, and interaction patterns, not ObjC syntax.
+
 ## 3. Chrome — nine-tile bitmap engine (decided design)
 
 Widget chrome is a 3×3 bitmap slicing scheme: corners fixed at native
