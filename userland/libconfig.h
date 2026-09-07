@@ -195,6 +195,10 @@ config_err_t config_path(config_scope_t scope, const char *domain,
  *   key:    dot-separated segments, each ^[A-Za-z_][A-Za-z0-9_-]*$ */
 bool config_valid_domain(const char *domain);
 bool config_valid_key(const char *key);
+/* True for pinned single-file domains (config-design §12: 'system.kernel'
+ * lives on the ESP at /System/ESP/kernel.conf - no scope roots, no
+ * system/user/shared merge). */
+bool config_is_pinned(const char *domain);
 
 #ifdef __cplusplus
 }

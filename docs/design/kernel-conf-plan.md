@@ -1,6 +1,8 @@
 # kernel.conf — ESP boot config implementation plan
 
-Status: **PLAN (2026-09) — M0 + M1 + M2 DONE; M3 not implemented.
+Status: **PLAN (2026-09) — M0 + M1 + M2 + M3 (config side) DONE. The M3
+userland-edit half is wired; the ESP mount (FSH Q2/Q8 FAT work) is the
+remaining dependency for editing the REAL ESP file.
 Design decided (docs/design/config-design.md §12,
 docs/design/fsh-proposal.md §9.2 Q8).**
 
@@ -98,7 +100,8 @@ present.
   writes the ESP file via the pinned `system.kernel` alias
   (`/System/ESP/kernel.conf`) — requires the ESP mounted at
   `/System/ESP` (FSH Q2 mount, separate work). Until then the kernel
-  reads the file; userland editing of it is not wired.
+  reads the file; userland editing of it is not wired. **Config side
+  DONE (2026-09)** — see §3.4; the mount is the remaining dependency.
 
 ### 3.1 M0 implementation notes (2026-09)
 
@@ -175,6 +178,37 @@ present.
   EFI stub no longer logs "not found" on stock images — the file is
   always present; absent-file behavior remains the fallback for ESPs that
   predate M2.
+
+### 3.4 M3 implementation notes (2026-09, config side)
+
+- `userland/libconfig.c`: the pinned `system.kernel` alias — `domain_path()`
+  short-circuits to `<config_root>/System/ESP/kernel.conf` for that one
+  domain, ignoring the scope entirely. Because every scope resolves to the
+  same path, the scope merge degrades to a single file read (system scope
+  wins) and no scope-root `system.kernel.conf` is ever consulted. Honors
+  `FNX_CONFIG_ROOT` like every path, so host tests can re-root the alias
+  (in the guest `config_root() == "/"` gives the exact §12 path).
+- `config_is_pinned(domain)` exported in `userland/libconfig.h`; the
+  `config` CLI skips its user/shared shadow warnings for pinned domains
+  (there is no second scope to shadow the ESP file).
+- The canonical writer needs no ESP-specific handling: `config write` uses
+  the existing atomic writer (temp + fsync + rename) into the ESP
+  directory, exactly as §12 anticipates.
+- Unavailable semantics verified: with no file at `/System/ESP/kernel.conf`
+  the domain resolves to nothing (`read` reports not found), matching the
+  designed "unmounted ESP → domain unavailable".
+- Guest-verified through the `config` CLI on the pinned domain:
+  `write system.kernel recovery true -type bool` + `read` → `true`;
+  `write system.kernel root /System/Devices/...WholeDisk` + `read` → the
+  path; `cat /System/ESP/kernel.conf` shows the canonical file
+  (`recovery = true` / `root = ...`); `rm` removes it. The canonical file
+  the writer produces also parses cleanly under the kernel `.conf` parser
+  (round-trip). No scope-root file is consulted.
+- Caveat (the remaining M3 dependency): the in-guest test wrote the XBFS
+  root's `/System/ESP/kernel.conf` copy. Until the ESP is actually mounted
+  there (FSH Q2 — the FAT32 driver work), the file the `config` CLI edits
+  is NOT the ESP the firmware booted from; boot consumption still comes
+  from the real ESP via the M0 stub read.
 
 ## 4. Open items
 

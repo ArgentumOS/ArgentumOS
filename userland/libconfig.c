@@ -90,6 +90,26 @@ static void scope_dir_path(config_scope_t scope, char *out, size_t outsz)
 	}
 }
 
+/*
+ * Pinned (single-file) domains: config-design §12 'system.kernel' lives
+ * on the ESP at /System/ESP/kernel.conf, not under the three scope roots.
+ * The alias ignores the scope entirely (no system/user/shared merge) and
+ * honors FNX_CONFIG_ROOT like every other path, so host tests can re-root
+ * it (in the guest config_root() == "/" gives the exact §12 path).
+ */
+#define KERNEL_DOMAIN		"system.kernel"
+#define KERNEL_CONF_RELPATH	"/System/ESP/kernel.conf"
+
+static int pinned_domain(const char *domain)
+{
+	return domain && !strcmp(domain, KERNEL_DOMAIN);
+}
+
+bool config_is_pinned(const char *domain)
+{
+	return pinned_domain(domain);
+}
+
 /* Full on-disk path of a domain file in a scope. Returns 0 or
  * CONFIG_ERR_INVALID (bad scope/domain/truncation). */
 static config_err_t domain_path(config_scope_t scope, const char *domain,
@@ -97,6 +117,16 @@ static config_err_t domain_path(config_scope_t scope, const char *domain,
 {
 	size_t base;
 
+	if(pinned_domain(domain)) {
+		/* the ESP alias: one file, no scope roots (§12) */
+		if(strlen(KERNEL_CONF_RELPATH) + strlen(config_root()) + 1
+		   > outsz) {
+			return CONFIG_ERR_INVALID;
+		}
+		snprintf(out, outsz, "%s%s", config_root(),
+			 KERNEL_CONF_RELPATH);
+		return CONFIG_OK;
+	}
 	if(scope < CONFIG_SCOPE_USER || scope > CONFIG_SCOPE_SYSTEM) {
 		return CONFIG_ERR_INVALID;
 	}

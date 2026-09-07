@@ -484,6 +484,11 @@ static void warn_shadowed(const char *domain, const char *key,
 	if(winner != CONFIG_SCOPE_SYSTEM) {
 		return;
 	}
+	if(config_is_pinned(domain)) {
+		/* pinned domains are one file on the ESP: there is no
+		 * user/shared scope to shadow it */
+		return;
+	}
 	e = config_read_scope(CONFIG_SCOPE_USER, domain, key, &v);
 	if(e) {
 		e = config_read_scope(CONFIG_SCOPE_SHARED, domain, key, &v);
