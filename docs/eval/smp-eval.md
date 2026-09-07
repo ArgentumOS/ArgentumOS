@@ -1,6 +1,7 @@
 # FNX SMP evaluation — what multiple CPUs/cores would require
 
 Status: EVALUATION (requirements + scope), not an implementation plan.
+Execution plan (milestones, decisions, acceptance): `docs/design/smp-plan.md`.
 Current state: FNX is **strictly single-CPU by design** —
 `docs/reference/port-longmode-uefi.txt` lists SMP as an explicit non-goal ("for
 now"). This document evaluates what changes are required to support
