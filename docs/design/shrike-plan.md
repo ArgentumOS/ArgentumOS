@@ -30,7 +30,7 @@ changed, which is why from-scratch C++ is viable now and wasn't before:
    M2-proven in-guest (`cpp_smoke`), and the dynamic world is live
    (docs/design/shared-libraries-plan.md M0–M4). Objects, RAII, lambdas, and
    std::string are the language, not machinery to build.
-3. **The design corpus is stable.** The momo_* spec (two-container
+3. **The design corpus is stable.** The momo_* spec (view-tree
    layout, catalog, Xft text, .conf theming, WM-owned global menubar)
    survived every vehicle change. It was never Motif-specific.
 
@@ -45,7 +45,7 @@ apps (C++)                    shrike:: apps + Kestrel (the WM)
   │
 shrike (C++17, libc++)        toolkit core — MIT, ours
   ├─ chrome: nine-tile bitmap engine + theme loader
-  ├─ widgets: class hierarchy + two-container layout engine + v1 catalog
+  ├─ widgets: single View tree + springs/struts + row/column Box + v1 catalog
   ├─ text: Xft/FreeType, UTF-8
   ├─ session: .conf via libconfig (shared, /System/Libraries)
   └─ menu IPC: AF_UNIX session socket protocol
@@ -82,7 +82,7 @@ the *mechanics* are C++):
 |---|---|
 | `NSApplication` / `NSApp` | `shrike::Application::shared()` |
 | `NSWindow`, `NSView` + `addSubview:` | `shrike::Window`, `View::addSubview()` (view tree, `removeFromSuperview`, `drawRect`) |
-| `frame` / `autoresizingMask` (springs/struts) | the two-container layout engine (§4) — same model |
+| `frame` / `autoresizingMask` (springs/struts) | per-subview springs/struts in the view tree (§4) — same model |
 | `NSButton` `setTitle:`, controls, `setEnabled:` | catalog widgets, same verbs (`setTitle()`, `setEnabled()`) |
 | `setTarget:`/`setAction:` | `std::function` action handler (e.g. `setAction([] {…})`) |
 | Delegate protocols (`NSWindowDelegate`, `NSTextFieldDelegate`) | callback interfaces (pure-virtual delegates) — same names/roles |
@@ -130,11 +130,22 @@ size, edges stretched/tiled along one axis, center fills. Look is an
 
 ## 4. Widgets + layout (v1 catalog, from the momo spec)
 
-Class hierarchy in C++: `shrike::Widget` base; `Container` (two-container
-layout: packing order and springs/struts — the engine's two primitives);
-leaf widgets per `docs/design/momo-v1-widgets.md` (button, label, check, radio,
-slider, edit, scroll, menu…). Text via Xft. Widget states (idle/hover/
-armed/disabled/focused) map one-to-one onto theme tile sets.
+**View model (decided):** a single `shrike::View` tree — every view can
+host subviews (`addSubview`, Cocoa-style), so there is **no separate
+general Container class**; controls and chrome are all views. Layout
+primitives:
+
+1. **Springs/struts** (autoresizing) — each subview's growth flags
+   relative to its superview's bounds; the general mechanism, Cocoa's
+   model.
+2. **Row/column Box** — a view that arranges its subviews linearly
+   along one axis (packing order); the only arrangement widget needed
+   (the NSStackView-lite analog). Boxes nest like any view.
+
+v1 catalog leaf views per `docs/design/momo-v1-widgets.md` (button, label,
+check, radio, slider, edit, scroll, menu…), all Views. Text via Xft.
+View states (idle/hover/armed/disabled/focused) map one-to-one onto
+theme tile sets.
 
 System font (resolved): the **Liberation family** ships under
 /Shared/Fonts — metric-compatible with Arial/Times, smaller footprint
@@ -145,7 +156,7 @@ family; the font path stays a parameter so the choice is swappable.
 
 EMWM was chosen because it was a **Motif app** — with the fork gone that
 rationale is gone. The WM is a from-scratch C++ component, built **on
-shrike** — the toolkit's first consumer, exercising windows, containers,
+shrike** — the toolkit's first consumer, exercising windows, view trees,
 focus, input, and menus before any other app exists. It is small
 (a WM is far smaller than a toolkit) and it owns:
 
@@ -183,10 +194,10 @@ swaps by focus; picks flow back as triggers.
   flags), theme loader from /Shared/Themes, 1x/2x buckets, session
   scale. *Acceptance:* themed frame+button render at 1x and at 2x
   (scale=2 boot + screendump in the battery).
-- **S2 — Widget core**: class hierarchy + two-container layout engine +
-  v1 catalog. *Acceptance:* an interactive reference app — the future
-  Settings (resolved: the S2 reference app becomes Settings per the
-  app-model corpus) — exercises every catalog widget.
+- **S2 — Widget core**: the View tree + springs/struts + row/column
+  Box + v1 catalog. *Acceptance:* an interactive reference app — the
+  future Settings (resolved: the S2 reference app becomes Settings per
+  the app-model corpus) — exercises every catalog widget.
 - **S3 — Input & text depth**: focus/traversal, keyboard equivalents,
   edit-widget text input. *Acceptance:* the reference app is fully
   operable without a mouse.
