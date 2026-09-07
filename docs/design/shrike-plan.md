@@ -385,6 +385,73 @@ CollectionView, Browser, ComboBox, TokenField, DatePicker, RuleEditor
 are post-S5 additions. Each staged class ships with its own acceptance
 (same battery pattern), keeping the desktop gate bounded.
 
+### Class-hierarchy construction order (decided, 2026-09)
+
+The finer-grained order S2 (and later stages) actually follows. Shape
+first — mirroring AppKit's `NSControl` seam so interaction semantics
+live once, not per widget:
+
+```
+View                      tree, frame/pt, subviews, springs/struts,
+                          draw, responder virtuals, a11y metadata
+ ├── Control              target/action, enabled, focusable, a11y role
+ │     ├── Button         (Push / Checkbox / Radio types)
+ │     ├── PopUpButton    (presents Menu)
+ │     ├── Slider / Stepper / ProgressIndicator / LevelIndicator
+ │     ├── TextField (+ SecureTextField, SearchField)   [edit engine]
+ │     ├── SegmentedControl / ColorWell
+ ├── Box / SplitView / TabView / ScrollView             (containers)
+ ├── TableView                                          (data view, in ScrollView)
+ └── TextView                                           (rich text; shares edit engine)
+Menu / MenuItem                                         (NOT views — model objects)
+```
+
+`Control` marks *user-interactive* views; input-free views (Label,
+ImageView, ProgressIndicator) are plain `View` subclasses.
+
+Build order, each step verified before the next:
+
+- **L0 primitives** (no deps): Point/Size/Rect in points, Color, the
+  physical-derived px_per_pt converter. *Test: geometry/unit math.*
+- **L1 session + drawing**: `Application::shared()` (X, event loop,
+  session scale = display × accessibility k), the pixman offscreen
+  context (fill/gradient/rounded-rect), `Theme`. *Test: pixmap +
+  theme primitives screendump.*
+- **L2 View** (keystone): frame, subview tree, springs/struts
+  relayout, damage/redraw, responder virtuals, hit-testing, a11y
+  properties. *Test: bare window over a View hierarchy; role read
+  back.*
+- **L3 text pipeline** (parallelizable with L2): fontconfig →
+  HarfBuzz → FreeType (full-feature) → glyph runs. *Test: shape and
+  raster a complex-script string.*
+- **L4 Control + first leaves**: Control (no widget yet; fire a
+  `std::function` action programmatically) → **Label** (the pipeline
+  validator: text + theme + draw + a11y in one view — the catalog's
+  hello world) → **Button** (Control + focus/hover/chrome; then
+  Checkbox/Radio are free — same class, types) → **TextField + the
+  edit engine** (caret/selection/input — the first new subsystem;
+  SecureTextField/SearchField follow; S3 keyboard work starts here).
+- **L5 rest of Tier 1**, grouped by new machinery: Slider/Stepper
+  (drag+value), ProgressIndicator (view), SegmentedControl, ImageView
+  (plain view + content policy), LevelIndicator; Menu/MenuItem model
+  first, then PopUpButton.
+- **L6 structure**: Box (needed once the reference app has two
+  siblings), ScrollView, SplitView, TabView, then TableView-basic in
+  a ScrollView (columns/rows/selection, data-source/delegate).
+- **L7 rich views (staged)**: TextView — shares TextField's edit
+  engine, which is why TextField precedes it (the hard part is built
+  once, early).
+
+Principles: **validate the pipeline before the catalog** (Label/Button
+prove text+theme+draw+interaction end-to-end); **build shared
+machinery at its first consumer, not before** (edit engine at
+TextField, data-view machinery at TableView, springs/struts inside
+View because every sibling needs them); **input-free views fall out
+once View+theme exist** — ordering tracks where *new machinery*
+enters: Control → Button, edit engine → TextField, data model →
+TableView. A11y metadata rides every View from L2; keyboard/traversal
+rides Control's focus.
+
 ## 8. Resolved open items (2026-09)
 
 All plan-level open items are resolved; nothing remains open but the
