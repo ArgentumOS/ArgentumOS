@@ -124,3 +124,30 @@ No package manager (a static manifest + tarballs); no runtime network;
 no GPL tool on-FNX (make→bmake, gcc→clang, pkg-config→pkgconf,
 gawk→one-true-awk, GNU patch→permissive patch); no source control on
 FNX (source delivered as tarballs + patches).
+
+## 6. Keeping this manifest current (standing policy)
+
+**As software is added to FNX, record its self-hosting requirements
+here.** Every adoption (a port, a new package, a new third-party
+library) must update this document — the manifest is a living list, not
+a snapshot:
+
+1. **Admission line**: license (permissive — GPL/LGPL members are
+   blocked, name the permissive replacement), pinned version, musl +
+   clang build recipe.
+2. **New build-time requirements**: any tool the package needs to
+   *rebuild itself from source on-FNX* — generators (yacc/lex/gperf/
+   ragel), configure machinery (autotools/meson/cmake), scripting
+   (python is out — note the replacement), etc. If the tool isn't
+   already in §C/§D, that is a **manifest update, not an exception**:
+   find the permissive member of the family (bison→byacc,
+   make→bmake, pkg-config→pkgconf, gawk→onetrueawk) or record the gap.
+3. **Format/content notes**: new fonts, data files, or formats the
+   package ships that the self-hosted rebuild must also reproduce.
+4. The check is symmetric: a package is only *adopted for the system*
+   when its on-FNX rebuild path is complete and recorded.
+
+History of this discipline: CMake (BSD-3) ships so clang reconfigures
+in-guest; byacc (public domain) ships so awk's parser regenerates
+in-guest; awk = onetrueawk, patch = NetBSD usr.bin/patch — each gap was
+closed by finding the permissive member, never by accepting GPL.
