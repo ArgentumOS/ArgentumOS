@@ -139,8 +139,11 @@ drawing code.
   high-PPI panel) and screendumps, exercising the same single code
   path at a different factor so it never rots.
 - Rendering rules: chrome composes into an offscreen pixmap per widget
-  via pixman (coverage antialiasing), then blits server-side through
-  XRender — same composite path as before.
+  via pixman (coverage antialiasing), then blits with core-protocol
+  `XCopyArea`/`XPutImage` — **no XRender dependency in v1** (the
+  client stack lacks libXrender and pixman already rasterizes
+  client-side); XRender server-side compositing is an optional later
+  optimization, not a prerequisite.
 - First theme deliberately utilitarian (solid fills, 1px bevels via
   two-stop gradients, small radii) — consistency is what a shared
   parameterized engine gives free; richer themes are later `.conf`
