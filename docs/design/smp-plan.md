@@ -40,6 +40,7 @@ the clang/LLVM integrated-assembler style already used in
 | D4 | **ACPI MADT walker** (RSDP → RSDT/XSDT → MADT) for LAPIC IDs + IO-APIC; no legacy MP table. |
 | D5 | Target ≤ 8 vCPUs; **NUMA-optimality and hotplug out of scope** — NUMA hardware stays runnable as effectively-UMA (NUMA never affects correctness, only locality); memory topology (SRAT/SLIT) is not parsed. |
 | D6 | Test-and-set spinlock (`lock; xchg` with `pause`) + irqsave variants; x86 is TSO so explicit fences are rare; per-CPU area reached via GS + `swapgs`. |
+| D7 | **`NR_CPUS` sized for 32** (per-CPU area, GDT/IDT/TSS tables, online bitmap, trampoline rendezvous), **correctness verified at ≤ 8** (D5). The cap is a constant (kernel.conf override later) chosen so per-CPU structure layout is future-proof — growing it later means a re-layout of per-CPU tables, not a redesign. Sizing for 32 keeps x2APIC a genuine *>8-CPU* question rather than a cap artifact. |
 
 ## 3. Milestones
 
@@ -69,7 +70,8 @@ target. Order is a hard dependency chain.
 - Move into the per-CPU area: `current`, `need_resched`, APIC id/EOI,
   per-CPU stats. Per-CPU **GDT/IDT/TSS** with per-CPU `RSP0` (the
   `gdt64_set_rsp0` busy-bit dance becomes per-CPU; TR is per-CPU by
-  definition).
+  definition). All per-CPU tables are laid out for **`NR_CPUS = 32`**
+  (D7) from the first allocation.
 - Kernel stack discipline: per-CPU entry/interrupt stack as `tss.rsp0`;
   tasks keep their own kernel stacks via explicit context switch (the
   shape FNX already uses for tasks — only the *entry* stack is global
@@ -156,11 +158,9 @@ target. Order is a hard dependency chain.
 ## 6. Open items (decided at execution)
 
 - x2APIC (MSR) enablement timing — xAPIC first (D3); revisit when
-  > 8 CPUs or real hardware demands it.
+  real >8-CPU demand appears (no longer a cap artifact — see D7).
 - Spinlock fairness: TAS-with-pause vs ticket lock; revisit only if
-  starvation shows at 8 CPUs.
-- `nr_cpus` cap as a kernel.conf parameter (kconf M0–M2 are done — the
-  natural home).
+  starvation shows at the verification ceiling.
 - Whether the M2 MADT walker becomes the standing ACPI home (yes by
   default; keep it MADT-minimal until a second consumer appears).
 - IRQ affinity policy (all legacy IRQs on BSP first, per-IRQ affinity
