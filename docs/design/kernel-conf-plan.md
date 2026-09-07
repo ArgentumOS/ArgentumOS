@@ -1,6 +1,6 @@
 # kernel.conf — ESP boot config implementation plan
 
-Status: **PLAN (2026-09) — M0 + M1 DONE; M2-M3 not implemented.
+Status: **PLAN (2026-09) — M0 + M1 + M2 DONE; M3 not implemented.
 Design decided (docs/design/config-design.md §12,
 docs/design/fsh-proposal.md §9.2 Q8).**
 
@@ -93,7 +93,7 @@ present.
   template next to `BOOTX64.EFI`; guest harness boots with an
   overridden `root`/`console`/`verbose` from the file. Acceptance: one
   edited key changes the boot; the template round-trips through the
-  parser (canonical form accepted).
+  parser (canonical form accepted). **DONE** — see §3.3.
 - **M3 — `system.kernel` domain (dependent)**: the `config` CLI reads/
   writes the ESP file via the pinned `system.kernel` alias
   (`/System/ESP/kernel.conf`) — requires the ESP mounted at
@@ -156,6 +156,25 @@ present.
   EOF on a file not ending in a newline (EOF-on-blank fell through into
   the parse section instead of returning 0). Fixed + covered by the
   corpus driver's exit code.
+
+### 3.3 M2 implementation notes (2026-09)
+
+- `tools/esp-kernel.conf`: the commented template (canonical `.conf` form,
+  FSH header comments). Everything is commented out, so a stock
+  `make mkesp`/`run-uefi` ESP boots exactly as before; uncommenting a line
+  overrides that option for this kernel. mkesp.sh stages it next to
+  `BOOTX64.EFI` (`EFI/BOOT/kernel.conf`).
+- Template round-trip verified through BOTH parsers: the kernel parser and
+  the userland libconfig parser both reduce the unmodified template to
+  zero keys with no errors.
+- Guest-verified: stock ESP (template present, commented) → normal boot
+  (`[kernel.conf] read 1481 bytes`, no applied/warning lines, INIT alive);
+  uncommenting `recovery = true` in the ESP copy → `kernel.conf: applied
+  'recovery'` → recovery shell boots. One edited key changes the boot.
+- Note: every mkesp'd ESP now carries a (commented) `kernel.conf`, so the
+  EFI stub no longer logs "not found" on stock images — the file is
+  always present; absent-file behavior remains the fallback for ESPs that
+  predate M2.
 
 ## 4. Open items
 
