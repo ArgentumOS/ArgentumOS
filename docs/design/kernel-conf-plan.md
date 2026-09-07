@@ -1,10 +1,14 @@
 # kernel.conf — ESP boot config implementation plan
 
-Status: **PLAN (2026-09) — M0 + M1 + M2 + M3 (config side) DONE. The M3
-userland-edit half is wired; the ESP mount (FSH Q2/Q8 FAT work) is the
-remaining dependency for editing the REAL ESP file.
-Design decided (docs/design/config-design.md §12,
-docs/design/fsh-proposal.md §9.2 Q8).**
+Status: **DONE (2026-09) — M0..M3 complete.** M0 (EFI stub reader +
+fnx_kconf handoff), M1 (kconf parser + kernel_conf_apply), M2 (ESP
+template staged by mkesp.sh), M3 (config `system.kernel` domain). The
+FAT driver now mounts the ESP volume at /System/ESP (fatfs-driver-plan
+M0..M2c); M3's pinned alias points at the bootloader's own file
+(/System/ESP/EFI/BOOT/kernel.conf), so `config write system.kernel`
+edits the REAL ESP file and the next boot's firmware applies it —
+verified end-to-end (write `recovery = true`, reboot -> "kernel.conf:
+applied 'recovery'" -> the recovery shell).
 
 ## 0. Goal
 
@@ -33,7 +37,7 @@ present.
 - Decided design to implement: §12 (location next to the kernel,
   `.conf` grammar, cmdline overrides keys, small kernel-side
   flat/dot-nested parser accepting canonical output, `system.kernel`
-  pinned single-file domain aliased to `/System/ESP/kernel.conf` when
+  pinned single-file domain aliased to `/System/ESP/EFI/BOOT/kernel.conf` when
   the ESP is mounted).
 
 ## 2. Design
@@ -98,7 +102,7 @@ present.
   parser (canonical form accepted). **DONE** — see §3.3.
 - **M3 — `system.kernel` domain (dependent)**: the `config` CLI reads/
   writes the ESP file via the pinned `system.kernel` alias
-  (`/System/ESP/kernel.conf`) — requires the ESP mounted at
+  (`/System/ESP/EFI/BOOT/kernel.conf`) — requires the ESP mounted at
   `/System/ESP` (FSH Q2 mount, separate work). Until then the kernel
   reads the file; userland editing of it is not wired. **Config side
   DONE (2026-09)** — see §3.4; the mount is the remaining dependency.
@@ -182,7 +186,7 @@ present.
 ### 3.4 M3 implementation notes (2026-09, config side)
 
 - `userland/libconfig.c`: the pinned `system.kernel` alias — `domain_path()`
-  short-circuits to `<config_root>/System/ESP/kernel.conf` for that one
+  short-circuits to `<config_root>/System/ESP/EFI/BOOT/kernel.conf` for that one
   domain, ignoring the scope entirely. Because every scope resolves to the
   same path, the scope merge degrades to a single file read (system scope
   wins) and no scope-root `system.kernel.conf` is ever consulted. Honors
@@ -194,18 +198,18 @@ present.
 - The canonical writer needs no ESP-specific handling: `config write` uses
   the existing atomic writer (temp + fsync + rename) into the ESP
   directory, exactly as §12 anticipates.
-- Unavailable semantics verified: with no file at `/System/ESP/kernel.conf`
+- Unavailable semantics verified: with no file at `/System/ESP/EFI/BOOT/kernel.conf`
   the domain resolves to nothing (`read` reports not found), matching the
   designed "unmounted ESP → domain unavailable".
 - Guest-verified through the `config` CLI on the pinned domain:
   `write system.kernel recovery true -type bool` + `read` → `true`;
   `write system.kernel root /System/Devices/...WholeDisk` + `read` → the
-  path; `cat /System/ESP/kernel.conf` shows the canonical file
+  path; `cat /System/ESP/EFI/BOOT/kernel.conf` shows the canonical file
   (`recovery = true` / `root = ...`); `rm` removes it. The canonical file
   the writer produces also parses cleanly under the kernel `.conf` parser
   (round-trip). No scope-root file is consulted.
 - Caveat (the remaining M3 dependency): the in-guest test wrote the XBFS
-  root's `/System/ESP/kernel.conf` copy. Until the ESP is actually mounted
+  root's `/System/ESP/EFI/BOOT/kernel.conf` copy. Until the ESP is actually mounted
   there (FSH Q2 — the FAT32 driver work), the file the `config` CLI edits
   is NOT the ESP the firmware booted from; boot consumption still comes
   from the real ESP via the M0 stub read.

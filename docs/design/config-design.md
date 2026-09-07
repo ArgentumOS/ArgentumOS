@@ -273,7 +273,7 @@ ACCESS / NOMEM. See the header for the full contract.
 ## 12. `kernel.conf` — the kernel's boot configuration (decided)
 
 The kernel's own options live in a config file **next to the kernel on
-the ESP**: `/System/ESP/kernel.conf`, in the same `.conf` grammar as
+the ESP**: `/System/ESP/EFI/BOOT/kernel.conf`, in the same `.conf` grammar as
 everything else (§10) — one format for user config *and* kernel boot
 config. Example:
 
@@ -305,7 +305,7 @@ Editing (decided, Q5 owner review): `system.kernel` is a
 **pinned single-file domain**. It is the one config domain whose file
 lives outside the three scope roots — physically on the ESP, next to
 the kernel. libconfig carries a small built-in alias table:
-`system.kernel` → `/System/ESP/kernel.conf` (the ESP is mounted
+`system.kernel` → `/System/ESP/EFI/BOOT/kernel.conf` (the ESP is mounted
 at `/System/ESP` from FSH Q2). No `/System/Configuration` file or
 symlink exists for it.
 
@@ -316,7 +316,7 @@ symlink exists for it.
   claim to set something the kernel never saw). Resolution for this
   domain is: ESP file value, else the kernel's compiled-in default
   (D5-style), else nothing — never a user/shared merge.
-- **Reads/writes/keys** go straight to `/System/ESP/kernel.conf` like
+- **Reads/writes/keys** go straight to `/System/ESP/EFI/BOOT/kernel.conf` like
   any ordinary file domain: the existing atomic writer (temp + fsync +
   rename) needs no symlink or cross-filesystem special-casing, since
   temp and target share the ESP directory.

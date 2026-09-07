@@ -92,13 +92,17 @@ static void scope_dir_path(config_scope_t scope, char *out, size_t outsz)
 
 /*
  * Pinned (single-file) domains: config-design §12 'system.kernel' lives
- * on the ESP at /System/ESP/kernel.conf, not under the three scope roots.
+ * on the ESP at /System/ESP/EFI/BOOT/kernel.conf (where the EFI
+ * stub reads it), not under the three scope roots.
  * The alias ignores the scope entirely (no system/user/shared merge) and
  * honors FNX_CONFIG_ROOT like every other path, so host tests can re-root
  * it (in the guest config_root() == "/" gives the exact §12 path).
  */
 #define KERNEL_DOMAIN		"system.kernel"
-#define KERNEL_CONF_RELPATH	"/System/ESP/kernel.conf"
+/* the EFI stub reads kernel.conf from the bootloader's own directory
+ * (EFI/BOOT/kernel.conf on the ESP volume); /System/ESP mounts the
+ * volume ROOT, so the pinned path includes the EFI/BOOT prefix */
+#define KERNEL_CONF_RELPATH	"/System/ESP/EFI/BOOT/kernel.conf"
 
 static int pinned_domain(const char *domain)
 {

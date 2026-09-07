@@ -146,8 +146,19 @@ find and compiles as c89 with the rest of the kernel.
   FAT12 (1.44 MB) fixtures read in-guest (root/subdir/LFN/5000 B chain);
   create/write/mkdir/nested files persist and pass the host mtools
   cross-check for both variants.
-- **Open** — M3 (kernel.conf config domain targets the
-  mounted /System/ESP).
+- **M3** — committed (this milestone): the `config` CLI's `system.kernel`
+  pinned domain now targets the bootloader's own file on the mounted ESP
+  volume (`/System/ESP/EFI/BOOT/kernel.conf` — the earlier
+  `/System/ESP/kernel.conf` alias predated the ESP mount and pointed at
+  nothing). Verified end-to-end: `config write system.kernel recovery
+  true` persisted through the FAT driver into the ESP image (host
+  mtools confirms `recovery = true` at the top of the file), and the
+  next boot's EFI stub read it and the kernel printed "kernel.conf:
+  applied 'recovery'" and booted the recovery shell. kernel.conf-plan
+  M0..M3 all done; config-design §12 path references updated.
+- **Done** — the FAT driver milestones (M0 FAT32 read, M1 FAT32 writes,
+  M2a/M2b exFAT read/write, M2c FAT12/16 read/write) are all committed
+  (c76bd44, 37b83f5, 0184f13/781e679, 2ba5a2d, babc2dd).
 
 ## Kept from the abandoned wrapper attempt
 
