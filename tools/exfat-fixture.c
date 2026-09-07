@@ -45,6 +45,64 @@ static void fail(FRESULT r, const char *what)
 	exit(1);
 }
 
+static int verify(const char *path)
+{
+	FATFS fs;
+	DIR dj;
+	FILINFO fi;
+	FIL f;
+	FRESULT r;
+	char line[256];
+
+	if(!(g_fp = fopen(path, "r+b"))) {
+		return 1;
+	}
+	if((r = f_mount(&fs, "", 1)) != FR_OK) {
+		printf("VERIFY mount rc=%d\n", r);
+		return 1;
+	}
+	if((r = f_opendir(&dj, "/")) != FR_OK) {
+		printf("VERIFY opendir rc=%d\n", r);
+		return 1;
+	}
+	printf("VERIFY root:\n");
+	for(;;) {
+		if((r = f_readdir(&dj, &fi)) != FR_OK || !fi.fname[0]) {
+			break;
+		}
+		printf("  %c %9lu %s\n", (fi.fattrib & AM_DIR) ? 'd' : 'f',
+		       (unsigned long)fi.fsize, fi.fname);
+	}
+	f_closedir(&dj);
+	if((r = f_open(&f, "fnx-written.txt", FA_READ)) != FR_OK) {
+		printf("VERIFY fnx-written.txt rc=%d\n", r);
+		return 1;
+	}
+	{
+		unsigned int got = 0;
+
+		f_read(&f, line, sizeof(line) - 1, &got);
+		line[got] = 0;
+		printf("VERIFY fnx-written.txt: %.60s\n", line);
+	}
+	f_close(&f);
+	if((r = f_open(&f, "sub2/deep.txt", FA_READ)) == FR_OK) {
+		unsigned int got = 0;
+
+		f_read(&f, line, sizeof(line) - 1, &got);
+		line[got] = 0;
+		printf("VERIFY sub2/deep.txt: %.60s\n", line);
+		f_close(&f);
+	} else {
+		printf("VERIFY sub2/deep.txt rc=%d\n", r);
+		return 1;
+	}
+	f_mount(NULL, "", 0);
+	fclose(g_fp);
+	printf("VERIFY OK\n");
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	FATFS fs;
@@ -54,8 +112,11 @@ int main(int argc, char **argv)
 	char big[5000];
 	int i;
 
+	if(argc >= 2 && argv[2] && !strcmp(argv[2], "verify")) {
+		return verify(argv[1]);
+	}
 	if(argc < 2 || !(g_fp = fopen(argv[1], "r+b"))) {
-		fprintf(stderr, "usage: exfat-fixture <image>\n");
+		fprintf(stderr, "usage: exfat-fixture <image> [verify]\n");
 		return 1;
 	}
 	if((r = f_mount(&fs, "", 1)) != FR_OK) fail(r, "mount");
