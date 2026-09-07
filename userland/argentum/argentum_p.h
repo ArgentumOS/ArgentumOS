@@ -34,6 +34,13 @@ struct Application::Impl {
 	bool ftInited = false;
 	FT_Library ft = nullptr;	/* FT_Init_FreeType result */
 
+	/* S0.5 session values, resolved from the system.argentum domain at
+	 * init() (libconfig; system -> user -> shared precedence). */
+	bool confLoaded = false;	/* domain read attempted */
+	std::uint32_t winBg = 0x2288ee;	/* window.background default */
+	char fontFamily[96];		/* font.family */
+	unsigned int fontPx = 26;	/* font.size */
+
 	/* X window id -> the argentum::Window that owns it (S0.3 event
 	 * dispatch). Window registers on init, unregisters on destroy. */
 	std::map<unsigned long, Window *> windows;

@@ -8,9 +8,15 @@
 #include <argentum/argentum_p.h>
 
 #include <fontconfig/fontconfig.h>
+#include <libconfig.h>
 
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
+
+/* S0.5: the libconfig domain holding the session defaults (system
+ * scope of the FSH Configuration tree). */
+#define ARGENTUM_CONF_DOMAIN "system.argentum"
 
 namespace argentum {
 
@@ -65,6 +71,37 @@ Application::init(const char *displayName)
 		impl_->ftInited = true;
 		fprintf(stderr, "ARGENTUM: FreeType inited\n");
 	}
+
+	/* S0.5: resolve the session values from the system.argentum domain.
+	 * libconfig reads are lazy per key with system -> user -> shared
+	 * precedence; a missing domain/key falls back to the toolkit
+	 * default (logged as the resolved value either way). */
+	impl_->confLoaded = true;
+	{
+		int64_t bg = -1;
+		int64_t px = -1;
+		const char *fam = nullptr;
+
+		strcpy(impl_->fontFamily, "DejaVu Sans");
+		if (config_get_int(ARGENTUM_CONF_DOMAIN, "window.background",
+				   &bg) == CONFIG_OK && bg >= 0) {
+			impl_->winBg = (std::uint32_t) (bg & 0xffffff);
+		}
+		if (config_get_string(ARGENTUM_CONF_DOMAIN, "font.family",
+				      &fam) == CONFIG_OK && fam && *fam) {
+			strncpy(impl_->fontFamily, fam,
+				sizeof(impl_->fontFamily) - 1);
+			impl_->fontFamily[sizeof(impl_->fontFamily) - 1] = 0;
+		}
+		if (config_get_int(ARGENTUM_CONF_DOMAIN, "font.size",
+				   &px) == CONFIG_OK && px > 0) {
+			impl_->fontPx = (unsigned int) px;
+		}
+		fprintf(stderr,
+			"ARGENTUM: session background=0x%06x family=%s "
+			"size=%u\n",
+			impl_->winBg, impl_->fontFamily, impl_->fontPx);
+	}
 	/* Xlib's default error handler exits the process on any protocol
 	 * error. Install a reporting handler so a stray BadWindow etc.
 	 * prints and the loop survives (S0.3 debugging). */
@@ -84,6 +121,24 @@ bool
 Application::isRunning() const
 {
 	return impl_->running;
+}
+
+std::uint32_t
+Application::sessionBackground() const
+{
+	return impl_->winBg;
+}
+
+const char *
+Application::sessionFontFamily() const
+{
+	return impl_->fontFamily;
+}
+
+unsigned int
+Application::sessionFontSize() const
+{
+	return impl_->fontPx;
 }
 
 /* S0.3 modifier translation (X11 state -> the public flags). */

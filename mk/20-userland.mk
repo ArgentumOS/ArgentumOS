@@ -152,14 +152,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# shared libargentum.so.1 (NEEDED libargentum.so.1 resolved from
 	# /System/Libraries at exec; no static copy).
 	$(MUSL64_CXX) -Iuserland -L$(CURDIR)/$(FNXLIB) \
-		userland/tests/argentum_hello.cpp -largentum \
+		userland/tests/argentum_hello.cpp -largentum -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/argentum_hello"
 	# argentum_demo: Argentum S0.2 acceptance — opens a window on Xfb and
 	# blits a solid fill via core protocol (Window::fill/XPutImage).
 	# Run from the shell with DISPLAY=:0 once Xfb is up.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/argentum_demo.cpp -largentum -lX11 \
+		userland/tests/argentum_demo.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/argentum_demo"
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
 		-I$(X11PREFIX)/include/harfbuzz \
@@ -298,6 +298,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
 	@cp userland/configuration/system.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.xfb.conf"
+	# Argentum session defaults (S0.5, domain system.argentum): same
+	# Shared-scope convention; the S0.5 acceptance overrides via
+	# `config write -s system.argentum ...` (System wins on read).
+	@cp userland/configuration/system.argentum.conf \
+		"$(ROOTFS64)/Shared/Configuration/system.argentum.conf"
 	# --- the Admin home: the User Template, copied (Q9) ---
 	rm -rf "$(ROOTFS64)/Users"
 	@mkdir -p "$(ROOTFS64)/Users"

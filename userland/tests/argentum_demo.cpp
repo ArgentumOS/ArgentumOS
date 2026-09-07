@@ -14,6 +14,10 @@
  *
  * Built by the C++ wrapper against .build/x11-prefix and staged under
  * System/Shared/tests next to argentum_hello.
+ *
+ * S0.5: the demo reads its window background + default font family/size
+ * from the system.argentum domain (Application::session*()); changing
+ * the domain and re-running changes what it draws and logs.
  */
 #include <argentum/argentum.h>
 
@@ -24,7 +28,6 @@ static const int WIN_X = 120;	/* root position — must match the check */
 static const int WIN_Y = 90;
 static const unsigned WIN_W = 360;
 static const unsigned WIN_H = 240;
-static const unsigned FILL_RGB = 0x2288ee;	/* distinctive blue */
 
 class DemoWindow : public argentum::Window {
 public:
@@ -57,12 +60,16 @@ public:
 		fflush(stdout);
 	}
 
-	/* Expose/redraw: repaint the fill then the text run */
+	/* Expose/redraw: repaint the fill then the text run — both from
+	 * the system.argentum session values (S0.5), so a domain change
+	 * is visible on the next expose. */
 	void draw() override
 	{
-		fill(FILL_RGB);
-		drawText("DejaVu Sans", 24, 20,
-			 "Argentum S0.4", 26, 0xf5f6fa, 0x123456);
+		argentum::Application &a = argentum::Application::shared();
+		fill(a.sessionBackground());
+		drawText(a.sessionFontFamily(), 24, 20,
+			 "Argentum S0.5", a.sessionFontSize(),
+			 0xf5f6fa, a.sessionBackground());
 	}
 };
 
@@ -83,14 +90,17 @@ main()
 	}
 
 	DemoWindow w;
-	if (!w.init("Argentum S0.3", WIN_X, WIN_Y, WIN_W, WIN_H)) {
+	if (!w.init("Argentum S0.5", WIN_X, WIN_Y, WIN_W, WIN_H)) {
 		printf("ARGENTUM: window init failed\n");
 		return 1;
 	}
 	w.show();
-	w.fill(FILL_RGB);
-	printf("ARGENTUM: window mapped (%ux%u at %d,%d rgb=%06x)\n",
-	       w.width(), w.height(), WIN_X, WIN_Y, FILL_RGB);
+	w.fill(app.sessionBackground());
+	printf("ARGENTUM: window mapped (%ux%u at %d,%d rgb=%06x)"\
+	       " family=%s size=%u\n",
+	       w.width(), w.height(), WIN_X, WIN_Y,
+	       app.sessionBackground(), app.sessionFontFamily(),
+	       app.sessionFontSize());
 	fflush(stdout);
 
 	/* event loop: dispatch until 'q' terminates the app */

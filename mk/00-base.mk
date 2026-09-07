@@ -196,9 +196,9 @@ $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argen
 	$(MUSL64_CXX) -fPIC -shared -Iuserland -I$(X11PREFIX)/include \
 		-I$(X11PREFIX)/include/freetype2 -I$(X11PREFIX)/include/harfbuzz \
 		-I$(X11PREFIX)/include/fontconfig \
-		-L$(X11PREFIX)/lib -Wl,-soname,libargentum.so.1 \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -Wl,-soname,libargentum.so.1 \
 		-o $@ $(ARGENTUM_SRCS) -lX11 \
-		-lfontconfig -lharfbuzz -lfreetype
+		-lfontconfig -lharfbuzz -lfreetype -lconfig
 	ln -sf libargentum.so.1 $(FNXLIB)/libargentum.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).

@@ -21,10 +21,10 @@
 #include <cstdint>
 
 #define ARGENTUM_VERSION_MAJOR 0
-#define ARGENTUM_VERSION_MINOR 4
+#define ARGENTUM_VERSION_MINOR 5
 #define ARGENTUM_VERSION_PATCH 0
 
-#define ARGENTUM_VERSION "0.4.0"
+#define ARGENTUM_VERSION "0.5.0"
 
 namespace argentum {
 
@@ -48,6 +48,15 @@ public:
 
 	/* true once init() succeeded (before terminate()) */
 	bool isRunning() const;
+
+	/* S0.5 session values resolved from the system.argentum domain at
+	 * init() (libconfig reads; system -> user -> shared precedence).
+	 * Fallbacks (used when the domain/key is absent):
+	 * window.background 0x2288ee, font.family "DejaVu Sans",
+	 * font.size 26. See userland/configuration/system.argentum.conf. */
+	std::uint32_t sessionBackground() const;	/* window.background */
+	const char *sessionFontFamily() const;	/* font.family */
+	unsigned int sessionFontSize() const;	/* font.size */
 
 	/* Event loop (S0.3): dispatch X events to the registered windows'
 	 * responder virtuals (keyDown/keyUp/mouseDown/mouseUp/draw) until
