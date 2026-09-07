@@ -209,8 +209,38 @@ Fixed-base dynamic exec in `fs/elf.c`:
   (lean: kernel).
 - Final shape of the static set (recovery shell + updater; anything
   else?).
-- libc/ld soname naming under FSH conventions.
+- ~~libc/ld soname naming under FSH conventions~~ — **resolved 2026-09
+  (§7.1)**.
 - ASLR: a later, separate milestone (additive to the fixed-base loader).
+
+### 7.1 Resolved — libc/ld naming + the library party split (2026-09)
+
+Decisions, recorded so the convention stops being an open item:
+
+- **libc stays unversioned and soname-less.** `libc.so` has no
+  `DT_SONAME` and no versioned filename; every binary `NEEDED`s
+  `libc.so` (musl's convention, and the FSH's own examples). This is a
+  deliberate exception, not an inconsistency: FNX is a closed world with
+  one libc and no third-party binary promises (see Non-goals), so
+  versioning — glibc's mechanism for running multiple ABI-incompatible
+  libcs — buys nothing. All *other* libraries follow the versioned
+  soname pattern (`libconfig.so.1`, upstream X sonames) with the dev
+  symlink staged beside the real file.
+- **The dynamic loader keeps its canonical name** `/System/Libraries/
+  ld-musl-x86_64.so.1`. It is a path, not a soname: the kernel reads it
+  from each binary's `PT_INTERP` and the link wrappers bake it, so a
+  rename would be a whole-world relink for branding only. (It is the
+  same object as `libc.so` — a hard link — since musl's libc *is* the
+  interpreter.)
+- **Party split, defined.** "First-party" means *ships with the OS in
+  the default install*; `/Shared/*` is for what a third party — the user
+  or sysadmin — installs later. So `/System/Libraries` correctly holds
+  libc, `libconfig.so.1`, and the bundled X platform (`libX11`,
+  `libxcb`, pixman, `libXfont2`, `libXau`, `libXdmcp`, `libxkbfile`,
+  `libz`); `/Shared/Libraries` stays empty until something is installed
+  outside the default image. The loader search path spans both
+  (`System/Libraries` + `Shared/Libraries`), so later third-party
+  installs need no kernel change.
 
 ## 8. Non-goals
 
