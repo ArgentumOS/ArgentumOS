@@ -126,7 +126,25 @@ index is updated once rather than twice.
 - Bird names in *archived* records stay (history); only current
   identifiers and user-facing text change.
 
-## 6. Final identity table (target state)
+## 6. AGFS partition identity (decided note, 2026-09)
+
+Three distinct identifiers; staged by when they are needed:
+
+1. **GPT partition type GUID** — mandatory by the GPT spec the moment
+   FNX *creates* a partition; none needed today (dev AGFS images are
+   whole-disk, superblock at sector offset 512, no partition table).
+   Register a fixed **AGFS type GUID** when partition tooling lands.
+2. **GPT partition unique GUID** — the entry's own identity, used for
+   **mount-by-GUID as ONE addressing option, not the only one**:
+   mount-by-device (`Disk0/PartitionN`) stays first-class; GUID
+   addressing serves the cases where device identity is unstable
+   (reordered controllers, multiple AGFS volumes). Both are keys a
+   `system.mounts` domain record may use.
+3. **On-superblock AGFS volume UUID** — filesystem-level identity,
+   independent of GPT; neither BFS nor XBFS has one. Optional; add
+   only if a consumer appears (no speculative superblock fields).
+
+## 7. Final identity table (target state)
 
 | Layer | Brand | Engineering identifier |
 |---|---|---|
