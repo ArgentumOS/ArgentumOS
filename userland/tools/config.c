@@ -121,6 +121,10 @@ static void display_text(const config_value_t *v, char *out, size_t outsz)
 		}
 		break;
 	}
+	case CONFIG_TYPE_RECORD:
+		/* v2 placeholder; M2 prints the nested spelling */
+		snprintf(out, outsz, "{ ... }");
+		break;
 	}
 }
 
@@ -142,6 +146,9 @@ static void raw_text(const config_value_t *v, char *out, size_t outsz)
 		break;
 	case CONFIG_TYPE_ARRAY:
 		display_text(v, out, outsz);	/* comma-joined */
+		break;
+	case CONFIG_TYPE_RECORD:
+		display_text(v, out, outsz);
 		break;
 	}
 }

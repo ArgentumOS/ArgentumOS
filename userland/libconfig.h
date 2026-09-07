@@ -44,13 +44,17 @@ typedef enum config_scope {
 	CONFIG_SCOPE_SYSTEM,	/* /System/Configuration       */
 } config_scope_t;
 
-/* Value types, mirroring the .conf inference rules (docs §10). */
+/* Value types, mirroring the .conf inference rules (docs §10).
+ * CONFIG_TYPE_RECORD (v2, docs §10.1) marks a record value — a block
+ * (`key = { … }`) read back whole, or an anonymous element of a
+ * bracketed array literal. */
 typedef enum config_type {
 	CONFIG_TYPE_STRING = 0,
 	CONFIG_TYPE_BOOL,
 	CONFIG_TYPE_INT,
 	CONFIG_TYPE_FLOAT,
 	CONFIG_TYPE_ARRAY,
+	CONFIG_TYPE_RECORD,
 } config_type_t;
 
 typedef enum config_err {
@@ -68,9 +72,13 @@ typedef enum config_err {
  * A config value. `string` is a NUL-terminated copy owned by the
  * library; it stays valid until config_value_free() or until the next
  * call that returns a value from the same domain. `array.items` points
- * to `count` config_value_t elements (also lib-owned).
+ * to `count` config_value_t elements (also lib-owned). A
+ * CONFIG_TYPE_RECORD value is an ordered field map: `record.fields`
+ * points to `count` config_record_field_t entries, each a malloc'd
+ * single-segment name + lib-owned value (v2, docs §10.1).
  */
 typedef struct config_value config_value_t;
+typedef struct config_record_field config_record_field_t;
 struct config_value {
 	config_type_t type;
 	union {
@@ -82,7 +90,20 @@ struct config_value {
 			config_value_t *items;
 			size_t count;
 		} array;
+		struct {
+			config_record_field_t *fields;
+			size_t count;
+		} record;
 	} v;
+};
+
+/* One field of a CONFIG_TYPE_RECORD value (v2, docs §10.1). `name` is a
+ * malloc'd single-segment field name; `value` is the field's value.
+ * Both are lib-owned and stay valid until the enclosing value is freed
+ * with config_value_free(). */
+struct config_record_field {
+	char *name;
+	config_value_t value;
 };
 
 /* ------------------------------------------------------------------ */
@@ -116,6 +137,18 @@ config_err_t config_resolve(const char *domain, const char *key,
 /* Read from one explicit scope (no precedence fallback). */
 config_err_t config_read_scope(config_scope_t scope, const char *domain,
 			       const char *key, config_value_t *out);
+
+/*
+ * v2 (docs §10.1): look up child field `name` in a CONFIG_TYPE_RECORD
+ * value. On CONFIG_OK *out (may be NULL to test presence) is set to the
+ * field's value pointer, lib-owned and valid until config_value_free()
+ * on the containing value. Returns CONFIG_ERR_TYPE when `record` is not
+ * a CONFIG_TYPE_RECORD and CONFIG_ERR_NOT_FOUND when the field is
+ * absent.
+ */
+config_err_t config_record_child(const config_value_t *record,
+				 const char *name,
+				 config_value_t **out);
 
 /* Prefix read for dot-nested keys: "window" -> every "window.*" key.
  * Returns a NULL-terminated array of "window.x" strings via *keys.

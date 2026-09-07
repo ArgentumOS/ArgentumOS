@@ -229,6 +229,17 @@ static void value_free(config_value_t *v)
 			free(v->v.array.items);
 		}
 		break;
+	case CONFIG_TYPE_RECORD:
+		if(v->v.record.fields) {
+			size_t i;
+
+			for(i = 0; i < v->v.record.count; i++) {
+				free(v->v.record.fields[i].name);
+				value_free(&v->v.record.fields[i].value);
+			}
+			free(v->v.record.fields);
+		}
+		break;
 	default:
 		break;
 	}
@@ -268,6 +279,38 @@ static config_err_t value_copy(config_value_t *dst, const config_value_t *src)
 
 			if(e) {
 				dst->v.array.count = i;
+				value_free(dst);
+				return e;
+			}
+		}
+		break;
+	}
+	case CONFIG_TYPE_RECORD: {
+		size_t i;
+
+		if(src->v.record.count) {
+			dst->v.record.fields = calloc(src->v.record.count,
+						      sizeof(config_record_field_t));
+			if(!dst->v.record.fields) {
+				return CONFIG_ERR_NOMEM;
+			}
+		}
+		dst->v.record.count = src->v.record.count;
+		for(i = 0; i < src->v.record.count; i++) {
+			const config_record_field_t *sf =
+				&src->v.record.fields[i];
+			config_record_field_t *df = &dst->v.record.fields[i];
+			config_err_t e;
+
+			df->name = strdup(sf->name);
+			if(!df->name) {
+				dst->v.record.count = i;
+				value_free(dst);
+				return CONFIG_ERR_NOMEM;
+			}
+			e = value_copy(&df->value, &sf->value);
+			if(e) {
+				dst->v.record.count = i + 1;
 				value_free(dst);
 				return e;
 			}
@@ -673,11 +716,469 @@ static void blocks_free(char **blocks, int n)
 	free(blocks);
 }
 
-/* Parse whole-file text into an entry list (duplicate keys: last
- * occurrence wins, keeping the first occurrence's position). When
- * blocks/nblocks (when provided) receive the names of the top-level
- * explicit blocks (record domains) in the file, which the canonical
- * writer uses to choose nested spelling. */
+/* ---- v2 values: bracketed arrays + records (docs §10.1) ------------ */
+/*
+ * v2 grammar is a strict superset of v1. Two new value shapes arrive:
+ *  - a bracketed literal `[ … ]`: an explicit array whose elements may
+ *    be scalars (as v1) or records; items separated by commas, spanning
+ *    lines (the strict §10 grammar has one item or close per line).
+ *  - a record value `{ name = value … }`: anonymous (never flattened),
+ *    built into a CONFIG_TYPE_RECORD; records appear as array elements
+ *    and as values nested inside other records.
+ * Named blocks `key = { … }` keep their v1 flattening (prefix store), so
+ * record-domain consumers (pwconf/mounts) are untouched; only records
+ * spelled INSIDE a bracketed literal are tree values. A record element
+ * is line-structured: the first field may share the `{` line, later
+ * fields each start on their own line (blank/comment lines allowed),
+ * and `}` closes on its own line.
+ *
+ * The value parser consumes whole lines from the same (text,len,&off)
+ * cursor parse_conf uses, so a multi-line bracketed array cannot be
+ * handled by the one-line parse_value(); parse_conf calls v2_parse_value
+ * when the value begins with '['.
+ */
+struct v2src {
+	const char *text;
+	size_t len;
+	size_t *off;		/* next unread byte (a line start) */
+	char line[CONF_MAX_LINE + 1];	/* last line pulled */
+	const char *p;		/* scan cursor within line */
+};
+
+/* Pull the next physical line into s->line (trimmed: CR + trailing WS
+ * removed) and point s->p at it. Returns 1 on a new line, 0 at EOF,
+ * -1 if a line is overlong. Blank/comment lines are NOT skipped here;
+ * callers decide (parse_record skips them between fields). */
+static int v2_pull(struct v2src *s)
+{
+	size_t n = 0;
+
+	if(*s->off >= s->len) {
+		s->p = NULL;
+		return 0;
+	}
+	while(*s->off < s->len && s->text[*s->off] != '\n' &&
+	      n < CONF_MAX_LINE) {
+		s->line[n++] = s->text[(*s->off)++];
+	}
+	if(*s->off < s->len && s->text[*s->off] == '\n') {
+		(*s->off)++;
+	} else if(n == CONF_MAX_LINE && *s->off < s->len) {
+		s->p = NULL;
+		return -1;
+	}
+	while(n && (s->line[n - 1] == '\r' || s->line[n - 1] == ' ' ||
+		    s->line[n - 1] == '\t')) {
+		n--;
+	}
+	s->line[n] = '\0';
+	s->p = s->line;
+	return 1;
+}
+
+/* Skip spaces/tabs. If the scan reaches end-of-line, pull the next
+ * non-blank, non-comment line and continue. Returns 1 when a
+ * non-ws char is at *p, 0 at EOF, -1 on an overlong line. */
+static int v2_skip_ws(struct v2src *s)
+{
+	for(;;) {
+		while(*s->p == ' ' || *s->p == '\t') {
+			s->p++;
+		}
+		if(*s->p) {
+			return 1;
+		}
+		for(;;) {	/* pull the next non-empty line */
+			int r = v2_pull(s);
+
+			if(r <= 0) {
+				return r;
+			}
+			{
+				const char *q = s->p;
+
+				while(*q == ' ' || *q == '\t') {
+					q++;
+				}
+				if(*q && *q != '#') {
+					s->p = q;
+					return 1;
+				}
+				/* blank or comment: keep pulling */
+			}
+		}
+	}
+}
+
+static config_err_t v2_parse_value(struct v2src *s, config_value_t *out);
+static config_err_t v2_parse_record(struct v2src *s, config_value_t *out);
+static config_err_t v2_parse_array(struct v2src *s, config_value_t *out);
+
+/* Parse one scalar array element (quoted or bare) at *s->p; advances
+ * past it. Element chars exclude WS, ',', ']', '"', '{', '}'. */
+static config_err_t v2_parse_element(struct v2src *s, config_value_t *out)
+{
+	const char *p = s->p;
+	char tok[CONF_MAX_LINE];
+	size_t n = 0;
+	config_err_t e;
+
+	if(*p == '"') {
+		char *str;
+		const char *q;
+
+		e = parse_quoted(&p, &str);
+		if(e) {
+			return e;
+		}
+		memset(out, 0, sizeof(*out));
+		out->type = CONFIG_TYPE_STRING;
+		out->v.string = str;
+		s->p = p;
+		/* must be followed by ws, ',' or ']' */
+		q = p;
+		while(*q == ' ' || *q == '\t') {
+			q++;
+		}
+		if(*q && *q != ',' && *q != ']') {
+			value_free(out);
+			return CONFIG_ERR_PARSE;
+		}
+		return CONFIG_OK;
+	}
+	while(*p && *p != ',' && *p != ' ' && *p != '\t' && *p != ']' &&
+	      *p != '"' && *p != '{' && *p != '}' && *p != '[') {
+		if(n + 1 < sizeof(tok)) {
+			tok[n++] = *p;
+		} else {
+			return CONFIG_ERR_PARSE;
+		}
+		p++;
+	}
+	if(n == 0 || (*p && *p != ',' && *p != ' ' && *p != '\t' &&
+		     *p != ']' && *p != '{' && *p != '}' && *p != '[')) {
+		return CONFIG_ERR_PARSE;	/* empty or bad element */
+	}
+	tok[n] = '\0';
+	e = infer_scalar(tok, out);
+	if(e) {
+		return e;
+	}
+	s->p = p;
+	return CONFIG_OK;
+}
+
+/* ---- record field helpers ------------------------------------------ */
+
+static config_err_t v2_field_set(config_value_t *rec, const char *name,
+				 const config_value_t *val)
+{
+	size_t i;
+
+	for(i = 0; i < rec->v.record.count; i++) {
+		if(!strcmp(rec->v.record.fields[i].name, name)) {
+			config_value_t *dst = &rec->v.record.fields[i].value;
+
+			/* records are identity-bearing: a field may not
+			 * be both a leaf and a record, and duplicate
+			 * record values are parse errors (v2 §10.1) */
+			if(dst->type == CONFIG_TYPE_RECORD ||
+			   val->type == CONFIG_TYPE_RECORD) {
+				if(dst->type == CONFIG_TYPE_RECORD &&
+				   val->type == CONFIG_TYPE_RECORD) {
+					return CONFIG_ERR_PARSE; /* dup */
+				}
+				return CONFIG_ERR_PARSE; /* leaf vs record */
+			}
+			value_free(dst);
+			return value_copy(dst, val);
+		}
+	}
+	{
+		config_record_field_t *nf;
+		config_err_t e;
+
+		nf = realloc(rec->v.record.fields,
+			     (rec->v.record.count + 1) *
+			     sizeof(*nf));
+		if(!nf) {
+			return CONFIG_ERR_NOMEM;
+		}
+		rec->v.record.fields = nf;
+		nf[rec->v.record.count].name = strdup(name);
+		if(!nf[rec->v.record.count].name) {
+			return CONFIG_ERR_NOMEM;
+		}
+		memset(&nf[rec->v.record.count].value, 0,
+		       sizeof(nf[rec->v.record.count].value));
+		e = value_copy(&nf[rec->v.record.count].value, val);
+		if(e) {
+			free(nf[rec->v.record.count].name);
+			return e;
+		}
+		rec->v.record.count++;
+		return CONFIG_OK;
+	}
+}
+
+/* Parse one record field assignment; s->p is at the field name, the
+ * field must occupy the remainder of its line (nested [ … ] / { … }
+ * values may span lines and close on their own line). On success s->p
+ * is at the end of the value's closing line. */
+static config_err_t v2_parse_field(struct v2src *s, config_value_t *rec)
+{
+	const char *p0 = s->p;
+	const char *eq = strchr(p0, '=');
+	const char *ke;
+	char name[CONF_MAX_SEGMENT + 1];
+	size_t nl;
+	config_value_t v;
+	config_err_t e;
+	const char *valp;
+
+	while(*p0 == ' ' || *p0 == '\t') {
+		p0++;
+	}
+	if(!*p0 || *p0 == '#') {
+		return CONFIG_OK;	/* blank/comment */
+	}
+	if(!eq) {
+		return CONFIG_ERR_PARSE;
+	}
+	ke = eq;
+	while(ke > p0 && (ke[-1] == ' ' || ke[-1] == '\t')) {
+		ke--;
+	}
+	nl = (size_t)(ke - p0);
+	if(!nl || nl > CONF_MAX_SEGMENT || !valid_segment(p0, nl)) {
+		return CONFIG_ERR_PARSE;
+	}
+	memcpy(name, p0, nl);
+	name[nl] = '\0';
+	valp = eq + 1;
+	while(*valp == ' ' || *valp == '\t') {
+		valp++;
+	}
+	memset(&v, 0, sizeof(v));
+	if(*valp == '[') {
+		s->p = valp;
+		e = v2_parse_array(s, &v);
+	} else if(*valp == '{') {
+		s->p = valp;
+		e = v2_parse_record(s, &v);
+	} else {
+		e = parse_value(valp, &v);
+		if(!e) {
+			s->p = valp + strlen(valp);
+		}
+	}
+	if(e) {
+		return e;
+	}
+	/* value must end at the line end */
+	{
+		const char *t = s->p;
+
+		while(*t == ' ' || *t == '\t') {
+			t++;
+		}
+		if(*t) {
+			value_free(&v);
+			return CONFIG_ERR_PARSE;
+		}
+	}
+	e = v2_field_set(rec, name, &v);
+	value_free(&v);
+	return e;
+}
+
+/* Parse a record value. s->p is at '{'. The first field may follow '{'
+ * on the same line; subsequent fields each start on their own line;
+ * '}' (alone on its line) closes. */
+static config_err_t v2_parse_record(struct v2src *s, config_value_t *out)
+{
+	config_err_t rc = CONFIG_OK;
+	const char *q;
+
+	memset(out, 0, sizeof(*out));
+	out->type = CONFIG_TYPE_RECORD;
+	out->v.record.fields = NULL;
+	out->v.record.count = 0;
+	s->p++;		/* '{' */
+	q = s->p;
+	while(*q == ' ' || *q == '\t') {
+		q++;
+	}
+	if(*q == '}') {
+		/* empty record {} — leave any tail (',', ']') to the
+		 * caller (array loop) */
+		s->p = q + 1;
+		return CONFIG_OK;
+	}
+	if(*q) {
+		/* first field shares the '{' line */
+		s->p = q;
+		rc = v2_parse_field(s, out);
+		if(rc) {
+			goto fail;
+		}
+	}
+	for(;;) {
+		int r;
+		const char *p0;
+
+		r = v2_pull(s);
+		if(r <= 0) {
+			rc = CONFIG_ERR_PARSE;	/* unterminated record */
+			break;
+		}
+		p0 = s->p;
+		while(*p0 == ' ' || *p0 == '\t') {
+			p0++;
+		}
+		if(!*p0 || *p0 == '#') {
+			continue;	/* blank/comment */
+		}
+		if(*p0 == '}') {
+			/* record closed: leave any tail (',', ']')
+			 * to the caller (array loop) */
+			s->p = p0 + 1;
+			break;
+		}
+		s->p = p0;
+		rc = v2_parse_field(s, out);
+		if(rc) {
+			break;
+		}
+	}
+fail:
+	if(rc) {
+		value_free(out);
+	}
+	return rc;
+}
+
+/* Parse a bracketed array literal. s->p is at '['. Elements are scalars
+ * or records separated by commas; whitespace/blank lines may surround
+ * items; ']' closes (may be alone on a line). */
+static config_err_t v2_parse_array(struct v2src *s, config_value_t *out)
+{
+	config_err_t rc = CONFIG_OK;
+
+	memset(out, 0, sizeof(*out));
+	out->type = CONFIG_TYPE_ARRAY;
+	out->v.array.items = NULL;
+	out->v.array.count = 0;
+	s->p++;		/* '[' */
+	for(;;) {
+		int r = v2_skip_ws(s);
+
+		if(r <= 0) {
+			rc = CONFIG_ERR_PARSE;	/* unterminated */
+			break;
+		}
+		if(*s->p == ']') {
+			s->p++;
+			/* only whitespace may follow on this line */
+			{
+				const char *t = s->p;
+
+				while(*t == ' ' || *t == '\t') {
+					t++;
+				}
+				if(*t) {
+					rc = CONFIG_ERR_PARSE;
+					break;
+				}
+			}
+			break;
+		}
+		if(*s->p == ',') {
+			rc = CONFIG_ERR_PARSE;	/* empty element */
+			break;
+		}
+		{
+			config_value_t item;
+			config_err_t e;
+			config_value_t *ni;
+
+			memset(&item, 0, sizeof(item));
+			if(*s->p == '{') {
+				e = v2_parse_record(s, &item);
+			} else {
+				e = v2_parse_element(s, &item);
+			}
+			if(e) {
+				rc = e;
+				break;
+			}
+			ni = realloc(out->v.array.items,
+				     (out->v.array.count + 1) *
+				     sizeof(config_value_t));
+			if(!ni) {
+				value_free(&item);
+				rc = CONFIG_ERR_NOMEM;
+				break;
+			}
+			out->v.array.items = ni;
+			out->v.array.items[out->v.array.count++] = item;
+		}
+		/* after an element: comma or close */
+		r = v2_skip_ws(s);
+		if(r <= 0) {
+			rc = CONFIG_ERR_PARSE;
+			break;
+		}
+		if(*s->p == ',') {
+			s->p++;
+			continue;
+		}
+		if(*s->p == ']') {
+			s->p++;
+			{
+				const char *t = s->p;
+
+				while(*t == ' ' || *t == '\t') {
+					t++;
+				}
+				if(*t) {
+					rc = CONFIG_ERR_PARSE;
+					break;
+				}
+			}
+			break;
+		}
+		rc = CONFIG_ERR_PARSE;
+		break;
+	}
+	if(rc) {
+		value_free(out);
+	}
+	return rc;
+}
+
+/* v2 value parser entry: parse a value that starts at *s->p on the
+ * current (caller) line. Scalars/comma arrays fall through to the v1
+ * single-line parse_value; '['/'{' span lines via the recursive
+ * parsers above. */
+static config_err_t v2_parse_value(struct v2src *s, config_value_t *out)
+{
+	const char *p = s->p;
+
+	while(*p == ' ' || *p == '\t') {
+		p++;
+	}
+	if(*p == '[') {
+		s->p = p;
+		return v2_parse_array(s, out);
+	}
+	if(*p == '{') {
+		s->p = p;
+		return v2_parse_record(s, out);
+	}
+	return parse_value(p, out);
+}
+
 static config_err_t parse_conf(const char *text, size_t len,
 			       struct entry **list, char ***blocks,
 			       int *nblocks)
@@ -907,7 +1408,22 @@ static config_err_t parse_conf(const char *text, size_t len,
 					rc = CONFIG_ERR_PARSE;
 					break;
 				}
-				e = parse_value(val, &v);
+				if(*val == '[') {
+					/* v2 bracketed literal: may span lines and hold
+					 * records. Parse with the recursive v2 value
+					 * parser, which consumes whole lines from the
+					 * shared cursor (off). */
+					struct v2src vs;
+
+					vs.text = text;
+					vs.len = len;
+					vs.off = &off;
+					snprintf(vs.line, sizeof(vs.line), "%s", val);
+					vs.p = vs.line;
+					e = v2_parse_value(&vs, &v);
+				} else {
+					e = parse_value(val, &v);
+				}
 				if(e) {
 					free(full);
 					rc = e;
@@ -1085,6 +1601,125 @@ static struct entry *entry_find(struct entry *list, const char *key)
 	return NULL;
 }
 
+/*
+ * Synthesize a CONFIG_TYPE_RECORD for a block name from its prefix
+ * children in one scope's flat entry list (v2 §10.1 "reads never care
+ * which spelling": `user = { … }` and `user.admin.uid = 0` both read
+ * back whole via config_read("user")). Children keep file order; a
+ * child is a leaf when an exact entry exists, else a nested record
+ * built from its own prefix children. Returns CONFIG_ERR_NOT_FOUND when
+ * `key` has no children in this list.
+ */
+static config_err_t record_from_prefix(struct entry *list, const char *key,
+				       config_value_t *out)
+{
+	const char *pre;
+	char seg[CONF_MAX_SEGMENT + 1];
+	size_t plen, n = 0, cap = 0;
+	config_record_field_t *fields = NULL;
+	struct entry *en;
+	config_err_t rc = CONFIG_ERR_NOT_FOUND;
+
+	pre = key;
+	plen = strlen(pre);
+	memset(out, 0, sizeof(*out));
+	for(en = list; en; en = en->next) {
+		size_t el = strlen(en->key);
+		size_t m;
+		int have = 0;
+
+		if(el <= plen || strncmp(en->key, pre, plen) ||
+		   en->key[plen] != '.') {
+			continue;
+		}
+		/* immediate child segment: up to the next '.' */
+		m = plen + 1;
+		while(m < el && en->key[m] != '.') {
+			if(m - (plen + 1) >= CONF_MAX_SEGMENT) {
+				break;
+			}
+			m++;
+		}
+		{
+			size_t cl = m - (plen + 1);
+			size_t j;
+
+			if(cl == 0 || cl > CONF_MAX_SEGMENT) {
+				continue;
+			}
+			memcpy(seg, en->key + plen + 1, cl);
+			seg[cl] = '\0';
+			for(j = 0; j < n; j++) {
+				if(!strcmp(fields[j].name, seg)) {
+					have = 1;
+					break;
+				}
+			}
+		}
+		if(have) {
+			continue;
+		}
+		/* new child `key.seg`: leaf or nested record? */
+		{
+			char full[CONF_MAX_KEY + 1];
+			struct entry *exact;
+			config_value_t v;
+			config_err_t e;
+			config_record_field_t *nf;
+
+			snprintf(full, sizeof(full), "%s.%s", key, seg);
+			exact = entry_find(list, full);
+			memset(&v, 0, sizeof(v));
+			if(exact) {
+				e = value_copy(&v, &exact->val);
+			} else {
+				e = record_from_prefix(list, full, &v);
+			}
+			if(e) {
+				rc = e;
+				break;
+			}
+			if(n == cap) {
+				cap = cap ? cap * 2 : 4;
+				nf = realloc(fields,
+					     cap * sizeof(*nf));
+				if(!nf) {
+					value_free(&v);
+					rc = CONFIG_ERR_NOMEM;
+					break;
+				}
+				fields = nf;
+			}
+			fields[n].name = strdup(seg);
+			if(!fields[n].name) {
+				value_free(&v);
+				rc = CONFIG_ERR_NOMEM;
+				break;
+			}
+			memset(&fields[n].value, 0, sizeof(fields[n].value));
+			memcpy(&fields[n].value, &v, sizeof(v));
+			n++;
+			rc = CONFIG_OK;
+		}
+	}
+	if(rc == CONFIG_OK) {
+		out->type = CONFIG_TYPE_RECORD;
+		out->v.record.fields = fields;
+		out->v.record.count = n;
+		return CONFIG_OK;
+	}
+	if(fields) {
+		size_t j;
+
+		for(j = 0; j < n; j++) {
+			free(fields[j].name);
+			value_free(&fields[j].value);
+		}
+		free(fields);
+	}
+	return rc;
+}
+
 /* ---- reading ------------------------------------------------------- */
 
 static config_err_t read_scope_internal(config_scope_t scope,
@@ -1102,8 +1737,12 @@ static config_err_t read_scope_internal(config_scope_t scope,
 	}
 	en = entry_find(list, key);
 	if(!en) {
+		/* v2: a block name reads back as a synthesized record
+		 * from its prefix children (§10.1 "reads never care
+		 * which spelling") */
+		e = record_from_prefix(list, key, out);
 		entries_free(list);
-		return CONFIG_ERR_NOT_FOUND;
+		return e;
 	}
 	e = value_copy(out, &en->val);
 	entries_free(list);
@@ -1537,6 +2176,28 @@ config_err_t config_record_next(config_scope_t scope, const char *domain,
 		return CONFIG_ERR_INVALID;
 	}
 	return record_walk(scope, domain, group, prev, name);
+}
+
+config_err_t config_record_child(const config_value_t *record,
+				 const char *name,
+				 config_value_t **out)
+{
+	if(!record || !name || record->type != CONFIG_TYPE_RECORD) {
+		return CONFIG_ERR_TYPE;
+	}
+	{
+		size_t i;
+
+		for(i = 0; i < record->v.record.count; i++) {
+			if(!strcmp(record->v.record.fields[i].name, name)) {
+				if(out) {
+					*out = &record->v.record.fields[i].value;
+				}
+				return CONFIG_OK;
+			}
+		}
+	}
+	return CONFIG_ERR_NOT_FOUND;
 }
 
 /* ---- value serialization (docs §10 write canonicalization) --------- */
