@@ -61,9 +61,9 @@ spine reads correctly, not duplicated here.
   libraries + a working loader on FNX, because a dynamic compiler is far
   smaller to build than a static one and the guest RAM/disk budget is
   tight; the static recovery set stays for the bootstrap-deadlock case.
-- **G3 — Build prerequisites on FNX**: a build driver (bmake or ninja per
-  §4, or a small FNX-native build script), patch/sed/awk (toybox covers
-  most), and
+- **G3 — Build prerequisites on FNX**: the package manifest in
+  `docs/design/self-hosting-packages.md` (build driver per §4, plus
+  tooling: patch/sed/awk/editor — note toybox has **no awk**, a gap), and
   enough persistent disk for the LLVM source tree (multi-hundred-MB;
   likely a dedicated build volume, not the root image).
 - **G4 — RAM/disk budget sized**: clang/LLVM builds are memory-hungry.
