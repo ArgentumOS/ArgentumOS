@@ -15,6 +15,16 @@ P3 `cpp_smoke` runs green under FNX (`CPP-SMOKE: all checks OK`, no kernel
 exceptions). Measured gotchas recorded in §P1/§P2/§6.3 below. P4 (FLTK)
 is tracked by docs/archive/fltk-port-plan.md.
 
+**Since the dynamic-C++ milestone the runtimes are SHARED**: the llvm-cxx
+cmake builds libc++.so.1/libc++abi.so.1/libunwind.so.1 (+ soname
+symlinks; static .a kept for -static links), staged in `/System/Libraries`
+like the X stack; `tools/musl-clang++64.sh` links dynamic by default
+(Scrt1 + the /System interpreter), a `-shared` branch produces .so's with
+the PIC crtbeginS/crtendS (each module gets its own hidden __dso_handle),
+and the host libatomic probe is pinned NO (x86_64 libc++ references no
+__atomic_* symbols; shipping a dead libatomic.so.1 would only burden the
+guest loader).
+
 Scope note: the kernel and the C userland were gcc at this plan's
 writing; since LLVM M1-M3 (docs/design/llvm-clang-toolchain-plan.md) they are
 clang-built via `tools/musl-clang64*.sh` / `$(CLANG19)`. Only the

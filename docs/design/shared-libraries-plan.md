@@ -13,7 +13,11 @@ updater + unconverted carve-outs), init/dash/toybox/all first-party tools
 are dynamic, fshlint R1 is now "dynamic is the norm" with an explicit
 static exception list, and the kernel auxv reports post-exec euid/egid so
 a setuid-root dynamic binary is seen as secure by musl (no LD_PRELOAD into
-root). C++ (static LLVM runtimes) stays a static carve-out. M2
+root). C++ was a static carve-out until the dynamic-C++ milestone: the LLVM
+runtimes now build SHARED (libc++.so.1/libc++abi.so.1/libunwind.so.1,
+libc++.so no libatomic - the host probe is pinned NO) and are staged in
+/System/Libraries like the X stack; the C++ wrapper links dynamic by
+default (-static falls back to the kept archives). M2
 converted the X stack: `tools/x11-shared-build.sh` rebuilds the x11-prefix
 libs shared (autotools `--host` / meson `--cross-file` because dynamic
 configure test binaries cannot run on the build host), the versioned

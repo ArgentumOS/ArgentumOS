@@ -12,14 +12,27 @@ CRT="$ROOT/.build/compiler-rt/lib/linux"
 CLANG="${MUSL_CLANG:-/usr/lib/llvm-19/bin/clang}"
 RES="$( "$CLANG" -print-resource-dir )/include"
 
-link=1
+link=1; shared=0
 for a in "$@"; do
 	case "$a" in
 		-c|-E|-S|-M|-MM|--help|--version) link=0 ;;
+		# -shared or the -Wl,-shared cmake form: the llvm-cxx runtimes
+		# build their .so's through this wrapper (their cmake picks the C
+		# linker for the mixed C/C++ targets) - those links must produce
+		# a normal dynamic .so, not a static executable.
+		*-shared*) shared=1 ;;
 	esac
 done
 
-if [ "$link" = 1 ]; then
+if [ "$link" = 1 ] && [ "$shared" = 1 ]; then
+	exec "$CLANG" \
+		-nostdinc -isystem "$MUSL/include" -isystem "$RES" -I"$ROOT/tools/kernel-headers" \
+		-nostdlib \
+		"$MUSL/lib/crti.o" \
+		-L"$MUSL/lib" -L"$CRT" \
+		"$@" \
+		-lc "$CRT/libclang_rt.builtins-x86_64.a" "$MUSL/lib/crtn.o"
+elif [ "$link" = 1 ]; then
 	# -no-pie for parity with the dynamic wrapper: -static drops PIE on
 	# most hosts but a PIE-default clang would emit a static-PIE ET_DYN
 	# (the kernel loader rejects PIE mains), so pin ET_EXEC explicitly.

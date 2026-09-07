@@ -232,6 +232,19 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
+	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
+	# libunwind .so files from the llvm-cxx prefix (built shared since the
+	# dynamic-C++ milestone). Same staging rule as the X stack: the glob
+	# carries the soname symlink + the versioned real file; the bare dev
+	# symlink is link-time only and skipped. cpp_smoke (and libshrike
+	# later) NEED these sonames at runtime.
+	@if [ ! -d "$(LLVM_CXX_PREFIX)/lib" ]; then \
+		echo "llvm-cxx prefix missing - run make llvm-cxx first"; \
+		exit 1; \
+	fi
+	@for l in libc++.so libc++abi.so libunwind.so; do \
+		cp -a $(LLVM_CXX_PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
+	done
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.

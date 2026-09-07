@@ -14,6 +14,26 @@ $(MUSL64_LIBC): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_p
 		git checkout -- . && \
 		rm -f src/passwd/pwconf.c src/passwd/pwconf.h
 
+# crtbegin.o/crtend.o for C++ (docs/llvm-clang-toolchain-plan.md M2): the
+# standalone builtins cmake does not emit crt objects, but clang++ links
+# need them - crtbegin defines __dso_handle (libc++ locale/guard code
+# references it) and registers .eh_frame, crtend closes the section.
+# Compiled from the pinned compiler-rt sources with the static wrapper.
+COMPILER_RT_CRTBEGIN = .build/compiler-rt/lib/linux/crtbegin.o
+COMPILER_RT_CRTEND   = .build/compiler-rt/lib/linux/crtend.o
+
+$(COMPILER_RT_CRTBEGIN): .build/llvm-src/compiler-rt/lib/builtins/crtbegin.c $(MUSL64_CC_STATIC)
+	$(MUSL64_CC_STATIC) -c $< -o $@
+
+$(COMPILER_RT_CRTEND): .build/llvm-src/compiler-rt/lib/builtins/crtend.c $(MUSL64_CC_STATIC)
+	$(MUSL64_CC_STATIC) -c $< -o $@
+
+# PIC crtbeginS.o/crtendS.o: shared-object links (libc++.so etc.) also need
+# __dso_handle + frame registration, but crtbegin.o is non-PIC - a .so
+# cannot take R_X86_64_PC32 relocations against it. Each module defines its
+# own hidden __dso_handle (the glibc crtbeginS model).
+COMPILER_RT_CRTBEGINS = .build/compiler-rt/lib/linux/crtbeginS.o
+COMPILER_RT_CRTENDS   = .build/compiler-rt/lib/linux/crtendS.o
 # LLVM C++ runtimes (docs/cpp-toolchain-plan.md P0+P1): pinned fetch via
 # tools/fetch-llvm.sh, then a cmake build of static libc++/libc++abi/
 # libunwind against musl. Since M2 the compilers are the clang wrappers
@@ -29,6 +49,11 @@ $(LLVM_CXX_SRC)/libcxx/CMakeLists.txt: tools/fetch-llvm.sh
 
 $(LLVM_CXX_CFG): $(LLVM_CXX_SRC)/libcxx/CMakeLists.txt
 	rm -rf .build/llvm-cxx $(LLVM_CXX_PREFIX)
+	# FNX ships no libatomic: the config probe finds the HOST libatomic
+	# and private-links it into libc++.so (a vestigial NEEDED the guest
+	# loader would hard-fail on - libc++.so uses no __atomic_* symbols).
+	sed -i 's/check_library_exists(atomic __atomic_fetch_add_8 "" LIBCXX_HAS_ATOMIC_LIB)/set(LIBCXX_HAS_ATOMIC_LIB NO)/' \
+		$(LLVM_CXX_SRC)/libcxx/cmake/config-ix.cmake
 	cmake -G "Unix Makefiles" -S $(LLVM_CXX_SRC)/runtimes -B .build/llvm-cxx \
 	  -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
 	  -DCMAKE_C_COMPILER=$(MUSL64_CC_STATIC) \
@@ -38,16 +63,16 @@ $(LLVM_CXX_CFG): $(LLVM_CXX_SRC)/libcxx/CMakeLists.txt
 	  -DCMAKE_EXE_LINKER_FLAGS="" \
 	  -DCMAKE_INSTALL_PREFIX=$(CURDIR)/$(LLVM_CXX_PREFIX) \
 	  -DCMAKE_BUILD_TYPE=Release \
-	  -DLIBCXX_ENABLE_SHARED=OFF -DLIBCXXABI_ENABLE_SHARED=OFF \
-	  -DLIBUNWIND_ENABLE_SHARED=OFF \
+	  -DLIBCXX_ENABLE_SHARED=ON -DLIBCXXABI_ENABLE_SHARED=ON \
+	  -DLIBUNWIND_ENABLE_SHARED=ON \
 	  -DLIBCXX_ENABLE_STATIC=ON -DLIBCXXABI_ENABLE_STATIC=ON \
 	  -DLIBUNWIND_ENABLE_STATIC=ON \
-	  -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \
+	  -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=OFF \
 	  -DLIBCXX_INCLUDE_TESTS=OFF -DLIBCXXABI_INCLUDE_TESTS=OFF \
 	  -DLIBUNWIND_INCLUDE_TESTS=OFF \
 	  -DLIBCXX_HAS_MUSL_LIBC=ON
 
-$(LLVM_CXX_STAMP): $(LLVM_CXX_CFG)
+$(LLVM_CXX_STAMP): $(LLVM_CXX_CFG) $(COMPILER_RT_CRTBEGIN) $(COMPILER_RT_CRTEND) $(COMPILER_RT_CRTBEGINS) $(COMPILER_RT_CRTENDS)
 	cmake --build .build/llvm-cxx -j$$(nproc)
 	cmake --install .build/llvm-cxx
 	touch $(LLVM_CXX_STAMP)
@@ -76,19 +101,12 @@ $(COMPILER_RT_CFG): .build/llvm-src/compiler-rt/lib/builtins/CMakeLists.txt
 $(COMPILER_RT_BUILTINS): $(COMPILER_RT_CFG)
 	cmake --build .build/compiler-rt -j$$(nproc)
 
-# crtbegin.o/crtend.o for C++ (docs/llvm-clang-toolchain-plan.md M2): the
-# standalone builtins cmake does not emit crt objects, but clang++ links
-# need them - crtbegin defines __dso_handle (libc++ locale/guard code
-# references it) and registers .eh_frame, crtend closes the section.
-# Compiled from the pinned compiler-rt sources with the static wrapper.
-COMPILER_RT_CRTBEGIN = .build/compiler-rt/lib/linux/crtbegin.o
-COMPILER_RT_CRTEND   = .build/compiler-rt/lib/linux/crtend.o
 
-$(COMPILER_RT_CRTBEGIN): .build/llvm-src/compiler-rt/lib/builtins/crtbegin.c $(MUSL64_CC_STATIC)
-	$(MUSL64_CC_STATIC) -c $< -o $@
+$(COMPILER_RT_CRTBEGINS): .build/llvm-src/compiler-rt/lib/builtins/crtbegin.c $(MUSL64_CC_STATIC)
+	$(MUSL64_CC_STATIC) -fPIC -c $< -o $@
 
-$(COMPILER_RT_CRTEND): .build/llvm-src/compiler-rt/lib/builtins/crtend.c $(MUSL64_CC_STATIC)
-	$(MUSL64_CC_STATIC) -c $< -o $@
+$(COMPILER_RT_CRTENDS): .build/llvm-src/compiler-rt/lib/builtins/crtend.c $(MUSL64_CC_STATIC)
+	$(MUSL64_CC_STATIC) -fPIC -c $< -o $@
 
 # --- Clang toolchain M0 proof (docs/llvm-clang-toolchain-plan.md M0) ---
 # userland/tests/hello.c compiled twice by the clang wrappers - dynamic and

@@ -73,7 +73,9 @@ of scope here (Non-goals, §8).
 - **C++ runtimes** (Makefile `llvm-cxx`): cmake with
   `CMAKE_C_COMPILER=$(MUSL64_CC_STATIC)` and
   `CMAKE_CXX_COMPILER=tools/musl-clang++64.sh` (self-bootstrapping);
-  `.build/llvm-cxx-prefix` = static libc++/libc++abi/libunwind only.
+  `.build/llvm-cxx-prefix` = shared libc++/libc++abi/libunwind
+  (libc++.so.1 + the .so.1.0 real files; static archives kept for
+  -static links) built with crtbeginS.o/crtendS.o (PIC) for the .so links.
 - **Kernel**:
   - Compile flags (CC64K; CC64R = CC64K + `-fvisibility=hidden -MMD
     -MP`): `clang -m64 -march=x86-64 -std=c89 -O2 -fPIC
