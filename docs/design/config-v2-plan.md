@@ -84,6 +84,19 @@ whole-value shadowing (§5 v2).
   passes unchanged; new parse cases (anonymous arrays, records in
   arrays, dup-record/scalar-container errors, quoted `{`) covered by
   added corpus files; no consumer rebuilt.
+  *Implementation design (from the 2026-09 analysis):* parse_conf is
+  LINE-based with a pctx container stack (prefix flattening + per-
+  container record-name binding). The contained approach keeps the flat
+  entry store and adds a pctx **array mode**: after `key = [`, items are
+  parsed across lines (records via the existing block machinery with
+  synthetic keys `key[idx].child`, never exposed), scalars as today;
+  named blocks `key = { … }` keep their v1 flattening so record-domain
+  consumers (pwconf/mounts) are untouched, and config_read of a block
+  name SYNTHESIZES a CONFIG_TYPE_RECORD value from its prefix children
+  (the v2 "reads never care which spelling" guarantee). Header adds
+  CONFIG_TYPE_RECORD + a record representation + value_free/child
+  accessors (additive only). Bracket KEY segments stay M1; the v2
+  canonical writer stays M2 (v2-shaped values reject cleanly in M0).
 - **CV2-M1 — bracket addressing + additive merge + tree reads.**
   `ident[i]` key segments; §5-v2 array resolution across scopes; tree
   getters + record enumeration over the tree; `config_read_scope` for
