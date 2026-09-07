@@ -261,6 +261,42 @@ Shrike** — architected into the foundation, not added later. This means:
 - **Tests**: the battery asserts a11y metadata (every widget exposes
   role/label; keyboard-only pass) alongside the ui-scale screendumps.
 
+### Screen reader — recommended course (decided)
+
+Build, don't port: no ORCA/AT-SPI/DBus or BRLTTY (foreign stacks,
+GPL/LGPL, and an AT-SPI bridge would cost more than the native protocol).
+The reader is **a Shrike app that consumes other apps' a11y trees** —
+the Cocoa/VoiceOver shape. Three layers:
+
+1. **A11y protocol on the session socket (rides the menu-IPC seam, §6;
+   ships with S2/S3)** — apps expose their view tree (role/label/value/
+   children/actions) plus events: focus change, value change, live
+   regions. The tree is Tier-1 metadata (§4); the protocol is what lets
+   another process read it — and doubles as the automation/testing API
+   (the a11y battery becomes a real protocol consumer).
+2. **Speech synthesis (independent, small)** — permissive, musl-portable
+   engine behind one interface: **CMU Flite** (tiny, self-contained C —
+   the v1 pick) or svox-pico (Apache-2, better quality); espeak-ng is
+   GPL and out. Output: PCM → the existing OSS `/dev/dsp` drivers
+   (AC97/ES1370/HD-Audio done). Flite can port before Shrike — never a
+   bottleneck.
+3. **The reader app (named post-S5 first-party app, like Settings)** —
+   connects to the focused app's tree and provides the reader model:
+   **virtual cursor** (navigation position independent of the visual
+   cursor), navigation commands (next/previous, read-all, activate,
+   adjust value — an own command set), announcements from focus-change
+   events, rate/voice from the accessibility domain. Braille is a later
+   driver question, not v1.
+
+Order is load-bearing: Layer 1 must exist before the catalog ships
+(retrofit is the expensive mistake); Layer 2 is independent; Layer 3 is
+last because a reader with nothing to read is rework. Scope honesty: v1
+targets functional reading (announce focused elements, read text,
+navigate, activate), not VoiceOver/ORCA parity.
+
+**Open items**: the TTS engine pick (Flite recommended v1) and the
+reader app's name.
+
 ## 5. Kestrel — the window manager (from-scratch; EMWM decision retired)
 
 EMWM was chosen because it was a **Motif app** — with the fork gone that
