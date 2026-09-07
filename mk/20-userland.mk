@@ -84,7 +84,7 @@ xfb64: $(FNXLIB_CONFIG)
 # toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
 # stage into a scratch root and merge every applet dir into System/Tools.
 TOYBOX64_STAGE = .build/toybox-root
-userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(FNXLIB_SHRIKE) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -148,6 +148,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
 	$(MUSL64_CC) userland/tools/init.c -o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
+	# shrike_hello: Shrike S0.1 acceptance — dynamic link against the
+	# shared libshrike.so.1 (NEEDED libshrike.so.1 resolved from
+	# /System/Libraries at exec; no static copy).
+	$(MUSL64_CXX) -Iuserland -L$(CURDIR)/$(FNXLIB) \
+		userland/tests/shrike_hello.cpp -lshrike \
+		-o "$(ROOTFS64)/System/Shared/tests/shrike_hello"
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
 		-I$(X11PREFIX)/include/harfbuzz \
 		-L$(X11PREFIX)/lib -L$(CURDIR)/$(FNXLIB) \
@@ -247,6 +253,9 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
+	# FNX's C++ GUI toolkit (first-party): libshrike.so.1 staged under
+	# the same rule — shrike_hello (S0.1) NEEDs it at runtime.
+	@cp $(FNXLIB_SHRIKE) "$(ROOTFS64)/System/Libraries/libshrike.so.1"
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the
 	# dynamic-C++ milestone). Same staging rule as the X stack: the glob

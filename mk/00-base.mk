@@ -172,6 +172,21 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 	$(MUSL64_CC) -fPIC -shared -Iinclude -Iuserland -Wl,-soname,libconfig.so.1 \
 		-o $@ userland/libconfig.c
 	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
+
+# --- Shrike (docs/design/shrike-plan.md): FNX's C++ GUI toolkit. S0.1
+# skeleton = the namespace + Application/Window shells in one shared
+# libshrike.so.1 (same fnxlib staging + soname pattern as libconfig).
+# The C++ wrapper supplies the libc++/libc++abi/libunwind NEEDEDs and
+# the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
+# the session in S0.2.
+SHRIKE_SRCS = userland/shrike/application.cpp userland/shrike/window.cpp
+FNXLIB_SHRIKE = $(FNXLIB)/libshrike.so.1
+
+$(FNXLIB_SHRIKE): $(SHRIKE_SRCS) userland/shrike/shrike.h $(MUSL64_CXX)
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_CXX) -fPIC -shared -Iuserland -Wl,-soname,libshrike.so.1 \
+		-o $@ $(SHRIKE_SRCS)
+	ln -sf libshrike.so.1 $(FNXLIB)/libshrike.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-clang++64.sh
