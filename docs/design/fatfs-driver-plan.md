@@ -1,97 +1,94 @@
-# FAT32/exFAT support via FatFs (fs/fatfs)
+# Native FAT12/16/32 + exFAT driver (fs/fatfs)
 
-**Status: PLAN (2026-09) — vendored (third_party/fatfs, FatFs R0.16), nothing
-integrated yet.** Milestones M0-M3 below; commits + acceptance tracked here.
+**Status: DESIGN (2026-09).** First attempt (a kernel VFS adapter wrapping
+the FatFs middleware, third_party/fatfs) was abandoned mid-M0: mount
+worked but the first readdir faulted inside FatFs internals, and the
+wrap's impedance with FNX's VFS is systemic (double caching, no stable
+inode identity, non-reentrancy, C99 carve-out). **Decision: write a
+FNX-native driver in house style** (like minix/ext2/xbfs); the vendored
+FatFs stays in third_party/fatfs purely as the authoritative reference
+for the on-disk format (LFN checksums, exFAT entry sets, upcase/bitmap
+handling) and is never compiled into the kernel.
 
 ## Goal
 
-Mount FAT12/16/32 and exFAT volumes in the FNX tree (FSH Q2 `/System/ESP`
-+ Q8 removable media), using the FatFs middleware as the on-disk engine:
+Mount FAT12/16/32 and exFAT volumes (FSH Q2 `/System/ESP` + Q8 removable
+media) through the normal `fs_operations` contract: `read_superblock`
+fills `sb` from the boot sector, `iget`/`lookup`/`readdir`/`read`/`write`
+all use FNX's buffer cache (`bread`/`bwrite`) exactly like the other
+drivers. fstype `"fat"` autodetects the variant from the BPB.
 
-- FatFs R0.16 (elm-chan.org), vendored under `third_party/fatfs/`
-  (`ff.c`, `ffunicode.c`, `ffsystem.c`, `diskio.c/h`, `ffconf.h`),
-  BSD-style permissive license (`LICENSE.txt` kept).
-- A kernel filesystem driver `fs/fatfs/` registered under the fstype
-  `"fat"` (FatFs autodetects FAT12/16/32 vs exFAT on `f_mount`, so one
-  fstype serves both — matching how the `config` CLI's `mount` table names
-  filesystems today).
+## FAT identity (the design's core)
 
-## Architecture
+FAT has no inode numbers, but it has a natural stable one: **a file's
+first cluster** — it survives renames and is what Linux vfat keys on.
+Rules:
 
-### The impedance match (why there is an adapter at all)
+- `i_ino` = first cluster of the entry (`FAT_ROOT_INO` = 1 for the
+  volume root; FAT32's real root cluster is in the BPB).
+- readdir/lookup see the raw directory entry, so they know the cluster,
+  the dir/file bit and the size directly.
+- `iget(dev, ino)` on a cache **hit** returns the pinned inode. On a
+  **miss**, `fat_read_inode()` rebuilds the inode from a driver-side
+  per-volume cache (`sb->u.fatfs.cache`: cluster -> {is_dir, size}),
+  which readdir/lookup populate *before* calling iget.
+- **Pinning:** FNX namei holds inode refs only for the length of one
+  syscall, so every FAT inode would be evictable between syscalls. The
+  driver holds an extra reference on every inode it creates (until
+  umount) so evicted-then-reiget'd inodes always hit the cache; the
+  volume sizes this bounds (boot/removable media).
 
-FNX mounts kernel filesystems through the `fs_operations` contract:
-`read_superblock(dev, sb)` fills the superblock, namei walks directories
-via `fsop->lookup(name, dir, &ino)` and `iget(dev, ino)` returns inodes
-keyed by a stable on-disk number. FAT has no inode numbers, and FatFs's
-API is name/handle-based (`f_open`, `f_readdir`, `f_stat`, ...), hiding
-directory-entry positions. The driver therefore:
+## Format work (read path = the BPB + FAT chain walk)
 
-1. **Synthesizes stable inode identity.** Every inode the driver returns
-   is cached for the mount's lifetime; `i_ino` is a hash of the entry's
-   full FAT path, and the inode's private area stores that path. As long
-   as the VFS inode cache holds the object, re-`iget`s by `i_ino` hit it
-   and the path is intact. `read_inode()` for an unknown `i_ino` (a
-   genuinely evicted inode) fails cleanly (`ENOENT`) rather than
-   reconstructing — FAT identity is not reconstructible from a number.
-   The driver pins every inode it hands out (holds a reference) so
-   eviction does not happen under normal FNX usage; the fixed inode table
-   bounds the cost.
-2. **Serializes FatFs per volume.** FatFs is not reentrant; each mounted
-   volume gets one kernel sleep-lock held around every FatFs call (FNX is
-   preemptive). A FAT volume is a boot/removable medium with modest
-   concurrency, so a single per-volume lock is sufficient.
-3. **Glues disk I/O onto the block layer.** `diskio.c` implements
-   `disk_initialize/status/read/write/ioctl` over the mounted `__dev_t`
-   using the device's `read_block`/`write_block` and an ioctl for sector
-   count/size. One FatFs volume slot (`FF_VOLUMES = 8`) is bound at
-   `read_superblock` (static `f_mount` with the device pre-mounted).
+- Boot sector: BPB parse (bytes/sector, sects/cluster, reserved, n_fats,
+  root dir entries, total sectors, FAT size; FAT32: root cluster + FS
+  info). exFAT: the exFAT boot region (its own BPB + FAT/cluster/bitmap/
+  upcase sector fields, no reserved-area FAT12/16 legacy fields).
+- Directory entries: FAT32 = cluster chains of 32-byte entries; LFN
+  entries precede their short entry (checksum-verified, per FatFs
+  reference); exFAT = entry *sets* (file/stream/name), names are
+  UTF-16 hashed, "." and ".." are not stored.
+- Data: file = cluster chain from the FAT (read via `bread` at 512,
+  cluster index -> sector arithmetic with `data_sector`).
+- Milestone M0 keeps the driver read-only: BPB + FAT32 walk + LFN +
+  readdir/lookup/read/stat is a small, auditable core. Writes (FAT chain
+  allocation, dir entry creation/update, exFAT bitmap) come in M1/M2
+  where FatFs's allocation logic is the reference.
 
-### Driver surface (fsop mapping)
+## Layout
 
-- `read_superblock` — `f_mount` the volume (autodetect FAT/exFAT), record
-  the volume slot in `sb->u.fatfs`, register `fsop`.
-- Inode ops on dir inodes: `lookup(name)` → `f_stat`/`f_opendir`+scan for
-  the entry; `readdir` re-scans via `f_readdir`, mapping the VFS dir
-  offset to an entry index by counting (O(n) per step — acceptable).
-  `create/mkdir/unlink/rmdir/rename/truncate` → the FatFs calls (M2).
-- File read/write: one `FIL` kept per inode (guarded by the volume lock);
-  `read/write` translate byte offsets with `f_lseek`.
-- `stat` from `f_stat`; timestamps via `get_fattime()` from the FNX clock
-  (M2; `FF_FS_NORTC` stays 0 once wired, else files get epoch dates).
+```
+fs/fatfs/
+  super.c     register + read_superblock + read_inode + pin/unpin
+  dir.c       readdir + lookup (dir entry scanning, LFN decode)
+  file.c      read/write/llseek (cluster chain I/O)
+  fat.h       driver-private structs (sb geometry helpers, entry decode)
+include/fnx/fs_fat.h   c89-safe sb/inode info (already in the fs.h unions)
+```
 
-### ffconf for kernel use
-
-`FF_USE_LFN = 1` (exFAT requires LFN; work buffer lives in the volume
-objects, not on the kernel stack — kernel stacks are 4KB), `FF_FS_EXFAT
-= 1`, `FF_VOLUMES = 8`, `FF_MIN_SS = FF_MAX_SS = 512`, `FF_FS_REENTRANT
-= 0` (we lock at the adapter), `FF_USE_MKFS/FIND/STRFUNC = 0` for now.
-`ff.c`/`ffunicode.c` compile with the kernel CC64R flag set.
+No Makefile changes needed: fs/fatfs/*.c is picked up by the REALSRCS
+find and compiles as c89 with the rest of the kernel.
 
 ## Milestones
 
-- **M0 — diskio glue + FAT mount**: `fs/fatfs/` skeleton; fstype `"fat"`
-  registered; `read_superblock` mounts a FAT32 volume over the block
-  layer; the mount root lists on a crafted FAT32 image (the ESP's FAT32
-  partition is the test fixture). Acceptance: `ls /mnt` on a mounted
-  FAT32 disk shows the expected entries.
-- **M1 — namei + file read**: full read path — lookup/open/readdir/read/
-  stat for files and subdirs (LFN names, case-preserved). Acceptance:
-  guest reads files + lists a subdirectory on the ESP image.
-- **M2 — writes**: create/mkdir/unlink/rmdir/rename/truncate/write;
-  `get_fattime` from the FNX clock. Acceptance: create+write+read-back in
-  the guest and cross-checked on the host (mtools or a host mount).
-- **M3 — exFAT + `/System/ESP` boot mount**: verify an exFAT volume
-  (host-formatted fixture) mounts and reads/writes; add the boot mount
-  record (system.mounts.conf) mounting the ESP partition at
-  `/System/ESP`; the `config` CLI's `system.kernel` domain then edits the
-  REAL kernel.conf end-to-end (kernel.conf-plan M3 closes).
+- **M0 — FAT32 read**: fstype `"fat"` registered; read_superblock on the
+  ESP partition; root readdir (LFN names) + file read + stat. Acceptance:
+  boot with the ESP mounted at /System/ESP (mount record) and `ls` +
+  `cat` its files.
+- **M1 — FAT32 write**: create/mkdir/unlink/rename/truncate/write with
+  FAT-chain allocation through the buffer cache. Acceptance: create a
+  file on the ESP, reboot, it persists (host cross-check with mtools).
+- **M2 — exFAT**: extend BPB/dir/chain code for exFAT volumes
+  (bitmap/upcase/entry sets) read + write. Acceptance: host-formatted
+  exFAT fixture mounts + round-trips.
+- **M3 — boot wiring + FAT12/16**: boot mount record mounts the ESP at
+  /System/ESP (closing kernel.conf-plan M3: `config` edits the REAL
+  kernel.conf); FAT12/16 floppy-era volumes also mount (cheap: fixed
+  root dir + 12/16-bit FAT walk).
 
-## Open items
+## Kept from the abandoned wrapper attempt
 
-- exFAT volumes with 4096-byte sectors need `FF_MAX_SS = 4096`
-  (4Kn media); QEMU + common USB are 512 — defer unless a fixture needs it.
-- File sharing/concurrency: one `FIL` per inode + the volume lock means
-  two writers to one file serialize at open — fine for boot/removable use.
-- `f_mount` re-binding a volume after device removal (hot-unplug) — not
-  in scope for the first cut.
+- **IDE devfs nodes** (drivers/block/ata_hd.c): the PIIX IDE master (the
+  ESP's home bus) now publishes Disk/IDE/Disk0/WholeDisk + Partition<N>
+  nodes — a prerequisite for any kernel mount of the ESP.
+- The `sb->u.fatfs` / `inode->u.fatfs` union slots in include/fnx/fs.h.

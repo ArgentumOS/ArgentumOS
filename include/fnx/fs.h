@@ -23,6 +23,7 @@
 #include <fnx/fs_sock.h>
 #include <fnx/fs_epoll.h>
 #include <fnx/fs_devfs.h>
+#include <fnx/fs_fat.h>
 
 #define BPS			512	/* bytes per sector */
 #define BLKSIZE_1K		1024	/* 1KB block size */
@@ -106,7 +107,8 @@ struct inode {
 #endif /* CONFIG_NET */
 		struct epoll_inode epoll;
 		struct devfs_inode devfs;
-	} u;
+			struct fatfs_i_info fatfs;
+} u;
 };
 extern struct inode *inode_table;
 extern struct inode **inode_hash_table;
@@ -133,7 +135,8 @@ struct superblock {
 		struct ext2_sb_info ext2;
 		struct iso9660_sb_info iso9660;
 		struct xbfs_sb_info xbfs;
-	} u;
+			struct fatfs_sb_info fatfs;
+} u;
 };
 
 

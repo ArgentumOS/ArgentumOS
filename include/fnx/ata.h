@@ -282,6 +282,7 @@ struct ata_drv {
 	unsigned char major;		/* major number */
 	unsigned int flags;
 	int minor_shift;		/* shift factor to get the real minor */
+	int devfs_nodes;		/* devfs nodes published */
 	int lba_cyls;
 	int lba_heads;
 	short int lba_factor;

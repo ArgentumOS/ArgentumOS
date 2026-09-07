@@ -10,6 +10,7 @@
 #include <fnx/ata.h>
 #include <fnx/ata_pci.h>
 #include <fnx/ata_hd.h>
+#include <fnx/fs_devfs.h>
 #include <fnx/ioctl.h>
 #include <fnx/devices.h>
 #include <fnx/timer.h>
@@ -90,6 +91,12 @@ static void assign_minors(__dev_t rdev, struct ata_drv *drive, struct partition 
 			SET_MINOR(d->minors, minor);
 			((unsigned int *)d->blksize)[minor] = BLKSIZE_1K;
 			((unsigned int *)d->device_data)[minor] = part[n].nr_sects / 2;
+			/* partition devfs node: Disk/IDE/Disk<unit>/Partition<n+1>
+			 * (minor n+1 for the master, matching part[minor-1]) */
+			if(drive->devfs_nodes) {
+				devfs_partition_node("IDE", drive->num, n + 1,
+						     MKDEV(MAJOR(rdev), minor));
+			}
 		}
 	}
 }
@@ -436,6 +443,13 @@ int ata_hd_init(struct ide *ide, struct ata_drv *drive)
 			return -EINVAL;
 		}
 		((unsigned int *)d->device_data)[1 << IDE_SLAVE_MSF] = drive->nr_sects / 2;
+	}
+
+	/* publish the devfs whole-disk node (Disk/IDE/Disk<n>/WholeDisk plus
+	 * the legacy flat name); partition nodes come from assign_minors()
+	 * once the partition table is read. devfs_make_* is idempotent. */
+	if(!devfs_block_node("IDE", drive->num, drive->dev_name, rdev)) {
+		drive->devfs_nodes = 1;
 	}
 
 	/* prepare for an interrupt */
