@@ -1,6 +1,19 @@
 # Native FAT12/16/32 + exFAT driver (fs/fatfs)
 
-**Status: M0 DONE (FAT32 read) — committed a236a3f (pivot) + <M0 commit>.**
+**Status: M1 DONE (FAT32 read + write) — M0 = c76bd44, M1 = <M1 commit>.**
+M1 acceptance: in-guest create/write/mkdir/rename/rmdir/unlink/O_TRUNC
+rewrite on /System/ESP, sync, reboot persistence + host cross-checks
+(mtools: subdir/f.txt = "nested", bb.txt = "beta" after a rename + O_TRUNC
+rewrite). Root cause fixes along the way: sync_buffers + the background
+flusher only flushed >= 1K dirty buffers, silently dropping FAT's 512-byte
+bwrite buffers (fs/buffer.c flush loops now start at 512); directory
+writes must append at the 0x00 end marker - entries placed past a live
+terminator are invisible to every compliant reader (find_run now returns
+the terminator slot and grows the chain to fit); the SFN slot registered
+in the inode cache was start+1+nparts instead of start+nparts, so
+write_inode rewrote the wrong slot.
+
+**Status (orig note): M0 DONE (FAT32 read) — committed a236a3f (pivot) + <M0 commit>.**
 M0 acceptance green in-guest: the ESP (PIIX IDE master partition 1,
 hda1) mounts at /System/ESP via the boot mount record; `ls` lists the
 root (EFI/NvVars/STARTUP.NSH), traverses EFI/BOOT, decodes the LFN

@@ -316,6 +316,35 @@ static int scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 	}
 }
 
+/* does the directory contain an entry matching 'name'? (create/rename
+ * duplicate checks; the generic scanner matches LFN + 8.3 forms) */
+int fat_dir_has_name(struct inode *dir, const char *name)
+{
+	struct fat_dir_it it;
+	struct fat_rec rec;
+	int found = 0;
+
+	if(!S_ISDIR(dir->i_mode)) {
+		return 1;	/* be safe: not a dir */
+	}
+	dir_it_open(&it, dir);
+	if(!it.ok) {
+		return 1;
+	}
+	while(!found) {
+		int r = scan_record(&it, &rec);
+
+		if(r <= 0) {
+			break;
+		}
+		if(!rec.is_dot && name_ieq(rec.name, name)) {
+			found = 1;
+		}
+	}
+	dir_it_close(&it);
+	return found;
+}
+
 /* ---- readdir/readdir64 emitters ---- */
 
 static int fat_readdir_common(struct inode *dir, struct fd *f,
@@ -444,7 +473,8 @@ int fat_lookup(const char *name, struct inode *dir, struct inode **res)
 		ino = 2;
 	}
 	if(fatfs_ent_add(dir->sb, ino, rec.cluster, rec.size,
-			 !!(rec.attr & FAT_ATTR_DIRECTORY))) {
+			 !!(rec.attr & FAT_ATTR_DIRECTORY),
+			 dir->u.fatfs.cluster, rec.slot)) {
 		return -ENOMEM;
 	}
 	if(!(*res = iget(dir->sb, ino))) {

@@ -3,9 +3,11 @@
  *
  * Regular files reuse the generic page-cache read path (file_read in
  * mm/page.c): bread_page maps a page through fsop->bmap() at
- * sb->s_blocksize (512) granularity, so fat_bmap() walks the file's
- * cluster chain to the 512-byte block containing a byte offset.
- * Write support (M1) adds the FAT allocation half of bmap FOR_WRITING.
+ * sb->s_blocksize (512) granularity. fat_bmap() FOR_READING walks the
+ * file's cluster chain; FOR_WRITING additionally allocates + links
+ * clusters (under superblock_lock) so the generic writers can extend the
+ * file. The first cluster allocation is persisted to the parent dir
+ * entry by write_inode (INODE_DIRTY).
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
@@ -41,19 +43,72 @@ __blk_t fat_bmap(struct inode *i, __off_t offset, int mode)
 	unsigned int want;
 	__u32 cluster = i->u.fatfs.cluster;
 	unsigned int n;
+	int errno;
 
 	if(mode == FOR_READING && (__off_t)offset >= i->i_size) {
 		return 0;
 	}
 	if(!cluster) {
-		return 0;	/* empty file */
+		if(mode != FOR_WRITING) {
+			return 0;	/* empty file */
+		}
+		/* first allocation: extend the chain from nothing */
+		superblock_lock(i->sb);
+		if(!cluster && i->u.fatfs.cluster == 0) {
+			if((errno = fat_alloc_cluster(i->sb, &cluster))) {
+				superblock_unlock(i->sb);
+				return errno;
+			}
+			i->u.fatfs.cluster = cluster;
+		}
+		superblock_unlock(i->sb);
 	}
 	want = (unsigned int)(offset / cluster_bytes);
 	for(n = 0; n < want; n++) {
-		cluster = fat_next_cluster(i->sb, cluster);
-		if(cluster < 2 || cluster >= FAT_CLUST_LAST) {
-			return 0;	/* chain ended early */
+		__u32 next;
+
+		superblock_lock(i->sb);
+		if(fat_read_entry(i->sb, cluster, &next)) {
+			superblock_unlock(i->sb);
+			return -EIO;
 		}
+		if(next >= 2 && next < FAT_CLUST_LAST) {
+			cluster = next;
+			superblock_unlock(i->sb);
+			continue;
+		}
+		if(mode != FOR_WRITING) {
+			superblock_unlock(i->sb);
+			return 0;	/* chain ended early (hole) */
+		}
+		/* extend: allocate + link */
+		{
+			__u32 nc;
+
+			if((errno = fat_alloc_cluster(i->sb, &nc))) {
+				superblock_unlock(i->sb);
+				return errno;
+			}
+			fat_set_eoc(i->sb, nc);
+			{
+				/* fat_link writes 'next' at 'cluster' */
+				struct buffer *b;
+				__blk_t sect = (__blk_t)f->fat_sector +
+					       cluster / 128;
+
+				if(!(b = bread(i->sb->dev, sect, 512))) {
+					superblock_unlock(i->sb);
+					return -EIO;
+				}
+				((__u32 *)b->data)[cluster % 128] =
+					(((__u32 *)b->data)[cluster % 128] &
+					 0xF0000000) | nc;
+				bwrite(b);
+				brelse(b);
+			}
+			cluster = nc;
+		}
+		superblock_unlock(i->sb);
 	}
 	return fat_file_block(i, cluster, offset);
 }

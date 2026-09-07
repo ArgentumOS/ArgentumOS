@@ -28,11 +28,15 @@
 #define FAT_CLUST_BAD		0x0FFFFFF7
 
 /* per-inode cache entry: rebuilds evicted inodes (cluster -> identity).
- * Populated by the dir scanner before iget, kept for the mount. */
+ * Populated by the dir scanner before iget, kept for the mount. parent +
+ * slot locate the entry's directory slot so write_inode/rename/unlink can
+ * rewrite or remove it. */
 struct fatfs_ent {
 	__ino_t ino;			/* entry inode number */
 	__u32 cluster;			/* first cluster (0 = empty file) */
 	__u32 size;			/* file size */
+	__u32 parent;			/* parent dir first cluster (0 = n/a) */
+	unsigned long slot;		/* 0-based slot of the short entry */
 	unsigned char is_dir;
 	unsigned char used;
 };
@@ -62,13 +66,31 @@ extern struct fs_operations fatfs_file_fsop;	/* regular file ops */
 int fatfs_init(void);
 int fatfs_ent_find(struct superblock *sb, __ino_t ino, struct fatfs_ent **out);
 int fatfs_ent_add(struct superblock *sb, __ino_t ino, __u32 cluster,
-		  __u32 size, unsigned char is_dir);
+		  __u32 size, unsigned char is_dir, __u32 parent,
+		  unsigned long slot);
 __u32 fat_next_cluster(struct superblock *sb, __u32 cluster);
+int fat_alloc_cluster(struct superblock *sb, __u32 *cluster);
+int fat_read_entry(struct superblock *sb, __u32 cl, __u32 *val);
+void fat_set_eoc(struct superblock *sb, __u32 cluster);
+void fatfs_ent_remove(struct superblock *sb, __ino_t ino);
+int fat_free_chain(struct superblock *sb, __u32 first);
+
+/* write.c */
+int fat_write(struct inode *, struct fd *, const char *, __size_t);
+int fat_write_inode(struct inode *);
+int fat_truncate(struct inode *, __off_t);
+int fat_create(struct inode *, char *, int, __mode_t, struct inode **);
+int fat_mkdir(struct inode *, char *, __mode_t);
+int fat_unlink(struct inode *, struct inode *, char *);
+int fat_rmdir(struct inode *, struct inode *);
+int fat_rename(struct inode *i, struct inode *dir, struct inode *i_new,
+	       struct inode *dir_new, char *oldname, char *newname);
 
 /* dir.c */
 int fat_readdir(struct inode *, struct fd *, struct dirent *, __size_t);
 int fat_readdir64(struct inode *, struct fd *, struct dirent64 *, __size_t);
 int fat_lookup(const char *, struct inode *, struct inode **);
+int fat_dir_has_name(struct inode *, const char *);
 
 /* file.c */
 __blk_t fat_bmap(struct inode *, __off_t, int);

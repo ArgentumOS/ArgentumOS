@@ -19,6 +19,7 @@
 #include <fnx/stdio.h>
 #include <fnx/devices.h>
 #include <fnx/filesystems.h>
+#include <fnx/fcntl.h>
 #include <fnx/mm.h>
 #include <fnx/sched.h>
 #include "fat.h"
@@ -40,7 +41,8 @@ static struct fatfs_cache *fat_cache(struct superblock *sb)
 }
 
 int fatfs_ent_add(struct superblock *sb, __ino_t ino, __u32 cluster,
-		  __u32 size, unsigned char is_dir)
+		  __u32 size, unsigned char is_dir, __u32 parent,
+		  unsigned long slot)
 {
 	struct fatfs_cache *c = fat_cache(sb);
 	struct fatfs_ent *ne;
@@ -73,6 +75,8 @@ int fatfs_ent_add(struct superblock *sb, __ino_t ino, __u32 cluster,
 	ne->ino = ino;
 	ne->cluster = cluster;
 	ne->size = size;
+	ne->parent = parent;
+	ne->slot = slot;
 	ne->is_dir = is_dir;
 	ne->used = 1;
 	return 0;
@@ -269,6 +273,17 @@ static void fat_release_superblock(struct superblock *sb)
 static int fat_open(struct inode *i, struct fd *f)
 {
 	f->offset = 0;
+	if(S_ISREG(i->i_mode) && (f->flags & O_TRUNC)) {
+		superblock_lock(i->sb);
+		if(i->u.fatfs.cluster) {
+			fat_free_chain(i->sb, i->u.fatfs.cluster);
+			i->u.fatfs.cluster = 0;
+		}
+		i->i_size = 0;
+		i->i_mtime = CURRENT_TIME;
+		i->state |= INODE_DIRTY;
+		superblock_unlock(i->sb);
+	}
 	return 0;
 }
 
@@ -299,19 +314,19 @@ struct fs_operations fatfs_fsop = {
 	NULL,			/* followlink */
 	NULL,			/* bmap */
 	fat_lookup,		/* lookup */
-	NULL,			/* rmdir */
+	fat_rmdir,		/* rmdir */
 	NULL,			/* link */
-	NULL,			/* unlink */
+	fat_unlink,		/* unlink */
 	NULL,			/* symlink */
-	NULL,			/* mkdir */
+	fat_mkdir,		/* mkdir */
 	NULL,			/* mknod */
 	NULL,			/* truncate */
-	NULL,			/* create */
-	NULL,			/* rename */
+	fat_create,		/* create */
+	fat_rename,		/* rename */
 	NULL,			/* read_block */
 	NULL,			/* write_block */
 	fat_read_inode,		/* read_inode */
-	NULL,			/* write_inode */
+	fat_write_inode,	/* write_inode */
 	NULL,			/* ialloc */
 	NULL,			/* ifree */
 	NULL,			/* statfs */
@@ -334,7 +349,7 @@ struct fs_operations fatfs_file_fsop = {
 	fat_open,		/* open */
 	fat_close,		/* close */
 	file_read,		/* read (generic page-cache path) */
-	NULL,			/* write (M1) */
+	fat_write,		/* write */
 	NULL,			/* ioctl */
 	fat_file_llseek,	/* llseek */
 	NULL,			/* readdir */
@@ -351,7 +366,7 @@ struct fs_operations fatfs_file_fsop = {
 	NULL,			/* symlink */
 	NULL,			/* mkdir */
 	NULL,			/* mknod */
-	NULL,			/* truncate */
+	fat_truncate,		/* truncate */
 	NULL,			/* create */
 	NULL,			/* rename */
 	NULL,			/* read_block */

@@ -590,7 +590,7 @@ void sync_buffers(__dev_t dev)
 
 	lock_resource(&sync_resource);
 	flushed = 0;
-	for(size = BLKSIZE_1K; size <= PAGE_SIZE; size <<= 1) {
+	for(size = 512; size <= PAGE_SIZE; size <<= 1) {
 		first = NULL;
 		for(;;) {
 			if(!(buf = get_dirty_buffer(size))) {
@@ -817,7 +817,7 @@ int kbdflushd(void)
 		flushed = 0;
 
 		lock_resource(&sync_resource);
-		for(size = BLKSIZE_1K; size <= PAGE_SIZE; size <<= 1) {
+		for(size = 512; size <= PAGE_SIZE; size <<= 1) {
 			first = NULL;
 			for(;;) {
 				if(!(buf = get_dirty_buffer(size))) {
