@@ -108,7 +108,7 @@ int sys_umount2(const char *target, int flags)
 	 * through), so the last iputs here can still allocate/free bitmap
 	 * blocks. Writing the superblock first left its used_blocks
 	 * counter behind the bitmap on disk (deterministic on a second
-	 * mount after an rm, xbfscheck 'bitmap count vs used_blocks'). */
+	 * mount after an rm, agfscheck 'bitmap count vs used_blocks'). */
 	sync_inodes(dev);
 	sync_buffers(dev);
 	sync_superblocks(dev);

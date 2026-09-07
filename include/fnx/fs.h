@@ -17,7 +17,7 @@
 #include <fnx/fs_ext2.h>
 #include <fnx/fs_pipe.h>
 #include <fnx/fs_inotify.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 #include <fnx/fs_iso9660.h>
 #include <fnx/fs_proc.h>
 #include <fnx/fs_sock.h>
@@ -97,7 +97,7 @@ struct inode {
 		struct minix_i_info minix;
 #endif /* CONFIG_FS_MINIX */
 		struct ext2_i_info ext2;
-		struct xbfs_i_info xbfs;
+		struct agfs_i_info agfs;
 		struct pipefs_inode pipefs;
 		struct inotifyfs_inode inotify;
 		struct iso9660_inode iso9660;
@@ -134,7 +134,7 @@ struct superblock {
 #endif /* CONFIG_FS_MINIX */
 		struct ext2_sb_info ext2;
 		struct iso9660_sb_info iso9660;
-		struct xbfs_sb_info xbfs;
+		struct agfs_sb_info agfs;
 			struct fatfs_sb_info fatfs;
 } u;
 };

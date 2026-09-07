@@ -1,17 +1,17 @@
 /*
- * fnx/fs/xbfs/inode.c
+ * fnx/fs/agfs/inode.c
  *
- * XBFS inode + block mapping.
+ * AGFS inode + block mapping.
  *
  * Each inode occupies a full 1024-byte block; the vfs inode number is
  * the absolute disk block number of the inode:
  *
  *	block = (allocation_group << ag_shift) + start
  *
- * The raw on-disk inode (struct xbfs_inode, 256 bytes at the start of
- * the block) is cached in i->u.xbfs.raw for bmap and readdir. Writes:
+ * The raw on-disk inode (struct agfs_inode, 256 bytes at the start of
+ * the block) is cached in i->u.agfs.raw for bmap and readdir. Writes:
  * bmap(FOR_WRITING) allocates blocks (extending the last direct run or
- * appending a new one) into the cached raw inode; xbfs_write_inode
+ * appending a new one) into the cached raw inode; agfs_write_inode
  * flushes the raw inode + vfs fields to disk.
  *
  * Copyright 2024, the FNX project.
@@ -23,27 +23,27 @@
 #include <fnx/errno.h>
 #include <fnx/fs.h>
 #include <fnx/timer.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 #include <fnx/buffer.h>
 #include <fnx/fcntl.h>
 #include <fnx/mm.h>
 #include <fnx/stat.h>
 #include <fnx/string.h>
 
-extern struct fs_operations xbfs_fsop;
-static int xbfs_indirect_bmap(struct inode *, __off_t, int);
+extern struct fs_operations agfs_fsop;
+static int agfs_indirect_bmap(struct inode *, __off_t, int);
 
 /* single fsop for files and dirs: dispatch on the inode type */
-int xbfs_open(struct inode *i, struct fd *f)
+int agfs_open(struct inode *i, struct fd *f)
 {
 	f->offset = 0;
 	if(S_ISREG(i->i_mode) && (f->flags & O_TRUNC)) {
-		xbfs_truncate(i, 0);
+		agfs_truncate(i, 0);
 	}
 	return 0;
 }
 
-int xbfs_close(struct inode *i, struct fd *f)
+int agfs_close(struct inode *i, struct fd *f)
 {
 	return 0;
 }
@@ -53,7 +53,7 @@ int xbfs_close(struct inode *i, struct fd *f)
  * are a 65536th-of-a-second fraction). The subsecond comes from the
  * tick clock (HZ = 100), the same source gettimeofday uses.
  */
-static __u16 xbfs_subsecond(void)
+static __u16 agfs_subsecond(void)
 {
 	return (__u16)(((__u64)(CURRENT_TICKS % HZ) * 65536) / HZ);
 }
@@ -61,20 +61,20 @@ static __u16 xbfs_subsecond(void)
 /*
  * Set the modification / status-change times, storing the full
  * (sec << 16) | subsecond value in the in-memory raw inode (the same
- * value the last_modified index key and xbfs_write_inode() use).
+ * value the last_modified index key and agfs_write_inode() use).
  */
-void xbfs_touch_mtime(struct inode *i)
+void agfs_touch_mtime(struct inode *i)
 {
 	i->i_mtime = CURRENT_TIME;
-	i->u.xbfs.raw.last_modified_time =
-		((__u64)i->i_mtime << 16) | xbfs_subsecond();
+	i->u.agfs.raw.last_modified_time =
+		((__u64)i->i_mtime << 16) | agfs_subsecond();
 }
 
-void xbfs_touch_ctime(struct inode *i)
+void agfs_touch_ctime(struct inode *i)
 {
 	i->i_ctime = CURRENT_TIME;
-	i->u.xbfs.raw.status_change_time =
-		((__u64)i->i_ctime << 16) | xbfs_subsecond();
+	i->u.agfs.raw.status_change_time =
+		((__u64)i->i_ctime << 16) | agfs_subsecond();
 }
 
 /*
@@ -82,55 +82,55 @@ void xbfs_touch_ctime(struct inode *i)
  * its size and last_modified moved, so its index entries (Haiku
  * indexes directories too) must move with them. 'old_size' is the
  * directory's i_size BEFORE the tree mutation (the caller captures it
- * before xbfs_btree_insert/delete) — reading i_size here would already
+ * before agfs_btree_insert/delete) — reading i_size here would already
  * reflect the mutation, making the size index resize a no-op.
  */
-void xbfs_dir_touch(struct inode *dir, __off_t old_size)
+void agfs_dir_touch(struct inode *dir, __off_t old_size)
 {
-	__u64 old_mtime = dir->u.xbfs.raw.last_modified_time;
+	__u64 old_mtime = dir->u.agfs.raw.last_modified_time;
 
-	xbfs_touch_mtime(dir);
-	xbfs_touch_ctime(dir);
-	xbfs_index_resize(dir->sb, dir, old_size, old_mtime);
+	agfs_touch_mtime(dir);
+	agfs_touch_ctime(dir);
+	agfs_index_resize(dir->sb, dir, old_size, old_mtime);
 }
 
-int xbfs_read_inode(struct inode *i)
+int agfs_read_inode(struct inode *i)
 {
 	struct buffer *buf;
-	struct xbfs_inode *raw;
+	struct agfs_inode *raw;
 	__u32 tail;
 
 	if(!(buf = bread(i->dev, i->inode, i->sb->s_blocksize))) {
 		return -EIO;
 	}
-	raw = (struct xbfs_inode *)buf->data;
-	if(raw->magic1 != XBFS_INODE_MAGIC) {
+	raw = (struct agfs_inode *)buf->data;
+	if(raw->magic1 != AGFS_INODE_MAGIC) {
 		brelse(buf);
 		return -EINVAL;
 	}
-	memcpy_b(&i->u.xbfs.raw, raw, sizeof(struct xbfs_inode));
+	memcpy_b(&i->u.agfs.raw, raw, sizeof(struct agfs_inode));
 	/* the on-disk small_data tail is block_size - inode; the in-memory
 	 * copy is sized for the largest block, so zero the rest */
-	tail = i->sb->s_blocksize - sizeof(struct xbfs_inode);
-	if(!i->u.xbfs.small_data) {
-		if(!(i->u.xbfs.small_data = (unsigned char *)kmalloc(
-				XBFS_SMALL_DATA_SIZE))) {
+	tail = i->sb->s_blocksize - sizeof(struct agfs_inode);
+	if(!i->u.agfs.small_data) {
+		if(!(i->u.agfs.small_data = (unsigned char *)kmalloc(
+				AGFS_SMALL_DATA_SIZE))) {
 			brelse(buf);
 			return -ENOMEM;
 		}
 	}
-	i->u.xbfs.magic = XBFS_II_MAGIC;
-	memcpy_b(i->u.xbfs.small_data, (char *)raw + sizeof(struct xbfs_inode),
+	i->u.agfs.magic = AGFS_II_MAGIC;
+	memcpy_b(i->u.agfs.small_data, (char *)raw + sizeof(struct agfs_inode),
 		 tail);
-	memset_b(i->u.xbfs.small_data + tail, 0,
-		XBFS_SMALL_DATA_SIZE - tail);
+	memset_b(i->u.agfs.small_data + tail, 0,
+		AGFS_SMALL_DATA_SIZE - tail);
 
 	if(S_ISDIR(raw->mode) || S_ISREG(raw->mode) || S_ISLNK(raw->mode)
 	   || S_ISSOCK(raw->mode) || S_ISFIFO(raw->mode)) {
 		/* socket/fifo nodes are data-less inodes whose type lives in
-		 * i_mode (xbfs_mknod) — xbfs_fsop is right for them since they
+		 * i_mode (agfs_mknod) — agfs_fsop is right for them since they
 		 * are never opened through the filesystem */
-		i->fsop = &xbfs_fsop;
+		i->fsop = &agfs_fsop;
 	} else {
 		/* unsupported inode type */
 		brelse(buf);
@@ -145,7 +145,7 @@ int xbfs_read_inode(struct inode *i)
 		 * NUL-terminated text in the symlink area, data.size == 0),
 		 * so scan for the NUL. Stream symlinks carry the
 		 * INODE_LONG_SYMLINK flag and their length in data.size. */
-		if(raw->flags & XBFS_INODE_LONG_SYMLINK) {
+		if(raw->flags & AGFS_INODE_LONG_SYMLINK) {
 			i->i_size = raw->u.data.size;
 		} else if(raw->pad[0]) {
 			i->i_size = raw->pad[0];
@@ -157,26 +157,26 @@ int xbfs_read_inode(struct inode *i)
 	} else {
 		i->i_size = raw->u.data.size;
 	}
-	/* XBFS stores times as (seconds << 16); there is no access time */
+	/* AGFS stores times as (seconds << 16); there is no access time */
 	i->i_atime = raw->last_modified_time >> 16;
 	i->i_ctime = raw->status_change_time >> 16;
 	i->i_mtime = raw->last_modified_time >> 16;
-	/* nlink is per-inode, never a subdir count of the parent: XBFS has
+	/* nlink is per-inode, never a subdir count of the parent: AGFS has
 	 * no on-disk link field, so a dir read back from disk must carry a
 	 * stable base count (2 = '.' + '..') that its own mkdir/rmdir
 	 * history cannot drive to 0 - otherwise removing a subdirectory of
 	 * a just-mounted/replayed directory frees the directory inode */
 	i->i_nlink = S_ISDIR(raw->mode) ? 2 : 1;
-	/* gate for xbfs_ifree()'s truncate-on-unlink: a file/dir/stream-
+	/* gate for agfs_ifree()'s truncate-on-unlink: a file/dir/stream-
 	 * symlink with a nonzero size has allocated stream blocks and must
 	 * be truncated when unlinked (i_blocks == 0 would leak them); an
-	 * INLINE symlink has no stream, and xbfs_truncate() would misread
+	 * INLINE symlink has no stream, and agfs_truncate() would misread
 	 * the target text as run descriptors, so it must stay 0 */
 	if(S_ISLNK(i->i_mode)) {
 		i->i_blocks = (i->i_size > 143) ? ((i->i_size + 511) >> 9) : 0;
-	} else if((raw->flags & XBFS_INODE_INLINE_DATA)) {
+	} else if((raw->flags & AGFS_INODE_INLINE_DATA)) {
 		/* X-SSD6: an inline file has no stream blocks; i_blocks == 0
-		 * keeps xbfs_ifree()'s truncate-on-unlink from trying to free
+		 * keeps agfs_ifree()'s truncate-on-unlink from trying to free
 		 * run descriptors over the tail content */
 		i->i_blocks = 0;
 	} else {
@@ -188,99 +188,99 @@ int xbfs_read_inode(struct inode *i)
 }
 
 /*
- * Flush the inode to disk. The runs live in i->u.xbfs.raw (updated by
+ * Flush the inode to disk. The runs live in i->u.agfs.raw (updated by
  * bmap FOR_WRITING); the vfs fields (mode, uid/gid, size, times) are
  * refreshed into the raw copy before writing.
  */
-int xbfs_write_inode(struct inode *i)
+int agfs_write_inode(struct inode *i)
 {
 	struct buffer *buf;
-	struct xbfs_inode *raw;
-	struct xbfs_data_stream *ds;
+	struct agfs_inode *raw;
+	struct agfs_data_stream *ds;
 
 	if(!(buf = bread(i->dev, i->inode, i->sb->s_blocksize))) {
 		return -EIO;
 	}
-	raw = (struct xbfs_inode *)buf->data;
-	ds = &i->u.xbfs.raw.u.data;
+	raw = (struct agfs_inode *)buf->data;
+	ds = &i->u.agfs.raw.u.data;
 
 	/* X-SSD5(a): trim the unused tail of the last run's allocation
 	 * window back to the committed size. Runs at the last close of a
 	 * file and at sync/umount, so an open append fd keeps its whole
 	 * window while a closed small file never holds dead space. */
-	xbfs_trim_prealloc(i);
-	if(!i->u.xbfs.small_data) {
+	agfs_trim_prealloc(i);
+	if(!i->u.agfs.small_data) {
 		/* defensive: a dirty inode must always be writable. Every
 		 * creation path (ialloc, read_inode) allocates the tail, but
 		 * recycled inode structs can carry a NULL here (get_free_inode
 		 * zeroes the union) - allocate rather than memcpy from NULL. */
 		printk("BWI-NULLSD: ino %d dirty %x\n", i->inode, i->state);
-		if(!(i->u.xbfs.small_data = (unsigned char *)kmalloc(
-				XBFS_SMALL_DATA_SIZE))) {
+		if(!(i->u.agfs.small_data = (unsigned char *)kmalloc(
+				AGFS_SMALL_DATA_SIZE))) {
 			brelse(buf);
 			return -ENOMEM;
 		}
-		memset_b(i->u.xbfs.small_data, 0, XBFS_SMALL_DATA_SIZE);
+		memset_b(i->u.agfs.small_data, 0, AGFS_SMALL_DATA_SIZE);
 	}
 
 	/* the VFS owns the low 16 bits (type + permissions); the high 16
 	 * bits carry Haiku's extended mode bits (S_ATTR, S_ATTR_DIR,
 	 * S_STR_INDEX, ...) which a 16-bit i_mode cannot hold — preserve
 	 * them so rewriting a Haiku attribute/index inode keeps them */
-	i->u.xbfs.raw.mode = (i->u.xbfs.raw.mode & 0xFFFF0000u)
+	i->u.agfs.raw.mode = (i->u.agfs.raw.mode & 0xFFFF0000u)
 		| (i->i_mode & 0xFFFFu);
-	i->u.xbfs.raw.uid = i->i_uid;
-	i->u.xbfs.raw.gid = i->i_gid;
+	i->u.agfs.raw.uid = i->i_uid;
+	i->u.agfs.raw.gid = i->i_gid;
 	if(S_ISLNK(i->i_mode)) {
 		/* the symlink length lives in pad[0]; u.data.size aliases
 		 * symlink[136..143], so writing it for an inline symlink
 		 * would corrupt the last bytes of targets >= 136 chars */
-		i->u.xbfs.raw.pad[0] = i->i_size;
+		i->u.agfs.raw.pad[0] = i->i_size;
 		if(i->i_size > 143) {
-			i->u.xbfs.raw.u.data.size = i->i_size;
+			i->u.agfs.raw.u.data.size = i->i_size;
 		}
 	} else {
-		i->u.xbfs.raw.u.data.size = i->i_size;
+		i->u.agfs.raw.u.data.size = i->i_size;
 	}
 	{
-		__u64 lm = i->u.xbfs.raw.last_modified_time;
-		__u64 sc = i->u.xbfs.raw.status_change_time;
+		__u64 lm = i->u.agfs.raw.last_modified_time;
+		__u64 sc = i->u.agfs.raw.status_change_time;
 		/* the raw fields already carry (sec << 16) | subsecond from
 		 * the touch; only rewrite when the seconds moved directly
 		 * (e.g. utimensat), in which case there is no subsecond */
-		i->u.xbfs.raw.last_modified_time =
+		i->u.agfs.raw.last_modified_time =
 			((lm >> 16) == (__u64)i->i_mtime)
 			? ((__u64)i->i_mtime << 16) | (lm & 0xFFFF)
 			: ((__u64)i->i_mtime << 16);
-		i->u.xbfs.raw.status_change_time =
+		i->u.agfs.raw.status_change_time =
 			((sc >> 16) == (__u64)i->i_ctime)
 			? ((__u64)i->i_ctime << 16) | (sc & 0xFFFF)
 			: ((__u64)i->i_ctime << 16);
 	}
 	if(i->inode >= 23 && i->inode <= 27) {
 			}
-	memcpy_b(raw, &i->u.xbfs.raw, sizeof(struct xbfs_inode));
-	memcpy_b((char *)raw + sizeof(struct xbfs_inode), i->u.xbfs.small_data,
-		 i->sb->s_blocksize - sizeof(struct xbfs_inode));
-	raw->magic1 = XBFS_INODE_MAGIC;
+	memcpy_b(raw, &i->u.agfs.raw, sizeof(struct agfs_inode));
+	memcpy_b((char *)raw + sizeof(struct agfs_inode), i->u.agfs.small_data,
+		 i->sb->s_blocksize - sizeof(struct agfs_inode));
+	raw->magic1 = AGFS_INODE_MAGIC;
 	/* preserve the permanent on-disk flags (e.g. INODE_LONG_SYMLINK on
 	 * Haiku-created stream symlinks) — only IN_USE is ours to manage */
-	raw->flags |= XBFS_INODE_IN_USE;
-	xbfs_run_encode(&raw->inode_num, i->inode, i->sb->u.xbfs.ag_shift);
+	raw->flags |= AGFS_INODE_IN_USE;
+	agfs_run_encode(&raw->inode_num, i->inode, i->sb->u.agfs.ag_shift);
 	raw->inode_num.len = 1;
 	if(!(S_ISLNK(i->i_mode) && i->i_size <= 143)) {
 		raw->u.data.size = i->i_size;
 	}
 	/* max_direct_range was already copied by the memcpy above; do NOT
 	 * reset it to the full direct range here — bmap tracks the real
-	 * coverage and xbfs_indirect_bmap translates offsets against it */
+	 * coverage and agfs_indirect_bmap translates offsets against it */
 	(void)ds;
 
 	/* journal the inode write: inside an open transaction it joins it
 	 * (e.g. a dir-entry create), otherwise it is its own transaction */
-	xbfs_log_begin(i->sb);
-	xbfs_log_write_block(i->sb, buf->block, buf);
-	xbfs_log_commit(i->sb);
+	agfs_log_begin(i->sb);
+	agfs_log_write_block(i->sb, buf->block, buf);
+	agfs_log_commit(i->sb);
 	i->state &= ~INODE_DIRTY;
 	return 0;
 }
@@ -295,21 +295,21 @@ int xbfs_write_inode(struct inode *i)
  * strictly by appending runs). Indirect streams are left alone (their
  * tail table runs are managed by the indirect code).
  */
-void xbfs_trim_prealloc(struct inode *i)
+void agfs_trim_prealloc(struct inode *i)
 {
-	struct xbfs_inode *raw = &i->u.xbfs.raw;
-	struct xbfs_data_stream *ds = &raw->u.data;
+	struct agfs_inode *raw = &i->u.agfs.raw;
+	struct agfs_data_stream *ds = &raw->u.data;
 	__u64 used, cov = 0;
 	int run, last = -1;
 	__u64 excess, base, b, cut;
 
 	if(!S_ISREG(i->i_mode) || !i->i_size
-			|| (raw->flags & XBFS_INODE_INLINE_DATA)) {
+			|| (raw->flags & AGFS_INODE_INLINE_DATA)) {
 		return;
 	}
 	used = ((__u64)i->i_size + i->sb->s_blocksize - 1)
 		>> i->sb->s_blocksize_bits;
-	for(run = 0; run < XBFS_NUM_DIRECT_BLOCKS; run++) {
+	for(run = 0; run < AGFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
 
 		if(!len || (ds->direct[run].allocation_group == 0
@@ -328,10 +328,10 @@ void xbfs_trim_prealloc(struct inode *i)
 		return;
 	}
 	base = ((__u64)ds->direct[last].allocation_group
-			<< i->sb->u.xbfs.ag_shift) + ds->direct[last].start;
+			<< i->sb->u.agfs.ag_shift) + ds->direct[last].start;
 	for(b = base + ds->direct[last].len - cut; b < base + ds->direct[last].len;
 			b++) {
-		xbfs_bfree(i->sb, (__blk_t)b);
+		agfs_bfree(i->sb, (__blk_t)b);
 	}
 	ds->direct[last].len = (__u16)(ds->direct[last].len - cut);
 	if(!ds->direct[last].len) {
@@ -342,84 +342,84 @@ void xbfs_trim_prealloc(struct inode *i)
 }
 
 /*
- * Allocate a new inode (inodes are normal blocks in XBFS). Initializes
+ * Allocate a new inode (inodes are normal blocks in AGFS). Initializes
  * the inode block and sets i->inode to the new block number.
  */
-int xbfs_ialloc(struct inode *i, int mode)
+int agfs_ialloc(struct inode *i, int mode)
 {
 	__blk_t block;
 	struct buffer *buf;
-	struct xbfs_inode *raw;
+	struct agfs_inode *raw;
 
-	if((block = xbfs_balloc(i->sb)) < 0) {
+	if((block = agfs_balloc(i->sb)) < 0) {
 		return block;
 	}
 	if(!(buf = bread(i->sb->dev, block, i->sb->s_blocksize))) {
-		xbfs_bfree(i->sb, block);
+		agfs_bfree(i->sb, block);
 		return -EIO;
 	}
 	memset_b(buf->data, 0, i->sb->s_blocksize);
-	raw = (struct xbfs_inode *)buf->data;
-	raw->magic1 = XBFS_INODE_MAGIC;
-	xbfs_run_encode(&raw->inode_num, block, i->sb->u.xbfs.ag_shift);
+	raw = (struct agfs_inode *)buf->data;
+	raw->magic1 = AGFS_INODE_MAGIC;
+	agfs_run_encode(&raw->inode_num, block, i->sb->u.agfs.ag_shift);
 	raw->inode_num.len = 1;
 	raw->mode = mode;
-	raw->flags = XBFS_INODE_IN_USE;
+	raw->flags = AGFS_INODE_IN_USE;
 	/* inode_size == block_size: Haiku's Inode::InitCheck requires
 	 * InodeSize() == volume->InodeSize() */
 	raw->inode_size = i->sb->s_blocksize;
-	raw->u.data.max_direct_range = XBFS_NUM_DIRECT_BLOCKS * i->sb->s_blocksize;
-	xbfs_log_begin(i->sb);
-	xbfs_log_write_block(i->sb, buf->block, buf);
-	xbfs_log_commit(i->sb);
+	raw->u.data.max_direct_range = AGFS_NUM_DIRECT_BLOCKS * i->sb->s_blocksize;
+	agfs_log_begin(i->sb);
+	agfs_log_write_block(i->sb, buf->block, buf);
+	agfs_log_commit(i->sb);
 
 	i->inode = block;
 	i->i_size = 0;
 	i->i_blocks = 0;
-	memset_b(&i->u.xbfs.raw, 0, sizeof(struct xbfs_inode));
-	if(!i->u.xbfs.small_data) {
-		if(!(i->u.xbfs.small_data = (unsigned char *)kmalloc(
-				XBFS_SMALL_DATA_SIZE))) {
-			xbfs_bfree(i->sb, block);
+	memset_b(&i->u.agfs.raw, 0, sizeof(struct agfs_inode));
+	if(!i->u.agfs.small_data) {
+		if(!(i->u.agfs.small_data = (unsigned char *)kmalloc(
+				AGFS_SMALL_DATA_SIZE))) {
+			agfs_bfree(i->sb, block);
 			return -ENOMEM;
 		}
 	}
-	i->u.xbfs.magic = XBFS_II_MAGIC;
-	memset_b(i->u.xbfs.small_data, 0, XBFS_SMALL_DATA_SIZE);
-	i->u.xbfs.raw.mode = mode;
-	/* keep the in-memory copy in sync: xbfs_write_inode() rewrites the
-	 * buffer from i->u.xbfs.raw, which ialloc leaves zeroed */
-	i->u.xbfs.raw.inode_size = i->sb->s_blocksize;
-	i->u.xbfs.raw.u.data.max_direct_range = XBFS_NUM_DIRECT_BLOCKS * i->sb->s_blocksize;
+	i->u.agfs.magic = AGFS_II_MAGIC;
+	memset_b(i->u.agfs.small_data, 0, AGFS_SMALL_DATA_SIZE);
+	i->u.agfs.raw.mode = mode;
+	/* keep the in-memory copy in sync: agfs_write_inode() rewrites the
+	 * buffer from i->u.agfs.raw, which ialloc leaves zeroed */
+	i->u.agfs.raw.inode_size = i->sb->s_blocksize;
+	i->u.agfs.raw.u.data.max_direct_range = AGFS_NUM_DIRECT_BLOCKS * i->sb->s_blocksize;
 	/* creation time: Haiku encodes (seconds << 16) | subsecond */
-	i->u.xbfs.raw.create_time =
-		((__u64)CURRENT_TIME << 16) | xbfs_subsecond();
+	i->u.agfs.raw.create_time =
+		((__u64)CURRENT_TIME << 16) | agfs_subsecond();
 	i->i_atime = CURRENT_TIME;
-	xbfs_touch_mtime(i);
-	xbfs_touch_ctime(i);
+	agfs_touch_mtime(i);
+	agfs_touch_ctime(i);
 	return 0;
 }
 
-void xbfs_ifree(struct inode *i){
-	if(!i->inode || i->inode >= i->sb->u.xbfs.num_blocks) {
+void agfs_ifree(struct inode *i){
+	if(!i->inode || i->inode >= i->sb->u.agfs.num_blocks) {
 		return;
 	}
 	/* free any attribute inodes (tree + attribute files) first, so
 	 * their blocks are not leaked when a Haiku file with attributes
 	 * is unlinked */
-	xbfs_attr_free_all(i);
+	agfs_attr_free_all(i);
 	if(i->i_blocks
 	   /* a session-created directory whose tree outgrew its initial
 	    * i_blocks (or was never counted): any nonzero stream size
 	    * means allocated runs that must be freed on unlink; inline
 	    * data and short symlinks have no stream and stay excluded */
 	   || ((S_ISREG(i->i_mode) || S_ISDIR(i->i_mode))
-	       && !(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA)
+	       && !(i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA)
 	       && i->i_size)) {
 		invalidate_inode_pages(i);
-		xbfs_truncate(i, 0);
+		agfs_truncate(i, 0);
 	}
-	xbfs_bfree(i->sb, i->inode);
+	agfs_bfree(i->sb, i->inode);
 }
 
 /*
@@ -428,20 +428,20 @@ void xbfs_ifree(struct inode *i){
  * struct itself is recycled by get_free_inode(), so read_inode/ialloc
  * re-allocate on the next use.
  */
-void xbfs_destroy_inode(struct inode *i)
+void agfs_destroy_inode(struct inode *i)
 {
 	/* the union may have been repurposed by another filesystem (e.g.
 	 * the mount_root probe reuses one superblock struct, so a minix
-	 * inode can carry i->sb->fsop == xbfs_fsop); only act while the
-	 * union actually holds a XBFS inode */
-	if(i->u.xbfs.magic != XBFS_II_MAGIC) {
+	 * inode can carry i->sb->fsop == agfs_fsop); only act while the
+	 * union actually holds a AGFS inode */
+	if(i->u.agfs.magic != AGFS_II_MAGIC) {
 		return;
 	}
-	if(i->u.xbfs.small_data) {
-		kfree((addr_t)i->u.xbfs.small_data);
-		i->u.xbfs.small_data = NULL;
+	if(i->u.agfs.small_data) {
+		kfree((addr_t)i->u.agfs.small_data);
+		i->u.agfs.small_data = NULL;
 	}
-	i->u.xbfs.magic = 0;
+	i->u.agfs.magic = 0;
 }
 
 /*
@@ -452,22 +452,22 @@ void xbfs_destroy_inode(struct inode *i)
  * appending a new run. Only the 12 direct runs are supported; indirect
  * streams return -EIO.
  */
-int xbfs_bmap(struct inode *i, __off_t offset, int mode)
+int agfs_bmap(struct inode *i, __off_t offset, int mode)
 {
-	struct xbfs_inode *raw = &i->u.xbfs.raw;
-	struct xbfs_data_stream *ds = &raw->u.data;
+	struct agfs_inode *raw = &i->u.agfs.raw;
+	struct agfs_data_stream *ds = &raw->u.data;
 	__u32 block = (__u32)(offset >> i->sb->s_blocksize_bits);
-	__u32 ag_shift = i->sb->u.xbfs.ag_shift;
+	__u32 ag_shift = i->sb->u.agfs.ag_shift;
 	__u64 covered = 0;
 	__u32 last_ag = 0, last_start = 0, last_len = 0;
 	int run, nrun = -1;
 
-	/* direct runs (up to XBFS_NUM_DIRECT_BLOCKS runs; the runs' total
+	/* direct runs (up to AGFS_NUM_DIRECT_BLOCKS runs; the runs' total
 	 * coverage is tracked in max_direct_range). A run pointing at
 	 * block 0 in AG 0 is a phantom (the superblock owns block 0) and
 	 * is treated as empty; a run starting at block 0 of a LATER AG
 	 * is a real run (the first block of that group). */
-	for(run = 0; run < XBFS_NUM_DIRECT_BLOCKS; run++) {
+	for(run = 0; run < AGFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
 		if(!len || (ds->direct[run].allocation_group == 0
 				&& ds->direct[run].start == 0)) {
@@ -500,14 +500,14 @@ int xbfs_bmap(struct inode *i, __off_t offset, int mode)
 		 * file beyond them (this is where reads of the indirect region
 		 * must go too — returning 0 here would turn the tail of a
 		 * fragmented file into zeros) */
-		return xbfs_indirect_bmap(i, offset, mode);
+		return agfs_indirect_bmap(i, offset, mode);
 	}
 
 	if(mode != FOR_WRITING) {
 		return 0;	/* unmapped: the direct runs don't reach here */
 	}
 
-	/* Allocate file blocks [covered, block]. XBFS runs are positional
+	/* Allocate file blocks [covered, block]. AGFS runs are positional
 	 * (run i covers the file range after runs 0..i-1), so a sparse
 	 * write past a hole must materialize the hole: every intermediate
 	 * block gets allocated and the last run is extended, or a new run
@@ -520,7 +520,7 @@ int xbfs_bmap(struct inode *i, __off_t offset, int mode)
 		/* try to extend the last direct run with the contiguous next block */
 		if(nrun > 0 && last_len) {
 			nb = (last_ag << ag_shift) + last_start + last_len;
-			if(xbfs_balloc_specific(i->sb, nb) == 0) {
+			if(agfs_balloc_specific(i->sb, nb) == 0) {
 				ds->direct[nrun - 1].len++;
 				ds->max_direct_range = (covered + 1) << i->sb->s_blocksize_bits;
 				last_len++;
@@ -531,20 +531,20 @@ int xbfs_bmap(struct inode *i, __off_t offset, int mode)
 				continue;
 			}
 		}
-		if(nrun >= XBFS_NUM_DIRECT_BLOCKS) {
+		if(nrun >= AGFS_NUM_DIRECT_BLOCKS) {
 			/* all 12 direct runs are used: go indirect */
-			return xbfs_indirect_bmap(i, offset, mode);
+			return agfs_indirect_bmap(i, offset, mode);
 		}
 		/* append a new direct run (or start the first one): reserve a
 		 * contiguous allocation window (X-SSD5(a)) so a sequential
 		 * burst lands in one long run; the unused tail of the window
-		 * is trimmed back to the committed size by xbfs_write_inode at
+		 * is trimmed back to the committed size by agfs_write_inode at
 		 * the file's last close and at sync/umount */
 		{
 			__u32 wlen = 0;
-			__u32 want = XBFS_DELALLOC_WINDOW;
+			__u32 want = AGFS_DELALLOC_WINDOW;
 
-			if((nb = xbfs_balloc_contig(i->sb, want, &wlen)) < 0) {
+			if((nb = agfs_balloc_contig(i->sb, want, &wlen)) < 0) {
 				return nb;
 			}
 			ds->direct[nrun].allocation_group = (__u32)(nb >> ag_shift);
@@ -575,10 +575,10 @@ int xbfs_bmap(struct inode *i, __off_t offset, int mode)
  * double_indirect block holds 128 __blk_t disk-block addresses of table
  * blocks.
  */
-static __blk_t xbfs_indirect_table_block(struct inode *i, __u32 t)
+static __blk_t agfs_indirect_table_block(struct inode *i, __u32 t)
 {
-	struct xbfs_data_stream *ds = &i->u.xbfs.raw.u.data;
-	__u32 ag_shift = i->sb->u.xbfs.ag_shift;
+	struct agfs_data_stream *ds = &i->u.agfs.raw.u.data;
+	__u32 ag_shift = i->sb->u.agfs.ag_shift;
 	__u32 darray = i->sb->s_blocksize / sizeof(__blk_t);
 	struct buffer *dbuf;
 
@@ -601,13 +601,13 @@ static __blk_t xbfs_indirect_table_block(struct inode *i, __u32 t)
 	}
 }
 
-static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
+static int agfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 {
-	struct xbfs_inode *raw = &i->u.xbfs.raw;
-	struct xbfs_data_stream *ds = &raw->u.data;
+	struct agfs_inode *raw = &i->u.agfs.raw;
+	struct agfs_data_stream *ds = &raw->u.data;
 	__u32 block = (__u32)(offset >> i->sb->s_blocksize_bits);
-	__u32 ag_shift = i->sb->u.xbfs.ag_shift;
-	__u32 arraylen = i->sb->s_blocksize / sizeof(struct xbfs_block_run);
+	__u32 ag_shift = i->sb->u.agfs.ag_shift;
+	__u32 arraylen = i->sb->s_blocksize / sizeof(struct agfs_block_run);
 	__u64 covered = 0;
 	__u32 table_len = !ds->indirect.len ? 0
 		: ds->indirect.len + ds->double_indirect.len
@@ -619,8 +619,8 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 
 	/* walk the indirect table looking for the run covering 'block' */
 	for(t = 0; t < table_len; t++) {
-		struct xbfs_block_run *runs;
-		__blk_t tbl = xbfs_indirect_table_block(i, t);
+		struct agfs_block_run *runs;
+		__blk_t tbl = agfs_indirect_table_block(i, t);
 
 		if(!tbl) {
 			/* the table ends here: a double-indirect entry that
@@ -637,7 +637,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		if(!(buf = bread(i->dev, tbl, i->sb->s_blocksize))) {
 			return -EIO;
 		}
-		runs = (struct xbfs_block_run *)buf->data;
+		runs = (struct agfs_block_run *)buf->data;
 		for(j = 0; j < arraylen; j++) {
 			__u32 len = runs[j].len;
 			if(!len || (runs[j].allocation_group == 0
@@ -657,16 +657,16 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 					}
 					/* try to extend the previous run */
 					if(j > 0) {
-						struct xbfs_block_run *pr = &runs[j - 1];
+						struct agfs_block_run *pr = &runs[j - 1];
 						__blk_t next = (pr->allocation_group << ag_shift)
 							+ pr->start + pr->len;
-						if(xbfs_balloc_specific(i->sb, next) == 0) {
+						if(agfs_balloc_specific(i->sb, next) == 0) {
 							pr->len++;
 							bwrite(buf);	/* persist the table block */
 							return next;
 						}
 					}
-					if((nb = xbfs_balloc(i->sb)) < 0) {
+					if((nb = agfs_balloc(i->sb)) < 0) {
 						brelse(buf);
 						return nb;
 					}
@@ -703,7 +703,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		if(table_len == 0) {
 			/* first indirect block: allocate a fresh block for the
 			 * table (there is no existing run to extend) */
-			if((next = xbfs_balloc(i->sb)) < 0) {
+			if((next = agfs_balloc(i->sb)) < 0) {
 				return next;
 			}
 			ds->indirect.allocation_group = (__u32)(next >> ag_shift);
@@ -711,7 +711,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			ds->indirect.len = 1;
 			new_slot = 0;
 		} else if(ds->double_indirect.len == 0
-				&& xbfs_balloc_specific(i->sb,
+				&& agfs_balloc_specific(i->sb,
 					(ds->indirect.allocation_group
 						<< ag_shift)
 					+ ds->indirect.start
@@ -740,7 +740,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 				 * only — a fragmented double table is not worth
 				 * a third level) */
 				if(ds->double_indirect.len == 0) {
-					if((next = xbfs_balloc(i->sb)) < 0) {
+					if((next = agfs_balloc(i->sb)) < 0) {
 						return next;
 					}
 					ds->double_indirect.allocation_group =
@@ -748,7 +748,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 					ds->double_indirect.start =
 						next & ((1 << ag_shift) - 1);
 					ds->double_indirect.len = 1;
-				} else if(xbfs_balloc_specific(i->sb,
+				} else if(agfs_balloc_specific(i->sb,
 						(ds->double_indirect.allocation_group
 							<< ag_shift)
 						+ ds->double_indirect.start
@@ -770,7 +770,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 			}
 			/* allocate a fresh table block and record its address in
 			 * the double table */
-			if((next = xbfs_balloc(i->sb)) < 0) {
+			if((next = agfs_balloc(i->sb)) < 0) {
 				return next;
 			}
 			if(!(dbuf = bread(i->dev,
@@ -789,7 +789,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		 * slot depends on the branch above: 0 for the first table
 		 * block, indirect.len-1 for a contiguous extension, 't' for
 		 * a double-table block — never the phantom table_len */
-		if(!(zbuf = bread(i->dev, xbfs_indirect_table_block(i, new_slot),
+		if(!(zbuf = bread(i->dev, agfs_indirect_table_block(i, new_slot),
 				i->sb->s_blocksize))) {
 			return -EIO;
 		}
@@ -802,7 +802,7 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
 		ds->max_double_indirect_range = ds->max_indirect_range;
 		/* recurse: the new table block is empty, the write
 		 * path above fills it */
-		return xbfs_indirect_bmap(i, offset, mode);
+		return agfs_indirect_bmap(i, offset, mode);
 	}
 }
 
@@ -810,33 +810,33 @@ static int xbfs_indirect_bmap(struct inode *i, __off_t offset, int mode)
  * Truncate the data stream to 'length'. Frees every block beyond the
  * new size and resets the direct runs.
  */
-int xbfs_truncate(struct inode *i, __off_t length)
+int agfs_truncate(struct inode *i, __off_t length)
 {
-	struct xbfs_data_stream *ds = &i->u.xbfs.raw.u.data;
-	__u32 ag_shift = i->sb->u.xbfs.ag_shift;
+	struct agfs_data_stream *ds = &i->u.agfs.raw.u.data;
+	__u32 ag_shift = i->sb->u.agfs.ag_shift;
 	__off_t old_size = i->i_size;
-	__u64 old_mtime = i->u.xbfs.raw.last_modified_time;
+	__u64 old_mtime = i->u.agfs.raw.last_modified_time;
 
 	/* X-SSD6: an inline file's size lives in the tail; truncating it
 	 * within the inline capacity never touches a stream. Growing past
 	 * the capacity converts it to a stream file first, then the normal
 	 * (grow) path below only advances the size. */
 	if(S_ISREG(i->i_mode)
-	   && (i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA)) {
-		if((__u64)length <= XBFS_INLINE_MAX) {
+	   && (i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA)) {
+		if((__u64)length <= AGFS_INLINE_MAX) {
 			if(length < i->i_size) {
-				memset_b(i->u.xbfs.small_data
-					 + xbfs_inline_base(i) + length, 0,
+				memset_b(i->u.agfs.small_data
+					 + agfs_inline_base(i) + length, 0,
 					i->i_size - length);
 			}
 			i->i_size = length;
-			i->u.xbfs.raw.u.data.size = length;
-			xbfs_touch_mtime(i);
+			i->u.agfs.raw.u.data.size = length;
+			agfs_touch_mtime(i);
 			i->state |= INODE_DIRTY;
-			xbfs_index_resize(i->sb, i, old_size, old_mtime);
+			agfs_index_resize(i->sb, i, old_size, old_mtime);
 			return 0;
 		}
-		if(xbfs_inline_expand(i) < 0) {
+		if(agfs_inline_expand(i) < 0) {
 			return -ENOSPC;
 		}
 	}
@@ -844,7 +844,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 	__u64 covered = 0;
 	int run;
 
-	for(run = 0; run < XBFS_NUM_DIRECT_BLOCKS; run++) {
+	for(run = 0; run < AGFS_NUM_DIRECT_BLOCKS; run++) {
 		__u32 len = ds->direct[run].len;
 		__blk_t base;
 		__u64 run_end;
@@ -860,7 +860,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 			/* the whole run is beyond the new size: free it */
 			__u32 n;
 			for(n = 0; n < len; n++) {
-				xbfs_bfree(i->sb, base + n);
+				agfs_bfree(i->sb, base + n);
 			}
 			ds->direct[run].allocation_group = 0;
 			ds->direct[run].start = 0;
@@ -871,7 +871,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 					+ i->sb->s_blocksize - 1) >> i->sb->s_blocksize_bits;
 			__u32 n;
 			for(n = (__u32)keep; n < len; n++) {
-				xbfs_bfree(i->sb, base + n);
+				agfs_bfree(i->sb, base + n);
 			}
 			ds->direct[run].len = (__u32)keep;
 		}
@@ -881,7 +881,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 	/* free the indirect table if the new size is within the direct
 	 * range; otherwise free the indirect runs beyond the new size */
 	{
-		__u32 arraylen = i->sb->s_blocksize / sizeof(struct xbfs_block_run);
+		__u32 arraylen = i->sb->s_blocksize / sizeof(struct agfs_block_run);
 		__u32 table_len = !ds->indirect.len ? 0
 			: ds->indirect.len + ds->double_indirect.len
 				* (i->sb->s_blocksize / sizeof(__blk_t));
@@ -891,15 +891,15 @@ int xbfs_truncate(struct inode *i, __off_t length)
 		{
 		__u64 covered = ds->max_direct_range;
 		for(t = 0; t < table_len; t++) {
-			struct xbfs_block_run *runs;
+			struct agfs_block_run *runs;
 			struct buffer *ibuf;
-			__blk_t tbl = xbfs_indirect_table_block(i, t);
+			__blk_t tbl = agfs_indirect_table_block(i, t);
 			int j;
 
 			if(!tbl || !(ibuf = bread(i->dev, tbl, i->sb->s_blocksize))) {
 				break;
 			}
-			runs = (struct xbfs_block_run *)ibuf->data;
+			runs = (struct agfs_block_run *)ibuf->data;
 			for(j = 0; j < arraylen; j++) {
 				__u32 len = runs[j].len;
 				__u64 base, run_end;
@@ -915,7 +915,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 					/* the whole run is beyond the new size */
 					__u32 n;
 					for(n = 0; n < len; n++) {
-						xbfs_bfree(i->sb, (__blk_t)base + n);
+						agfs_bfree(i->sb, (__blk_t)base + n);
 					}
 					runs[j].allocation_group = 0;
 					runs[j].start = 0;
@@ -926,7 +926,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 							+ i->sb->s_blocksize - 1) >> i->sb->s_blocksize_bits;
 					__u32 n;
 					for(n = (__u32)keep; n < len; n++) {
-						xbfs_bfree(i->sb, (__blk_t)base + n);
+						agfs_bfree(i->sb, (__blk_t)base + n);
 					}
 					runs[j].len = (__u32)keep;
 				}
@@ -941,7 +941,7 @@ int xbfs_truncate(struct inode *i, __off_t length)
 			__blk_t base = (ds->indirect.allocation_group << ag_shift)
 				+ ds->indirect.start;
 			for(n = 0; n < ds->indirect.len; n++) {
-				xbfs_bfree(i->sb, base + n);
+				agfs_bfree(i->sb, base + n);
 			}
 			base = (ds->double_indirect.allocation_group << ag_shift)
 				+ ds->double_indirect.start;
@@ -955,13 +955,13 @@ int xbfs_truncate(struct inode *i, __off_t length)
 					addrs = (__blk_t *)dbuf->data;
 					for(s = 0; s < darray; s++) {
 						if(addrs[s]
-							&& addrs[s] < i->sb->u.xbfs.num_blocks) {
-							xbfs_bfree(i->sb, addrs[s]);
+							&& addrs[s] < i->sb->u.agfs.num_blocks) {
+							agfs_bfree(i->sb, addrs[s]);
 						}
 					}
 					brelse(dbuf);
 				}
-				xbfs_bfree(i->sb, base + n);
+				agfs_bfree(i->sb, base + n);
 			}
 			ds->indirect.allocation_group = 0;
 			ds->indirect.start = 0;
@@ -975,9 +975,9 @@ int xbfs_truncate(struct inode *i, __off_t length)
 	}
 
 	i->i_size = length;
-	i->u.xbfs.raw.u.data.size = length;
-	xbfs_touch_mtime(i);
+	i->u.agfs.raw.u.data.size = length;
+	agfs_touch_mtime(i);
 	i->state |= INODE_DIRTY;
-	xbfs_index_resize(i->sb, i, old_size, old_mtime);
+	agfs_index_resize(i->sb, i, old_size, old_mtime);
 	return 0;
 }

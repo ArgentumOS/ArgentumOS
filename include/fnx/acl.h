@@ -41,7 +41,7 @@ struct acl_xattr_entry {
 
 #define ACL_UNDEFINED_ID	0xFFFFFFFF	/* USER_OBJ/GROUP_OBJ/MASK/OTHER */
 
-/* largest sane ACL: comfortably inside the XBFS small_data cap */
+/* largest sane ACL: comfortably inside the AGFS small_data cap */
 #define ACL_MAX_ENTRIES	32
 
 /* full-size buffer for one ACL payload */

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build an XBFS image (FNX mkxbfs; superblock magic 0x58424653 'XBFS',
+"""Build an AGFS image (FNX mkagfs; superblock magic 0x41474653 'AGFS',
 the ex-Be filesystem — layout still follows the Haiku BFS conventions).
 
-Usage: mkxbfs.py <rootdir> <image> <size-MB>
+Usage: mkagfs.py <rootdir> <image> <size-MB>
 
 1KB blocks, 8MB allocation groups. Layout (Haiku convention):
   block 0: boot block + 512-byte superblock at offset 512
@@ -15,10 +15,10 @@ Files with <= 12 runs use only the direct runs; larger files use the
 indirect stream: an indirect run of table blocks (128 block_run entries
 per table block) and, when the table spills past the first table run,
 the double-indirect table (256 u32 block addresses per block). This is
-the exact layout the FNX xbfs driver's bmap reads (fs/xbfs/inode.c).
+the exact layout the FNX agfs driver's bmap reads (fs/agfs/inode.c).
 
 Directories whose entries do not fit one leaf get a multi-node B+tree
-matching fs/xbfs/btree.c: interior nodes carry key[i] = the LAST key of
+matching fs/agfs/btree.c: interior nodes carry key[i] = the LAST key of
 child[i]'s subtree, values[i] = child[i]'s stream offset and overflow =
 the rightmost child; leaves are right-linked (left always -1, as the
 driver writes). Everything is byte-lexicographically sorted, which is
@@ -62,7 +62,7 @@ BTREE_MAGIC = 0x69f6c2e8
 INODE_MAGIC = 0x3bbe0ad9
 INODE_IN_USE = 0x00000001
 INODE_LONG_SYMLINK = 0x00000040  # Haiku inode_flags
-MAGIC1 = 0x58424653   # 'XBFS' (our own; BFS used 0x42465331 'BFS1')
+MAGIC1 = 0x41474653   # 'AGFS' (our own; BFS used 0x42465331 'BFS1')
 MAGIC2 = 0xdd121031
 MAGIC3 = 0x15b6830e
 BYTEORDER = 0x42494745
@@ -96,7 +96,7 @@ def u64(v):
 def build_super(num_blocks, used, root_block, log_start, log_len,
                  ag_shift, blocks_per_ag, num_ags, indices_block=0):
     sb = bytearray(512)
-    sb[0:4] = b"XBFS"   # default volume name
+    sb[0:4] = b"AGFS"   # default volume name
     o = 0x20
     sb[o:o + 4] = u32(MAGIC1); o += 4
     sb[o:o + 4] = u32(BYTEORDER); o += 4
@@ -119,7 +119,7 @@ def build_super(num_blocks, used, root_block, log_start, log_len,
     sb[o:o + 8] = run(0, indices_block); o += 8  # indices
     # dual-copy superblock: a u64 sequence + u32 checksum (of the
     # struct, bytes [0, SEQ_OFF)) follow the struct in the copy area;
-    # mkxbfs writes the identical copy twice (block 0 @0x200 and @0x0)
+    # mkagfs writes the identical copy twice (block 0 @0x200 and @0x0)
     assert o <= 0x84
     sb[0x84:0x8C] = u64(1)                # sequence (new-format marker)
     cksum = sum(struct.unpack('<I', sb[j:j + 4])[0]
@@ -142,7 +142,7 @@ def build_btree_header(root_off, max_depth, max_size=1 << 20,
 
 
 def build_node(keys, values, overflow, right, left=BTREE_NULL):
-    """One XBFS btree node. For a leaf: overflow == BTREE_NULL, values =
+    """One AGFS btree node. For a leaf: overflow == BTREE_NULL, values =
     inode block numbers. For an interior: values[0..k-1] = child stream
     offsets and overflow = the rightmost child (values[i] holds child i,
     keys[i] = the last key of child i's subtree)."""
@@ -196,7 +196,7 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
                 symlink=None, flags=INODE_IN_USE, itype=0, mtime=0):
     # 'mtime' = the host st_mtime (seconds) of the source tree entry; the
     # on-disk raw times store the index-key form (sec << 16 | subsecond),
-    # which xbfs_touch_mtime uses and the guest derives i_mtime from
+    # which agfs_touch_mtime uses and the guest derives i_mtime from
     # (raw >> 16). Indexed tree entries carry their source time; synthetic
     # inodes (indices, index files, the root) keep 0.
     """Serialize a 256-byte inode. 'stream' is a dict with 'direct' (list
@@ -272,7 +272,7 @@ def main():
         journal_len = int(args[1])
         args = args[2:]
     if len(args) != 3 or block_size not in (1024, 2048, 4096):
-        print("usage: mkxbfs.py [--block-size 1024|2048|4096] [--journal <blocks>] <rootdir> <image> <size-MB>")
+        print("usage: mkagfs.py [--block-size 1024|2048|4096] [--journal <blocks>] <rootdir> <image> <size-MB>")
         sys.exit(1)
     root, img, mb = args[0], args[1], int(args[2])
     global BLOCK, BLOCK_SHIFT
@@ -515,11 +515,11 @@ def main():
         """Index tree over (key, ino) entries, duplicate keys allowed.
         Distinct keys pack into the B+tree exactly as in build_tree();
         each leaf entry value is a direct inode number (unique key) or a
-        link to a duplicate node (type 2, XBFS_BTREE_DUPLICATE_NODE:
+        link to a duplicate node (type 2, AGFS_BTREE_DUPLICATE_NODE:
         {left @0, right @8, count @16, values[125] @24}, chained by right
-        links when a key has > 125 values). mkxbfs does not emit fragment
+        links when a key has > 125 values). mkagfs does not emit fragment
         slots (type 3): a duplicate node is valid for any count >= 2 and
-        the driver + xbfscheck both read it. Returns
+        the driver + agfscheck both read it. Returns
         (nblocks, root_off, max_depth, blocks) with any duplicate-node
         blocks appended to the tree's stream (their stream offsets are
         what the links point at). data_type 5 (LLNG) sorts keys as signed
@@ -732,7 +732,7 @@ def main():
                   'max_dind': len(dir_blocks) * BLOCK}
         st = os.stat(full)
         # the root inode stays at mtime 0: it is not a tree entry with a
-        # parent name, so mkxbfs never backfills it; the driver adds it
+        # parent name, so mkagfs never backfills it; the driver adds it
         # to the indices on its first real modification (index-on-modify)
         write_inodes.append((dblk, build_inode(
             dblk, S_IFDIR | (st.st_mode & 0o7777),
@@ -767,7 +767,7 @@ def main():
     # every directory entry, size + last_modified (INT64, signed order)
     # over every tree entry at the inode's stamped size/mtime — Haiku
     # mkfs parity (mkfs-built volumes are fully indexed; see
-    # docs/design/xbfs-enhancements.md A.2 / the xbfscheck expectations).
+    # docs/design/agfs-enhancements.md A.2 / the agfscheck expectations).
     backfill = {}
     backfill['name'] = [(n.encode('latin1'), ino) for n, ino, _, _ in idx_rows]
     backfill['last_modified'] = [
@@ -801,8 +801,8 @@ def main():
     # ---- typed demo indices (gap-4 verification) ------------------
     # Six indices with every fixed-size key type beyond STRING/INT64,
     # populated with one entry per image inode: the key is the inode
-    # number packed as the index's type. xbfscheck validates the trees
-    # (per-type sort + exact mapping) and the guest's xbfsquery tool
+    # number packed as the index's type. agfscheck validates the trees
+    # (per-type sort + exact mapping) and the guest's agfsquery tool
     # cross-checks queries against stat st_ino.
     IDX_INT_INDEX = 0x02000000
     IDX_UINT_INDEX = 0x04000000
@@ -870,8 +870,8 @@ def main():
                      journal_len, ag_shift, blocks_per_ag, num_ags,
                      indices_block=indices_blk)
     # copy A @ offset 512 (as always) and copy B @ offset 0 (the boot
-    # sector, free on XBFS data volumes); each copy is its own 512-byte
-    # sector, so a torn write can only damage one (see xbfs.h)
+    # sector, free on AGFS data volumes); each copy is its own 512-byte
+    # sector, so a torn write can only damage one (see agfs.h)
     img_buf[0:512] = sb
     img_buf[512:512 + len(sb)] = sb
 
@@ -900,7 +900,7 @@ def main():
 
     with open(img, "wb") as fh:
         fh.write(bytes(img_buf))
-    print("mkxbfs: %s %dMB (%d blocks), %d files, %d dirs, %d used, "
+    print("mkagfs: %s %dMB (%d blocks), %d files, %d dirs, %d used, "
           "root inode %d" % (img, mb, num_blocks, nfiles, len(dirs),
                              len(used), root_blk))
 

@@ -28,7 +28,7 @@ the FatFs middleware, third_party/fatfs) was abandoned mid-M0: mount
 worked but the first readdir faulted inside FatFs internals, and the
 wrap's impedance with FNX's VFS is systemic (double caching, no stable
 inode identity, non-reentrancy, C99 carve-out). **Decision: write a
-FNX-native driver in house style** (like minix/ext2/xbfs); the vendored
+FNX-native driver in house style** (like minix/ext2/agfs); the vendored
 FatFs stays in third_party/fatfs purely as the authoritative reference
 for the on-disk format (LFN checksums, exFAT entry sets, upcase/bitmap
 handling) and is never compiled into the kernel.

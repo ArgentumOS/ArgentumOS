@@ -1,7 +1,7 @@
-/* xbfsqtest.c: OpenBFS query-engine test (gap-3/4 verification).
- * Runs after the battery (xbfsdir 2000 on /mnt/big): asserts exact
+/* agfsqtest.c: OpenBFS query-engine test (gap-3/4 verification).
+ * Runs after the battery (agfsdir 2000 on /mnt/big): asserts exact
  * match counts for STRING/INT64 queries over the driver-populated
- * indices and for the mkxbfs-built typed demo indices (keyed on the
+ * indices and for the mkagfs-built typed demo indices (keyed on the
  * inode number, so the expected counts are fixed). */
 #include <stdio.h>
 #include <string.h>
@@ -12,27 +12,27 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#define XBFS_QUERY_MAX_LEN	512
-#define XBFS_QUERY_MAX_RESULTS	65536
-struct xbfs_query {
-	char query[XBFS_QUERY_MAX_LEN];
+#define AGFS_QUERY_MAX_LEN	512
+#define AGFS_QUERY_MAX_RESULTS	65536
+struct agfs_query {
+	char query[AGFS_QUERY_MAX_LEN];
 	unsigned int count;
-	unsigned int inodes[XBFS_QUERY_MAX_RESULTS];
+	unsigned int inodes[AGFS_QUERY_MAX_RESULTS];
 };
-#define XBFS_IOC_QUERY		0x42530003
+#define AGFS_IOC_QUERY		0x42530003
 
 static int fd;
 
 static int run_query(const char *q, unsigned int *inos, unsigned int cap)
 {
-	struct xbfs_query *bq;
+	struct agfs_query *bq;
 	int total;
 
-	bq = malloc(sizeof(struct xbfs_query));
-	memset(bq, 0, sizeof(struct xbfs_query));
-	strncpy(bq->query, q, XBFS_QUERY_MAX_LEN - 1);
+	bq = malloc(sizeof(struct agfs_query));
+	memset(bq, 0, sizeof(struct agfs_query));
+	strncpy(bq->query, q, AGFS_QUERY_MAX_LEN - 1);
 	bq->count = cap;
-	if(ioctl(fd, XBFS_IOC_QUERY, bq) < 0) {
+	if(ioctl(fd, AGFS_IOC_QUERY, bq) < 0) {
 		fprintf(stderr, "ioctl(%s): %s\n", q, strerror(errno));
 		free(bq);
 		return -1;
@@ -63,9 +63,9 @@ int main(void)
 		fprintf(stderr, "open /mnt: %s\n", strerror(errno));
 		return 1;
 	}
-	printf("XBFSQTEST: query engine tests\n");
+	printf("AGFSQTEST: query engine tests\n");
 
-	/* driver-populated indices (after xbfsdir 2000) */
+	/* driver-populated indices (after agfsdir 2000) */
 	fails += check("name=f0000*", 10);	/* f00000..f00009 */
 	fails += check("name=f00001", 1);
 	fails += check("name=f00001 && size=0", 1);
@@ -79,7 +79,7 @@ int main(void)
 	fails += check("!(name=f0*)", 1);	/* only 'big' in the index */
 	fails += check("name=nosuchfile*", 0);
 
-	/* typed demo indices (mkxbfs-built, keyed on inode number:
+	/* typed demo indices (mkagfs-built, keyed on inode number:
 	 * the root-tree inodes are consecutive, root .. root+3). The
 	 * root inode differs between images (19 at 1024-byte blocks,
 	 * 18 at 2048), so derive the key range from stat("/Volumes"). */
@@ -116,7 +116,7 @@ int main(void)
 		fails += check(buf, 2);
 	}
 
-	printf("XBFSQTEST: %s\n", fails ? "FAIL" : "ALL-OK");
+	printf("AGFSQTEST: %s\n", fails ? "FAIL" : "ALL-OK");
 	close(fd);
 	return fails ? 1 : 0;
 }

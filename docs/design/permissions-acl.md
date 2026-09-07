@@ -42,9 +42,9 @@ compatibility.
 
 ## 2. Storage
 
-- **XBFS** (the native filesystem): ACLs are stored as **xattrs** via
+- **AGFS** (the native filesystem): ACLs are stored as **xattrs** via
   the existing machinery — `kernel/syscalls/xattr.c` and
-  `fs/xbfs/xattr.c` (the Haiku-style per-file attribute tree, `CSTR`
+  `fs/agfs/xattr.c` (the Haiku-style per-file attribute tree, `CSTR`
   type). Names follow the convention:
   `system.posix_acl_access` (the object's ACL) and
   `system.posix_acl_default` (directories' inheritance rule).
@@ -85,9 +85,9 @@ compatibility.
 
 ## 6. Decisions
 
-- **Q-P1 — Storage: XBFS xattrs.** `system.posix_acl_access` and
+- **Q-P1 — Storage: AGFS xattrs.** `system.posix_acl_access` and
   `system.posix_acl_default` via the existing xattr machinery
-  (`kernel/syscalls/xattr.c`, `fs/xbfs/xattr.c`); no new syscalls, no
+  (`kernel/syscalls/xattr.c`, `fs/agfs/xattr.c`); no new syscalls, no
   inode-format change. The inode mode bits remain, always in sync as
   the projection.
 - **Q-P2 — Default ACLs in v1.** `system.posix_acl_default` on

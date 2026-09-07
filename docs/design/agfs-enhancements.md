@@ -1,23 +1,25 @@
-# XBFS enhancements
+# AGFS enhancements
 
-Home document for XBFS improvements that go beyond bug work. Each area is
+Home document for AGFS improvements that go beyond bug work. Each area is
 a self-contained section with its own milestones and acceptance criteria;
 new areas get appended as sections (see §I). Nothing here is implemented
 yet unless a section says otherwise.
 
-Supersedes `docs/xbfs-ssd-plan.md` (efe77aa, b74390d), whose content is
+Supersedes `docs/agfs-ssd-plan.md` (efe77aa, b74390d), whose content is
 folded into §A.
 
-Update (format identity, c0386ea): the superblock magic1 is now
-**0x58424653 ('XBFS')**, not BFS's 0x42465331 ('BFS1'), and mounts are
-strict XBFS-only (legacy 'BFS1' volumes are rejected). The layout stays
+Update (format identity): the superblock magic1 is now
+**0x41474653 ('AGFS')**, not BFS's 0x42465331 ('BFS1') nor the
+ex-Be XBFS's 0x58424653 ('XBFS'); the lineage is **'BFS1' (Be) →
+'XBFS' (ex-Be) → 'AGFS' (Argentum)**. Mounts are strict AGFS-only
+(legacy 'BFS1'/'XBFS' volumes are rejected). The layout stays
 BFS-derived, but the format identity has already diverged — relevant to
 X-SSD4's format-version question in §A.4 and to §B's on-disk
 representation decision (D1).
 
 ## A. SSD suitability
 
-The XBFS on-disk model (BeFS fork, own 'XBFS' magic) predates SSDs; this
+The AGFS on-disk model (BeFS fork, own 'AGFS' magic) predates SSDs; this
 section documents what could be added to make it SSD-appropriate, ranked
 by value/effort. No format change is required for any item except the
 checksum/scrub one (X-SSD4).
@@ -32,20 +34,20 @@ X-SSD2. **X-SSD1 (TRIM/discard on free) is DONE** (commit 500d19a),
 4f147b8) — see the X-SSD3 split below; X-SSD5(b)
 temperature AGs and X-SSD5(c) fallocate remain.
 
-### A.1 Where XBFS stands relative to SSD behavior
+### A.1 Where AGFS stands relative to SSD behavior
 
-Grounded in the current tree (fs/xbfs/, tools/mkxbfs.py, include/fnx/xbfs.h):
+Grounded in the current tree (fs/agfs/, tools/mkagfs.py, include/fnx/agfs.h):
 
-- **1 KB blocks, one buffer per block.** `mkxbfs` defaults to 1024-byte
+- **1 KB blocks, one buffer per block.** `mkagfs` defaults to 1024-byte
   blocks (Haiku geometry, `inode_size == block_size`); reads/writes are
   single-block `bread`/`bwrite`. SSDs want fewer, larger, aligned,
   batched I/Os; 1 KB random metadata writes are the worst case.
-- **A full-device flush per metadata commit.** `fs/xbfs/journal.c` calls
+- **A full-device flush per metadata commit.** `fs/agfs/journal.c` calls
   `sync_buffers()` ~5×; every commit's tail flushes the whole buffer
   cache, and the tight-range wrap design (docs/reference/bfs-journal-reclaim.md)
   depends on that tail sync. Interactive small-file churn therefore
   produces one small journal write + a full flush per commit.
-- **No TRIM/discard.** Nothing in fs/xbfs or the block layer ever tells
+- **No TRIM/discard.** Nothing in fs/agfs or the block layer ever tells
   the device a block range is free (rm/truncate/rmdir just clear bitmap
   bits). The FTL never learns — deletion write-amplification is permanent.
 - **No checksums, no scrub.** A flipped bit (bit rot, read disturb) is
@@ -71,9 +73,9 @@ per-free (free is hot).
 - Pure addition; no format change; removes the deletion
   write-amplification tax.
 - Acceptance (passed 500d19a): guest `rm -rf` of a staged 12 MB tree on
-  a second XBFS volume (QEMU nvme, `discard=unmap` on both blockdev
+  a second AGFS volume (QEMU nvme, `discard=unmap` on both blockdev
   nodes) punches 3 host-side holes totalling 12.02 MB in the image file;
-  post-session `xbfscheck` clean; churn soak `resets=0 struct_ok=True`.
+  post-session `agfscheck` clean; churn soak `resets=0 struct_ok=True`.
   QEMU gotchas recorded in the commit: IDE-trim is silently dropped by
   this QEMU (NVMe is the evidence path), and the DSM deallocate
   attribute is bit 2 (0x04) with a cattr/nlb/slba range layout.
@@ -95,22 +97,22 @@ targeted writes where the buffer layer supports them.
 **X-SSD2 is DONE** (commits below). The journal commit became an
 *enqueue*: the run_array + data blocks are written to the log and the
 real metadata blocks are applied to the buffer cache (dirty), but nothing
-is synced and the range is not published. A *barrier* (`xbfs_log_flush`)
+is synced and the range is not published. A *barrier* (`agfs_log_flush`)
 closes the batch in the write-ahead order, once per batch instead of once
 per transaction:
 
 - **phase A** — selective sync of the batch's log range only
   (`sync_buffers_select`, new buffer-layer helper);
 - **phase B** — bitmap + the published superblock range, selective sync
-  of just those blocks (`xbfs_log_write_super` gained a no-full-sync
-  publish, `xbfs_sb_dual_write_nosync`);
+  of just those blocks (`agfs_log_write_super` gained a no-full-sync
+  publish, `agfs_sb_dual_write_nosync`);
 - **phase C** — full `sync_buffers` (the dirty real blocks land; a crash
   here is repaired by replay because B published the range).
 
 Barriers run when the batch would wrap the log, at the batch cap
-(`XBFS_LOG_BATCH_BLOCKS` 96), and at every public sync path: the umount
-drain (`xbfs_write_superblock` flushes first), `sys_sync`, and
-`sys_fsync` (`xbfs_flush_all` over a live-superblock registry) — a stray
+(`AGFS_LOG_BATCH_BLOCKS` 96), and at every public sync path: the umount
+drain (`agfs_write_superblock` flushes first), `sys_sync`, and
+`sys_fsync` (`agfs_flush_all` over a live-superblock registry) — a stray
 full sync mid-batch would flush the dirty real blocks ahead of their
 publish. Durability semantics change deliberately: an individual write is
 durable at the next barrier, not at its own commit.
@@ -121,41 +123,41 @@ durable at the next barrier, not at its own commit.
   leg A green for all live states (1 enqueue / 2,3,6 flush phases / 4
   wrap) — every crashed image boots, and publish-point crashes replay the
   whole batch (`replayed=37`); leg B random-kill runs always recover
-  (mount + churn files served). Leg B's host-side `xbfscheck` after a
+  (mount + churn files served). Leg B's host-side `agfscheck` after a
   kill shows the *dirty-after-kill* artifacts (`journal must be clean`,
   `superblock not clean (CLEN)`) — both expected for an unclean kill and
   both cleared by a real mount's replay; structural checks need
-  `xbfscheck --allow-dirty-log` on a killed image (the R-M2 harness's
+  `agfscheck --allow-dirty-log` on a killed image (the R-M2 harness's
   post-kill check was tightened to that).
 - Effort: medium; touched journal.c, super.c, buffer.c (+ fsync/sync).
 
 #### X-SSD3(a) — Configurable block size (2048/4096)
 
-`mkxbfs --block-size` already took 1024/2048/4096, but the builder's
+`mkagfs --block-size` already took 1024/2048/4096, but the builder's
 index dup-node layout assumed 1024-byte blocks and the indirect/dind
 table slot counts were hardcoded 128/256 while the driver used
 `block_size/8` and `block_size/4`. Both are now parametric (commit
-4f147b8) and `xbfscheck` decodes indirect runs with the superblock's
+4f147b8) and `agfscheck` decodes indirect runs with the superblock's
 `ag_shift`. The driver and on-disk format were already block-size-
 runtime (btree nodes stay Haiku-fixed at 1024, packing several per
 larger stream block).
 
 - Acceptance (passed 4f147b8): 1024/2048/4096 images build and
-  `xbfscheck` clean; a 4096-byte root image boots/mounts/churns in the
+  `agfscheck` clean; a 4096-byte root image boots/mounts/churns in the
   guest and checks clean. The churn acceptance also exposed and fixed a
-  pre-existing rmdir block leak (xbfs_mkdir never set i_blocks, so
-  `xbfs_ifree` skipped the truncate-on-unlink of session-created
+  pre-existing rmdir block leak (agfs_mkdir never set i_blocks, so
+  `agfs_ifree` skipped the truncate-on-unlink of session-created
   directories).
 - Fixed residuals (43df3df, crash-atomicity): a random kill between a
   create's ialloc tx and its dir-link used to leave an orphaned
   half-initialized inode (IN_USE, no 0x13 name record), and a tear
   between a re-index delete and its insert left stale `last_modified` /
-  `size` entries (xbfscheck "index last_modified mismatch"). Root
+  `size` entries (agfscheck "index last_modified mismatch"). Root
   causes: every create was three separate journal transactions, and
   each index mutation ran its per-tree del/put as separate txs.
-  xbfs_create/mkdir/mknod now wrap the whole operation in one outer
-  transaction; xbfs_index_add/remove/resize are likewise one tx each;
-  and xbfs_inode_set_name re-records the inode block (a create hands
+  agfs_create/mkdir/mknod now wrap the whole operation in one outer
+  transaction; agfs_index_add/remove/resize are likewise one tx each;
+  and agfs_inode_set_name re-records the inode block (a create hands
   the inode to the fd, so the block had not been re-recorded since
   ialloc — before the name record existed). legB kills no longer show
   either class; the remaining verifier failures at the kill point are
@@ -167,7 +169,7 @@ larger stream block).
 #### X-SSD3(b) — Multi-page / scatter-gather I/O (8/16 KB blocks)
 
 8192/16384-byte blocks are blocked by a family of PAGE_SIZE = 4096 caps
-in the core, not by the XBFS format (the superblock carries block_size
+in the core, not by the AGFS format (the superblock carries block_size
 and every driver structure indexes by it):
 - the buffer cache allocates one page per buffer and keys free/dirty
   lists by `size/1024-1` (only 1K/2K/4K valid) — fs/buffer.c
@@ -176,7 +178,7 @@ and every driver structure indexes by it):
   and the NVMe driver's fixed `kmalloc(4096)` bounce would need
   scatter-gather / multi-page handling;
 - the per-inode `small_data` tail and the journal's tx copies are
-  kmalloc'd at `XBFS_SMALL_DATA_SIZE = 4096 - 232` (the kmalloc
+  kmalloc'd at `AGFS_SMALL_DATA_SIZE = 4096 - 232` (the kmalloc
   PAGE_SIZE cap);
 - the generic page cache issues one on-disk block per request
   (`bread_page`), so a block larger than a cached page breaks the
@@ -187,14 +189,14 @@ and every driver structure indexes by it):
   allocation hook) for the small_data tail + journal tx scratch, and
   block-sized page-cache I/O.
 - Acceptance: 8192 and 16384 images mount/boot/churn cleanly;
-  `xbfscheck` clean; measured fewer, larger device I/Os for the same
+  `agfscheck` clean; measured fewer, larger device I/Os for the same
   workload.
 - Effort: high (the doc's original "risky part").
 
 #### X-SSD4 — Metadata checksums + scrub
 Per-metadata-block CRC (inode, B+tree nodes, run arrays, superblock
 copies) verified on read and on journal replay; an offline
-`xbfscheck --scrub` that reads all metadata and reports/repairs.
+`agfscheck --scrub` that reads all metadata and reports/repairs.
 
 - Format: **requires a version/flags bump** or a new field — a format
   claimant, alongside §B D1's live-directory marker, §D-3's reflink
@@ -222,13 +224,13 @@ separate data block + run — removes a whole class of tiny random writes.
 Uses an inode flag + the existing tail space pattern (cf. `small_data`).
 
 **X-SSD6 is DONE** (commit below). A file whose first write fits
-`XBFS_INLINE_MAX` (512 bytes) stores its content in the inode's
+`AGFS_INLINE_MAX` (512 bytes) stores its content in the inode's
 `small_data` tail — *after* the file-name 0x13 record + its zero
-terminator (`xbfs_inline_base`), so the attribute walkers and the
-host-side checker still see the records. New `XBFS_INODE_INLINE_DATA`
-(0x80) marks it; reads copy out of the tail (`xbfs_file_read`), writes
+terminator (`agfs_inline_base`), so the attribute walkers and the
+host-side checker still see the records. New `AGFS_INODE_INLINE_DATA`
+(0x80) marks it; reads copy out of the tail (`agfs_file_read`), writes
 stay inline while they fit, and a write/truncate past the capacity or an
-`xattr` set converts to a stream file first (`xbfs_inline_expand` — the
+`xattr` set converts to a stream file first (`agfs_inline_expand` — the
 content is copied into freshly allocated data blocks through the normal
 bmap FOR_WRITING path). Inline files keep `i_blocks == 0` (like inline
 symlinks) so unlink never walks the empty stream. Truncate-to-0
@@ -242,8 +244,8 @@ symlinks) so unlink never walks the empty stream. Truncate-to-0
   struct_ok=True`; R-M2 crash states 3/6 verified (mounted + files
   served + batch replay).
 - Note: a `last_modified` index mismatch after `mkdir` sessions was
-  root-caused to `xbfs_dup_array()` pointer arithmetic — `+ slot*64` was
-  added to a `struct xbfs_btree_node *` (28-byte units), so every
+  root-caused to `agfs_dup_array()` pointer arithmetic — `+ slot*64` was
+  added to a `struct agfs_btree_node *` (28-byte units), so every
   fragment slot > 0 landed ~3.4KB out of bounds and its value was never
   journaled. Slot 0 masked it until a same-tick pair (mkdir'd dir +
   parent sharing one key) put a second value in an existing fragment.
@@ -262,19 +264,19 @@ blocking the caller.
 - Effort: medium.
 
 #### Out of scope (documented, not milestones)
-Zoned (ZNS) support and a CoW/atomic-write redesign would make XBFS
+Zoned (ZNS) support and a CoW/atomic-write redesign would make AGFS
 genuinely SSD-native but replace the allocation + recovery model — worth
 a separate design doc, not an additive plan.
 
 ### A.3 Cross-cutting
 
 - Every milestone boots on the existing QEMU harness suite (rootfs,
-  desktop, churn loops) and keeps `xbfscheck` clean; the journal R-M2
+  desktop, churn loops) and keeps `agfscheck` clean; the journal R-M2
   crash-injection harness (from docs/reference/bfs-journal-reclaim.md) is a
   precondition for anything touching the write path (X-SSD2, X-SSD7).
-- Tools names are mkxbfs.py / xbfscheck.py; the superblock magic is
-  'XBFS' 0x58424653 (include/fnx/xbfs.h).
-- The -O2 pointer-walk discipline for fs/xbfs loops applies to any new
+- Tools names are mkagfs.py / agfscheck.py; the superblock magic is
+  'AGFS' 0x41474653 (include/fnx/agfs.h).
+- The -O2 pointer-walk discipline for fs/agfs loops applies to any new
   journal/buffer code.
 
 ### A.4 Open items / decisions
@@ -296,13 +298,13 @@ over the volume's indices — macOS smart-folder style, but as a real VFS
 directory that stays current as files change.
 
 **What already exists in the tree (the substrate):**
-- `fs/xbfs/query.c` (~1.3k lines): full Haiku-grammar query parser
-  (`expr := orexpr`, …) and `xbfs_query(sb, q, inos, cap)` returning the
-  matching inode numbers; today surfaced via the `XBFS_IOC_QUERY` ioctl
-  and exercised by the userland `xbfsquery` battery.
-- `fs/xbfs/indices.c`: live B+trees over `name`, `size`, `last_modified`,
+- `fs/agfs/query.c` (~1.3k lines): full Haiku-grammar query parser
+  (`expr := orexpr`, …) and `agfs_query(sb, q, inos, cap)` returning the
+  matching inode numbers; today surfaced via the `AGFS_IOC_QUERY` ioctl
+  and exercised by the userland `agfsquery` battery.
+- `fs/agfs/indices.c`: live B+trees over `name`, `size`, `last_modified`,
   plus per-attribute indices, maintained incrementally through
-  `xbfs_index_add` / `xbfs_index_remove` / `xbfs_index_resize` on every
+  `agfs_index_add` / `agfs_index_remove` / `agfs_index_resize` on every
   inode and attribute change (also driven from `attribute.c`/`xattr.c`).
 - Attribute storage on inodes (`small_data` + per-file attribute trees)
   can carry the query expression itself.
@@ -330,10 +332,10 @@ format-free.
 
 **D2 — Liveness strategy.**
 - (i) *readdir-time evaluation*: each open/readdir/lookup re-runs the
-  expression via `xbfs_query` (index-driven; cheap). Trivially correct,
+  expression via `agfs_query` (index-driven; cheap). Trivially correct,
   snapshot-consistent per readdir, no invalidation machinery. v1 default.
 - (ii) *incremental membership*: maintain the member set from the
-  `xbfs_index_add/remove/resize` hooks so membership is instantly current
+  `agfs_index_add/remove/resize` hooks so membership is instantly current
   and reads are pure walks. You own invalidation on every attribute
   write; a later milestone once (i) exists as the correctness oracle.
 
@@ -356,15 +358,15 @@ changes once.
 **L-D0 — Virtual read-only live dir, no format change.** A fixed
 container (e.g., `/.live/<name>`) implemented as a VFS-level virtual dir:
 `mkdir` of a name under it stores an expression file; `readdir`/`lookup`
-inside evaluate via `xbfs_query`. No inode-flag changes; pure VFS +
+inside evaluate via `agfs_query`. No inode-flag changes; pure VFS +
 query-engine glue. Acceptance: guest creates/opens several named live
 dirs, `ls` shows live results after creating/deleting matching files
-(re-evaluated per readdir), `xbfscheck` clean, no churn regression.
-Effort: medium (new virtual-dir inode type in xbfs namei/dir paths).
+(re-evaluated per readdir), `agfscheck` clean, no churn regression.
+Effort: medium (new virtual-dir inode type in agfs namei/dir paths).
 
 **L-D1 — On-disk live directories (format).** D1(a) marked inodes;
 survive remount; nested and relocatable. Coordinate the format bump with
-X-SSD4 (§A). Acceptance: `mkxbfs`/`xbfscheck` handle the flag; live dirs
+X-SSD4 (§A). Acceptance: `mkagfs`/`agfscheck` handle the flag; live dirs
 persist across reboot; incremental liveness (D2-ii) optional here.
 Effort: medium-high.
 
@@ -390,26 +392,26 @@ Proposed; nothing implemented. Pairs with the journal/durability work
 (R-M2/R-M3 harness, dual-copy sequenced superblock f12fa35): those make
 crashes safe, these make the volume self-healing.
 
-### C-1 — Offline index rebuild (`xbfscheck --rebuild-indices`)
+### C-1 — Offline index rebuild (`agfscheck --rebuild-indices`)
 
-Indices are derived data. The index-on-modify + `mkxbfs` backfill work
+Indices are derived data. The index-on-modify + `mkagfs` backfill work
 (e01b81e) already proved an inode scan can regenerate them; a
 rebuild-from-scan option makes a corrupted, aged, or user-dropped index a
 non-event instead of a re-mkfs.
 
-- No format change; reuses the scan + `xbfs_index_put` machinery.
-- Milestone: `xbfscheck` option scans every inode and rebuilds the
+- No format change; reuses the scan + `agfs_index_put` machinery.
+- Milestone: `agfscheck` option scans every inode and rebuilds the
   `name`/`size`/`last_modified` + attribute indices from scratch,
   verifying the rebuilt trees against the existing ones and reporting
   any divergence before replacing them.
 - Acceptance: corrupt or drop an index tree on the host → rebuild →
-  `xbfsquery` battery green and query results identical to a fresh
+  `agfsquery` battery green and query results identical to a fresh
   volume.
-- Effort: small-medium (port of the backfill logic into xbfscheck).
+- Effort: small-medium (port of the backfill logic into agfscheck).
 
-### C-2 — Repair-mode fsck (`xbfscheck --fix`)
+### C-2 — Repair-mode fsck (`agfscheck --fix`)
 
-`xbfscheck` verifies today (superblock, bitmap vs block-run references,
+`agfscheck` verifies today (superblock, bitmap vs block-run references,
 tree consistency) and reports; a fix mode reconciles what it finds:
 bitmap-vs-referenced mismatches (adopt the referenced or free the
 leaked), journal-tail leftovers, and orphaned inodes. Ties into X-SSD4's
@@ -417,7 +419,7 @@ scrub as "detect" (X-SSD4) + "repair" (this).
 
 - No format change.
 - Acceptance: induce known damage on a host image (clear bitmap bits,
-  unlink a tree leaf) → `--fix` repairs it and `xbfscheck` comes back
+  unlink a tree leaf) → `--fix` repairs it and `agfscheck` comes back
   clean; guest churn suite and the R-M harness are unaffected.
 - Effort: medium.
 
@@ -430,7 +432,7 @@ up begging for.
 ### D-1 — fs-notify / change notification
 
 A VFS-wide watch surface (directory/file events) fed from the dir-mutation
-hooks and the index hooks — `xbfs_index_add/remove/resize` already fire on
+hooks and the index hooks — `agfs_index_add/remove/resize` already fire on
 every meaningful change. Substrate for Live-Directory L-D2 (§B), the
 compositor's file browsing, and backup.
 
@@ -461,9 +463,9 @@ O(metadata) — and kernel-side cross-file copies via `copy_file_range`.
 Needs per-run reference counts → **format claim** (coordinate with
 X-SSD4 and §G so the format changes once).
 
-- Milestones: same-volume reflink ioctl; `copy_file_range` for xbfs.
+- Milestones: same-volume reflink ioctl; `copy_file_range` for agfs.
 - Acceptance: reflink of a 100 MB file is O(metadata) (disk usage
-  unchanged); post-write divergence is correct CoW; `xbfscheck` clean.
+  unchanged); post-write divergence is correct CoW; `agfscheck` clean.
 - Effort: medium-high + format.
 
 ### D-4 — Background deletion
@@ -476,7 +478,7 @@ pending-delete record).
 - No format change (intent lives in the journal or a hidden record).
 - Acceptance: `rm` of a huge tree returns promptly; reclamation completes
   in the background; power-cut mid-reap → next mount finishes
-  reclamation or `xbfscheck` is clean.
+  reclamation or `agfscheck` is clean.
 - Effort: medium.
 
 ## E. Space & accounting
@@ -516,9 +518,9 @@ component cache. A VFS-level name→inode cache (with negative entries)
 would make shell/GUI churn — and the `/System/...` and `@` shorthand
 lookups — near-free. Coherence is the work: invalidation on
 mkdir/rm/rename across every filesystem, hooked from the existing
-dir-mutation points and the xbfs index hooks.
+dir-mutation points and the agfs index hooks.
 
-- Kernel-wide, not XBFS-specific; no format change.
+- Kernel-wide, not AGFS-specific; no format change.
 - Acceptance: churn micro-benchmark syscall time drops measurably;
   create/rename/unlink storm battery stays green.
 - Effort: medium-high (cache-coherence discipline is the risk).
@@ -537,7 +539,7 @@ journals as plain data blocks).
 
 - Format: inode flag (+ any per-run metadata).
 - Acceptance: guest writes a compressible file → block usage drops;
-  reads are byte-identical; `xbfscheck` clean.
+  reads are byte-identical; `agfscheck` clean.
 - Effort: high.
 
 ### G-2 — Volume/user encryption
@@ -577,14 +579,14 @@ separates kinds), or (b) a raw-open mode on the existing block node
   volume is unmounted (or after the cache is flushed); dirty cached
   buffers + raw writes alias and corrupt. The shutdown flush already
   drains the cache, so the primitive exists.
-- Motivations: guest-side whole-disk/repair tools (`xbfscheck --fix`,
+- Motivations: guest-side whole-disk/repair tools (`agfscheck --fix`,
   `--rebuild-indices`, §C-1/C-2 — today no guest tool opens a Disk
   node at all; mkfs/flash/copy inside the guest), and a natural host
   for `BLKDISCARD`-style control ioctls (X-SSD1's §A.4 discard-plumbing
   decision). Per-partition raw becomes relevant once
   docs/reference/partition-support-plan.md's `WholeDisk`/`PartitionN` nodes land.
 - Acceptance: guest `dd` from a raw handle of an unmounted image volume
-  is byte-identical to the host image; in-guest `xbfscheck --fix` on an
+  is byte-identical to the host image; in-guest `agfscheck --fix` on an
   unmounted volume works with no buffer-cache aliasing; raw open of a
   mounted volume is refused (or requires an explicit flush first).
 - Effort: small-medium (devfs node + devices.c path + the mounted?
@@ -604,5 +606,5 @@ milestones + acceptance, and an explicit format-change flag. Related
 design/history docs these sections build on: docs/reference/bfs-journal-reclaim.md
 (wrap-journal invariant, R-M2/R-M3 harness), docs/reference/devfs-topology.md,
 docs/reference/partition-support-plan.md (WholeDisk/PartitionN nodes — the raw
-surface's per-partition future), docs/xbfs-ssd-plan.md (history of §A —
+surface's per-partition future), docs/agfs-ssd-plan.md (history of §A —
 superseded, kept in git). Kernel design docs live alongside in docs/.

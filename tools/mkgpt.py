@@ -4,7 +4,7 @@
 Layout (sectors, 512B): protective MBR, GPT header @1, entries @2-33,
 p1 = EFI System Partition at 2048 (FAT32 with EFI/BOOT/BOOTX64.EFI +
 startup.nsh, built with the bundled mtools exactly like tools/mkesp.sh),
-p2 = the XBFS root filesystem (mkxbfs of the given root tree).
+p2 = the AGFS root filesystem (mkagfs of the given root tree).
 
 Usage: tools/mkgpt.py <rootfs-dir> <out.img> <p1-MB> <p2-MB>
 Requires .build/64/fnx.efi (the FAT content comes from it + startup.nsh).
@@ -30,11 +30,11 @@ P2_START = ((P1_START + P1_SECT + 2047) // 2048) * 2048
 P2_SECT = p2_mb * 2048
 DISK_SECT = P2_START + P2_SECT
 
-# ---- XBFS root image for p2 -------------------------------------------
+# ---- AGFS root image for p2 -------------------------------------------
 rootimg = os.path.join(REPO, ".build", "mkgpt-root.img")
 if os.path.exists(rootimg):
     os.unlink(rootimg)
-subprocess.run(["python3", "tools/mkxbfs.py", rootdir, rootimg, str(p2_mb)],
+subprocess.run(["python3", "tools/mkagfs.py", rootdir, rootimg, str(p2_mb)],
                cwd=REPO, check=True, stdout=subprocess.DEVNULL)
 rootdata = open(rootimg, "rb").read()
 assert len(rootdata) == P2_SECT * 512, (len(rootdata), P2_SECT * 512)
@@ -103,11 +103,11 @@ for i in range(0, len(entries), 512):
 put(1, gpt_header(1, sectors - 1, 2, 128, ecrc))
 put(sectors - 1, gpt_header(sectors - 1, 1, 2, 128, ecrc))
 
-# ---- p2: the XBFS root ------------------------------------------------
+# ---- p2: the AGFS root ------------------------------------------------
 put(P2_START, rootdata)
 
 open(out, "wb").write(disk)
-print("GPT disk ready: %s (%d MB; p1 EFI @%d len %d, p2 XBFS @%d len %d)"
+print("GPT disk ready: %s (%d MB; p1 EFI @%d len %d, p2 AGFS @%d len %d)"
       % (out, DISK_SECT // 2048, P1_START, P1_SECT, P2_START, P2_SECT))
 
 # ---- p1: FAT32 ESP at the partition offset (mtools, mkesp-style) -------

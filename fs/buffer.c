@@ -632,7 +632,7 @@ void sync_buffers(__dev_t dev)
 
 /* Flush the dirty cache buffers for the CONTIGUOUS block range
  * [first, first+count) at the given size, leaving every other dirty
- * buffer untouched. Used by the XBFS journal's group-commit barrier to
+ * buffer untouched. Used by the AGFS journal's group-commit barrier to
  * order the on-disk writes: log entries first, then the bitmap +
  * superblock, while the real metadata blocks stay dirty until the final
  * full sync_buffers() (a crash in that last phase is repaired by replay,

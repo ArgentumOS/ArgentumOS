@@ -470,7 +470,7 @@ entries deny; any crypt hash, DES included, verifies); useradd creates
 shells-domain default shell; group memberships live in the `members`
 key.
 
-Verified in-guest on the rebuilt rootxbfs: `useradd alice` (home owned
+Verified in-guest on the rebuilt rootagfs: `useradd alice` (home owned
 500:500), `passwd alice` interactive → "Success" (hash in the domain),
 `su alice -c id` from root AND non-root (`su alice -c 'su alice -c id'`
 after typing the password) → `uid=500(alice)`, `groupadd alice dev` →
@@ -479,7 +479,7 @@ after typing the password) → `uid=500(alice)`, `groupadd alice dev` →
 
 Two pre-existing kernel bugs surfaced and were fixed in-tree (they
 blocked *any* in-guest account-domain write):
-1. `fs/xbfs/namei.c xbfs_rename` returned EEXIST when the target existed
+1. `fs/agfs/namei.c agfs_rename` returned EEXIST when the target existed
    (the btree rejects the duplicate) — broken rename-over-existing,
    which is exactly what libconfig's atomic temp+rename needs. Now
    replaces the target (unlink semantics for files, rmdir semantics for
@@ -496,8 +496,8 @@ for every applet without TOYFLAG_STAYROOT, so the suid bit does not
 privilege `ls` & co; `passwd`/`chsh` are STAYROOT and keep root for
 their System-domain writes.
 
-Also: `tools/mkxbfs.py` journal length 16 → 64 blocks (fewer benign
-"XBFS-LOG: log full, resetting" cycles; format unchanged). `config`/`init`
+Also: `tools/mkagfs.py` journal length 16 → 64 blocks (fewer benign
+"AGFS-LOG: log full, resetting" cycles; format unchanged). `config`/`init`
 are staged 0755 (never suid).
 
 Acceptance: guest `useradd` then `su`/login flow works against the
@@ -563,9 +563,9 @@ malloc'd name exactly once (a first draft double-freed the last name
 and tripped the FNX malloc's header check in-guest).
 
 Verified in-guest: `mount` lists proc + devpts from the domain; a real
-`mount -t xbfs /System/Devices/hdc /Volumes/Data` reads the disk and
+`mount -t agfs /System/Devices/hdc /Volumes/Data` reads the disk and
 persists the record (config read shows fstype + source); `mount` then
-lists the xbfs mount; `umount /Volumes/Data` unmounts and removes the
+lists the agfs mount; `umount /Volumes/Data` unmounts and removes the
 record. (Test disk attached as legacy IDE hdc; the boot cmdline fixes
 root=/dev/sda so the root must stay on the AHCI controller.)
 
@@ -576,7 +576,7 @@ No legacy account files or parsers remain. The staged rootfs has **no
 and musl patches contain no `/etc/passwd|group|shadow|hosts` reads or
 colon parsing (the only match is a comment saying no shadow file
 exists). The full-rebuild chain (musl → dash → toybox → userland64 →
-rootxbfs) boots clean and `id`/`hostname`/`mount`/`config read` all
+rootagfs) boots clean and `id`/`hostname`/`mount`/`config read` all
 serve from the domains. `musl getnameinfo`'s reverse-hosts path was the
 last stale consumer and now reads the hosts domain via
 `__pwconf_hosts_fopen()` (musl-hosts.patch). `dash /etc/profile`,

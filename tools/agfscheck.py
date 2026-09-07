@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Host-side cross-check of a XBFS image (FNX mkxbfs/xbfs driver compatibility).
+"""Host-side cross-check of a AGFS image (FNX mkagfs/agfs driver compatibility).
 
-Usage: xbfscheck.py <image> [rootdir]
+Usage: agfscheck.py <image> [rootdir]
 
 Structural checks (always): superblock, bitmap <-> used-block agreement,
 inode validity, every directory B+tree (multi-node: sortedness, . / ..,
@@ -13,7 +13,7 @@ Content checks (when <rootdir> is given): every file's stream reads back
 byte-identical to the source tree, every symlink target matches.
 
 The double-indirect table uses 256 u32 block addresses per block
-(s_blocksize / sizeof(__blk_t) in the FNX driver, fs/xbfs/inode.c) and
+(s_blocksize / sizeof(__blk_t) in the FNX driver, fs/agfs/inode.c) and
 the indirect table blocks hold 128 block_run entries each.
 """
 
@@ -27,7 +27,7 @@ BTREE_NULL = 0xFFFFFFFFFFFFFFFF
 BTREE_MAGIC = 0x69f6c2e8
 INODE_MAGIC = 0x3bbe0ad9
 INODE_IN_USE = 0x00000001
-MAGIC1 = 0x58424653   # 'XBFS' (BFS used 0x42465331 'BFS1')
+MAGIC1 = 0x41474653   # 'AGFS' (BFS used 0x42465331 'BFS1')
 MAGIC2 = 0xdd121031
 MAGIC3 = 0x15b6830e
 S_IFMT = 0o170000
@@ -257,7 +257,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
             % (len(leaves), stats['leaves']))
         # leaves in chain order must partition the keys in order
         # (the sort follows the tree's data_type: numeric keys compare
-        # numerically like the driver's xbfs_btree_key_cmp; STRING keys
+        # numerically like the driver's agfs_btree_key_cmp; STRING keys
         # are raw bytes)
         dt = u32(node_at(blocks, 0) + 12)  # tree header data_type
         sizes = {1: ('<b', 1), 2: ('<h', 2), 3: ('<i', 4), 4: ('<I', 4),
@@ -346,7 +346,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
         io, mode = check_inode(ino)
         check_mode(io, path, S_IFDIR)
         assert mode & S_IFMT == S_IFDIR, "%s: not a dir" % path
-        # the root inode: mkxbfs leaves it at mtime 0 (not backfilled),
+        # the root inode: mkagfs leaves it at mtime 0 (not backfilled),
         # but the driver indexes it (size + last_modified) on the first
         # modification, so expect it once it carries a nonzero mtime
         if ino == root_ino:
@@ -384,7 +384,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
             else:
                 csize = parse_stream(cio2)[6]
             cmtime = u64(cio2 + 36)
-            # mkxbfs backfills the name/size/last_modified indices over
+            # mkagfs backfills the name/size/last_modified indices over
             # the whole tree it builds (Haiku-mkfs parity), and the
             # driver moves keys on modification (index-on-modify), so
             # every directory entry is expected in all three indices
@@ -611,7 +611,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
                 for dv in dup_values(vio, val):
                     got.setdefault(k, set()).add(dv)
             # The typed demo indices are a build-time fixture of our
-            # mkxbfs images (keyed by inode number as the index's type).
+            # mkagfs images (keyed by inode number as the index's type).
             # Foreign volumes (e.g. a real Haiku image) have their own
             # index set with different semantics — only verify the
             # contents when the q* demo indices are present.
@@ -620,7 +620,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
                                 b'qdouble') for i in ientries)
             if not demo:
                 continue
-            # maintained indices (name/size/last_modified): mkxbfs
+            # maintained indices (name/size/last_modified): mkagfs
             # backfills them over the whole tree and the driver moves
             # keys on modification, so every walked entry is expected in
             # all three - the comparison is exact
@@ -706,7 +706,7 @@ def check(path, rootdir=None, allow_dirty_log=False):
 if __name__ == '__main__':
     args = sys.argv[1:]
     if not args:
-        print("usage: xbfscheck.py <image> [rootdir]")
+        print("usage: agfscheck.py <image> [rootdir]")
         sys.exit(1)
     try:
         dirty = '--allow-dirty-log' in args

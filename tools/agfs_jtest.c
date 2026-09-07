@@ -1,6 +1,6 @@
-/* xbfs_jtest: exercise the XBFS journal reset path - repeatedly create
- * and unlink a file until the log fills and xbfs_log_commit() takes its
- * 'log full, resetting' branch. Mounts the XBFS disk (/dev/hdb) on /mnt
+/* agfs_jtest: exercise the AGFS journal reset path - repeatedly create
+ * and unlink a file until the log fills and agfs_log_commit() takes its
+ * 'log full, resetting' branch. Mounts the AGFS disk (/dev/hdb) on /mnt
  * first (the boot root is a reliable ext2 on /dev/sda). */
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -20,11 +20,11 @@ int main(void)
 		perror("mkdir /mnt");
 		return 1;
 	}
-	if(mount("/dev/hdb", "/mnt", "xbfs", 0, NULL) < 0) {
-		perror("mount /dev/hdb (xbfs)");
+	if(mount("/dev/hdb", "/mnt", "agfs", 0, NULL) < 0) {
+		perror("mount /dev/hdb (agfs)");
 		return 1;
 	}
-	printf("JT: xbfs mounted\n");
+	printf("JT: agfs mounted\n");
 
 	for(i = 0; i < 40; i++) {
 		int fd;

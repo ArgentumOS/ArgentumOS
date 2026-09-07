@@ -1,9 +1,9 @@
-# XBFS journal: log-space reclaim (wrap commit) — spec
+# AGFS journal: log-space reclaim (wrap commit) — spec
 
-Status: **implemented (R-M1 + R-M2 + R-M3)**. Sizing alone (tools/mkxbfs.py,
+Status: **implemented (R-M1 + R-M2 + R-M3)**. Sizing alone (tools/mkagfs.py,
 1024 blocks, commit 3c745e1) bounds *reset storms for bounded busy phases*;
 this spec kills the resets for *sustained metadata streams*, which no log
-size can fix. Reference: fs/xbfs/journal.c (+ xbfs.h, mkxbfs.py).
+size can fix. Reference: fs/agfs/journal.c (+ agfs.h, mkagfs.py).
 
 ## 1. Problem
 
@@ -53,7 +53,7 @@ declaring it all dead at once.
   (the previous commit already synced).
 - **D4 — The full-reset path is deleted.** A "log full" reset can no
   longer trigger: the only remaining hard bound is a *single transaction*
-  not fitting, which is impossible for any log ≥ `XBFS_LOG_MAX_BLOCKS + 1`
+  not fitting, which is impossible for any log ≥ `AGFS_LOG_MAX_BLOCKS + 1`
   (= 16; a tx records ≤ 15 blocks). The existing write-through branch
   (`transaction larger than the log`) stays as the degenerate guard.
 
@@ -68,7 +68,7 @@ if proposed + s > log_size:
     # still published; a new entry at 0 may overwrite it, so orphan it
     # first (publish an empty log), then write at 0.
     sb.log_start = sb.log_end = 0
-    xbfs_log_write_super(sb)                 # + sync (positions 0 on disk)
+    agfs_log_write_super(sb)                 # + sync (positions 0 on disk)
     entry_pos = 0
 else:
     entry_pos = proposed
@@ -82,7 +82,7 @@ else:
 The counters (`log_since_reset`, `log_peak`) stay; the reset print becomes
 an optional wrap stat (`log_end` wrapped at position 0). `log_start ==
 log_end` remains the "empty log" convention everywhere it is already
-tested (replay, umount drain, mkxbfs clean check).
+tested (replay, umount drain, mkagfs clean check).
 
 ## 5. Crash-atomicity (every window)
 
@@ -121,7 +121,7 @@ walked because the range is tight, D2).
   validation (`pos + 1 + count > log_size` → bail) still holds. Clears to
   (0,0) + marks CLEAN exactly as today.
 - **Umount / power-off drain** (`log_draining` write-through +
-  `xbfs_write_superblock`): unaffected; with the tight range the drained
+  `agfs_write_superblock`): unaffected; with the tight range the drained
   superblock already carries empty or single-entry positions.
 - **Old images**: an image with a dirty multi-entry linear log replays and
   clears on first mount (current code path); thereafter writes use the
@@ -135,18 +135,18 @@ walked because the range is tight, D2).
   one extra sync per ~64 ops instead of 229 full resets.
 - Bounded phases: unchanged (no wraps at all).
 - Log-size sensitivity disappears for sustained streams (64 and 1024
-  behave the same modulo wrap frequency); the mkxbfs size stays as the
+  behave the same modulo wrap frequency); the mkagfs size stays as the
   measured-headroom value for bounded phases.
 
 ## 8. Acceptance criteria
 
 1. Churn regression (the 400-file create/delete guest loop): **0** `log
-   full, resetting` prints (any journal size ≥ 16); `xbfscheck` clean after.
+   full, resetting` prints (any journal size ≥ 16); `agfscheck` clean after.
 2. Continuous-write soak (e.g. `while`-loop file churn for 60s): no reset
    prints; `log_end` wraps repeatedly without error; clean shutdown leaves
    an empty log.
 3. Crash-injection matrix: qemu `kill -9` at each of §5's states (repeat
-   ~10× each), reboot → `xbfscheck` clean and the previously observed
+   ~10× each), reboot → `agfscheck` clean and the previously observed
    corruption class (replay restoring garbage over real blocks, e.g. the
    `/tmp` inode clobber) must not reproduce.
 4. Old-image compat: mount an image left dirty by a killed pre-change
@@ -155,19 +155,19 @@ walked because the range is tight, D2).
 
 ## 9. Milestones
 
-- **R-M1 — DONE**: commit-path wrap (D2/D3/D4) in `fs/xbfs/journal.c`;
+- **R-M1 — DONE**: commit-path wrap (D2/D3/D4) in `fs/agfs/journal.c`;
   the full-reset/zeroing block and the `log_flushing` recursion guard are
   deleted. Verified: 400-file churn on a 64-block log = **0 resets, 194
   wraps, verify=1, count=400**; a killed session replays its single
   in-flight entry cleanly on the next boot; the 1024-log desktop boots
   with 0 resets and 0 wraps.
 - **R-M2 — DONE**: deterministic crash-injection harness. Kernel support:
-  an `xbfscrash=STATE[,COUNT]` boot parameter (kernel/multiboot.c) arms a
-  deliberate halt (`xbfs_crash_set`/`xbfs_crash_inject` in fs/xbfs/journal.c)
+  an `agfscrash=STATE[,COUNT]` boot parameter (kernel/multiboot.c) arms a
+  deliberate halt (`agfs_crash_set`/`agfs_crash_inject` in fs/agfs/journal.c)
   when the journal reaches one of §5's states for the COUNT-th time
   (1 = commit start, 2/5 = after the entry write contiguous/wrap, 3/6 =
   after the range publish contiguous/wrap, 4 = after the wrap orphan
-  publish, 7 = after the full commit syncs). `tools/mkxbfs.py` gained
+  publish, 7 = after the full commit syncs). `tools/mkagfs.py` gained
   `--journal <blocks>` so a small (64-block) log makes wrap states cheap.
   Harness: `.build/rm2_harness.py` (crash state esp per state, pristine
   image per run, churn until the halt, reboot + verify). Results:
@@ -176,7 +176,7 @@ walked because the range is tight, D2).
   (1–2 blocks for S1–S3/S6–S7; S4–S5 leave the log range empty — nothing
   to replay, as designed). **6/6 random qemu kills** mid-churn recovered
   with all four file probes intact. No unmountable volume, no replay-
-  restoring-garbage, and no `magic1`/btree/inode `xbfscheck` failures in
+  restoring-garbage, and no `magic1`/btree/inode `agfscheck` failures in
   the whole matrix. Criteria 3–4 pass. Residual closed: the superblock is now a **dual-copy sequenced sb**
   (copy A @ block 0 offset 512, copy B @ block 0 offset 0, each in its
   own 512-byte sector, with a per-copy u64 sequence + u32 checksum in
@@ -195,20 +195,20 @@ walked because the range is tight, D2).
   1024-block log: **0** `log full, resetting` prints, the log wrapped
   **804× (64-block) / 33× (1024-block)** without error, and a clean
   shutdown (`halt -f` = the direct reboot() syscall → stop_kernel's
-  sync_superblocks) left the log drained — `xbfscheck` reports
+  sync_superblocks) left the log drained — `agfscheck` reports
   `log=(0,0)` with no journal FAIL on the 1024 image. Two follow-up
   notes, both orthogonal to the journal reclaim: (1) plain `halt`
   (toybox) uses the SysV `kill(1, SIGUSR1)` init protocol, which FNX's
   init does not handle — `halt -f` / `reboot -f` are the working forms;
-  (2) `xbfscheck` flagged a `last_modified` index mismatch after churning
+  (2) `agfscheck` flagged a `last_modified` index mismatch after churning
   files in a directory (a session-modified build-time inode's entry went
   missing) — reproduces with **zero wraps**, so it was an index-
-  maintenance issue, not a journal defect. Resolved: mkxbfs now backfills
+  maintenance issue, not a journal defect. Resolved: mkagfs now backfills
   the name/size/last_modified indices over the whole tree it builds
   (Haiku-mkfs parity, duplicate keys via chained duplicate nodes), the
   driver moves keys on modification even for never-indexed inodes
-  (index-on-modify, mirroring Haiku's `Index::Update`), and xbfscheck
-  expects that model (see docs/design/xbfs-enhancements.md A.2 / the mkxbfs
+  (index-on-modify, mirroring Haiku's `Index::Update`), and agfscheck
+  expects that model (see docs/design/agfs-enhancements.md A.2 / the mkagfs
   backfill notes).
 
 ## 10. Risks / gotchas
@@ -221,7 +221,7 @@ walked because the range is tight, D2).
   the order silently reintroduces the corruption class §8.3 guards
   against. Keep the two steps adjacent with a comment.
 - `log_start == log_end` is load-bearing as "empty" in replay, the drain,
-  and the mkxbfs clean check — never let a wrapped-but-nonempty state
+  and the mkagfs clean check — never let a wrapped-but-nonempty state
   produce equal positions except the true empty case.
 
 ## 11. Open items
@@ -237,19 +237,19 @@ Crash-atomic creates (43df3df: one outer tx per create/mkdir/mknod, one tx
 per index mutation, set_name re-record) eliminated the 'missing 0x13'
 orphan. e712f50 eliminated the tx-split classes:
 
-1. XBFS_LOG_MAX_BLOCKS 15 -> 48. A create in a deep tree records 15-20
+1. AGFS_LOG_MAX_BLOCKS 15 -> 48. A create in a deep tree records 15-20
    metadata blocks, so the cap overflowed constantly and the write-through
    abort split the op across a direct part (which could sync) and a
    re-filled journaled part (unpublished) — replaying an inode without its
    directory entry, or a bitmap-set block with no content.
 2. tx_poisoned: an overflowing tx writes the REST of the outer tx through
    too (never re-fills and commits a journaled remainder later).
-3. xbfs_index_resize writes the inode in its own transaction (the
+3. agfs_index_resize writes the inode in its own transaction (the
    size/mtime change + index del+put + inode record commit atomically;
    the fd-close flush is an idempotent re-record).
 
 Verified: legA crash states 3+6 green; R-M3 soak resets=0; boot-sanity +
-xbfscheck clean. legB failures drop to a rare btree artifact at the kill
+agfscheck clean. legB failures drop to a rare btree artifact at the kill
 boundary: the dir tree's leaf chain ends with leaves whose keys sit in the
 wrong subtree (root separator vs physical link divergence; the checker
 reports 'iterate path hit an interior node' or 'bitmap blocks not

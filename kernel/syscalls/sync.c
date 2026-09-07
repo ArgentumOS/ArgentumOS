@@ -7,7 +7,7 @@
 
 #include <fnx/fs.h>
 #include <fnx/buffer.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 #include <fnx/filesystems.h>
 
 #ifdef __DEBUG__
@@ -23,7 +23,7 @@ void sys_sync(void)
 
 	sync_superblocks(0);	/* in all devices */
 	sync_inodes(0);		/* in all devices */
-	xbfs_flush_all();	/* close any group-commit batches the inode
+	agfs_flush_all();	/* close any group-commit batches the inode
 				 * sync re-populated (a full buffer sync
 				 * mid-batch would flush their dirty real
 				 * blocks ahead of the publish) */

@@ -183,7 +183,7 @@ toolchain yields an identical image (see §5 on reproducibility).
   source and the host packages match. A bump only if a language feature
   forces it — and a bump is now an in-guest rebuild, not a host op.
 - **Source delivery**: how the source tree + patches reach the guest
-  build volume (packaged tarball in `/Shared`, an auxiliary XBFS volume,
+  build volume (packaged tarball in `/Shared`, an auxiliary AGFS volume,
   or the root image grows). Ties to disk budget (G4).
 - **Testing under acceleration**: full LLVM rebuilds under TCG are
   slow enough to threaten milestone realism (§5).
@@ -200,7 +200,7 @@ toolchain yields an identical image (see §5 on reproducibility).
   match (the address space is already 128 TB; this is RAM sizing, not
   VA). Swap is not on the table (no paging plan) — budget RSS instead.
 - **Disk**: LLVM source + two build trees ≈ 1 GB+; plan a dedicated
-  build volume (XBFS) rather than growing the root image.
+  build volume (AGFS) rather than growing the root image.
 - **Bootstrap deadlock**: the static recovery set (G2) is the escape
   hatch if a dynamic guest toolchain breaks — a static clang fallback
   must always be producible from the last-good seed.

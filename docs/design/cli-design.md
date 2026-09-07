@@ -61,7 +61,7 @@ A tool moves out of toybox into the suite when FNX's own semantics
 demand it — not for completeness:
 
 - the command must address things by **Devices topology paths**
-  (`disk format xbfs ATA/Bus0/Disk2`), which validates the argument
+  (`disk format agfs ATA/Bus0/Disk2`), which validates the argument
   against the device tree rather than treating it as a filesystem path;
 - its behavior/config belongs in a **.conf domain** (`system.mounts`,
   `system.passwd`) and must use the mediated, validating writer;
@@ -142,7 +142,7 @@ grant   list / add / remove                 (a) the audit + delegation front end
 `ps`/`kill` (processes are person-visible), `edit`/`cat`/`cp`,
 `find`/`grep` — files and search are person verbs.
 
-### Extended attributes and the Haiku/XBFS guardrail
+### Extended attributes and the Haiku/AGFS guardrail
 
 Generic extended attributes are family-two, per-file app metadata
 (`xattr get/set/list/remove`), not a domain verb — `acl` is a domain
@@ -150,10 +150,10 @@ tool because ACLs are *the* permissions model; xattrs are the opposite.
 
 Guardrail (see the OpenBFS cross-compat work): **the `user.*` /
 `system.*` xattr namespace convention must be enforced at the tool, not
-as a syscall-layer name gate.** XBFS attributes are free-form names with
+as a syscall-layer name gate.** AGFS attributes are free-form names with
 a 32-bit type code (`BEOS:TYPE`, media attrs, …) — Haiku carries no
 POSIX namespace prefixes, so a hard kernel prefix rule would make every
-Haiku attribute invisible/unwritable on a mounted XBFS volume and break
+Haiku attribute invisible/unwritable on a mounted AGFS volume and break
 file-type identification for cross-boot files. The kernel therefore
 ownership-gates only its own two names
 (`system.posix_acl_access`/`system.posix_acl_default`); everything else

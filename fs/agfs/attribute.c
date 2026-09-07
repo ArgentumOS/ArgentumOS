@@ -1,5 +1,5 @@
 /*
- * fnx/fs/xbfs/attribute.c
+ * fnx/fs/agfs/attribute.c
  *
  * Haiku-compatible attribute inodes (the per-file attributes B+tree).
  *
@@ -36,43 +36,43 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 #include <fnx/buffer.h>
 #include <fnx/stat.h>
 #include <fnx/string.h>
 
-extern struct fs_operations xbfs_fsop;
-extern int xbfs_btree_insert(struct inode *, const char *, __ino_t);
-extern int xbfs_btree_delete(struct inode *, const char *);
-extern int xbfs_btree_find(struct inode *, const char *, __ino_t *);
-extern int xbfs_btree_iterate(struct inode *,
+extern struct fs_operations agfs_fsop;
+extern int agfs_btree_insert(struct inode *, const char *, __ino_t);
+extern int agfs_btree_delete(struct inode *, const char *);
+extern int agfs_btree_find(struct inode *, const char *, __ino_t *);
+extern int agfs_btree_iterate(struct inode *,
 			     int (*)(const char *, __ino_t, void *), void *);
 
 /* remove one small_data attribute record (xattr.c); used by the tree
  * write path so the attribute leaves the small_data section (Haiku) */
-extern int xbfs_xattr_remove_sd(struct inode *, const char *);
+extern int agfs_xattr_remove_sd(struct inode *, const char *);
 
-static int xbfs_attr_count_cb(const char *, __ino_t, void *);
-static int xbfs_attr_free_cb(const char *, __ino_t, void *);
+static int agfs_attr_count_cb(const char *, __ino_t, void *);
+static int agfs_attr_free_cb(const char *, __ino_t, void *);
 
 /* block number of a block_run (all groups are ag_shift'd blocks) */
-static __blk_t xbfs_run_block(struct superblock *sb, struct xbfs_block_run *r)
+static __blk_t agfs_run_block(struct superblock *sb, struct agfs_block_run *r)
 {
-	return (r->allocation_group << sb->u.xbfs.ag_shift) + r->start;
+	return (r->allocation_group << sb->u.agfs.ag_shift) + r->start;
 }
 
 /*
  * Load the attributes inode of 'i' (iget, counted) or NULL when the
  * file has none.
  */
-static struct inode *xbfs_attr_dir(struct inode *i)
+static struct inode *agfs_attr_dir(struct inode *i)
 {
-	struct xbfs_block_run *r = &i->u.xbfs.raw.attributes;
+	struct agfs_block_run *r = &i->u.agfs.raw.attributes;
 
 	if(!r->len) {
 		return NULL;
 	}
-	return iget(i->sb, xbfs_run_block(i->sb, r));
+	return iget(i->sb, agfs_run_block(i->sb, r));
 }
 
 /*
@@ -80,12 +80,12 @@ static struct inode *xbfs_attr_dir(struct inode *i)
  * allocates the inode, gives it its own tree (header + one empty leaf,
  * NO dots), and points the file's attributes run at it.
  */
-static struct inode *xbfs_attr_dir_create(struct inode *i)
+static struct inode *agfs_attr_dir_create(struct inode *i)
 {
 	struct inode *ai;
 	struct buffer *buf, *buf2;
-	struct xbfs_btree_header *h;
-	struct xbfs_btree_node *n;
+	struct agfs_btree_header *h;
+	struct agfs_btree_node *n;
 	__blk_t block, block2;
 
 	if(!(ai = ialloc(i->sb, S_IFDIR | 0666))) {
@@ -107,7 +107,7 @@ static struct inode *xbfs_attr_dir_create(struct inode *i)
 		iput(ai);
 		return NULL;
 	}
-	if((block2 = bmap(ai, XBFS_BTREE_NODE_SIZE, FOR_WRITING)) < 0) {
+	if((block2 = bmap(ai, AGFS_BTREE_NODE_SIZE, FOR_WRITING)) < 0) {
 		ai->i_nlink = 0;
 		iput(ai);
 		return NULL;
@@ -117,14 +117,14 @@ static struct inode *xbfs_attr_dir_create(struct inode *i)
 		iput(ai);
 		return NULL;
 	}
-	h = (struct xbfs_btree_header *)buf->data;
-	h->magic = XBFS_BTREE_MAGIC;
-	h->node_size = XBFS_BTREE_NODE_SIZE;
+	h = (struct agfs_btree_header *)buf->data;
+	h->magic = AGFS_BTREE_MAGIC;
+	h->node_size = AGFS_BTREE_NODE_SIZE;
 	h->max_depth = 1;
-	h->data_type = XBFS_BTREE_STRING_TYPE;
-	h->root_node_ptr = XBFS_BTREE_NODE_SIZE;
-	h->free_node_ptr = XBFS_BTREE_NULL;
-	h->max_size = 2 * XBFS_BTREE_NODE_SIZE;
+	h->data_type = AGFS_BTREE_STRING_TYPE;
+	h->root_node_ptr = AGFS_BTREE_NODE_SIZE;
+	h->free_node_ptr = AGFS_BTREE_NULL;
+	h->max_size = 2 * AGFS_BTREE_NODE_SIZE;
 	bwrite(buf);
 
 	if(!(buf2 = bread(ai->dev, block2, ai->sb->s_blocksize))) {
@@ -132,11 +132,11 @@ static struct inode *xbfs_attr_dir_create(struct inode *i)
 		iput(ai);
 		return NULL;
 	}
-	n = (struct xbfs_btree_node *)((char *)buf2->data
-		+ (XBFS_BTREE_NODE_SIZE % ai->sb->s_blocksize));
-	n->left = XBFS_BTREE_NULL;
-	n->right = XBFS_BTREE_NULL;
-	n->overflow = XBFS_BTREE_NULL;
+	n = (struct agfs_btree_node *)((char *)buf2->data
+		+ (AGFS_BTREE_NODE_SIZE % ai->sb->s_blocksize));
+	n->left = AGFS_BTREE_NULL;
+	n->right = AGFS_BTREE_NULL;
+	n->overflow = AGFS_BTREE_NULL;
 	n->all_key_count = 0;
 	n->all_key_length = 0;
 	bwrite(buf2);
@@ -144,18 +144,18 @@ static struct inode *xbfs_attr_dir_create(struct inode *i)
 	/* the inode: extended mode bits + legacy attribute flag. NOTE:
 	 * the in-memory raw.inode_num is NOT set by ialloc (only the disk
 	 * buffer and i->inode are), so runs must be built from i->inode */
-	ai->u.xbfs.raw.mode = XBFS_S_ATTR_DIR | XBFS_S_STR_INDEX | S_IFDIR | 0666;
-	ai->u.xbfs.raw.flags = XBFS_INODE_IN_USE | XBFS_INODE_ATTR_INODE;
-	ai->u.xbfs.raw.type = 0;
-	xbfs_run_encode(&ai->u.xbfs.raw.parent, i->inode, i->sb->u.xbfs.ag_shift);
-	ai->u.xbfs.raw.parent.len = 1;
-	ai->i_size = 2 * XBFS_BTREE_NODE_SIZE;
+	ai->u.agfs.raw.mode = AGFS_S_ATTR_DIR | AGFS_S_STR_INDEX | S_IFDIR | 0666;
+	ai->u.agfs.raw.flags = AGFS_INODE_IN_USE | AGFS_INODE_ATTR_INODE;
+	ai->u.agfs.raw.type = 0;
+	agfs_run_encode(&ai->u.agfs.raw.parent, i->inode, i->sb->u.agfs.ag_shift);
+	ai->u.agfs.raw.parent.len = 1;
+	ai->i_size = 2 * AGFS_BTREE_NODE_SIZE;
 	ai->i_blocks = (ai->i_size + 511) >> 9;
 	ai->state |= INODE_DIRTY;
 
 	/* point the file's attributes run at the new inode */
-	xbfs_run_encode(&i->u.xbfs.raw.attributes, ai->inode, i->sb->u.xbfs.ag_shift);
-	i->u.xbfs.raw.attributes.len = 1;
+	agfs_run_encode(&i->u.agfs.raw.attributes, ai->inode, i->sb->u.agfs.ag_shift);
+	i->u.agfs.raw.attributes.len = 1;
 	i->state |= INODE_DIRTY;
 	return ai;
 }
@@ -164,16 +164,16 @@ static struct inode *xbfs_attr_dir_create(struct inode *i)
  * Find the attribute file inode for 'name' in the attributes tree.
  * Returns 0 with '*attr' set (counted) on success, or a negative errno.
  */
-int xbfs_attr_find(struct inode *i, const char *name,
+int agfs_attr_find(struct inode *i, const char *name,
 		   struct inode **attr)
 {
 	struct inode *ai;
 	__ino_t ino;
 
-	if(!(ai = xbfs_attr_dir(i))) {
+	if(!(ai = agfs_attr_dir(i))) {
 		return -ENODATA;
 	}
-	if(xbfs_btree_find(ai, name, &ino)) {
+	if(agfs_btree_find(ai, name, &ino)) {
 		iput(ai);
 		return -ENODATA;
 	}
@@ -185,7 +185,7 @@ int xbfs_attr_find(struct inode *i, const char *name,
 }
 
 /* write 'size' bytes of 'value' into the data stream of 'attr' */
-static int xbfs_attr_write_stream(struct inode *attr, const char *value,
+static int agfs_attr_write_stream(struct inode *attr, const char *value,
 				 __size_t size)
 {
 	__size_t total = 0;
@@ -218,26 +218,26 @@ static int xbfs_attr_write_stream(struct inode *attr, const char *value,
 
 /*
  * Create the attribute file inode for 'name' (if missing) and write
- * 'value'. Called by xbfs_attr_set when the attribute does not fit the
+ * 'value'. Called by agfs_attr_set when the attribute does not fit the
  * small_data section (Haiku's CreateAttribute path: remove the inline
  * record first, then create the file, then write its stream).
  */
-int xbfs_attr_set(struct inode *i, const char *name, const char *value,
+int agfs_attr_set(struct inode *i, const char *name, const char *value,
 		 __size_t size, __u32 type)
 {
 	struct inode *ai, *attr;
 	int res;
 
 	/* Haiku: the attribute leaves the small_data section */
-	xbfs_xattr_remove_sd(i, name);
+	agfs_xattr_remove_sd(i, name);
 
-	if(!(ai = xbfs_attr_dir(i))) {
-		if(!(ai = xbfs_attr_dir_create(i))) {
+	if(!(ai = agfs_attr_dir(i))) {
+		if(!(ai = agfs_attr_dir_create(i))) {
 			return -ENOSPC;
 		}
 	}
 
-	res = xbfs_attr_find(i, name, &attr);
+	res = agfs_attr_find(i, name, &attr);
 	if(res == -ENODATA) {
 		/* create the attribute file inode + the tree entry */
 		if(!(attr = ialloc(i->sb, S_IFREG | 0666))) {
@@ -252,16 +252,16 @@ int xbfs_attr_set(struct inode *i, const char *name, const char *value,
 		attr->i_gid = current->egid;
 		attr->i_nlink = 1;
 		attr->i_blocks = 0;
-		attr->u.xbfs.raw.mode = XBFS_S_ATTR | S_IFREG | 0666;
-		attr->u.xbfs.raw.flags = XBFS_INODE_IN_USE | XBFS_INODE_ATTR_INODE;
+		attr->u.agfs.raw.mode = AGFS_S_ATTR | S_IFREG | 0666;
+		attr->u.agfs.raw.flags = AGFS_INODE_IN_USE | AGFS_INODE_ATTR_INODE;
 		/* 'CSTR' unless the caller migrated a typed inline record
 		 * into the tree (Haiku's CreateAttribute carries the type) */
-		attr->u.xbfs.raw.type = type ? type : XBFS_FILE_NAME_TYPE;
-		xbfs_run_encode(&attr->u.xbfs.raw.parent, ai->inode, i->sb->u.xbfs.ag_shift);
-		attr->u.xbfs.raw.parent.len = 1;
+		attr->u.agfs.raw.type = type ? type : AGFS_FILE_NAME_TYPE;
+		agfs_run_encode(&attr->u.agfs.raw.parent, ai->inode, i->sb->u.agfs.ag_shift);
+		attr->u.agfs.raw.parent.len = 1;
 		attr->state |= INODE_DIRTY;
 
-		if((res = xbfs_btree_insert(ai, name, attr->inode)) < 0) {
+		if((res = agfs_btree_insert(ai, name, attr->inode)) < 0) {
 			attr->i_nlink = 0;
 			iput(attr);
 			iput(ai);
@@ -272,7 +272,7 @@ int xbfs_attr_set(struct inode *i, const char *name, const char *value,
 		return res;
 	}
 
-	if((res = xbfs_attr_write_stream(attr, value, size)) < 0) {
+	if((res = agfs_attr_write_stream(attr, value, size)) < 0) {
 		iput(attr);
 		iput(ai);
 		return res;
@@ -288,14 +288,14 @@ int xbfs_attr_set(struct inode *i, const char *name, const char *value,
  * path in xattr.c already tried). Returns the size, or copies up to
  * 'size' bytes like getxattr.
  */
-int xbfs_attr_get(struct inode *i, const char *name, char *buffer,
+int agfs_attr_get(struct inode *i, const char *name, char *buffer,
 		 __size_t size)
 {
 	struct inode *attr;
 	__size_t total = 0;
 	int res;
 
-	if((res = xbfs_attr_find(i, name, &attr)) < 0) {
+	if((res = agfs_attr_find(i, name, &attr)) < 0) {
 		return res;
 	}
 	if(!buffer || size == 0) {
@@ -339,16 +339,16 @@ int xbfs_attr_get(struct inode *i, const char *name, char *buffer,
 	return total;
 }
 
-struct xbfs_attr_list_ctx {
+struct agfs_attr_list_ctx {
 	char *list;
 	__size_t size;
 	int total;
 	int errno;
 };
 
-static int xbfs_attr_list_cb(const char *name, __ino_t ino, void *arg)
+static int agfs_attr_list_cb(const char *name, __ino_t ino, void *arg)
 {
-	struct xbfs_attr_list_ctx *l = (struct xbfs_attr_list_ctx *)arg;
+	struct agfs_attr_list_ctx *l = (struct agfs_attr_list_ctx *)arg;
 	int nlen = strlen(name);
 
 	if(l->size == 0) {
@@ -368,20 +368,20 @@ static int xbfs_attr_list_cb(const char *name, __ino_t ino, void *arg)
 
 /* append the tree attribute names after the small_data ones ('start'
  * is the byte offset already written by the small_data walk) */
-int xbfs_attr_list(struct inode *i, char *list, __size_t size, int start)
+int agfs_attr_list(struct inode *i, char *list, __size_t size, int start)
 {
 	struct inode *ai;
-	struct xbfs_attr_list_ctx l;
+	struct agfs_attr_list_ctx l;
 	int res;
 
-	if(!(ai = xbfs_attr_dir(i))) {
+	if(!(ai = agfs_attr_dir(i))) {
 		return 0;
 	}
 	l.list = list;
 	l.size = size;
 	l.total = start;
 	l.errno = 0;
-	res = xbfs_btree_iterate(ai, xbfs_attr_list_cb, &l);
+	res = agfs_btree_iterate(ai, agfs_attr_list_cb, &l);
 	iput(ai);
 	if(res && l.errno) {
 		return l.errno;
@@ -395,21 +395,21 @@ int xbfs_attr_list(struct inode *i, char *list, __size_t size, int start)
  * attributes inode itself is freed and the file's attributes run is
  * cleared.
  */
-int xbfs_attr_remove(struct inode *i, const char *name)
+int agfs_attr_remove(struct inode *i, const char *name)
 {
 	struct inode *ai, *attr;
 	int count = 0;
 	int res;
 
-	if(!(ai = xbfs_attr_dir(i))) {
+	if(!(ai = agfs_attr_dir(i))) {
 		return -ENODATA;
 	}
-	if((res = xbfs_attr_find(i, name, &attr)) < 0) {
+	if((res = agfs_attr_find(i, name, &attr)) < 0) {
 		iput(ai);
 		return res;
 	}
 
-	if((res = xbfs_btree_delete(ai, name)) < 0) {
+	if((res = agfs_btree_delete(ai, name)) < 0) {
 		iput(attr);
 		iput(ai);
 		return res;
@@ -420,13 +420,13 @@ int xbfs_attr_remove(struct inode *i, const char *name)
 	iput(attr);
 
 	/* drop the attributes inode when the tree is empty */
-	xbfs_btree_iterate(ai, xbfs_attr_count_cb, &count);
+	agfs_btree_iterate(ai, agfs_attr_count_cb, &count);
 	if(count == 0) {
 		ai->i_nlink = 0;
 		iput(ai);
-		i->u.xbfs.raw.attributes.allocation_group = 0;
-		i->u.xbfs.raw.attributes.start = 0;
-		i->u.xbfs.raw.attributes.len = 0;
+		i->u.agfs.raw.attributes.allocation_group = 0;
+		i->u.agfs.raw.attributes.start = 0;
+		i->u.agfs.raw.attributes.len = 0;
 		i->state |= INODE_DIRTY;
 	} else {
 		iput(ai);
@@ -438,33 +438,33 @@ int xbfs_attr_remove(struct inode *i, const char *name)
  * Free every attribute of 'i': walk the attributes tree, free each
  * attribute file inode (stream + block), free the tree stream and the
  * attributes inode block, and clear the file's attributes run. Called
- * from xbfs_ifree() on unlink — without this, a Haiku file with
+ * from agfs_ifree() on unlink — without this, a Haiku file with
  * attribute inodes would leak its tree and attribute blocks.
  */
-void xbfs_attr_free_all(struct inode *i)
+void agfs_attr_free_all(struct inode *i)
 {
 	struct inode *ai;
 
-	if(!i->u.xbfs.raw.attributes.len) {
+	if(!i->u.agfs.raw.attributes.len) {
 		return;
 	}
-	if(!(ai = xbfs_attr_dir(i))) {
+	if(!(ai = agfs_attr_dir(i))) {
 		return;
 	}
 
-	xbfs_btree_iterate(ai, xbfs_attr_free_cb, i->sb);
+	agfs_btree_iterate(ai, agfs_attr_free_cb, i->sb);
 
 	ai->i_nlink = 0;
 	iput(ai);
 
-	i->u.xbfs.raw.attributes.allocation_group = 0;
-	i->u.xbfs.raw.attributes.start = 0;
-	i->u.xbfs.raw.attributes.len = 0;
+	i->u.agfs.raw.attributes.allocation_group = 0;
+	i->u.agfs.raw.attributes.start = 0;
+	i->u.agfs.raw.attributes.len = 0;
 	i->state |= INODE_DIRTY;
 }
 
 /* callback: count the tree entries */
-static int xbfs_attr_count_cb(const char *name, __ino_t ino, void *arg)
+static int agfs_attr_count_cb(const char *name, __ino_t ino, void *arg)
 {
 	(*(int *)arg)++;
 	return 0;
@@ -472,7 +472,7 @@ static int xbfs_attr_count_cb(const char *name, __ino_t ino, void *arg)
 
 /* callback: free one attribute file (truncate stream + free the block).
  * The superblock rides in 'arg'. */
-static int xbfs_attr_free_cb(const char *name, __ino_t ino, void *arg)
+static int agfs_attr_free_cb(const char *name, __ino_t ino, void *arg)
 {
 	struct superblock *sb = (struct superblock *)arg;
 	struct inode *attr;

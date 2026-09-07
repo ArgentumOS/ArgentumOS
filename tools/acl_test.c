@@ -1,6 +1,6 @@
 /* acl_test.c — POSIX ACL kernel probe for FNX (M0/M1).
  *
- * Verifies on a XBFS root (the only filesystem with xattr support):
+ * Verifies on a AGFS root (the only filesystem with xattr support):
  *   - setxattr/getxattr/removexattr of system.posix_acl_access observe
  *     chmod-style ownership (owner/root) and validate the payload;
  *   - check_permission() runs the ACL algorithm: a named-user entry
@@ -80,10 +80,10 @@ static int as_user(unsigned int uid, unsigned int gid, int (*fn)(void))
 	return WEXITSTATUS(st);
 }
 
-/* the XBFS disk persists across runs. The old test directory may linger
+/* the AGFS disk persists across runs. The old test directory may linger
  * with a wrong mode or stale ACL xattrs, so: force 0755 (traversable by
  * the test's non-root children) and drop any stale ACL on the fixed
- * file names instead of deleting (recursive deletes flood the XBFS
+ * file names instead of deleting (recursive deletes flood the AGFS
  * journal's small log and trip its reset path). */
 static void reset_dir(const char *dir)
 {
@@ -157,18 +157,18 @@ int main(void)
 	struct aclx acl[8];
 	int n;
 
-	/* Boot runs from a reliable ext2 root; the XBFS filesystem (the
+	/* Boot runs from a reliable ext2 root; the AGFS filesystem (the
 	 * only one with xattr support) is attached as an IDE slave and
-	 * mounted here so the checks below run against real XBFS inodes. */
+	 * mounted here so the checks below run against real AGFS inodes. */
 	if(mkdir("/mnt", 0755) < 0 && errno != EEXIST) {
 		perror("mkdir /mnt");
 		return 1;
 	}
-	if(mount("/dev/hdb", "/mnt", "xbfs", 0, NULL) < 0) {
-		perror("mount /dev/hdb (xbfs)");
+	if(mount("/dev/hdb", "/mnt", "agfs", 0, NULL) < 0) {
+		perror("mount /dev/hdb (agfs)");
 		return 1;
 	}
-	printf("ACLTEST: xbfs mounted on /mnt\n");
+	printf("ACLTEST: agfs mounted on /mnt\n");
 
 	reset_dir("/mnt/aclt_d");
 	if(mkdir("/mnt/aclt_d", 0755) < 0 && errno != EEXIST) {
@@ -668,7 +668,7 @@ int main(void)
 		struct stat st;
 		int fd, i2, mkattempt;
 
-		/* the XBFS disk persists across runs: pick a dir name that
+		/* the AGFS disk persists across runs: pick a dir name that
 		 * cannot collide with a stale one from a crashed run */
 		for(mkattempt = 0; mkattempt < 16; mkattempt++) {
 			snprintf(d, sizeof(d), "/mnt/aclt_d/m3_%d_%d",

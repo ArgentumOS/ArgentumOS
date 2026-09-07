@@ -208,7 +208,7 @@ present.
   (`recovery = true` / `root = ...`); `rm` removes it. The canonical file
   the writer produces also parses cleanly under the kernel `.conf` parser
   (round-trip). No scope-root file is consulted.
-- Caveat (the remaining M3 dependency): the in-guest test wrote the XBFS
+- Caveat (the remaining M3 dependency): the in-guest test wrote the AGFS
   root's `/System/ESP/EFI/BOOT/kernel.conf` copy. Until the ESP is actually mounted
   there (FSH Q2 — the FAT32 driver work), the file the `config` CLI edits
   is NOT the ESP the firmware booted from; boot consumption still comes

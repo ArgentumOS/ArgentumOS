@@ -318,7 +318,7 @@ explicitly-listed host-tool/doc mentions).
   (cmake configure+build), `m0clang` target staging
   `userland/hello.c` twice under `System/Shared/tests`
   (`clang-hello-dl`, `clang-hello-static`; lint carve-out tree).
-  `rootxbfs` chains `m0clang` — `userland64` starts with
+  `rootagfs` chains `m0clang` — `userland64` starts with
   `rm -rf $(ROOTFS64)`, so the clang outputs must be (re)staged after
   it or they never reach the packed image.
 - **Acceptance**: both binaries boot and print under FNX

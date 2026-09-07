@@ -26,8 +26,8 @@ export LD INCLUDE
 #                   panic - that is the smoke test.
 #   make ovmf       fetch OVMF firmware without root (into .build/ovmf).
 #   make run-uefi   boot OVMF (UEFI) firmware with the FNX EFI stub
-#                   (PE32+ kernel from make build64) on the XBFS root image
-#                   (.build/rootxbfs.img) — XBFS is the default root device.
+#                   (PE32+ kernel from make build64) on the AGFS root image
+#                   (.build/rootagfs.img) — AGFS is the default root device.
 #   make run-ext2    same, but booting the legacy ext2 root (.build/root.img).
 #   make compile64  compile every C source with 64-bit flags into .build/64
 #                   (no link) - the type-sweep verifier for the long-mode
@@ -78,13 +78,13 @@ CC64 = $(CLANG19) -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLU
        -fno-pie -fno-common -ffreestanding -mno-red-zone -mno-sse -mno-sse2 \
        -fno-asynchronous-unwind-tables -Wall -Wstrict-prototypes
 
-run: .build/ovmf/OVMF.fd rootxbfs build64
+run: .build/ovmf/OVMF.fd rootagfs build64
 	$(MAKE) run-qemu
 
 run-uefi: run
 
-# Legacy ext2 root (mkext2.py, rev-0, 1KB blocks): the pre-XBFS default,
-# kept as an optional boot path (M4f made XBFS the root fs).
+# Legacy ext2 root (mkext2.py, rev-0, 1KB blocks): the pre-AGFS default,
+# kept as an optional boot path (M4f made AGFS the root fs).
 run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 	$(MAKE) run-qemu ROOTIMG=.build/root.img
 
@@ -95,7 +95,7 @@ run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 # --- terminal with DISPLAY set so the GOP fb is shown in a GTK window:
 # ---     make run-xfb
 XFBROOT ?= .build/xfbdesk-root
-XFBIMG  ?= .build/rootxbfs-xfbdesk.img
+XFBIMG  ?= .build/rootagfs-xfbdesk.img
 XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 
 .build/x11/xdraw: userland/demos/xdraw.c
@@ -113,17 +113,17 @@ xfbdesk-root: $(XFB_DEMO_BIN) $(XFB_BIN)
 	cp .build/x11/xkey "$(XFBROOT)/System/Shared/X11/bin/xkey"
 	printf 'desktop = "xfb"\n' > "$(XFBROOT)/System/Configuration/session.conf"
 xfbdesk: xfbdesk-root
-	python3 tools/mkxbfs.py $(XFBROOT) $(XFBIMG) 64
-	python3 tools/xbfscheck.py $(XFBIMG) $(XFBROOT)
+	python3 tools/mkagfs.py $(XFBROOT) $(XFBIMG) 64
+	python3 tools/agfscheck.py $(XFBIMG) $(XFBROOT)
 run-xfb: .build/ovmf/OVMF.fd xfbdesk build64
 	$(MAKE) run-qemu ROOTIMG=$(XFBIMG)
 
-# Boot the XBFS root image (.build/rootxbfs.img) as /dev/sda. The kernel's
+# Boot the AGFS root image (.build/rootagfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
-# filesystems (minix -> ext2 -> iso9660 -> xbfs) and finds xbfs; the same
-# kernel boots both the ext2 and the XBFS root.
-ROOTIMG ?= .build/rootxbfs.img
-run-xbfs: run
+# filesystems (minix -> ext2 -> iso9660 -> agfs) and finds agfs; the same
+# kernel boots both the ext2 and the AGFS root.
+ROOTIMG ?= .build/rootagfs.img
+run-agfs: run
 
 run-qemu:
 	@./tools/mkesp.sh

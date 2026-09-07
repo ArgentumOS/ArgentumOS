@@ -1,9 +1,9 @@
 /*
- * fnx/fs/xbfs/namei.c
+ * fnx/fs/agfs/namei.c
  *
- * XBFS inode operations: create, mkdir, link, unlink, rmdir, rename,
+ * AGFS inode operations: create, mkdir, link, unlink, rmdir, rename,
  * symlink. Directory entries live in the B+tree; creating/removing a
- * name = xbfs_btree_insert/xbfs_btree_delete on the parent directory.
+ * name = agfs_btree_insert/agfs_btree_delete on the parent directory.
  *
  * Copyright 2024, the FNX project.
  * Distributed under the terms of the Fiwix License.
@@ -13,69 +13,69 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 
 /* the create-family fsops are one-journal-transaction wrappers around
  * the *_impl bodies below (crash-atomic creates) */
-static int xbfs_create_impl(struct inode *, char *, int, __mode_t,
+static int agfs_create_impl(struct inode *, char *, int, __mode_t,
 			    struct inode **);
-static int xbfs_mknod_impl(struct inode *, char *, __mode_t, __dev_t);
-static int xbfs_mkdir_impl(struct inode *, char *, __mode_t);
+static int agfs_mknod_impl(struct inode *, char *, __mode_t, __dev_t);
+static int agfs_mkdir_impl(struct inode *, char *, __mode_t);
 #include <fnx/buffer.h>
 #include <fnx/fcntl.h>
 #include <fnx/stat.h>
 #include <fnx/sched.h>
 #include <fnx/string.h>
 
-extern int xbfs_btree_insert(struct inode *, const char *, __ino_t);
-extern int xbfs_btree_delete(struct inode *, const char *);
-extern int xbfs_btree_delete_ino(struct inode *, __ino_t);
-extern int xbfs_btree_iterate(struct inode *, int (*)(const char *, __ino_t, void *), void *);
-extern int xbfs_btree_find(struct inode *, const char *, __ino_t *);
-extern int xbfs_ialloc(struct inode *, int);
+extern int agfs_btree_insert(struct inode *, const char *, __ino_t);
+extern int agfs_btree_delete(struct inode *, const char *);
+extern int agfs_btree_delete_ino(struct inode *, __ino_t);
+extern int agfs_btree_iterate(struct inode *, int (*)(const char *, __ino_t, void *), void *);
+extern int agfs_btree_find(struct inode *, const char *, __ino_t *);
+extern int agfs_ialloc(struct inode *, int);
 
-struct xbfs_dir_count_arg {
+struct agfs_dir_count_arg {
 	int count;
 };
 
-static int xbfs_count_entry(const char *name, __ino_t ino, void *arg)
+static int agfs_count_entry(const char *name, __ino_t ino, void *arg)
 {
-	((struct xbfs_dir_count_arg *)arg)->count++;
+	((struct agfs_dir_count_arg *)arg)->count++;
 	return 0;
 }
 
 /* count the entries in the directory tree */
-static int xbfs_dir_count(struct inode *dir)
+static int agfs_dir_count(struct inode *dir)
 {
-	struct xbfs_dir_count_arg arg;
+	struct agfs_dir_count_arg arg;
 
 	arg.count = 0;
-	xbfs_btree_iterate(dir, xbfs_count_entry, &arg);
+	agfs_btree_iterate(dir, agfs_count_entry, &arg);
 	return arg.count;
 }
 
 /* the directory tree is empty when it only holds '.' and '..' */
-static int xbfs_dir_empty(struct inode *dir)
+static int agfs_dir_empty(struct inode *dir)
 {
-	return xbfs_dir_count(dir) <= 2;
+	return agfs_dir_count(dir) <= 2;
 }
 
 /* one transaction for the whole create: ialloc/insert/name/index each
  * take their own (nested) tx today, so a kill between two of them
  * replays a half-created inode (an IN_USE orphan with no name record).
  * A single outer tx commits everything together, or nothing at all. */
-int xbfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
+int agfs_create(struct inode *dir, char *name, int flags, __mode_t mode,
 	       struct inode **i_res)
 {
 	int res;
 
-	xbfs_log_begin(dir->sb);
-	res = xbfs_create_impl(dir, name, flags, mode, i_res);
-	xbfs_log_commit(dir->sb);
+	agfs_log_begin(dir->sb);
+	res = agfs_create_impl(dir, name, flags, mode, i_res);
+	agfs_log_commit(dir->sb);
 	return res;
 }
 
-static int xbfs_create_impl(struct inode *dir, char *name, int flags,
+static int agfs_create_impl(struct inode *dir, char *name, int flags,
 			    __mode_t mode, struct inode **i_res)
 {
 	struct inode *i;
@@ -89,7 +89,7 @@ static int xbfs_create_impl(struct inode *dir, char *name, int flags,
 	inode_lock(dir);
 
 	if(flags & O_CREAT) {
-		if(!(errno = xbfs_btree_find(dir, name, &ino))) {
+		if(!(errno = agfs_btree_find(dir, name, &ino))) {
 			inode_unlock(dir);
 			return -EEXIST;
 		}
@@ -104,7 +104,7 @@ static int xbfs_create_impl(struct inode *dir, char *name, int flags,
 	i->fsop = dir->fsop;
 
 	__off_t old_dir_size = dir->i_size;
-	if((errno = xbfs_btree_insert(dir, name, i->inode))) {
+	if((errno = agfs_btree_insert(dir, name, i->inode))) {
 		i->i_nlink = 0;
 		iput(i);
 		inode_unlock(dir);
@@ -120,11 +120,11 @@ static int xbfs_create_impl(struct inode *dir, char *name, int flags,
 	i->state |= INODE_DIRTY;
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
-	xbfs_inode_set_name(i, name);
+	agfs_inode_set_name(i, name);
 	/* keep the name/size/last_modified indices in sync (Haiku) */
-	xbfs_index_add(dir->sb, i, name);
+	agfs_index_add(dir->sb, i, name);
 
-	xbfs_dir_touch(dir, old_dir_size);
+	agfs_dir_touch(dir, old_dir_size);
 	dir->state |= INODE_DIRTY;
 
 	*i_res = i;
@@ -132,23 +132,23 @@ static int xbfs_create_impl(struct inode *dir, char *name, int flags,
 	return 0;
 }
 
-/* FNX: XBFS had no mknod (do_mknod fell back to -EPERM), which broke
- * every path-based AF_UNIX socket on a XBFS root (X11, the compositor's
+/* FNX: AGFS had no mknod (do_mknod fell back to -EPERM), which broke
+ * every path-based AF_UNIX socket on a AGFS root (X11, the compositor's
  * /tmp/gui.sock, ...). Socket/fifo/regular nodes are stored as ordinary
  * data-less inodes whose i_mode carries the type bits — the same trick
  * Linux ext2 uses. Char/block devices stay unsupported (devfs owns /dev). */
-/* one transaction for the whole mknod (see xbfs_create) */
-int xbfs_mknod(struct inode *dir, char *name, __mode_t mode, __dev_t dev)
+/* one transaction for the whole mknod (see agfs_create) */
+int agfs_mknod(struct inode *dir, char *name, __mode_t mode, __dev_t dev)
 {
 	int res;
 
-	xbfs_log_begin(dir->sb);
-	res = xbfs_mknod_impl(dir, name, mode, dev);
-	xbfs_log_commit(dir->sb);
+	agfs_log_begin(dir->sb);
+	res = agfs_mknod_impl(dir, name, mode, dev);
+	agfs_log_commit(dir->sb);
 	return res;
 }
 
-static int xbfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
+static int agfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
 			   __dev_t dev)
 {
 	struct inode *i;
@@ -172,7 +172,7 @@ static int xbfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
 
 	inode_lock(dir);
 
-	if(!(errno = xbfs_btree_find(dir, name, &ino))) {
+	if(!(errno = agfs_btree_find(dir, name, &ino))) {
 		inode_unlock(dir);
 		return -EEXIST;
 	}
@@ -186,7 +186,7 @@ static int xbfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
 	i->fsop = dir->fsop;
 
 	old_dir_size = dir->i_size;
-	if((errno = xbfs_btree_insert(dir, name, i->inode))) {
+	if((errno = agfs_btree_insert(dir, name, i->inode))) {
 		i->i_nlink = 0;
 		iput(i);
 		inode_unlock(dir);
@@ -202,11 +202,11 @@ static int xbfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
 	i->state |= INODE_DIRTY;
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
-	xbfs_inode_set_name(i, name);
+	agfs_inode_set_name(i, name);
 	/* keep the name/size/last_modified indices in sync (Haiku) */
-	xbfs_index_add(dir->sb, i, name);
+	agfs_index_add(dir->sb, i, name);
 
-	xbfs_dir_touch(dir, old_dir_size);
+	agfs_dir_touch(dir, old_dir_size);
 	dir->state |= INODE_DIRTY;
 
 	iput(i);
@@ -214,22 +214,22 @@ static int xbfs_mknod_impl(struct inode *dir, char *name, __mode_t mode,
 	return 0;
 }
 
-/* one transaction for the whole mkdir (see xbfs_create) */
-int xbfs_mkdir(struct inode *dir, char *name, __mode_t mode)
+/* one transaction for the whole mkdir (see agfs_create) */
+int agfs_mkdir(struct inode *dir, char *name, __mode_t mode)
 {
 	int res;
 
-	xbfs_log_begin(dir->sb);
-	res = xbfs_mkdir_impl(dir, name, mode);
-	xbfs_log_commit(dir->sb);
+	agfs_log_begin(dir->sb);
+	res = agfs_mkdir_impl(dir, name, mode);
+	agfs_log_commit(dir->sb);
 	return res;
 }
 
-static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
+static int agfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 {
 	struct inode *i;
 	struct buffer *buf;
-	struct xbfs_inode *raw;
+	struct agfs_inode *raw;
 	__blk_t block, block2;
 	int errno;
 	__ino_t ino;
@@ -240,7 +240,7 @@ static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 
 	inode_lock(dir);
 
-	if(!(errno = xbfs_btree_find(dir, name, &ino))) {
+	if(!(errno = agfs_btree_find(dir, name, &ino))) {
 		inode_unlock(dir);
 		return -EEXIST;
 	}
@@ -265,7 +265,7 @@ static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 		inode_unlock(dir);
 		return block;
 	}
-	if((block2 = bmap(i, XBFS_BTREE_NODE_SIZE, FOR_WRITING)) < 0) {
+	if((block2 = bmap(i, AGFS_BTREE_NODE_SIZE, FOR_WRITING)) < 0) {
 		iput(i);
 		inode_unlock(dir);
 		return block2;
@@ -276,13 +276,13 @@ static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 		return -EIO;
 	}
 	{
-		struct xbfs_btree_header *h = (struct xbfs_btree_header *)buf->data;
-		h->magic = XBFS_BTREE_MAGIC;
-		h->node_size = XBFS_BTREE_NODE_SIZE;
+		struct agfs_btree_header *h = (struct agfs_btree_header *)buf->data;
+		h->magic = AGFS_BTREE_MAGIC;
+		h->node_size = AGFS_BTREE_NODE_SIZE;
 		h->max_depth = 1;
-		h->data_type = XBFS_BTREE_STRING_TYPE;
-		h->root_node_ptr = XBFS_BTREE_NODE_SIZE;
-		h->free_node_ptr = XBFS_BTREE_NULL;
+		h->data_type = AGFS_BTREE_STRING_TYPE;
+		h->root_node_ptr = AGFS_BTREE_NODE_SIZE;
+		h->free_node_ptr = AGFS_BTREE_NULL;
 		h->max_size = 1 << 20;
 		bwrite(buf);
 	}
@@ -290,24 +290,24 @@ static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 	 * than the node size it shares the header's block) */
 	{
 		struct buffer *buf2;
-		struct xbfs_btree_node *n;
+		struct agfs_btree_node *n;
 		if(!(buf2 = bread(i->dev, block2, i->sb->s_blocksize))) {
 			iput(i);
 			inode_unlock(dir);
 			return -EIO;
 		}
-		n = (struct xbfs_btree_node *)((char *)buf2->data
-			+ (XBFS_BTREE_NODE_SIZE % i->sb->s_blocksize));
-		memset_b(n, 0, XBFS_BTREE_NODE_SIZE);
-		n->left = XBFS_BTREE_NULL;
-		n->right = XBFS_BTREE_NULL;
-		n->overflow = XBFS_BTREE_NULL;
+		n = (struct agfs_btree_node *)((char *)buf2->data
+			+ (AGFS_BTREE_NODE_SIZE % i->sb->s_blocksize));
+		memset_b(n, 0, AGFS_BTREE_NODE_SIZE);
+		n->left = AGFS_BTREE_NULL;
+		n->right = AGFS_BTREE_NULL;
+		n->overflow = AGFS_BTREE_NULL;
 		n->all_key_count = 2;
 		n->all_key_length = 3;	/* "." + ".." */
 		{
-			char *keys = (char *)n + sizeof(struct xbfs_btree_node);
+			char *keys = (char *)n + sizeof(struct agfs_btree_node);
 			__u16 *kl = (__u16 *)((char *)n
-				+ ((sizeof(struct xbfs_btree_node) + 3 + 7) & ~7));
+				+ ((sizeof(struct agfs_btree_node) + 3 + 7) & ~7));
 			__u64 *values = (__u64 *)((char *)kl + 2 * 2);
 			keys[0] = '.';
 			kl[0] = 1;
@@ -317,33 +317,33 @@ static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 			kl[1] = 3;
 			values[1] = dir->inode;
 		}
-		i->i_size = 2 * XBFS_BTREE_NODE_SIZE;
+		i->i_size = 2 * AGFS_BTREE_NODE_SIZE;
 		/* the two bmap() calls above already built the runs; the
 		 * second node is only in a new block when it crosses a block
 		 * boundary (at 1024-byte blocks; at larger sizes it shares
 		 * the header's block). */
-		raw = &i->u.xbfs.raw;
-		raw->u.data.size = 2 * XBFS_BTREE_NODE_SIZE;
-		/* the size-based gate xbfs_read_inode would have set, so a
+		raw = &i->u.agfs.raw;
+		raw->u.data.size = 2 * AGFS_BTREE_NODE_SIZE;
+		/* the size-based gate agfs_read_inode would have set, so a
 		 * session-created dir truncated at unlink frees its tree
-		 * (xbfs_ifree skips the truncate while i_blocks == 0) */
+		 * (agfs_ifree skips the truncate while i_blocks == 0) */
 		i->i_blocks = (i->i_size + 511) >> 9;
 		i->state |= INODE_DIRTY;
 		bwrite(buf2);
 	}
 
 	__off_t old_dir_size = dir->i_size;
-	if((errno = xbfs_btree_insert(dir, name, i->inode))) {
+	if((errno = agfs_btree_insert(dir, name, i->inode))) {
 		iput(i);
 		inode_unlock(dir);
 		return errno;
 	}
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
-	xbfs_inode_set_name(i, name);
-	xbfs_index_add(dir->sb, i, name);
+	agfs_inode_set_name(i, name);
+	agfs_index_add(dir->sb, i, name);
 
-	xbfs_dir_touch(dir, old_dir_size);
+	agfs_dir_touch(dir, old_dir_size);
 	/* directory nlink does not count subdirectories (no on-disk link
 	 * count field; read_inode reconstructs nlink per-inode), so a
 	 * subdir's later removal can never free its parent */
@@ -354,7 +354,7 @@ static int xbfs_mkdir_impl(struct inode *dir, char *name, __mode_t mode)
 	return 0;
 }
 
-int xbfs_link(struct inode *i_old, struct inode *dir_new, char *name)
+int agfs_link(struct inode *i_old, struct inode *dir_new, char *name)
 {
 	int errno;
 
@@ -367,28 +367,28 @@ int xbfs_link(struct inode *i_old, struct inode *dir_new, char *name)
 
 	inode_lock(dir_new);
 
-	if(!(errno = xbfs_btree_find(dir_new, name, (__ino_t *)&errno))) {
+	if(!(errno = agfs_btree_find(dir_new, name, (__ino_t *)&errno))) {
 		inode_unlock(dir_new);
 		return -EEXIST;
 	}
 	__off_t old_dir_size = dir_new->i_size;
-	if((errno = xbfs_btree_insert(dir_new, name, i_old->inode))) {
+	if((errno = agfs_btree_insert(dir_new, name, i_old->inode))) {
 		inode_unlock(dir_new);
 		return errno;
 	}
 
 	i_old->i_nlink++;
-	xbfs_touch_ctime(i_old);
+	agfs_touch_ctime(i_old);
 	i_old->state |= INODE_DIRTY;
 
-	xbfs_dir_touch(dir_new, old_dir_size);
+	agfs_dir_touch(dir_new, old_dir_size);
 	dir_new->state |= INODE_DIRTY;
 
 	inode_unlock(dir_new);
 	return 0;
 }
 
-int xbfs_unlink(struct inode *dir, struct inode *i, char *name)
+int agfs_unlink(struct inode *dir, struct inode *i, char *name)
 {
 	int errno;
 
@@ -400,19 +400,19 @@ int xbfs_unlink(struct inode *dir, struct inode *i, char *name)
 	inode_lock(i);
 
 	__off_t old_dir_size = dir->i_size;
-	if((errno = xbfs_btree_delete(dir, name))) {
+	if((errno = agfs_btree_delete(dir, name))) {
 		inode_unlock(dir);
 		inode_unlock(i);
 		return errno;
 	}
 
-	xbfs_index_remove(dir->sb, i, name);
+	agfs_index_remove(dir->sb, i, name);
 
 	if(!--i->i_nlink) {
 		/* freed when iput'd */
 	}
-	xbfs_touch_ctime(i);
-	xbfs_dir_touch(dir, old_dir_size);
+	agfs_touch_ctime(i);
+	agfs_dir_touch(dir, old_dir_size);
 
 	i->state |= INODE_DIRTY;
 	dir->state |= INODE_DIRTY;
@@ -422,13 +422,13 @@ int xbfs_unlink(struct inode *dir, struct inode *i, char *name)
 	return 0;
 }
 
-int xbfs_rmdir(struct inode *dir, struct inode *i)
+int agfs_rmdir(struct inode *dir, struct inode *i)
 {
 	int errno;
 
 	inode_lock(i);
 
-	if(!xbfs_dir_empty(i)) {
+	if(!agfs_dir_empty(i)) {
 		inode_unlock(i);
 		return -ENOTEMPTY;
 	}
@@ -436,7 +436,7 @@ int xbfs_rmdir(struct inode *dir, struct inode *i)
 	inode_lock(dir);
 
 	__off_t old_dir_size = dir->i_size;
-	if((errno = xbfs_btree_delete_ino(dir, i->inode))) {
+	if((errno = agfs_btree_delete_ino(dir, i->inode))) {
 		inode_unlock(i);
 		inode_unlock(dir);
 		return errno;
@@ -444,19 +444,19 @@ int xbfs_rmdir(struct inode *dir, struct inode *i)
 	{
 		char namebuf[256];
 
-		if(xbfs_inode_get_name(i, namebuf, 255) >= 0) {
-			xbfs_index_remove(dir->sb, i, namebuf);
+		if(agfs_inode_get_name(i, namebuf, 255) >= 0) {
+			agfs_index_remove(dir->sb, i, namebuf);
 		}
 	}
 	i->i_nlink = 0;
 	/* do NOT decrement the parent: a directory read back from disk has
-	 * nlink 2 (see xbfs_read_inode) regardless of its subdirectories, so
+	 * nlink 2 (see agfs_read_inode) regardless of its subdirectories, so
 	 * removing a subdir must not be able to drive the parent to 0 and
 	 * free it (that was freeing /tmp whenever a replayed /tmp/.X11-unix
 	 * was rmdir'd - the parent's inode block then got recycled for the
 	 * next file, corrupting the tree) */
-	xbfs_touch_ctime(i);
-	xbfs_dir_touch(dir, old_dir_size);
+	agfs_touch_ctime(i);
+	agfs_dir_touch(dir, old_dir_size);
 
 	i->state |= INODE_DIRTY;
 	dir->state |= INODE_DIRTY;
@@ -466,7 +466,7 @@ int xbfs_rmdir(struct inode *dir, struct inode *i)
 	return 0;
 }
 
-int xbfs_symlink(struct inode *dir, char *name, char *oldname)
+int agfs_symlink(struct inode *dir, char *name, char *oldname)
 {
 	struct inode *i;
 	__ino_t ino;
@@ -479,7 +479,7 @@ int xbfs_symlink(struct inode *dir, char *name, char *oldname)
 
 	inode_lock(dir);
 
-	if(!(errno = xbfs_btree_find(dir, name, &ino))) {
+	if(!(errno = agfs_btree_find(dir, name, &ino))) {
 		inode_unlock(dir);
 		return -EEXIST;
 	}
@@ -499,7 +499,7 @@ int xbfs_symlink(struct inode *dir, char *name, char *oldname)
 	i->state |= INODE_DIRTY;
 
 	__off_t old_dir_size = dir->i_size;
-	if((errno = xbfs_btree_insert(dir, name, i->inode))) {
+	if((errno = agfs_btree_insert(dir, name, i->inode))) {
 		i->i_nlink = 0;
 		iput(i);
 		inode_unlock(dir);
@@ -511,13 +511,13 @@ int xbfs_symlink(struct inode *dir, char *name, char *oldname)
 		/* fast symlink: the target lives in the inode's symlink area,
 		 * NUL-terminated (Haiku reads it with strlen) */
 		for(n = 0; n < len; n++) {
-			i->u.xbfs.raw.u.symlink[n] = oldname[n];
+			i->u.agfs.raw.u.symlink[n] = oldname[n];
 		}
-		i->u.xbfs.raw.u.symlink[n] = 0;
-		i->u.xbfs.raw.pad[0] = len;
+		i->u.agfs.raw.u.symlink[n] = 0;
+		i->u.agfs.raw.pad[0] = len;
 		/* the data.size union field carries the logical size so the
 		 * on-disk inode, stat and the size index all agree */
-		i->u.xbfs.raw.u.data.size = n;
+		i->u.agfs.raw.u.data.size = n;
 		i->i_size = n;
 	} else {
 		/* long symlink: the target lives in the data stream; the
@@ -525,7 +525,7 @@ int xbfs_symlink(struct inode *dir, char *name, char *oldname)
 		 * the symlink area */
 		__off_t offset = 0;
 
-		i->u.xbfs.raw.flags |= XBFS_INODE_LONG_SYMLINK;
+		i->u.agfs.raw.flags |= AGFS_INODE_LONG_SYMLINK;
 		i->i_blocks = (len + 511) >> 9;
 		while(offset < len) {
 			__blk_t block;
@@ -549,15 +549,15 @@ int xbfs_symlink(struct inode *dir, char *name, char *oldname)
 			offset += bytes;
 		}
 		i->i_size = len;
-		i->u.xbfs.raw.pad[0] = len;
-		i->u.xbfs.raw.u.data.size = len;
+		i->u.agfs.raw.pad[0] = len;
+		i->u.agfs.raw.u.data.size = len;
 	}
 
 	/* the file-name 0x13 small_data record (Haiku SetName) */
-	xbfs_inode_set_name(i, name);
-	xbfs_index_add(dir->sb, i, name);
+	agfs_inode_set_name(i, name);
+	agfs_index_add(dir->sb, i, name);
 
-	xbfs_dir_touch(dir, old_dir_size);
+	agfs_dir_touch(dir, old_dir_size);
 	dir->state |= INODE_DIRTY;
 
 	iput(i);
@@ -565,14 +565,14 @@ int xbfs_symlink(struct inode *dir, char *name, char *oldname)
 	return 0;
 
 err:
-	xbfs_btree_delete(dir, name);
+	agfs_btree_delete(dir, name);
 	i->i_nlink = 0;
 	iput(i);
 	inode_unlock(dir);
 	return errno;
 }
 
-int xbfs_rename(struct inode *i_old, struct inode *dir_old,
+int agfs_rename(struct inode *i_old, struct inode *dir_old,
 	       struct inode *i_new, struct inode *dir_new,
 	       char *oldpath, char *newpath)
 {
@@ -597,7 +597,7 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 	 * breaking libconfig's atomic temp+rename writes. */
 	if(i_new) {
 		if(S_ISDIR(i_new->i_mode)) {
-			if(!xbfs_dir_empty(i_new)) {
+			if(!agfs_dir_empty(i_new)) {
 				errno = -ENOTEMPTY;
 				if(dir_new != dir_old) {
 					inode_unlock(dir_new);
@@ -605,9 +605,9 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 				inode_unlock(dir_old);
 				return errno;
 			}
-			errno = xbfs_btree_delete_ino(dir_new, i_new->inode);
+			errno = agfs_btree_delete_ino(dir_new, i_new->inode);
 		} else {
-			errno = xbfs_btree_delete(dir_new, newpath);
+			errno = agfs_btree_delete(dir_new, newpath);
 		}
 		if(errno) {
 			if(dir_new != dir_old) {
@@ -619,8 +619,8 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 		{
 			char namebuf[256];
 
-			if(xbfs_inode_get_name(i_new, namebuf, 255) >= 0) {
-				xbfs_index_remove(dir_new->sb, i_new, namebuf);
+			if(agfs_inode_get_name(i_new, namebuf, 255) >= 0) {
+				agfs_index_remove(dir_new->sb, i_new, namebuf);
 			}
 		}
 		if(S_ISDIR(i_new->i_mode)) {
@@ -628,7 +628,7 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 		} else if(i_new->i_nlink) {
 			i_new->i_nlink--;
 		}
-		xbfs_touch_ctime(i_new);
+		agfs_touch_ctime(i_new);
 		i_new->state |= INODE_DIRTY;
 	}
 	/* update the file-name 0x13 small_data record (Haiku SetName).
@@ -636,23 +636,23 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 	 * an inline file (ENOSPC), failing here aborts the rename with
 	 * nothing committed (the common tmp -> newpath rename has no
 	 * i_new work above, so no dir state has changed yet). */
-	if((errno = xbfs_inode_set_name(i_old, newpath))) {
+	if((errno = agfs_inode_set_name(i_old, newpath))) {
 		if(dir_new != dir_old) {
 			inode_unlock(dir_new);
 		}
 		inode_unlock(dir_old);
 		return errno;
 	}
-	if((errno = xbfs_btree_delete(dir_old, oldpath))) {
+	if((errno = agfs_btree_delete(dir_old, oldpath))) {
 		if(dir_new != dir_old) {
 			inode_unlock(dir_new);
 		}
 		inode_unlock(dir_old);
 		return errno;
 	}
-	if((errno = xbfs_btree_insert(dir_new, newpath, i_old->inode))) {
+	if((errno = agfs_btree_insert(dir_new, newpath, i_old->inode))) {
 		/* roll back */
-		xbfs_btree_insert(dir_old, oldpath, i_old->inode);
+		agfs_btree_insert(dir_old, oldpath, i_old->inode);
 		if(dir_new != dir_old) {
 			inode_unlock(dir_new);
 		}
@@ -661,13 +661,13 @@ int xbfs_rename(struct inode *i_old, struct inode *dir_old,
 	}
 
 	/* (set_name for i_old ran above, before the btree mutations) */
-	xbfs_index_remove(dir_old->sb, i_old, oldpath);
-	xbfs_index_add(dir_old->sb, i_old, newpath);
+	agfs_index_remove(dir_old->sb, i_old, oldpath);
+	agfs_index_add(dir_old->sb, i_old, newpath);
 
-	xbfs_dir_touch(dir_old, old_dir_old_size);
+	agfs_dir_touch(dir_old, old_dir_old_size);
 	dir_old->state |= INODE_DIRTY;
 	if(dir_new != dir_old) {
-		xbfs_dir_touch(dir_new, old_dir_new_size);
+		agfs_dir_touch(dir_new, old_dir_new_size);
 		dir_new->state |= INODE_DIRTY;
 	}
 

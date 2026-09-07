@@ -47,7 +47,7 @@ without rebooting the media:
    (`System/Devices/Disk/...`), showing its partitions and sizes, with
    a clear overwrite warning. The disk the system is running from
    (install media) is never offered.
-3. **Format** — create the root filesystem (**XBFS**, the only writable
+3. **Format** — create the root filesystem (**AGFS**, the only writable
    filesystem) and the initial layout: the five top-level directories
    (`Applications`, `Shared`, `System`, `Users`, `Volumes`).
 4. **Install** — copy the OS payload (system files, the base
@@ -65,17 +65,17 @@ media as a target, and a summary screen before anything is written.
 
 Dependencies to note (prerequisites the installer exposes):
 
-- **An in-OS XBFS formatter** — a `mkfs.xbfs` tool in `/System/Tools`
+- **An in-OS AGFS formatter** — a `mkfs.agfs` tool in `/System/Tools`
   (provided by the Disks CLI tools).
 - **An ESP write path** — filled by the planned **FAT32 driver**
   (FAT32 + ExFAT filesystem drivers are on the kernel work list; the
   ESP is FAT32, ExFAT covers large removable media).
 
 Release filesystem/boot scope (decided): **ext2, minix, and initrd
-support are removed** as part of the release. XBFS is the native
+support are removed** as part of the release. AGFS is the native
 writable filesystem; **FAT32 and ExFAT** drivers are planned
 (ESP mount, removable media, and Disks formatting); ISO9660 remains
-for read-only/install media. The kernel boots the XBFS root directly
+for read-only/install media. The kernel boots the AGFS root directly
 (no initrd, no RAMdisk).
 
 ## 6. Disks app (detailed)
@@ -90,7 +90,7 @@ access exists (device nodes expose read/write/ioctl —
    partition entries, GUIDs, names. MBR: primary partitions (+
    extended/logical later).
 2. **Formatting** — create volumes with **any supported filesystem**:
-   XBFS (native), **FAT32**, and **ExFAT** in v1 (writable); ISO9660 is
+   AGFS (native), **FAT32**, and **ExFAT** in v1 (writable); ISO9660 is
    read-only (no formatting). Labeling feeds the `Volumes` label-first
    mount naming (FAT32 volume labels, ExFAT volume names).
 3. **Volumes** — mount/unmount volumes at `/Volumes/<label>` per the
@@ -102,7 +102,7 @@ access exists (device nodes expose read/write/ioctl —
 Form factor and scope (decided): the Disks app drives **CLI tools in
 `/System/Tools`** (partition-table, `mkfs`, and mount commands —
 scriptable, and reusable by the Installer); GPT + MBR create/edit,
-format (XBFS/FAT32/ExFAT), label, and mount/unmount in v1 (resize,
+format (AGFS/FAT32/ExFAT), label, and mount/unmount in v1 (resize,
 extended/logical MBR partitions, and fsck deferred); partition edits
 are **staged and applied on commit**. The Disks app absorbs the
 Installer's mkfs dependency (the `mkfs` tools are `/System/Tools`
@@ -198,7 +198,7 @@ file-manager.column-width = 200
   partition-table, `mkfs`, and mount commands in `/System/Tools` —
   scriptable, and the Installer reuses them.
 - **Q-R7 — Disks v1 scope: as specced in §6.** GPT + MBR create/edit,
-  format (XBFS/FAT32/ExFAT), label, mount/unmount. Resize, extended/
+  format (AGFS/FAT32/ExFAT), label, mount/unmount. Resize, extended/
   logical MBR partitions, and fsck deferred.
 - **Q-R8 — Disks write model: staged apply-on-commit.** All partition
   edits are staged in memory and written only when the user commits

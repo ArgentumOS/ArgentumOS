@@ -1,7 +1,7 @@
 /*
- * fnx/fs/xbfs/balloc.c
+ * fnx/fs/agfs/balloc.c
  *
- * XBFS free-space management.
+ * AGFS free-space management.
  *
  * Each allocation group has a bit bitmap stored in the FIRST blocks of
  * the group, right after the superblock (Haiku's disk_super_block
@@ -11,8 +11,8 @@
  * boot block + superblock), the bitmap blocks themselves, and the log
  * area are reserved by setting their bits.
  *
- * The whole bitmap is cached in memory (sb->u.xbfs.bitmap); changes are
- * flushed by xbfs_write_superblock (via sync_superblocks).
+ * The whole bitmap is cached in memory (sb->u.agfs.bitmap); changes are
+ * flushed by agfs_write_superblock (via sync_superblocks).
  *
  * Copyright 2024, the FNX project.
  * Distributed under the terms of the Fiwix License.
@@ -22,72 +22,72 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 #include <fnx/mm.h>
 #include <fnx/buffer.h>
 #include <fnx/devices.h>
 #include <fnx/string.h>
 
 /* block number -> (group, bit-in-group) */
-static __u32 xbfs_group(struct superblock *sb, __blk_t block)
+static __u32 agfs_group(struct superblock *sb, __blk_t block)
 {
-	return block >> sb->u.xbfs.ag_shift;
+	return block >> sb->u.agfs.ag_shift;
 }
 
-static __u32 xbfs_group_bit(struct superblock *sb, __blk_t block)
+static __u32 agfs_group_bit(struct superblock *sb, __blk_t block)
 {
-	return block & ((1 << sb->u.xbfs.ag_shift) - 1);
+	return block & ((1 << sb->u.agfs.ag_shift) - 1);
 }
 
 /* the bitmap byte for a block, split into its PAGE_SIZE chunk + offset */
-static void xbfs_bitmap_byte(struct superblock *sb, __blk_t block,
+static void agfs_bitmap_byte(struct superblock *sb, __blk_t block,
 			    unsigned char **chunk, __u32 *byte)
 {
-	__u64 off = (__u64)xbfs_group(sb, block) * sb->u.xbfs.blocks_per_ag
-		* sb->u.xbfs.block_size
-		+ (xbfs_group_bit(sb, block) >> 3);
+	__u64 off = (__u64)agfs_group(sb, block) * sb->u.agfs.blocks_per_ag
+		* sb->u.agfs.block_size
+		+ (agfs_group_bit(sb, block) >> 3);
 
-	*chunk = sb->u.xbfs.bitmap[off >> 12];
+	*chunk = sb->u.agfs.bitmap[off >> 12];
 	*byte = off & (PAGE_SIZE - 1);
 }
 
-static int xbfs_bitmap_test(struct superblock *sb, __blk_t block)
+static int agfs_bitmap_test(struct superblock *sb, __blk_t block)
 {
 	unsigned char *chunk;
 	__u32 byte;
-	__u32 bit = xbfs_group_bit(sb, block);
+	__u32 bit = agfs_group_bit(sb, block);
 
-	xbfs_bitmap_byte(sb, block, &chunk, &byte);
+	agfs_bitmap_byte(sb, block, &chunk, &byte);
 	return chunk[byte] & (1 << (bit & 7));
 }
 
-static void xbfs_bitmap_set(struct superblock *sb, __blk_t block)
+static void agfs_bitmap_set(struct superblock *sb, __blk_t block)
 {
 	unsigned char *chunk;
 	__u32 byte;
-	__u32 bit = xbfs_group_bit(sb, block);
+	__u32 bit = agfs_group_bit(sb, block);
 
-	xbfs_bitmap_byte(sb, block, &chunk, &byte);
+	agfs_bitmap_byte(sb, block, &chunk, &byte);
 	chunk[byte] |= (1 << (bit & 7));
 }
 
-static void xbfs_bitmap_clear(struct superblock *sb, __blk_t block)
+static void agfs_bitmap_clear(struct superblock *sb, __blk_t block)
 {
 	unsigned char *chunk;
 	__u32 byte;
-	__u32 bit = xbfs_group_bit(sb, block);
+	__u32 bit = agfs_group_bit(sb, block);
 
-	xbfs_bitmap_byte(sb, block, &chunk, &byte);
+	agfs_bitmap_byte(sb, block, &chunk, &byte);
 	chunk[byte] &= ~(1 << (bit & 7));
 }
 
 /*
  * Allocate a free block. Returns the block number or a negative errno.
  */
-int xbfs_balloc(struct superblock *sb)
+int agfs_balloc(struct superblock *sb)
 {
-	__u64 num_blocks = sb->u.xbfs.num_blocks;
-	__u32 hint = sb->u.xbfs.next_free;
+	__u64 num_blocks = sb->u.agfs.num_blocks;
+	__u32 hint = sb->u.agfs.next_free;
 	__blk_t block;
 
 	superblock_lock(sb);
@@ -97,10 +97,10 @@ int xbfs_balloc(struct superblock *sb)
 	}
 	block = hint;
 	do {
-		if(!xbfs_bitmap_test(sb, block)) {
-			xbfs_bitmap_set(sb, block);
-			sb->u.xbfs.used_blocks++;
-			sb->u.xbfs.next_free = block + 1;
+		if(!agfs_bitmap_test(sb, block)) {
+			agfs_bitmap_set(sb, block);
+			sb->u.agfs.used_blocks++;
+			sb->u.agfs.next_free = block + 1;
 			sb->state |= SUPERBLOCK_DIRTY;
 			superblock_unlock(sb);
 			return block;
@@ -120,19 +120,19 @@ int xbfs_balloc(struct superblock *sb)
  * Returns 0 if the block was free (now marked used), -EEXIST if it was
  * already in use.
  */
-int xbfs_balloc_specific(struct superblock *sb, __blk_t block)
+int agfs_balloc_specific(struct superblock *sb, __blk_t block)
 {
-	if(block >= sb->u.xbfs.num_blocks) {
+	if(block >= sb->u.agfs.num_blocks) {
 		return -EINVAL;
 	}
 
 	superblock_lock(sb);
-	if(xbfs_bitmap_test(sb, block)) {
+	if(agfs_bitmap_test(sb, block)) {
 		superblock_unlock(sb);
 		return -EEXIST;
 	}
-	xbfs_bitmap_set(sb, block);
-	sb->u.xbfs.used_blocks++;
+	agfs_bitmap_set(sb, block);
+	sb->u.agfs.used_blocks++;
 	sb->state |= SUPERBLOCK_DIRTY;
 	superblock_unlock(sb);
 	return 0;
@@ -146,10 +146,10 @@ int xbfs_balloc_specific(struct superblock *sb, __blk_t block)
  * stores the number actually taken in *len (always >= 1); -ENOSPC when
  * the volume is full.
  */
-int xbfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
+int agfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
 {
-	__u64 num_blocks = sb->u.xbfs.num_blocks;
-	__u32 hint = sb->u.xbfs.next_free;
+	__u64 num_blocks = sb->u.agfs.num_blocks;
+	__u32 hint = sb->u.agfs.next_free;
 	__blk_t first;
 	__u32 got, i;
 
@@ -159,7 +159,7 @@ int xbfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
 		hint = 0;
 	}
 	first = hint;
-	while(xbfs_bitmap_test(sb, first)) {
+	while(agfs_bitmap_test(sb, first)) {
 		first++;
 		if(first >= num_blocks) {
 			first = 0;
@@ -172,7 +172,7 @@ int xbfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
 	}
 	for(got = 0; got < want; got++) {
 		__u64 b = (__u64)first + got;
-		__u32 ag_blocks = (__u32)1 << sb->u.xbfs.ag_shift;
+		__u32 ag_blocks = (__u32)1 << sb->u.agfs.ag_shift;
 
 		if(b >= num_blocks) {
 			break;	/* stop at the volume end, no wrap-around */
@@ -183,15 +183,15 @@ int xbfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
 		if(b > (__u64)first && (b & (ag_blocks - 1)) == 0) {
 			break;
 		}
-		if(xbfs_bitmap_test(sb, b)) {
+		if(agfs_bitmap_test(sb, b)) {
 			break;
 		}
-		xbfs_bitmap_set(sb, b);
+		agfs_bitmap_set(sb, b);
 	}
-	sb->u.xbfs.used_blocks += got;
-	sb->u.xbfs.next_free = first + got;
-	if(sb->u.xbfs.next_free >= num_blocks) {
-		sb->u.xbfs.next_free = 0;
+	sb->u.agfs.used_blocks += got;
+	sb->u.agfs.next_free = first + got;
+	if(sb->u.agfs.next_free >= num_blocks) {
+		sb->u.agfs.next_free = 0;
 	}
 	sb->state |= SUPERBLOCK_DIRTY;
 	superblock_unlock(sb);
@@ -205,63 +205,63 @@ int xbfs_balloc_contig(struct superblock *sb, __u32 want, __u32 *len)
  * behind the bitmap; called at every mount so the two never diverge for
  * more than one boot. Prints when a repair was needed.
  */
-void xbfs_resync_used_blocks(struct superblock *sb)
+void agfs_resync_used_blocks(struct superblock *sb)
 {
 	__u32 count = 0;
 	__blk_t block;
 
-	for(block = 0; block < sb->u.xbfs.num_blocks; block++) {
-		if(xbfs_bitmap_test(sb, block)) {
+	for(block = 0; block < sb->u.agfs.num_blocks; block++) {
+		if(agfs_bitmap_test(sb, block)) {
 			count++;
 		}
 	}
-	if(count != sb->u.xbfs.used_blocks) {
-		printk("XBFS: superblock used_blocks %lu resynced to bitmap count %u.\n",
-		       (unsigned long)sb->u.xbfs.used_blocks, count);
-		sb->u.xbfs.used_blocks = count;
+	if(count != sb->u.agfs.used_blocks) {
+		printk("AGFS: superblock used_blocks %lu resynced to bitmap count %u.\n",
+		       (unsigned long)sb->u.agfs.used_blocks, count);
+		sb->u.agfs.used_blocks = count;
 		sb->state |= SUPERBLOCK_DIRTY;
-		sb->u.xbfs.flags = XBFS_SUPER_DIRTY;
+		sb->u.agfs.flags = AGFS_SUPER_DIRTY;
 	}
 }
 
 /*
  * Free a block.
  */
-static void xbfs_discard_add(struct superblock *sb, __blk_t block)
+static void agfs_discard_add(struct superblock *sb, __blk_t block)
 {
-	__u32 n = sb->u.xbfs.ndiscard;
+	__u32 n = sb->u.agfs.ndiscard;
 
 	/* coalesce with the previous pending extent when adjacent */
-	if(n && sb->u.xbfs.d_start[n - 1] + sb->u.xbfs.d_count[n - 1] == block) {
-		sb->u.xbfs.d_count[n - 1]++;
+	if(n && sb->u.agfs.d_start[n - 1] + sb->u.agfs.d_count[n - 1] == block) {
+		sb->u.agfs.d_count[n - 1]++;
 		return;
 	}
-	if(n && sb->u.xbfs.d_count[n - 1] == 1) {	}
-	if(n >= XBFS_NR_PENDING_DISCARD) {
+	if(n && sb->u.agfs.d_count[n - 1] == 1) {	}
+	if(n >= AGFS_NR_PENDING_DISCARD) {
 		/* overflow: drop the extent (loses only the reclaim
 		 * opportunity; the bitmap state is authoritative) */
 		return;
 	}
-	sb->u.xbfs.d_start[n] = block;
-	sb->u.xbfs.d_count[n] = 1;
-	sb->u.xbfs.ndiscard = n + 1;
+	sb->u.agfs.d_start[n] = block;
+	sb->u.agfs.d_count[n] = 1;
+	sb->u.agfs.ndiscard = n + 1;
 }
 
-void xbfs_bfree(struct superblock *sb, __blk_t block)
+void agfs_bfree(struct superblock *sb, __blk_t block)
 {
-	if(block >= sb->u.xbfs.num_blocks) {
+	if(block >= sb->u.agfs.num_blocks) {
 		return;
 	}
 
 	superblock_lock(sb);
-	if(xbfs_bitmap_test(sb, block)) {
-		xbfs_bitmap_clear(sb, block);
-		sb->u.xbfs.used_blocks--;
+	if(agfs_bitmap_test(sb, block)) {
+		agfs_bitmap_clear(sb, block);
+		sb->u.agfs.used_blocks--;
 		sb->state |= SUPERBLOCK_DIRTY;
-		if(sb->u.xbfs.next_free > block) {
-			sb->u.xbfs.next_free = block;
+		if(sb->u.agfs.next_free > block) {
+			sb->u.agfs.next_free = block;
 		}
-		xbfs_discard_add(sb, block);
+		agfs_discard_add(sb, block);
 	}
 	superblock_unlock(sb);
 }
@@ -277,38 +277,38 @@ void xbfs_bfree(struct superblock *sb, __blk_t block)
  * reallocated inside the same transaction window must not be trimmed),
  * then handed to the driver's discard op one extent at a time.
  */
-void xbfs_flush_discards(struct superblock *sb)
+void agfs_flush_discards(struct superblock *sb)
 {
 	struct device *d;
 	__u32 n, i;
 	__blk_t b;
 
-	if(!sb->u.xbfs.ndiscard) {
+	if(!sb->u.agfs.ndiscard) {
 		return;
 	}
 	if(!(d = get_device(BLK_DEV, sb->dev))) {
 		return;	/* keep the list; retry on the next commit */
 	}
 	if(!d->fsop->discard_blocks) {
-		sb->u.xbfs.ndiscard = 0;
+		sb->u.agfs.ndiscard = 0;
 		return;	/* no discard support on this device */
-	}	for(n = 0; n < sb->u.xbfs.ndiscard; n++) {
-		b = sb->u.xbfs.d_start[n];		while(b < sb->u.xbfs.d_start[n] + sb->u.xbfs.d_count[n]) {
+	}	for(n = 0; n < sb->u.agfs.ndiscard; n++) {
+		b = sb->u.agfs.d_start[n];		while(b < sb->u.agfs.d_start[n] + sb->u.agfs.d_count[n]) {
 			__blk_t run = 0;
 
-			while(b + run < sb->u.xbfs.d_start[n] + sb->u.xbfs.d_count[n]
-			      && !xbfs_bitmap_test(sb, b + run)) {
+			while(b + run < sb->u.agfs.d_start[n] + sb->u.agfs.d_count[n]
+			      && !agfs_bitmap_test(sb, b + run)) {
 				run++;
 			}
 			if(run) {				d->fsop->discard_blocks(sb->dev, b, run,
-							sb->u.xbfs.block_size);
+							sb->u.agfs.block_size);
 				b += run;
 			} else {
 				b++;	/* reallocated: skip */
 			}
 		}
 	}
-	sb->u.xbfs.ndiscard = 0;
+	sb->u.agfs.ndiscard = 0;
 	/* device-side discard is fire-and-forget; the caller's commit
 	 * path holds the superblock lock */
 }

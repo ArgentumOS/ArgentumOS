@@ -25,7 +25,7 @@ brand). **FNX is retained as the kernel's engineering name** — the XNU
 role: boot banner, UTS_SYSNAME, `FNX_QEMU_*` env vars, and internal
 docs keep FNX, like XNU inside macOS. No separate product-name slot
 exists; earlier candidates (Aven, AvianOS, HawkOS, Eyrie, Ferrum…)
-are retired. Existing technical identifiers (FSH, XBFS, fshlint,
+are retired. Existing technical identifiers (FSH, AGFS, fshlint,
 Shrike, Kestrel, Finch, Argentum theme) are unchanged — the brand
 names the layers; the identifiers name the machinery.
 
@@ -54,9 +54,9 @@ names the layers; the identifiers name the machinery.
 
 ## The kernel
 
-- x86-64, UEFI-booted, POSIX-compatible; boots straight to a **XBFS
+- x86-64, UEFI-booted, POSIX-compatible; boots straight to a **AGFS
   root** (no initrd/RAMdisk), options from `/System/ESP/kernel.conf`.
-- **Filesystems**: XBFS = the only writable filesystem
+- **Filesystems**: AGFS = the only writable filesystem
   (ext2/minix/initrd removed); FAT32 + ExFAT planned (ESP + removable
   media, UTF-16↔UTF-8 LFN); ISO9660 read-only.
 - **Planned**: SMP ≤ 8 vCPUs (LAPIC timers, IO-APIC, ACPI MADT, one

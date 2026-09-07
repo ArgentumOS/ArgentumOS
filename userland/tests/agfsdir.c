@@ -1,4 +1,4 @@
-/* xbfsdir.c: OpenXBFS M4b test - create N files in /mnt/big, then verify
+/* agfsdir.c: OpenAGFS M4b test - create N files in /mnt/big, then verify
  * the directory reads them all back (readdir count + stat spot checks).
  * The point is to overflow the btree interior nodes (~60+ leaf children),
  * forcing recursive interior splits (depth-3+ trees). */
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 		}
 		close(fd);
 	}
-	printf("XBFSDIR-CREATED %d (%d..%d)\n", n, base, base + n - 1);
+	printf("AGFSDIR-CREATED %d (%d..%d)\n", n, base, base + n - 1);
 
 	if(!(d = opendir("/Volumes/big"))) {
 		fprintf(stderr, "opendir: %s\n", strerror(errno));
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 		count++;
 	}
 	closedir(d);
-	printf("XBFSDIR-READDIR-COUNT %d (expect %d)\n", count, n);
+	printf("AGFSDIR-READDIR-COUNT %d (expect %d)\n", count, n);
 
 	{
 		struct stat st;
@@ -66,13 +66,13 @@ int main(int argc, char **argv)
 			snprintf(name, sizeof(name), "f%05d", probes[i]);
 			snprintf(path, sizeof(path), "/Volumes/big/%s", name);
 			if(stat(path, &st) < 0) {
-				printf("XBFSDIR-STAT-MISS %s (%s)\n", name,
+				printf("AGFSDIR-STAT-MISS %s (%s)\n", name,
 				       strerror(errno));
 				ok = 0;
 			}
 		}
 		if(ok) {
-			printf("XBFSDIR-STAT-OK\n");
+			printf("AGFSDIR-STAT-OK\n");
 		}
 
 		/* spread lookups: stat every n/100-th entry (exercises the
@@ -82,14 +82,14 @@ int main(int argc, char **argv)
 			snprintf(name, sizeof(name), "f%05d", base + i);
 			snprintf(path, sizeof(path), "/Volumes/big/%s", name);
 			if(stat(path, &st) < 0) {
-				printf("XBFSDIR-SPREAD-MISS %s (%s)\n", name,
+				printf("AGFSDIR-SPREAD-MISS %s (%s)\n", name,
 				       strerror(errno));
 				ok = 0;
 				break;
 			}
 		}
 		if(ok) {
-			printf("XBFSDIR-SPREAD-OK\n");
+			printf("AGFSDIR-SPREAD-OK\n");
 		}
 	}
 	return 0;

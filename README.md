@@ -26,7 +26,7 @@ Features
 ### Filesystems
  - EXT2 (1KB/2KB/4KB block sizes).
  - Minix v1/v2.
- - XBFS — “the ex-Be filesystem” — the native read/write filesystem: a fork of the Be File System layout (block-run allocation, B+tree directories, per-file attribute trees, attribute indices with a live query engine, journaled metadata with crash-injection-tested recovery, dual-copy sequenced superblock, allocation windows) carrying its own superblock magic `'XBFS'` (0x58424653) and mounted strictly (legacy `'BFS1'` volumes are rejected). POSIX ACLs are stored as xattrs; 1024–4096-byte blocks. Images are produced by `tools/mkxbfs.py` and cross-checked by `tools/xbfscheck.py`.
+ - AGFS — “the ex-Be filesystem” — the native read/write filesystem: a fork of the Be File System layout (block-run allocation, B+tree directories, per-file attribute trees, attribute indices with a live query engine, journaled metadata with crash-injection-tested recovery, dual-copy sequenced superblock, allocation windows) carrying its own superblock magic `'AGFS'` (0x41474653; lineage 'BFS1' (Be) → 'XBFS' (ex-Be) → 'AGFS') and mounted strictly (legacy `'BFS1'`/`'XBFS'` volumes are rejected). POSIX ACLs are stored as xattrs; 1024–4096-byte blocks. Images are produced by `tools/mkagfs.py` and cross-checked by `tools/agfscheck.py`.
  - Linux-like PROC filesystem (read-only), mounted at `/System/Processes` at boot.
  - devfs mounted at `/System/Devices` — a device *topology* tree (`Memory/`, `TTY/`, `Serial/`, `PTS/`, `PS2/`, `Display/`, `Audio/`, `Disk/<bus>/DiskN` plus `by-identity` symlinks), with a node registry and clone API.
  - devpts (UNIX98 pseudoterminals), pipefs, ISO9660 (+Rock Ridge), sockfs (AF_UNIX), inotifyfs.
@@ -38,7 +38,7 @@ Path resolution knows an `@` device shorthand: a path whose first component star
  - Floppy driver with DMA management.
  - IDE/ATA hard disk and ATAPI CD-ROM (legacy + PCI).
  - AHCI (SATA), VMware PVSCSI, and NVMe controllers.
- - Disk partition support; persistent XBFS root on an ATA/AHCI disk (block cache flushed on shutdown).
+ - Disk partition support; persistent AGFS root on an ATA/AHCI disk (block cache flushed on shutdown).
 
 ### USB
  - UHCI, OHCI, EHCI (with companion-controller routing) and XHCI host controllers.
@@ -82,7 +82,7 @@ Before compiling you may want to tweak the kernel configuration in `include/fnx/
 The kernel needs a user-space environment: at boot it mounts the root filesystem and runs `/System/Tools/init`. FNX ships with a small native userland built from musl, dash and toybox, staged into the FSH layout:
 
     make userland64          # musl libc + dash + toybox, staged under .build/rootfs64
-    make rootxbfs             # packs .build/rootxbfs.img (XBFS, the default root)
+    make rootagfs             # packs .build/rootagfs.img (AGFS, the default root)
     make rootdisk64          # optional legacy ext2 root: .build/root.img (tools/mkext2.py)
 
 Source tree
@@ -104,18 +104,18 @@ by purpose:
                         libconfig.c/.h, configuration/
     docs/               design/ eval/ reference/ archive/ history/ — start at
                         docs/README.md for the index of every document
-    tools/              build drivers + QA: image tools (mkxbfs, xbfscheck,
+    tools/              build drivers + QA: image tools (mkagfs, agfscheck,
                         mkesp), fshlint, toolchain-gate, the musl-clang
                         wrappers, host-side harnesses
     third_party/        pinned sources (musl, dash, toybox, X11) as submodules
 
 Running under QEMU
 ------------------
-The stock harness boots the ESP image under OVMF and attaches the XBFS
-root disk over AHCI (XBFS is the default root device; the kernel probes
-minix -> ext2 -> iso9660 -> xbfs):
+The stock harness boots the ESP image under OVMF and attaches the AGFS
+root disk over AHCI (AGFS is the default root device; the kernel probes
+minix -> ext2 -> iso9660 -> agfs):
 
-    make run-uefi            # OVMF + esp.img + rootxbfs.img + a virtio-net NIC
+    make run-uefi            # OVMF + esp.img + rootagfs.img + a virtio-net NIC
     make run-ext2            # same, but booting the legacy ext2 root (.build/root.img)
     make run-xfb             # same, but a root preconfigured to boot the X11 (Xfb) desktop
 
@@ -124,20 +124,20 @@ By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf` is expo
 Once the shell is up (the tools live under `/System/Tools`, device names use
 the `@` shorthand or `/System/Devices`, scratch mounts go under `/Volumes`):
  - `ls /System/Tools` - the full tool set (toybox applets, dash as `sh`, plus FNX's own tools).
- - `acl get <path>` / `acl set ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed XBFS).
- - `xbfsquery` / `xbfsqtest` - the XBFS query engine (attribute-index queries) and its regression battery.
+ - `acl get <path>` / `acl set ...` - inspect and edit POSIX ACLs (works on any filesystem; sets need xattr-backed AGFS).
+ - `agfsquery` / `agfsqtest` - the AGFS query engine (attribute-index queries) and its regression battery.
  - `shm_leak_test` / `shm_resize_test` / `shm_cap_test` - SysV shared-memory regressions.
  - The default boot is the X11 desktop (Xfb on `:0`); `make run-xfb` is a preconfigured shortcut for the same thing.
 
 Notes / design decisions
 ------------------------
- - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only XBFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs XBFS. Full design: `docs/design/permissions-acl.md`; the `acl` tool lives at `/System/Tools/acl`.
- - Boot and storage reliability: the PIT IRQ stays masked until the real kernel's timer handler is linked (no early timer storms); the AHCI command-completion poll is bounded so a lost completion surfaces as an error instead of wedging the boot for minutes; and `iput()` never writes back a deleted inode (the root cause of the XBFS NULL-`small_data` crash on unlinking a dirty inode).
+ - Permissions have exactly one model: the POSIX ACL. `check_permission()` runs the ACL algorithm (owner -> named user -> group class through the mask -> other) for every object; an inode without a stored access ACL is served the trivial ACL projected from its mode bits, so the classic mode check is never a parallel path. `chmod` edits the stored ACL's owner/other/mask entries and trivial (mode-equivalent) ACLs are compressed away on set, keeping the mode bits a true view. Only AGFS stores ACLs today (per-file attribute xattrs); other filesystems synthesize the trivial ACL, which is why `acl get` works everywhere while `acl set` needs AGFS. Full design: `docs/design/permissions-acl.md`; the `acl` tool lives at `/System/Tools/acl`.
+ - Boot and storage reliability: the PIT IRQ stays masked until the real kernel's timer handler is linked (no early timer storms); the AHCI command-completion poll is bounded so a lost completion surfaces as an error instead of wedging the boot for minutes; and `iput()` never writes back a deleted inode (the root cause of the AGFS NULL-`small_data` crash on unlinking a dirty inode).
  - The kernel boots to a single high-half address space: `rebase_image_data()` in `kernel/boot64/paging64.c` walks the PE base-relocation table at boot and re-biases every absolute data pointer by `PAGE_OFFSET64` before the jump to the high-half entry, so indirect calls (syscall table, tty output, file operations) never execute at the identity alias. Process pml4s therefore map no kernel identity pages, and the TSS descriptor base must be the high-half address (see `kernel/boot64/gdt64.c`).
  - The serial console (ttyS0) is the system console on every boot; the display is the X11 desktop session's (Xfb renders to `/dev/fb0` — it owns the framebuffer).
  - The filesystem hierarchy (FSH) is FNX's own: five top-level directories (`Applications`, `Shared`, `System`, `Users`, `Volumes`) with configuration under `/System/Configuration` (the `.conf` domains edited by the `config` tool), device nodes under `/System/Devices`, tools under `/System/Tools`, and libraries under `/System/Libraries` (everything that ships with the OS in the default install — libc, libconfig, the X platform) vs `/Shared/Libraries` (libraries a third party — the user or sysadmin — installs later).
  - Device-name shorthand: any path whose first component starts with `@` resolves under `/System/Devices` (`2>@null`, `@TTY/console`); it is a pure kernel namei rule, so `@` is not a directory and files named `@x` stay reachable as `./@x`.
- - Design documents live in `docs/` — start at `docs/README.md`, which indexes every document by category and lists the active design set. The main active plans: OS profile `docs/reference/os-profile.md`; dynamic linking `docs/design/shared-libraries-plan.md`; the one-clang-compiler migration `docs/design/llvm-clang-toolchain-plan.md`; the filesystem hierarchy `docs/design/fsh-proposal.md`; XBFS enhancements `docs/design/xbfs-enhancements.md`; the X11 desktop `docs/design/x11-xvfb-fb-plan.md`; and the GUI-toolkit direction `docs/design/shrike-plan.md` (earlier toolkit plans — motif-fork, CDE-fork, FLTK, GNUstep, Momo — are superseded/rejected and kept under `docs/archive/`).
+ - Design documents live in `docs/` — start at `docs/README.md`, which indexes every document by category and lists the active design set. The main active plans: OS profile `docs/reference/os-profile.md`; dynamic linking `docs/design/shared-libraries-plan.md`; the one-clang-compiler migration `docs/design/llvm-clang-toolchain-plan.md`; the filesystem hierarchy `docs/design/fsh-proposal.md`; AGFS enhancements `docs/design/agfs-enhancements.md`; the X11 desktop `docs/design/x11-xvfb-fb-plan.md`; and the GUI-toolkit direction `docs/design/argentum-uikit-plan.md` (earlier toolkit plans — motif-fork, CDE-fork, FLTK, GNUstep, Momo — are superseded/rejected and kept under `docs/archive/`).
  - This is a hobby/educational kernel: it may have serious bugs and broken features which have not yet been identified or resolved.
 
 			*****************************

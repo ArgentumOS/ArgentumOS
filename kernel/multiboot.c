@@ -23,7 +23,7 @@
 #include <fnx/fb.h>
 #include <fnx/fbcon.h>
 #include <fnx/sysconsole.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 
 char bios_data[256];
 
@@ -53,7 +53,7 @@ static struct kernel_params_value kparamval_table[] = {
 	   { 0 },
 	   { 0 }
 	},
-	{ "xbfscrash=",
+	{ "agfscrash=",
 	   { 0 },
 	   { 0 }
 	},
@@ -170,7 +170,7 @@ static int check_param(struct kernel_params_value *kpv, const char *value)
 		}
 		return 1;
 	}
-	if(!strcmp(kpv->name, "xbfscrash=")) {
+	if(!strcmp(kpv->name, "agfscrash=")) {
 		int state, count = 1;
 		const char *colon = value ? strchr(value, ':') : NULL;
 		if(!value || !value[0]) {
@@ -183,7 +183,7 @@ static int check_param(struct kernel_params_value *kpv, const char *value)
 		if(state < 1 || state > 7 || count < 1) {
 			return 1;
 		}
-		xbfs_crash_set(state, count);
+		agfs_crash_set(state, count);
 		return 0;
 	}
 	if(!strcmp(kpv->name, "ide_nodma")) {

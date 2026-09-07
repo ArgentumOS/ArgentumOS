@@ -35,7 +35,7 @@ M3 89b15b2, M4 5463158).
 - D2 **Formats**: GPT and full MBR — 4 primaries + EBR chains with logicals,
   `0x55AA` validation, protective-MBR handling for GPT.
 - D3 **Acceptance (M-final)**: boot FNX from ONE GPT disk: p1 = EFI System
-  Partition (the current esp content: fnx.efi + startup), p2 = XBFS root;
+  Partition (the current esp content: fnx.efi + startup), p2 = AGFS root;
   OVMF boots it and the kernel mounts root from `.../Partition2`. Retires the
   separate esp.img + root-disk default harness.
 - D4 **Scope**: kernel-only this pass (parse + scan + nodes + mount + boot
@@ -94,7 +94,7 @@ MAX_PARTITIONS; the per-driver global `part[]` becomes `part[MAX_PARTITIONS]`.
 - New `tools/mkgpt.py`: writes a protective-MBR + GPT disk image of size N;
   p1 (type EFI System, aligned 1M) = the current ESP content (the FAT image
   is placed at the partition offset as-is — FAT has no absolute-LBA
-  dependence for OVMF's block reads), p2 (XBFS) = the mkxbfs'd root tree.
+  dependence for OVMF's block reads), p2 (AGFS) = the mkagfs'd root tree.
 - Makefile/harness: `QEMU_DRIVES` default becomes the single GPT disk;
   OVMF finds the ESP partition and boots `fnx.efi`; the kernel cmdline roots
   on `.../Disk/AHCI/Disk0/Partition2`.
@@ -118,8 +118,8 @@ MAX_PARTITIONS; the per-driver global `part[]` becomes `part[MAX_PARTITIONS]`.
 - **M2 — driver scan + partition nodes + mount. DONE.** ahci/nvme/pvscsi
   probe-scan through the shared parser (part[] -> MAX_PARTITIONS), publish
   Partition<k> + by-identity P<k> nodes (devfs_partition_node), re-scan on
-  BLKRRPART. MBR and GPT disks with two XBFS partitions each: both mount,
-  read, rm; post-session xbfscheck clean. Exposed + fixed a real xbfs
+  BLKRRPART. MBR and GPT disks with two AGFS partitions each: both mount,
+  read, rm; post-session agfscheck clean. Exposed + fixed a real agfs
   umount bug (release freed the bitmap before the drain could flush it ->
   stale on-disk bitmap; bitmap now lives until the log_draining drain).
   Whole-disk harness + churn soak stay green.
@@ -139,7 +139,7 @@ Gotchas recorded along the way (QEMU/OVMF + kernel):
 - kernel/multiboot.c root= string/sysval tables are parallel arrays sized
   by CMDL_NUM_VALUES: the root= table already exceeded 30 before
   partition entries (a silent overflow); bumped to 64.
-- xbfs umount bug the partition sessions exposed deterministically:
+- agfs umount bug the partition sessions exposed deterministically:
   release_superblock freed the in-memory bitmap before the drain could
   flush it -> stale on-disk bitmap (bitmap now lives until the
   log_draining drain; umount2 syncs inodes/buffers before the final
@@ -151,6 +151,6 @@ Gotchas recorded along the way (QEMU/OVMF + kernel):
   partition minor range stays driver-owned (the shared layer returns a list;
   drivers map list index -> their minor). No change to the shared-major
   per-minor arrays.
-- GPT type GUIDs: minimal built-in table (EFI System, Linux XBFS/ext2-ish,
+- GPT type GUIDs: minimal built-in table (EFI System, Linux AGFS/ext2-ish,
   generic) in M0; full partition-type map is out of scope.
 - GPT names/labels are parsed but not yet surfaced (no consumer until a CLI).

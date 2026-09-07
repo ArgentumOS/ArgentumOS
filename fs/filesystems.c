@@ -79,8 +79,8 @@ void fs_init(void)
 	if(iso9660_init()) {
 		printk("%s(): unable to register 'iso9660' filesystem.\n", __FUNCTION__);
 	}
-	if(xbfs_init()) {
-		printk("%s(): unable to register 'xbfs' filesystem.\n", __FUNCTION__);
+	if(agfs_init()) {
+		printk("%s(): unable to register 'agfs' filesystem.\n", __FUNCTION__);
 	}
 	if(fatfs_init()) {
 		printk("%s(): unable to register 'fat' filesystem.\n", __FUNCTION__);

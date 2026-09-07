@@ -1,11 +1,11 @@
 /*
- * fnx/fs/xbfs/xattr.c
+ * fnx/fs/agfs/xattr.c
  *
- * XBFS small_data attributes. Attributes are packed into the small_data
- * tail of the inode (raw + sizeof(struct xbfs_inode) .. raw + inode_size)
- * as consecutive records in the HAIKU on-disk layout (xbfs.h):
+ * AGFS small_data attributes. Attributes are packed into the small_data
+ * tail of the inode (raw + sizeof(struct agfs_inode) .. raw + inode_size)
+ * as consecutive records in the HAIKU on-disk layout (agfs.h):
  *
- *	struct xbfs_small_data {
+ *	struct agfs_small_data {
  *		__u32 type;		attribute type ('CSTR' for xattrs)
  *		__u16 name_size;	strlen(name), WITHOUT the NUL
  *		__u16 data_size;
@@ -36,24 +36,24 @@
 #include <fnx/types.h>
 #include <fnx/errno.h>
 #include <fnx/fs.h>
-#include <fnx/xbfs.h>
+#include <fnx/agfs.h>
 #include <fnx/fcntl.h>
 #include <fnx/stat.h>
 #include <fnx/string.h>
 
 /* record size excluding the name/data payload (type + 2 x u16) */
-#define XBFS_SD_HDR		8
+#define AGFS_SD_HDR		8
 /* Haiku small_data layout: name + strcpy NUL + 2 pad, then the data,
  * then a trailing NUL */
-#define XBFS_SD_SIZE(n, d)	(XBFS_SD_HDR + (n) + 3 + (d) + 1)
-#define XBFS_SD_DATA(sd)		((sd)->name + (sd)->name_size + 3)
+#define AGFS_SD_SIZE(n, d)	(AGFS_SD_HDR + (n) + 3 + (d) + 1)
+#define AGFS_SD_DATA(sd)		((sd)->name + (sd)->name_size + 3)
 
 /* the file-name record: one byte 0x13 (Haiku FILE_NAME_NAME) */
-#define XBFS_SD_IS_NAME(sd)	((sd)->name_size == 1 && (sd)->name[0] == 0x13)
+#define AGFS_SD_IS_NAME(sd)	((sd)->name_size == 1 && (sd)->name[0] == 0x13)
 
-static char *xbfs_xattr_area(struct inode *i)
+static char *agfs_xattr_area(struct inode *i)
 {
-	return i->u.xbfs.small_data;
+	return i->u.agfs.small_data;
 }
 
 /*
@@ -62,20 +62,20 @@ static char *xbfs_xattr_area(struct inode *i)
  * to the caller). Returns the cb result, or 0 when the area is
  * exhausted.
  */
-typedef int (*xbfs_xattr_cb)(struct xbfs_small_data *, void *);
+typedef int (*agfs_xattr_cb)(struct agfs_small_data *, void *);
 
-static int xbfs_xattr_walk(struct inode *i, xbfs_xattr_cb cb, void *arg)
+static int agfs_xattr_walk(struct inode *i, agfs_xattr_cb cb, void *arg)
 {
-	char *p = xbfs_xattr_area(i);
+	char *p = agfs_xattr_area(i);
 	/* the meaningful tail is block_size - inode; the in-memory copy
 	 * is sized for the largest block and zeroed past the tail, so
 	 * the walk would stop at the first zero record either way */
-	int left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
+	int left = i->sb->s_blocksize - sizeof(struct agfs_inode);
 	int res;
 
-	while(left >= XBFS_SD_HDR) {
-		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
-		int need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= AGFS_SD_HDR) {
+		struct agfs_small_data *sd = (struct agfs_small_data *)p;
+		int need = AGFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(!sd->name_size || need > left) {
 			break;
@@ -89,22 +89,22 @@ static int xbfs_xattr_walk(struct inode *i, xbfs_xattr_cb cb, void *arg)
 	return 0;
 }
 
-struct xbfs_xattr_find {
+struct agfs_xattr_find {
 	const char *name;
 	int name_size;		/* strlen (no NUL) */
-	struct xbfs_small_data *found;
+	struct agfs_small_data *found;
 };
 
-struct xbfs_xattr_remove {
+struct agfs_xattr_remove {
 	const char *name;
 	int name_size;		/* strlen (no NUL) */
 };
 
-static int xbfs_xattr_find_cb(struct xbfs_small_data *sd, void *arg)
+static int agfs_xattr_find_cb(struct agfs_small_data *sd, void *arg)
 {
-	struct xbfs_xattr_find *f = (struct xbfs_xattr_find *)arg;
+	struct agfs_xattr_find *f = (struct agfs_xattr_find *)arg;
 
-	if(XBFS_SD_IS_NAME(sd)) {
+	if(AGFS_SD_IS_NAME(sd)) {
 		return 0;
 	}
 	if(sd->name_size == f->name_size &&
@@ -116,23 +116,23 @@ static int xbfs_xattr_find_cb(struct xbfs_small_data *sd, void *arg)
 }
 
 /* the file-name record is not accessible through the xattr API (it is
- * written at create/rename via xbfs_inode_set_name()) */
-static int xbfs_xattr_refuse_name(const char *name)
+ * written at create/rename via agfs_inode_set_name()) */
+static int agfs_xattr_refuse_name(const char *name)
 {
 	return name[0] == 0x13 && name[1] == 0;
 }
 
-int xbfs_getxattr(struct inode *i, const char *name, char *buffer,
+int agfs_getxattr(struct inode *i, const char *name, char *buffer,
 		 __size_t size)
 {
-	struct xbfs_xattr_find f;
-	struct xbfs_small_data *sd;
+	struct agfs_xattr_find f;
+	struct agfs_small_data *sd;
 	int nlen, dsize;
 
-	if(xbfs_xattr_refuse_name(name)) {
+	if(agfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
-	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+	if(i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA) {
 		/* X-SSD6: an inline file's tail is pure content - no xattrs
 		 * can exist while inline (setxattr converts it first) */
 		return -ENODATA;
@@ -143,7 +143,7 @@ int xbfs_getxattr(struct inode *i, const char *name, char *buffer,
 	f.name = name;
 	f.name_size = nlen;
 	f.found = NULL;
-	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
+	agfs_xattr_walk(i, agfs_xattr_find_cb, &f);
 	sd = f.found;
 	if(sd && (!buffer || size == 0)) {
 		/* size query: report without copying */
@@ -157,7 +157,7 @@ int xbfs_getxattr(struct inode *i, const char *name, char *buffer,
 		return dsize;
 	}
 	if(sd) {
-		memcpy_b(buffer, XBFS_SD_DATA(sd), sd->data_size);
+		memcpy_b(buffer, AGFS_SD_DATA(sd), sd->data_size);
 		dsize = sd->data_size;
 		inode_unlock(i);
 		return dsize;
@@ -165,25 +165,25 @@ int xbfs_getxattr(struct inode *i, const char *name, char *buffer,
 	inode_unlock(i);
 
 	/* not inline: the attribute may live in the attributes tree */
-	return xbfs_attr_get(i, name, buffer, size);
+	return agfs_attr_get(i, name, buffer, size);
 }
 
-int xbfs_setxattr(struct inode *i, const char *name, const char *value,
+int agfs_setxattr(struct inode *i, const char *name, const char *value,
 		 __size_t size, int flags)
 {
-	struct xbfs_xattr_find f;
+	struct agfs_xattr_find f;
 
 	/* X-SSD6: an inline file's tail is pure content - converting it
 	 * to a stream frees the tail for the attribute records */
-	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
-		if(xbfs_inline_expand(i) < 0) {
+	if(i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA) {
+		if(agfs_inline_expand(i) < 0) {
 			return -ENOSPC;
 		}
 	}
 
 	/* Haiku's B_ATTR_NAME_LENGTH (255); refusing keeps volumes we
 	 * create writable by Haiku */
-	if(strlen(name) > XBFS_ATTR_NAME_MAX) {
+	if(strlen(name) > AGFS_ATTR_NAME_MAX) {
 		return -ENAMETOOLONG;
 	}
 	char *area;
@@ -191,29 +191,29 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 	char *p;
 	int left;
 	int nlen, need, total, found, tree_found = 0;
-	__u32 attr_type = XBFS_FILE_NAME_TYPE;
-	struct xbfs_small_data *sd;
+	__u32 attr_type = AGFS_FILE_NAME_TYPE;
+	struct agfs_small_data *sd;
 
-	if(xbfs_xattr_refuse_name(name)) {
+	if(agfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
 	if(flags & ~(XATTR_CREATE | XATTR_REPLACE)) {
 		return -EINVAL;
 	}
 	/* Values bigger than the small_data section fall through to the
-	 * attributes tree (xbfs_attr_set) below; the fit test below uses
+	 * attributes tree (agfs_attr_set) below; the fit test below uses
 	 * u64 arithmetic so a huge size can never wrap into the 792-byte
 	 * stack area. */
 	if(size > 0x7FFFFFFF) {
 		return -ENOSPC;
 	}
 	if(!(area = (char *)kmalloc(i->sb->s_blocksize
-				- sizeof(struct xbfs_inode)))) {
+				- sizeof(struct agfs_inode)))) {
 		return -ENOMEM;
 	}
 	q = area;
-	p = xbfs_xattr_area(i);
-	left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
+	p = agfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct agfs_inode);
 
 	inode_lock(i);
 
@@ -221,7 +221,7 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 	f.name = name;
 	f.name_size = nlen;
 	f.found = NULL;
-	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
+	agfs_xattr_walk(i, agfs_xattr_find_cb, &f);
 	found = (f.found != NULL);
 
 	if(found && (flags & XATTR_CREATE)) {
@@ -242,7 +242,7 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 		 * small_data section and drop the stale tree entry below
 		 * (Haiku checks both layers for the CREATE/REPLACE flags) */
 		struct inode *attr;
-		int tres = xbfs_attr_find(i, name, &attr);
+		int tres = agfs_attr_find(i, name, &attr);
 		if(tres == 0) {
 			if(flags & XATTR_CREATE) {
 				iput(attr);
@@ -250,7 +250,7 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 				kfree((addr_t)area);
 				return -EEXIST;
 			}
-			attr_type = attr->u.xbfs.raw.type;
+			attr_type = attr->u.agfs.raw.type;
 			iput(attr);
 			tree_found = 1;
 		} else if(flags & XATTR_REPLACE) {
@@ -262,9 +262,9 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 
 	/* copy every record except the one being replaced, then append
 	 * the new one */
-	while(left >= XBFS_SD_HDR) {
-		sd = (struct xbfs_small_data *)p;
-		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= AGFS_SD_HDR) {
+		sd = (struct agfs_small_data *)p;
+		need = AGFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(!sd->name_size || need > left) {
 			break;
@@ -278,14 +278,14 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 		left -= need;
 	}
 
-	need = XBFS_SD_SIZE(nlen, size);
+	need = AGFS_SD_SIZE(nlen, size);
 	total = (q - area) + need;
-	if((__u64)total > i->sb->s_blocksize - sizeof(struct xbfs_inode)) {
+	if((__u64)total > i->sb->s_blocksize - sizeof(struct agfs_inode)) {
 		/* no room inline: Haiku moves the attribute into the
 		 * per-file attributes tree, carrying the record's type */
 		inode_unlock(i);
 		kfree((addr_t)area);
-		return xbfs_attr_set(i, name, value, size, attr_type);
+		return agfs_attr_set(i, name, value, size, attr_type);
 	}
 
 	*(__u32 *)(q + 0) = attr_type;
@@ -299,8 +299,8 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 	}
 	q[8 + nlen + 3 + size] = 0;		/* trailing NUL */
 
-	memset_b(xbfs_xattr_area(i), 0, XBFS_SMALL_DATA_SIZE);
-	memcpy_b(xbfs_xattr_area(i), area, total);
+	memset_b(agfs_xattr_area(i), 0, AGFS_SMALL_DATA_SIZE);
+	memcpy_b(agfs_xattr_area(i), area, total);
 	i->state |= INODE_DIRTY;
 
 	inode_unlock(i);
@@ -311,7 +311,7 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
 	 * entry so the two copies do not diverge (Haiku's WriteAttribute
 	 * migrates back to the small_data section the same way) */
 	if(tree_found) {
-		xbfs_attr_remove(i, name);
+		agfs_attr_remove(i, name);
 	}
 	return 0;
 }
@@ -322,7 +322,7 @@ int xbfs_setxattr(struct inode *i, const char *name, const char *value,
  * expects in the inode. Works for symlinks too (the name record lives in
  * the small_data tail, not the data union).
  */
-int xbfs_inode_set_name(struct inode *i, const char *name)
+int agfs_inode_set_name(struct inode *i, const char *name)
 {
 	char *area;
 	char *q;
@@ -337,35 +337,35 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
 	 * the destination read back as NULs. Convert any inline content to
 	 * a stream first, exactly like setxattr does, so it survives.
 	 */
-	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
-		if(xbfs_inline_expand(i) < 0) {
+	if(i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA) {
+		if(agfs_inline_expand(i) < 0) {
 			return -ENOSPC;
 		}
 	}
 	int nlen, need, total;
-	struct xbfs_small_data *sd;
+	struct agfs_small_data *sd;
 
 	if(!(area = (char *)kmalloc(i->sb->s_blocksize
-				- sizeof(struct xbfs_inode)))) {
+				- sizeof(struct agfs_inode)))) {
 		return -ENOMEM;
 	}
 	q = area;
-	p = xbfs_xattr_area(i);
-	left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
+	p = agfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct agfs_inode);
 
 	inode_lock(i);
 
 	nlen = strlen(name);
 
 	/* copy every record except an existing file-name record */
-	while(left >= XBFS_SD_HDR) {
-		sd = (struct xbfs_small_data *)p;
-		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= AGFS_SD_HDR) {
+		sd = (struct agfs_small_data *)p;
+		need = AGFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(!sd->name_size || need > left) {
 			break;
 		}
-		if(!XBFS_SD_IS_NAME(sd)) {
+		if(!AGFS_SD_IS_NAME(sd)) {
 			memcpy_b(q, p, need);
 			q += need;
 		}
@@ -373,15 +373,15 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
 		left -= need;
 	}
 
-	need = XBFS_SD_SIZE(1, nlen);
+	need = AGFS_SD_SIZE(1, nlen);
 	total = (q - area) + need;
-	if(total > i->sb->s_blocksize - sizeof(struct xbfs_inode)) {
+	if(total > i->sb->s_blocksize - sizeof(struct agfs_inode)) {
 		inode_unlock(i);
 		kfree((addr_t)area);
 		return -ENOSPC;
 	}
 
-	*(__u32 *)(q + 0) = XBFS_FILE_NAME_TYPE;
+	*(__u32 *)(q + 0) = AGFS_FILE_NAME_TYPE;
 	*(__u16 *)(q + 4) = 1;
 	*(__u16 *)(q + 6) = nlen;
 	q[8] = 0x13;				/* FILE_NAME_NAME */
@@ -390,8 +390,8 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
 	memcpy_b(q + 12, name, nlen);
 	q[12 + nlen] = 0;			/* trailing NUL */
 
-	memset_b(xbfs_xattr_area(i), 0, XBFS_SMALL_DATA_SIZE);
-	memcpy_b(xbfs_xattr_area(i), area, total);
+	memset_b(agfs_xattr_area(i), 0, AGFS_SMALL_DATA_SIZE);
+	memcpy_b(agfs_xattr_area(i), area, total);
 	i->state |= INODE_DIRTY;
 
 	/* the in-memory small_data has changed: re-record the inode block in
@@ -400,7 +400,7 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
 	 * the inode to an fd (no iput at the end) would otherwise flush the
 	 * pre-name content — a crash between the flush and the fd's close
 	 * replays an indexed-but-nameless IN_USE inode ("missing 0x13"). */
-	xbfs_write_inode(i);
+	agfs_write_inode(i);
 
 	inode_unlock(i);
 	kfree((addr_t)area);
@@ -412,19 +412,19 @@ int xbfs_inode_set_name(struct inode *i, const char *name)
  * rename). Returns the length, or -ENOENT. Used by rmdir (which has no
  * name argument) to remove the name-index entry.
  */
-int xbfs_inode_get_name(struct inode *i, char *buf, int size)
+int agfs_inode_get_name(struct inode *i, char *buf, int size)
 {
-	char *p = xbfs_xattr_area(i);
-	int left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
+	char *p = agfs_xattr_area(i);
+	int left = i->sb->s_blocksize - sizeof(struct agfs_inode);
 	int nlen;
 
-	while(left >= XBFS_SD_HDR) {
-		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
-		int need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
+	while(left >= AGFS_SD_HDR) {
+		struct agfs_small_data *sd = (struct agfs_small_data *)p;
+		int need = AGFS_SD_SIZE(sd->name_size, sd->data_size);
 
 		if(sd->name_size == 1 && sd->data_size
-				&& (sd->type == XBFS_FILE_NAME_TYPE)) {
-			char *n = p + XBFS_SD_HDR + 4;	/* after 0x13/NUL/pad */
+				&& (sd->type == AGFS_FILE_NAME_TYPE)) {
+			char *n = p + AGFS_SD_HDR + 4;	/* after 0x13/NUL/pad */
 			nlen = sd->data_size;
 			if(nlen > size) {
 				nlen = size;
@@ -442,19 +442,19 @@ int xbfs_inode_get_name(struct inode *i, char *buf, int size)
 	return -ENOENT;
 }
 
-struct xbfs_xattr_list {
+struct agfs_xattr_list {
 	char *list;
 	__size_t size;
 	int total;
 	int errno;
 };
 
-static int xbfs_xattr_list_cb(struct xbfs_small_data *sd, void *arg)
+static int agfs_xattr_list_cb(struct agfs_small_data *sd, void *arg)
 {
-	struct xbfs_xattr_list *l = (struct xbfs_xattr_list *)arg;
+	struct agfs_xattr_list *l = (struct agfs_xattr_list *)arg;
 	int nlen = sd->name_size;
 
-	if(XBFS_SD_IS_NAME(sd)) {
+	if(AGFS_SD_IS_NAME(sd)) {
 		/* the file-name record is not exposed */
 		return 0;
 	}
@@ -475,12 +475,12 @@ static int xbfs_xattr_list_cb(struct xbfs_small_data *sd, void *arg)
 	return 0;
 }
 
-int xbfs_listxattr(struct inode *i, char *list, __size_t size)
+int agfs_listxattr(struct inode *i, char *list, __size_t size)
 {
-	struct xbfs_xattr_list l;
+	struct agfs_xattr_list l;
 	int res;
 
-	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+	if(i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA) {
 		/* X-SSD6: no xattrs can exist while inline */
 		return 0;
 	}
@@ -489,7 +489,7 @@ int xbfs_listxattr(struct inode *i, char *list, __size_t size)
 	l.total = 0;
 	l.errno = 0;
 	inode_lock(i);
-	res = xbfs_xattr_walk(i, xbfs_xattr_list_cb, &l);
+	res = agfs_xattr_walk(i, agfs_xattr_list_cb, &l);
 	inode_unlock(i);
 	if(res && l.errno) {
 		return l.errno;
@@ -498,18 +498,18 @@ int xbfs_listxattr(struct inode *i, char *list, __size_t size)
 		return l.errno;
 	}
 	/* the attributes tree names follow the small_data ones */
-	res = xbfs_attr_list(i, list, size, l.total);
+	res = agfs_attr_list(i, list, size, l.total);
 	if(res < 0) {
 		return res;
 	}
 	return l.total + res;
 }
 
-static int xbfs_xattr_remove_cb(struct xbfs_small_data *sd, void *arg)
+static int agfs_xattr_remove_cb(struct agfs_small_data *sd, void *arg)
 {
-	struct xbfs_xattr_remove *r = (struct xbfs_xattr_remove *)arg;
+	struct agfs_xattr_remove *r = (struct agfs_xattr_remove *)arg;
 
-	if(XBFS_SD_IS_NAME(sd)) {
+	if(AGFS_SD_IS_NAME(sd)) {
 		return 0;
 	}
 	if(sd->name_size == r->name_size &&
@@ -519,16 +519,16 @@ static int xbfs_xattr_remove_cb(struct xbfs_small_data *sd, void *arg)
 	return 0;
 }
 
-int xbfs_removexattr(struct inode *i, const char *name)
+int agfs_removexattr(struct inode *i, const char *name)
 {
-	struct xbfs_xattr_remove r;
+	struct agfs_xattr_remove r;
 	char *p;
 	int left, need, found, tail;
 
-	if(xbfs_xattr_refuse_name(name)) {
+	if(agfs_xattr_refuse_name(name)) {
 		return -EACCES;
 	}
-	if(i->u.xbfs.raw.flags & XBFS_INODE_INLINE_DATA) {
+	if(i->u.agfs.raw.flags & AGFS_INODE_INLINE_DATA) {
 		/* X-SSD6: no xattrs can exist while inline */
 		return -ENODATA;
 	}
@@ -537,20 +537,20 @@ int xbfs_removexattr(struct inode *i, const char *name)
 
 	r.name = name;
 	r.name_size = strlen(name);
-	found = xbfs_xattr_walk(i, xbfs_xattr_remove_cb, &r);
+	found = agfs_xattr_walk(i, agfs_xattr_remove_cb, &r);
 	if(!found) {
 		inode_unlock(i);
 		/* not inline: remove from the attributes tree */
-		return xbfs_attr_remove(i, name);
+		return agfs_attr_remove(i, name);
 	}
 
 	/* compact: shift the records after the removed one down */
-	p = xbfs_xattr_area(i);
-	left = i->sb->s_blocksize - sizeof(struct xbfs_inode);
-	while(left >= XBFS_SD_HDR) {
-		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
+	p = agfs_xattr_area(i);
+	left = i->sb->s_blocksize - sizeof(struct agfs_inode);
+	while(left >= AGFS_SD_HDR) {
+		struct agfs_small_data *sd = (struct agfs_small_data *)p;
 
-		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
+		need = AGFS_SD_SIZE(sd->name_size, sd->data_size);
 		if(!sd->name_size || need > left) {
 			break;
 		}
@@ -577,34 +577,34 @@ int xbfs_removexattr(struct inode *i, const char *name)
 
 /*
  * Remove one small_data record by name (no unlock, no tree fallback).
- * Used by xbfs_attr_set() so an attribute that moved into the attributes
+ * Used by agfs_attr_set() so an attribute that moved into the attributes
  * tree leaves the small_data section (Haiku's _RemoveSmallData).
  */
-int xbfs_xattr_remove_sd(struct inode *i, const char *name)
+int agfs_xattr_remove_sd(struct inode *i, const char *name)
 {
-	struct xbfs_xattr_remove r;
+	struct agfs_xattr_remove r;
 	char *p;
 	int left, need, found, tail;
 
-	if(xbfs_xattr_refuse_name(name)) {
+	if(agfs_xattr_refuse_name(name)) {
 		return 0;
 	}
 
 	inode_lock(i);
 	r.name = name;
 	r.name_size = strlen(name);
-	found = xbfs_xattr_walk(i, xbfs_xattr_remove_cb, &r);
+	found = agfs_xattr_walk(i, agfs_xattr_remove_cb, &r);
 	if(!found) {
 		inode_unlock(i);
 		return -ENODATA;
 	}
 
-	p = xbfs_xattr_area(i);
-	left = XBFS_SMALL_DATA_SIZE;
-	while(left >= XBFS_SD_HDR) {
-		struct xbfs_small_data *sd = (struct xbfs_small_data *)p;
+	p = agfs_xattr_area(i);
+	left = AGFS_SMALL_DATA_SIZE;
+	while(left >= AGFS_SD_HDR) {
+		struct agfs_small_data *sd = (struct agfs_small_data *)p;
 
-		need = XBFS_SD_SIZE(sd->name_size, sd->data_size);
+		need = AGFS_SD_SIZE(sd->name_size, sd->data_size);
 		if(!sd->name_size || need > left) {
 			break;
 		}
@@ -627,15 +627,15 @@ int xbfs_xattr_remove_sd(struct inode *i, const char *name)
 }
 
 /*
- * XBFS attribute-type ioctl (FNX extension). The Linux xattr ABI has no
+ * AGFS attribute-type ioctl (FNX extension). The Linux xattr ABI has no
  * type field, but the on-disk record and Haiku's fs_stat_attr /
  * BNode::WriteAttr carry one, so a volume moving between FNX and Haiku
  * must be able to set and query types. The name is the xattr name as
  * passed to setxattr/getxattr.
  */
-int xbfs_attr_info(struct inode *i, struct xbfs_attr_info *info)
+int agfs_attr_info(struct inode *i, struct agfs_attr_info *info)
 {
-	struct xbfs_xattr_find f;
+	struct agfs_xattr_find f;
 	struct inode *attr;
 	int res;
 
@@ -644,7 +644,7 @@ int xbfs_attr_info(struct inode *i, struct xbfs_attr_info *info)
 	f.name = info->name;
 	f.name_size = strlen(info->name);
 	f.found = NULL;
-	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
+	agfs_xattr_walk(i, agfs_xattr_find_cb, &f);
 	if(f.found) {
 		info->type = f.found->type;
 		info->size = f.found->data_size;
@@ -653,18 +653,18 @@ int xbfs_attr_info(struct inode *i, struct xbfs_attr_info *info)
 	}
 	inode_unlock(i);
 
-	if((res = xbfs_attr_find(i, info->name, &attr)) < 0) {
+	if((res = agfs_attr_find(i, info->name, &attr)) < 0) {
 		return res;
 	}
-	info->type = attr->u.xbfs.raw.type;
+	info->type = attr->u.agfs.raw.type;
 	info->size = attr->i_size;
 	iput(attr);
 	return 0;
 }
 
-int xbfs_attr_set_type(struct inode *i, const char *name, __u32 type)
+int agfs_attr_set_type(struct inode *i, const char *name, __u32 type)
 {
-	struct xbfs_xattr_find f;
+	struct agfs_xattr_find f;
 	struct inode *attr;
 	int res;
 
@@ -673,7 +673,7 @@ int xbfs_attr_set_type(struct inode *i, const char *name, __u32 type)
 	f.name = name;
 	f.name_size = strlen(name);
 	f.found = NULL;
-	xbfs_xattr_walk(i, xbfs_xattr_find_cb, &f);
+	agfs_xattr_walk(i, agfs_xattr_find_cb, &f);
 	if(f.found) {
 		f.found->type = type;
 		i->state |= INODE_DIRTY;
@@ -682,27 +682,27 @@ int xbfs_attr_set_type(struct inode *i, const char *name, __u32 type)
 	}
 	inode_unlock(i);
 
-	if((res = xbfs_attr_find(i, name, &attr)) < 0) {
+	if((res = agfs_attr_find(i, name, &attr)) < 0) {
 		return res;
 	}
-	attr->u.xbfs.raw.type = type;
+	attr->u.agfs.raw.type = type;
 	attr->state |= INODE_DIRTY;
 	iput(attr);
 	return 0;
 }
 
-int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
+int agfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 {
-	struct xbfs_attr_info info;
+	struct agfs_attr_info info;
 	int errno;
 
 	switch(cmd) {
-	case XBFS_IOC_GET_ATTR_INFO:
+	case AGFS_IOC_GET_ATTR_INFO:
 		if(copy_from_user(&info, (void *)arg, sizeof(info))) {
 			return -EFAULT;
 		}
-		info.name[XBFS_ATTR_NAME_MAX] = 0;
-		if((errno = xbfs_attr_info(i, &info)) < 0) {
+		info.name[AGFS_ATTR_NAME_MAX] = 0;
+		if((errno = agfs_attr_info(i, &info)) < 0) {
 			return errno;
 		}
 		if(copy_to_user((void *)arg, &info, sizeof(info))) {
@@ -710,12 +710,12 @@ int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		}
 		return 0;
 
-	case XBFS_IOC_SET_ATTR_TYPE:
+	case AGFS_IOC_SET_ATTR_TYPE:
 		if(copy_from_user(&info, (void *)arg, sizeof(info))) {
 			return -EFAULT;
 		}
-		info.name[XBFS_ATTR_NAME_MAX] = 0;
-		errno = xbfs_attr_set_type(i, info.name, info.type);
+		info.name[AGFS_ATTR_NAME_MAX] = 0;
+		errno = agfs_attr_set_type(i, info.name, info.type);
 		if(errno < 0) {
 			return errno;
 		}
@@ -724,7 +724,7 @@ int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		}
 		return 0;
 
-	case XBFS_IOC_QUERY: {
+	case AGFS_IOC_QUERY: {
 		/* volume query: evaluate the expression against the
 		 * indices and return the matching inode numbers (a probe
 		 * with count == 0 only fetches the total). The user
@@ -733,19 +733,19 @@ int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		 * inodes at the fixed offset, so use a compact prefix
 		 * struct (a full copy would blow the 4KB kernel stack). */
 		struct {
-			char query[XBFS_QUERY_MAX_LEN];
+			char query[AGFS_QUERY_MAX_LEN];
 			__u32 count;
 		} hdr;
 		__u32 *inos = NULL;
 		int total, n;
 
 		if(copy_from_user(&hdr, (void *)arg,
-				  XBFS_QUERY_INODES_OFF)) {
+				  AGFS_QUERY_INODES_OFF)) {
 			return -EFAULT;
 		}
-		hdr.query[XBFS_QUERY_MAX_LEN - 1] = 0;
-		if(hdr.count > XBFS_QUERY_MAX_RESULTS) {
-			hdr.count = XBFS_QUERY_MAX_RESULTS;
+		hdr.query[AGFS_QUERY_MAX_LEN - 1] = 0;
+		if(hdr.count > AGFS_QUERY_MAX_RESULTS) {
+			hdr.count = AGFS_QUERY_MAX_RESULTS;
 		}
 		/* kmalloc caps at PAGE_SIZE (4096): at most 1024 inodes fit in
 		 * one allocation, so clamp the buffer (the total is still
@@ -759,7 +759,7 @@ int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 				return -ENOMEM;
 			}
 		}
-		total = xbfs_query(i->sb, hdr.query, inos, hdr.count);
+		total = agfs_query(i->sb, hdr.query, inos, hdr.count);
 		if(total < 0) {
 			if(inos) {
 				kfree((addr_t)inos);
@@ -770,14 +770,14 @@ int xbfs_ioctl(struct inode *i, struct fd *f, int cmd, addr_t arg)
 		hdr.count = (__u32)total;
 		if(n) {
 			if(copy_to_user((void *)arg
-					+ XBFS_QUERY_INODES_OFF,
+					+ AGFS_QUERY_INODES_OFF,
 					inos, n * sizeof(__u32))) {
 				kfree((addr_t)inos);
 				return -EFAULT;
 			}
 		}
 		if(copy_to_user((void *)arg, &hdr,
-				  XBFS_QUERY_INODES_OFF)) {
+				  AGFS_QUERY_INODES_OFF)) {
 			kfree((addr_t)inos);
 			return -EFAULT;
 		}

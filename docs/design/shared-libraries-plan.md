@@ -31,7 +31,7 @@ converted FNX's own config parser: the `FNXLIB_CONFIG` rule builds
 stages it into `/System/Libraries`; config, toybox's account tools and
 Xfb's configargs (the last compiled-in libconfig consumers) link
 `-L .build/fnxlib -lconfig`. Testing the M3 write path surfaced two latent
-XBFS bugs (mkdirat draining the dirfd inode ref under cp -R; inline file
+AGFS bugs (mkdirat draining the dirfd inode ref under cp -R; inline file
 content lost when rename rewrote the inode name record) — both fixed and
 guest-verified. M4 shipped the static recovery set: `/System/Tools/
 recovery-sh` (static dash) + `recovery-toybox` (static toybox; links its
