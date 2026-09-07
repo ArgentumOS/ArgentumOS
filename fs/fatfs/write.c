@@ -31,39 +31,175 @@
 
 extern int file_read(struct inode *, struct fd *, char *, __size_t);
 
-/* ---- FAT entry read/write (32-bit FATs; fs_type == 32 in M1) ---- */
+/* ---- FAT entry read/write (12/16/32-bit classic FATs) ----
+ * Reads normalize: any value >= fat_n_fatent (free chain ends, EOC marks
+ * 0xFFF/0xFFFF/0x0FFFFFFF and reserved/bad entries all sit at or above
+ * the volume's entry count) maps to FAT_CLUST_LAST, so the generic
+ * `next >= FAT_CLUST_LAST` bound checks in the dir/file walkers hold for
+ * every classic FAT width without per-site changes. */
+
+#define FAT_EOC		0x0FFFFFFF
+
+/* read 'n' bytes of the FAT byte stream at byte offset 'off' (FAT12
+ * entries straddle 512-byte sectors; a window may cross one boundary) */
+static int fat_stream_read(struct superblock *sb, __u32 off,
+			   unsigned char *out, int n)
+{
+	struct fatfs_sb_info *f = &sb->u.fatfs;
+
+	while(n > 0) {
+		__blk_t sect = (__blk_t)f->fat_sector + off / 512;
+		unsigned int within = off % 512;
+		struct buffer *buf;
+		int chunk = 512 - (int)within;
+
+		if(chunk > n) {
+			chunk = n;
+		}
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return -EIO;
+		}
+		memcpy_b(out, (unsigned char *)buf->data + within, chunk);
+		brelse(buf);
+		out += chunk;
+		off += chunk;
+		n -= chunk;
+	}
+	return 0;
+}
+
+static int fat_stream_write(struct superblock *sb, __u32 off,
+			    const unsigned char *in, int n)
+{
+	struct fatfs_sb_info *f = &sb->u.fatfs;
+
+	while(n > 0) {
+		__blk_t sect = (__blk_t)f->fat_sector + off / 512;
+		unsigned int within = off % 512;
+		struct buffer *buf;
+		int chunk = 512 - (int)within;
+
+		if(chunk > n) {
+			chunk = n;
+		}
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return -EIO;
+		}
+		memcpy_b((unsigned char *)buf->data + within, in, chunk);
+		bwrite(buf);
+		brelse(buf);
+		in += chunk;
+		off += chunk;
+		n -= chunk;
+	}
+	return 0;
+}
+
+/* EOC value for the volume's FAT width (FAT_EOC is the 32-bit sentinel) */
+static __u32 fat_eoc_value(struct superblock *sb)
+{
+	switch(sb->u.fatfs.fs_type) {
+	case 12:
+		return 0x0FFF;
+	case 16:
+		return 0xFFFF;
+	default:
+		return FAT_EOC;
+	}
+}
 
 int fat_read_entry(struct superblock *sb, __u32 cl, __u32 *val)
 {
+	struct fatfs_sb_info *f = &sb->u.fatfs;
+	unsigned char b[3];
 	struct buffer *buf;
 	__blk_t sect;
+	__u32 v;
 
-	sect = (__blk_t)sb->u.fatfs.fat_sector + cl / 128;
-	if(!(buf = bread(sb->dev, sect, 512))) {
-		return -EIO;
+	switch(f->fs_type) {
+	case 12: {
+		__u32 off = cl + (cl >> 1);	/* cl * 3 / 2 bytes */
+		__u16 word;
+
+		if(fat_stream_read(sb, off, b, 2)) {
+			return -EIO;
+		}
+		word = (__u16)(b[0] | (b[1] << 8));
+		v = (cl & 1) ? (word >> 4) : (word & 0x0FFF);
+		break;
 	}
-	*val = ((__u32 *)buf->data)[cl % 128] & 0x0FFFFFFF;
-	brelse(buf);
+	case 16:
+		sect = (__blk_t)f->fat_sector + cl / 256;
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return -EIO;
+		}
+		v = ((__u16 *)buf->data)[cl % 256];
+		brelse(buf);
+		break;
+	default:
+		sect = (__blk_t)f->fat_sector + cl / 128;
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return -EIO;
+		}
+		v = ((__u32 *)buf->data)[cl % 128] & 0x0FFFFFFF;
+		brelse(buf);
+		break;
+	}
+	*val = (v >= f->fat_n_fatent) ? FAT_CLUST_LAST : v;
 	return 0;
 }
 
 static int fat_write_entry(struct superblock *sb, __u32 cl, __u32 val)
 {
+	struct fatfs_sb_info *f = &sb->u.fatfs;
+	unsigned char b[3];
 	struct buffer *buf;
 	__blk_t sect;
+	__u32 eoc = fat_eoc_value(sb);
 
-	sect = (__blk_t)sb->u.fatfs.fat_sector + cl / 128;
-	if(!(buf = bread(sb->dev, sect, 512))) {
-		return -EIO;
+	if(val >= f->fat_n_fatent) {
+		val = eoc;	/* EOC-sentinel writes -> this width's EOC */
 	}
-	((__u32 *)buf->data)[cl % 128] =
-		(((__u32 *)buf->data)[cl % 128] & 0xF0000000) |
-		(val & 0x0FFFFFFF);
-	bwrite(buf);
-	return 0;
-}
+	switch(f->fs_type) {
+	case 12: {
+		__u32 off = cl + (cl >> 1);
 
-#define FAT_EOC		0x0FFFFFFF
+		if(fat_stream_read(sb, off, b, 3)) {
+			return -EIO;
+		}
+		if(cl & 1) {
+			/* the odd entry's 12-bit field = b[0] bits 4-7 (low
+			 * nibble of the value) + b[1] (its high 8 bits);
+			 * b[2] belongs to the next pair and stays put */
+			b[0] = (unsigned char)((b[0] & 0x0F) |
+					       ((val & 0x0F) << 4));
+			b[1] = (unsigned char)(val >> 4);
+		} else {
+			b[0] = (unsigned char)(val & 0xFF);
+			b[1] = (unsigned char)((b[1] & 0xF0) | (val >> 8));
+		}
+		return fat_stream_write(sb, off, b, 3);
+	}
+	case 16:
+		sect = (__blk_t)f->fat_sector + cl / 256;
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return -EIO;
+		}
+		((__u16 *)buf->data)[cl % 256] = (__u16)val;
+		bwrite(buf);
+		return 0;
+	default:
+		sect = (__blk_t)f->fat_sector + cl / 128;
+		if(!(buf = bread(sb->dev, sect, 512))) {
+			return -EIO;
+		}
+		((__u32 *)buf->data)[cl % 128] =
+			(((__u32 *)buf->data)[cl % 128] & 0xF0000000) |
+			(val & 0x0FFFFFFF);
+		bwrite(buf);
+		return 0;
+	}
+}
 
 /* scan the FAT for a free cluster and mark it EOC */
 int fat_alloc_cluster(struct superblock *sb, __u32 *cluster)
@@ -73,36 +209,59 @@ int fat_alloc_cluster(struct superblock *sb, __u32 *cluster)
 	struct buffer *buf = NULL;
 	__blk_t sect;
 	__u32 start = 2;
+	__u32 eoc = fat_eoc_value(sb);
 
 	max_cluster = (f->total_sectors - f->data_sector) /
 		      f->sects_per_cluster;
-	cl = start;
-	for(;;) {
-		if(!(cl & 127)) {
-			if(buf) {
+	if(f->fs_type == 32) {
+		/* sector-buffered scan (128 entries per 512-byte sector) */
+		cl = start;
+		for(;;) {
+			if(!(cl & 127)) {
+				if(buf) {
+					brelse(buf);
+				}
+				sect = (__blk_t)f->fat_sector + cl / 128;
+				if(!(buf = bread(sb->dev, sect, 512))) {
+					return -EIO;
+				}
+			}
+			if(buf && (((__u32 *)buf->data)[cl % 128] &
+				   0x0FFFFFFF) == 0) {
+				((__u32 *)buf->data)[cl % 128] =
+					(((__u32 *)buf->data)[cl % 128] &
+					 0xF0000000) | eoc;
+				bwrite(buf);
 				brelse(buf);
+				*cluster = cl;
+				return 0;
 			}
-			sect = (__blk_t)f->fat_sector + cl / 128;
-			if(!(buf = bread(sb->dev, sect, 512))) {
-				return -EIO;
+			if(++cl > max_cluster) {
+				if(buf) {
+					brelse(buf);
+				}
+				return -ENOSPC;
 			}
-		}
-		if(buf && (((__u32 *)buf->data)[cl % 128] & 0x0FFFFFFF) == 0) {
-			((__u32 *)buf->data)[cl % 128] =
-				(((__u32 *)buf->data)[cl % 128] &
-				 0xF0000000) | FAT_EOC;
-			bwrite(buf);
-			brelse(buf);
-			*cluster = cl;
-			return 0;
-		}
-		if(++cl > max_cluster) {
-			if(buf) {
-				brelse(buf);
-			}
-			return -ENOSPC;
 		}
 	}
+	/* FAT12/16: entry-at-a-time scan through the width-aware reader */
+	{
+		__u32 v;
+
+		for(cl = start; cl <= max_cluster; cl++) {
+			if(fat_read_entry(sb, cl, &v)) {
+				return -EIO;
+			}
+			if(v == 0) {
+				if(fat_write_entry(sb, cl, eoc)) {
+					return -EIO;
+				}
+				*cluster = cl;
+				return 0;
+			}
+		}
+	}
+	return -ENOSPC;
 }
 
 void fat_set_eoc(struct superblock *sb, __u32 cluster)
@@ -186,6 +345,19 @@ static struct buffer *fat_slot_buffer(struct superblock *sb,
 	__u32 cl = dir_cluster;
 	unsigned long n;
 
+	if(!dir_cluster) {
+		/* FAT12/16 fixed root region: slots are linear sectors
+		 * between the FATs and the data area (no chain) */
+		__blk_t base = (__blk_t)(f->data_sector -
+					 f->root_dir_sectors);
+		unsigned long reg_slots = (unsigned long)f->root_dir_sectors *
+					  16;
+
+		if(!f->root_dir_sectors || slot >= reg_slots) {
+			return NULL;
+		}
+		return bread(sb->dev, base + slot / 16, 512);
+	}
 	for(n = 0; n < step; n++) {
 		__u32 next;
 
@@ -244,6 +416,39 @@ static unsigned long fat_find_run(struct inode *dir, int need,
 				  unsigned long *last)
 {
 	struct fatfs_sb_info *f = &dir->sb->u.fatfs;
+
+	/* FAT12/16 volume root: the fixed region cannot grow. Find the
+	 * first 0x00 terminator and require the whole run to fit. */
+	if(dir->inode == FAT_ROOT_INO &&
+	   (f->fs_type == 12 || f->fs_type == 16) && f->root_dir_sectors) {
+		unsigned long cap = (unsigned long)f->root_dir_sectors * 16;
+		unsigned long term = cap, slot;
+		int have_term = 0;
+
+		for(slot = 0; slot < cap; slot++) {
+			struct buffer *b = fat_slot_buffer(dir->sb, 0, slot);
+			unsigned char *e;
+
+			if(!b) {
+				break;
+			}
+			e = (unsigned char *)b->data + (slot % 16) * 32;
+			if(!have_term && e[0] == 0x00) {
+				term = slot;
+				have_term = 1;
+			}
+			brelse(b);
+		}
+		if(!have_term) {
+			term = cap;
+		}
+		if(term + (unsigned long)need > cap) {
+			return (unsigned long)-1;	/* region full */
+		}
+		*last = term + need - 1;
+		return term;
+	}
+	{
 	__u32 cl = dir->u.fatfs.cluster;
 	unsigned int si = 0, ei = 0;
 	unsigned long slot = 0, term = 0;
@@ -319,6 +524,7 @@ static unsigned long fat_find_run(struct inode *dir, int need,
 	}
 	*last = term + need - 1;
 	return term;
+	}
 }
 /* ---- short entry / LFN packing ---- */
 
@@ -495,6 +701,34 @@ extern int fat_dir_has_name(struct inode *, const char *);
 static int fat_sfn_exists(struct inode *dir, const unsigned char want[11])
 {
 	struct fatfs_sb_info *f = &dir->sb->u.fatfs;
+
+	if(dir->inode == FAT_ROOT_INO &&
+	   (f->fs_type == 12 || f->fs_type == 16) && f->root_dir_sectors) {
+		unsigned long cap = (unsigned long)f->root_dir_sectors * 16;
+		unsigned long slot;
+
+		for(slot = 0; slot < cap; slot++) {
+			struct buffer *b = fat_slot_buffer(dir->sb, 0, slot);
+			unsigned char *e;
+
+			if(!b) {
+				return 1;	/* assume exists on error */
+			}
+			e = (unsigned char *)b->data + (slot % 16) * 32;
+			if(e[0] == 0x00) {
+				brelse(b);
+				return 0;	/* rest of the dir is free */
+			}
+			if(e[0] != FAT_ENTRY_DELETED && e[11] != FAT_ATTR_LFN &&
+			   !memcmp(e, want, 11)) {
+				brelse(b);
+				return 1;
+			}
+			brelse(b);
+		}
+		return 0;
+	}
+	{
 	__u32 cl = dir->u.fatfs.cluster;
 	struct buffer *buf = NULL;
 	unsigned int si = 0, ei = 0;
@@ -548,6 +782,7 @@ static int fat_sfn_exists(struct inode *dir, const unsigned char want[11])
 		brelse(buf);
 		return 0;
 	}
+	}
 }
 
 /* uniquify an SFN with a '~N' tail: base must already be truncated to
@@ -600,7 +835,11 @@ static int fat_write_record(struct inode *dir, unsigned long start,
 		nparts = 0;
 	}
 	for(p = 0; p < nparts; p++) {
-		unsigned long slot = start + p;
+		/* LFN parts occupy the slots in DESCENDING sequence: part
+		 * nparts (0x40|nparts) at the lowest slot, part 1 adjacent
+		 * to the SFN (FatFs and every compliant reader scan forward
+		 * expecting the 0x40 sequence head first) */
+		unsigned long slot = start + (nparts - 1 - p);
 
 		if(!(buf = fat_slot_buffer(dir->sb, dir->u.fatfs.cluster,
 					   slot))) {
@@ -1257,7 +1496,10 @@ int fat_write_inode(struct inode *i)
 		 * find any entry carrying the same cluster */
 		return 0;
 	}
-	if(!e->parent) {
+	if(!e->parent && !i->sb->u.fatfs.root_dir_sectors) {
+		/* parent 0 = the FAT12/16 fixed root region (its dir inode
+		 * cluster is 0); only a genuinely parent-less entry on a
+		 * chain-rooted volume (FAT32/exFAT) is a no-op */
 		return 0;
 	}
 	superblock_lock(i->sb);

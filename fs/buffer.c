@@ -21,7 +21,13 @@
 
 #define NR_BUF_HASH		(buffer_hash_table_size / sizeof(struct buffer *))
 #define BUFFER_HASH(dev, block)	(((__dev_t)(dev) ^ (__blk_t)(block)) % (NR_BUF_HASH))
-#define BUFHEAD_INDEX(size)	((size / BLKSIZE_1K) - 1)
+/* buffer size -> free/dirty-list head index. Sizes are powers of two in
+ * [512, PAGE_SIZE]; 512-byte buffers (FAT sectors) must map to a real
+ * slot - the old (size / BLKSIZE_1K - 1) sent 512 to index -1 (memory
+ * before the array), which usually worked but could silently drop dirty
+ * buffers from the flush. (size >> 9) - 1 gives 512->0, 1K->1, 2K->3,
+ * 4K->7; slots 2,4,5,6 stay unused. */
+#define BUFHEAD_INDEX(size)	((size >> 9) - 1)
 
 #define NO_GROW		0
 #define GROW_IF_NEEDED	1
@@ -29,9 +35,9 @@
 struct buffer *buffer_table;		/* buffer pool */
 struct buffer **buffer_hash_table;
 
-/* [0] = 1KB, [1] = 2KB, [2] = unused, [3] = 4KB */
-struct buffer *buffer_head[4];		/* heads of free list */
-struct buffer *buffer_dirty_head[4];	/* heads of dirty list */
+/* free/dirty list heads, indexed by BUFHEAD_INDEX (512->0 ... 4K->7) */
+struct buffer *buffer_head[8];		/* heads of free list */
+struct buffer *buffer_dirty_head[8];	/* heads of dirty list */
 
 static struct resource sync_resource = { 0, 0 };
 

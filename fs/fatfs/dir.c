@@ -64,6 +64,9 @@ struct fat_dir_it {
 	struct buffer *buf;
 	int ok;
 	int contiguous;
+	int region;		/* FAT12/16 fixed root region walk */
+	__blk_t region_base;	/* first sector of the root region */
+	__u32 region_sectors;	/* sectors in the fixed root region */
 };
 
 static void dir_it_close(struct fat_dir_it *it)
@@ -89,6 +92,21 @@ static int dir_next(struct fat_dir_it *it)
 			return 1;
 		}
 		it->ent_off = 0;
+		if(it->region) {
+			/* FAT12/16 fixed root: one linear region sector
+			 * per 16-entry block, bounded by the region size */
+			if(it->buf) {
+				brelse(it->buf);
+			}
+			it->cluster++;
+			if(it->cluster >= it->region_sectors) {
+				dir_it_close(it);
+				return 0;
+			}
+			it->buf = bread(it->dir->dev,
+					it->region_base + it->cluster, 512);
+			return it->buf ? 1 : (dir_it_close(it), 0);
+		}
 		it->sector_off++;
 		if(it->sector_off < f->sects_per_cluster) {
 			if(it->buf) {
@@ -144,19 +162,37 @@ static unsigned char *dir_ent(struct fat_dir_it *it)
 
 static void dir_it_open(struct fat_dir_it *it, struct inode *dir)
 {
+	struct fatfs_sb_info *f = &dir->sb->u.fatfs;
+
 	it->dir = dir;
 	it->cluster = dir->u.fatfs.cluster;
 	it->first = dir->u.fatfs.cluster;
 	it->size = (unsigned long)dir->i_size;
 	it->contiguous = dir->u.fatfs.contiguous &&
-			 dir->sb->u.fatfs.fs_type == FAT_EXFAT;
+			 f->fs_type == FAT_EXFAT;
 	it->sector_off = 0;
 	it->ent_off = (unsigned int)-1;
 	it->consumed = 0;
 	it->buf = NULL;
 	it->ok = 0;
+	it->region = 0;
+	it->region_base = 0;
+	it->region_sectors = 0;
 	if(!it->cluster) {
-		return;		/* FAT12/16 fixed root area (M3) */
+		/* the only dirs with cluster 0 are FAT12/16 volume roots
+		 * (their entries live in the fixed root-dir region between
+		 * the FATs and the data area, not in a cluster chain) */
+		if((f->fs_type == 12 || f->fs_type == 16) &&
+		   dir->inode == FAT_ROOT_INO && f->root_dir_sectors) {
+			it->region = 1;
+			it->region_base = (__blk_t)(f->data_sector -
+						    f->root_dir_sectors);
+			it->region_sectors = f->root_dir_sectors;
+			it->cluster = 0;
+			it->buf = bread(dir->dev, it->region_base, 512);
+			it->ok = it->buf ? 1 : 0;
+		}
+		return;
 	}
 	it->buf = bread(dir->dev, fat_cluster_sector(dir->sb, it->cluster, 0),
 			512);

@@ -132,7 +132,21 @@ find and compiles as c89 with the rest of the kernel.
   harness (create/append/rewrite/mkdir/rename/rm/rmdir, wc sizes) +
   host FatFs read-back (tools/exfat-fixture verify) + recovery-normal
   regression + fshlint 0.
-- **Open** — M2c (FAT12/16) + M3 (kernel.conf config domain targets the
+- **M2c (FAT12/16)** — committed (this milestone): classic FATs mount
+  through the same driver (msdos discrimination rule: RootEntCnt > 0 +
+  FATSz16 = FAT12/16). Geometry: FAT12/16 use the FATSz16 at BPB+22 and
+  the fixed root-dir region between the FATs and the data area
+  (root_cluster 0); FAT12 chains are byte-packed across sector
+  boundaries. Read normalization: every classic entry read maps values
+  >= fat_n_fatent (EOC 0xFFF/0xFFFF/0x0FFFFFFF + reserved/bad) to
+  FAT_CLUST_LAST so all existing `>= FAT_CLUST_LAST` walkers hold without
+  per-site changes. fs/buffer.c: BUFHEAD_INDEX now gives 512-byte buffers
+  a real list slot (was index -1 = memory before the array, which could
+  silently drop dirty buffers). Verified: host-authored FAT16 (32 MB) +
+  FAT12 (1.44 MB) fixtures read in-guest (root/subdir/LFN/5000 B chain);
+  create/write/mkdir/nested files persist and pass the host mtools
+  cross-check for both variants.
+- **Open** — M3 (kernel.conf config domain targets the
   mounted /System/ESP).
 
 ## Kept from the abandoned wrapper attempt

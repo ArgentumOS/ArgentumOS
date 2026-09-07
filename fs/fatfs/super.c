@@ -111,31 +111,27 @@ __u32 fat_next_cluster(struct superblock *sb, __u32 cluster)
 	__blk_t sect;
 	__u32 val;
 
-	switch(f->fs_type) {
-	case 32:
-		sect = (__blk_t)f->fat_sector + cluster / 128;
-		if(!(buf = bread(sb->dev, sect, 512))) {
-			return FAT_CLUST_LAST;	/* treat I/O error as EOC */
-		}
-		val = ((__u32 *)buf->data)[cluster % 128] & 0x0FFFFFFF;
-		brelse(buf);
-		return val;
-	case FAT_EXFAT:
-		/* exFAT FAT entries are full 32-bit (no mask); the chain
-		 * terminates at 0xFFFFFFFF or an out-of-range entry */
-		sect = (__blk_t)f->fat_sector + cluster / 128;
-		if(!(buf = bread(sb->dev, sect, 512))) {
-			return FAT_CLUST_LAST;
-		}
-		val = ((__u32 *)buf->data)[cluster % 128];
-		brelse(buf);
-		if(val >= f->fat_n_fatent) {
-			return 0xFFFFFFFF;	/* EOC (free entries are 0) */
+	if(f->fs_type != FAT_EXFAT) {
+		/* classic FATs (12/16/32): width-aware read with EOC/range
+		 * normalization (>= FAT_CLUST_LAST after the mask) so the
+		 * generic bound checks in the dir/file walkers stay valid */
+		if(fat_read_entry(sb, cluster, &val)) {
+			return FAT_CLUST_LAST;	/* I/O error as EOC */
 		}
 		return val;
-	default:
+	}
+	/* exFAT FAT entries are full 32-bit (no mask); the chain
+	 * terminates at 0xFFFFFFFF or an out-of-range entry */
+	sect = (__blk_t)f->fat_sector + cluster / 128;
+	if(!(buf = bread(sb->dev, sect, 512))) {
 		return FAT_CLUST_LAST;
 	}
+	val = ((__u32 *)buf->data)[cluster % 128];
+	brelse(buf);
+	if(val >= f->fat_n_fatent) {
+		return 0xFFFFFFFF;	/* EOC (free entries are 0) */
+	}
+	return val;
 }
 
 /* ---- read_inode: rebuild an inode from the cache ---- */
@@ -246,45 +242,89 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 		reserved = b[14] | (b[15] << 8);
 		nfats = b[16];
 		root_ents = b[17] | (b[18] << 8);
-		tot32 = b[32] | (b[33] << 8) | (b[34] << 16) |
-			((__u32)b[35] << 24);
+		tot32 = b[19] | (b[20] << 8);	/* TotalSectors16 */
+		if(!tot32) {
+			tot32 = b[32] | (b[33] << 8) | (b[34] << 16) |
+				((__u32)b[35] << 24);
+		}
 		fatsz32 = b[36] | (b[37] << 8) | (b[38] << 16) |
-			  ((__u32)b[39] << 24);
+			  ((__u32)b[39] << 24);	/* FATSz32 (FAT32 only) */
 		if(bps != 512 || !spc || !nfats || !reserved) {
 			brelse(buf);
 			return -EINVAL;
 		}
-		if(!fatsz32) {
-			brelse(buf);
-			printk("fat: FAT12/16 not yet supported.\n");
-			return -EINVAL;
-		}
-		root_cluster = b[44] | (b[45] << 8) | (b[46] << 16) |
-			       ((__u32)b[47] << 24);
-		data_sector = reserved + nfats * fatsz32 +
-			      (root_ents * 32 + bps - 1) / bps;
-		if(tot32 <= data_sector) {
-			brelse(buf);
-			return -EINVAL;
-		}
-		cluster_cnt = (tot32 - data_sector) / spc;
-		if(cluster_cnt < 65525) {
-			brelse(buf);
-			return -EINVAL;
+		/* classic FAT12/16 vs FAT32 discrimination (the msdos rule):
+		 * FAT12/16 carry a RootEntCnt > 0 + FATSz16 at 22; FAT32
+		 * has RootEntCnt == 0 and FATSz32 at 36. FATSz32@36 is NOT
+		 * zero on FAT12/16 (bytes 36+ hold boot-code/drive fields). */
+		{
+			__u16 fatsz16 = b[22] | (b[23] << 8);
+
+			if(root_ents && fatsz16) {
+				/* FAT12/16: FATSz16 at 22 + the fixed root
+				 * dir region between the FATs and the data */
+				__u16 root_dir_sectors =
+					(__u16)((root_ents * 32 + bps - 1) /
+						bps);
+
+				fatsz32 = fatsz16;
+				data_sector = reserved + nfats * fatsz32 +
+					      root_dir_sectors;
+				if(tot32 <= data_sector) {
+					brelse(buf);
+					return -EINVAL;
+				}
+				cluster_cnt = (tot32 - data_sector) / spc;
+				if(cluster_cnt < 4085) {
+					f->fs_type = 12;
+				} else {
+					f->fs_type = 16;
+				}
+				f->root_cluster = 0;	/* fixed root region */
+				f->root_dir_sectors = root_dir_sectors;
+			} else {
+				if(!fatsz32) {
+					brelse(buf);
+					return -EINVAL;
+				}
+				root_cluster = b[44] | (b[45] << 8) |
+					       (b[46] << 16) |
+					       ((__u32)b[47] << 24);
+				data_sector = reserved + nfats * fatsz32 +
+					      (root_ents * 32 + bps - 1) / bps;
+				if(tot32 <= data_sector) {
+					brelse(buf);
+					return -EINVAL;
+				}
+				cluster_cnt = (tot32 - data_sector) / spc;
+				if(cluster_cnt < 65525) {
+					brelse(buf);
+					return -EINVAL;	/* not FAT32 */
+				}
+				f->fs_type = 32;
+			}
 		}
 		f->fat_sector = reserved;
 	}
 	f->total_sectors = tot32;
 	f->fat_sectors = fatsz32;
-	f->root_cluster = root_cluster;
+	if(f->fs_type != 12 && f->fs_type != 16) {
+		/* FAT32/exFAT keep the BPB root cluster; FAT12/16 set
+		 * root_cluster = 0 (fixed region) inside the branch above */
+		f->root_cluster = root_cluster;
+	}
 	f->data_sector = data_sector;
 	f->bytes_per_sector = bps;
-	f->root_dir_sectors = 0;
+	if(f->fs_type != 12 && f->fs_type != 16) {
+		f->root_dir_sectors = 0;
+	}
 	f->sects_per_cluster = spc;
 	f->n_fats = nfats;
 	f->fat_n_fatent = cluster_cnt + 2;
 	f->bitmap_cluster = 0;
-	f->fs_type = is_exfat ? FAT_EXFAT : 32;
+	if(is_exfat) {
+		f->fs_type = FAT_EXFAT;
+	}
 	brelse(buf);
 
 	if(is_exfat) {
@@ -328,7 +368,9 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 		return -EIO;
 	}
 	printk("fat: %s detected on device %d,%d (%d MB, %u sectors, %u bytes/cluster).\n",
-	       is_exfat ? "exFAT" : "FAT32",
+	       is_exfat ? "exFAT" :
+	       (f->fs_type == 12 ? "FAT12" :
+		(f->fs_type == 16 ? "FAT16" : "FAT32")),
 	       MAJOR(dev), MINOR(dev), tot32 / 2048, tot32,
 	       (unsigned int)spc * bps);
 	return 0;
