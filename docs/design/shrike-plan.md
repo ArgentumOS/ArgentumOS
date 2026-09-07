@@ -406,9 +406,10 @@ libc++/libc++abi/libunwind in /System/Libraries):
   --sysconfdir=/System/Configuration); OS fonts live in
   /System/Shared/Fonts (DejaVuSans.ttf — the milestone's test font;
   §8's Liberation pick remains the future system-font direction when a
-  real consumer lands). fontconfig's gperf generator is a host-local
-  build (.build/host-tools) + a recorded self-hosting gap
-  (docs/design/self-hosting-packages.md §6).
+  real consumer lands). fontconfig's gperf generator is patched away
+  (third_party/x11/fontconfig-nogperf.patch: static table in fcobjs.c —
+  gperf is GPLv3 and no longer a build dependency, see
+  docs/design/self-hosting-packages.md §6).
 - **Verified**: userland/tests/text_pipeline (System/Shared/tests)
   boots in-guest: fontconfig matches DejaVu Sans, HarfBuzz shapes the
   Arabic "السلام" with the lam-alef ligature (6 code points → 5 glyphs),

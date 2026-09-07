@@ -35,12 +35,6 @@ export PKG_CONFIG_PATH="$P/lib/pkgconfig:$P/share/pkgconfig"
 export ACLOCAL_PATH="$P/share/aclocal"
 export PYTHONPATH="$R/.build/pip"
 export PATH="$R/.build/pip/bin:$PATH"
-# fontconfig generates fcobjshash.h with gperf at build time - the host
-# has no gperf package available without root, so a local host build
-# (gperf-3.2.1, gnu.org tarball) supplies it when present. Recorded in
-# docs/design/self-hosting-packages.md: gperf is a build-time generator
-# FNX itself must provide before fontconfig can be rebuilt on-FNX.
-export PATH="$R/.build/host-tools/bin:$PATH"
 
 mkdir -p "$LOG"
 log() { echo "===== $1 ====="; }
@@ -185,6 +179,14 @@ log "freetype (full feature: zlib+libpng; brotli/bzip2 deferred)"
 log "fontconfig"
 ( cd "$R/third_party/x11/fontconfig" || exit 1
   make distclean >/dev/null 2>&1 || true
+  # FNX no-gperf patch (gperf is GPLv3): replaces the cpp/sed/awk/gperf
+  # fcobjshash.h generation with a static table in fcobjs.c. Idempotent -
+  # re-runs over an already-patched tree skip it (docs/design/
+  # self-hosting-packages.md §6).
+  if ! grep -q "FNX no-gperf" src/fcobjs.c 2>/dev/null; then
+    git apply "$R/third_party/x11/fontconfig-nogperf.patch" \
+      > "$LOG/fontconfig-patch.log" 2>&1 || exit 1
+  fi
   ./configure --prefix="$P" --host=x86_64-unknown-linux-gnu \
     $SHARED $STATIC --disable-docs --enable-libxml2=no \
     --sysconfdir=/System/Configuration --localstatedir=/System/Variable\ Data \

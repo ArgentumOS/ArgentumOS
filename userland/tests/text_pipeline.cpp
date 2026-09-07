@@ -28,6 +28,27 @@ int main()
 		return 1;
 	}
 
+	/* 0) the no-gperf object-name table (third_party/x11/
+	 * fontconfig-nogperf.patch): FcNameParse resolves the property NAME
+	 * tokens ("dpi", "family", "antialias") to object ids through the
+	 * table - a wrong/missing row puts the value on the wrong slot, so
+	 * parsing ":dpi=120:antialias=false" and reading the values back
+	 * through the FC_* string macros proves the exact-id mapping. */
+	{
+		FcPattern *pp = FcNameParse((const FcChar8 *)":dpi=120:antialias=false");
+		double dpi = 0;
+		FcBool aa = FcTrue;
+		if(!pp ||
+		   FcPatternGetDouble(pp, FC_DPI, 0, &dpi) != FcResultMatch ||
+		   dpi != 120 ||
+		   FcPatternGetBool(pp, FC_ANTIALIAS, 0, &aa) != FcResultMatch ||
+		   aa != FcFalse) {
+			printf("TEXT-PIPELINE: object-name lookup FAILED\n");
+			return 1;
+		}
+		FcPatternDestroy(pp);
+	}
+
 	/* 1) fontconfig: match an Arabic face from the FSH font dirs */
 	FcPattern *pat = FcNameParse((const FcChar8 *)"DejaVu Sans");
 	if(!pat) {

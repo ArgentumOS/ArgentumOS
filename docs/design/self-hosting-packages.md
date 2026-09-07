@@ -155,13 +155,17 @@ a snapshot:
 4. The check is symmetric: a package is only *adopted for the system*
    when its on-FNX rebuild path is complete and recorded.
 
-**Text stack (2026-09)**: fontconfig's `src/fcobjshash.h` is generated
-from `fcobjshash.gperf` by **gperf (GPLv3 - blocked)**. The host build
-uses a local `.build/host-tools` gperf-3.2.1 (tools/x11-shared-build.sh
-puts it on PATH); the on-FNX path must NOT build gperf - the recorded
-direction is a pre-generated committed `fcobjshash.h` + a touch guard so
-fontconfig's make never regenerates it (open follow-up when fontconfig
-is rebuilt on-FNX).
+**Text stack (2026-09)**: fontconfig's stock build synthesizes
+`src/fcobjshash.h` from `fcobjshash.gperf.h` + `fcobjs.h` via
+cpp/sed/awk + **gperf (GPLv3 - blocked)**. **CLOSED by
+third_party/x11/fontconfig-nogperf.patch** (applied idempotently by
+tools/x11-shared-build.sh before configure): the lookup is now a static
+55-row name->FcObject table + length-checked memcmp scan in `src/fcobjs.c`
+(rows mirror fcobjs.h's cache-signature order; regenerate = run the
+upstream .gperf pipeline with a dev-time gperf and diff the keyword
+list). No GPL tooling is a build dependency; a local gperf exists only
+as an optional dev-time regenerator (.build/host-tools, not on any build
+PATH).
 
 History of this discipline: CMake (BSD-3) ships so clang reconfigures
 in-guest; byacc (public domain) ships so awk's parser regenerates

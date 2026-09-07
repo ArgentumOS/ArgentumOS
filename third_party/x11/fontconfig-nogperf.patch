@@ -1,0 +1,222 @@
+diff --git a/third_party/x11/fontconfig/src/Makefile.am b/third_party/x11/fontconfig/src/Makefile.am
+index 390ca82..b08d7b5 100644
+--- a/third_party/x11/fontconfig/src/Makefile.am
++++ b/third_party/x11/fontconfig/src/Makefile.am
+@@ -94,8 +94,6 @@ BUILT_SOURCES = $(ALIAS_FILES) \
+ 	../fc-case/fccase.h \
+ 	../fc-lang/fclang.h \
+ 	stamp-fcstdint \
+-	$(builddir)/fcobjshash.h \
+-	fcobjshash.gperf
+ 
+ noinst_PROGRAMS = fcarch
+ 
+@@ -104,24 +102,6 @@ noinst_PROGRAMS = fcarch
+ ../fc-lang/fclang.h:
+ 	cd ../fc-lang && $(MAKE) $(AM_MAKEFLAGS) fclang.h
+ 
+-fcobjshash.gperf: Makefile stamp-fcobjshash.gperf
+-	-@$(RM) stamp-fcobjshash.gperf
+-	@$(MAKE) stamp-fcobjshash.gperf
+-	@touch -r stamp-fcobjshash.gperf $@
+-stamp-fcobjshash.gperf: fcobjshash.gperf.h fcobjs.h
+-	$(AM_V_GEN) $(CPP) -I$(top_srcdir) $(CPPFLAGS) $< | \
+-	$(SED) 's/^ *//;s/ *, */,/' | \
+-	awk ' \
+-		/CUT_OUT_BEGIN/ { no_write=1; next; }; \
+-		/CUT_OUT_END/ { no_write=0; next; }; \
+-		/^$$/||/^#/ { next; }; \
+-		{ if (!no_write) print; next; }; \
+-	' - > $@.tmp && \
+-	mv -f $@.tmp fcobjshash.gperf && touch $@ || ( $(RM) $@.tmp && false )
+-
+-$(builddir)/fcobjshash.h: Makefile fcobjshash.gperf
+-	$(AM_V_GEN) $(GPERF) --pic -m 100 fcobjshash.gperf > $@.tmp && \
+-	mv -f $@.tmp $@ || ( $(RM) $@.tmp && false )
+ 
+ EXTRA_DIST += \
+ 	fcobjshash.gperf.h
+@@ -202,14 +182,11 @@ stamp-fcstdint: $(top_builddir)/config.status
+ 
+ CLEANFILES =		\
+ 	$(ALIAS_FILES)	\
+-	fontconfig.def	\
+-	$(builddir)/fcobjshash.h
++	fontconfig.def
+ 
+ DISTCLEANFILES = 	\
+ 	stamp-fcstdint	\
+ 	fcstdint.h	\
+-	stamp-fcobjshash.gperf	\
+-	fcobjshash.gperf
+ 
+ fontconfig.def: $(PUBLIC_FILES) $(PUBLIC_FT_FILES)
+ 	echo Generating $@
+diff --git a/third_party/x11/fontconfig/src/Makefile.in b/third_party/x11/fontconfig/src/Makefile.in
+index 1fc5a03..ac934ba 100644
+--- a/third_party/x11/fontconfig/src/Makefile.in
++++ b/third_party/x11/fontconfig/src/Makefile.in
+@@ -487,8 +487,6 @@ BUILT_SOURCES = $(ALIAS_FILES) \
+ 	../fc-case/fccase.h \
+ 	../fc-lang/fclang.h \
+ 	stamp-fcstdint \
+-	$(builddir)/fcobjshash.h \
+-	fcobjshash.gperf
+ 
+ libfontconfig_la_SOURCES = \
+ 	fcarch.h \
+@@ -542,14 +540,11 @@ PUBLIC_FT_FILES = \
+ 
+ CLEANFILES = \
+ 	$(ALIAS_FILES)	\
+-	fontconfig.def	\
+-	$(builddir)/fcobjshash.h
++	fontconfig.def
+ 
+ DISTCLEANFILES = \
+ 	stamp-fcstdint	\
+ 	fcstdint.h	\
+-	stamp-fcobjshash.gperf	\
+-	fcobjshash.gperf
+ 
+ all: $(BUILT_SOURCES)
+ 	$(MAKE) $(AM_MAKEFLAGS) all-am
+@@ -1013,24 +1008,6 @@ uninstall-am: uninstall-libLTLIBRARIES uninstall-local
+ ../fc-lang/fclang.h:
+ 	cd ../fc-lang && $(MAKE) $(AM_MAKEFLAGS) fclang.h
+ 
+-fcobjshash.gperf: Makefile stamp-fcobjshash.gperf
+-	-@$(RM) stamp-fcobjshash.gperf
+-	@$(MAKE) stamp-fcobjshash.gperf
+-	@touch -r stamp-fcobjshash.gperf $@
+-stamp-fcobjshash.gperf: fcobjshash.gperf.h fcobjs.h
+-	$(AM_V_GEN) $(CPP) -I$(top_srcdir) $(CPPFLAGS) $< | \
+-	$(SED) 's/^ *//;s/ *, */,/' | \
+-	awk ' \
+-		/CUT_OUT_BEGIN/ { no_write=1; next; }; \
+-		/CUT_OUT_END/ { no_write=0; next; }; \
+-		/^$$/||/^#/ { next; }; \
+-		{ if (!no_write) print; next; }; \
+-	' - > $@.tmp && \
+-	mv -f $@.tmp fcobjshash.gperf && touch $@ || ( $(RM) $@.tmp && false )
+-
+-$(builddir)/fcobjshash.h: Makefile fcobjshash.gperf
+-	$(AM_V_GEN) $(GPERF) --pic -m 100 fcobjshash.gperf > $@.tmp && \
+-	mv -f $@.tmp $@ || ( $(RM) $@.tmp && false )
+ 
+ @ENABLE_SHARED_TRUE@install-data-local: install-ms-import-lib install-libtool-import-lib
+ 
+diff --git a/third_party/x11/fontconfig/src/fcobjs.c b/third_party/x11/fontconfig/src/fcobjs.c
+index 33bba8d..f630169 100644
+--- a/third_party/x11/fontconfig/src/fcobjs.c
++++ b/third_party/x11/fontconfig/src/fcobjs.c
+@@ -24,15 +24,91 @@
+ 
+ #include "fcint.h"
+ 
+-static unsigned int
+-FcObjectTypeHash (register const char *str, register FC_GPERF_SIZE_T len);
++#include <string.h>
++
++/* FNX no-gperf replacement (docs/design/self-hosting-packages.md §6):
++ * the stock build synthesizes fcobjshash.h with cpp/sed/awk + gperf
++ * (GPLv3) at build time - FNX carries no GPL tooling.  The same
++ * lowercase property-name -> FcObject mapping is provided here directly.
++ * The rows mirror src/fcobjs.h (cache-signature order) - when fcobjs.h
++ * changes, regenerate the keyword list from the upstream
++ * src/fcobjshash.gperf.h pipeline (gperf --pic -m 100; the gperf binary
++ * is a dev-time tool in .build/host-tools, never a build dependency). */
++struct FcObjectTypeInfo {
++    const char *name;
++    FcObject id;
++};
++
++static const struct FcObjectTypeInfo fcObjectTypeTable[] = {
++{ "family", FC_FAMILY_OBJECT },
++{ "familylang", FC_FAMILYLANG_OBJECT },
++{ "style", FC_STYLE_OBJECT },
++{ "stylelang", FC_STYLELANG_OBJECT },
++{ "fullname", FC_FULLNAME_OBJECT },
++{ "fullnamelang", FC_FULLNAMELANG_OBJECT },
++{ "slant", FC_SLANT_OBJECT },
++{ "weight", FC_WEIGHT_OBJECT },
++{ "width", FC_WIDTH_OBJECT },
++{ "size", FC_SIZE_OBJECT },
++{ "aspect", FC_ASPECT_OBJECT },
++{ "pixelsize", FC_PIXEL_SIZE_OBJECT },
++{ "spacing", FC_SPACING_OBJECT },
++{ "foundry", FC_FOUNDRY_OBJECT },
++{ "antialias", FC_ANTIALIAS_OBJECT },
++{ "hintstyle", FC_HINT_STYLE_OBJECT },
++{ "hinting", FC_HINTING_OBJECT },
++{ "verticallayout", FC_VERTICAL_LAYOUT_OBJECT },
++{ "autohint", FC_AUTOHINT_OBJECT },
++{ "globaladvance", FC_GLOBAL_ADVANCE_OBJECT },
++{ "file", FC_FILE_OBJECT },
++{ "index", FC_INDEX_OBJECT },
++{ "rasterizer", FC_RASTERIZER_OBJECT },
++{ "outline", FC_OUTLINE_OBJECT },
++{ "scalable", FC_SCALABLE_OBJECT },
++{ "dpi", FC_DPI_OBJECT },
++{ "rgba", FC_RGBA_OBJECT },
++{ "scale", FC_SCALE_OBJECT },
++{ "minspace", FC_MINSPACE_OBJECT },
++{ "charwidth", FC_CHARWIDTH_OBJECT },
++{ "charheight", FC_CHAR_HEIGHT_OBJECT },
++{ "matrix", FC_MATRIX_OBJECT },
++{ "charset", FC_CHARSET_OBJECT },
++{ "lang", FC_LANG_OBJECT },
++{ "fontversion", FC_FONTVERSION_OBJECT },
++{ "capability", FC_CAPABILITY_OBJECT },
++{ "fontformat", FC_FONTFORMAT_OBJECT },
++{ "embolden", FC_EMBOLDEN_OBJECT },
++{ "embeddedbitmap", FC_EMBEDDED_BITMAP_OBJECT },
++{ "decorative", FC_DECORATIVE_OBJECT },
++{ "lcdfilter", FC_LCD_FILTER_OBJECT },
++{ "namelang", FC_NAMELANG_OBJECT },
++{ "fontfeatures", FC_FONT_FEATURES_OBJECT },
++{ "prgname", FC_PRGNAME_OBJECT },
++{ "hash", FC_HASH_OBJECT },
++{ "postscriptname", FC_POSTSCRIPT_NAME_OBJECT },
++{ "color", FC_COLOR_OBJECT },
++{ "symbol", FC_SYMBOL_OBJECT },
++{ "fontvariations", FC_FONT_VARIATIONS_OBJECT },
++{ "variable", FC_VARIABLE_OBJECT },
++{ "fonthashint", FC_FONT_HAS_HINT_OBJECT },
++{ "order", FC_ORDER_OBJECT },
++{ "desktop", FC_DESKTOP_NAME_OBJECT },
++{ "namedinstance", FC_NAMED_INSTANCE_OBJECT },
++{ "fontwrapper", FC_FONT_WRAPPER_OBJECT },
++};
+ 
+ static const struct FcObjectTypeInfo *
+-FcObjectTypeLookup (register const char *str, register FC_GPERF_SIZE_T len);
++FcObjectTypeLookup (register const char *str, register size_t len)
++{
++    unsigned int i;
+ 
+-#include "fcobjshash.h"
++    for (i = 0; i < sizeof (fcObjectTypeTable) / sizeof (fcObjectTypeTable[0]); i++)
++	if (strlen (fcObjectTypeTable[i].name) == len &&
++	    0 == memcmp (fcObjectTypeTable[i].name, str, len))
++	    return &fcObjectTypeTable[i];
++    return 0;
++}
+ 
+-#include <string.h>
+ 
+ /* The 1000 is to leave some room for future added internal objects, such
+  * that caches from newer fontconfig can still be used with older fontconfig
+diff --git a/third_party/x11/fontconfig/src/fcstdint.h b/third_party/x11/fontconfig/src/fcstdint.h
+index a03b27c..fe43be4 100644
+--- a/third_party/x11/fontconfig/src/fcstdint.h
++++ b/third_party/x11/fontconfig/src/fcstdint.h
+@@ -2,7 +2,7 @@
+ #define _FONTCONFIG_SRC_FCSTDINT_H 1
+ #ifndef _GENERATED_STDINT_H
+ #define _GENERATED_STDINT_H "fontconfig 2.15.0"
+-/* generated using gnu compiler gcc (GCC) 13.2.1 20231110 (Red Hat 13.2.1-5) */
++/* generated using gnu compiler Debian clang version 19.1.7 (3+b1) */
+ #define _STDINT_HAVE_STDINT_H 1
+ #include <stdint.h>
+ #endif
