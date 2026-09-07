@@ -154,6 +154,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -Iuserland -L$(CURDIR)/$(FNXLIB) \
 		userland/tests/shrike_hello.cpp -lshrike \
 		-o "$(ROOTFS64)/System/Shared/tests/shrike_hello"
+	# shrike_demo: Shrike S0.2 acceptance — opens a window on Xfb and
+	# blits a solid fill via core protocol (Window::fill/XPutImage).
+	# Run from the shell with DISPLAY=:0 once Xfb is up.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/shrike_demo.cpp -lshrike -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/shrike_demo"
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
 		-I$(X11PREFIX)/include/harfbuzz \
 		-L$(X11PREFIX)/lib -L$(CURDIR)/$(FNXLIB) \

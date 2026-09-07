@@ -182,10 +182,15 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 SHRIKE_SRCS = userland/shrike/application.cpp userland/shrike/window.cpp
 FNXLIB_SHRIKE = $(FNXLIB)/libshrike.so.1
 
-$(FNXLIB_SHRIKE): $(SHRIKE_SRCS) userland/shrike/shrike.h $(MUSL64_CXX)
+$(FNXLIB_SHRIKE): $(SHRIKE_SRCS) userland/shrike/shrike.h userland/shrike/shrike_p.h $(MUSL64_CXX)
 	@mkdir -p $(FNXLIB)
-	$(MUSL64_CXX) -fPIC -shared -Iuserland -Wl,-soname,libshrike.so.1 \
-		-o $@ $(SHRIKE_SRCS)
+	@if [ ! -d "$(X11PREFIX)/include/X11" ]; then \
+		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
+		exit 1; \
+	fi
+	$(MUSL64_CXX) -fPIC -shared -Iuserland -I$(X11PREFIX)/include \
+		-L$(X11PREFIX)/lib -Wl,-soname,libshrike.so.1 \
+		-o $@ $(SHRIKE_SRCS) -lX11
 	ln -sf libshrike.so.1 $(FNXLIB)/libshrike.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
