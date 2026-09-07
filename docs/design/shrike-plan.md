@@ -425,6 +425,12 @@ libc++/libc++abi/libunwind in /System/Libraries):
 
 ## 7. Milestones (order + acceptance; not scheduled)
 
+*Execution note (2026-09): the S0–S5 milestones below are deliberately
+coarse. Work proceeds through them via the sub-milestone split in
+docs/design/shrike-milestone-split.md — each sub-milestone lands as one
+reviewable increment with its own guest/battery acceptance before the
+next starts.*
+
 - **S0 — Foundation**: `shrike::Application` + `Window` over X11;
   event loop; fontconfig/HarfBuzz/FreeType init; .conf load;
   libshrike.so staged.
