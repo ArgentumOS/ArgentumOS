@@ -244,7 +244,9 @@ struct fat_rec {
 	unsigned char attr;
 	__u32 cluster;
 	__u32 size;
-	unsigned long slot;		/* 0-based slot of the last record slot */
+	unsigned long slot;		/* 0-based slot write_inode targets
+					   (FAT32: SFN, exFAT: the 0x85) */
+	unsigned long rec_end;		/* 0-based slot AFTER the record */
 	int is_dot;
 	int contiguous;
 };
@@ -324,6 +326,7 @@ static int scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 			rec->size = 0;
 		}
 		rec->slot = it->consumed - 1;
+		rec->rec_end = it->consumed;
 		if(have_lfn && lfn_checksum(e) == lfn_sum && u16_units > 0) {
 			utf16_to_utf8(rec->u16, u16_units, rec->name);
 		} else {
@@ -371,6 +374,7 @@ static int ex_scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 		if(nsec < 2 || nsec > 18) {
 			continue;	/* malformed: skip */
 		}
+		rec->slot = it->consumed - 1;	/* the set's 0x85 slot */
 		memcpy_b(set[0], e, 32);
 		for(k = 1; k <= nsec; k++) {
 			if(!dir_next(it)) {
@@ -378,6 +382,7 @@ static int ex_scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 			}
 			memcpy_b(set[k], dir_ent(it), 32);
 		}
+		rec->rec_end = it->consumed;
 		/* set[0] = File, set[1] = Stream, set[2..] = names */
 		if(set[1][0] != 0xC0) {
 			continue;
@@ -411,7 +416,6 @@ static int ex_scan_record(struct fat_dir_it *it, struct fat_rec *rec)
 		}
 		utf16_to_utf8(rec->u16, ci > NAME_MAX ? NAME_MAX : ci,
 			      rec->name);
-		rec->slot = it->consumed - 1;
 		return 1;
 	}
 }
@@ -505,7 +509,7 @@ static int fat_readdir_common(struct inode *dir, struct fd *f,
 			memcpy_b(de->d_name, rec.name, strlen(rec.name) + 1);
 		}
 		size += reclen;
-		f->offset = (__loff_t)(rec.slot + 1);
+		f->offset = (__loff_t)rec.rec_end;
 	}
 	dir_it_close(&it);
 	return size;

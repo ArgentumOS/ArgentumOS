@@ -354,7 +354,7 @@ static int fat_open(struct inode *i, struct fd *f)
 	f->offset = 0;
 	if(S_ISREG(i->i_mode) && (f->flags & O_TRUNC)) {
 		if(i->sb->u.fatfs.fs_type == FAT_EXFAT) {
-			return -EROFS;	/* exFAT writes are M2b */
+			return ex_truncate(i, 0);
 		}
 		superblock_lock(i->sb);
 		if(i->u.fatfs.cluster) {

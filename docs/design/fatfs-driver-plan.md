@@ -109,6 +109,32 @@ find and compiles as c89 with the rest of the kernel.
   kernel.conf); FAT12/16 floppy-era volumes also mount (cheap: fixed
   root dir + 12/16-bit FAT walk).
 
+## Status
+
+- **M0** — committed `c76bd44` (native driver, FAT32 read; pivot + design
+  doc `a236a3f`). ESP mounts at /System/ESP on every boot.
+- **M1** — committed `37b83f5` (FAT32 writes). Verified + host mtools
+  cross-checked.
+- **M2a (exFAT read)** — committed `0184f13` + `781e679`. exFAT
+  BPB/entry-set/contiguous+FAT-linked streams; all mutators refused
+  exFAT with -EROFS.
+- **M2b (exFAT writes)** — committed (this milestone): fs/fatfs/exwrite.c
+  (bitmap alloc/free, full-32-bit FAT writes, entry-set pack with
+  NameHash + SetChecksum, free-run slot finder with grow-once dirs,
+  create/mkdir/unlink/rmdir/rename/truncate/write_inode, bmap write
+  allocation). Two load-bearing fixes beyond the draft: write_inode must
+  write the STREAM entry (slot+1) back to its own buffer, not just the
+  set checksum (content was silently orphaned with the stream still at
+  cluster 0/size 0); and inode identity hygiene - drop the stale packed
+  (0x80000000|slot) cache entry when the cluster alias is created or the
+  object deleted, clear INODE_DIRTY on write_inode success, and treat a
+  deleted set (0x05) as a no-op update. Verified: 22-marker in-guest
+  harness (create/append/rewrite/mkdir/rename/rm/rmdir, wc sizes) +
+  host FatFs read-back (tools/exfat-fixture verify) + recovery-normal
+  regression + fshlint 0.
+- **Open** — M2c (FAT12/16) + M3 (kernel.conf config domain targets the
+  mounted /System/ESP).
+
 ## Kept from the abandoned wrapper attempt
 
 - **IDE devfs nodes** (drivers/block/ata_hd.c): the PIIX IDE master (the

@@ -80,10 +80,18 @@ static int verify(const char *path)
 	}
 	{
 		unsigned int got = 0;
+		int ok;
 
 		f_read(&f, line, sizeof(line) - 1, &got);
 		line[got] = 0;
 		printf("VERIFY fnx-written.txt: %.60s\n", line);
+		ok = (got == 12) && !strcmp(line, "second-pass\n");
+		if(!ok) {
+			printf("VERIFY fnx-written.txt CONTENT WRONG (got=%u)\n",
+			       got);
+			f_mount(NULL, "", 0);
+			return 1;
+		}
 	}
 	f_close(&f);
 	if((r = f_open(&f, "sub2/deep.txt", FA_READ)) == FR_OK) {
@@ -92,11 +100,31 @@ static int verify(const char *path)
 		f_read(&f, line, sizeof(line) - 1, &got);
 		line[got] = 0;
 		printf("VERIFY sub2/deep.txt: %.60s\n", line);
+		if(got != 13 || strcmp(line, "deep-content\n")) {
+			printf("VERIFY sub2/deep.txt CONTENT WRONG\n");
+			f_close(&f);
+			f_mount(NULL, "", 0);
+			return 1;
+		}
 		f_close(&f);
 	} else {
 		printf("VERIFY sub2/deep.txt rc=%d\n", r);
 		return 1;
 	}
+	/* tmp.txt + sub3 must be gone */
+	if((r = f_open(&f, "tmp.txt", FA_READ)) == FR_OK) {
+		printf("VERIFY tmp.txt should be deleted!\n");
+		f_close(&f);
+		f_mount(NULL, "", 0);
+		return 1;
+	}
+	if((r = f_opendir(&dj, "sub3")) == FR_OK) {
+		printf("VERIFY sub3 should be deleted!\n");
+		f_closedir(&dj);
+		f_mount(NULL, "", 0);
+		return 1;
+	}
+	printf("VERIFY OK\n");
 	f_mount(NULL, "", 0);
 	fclose(g_fp);
 	printf("VERIFY OK\n");

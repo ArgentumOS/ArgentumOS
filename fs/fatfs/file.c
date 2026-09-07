@@ -55,7 +55,7 @@ __blk_t fat_bmap(struct inode *i, __off_t offset, int mode)
 		unsigned int within = (unsigned int)(offset % cluster_bytes) / 512;
 
 		if(mode != FOR_READING) {
-			return -EROFS;	/* exFAT writes are M2b */
+			return ex_fat_bmap_write(i, offset);
 		}
 		if(i->u.fatfs.contiguous) {
 			__u32 cl = i->u.fatfs.cluster + idx;

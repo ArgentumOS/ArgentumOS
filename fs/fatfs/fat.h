@@ -75,6 +75,7 @@ int fat_alloc_cluster(struct superblock *sb, __u32 *cluster);
 int fat_read_entry(struct superblock *sb, __u32 cl, __u32 *val);
 void fat_set_eoc(struct superblock *sb, __u32 cluster);
 void fatfs_ent_remove(struct superblock *sb, __ino_t ino);
+int fat_dir_empty(struct inode *dir);
 int fat_free_chain(struct superblock *sb, __u32 first);
 
 /* write.c */
@@ -96,6 +97,20 @@ int fat_dir_has_name(struct inode *, const char *);
 
 /* file.c */
 __blk_t fat_bmap(struct inode *, __off_t, int);
+
+/* exwrite.c (exFAT) */
+int ex_create(struct inode *, char *, int, __mode_t, struct inode **);
+int ex_mkdir(struct inode *, char *, __mode_t);
+int ex_unlink(struct inode *, struct inode *, char *);
+int ex_rmdir(struct inode *, struct inode *);
+int ex_rename(struct inode *, struct inode *, struct inode *, struct inode *,
+	      char *, char *);
+int ex_truncate(struct inode *, __off_t);
+int ex_write_inode(struct inode *);
+int ex_fat_bmap_write(struct inode *, __off_t);
+int ex_alloc_cluster(struct superblock *, __u32 *);
+int ex_free_chain(struct superblock *, __u32);
+int ex_fat_write(struct superblock *, __u32, __u32);
 __loff_t fat_file_llseek(struct inode *, __loff_t);
 
 #endif /* _FATFS_FAT_H */
