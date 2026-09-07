@@ -179,7 +179,8 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 # The C++ wrapper supplies the libc++/libc++abi/libunwind NEEDEDs and
 # the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
 # the session in S0.2.
-ARGENTUM_SRCS = userland/argentum/application.cpp userland/argentum/window.cpp
+ARGENTUM_SRCS = userland/argentum/application.cpp \
+	userland/argentum/window.cpp userland/argentum/text.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 
 $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argentum/argentum_p.h $(MUSL64_CXX)
@@ -188,9 +189,16 @@ $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argen
 		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
 		exit 1; \
 	fi
+	@if [ ! -f "$(X11PREFIX)/include/freetype2/ft2build.h" ]; then \
+		echo "text stack missing - run the fontconfig/harfbuzz/freetype port first"; \
+		exit 1; \
+	fi
 	$(MUSL64_CXX) -fPIC -shared -Iuserland -I$(X11PREFIX)/include \
+		-I$(X11PREFIX)/include/freetype2 -I$(X11PREFIX)/include/harfbuzz \
+		-I$(X11PREFIX)/include/fontconfig \
 		-L$(X11PREFIX)/lib -Wl,-soname,libargentum.so.1 \
-		-o $@ $(ARGENTUM_SRCS) -lX11
+		-o $@ $(ARGENTUM_SRCS) -lX11 \
+		-lfontconfig -lharfbuzz -lfreetype
 	ln -sf libargentum.so.1 $(FNXLIB)/libargentum.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).

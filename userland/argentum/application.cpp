@@ -7,7 +7,10 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+#include <fontconfig/fontconfig.h>
+
 #include <cstdlib>
+#include <cstdio>
 
 namespace argentum {
 
@@ -42,6 +45,26 @@ Application::init(const char *displayName)
 	}
 	impl_->screen = DefaultScreen(impl_->dpy);
 	impl_->running = true;
+
+	/* S0.4: boot the text stack. fontconfig config comes from the
+	 * system.fonts libconfig domain (fontconfig M0); FreeType is a
+	 * per-process library handle every drawn face shares. HarfBuzz
+	 * needs no global init (per-buffer objects). Both are
+	 * best-effort: if they fail, init() still succeeds and drawText()
+	 * simply refuses to draw (logged per call). */
+	if (!FcInit()) {
+		fprintf(stderr, "ARGENTUM: FcInit failed\n");
+	} else {
+		fprintf(stderr, "ARGENTUM: fontconfig inited (v%d)\n",
+			FcGetVersion());
+	}
+	if (FT_Init_FreeType(&impl_->ft)) {
+		impl_->ft = nullptr;
+		fprintf(stderr, "ARGENTUM: FT_Init_FreeType failed\n");
+	} else {
+		impl_->ftInited = true;
+		fprintf(stderr, "ARGENTUM: FreeType inited\n");
+	}
 	/* Xlib's default error handler exits the process on any protocol
 	 * error. Install a reporting handler so a stray BadWindow etc.
 	 * prints and the loop survives (S0.3 debugging). */
@@ -164,6 +187,11 @@ Application::~Application()
 		XCloseDisplay(impl_->dpy);
 		impl_->dpy = nullptr;
 	}
+	if (impl_->ftInited && impl_->ft) {
+		FT_Done_FreeType(impl_->ft);
+		impl_->ft = nullptr;
+	}
+	FcFini();
 	impl_->running = false;
 	delete impl_;
 }

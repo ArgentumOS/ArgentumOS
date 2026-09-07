@@ -11,7 +11,9 @@
  * S0.2 (docs/design/argentum-milestone-split.md): Application opens the
  * X session, Window creates + maps a real X11 window, and the solid
  * background is blitted with core protocol (XPutImage — no XRender/Xft
- * client lib). Text + .conf arrive in S0.4/S0.5; the event loop in S0.3.
+ * client lib). S0.3 adds the responder virtuals + event loop; S0.4
+ * boots the text stack (fontconfig/FreeType) and draws text through
+ * Argentum's own Fc→HB→FT path; the .conf domain lands in S0.5.
  */
 #ifndef FNX_ARGENTUM_ARGENTUM_H
 #define FNX_ARGENTUM_ARGENTUM_H
@@ -19,10 +21,10 @@
 #include <cstdint>
 
 #define ARGENTUM_VERSION_MAJOR 0
-#define ARGENTUM_VERSION_MINOR 3
+#define ARGENTUM_VERSION_MINOR 4
 #define ARGENTUM_VERSION_PATCH 0
 
-#define ARGENTUM_VERSION "0.3.0"
+#define ARGENTUM_VERSION "0.4.0"
 
 namespace argentum {
 
@@ -39,7 +41,9 @@ public:
 
 	/* Open the X session. displayName NULL uses $DISPLAY (":0" on the
 	 * Xfb desktop). Returns true when connected; callers retry while
-	 * the server is still coming up. Safe to call once only. */
+	 * the server is still coming up. Safe to call once only. Also
+	 * boots the text stack: fontconfig (FcInit) + FreeType
+	 * (FT_Init_FreeType) so drawText() works after init() succeeds. */
 	bool init(const char *displayName = nullptr);
 
 	/* true once init() succeeded (before terminate()) */
@@ -118,6 +122,17 @@ public:
 	/* Core-protocol solid fill of the whole window (XPutImage of a
 	 * depth-24 XRGB image). rgb is 0xRRGGBB. No XRender/Xft. */
 	void fill(std::uint32_t rgb);
+
+	/* S0.4: draw a UTF-8 run at (x, y) (top-left of the text box,
+	 * pixel geometry) through Argentum's own text path: fontconfig
+	 * family match -> HarfBuzz shape -> FreeType glyph raster, then a
+	 * core-protocol XPutImage of the composited run box. family is a
+	 * fontconfig family name (e.g. "DejaVu Sans"); fg/bg are 0xRRGGBB
+	 * glyph / box colors; pixelSize is the FreeType pixel size.
+	 * Prints ARGENTUM-TEXT: shape/raster log lines (acceptance). */
+	void drawText(const char *family, int x, int y, const char *utf8,
+		      unsigned int pixelSize, std::uint32_t fg,
+		      std::uint32_t bg);
 
 	/* --- responder virtuals (S0.3; empty by default) --- */
 

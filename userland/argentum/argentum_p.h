@@ -13,6 +13,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 #include <map>
 
 namespace argentum {
@@ -25,6 +28,11 @@ struct Application::Impl {
 	int screen = 0;			/* DefaultScreen(dpy) */
 	bool running = false;		/* init() succeeded */
 	bool stopping = false;		/* terminate() requested */
+
+	/* S0.4 text stack. fontconfig is process-global (FcInit once);
+	 * FreeType needs one library handle shared by every face. */
+	bool ftInited = false;
+	FT_Library ft = nullptr;	/* FT_Init_FreeType result */
 
 	/* X window id -> the argentum::Window that owns it (S0.3 event
 	 * dispatch). Window registers on init, unregisters on destroy. */

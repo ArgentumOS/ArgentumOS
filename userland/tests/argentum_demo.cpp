@@ -57,10 +57,12 @@ public:
 		fflush(stdout);
 	}
 
-	/* Expose/redraw: repaint the solid fill */
+	/* Expose/redraw: repaint the fill then the text run */
 	void draw() override
 	{
 		fill(FILL_RGB);
+		drawText("DejaVu Sans", 24, 20,
+			 "Argentum S0.4", 26, 0xf5f6fa, 0x123456);
 	}
 };
 
