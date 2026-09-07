@@ -163,6 +163,16 @@ toolchain yields an identical image (see §5 on reproducibility).
 - **Kernel-on-FNX timing**: SH-5 is last in the spine, but the kernel
   clang build (G1) may make kernel-in-guest practical earlier — the
   milestone order is not a commitment.
+- **Dev-tooling licenses (note)**: pkg-config (freedesktop) is
+  **GPL-2+** — not admissible on-FNX. **pkgconf is ISC** (verified
+  from its COPYING, 2026) and is the permissive pkg-config-compatible
+  tool if any in-guest configure/dev tooling needs one (e.g., third
+  parties built against the X stack). pkgconf builds with Meson
+  (Python — out on FNX) or **Muon** (a C implementation of the Meson
+  build language, for bootstrap environments without Python), and has
+  a `pkgconf-lite` single-binary build (`Makefile.lite`). Host-side
+  dev tooling is unaffected (the host may use GPL pkg-config; the
+  roof constrains what ships/runs on FNX).
 - **Reproducibility standard**: byte-identical images are the strong
   target; if the tree can't reach it (paths, build-id), define what
   "reproducible" certifies instead (boots + same behavior + diffable
