@@ -1,0 +1,75 @@
+name: linux-ci
+
+on:
+  push:
+    branches: [ main ]
+    tags: ["*.*.*"]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@ed74d11c0b343532753ecead8a951bb09bb34bc9 # v1.2.14
+      with:
+        key: ${{ github.job }}-${{ runner.os }}-${{ runner.arch }}
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install \
+          gcc \
+          gobject-introspection \
+          gtk-doc-tools \
+          libcairo2-dev \
+          libfreetype6-dev \
+          libgirepository1.0-dev \
+          libglib2.0-dev \
+          libgraphite2-dev \
+          libicu-dev \
+          ninja-build \
+          pkg-config \
+          python3 \
+          python3-setuptools
+    - name: Setup Python
+      uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+      with:
+        python-version: '3.x'
+    - name: Install Python Dependencies
+      run: sudo pip3 install -r .ci/requirements.txt --require-hashes
+    - name: Setup Meson
+      run: |
+        ccache --version
+        meson setup build \
+          -Dauto_features=enabled \
+          -Dchafa=disabled \
+          -Dgraphite=enabled \
+          -Doptimization=2 \
+          -Db_coverage=true \
+          -Ddoc_tests=true \
+          -Dragel_subproject=true
+    - name: Build
+      run: meson compile -Cbuild
+    - name: Test
+      run: meson test --print-errorlogs -Cbuild
+    - name: Generate Documentations
+      run: ninja -Cbuild harfbuzz-doc
+    - name: Deploy Documentations
+      if: github.ref_type == 'tag'
+      run: .ci/deploy-docs.sh
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        REVISION: ${{ github.sha }}
+    - name: Generate Coverage
+      run: ninja -Cbuild coverage-xml
+    - name: Upload Coverage
+      uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673 # v4.5.0
+      with:
+        file: build/meson-logs/coverage.xml

@@ -10,6 +10,23 @@ See docs/x11-xvfb-fb-plan.md (M0: vendor + build the modern Xvfb core).
 | libxkbfile | libxkbfile-1.2.0     | git submodule |
 | libXfont2  | 2.0.7                | x.org release tarball (extracted tree; repo left freedesktop gitlab, no anonymous clone) |
 | libfontenc | 1.1.8                | x.org release tarball (extracted tree) |
+
+## Text stack (Shrike: fontconfig → HarfBuzz → FreeType → pixman)
+
+Vendored with the Shrike text-stack port (docs/design/shrike-plan.md §4);
+built SHARED into .build/x11-prefix by tools/x11-shared-build.sh alongside
+the X stack. libpng + expat are the transitive deps the full-feature
+requirements pull in (sbix color glyphs need libpng; fontconfig's XML
+parsing needs expat). brotli/bzip2 deliberately NOT vendored (shrike-plan
+deferral: no WOFF2/bzip2 font source on FNX).
+
+| component  | version | source |
+|---|---|---|
+| freetype   | 2.13.3  | Debian pool freetype_2.13.3+dfsg.orig repack (identical src/; non-free docs stripped) |
+| fontconfig  | 2.15.0  | freedesktop release tarball |
+| harfbuzz   | 10.0.1  | github release tarball (test/perf corpora trimmed; meson dirs option-guarded) |
+| libpng     | 1.6.47  | sourceforge release tarball |
+| expat      | 2.6.4   | github release tarball |
 | xtrans     | 1.5.2                | x.org release tarball (extracted tree; repo left freedesktop gitlab) |
 
 Builds target the musl64 static toolchain into .build/x11-prefix (see
