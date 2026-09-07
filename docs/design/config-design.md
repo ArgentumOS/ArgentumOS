@@ -203,19 +203,28 @@ assignment := WS* key WS* '=' WS* value WS*
 group-line := empty | comment | assignment
 close-brace:= WS* '}' WS*                  -- on its own line
 key        := segment ('.' segment)*       -- dot-separated, no empty segments
-segment    := [A-Za-z_] [A-Za-z0-9_-]*
+segment    := ident | ident '[' index ']'  -- rules[0].edits[1] (§10.2)
+ident      := [A-Za-z_] [A-Za-z0-9_-]*
+index      := digits                        -- 0-based array position
 value      := boolean | integer | float | quoted-string | array
-            | bare-string | empty
+            | bare-string | record | empty
 boolean    := 'true' | 'false'             -- lowercase, case-sensitive
 integer    := sign? digits | sign? '0x' hexdigits
 float      := sign? digits '.' digits? exp? | sign? digits exp
 exp        := [eE] sign? digits
 quoted-string := '"' (escape | char)* '"'
 escape     := '\' ( '"' | '\' | 'n' | 't' )   -- unknown escapes: parse error
-array      := element (WS* ',' WS* element)*
+array      := csv-list | bracketed-list
+csv-list   := element (WS* ',' WS* element)*     -- v1 comma form (scalars)
+bracketed-list := '[' WS* ']' | '[' list-item (WS* ',' WS* list-item)* WS* ']'
+list-item  := scalar-element | record            -- records need the
+                                                  -- bracketed form (§10.2)
 element    := boolean | integer | float | quoted-string | bare-element
-bare-element  := char+ except {WS, ',', '"'}
-bare-string  := char+ except {WS, '#', '=', ',', '"'}
+scalar-element := boolean | integer | float | quoted-string | bare-element
+bare-element  := char+ except {WS, ',', '"', '{', '}'}
+bare-string  := char+ except {WS, '#', '=', ',', '"', '{', '}'}
+record     := '{' record-line* close-brace WS*   -- block value (§10.2)
+record-line := empty | comment | assignment
 empty      := (nothing after '=')
 WS         := ' ' | '\t'
 ```
@@ -235,7 +244,10 @@ WS         := ' ' | '\t'
   line start; there are **no trailing comments**).
 - **Arrays**: `recent-apps = Terminal, Editor, Mail` — elements are
   individually inferred (bool/int/float/string). Quoted elements may
-  contain commas: `"a,b", c`.
+  contain commas: `"a,b", c`. A **bracketed literal** `[ … ]` is an
+  explicit array that may also hold records (§10.2); scalars inside it
+  are inferred as usual. Brackets only open an array at value position —
+  `a[0] = 1` is a key, `a = [1]` is a value.
 - **Empty value** (`key =`) is an empty string.
 - **Duplicate keys**: last occurrence wins (deterministic).
 - **Encoding**: UTF-8; an optional BOM at the start of the file is
@@ -248,42 +260,66 @@ WS         := ' ' | '\t'
   nested (block) spelling; a pure flat file keeps its flat spelling
   byte-for-byte (§10.1).
 
-## 10.1 Group records (block values)
+## 10.1 Records, arrays of records, and tree values (v2)
 
-Block values make a **record domain** expressible: `key = { … }` opens
-a group whose lines are relative to the key (`user = { admin = { uid =
-0 } }` spells the key `user.admin.uid`). Blocks may nest arbitrarily and
-empty blocks (`x = {}`) are valid. Blocks are a *file spelling*: the
-in-memory model stays a flat dot-key map, and flat and nested spellings
-of the same keys may be mixed in one file (reads never care which
-spelling produced a key). This amendment is the normative home of
-docs/design/system-config-files-plan.md §3.
+**Records are values.** A block (`key = { … }`) is a *record* — a
+first-class config value, not a file spelling — and records may appear
+anywhere a value can, including as **anonymous array elements**:
 
-Rules and edge cases:
+```conf
+rules = [ { match = pattern
+            tests  = [ { object = family; compare = eq; value = "Sans" } ]
+            edits  = [ { object = family; mode = assign; value = "DejaVu Sans" } ] },
+          { match = pattern
+            edits  = [ { object = family; mode = prepend; value = "DejaVu Serif" } ] } ]
+```
 
-- A block value opens when the first non-WS char after `=` is `{`, and
-  `}` closes the innermost open group. Both appear on their own lines in
-  canonical files (`key = {` … `}`); an inline `}` right after `{`
-  (`key = {}`) is an empty group. Anything else after `{` on the line is
-  a parse error, so a *bare value beginning with `{` is no longer
-  legal* — quote it: `key = "{notablock"`. (A `{` elsewhere in a value,
-  e.g. `key = a{b`, is untouched.) An unclosed group at EOF or a stray
-  `}` is a parse error.
-- A block's name is a single segment (a dotted block key is a parse
-  error). Full keys stay ≤ 255 chars and relative keys follow the key
-  grammar.
+The in-memory model is a **tree**: a value is a scalar, a record
+(ordered field map), or an array whose elements are scalars or records.
+The flat dot-key read model remains: a dot path walks the tree, `config
+read <domain> rules` returns the whole nested value, and existing flat
+domains + the kernel.conf flat subset (§12) are unchanged.
+
+**Key addressing.** Segments may carry a 0-based array index:
+`rules[1].edits[0].value`. Bare segment + bracket forms may mix
+(`rules[0].tests.1` ≡ `rules[0].tests[1]`), but each array element is
+addressed by its own index only — no implicit ordinal keys are ever
+exposed or written. The canonical writer emits the anonymous-array
+spelling above; flat domains keep their flat spelling byte-for-byte.
+
+**Parse rules** (carried from v1 + new):
+
+- A record value opens when the first non-WS char after `=` is `{` and
+  likewise as an array element; `}` closes the innermost open record.
+  `key = {}` is an empty record. A bare value beginning with `{` must be
+  quoted (`key = "{notablock"`); an unclosed record or stray `}` is a
+  parse error.
+- A record's name is a single segment (dotted block keys are a parse
+  error). Full keys ≤ 255 chars.
 - **Duplicate record names in one block are a parse error** — records
   are identity-bearing and must not silently collapse. Duplicate leaf
-  keys keep the existing rule (last occurrence wins), whether flat or
-  inside a block.
+  keys keep last-wins.
 - A name may not be **both a stored scalar and a container**: `a = 1`
-  with `a.b = 2` (either order, either spelling) is a parse error.
-- **Writing**: the canonical writer emits record domains (files with an
-  explicit top-level block) in the nested spelling with 4-space
-  indentation, and flat domains exactly as before — the two forms
-  round-trip byte-for-byte after a rewrite.
-- The kernel parser (§12) is a flat subset and is unchanged: `kernel.conf`
-  is a flat domain and only record domains use the nested spelling.
+  with `a = { … }` / `a.b = 2` (either order, either spelling) is a
+  parse error. An array value is one value — it may not also be a
+  record name.
+- **Empty value** (`key =`) is an empty string.
+
+**Scope merging (v2, supersedes §5 for array values).** Precedence
+remains resolve system → user → shared, system authoritative. Scalars
+and records follow the v1 rule (the highest scope that defines the key
+wins wholesale). **Arrays are additive**: the effective value is the
+concatenation of every scope's list that defines the key, in precedence
+order — system elements first, then user, then shared — so a lower
+scope's list is never shadowed and nothing is silently dropped. A
+domain that needs a different composition (replace, per-element merge)
+documents it and reads the per-scope values itself via
+`config_read_scope`. fontconfig's `rules` is a system-only domain today
+(single list, file order preserved).
+
+**Writing**: the canonical writer emits record/array-of-record domains
+in the nested spelling above (4-space indent); flat domains round-trip
+byte-for-byte. Records in arrays are written anonymously.
 
 ## 11. libconfig header
 

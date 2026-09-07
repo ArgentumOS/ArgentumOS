@@ -68,10 +68,14 @@ dot-key map per config-design §10/§10.1.
 dirs = /System/Shared/Fonts, /Shared/Fonts        # FSH dirs, absolute
 cachedir = "/System/Variable Data/fontconfig"
 rescan = 30
-# optional: acceptfont/rejectfont globs (selectfont)
-# accept = "/System/Shared/Fonts/*"               # string or array
-# rules: ordered match/test/edit chain (conf.d equivalent)
-# rules.0 = { match = pattern; test.0 = { ... } edit.0 = { ... } }
+accept = [ "/System/Shared/Fonts/*" ]            # selectfont globs
+# rules: ordered match/test/edit chain (conf.d equivalent), the
+# anonymous-array-of-records spelling (config-design §10.2):
+rules = [
+  { match = pattern
+    tests = [ { object = family; compare = eq; value = "Sans" } ]
+    edits = [ { object = family; mode = assign; value = "DejaVu Sans" } ] }
+]
 ```
 
 Conventions: FNX font dirs are absolute FSH paths — the XML `prefix`
@@ -91,11 +95,13 @@ New front-end in the vendored tree (`src/fclibconf.c`, mirroring
   C API (`userland/libconfig.h` + `libconfig.so.1` — already shared,
   staged in `/System/Libraries`; fontconfig's link gains `-lconfig` and
   `libfontconfig.so.1` NEEDED `libconfig.so.1`).
-- Walks the flat dot-key map and drives the **same internal builders**
-  fcxml uses (the §2 table's loader column), so `FcConfigGetFontDirs`,
-  `FcConfigSubstitute`, `FcConfigAcceptFont`, `FcConfigGetCacheDirs`,
-  `FcConfigFileInfoIter*` all behave as before (ruleset descriptions
-  derive from the `rules.N` list).
+- Walks the parsed **tree** (config-design §10.2: records + arrays of
+  records, addressed by dot/bracket keys such as `rules[0].edits[1]`)
+  and drives the **same internal builders** fcxml uses (the §2 table's
+  loader column), so `FcConfigGetFontDirs`, `FcConfigSubstitute`,
+  `FcConfigAcceptFont`, `FcConfigGetCacheDirs`, `FcConfigFileInfoIter*`
+  all behave as before (ruleset descriptions derive from each `rules`
+  array element).
 - Wired at the default-config load: `FcInitLoadOwnConfig` (fcinit.c)
   calls `FcConfigParseAndLoad(config, 0, complain)`. The patch makes that
   `file == 0` branch load the domain via fclibconf when no
@@ -107,13 +113,12 @@ New front-end in the vendored tree (`src/fclibconf.c`, mirroring
 - fcxml + expat remain linked (their symbols are part of the shared lib
   surface) but the FNX default never reaches them.
 
-Expression encoding (§2's expr ops): each `edit.N.value` / `test.N.value`
-is either a scalar (string/int/double/bool/array-of-scalars → constant
-`FcExpr`, `FcOpComma` for the array) or a block spelling the operator:
+Expression encoding (§2's expr ops): each edit/test `value` is either a
+scalar or record (a record = an `op` block spelling the operator):
 
 ```conf
-rules.0.edit.0.value = { op = plus; lhs = size; rhs = 2 }   # size + 2
-rules.0.edit.0.value = { op = if; cond = { op = eq; lhs = slant; rhs = italic }; then = "X"; else = "Y" }
+rules = [ { edits = [ { object = size
+                       value = { op = plus; lhs = size; rhs = 2 } } ] } ]
 ```
 
 `op` = the XML operator set (or and eq not_eq less … if … round), `lhs`/
@@ -154,7 +159,11 @@ the fclibconf build (it is in-tree source) + the `-lconfig` link.
 ## 6. Risks / notes
 
 - `FcConfigFileInfoIter*`/fc-conflist provenance (file names) becomes
-  `system.fonts.conf` + `rules.N` — acceptable (FNX ships no fc-conflist).
+  `system.fonts.conf` + one ruleset per `rules` array element (name =
+  its index, description from an optional per-rule `description` key) so
+  the public file-info API stays meaningful; the stock fc-conflist
+  binary itself is not shipped (a domain-aware config view is future
+  tooling).
 - Per-read flat-map walk at `FcInit` only — negligible cost.
 - libconfig is first-party MIT; linking it into vendored fontconfig keeps
   the permissive roof (no new license surface).
