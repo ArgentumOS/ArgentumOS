@@ -5,6 +5,12 @@
 # FAT32 partition holding EFI/BOOT/BOOTX64.EFI (plus a startup.nsh fallback
 # for the EFI shell). OVMF's BDS boots it directly as "UEFI QEMU HARDDISK".
 #
+# Also places a commented kernel.conf template next to BOOTX64.EFI
+# (tools/esp-kernel.conf): the boot config file the EFI stub reads
+# (docs/design/kernel-conf-plan.md). Uncomment/edit a line to override a
+# compiled-in boot option; the unmodified template boots exactly as if it
+# were absent.
+#
 # No root required; uses the bundled mtools from the fnx-qemu-tools prefix.
 
 set -e
@@ -31,6 +37,7 @@ fi
 rm -rf "$ESP"
 mkdir -p "$ESP/EFI/BOOT"
 cp "$REPO/.build/64/fnx.efi" "$ESP/EFI/BOOT/BOOTX64.EFI"
+cp "$REPO/tools/esp-kernel.conf" "$ESP/EFI/BOOT/kernel.conf"
 printf 'EFI\\BOOT\\BOOTX64.EFI\r\n' > "$ESP/startup.nsh"
 
 dd if=/dev/zero of="$IMG" bs=1M count=64 status=none
@@ -56,6 +63,7 @@ PYEOF
 $MTOOLS "$TOOLROOT/usr/bin/mformat" -i "$IMG"@@2048s -F -c 1 ::
 $MTOOLS "$TOOLROOT/usr/bin/mmd" -i "$IMG"@@2048s ::/EFI ::/EFI/BOOT
 $MTOOLS "$TOOLROOT/usr/bin/mcopy" -i "$IMG"@@2048s -o "$ESP/EFI/BOOT/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
+$MTOOLS "$TOOLROOT/usr/bin/mcopy" -i "$IMG"@@2048s -o "$ESP/EFI/BOOT/kernel.conf" ::/EFI/BOOT/kernel.conf
 $MTOOLS "$TOOLROOT/usr/bin/mcopy" -i "$IMG"@@2048s -o "$ESP/startup.nsh" ::/startup.nsh
 
 echo "ESP image ready: $IMG"
