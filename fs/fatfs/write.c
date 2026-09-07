@@ -977,7 +977,6 @@ int fat_unlink(struct inode *dir, struct inode *child, char *name)
 int fat_rmdir(struct inode *dir, struct inode *child)
 {
 	struct fatfs_ent *e;
-	int errno;
 
 	if(IS_RDONLY_FS(dir)) {
 		return -EROFS;
@@ -1249,7 +1248,6 @@ int fat_write(struct inode *i, struct fd *f, const char *buffer,
 	__size_t total_written = 0;
 	unsigned int boffset, bytes;
 	struct buffer *buf;
-	struct fatfs_sb_info *fs = &i->sb->u.fatfs;
 
 	if(i->sb->u.fatfs.fs_type == FAT_EXFAT) {
 		return -EROFS;	/* exFAT writes are M2b */

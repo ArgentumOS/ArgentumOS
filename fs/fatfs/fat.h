@@ -50,8 +50,9 @@ struct fatfs_cache {
 };
 
 /* cluster -> device block helper (512-byte blocks, partition-relative) */
-static __blk_t fat_cluster_sector(struct superblock *sb, __u32 cluster,
-				  unsigned int within)
+static __inline__ __blk_t fat_cluster_sector(struct superblock *sb,
+					      __u32 cluster,
+					      unsigned int within)
 {
 	struct fatfs_sb_info *f = &sb->u.fatfs;
 	return (__blk_t)(f->data_sector +

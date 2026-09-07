@@ -186,7 +186,7 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 	struct fatfs_cache *c;
 	struct buffer *buf;
 	unsigned char *b;
-	__u16 bps, reserved, root_ents, fatsz16;
+	__u16 bps, reserved, root_ents;
 	__u32 tot32, fatsz32, root_cluster, data_sector;
 	__u32 cluster_cnt = 0;
 	unsigned char spc, nfats;
@@ -195,7 +195,7 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 	if(!(buf = bread(dev, 0, 512))) {
 		return -EIO;
 	}
-	b = buf->data;
+	b = (unsigned char *)buf->data;
 	if(b[510] != 0x55 || b[511] != 0xAA) {
 		brelse(buf);
 		return -EINVAL;		/* not a FAT volume */
@@ -246,7 +246,6 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 		reserved = b[14] | (b[15] << 8);
 		nfats = b[16];
 		root_ents = b[17] | (b[18] << 8);
-		fatsz16 = b[22] | (b[23] << 8);
 		tot32 = b[32] | (b[33] << 8) | (b[34] << 16) |
 			((__u32)b[35] << 24);
 		fatsz32 = b[36] | (b[37] << 8) | (b[38] << 16) |
@@ -297,7 +296,7 @@ static int fat_read_superblock(__dev_t dev, struct superblock *sb)
 
 		if((rb = bread(dev, (__blk_t)f->data_sector +
 			       (__u64)(root_cluster - 2) * spc, 512))) {
-			re = rb->data;
+			re = (unsigned char *)rb->data;
 			for(i = 0; i < 16; i++) {
 				if(re[i * 32] == 0x00) {
 					break;
