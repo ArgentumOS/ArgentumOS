@@ -153,6 +153,106 @@ static void raw_text(const config_value_t *v, char *out, size_t outsz)
 	}
 }
 
+/* ---- nested value printing (CLI v2, docs §4) ----------------------- */
+
+static void print_assignment(const char *name, const config_value_t *v,
+			     int depth);
+
+/* Recursively print a value in the v2 nested spelling, one assignment
+ * per line. Used by `read` when the value contains records so nested
+ * trees are readable (M2 CLI). Scalars/arrays-of-scalars stay on one
+ * line for scripts. */
+static int value_is_tree(const config_value_t *v)
+{
+	size_t i;
+
+	if(v->type == CONFIG_TYPE_RECORD) {
+		return 1;
+	}
+	if(v->type == CONFIG_TYPE_ARRAY) {
+		for(i = 0; i < v->v.array.count; i++) {
+			if(value_is_tree(&v->v.array.items[i])) {
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+static void print_indent(int depth)
+{
+	while(depth-- > 0) {
+		fputs("    ", stdout);
+	}
+}
+
+static void print_value_lines(const config_value_t *v, int depth)
+{
+	size_t i;
+
+	switch(v->type) {
+	case CONFIG_TYPE_RECORD:
+		fputs("{\n", stdout);
+		for(i = 0; i < v->v.record.count; i++) {
+			const config_record_field_t *f =
+				&v->v.record.fields[i];
+
+			print_assignment(f->name, &f->value, depth + 1);
+		}
+		print_indent(depth);
+		fputs("}", stdout);
+		break;
+	case CONFIG_TYPE_ARRAY:
+		fputs("[\n", stdout);
+		for(i = 0; i < v->v.array.count; i++) {
+			const config_value_t *el = &v->v.array.items[i];
+
+			if(el->type == CONFIG_TYPE_RECORD) {
+				print_indent(depth + 1);
+				print_value_lines(el, depth + 1);
+			} else {
+				char out[512];
+
+				display_text(el, out, sizeof(out));
+				print_indent(depth + 1);
+				fputs(out, stdout);
+			}
+			fputs(i + 1 < v->v.array.count ? ",\n" : "\n",
+			      stdout);
+		}
+		print_indent(depth);
+		fputs("]", stdout);
+		break;
+	default: {
+		char out[512];
+
+		display_text(v, out, sizeof(out));
+		fputs(out, stdout);
+		break;
+	}
+	}
+}
+
+/* `name = <value>`; when the value is a record/record-array the RHS
+ * spans lines (printed at `depth` indent). */
+static void print_assignment(const char *name, const config_value_t *v,
+			     int depth)
+{
+	if(value_is_tree(v)) {
+		print_indent(depth);
+		fputs(name, stdout);
+		fputs(" = ", stdout);
+		print_value_lines(v, depth);
+		fputs("\n", stdout);
+	} else {
+		char out[512];
+
+		display_text(v, out, sizeof(out));
+		print_indent(depth);
+		printf("%s = %s\n", name, out);
+	}
+}
+
 /* ---- write-value inference (mirrors the .conf grammar) ------------- */
 
 static bool parse_int(const char *s, int64_t *v)
@@ -534,7 +634,9 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 					config_strerror(e));
 				return 1;
 			}
-			{
+			if(value_is_tree(&v)) {
+				print_assignment(key, &v, 0);
+			} else {
 				char out[512];
 
 				raw_text(&v, out, sizeof(out));
@@ -566,8 +668,12 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 				if(e) {
 					continue;
 				}
-				display_text(&v, out, sizeof(out));
-				printf("%s = %s\n", keys[i], out);
+				if(value_is_tree(&v)) {
+					print_assignment(keys[i], &v, 0);
+				} else {
+					display_text(&v, out, sizeof(out));
+					printf("%s = %s\n", keys[i], out);
+				}
 				shown++;
 				config_value_free(&v);
 			}
@@ -622,13 +728,15 @@ static int do_read(int has_scope, config_scope_t scope, int argc,
 				config_strerror(e));
 			return 1;
 		}
-		{
+		if(value_is_tree(&v)) {
+			print_assignment(key, &v, 0);
+		} else {
 			char out[512];
 
 			raw_text(&v, out, sizeof(out));
 			printf("%s\n", out);
-			warn_shadowed(domain, key, fs);
 		}
+		warn_shadowed(domain, key, fs);
 		config_value_free(&v);
 		return 0;
 	}
