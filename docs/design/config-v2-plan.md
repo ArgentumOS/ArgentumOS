@@ -1,10 +1,14 @@
 # libconfig v2 — tree values, arrays of records, additive merging
 
-Status: PLAN — for execution. Normative grammar: docs/design/config-design.md
+Status: M0–M2 DONE (bb5c394, 74985f5, d8fc0b1/f486a9a); M3 consumer
+regression green (host probes + CLI suites + fshlint 0 + guest boot
+matrix: config CLI, pwconf config_m3_test, toybox account tools, init
+mounts/procfs on the refreshed rootxbfs image); M3 docs current
+(config-design §11). Normative grammar: docs/design/config-design.md
 §10/§10.1 v2 (committed 57a9e8b). This plan moves `userland/libconfig.c`
 (+ header, `config` CLI, corpus) onto that model. fontconfig's domain
 loader (docs/design/fontconfig-config-plan.md) is the first consumer of
-the v2 tree API and starts after CV2-M3.
+the v2 tree API and starts after CV2-M3 (the next milestone).
 
 ## 1. Goal
 

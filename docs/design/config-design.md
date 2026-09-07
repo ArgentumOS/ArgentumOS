@@ -330,6 +330,32 @@ reads/writes, atomic writes (temp + fsync + rename), domain/key
 validation, and error codes for NOT_FOUND / TYPE / PARSE / IO / INVALID /
 ACCESS / NOMEM. See the header for the full contract.
 
+v2 (this design) is additive on the header:
+
+- `CONFIG_TYPE_RECORD` joins the value union as an ordered field map
+  (`v.record.fields[]`, each a malloc'd `name` + lib-owned
+  `config_value_t`). Record values are produced by `config_read` of a
+  block name (synthesized from its prefix children) and by tree reads
+  of array elements. `config_record_child()` resolves one field;
+  `config_value_free()`/`config_value_copy()` recurse into records.
+- `config_valid_address()` validates *addressing keys*: plain dotted
+  keys plus `ident[i]` / bare-digit index segments
+  (`rules[1].edits[0].value`, `rules[0].tests.1`). Reads and writes
+  accept them; files only ever carry ident segments (the canonical
+  writer emits arrays anonymously).
+- Reads resolve an address in two phases: the leading ident run is a
+  dotted base key resolved against the flat store, then index/name
+  steps descend the stored tree value. Array bases are **additive**
+  across scopes for `config_read` (concatenated system → user →
+  shared); `config_read_scope` stays per-scope.
+- The canonical writer serializes `CONFIG_TYPE_RECORD` and arrays
+  whose elements are records in the nested v2 spelling; scalar and
+  scalar-array leaves keep the v1 comma spelling so flat domains
+  round-trip byte-for-byte.
+
+See the plan (docs/design/config-v2-plan.md) for the milestone-by-
+milestone status.
+
 ## 12. `kernel.conf` — the kernel's boot configuration (decided)
 
 The kernel's own options live in a config file **next to the kernel on
