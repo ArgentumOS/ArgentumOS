@@ -5,6 +5,30 @@ Modeled loosely on macOS `defaults`, but with the configuration **tree**
 that the FSH redesign provides (`Configuration/` is a first-class directory
 at every scope) instead of plists.
 
+## 0. Config-language policy (standing, 2026-09)
+
+**All software with config files on FNX uses libconfig.** One
+configuration language, one tool (`config`), one file-per-domain model —
+no format zoo (no XML/ini/JSON/TOML config authored by FNX or by any
+adopted port).
+
+- **First-party + adopted third-party software**: configuration is a
+  libconfig domain in a `Configuration/` directory (system scope by
+  default), read by the software itself or by the `config` tool.
+  Adopting a port must not introduce a second config format — convert or
+  gate it behind the domain (recorded per
+  docs/design/self-hosting-packages.md §6).
+- **A consumer's private on-disk format may remain only where the domain
+  targets it** (the kernel.conf precedent: `system.kernel` drives the
+  ESP's `kernel.conf` file the bootloader reads). FNX never authors
+  config in a foreign format directly.
+- **fontconfig** is the standing migration example: its XML config
+  surface (`fonts.conf`, the `fcxml` front-end) is being replaced by a
+  libconfig domain + loader (docs/design/fontconfig-config-plan.md) so
+  no XML config exists on FNX.
+
+---
+
 ---
 
 ## 1. Purpose
