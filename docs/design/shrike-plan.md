@@ -146,6 +146,41 @@ drawing code.
   parameterized engine gives free; richer themes are later `.conf`
   work, not code.
 
+### Visual target (mockup, 2026-09)
+
+**The reference look is the user's mockup (2026-09): a refined
+continuation of the classic Mac OS X / GNUstep / NeXTSTEP workstation
+aesthetic** — elegant, dense, desktop-oriented, tactile, functional.
+Not flat-modern, not mobile-style. Concrete target, expressed as theme
+parameters (provisional values set from the mockup at S1):
+
+- **Chrome**: light silver-grey, subtly textured/gradient surfaces;
+  **thin dark-grey borders**; **small corner radii** (≈2–3 pt);
+  gentle/restrained shadows; **subtle bevels**; recessed (inset)
+  panels; compact controls and fine borders — no bright gradients, no
+  glassmorphism, no oversized controls, no excessive whitespace.
+- **Palette**: chrome light silver-grey · page off-white (document
+  surfaces) · text black · **accent muted lavender/periwinkle blue**
+  (selected controls, active tabs, progress, menu selection) ·
+  menubar thin light grey.
+- **Menubar**: global, across the top — system icon, active app name,
+  then File/Edit/View/Go/Window/Help (active menu highlighted with the
+  accent); far right: date and time (already the app-model corpus
+  shape).
+- **Typography**: serif for dense document content (off-white page,
+  black serif text — Liberation Serif); compact sans for UI chrome.
+- **Widget states**: the mockup shows normal/pressed/disabled buttons,
+  radio/checkbox, combo, stepper, slider, tabs, segmented, text
+  fields, progress bars — the v1 catalog exercising states as theme
+  parameter sets.
+- **Minimal decorative imagery inside widgets**: chrome is
+  vector-parameter driven; imagery is content (wallpaper,
+  document/editor content), not chrome.
+
+Desktop-shell elements from the mockup (wallpaper, the right-edge
+vertical dock with separators and trash, menubar date/time) are
+**Kestrel-owned desktop chrome**, not toolkit chrome — see §5.
+
 ### UI scale — accessibility multiplier (decided)
 
 **Decision (2026-09): for accessibility, one setting multiplies the
@@ -322,6 +357,11 @@ focus, input, and menus before any other app exists. It is small
 - focus tracking (EWMH `_NET_ACTIVE_WINDOW`),
 - the **global menubar** (the spec's WM-owned bar), swapping menus by
   focus,
+- **desktop chrome** per the visual target (§3 mockup): the wallpaper
+  surface, the right-edge vertical dock (single column of app icons
+  with separators, trash at the bottom), and the menubar's right-side
+  date/time — the app-model corpus's desktop-shell elements,
+  WM-owned,
 - workspace/session behavior per the app-model/sessionmgr corpus
   (unchanged).
 
