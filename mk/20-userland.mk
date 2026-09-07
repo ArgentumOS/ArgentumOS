@@ -150,9 +150,9 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
 		-I$(X11PREFIX)/include/harfbuzz \
-		-L$(X11PREFIX)/lib \
+		-L$(X11PREFIX)/lib -L$(CURDIR)/$(FNXLIB) \
 		userland/tests/text_pipeline.cpp \
-		-lfontconfig -lharfbuzz -lfreetype \
+		-lfontconfig -lharfbuzz -lfreetype -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/text_pipeline"
 	$(MUSL64_CC) userland/tools/acl.c -o "$(ROOTFS64)/System/Tools/acl"
 	$(MUSL64_CC) -Iinclude -Iuserland userland/tools/config.c -L$(CURDIR)/$(FNXLIB) \
@@ -213,18 +213,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
 	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
 	@cp userland/configuration/system.mounts.conf "$(ROOTFS64)/System/Configuration/system.mounts.conf"
-	# --- FSH fonts (text stack): OS fonts in /System/Shared/Fonts and the
-	# fontconfig config in /System/Configuration/fonts (libfontconfig is
-	# built with --sysconfdir=/System/Configuration, so this is the file
-	# it reads at runtime - it replaces the stock /usr/share dirs with the
-	# FSH font locations).
+	# --- FSH fonts (text stack): OS fonts in /System/Shared/Fonts; the
+	# fontconfig config is the libconfig domain system.fonts.conf (M0,
+	# docs/design/fontconfig-config-plan.md) - no XML fonts.conf ships.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts" \
-		"$(ROOTFS64)/System/Configuration/fonts" \
 		"$(ROOTFS64)/System/Variable Data/fontconfig"
 	@cp userland/fonts/DejaVuSans.ttf \
 		"$(ROOTFS64)/System/Shared/Fonts/"
-	@cp userland/configuration/fonts.conf \
-		"$(ROOTFS64)/System/Configuration/fonts/fonts.conf"
+	@cp userland/configuration/system.fonts.conf \
+		"$(ROOTFS64)/System/Configuration/system.fonts.conf"
 	# --- shared libc (docs/shared-libraries-plan.md): stage the dynamic
 	# linker + libc for the dynamic userland. The interpreter is a
 	# hardlink of libc.so (same inode), matching musl's own install, so

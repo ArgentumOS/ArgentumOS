@@ -1,0 +1,268 @@
+diff --git a/third_party/x11/fontconfig/src/Makefile.am b/third_party/x11/fontconfig/src/Makefile.am
+index b08d7b5..c58b2d4 100644
+--- a/third_party/x11/fontconfig/src/Makefile.am
++++ b/third_party/x11/fontconfig/src/Makefile.am
+@@ -124,6 +124,7 @@ libfontconfig_la_SOURCES = \
+ 	fchash.c \
+ 	fcinit.c \
+ 	fclang.c \
++	fclibconf.c \
+ 	fclist.c \
+ 	fcmatch.c \
+ 	fcmatrix.c \
+@@ -147,7 +148,10 @@ lib_LTLIBRARIES = libfontconfig.la
+ libfontconfig_la_LDFLAGS =			\
+ 	-version-info @LIBT_VERSION_INFO@ -no-undefined $(export_symbols)
+ 
+-libfontconfig_la_LIBADD = $(ICONV_LIBS) $(FREETYPE_LIBS) $(LIBXML2_LIBS) $(EXPAT_LIBS) $(LTLIBINTL)
++libfontconfig_la_LIBADD = $(ICONV_LIBS) $(FREETYPE_LIBS) $(LIBXML2_LIBS) $(EXPAT_LIBS) $(LTLIBINTL) -lconfig
++
++# FNX: libconfig.h lives in the FNX tree, not in this prefix
++AM_CPPFLAGS += -I../../../../userland
+ 
+ libfontconfig_la_DEPENDENCIES = $(fontconfig_def_dependency)
+ 
+diff --git a/third_party/x11/fontconfig/src/Makefile.in b/third_party/x11/fontconfig/src/Makefile.in
+index ac934ba..12902b3 100644
+--- a/third_party/x11/fontconfig/src/Makefile.in
++++ b/third_party/x11/fontconfig/src/Makefile.in
+@@ -171,7 +171,7 @@ am__DEPENDENCIES_1 =
+ am_libfontconfig_la_OBJECTS = fcatomic.lo fccache.lo fccfg.lo \
+ 	fccharset.lo fccompat.lo fcdbg.lo fcdefault.lo fcdir.lo \
+ 	fcformat.lo fcfreetype.lo fcfs.lo fcptrlist.lo fchash.lo \
+-	fcinit.lo fclang.lo fclist.lo fcmatch.lo fcmatrix.lo fcname.lo \
++	fcinit.lo fclang.lo fclibconf.lo fclist.lo fcmatch.lo fcmatrix.lo fcname.lo \
+ 	fcobjs.lo fcpat.lo fcrange.lo fcserialize.lo fcstat.lo \
+ 	fcstr.lo fcweight.lo fcxml.lo ftglue.lo
+ libfontconfig_la_OBJECTS = $(am_libfontconfig_la_OBJECTS)
+@@ -300,6 +300,7 @@ EXEEXT_FOR_BUILD = @EXEEXT_FOR_BUILD@
+ EXPAT_CFLAGS = @EXPAT_CFLAGS@
+ EXPAT_LIBS = @EXPAT_LIBS@
+ FC_ADD_FONTS = @FC_ADD_FONTS@
++	-I../../../../userland				\
+ FC_CACHEDIR = @FC_CACHEDIR@
+ FC_DEFAULT_FONTS = @FC_DEFAULT_FONTS@
+ FC_FONTDATE = @FC_FONTDATE@
+@@ -506,6 +507,7 @@ libfontconfig_la_SOURCES = \
+ 	fchash.c \
+ 	fcinit.c \
+ 	fclang.c \
++	fclibconf.c \
+ 	fclist.c \
+ 	fcmatch.c \
+ 	fcmatrix.c \
+@@ -528,7 +530,7 @@ lib_LTLIBRARIES = libfontconfig.la
+ libfontconfig_la_LDFLAGS = \
+ 	-version-info @LIBT_VERSION_INFO@ -no-undefined $(export_symbols)
+ 
+-libfontconfig_la_LIBADD = $(ICONV_LIBS) $(FREETYPE_LIBS) $(LIBXML2_LIBS) $(EXPAT_LIBS) $(LTLIBINTL)
++libfontconfig_la_LIBADD = $(ICONV_LIBS) $(FREETYPE_LIBS) $(LIBXML2_LIBS) $(EXPAT_LIBS) $(LTLIBINTL) -lconfig
+ libfontconfig_la_DEPENDENCIES = $(fontconfig_def_dependency)
+ PUBLIC_FILES = \
+ 	$(top_srcdir)/fontconfig/fontconfig.h \
+diff --git a/third_party/x11/fontconfig/src/fcinit.c b/third_party/x11/fontconfig/src/fcinit.c
+index c05cdc5..26b5105 100644
+--- a/third_party/x11/fontconfig/src/fcinit.c
++++ b/third_party/x11/fontconfig/src/fcinit.c
+@@ -86,7 +86,27 @@ FcInitLoadOwnConfig (FcConfig *config)
+ 
+     FcInitDebug ();
+ 
+-    if (!FcConfigParseAndLoad (config, 0, FcTrue))
++    /* FNX: the default configuration comes from the libconfig domain
++     * (docs/design/fontconfig-config-plan.md), not the XML fonts.conf.
++     * An explicit FONTCONFIG_FILE env var still wins (stock behavior);
++     * the domain loader drives the same internal builders as fcxml so
++     * every public reader behaves identically. If no domain file
++     * exists FcConfigLoadDomain returns FcTrue with an unset config,
++     * and the cachedir/cacheDirs fallback below still applies. */
++    if (getenv ("FONTCONFIG_FILE") == NULL ||
++	getenv ("FONTCONFIG_FILE")[0] == 0)
++    {
++	if (!FcConfigLoadDomain (config))
++	{
++	    const FcChar8 *sysroot = FcConfigGetSysRoot (config);
++	    FcConfig *fallback = FcInitFallbackConfig (sysroot);
++
++	    FcConfigDestroy (config);
++
++	    return fallback;
++	}
++    }
++    else if (!FcConfigParseAndLoad (config, 0, FcTrue))
+     {
+ 	const FcChar8 *sysroot = FcConfigGetSysRoot (config);
+ 	FcConfig *fallback = FcInitFallbackConfig (sysroot);
+diff --git a/third_party/x11/fontconfig/src/fcint.h b/third_party/x11/fontconfig/src/fcint.h
+index fbf0e81..3406506 100644
+--- a/third_party/x11/fontconfig/src/fcint.h
++++ b/third_party/x11/fontconfig/src/fcint.h
+@@ -1031,6 +1031,10 @@ FcConfigParseOnly (FcConfig		*config,
+ 		   const FcChar8	*name,
+ 		   FcBool		complain);
+ 
++/* fclibconf.c: FNX default-config loader (system.fonts domain) */
++FcPrivate FcBool
++FcConfigLoadDomain (FcConfig		*config);
++
+ FcPrivate FcChar8 *
+ FcConfigRealFilename (FcConfig		*config,
+ 		      const FcChar8	*url);
+diff --git a/third_party/x11/fontconfig/src/fclibconf.c b/third_party/x11/fontconfig/src/fclibconf.c
+new file mode 100644
+index 0000000..9324aed
+--- /dev/null
++++ b/third_party/x11/fontconfig/src/fclibconf.c
+@@ -0,0 +1,152 @@
++/*
++ * fontconfig/src/fclibconf.c
++ *
++ * FNX: fontconfig configuration from the libconfig domain
++ * (docs/design/fontconfig-config-plan.md). The default-config load path
++ * reads /System/Configuration/system.fonts.conf (scope CONFIG_SCOPE_SYSTEM,
++ * domain "system.fonts") with the FNX libconfig C API and drives the same
++ * internal builders fcxml.c uses, so the public FcConfig readers behave as
++ * before.
++ *
++ * M0 scope (fontconfig-config-plan §5): dirs / cachedir / rescan and the
++ * selectfont accept/reject globs. The full match/test/edit rule DSL is M1.
++ *
++ * Permission is hereby granted to use this file under the same terms as
++ * the fontconfig license (MIT-style, see the COPYING file).
++ */
++
++#include "fcint.h"
++#include <libconfig.h>
++
++#include <string.h>
++
++#define FC_DOMAIN	"system.fonts"
++
++/* Reads one flat dotted key from the domain (scope system). Returns:
++ *   1  found and copied into *out (caller frees)
++ *   0  absent (NOT_FOUND / TYPE on an absent key)
++ *  -1  hard error (PARSE / IO / other): the domain exists but is broken
++ */
++static int
++FcLibconfGetString (const char *key, FcChar8 **out)
++{
++    const char *v = NULL;
++    config_err_t e = config_get_string (FC_DOMAIN, key, &v);
++
++    if (e == CONFIG_OK && v)
++    {
++	*out = (FcChar8 *) FcStrdup ((const FcChar8 *) v);
++	return *out != NULL ? 1 : -1;
++    }
++    if (e == CONFIG_ERR_NOT_FOUND || e == CONFIG_ERR_TYPE)
++	return 0;	/* absent key */
++    return -1;		/* domain present but unreadable */
++}
++
++/* dirs = /a, /b   (comma list of absolute FSH paths) */
++static FcBool
++FcLibconfLoadDirs (FcConfig *config)
++{
++    config_value_t *items;
++    size_t n, i;
++    config_err_t e;
++
++    e = config_get_array (FC_DOMAIN, "dirs", &items, &n);
++    if (e == CONFIG_ERR_NOT_FOUND || e == CONFIG_ERR_TYPE)
++	return FcTrue;	/* no dirs key: leave FcConfigCreate's empty set */
++    if (e != CONFIG_OK)
++	return FcFalse;
++    if (!FcConfigResetFontDirs (config))
++	return FcFalse;
++    for (i = 0; i < n; i++)
++    {
++	if (items[i].type != CONFIG_TYPE_STRING || !items[i].v.string)
++	    return FcFalse;
++	if (!FcConfigAddFontDir (config,
++				 (const FcChar8 *) items[i].v.string,
++				 NULL, NULL))
++	    return FcFalse;
++    }
++    return FcTrue;
++}
++
++static FcBool
++FcLibconfLoadCachedir (FcConfig *config)
++{
++    FcChar8 *d = NULL;
++    int r = FcLibconfGetString ("cachedir", &d);
++
++    if (r <= 0)
++	return r == 0;	/* absent: fcinit supplies the default cachedir;
++			 * broken domain: hard error */
++    if (!FcConfigAddCacheDir (config, (const FcChar8 *) d))
++    {
++	FcStrFree (d);
++	return FcFalse;
++    }
++    FcStrFree (d);
++    return FcTrue;
++}
++
++static FcBool
++FcLibconfLoadRescan (FcConfig *config)
++{
++    int64_t v;
++    config_err_t e = config_get_int (FC_DOMAIN, "rescan", &v);
++
++    if (e != CONFIG_OK)
++	return FcTrue;	/* absent: default 30 already set */
++    return FcConfigSetRescanInterval (config, (int) v);
++}
++
++/* accept = [ "/glob", ... ]  /  reject = [ ... ] */
++static FcBool
++FcLibconfLoadGlobs (FcConfig *config, FcBool accept)
++{
++    config_value_t *items;
++    size_t n, i;
++    config_err_t e;
++
++    e = config_get_array (FC_DOMAIN, accept ? "accept" : "reject",
++			  &items, &n);
++    if (e == CONFIG_ERR_NOT_FOUND || e == CONFIG_ERR_TYPE)
++	return FcTrue;
++    if (e != CONFIG_OK)
++	return FcFalse;
++    for (i = 0; i < n; i++)
++    {
++	if (items[i].type != CONFIG_TYPE_STRING || !items[i].v.string)
++	    return FcFalse;
++	if (!FcConfigGlobAdd (config,
++			      (const FcChar8 *) items[i].v.string, accept))
++	    return FcFalse;
++    }
++    return FcTrue;
++}
++
++/* Populate `config` from the system.fonts domain. M0: dirs, cachedir,
++ * rescan, accept/reject globs. Returns FcFalse on a hard error (domain
++ * unreadable with a parse error, or a value of the wrong shape). */
++FcBool
++FcConfigLoadDomain (FcConfig *config)
++{
++    if (!config)
++	return FcFalse;
++
++    /* config_get_* resolves through the same scope machinery every FNX
++     * config reader uses (system -> user -> shared; this domain ships in
++     * the system scope). A missing domain is NOT an error here: fcinit's
++     * fallback supplies default dirs + cachedir, mirroring how the stock
++     * built-in XML behaves when fonts.conf is absent. */
++    if (!FcLibconfLoadDirs (config))
++	return FcFalse;
++    if (!FcLibconfLoadCachedir (config))
++	return FcFalse;
++    if (!FcLibconfLoadRescan (config))
++	return FcFalse;
++    if (!FcLibconfLoadGlobs (config, FcTrue))
++	return FcFalse;
++    if (!FcLibconfLoadGlobs (config, FcFalse))
++	return FcFalse;
++    return FcTrue;
++}

@@ -1,8 +1,11 @@
 # fontconfig configuration → libconfig domain plan
 
-Status: PLAN — for execution (decisions 2026-09: patch fontconfig to read
-the domain directly, no XML on FNX; full rule DSL domain-expressible;
-policy recorded in docs/design/config-design.md §0).
+Status: M0 DONE (committed): default config loads from the libconfig
+domain (system.fonts.conf → fclibconf.c), no XML fontconfig file ships;
+guest text_pipeline green. M1 (full match/test/edit DSL) is next.
+Decisions 2026-09: patch fontconfig to read the domain directly, no XML
+on FNX; full rule DSL domain-expressible; policy recorded in
+docs/design/config-design.md §0.
 
 ## 1. Goal
 

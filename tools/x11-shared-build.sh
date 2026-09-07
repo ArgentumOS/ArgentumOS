@@ -187,9 +187,17 @@ log "fontconfig"
     git apply "$R/third_party/x11/fontconfig-nogperf.patch" \
       > "$LOG/fontconfig-patch.log" 2>&1 || exit 1
   fi
+  # FNX libconfig domain loader (docs/design/fontconfig-config-plan.md):
+  # the default config comes from /System/Configuration/system.fonts.conf
+  # (src/fclibconf.c) instead of XML fonts.conf. Same idempotency rule.
+  if [ ! -f src/fclibconf.c ]; then
+    git apply "$R/third_party/x11/fontconfig-libconf.patch" \
+      >> "$LOG/fontconfig-patch.log" 2>&1 || exit 1
+  fi
   ./configure --prefix="$P" --host=x86_64-unknown-linux-gnu \
     $SHARED $STATIC --disable-docs --enable-libxml2=no \
     --sysconfdir=/System/Configuration --localstatedir=/System/Variable\ Data \
+    LDFLAGS="-L$P/lib -L$R/.build/fnxlib" \
     > "$LOG/fontconfig.log" 2>&1 || exit 1
   touch aclocal.m4 configure Makefile.in config.h.in
   make >> "$LOG/fontconfig.log" 2>&1 || exit 1
@@ -198,7 +206,8 @@ log "fontconfig"
   # install everything under a staging tree, then copy the prefix pieces
   # (libs/headers/.pc/bin) into the real prefix. The staged
   # System/Configuration/fonts tree is discarded here; the guest gets the
-  # FNX-authored userland/configuration/fonts.conf from the image build.
+  # FNX-authored system.fonts.conf domain from the image build (M0,
+  # docs/design/fontconfig-config-plan.md).
   rm -rf "$R/.build/x11/fc-stage"
   make install DESTDIR="$R/.build/x11/fc-stage" >> "$LOG/fontconfig.log" 2>&1 \
     || exit 1
