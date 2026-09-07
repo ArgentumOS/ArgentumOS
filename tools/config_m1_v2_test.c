@@ -215,8 +215,7 @@ int main(void)
 	check(e == CONFIG_ERR_NOT_FOUND,
 	      "empty array entry removed after unsetting last element");
 
-	/* record-array surgical writes are M2 (canonical writer); M1
-	 * rejects cleanly */
+	/* record-array leaf writes land in M2 with the canonical writer */
 	config_remove_domain(CONFIG_SCOPE_SYSTEM, "rw");
 	put("System", "rw",
 		"rules = [\n"
@@ -230,8 +229,12 @@ int main(void)
 		"]\n");
 	e = config_set_string(CONFIG_SCOPE_SYSTEM, "rw",
 			      "rules[0].edits[0].value", "new");
-	check(e == CONFIG_ERR_INVALID,
-	      "record-array leaf write rejects in M1 (M2 writer)");
+	check(e == CONFIG_OK, "M2: record-array leaf write succeeds");
+	if(e == CONFIG_OK) {
+		e = config_get_string("rw", "rules[0].edits[0].value", &s);
+		check(!e && s && !strcmp(s, "new"),
+		      "rules[0].edits[0].value reads back new");
+	}
 	config_remove_domain(CONFIG_SCOPE_SYSTEM, "accw");
 	config_remove_domain(CONFIG_SCOPE_SYSTEM, "rw");
 

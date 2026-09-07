@@ -132,9 +132,9 @@ int main(void)
 		config_value_free(&v);
 	}
 
-	/* ---- v2-shaped (array-of-records) write rejects cleanly in M0
-	 * (the canonical writer is M2; a record/array value cannot be
-	 * serialized to v1 text yet) --------------------------------- */
+	/* ---- M2: array-of-record domain writes round-trip (supersedes
+	 * the M0 write rejection; canonical writer lands in M2) ------ */
+	config_remove_domain(CONFIG_SCOPE_SYSTEM, "wtest");
 	put_sys("wtest",
 		"rules = [\n"
 		"  {\n"
@@ -142,8 +142,17 @@ int main(void)
 		"  }\n"
 		"]\n");
 	e = config_set_int(CONFIG_SCOPE_SYSTEM, "wtest", "other", 1);
-	check(e == CONFIG_ERR_INVALID,
-	      "config_set on array-of-record domain rejects cleanly (M0)");
+	check(e == CONFIG_OK, "M2: array-of-record domain write succeeds");
+	if(e == CONFIG_OK) {
+		config_value_t rv;
+
+		e = config_read_scope(CONFIG_SCOPE_SYSTEM, "wtest",
+				      "rules[0].m", &rv);
+		check(e == CONFIG_OK && rv.type == CONFIG_TYPE_INT &&
+		      rv.v.integer == 1,
+		      "rules[0].m survives the rewrite");
+		if(e == CONFIG_OK) config_value_free(&rv);
+	}
 	config_remove_domain(CONFIG_SCOPE_SYSTEM, "pwtest");
 	config_remove_domain(CONFIG_SCOPE_SYSTEM, "wtest");
 	/* ---- §10 parse diagnostics in v2 shapes ---------------------- */

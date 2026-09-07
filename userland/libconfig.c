@@ -2077,9 +2077,13 @@ static config_err_t read_scope_internal(config_scope_t scope,
 			 * children; inside a flat-spelled record only
 			 * names may follow (records aren't arrays) */
 			if(!record_from_prefix(list, base, &baseval)) {
+				config_err_t e2;
+
 				entries_free(list);
-				return tree_descend(&baseval, steps, nsteps,
-						    base_idents, out);
+				e2 = tree_descend(&baseval, steps, nsteps,
+						  base_idents, out);
+				value_free(&baseval);
+				return e2;
 			}
 			entries_free(list);
 			return CONFIG_ERR_NOT_FOUND;
@@ -2095,8 +2099,10 @@ static config_err_t read_scope_internal(config_scope_t scope,
 			if(e2) {
 				return e2;
 			}
-			return tree_descend(&baseval, steps, nsteps,
-					    base_idents, out);
+			e2 = tree_descend(&baseval, steps, nsteps,
+					  base_idents, out);
+			value_free(&baseval);
+			return e2;
 		}
 	}
 }
@@ -2829,6 +2835,251 @@ static config_err_t mkdir_p(const char *dir)
 
 /* ---- canonical writer (group records, docs §3.1) ------------------- */
 
+static config_err_t emit_value_lines(int fd, const char *indent,
+				     const char *name,
+				     const config_value_t *v, char *scratch);
+static void indent_of(int depth, char *out, size_t outsz);
+static config_err_t write_indented(int fd, const char *indent,
+				   const char *relkey, const char *rhs);
+static bool value_has_records(const config_value_t *v);
+
+/* canonical leaf emitter: one-line for scalars/scalar arrays (v1
+ * spelling), nested v2 spelling for records and record-bearing arrays.
+ * Replaces write_indented at leaf sites so v2-shaped domains round-trip
+ * through their own grammar. */
+static config_err_t emit_leaf(int fd, const char *indent, const char *name,
+			      const config_value_t *v)
+{
+	if(v->type == CONFIG_TYPE_RECORD ||
+	   (v->type == CONFIG_TYPE_ARRAY && value_has_records(v))) {
+		return emit_value_lines(fd, indent, name, v, NULL);
+	}
+	{
+		char *tv = NULL;
+		config_err_t e = value_to_text(v, &tv);
+
+		if(e) {
+			return e;
+		}
+		e = write_indented(fd, indent, name, tv);
+		free(tv);
+		return e;
+	}
+}
+
+/* ---- canonical writer (group records, docs §3.1) ------------------- */
+
+static config_err_t emit_value_lines(int fd, const char *indent,
+				     const char *name,
+				     const config_value_t *v, char *scratch);
+
+/* true when the value contains at least one CONFIG_TYPE_RECORD anywhere
+ * (a record, or an array element chain reaching a record) */
+static bool value_has_records(const config_value_t *v)
+{
+	switch(v->type) {
+	case CONFIG_TYPE_RECORD:
+		return true;
+	case CONFIG_TYPE_ARRAY: {
+		size_t i;
+
+		for(i = 0; i < v->v.array.count; i++) {
+			if(value_has_records(&v->v.array.items[i])) {
+				return true;
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
+	return false;
+}
+
+/* raw single-line write helper */
+static config_err_t putl(int fd, const char *s, size_t n)
+{
+	if(write(fd, s, n) != (ssize_t)n) {
+		return CONFIG_ERR_IO;
+	}
+	return CONFIG_OK;
+}
+
+/* one record value: its fields on lines one deeper than `indent`.
+ * Canonical record body: first field may share the `{` line is allowed,
+ * but the writer always opens `{` alone and closes `}` alone (the
+ * strict §10.2 line structure). */
+static config_err_t emit_record_body(int fd, const char *indent,
+				     const config_value_t *rec)
+{
+	char inner[640];
+	size_t i;
+	config_err_t e = CONFIG_OK;
+
+	indent_of(strlen(indent) / 4 + 1, inner, sizeof(inner));
+	for(i = 0; i < rec->v.record.count && !e; i++) {
+		const config_record_field_t *f = &rec->v.record.fields[i];
+
+		e = emit_value_lines(fd, inner, f->name, &f->value, NULL);
+	}
+	return e;
+}
+
+/* An array that contains records: the canonical anonymous-array
+ * spelling. Elements are one per line; a `,` on its own line separates
+ * elements (the v2 line grammar has no inline ';' separators). */
+static config_err_t emit_record_array(int fd, const char *indent,
+				      const config_value_t *arr)
+{
+	char inner[640];
+	size_t i;
+	config_err_t e = CONFIG_OK;
+
+	indent_of(strlen(indent) / 4 + 1, inner, sizeof(inner));
+	for(i = 0; i < arr->v.array.count && !e; i++) {
+		const config_value_t *el = &arr->v.array.items[i];
+		char et[CONF_MAX_LINE + 256];
+		char line[CONF_MAX_LINE + 640];
+		size_t n;
+
+		if(el->type == CONFIG_TYPE_RECORD) {
+			n = snprintf(line, sizeof(line), "%s{\n", inner);
+			if(n >= sizeof(line)) {
+				return CONFIG_ERR_PARSE;
+			}
+			e = putl(fd, line, n);
+			if(e) {
+				break;
+			}
+			e = emit_record_body(fd, inner, el);
+			if(e) {
+				break;
+			}
+			n = snprintf(line, sizeof(line), "%s}", inner);
+			if(n >= sizeof(line)) {
+				return CONFIG_ERR_PARSE;
+			}
+			e = putl(fd, line, n);
+			if(e) {
+				break;
+			}
+		} else {
+			char *tv = NULL;
+
+			e = value_to_text(el, &tv);
+			if(e) {
+				return e;
+			}
+			n = snprintf(line, sizeof(line), "%s%s", inner, tv);
+			free(tv);
+			if(n >= sizeof(line)) {
+				return CONFIG_ERR_PARSE;
+			}
+			e = putl(fd, line, n);
+			if(e) {
+				break;
+			}
+		}
+		(void)et;
+		if(i + 1 < arr->v.array.count) {
+			n = snprintf(line, sizeof(line), ",\n");
+			if(write(fd, line, 2) != 2) {
+				e = CONFIG_ERR_IO;
+				break;
+			}
+		} else {
+			if(write(fd, "\n", 1) != 1) {
+				e = CONFIG_ERR_IO;
+				break;
+			}
+		}
+	}
+	if(e) {
+		return e;
+	}
+	{
+		char line[64];
+		size_t n = snprintf(line, sizeof(line), "%s]\n", indent);
+
+		if(n >= sizeof(line)) {
+			return CONFIG_ERR_PARSE;
+		}
+		return putl(fd, line, n);
+	}
+}
+
+/* Canonical single assignment: `indent name = value`. Scalars and
+ * scalar-only arrays write one line (v1 comma spelling, byte-for-byte
+ * flat round trip). Records and record-bearing arrays use the nested
+ * v2 spelling spanning lines. */
+static config_err_t emit_value_lines(int fd, const char *indent,
+				     const char *name,
+				     const config_value_t *v, char *scratch)
+{
+	char line[CONF_MAX_KEY + CONF_MAX_LINE + 640];
+	size_t n;
+
+	(void)scratch;
+	if(v->type == CONFIG_TYPE_RECORD) {
+		n = snprintf(line, sizeof(line), "%s%s = {\n", indent,
+			     name);
+		if(n >= sizeof(line)) {
+			return CONFIG_ERR_PARSE;
+		}
+		if(write(fd, line, n) != (ssize_t)n) {
+			return CONFIG_ERR_IO;
+		}
+		{
+			config_err_t e = emit_record_body(fd, indent, v);
+
+			if(e) {
+				return e;
+			}
+		}
+		n = snprintf(line, sizeof(line), "%s}\n", indent);
+		if(n >= sizeof(line)) {
+			return CONFIG_ERR_PARSE;
+		}
+		return putl(fd, line, n);
+	}
+	if(v->type == CONFIG_TYPE_ARRAY && v->v.array.count == 0) {
+		/* an empty value would reload as an empty string, so
+		 * write the bracket spelling */
+		n = snprintf(line, sizeof(line), "%s%s = []\n", indent,
+			     name);
+		if(n >= sizeof(line)) {
+			return CONFIG_ERR_PARSE;
+		}
+		return putl(fd, line, n);
+	}
+	if(v->type == CONFIG_TYPE_ARRAY && value_has_records(v)) {
+		n = snprintf(line, sizeof(line), "%s%s = [\n", indent,
+			     name);
+		if(n >= sizeof(line)) {
+			return CONFIG_ERR_PARSE;
+		}
+		if(write(fd, line, n) != (ssize_t)n) {
+			return CONFIG_ERR_IO;
+		}
+		return emit_record_array(fd, indent, v);
+	}
+	{
+		char *tv = NULL;
+		config_err_t e = value_to_text(v, &tv);
+
+		if(e) {
+			return e;
+		}
+		n = snprintf(line, sizeof(line), "%s%s = %s\n", indent,
+			     name, tv);
+		free(tv);
+		if(n >= sizeof(line)) {
+			return CONFIG_ERR_PARSE;
+		}
+		return putl(fd, line, n);
+	}
+}
+
 static void indent_of(int depth, char *out, size_t outsz)
 {
 	size_t i, n = (size_t)depth * 4;
@@ -2919,7 +3170,6 @@ static config_err_t emit_children(int fd, struct entry *list,
 		size_t fl = (plen ? plen + 1 : 0) + strlen(kids[i]);
 		char *full = malloc(fl + 1);
 		struct entry *leaf;
-		char *tv = NULL;
 
 		if(!full) {
 			e = CONFIG_ERR_NOMEM;
@@ -2934,12 +3184,9 @@ static config_err_t emit_children(int fd, struct entry *list,
 		}
 		leaf = entry_find(list, full);
 		if(leaf) {
-			/* a leaf child: "name = value" */
-			e = value_to_text(&leaf->val, &tv);
-			if(!e) {
-				e = write_indented(fd, ind, kids[i], tv);
-			}
-			free(tv);
+			/* a leaf child: "name = value" (record-bearing
+			 * values take the nested v2 spelling) */
+			e = emit_leaf(fd, ind, kids[i], &leaf->val);
 		} else {
 			/* a container child: nested block */
 			e = write_indented(fd, ind, kids[i], "{");
@@ -3023,13 +3270,8 @@ static config_err_t emit_grouped(int fd, struct entry *list,
 		if(entry_find(list, tops[i])) {
 			/* a top-level leaf */
 			struct entry *leaf = entry_find(list, tops[i]);
-			char *tv = NULL;
 
-			e = value_to_text(&leaf->val, &tv);
-			if(!e) {
-				e = write_indented(fd, "", tops[i], tv);
-			}
-			free(tv);
+			e = emit_leaf(fd, "", tops[i], &leaf->val);
 		} else if(expl) {
 			/* an explicit top-level block: nested spelling */
 			e = write_indented(fd, "", tops[i], "{");
@@ -3053,16 +3295,7 @@ static config_err_t emit_grouped(int fd, struct entry *list,
 				   en->key[tl] != '.') {
 					continue;
 				}
-				{
-					char *tv = NULL;
-
-					e = value_to_text(&en->val, &tv);
-					if(!e) {
-						e = write_indented(fd, "",
-								   en->key, tv);
-					}
-					free(tv);
-				}
+				e = emit_leaf(fd, "", en->key, &en->val);
 			}
 		}
 	}
@@ -3125,26 +3358,8 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 	if(blocks && nblocks > 0) {
 		e = emit_grouped(fd, list, blocks, nblocks);
 	} else {
-		for(en = list; en; en = en->next) {
-			char *tv = NULL;
-			char line[CONF_MAX_KEY + CONF_MAX_LINE + 64];
-			size_t len;
-
-			e = value_to_text(&en->val, &tv);
-			if(e) {
-				break;
-			}
-			len = snprintf(line, sizeof(line), "%s = %s\n",
-				       en->key, tv);
-			free(tv);
-			if(len >= sizeof(line)) {
-				e = CONFIG_ERR_PARSE;
-				break;
-			}
-			if(write(fd, line, len) != (ssize_t)len) {
-				e = CONFIG_ERR_IO;
-				break;
-			}
+		for(en = list; en && !e; en = en->next) {
+			e = emit_leaf(fd, "", en->key, &en->val);
 		}
 	}
 	if(e) {
