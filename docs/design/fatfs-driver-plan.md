@@ -1,6 +1,16 @@
 # Native FAT12/16/32 + exFAT driver (fs/fatfs)
 
-**Status: DESIGN (2026-09).** First attempt (a kernel VFS adapter wrapping
+**Status: M0 DONE (FAT32 read) — committed a236a3f (pivot) + <M0 commit>.**
+M0 acceptance green in-guest: the ESP (PIIX IDE master partition 1,
+hda1) mounts at /System/ESP via the boot mount record; `ls` lists the
+root (EFI/NvVars/STARTUP.NSH), traverses EFI/BOOT, decodes the LFN
+`kernel.conf`, and `wc -c` reads BOOTX64.EFI (1,728,512 B across a 3376
+cluster chain) and kernel.conf (1481 B) through fat_bmap + the generic
+page-cache path. LFN layout was derived empirically from the image (parts
+arrive reverse-chunked; the 13 UTF-16 units sit at bytes 1-10/14-25/
+28-31 of a slot).
+
+**Status (orig note): DESIGN (2026-09).** First attempt (a kernel VFS adapter wrapping
 the FatFs middleware, third_party/fatfs) was abandoned mid-M0: mount
 worked but the first readdir faulted inside FatFs internals, and the
 wrap's impedance with FNX's VFS is systemic (double caching, no stable

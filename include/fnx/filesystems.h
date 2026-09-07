@@ -11,7 +11,7 @@
 #include <fnx/types.h>
 #include <fnx/limits.h>
 
-#define NR_FILESYSTEMS		10	/* supported filesystems */
+#define NR_FILESYSTEMS		11	/* supported filesystems */
 
 /* special device numbers for nodev filesystems */
 enum {
@@ -150,6 +150,7 @@ int iso9660_read_superblock(__dev_t, struct superblock *);
 void iso9660_release_superblock(struct superblock *);
 int iso9660_init(void);
 int xbfs_init(void);
+int fatfs_init(void);
 
 /* procfs prototypes */
 int procfs_file_open(struct inode *, struct fd *);

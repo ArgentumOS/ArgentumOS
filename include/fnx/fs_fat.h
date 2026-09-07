@@ -27,6 +27,7 @@
 struct fatfs_sb_info {
 	/* geometry from the boot sector / BPB */
 	__u32 total_sectors;		/* volume size in sectors */
+	__u32 fat_sector;		/* first FAT sector (= reserved) */
 	__u32 fat_sectors;		/* sectors per FAT */
 	__u32 root_cluster;		/* FAT32/16/12 root dir start cluster
 					   (0 = fixed root area) */

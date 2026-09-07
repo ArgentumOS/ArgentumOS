@@ -82,6 +82,9 @@ void fs_init(void)
 	if(xbfs_init()) {
 		printk("%s(): unable to register 'xbfs' filesystem.\n", __FUNCTION__);
 	}
+	if(fatfs_init()) {
+		printk("%s(): unable to register 'fat' filesystem.\n", __FUNCTION__);
+	}
 	if(procfs_init()) {
 		printk("%s(): unable to register 'procfs' filesystem.\n", __FUNCTION__);
 	}
