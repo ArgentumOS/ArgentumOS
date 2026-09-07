@@ -41,6 +41,7 @@ the clang/LLVM integrated-assembler style already used in
 | D5 | Target ≤ 8 vCPUs; **NUMA-optimality and hotplug out of scope** — NUMA hardware stays runnable as effectively-UMA (NUMA never affects correctness, only locality); memory topology (SRAT/SLIT) is not parsed. |
 | D6 | Test-and-set spinlock (`lock; xchg` with `pause`) + irqsave variants; x86 is TSO so explicit fences are rare; per-CPU area reached via GS + `swapgs`. |
 | D7 | **`NR_CPUS` sized for 32** (per-CPU area, GDT/IDT/TSS tables, online bitmap, trampoline rendezvous), **correctness verified at ≤ 8** (D5). The cap is a constant (kernel.conf override later) chosen so per-CPU structure layout is future-proof — growing it later means a re-layout of per-CPU tables, not a redesign. Sizing for 32 keeps x2APIC a genuine *>8-CPU* question rather than a cap artifact. |
+| D8 | **IRQ affinity policy: all legacy IRQs on the BSP initially** (device drivers stay single-interrupt-context through the M5 lock sweep), but the IO-APIC driver implements **per-IRQ destination registers from the start** — "all to BSP" and "IRQ n to CPU m" are the same code path with different destination fields, so spreading IRQs later is a kernel.conf knob, not a rewrite. |
 
 ## 3. Milestones
 
@@ -112,9 +113,10 @@ target. Order is a hard dependency chain.
   `invalidate_tlb`/`invlpg` flushes (`kernel/boot64/asm64.c`) for
   munmap/mprotect/CoW-fork; `page_ref` counts become atomic.
 - **IO-APIC** driver + routing of legacy IRQs (8259 path remains the
-  1-CPU fallback); MSI-X destination becomes programmable
-  (`drivers/pci/msix.c` today hardcodes BSP); **per-CPU EOI** in the
-  MSI-X path (`kernel/msix.c`).
+  1-CPU fallback); **per-IRQ destination registers from the start**
+  (D8): policy is BSP-only initially, spreading is a later knob; MSI-X
+  destination becomes programmable (`drivers/pci/msix.c` today
+  hardcodes BSP); **per-CPU EOI** in the MSI-X path (`kernel/msix.c`).
 - **Acceptance**: munmap/mprotect/fork stress clean at `-smp 2/4`;
   devices (keyboard, serial, disk, NIC) functional from both CPUs.
 
@@ -163,8 +165,6 @@ target. Order is a hard dependency chain.
   starvation shows at the verification ceiling.
 - Whether the M2 MADT walker becomes the standing ACPI home (yes by
   default; keep it MADT-minimal until a second consumer appears).
-- IRQ affinity policy (all legacy IRQs on BSP first, per-IRQ affinity
-  later).
 
 ## 7. Non-goals
 
