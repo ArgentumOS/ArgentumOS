@@ -39,7 +39,15 @@ the plan's G3 gate and SH-0..SH-5.
 - **X stack sources**: xorgproto, xcbproto/libxcb, libX11, xtrans,
   libXau/libXdmcp, pixman, libxkbfile, libXfont2/libfontenc,
   fontconfig, **FreeType**, **HarfBuzz** (full-feature build per
-  shrike-plan).
+  shrike-plan), and the text-stack leaves **libpng** (sbix color
+  glyphs) + **expat** (fontconfig's XML) - all vendored under
+  third_party/x11/ and built shared into .build/x11-prefix by
+  tools/x11-shared-build.sh (text-stack milestone).
+- **Font content**: userland/fonts/DejaVuSans.ttf (Bitstream Vera
+  license - permissive) staged to /System/Shared/Fonts; the FNX
+  fontconfig config is userland/configuration/fonts.conf staged to
+  /System/Configuration/fonts (libfontconfig is built with
+  --sysconfdir=/System/Configuration).
 - musl and LLVM source as in §A (their own rebuild inputs).
 
 ### C. Build drivers
@@ -146,6 +154,14 @@ a snapshot:
    package ships that the self-hosted rebuild must also reproduce.
 4. The check is symmetric: a package is only *adopted for the system*
    when its on-FNX rebuild path is complete and recorded.
+
+**Text stack (2026-09)**: fontconfig's `src/fcobjshash.h` is generated
+from `fcobjshash.gperf` by **gperf (GPLv3 - blocked)**. The host build
+uses a local `.build/host-tools` gperf-3.2.1 (tools/x11-shared-build.sh
+puts it on PATH); the on-FNX path must NOT build gperf - the recorded
+direction is a pre-generated committed `fcobjshash.h` + a touch guard so
+fontconfig's make never regenerates it (open follow-up when fontconfig
+is rebuilt on-FNX).
 
 History of this discipline: CMake (BSD-3) ships so clang reconfigures
 in-guest; byacc (public domain) ships so awk's parser regenerates

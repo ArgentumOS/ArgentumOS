@@ -387,6 +387,36 @@ swaps by focus; picks flow back as triggers.
   already shared; a dedicated codec stays possible behind the socket
   without touching apps).
 
+## 6a. Text stack — PORTED (milestone done before S0)
+
+The four text libraries Shrike's pipeline needs are built, staged and
+verified (dynamic-C++ prerequisite landed first — the shared
+libc++/libc++abi/libunwind in /System/Libraries):
+
+- **Vendored** under third_party/x11/: freetype-2.13.3 (Debian +dfsg
+  repack), fontconfig-2.15.0, harfbuzz-10.0.1 (test/perf corpora
+  trimmed), libpng-1.6.47 (sbix), expat-2.6.4 (fontconfig XML).
+- **Built SHARED** into .build/x11-prefix by tools/x11-shared-build.sh
+  (new text-stack section; fontconfig uses DESTDIR staging because its
+  sysconfdir is the FNX-guest /System/Configuration) and staged into
+  /System/Libraries (libfontconfig.so.1, libharfbuzz.so.0,
+  libfreetype.so.6, libpng16.so.16, libexpat.so.1 + real files).
+- **FSH wiring**: fonts.conf (userland/configuration/fonts.conf) staged
+  at /System/Configuration/fonts (fontconfig compiled with
+  --sysconfdir=/System/Configuration); OS fonts live in
+  /System/Shared/Fonts (DejaVuSans.ttf — the milestone's test font;
+  §8's Liberation pick remains the future system-font direction when a
+  real consumer lands). fontconfig's gperf generator is a host-local
+  build (.build/host-tools) + a recorded self-hosting gap
+  (docs/design/self-hosting-packages.md §6).
+- **Verified**: userland/tests/text_pipeline (System/Shared/tests)
+  boots in-guest: fontconfig matches DejaVu Sans, HarfBuzz shapes the
+  Arabic "السلام" with the lam-alef ligature (6 code points → 5 glyphs),
+  FreeType rasterizes a real glyph bitmap (TEXT_PIPELINE: all checks OK).
+  Note: the googlefonts Noto Naskh files (variable + static) do NOT
+  ligate under hb-10 (host and FNX-port identically) — DejaVu proves the
+  pipeline; revisit Noto when a consumer needs its coverage.
+
 ## 7. Milestones (order + acceptance; not scheduled)
 
 - **S0 — Foundation**: `shrike::Application` + `Window` over X11;
