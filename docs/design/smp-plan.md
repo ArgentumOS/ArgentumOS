@@ -7,8 +7,10 @@ decisions (re-openable at M0). Nothing implemented.
 
 Goal: boot and run the FNX kernel on up to **8 logical CPUs** (physical
 cores and SMT both appear as APIC IDs — no topology distinction in this
-plan). Development at QEMU `-smp 2`, verification at `-smp 4`, single-CPU
-boot must remain **identical** (every milestone's regression gate).
+plan). Development at QEMU `-smp 2`, verification at `-smp 4`, and the
+**single-CPU configuration remains first-class and green at every
+milestone** (the two-sided regression gate: 1-CPU results never
+regress while `-smp N` advances).
 
 ## 1. Current state (verified in docs/eval/smp-eval.md §1)
 
@@ -45,8 +47,13 @@ the clang/LLVM integrated-assembler style already used in
 
 ## 3. Milestones
 
-Each milestone: boots identically on 1 CPU **and** advances the `-smp N`
-target. Order is a hard dependency chain.
+Each milestone keeps the system in a working, testable state on one
+CPU **and** advances the `-smp N` target. Order is a hard dependency
+chain. Through M2 the 1-CPU side is *identical* (new machinery is
+uncontended/inert/dormant); from M3 it is *equivalent* — same guest
+battery, same results, but the LAPIC timer (D2) and the M0 locks now
+actually do the work even on one CPU. The `-smp` gates prove the new
+behavior; the 1-CPU gate proves no damage.
 
 ### M0 — Primitives + locking foundations (1 CPU, no SMP yet)
 
