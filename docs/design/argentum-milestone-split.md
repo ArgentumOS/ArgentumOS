@@ -143,6 +143,21 @@ places them.
   same code path draws at 2x.
   *Acceptance:* original S1 acceptance — themed frame+button render at
   fallback and at 2x px/pt (override boot + screendump in the battery).
+  *Status:* DONE — gate `.build/s14_run.sh` boots the stock image and
+  writes the System-scope override (`config write -s system.display
+  display.width_mm 169.333333 display.height_mm 105.833333`, a 192-dpi
+  panel at the 1280x800 Xfb mode → pxPerPt = 8/3 = 2x the 4/3
+  fallback) BEFORE launching the unchanged `theme_chrome`. `.build/
+  s14_pixels.py` asserts the render stayed intact at the SAME six probe
+  coordinates (board geometry is px-fixed) and — the anti-rot proof —
+  that the CHROME log line shows `pxPerPt=2.666667 radius=8 small=5`
+  (baseRadius 3pt × 8/3, smallRadius 2pt × 8/3), i.e. the pt theme
+  geometry doubled through the session factor rather than a hard-coded
+  px value. Green (S14-PIXELS-OK: factor 8/3, 6 probes @ 2x);
+  `.build/scr_s14.ppm` joins `scr_s13.ppm` in the battery. The S1.3
+  fallback gate re-ran green on a fresh image after the override boot
+  (System-scope write must not leak into later gates: `make rootagfs`
+  regenerates the image from staging).
 
 ## S2 — Widget core (v1 catalog cut)
 
