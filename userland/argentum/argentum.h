@@ -140,6 +140,18 @@ public:
 	virtual void keyUp(const KeyEvent &e);
 	virtual void mouseDown(const MouseEvent &e);
 	virtual void mouseUp(const MouseEvent &e);
+	/* S2.2c: pointer tracking. mouseEntered/Exited fire when the
+	 * pointer enters/leaves THIS view (hit-test change); mouseMoved
+	 * fires on motion while inside. Defaults pass up the chain. */
+	virtual void mouseEntered(const MouseEvent &e);
+	virtual void mouseExited(const MouseEvent &e);
+	virtual void mouseMoved(const MouseEvent &e);
+	/* S2.2c minimal focus: a view that accepts first responder
+	 * becomes the window's key target when clicked. become/resign
+	 * are called by the owning Window (defaults do nothing). */
+	virtual bool acceptsFirstResponder() const;
+	virtual void becomeFirstResponder();
+	virtual void resignFirstResponder();
 	/* the next view in the responder chain (the superview) */
 	virtual View *nextResponder();
 
@@ -371,6 +383,17 @@ public:
 	void dispatchMouseToContent(const MouseEvent &pxEvent, bool down);
 	void dispatchKeyToContent(const KeyEvent &keyEvent, bool down);
 
+	/* S2.2c: route a pointer-motion event into the content tree —
+	 * delivers mouseEntered/Exited on hit-test changes and
+	 * mouseMoved while inside (hover tracking). */
+	void dispatchMotionToContent(const MouseEvent &pxEvent);
+
+	/* S2.2c minimal focus: the first responder receives key events
+	 * (null = the content view). setFirstResponder resigns the old
+	 * and notifies the new via become/resignFirstResponder. */
+	View *firstResponder() const;
+	void setFirstResponder(View *view);
+
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
 
@@ -582,6 +605,11 @@ public:
 	 * Armed, Hover, Focused, Idle) */
 	ControlState state() const;
 
+	/* S2.2c: Controls take key focus when clicked */
+	bool acceptsFirstResponder() const override;
+	void becomeFirstResponder() override;
+	void resignFirstResponder() override;
+
 protected:
 	/* event plumbing (S2.2c Button drives these from mouse/keys);
 	 * each marks the control for redraw */
@@ -595,6 +623,46 @@ protected:
 private:
 	struct Impl;
 	Impl *ctrl_;
+};
+
+/* S2.2c: Button — the first real control (catalog Button, push +
+ * checkbox/radio types in one class). Draws its chrome per type with
+ * the theme's state params (push = rounded chrome button with a
+ * centred title; checkbox/radio = marker + title), tracks hover via
+ * the pointer-tracking virtuals, arms on press and fires on a release
+ * inside (or on Space/Return when focused). Checkbox/Radio toggle;
+ * Radio buttons grouped under the same superview are mutually
+ * exclusive (Box grouping replaces this in S2.4). A11y role per type,
+ * label = the title, value = "1"/"0" for the toggle types. */
+class Button : public Control {
+public:
+	enum class Type { Push, Checkbox, Radio };
+
+	Button();
+	explicit Button(Type type);
+	~Button() override;
+
+	void setType(Type type);
+	Type type() const;
+	void setTitle(const char *utf8);	/* copied */
+	const char *title() const;
+	/* checkbox/radio state */
+	void setOn(bool on);
+	bool isOn() const;
+
+	void draw(GraphicsContext &g) override;
+
+	/* responder behaviour */
+	void mouseEntered(const MouseEvent &e) override;
+	void mouseExited(const MouseEvent &e) override;
+	void mouseDown(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+	void keyDown(const KeyEvent &e) override;
+
+private:
+	void toggle();			/* checkbox/radio flip */
+	struct Impl;
+	Impl *btn_;
 };
 
 /* S2.2b: Label — input-free text view (the catalog's hello world:

@@ -76,6 +76,15 @@ struct Window::Impl {
 	/* S2.1a: the content view rooting the view tree drawn in this
 	 * window (non-owning; may be null). */
 	View *contentView = nullptr;
+
+	/* S2.2c minimal focus: the first responder receives key events
+	 * (null = the content view). pressed tracks the view that got
+	 * the ButtonPress so the release reaches it even after a drag
+	 * out; motionTarget is the last view the pointer entered (for
+	 * mouseExited on leave). */
+	View *firstResponder = nullptr;
+	View *pressed = nullptr;
+	View *motionTarget = nullptr;
 };
 
 /* S1.2 BitmapImage state: the pixman offscreen surface. x8r8g8b8 is the
@@ -164,6 +173,13 @@ struct Label::Impl {
 	char text[256] = { 0 };
 	std::uint32_t color = 0;	/* 0 = theme text colour */
 	double sizePt = 0;		/* 0 = theme font size */
+};
+
+/* S2.2c Button state: type + title + toggle state. */
+struct Button::Impl {
+	Button::Type type = Button::Type::Push;
+	char title[256] = { 0 };
+	bool on = false;
 };
 
 /* S2.2a text core: shared run internals (implemented in text.cpp).

@@ -321,6 +321,20 @@ Application::run()
 		case Expose:
 			w->draw();
 			break;
+		case MotionNotify: {
+			/* S2.2c hover: route pointer motion into the tree
+			 * (enter/exit/move); px window coords */
+			if (w->contentView()) {
+				MouseEvent e;
+
+				e.x = ev.xmotion.x;
+				e.y = ev.xmotion.y;
+				e.button = 0;
+				e.modifiers = mods_from_state(ev.xmotion.state);
+				w->dispatchMotionToContent(e);
+			}
+			break;
+		}
 		case ConfigureNotify: {
 			/* S2.1d: window resized by the server/another
 			 * client -> springs/struts relayout (only when

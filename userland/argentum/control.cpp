@@ -23,6 +23,9 @@ Control::setEnabled(bool enabled)
 {
 	if (ctrl_->enabled != enabled) {
 		ctrl_->enabled = enabled;
+		/* a11y mirrors control state: a disabled control is not
+		 * operable, so it reports disabled */
+		setAccessibilityEnabled(enabled);
 		setNeedsDisplay();
 	}
 }
@@ -45,6 +48,24 @@ Control::sendAction()
 	if (ctrl_->enabled && ctrl_->action) {
 		ctrl_->action(this);
 	}
+}
+
+bool
+Control::acceptsFirstResponder() const
+{
+	return true;
+}
+
+void
+Control::becomeFirstResponder()
+{
+	setFocused(true);
+}
+
+void
+Control::resignFirstResponder()
+{
+	setFocused(false);
 }
 
 ControlState

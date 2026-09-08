@@ -258,6 +258,58 @@ View::mouseUp(const MouseEvent &e)
 	}
 }
 
+void
+View::mouseEntered(const MouseEvent &e)
+{
+	if (View *nr = nextResponder()) {
+		MouseEvent up = e;
+
+		up.x += frame().origin.x;
+		up.y += frame().origin.y;
+		nr->mouseEntered(up);
+	}
+}
+
+void
+View::mouseExited(const MouseEvent &e)
+{
+	if (View *nr = nextResponder()) {
+		MouseEvent up = e;
+
+		up.x += frame().origin.x;
+		up.y += frame().origin.y;
+		nr->mouseExited(up);
+	}
+}
+
+void
+View::mouseMoved(const MouseEvent &e)
+{
+	if (View *nr = nextResponder()) {
+		MouseEvent up = e;
+
+		up.x += frame().origin.x;
+		up.y += frame().origin.y;
+		nr->mouseMoved(up);
+	}
+}
+
+bool
+View::acceptsFirstResponder() const
+{
+	return false;
+}
+
+void
+View::becomeFirstResponder()
+{
+}
+
+void
+View::resignFirstResponder()
+{
+}
+
 View *
 View::nextResponder()
 {

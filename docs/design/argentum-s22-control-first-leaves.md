@@ -177,6 +177,30 @@ grouping.
 (hover via injected MotionNotify, armed via press), checkbox toggles,
 radio exclusivity; action fired; a11y role/label/value; a focused
 button shows the Focused chrome.
+*Status:* DONE (commit lands with S2.2c) — `Button` draws its chrome
+per type with the theme's state params (Push = rounded chrome button
+with a centred title; Checkbox/Radio = marker + title; on = accent
+interior, off = page) and behaves: hover via the new pointer-tracking
+responder virtuals (`mouseEntered/mouseExited/mouseMoved`, defaults
+bubble up; the window delivers them on hit-test changes via
+`PointerMotionMask` + `dispatchMotionToContent`), arm on press, fire
+on a release inside (push) or toggle (checkbox/radio); Space/Return
+activates the focused button. Minimal focus: `acceptsFirstResponder`
+(true for Controls), `Window::firstResponder/setFirstResponder`
+(notifies via `become/resignFirstResponder`, keys route to the first
+responder, disabled controls and empty clicks don't take focus, drag
+out keeps the release on the pressed view). Radio siblings under one
+superview are mutually exclusive (Box grouping replaces this in
+S2.4). `Control::setEnabled` mirrors into the a11y enabled flag.
+*Gate:* `.build/s22c_run.sh` + `.build/s22c_assert.py`. `widgets_c`
+injects motion-in + clicks, a Space key, motion-out, and a final
+Expose from a second X connection. Result: `S22C-OK` — focus chain go
+→ check → alpha → beta (disabled nope never focuses), go fires twice
+(click + Space), hover enter/exit tracked, checkbox toggles on, radio
+group flips alpha=1/beta=0 then 0/1, disabled button inert, a11y rows
+role/label/enabled correct, and pixel probes confirm the push chrome
+(idle + disabled) and the accent/page markers. S1.3 / S2.1 regressions
+green.
 
 ### S2.2d — TextField + edit engine + S2.2 gate board
 

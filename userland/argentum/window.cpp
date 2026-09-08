@@ -90,6 +90,39 @@ Window::handleResize(unsigned int widthPx, unsigned int heightPx)
  * chain (View::mouseDown default forwards to nextResponder with the
  * local point translated by the frame origin). Empty space hits the
  * content view itself. */
+/* Shared S2.1c hit-test helper: convert the window-relative px point
+ * to content-local pt, descend to the deepest visible view, and fill
+ * *hl with the HIT-LOCAL pt. Returns the hit view (nullptr outside
+ * the content tree). */
+static View *
+hit_in_tree(View *cv, double ppt, const MouseEvent &pxEvent, Point *hl)
+{
+	Point wp = { pxEvent.x / ppt, pxEvent.y / ppt };
+	Point cl = { wp.x - cv->frame().origin.x,
+		     wp.y - cv->frame().origin.y };
+
+	if (!rectContains(cv->bounds(), cl)) {
+		return nullptr;		/* outside the content tree */
+	}
+	View *hit = cv->hitTest(cl);
+	if (!hit) {
+		return nullptr;
+	}
+	/* translate the point down the path cv -> hit into hit-local pt */
+	std::vector<View *> path;
+
+	for (View *v = hit; v && v != cv; v = v->superview()) {
+		path.push_back(v);
+	}
+	hl->x = cl.x;
+	hl->y = cl.y;
+	for (auto it = path.rbegin(); it != path.rend(); ++it) {
+		hl->x -= (*it)->frame().origin.x;
+		hl->y -= (*it)->frame().origin.y;
+	}
+	return hit;
+}
+
 void
 Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
 {
@@ -98,36 +131,127 @@ Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
 	}
 	double ppt = Application::shared().pxPerPt();
 	View *cv = impl_->contentView;
-	Point wp = { pxEvent.x / ppt, pxEvent.y / ppt };
-	Point cl = { wp.x - cv->frame().origin.x,
-		     wp.y - cv->frame().origin.y };
+	Point hl;
 
-	if (!rectContains(cv->bounds(), cl)) {
-		return;			/* outside the content tree */
-	}
-	View *hit = cv->hitTest(cl);
-	if (!hit) {
+	if (down) {
+		/* press: hit-test, deliver, remember the target so the
+		 * matching release reaches the SAME view even if the
+		 * pointer moved off it (drag-out semantics) */
+		View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
+		if (!hit) {
+			return;
+		}
+		impl_->pressed = hit;
+		/* minimal focus (S2.2c): clicking an ENABLED control makes
+		 * it the window's first responder; disabled controls do
+		 * not take focus; clicking empty space clears */
+		if (hit->acceptsFirstResponder()) {
+			Control *c = dynamic_cast<Control *>(hit);
+
+			if (!c || c->isEnabled()) {
+				setFirstResponder(hit);
+			}
+		} else if (hit == cv) {
+			setFirstResponder(nullptr);
+		}
+		MouseEvent e = pxEvent;
+
+		e.x = hl.x;
+		e.y = hl.y;
+		hit->mouseDown(e);
 		return;
 	}
-	/* translate the point down the path cv -> hit into hit-local pt */
-	Point hl = cl;
-	std::vector<View *> path;
-	for (View *v = hit; v && v != cv; v = v->superview()) {
-		path.push_back(v);
-	}
-	for (auto it = path.rbegin(); it != path.rend(); ++it) {
-		hl.x -= (*it)->frame().origin.x;
-		hl.y -= (*it)->frame().origin.y;
-	}
+	/* release: the view that got the press owns the release */
+	View *target = impl_->pressed ? impl_->pressed : nullptr;
+	View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
 
+	if (!target) {
+		target = hit;
+	}
+	impl_->pressed = nullptr;
+	if (!target) {
+		return;
+	}
+	/* local pt for the TARGET (may differ from the pointer's hit) */
+	Point tl = { 0, 0 };
+	View *anc = target;
+
+	if (target != cv) {
+		Point wpl = { pxEvent.x / ppt, pxEvent.y / ppt };
+		Point cl = { wpl.x - cv->frame().origin.x,
+			     wpl.y - cv->frame().origin.y };
+		std::vector<View *> path;
+
+		for (View *v = target; v && v != cv; v = v->superview()) {
+			path.push_back(v);
+		}
+		tl = cl;
+		for (auto it = path.rbegin(); it != path.rend(); ++it) {
+			tl.x -= (*it)->frame().origin.x;
+			tl.y -= (*it)->frame().origin.y;
+		}
+	}
+	(void) anc;
 	MouseEvent e = pxEvent;
 
-	e.x = hl.x;
-	e.y = hl.y;
-	if (down) {
-		hit->mouseDown(e);
-	} else {
-		hit->mouseUp(e);
+	e.x = tl.x;
+	e.y = tl.y;
+	target->mouseUp(e);
+}
+
+void
+Window::setFirstResponder(View *view)
+{
+	if (impl_->firstResponder == view) {
+		return;
+	}
+	if (impl_->firstResponder) {
+		impl_->firstResponder->resignFirstResponder();
+	}
+	impl_->firstResponder = view;
+	if (view) {
+		view->becomeFirstResponder();
+	}
+}
+
+View *
+Window::firstResponder() const
+{
+	return impl_->firstResponder;
+}
+
+void
+Window::dispatchMotionToContent(const MouseEvent &pxEvent)
+{
+	if (!impl_->contentView) {
+		return;
+	}
+	double ppt = Application::shared().pxPerPt();
+	View *cv = impl_->contentView;
+	Point hl;
+	View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
+
+	if (hit != impl_->motionTarget) {
+		if (impl_->motionTarget) {
+			MouseEvent out = pxEvent;
+
+			impl_->motionTarget->mouseExited(out);
+		}
+		impl_->motionTarget = hit;
+		if (hit) {
+			MouseEvent in = pxEvent;
+
+			in.x = hl.x;
+			in.y = hl.y;
+			hit->mouseEntered(in);
+		}
+	}
+	if (hit) {
+		MouseEvent mv = pxEvent;
+
+		mv.x = hl.x;
+		mv.y = hl.y;
+		hit->mouseMoved(mv);
 	}
 }
 
@@ -137,10 +261,15 @@ Window::dispatchKeyToContent(const KeyEvent &keyEvent, bool down)
 	if (!impl_->contentView) {
 		return;
 	}
+	/* keys go to the first responder (S2.2c) when one is set, else
+	 * the content view; unhandled events bubble up the chain */
+	View *target = impl_->firstResponder ? impl_->firstResponder
+					     : impl_->contentView;
+
 	if (down) {
-		impl_->contentView->keyDown(keyEvent);
+		target->keyDown(keyEvent);
 	} else {
-		impl_->contentView->keyUp(keyEvent);
+		target->keyUp(keyEvent);
 	}
 }
 
@@ -210,7 +339,8 @@ Window::init(const char *title, int x, int y,
 	XSelectInput(impl_->dpy, impl_->xwin,
 		     KeyPressMask | KeyReleaseMask |
 		     ButtonPressMask | ButtonReleaseMask |
-		     ExposureMask | StructureNotifyMask);
+		     ExposureMask | StructureNotifyMask |
+		     PointerMotionMask);
 	XSync(impl_->dpy, False);
 
 	/* register for event dispatch (idempotent on re-init) */
