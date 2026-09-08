@@ -202,7 +202,8 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 ARGENTUM_SRCS = userland/argentum/application.cpp \
 	userland/argentum/window.cpp userland/argentum/text.cpp \
 	userland/argentum/graphics.cpp userland/argentum/theme.cpp \
-	userland/argentum/view.cpp
+	userland/argentum/view.cpp userland/argentum/control.cpp \
+	userland/argentum/label.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 
 $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argentum/argentum_p.h $(MUSL64_CXX)

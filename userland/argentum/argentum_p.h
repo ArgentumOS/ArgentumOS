@@ -57,6 +57,10 @@ struct Application::Impl {
 	/* X window id -> the argentum::Window that owns it (S0.3 event
 	 * dispatch). Window registers on init, unregisters on destroy. */
 	std::map<unsigned long, Window *> windows;
+
+	/* S2.2b: the session Theme (lazy; owned here, deleted in ~Impl).
+	 * Loaded from the system.theme domain on first theme() access. */
+	Theme *theme = nullptr;
 };
 
 /* Window X11 state. */
@@ -142,6 +146,24 @@ struct View::Impl {
 	char a11yLabel[128] = { 0 };
 	char a11yHelp[128] = { 0 };
 	char a11yValue[128] = { 0 };
+};
+
+/* S2.2b Control state: action + enabled + the flags the chrome state
+ * derives from (hover/armed/focused are event-driven from S2.2c). */
+struct Control::Impl {
+	std::function<void(Control *)> action;
+	bool enabled = true;
+	bool hovered = false;
+	bool armed = false;
+	bool focused = false;
+};
+
+/* S2.2b Label state: text + colour/size overrides (0 = theme). The
+ * a11y label mirrors the text (kept in View::Impl). */
+struct Label::Impl {
+	char text[256] = { 0 };
+	std::uint32_t color = 0;	/* 0 = theme text colour */
+	double sizePt = 0;		/* 0 = theme font size */
 };
 
 /* S2.2a text core: shared run internals (implemented in text.cpp).

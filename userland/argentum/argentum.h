@@ -24,6 +24,7 @@
 #define FNX_ARGENTUM_ARGENTUM_H
 
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 #define ARGENTUM_VERSION_MAJOR 0
@@ -89,6 +90,7 @@ enum class AccessibilityRole : int {
  * ("button", "static text", ...). Unknown -> "unknown". */
 const char *accessibilityRoleName(AccessibilityRole role);
 
+class Theme;
 struct KeyEvent;	/* defined below (responder signatures) */
 struct MouseEvent;
 class GraphicsContext;
@@ -235,6 +237,12 @@ public:
 	 * responder virtuals (keyDown/keyUp/mouseDown/mouseUp/draw) until
 	 * terminate() is called. Returns 0 on a clean stop. */
 	int run();
+
+	/* S2.2b: the session Theme (the NSAppearance analog) — loaded
+	 * lazily from the system.theme domain on first access; always
+	 * valid (falls back to the compiled defaults when the domain or
+	 * file is absent). Widgets read chrome params here. */
+	Theme &theme();
 
 	/* Ask run() to return after the current event. Safe to call from an
 	 * event handler. The X display is closed in the destructor. */
@@ -549,6 +557,73 @@ private:
 	struct Impl;
 	Impl *impl_;
 };
+
+/* S2.2b: Control — the base for user-interactive views (the NSControl
+ * analog). Adds enabled + a std::function action + the chrome state
+ * machine (ControlState) derived from the enabled/hover/armed/focused
+ * flags the events drive (Button sets them from S2.2c on). sendAction
+ * fires the action when enabled. */
+class Control : public View {
+public:
+	/* NSControl target/action, modern form: no target object, the
+	 * closure receives the control */
+	using Action = std::function<void(Control *)>;
+
+	Control();
+	~Control() override;
+
+	void setEnabled(bool enabled);
+	bool isEnabled() const;
+	void setAction(Action action);
+	/* fire the action (no-op when disabled or no action set) */
+	void sendAction();
+
+	/* the chrome state for the current flags (Disabled wins, then
+	 * Armed, Hover, Focused, Idle) */
+	ControlState state() const;
+
+protected:
+	/* event plumbing (S2.2c Button drives these from mouse/keys);
+	 * each marks the control for redraw */
+	void setHovered(bool hovered);
+	void setArmed(bool armed);
+	void setFocused(bool focused);
+	bool hovered() const;
+	bool armed() const;
+	bool focused() const;
+
+private:
+	struct Impl;
+	Impl *ctrl_;
+};
+
+/* S2.2b: Label — input-free text view (the catalog's hello world:
+ * text + theme + draw + a11y in one view). Draws one run of the theme
+ * font (family + fontSizePt unless overridden) inside its bounds,
+ * left-aligned and vertically centred on the frame's centreline. The
+ * a11y role is StaticText and the label text mirrors setText(). */
+class Label : public View {
+public:
+	Label();
+	explicit Label(const char *utf8);
+	~Label() override;
+
+	void setText(const char *utf8);	/* copied */
+	const char *text() const;
+	/* text colour; 0 (default) = the theme's text colour */
+	void setTextColor(std::uint32_t rgb);
+	std::uint32_t textColor() const;
+	/* font size; 0 (default) = the theme's font size (pt) */
+	void setFontSizePt(double sizePt);
+	double fontSizePt() const;
+
+	void draw(GraphicsContext &g) override;
+
+private:
+	struct Impl;
+	Impl *lbl_;
+};
+
 
 } /* namespace argentum */
 

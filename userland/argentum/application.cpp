@@ -363,8 +363,20 @@ Application::~Application()
 		impl_->ft = nullptr;
 	}
 	FcFini();
+	delete impl_->theme;
+	impl_->theme = nullptr;
 	impl_->running = false;
 	delete impl_;
+}
+
+Theme &
+Application::theme()
+{
+	if (!impl_->theme) {
+		impl_->theme = new Theme();
+		impl_->theme->load();
+	}
+	return *impl_->theme;
 }
 
 } /* namespace argentum */

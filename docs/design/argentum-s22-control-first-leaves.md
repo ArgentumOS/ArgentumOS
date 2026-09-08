@@ -151,6 +151,20 @@ S1.3 / S2.1 regressions green.
 *Acceptance:* board shows labels (theme font, distinct colors);
 a11y read-back (role/label); a Control subclass fires its action when
 `sendAction()` is called.
+*Status:* DONE (commit lands with S2.2b) — `Control` (enabled +
+`std::function` action + `state()` deriving Disabled > Armed > Hover >
+Focused > Idle from protected hovered/armed/focused flags;
+`sendAction()` no-ops when disabled) and `Label` (theme font run drawn
+left-aligned + vertically centred through GC::drawText; a11y
+StaticText role with the label mirroring the text). `Application::theme()`
+owns the session Theme (lazy, valid fallback) so widgets stop
+constructing their own.
+*Gate:* `.build/s22b_run.sh` + `.build/s22b_assert.py`. `widgets_b`
+logs the state sequence (Disabled > Idle > Focused > Hover > Armed >
+Idle), fires exactly ONE action (the disabled sendAction must no-op),
+reads a11y back (static text "Control & Label", button "Do it"), and
+pixel-probes the Label's theme-text glyphs over the content fill.
+Result: `S22B-OK`; S1.3 / S2.1 regressions green.
 
 ### S2.2c — Button + hover + minimal focus
 
