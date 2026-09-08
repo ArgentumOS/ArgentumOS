@@ -274,6 +274,12 @@ Xfb run as the `Display` principal).
   `Admin` where Admin is required) — never euid checks, never argv
   trust. Mixed-authorization binaries (target- or verb-based) drop
   euid to the real user before any unprivileged work.
+- **Elevate last** (finding 15): parse, validate, and canonicalize
+  attacker-influenced input **as the real, unprivileged user**; the
+  only euid-0 step is the final atomic act (the rename into a
+  System-owned tree, the table/domain write). A parser memory bug
+  never runs as root — no-exec already kills *shell* escalation;
+  elevate-last kills *parser* escalation.
 - Single operation per invocation; atomic writes (temp + fsync +
   rename) where files are touched; audit via the shared recorder
   (finding 6) — helper-local logging is not in v1.
@@ -351,7 +357,9 @@ validated front-ends over the same atomic mechanism — **not exclusive
 writers** (a raw Admin `config -s system.passwd` edit is legal, like
 root `vipw`). Schema-less by design: validation is grammar +
 atomicity, not meaning; a semantically wrong value is the operator's
-error, accepted.
+error, accepted. **Elevate last applies hardest here**: parse and
+canonicalize the new domain content as the real user; euid 0 only for
+the temp+rename into `/System/Configuration`.
 
 ## 5. Boot, session, and config scope
 - **init** (PID 1, uid 0) mounts from `system.mounts.conf`, runs the
@@ -463,6 +471,12 @@ Recorded criticisms and where they landed:
     placeholder for unassigned daemons; dedicated accounts once a
     daemon exists. `Service` reading `Shared/Configuration` by default
     is questioned (Shared is the third-party scope).
+15. **Parsers at euid 0** → resolved by **elevate last** (§4.5 common
+    rules): parse/validate/canonicalize attacker-influenced input as
+    the real user; euid 0 only for the final atomic act. `install`
+    already stages+validates unprivileged; `disk`'s read side is
+    already unprivileged; `config` canonicalizes then elevates for the
+    rename. The root parser surface shrinks to near zero.
 
 ## 8. Open items
 
