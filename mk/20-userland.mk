@@ -161,6 +161,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/argentum_demo.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/argentum_demo"
+	# xbtn: X11 mouse-leg regression client (window + pointer poll +
+	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
+	# it and expects "XBTN: button 1 press/release".
+	$(MUSL64_CC) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/X11 \
+		-L$(X11PREFIX)/lib \
+		userland/tests/xbtn.c -lX11 -o "$(ROOTFS64)/System/Shared/tests/xbtn"
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
 		-I$(X11PREFIX)/include/harfbuzz \
 		-L$(X11PREFIX)/lib -L$(CURDIR)/$(FNXLIB) \

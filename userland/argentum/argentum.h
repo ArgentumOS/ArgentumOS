@@ -21,10 +21,10 @@
 #include <cstdint>
 
 #define ARGENTUM_VERSION_MAJOR 0
-#define ARGENTUM_VERSION_MINOR 5
+#define ARGENTUM_VERSION_MINOR 6
 #define ARGENTUM_VERSION_PATCH 0
 
-#define ARGENTUM_VERSION "0.5.0"
+#define ARGENTUM_VERSION "0.6.0"
 
 namespace argentum {
 

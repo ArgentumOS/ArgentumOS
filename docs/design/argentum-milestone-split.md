@@ -70,6 +70,16 @@ places them.
   *Acceptance:* a argentum app opens a window on Xfb; keyboard/mouse
   events round-trip; text draws via Argentum's own path (fontconfig →
   HarfBuzz → FreeType glyph bitmaps, blitted with core protocol).
+  *Status:* DONE (0589eac + version 0.6.0) — the whole gate is
+  `.build/s06g2_run.sh`: demo window mapped (rgb from the domain),
+  `sendkey a`/shift round-trip (`ARGENTUM: key 0x61 'a' down/up`),
+  QEMU monitor mouse click into the window (`ARGENTUM: button 1 at
+  180,160 down/up`), own-path text blit (`ARGENTUM-TEXT: blitted 12
+  glyph(s)`), and a live `config write -s system.argentum
+  window.background 0x2ecc40` flips the re-run's mapped rgb. The mouse
+  leg needed kernel fixes 0589eac (IRQ12 was masked by raw slave-PIC
+  IMR writes in net/USB drivers; psaux forced 4-byte wheel mode while
+  consumers parse 3-byte).
 
 ## S1 — Chrome engine
 

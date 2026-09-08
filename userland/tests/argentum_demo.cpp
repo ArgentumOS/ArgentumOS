@@ -18,6 +18,9 @@
  * S0.5: the demo reads its window background + default font family/size
  * from the system.argentum domain (Application::session*()); changing
  * the domain and re-running changes what it draws and logs.
+ *
+ * S0.6: the S0 whole-gate runs window + keyboard/mouse round-trip +
+ * own-path text + conf in one guest run; version/title bumped to 0.6.
  */
 #include <argentum/argentum.h>
 
@@ -68,7 +71,7 @@ public:
 		argentum::Application &a = argentum::Application::shared();
 		fill(a.sessionBackground());
 		drawText(a.sessionFontFamily(), 24, 20,
-			 "Argentum S0.5", a.sessionFontSize(),
+			 "Argentum S0.6", a.sessionFontSize(),
 			 0xf5f6fa, a.sessionBackground());
 	}
 };
@@ -90,7 +93,7 @@ main()
 	}
 
 	DemoWindow w;
-	if (!w.init("Argentum S0.5", WIN_X, WIN_Y, WIN_W, WIN_H)) {
+	if (!w.init("Argentum S0.6", WIN_X, WIN_Y, WIN_W, WIN_H)) {
 		printf("ARGENTUM: window init failed\n");
 		return 1;
 	}
