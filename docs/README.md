@@ -20,7 +20,8 @@ unchanged (FNX, FSH, AGFS, Xfb, `finch`).
 - `reference/` — factual records of what FNX is / how it is built today:
   hardware + device allocation tables, kernel parameters, boot records,
   implemented specs (AGFS journal, partition support, devfs topology),
-  the OS profile, and notes that are historical but still consulted.
+  the OS profile, how to build and run the OS (`reference/building.md`),
+  and notes that are historical but still consulted.
 - `archive/` — superseded, rejected, failed, or fully-completed plans
   kept for the record (the GUI-toolkit lineage before Argentum, the FLTK
   failure, the pre-rename TODO list, ...).
