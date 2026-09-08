@@ -203,26 +203,49 @@ View::needsDisplay() const
 	return impl_->needsDisplay;
 }
 
-/* ---- responder virtuals (S2.1c; default = chain to superview) -- */
+/* ---- responder virtuals (S2.1c) -------------------------------- */
+/* Default: pass the event up the responder chain (nextResponder, the
+ * superview), translating mouse coordinates by this view's frame
+ * origin so each receiver sees LOCAL POINTS. Override to handle. */
 
 void
-View::keyDown(const KeyEvent &)
+View::keyDown(const KeyEvent &e)
 {
+	if (View *nr = nextResponder()) {
+		nr->keyDown(e);
+	}
 }
 
 void
-View::keyUp(const KeyEvent &)
+View::keyUp(const KeyEvent &e)
 {
+	if (View *nr = nextResponder()) {
+		nr->keyUp(e);
+	}
 }
 
 void
-View::mouseDown(const MouseEvent &)
+View::mouseDown(const MouseEvent &e)
 {
+	if (View *nr = nextResponder()) {
+		MouseEvent up = e;
+
+		up.x += frame().origin.x;
+		up.y += frame().origin.y;
+		nr->mouseDown(up);
+	}
 }
 
 void
-View::mouseUp(const MouseEvent &)
+View::mouseUp(const MouseEvent &e)
 {
+	if (View *nr = nextResponder()) {
+		MouseEvent up = e;
+
+		up.x += frame().origin.x;
+		up.y += frame().origin.y;
+		nr->mouseUp(up);
+	}
 }
 
 View *
@@ -232,9 +255,29 @@ View::nextResponder()
 }
 
 View *
-View::hitTest(const Point &)
+View::hitTest(const Point &pt)
 {
-	/* S2.1c; S2.1a only needs the draw walk. */
+	/* pt is in THIS view's local space. Hidden views never hit.
+	 * Reverse draw order (topmost first): the deepest visible
+	 * descendant containing pt wins; this view itself when no child
+	 * claims it; nullptr outside our bounds. */
+	if (impl_->hidden) {
+		return nullptr;
+	}
+	if (!rectContains(bounds(), pt)) {
+		return nullptr;
+	}
+	for (auto it = impl_->subviews.rbegin();
+	     it != impl_->subviews.rend(); ++it) {
+		View *c = *it;
+		Point lp;
+
+		lp.x = pt.x - c->frame().origin.x;
+		lp.y = pt.y - c->frame().origin.y;
+		if (View *hit = c->hitTest(lp)) {
+			return hit;
+		}
+	}
 	return this;
 }
 

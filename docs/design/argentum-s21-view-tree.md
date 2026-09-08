@@ -269,18 +269,28 @@ children. (Gate script gotcha: a serial-only run needs an explicit
 `-monitor unix:...` or QEMU's default stdio monitor collides with
 `-serial stdio`.)
 
-### S2.1c — responder chain + hit-testing
-
-*Scope:* responder virtuals, nextResponder chain, hitTest; Application
-dispatch routes mouse events (px→pt, hit-test, local coords, chain
-propagation).
-*Acceptance (gate .build/s21c_*):* `viewtree_c` maps a window with two
-overlapping siblings; the gate injects synthetic clicks (xbtn-style
-client or QEMU monitor mouse) at (a) a point only the top view covers,
-(b) a point in the overlap (top must win), (c) a point only the bottom
-view covers, (d) empty space. Log lines assert the handled view + local
-pt: `VTREE-C: hit Button@(x,y)`, and an unhandled chain reaching the
-content view logs `VTREE-C: chain end`.
+*Status:* DONE (commit lands with S2.1c) — the responder virtuals
+(`keyDown/keyUp/mouseDown/mouseUp`) default to forwarding up the chain
+(`nextResponder` = superview) with mouse coordinates translated by the
+frame origin, so every receiver sees LOCAL POINTS; `hitTest` descends
+in reverse draw order, skips hidden views, and returns this view when
+no child claims the point. `MouseEvent.x/y` are now `double` (local pt
+for view responders; window responders keep px). Window gained
+`dispatchMouseToContent`/`dispatchKeyToContent` (px→pt, hit-test, local
+point down the path) and a public `xid()`; Application::run() routes
+to the content tree when one exists, else to the Window responders
+unchanged.
+*Gate:* `.build/s21c_run.sh` + `.build/s21c_assert.py`. `viewtree_c`
+injects five ButtonPress/Release pairs (XSendEvent on a second X
+connection — deterministic window-px coordinates, no monitor-mouse
+math) at: (a) a point only the top view covers, (b) the overlap (top
+must win), (c) a point only the bottom view covers, (d) empty space
+(chain reaches the content view → `chain-end`), and (e) a point on a
+non-handling grandchild (chains up to its superview). Log lines assert
+the handled view + view-LOCAL pt:
+`VTREE-C: HIT top@(105.00,15.00)` … `HIT content@(...) chain-end`.
+Result: `S21C-OK (5 probes)`, plus S1.3 (`S13-PIXELS-OK (6 probes)`)
+and S2.1a (`S21A-PIXELS-OK (5 probes)`) regressions green.
 
 ### S2.1d — springs/struts relayout
 

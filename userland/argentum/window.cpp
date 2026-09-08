@@ -61,6 +61,68 @@ Window::contentView() const
 	return impl_->contentView;
 }
 
+/* S2.1c: hit-test + responder dispatch for content-view windows.
+ * The X event point is window-relative PX; frames are PT, so convert.
+ * Descends to the deepest visible view under the point (reverse draw
+ * order, hidden skipped) and delivers the mouse event with
+ * VIEW-LOCAL PT coordinates; unhandled events bubble up the responder
+ * chain (View::mouseDown default forwards to nextResponder with the
+ * local point translated by the frame origin). Empty space hits the
+ * content view itself. */
+void
+Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
+{
+	if (!impl_->contentView) {
+		return;
+	}
+	double ppt = Application::shared().pxPerPt();
+	View *cv = impl_->contentView;
+	Point wp = { pxEvent.x / ppt, pxEvent.y / ppt };
+	Point cl = { wp.x - cv->frame().origin.x,
+		     wp.y - cv->frame().origin.y };
+
+	if (!rectContains(cv->bounds(), cl)) {
+		return;			/* outside the content tree */
+	}
+	View *hit = cv->hitTest(cl);
+	if (!hit) {
+		return;
+	}
+	/* translate the point down the path cv -> hit into hit-local pt */
+	Point hl = cl;
+	std::vector<View *> path;
+	for (View *v = hit; v && v != cv; v = v->superview()) {
+		path.push_back(v);
+	}
+	for (auto it = path.rbegin(); it != path.rend(); ++it) {
+		hl.x -= (*it)->frame().origin.x;
+		hl.y -= (*it)->frame().origin.y;
+	}
+
+	MouseEvent e = pxEvent;
+
+	e.x = hl.x;
+	e.y = hl.y;
+	if (down) {
+		hit->mouseDown(e);
+	} else {
+		hit->mouseUp(e);
+	}
+}
+
+void
+Window::dispatchKeyToContent(const KeyEvent &keyEvent, bool down)
+{
+	if (!impl_->contentView) {
+		return;
+	}
+	if (down) {
+		impl_->contentView->keyDown(keyEvent);
+	} else {
+		impl_->contentView->keyUp(keyEvent);
+	}
+}
+
 void
 Window::draw()
 {
@@ -230,6 +292,12 @@ unsigned int
 Window::height() const
 {
 	return impl_->height;
+}
+
+unsigned long
+Window::xid() const
+{
+	return (unsigned long) impl_->xwin;
 }
 
 } /* namespace argentum */

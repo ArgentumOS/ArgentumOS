@@ -252,11 +252,13 @@ struct KeyEvent {
 	unsigned int modifiers = 0;
 };
 
-/* A mouse button press/release (S0.3). x/y are window-relative;
- * button is the X button number (1 = left). */
+/* A mouse button press/release. For window responders (no content
+ * view) x/y are window-relative PX; for view responders they are
+ * VIEW-LOCAL POINTS (S2.1c) — dispatch converts. button is the X
+ * button number (1 = left). */
 struct MouseEvent {
-	int x = 0;
-	int y = 0;
+	double x = 0;
+	double y = 0;
 	int button = 0;
 	unsigned int modifiers = 0;
 };
@@ -314,6 +316,10 @@ public:
 	unsigned int width() const;
 	unsigned int height() const;
 
+	/* the X window id (for interop: XSendEvent test injection,
+	 * XStoreName etc.). 0 before a successful init(). */
+	unsigned long xid() const;
+
 	/* S2.1a: the content view roots the view tree rendered inside this
 	 * window. The base draw() (when not overridden) composites the
 	 * content view tree into the window (per-view translate + clip,
@@ -323,6 +329,13 @@ public:
 	 * view. */
 	void setContentView(View *view);
 	View *contentView() const;
+
+	/* S2.1c: route an X mouse/key event into the content view tree
+	 * (hit-test + responder chain). Used by Application::run() when
+	 * this window has a content view; ignored otherwise. The event
+	 * coordinates are window-relative PX (as delivered by X). */
+	void dispatchMouseToContent(const MouseEvent &pxEvent, bool down);
+	void dispatchKeyToContent(const KeyEvent &keyEvent, bool down);
 
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;

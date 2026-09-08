@@ -198,6 +198,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/viewtree_b.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/viewtree_b"
+	# viewtree_c: Argentum S2.1c acceptance — responder chain +
+	# hit-testing (XSendEvent clicks -> HIT <view>@<local pt> logs).
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/viewtree_c.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/viewtree_c"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".

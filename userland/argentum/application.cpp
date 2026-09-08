@@ -278,7 +278,10 @@ Application::run()
 			e.keysym = (unsigned long) ks;
 			XLookupString(&ev.xkey, e.chars, (int) sizeof(e.chars) - 1,
 				      nullptr, nullptr);
-			if (ev.type == KeyPress) {
+			if (w->contentView()) {
+				w->dispatchKeyToContent(e,
+					ev.type == KeyPress);
+			} else if (ev.type == KeyPress) {
 				w->keyDown(e);
 			} else {
 				w->keyUp(e);
@@ -293,7 +296,10 @@ Application::run()
 			e.y = ev.xbutton.y;
 			e.button = (int) ev.xbutton.button;
 			e.modifiers = mods_from_state(ev.xbutton.state);
-			if (ev.type == ButtonPress) {
+			if (w->contentView()) {
+				w->dispatchMouseToContent(e,
+					ev.type == ButtonPress);
+			} else if (ev.type == ButtonPress) {
 				w->mouseDown(e);
 			} else {
 				w->mouseUp(e);
