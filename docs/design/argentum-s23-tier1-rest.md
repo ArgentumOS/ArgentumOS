@@ -126,7 +126,7 @@ indicator` / `image`.
 
 ## 4. Split (one observable acceptance per slice)
 
-### S2.3a — drag + Slider + Stepper + Menu model
+### S2.3a — drag + Slider + Stepper + Menu model — Status: DONE (`1f978c4` design, commit below)
 
 *Scope:* drag delivery (motion to the pressed view); `Slider`
 (click/drag sets the value); `Stepper` (+/− zones); the `Menu`/
@@ -136,6 +136,10 @@ the slider to a fraction and its value reads back; stepper clicks
 step the value; actions fire; a11y role/value read-back; Menu built
 in-process with items + a submenu, read back (titles/enabled), no
 popup yet (that is S2.3c's PopUpButton).
+Gate: `.build/s23a_run.sh` + `.build/s23a_assert.py` (probe
+`widgets_e`) — `S23A-OK` (drag slider 0.5→0.757, stepper 0→1,
+actions 1+3, a11y roles/values, Menu read-back). Regressions after:
+S13-PIXELS-OK (6), S21A-PIXELS-OK (5), S22C-OK.
 
 ### S2.3b — SegmentedControl + ProgressIndicator + LevelIndicator
 

@@ -450,6 +450,7 @@ accessibilityRoleName(AccessibilityRole role)
 	case AccessibilityRole::SecureTextField: return "secure text field";
 	case AccessibilityRole::Image: return "image";
 	case AccessibilityRole::Slider: return "slider";
+	case AccessibilityRole::Stepper: return "stepper";
 	case AccessibilityRole::ProgressIndicator: return "progress indicator";
 	case AccessibilityRole::ScrollArea: return "scroll area";
 	case AccessibilityRole::List: return "list";

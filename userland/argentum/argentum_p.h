@@ -175,6 +175,33 @@ struct Label::Impl {
 	double sizePt = 0;		/* 0 = theme font size */
 };
 
+/* S2.3a Menu model state. Menu owns NO items (borrowed). */
+struct MenuItem::Impl {
+	char title[128] = { 0 };
+	bool enabled = true;
+	std::function<void()> action;
+	Menu *submenu = nullptr;
+};
+
+struct Menu::Impl {
+	char title[128] = { 0 };
+	std::vector<MenuItem *> items;
+};
+
+/* S2.3a Slider state. */
+struct Slider::Impl {
+	double minValue = 0.0;
+	double maxValue = 1.0;
+	double value = 0.5;
+};
+
+/* S2.3a Stepper state. */
+struct Stepper::Impl {
+	double value = 0.0;
+	double increment = 1.0;
+	bool upZone = false;		/* armed zone from mouseDown */
+};
+
 /* S2.2c Button state: type + title + toggle state. */
 struct Button::Impl {
 	Button::Type type = Button::Type::Push;

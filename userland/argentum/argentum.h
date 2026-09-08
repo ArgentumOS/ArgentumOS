@@ -82,7 +82,7 @@ TextMetrics textMetrics(const char *family, double sizePt,
 enum class AccessibilityRole : int {
 	Unknown, Window, Group, Box, StaticText, Button, CheckBox,
 	RadioButton, TextField, SecureTextField, Image, Slider,
-	ProgressIndicator, ScrollArea, List, Table, Splitter,
+	Stepper, ProgressIndicator, ScrollArea, List, Table, Splitter,
 	TabGroup, MenuItem, HelpTag,
 };
 
@@ -738,6 +738,102 @@ private:
 	Impl *lbl_;
 };
 
+/* S2.3a: MenuItem / Menu — the menu MODEL (Cocoa's NSMenu analog;
+ * NOT views). */
+class Menu;
+
+/* (menu model) A MenuItem has a title, enabled state, an action and
+ * an optional submenu; a Menu holds an ordered list of borrowed
+ * items. The config-framed wire format + the session socket (Kestrel)
+ * come later; S2.3 uses the model in-process (S2.3c PopUpButton). */
+class MenuItem {
+public:
+	explicit MenuItem(const char *title);
+	~MenuItem();
+
+	void setTitle(const char *utf8);	/* copied */
+	const char *title() const;
+	void setEnabled(bool enabled);
+	bool isEnabled() const;
+	void setAction(std::function<void()> action);
+	void setSubmenu(Menu *submenu);		/* borrowed; may be null */
+	Menu *submenu() const;
+	void activate();			/* fires the action */
+
+private:
+	struct Impl;
+	Impl *impl_;
+};
+
+class Menu {
+public:
+	Menu();
+	~Menu();
+
+	const char *title() const;
+	void setTitle(const char *utf8);
+	/* ordered list; non-owning (the app keeps items alive) */
+	void addItem(MenuItem *item);
+	MenuItem *itemAt(int i) const;
+	int itemCount() const;
+
+private:
+	struct Impl;
+	Impl *impl_;
+};
+
+/* S2.3a: Slider — a horizontal track + knob control (Control).
+ * value is a double in [minValue, maxValue]; clicking the track jumps
+ * the knob, dragging (motion delivered to the pressed view while the
+ * press is held) tracks it, and the action fires on release. A11y
+ * role Slider, value = the value. */
+class Slider : public Control {
+public:
+	Slider();
+	~Slider() override;
+
+	void setRange(double minValue, double maxValue);
+	double minValue() const;
+	double maxValue() const;
+	void setValue(double v);
+	double value() const;
+	/* knob travel fraction in [0,1] (for drawing/read-back) */
+	double knobFraction() const;
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+	void mouseMoved(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+	void keyDown(const KeyEvent &e) override;	/* arrows adjust */
+
+private:
+	void setFromX(double localPt);	/* clamp + store + a11y */
+	struct Impl;
+	Impl *sli_;
+};
+
+/* S2.3a: Stepper — a small +/- control (Control). Clicking the upper
+ * zone adds the increment, the lower zone subtracts; the action fires
+ * after each step. A11y role Stepper, value = the value. */
+class Stepper : public Control {
+public:
+	Stepper();
+	~Stepper() override;
+
+	void setIncrement(double inc);
+	double increment() const;
+	void setValue(double v);
+	double value() const;
+	/* number of steps between value and min/max is unbounded in v1 */
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+
+private:
+	struct Impl;
+	Impl *stp_;
+};
 
 } /* namespace argentum */
 

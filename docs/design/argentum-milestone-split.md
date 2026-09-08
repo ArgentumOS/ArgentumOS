@@ -187,7 +187,10 @@ reference-app + a11y gate.
 - **S2.3 — rest of Tier 1 (L5).** Slider/Stepper/ProgressIndicator/
   SegmentedControl/ImageView/LevelIndicator; Menu model + PopUpButton.
   *Acceptance:* each new widget exercised by the reference app; a11y
-  battery asserts role/label.
+  battery asserts role/label. Split + design:
+  `docs/design/argentum-s23-tier1-rest.md` (`1f978c4`). S2.3a (drag +
+  Slider/Stepper + Menu model) DONE (`S23A-OK`); S2.3b (Segmented +
+  Progress + Level) and S2.3c (ImageView + PopUpButton) open.
 - **S2.4 — Tier 2 structure (L6).** Box, ScrollView, SplitView, TabView,
   TableView-basic (columns/rows/selection, data-source/delegate).
   *Acceptance:* reference app exercises every v1-cut widget (original S2

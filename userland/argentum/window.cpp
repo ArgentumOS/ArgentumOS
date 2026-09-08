@@ -231,6 +231,38 @@ Window::dispatchMotionToContent(const MouseEvent &pxEvent)
 	Point hl;
 	View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
 
+	/* S2.3a drag delivery: while a ButtonPress is held, pointer
+	 * motion goes to the PRESSED view (so a Slider tracks the knob
+	 * across the window); enter/exit tracking is suspended for the
+	 * drag. */
+	if (impl_->pressed) {
+		View *target = impl_->pressed;
+		Point wpl = { pxEvent.x / ppt, pxEvent.y / ppt };
+		Point cl = { wpl.x - cv->frame().origin.x,
+			     wpl.y - cv->frame().origin.y };
+		std::vector<View *> path;
+		Point tl = cl;
+
+		if (target != cv) {
+			for (View *v = target; v && v != cv;
+			     v = v->superview()) {
+				path.push_back(v);
+			}
+			tl = cl;
+			for (auto it = path.rbegin(); it != path.rend();
+			     ++it) {
+				tl.x -= (*it)->frame().origin.x;
+				tl.y -= (*it)->frame().origin.y;
+			}
+		}
+		MouseEvent mv = pxEvent;
+
+		mv.x = tl.x;
+		mv.y = tl.y;
+		target->mouseMoved(mv);
+		return;
+	}
+
 	if (hit != impl_->motionTarget) {
 		if (impl_->motionTarget) {
 			MouseEvent out = pxEvent;
