@@ -106,7 +106,7 @@ Elevation is used **only** for a small set of native, System-owned
 helpers:
 
 ```
-/System/Tools/disk         mount/unmount: "disk mount <device|guid> <target>" (Volumes, policy)
+/System/Tools/disk         "disk mount <device|guid> <target>" / "disk unmount <target|device|guid>"
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
 /System/Tools/install-app  bundle validation + install into /Applications
