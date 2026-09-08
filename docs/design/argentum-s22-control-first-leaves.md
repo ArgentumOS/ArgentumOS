@@ -125,6 +125,24 @@ translated+clipped GC in a view tree; pixel probes assert glyph
 pixels at the expected local px and that the text is clipped at the
 view bounds; the S0.6-era window text still renders (Window::drawText
 parity via the existing demo/text path).
+*Status:* DONE (commit lands with S2.2a) — `text.cpp` is now a shared
+core (`textRunPrepare`/`textRunComposeRgb`/`textRunComposeMask`/
+`textRunAscent`, declared in argentum_p.h) with two sinks: the legacy
+opaque-box RGB blit and an A8 AA-coverage mask.
+`GraphicsContext::drawText` rasterizes the run into the A8 mask and
+composites the fg colour through it with pixman OP_OVER after
+`map_frame` (frame translate + clip) — so text is a first-class shape
+inside the view-tree composite, clipped like any other primitive.
+`Application::textStackReady()/freeTypeHandle()` expose the shared
+FT stack to the text core; `textMetrics(family, sizePt, utf8)` returns
+the run's width/ascent/descent in POINTS for widget layout.
+`Window::drawText` keeps its exact S0.4 behaviour and log lines.
+*Gate:* `.build/s22a_run.sh` + `.build/s22a_pixels.py`. `text_gc`
+draws "MMM" and a 12-W run inside tree tiles through the GC (local px,
+view-clipped) plus the legacy blit. Result: `S22A-OK` — T1 glyphs at
+local px, wide-run glyphs reach T2's edge but NONE leak past the view
+bounds, legacy blit renders (blitted line + pixels), metrics sane.
+S1.3 / S2.1 regressions green.
 
 ### S2.2b — Control + Label
 

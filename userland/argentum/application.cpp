@@ -226,6 +226,18 @@ Application::pxPerPt() const
 	return impl_->pxPerPt;
 }
 
+bool
+Application::textStackReady() const
+{
+	return impl_->ftInited && impl_->ft != nullptr;
+}
+
+void *
+Application::freeTypeHandle() const
+{
+	return (void *) impl_->ft;
+}
+
 /* S0.3 modifier translation (X11 state -> the public flags). */
 static unsigned int
 mods_from_state(unsigned int state)

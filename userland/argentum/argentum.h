@@ -63,6 +63,18 @@ Rect rectOffset(const Rect &r, double dx, double dy);
 Rect rectIntersect(const Rect &a, const Rect &b);
 bool rectIsEmpty(const Rect &r);
 
+/* S2.2a text metrics: one run's layout in POINTS at the session px/pt
+ * (width = total advance; ascent/descent relative to the baseline).
+ * Returns zeros when the text stack is not ready. Used by widget
+ * layout (label/button centering, text-field carets). */
+struct TextMetrics {
+	double widthPt = 0;
+	double ascentPt = 0;
+	double descentPt = 0;
+};
+TextMetrics textMetrics(const char *family, double sizePt,
+			const char *utf8);
+
 /* S2.1b: accessibility roles (catalog §4; grown as widgets appear in
  * S2.2/S2.3). Every View carries role/label/help/value/enabled; the
  * view tree IS the a11y tree (no side table). */
@@ -211,6 +223,13 @@ public:
 	double pxPerPt() const;
 	double ptToPx(double pt) const { return pt * pxPerPt(); }
 	double pxToPt(double px) const { return px / pxPerPt(); }
+
+	/* S2.2a text core: true when init() booted fontconfig + FreeType
+	 * so the text path can run (text.cpp free helpers use this). */
+	bool textStackReady() const;
+	/* the shared FreeType library handle (opaque; text.cpp internals
+	 * cast it back to FT_Library). Not for app code. */
+	void *freeTypeHandle() const;
 
 	/* Event loop (S0.3): dispatch X events to the registered windows'
 	 * responder virtuals (keyDown/keyUp/mouseDown/mouseUp/draw) until
@@ -412,6 +431,18 @@ public:
 				std::uint32_t rgb0, std::uint32_t rgb1);
 	/* 1px anti-aliased line from (x0,y0) to (x1,y1). */
 	void drawLine(int x0, int y0, int x1, int y1, std::uint32_t rgb);
+
+	/* S2.2a: draw a UTF-8 run through Argentum's own text path
+	 * (fontconfig -> HarfBuzz -> FreeType) with its top-left at
+	 * (xPx, yPx) in the current translated space, clipped to the
+	 * frame — the view-tree text primitive. Glyph AA coverage is
+	 * composited fg over whatever the surface holds (no opaque
+	 * background box, unlike Window::drawText). sizePt is the
+	 * requested size in POINTS (converted at the session px/pt);
+	 * fg is 0xRRGGBB. The run's advance/box fall out of
+	 * textMetrics() when layout needs them. */
+	void drawText(const char *family, double sizePt, int xPx, int yPx,
+		      const char *utf8, std::uint32_t fg);
 
 	/* S2.1a state stack (the NSGraphicsContext analog): push a frame,
 	 * translate subsequent draw coordinates by (dxPx, dyPx), clip to a

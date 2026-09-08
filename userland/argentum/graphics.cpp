@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 namespace argentum {
 
@@ -730,6 +731,91 @@ GraphicsContext::drawLine(int x0, int y0, int x1, int y1, std::uint32_t rgb)
 	pixman_composite_triangles(PIXMAN_OP_OVER, src, b->img, PIXMAN_a8,
 				   0, 0, 0, 0, 2, tris);
 	pixman_image_unref(src);
+}
+
+void
+GraphicsContext::drawText(const char *family, double sizePt,
+			  int xPx, int yPx, const char *utf8,
+			  std::uint32_t fg)
+{
+	BitmapImage::Impl *b = impl_->bitmap ? impl_->bitmap->impl_ : nullptr;
+
+	if (!b || !b->img || !family || !utf8 || sizePt <= 0) {
+		return;
+	}
+	Application &app = Application::shared();
+	unsigned int pixelSize = (unsigned int)
+		((sizePt * app.pxPerPt()) + 0.5);
+
+	TextRun *t = textRunPrepare(family, utf8, pixelSize);
+	if (!t) {
+		return;
+	}
+	int boxW = textRunBoxW(t);
+	int boxH = textRunBoxH(t);
+	std::uint32_t fg2 = fg;
+
+	/* frame state: run box in surface space + clipped bounds */
+	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
+			   impl_->clipX, impl_->clipY,
+			   impl_->clipW, impl_->clipH };
+	int runX = xPx + fs.ox;
+	int runY = yPx + fs.oy;
+	int x0, y0, x1, y1;
+
+	if (!map_frame(fs, xPx, yPx, boxW, boxH, &x0, &y0, &x1, &y1)) {
+		textRunFinish(t);
+		return;
+	}
+	if (!clip_rect((int) impl_->bitmap->width(),
+		       (int) impl_->bitmap->height(),
+		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
+		textRunFinish(t);
+		return;
+	}
+
+	/* render glyph AA coverage into an A8 mask sized to the run box */
+	unsigned char *cov = (unsigned char *)
+		std::calloc((size_t) boxW * boxH, 1);
+	if (!cov) {
+		textRunFinish(t);
+		return;
+	}
+	unsigned int rasterized = textRunComposeMask(t, cov);
+	if (rasterized == 0) {
+		std::free(cov);
+		textRunFinish(t);
+		return;
+	}
+	pixman_image_t *mask = pixman_image_create_bits(
+		PIXMAN_a8, boxW, boxH, nullptr, 0);
+	if (!mask) {
+		std::free(cov);
+		textRunFinish(t);
+		return;
+	}
+	int stride = pixman_image_get_stride(mask);
+	unsigned char *md = (unsigned char *) pixman_image_get_data(mask);
+
+	for (int r = 0; r < boxH; r++) {
+		std::memcpy(md + (size_t) r * stride, cov + (size_t) r * boxW,
+			    (size_t) boxW);
+	}
+	std::free(cov);
+
+	/* composite fg through the clipped mask region */
+	pixman_color_t c = pixcolor(fg2);
+	pixman_image_t *src = pixman_image_create_solid_fill(&c);
+
+	if (src) {
+		pixman_image_composite32(PIXMAN_OP_OVER, src, mask, b->img,
+					 0, 0,
+					 x0 - runX, y0 - runY,
+					 x0, y0, x1 - x0, y1 - y0);
+		pixman_image_unref(src);
+	}
+	pixman_image_unref(mask);
+	textRunFinish(t);
 }
 
 void

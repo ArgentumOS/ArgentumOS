@@ -144,6 +144,34 @@ struct View::Impl {
 	char a11yValue[128] = { 0 };
 };
 
+/* S2.2a text core: shared run internals (implemented in text.cpp).
+ * The S0.4 Window::drawText and the S2.2a GraphicsContext::drawText
+ * share match -> shape -> metrics; each sink then rasterizes the
+ * glyphs itself (RGB blend over a background box vs A8 coverage into
+ * an offscreen surface). A TextRun is single-shot: prepare, inspect,
+ * compose at most once, finish. */
+struct TextRun;
+
+TextRun *textRunPrepare(const char *family, const char *utf8,
+			unsigned int pixelSize);
+void textRunFinish(TextRun *t);
+unsigned int textRunGlyphCount(const TextRun *t);
+/* run box geometry (px), matching the legacy drawText box */
+int textRunBoxW(const TextRun *t);
+int textRunBoxH(const TextRun *t);
+/* ascent (px above the baseline) used to position the baseline in the
+ * box: baseline sits textRunAscent()+PADY below the top */
+int textRunAscent(const TextRun *t);
+/* rasterize every glyph fg-over-bg into an opaque RGB32 box
+ * (boxW*boxH words, 0x00RRGGBB). Returns the glyph count rasterized
+ * and prints the legacy ARGENTUM-TEXT: rasterized/blitted lines. */
+unsigned int textRunComposeRgb(TextRun *t, std::uint32_t *box,
+			       std::uint32_t fg, std::uint32_t bg);
+/* rasterize every glyph's AA coverage into an A8 mask (boxW*boxH
+ * bytes, 0 = empty). Returns the glyph count rasterized. The caller
+ * owns the buffer. */
+unsigned int textRunComposeMask(TextRun *t, unsigned char *cov);
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_P_H */
