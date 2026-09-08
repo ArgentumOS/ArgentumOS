@@ -123,7 +123,9 @@ helpers:
                            drag-and-drop installs via this helper, both kinds)
 /System/Tools/uninstall   symlink to install (argv[0]-dispatched): "uninstall <bundle-name> <global|local>"
 /System/Tools/power        off / reboot (the everyday verb: "power off")
-/System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
+/System/Tools/config       "config <domain> ..." — the mediated .conf writer: with Admin, any scope incl.
+                           any system domain (allowlist lives in the tool: Admin gate only, no domain
+                           restriction); without Admin, the caller's own user scope only
 ```
 
 Each helper is a small dedicated binary (no shell, no generic
@@ -184,10 +186,18 @@ the whole toybox binary staged 4755 so `TOYFLAG_ROOTONLY` applets
   power.
 - **Machine config is edited mediated, never by raw file write.**
   There is **no person-writable ACL carve-out on
-  `/System/Configuration`**: the config mechanism (running as System,
-  via the `config` helper) is the only writer, so Admin's "edit config" is a
-  validated, canonicalizing, atomic *operation* — not a `vi` typo that
-  breaks boot. The same applies to app install. (Review finding 4,
+  `/System/Configuration`**: the `config` helper (setuid-System) is the
+  mediated writer — with Admin privileges it may adjust **any** config
+  domain at any scope (the allowlist lives in the tool: the Admin gate
+  is the whole restriction, no per-domain list), and without Admin it
+  writes only the caller's own user scope. `account`/`group`/`install`
+  are *validated front-ends* that write their own domains through the
+  same atomic mechanism — not exclusive writers; a raw Admin `config
+  -s system.passwd` edit is permitted the way a root `vipw` is. So
+  Admin's "edit config" is a canonicalizing, atomic *operation* — not
+  a `vi` typo that breaks boot. (Schema-less by design: validation is
+  grammar + atomicity, not meaning — a semantically wrong value is the
+  operator's error, accepted.) The same applies to app install. (Review finding 4,
   resolved this way.)
 
 ### 4.2 Why not sudo/doas (considered, rejected)
