@@ -145,8 +145,18 @@ View::subviews() const
 void
 View::setFrame(const Rect &r)
 {
+	Rect old = impl_->frame;
+
 	impl_->frame = r;
-	/* S2.1d hooks springs/struts here via the old/new bounds. */
+	if (old.size.w != r.size.w || old.size.h != r.size.h) {
+		/* springs/struts (S2.1d): our size changed, so relayout
+		 * the subviews against the old/new bounds. (Bounds are
+		 * {0,0,w,h}; a pure move leaves subview frames alone.) */
+		Rect oldBounds = { {0, 0}, old.size };
+		Rect newBounds = { {0, 0}, r.size };
+
+		resizeSubviewsWithOldBounds(oldBounds, newBounds);
+	}
 	setNeedsDisplay();
 }
 
@@ -299,9 +309,75 @@ void
 View::resizeSubviewsWithOldBounds(const Rect &oldBounds,
 				  const Rect &newBounds)
 {
-	/* S2.1d: springs/struts relayout lands here. */
-	(void) oldBounds;
-	(void) newBounds;
+	/* springs/struts (S2.1d): called on THIS view when its own
+	 * bounds size changed; each subview's frame is adjusted by its
+	 * autoresizingMask so rigid components keep their length and
+	 * the flexible ones split the delta equally.
+	 *
+	 * Per axis (Cocoa semantics): the flexible margins/width share
+	 * d = newSize - oldSize among themselves (n = number of
+	 * flexible components). A flexible Min margin moves the origin
+	 * by d/n; flexible Width/Height grows by d/n; a flexible Max
+	 * margin needs no explicit change (it absorbs its share on the
+	 * far side once origin/size took theirs). Zero flexible
+	 * components on an axis = pinned (origin + size unchanged). */
+	double dw = newBounds.size.w - oldBounds.size.w;
+	double dh = newBounds.size.h - oldBounds.size.h;
+
+	for (View *c : impl_->subviews) {
+		Rect f = c->frame();
+		unsigned int mask = c->autoresizingMask();
+		double nx = f.origin.x, ny = f.origin.y;
+		double nw = f.size.w, nh = f.size.h;
+		int n;
+
+		n = 0;
+		if (mask & AutoresizingFlexibleMinX) {
+			n++;
+		}
+		if (mask & AutoresizingFlexibleWidth) {
+			n++;
+		}
+		if (mask & AutoresizingFlexibleMaxX) {
+			n++;
+		}
+		if (n > 0 && dw != 0.0) {
+			double share = dw / n;
+
+			if (mask & AutoresizingFlexibleMinX) {
+				nx += share;
+			}
+			if (mask & AutoresizingFlexibleWidth) {
+				nw += share;
+			}
+		}
+		n = 0;
+		if (mask & AutoresizingFlexibleMinY) {
+			n++;
+		}
+		if (mask & AutoresizingFlexibleHeight) {
+			n++;
+		}
+		if (mask & AutoresizingFlexibleMaxY) {
+			n++;
+		}
+		if (n > 0 && dh != 0.0) {
+			double share = dh / n;
+
+			if (mask & AutoresizingFlexibleMinY) {
+				ny += share;
+			}
+			if (mask & AutoresizingFlexibleHeight) {
+				nh += share;
+			}
+		}
+		if (nx != f.origin.x || ny != f.origin.y ||
+		    nw != f.size.w || nh != f.size.h) {
+			Rect nf = { {nx, ny}, {nw, nh} };
+
+			c->setFrame(nf);
+		}
+	}
 }
 
 /* ---- a11y metadata (S2.1b) ------------------------------------- */

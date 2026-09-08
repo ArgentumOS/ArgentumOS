@@ -330,6 +330,13 @@ public:
 	void setContentView(View *view);
 	View *contentView() const;
 
+	/* S2.1d: the X server resized this window (ConfigureNotify).
+	 * Width/height are the NEW window px; if a content view exists
+	 * its frame is reset to the full window in pt, which triggers
+	 * the springs/struts relayout of the tree. An Expose follows
+	 * from the server and redraws. */
+	void handleResize(unsigned int widthPx, unsigned int heightPx);
+
 	/* S2.1c: route an X mouse/key event into the content view tree
 	 * (hit-test + responder chain). Used by Application::run() when
 	 * this window has a content view; ignored otherwise. The event

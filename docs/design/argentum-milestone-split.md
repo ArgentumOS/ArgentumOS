@@ -169,6 +169,10 @@ reference-app + a11y gate.
   springs/struts relayout, damage/redraw, responder virtuals,
   hit-testing, a11y metadata.
   *Acceptance:* bare window over a View hierarchy; role read back.
+  *Status:* DONE — S2.1a (view core + tree + composite) `3c2fa43`,
+  S2.1b (a11y metadata) `4c39383`, S2.1c (responder chain +
+  hit-testing) `8548aea`, S2.1d (springs/struts relayout) commits with
+  this entry. Gates + recipes in docs/design/argentum-s21-view-tree.md.
 - **S2.2 — Control + first leaves (L4).** Control action firing;
   Label (text+theme+draw+a11y); Button + types; TextField + edit
   engine.

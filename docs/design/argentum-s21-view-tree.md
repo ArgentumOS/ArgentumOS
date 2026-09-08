@@ -292,17 +292,24 @@ the handled view + view-LOCAL pt:
 Result: `S21C-OK (5 probes)`, plus S1.3 (`S13-PIXELS-OK (6 probes)`)
 and S2.1a (`S21A-PIXELS-OK (5 probes)`) regressions green.
 
-### S2.1d — springs/struts relayout
-
-*Scope:* autoresizingMask, resizeSubviewsWithOldBounds, setFrame
-trigger; Window resize (ConfigureNotify) → contentView relayout.
-*Acceptance (gate .build/s21d_*):* `viewtree_d` lays a fixed header
-(flexible width, fixed height) + flexible content under it; the gate
-resizes the window (XResizeWindow from the probe or a guest-side
-resize helper) and reads frames back:
-`VTREE-D: header w=<W> content h=<H>` with the expected springs math
-asserted in the log (header keeps height, stretches width; content
-grows).
+*Status:* DONE (commit lands with S2.1d) — `autoresizingMask`
+(flexible Min/Width-or-Height/Max per axis) + `setFrame` triggers +
+`resizeSubviewsWithOldBounds` implement Cocoa springs/struts: on each
+axis the flexible margins/size share the delta equally (rigid parts
+keep their length); a flexible Max margin needs no explicit change (it
+absorbs its share on the far side). Window::handleResize + a
+ConfigureNotify case in Application::run() (StructureNotifyMask now
+selected) reset the content view's frame to the full window in pt,
+which re-runs the springs on the tree; the Expose that follows
+redraws.
+*Gate:* `.build/s21d_run.sh` + `.build/s21d_assert.py`. `viewtree_d`
+maps a 480x360 px window with a fixed-height header (FlexibleWidth)
+and a content area below (FlexibleWidth|FlexibleHeight), then
+XResizeWindow's it to 600x420 px from a second X connection; each view
+logs its frame in draw (the post-resize Expose redraws). Read-back:
+header x=0 y=0 w=450 h=40 (stretched width, height kept); content
+x=0 y=40 w=450 h=275 (grew down). Result: `S21D-OK`, plus S1.3, S2.1a
+and S2.1c regressions green. **S2.1 is complete (a–d).**
 
 ## 6. Files
 

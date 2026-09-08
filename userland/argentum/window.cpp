@@ -61,6 +61,27 @@ Window::contentView() const
 	return impl_->contentView;
 }
 
+void
+Window::handleResize(unsigned int widthPx, unsigned int heightPx)
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	impl_->width = widthPx;
+	impl_->height = heightPx;
+	if (impl_->contentView) {
+		/* reset the tree root to the full window; setFrame's
+		 * size change triggers resizeSubviewsWithOldBounds,
+		 * which relayouts every subview by its autoresizing
+		 * mask (S2.1d springs/struts) */
+		double ppt = Application::shared().pxPerPt();
+		Rect full = { {0, 0},
+			      {widthPx / ppt, heightPx / ppt} };
+
+		impl_->contentView->setFrame(full);
+	}
+}
+
 /* S2.1c: hit-test + responder dispatch for content-view windows.
  * The X event point is window-relative PX; frames are PT, so convert.
  * Descends to the deepest visible view under the point (reverse draw
@@ -184,11 +205,12 @@ Window::init(const char *title, int x, int y,
 		XStoreName(impl_->dpy, impl_->xwin, title);
 	}
 	/* S0.3: which events the loop dispatches (keyboard, mouse
-	 * buttons, expose/redraw) */
+	 * buttons, expose/redraw). StructureNotifyMask (S2.1d) also
+	 * brings ConfigureNotify so window resizes reach handleResize. */
 	XSelectInput(impl_->dpy, impl_->xwin,
 		     KeyPressMask | KeyReleaseMask |
 		     ButtonPressMask | ButtonReleaseMask |
-		     ExposureMask);
+		     ExposureMask | StructureNotifyMask);
 	XSync(impl_->dpy, False);
 
 	/* register for event dispatch (idempotent on re-init) */

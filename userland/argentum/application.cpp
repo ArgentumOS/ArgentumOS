@@ -309,6 +309,19 @@ Application::run()
 		case Expose:
 			w->draw();
 			break;
+		case ConfigureNotify: {
+			/* S2.1d: window resized by the server/another
+			 * client -> springs/struts relayout (only when
+			 * the px size actually changed; moves of a
+			 * fixed-size window are no-ops) */
+			if ((unsigned) ev.xconfigure.width != w->width() ||
+			    (unsigned) ev.xconfigure.height != w->height()) {
+				w->handleResize(
+					(unsigned) ev.xconfigure.width,
+					(unsigned) ev.xconfigure.height);
+			}
+			break;
+		}
 		default:
 			break;		/* S0.3: ignore the rest */
 		}
