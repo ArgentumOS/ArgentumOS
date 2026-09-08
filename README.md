@@ -9,6 +9,13 @@ enough POSIX surface to run mindfully-ported software. It is developed
 as a hobby OS, one layer at a time, on its own decisions (profile and
 philosophy: `docs/reference/os-profile.md`).
 
+**This repository builds the whole of Argentum OS** — not just the
+kernel. One tree contains and builds every layer: the FNX kernel, the
+native userland (musl, dash, toybox, FNX's own tools), the AGFS root
+images, the FSH layout, the Xfb X server, and the Argentum UIKit — and
+`make` drives them all into bootable OS images (`make run-uefi` boots
+the finished OS under QEMU).
+
 **Argentum is the single house brand, qualified by layer.** Brands name
 the layers; engineering identifiers name the machinery and stay
 unchanged (FNX, FSH, AGFS, Xfb, `finch`):
@@ -16,7 +23,7 @@ unchanged (FNX, FSH, AGFS, Xfb, `finch`):
 | Layer | Brand | Identifier / state |
 |---|---|---|
 | Product | Argentum OS | — |
-| Kernel | the Argentum kernel | **FNX** (engineering name) — implemented; this repository |
+| Kernel | the Argentum kernel | **FNX** (engineering name) — implemented |
 | Filesystem hierarchy | the Argentum System Hierarchy | FSH |
 | Native filesystem | AGFS (the Argentum filesystem) | `agfs` — implemented |
 | Desktop session | Argentum Desktop | Xfb (the X server) — implemented |
@@ -27,8 +34,10 @@ unchanged (FNX, FSH, AGFS, Xfb, `finch`):
 
 Today the OS boots from UEFI into the Argentum Desktop: the FNX kernel
 running the AGFS-native userland under Xfb, with the Argentum UIKit
-being built on top of it. The rest of this README is the kernel's
-engineering story.
+being built on top of it. The layers below are all built from this one
+repository — the `FNX` section that follows is the kernel's
+engineering story; the userland and desktop layers are covered in
+`docs/` (start at `docs/README.md`).
 
 FNX
 =====
@@ -113,6 +122,9 @@ The kernel is 64-bit only and is built as a PE32+ EFI application:
     make                 # same as `make buildfnx` -> .build/64/fnx.efi
 
 This produces the kernel image `.build/64/fnx.efi` (a native x86-64, UEFI-bootable kernel). There is no 32-bit build and no multiboot image.
+The kernel alone is only the core — a bootable Argentum OS needs the
+userland and a root image too: `make userland64 rootagfs` builds them,
+and `make run-uefi` boots the assembled OS under QEMU.
 
 Before compiling you may want to tweak the kernel configuration in `include/fnx/config.h` and `include/fnx/limits.h`.
 
