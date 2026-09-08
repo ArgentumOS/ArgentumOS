@@ -263,6 +263,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
 		userland/tests/widgets_g_inj.cpp -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/widgets_g_inj"
+	# widget_zoo: the S2.5 reference-app germ — every S2.2+S2.3 control
+	# on one live board (launched by init when session.conf says
+	# desktop = "zoo"; `make zoo` boots it).
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/widget_zoo.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/widget_zoo"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".

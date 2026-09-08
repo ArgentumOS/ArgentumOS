@@ -236,7 +236,7 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[])
  * session.conf (written by the image builders: xfbdesk-root writes
  * `desktop = "xfb"`, uitest-root writes `desktop = "uitest"`). A
  * missing file or an unknown value keeps the default demo desktop. */
-enum session_kind { SESSION_XFB, SESSION_UITEST };
+enum session_kind { SESSION_XFB, SESSION_UITEST, SESSION_ZOO };
 
 static enum session_kind read_session(void)
 {
@@ -278,6 +278,8 @@ static enum session_kind read_session(void)
 		}
 		if (strcmp(v, "uitest") == 0)
 			kind = SESSION_UITEST;
+		else if (strcmp(v, "zoo") == 0)
+			kind = SESSION_ZOO;
 		break;
 	}
 	fclose(f);
@@ -288,8 +290,9 @@ static enum session_kind read_session(void)
  * demo clients retry XOpenDisplay until the server is up (Xfb takes a
  * while to come up under TCG), so the console shell is not gated on the
  * server. Which client runs after Xfb comes from session.conf: the
- * default demo desktop (xdraw + xkey) or the uitest board
- * (theme_chrome, the S1.x acceptance probe). */
+ * default demo desktop (xdraw + xkey), the uitest board
+ * (theme_chrome, the S1.x acceptance probe), or the widget zoo
+ * (widget_zoo, S2.2+S2.3 control catalog; desktop = "zoo"). */
 static void start_xfb(void)
 {
 	/* the server execs xkbcomp to compile the keymap at startup, so its
@@ -328,6 +331,10 @@ static void start_xfb(void)
 		spawn_gui("/System/Shared/tests/theme_chrome",
 			  (char *const[]) { "theme_chrome", NULL }, dpy_env);
 		puts("XDESK: uitest session launching (theme_chrome on :0)");
+	} else if (session == SESSION_ZOO) {
+		spawn_gui("/System/Shared/tests/widget_zoo",
+			  (char *const[]) { "widget_zoo", NULL }, dpy_env);
+		puts("XDESK: zoo session launching (widget_zoo on :0)");
 	} else {
 		spawn_gui("/System/Shared/X11/bin/xdraw",
 			  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },

@@ -138,6 +138,25 @@ uitest-img: uitest-root
 uitest: .build/ovmf/OVMF.fd uitest-img build64
 	$(MAKE) run-qemu ROOTIMG=$(UITESTIMG)
 
+# --- Widget zoo: the S2.5 reference-app germ. init auto-spawns
+# --- widget_zoo (every S2.2+S2.3 control, live) via session.conf
+# --- desktop="zoo". Run from a terminal with DISPLAY set for a GTK
+# --- window:
+# ---     make zoo       (widget zoo board)
+ZOOROOT ?= .build/zoo-root
+ZOOIMG  ?= .build/rootagfs-zoo.img
+
+zoo-root: userland64
+	rm -rf $(ZOOROOT)
+	cp -a $(ROOTFS64) $(ZOOROOT)
+	cp $(XFB_BIN) "$(ZOOROOT)/System/Shared/X11/bin/Xfb"
+	printf 'desktop = "zoo"\n' > "$(ZOOROOT)/System/Configuration/session.conf"
+zoo-img: zoo-root
+	python3 tools/mkagfs.py $(ZOOROOT) $(ZOOIMG) 64
+	python3 tools/agfscheck.py $(ZOOIMG) $(ZOOROOT)
+zoo: .build/ovmf/OVMF.fd zoo-img build64
+	$(MAKE) run-qemu ROOTIMG=$(ZOOIMG)
+
 # Boot the AGFS root image (.build/rootagfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
 # filesystems (minix -> ext2 -> iso9660 -> agfs) and finds agfs; the same

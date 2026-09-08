@@ -199,7 +199,10 @@ reference-app + a11y gate.
   acceptance, first half); a11y battery green on all.
 - **S2.5 — S2 gate.** *Acceptance:* the Settings reference app
   exercises every v1-cut widget and the a11y battery asserts
-  role/label on each (original S2 acceptance, whole).
+  role/label on each (original S2 acceptance, whole). The interim
+  `make zoo` board (widget_zoo, session.conf `desktop = "zoo"`,
+  init.c SESSION_ZOO) is the reference-app germ: every S2.2+S2.3
+  control live on one window; S2.5 grows it into Settings.
 
 ## S3 — Input & text depth
 
