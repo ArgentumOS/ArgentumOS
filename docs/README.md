@@ -7,7 +7,13 @@ directories below are only the first cut.
 - `design/` — chosen directions, design records, and active plans
   (including the milestone-tracking plans for the toolchain, shared
   libraries, system config, X11, the Argentum GUI toolkit, and the
-  Finch shell).
+  Argentum Shell).
+
+Branding follows the monobrand (docs/reference/os-profile.md):
+**Argentum** names the layers — the Argentum OS, the Argentum Desktop,
+the Argentum Design Language, the Argentum kernel, the Argentum UIKit,
+the Argentum Shell — while the identifiers name the machinery and are
+unchanged (FNX, FSH, AGFS, Xfb, `finch`).
 - `eval/` — feasibility evaluations and candidate surveys that did not
   (yet) become decisions: SSE/FPU, SMP, GPU accel, kernel debugger, and
   the GUI-candidate documents.
@@ -33,7 +39,7 @@ directories below are only the first cut.
 | `design/system-config-files-plan.md` | libconfig `.conf` domains (M0-M7 DONE) |
 | `design/permissions-acl.md` | POSIX ACLs as the canonical model |
 | `design/agfs-enhancements.md` | AGFS home doc (SSD suitability, live directories, integrity, ...) |
-| `design/finch-shell-plan.md` | PLAN — the Finch user shell (from-scratch; dash stays `/bin/sh`) |
+| `design/finch-shell-plan.md` | PLAN — the Argentum Shell (code name `finch`; from-scratch; dash stays `/bin/sh`) |
 
 New design work goes under `design/`; feasibility studies under `eval/`;
 when a plan is superseded or abandoned it moves to `archive/` (git mv, so
