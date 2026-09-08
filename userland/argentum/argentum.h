@@ -177,6 +177,72 @@ public:
 
 private:
 	friend class Application;	/* the loop reads impl_->xwin */
+	friend class GraphicsContext;	/* flush() XPutImages bitmaps */
+	struct Impl;
+	Impl *impl_;
+};
+
+/* S1.2: BitmapImage — an offscreen pixel buffer (the NSBitmapImageRep
+ * analog). Owns a pixman x8r8g8b8 surface; drawing happens through a
+ * GraphicsContext on it, and the result is blitted to a Window with
+ * Window::flush(). Pixels are 0x00RRGGBB words in the same layout the
+ * core-protocol blits use. */
+class BitmapImage {
+public:
+	/* New WxH offscreen surface, cleared to transparent black. */
+	BitmapImage(unsigned int width, unsigned int height);
+	~BitmapImage();
+
+	unsigned int width() const;
+	unsigned int height() const;
+
+	BitmapImage(const BitmapImage &) = delete;
+	BitmapImage &operator=(const BitmapImage &) = delete;
+
+private:
+	friend class GraphicsContext;
+	friend class Window;
+	struct Impl;
+	Impl *impl_;
+};
+
+/* S1.2: GraphicsContext — the shape set drawn into a BitmapImage (the
+ * NSGraphicsContext analog). All geometry is integer pixels; colors
+ * are 0xRRGGBB. Anti-aliased edges come from pixman (coverage), so
+ * shapes composite onto whatever the surface already holds. */
+class GraphicsContext {
+public:
+	/* Draw onto image. The context does not own the image. */
+	explicit GraphicsContext(BitmapImage &image);
+	~GraphicsContext();
+
+	/* Solid axis-aligned rectangle. */
+	void fillRect(int x, int y, unsigned int w, unsigned int h,
+		     std::uint32_t rgb);
+	/* Rounded rectangle (solid); radius is the corner radius in px
+	 * (clamped to half the smaller side). */
+	void fillRoundedRect(int x, int y, unsigned int w, unsigned int h,
+			     unsigned int radius, std::uint32_t rgb);
+	/* Two-stop linear gradient across the rect. vertical=true:
+	 * top=rgb0 bottom=rgb1; false: left=rgb0 right=rgb1. */
+	void fillLinearGradient(int x, int y, unsigned int w, unsigned int h,
+				std::uint32_t rgb0, std::uint32_t rgb1,
+				bool vertical = true);
+	/* Radial gradient: rgb0 at the center, rgb1 at `radius`. */
+	void fillRadialGradient(int cx, int cy, unsigned int radius,
+				std::uint32_t rgb0, std::uint32_t rgb1);
+	/* 1px anti-aliased line from (x0,y0) to (x1,y1). */
+	void drawLine(int x0, int y0, int x1, int y1, std::uint32_t rgb);
+
+	/* Push the context's BitmapImage into `window` at (x, y) with one
+	 * core-protocol XPutImage (the offscreen draw then the blit).
+	 * The context keeps drawing afterwards if you want to re-flush. */
+	void flush(Window &window, int x, int y);
+
+	GraphicsContext(const GraphicsContext &) = delete;
+	GraphicsContext &operator=(const GraphicsContext &) = delete;
+
+private:
 	struct Impl;
 	Impl *impl_;
 };

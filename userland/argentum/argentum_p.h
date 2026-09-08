@@ -16,11 +16,14 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include <pixman.h>
+
 #include <map>
 
 namespace argentum {
 
 class Window;
+class GraphicsContext;
 
 /* Application session state. */
 struct Application::Impl {
@@ -63,6 +66,20 @@ struct Window::Impl {
 	unsigned int width = 0;
 	unsigned int height = 0;
 	bool mapped = false;
+};
+
+/* S1.2 BitmapImage state: the pixman offscreen surface. x8r8g8b8 is the
+ * 32-bpp XRGB layout fill()/drawText blit, so flush() can XPutImage the
+ * pixman data pointer straight to the window. */
+struct BitmapImage::Impl {
+	pixman_image_t *img = nullptr;	/* PIXMAN_x8r8g8b8 surface */
+	unsigned int width = 0;
+	unsigned int height = 0;
+};
+
+/* S1.2 GraphicsContext state: which bitmap it draws into. */
+struct GraphicsContext::Impl {
+	BitmapImage *bitmap = nullptr;	/* the target surface */
 };
 
 } /* namespace argentum */

@@ -105,6 +105,16 @@ places them.
   linear/radial gradients, rounded rects, 1px lines into an offscreen
   pixman surface.
   *Acceptance:* theme-primitives screendump (plan §469 L1 test).
+  *Status:* DONE — `BitmapImage` (x8r8g8b8 offscreen, NSBitmapImageRep
+  analog) + `GraphicsContext` (the NSGraphicsContext analog: fillRect,
+  fillRoundedRect, fillLinearGradient, fillRadialGradient, drawLine,
+  flush) in argentum.h, pixman-backed in graphics.cpp. Gate
+  `.build/s12_run.sh` runs `System/Shared/tests/theme_primitives`
+  (fixed 560x440 board at root 100,80) on Xfb, screendumps, and
+  pixel-probes 11 points (`.build/s12_pixels.py`): solid interior,
+  linear top/mid/bottom, radial center/mid/rim, rounded-rect interior +
+  backdrop outside the corner radius, and the 1px h/v lines. PPM from
+  a clean tree is green (S12-PIXELS-OK).
 - **S1.3 — theme .conf loader.** Theme file under /Shared/Themes
   (colors, radii, bevels, gradient stops, font selection); active theme
   from the config domain; widget states → parameter sets.
