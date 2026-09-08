@@ -223,6 +223,13 @@ public:
 	 * (clamped to half the smaller side). */
 	void fillRoundedRect(int x, int y, unsigned int w, unsigned int h,
 			     unsigned int radius, std::uint32_t rgb);
+	/* Rounded rectangle filled with a two-stop gradient (vertical =
+	 * top rgb0 -> bottom rgb1; false = left -> right). The gradient
+	 * is clipped to the rounded mask so the corners follow the arc. */
+	void fillRoundedGradient(int x, int y, unsigned int w,
+				 unsigned int h, unsigned int radius,
+				 std::uint32_t rgb0, std::uint32_t rgb1,
+				 bool vertical = true);
 	/* Two-stop linear gradient across the rect. vertical=true:
 	 * top=rgb0 bottom=rgb1; false: left=rgb0 right=rgb1. */
 	void fillLinearGradient(int x, int y, unsigned int w, unsigned int h,

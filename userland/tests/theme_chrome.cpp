@@ -63,14 +63,24 @@ log_probe(const char *nm, int rx, int ry, std::uint32_t want)
 		nm, WIN_X + rx, WIN_Y + ry, want);
 }
 
-/* draw one push button: outline ring + two-stop state fill */
+/* draw one push button: the whole rounded rect is painted in the ring
+ * color first, then a CONCENTRIC rounded gradient interior (inset by 1,
+ * radius-1) covers the middle. Both shapes share the same AA treatment,
+ * so the ring stays a uniform 1px band around the corner arc — the
+ * earlier square inner cut washed the corner out. */
 static void draw_button(argentum::GraphicsContext &g,
 			argentum::Theme::Params p, int x, int y, int w,
 			int radius)
 {
 	g.fillRoundedRect(x, y, w, BTN_H, radius, p.outline);
-	g.fillLinearGradient(x + 1, y + 1, w - 2, BTN_H - 2,
-			     p.fillTop, p.fillBottom, true);
+	if (radius > 1) {
+		g.fillRoundedGradient(x + 1, y + 1, w - 2, BTN_H - 2,
+				      radius - 1,
+				      p.fillTop, p.fillBottom, true);
+	} else {
+		g.fillLinearGradient(x + 1, y + 1, w - 2, BTN_H - 2,
+				     p.fillTop, p.fillBottom, true);
+	}
 }
 
 class DemoWindow : public argentum::Window {
@@ -105,9 +115,16 @@ public:
 		int fw = (int) width() - 2 * M, fh = (int) height() - 2 * M;
 		g.fillRoundedRect(fx, fy, fw, fh, radius,
 				  theme.chromeOutline());
-		g.fillLinearGradient(fx + 1, fy + 1, fw - 2, fh - 2,
-				     theme.chromeTop(),
-				     theme.chromeBottom(), true);
+		if (radius > 1) {
+			g.fillRoundedGradient(fx + 1, fy + 1, fw - 2,
+					      fh - 2, radius - 1,
+					      theme.chromeTop(),
+					      theme.chromeBottom(), true);
+		} else {
+			g.fillLinearGradient(fx + 1, fy + 1, fw - 2,
+					     fh - 2, theme.chromeTop(),
+					     theme.chromeBottom(), true);
+		}
 		int px = fx + FRAME_INSET, py = fy + FRAME_INSET;
 		int pw = fw - 2 * FRAME_INSET, ph = fh - 2 * FRAME_INSET;
 		g.fillRoundedRect(px, py, pw, ph, radiusSmall,

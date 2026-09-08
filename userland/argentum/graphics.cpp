@@ -25,6 +25,8 @@
 namespace argentum {
 
 #define PI 3.14159265358979323846
+/* arc sample density for the rounded-rect perimeter fan (per quadrant) */
+#define ARC_STEPS 12
 
 /* 0xRRGGBB -> premultiplied 16-bit pixman color (alpha 0xffff). */
 static pixman_color_t
@@ -119,6 +121,99 @@ composite_solid(pixman_image_t *dest, std::uint32_t rgb,
 	pixman_image_unref(src);
 }
 
+/* Build the a8 coverage mask of a rounded rect via a center fan over the
+ * perimeter (arcs sampled at ARC_STEPS per quadrant), the same geometry
+ * fillRoundedRect uses. The mask is `w` x `h` with the shape spanning
+ * the full mask (origin at 0,0); pixman rasterizes the triangles with
+ * AA coverage. Returns NULL on allocation failure. The caller owns the
+ * mask. Radius 0 falls back to a full-opaque mask (callers route that
+ * case to fillRect themselves). */
+static pixman_image_t *
+rounded_mask(unsigned int w, unsigned int h, unsigned int radius)
+{
+	pixman_image_t *mask;
+	int rr = (int) radius;
+	double cx, cy;
+	struct { double px, py; } per[4 * (ARC_STEPS + 2)];
+	int nv = 0;
+
+	mask = pixman_image_create_bits(PIXMAN_a8, (int) w, (int) h,
+					nullptr, 0);
+	if (!mask) {
+		return nullptr;
+	}
+	cx = (double) w / 2.0;
+	cy = (double) h / 2.0;
+
+	/* helper: append the arc of a corner. Corner circle centers at
+	 * the inner corners; arcs run clockwise from the top/right side. */
+#define APPEND(cx_, cy_, a0, a1)					\
+	do {								\
+		int s_;							\
+		for (s_ = 0; s_ <= ARC_STEPS; s_++) {			\
+			double a = (a0) + ((a1) - (a0)) * s_ / ARC_STEPS; \
+			per[nv].px = (cx_) + rr * __builtin_cos(a);	\
+			per[nv].py = (cy_) + rr * __builtin_sin(a);	\
+			nv++;						\
+		}							\
+	} while (0)
+
+	/* top-left corner: circle center (rr, rr); arc from 180deg
+	 * (left edge) to 270deg (top edge), i.e. the corner round. */
+	APPEND(rr, rr, PI, PI * 1.5);
+	/* top-right: center (w-rr, rr); 270deg -> 360deg */
+	APPEND((int) w - rr, rr, PI * 1.5, PI * 2.0);
+	/* bottom-right: center (w-rr, h-rr); 0deg -> 90deg */
+	APPEND((int) w - rr, (int) h - rr, 0, PI * 0.5);
+	/* bottom-left: center (rr, h-rr); 90deg -> 180deg */
+	APPEND(rr, (int) h - rr, PI * 0.5, PI);
+#undef APPEND
+
+	/* center fan — closed: nv triangles, each (center, per[i],
+	 * per[(i+1) % nv]) so the straight left/right/top/bottom sides
+	 * between the arc endpoints are covered too. */
+	{
+		pixman_triangle_t *tris = (pixman_triangle_t *)
+			std::calloc((size_t) (nv > 0 ? nv : 0),
+				    sizeof(pixman_triangle_t));
+		int i;
+
+		if (!tris) {
+			pixman_image_unref(mask);
+			return nullptr;
+		}
+		for (i = 0; i < nv; i++) {
+			int j = (i + 1) % nv;
+
+			tris[i].p1.x = pixman_double_to_fixed(cx);
+			tris[i].p1.y = pixman_double_to_fixed(cy);
+			tris[i].p2.x = pixman_double_to_fixed(per[i].px);
+			tris[i].p2.y = pixman_double_to_fixed(per[i].py);
+			tris[i].p3.x = pixman_double_to_fixed(per[j].px);
+			tris[i].p3.y = pixman_double_to_fixed(per[j].py);
+		}
+		{
+			pixman_color_t white =
+				{ 0xffff, 0xffff, 0xffff, 0xffff };
+			pixman_image_t *wsrc =
+				pixman_image_create_solid_fill(&white);
+
+			if (wsrc) {
+				/* rasterize into the mask: triangles
+				 * accumulate coverage (PIXMAN_OP_ADD keeps
+				 * overlaps additive). */
+				pixman_composite_triangles(PIXMAN_OP_ADD,
+							   wsrc, mask,
+							   PIXMAN_a8, 0, 0,
+							   0, 0, nv, tris);
+				pixman_image_unref(wsrc);
+			}
+		}
+		std::free(tris);
+	}
+	return mask;
+}
+
 void
 GraphicsContext::fillRect(int x, int y, unsigned int w, unsigned int h,
 			  std::uint32_t rgb)
@@ -152,12 +247,35 @@ GraphicsContext::fillRect(int x, int y, unsigned int w, unsigned int h,
 			(int) w, (int) h);
 }
 
+/* Clip a shape rect to the bitmap surface; returns false when fully
+ * outside. On true, x0..y1 hold the clipped exclusive bounds. */
+static bool
+clip_rect(int bw, int bh, int x, int y, int w, int h,
+	  int *x0, int *y0, int *x1, int *y1)
+{
+	*x0 = x < 0 ? 0 : x;
+	*y0 = y < 0 ? 0 : y;
+	*x1 = x + w;
+	*y1 = y + h;
+	if (*x0 >= bw || *y0 >= bh || *x1 <= 0 || *y1 <= 0) {
+		return false;
+	}
+	if (*x1 > bw) {
+		*x1 = bw;
+	}
+	if (*y1 > bh) {
+		*y1 = bh;
+	}
+	return true;
+}
+
 void
 GraphicsContext::fillRoundedRect(int x, int y, unsigned int w,
 				 unsigned int h, unsigned int radius,
 				 std::uint32_t rgb)
 {
 	BitmapImage::Impl *b = impl_->bitmap->impl_;
+	int x0, y0, x1, y1;
 
 	if (!b->img || w == 0 || h == 0) {
 		return;
@@ -171,114 +289,86 @@ GraphicsContext::fillRoundedRect(int x, int y, unsigned int w,
 		fillRect(x, y, w, h, rgb);
 		return;
 	}
-	/* clip to the surface */
-	int x0 = x < 0 ? 0 : x;
-	int y0 = y < 0 ? 0 : y;
-	int x1 = x + (int) w;
-	int y1 = y + (int) h;
-	int bw = (int) impl_->bitmap->width();
-	int bh = (int) impl_->bitmap->height();
-	if (x0 >= bw || y0 >= bh || x1 <= 0 || y1 <= 0) {
+	if (!clip_rect((int) impl_->bitmap->width(), (int) impl_->bitmap->height(), x, y, (int) w, (int) h, &x0, &y0, &x1, &y1)) {
 		return;
 	}
-	if (x1 > bw) {
-		x1 = bw;
-	}
-	if (y1 > bh) {
-		y1 = bh;
-	}
+	pixman_image_t *mask = rounded_mask(w, h, radius);
 
-	/* Mask: a8, sized to the rounded rect, cleared to 0. The rounded
-	 * rect is triangulated (center fan over the perimeter, arcs
-	 * sampled finely) and pixman rasterizes the triangles with AA
-	 * coverage into the mask; the fill color is then composited over
-	 * the destination through the mask. This is pixman's native
-	 * mechanism for non-rectangular shapes (plan §3: "rounded rects
-	 * ... are a thin layer on top"). */
-	int mw = x1 - x0;
-	int mh = y1 - y0;
-	pixman_image_t *mask = pixman_image_create_bits(PIXMAN_a8,
-							 mw, mh, nullptr, 0);
 	if (!mask) {
 		return;
 	}
-	int ox = x - x0;	/* shape origin in mask space */
-	int oy = y - y0;
-	int rr = (int) radius;
+	/* paint through the mask; mask pixel (i,j) corresponds to dest
+	 * (x0+i, y0+j) via the composite offset. */
+	composite_solid(b->img, rgb, mask,
+			x0 - x, y0 - y,	/* mask offset (shape origin) */
+			x0, y0, x1 - x0, y1 - y0);
+	pixman_image_unref(mask);
+}
 
-	/* perimeter vertices: the four straight edges + each arc sampled
-	 * at ARC_STEPS per quadrant. Center fan: every vertex pairs with
-	 * the center -> all triangles are inside the convex shape. */
-#define ARC_STEPS 12
-	double cx = ox + (double) w / 2.0;
-	double cy = oy + (double) h / 2.0;
-	struct { double px, py; } per[4 * (ARC_STEPS + 2)];
-	int nv = 0;
-	int q;
+void
+GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
+				     unsigned int h, unsigned int radius,
+				     std::uint32_t rgb0, std::uint32_t rgb1,
+				     bool vertical)
+{
+	BitmapImage::Impl *b = impl_->bitmap->impl_;
+	int x0, y0, x1, y1;
+	pixman_gradient_stop_t stops[2];
+	pixman_point_fixed_t p1, p2;
+	pixman_image_t *grad;
+	pixman_image_t *mask;
 
-	/* helper: append the arc of a corner. Corner circle centers at
-	 * the inner corners; arcs run clockwise from the top/right side. */
-#define APPEND(cx_, cy_, a0, a1)					\
-	do {								\
-		int s_;							\
-		for (s_ = 0; s_ <= ARC_STEPS; s_++) {			\
-			double a = (a0) + ((a1) - (a0)) * s_ / ARC_STEPS; \
-			per[nv].px = (cx_) + rr * __builtin_cos(a);	\
-			per[nv].py = (cy_) + rr * __builtin_sin(a);	\
-			nv++;						\
-		}							\
-	} while (0)
-
-	/* top-left corner: circle center (ox+rr, oy+rr); arc from 180deg
-	 * (left edge) to 270deg (top edge), i.e. the corner round. */
-	APPEND(ox + rr, oy + rr, PI, PI * 1.5);
-	/* top-right: center (ox+w-rr, oy+rr); 270deg -> 360deg */
-	APPEND(ox + (int) w - rr, oy + rr, PI * 1.5, PI * 2.0);
-	/* bottom-right: center (ox+w-rr, oy+h-rr); 0deg -> 90deg */
-	APPEND(ox + (int) w - rr, oy + (int) h - rr, 0, PI * 0.5);
-	/* bottom-left: center (ox+rr, oy+h-rr); 90deg -> 180deg */
-	APPEND(ox + rr, oy + (int) h - rr, PI * 0.5, PI);
-#undef APPEND
-
-	/* center fan — closed: nv triangles, each (center, per[i],
-	 * per[(i+1) % nv]) so the straight left/right/top/bottom sides
-	 * between the arc endpoints are covered too. */
-	pixman_triangle_t *tris = (pixman_triangle_t *)
-		std::calloc((size_t) (nv > 0 ? nv : 0),
-			    sizeof(pixman_triangle_t));
-	if (!tris) {
-		pixman_image_unref(mask);
+	if (!b->img || w == 0 || h == 0) {
 		return;
 	}
-	int i;
-	for (i = 0; i < nv; i++) {
-		int j = (i + 1) % nv;
-
-		tris[i].p1.x = pixman_double_to_fixed(cx);
-		tris[i].p1.y = pixman_double_to_fixed(cy);
-		tris[i].p2.x = pixman_double_to_fixed(per[i].px);
-		tris[i].p2.y = pixman_double_to_fixed(per[i].py);
-		tris[i].p3.x = pixman_double_to_fixed(per[j].px);
-		tris[i].p3.y = pixman_double_to_fixed(per[j].py);
+	unsigned int half = (w < h ? w : h) / 2;
+	if (radius > half) {
+		radius = half;
 	}
-	pixman_color_t white = { 0xffff, 0xffff, 0xffff, 0xffff };
-	pixman_image_t *wsrc = pixman_image_create_solid_fill(&white);
-	if (wsrc) {
-		/* rasterize into the mask: triangles accumulate coverage
-		 * (PIXMAN_OP_ADD keeps overlaps additive). */
-		pixman_composite_triangles(PIXMAN_OP_ADD, wsrc, mask,
-					   PIXMAN_a8, 0, 0, 0, 0,
-					   nv, tris);
-		pixman_image_unref(wsrc);
+	if (radius == 0) {
+		fillLinearGradient(x, y, w, h, rgb0, rgb1, vertical);
+		return;
 	}
-	std::free(tris);
-
-	/* paint the fill color over the destination through the mask.
-	 * mask pixel 0 corresponds to dest (x0,y0): composite at dest
-	 * (x0,y0) with mask_x=0. */
-	composite_solid(b->img, rgb, mask, 0, 0, x0, y0, mw, mh);
+	if (!clip_rect((int) impl_->bitmap->width(), (int) impl_->bitmap->height(), x, y, (int) w, (int) h, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	/* two-stop gradient clipped to the rounded mask */
+	pixman_color_t c0 = pixcolor(rgb0);
+	pixman_color_t c1 = pixcolor(rgb1);
+	stops[0].x = 0;
+	stops[0].color = c0;
+	stops[1].x = pixman_fixed_1;
+	stops[1].color = c1;
+	if (vertical) {
+		p1.x = pixman_int_to_fixed(x);
+		p1.y = pixman_int_to_fixed(y);
+		p2.x = pixman_int_to_fixed(x);
+		p2.y = pixman_int_to_fixed(y + (int) h);
+	} else {
+		p1.x = pixman_int_to_fixed(x);
+		p1.y = pixman_int_to_fixed(y);
+		p2.x = pixman_int_to_fixed(x + (int) w);
+		p2.y = pixman_int_to_fixed(y);
+	}
+	grad = pixman_image_create_linear_gradient(&p1, &p2, stops, 2);
+	if (!grad) {
+		return;
+	}
+	pixman_image_set_repeat(grad, PIXMAN_REPEAT_PAD);
+	mask = rounded_mask(w, h, radius);
+	if (!mask) {
+		pixman_image_unref(grad);
+		return;
+	}
+	/* gradient sampled in dest coordinates: src offset == dest offset */
+	/* OVER (not SRC) through the AA mask: edge pixels where the mask
+	 * is partial must blend with whatever is beneath (the ring/base),
+	 * not be replaced by gradient*(mask) which darkens them to ~black */
+	pixman_image_composite32(PIXMAN_OP_OVER, grad, mask, b->img,
+				 x0, y0, x0 - x, y0 - y, x0, y0,
+				 x1 - x0, y1 - y0);
 	pixman_image_unref(mask);
-#undef ARC_STEPS
+	pixman_image_unref(grad);
 }
 
 void
