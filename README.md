@@ -1,3 +1,35 @@
+# Argentum
+
+Argentum is a **from-first-principles, desktop-first personal operating
+system**: a small, POSIX-compatible kernel carrying a radically
+original userland that owns every layer — its own filesystem
+hierarchy, its own config format, its own GUI stack, its own app
+packaging — rejecting external standards on principle, yet keeping
+enough POSIX surface to run mindfully-ported software. It is developed
+as a hobby OS, one layer at a time, on its own decisions (profile and
+philosophy: `docs/reference/os-profile.md`).
+
+**Argentum is the single house brand, qualified by layer.** Brands name
+the layers; engineering identifiers name the machinery and stay
+unchanged (FNX, FSH, AGFS, Xfb, `finch`):
+
+| Layer | Brand | Identifier / state |
+|---|---|---|
+| Product | Argentum OS | — |
+| Kernel | the Argentum kernel | **FNX** (engineering name) — implemented; this repository |
+| Filesystem hierarchy | the Argentum System Hierarchy | FSH |
+| Native filesystem | AGFS (the Argentum filesystem) | `agfs` — implemented |
+| Desktop session | Argentum Desktop | Xfb (the X server) — implemented |
+| Visual language | Argentum Design Language | Argentum theme |
+| GUI toolkit | Argentum UIKit | `argentum::`, `libargentum.so` — in progress |
+| Shell | the Argentum Shell | `finch` — designed (`docs/design/finch-shell-plan.md`) |
+| Window manager | the Argentum Workspace | — (future; executable naming open) |
+
+Today the OS boots from UEFI into the Argentum Desktop: the FNX kernel
+running the AGFS-native userland under Xfb, with the Argentum UIKit
+being built on top of it. The rest of this README is the kernel's
+engineering story.
+
 FNX
 =====
 FNX (pronounced "phoenix" or "fee-nicks") is a 64-bit long-mode Unix-like kernel, booting directly from UEFI firmware. It is designed and developed mainly as a hobby OS. It runs natively on x86-64 hardware with a small native userland built from musl, dash and toybox, and boots into a filesystem hierarchy (FSH) of its own design.
@@ -6,7 +38,10 @@ FNX is derived from [Fiwix](https://www.fiwix.org), the original 32-bit i386 ker
 
 FNX is **64-bit only**: it boots as a PE32+ EFI application from UEFI firmware, enters x86-64 long mode with 4-level paging, and runs a single-address-space kernel mapped at the high-half (the UEFI stub re-biases the PE base relocations so every kernel pointer resolves to the high-half alias). There is no 32-bit compatibility mode, no ELF32 support, and no legacy BIOS boot path.
 
-**Argentum is the house brand** (monobrand, 2026-09): the **Argentum OS** (the product), the **Argentum Desktop** (the GUI session), the **Argentum Design Language** (the visual language), and the **Argentum kernel** (this kernel by brand). **FNX is the kernel's engineering name** — the XNU role: boot banner, UTS_SYSNAME, `FNX_QEMU_*` env vars, and engineering prose keep FNX, like XNU inside macOS. The layer components carry their own brands (the **Argentum UIKit**, the **Argentum Shell**); the identifiers name the machinery (FSH, AGFS, Xfb, `finch`, fshlint) and are unchanged. See `docs/reference/os-profile.md`.
+FNX is the kernel's **engineering name** within Argentum — the XNU
+role: boot banner, UTS_SYSNAME, `FNX_QEMU_*` env vars, and engineering
+prose keep FNX while the brand names the layer (the Argentum kernel).
+See the Argentum overview above and `docs/reference/os-profile.md`.
 
 Features
 --------
