@@ -90,12 +90,17 @@ run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 
 # --- Interactive Xfb desktop: boots Xfb :0 on the framebuffer (the QEMU
 # --- window) with demo windows + a console shell, from the real FSH root.
-# --- The image is the standard FSH rootfs plus a session.conf asking init
-# --- for the X11 desktop (init.c session_is_xfb -> start_xfb). Run from a
-# --- terminal with DISPLAY set so the GOP fb is shown in a GTK window:
-# ---     make run-xfb
+# --- The image is the standard FSH rootfs plus a session.conf steering
+# --- init (init.c read_session -> start_xfb): `desktop = "xfb"` runs the
+# --- xdraw+xkey demo desktop; `desktop = "uitest"` runs the theme_chrome
+# --- acceptance board instead. Run from a terminal with DISPLAY set so
+# --- the GOP fb is shown in a GTK window:
+# ---     make run-xfb      (demo desktop)
+# ---     make uitest       (theme_chrome UI test board)
 XFBROOT ?= .build/xfbdesk-root
 XFBIMG  ?= .build/rootagfs-xfbdesk.img
+UITESTROOT ?= .build/uitest-root
+UITESTIMG  ?= .build/rootagfs-uitest.img
 XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 
 .build/x11/xdraw: userland/demos/xdraw.c
@@ -117,6 +122,21 @@ xfbdesk: xfbdesk-root
 	python3 tools/agfscheck.py $(XFBIMG) $(XFBROOT)
 run-xfb: .build/ovmf/OVMF.fd xfbdesk build64
 	$(MAKE) run-qemu ROOTIMG=$(XFBIMG)
+
+# --- UI test board: same boot, but init auto-spawns theme_chrome (the
+# --- S1.x themed frame+button acceptance probe) instead of the demo
+# --- clients, via session.conf desktop="uitest". self-contained: it
+# --- rebuilds userland so the session hook in init is always current.
+uitest-root: userland64
+	rm -rf $(UITESTROOT)
+	cp -a $(ROOTFS64) $(UITESTROOT)
+	cp $(XFB_BIN) "$(UITESTROOT)/System/Shared/X11/bin/Xfb"
+	printf 'desktop = "uitest"\n' > "$(UITESTROOT)/System/Configuration/session.conf"
+uitest-img: uitest-root
+	python3 tools/mkagfs.py $(UITESTROOT) $(UITESTIMG) 64
+	python3 tools/agfscheck.py $(UITESTIMG) $(UITESTROOT)
+uitest: .build/ovmf/OVMF.fd uitest-img build64
+	$(MAKE) run-qemu ROOTIMG=$(UITESTIMG)
 
 # Boot the AGFS root image (.build/rootagfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk

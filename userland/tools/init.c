@@ -232,10 +232,64 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[])
 	}
 }
 
+/* Which desktop session init should run, from /System/Configuration/
+ * session.conf (written by the image builders: xfbdesk-root writes
+ * `desktop = "xfb"`, uitest-root writes `desktop = "uitest"`). A
+ * missing file or an unknown value keeps the default demo desktop. */
+enum session_kind { SESSION_XFB, SESSION_UITEST };
+
+static enum session_kind read_session(void)
+{
+	FILE *f;
+	char line[256];
+	enum session_kind kind = SESSION_XFB;
+
+	f = fopen("/System/Configuration/session.conf", "r");
+	if (!f)
+		return kind;
+	while (fgets(line, sizeof line, f)) {
+		char *p, *v, *end;
+
+		for (p = line; *p == ' ' || *p == '\t'; p++)
+			;
+		if (*p == '#' || !*p)
+			continue;
+		if (strncmp(p, "desktop", 7) ||
+		    (p[7] != '=' && p[7] != ' ' && p[7] != '\t'))
+			continue;
+		v = p + 7;
+		while (*v == ' ' || *v == '\t')
+			v++;
+		if (*v != '=')
+			continue;
+		v++;
+		while (*v == ' ' || *v == '\t')
+			v++;
+		if (*v == '"') {
+			v++;
+			end = strchr(v, '"');
+			if (end)
+				*end = 0;
+		} else {
+			end = v + strlen(v);
+			while (end > v && (end[-1] == '\n' || end[-1] == '\r' ||
+					    end[-1] == ' ' || end[-1] == '\t'))
+				*--end = 0;
+		}
+		if (strcmp(v, "uitest") == 0)
+			kind = SESSION_UITEST;
+		break;
+	}
+	fclose(f);
+	return kind;
+}
+
 /* The X11 desktop: Xfb owns /dev/fb0 and is the one graphics path. The
  * demo clients retry XOpenDisplay until the server is up (Xfb takes a
  * while to come up under TCG), so the console shell is not gated on the
- * server. */
+ * server. Which client runs after Xfb comes from session.conf: the
+ * default demo desktop (xdraw + xkey) or the uitest board
+ * (theme_chrome, the S1.x acceptance probe). */
 static void start_xfb(void)
 {
 	/* the server execs xkbcomp to compile the keymap at startup, so its
@@ -243,6 +297,7 @@ static void start_xfb(void)
 	char *xpath = "PATH=" PATH_DEFAULT ":/System/Shared/X11/bin";
 	char *gui_env[] = { xpath, "HOME=/", NULL };
 	char *dpy_env[] = { xpath, "HOME=/", "DISPLAY=:0", NULL };
+	enum session_kind session = read_session();
 	pid_t p;
 
 	mkdir("/System/Variable Data/log", 0755);
@@ -266,15 +321,21 @@ static void start_xfb(void)
 		       (char *const[]) { "Xfb", ":0", "-ac", NULL }, gui_env);
 		_exit(127);
 	}
-	/* spawn the demo clients right away: they retry XOpenDisplay until
-	 * the server is ready (Xfb takes a while to come up under TCG), so
-	 * the console shell is not gated on the server */
-	spawn_gui("/System/Shared/X11/bin/xdraw",
-		  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },
-		  dpy_env);
-	spawn_gui("/System/Shared/X11/bin/xkey",
-		  (char *const[]) { "xkey", NULL }, dpy_env);
-	puts("XDESK: Xfb desktop launching (xdraw + xkey retry until :0 is up)");
+	/* spawn the session client right away: it retries XOpenDisplay
+	 * until the server is ready (Xfb takes a while to come up under
+	 * TCG), so the console shell is not gated on the server */
+	if (session == SESSION_UITEST) {
+		spawn_gui("/System/Shared/tests/theme_chrome",
+			  (char *const[]) { "theme_chrome", NULL }, dpy_env);
+		puts("XDESK: uitest session launching (theme_chrome on :0)");
+	} else {
+		spawn_gui("/System/Shared/X11/bin/xdraw",
+			  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },
+			  dpy_env);
+		spawn_gui("/System/Shared/X11/bin/xkey",
+			  (char *const[]) { "xkey", NULL }, dpy_env);
+		puts("XDESK: Xfb desktop launching (xdraw + xkey retry until :0 is up)");
+	}
 	fflush(stdout);
 }
 
