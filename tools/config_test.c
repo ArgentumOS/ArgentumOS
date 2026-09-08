@@ -318,6 +318,87 @@ int main(void)
 		}
 	}
 
+	/* ---- raw-file read (config_read_file) ------------------------- */
+	{
+		const char *raw = "/tmp/fnx_libconfig_raw.conf";
+		FILE *f;
+
+		f = fopen(raw, "w");
+		if(!f) {
+			fail("raw-file: create");
+		} else {
+			fprintf(f,
+				"# raw theme-style file (no domain, no scope)\n"
+				"name = \"Argentum\"\n"
+				"accent = 0x8a7fc0\n"
+				"radius = 4\n"
+				"window = {\n"
+				"    radius = 6\n"
+				"    fill = 0xe8e8ec\n"
+				"}\n"
+				"states = [ \"idle\", \"armed\" ]\n");
+			fclose(f);
+
+			e = config_read_file(raw, "name", &v);
+			if(!e && v.type == CONFIG_TYPE_STRING &&
+			   !strcmp(v.v.string, "Argentum")) {
+				ok("raw-file: string leaf");
+			} else {
+				fail("raw-file: string leaf");
+			}
+			config_value_free(&v);
+
+			e = config_read_file(raw, "accent", &v);
+			if(!e && v.type == CONFIG_TYPE_INT &&
+			   v.v.integer == 0x8a7fc0) {
+				ok("raw-file: 0x int leaf");
+			} else {
+				fail("raw-file: 0x int leaf");
+			}
+			config_value_free(&v);
+
+			e = config_read_file(raw, "window", &v);
+			if(!e && v.type == CONFIG_TYPE_RECORD) {
+				config_value_t *c;
+
+				ok("raw-file: block -> record");
+				e = config_record_child(&v, "radius", &c);
+				if(!e && c && c->type == CONFIG_TYPE_INT &&
+				   c->v.integer == 6) {
+					ok("raw-file: record child radius");
+				} else {
+					fail("raw-file: record child radius");
+				}
+			} else {
+				fail("raw-file: block -> record");
+			}
+			config_value_free(&v);
+
+			e = config_read_file(raw, "states", &v);
+			if(!e && v.type == CONFIG_TYPE_ARRAY &&
+			   v.v.array.count == 2) {
+				ok("raw-file: array");
+			} else {
+				fail("raw-file: array");
+			}
+			config_value_free(&v);
+
+			e = config_read_file(raw, "absent.key", &v);
+			if(e == CONFIG_ERR_NOT_FOUND) {
+				ok("raw-file: absent key -> NOT_FOUND");
+			} else {
+				fail("raw-file: absent key -> NOT_FOUND");
+			}
+			e = config_read_file("/nonexistent/x.conf", "k", &v);
+			if(e == CONFIG_ERR_NOT_FOUND) {
+				ok("raw-file: missing path -> NOT_FOUND");
+			} else {
+				fail("raw-file: missing path -> NOT_FOUND");
+			}
+			unlink(raw);
+		}
+	}
+
 	printf("CONFIGTEST: %d failure(s)\n", fails);
 	return fails ? 1 : 0;
 }

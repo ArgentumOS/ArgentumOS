@@ -82,6 +82,27 @@ struct GraphicsContext::Impl {
 	BitmapImage *bitmap = nullptr;	/* the target surface */
 };
 
+/* S1.3 Theme state: parsed params of the active theme file. */
+struct Theme::Impl {
+	bool loaded = false;		/* load() parsed a theme file */
+	char name[64];			/* e.g. "Argentum" */
+	std::uint32_t accent;		/* design accent (0xRRGGBB) */
+	std::uint32_t chromeTop;	/* chrome surface top stop */
+	std::uint32_t chromeBottom;	/* chrome surface bottom stop */
+	std::uint32_t page;		/* document surface */
+	std::uint32_t text;		/* text colour */
+	double smallRadius;		/* pt */
+	double baseRadius;
+	double bevel;
+	double outline;
+	char fontFamily[96];
+	double fontPt;
+	std::uint32_t chromeOutline;	/* derived dark-accent edge */
+	struct StateParams {
+		std::uint32_t fillTop, fillBottom, outline, label;
+	} states[5];			/* Index: (int)ControlState */
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_P_H */

@@ -365,6 +365,13 @@ v2 (this design) is additive on the header:
   (`rules[1].edits[0].value`, `rules[0].tests.1`). Reads and writes
   accept them; files only ever carry ident segments (the canonical
   writer emits arrays anonymously).
+- `config_read_file(path, key, &out)` (added S1.3) parses ONE .conf
+  file at an arbitrary absolute path and resolves `key` in it — no
+  scope tree, no system → user → shared merge. For .conf DATA files
+  that live outside the three `Configuration/` dirs (e.g. Argentum
+  theme files under `/Shared/Themes/<name>.conf`): same grammar, key
+  rules, record synthesis and error codes as `config_read_scope()`;
+  free the result with `config_value_free()`.
 - Reads resolve an address in two phases: the leading ident run is a
   dotted base key resolved against the flat store, then index/name
   steps descend the stored tree value. Array bases are **additive**

@@ -139,6 +139,17 @@ config_err_t config_read_scope(config_scope_t scope, const char *domain,
 			       const char *key, config_value_t *out);
 
 /*
+ * Raw-file read: parse ONE .conf file at an absolute path and resolve
+ * `key` in it (no scope tree, no precedence merge — the file is the
+ * only source). For data files outside the Configuration/ dirs (e.g.
+ * Argentum themes under /Shared/Themes/<theme>.conf). Key rules,
+ * record synthesis and error codes match config_read_scope(); free the
+ * result with config_value_free().
+ */
+config_err_t config_read_file(const char *path, const char *key,
+			      config_value_t *out);
+
+/*
  * v2 (docs §10.1): look up child field `name` in a CONFIG_TYPE_RECORD
  * value. On CONFIG_OK *out (may be NULL to test presence) is set to the
  * field's value pointer, lib-owned and valid until config_value_free()

@@ -97,7 +97,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
 		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
 		"$(ROOTFS64)/Shared/Sounds" "$(ROOTFS64)/Shared/Videos" \
-		"$(ROOTFS64)/Shared/Documentation"
+		"$(ROOTFS64)/Shared/Documentation" "$(ROOTFS64)/Shared/Themes"
 	@mkdir -p "$(ROOTFS64)/System/Tools" "$(ROOTFS64)/System/Libraries" \
 		"$(ROOTFS64)/System/Configuration" "$(ROOTFS64)/System/Devices" \
 		"$(ROOTFS64)/System/Devices/pts" "$(ROOTFS64)/System/Processes" \
@@ -178,6 +178,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/theme_primitives.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/theme_primitives"
+	# theme_chrome: Argentum S1.3 acceptance — the themed frame+button
+	# render at the fallback factor: loads the active Theme and draws
+	# a chrome window frame + three state buttons with theme params.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/theme_chrome.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/theme_chrome"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".
@@ -332,6 +339,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# system.display display.width_mm <mm> display.height_mm <mm>`.
 	@cp userland/configuration/system.display.conf \
 		"$(ROOTFS64)/Shared/Configuration/system.display.conf"
+	# Argentum active theme (S1.3, domain system.theme): names the
+	# theme file under /Shared/Themes. Same Shared-scope convention.
+	@cp userland/configuration/system.theme.conf \
+		"$(ROOTFS64)/Shared/Configuration/system.theme.conf"
+	# Argentum theme files (S1.3, plan §3 Themes): plain .conf data
+	# under /Shared/Themes/<name>.conf, read raw via config_read_file
+	# (NOT domains — they live outside the Configuration/ scope dirs).
+	@cp userland/configuration/themes/Argentum.conf \
+		"$(ROOTFS64)/Shared/Themes/Argentum.conf"
 	# --- the Admin home: the User Template, copied (Q9) ---
 	rm -rf "$(ROOTFS64)/Users"
 	@mkdir -p "$(ROOTFS64)/Users"

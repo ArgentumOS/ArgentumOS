@@ -120,6 +120,25 @@ places them.
   from the config domain; widget states → parameter sets.
   *Acceptance:* themed frame+button render at the fallback factor
   (screendump).
+  *Status:* DONE — `system.theme` domain (userland/configuration/
+  system.theme.conf, `active = "Argentum"`) + first theme file
+  (userland/configuration/themes/Argentum.conf, staged at
+  /Shared/Themes/Argentum.conf: accent/chrome/page/text palette,
+  radius.small/base, bevel, outline, font family/size — all in points).
+  Theme .conf files are DATA outside the Configuration/ scope dirs, so
+  libconfig gained a raw-file read `config_read_file(path, key, &out)`
+  (no scope merge) in S1.3; `Theme` (argentum.h) loads the active theme
+  and serves palette/geometry/font plus the five per-state parameter
+  sets (idle/hover/armed/disabled/focused, `Theme::state(ControlState)`)
+  derived from the accent by the colour module in theme.cpp (mix/
+  lighten/darken/desaturate; plan §3 "one accent in, coherent states
+  out"; file `derived.*` keys override any computed colour). Gate
+  `.build/s13_run.sh` runs `System/Shared/tests/theme_chrome` (frame +
+  idle/armed/disabled buttons at fallback 4/3 px/pt), screendumps, and
+  `.build/s13_pixels.py` probes 6 points against the CHROME: log lines
+  (theme values + pixman-model expectations) — green
+  (S13-PIXELS-OK: frame ring = chromeOutline 0x3e3956, chrome
+  gradient, page panel, armed = accent fill, disabled = desaturated).
 - **S1.4 — 2x px/pt gate.** Boot with the physical-size override;
   same code path draws at 2x.
   *Acceptance:* original S1 acceptance — themed frame+button render at

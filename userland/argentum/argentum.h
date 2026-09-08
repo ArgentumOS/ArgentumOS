@@ -247,6 +247,84 @@ private:
 	Impl *impl_;
 };
 
+/* Widget chrome states — the one-to-one state -> parameter-set mapping
+ * the theme engine serves (plan §3/§4; S1.3). */
+enum class ControlState : int {
+	Idle, Hover, Armed, Disabled, Focused,
+};
+
+/* S1.3: Theme — the chrome parameter set for the session (the
+ * NSAppearance analog). Loaded once from the active theme file:
+ * the system.theme config domain names it ("active" key,
+ * /Shared/Themes/<name>.conf), and the file is parsed with libconfig's
+ * raw-file read. Colors are 0xRRGGBB; radii/bevels/font sizes are
+ * POINTS — multiply by Application::pxPerPt() when drawing.
+ *
+ * Colour model (plan §3): one accent in, coherent states out. The
+ * theme file stores the accent + the base chrome/page/text palette;
+ * per-state colours are DERIVED by the derivation module below
+ * (lighten/darken/saturate blends on the accent). A theme may pin any
+ * derived colour by adding an explicit override key in the file's
+ * `derived` section (hover_fill, armed_fill, disabled_fill,
+ * chrome_outline) — read when present, else computed.
+ */
+class Theme {
+public:
+	/* Load the active theme (name from the system.theme domain; the
+	 * shipped file falls back when the domain or file is absent).
+	 * Returns true when the file was found and parsed. Safe to call
+	 * repeatedly (reloads the current active theme). */
+	bool load();
+
+	/* true when load() succeeded (theme params valid). */
+	bool valid() const;
+	const char *name() const;	/* file base name, e.g. "Argentum" */
+
+	/* palette (0xRRGGBB), as stored in the theme file */
+	std::uint32_t accent() const;	/* design accent (state driver) */
+	std::uint32_t chromeTop() const;	/* chrome surface, top stop */
+	std::uint32_t chromeBottom() const;	/* chrome surface, bottom stop */
+	std::uint32_t page() const;	/* off-white document surface */
+	std::uint32_t text() const;	/* text on chrome/page */
+
+	/* geometry (points) */
+	double smallRadius() const;	/* radius.small (tiny controls) */
+	double baseRadius() const;	/* radius.base (frame/buttons) */
+	double bevel() const;		/* 1px bevel at the fallback factor */
+	double outline() const;		/* 1px border width */
+
+	/* UI chrome font selection (points) */
+	const char *fontFamily() const;
+	double fontSizePt() const;
+
+	/* The parameter set for `state` (derived from the accent; see
+	 * theme.cpp for the derivation recipes). fillTop/fillBottom are
+	 * the vertical two-stop chrome fill; outline is the 1px border;
+	 * label is the foreground text colour. */
+	struct Params {
+		std::uint32_t fillTop;
+		std::uint32_t fillBottom;
+		std::uint32_t outline;
+		std::uint32_t label;
+	};
+	Params state(ControlState s) const;
+
+	/* derived chrome edge colour: a very dark tone of the accent
+	 * (plan §3: chrome outlines carry the accent's hue faintly) */
+	std::uint32_t chromeOutline() const;
+
+	Theme();
+	~Theme();
+
+	Theme(const Theme &) = delete;
+	Theme &operator=(const Theme &) = delete;
+
+private:
+	friend class Application;
+	struct Impl;
+	Impl *impl_;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

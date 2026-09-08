@@ -1740,19 +1740,17 @@ static void entries_free(struct entry *list)
 	}
 }
 
-/* Load + parse a scope's domain file. *found is 1 when the file
- * existed (even if empty). blocks/nblocks (either may be NULL) return
- * the top-level explicit-block names for the canonical writer. */
-static config_err_t load_entries(config_scope_t scope, const char *domain,
-				 struct entry **list, int *found,
-				 char ***blocks, int *nblocks)
+/* Load + parse a .conf file at an explicit path (not a scope/domain
+ * lookup). *found is 1 when the file existed (even if empty).
+ * blocks/nblocks (either may be NULL) return the top-level explicit-
+ * block names for the canonical writer. */
+static config_err_t load_path(const char *path, struct entry **list,
+			      int *found, char ***blocks, int *nblocks)
 {
-	char path[PATH_MAX];
 	char *text;
 	struct stat st;
 	int fd, n;
 	config_err_t e;
-	config_err_t rc;
 
 	*found = 0;
 	*list = NULL;
@@ -1761,10 +1759,6 @@ static config_err_t load_entries(config_scope_t scope, const char *domain,
 	}
 	if(nblocks) {
 		*nblocks = 0;
-	}
-	rc = domain_path(scope, domain, path, sizeof(path));
-	if(rc) {
-		return rc;
 	}
 	fd = open(path, O_RDONLY);
 	if(fd < 0) {
@@ -1806,6 +1800,31 @@ static config_err_t load_entries(config_scope_t scope, const char *domain,
 	e = parse_conf(text, n, list, blocks, nblocks);
 	free(text);
 	return e;
+}
+
+/* Load + parse a scope's domain file. *found is 1 when the file
+ * existed (even if empty). blocks/nblocks (either may be NULL) return
+ * the top-level explicit-block names for the canonical writer. */
+static config_err_t load_entries(config_scope_t scope, const char *domain,
+				 struct entry **list, int *found,
+				 char ***blocks, int *nblocks)
+{
+	char path[PATH_MAX];
+	config_err_t rc;
+
+	*found = 0;
+	*list = NULL;
+	if(blocks) {
+		*blocks = NULL;
+	}
+	if(nblocks) {
+		*nblocks = 0;
+	}
+	rc = domain_path(scope, domain, path, sizeof(path));
+	if(rc) {
+		return rc;
+	}
+	return load_path(path, list, found, blocks, nblocks);
 }
 
 static struct entry *entry_find(struct entry *list, const char *key)
@@ -2026,21 +2045,17 @@ static config_err_t tree_descend(config_value_t *cur,
 	return CONFIG_OK;
 }
 
-static config_err_t read_scope_internal(config_scope_t scope,
-					const char *domain, const char *key,
-					config_value_t *out)
+/* Resolve `key` against an already-loaded entry list (one scope's file
+ * or a raw path). The list is consumed/freed on all paths. This is the
+ * resolution half of read_scope_internal() shared with config_read_path. */
+static config_err_t resolve_list(struct entry *list, const char *key,
+				 config_value_t *out)
 {
-	struct entry *list;
-	int found;
-	config_err_t e = load_entries(scope, domain, &list, &found,
-				      NULL, NULL);
 	struct entry *en;
 	struct addr_step steps[ADDR_MAX_STEPS];
 	size_t nsteps;
+	config_err_t e;
 
-	if(e) {
-		return e;
-	}
 	if(!address_split(key, steps, &nsteps)) {
 		entries_free(list);
 		return CONFIG_ERR_INVALID;
@@ -2107,6 +2122,21 @@ static config_err_t read_scope_internal(config_scope_t scope,
 	}
 }
 
+static config_err_t read_scope_internal(config_scope_t scope,
+					const char *domain, const char *key,
+					config_value_t *out)
+{
+	struct entry *list;
+	int found;
+	config_err_t e = load_entries(scope, domain, &list, &found,
+				      NULL, NULL);
+
+	if(e) {
+		return e;
+	}
+	return resolve_list(list, key, out);
+}
+
 config_err_t config_read_scope(config_scope_t scope, const char *domain,
 			       const char *key, config_value_t *out)
 {
@@ -2116,6 +2146,33 @@ config_err_t config_read_scope(config_scope_t scope, const char *domain,
 		return CONFIG_ERR_INVALID;
 	}
 	return read_scope_internal(scope, domain, key, out);
+}
+
+/*
+ * Raw-file read (v2): parse ONE .conf file at an absolute path and
+ * resolve `key` in it. Unlike the domain reads there is no scope tree
+ * and no system -> user -> shared merge — the file is the only source.
+ * Used for data files that live outside the Configuration/ dirs (e.g.
+ * Argentum theme files under /Shared/Themes/<theme>.conf). Key rules,
+ * record synthesis and error codes match config_read_scope(). On
+ * CONFIG_OK *out holds the value (free with config_value_free()).
+ */
+config_err_t config_read_file(const char *path, const char *key,
+			      config_value_t *out)
+{
+	struct entry *list;
+	int found;
+	config_err_t e;
+
+	if(!path || !*path || !key || !out ||
+	   !config_valid_address(key)) {
+		return CONFIG_ERR_INVALID;
+	}
+	e = load_path(path, &list, &found, NULL, NULL);
+	if(e) {
+		return e;
+	}
+	return resolve_list(list, key, out);
 }
 
 /* resolution order: system -> user -> shared (docs plan D4; the enum
