@@ -161,6 +161,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/argentum_demo.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/argentum_demo"
+	# units_probe: Argentum S1.1 acceptance — prints the session
+	# px/pt factor (Application::pxPerPt). The S1.1 gate runs it with
+	# system.display width_mm/height_mm unset (expect 4/3 fallback)
+	# then after `config write -s system.display ...` (expect 8/3 =
+	# 2x). Needs the X session like the demo.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/units_probe.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/units_probe"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".
@@ -309,6 +318,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# `config write -s system.argentum ...` (System wins on read).
 	@cp userland/configuration/system.argentum.conf \
 		"$(ROOTFS64)/Shared/Configuration/system.argentum.conf"
+	# Argentum display physical size (S1.1, domain system.display): the
+	# FNX-owned panel's real mm; 0 = unknown -> 96 dpi (4/3 px/pt)
+	# fallback. The S1.1/S1.4 gates override via `config write -s
+	# system.display display.width_mm <mm> display.height_mm <mm>`.
+	@cp userland/configuration/system.display.conf \
+		"$(ROOTFS64)/Shared/Configuration/system.display.conf"
 	# --- the Admin home: the User Template, copied (Q9) ---
 	rm -rf "$(ROOTFS64)/Users"
 	@mkdir -p "$(ROOTFS64)/Users"

@@ -41,6 +41,14 @@ struct Application::Impl {
 	char fontFamily[96];		/* font.family */
 	unsigned int fontPx = 26;	/* font.size */
 
+	/* S1.1 points->pixels session factor: PPI/72 resolved once at
+	 * init() from the display physical size (system.display domain
+	 * display.width_mm/height_mm when set; else the X server's
+	 * DisplayWidthMM/HeightMM when the display domain is absent;
+	 * else the 96 dpi fallback = 4/3 px/pt). All Argentum screen
+	 * units are points; multiply by pxPerPt to blit. */
+	double pxPerPt = 4.0 / 3.0;	/* px/pt (96 dpi fallback) */
+
 	/* X window id -> the argentum::Window that owns it (S0.3 event
 	 * dispatch). Window registers on init, unregisters on destroy. */
 	std::map<unsigned long, Window *> windows;

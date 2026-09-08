@@ -58,6 +58,18 @@ public:
 	const char *sessionFontFamily() const;	/* font.family */
 	unsigned int sessionFontSize() const;	/* font.size */
 
+	/* S1.1: points→pixels. Argentum screen units are real points
+	 * (1 pt = 1/72 in); pxPerPt() is the session factor PPI/72,
+	 * resolved once at init() from the display's physical size
+	 * (§3 Units): the system.display domain
+	 * (display.width_mm/display.height_mm) when set, else the X
+	 * server's DisplayWidthMM/HeightMM when that domain is absent
+	 * (a foreign X server), else the 96 dpi fallback (4/3 px/pt).
+	 * ptToPx/pxToPt convert a length at that factor. */
+	double pxPerPt() const;
+	double ptToPx(double pt) const { return pt * pxPerPt(); }
+	double pxToPt(double px) const { return px / pxPerPt(); }
+
 	/* Event loop (S0.3): dispatch X events to the registered windows'
 	 * responder virtuals (keyDown/keyUp/mouseDown/mouseUp/draw) until
 	 * terminate() is called. Returns 0 on a clean stop. */

@@ -17,6 +17,7 @@
 /* S0.5: the libconfig domain holding the session defaults (system
  * scope of the FSH Configuration tree). */
 #define ARGENTUM_CONF_DOMAIN "system.argentum"
+#define DISPLAY_CONF_DOMAIN "system.display"
 
 namespace argentum {
 
@@ -35,6 +36,35 @@ const char *
 Application::version() const
 {
 	return ARGENTUM_VERSION;
+}
+
+/* S1.1: true when a system.display domain file exists in any scope
+ * (FNX-owned machines ship one; a foreign X server has none). */
+static bool
+display_domain_exists(void)
+{
+	config_scope_t scopes[3] = {
+		CONFIG_SCOPE_SYSTEM, CONFIG_SCOPE_USER, CONFIG_SCOPE_SHARED,
+	};
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		char **domains = NULL;
+		size_t count = 0, j;
+
+		if (config_list_domains(scopes[i], &domains, &count) !=
+		    CONFIG_OK) {
+			continue;
+		}
+		for (j = 0; j < count; j++) {
+			if (!strcmp(domains[j], DISPLAY_CONF_DOMAIN)) {
+				config_free_domains(domains, count);
+				return true;
+			}
+		}
+		config_free_domains(domains, count);
+	}
+	return false;
 }
 
 bool
@@ -102,6 +132,55 @@ Application::init(const char *displayName)
 			"size=%u\n",
 			impl_->winBg, impl_->fontFamily, impl_->fontPx);
 	}
+	/* S1.1: resolve the points→pixels session factor once, from the
+	 * display's physical size (system.display domain
+	 * display.width_mm/height_mm when set; else, when the display
+	 * domain is absent entirely (a foreign X server), the X server's
+	 * DisplayWidthMM/HeightMM; else the 96 dpi fallback = 4/3 px/pt).
+	 *
+	 * X11 mm is deliberately NOT consulted on FNX-owned machines
+	 * (Xfb reports dpi-derived mm from its own default — never a
+	 * real panel), so an unset domain means "unknown" → fallback,
+	 * never Xfb's fabricated size. */
+	{
+		double wmm = 0, hmm = 0;
+		const char *src = "96 dpi fallback";
+
+		if (config_get_float(DISPLAY_CONF_DOMAIN, "display.width_mm",
+				     &wmm) == CONFIG_OK
+		    && config_get_float(DISPLAY_CONF_DOMAIN,
+				       "display.height_mm",
+				       &hmm) == CONFIG_OK
+		    && wmm > 0 && hmm > 0) {
+			/* domain physical size: px/pt = PPI/72 with PPI from
+			 * the mode resolution + declared panel mm */
+			double ppi_x = (DisplayWidth(impl_->dpy,
+						      impl_->screen)
+					/ (wmm / 25.4));
+			double ppi_y = (DisplayHeight(impl_->dpy,
+						      impl_->screen)
+					/ (hmm / 25.4));
+
+			impl_->pxPerPt = ((ppi_x + ppi_y) / 2.0) / 72.0;
+			src = "display domain";
+		} else if (!display_domain_exists()
+			   && DisplayWidthMM(impl_->dpy, impl_->screen) > 0
+			   && DisplayHeightMM(impl_->dpy, impl_->screen) > 0) {
+			int xmm = DisplayWidthMM(impl_->dpy, impl_->screen);
+			int ymm = DisplayHeightMM(impl_->dpy, impl_->screen);
+			double ppi_x =
+				(DisplayWidth(impl_->dpy, impl_->screen)
+				 / (xmm / 25.4));
+			double ppi_y =
+				(DisplayHeight(impl_->dpy, impl_->screen)
+				 / (ymm / 25.4));
+
+			impl_->pxPerPt = ((ppi_x + ppi_y) / 2.0) / 72.0;
+			src = "X11 mm";
+		}
+		fprintf(stderr, "ARGENTUM: pxPerPt=%.6f (%s)\n",
+			impl_->pxPerPt, src);
+	}
 	/* Xlib's default error handler exits the process on any protocol
 	 * error. Install a reporting handler so a stray BadWindow etc.
 	 * prints and the loop survives (S0.3 debugging). */
@@ -139,6 +218,12 @@ unsigned int
 Application::sessionFontSize() const
 {
 	return impl_->fontPx;
+}
+
+double
+Application::pxPerPt() const
+{
+	return impl_->pxPerPt;
 }
 
 /* S0.3 modifier translation (X11 state -> the public flags). */

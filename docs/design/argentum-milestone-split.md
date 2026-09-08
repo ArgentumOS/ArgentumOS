@@ -87,6 +87,20 @@ places them.
   px/pt (fallback 96 dpi → 4/3), computed once at session start.
   *Acceptance:* unit probe prints px/pt at the fallback and under a
   display-physical-size override forcing 2x.
+  *Status:* DONE — `Application::pxPerPt()/ptToPx()/pxToPt()` resolve
+  the session factor once at init() from the display's physical size
+  (plan §3 Units): the `system.display` domain
+  (`display.width_mm`/`display.height_mm`, staged from
+  userland/configuration/system.display.conf) when set; else X11
+  `DisplayWidthMM/HeightMM` only when that domain is absent entirely (a
+  foreign X server — Xfb's mm is dpi-derived, never a real panel, so an
+  unset FNX domain means "unknown", never Xfb's fabrication); else the
+  96 dpi fallback = 4/3 px/pt. Gate `.build/s11_run.sh`: `units_probe`
+  (System/Shared/tests) prints `UNITS: pxPerPt=1.333333` on the stock
+  image, then after
+  `config write -s system.display display.width_mm 169.333333
+  display.height_mm 105.833333` (a 192-dpi panel at the 1280×800 Xfb
+  mode) prints `2.666667` — exactly 2×, same code path.
 - **S1.2 — pixman offscreen context + shape set.** Solid fills,
   linear/radial gradients, rounded rects, 1px lines into an offscreen
   pixman surface.
