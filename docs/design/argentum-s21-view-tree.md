@@ -255,6 +255,19 @@ read-back helpers on View (walk + print).
 hierarchy with roles/labels and prints the tree:
 `VTREE-B: <role> "<label>"` lines, one per view, parents before
 children. That is the milestone-split doc's "role read back".
+*Status:* DONE — `accessibilityRoleName()` (stable role strings,
+argentum.h + view.cpp); the a11y accessors landed with the View class
+in S2.1a (role/label/help/value/enabled on every View; the tree IS the
+a11y tree). `viewtree_b` (userland/tests/viewtree_b.cpp, staged by
+mk/20-userland.mk) builds a window content tree with roles+labels and
+prints depth-first read-back; gate `.build/s21b_run.sh` +
+`.build/s21b_assert.py` — green (S21B-OK, 4 rows): box "Main",
+static text "Colour A" value=0x2288ee, group "Panel B"
+help="holds a nested button", button "Go" enabled=0 help=... — roles,
+labels, value/help and the disabled flag all read back, parents before
+children. (Gate script gotcha: a serial-only run needs an explicit
+`-monitor unix:...` or QEMU's default stdio monitor collides with
+`-serial stdio`.)
 
 ### S2.1c — responder chain + hit-testing
 

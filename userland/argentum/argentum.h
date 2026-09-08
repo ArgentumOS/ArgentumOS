@@ -73,6 +73,10 @@ enum class AccessibilityRole : int {
 	TabGroup, MenuItem, HelpTag,
 };
 
+/* S2.1b: stable role name for read-back / the future a11y protocol
+ * ("button", "static text", ...). Unknown -> "unknown". */
+const char *accessibilityRoleName(AccessibilityRole role);
+
 struct KeyEvent;	/* defined below (responder signatures) */
 struct MouseEvent;
 class GraphicsContext;

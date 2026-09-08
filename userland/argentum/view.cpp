@@ -263,6 +263,35 @@ View::resizeSubviewsWithOldBounds(const Rect &oldBounds,
 
 /* ---- a11y metadata (S2.1b) ------------------------------------- */
 
+const char *
+accessibilityRoleName(AccessibilityRole role)
+{
+	switch (role) {
+	case AccessibilityRole::Unknown: return "unknown";
+	case AccessibilityRole::Window: return "window";
+	case AccessibilityRole::Group: return "group";
+	case AccessibilityRole::Box: return "box";
+	case AccessibilityRole::StaticText: return "static text";
+	case AccessibilityRole::Button: return "button";
+	case AccessibilityRole::CheckBox: return "check box";
+	case AccessibilityRole::RadioButton: return "radio button";
+	case AccessibilityRole::TextField: return "text field";
+	case AccessibilityRole::SecureTextField: return "secure text field";
+	case AccessibilityRole::Image: return "image";
+	case AccessibilityRole::Slider: return "slider";
+	case AccessibilityRole::ProgressIndicator: return "progress indicator";
+	case AccessibilityRole::ScrollArea: return "scroll area";
+	case AccessibilityRole::List: return "list";
+	case AccessibilityRole::Table: return "table";
+	case AccessibilityRole::Splitter: return "splitter";
+	case AccessibilityRole::TabGroup: return "tab group";
+	case AccessibilityRole::MenuItem: return "menu item";
+	case AccessibilityRole::HelpTag: return "help tag";
+	}
+	return "unknown";
+}
+
+
 void
 View::setAccessibilityRole(AccessibilityRole role)
 {
