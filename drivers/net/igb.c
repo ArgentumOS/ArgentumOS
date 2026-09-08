@@ -43,6 +43,7 @@
 #include <fnx/asm.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/mm.h>
 #include <fnx/sleep.h>
 #include <fnx/sched.h>
@@ -505,11 +506,7 @@ struct ext_net_ops *igb_probe(void)
 		static struct interrupt irq_config_igb = { 0, "igb", &igb_irq_handler, NULL };
 		register_irq(igb.irq, &irq_config_igb);
 		igb_reg_w(E1000_ICR, 0xFFFFFFFF);	/* clear pending */
-		if(igb.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (igb.irq - 8)));
-		} else {
-			outport_b(0x21, 0xFE & ~(1 << igb.irq));
-		}
+		enable_irq(igb.irq);
 		igb_reg_w(E1000_IMS, E1000_ICR_RXT0);
 	}
 

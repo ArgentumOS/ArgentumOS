@@ -34,6 +34,7 @@
 #include <fnx/asm.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/msix.h>
 #include <fnx/mm.h>
 #include <fnx/sleep.h>
@@ -479,11 +480,7 @@ struct ext_net_ops *e1000e_probe(void)
 		} else {
 			register_irq(e1000e.irq, &irq_config_e1000e);
 			e1000e_reg_w(E1000_ICR, 0xFFFFFFFF);	/* clear pending */
-			if(e1000e.irq >= 8) {
-				outport_b(0xA1, 0xFF & ~(1 << (e1000e.irq - 8)));
-			} else {
-				outport_b(0x21, 0xFE & ~(1 << e1000e.irq));
-			}
+			enable_irq(e1000e.irq);
 			e1000e_reg_w(E1000_IMS, E1000_ICR_RXT0);
 		}
 	}

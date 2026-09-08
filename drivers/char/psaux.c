@@ -110,16 +110,15 @@ static void psaux_identify(void)
 	/* status information */
 	psaux_command_write(PS2_DEV_GETINFO);
 	status[0] = ps2_read(PS2_DATA);	/* status */
-	status[2] = ps2_read(PS2_DATA);	/* resolution */
+	status[1] = ps2_read(PS2_DATA);	/* resolution */
 	status[2] = ps2_read(PS2_DATA);	/* sample rate */
 
-	/* identify */
-	psaux_command_write(PS2_DEV_RATE);
-	psaux_command_write(200);
-	psaux_command_write(PS2_DEV_RATE);
-	psaux_command_write(100);
-	psaux_command_write(PS2_DEV_RATE);
-	psaux_command_write(80);
+	/* identify: plain IDENTIFY only. Do NOT run the IntelliMouse
+	 * sample-rate magic (200/100/80) here: it switches a wheel mouse
+	 * into IMPS/2 4-byte packet mode, but every FNX consumer of the
+	 * psaux stream (Xfb fnxinput, the USB-mouse synthesizer, the
+	 * serial test seam) speaks 3-byte PS/2. Keeping the device in
+	 * standard 3-byte mode makes all paths agree. */
 	psaux_command_write(PS2_DEV_IDENTIFY);
 	id = ps2_read(PS2_DATA);
 	ps2_clear_buffer();

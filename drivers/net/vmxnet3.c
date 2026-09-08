@@ -51,6 +51,7 @@
 #include <fnx/string.h>
 #include <fnx/stdio.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/asm.h>
 #include <fnx/sleep.h>
 #include <fnx/pci.h>
@@ -520,11 +521,7 @@ struct ext_net_ops *vmxnet3_probe(void)
 		static struct interrupt irq_config_vmxnet3 = { 0, "vmxnet3", &vmxnet3_irq_handler, NULL };
 		register_irq(vmxnet3.irq, &irq_config_vmxnet3);
 	}
-	if(vmxnet3.irq < 8) {
-		outport_b(0x21, inport_b(0x21) & ~(1 << vmxnet3.irq));
-	} else {
-		outport_b(0xA1, inport_b(0xA1) & ~(1 << (vmxnet3.irq - 8)));
-	}
+	enable_irq(vmxnet3.irq);
 
 	vmxnet3.present = 1;
 	memcpy_b(vmxnet3_ops.mac, vmxnet3.mac, 6);

@@ -32,6 +32,7 @@
 #include <fnx/asm.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/mm.h>
 #include <fnx/sleep.h>
 #include <fnx/sched.h>
@@ -560,11 +561,7 @@ struct ext_net_ops *tulip_probe(void)
 		static struct interrupt irq_config_tulip = { 0, "tulip", &tulip_irq_handler, NULL };
 		register_irq(tulip.irq, &irq_config_tulip);
 		tulip_csr_w(CSR5, 0xFFFFFFFF);	/* clear pending */
-		if(tulip.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (tulip.irq - 8)));
-		} else {
-			outport_b(0x21, 0xFE & ~(1 << tulip.irq));
-		}
+		enable_irq(tulip.irq);
 		tulip_csr_w(CSR7, CSR7_INT_EN);
 	}
 

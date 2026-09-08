@@ -27,6 +27,7 @@
 #include <fnx/sched.h>
 #include <fnx/sleep.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/net.h>
 #include <fnx/net/ext_net.h>
 
@@ -509,11 +510,7 @@ struct ext_net_ops *virtio_net_probe(void)
 		 * it must NOT poll the rings (races with the recv path). */
 		vnet_ior8(VPCI_ISR);
 		vnet_ior8(VPCI_ISR);
-		if(vnet.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (vnet.irq - 8)));
-		} else {
-			outport_b(0x21, 0xFE & ~(1 << vnet.irq));
-		}
+		enable_irq(vnet.irq);
 	}
 
 	/* pre-queue RX buffers */

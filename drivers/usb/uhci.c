@@ -27,6 +27,7 @@
 #include <fnx/usb.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/asm.h>
 
 #define UHCI_VENDOR_INTEL	0x8086
@@ -822,11 +823,7 @@ int uhci_probe(void)
 		static struct interrupt irq_config_uhci = { 0, "uhci", &uhci_irq_handler, NULL };
 		if(u->irq) {
 			register_irq(u->irq, &irq_config_uhci);
-			if(u->irq >= 8) {
-				outport_b(0xA1, 0xFF & ~(1 << (u->irq - 8)));
-			} else {
-				outport_b(0x21, 0xFE & ~(1 << u->irq));
-			}
+			enable_irq(u->irq);
 		}
 	}
 

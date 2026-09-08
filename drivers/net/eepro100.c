@@ -33,6 +33,7 @@
 #include <fnx/string.h>
 #include <fnx/stdio.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/asm.h>
 #include <fnx/sleep.h>
 #include <fnx/pci.h>
@@ -512,12 +513,9 @@ struct ext_net_ops *eepro100_probe(void)
 		static struct interrupt irq_config_eepro100 = { 0, "eepro100", &eepro100_irq_handler, NULL };
 		register_irq(eepro100.irq, &irq_config_eepro100);
 	}
-	/* PIC unmask for the IRQ line */
-	if(eepro100.irq < 8) {
-		outport_b(0x21, inport_b(0x21) & ~(1 << eepro100.irq));
-	} else {
-		outport_b(0xA1, inport_b(0xA1) & ~(1 << (eepro100.irq - 8)));
-	}
+	/* PIC unmask for the IRQ line (RMW via enable_irq: a raw IMR
+	 * write here would mask every other IRQ on that PIC) */
+	enable_irq(eepro100.irq);
 
 	eepro100_init_commands();
 

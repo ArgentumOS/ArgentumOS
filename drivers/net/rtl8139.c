@@ -20,6 +20,7 @@
 #include <fnx/asm.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/mm.h>
 #include <fnx/sleep.h>
 #include <fnx/sched.h>
@@ -474,11 +475,7 @@ struct ext_net_ops *rtl8139_probe(void)
 		 * slave (NOT the master cascade - same as virtio-net) */
 		inport_w(iobase + R_ISR);
 		outport_w(iobase + R_ISR, 0xFFFF);
-		if(r8139.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (r8139.irq - 8)));
-		} else {
-			outport_b(0x21, 0xFE & ~(1 << r8139.irq));
-		}
+		enable_irq(r8139.irq);
 	}
 	/* interrupt mask: RX/TX events (only if we have an INTx line to
 	 * take them on; the RX path polls the ring regardless) */

@@ -26,6 +26,7 @@
 #include <fnx/usb.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/asm.h>
 
 #define EHCI_MMIO_VA		0xFFFFB80000000000UL	/* pml4[501] */
@@ -899,11 +900,7 @@ int ehci_probe(void)
 		static struct interrupt irq_config_ehci = { 0, "ehci", &ehci_irq_handler, NULL };
 		if(irq) {
 			register_irq(irq, &irq_config_ehci);
-			if(irq >= 8) {
-				outport_b(0xA1, 0xFF & ~(1 << (irq - 8)));
-			} else {
-				outport_b(0x21, 0xFE & ~(1 << irq));
-			}
+			enable_irq(irq);
 		}
 	}
 

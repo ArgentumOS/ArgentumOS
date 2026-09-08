@@ -27,6 +27,7 @@
 #include <fnx/errno.h>
 #include <fnx/asm.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/msix.h>
 #include <fnx/mm.h>
 #include <fnx/pci.h>
@@ -1018,11 +1019,7 @@ int xhci_probe(void)
 				MSIX_VEC_BASE);
 		} else if(irq) {
 			register_irq(irq, &irq_config_xhci);
-			if(irq >= 8) {
-				outport_b(0xA1, 0xFF & ~(1 << (irq - 8)));
-			} else {
-				outport_b(0x21, 0xFE & ~(1 << irq));
-			}
+			enable_irq(irq);
 			printk("xhci: INTx on IRQ %d\n", irq);
 		}
 	}

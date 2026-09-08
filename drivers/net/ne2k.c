@@ -27,6 +27,7 @@
 #include <fnx/asm.h>
 #include <fnx/pci.h>
 #include <fnx/irq.h>
+#include <fnx/pic.h>
 #include <fnx/mm.h>
 #include <fnx/sleep.h>
 #include <fnx/sched.h>
@@ -448,11 +449,7 @@ static struct ext_net_ops *ne2k_setup(void)
 		static struct interrupt irq_config_ne2k = { 0, "ne2k", &ne2k_irq_handler, NULL };
 		register_irq(ne2k.irq, &irq_config_ne2k);
 		outport_b(ne2k.iobase + N_ISR, 0x7F);
-		if(ne2k.irq >= 8) {
-			outport_b(0xA1, 0xFF & ~(1 << (ne2k.irq - 8)));
-		} else {
-			outport_b(0x21, 0xFE & ~(1 << ne2k.irq));
-		}
+		enable_irq(ne2k.irq);
 		outport_b(ne2k.iobase + N_IMR, ISR_INT_EN);
 	}
 
