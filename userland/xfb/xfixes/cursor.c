@@ -1074,7 +1074,14 @@ XFixesCursorInit(void)
     if (party_like_its_1989)
         CursorVisible = EnableCursor;
     else
-        CursorVisible = FALSE;
+        CursorVisible = EnableCursor;   /* FNX fork: Xfb is the whole
+                                           * display (owns /dev/fb0); there
+                                           * is no WM or saver cycle that
+                                           * would flip CursorVisible TRUE
+                                           * later (upstream relies on a
+                                           * client defining a window
+                                           * cursor), so keep the pointer
+                                           * visible from the start. */
 
     if (!dixRegisterPrivateKey(&CursorScreenPrivateKeyRec, PRIVATE_SCREEN, 0))
         return FALSE;
