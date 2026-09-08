@@ -109,15 +109,50 @@ helpers:
 /System/Tools/mount        mount/umount (system.mounts domain, Volumes)
 /System/Tools/account      account verbs (passwd, useradd, groupadd, ...)
 /System/Tools/install-app  bundle validation + install into /Applications
+/System/Tools/power        poweroff/reboot (the everyday verb)
+/System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
 ```
 
 Each helper is a small dedicated binary (no shell, no generic
-file-copy, strict argv/path validation, one narrow operation). The
-entire toybox multicall binary stays **unprivileged**, always running
+file-copy, no spawning, strict argv/path validation, one narrow
+operation). The entire toybox multicall binary stays **unprivileged**, always running
 as a person: a setuid toybox is a root shell with extra steps, and no
 audit closes that class (every upstream sync re-opens it). "Audit
 toybox" is only meaningful for unprivileged toybox; a native userland
 replacement is a separate project.
+
+### 4.4 Object-shaped vs operation-shaped privilege (result, 2026-09)
+
+Privilege splits into two classes, and the split decides whether
+elevation is needed at all:
+
+- **Operation-shaped** privileges are not objects — there is nothing
+to hang an ACL on. Rebooting is not a file; passwd-conf integrity is
+not a file; mount policy is not a file. These are the **helpers**: a
+closed, first-party, System-owned fleet, each a narrow setuid
+binary.
+- **Object-shaped** privileges are file-like and belong on the
+object's ACL, never in a binary. Device access is the existing proof:
+`Video`/`Input`/`Audio` are group-entry ACLs on the devfs node, read
+off the node like any file. **Raw block devices are the same shape**:
+`@Disk/...` nodes carry a role-group ACL, so formatting/partitioning
+tools (`disk`, mkfs-style) run **unprivileged**, writing through the
+node's ACL like an ordinary file — "can I format this disk?" reads
+`acl get @Disk/...`. The rev-1 intuition that disk work needs a suid
+`disk` helper was wrong: the raw-block path is already file-shaped;
+it was only ever exercised as root because every node was owned by
+uid-0 Admin.
+
+Ground truth for "needs privilege" (2026-09): the kernel gates these
+syscalls on `IS_SUPERUSER` (`current->euid == 0`,
+`include/fnx/process.h:54`): mount, umount, reboot, settimeofday,
+sethostname, chroot, mknod, ioperm/iopl, chown-of-others, priority/
+prlimit on others, parts of ipc/msgctl, setfsuid. **Not gated at
+all**: raw/AF_PACKET sockets (`net/packet.c`) — open to any caller
+today; the §3 `Network` socket-layer group check is the named fix,
+still deferred to the first network service. Today's de-facto suid is
+the whole toybox binary staged 4755 so `TOYFLAG_ROOTONLY` applets
+(passwd, useradd, ...) work — the thing this model retires.
 
 ### 4.1 Helpers are how people act as administrator (decided)
 
@@ -133,7 +168,7 @@ replacement is a separate project.
 - **Machine config is edited mediated, never by raw file write.**
   There is **no person-writable ACL carve-out on
   `/System/Configuration`**: the config mechanism (running as System,
-  via helper/broker) is the only writer, so Admin's "edit config" is a
+  via the `config` helper) is the only writer, so Admin's "edit config" is a
   validated, canonicalizing, atomic *operation* — not a `vi` typo that
   breaks boot. The same applies to app install. (Review finding 4,
   resolved this way.)
@@ -157,23 +192,29 @@ against this model and rejected:
 - **It conflicts with the kernel backstop (§6.4).** An allowlist that
   lets only System binaries run as root cannot also let `doas` exec
   arbitrary rule-allowed commands; the kernel cannot know doas.conf.
-- **Restricted to the verb set it is merely a proto-broker.** A doas
-  whose rules name only `mount`/`account`/`install-app` is a coherent
-  single-suid-front-end over the helpers — but the moment per-verb
-  delegation is worth having, the **System broker** (§4.3) provides the
-  same rule-check with no suid binary at all. Direction: if per-verb
-  delegation is ever needed, go to the broker; doas is never adopted.
+- **Restricted to the verb set it is merely a proto-helper-fleet.** A
+  doas whose rules name only `mount`/`account`/`install-app` is a
+  coherent single-suid-front-end over the helpers — i.e. it reinvents
+  the fleet with an extra indirection and a rule file to audit. The
+  helpers themselves already are that front end, one narrow binary per
+  verb. Direction: doas is never adopted; per-verb delegation, if ever
+  needed, is a property of the helper set (or the account/config
+  mechanism), not a generic root runner (finding 9).
 
 ### 4.3 Known cost: the helper blast radius
 
 A compromised setuid-System helper is a compromised **machine
 principal** (full ACL bypass), and helpers share one trust domain.
-Mitigations: minimal helper count, no shell/file-copy primitives, and
-a stated **transition trigger to the System broker** (one uid-0 daemon
-owning the privileged verbs over an authenticated AF_UNIX socket, no
-suid bits) — e.g. when the third helper appears, or when Admin data
-becomes valuable. suid auditing is new ground for FNX; the first
-helpers are an education, not a foundation. (Review findings 3 + 8.)
+Mitigations: minimal helper count, no shell/file-copy primitives, no
+spawning, System-owned + immutable after the ownership split (a helper
+a person can replace is meaningless), and the §6.4 exec allowlist as
+the backstop that keeps even a *buggy* helper from yielding a shell.
+The helpers are the durable shape for operation-shaped privilege
+(§4.4), not a stopgap: the considered alternative — one privileged
+daemon ("System broker") — was rejected as systemd-shaped (finding 9),
+and per-verb delegation, if ever needed, belongs in the helper set or
+the doas-rejection's §4.2 reasoning, never a generic root runner.
+(Review findings 3 + 8 + 9–12.)
 
 ## 5. Boot, session, and config scope
 - **init** (PID 1, uid 0) mounts from `system.mounts.conf`, runs the
@@ -190,12 +231,14 @@ helpers are an education, not a foundation. (Review findings 3 + 8.)
   uid/gid 0 (no shell), `Service` is a non-zero account (no shell, no
   home).
 
-## 6. Invariant: no shell as uid 0 (decided; maintenance deferred)
+## 6. Invariant: no path to an interactive root shell (decided; maintenance deferred)
 
 **It must be impossible to get a shell running as uid 0.** This is the
 keystone of the model: a root shell bypasses the `Admin`-group check,
 skips the helpers, and can rewrite anything, so the rest of this design
-is only meaningful while it holds. Enforcement is layered:
+is only meaningful while it holds. (Setuid 0 itself is not the
+invariant's subject — the helpers hold euid 0 by design; see finding
+11.) Enforcement is layered:
 
 1. **No account path (decided)**: `System` has no shell field and a
    locked credential; `su`/`login` refuse non-person targets
@@ -251,6 +294,35 @@ Recorded criticisms and where they landed:
    dedicated service accounts, and socket-layer group checks wait for
    an actual daemon/need to justify them. Build the audit tool before
    any grant sprawl.
+9. **A privileged daemon ("System broker")** → rejected — too
+   systemd-shaped: one uid-0 process owning verbs, service spawning,
+   and config is the exact architecture this model rejects. No
+   privileged userland daemon exists beyond init; the helpers are the
+   shape.
+10. **Privilege as a kernel policy table** → rejected — a hidden
+    kernel allowlist makes "what can a person do" unreadable. Power
+    must be visible on the objects that carry it: read the devfs/disk
+    node's ACL or read the helper (§4.4).
+11. **Setuid 0 as such** → resolved: not the problem; the danger is
+    the bit on *generic or influencable* binaries (shells, toybox,
+    doas, anything that execs or edits on the caller's say-so). A
+    narrow, closed, first-party, non-spawning, System-owned helper
+    has none of those properties. The keystone (§6) is therefore
+    stated about shells, not about uid 0 in general.
+12. **`disk` needs a helper** → resolved against: raw block access is
+    object-shaped — a role-group ACL on the `@Disk/...` node, format
+    tools unprivileged (§4.4).
+13. **The session trust boundary** → stated: the interactive Admin
+    session is the boundary; a compromised GUI app is a compromised
+    Admin (same position every desktop OS takes). Damage control is
+    for non-session compromise. Rev-1 §2.1's "never System's" claim
+    is scoped to non-session processes.
+14. **Service-default polarity** → open, leaning per-service: at FNX
+    scale a daemon "zoo" is a handful of records; a shared `Service`
+    uid is containment- and audit-blind between daemons. `Service` as
+    placeholder for unassigned daemons; dedicated accounts once a
+    daemon exists. `Service` reading `Shared/Configuration` by default
+    is questioned (Shared is the third-party scope).
 
 ## 8. Open items
 
