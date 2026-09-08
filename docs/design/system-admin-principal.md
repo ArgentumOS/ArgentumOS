@@ -106,7 +106,8 @@ Elevation is used **only** for a small set of native, System-owned
 helpers:
 
 ```
-/System/Tools/disk         "disk mount <device|guid> <target>" / "disk unmount <target|device|guid>"
+/System/Tools/disk         "disk mount <device|guid> <target>" / "disk unmount <target|device|guid>" /
+                           "disk initialize mbr|gpt <device>" (destructive whole-disk verbs)
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
 /System/Tools/install-app  bundle validation + install into /Applications
@@ -142,7 +143,11 @@ node's ACL like an ordinary file — "can I format this disk?" reads
 `acl get @Disk/...`. The rev-1 intuition that disk work needs a suid
 `disk` helper was wrong: the raw-block path is already file-shaped;
 it was only ever exercised as root because every node was owned by
-uid-0 Admin.
+uid-0 Admin. **Carve-out (2026-09): partition-table *creation* is a
+privileged `disk` verb** (`disk initialize mbr|gpt <device>`) — it
+rewrites a whole disk and can destroy the boot/root device, so it is
+Admin-mediated; formatting *within an existing partition* remains
+unprivileged node-ACL work.
 
 Ground truth for "needs privilege" (2026-09): the kernel gates these
 syscalls on `IS_SUPERUSER` (`current->euid == 0`,
