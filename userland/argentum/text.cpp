@@ -167,7 +167,8 @@ render_glyphs(TextRun *t, Sink sink)
 }
 
 TextRun *
-textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize)
+textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
+	       bool quiet)
 {
 	Application &app = Application::shared();
 
@@ -211,8 +212,10 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize)
 		textRunFinish(t);
 		return nullptr;
 	}
-	fprintf(stderr, "ARGENTUM-TEXT: matched '%s' index %d\n",
-		(char *) file, index);
+	if (!quiet) {
+		fprintf(stderr, "ARGENTUM-TEXT: matched '%s' index %d\n",
+			(char *) file, index);
+	}
 
 	/* 2) FreeType face from the matched file at the requested size */
 	if (FT_New_Face((FT_Library) app.freeTypeHandle(), (char *) file,
@@ -234,8 +237,10 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize)
 	t->nglyphs = hb_buffer_get_length(t->buf);
 	t->info = hb_buffer_get_glyph_infos(t->buf, nullptr);
 	t->pos = hb_buffer_get_glyph_positions(t->buf, nullptr);
-	fprintf(stderr, "ARGENTUM-TEXT: shaped '%s' -> %u glyphs\n",
-		utf8, t->nglyphs);
+	if (!quiet) {
+		fprintf(stderr, "ARGENTUM-TEXT: shaped '%s' -> %u glyphs\n",
+			utf8, t->nglyphs);
+	}
 
 	/* run box metrics: total advance + face ascent/descent (26.6) */
 	long adv26 = 0;
@@ -304,6 +309,12 @@ int
 textRunAscent(const TextRun *t)
 {
 	return t->ascPx;
+}
+
+long
+textRunAdvance26(const TextRun *t)
+{
+	return t->adv26;
 }
 
 /* ---- sinks ------------------------------------------------------ */

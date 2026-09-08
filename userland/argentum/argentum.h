@@ -665,6 +665,52 @@ private:
 	Impl *btn_;
 };
 
+/* S2.2d: TextField — single-line text input with the edit engine
+ * (the first new subsystem): a value, an insertion caret, and
+ * selection. Click to focus + position the caret; printable keys
+ * type (inserting over a selection), BackSpace/Delete delete,
+ * Left/Right/Home/End move (Shift extends the selection), and
+ * deletions apply to the selection when one is active. Draws the
+ * field bezel (page interior + state outline) with the text, a
+ * selection highlight, and the caret while focused. A11y role
+ * TextField, value = the text. valueChanged() is called after every
+ * edit (subclass hook; the default is empty). */
+class TextField : public Control {
+public:
+	TextField();
+	~TextField() override;
+
+	/* the field text (UTF-8, single line) */
+	void setValue(const char *utf8);	/* copied; caret to the end */
+	const char *value() const;
+	/* caret / selection state (for read-back; caret == anchor and
+	 * no selection when caret == start == end) */
+	unsigned int caretIndex() const;
+	unsigned int selectionStart() const;	/* inclusive */
+	unsigned int selectionEnd() const;	/* exclusive */
+
+	void draw(GraphicsContext &g) override;
+
+	/* responder behaviour */
+	void mouseDown(const MouseEvent &e) override;
+	void keyDown(const KeyEvent &e) override;
+
+protected:
+	/* called after any edit (insert/delete/move); the default does
+	 * nothing — subclass to observe (gate logging) */
+	virtual void valueChanged();
+
+private:
+	unsigned int charStart(unsigned int at) const;	/* utf8-safe */
+	unsigned int charEnd(unsigned int at) const;
+	void insertAtCaret(const char *utf8);
+	void deleteRange(unsigned int start, unsigned int end);
+	unsigned int indexAtX(double localPt) const;	/* click position */
+	void setSelection(unsigned int start, unsigned int end);
+	struct Impl;
+	Impl *fld_;
+};
+
 /* S2.2b: Label — input-free text view (the catalog's hello world:
  * text + theme + draw + a11y in one view). Draws one run of the theme
  * font (family + fontSizePt unless overridden) inside its bounds,

@@ -178,6 +178,12 @@ reference-app + a11y gate.
   engine.
   *Acceptance:* interactive reference-app slice showing label/button/
   textfield; a11y role/label asserted.
+  *Status:* DONE — S2.2a (GC text draw + metrics) `c6ab9e6`, S2.2b
+  (Control + Label) `bf70825`, S2.2c (Button Push/Checkbox/Radio +
+  hover + minimal focus) `7976015`, S2.2d (TextField + edit engine)
+  commits with this entry. Gates + recipes in
+  docs/design/argentum-s22-control-first-leaves.md; the milestone
+  board `widgets_d` (label + field + button) is the interactive slice.
 - **S2.3 — rest of Tier 1 (L5).** Slider/Stepper/ProgressIndicator/
   SegmentedControl/ImageView/LevelIndicator; Menu model + PopUpButton.
   *Acceptance:* each new widget exercised by the reference app; a11y

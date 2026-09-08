@@ -213,6 +213,27 @@ clicks + keys exercise the board: button action fires, checkbox and
 radio toggle, the field accepts typed text with caret movement and
 selection, values + a11y role/label/value read back; S1.3 / S2.1
 regressions stay green.
+*Status:* DONE (commit lands with S2.2d) — the TextField edit engine:
+click positions the caret (utf8-safe index from the click x),
+printable keys insert at the caret (replacing a selection),
+BackSpace/Delete delete (the selection, else around the caret),
+Left/Right/Home/End move (Shift extends the selection); the field
+draws its bezel (page interior + state outline), the text split
+pre/selection/post (selection = accent bar + white text), and the
+caret bar while focused; a11y TextField mirrors the value; the
+protected `valueChanged()` hook fires after every edit.
+`textRunPrepare` gained a quiet mode (no log spam) for caret/advance
+math. **S2.2 is complete (a–d): the milestone board shows a
+Label + push button + checkbox + radio pair + TextField with all
+interactions live, and a11y role/label/value read back.**
+*Gate:* `.build/s22d_run.sh` + `.build/s22d_assert.py`. `widgets_d`
+types/edits the field through injected keys (abc -> abcxy -> abcx ->
+abZcX-style insert-in-middle -> select [0,2] via Shift+Right ->
+BackSpace deletes the selection -> "zcx" -> "qzcx"), then the Clear
+button action empties it. Result: `S22D-OK` — the S22D-EDIT sequence,
+the selection-delete step, a11y rows, the final cleared board pixels
+and the Name/Clear chrome all verified. S1.3 / S2.1 / S2.2c
+regressions green.
 
 ## 5. Files
 

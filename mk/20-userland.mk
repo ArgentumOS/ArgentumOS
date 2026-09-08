@@ -231,6 +231,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/widgets_c.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/widgets_c"
+	# widgets_d: Argentum S2.2d acceptance — TextField edit engine on
+	# the S2.2 interactive board (label + field + button); logs
+	# S22D-EDIT (per edit) / S22D-A11Y / S22D-DRAW / S22D-READY.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/widgets_d.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/widgets_d"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".

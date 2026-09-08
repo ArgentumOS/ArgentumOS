@@ -182,6 +182,15 @@ struct Button::Impl {
 	bool on = false;
 };
 
+/* S2.2d TextField state: the single-line value, the caret index, the
+ * selection anchor (start of the selection; == caret when none). */
+struct TextField::Impl {
+	char text[256] = { 0 };
+	unsigned int caret = 0;		/* byte index, utf8-safe */
+	unsigned int anchor = 0;	/* selection anchor (byte) */
+	bool selectAll = false;		/* first responder select-all */
+};
+
 /* S2.2a text core: shared run internals (implemented in text.cpp).
  * The S0.4 Window::drawText and the S2.2a GraphicsContext::drawText
  * share match -> shape -> metrics; each sink then rasterizes the
@@ -191,7 +200,7 @@ struct Button::Impl {
 struct TextRun;
 
 TextRun *textRunPrepare(const char *family, const char *utf8,
-			unsigned int pixelSize);
+			unsigned int pixelSize, bool quiet = false);
 void textRunFinish(TextRun *t);
 unsigned int textRunGlyphCount(const TextRun *t);
 /* run box geometry (px), matching the legacy drawText box */
@@ -200,6 +209,8 @@ int textRunBoxH(const TextRun *t);
 /* ascent (px above the baseline) used to position the baseline in the
  * box: baseline sits textRunAscent()+PADY below the top */
 int textRunAscent(const TextRun *t);
+/* total 26.6 advance of the shaped run (px at the prepared size) */
+long textRunAdvance26(const TextRun *t);
 /* rasterize every glyph fg-over-bg into an opaque RGB32 box
  * (boxW*boxH words, 0x00RRGGBB). Returns the glyph count rasterized
  * and prints the legacy ARGENTUM-TEXT: rasterized/blitted lines. */
