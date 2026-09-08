@@ -109,7 +109,7 @@ helpers:
 /System/Tools/mount        mount/umount (system.mounts domain, Volumes)
 /System/Tools/account      account verbs (passwd, useradd, groupadd, ...)
 /System/Tools/install-app  bundle validation + install into /Applications
-/System/Tools/power        poweroff/reboot (the everyday verb)
+/System/Tools/power        off / reboot (the everyday verb: "power off")
 /System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
 ```
 
