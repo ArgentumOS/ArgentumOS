@@ -33,7 +33,8 @@ with an initial capital.
 
 | principal | identity | owns | runs | login |
 |---|---|---|---|---|
-| **System** | uid/gid **0** | `/System`, boot state, the privileged helpers | init, boot-time services | no — the machine itself |
+| **System** | uid/gid **0** | `/System`, boot state, the privileged helpers | init, sessionmgr, boot-time services | no — the machine itself |
+| **Display** | non-zero, unprivileged | the display: Xfb, the pre-login greeters (console + graphical), the system menubar | the always-on X server and the login screen | no — no shell, no home |
 | **Service** | non-zero, unprivileged | what it creates under `/System/Variable Data/...` | generic daemons | no — no shell, no home |
 | **Admin** | a normal **non-zero** uid/gid (open: value) | `/Users/Admin` and everything she creates | her session (shell, apps, ordinary tools) | yes — the interactive session |
 
@@ -52,6 +53,17 @@ executable by all, with grants where the person may legitimately write
 (see §4.1 — mediated, not raw). Files Admin creates inside a
 grant-writable System directory are hers (POSIX creator-owns):
 admin-authored config is Admin's; system-generated state is System's.
+
+`Display` = the login screen's unprivileged owner (decided 2026-09):
+Xfb and the pre-login greeters never run as System — the always-on X
+server, the console and graphical greeters, and the pre-login system
+menubar run as `Display`, an unprivileged account whose device access
+comes from the `Video`/`Input` privilege-group ACLs on the devfs nodes
+it opens (fb0, psaux, ...). It owns no home and no shell; its state
+(display logs, cookies) lives under `/System/Variable Data/Display`.
+`sessionmgr` (System) is the only privileged piece at the login
+screen: it spawns the greeters as `Display` and performs the
+verify-and-drop into a person's session.
 
 ### 2.1 Honest scope (decided)
 
