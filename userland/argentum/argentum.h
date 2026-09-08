@@ -14,11 +14,17 @@
  * client lib). S0.3 adds the responder virtuals + event loop; S0.4
  * boots the text stack (fontconfig/FreeType) and draws text through
  * Argentum's own Fc→HB→FT path; the .conf domain lands in S0.5.
+ *
+ * S2.1 (docs/design/argentum-s21-view-tree.md): the View tree — frames
+ * in POINTS (S1.1 px/pt), subview tree, composite display through a
+ * per-view translated+clipped GraphicsContext, a11y metadata. Split
+ * S2.1a = View core + tree + composite display.
  */
 #ifndef FNX_ARGENTUM_ARGENTUM_H
 #define FNX_ARGENTUM_ARGENTUM_H
 
 #include <cstdint>
+#include <vector>
 
 #define ARGENTUM_VERSION_MAJOR 0
 #define ARGENTUM_VERSION_MINOR 6
@@ -27,6 +33,138 @@
 #define ARGENTUM_VERSION "0.6.0"
 
 namespace argentum {
+
+/* S2.1: view geometry. All View frames are POINTS (1 pt = 1/72 in,
+ * plan §3 Units); px arises only at composite time (pt × pxPerPt).
+ * Origin top-left, y down. Plain data + free helpers (no operator
+ * overloading in v1). */
+struct Point {
+	double x = 0;
+	double y = 0;
+};
+
+struct Size {
+	double w = 0;
+	double h = 0;
+};
+
+struct Rect {
+	Point origin;			/* top-left in the parent's space */
+	Size size;
+};
+
+/* true when the point is inside the rect ([origin, origin+size)). */
+bool rectContains(const Rect &r, const Point &p);
+/* rect inset by d on all sides (negative grows) */
+Rect rectInset(const Rect &r, double d);
+/* rect moved by (dx, dy) */
+Rect rectOffset(const Rect &r, double dx, double dy);
+/* intersection (empty when disjoint — size 0) */
+Rect rectIntersect(const Rect &a, const Rect &b);
+bool rectIsEmpty(const Rect &r);
+
+/* S2.1b: accessibility roles (catalog §4; grown as widgets appear in
+ * S2.2/S2.3). Every View carries role/label/help/value/enabled; the
+ * view tree IS the a11y tree (no side table). */
+enum class AccessibilityRole : int {
+	Unknown, Window, Group, Box, StaticText, Button, CheckBox,
+	RadioButton, TextField, SecureTextField, Image, Slider,
+	ProgressIndicator, ScrollArea, List, Table, Splitter,
+	TabGroup, MenuItem, HelpTag,
+};
+
+struct KeyEvent;	/* defined below (responder signatures) */
+struct MouseEvent;
+class GraphicsContext;
+
+/* S2.1: View — the toolkit's node type (the NSView analog). Every
+ * widget and container is a View; a window's content view roots the
+ * tree. Frames are POINTS in the superview's coordinate space.
+ *
+ * The tree is NON-OWNING: addSubview() does not take ownership; the
+ * app keeps top-level views alive (stack/heap). The destructor
+ * unlinks from its superview. removeFromSuperview() unlinks but does
+ * not delete. Draw order == subview order (last added = topmost).
+ *
+ * Display (S2.1a): the owning Window redraws by walking the tree; each
+ * view's draw() is called with a GraphicsContext already translated so
+ * (0,0) is this view's top-left and clipped to its bounds — draw in
+ * LOCAL PX (frame pt × pxPerPt). The default draw() paints nothing.
+ */
+class View {
+public:
+	View();
+	virtual ~View();
+
+	/* tree */
+	void addSubview(View *v);	/* append (topmost); no ownership */
+	void removeFromSuperview();
+	View *superview() const;
+	const std::vector<View *> &subviews() const;
+
+	/* frame (pt, superview coords) + visibility */
+	void setFrame(const Rect &r);
+	Rect frame() const;
+	Rect bounds() const;		/* {0,0,w,h} in local space */
+	void setHidden(bool hidden);
+	bool isHidden() const;
+
+	/* display: draw local px content; default paints nothing */
+	virtual void draw(GraphicsContext &g);
+	/* mark this subtree damaged: the owning window redraws at the next
+	 * Expose/redraw pass */
+	void setNeedsDisplay();
+	bool needsDisplay() const;
+
+	/* responder virtuals (S2.1c; empty by default = pass to
+	 * nextResponder()). e.x/e.y are LOCAL POINTS. */
+	virtual void keyDown(const KeyEvent &e);
+	virtual void keyUp(const KeyEvent &e);
+	virtual void mouseDown(const MouseEvent &e);
+	virtual void mouseUp(const MouseEvent &e);
+	/* the next view in the responder chain (the superview) */
+	virtual View *nextResponder();
+
+	/* hit-test (S2.1c): pt in THIS view's local space. Returns the
+	 * deepest visible view containing pt (reverse draw order); this
+	 * view itself when the point is inside its bounds but no child
+	 * claims it; nullptr when the point is outside bounds. */
+	virtual View *hitTest(const Point &pt);
+
+	/* springs/struts (S2.1d) */
+	static const unsigned int AutoresizingNone = 0;
+	static const unsigned int AutoresizingFlexibleMinX = 1u << 0;
+	static const unsigned int AutoresizingFlexibleWidth = 1u << 1;
+	static const unsigned int AutoresizingFlexibleMaxX = 1u << 2;
+	static const unsigned int AutoresizingFlexibleMinY = 1u << 3;
+	static const unsigned int AutoresizingFlexibleHeight = 1u << 4;
+	static const unsigned int AutoresizingFlexibleMaxY = 1u << 5;
+	void setAutoresizingMask(unsigned int mask);
+	unsigned int autoresizingMask() const;
+	void resizeSubviewsWithOldBounds(const Rect &oldBounds,
+					 const Rect &newBounds);
+
+	/* a11y metadata (S2.1b) */
+	void setAccessibilityRole(AccessibilityRole role);
+	AccessibilityRole accessibilityRole() const;
+	void setAccessibilityLabel(const char *utf8);	/* copied */
+	const char *accessibilityLabel() const;
+	void setAccessibilityHelp(const char *utf8);	/* copied */
+	const char *accessibilityHelp() const;
+	void setAccessibilityValue(const char *utf8);	/* copied */
+	const char *accessibilityValue() const;
+	void setAccessibilityEnabled(bool enabled);
+	bool accessibilityEnabled() const;
+
+	View(const View &) = delete;
+	View &operator=(const View &) = delete;
+
+private:
+	friend class Window;		/* composite walks subviews */
+	friend class Application;	/* event dispatch (S2.1c) */
+	struct Impl;
+	Impl *impl_;
+};
 
 /* Mirrors NSApplication / the global NSApp. The single app object owns
  * the X session (Display connection + the event loop). Constructed on
@@ -172,6 +310,16 @@ public:
 	unsigned int width() const;
 	unsigned int height() const;
 
+	/* S2.1a: the content view roots the view tree rendered inside this
+	 * window. The base draw() (when not overridden) composites the
+	 * content view tree into the window (per-view translate + clip,
+	 * local-px drawRect) and flushes. NULL (default) keeps the old
+	 * behavior: base draw() paints nothing; subclasses that override
+	 * draw() are unaffected either way. The window does not own the
+	 * view. */
+	void setContentView(View *view);
+	View *contentView() const;
+
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
 
@@ -240,6 +388,21 @@ public:
 				std::uint32_t rgb0, std::uint32_t rgb1);
 	/* 1px anti-aliased line from (x0,y0) to (x1,y1). */
 	void drawLine(int x0, int y0, int x1, int y1, std::uint32_t rgb);
+
+	/* S2.1a state stack (the NSGraphicsContext analog): push a frame,
+	 * translate subsequent draw coordinates by (dxPx, dyPx), clip to a
+	 * rect, draw, then restore. The view-tree composite uses one frame
+	 * per view (translate = view origin px, clip = view bounds px), so
+	 * View::draw() receives a context in LOCAL PX. */
+	void save();
+	void restore();
+	/* add (dxPx, dyPx) to the current frame's origin; affects later
+	 * draws and clipToRect arguments */
+	void translate(int dxPx, int dyPx);
+	/* intersect the current clip with [x..x+w)[y..y+h) (in the current
+	 * translated space); later draws are clipped to it */
+	void clipToRect(int xPx, int yPx, unsigned int wPx,
+			unsigned int hPx);
 
 	/* Push the context's BitmapImage into `window` at (x, y) with one
 	 * core-protocol XPutImage (the offscreen draw then the blit).

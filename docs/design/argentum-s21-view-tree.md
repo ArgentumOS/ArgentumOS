@@ -227,6 +227,25 @@ pixel probes prove each view's rect rendered at its **pt frame ×
 pxPerPt**, with the child clipped to its parent's bounds (a probe just
 outside the parent where the child would overflow must read the parent
 colour, not the child's). Log: `VTREE-A: flushed`.
+*Status:* DONE — geometry structs (Point/Size/Rect + rect helpers in
+argentum.h), `View` (argentum.h + view.cpp: frame/bounds in pt,
+addSubview/removeFromSuperview/superview/subviews in draw order,
+hidden, needsDisplay, a11y accessors, responder/springs stubs for
+S2.1c/d), `Window::setContentView/contentView`, and the GC state
+stack (save/restore/translate/clipToRect in graphics.cpp — clip is
+stored in SURFACE space, fixed at clipToRect time, so nested view
+frames intersect correctly; every primitive maps through it).
+`Window::draw()` (base) composites: fillRect backdrop, then per-view
+save→translate(pt×pxPerPt)→clipToRect(bounds px)→draw()→recurse→
+restore, one flush. Host probe (.build/probe/gc_state.c) validated the
+translate/clip math. Gate `.build/s21a_run.sh` boots viewtree_a
+(480x360 px window at root 100,80; root 0x223344, child A
+0x2288ee at px 20,20 200x160, child B 0x1fa84d at px 300,40 120x240,
+grandchild B1 0xcc3344 at B-local px 8,8 128x24 — overflows B by 8px);
+`.build/s21a_pixels.py` probes 5 points, all green
+(S21A-PIXELS-OK): A/B/B1 interiors at their pt frames and
+**B1-clipped** reads root colour beyond B's right edge. S1.3 gate
+re-ran green (gradients/rounded rects unchanged at identity state).
 
 ### S2.1b — a11y metadata + role read-back
 

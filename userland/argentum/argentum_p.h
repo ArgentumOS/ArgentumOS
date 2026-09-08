@@ -19,11 +19,13 @@
 #include <pixman.h>
 
 #include <map>
+#include <vector>
 
 namespace argentum {
 
 class Window;
 class GraphicsContext;
+class View;
 
 /* Application session state. */
 struct Application::Impl {
@@ -66,6 +68,10 @@ struct Window::Impl {
 	unsigned int width = 0;
 	unsigned int height = 0;
 	bool mapped = false;
+
+	/* S2.1a: the content view rooting the view tree drawn in this
+	 * window (non-owning; may be null). */
+	View *contentView = nullptr;
 };
 
 /* S1.2 BitmapImage state: the pixman offscreen surface. x8r8g8b8 is the
@@ -77,9 +83,27 @@ struct BitmapImage::Impl {
 	unsigned int height = 0;
 };
 
-/* S1.2 GraphicsContext state: which bitmap it draws into. */
+/* S1.2 GraphicsContext state: which bitmap it draws into, plus the
+ * S2.1a state stack (transform origin + clip). One frame per pushed
+ * view during the tree composite. */
 struct GraphicsContext::Impl {
 	BitmapImage *bitmap = nullptr;	/* the target surface */
+
+	/* current frame: draw coordinates are offset by (ox,oy) and
+	 * clipped to clipW/H (when clipping) before hitting the surface */
+	int ox = 0;			/* current translate x (px) */
+	int oy = 0;			/* current translate y (px) */
+	bool clipOn = false;		/* clipToRect in effect */
+	int clipX = 0;			/* clip rect (in translated space) */
+	int clipY = 0;
+	int clipW = 0;
+	int clipH = 0;
+	struct SavedFrame {
+		int ox, oy;
+		bool clipOn;
+		int clipX, clipY, clipW, clipH;
+	};
+	std::vector<SavedFrame> stack;	/* save() push / restore() pop */
 };
 
 /* S1.3 Theme state: parsed params of the active theme file. */
@@ -101,6 +125,23 @@ struct Theme::Impl {
 	struct StateParams {
 		std::uint32_t fillTop, fillBottom, outline, label;
 	} states[5];			/* Index: (int)ControlState */
+};
+
+/* S2.1 View state: frame (pt, superview space), tree links, flags,
+ * a11y metadata. Non-owning tree (addSubview does not take ownership). */
+struct View::Impl {
+	View *superview = nullptr;
+	std::vector<View *> subviews;	/* draw order; last = topmost */
+	Rect frame;			/* pt, superview space */
+	bool hidden = false;
+	bool needsDisplay = false;
+	unsigned int autoresizeMask = View::AutoresizingNone;
+
+	AccessibilityRole a11yRole = AccessibilityRole::Unknown;
+	bool a11yEnabled = true;
+	char a11yLabel[128] = { 0 };
+	char a11yHelp[128] = { 0 };
+	char a11yValue[128] = { 0 };
 };
 
 } /* namespace argentum */

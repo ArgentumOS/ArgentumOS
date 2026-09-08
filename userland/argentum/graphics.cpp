@@ -28,6 +28,56 @@ namespace argentum {
 /* arc sample density for the rounded-rect perimeter fan (per quadrant) */
 #define ARC_STEPS 12
 
+/* clip a rect to the surface; returns false when fully outside */
+static bool clip_rect(int bw, int bh, int x, int y, int w, int h,
+		      int *x0, int *y0, int *x1, int *y1);
+
+/* The current frame state (translate origin + clip). Member functions
+ * copy it out of the private Impl and hand it to map_frame() below. */
+struct frame_state {
+	int ox, oy;
+	bool clipOn;
+	int clipX, clipY, clipW, clipH;
+};
+
+/* Map a shape rect (x,y,w,h), given in the current frame's translated
+ * space, through the frame origin + clip into surface coordinates.
+ * On true, *x0..*y1 hold the clipped exclusive bounds (already within
+ * the bitmap) and the shape was not empty. On false the shape is
+ * fully clipped away. clip_rect() (surface) is then applied by the
+ * caller as before. */
+static bool
+map_frame(const frame_state &g, int x, int y, int w, int h,
+	  int *x0, int *y0, int *x1, int *y1)
+{
+	x += g.ox;
+	y += g.oy;
+	*x0 = x;
+	*y0 = y;
+	*x1 = x + w;
+	*y1 = y + h;
+	if (g.clipOn) {
+		/* clip stored in SURFACE space (fixed at clipToRect) */
+		int cx1 = g.clipX + g.clipW;
+		int cy1 = g.clipY + g.clipH;
+
+		if (*x0 < g.clipX) {
+			*x0 = g.clipX;
+		}
+		if (*y0 < g.clipY) {
+			*y0 = g.clipY;
+		}
+		if (*x1 > cx1) {
+			*x1 = cx1;
+		}
+		if (*y1 > cy1) {
+			*y1 = cy1;
+		}
+	}
+	return *x1 > *x0 && *y1 > *y0;
+}
+
+
 /* 0xRRGGBB -> premultiplied 16-bit pixman color (alpha 0xffff). */
 static pixman_color_t
 pixcolor(std::uint32_t rgb)
@@ -100,6 +150,79 @@ GraphicsContext::GraphicsContext(BitmapImage &image)
 GraphicsContext::~GraphicsContext()
 {
 	delete impl_;
+}
+
+void
+GraphicsContext::save()
+{
+	GraphicsContext::Impl::SavedFrame f;
+
+	f.ox = impl_->ox;
+	f.oy = impl_->oy;
+	f.clipOn = impl_->clipOn;
+	f.clipX = impl_->clipX;
+	f.clipY = impl_->clipY;
+	f.clipW = impl_->clipW;
+	f.clipH = impl_->clipH;
+	impl_->stack.push_back(f);
+}
+
+void
+GraphicsContext::restore()
+{
+	if (impl_->stack.empty()) {
+		return;
+	}
+	GraphicsContext::Impl::SavedFrame f = impl_->stack.back();
+
+	impl_->stack.pop_back();
+	impl_->ox = f.ox;
+	impl_->oy = f.oy;
+	impl_->clipOn = f.clipOn;
+	impl_->clipX = f.clipX;
+	impl_->clipY = f.clipY;
+	impl_->clipW = f.clipW;
+	impl_->clipH = f.clipH;
+}
+
+void
+GraphicsContext::translate(int dxPx, int dyPx)
+{
+	impl_->ox += dxPx;
+	impl_->oy += dyPx;
+}
+
+void
+GraphicsContext::clipToRect(int xPx, int yPx, unsigned int wPx,
+			    unsigned int hPx)
+{
+	/* the clip is stored in SURFACE space, fixed at set time (later
+	 * translates move drawing, not the clip): convert local -> */
+	int sx = xPx + impl_->ox;
+	int sy = yPx + impl_->oy;
+	int cx1 = sx + (int) wPx;
+	int cy1 = sy + (int) hPx;
+
+	if (!impl_->clipOn) {
+		impl_->clipX = sx;
+		impl_->clipY = sy;
+		impl_->clipW = (int) wPx;
+		impl_->clipH = (int) hPx;
+		impl_->clipOn = true;
+		return;
+	}
+	/* intersect with the current clip */
+	int x0 = impl_->clipX > sx ? impl_->clipX : sx;
+	int y0 = impl_->clipY > sy ? impl_->clipY : sy;
+	int x1 = (impl_->clipX + impl_->clipW) < cx1 ?
+		(impl_->clipX + impl_->clipW) : cx1;
+	int y1 = (impl_->clipY + impl_->clipH) < cy1 ?
+		(impl_->clipY + impl_->clipH) : cy1;
+
+	impl_->clipX = x0;
+	impl_->clipY = y0;
+	impl_->clipW = x1 > x0 ? x1 - x0 : 0;
+	impl_->clipH = y1 > y0 ? y1 - y0 : 0;
 }
 
 /* Composite a solid color over dest[x..x+w)[y..y+h) through an a8 mask
@@ -219,32 +342,26 @@ GraphicsContext::fillRect(int x, int y, unsigned int w, unsigned int h,
 			  std::uint32_t rgb)
 {
 	BitmapImage::Impl *b = impl_->bitmap->impl_;
-	int r = (int) impl_->bitmap->width();
-	int s = (int) impl_->bitmap->height();
+	int x0, y0, x1, y1;
 
 	if (!b->img || w == 0 || h == 0) {
 		return;
 	}
-	/* clip to the surface */
-	if (x < 0) {
-		w = (unsigned int) (x + (int) w);
-		x = 0;
-	}
-	if (y < 0) {
-		h = (unsigned int) (y + (int) h);
-		y = 0;
-	}
-	if ((int) w > r - x) {
-		w = (unsigned int) (r - x);
-	}
-	if ((int) h > s - y) {
-		h = (unsigned int) (s - y);
-	}
-	if ((int) w <= 0 || (int) h <= 0) {
+	/* frame transform + clip, then the surface */
+	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
+			   impl_->clipX, impl_->clipY,
+			   impl_->clipW, impl_->clipH };
+	if (!map_frame(fs, x, y, (int) w, (int) h,
+		       &x0, &y0, &x1, &y1)) {
 		return;
 	}
-	composite_solid(b->img, rgb, nullptr, 0, 0, x, y,
-			(int) w, (int) h);
+	if (!clip_rect((int) impl_->bitmap->width(),
+		       (int) impl_->bitmap->height(),
+		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	composite_solid(b->img, rgb, nullptr, 0, 0,
+			x0, y0, x1 - x0, y1 - y0);
 }
 
 /* Clip a shape rect to the bitmap surface; returns false when fully
@@ -289,7 +406,16 @@ GraphicsContext::fillRoundedRect(int x, int y, unsigned int w,
 		fillRect(x, y, w, h, rgb);
 		return;
 	}
-	if (!clip_rect((int) impl_->bitmap->width(), (int) impl_->bitmap->height(), x, y, (int) w, (int) h, &x0, &y0, &x1, &y1)) {
+	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
+			   impl_->clipX, impl_->clipY,
+			   impl_->clipW, impl_->clipH };
+	if (!map_frame(fs, x, y, (int) w, (int) h,
+		       &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	if (!clip_rect((int) impl_->bitmap->width(),
+		       (int) impl_->bitmap->height(),
+		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
 		return;
 	}
 	pixman_image_t *mask = rounded_mask(w, h, radius);
@@ -297,10 +423,11 @@ GraphicsContext::fillRoundedRect(int x, int y, unsigned int w,
 	if (!mask) {
 		return;
 	}
-	/* paint through the mask; mask pixel (i,j) corresponds to dest
-	 * (x0+i, y0+j) via the composite offset. */
+	/* mask was built in LOCAL shape space (w x h at shape origin
+	 * x,y); the shape's surface origin is x+ox,y+oy. Composite the
+	 * clipped dest rect sampling the mask from there. */
 	composite_solid(b->img, rgb, mask,
-			x0 - x, y0 - y,	/* mask offset (shape origin) */
+			x0 - (x + impl_->ox), y0 - (y + impl_->oy),
 			x0, y0, x1 - x0, y1 - y0);
 	pixman_image_unref(mask);
 }
@@ -329,26 +456,40 @@ GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
 		fillLinearGradient(x, y, w, h, rgb0, rgb1, vertical);
 		return;
 	}
-	if (!clip_rect((int) impl_->bitmap->width(), (int) impl_->bitmap->height(), x, y, (int) w, (int) h, &x0, &y0, &x1, &y1)) {
+	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
+			   impl_->clipX, impl_->clipY,
+			   impl_->clipW, impl_->clipH };
+	if (!map_frame(fs, x, y, (int) w, (int) h,
+		       &x0, &y0, &x1, &y1)) {
 		return;
 	}
-	/* two-stop gradient clipped to the rounded mask */
+	if (!clip_rect((int) impl_->bitmap->width(),
+		       (int) impl_->bitmap->height(),
+		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	/* two-stop gradient clipped to the rounded mask; gradient is
+	 * defined in SURFACE space (shape origin x+ox,y+oy) so it
+	 * matches dest 1:1. */
 	pixman_color_t c0 = pixcolor(rgb0);
 	pixman_color_t c1 = pixcolor(rgb1);
+	int sx = x + impl_->ox;	/* shape origin in surface space */
+	int sy = y + impl_->oy;
+
 	stops[0].x = 0;
 	stops[0].color = c0;
 	stops[1].x = pixman_fixed_1;
 	stops[1].color = c1;
 	if (vertical) {
-		p1.x = pixman_int_to_fixed(x);
-		p1.y = pixman_int_to_fixed(y);
-		p2.x = pixman_int_to_fixed(x);
-		p2.y = pixman_int_to_fixed(y + (int) h);
+		p1.x = pixman_int_to_fixed(sx);
+		p1.y = pixman_int_to_fixed(sy);
+		p2.x = pixman_int_to_fixed(sx);
+		p2.y = pixman_int_to_fixed(sy + (int) h);
 	} else {
-		p1.x = pixman_int_to_fixed(x);
-		p1.y = pixman_int_to_fixed(y);
-		p2.x = pixman_int_to_fixed(x + (int) w);
-		p2.y = pixman_int_to_fixed(y);
+		p1.x = pixman_int_to_fixed(sx);
+		p1.y = pixman_int_to_fixed(sy);
+		p2.x = pixman_int_to_fixed(sx + (int) w);
+		p2.y = pixman_int_to_fixed(sy);
 	}
 	grad = pixman_image_create_linear_gradient(&p1, &p2, stops, 2);
 	if (!grad) {
@@ -365,7 +506,7 @@ GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
 	 * is partial must blend with whatever is beneath (the ring/base),
 	 * not be replaced by gradient*(mask) which darkens them to ~black */
 	pixman_image_composite32(PIXMAN_OP_OVER, grad, mask, b->img,
-				 x0, y0, x0 - x, y0 - y, x0, y0,
+				 x0, y0, x0 - sx, y0 - sy, x0, y0,
 				 x1 - x0, y1 - y0);
 	pixman_image_unref(mask);
 	pixman_image_unref(grad);
@@ -453,6 +594,10 @@ GraphicsContext::fillRadialGradient(int cx, int cy, unsigned int radius,
 	stops[1].x = pixman_fixed_1;
 	stops[1].color = c1;
 
+	/* centre in surface space (frame translate), then the disc
+	 * bbox; intersect with the frame clip + surface. */
+	cx += impl_->ox;
+	cy += impl_->oy;
 	pixman_point_fixed_t pc = { pixman_int_to_fixed(cx),
 				    pixman_int_to_fixed(cy) };
 	pixman_image_t *grad = pixman_image_create_radial_gradient(
@@ -461,29 +606,53 @@ GraphicsContext::fillRadialGradient(int cx, int cy, unsigned int radius,
 		return;
 	}
 	pixman_image_set_repeat(grad, PIXMAN_REPEAT_PAD);
+	int r = (int) radius;
+	int x0 = cx - r;
+	int y0 = cy - r;
+	int x1 = cx + r;
+	int y1 = cy + r;
 
-	/* clip the composite to the bounding box of the disc */
-	int x0 = cx - (int) radius;
-	int y0 = cy - (int) radius;
-	int w = (int) radius * 2;
-	int h = w;
-	pixman_box32_t bb = { x0, y0, x0 + w, y0 + h };
-	pixman_region32_t clip;
-	pixman_region32_init_rect(&clip, x0, y0, (unsigned int) w,
-				  (unsigned int) h);
-	pixman_image_set_clip_region32(b->img, &clip);
-	pixman_region32_fini(&clip);
+	if (impl_->clipOn) {
+		int cxr = impl_->clipX + impl_->clipW;
+		int cyb = impl_->clipY + impl_->clipH;
+
+		if (x0 < impl_->clipX) {
+			x0 = impl_->clipX;
+		}
+		if (y0 < impl_->clipY) {
+			y0 = impl_->clipY;
+		}
+		if (x1 > cxr) {
+			x1 = cxr;
+		}
+		if (y1 > cyb) {
+			y1 = cyb;
+		}
+	}
+	int bw = (int) impl_->bitmap->width();
+	int bh = (int) impl_->bitmap->height();
+
+	if (x0 < 0) {
+		x0 = 0;
+	}
+	if (y0 < 0) {
+		y0 = 0;
+	}
+	if (x1 > bw) {
+		x1 = bw;
+	}
+	if (y1 > bh) {
+		y1 = bh;
+	}
+	if (x1 <= x0 || y1 <= y0) {
+		pixman_image_unref(grad);
+		return;
+	}
+	/* sample the gradient at dest coords: src offset == dest offset,
+	 * so pc must be in SURFACE space (done above) */
 	pixman_image_composite32(PIXMAN_OP_SRC, grad, nullptr, b->img,
-				 x0, y0, 0, 0, x0, y0, w, h);
+				 x0, y0, 0, 0, x0, y0, x1 - x0, y1 - y0);
 	pixman_image_unref(grad);
-
-	/* clear the clip for subsequent draws */
-	pixman_region32_t all;
-	pixman_region32_init_rect(&all, 0, 0,
-				  (unsigned int) impl_->bitmap->width(),
-				  (unsigned int) impl_->bitmap->height());
-	pixman_image_set_clip_region32(b->img, &all);
-	pixman_region32_fini(&all);
 }
 
 void
@@ -495,9 +664,32 @@ GraphicsContext::drawLine(int x0, int y0, int x1, int y1, std::uint32_t rgb)
 		return;
 	}
 	if (x0 == x1 && y0 == y1) {
-		/* single pixel */
+		/* single pixel (fillRect applies the frame translate) */
 		fillRect(x0, y0, 1, 1, rgb);
 		return;
+	}
+	/* frame translate; long lines are triangle-fanned (below) and
+	 * pixman clips them to the surface; the frame CLIP is honored
+	 * only as a coarse bbox rejection (a line crossing the clip
+	 * edge can leak up to one AA fringe — acceptable for the v1
+	 * chrome, all lines interior). */
+	x0 += impl_->ox;
+	y0 += impl_->oy;
+	x1 += impl_->ox;
+	y1 += impl_->oy;
+	if (impl_->clipOn) {
+		int cxl = impl_->clipX;
+		int cyl = impl_->clipY;
+		int cxr = cxl + impl_->clipW;
+		int cyb = cyl + impl_->clipH;
+		int lx0 = x0 < x1 ? x0 : x1;
+		int lx1 = x0 < x1 ? x1 : x0;
+		int ly0 = y0 < y1 ? y0 : y1;
+		int ly1 = y0 < y1 ? y1 : y0;
+
+		if (lx1 < cxl || lx0 > cxr || ly1 < cyl || ly0 > cyb) {
+			return;	/* fully outside the clip */
+		}
 	}
 	/* 1px line as two triangles (a thin quad of width 1.0 with AA).
 	 * Perpendicular unit vector, half-width 0.5. */

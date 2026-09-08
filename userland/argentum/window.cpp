@@ -5,14 +5,80 @@
  * XRender/Xft client lib).
  * S0.3: selects the input events and registers in the Application's
  * window map so run() can dispatch to the responder virtuals.
+ * S2.1a: an optional content view roots the view tree; the base draw()
+ * composites it into an offscreen BitmapImage (per-view translate +
+ * clip, local-px drawRect) and flushes.
  */
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
 namespace argentum {
+
+/* S2.1a: draw one view and its subtree into g. The context must
+ * already be positioned so (0,0) is `v`'s top-left (the caller
+ * translates); we push a frame, translate to this view, clip to its
+ * px bounds, call draw(), recurse into subviews in draw order.
+ * Frames are pt — px = frame × session pxPerPt (rounded). */
+static void
+render_view(View *v, GraphicsContext &g, double pxPerPt)
+{
+	if (!v || v->isHidden()) {
+		return;
+	}
+	Rect fr = v->frame();
+
+	g.save();
+	g.translate((int) std::lround(fr.origin.x * pxPerPt),
+		    (int) std::lround(fr.origin.y * pxPerPt));
+	unsigned int pw = (unsigned int) std::lround(fr.size.w * pxPerPt);
+	unsigned int ph = (unsigned int) std::lround(fr.size.h * pxPerPt);
+
+	g.clipToRect(0, 0, pw, ph);
+	v->draw(g);
+	for (View *c : v->subviews()) {
+		render_view(c, g, pxPerPt);
+	}
+	g.restore();
+}
+
+void
+Window::setContentView(View *view)
+{
+	impl_->contentView = view;
+	if (view && impl_->mapped) {
+		view->setNeedsDisplay();
+		draw();
+	}
+}
+
+View *
+Window::contentView() const
+{
+	return impl_->contentView;
+}
+
+void
+Window::draw()
+{
+	/* S2.1a: with a content view, composite the tree; without one
+	 * this base implementation paints nothing (S1-era subclasses
+	 * override draw() and never reach here). */
+	if (!impl_->contentView || !impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	BitmapImage bmp(impl_->width, impl_->height);
+	GraphicsContext g(bmp);
+
+	/* deterministic backdrop before the tree composites */
+	g.fillRect(0, 0, impl_->width, impl_->height, 0x000000);
+	render_view(impl_->contentView, g,
+		    Application::shared().pxPerPt());
+	g.flush(*this, 0, 0);
+}
 
 Window::Window()
 {
@@ -151,11 +217,6 @@ Window::mouseDown(const MouseEvent &)
 
 void
 Window::mouseUp(const MouseEvent &)
-{
-}
-
-void
-Window::draw()
 {
 }
 
