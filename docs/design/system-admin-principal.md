@@ -116,7 +116,9 @@ helpers:
                            (type = agfs|swap|esp by reserved GUID; table auto-detected GPT|MBR)
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
-/System/Tools/install-app  bundle validation + install into /Applications
+/System/Tools/install     "install <appname.app> <global|local>" — validate + install a bundle
+                           (global = /Applications, Admin; local = the caller's own Applications,
+                           no elevation); the file manager's drag-and-drop installs via this helper
 /System/Tools/power        off / reboot (the everyday verb: "power off")
 /System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
 ```
@@ -205,7 +207,7 @@ against this model and rejected:
   lets only System binaries run as root cannot also let `doas` exec
   arbitrary rule-allowed commands; the kernel cannot know doas.conf.
 - **Restricted to the verb set it is merely a proto-helper-fleet.** A
-  doas whose rules name only `mount`/`account`/`install-app` is a
+  doas whose rules name only `mount`/`account`/`install` is a
   coherent single-suid-front-end over the helpers — i.e. it reinvents
   the fleet with an extra indirection and a rule file to audit. The
   helpers themselves already are that front end, one narrow binary per
