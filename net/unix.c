@@ -607,6 +607,16 @@ int unix_read(struct socket *s, struct fd *f, char *buffer, __size_t count)
 				break;
 			}
 			if(f->flags & O_NONBLOCK) {
+				/* nonblocking: report the partial bytes actually
+				 * copied (POSIX); only EAGAIN when nothing was
+				 * available yet (the writer fills the ring
+				 * incrementally for large writes, so a partial
+				 * read must not be discarded or large transfers
+				 * over a nonblocking socket lose data — X11
+				 * sub-requests stalled exactly this way) */
+				if(bytes_read) {
+					break;
+				}
 				return -EAGAIN;
 			}
 			if(sleep(u, PROC_INTERRUPTIBLE)) {
