@@ -116,9 +116,11 @@ helpers:
                            (type = agfs|swap|esp by reserved GUID; table auto-detected GPT|MBR)
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
-/System/Tools/install     "install <appname.app> <global|local>" — validate + install a bundle
-                           (global = /Applications, Admin; local = the caller's own Applications,
-                           no elevation); the file manager's drag-and-drop installs via this helper
+/System/Tools/install     "install <bundle> <global|local>" — validate + install a bundle
+                           (app bundles → /Applications | ~/Applications; shared-resource bundles
+                           (libraries/fonts/resources only) → /Shared | ~/Shared by payload type;
+                           global = Admin, local = self no-elevation; the file manager's
+                           drag-and-drop installs via this helper, both kinds)
 /System/Tools/power        off / reboot (the everyday verb: "power off")
 /System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
 ```
