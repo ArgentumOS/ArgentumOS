@@ -121,6 +121,7 @@ helpers:
                            (libraries/fonts/resources only) → /Shared | ~/Shared by payload type;
                            global = Admin, local = self no-elevation; the file manager's
                            drag-and-drop installs via this helper, both kinds)
+/System/Tools/uninstall   symlink to install (argv[0]-dispatched): removes the selected bundle
 /System/Tools/power        off / reboot (the everyday verb: "power off")
 /System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
 ```
