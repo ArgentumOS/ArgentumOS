@@ -107,7 +107,10 @@ helpers:
 
 ```
 /System/Tools/disk         "disk mount <device|guid> <target>" / "disk unmount <target|device|guid>" /
-                           "disk initialize mbr|gpt <device>" (destructive whole-disk verbs)
+                           "disk initialize mbr|gpt <device>" (destructive whole-disk verbs) /
+                           "disk partition create <device> <type> <size>" /
+                           "disk partition delete <device> <partition-guid>"
+                           (type = agfs|swap|esp by reserved GUID; table auto-detected GPT|MBR)
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
 /System/Tools/install-app  bundle validation + install into /Applications
