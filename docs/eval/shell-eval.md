@@ -1,11 +1,18 @@
 # Shell evaluation — FNX system shell options
 
-Status: **EVALUATION (2026-09)** with a **decided direction: Finch — a
-fork of mksh as FNX's sole system shell** (working name **Finch**; the
-bird kin — FNX-phoenix family: Argentum the toolkit, Kestrel the WM,
-Finch the shell). "fsh" was considered and rejected: FSH already names
-the filesystem hierarchy (fsh-proposal, fshlint, FSH env) — a fatal
-brand collision. The live `/bin/sh` today is dash, with FSH patches.
+Status: **EVALUATION (2026-09), SUPERSEDED decision** — the original
+decided direction (Finch = fork of mksh as a sole system shell aliased
+`sh`) is **replaced**: mksh is out (personal reasons, 2026-09); the
+user chose **from-scratch**, and the two-shell model dissolved the
+sole-shell premise — dash stays `/bin/sh` forever, Finch is the user
+shell. Full design: `docs/design/finch-shell-plan.md`. This doc remains
+the license/candidate record that shaped the choice.
+
+Working name Finch (the bird kin — FNX-phoenix family: Argentum the
+toolkit, Kestrel the WM, Finch the shell). "fsh" was considered and
+rejected: FSH already names the filesystem hierarchy (fsh-proposal,
+fshlint, FSH env) — a fatal brand collision. The live `/bin/sh` today
+is dash, with FSH patches — and that is now the permanent arrangement.
 
 FNX has two shell jobs: `/bin/sh` (POSIX scripting, tiny, static-
 capable) and the **interactive login shell** (editing/history/
@@ -59,50 +66,57 @@ nushell LICENSE; bash COPYING; fish COPYING.
   entirely non-POSIX: no `/bin/sh` role; user-taste installs, not
   first-party ships.
 
-## Finch — the fork (name + scope, 2026-09)
+## Finch — from scratch (decision 2026-09)
 
-**Finch = mksh core + a curated bash-like QoL layer + FNX
-modifications**, forked in the house pattern (Xfb-from-Xvfb,
-urxvt-from-rxvt): take the small permissive correct base, make it
-ours. Installed as **`finch`, aliased to `sh`** — the same binary serves
-`/bin/sh` (sh-mode via argv0) and the interactive login shell; dash
-retires from the running system (static-recovery sh during transition:
-open).
+mksh is out (personal reasons). Re-evaluated: **oksh** (portable
+OpenBSD ksh — pdksh core PD, BSD/ISC portability glue, musl-supported;
+the same ksh-family case as mksh under a different project) vs **dash
+fork** vs **from-scratch**. User chose from-scratch, per the house
+doctrine — and the two-shell model (below) removed the reason a fork
+was ever attractive: a from-scratch shell should not pay POSIX
+conformance to re-implement dash.
 
-QoL layer, v1-provisional (curated; trim at adoption):
+**Finch = a designed language** (rc semantics under a C-skin syntax,
+full POSIX job control), from-scratch, C, first-party; installed as
+`finch`; **not** `/bin/sh`. dash remains `/bin/sh`, the static recovery
+sh, and the script runner — permanent. The fork era's QoL layer
+(listed below) survives as the interactive-surface design in
+`docs/design/finch-shell-plan.md` §2.5, where the from-scratch parser
+makes it strictly more capable (live reparse, token-aware completion).
 
-- **Interactive**: tab-twice listing + a *simple* menu completion
-  (bash's full programmable-completion API is a defer); `!!`/`!$`/`!n`
-  history expansion; pre-prompt hooks (`PROMPT_COMMAND`-style);
-  bindable keys and colored-prompt helpers.
-- **Scripting**: `set -o pipefail` + `PIPESTATUS`; case modifiers
-  (`${var,,}`/`${var^^}`); herestrings `<<<`, `$(<file)`; `[[ -v var ]]`,
-  `${!prefix*}`, debug stack visibility.
-- **Deferred deliberately**: `declare -A` associative arrays (bash's
-  largest engine addition — a genuine feature project; scripts can be
-  written Korn-style), and bash's programmable-completion scripting.
-- **Guardrail**: purely additive — never breaks POSIX sh-mode (the
-  sole-shell claim depends on a correct `/bin/sh` for scripts and
-  configure runs); each addition earns its place against "one small
-  correct shell."
+Fork-era QoL layer, for the record:
 
-FNX modifications (as previously scoped): FSH integration (the
-dash-FSH-patch pattern: env/home/PATH under FSH, PS1), init/rc in
-Application Support/ per the config policy (behaviour, not settings),
-static Finch in the recovery carve-out, fshlint zero-allow.
+- **Interactive**: tab completion + menu; ^R history search (no `!`
+  expansion); bindable keys; colored-prompt helpers.
+- **Scripting**: case modifiers / herestrings / `[[ -v var ]]`-class
+  conveniences were bash-like extras — superseded by the designed
+  language; irrelevant to dash.
+- **Guardrail**: the old "never break POSIX sh-mode" rule is MOOT —
+  Finch has no sh-mode; dash owns POSIX.
+
+FNX modifications carried into the design: FSH integration (paths per
+fsh-proposal: settings in Configuration/finch.conf domains, behaviour
+in Application Support startup scripts, history in Variable Data),
+prompt per config-design (behaviour-vs-settings split), static Finch
+in the recovery carve-out only if dash is ever unavailable (not v1).
 
 ## Open items
 
-- sh-mode POSIX verification (mksh invoked as `sh` vs strict POSIX).
-- Whether dash is *fully* retired or kept only as the static recovery
-  sh during the transition.
+- Resolved by the from-scratch decision: sh-mode POSIX verification is
+  MOOT (Finch has no sh-mode; dash is `/bin/sh`); dash retirement is
+  MOOT — dash is permanent.
 - zsh as a *user-installable* option under /Shared (policy-clean if
   shipped without the GPL'd function files) — out of first-party
   scope, recorded so the door is documented.
+- The from-scratch milestone list lives in
+  docs/design/finch-shell-plan.md (§5); open-at-execution items there
+  (§6) are the forward record.
 
 ## Relationship
 
 - Config policy: docs/design/config-design.md §0 (all config libconfig;
   Application Support carve-out + domain matching).
 - Recovery/static world: docs/design/shared-libraries-plan.md.
-- Current sh: dash with FSH patches (third_party/dash + dash-fsh.patch).
+- Current sh: dash with FSH patches (third_party/dash + dash-fsh.patch)
+  — permanent (see decision above).
+- Finch design: docs/design/finch-shell-plan.md.
