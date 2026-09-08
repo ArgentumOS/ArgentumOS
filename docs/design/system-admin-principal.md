@@ -255,6 +255,104 @@ and per-verb delegation, if ever needed, belongs in the helper set or
 the doas-rejection's §4.2 reasoning, never a generic root runner.
 (Review findings 3 + 8 + 9–12.)
 
+### 4.5 The helper contracts (decided 2026-09)
+
+The fleet, per §4's list, with each helper's locked contract. These
+were examined one-by-one in design sessions; this is the normative
+record. The session/login boundary lives in `sessionmgr-design.md`
+(sessionmgr = the one System process at the login screen; greeters and
+Xfb run as the `Display` principal).
+
+**Common rules (all helpers):**
+- setuid-System `4755`, System-owned, immutable after the ownership
+  split; a helper a person can replace is meaningless.
+- **No exec, no spawning, no shell, no generic file-copy.** The fleet
+  never yields a shell; `su` does not exist.
+- Strict argv/verb validation: no flags-as-force, no prefix matching;
+  unknown input → usage + non-zero exit.
+- **Real-caller authorization per verb** (`getuid` + groups contain
+  `Admin` where Admin is required) — never euid checks, never argv
+  trust. Mixed-authorization binaries (target- or verb-based) drop
+  euid to the real user before any unprivileged work.
+- Single operation per invocation; atomic writes (temp + fsync +
+  rename) where files are touched; audit via the shared recorder
+  (finding 6) — helper-local logging is not in v1.
+
+**`power`** — the smallest, the pattern-setter. Verbs: `power off` /
+`power reboot` (`argv[1] ∈ {off, reboot}`). Admin. No files, no
+config, no env. Syscall surface: `reboot(2)` only (no sync — the
+kernel's `stop_kernel()` flushes; a userland sync before the syscall
+would be racy). Kernel delta: `BMAGIC_POWEROFF` is defined but
+unhandled in `sys_reboot` (currently `-EINVAL`); treat it like HALT.
+Real ACPI power-down is a separate kernel project.
+
+**`account`** — person-object verbs, object-first grammar, target
+decides authorization: `account <user> add|delete|password|group
+<g> add|remove|shell <sh>`. `password`/`shell` are self-service iff
+`<user>` is the caller (current-hash verify), else Admin; `add`/
+`delete`/`group` are always Admin. Validation: username grammar
+(`[a-z0-9_-]`, reserved names incl. `System`/`Service`/`group`/
+`Admin`/`Users` rejected), home always derived `/Users/<user>`
+(never caller-supplied; `O_NOFOLLOW`, no symlink components), uids
+allocated by the helper (no reuse-after-delete), shells validated
+against `system.shells.conf`, **last-`Admin` guard** (never remove or
+demote the final Admin-group member), System/Service targets refused,
+atomic domain writes. `useradd` creates the home + `/System/User
+Template/` skel; rollback policy is a build-time detail. Writes
+`system.passwd.conf` (and group membership in `system.group.conf`).
+
+**`group`** — group-object verbs: `group <name> create|delete`
+(Admin). Shares the `system.group.conf` single-writer discipline with
+`account`'s membership verb (same atomic configedit core).
+
+**`disk`** — the largest; two auth classes:
+- Admin: `disk mount <device|guid> <target>` · `disk unmount
+  <target|device|guid>` · `disk initialize mbr|gpt <device>` ·
+  `disk partition create <device> <type> <size>` · `disk partition
+  delete <device> <partition-guid>` · `disk eject <device|target|guid>`
+- Anyone (read-only, euid dropped): `disk info <device|target|guid>` ·
+  `disk list`
+- Types are named (`agfs|swap|esp`, mapped to the reserved GPT type
+  GUIDs, rebrand-plan §6); tables auto-detected (GPT if valid, else
+  MBR, mapping type → GUID or MBR byte).
+- `mount`/`unmount` bring in mount-by-GUID (partition unique GUID);
+  `initialize` is destructive — refuses the boot/root device, mounted
+  disks, and requires an explicit confirm word; `eject` implies
+  unmount and refuses a busy mount (no force); v1 eject mechanics
+  exist for ATAPI only. Kernel deltas: partition-table/unique-GUID
+  parsing if not already present; per-transport eject commands.
+- Formatting *within* an existing partition stays unprivileged node
+  (ACL) work (§4.4) — `disk` owns table + mount lifecycle, not mkfs.
+
+**`install` / `uninstall`** — argv[0]-dispatched twins. `install
+<bundle> <global|local>`: app bundles land in `/Applications` |
+`~/Applications`; shared-resource bundles (libraries/fonts/resources
+only) land in `/Shared` | `~/Shared`, payload routed by type.
+`global` = Admin, `local` = the caller's own trees with no elevation
+(same validation, euid dropped). `uninstall <bundle-name>
+<global|local>` removes from the named scope. The file manager is the
+flagship consumer (drag-and-drop on a scope = the matching command).
+Bundle validation (the whole contract — install ingests
+attacker-controlled content): strict manifest schema (unknown keys
+rejected), identifier is reverse-DNS and **never a path component**,
+`name` matches a safe grammar, executable/icon/resource paths resolve
+inside the bundle (no `..`, no absolute, no symlink escape — copy
+no-follow, re-validate symlinks), linter gate on staged ELFs (legacy
+path scan), size caps, and **no post-install scripts, no hooks, no
+exec of bundle content** — install is validated data motion.
+Installed bundles are System-owned (origin model); apps run as the
+person, never modify themselves.
+
+**`config`** — the mediated `.conf` writer (§4.1), setuid-System:
+Admin may adjust **any** domain at **any** scope (the allowlist lives
+in the tool: the Admin gate is the whole restriction); without Admin,
+the caller's own user scope only. `account`/`group`/`install` are
+validated front-ends over the same atomic mechanism — **not exclusive
+writers** (a raw Admin `config -s system.passwd` edit is legal, like
+root `vipw`). Schema-less by design: validation is grammar +
+atomicity, not meaning; a semantically wrong value is the operator's
+error, accepted.
+
 ## 5. Boot, session, and config scope
 - **init** (PID 1, uid 0) mounts from `system.mounts.conf`, runs the
   boot-time services (as System or Service per identity), then
@@ -368,10 +466,14 @@ Recorded criticisms and where they landed:
 
 ## 8. Open items
 
-- Admin's uid/gid numbers and Service's (`Admin` currently occupies
-  uid 0 in `system.passwd.conf`; `System` takes 0 with no shell).
-- The v1 helper inventory and narrow contracts (path allow-lists,
-  argv validation).
+- Admin's uid/gid numbers, Service's, and `Display`'s (`Admin`
+  currently occupies uid 0 in `system.passwd.conf`; `System` takes 0
+  with no shell).
+- Per-helper build-time details and the remaining kernel deltas:
+  `BMAGIC_POWEROFF` handling (power), partition-table/unique-GUID
+  parsing + per-transport eject (disk), `Display`'s devfs staging
+  (fb0 → Video, input → Input). The contracts themselves are decided
+  (§4.5).
 - Group roster beyond `Admin`/`Users`/`Service`/`Video`/`Input`/
   `Audio`/`Network`; devfs-node group-ACL staging (which node → which
   group → which mask).
@@ -379,6 +481,8 @@ Recorded criticisms and where they landed:
   membership; Service's default memberships.
 - Review finding 5's four interaction rules + tests.
 - Review finding 6's audit tool and devfs policy table.
-- `poweroff`/`reboot`: helper, kernel-keypress, or System event.
+- `poweroff`/`reboot` → resolved: the `power` helper (`power off` /
+  `power reboot`, §4.5); kernel-keypress (ctrl-alt-del) and System
+  events remain as secondary paths.
 - The kernel backstop allowlist (§6.4) and the maintenance path (§6).
 - `S_ISGID` at exec is unimplemented — v1 helpers are setuid-0 only.
