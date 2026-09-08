@@ -110,7 +110,8 @@ helpers:
                            "disk initialize mbr|gpt <device>" (destructive whole-disk verbs) /
                            "disk partition create <device> <type> <size>" /
                            "disk partition delete <device> <partition-guid>" /
-                           "disk eject <device|target|guid>" (unmounts, then ejects removable media)
+                           "disk eject <device|target|guid>" (unmounts, then ejects removable media) /
+                           "disk info <device|target|guid>" (read-only; the one non-Admin verb)
                            (type = agfs|swap|esp by reserved GUID; table auto-detected GPT|MBR)
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
