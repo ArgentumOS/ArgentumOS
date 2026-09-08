@@ -166,6 +166,13 @@ void unix_free(struct socket *s)
 		return;
 	}
 
+	/* This endpoint closes while its peer is still up: tell the peer
+	 * the connection is going away (it gets EPIPE on further writes,
+	 * EOF after draining) and release this endpoint's own receive ring.
+	 * The kernel is not preemptible inside a syscall, so a peer blocked
+	 * in unix_write() can only wake up after we return - by then it
+	 * re-checks s->state and sees SS_DISCONNECTING, so it never touches
+	 * the freed buffer. */
 	if(u->peer) {
 		if(!--u->peer->count) {
 			remove_unix_socket(u->peer);
@@ -175,6 +182,10 @@ void unix_free(struct socket *s)
 		}
 		wakeup(u->peer);
 		wakeup(&do_select);
+	}
+	if(u->data) {
+		kfree((addr_t)u->data);
+		u->data = NULL;
 	}
 	remove_unix_socket(u);
 	return;
@@ -328,11 +339,27 @@ int unix_accept(struct socket *ss, struct sockaddr *addr, unsigned int *addrlen)
 	uc = &sc->u.unix_info;
 	us = &nss->u.unix_info;
 
+	/* FNX: each endpoint owns its OWN receive ring. Sharing one
+	 * PIPE_BUF buffer for both directions (us->data = uc->data) made
+	 * the two stream directions keep independent cursors over the same
+	 * memory: whenever both were busy at once (X11: big request uploads
+	 * while the server pushes events/replies back), one direction's
+	 * write overwrote the other's unread bytes and the byte streams
+	 * desynced (the X server ended up parsing its own outbound events
+	 * as incoming requests). unix_write() fills peer->data and
+	 * unix_read() drains its own, so per-endpoint buffers keep the two
+	 * directions fully isolated. kmalloc() only hands out pages, hence
+	 * one PIPE_BUF per direction. */
 	if(!(uc->data = (char *)kmalloc(PIPE_BUF))) {
 		sock_free(nss);
 		return -ENOMEM;
 	}
-	us->data = uc->data;
+	if(!(us->data = (char *)kmalloc(PIPE_BUF))) {
+		kfree((addr_t)uc->data);
+		uc->data = NULL;
+		sock_free(nss);
+		return -ENOMEM;
+	}
 	/* FNX: the accepted socket carries the LISTENER's bound name, so
 	 * getsockname()/getpeername() on the connection return the address
 	 * the client connected to (Linux semantics; libxcb checks the peer
@@ -340,7 +367,11 @@ int unix_accept(struct socket *ss, struct sockaddr *addr, unsigned int *addrlen)
 	 * client's (unbound) sun, yielding an empty peer address. */
 	if(ss->u.unix_info.sun) {
 		if(!(us->sun = (struct sockaddr_un *)kmalloc(sizeof(struct sockaddr_un)))) {
+			/* keep the connecting socket's ring: it is not owned by
+			 * nss (unix_free below would only drop us->data) */
 			sock_free(nss);
+			kfree((addr_t)uc->data);
+			uc->data = NULL;
 			return -ENOMEM;
 		}
 		memcpy_b(us->sun, ss->u.unix_info.sun, sizeof(struct sockaddr_un));
@@ -395,10 +426,17 @@ int unix_socketpair(struct socket *s1, struct socket *s2)
 	u1 = &s1->u.unix_info;
 	u2 = &s2->u.unix_info;
 
+	/* FNX: each endpoint gets its own receive ring (see unix_accept);
+	 * aliasing u2->data = u1->data shared one buffer between the two
+	 * directions and corrupted bidirectional streams. */
 	if(!(u1->data = (char *)kmalloc(PIPE_BUF))) {
 		return -ENOMEM;
 	}
-	u2->data = u1->data;
+	if(!(u2->data = (char *)kmalloc(PIPE_BUF))) {
+		kfree((addr_t)u1->data);
+		u1->data = NULL;
+		return -ENOMEM;
+	}
 	u1->count++;
 	u2->count++;
 	u1->peer = u2;
