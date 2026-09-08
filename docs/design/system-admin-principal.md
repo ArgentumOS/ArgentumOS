@@ -268,7 +268,10 @@ invariant's subject — the helpers hold euid 0 by design; see finding
 11.) Enforcement is layered:
 
 1. **No account path (decided)**: `System` has no shell field and a
-   locked credential; `su`/`login` refuse non-person targets
+   locked credential; **`su` does not exist** (decided: person-switch is
+   logout/login; su's two Unix jobs — the root shell and acting as
+   another person — are respectively forbidden by §6 and owned by the
+   session model) and `login` refuses non-person targets
    (`System`, `Service`).
 2. **No suid shell (decided, structural)**: the only suid binaries are
    the narrow native helpers, and helper contracts forbid spawning
