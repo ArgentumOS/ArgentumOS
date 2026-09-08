@@ -107,7 +107,8 @@ helpers:
 
 ```
 /System/Tools/mount        mount/umount (system.mounts domain, Volumes)
-/System/Tools/account      account verbs (passwd, useradd, groupadd, ...)
+/System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
+/System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
 /System/Tools/install-app  bundle validation + install into /Applications
 /System/Tools/power        off / reboot (the everyday verb: "power off")
 /System/Tools/config       system-scope .conf domain writes (the §4.1 writer)
