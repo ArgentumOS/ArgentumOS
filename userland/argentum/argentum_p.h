@@ -34,6 +34,11 @@ struct Application::Impl {
 	bool running = false;		/* init() succeeded */
 	bool stopping = false;		/* terminate() requested */
 
+	/* S2.3c: root px of the last dispatched mouse press (popup
+	 * anchoring). Written by Window::dispatchMouseToContent. */
+	int lastRootX = 0;
+	int lastRootY = 0;
+
 	/* S0.4 text stack. fontconfig is process-global (FcInit once);
 	 * FreeType needs one library handle shared by every face. */
 	bool ftInited = false;
@@ -221,6 +226,27 @@ struct LevelIndicator::Impl {
 	double level = 0.0;
 	int cells = 8;
 };
+
+/* S2.3c ImageView state. */
+struct ImageView::Impl {
+	BitmapImage *image = nullptr;	/* borrowed */
+	ImageContentMode mode = ImageContentMode::ScaleToFit;
+};
+
+/* S2.3c internal popup window (popup.cpp). */
+class PopupWindow;
+
+/* S2.3c PopUpButton state. */
+struct PopUpButton::Impl {
+	char title[128] = { 0 };
+	Menu *menu = nullptr;		/* borrowed */
+	PopupWindow *popup = nullptr;	/* the transient popup, ours */
+};
+
+/* S2.3c internal popup bookkeeping (popup.cpp): if a popup is open and
+ * `windowXid` is not it, dismiss it. Called from Application::run()
+ * before a ButtonPress dispatches. */
+void _popupDismissOther(unsigned long windowXid);
 
 /* S2.2c Button state: type + title + toggle state. */
 struct Button::Impl {

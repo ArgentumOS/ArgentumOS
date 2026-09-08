@@ -155,7 +155,7 @@ s23b_pixels.py` (probe `widgets_f`) — `S23B-OK` + `S23B-PIXELS-OK`
 level 0.7 → 6 accent cells; a11y). Regressions after:
 S13-PIXELS-OK, S21A-PIXELS-OK, S22C-OK.
 
-### S2.3c — ImageView + PopUpButton
+### S2.3c — ImageView + PopUpButton — Status: DONE
 
 *Scope:* `GC::drawImage` (image composite with content modes) +
 ImageView; PopUpButton that presents a Menu in a transient popup
@@ -163,6 +163,13 @@ window (hover highlight, click fires, closes on outside click).
 *Acceptance:* a painted image is drawn through the ImageView at each
 content mode (pixel probes); clicking the PopUpButton opens the menu,
 hover + item click fires the item action; a11y read-back.
+Gate: `.build/s23c_run.sh` + `.build/s23c_assert.py` + `.build/
+s23c_pixels.py` (app probe `widgets_g` + driver helper
+`widgets_g_inj`) — `S23C-OK` + `S23C-PIXELS-OK` (stretch/fit/center
+modes probed; popup opens under the click, hover accent band, item
+"Open..." activates + closes). Regressions after: S13-PIXELS-OK,
+S21A-PIXELS-OK, S22C-OK, S23A-OK, S23B-OK (+pixels). **S2.3
+complete.**
 
 ## 5. Files
 

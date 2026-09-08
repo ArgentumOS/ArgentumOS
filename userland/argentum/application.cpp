@@ -259,6 +259,17 @@ mods_from_state(unsigned int state)
 	return m;
 }
 
+void
+Application::lastPointerRoot(int *rootX, int *rootY) const
+{
+	if (rootX) {
+		*rootX = impl_->lastRootX;
+	}
+	if (rootY) {
+		*rootY = impl_->lastRootY;
+	}
+}
+
 int
 Application::run()
 {
@@ -304,6 +315,13 @@ Application::run()
 		case ButtonRelease: {
 			MouseEvent e;
 
+			/* S2.3c: a press anywhere that is NOT the open
+			 * popup dismisses it first (menu-dismiss). The
+			 * popup itself re-dispatches blank clicks. */
+			if (ev.type == ButtonPress) {
+				_popupDismissOther(
+					(unsigned long) ev.xbutton.window);
+			}
 			e.x = ev.xbutton.x;
 			e.y = ev.xbutton.y;
 			e.button = (int) ev.xbutton.button;

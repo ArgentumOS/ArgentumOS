@@ -133,6 +133,14 @@ Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
 	View *cv = impl_->contentView;
 	Point hl;
 
+	/* S2.3c: remember the press in ROOT px for popup anchoring */
+	if (down) {
+		Application::shared().impl_->lastRootX =
+			impl_->x + (int) pxEvent.x;
+		Application::shared().impl_->lastRootY =
+			impl_->y + (int) pxEvent.y;
+	}
+
 	if (down) {
 		/* press: hit-test, deliver, remember the target so the
 		 * matching release reaches the SAME view even if the
@@ -172,26 +180,24 @@ Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
 	if (!target) {
 		return;
 	}
-	/* local pt for the TARGET (may differ from the pointer's hit) */
-	Point tl = { 0, 0 };
-	View *anc = target;
+	/* local pt for the TARGET (may differ from the pointer's hit).
+	 * Content-local first; when the target is a child, subtract
+	 * each ancestor's frame origin down to it. */
+	Point wpl = { pxEvent.x / ppt, pxEvent.y / ppt };
+	Point tl = { wpl.x - cv->frame().origin.x,
+		     wpl.y - cv->frame().origin.y };
 
 	if (target != cv) {
-		Point wpl = { pxEvent.x / ppt, pxEvent.y / ppt };
-		Point cl = { wpl.x - cv->frame().origin.x,
-			     wpl.y - cv->frame().origin.y };
 		std::vector<View *> path;
 
 		for (View *v = target; v && v != cv; v = v->superview()) {
 			path.push_back(v);
 		}
-		tl = cl;
 		for (auto it = path.rbegin(); it != path.rend(); ++it) {
 			tl.x -= (*it)->frame().origin.x;
 			tl.y -= (*it)->frame().origin.y;
 		}
 	}
-	(void) anc;
 	MouseEvent e = pxEvent;
 
 	e.x = tl.x;
@@ -391,6 +397,38 @@ Window::show()
 	XSetInputFocus(impl_->dpy, impl_->xwin, RevertToParent, CurrentTime);
 	impl_->mapped = true;
 	XSync(impl_->dpy, False);
+}
+
+void
+Window::setNeedsDisplay()
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	/* XClearArea on the whole window: the server answers with an
+	 * Expose, which run() turns into draw(). */
+	XClearArea(impl_->dpy, impl_->xwin, 0, 0, 0, 0, True);
+}
+
+void
+Window::unmap()
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	XUnmapWindow(impl_->dpy, impl_->xwin);
+	impl_->mapped = false;
+}
+
+void
+Window::moveRoot(int xPx, int yPx)
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	impl_->x = xPx;
+	impl_->y = yPx;
+	XMoveWindow(impl_->dpy, impl_->xwin, xPx, yPx);
 }
 
 void

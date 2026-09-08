@@ -859,4 +859,166 @@ GraphicsContext::flush(Window &window, int x, int y)
 	XSync(w->dpy, False);
 }
 
+/* Composite a source x8r8g8b8 image into the destination at 1:1 with
+ * an (sx,sy) sample origin; dest region is (x,y,w,h) surface px. */
+static void
+composite_image(pixman_image_t *dest, pixman_image_t *src,
+		int sx, int sy, int x, int y, int w, int h)
+{
+	if (w <= 0 || h <= 0) {
+		return;
+	}
+	pixman_image_composite32(PIXMAN_OP_OVER, src, nullptr, dest,
+				 sx, sy, 0, 0, x, y, w, h);
+}
+
+void
+GraphicsContext::drawImage(const BitmapImage &img, int xPx, int yPx,
+			   unsigned int wPx, unsigned int hPx,
+			   ImageContentMode mode)
+{
+	BitmapImage::Impl *src = img.impl_;
+	BitmapImage::Impl *b = impl_->bitmap->impl_;
+
+	if (!src->img || !b->img || wPx == 0 || hPx == 0) {
+		return;
+	}
+	int iw = (int) src->width;
+	int ih = (int) src->height;
+
+	if (iw <= 0 || ih <= 0) {
+		return;
+	}
+	/* layout of the source within the destination rect */
+	int lx = xPx;
+	int ly = yPx;
+	int lw = (int) wPx;
+	int lh = (int) hPx;
+
+	switch (mode) {
+	case ImageContentMode::Center:
+		lw = iw;
+		lh = ih;
+		lx = xPx + ((int) wPx - iw) / 2;
+		ly = yPx + ((int) hPx - ih) / 2;
+		break;
+	case ImageContentMode::ScaleToFit: {
+		double s = wPx / (double) iw;
+
+		if (hPx / (double) ih < s) {
+			s = hPx / (double) ih;
+		}
+		lw = (int) (iw * s + 0.5);
+		lh = (int) (ih * s + 0.5);
+		lx = xPx + ((int) wPx - lw) / 2;
+		ly = yPx + ((int) hPx - lh) / 2;
+		break;
+	}
+	case ImageContentMode::Stretch:
+	default:
+		break;
+	}
+	/* map the layout through the frame translate + clip */
+	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
+			   impl_->clipX, impl_->clipY,
+			   impl_->clipW, impl_->clipH };
+	int x0, y0, x1, y1;
+
+	if (!map_frame(fs, lx, ly, lw, lh, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	if (!clip_rect((int) b->width, (int) b->height,
+		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	int dw = x1 - x0;
+	int dh = y1 - y0;
+
+	if (lw == iw && lh == ih) {
+		/* 1:1 — direct composite. The sample origin is the
+		 * clipped rect's offset within the LAYOUT (which lives
+		 * in translated space: surface rect Lx = lx+ox). */
+		composite_image(b->img, src->img,
+				x0 - (lx + fs.ox), y0 - (ly + fs.oy),
+				x0, y0, dw, dh);
+		return;
+	}
+	/* Scaled: resample the source into a dw x dh temp surface with
+	 * manual bilinear sampling, then composite it 1:1. Image sizes
+	 * here are small (view icons), so the per-pixel loop is fine
+	 * and the mapping is explicit. Surface pixel (dx,dy) lies at
+	 * layout offset ((dx - Lx), (dy - Ly)) with Lx = lx+ox; the
+	 * image spans the layout rect, so the source coordinate is
+	 * offset * iw/lw. */
+	pixman_image_t *tmp = pixman_image_create_bits(
+		PIXMAN_x8r8g8b8, dw, dh, nullptr, 0);
+
+	if (!tmp) {
+		return;
+	}
+	const std::uint32_t *sp =
+		(const std::uint32_t *) pixman_image_get_data(src->img);
+	int sstride = (int) (pixman_image_get_stride(src->img) /
+			     (int) sizeof(std::uint32_t));
+	std::uint32_t *tp = (std::uint32_t *) pixman_image_get_data(tmp);
+	int tstride = (int) (pixman_image_get_stride(tmp) /
+			     (int) sizeof(std::uint32_t));
+	double sx = iw / (double) lw;
+	double sy = ih / (double) lh;
+	int Lx = lx + impl_->ox;
+	int Ly = ly + impl_->oy;
+
+	for (int j = 0; j < dh; j++) {
+		double syf = ((y0 + j) - Ly) * sy;
+
+		if (syf < 0) {
+			syf = 0;
+		}
+		if (syf > ih - 1) {
+			syf = ih - 1;
+		}
+		int sy0i = (int) syf;
+		int sy1i = sy0i + 1 < ih ? sy0i + 1 : sy0i;
+		double fy = syf - sy0i;
+
+		for (int i = 0; i < dw; i++) {
+			double sxf = ((x0 + i) - Lx) * sx;
+
+			if (sxf < 0) {
+				sxf = 0;
+			}
+			if (sxf > iw - 1) {
+				sxf = iw - 1;
+			}
+			int sx0i = (int) sxf;
+			int sx1i = sx0i + 1 < iw ? sx0i + 1 : sx0i;
+			double fx = sxf - sx0i;
+			std::uint32_t p00 = sp[sy0i * sstride + sx0i];
+			std::uint32_t p10 = sp[sy0i * sstride + sx1i];
+			std::uint32_t p01 = sp[sy1i * sstride + sx0i];
+			std::uint32_t p11 = sp[sy1i * sstride + sx1i];
+			std::uint32_t out = 0;
+
+			for (int c = 0; c < 3; c++) {
+				int sh = 16 - 8 * c;
+				double v =
+					((p00 >> sh) & 0xff) * (1 - fx) *
+						(1 - fy) +
+					((p10 >> sh) & 0xff) * fx *
+						(1 - fy) +
+					((p01 >> sh) & 0xff) * (1 - fx) *
+						fy +
+					((p11 >> sh) & 0xff) * fx * fy;
+
+				out |= ((std::uint32_t) (v + 0.5) & 0xff)
+					<< sh;
+			}
+			tp[j * tstride + i] = out;
+		}
+	}
+	pixman_image_composite32(PIXMAN_OP_OVER, tmp, nullptr, b->img,
+				 0, 0, 0, 0, x0, y0, dw, dh);
+	pixman_image_unref(tmp);
+}
+
 } /* namespace argentum */

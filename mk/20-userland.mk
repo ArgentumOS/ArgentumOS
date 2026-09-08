@@ -251,6 +251,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/widgets_f.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/widgets_f"
+	# widgets_g: Argentum S2.3c acceptance app — ImageView content modes
+	# + PopUpButton (image painted via a BitmapImage+GC); driven by the
+	# widgets_g_inj helper below (S23C-A11Y / S23C-DRAW / S23C-APP-READY).
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/widgets_g.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/widgets_g"
+	# widgets_g_inj: the S2.3c helper (second X connection; phases
+	# S23C-A..D markers the gate screendumps between).
+	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
+		userland/tests/widgets_g_inj.cpp -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/widgets_g_inj"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".

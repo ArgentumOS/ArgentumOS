@@ -83,7 +83,7 @@ enum class AccessibilityRole : int {
 	Unknown, Window, Group, Box, StaticText, Button, CheckBox,
 	RadioButton, TextField, SecureTextField, Image, Slider,
 	Stepper, SegmentedControl, ProgressIndicator, LevelIndicator,
-	ScrollArea, List, Table, Splitter,
+	PopUpButton, ScrollArea, List, Table, Splitter,
 	TabGroup, MenuItem, HelpTag,
 };
 
@@ -239,6 +239,10 @@ public:
 	double ptToPx(double pt) const { return pt * pxPerPt(); }
 	double pxToPt(double px) const { return px / pxPerPt(); }
 
+	/* S2.3c: root-px position of the last dispatched mouse press
+	 * (used to anchor popups under the click). Unset -> (0,0). */
+	void lastPointerRoot(int *rootX, int *rootY) const;
+
 	/* S2.2a text core: true when init() booted fontconfig + FreeType
 	 * so the text path can run (text.cpp free helpers use this). */
 	bool textStackReady() const;
@@ -265,6 +269,8 @@ public:
 	Application(const Application &) = delete;
 	Application &operator=(const Application &) = delete;
 
+	/* Session fontconfig + FreeType handles live in the Impl; the
+	 * app-facing init() is the only entry point. */
 private:
 	friend class Window;		/* Window reads the session Display */
 	struct Impl;
@@ -323,6 +329,15 @@ public:
 
 	/* Map the window and flush the connection. */
 	void show();
+
+	/* S2.3c: request a redraw of the whole window (XClearArea,
+	 * which the server answers with an Expose -> the draw()
+	 * virtual re-composites). Used by transient windows whose
+	 * content changes on events (menus, popups). */
+	void setNeedsDisplay();
+	/* S2.3c: unmap + reposition at root px (transient windows). */
+	void unmap();
+	void moveRoot(int xPx, int yPx);
 
 	/* Core-protocol solid fill of the whole window (XPutImage of a
 	 * depth-24 XRGB image). rgb is 0xRRGGBB. No XRender/Xft. */
@@ -433,6 +448,14 @@ private:
  * NSGraphicsContext analog). All geometry is integer pixels; colors
  * are 0xRRGGBB. Anti-aliased edges come from pixman (coverage), so
  * shapes composite onto whatever the surface already holds. */
+/* S2.3c: how drawImage() places the source BitmapImage within its
+ * destination rect. */
+enum class ImageContentMode : int {
+	Center = 0,		/* 1:1, centred */
+	ScaleToFit = 1,		/* uniform scale, centred, no crop */
+	Stretch = 2,		/* fill the rect (x/y may differ) */
+};
+
 class GraphicsContext {
 public:
 	/* Draw onto image. The context does not own the image. */
@@ -475,6 +498,15 @@ public:
 	 * textMetrics() when layout needs them. */
 	void drawText(const char *family, double sizePt, int xPx, int yPx,
 		      const char *utf8, std::uint32_t fg);
+
+	/* S2.3c: draw a BitmapImage into (xPx,yPx,wPx,hPx) in the
+	 * current translated space, clipped to the frame. mode places
+	 * the source within the rect (ImageContentMode below). The
+	 * source is composite-opaque (x8r8g8b8); scaled modes sample
+	 * bilinearly. */
+	void drawImage(const BitmapImage &img, int xPx, int yPx,
+		       unsigned int wPx, unsigned int hPx,
+		       ImageContentMode mode = ImageContentMode::Stretch);
 
 	/* S2.1a state stack (the NSGraphicsContext analog): push a frame,
 	 * translate subsequent draw coordinates by (dxPx, dyPx), clip to a
@@ -904,6 +936,54 @@ public:
 private:
 	struct Impl;
 	Impl *lev_;
+};
+
+/* S2.3c: ImageView — an input-free View that draws a
+ * view-supplied image (a BitmapImage the app paints) into its frame
+ * with a content mode (Center / ScaleToFit / Stretch). A11y role
+ * Image. Image-file decoding (PNG/JPEG) is a later media milestone;
+ * v1 images are app-painted. */
+class ImageView : public View {
+public:
+	ImageView();
+	~ImageView() override;
+
+	void setImage(BitmapImage *image);	/* borrowed; may be null */
+	BitmapImage *image() const;
+	void setContentMode(ImageContentMode mode);
+	ImageContentMode contentMode() const;
+
+	void draw(GraphicsContext &g) override;
+
+private:
+	struct Impl;
+	Impl *iv_;
+};
+
+/* S2.3c: PopUpButton — a button that presents a Menu (the in-process
+ * model from S2.3a) in a transient popup window below the click.
+ * Clicking an enabled item fires the item's action and closes the
+ * popup; clicking empty popup space or another of the app's windows
+ * closes it. A11y role PopUpButton, label = the title. */
+class PopUpButton : public Control {
+public:
+	PopUpButton();
+	~PopUpButton() override;
+
+	void setTitle(const char *utf8);
+	const char *title() const;
+	void setMenu(Menu *menu);	/* borrowed; may be null */
+	Menu *menu() const;
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+
+private:
+	void openMenu();		/* build + map the popup */
+	void closeMenu();		/* hide the popup */
+
+	struct Impl;
+	Impl *pop_;
 };
 
 } /* namespace argentum */
