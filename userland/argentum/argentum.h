@@ -82,7 +82,8 @@ TextMetrics textMetrics(const char *family, double sizePt,
 enum class AccessibilityRole : int {
 	Unknown, Window, Group, Box, StaticText, Button, CheckBox,
 	RadioButton, TextField, SecureTextField, Image, Slider,
-	Stepper, ProgressIndicator, ScrollArea, List, Table, Splitter,
+	Stepper, SegmentedControl, ProgressIndicator, LevelIndicator,
+	ScrollArea, List, Table, Splitter,
 	TabGroup, MenuItem, HelpTag,
 };
 
@@ -833,6 +834,76 @@ public:
 private:
 	struct Impl;
 	Impl *stp_;
+};
+
+/* S2.3b: SegmentedControl — N titled segments, one selected (Control).
+ * The whole bezel is one chrome unit; each segment carries its own
+ * control state (the selected segment draws armed/accent, hovered
+ * segments hover chrome). Clicking selects; the action fires on
+ * release inside the same segment; Left/Right adjust when focused.
+ * A11y role SegmentedControl, value = the selected index. */
+class SegmentedControl : public Control {
+public:
+	SegmentedControl();
+	~SegmentedControl() override;
+
+	/* copy the segment titles */
+	void setSegments(const char *const *titles, int count);
+	int segmentCount() const;
+	const char *segmentTitle(int i) const;
+	void setSelectedIndex(int i);
+	int selectedIndex() const;
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+	void keyDown(const KeyEvent &e) override;
+
+private:
+	int segmentAt(double localPt) const;	/* -1 outside */
+	struct Impl;
+	Impl *seg_;
+};
+
+/* S2.3b: ProgressIndicator — an input-free determinate progress bar
+ * (View). value in [0,1]; a rounded track (chrome outline + page
+ * fill) with the theme accent filling `value` of it. A11y role
+ * ProgressIndicator, value = progress. Spinning/indeterminate + any
+ * animation are deferred (no timer machinery yet). */
+class ProgressIndicator : public View {
+public:
+	ProgressIndicator();
+	~ProgressIndicator() override;
+
+	void setProgress(double value);	/* clamped [0,1] */
+	double progress() const;
+
+	void draw(GraphicsContext &g) override;
+
+private:
+	struct Impl;
+	Impl *pro_;
+};
+
+/* S2.3b: LevelIndicator — an input-free capacity gauge (View). A row
+ * of `cellCount` cells; ceil(level*cellCount) of them fill (accent)
+ * above an empty page/chrome track. A11y role LevelIndicator, value
+ * = the level. */
+class LevelIndicator : public View {
+public:
+	LevelIndicator();
+	~LevelIndicator() override;
+
+	void setLevel(double value);	/* clamped [0,1] */
+	double level() const;
+	void setCellCount(int n);	/* >= 1, default 8 */
+	int cellCount() const;
+
+	void draw(GraphicsContext &g) override;
+
+private:
+	struct Impl;
+	Impl *lev_;
 };
 
 } /* namespace argentum */

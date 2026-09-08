@@ -202,6 +202,26 @@ struct Stepper::Impl {
 	bool upZone = false;		/* armed zone from mouseDown */
 };
 
+/* S2.3b SegmentedControl state. */
+struct SegmentedControl::Impl {
+	static const int kMax = 8;
+	char titles[kMax][64] = { { 0 } };
+	int count = 0;
+	int selected = 0;
+	int armed = -1;			/* segment pressed, -1 none */
+};
+
+/* S2.3b ProgressIndicator state. */
+struct ProgressIndicator::Impl {
+	double progress = 0.0;
+};
+
+/* S2.3b LevelIndicator state. */
+struct LevelIndicator::Impl {
+	double level = 0.0;
+	int cells = 8;
+};
+
 /* S2.2c Button state: type + title + toggle state. */
 struct Button::Impl {
 	Button::Type type = Button::Type::Push;

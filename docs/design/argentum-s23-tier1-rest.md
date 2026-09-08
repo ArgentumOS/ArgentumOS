@@ -141,7 +141,7 @@ Gate: `.build/s23a_run.sh` + `.build/s23a_assert.py` (probe
 actions 1+3, a11y roles/values, Menu read-back). Regressions after:
 S13-PIXELS-OK (6), S21A-PIXELS-OK (5), S22C-OK.
 
-### S2.3b — SegmentedControl + ProgressIndicator + LevelIndicator
+### S2.3b — SegmentedControl + ProgressIndicator + LevelIndicator — Status: DONE
 
 *Scope:* the two interactive/display controls: SegmentedControl (N
 titles, selected index, action-with-index), ProgressIndicator
@@ -149,6 +149,11 @@ titles, selected index, action-with-index), ProgressIndicator
 *Acceptance:* injected clicks change the segmented selection and fire
 its action; progress/level set values are drawn and pixel-probed;
 a11y role/value read-back.
+Gate: `.build/s23b_run.sh` + `.build/s23b_assert.py` + `.build/
+s23b_pixels.py` (probe `widgets_f`) — `S23B-OK` + `S23B-PIXELS-OK`
+(click → segment 2, action; progress 0.40 fill band at 40% x, 8-cell
+level 0.7 → 6 accent cells; a11y). Regressions after:
+S13-PIXELS-OK, S21A-PIXELS-OK, S22C-OK.
 
 ### S2.3c — ImageView + PopUpButton
 

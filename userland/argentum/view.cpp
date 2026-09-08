@@ -451,6 +451,8 @@ accessibilityRoleName(AccessibilityRole role)
 	case AccessibilityRole::Image: return "image";
 	case AccessibilityRole::Slider: return "slider";
 	case AccessibilityRole::Stepper: return "stepper";
+	case AccessibilityRole::SegmentedControl: return "segmented control";
+	case AccessibilityRole::LevelIndicator: return "level indicator";
 	case AccessibilityRole::ProgressIndicator: return "progress indicator";
 	case AccessibilityRole::ScrollArea: return "scroll area";
 	case AccessibilityRole::List: return "list";
