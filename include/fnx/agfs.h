@@ -47,6 +47,18 @@
 #define AGFS_SUPER_MAGIC1	0x41474653	/* 'AGFS' */
 #define AGFS_SUPER_MAGIC2	0xdd121031
 #define AGFS_SUPER_MAGIC3	0x15b6830e
+
+/*
+ * GPT partition type GUIDs (self-issued 2026-09 — GPT has no central
+ * registry; vendors self-issue random UUIDs per the UEFI spec).
+ * Canonical homes: this comment + docs/design/argentum-rebrand-plan.md
+ * §6. Wire encoding on disk is the GPT mixed-endian form (first three
+ * fields little-endian). Neither GUID is consumed yet: dev AGFS images
+ * are whole-disk (superblock at sector offset 512, no partition table);
+ * they become live when partition tooling lands.
+ */
+#define AGFS_GPT_TYPE_GUID	"60a2a0c2-6971-4ea2-8776-848337a8157f"
+#define ARGENTUM_SWAP_GPT_TYPE_GUID	"b4bd83e2-80de-4ba4-acc4-55023e68fa07" /* reserved — no swap exists yet */
 #define AGFS_SUPER_BYTEORDER	0x42494745	/* 'BIGE' (LE disk) */
 #define AGFS_SUPER_CLEAN		0x434c454e	/* 'CLEN' */
 #define AGFS_SUPER_DIRTY		0x44495254	/* 'DIRT' */

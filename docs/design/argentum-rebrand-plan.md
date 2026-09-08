@@ -133,10 +133,23 @@ index is updated once rather than twice.
 
 Three distinct identifiers; staged by when they are needed:
 
-1. **GPT partition type GUID** — mandatory by the GPT spec the moment
+1. **GPT partition type GUIDs** — mandatory by the GPT spec the moment
    FNX *creates* a partition; none needed today (dev AGFS images are
    whole-disk, superblock at sector offset 512, no partition table).
-   Register a fixed **AGFS type GUID** when partition tooling lands.
+   **Fixed (self-issued 2026-09; GPT has no registry — UEFI spec
+   §5.3.x: vendors self-issue random UUIDs):**
+
+   | Type | GUID (canonical) | Status |
+   |---|---|---|
+   | **AGFS** | `60a2a0c2-6971-4ea2-8776-848337a8157f` | live — the AGFS type GUID |
+   | **Argentum Swap** | `b4bd83e2-80de-4ba4-acc4-55023e68fa07` | **reserved** — no swap exists yet; held for the future partition/swap tooling |
+
+   Canonical homes: the table above plus the comment block at the
+   AGFS magics in `include/fnx/agfs.h`. Wire encoding is the GPT
+   mixed-endian form (first three fields little-endian on disk).
+   External name tables (gdisk/sgdisk `parttypes`, util-linux fdisk,
+   os-prober, ArchWiki list) are optional courtesy updates once AGFS
+   partitions leave FNX's own tooling.
 2. **GPT partition unique GUID** — the entry's own identity, used for
    **mount-by-GUID as ONE addressing option, not the only one**:
    mount-by-device (`Disk0/PartitionN`) stays first-class; GUID
