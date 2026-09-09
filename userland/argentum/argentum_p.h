@@ -365,6 +365,11 @@ struct TextView::Impl {
 	bool dirty = true;		/* layout stale */
 	double wrapPt = 0;		/* wrap width of the last layout */
 	std::vector<TextViewLine> lines;	/* top to bottom */
+	/* TXT-b edit state: byte caret/anchor over the document; the
+	 * goal column (px, -1 = unset) anchors vertical moves */
+	unsigned int caret = 0;
+	unsigned int anchor = 0;
+	double goalXPx = -1.0;
 };
 
 /* S2.2a text core: shared run internals (implemented in text.cpp).

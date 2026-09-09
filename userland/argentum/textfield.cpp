@@ -14,50 +14,12 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+#include <argentum/text_utf8.h>
+
 #include <cmath>
 #include <cstring>
 
 namespace argentum {
-
-/* ---- utf8-safe byte helpers ------------------------------------- */
-
-static bool
-isCont(unsigned char c)
-{
-	return (c & 0xc0) == 0x80;
-}
-
-/* index of the character START before `at` (at must be a boundary) */
-static unsigned int
-prevCharStart(const char *s, unsigned int at)
-{
-	unsigned int p = at;
-
-	if (p == 0) {
-		return 0;
-	}
-	p--;
-	while (p > 0 && isCont((unsigned char) s[p])) {
-		p--;
-	}
-	return p;
-}
-
-/* index just past the character STARTING at `at` */
-static unsigned int
-nextCharEnd(const char *s, unsigned int at)
-{
-	unsigned int n = at;
-
-	if (s[n] == 0) {
-		return n;
-	}
-	n++;
-	while (s[n] && isCont((unsigned char) s[n])) {
-		n++;
-	}
-	return n;
-}
 
 static unsigned int
 tlen(const char *s)

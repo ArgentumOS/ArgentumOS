@@ -161,6 +161,26 @@ Commit: `textview.cpp` layout+draw, role TextArea, `lineCount/
 lineText`, board, gate.
 
 ### TXT-b — document editing
+Status: **DONE** — TextView is now a full document editor. The caret/
+anchor are byte offsets with TextField's utf8-safe semantics; the
+utf8 boundary helpers moved to a shared `text_utf8.h` used by both
+TextField and TextView. Editing surface: click-to-position
+(`indexAt(xPt,yPt)` = y→visual line, x→char), typing at the caret
+(Return/keypad-Enter insert `\n` — a document editor has no end-edit
+commit), BackSpace/Delete over chars or the selection, Left/Right
+(byte moves; a selection collapses to its edge), Home/End at visual
+line edges, **Up/Down across visual lines at a goal column** (the
+x of the last horizontal position; Shift extends), Shift+arrow
+cross-line selections, and per-line selection rendering (accent fill
++ white glyphs; 1px caret while focused and unselected). `setValue`
+places the caret at the end; every mutation fires valueChanged.
+Gate `.build/s_txtb_run.sh` + `s_txtb_assert.py` -> S-TXTB-OK (10
+checks: the queued sequence — click, type "hello world", Return,
+"hi", Home, Up, Down, End, Shift+Up — leaves `value='hello world\\nhi'`
+caret=1 sel=1..14; the selection spans the `\n` at byte 10; screendump
+shows the unselected "h" dark, accent fill on line 1's tail and line
+2, white glyphs over both). Regressions S-TXTA-OK, S22D-OK, S31A-OK,
+S13-PIXELS-OK. Board `userland/tests/textview_b.cpp`.
 *Acceptance:* `textview_b` self-injects: click positions the caret on
 line 1; type "ab", Return, type "cd"; Left/Left (to "cd" start),
 Shift+Left×2 selects "cd"; typing "Z" replaces it; Down moves to line

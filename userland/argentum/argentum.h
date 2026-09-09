@@ -842,7 +842,7 @@ public:
 	TextView();
 	~TextView() override;
 
-	/* replaces the document (\r\n -> \n) */
+	/* replaces the document (\r\n -> \n); caret to the end */
 	void setValue(const char *utf8);	/* copied */
 	const char *value() const;
 
@@ -851,6 +851,20 @@ public:
 	/* copies the i-th VISUAL line (no \r/\n, no wrap-dropped trailing
 	 * space) into dst; false if i >= lineCount() */
 	bool lineText(unsigned int i, char *dst, unsigned int cap);
+
+	/* TXT-b edit surface (TextField parity; byte offsets, utf8-safe).
+	 * setValue and every edit fire valueChanged(). */
+	unsigned int caretIndex() const;
+	unsigned int selectionStart() const;
+	unsigned int selectionEnd() const;
+	void setSelection(unsigned int start, unsigned int end);
+	void deleteRange(unsigned int start, unsigned int end);
+	void insertAtCaret(const char *utf8);
+	/* caret byte for a click at local pt (x, y) */
+	unsigned int indexAt(double xPt, double yPt);
+
+	void mouseDown(const MouseEvent &e) override;
+	void keyDown(const KeyEvent &e) override;
 
 	void draw(GraphicsContext &g) override;
 	void valueChanged();		/* after every setValue/edit */
