@@ -1,14 +1,14 @@
 # Argentum
 
-Argentum is a **from-scratch, desktop-first personal operating system**
-for 64-bit x86. It is written as a hobby, one layer at a time, and
+Argentum is a **desktop-first operating system**
+for AMD64/UEFI systems. It is written as a hobby, one layer at a time, and
 every layer is its own design — kernel, filesystem hierarchy and
 filesystem, config format, GUI stack, application model. Nothing is
 adopted for convenience; just enough POSIX surface is kept to run
 software that is *mindfully ported*.
 
 This repository builds all of it — one tree, one compiler (clang);
-`make run-uefi` boots the finished OS under QEMU.
+`make run-uefi` boots the OS under QEMU.
 
 ## Goals
 
@@ -29,15 +29,10 @@ legacy to carry. Concretely:
 
 ## Where it stands
 
-Today the OS boots from UEFI into a working desktop: the kernel
-(engineering name FNX) runs the AGFS-native userland under Xfb — the
-Argentum Desktop — with the Argentum UIKit toolkit being built on top,
-and the Argentum Shell (code name `finch`) designed and waiting its
-turn. Each layer carries the Argentum name; the machinery keeps plain
-engineering identifiers (FNX, FSH, AGFS, Xfb, `finch`).
+Today the OS boots to a serial console and has some test GUI code being
+turned into the Argentum UIKit.
 
-It is a hobby project: it may have serious bugs and broken features.
-**Use at your own risk.**
+Argentum is a hobby OS project: it may have serious bugs and broken features. **Use at your own risk.**
 
 ## More
 
