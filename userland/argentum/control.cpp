@@ -53,7 +53,7 @@ Control::sendAction()
 bool
 Control::acceptsFirstResponder() const
 {
-	return true;
+	return ctrl_->enabled;		/* disabled controls skip focus */
 }
 
 void

@@ -79,6 +79,17 @@ focused chrome moves (pixel probe on the accent ring region), and the
 window logs the movement (`FOCUS-TAB: k <role> '<label>'`). Disabled
 controls are skipped; the wrap is observable (Tab past the last
 returns to the first).
+Status: **DONE** — `Window::focusables()`/`moveFocus()` in
+`window.cpp`: a document-order (depth-first pre-order) walk of the
+content tree; `dispatchKeyToContent` intercepts Tab (keysym 0xff09)
+before the responder chain and moves the first responder +/-1 (wrap;
+Tab from no-focus lands on the first, Shift-Tab on the last), logging
+`FOCUS-TAB: k role=… label=…`. `Control::acceptsFirstResponder` is now
+enabled-gated so disabled controls are skipped. Probe `structure_f`
+(self-injected Tab x4 + Shift-Tab, widgets_d pattern), gate
+`.build/s31a_run.sh` + `s31a_assert.py` -> S31A-OK (5 checks:
+0,1,2,3 then back to 2; disabled button skipped; the focused Two's
+ring is the accent colour while One's is not).
 
 ### S3.1b — keyboard equivalents on the leaves
 *Acceptance:* with a Slider focused, `←`/`→` move the knob by a step

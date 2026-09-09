@@ -438,6 +438,18 @@ Window::dispatchKeyToContent(const KeyEvent &keyEvent, bool down)
 	if (!impl_->contentView) {
 		return;
 	}
+	/* S3.1: Tab / Shift-Tab is traversal — the window owns focus
+	 * movement, so it is consumed before the responder chain (both
+	 * the press and the release). 0xff09 = XK_Tab. */
+	if (keyEvent.keysym == 0xff09) {
+		if (down) {
+			int dir = (keyEvent.modifiers & ARGENTUM_MOD_SHIFT) ?
+				-1 : 1;
+
+			moveFocus(dir);
+		}
+		return;
+	}
 	/* keys go to the first responder (S2.2c) when one is set, else
 	 * the content view; unhandled events bubble up the chain */
 	View *target = impl_->firstResponder ? impl_->firstResponder
@@ -448,6 +460,77 @@ Window::dispatchKeyToContent(const KeyEvent &keyEvent, bool down)
 	} else {
 		target->keyUp(keyEvent);
 	}
+}
+
+/* Document-order walk: depth-first pre-order. The view itself is
+ * checked first, then the subviews in draw order. */
+static void
+collectFocusables(View *v, std::vector<View *> &out)
+{
+	if (!v || v->isHidden()) {
+		return;
+	}
+	if (v->acceptsFirstResponder()) {
+		out.push_back(v);
+	}
+	for (View *c : v->subviews()) {
+		collectFocusables(c, out);
+	}
+}
+
+std::vector<View *>
+Window::focusables()
+{
+	std::vector<View *> out;
+
+	if (impl_->contentView) {
+		collectFocusables(impl_->contentView, out);
+	}
+	return out;
+}
+
+View *
+Window::moveFocus(int direction)
+{
+	if (direction >= 0) {
+		direction = 1;
+	} else {
+		direction = -1;
+	}
+	std::vector<View *> list = focusables();
+
+	if (list.empty()) {
+		return nullptr;
+	}
+	int cur = 0;
+
+	if (impl_->firstResponder) {
+		for (size_t i = 0; i < list.size(); i++) {
+			if (list[i] == impl_->firstResponder) {
+				cur = (int) i;
+				break;
+			}
+		}
+	} else {
+		/* no focus yet: Tab -> first, Shift-Tab -> last */
+		cur = direction > 0 ? -1 : (int) list.size();
+	}
+	cur += direction;
+	if (cur < 0) {
+		cur = (int) list.size() - 1;
+	}
+	if (cur >= (int) list.size()) {
+		cur = 0;
+	}
+	View *next = list[(size_t) cur];
+
+	setFirstResponder(next);
+	printf("FOCUS-TAB: %d role=%s label=%s\n", cur,
+	       accessibilityRoleName(next->accessibilityRole()),
+	       next->accessibilityLabel() ? next->accessibilityLabel() :
+					     "");
+	fflush(stdout);
+	return next;
 }
 
 /* S2.6 per-rect damage ------------------------------------------ */

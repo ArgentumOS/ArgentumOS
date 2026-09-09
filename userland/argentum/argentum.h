@@ -420,6 +420,14 @@ public:
 	View *firstResponder() const;
 	void setFirstResponder(View *view);
 
+	/* S3.1 focus traversal: the window's focusable views in document
+	 * order (depth-first pre-order over the content tree; hidden
+	 * views and non-responders excluded), and a move of the first
+	 * responder by +/-1 over them (wraps). Returns the new responder
+	 * (null when nothing is focusable). */
+	std::vector<View *> focusables();
+	View *moveFocus(int direction);
+
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
 
