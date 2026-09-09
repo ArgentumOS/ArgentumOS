@@ -1,6 +1,9 @@
 # Kernel debugger — an in-kernel stub over the debug serial port
 
-Status: EVALUATION — **PARKED** (Q-D1..Q-D6 open, no decision). Assesses whether FNX should carry
+Status: EVALUATION — **DECIDED in direction (2026-09)**. The Q-D
+choices are resolved (below) and the shaped design + milestones live
+in `docs/design/kernel-debugger-plan.md`. **No code until a trigger
+fires** (Q-D2). Assesses whether FNX should carry
 an in-kernel debugger that speaks to an external harness over a serial
 port: what it buys, what it duplicates, what it costs, and the shape
 that would fit FNX. The Q-X decisions (`docs/design/system-extensibility.md`)
@@ -117,21 +120,27 @@ structured queries instead of printk parsing). **Design the interface
 now (this doc, the kernel.conf keys, the port policy); implement when
 a trigger fires** — the same discipline as Q-X3's driver gates.
 
-## 8. Open design choices (recommended)
+## 8. Open design choices (resolved 2026-09)
 
-- **Q-D1 — Protocol: minimal gdb RSP.** Stock gdb + scriptable
-  harnesses; a kgdb-style extension later. (vs. FNX-native protocol —
-  smaller, no tooling.)
-- **Q-D2 — Build timing: later, on trigger.** Triggers: a real-
-  hardware-only target, or a harness test needing structured queries.
-  (vs. now — QEMU loop already covers machine-level; vs. never.)
-- **Q-D3 — Channel: dedicated debug UART** (vs. share the console).
-- **Q-D4 — Gating: `kernel.conf` `debug.stub.enabled`, default off.**
-  Built-in, config-trimmed (Q-X posture). (vs. always-on vs.
-  build-time only.)
-- **Q-D5 — v1 scope: registers + memory + run control + int3
-  breakpoints, host-side symbols** (System.map export). (vs. + in-
-  kernel function-call extension in v1.)
-- **Q-D6 — SMP: single-CPU until the SMP milestone; coherent stop-all
-  deferred to it.** (recommended — coherent multi-CPU stop is SMP
-  work, and the kernel is single-CPU today.)
+- **Q-D1 — Protocol: minimal gdb RSP — DECIDED.** Stock gdb + scriptable
+  harnesses; a kgdb-style extension later. (FNX-native rejected: a new
+  debugging protocol has no tooling.)
+- **Q-D2 — Build timing: later, on trigger — DECIDED.** Triggers: a
+  real-hardware-only target, or a harness test needing structured
+  queries. Scope and design are decided now; code waits. (QEMU's gdb
+  covers the dev loop.)
+- **Q-D3 — Channel: dedicated debug UART — DECIDED** (console stays on
+  the first UART; polled-TX console keeps printing while the stub is
+  stopped; debug UART = PCI-serial `ttyS1`-class or COM2).
+- **Q-D4 — Gating: `kernel.conf` `debug.stub.enabled`, default off —
+  DECIDED** (+ `debug.stub.port`). Built-in, config-trimmed (Q-X
+  posture).
+- **Q-D5 — v1 scope: process-aware "debug anything" — DECIDED
+  (widened)**. The stub debugs the kernel OR any process: threads =
+  the process table, inferior switch targets a process's pml4,
+  registers from saved contexts, int3 in user text (CoW-split before
+  patching), DR watchpoints. (Supersedes the narrow kernel-only
+  reading.)
+- **Q-D6 — SMP: single-CPU until the SMP milestone — DECIDED**;
+  per-process stop is the stop unit pre-SMP; coherent stop-all
+  deferred to the SMP milestone.
