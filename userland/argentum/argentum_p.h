@@ -43,6 +43,8 @@ struct Application::Impl {
 
 	/* S4.1a: optional raw-X event hook (Kestrel). null = off. */
 	Application::EventHook eventHook = nullptr;
+	/* S4.1c: optional idle beat (Kestrel housekeeping). null = off. */
+	Application::IdleHook idleHook = nullptr;
 
 	/* S0.4 text stack. fontconfig is process-global (FcInit once);
 	 * FreeType needs one library handle shared by every face. */
@@ -86,6 +88,9 @@ struct Window::Impl {
 	/* S2.1a: the content view rooting the view tree drawn in this
 	 * window (non-owning; may be null). */
 	View *contentView = nullptr;
+
+	/* S4.1c: WM_DELETE_WINDOW close hook (null = quit the app). */
+	std::function<void()> onClose;
 
 	/* S2.2c minimal focus: the first responder receives key events
 	 * (null = the content view). pressed tracks the view that got

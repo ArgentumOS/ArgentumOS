@@ -75,6 +75,41 @@ public:
 		strncpy(title_, title, sizeof(title_) - 1);
 	}
 
+	/* S4.1c: clicking the close plate asks Kestrel to close the
+	 * client (wired by Kestrel; the default does nothing). */
+	void setOnClose(std::function<void()> cb)
+	{
+		closeCb_ = std::move(cb);
+	}
+
+	/* S4.1b: clicking anywhere else in the band activates the frame */
+	void setOnActivate(std::function<void()> cb)
+	{
+		activateCb_ = std::move(cb);
+	}
+
+	void mouseDown(const MouseEvent &e) override
+	{
+		Application &app = Application::shared();
+		double ppt = app.pxPerPt();
+		Rect f = frame();
+		double cw = 18.0 / ppt;		/* close plate, pt */
+		double cx0 = f.size.w - cw - 6.0 / ppt;
+		double cy0 = (BAND_H / ppt - cw) / 2.0;
+
+		if (e.y > cy0 + cw) {
+			return;		/* below the band: client area */
+		}
+		if (e.x >= cx0 && e.x <= cx0 + cw &&
+		    e.y >= cy0 && e.y <= cy0 + cw) {
+			if (closeCb_) {
+				closeCb_();
+			}
+		} else if (activateCb_) {
+			activateCb_();
+		}
+	}
+
 	/* S4.1b: the active frame's band is accent-tinted; the title
 	 * flips to the armed label colour. */
 	void setActive(bool active)
@@ -129,6 +164,8 @@ public:
 private:
 	char title_[128] = { 0 };
 	bool active_ = false;
+	std::function<void()> closeCb_;
+	std::function<void()> activateCb_;
 };
 
 /* ---- WM helpers ----------------------------------------------------- */
@@ -142,6 +179,17 @@ findFrame(::Window client)
 		}
 	}
 	return nullptr;
+}
+
+static bool
+findFrameByXid(::Window xid)
+{
+	for (Managed *m : gFrames) {
+		if (m->frame->xid() == xid) {
+			return true;
+		}
+	}
+	return false;
 }
 
 static void
@@ -199,6 +247,29 @@ manageClient(const XMapRequestEvent &ev)
 	}
 	FrameChrome *cv = new FrameChrome(m->title);
 
+	/* S4.1c: the frame's close plate asks the client to exit via
+	 * the WM_DELETE_WINDOW protocol */
+	cv->setOnActivate([m]() {
+		focusClient(m);
+	});
+	cv->setOnClose([m]() {
+		Atom wmProtocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
+		Atom wmDelete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+		XEvent ev;
+
+		memset(&ev, 0, sizeof(ev));
+		ev.xclient.type = ClientMessage;
+		ev.xclient.window = m->client;
+		ev.xclient.message_type = wmProtocols;
+		ev.xclient.format = 32;
+		ev.xclient.data.l[0] = (long) wmDelete;
+		ev.xclient.data.l[1] = CurrentTime;
+		XSendEvent(dpy, m->client, False, NoEventMask, &ev);
+		XSync(dpy, False);
+		printf("KESTREL: close-request 0x%lx '%s'\n",
+		       (unsigned long) m->client, m->title);
+		fflush(stdout);
+	});
 	cv->setFrame({ {0, 0},
 		       { fw / Application::shared().pxPerPt(),
 			 (fh + BAND_H) / Application::shared().pxPerPt() } });
@@ -216,13 +287,27 @@ manageClient(const XMapRequestEvent &ev)
 	 * grab — ButtonPressMask is an AtMostOneClient event (the
 	 * client itself selected it), so a plain XSelectInput would
 	 * BadAccess; the grab + ReplayPointer is how a WM sees clicks
-	 * without stealing them */
+	 * without stealing them. SubstructureNotify on the frame sees
+	 * the reparented client's unmap/destroy. */
+	{
+		/* ADD SubstructureNotify to the toolkit's mask — a plain
+		 * XSelectInput would replace it (same connection) and the
+		 * frame would stop selecting Exposure/input. */
+		XWindowAttributes fa;
+
+		XGetWindowAttributes(dpy, frame->xid(), &fa);
+		XSelectInput(dpy, frame->xid(),
+			     fa.your_event_mask | SubstructureNotifyMask);
+	}
 	XReparentWindow(dpy, m->client, frame->xid(), 0, BAND_H);
 	XGrabButton(dpy, Button1, AnyModifier, m->client, False,
 		    ButtonPressMask, GrabModeSync, GrabModeAsync,
 		    None, None);
+	XMapWindow(dpy, frame->xid());	/* frame first: its band must get
+					 * its own Expose before the client
+					 * covers the client area */
 	XMapWindow(dpy, m->client);
-	XMapWindow(dpy, frame->xid());
+	XSync(dpy, False);
 	m->mapped = true;
 	XRaiseWindow(dpy, stripX);
 	XSync(dpy, False);
@@ -298,35 +383,59 @@ focusClient(Managed *m)
 	fflush(stdout);
 }
 
-/* A click lands in a managed window (its client area or its frame's
- * title band): focus the owner. Returns true when consumed. */
-static bool
-focusClick(::Window win)
-{
-	for (Managed *m : gFrames) {
-		if (win == m->client || win == m->frame->xid()) {
-			focusClient(m);
-			return true;
-		}
-	}
-	return false;
-}
-
 /* ---- the event hook: WM events on the root -------------------------- */
+
+/* Some events (DestroyNotify for a client killed by its connection
+ * closing) never arrive on this server; probe the managed clients
+ * cheaply and reap the dead. Runs on every event (hook) and on the
+ * idle beat (S4.1c). */
+static bool
+reapDeadClients()
+{
+	for (size_t i = 0; i < gFrames.size();) {
+		Managed *m = gFrames[i];
+		XWindowAttributes a;
+
+		if (XGetWindowAttributes(dpy, m->client, &a)) {
+			i++;
+			continue;
+		}
+		printf("KESTREL: unmanage 0x%lx '%s'\n",
+		       (unsigned long) m->client, m->title);
+		fflush(stdout);
+		if (gActive == m) {
+			gActive = nullptr;
+		}
+		argentum::Window *frame = m->frame;
+
+		gFrames.erase(gFrames.begin() + (long) i);
+		delete frame;
+		delete m;
+	}
+	return false;		/* the caller keeps idling */
+}
 
 static bool
 kestrelHook(void *xevent)
 {
 	XEvent *ev = (XEvent *) xevent;
 
+	reapDeadClients();
 	switch (ev->type) {
 	case ButtonPress:
-		if (focusClick(ev->xbutton.window)) {
-			/* replay the press into the client so its own
-			 * UI sees the click after we take focus */
-			XAllowEvents(dpy, ReplayPointer, CurrentTime);
-			XSync(dpy, False);
-			return true;
+		/* a press in a CLIENT arrives through the passive grab
+		 * (GrabModeSync): focus it, then replay the press so the
+		 * client's own UI sees the click. A press in a FRAME is
+		 * an ordinary event — let the toolkit deliver it to the
+		 * FrameChrome (activate/close). */
+		for (Managed *m : gFrames) {
+			if (ev->xbutton.window == m->client) {
+				focusClient(m);
+				XAllowEvents(dpy, ReplayPointer,
+					     CurrentTime);
+				XSync(dpy, False);
+				return true;
+			}
 		}
 		return false;
 	case MapRequest:
@@ -354,12 +463,14 @@ kestrelHook(void *xevent)
 		return true;
 	}
 	case UnmapNotify:
-		if (ev->xunmap.event == root) {
+		if (ev->xunmap.event == root ||
+		    findFrameByXid(ev->xunmap.event)) {
 			unmanageClient(ev->xunmap.window, false);
 		}
 		return true;
 	case DestroyNotify:
-		if (ev->xdestroywindow.event == root) {
+		if (ev->xdestroywindow.event == root ||
+		    findFrameByXid(ev->xdestroywindow.event)) {
 			unmanageClient(ev->xdestroywindow.window, true);
 		}
 		return true;

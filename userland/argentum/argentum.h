@@ -268,6 +268,12 @@ public:
 	 * window owns). */
 	using EventHook = bool (*)(void *xevent);
 	void setEventHook(EventHook hook);
+	/* S4.1c: optional housekeeping beat — when set, run() polls the
+	 * connection with a ~250ms timeout instead of blocking, calling
+	 * hook() (returning true = work done / false = keep idling)
+	 * when no events are pending. Only Kestrel uses it. */
+	using IdleHook = bool (*)();
+	void setIdleHook(IdleHook hook);
 
 	/* S2.2b: the session Theme (the NSAppearance analog) — loaded
 	 * lazily from the system.theme domain on first access; always
@@ -442,6 +448,10 @@ public:
 	std::vector<View *> focusables();
 	View *moveFocus(int direction);
 
+	/* S4.1c: a WM's WM_DELETE_WINDOW close request. The callback
+	 * runs when one is set; the default quits the application. */
+	void setOnClose(std::function<void()> cb);
+
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
 
@@ -450,6 +460,8 @@ private:
 	friend class GraphicsContext;	/* flush() XPutImages bitmaps */
 	struct Impl;
 	Impl *impl_;
+
+	void handleCloseRequest();	/* S4.1c (the loop calls it) */
 
 	/* MIT-SHM (docs/design/mit-shm-plan.md M2): attach/refresh the
 	 * persistent SysV transport for the current backing geometry

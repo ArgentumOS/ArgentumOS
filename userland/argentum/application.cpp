@@ -8,6 +8,8 @@
 #include <argentum/argentum_p.h>
 
 #include <fontconfig/fontconfig.h>
+
+#include <poll.h>
 #include <libconfig.h>
 
 #include <cstdlib>
@@ -283,6 +285,12 @@ Application::setEventHook(Application::EventHook hook)
 	impl_->eventHook = hook;
 }
 
+void
+Application::setIdleHook(Application::IdleHook hook)
+{
+	impl_->idleHook = hook;
+}
+
 int
 Application::run()
 {
@@ -294,6 +302,21 @@ Application::run()
 	impl_->stopping = false;
 
 	while (!impl_->stopping) {
+		/* idle hook (Kestrel): when no events are pending, poll
+		 * with a short timeout and give the hook a beat every
+		 * ~250ms (WM housekeeping: reaping dead clients). Apps
+		 * without the hook block in poll() forever — identical
+		 * to the old XNextEvent behaviour. */
+		if (impl_->idleHook && XPending(impl_->dpy) <= 0) {
+			struct pollfd pfd = { ConnectionNumber(impl_->dpy),
+					      POLLIN, 0 };
+
+			if (poll(&pfd, 1, 250) <= 0) {
+				if (!impl_->idleHook()) {
+					continue;
+				}
+			}
+		}
 		XNextEvent(impl_->dpy, &ev);
 
 		/* S4.1a: Kestrel's raw-X hook sees every event first and
@@ -386,6 +409,23 @@ Application::run()
 				w->handleResize(
 					(unsigned) ev.xconfigure.width,
 					(unsigned) ev.xconfigure.height);
+			}
+			break;
+		}
+		case ClientMessage: {
+			/* S4.1c: a WM's WM_DELETE_WINDOW close request */
+			static Atom wmProtocols = 0;
+			static Atom wmDelete = 0;
+
+			if (!wmProtocols) {
+				wmProtocols = XInternAtom(
+					impl_->dpy, "WM_PROTOCOLS", False);
+				wmDelete = XInternAtom(
+					impl_->dpy, "WM_DELETE_WINDOW", False);
+			}
+			if (ev.xclient.message_type == wmProtocols &&
+			    (Atom) ev.xclient.data.l[0] == wmDelete) {
+				w->handleCloseRequest();
 			}
 			break;
 		}

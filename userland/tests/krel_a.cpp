@@ -48,6 +48,12 @@ main()
 		return 1;
 	}
 	w.setContentView(&v);
+	/* S4.1c: the WM's close request (WM_DELETE) exits cleanly */
+	w.setOnClose([&app]() {
+		printf("KREL-A-CLOSE\n");
+		fflush(stdout);
+		app.terminate();
+	});
 	w.show();
 	printf("KREL-A-READY xid=0x%lx\n", (unsigned long) w.xid());
 	fflush(stdout);

@@ -790,6 +790,14 @@ Window::init(const char *title, int x, int y,
 	if (title) {
 		XStoreName(impl_->dpy, impl_->xwin, title);
 	}
+	/* S4.1c: advertise the WM_DELETE_WINDOW protocol so a window
+	 * manager (Kestrel) can ask us to close cleanly */
+	{
+		Atom wmDelete = XInternAtom(impl_->dpy, "WM_DELETE_WINDOW",
+					    False);
+
+		XSetWMProtocols(impl_->dpy, impl_->xwin, &wmDelete, 1);
+	}
 	/* S0.3: which events the loop dispatches (keyboard, mouse
 	 * buttons, expose/redraw). StructureNotifyMask (S2.1d) also
 	 * brings ConfigureNotify so window resizes reach handleResize. */
@@ -803,6 +811,24 @@ Window::init(const char *title, int x, int y,
 	/* register for event dispatch (idempotent on re-init) */
 	app.impl_->windows[(unsigned long) impl_->xwin] = this;
 	return true;
+}
+
+/* S4.1c: the WM asked us to close (WM_DELETE_WINDOW). Run the
+ * caller's hook when one is set, else quit the application. */
+void
+Window::handleCloseRequest()
+{
+	if (impl_->onClose) {
+		impl_->onClose();
+	} else {
+		Application::shared().terminate();
+	}
+}
+
+void
+Window::setOnClose(std::function<void()> cb)
+{
+	impl_->onClose = std::move(cb);
 }
 
 void

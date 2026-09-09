@@ -141,6 +141,22 @@ expectation (the first-managed window now carries the active accent).
 *Acceptance:* clicking the active frame's close glyph sends
 `WM_DELETE_WINDOW`; the probe exits via `setOnClose` (logs
 `S41C-CLOSE`) and Kestrel unmaps the frame (`KESTREL: unmanage`).
+Status: **DONE** — the toolkit advertises `WM_DELETE_WINDOW`
+(`XSetWMProtocols` in Window::init) and the run loop's new
+ClientMessage case calls `Window::handleCloseRequest` (the
+`setOnClose` hook, default = quit the app). Kestrel's `FrameChrome`
+close plate fires a callback on a band click that sends the
+WM_DELETE ClientMessage to the client. Because this server never
+delivers DestroyNotify for a client killed by its connection closing,
+Kestrel reaps dead clients by probing them: `Application::setIdleHook`
+makes run() poll with a 250ms beat when no events pend, and the hook
+reaps frames whose client no longer exists. Gate `.build/s41c_run.sh`
++ `s41c_assert.py` -> S41C-OK (7 checks); S41A/S41B re-runs green.
+Load-bearing fixes found here: a WM XSelectInput on one of its OWN
+toolkit windows REPLACES the toolkit's mask on the same connection —
+always OR into `fa.your_event_mask` (the frames had stopped selecting
+Exposure and never drew); map the frame BEFORE the client so its band
+gets its own Expose.
 
 ### S4.2a — session socket: publish + menubar render
 *Acceptance:* probe A (and B) publish distinct menus (File/Edit …)
