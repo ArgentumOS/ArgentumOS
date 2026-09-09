@@ -22,25 +22,63 @@ namespace argentum {
  * already be positioned so (0,0) is `v`'s top-left (the caller
  * translates); we push a frame, translate to this view, clip to its
  * px bounds, call draw(), recurse into subviews in draw order.
- * Frames are pt — px = frame × session pxPerPt (rounded). */
+ * Frames are pt — px = frame × session pxPerPt (rounded).
+ *
+ * S2.6 damage-limited compositing: (wx,wy) is this view's window-px
+ * origin and (d0x,d0y,d1x,d1y) the damage rect (window px). A subtree
+ * whose rect does not intersect the damage is skipped entirely (no
+ * draw, no text shaping, no glyph raster); intersecting views are
+ * additionally clipped to the intersection so the work is bounded by
+ * the dirty region. */
 static void
-render_view(View *v, GraphicsContext &g, double pxPerPt)
+render_view(View *v, GraphicsContext &g, double pxPerPt,
+	    int wx, int wy, int d0x, int d0y, int d1x, int d1y)
 {
 	if (!v || v->isHidden()) {
 		return;
 	}
 	Rect fr = v->frame();
+	int pw = (int) std::lround(fr.size.w * pxPerPt);
+	int ph = (int) std::lround(fr.size.h * pxPerPt);
 
+	/* skip whole subtrees outside the damage */
+	if (wx >= d1x || wy >= d1y || wx + pw <= d0x || wy + ph <= d0y) {
+		return;
+	}
 	g.save();
 	g.translate((int) std::lround(fr.origin.x * pxPerPt),
 		    (int) std::lround(fr.origin.y * pxPerPt));
-	unsigned int pw = (unsigned int) std::lround(fr.size.w * pxPerPt);
-	unsigned int ph = (unsigned int) std::lround(fr.size.h * pxPerPt);
+	g.clipToRect(0, 0, (unsigned) pw, (unsigned) ph);
+	/* intersect the damage with this view's bounds (local px) */
+	int cx0 = d0x - wx;
+	int cy0 = d0y - wy;
+	int cx1 = d1x - wx;
+	int cy1 = d1y - wy;
 
-	g.clipToRect(0, 0, pw, ph);
+	if (cx0 < 0) {
+		cx0 = 0;
+	}
+	if (cy0 < 0) {
+		cy0 = 0;
+	}
+	if (cx1 > pw) {
+		cx1 = pw;
+	}
+	if (cy1 > ph) {
+		cy1 = ph;
+	}
+	if (cx1 > cx0 && cy1 > cy0) {
+		g.clipToRect(cx0, cy0, (unsigned) (cx1 - cx0),
+			     (unsigned) (cy1 - cy0));
+	}
 	v->draw(g);
 	for (View *c : v->subviews()) {
-		render_view(c, g, pxPerPt);
+		Rect cr = c->frame();
+
+		render_view(c, g, pxPerPt,
+			    wx + (int) std::lround(cr.origin.x * pxPerPt),
+			    wy + (int) std::lround(cr.origin.y * pxPerPt),
+			    d0x, d0y, d1x, d1y);
 	}
 	g.restore();
 }
@@ -441,10 +479,21 @@ Window::draw()
 	clock_gettime(CLOCK_MONOTONIC, &t0);
 	BitmapImage *back = impl_->back;
 	GraphicsContext g(*back);
+	double ppt = Application::shared().pxPerPt();
 
-	/* deterministic backdrop before the tree composites */
-	g.fillRect(0, 0, impl_->width, impl_->height, 0x000000);
-	render_view(impl_->contentView, g, Application::shared().pxPerPt());
+	/* deterministic backdrop, bounded to the damage rect (the rest
+	 * of the backing keeps the previous frame) */
+	g.fillRect(impl_->dmgX0, impl_->dmgY0,
+		   (unsigned) (impl_->dmgX1 - impl_->dmgX0),
+		   (unsigned) (impl_->dmgY1 - impl_->dmgY0), 0x000000);
+	View *cv = impl_->contentView;
+	Rect cr = cv->frame();
+
+	render_view(cv, g, ppt,
+		    (int) std::lround(cr.origin.x * ppt),
+		    (int) std::lround(cr.origin.y * ppt),
+		    impl_->dmgX0, impl_->dmgY0, impl_->dmgX1,
+		    impl_->dmgY1);
 	clock_gettime(CLOCK_MONOTONIC, &t1);
 	flushBacking();
 	clock_gettime(CLOCK_MONOTONIC, &t2);
