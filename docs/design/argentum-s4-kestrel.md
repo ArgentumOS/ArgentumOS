@@ -158,6 +158,21 @@ always OR into `fa.your_event_mask` (the frames had stopped selecting
 Exposure and never drew); map the frame BEFORE the client so its band
 gets its own Expose.
 
+### S4.1d — title-band drag (move)
+*Acceptance (user: "windows aren't draggable yet"):* a real mouse
+presses a managed frame's title band (off the close plate) and drags;
+the frame follows and is dropped at the pointer. Moved windows render
+at the new position; the old spot empties; other windows are
+untouched.
+Status: **DONE** — Kestrel's event hook starts an active pointer grab
+on a band press (the close plate is left to the toolkit so the
+FrameChrome can still close), `XMoveWindow`s the frame on motion
+(clamped below the strip), and logs `KESTREL: move ... to x,y` on
+release. Gate `.build/s41d_run.sh` + `s41d_assert.py` -> S41D-OK
+(7 checks: the +200/+150 drag lands the frame at 260,230, the old spot
+empties, the accent band + content render at the new origin, Krel B is
+untouched). S41A/B/C re-runs green.
+
 ### S4.2a — session socket: publish + menubar render
 *Acceptance:* probe A (and B) publish distinct menus (File/Edit …)
 over the session socket; Kestrel's menubar strip renders the focused
@@ -187,10 +202,8 @@ two apps, the bar swaps with focus, picks trigger app actions.
 
 ## 6. Deferred (decisions, not omissions)
 
-- **Move/resize of clients** (drag the title band; resize grips):
-  S4.1 is decoration + focus per the milestone; a WM without user
-  move/resize is still a WM for the acceptance. Revisit in S5 when the
-  desktop chrome needs it.
+- **Move is DONE** (S4.1d, title-band drag); **client resize** (edge/
+  corner grips) remains deferred until S5.
 - **Desktop chrome** (wallpaper surface, right dock + trash,
   menubar date/time): uikit-plan §5 items = S5's session surface.
 - **Session/login** (sessionmgr, greeters, power menus): per

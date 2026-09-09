@@ -383,6 +383,86 @@ focusClient(Managed *m)
 	fflush(stdout);
 }
 
+/* ---- S4.1d window drag (title-band move) ----------------------------- */
+
+static bool gDragActive = false;
+static Managed *gDragFrame = nullptr;
+static int gDragOffX = 0;	/* grab point - frame origin (px) */
+static int gDragOffY = 0;
+static bool gDragMoved = false;	/* any actual motion happened */
+
+/* Is (lx,ly) inside a frame's title band but NOT on the close plate?
+ * (frame-local px; mirrors the FrameChrome plate geometry) */
+static bool
+isBandGrabArea(Managed *m, int lx, int ly)
+{
+	if (ly < 0 || ly >= BAND_H || lx < 0 || lx >= m->fw) {
+		return false;
+	}
+	int plateX0 = m->fw - 18 - 6;
+
+	return !(lx >= plateX0 && lx < plateX0 + 18 &&
+		 ly >= (BAND_H - 16) / 2 && ly < (BAND_H - 16) / 2 + 16);
+}
+
+static void
+beginDrag(Managed *m, int rootX, int rootY)
+{
+	gDragActive = true;
+	gDragFrame = m;
+	gDragOffX = rootX - m->fx;
+	gDragOffY = rootY - m->fy;
+	gDragMoved = false;
+	XGrabPointer(dpy, m->frame->xid(), False,
+		     PointerMotionMask | ButtonReleaseMask,
+		     GrabModeAsync, GrabModeAsync, None, None,
+		     CurrentTime);
+	XRaiseWindow(dpy, m->frame->xid());
+	XSync(dpy, False);
+}
+
+static void
+dragTo(int rootX, int rootY)
+{
+	if (!gDragActive || !gDragFrame) {
+		return;
+	}
+	Managed *m = gDragFrame;
+	int nx = rootX - gDragOffX;
+	int ny = rootY - gDragOffY;
+
+	if (ny < BAR_H) {
+		ny = BAR_H;		/* keep it below the strip */
+	}
+	if (nx != m->fx || ny != m->fy) {
+		XMoveWindow(dpy, m->frame->xid(), nx, ny);
+		m->fx = nx;
+		m->fy = ny;
+		gDragMoved = true;
+		XSync(dpy, False);
+	}
+}
+
+static void
+endDrag(bool moved)
+{
+	if (!gDragActive) {
+		return;
+	}
+	Managed *m = gDragFrame;
+
+	if (m) {
+		printf("KESTREL: move 0x%lx '%s' to %d,%d%s\n",
+		       (unsigned long) m->client, m->title, m->fx, m->fy,
+		       moved ? "" : " (no motion)");
+		fflush(stdout);
+	}
+	XUngrabPointer(dpy, CurrentTime);
+	XSync(dpy, False);
+	gDragActive = false;
+	gDragFrame = nullptr;
+}
+
 /* ---- the event hook: WM events on the root -------------------------- */
 
 /* Some events (DestroyNotify for a client killed by its connection
@@ -425,9 +505,7 @@ kestrelHook(void *xevent)
 	case ButtonPress:
 		/* a press in a CLIENT arrives through the passive grab
 		 * (GrabModeSync): focus it, then replay the press so the
-		 * client's own UI sees the click. A press in a FRAME is
-		 * an ordinary event — let the toolkit deliver it to the
-		 * FrameChrome (activate/close). */
+		 * client's own UI sees the click. */
 		for (Managed *m : gFrames) {
 			if (ev->xbutton.window == m->client) {
 				focusClient(m);
@@ -436,6 +514,31 @@ kestrelHook(void *xevent)
 				XSync(dpy, False);
 				return true;
 			}
+		}
+		/* a press in a FRAME's title band (off the close plate)
+		 * starts a drag; the close plate is left to the toolkit
+		 * so the FrameChrome closes the client */
+		for (Managed *m : gFrames) {
+			if (ev->xbutton.window == m->frame->xid() &&
+			    isBandGrabArea(m, ev->xbutton.x,
+					   ev->xbutton.y)) {
+				focusClient(m);
+				beginDrag(m, ev->xbutton.x_root,
+					  ev->xbutton.y_root);
+				return true;
+			}
+		}
+		return false;
+	case MotionNotify:
+		if (gDragActive) {
+			dragTo(ev->xmotion.x_root, ev->xmotion.y_root);
+			return true;
+		}
+		return false;
+	case ButtonRelease:
+		if (gDragActive) {
+			endDrag(gDragMoved);
+			return true;
 		}
 		return false;
 	case MapRequest:
