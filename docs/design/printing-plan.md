@@ -75,6 +75,35 @@ the toolkit's print dialog target.
 spool and the file target receives it; language selection from the
 printer record flows through.
 
+## 3a. Producer endgame: any view emits PDF (desktop-era, folded 2026-09)
+
+The toolkit's native answer to "how does app content become
+printable": **any UIKit view can emit itself as a PDF**, Cocoa-style —
+the drawing is *replayable*, so the toolkit renders it into a
+PDF-backed GraphicsContext instead of pixman. This fits FNX unusually
+well:
+
+- The design-language chrome (rounded rects, linear/radial gradients,
+  bevels, theme parameterized) **maps natively onto PDF primitives** —
+  the drawing model *is* the document model; nothing rasterizes.
+- **Text** is the one real cost: v1 draws glyphs as **vector paths**
+  through the existing FreeType outline path (no font embedding);
+  embedded subsets are the later step.
+- **Images/offscreen content** embed as XObjects (Flate).
+- The **PDF writer is a house component**: PDF 1.7 (objects, content
+  streams, xref) is a spec, not code — a minimal writer is a small
+  permissive first-party component (self-hosting manifest records the
+  requirement); no CUPS/filter-chain machinery.
+
+It resolves much of §1's "hard part": a view emitting PDF is exactly
+what **PDF-direct/PWG printers** speak — emit → spool → the printer,
+with no intermediate renderer. (PS/PCL-only printers still need a
+later emitter — honest caveat.) Dependency chain: a backend-swappable
+GraphicsContext (the S1.x GC design already is), FreeType outlines,
+then the house PDF writer — a **desktop-era** feature and the natural
+successor to §P3, not something to build before the toolkit work
+reaches the print dialog.
+
 ## 4. Out of scope (recorded)
 
 - A PS interpreter / PDF renderer / RIP (the producer-side hard part,
