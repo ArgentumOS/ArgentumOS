@@ -941,6 +941,21 @@ ioctl extension) without inheriting the convention.
 - Future open-with registration (bundle `document-types` already
   declares the reverse mapping).
 
+**Folders are suite objects too (2026-09)**: directories carry
+metadata like files, in-tree (the BeOS/Tracker precedent — state
+travels with the folder across copy/move/backup):
+
+- `system.folder.type` = `plain` | `smart` — a smart folder's value is
+  a stored §B query reference (the folder's content *is* the query
+  result; §B and this attr are the same story, one declared as suite
+  metadata).
+- `system.icon` (hint, indexed last) — the FM's folder/app icon
+  preference, FSH User Template seeding the shared set.
+- **Exclusion (doctrine)**: pure view chrome — window position,
+  column widths, sort order — is app config (the FM's `.conf`
+  domain), not FS metadata. What travels with the folder is what the
+  folder *means*; how it was displayed stays with the app.
+
 ### K.5 Open
 
 - **The rest of the v1 suite**: grows by consumer demand (FM column
@@ -956,3 +971,69 @@ ioctl extension) without inheriting the convention.
 - **Precedence details**: apps may want a *locked* type (an explicit
   set the maintainer never overwrites) vs set-if-absent-only; and
   unguessable files (no ext, no mapping) stay untyped by design.
+
+## L. Directory default attributes (stamped folders)
+
+Status: **DESIGN (2026-09) — direction decided in conversation; no
+code.** New area. Format impact: one directory attr record
+(`system.defaults`) + a create-path inheritance step; no structural
+change.
+
+### L.1 Concept
+
+A directory can declare **default attributes for its children** —
+folders that *stamp their content*. "New file in this folder is a
+versioned image" is expressed by the folder, not by every app and not
+by a global rule. The precedent is already in the kernel: default ACLs
+on directories (`system.posix_acl_default`) inherit at create/mkdir
+with `acl_default_masq` semantics — L generalizes that machinery from
+ACLs to the whole §K suite.
+
+### L.2 Mechanism
+
+- A directory's default set is **one attr record, `system.defaults`**,
+  holding name → (type, value) pairs (typed via the existing attr-type
+  machinery) — one write carries many defaults, mirroring how the
+  default ACL is one record.
+- At create/mkdir the kernel copies the parent's `system.defaults`
+  onto the child as **real attrs**, ACL-mirror semantics: files are
+  stamped; directories are stamped *and* carry their own
+  `system.defaults` forward, so nesting keeps stamping.
+- Stamping is create-time only — explicit attrs are never overridden;
+  the create rides the existing one-transaction create path
+  (journal-atomic with the inode).
+
+### L.3 What folders can stamp (suite coupling)
+
+| default | consumer |
+|---|---|
+| `system.mime.type` | §K — present at create, so folder intent wins over the maintainer daemon's ext mapping (the daemon's set-if-absent never fires) |
+| the versioned flag | §J — a `Documents` folder makes its files versioned without any app asking |
+| the compress flag | G-1 — a `Logs` folder compresses its contents |
+| future flag attrs | uniform: any §K suite member can be defaulted per folder |
+
+The Uniform move is the point: **defaults are the §K suite applied
+per folder** — one mechanism, and the FS's answer to "folders that
+stamp their content" covers types, versions, and compression alike.
+
+### L.4 Milestones (draft)
+
+- **M0 — generalize the inherit hook**: extend the create-path ACL
+  inheritance to generic `system.defaults` (files stamped; dirs
+  stamped + defaults carried). *Acceptance: files created in a
+  stamped folder carry the stamped attrs; nested dirs keep stamping;
+  kill-cycle mid-create leaves no half-stamped inode.*
+- **M1 — tooling**: setting/clearing a folder's defaults through the
+  existing attr/`config` surface (a folder "get info" equivalent).
+- **M2 — seed the User Template**: `~/Documents` → versioned (§J),
+  `~/Logs`-class folders → compress (G-1) — the defaults arrive
+  pre-wired for every new user.
+
+### L.5 Open
+
+- Defaults and the §J versioned-flag interplay: whether stamped
+  versioning is a per-folder opt-in while TM capture (§J V-3) stays
+  the scope-wide safety net — likely both, at different cadences.
+- Whether `system.defaults` itself is inherited-and-merged vs
+  replaced at each level (ACL precedent: replaced — the child's own
+  defaults are its own; merging is a later want).
