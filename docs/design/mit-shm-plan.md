@@ -36,13 +36,22 @@ not an X11-copy and stays.
 ## 3. Milestones
 
 ### M0 — Prove the server answers MIT-SHM
-A tiny guest client using `libxcb-shm` directly (no libXext needed):
-query the extension, create a segment, `ShmPutImage` a known pattern
-into a window, over the live desktop.
+A tiny guest client: query the extension, create a segment,
+`ShmPutImage` a known pattern into a window, over the live desktop.
 **Acceptance**: the pattern lands on the framebuffer (screendump
 pixel check); the server log shows the extension enabled (no
-"disabled due to lack of kernel support"); zero kernel errors. This
-answers the entire server-side question with one boot test.
+"disabled due to lack of kernel support"); zero kernel errors.
+Status: **DONE** (`userland/tests/xshm_m0.c`, commit f0429a0). The
+probe was first written against `libxcb-shm` but xcb could never
+connect to the FNX X socket (xcb's abstract-then-filesystem probe
+order differs from Xlib's transport, and DISPLAY=unix/... full-path
+form also failed) — M0 was redone on the XLIB path (the real client
+transport) with libXext. Two server-side facts surfaced:
+- The segment mode must be 0666, not 0600: FNX has no SO_PEERCRED,
+  so Xorg's `shm_access()` falls through to the "other" bits and
+  0600 denies (BadAccess).
+- Gate `.build/shmm0_run.sh`/`shmm0_assert.py` -> SHMM0-OK: two-band
+  400x300 window painted via XShmPutImage, screendump probes green.
 
 ### M1 — Stage libXext
 Add libXext to `tools/x11-shared-build.sh` (shared, into
@@ -50,8 +59,13 @@ Add libXext to `tools/x11-shared-build.sh` (shared, into
 are linkable for Xlib clients (UIKit, future toolkit apps).
 **Acceptance**: `libXext.so` + `X11/extensions/XShm.h` staged; a
 guest `XShmQueryExtension` client links and reports the server's
-MIT-SHM present. Rebuild chain per the doc's own notes (the 
-patch-regen + staging gotchas recorded in the toolchain memory).
+MIT-SHM present. Rebuild chain per the doc's own notes.
+Status: **DONE** (commit f0429a0) — libXext 1.3.6 vendored at
+`third_party/x11/libXext` (untracked, like libXau/libXdmcp), built by
+`tools/x11-shared-build.sh` (`au Xext libXext`) with the `--host`
+cross configure; `mk/20-userland.mk` stages `libXext.so.6` into
+System/Libraries. Note: 0600 segments are refused server-side (see
+M0) — XShm segments must be created 0666.
 
 ### M2 — Adopt in the UIKit image path
 Switch the UIKit's image drawing from `XPutImage` to `ShmPutImage`
