@@ -444,6 +444,19 @@ static void
 beginDrag(Managed *m, int rootX, int rootY)
 {
 	ensureOutlineGC();
+	/* a phantom re-press mid-drag (flaky button state): keep the
+	 * outline and drag state, just re-anchor + re-grab so the
+	 * continuing motion continues the same drag */
+	if (gDragActive && gDragFrame == m) {
+		gDragOffX = rootX - m->fx;
+		gDragOffY = rootY - m->fy;
+		XGrabPointer(dpy, m->frame->xid(), False,
+			     PointerMotionMask | ButtonReleaseMask,
+			     GrabModeAsync, GrabModeAsync, None, None,
+			     CurrentTime);
+		XSync(dpy, False);
+		return;
+	}
 	gDragActive = true;
 	gDragFrame = m;
 	gDragOffX = rootX - m->fx;
@@ -487,6 +500,13 @@ dragTo(int rootX, int rootY)
 	XFlush(dpy);
 }
 
+/* QEMU's mouse path can deliver phantom press/release pairs mid-drag
+ * (ps2 sync slips under fast motion); trusting a release would drop
+ * the window every couple of pixels. The drag instead ends only when
+ * the pointer goes QUIET: the loop's idle beat (~250ms with no
+ * events) drops the window at the outline's last position.
+ * (dropIfQuiet is defined after endDrag below.) */
+
 static void
 endDrag(bool moved)
 {
@@ -520,6 +540,19 @@ endDrag(bool moved)
 	gDragFrame = nullptr;
 }
 
+/* QEMU's mouse path can deliver phantom press/release pairs mid-drag
+ * (ps2 sync slips under fast motion); trusting a release would drop
+ * the window every couple of pixels. The drag instead ends only when
+ * the pointer goes QUIET: the loop's idle beat (~250ms with no
+ * events) drops the window at the outline's last position. */
+static void
+dropIfQuiet()
+{
+	if (gDragActive) {
+		endDrag(gDragMoved);
+	}
+}
+
 /* ---- the event hook: WM events on the root -------------------------- */
 
 /* Some events (DestroyNotify for a client killed by its connection
@@ -529,6 +562,8 @@ endDrag(bool moved)
 static bool
 reapDeadClients()
 {
+	/* a quiet pointer (a full beat with no motion) ends the drag */
+	dropIfQuiet();
 	for (size_t i = 0; i < gFrames.size();) {
 		Managed *m = gFrames[i];
 		XWindowAttributes a;
@@ -593,11 +628,9 @@ kestrelHook(void *xevent)
 		}
 		return false;
 	case ButtonRelease:
-		if (gDragActive) {
-			endDrag(gDragMoved);
-			return true;
-		}
-		return false;
+		/* the drag is quiet-driven (dropIfQuiet on the idle beat);
+		 * releases are consumed so nothing else acts on them */
+		return gDragActive;
 	case MapRequest:
 		manageClient(ev->xmaprequest);
 		return true;
