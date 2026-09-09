@@ -453,10 +453,6 @@ GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
 	if (radius > half) {
 		radius = half;
 	}
-	if (radius == 0) {
-		fillLinearGradient(x, y, w, h, rgb0, rgb1, vertical);
-		return;
-	}
 	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
 			   impl_->clipX, impl_->clipY,
 			   impl_->clipW, impl_->clipH };
@@ -497,10 +493,20 @@ GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
 		return;
 	}
 	pixman_image_set_repeat(grad, PIXMAN_REPEAT_PAD);
-	mask = rounded_mask(w, h, radius);
-	if (!mask) {
-		pixman_image_unref(grad);
-		return;
+	if (radius > 0) {
+		mask = rounded_mask(w, h, radius);
+		if (!mask) {
+			pixman_image_unref(grad);
+			return;
+		}
+	} else {
+		/* radius 0 = a plain rectangular band: same mapped +
+		 * clipped composite, no AA mask (do NOT fall back to
+		 * fillLinearGradient — that is the legacy surface-space
+		 * primitive that ignores the frame translate/clip, so a
+		 * translated view painted its "flat" zone at the wrong
+		 * place and the outline showed through) */
+		mask = nullptr;
 	}
 	/* gradient sampled in dest coordinates: src offset == dest offset */
 	/* OVER (not SRC) through the AA mask: edge pixels where the mask
@@ -509,7 +515,9 @@ GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
 	pixman_image_composite32(PIXMAN_OP_OVER, grad, mask, b->img,
 				 x0, y0, x0 - sx, y0 - sy, x0, y0,
 				 x1 - x0, y1 - y0);
-	pixman_image_unref(mask);
+	if (mask) {
+		pixman_image_unref(mask);
+	}
 	pixman_image_unref(grad);
 }
 
