@@ -66,7 +66,35 @@ verification is the established audio acceptance). **Acceptance**:
 window visible on the desktop, tone audible through the same
 OSS family the wired drivers already verify.
 
-### S3 — On-FNX self-rebuild
+### S3 — UIKit-embeddable SDL view (the sanctioned bridge)
+SDL apps must not be separate windows floating beside the desktop;
+they embed inside Argentum windows like any UIKit content.
+Architecture — X11-idiomatic, **no SDL fork**:
+
+- A UIKit native-container view (libargentum) owns an X11
+  **subwindow** of its app window and hands its XID to the SDL app
+  through SDL3's native-window entry
+  (`SDL_CreateWindowWithProperties` + the x11-window property); SDL
+  renders with its software renderer into that subwindow.
+- Pointer events reach the SDL child automatically (X11 subwindow
+  clipping); keyboard focus is managed with the **XEMBED** container
+  role, implemented first-party in the UIKit container — SDL3's X11
+  driver is the XEMBED client side. This is the one piece of new X
+  plumbing; the S2 smoke should confirm SDL3's embedded-focus
+  handling on FNX's Xfb (fallback: explicit `SetInputFocus` routing).
+- **Lifecycle rule**: the container owns the SDL window — view close
+  ⇒ `SDL_DestroyWindow` before the X subwindow dies (the same
+  teardown discipline as every other owned-native-object rule).
+- **Acceptance**: a first-party Argentum app hosts a running SDL3
+  demo (soft-rendered animation + tone) inside its window;
+  keyboard input reaches the demo; closing the app tears the SDL
+  window down without X errors; resize reconfigures the subwindow
+  cleanly.
+- **Scope gate**: if the desktop's window model needs extension for
+  child-window focus policy, that is part of this milestone —
+  embedding must not be bolted onto a model that fights it.
+
+### S4 — On-FNX self-rebuild
 Rebuild SDL3 on-FNX (CMake in-guest, per the roster) then rebuild
 the demo against it — the manifest's full self-host cycle.
 
@@ -84,7 +112,9 @@ freetype + harfbuzz).
 
 - Complements the X11 stack; replaces nothing. First-party GUI stays
   Argentum UIKit on X11 — SDL is the *third-party* path, never the
-  house toolkit.
+  house toolkit; the sanctioned bridge is the **UIKit-embeddable
+  view** (§S4): SDL renders as a guest inside a UIKit window and
+  never becomes the toolkit.
 - Out (recorded): GL/GLES/Vulkan, KMS/DRM/Wayland backends, all
   satellites in v1, SDL2 as a second library (compat layer instead).
 - Manifest: admission row to `self-hosting-packages.md` §B at S0 —
