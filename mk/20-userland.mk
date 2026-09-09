@@ -281,6 +281,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/structure_a.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/structure_a"
+	# structure_b: S2.4b ScrollView acceptance — banded doc in a ScrollView,
+	# Down/Up scroll by 60 pt; logs SCROLL-B offsets for the gate.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/structure_b.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/structure_b"
+	# xclick: generic synthetic-click injector for the S2.4 gates
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xclick.c \
+		-L$(X11PREFIX)/lib -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xclick"
 	# xshm_m0: MIT-SHM M0 acceptance — Xlib client (the UIKit transport)
 	# paints a window via a SysV segment + XShmPutImage (libXext); logs
 	# SHMM0-DONE for the gate.

@@ -208,6 +208,13 @@ struct Box::Impl {
 	double spacing = 6.0;		/* pt between arranged children */
 	bool logged = false;		/* BOX-A arrange log printed once */
 };
+/* S2.4b ScrollView state (see argentum.h). */
+struct ScrollView::Impl {
+	View *doc = nullptr;		/* document view (subview) */
+	View *chrome = nullptr;		/* internal ScrollChrome overlay */
+	double ox = 0;			/* scroll offset (pt) */
+	double oy = 0;
+};
 
 /* S2.2b Label state: text + colour/size overrides (0 = theme). The
  * a11y label mirrors the text (kept in View::Impl). */

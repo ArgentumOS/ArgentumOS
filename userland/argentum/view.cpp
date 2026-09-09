@@ -230,6 +230,27 @@ View::setNeedsDisplay()
 	int x1 = (int) ((r.origin.x + r.size.w) * ppt + 0.5);
 	int y1 = (int) ((r.origin.y + r.size.h) * ppt + 0.5);
 
+	/* clamp to the root (window) px bounds: a view scrolled partly
+	 * above/left of the window must damage only the visible part —
+	 * negative damage coords would reach the render walk */
+	int rw = (int) (root->impl_->frame.size.w * ppt + 0.5);
+	int rh = (int) (root->impl_->frame.size.h * ppt + 0.5);
+
+	if (x0 < 0) {
+		x0 = 0;
+	}
+	if (y0 < 0) {
+		y0 = 0;
+	}
+	if (x1 > rw) {
+		x1 = rw;
+	}
+	if (y1 > rh) {
+		y1 = rh;
+	}
+	if (x1 <= x0 || y1 <= y0) {
+		return;
+	}
 	root->impl_->hostWindow->scheduleDamagePx(x0, y0, x1, y1);
 }
 

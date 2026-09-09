@@ -1040,6 +1040,32 @@ private:
 	Impl *bx_;
 };
 
+/* S2.4b: ScrollView — a clipping wrapper (NSClipView-lite). The
+ * document view is a subview whose frame origin is translated by the
+ * scroll offset (-ox,-oy); the view tree clips it to the ScrollView's
+ * bounds. v1 scroll is PROGRAMMATIC (scrollTo/scrollBy) — there is no
+ * wheel/scroll-event source yet; the drawn scrollbar thumb is an
+ * indicator that tracks the offset. A11y role ScrollArea. */
+class ScrollView : public View {
+public:
+	ScrollView();
+	~ScrollView() override;
+
+	void setDocumentView(View *doc);	/* non-owning; may be null */
+	View *documentView() const;
+	/* clamp: 0 .. docSize - viewportSize (>= 0) */
+	void scrollTo(double xPt, double yPt);
+	void scrollBy(double dxPt, double dyPt);
+	double contentOffsetX() const;
+	double contentOffsetY() const;
+
+	void draw(GraphicsContext &g) override;
+
+private:
+	struct Impl;
+	Impl *sc_;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

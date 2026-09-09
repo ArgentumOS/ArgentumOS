@@ -130,6 +130,21 @@ fixed viewport point return different grid colours per offset) and the
 scrollbar thumb moves with the offset (thumb-band pixel differs before
 / after). Content outside the viewport never draws (probe above the
 content top = box page colour, not content).
+Status: **DONE** — `userland/argentum/scroll.cpp` (decl in
+`argentum.h`, Impl in `argentum_p.h`). The document view is a subview
+whose frame origin carries the offset (the tree clips it); a
+non-interactive ScrollChrome overlay (added after the document,
+`hitTest -> nullptr`) paints the 1px border ring + the thumb indicator
+ON TOP, since the tree paints parents under their children. Clamp fix
+in `View::setNeedsDisplay` (`view.cpp`): a scrolled view partially
+above/left of the window must damage only the visible rect — the raw
+negative window-px rect reached the damage machinery and corrupted
+memory (page fault). Gate `.build/s24b_run.sh` + `s24b_assert.py` ->
+S24B-OK (8 checks: offsets 60..240, band0->band3 flip, thumb top->
+bottom, doc showing through the gutter). Generic synthetic-click tool
+`userland/tests/xclick.c` (motion + press + release, since Buttons
+fire only while hovered). Regressions S24A-OK, S13-PIXELS-OK,
+S22D-OK.
 
 ### S2.4c — SplitView: divider drag resizes panes
 *Acceptance:* two/three coloured panes with a divider; an injected
