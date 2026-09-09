@@ -1,8 +1,10 @@
 /* xclick.c — generic synthetic click injector for the S2.4 gates:
- * argv: <window-xid> <x> <y> [repeat] [delayMs]
- * Sends ButtonPress+Release (button 1) pairs to the window at the
- * given WINDOW-relative px coordinates (XSendEvent, like widgets_d).
- * Repeat pairs every delayMs. Exits after the last release. */
+ * argv: <window-xid> <x> <y> [repeat] [delayMs] [dragX] [dragY]
+ * Sends MotionNotify to (x,y) (Buttons fire only while hovered), then
+ * ButtonPress+Release (button 1) pairs at that point (window-relative
+ * px, XSendEvent). With dragX/dragY given, each press is followed by
+ * interpolated motions to (dragX,dragY) before the release — a drag
+ * (SplitView dividers). Exits after the last release. */
 #include <X11/Xlib.h>
 
 #include <stdio.h>
@@ -15,7 +17,7 @@ main(int argc, char **argv)
 {
 	if (argc < 4) {
 		fprintf(stderr, "usage: xclick <xid> <x> <y> [repeat] "
-			"[delayMs]\n");
+			"[delayMs] [dragX] [dragY]\n");
 		return 2;
 	}
 	Display *d = XOpenDisplay(NULL);
@@ -29,6 +31,8 @@ main(int argc, char **argv)
 	int y = atoi(argv[3]);
 	int repeat = argc > 4 ? atoi(argv[4]) : 1;
 	int delayMs = argc > 5 ? atoi(argv[5]) : 300;
+	int dragX = argc > 6 ? atoi(argv[6]) : -1;
+	int dragY = argc > 7 ? atoi(argv[7]) : -1;
 
 	if (delayMs < 20) {
 		delayMs = 20;
@@ -66,6 +70,27 @@ main(int argc, char **argv)
 		XSendEvent(d, win, False, ButtonPressMask, &ev);
 		XSync(d, False);
 		usleep(60000);
+		if (dragX >= 0) {
+			/* interpolated drag motions while the press is held */
+			int steps = 5;
+
+			for (int st = 1; st <= steps; st++) {
+				int xx = x + (dragX - x) * st / steps;
+				int yy = y + (dragY - y) * st / steps;
+
+				ev.xmotion.type = MotionNotify;
+				ev.xmotion.x = xx;
+				ev.xmotion.y = yy;
+				ev.xmotion.state = Button1Mask;
+				XSendEvent(d, win, False,
+					   PointerMotionMask, &ev);
+				XSync(d, False);
+				printf("XCLICK: drag %d/%d at %d,%d\n",
+				       st, steps, xx, yy);
+				fflush(stdout);
+				usleep((useconds_t) delayMs * 1000);
+			}
+		}
 		ev.type = ButtonRelease;
 		ev.xbutton.state = Button1Mask;
 		XSendEvent(d, win, False, ButtonPressMask, &ev);

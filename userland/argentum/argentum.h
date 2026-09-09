@@ -1066,6 +1066,41 @@ private:
 	Impl *sc_;
 };
 
+/* S2.4c: SplitView — N panes along an axis separated by draggable
+ * dividers (NSplitView-lite). Children ARE the panes; the SplitView
+ * controls their frames (equal split initially; the divider drag
+ * resizes the two adjacent panes, clamped by the minimum pane size).
+ * A press on a divider gutter (or bubbling from a pane edge) arms the
+ * drag; motion moves the divider; release finalizes. Dividers are
+ * left transparent (the panes tile the frame except the gutter
+ * bands). A11y role Splitter. */
+class SplitView : public View {
+public:
+	SplitView();
+	~SplitView() override;
+
+	void setVertical(bool vertical);	/* true = side-by-side */
+	bool isVertical() const;
+	void setDividerThickness(double pt);
+	double dividerThickness() const;
+	void setMinimumPaneSize(double pt);
+	double minimumPaneSize() const;
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+	void mouseMoved(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+
+private:
+	/* equal-split when the frame/count changed, then apply */
+	void layoutChildren(bool resetPositions);
+	int dividerAt(double pos) const;	/* -1 when off a divider */
+	void logDividers(const char *tag);
+
+	struct Impl;
+	Impl *sp_;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

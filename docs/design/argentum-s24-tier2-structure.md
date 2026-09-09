@@ -151,6 +151,20 @@ S22D-OK.
 press-drag-release on the divider band changes the pane widths
 (probes at the old boundary flip colour; min-size clamp holds when the
 drag exceeds the limit).
+Status: **DONE** — `userland/argentum/split.cpp` (decl in
+`argentum.h`, Impl in `argentum_p.h`). Children ARE the panes; the
+SplitView owns their frames (equal split; divider drag resizes the two
+adjacent panes). Gutters are the SplitView's own area, so a press on
+a divider hits it directly and presses just outside bubble up from the
+pane edge (View::mouseDown forwarding widens the grab); the armed drag
+uses the S2.3a pressed-view motion delivery. Gate `.build/s24c_run.sh`
++ `s24c_assert.py` -> S24C-OK (9 checks: layout p0=108, drag to
+p0=168, far-left drag clamped at p0=40, page->red->green at the old
+boundary, blue pane stable). The drag is injected with the QEMU
+monitor's REAL mouse (XSendEvent-based tools hang at XSync once the
+server is under interactive load — observed, not root-caused);
+`xclick.c` additionally gained an optional [dragX dragY] mode.
+Regressions S24A-OK, S24B-OK.
 
 ### S2.4d — TabView: tab strip + page switching
 *Acceptance:* three items with distinct page content; injected clicks

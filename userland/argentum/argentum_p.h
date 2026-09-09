@@ -215,6 +215,17 @@ struct ScrollView::Impl {
 	double ox = 0;			/* scroll offset (pt) */
 	double oy = 0;
 };
+/* S2.4c SplitView state (see argentum.h). */
+struct SplitView::Impl {
+	bool vertical = true;		/* axis: true = side-by-side */
+	double thickness = 6.0;		/* divider band width (pt) */
+	double minPane = 40.0;		/* smallest pane length (pt) */
+	std::vector<double> divs;	/* divider positions (pt), n-1 */
+	double lastAxis = -1;		/* frame length at the last reset */
+	int dragging = -1;		/* divider being dragged, -1 none */
+	double downPos = 0;		/* pointer pos at press (pt) */
+	double dragBase = 0;		/* divider pos at press (pt) */
+};
 
 /* S2.2b Label state: text + colour/size overrides (0 = theme). The
  * a11y label mirrors the text (kept in View::Impl). */
