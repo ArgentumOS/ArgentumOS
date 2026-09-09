@@ -385,11 +385,46 @@ focusClient(Managed *m)
 
 /* ---- S4.1d window drag (title-band move) ----------------------------- */
 
+/* Drag = move a cheap XOR OUTLINE on the root; the real window is
+ * teleported once on release. Moving the real window per-motion makes
+ * the server discard its pixels (no backing store) so the client
+ * fully re-renders on every Expose — the outline keeps the drag smooth
+ * and costs ONE redraw at the drop. */
+
 static bool gDragActive = false;
 static Managed *gDragFrame = nullptr;
 static int gDragOffX = 0;	/* grab point - frame origin (px) */
 static int gDragOffY = 0;
 static bool gDragMoved = false;	/* any actual motion happened */
+static GC gOutlineGC = nullptr;
+static bool gOutlineOn = false;	/* outline currently drawn */
+static int gOutlineX = 0, gOutlineY = 0;
+
+static void
+ensureOutlineGC()
+{
+	if (gOutlineGC) {
+		return;
+	}
+	gOutlineGC = XCreateGC(dpy, root, 0, nullptr);
+	if (gOutlineGC) {
+		XSetFunction(dpy, gOutlineGC, GXinvert);
+		XSetForeground(dpy, gOutlineGC, 0xffffffff);
+		XSetLineAttributes(dpy, gOutlineGC, 1, LineSolid,
+				   CapButt, JoinMiter);
+	}
+}
+
+/* XOR the outline rect at (x,y) (drawing it again erases it). */
+static void
+xorOutline(int x, int y, Managed *m)
+{
+	if (!gOutlineGC || !m) {
+		return;
+	}
+	XDrawRectangle(dpy, root, gOutlineGC, x, y,
+		       (unsigned) m->fw, (unsigned) (m->fh + BAND_H));
+}
 
 /* Is (lx,ly) inside a frame's title band but NOT on the close plate?
  * (frame-local px; mirrors the FrameChrome plate geometry) */
@@ -408,11 +443,13 @@ isBandGrabArea(Managed *m, int lx, int ly)
 static void
 beginDrag(Managed *m, int rootX, int rootY)
 {
+	ensureOutlineGC();
 	gDragActive = true;
 	gDragFrame = m;
 	gDragOffX = rootX - m->fx;
 	gDragOffY = rootY - m->fy;
 	gDragMoved = false;
+	gOutlineOn = false;
 	XGrabPointer(dpy, m->frame->xid(), False,
 		     PointerMotionMask | ButtonReleaseMask,
 		     GrabModeAsync, GrabModeAsync, None, None,
@@ -434,13 +471,20 @@ dragTo(int rootX, int rootY)
 	if (ny < BAR_H) {
 		ny = BAR_H;		/* keep it below the strip */
 	}
-	if (nx != m->fx || ny != m->fy) {
-		XMoveWindow(dpy, m->frame->xid(), nx, ny);
-		m->fx = nx;
-		m->fy = ny;
-		gDragMoved = true;
-		XSync(dpy, False);
+	if (nx == m->fx && ny == m->fy) {
+		return;			/* no motion yet */
 	}
+	/* erase the old outline, draw the new one — the window itself
+	 * does not move (and so does not redraw) until the drop */
+	if (gOutlineOn) {
+		xorOutline(gOutlineX, gOutlineY, m);
+	}
+	xorOutline(nx, ny, m);
+	gOutlineOn = true;
+	gOutlineX = nx;
+	gOutlineY = ny;
+	gDragMoved = true;
+	XFlush(dpy);
 }
 
 static void
@@ -452,6 +496,19 @@ endDrag(bool moved)
 	Managed *m = gDragFrame;
 
 	if (m) {
+		if (gOutlineOn) {
+			xorOutline(gOutlineX, gOutlineY, m);	/* erase */
+			gOutlineOn = false;
+			XFlush(dpy);
+		}
+		if (moved) {
+			/* teleport: ONE move + ONE redraw */
+			XMoveWindow(dpy, m->frame->xid(),
+				    gOutlineX, gOutlineY);
+			m->fx = gOutlineX;
+			m->fy = gOutlineY;
+			XSync(dpy, False);
+		}
 		printf("KESTREL: move 0x%lx '%s' to %d,%d%s\n",
 		       (unsigned long) m->client, m->title, m->fx, m->fy,
 		       moved ? "" : " (no motion)");

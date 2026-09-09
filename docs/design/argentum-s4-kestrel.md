@@ -166,12 +166,19 @@ at the new position; the old spot empties; other windows are
 untouched.
 Status: **DONE** — Kestrel's event hook starts an active pointer grab
 on a band press (the close plate is left to the toolkit so the
-FrameChrome can still close), `XMoveWindow`s the frame on motion
-(clamped below the strip), and logs `KESTREL: move ... to x,y` on
-release. Gate `.build/s41d_run.sh` + `s41d_assert.py` -> S41D-OK
-(7 checks: the +200/+150 drag lands the frame at 260,230, the old spot
-empties, the accent band + content render at the new origin, Krel B is
-untouched). S41A/B/C re-runs green.
+FrameChrome can still close) and logs `KESTREL: move ... to x,y` on
+release. v2 (perf fix — per-motion XMoveWindow made the server discard
+the window's pixels, so the client fully re-rendered on every Expose):
+the drag moves a cheap XOR **outline** on the root and the window is
+teleported ONCE on release (one move + one redraw). Gate
+`.build/s41d_run.sh` + `s41d_assert.py` -> S41D-OK (9 checks: the
++200/+150 drag lands the frame at 260,230; a mid-drag screendump
+proves the window has NOT moved yet while the inverted outline
+tracks over the desktop; the old spot empties, the band + content
+render at the new origin, Krel B untouched). S41B re-run green.
+Note: the root-drawn outline is hidden under other windows (classic
+X11 behaviour) — fine for v1; a raised border-window outline would be
+fully visible if it matters later.
 
 ### S4.2a — session socket: publish + menubar render
 *Acceptance:* probe A (and B) publish distinct menus (File/Edit …)
