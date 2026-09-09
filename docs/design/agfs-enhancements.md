@@ -601,15 +601,53 @@ docs before X-SSD4's bump so the format changes once (see A.4 and §B D4).
 
 ### G-1 — Transparent per-file compression
 
-lz4/zstd on the run stream behind an inode flag: reads decompress,
-writes compress; stat size is uncompressed, disk usage shrinks.
-Transparency to the journal is the design crux (compressed data still
-journals as plain data blocks).
+**Codec: ZSTD (decided 2026-09)** — C, BSD-3-Clause (permissive
+roof), self-hostable under the clang doctrine; one-of-each doctrine
+means zstd only. Compresses the text-heavy AGFS content (configs,
+source, docs, logs) well at its low levels.
 
-- Format: inode flag (+ any per-run metadata).
-- Acceptance: guest writes a compressible file → block usage drops;
-  reads are byte-identical; `agfscheck` clean.
-- Effort: high.
+**Format crux**: AGFS's `data_stream` model (direct runs → indirect)
+assumes fixed logical granularity — a compressed cluster's physical
+size is variable, so general compression needs a *new mapping layer*
+(logical cluster → variable physical run + length), not just a flag.
+Two kernel realities constrain it:
+
+- **kmalloc caps at 4 KB** — zstd compression workspaces are 100 KB+,
+  so compression needs `alloc_pages` and sleepable context (fine on
+  the syscall write path; impossible from atomic/buffer contexts).
+- **Fixed-block cache** — decompressing a cluster is "read N physical
+  blocks, decompress to a logical buffer," a second read/write
+  architecture that bypasses the `bmap`/`bread` path the VFS read
+  flow assumes.
+
+**Staged plan (productive order):**
+
+- **Stage 1 — whole-file compression for small files** (the real
+  win; bounded cost). Files ≤ a small logical ceiling are compressed
+  *whole* at close when the ratio wins (an inode flag; uncompressed
+  files stay untouched — no amplification on incompressible data),
+  stored in ordinary runs whose total length is simply smaller.
+  Reads decompress the whole file; no cluster mapping, no random-
+  access problem, `bmap` untouched for the files that don't need it.
+  Value concentrates where AGFS's text lives.
+- **Stage 2 — general cluster compression**, only if a real consumer
+  demands it (large compressible files): the full mapping-layer
+  project, deferred until Stage 1 proves demand.
+
+Transparency to the journal is unchanged from the original framing
+(compressed data still journals as plain data blocks). Stat size is
+uncompressed; disk usage shrinks.
+
+**Interplay**: compression helps §J (retained version runs of text
+churn shrink) and the SSD story (less written), and is orthogonal to
+§K.
+
+- Format: inode flag (+ per-file metadata); stage 2 adds the cluster
+  map.
+- Acceptance (stage 1): guest writes a compressible small file →
+  block usage drops; reads are byte-identical; an incompressible file
+  is stored uncompressed; `agfscheck` clean.
+- Effort: stage 1 moderate; stage 2 high.
 
 ### G-2 — Volume/user encryption
 
