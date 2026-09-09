@@ -1097,3 +1097,58 @@ live files are deliberately out of scope for the flag's v1.
 scrub detects → FEC reconstructs → read byte-identical; overhead
 matches the configured K/M ratio; `agfscheck` tolerates parity
 records.*
+
+## N. Subvolumes — shared-pool volumes (future feature)
+
+Status: **FUTURE (2026-09) — decided in direction; not scheduled.**
+Format impact: a root-inode marker + per-subvolume label; the
+allocation model is unchanged. This is the AGFS-native answer to
+volume pooling — distinct from the block-layer RAID plan
+(`docs/design/software-raid-plan.md`), which mirrors *beneath* it.
+
+### N.1 What
+
+Multiple AGFS **subvolumes share one storage pool, transparently**:
+"free space" means free space every subvolume may draw on. The
+structural truth that makes this cheap: **free space is shared for
+free when there is only one filesystem** — one allocator, one free
+bitmap. No LVM-style fixed volumes, no grow/shrink, no partitions
+needed: a subvolume is a **designated root inode** (a directory marked
+as a mountable sub-root), and each marked root mounts as its own
+filesystem while all of them draw from the same pool. `df` on any
+subvolume shows the same pool-wide free.
+
+### N.2 Design shape
+
+- **Root marker**: an inode flag on the designated root inode (an
+  inode flag is cheaper than an attr for something checked at mount).
+- **Per-subvolume filesystem label** (2026-09): each subvolume carries
+  its own label, like a volume name — stored with the marker (the
+  label field on the marked root), surfaced by mount-by-label, `df`,
+  and the file manager.
+- **VFS**: mounting a subtree-inode as a root (bind-style mount with
+  its own identity) — FNX's VFS mounts devices; a sub-root mount is a
+  contained extension. Subvolume labels join `system.mounts` targets.
+- **No CoW**: subvolume *snapshots* and *clones* are deliberately out
+  — they are the CoW half that demands a new architecture. §J time
+  travel and §D-3 reflink already deliver those user outcomes on the
+  single-FS model.
+
+### N.3 Semantics to decide when scheduled
+
+- Rename/move across subvolume roots (mount-boundary rule: normally
+  refused, like real mounts).
+- Nesting (subvolumes inside subvolumes) and the marker's
+  relationship to §L directory defaults (a marked root is a folder
+  with more authority).
+- Per-subvolume usage accounting (§E quotas are a query over the
+  tree — each root's usage is queryable without new machinery).
+
+### N.4 Relationship
+
+- Beneath: one AGFS device per pool, optionally mirrored by the
+  block-layer RAID plan. Subvolumes remove the need for GPT
+  partitions as the pooling mechanism (partitions remain for
+  multi-OS / interop disks, `disk` helper unchanged).
+- Above: `system.mounts` mounts subvolumes by label; FSH mounts them
+  at `/Volumes/<label>`.
