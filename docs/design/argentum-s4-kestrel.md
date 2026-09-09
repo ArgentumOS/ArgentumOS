@@ -122,6 +122,20 @@ the map (BadMatch, and Xfb faults on the error path).
 band active (accent); the root's `_NET_ACTIVE_WINDOW` = B's xid
 (Kestrel logs it); clicking A swaps both back. Screendump shows one
 accent band vs one neutral band.
+Status: **DONE** — Kestrel tracks the active client: the first managed
+window takes focus; a click inside a client (or on its frame) focuses
+it — the WM sees client clicks through a passive `XGrabButton` +
+`XAllowEvents(ReplayPointer)` (ButtonPressMask is an AtMostOneClient
+event: the client already selected it, so a plain XSelectInput would
+BadAccess — the grab + replay is the standard WM mechanism). focusClient
+raises the frame, repaints both bands via `FrameChrome::setActive`
+(armed/accent band + light label vs idle chrome), sets the input
+focus, publishes `_NET_ACTIVE_WINDOW` and logs `KESTREL: focus`.
+Kestrel keeps a non-fatal X error handler. Gate `.build/s41b_run.sh`
++ `s41b_assert.py` -> S41B-OK (7 checks: A then B focused, b0 shows
+A accent/B neutral, a real monitor click on B's content flips the
+bands, contents stable). S41A re-run green with its updated
+expectation (the first-managed window now carries the active accent).
 
 ### S4.1c — WM_DELETE close
 *Acceptance:* clicking the active frame's close glyph sends

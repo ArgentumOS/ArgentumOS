@@ -10,6 +10,7 @@
 #include <argentum/argentum.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/Xutil.h>
 
 #include <cstdio>
@@ -32,10 +33,13 @@ static int xerrCount = 0;
 
 /* ---- frame chrome -------------------------------------------------- */
 
+class FrameChrome;	/* the frame's title-band content view */
+
 /* A managed client + its Kestrel frame (an argentum::Window whose
  * content view draws the title band). */
 struct Managed {
 	argentum::Window *frame = nullptr;
+	FrameChrome *chrome = nullptr;
 	::Window client = 0;
 	char title[128] = { 0 };
 	int fx = 0, fy = 0;	/* frame origin (px, root) */
@@ -44,6 +48,23 @@ struct Managed {
 };
 
 static std::vector<Managed *> gFrames;
+static void focusClient(Managed *m);	/* S4.1b (defined below) */
+static Managed *gActive = nullptr;	/* S4.1b focused client */
+static ::Window ewmhRoot = 0;
+
+/* S4.1b EWMH: publish _NET_ACTIVE_WINDOW on the root. */
+static void
+setActiveProperty(::Window client)
+{
+	if (!ewmhRoot) {
+		ewmhRoot = DefaultRootWindow(dpy);
+	}
+	Atom netActive = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+
+	XChangeProperty(dpy, ewmhRoot, netActive, XA_WINDOW, 32,
+			PropModeReplace, (unsigned char *) &client, 1);
+	XSync(dpy, False);
+}
 
 /* The frame's content: chrome band (title + close glyph plate) over a
  * page plate that fills the rest of the frame under the client. */
@@ -52,6 +73,17 @@ public:
 	explicit FrameChrome(const char *title)
 	{
 		strncpy(title_, title, sizeof(title_) - 1);
+	}
+
+	/* S4.1b: the active frame's band is accent-tinted; the title
+	 * flips to the armed label colour. */
+	void setActive(bool active)
+	{
+		if (active_ == active) {
+			return;
+		}
+		active_ = active;
+		setNeedsDisplay();
 	}
 
 	void draw(GraphicsContext &g) override
@@ -63,7 +95,10 @@ public:
 		int w = (int) (f.size.w * ppt + 0.5);
 		int h = (int) (f.size.h * ppt + 0.5);
 		int band = BAND_H;
-		Theme::Params p = t.state(ControlState::Idle);
+		Theme::Params p = t.state(active_ ? ControlState::Armed :
+					  ControlState::Idle);
+		std::uint32_t label = active_ ?
+			t.state(ControlState::Armed).label : t.text();
 
 		if (band > h) {
 			band = h;
@@ -82,7 +117,7 @@ public:
 			int ty = (int) ((band - box * ppt) / 2.0);
 
 			g.drawText(t.fontFamily(), t.fontSizePt(), 8, ty,
-				   title_, t.text());
+				   title_, label);
 		}
 		int cw = 18;
 		int cx = w - cw - 6;
@@ -93,6 +128,7 @@ public:
 
 private:
 	char title_[128] = { 0 };
+	bool active_ = false;
 };
 
 /* ---- WM helpers ----------------------------------------------------- */
@@ -168,19 +204,31 @@ manageClient(const XMapRequestEvent &ev)
 			 (fh + BAND_H) / Application::shared().pxPerPt() } });
 	frame->setContentView(cv);
 	m->frame = frame;
+	m->chrome = cv;
 	m->fx = fx;
 	m->fy = fy;
 	m->fw = fw;
 	m->fh = fh;
 	gFrames.push_back(m);
 
-	/* reparent below the band + map frame and client */
+	/* reparent below the band + map frame and client; watch the
+	 * client's pointer events (S4.1b focus) via a passive button
+	 * grab — ButtonPressMask is an AtMostOneClient event (the
+	 * client itself selected it), so a plain XSelectInput would
+	 * BadAccess; the grab + ReplayPointer is how a WM sees clicks
+	 * without stealing them */
 	XReparentWindow(dpy, m->client, frame->xid(), 0, BAND_H);
+	XGrabButton(dpy, Button1, AnyModifier, m->client, False,
+		    ButtonPressMask, GrabModeSync, GrabModeAsync,
+		    None, None);
 	XMapWindow(dpy, m->client);
 	XMapWindow(dpy, frame->xid());
 	m->mapped = true;
 	XRaiseWindow(dpy, stripX);
 	XSync(dpy, False);
+	if (!gActive) {
+		focusClient(m);		/* first window gets focus */
+	}
 	printf("KESTREL: manage 0x%lx '%s' frame=0x%lx at %d,%d %dx%d\n",
 	       (unsigned long) m->client, m->title,
 	       (unsigned long) frame->xid(), fx, fy, fw, fh);
@@ -200,6 +248,9 @@ unmanageClient(::Window client, bool destroyed)
 		printf("KESTREL: unmanage 0x%lx '%s'\n",
 		       (unsigned long) m->client, m->title);
 		fflush(stdout);
+		if (gActive == m) {
+			gActive = nullptr;
+		}
 		argentum::Window *frame = m->frame;
 
 		for (size_t i = 0; i < gFrames.size(); i++) {
@@ -219,6 +270,48 @@ unmanageClient(::Window client, bool destroyed)
 	XSync(dpy, False);
 }
 
+/* ---- S4.1b focus ----------------------------------------------------- */
+
+/* Make `m` the active client: repaint both bands, raise, focus the
+ * input, publish _NET_ACTIVE_WINDOW. */
+static void
+focusClient(Managed *m)
+{
+	if (!m || m == gActive) {
+		return;
+	}
+	Managed *prev = gActive;
+
+	gActive = m;
+	if (prev && prev->chrome) {
+		prev->chrome->setActive(false);
+	}
+	if (m->chrome) {
+		m->chrome->setActive(true);
+	}
+	XRaiseWindow(dpy, m->frame->xid());
+	XSetInputFocus(dpy, m->client, RevertToParent, CurrentTime);
+	setActiveProperty(m->client);
+	XSync(dpy, False);
+	printf("KESTREL: focus 0x%lx '%s'\n",
+	       (unsigned long) m->client, m->title);
+	fflush(stdout);
+}
+
+/* A click lands in a managed window (its client area or its frame's
+ * title band): focus the owner. Returns true when consumed. */
+static bool
+focusClick(::Window win)
+{
+	for (Managed *m : gFrames) {
+		if (win == m->client || win == m->frame->xid()) {
+			focusClient(m);
+			return true;
+		}
+	}
+	return false;
+}
+
 /* ---- the event hook: WM events on the root -------------------------- */
 
 static bool
@@ -227,6 +320,15 @@ kestrelHook(void *xevent)
 	XEvent *ev = (XEvent *) xevent;
 
 	switch (ev->type) {
+	case ButtonPress:
+		if (focusClick(ev->xbutton.window)) {
+			/* replay the press into the client so its own
+			 * UI sees the click after we take focus */
+			XAllowEvents(dpy, ReplayPointer, CurrentTime);
+			XSync(dpy, False);
+			return true;
+		}
+		return false;
 	case MapRequest:
 		manageClient(ev->xmaprequest);
 		return true;
@@ -267,8 +369,14 @@ kestrelHook(void *xevent)
 }
 
 static int
-xerr(Display *, XErrorEvent *)
+xerr(Display *, XErrorEvent *e)
 {
+	if (e) {
+		fprintf(stderr, "KESTREL: X error op=%d code=%d res=%lu\n",
+			e->request_code, e->error_code,
+			(unsigned long) e->resourceid);
+		fflush(stderr);
+	}
 	xerrCount++;
 	return 0;
 }
@@ -346,7 +454,8 @@ main()
 		fprintf(stderr, "KESTREL: another WM owns the display\n");
 		return 1;
 	}
-	XSetErrorHandler(nullptr);
+	/* keep the handler installed: a stray error must log, not exit */
+	xerrCount = 0;
 
 	/* the menubar strip: a full-width argentum window at the top */
 	argentum::Window bar;
