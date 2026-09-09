@@ -249,11 +249,25 @@ public:
 	/* the shared FreeType library handle (opaque; text.cpp internals
 	 * cast it back to FT_Library). Not for app code. */
 	void *freeTypeHandle() const;
+	/* S4.1a Kestrel: the X Display the event loop reads (opaque
+	 * Xlib Display*). WM selection must live on THIS connection so
+	 * the run() loop's event hook sees MapRequest etc. */
+	void *display() const;
 
 	/* Event loop (S0.3): dispatch X events to the registered windows'
 	 * responder virtuals (keyDown/keyUp/mouseDown/mouseUp/draw) until
 	 * terminate() is called. Returns 0 on a clean stop. */
 	int run();
+
+	/* S4.1a Kestrel hook: when set, run() calls hook(xevent) for
+	 * every X event BEFORE the per-window dispatch. Returning true
+	 * consumes the event (the toolkit skips it); false lets normal
+	 * dispatch continue. The pointer is the Xlib XEvent (the public
+	 * header stays X-free, so the hook casts). Used by Kestrel to
+	 * see WM events (MapRequest etc. arrive on the root, which no
+	 * window owns). */
+	using EventHook = bool (*)(void *xevent);
+	void setEventHook(EventHook hook);
 
 	/* S2.2b: the session Theme (the NSAppearance analog) — loaded
 	 * lazily from the system.theme domain on first access; always

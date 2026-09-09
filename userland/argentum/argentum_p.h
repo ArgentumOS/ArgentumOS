@@ -41,6 +41,9 @@ struct Application::Impl {
 	int lastRootX = 0;
 	int lastRootY = 0;
 
+	/* S4.1a: optional raw-X event hook (Kestrel). null = off. */
+	Application::EventHook eventHook = nullptr;
+
 	/* S0.4 text stack. fontconfig is process-global (FcInit once);
 	 * FreeType needs one library handle shared by every face. */
 	bool ftInited = false;

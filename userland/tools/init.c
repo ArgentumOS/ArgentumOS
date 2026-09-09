@@ -236,7 +236,12 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[])
  * session.conf (written by the image builders: xfbdesk-root writes
  * `desktop = "xfb"`, uitest-root writes `desktop = "uitest"`). A
  * missing file or an unknown value keeps the default demo desktop. */
-enum session_kind { SESSION_XFB, SESSION_UITEST, SESSION_ZOO };
+enum session_kind {
+	SESSION_XFB,
+	SESSION_UITEST,
+	SESSION_ZOO,
+	SESSION_KESTREL
+};
 
 static enum session_kind read_session(void)
 {
@@ -280,6 +285,8 @@ static enum session_kind read_session(void)
 			kind = SESSION_UITEST;
 		else if (strcmp(v, "zoo") == 0)
 			kind = SESSION_ZOO;
+		else if (strcmp(v, "kestrel") == 0)
+			kind = SESSION_KESTREL;
 		break;
 	}
 	fclose(f);
@@ -335,6 +342,10 @@ static void start_xfb(void)
 		spawn_gui("/System/Shared/tests/widget_zoo",
 			  (char *const[]) { "widget_zoo", NULL }, dpy_env);
 		puts("XDESK: zoo session launching (widget_zoo on :0)");
+	} else if (session == SESSION_KESTREL) {
+		spawn_gui("/System/Tools/kestrel",
+			  (char *const[]) { "kestrel", NULL }, dpy_env);
+		puts("XDESK: kestrel session launching (kestrel WM on :0)");
 	} else {
 		spawn_gui("/System/Shared/X11/bin/xdraw",
 			  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },

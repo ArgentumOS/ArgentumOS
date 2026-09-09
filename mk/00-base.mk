@@ -157,6 +157,21 @@ zoo-img: zoo-root
 zoo: .build/ovmf/OVMF.fd zoo-img build64
 	$(MAKE) run-qemu ROOTIMG=$(ZOOIMG)
 
+# --- Kestrel: the S4 window manager runs as the session (init spawns it
+# --- instead of the demo clients) via session.conf desktop="kestrel".
+# --- Managed probe clients (krel_a/krel_b) are launched by the gate.
+KRELROOT ?= .build/kestrel-root
+KRELIMG  ?= .build/rootagfs-kestrel.img
+
+kestrel-root: userland64
+	rm -rf $(KRELROOT)
+	cp -a $(ROOTFS64) $(KRELROOT)
+	cp $(XFB_BIN) "$(KRELROOT)/System/Shared/X11/bin/Xfb"
+	printf 'desktop = "kestrel"\n' > "$(KRELROOT)/System/Configuration/session.conf"
+kestrel-img: kestrel-root
+	python3 tools/mkagfs.py $(KRELROOT) $(KRELIMG) 64
+	python3 tools/agfscheck.py $(KRELIMG) $(KRELROOT)
+
 # Boot the AGFS root image (.build/rootagfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
 # filesystems (minix -> ext2 -> iso9660 -> agfs) and finds agfs; the same

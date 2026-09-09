@@ -99,6 +99,23 @@ app's content appears inside a Kestrel frame with the argentum chrome
 title band showing the app's `WM_NAME`; the frames sit in the work
 area below the menubar strip. Screendump + Kestrel logs (`KESTREL:
 manage <xid> '<title>'`).
+Status: **DONE** — `userland/kestrel/kestrel.cpp`: a reparenting WM on
+the toolkit's own connection (`Application::display()` +
+`Application::setEventHook`): SubstructureRedirect on the root (with a
+BadAccess guard), every MapRequest gets an argentum::Window frame whose
+`FrameChrome` content view draws the chrome title band (title +
+close-glyph plate), the client is reparented below the band at its
+requested spot clamped into the work area below the strip, and a
+full-width `StripView` strip (the future menubar) sits at the top.
+Init gains `desktop = "kestrel"` (SESSION_KESTREL); `make kestrel-img`
+builds `.build/rootagfs-kestrel.img`. Probes `krel_a`/`krel_b`, gate
+`.build/s41a_run.sh` + `s41a_assert.py` -> S41A-OK (10 checks:
+two manage logs with titles/positions, strip + both frame bands in
+chrome, each probe's content at its band-offset position, title text
+in the band). Load-bearing: the WM must select redirect on the SAME
+connection the event loop reads (the hook only sees that display), and
+the strip maps via XMapWindow — the toolkit's show() focus grab races
+the map (BadMatch, and Xfb faults on the error path).
 
 ### S4.1b — EWMH focus + active chrome
 *Acceptance:* clicking inside probe B raises B and paints B's title

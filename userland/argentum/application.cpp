@@ -271,6 +271,18 @@ Application::lastPointerRoot(int *rootX, int *rootY) const
 	}
 }
 
+void *
+Application::display() const
+{
+	return impl_->dpy;
+}
+
+void
+Application::setEventHook(Application::EventHook hook)
+{
+	impl_->eventHook = hook;
+}
+
 int
 Application::run()
 {
@@ -284,6 +296,11 @@ Application::run()
 	while (!impl_->stopping) {
 		XNextEvent(impl_->dpy, &ev);
 
+		/* S4.1a: Kestrel's raw-X hook sees every event first and
+		 * may consume WM events (MapRequest etc. on the root). */
+		if (impl_->eventHook && impl_->eventHook(&ev)) {
+			continue;
+		}
 		/* find the owning window by X id */
 		auto it = impl_->windows.find((unsigned long) ev.xany.window);
 		if (it == impl_->windows.end()) {
