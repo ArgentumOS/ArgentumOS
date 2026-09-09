@@ -20,6 +20,7 @@
 #include <pixman.h>
 
 #include <map>
+#include <string>
 #include <vector>
 
 namespace argentum {
@@ -230,6 +231,14 @@ struct SplitView::Impl {
 struct TabViewItem::Impl {
 	char title[128] = { 0 };
 	View *page = nullptr;
+};
+/* S2.4e TableView state (see argentum.h). */
+struct TableView::Impl {
+	TableViewDataSource *dataSource = nullptr;
+	TableViewDelegate *delegate = nullptr;
+	std::vector<std::string> titles;	/* column titles */
+	double headerH = 0;			/* 0 = auto (rowH + 2 pt) */
+	int selected = -1;
 };
 
 /* S2.4d TabView state (see argentum.h). */

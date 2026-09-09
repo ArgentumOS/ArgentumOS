@@ -287,6 +287,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/structure_b.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/structure_b"
+	# structure_e: S2.4e TableView acceptance — data-source rows in a ScrollView
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/structure_e.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/structure_e"
 	# structure_d: S2.4d TabView acceptance — tab clicks switch the page
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/tests/structure_d.cpp \

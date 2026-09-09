@@ -1150,6 +1150,57 @@ private:
 	Impl *tb_;
 };
 
+/* S2.4e: TableView-basic — the first DATA view (NSTableView-lite),
+ * designed to live inside a ScrollView as its document. Columns have
+ * titles (setColumns); the rows come from a data source protocol:
+ *
+ *   class MySource : public TableViewDataSource {
+ *     int rowCount() const override;
+ *     const char *cellText(int row, int col) const override;
+ *   };
+ *
+ * Clicking a row selects it (single selection); the delegate's
+ * tableSelectionDidChange fires. The table draws a chrome header row
+ * and the data rows at a fixed row height; it owns no scroll state
+ * (the ScrollView scrolls the whole document, header included in v1).
+ * A11y role Table: label/value mirror the app's choice. */
+class TableView;		/* fwd (delegate refs it) */
+
+class TableViewDataSource {
+public:
+	virtual ~TableViewDataSource() {}
+	virtual int rowCount() const = 0;
+	virtual const char *cellText(int row, int col) const = 0;
+};
+
+class TableViewDelegate {
+public:
+	virtual ~TableViewDelegate() {}
+	virtual void tableSelectionDidChange(TableView *table, int row) {}
+};
+
+class TableView : public View {
+public:
+	TableView(TableViewDataSource *dataSource,
+		  TableViewDelegate *delegate = nullptr);
+	~TableView() override;
+
+	void setColumns(const char *const *titles, int count); /* copied */
+	int columnCount() const;
+	double rowHeight() const;	/* derived from the theme font */
+	void setHeaderHeight(double pt);	/* 0 = auto */
+
+	void selectRow(int row);	/* -1 clears */
+	int selectedRow() const;
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+
+private:
+	struct Impl;
+	Impl *tb_;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

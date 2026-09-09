@@ -190,6 +190,19 @@ rows inside a ScrollView (probes on a header cell and a body cell);
 injected click on row k selects it (selected-row chrome probe) and the
 delegate logs `TABLE-SELECT: k`. Empty/one-row data sources do not
 crash.
+Status: **DONE** — `userland/argentum/table.cpp` (decl in
+`argentum.h`, Impl in `argentum_p.h`). The table draws a chrome header
+row (column titles) + the data rows from a
+`TableViewDataSource`/`TableViewDelegate` protocol at a theme-derived
+row height; even rows page-coloured, odd rows zebra, the selected row
+an accent-tinted fill; row clicks select + fire the delegate; cell
+text draws with a per-cell clip. Designed as a ScrollView document
+(whole table scrolls in v1; header not pinned). A11y Table. Gate
+`.build/s24e_run.sh` + `s24e_assert.py` -> S24E-OK (8 checks:
+role=table, row click 2 -> S24E-SELECT + TABLE-SELECT: 2, header
+chrome + glyphs, zebra, page -> selection-tint flip). Regressions
+S24A-OK, S24D-OK. **S2.4 (Tier 2 structure, L6) is therefore
+complete: S2.4a-e all green and committed.**
 
 ## 5. Files
 
