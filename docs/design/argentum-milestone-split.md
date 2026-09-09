@@ -224,11 +224,12 @@ structure, S2.5 the reference board + a11y battery).
 
 ## S3 — Input & text depth
 
-- **S3.1 — focus/traversal + keyboard equivalents.**
+- **S3.1 — focus/traversal + keyboard equivalents.** (DONE 69315c2,
+  7f1d99f — `docs/design/argentum-s3-input-depth.md`)
   *Acceptance:* reference app operable by keyboard traversal across
   focusable widgets.
 - **S3.2 — edit-widget text input depth.** TextField/secure caret,
-  selection, editing (shared with TextView later).
+  selection, editing (shared with TextView later). (DONE e9ab0dd)
   *Acceptance:* original S3 acceptance — the reference app is fully
   operable without a mouse (including typing in edit fields).
 
