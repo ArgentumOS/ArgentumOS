@@ -1002,6 +1002,44 @@ private:
 	Impl *pop_;
 };
 
+/* S2.4a: Box — a titled chrome panel + the row/column arrangement
+ * role (NSBox-lite / NSStackView-lite). With a title the Box draws a
+ * chrome panel: a title cap strip on top, a page-coloured body, a
+ * chrome outline border; untitled (setTitle("")) it is an invisible
+ * arrangement container. Row/Column rewrites the subview frames
+ * (packing along the axis with `spacing`; cross-axis centred), so
+ * boards do not hand-place every control; None keeps author frames
+ * (the S2.1d springs/struts path). A11y role Group, label = title. */
+enum class BoxLayout : int {
+	Free = 0,		/* author frames (no rewrite) */
+	Row,			/* pack left -> right */
+	Column,			/* pack top -> bottom */
+};
+
+class Box : public View {
+public:
+	Box();
+	~Box() override;
+
+	void setTitle(const char *utf8);	/* copied; "" = no cap */
+	const char *title() const;
+	void setLayout(BoxLayout layout);
+	BoxLayout layout() const;
+	void setSpacing(double pt);
+	double spacing() const;
+
+	void draw(GraphicsContext &g) override;
+
+private:
+	/* S2.4a internals: pack children along the layout axis (rewrites
+	 * subview frames in pt); the title cap height in px (0 untitled) */
+	void arrange();
+	int capPx(double ppt) const;
+
+	struct Impl;
+	Impl *bx_;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

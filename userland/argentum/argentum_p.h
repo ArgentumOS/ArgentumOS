@@ -201,6 +201,14 @@ struct Control::Impl {
 	bool focused = false;
 };
 
+/* S2.4a Box state (see argentum.h): title + layout mode + spacing. */
+struct Box::Impl {
+	char title[64] = { 0 };
+	BoxLayout layout = BoxLayout::Free;
+	double spacing = 6.0;		/* pt between arranged children */
+	bool logged = false;		/* BOX-A arrange log printed once */
+};
+
 /* S2.2b Label state: text + colour/size overrides (0 = theme). The
  * a11y label mirrors the text (kept in View::Impl). */
 struct Label::Impl {

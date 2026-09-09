@@ -111,6 +111,17 @@ the children's frames (no manual frames), so the buttons sit at the
 packed positions and the nested row is centred inside its parent cell.
 Pixel probes hit the box chrome border + the title text at the cap,
 and the buttons at their ARRANGED (not author-given) origins.
+Status: **DONE** — `userland/argentum/box.cpp` (BoxLayout enum in
+`argentum.h`; Box::Impl in `argentum_p.h`). Box draw paints the chrome
+panel (outline + page body + gradient cap + centred title) and runs
+the arrangement pass at the top of draw (children pack along the axis
+at their own sizes with `spacing`, cross-axis centred inside the
+content area below the cap; untitled Boxes are invisible arrangement
+containers). `Box::capPx()` derives the cap from the theme title
+metrics. One-time BOX-A logs carry the arranged frames for the gate
+(probe `structure_a`, gate `.build/s24a_run.sh` + `s24a_assert.py` ->
+S24A-OK: 15 checks incl. the packed pitch 36 pt, nested row centring,
+cap glyphs, border, buttons at arranged origins).
 
 ### S2.4b — ScrollView: clip + programmatic scroll + thumb
 *Acceptance:* a tall content view (a marker grid) inside a ScrollView;

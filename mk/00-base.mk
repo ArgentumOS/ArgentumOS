@@ -227,6 +227,7 @@ ARGENTUM_SRCS = userland/argentum/application.cpp \
 	userland/argentum/menu.cpp userland/argentum/slider.cpp \
 	userland/argentum/stepper.cpp userland/argentum/segmented.cpp \
 	userland/argentum/progress.cpp userland/argentum/level.cpp \
+	userland/argentum/box.cpp \
 	userland/argentum/imageview.cpp userland/argentum/popup.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 

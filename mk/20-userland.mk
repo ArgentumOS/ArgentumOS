@@ -275,6 +275,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
 		userland/tests/zoo_inj.cpp -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/zoo_inj"
+	# structure_a: S2.4a Box acceptance — titled Column Box packs buttons
+	# + a nested Row Box; logs BOX-A arranged frames for the gate.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/structure_a.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/structure_a"
 	# xshm_m0: MIT-SHM M0 acceptance — Xlib client (the UIKit transport)
 	# paints a window via a SysV segment + XShmPutImage (libXext); logs
 	# SHMM0-DONE for the gate.
