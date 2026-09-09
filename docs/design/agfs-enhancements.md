@@ -842,3 +842,79 @@ versioning builds on it.
   tail with xattrs (ACLs) and the 0x13 name record — a deep inline
   history starves ACLs. Retention depth for inline content must
   budget the tail, not just count versions.
+
+## K. Standard attribute suite (typed, indexed metadata)
+
+Status: **DESIGN (2026-09) — direction decided in conversation; no
+code.** New area. Format impact: attr-name conventions + index
+availability only; no structural change.
+
+### K.1 Why
+
+AGFS has typed, indexed attributes and a query engine, but nothing
+standard to index. Live Directories (§B) can only answer "all images"
+if every image carries the same typed, indexed key; without a
+convention every app invents its own and queries cannot see across
+apps. This is BeOS's heritage: BFS's type attributes + maintained
+indices made Tracker's browsing and queries work — AGFS inherited the
+machinery (indices, query, even the attr *type* field via the FNX
+ioctl extension) without inheriting the convention.
+
+### K.2 Decisions (locked)
+
+- **Suite attrs live under the `system.*` namespace** (one namespace
+  doctrine): `system.mime.type` first.
+- **MIME strings are the type vocabulary** (`text/plain`,
+  `image/png`, …) — the data-file lingua franca, BeOS precedent; the
+  app model's bundle `document-types` tokens map to MIME.
+- **Lazy userland store**: no kernel type table. A **type-maintainer
+  daemon watches inotify** (create / rename / close-after-write) over
+  the user-data scope and sets `system.mime.type` from an
+  ext→MIME mapping (a `.conf` data domain, system + user scopes),
+  **set-if-absent** — apps that know their own type (bundle
+  manifests) set it on save and their explicit value wins. Files
+  with no mapping and no app-set type simply carry no attr; the
+  index holds entries only for files that have one (the index engine
+  already behaves this way).
+- **Shared watcher with §J**: the type maintainer and the §J V-3
+  Time-Machine capture pass are both inotify watchers over the user
+  tree — one per-person housekeeping daemon does both (type on
+  close-write, hourly capture), sharing a single watch.
+
+### K.3 Grounding
+
+- Typed attr machinery exists: the attr type travels with the record
+  (`xattr.c` preserves Haiku types; the FNX ioctl extension exposes
+  it over the type-less Linux xattr ABI).
+- Indices exist with **index-on-modify** maintenance (`indices.c`),
+  and `mkagfs` already lays down the default index set at format
+  (name, last_modified, size, BEOS:APP_SIG, demo indices —
+  `tools/mkagfs.py` "11 index inodes"). The MIME index is not among
+  them.
+- inotifyfs exists (change journal), already serving the §J capture
+  design.
+
+### K.4 Consumers (why the suite earns its keep)
+
+- **File manager**: type-based browsing and columns (the Miller-column
+  FM from the OS profile).
+- **§B Live Directories**: "all images", "files of type X" as
+  first-class query-backed directories.
+- Future open-with registration (bundle `document-types` already
+  declares the reverse mapping).
+
+### K.5 Open
+
+- **The rest of the v1 suite**: grows by consumer demand (FM column
+  needs), not completeness — last-modified/size are already inode
+  fields with indices; the suite should stay deliberately small.
+- **MIME index availability**: add the suite's indices to `mkagfs`'s
+  default set, or create indices on a live volume at need (Haiku
+  supports both mkfs-time and runtime index creation)? Determines
+  whether `mkagfs`-made volumes are query-ready for MIME from day one.
+- **Maintainer daemon identity**: per-person session service (runs as
+  the person, unprivileged — consistent with §J V-3) vs boot
+  service; name TBD.
+- **Precedence details**: apps may want a *locked* type (an explicit
+  set the maintainer never overwrites) vs set-if-absent-only; and
+  unguessable files (no ext, no mapping) stay untyped by design.
