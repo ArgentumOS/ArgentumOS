@@ -1037,3 +1037,63 @@ stamp their content" covers types, versions, and compression alike.
 - Whether `system.defaults` itself is inherited-and-merged vs
   replaced at each level (ACL precedent: replaced — the child's own
   defaults are its own; merging is a later want).
+
+## M. Extent FEC — single-disk self-healing (PAR2-style parity)
+
+Status: **DESIGN (2026-09) — direction decided in conversation; no
+code.** New area. Format impact: a per-file protection flag + group
+parity records; no structural change to the data stream.
+
+### M.1 Concept
+
+Per-file erasure coding over extents: a protected file's data blocks
+are grouped (K data + M parity), and a detected-but-unrepairable
+block is reconstructed from its group's parity — **single-disk
+self-healing at ~5–10% redundancy instead of `copies=2`'s 100%.** No
+mainstream filesystem offers this; on a one-disk personal machine it
+is the only repair option under 2× storage.
+
+**Prerequisite, named plainly**: parity cannot repair what it cannot
+locate. Detection first — X-SSD4's metadata checksums + scrub find
+the bad block; FEC reconstructs it. FEC without X-SSD4 is a repair
+mechanism with no trigger; M below assumes X-SSD4 lands.
+
+**The write-amplification trap**: updating one block in a protected
+group rewrites the group's parity — the RAID-5 write-hole pattern at
+file level. On live, actively-written files that is a killer; on
+**static, write-once data it vanishes** (parity written once, never
+updated).
+
+### M.2 The first consumer: §J version history
+
+Hourly Time-Machine versions are append-only and immutable — the
+ideal FEC payload, and the data most worth self-healing (history kept
+"just in case" should survive rot). Capture writes a version, computes
+its group parity once, done. Documents/archives are the second tier;
+live files are deliberately out of scope for the flag's v1.
+
+### M.3 Notes
+
+- Codec: Reed–Solomon (Cauchy/Vandermonde variant), a bounded,
+  well-understood math component; permissive implementations exist to
+  adapt under the license doctrine.
+- Interplay: orthogonal to §K; compressed protected files (G-1) —
+  parity over the compressed stream (what's on disk) is the coherent
+  choice; group geometry must tolerate variable physical lengths.
+- Journal: parity for a write-once version is computed after the data
+  commit, so it adds no journal transaction of its own.
+
+### M.4 Milestones (draft)
+
+- **M0 — detection gate**: X-SSD4 checksums + scrub land first
+  (detect-and-report working before any repair exists).
+- **M1 — parity engine**: group encode/decode over extent lists for
+  static, flagged files; repair path exercised by scrub-crafted
+  corruption.
+- **M2 — §J wiring**: Time-Machine capture computes parity for
+  retained versions; restore verifies + repairs.
+
+*Acceptance (M1/M2): corrupt one block of a protected static file →
+scrub detects → FEC reconstructs → read byte-identical; overhead
+matches the configured K/M ratio; `agfscheck` tolerates parity
+records.*
