@@ -352,6 +352,21 @@ struct TextField::Impl {
 	std::function<void(TextField *)> onEndEdit; /* commit callback */
 };
 
+/* TXT-a TextView internals. The layout memoizes the visual lines
+ * (byte ranges over the document) and is recomputed when the text or
+ * the wrap width changes. */
+struct TextViewLine {
+	unsigned int start;		/* bytes over the document */
+	unsigned int end;
+};
+
+struct TextView::Impl {
+	std::string text;
+	bool dirty = true;		/* layout stale */
+	double wrapPt = 0;		/* wrap width of the last layout */
+	std::vector<TextViewLine> lines;	/* top to bottom */
+};
+
 /* S2.2a text core: shared run internals (implemented in text.cpp).
  * The S0.4 Window::drawText and the S2.2a GraphicsContext::drawText
  * share match -> shape -> metrics; each sink then rasterizes the

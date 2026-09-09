@@ -133,6 +133,24 @@ pixel probes + guest-log assertions; `halt -f`), then regressions
 (S13-PIXELS, S22D, S31A/B, S32, zoo-adjacent S24X) and a commit.
 
 ### TXT-a — layout + read-only draw
+Status: **DONE** — `TextView` (a Control-shaped View) owns a
+`std::string` document (`
+`→`
+` on setValue), memoizes the layout
+(byte-range visual lines; recomputed on text or width change), draws
+each visual line in the theme font at a fixed line box (ascent +
+descent + 4 pt leading). Wrap = greedy at spaces; a single word wider
+than the content width character-wraps; a hard break's segment can be
+empty (blank line). Public `lineCount()`/`lineText(i)` expose the
+visual lines. A11y `TextArea` role ("text area"), value mirrors the
+document. Gate `.build/s_txta_run.sh` + `s_txta_assert.py` ->
+S-TXTA-OK (10 checks: the logged wrap = 5 lines — paragraph 1 wrapped
+to 3, `
+
+` blank preserved, paragraph 2 after the break; role reads
+back; screendump ink probes land on each non-blank line's band, the
+blank band is clean, page below). Regressions S22D-OK, S31A-OK,
+S13-PIXELS-OK (6). Board `userland/tests/textview_a.cpp`.
 *Acceptance:* `textview_a` shows, in one window at a fixed content
 width, a document with a forced `\n` and a long paragraph wrapping to
 ≥ 3 visual lines. The board logs `TXT-A:` geometry lines (line count,

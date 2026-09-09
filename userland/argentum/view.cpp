@@ -502,6 +502,7 @@ accessibilityRoleName(AccessibilityRole role)
 	case AccessibilityRole::RadioButton: return "radio button";
 	case AccessibilityRole::TextField: return "text field";
 	case AccessibilityRole::SecureTextField: return "secure text field";
+	case AccessibilityRole::TextArea: return "text area";
 	case AccessibilityRole::Image: return "image";
 	case AccessibilityRole::Slider: return "slider";
 	case AccessibilityRole::Stepper: return "stepper";

@@ -81,7 +81,7 @@ TextMetrics textMetrics(const char *family, double sizePt,
  * view tree IS the a11y tree (no side table). */
 enum class AccessibilityRole : int {
 	Unknown, Window, Group, Box, StaticText, Button, CheckBox,
-	RadioButton, TextField, SecureTextField, Image, Slider,
+	RadioButton, TextField, SecureTextField, TextArea, Image, Slider,
 	Stepper, SegmentedControl, ProgressIndicator, LevelIndicator,
 	PopUpButton, ScrollArea, List, Table, Splitter,
 	TabGroup, MenuItem, HelpTag,
@@ -828,6 +828,37 @@ public:
 private:
 	struct Impl;
 	Impl *lbl_;
+};
+
+/* TXT-a (docs/design/argentum-textview.md): TextView — the L7 rich
+ * view. A multi-line UTF-8 document laid out (hard \n breaks + greedy
+ * word wrap at the content width) and drawn line by line in the theme
+ * font. v1 text is plain (no attributes/runs); TXT-a is read-only,
+ * TXT-b adds the document editing surface (click-to-position, typing,
+ * cross-line selection), TXT-c the ScrollView integration. A11y role
+ * TextArea; the a11y value mirrors the document. */
+class TextView : public Control {
+public:
+	TextView();
+	~TextView() override;
+
+	/* replaces the document (\r\n -> \n) */
+	void setValue(const char *utf8);	/* copied */
+	const char *value() const;
+
+	/* forces the layout and reports it (gates + a11y/scroll later) */
+	unsigned int lineCount();
+	/* copies the i-th VISUAL line (no \r/\n, no wrap-dropped trailing
+	 * space) into dst; false if i >= lineCount() */
+	bool lineText(unsigned int i, char *dst, unsigned int cap);
+
+	void draw(GraphicsContext &g) override;
+	void valueChanged();		/* after every setValue/edit */
+
+private:
+	struct Impl;
+	Impl *tv_;
+	void relayout();		/* recompute the visual lines */
 };
 
 /* S2.3a: MenuItem / Menu — the menu MODEL (Cocoa's NSMenu analog;
