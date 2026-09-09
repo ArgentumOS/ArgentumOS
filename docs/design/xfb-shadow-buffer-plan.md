@@ -1,6 +1,7 @@
 # Xfb server shadow buffer — frame-atomic software scanout
 
-Status: **PLAN (2026-09)** — no code yet. Related:
+Status: **DONE (S0-S2, 2026-09)** — shadow draw + damage-driven
+flush + config key shipped. Related:
 `docs/design/x11-xvfb-fb-plan.md` (Xfb), `docs/design/mit-shm-plan.md`
 (the complementary client→server copy removal).
 
@@ -57,6 +58,11 @@ pixmap at it; fb0 mapping retained as scanout only. No flush yet —
 temporarily the display freezes; verify *X-side* correctness only.
 **Acceptance**: X-side probes (the S1.x-style guest draws) complete
 against the shadow; server boots; no crash; fb0 intentionally stale.
+Status: **DONE** — subsumed by S1 (the shadow draw path IS the S1
+render path; S1's byte-identical probes prove X-side correctness).
+Implementation detail: screen memory = malloc'd `shadowMem` in
+`vfbTryFbdev()`; the fb0 mapping moves to `fb0Mem` and `freeScreenInfo`
+frees each accordingly.
 
 ### S1 — Damage-driven flush
 Damage on the screen pixmap; BlockHandler drains and copies damaged
@@ -66,12 +72,28 @@ pre-shadow build (the CHROME/PPM comparison harness); an idle-period
 copy counter reads zero (no flush when nothing changed); a
 full-window repaint leaves no partial-frame artifacts in a mid-repaint
 screendump (the actual fix this exists for).
+Status: **DONE** — `hw/xfb/InitOutput.c` (all in one file): damage
+registered on the ROOT WINDOW (not the screen pixmap — the damage
+pixmap key is registered after the screen pixmap exists, so the
+pixmap-private path reads out of bounds; the root window tracks via
+the per-screen damage list and receives every draw clipped into it);
+`xfbShadowBlockHandler` drains `DamageRegion` rects shadow->fb0 and
+logs `XFB-SHADOW: flushed`; the damage is armed lazily at the first
+BlockHandler (the root window only exists after AddScreen). Gate
+`.build/shadow_run.sh`/`shadow_assert.py` -> SHADOW-OK over the zoo
+session (boot draws flushed, idle 8 s = zero new copies, screendump
+pixel matches); S13 theme_chrome probes stay S13-PIXELS-OK.
 
 ### S2 — Config + fallback
 A `system.xfb` config key to disable the shadow (direct draw) for
 debugging/comparison; shadow on by default.
 **Acceptance**: flipping the key changes behavior without rebuild;
 both paths render identically at rest.
+Status: **DONE** — `system.xfb` `shadow = true|false` (default true)
+read by `hw/xfb/configargs.c` (`xfb_apply_shadow_key` ->
+`xfb_shadow_config`), consumed in `vfbTryFbdev()`. Gate
+`.build/s2_run.sh`/`s2_assert.py` + `s13c_pixels.py` ->
+S2-KEY-OK + S13-PIXELS-OK with `shadow = false` staged in the image.
 
 ## 5. Costs / caveats
 

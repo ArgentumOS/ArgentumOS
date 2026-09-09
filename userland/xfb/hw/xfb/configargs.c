@@ -22,6 +22,28 @@
 
 #define XFB_DOMAIN "system.xfb"
 
+/* system.xfb `shadow` key — Xfb shadow (S2 of
+ * docs/design/xfb-shadow-buffer-plan.md): render into an off-screen
+ * shadow and damage-flush to /dev/fb0 (frame-atomic scanout), default
+ * ON. Owned by InitOutput.c (extern int); set here before the screens
+ * init. (configargs.c has no X headers, so int not Bool.) */
+int xfb_shadow_config = 1;
+
+static void
+xfb_apply_shadow_key(char **keys, config_value_t *values, size_t nkeys)
+{
+	size_t i;
+
+	for (i = 0; i < nkeys; i++) {
+		if (strcmp(keys[i], "shadow"))
+			continue;
+		if (values[i].type != CONFIG_TYPE_BOOL)
+			continue;
+		xfb_shadow_config = values[i].v.boolean;
+		break;
+	}
+}
+
 /*
  * Emission kinds (docs/design/x11-xvfb-fb-plan.md "Arity table"):
  *   K_FLAG    boolean key: emit `on` when true, nothing when false.
@@ -189,6 +211,7 @@ xfb_config_args(int *argcp, char ***argvp)
 			"using command line only\n", config_strerror(e));
 		return;
 	}
+	xfb_apply_shadow_key(keys, values, nkeys);
 
 	/* Emit in table order; suppress a key whose option appears in the
 	 * real argv (per-key override). */

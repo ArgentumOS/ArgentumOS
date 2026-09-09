@@ -68,6 +68,7 @@ from The Open Group.
 #include "miline.h"
 #include "glx_extinit.h"
 #include "randrstr.h"
+#include "damage.h"         /* Xfb shadow flush (screen-pixmap damage) */
 
 #define VFB_DEFAULT_WIDTH      1280
 #define VFB_DEFAULT_HEIGHT     1024
@@ -93,6 +94,12 @@ typedef struct {
     Pixel whitePixel;
     unsigned int lineBias;
     Bool use_fbdev;         /* FNX fork: screen memory is mmap(/dev/fb0) */
+    Bool use_shadow;        /* Xfb shadow (docs/design/xfb-shadow-buffer-plan.md):
+                             * X draws land in shadowMem; the damage-driven
+                             * BlockHandler flush copies damaged rects to
+                             * fb0Mem (scanout). */
+    char *fb0Mem;           /* the /dev/fb0 mapping (scanout base) */
+    char *shadowMem;        /* malloc'd draw target when use_shadow */
     CloseScreenProcPtr closeScreen;
 
 #ifdef HAVE_MMAP
@@ -127,6 +134,164 @@ typedef enum { NORMAL_MEMORY_FB, SHARED_MEMORY_FB, MMAPPED_FILE_FB } fbMemType;
 static fbMemType fbmemtype = NORMAL_MEMORY_FB;
 static char needswap = 0;
 static Bool Render = TRUE;
+
+/* ---- Xfb shadow (docs/design/xfb-shadow-buffer-plan.md) ----------
+ *
+ * The fbdev screen memory is a malloc'd SHADOW; /dev/fb0's mapping is
+ * retained as the scanout buffer. Damage registered on the screen
+ * pixmap tracks every draw (miext/damage keeps one per-screen damage
+ * list and clips every draw region into each registered damage), so a
+ * BlockHandler drain copies only the damaged rects shadow -> fb0. The
+ * visible buffer therefore only ever receives completed regions of a
+ * consistent frame — as frame-atomic as software scanout gets without
+ * a vblank. Idle servers flush nothing (the drain is a no-op).
+ *
+ * S2: configargs sets xfb_shadow_config from the system.xfb domain
+ * (`shadow = true|false`); default TRUE (see configargs.c). */
+extern int xfb_shadow_config;
+
+typedef struct {
+    ScreenPtr pScreen;
+    DamagePtr pDamage;
+    PixmapPtr pPixmap;          /* screen pixmap == the shadow */
+    char *fb0;                  /* scanout base (/dev/fb0 mapping) */
+    size_t stride;              /* bytes per row (== width * 4) */
+    int width, height;
+    unsigned long flushes;      /* drains that copied at least one rect */
+    unsigned long idleDrains;   /* drains with an empty damage region */
+} XfbShadowRec, *XfbShadowPtr;
+
+static XfbShadowRec xfbShadow;
+static CloseScreenProcPtr xfbShadowPrevCloseScreen;
+static ScreenBlockHandlerProcPtr xfbShadowPrevBlockHandler;
+
+/* One-shot arm at the first BlockHandler: the root window only exists
+ * after AddScreen returns, and miext/damage keys must be registered
+ * only once pixmaps/windows with room for them exist. Damage on the
+ * ROOT WINDOW (a DRAWABLE_WINDOW without backing) tracks via the
+ * per-screen damage list (damageScrPriv->pScreenDamage), NOT the
+ * per-pixmap private that would read out of bounds for the screen
+ * pixmap created before the damage keys existed. Every draw on screen
+ * (any window) is clipped into each registered damage, so the root
+ * window damage sees the whole screen. */
+static Bool
+xfbShadowArm(ScreenPtr pScreen)
+{
+    DamagePtr pDamage;
+    WindowPtr pRoot = pScreen->root;
+
+    if (!pRoot) {
+        return FALSE;		/* retry next wake */
+    }
+    if (!DamageSetup(pScreen))
+        return FALSE;
+    pDamage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
+                           pScreen, pScreen);
+    if (!pDamage)
+        return FALSE;
+    DamageRegister(&pRoot->drawable, pDamage);
+    xfbShadow.pDamage = pDamage;
+    ErrorF("XFB-SHADOW: enabled %dx%d stride=%lu fb0=%p\n",
+           xfbShadow.width, xfbShadow.height,
+           (unsigned long) xfbShadow.stride, (void *) xfbShadow.fb0);
+    return TRUE;
+}
+
+/* Copy the pending damage region shadow -> fb0, rect by rect (row
+ * memcpy; both buffers share geometry and 32-bpp layout). */
+static void
+xfbShadowFlush(XfbShadowPtr pShadow)
+{
+    RegionPtr pRegion = DamageRegion(pShadow->pDamage);
+    PixmapPtr pPixmap = pShadow->pScreen->GetScreenPixmap(pShadow->pScreen);
+    FbBits *shaBase;
+    FbStride shaStride;
+    int shaBpp, shaXoff, shaYoff;
+    int nbox, i;
+    BoxPtr pbox;
+
+    if (!RegionNotEmpty(pRegion)) {
+        pShadow->idleDrains++;
+        return;
+    }
+    fbGetDrawable(&pPixmap->drawable, shaBase, shaStride,
+                  shaBpp, shaXoff, shaYoff);
+    nbox = RegionNumRects(pRegion);
+    pbox = RegionRects(pRegion);
+    for (i = 0; i < nbox; i++) {
+        int x0 = pbox[i].x1, y0 = pbox[i].y1;
+        int x1 = pbox[i].x2, y1 = pbox[i].y2;
+        int y;
+
+        if (x0 < 0) x0 = 0;
+        if (y0 < 0) y0 = 0;
+        if (x1 > pShadow->width) x1 = pShadow->width;
+        if (y1 > pShadow->height) y1 = pShadow->height;
+        if (x1 <= x0 || y1 <= y0)
+            continue;
+        for (y = y0; y < y1; y++) {
+            memcpy(pShadow->fb0 + (size_t) y * pShadow->stride +
+                   (size_t) x0 * 4,
+                   (char *) shaBase + (size_t) y * (size_t) shaStride *
+                   sizeof(FbBits) + (size_t) x0 * 4,
+                   (size_t) (x1 - x0) * 4);
+        }
+    }
+    pShadow->flushes++;
+    if (pShadow->flushes <= 4 || (pShadow->flushes % 250) == 0) {
+        ErrorF("XFB-SHADOW: flushed %d rects (total %lu)\n", nbox,
+               pShadow->flushes);
+    }
+    DamageEmpty(pShadow->pDamage);
+}
+
+static void
+xfbShadowBlockHandler(ScreenPtr pScreen, void *timeout)
+{
+    if (!xfbShadow.pDamage) {
+        (void) xfbShadowArm(pScreen);
+    }
+    xfbShadowFlush(&xfbShadow);
+    pScreen->BlockHandler = xfbShadowPrevBlockHandler;
+    xfbShadowPrevBlockHandler(pScreen, timeout);
+    pScreen->BlockHandler = xfbShadowBlockHandler;
+}
+
+static Bool
+xfbShadowCloseScreen(ScreenPtr pScreen)
+{
+    ErrorF("XFB-SHADOW: close (flushes=%lu idle=%lu)\n",
+           xfbShadow.flushes, xfbShadow.idleDrains);
+    if (xfbShadow.pDamage) {
+        DamageUnregister(xfbShadow.pDamage);
+        DamageDestroy(xfbShadow.pDamage);
+        xfbShadow.pDamage = NULL;
+    }
+    pScreen->BlockHandler = xfbShadowPrevBlockHandler;
+    pScreen->CloseScreen = xfbShadowPrevCloseScreen;
+    return pScreen->CloseScreen(pScreen);
+}
+
+/* Hook the shadow: swap the BlockHandler/CloseScreen; the damage
+ * registration happens lazily at the first wake (see xfbShadowArm). */
+static Bool
+xfbShadowEnable(ScreenPtr pScreen, char *fb0, size_t stride,
+                int width, int height)
+{
+    memset(&xfbShadow, 0, sizeof(xfbShadow));
+    xfbShadow.pScreen = pScreen;
+    xfbShadow.fb0 = fb0;
+    xfbShadow.stride = stride;
+    xfbShadow.width = width;
+    xfbShadow.height = height;
+
+    xfbShadowPrevBlockHandler = pScreen->BlockHandler;
+    pScreen->BlockHandler = xfbShadowBlockHandler;
+    xfbShadowPrevCloseScreen = pScreen->CloseScreen;
+    pScreen->CloseScreen = xfbShadowCloseScreen;
+    return TRUE;
+}
+
 
 #define swapcopy16(_dst, _src) \
     if (needswap) { CARD16 _s = _src; cpswaps(_s, _dst); } \
@@ -166,7 +331,14 @@ freeScreenInfo(vfbScreenInfoPtr pvfb)
      * no XWD header block to free. */
     if (pvfb->use_fbdev) {
 #ifdef HAVE_MMAP
-        munmap(pvfb->pfbMemory, pvfb->sizeInBytes);
+        if (pvfb->shadowMem) {
+            /* shadow active: pfbMemory == shadowMem (malloc'd); the
+             * fb0 mapping is the scanout and lives in fb0Mem */
+            munmap(pvfb->fb0Mem, pvfb->sizeInBytes);
+            free(pvfb->shadowMem);
+        } else {
+            munmap(pvfb->pfbMemory, pvfb->sizeInBytes);
+        }
         close(pvfb->fbdev_fd);
 #endif
         return;
@@ -925,10 +1097,24 @@ vfbTryFbdev(vfbScreenInfoPtr pvfb)
     pvfb->paddedBytesWidth = w * 4;
     pvfb->paddedWidth = w;
     pvfb->sizeInBytes = len;
-    pvfb->ncolors = 256;        /* unused without the XWD preamble */
     pvfb->pfbMemory = map;
+    pvfb->fb0Mem = map;
+    pvfb->shadowMem = NULL;
     pvfb->pXWDHeader = NULL;
     pvfb->use_fbdev = TRUE;
+    pvfb->use_shadow = FALSE;
+    if (xfb_shadow_config) {
+        pvfb->shadowMem = malloc(len);
+        if (!pvfb->shadowMem) {
+            ErrorF("fbdev: shadow alloc failed (%zu); drawing direct\n",
+                   len);
+        } else {
+            /* X drawing lands in the shadow; fb0 becomes scanout */
+            memset(pvfb->shadowMem, 0, len);
+            pvfb->pfbMemory = pvfb->shadowMem;
+            pvfb->use_shadow = TRUE;
+        }
+    }
 }
 
 
@@ -1038,6 +1224,20 @@ vfbScreenInit(ScreenPtr pScreen, int argc, char **argv)
     ret = fbCreateDefColormap(pScreen);
 
     miSetZeroLineBias(pScreen, pvfb->lineBias);
+
+    /* Xfb shadow (S1): the screen pixmap exists now; hook the
+     * damage-driven flush to the fb0 scanout. Falls back to direct
+     * drawing when damage is unavailable. */
+    if (pvfb->use_shadow) {
+        if (xfbShadowEnable(pScreen, pvfb->fb0Mem,
+                            (size_t) pvfb->width * 4,
+                            pvfb->width, pvfb->height)) {
+            pvfb->use_shadow = TRUE;
+        } else {
+            ErrorF("XFB-SHADOW: enable failed; drawing direct\n");
+            pvfb->use_shadow = FALSE;
+        }
+    }
 
     pvfb->closeScreen = pScreen->CloseScreen;
     pScreen->CloseScreen = vfbCloseScreen;
