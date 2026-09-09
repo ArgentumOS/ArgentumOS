@@ -434,6 +434,7 @@ TextView::deleteRange(unsigned int start, unsigned int end)
 	setAccessibilityValue(tv_->text.c_str());
 	setNeedsDisplay();
 	valueChanged();
+	scrollCaretToVisible();
 }
 
 void
@@ -461,6 +462,7 @@ TextView::insertAtCaret(const char *utf8)
 	setAccessibilityValue(tv_->text.c_str());
 	setNeedsDisplay();
 	valueChanged();
+	scrollCaretToVisible();
 }
 
 void
@@ -587,6 +589,7 @@ TextView::keyDown(const KeyEvent &e)
 	}
 	if (moved) {
 		setNeedsDisplay();
+		scrollCaretToVisible();
 	}
 }
 
@@ -600,6 +603,36 @@ TextView::mouseDown(const MouseEvent &e)
 	tv_->anchor = tv_->caret;
 	tv_->goalXPx = -1.0;
 	setNeedsDisplay();
+	scrollCaretToVisible();
+}
+
+void
+TextView::scrollCaretToVisible()
+{
+	relayout();
+	if (tv_->lines.empty()) {
+		return;
+	}
+	double x;
+	unsigned int li = lineForByte(tv_->text, tv_->lines, tv_->caret,
+				      &x);
+	Application &app = Application::shared();
+	double ppt = app.pxPerPt();
+	double box = lineBoxPx();
+	double topPt = (2.0 + (double) li * box) / ppt;
+	double hPt = box / ppt;
+
+	for (View *s = superview(); s; s = s->superview()) {
+		ScrollView *sv = dynamic_cast<ScrollView *>(s);
+
+		if (sv) {
+			Rect r = { {0, topPt},
+				   {frame().size.w, hPt} };
+
+			sv->scrollRectToVisible(r);
+			return;
+		}
+	}
 }
 
 /* ---- drawing ---------------------------------------------------- */

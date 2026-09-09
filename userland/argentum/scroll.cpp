@@ -228,6 +228,31 @@ ScrollView::scrollBy(double dxPt, double dyPt)
 	scrollTo(sc_->ox + dxPt, sc_->oy + dyPt);
 }
 
+void
+ScrollView::scrollRectToVisible(const Rect &r)
+{
+	if (!sc_->doc) {
+		return;
+	}
+	Rect f = frame();
+	double nx = sc_->ox;
+	double ny = sc_->oy;
+
+	if (r.origin.x < nx) {
+		nx = r.origin.x;
+	} else if (r.origin.x + r.size.w > nx + f.size.w) {
+		nx = r.origin.x + r.size.w - f.size.w;
+	}
+	if (r.origin.y < ny) {
+		ny = r.origin.y;
+	} else if (r.origin.y + r.size.h > ny + f.size.h) {
+		ny = r.origin.y + r.size.h - f.size.h;
+	}
+	if (nx != sc_->ox || ny != sc_->oy) {
+		scrollTo(nx, ny);
+	}
+}
+
 double
 ScrollView::contentOffsetX() const
 {

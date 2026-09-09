@@ -193,6 +193,19 @@ the shared utf8 helpers move) + S13.
 Commit: TextView Control + keyDown/mouseDown edit surface, board, gate.
 
 ### TXT-c — scroll integration
+Status: **DONE** — `ScrollView::scrollRectToVisible(Rect)` (pt, in
+the document's local coordinates) pans with the least scrolling,
+clamped by `scrollTo`. A TextView used as the ScrollView's document
+view auto-scrolls after every caret move/edit/click:
+`TextView::scrollCaretToVisible()` finds the nearest ScrollView
+ancestor and scrolls the caret's line rect into view (no-op when
+already visible). The TextView milestone (TXT-a/b/c) is COMPLETE.
+Gate `.build/s_txtc_run.sh` + `s_txtc_assert.py` -> S-TXTC-OK (8
+checks: 20 Down-arrows from a top click leave the caret on line 20
+with contentOffsetY 314 within the 498pt doc minus the 110pt
+viewport; the caret line stays visible; screendump shows glyphs in
+the panned viewport and page outside). Regressions S-TXTA-OK,
+S-TXTB-OK, S22D-OK, S13-PIXELS-OK. Board `userland/tests/textview_c.cpp`.
 *Acceptance:* `textview_c` = a ScrollView viewport (e.g. 320×110 pt)
 holding a TextView document tall enough to overflow (≥ 20 lines).
 The board types at the caret while it sits below the viewport bottom;

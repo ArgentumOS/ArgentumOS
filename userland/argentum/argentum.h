@@ -873,6 +873,7 @@ private:
 	struct Impl;
 	Impl *tv_;
 	void relayout();		/* recompute the visual lines */
+	void scrollCaretToVisible();	/* TXT-c: pan the ScrollView */
 };
 
 /* S2.3a: MenuItem / Menu — the menu MODEL (Cocoa's NSMenu analog;
@@ -1145,6 +1146,9 @@ public:
 	/* clamp: 0 .. docSize - viewportSize (>= 0) */
 	void scrollTo(double xPt, double yPt);
 	void scrollBy(double dxPt, double dyPt);
+	/* TXT-c: pan so `r` (pt, in the DOCUMENT's local coordinates) is
+	 * visible, with the least scrolling (clamped by scrollTo) */
+	void scrollRectToVisible(const Rect &r);
 	double contentOffsetX() const;
 	double contentOffsetY() const;
 

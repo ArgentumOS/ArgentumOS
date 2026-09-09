@@ -301,6 +301,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/krel_b.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/krel_b"
+	# textview_c: TXT-c TextView scroll integration acceptance
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/textview_c.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/textview_c"
 	# textview_b: TXT-b TextView document-editing acceptance
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/tests/textview_b.cpp \
