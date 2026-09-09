@@ -320,6 +320,21 @@ manageClient(const XMapRequestEvent &ev)
 	fflush(stdout);
 }
 
+/* ---- S4.1d window drag state ----------------------------------------
+ * (declared here, above the manage/unmanage code that must end an
+ * active drag on a dying client before freeing its frame) */
+static bool gDragActive = false;
+static Managed *gDragFrame = nullptr;
+static int gDragOffX = 0;	/* grab point - frame origin (px) */
+static int gDragOffY = 0;
+static bool gDragMoved = false;	/* any actual motion happened */
+static bool gBtnDown = false;	/* button state from press/release events */
+static long long gBtnUpMs = 0;	/* when the button last went up */
+static long long gLastMotionMs = 0;	/* when the pointer last moved in the drag */
+static bool gAbruptRelease = false;	/* the release hit mid fast motion */
+
+static void endDrag(bool moved);
+
 static void
 unmanageClient(::Window client, bool destroyed)
 {
@@ -335,6 +350,11 @@ unmanageClient(::Window client, bool destroyed)
 		fflush(stdout);
 		if (gActive == m) {
 			gActive = nullptr;
+		}
+		/* an active drag on the dying frame must end first or
+		 * gDragFrame dangles into the delete below */
+		if (gDragActive && gDragFrame == m) {
+			endDrag(gDragMoved);
 		}
 		argentum::Window *frame = m->frame;
 
@@ -385,22 +405,15 @@ focusClient(Managed *m)
 
 /* ---- S4.1d window drag (title-band move) ----------------------------- */
 
-/* Drag = move a cheap XOR OUTLINE on the root; the real window is
- * teleported once on release. Moving the real window per-motion makes
- * the server discard its pixels (no backing store) so the client
- * fully re-renders on every Expose — the outline keeps the drag smooth
- * and costs ONE redraw at the drop. */
-
-static bool gDragActive = false;
-static Managed *gDragFrame = nullptr;
-static int gDragOffX = 0;	/* grab point - frame origin (px) */
-static int gDragOffY = 0;
-static bool gDragMoved = false;	/* any actual motion happened */
-static GC gOutlineGC = nullptr;
-static bool gOutlineOn = false;	/* outline currently drawn */
-static int gOutlineX = 0, gOutlineY = 0;
-static bool gBtnDown = false;	/* button state from press/release events */
-static long long gBtnUpMs = 0;	/* when the button last went up */
+/* Drag = the frame follows the pointer LIVE per motion; the server's
+ * CopyWindow carries the reparented client's pixels on the move, so
+ * the drag costs no client redraw (measured: one redraw across 200
+ * moves). The drag END is only a grab release — the window is
+ * already where the pointer is, so a premature or delayed end is
+ * visually harmless. (v2 used an XOR outline + teleport-on-drop
+ * because a per-motion move was believed to force a full client
+ * re-render on every Expose; on the current Xfb that is not the
+ * case, and the outline made phantom releases catastrophic.) */
 
 static long long
 nowMs()
@@ -409,32 +422,6 @@ nowMs()
 
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
-}
-
-static void
-ensureOutlineGC()
-{
-	if (gOutlineGC) {
-		return;
-	}
-	gOutlineGC = XCreateGC(dpy, root, 0, nullptr);
-	if (gOutlineGC) {
-		XSetFunction(dpy, gOutlineGC, GXinvert);
-		XSetForeground(dpy, gOutlineGC, 0xffffffff);
-		XSetLineAttributes(dpy, gOutlineGC, 1, LineSolid,
-				   CapButt, JoinMiter);
-	}
-}
-
-/* XOR the outline rect at (x,y) (drawing it again erases it). */
-static void
-xorOutline(int x, int y, Managed *m)
-{
-	if (!gOutlineGC || !m) {
-		return;
-	}
-	XDrawRectangle(dpy, root, gOutlineGC, x, y,
-		       (unsigned) m->fw, (unsigned) (m->fh + BAND_H));
 }
 
 /* Is (lx,ly) inside a frame's title band but NOT on the close plate?
@@ -454,10 +441,9 @@ isBandGrabArea(Managed *m, int lx, int ly)
 static void
 beginDrag(Managed *m, int rootX, int rootY)
 {
-	ensureOutlineGC();
 	/* a phantom re-press mid-drag (flaky button state): keep the
-	 * outline and drag state, just re-anchor + re-grab so the
-	 * continuing motion continues the same drag */
+	 * drag state, just re-anchor + re-grab so the continuing
+	 * motion continues the same drag */
 	if (gDragActive && gDragFrame == m) {
 		gDragOffX = rootX - m->fx;
 		gDragOffY = rootY - m->fy;
@@ -474,7 +460,6 @@ beginDrag(Managed *m, int rootX, int rootY)
 	gDragOffX = rootX - m->fx;
 	gDragOffY = rootY - m->fy;
 	gDragMoved = false;
-	gOutlineOn = false;
 	gBtnDown = true;
 	XGrabPointer(dpy, m->frame->xid(), False,
 		     PointerMotionMask | ButtonReleaseMask,
@@ -500,25 +485,21 @@ dragTo(int rootX, int rootY)
 	if (nx == m->fx && ny == m->fy) {
 		return;			/* no motion yet */
 	}
-	/* erase the old outline, draw the new one — the window itself
-	 * does not move (and so does not redraw) until the drop */
-	if (gOutlineOn) {
-		xorOutline(gOutlineX, gOutlineY, m);
-	}
-	xorOutline(nx, ny, m);
-	gOutlineOn = true;
-	gOutlineX = nx;
-	gOutlineY = ny;
+	/* MOVE LIVE: the frame follows the pointer per motion. The
+	 * server's CopyWindow carries the frame AND the reparented
+	 * client's pixels on a move (measured: a 200-move drag causes
+	 * exactly ONE client redraw), so this is cheap and the window
+	 * always renders at the tracked position — no outline, no
+	 * teleport-on-drop. (v2's XOR outline existed because a move
+	 * was believed to discard the client's pixels; on the current
+	 * Xfb that is not the case.) */
+	gLastMotionMs = nowMs();
+	XMoveWindow(dpy, m->frame->xid(), nx, ny);
+	m->fx = nx;
+	m->fy = ny;
 	gDragMoved = true;
 	XFlush(dpy);
 }
-
-/* QEMU's mouse path can deliver phantom press/release pairs mid-drag
- * (ps2 sync slips under fast motion); trusting a release would drop
- * the window every couple of pixels. The drag instead ends only when
- * the pointer goes QUIET: the loop's idle beat (~250ms with no
- * events) drops the window at the outline's last position.
- * (dropIfQuiet is defined after endDrag below.) */
 
 static void
 endDrag(bool moved)
@@ -529,19 +510,6 @@ endDrag(bool moved)
 	Managed *m = gDragFrame;
 
 	if (m) {
-		if (gOutlineOn) {
-			xorOutline(gOutlineX, gOutlineY, m);	/* erase */
-			gOutlineOn = false;
-			XFlush(dpy);
-		}
-		if (moved) {
-			/* teleport: ONE move + ONE redraw */
-			XMoveWindow(dpy, m->frame->xid(),
-				    gOutlineX, gOutlineY);
-			m->fx = gOutlineX;
-			m->fy = gOutlineY;
-			XSync(dpy, False);
-		}
 		printf("KESTREL: move 0x%lx '%s' to %d,%d%s\n",
 		       (unsigned long) m->client, m->title, m->fx, m->fy,
 		       moved ? "" : " (no motion)");
@@ -554,24 +522,41 @@ endDrag(bool moved)
 	gBtnDown = false;
 }
 
-/* QEMU's mouse path can deliver phantom press/release pairs mid-drag
- * (ps2 sync slips under fast motion); trusting a release would drop
- * the window every couple of pixels. The drag ends only when the
- * BUTTON is up AND the pointer is QUIET for ~250ms: a release alone
- * never drops it, and neither does a motion alone (the pointer may
- * glide after a real release). Motion re-arms the button-up clock
- * (MotionNotify below), so a phantom release cannot drop the window
- * while the drag motion is still flowing — only a release that
- * STAYS up and then rests drops the window. Mid-drag pauses never
- * drop (the button is held: gBtnDown). Checked on the per-event
- * path and on the idle beat (when events stop entirely). */
-#define DRAG_DROP_MS 250	/* button-up + quiet window before the drop */
+/* ---- drag end -------------------------------------------------------
+ *
+ * The drag follows the pointer LIVE (above); the end is only a grab
+ * release — the window is already at the final position, so ending
+ * early or late is visually harmless either way. QEMU's mouse path
+ * can deliver phantom press/release pairs mid-drag (ps2 sync slips
+ * under fast motion), and an input stall can follow a phantom
+ * release before the stream resyncs. The drag therefore ends only
+ * when the BUTTON is up AND the pointer is QUIET for the window: a
+ * release alone never ends it, and neither does a motion alone —
+ * motion re-arms the button-up clock (MotionNotify below), so a
+ * phantom release cannot stop the drag while the motion is still
+ * flowing, and a mid-drag input stall is survived via the abrupt
+ * release window below. A real release after the pointer has
+ * already slowed or stopped ends it promptly. Checked on the
+ * per-event path and on the idle beat (when events stop). */
+#define DRAG_DROP_MS 250	/* button-up + quiet window before the end */
+#define DRAG_DROP_FAST_MS 1000	/* window after an ABRUPT release (mid fast
+				 * motion): fast drags are exactly when QEMU's
+				 * ps2 slips, and a phantom release can be
+				 * followed by a multi-hundred-ms input stall
+				 * before the resync press re-arms the button.
+				 * A real release after a gentle stop ends in
+				 * DRAG_DROP_MS; only fast flicks pay this. */
+#define DRAG_ABRUPT_GAP_MS 60	/* release within this of the last motion
+				 * = it hit while the pointer was still
+				 * moving fast (phantom-prone) */
 
 static void
 dropIfReleased()
 {
+	long long win = gAbruptRelease ? DRAG_DROP_FAST_MS : DRAG_DROP_MS;
+
 	if (gDragActive && !gBtnDown &&
-	    nowMs() - gBtnUpMs >= DRAG_DROP_MS) {
+	    nowMs() - gBtnUpMs >= win) {
 		endDrag(gDragMoved);
 	}
 }
@@ -601,6 +586,11 @@ reapDeadClients()
 		fflush(stdout);
 		if (gActive == m) {
 			gActive = nullptr;
+		}
+		/* an active drag on the dying frame must end first or
+		 * gDragFrame dangles into the delete below */
+		if (gDragActive && gDragFrame == m) {
+			endDrag(gDragMoved);
 		}
 		argentum::Window *frame = m->frame;
 
@@ -663,14 +653,14 @@ kestrelHook(void *xevent)
 		return false;
 	case MotionNotify:
 		if (gDragActive) {
-			/* the outline follows the hand on every motion,
-			 * regardless of the button state; the drop is
-			 * gated on button-up AND quiet (dropIfReleased).
+			/* the window follows the hand on every motion,
+			 * regardless of the button state; the drag ends
+			 * (dropIfReleased) only on button-up AND quiet.
 			 * While the button is up, motion re-arms the
 			 * clock: a phantom release mid-drag (button
 			 * visibly up under a ps2 sync slip) must not
-			 * drop the window while the user is still
-			 * dragging — the drop waits for the motion to
+			 * stop the drag while the user is still
+			 * dragging — the end waits for the motion to
 			 * stop (a real-release glide defers the same
 			 * way, which is what makes phantoms harmless). */
 			dragTo(ev->xmotion.x_root, ev->xmotion.y_root);
@@ -685,10 +675,24 @@ kestrelHook(void *xevent)
 			if (gBtnDown) {
 				gBtnDown = false;
 				gBtnUpMs = nowMs();
+				/* an abrupt release (the pointer was still
+				 * moving fast) is phantom-prone: QEMU's ps2
+				 * slip puts a release mid motion-burst, and
+				 * the real button state only resyncs later.
+				 * Distrust it for DRAG_DROP_FAST_MS so a fast
+				 * drag survives the input stall until the
+				 * resync press re-arms; a release after the
+				 * pointer already slowed or stopped is a real
+				 * one and drops in DRAG_DROP_MS. */
+				gAbruptRelease =
+				    (gLastMotionMs != 0 &&
+				     nowMs() - gLastMotionMs <= DRAG_ABRUPT_GAP_MS);
 			}
-			/* the drag ends via dropIfReleased (button up
-			 * for DRAG_DROP_MS), never on this release
-			 * alone — phantom releases must not drop it */
+			/* the drag ends via dropIfReleased (button up +
+			 * quiet, with the distrust window chosen by how
+			 * abrupt this release was), never on this
+			 * release alone — phantom releases must not
+			 * drop it */
 			return true;
 		}
 		return false;

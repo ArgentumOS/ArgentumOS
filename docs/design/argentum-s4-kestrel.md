@@ -218,9 +218,32 @@ pend, plenty for frame cleanup — dead frames linger at most one beat
 after the pointer rests). A paced ~100 ev/s fast-drag burst then
 tracks cleanly (10.4ms mean inter-event). S41C/S41D/S41E re-run
 green after v5.1.
-Note: the root-drawn outline is hidden under other windows (classic
-X11 behaviour) — fine for v1; a raised border-window outline would be
-fully visible if it matters later.
+v6 (user: "have a peek at how some other MIT-licensed WM handles
+drags"; direction decided: fix the move cost, then go live): the
+outline model is RETIRED. Live per-motion moves were believed to make
+the server discard the client's pixels (v2's premise); measured on the
+current Xfb that is false — `miMoveWindow`/`fbCopyWindow` carry the
+frame AND the reparented client's pixels (a 200-move drag caused
+exactly ONE client redraw, and a live drag sustains **285 ev/s** vs the
+outline's 135). Kestrel now moves the frame live per MotionNotify like
+dwm/cwm/i3; the XOR outline GC, the teleport, and the outline gates
+are gone. The END is only a grab release (the window is already where
+the pointer is, so ending early/late is visually harmless) and keeps
+the button-up + quiet rule with motion re-arm plus the abrupt-release
+distrust window (v5/v5.1) — a phantom release stops nothing (motion
+keeps the drag alive through ps2 desyncs; the window follows live), a
+mid-drag input stall is survived via DRAG_DROP_FAST_MS, and a real
+release ends the drag at rest. Client death mid-drag now ends the drag
+before the frame is freed (gDragFrame UAF guard in unmanageClient +
+reapDeadClients). Gates reworked for live semantics: s41d asserts the
+window FOLLOWS mid-drag (band+content at the tracked origin, old spot
+empty); s41e (phantom release + continuous motion -> window keeps
+following, one in-place end); s41g (abrupt release + ~350ms stall ->
+drag survives and follows the full distance; a fixed-250ms window dies
+at the stall). S41C/S41D/S41E/S41G all green after v6.
+Note: with live moves there is no outline to hide; the window itself
+renders at every tracked position, so drags look native (the earlier
+root-outline-hidden note is moot).
 
 ### S4.2a — session socket: publish + menubar render
 *Acceptance:* probe A (and B) publish distinct menus (File/Edit …)
