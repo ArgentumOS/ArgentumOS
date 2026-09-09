@@ -147,6 +147,13 @@ View::setFrame(const Rect &r)
 {
 	Rect old = impl_->frame;
 
+	if (old.origin.x == r.origin.x && old.origin.y == r.origin.y &&
+	    old.size.w == r.size.w && old.size.h == r.size.h) {
+		return;		/* no-op: layout passes re-apply frames
+				 * on every draw (Box/SplitView/TabView);
+				 * a spurious setNeedsDisplay here would
+				 * schedule a redraw every composite */
+	}
 	impl_->frame = r;
 	if (old.size.w != r.size.w || old.size.h != r.size.h) {
 		/* springs/struts (S2.1d): our size changed, so relayout

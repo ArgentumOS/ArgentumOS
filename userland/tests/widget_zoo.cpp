@@ -328,22 +328,160 @@ main()
 		v.addSubview(&v.pop);
 	}
 
-	/* a11y + init summary line for the smoke gate */
+	/* ---- S2.5: Tier-2 structure band (Box / ScrollView+TableView /
+	 * SplitView / TabView) spans the bottom of the board ---- */
+	static const char *COL_NAMES[] = { "Name", "Kind", "Size" };
+
+	class ZooSource : public argentum::TableViewDataSource {
+	public:
+		int rowCount() const override
+		{
+			return 8;
+		}
+		const char *cellText(int row, int col) const override
+		{
+			static const char *const N[8][3] = {
+				{ "init", "tool", "48K" },
+				{ "sh", "shell", "120K" },
+				{ "Xfb", "server", "8.1M" },
+				{ "xdraw", "demo", "24K" },
+				{ "xkey", "demo", "18K" },
+				{ "zoo", "board", "340K" },
+				{ "config", "tool", "60K" },
+				{ "mount", "tool", "52K" },
+			};
+			if (row < 0 || row > 7 || col < 0 || col > 2) {
+				return "";
+			}
+			return N[row][col];
+		}
+	} zooSrc;
+
+	class ZooTableDel : public argentum::TableViewDelegate {
+	public:
+		void tableSelectionDidChange(argentum::TableView *, int row) override
+		{
+			char buf[64];
+
+			std::snprintf(buf, sizeof(buf), "table:select:%d", row);
+			zoo_log(buf);
+		}
+	} zooDel;
+
+	class PaneView : public argentum::View {
+	public:
+		unsigned int color;
+		explicit PaneView(unsigned int c)
+			: color(c)
+		{
+		}
+		void draw(argentum::GraphicsContext &g) override
+		{
+			argentum::Application &app = argentum::Application::shared();
+			argentum::Rect f = frame();
+			double ppt = app.pxPerPt();
+
+			g.fillRect(0, 0,
+				   (unsigned) (f.size.w * ppt + 0.5),
+				   (unsigned) (f.size.h * ppt + 0.5),
+				   color);
+		}
+	};
+
+	y = 408;
+	/* Box: titled column box packs three buttons (no hand frames) */
+	argentum::Box sbox;
+	argentum::Button sTop, sMid, sBot;
+
+	sbox.setTitle("Layout");
+	sbox.setLayout(argentum::BoxLayout::Column);
+	sbox.setFrame({ {lx, y}, {140, 120} });
+	sTop.setTitle("Top");
+	sMid.setTitle("Middle");
+	sBot.setTitle("Bottom");
+	sTop.setFrame({ {0, 0}, {100, 24} });
+	sMid.setFrame({ {0, 0}, {100, 24} });
+	sBot.setFrame({ {0, 0}, {100, 24} });
+	sTop.setAction([](argentum::Control *) { zoo_log("box:top"); });
+	sMid.setAction([](argentum::Control *) { zoo_log("box:middle"); });
+	sBot.setAction([](argentum::Control *) { zoo_log("box:bottom"); });
+	sbox.addSubview(&sTop);
+	sbox.addSubview(&sMid);
+	sbox.addSubview(&sBot);
+	v.addSubview(&sbox);
+
+	/* ScrollView hosting a TableView document (3 cols x 8 rows) */
+	argentum::TableView table(&zooSrc, &zooDel);
+	argentum::ScrollView scroll;
+	double rh = table.rowHeight();
+
+	table.setColumns(COL_NAMES, 3);
+	table.setFrame({ {0, 0}, {216, (rh + 2.0) + 8 * rh} });
+	table.setAccessibilityLabel("Processes");
+	scroll.setFrame({ {lx + 152, y}, {216, 120} });
+	scroll.setDocumentView(&table);
+	v.addSubview(&scroll);
+
+	/* SplitView: two panes side by side */
+	argentum::SplitView split;
+	PaneView splitA(0xcc3344), splitB(0x2288ee);
+
+	split.setFrame({ {lx + 380, y}, {120, 120} });
+	split.addSubview(&splitA);
+	split.addSubview(&splitB);
+	v.addSubview(&split);
+
+	/* TabView: two labelled pages */
+	argentum::TabView tabs;
+	PaneView tabP1(0xf0a030), tabP2(0x1fa84d);
+	argentum::TabViewItem tabI1("One", &tabP1);
+	argentum::TabViewItem tabI2("Two", &tabP2);
+
+	tabs.setFrame({ {lx + 512, y}, {176, 120} });
+	tabs.addItem(&tabI1);
+	tabs.addItem(&tabI2);
+	v.addSubview(&tabs);
+
+	zoo_log("s25:band");
+
+	/* a11y battery: every v1-cut widget's role (S2.5 whole-board) */
 	std::fprintf(stderr,
-		     "ZOO-A11Y: chrome=%s push=%s field=%s slider=%s "
-		     "seg=%s pop=%s\n",
+		     "ZOO-A11Y: chrome=%s push=%s check=%s radio=%s "
+		     "field=%s slider=%s stepper=%s seg=%s prog=%s "
+		     "level=%s pop=%s box=%s scroll=%s table=%s "
+		     "split=%s tabs=%s\n",
 		     argentum::accessibilityRoleName(
 			     v.chrome.accessibilityRole()),
 		     argentum::accessibilityRoleName(
 			     v.logBtn.accessibilityRole()),
 		     argentum::accessibilityRoleName(
+			     v.checkBtn.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     v.radioA.accessibilityRole()),
+		     argentum::accessibilityRoleName(
 			     v.field.accessibilityRole()),
 		     argentum::accessibilityRoleName(
 			     v.slider.accessibilityRole()),
 		     argentum::accessibilityRoleName(
+			     v.stepper.accessibilityRole()),
+		     argentum::accessibilityRoleName(
 			     v.seg.accessibilityRole()),
 		     argentum::accessibilityRoleName(
-			     v.pop.accessibilityRole()));
+			     v.prog.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     v.level.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     v.pop.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     sbox.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     scroll.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     table.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     split.accessibilityRole()),
+		     argentum::accessibilityRoleName(
+			     tabs.accessibilityRole()));
 	std::fflush(stderr);
 
 	class ZooWin : public argentum::Window {

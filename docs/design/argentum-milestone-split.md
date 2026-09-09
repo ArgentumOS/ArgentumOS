@@ -203,6 +203,24 @@ reference-app + a11y gate.
   `make zoo` board (widget_zoo, session.conf `desktop = "zoo"`,
   init.c SESSION_ZOO) is the reference-app germ: every S2.2+S2.3
   control live on one window; S2.5 grows it into Settings.
+  Status: **DONE** — the zoo grew a Tier-2 band (Box column, a
+  ScrollView hosting a 3x8 TableView, a two-pane SplitView and a
+  two-tab TabView) below the S2.2/2.3 controls, and the a11y battery
+  now names every role (`ZOO-A11Y: ... box=group scroll=scroll area
+  table=table split=splitter tabs=tab group`, 16 roles). Gate
+  `.build/s25_run.sh` + `s25_assert.py` -> S25-OK (11 checks:
+  battery roles, monitor-mouse table row-2 click -> selection tint +
+  `table:select:2`, tab-2 click -> page amber->green + read-back).
+  Fix folded in: `View::setFrame` no-ops when the frame is unchanged
+  (Box/SplitView/TabView layout passes re-apply frames every draw;
+  a spurious setNeedsDisplay scheduled a redraw every composite ->
+  25 fps redraw storm that broke the SHADOW idle-zero-copies gate).
+  Regressions SHADOW-OK, S24A-OK, S24D-OK. **S2 (the whole v1-cut
+  widget catalog on one board) is complete.**
+
+S2.5 = the whole-S2 acceptance: **S2 COMPLETE** (S2.1 view tree,
+S2.2 Control + first leaves, S2.3 rest of Tier 1, S2.4 Tier 2
+structure, S2.5 the reference board + a11y battery).
 
 ## S3 — Input & text depth
 
