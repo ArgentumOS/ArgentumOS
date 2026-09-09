@@ -399,6 +399,17 @@ static bool gDragMoved = false;	/* any actual motion happened */
 static GC gOutlineGC = nullptr;
 static bool gOutlineOn = false;	/* outline currently drawn */
 static int gOutlineX = 0, gOutlineY = 0;
+static bool gBtnDown = false;	/* button state from press/release events */
+static long long gBtnUpMs = 0;	/* when the button last went up */
+
+static long long
+nowMs()
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
+}
 
 static void
 ensureOutlineGC()
@@ -450,6 +461,7 @@ beginDrag(Managed *m, int rootX, int rootY)
 	if (gDragActive && gDragFrame == m) {
 		gDragOffX = rootX - m->fx;
 		gDragOffY = rootY - m->fy;
+		gBtnDown = true;
 		XGrabPointer(dpy, m->frame->xid(), False,
 			     PointerMotionMask | ButtonReleaseMask,
 			     GrabModeAsync, GrabModeAsync, None, None,
@@ -463,6 +475,7 @@ beginDrag(Managed *m, int rootX, int rootY)
 	gDragOffY = rootY - m->fy;
 	gDragMoved = false;
 	gOutlineOn = false;
+	gBtnDown = true;
 	XGrabPointer(dpy, m->frame->xid(), False,
 		     PointerMotionMask | ButtonReleaseMask,
 		     GrabModeAsync, GrabModeAsync, None, None,
@@ -538,32 +551,37 @@ endDrag(bool moved)
 	XSync(dpy, False);
 	gDragActive = false;
 	gDragFrame = nullptr;
+	gBtnDown = false;
 }
 
 /* QEMU's mouse path can deliver phantom press/release pairs mid-drag
  * (ps2 sync slips under fast motion); trusting a release would drop
- * the window every couple of pixels. The drag instead ends only when
- * the pointer goes QUIET: the loop's idle beat (~250ms with no
- * events) drops the window at the outline's last position. */
+ * the window every couple of pixels. The drag instead ends only once
+ * the BUTTON has stayed UP for a sustained window (~250ms): the
+ * phantoms are millisecond up-flips, the real release leaves the
+ * button up. Mid-drag pauses (button held) never drop the window.
+ * Checked on the per-event path (time-gated, so ordinary motions are
+ * safe) and on the idle beat (when events stop entirely). */
+#define DRAG_DROP_MS 250	/* button-up window before the drop */
+
 static void
-dropIfQuiet()
+dropIfReleased()
 {
-	if (gDragActive) {
+	if (gDragActive && !gBtnDown &&
+	    nowMs() - gBtnUpMs >= DRAG_DROP_MS) {
 		endDrag(gDragMoved);
 	}
 }
 
-/* ---- the event hook: WM events on the root -------------------------- */
+/* ---- the idle + event hooks: WM housekeeping ------------------------ */
 
 /* Some events (DestroyNotify for a client killed by its connection
  * closing) never arrive on this server; probe the managed clients
  * cheaply and reap the dead. Runs on every event (hook) and on the
- * idle beat (S4.1c). */
+ * idle beat. */
 static bool
 reapDeadClients()
 {
-	/* a quiet pointer (a full beat with no motion) ends the drag */
-	dropIfQuiet();
 	for (size_t i = 0; i < gFrames.size();) {
 		Managed *m = gFrames[i];
 		XWindowAttributes a;
@@ -587,12 +605,24 @@ reapDeadClients()
 	return false;		/* the caller keeps idling */
 }
 
+/* The idle beat (the app loop polls ~250ms with no events, then calls
+ * this): a window that released its button long enough ago drops here
+ * even when no further events arrive. */
+static bool
+idleBeat()
+{
+	dropIfReleased();
+	reapDeadClients();
+	return false;
+}
+
 static bool
 kestrelHook(void *xevent)
 {
 	XEvent *ev = (XEvent *) xevent;
 
 	reapDeadClients();
+	dropIfReleased();
 	switch (ev->type) {
 	case ButtonPress:
 		/* a press in a CLIENT arrives through the passive grab
@@ -623,14 +653,26 @@ kestrelHook(void *xevent)
 		return false;
 	case MotionNotify:
 		if (gDragActive) {
+			/* the outline follows the hand on every motion,
+			 * regardless of the button state; the drop is
+			 * gated purely on the button having stayed up
+			 * for DRAG_DROP_MS (dropIfReleased) */
 			dragTo(ev->xmotion.x_root, ev->xmotion.y_root);
 			return true;
 		}
 		return false;
 	case ButtonRelease:
-		/* the drag is quiet-driven (dropIfQuiet on the idle beat);
-		 * releases are consumed so nothing else acts on them */
-		return gDragActive;
+		if (gDragActive) {
+			if (gBtnDown) {
+				gBtnDown = false;
+				gBtnUpMs = nowMs();
+			}
+			/* the drag ends via dropIfReleased (button up
+			 * for DRAG_DROP_MS), never on this release
+			 * alone — phantom releases must not drop it */
+			return true;
+		}
+		return false;
 	case MapRequest:
 		manageClient(ev->xmaprequest);
 		return true;
@@ -815,6 +857,7 @@ main()
 	fflush(stdout);
 
 	app.setEventHook(kestrelHook);
+	app.setIdleHook(idleBeat);
 	app.run();
 	return 0;
 }

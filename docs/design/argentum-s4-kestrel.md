@@ -183,6 +183,16 @@ the outline. Gate `.build/s41d_run.sh` + `s41d_assert.py` -> S41D-OK
 window has NOT moved while the inverted outline tracks over the
 desktop; the old spot empties, the band + content render at the new
 origin, Krel B untouched). S41A/B/C re-runs green after v3.
+v4 (quiet-end had two blind spots): a drag dropped when the pointer
+went QUIET even while the button was still HELD (pause mid-drag), and
+conversely a released-but-still-gliding pointer deferred the drop
+until the motion stopped. The drop is now gated on the button alone:
+`dropIfReleased` (per-event + idle beat) drops once the button has
+stayed UP for `DRAG_DROP_MS` (250ms). Phantom release/press pairs are
+millisecond up-flips — the phantom press re-arms `gBtnDown` long
+before the window elapses, so only a real release (button left up)
+drops the window, at the outline's last position. S41D gate re-run
+green after v4.
 Note: the root-drawn outline is hidden under other windows (classic
 X11 behaviour) — fine for v1; a raised border-window outline would be
 fully visible if it matters later.
