@@ -118,6 +118,9 @@ au libxcb libxcb $SHARED $STATIC
 log libX11
 au libX11 libX11 $SHARED $STATIC
 
+log libXext
+au Xext libXext $SHARED $STATIC
+
 log libxkbfile
 mes libxkbfile libxkbfile
 log pixman

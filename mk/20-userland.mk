@@ -275,6 +275,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
 		userland/tests/zoo_inj.cpp -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/zoo_inj"
+	# xshm_m0: MIT-SHM M0 acceptance — Xlib client (the UIKit transport)
+	# paints a window via a SysV segment + XShmPutImage (libXext); logs
+	# SHMM0-DONE for the gate.
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_m0.c \
+		-L$(X11PREFIX)/lib -lXext -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xshm_m0"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".
@@ -374,7 +380,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		exit 1; \
 	fi
 	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
-		libpixman-1.so libXfont2.so libfontenc.so libz.so; do \
+		libpixman-1.so libXfont2.so libfontenc.so libz.so libXext.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
