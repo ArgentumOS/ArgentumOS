@@ -339,9 +339,15 @@ static void start_xfb(void)
 			  (char *const[]) { "theme_chrome", NULL }, dpy_env);
 		puts("XDESK: uitest session launching (theme_chrome on :0)");
 	} else if (session == SESSION_ZOO) {
+		/* S4: the zoo is the reference app — it runs UNDER
+		 * Kestrel (spawned first so its MapRequest is
+		 * redirected; if it maps first, Kestrel's manage-existing
+		 * pass picks it up) */
+		spawn_gui("/System/Tools/kestrel",
+			  (char *const[]) { "kestrel", NULL }, dpy_env);
 		spawn_gui("/System/Shared/tests/widget_zoo",
 			  (char *const[]) { "widget_zoo", NULL }, dpy_env);
-		puts("XDESK: zoo session launching (widget_zoo on :0)");
+		puts("XDESK: zoo session launching (kestrel WM + widget_zoo on :0)");
 	} else if (session == SESSION_KESTREL) {
 		spawn_gui("/System/Tools/kestrel",
 			  (char *const[]) { "kestrel", NULL }, dpy_env);
