@@ -495,11 +495,26 @@ Window::scheduleDamagePx(int x0, int y0, int x1, int y1)
 	noteDamage(x0, y0, (unsigned) (x1 - x0), (unsigned) (y1 - y0));
 	if (!impl_->damageScheduled) {
 		impl_->damageScheduled = true;
-		/* ask the server for one Expose over the whole pending
-		 * rect; run() turns it into draw() */
-		XClearArea(impl_->dpy, impl_->xwin, x0, y0,
-			   (unsigned) (x1 - x0), (unsigned) (y1 - y0),
-			   True);
+		/* Synthesize one Expose over the pending rect instead of
+		 * XClearArea: the server-side clear erased the rect to the
+		 * window background and the shadow drain made that erase
+		 * visible on fb0 before the redraw landed — a black flash
+		 * on every update. With a self-sent Expose nothing is
+		 * erased; the OLD frame stays on screen until the redraw
+		 * flushes it in the same damage drain. */
+		XExposeEvent ev;
+
+		memset(&ev, 0, sizeof(ev));
+		ev.type = Expose;
+		ev.display = impl_->dpy;
+		ev.window = impl_->xwin;
+		ev.x = x0;
+		ev.y = y0;
+		ev.width = (unsigned) (x1 - x0);
+		ev.height = (unsigned) (y1 - y0);
+		ev.count = 0;
+		XSendEvent(impl_->dpy, impl_->xwin, False, ExposureMask,
+			   (XEvent *) &ev);
 	}
 }
 
@@ -610,10 +625,14 @@ Window::draw()
 	double ppt = Application::shared().pxPerPt();
 
 	/* deterministic backdrop, bounded to the damage rect (the rest
-	 * of the backing keeps the previous frame) */
+	 * of the backing keeps the previous frame); the session backdrop
+	 * (not black) so a strip the view tree does not paint matches
+	 * the window background instead of flashing black */
 	g.fillRect(impl_->dmgX0, impl_->dmgY0,
 		   (unsigned) (impl_->dmgX1 - impl_->dmgX0),
-		   (unsigned) (impl_->dmgY1 - impl_->dmgY0), 0x000000);
+		   (unsigned) (impl_->dmgY1 - impl_->dmgY0),
+		   (int) (Application::shared().sessionBackground() &
+			  0xffffff));
 	View *cv = impl_->contentView;
 	Rect cr = cv->frame();
 
@@ -674,8 +693,14 @@ Window::init(const char *title, int x, int y,
 	impl_->y = y;
 	impl_->width = width;
 	impl_->height = height;
+	/* Background = the session backdrop (0xRRGGBB pixel on this
+	 * TrueColor visual), NOT black: any server-side clear (a real
+	 * Expose path) then shows the page color instead of a black
+	 * hole. Border stays black (0-width here). */
+	unsigned long bg = app.sessionBackground() & 0xffffff;
+
 	impl_->xwin = XCreateSimpleWindow(impl_->dpy, root, x, y,
-					  width, height, 0, black, black);
+					  width, height, 0, black, bg);
 	if (!impl_->xwin) {
 		return false;
 	}
@@ -716,9 +741,23 @@ Window::setNeedsDisplay()
 	if (!impl_->dpy || !impl_->xwin) {
 		return;
 	}
-	/* XClearArea on the whole window: the server answers with an
-	 * Expose, which run() turns into draw(). */
-	XClearArea(impl_->dpy, impl_->xwin, 0, 0, 0, 0, True);
+	/* Self-sent full-window Expose (NOT XClearArea — see
+	 * scheduleDamagePx: a server clear would flash the window's
+	 * background before the redraw lands). run() turns it into a
+	 * full draw(). */
+	XExposeEvent ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.type = Expose;
+	ev.display = impl_->dpy;
+	ev.window = impl_->xwin;
+	ev.x = 0;
+	ev.y = 0;
+	ev.width = impl_->width;
+	ev.height = impl_->height;
+	ev.count = 0;
+	XSendEvent(impl_->dpy, impl_->xwin, False, ExposureMask,
+		   (XEvent *) &ev);
 }
 
 void
