@@ -677,3 +677,126 @@ design/history docs these sections build on: docs/reference/bfs-journal-reclaim.
 docs/reference/partition-support-plan.md (WholeDisk/PartitionN nodes — the raw
 surface's per-partition future), docs/agfs-ssd-plan.md (history of §A —
 superseded, kept in git). Kernel design docs live alongside in docs/.
+
+## J. File versioning (retain prior contents)
+
+Status: **DESIGN (2026-09) — capability direction decided in
+conversation; no code.** New area; append after §I. Format change: no
+new top-level structures in the core design (version data rides the
+existing attr/stream machinery); milestone V-1 may add a per-file flag
+attr and a version-chain convention.
+
+### J.1 The capability
+
+A **versioned file keeps its prior contents reachable**. Three pieces,
+all AGFS-native:
+
+1. **Retention, not CoW**: overwrites on a versioned file allocate
+   fresh runs (already SSD-friendlier — same direction as X-SSD6 /
+   delayed allocation); the *old* run-list goes onto a per-file
+   version chain instead of back to the free bitmap. The allocator
+   change is *where old blocks go*, nothing else.
+2. **Version records as attributes**: each retained version is an
+   attribute (run-list + timestamp + trigger note); tiny prior
+   contents (config files!) keep their bytes inline.
+3. **Findability via the engine that exists**: versions are
+   attribute-index entries, so "versions of this file" is a **query**
+   — §B Live Directories can render a file's history as a first-class
+   view. VMS had versions; it had no indices. This is what makes the
+   feature distinctive rather than a hidden `~`-suffixed listing.
+
+### J.2 The three consumers (one mechanism, one policy axis)
+
+| consumer | trigger | depth | retention |
+|---|---|---|---|
+| Config rollback | automatic, at every mediated domain commit | bounded (a handful) | tiny content — inline |
+| Documents | explicit save / close | generous, user-visible | runs retained; purge later |
+| Format-level | any file opts in via a flag attr | per class | the mechanism, generalized |
+
+Config is the anchor: the §4.1-config/`config`-helper story gets teeth
+— a mediated domain write *is* a versioned commit, and `config revert
+<domain>` restores the prior version atomically as System. Most
+"won't boot" configs become one revert; the maintenance-path open
+item softens without boot heroics. (Cross-doc: system-admin-principal
+§4.5 config contract.)
+
+### J.3 Attribute-machinery grounding (V-0; folded from the xattr review)
+
+The version records above ride the attribute layer, so its real
+limits matter — and the review found the layer **already supports
+file-sized attribute data**, contradicting its own documentation:
+
+- `fs/agfs/xattr.c`'s header claims values that don't fit the inode's
+  small_data tail are "refused with -ENOSPC … out of scope." **Stale**
+  — ten lines below, the set path says the opposite: values bigger
+  than the tail "fall through to the attributes tree."
+- `fs/agfs/attribute.c` implements full Haiku-compatible attribute
+  nodes: an attribute-directory inode (`S_ATTR_DIR`, STRING btree
+  name → attr-file inode) per file, each attribute file (`S_ATTR |
+  S_IFREG`) holding the value in a **regular data stream**
+  (`agfs_attr_write_stream` → `bmap(..., FOR_WRITING)`, `i_size =
+  size`) — so an oversized attribute *is* a file and inherits the
+  file size limit, not the ~758-byte tail (792 − record overhead at
+  1K blocks). The only real cap is a `size > 0x7FFFFFFF` sanity
+  guard.
+- Migration is bidirectional (big → tree; shrink → back to
+  small_data with type preservation and stale-entry removal, Haiku
+  `WriteAttribute` parity), but **entirely unexercised**: the guest
+  xattr test's "big" buffer is 30 bytes, far under the tail.
+
+Consequences for versioning: version blobs that don't fit inline can
+already spill to file-sized attribute nodes — no new storage path is
+required for large version *content* (retained runs remain the
+primary design for multi-block files; the attribute node is the
+container when a blob must be *copied* into history rather than
+retained in place). V-0 is therefore a verification milestone, not a
+feature: make the attribute layer's claims true and tested before any
+versioning builds on it.
+
+### J.4 Milestones (draft)
+
+- **V-0 — attribute-machinery verification.** Fix the stale xattr.c
+  header comment; extend `userland/tests/agfsxattr.c` with a
+  >1-block battery: set 2 KB+ attr → read back → shrink below the
+  tail (verify migration back inline) → replace across layers →
+  delete (attr file + tree entry reaped) → the same under kill-cycle
+  (journal atomicity of the two-step migration: no orphaned attr
+  node between "create attr file" and "link into tree"). Verify
+  index sync across both migration directions. *Acceptance: the
+  battery green; agfscheck tolerates the tree state; kill-cycle
+  leaves no orphans.*
+- **V-1 — retention + version records.** Fresh-run overwrite for
+  versioned files; old run-list to a per-file version chain; version
+  flag attr; version record format (run-list | inline content,
+  timestamp, trigger); delete semantics and space caps per class.
+  *Acceptance: a versioned file's overwrite leaves the prior content
+  reachable and mount-stable; agfscheck validates chains; rm reaps
+  per class policy.*
+- **V-2 — config rollback.** `config`'s mediated write becomes a
+  versioned commit (automatic, bounded depth); `config revert`
+  verb. *Acceptance: bad-value → revert → boot unchanged; atomic
+  under kill-cycle.*
+- **V-3 — documents + query view.** Explicit-save versions; versions
+  as a §B Live Directory query; purge. *Acceptance: an app's save
+  history is queryable and restorable end-to-end.*
+
+### J.5 Open cruxes (the real design, when V-1 starts)
+
+- **The commit point**: "every write" is meaningless against the
+  buffer cache; a version boundary needs a defined event (close?
+  fsync/commit? per-class flag such as an open-time opt-in). The
+  trigger *is* the design; the rest is allocator plumbing.
+- **Journal atomicity**: a versioned overwrite must commit its
+  retention decision atomically with the data write, or a crash
+  leaves a file with no valid current version (the V-0 kill-cycle
+  class, at the file level).
+- **Delete semantics per class**: config reaps (a deleted domain
+  stays deleted); documents keep (trash-style recovery); the format
+  flag is per file, so the policy must be per class by convention.
+- **Space budget**: retention is space; per-class caps + purge are
+  mandatory and are a *query* problem (find versioned files over
+  budget) the engine already handles.
+- **small_data is shared**: inline version history shares the inode
+  tail with xattrs (ACLs) and the 0x13 name record — a deep inline
+  history starves ACLs. Retention depth for inline content must
+  budget the tail, not just count versions.
