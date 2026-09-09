@@ -710,15 +710,39 @@ all AGFS-native:
 | consumer | trigger | depth | retention |
 |---|---|---|---|
 | Config rollback | automatic, at every mediated domain commit | bounded (a handful) | tiny content — inline |
-| Documents | explicit save / close | generous, user-visible | runs retained; purge later |
+| **Time-Machine capture** (the user-data story) | **scheduled: hourly capture of every changed file** | per tier below | **keep every hour for 24 h → one per day for 7 d → one per week** |
 | Format-level | any file opts in via a flag attr | per class | the mechanism, generalized |
 
-Config is the anchor: the §4.1-config/`config`-helper story gets teeth
-— a mediated domain write *is* a versioned commit, and `config revert
-<domain>` restores the prior version atomically as System. Most
-"won't boot" configs become one revert; the maintenance-path open
-item softens without boot heroics. (Cross-doc: system-admin-principal
-§4.5 config contract.)
+**Time-Machine semantics (2026-09)**: snapshot *every file that has
+changed* every hour, keeping the last 24 hours, then one per day for
+the last week, then one per week — implemented as **timestamped
+versions + a pruning policy**, not whole-volume snapshots. Three
+properties fall out of the AGFS design rather than being bolted on:
+
+- **The commit point is a schedule, not a write callback** — an
+  hourly capture daemon snapshots whatever changed since the last
+  pass and goes away. The subtle per-write trigger question (J.5)
+  never arises for this consumer.
+- **"Changed since last pass" has an honest source**: the kernel
+  already ships **inotifyfs**; the capture pass asks the change log
+  which files changed in the interval (recording per-file change
+  time), and edits within one hour **coalesce to one hourly version**
+  (the hour's last state), so churn never explodes retention.
+- **Time is a browse dimension by *query***: every version carries a
+  timestamp; "the file as of last Tuesday" is the query *newest
+  version ≤ T* over the version index, rendered as a §B Live
+  Directory view that *looks* like a snapshot browser. TM's UX is
+  derived, not stored — no tree-level snapshot layer.
+
+Config remains the fine-grained case on top of the same machinery:
+hourly is too coarse for "revert the typo I made ten seconds ago," so
+a mediated domain commit keeps its own V-2 cadence (per-commit,
+bounded depth). Config rollback is still the anchor for boot
+integrity: the §4.1-`config`-helper story gets teeth — a mediated
+domain write *is* a versioned commit, `config revert <domain>`
+restores the prior version atomically as System, and most "won't
+boot" configs become one revert (maintenance-path open item softens;
+cross-doc: system-admin-principal §4.5).
 
 ### J.3 Attribute-machinery grounding (V-0; folded from the xattr review)
 
@@ -776,16 +800,34 @@ versioning builds on it.
   versioned commit (automatic, bounded depth); `config revert`
   verb. *Acceptance: bad-value → revert → boot unchanged; atomic
   under kill-cycle.*
-- **V-3 — documents + query view.** Explicit-save versions; versions
-  as a §B Live Directory query; purge. *Acceptance: an app's save
-  history is queryable and restorable end-to-end.*
+- **V-3 — Time-Machine capture.** A per-person capture pass runs
+  hourly over the user-data scope (`/Users/$USER` + the person's
+  Configuration), asks the inotifyfs change journal which files
+  changed since the last pass, coalesces per-hour edits to one
+  version, and prunes by tier (hourly ×24 → daily ×7 → weekly).
+  Versions browsable by time: "newest version ≤ T" via a §B Live
+  Directory view. *Acceptance: an edited file appears in the hourly
+  history; pruning keeps exactly the tier counts; a time-qualified
+  restore yields the file's state as of T; kill-cycle between capture
+  passes loses no committed version.*
 
 ### J.5 Open cruxes (the real design, when V-1 starts)
 
-- **The commit point**: "every write" is meaningless against the
-  buffer cache; a version boundary needs a defined event (close?
-  fsync/commit? per-class flag such as an open-time opt-in). The
-  trigger *is* the design; the rest is allocator plumbing.
+- **The commit point**: for the Time-Machine consumer it is
+  **resolved by scheduling** — capture is a wall-clock act over the
+  change journal, not a write callback (J.2), so the subtle
+  per-write trigger never arises. It remains open *only* for any
+  future per-write versioning consumer; config's trigger is given
+  (the mediated commit).
+- **Scope**: TM capture covers user data + person config; `/System`
+  binaries are never versioned (config's per-domain capture covers
+  what needs rollback there).
+- **Space + fragmentation**: hourly churn × retained runs is real
+  disk; per-hour coalescing bounds it, tiered pruning bounds the
+  total, but the budget story stays load-bearing. Fragmentation of
+  frequently-rewritten files needs a compaction answer at prune time
+  (the pruning pass can also defragment by re-serializing the kept
+  version's runs).
 - **Journal atomicity**: a versioned overwrite must commit its
   retention decision atomically with the data write, or a crash
   leaves a file with no valid current version (the V-0 kill-cycle
