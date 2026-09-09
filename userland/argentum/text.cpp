@@ -168,7 +168,7 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
  * RGB32 box at (x0,y0), blending fg over bg by per-pixel coverage. */
 static void
 compose_glyph_rgb(std::uint32_t *box, int boxW, int boxH,
-		  FT_Bitmap *bm, int x0, int y0,
+		  const FT_Bitmap *bm, int x0, int y0,
 		  std::uint32_t fg, std::uint32_t bg)
 {
 	int fr = (fg >> 16) & 0xff, fg2 = (fg >> 8) & 0xff, fb = fg & 0xff;
@@ -207,7 +207,7 @@ compose_glyph_rgb(std::uint32_t *box, int boxW, int boxH,
 /* Composite one glyph's coverage into an A8 mask at (x0,y0). */
 static void
 compose_glyph_mask(unsigned char *cov, int boxW, int boxH,
-		   FT_Bitmap *bm, int x0, int y0)
+		   const FT_Bitmap *bm, int x0, int y0)
 {
 	int rows = (int) bm->rows;
 	int cols = (int) bm->width;
@@ -235,6 +235,81 @@ compose_glyph_mask(unsigned char *cov, int boxW, int boxH,
 	}
 }
 
+/* ---- glyph raster cache -----------------------------------------
+ *
+ * Every draw re-ran FT_Load_Glyph(FT_LOAD_RENDER) for each glyph, i.e.
+ * FreeType re-rasterized each character on every redraw. Faces are
+ * pinned to one pixel size (the face cache key is family + px), so a
+ * rendered glyph's bitmap and bitmap_left/top are constant per
+ * (face, glyph) — cache them and blit on reuse. 512 entries at ~20px
+ * is well under a megabyte. */
+struct GlyphEntry {
+	FT_Face face = nullptr;
+	unsigned int glyph = 0;
+	FT_Bitmap bm = {};		/* buffer owned by the entry */
+	int left = 0;
+	int top = 0;
+};
+
+static GlyphEntry g_glyphCache[512];
+static int g_glyphCount = 0;
+
+/* Rasterize (or fetch) a glyph. Returns a stable FT_Bitmap (the entry
+ * owns the buffer) or null on failure; *left/*top = the glyph's
+ * bitmap offset in the FreeType metric convention. */
+static const FT_Bitmap *
+glyphBitmap(FT_Face face, unsigned int glyph, int *left, int *top)
+{
+	int i;
+
+	for (i = 0; i < g_glyphCount; i++) {
+		if (g_glyphCache[i].face == face &&
+		    g_glyphCache[i].glyph == glyph) {
+			*left = g_glyphCache[i].left;
+			*top = g_glyphCache[i].top;
+			return &g_glyphCache[i].bm;
+		}
+	}
+	if (FT_Load_Glyph(face, glyph, FT_LOAD_RENDER)) {
+		return nullptr;
+	}
+	FT_GlyphSlot s = face->glyph;
+
+	if (!s->bitmap.buffer) {
+		return nullptr;
+	}
+	if (g_glyphCount == (int) (sizeof(g_glyphCache) /
+				  sizeof(g_glyphCache[0]))) {
+		/* full: drop everything (glyph sets are small) */
+		for (i = 0; i < g_glyphCount; i++) {
+			delete[] g_glyphCache[i].bm.buffer;
+		}
+		g_glyphCount = 0;
+	}
+	GlyphEntry &e = g_glyphCache[g_glyphCount++];
+	FT_Bitmap &bm = e.bm;
+
+	e.face = face;
+	e.glyph = glyph;
+	e.left = s->bitmap_left;
+	e.top = s->bitmap_top;
+	bm.rows = s->bitmap.rows;
+	bm.width = s->bitmap.width;
+	bm.pitch = s->bitmap.pitch;
+	bm.pixel_mode = s->bitmap.pixel_mode;
+	if (s->bitmap.pitch > 0 && s->bitmap.rows > 0) {
+		size_t bytes = (size_t) s->bitmap.rows * s->bitmap.pitch;
+
+		bm.buffer = new unsigned char[bytes];
+		std::memcpy(bm.buffer, s->bitmap.buffer, bytes);
+	} else {
+		bm.buffer = nullptr;
+	}
+	*left = e.left;
+	*top = e.top;
+	return &bm;
+}
+
 /* Pen advance callback shared by the two sinks. */
 template <typename Sink>
 static unsigned int
@@ -247,18 +322,19 @@ render_glyphs(TextRun *t, Sink sink)
 	for (i = 0; i < t->nglyphs; i++) {
 		int penPx = (int) (pen26 >> 6);	/* truncation is fine */
 		pen26 += t->pos[i].x_advance;
-		if (FT_Load_Glyph(t->face, t->info[i].codepoint,
-				  FT_LOAD_RENDER)) {
-			continue;
-		}
-		FT_GlyphSlot g = t->face->glyph;
-		if (!g->bitmap.buffer) {
+		int left = 0;
+		int top = 0;
+		const FT_Bitmap *bm = glyphBitmap(t->face,
+						 t->info[i].codepoint,
+						 &left, &top);
+
+		if (!bm) {
 			continue;
 		}
 		/* box coords: baseline sits ascPx+PADY below the top */
-		int gx = PADX + penPx + g->bitmap_left;
-		int gy = PADY + t->ascPx - g->bitmap_top;
-		sink(t, i, g, gx, gy);
+		int gx = PADX + penPx + left;
+		int gy = PADY + t->ascPx - top;
+		sink(t, bm, gx, gy);
 		rasterized++;
 	}
 	return rasterized;
@@ -446,12 +522,9 @@ textRunComposeRgb(TextRun *t, std::uint32_t *box, std::uint32_t fg,
 	for (int k = 0; k < t->boxW * t->boxH; k++) {
 		box[k] = bg & 0xffffff;
 	}
-	unsigned int n = render_glyphs(t, [&ctx](TextRun *t, unsigned int i,
-						 FT_GlyphSlot g, int gx,
-						 int gy) {
-		(void) t;
-		(void) i;
-		compose_glyph_rgb(ctx.box, ctx.boxW, ctx.boxH, &g->bitmap,
+	unsigned int n = render_glyphs(t, [&ctx](TextRun *, const FT_Bitmap *bm,
+						 int gx, int gy) {
+		compose_glyph_rgb(ctx.box, ctx.boxW, ctx.boxH, bm,
 				  gx, gy, ctx.fg, ctx.bg);
 	});
 	return n;
@@ -464,11 +537,10 @@ textRunComposeMask(TextRun *t, unsigned char *cov)
 	for (int k = 0; k < t->boxW * t->boxH; k++) {
 		cov[k] = 0;
 	}
-	unsigned int n = render_glyphs(t, [cov, t](TextRun *, unsigned int i,
-						   FT_GlyphSlot g, int gx,
-						   int gy) {
-		(void) i;
-		compose_glyph_mask(cov, t->boxW, t->boxH, &g->bitmap, gx, gy);
+	unsigned int n = render_glyphs(t, [cov, t](TextRun *,
+						   const FT_Bitmap *bm,
+						   int gx, int gy) {
+		compose_glyph_mask(cov, t->boxW, t->boxH, bm, gx, gy);
 	});
 	return n;
 }
