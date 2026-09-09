@@ -141,4 +141,25 @@ Stepper::mouseUp(const MouseEvent &)
 	}
 }
 
+/* S3.1b keyboard equivalent: arrows step the value like the mouse
+ * zones (Up/Right increment, Down/Left decrement). */
+void
+Stepper::keyDown(const KeyEvent &e)
+{
+	if (!isEnabled()) {
+		return;
+	}
+	if (e.keysym == 0xff52 || e.keysym == 0xff53) {
+		setValue(stp_->value + stp_->increment);
+		sendAction();
+		return;
+	}
+	if (e.keysym == 0xff54 || e.keysym == 0xff51) {
+		setValue(stp_->value - stp_->increment);
+		sendAction();
+		return;
+	}
+	Control::keyDown(e);
+}
+
 } /* namespace argentum */

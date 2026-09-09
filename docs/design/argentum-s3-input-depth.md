@@ -96,6 +96,14 @@ ring is the accent colour while One's is not).
 (value + ZOO-ACT-style log); Stepper `←`/`→` step; SegmentedControl
 `←`/`→` moves the selection and fires the action; Space on the
 focused Checkbox toggles it (keyboard-only interaction, no mouse).
+Status: **DONE** — Slider/SegmentedControl already had arrow keyDowns
+(S2.3-era); Stepper gained one (`stepper.cpp`: Up/Right increment,
+Down/Left decrement + sendAction). Probe `structure_g` self-injects
+Tab then arrows/Space across Slider/Stepper/SegmentedControl/Checkbox
+(no mouse); gate `.build/s31b_run.sh` + `s31b_assert.py` -> S31B-OK
+(11 checks: 0.25 -> 0.45 by four Rights, 3 -> 5 by two Rights, segment
+0 -> 1 with its action, Space checks the box; pixels confirm the
+0.45 knob, the B segment fill and the checked box).
 
 ### S3.2 — secure field + commit + whole-S3 keyboard acceptance
 *Acceptance:* the TextField in secure mode draws bullets instead of

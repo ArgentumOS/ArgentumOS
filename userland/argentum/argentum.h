@@ -886,6 +886,7 @@ public:
 	void draw(GraphicsContext &g) override;
 	void mouseDown(const MouseEvent &e) override;
 	void mouseUp(const MouseEvent &e) override;
+	void keyDown(const KeyEvent &e) override;
 
 private:
 	struct Impl;
