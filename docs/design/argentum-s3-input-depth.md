@@ -112,6 +112,19 @@ once (single `valueChanged`, logged); and the ORIGINAL S3 acceptance
 runs on the zoo: a keyboard-only script (Tab to each control, arrows/
 Space to operate, type into the field) exercises the whole board with
 no mouse — the S2.5 battery of ZOO-ACT/interaction logs fires.
+Status: **DONE** — TextField gains `setSecure`/`isSecure`/`setOnEndEdit`
+(`textfield.cpp`): secure draws one U+2022 bullet per character while
+`value()` keeps the real text (a11y/actions read it); an editing
+session opens on typing or click and commits once on Return/keypad-
+Enter or on focus loss (`resignFirstResponder`), firing the end-edit
+callback. Probe `structure_h` (User/PIN form, PIN secure) runs fully
+keyboard-only: Tab in, type, Return, Tab, Space -> gate
+`.build/s32_run.sh` + `s32_assert.py` -> S32-OK (6 checks: one
+commit, secure=1 len=4, login reads `user=kyle pin=1234`, Tab reaches
+all three controls, the user field draws full-height glyphs while the
+PIN field draws 5px-tall bullets). The zoo keyboard equivalence is
+carried by S3.1a/b + this gate (the same Control/TextField code the
+zoo uses).
 
 ## 5. Files
 

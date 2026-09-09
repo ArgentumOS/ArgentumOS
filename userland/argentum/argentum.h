@@ -740,6 +740,13 @@ public:
 	/* the field text (UTF-8, single line) */
 	void setValue(const char *utf8);	/* copied; caret to the end */
 	const char *value() const;
+	/* S3.2: secure entry shows one bullet per character on screen
+	 * (value()/a11y keep the real text); an editing session ends on
+	 * Return or on losing focus, firing the end-edit callback
+	 * (commit) once. */
+	void setSecure(bool secure);
+	bool isSecure() const;
+	void setOnEndEdit(std::function<void(TextField *)> cb);
 	/* caret / selection state (for read-back; caret == anchor and
 	 * no selection when caret == start == end) */
 	unsigned int caretIndex() const;
@@ -751,6 +758,7 @@ public:
 	/* responder behaviour */
 	void mouseDown(const MouseEvent &e) override;
 	void keyDown(const KeyEvent &e) override;
+	void resignFirstResponder() override;
 
 protected:
 	/* called after any edit (insert/delete/move); the default does
@@ -764,6 +772,7 @@ private:
 	void deleteRange(unsigned int start, unsigned int end);
 	unsigned int indexAtX(double localPt) const;	/* click position */
 	void setSelection(unsigned int start, unsigned int end);
+	void endEditing();		/* S3.2: commit an open session */
 	struct Impl;
 	Impl *fld_;
 };

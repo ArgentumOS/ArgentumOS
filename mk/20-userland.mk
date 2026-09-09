@@ -287,6 +287,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/structure_b.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/structure_b"
+	# structure_h: S3.2 secure-field acceptance — bullets + Return commit
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/structure_h.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/structure_h"
 	# structure_g: S3.1b keyboard-equivalents acceptance — arrows/Space by Tab
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/tests/structure_g.cpp \

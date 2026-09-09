@@ -235,8 +235,14 @@ TextField::keyDown(const KeyEvent &e)
 	    (unsigned char) e.chars[0] != 0x7f) {
 		char buf[8] = { 0 };
 
+		fld_->editing = true;
 		std::strncpy(buf, e.chars, sizeof(buf) - 1);
 		insertAtCaret(buf);
+		return;
+	}
+	/* S3.2: Return / keypad-Enter commits an open editing session */
+	if (e.keysym == 0xff0d || e.keysym == 0xff8d) {
+		endEditing();
 		return;
 	}
 	bool shift = (e.modifiers & ARGENTUM_MOD_SHIFT) != 0;
@@ -322,6 +328,7 @@ TextField::mouseDown(const MouseEvent &e)
 	if (!isEnabled()) {
 		return;
 	}
+	fld_->editing = true;
 	fld_->caret = indexAtX(e.x);
 	fld_->anchor = fld_->caret;
 	setNeedsDisplay();
@@ -367,6 +374,67 @@ TextField::indexAtX(double localPt) const
 void
 TextField::valueChanged()
 {
+}
+
+/* ---- S3.2 secure entry + end-edit commit ------------------------- */
+
+void
+TextField::setSecure(bool secure)
+{
+	fld_->secure = secure;
+	setNeedsDisplay();
+}
+
+bool
+TextField::isSecure() const
+{
+	return fld_->secure;
+}
+
+void
+TextField::setOnEndEdit(std::function<void(TextField *)> cb)
+{
+	fld_->onEndEdit = std::move(cb);
+}
+
+void
+TextField::endEditing()
+{
+	if (!fld_->editing) {
+		return;
+	}
+	fld_->editing = false;
+	if (fld_->onEndEdit) {
+		fld_->onEndEdit(this);
+	}
+}
+
+void
+TextField::resignFirstResponder()
+{
+	endEditing();
+	Control::resignFirstResponder();
+}
+
+/* utf8 char count helper: replace every character in `part` with a
+ * bullet (U+2022) into `dst`. */
+static void
+toBullets(char *dst, const char *part)
+{
+	const char *u = part;
+	size_t d = 0;
+
+	while (*u && d < 900) {
+		/* skip one utf8 continuation sequence */
+		u++;
+		while ((*u & 0xc0) == 0x80) {
+			u++;
+		}
+		dst[d++] = (char) 0xe2;
+		dst[d++] = (char) 0x80;
+		dst[d++] = (char) 0xa2;
+	}
+	dst[d] = 0;
 }
 
 /* ---- drawing ---------------------------------------------------- */
@@ -423,7 +491,7 @@ TextField::draw(GraphicsContext &g)
 	bool hasSel = isEnabled() && e > s && e <= len;
 	unsigned int preEnd = hasSel ? s : len;
 	unsigned int postStart = hasSel ? e : len;
-	char pre[256], selc[256], post[256];
+	char pre[1024], selc[1024], post[1024];
 
 	pre[0] = 0;
 	selc[0] = 0;
@@ -439,6 +507,19 @@ TextField::draw(GraphicsContext &g)
 	if (len - postStart < sizeof(post)) {
 		std::memcpy(post, text + postStart, len - postStart);
 		post[len - postStart] = 0;
+	}
+	if (fld_->secure) {
+		/* one bullet per character, split at the same points;
+		 * value() and the selection/caret stay byte-based on the
+		 * real text */
+		char bullets[1024];
+
+		toBullets(bullets, pre);
+		std::strncpy(pre, bullets, sizeof(pre) - 1);
+		toBullets(bullets, selc);
+		std::strncpy(selc, bullets, sizeof(selc) - 1);
+		toBullets(bullets, post);
+		std::strncpy(post, bullets, sizeof(post) - 1);
 	}
 
 	double xPre = padx;

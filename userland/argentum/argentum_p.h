@@ -339,6 +339,9 @@ struct TextField::Impl {
 	unsigned int caret = 0;		/* byte index, utf8-safe */
 	unsigned int anchor = 0;	/* selection anchor (byte) */
 	bool selectAll = false;		/* first responder select-all */
+	bool secure = false;		/* S3.2 bullets instead of glyphs */
+	bool editing = false;		/* S3.2 open edit session */
+	std::function<void(TextField *)> onEndEdit; /* commit callback */
 };
 
 /* S2.2a text core: shared run internals (implemented in text.cpp).
