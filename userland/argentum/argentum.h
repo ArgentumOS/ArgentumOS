@@ -428,6 +428,12 @@ private:
 	friend class GraphicsContext;	/* flush() XPutImages bitmaps */
 	struct Impl;
 	Impl *impl_;
+
+	/* MIT-SHM (docs/design/mit-shm-plan.md M2): attach/refresh the
+	 * persistent SysV transport for the current backing geometry
+	 * (false = fall back to XPutImage); release it. */
+	bool shmEnsure();
+	void shmTeardown();
 };
 
 /* S1.2: BitmapImage — an offscreen pixel buffer (the NSBitmapImageRep

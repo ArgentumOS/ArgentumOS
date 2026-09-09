@@ -74,6 +74,20 @@ segment setup costs more than a small copy).
 **Acceptance**: UIKit large-image draw through MIT-SHM renders
 byte-identical to the `XPutImage` path (guest screenshot compare);
 the X11 wire carries segment ids, not image bytes, for the shm path.
+Status: **DONE** — `Window::flushBacking()` uses a persistent per-
+window SysV segment + `XShmPutImage` when the server answers XShm and
+the backing layout is unpadded (stride == width*4); otherwise the
+`XPutImage` core path stays. Segment mode 0666 (M0's SO_PEERCRED
+finding). Two bugs found on the way:
+- The `XShmSegmentInfo` handed to `XShmCreateImage` becomes the
+  XImage's `obdata`, read again by `XShmPutImage` at EVERY flush — it
+  must live as long as the window (a function-local dangles -> the put
+  sends a stale segment id and the server answers BadShmSeg).
+- `XSync` after `XShmAttach` (the xcb-route attach must not overtake
+  buffered Xlib requests).
+Gates: zoo session SHADOW-OK (pixels identical, server-side SHM-PUT
+trace showed seg id + offset 0 before the trace was stripped) and
+S13-PIXELS-OK (theme_chrome through the shm path).
 
 ## 4. Caveats (stated, not hidden)
 

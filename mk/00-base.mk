@@ -245,7 +245,7 @@ $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argen
 		-I$(X11PREFIX)/include/freetype2 -I$(X11PREFIX)/include/harfbuzz \
 		-I$(X11PREFIX)/include/fontconfig \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -Wl,-soname,libargentum.so.1 \
-		-o $@ $(ARGENTUM_SRCS) -lX11 -lpixman-1 \
+		-o $@ $(ARGENTUM_SRCS) -lX11 -lXext -lpixman-1 \
 		-lfontconfig -lharfbuzz -lfreetype -lconfig
 	ln -sf libargentum.so.1 $(FNXLIB)/libargentum.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh

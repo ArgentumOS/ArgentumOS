@@ -188,8 +188,9 @@ Application::init(const char *displayName)
 		char buf[128];
 
 		XGetErrorText(e->display, e->error_code, buf, sizeof(buf));
-		fprintf(stderr, "ARGENTUM: X error op=%d code=%d (%s) res=%lu\n",
-			e->request_code, e->error_code, buf,
+		fprintf(stderr,
+			"ARGENTUM: X error op=%d minor=%d code=%d (%s) res=%lu\n",
+			e->request_code, e->minor_code, e->error_code, buf,
 			(unsigned long) e->resourceid);
 		return 0;
 	});

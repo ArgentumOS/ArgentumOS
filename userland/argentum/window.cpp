@@ -12,11 +12,108 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 
 namespace argentum {
+
+/* ---- MIT-SHM transport (docs/design/mit-shm-plan.md M2) ----------
+ * One persistent SysV segment per window backing. The segment must be
+ * 0666: FNX has no SO_PEERCRED, so the server's shm_access() falls
+ * through to the "other" bits. Geometry must be width*4 rows (the
+ * layout the server derives from a depth-24 32-bpp ShmPutImage);
+ * XShmCreateImage pads to that when the pad is 32, but verify and
+ * fall back to XPutImage otherwise. */
+
+void
+Window::shmTeardown()
+{
+	if (!impl_->shmImg) {
+		return;		/* nothing attached */
+	}
+	XShmDetach(impl_->dpy, &impl_->shm);
+	shmdt(impl_->shmImg->data);
+	impl_->shmImg->data = nullptr;	/* XDestroyImage frees data */
+	XDestroyImage(impl_->shmImg);
+	impl_->shmImg = nullptr;
+	shmctl(impl_->shm.shmid, IPC_RMID, nullptr);
+	impl_->shmUp = false;
+	impl_->shmW = impl_->shmH = 0;
+}
+
+/* Make the shm transport ready for the current backing geometry.
+ * Returns true when flushBacking can XShmPutImage. */
+bool
+Window::shmEnsure()
+{
+	int screen = DefaultScreen(impl_->dpy);
+
+	if (impl_->shmUp && impl_->shmW == (int) impl_->width &&
+	    impl_->shmH == (int) impl_->height) {
+		return true;
+	}
+	if (impl_->shmUp) {
+		shmTeardown();
+	}
+	if (!XShmQueryExtension(impl_->dpy)) {
+		return false;
+	}
+	unsigned int wpx = impl_->width;
+	unsigned int hpx = impl_->height;
+
+	/* Use the PERSISTENT XShmSegmentInfo (impl_->shm): libXext keeps
+	 * it as the XImage's obdata (img->obdata = the shminfo pointer),
+	 * so XShmPutImage reads the segment id from it at flush time. A
+	 * local would dangle the moment this function returns. */
+	memset(&impl_->shm, 0, sizeof(impl_->shm));
+	impl_->shm.shmid = shmget(IPC_PRIVATE, (size_t) wpx * hpx * 4,
+				  IPC_CREAT | 0666);
+	if (impl_->shm.shmid < 0) {
+		return false;
+	}
+	XImage *img = XShmCreateImage(
+		impl_->dpy, DefaultVisual(impl_->dpy, screen),
+		(unsigned int) DefaultDepth(impl_->dpy, screen), ZPixmap,
+		nullptr, &impl_->shm, wpx, hpx);
+	if (!img) {
+		shmctl(impl_->shm.shmid, IPC_RMID, nullptr);
+		return false;
+	}
+	impl_->shm.shmaddr = img->data =
+		(char *) shmat(impl_->shm.shmid, nullptr, 0);
+	impl_->shm.readOnly = False;
+	if (impl_->shm.shmaddr == (char *) -1) {
+		img->data = nullptr;
+		XDestroyImage(img);
+		shmctl(impl_->shm.shmid, IPC_RMID, nullptr);
+		return false;
+	}
+	if (!XShmAttach(impl_->dpy, &impl_->shm) ||
+	    img->bytes_per_line != (int) (wpx * 4)) {
+		/* padded layout or attach refused: keep the core path */
+		shmdt(impl_->shm.shmaddr);
+		img->data = nullptr;
+		XDestroyImage(img);
+		shmctl(impl_->shm.shmid, IPC_RMID, nullptr);
+		return false;
+	}
+	/* libXext routes XShm over xcb, ahead of Xlib's buffered stream:
+	 * flush so the attach (and every earlier Xlib request) reaches
+	 * the server before the first XShmPutImage references the seg. */
+	XSync(impl_->dpy, False);
+	impl_->shmImg = img;
+	impl_->shmUp = true;
+	impl_->shmW = (int) wpx;
+	impl_->shmH = (int) hpx;
+	printf("ARGENTUM-SHM: enabled %ux%u shmid=%d\n", wpx, hpx,
+	       impl_->shm.shmid);
+	fflush(stdout);
+	return true;
+}
 
 /* S2.1a: draw one view and its subtree into g. The context must
  * already be positioned so (0,0) is `v`'s top-left (the caller
@@ -419,6 +516,42 @@ Window::flushBacking()
 	int screen = DefaultScreen(impl_->dpy);
 	Visual *vis = DefaultVisual(impl_->dpy, screen);
 	unsigned int depth = (unsigned int) DefaultDepth(impl_->dpy, screen);
+	int dx = impl_->dmgX0;
+	int dy = impl_->dmgY0;
+	unsigned int dw = (unsigned) (impl_->dmgX1 - dx);
+	unsigned int dh = (unsigned) (impl_->dmgY1 - dy);
+
+	/* MIT-SHM path: memcpy the damaged rect into the segment and
+	 * XShmPutImage (no image bytes on the wire). Fall back to
+	 * XPutImage when the server lacks XShm or the layout pads. */
+	if (shmEnsure() &&
+	    impl_->shmImg->bytes_per_line ==
+		    (int) pixman_image_get_stride(b->img)) {
+		char *src = (char *) pixman_image_get_data(b->img);
+		char *dst = impl_->shmImg->data;
+		int bpl = impl_->shmImg->bytes_per_line;
+		int rowBytes = (int) dw * 4;
+		unsigned int y;
+
+		for (y = 0; y < dh; y++) {
+			memcpy(dst + (size_t) (dy + y) * bpl +
+			       (size_t) dx * 4,
+			       src + (size_t) (dy + y) *
+					     pixman_image_get_stride(b->img) +
+				       (size_t) dx * 4,
+			       (size_t) rowBytes);
+		}
+		GC gc = XCreateGC(impl_->dpy, impl_->xwin, 0, nullptr);
+
+		if (gc) {
+			XShmPutImage(impl_->dpy, impl_->xwin, gc,
+				     impl_->shmImg, dx, dy, dx, dy, dw, dh,
+				     False);
+			XFreeGC(impl_->dpy, gc);
+		}
+		XSync(impl_->dpy, False);
+		return;
+	}
 	XImage *ximg = XCreateImage(
 		impl_->dpy, vis, depth, ZPixmap, 0,
 		(char *) pixman_image_get_data(b->img),
@@ -431,11 +564,6 @@ Window::flushBacking()
 	GC gc = XCreateGC(impl_->dpy, impl_->xwin, 0, nullptr);
 
 	if (gc) {
-		int dx = impl_->dmgX0;
-		int dy = impl_->dmgY0;
-		unsigned int dw = (unsigned) (impl_->dmgX1 - dx);
-		unsigned int dh = (unsigned) (impl_->dmgY1 - dy);
-
 		XPutImage(impl_->dpy, impl_->xwin, gc, ximg,
 			  dx, dy, dx, dy, dw, dh);
 		XFreeGC(impl_->dpy, gc);
@@ -524,6 +652,7 @@ Window::~Window()
 			(unsigned long) impl_->xwin);
 		XDestroyWindow(impl_->dpy, impl_->xwin);
 	}
+	shmTeardown();
 	delete impl_->back;
 	delete impl_;
 }

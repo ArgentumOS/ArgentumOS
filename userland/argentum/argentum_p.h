@@ -12,6 +12,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/XShm.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -103,6 +104,17 @@ struct Window::Impl {
 	int dmgY0 = 0;
 	int dmgX1 = 0;
 	int dmgY1 = 0;			/* px bounds, exclusive */
+
+	/* MIT-SHM (docs/design/mit-shm-plan.md M2): when the server
+	 * answers XShm, the damaged rect is memcpy'd into a persistent
+	 * SysV segment and XShmPutImage'd — the X11 wire carries the
+	 * segment id, not the image bytes (a 960x720 flush stops being a
+	 * multi-MB socket write). Geometry must equal the backing
+	 * (width*4 stride) or flushBacking falls back to XPutImage. */
+	bool shmUp = false;		/* the transport is attached */
+	int shmW = 0, shmH = 0;		/* segment geometry (px) */
+	XShmSegmentInfo shm;
+	XImage *shmImg = nullptr;
 };
 
 /* S1.2 BitmapImage state: the pixman offscreen surface. x8r8g8b8 is the
