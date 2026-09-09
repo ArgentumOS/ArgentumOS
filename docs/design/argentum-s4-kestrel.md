@@ -193,6 +193,20 @@ millisecond up-flips — the phantom press re-arms `gBtnDown` long
 before the window elapses, so only a real release (button left up)
 drops the window, at the outline's last position. S41D gate re-run
 green after v4.
+v5 (user: "the fully-drawn window keeps moving while the mouse
+button is held down"): v4 gated the drop purely on the button, so a
+phantom RELEASE that was not re-armed by a press within 250ms dropped
+the drag MID-MOTION — the window teleported to the outline and a
+later phantom press re-anchored it, so under fast real-mouse motion
+the window chased the outline in steps. The drop now requires the
+button up AND the pointer QUIET: every MotionNotify re-arms the
+button-up clock (`gBtnUpMs`), so motion flowing after a phantom
+release can never drop the drag — only a release that stays up and
+then rests drops (250ms after the last motion). Mid-drag pauses still
+never drop (button held). Repro gate `.build/s41e_run.sh`: a phantom
+release followed by >250ms of continuous motion must leave the window
+unmoved (S41E-PASS: mid shot == pre shot; the drop fires once, at
+rest). S41D re-run green after v5.
 Note: the root-drawn outline is hidden under other windows (classic
 X11 behaviour) — fine for v1; a raised border-window outline would be
 fully visible if it matters later.

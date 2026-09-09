@@ -556,13 +556,16 @@ endDrag(bool moved)
 
 /* QEMU's mouse path can deliver phantom press/release pairs mid-drag
  * (ps2 sync slips under fast motion); trusting a release would drop
- * the window every couple of pixels. The drag instead ends only once
- * the BUTTON has stayed UP for a sustained window (~250ms): the
- * phantoms are millisecond up-flips, the real release leaves the
- * button up. Mid-drag pauses (button held) never drop the window.
- * Checked on the per-event path (time-gated, so ordinary motions are
- * safe) and on the idle beat (when events stop entirely). */
-#define DRAG_DROP_MS 250	/* button-up window before the drop */
+ * the window every couple of pixels. The drag ends only when the
+ * BUTTON is up AND the pointer is QUIET for ~250ms: a release alone
+ * never drops it, and neither does a motion alone (the pointer may
+ * glide after a real release). Motion re-arms the button-up clock
+ * (MotionNotify below), so a phantom release cannot drop the window
+ * while the drag motion is still flowing — only a release that
+ * STAYS up and then rests drops the window. Mid-drag pauses never
+ * drop (the button is held: gBtnDown). Checked on the per-event
+ * path and on the idle beat (when events stop entirely). */
+#define DRAG_DROP_MS 250	/* button-up + quiet window before the drop */
 
 static void
 dropIfReleased()
@@ -606,8 +609,8 @@ reapDeadClients()
 }
 
 /* The idle beat (the app loop polls ~250ms with no events, then calls
- * this): a window that released its button long enough ago drops here
- * even when no further events arrive. */
+ * this): a window whose button has been up and the pointer quiet long
+ * enough drops here even when no further events arrive. */
 static bool
 idleBeat()
 {
@@ -655,9 +658,18 @@ kestrelHook(void *xevent)
 		if (gDragActive) {
 			/* the outline follows the hand on every motion,
 			 * regardless of the button state; the drop is
-			 * gated purely on the button having stayed up
-			 * for DRAG_DROP_MS (dropIfReleased) */
+			 * gated on button-up AND quiet (dropIfReleased).
+			 * While the button is up, motion re-arms the
+			 * clock: a phantom release mid-drag (button
+			 * visibly up under a ps2 sync slip) must not
+			 * drop the window while the user is still
+			 * dragging — the drop waits for the motion to
+			 * stop (a real-release glide defers the same
+			 * way, which is what makes phantoms harmless). */
 			dragTo(ev->xmotion.x_root, ev->xmotion.y_root);
+			if (!gBtnDown) {
+				gBtnUpMs = nowMs();
+			}
 			return true;
 		}
 		return false;
