@@ -166,16 +166,23 @@ at the new position; the old spot empties; other windows are
 untouched.
 Status: **DONE** — Kestrel's event hook starts an active pointer grab
 on a band press (the close plate is left to the toolkit so the
-FrameChrome can still close) and logs `KESTREL: move ... to x,y` on
-release. v2 (perf fix — per-motion XMoveWindow made the server discard
-the window's pixels, so the client fully re-rendered on every Expose):
+FrameChrome can still close) and logs `KESTREL: move ... to x,y`.
+v2 (perf fix — per-motion XMoveWindow made the server discard the
+window's pixels, so the client fully re-rendered on every Expose):
 the drag moves a cheap XOR **outline** on the root and the window is
-teleported ONCE on release (one move + one redraw). Gate
-`.build/s41d_run.sh` + `s41d_assert.py` -> S41D-OK (9 checks: the
-+200/+150 drag lands the frame at 260,230; a mid-drag screendump
-proves the window has NOT moved yet while the inverted outline
-tracks over the desktop; the old spot empties, the band + content
-render at the new origin, Krel B untouched). S41B re-run green.
+teleported ONCE (one move + one redraw).
+v3 (user: "the window advances a couple px, drops, then repeats along
+the motion"): QEMU's mouse path delivers phantom press/release pairs
+mid-drag (ps2 sync slips under fast motion), so ending on a release
+teleported every couple of pixels. The drag now ends only when the
+pointer goes **quiet** — the ~250ms idle beat drops the window at the
+outline's last position; releases are consumed but never trusted, and
+a phantom re-press mid-drag re-anchors + re-grabs without disturbing
+the outline. Gate `.build/s41d_run.sh` + `s41d_assert.py` -> S41D-OK
+(a multi-step drag lands at 210,190; a mid-drag screendump proves the
+window has NOT moved while the inverted outline tracks over the
+desktop; the old spot empties, the band + content render at the new
+origin, Krel B untouched). S41A/B/C re-runs green after v3.
 Note: the root-drawn outline is hidden under other windows (classic
 X11 behaviour) — fine for v1; a raised border-window outline would be
 fully visible if it matters later.
