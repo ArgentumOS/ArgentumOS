@@ -576,12 +576,15 @@ dropIfReleased()
 	}
 }
 
+
 /* ---- the idle + event hooks: WM housekeeping ------------------------ */
 
 /* Some events (DestroyNotify for a client killed by its connection
  * closing) never arrive on this server; probe the managed clients
- * cheaply and reap the dead. Runs on every event (hook) and on the
- * idle beat. */
+ * cheaply and reap the dead. Runs on the idle beat (a ~250ms poll
+ * when no events pend) — deliberately NOT on the per-event path: the
+ * XGetWindowAttributes probe is a synchronous round-trip per managed
+ * client and would throttle every motion during a drag. */
 static bool
 reapDeadClients()
 {
@@ -624,7 +627,11 @@ kestrelHook(void *xevent)
 {
 	XEvent *ev = (XEvent *) xevent;
 
-	reapDeadClients();
+	/* reapDeadClients does a synchronous XGetWindowAttributes
+	 * round-trip per managed client — on the per-event path it would
+	 * throttle every motion during a drag to server round-trip
+	 * latency. Reaping runs on the idle beat instead (~250ms, when
+	 * no events pend), which is plenty for frame cleanup. */
 	dropIfReleased();
 	switch (ev->type) {
 	case ButtonPress:

@@ -207,6 +207,17 @@ never drop (button held). Repro gate `.build/s41e_run.sh`: a phantom
 release followed by >250ms of continuous motion must leave the window
 unmoved (S41E-PASS: mid shot == pre shot; the drop fires once, at
 rest). S41D re-run green after v5.
+v5.1 (user: "the XOR-frame feels laggy, it can't keep up with the
+pointer"): dead-client reaping ran on EVERY event (kestrelHook), and
+each reap is a synchronous `XGetWindowAttributes` round-trip per
+managed client — during a drag every motion was throttled to server
+round-trip latency. Measured saturation (250 injected moves): **66
+ev/s** sustained with reaping per event vs **135 ev/s** with reaping
+moved to the idle beat only (a ~250ms poll that fires when no events
+pend, plenty for frame cleanup — dead frames linger at most one beat
+after the pointer rests). A paced ~100 ev/s fast-drag burst then
+tracks cleanly (10.4ms mean inter-event). S41C/S41D/S41E re-run
+green after v5.1.
 Note: the root-drawn outline is hidden under other windows (classic
 X11 behaviour) — fine for v1; a raised border-window outline would be
 fully visible if it matters later.
