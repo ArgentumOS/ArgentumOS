@@ -338,6 +338,13 @@ public:
 	/* S2.3c: unmap + reposition at root px (transient windows). */
 	void unmap();
 	void moveRoot(int xPx, int yPx);
+	/* S2.6 per-rect damage: merge a dirty rect (window px) and, for
+	 * scheduleDamagePx, ask the server for one coalesced Expose over
+	 * it. run() merges the Expose region via noteDamage before the
+	 * draw pass. */
+	void noteDamage(int xPx, int yPx, unsigned int wPx,
+			unsigned int hPx);
+	void scheduleDamagePx(int x0, int y0, int x1, int y1);
 
 	/* Core-protocol solid fill of the whole window (XPutImage of a
 	 * depth-24 XRGB image). rgb is 0xRRGGBB. No XRender/Xft. */
@@ -403,6 +410,9 @@ public:
 	 * delivers mouseEntered/Exited on hit-test changes and
 	 * mouseMoved while inside (hover tracking). */
 	void dispatchMotionToContent(const MouseEvent &pxEvent);
+
+	/* S2.6 per-rect redraw helper (see noteDamage/draw). */
+	void flushBacking();
 
 	/* S2.2c minimal focus: the first responder receives key events
 	 * (null = the content view). setFirstResponder resigns the old

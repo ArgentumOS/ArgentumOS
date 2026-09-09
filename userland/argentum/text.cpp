@@ -42,8 +42,10 @@ struct TextRun {
 	FcPattern *pat = nullptr;
 	FcPattern *match = nullptr;
 
-	/* FreeType + HarfBuzz (destroyed on finish) */
+	/* FreeType + HarfBuzz (destroyed on finish; the face only when
+	 * faceOwned — cached faces belong to the face cache) */
 	FT_Face face = nullptr;
+	bool faceOwned = false;
 	hb_font_t *hbf = nullptr;
 	hb_buffer_t *buf = nullptr;
 
@@ -65,6 +67,102 @@ struct TextRun {
 
 static const int PADX = 2;
 static const int PADY = 1;
+
+/* ---- face cache ------------------------------------------------
+ *
+ * Every draw used to re-run FcFontMatch (a fontconfig directory scan,
+ * tens of ms) + FT_New_Face (opens + parses the file) for EVERY text
+ * run — a window redraw with N strings paid N fontconfig matches.
+ * Faces are process-lifetime: resolve (family, pixel size) once and
+ * reuse. Sizes are pixel sizes at the session px/pt factor, so a
+ * theme font at one pt size = one entry. */
+struct FaceEntry {
+	char family[64] = { 0 };
+	unsigned int px = 0;
+	FT_Face face = nullptr;
+	FcPattern *match = nullptr;	/* keeps FC_FILE alive */
+};
+
+static FaceEntry g_faceCache[8];
+static int g_faceCount = 0;
+
+/* Look up (family, px); on miss resolve via fontconfig + FreeType and
+ * cache it. Returns the face or null. *firstResolve is set when this
+ * call created the entry (callers log the 'matched' line once). */
+static FT_Face
+textLookupFace(const char *family, unsigned int px, FT_Library lib,
+	       FcPattern **matchRef, bool *firstResolve)
+{
+	int i;
+
+	*firstResolve = false;
+	for (i = 0; i < g_faceCount; i++) {
+		if (g_faceCache[i].px == px &&
+		    std::strcmp(g_faceCache[i].family, family) == 0) {
+			if (matchRef) {
+				*matchRef = g_faceCache[i].match;
+			}
+			return g_faceCache[i].face;
+		}
+	}
+	/* resolve: fontconfig family match */
+	FcPattern *pat = FcNameParse((const FcChar8 *) family);
+
+	if (!pat) {
+		return nullptr;
+	}
+	FcConfigSubstitute(nullptr, pat, FcMatchPattern);
+	FcDefaultSubstitute(pat);
+	FcResult res = FcResultNoMatch;
+	FcPattern *match = FcFontMatch(nullptr, pat, &res);
+
+	FcPatternDestroy(pat);
+	if (!match || res != FcResultMatch) {
+		if (match) {
+			FcPatternDestroy(match);
+		}
+		return nullptr;
+	}
+	FcChar8 *file = nullptr;
+	int index = 0;
+
+	if (FcPatternGetString(match, FC_FILE, 0, &file) != FcResultMatch ||
+	    FcPatternGetInteger(match, FC_INDEX, 0, &index) !=
+		    FcResultMatch) {
+		FcPatternDestroy(match);
+		return nullptr;
+	}
+	FT_Face face = nullptr;
+
+	if (FT_New_Face(lib, (char *) file, index, &face) || !face) {
+		FcPatternDestroy(match);
+		return nullptr;
+	}
+	/* store (evict slot 0 when full) */
+	if (g_faceCount < (int) (sizeof(g_faceCache) /
+				 sizeof(g_faceCache[0]))) {
+		i = g_faceCount++;
+	} else {
+		i = 0;
+		if (g_faceCache[i].face) {
+			FT_Done_Face(g_faceCache[i].face);
+		}
+		if (g_faceCache[i].match) {
+			FcPatternDestroy(g_faceCache[i].match);
+		}
+	}
+	std::strncpy(g_faceCache[i].family, family,
+		     sizeof(g_faceCache[i].family) - 1);
+	g_faceCache[i].family[sizeof(g_faceCache[i].family) - 1] = 0;
+	g_faceCache[i].px = px;
+	g_faceCache[i].face = face;
+	g_faceCache[i].match = match;
+	*firstResolve = true;
+	if (matchRef) {
+		*matchRef = match;
+	}
+	return face;
+}
 
 /* Composite one glyph bitmap (FT_PIXEL_MODE_GRAY or _MONO) into an
  * RGB32 box at (x0,y0), blending fg over bg by per-pixel coverage. */
@@ -185,46 +283,33 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 		return nullptr;
 	}
 
-	/* 1) fontconfig: match the family */
-	t->pat = FcNameParse((const FcChar8 *) family);
-	if (!t->pat) {
-		fprintf(stderr, "ARGENTUM-TEXT: FcNameParse(%s) failed\n",
-			family);
-		textRunFinish(t);
-		return nullptr;
-	}
-	FcConfigSubstitute(nullptr, t->pat, FcMatchPattern);
-	FcDefaultSubstitute(t->pat);
-	FcResult res = FcResultNoMatch;
-	t->match = FcFontMatch(nullptr, t->pat, &res);
-	if (!t->match || res != FcResultMatch) {
-		fprintf(stderr, "ARGENTUM-TEXT: FcFontMatch(%s) failed\n",
-			family);
-		textRunFinish(t);
-		return nullptr;
-	}
-	FcChar8 *file = nullptr;
-	int index = 0;
-	if (FcPatternGetString(t->match, FC_FILE, 0, &file) != FcResultMatch ||
-	    FcPatternGetInteger(t->match, FC_INDEX, 0, &index) !=
-		    FcResultMatch) {
-		fprintf(stderr, "ARGENTUM-TEXT: no FC_FILE/FC_INDEX\n");
-		textRunFinish(t);
-		return nullptr;
-	}
-	if (!quiet) {
-		fprintf(stderr, "ARGENTUM-TEXT: matched '%s' index %d\n",
-			(char *) file, index);
-	}
+	/* 1) fontconfig match + FreeType face come from the process
+	 * face cache (resolve once per family+pixel size; the cached
+	 * face is borrowed — finish() must not destroy it) */
+	bool first = false;
+	FcPattern *matchRef = nullptr;
+	FT_Face face = textLookupFace(
+		family, pixelSize, (FT_Library) app.freeTypeHandle(),
+		&matchRef, &first);
 
-	/* 2) FreeType face from the matched file at the requested size */
-	if (FT_New_Face((FT_Library) app.freeTypeHandle(), (char *) file,
-			 index, &t->face) ||
-	    !t->face) {
-		fprintf(stderr, "ARGENTUM-TEXT: FT_New_Face failed\n");
+	if (!face) {
+		fprintf(stderr, "ARGENTUM-TEXT: face lookup(%s) failed\n",
+			family);
 		textRunFinish(t);
 		return nullptr;
 	}
+	if (!quiet && first && matchRef) {
+		FcChar8 *file = nullptr;
+		int index = 0;
+
+		if (FcPatternGetString(matchRef, FC_FILE, 0, &file) ==
+			    FcResultMatch) {
+			fprintf(stderr,
+				"ARGENTUM-TEXT: matched '%s' index %d\n",
+				(char *) file, index);
+		}
+	}
+	t->face = face;		/* borrowed from the cache */
 	FT_Set_Pixel_Sizes(t->face, 0, pixelSize);
 
 	/* 3) HarfBuzz shapes the run (glyph order + 26.6 advances) */
@@ -238,8 +323,32 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	t->info = hb_buffer_get_glyph_infos(t->buf, nullptr);
 	t->pos = hb_buffer_get_glyph_positions(t->buf, nullptr);
 	if (!quiet) {
-		fprintf(stderr, "ARGENTUM-TEXT: shaped '%s' -> %u glyphs\n",
-			utf8, t->nglyphs);
+		/* log a run's shaping once per (family|px|text) — the
+		 * console is serial-bound, and every redraw reshapes
+		 * every string; printing each time was ~0.2s of pure
+		 * log I/O per full-window draw */
+		static char s_logged[8][160];
+		static int s_loggedN = 0;
+		char key[160];
+		int li;
+
+		std::snprintf(key, sizeof(key), "%s|%u|%s", family,
+			      pixelSize, utf8);
+		for (li = 0; li < s_loggedN; li++) {
+			if (std::strcmp(s_logged[li], key) == 0) {
+				break;
+			}
+		}
+		if (li == s_loggedN && s_loggedN < 8) {
+			std::strncpy(s_logged[s_loggedN], key,
+				     sizeof(s_logged[0]) - 1);
+			s_logged[s_loggedN]
+				[sizeof(s_logged[0]) - 1] = 0;
+			s_loggedN++;
+			fprintf(stderr,
+				"ARGENTUM-TEXT: shaped '%s' -> %u glyphs\n",
+				utf8, t->nglyphs);
+		}
 	}
 
 	/* run box metrics: total advance + face ascent/descent (26.6) */
@@ -275,7 +384,7 @@ textRunFinish(TextRun *t)
 	if (t->hbf) {
 		hb_font_destroy(t->hbf);
 	}
-	if (t->face) {
+	if (t->face && t->faceOwned) {
 		FT_Done_Face(t->face);
 	}
 	if (t->match) {

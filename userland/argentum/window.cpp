@@ -49,6 +49,10 @@ void
 Window::setContentView(View *view)
 {
 	impl_->contentView = view;
+	if (view) {
+		/* the root view reports damage to this window */
+		view->impl_->hostWindow = this;
+	}
 	if (view && impl_->mapped) {
 		view->setNeedsDisplay();
 		draw();
@@ -311,23 +315,151 @@ Window::dispatchKeyToContent(const KeyEvent &keyEvent, bool down)
 	}
 }
 
+/* S2.6 per-rect damage ------------------------------------------ */
+
+void
+Window::noteDamage(int xPx, int yPx, unsigned int wPx, unsigned int hPx)
+{
+	int x1 = xPx + (int) wPx;
+	int y1 = yPx + (int) hPx;
+
+	if (x1 <= xPx || y1 <= yPx) {
+		return;
+	}
+	if (!impl_->damageScheduled && impl_->dmgX1 <= impl_->dmgX0 &&
+	    impl_->dmgY1 <= impl_->dmgY0) {
+		impl_->dmgX0 = xPx;
+		impl_->dmgY0 = yPx;
+		impl_->dmgX1 = x1;
+		impl_->dmgY1 = y1;
+	} else {
+		if (xPx < impl_->dmgX0) {
+			impl_->dmgX0 = xPx;
+		}
+		if (yPx < impl_->dmgY0) {
+			impl_->dmgY0 = yPx;
+		}
+		if (x1 > impl_->dmgX1) {
+			impl_->dmgX1 = x1;
+		}
+		if (y1 > impl_->dmgY1) {
+			impl_->dmgY1 = y1;
+		}
+	}
+}
+
+void
+Window::scheduleDamagePx(int x0, int y0, int x1, int y1)
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	if (x1 <= x0 || y1 <= y0) {
+		return;
+	}
+	noteDamage(x0, y0, (unsigned) (x1 - x0), (unsigned) (y1 - y0));
+	if (!impl_->damageScheduled) {
+		impl_->damageScheduled = true;
+		/* ask the server for one Expose over the whole pending
+		 * rect; run() turns it into draw() */
+		XClearArea(impl_->dpy, impl_->xwin, x0, y0,
+			   (unsigned) (x1 - x0), (unsigned) (y1 - y0),
+			   True);
+	}
+}
+
+/* Put the pending damage rect of the backing store onto the window. */
+void
+Window::flushBacking()
+{
+	BitmapImage::Impl *b = impl_->back->impl_;
+
+	if (!b->img || impl_->dmgX1 <= impl_->dmgX0 ||
+	    impl_->dmgY1 <= impl_->dmgY0) {
+		return;
+	}
+	int screen = DefaultScreen(impl_->dpy);
+	Visual *vis = DefaultVisual(impl_->dpy, screen);
+	unsigned int depth = (unsigned int) DefaultDepth(impl_->dpy, screen);
+	XImage *ximg = XCreateImage(
+		impl_->dpy, vis, depth, ZPixmap, 0,
+		(char *) pixman_image_get_data(b->img),
+		b->width, b->height, 32,
+		pixman_image_get_stride(b->img));
+
+	if (!ximg) {
+		return;
+	}
+	GC gc = XCreateGC(impl_->dpy, impl_->xwin, 0, nullptr);
+
+	if (gc) {
+		int dx = impl_->dmgX0;
+		int dy = impl_->dmgY0;
+		unsigned int dw = (unsigned) (impl_->dmgX1 - dx);
+		unsigned int dh = (unsigned) (impl_->dmgY1 - dy);
+
+		XPutImage(impl_->dpy, impl_->xwin, gc, ximg,
+			  dx, dy, dx, dy, dw, dh);
+		XFreeGC(impl_->dpy, gc);
+	}
+	/* XDestroyImage frees ximg->data — pixman's buffer, which the
+	 * BitmapImage still owns; detach first. */
+	ximg->data = nullptr;
+	XDestroyImage(ximg);
+	XSync(impl_->dpy, False);
+}
+
 void
 Window::draw()
 {
 	/* S2.1a: with a content view, composite the tree; without one
 	 * this base implementation paints nothing (S1-era subclasses
-	 * override draw() and never reach here). */
+	 * override draw() and never reach here). S2.6 keeps a backing
+	 * store and flushes ONLY the damaged rect (a full-window put of
+	 * a big backing through Xfb is the redraw bottleneck). */
 	if (!impl_->contentView || !impl_->dpy || !impl_->xwin) {
 		return;
 	}
-	BitmapImage bmp(impl_->width, impl_->height);
-	GraphicsContext g(bmp);
+	if (!impl_->back || impl_->back->width() != impl_->width ||
+	    impl_->back->height() != impl_->height) {
+		delete impl_->back;
+		impl_->back = new BitmapImage(impl_->width, impl_->height);
+		/* fresh backing: the whole window is damaged */
+		impl_->dmgX0 = impl_->dmgY0 = 0;
+		impl_->dmgX1 = (int) impl_->width;
+		impl_->dmgY1 = (int) impl_->height;
+	} else if (impl_->dmgX1 <= impl_->dmgX0 ||
+		   impl_->dmgY1 <= impl_->dmgY0) {
+		/* a redraw pass with no pending damage = full redraw */
+		impl_->dmgX0 = impl_->dmgY0 = 0;
+		impl_->dmgX1 = (int) impl_->width;
+		impl_->dmgY1 = (int) impl_->height;
+	}
+	struct timespec t0, t1, t2;
+	bool timed = getenv("ARGENTUM_DRAW_MS") != nullptr;
+
+	clock_gettime(CLOCK_MONOTONIC, &t0);
+	BitmapImage *back = impl_->back;
+	GraphicsContext g(*back);
 
 	/* deterministic backdrop before the tree composites */
 	g.fillRect(0, 0, impl_->width, impl_->height, 0x000000);
-	render_view(impl_->contentView, g,
-		    Application::shared().pxPerPt());
-	g.flush(*this, 0, 0);
+	render_view(impl_->contentView, g, Application::shared().pxPerPt());
+	clock_gettime(CLOCK_MONOTONIC, &t1);
+	flushBacking();
+	clock_gettime(CLOCK_MONOTONIC, &t2);
+	if (timed) {
+		fprintf(stderr, "DRAW-MS: comp=%ld flush=%ld rect=%d,%d-%d,%d\n",
+			(t1.tv_sec - t0.tv_sec) * 1000 +
+				(t1.tv_nsec - t0.tv_nsec) / 1000000,
+			(t2.tv_sec - t1.tv_sec) * 1000 +
+				(t2.tv_nsec - t1.tv_nsec) / 1000000,
+			impl_->dmgX0, impl_->dmgY0, impl_->dmgX1,
+			impl_->dmgY1);
+	}
+	impl_->dmgX0 = impl_->dmgY0 = 0;
+	impl_->dmgX1 = impl_->dmgY1 = 0;
+	impl_->damageScheduled = false;
 }
 
 Window::Window()
@@ -343,6 +475,7 @@ Window::~Window()
 			(unsigned long) impl_->xwin);
 		XDestroyWindow(impl_->dpy, impl_->xwin);
 	}
+	delete impl_->back;
 	delete impl_;
 }
 

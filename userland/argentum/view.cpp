@@ -201,10 +201,36 @@ void
 View::setNeedsDisplay()
 {
 	impl_->needsDisplay = true;
-	/* damage propagates to the owning window, which redraws the tree
-	 * on the next Expose/redraw pass. The window is found by walking
-	 * up to the content view (the tree root) — the window owns that
-	 * pointer. No per-rect damage in v1 (whole-tree redraw). */
+	/* S2.6: report the dirty rect to the owning window (found by
+	 * walking up to the content root, whose hostWindow the window
+	 * set) so the redraw flushes only this region. */
+	View *root = this;
+
+	if (impl_->hidden) {
+		return;
+	}
+	/* rect in the content root's coordinate space */
+	Rect r = impl_->frame;
+
+	while (root->impl_->superview) {
+		root = root->impl_->superview;
+		r.origin.x += root->impl_->frame.origin.x;
+		r.origin.y += root->impl_->frame.origin.y;
+	}
+	if (!root->impl_->hostWindow || r.size.w <= 0 || r.size.h <= 0) {
+		return;
+	}
+	Application &app = Application::shared();
+	double ppt = app.pxPerPt();
+
+	/* r is in the content root's space (its own origin included);
+	 * the root's frame origin is the window origin of the tree */
+	int x0 = (int) (r.origin.x * ppt);
+	int y0 = (int) (r.origin.y * ppt);
+	int x1 = (int) ((r.origin.x + r.size.w) * ppt + 0.5);
+	int y1 = (int) ((r.origin.y + r.size.h) * ppt + 0.5);
+
+	root->impl_->hostWindow->scheduleDamagePx(x0, y0, x1, y1);
 }
 
 bool

@@ -337,6 +337,11 @@ Application::run()
 			break;
 		}
 		case Expose:
+			/* S2.6: merge the exposed region, then the draw pass
+			 * flushes only that rect from the backing store */
+			w->noteDamage(ev.xexpose.x, ev.xexpose.y,
+				      (unsigned) ev.xexpose.width,
+				      (unsigned) ev.xexpose.height);
 			w->draw();
 			break;
 		case MotionNotify: {

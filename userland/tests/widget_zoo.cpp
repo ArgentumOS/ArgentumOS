@@ -8,6 +8,7 @@
 #include <argentum/argentum.h>
 
 #include <cstdio>
+#include <time.h>
 #include <cstring>
 #include <unistd.h>
 
@@ -349,9 +350,17 @@ main()
 	public:
 		void draw() override
 		{
+			static long lastMs = 0;
+			struct timespec ts;
+			long nowMs;
+
 			Window::draw();
-			std::fprintf(stderr, "ZOO-DRAW\n");
+			clock_gettime(CLOCK_MONOTONIC, &ts);
+			nowMs = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+			std::fprintf(stderr, "ZOO-DRAW %ldms\n",
+				     lastMs ? nowMs - lastMs : 0);
 			std::fflush(stderr);
+			lastMs = nowMs;
 		}
 	} w;
 

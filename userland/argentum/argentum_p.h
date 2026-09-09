@@ -90,6 +90,19 @@ struct Window::Impl {
 	View *firstResponder = nullptr;
 	View *pressed = nullptr;
 	View *motionTarget = nullptr;
+
+	/* S2.6 redraw: per-rect damage. A persistent backing store holds
+	 * the last full composite; the tree is re-composited into it and
+	 * ONLY the damaged rect is XPutImage'd (a full-window put of a
+	 * 960x720 backing through Xfb is ~850ms; a small dirty rect is
+	 * microseconds of server work). damageScheduled coalesces the
+	 * XClearArea requests that generate the Expose pass. */
+	BitmapImage *back = nullptr;	/* window-px backing store */
+	bool damageScheduled = false;	/* a rect is pending an Expose */
+	int dmgX0 = 0;
+	int dmgY0 = 0;
+	int dmgX1 = 0;
+	int dmgY1 = 0;			/* px bounds, exclusive */
 };
 
 /* S1.2 BitmapImage state: the pixman offscreen surface. x8r8g8b8 is the
@@ -154,6 +167,10 @@ struct View::Impl {
 	bool hidden = false;
 	bool needsDisplay = false;
 	unsigned int autoresizeMask = View::AutoresizingNone;
+	/* the window that owns this view's content root (set only on the
+	 * root view by Window::setContentView) — damage reports through
+	 * it so a redraw only flushes the dirty rect */
+	class Window *hostWindow = nullptr;
 
 	AccessibilityRole a11yRole = AccessibilityRole::Unknown;
 	bool a11yEnabled = true;
