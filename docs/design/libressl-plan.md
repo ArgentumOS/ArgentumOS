@@ -37,12 +37,18 @@ doctrine: a single system crypto library, chosen once).
   the time64 work is done (LibreSSL needs sane `time_t` only).
   **Sockets**: TLS rides plain TCP — present. **fork/pid**: forking
   is fine (`arc4random` is fork-safe by design).
-- **Build route**: cross-seed and on-FNX rebuild both via **CMake**
-  — the roster's in-guest configure generator (LibreSSL ships a
-  maintained CMake build). Upstream's primary autotools route is
-  *host-only*: its regeneration toolchain is GPL (autoconf family)
-  and out on-FNX; the dist `configure` needs GNU-make semantics —
-  recorded, not used.
+- **Build route — autotools-free, by rule**: the library's own
+  autotools layer (configure.ac / Makefile.am / autogen / the dist
+  `configure`) is **never invoked — not on the host, not on-FNX**;
+  the pinned tarball is source only. The build is **CMake**, the
+  roster's in-guest configure generator (`cmake -S libressl -B build`
+  does its own feature detection and config-header generation — no
+  Makefile.in execution, no GNU make, no autoreconf anywhere). Host
+  and guest use the same CMake recipe, so the on-FNX rebuild is the
+  cross-seed's recipe, not a second build system. If L0 finds the
+  CMake path itself references a header upstream only generates via
+  autotools, that is an L0 finding (checked-in template), never a
+  reason to run autogen.
 - No TLS consumer exists on the OS today — the plan lands the
   library before its first user (see §5 L2).
 

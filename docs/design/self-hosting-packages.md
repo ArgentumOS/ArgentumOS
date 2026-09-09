@@ -49,6 +49,10 @@ the plan's G3 gate and SH-0..SH-5.
   /System/Configuration/fonts (libfontconfig is built with
   --sysconfdir=/System/Configuration).
 - musl and LLVM source as in §A (their own rebuild inputs).
+- **LibreSSL** — the system SSL lib (docs/design/libressl-plan.md,
+  pin 4.3.2): ISC core, musl+clang, built via **CMake only** — its
+  autotools layer is never invoked (host or guest). No new
+  build-time tools: CMake is already in §C.
 
 ### C. Build drivers
 
