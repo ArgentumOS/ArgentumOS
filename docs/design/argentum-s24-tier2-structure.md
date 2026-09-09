@@ -171,6 +171,18 @@ Regressions S24A-OK, S24B-OK.
 on tabs 2 and 3 switch the visible page (pixel probe of the content
 area changes), the selected tab draws armed chrome, and a11y read-back
 reports the TabGroup with the selected item.
+Status: **DONE** — `userland/argentum/tab.cpp` (TabViewItem + TabView,
+decl in `argentum.h`, Impls in `argentum_p.h`). Items borrow a title +
+a page view; the pages are subviews and only the selected one is
+visible below the strip (measured from the theme font). Strip clicks
+select; the selected tab is page-coloured (attached to the body), the
+others chrome gradient; `setOnSelect` optional callback. A11y TabGroup
+with the label = selected title, value = index (read back per
+selection as TAB-A11Y). Gate `.build/s24d_run.sh` + `s24d_assert.py`
+-> S24D-OK (9 checks: red->green content flip, tab chrome flips,
+a11y read-back role=tab group label=Sounds value=1). The tab click
+uses the QEMU monitor's real mouse (the xclick/XSync hang persists for
+interactive servers). Regressions S24A-OK, S24C-OK.
 
 ### S2.4e — TableView-basic: header + rows + selection
 *Acceptance:* a data source of N rows x M cols renders the header and

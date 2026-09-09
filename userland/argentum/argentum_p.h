@@ -226,6 +226,19 @@ struct SplitView::Impl {
 	double downPos = 0;		/* pointer pos at press (pt) */
 	double dragBase = 0;		/* divider pos at press (pt) */
 };
+/* S2.4d TabViewItem state: the borrowed title + page. */
+struct TabViewItem::Impl {
+	char title[128] = { 0 };
+	View *page = nullptr;
+};
+
+/* S2.4d TabView state (see argentum.h). */
+struct TabView::Impl {
+	std::vector<TabViewItem *> items;	/* borrowed */
+	int selected = 0;
+	bool logged = false;			/* TAB-C rect log printed once */
+	std::function<void(TabView *, int)> onSelect;
+};
 
 /* S2.2b Label state: text + colour/size overrides (0 = theme). The
  * a11y label mirrors the text (kept in View::Impl). */

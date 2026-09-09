@@ -1101,6 +1101,55 @@ private:
 	Impl *sp_;
 };
 
+/* S2.4d: TabViewItem + TabView — a tab strip with one visible page
+ * (NSTabView-lite). An item has a title and a page view (both
+ * borrowed, like menu items); the pages are subviews and only the
+ * selected one is visible, below the strip. Clicking a tab selects it
+ * (armed chrome follows the strip); selectItem() works
+ * programmatically too. A11y role TabGroup: the label mirrors the
+ * selected title, the value the selection index. */
+class TabViewItem {
+public:
+	TabViewItem(const char *title, View *page);
+	~TabViewItem();
+
+	void setTitle(const char *utf8);	/* copied */
+	const char *title() const;
+	View *page() const;
+
+private:
+	struct Impl;
+	Impl *ti_;
+};
+
+class TabView : public View {
+public:
+	TabView();
+	~TabView() override;
+
+	void addItem(TabViewItem *item);	/* borrowed */
+	void removeAllItems();
+	int itemCount() const;
+	TabViewItem *itemAt(int index) const;
+
+	void selectItem(int index);		/* clamped */
+	int selectedIndex() const;
+
+	/* optional selection callback (fired by click AND selectItem) */
+	void setOnSelect(std::function<void(TabView *, int)> onSelect);
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+
+private:
+	void layoutPages();
+	void logOnce();
+	void tabRects(std::vector<Rect> &out) const;
+
+	struct Impl;
+	Impl *tb_;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */
