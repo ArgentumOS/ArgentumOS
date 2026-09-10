@@ -851,11 +851,15 @@ Window::init(const char *title, int x, int y,
 	impl_->y = y;
 	impl_->width = width;
 	impl_->height = height;
-	/* Background = the session backdrop (0xRRGGBB pixel on this
-	 * TrueColor visual), NOT black: any server-side clear (a real
-	 * Expose path) then shows the page color instead of a black
-	 * hole. Border stays black (0-width here). */
-	unsigned long bg = app.sessionBackground() & 0xffffff;
+	/* Background = the WINDOW BODY tone (the theme's page), not the
+	 * session/desktop colour and not black: a window that is mapped
+	 * but not yet drawn (the round trip between the map and the first
+	 * paint) then reads as an empty window surface. With the session
+	 * colour it flashed the wallpaper; with black it flashed a hole
+	 * (S2.6). The toolkit's own damage-rect backdrop fill still uses
+	 * the session colour, so what an app DRAWS is unchanged. Border
+	 * stays black (0-width here). */
+	unsigned long bg = app.theme().page() & 0xffffff;
 
 	impl_->xwin = XCreateSimpleWindow(impl_->dpy, root, x, y,
 					  width, height, 0, black, bg);
@@ -984,6 +988,22 @@ Window::show()
 	XSetInputFocus(impl_->dpy, impl_->xwin, RevertToParent, CurrentTime);
 	impl_->mapped = true;
 	XSync(impl_->dpy, False);
+
+	/* S4.3b: paint with the map. Requests are ordered, so a draw()
+	 * here lands right after the map in the SAME server batch — the
+	 * window never shows its background for the round trip that an
+	 * Expose-driven first paint would cost. Only when the map actually
+	 * took effect: under a WM the map request is redirected and the
+	 * window is not viewable yet, and the Expose from the WM's own map
+	 * is the first paint. */
+	{
+		XWindowAttributes a;
+
+		if (XGetWindowAttributes(impl_->dpy, impl_->xwin, &a) &&
+		    a.map_state == IsViewable) {
+			draw();
+		}
+	}
 }
 
 void

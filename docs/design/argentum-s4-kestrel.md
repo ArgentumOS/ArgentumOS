@@ -312,12 +312,12 @@ two apps, the bar swaps with focus, picks trigger app actions.
 boxes) and `userland/argentum/` (the two published hints in
 `Window::setPreferredContentSize` / `setToolbarHeight`); probes
 `userland/tests/krel_a.cpp` / `krel_b.cpp`; gate `.build/s43_run.sh` +
-`s43_assert.py` -> **S43-OK** (32 checks: the outline, the 20px band,
+`s43_assert.py` -> **S43-OK** (36 checks: the outline, the 20px band,
 the three band controls and the grow box in the right theme tones, an
 edge drag that resizes the frame AND the client, the toolbar box's round
 trip — telling the client to hide/show its strip AND reserving the
 geometry each way — the zoom to the published size, the S4.1d move still
-live, the close box).
+live, the close box, and the created-but-undrawn moment).
 This supersedes the first version of this section, which put the handle
 in the client's content view. That was the wrong side of the line: the
 frame is the WM's, so the affordances on it are the WM's too.
@@ -539,6 +539,24 @@ slice uncovered.
   `KREL-A-TOOLBAR off`/`on` and the strip's pixels go and come back (the
   gate checks the pixel where the strip was, that the state persists
   through a zoom, and the full round trip).
+- **A window is never shown undressed** (S4.3b — found in use: "when a
+  window is created there is a visible blanked area before it is
+  drawn"). Every argentum window used the session/desktop colour as its
+  X background, so a mapped-but-undrawn window flashed the wallpaper,
+  and a frame was undecorated until Kestrel's loop handled its Expose.
+  Now: toolkit windows carry the theme's *page* tone as their X
+  background (a window surface — the toolkit's damage-rect backdrop fill
+  still uses the session colour, so what an app DRAWS is unchanged);
+  `Window::show()` paints once with the map when the map actually took
+  effect (no WM case — under a WM the map is redirected and the Expose
+  from the WM's map is the first paint); and Kestrel paints a frame's
+  chrome — and the strip's — in the SAME server batch as its map, before
+  the client's map, so chrome lands before any client pixel can be seen.
+  Probe `krel_slow` (a window that sleeps 6s inside its first paint) plus
+  the gate's `scr_s43_undrawn`/`_drawn` pair hold it: the frame is
+  already decorated while the client paints, the client's own area is
+  the theme's page with **zero** desktop-colour pixels, and the same
+  pixel becomes the content once the paint lands.
 - **Deferred, not dropped** (decisions, not omissions):
   - **minimize** still needs the task list, and **shading**
     (double-click the title bar) is still undesigned; the inactive

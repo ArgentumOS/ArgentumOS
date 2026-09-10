@@ -611,6 +611,10 @@ manageClient(const XMapRequestEvent &ev)
 	XMapWindow(dpy, frame->xid());	/* frame first: its band must get
 					 * its own Expose before the client
 					 * covers the client area */
+	/* S4.3b: draw the chrome in the SAME server batch as the frame's
+	 * map (requests are ordered), so the frame is never seen
+	 * undecorated — the band lands before the client's pixels can. */
+	frame->draw();
 	XMapWindow(dpy, m->client);
 	XSync(dpy, False);
 	m->mapped = true;
@@ -1402,6 +1406,8 @@ main()
 	 * focus, which races the map under SubstructureRedirect and
 	 * trips a BadMatch (the focus window must be viewable). */
 	XMapWindow(dpy, stripX);
+	/* S4.3b: chrome with the map (see the frames) */
+	bar.draw();
 	XSync(dpy, False);
 	XRaiseWindow(dpy, stripX);
 	XSync(dpy, False);
