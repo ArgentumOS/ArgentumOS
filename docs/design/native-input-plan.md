@@ -107,6 +107,15 @@ Three defects, in increasing order of consequence:
 5. **Xfb** reads records from the role-alias mouse node (the
    `vfbFeedMouseByte` 3-byte parser is replaced by a fixed-record
    reader). No PS/2 framing is parsed anywhere in userspace.
+6. **Xfb maps the wheel to X core buttons.** A record's `wheel` /
+   `hwheel` notches become momentary button 4/5 (vertical) and 6/7
+   (horizontal) press+release pairs — the shape every X client expects
+   a pointer wheel to take, and what the Argentum toolkit's
+   `View::mouseWheel` consumes. A record is clamped to 3 notches per
+   axis so an over-fast read cannot flood a client, and the record's
+   button bitmask still carries only the three real buttons, so a
+   notch never disturbs button state. (QEMU's `usb-mouse` has no
+   horizontal pan, so only 4/5 are exercised in QEMU.)
 
 ## 4. Decisions (decided 2026-09)
 

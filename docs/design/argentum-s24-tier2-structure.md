@@ -17,11 +17,15 @@ time, each green before the next, committed separately.
    This is the only *arrangement* widget needed; boxes nest like any
    view and coexist with per-view springs/struts (S2.1d) for boards
    that place frames by hand (`layout = none`).
-2. **ScrollView** — a clipping wrapper: a content view larger than the
-   viewport, translated by a scroll offset, with drawn scrollbar
-   chrome (thumb tracks the offset). v1 scroll is PROGRAMMATIC
-   (`scrollTo`/`scrollBy`) — no wheel/touch/scroll-event machinery
-   exists yet; scrollbars are indicators, not drag targets.
+2. **ScrollView** — a clipping wrapper with CLASSIC, always-visible
+   EXTERNAL scrollbars: a viewport view clips the document (translated
+   by the scroll offset) and a `ScrollBar` sits in the right gutter,
+   another in the bottom gutter, with the corner between them. The
+   gutter is OUTSIDE the content, so the document never paints under a
+   bar. Scrolling is interactive (arrows step a line, the track pages,
+   the proportional scroller drags) and responds to the wheel; the
+   programmatic entry points (`scrollTo`/`scrollBy`/
+   `scrollRectToVisible`) remain.
 3. **SplitView** — N panes along an axis separated by dividers; the
    divider is draggable (drag delivery from S2.3a) and resizes the
    neighbouring panes between minimum sizes.
@@ -63,11 +67,25 @@ class Box : public View {           // argentum/box.cpp
   void setLayout(BoxLayout);        // None keeps manual child frames
   void setSpacing(double pt);
 };
+class ScrollBar : public View {      // argentum/scrollbar.cpp
+  enum class Orientation { Vertical, Horizontal };
+  ScrollBar(Orientation = Orientation::Vertical);
+  void setRange(double range, double page); // page/range = scroller size
+  void setValue(double);  double value() const;
+  void setLineStep(double pt);              // one arrow click
+  void setAction(std::function<void(double)>); // requested offset (pt)
+  double thickness() const;                 // cross size (gutter)
+};
 class ScrollView : public View {    // argentum/scroll.cpp
   void setDocumentView(View *);     // non-owning, may exceed bounds
-  void scrollTo(double xPt, double yPt); // clamp: 0..content-frame
+  void scrollTo(double xPt, double yPt); // clamp: 0..content-viewport
   void scrollBy(double dxPt, double dyPt);
+  void scrollRectToVisible(const Rect &);
   double contentOffsetX() const; double contentOffsetY() const;
+  Size contentSize() const;         // frame minus the bar gutter
+  ScrollBar *verticalScrollBar() const;
+  ScrollBar *horizontalScrollBar() const;
+  bool mouseWheel(const MouseEvent &) override; // buttons 4-7
 };
 class SplitView : public View {     // argentum/split.cpp
   void setVertical(bool);           // divider axis
@@ -123,25 +141,44 @@ metrics. One-time BOX-A logs carry the arranged frames for the gate
 S24A-OK: 15 checks incl. the packed pitch 36 pt, nested row centring,
 cap glyphs, border, buttons at arranged origins).
 
-### S2.4b — ScrollView: clip + programmatic scroll + thumb
-*Acceptance:* a tall content view (a marker grid) inside a ScrollView;
-`scrollBy` steps change which grid band is visible (pixel probes at a
-fixed viewport point return different grid colours per offset) and the
-scrollbar thumb moves with the offset (thumb-band pixel differs before
-/ after). Content outside the viewport never draws (probe above the
-content top = box page colour, not content).
-Status: **DONE** — `userland/argentum/scroll.cpp` (decl in
-`argentum.h`, Impl in `argentum_p.h`). The document view is a subview
-whose frame origin carries the offset (the tree clips it); a
-non-interactive ScrollChrome overlay (added after the document,
-`hitTest -> nullptr`) paints the 1px border ring + the thumb indicator
-ON TOP, since the tree paints parents under their children. Clamp fix
-in `View::setNeedsDisplay` (`view.cpp`): a scrolled view partially
-above/left of the window must damage only the visible rect — the raw
-negative window-px rect reached the damage machinery and corrupted
-memory (page fault). Gate `.build/s24b_run.sh` + `s24b_assert.py` ->
-S24B-OK (8 checks: offsets 60..240, band0->band3 flip, thumb top->
-bottom, doc showing through the gutter). Generic synthetic-click tool
+### S2.4b — ScrollView: clip + classic EXTERNAL scrollbars
+*Acceptance:* a tall banded document inside a ScrollView. Scrolling is
+driven through real input and the offsets are asserted exactly: one
+wheel notch = 3 lines, one arrow click = one line step, one track click
+= one page, a scroller drag moves proportionally. Structurally the
+gutter is OUTSIDE the content - pixels in the bar strip are bar chrome
+and never document, and the content just inside the viewport is
+document - and the scroller's travel matches the offset
+(proportionality), with the accent as its control colour.
+Status: **DONE (revised)** — `userland/argentum/scroll.cpp` +
+`userland/argentum/scrollbar.cpp` (decls in `argentum.h`, Impls in
+`argentum_p.h`). The document is a subview of an internal viewport view
+clipped to the content rect (the tree clips a view's children to its
+bounds), so no overlay is needed and the document cannot paint under a
+bar; the old inset `ScrollChrome` overlay is gone. The bars are
+`ScrollBar` controls - rounded rects in flat chrome with 1px line art,
+arrow buttons that grey out at the ends, a muted track, and a
+PROPORTIONAL scroller (its length is page/range of the track) filled
+with the accent so it reads as the control it is. They call back into
+`scrollTo`, so every request is clamped in one place and pushed back
+with `setValue` (the scroller can never drift from the content). One
+wheel notch scrolls three lines through `View::mouseWheel`, which
+BUBBLES up the responder chain; the window dispatch routes X buttons
+4-7 there and never as a press, so scrolling over a button cannot arm
+and click it. `ScrollView::contentSize()` reports the clip size, for a
+document that should not overflow the gutter (the zoo's table sizes to
+it). Clamp fix kept in `View::setNeedsDisplay` (`view.cpp`): a scrolled
+view partially above/left of the window must damage only the visible
+rect. Gates: `.build/s24b_run.sh` + `s24b_assert.py` -> S24B-OK
+(programmatic scroll + `gutter-never-document`) and
+`.build/s24sb_run.sh` + `s24sb_drive.py` + `s24sb_assert.py` ->
+S24SBAR-OK (15 checks: wheel/arrow/page/drag/horizontal-arrow offsets,
+the external-gutter structure, scroller proportionality). The wheel is
+driven end to end from QMP `input-send-event` (wheel-up/down -> QEMU
+HID -> USB -> xHCI -> mousedev -> Xfb buttons 4-7 -> the toolkit) and
+the pointer from the QEMU monitor on the USB mouse. Note: QEMU's
+`usb-mouse` HID has no horizontal pan (`usb-mouse.c` passes hwheel 0),
+so the tilt path (buttons 6/7) is plumbed but not drivable headlessly. Generic synthetic-click tool
 `userland/tests/xclick.c` (motion + press + release, since Buttons
 fire only while hovered). Regressions S24A-OK, S13-PIXELS-OK,
 S22D-OK.

@@ -149,7 +149,12 @@ main()
 		double lineBox = m.ascentPt + m.descentPt + 4.0;
 		unsigned int lines = tv.lineCount();
 
-		tv.setFrame({ {0, 0}, {SV_W, lines * lineBox + 4.0} });
+		/* the CLIP width (frame minus the bar gutter) is the wrap
+		 * width the viewport actually shows, so the document never
+		 * overflows into the gutter and no horizontal bar appears */
+		Size cs = sv.contentSize();
+
+		tv.setFrame({ {0, 0}, {cs.w, lines * lineBox + 4.0} });
 		printf("TXT-C: docLines=%u lineBox=%.1f\n", lines,
 		       lineBox);
 	}
