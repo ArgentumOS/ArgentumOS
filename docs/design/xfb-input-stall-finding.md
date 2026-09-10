@@ -55,10 +55,12 @@ to the wedge but is just a miss.
   `userland/xfb/include/dix-config.h` did not change the behaviour.
 - **A separate real hazard, fixed** (commit `bc2e3e4`): the pointer
   position could leave the screen - the server's own pointer trace
-  showed `(1406,926)` on 1280x800 - which drives X's sprite code into its
-  screen-switch path (`miPointerUpdateSprite`); the input backend now
-  clamps to the screen and adopts the server's real starting position on
-  the first record. This does not fix this stall.
+  showed `(1406,926)` on 1280x800. Xvfb's pointer screen funcs (which
+  Xfb also installs) make `CursorOffScreen` return FALSE, so no screen
+  switch happens, but the sprite code still works on an off-screen
+  position; the input backend now clamps to the screen and adopts the
+  server's real starting position on the first record. This does not fix
+  this stall.
 
 ## Remaining hypothesis
 
@@ -84,6 +86,9 @@ reported readable even though the kernel has data queued.
 
 ## Related
 
+- Comparison with upstream models: `docs/reference/xfb-input-vs-upstream.md`
+  (Xvfb has no real input; kdrive/ephyr poll their source on notify and
+  re-check for queued events - a robustness the FNX backend lacks).
 - Native input device work: commit `96263f4`
   (`docs/design/native-input-plan.md`).
 - Pointer clamp: `bc2e3e4`.
