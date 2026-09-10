@@ -84,8 +84,8 @@ artifact, like the earliest compiler stages.
 - The image-library plan's consumers (Viewer, UIKit image views) are
   the same consumers PDFium serves — one document door, codecs and
   PDF side by side.
-- Out (recorded): V8/XFA, JavaScript-in-PDF, form filling, printing
-  *to* PDF (that is the write side — libharu/first-party, a separate
-  future adoption; PDFium is a reader, not a writer), and any
-  attempt to dedup PDFium's vendored deps before the S0 audit says
-  it is clean.
+- Out (recorded): V8/XFA, JavaScript-in-PDF, form filling — and
+  printing/export *to* PDF is **not** out of scope: that is the
+  write side, a decided libharu adoption (docs/design/
+  pdf-generation-plan.md) — PDFium is a reader; libharu is the
+  paired writer.
