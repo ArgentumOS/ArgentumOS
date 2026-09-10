@@ -208,6 +208,10 @@ Window::handleResize(unsigned int widthPx, unsigned int heightPx)
 	}
 	impl_->width = widthPx;
 	impl_->height = heightPx;
+	/* the backing (if any) is now the wrong size: no valid content
+	 * until the next draw() recreates it, so server Exposes must
+	 * fall back to the render path (redrawExposed checks painted) */
+	impl_->painted = false;
 	if (impl_->contentView) {
 		/* reset the tree root to the full window; setFrame's
 		 * size change triggers resizeSubviewsWithOldBounds,
@@ -736,6 +740,34 @@ Window::draw()
 			impl_->dmgX0, impl_->dmgY0, impl_->dmgX1,
 			impl_->dmgY1);
 	}
+	impl_->dmgX0 = impl_->dmgY0 = 0;
+	impl_->dmgX1 = impl_->dmgY1 = 0;
+	impl_->damageScheduled = false;
+	/* the backing now holds full, current content for this window
+	 * size: any draw() either forced a full composite (fresh or
+	 * resized backing, or an explicit full redraw) or overlays a
+	 * partial rect onto an already-fully-painted backing */
+	impl_->painted = true;
+}
+
+/* A SERVER-generated Expose (first map, a move-back from off-screen,
+ * an uncover): the screen lost pixels but the backing store still
+ * holds the current content — put the damaged rect from the backing
+ * WITHOUT re-compositing the view tree (re-rendering a heavy tree per
+ * drag step is what made off-screen drag-backs glacial). Before the
+ * first full paint or after a resize the backing has no valid content:
+ * fall back to draw(). */
+void
+Window::redrawExposed()
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	if (!impl_->painted) {
+		draw();
+		return;
+	}
+	flushBacking();
 	impl_->dmgX0 = impl_->dmgY0 = 0;
 	impl_->dmgX1 = impl_->dmgY1 = 0;
 	impl_->damageScheduled = false;

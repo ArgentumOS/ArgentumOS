@@ -241,6 +241,24 @@ empty); s41e (phantom release + continuous motion -> window keeps
 following, one in-place end); s41g (abrupt release + ~350ms stall ->
 drag survives and follows the full distance; a fixed-250ms window dies
 at the stall). S41C/S41D/S41E/S41G all green after v6.
+v6.1 (user: dragging a window partially off-screen "wipes the part
+that leaves the screen area, and redrawing it is very very slow"):
+with live moves a partial-off-screen excursion loses the off-screen
+pixels screen-side (no retention), and dragging back re-exposes the
+re-entering strips — argentum's Expose handler re-composited the whole
+view tree into its backing on EVERY server Expose, so a heavy window
+(the zoo, 960x720 of controls) re-rendered per drag step. Server-
+generated Exposes (send_event=false) now take `Window::redrawExposed()`:
+the client backing store already holds the content, so the damaged
+rect is flushed straight from the backing — no view re-render. The
+view tree is still re-composited for SELF-sent Exposes (send_event, a
+content change). `painted` tracks backing validity (cleared on resize,
+set after the first full draw) so pre-first-paint and post-resize
+server Exposes fall back to the render path. Verified by the s41h gate:
+a full off-screen drag-out + drag-back of krel_a produced exactly ONE
+client redraw (the initial paint) with the content intact throughout;
+s41d/s41g re-runs + the zoo-under-Kestrel smoke (zook) green after
+v6.1.
 Note: with live moves there is no outline to hide; the window itself
 renders at every tracked position, so drags look native (the earlier
 root-outline-hidden note is moot).

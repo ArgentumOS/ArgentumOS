@@ -365,6 +365,14 @@ public:
 	void noteDamage(int xPx, int yPx, unsigned int wPx,
 			unsigned int hPx);
 	void scheduleDamagePx(int x0, int y0, int x1, int y1);
+	/* S2.6: a SERVER-generated Expose (first map, a move-back from
+	 * off-screen, an uncover) — the screen lost pixels but the backing
+	 * store still holds the current content, so put the damaged rect
+	 * from the backing WITHOUT re-compositing the view tree (re-
+	 * rendering a heavy tree per drag step made off-screen drag-backs
+	 * glacial). Falls back to draw() before the first full paint or
+	 * after a resize (no valid backing content yet). */
+	void redrawExposed();
 
 	/* Core-protocol solid fill of the whole window (XPutImage of a
 	 * depth-24 XRGB image). rgb is 0xRRGGBB. No XRender/Xft. */

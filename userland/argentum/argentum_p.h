@@ -113,6 +113,8 @@ struct Window::Impl {
 	int dmgY0 = 0;
 	int dmgX1 = 0;
 	int dmgY1 = 0;			/* px bounds, exclusive */
+	bool painted = false;		/* the backing holds full, current
+					 * content (set by draw()) */
 
 	/* MIT-SHM (docs/design/mit-shm-plan.md M2): when the server
 	 * answers XShm, the damaged rect is memcpy'd into a persistent

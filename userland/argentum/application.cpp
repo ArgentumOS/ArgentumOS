@@ -378,12 +378,25 @@ Application::run()
 			break;
 		}
 		case Expose:
-			/* S2.6: merge the exposed region, then the draw pass
-			 * flushes only that rect from the backing store */
+			/* S2.6: merge the exposed region, then flush only
+			 * that rect from the backing store. A SELF-sent
+			 * Expose (scheduleDamagePx / setNeedsDisplay)
+			 * means view content changed: re-composite the
+			 * tree into the backing first. A SERVER one
+			 * (first map, an uncover, a move-back from
+			 * off-screen) means the screen lost pixels but
+			 * the backing still holds the content — flush
+			 * without re-rendering views (re-rendering a
+			 * heavy tree per drag step made off-screen
+			 * drag-backs glacial). */
 			w->noteDamage(ev.xexpose.x, ev.xexpose.y,
 				      (unsigned) ev.xexpose.width,
 				      (unsigned) ev.xexpose.height);
-			w->draw();
+			if (ev.xexpose.send_event) {
+				w->draw();
+			} else {
+				w->redrawExposed();
+			}
 			break;
 		case MotionNotify: {
 			/* S2.2c hover: route pointer motion into the tree
