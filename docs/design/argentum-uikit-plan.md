@@ -58,7 +58,7 @@ X11 / Xfb                     Xfb owns /dev/fb0; X11 windows, events, EWMH
 
 - **Display**: Xfb (unchanged). Argentum talks X11 + XRender; text is
   fontconfig + HarfBuzz + FreeType (full shaping, §4) — Xft remains in
-  the X stack for legacy X clients (urxvt), not in Argentum's text path.
+  the X stack for legacy X clients (xterm-class), not in Argentum's text path.
 - **Language**: C++17, clang++, libc++ (M2-proven), with exceptions and
   RTTI adopted (resolved — `cpp_smoke` proved the stack; no
   -fno-exceptions carve-out in userland). No C FFI in v1
@@ -303,8 +303,8 @@ stack, and the Xft session configuration in Argentum:
   script **shaping** (HarfBuzz) is a separate text stack outside
   FreeType, and OT-SVG color glyphs need an external SVG renderer
   hook. Both are adjacent open decisions, not part of this
-  requirement. (The same full-feature build also serves urxvt's Xft
-  text.)
+  requirement. (The same full-feature build also serves Xft-based
+  legacy X clients.)
 
 **Shaping (decided): HarfBuzz is the shaper, inside Argentum's text
 path.** Adopted (2026-09) to complete the full-text requirement: `TextField`/
@@ -598,7 +598,7 @@ ordinary decisions that surface at execution.
 | docs/archive/momo-v1-widgets.md | SUPERSEDED by argentum-uikit-catalog.md (archive) |
 | docs/design/argentum-uikit-catalog.md | **catalog target** — Snow Leopard-parallel, staged v1 |
 | docs/archive/emwm-window-manager.md | SUPERSEDED (WM is from-scratch argentum-based) |
-| docs/design/urxvt-terminal.md | unchanged (Xlib-only, toolkit-independent) |
+| docs/design/terminal-plan.md | SUPERSEDES the urxvt fork (GPL-3.0): terminal = libvterm (MIT) core + a first-party Argentum view — now a **toolkit client**, not toolkit-independent |
 | docs/design/app-model.md, sessionmgr-design.md | unchanged (design corpus) |
 | docs/archive/gnustep-evaluation.md | REJECTED (record kept) |
 

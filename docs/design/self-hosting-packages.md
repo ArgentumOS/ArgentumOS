@@ -34,7 +34,7 @@ the plan's G3 gate and SH-0..SH-5.
 
 - **FNX kernel tree** + `mk/` build fragments.
 - **First-party userland**: tools/, tests/, demos/, scripts/, the Xfb
-  server tree, (later) Argentum/Kestrel/urxvt.
+  server tree, (later) Argentum/Kestrel/the first-party terminal.
 - **Base userland upstreams**: dash, toybox (submodule + patches).
 - **X stack sources**: xorgproto, xcbproto/libxcb, libX11, xtrans,
   libXau/libXdmcp, pixman, libxkbfile, libXfont2/libfontenc,
@@ -49,6 +49,11 @@ the plan's G3 gate and SH-0..SH-5.
   /System/Configuration/fonts (libfontconfig is built with
   --sysconfdir=/System/Configuration).
 - musl and LLVM source as in §A (their own rebuild inputs).
+- **libvterm** — **MIT**; the terminal emulation core behind the
+  first-party Argentum Terminal app (docs/design/terminal-plan.md,
+  superseding the GPL-3.0 urxvt fork). Plain-Make build, no
+  autotools; terminfo dependency audited at T0. Admission row with
+  the pin lands at adoption (T0).
 - **LibreSSL** — the system SSL lib (docs/design/libressl-plan.md,
   pin 4.3.2): ISC core, musl+clang, built via **CMake only** — its
   autotools layer is never invoked (host or guest). No new

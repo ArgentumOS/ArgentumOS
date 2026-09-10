@@ -21,7 +21,7 @@ happen before implementation starts.
   `FNX_QEMU_*` env vars, kernel internals, engineering prose. (The
   *brand* reference is "the Argentum kernel"; FNX is its codename.)
 - **FSH** (the Argentum System Hierarchy), and all identifiers that
-  name machinery: Xfb, urxvt, fshlint, toybox/dash-era paths, musl.
+  name machinery: Xfb, fshlint, toybox/dash-era paths, musl.
 - **AGFS on-disk format**: layout and journal are unchanged, but the
   **superblock magic becomes 'AGFS'** (0x41474653) with a strict
   mount — XBFS-magic ('XBFS', 0x58424653) volumes are rejected, the

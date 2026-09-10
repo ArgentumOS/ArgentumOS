@@ -72,7 +72,9 @@ names the layers; the identifiers name the machinery.
 - **GUI**: X11 desktop — **Xfb** (native X server, owns /dev/fb0)
   with the **Argentum** from-scratch C++ toolkit (Cocoa-resemblant API,
   pixman vector chrome, real-point units) and the **Kestrel** window
-  manager (global menubar); no Wayland; urxvt terminal fork.
+  manager (global menubar); no Wayland; a first-party terminal — the
+  **libvterm** emulation core (MIT) behind an Argentum view
+  (docs/design/terminal-plan.md).
   Design: docs/design/argentum-uikit-plan.md + docs/design/argentum-uikit-catalog.md.
 - **Initial release**: eight apps — Workspace, Terminal, Editor,
   Settings, Viewer, Calculator, Installer, Disks — plus `config`,

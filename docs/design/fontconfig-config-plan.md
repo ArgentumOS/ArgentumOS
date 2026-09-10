@@ -153,7 +153,7 @@ dot-key + block-spelling of config-design §10 — no libconfig changes.
   the domain; run the pipeline + fc behaviors; full acceptance matrix +
   fshlint + recovery; docs current.
 - **M3 — follow-ups** (if ever needed): keep `fcxml`/expat or excise
-  (currently kept for API compat); Xft/urxvt-era rule needs extend the
+  (currently kept for API compat); Xft-era rule needs extend the
   domain.
 
 Commit per milestone; `tools/x11-shared-build.sh` fontconfig block gains
