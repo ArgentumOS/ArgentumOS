@@ -71,6 +71,10 @@ Fields:
   (docs/design/bundle-signing-plan.md): its absence is normal, and
   verification status is surfaced by `install` and by consumers that
   care (keychain ACLs) — never enforced at launch.
+- `requires` — the package's **metadata declaration** (e.g.
+  `requires = xattr acl`): what a distributable package needs the
+  target filesystem to hold. Absent = modes only. Drives the fidelity
+  refusal in docs/design/package-format-plan.md §6.
 - `menu-name` — the bold name shown in the global menubar.
 - `document-types`, `url-schemes` — declarative registration for
   open-with and deep links, in v1 (Q-D).
