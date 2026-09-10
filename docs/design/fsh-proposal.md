@@ -71,6 +71,7 @@ question "what kinds of things does this OS contain, and who owns them?"
     System/                       the OS itself (read-only by default)
         ESP/                      mounted EFI System Partition (kernel, kernel.conf, firmware)
         Configuration/            machine & OS settings
+        Keychains/                machine secrets (the System keychain; Admin-gated)
         Devices/                  hardware, bus-organized
             Disk/
                 AHCI/
@@ -111,6 +112,7 @@ question "what kinds of things does this OS contain, and who owns them?"
         $USER/
             Application Support/   this user's behavioural scripts/data
             Configuration/        per-user settings
+            Keychains/            this user's keychains (encrypted items)
             Applications/         per-user installed apps
             Documents/            the user's own files
             Desktop/              the user's desktop surface
@@ -149,6 +151,11 @@ question "what kinds of things does this OS contain, and who owns them?"
   The dynamic loader lives here too (see §6).
 - **Configuration/** — all machine settings, one place. No `/etc` split
   between rc scripts, passwd, fstab-analog, and per-daemon dirs.
+- **Keychains/** — machine secrets (the **System keychain**), Admin-gated;
+  each user's keychains live in their own `Users/$USER/Keychains/`.
+  Deliberately not under `Configuration/` (these are encrypted blobs,
+  not human-editable settings) and not under `Variable Data/` (they
+  are not disposable state). Design: docs/design/keychain-plan.md.
 - **Devices/** — a **bus/topology tree** instead of a flat `/dev`. The
   notes show the two regimes FNX already has: controller-oriented disks
   (`Disk/AHCI/Disk0/Partition0`) and class-oriented input
