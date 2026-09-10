@@ -73,9 +73,12 @@ required** (docs/design/bundle-signing-plan.md), so an app ACL's
 identity is `verified` only when the bundle carries a signature that
 checks against a trusted key — otherwise it is `self-asserted`, which
 an unsigned app can claim. The prompt still applies either way, and
-items may opt into "verified identity required". Process isolation
-(sandboxing, unplanned) remains the other gap; both are recorded here
-so the ACL prompt is not mistaken for a sandbox.
+items may opt into "verified identity required". **Blessing an
+unsigned bundle (§3 of that plan) is not verification**: a blessed
+app stays `self-asserted`, so a `verified identity required` item
+still refuses it silently. Process isolation (sandboxing, unplanned)
+remains the other gap; both are recorded here so the ACL prompt is
+not mistaken for a sandbox.
 
 **Side benefits / watch items**: with no swap today, secrets cannot
 be paged to disk (**when the swap plan lands, verify an

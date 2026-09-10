@@ -81,14 +81,22 @@ Fields:
 1. The shell (or a launcher) resolves a bundle by name from
    `/Applications` or `Users/$USER/Applications`.
 2. It reads and validates the manifest with `libconfig`.
-3. It execs `<bundle>/bin/<executable>` with the standard environment
+3. It checks the bundle's **run authorization**: a bundle signed with
+   a trusted key proceeds; otherwise the launcher consults the user's
+   blessing record and, on first run, prompts once (Run / Run Once /
+   Cancel) — the signature policy's blessing gate
+   (docs/design/bundle-signing-plan.md §3). On a successful blessing
+   the record is written before the app starts.
+4. It execs `<bundle>/bin/<executable>` with the standard environment
    (PATH, HOME, TMPDIR per the runtime contract) and the app's config
    domain available.
-4. The app connects to the compositor (`display_connect`), creates
-   windows, and publishes its global menubar (`menubar_set`).
+5. The app connects to the X server, creates windows, and publishes
+   its global menubar (`menubar_set`).
 
 A bundle's executable is an ordinary binary and can also be run
-directly — the bundle is the *packaged* form.
+directly — the bundle is the *packaged* form, and a direct exec
+bypasses the blessing gate (a documented limit of the policy, not an
+oversight).
 
 ## 5. Integration with the rest of the design
 
