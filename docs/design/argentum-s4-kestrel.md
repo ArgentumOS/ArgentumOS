@@ -312,11 +312,12 @@ two apps, the bar swaps with focus, picks trigger app actions.
 boxes) and `userland/argentum/` (the two published hints in
 `Window::setPreferredContentSize` / `setToolbarHeight`); probes
 `userland/tests/krel_a.cpp` / `krel_b.cpp`; gate `.build/s43_run.sh` +
-`s43_assert.py` -> **S43-OK** (25 checks: the outline, the 20px band,
+`s43_assert.py` -> **S43-OK** (32 checks: the outline, the 20px band,
 the three band controls and the grow box in the right theme tones, an
-edge drag that resizes the frame AND the client, the toolbar toggle's
-geometry, the zoom to the published size, the S4.1d move still live,
-the close box).
+edge drag that resizes the frame AND the client, the toolbar box's round
+trip — telling the client to hide/show its strip AND reserving the
+geometry each way — the zoom to the published size, the S4.1d move still
+live, the close box).
 This supersedes the first version of this section, which put the handle
 in the client's content view. That was the wrong side of the line: the
 frame is the WM's, so the affordances on it are the WM's too.
@@ -363,7 +364,12 @@ deviation — a 26px band, accent-tinted when active (S4.1b).
   the strip and the toggle is about geometry - the WM adds or removes the
   strip from the client's rect - rather than the client redrawing chrome
   it was never told about. The strip's *height* is the application's to
-  choose, so the client publishes it alongside its preferred size;
+  choose, so the client publishes it alongside its preferred size.
+  Amended in the build (user decision, 2026-09): geometry alone cannot
+  express the toggle - a client cannot tell "the WM hid my strip" from
+  "the window was resized taller" - so the box ALSO tells the client, and
+  the client shows or hides its own strip. The WM still owns the
+  geometry, so the two halves stay in step (see the protocol below);
 - grow box in the lower-right: two or three short lines, drawn by the WM.
 
 **Resize from any edge.** The grow box is the *indicator*; the drag may
@@ -422,6 +428,19 @@ the CLIENT WINDOW size, so a window that carries its own strip declares
 the size with the strip, and the zoom subtracts the strip's height when
 the strip is hidden. The strip's height is the client's; the WM only
 reserves it.
+
+**Protocol the WM sends back (the toolbar state).** The frame's
+show/hide-toolbar box is a message, not just geometry:
+`_ARGENTUM_TOOLBAR`, a ClientMessage laid out like WM_DELETE_WINDOW
+(`data.l[0]` = the atom, `data.l[1]` = the state, 1 = shown), and the
+toolkit advertises it in WM_PROTOCOLS when the client declares a strip.
+`Window::setOnToolbarToggle(cb)` receives the state and
+`Window::toolbarVisible()` reads it; both sides start "shown", so the
+message carries changes only. The WM sends it BEFORE the resize that
+reserves or drops the strip's height, on the same connection, so the
+client's single repaint (the Expose from that resize) already knows the
+state and the strip never flickers. A client with no hook keeps its
+strip and sees the old geometry-only behaviour.
 
 
 ### Edit plan (anchors verified against the tree, 2026-09)
@@ -512,18 +531,19 @@ slice uncovered.
     window was resized to the client's geometry — its bands drifted by
     the lip and the toolbar box's hit-test missed by 8px. Only
     `window == event` resizes a window now.
+- **The toolbar box speaks to the client** (`_ARGENTUM_TOOLBAR`,
+  ClientMessage, `data.l[1]` = the state; `Window::setOnToolbarToggle` /
+  `toolbarVisible()`; advertised in WM_PROTOCOLS when a strip is
+  declared) *and* reserves the geometry — the message first, so the
+  resize's Expose repaints once with the new state. krel_a proves it:
+  `KREL-A-TOOLBAR off`/`on` and the strip's pixels go and come back (the
+  gate checks the pixel where the strip was, that the state persists
+  through a zoom, and the full round trip).
 - **Deferred, not dropped** (decisions, not omissions):
   - **minimize** still needs the task list, and **shading**
     (double-click the title bar) is still undesigned; the inactive
     frame's cue stays "the accent tint falls away and the band goes
     flat".
-  - **The toolbar toggle has no state bit.** The wire carries the
-    client's strip height only, and the toggle is geometry (the WM adds
-    or removes the strip's height from the client's rect), so a client
-    cannot tell "hidden" from "resized taller" — a client that wants to
-    drop its toolbar needs a WM->client property (`_ARGENTUM_TOOLBAR_
-    VISIBLE`). The gate asserts the geometry it does have: the frame and
-    the client both lose exactly the strip's 22px.
   - `_NET_WM_MOVERESIZE` / `_NET_SUPPORTING_WM_CHECK`: not needed at
     all under this design — the WM owns the affordances, so no client
     ever asks to be resized.

@@ -114,6 +114,12 @@ struct Window::Impl {
 	/* S4.1c: WM_DELETE_WINDOW close hook (null = quit the app). */
 	std::function<void()> onClose;
 
+	/* S4.3: the WM's toolbar state (the frame's show/hide-toolbar box
+	 * reports it as a ClientMessage) and the app's hook. Both sides
+	 * start "shown": the WM reserves a declared strip from map time. */
+	std::function<void(bool)> onToolbarToggle;
+	bool toolbarVisible = true;
+
 	/* S2.2c minimal focus: the first responder receives key events
 	 * (null = the content view). pressed tracks the view that got
 	 * the ButtonPress so the release reaches it even after a drag

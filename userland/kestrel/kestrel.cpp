@@ -974,10 +974,35 @@ zoomClient(Managed *m)
 	fflush(stdout);
 }
 
-/* The show/hide-toolbar box: the strip is the CLIENT's content, so the
- * toggle is geometry — the frame reserves (or drops) the strip's
- * height and the client's window follows; the client redraws into
- * whatever it is given. */
+/* Tell the client its new toolbar state (S4.3: the strip's pixels are
+ * the client's, so the box can only say so — `_ARGENTUM_TOOLBAR`, the
+ * same shape as WM_DELETE_WINDOW, data.l[1] = the state). */
+static void
+sendToolbarState(Managed *m)
+{
+	Atom wmProtocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
+	Atom wmToolbar = XInternAtom(dpy, "_ARGENTUM_TOOLBAR", False);
+	XEvent ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.xclient.type = ClientMessage;
+	ev.xclient.window = m->client;
+	ev.xclient.message_type = wmProtocols;
+	ev.xclient.format = 32;
+	ev.xclient.data.l[0] = (long) wmToolbar;
+	ev.xclient.data.l[1] = m->toolbar ? 1L : 0L;
+	XSendEvent(dpy, m->client, False, NoEventMask, &ev);
+	XSync(dpy, False);
+}
+
+/* The show/hide-toolbar box. The strip is the CLIENT's content, so the
+ * box does both halves of the toggle: it tells the client the new state
+ * (its strip appears or goes), and it reserves or drops the strip's
+ * height in the frame — the client's window is resized around the
+ * strip. The message goes FIRST: the resize that follows carries the
+ * Expose that repaints the client, so it repaints once, already knowing
+ * the state (a client with no hook keeps its strip and the geometry
+ * still matches the old behaviour). */
 static void
 toggleToolbar(Managed *m)
 {
@@ -985,6 +1010,7 @@ toggleToolbar(Managed *m)
 		return;
 	}
 	m->toolbar = !m->toolbar;
+	sendToolbarState(m);
 	int fh = m->fh + (m->toolbar ? (int) m->tbH : -(int) m->tbH);
 
 	applyFrameGeometry(m, m->fx, m->fy, m->fw, fh);

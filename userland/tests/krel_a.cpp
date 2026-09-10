@@ -1,7 +1,9 @@
 /* krel_a.cpp — S4.1a probe: an argentum app that maps under Kestrel.
  * S4.3: it declares a preferred content size (the zoom box grows the
- * frame to it) and a toolbar strip the WM reserves and toggles, so the
- * frame's controls have something real to act on. */
+ * frame to it) and a toolbar strip, and it honours the frame's
+ * show/hide-toolbar box — the WM tells it the new state
+ * (_ARGENTUM_TOOLBAR) and reserves or drops the strip's height, so the
+ * strip is the app's and the state is the WM's. */
 #include <argentum/argentum.h>
 
 #include <cstdio>
@@ -12,6 +14,18 @@ using namespace argentum;
 static const int TB_H = 22;	/* the strip this app draws itself */
 
 struct Content : public View {
+	/* the toolbar state the WM reported (its box in the title bar) */
+	bool toolbar_ = true;
+
+	void setToolbar(bool visible)
+	{
+		if (toolbar_ == visible) {
+			return;
+		}
+		toolbar_ = visible;
+		setNeedsDisplay();
+	}
+
 	void draw(GraphicsContext &g) override
 	{
 		Application &app = Application::shared();
@@ -26,11 +40,10 @@ struct Content : public View {
 
 		/* the body */
 		g.fillRect(0, 0, (unsigned) w, (unsigned) h, 0xcc3344);
-		/* the app's toolbar strip: the WM reserves its height under
-		 * the frame's title bar and the frame's toolbar toggle adds
-		 * or removes it from this window's rect (the strip is the
-		 * CLIENT's, so it is drawn whenever the window has room) */
-		if (h > TB_H) {
+		/* the app's toolbar strip: the WM's title-bar box tells this
+		 * window whether to show it (_ARGENTUM_TOOLBAR) and reserves
+		 * or drops its height in the frame at the same time */
+		if (toolbar_ && h > TB_H) {
 			int ty = (int) ((TB_H - box * ppt) / 2.0);
 
 			g.fillRoundedGradient(0, 0, (unsigned) w,
@@ -43,7 +56,8 @@ struct Content : public View {
 		}
 		/* the app's own content label, below the strip */
 		g.drawText(t.fontFamily(), t.fontSizePt(), 8,
-			   (int) (TB_H + 10), "Krel A window", t.text());
+			   (int) ((toolbar_ ? TB_H : 0) + 10),
+			   "Krel A window", t.text());
 		/* the size the toolkit just laid this view out at (the gate
 		 * reads it to see a resize reach the client) */
 		printf("KREL-A-DRAW %dx%d\n", w, h);
@@ -75,6 +89,12 @@ main()
 	/* S4.3: the published hints */
 	w.setPreferredContentSize(360, 200);
 	w.setToolbarHeight(TB_H);
+	/* the frame's show/hide-toolbar box speaks: honour it */
+	w.setOnToolbarToggle([&v](bool shown) {
+		printf("KREL-A-TOOLBAR %s\n", shown ? "on" : "off");
+		fflush(stdout);
+		v.setToolbar(shown);
+	});
 	/* S4.1c: the WM's close request (WM_DELETE) exits cleanly */
 	w.setOnClose([&app]() {
 		printf("KREL-A-CLOSE\n");

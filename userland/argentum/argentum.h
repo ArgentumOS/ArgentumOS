@@ -501,11 +501,25 @@ public:
 	 * `_ARGENTUM_TOOLBAR_HEIGHT`; the WM reserves the strip inside
 	 * the frame (the client makes its own window that much taller and
 	 * draws into it) and offers the title bar's show/hide-toolbar
-	 * button, which adds or removes the strip's HEIGHT from this
-	 * window's rect. The strip is the client's content, so the client
-	 * keeps drawing it into whatever height it is given; 0 (the
+	 * button. The strip is the client's content, so the button only
+	 * TELLS the client (see setOnToolbarToggle) while the WM adds or
+	 * removes the strip's height from this window's rect; 0 (the
 	 * default) = no strip, no button. */
 	void setToolbarHeight(unsigned int heightPx);
+
+	/* S4.3: the WM's show/hide-toolbar box (the frame's title bar) —
+	 * `cb` receives the new toolbar state, true = the strip is shown.
+	 * Declaring a toolbar height is what makes the window eligible: the
+	 * WM then adds this to WM_PROTOCOLS (`_ARGENTUM_TOOLBAR`, a
+	 * ClientMessage whose data.l[1] carries the state) and sends it
+	 * whenever the box is pressed, together with the resize that adds
+	 * or removes the strip's height from this window. The default
+	 * does nothing (the window keeps drawing its strip). */
+	void setOnToolbarToggle(std::function<void(bool visible)> cb);
+
+	/* the toolbar state the WM last reported (true until told
+	 * otherwise — both sides start "shown") */
+	bool toolbarVisible() const;
 
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
@@ -517,6 +531,7 @@ private:
 	Impl *impl_;
 
 	void handleCloseRequest();	/* S4.1c (the loop calls it) */
+	void handleToolbarToggle(bool visible);	/* S4.3 (the loop calls it) */
 
 	/* MIT-SHM (docs/design/mit-shm-plan.md M2): attach/refresh the
 	 * persistent SysV transport for the current backing geometry

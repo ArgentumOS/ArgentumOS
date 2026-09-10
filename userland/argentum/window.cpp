@@ -934,10 +934,43 @@ Window::setToolbarHeight(unsigned int heightPx)
 	}
 	Atom a = XInternAtom(impl_->dpy, "_ARGENTUM_TOOLBAR_HEIGHT", False);
 	unsigned long v = heightPx;
+	Atom protocols[2];
 
 	XChangeProperty(impl_->dpy, impl_->xwin, a, XA_CARDINAL, 32,
 			PropModeReplace, (unsigned char *) &v, 1);
+	/* S4.3: declaring a strip is what makes this window eligible for
+	 * the WM's show/hide-toolbar box, so advertise the protocol it
+	 * then honours (ICCCM: WM_PROTOCOLS lists them). */
+	protocols[0] = XInternAtom(impl_->dpy, "WM_DELETE_WINDOW", False);
+	protocols[1] = XInternAtom(impl_->dpy, "_ARGENTUM_TOOLBAR", False);
+	XSetWMProtocols(impl_->dpy, impl_->xwin, protocols,
+			heightPx ? 2 : 1);
 	XSync(impl_->dpy, False);
+}
+
+void
+Window::setOnToolbarToggle(std::function<void(bool)> cb)
+{
+	impl_->onToolbarToggle = std::move(cb);
+}
+
+bool
+Window::toolbarVisible() const
+{
+	return impl_->toolbarVisible;
+}
+
+/* S4.3: the WM flipped the toolbar (its box in the frame's title bar).
+ * The message carries the new state; the WM's matching resize follows on
+ * the same wire, so a hook that just records the state is repainted once,
+ * by that resize's Expose. */
+void
+Window::handleToolbarToggle(bool visible)
+{
+	impl_->toolbarVisible = visible;
+	if (impl_->onToolbarToggle) {
+		impl_->onToolbarToggle(visible);
+	}
 }
 
 void

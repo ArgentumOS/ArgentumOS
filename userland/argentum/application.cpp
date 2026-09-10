@@ -439,19 +439,31 @@ Application::run()
 			break;
 		}
 		case ClientMessage: {
-			/* S4.1c: a WM's WM_DELETE_WINDOW close request */
+			/* S4.1c: a WM's WM_DELETE_WINDOW close request.
+			 * S4.3: the WM's toolbar-state message (`data.l[0]`
+			 * is the protocol atom, `data.l[1]` the state — the
+			 * WM_DELETE_WINDOW layout). */
 			static Atom wmProtocols = 0;
 			static Atom wmDelete = 0;
+			static Atom wmToolbar = 0;
 
 			if (!wmProtocols) {
 				wmProtocols = XInternAtom(
 					impl_->dpy, "WM_PROTOCOLS", False);
 				wmDelete = XInternAtom(
 					impl_->dpy, "WM_DELETE_WINDOW", False);
+				wmToolbar = XInternAtom(
+					impl_->dpy, "_ARGENTUM_TOOLBAR", False);
 			}
-			if (ev.xclient.message_type == wmProtocols &&
-			    (Atom) ev.xclient.data.l[0] == wmDelete) {
-				w->handleCloseRequest();
+			if (ev.xclient.message_type == wmProtocols) {
+				Atom a = (Atom) ev.xclient.data.l[0];
+
+				if (a == wmDelete) {
+					w->handleCloseRequest();
+				} else if (a == wmToolbar) {
+					w->handleToolbarToggle(
+						ev.xclient.data.l[1] != 0);
+				}
 			}
 			break;
 		}
