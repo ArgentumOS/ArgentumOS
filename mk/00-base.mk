@@ -184,8 +184,28 @@ kestrel-img: kestrel-root
 ROOTIMG ?= .build/rootagfs.img
 run-agfs: run
 
+# Stop lingering QEMU guests. Every guest opens .build/esp.img, so one left
+# behind (a guest can reach "Safe to Power Off" and stay alive) makes the next
+# `make run-*` / `make zoo` fail with "Failed to get write lock". Safe when no
+# guest is meant to be up.
+qemu-kill:
+	@n=$$(pgrep -f '[q]emu-system' | wc -l); \
+	if [ "$$n" = "0" ]; then \
+		echo "qemu-kill: no guests running"; \
+	else \
+		pkill -9 -f '[q]emu-system'; sleep 1; \
+		echo "qemu-kill: stopped $$n guest(s)"; \
+	fi
+
 run-qemu:
 	@./tools/mkesp.sh
+	@if pgrep -f '[q]emu-system' >/dev/null 2>&1; then \
+		echo "run-qemu: a QEMU guest is already running, and every guest opens"; \
+		echo "  .build/esp.img, so this run would fail with \"Failed to get write"; \
+		echo "  lock\". A guest that reached 'Safe to Power Off' can linger and keep"; \
+		echo "  holding it. Finish/close it, or clean up with: make qemu-kill"; \
+		exit 1; \
+	fi
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
 		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display gtk -serial stdio -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
