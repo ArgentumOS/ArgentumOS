@@ -236,13 +236,21 @@ control is drawn the way `SegmentedControl` draws itself
 (`segmented.cpp`), so that a tab strip and a segmented control are
 visibly the same control rather than two similar ones: ONE
 chromeOutline bezel, each segment a rounded gradient inset from its
-NEIGHBOUR by the bezel inset - so a separator has room between two
-segments, as in `segmented.cpp` - but flush with the bezel at the two
-outer ends: insetting those as well makes the end borders twice as
-thick as a segmented control's, because the bezel already stands off
-the first and last cell. The SELECTED segment is in the `Armed` state and the rest in `Idle`, which
-is exactly a segmented control's selected and unselected colours - and
-1px page-coloured lines between neighbouring segments. The bezel inset
+LEFT boundary by the bezel inset and flush at its right, so every seam
+is one dark pixel of bezel - the same width as the borders at the two
+outer ends, which are flush because the bezel already stands off the
+first and last cell.
+
+There is deliberately NO page-coloured line between segments, which is
+what `segmented.cpp` draws. The cells are ADJACENT, so a boundary pixel
+belongs to the second cell: a light line there sits inside the second
+tab's area, against its selected fill, and reads as background bleeding
+through the seam rather than as the gap it is against the control's own
+chrome background. The bezel shows there instead - the same colour the
+divider would have been, at one pixel instead of three.
+
+The SELECTED segment is in the `Armed` state and the rest in `Idle`, which
+is exactly a segmented control's selected and unselected colours. The bezel inset
 is 1 PIXEL rather than a point measure, matching `segmented.cpp`'s `o`:
 a scaled inset would make the strip a subtly different control from the
 one beside it. Segment rects are adjacent and labels are centred within

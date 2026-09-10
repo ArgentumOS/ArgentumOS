@@ -404,28 +404,28 @@ TabView::draw(GraphicsContext &g)
 		int x = (int) (rc.origin.x * ppt + 0.5);
 		int tw = (int) (rc.size.w * ppt + 0.5);
 
-		/* the segment's fill: inset from a NEIGHBOUR by the bezel
-		 * inset, so a separator has room between two segments as it
-		 * does in segmented.cpp, but FLUSH with the bezel at the two
-		 * outer ends. Insetting those too made the end borders twice
-		 * as thick as a segmented control's - the bezel already
-		 * stands off the first and last cell by `ob`. */
+		/* The segment's fill. Inset from its LEFT boundary by the bezel
+		 * inset and flush at its right: a neighbour's inset is then what
+		 * leaves the single dark pixel of bezel at each seam, and that
+		 * pixel is the same width as the borders at the two outer ends
+		 * (which are flush, the bezel already standing off them).
+		 *
+		 * No page-coloured line between the segments, which is what
+		 * segmented.cpp draws: the cells are ADJACENT, so a boundary
+		 * pixel belongs to the second cell, and a light line there sits
+		 * inside the second tab's area against its (light) selected fill
+		 * - it reads as background bleeding through the seam. Against
+		 * the control's own chrome background the same line reads as a
+		 * gap; against a dark bezel it does not. The bezel shows here
+		 * instead, which is the same colour as the divider. */
 		int padL = (i == 0) ? 0 : ob;
-		int padR = (i + 1 == rects.size()) ? 0 : ob;
 
-		if (tw - padL - padR > 0 && cellH > 2) {
+		if (tw - padL > 0 && cellH > 2) {
 			g.fillRoundedGradient(x + padL, cellY,
-					      (unsigned) (tw - padL - padR),
+					      (unsigned) (tw - padL),
 					      (unsigned) cellH,
 					      (unsigned) (r - 1 > 0 ? r - 1 : 0),
 					      q.fillTop, q.fillBottom);
-		}
-		/* the line between neighbours, page-coloured as there */
-		if (i + 1 < rects.size()) {
-			int sx = (int) (rects[i + 1].origin.x * ppt + 0.5);
-
-			g.fillRect((unsigned) sx, (unsigned) cellY, 1,
-				   (unsigned) cellH, theme.page());
 		}
 		/* label, centred in the segment */
 		TabViewItem *it = tb_->items[i];
