@@ -44,9 +44,10 @@ implements to draw.
   (the UIKit input-depth milestone), paste, and mouse reporting when
   the app enables it.
 - **Selection**: widget-level selection (the toolkit already has
-  text-widget selection semantics); system-wide copy/paste depends
-  on the clipboard story, which is currently unplanned — the
-  terminal starts with PRIMARY-style own-selection behaviour.
+  text-widget selection semantics); system copy/paste goes through
+  the **single session pasteboard** (`docs/design/clipboard-plan.md`)
+  — explicitly *not* X `PRIMARY`/`CLIPBOARD`. Until C2 lands, a
+  widget-local selection with an internal copy is the stopgap.
 - **PTYs**: devpts + `forkpty` — present.
 
 ## 3. Milestones
