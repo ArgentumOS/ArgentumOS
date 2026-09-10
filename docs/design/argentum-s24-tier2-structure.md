@@ -268,10 +268,11 @@ complete: S2.4a-e all green and committed.**
 
 ## 6. Deferred (noted so they are decisions)
 
-- **Scroll input**: no mouse wheel exists in the input stack (psaux is
-  3-byte; the serial seam is pointer-only); wheel scrolling + scroll
-  event machinery land with a real wheel source. Scrollbar dragging is
-  likewise deferred (indicators only).
+- **Scroll input**: DONE after all — the native mouse device carries
+  the wheel in its record, Xfb maps notches to X buttons 4-7, and the
+  window dispatch routes them to `View::mouseWheel` (which bubbles), so
+  the wheel scrolls a view and the scroller drags. See the S2.4b
+  section; nothing is deferred here any more.
 - **TabView keyboard navigation / mnemonics** — minimal-focus traversal
   is S3.1 (unchanged).
 - **TableView richness**: column resizing, sorting, editing, multiple
