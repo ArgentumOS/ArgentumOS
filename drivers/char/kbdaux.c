@@ -5,7 +5,8 @@
  * normalized key-press events here (4-byte records: key, mods, state,
  * pad) whenever a reader has the device open, and the console tty
  * emission is skipped while it is grabbed - the session compositor
- * owns the keyboard, exactly as it owns the pointer via /dev/psaux.
+ * owns the keyboard, exactly as it owns the pointer via the native
+ * mouse device (/System/Devices/mouse, drivers/char/mousedev.c).
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */

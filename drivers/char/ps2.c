@@ -166,6 +166,19 @@ void ps2_init(void)
 		ps2_write(PS2_COMMAND, PS2_CMD_SELF_TEST);
 		if((errno = ps2_read(PS2_DATA)) != 0x55) {
 			printk("WARNING: %s(): PS/2 controller not returned 0x55 after self-test (was 0x%x), try with the parameter 'ps2_noreset'.\n", __FUNCTION__, errno);
+			/* No PS/2 controller (e.g. QEMU 'pc,i8042=off', the
+			 * USB-HID-only desktop): the console input devices
+			 * must still be registered so a USB keyboard/mouse
+			 * can drive them - usb-kbd feeds the console
+			 * scancode path and usb-mouse synthesizes PS/2
+			 * packets into /dev/psaux. */
+			keyboard_init();
+#ifdef CONFIG_KBDAUX
+			kbdaux_init();
+#endif /* CONFIG_KBDAUX */
+#ifdef CONFIG_PSAUX
+			psaux_init();
+#endif /* CONFIG_PSAUX */
 			return;
 		} else {
 			supp_ports = 1;

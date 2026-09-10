@@ -1,6 +1,14 @@
 /*
  * fnx/drivers/char/psaux.c
  *
+ * The PS/2 auxiliary (mouse) port of the 8042 controller. This driver
+ * owns the controller handshake and IRQ12, and it is the PS/2 *producer*
+ * for the native mouse device: every aux byte is handed to
+ * mousedev_ps2_byte(), which frames 3-byte PS/2 packets and decodes
+ * them into normalized records. There is no raw byte device any more -
+ * consumers (the X server) read normalized events from
+ * /System/Devices/mouse, never a PS/2 stream.
+ *
  * Copyright 2024, Jordi Sanfeliu. All rights reserved.
  * Distributed under the terms of the Fiwix License.
  */
@@ -14,75 +22,14 @@
 #include <fnx/errno.h>
 #include <fnx/ps2.h>
 #include <fnx/psaux.h>
+#include <fnx/mousedev.h>
 #include <fnx/pic.h>
 #include <fnx/irq.h>
-#include <fnx/fcntl.h>
 #include <fnx/sched.h>
-#include <fnx/sleep.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 
 #ifdef CONFIG_PSAUX
-static struct fs_operations psaux_driver_fsop = {
-	0,
-	0,
-
-	psaux_open,
-	psaux_close,
-	psaux_read,
-	psaux_write,
-	NULL,			/* ioctl */
-	NULL,			/* llseek */
-	NULL,			/* readdir */
-	NULL,			/* readdir64 */
-	NULL,			/* mmap */
-	psaux_select,
-
-	NULL,			/* readlink */
-	NULL,			/* followlink */
-	NULL,			/* bmap */
-	NULL,			/* lockup */
-	NULL,			/* rmdir */
-	NULL,			/* link */
-	NULL,			/* unlink */
-	NULL,			/* symlink */
-	NULL,			/* mkdir */
-	NULL,			/* mknod */
-	NULL,			/* truncate */
-	NULL,			/* create */
-	NULL,			/* rename */
-
-	NULL,			/* read_block */
-	NULL,			/* write_block */
-
-	NULL,			/* read_inode */
-	NULL,			/* write_inode */
-	NULL,			/* ialloc */
-	NULL,			/* ifree */
-	NULL,			/* statfs */
-	NULL,			/* read_superblock */
-	NULL,			/* remount_fs */
-	NULL,			/* write_superblock */
-	NULL			/* release_superblock */
-};
-
-static struct device psaux_device = {
-	"psaux",
-	PSAUX_MAJOR,
-	{ 0, 0, 0, 0, 0, 0, 0, 0 },
-	NULL,
-	NULL,
-	&psaux_driver_fsop,
-	NULL,
-	NULL,
-	NULL
-};
-
-struct psaux *psaux_table;	/* heap: FNX64 maps kernel code/data at both
-					 * low-identity and high-half VAs; static
-					 * objects get two addresses, so the psaux
-					 * state (used as a sleep/wakeup key) must
-					 * live on the heap (like tty_table) */
 
 static struct interrupt irq_config_psaux = { 0, "psaux", &irq_psaux, NULL };
 
@@ -115,10 +62,10 @@ static void psaux_identify(void)
 
 	/* identify: plain IDENTIFY only. Do NOT run the IntelliMouse
 	 * sample-rate magic (200/100/80) here: it switches a wheel mouse
-	 * into IMPS/2 4-byte packet mode, but every FNX consumer of the
-	 * psaux stream (Xfb fnxinput, the USB-mouse synthesizer, the
-	 * serial test seam) speaks 3-byte PS/2. Keeping the device in
-	 * standard 3-byte mode makes all paths agree. */
+	 * into IMPS/2 4-byte packet mode, and the decoder in mousedev.c
+	 * frames 3-byte packets. Keeping the device in standard 3-byte
+	 * mode makes the PS/2 stream unambiguous (a wheel mouse on the
+	 * 8042 port simply reports no wheel). */
 	psaux_command_write(PS2_DEV_IDENTIFY);
 	id = ps2_read(PS2_DATA);
 	ps2_clear_buffer();
@@ -137,155 +84,15 @@ void irq_psaux(int num, struct sigcontext *sc)
 	if(ch == DEV_ACK) {
 		ack = 1;
 	}
-	if(!psaux_table->count) {
-		return;
-	}
-	charq_putchar(&psaux_table->read_q, ch);
-	/* NB: wake on a DATA address; FNX64 maps the kernel code at both
-	 * the low identity and high-half VAs, so function-address sleep
-	 * keys do not match across contexts (e.g. syscall vs timer BH) */
-	wakeup(&psaux_table->read_q);
-	wakeup(&do_select);
-}
-
-/* feed a synthesized PS/2 mouse packet (from a USB mouse) into the
- * psaux input queue and wake the readers */
-void psaux_synth_packet(unsigned char *pkt, int len)
-{
-	int n;
-
-	if(!psaux_table->count) {
-		return;
-	}
-	for(n = 0; n < len; n++) {
-		charq_putchar(&psaux_table->read_q, pkt[n]);
-	}
-	wakeup(&psaux_table->read_q);
-	wakeup(&do_select);
-}
-
-int psaux_open(struct inode *i, struct fd *f)
-{
-	int minor;
-
-	minor = MINOR(i->rdev);
-	if(!TEST_MINOR(psaux_device.minors, minor)) {
-		return -ENXIO;
-	}
-	if(psaux_table->count++) {
-		return 0;
-	}
-	memset_b(&psaux_table->read_q, 0, sizeof(struct clist));
-	memset_b(&psaux_table->write_q, 0, sizeof(struct clist));
-	return 0;
-}
-
-int psaux_close(struct inode *i, struct fd *f)
-{
-	int minor;
-
-	minor = MINOR(i->rdev);
-	if(!TEST_MINOR(psaux_device.minors, minor)) {
-		return -ENXIO;
-	}
-	psaux_table->count--;
-	return 0;
-}
-
-int psaux_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
-{
-	int minor, bytes_read;
-	unsigned char ch;
-
-	minor = MINOR(i->rdev);
-	if(!TEST_MINOR(psaux_device.minors, minor)) {
-		return -ENXIO;
-	}
-
-	while(!psaux_table->read_q.count) {
-		if(f->flags & O_NONBLOCK) {
-			return -EAGAIN;
-		}
-		if(sleep(&psaux_table->read_q, PROC_INTERRUPTIBLE)) {
-			return -EINTR;
-		}
-	}
-	bytes_read = 0;
-	while(bytes_read < count) {
-		if(psaux_table->read_q.count) {
-			ch = charq_getchar(&psaux_table->read_q);
-			buffer[bytes_read++] = ch;
-			continue;
-		}
-		break;
-	}
-	if(bytes_read) {
-		i->i_atime = CURRENT_TIME;
-	}
-	return bytes_read;
-}
-
-int psaux_write(struct inode *i, struct fd *f, const char *buffer, __size_t count)
-{
-	int minor, bytes_written;
-	unsigned char ch;
-
-	minor = MINOR(i->rdev);
-	if(!TEST_MINOR(psaux_device.minors, minor)) {
-		return -ENXIO;
-	}
-
-	bytes_written = 0;
-	while(bytes_written < count) {
-		ch = buffer[bytes_written++];
-		psaux_command_write(ch);
-	}
-	if(bytes_written) {
-		i->i_mtime = CURRENT_TIME;
-	}
-	return bytes_written;
-}
-
-int psaux_select(struct inode *i, struct fd *f, int flag)
-{
-	int minor;
-
-	minor = MINOR(i->rdev);
-	if(!TEST_MINOR(psaux_device.minors, minor)) {
-		return -ENXIO;
-	}
-
-	switch(flag) {
-		case SEL_R:
-			if(psaux_table->read_q.count) {
-				return 1;
-			}
-			break;
-	}
-	return 0;
+	/* decode the byte stream into normalized pointer events; the
+	 * decoder keeps its own packet framing and drops strays */
+	mousedev_ps2_byte(ch);
 }
 
 void psaux_init(void)
 {
 	int errno;
 	int irq_registered = 0;
-
-	/* register /dev/psaux unconditionally: a USB mouse synthesizes
-	 * PS/2 packets into it even when no PS/2 mouse is attached.
-	 * psaux_table is heap-allocated: FNX64 maps kernel code/data at
-	 * both low-identity and high-half VAs, so static objects get two
-	 * addresses and cannot serve as sleep/wakeup keys (tty_table is
-	 * a heap pointer for the same reason). */
-	if(!(psaux_table = (struct psaux *)kmalloc(sizeof(struct psaux)))) {
-		printk("psaux: no memory\n");
-		return;
-	}
-	memset_b(psaux_table, 0, sizeof(struct psaux));
-	SET_MINOR(psaux_device.minors, PSAUX_MINOR);
-	if(register_device(CHR_DEV, &psaux_device)) {
-		printk("WARNING: %s(): unable to register psaux device.\n", __FUNCTION__);
-	}
-	devfs_make_node("PS2/Mouse", MKDEV(PSAUX_MAJOR, PSAUX_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
 
 	/* reset device */
 	psaux_command_write(PS2_DEV_RESET);
@@ -330,6 +137,12 @@ void psaux_init(void)
 			break;
 	}
 	printk("\n");
+
+	/* the PS/2 mouse exists: publish its topology node and the
+	 * by-role alias the session opens (a USB mouse publishes
+	 * USB/Mouse and creates the alias only if this one did not) */
+	devfs_make_node("PS2/Mouse", MKDEV(MOUSE_MAJOR, MOUSE_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_symlink("mouse", "PS2/Mouse", 0777);
 
 	/* init complete; unmask IRQ12 so motion packets start flowing */
 	if(irq_registered) {

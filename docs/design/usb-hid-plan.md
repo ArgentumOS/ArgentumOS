@@ -1,6 +1,7 @@
 # More HID-class USB devices — a generic HID layer
 
-Status: **PLAN (2026-09) — scoped; no code.** Today FNX handles two
+Status: **PLAN (2026-09) — its delivery seam is superseded by
+[`native-input-plan.md`](native-input-plan.md) (N0/N1 done).** Today FNX handles two
 HID devices: boot-protocol keyboard (class 3, proto 1) and
 boot-protocol mouse (class 3, proto 2), both synthesized into the
 existing psaux/scancode seams. Everything beyond boot protocol is

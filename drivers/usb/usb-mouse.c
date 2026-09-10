@@ -2,17 +2,19 @@
  * fnx/drivers/usb/usb-mouse.c
  *
  * USB HID boot mouse / tablet class driver. Runs on the xHCI host
- * controller: configures EP1 IN (interrupt) and delivers pointer
- * reports to the PS/2 mouse device (/dev/psaux) as synthesized
- * 3-byte PS/2 packets, so existing userland mouse consumers work
- * unchanged.
+ * controller: configures EP1 IN (interrupt) and decodes pointer
+ * reports into normalized events on the native mouse device
+ * (/System/Devices/mouse) - a real HID consumer, not a PS/2
+ * emulator. The topology node is USB/Mouse; the by-role alias
+ * (Devices/mouse) is created if no PS/2 mouse claimed it first.
  *
  * QEMU contract (qemu-10.0.11+ds/hw/usb/dev-hid.c):
  * - usb-mouse:  interface proto 0x02, EP1 IN, report = 4 bytes
  *   [buttons, X delta (s8), Y delta (s8), wheel (s8)].
  * - usb-tablet: interface proto 0x00, EP1 IN, report = 8 bytes
  *   [buttons, pad, X (u16 LE), Y (u16 LE), wheel, pad] - absolute.
- * PS/2 packet: [Ysign|Xsign|0x08|buttons, X, -Y] (Y up = positive).
+ * Deltas arrive in screen convention (positive Y = down); the record
+ * carries them unchanged.
  *
  * Copyright 2026. Distributed under the terms of the Fiwix License.
  */
@@ -20,7 +22,11 @@
 #include <fnx/config.h>
 #include <fnx/errno.h>
 #include <fnx/mm.h>
-#include <fnx/psaux.h>
+#include <fnx/fs.h>
+#include <fnx/fs_devfs.h>
+#include <fnx/devices.h>
+#include <fnx/stat.h>
+#include <fnx/mousedev.h>
 #include <fnx/stdio.h>
 #include <fnx/string.h>
 #include <fnx/types.h>
@@ -54,8 +60,7 @@ static void usb_mouse_submit(struct usb_mouse *m)
 static void usb_mouse_cb(int slotid, int epid, int ccode, int length, void *data)
 {
 	struct usb_mouse *m = &mouse;
-	unsigned char pkt[3];
-	int buttons, dx, dy;
+	int buttons, wheel, dx, dy;
 
 	if(slotid != m->slotid || epid != m->epid) {
 		return;
@@ -73,28 +78,17 @@ static void usb_mouse_cb(int slotid, int epid, int ccode, int length, void *data
 		dy = y - m->last_y;
 		m->last_x = x;
 		m->last_y = y;
+		wheel = (m->mps > 6) ? (signed char)m->buf[6] : 0;
 	} else {
 		buttons = m->buf[0] & 7;
 		dx = (signed char)m->buf[1];
 		dy = (signed char)m->buf[2];
+		wheel = (m->mps > 3) ? (signed char)m->buf[3] : 0;
 	}
 
-	/* PS/2 packet: positive Y = down (toward the user). QEMU's usb-mouse
-	 * already feeds screen-convention deltas (positive Y = down), so the
-	 * HID y-up negation must NOT be applied here - doing so flips the
-	 * vertical axis (moving up moves the cursor down). */
-	{
-		int xd = dx;
-		int yd = dy;
-
-		pkt[0] = 0x08 |
-			 ((yd & 0x80) ? 0x20 : 0) |
-			 ((xd & 0x80) ? 0x10 : 0) |
-			 (buttons & 0x07);
-		pkt[1] = xd & 0xFF;
-		pkt[2] = yd & 0xFF;
-	}
-	psaux_synth_packet(pkt, 3);
+	/* Deltas are screen-convention already (positive Y = down, as
+	 * QEMU's usb-mouse reports); the record carries them unchanged. */
+	mousedev_event(buttons, wheel, dx, dy, 0);
 
 	usb_mouse_submit(m);
 }
@@ -174,6 +168,12 @@ int usb_mouse_init(int slotid, unsigned char *configdesc)
 
 	usb_set_transfer_cb(slotid, m->epid, usb_mouse_cb, NULL);
 	usb_mouse_submit(m);
+
+	/* publish the USB topology node; the by-role alias stays put if a
+	 * PS/2 mouse already published it first (both feed the same device) */
+	devfs_make_node("USB/Mouse", MKDEV(MOUSE_MAJOR, MOUSE_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_symlink("mouse", "USB/Mouse", 0777);
+
 	printk("usb-mouse: %s on slot %d (epid %d, mps %d)\n",
 		m->tablet ? "tablet" : "mouse", slotid, m->epid, m->mps);
 	return 0;

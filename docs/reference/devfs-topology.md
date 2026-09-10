@@ -21,7 +21,8 @@ Drivers register real nodes under bus/role dirs. Prefix dirs are dev-0
     TTY/               tty (SYSCON 5:0), console (5:1)
     Serial/            Port0..Port3          (serial.c per probed port)
     PTS/               ptmx (clone)          + pts/  (devpts mount target)
-    PS2/               Keyboard, Mouse       (kbd.c, psaux.c)
+    PS2/               Keyboard, Mouse       (kbd.c, psaux.c; Mouse is the
+                                             native device, 10:0)
     USB/               Keyboard, Mouse       (usb-kbd / usb-mouse, when present)
     Display/           fb0
     Audio/             dsp
@@ -56,7 +57,8 @@ Disk/by-identity/<bus>-DiskN -> .../DiskN/WholeDisk and
 ```
 console  -> TTY/console        tty   -> TTY/tty
 ttyS0..3 -> Serial/Port0..3    ptmx  -> PTS/ptmx
-kbd      -> PS2/Keyboard       mouse -> PS2/Mouse     psaux -> PS2/Mouse
+kbd      -> PS2/Keyboard       mouse -> PS2/Mouse (or USB/Mouse: whoever
+                                       registers first; 10:0 either way)
 fb0      -> Display/fb0        dsp   -> Audio/dsp
 hda..hdd -> Disk/IDE/Disk0..3/WholeDisk
 sda..    -> Disk/<AHCI|SCSI|USB>/Disk<n>/WholeDisk  (resolved at probe

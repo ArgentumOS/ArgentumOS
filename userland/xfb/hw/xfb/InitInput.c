@@ -57,8 +57,8 @@ DDXRingBell(int volume, int pitch, int duration)
 #define VFB_MIN_KEY 8
 #define VFB_MAX_KEY 255
 
-/* FNX real-input backend (hw/xfb/fnxinput.c): opens /dev/psaux + /dev/kbd
- * and feeds mieq. */
+/* FNX real-input backend (hw/xfb/fnxinput.c): opens the native mouse
+ * device (/System/Devices/mouse) + /dev/kbd and feeds mieq. */
 extern void vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd);
 
 static int

@@ -38,6 +38,7 @@ extern void kernel_conf_apply(void);	/* kernel/multiboot.c */
 #include <fnx/sleep.h>
 #include <fnx/locks.h>
 #include <fnx/ps2.h>
+#include <fnx/mousedev.h>
 #include <fnx/keyboard.h>
 #include <fnx/sched.h>
 #include <fnx/mm.h>
@@ -175,6 +176,7 @@ void start_kernel(unsigned int magic, unsigned int info, unsigned long last_boot
 	video_init();
 	console_init();
 	timer_init();
+	mousedev_init();
 	ps2_init();
 	proc_init();
 	sleep_init();

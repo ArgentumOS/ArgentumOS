@@ -2,9 +2,10 @@
  *
  * Xvfb creates core pointer/keyboard devices but (XTEST aside) feeds them
  * nothing. This file plugs FNX's input devices into the X event pipeline
- * the kdrive way: the os layer polls /dev/psaux (3-byte PS/2 packets,
- * driven by the kernel's usb-mouse/ps2 synthesis) and /dev/kbd (4-byte
- * {key, mods, state, pad} records) through SetNotifyFd, and the notify
+ * the kdrive way: the os layer polls /System/Devices/mouse (the native
+ * pointer device: 8-byte records, decoded by the kernel from the PS/2
+ * port or USB HID) and /dev/kbd (4-byte {key, mods, state, pad}
+ * records) through SetNotifyFd, and the notify
  * callbacks drain + parse the streams and call QueuePointerEvents /
  * QueueKeyboardEvents into mieq.
  *
@@ -43,9 +44,10 @@ static int vfbKbdFd = -1;
 static int vfbPtrX = 0;
 static int vfbPtrY = 0;
 
-/* PS/2 packet assembly state */
-static int vfbMousePkt[3];
-static int vfbMousePktN = 0;
+/* /dev/mouse record assembly state (partial reads are possible) */
+#define FNX_MOUSE_EVENT_SIZE 8
+static unsigned char vfbMouseRec[FNX_MOUSE_EVENT_SIZE];
+static int vfbMouseRecN = 0;
 
 /* current X button bitmask: bit0 left, bit1 middle, bit2 right */
 static int vfbMouseButtons = 0;
@@ -54,60 +56,53 @@ static int vfbMouseButtons = 0;
 /* ---- mouse ----------------------------------------------------------- */
 
 static void
-vfbFeedMouseByte(unsigned char b)
+vfbMouseRecord(const unsigned char *rec)
 {
+    int buttons = rec[0] & 0x07;
+    int dx = (short) (rec[2] | (rec[3] << 8));
+    int dy = (short) (rec[4] | (rec[5] << 8));
+    int changed = buttons ^ vfbMouseButtons;
+    ValuatorMask mask;
+    int btn;
     int i;
 
-    if (vfbMousePktN == 0) {
-        /* first byte of a PS/2 packet has bit 3 set; drop stray bytes */
-        if (!(b & 0x08))
-            return;
-        vfbMousePkt[0] = b;
-        vfbMousePktN = 1;
-        return;
-    }
-    if (vfbMousePktN == 1) {
-        vfbMousePkt[1] = b;
-        vfbMousePktN = 2;
-        return;
-    }
-    vfbMousePkt[2] = b;
-    vfbMousePktN = 0;
+    /* record: bit0 left, bit1 right, bit2 middle (PS/2 + HID order).
+     * X core: button 1 left, 2 middle, 3 right. */
+    static const int xbtn[3] = { 1, 3, 2 };
 
-    /* decode: PS/2 3-byte packet (same as the GUI compositor) */
-    {
-        int b0 = vfbMousePkt[0];
-        int dx = (int) (signed char) vfbMousePkt[1];
-        int dy = (int) (signed char) vfbMousePkt[2];
-        int buttons = b0 & 0x07;
-        int changed = buttons ^ vfbMouseButtons;
-        ValuatorMask mask;
-        int btn;
+    /* deltas are already screen convention (positive Y = down) */
+    vfbPtrX += dx;
+    vfbPtrY += dy;
 
-        /* PS/2 dy is positive down (toward the user): feed straight
-         * through as relative motion */
-        vfbPtrX += dx;
-        vfbPtrY += dy;
+    valuator_mask_zero(&mask);
+    valuator_mask_set(&mask, 0, dx);
+    valuator_mask_set(&mask, 1, dy);
+    QueuePointerEvents(vfbMouseDev, MotionNotify, 0,
+                       POINTER_RELATIVE, &mask);
 
-        valuator_mask_zero(&mask);
-        valuator_mask_set(&mask, 0, dx);
-        valuator_mask_set(&mask, 1, dy);
-        QueuePointerEvents(vfbMouseDev, MotionNotify, 0,
-                           POINTER_RELATIVE, &mask);
-
-        for (btn = 0; btn < 3; btn++) {
-            int bit = 1 << btn;
-            if (changed & bit) {
-                if (buttons & bit)
-                    QueuePointerEvents(vfbMouseDev, ButtonPress,
-                                       btn + 1, 0, NULL);
-                else
-                    QueuePointerEvents(vfbMouseDev, ButtonRelease,
-                                       btn + 1, 0, NULL);
-            }
+    for (i = 0; i < 3; i++) {
+        int bit = 1 << i;
+        if (changed & bit) {
+            if (buttons & bit)
+                QueuePointerEvents(vfbMouseDev, ButtonPress,
+                                   xbtn[i], 0, NULL);
+            else
+                QueuePointerEvents(vfbMouseDev, ButtonRelease,
+                                   xbtn[i], 0, NULL);
         }
-        vfbMouseButtons = buttons;
     }
+    vfbMouseButtons = buttons;
+}
+
+/* assemble fixed 8-byte records (a read may split one) */
+static void
+vfbFeedMouseByte(unsigned char b)
+{
+    vfbMouseRec[vfbMouseRecN++] = b;
+    if (vfbMouseRecN < FNX_MOUSE_EVENT_SIZE)
+        return;
+    vfbMouseRecN = 0;
+    vfbMouseRecord(vfbMouseRec);
 }
 
 static void
@@ -387,7 +382,7 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
 
     src = getenv("XFB_MOUSE");
     if (!src || !*src)
-        src = "/System/Devices/PS2/Mouse";
+        src = "/System/Devices/mouse";   /* by-role alias (PS2/Mouse or USB/Mouse) */
     vfbMouseFd = open(src, O_RDONLY | O_NONBLOCK);
     if (vfbMouseFd >= 0) {
         vfbSetRaw(vfbMouseFd);

@@ -67,11 +67,16 @@ QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=
 CLANG19 = /usr/lib/llvm-19/bin/clang
 LLVM_OBJCOPY = /usr/lib/llvm-19/bin/llvm-objcopy
 
-# A USB mouse is attached by default so the X desktop (Xfb) has a
-# working pointer: QEMU 10's PS/2 mouse delivery is unreliable headless,
-# and FNX's usb-mouse driver synthesizes PS/2 packets into /dev/psaux
-# for the X server. Set QEMU_USB= to disable.
-QEMU_USB ?= -device usb-ehci -device usb-mouse
+# Input is real USB HID (docs/design/native-input-plan.md): a USB
+# keyboard + mouse on an xHCI controller, with the PS/2 controller
+# absent ('i8042=off') so the host pointer routes to the USB device
+# instead of the emulated PS/2 port. The drivers decode their own HID
+# reports into the native input devices (/System/Devices/mouse,
+# /dev/kbd) - nothing synthesizes PS/2 any more. xHCI (not EHCI) is
+# required to hold two full-speed devices at once. Set QEMU_USB= and
+# QEMU_MACHINE= to disable.
+QEMU_USB ?= -device qemu-xhci -device usb-kbd -device usb-mouse
+QEMU_MACHINE ?= -machine pc,i8042=off
 # ---------------------------------------------------------------------------
 
 CC64 = $(CLANG19) -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
@@ -182,11 +187,11 @@ run-agfs: run
 run-qemu:
 	@./tools/mkesp.sh
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display gtk -serial stdio -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display gtk -serial stdio -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -display curses -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display curses -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	else \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh -nographic -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -nographic -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	fi
 
 # ---------------------------------------------------------------------------
