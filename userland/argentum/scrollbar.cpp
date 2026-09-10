@@ -502,19 +502,21 @@ ScrollBar::draw(GraphicsContext &g)
 	/* track: the recess, as a plain fill - no ring of its own. The
 	 * bar's ring already frames it, and a ring here would stack against
 	 * the scroller's: three dark lines read as one thick black band
-	 * instead of the single hairline the rest of the chrome draws. The
-	 * radius matches the scroller's so their edges line up exactly. */
+	 * instead of the single hairline the rest of the chrome draws. It is
+	 * a plain RECTANGLE, unlike the scroller over it: the well butts
+	 * straight against the arrow buttons at both ends, and rounded
+	 * corners there would leave chrome notches at four interior
+	 * junctions. Square ends also read as a recess rather than a
+	 * second movable thing. */
 	{
 		std::uint32_t well = mixTo(theme.chromeBottom(), 0x000000, 0.18);
 		int tx = vertical ? 1 : gg.track0;
 		int ty = vertical ? gg.track0 : 1;
 		int tw = vertical ? w - 2 : gg.trackLen;
 		int th = vertical ? gg.trackLen : w - 2;
-		int wr = r > 1 ? r : 1;
 
 		if (tw > 0 && th > 0) {
-			g.fillRoundedRect(tx, ty, (unsigned) tw, (unsigned) th,
-					  (unsigned) wr, well);
+			g.fillRect(tx, ty, (unsigned) tw, (unsigned) th, well);
 		}
 	}
 

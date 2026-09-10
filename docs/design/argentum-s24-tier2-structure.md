@@ -166,8 +166,11 @@ read as a recess); the enabled arrows' triangles carry the accent so the
 bar still reads as one control, and the tips point at the ends they
 scroll toward. Boundaries are single hairlines rather than stacks
 (three stacked dark rings read as a thick black band): the trough draws
-no ring of its own, and the scroller spans the gutter's full width like
-the arrow buttons, so its ring coincides with the bar's. The scrolled
+no ring of its own - and it is a plain RECTANGLE, since it butts
+straight against the arrow buttons and rounded corners there would
+leave notches at four interior junctions - while the scroller spans the
+gutter's full width like the arrow buttons, so its ring coincides with
+the bar's. The scrolled
 view as a whole carries the house frame - `chromeOutline` at
 `smallRadius`, exactly as `Box::draw` draws one - as a 1px ring painted
 LAST (a hit-transparent `ScrollFrame`, the one overlay in the subtree):
