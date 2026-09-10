@@ -305,70 +305,50 @@ two apps, the bar swaps with focus, picks trigger app actions.
 - **A11y over the session socket**: rides the same seam later (§6 of
   the uikit plan); the socket stays framed so a codec can join.
 
-## S4.3 — interactive resize (the corner handle)
+## S4.3 — Platinum window frames, resize affordance in the chrome
 
-*Status: DESIGN (2026-09), not started.* Two halves, and it only works
-when both land: an indicator that does nothing is worse than none.
+*Status: DESIGN (2026-09), decided; implementation is the next slice.*
+This supersedes the first version of this section, which put the handle
+in the client's content view. That was the wrong side of the line: the
+frame is the WM's, so the affordances on it are the WM's too.
 
-### The affordance (toolkit)
+**Why the move is right.** With the handle in the client, the client had
+to resize itself — wrong under a reparenting WM, and the reason that
+draft needed a `_NET_SUPPORTING_WM_CHECK` probe plus an
+`_NET_WM_MOVERESIZE` round-trip to do what the WM can do directly. With
+the handle in the frame, nothing but the WM ever resizes anything: no
+protocol round-trip, no WM detection, no client-side gesture state, and
+no way for an application to leave the frame behind. Platinum was
+already the decided look (`docs/design/system-extensibility.md`:
+"Platinum is built in, not bolted on"); Kestrel's frames are the current
+deviation — a 26px band, accent-tinted when active (S4.1b).
 
-A resizable window (default true; `Window::setResizable(false)` opts out)
-shows three diagonal lines in the lower-right corner of its content view
-— the classic grow box — in the house line colour.
+**The frame** (`FrameChrome`):
 
-Implemented as a small `View` added **last** to the content view by
-`setContentView`, NOT painted by `Window::draw`. Two reasons. The view
-tree's composite/damage path then handles it for free, whereas painting
-into the backing inside `Window::draw` would have to widen the damage
-rect around a flush that has already happened by the time the draw tail
-clears it (`impl_->dmgX0 = …` comes after the timed "flush" phase).
-And the corner is exactly the region a container like `TabView` fills,
-so it has to be the topmost child rather than an underlay.
+- a 1px outline around the whole frame, black when active — carried by
+  X's window border (`XSetWindowBorder`) rather than painted, because the
+  sides and bottom of the frame window are occupied by the client;
+- a ~20px title bar with fine horizontal pinstripes when ACTIVE and flat
+  when inactive. This replaces the accent tint as the focus cue, so the
+  accent goes back to meaning selection rather than focus;
+- close box on the left (the existing close plate, restyled to
+  Platinum's 1px-bordered square), zoom box on the right
+  (square-in-square);
+- grow box in the lower-right: two or three short lines, drawn by the WM.
 
-The class is file-local to `window.cpp` and talks to the window through
-`std::function` callbacks, the way `Window::setOnClose` already does, so
-it needs no access to `Window::Impl` — which a free class cannot reach
-anyway (`View::Impl` is a private nested type).
+**Resize from any edge.** The grow box is the *indicator*; the drag may
+start on any frame edge or corner, as in OS 9. Kestrel hit-tests the
+frame's border region on button-press, and the hit edge or corner
+becomes the resize direction and the grabbed point. The existing drag
+session (S4.1d: `gDrag*`, `dragTo`/`endDrag`, the grab, the quiet-end
+rules) does the rest with a **mode** of move | resize. Motion applies the
+delta to whichever edges the grab owns, against a minimum size; release
+ends the session exactly as a move does.
 
-### The gesture
+**Client geometry.** The client sits inside the frame, inset by the
+frame's thickness on the sides and bottom — today it is inset by the
+band only. A resize moves and resizes both: the frame to the new rect,
+the client to the new content rect.
 
-The handle's `mouseDown` records the anchor and starts a resize. The
-toolkit already routes motion during a press to the **pressed** view
-(that is how a Slider tracks a drag that leaves its own bounds), so the
-handle keeps receiving motion without any grab of its own. It swallows
-its events instead of bubbling, so a press in the corner never reaches
-the application's views.
-
-### Who performs the resize
-
-- **Unmanaged** — the zoo and structure boards run without a WM. The
-  window resizes itself with `XMoveResizeWindow` on its own X window.
-  The ConfigureNotify that follows is already handled: `Window::
-  handleResize` plus the ConfigureNotify case in `Application::run()`
-  (S2.1d) re-lay-out the tree and re-back the window.
-- **Managed** — under Kestrel the client must NOT resize itself. It is
-  reparented inside a WM frame, so resizing its own window would leave
-  the frame behind, chewing the corner of a frame that no longer fits.
-  It sends `_NET_WM_MOVERESIZE` (direction 3, bottom-right) to the root
-  and Kestrel performs the interactive resize. Detected with
-  `_NET_SUPPORTING_WM_CHECK`, which Kestrel must therefore set.
-
-### Kestrel's half
-
-Reuse the existing drag session rather than growing a second one:
-`gDragActive`/`gDragFrame`/`gDragOff*` with `dragTo`/`endDrag`,
-`XGrabPointer(MotionMask|ButtonReleaseMask)`, and the quiet-end /
-abrupt-release rules from S4.1d all apply unchanged. What is new is a
-**mode** (move | resize) plus the grabbed corner and the frame size at
-grab time; motion resizes the frame and the client by the delta with a
-minimum size, release ends the session. `_NET_WM_MOVERESIZE` arrives as
-a ClientMessage — the WM already *sends* one for WM_DELETE_WINDOW, so
-this is the same mechanism in the other direction.
-
-### Two things to read before writing it
-
-1. Where the backing is flushed relative to the damage reset in
-   `Window::draw` — decides whether the handle could be painted there
-   after all (simpler than a child view) — and
-2. how the pressed-view routing is keyed — decides whether the handle
-   reliably keeps the motion for the whole drag.
+**Deferred, not decided:** window shading (double-click the title bar),
+and desaturating the frame when inactive beyond dropping the pinstripes.
