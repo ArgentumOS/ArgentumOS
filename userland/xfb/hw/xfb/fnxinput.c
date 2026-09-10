@@ -40,9 +40,11 @@ static DeviceIntPtr vfbKbdDev;
 static int vfbMouseFd = -1;
 static int vfbKbdFd = -1;
 
-/* absolute pointer tracking (we feed relative deltas) */
+/* absolute pointer tracking (we feed relative deltas, clamped to the
+ * screen; see vfbMouseRecord) */
 static int vfbPtrX = 0;
 static int vfbPtrY = 0;
+static int vfbPtrInit = 0;
 
 /* /dev/mouse record assembly state (partial reads are possible) */
 #define FNX_MOUSE_EVENT_SIZE 8
@@ -70,9 +72,44 @@ vfbMouseRecord(const unsigned char *rec)
      * X core: button 1 left, 2 middle, 3 right. */
     static const int xbtn[3] = { 1, 3, 2 };
 
-    /* deltas are already screen convention (positive Y = down) */
-    vfbPtrX += dx;
-    vfbPtrY += dy;
+    /* Deltas are already screen convention (positive Y = down), but the
+     * device delivers unbounded relative motion: keep our own absolute
+     * position clamped to the screen and forward only the in-bounds part.
+     * An out-of-bounds pointer position drives X's sprite code into its
+     * screen-switch path, which hangs the server (the point is on no
+     * screen) - the whole GUI wedges with the pointer pinned at an edge.
+     * Clamping here means the server never sees an out-of-range position.
+     * Rebase the delta on the clamped position so the cursor stops at the
+     * border instead of accumulating past it. */
+    if (!vfbPtrInit) {
+        /* First record: adopt the server's actual pointer position as
+         * our absolute base. Nothing has been forwarded yet, so the
+         * device's last valuators are exactly where the server put the
+         * pointer (X centers it). Everything after this is tracked
+         * locally, which is exact because we are the only pointer
+         * source. */
+        vfbPtrInit = 1;
+        if (vfbMouseDev && vfbMouseDev->valuator &&
+            vfbMouseDev->valuator->numAxes >= 2) {
+            vfbPtrX = (int) vfbMouseDev->last.valuators[0];
+            vfbPtrY = (int) vfbMouseDev->last.valuators[1];
+        }
+    }
+    if (screenInfo.screens[0]) {
+        int sw = screenInfo.screens[0]->width;
+        int sh = screenInfo.screens[0]->height;
+        int nx = vfbPtrX + dx;
+        int ny = vfbPtrY + dy;
+
+        if (nx < 0) nx = 0;
+        if (nx > sw - 1) nx = sw - 1;
+        if (ny < 0) ny = 0;
+        if (ny > sh - 1) ny = sh - 1;
+        dx = nx - vfbPtrX;
+        dy = ny - vfbPtrY;
+        vfbPtrX = nx;
+        vfbPtrY = ny;
+    }
 
     valuator_mask_zero(&mask);
     valuator_mask_set(&mask, 0, dx);
@@ -379,6 +416,7 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
 
     vfbMouseDev = pMouse;
     vfbKbdDev = pKbd;
+
 
     src = getenv("XFB_MOUSE");
     if (!src || !*src)
