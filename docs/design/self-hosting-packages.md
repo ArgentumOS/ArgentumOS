@@ -61,6 +61,7 @@ the plan's G3 gate and SH-0..SH-5.
 | **bmake** (BSD make) | BSD-2-Clause | system driver for the tree (GNU make is GPL — out) |
 | **ninja** | Apache-2.0 | the executor for the LLVM stage (and any CMake+ninja third party) |
 | **CMake** | BSD-3-Clause | the *configure* generator — ships on-FNX (decided): bootstraps with clang++ + bmake, vendored deps, OpenSSL off; host CMake is needed only for the very first cross-seed. In-guest clang source changes reconfigure in-guest — no host round-trip |
+| **GN** | BSD-3-Clause | the generator for the **PDFium build only** (docs/design/pdfium-plan.md) — not a system tool; ninja (§C) is its executor; builds with clang++ |
 
 ### D. Configure/build tooling
 
