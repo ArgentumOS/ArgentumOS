@@ -67,14 +67,35 @@ ownership, so a numeric uid in an ACL would reference an account that
 does not exist on the target — meaningless at best, hostile at worst.
 Resolution by name happens at install.
 
-## 4. The enabling kernel work: a file-backed AGFS mount
+## 4. The enabling kernel work: a loop block device
 
-There are no loop devices, so mounting an image file is new work: AGFS
-gains a **vnode-backed read-only volume source** (the equivalent of a
-vnode-backed md device), and the `disk` helper gains an image verb —
-`disk image mount <file.pkg> <target>` (read-only enforced; mounting
-something does not execute it). That mount is both the installer's
-input and the user's inspection path (§2).
+**There is no loopback mount today** (verified 2026-09):
+`drivers/block/` has no loop driver, and `mount()` accepts only
+`S_ISBLK` sources for filesystems that declare `FSOP_REQUIRES_DEV`
+(`kernel/syscalls/mount.c:120-135`, otherwise `-ENOTBLK`) — so a
+regular file **cannot** be a mount source. The nearest existing
+primitive is the **ramdisk** (major 1, 10 minors, memory-backed via
+`memcpy_b`, sized at boot by `ramdisksize=`; slot 0 is the initrd from
+a boot module's memory): RAM-backed, boot-configured, with no userland
+attach — the initrd mechanism, not a loop.
+
+**Decision: implement a loop block device**, rather than teaching AGFS
+about vnodes. A block device whose read/write callbacks resolve to the
+pages of a backing file:
+
+- reuses all existing block plumbing (buffer cache,
+  `bread`/`brelse`, partition scan, the `disk` helper) and *is* a block
+  device — so `mount` needs **no change at all**;
+- works for **every** filesystem unchanged: `.pkg` (AGFS) now,
+  ISO9660/FAT/ExFAT images and backup volumes later;
+- enforces read-only at the device level, which is where §3's
+  modes-only discipline belongs;
+- gives `disk` the verbs (`disk loop attach <file> [--ro]`,
+  `disk loop detach <dev>`), with inspection a normal mount.
+
+The plan's only kernel guarantee: mounting an image **executes
+nothing** — it is a device, and ingest validation (§5) is what guards
+the content.
 
 ## 5. Install = one validated subtree copy
 
@@ -133,15 +154,16 @@ installs anyway with an explicit report.
 | `mkpkg` | bundle tree + manifest → `.pkg`; validates the whitelist, **rejects setuid/devices/hooks**, stamps the metadata declaration; built on `mkagfs.py`'s writer |
 | `agfscheck` | validates the image (already exists) |
 | `install` / `uninstall` | ingest (§5) and removal (install record) |
-| `disk image mount` | read-only inspection (§4) |
+| `disk loop attach/detach` | file-backed read-only inspection (§4) |
 
 ## 9. Milestones
 
-### W0 — File-backed read-only AGFS mount
-Vnode-backed volume source + `disk image mount`. **Acceptance**: a
-package image mounts read-only and lists correctly; a corrupt or
-truncated image fails cleanly (no panic, no partial mount); writes to
-the mount are refused.
+### W0 — Loop block device
+A file-backed block device (`disk loop attach/detach`; read-only flag).
+**Acceptance**: a package image attaches, mounts read-only and lists
+correctly; a corrupt or truncated image fails cleanly (no panic, no
+partial mount); writes on a `--ro` device are refused; `detach`
+teardown is clean.
 
 ### W1 — `mkpkg` and the package profile
 The builder (whitelist validation, metadata declaration, label carries
