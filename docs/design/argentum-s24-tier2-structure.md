@@ -229,8 +229,19 @@ Status: **DONE** — `userland/argentum/tab.cpp` (TabViewItem + TabView,
 decl in `argentum.h`, Impls in `argentum_p.h`). Items borrow a title +
 a page view; the pages are subviews and only the selected one is
 visible below the strip (measured from the theme font). Strip clicks
-select; the selected tab is page-coloured (attached to the body), the
-others chrome gradient; `setOnSelect` optional callback. A11y TabGroup
+select; the tabs are drawn the way Aqua draws them, because a row of
+separate outlined boxes reads as buttons rather than as tabs: the
+cells are ADJACENT with a single shared hairline between neighbours
+(each is drawn out to the next one's left edge, while the rects
+themselves stay put for hit testing), the corners are rounded on the
+TOP only, the bottoms are square and stand on the strip's rule, and
+the strip behind them is chrome - the same surface as the window
+chrome - so an unselected tab reads as part of the strip. The selected
+tab is page-coloured and runs one row past the rule, so it opens into
+the page below instead of being a chip sitting on top of it, and it
+breaks the rule where it meets it. The rule is placed at the strip
+height in PIXELS (it used `lround()` of the point value, so under the
+2x scale it cut through the middle of the tabs). `setOnSelect` optional callback. A11y TabGroup
 with the label = selected title, value = index (read back per
 selection as TAB-A11Y). Gate `.build/s24d_run.sh` + `s24d_assert.py`
 -> S24D-OK (9 checks: red->green content flip, tab chrome flips,

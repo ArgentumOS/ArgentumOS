@@ -17,7 +17,7 @@ namespace argentum {
 
 static const double TAB_H_PAD = 14.0;	/* title <-> tab edge (pt) */
 static const double TAB_V_PAD = 4.0;	/* title <-> tab top/bottom */
-static const double TAB_GAP = 2.0;	/* between adjacent tabs */
+static const double TAB_GAP = 2.0;	/* gap between tab rects */
 
 TabViewItem::TabViewItem(const char *title, View *page)
 	: ti_(new Impl())
@@ -237,6 +237,66 @@ TabView::logOnce()
 	fflush(stdout);
 }
 
+/* One tab, the way Aqua draws them: rounded TOP corners only, square
+ * bottom, outline on the top and the two sides - never the bottom,
+ * because the strip's rule is the baseline all the tabs stand on. The
+ * fill runs to 'bottom' (exclusive): the rule row for an unselected
+ * tab, one row past it for the selected one, so the selected tab opens
+ * into the page below instead of being a chip sitting on top of it.
+ * 'tw' spans the tab's rect plus the gap to the next tab, so adjacent
+ * tabs share a single hairline rather than leaving a sliver. */
+static void
+drawTab(GraphicsContext &g, int x, int y, int tw, int bottom, int r,
+	std::uint32_t fill, std::uint32_t line)
+{
+	if (tw <= 0 || bottom <= y) {
+		return;
+	}
+	if (r < 1) {
+		r = 1;
+	}
+	if (2 * r > tw) {
+		r = tw / 2;
+	}
+	/* fill: a rounded band for the top corners, then a plain body - the
+	 * band's rounded BOTTOM corners are covered by the body, so only the
+	 * top two corners stay rounded */
+	int band = 2 * r;
+
+	if (band > bottom - y) {
+		band = bottom - y;
+	}
+	g.fillRoundedRect(x, y, (unsigned) tw, (unsigned) band,
+			  (unsigned) r, fill);
+	if (bottom - (y + r) > 0) {
+		g.fillRect(x, y + r, (unsigned) tw,
+			   (unsigned) (bottom - (y + r)), fill);
+	}
+	/* outline: the two top arcs, then the straight top between them and
+	 * the two sides down to the baseline */
+	for (int j = 0; j < r; j++) {
+		for (int i = 0; i < r; i++) {
+			int dx = r - 1 - i;
+			int dy = r - 1 - j;
+			int d2 = dx * dx + dy * dy;
+
+			if (d2 < (r - 1) * (r - 1) || d2 > r * r) {
+				continue;
+			}
+			g.fillRect(x + i, y + j, 1, 1, line);
+			g.fillRect(x + tw - 1 - i, y + j, 1, 1, line);
+		}
+	}
+	if (tw - 2 * r > 0) {
+		g.fillRect(x + r, y, (unsigned) (tw - 2 * r), 1, line);
+	}
+	if (bottom - (y + r) > 0) {
+		g.fillRect(x, y + r, 1, (unsigned) (bottom - (y + r)), line);
+		g.fillRect(x + tw - 1, y + r, 1,
+			   (unsigned) (bottom - (y + r)), line);
+	}
+}
+
 void
 TabView::draw(GraphicsContext &g)
 {
@@ -264,45 +324,47 @@ TabView::draw(GraphicsContext &g)
 	g.fillRect((unsigned) (w - 1), 1, 1, (unsigned) (h - 2),
 		   theme.chromeOutline());
 
-	/* strip: page-coloured; a rule under the strip separates the
-	 * page body */
-	g.fillRect(1, 1, (unsigned) (w - 2), (unsigned) std::lround(strip) - 1,
-		   theme.page());
-	int ruleY = 1 + (int) std::lround(strip);
+	/* strip: chrome, the surface the window chrome is made of - the tabs
+	 * are cells OF the strip, so an unselected one reads as part of it
+	 * and the selected one (page-coloured) is what stands out. The rule
+	 * under the strip is the baseline all the tabs stand on. */
+	int stripPx = (int) (strip * ppt + 0.5);
+
+	if (stripPx < 4) {
+		stripPx = 4;
+	}
+	g.fillRect(1, 1, (unsigned) (w - 2), (unsigned) (stripPx - 1),
+		   theme.state(ControlState::Idle).fillTop);
+	int ruleY = stripPx;
 
 	g.fillRect(1, (unsigned) ruleY, (unsigned) (w - 2), 1,
 		   theme.chromeOutline());
 
-	/* the tabs */
+	/* the tabs: adjacent cells sharing a single hairline, rounded tops,
+	 * square bottoms standing on the rule. Each is drawn out to the next
+	 * tab's left edge; the RECTS are untouched, so hit testing and the
+	 * gate's probes keep their coordinates. */
+	Theme::Params p = theme.state(ControlState::Idle);
+	int r = (int) (theme.smallRadius() * ppt + 0.5);
+
+	if (r < 1) {
+		r = 1;
+	}
 	for (size_t i = 0; i < rects.size(); i++) {
-		Rect r = rects[i];
+		Rect rc = rects[i];
 		bool sel = ((int) i == tb_->selected);
-		int x = (int) (r.origin.x * ppt + 0.5);
-		int y = (int) (r.origin.y * ppt + 0.5);
-		int tw = (int) (r.size.w * ppt + 0.5);
-		int th = (int) (r.size.h * ppt + 0.5);
+		int x = (int) (rc.origin.x * ppt + 0.5);
+		int y = (int) (rc.origin.y * ppt + 0.5);
+		int tw = (int) (rc.size.w * ppt + 0.5);
+		int th = (int) (rc.size.h * ppt + 0.5);
+		int bottom = ruleY + (sel ? 1 : 0);
 
-		if (sel) {
-			/* selected: page coloured, attached to the body */
-			g.fillRect((unsigned) x, (unsigned) y,
-				   (unsigned) tw, (unsigned) th,
-				   theme.page());
-		} else {
-			Theme::Params idle = theme.state(ControlState::Idle);
-
-			g.fillRect((unsigned) x, (unsigned) y,
-				   (unsigned) tw, (unsigned) th,
-				   idle.fillTop);
+		if (i + 1 < rects.size()) {
+			tw = (int) (rects[i + 1].origin.x * ppt + 0.5) - x + 1;
 		}
-		/* outline the tab cell */
-		g.fillRect((unsigned) x, (unsigned) y, (unsigned) tw, 1,
-			   theme.chromeOutline());
-		g.fillRect((unsigned) x, (unsigned) (y + th - 1),
-			   (unsigned) tw, 1, theme.chromeOutline());
-		g.fillRect((unsigned) x, (unsigned) y, 1,
-			   (unsigned) th, theme.chromeOutline());
-		g.fillRect((unsigned) (x + tw - 1), (unsigned) y, 1,
-			   (unsigned) th, theme.chromeOutline());
+		drawTab(g, x, y, tw, bottom, r,
+			sel ? theme.page() : p.fillTop, theme.chromeOutline());
+
 		/* title */
 		TabViewItem *it = tb_->items[i];
 
@@ -319,7 +381,7 @@ TabView::draw(GraphicsContext &g)
 			g.drawText(theme.fontFamily(), theme.fontSizePt(),
 				   x + (int) (TAB_H_PAD * ppt * 0.5),
 				   ty, it->title(),
-				   sel ? theme.text() : (unsigned int) 0x606060);
+				   sel ? theme.text() : p.label);
 		}
 	}
 }
