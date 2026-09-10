@@ -325,9 +325,10 @@ deviation — a 26px band, accent-tinted when active (S4.1b).
 
 **The frame** (`FrameChrome`):
 
-- a 1px outline around the whole frame, black when active — carried by
-  X's window border (`XSetWindowBorder`) rather than painted, because the
-  sides and bottom of the frame window are occupied by the client;
+- a 1px outline around the whole frame, in the theme's outline tone (see
+  Coloration), carried by X's window border (`XSetWindowBorder`) rather
+  than painted, because the sides and bottom of the frame window are
+  occupied by the client;
 - a ~20px title bar with fine horizontal pinstripes when ACTIVE and flat
   when inactive. This replaces the accent tint as the focus cue, so the
   accent goes back to meaning selection rather than focus;
@@ -344,6 +345,29 @@ session (S4.1d: `gDrag*`, `dragTo`/`endDrag`, the grab, the quiet-end
 rules) does the rest with a **mode** of move | resize. Motion applies the
 delta to whichever edges the grab owns, against a minimum size; release
 ends the session exactly as a move does.
+
+**Coloration comes from the theme, not from Platinum.** The shapes and
+states below are Platinum's; every colour is the Argentum design
+language's, read from the `Theme` the toolkit already publishes — no
+Platinum hex values anywhere. Kestrel is a toolkit client like any
+other application, so it must take its palette from the same place they
+do; a frame in foreign colours is the same class of mistake as a widget
+in foreign colours.
+
+| element | active | inactive |
+| --- | --- | --- |
+| frame outline | `chromeOutline()` | `state(Disabled).outline` |
+| title bar | pinstripes alternating `chromeTop()` / `chromeBottom()` | flat `chromeTop()` |
+| title text | `text()` | `state(Disabled).label` |
+| close / zoom glyphs | `chromeOutline()` | `state(Disabled).outline` |
+| content background | `page()` | `page()` |
+| grow box lines | `chromeOutline()` | `state(Disabled).outline` |
+
+The pinstripes are what make this work outside a Platinum palette: they
+alternate two tones the theme already has, chrome top and bottom, so the
+metallic reading comes from the existing chrome gradient rather than from
+invented greys. The inactive column is the same shapes stepped down
+through the theme's disabled state, not a second palette.
 
 **Client geometry.** The client sits inside the frame, inset by the
 frame's thickness on the sides and bottom — today it is inset by the
