@@ -238,3 +238,11 @@ real-hardware wins if acceleration is ever wanted off QEMU.
   eval cites `drivers/video/ati.c` and `svga.c`, which were later
   removed (display is GOP-only today). The DRM/KMS question stays
   parked.
+- **The "borrow someone else's stack" routes are evaluated separately
+  and deferred**: importing Linux's DRM drivers behind a kernel-API
+  shim (the FreeBSD model) — `docs/eval/drm-shim-eval.md`; and Mesa's
+  Gallium3D (including the software path, llvmpipe/lavapipe, whose
+  blocker is that Mesa's **meson + Python** build cannot be rebuilt
+  on-FNX) — `docs/eval/gallium-eval.md`. Both stay trigger-gated on
+  "real GL/Vulkan on hardware becomes the goal"; neither changes this
+  plan's native path.
