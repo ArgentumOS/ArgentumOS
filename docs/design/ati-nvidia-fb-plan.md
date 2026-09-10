@@ -258,6 +258,87 @@ BAR2 = MMIO, `map_page64` at a fixed slot, CRTC registers 0x50/0x200/0x208/
 0x224/0x22c. The family table just makes that structure data-driven per
 vendor.
 
+### 6.6 Display-path capability inventory (NVIDIA / ATI)
+
+What the "display path" (cursor, flip, VRAM framebuffer, planes) costs,
+researched 2026-09. **None of this needs the render stack.**
+
+**Shared infrastructure, either vendor** (the real work, and the same
+for both): RomBIOS/VBIOS image parsing (checksum + tables);
+**edid/DDC over bit-banged I2C** (+ DP AUX/DPCD where DP); **vblank
+interrupt plumbing** — page flip *depends* on it (latch at vblank,
+flip-completion event, timestamps); VRAM allocation honouring each
+generation's pitch/base alignment; double-buffered flip latching (a
+flip queue + vblank-synced address swap); hotplug (HPD IRQ + detect).
+Linear scanout is accepted by both vendors on every era considered —
+**no tiling work is needed for v1.**
+
+**NVIDIA.** Display engine lives in
+`drivers/gpu/drm/nouveau/nvkm/engine/disp/` (per-chip files `nv04.c
+nv50.c … tu102.c ga102.c gb202.c`), with the KMS layers at the drm
+root: `dispnv04/` (`disp crtc dac overlay …`) and `dispnv50/`
+(`core head crtc base ovly imm wimm curs dac sor lut`).
+- Pre-NV50: legacy PCRTC/PRAMDAC/VPLL register set; cursor via PRAMDAC
+  cursor registers; flip = rewrite the CRTC start (`NV_PCRTC_START`)
+  at vblank.
+- NV50+: disp *core* + **heads**, output objects (**SOR** for
+  TMDS/DP, DAC, PIOR), and **window objects** — `base` (primary),
+  `ovly` (overlay = the plane), `imm`/`wimm` (immediate), `curs`
+  (cursor). Flip = program the window address, then arm the window
+  *update* which latches at the next vblank.
+- Mode/connector data comes from the **VBIOS**: BIT (pre-NV50) and
+  **DCB** (`nvkm/subdev/bios/dcb.c`) for NV50+, plus **devinit
+  scripts replayed by a software interpreter**
+  (`nvkm/subdev/bios/init.c`) — ROM bytecode run in-kernel, **no
+  firmware blob**. Pixel clocks come from `nvbios_pll_parse`
+  (`nvkm/subdev/bios/pll.c`) + `nv04_pll_calc`.
+- **Firmware position**: modeset is a *native* driver even on Turing
+  (`tu102.c`), Ampere (`ga102.c`) and Ada — KMS is marked DONE, not
+  firmware-gated; on NV160/NV170 only *power management* needs GSP
+  (`NvGspRm=1`). So **the display path is blob-free on NVIDIA too**,
+  which is a notable reversal of the render half's story. Blackwell is
+  the open question.
+
+**ATI.** Two eras, and the boundary matters more than the vendor:
+- **Pre-R600 (`radeon_legacy_*`)**: fully register-programmed —
+  `CRTC_GEN_CNTL`, `CRTC_H/V_TOTAL_DISP`, `CRTC_OFFSET`/`CRTC_PITCH`,
+  `DAC_CNTL`, `PPLL_REF_DIV`/`PPLL_DIV_n`, cursor via
+  `CUR_OFFSET`/`CUR_HV_POS`/`CUR_HV_OFFS`/`CUR_COLOR_0/1`. Flip =
+  rewrite `CRTC_OFFSET` at vblank (no async-flip hardware). Mode
+  tables come from **COMBIOS** (`radeon_combios.c`, *parsed*, not
+  executed) for R100–R420.
+- **R520 onward**: the VBIOS carries **AtomBIOS bytecode**, so a
+  **command-table interpreter is required** (`atom.c`
+  `atom_execute_table`, driven by `radeon_atombios.c`) — a real
+  subproject, and the single biggest hidden cost on the ATI side.
+- **DCE (R600–Polaris)**: DRM crtc/encoder/connector blocks
+  (CRTC/DIG/UNIPHY/PPLL/DCPLL) driven through AtomBIOS.
+- **DCN (modern `amdgpu`)**: block chain **HUBP** (surface+cursor
+  fetch, format) → **DPP** (CNVC/DSCL scaler) → **MPC** (blending) →
+  **OPP** (FMT/output buffer) → **DIO/DIG** (encoders); DMUB firmware
+  covers PSR/ABM/backlight and increasingly link bring-up — "features
+  only" is true for older DCN and **questionable on the newest**.
+
+**Verification asymmetry (decisive for sequencing)** — QEMU
+`ati-vga` emulates **Rage128 Pro and RV100** and its display model is
+real: EXT-modeset via `CRTC2_EXT_DISP_EN` + CRTC_GEN_CNTL/H-V totals,
+`CRTC_OFFSET`/`PITCH`, **hardware cursor**
+(`ati_cursor_define`/`draw_line`), **DDC bit-bang** (`ati_i2c`), a
+**vblank IRQ** (`ati_vga_vblank_irq`, ~60 Hz synthetic), and the 2D
+engine. So **modeset, cursor and flip latching are all testable in
+the dev loop on the ATI side** — with two caveats: the vblank is
+timer-derived, not pixel-clock-derived, and there is a `cur_hv_offs`
+FIXME plus partial pixel formats. **QEMU models no NVIDIA display
+controller at all**: NVIDIA display work is VFIO passthrough or real
+hardware, no third option.
+
+**Minimal v1 scope this implies**: one head, one linear mode taken
+from the ROM tables (no mode *generation* beyond what the ROM
+provides), primary plane + hardware cursor, flip via the pending
+latch, no overlays/scaling, no hotplug (detect at bind only). That is
+the whole of §6.1–§6.5 plus a vblank IRQ and a flip latch — and on
+ATI it is QEMU-verifiable end to end.
+
 ## 7. Milestones
 
 Every milestone's "done" includes: code builds clean for the 64-bit target,
