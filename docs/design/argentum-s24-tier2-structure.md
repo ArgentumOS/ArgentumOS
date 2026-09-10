@@ -259,6 +259,11 @@ last so it sits on the strip's fill. The band's height is the segment
 height plus the bezel inset, the top margin and the gap down to the
 pane, all measured in PIXELS (the rule used `lround()` of the point
 value, so under the 2x scale it cut through the middle of the tabs).
+Its vertical padding is deliberately TIGHT - 1pt a side, about three
+quarters of a button's height - because a segmented control is shorter
+than a button and does not need a button's breathing room; since the
+border row derives from the control's own height, shortening the
+control moves the line with it and the two stay centred on each other.
 `setOnSelect` optional callback. A11y TabGroup
 with the label = selected title, value = index (read back per
 selection as TAB-A11Y). Gate `.build/s24d_run.sh` + `s24d_assert.py`
