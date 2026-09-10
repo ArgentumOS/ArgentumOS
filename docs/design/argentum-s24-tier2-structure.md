@@ -243,11 +243,16 @@ are centred. The control is centred across the view too, and the
 content's top border is drawn on the control's MIDDLE row, so the line
 straddles it and re-emerges either side - the border row is taken from
 the control's own rounded pixel geometry, not from parallel point maths
-that could round a pixel off it. That straddle is what makes the two
-read as aligned. The control's top inset is ZERO, so its top edge IS
-the panel's top edge - the two hairlines are the same row and there is
-no second border above the control: it is the top of the tab view. The
-pages then start clear below the control (they are
+that could round a pixel off it. The control's top inset is ZERO and
+the box is drawn with NO top border of its own: a border at the view's
+own top row would be a second line above the control. Instead the
+border's top edge IS the line the control is centred on, and the left
+and right borders stop at that line and turn into it, so the three
+meet in corners. The box is drawn BEFORE the control, so the control's
+track covers the border where it crosses and the line emerges either
+side - half the control sits above the box's edge, inside the view, so
+nothing is clipped, and the control reads as centred on the border.
+The pages then start clear below the control (they are
 subviews and paint after this view, so they have to). The panel keeps
 its own rounded hairline frame, drawn
 last so it sits on the strip's fill. The band's height is the segment

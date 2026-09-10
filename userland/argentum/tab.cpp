@@ -359,16 +359,26 @@ TabView::draw(GraphicsContext &g)
 	if (r < 1) {
 		r = 1;
 	}
-	/* the panel surface: the control floats on the page, and the pages
-	 * paint the body below the strip themselves */
-	g.fillRect(1, 1, (unsigned) (w - 2), (unsigned) (stripPx - 1),
-		   theme.page());
+	/* the panel surface: the control straddles the box's top edge and the
+	 * pages paint the body themselves; the fill runs a few px into the
+	 * body so no seam can show between the band and the pages */
+	int bandH = stripPx + 4;
 
-	/* the content's top border, placed from the control's own ROUNDED
-	 * geometry so the line lands exactly on the control's middle row at
-	 * any scale (parallel point maths could drift a pixel off it). The
-	 * bezel's track covers the line where the control crosses, so it
-	 * re-emerges either side - the straddle that reads as 'aligned' */
+	if (bandH > h) {
+		bandH = h;
+	}
+	g.fillRect(0, 0, (unsigned) w, (unsigned) bandH, theme.page());
+
+	/* The box, drawn BEFORE the control so the control's track covers
+	 * the border where it crosses. There is no top border at the view's
+	 * own top row - that would put a second line above the control -
+	 * so the border's top edge IS the line the control is centred on,
+	 * and the left and right borders stop there and turn into it: the
+	 * three meet in corners. Half the control therefore sits above the
+	 * box's edge (inside the view, so nothing is clipped) and the
+	 * border runs behind it, emerging either side. The row comes from
+	 * the control's own ROUNDED geometry, so it lands exactly on the
+	 * control's middle at any scale. */
 	int bez = (int) (TAB_BEZ_PAD * ppt + 0.5);
 	int segY = (int) ((TAB_TOP + TAB_BEZ_PAD) * ppt + 0.5);
 	int segH = (int) (tabSegHeight(ppt) * ppt + 0.5);
@@ -376,8 +386,9 @@ TabView::draw(GraphicsContext &g)
 	if (bez < 1) {
 		bez = 1;
 	}
-	g.fillRect(1, (unsigned) (segY - bez + (segH + 2 * bez) / 2),
-		   (unsigned) (w - 2), 1, theme.chromeOutline());
+	int midY = segY - bez + (segH + 2 * bez) / 2;
+
+	panelRing(g, 0, midY, w, h - midY, r, theme.chromeOutline());
 	/* the tab control, in the NSTabView / segmented-control idiom: ONE
 	 * rounded bezel holding the segments, the selected one a raised chip
 	 * inset inside it. Not folder tabs attached to the body - that reads
@@ -450,9 +461,6 @@ TabView::draw(GraphicsContext &g)
 				   sel ? theme.text() : p.label);
 		}
 	}
-	/* the panel's own ring, last so it sits on top of the strip fill:
-	 * one rounded hairline, the frame every other pane has */
-	panelRing(g, 0, 0, w, h, r, theme.chromeOutline());
 }
 
 void
