@@ -333,9 +333,10 @@ deviation — a 26px band, accent-tinted when active (S4.1b).
   decided: the tint stays and the title bar is NOT pinstriped. Platinum
   supplies this frame's shapes (outline, boxes, grow box), not its
   title-bar texture;
-- the title band's controls, in Mac OS X order (decided): **close,
-  minimize, maximize** at the left in that order, the title **centred**,
-  and a **show/hide toolbar** button at the right. This supersedes the
+- the title band's controls, in Mac OS X order (decided): **close** and
+  **maximize** at the left, the title **centred**, and a **show/hide
+  toolbar** button at the right. Minimize belongs between close and
+  maximize and is deferred, not dropped (below). This supersedes the
   Platinum close-box/zoom-box arrangement: the frame takes its *shapes*
   from Platinum and its *controls* from OS X, which is the
   Snow-Leopard-parallel line the catalog was cut along;
@@ -345,11 +346,15 @@ deviation — a 26px band, accent-tinted when active (S4.1b).
   to that. One new piece of protocol: an atom the toolkit sets and
   Kestrel reads, since nothing in WM_NORMAL_HINTS carries "the size this
   content wants";
-- **minimize** has nowhere to go yet: there is no Dock and no task list,
-  so iconifying today would make a window vanish with no way back;
-- **show/hide toolbar** implies the frame has a toolbar area to toggle.
-  OS X attaches it to the title band; nothing draws one here yet, so the
-  button has nothing to act on until that strip exists;
+- **minimize is deferred until there is a task list** (decided). Kestrel
+  has neither a Dock nor a task list, so iconifying today would make a
+  window vanish with no way back. The button appears with the task list;
+- **show/hide toolbar**: the frame RESERVES a strip under the title band
+  and the CLIENT draws into it (decided). So the client's window includes
+  the strip and the toggle is about geometry - the WM adds or removes the
+  strip from the client's rect - rather than the client redrawing chrome
+  it was never told about. The strip's *height* is the application's to
+  choose, so the client publishes it alongside its preferred size;
 - grow box in the lower-right: two or three short lines, drawn by the WM.
 
 **Resize from any edge.** The grow box is the *indicator*; the drag may
@@ -390,17 +395,15 @@ frame's thickness on the sides and bottom — today it is inset by the
 band only. A resize moves and resizes both: the frame to the new rect,
 the client to the new content rect.
 
-**Deferred, not decided:** window shading (double-click the title bar),
-and desaturating the frame when inactive beyond dropping the pinstripes.
+**Deferred, not decided:** window shading (double-click the title bar).
+The inactive frame's cue is what S4.1b already does - the accent tint
+falls away and the band goes flat - and no further desaturation is
+specified.
 
-**Open — decide before those buttons can be wired:**
+**Protocol the client publishes (both are the client's to declare):**
 
-1. **Where does a minimized window go?** Kestrel has neither a Dock nor a
-   task list, so iconify needs a destination: a strip Kestrel draws along
-   a screen edge, a window list in its own UI, or the minimize button is
-   deferred until one of those exists.
-2. **Who owns the toolbar?** On OS X it is part of the window's title
-   area and the *client* fills it. Here the frame is the WM's and the
-   client is a separate reparented window, so it is either a strip the WM
-   reserves and the client draws into, or the client's own and the button
-   merely tells it to show or hide it.
+- `_ARGENTUM_PREFERRED_SIZE` - the size the content wants, which the
+  maximize button grows the frame to. Nothing in WM_NORMAL_HINTS carries
+  it, and the toolkit knows it: its content view's `contentSize()`.
+- the toolbar strip's height, so the WM reserves the right amount.
+
