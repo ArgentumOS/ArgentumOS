@@ -404,11 +404,18 @@ TabView::draw(GraphicsContext &g)
 		int x = (int) (rc.origin.x * ppt + 0.5);
 		int tw = (int) (rc.size.w * ppt + 0.5);
 
-		/* the segment, inset from the bezel as segmented.cpp insets
-		 * its own: o on every side, r-1 corners */
-		if (tw - 2 * ob > 0 && cellH > 2) {
-			g.fillRoundedGradient(x + ob, cellY,
-					      (unsigned) (tw - 2 * ob),
+		/* the segment's fill: inset from a NEIGHBOUR by the bezel
+		 * inset, so a separator has room between two segments as it
+		 * does in segmented.cpp, but FLUSH with the bezel at the two
+		 * outer ends. Insetting those too made the end borders twice
+		 * as thick as a segmented control's - the bezel already
+		 * stands off the first and last cell by `ob`. */
+		int padL = (i == 0) ? 0 : ob;
+		int padR = (i + 1 == rects.size()) ? 0 : ob;
+
+		if (tw - padL - padR > 0 && cellH > 2) {
+			g.fillRoundedGradient(x + padL, cellY,
+					      (unsigned) (tw - padL - padR),
 					      (unsigned) cellH,
 					      (unsigned) (r - 1 > 0 ? r - 1 : 0),
 					      q.fillTop, q.fillBottom);

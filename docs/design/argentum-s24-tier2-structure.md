@@ -235,8 +235,12 @@ page below read as a row of buttons, which is the wrong idiom). The
 control is drawn the way `SegmentedControl` draws itself
 (`segmented.cpp`), so that a tab strip and a segmented control are
 visibly the same control rather than two similar ones: ONE
-chromeOutline bezel, each segment a rounded gradient inset inside it -
-the SELECTED segment in the `Armed` state and the rest in `Idle`, which
+chromeOutline bezel, each segment a rounded gradient inset from its
+NEIGHBOUR by the bezel inset - so a separator has room between two
+segments, as in `segmented.cpp` - but flush with the bezel at the two
+outer ends: insetting those as well makes the end borders twice as
+thick as a segmented control's, because the bezel already stands off
+the first and last cell. The SELECTED segment is in the `Armed` state and the rest in `Idle`, which
 is exactly a segmented control's selected and unselected colours - and
 1px page-coloured lines between neighbouring segments. The bezel inset
 is 1 PIXEL rather than a point measure, matching `segmented.cpp`'s `o`:
