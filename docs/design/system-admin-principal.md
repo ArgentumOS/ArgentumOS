@@ -346,6 +346,10 @@ inside the bundle (no `..`, no absolute, no symlink escape — copy
 no-follow, re-validate symlinks), linter gate on staged ELFs (legacy
 path scan), size caps, and **no post-install scripts, no hooks, no
 exec of bundle content** — install is validated data motion.
+**Signature status is reported, never required**: when a bundle
+carries a detached signature, `install` verifies it and prints
+`verified (key …)` / `unverified`, and installs either way
+(docs/design/bundle-signing-plan.md).
 Installed bundles are System-owned (origin model); apps run as the
 person, never modify themselves.
 

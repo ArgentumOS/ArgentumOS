@@ -15,7 +15,10 @@ pasteboard pattern, not a lone app).
   master key is wrapped by `KDF(account password)` so a password
   change **re-wraps only** (no item re-encryption).
 - **App access**: **per-item ACLs + a prompt** on first access by a
-  new app (Allow / Always / Deny).
+  new app (Allow / Always / Deny). ACL entries also record the
+  identity's **verification strength** — `verified` (signed against
+  a trusted key) or `self-asserted` (unsigned) — per the signing
+  policy (docs/design/bundle-signing-plan.md).
 
 ## 2. Where the bytes live
 
@@ -65,10 +68,14 @@ plaintext file).
 running as the same user** after unlock — it can request items, and
 the ACL prompt is a human decision that social engineering defeats.
 There is no process isolation yet (sandboxing is unplanned) and no
-signed-bundle identity (app ACLs key on bundle identity, which an
-unsigned app can claim). Both limitations are recorded here so the
-ACL prompt is not mistaken for a sandbox; signed bundles and
-sandboxing are the triggers that strengthen it.
+signed-bundle identity needs care: **signing is supported but never
+required** (docs/design/bundle-signing-plan.md), so an app ACL's
+identity is `verified` only when the bundle carries a signature that
+checks against a trusted key — otherwise it is `self-asserted`, which
+an unsigned app can claim. The prompt still applies either way, and
+items may opt into "verified identity required". Process isolation
+(sandboxing, unplanned) remains the other gap; both are recorded here
+so the ACL prompt is not mistaken for a sandbox.
 
 **Side benefits / watch items**: with no swap today, secrets cannot
 be paged to disk (**when the swap plan lands, verify an
@@ -113,7 +120,9 @@ Allow/Always/Deny prompt on first access by a new app; refusal is
 silent for non-permitted apps.
 **Acceptance**: two apps, one allowed and one denied, behave
 differently; the prompt appears exactly once per new app/item pair;
-"Always" persists in the item ACL.
+"Always" persists in the item ACL **as a `self-asserted` entry** for
+an unsigned app and as `verified` for a signed one; a
+`verified identity required` item refuses the unsigned app silently.
 
 ### K3 — Consumers + the Keychain app
 LibreSSL key retrieval, updater credentials, and the Keychain GUI
@@ -124,5 +133,6 @@ plaintext key file existing; the GUI can browse/edit/generate items.
 ### K4 — Hardening & portability (deferred)
 Encrypted export/import, idle-lock policy in the config corpus, the
 `mlock` audit closed, hardware sealing (TPM/secure boot) when that
-infrastructure exists, and signed-bundle identity to make ACLs
-unforgeable.
+infrastructure exists, and the **bundle-signing track**
+(docs/design/bundle-signing-plan.md) to make ACL identities
+verifiable where a bundle is signed.
