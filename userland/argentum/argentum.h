@@ -181,6 +181,27 @@ public:
 	void resizeSubviewsWithOldBounds(const Rect &oldBounds,
 					 const Rect &newBounds);
 
+	/* Sibling-relative struts (S2.1d). Bind one edge of this view to an
+	 * edge of a SIBLING: that edge is then held `offset` pt from the
+	 * reference's edge and follows it. The binding decides POSITION
+	 * only; the size is re-derived from the two edges afterwards, so
+	 * binding one edge leaves the other keeping whatever the springs
+	 * gave it and the view grows with it - 'my left is that view's
+	 * right' fills the space beside a view that resizes. Binding both
+	 * edges on an axis fixes the size to the distance between them.
+	 *
+	 * The reference must be an EARLIER sibling: the pass resolves in
+	 * subview order, against the reference's already-final frame. A
+	 * self-reference, a view under another parent, or a later sibling is
+	 * reported and the binding dropped (see the diagnostic below), since
+	 * silently ignoring it would leave a layout that looks arbitrary.
+	 * Bindings are resolved when the PARENT relayouts (its frame is set
+	 * or its size changes), not when a sibling moves by itself. Pass
+	 * nullptr as the sibling to clear a binding. */
+	enum class Edge { Left = 0, Right, Top, Bottom };
+	void setStrutReference(Edge own, View *sibling, Edge ref,
+			       double offset);
+
 	/* a11y metadata (S2.1b) */
 	void setAccessibilityRole(AccessibilityRole role);
 	AccessibilityRole accessibilityRole() const;

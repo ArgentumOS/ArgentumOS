@@ -212,6 +212,15 @@ struct View::Impl {
 	bool hidden = false;
 	bool needsDisplay = false;
 	unsigned int autoresizeMask = View::AutoresizingNone;
+	/* Sibling-relative struts, indexed by View::Edge. An edge with a
+	 * non-null ref is positioned from that view's edge when the parent
+	 * relayouts; see View::setStrutReference for the contract. */
+	struct StrutRef {
+		View *ref = nullptr;
+		View::Edge refEdge = View::Edge::Left;
+		double offset = 0;
+	};
+	StrutRef struts[4];
 	/* the window that owns this view's content root (set only on the
 	 * root view by Window::setContentView) — damage reports through
 	 * it so a redraw only flushes the dirty rect */

@@ -302,6 +302,32 @@ ConfigureNotify case in Application::run() (StructureNotifyMask now
 selected) reset the content view's frame to the full window in pt,
 which re-runs the springs on the tree; the Expose that follows
 redraws.
+
+*Sibling-relative struts* extend the same pass. `View::Edge` × 4 plus
+`setStrutReference(own, sibling, ref, offset)` binds one edge of a view
+to an edge of another subview of the same parent, held `offset` pt away
+and following it. A binding decides POSITION only: the bound edges are
+settled first (parent-relative springs for everything else), then the
+size is re-derived from the pair - which is why binding one edge makes
+the view grow with the edge the springs still own:
+
+    A: x10 w100, grows with the window
+    V: left bound to A's right + 8, flexible width
+    parent 300 -> 400:  A 10…210, V left 218 (= A.right + 8),
+                        V right 390 (its margin kept) — V fills the
+                        gap beside A.
+
+A bound edge is treated as RIGID in the delta split: left in, it would
+inflate the divisor and the flexible edge would take half the delta.
+Resolution order is the parent's subview order, against the reference's
+already-final frame, so the reference must be an EARLIER sibling — which
+one rule also catches self-references, cycles and views under another
+parent; those are reported on stderr (`ARGENTUM: strut edge …`) with the
+name of the offending view, and the binding is dropped so it reports
+once instead of on every relayout. Bindings are resolved when the
+PARENT relayouts (its frame is set or its size changes), not when a
+sibling moves by itself.
+
 *Gate:* `.build/s21d_run.sh` + `.build/s21d_assert.py`. `viewtree_d`
 maps a 480x360 px window with a fixed-height header (FlexibleWidth)
 and a content area below (FlexibleWidth|FlexibleHeight), then

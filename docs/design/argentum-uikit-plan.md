@@ -251,7 +251,10 @@ primitives:
 
 1. **Springs/struts** (autoresizing) — each subview's growth flags
    relative to its superview's bounds; the general mechanism, Cocoa's
-   model.
+   model. Extended (S2.1d) with *sibling-relative struts*: an edge can
+   be positioned from an earlier sibling's edge instead of the
+   superview's, for the cases where a view has to sit beside one that
+   resizes (see docs/design/argentum-s21-view-tree.md).
 2. **Row/column Box** — a view that arranges its subviews linearly
    along one axis (packing order); the only arrangement widget needed
    (the NSStackView-lite analog). Boxes nest like any view.
