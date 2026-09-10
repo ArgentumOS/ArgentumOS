@@ -39,26 +39,6 @@ fpx(double pt, double ppt)
 	return (int) (pt * ppt + 0.5);
 }
 
-/* The theme engine derives its state tones with this same blend
- * (theme.cpp's mix()); the trough needs one locally, since theme.cpp's
- * helpers are file-static. */
-static std::uint32_t
-mixTo(std::uint32_t c, std::uint32_t to, double f)
-{
-	int r0 = (int) ((c >> 16) & 0xff);
-	int g0 = (int) ((c >> 8) & 0xff);
-	int b0 = (int) (c & 0xff);
-	int r1 = (int) ((to >> 16) & 0xff);
-	int g1 = (int) ((to >> 8) & 0xff);
-	int b1 = (int) (to & 0xff);
-	int r = (int) (r0 + (r1 - r0) * f + 0.5);
-	int g = (int) (g0 + (g1 - g0) * f + 0.5);
-	int b = (int) (b0 + (b1 - b0) * f + 0.5);
-
-	return ((std::uint32_t) r << 16) | ((std::uint32_t) g << 8) |
-	       (std::uint32_t) b;
-}
-
 /* Pixel geometry of the bar for its current frame + state. `arrow` is
  * the pre-arrow span, `track0/trackLen` the track, `thumbPos/thumbLen`
  * the scroller (all px along the axis, measured from the bar's origin).
@@ -509,7 +489,7 @@ ScrollBar::draw(GraphicsContext &g)
 	 * junctions. Square ends also read as a recess rather than a
 	 * second movable thing. */
 	{
-		std::uint32_t well = mixTo(theme.chromeBottom(), 0x000000, 0.18);
+		std::uint32_t well = mixTone(theme.chromeBottom(), 0x000000, 0.18);
 		int tx = vertical ? 1 : gg.track0;
 		int ty = vertical ? gg.track0 : 1;
 		int tw = vertical ? w - 2 : gg.trackLen;

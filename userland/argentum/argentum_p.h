@@ -25,6 +25,28 @@
 
 namespace argentum {
 
+/* Channel-wise mix towards another colour. theme.cpp's own blend helpers
+ * (lighten/darken/mix) are file-static, so a derived tone that two
+ * controls have to agree on - the well a track or a trough is cut into -
+ * needs one both can reach. It lives here rather than being copied into
+ * each of them, which is what happened once already. */
+inline std::uint32_t
+mixTone(std::uint32_t c, std::uint32_t to, double f)
+{
+	int r0 = (int) ((c >> 16) & 0xff);
+	int g0 = (int) ((c >> 8) & 0xff);
+	int b0 = (int) (c & 0xff);
+	int r1 = (int) ((to >> 16) & 0xff);
+	int g1 = (int) ((to >> 8) & 0xff);
+	int b1 = (int) (to & 0xff);
+	int r = (int) (r0 + (r1 - r0) * f + 0.5);
+	int g = (int) (g0 + (g1 - g0) * f + 0.5);
+	int b = (int) (b0 + (b1 - b0) * f + 0.5);
+
+	return ((std::uint32_t) r << 16) | ((std::uint32_t) g << 8) |
+	       (std::uint32_t) b;
+}
+
 class Window;
 class GraphicsContext;
 class View;

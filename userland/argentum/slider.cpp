@@ -159,11 +159,17 @@ Slider::draw(GraphicsContext &g)
 	if (tw < 4) {
 		tw = 4;
 	}
+	/* Track: the ring, then the groove. The groove is the same well tone
+	 * the scrollbar's trough uses (chromeBottom darkened), so the
+	 * unfilled part of a track reads the same in both controls. It was
+	 * the page colour - the lightest surface in the palette - which made
+	 * the unfilled part read as a lit strip rather than a recess. */
+	std::uint32_t well = mixTone(theme.chromeBottom(), 0x000000, 0.18);
+
 	g.fillRoundedRect(padx, ty, (unsigned) tw, (unsigned) trackH,
 			  (unsigned) r, theme.chromeOutline());
 	g.fillRoundedRect(padx + 1, ty + 1, (unsigned) (tw - 2),
-			  (unsigned) (trackH - 2), (unsigned) r,
-			  theme.page());
+			  (unsigned) (trackH - 2), (unsigned) r, well);
 	/* filled portion */
 	double frac = knobFraction();
 	int fx = padx + 1 + (int) ((tw - 2) * frac);
