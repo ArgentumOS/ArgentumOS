@@ -134,3 +134,72 @@ the kernel still has data queued) are:
 
 Direction 1 is the kdrive-style robustness the backend currently lacks;
 direction 2 is the root-cause hunt.
+
+## 6. The rest of the X.org tree
+
+The servers above are not the whole family. Every other DDX X.org ships
+delivers input through the **same core** (`QueuePointerEvents` /
+`QueueKeyboardEvents` → `mieq` → `ProcessInputEvents`) and registers its
+event source with the **same wait machinery** (`SetNotifyFd` /
+`ospoll`, or the input thread). They differ only in *where the events
+come from*:
+
+- **Xorg (`hw/xfree86`)** - the mainline. A real *driver stack*: the
+  DDX's XInput core (`xf86Xinput.c`, `xf86Events.c`) plus out-of-tree
+  drivers (`xf86-input-libinput`, `-evdev`, `-synaptics`, ...), devices
+  supplied by `config/` + udev hotplug (`NewInputDeviceRequest`), each
+  driver reading until EAGAIN on fds it registered via the same
+  `InputThreadRegisterDev`/`SetNotifyFd` path, with `xf86Wakeup()` /
+  `xf86BlockHandler` in the wait loop. It is the only DDX with hotplug,
+  many devices, and driver-specific processing (acceleration, gestures).
+- **Xnest (`hw/xnest`)** - the closest sibling to Xfb: its input comes
+  from its **host X display connection**, not from devices.
+  `xnestCollectEvents()` drains with `while (XCheckIfEvent(...))` and
+  translates: KeyPress/Release → `QueueKeyboardEvents(xnestKeyboardDevice,
+  ...)`, Button/Motion → `QueuePointerEvents(xnestPointerDevice, ...,
+  POINTER_ABSOLUTE/RELATIVE, &mask)`; EnterNotify → `NewCurrentScreen()`.
+  Same "one fd + notify + translate + queue" shape as `fnxinput.c`.
+- **XWayland (`hw/xwayland`)** - the compositor owns the devices: wl_seat
+  listeners (`wl_pointer`/`wl_keyboard`/`wl_touch`) deliver events, the
+  Wayland display fd lives in the server's loop, and the X server never
+  opens an input device. (Model-level description - not read from the
+  tree here.)
+- **XQuartz (`hw/xquartz`)** - macOS: input from the Darwin/Quartz side
+  (`darwinEvents.c`, `quartzKeyboard.c`) via the Cocoa/Darwin event queue
+  and its own threads, then the same core queueing.
+- **Xdmx (`hw/dmx`)** - *distributed* input: a backend driver reads
+  XInput events from the backend X servers over the network
+  (`dmxinput.c`), registering those connections in the wait set.
+- Historically Xgl/XDarwin/Xprt; and **XTEST** (`dix/xtest.c`) is the
+  path Xvfb actually leans on.
+
+So FNX's Xfb is squarely in the **Xnest/Xephyr family** (one fd per
+device, notify, translate, queue) rather than the xfree86 family (driver
+stack, hotplug, drain-until-EAGAIN per driver).
+
+## 7. New lead on the stall, from reading the shared plumbing
+
+`SetNotifyFd()` (`userland/xfb/os/connection.c:820`) registers on the
+**main loop's `server_poll`**, with **level-triggered** semantics
+(`ospoll_trigger_level`). Level-triggered means a still-readable fd is
+reported on *every* wait - so a pending byte cannot be missed by losing
+an edge. The drain can therefore only stop if that fd's registration was
+**removed or replaced**:
+
+- `ospoll_add()` on an already-registered fd **overwrites** the entry's
+  `trigger`/`callback`/`data` (`userland/xfb/os/ospoll.c`) - a second
+  registration for the same fd *number* silently steals the handler;
+- `SetNotifyFd(fd, ..., mask = 0, ...)` removes the entry;
+- ospoll is keyed by **fd number**, so any `close()` followed by an
+  `open()` that recycles the number can collide.
+
+And this fork's display path does keep runtime fds: the Xvfb-inherited
+framebuffer-file/SHM machinery (`pvfb->mmap_fd`, `mmap_file`
+`"Xfb_screen%d"`, `pvfb->fbdev_fd`, `shmid`, and `close()` calls in
+`hw/xfb/InitOutput.c`), plus the `XFB-SHADOW` block handler.
+
+That makes the next experiment precise rather than exploratory: print the
+mouse/keyboard fd numbers at input init, and every `ospoll_add` /
+`SetNotifyFd` / `open()` / `close()` in the server, then run the
+repro - if the stall is an fd-number collision, the input fd's number
+will be seen re-registered for something else at the moment input dies.
