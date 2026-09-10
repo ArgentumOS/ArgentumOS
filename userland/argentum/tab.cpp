@@ -19,7 +19,6 @@ static const double TAB_H_PAD = 14.0;	/* label <-> segment edge (pt) */
 static const double TAB_V_PAD = 1.0;	/* label <-> segment top/bottom */
 static const double TAB_BEZ_PAD = 2.0;	/* bezel inset around a segment */
 static const double TAB_TOP = 0.0;	/* control top = panel top (pt) */
-static const double TAB_BOT_GAP = 5.0;	/* bezel -> pane below (pt) */
 
 TabViewItem::TabViewItem(const char *title, View *page)
 	: ti_(new Impl())
@@ -70,13 +69,15 @@ tabSegHeight(double ppt)
 	return (m.ascentPt + m.descentPt) + TAB_V_PAD * 2;
 }
 
-/* Where the pages begin: BELOW the control, not at the border the
- * control straddles - subviews paint after this view, so they have to
- * start clear of it. */
+/* Where the pages begin: the control's bottom edge. The control is what
+ * intrudes into the top of the pane, so nothing else is subtracted
+ * here. The margin between a view's border and its content is a UI
+ * decision - the designer sets it when building the UI - so the control
+ * does not enforce one. */
 static double
-tabStripHeight(double ppt)
+tabContentTop(double ppt)
 {
-	return TAB_TOP + tabSegHeight(ppt) + 2 * TAB_BEZ_PAD + TAB_BOT_GAP;
+	return TAB_TOP + tabSegHeight(ppt) + 2 * TAB_BEZ_PAD;
 }
 
 TabView::TabView()
@@ -192,8 +193,7 @@ TabView::layoutPages()
 	Application &app = Application::shared();
 	double ppt = app.pxPerPt();
 	Rect f = frame();
-	double strip = tabStripHeight(ppt);
-	double y0 = std::lround(strip) + 1;
+	double top = tabContentTop(ppt);
 
 	for (size_t i = 0; i < tb_->items.size(); i++) {
 		View *p = tb_->items[i]->page();
@@ -203,9 +203,11 @@ TabView::layoutPages()
 		}
 		p->setHidden(i != (size_t) tb_->selected);
 		if (i == (size_t) tb_->selected) {
-			p->setFrame({ {1, y0},
-				      {f.size.w - 2,
-				       f.size.h - y0 - 1} });
+			/* the pane's interior: inside the border, below the
+			 * control. Any margin the content wants is the UI's
+			 * business - the page fills what it is given. */
+			p->setFrame({ {1, top},
+				      {f.size.w - 2, f.size.h - top - 1} });
 		}
 	}
 }
@@ -262,7 +264,8 @@ TabView::logOnce()
 		       rects[i].size.w, rects[i].size.h,
 		       tb_->items[i] ? tb_->items[i]->title() : "");
 	}
-	printf("TAB-C: strip=%.1f\n", tabStripHeight(Application::shared().pxPerPt()));
+	printf("TAB-C: content_top=%.1f\n",
+	       tabContentTop(Application::shared().pxPerPt()));
 	fflush(stdout);
 }
 
@@ -344,7 +347,6 @@ TabView::draw(GraphicsContext &g)
 	Rect f = frame();
 	int w = (int) (f.size.w * ppt + 0.5);
 	int h = (int) (f.size.h * ppt + 0.5);
-	double strip = tabStripHeight(ppt);
 
 	if (w < 8 || h < 8) {
 		return;
@@ -354,25 +356,28 @@ TabView::draw(GraphicsContext &g)
 	std::vector<Rect> rects;
 
 	tabRects(rects);
-	int stripPx = (int) (strip * ppt + 0.5);
 	int r = (int) (theme.smallRadius() * ppt + 0.5);
 	Theme::Params p = theme.state(ControlState::Idle);
 
-	if (stripPx < 8) {
-		stripPx = 8;
-	}
 	if (r < 1) {
 		r = 1;
 	}
-	/* the panel surface: the control straddles the box's top edge and the
-	 * pages paint the body themselves; the fill runs a few px into the
-	 * body so no seam can show between the band and the pages */
-	int bandH = stripPx + 4;
+	/* Surfaces. The pane behind the content is the chrome tone - darker
+	 * than the page - so the margin between the box's border and the
+	 * content reads as a margin instead of as more content. The band the
+	 * control floats on stays page-coloured and is filled afterwards,
+	 * down to the line the control is centred on. */
+	int bez = (int) (TAB_BEZ_PAD * ppt + 0.5);
+	int segY = (int) ((TAB_TOP + TAB_BEZ_PAD) * ppt + 0.5);
+	int segH = (int) (tabSegHeight(ppt) * ppt + 0.5);
 
-	if (bandH > h) {
-		bandH = h;
+	if (bez < 1) {
+		bez = 1;
 	}
-	g.fillRect(0, 0, (unsigned) w, (unsigned) bandH, theme.page());
+	int midY = segY - bez + (segH + 2 * bez) / 2;
+
+	g.fillRect(0, 0, (unsigned) w, (unsigned) h, p.fillTop);
+	g.fillRect(0, 0, (unsigned) w, (unsigned) midY, theme.page());
 
 	/* The box, drawn BEFORE the control so the control's track covers
 	 * the border where it crosses. There is no top border at the view's
@@ -384,15 +389,6 @@ TabView::draw(GraphicsContext &g)
 	 * border runs behind it, emerging either side. The row comes from
 	 * the control's own ROUNDED geometry, so it lands exactly on the
 	 * control's middle at any scale. */
-	int bez = (int) (TAB_BEZ_PAD * ppt + 0.5);
-	int segY = (int) ((TAB_TOP + TAB_BEZ_PAD) * ppt + 0.5);
-	int segH = (int) (tabSegHeight(ppt) * ppt + 0.5);
-
-	if (bez < 1) {
-		bez = 1;
-	}
-	int midY = segY - bez + (segH + 2 * bez) / 2;
-
 	panelRing(g, 0, midY, w, h - midY, r, theme.chromeOutline());
 	/* the tab control, in the NSTabView / segmented-control idiom: ONE
 	 * rounded bezel holding the segments, the selected one a raised chip
@@ -477,7 +473,7 @@ TabView::mouseDown(const MouseEvent &e)
 	/* strip click? (only when the press is within the strip band) */
 	Application &app = Application::shared();
 	double ppt = app.pxPerPt();
-	double strip = tabStripHeight(ppt);
+	double strip = tabContentTop(ppt);
 
 	if (e.y >= 0 && e.y <= strip) {
 		std::vector<Rect> rects;

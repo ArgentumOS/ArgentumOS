@@ -252,12 +252,19 @@ meet in corners. The box is drawn BEFORE the control, so the control's
 track covers the border where it crosses and the line emerges either
 side - half the control sits above the box's edge, inside the view, so
 nothing is clipped, and the control reads as centred on the border.
-The pages then start clear below the control (they are
-subviews and paint after this view, so they have to). The panel keeps
+The pages begin at the control's bottom edge (they are
+subviews and paint after this view, so they have to start clear of it),
+and fill the pane they are given: how far in the CONTENT sits is a UI
+decision, taken when the UI is built - a Box, or a frame re-applied in
+the view's own draw - not something the control imposes. The pane
+behind it is the chrome tone, darker than the page, so the margin
+between the pane's border and the content reads as a margin instead of
+as more content; a board that wants the house 5pt sets 5pt (the
+structure_d board does). The panel keeps
 its own rounded hairline frame, drawn
 last so it sits on the strip's fill. The band's height is the segment
-height plus the bezel inset, the top margin and the gap down to the
-pane, all measured in PIXELS (the rule used `lround()` of the point
+height plus the bezel inset and the top margin, with no gap below the
+control, all measured in PIXELS (the rule used `lround()` of the point
 value, so under the 2x scale it cut through the middle of the tabs).
 Its vertical padding is deliberately TIGHT - 1pt a side, about three
 quarters of a button's height - because a segmented control is shorter

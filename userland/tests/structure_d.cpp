@@ -17,10 +17,20 @@ static const int WIN_Y = 40;
 static const unsigned WIN_W = 560;	/* 420 pt @ 4/3 */
 static const unsigned WIN_H = 480;	/* 360 pt @ 4/3 */
 
-struct Pane : public View {
+/* The content's own margin. The TabView sizes a page to the content pane
+ * and the UI decides how far in the content sits, so the board sets it
+ * here - the house 5pt, held by rigid margins and a flexible size so it
+ * survives the pane being resized. */
+static const double kPageMargin = 5.0;
+
+/* The coloured content. It is a CHILD of the page rather than the page
+ * itself, which is what leaves the margin visible: the TabView paints
+ * the pane darker than the page, so the strip between the pane's border
+ * and the content reads as a margin instead of as more content. */
+struct Fill : public View {
 	unsigned int color;
 
-	explicit Pane(unsigned int c)
+	explicit Fill(unsigned int c)
 		: color(c)
 	{
 	}
@@ -33,6 +43,34 @@ struct Pane : public View {
 
 		g.fillRect(0, 0, (unsigned) (f.size.w * ppt + 0.5),
 			   (unsigned) (f.size.h * ppt + 0.5), color);
+	}
+};
+
+/* The page the TabView manages: transparent, holding the content at the
+ * margin above. Nothing here is the control's business. */
+struct Pane : public View {
+	Fill body;
+
+	explicit Pane(unsigned int c)
+		: body(c)
+	{
+		addSubview(&body);
+	}
+
+	/* The content's frame: the page's, inset by the margin. Re-applied
+	 * on every draw the way Box/SplitView/TabView re-apply theirs -
+	 * setFrame is a no-op when nothing changed. Springs cannot express
+	 * it here: the page's size only arrives after construction, and
+	 * rigid margins have to be measured from a known size. */
+	void draw(GraphicsContext &g) override
+	{
+		(void) g;
+		double w = frame().size.w;
+		double h = frame().size.h;
+
+		body.setFrame({ {kPageMargin, kPageMargin},
+				{w - 2 * kPageMargin,
+				 h - 2 * kPageMargin} });
 	}
 };
 
