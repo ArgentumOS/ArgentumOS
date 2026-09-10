@@ -255,8 +255,8 @@ static GlyphEntry g_glyphCache[512];
 static int g_glyphCount = 0;
 
 /* Rasterize (or fetch) a glyph. Returns a stable FT_Bitmap (the entry
- * owns the buffer) or null on failure; *left/*top = the glyph's
- * bitmap offset in the FreeType metric convention. */
+ * owns the buffer) or null on failure, with the glyph's bitmap offset
+ * in the FreeType metric convention stored in left and top. */
 static const FT_Bitmap *
 glyphBitmap(FT_Face face, unsigned int glyph, int *left, int *top)
 {
