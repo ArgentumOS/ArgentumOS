@@ -231,15 +231,18 @@ a page view; the pages are subviews and only the selected one is
 visible below the strip (measured from the theme font). Strip clicks
 select; the strip is drawn the way NSTabView draws it - a segmented
 control, not folder tabs attached to the body (tabs that open into the
-page below read as a row of buttons, which is the wrong idiom). ONE
-rounded bezel holds the segments: a 1px ring plus a track interior in
-the same recess tone as the scrollbar's trough, so both controls share
-one grammar, with the selected segment a page-coloured chip inset
-inside it carrying its own ring - off-white on grey, the macOS
-selected segment. Segments are ADJACENT: their rects touch, neighbours
-are divided by a 1px divider that is suppressed beside the selected
-segment (the chip's own edge does the dividing there), and the labels
-are centred. The control is centred across the view too, and the
+page below read as a row of buttons, which is the wrong idiom). The
+control is drawn the way `SegmentedControl` draws itself
+(`segmented.cpp`), so that a tab strip and a segmented control are
+visibly the same control rather than two similar ones: ONE
+chromeOutline bezel, each segment a rounded gradient inset inside it -
+the SELECTED segment in the `Armed` state and the rest in `Idle`, which
+is exactly a segmented control's selected and unselected colours - and
+1px page-coloured lines between neighbouring segments. The bezel inset
+is 1 PIXEL rather than a point measure, matching `segmented.cpp`'s `o`:
+a scaled inset would make the strip a subtly different control from the
+one beside it. Segment rects are adjacent and labels are centred within
+them. The control is centred across the view too, and the
 content's top border is drawn on the control's MIDDLE row, so the line
 straddles it and re-emerges either side - the border row is taken from
 the control's own rounded pixel geometry, not from parallel point maths
