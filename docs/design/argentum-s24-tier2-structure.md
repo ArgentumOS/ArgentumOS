@@ -149,7 +149,8 @@ wheel notch = 3 lines, one arrow click = one line step, one track click
 gutter is OUTSIDE the content - pixels in the bar strip are bar chrome
 and never document, and the content just inside the viewport is
 document - and the scroller's travel matches the offset
-(proportionality), with the accent as its control colour.
+(proportionality); the scroller is the same grey chrome as the arrow
+buttons, with the darkened trough giving the contrast.
 Status: **DONE (revised)** — `userland/argentum/scroll.cpp` +
 `userland/argentum/scrollbar.cpp` (decls in `argentum.h`, Impls in
 `argentum_p.h`). The document is a subview of an internal viewport view
@@ -159,7 +160,11 @@ bar; the old inset `ScrollChrome` overlay is gone. The bars are
 `ScrollBar` controls - rounded rects in flat chrome with 1px line art,
 arrow buttons that grey out at the ends, a muted track, and a
 PROPORTIONAL scroller (its length is page/range of the track) filled
-with the accent so it reads as the control it is. They call back into
+in the same grey as the arrow buttons, over a trough darkened from the
+chrome (the theme's Disabled tone sits only ~7 levels off it and does not
+read as a recess); the enabled arrows' triangles carry the accent so the
+bar still reads as one control, and the tips point at the ends they
+scroll toward. They call back into
 `scrollTo`, so every request is clamped in one place and pushed back
 with `setValue` (the scroller can never drift from the content). One
 wheel notch scrolls three lines through `View::mouseWheel`, which

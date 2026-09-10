@@ -39,6 +39,26 @@ fpx(double pt, double ppt)
 	return (int) (pt * ppt + 0.5);
 }
 
+/* The theme engine derives its state tones with this same blend
+ * (theme.cpp's mix()); the trough needs one locally, since theme.cpp's
+ * helpers are file-static. */
+static std::uint32_t
+mixTo(std::uint32_t c, std::uint32_t to, double f)
+{
+	int r0 = (int) ((c >> 16) & 0xff);
+	int g0 = (int) ((c >> 8) & 0xff);
+	int b0 = (int) (c & 0xff);
+	int r1 = (int) ((to >> 16) & 0xff);
+	int g1 = (int) ((to >> 8) & 0xff);
+	int b1 = (int) (to & 0xff);
+	int r = (int) (r0 + (r1 - r0) * f + 0.5);
+	int g = (int) (g0 + (g1 - g0) * f + 0.5);
+	int b = (int) (b0 + (b1 - b0) * f + 0.5);
+
+	return ((std::uint32_t) r << 16) | ((std::uint32_t) g << 8) |
+	       (std::uint32_t) b;
+}
+
 /* Pixel geometry of the bar for its current frame + state. `arrow` is
  * the pre-arrow span, `track0/trackLen` the track, `thumbPos/thumbLen`
  * the scroller (all px along the axis, measured from the bar's origin).
@@ -118,9 +138,13 @@ arrowTri(GraphicsContext &g, int cx, int cy, int size, bool vertical,
 		n = 3;
 	}
 	for (int j = 0; j < n; j++) {
-		/* width grows from the tip (1 px) to the base (n px) */
-		int row = positive ? n - 1 - j : j;
-		int w = 1 + (2 * row * (n / 2)) / (n - 1);
+		/* 1 px wide at the TIP, n px at the BASE. `positive` is the
+		 * min/up/left arrow, whose tip sits at the START of the track
+		 * (the top of a vertical bar, the left of a horizontal one), so
+		 * it is widest at the far end - the reverse for the max arrow.
+		 * (Getting this backwards points every arrow the wrong way.) */
+		int tip = positive ? j : n - 1 - j;
+		int w = 1 + (2 * tip * (n / 2)) / (n - 1);
 
 		if (w > n) {
 			w = n;
@@ -475,11 +499,12 @@ ScrollBar::draw(GraphicsContext &g)
 			 disabled ? p.label : theme.accent());
 	}
 
-	/* track: the recess. The muted (disabled) chrome tone reads as a
-	 * trough without inventing a colour, and the ring keeps it in the
-	 * same line-art language as everything else. */
+	/* track: the recess. A darken() of the chrome - the same blend the
+	 * theme engine uses for its state tones, since the Disabled tone
+	 * sits only a few levels off the chrome and does not read as a
+	 * trough. The ring keeps it in the line-art language. */
 	{
-		Theme::Params well = theme.state(ControlState::Disabled);
+		std::uint32_t well = mixTo(theme.chromeBottom(), 0x000000, 0.18);
 		int tx = vertical ? 1 : gg.track0;
 		int ty = vertical ? gg.track0 : 1;
 		int tw = vertical ? w - 2 : gg.trackLen;
@@ -490,18 +515,15 @@ ScrollBar::draw(GraphicsContext &g)
 					  0, theme.chromeOutline());
 			if (tw > 2 && th > 2) {
 				g.fillRect(tx + 1, ty + 1, (unsigned) (tw - 2),
-					   (unsigned) (th - 2),
-					   well.fillBottom);
+					   (unsigned) (th - 2), well);
 			}
 		}
 	}
 
-	/* the proportional scroller: filled with the design ACCENT, so it
-	 * reads as the control you drag instead of another grey chrome
-	 * surface - a chrome fill sits within a few levels of the trough
-	 * and disappears against it. The interaction state shows in the
-	 * ring (hover and grabbed use the derived state outline), and the
-	 * rounded ends are what say "grab me" rather than "press me". */
+	/* the proportional scroller: the SAME chrome as the arrow buttons
+	 * (the grey the rest of the chrome uses, per state), so the bar
+	 * reads as one control; the trough behind it is what provides the
+	 * contrast. Rounded ends say "grab me" rather than "press me". */
 	{
 		ControlState st = sb_->dragging ? ControlState::Armed
 			: (sb_->hot == PartThumb || sb_->part == PartThumb)
@@ -525,11 +547,11 @@ ScrollBar::draw(GraphicsContext &g)
 			g.fillRoundedRect(sx, sy, (unsigned) sw, (unsigned) sh,
 					  (unsigned) sr, p.outline);
 			if (sw > 2 * o && sh > 2 * o) {
-				g.fillRoundedRect(sx + o, sy + o,
-						  (unsigned) (sw - 2 * o),
-						  (unsigned) (sh - 2 * o),
-						  (unsigned) (sr > o ? sr - o : 0),
-						  theme.accent());
+				g.fillRoundedGradient(sx + o, sy + o,
+						      (unsigned) (sw - 2 * o),
+						      (unsigned) (sh - 2 * o),
+						      (unsigned) (sr > o ? sr - o : 0),
+						      p.fillTop, p.fillBottom);
 			}
 		}
 	}
