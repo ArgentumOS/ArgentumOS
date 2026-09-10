@@ -12,6 +12,8 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+#include <X11/Xatom.h>		/* XA_CARDINAL (the S4.3 published hints) */
+
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
@@ -562,24 +564,45 @@ Window::moveFocus(int direction)
 void
 Window::noteDamage(int xPx, int yPx, unsigned int wPx, unsigned int hPx)
 {
+	int x0 = xPx, y0 = yPx;
 	int x1 = xPx + (int) wPx;
 	int y1 = yPx + (int) hPx;
 
-	if (x1 <= xPx || y1 <= yPx) {
+	/* S4.3: a window with a non-zero border_width (Kestrel's frames
+	 * carry their 1px outline as the X border) receives Exposes for
+	 * the BORDER too, and those arrive with coordinates OUTSIDE the
+	 * window (x=-1 for the left border, x=width for the right one).
+	 * The backing covers the inside only, and flushBacking indexes the
+	 * backing with this rect — unclamped, a border Expose walked the
+	 * flush past the pixman buffer (a wild write). Clip to the inside
+	 * and drop a rect entirely outside it. */
+	if (x0 < 0) {
+		x0 = 0;
+	}
+	if (y0 < 0) {
+		y0 = 0;
+	}
+	if (x1 > (int) impl_->width) {
+		x1 = (int) impl_->width;
+	}
+	if (y1 > (int) impl_->height) {
+		y1 = (int) impl_->height;
+	}
+	if (x1 <= x0 || y1 <= y0) {
 		return;
 	}
 	if (!impl_->damageScheduled && impl_->dmgX1 <= impl_->dmgX0 &&
 	    impl_->dmgY1 <= impl_->dmgY0) {
-		impl_->dmgX0 = xPx;
-		impl_->dmgY0 = yPx;
+		impl_->dmgX0 = x0;
+		impl_->dmgY0 = y0;
 		impl_->dmgX1 = x1;
 		impl_->dmgY1 = y1;
 	} else {
-		if (xPx < impl_->dmgX0) {
-			impl_->dmgX0 = xPx;
+		if (x0 < impl_->dmgX0) {
+			impl_->dmgX0 = x0;
 		}
-		if (yPx < impl_->dmgY0) {
-			impl_->dmgY0 = yPx;
+		if (y0 < impl_->dmgY0) {
+			impl_->dmgY0 = y0;
 		}
 		if (x1 > impl_->dmgX1) {
 			impl_->dmgX1 = x1;
@@ -881,6 +904,40 @@ void
 Window::setOnClose(std::function<void()> cb)
 {
 	impl_->onClose = std::move(cb);
+}
+
+/* S4.3: publish the client-published WM hints. Both are plain
+ * CARDINAL properties on this window; the WM (Kestrel) reads them at
+ * map time. Written as `long` words — the X wire type for format-32
+ * properties. */
+void
+Window::setPreferredContentSize(unsigned int widthPx, unsigned int heightPx)
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	Atom a = XInternAtom(impl_->dpy, "_ARGENTUM_PREFERRED_SIZE", False);
+	unsigned long v[2];
+
+	v[0] = widthPx;
+	v[1] = heightPx;
+	XChangeProperty(impl_->dpy, impl_->xwin, a, XA_CARDINAL, 32,
+			PropModeReplace, (unsigned char *) v, 2);
+	XSync(impl_->dpy, False);
+}
+
+void
+Window::setToolbarHeight(unsigned int heightPx)
+{
+	if (!impl_->dpy || !impl_->xwin) {
+		return;
+	}
+	Atom a = XInternAtom(impl_->dpy, "_ARGENTUM_TOOLBAR_HEIGHT", False);
+	unsigned long v = heightPx;
+
+	XChangeProperty(impl_->dpy, impl_->xwin, a, XA_CARDINAL, 32,
+			PropModeReplace, (unsigned char *) &v, 1);
+	XSync(impl_->dpy, False);
 }
 
 void

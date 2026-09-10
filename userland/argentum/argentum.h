@@ -487,6 +487,26 @@ public:
 	 * runs when one is set; the default quits the application. */
 	void setOnClose(std::function<void()> cb);
 
+	/* S4.3: the size (px) this window's content wants — what the WM's
+	 * zoom ("maximize") button grows the frame to fit. Published as
+	 * the `_ARGENTUM_PREFERRED_SIZE` CARDINAL pair: the CLIENT WINDOW
+	 * size, so a window that carries its own toolbar strip declares
+	 * the size with the strip. Nothing in WM_NORMAL_HINTS carries
+	 * "the size this content wants", hence the atom. */
+	void setPreferredContentSize(unsigned int widthPx,
+				     unsigned int heightPx);
+
+	/* S4.3: the height (px) of a toolbar strip this window draws
+	 * under the frame's title band. Published as
+	 * `_ARGENTUM_TOOLBAR_HEIGHT`; the WM reserves the strip inside
+	 * the frame (the client makes its own window that much taller and
+	 * draws into it) and offers the title bar's show/hide-toolbar
+	 * button, which adds or removes the strip's HEIGHT from this
+	 * window's rect. The strip is the client's content, so the client
+	 * keeps drawing it into whatever height it is given; 0 (the
+	 * default) = no strip, no button. */
+	void setToolbarHeight(unsigned int heightPx);
+
 	Window(const Window &) = delete;
 	Window &operator=(const Window &) = delete;
 

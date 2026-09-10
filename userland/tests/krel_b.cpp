@@ -1,4 +1,6 @@
-/* krel_b.cpp — S4.1a probe: an argentum app that maps under Kestrel. */
+/* krel_b.cpp — S4.1a probe: an argentum app that maps under Kestrel.
+ * S4.3: declares a preferred content size and NO toolbar strip (so the
+ * frame draws no show/hide-toolbar box for it). */
 #include <argentum/argentum.h>
 
 #include <cstdio>
@@ -48,6 +50,8 @@ main()
 		return 1;
 	}
 	w.setContentView(&v);
+	/* S4.3: the size this content wants (the zoom box grows to it) */
+	w.setPreferredContentSize(300, 160);
 	w.show();
 	printf("KREL-B-READY xid=0x%lx\n", (unsigned long) w.xid());
 	fflush(stdout);

@@ -416,7 +416,20 @@ Application::run()
 			/* S2.1d: window resized by the server/another
 			 * client -> springs/struts relayout (only when
 			 * the px size actually changed; moves of a
-			 * fixed-size window are no-ops) */
+			 * fixed-size window are no-ops). */
+			/* S4.3: a window that selects SubstructureNotify
+			 * (Kestrel's frames watch their reparented client)
+			 * also gets ConfigureNotify for its CHILDREN, and
+			 * Xlib's XAnyEvent.window aliases XConfigureEvent's
+			 * EVENT field, not its window field — so the lookup
+			 * above resolved the frame while the geometry
+			 * belongs to the child. Applying it resized the
+			 * frame's own content view to the client's size
+			 * (the bands drifted by the frame's lip). Only a
+			 * notification about the window itself resizes it. */
+			if (ev.xconfigure.window != ev.xany.window) {
+				break;
+			}
 			if ((unsigned) ev.xconfigure.width != w->width() ||
 			    (unsigned) ev.xconfigure.height != w->height()) {
 				w->handleResize(

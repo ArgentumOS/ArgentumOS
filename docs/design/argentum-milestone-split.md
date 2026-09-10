@@ -243,6 +243,17 @@ structure, S2.5 the reference board + a11y battery).
   (§5/§6); menubar model published; picks dispatch to app actions.
   *Acceptance:* original S4 acceptance — two apps; menubar swaps with
   focus; picks trigger app actions.
+- **S4.3 — Platinum frames + resize in the chrome**
+  (`docs/design/argentum-s4-kestrel.md` §S4.3, DONE): the frame's shapes
+  (1px outline as the frame window's X border, a 20px band in OS X
+  control order, the WM-owned lip, the grow box), every colour from the
+  theme; the drag session gains a resize mode (any edge or corner); the
+  client publishes `_ARGENTUM_PREFERRED_SIZE` (the zoom grows the frame
+  to it) and its toolbar strip's height.
+  *Acceptance:* drag an edge -> the frame and the client resize together;
+  the zoom grows to the published size; the toolbar box reserves/drops
+  the strip; the move (S4.1d) and the close (S4.1c) still work —
+  `.build/s43_run.sh` + `s43_assert.py` -> S43-OK.
 
 ## S5 — Desktop
 

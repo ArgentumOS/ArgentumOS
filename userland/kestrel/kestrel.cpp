@@ -6,7 +6,18 @@
  * the frame is placed in the work area below the menubar strip. The
  * strip (Kestrel's own argentum window, full width at the top) will
  * carry the global menubar in S4.2. WM X work runs on Kestrel's own
- * display connection (the toolkit's Application stays untouched). */
+ * display connection (the toolkit's Application stays untouched).
+ *
+ * S4.3: the frame is the Platinum one — a 1px outline carried by the
+ * frame window's X border (not painted: the sides and bottom of the
+ * frame's interior are occupied by the client), a 20px title bar in
+ * OS X control order (close + zoom boxed at the left, the title
+ * centred, the show/hide-toolbar box at the right), and a 4px lip on
+ * the left/right/bottom that the WM owns: the client is inset by it,
+ * the resize grips and the grow box live there. Every colour is the
+ * theme's, never Platinum's. The drag session (S4.1d) gained a
+ * RESIZE mode: a press on an edge or corner grip resizes the frame
+ * and the client together. */
 #include <argentum/argentum.h>
 
 #include <X11/Xlib.h>
@@ -21,8 +32,55 @@
 using namespace argentum;
 
 static const int BAR_H = 30;	/* menubar strip height, px */
-static const int BAND_H = 26;	/* frame title band, px */
 static const int MARGIN = 10;	/* work-area margin */
+
+/* S4.3 frame geometry (px). BAND_H is the title bar; FRAME_PX is the
+ * frame's lip on the left, right and bottom — the WM owns it, so the
+ * client is inset by it and the resize grips/grow box live there. The
+ * 1px outline around the whole frame is the frame WINDOW's X border. */
+static const int BAND_H = 20;	/* frame title bar, px */
+static const int FRAME_PX = 4;	/* the frame's lip (sides + bottom) */
+static const int GRIP_PX = 4;	/* edge/corner grab thickness, px */
+static const int MIN_FRAME_W = 120;
+static const int MIN_FRAME_H = BAND_H + 40;
+
+/* The title band's controls, band-local px. CTL is the box size; the
+ * close and zoom boxes sit at the left (OS X order), the toolbar box
+ * is right-aligned. */
+static const int CTL = 13;
+static const int CTL_Y = (BAND_H - CTL) / 2;
+static const int CTL_X = 6;		/* close */
+static const int CTL_GAP = 5;
+static const int CTL2_X = CTL_X + CTL + CTL_GAP;	/* zoom */
+static const int CTL_RIGHT_INSET = 6;	/* toolbar box */
+
+/* which band control owns band-local px (x,y) — shared by the chrome
+ * view's hit-test and the WM's press handler (a control press is left
+ * to the toolkit; everything else in the band starts a move) */
+enum { BAND_NONE = 0, BAND_CLOSE, BAND_ZOOM, BAND_TOOLBAR };
+
+static int
+bandControlAt(int w, int x, int y, bool hasToolbar)
+{
+	if (y < CTL_Y || y >= CTL_Y + CTL) {
+		return BAND_NONE;
+	}
+	if (x >= CTL_X && x < CTL_X + CTL) {
+		return BAND_CLOSE;
+	}
+	if (x >= CTL2_X && x < CTL2_X + CTL) {
+		return BAND_ZOOM;
+	}
+	int tx = w - CTL_RIGHT_INSET - CTL;
+
+	if (hasToolbar && x >= tx && x < tx + CTL) {
+		return BAND_TOOLBAR;
+	}
+	return BAND_NONE;
+}
+
+/* resize directions: the grab owns whichever edges it hit */
+enum { EDGE_LEFT = 1, EDGE_RIGHT = 2, EDGE_TOP = 4, EDGE_BOTTOM = 8 };
 
 static Display *dpy = nullptr;	/* the WM's own connection */
 static ::Window root = 0;
@@ -42,9 +100,13 @@ struct Managed {
 	FrameChrome *chrome = nullptr;
 	::Window client = 0;
 	char title[128] = { 0 };
-	int fx = 0, fy = 0;	/* frame origin (px, root) */
-	int fw = 0, fh = 0;	/* frame size (px) */
+	int fx = 0, fy = 0;	/* frame origin (inside, px on the root) */
+	int fw = 0, fh = 0;	/* frame inside size (px) */
 	bool mapped = false;
+	/* S4.3 client-published hints */
+	unsigned int prefW = 0, prefH = 0;	/* _ARGENTUM_PREFERRED_SIZE */
+	unsigned int tbH = 0;			/* _ARGENTUM_TOOLBAR_HEIGHT */
+	bool toolbar = false;			/* strip currently shown */
 };
 
 static std::vector<Managed *> gFrames;
@@ -66,8 +128,11 @@ setActiveProperty(::Window client)
 	XSync(dpy, False);
 }
 
-/* The frame's content: chrome band (title + close glyph plate) over a
- * page plate that fills the rest of the frame under the client. */
+/* The frame's content: the chrome title band (its controls + the
+ * client's WM_NAME) over a plate that fills the rest of the frame —
+ * the lip the client is inset by. Every colour comes from the theme
+ * (S4.3 coloration table): the active column, else the same shapes
+ * stepped down through the disabled state. */
 class FrameChrome : public View {
 public:
 	explicit FrameChrome(const char *title)
@@ -75,14 +140,37 @@ public:
 		strncpy(title_, title, sizeof(title_) - 1);
 	}
 
-	/* S4.1c: clicking the close plate asks Kestrel to close the
+	/* S4.1c: clicking the close box asks Kestrel to close the
 	 * client (wired by Kestrel; the default does nothing). */
 	void setOnClose(std::function<void()> cb)
 	{
 		closeCb_ = std::move(cb);
 	}
 
-	/* S4.1b: clicking anywhere else in the band activates the frame */
+	/* S4.3: the zoom box — Kestrel grows the frame to the size the
+	 * client published (_ARGENTUM_PREFERRED_SIZE). */
+	void setOnZoom(std::function<void()> cb)
+	{
+		zoomCb_ = std::move(cb);
+	}
+
+	/* S4.3: the show/hide-toolbar box (only drawn when the client
+	 * declared a toolbar strip). */
+	void setOnToolbar(std::function<void()> cb)
+	{
+		toolbarCb_ = std::move(cb);
+	}
+
+	void setToolbarVisible(bool visible)
+	{
+		if (toolbarVisible_ == visible) {
+			return;
+		}
+		toolbarVisible_ = visible;
+		setNeedsDisplay();
+	}
+
+	/* S4.1b: clicking the band background activates the frame */
 	void setOnActivate(std::function<void()> cb)
 	{
 		activateCb_ = std::move(cb);
@@ -93,25 +181,43 @@ public:
 		Application &app = Application::shared();
 		double ppt = app.pxPerPt();
 		Rect f = frame();
-		double cw = 18.0 / ppt;		/* close plate, pt */
-		double cx0 = f.size.w - cw - 6.0 / ppt;
-		double cy0 = (BAND_H / ppt - cw) / 2.0;
+		int w = (int) (f.size.w * ppt + 0.5);
+		int x = (int) (e.x * ppt + 0.5);
+		int y = (int) (e.y * ppt + 0.5);
 
-		if (e.y > cy0 + cw) {
-			return;		/* below the band: client area */
+		/* only the title band is the frame's; below it the client
+		 * covers the frame's interior, so a press there can only
+		 * arrive when the client is gone (doing nothing is right) */
+		if (y < 0 || y >= BAND_H) {
+			return;
 		}
-		if (e.x >= cx0 && e.x <= cx0 + cw &&
-		    e.y >= cy0 && e.y <= cy0 + cw) {
+		switch (bandControlAt(w, x, y, toolbarVisible_)) {
+		case BAND_CLOSE:
 			if (closeCb_) {
 				closeCb_();
 			}
-		} else if (activateCb_) {
-			activateCb_();
+			break;
+		case BAND_ZOOM:
+			if (zoomCb_) {
+				zoomCb_();
+			}
+			break;
+		case BAND_TOOLBAR:
+			if (toolbarCb_) {
+				toolbarCb_();
+			}
+			break;
+		default:
+			if (activateCb_) {
+				activateCb_();
+			}
+			break;
 		}
 	}
 
-	/* S4.1b: the active frame's band is accent-tinted; the title
-	 * flips to the armed label colour. */
+	/* S4.1b: the active frame's band is accent-tinted; the inactive
+	 * one goes flat (S4.3: no pinstripes), the outline/label step
+	 * down through the theme's disabled state. */
 	void setActive(bool active)
 	{
 		if (active_ == active) {
@@ -119,6 +225,14 @@ public:
 		}
 		active_ = active;
 		setNeedsDisplay();
+	}
+
+	/* the theme's tones for the current focus state (Kestrel also
+	 * needs them for the frame window's X border) */
+	std::uint32_t outlineTone(Theme &t) const
+	{
+		return active_ ? t.chromeOutline() :
+				 t.state(ControlState::Disabled).outline;
 	}
 
 	void draw(GraphicsContext &g) override
@@ -132,41 +246,189 @@ public:
 		int band = BAND_H;
 		Theme::Params p = t.state(active_ ? ControlState::Armed :
 					  ControlState::Idle);
+		std::uint32_t outline = outlineTone(t);
 		std::uint32_t label = active_ ?
-			t.state(ControlState::Armed).label : t.text();
+			t.text() : t.state(ControlState::Disabled).label;
+		/* the glyphs read against the band's own surface tone */
+		std::uint32_t glyph = active_ ? p.fillTop : t.chromeTop();
 
 		if (band > h) {
 			band = h;
 		}
-		/* plate under the client + the title band on top */
+		/* the frame's body: the lip the client is inset by */
 		g.fillRect(0, 0, (unsigned) w, (unsigned) h, t.page());
-		g.fillRoundedGradient(0, 0, (unsigned) w, (unsigned) band, 0,
-				      p.fillTop, p.fillBottom);
-		/* 1px outline under the band */
-		g.fillRect(0, band - 1, (unsigned) w, 1, t.chromeOutline());
-		/* the title text (left) + a close-glyph plate (right) */
+		/* the title bar: the S4.1b accent tint when active, flat
+		 * chrome when not */
+		if (active_) {
+			g.fillRoundedGradient(0, 0, (unsigned) w,
+					      (unsigned) band, 0, p.fillTop,
+					      p.fillBottom);
+		} else {
+			g.fillRect(0, 0, (unsigned) w, (unsigned) band,
+				   t.chromeTop());
+		}
+		/* 1px separator under the bar */
+		g.fillRect(0, band - 1, (unsigned) w, 1, outline);
+		/* close + zoom at the left, the toolbar toggle at the right */
+		bandBox(g, CTL_X, outline, glyph, BAND_CLOSE);
+		bandBox(g, CTL2_X, outline, glyph, BAND_ZOOM);
+		if (toolbarVisible_) {
+			bandBox(g, w - CTL_RIGHT_INSET - CTL, outline, glyph,
+				BAND_TOOLBAR);
+		}
+		/* the title, centred (clamped clear of the controls) */
 		if (title_[0]) {
 			TextMetrics m = textMetrics(t.fontFamily(),
 						    t.fontSizePt(), "Ag");
 			double box = (m.ascentPt + m.descentPt + 2.0 / ppt);
 			int ty = (int) ((band - box * ppt) / 2.0);
+			double tw = textMetrics(t.fontFamily(), t.fontSizePt(),
+						title_).widthPt * ppt;
+			int lo = CTL2_X + CTL + 4;
+			int hi = w - CTL_RIGHT_INSET - CTL - 4;
+			int tx = (int) ((w - tw) / 2.0);
 
-			g.drawText(t.fontFamily(), t.fontSizePt(), 8, ty,
+			if (tx < lo) {
+				tx = lo;
+			}
+			if (hi > lo && tx + (int) tw > hi) {
+				tx = hi - (int) tw;
+			}
+			if (tx < lo) {
+				tx = lo;
+			}
+			g.drawText(t.fontFamily(), t.fontSizePt(), tx, ty,
 				   title_, label);
 		}
-		int cw = 18;
-		int cx = w - cw - 6;
-
-		g.fillRoundedRect(cx, (band - 16) / 2, (unsigned) 16,
-				  (unsigned) 16, 2, t.chromeOutline());
+		/* the grow box: two short 45-degree lines in the
+		 * lower-right of the lip (the resize indicator) */
+		g.drawLine(w - 2, h - 2, w - FRAME_PX, h - FRAME_PX, outline);
+		g.drawLine(w - 2, h - FRAME_PX, w - FRAME_PX, h - 2, outline);
 	}
 
 private:
+	/* one band control: a rounded plate with a glyph cut out of it */
+	void bandBox(GraphicsContext &g, int x, std::uint32_t plate,
+		     std::uint32_t glyph, int kind)
+	{
+		int y = CTL_Y;
+		int a = 3;
+		int b = CTL - 4;
+
+		g.fillRoundedRect(x, y, (unsigned) CTL, (unsigned) CTL, 2,
+				  plate);
+		if (kind == BAND_CLOSE) {
+			g.drawLine(x + a, y + a, x + b, y + b, glyph);
+			g.drawLine(x + a, y + b, x + b, y + a, glyph);
+		} else if (kind == BAND_ZOOM) {
+			g.drawLine(x + a, y + CTL / 2, x + b, y + CTL / 2,
+				   glyph);
+			g.drawLine(x + CTL / 2, y + a, x + CTL / 2, y + b,
+				   glyph);
+		} else {
+			/* the toolbar toggle: two short bars */
+			g.drawLine(x + a, y + 4, x + b, y + 4, glyph);
+			g.drawLine(x + a, y + CTL - 5, x + b, y + CTL - 5,
+				   glyph);
+		}
+	}
+
 	char title_[128] = { 0 };
 	bool active_ = false;
+	bool toolbarVisible_ = false;
 	std::function<void()> closeCb_;
+	std::function<void()> zoomCb_;
+	std::function<void()> toolbarCb_;
 	std::function<void()> activateCb_;
 };
+
+/* ---- S4.3 frame geometry ------------------------------------------- */
+
+/* The nearest thing to the frame's own tone for `active`: the theme's
+ * values, exactly as the chrome view draws them (the frame WINDOW's X
+ * border must match the painted band) */
+static std::uint32_t
+outlineTone(bool active)
+{
+	Theme &t = Application::shared().theme();
+
+	return active ? t.chromeOutline() : t.state(ControlState::Disabled).outline;
+}
+
+/* The client's rect inside the frame (px, frame-local): inset by the
+ * frame's lip on the sides and bottom, the band on top. One helper so
+ * the reparent, the resize and ConfigureRequest cannot drift apart. */
+static void
+clientRect(const Managed *m, int *x, int *y, int *w, int *h)
+{
+	*x = FRAME_PX;
+	*y = BAND_H;
+	*w = m->fw - 2 * FRAME_PX;
+	*h = m->fh - BAND_H - FRAME_PX;
+	if (*w < 1) {
+		*w = 1;
+	}
+	if (*h < 1) {
+		*h = 1;
+	}
+}
+
+/* The one place frame geometry is applied: move+resize the frame and
+ * (mapped) its client together. The toolkit's Window sees the
+ * ConfigureNotify and relayouts/repaints through its normal path. */
+static void
+applyFrameGeometry(Managed *m, int fx, int fy, int fw, int fh)
+{
+	if (fw < MIN_FRAME_W) {
+		fw = MIN_FRAME_W;
+	}
+	if (fh < MIN_FRAME_H) {
+		fh = MIN_FRAME_H;
+	}
+	m->fx = fx;
+	m->fy = fy;
+	m->fw = fw;
+	m->fh = fh;
+	if (!m->frame || !m->mapped) {
+		return;
+	}
+	int cx, cy, cw, ch;
+
+	clientRect(m, &cx, &cy, &cw, &ch);
+	XMoveResizeWindow(dpy, m->frame->xid(), fx, fy, (unsigned) fw,
+			  (unsigned) fh);
+	XMoveResizeWindow(dpy, m->client, cx, cy, (unsigned) cw, (unsigned) ch);
+	XSync(dpy, False);
+}
+
+/* read a CARDINAL property (`n` words) off a client window */
+static bool
+getCardinals(::Window w, const char *name, unsigned long *out, int n)
+{
+	Atom a = XInternAtom(dpy, name, False);
+	Atom type = 0;
+	int fmt = 0;
+	unsigned long cnt = 0, after = 0;
+	unsigned char *data = nullptr;
+	bool ok = false;
+
+	if (XGetWindowProperty(dpy, w, a, 0, 4, False, XA_CARDINAL, &type,
+			       &fmt, &cnt, &after, &data) == Success && data) {
+		if (type == XA_CARDINAL && fmt == 32 && cnt >= (unsigned long) n) {
+			unsigned long *v = (unsigned long *) data;
+
+			for (int i = 0; i < n; i++) {
+				out[i] = v[i];
+			}
+			ok = true;
+		}
+		XFree(data);
+	}
+	return ok;
+}
+
+static void zoomClient(Managed *m);
+static void toggleToolbar(Managed *m);
 
 /* ---- WM helpers ----------------------------------------------------- */
 
@@ -215,21 +477,43 @@ manageClient(const XMapRequestEvent &ev)
 	}
 	/* the client's requested geometry (MapRequest only names it) */
 	XWindowAttributes a;
-	int fw = 320, fh = 200, fx = MARGIN, fy = BAR_H + MARGIN;
+	int cw0 = 320, ch0 = 200, fx = MARGIN, fy = BAR_H + MARGIN;
 
 	if (XGetWindowAttributes(dpy, ev.window, &a)) {
-		fw = a.width > 1 ? a.width : fw;
-		fh = a.height > 1 ? a.height : fh;
+		cw0 = a.width > 1 ? a.width : cw0;
+		ch0 = a.height > 1 ? a.height : ch0;
 		fx = a.x;
 		fy = a.y;
 	}
+	/* S4.3: the client publishes what it wants through two CARDINAL
+	 * properties (the toolkit's setPreferredContentSize /
+	 * setToolbarHeight): the frame reserves the toolbar strip, and
+	 * the zoom box grows the frame back to the preferred size. */
+	{
+		unsigned long v[2] = { 0, 0 };
+
+		if (getCardinals(ev.window, "_ARGENTUM_PREFERRED_SIZE", v, 2)) {
+			m->prefW = (unsigned int) v[0];
+			m->prefH = (unsigned int) v[1];
+		}
+		if (getCardinals(ev.window, "_ARGENTUM_TOOLBAR_HEIGHT", v, 1)) {
+			m->tbH = (unsigned int) v[0];
+		}
+		m->toolbar = m->tbH > 0;
+	}
+	/* the frame's inside = the client's size + the lip on the sides
+	 * and bottom, the band on top */
+	int fw = cw0 + 2 * FRAME_PX;
+	int fh = BAND_H + ch0 + FRAME_PX;
+
 	/* work area: honor the client's requested spot but keep it below
-	 * the strip and inside the screen */
+	 * the strip and inside the screen (the frame's 1px outline sits
+	 * outside fw/fh) */
 	if (fy < BAR_H + MARGIN) {
 		fy = BAR_H + MARGIN;
 	}
-	if (fx + fw > screenW - MARGIN) {
-		fx = screenW - fw - MARGIN;
+	if (fx + fw + 2 > screenW - MARGIN) {
+		fx = screenW - fw - 2 - MARGIN;
 	}
 	if (fx < MARGIN) {
 		fx = MARGIN;
@@ -238,20 +522,32 @@ manageClient(const XMapRequestEvent &ev)
 	argentum::Window *frame = new argentum::Window();
 
 	if (!frame->init(m->title[0] ? m->title : "Kestrel",
-			 fx, fy, (unsigned) fw, (unsigned) (fh + BAND_H))) {
+			 fx, fy, (unsigned) fw, (unsigned) fh)) {
 		fprintf(stderr, "KESTREL: frame init failed for 0x%lx\n",
 			(unsigned long) ev.window);
 		delete frame;
 		delete m;
 		return;
 	}
+	/* S4.3: the frame's 1px outline is the frame WINDOW's X border —
+	 * the sides and bottom of the frame's interior are occupied by
+	 * the client, so the outline cannot be painted there. */
+	XSetWindowBorderWidth(dpy, frame->xid(), 1);
+	XSetWindowBorder(dpy, frame->xid(), outlineTone(false));
 	FrameChrome *cv = new FrameChrome(m->title);
 
-	/* S4.1c: the frame's close plate asks the client to exit via
+	/* S4.1c: the frame's close box asks the client to exit via
 	 * the WM_DELETE_WINDOW protocol */
 	cv->setOnActivate([m]() {
 		focusClient(m);
 	});
+	cv->setOnZoom([m]() {
+		zoomClient(m);
+	});
+	cv->setOnToolbar([m]() {
+		toggleToolbar(m);
+	});
+	cv->setToolbarVisible(m->tbH > 0);
 	cv->setOnClose([m]() {
 		Atom wmProtocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
 		Atom wmDelete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
@@ -272,7 +568,7 @@ manageClient(const XMapRequestEvent &ev)
 	});
 	cv->setFrame({ {0, 0},
 		       { fw / Application::shared().pxPerPt(),
-			 (fh + BAND_H) / Application::shared().pxPerPt() } });
+			 fh / Application::shared().pxPerPt() } });
 	frame->setContentView(cv);
 	m->frame = frame;
 	m->chrome = cv;
@@ -288,18 +584,27 @@ manageClient(const XMapRequestEvent &ev)
 	 * client itself selected it), so a plain XSelectInput would
 	 * BadAccess; the grab + ReplayPointer is how a WM sees clicks
 	 * without stealing them. SubstructureNotify on the frame sees
-	 * the reparented client's unmap/destroy. */
+	 * the reparented client's unmap/destroy, and SubstructureRedirect
+	 * sends the client's own Map/Configure requests to the WM (which
+	 * is what makes them OBEYED on the frame's terms rather than
+	 * executed behind the WM's back). */
 	{
-		/* ADD SubstructureNotify to the toolkit's mask — a plain
-		 * XSelectInput would replace it (same connection) and the
-		 * frame would stop selecting Exposure/input. */
+		/* ADD to the toolkit's mask — a plain XSelectInput would
+		 * replace it (same connection) and the frame would stop
+		 * selecting Exposure/input. */
 		XWindowAttributes fa;
 
 		XGetWindowAttributes(dpy, frame->xid(), &fa);
 		XSelectInput(dpy, frame->xid(),
-			     fa.your_event_mask | SubstructureNotifyMask);
+			     fa.your_event_mask | SubstructureNotifyMask |
+			     SubstructureRedirectMask);
 	}
-	XReparentWindow(dpy, m->client, frame->xid(), 0, BAND_H);
+	/* S4.3: the client sits in the client rect of the frame (inset by
+	 * the lip on the sides and bottom) */
+	int ccx, ccy, ccw, cch;
+
+	clientRect(m, &ccx, &ccy, &ccw, &cch);
+	XReparentWindow(dpy, m->client, frame->xid(), ccx, ccy);
 	XGrabButton(dpy, Button1, AnyModifier, m->client, False,
 		    ButtonPressMask, GrabModeSync, GrabModeAsync,
 		    None, None);
@@ -314,19 +619,29 @@ manageClient(const XMapRequestEvent &ev)
 	if (!gActive) {
 		focusClient(m);		/* first window gets focus */
 	}
-	printf("KESTREL: manage 0x%lx '%s' frame=0x%lx at %d,%d %dx%d\n",
+	printf("KESTREL: manage 0x%lx '%s' frame=0x%lx at %d,%d %dx%d"
+	       " toolbar=%upx pref=%ux%u\n",
 	       (unsigned long) m->client, m->title,
-	       (unsigned long) frame->xid(), fx, fy, fw, fh);
+	       (unsigned long) frame->xid(), fx, fy, fw, fh,
+	       m->tbH, m->prefW, m->prefH);
 	fflush(stdout);
 }
 
 /* ---- S4.1d window drag state ----------------------------------------
  * (declared here, above the manage/unmanage code that must end an
  * active drag on a dying client before freeing its frame) */
+enum class DragMode { Move, Resize };
+
 static bool gDragActive = false;
 static Managed *gDragFrame = nullptr;
+static DragMode gDragMode = DragMode::Move;
 static int gDragOffX = 0;	/* grab point - frame origin (px) */
 static int gDragOffY = 0;
+static int gResizeEdges = 0;	/* EDGE_* the resize grab owns */
+static int gGrabRootX = 0;	/* the resize grab point (root px) */
+static int gGrabRootY = 0;
+static int gGrabFx = 0, gGrabFy = 0;	/* the frame rect at grab time */
+static int gGrabFw = 0, gGrabFh = 0;
 static bool gDragMoved = false;	/* any actual motion happened */
 static bool gBtnDown = false;	/* button state from press/release events */
 static long long gBtnUpMs = 0;	/* when the button last went up */
@@ -357,6 +672,7 @@ unmanageClient(::Window client, bool destroyed)
 			endDrag(gDragMoved);
 		}
 		argentum::Window *frame = m->frame;
+		FrameChrome *chrome = m->chrome;
 
 		for (size_t i = 0; i < gFrames.size(); i++) {
 			if (gFrames[i] == m) {
@@ -365,6 +681,7 @@ unmanageClient(::Window client, bool destroyed)
 			}
 		}
 		delete frame;	/* XDestroyWindow; the client is gone */
+		delete chrome;	/* the content view is not owned by the frame */
 		delete m;
 	} else if (m->mapped) {
 		/* an unmap of the client: unmap the frame too (kept for
@@ -378,7 +695,8 @@ unmanageClient(::Window client, bool destroyed)
 /* ---- S4.1b focus ----------------------------------------------------- */
 
 /* Make `m` the active client: repaint both bands, raise, focus the
- * input, publish _NET_ACTIVE_WINDOW. */
+ * input, publish _NET_ACTIVE_WINDOW. The frame's X border carries the
+ * 1px outline, so it flips with the focus too (S4.3). */
 static void
 focusClient(Managed *m)
 {
@@ -390,9 +708,11 @@ focusClient(Managed *m)
 	gActive = m;
 	if (prev && prev->chrome) {
 		prev->chrome->setActive(false);
+		XSetWindowBorder(dpy, prev->frame->xid(), outlineTone(false));
 	}
 	if (m->chrome) {
 		m->chrome->setActive(true);
+		XSetWindowBorder(dpy, m->frame->xid(), outlineTone(true));
 	}
 	XRaiseWindow(dpy, m->frame->xid());
 	XSetInputFocus(dpy, m->client, RevertToParent, CurrentTime);
@@ -424,18 +744,38 @@ nowMs()
 	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
 }
 
-/* Is (lx,ly) inside a frame's title band but NOT on the close plate?
- * (frame-local px; mirrors the FrameChrome plate geometry) */
+/* The resize grips: the frame's lip on the left/right/bottom, the
+ * band's top edge, and the 1px X border around all of it (a press on
+ * the border arrives with x<0 / y<0 / x>=fw / y>=fh). Returns the
+ * EDGE_* bitmask the grab owns, 0 = not a grip. */
+static int
+edgeHit(Managed *m, int lx, int ly)
+{
+	int e = 0;
+
+	if (lx < FRAME_PX) {
+		e |= EDGE_LEFT;
+	}
+	if (lx >= m->fw - FRAME_PX) {
+		e |= EDGE_RIGHT;
+	}
+	if (ly < GRIP_PX) {
+		e |= EDGE_TOP;
+	}
+	if (ly >= m->fh - FRAME_PX) {
+		e |= EDGE_BOTTOM;
+	}
+	return e;
+}
+
+/* Is (lx,ly) in the band, off the controls? (frame-local px) */
 static bool
 isBandGrabArea(Managed *m, int lx, int ly)
 {
 	if (ly < 0 || ly >= BAND_H || lx < 0 || lx >= m->fw) {
 		return false;
 	}
-	int plateX0 = m->fw - 18 - 6;
-
-	return !(lx >= plateX0 && lx < plateX0 + 18 &&
-		 ly >= (BAND_H - 16) / 2 && ly < (BAND_H - 16) / 2 + 16);
+	return bandControlAt(m->fw, lx, ly, m->tbH > 0) == BAND_NONE;
 }
 
 static void
@@ -444,7 +784,7 @@ beginDrag(Managed *m, int rootX, int rootY)
 	/* a phantom re-press mid-drag (flaky button state): keep the
 	 * drag state, just re-anchor + re-grab so the continuing
 	 * motion continues the same drag */
-	if (gDragActive && gDragFrame == m) {
+	if (gDragActive && gDragFrame == m && gDragMode == DragMode::Move) {
 		gDragOffX = rootX - m->fx;
 		gDragOffY = rootY - m->fy;
 		gBtnDown = true;
@@ -457,8 +797,35 @@ beginDrag(Managed *m, int rootX, int rootY)
 	}
 	gDragActive = true;
 	gDragFrame = m;
+	gDragMode = DragMode::Move;
 	gDragOffX = rootX - m->fx;
 	gDragOffY = rootY - m->fy;
+	gDragMoved = false;
+	gBtnDown = true;
+	XGrabPointer(dpy, m->frame->xid(), False,
+		     PointerMotionMask | ButtonReleaseMask,
+		     GrabModeAsync, GrabModeAsync, None, None,
+		     CurrentTime);
+	XRaiseWindow(dpy, m->frame->xid());
+	XSync(dpy, False);
+}
+
+/* S4.3: start (or re-anchor) a resize drag on the grabbed edges — the
+ * same session as a move, so the grab, the quiet-end rules and the
+ * abuse guards are shared. */
+static void
+beginResize(Managed *m, int edges, int rootX, int rootY)
+{
+	gDragActive = true;
+	gDragFrame = m;
+	gDragMode = DragMode::Resize;
+	gResizeEdges = edges;
+	gGrabRootX = rootX;
+	gGrabRootY = rootY;
+	gGrabFx = m->fx;
+	gGrabFy = m->fy;
+	gGrabFw = m->fw;
+	gGrabFh = m->fh;
 	gDragMoved = false;
 	gBtnDown = true;
 	XGrabPointer(dpy, m->frame->xid(), False,
@@ -476,6 +843,59 @@ dragTo(int rootX, int rootY)
 		return;
 	}
 	Managed *m = gDragFrame;
+
+	if (gDragMode == DragMode::Resize) {
+		/* apply the delta to the edges the grab owns, against the
+		 * frame rect at grab time; the frame and the client move
+		 * and resize together (applyFrameGeometry) */
+		int dx = rootX - gGrabRootX;
+		int dy = rootY - gGrabRootY;
+		int nx = gGrabFx, ny = gGrabFy;
+		int nw = gGrabFw, nh = gGrabFh;
+
+		if (gResizeEdges & EDGE_LEFT) {
+			nx = gGrabFx + dx;
+			nw = gGrabFw - dx;
+		}
+		if (gResizeEdges & EDGE_RIGHT) {
+			nw = gGrabFw + dx;
+		}
+		if (gResizeEdges & EDGE_TOP) {
+			ny = gGrabFy + dy;
+			nh = gGrabFh - dy;
+		}
+		if (gResizeEdges & EDGE_BOTTOM) {
+			nh = gGrabFh + dy;
+		}
+		if (nw < MIN_FRAME_W) {
+			nw = MIN_FRAME_W;
+			if (gResizeEdges & EDGE_LEFT) {
+				nx = gGrabFx + gGrabFw - MIN_FRAME_W;
+			}
+		}
+		if (nh < MIN_FRAME_H) {
+			nh = MIN_FRAME_H;
+			if (gResizeEdges & EDGE_TOP) {
+				ny = gGrabFy + gGrabFh - MIN_FRAME_H;
+			}
+		}
+		if (ny < BAR_H) {
+			/* the band stays out of the menubar strip: clamp the
+			 * top edge and re-derive the height from it */
+			ny = BAR_H;
+			if (gResizeEdges & EDGE_TOP) {
+				nh = gGrabFy + gGrabFh - ny;
+			}
+		}
+		if (nx == m->fx && ny == m->fy && nw == m->fw &&
+		    nh == m->fh) {
+			return;		/* no motion yet */
+		}
+		gLastMotionMs = nowMs();
+		applyFrameGeometry(m, nx, ny, nw, nh);
+		gDragMoved = true;
+		return;
+	}
 	int nx = rootX - gDragOffX;
 	int ny = rootY - gDragOffY;
 
@@ -510,16 +930,68 @@ endDrag(bool moved)
 	Managed *m = gDragFrame;
 
 	if (m) {
-		printf("KESTREL: move 0x%lx '%s' to %d,%d%s\n",
-		       (unsigned long) m->client, m->title, m->fx, m->fy,
-		       moved ? "" : " (no motion)");
+		if (gDragMode == DragMode::Resize) {
+			printf("KESTREL: resize 0x%lx '%s' to %dx%d%s\n",
+			       (unsigned long) m->client, m->title,
+			       m->fw, m->fh, moved ? "" : " (no motion)");
+		} else {
+			printf("KESTREL: move 0x%lx '%s' to %d,%d%s\n",
+			       (unsigned long) m->client, m->title,
+			       m->fx, m->fy, moved ? "" : " (no motion)");
+		}
 		fflush(stdout);
 	}
 	XUngrabPointer(dpy, CurrentTime);
 	XSync(dpy, False);
 	gDragActive = false;
 	gDragFrame = nullptr;
+	gDragMode = DragMode::Move;
+	gResizeEdges = 0;
 	gBtnDown = false;
+}
+
+/* ---- S4.3 zoom + toolbar -------------------------------------------- */
+
+/* The zoom box: grow the frame to the size the client published
+ * (_ARGENTUM_PREFERRED_SIZE = the client's own window size, so a
+ * window carrying a toolbar strip declares it with the strip). A
+ * second press is a no-op — the frame is already at it. */
+static void
+zoomClient(Managed *m)
+{
+	if (!m->prefW || !m->prefH) {
+		return;		/* nothing declared: the box does nothing */
+	}
+	int fw = (int) m->prefW + 2 * FRAME_PX;
+	int fh = BAND_H + (int) m->prefH + FRAME_PX;
+
+	if (!m->toolbar && m->tbH > 0) {
+		fh -= (int) m->tbH;	/* the strip is hidden */
+	}
+	applyFrameGeometry(m, m->fx, m->fy, fw, fh);
+	printf("KESTREL: zoom 0x%lx '%s' to %dx%d\n",
+	       (unsigned long) m->client, m->title, m->fw, m->fh);
+	fflush(stdout);
+}
+
+/* The show/hide-toolbar box: the strip is the CLIENT's content, so the
+ * toggle is geometry — the frame reserves (or drops) the strip's
+ * height and the client's window follows; the client redraws into
+ * whatever it is given. */
+static void
+toggleToolbar(Managed *m)
+{
+	if (!m->tbH) {
+		return;
+	}
+	m->toolbar = !m->toolbar;
+	int fh = m->fh + (m->toolbar ? (int) m->tbH : -(int) m->tbH);
+
+	applyFrameGeometry(m, m->fx, m->fy, m->fw, fh);
+	printf("KESTREL: toolbar 0x%lx '%s' %s (%upx)\n",
+	       (unsigned long) m->client, m->title,
+	       m->toolbar ? "on" : "off", m->tbH);
+	fflush(stdout);
 }
 
 /* ---- drag end -------------------------------------------------------
@@ -593,9 +1065,11 @@ reapDeadClients()
 			endDrag(gDragMoved);
 		}
 		argentum::Window *frame = m->frame;
+		FrameChrome *chrome = m->chrome;
 
 		gFrames.erase(gFrames.begin() + (long) i);
 		delete frame;
+		delete chrome;	/* the content view is not owned by the frame */
 		delete m;
 	}
 	return false;		/* the caller keeps idling */
@@ -637,18 +1111,42 @@ kestrelHook(void *xevent)
 				return true;
 			}
 		}
-		/* a press in a FRAME's title band (off the close plate)
-		 * starts a drag; the close plate is left to the toolkit
-		 * so the FrameChrome closes the client */
+		/* S4.3: a press on a FRAME's edge/corner grip resizes it
+		 * (the lip, the band's top edge, or the 1px X border);
+		 * a press on a band control is left to the toolkit (the
+		 * FrameChrome runs the close/zoom/toolbar callbacks); any
+		 * other band press starts a MOVE. */
 		for (Managed *m : gFrames) {
-			if (ev->xbutton.window == m->frame->xid() &&
-			    isBandGrabArea(m, ev->xbutton.x,
-					   ev->xbutton.y)) {
+			if (ev->xbutton.window != m->frame->xid()) {
+				continue;
+			}
+			int lx = ev->xbutton.x;
+			int ly = ev->xbutton.y;
+			int edges;
+
+			/* a band control belongs to the toolkit (the
+			 * FrameChrome runs the close/zoom/toolbar
+			 * callbacks): check it BEFORE the grips, whose
+			 * top band overlaps the controls' first row */
+			if (ly >= 0 && ly < BAND_H && lx >= 0 && lx < m->fw &&
+			    bandControlAt(m->fw, lx, ly, m->tbH > 0) !=
+				    BAND_NONE) {
+				return false;
+			}
+			edges = edgeHit(m, lx, ly);
+			if (edges) {
 				focusClient(m);
-				beginDrag(m, ev->xbutton.x_root,
-					  ev->xbutton.y_root);
+				beginResize(m, edges, ev->xbutton.x_root,
+					    ev->xbutton.y_root);
 				return true;
 			}
+			if (!isBandGrabArea(m, lx, ly)) {
+				return false;	/* a control: the toolkit's */
+			}
+			focusClient(m);
+			beginDrag(m, ev->xbutton.x_root,
+				  ev->xbutton.y_root);
+			return true;
 		}
 		return false;
 	case MotionNotify:
@@ -700,23 +1198,56 @@ kestrelHook(void *xevent)
 		manageClient(ev->xmaprequest);
 		return true;
 	case ConfigureRequest: {
-		/* the client asks for a geometry change: pass it through
-		 * (v1 clients never move/resize after mapping) */
+		/* a client asks for a geometry change: the frame redirects
+		 * its children, so the request lands here instead of being
+		 * executed. The requested size is the CLIENT window's, so
+		 * it becomes a frame resize (client size + the frame's
+		 * lip) and the client is placed by the client rect —
+		 * applying it to the client directly would drift it out of
+		 * its frame. Placement (width/height only) is the WM's job:
+		 * v1 clients never move themselves. */
 		Managed *m = findFrame(ev->xconfigurerequest.window);
 
-		if (m) {
-			XWindowChanges wc;
+		if (!m) {
+			return true;
+		}
+		unsigned int mask =
+			(unsigned int) ev->xconfigurerequest.value_mask;
 
-			memset(&wc, 0, sizeof(wc));
-			wc.x = ev->xconfigurerequest.x;
-			wc.y = ev->xconfigurerequest.y;
-			wc.width = ev->xconfigurerequest.width;
-			wc.height = ev->xconfigurerequest.height;
-			wc.border_width = ev->xconfigurerequest.border_width;
-			wc.sibling = ev->xconfigurerequest.above;
-			wc.stack_mode = ev->xconfigurerequest.detail;
-			XConfigureWindow(dpy, m->client,
-					 ev->xconfigurerequest.value_mask, &wc);
+		if (mask & (CWWidth | CWHeight)) {
+			/* sizes come from another client: clamp before the
+			 * frame arithmetic */
+			int rw = (int) ev->xconfigurerequest.width;
+			int rh = (int) ev->xconfigurerequest.height;
+			XWindowAttributes ca;
+
+			if (rw > 16384) {
+				rw = 16384;
+			}
+			if (rh > 16384) {
+				rh = 16384;
+			}
+			if (rw < 1) {
+				rw = 1;
+			}
+			if (rh < 1) {
+				rh = 1;
+			}
+			if (!XGetWindowAttributes(dpy, m->client, &ca)) {
+				return true;
+			}
+			int cw = (mask & CWWidth) ? rw : ca.width;
+			int ch = (mask & CWHeight) ? rh : ca.height;
+
+			/* a request that already matches the client is the
+			 * echo of our own applyFrameGeometry: applying it
+			 * again would re-enter forever */
+			if (cw == ca.width && ch == ca.height) {
+				return true;
+			}
+			applyFrameGeometry(m, m->fx, m->fy,
+					   cw + 2 * FRAME_PX,
+					   BAND_H + ch + FRAME_PX);
 		}
 		return true;
 	}

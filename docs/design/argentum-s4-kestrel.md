@@ -307,7 +307,16 @@ two apps, the bar swaps with focus, picks trigger app actions.
 
 ## S4.3 — Platinum window frames, resize affordance in the chrome
 
-*Status: DESIGN (2026-09), decided; implementation is the next slice.*
+*Status: **DONE** (2026-09).* Built in `userland/kestrel/kestrel.cpp`
+(the frame, the resize mode of the drag session, the zoom + toolbar
+boxes) and `userland/argentum/` (the two published hints in
+`Window::setPreferredContentSize` / `setToolbarHeight`); probes
+`userland/tests/krel_a.cpp` / `krel_b.cpp`; gate `.build/s43_run.sh` +
+`s43_assert.py` -> **S43-OK** (25 checks: the outline, the 20px band,
+the three band controls and the grow box in the right theme tones, an
+edge drag that resizes the frame AND the client, the toolbar toggle's
+geometry, the zoom to the published size, the S4.1d move still live,
+the close box).
 This supersedes the first version of this section, which put the handle
 in the client's content view. That was the wrong side of the line: the
 frame is the WM's, so the affordances on it are the WM's too.
@@ -407,6 +416,13 @@ specified.
   it, and the toolkit knows it: its content view's `contentSize()`.
 - the toolbar strip's height, so the WM reserves the right amount.
 
+As built (`Window::setPreferredContentSize` / `setToolbarHeight`,
+CARDINAL properties read by the WM at map time): the preferred size is
+the CLIENT WINDOW size, so a window that carries its own strip declares
+the size with the strip, and the zoom subtracts the strip's height when
+the strip is hidden. The strip's height is the client's; the WM only
+reserves it.
+
 
 ### Edit plan (anchors verified against the tree, 2026-09)
 
@@ -442,3 +458,72 @@ specified.
   client's hints. The preferred size is the content view's
   `contentSize()`, so publish from `setContentView` and after a resize
   rather than at init — there is no content view yet at init.
+
+### As built (deviations, and what the slice uncovered)
+
+The edit plan above was written against the pre-S4.3 tree; these are the
+places where the code landed differently, and the two toolkit bugs the
+slice uncovered.
+
+- **The lip is 4px, and the client is inset by it.** The plan's "1px
+  style side and bottom insets" and "a few px band along each edge" pull
+  in opposite directions: with the client flush to a 1px outline there is
+  no WM-owned strip to put the grips or the grow box in, and 1px is not a
+  grab target. So `FRAME_PX = 4` is the frame's lip on the left, right
+  and bottom (the client's content rect is `fw - 2*FRAME_PX` by
+  `fh - BAND_H - FRAME_PX`), the 1px outline is the frame WINDOW's X
+  border outside it, and the grow box is two short lines in the lip's
+  lower-right corner. `BAND_H` is 20 (was 26). **X positions a bordered
+  window by its OUTER corner**, so a frame created at (60,80) has its
+  inside at (61,81) — the gate's pixels are derived from that.
+- **`contentRect()` is one helper** (`clientRect`), used by the
+  reparent, `applyFrameGeometry` (the one place frame geometry is
+  applied: move, resize, zoom, toolbar) and ConfigureRequest.
+- **Resize grips** = the lip on the left/right/bottom, the band's top
+  `GRIP_PX` rows, and the 1px X border (a press on the border arrives
+  with x/y outside the window). A press in the band **on a control** wins
+  over a grip: the WM hands it to the toolkit so the `FrameChrome` runs
+  the close/zoom/toolbar callback, and only then considers grips and the
+  move. `bandControlAt()` is shared by the WM's press handler and the
+  chrome's hit-test so the two cannot drift.
+- **The frames select `SubstructureRedirect` too**, so a client's own
+  Map/Configure requests land in the WM's hook and are answered on the
+  frame's terms (a size request becomes a frame resize; the client is
+  never moved behind the WM's back). Its own `applyFrameGeometry` comes
+  back as a redirected ConfigureRequest, so the handler drops a request
+  that already matches the client — that is what keeps it from
+  re-entering.
+- **Two toolkit bugs, found here and fixed here** (both latent until a
+  frame had a border and a WM resized its client — neither is Kestrel's,
+  and both are worth the lines because the failure modes were a WM crash
+  and a silent geometry drift):
+  - a window with a non-zero `border_width` also gets Exposes for its
+    **border**, with coordinates outside the window (`x = -1`, or
+    `x = width`). `Window::noteDamage` took them at face value, so
+    `flushBacking` indexed the backing with them and walked past the
+    pixman buffer — a wild write that page-faulted the WM. `noteDamage`
+    now clips to the window and drops a rect entirely outside it.
+    (`docs/reference/xfb-input-vs-upstream.md`-style note: nothing else
+    in the toolkit ever had a border, so no window had ever seen one.)
+  - the event loop resolved a ConfigureNotify's window through
+    `ev.xany.window`, which aliases `XConfigureEvent`'s **event** field,
+    not its `window` field. A frame gets SubstructureNotify
+    ConfigureNotify for its reparented CLIENT, so the frame's toolkit
+    window was resized to the client's geometry — its bands drifted by
+    the lip and the toolbar box's hit-test missed by 8px. Only
+    `window == event` resizes a window now.
+- **Deferred, not dropped** (decisions, not omissions):
+  - **minimize** still needs the task list, and **shading**
+    (double-click the title bar) is still undesigned; the inactive
+    frame's cue stays "the accent tint falls away and the band goes
+    flat".
+  - **The toolbar toggle has no state bit.** The wire carries the
+    client's strip height only, and the toggle is geometry (the WM adds
+    or removes the strip's height from the client's rect), so a client
+    cannot tell "hidden" from "resized taller" — a client that wants to
+    drop its toolbar needs a WM->client property (`_ARGENTUM_TOOLBAR_
+    VISIBLE`). The gate asserts the geometry it does have: the frame and
+    the client both lose exactly the strip's 22px.
+  - `_NET_WM_MOVERESIZE` / `_NET_SUPPORTING_WM_CHECK`: not needed at
+    all under this design — the WM owns the affordances, so no client
+    ever asks to be resized.
