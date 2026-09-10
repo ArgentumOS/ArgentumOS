@@ -27,7 +27,12 @@ ships both doors:
 - **Audio**: SDL3 still carries the **OSS driver** (`dsp` — "Open
   Sound System (/dev/dsp)"), which is precisely FNX's audio family
   (sb16, gus, es1370, ac97, intel-hda, virtio-snd, …). `SDL_AudioOpenDevice`
-  speaks to `/dev/dsp` with no new kernel surface.
+  speaks to `/dev/dsp` with no new kernel surface. **But that path is
+  exclusive**: the shipping default should be a **mixer-native SDL
+  audio backend** over the first-party audio service
+  (docs/design/audio-mixer-plan.md §4), so games mix with other apps;
+  the `dsp` backend stays for direct/exclusive mode and hardware
+  bring-up.
 - **Input**: via X11 events (keyboard/mouse already reach Xfb) — no
   evdev dependency needed.
 
