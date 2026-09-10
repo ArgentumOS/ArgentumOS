@@ -76,9 +76,12 @@ an unsigned app can claim. The prompt still applies either way, and
 items may opt into "verified identity required". **Blessing an
 unsigned bundle (§3 of that plan) is not verification**: a blessed
 app stays `self-asserted`, so a `verified identity required` item
-still refuses it silently. Process isolation (sandboxing, unplanned)
-remains the other gap; both are recorded here so the ACL prompt is
-not mistaken for a sandbox.
+still refuses it silently. Identity *source* is ordered — **`bundle`**
+(launcher-established, docs/design/bundle-launch-plan.md) >
+**`verified`** (signature) > **`self-asserted`** (neither) — and an
+item may require the stronger sources. Process isolation
+(sandboxing, unplanned) remains the other gap; both are recorded
+here so the ACL prompt is not mistaken for a sandbox.
 
 **Side benefits / watch items**: with no swap today, secrets cannot
 be paged to disk (**when the swap plan lands, verify an

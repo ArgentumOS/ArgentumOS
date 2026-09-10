@@ -68,14 +68,18 @@ prompt at all.
 - **Informed prompting**: if a signature exists but its key is
   untrusted, the prompt shows the key fingerprint — blessing is a
   decision about a *known* key, not a guess.
-- **Honest limits (important)**: this is a **safety prompt, not a
-  security boundary**. It lives in the launch path (the app model's
-  launch flow — the launcher, open-with, Workspace), so **running the
-  bundle's executable directly from a shell bypasses it**, and the
-  ELF loader still never checks anything. It also does not make the
-  app sandboxed, and it does **not** grant a verified identity: an
-  unsigned app stays `self-asserted` for keychain ACLs, and an item
-  marked *verified identity required* still refuses it silently.
+- **Honest limits**: this is a **safety prompt, not a security
+  boundary**. It lives in the launch path, and the ELF loader never
+  checks signatures. Direct execution of a bundle payload is
+  **refused by the kernel**, not merely unprompted: payload
+  executables are marked at install and require a launcher-created
+  bundle identity (docs/design/bundle-launch-plan.md). What remains
+  possible is **copying the payload out** of the bundle and running
+  the copy — a different, unmarked file that runs identity-less. It
+  also does not make the app sandboxed, and it does **not** grant a
+  verified identity: an unsigned app stays `self-asserted` for
+  keychain ACLs, and an item marked *verified identity required*
+  still refuses it silently.
 
 ## 4. Where verification is used (and where it is not)
 
@@ -85,7 +89,7 @@ prompt at all.
 | **keychain item ACLs** | the one place signing changes behaviour: ACL entries record the identity's **verification strength** (see below) |
 | updater (shared-libraries plan) | reports the signing key of an update; unsigned updates still apply |
 | **launch path** (launcher / open-with / Workspace) | checks the **blessing record** for unsigned or untrusted-key bundles; prompts once (§3); signed-with-trusted-key passes silently |
-| loader / exec | **never** — no signature check at ELF load; a direct exec of a bundle binary bypasses the blessing gate too |
+| loader / exec | never checks **signatures**; `execve` **does** check the bundle marker + identity (docs/design/bundle-launch-plan.md) — a direct exec of a marked payload is refused |
 | file manager / launcher | may display the status marker; no gating |
 
 **Keychain ACL semantics** (the design consequence): an ACL entry

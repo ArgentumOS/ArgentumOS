@@ -128,6 +128,11 @@ helpers:
                            (type = agfs|swap|esp by reserved GUID; table auto-detected GPT|MBR)
 /System/Tools/account      person-object verbs: "account <user> add|delete|password|group <g> add|remove|shell <sh>"
 /System/Tools/group        group-object verbs: "group <name> create|delete" (Admin)
+/System/Tools/launch       "launch <bundle>" / "open <bundle>" — the sanctioned app door: checks
+                           signature/blessing, then (its one privileged act) establishes the
+                           bundle identity and execs the payload **as the user** (never euid 0).
+                           Required because bundle payloads are marked at install and refuse
+                           direct exec without that identity (docs/design/bundle-launch-plan.md)
 /System/Tools/install     "install <bundle> <global|local>" — validate + install a bundle
                            (app bundles → /Applications | ~/Applications; shared-resource bundles
                            (libraries/fonts/resources only) → /Shared | ~/Shared by payload type;
@@ -349,7 +354,11 @@ exec of bundle content** — install is validated data motion.
 **Signature status is reported, never required**: when a bundle
 carries a detached signature, `install` verifies it and prints
 `verified (key …)` / `unverified`, and installs either way
-(docs/design/bundle-signing-plan.md).
+(docs/design/bundle-signing-plan.md). Install also **marks the
+bundle's payload executables** with `AGFS_INODE_BUNDLE_ENTRY` (both
+scopes), which is what makes the launch door enforceable
+(docs/design/bundle-launch-plan.md): the payload then execs only
+under a launcher-created bundle identity.
 Installed bundles are System-owned (origin model); apps run as the
 person, never modify themselves.
 

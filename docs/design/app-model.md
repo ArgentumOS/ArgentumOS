@@ -93,10 +93,20 @@ Fields:
 5. The app connects to the X server, creates windows, and publishes
    its global menubar (`menubar_set`).
 
-A bundle's executable is an ordinary binary and can also be run
-directly — the bundle is the *packaged* form, and a direct exec
-bypasses the blessing gate (a documented limit of the policy, not an
-oversight).
+Steps 1–3 and 4–5 are separated by the privileged door: they are
+**the `launch` helper's** job (setuid System, docs/design/
+bundle-launch-plan.md), which performs the blessing check
+unprivileged, then makes its one privileged act — establishing the
+process's **bundle identity** and performing the exec, with the
+payload running as the user (never with euid 0).
+
+A bundle's executable is an ordinary binary *inside* the bundle, but
+**it is not directly runnable**: `install` marks payload executables
+(`AGFS_INODE_BUNDLE_ENTRY`) and `execve` refuses a marked file
+unless the caller carries that bundle's launcher-created identity —
+so `./Foo.app/bin/Foo` fails from a shell and the bundle is launched,
+not its guts. Copying the payload out of the bundle and running the
+copy still works, identity-less (the honest ceiling of the scheme).
 
 ## 5. Integration with the rest of the design
 
