@@ -14,7 +14,7 @@
 
 static const int WIN_X = 20;
 static const int WIN_Y = 20;
-static const unsigned WIN_W = 960;	/* 720 pt @ 4/3 */
+static const unsigned WIN_W = 1240;	/* 930 pt @ 4/3 (S2.1d column) */
 static const unsigned WIN_H = 720;	/* 540 pt @ 4/3 */
 
 static int zooActs = 0;
@@ -102,7 +102,7 @@ main()
 	}
 
 	ContentView v;
-	v.setFrame({ {0, 0}, {720, 540} });
+	v.setFrame({ {0, 0}, {930, 540} });	/* 720 + the S2.1d column */
 	double lx = 16;		/* left column */
 	double rx = 372;	/* right column */
 	double w1 = 340;	/* column width */
@@ -446,6 +446,55 @@ main()
 	v.addSubview(&tabs);
 
 	zoo_log("s25:band");
+
+	/* ---- S2.1d: sibling-relative strut, in the free column right of the
+	 * board (x >= 736 is clear for the whole height; the screen is
+	 * 1280x800, so the board grows sideways rather than down). The right
+	 * panel's LEFT edge is bound to the left panel's RIGHT edge + 8pt,
+	 * so it slides with the panel it is tied to instead of being pinned
+	 * to the band. The slider resizes the BAND, and that is what
+	 * re-runs the springs pass which resolves the binding: the gap stays
+	 * 8pt and the trailing panel keeps its width as the leading one
+	 * grows. Resizing the window does the same thing. ---- */
+	{
+		static argentum::View strutBand;
+		static PaneView strutRef(0x2288ee), strutBound(0xf0a030);
+		static argentum::Slider strutDrive;
+
+		strutBand.setFrame({ {760, 40}, {150, 144} });
+		/* the band resizes with the window, and the slider below
+		 * resizes it directly - either way its own pass runs, which is
+		 * what resolves the binding. Pinned, it would never relayout. */
+		strutBand.setAutoresizingMask(
+			argentum::View::AutoresizingFlexibleWidth |
+			argentum::View::AutoresizingFlexibleHeight);
+		strutRef.setFrame({ {0, 0}, {60, 36} });
+		strutRef.setAutoresizingMask(
+			argentum::View::AutoresizingFlexibleWidth);
+		strutBound.setFrame({ {68, 0}, {70, 36} });
+		strutBound.setAutoresizingMask(
+			argentum::View::AutoresizingFlexibleWidth);
+		/* the binding itself: sBound's left is 8pt past sRef's right */
+		strutBound.setStrutReference(argentum::View::Edge::Left,
+					     &strutRef,
+					     argentum::View::Edge::Right, 8);
+		strutBand.addSubview(&strutRef);
+		strutBand.addSubview(&strutBound);
+
+		strutDrive.setRange(0.0, 1.0);
+		strutDrive.setValue(1.0);
+		strutDrive.setFrame({ {0, 60}, {140, 22} });
+		strutDrive.setAction([](argentum::Control *c) {
+			argentum::Slider *s = static_cast<argentum::Slider *>(c);
+
+			zoo_log("strut");
+			strutBand.setFrame({ {760, 40},
+					     {90 + 60 * s->value(), 144} });
+		});
+		strutBand.addSubview(&strutDrive);
+		v.addSubview(&strutBand);
+		zoo_log("s21d:strut-band");
+	}
 
 	/* a11y battery: every v1-cut widget's role (S2.5 whole-board) */
 	std::fprintf(stderr,
