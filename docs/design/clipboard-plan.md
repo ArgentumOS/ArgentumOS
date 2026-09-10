@@ -46,7 +46,43 @@ model. Two consequences that are the whole point:
   feature, `/System/Variable Data`, setting-gated) is a separate,
   later thing (§5).
 
-## 3. UIKit integration
+## 3. X11 selections: disabled in the server
+
+The X clipboard is **not merely unbridged — the mechanism is
+disabled entirely in Xfb**. The single-clipboard rule is enforced by
+the server, not by convention: there is no way for a second
+clipboard to exist, and the removed machinery is also a smaller
+attack/conformance surface.
+
+**Protocol semantics are clean failures, not hangs or crashes**
+(the opcodes stay dispatched — unknown-request paths are the wrong
+answer):
+
+| Request | Behaviour |
+|---|---|
+| `SetSelectionOwner` | never takes effect — no ownership is recorded, no `SelectionClear` is ever emitted |
+| `GetSelectionOwner` | always `None` |
+| `ConvertSelection` | `SelectionNotify` with `property = None` (the protocol's "no data" answer) |
+| events | no `SelectionNotify`/`SelectionClear`/`SelectionRequest` are ever generated |
+
+Clients therefore see consistent unavailability — the correct
+protocol answer — rather than a broken server. Selection atoms
+remain interned (harmless).
+
+**Implementation**: gut `dix/selection.c` to refusal stubs and delete
+the selection state, keeping the three dispatch entries in
+`dix/tables.c` (core `SetSelectionOwner`/`GetSelectionOwner`/
+`ConvertSelection`) so the opcodes are *handled*; audit and disable
+any XFIXES selection wiring the same way; drop the state-carrying
+object from the Makefile if the stubs move. Consequence: xterm-class
+clients lose clipboard (accepted — they are out of scope), toolkit
+Xdnd/selection paths degrade cleanly (drag-and-drop is out of scope
+anyway), and every UIKit app plus the terminal uses the pasteboard.
+
+**Sequencing**: this lands with C0 — until then no clipboard exists
+at all, which is strictly better than two.
+
+## 4. UIKit integration
 
 - Standard shortcuts (Cmd/Ctrl-C/X/V) route to the pasteboard;
   `TextField`, `TextView`, and the terminal's cell grid declare
@@ -56,14 +92,17 @@ model. Two consequences that are the whole point:
 - Widget selection semantics are untouched: selecting text is a
   *view* state; copying is what reaches the system clipboard.
 
-## 4. Milestones
+## 5. Milestones
 
-### C0 — Service skeleton + client API (text)
+### C0 — Service skeleton + client API (text) + server-side disable
 Pasteboard service started by the session manager; in-memory,
-UTF-8-text-only; `Pasteboard::general()` client in the UIKit.
+UTF-8-text-only; `Pasteboard::general()` client in the UIKit; **X11
+selections disabled in Xfb** (§3).
 **Acceptance**: copy in one UIKit app, paste in another, text
 byte-exact; kill the copying app → paste still works; `changeCount`
-increments once per set.
+increments once per set; a client's `SetSelectionOwner`/
+`ConvertSelection` get the clean-failure semantics above
+(`GetSelectionOwner` → `None`) with no hang.
 
 ### C1 — Types + the SHM path
 Typed content (text + image + file references); large payloads via
@@ -80,13 +119,12 @@ Workspace, Terminal, Editor, and Viewer in one session.
 Clipboard history as user data under `/System/Variable Data`,
 setting-gated. Not v1.
 
-## 5. Out of scope (recorded)
+## 6. Out of scope (recorded)
 
-- **X selection interop** (the scope rule): UIKit apps do not use
-  `CLIPBOARD`/`PRIMARY` for the system clipboard and we guarantee
-  nothing for non-UIKit programs — even though all UIKit apps are X
-  clients, an X client claiming a selection is neither honoured nor
-  bridged.
+- **X selection interop — and the mechanism itself**: UIKit apps do
+  not use `CLIPBOARD`/`PRIMARY` for the system clipboard, and the
+  server **refuses selections outright** (§3): an X client cannot
+  claim one, and we guarantee nothing for non-UIKit programs.
 - PRIMARY/SECONDARY/MULTIPLE semantics, per-app clipboards,
   drag-and-drop (its own protocol if ever), clipboard history in v1,
   and cross-machine clipboard sync.
