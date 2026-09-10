@@ -62,6 +62,7 @@
 
 struct kbdaux {
 	int count;		/* open readers */
+	int dropped;		/* records dropped whole (queue full) */
 	struct clist read_q;
 };
 extern struct kbdaux *kbdaux_table;

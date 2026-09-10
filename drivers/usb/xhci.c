@@ -992,6 +992,19 @@ int xhci_probe(void)
 	if(xhci_ring_init(&xhci->evt, EVT_RING_TRBS) < 0) {
 		return -ENOMEM;
 	}
+	/* The event ring is a HARDWARE-managed segment: the controller
+	 * wraps it by itself at ERSTSZ and software must never write TRBs
+	 * into it.  xhci_ring_init() appends a trailing LINK TRB (needed
+	 * by the software-produced command/transfer rings), and that LINK
+	 * carries its cycle bit set - which is fatal here: the consumer
+	 * (xhci_event_wait) scans slots sequentially, so after size-1
+	 * events its index lands exactly on the LINK, matches its cycle
+	 * bit, consumes it as an event and flips the consumer CCS a full
+	 * pass early.  From then on every real event (cycle bit still the
+	 * hardware's) is rejected: the whole USB stack goes silent ~size
+	 * events after boot - mouse and keyboard stop dead while the rest
+	 * of the kernel keeps running.  Zero it out. */
+	memset_b(&xhci->evt.trbs[EVT_RING_TRBS - 1], 0, sizeof(struct xhci_trb));
 	xhci->evt_phys = xhci->evt.phys;
 
 	if(!(phys = (unsigned long)V2P((addr_t)kmalloc(4096)))) {

@@ -197,6 +197,23 @@ void mousedev_event(int buttons, int wheel, int dx, int dy, int hwheel)
 
 	{
 		int n;
+
+		/* A record must enter the queue whole.  charq_putchar()
+		 * returns -EAGAIN when the queue is full, so inserting the
+		 * eight bytes blindly can leave a *partial* record in the
+		 * stream: every later 8-byte record is then shifted and the
+		 * reader decodes garbage - fabricated button edges and wild
+		 * deltas (exactly the "button released while held", "window
+		 * jumps" symptoms).  Drop the whole record instead; the
+		 * pointer merely misses one motion sample. */
+		if(charq_room(&mousedev_table->read_q) < MOUSE_EVENT_SIZE) {
+			mousedev_table->dropped++;
+			if(mousedev_table->dropped == 1 || !(mousedev_table->dropped % 128)) {
+				printk("mouse: record dropped (queue full, total %d)\n",
+					mousedev_table->dropped);
+			}
+			return;
+		}
 		for(n = 0; n < MOUSE_EVENT_SIZE; n++) {
 			charq_putchar(&mousedev_table->read_q, rec[n]);
 		}

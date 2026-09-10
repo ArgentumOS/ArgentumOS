@@ -1,9 +1,14 @@
-# Xfb: pointer input stalls after a fast burst (OPEN)
+# Xfb: pointer input stalls after a fast burst (RESOLVED)
 
-Status: **OPEN finding (2026-09).** Reproducible. The symptom was first
-reported by the user as *"it freezes the GUI but not the whole system
-(the debug console still works) when I drag a window"* after the live
-drag work (S4.1) landed on the native input device.
+Status: **CLOSED (2026-09).** Root cause found and fixed in the xHCI
+event ring - see "Resolution" at the end. The symptom was first reported
+by the user as *"it freezes the GUI but not the whole system (the debug
+console still works) when I drag a window"* after the live drag work
+(S4.1) landed on the native input device.
+
+**The X server was never at fault**, which is why every earlier
+hypothesis here (wait-set loss, fd collision, record desync, the input
+thread) turned out wrong: the device was simply never fed again.
 
 ## Symptom
 
@@ -93,3 +98,84 @@ reported readable even though the kernel has data queued.
   (`docs/design/native-input-plan.md`).
 - Pointer clamp: `bc2e3e4`.
 - Live drags: `docs/design/argentum-s4-kestrel.md` (S4.1).
+
+## Resolution (2026-09): the HID interrupt transfer was never re-armed
+
+The stall was **not** in Xfb, the kernel input device, or the wait set.
+It is an xHCI event-ring initialisation bug.
+
+### Root cause
+
+`xhci_ring_init()` appends a trailing LINK TRB to every ring it builds.
+That is correct for the software-produced rings - the command ring and
+the per-endpoint transfer rings - whose producer walks them and needs the
+cycle flip that the LINK provides. The **event ring is not a software
+ring**: the controller owns it, wraps it itself at `ERSTSZ`, and software
+only ever reads it.
+
+The event-ring consumer (`xhci_event_wait()`) walks slots sequentially
+from `xhci->evt.enq`, so after `EVT_RING_TRBS - 1` = 127 events its index
+lands exactly on that stale LINK TRB. The LINK has its cycle bit set, so
+the consumer matches it, **consumes the LINK as if it were an event**,
+and flips its CCS a full pass early. The controller is still on the old
+cycle, so from then on every real event is rejected. Instrumentation:
+
+    xhci: evt #112 idx=112 ccs=1 type=32   <- ordinary transfer events
+    xhci: evt WRAP #127 ccs=0 wraps=1      <- consumed the LINK, wrapped early
+    xhci: evt #128 idx=0 ccs=0 type=6      <- type 6 = LINK TRB, not an event
+    xhci: poll #3072 enq=0 ccs=0           <- and never another event
+
+The controller's transfer-completion event for the HID interrupt-IN is
+therefore never seen, so `usb_mouse_cb()` never runs, so the interrupt
+transfer is never re-submitted: **the pointer (and keyboard) go
+permanently silent ~127 events after boot**, while the kernel, the X
+server and the serial console continue normally. Xfb behaves correctly
+throughout - it polls its fd, the kernel queue is empty (no records are
+ever produced again), so nothing arrives.
+
+That single mechanism explains the whole symptom set: "it freezes the GUI
+while I drag" (a drag is what generates enough reports to cross the
+ring), "fast drags drop the window", "click-and-hold reads as
+click-and-release" (reports stop mid-click), and "the window follows the
+moving mouse" (input only comes back on reboot). It also explains why the
+earlier device-side trace showed a fixed number of reports and then
+nothing, and why a *new client* could still connect.
+
+### Fix
+
+`drivers/usb/xhci.c`: after `xhci_ring_init(&xhci->evt, EVT_RING_TRBS)`,
+zero the trailing slot (`memset_b(&xhci->evt.trbs[EVT_RING_TRBS - 1], 0,
+sizeof(struct xhci_trb))`), with a comment recording why the LINK is
+fatal there and necessary in the other rings.
+
+### Evidence
+
+Gate `.build/s41i_run.sh`: park + find the band + press + drag; burst into
+the bottom-right corner; park again, fresh screendump, re-find the band,
+**verified** press, drag twice.
+
+- Before: only leg 1 logs `KESTREL: move ... to 120,120`; the trace ends
+  with the LINK consumption above and `enq=0 ccs=0` forever.
+- After: all three legs move - `to 120,120`, `to 180,160`, `to 220,180`
+  (each the exact expected delta) - the post-wrap event is a real
+  `type=32`, and the held button is carried through the drag
+  (`btn=01 dx=40 dy=20`).
+
+### Alongside: whole-record queueing (latent, fixed while here)
+
+Both record producers (`mousedev_event()`, `kbdaux_event()`) inserted
+their fixed-size record with byte-at-a-time `charq_putchar()` calls and
+ignored the return value. `charq_putchar()` returns `-EAGAIN` when the
+1024-byte queue is full, so a burst that outran the reader could leave a
+*partial* record in the stream - shifting every later 8-byte (or 4-byte)
+record and feeding the reader garbage, i.e. exactly the fabricated
+button edges and wild deltas this device exists to eliminate. Both now
+check `charq_room()` first and drop the **whole** record when it does not
+fit (incrementing `dropped`, warning on the first and every 128th), so
+the stream can never be torn.
+
+Note for future instrumentation: Xfb's fd-2 traces land in
+`/System/Variable Data/log/Xfb.log` (init dup2's fd 2 to the file), and
+that file **accrues across boots** - dump a filtered view, not `tail -N`.
+Kernel `printk` goes to the serial console directly and is far easier to
+read.

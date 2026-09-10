@@ -45,6 +45,7 @@
 
 struct mousedev {
 	int count;
+	int dropped;		/* records dropped whole (queue full) */
 	struct clist read_q;
 };
 extern struct mousedev *mousedev_table;

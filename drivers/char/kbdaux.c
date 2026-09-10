@@ -180,6 +180,17 @@ void kbdaux_event(int key, int mods, int state)
 	rec[1] = (unsigned char)mods;
 	rec[2] = (unsigned char)state;
 	rec[3] = 0;
+	/* Same rule as the pointer records: a partial insert (queue
+	 * full) would shift every later 4-byte record and desync the
+	 * reader, so drop the whole record instead. */
+	if(charq_room(&kbdaux_table->read_q) < 4) {
+		kbdaux_table->dropped++;
+		if(kbdaux_table->dropped == 1 || !(kbdaux_table->dropped % 64)) {
+			printk("kbd: record dropped (queue full, total %d)\n",
+				kbdaux_table->dropped);
+		}
+		return;
+	}
 	charq_putchar(&kbdaux_table->read_q, rec[0]);
 	charq_putchar(&kbdaux_table->read_q, rec[1]);
 	charq_putchar(&kbdaux_table->read_q, rec[2]);
