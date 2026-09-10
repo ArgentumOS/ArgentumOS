@@ -243,6 +243,7 @@ struct ScrollView::Impl {
 	View *viewport = nullptr;	/* internal clip container (owned) */
 	ScrollBar *vbar = nullptr;	/* right gutter (owned) */
 	ScrollBar *hbar = nullptr;	/* bottom gutter (owned) */
+	View *frame = nullptr;		/* 1px border ring, paints last (owned) */
 	double ox = 0;			/* scroll offset (pt) */
 	double oy = 0;
 };

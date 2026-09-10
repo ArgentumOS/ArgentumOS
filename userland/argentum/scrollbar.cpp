@@ -499,37 +499,39 @@ ScrollBar::draw(GraphicsContext &g)
 			 disabled ? p.label : theme.accent());
 	}
 
-	/* track: the recess. A darken() of the chrome - the same blend the
-	 * theme engine uses for its state tones, since the Disabled tone
-	 * sits only a few levels off the chrome and does not read as a
-	 * trough. The ring keeps it in the line-art language. */
+	/* track: the recess, as a plain fill - no ring of its own. The
+	 * bar's ring already frames it, and a ring here would stack against
+	 * the scroller's: three dark lines read as one thick black band
+	 * instead of the single hairline the rest of the chrome draws. The
+	 * radius matches the scroller's so their edges line up exactly. */
 	{
 		std::uint32_t well = mixTo(theme.chromeBottom(), 0x000000, 0.18);
 		int tx = vertical ? 1 : gg.track0;
 		int ty = vertical ? gg.track0 : 1;
 		int tw = vertical ? w - 2 : gg.trackLen;
 		int th = vertical ? gg.trackLen : w - 2;
+		int wr = r > 1 ? r : 1;
 
 		if (tw > 0 && th > 0) {
 			g.fillRoundedRect(tx, ty, (unsigned) tw, (unsigned) th,
-					  0, theme.chromeOutline());
-			if (tw > 2 && th > 2) {
-				g.fillRect(tx + 1, ty + 1, (unsigned) (tw - 2),
-					   (unsigned) (th - 2), well);
-			}
+					  (unsigned) wr, well);
 		}
 	}
 
 	/* the proportional scroller: the SAME chrome as the arrow buttons
 	 * (the grey the rest of the chrome uses, per state), so the bar
 	 * reads as one control; the trough behind it is what provides the
-	 * contrast. Rounded ends say "grab me" rather than "press me". */
+	 * contrast. It spans the gutter's full width, exactly like the
+	 * arrow buttons, so its ring falls on the bar's ring and REPLACES
+	 * it: one hairline at the edge, not two stacked - and one hairline
+	 * along the edge it shares with the (ringless) trough. Rounded ends
+	 * say "grab me" rather than "press me". */
 	{
 		ControlState st = sb_->dragging ? ControlState::Armed
 			: (sb_->hot == PartThumb || sb_->part == PartThumb)
 			? ControlState::Hover : ControlState::Idle;
 		Theme::Params p = theme.state(st);
-		int inset = 2;
+		int inset = 0;
 		int sx = vertical ? inset : gg.track0 + gg.thumbPos;
 		int sy = vertical ? gg.track0 + gg.thumbPos : inset;
 		int sw = vertical ? w - 2 * inset : gg.thumbLen;

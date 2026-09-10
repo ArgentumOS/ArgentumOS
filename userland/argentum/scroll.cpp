@@ -25,6 +25,66 @@
 
 namespace argentum {
 
+namespace {
+
+/* The scrolled view's frame: a 1px rounded ring around the whole
+ * cluster, in the same chromeOutline + smallRadius every other chrome
+ * surface uses (Box draws its frame exactly so). It is added LAST, so
+ * its pixels fall on the bars' outer edges and coincide with them
+ * (no doubling there) while giving the content side - top and left -
+ * the border it was missing. hitTest() returns null so it is
+ * transparent to input: clicks still reach the document underneath. */
+class ScrollFrame : public View {
+public:
+	void draw(GraphicsContext &g) override
+	{
+		Application &app = Application::shared();
+		Theme &theme = app.theme();
+		double ppt = app.pxPerPt();
+		Rect f = frame();
+		int w = (int) (f.size.w * ppt + 0.5);
+		int h = (int) (f.size.h * ppt + 0.5);
+		int r = (int) (theme.smallRadius() * ppt + 0.5);
+		std::uint32_t line = theme.chromeOutline();
+
+		if (w < 4 || h < 4) {
+			return;
+		}
+		if (r < 1) {
+			r = 1;
+		}
+		if (2 * r >= w || 2 * r >= h) {
+			r = 0;
+		}
+		g.fillRect(r, 0, (unsigned) (w - 2 * r), 1, line);
+		g.fillRect(r, h - 1, (unsigned) (w - 2 * r), 1, line);
+		g.fillRect(0, r, 1, (unsigned) (h - 2 * r), line);
+		g.fillRect(w - 1, r, 1, (unsigned) (h - 2 * r), line);
+		for (int j = 0; j < r; j++) {
+			for (int i = 0; i < r; i++) {
+				int dx = r - 1 - i;
+				int dy = r - 1 - j;
+				int d2 = dx * dx + dy * dy;
+
+				if (d2 < (r - 1) * (r - 1) || d2 > r * r) {
+					continue;
+				}
+				g.fillRect(i, j, 1, 1, line);
+				g.fillRect(w - 1 - i, j, 1, 1, line);
+				g.fillRect(i, h - 1 - j, 1, 1, line);
+				g.fillRect(w - 1 - i, h - 1 - j, 1, 1, line);
+			}
+		}
+	}
+
+	View *hitTest(const Point &) override
+	{
+		return nullptr;		/* never intercepts input */
+	}
+};
+
+} /* namespace */
+
 /* The gutter: one classic bar's cross size (pt), reserved whether or
  * not the content overflows, so the content rect never shifts as you
  * scroll. */
@@ -54,9 +114,11 @@ ScrollView::ScrollView()
 	sc_->viewport = new View;
 	sc_->vbar = new ScrollBar(ScrollBar::Orientation::Vertical);
 	sc_->hbar = new ScrollBar(ScrollBar::Orientation::Horizontal);
+	sc_->frame = new ScrollFrame;
 	addSubview(sc_->viewport);
 	addSubview(sc_->vbar);
 	addSubview(sc_->hbar);
+	addSubview(sc_->frame);		/* last: the border paints on top */
 
 	/* A bar asks for an offset; we clamp it (scrollTo also pushes the
 	 * clamped value back, so the scroller never drifts from the
@@ -71,6 +133,7 @@ ScrollView::~ScrollView()
 	delete sc_->viewport;
 	delete sc_->vbar;
 	delete sc_->hbar;
+	delete sc_->frame;
 	delete sc_;
 }
 
@@ -133,6 +196,7 @@ ScrollView::layoutChrome()
 	place(sc_->viewport, { {0, 0}, {vw, vh} });
 	place(sc_->vbar, { {vw, 0}, {bar, vh} });
 	place(sc_->hbar, { {0, vh}, {vw, bar} });
+	place(sc_->frame, { {0, 0}, {f.size.w, f.size.h} });
 
 	if (sc_->doc) {
 		Rect d = sc_->doc->frame();
