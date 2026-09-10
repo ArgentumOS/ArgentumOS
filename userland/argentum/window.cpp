@@ -276,6 +276,26 @@ Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
 	View *cv = impl_->contentView;
 	Point hl;
 
+	/* X buttons 4-7 are the wheel/tilt, not buttons (see
+	 * View::mouseWheel): deliver the notch to the deepest view and let
+	 * it bubble up the responder chain, and swallow the matching
+	 * release. A notch must never reach a view as a press/release, or
+	 * scrolling over a button would arm and click it. */
+	if (pxEvent.button >= 4) {
+		if (down) {
+			View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
+
+			if (hit) {
+				MouseEvent e = pxEvent;
+
+				e.x = hl.x;
+				e.y = hl.y;
+				hit->mouseWheel(e);
+			}
+		}
+		return;
+	}
+
 	/* S2.3c: remember the press in ROOT px for popup anchoring */
 	if (down) {
 		Application::shared().impl_->lastRootX =

@@ -287,6 +287,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/structure_b.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/structure_b"
+	# scrollbar_a: S2.4b (external) ScrollBar acceptance — arrows, track
+	# and scroller driven by a real USB pointer, the wheel via QMP;
+	# logs SBAR offsets for the gate.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/scrollbar_a.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/scrollbar_a"
 	# kestrel: the S4 window manager (uikit-plan §5) — System/Tools
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/kestrel/kestrel.cpp \

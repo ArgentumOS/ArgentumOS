@@ -139,6 +139,35 @@ displays, unaccelerated). Both trees (`i915`, `xe`) are MIT, so they
 are usable as *documentation*. Net: a modern Intel discrete card is a
 **3D-class project with a mandatory blob**, not a 2D one.
 
+**Where the 2D-engine era ends** (verified in Xorg/Mesa sources,
+2026-09): NVIDIA's last register-programmed ROP 2D object is **NV4x
+(GeForce 6/7, 2005–06)** — the DDX carries `nv04_accel.h` (SF2D/GDI/
+BLIT/ROP objects, `nv04_exa.c` … `nv40_exa.c`) and from **NV50 (G80,
+2006)** switches to driving 2D through the 3D/GR engine
+(`nv50_exa.c`, then `nvc0_exa.c`). ATI's last is **R500 (Radeon
+X1000, 2005)** — `radeon_exa_funcs.c` uses the RB2D engine
+(`DP_GUI_MASTER_CNTL`, `DST_Y_X`, `ROP[…]`) for all families below
+R600, and `radeon_accel.c` dispatches **R600 and above to shader
+paths** (`r600_exa.c`+`r600_shader.c`, `evergreen_*`, `cayman_*`) or
+glamor. Intel **never** exposed a register-poke 2D block: its
+blitter (BCS) has always been command-stream programmed (ring + GEM),
+and reaching it on modern parts means the full submission stack.
+Conclusion: *register-direct* 2D exists only in ~1998–2006 silicon.
+
+**Still sold new *and* 2D-accelerated** (the honest answer to "is
+there anything middle-of-the-road today?"): **ASPEED AST2500/2600** —
+the open `ast` DDX ships `ast_accel.c`/`ast_2dtool.c` driving an MMIO
+2D engine (EXA copy/fill) plus hardware cursor; current
+server/BMC-class silicon, with niche add-in PCIe cards. **Matrox
+G550 / M-series** — the open `mga` DDX accelerates via the MGA blit
+engine (`mga_exa.c`); still sold for multi-display, with the caveat
+that newer chips surface through the `mgag200` kernel path, where the
+modesetting DDX gives cursor only. **Silicon Motion SM750**
+(industrial/kiosk PCIe, 2D blit engine) is a third, less-verified
+candidate. So the accurate statement is not "no currently-available
+2D-accelerated GPU" but "**no *modern* one**" — and none of these
+server-class parts is QEMU-verifiable either.
+
 ## 5. Verification strategy
 
 - **Framework + ATI backend**: QEMU `screendump` + pixel comparison

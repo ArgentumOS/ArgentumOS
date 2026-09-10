@@ -410,15 +410,18 @@ main()
 	sbox.addSubview(&sBot);
 	v.addSubview(&sbox);
 
-	/* ScrollView hosting a TableView document (3 cols x 8 rows) */
+	/* ScrollView hosting a TableView document (3 cols x 8 rows). The
+	 * document is sized to the CLIP width (the frame minus the bar
+	 * gutter), so only the vertical bar is needed. */
 	argentum::TableView table(&zooSrc, &zooDel);
 	argentum::ScrollView scroll;
 	double rh = table.rowHeight();
 
 	table.setColumns(COL_NAMES, 3);
-	table.setFrame({ {0, 0}, {216, (rh + 2.0) + 8 * rh} });
-	table.setAccessibilityLabel("Processes");
 	scroll.setFrame({ {lx + 152, y}, {216, 120} });
+	argentum::Size cs = scroll.contentSize();
+	table.setFrame({ {0, 0}, {cs.w, (rh + 2.0) + 8 * rh} });
+	table.setAccessibilityLabel("Processes");
 	scroll.setDocumentView(&table);
 	v.addSubview(&scroll);
 

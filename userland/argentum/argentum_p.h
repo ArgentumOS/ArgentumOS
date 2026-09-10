@@ -219,10 +219,30 @@ struct Box::Impl {
 	double spacing = 6.0;		/* pt between arranged children */
 	bool logged = false;		/* BOX-A arrange log printed once */
 };
+/* S2.4b ScrollBar state (see argentum.h). */
+struct ScrollBar::Impl {
+	ScrollBar::Orientation orient = ScrollBar::Orientation::Vertical;
+	double range = 0;		/* content extent (pt) */
+	double page = 0;		/* viewport extent (pt) */
+	double value = 0;		/* scroll offset (pt) */
+	double lineStep = 16;		/* one arrow step (pt) */
+	double thickness = 16;		/* cross size (pt) */
+	std::function<void(double)> action;
+	/* interaction: which part the pointer is on (0 none, 1 arrow-min,
+	 * 2 arrow-max, 3 track, 4 scroller), the hovered part, and the
+	 * grab offset inside the scroller while dragging (pt) */
+	int part = 0;
+	int hot = 0;
+	bool dragging = false;
+	double grab = 0;
+};
+
 /* S2.4b ScrollView state (see argentum.h). */
 struct ScrollView::Impl {
-	View *doc = nullptr;		/* document view (subview) */
-	View *chrome = nullptr;		/* internal ScrollChrome overlay */
+	View *doc = nullptr;		/* document view (in the viewport) */
+	View *viewport = nullptr;	/* internal clip container (owned) */
+	ScrollBar *vbar = nullptr;	/* right gutter (owned) */
+	ScrollBar *hbar = nullptr;	/* bottom gutter (owned) */
 	double ox = 0;			/* scroll offset (pt) */
 	double oy = 0;
 };

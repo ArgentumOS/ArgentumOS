@@ -348,6 +348,22 @@ View::mouseMoved(const MouseEvent &e)
 	}
 }
 
+/* Wheel/tilt: bubble by default, the same shape as mouseDown - the
+ * innermost view that cares (a ScrollView) claims it, everything else
+ * passes it up. */
+bool
+View::mouseWheel(const MouseEvent &e)
+{
+	if (View *nr = nextResponder()) {
+		MouseEvent up = e;
+
+		up.x += frame().origin.x;
+		up.y += frame().origin.y;
+		return nr->mouseWheel(up);
+	}
+	return false;
+}
+
 bool
 View::acceptsFirstResponder() const
 {
@@ -517,6 +533,7 @@ accessibilityRoleName(AccessibilityRole role)
 	case AccessibilityRole::TabGroup: return "tab group";
 	case AccessibilityRole::MenuItem: return "menu item";
 	case AccessibilityRole::HelpTag: return "help tag";
+	case AccessibilityRole::ScrollBar: return "scroll bar";
 	}
 	return "unknown";
 }

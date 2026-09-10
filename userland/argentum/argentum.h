@@ -84,7 +84,7 @@ enum class AccessibilityRole : int {
 	RadioButton, TextField, SecureTextField, TextArea, Image, Slider,
 	Stepper, SegmentedControl, ProgressIndicator, LevelIndicator,
 	PopUpButton, ScrollArea, List, Table, Splitter,
-	TabGroup, MenuItem, HelpTag,
+	TabGroup, MenuItem, HelpTag, ScrollBar,
 };
 
 /* S2.1b: stable role name for read-back / the future a11y protocol
@@ -147,6 +147,12 @@ public:
 	virtual void mouseEntered(const MouseEvent &e);
 	virtual void mouseExited(const MouseEvent &e);
 	virtual void mouseMoved(const MouseEvent &e);
+	/* Wheel/tilt (X buttons 4-7: 4 = up, 5 = down, 6 = left, 7 =
+	 * right; modifiers carry Shift/Ctrl). Unlike the press/release
+	 * virtuals these BUBBLE: the dispatch delivers them to the deepest
+	 * view and the default implementation passes them up the responder
+	 * chain. Return true to claim the event. e.x/e.y are LOCAL POINTS. */
+	virtual bool mouseWheel(const MouseEvent &e);
 	/* S2.2c minimal focus: a view that accepts first responder
 	 * becomes the window's key target when clicked. become/resign
 	 * are called by the owning Window (defaults do nothing). */
@@ -1138,12 +1144,76 @@ private:
 	Impl *bx_;
 };
 
-/* S2.4b: ScrollView — a clipping wrapper (NSClipView-lite). The
- * document view is a subview whose frame origin is translated by the
- * scroll offset (-ox,-oy); the view tree clips it to the ScrollView's
- * bounds. v1 scroll is PROGRAMMATIC (scrollTo/scrollBy) — there is no
- * wheel/scroll-event source yet; the drawn scrollbar thumb is an
- * indicator that tracks the offset. A11y role ScrollArea. */
+/* S2.4b (external): ScrollBar — the classic, always-visible scrollbar
+ * the ScrollView lays out in its own gutter, BESIDE the content (never
+ * over it): an arrow button at each end, a sunken track, and a
+ * PROPORTIONAL scroller whose length is page/range of the track.
+ * Constructed from rounded rectangles with 1px line art, in flat
+ * chrome; the scroller carries the accent-derived control colour so it
+ * reads as the control it is, and the arrows take the ControlState
+ * chrome (hover/armed/disabled). Interaction: an arrow steps one line,
+ * the track pages, and the scroller drags — preserving where it was
+ * grabbed rather than snapping the pointer to its middle. The wheel is
+ * NOT handled here: it goes to the owning ScrollView (View::mouseWheel)
+ * so one notch scrolls the content whatever the pointer is over. The
+ * owner passes the clamped offsets back through setValue(). A11y role
+ * ScrollBar. */
+class ScrollBar : public View {
+public:
+	enum class Orientation : int { Vertical, Horizontal };
+
+	explicit ScrollBar(Orientation o = Orientation::Vertical);
+	~ScrollBar() override;
+
+	void setOrientation(Orientation o);
+	Orientation orientation() const;
+
+	/* Content extent and viewport extent (pt). range <= page means
+	 * "nothing to scroll": the scroller fills the track and the arrows
+	 * draw disabled. */
+	void setRange(double range, double page);
+	double range() const;
+	double page() const;
+	/* The scroll offset (pt), 0 .. range-page. Clamps; no callback -
+	 * the owner uses this to follow its own scrolling. */
+	void setValue(double v);
+	double value() const;
+	/* One arrow step (pt); the owner may size it to a line of its
+	 * content (a text view passes its line height). */
+	void setLineStep(double pt);
+	double lineStep() const;
+	double thickness() const;	/* cross size, pt */
+
+	/* Called with the requested offset (pt) when the user steps, pages
+	 * or drags; the owner clamps it (ScrollView::scrollTo) and calls
+	 * setValue() back. */
+	void setAction(std::function<void(double)> fn);
+	void sendAction(double v);
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+	void mouseMoved(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+	void mouseEntered(const MouseEvent &e) override;
+	void mouseExited(const MouseEvent &e) override;
+
+private:
+	struct Impl;
+	Impl *sb_;
+};
+
+/* S2.4b (external): ScrollView — a clipping wrapper (the NSClipView
+ * analog) with CLASSIC scrollbars. The document is a subview of an
+ * internal viewport view, clipped to the content rect (the tree clips a
+ * view's children to its bounds), translated by the scroll offset
+ * (-ox,-oy); the bar gutter is therefore OUTSIDE the content and the
+ * document never paints under a bar. An always-visible ScrollBar sits
+ * in the right gutter, one in the bottom gutter, with the corner
+ * between them — classic, and independent of whether the content
+ * currently overflows. Scrolling is interactive (arrows step, track
+ * pages, scroller drags) and via the wheel (View::mouseWheel); the
+ * programmatic entry points stay: scrollTo/scrollBy/
+ * scrollRectToVisible. A11y role ScrollArea. */
 class ScrollView : public View {
 public:
 	ScrollView();
@@ -1159,10 +1229,23 @@ public:
 	void scrollRectToVisible(const Rect &r);
 	double contentOffsetX() const;
 	double contentOffsetY() const;
+	/* the content rect size (pt): the frame minus the bar gutter. Size a
+	 * document to this when it should not scroll sideways. */
+	Size contentSize() const;
+	/* the bars, for an owner that sizes its line step to its content
+	 * (a text view passes its line height) */
+	ScrollBar *verticalScrollBar() const;
+	ScrollBar *horizontalScrollBar() const;
 
 	void draw(GraphicsContext &g) override;
+	/* one wheel notch = 3 lines of vertical scroll, or horizontal with
+	 * Shift (or the tilt buttons 6/7); claims the event only when the
+	 * scroll actually moves, so a nested ScrollView can take it */
+	bool mouseWheel(const MouseEvent &e) override;
 
 private:
+	void layoutChrome();	/* place the viewport + bars; re-clamp */
+	void syncBars();	/* content/viewport extent + offset -> bars */
 	struct Impl;
 	Impl *sc_;
 };

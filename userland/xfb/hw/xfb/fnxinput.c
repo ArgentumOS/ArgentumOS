@@ -128,6 +128,36 @@ vfbMouseRecord(const unsigned char *rec)
                                    xbtn[i], 0, NULL);
         }
     }
+
+    /* The wheel is momentary in X core: one press+release pair per
+     * notch - button 4 = up/away, 5 = down/toward, 6 = left, 7 =
+     * right (what every client, incl. the Argentum toolkit, expects
+     * a pointer wheel to look like). The record's button bitmask
+     * carries only the three real buttons, so notches never disturb
+     * the button state above; a whole-record burst is clamped so one
+     * over-fast read cannot flood the client with events. */
+    {
+        int wheel = (signed char) rec[1];
+        int hwheel = (signed char) rec[6];
+        int n, max;
+
+        if (wheel > 3) wheel = 3;
+        if (wheel < -3) wheel = -3;
+        if (hwheel > 3) hwheel = 3;
+        if (hwheel < -3) hwheel = -3;
+        max = wheel < 0 ? -wheel : wheel;
+        for (n = 0; n < max; n++) {
+            int b = wheel > 0 ? 4 : 5;
+            QueuePointerEvents(vfbMouseDev, ButtonPress, b, 0, NULL);
+            QueuePointerEvents(vfbMouseDev, ButtonRelease, b, 0, NULL);
+        }
+        max = hwheel < 0 ? -hwheel : hwheel;
+        for (n = 0; n < max; n++) {
+            int b = hwheel > 0 ? 7 : 6;
+            QueuePointerEvents(vfbMouseDev, ButtonPress, b, 0, NULL);
+            QueuePointerEvents(vfbMouseDev, ButtonRelease, b, 0, NULL);
+        }
+    }
     vfbMouseButtons = buttons;
 }
 
