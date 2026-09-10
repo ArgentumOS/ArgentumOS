@@ -1,10 +1,12 @@
 # Audio mixer — one device, many streams
 
-Status: **PLAN (2026-09) — decided in direction; not scheduled.**
-Answers the standing gap: the OSS `/dev/dsp` family is direct-device,
-so today exactly **one program can play at a time** (`tone.c` opens
-`/System/Devices/Audio/dsp`, sets S16_LE/44100/stereo, and writes).
-This plan inserts a mixing layer so many apps share the DAC.
+Status: **APPROVED (2026-09) — implementation deferred; not
+scheduled.** The design below is settled; no milestone should start
+unprompted. Answers the standing gap: the OSS `/dev/dsp` family is
+direct-device, so today exactly **one program can play at a time**
+(`tone.c` opens `/System/Devices/Audio/dsp`, sets S16_LE/44100/stereo,
+and writes). This plan inserts a mixing layer so many apps share the
+DAC.
 
 ## 1. The shape, and what was rejected
 
