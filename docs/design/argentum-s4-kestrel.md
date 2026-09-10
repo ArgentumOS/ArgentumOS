@@ -333,9 +333,23 @@ deviation — a 26px band, accent-tinted when active (S4.1b).
   decided: the tint stays and the title bar is NOT pinstriped. Platinum
   supplies this frame's shapes (outline, boxes, grow box), not its
   title-bar texture;
-- close box on the left (the existing close plate, restyled to
-  Platinum's 1px-bordered square), zoom box on the right
-  (square-in-square);
+- the title band's controls, in Mac OS X order (decided): **close,
+  minimize, maximize** at the left in that order, the title **centred**,
+  and a **show/hide toolbar** button at the right. This supersedes the
+  Platinum close-box/zoom-box arrangement: the frame takes its *shapes*
+  from Platinum and its *controls* from OS X, which is the
+  Snow-Leopard-parallel line the catalog was cut along;
+- **maximize means grow to fit the content**, not fill the screen. The
+  client publishes the size it wants - the toolkit knows it, it is its
+  content view's `contentSize()` - and the WM's button resizes the frame
+  to that. One new piece of protocol: an atom the toolkit sets and
+  Kestrel reads, since nothing in WM_NORMAL_HINTS carries "the size this
+  content wants";
+- **minimize** has nowhere to go yet: there is no Dock and no task list,
+  so iconifying today would make a window vanish with no way back;
+- **show/hide toolbar** implies the frame has a toolbar area to toggle.
+  OS X attaches it to the title band; nothing draws one here yet, so the
+  button has nothing to act on until that strip exists;
 - grow box in the lower-right: two or three short lines, drawn by the WM.
 
 **Resize from any edge.** The grow box is the *indicator*; the drag may
@@ -378,3 +392,15 @@ the client to the new content rect.
 
 **Deferred, not decided:** window shading (double-click the title bar),
 and desaturating the frame when inactive beyond dropping the pinstripes.
+
+**Open — decide before those buttons can be wired:**
+
+1. **Where does a minimized window go?** Kestrel has neither a Dock nor a
+   task list, so iconify needs a destination: a strip Kestrel draws along
+   a screen edge, a window list in its own UI, or the minimize button is
+   deferred until one of those exists.
+2. **Who owns the toolbar?** On OS X it is part of the window's title
+   area and the *client* fills it. Here the frame is the WM's and the
+   client is a separate reparented window, so it is either a strip the WM
+   reserves and the client draws into, or the client's own and the button
+   merely tells it to show or hide it.
