@@ -78,12 +78,42 @@ flip, from gpu-accel-plan V2), not by a software copy. Retire
 `xfbShadowFlush` (or keep it behind the config key as the fallback
 for a device with no engine).
 
-### 3.3 Gated `fb`-hook acceleration (greenfield in Xfb)
+### 3.3 Planes: what they realistically buy (a few-layer compositor, not an accelerator)
+
+Modern display engines expose **planes** — primary, one or two
+overlays, and the cursor, per output — each with its own buffer,
+position, format conversion, **scaling** and per-plane alpha, all
+firmware-free (block inventory per vendor: `ati-nvidia-fb-plan.md`
+§6.6). It is tempting to read that as "hardware compositing" and stop
+there. It is not, and the distinction matters for what this plan
+promises:
+
+- **What planes genuinely give**: the hardware cursor (§3.1); **one or
+  two** frequently-updating layers composited by the display engine
+  (fullscreen video, a game, a single maximised window); the wallpaper
+  as its own layer; and **cheap upscaling** (render at lower resolution
+  and let the display engine scale).
+- **What they do not give**: general window compositing. The
+  embedded/SoC model works because those systems composite *a handful
+  of rectangles*; a windowed desktop is many overlapping windows with
+  arbitrary clipping, and plane counts are small with per-plane format
+  and size constraints. Planes also cannot **draw into** a surface —
+  fills and blits are the command stream again (§3.4).
+- **Consequence**: the display path is the firmware-free win on modern
+  hardware, and planes extend it from "cursor + flip" to "cursor +
+  flip + a few hardware layers". Everything else stays CPU, which the
+  gpu-accel eval already found is fine at Argentum's scale.
+
+On *modern* parts this path also brings surface descriptors, **tiling**
+and optional flat-CCS compression (and LMEM on Intel Arc) — blob-free,
+but not trivial.
+
+### 3.4 Gated `fb`-hook acceleration (greenfield in Xfb)
 No hook layer exists; the cheap route is overriding the `fb` procs the
 software rasterizer installs (`fbFillRect`, `fbCopyArea`,
 `fbSolidBoxClipped`, `fbPolyFillRect`) with engine calls that
 **validate and fall back**. EXA is the alternative and is explicitly
-deferred (§3.5): it buys offscreen-VRAM pixmaps but needs a driver
+deferred (§3.6): it buys offscreen-VRAM pixmaps but needs a driver
 memory manager, outside the accel plan's v1 scope.
 
 **Gating rules (all mandatory, else software fallback)**:
@@ -102,14 +132,14 @@ memory manager, outside the accel plan's v1 scope.
   and small blits software. This is the difference between a win and
   a regression on X's many-small-ops workload.
 
-### 3.4 Real RandR resize
+### 3.5 Real RandR resize
 With buffers that can be re-created and a display-backend layer in
 the kernel, `vfbRRScreenSetSize` can re-map fb0, rebuild the
 back buffer, and notify — turning today's half-implemented,
 shrink-only resize into a working path (and resolving the shadow
 doc's open mode-set item).
 
-### 3.5 Deferred: offscreen VRAM pixmaps (EXA-class)
+### 3.6 Deferred: offscreen VRAM pixmaps (EXA-class)
 What would accelerate *pixmap→screen* traffic (text, images) by
 keeping X pixmaps in VRAM with a driver allocator. Big; needs
 allocation, eviction, and validation semantics — the same class of
@@ -121,7 +151,7 @@ machinery the accel plan defers. Until then, pixmap→screen stays CPU.
   the server's draw path, so apps get faster window moves for free.
 - **`/dev/fb0` stays fbdev-compatible** for other consumers
   (`fbdump`, the mmap path); accel ops are *additive* ioctls.
-- **Text and XRender compositing remain CPU** (pixman) — §3.5 is the
+- **Text and XRender compositing remain CPU** (pixman) — §3.6 is the
   only thing that changes that.
 - The `mit-shm-plan` transport work is orthogonal and unaffected.
 
@@ -137,7 +167,7 @@ machinery the accel plan defers. Until then, pixmap→screen stays CPU.
   explicit teardown rules (a mode switch wipes VRAM under a live
   server — the shadow doc already notes a rebuild path exists).
 - **A synchronous engine plus one CPU**: with no SMP, an ioctl+wait
-  per op competes with the app; the size threshold (§3.3) is the
+  per op competes with the app; the size threshold (§3.4) is the
   mitigation, not a detail.
 
 ## 6. Open decisions
@@ -169,9 +199,17 @@ removed (config fallback kept). **Acceptance**: rendering identical
 to the shadow path at rest; no tearing under load with flip; the
 accel plan's V2 flip acceptance passes with a live X.
 
+**Optional extension (after X1, not part of it)**: a few hardware
+**planes** — the wallpaper or one fullscreen layer composited by the
+display engine, with its scaling. Bounded by design: it is a
+few-layer compositor, **not** general window compositing (§3.3), and
+it is gated on the plane count/format constraints of the specific
+family. **Acceptance**: one plane composites a fullscreen layer with
+correct alpha/scaling while X draws normally underneath.
+
 ### X2 — Gated `fb`-hook acceleration
 Engine-backed `fbFillRect`/`fbCopyArea`/`fbSolidBoxClipped` with the
-§3.3 validation and threshold. **Acceptance**: screendump pixel
+§3.4 validation and threshold. **Acceptance**: screendump pixel
 equality against the software path for accelerated and falling-back
 ops; a measured win on window-drag/scroll workloads in QEMU; no
 regression on text-heavy redraws (ops below threshold stay CPU).
