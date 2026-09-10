@@ -15,9 +15,11 @@
 
 namespace argentum {
 
-static const double TAB_H_PAD = 14.0;	/* title <-> tab edge (pt) */
-static const double TAB_V_PAD = 4.0;	/* title <-> tab top/bottom */
-static const double TAB_GAP = 2.0;	/* gap between tab rects */
+static const double TAB_H_PAD = 14.0;	/* label <-> segment edge (pt) */
+static const double TAB_V_PAD = 4.0;	/* label <-> segment top/bottom */
+static const double TAB_BEZ_PAD = 2.0;	/* bezel inset around a segment */
+static const double TAB_TOP = 3.0;	/* panel top -> bezel (pt) */
+static const double TAB_BOT_GAP = 5.0;	/* bezel -> pane below (pt) */
 
 TabViewItem::TabViewItem(const char *title, View *page)
 	: ti_(new Impl())
@@ -53,7 +55,7 @@ TabViewItem::page() const
 
 /* Strip metrics in pt, from the theme font (single row). */
 static double
-tabStripHeight(double ppt)
+tabSegHeight(double ppt)
 {
 	Application &app = Application::shared();
 	Theme &theme = app.theme();
@@ -61,6 +63,14 @@ tabStripHeight(double ppt)
 		theme.fontFamily(), theme.fontSizePt(), "Ag");
 
 	return (m.ascentPt + m.descentPt) + TAB_V_PAD * 2;
+}
+
+/* The band the control floats in: the segment height plus the bezel
+ * inset, the panel's top margin and the gap down to the pane. */
+static double
+tabStripHeight(double ppt)
+{
+	return tabSegHeight(ppt) + TAB_TOP + TAB_BOT_GAP + 2 * TAB_BEZ_PAD;
 }
 
 TabView::TabView()
@@ -201,7 +211,6 @@ TabView::tabRects(std::vector<Rect> &out) const
 	Application &app = Application::shared();
 	Theme &theme = app.theme();
 	double ppt = app.pxPerPt();
-	double strip = tabStripHeight(ppt);
 	double x = 6;
 
 	out.clear();
@@ -209,10 +218,11 @@ TabView::tabRects(std::vector<Rect> &out) const
 		argentum::TextMetrics m = argentum::textMetrics(
 			theme.fontFamily(), theme.fontSizePt(), it->title());
 		double tw = m.widthPt + TAB_H_PAD * 2;
-		Rect r = { {x, 3}, {tw, strip - 3} };
+		Rect r = { {x, TAB_TOP + TAB_BEZ_PAD},
+			   {tw, tabSegHeight(ppt)} };
 
 		out.push_back(r);
-		x += tw + TAB_GAP;
+		x += tw;		/* segments touch: one bezel holds them */
 	}
 }
 
@@ -237,43 +247,58 @@ TabView::logOnce()
 	fflush(stdout);
 }
 
-/* One tab, the way Aqua draws them: rounded TOP corners only, square
- * bottom, outline on the top and the two sides - never the bottom,
- * because the strip's rule is the baseline all the tabs stand on. The
- * fill runs to 'bottom' (exclusive): the rule row for an unselected
- * tab, one row past it for the selected one, so the selected tab opens
- * into the page below instead of being a chip sitting on top of it.
- * 'tw' spans the tab's rect plus the gap to the next tab, so adjacent
- * tabs share a single hairline rather than leaving a sliver. */
-static void
-drawTab(GraphicsContext &g, int x, int y, int tw, int bottom, int r,
-	std::uint32_t fill, std::uint32_t line)
+/* The theme engine derives its state tones with the same blend
+ * (theme.cpp's mix()); the tab bezel's track needs one locally, since
+ * theme.cpp's helpers are file-static. Same call the scrollbar's trough
+ * makes, which is the point: one recess tone for both controls. */
+static std::uint32_t
+mixTo(std::uint32_t c, std::uint32_t to, double f)
 {
-	if (tw <= 0 || bottom <= y) {
+	int r0 = (int) ((c >> 16) & 0xff);
+	int g0 = (int) ((c >> 8) & 0xff);
+	int b0 = (int) (c & 0xff);
+	int r1 = (int) ((to >> 16) & 0xff);
+	int g1 = (int) ((to >> 8) & 0xff);
+	int b1 = (int) (to & 0xff);
+	int r = (int) (r0 + (r1 - r0) * f + 0.5);
+	int g = (int) (g0 + (g1 - g0) * f + 0.5);
+	int b = (int) (b0 + (b1 - b0) * f + 0.5);
+
+	return ((std::uint32_t) r << 16) | ((std::uint32_t) g << 8) |
+	       (std::uint32_t) b;
+}
+
+/* A 1px rounded ring: the house frame, the same shape Box draws for its
+ * panel. Four straight edges plus the four corner arcs. */
+static void
+panelRing(GraphicsContext &g, int x, int y, int w, int h, int r,
+	  std::uint32_t line)
+{
+	if (w < 2 || h < 2) {
 		return;
+	}
+	if (r > w / 2) {
+		r = w / 2;
+	}
+	if (r > h / 2) {
+		r = h / 2;
 	}
 	if (r < 1) {
 		r = 1;
 	}
-	if (2 * r > tw) {
-		r = tw / 2;
-	}
-	/* fill: a rounded band for the top corners, then a plain body - the
-	 * band's rounded BOTTOM corners are covered by the body, so only the
-	 * top two corners stay rounded */
-	int band = 2 * r;
+	int sw = w - 2 * r;
+	int sh = h - 2 * r;
 
-	if (band > bottom - y) {
-		band = bottom - y;
+	if (sw < 0) {
+		sw = 0;
 	}
-	g.fillRoundedRect(x, y, (unsigned) tw, (unsigned) band,
-			  (unsigned) r, fill);
-	if (bottom - (y + r) > 0) {
-		g.fillRect(x, y + r, (unsigned) tw,
-			   (unsigned) (bottom - (y + r)), fill);
+	if (sh < 0) {
+		sh = 0;
 	}
-	/* outline: the two top arcs, then the straight top between them and
-	 * the two sides down to the baseline */
+	g.fillRect(x + r, y, (unsigned) sw, 1, line);
+	g.fillRect(x + r, y + h - 1, (unsigned) sw, 1, line);
+	g.fillRect(x, y + r, 1, (unsigned) sh, line);
+	g.fillRect(x + w - 1, y + r, 1, (unsigned) sh, line);
 	for (int j = 0; j < r; j++) {
 		for (int i = 0; i < r; i++) {
 			int dx = r - 1 - i;
@@ -284,16 +309,10 @@ drawTab(GraphicsContext &g, int x, int y, int tw, int bottom, int r,
 				continue;
 			}
 			g.fillRect(x + i, y + j, 1, 1, line);
-			g.fillRect(x + tw - 1 - i, y + j, 1, 1, line);
+			g.fillRect(x + w - 1 - i, y + j, 1, 1, line);
+			g.fillRect(x + i, y + h - 1 - j, 1, 1, line);
+			g.fillRect(x + w - 1 - i, y + h - 1 - j, 1, 1, line);
 		}
-	}
-	if (tw - 2 * r > 0) {
-		g.fillRect(x + r, y, (unsigned) (tw - 2 * r), 1, line);
-	}
-	if (bottom - (y + r) > 0) {
-		g.fillRect(x, y + r, 1, (unsigned) (bottom - (y + r)), line);
-		g.fillRect(x + tw - 1, y + r, 1,
-			   (unsigned) (bottom - (y + r)), line);
 	}
 }
 
@@ -316,74 +335,102 @@ TabView::draw(GraphicsContext &g)
 	std::vector<Rect> rects;
 
 	tabRects(rects);
-	/* 1px border around the whole tab panel */
-	g.fillRect(0, 0, (unsigned) w, 1, theme.chromeOutline());
-	g.fillRect(0, (unsigned) (h - 1), (unsigned) w, 1,
-		   theme.chromeOutline());
-	g.fillRect(0, 1, 1, (unsigned) (h - 2), theme.chromeOutline());
-	g.fillRect((unsigned) (w - 1), 1, 1, (unsigned) (h - 2),
-		   theme.chromeOutline());
-
-	/* strip: chrome, the surface the window chrome is made of - the tabs
-	 * are cells OF the strip, so an unselected one reads as part of it
-	 * and the selected one (page-coloured) is what stands out. The rule
-	 * under the strip is the baseline all the tabs stand on. */
 	int stripPx = (int) (strip * ppt + 0.5);
-
-	if (stripPx < 4) {
-		stripPx = 4;
-	}
-	g.fillRect(1, 1, (unsigned) (w - 2), (unsigned) (stripPx - 1),
-		   theme.state(ControlState::Idle).fillTop);
-	int ruleY = stripPx;
-
-	g.fillRect(1, (unsigned) ruleY, (unsigned) (w - 2), 1,
-		   theme.chromeOutline());
-
-	/* the tabs: adjacent cells sharing a single hairline, rounded tops,
-	 * square bottoms standing on the rule. Each is drawn out to the next
-	 * tab's left edge; the RECTS are untouched, so hit testing and the
-	 * gate's probes keep their coordinates. */
-	Theme::Params p = theme.state(ControlState::Idle);
 	int r = (int) (theme.smallRadius() * ppt + 0.5);
+	Theme::Params p = theme.state(ControlState::Idle);
 
+	if (stripPx < 8) {
+		stripPx = 8;
+	}
 	if (r < 1) {
 		r = 1;
+	}
+	/* the panel surface: the control floats on the page, and the pages
+	 * paint the body below the strip themselves */
+	g.fillRect(1, 1, (unsigned) (w - 2), (unsigned) (stripPx - 1),
+		   theme.page());
+
+	/* The tab control, in the NSTabView / segmented-control idiom: ONE
+	 * rounded bezel holding the segments, the selected one a raised chip
+	 * inset inside it. Not folder tabs attached to the body - that reads
+	 * as a row of buttons rather than as a tab view. The track is the
+	 * same recess tone as the scrollbar's trough, so the two controls
+	 * share one visual grammar. */
+	std::uint32_t track = mixTo(theme.chromeBottom(), 0x000000, 0.18);
+	int bez = (int) (TAB_BEZ_PAD * ppt + 0.5);
+	int segY = (int) ((TAB_TOP + TAB_BEZ_PAD) * ppt + 0.5);
+	int segH = (int) (tabSegHeight(ppt) * ppt + 0.5);
+
+	if (bez < 1) {
+		bez = 1;
+	}
+	if (!rects.empty() && segH > 2 * r) {
+		int bx = (int) (rects.front().origin.x * ppt + 0.5) - bez;
+		int ex = (int) ((rects.back().origin.x +
+				 rects.back().size.w) * ppt + 0.5) + bez;
+
+		if (bx < 1) {
+			bx = 1;
+		}
+		/* bezel: 1px ring + track interior, the same ring/interior
+		 * pair Box draws, so the frame matches the rest of the chrome */
+		g.fillRoundedRect(bx, segY - bez, (unsigned) (ex - bx),
+				  (unsigned) (segH + 2 * bez), (unsigned) r,
+				  theme.chromeOutline());
+		g.fillRoundedRect(bx + 1, segY - bez + 1,
+				  (unsigned) (ex - bx - 2),
+				  (unsigned) (segH + 2 * bez - 2),
+				  (unsigned) (r - 1), track);
 	}
 	for (size_t i = 0; i < rects.size(); i++) {
 		Rect rc = rects[i];
 		bool sel = ((int) i == tb_->selected);
 		int x = (int) (rc.origin.x * ppt + 0.5);
-		int y = (int) (rc.origin.y * ppt + 0.5);
 		int tw = (int) (rc.size.w * ppt + 0.5);
-		int th = (int) (rc.size.h * ppt + 0.5);
-		int bottom = ruleY + (sel ? 1 : 0);
 
-		if (i + 1 < rects.size()) {
-			tw = (int) (rects[i + 1].origin.x * ppt + 0.5) - x + 1;
+		if (sel) {
+			/* the raised chip: page-coloured on the grey track with
+			 * its own ring - the macOS selected segment */
+			g.fillRoundedRect(x, segY, (unsigned) tw,
+					  (unsigned) segH, (unsigned) r,
+					  theme.chromeOutline());
+			g.fillRoundedRect(x + 1, segY + 1,
+					  (unsigned) (tw - 2),
+					  (unsigned) (segH - 2),
+					  (unsigned) (r - 1), theme.page());
 		}
-		drawTab(g, x, y, tw, bottom, r,
-			sel ? theme.page() : p.fillTop, theme.chromeOutline());
-
-		/* title */
+		/* dividers sit BETWEEN segments and never beside the selected
+		 * one: the chip's own edge is the division there */
+		if (i + 1 < rects.size() && !sel &&
+		    (int) (i + 1) != tb_->selected && segH > 6) {
+			g.fillRect((unsigned) ((int) (rects[i + 1].origin.x *
+						      ppt + 0.5)),
+				   (unsigned) (segY + 3), 1,
+				   (unsigned) (segH - 6),
+				   theme.chromeOutline());
+		}
+		/* label, centred in the segment */
 		TabViewItem *it = tb_->items[i];
 
 		if (it) {
 			argentum::TextMetrics m = argentum::textMetrics(
 				theme.fontFamily(), theme.fontSizePt(),
 				it->title());
-			int ty = y + (th - (int) (m.ascentPt * ppt +
-						 m.descentPt * ppt + 2)) / 2;
+			int ty = segY + (segH - (int) (m.ascentPt * ppt +
+							 m.descentPt * ppt + 2)) / 2;
+			int cx = x + (tw - (int) (m.widthPt * ppt + 0.5)) / 2;
 
-			if (ty < 0) {
-				ty = 0;
+			if (ty < segY) {
+				ty = segY;
 			}
 			g.drawText(theme.fontFamily(), theme.fontSizePt(),
-				   x + (int) (TAB_H_PAD * ppt * 0.5),
-				   ty, it->title(),
+				   cx, ty, it->title(),
 				   sel ? theme.text() : p.label);
 		}
 	}
+	/* the panel's own ring, last so it sits on top of the strip fill:
+	 * one rounded hairline, the frame every other pane has */
+	panelRing(g, 0, 0, w, h, r, theme.chromeOutline());
 }
 
 void

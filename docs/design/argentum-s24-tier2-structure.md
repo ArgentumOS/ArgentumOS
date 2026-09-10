@@ -229,19 +229,22 @@ Status: **DONE** — `userland/argentum/tab.cpp` (TabViewItem + TabView,
 decl in `argentum.h`, Impls in `argentum_p.h`). Items borrow a title +
 a page view; the pages are subviews and only the selected one is
 visible below the strip (measured from the theme font). Strip clicks
-select; the tabs are drawn the way Aqua draws them, because a row of
-separate outlined boxes reads as buttons rather than as tabs: the
-cells are ADJACENT with a single shared hairline between neighbours
-(each is drawn out to the next one's left edge, while the rects
-themselves stay put for hit testing), the corners are rounded on the
-TOP only, the bottoms are square and stand on the strip's rule, and
-the strip behind them is chrome - the same surface as the window
-chrome - so an unselected tab reads as part of the strip. The selected
-tab is page-coloured and runs one row past the rule, so it opens into
-the page below instead of being a chip sitting on top of it, and it
-breaks the rule where it meets it. The rule is placed at the strip
-height in PIXELS (it used `lround()` of the point value, so under the
-2x scale it cut through the middle of the tabs). `setOnSelect` optional callback. A11y TabGroup
+select; the strip is drawn the way NSTabView draws it - a segmented
+control, not folder tabs attached to the body (tabs that open into the
+page below read as a row of buttons, which is the wrong idiom). ONE
+rounded bezel holds the segments: a 1px ring plus a track interior in
+the same recess tone as the scrollbar's trough, so both controls share
+one grammar, with the selected segment a page-coloured chip inset
+inside it carrying its own ring - off-white on grey, the macOS
+selected segment. Segments are ADJACENT: their rects touch, neighbours
+are divided by a 1px divider that is suppressed beside the selected
+segment (the chip's own edge does the dividing there), and the labels
+are centred. The panel keeps its own rounded hairline frame, drawn
+last so it sits on the strip's fill. The band's height is the segment
+height plus the bezel inset, the top margin and the gap down to the
+pane, all measured in PIXELS (the rule used `lround()` of the point
+value, so under the 2x scale it cut through the middle of the tabs).
+`setOnSelect` optional callback. A11y TabGroup
 with the label = selected title, value = index (read back per
 selection as TAB-A11Y). Gate `.build/s24d_run.sh` + `s24d_assert.py`
 -> S24D-OK (9 checks: red->green content flip, tab chrome flips,
