@@ -114,13 +114,30 @@ struct gpu_family {
 | vmware-svga | rect copy/fill | none | QEMU — **but blocked**: the recorded finding that QEMU never executes the SVGA FIFO commands RECT_FILL/RECT_COPY (QEMU-side) |
 | NVIDIA NV04–NV110 | yes (fixed-function) | none | **real hardware only** — QEMU models no NVIDIA VGA |
 | NVIDIA NV140+ (Turing+) | via shaders/GSP | **signed GSP required** | real hardware; gated on the firmware decision |
-| Intel | yes (documented PRMs) | free, redistributable | real hardware — the *most tractable* real-hardware target |
+| Intel **Gen9–Gen11** (integrated) | yes, via **execlist** submission | none needed for blits | real hardware — the most tractable *documented* target (published PRMs, MIT driver code) |
+| Intel **Arc / Battlemage** (modern discrete, PCIe) | **no fixed-function 2D** — blits go through the command stream on the blitter engine | **GuC: signed, redistributable-unmodifiable blob, and mandatory to submit on `xe`/Battlemage** | real hardware; no QEMU model |
 | AMD pre-R600 | yes | none | real hardware (AMD 2D is blob-free below R600) |
 
 The honest asymmetry: **the framework is verifiable in QEMU; NVIDIA
 never is.** That is precisely why NVIDIA is a descriptor rather than
 the starting point — the fb plan's own rule (an unverifiable driver
 is worse than a deferred one) applies unchanged.
+
+**Modern Intel is not the easy alternative it looks like** (2026-09
+research): Arc/Alchemist (DG2) is driven by `i915` *and* `xe`;
+Battlemage/BMG by **`xe` only**, whose submission is
+**GuC-only** — i.e. a signed, redistributable-but-unmodifiable
+firmware blob is **mandatory even to submit a blit**, and the GuC
+command-transport ABI (CTB descriptors, doorbells, H2G/G2H) is
+published **only in kernel headers**, not as a spec. There is also no
+fixed-function 2D engine any more: the blitter is a command-stream
+engine needing ring, context and VM setup, and the framebuffer lives
+in **LMEM** with tiling and optional flat-CCS, not a linear LFB.
+Display/modeset *is* independent of GuC (so a GOP/scanout-only path
+is realistic, and Arc cards ship a GOP — the existing path already
+displays, unaccelerated). Both trees (`i915`, `xe`) are MIT, so they
+are usable as *documentation*. Net: a modern Intel discrete card is a
+**3D-class project with a mandatory blob**, not a 2D one.
 
 ## 5. Verification strategy
 
