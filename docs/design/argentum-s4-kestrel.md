@@ -329,9 +329,10 @@ deviation — a 26px band, accent-tinted when active (S4.1b).
   Coloration), carried by X's window border (`XSetWindowBorder`) rather
   than painted, because the sides and bottom of the frame window are
   occupied by the client;
-- a ~20px title bar with fine horizontal pinstripes when ACTIVE and flat
-  when inactive. This replaces the accent tint as the focus cue, so the
-  accent goes back to meaning selection rather than focus;
+- a ~20px title bar, keeping S4.1b's accent tint as the active cue -
+  decided: the tint stays and the title bar is NOT pinstriped. Platinum
+  supplies this frame's shapes (outline, boxes, grow box), not its
+  title-bar texture;
 - close box on the left (the existing close plate, restyled to
   Platinum's 1px-bordered square), zoom box on the right
   (square-in-square);
@@ -357,17 +358,18 @@ in foreign colours.
 | element | active | inactive |
 | --- | --- | --- |
 | frame outline | `chromeOutline()` | `state(Disabled).outline` |
-| title bar | pinstripes alternating `chromeTop()` / `chromeBottom()` | flat `chromeTop()` |
+| title bar | S4.1b accent tint (unchanged) | flat `chromeTop()` |
 | title text | `text()` | `state(Disabled).label` |
 | close / zoom glyphs | `chromeOutline()` | `state(Disabled).outline` |
 | content background | `page()` | `page()` |
 | grow box lines | `chromeOutline()` | `state(Disabled).outline` |
 
-The pinstripes are what make this work outside a Platinum palette: they
-alternate two tones the theme already has, chrome top and bottom, so the
-metallic reading comes from the existing chrome gradient rather than from
-invented greys. The inactive column is the same shapes stepped down
-through the theme's disabled state, not a second palette.
+The accent tint on the title bar is the one piece of S4.1b that stays:
+the frame's focus cue is the house accent, as it is elsewhere in the
+language, and the title bar is not pinstriped. Everything Platinum
+contributes here is shape and state, not texture. The inactive column is
+the same shapes stepped down through the theme's disabled state, not a
+second palette.
 
 **Client geometry.** The client sits inside the frame, inset by the
 frame's thickness on the sides and bottom — today it is inset by the
