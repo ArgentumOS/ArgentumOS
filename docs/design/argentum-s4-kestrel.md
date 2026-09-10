@@ -407,3 +407,38 @@ specified.
   it, and the toolkit knows it: its content view's `contentSize()`.
 - the toolbar strip's height, so the WM reserves the right amount.
 
+
+### Edit plan (anchors verified against the tree, 2026-09)
+
+`userland/kestrel/kestrel.cpp`:
+
+- **240** `frame->init(… fh + BAND_H)` and **302**
+  `XReparentWindow(dpy, m->client, frame->xid(), 0, BAND_H)`: the
+  client's origin and size gain the frame's 1px side and bottom insets.
+  **718** `XConfigureWindow(dpy, m->client, …)` places it again on a
+  resize, so the content rect wants to be one helper rather than three
+  literals that can drift apart.
+- **432** `if (ly < 0 || ly >= BAND_H …)`: the button-press hit-test.
+  The frame's border region joins it — a few px band along each edge and
+  corner of the frame window — and a hit there sets a resize direction
+  instead of starting a move.
+- **326-330** the `gDrag*` globals, **473** `dragTo` (which moves the
+  frame at **497** `XMoveWindow`), **505** `endDrag`: add a mode
+  (move | resize), the grabbed edges, and the frame and client sizes at
+  grab time. In resize mode `dragTo` resizes both by the delta against a
+  minimum size instead of moving the frame. The grab, the quiet-end
+  rules and the abuse guards are unchanged.
+- **90-140** `FrameChrome::draw`: the band's control layout — close at
+  the left, the title centred, the toolbar toggle at the right — and the
+  grow box in the frame's lower-right.
+- the frame's 1px outline: `XSetWindowBorderWidth` plus
+  `XSetWindowBorder` on the frame window, adjusting the frame's own
+  content origin (the border shifts the coordinate frame).
+
+`userland/argentum/window.cpp`:
+
+- **845** the `WM_DELETE_WINDOW` advertisement in `Window::init` is where
+  the client already talks protocol; the same place publishes the
+  client's hints. The preferred size is the content view's
+  `contentSize()`, so publish from `setContentView` and after a resize
+  rather than at init — there is no content view yet at init.
