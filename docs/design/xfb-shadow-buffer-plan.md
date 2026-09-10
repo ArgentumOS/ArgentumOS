@@ -5,6 +5,14 @@ flush + config key shipped. Related:
 `docs/design/x11-xvfb-fb-plan.md` (Xfb), `docs/design/mit-shm-plan.md`
 (the complementary client→server copy removal).
 
+**UPDATE (2026-09)**: the shadow's fate is now tied to
+`docs/design/xfb-accel-plan.md`. Its original justification (tearing
+under a single static buffer) is what **page flip** solves properly,
+and that plan's §3.2 retires this shadow once the X screen pixmap
+becomes the VRAM framebuffer — the flush-cadence open item below
+disappears with it. Until an engine and flip exist, this design
+stands unchanged.
+
 ## 1. Problem
 
 Xfb draws directly into the single visible buffer — `mmap(/dev/fb0)`

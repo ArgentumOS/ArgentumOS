@@ -155,6 +155,12 @@ layer, ATI family breadth (code-complete; partially verifiable).
 `vmsvga` 2D remains blocked by the recorded QEMU FIFO finding and is
 marked as such rather than "unsupported".
 
+**Consumer note**: the *user-visible* payoff of these three arrives
+in Xfb, whose presentation model must change for an engine to matter
+it renders into system RAM today (docs/design/xfb-accel-plan.md) —
+specifically X0 (hardware cursor) and X1 (direct-VRAM pixmap + flip)
+consume this milestone's kernel surface.
+
 ### V3 — NVIDIA descriptor: display
 A family descriptor for a chosen pre-Turing target (e.g. NV4x/G80):
 chipset dispatch, MMIO mapping, VBIOS/BIT parsing, modeset.
@@ -177,6 +183,9 @@ real-hardware wins if acceleration is ever wanted off QEMU.
 - Extends `ati-nvidia-fb-plan.md`: its §6.1 backend layer gains the
   engine dimension; its **M4 NVIDIA slot** now has a companion accel
   path (M4 remains display-only, this plan's V3/V4 add engines).
+- **Xfb is where V2's payoff lands**: the server's presentation model
+  must change (system-RAM shadow → VRAM pixmap + flip, hardware
+  cursor, gated `fb`-hook accel) — docs/design/xfb-accel-plan.md.
 - Adopts the `gpu-accel-eval.md` answers that were left open
   (Q-G1: a small 2D driver, not a DRM import; Q-G2: extend the
   framebuffer device) and **supersedes two stale premises** there: the
