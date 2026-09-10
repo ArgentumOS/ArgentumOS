@@ -65,12 +65,13 @@ tabSegHeight(double ppt)
 	return (m.ascentPt + m.descentPt) + TAB_V_PAD * 2;
 }
 
-/* The band the control floats in: the segment height plus the bezel
- * inset, the panel's top margin and the gap down to the pane. */
+/* Where the pages begin: BELOW the control, not at the border the
+ * control straddles - subviews paint after this view, so they have to
+ * start clear of it. */
 static double
 tabStripHeight(double ppt)
 {
-	return tabSegHeight(ppt) + TAB_TOP + TAB_BOT_GAP + 2 * TAB_BEZ_PAD;
+	return TAB_TOP + tabSegHeight(ppt) + 2 * TAB_BEZ_PAD + TAB_BOT_GAP;
 }
 
 TabView::TabView()
@@ -211,7 +212,20 @@ TabView::tabRects(std::vector<Rect> &out) const
 	Application &app = Application::shared();
 	Theme &theme = app.theme();
 	double ppt = app.pxPerPt();
-	double x = 6;
+	double total = 0;
+
+	for (TabViewItem *it : tb_->items) {
+		argentum::TextMetrics m = argentum::textMetrics(
+			theme.fontFamily(), theme.fontSizePt(), it->title());
+
+		total += m.widthPt + TAB_H_PAD * 2;
+	}
+	/* centred across the view, the way a NSTabView's control sits */
+	double x = (frame().size.w - total) * 0.5;
+
+	if (x < 2) {
+		x = 2;
+	}
 
 	out.clear();
 	for (TabViewItem *it : tb_->items) {
@@ -350,13 +364,11 @@ TabView::draw(GraphicsContext &g)
 	g.fillRect(1, 1, (unsigned) (w - 2), (unsigned) (stripPx - 1),
 		   theme.page());
 
-	/* The tab control, in the NSTabView / segmented-control idiom: ONE
-	 * rounded bezel holding the segments, the selected one a raised chip
-	 * inset inside it. Not folder tabs attached to the body - that reads
-	 * as a row of buttons rather than as a tab view. The track is the
-	 * same recess tone as the scrollbar's trough, so the two controls
-	 * share one visual grammar. */
-	std::uint32_t track = mixTo(theme.chromeBottom(), 0x000000, 0.18);
+	/* the content's top border, placed from the control's own ROUNDED
+	 * geometry so the line lands exactly on the control's middle row at
+	 * any scale (parallel point maths could drift a pixel off it). The
+	 * bezel's track covers the line where the control crosses, so it
+	 * re-emerges either side - the straddle that reads as 'aligned' */
 	int bez = (int) (TAB_BEZ_PAD * ppt + 0.5);
 	int segY = (int) ((TAB_TOP + TAB_BEZ_PAD) * ppt + 0.5);
 	int segH = (int) (tabSegHeight(ppt) * ppt + 0.5);
@@ -364,6 +376,16 @@ TabView::draw(GraphicsContext &g)
 	if (bez < 1) {
 		bez = 1;
 	}
+	g.fillRect(1, (unsigned) (segY - bez + (segH + 2 * bez) / 2),
+		   (unsigned) (w - 2), 1, theme.chromeOutline());
+	/* the tab control, in the NSTabView / segmented-control idiom: ONE
+	 * rounded bezel holding the segments, the selected one a raised chip
+	 * inset inside it. Not folder tabs attached to the body - that reads
+	 * as a row of buttons rather than as a tab view. The track is the
+	 * same recess tone as the scrollbar's trough, so the two controls
+	 * share one visual grammar. */
+	std::uint32_t track = mixTo(theme.chromeBottom(), 0x000000, 0.18);
+
 	if (!rects.empty() && segH > 2 * r) {
 		int bx = (int) (rects.front().origin.x * ppt + 0.5) - bez;
 		int ex = (int) ((rects.back().origin.x +

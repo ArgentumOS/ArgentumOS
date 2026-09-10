@@ -239,7 +239,14 @@ inside it carrying its own ring - off-white on grey, the macOS
 selected segment. Segments are ADJACENT: their rects touch, neighbours
 are divided by a 1px divider that is suppressed beside the selected
 segment (the chip's own edge does the dividing there), and the labels
-are centred. The panel keeps its own rounded hairline frame, drawn
+are centred. The control is centred across the view too, and the
+content's top border is drawn on the control's MIDDLE row, so the line
+straddles it and re-emerges either side - the border row is taken from
+the control's own rounded pixel geometry, not from parallel point maths
+that could round a pixel off it. That straddle is what makes the two
+read as aligned. The pages then start clear below the control (they are
+subviews and paint after this view, so they have to). The panel keeps
+its own rounded hairline frame, drawn
 last so it sits on the strip's fill. The band's height is the segment
 height plus the bezel inset, the top margin and the gap down to the
 pane, all measured in PIXELS (the rule used `lround()` of the point
