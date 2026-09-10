@@ -77,6 +77,13 @@ minix -> ext2 -> iso9660 -> agfs):
     make run-uefi            # OVMF + esp.img + rootagfs.img + a virtio-net NIC
     make run-ext2            # same, but booting the legacy ext2 root (.build/root.img)
     make run-xfb             # same, but a root preconfigured to boot the X11 (Xfb) desktop
+    make uitest              # ...the UIKit session (theme_chrome) on Xfb
+    make zoo                 # ...Kestrel (WM) + widget_zoo: the live control board
+
+`make kestrel-img` builds the same kind of preconfigured root for the
+window-manager-only session (used by the Kestrel gates); the sessions are
+chosen by `desktop = "..."` in `/System/Configuration/session.conf`, and
+init defaults to the demo desktop when the file is absent.
 
 By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf`
 is exported. The ESP image is written by `./tools/mkesp.sh` (run

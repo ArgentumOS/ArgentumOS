@@ -72,9 +72,9 @@ LLVM_OBJCOPY = /usr/lib/llvm-19/bin/llvm-objcopy
 # absent ('i8042=off') so the host pointer routes to the USB device
 # instead of the emulated PS/2 port. The drivers decode their own HID
 # reports into the native input devices (/System/Devices/mouse,
-# /dev/kbd) - nothing synthesizes PS/2 any more. xHCI (not EHCI) is
-# required to hold two full-speed devices at once. Set QEMU_USB= and
-# QEMU_MACHINE= to disable.
+# /System/Devices/kbd) - nothing synthesizes PS/2 any more. xHCI (not
+# EHCI) is required to hold two full-speed devices at once. Set
+# QEMU_USB= and QEMU_MACHINE= to disable.
 QEMU_USB ?= -device qemu-xhci -device usb-kbd -device usb-mouse
 QEMU_MACHINE ?= -machine pc,i8042=off
 # ---------------------------------------------------------------------------

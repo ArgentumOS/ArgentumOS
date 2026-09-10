@@ -29,8 +29,17 @@ legacy to carry. Concretely:
 
 ## Where it stands
 
-Today the OS boots to a serial console and has some test GUI code being
-turned into the Argentum UIKit.
+Today the OS boots from UEFI on an AGFS root into a graphical session:
+the Xfb display server on the framebuffer, a demo desktop, and a serial
+console alongside.
+
+The rest of the desktop is mid-development. The Argentum UIKit has its
+view tree, its first controls and its theme system, exercised by a live
+widget zoo; a window manager (Kestrel) manages windows and drags them.
+Input is real hardware rather than emulation of it: a USB HID keyboard
+and mouse are decoded by their own drivers into native input devices
+(`/System/Devices/mouse`, `/System/Devices/kbd`), so the pointer and keys
+a session sees are exactly what those devices report.
 
 Argentum is a hobby OS project: it may have serious bugs and broken features. **Use at your own risk.**
 
