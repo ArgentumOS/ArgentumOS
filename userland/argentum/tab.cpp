@@ -18,7 +18,7 @@ namespace argentum {
 static const double TAB_H_PAD = 14.0;	/* label <-> segment edge (pt) */
 static const double TAB_V_PAD = 4.0;	/* label <-> segment top/bottom */
 static const double TAB_BEZ_PAD = 2.0;	/* bezel inset around a segment */
-static const double TAB_TOP = 3.0;	/* panel top -> bezel (pt) */
+static const double TAB_TOP = 0.0;	/* control top = panel top (pt) */
 static const double TAB_BOT_GAP = 5.0;	/* bezel -> pane below (pt) */
 
 TabViewItem::TabViewItem(const char *title, View *page)

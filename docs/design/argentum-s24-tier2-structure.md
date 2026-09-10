@@ -244,7 +244,10 @@ content's top border is drawn on the control's MIDDLE row, so the line
 straddles it and re-emerges either side - the border row is taken from
 the control's own rounded pixel geometry, not from parallel point maths
 that could round a pixel off it. That straddle is what makes the two
-read as aligned. The pages then start clear below the control (they are
+read as aligned. The control's top inset is ZERO, so its top edge IS
+the panel's top edge - the two hairlines are the same row and there is
+no second border above the control: it is the top of the tab view. The
+pages then start clear below the control (they are
 subviews and paint after this view, so they have to). The panel keeps
 its own rounded hairline frame, drawn
 last so it sits on the strip's fill. The band's height is the segment
