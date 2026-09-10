@@ -4,6 +4,13 @@ Status: EVALUATION — **PARKED** (Q-G1..Q-G4 open, no decision). Examines wheth
 open-source NVIDIA/ATI drivers FreeBSD ships as a model for accelerated
 graphics on those cards. Question reframed by the evidence: FreeBSD does
 not *write* accelerated drivers — it **imports Linux's DRM drivers** — so
+
+**UPDATE (2026-09)**: its two stale premises are fixed by
+`docs/design/gpu-accel-plan.md`, which adopts this eval's Q-G1/Q-G2
+answers (a small 2D-engine driver, not a DRM import; extend the
+framebuffer device) and notes that the `drivers/video/ati.c` and
+`svga.c` cited below were later **removed** — display is GOP-only
+today. The DRM/KMS question remains parked.
 the real question is what, if anything, of that stack is FNX-scale, and
 what a from-scratch accelerated driver would look like instead.
 Related decisions: GUI is fbdev-first (Q6/Q-L6) with **three §8 seams**
