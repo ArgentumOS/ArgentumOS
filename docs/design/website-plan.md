@@ -107,6 +107,65 @@ The generated reference is the **same artifact** the in-OS volume uses —
 built once, rendered twice — so the site and the machine can never
 disagree.
 
+### 4.1 Repository topology and deployment (GitHub Pages)
+
+**Hosting is decided: GitHub Pages, in a dedicated repository that
+does not exist yet** — creating it is the first step of U4.
+
+**Mode: publish from a branch** (the usual repository method). The
+committed output *is* the site, so the repository holds:
+
+```
+site repo /
+    .nojekyll              disables Jekyll processing (and preserves _-prefixed paths)
+    Makefile               builds the site (calls the generator)
+    generator/             the first-party thin generator (+ templates/)
+    pages/                 site-only content: home, download, news posts
+    assets/                CSS (Design Language tokens), images
+    os/                    THE OS REPO AS A SUBMODULE, pinned to a commit
+    <built output>         index.html, docs/, sitemap.xml, robots.txt, atom.xml, …
+```
+
+The **submodule pin is the reproducibility anchor**: it fixes the exact
+OS commit the site documents, which is also the commit stamped on the
+screenshots and the source of the hardware matrix and roadmap.
+
+**The rule inversion, stated deliberately**: "generated output is
+never committed" applies to **the OS repository** (drift risk). In the
+*site* repository, committing output **is** the deployment mechanism —
+and it is safe precisely because the build is reproducible (same
+submodule pin + same tool versions → identical bytes), which makes a
+Pages update a reviewable diff rather than an opaque blob.
+
+**The base-path trap** (the one thing that breaks every link): the
+repository's *name* decides the URL. A `<org>.github.io` repo is served
+at the root (`https://<org>.github.io/`); any other name is served
+under a prefix (`https://<org>.github.io/<repo>/`). So the generator
+must emit **relative links** (or take a single base-URL setting), with
+`sitemap.xml` and `atom.xml` taking absolute URLs from that setting —
+and the link checker must run against the **deployed base path**, not
+just a local file tree.
+
+**Pages mechanics that constrain the build** (verified 2026-09):
+- branch publishing serves `/` or `/docs` on a chosen branch;
+- **symlinks are not supported** by branch publishing (a site tree
+  containing one requires the Actions mode) — so the build output must
+  contain no symlinks, which is a build rule;
+- **a `CNAME` file does not itself set a custom domain** — that is
+  configured in repository settings/API when a domain is adopted;
+- HTTPS is automatic; `robots.txt`/`sitemap.xml` are ordinary files.
+
+**Recorded alternative**: publish via **GitHub Actions** (build in CI →
+upload artifact → deploy). Needed if we ever require the submodule's
+*contents* at build time (branch publishing serves only committed
+files, with no build step) or decide against committing output. Costs: a
+CI build step, pinned tool versions in the workflow, and — for
+tree-sitter grammars — a Node step.
+
+**Prerequisite to settle at first deploy**: where the OS repository is
+hosted, since the submodule needs a URL. If it is not published yet,
+the URL is a placeholder in the site repo until it is.
+
 ## 5. Verification (anti-rot, in the project's own style)
 
 - **Link check** in the build: an unresolvable internal link fails it.
@@ -152,14 +211,27 @@ system under QEMU using only the site's instructions (the honest test);
 the feed validates.
 
 ### U4 — Publish
-Execute the hosting decision, domain, `sitemap.xml`/`robots.txt`, no
-analytics. **Acceptance**: the site is live and fully readable with
-JavaScript disabled.
+Create the site repository (**it does not exist yet**), add the OS repo
+as a pinned submodule, configure the base URL for the eventual
+repository name, build, commit the output, enable Pages (branch
+publishing, `.nojekyll` present), and verify **on the live URL**.
+**Acceptance**: the site is live and fully readable with JavaScript
+disabled; the link checker passes against the deployed base path; TLS
+works; `sitemap.xml`/`atom.xml` carry correct absolute URLs.
 
 ## 7. Open decisions
 
-- **Hosting and domain** — the static output constrains nothing except
-  cost; the choice is external and the user's.
+- **Repository name** — decides the URL (root vs `/prefix/`) and is
+  therefore a **build-config input** (§4.1), not a cosmetic choice.
+- **Custom domain** — optional later; note it is configured in
+  repository settings, not by committing a `CNAME` file.
+- **Publishing mode** — branch publishing with committed output is the
+  default (`§4.1`); Actions is the recorded alternative if we need the
+  submodule's contents at build time or stop committing output.
+- **Documentation content licence** — the site publishes guides and
+  reference that others may want to reuse; a permissive content licence
+  should be stated on the Legal page (the code roof does not
+  automatically cover prose).
 - **Community channel** — mailing list, forum, or none (with the
   no-tracker/no-analytics policy fixed).
 - **Optional search** — `lunr.js` (MIT) as a progressive enhancement,
