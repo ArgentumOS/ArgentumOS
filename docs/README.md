@@ -45,3 +45,10 @@ unchanged (FNX, FSH, AGFS, Xfb, `finch`).
 New design work goes under `design/`; feasibility studies under `eval/`;
 when a plan is superseded or abandoned it moves to `archive/` (git mv, so
 history is preserved).
+
+## Licence
+
+Documentation prose in this tree is licensed **CC BY 4.0**; code, build
+files and the embedded code samples are under the repository's software
+licence (**MIT**). See `LICENSE` in this directory for the statement and
+the attribution form.

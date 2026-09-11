@@ -1,0 +1,55 @@
+Argentum documentation licence
+================================
+
+The **prose documentation** in this directory tree (`docs/**`) — design
+records, reference material, guides, and the documentation pages of the
+project website — is licensed under the **Creative Commons Attribution
+4.0 International licence (CC BY 4.0)**.
+
+    https://creativecommons.org/licenses/by/4.0/
+
+You may share and adapt it for any purpose, including commercially,
+provided you give appropriate credit, link to the licence, and indicate
+if changes were made.
+
+Suggested attribution: *"Argentum documentation, by the Argentum project
+contributors, licensed CC BY 4.0"*, with a link to
+<https://creativecommons.org/licenses/by/4.0/>.
+
+Code is not documentation
+-------------------------
+
+Source code, build files, and the code-sample files the documentation
+embeds (`docs/uikit/snippets/**`) are under the repository's **software
+licence — MIT** (see `../LICENSE`), *not* CC BY 4.0. Code that readers
+copy into their own programs should carry the licence they expect.
+
+Third-party material
+--------------------
+
+Text quoted or reproduced from other projects keeps its original licence
+and copyright, with its notices kept alongside it. CC BY 4.0 applies to
+this project's own prose, not to material it borrows.
+
+Relationship to the repository's MIT grant
+------------------------------------------
+
+The repository's MIT licence (`../LICENSE`) is written to cover "the
+Software and associated documentation files", so it already reaches
+these documents. Nothing here revokes that: where the MIT grant applies
+to a document, you may rely on **either** licence. For documentation
+prose specifically, **CC BY 4.0 is the intended, stated licence**.
+
+Why CC BY 4.0
+-------------
+
+It is a permissive documentation licence — attribution only, no
+copyleft, no restriction on commercial use or on modification — and its
+attribution requirement matches how this project already works (the
+credits and lineage page names Fiwix and the upstream projects whose
+work is adopted).
+
+Excluded by the project's permissive-only rule, and therefore not used
+here: copyleft documentation licences (CC BY-SA, GFDL), the
+non-commercial variants (CC BY-NC\*), and the no-derivatives variants
+(CC BY-ND\*).

@@ -86,7 +86,11 @@ content this project can actually fill.
 11. **Legal / Credits** — **the lineage note is required**: derived
     from Fiwix (Jordi Sanfeliu, MIT) with attribution kept, plus adopted
     packages and their licences, and an explanation of the permissive
-    roof.
+    roof. It also states the **documentation licence: CC BY 4.0** for
+    prose (`docs/LICENSE`), with **code samples under the software
+    licence (MIT)** — the page renders that statement rather than
+    restating it, and the site footer carries the attribution, which is
+    also what CC BY requires.
 12. **About** — the short project story.
 
 ## 4. Pipeline
@@ -118,6 +122,8 @@ committed output *is* the site, so the repository holds:
 ```
 site repo /
     .nojekyll              disables Jekyll processing (and preserves _-prefixed paths)
+    LICENSE                generator/templates under the software licence;
+                           prose inherits CC BY 4.0 from docs/LICENSE
     Makefile               builds the site (calls the generator)
     generator/             the first-party thin generator (+ templates/)
     pages/                 site-only content: home, download, news posts
@@ -181,6 +187,11 @@ the URL is a placeholder in the site repo until it is.
   them is a release-checklist item.
 - **Asset licence check**: vendored CSS/JS/fonts and tree-sitter
   grammars must be permissive and attributed.
+- **Licence-notice check**: every published page carries the footer
+  attribution (CC BY 4.0 needs attribution, so the build should not be
+  able to publish a page without it); the site repository carries its
+  own `LICENSE` (generator/templates under the software licence, prose
+  inheriting CC BY 4.0 from `docs/LICENSE`).
 
 ## 6. Milestones
 
@@ -228,10 +239,11 @@ works; `sitemap.xml`/`atom.xml` carry correct absolute URLs.
 - **Publishing mode** — branch publishing with committed output is the
   default (`§4.1`); Actions is the recorded alternative if we need the
   submodule's contents at build time or stop committing output.
-- **Documentation content licence** — the site publishes guides and
-  reference that others may want to reuse; a permissive content licence
-  should be stated on the Legal page (the code roof does not
-  automatically cover prose).
+- **Documentation licence (decided)**: **CC BY 4.0** for prose
+  (`docs/LICENSE`), **MIT** for code samples and all source. The
+  alternatives considered and rejected: CC0/MIT-0 (permissive, but
+  drops the attribution the project's lineage notes depend on),
+  CC BY-SA and the GFDL (copyleft), CC BY-NC\*/ND\* (not permissive).
 - **Community channel** — mailing list, forum, or none (with the
   no-tracker/no-analytics policy fixed).
 - **Optional search** — `lunr.js` (MIT) as a progressive enhancement,
