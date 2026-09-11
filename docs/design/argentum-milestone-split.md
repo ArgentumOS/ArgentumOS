@@ -251,7 +251,7 @@ structure, S2.5 the reference board + a11y battery).
   the widget zoo's real menubar (check items with state, separators, key
   equivalents) and the dropdown rows that draw them — which uncovered
   and fixed `View::setHidden` never repainting. **S4 is complete through
-  S4.3; S5 (default-session boot + the desktop surface) is next.**
+  S4.3; S5.1 is done (below) and S5.2 (the desktop surface) is next.**
   *Acceptance:* original S4 acceptance — two apps; menubar swaps with
   focus; picks trigger app actions.
 - **S4.3 — Platinum frames + resize in the chrome**
@@ -272,6 +272,43 @@ structure, S2.5 the reference board + a11y battery).
   under `make run-uefi` (EMWM replacement; no demo-client fallback).
   *Acceptance:* the standard image boots to the Argentum desktop
   (screendump + interactive log).
+
+  **As built (DONE).** The standard image is `.build/rootagfs.img`, built
+  by `rootagfs` from `$(ROOTFS64)` — and it already *contained* Xfb and
+  Kestrel; what it lacked was the session choice. So:
+
+  - `mk/30-images.mk`'s `rootagfs` target now writes
+    `printf 'desktop = "kestrel"\n' > $(ROOTFS64)/System/Configuration/session.conf`
+    before packing. `ROOTFS64` is the shared staging dir, but every
+    variant image (`xfbdesk`/`uitest`/`zoo`/`kestrel-root`) copies it into
+    its **own** staging dir and overwrites `session.conf` there, so
+    `make run-xfb` / `run-uitest` / `run-zoo` are unaffected.
+  - `userland/tools/init.c`'s `read_session()` default changed from
+    `SESSION_XFB` to `SESSION_KESTREL`: a missing or unknown
+    `session.conf` now boots the **desktop**, not the xdraw+xkey demo
+    clients. That is the "no demo-client fallback" clause — the demo
+    stays reachable by name (`desktop = "xfb"`), it just isn't what an
+    unconfigured image does.
+  - **The empty desktop is black**: nothing paints the root window yet.
+    That is deliberate — the wallpaper surface is S5.2's deliverable, and
+    faking one here would have hidden it.
+  - Gate: `.build/s51_run.sh` + `s51_drive.py` + `s51_assert.py` →
+    **S51-OK, 13 checks** on one boot of the *standard* image: init chose
+    the kestrel session and the demo did not run, the image's
+    `session.conf` really says `desktop = "kestrel"` (read back over the
+    console), `KESTREL-READY`, the console shell is there alongside, the
+    menubar is drawn across the top, the desktop is *one flat colour*
+    over 240/240 samples (nothing open), and an app launched from the
+    console shell (`DISPLAY=:0 …/widget_zoo &`) is managed by the desktop
+    (464,283 px changed on screen) and its menubar reaches the bar
+    (`titles=zoo,Widgets,View` — the S4.2 path working on the standard
+    image, not just the probe image), with no X protocol errors.
+  - Cost, recorded: my first assertion demanded the desktop be the
+    *session colour* `0x2288ee` because older gates had sampled that
+    beside a frame. It isn't — that colour is the **window** background
+    (windows, not the root). Asserting *emptiness* (uniformity) was the
+    honest test; the run held all other 12 checks while this one was
+    wrong.
 - **S5.2 — S5 gate.** *Acceptance:* original S5 acceptance —
   interactive desktop on the standard image (FSH skeleton, reference
   apps; FSH layout + Application Support dirs per config policy).

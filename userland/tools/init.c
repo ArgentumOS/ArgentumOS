@@ -233,9 +233,11 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[])
 }
 
 /* Which desktop session init should run, from /System/Configuration/
- * session.conf (written by the image builders: xfbdesk-root writes
- * `desktop = "xfb"`, uitest-root writes `desktop = "uitest"`). A
- * missing file or an unknown value keeps the default demo desktop. */
+ * session.conf (the standard image writes `desktop = "kestrel"`; the
+ * variant images write "xfb" / "uitest" / "zoo"). S5.1: the DEFAULT is
+ * the Argentum desktop — a missing file or an unknown value boots
+ * Kestrel, not the xdraw+xkey demo clients. The demo is still reachable
+ * by name (`make run-xfb`, `desktop = "xfb"`). */
 enum session_kind {
 	SESSION_XFB,
 	SESSION_UITEST,
@@ -247,7 +249,7 @@ static enum session_kind read_session(void)
 {
 	FILE *f;
 	char line[256];
-	enum session_kind kind = SESSION_XFB;
+	enum session_kind kind = SESSION_KESTREL;	/* S5.1: the desktop */
 
 	f = fopen("/System/Configuration/session.conf", "r");
 	if (!f)
