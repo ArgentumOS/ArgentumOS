@@ -216,6 +216,7 @@ at S1); the first theme *is* Argentum:
 Desktop-shell elements from the mockup (wallpaper, the right-edge
 vertical dock with separators and trash, menubar date/time) are
 **Kestrel-owned desktop chrome**, not toolkit chrome — see §5.
+(For S5.2: no trash tile, and a vector wallpaper — see §5's note.)
 
 ### UI scale — accessibility multiplier (decided)
 
@@ -401,6 +402,12 @@ focus, input, and menus before any other app exists. It is small
   with separators, trash at the bottom), and the menubar's right-side
   date/time — the app-model corpus's desktop-shell elements,
   WM-owned,
+  *S5.2 decisions (rationale in the milestone split):* the dock ships
+  **pinned + running only, no Trash tile** — `initial-release.md` Q-R1
+  overrides this list's "trash at the bottom", and the Trash returns with
+  a Trash view; and the wallpaper is **theme parameters, not an image**,
+  a PNG wallpaper being parked as S5.2h because the toolkit's
+  `BitmapImage` has no loader and the tree ships no image assets,
 - workspace/session behavior per the app-model/sessionmgr corpus
   (unchanged).
 

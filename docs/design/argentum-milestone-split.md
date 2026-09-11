@@ -309,9 +309,136 @@ structure, S2.5 the reference board + a11y battery).
     (windows, not the root). Asserting *emptiness* (uniformity) was the
     honest test; the run held all other 12 checks while this one was
     wrong.
-- **S5.2 — S5 gate.** *Acceptance:* original S5 acceptance —
+- **S5.2 — the desktop shell.** *Acceptance:* original S5 acceptance —
   interactive desktop on the standard image (FSH skeleton, reference
   apps; FSH layout + Application Support dirs per config policy).
+
+  S5.1 made the standard image *boot* the desktop; it is still an empty
+  black screen with a menubar. S5.2 is what makes it a desktop: the
+  wallpaper, the dock, the menubar's two ends, the apps that fill it, and
+  the filesystem skeleton the acceptance names. Split below in dependency
+  order; every sub-milestone is gated on the **standard image**
+  (`.build/rootagfs.img`), not a variant, because the point of S5 is that
+  a stock boot is a working desktop.
+
+  #### S5.2a — the wallpaper surface
+
+  Kestrel paints the desktop (today nothing paints the root, so the empty
+  desktop is black — recorded at S5.1). The source is the theme's
+  parameters — a vector wallpaper, so no decoder and no asset. Set the
+  root window's background from the desktop configuration, repaint on
+  root `ConfigureNotify` (an `fb0` mode-set resizes the desktop), and
+  keep the S4.3 window-backdrop path untouched. *Acceptance:* the desktop shows
+  the wallpaper; it repaints after a mode-set; windows still composite
+  correctly over it; no X errors.
+
+  #### S5.2b — the menubar's two ends
+
+  The mockup's menubar is "system icon, active app name, menus … far
+  right: date and time". The **system icon** (left) is a Kestrel-owned
+  menu, so it reuses the S4.2 popup path — its items are desktop actions
+  (dock visibility, open, about); session power items belong to
+  sessionmgr and are not here. The **clock** (right) is live, formatted
+  from configuration, and the strip's layout must reserve the right end so
+  a long menu list never collides with it. *Acceptance:* the clock ticks;
+  the system menu opens/closes like an app menu; a menu list long enough
+  to reach the clock still lays out inside its own zone.
+
+  #### S5.2c — the dock
+
+  The right-edge vertical dock, Kestrel-owned: theme chrome (rounded
+  tiles, separators — the theme is parameters, so **no bitmap assets**),
+  pinned entries, running-state marks, press/rollover states, and a click
+  that launches or raises. The **work area** grows a right inset
+  (today's work area is only "below the bar"), so a window placed at the
+  right edge is inset rather than under the dock. Contents are pinned +
+  running only — **no Trash tile** (decision above). *Acceptance:* the dock draws correctly at 1x and 2x; a
+  tile launches its app; a running app shows state; edge-placed windows
+  are inset; the dock's config keys are honoured.
+
+  #### S5.2d — reference apps, as bundles the dock can launch
+
+  Package the reference apps into `/Applications/<DisplayName>.app/`
+  (`manifest` + `bin/<Executable>` + `Resources/`) and install them from
+  the image target, so "reference apps" in the acceptance means real
+  bundles rather than test binaries in `System/Shared/tests/`. The dock
+  launches one by direct `fork`/`execve` of its payload (decision above —
+  this is *not* bundle mediation). *Acceptance:*
+  `/Applications` holds bundles whose manifests validate; the dock
+  launches them; each runs under the WM and its menubar reaches the bar.
+
+  #### S5.2e — the FSH skeleton + Application Support per config policy
+
+  `Applications/`, `Shared/`, `System/`, `Users/`, `Volumes/` already
+  exist in the staged image, and `System/` carries the rest; what is
+  missing is the **Application Support** half of the config policy —
+  `System/Application Support/` does not exist yet, and the shared and
+  per-user scopes plus `System/User Template/` come with it. Per
+  `config-design.md` §0 an app's scripts/data live in a subdirectory
+  keyed by its domain name, and the three scopes resolve with libconfig's
+  precedence (system default, shared overrides, user overrides both).
+  *Acceptance:* the root has exactly the five entries and nothing else;
+  an app's settings and scripts resolve system → shared → user, verified
+  from a desktop app rather than from a test.
+
+  #### S5.2f — the window list and minimize
+
+  The dock doubles as the task list (running windows appear in it; a click
+  focuses or restores), and **minimize** — deferred at S4.3 "until there
+  is a task list" — lands here: iconify to `IconicState` (`WM_CHANGE_STATE`
+  / `XIconifyWindow`), the window leaves the screen but stays in the dock,
+  and restore returns the geometry it had. This needs the toolkit to
+  handle being iconified, which is the real work. *Acceptance:* minimize
+  → the window is gone from the screen and present in the dock; restore
+  returns the same geometry; a running tile focuses its window; zoom
+  accounts for the dock inset.
+
+  #### S5.2g — the S5 gate
+
+  One boot of the standard image: wallpaper, bar (system menu, app menus,
+  clock) and dock all present; launch two apps **from the dock**; drag,
+  resize, zoom, toolbar toggle and the menu round trip still work on them
+  (the S4 regression surface); minimize and restore; the FSH skeleton and
+  Application Support resolution asserted; screendumps as evidence; no X
+  protocol errors. *Acceptance:* the S5 sentence, evidenced end to end.
+
+  #### Decisions (settled)
+
+  - **Dock contents: pinned + running only, no Trash.**
+    `initial-release.md` Q-R1 wins over `uikit-plan.md` §5's "trash at the
+    bottom" — it is the more concrete spec (it also gives the dock its
+    config domain), and a Trash tile needs something to put in it: a Trash
+    view and delete/restore semantics, which is a milestone of its own.
+    The trash returns when that exists; S5.2c is a deliberate override of
+    the mockup, not an omission.
+  - **Wallpaper: parametric/vector, from the theme.** Consistent with
+    "chrome is vector-parameter driven" (§3), and it needs no image
+    decoder and no shipped asset — of which the repo has none. The PNG
+    path is parked as **S5.2h** below rather than dropped.
+  - **Launching: direct `fork`/`execve` of the bundle payload.** What
+    init does today. `bundle-launch-plan.md`'s `launch` helper and the
+    kernel's `BUNDLE_ENTRY` identity check (both DECIDED-but-unimplemented)
+    stay their own milestone: mediation is a kernel/security slice, and
+    blocking the desktop on it would invert the dependency. S5.2d's
+    bundles are therefore *unmediated* and must not be treated as a
+    safety boundary.
+
+  #### S5.2h — PNG wallpaper (parked follow-on)
+
+  Not part of S5.2's gate. Give `BitmapImage` a loader (it has none —
+  only blank WxH surfaces) using the `libpng16` already in the image, and
+  ship `System/Shared/Images/Wallpaper/Default.png`, so the wallpaper can
+  be imagery rather than theme parameters, as §3/§5 describe it. Parked
+  because it adds a decode path and an asset for no visible S5 gain.
+
+  #### Not in S5.2
+
+  Session/log-in (sessionmgr, greeters, power menus); the `launch`
+  helper's mediation if the decision defers it; submenus inside a
+  dropdown; mnemonics/accelerators; session-socket peer credentials;
+  accessibility over the session socket; virtual desktops/spaces (the
+  `system.workspace.conf` domain exists in `initial-release.md` §3 but
+  workspaces are their own milestone).
 
 ## Relationship to plan §7 and §469
 
