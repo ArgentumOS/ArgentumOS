@@ -355,6 +355,7 @@ struct MenuItem::Impl {
 	bool enabled = true;
 	int id = 0;					/* S4.2a: 0 = none yet */
 	char keyEquivalent = 0;				/* S4.2a: display hint */
+	bool checked = false;				/* S4.2c: the mark */
 	unsigned int keyModifiers = 0;			/* S4.2a: KeyMod* bits */
 	std::function<void()> action;
 	Menu *submenu = nullptr;

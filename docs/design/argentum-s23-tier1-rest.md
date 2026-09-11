@@ -12,7 +12,11 @@ separately.
 
 ## 1. Scope (L5, grouped by new machinery)
 
-1. **Menu / MenuItem model** (NOT views — Cocoa's NSMenu model):
+1. **Menu / MenuItem model** (NOT views — Cocoa's NSMenu model;
+   extended in S4.2a/S4.2c with item kinds incl. separator, pick ids,
+   key equivalents and a checked state, and given a real dropdown row
+   rendering: separators as rules, check/radio marks, right-aligned
+   equivalents):
    title, enabled, an action, submenu items; the *wire* (config-framed
    menu tree for the session socket) stays later (Kestrel); S2.3 builds
    the in-process model + the PopUpButton that presents it.

@@ -357,6 +357,27 @@ Application::setOnMenuPick(std::function<void(int itemId)> cb)
 	impl_->onMenuPick = std::move(cb);
 }
 
+/* S4.2c: publish the menubar again for each of the app's windows, so a
+ * model change the WM cannot see on its own (a Check item's state)
+ * reaches the bar. */
+void
+Application::menuBarRefresh()
+{
+	if (!impl_->menuBar || !impl_->session) {
+		return;
+	}
+	for (std::map<unsigned long, Window *>::iterator it =
+		     impl_->windows.begin(); it != impl_->windows.end(); ++it) {
+		Window *w = it->second;
+
+		if (!w || w->isOverrideRedirect()) {
+			continue;
+		}
+		impl_->session->publish(impl_->menuBar,
+					(unsigned long) w->xid());
+	}
+}
+
 int
 Application::run()
 {

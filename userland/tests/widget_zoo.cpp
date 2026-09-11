@@ -559,6 +559,114 @@ main()
 		return 1;
 	}
 	w.setContentView(&v);
+
+	/* ---- S4.2c: the zoo's REAL menubar ---------------------------
+	 * The reference app for the global menu bar: every item does
+	 * something this board can be seen doing. Reset Values restores
+	 * the widgets, Enable/Disable All gate them, Show Table is a
+	 * Check item (so a dropdown has state to draw and the tick has to
+	 * come back over the wire after the toggle), Focus First Field
+	 * moves the first responder, Dump Geometry prints the frames. */
+	static argentum::Menu zooBar, mZoo, mWidgets, mView;
+	static argentum::MenuItem tZoo("zoo"), tWidgets("Widgets"),
+		tView("View");
+	static argentum::MenuItem iAbout("About Zoo"), iQuit("Quit Zoo");
+	static argentum::MenuItem iReset("Reset Values"),
+		iEnable("Enable All"), iDisable("Disable All");
+	static argentum::MenuItem iTable("Show Tabs"),
+		iFocus("Focus First Field"), iDump("Dump Geometry");
+
+	mZoo.setTitle("zoo");
+	iAbout.setAction([]() { zoo_log("menu:about"); });
+	iQuit.setAction([&app]() {
+		zoo_log("menu:quit");
+		app.terminate();
+	});
+	iQuit.setKeyEquivalent('q', argentum::KeyModCommand);
+	mZoo.addItem(&iAbout);
+	mZoo.addSeparator();
+	mZoo.addItem(&iQuit);
+
+	mWidgets.setTitle("Widgets");
+	iReset.setAction([&v]() {
+		/* the same reset the board's own popup menu runs */
+		zoo_log("menu:reset");
+		v.slider.setValue(0.5);
+		v.stepper.setValue(5.0);
+		v.field.setValue("Argentum");
+		v.prog.setProgress(0.5);
+		v.level.setLevel(0.5);
+		v.lblSliderVal.setText("Volume: 0.50");
+		v.lblStepperVal.setText("Steps: 5");
+	});
+	iReset.setKeyEquivalent('r', argentum::KeyModCommand);
+	iEnable.setAction([&v]() {
+		zoo_log("menu:enable-all");
+		v.field.setEnabled(true);
+		v.setBtn.setEnabled(true);
+		v.slider.setEnabled(true);
+		v.stepper.setEnabled(true);
+		v.seg.setEnabled(true);
+		v.pop.setEnabled(true);
+	});
+	iDisable.setAction([&v]() {
+		zoo_log("menu:disable-all");
+		v.field.setEnabled(false);
+		v.setBtn.setEnabled(false);
+		v.slider.setEnabled(false);
+		v.stepper.setEnabled(false);
+		v.seg.setEnabled(false);
+		v.pop.setEnabled(false);
+	});
+	mWidgets.addItem(&iReset);
+	mWidgets.addSeparator();
+	mWidgets.addItem(&iEnable);
+	mWidgets.addItem(&iDisable);
+
+	mView.setTitle("View");
+	iTable.setKind(argentum::MenuItem::Kind::Check);
+	iTable.setChecked(true);
+	iTable.setAction([&app, &tabs]() {
+		bool show = tabs.isHidden();
+
+		/* the TabView is the band's unmistakable element: its tab
+		 * bar and coloured content are what the toggle has to
+		 * change on screen */
+		zoo_log(show ? "menu:tabs-back" : "menu:tabs-away");
+		tabs.setHidden(!show);
+		iTable.setChecked(show);
+		/* the WM holds a copy of the model: tell it to take it
+		 * again, or the tick would never change */
+		app.menuBarRefresh();
+	});
+	iFocus.setAction([&w, &v]() {
+		zoo_log("menu:focus-field");
+		w.setFirstResponder(&v.field);
+	});
+	iDump.setAction([&v]() {
+		argentum::Rect r = v.field.frame();
+		char buf[160];
+
+		std::snprintf(buf, sizeof(buf),
+			      "menu:dump field=%.0f,%.0f %.0fx%.0f",
+			      r.origin.x, r.origin.y, r.size.w, r.size.h);
+		zoo_log(buf);
+	});
+	iDump.setKeyEquivalent('d', argentum::KeyModCommand);
+	mView.addItem(&iTable);
+	mView.addSeparator();
+	mView.addItem(&iFocus);
+	mView.addItem(&iDump);
+
+	tZoo.setSubmenu(&mZoo);
+	tWidgets.setSubmenu(&mWidgets);
+	tView.setSubmenu(&mView);
+	zooBar.setTitle("Argentum widget zoo");
+	zooBar.addItem(&tZoo);
+	zooBar.addItem(&tWidgets);
+	zooBar.addItem(&tView);
+	app.setMenuBar(&zooBar);
+
 	w.show();
 	std::fprintf(stderr, "ZOO-READY xid=0x%lx\n", w.xid());
 	std::fflush(stderr);

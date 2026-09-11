@@ -330,6 +330,10 @@ public:
 	void setMenuBar(Menu *menubar);
 	Menu *menuBar() const;
 	void setOnMenuPick(std::function<void(int itemId)> cb);
+	/* S4.2c: publish the menubar again — for a model that changed
+	 * under the WM (a Check item's state, a relabel, an enable/
+	 * disable). The WM replaces the record it holds per window. */
+	void menuBarRefresh();
 
 	/* S2.2b: the session Theme (the NSAppearance analog) — loaded
 	 * lazily from the system.theme domain on first access; always
@@ -1025,6 +1029,13 @@ public:
 	Menu *submenu() const;
 	void activate();			/* fires the action */
 
+	/* S4.2c: the on/off state a Check or Radio item shows. Carried
+	 * on the wire (the record's flags bit 1) so the WM's dropdown can
+	 * draw the mark, and re-read on a republish
+	 * (Application::refreshMenuBar). */
+	void setChecked(bool checked);
+	bool isChecked() const;
+
 	/* S4.2a: the pick id. Menu::addItem() gives an item without
 	 * one an id that is unique in the process, so a published
 	 * menubar always has ids to pick with; Kestrel routes a pick
@@ -1078,6 +1089,7 @@ private:
  * line-oriented and readable: Kestrel logs what it parsed. */
 bool menuSerialize(const Menu *menubar, std::string &out);
 Menu *menuParse(const char *text, size_t len);
+
 
 /* S4.2a: the session socket's framing — one message is a 4-byte
  * big-endian length followed by that many bytes of payload. Exported

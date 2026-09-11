@@ -55,6 +55,10 @@ sameTree(Menu *a, Menu *b)
 			printf("  [%d] '%s' enabled differs\n", i, x->title());
 			return false;
 		}
+		if (x->isChecked() != y->isChecked()) {
+			printf("  [%d] '%s' checked differs\n", i, x->title());
+			return false;
+		}
 		if (x->id() != y->id()) {
 			printf("  [%d] '%s' id %d != %d\n", i, x->title(), x->id(), y->id());
 			return false;
@@ -109,6 +113,7 @@ main()
 	redoItem.setKeyEquivalent('z', KeyModCommand | KeyModShift);
 	editMenu.addSeparator();
 	wrapItem.setKind(MenuItem::Kind::Check);
+	wrapItem.setChecked(true);
 	editMenu.addItem(&wrapItem);
 	sizeItem.setKind(MenuItem::Kind::Radio);
 	bigItem.setKind(MenuItem::Kind::Radio);
@@ -144,7 +149,10 @@ main()
 	if (back) {
 		check("round-trip", sameTree(&bar, back),
 		      "titles, kinds, enabled, ids, key equivalents and nesting survive");
-		check("parsed-lookup", back->itemWithId(newItem.id()) != nullptr &&
+		check("checked-flag", back && back->itemWithId(wrapItem.id()) &&
+	      back->itemWithId(wrapItem.id())->isChecked(),
+	      "a checked Check item survives the trip");
+	check("parsed-lookup", back->itemWithId(newItem.id()) != nullptr &&
 		      !strcmp(back->itemWithId(newItem.id())->title(), "New"),
 		      "itemWithId finds a nested item");
 		check("parsed-owns", true, "deleting the parsed tree");

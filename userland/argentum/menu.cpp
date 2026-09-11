@@ -67,6 +67,18 @@ MenuItem::id() const
 }
 
 void
+MenuItem::setChecked(bool checked)
+{
+	impl_->checked = checked;
+}
+
+bool
+MenuItem::isChecked() const
+{
+	return impl_->checked;
+}
+
+void
 MenuItem::setKeyEquivalent(char key, unsigned int mods)
 {
 	impl_->keyEquivalent = key;
@@ -251,7 +263,8 @@ Menu::itemCount() const
  *	<TAB>I <kind> <flags> <id> <key> <mods> <title>
  *
  * kind = A action, C check, R radio, S separator; flags bit0 =
- * enabled; id = the pick id (0 = none); key = the key equivalent's
+ * enabled, bit1 = checked; id = the pick id (0 = none); key = the key
+ * equivalent's
  * character code (0 = none); mods = KeyMod* bits. The title is escaped
  * (backslash, and \n \t \r) because it runs to the end of the line.
  *
@@ -341,7 +354,9 @@ serializeMenuInto(const Menu *menu, int depth, std::string &out)
 		MenuItem *item = menu->itemAt(i);
 
 		snprintf(fields, sizeof(fields), "I %s %u %d %d %u ",
-			 kindLetter(item->kind()), item->isEnabled() ? 1u : 0u,
+			 kindLetter(item->kind()),
+			 (item->isEnabled() ? 1u : 0u) |
+				 (item->isChecked() ? 2u : 0u),
 			 item->id(), (int) (unsigned char) item->keyEquivalent(),
 			 item->keyModifiers());
 		out += ipad;
@@ -515,6 +530,7 @@ menuParse(const char *text, size_t len)
 			item = new MenuItem(title);
 			item->setKind(letterKind(kind));
 			item->setEnabled((flags & 1) != 0);
+			item->setChecked((flags & 2) != 0);
 			item->setId((int) id);
 			item->setKeyEquivalent((char) key,
 					       (unsigned int) mods);

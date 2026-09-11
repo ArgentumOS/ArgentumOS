@@ -80,16 +80,76 @@ private:
 	std::function<void(int)> pick_;
 };
 
-/* geometry helpers shared by draw + row hit-testing */
+/* geometry helpers shared by draw + row hit-testing. S4.2c: rows are
+ * not all the same height — a separator is a thin rule, which is what a
+ * real menu shows and what its hit-test must skip over. */
 static double
-rowHPt(Menu *menu)
+rowHPt(MenuItem *item)
 {
 	Application &app = Application::shared();
 	Theme &theme = app.theme();
-	TextMetrics m = textMetrics(theme.fontFamily(), theme.fontSizePt(),
-				    "Ag");
+	TextMetrics m;
 
+	if (item && item->kind() == MenuItem::Kind::Separator) {
+		return 9.0;
+	}
+	m = textMetrics(theme.fontFamily(), theme.fontSizePt(), "Ag");
 	return m.ascentPt + m.descentPt + 4.0;
+}
+
+/* where each row starts, in pt (row 0 at 0); returns the total height */
+static double
+rowTops(Menu *menu, double *tops, int max)
+{
+	double y = 0;
+
+	for (int i = 0; i < menu->itemCount(); i++) {
+		if (tops && i < max) {
+			tops[i] = y;
+		}
+		y += rowHPt(menu->itemAt(i));
+	}
+	return y;
+}
+
+/* the free-standing sheet padding above and below the rows */
+#define POPUP_PAD_PT	3.0
+
+/* S4.2c: the row's key equivalent, right-aligned. Command and shift
+ * have glyphs every UI font carries; control and option spell
+ * themselves out rather than risk a missing glyph. */
+static void
+keyEquivalentText(MenuItem *item, char *buf, size_t size)
+{
+	static const struct {
+		unsigned int bit;
+		const char *glyph;
+	} MODS[] = {
+		{ KeyModControl, "Ctrl+" },
+		{ KeyModOption, "Alt+" },
+		{ KeyModShift, "\xe2\x87\xa7" },	/* U+21E7 */
+		{ KeyModCommand, "\xe2\x8c\x98" },	/* U+2318 */
+	};
+
+	buf[0] = 0;
+	if (!item || !item->keyEquivalent()) {
+		return;
+	}
+	for (size_t i = 0; i < sizeof(MODS) / sizeof(MODS[0]); i++) {
+		if (item->keyModifiers() & MODS[i].bit) {
+			strncat(buf, MODS[i].glyph, size - strlen(buf) - 1);
+		}
+	}
+	{
+		char key[2];
+
+		key[0] = item->keyEquivalent();
+		if (key[0] >= 'a' && key[0] <= 'z') {
+			key[0] = (char) (key[0] - 'a' + 'A');
+		}
+		key[1] = 0;
+		strncat(buf, key, size - strlen(buf) - 1);
+	}
 }
 
 static double
@@ -101,15 +161,23 @@ popupWidthPt(Menu *menu)
 
 	for (int i = 0; i < menu->itemCount(); i++) {
 		MenuItem *it = menu->itemAt(i);
-		TextMetrics m;
+		char eq[32];
+		double w;
 
-		if (!it) {
+		if (!it || it->kind() == MenuItem::Kind::Separator) {
 			continue;
 		}
-		m = textMetrics(theme.fontFamily(), theme.fontSizePt(),
-				it->title());
-		if (m.widthPt + 20.0 > wmax) {
-			wmax = m.widthPt + 20.0;
+		/* the mark column, the title, then the equivalents right-
+		 * aligned with a gap */
+		w = textMetrics(theme.fontFamily(), theme.fontSizePt(),
+				it->title()).widthPt + 20.0 + 14.0;
+		keyEquivalentText(it, eq, sizeof(eq));
+		if (eq[0]) {
+			w += textMetrics(theme.fontFamily(), theme.fontSizePt(),
+					 eq).widthPt + 24.0;
+		}
+		if (w > wmax) {
+			wmax = w;
 		}
 	}
 	return wmax;
@@ -118,13 +186,19 @@ popupWidthPt(Menu *menu)
 int
 PopupMenuView::rowAt(double yPt) const
 {
-	double rh = rowHPt(menu_);
-	int i = (int) (yPt / rh);
+	double y = POPUP_PAD_PT;
 
-	if (i < 0 || i >= menu_->itemCount()) {
-		return -1;
+	for (int i = 0; i < menu_->itemCount(); i++) {
+		double rh = rowHPt(menu_->itemAt(i));
+
+		if (yPt >= y && yPt < y + rh) {
+			/* a separator is not a row you can pick */
+			return (menu_->itemAt(i)->kind() ==
+				MenuItem::Kind::Separator) ? -1 : i;
+		}
+		y += rh;
 	}
-	return i;
+	return -1;
 }
 
 void
@@ -145,7 +219,7 @@ PopupMenuView::draw(GraphicsContext &g)
 	Rect f = frame();
 	int w = (int) (f.size.w * ppt + 0.5);
 	int h = (int) (f.size.h * ppt + 0.5);
-	double rh = rowHPt(menu_);
+	double ypt = POPUP_PAD_PT;
 
 	/* chrome sheet + outline (a small floating panel) */
 	g.fillRoundedRect(0, 0, (unsigned) w, (unsigned) h, 3,
@@ -155,33 +229,77 @@ PopupMenuView::draw(GraphicsContext &g)
 
 	for (int i = 0; i < menu_->itemCount(); i++) {
 		MenuItem *it = menu_->itemAt(i);
-		double y0 = i * rh;
-		int yPx = (int) (y0 * ppt + 0.5);
+		double rh = rowHPt(it);
+		int yPx = (int) (ypt * ppt + 0.5);
 		int rowHPx = (int) (rh * ppt + 0.5);
 		std::uint32_t fg;
 		bool hovered = (i == hover_) && it && it->isEnabled();
+		TextMetrics m;
+		int tx = 22;		/* past the mark column */
+		int ty;
+
+		ypt += rh;
+		if (!it) {
+			continue;
+		}
+		if (it->kind() == MenuItem::Kind::Separator) {
+			/* S4.2c: a rule, inset, in a thin row of its own */
+			g.fillRect(8, yPx + rowHPx / 2, (unsigned) (w - 16), 1,
+				   theme.chromeOutline());
+			continue;
+		}
 
 		if (hovered) {
 			g.fillRoundedRect(2, yPx + 1, (unsigned) (w - 4),
 					  (unsigned) (rowHPx - 2), 2,
 					  theme.accent());
 			fg = 0xffffff;
-		} else if (it && !it->isEnabled()) {
+		} else if (!it->isEnabled()) {
 			fg = theme.state(ControlState::Disabled).label;
 		} else {
 			fg = theme.text();
 		}
-		if (it) {
-			TextMetrics m = textMetrics(theme.fontFamily(),
-						   theme.fontSizePt(),
-						   it->title());
-			int tx = 8;
-			int ty = yPx + (int) ((rowHPx - (m.ascentPt +
-						      m.descentPt) * ppt) /
-						2.0);
 
-			g.drawText(theme.fontFamily(), theme.fontSizePt(),
-				   tx, ty, it->title(), fg);
+		m = textMetrics(theme.fontFamily(), theme.fontSizePt(),
+				it->title());
+		ty = yPx + (int) ((rowHPx - (m.ascentPt + m.descentPt) * ppt) /
+				  2.0);
+
+		/* S4.2c: the mark column — what a check or radio item's
+		 * state looks like, and what the WM's dropdown can show
+		 * because the wire carries it */
+		if (it->isChecked() &&
+		    (it->kind() == MenuItem::Kind::Check ||
+		     it->kind() == MenuItem::Kind::Radio)) {
+			if (it->kind() == MenuItem::Kind::Radio) {
+				int d = 7;
+
+				g.fillRoundedRect(9, yPx + rowHPx / 2 - d / 2,
+						  (unsigned) d, (unsigned) d,
+						  d / 2, fg);
+			} else {
+				g.drawText(theme.fontFamily(),
+					   theme.fontSizePt(), 8, ty,
+					   "\xe2\x9c\x93", fg);	/* U+2713 */
+			}
+		}
+
+		g.drawText(theme.fontFamily(), theme.fontSizePt(), tx, ty,
+			   it->title(), fg);
+
+		/* S4.2c: the key equivalent, right-aligned */
+		{
+			char eq[32];
+
+			keyEquivalentText(it, eq, sizeof(eq));
+			if (eq[0]) {
+				m = textMetrics(theme.fontFamily(),
+						theme.fontSizePt(), eq);
+				g.drawText(theme.fontFamily(),
+					   theme.fontSizePt(),
+					   w - 8 - (int) (m.widthPt * ppt + 0.5),
+					   ty, eq, fg);
+			}
 		}
 	}
 }
@@ -238,7 +356,8 @@ PopupWindow::PopupWindow(Menu *menu, int xRootPx, int yRootPx)
 	Application &app = Application::shared();
 	double ppt = app.pxPerPt();
 	int wPx = (int) (popupWidthPt(menu) * ppt + 0.5);
-	int hPx = (int) (menu->itemCount() * rowHPt(menu) * ppt + 0.5) + 2;
+	int hPx = (int) ((rowTops(menu, nullptr, 0) + POPUP_PAD_PT * 2.0) * ppt
+			 + 0.5);
 
 	init(menu->title() ? menu->title() : "menu", xRootPx, yRootPx,
 	     (unsigned) wPx, (unsigned) hPx);

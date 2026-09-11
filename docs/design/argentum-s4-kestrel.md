@@ -386,6 +386,59 @@ two apps, the bar swaps with focus, picks trigger app actions.
   `KREL-B-ACTION New`) and that the dropdown is on screen while open and
   gone after the pick.
 
+### S4.2c — the reference app's menubar, and real menu rows
+*Status: **DONE** (2026-09).* `userland/tests/widget_zoo.cpp` (the zoo's
+menubar + `Application::menuBarRefresh`), `userland/argentum/popup.cpp`
+(per-row heights, separators, marks, key equivalents),
+`userland/argentum/menu.cpp` (the checked bit), `view.cpp` (a hide/show
+repaint fix it uncovered).
+
+*Acceptance:* the zoo — the app a person runs to see the toolkit — has a
+real menubar whose items do things the board can be seen doing, and the
+dropdown draws what the wire carries.
+
+**As built:**
+
+- **The zoo's menubar is real**: `zoo` (About, Quit), `Widgets` (Reset
+  Values, then Enable All / Disable All), `View` (a Check item over the
+  TabView, Focus First Field, Dump Geometry), with `⌘Q`/`⌘R`/`⌘D` key
+  equivalents. Each action drives board state and logs it, so a gate can
+  see it happen, and the reset reuses the action the board's own popup
+  menu runs.
+- **`MenuItem` gained a checked state** and the wire carries it: a Check
+  or Radio item's mark is meaningless without it. It rides the record's
+  `flags` bit 1 (still version 1 — the flags field was already numeric),
+  so `menuSerialize`/`menuParse` and the round-trip probe cover it.
+- **`Application::menuBarRefresh()`** republishes the model for the
+  app's windows. A Check item's state changes in the app; the WM holds
+  a *copy*, so without this the tick could never change. (A *diff*
+  protocol is still not needed; §S4.2a's "model diffs can follow the
+  same records" now has its first real user.)
+- **The dropdown now draws a real menu**: rows are not all the same
+  height (a separator is a 9pt rule inset from the edges, not a text row
+  of blank), a checked Check item shows `✓` and a checked Radio item a
+  dot in a mark column (titles start past it), and a key equivalent is
+  drawn right-aligned. `⌘`/`⇧` are glyphs; `Ctrl+`/`Alt+` spell
+  themselves out rather than risk a missing glyph in the UI font. The
+  popup's width now fits the mark column and the equivalents.
+- **`View::setHidden` did not repaint** — found in use, and the reason
+  this slice exists. It flipped `hidden` and *then* called
+  `setNeedsDisplay()`, which returns early for a hidden view, so the
+  area a view vacated was never redrawn: with the damage-limited flush
+  the pixels stayed on screen forever. Both directions are now reported
+  before/after the flip. (Anything that hides a view had stale pixels —
+  scrollbars, panels, and this.)
+- *Gate:* `.build/zoomenu_run.sh` + `zoomenu_drive.py` +
+  `zoomenu_assert.py` (ZOOMENU-OK, 13 checks) — a fresh boot with the
+  zoo as the only client, so its bar is the only bar. It clicks "View"
+  and picks the Check item, then asserts: the zoo's action ran and said
+  so, the pick was routed to its window, the model was published again,
+  the TabView left the screen (18k pixels), a separator is drawn as a
+  rule (150px), and the mark column has ink while checked (19px) and
+  none after the toggle (0px). The driver reads where to click from the
+  screenshots, and the WM draws the app's *name* before the menus, so
+  the zoo's "View" is the last word run, not the second.
+
 ## 5. Files
 
 - `userland/kestrel/` — the WM (new app; root handling, frame

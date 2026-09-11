@@ -189,8 +189,18 @@ View::setHidden(bool hidden)
 	if (impl_->hidden == hidden) {
 		return;
 	}
+	/* S4.2c: report the transition BEFORE flipping the flag. A hidden
+	 * view reports no damage (setNeedsDisplay returns early for it),
+	 * so hiding a view used to leave its pixels on screen forever —
+	 * the renderer skips it, but nothing ever repainted the area it
+	 * vacated. */
+	if (hidden) {
+		setNeedsDisplay();
+	}
 	impl_->hidden = hidden;
-	setNeedsDisplay();
+	if (!hidden) {
+		setNeedsDisplay();
+	}
 }
 
 bool
