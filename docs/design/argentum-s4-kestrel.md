@@ -292,8 +292,11 @@ two apps, the bar swaps with focus, picks trigger app actions.
 
 ## 6. Deferred (decisions, not omissions)
 
-- **Move is DONE** (S4.1d, title-band drag); **client resize** (edge/
-  corner grips) remains deferred until S5.
+- **Move and client resize are both DONE** (S4.1d title-band drag;
+  S4.3 edge/corner grips — this bullet used to defer the resize to
+  S5). What remains deferred in the chrome: **minimize** still needs
+  the task list and **shading** (double-click the title bar) is
+  undesigned.
 - **Desktop chrome** (wallpaper surface, right dock + trash,
   menubar date/time): uikit-plan §5 items = S5's session surface.
 - **Session/login** (sessionmgr, greeters, power menus): per
