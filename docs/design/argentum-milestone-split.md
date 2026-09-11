@@ -397,7 +397,7 @@ structure, S2.5 the reference board + a11y battery).
   from the console shell is managed and drew over the wallpaper (211,581 px)
   with wallpaper still visible where it does not cover; no X protocol errors.
 
-  #### S5.2b — the menubar's two ends
+  #### S5.2b — the menubar's two ends (DONE)
 
   The mockup's menubar is "system icon, active app name, menus … far
   right: date and time". The **system icon** (left) is a Kestrel-owned
@@ -408,6 +408,55 @@ structure, S2.5 the reference board + a11y battery).
   a long menu list never collides with it. *Acceptance:* the clock ticks;
   the system menu opens/closes like an app menu; a menu list long enough
   to reach the clock still lays out inside its own zone.
+
+  **As built (DONE).** The bar now has the mockup's three zones: the system
+  mark on the left, the active app (its name, then its menus), and the
+  clock at the right.
+
+  - **The system mark** is a vector tile — the theme's accent, a rounded
+    square, **no asset** — and its zone `[0, 28)` opens Kestrel's own menu
+    through the S4.2 popup path (`menuPopUp` with no pick handler, so the
+    item's own action runs). Its items are **desktop actions**: "About
+    Argentum Desktop" (logs) and "Arrange Windows in Front" (raises every
+    managed frame, bar last). Session items — log out, restart, sleep —
+    are deliberately absent; they belong to sessionmgr.
+  - **The clock** is right-aligned in a **reserved** zone. Its format is a
+    setting: `desktop.clockFormat` in the `system.argentum` domain, read
+    through a new `Application::configString()` (the toolkit's first
+    general config accessor, same domain and system -> user -> shared
+    precedence as its own settings), with a shipped default in
+    `userland/configuration/system.argentum.conf`. The reserved width is
+    measured from a **fixed reference time** (2006-11-22 22:22, two digits
+    everywhere) so the menus beside it never shift when the text changes.
+    It is updated on the idle beat and redrawn — and logged — only when
+    the text actually changes.
+  - **The zones are one layout**, shared by the paint and the hit-test
+    (S4.2b's rule), and the layout stops at the clock's edge: a title that
+    would reach into it is dropped rather than drawn over it — and, since
+    the hit-test runs the same layout, it is not clickable either. The
+    zone is never squeezed below `SYS_ZONE_W + 40` px.
+
+  Verification gap, recorded: a menubar long enough to actually reach the
+  clock is not in the tree (the zoo's menus end around x≈400 of 1280), so
+  the drop path is verified by construction and review, not by a run.
+
+  **Gate lesson worth keeping** (it cost three runs): the pointer driver
+  drops ps/2 chunks sent faster than the guest drains them, so a *big*
+  relative move — the kind needed to reach a screen corner — can silently
+  land short and poison every later coordinate. The symptom was bizarre:
+  the mark click arrived on the *strip* but at `(1064, 0)`, a title slot,
+  so the system-menu branch never ran. Diagnosed by temporarily logging
+  every `ButtonPress`'s window and coordinates (removed after). The drive
+  now parks to the **top-left** (equal deltas, which survive chunking) at a
+  slower cadence, so the click itself is a small move.
+
+  Gate: `.build/s52b_run.sh` + `s52b_drive.py` + `s52b_assert.py` →
+  **S52B-OK, 12 checks** on one boot of the standard image: the zones the
+  WM laid out, the clock's format coming from the config key, the clock
+  drawn in its zone and advancing (`20:38 -> 20:40`, three distinct
+  strings, 92 px changed across the tick), the system mark drawn, the menu
+  dropped below the mark (0.84 light) and gone after a press elsewhere
+  (0.00), and no X protocol errors.
 
   #### S5.2c — the dock
 

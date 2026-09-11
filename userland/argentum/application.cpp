@@ -205,6 +205,31 @@ Application::isRunning() const
 	return impl_->running;
 }
 
+/* S5.2b: a general read of the session's Argentum config domain, for
+ * settings that are not the toolkit's own (Kestrel's desktop.clockFormat,
+ * and the dock/wallpaper keys after it). Same domain and precedence as the
+ * constructor's reads; the returned pointer is libconfig's, so it is
+ * copied out here rather than handed to callers. */
+bool
+Application::configString(const char *key, const char *def, char *out,
+			   unsigned int cap) const
+{
+	const char *v = nullptr;
+
+	if (!out || cap == 0)
+		return false;
+	if (def)
+		snprintf(out, cap, "%s", def);
+	else
+		out[0] = 0;
+	if (!key || config_get_string(ARGENTUM_CONF_DOMAIN, key, &v) !=
+			      CONFIG_OK ||
+	    !v || !*v)
+		return false;
+	snprintf(out, cap, "%s", v);
+	return true;
+}
+
 std::uint32_t
 Application::sessionBackground() const
 {

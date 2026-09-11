@@ -19,6 +19,7 @@
  * RESIZE mode: a press on an edge or corner grip resizes the frame
  * and the client together. */
 #include <argentum/argentum.h>
+#include <time.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -96,6 +97,33 @@ static ::Window stripX = 0;	/* the menubar strip's X window */
 static int screenW = 0;
 static int screenH = 0;
 static int xerrCount = 0;
+
+/* ---- S5.2b: the menubar's zones ------------------------------------
+ *
+ * The mockup's bar has three zones: a system mark on the left, the active
+ * app (its name, then its menus), and the date/time on the right. The
+ * clock's zone is RESERVED: a menu that would reach it is dropped rather
+ * than drawn over it, and the paint and the hit-test share one layout
+ * (S4.2b's rule) so they cannot disagree about where a title is.
+ */
+#define SYS_ICON_W	16	/* the system mark's box, px */
+#define SYS_ZONE_W	28	/* its hit zone: the box plus padding */
+#define CLOCK_INSET	10	/* from the screen's right edge */
+#define CLOCK_GAP	12	/* between the last menu and the clock */
+
+static char gClockText[64] = { 0 };	/* what the clock currently shows */
+static char gClockFmt[32] = { 0 };	/* desktop.clockFormat */
+static int gClockW = 0;			/* its reserved width (px) */
+
+/* The left edge of the clock's zone: menus stop here. Never so small that
+ * the app name and its menus have no room at all. */
+static int
+clockZoneLeft()
+{
+	int left = screenW - gClockW - CLOCK_INSET - CLOCK_GAP;
+
+	return (left < SYS_ZONE_W + 40) ? SYS_ZONE_W + 40 : left;
+}
 
 /* ---- S5.2a: the wallpaper surface ---------------------------------
  *
@@ -258,6 +286,7 @@ struct Managed {
 static std::vector<Managed *> gFrames;
 static void focusClient(Managed *m);	/* S4.1b (defined below) */
 static void stripRefresh();		/* S4.2a (defined below) */
+static void clockUpdate(bool force);	/* S5.2b (defined below) */
 static Managed *gActive = nullptr;	/* S4.1b focused client */
 static ::Window ewmhRoot = 0;
 
@@ -295,7 +324,7 @@ struct PublishedMenu {
 };
 
 static int stripMenuLayout(const Menu *menu, const char *title, int *xs,
-			   int *ws, int *idx, int max);	/* with the strip */
+			   int *ws, int *idx, int max, int limit);	/* with the strip */
 static std::vector<SessionConn *> gConns;
 static std::vector<PublishedMenu *> gMenus;
 static int gListenFd = -1;
@@ -492,6 +521,64 @@ popUpClientMenu(Managed *m, int itemIndex, int xRootPx)
 	menuPopUp(sub, xRootPx, BAR_H, [client](int id) {
 		sessionSendPick(client, id);
 	});
+}
+
+/* S5.2b: Kestrel's own menu, behind the system mark. Its items are DESKTOP
+ * actions — session items (log out, restart, sleep) belong to sessionmgr
+ * and are deliberately not here. Built once, then reused: menuPopUp without
+ * a pick handler runs the item's own action (the S2.3c path). */
+static void
+arrangeWindows()
+{
+	for (Managed *m : gFrames) {
+		if (m->mapped) {
+			XRaiseWindow(dpy, m->frame->xid());
+		}
+	}
+	if (stripX) {
+		XRaiseWindow(dpy, stripX);	/* the bar stays on top */
+	}
+	XSync(dpy, False);
+	printf("KESTREL: action arrange (%d frame(s))\n", (int) gFrames.size());
+	fflush(stdout);
+}
+
+static Menu *
+systemMenu()
+{
+	static Menu *menu = nullptr;
+
+	if (menu) {
+		return menu;
+	}
+	menu = new Menu();
+	{
+		MenuItem *about = new MenuItem("About Argentum Desktop");
+
+		about->setAction([]() {
+			printf("KESTREL: action about\n");
+			fflush(stdout);
+		});
+		menu->addItem(about);
+	}
+	menu->addSeparator();
+	{
+		MenuItem *arrange = new MenuItem("Arrange Windows in Front");
+
+		arrange->setAction(arrangeWindows);
+		menu->addItem(arrange);
+	}
+	return menu;
+}
+
+static void
+popUpSystemMenu()
+{
+	Menu *m = systemMenu();
+
+	printf("KESTREL: system menu open (%d item(s))\n", m->itemCount());
+	fflush(stdout);
+	menuPopUp(m, 0, BAR_H);
 }
 
 static void
@@ -1605,6 +1692,7 @@ idleBeat()
 {
 	dropIfReleased();
 	reapDeadClients();
+	clockUpdate(false);	/* S5.2b: the bar's clock */
 	return false;
 }
 
@@ -1664,14 +1752,21 @@ kestrelHook(void *xevent)
 		 * that title's menu, anywhere else it closes an open one.
 		 * Consumed either way: the strip is the WM's own. */
 		if (ev->xbutton.window == stripX) {
+			int x = ev->xbutton.x;
+
+			/* S5.2b: the system mark opens Kestrel's own menu */
+			if (x < SYS_ZONE_W) {
+				popUpSystemMenu();
+				return true;
+			}
 			Menu *root = gActive ? menuForClient(gActive->client)
 					     : nullptr;
 			int xs[32], ws[32], idx[32];
 			int n = stripMenuLayout(root,
 						gActive ? gActive->title
 							: "Kestrel",
-						xs, ws, idx, 32);
-			int x = ev->xbutton.x;
+						xs, ws, idx, 32,
+						clockZoneLeft());
 
 			for (int i = 0; i < n; i++) {
 				if (x >= xs[i] - 8 && x < xs[i] + ws[i] + 8) {
@@ -1881,16 +1976,30 @@ public:
 			/* S4.2a: the focused app's menus — the menubar's
 			 * items are the bar titles, laid out by the same
 			 * function the hit-test uses (S4.2b). */
+			/* S5.2b: the system mark — the mockup's "system icon" as
+			 * a vector tile (no asset): the theme's accent, centred in
+			 * the bar. A press in its zone opens Kestrel's own menu. */
+			g.fillRoundedRect(6, (h - SYS_ICON_W) / 2, SYS_ICON_W,
+					  SYS_ICON_W, 4, t.accent());
 			if (title_[0]) {
-				g.drawText(t.fontFamily(), t.fontSizePt(), 8,
-					   ty, title_, t.text());
+				g.drawText(t.fontFamily(), t.fontSizePt(),
+					   SYS_ZONE_W, ty, title_, t.text());
 			}
-			n = stripMenuLayout(menu_, title_, xs, ws, idx, 32);
+			n = stripMenuLayout(menu_, title_, xs, ws, idx, 32,
+					    clockZoneLeft());
 			for (int i = 0; i < n; i++) {
 				g.drawText(t.fontFamily(), t.fontSizePt(),
 					   xs[i], ty,
 					   menu_->itemAt(idx[i])->title(),
 					   t.text());
+			}
+			/* S5.2b: the clock, in its reserved zone at the right.
+			 * Left-aligned inside the reserved box so it does not
+			 * jitter when the text's own width changes. */
+			if (clock_[0]) {
+				g.drawText(t.fontFamily(), t.fontSizePt(),
+					   screenW - gClockW - CLOCK_INSET, ty,
+					   clock_, t.text());
 			}
 		}
 	}
@@ -1906,8 +2015,16 @@ public:
 		menu_ = menu;
 	}
 
+	/* S5.2b: the date/time, drawn at the right in its reserved zone */
+	void setClock(const char *utf8)
+	{
+		strncpy(clock_, utf8, sizeof(clock_) - 1);
+		clock_[sizeof(clock_) - 1] = 0;
+	}
+
 private:
 	char title_[64] = { 0 };
+	char clock_[64] = { 0 };
 	const Menu *menu_ = nullptr;
 };
 
@@ -1918,12 +2035,12 @@ private:
  * titles were laid out (at most max). */
 static int
 stripMenuLayout(const Menu *menu, const char *title, int *xs, int *ws,
-		int *idx, int max)
+		int *idx, int max, int limit)
 {
 	Application &app = Application::shared();
 	Theme &t = app.theme();
 	double ppt = app.pxPerPt();
-	int x = 8;
+	int x = SYS_ZONE_W;	/* S5.2b: past the system mark */
 	int n = 0;
 
 	if (title && title[0]) {
@@ -1940,6 +2057,11 @@ stripMenuLayout(const Menu *menu, const char *title, int *xs, int *ws,
 		}
 		w = (int) (textMetrics(t.fontFamily(), t.fontSizePt(), s)
 			   .widthPt * ppt + 0.5);
+		/* S5.2b: the clock's zone is reserved — a title that would
+		 * reach into it is dropped (and, since the hit-test runs this
+		 * same layout, it is not clickable either). */
+		if (x + w > limit)
+			break;
 		if (n < max) {
 			xs[n] = x;
 			ws[n] = w;
@@ -1953,6 +2075,58 @@ stripMenuLayout(const Menu *menu, const char *title, int *xs, int *ws,
 
 static StripView *gStrip = nullptr;	/* the strip's content view */
 static argentum::Window *gBar = nullptr;	/* its window (in main) */
+
+/* The clock's reserved width, measured from a FIXED reference time so the
+ * menus beside it never shift when the text changes ("9:05" -> "10:05").
+ * The reference has two digits everywhere, so the reserved box is the
+ * widest the format can be for a normal date. */
+static int
+clockTextWidth(const char *fmt)
+{
+	Application &app = Application::shared();
+	Theme &t = app.theme();
+	struct tm ref = {};
+	char buf[96];
+
+	ref.tm_year = 106;	/* 2006-11-22 22:22 */
+	ref.tm_mon = 10;
+	ref.tm_mday = 22;
+	ref.tm_hour = 22;
+	ref.tm_min = 22;
+	ref.tm_wday = 3;
+	if (!strftime(buf, sizeof buf, fmt, &ref))
+		return 0;
+	return (int) (textMetrics(t.fontFamily(), t.fontSizePt(), buf)
+			      .widthPt * app.pxPerPt() + 0.5);
+}
+
+/* S5.2b: tick the clock. Runs on the idle beat, redraws only when the text
+ * actually changes (once a minute), and logs the text so a run can see it
+ * tick — the same trick the wallpaper tones use. */
+static void
+clockUpdate(bool force)
+{
+	struct tm tm;
+	time_t now = time(nullptr);
+	char buf[96];
+
+	if (!gClockFmt[0])
+		return;
+	if (!localtime_r(&now, &tm))
+		return;
+	if (!strftime(buf, sizeof buf, gClockFmt, &tm))
+		return;
+	if (!force && strcmp(buf, gClockText) == 0)
+		return;
+	strncpy(gClockText, buf, sizeof(gClockText) - 1);
+	gClockText[sizeof(gClockText) - 1] = 0;
+	if (gStrip) {
+		gStrip->setClock(gClockText);
+		stripRefresh();
+	}
+	printf("KESTREL: clock \"%s\"\n", gClockText);
+	fflush(stdout);
+}
 
 /* S4.2a: what the strip shows — the focused client's name and its
  * published menus, else Kestrel's own. Called when focus or the menus
@@ -2042,6 +2216,16 @@ main()
 	stripView->setTitle("Kestrel");
 	bar.setContentView(stripView);
 	gStrip = stripView;
+	/* S5.2b: the bar's clock — its format comes from the desktop config,
+	 * its zone is reserved so the app's menus cannot reach it */
+	app.configString("desktop.clockFormat", "%a %e %b  %H:%M", gClockFmt,
+			 sizeof(gClockFmt));
+	gClockW = clockTextWidth(gClockFmt);
+	clockUpdate(true);
+	printf("KESTREL: strip zones: system=0..%d menus<-%d clock=%d..%d \"%s\"\n",
+	       SYS_ZONE_W, clockZoneLeft(), clockZoneLeft() + CLOCK_GAP,
+	       screenW - CLOCK_INSET, gClockFmt);
+	fflush(stdout);
 	gBar = &bar;
 	stripX = bar.xid();
 	/* map the strip directly: the toolkit's show() also grabs input
