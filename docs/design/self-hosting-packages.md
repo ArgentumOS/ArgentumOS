@@ -98,6 +98,14 @@ the plan's G3 gate and SH-0..SH-5.
 - **dash** — the shell for configure/build scripts (already FNX's).
 - **tar/cpio/file transfer** — toybox; sources arrive on the build
   volume as tarballs — **no network at runtime** is a requirement.
+- **clang-doc** — the UIKit documentation pipeline
+  (docs/design/uikit-documentation-plan.md): generates the Markdown
+  reference from doc comments. Part of the existing LLVM source
+  (`clang-tools-extra`, Apache-2.0-with-LLVM-exceptions), so **no new
+  package** — but it must be **enable-able in the in-guest LLVM
+  build** (D0 verifies); the documented fallback is a small
+  libclang-based first-party extractor. **Doxygen is GPL-2.0 — out**,
+  which is exactly why the pipeline is LLVM-based.
 
 ### E. Volumes/infrastructure (not software, but required)
 
