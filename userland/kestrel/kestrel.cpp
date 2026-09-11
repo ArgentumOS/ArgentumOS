@@ -94,7 +94,146 @@ static ::Window root = 0;
 static int scr = 0;
 static ::Window stripX = 0;	/* the menubar strip's X window */
 static int screenW = 0;
+static int screenH = 0;
 static int xerrCount = 0;
+
+/* ---- S5.2a: the wallpaper surface ---------------------------------
+ *
+ * Kestrel owns the desktop, so it owns the wallpaper: an ordinary
+ * Kestrel window at the BOTTOM of the stack, painted with the theme's
+ * ramp through the toolkit's own draw path. Being a window (rather than
+ * the root's background) is what makes an uncovered region a normal
+ * Expose: the toolkit repaints exactly the damaged rect, so a window
+ * move only redraws the strip of desktop it uncovered.
+ *
+ * The colour is configuration (Application::sessionBackground(),
+ * i.e. window.background), so the desktop follows the theme, and the
+ * ramp is parametric rather than an image — the S5.2 decision. A PNG
+ * wallpaper is parked as S5.2h: BitmapImage has no loader.
+ *
+ * (A server-side PIXMAP as the root's background was tried first.
+ * miPaintWindow does implement BackgroundPixmap, but Xfb's tiled fill of
+ * the root background rendered as garbage stripes — see the S5.2a
+ * record — so the desktop is a window.)
+ */
+static ::Window deskX = 0;
+static argentum::Window *gDesk = nullptr;
+static int gDeskW = 0, gDeskH = 0;
+
+static std::uint32_t
+mixColor(std::uint32_t a, std::uint32_t b, unsigned int num)
+{
+	/* num 0..256: 0 = a, 256 = b. Integer only — the double/optimizer
+	 * path in this toolchain has produced garbage here before, and a
+	 * wrong wallpaper colour is exactly the kind of thing that hides
+	 * (the screen still looks like a ramp). */
+	unsigned int ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+	unsigned int br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+	unsigned int r = (ar * (256 - num) + br * num) >> 8;
+	unsigned int g = (ag * (256 - num) + bg * num) >> 8;
+	unsigned int bl = (ab * (256 - num) + bb * num) >> 8;
+
+	return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (bl & 0xff);
+}
+
+/* The desktop's two endpoint tones: 22% toward white, 18% toward black.
+ * Kept as functions so the WM's log and the painter cannot drift. */
+static std::uint32_t
+deskTop(std::uint32_t base)
+{
+	return mixColor(base, 0xffffff, 56);	/* 56/256 = 22% */
+}
+
+static std::uint32_t
+deskBot(std::uint32_t base)
+{
+	return mixColor(base, 0x000000, 46);	/* 46/256 = 18% */
+}
+
+/* The desktop's content: one vertical ramp off the session colour,
+ * drawn as solid bands. A `fillLinearGradient` version rendered a smooth
+ * ramp whose *start* colour matched the theme and whose *end* colour did
+ * not (it reached R=255, which the theme's colours never contain) — so
+ * the desktop does not depend on that path; see the S5.2a record. */
+class DeskView : public argentum::View {
+public:
+	void draw(argentum::GraphicsContext &g) override
+	{
+		argentum::Rect f = frame();
+		double ppt = argentum::Application::shared().pxPerPt();
+		int w = (int) (f.size.w * ppt + 0.5);
+		int h = (int) (f.size.h * ppt + 0.5);
+		std::uint32_t base =
+			argentum::Application::shared().sessionBackground();
+		const int band = 4;	/* ~0.3 luma per step: invisible */
+
+		if (w <= 0 || h <= 0)
+			return;
+
+		std::uint32_t top = deskTop(base);
+		std::uint32_t bot = deskBot(base);
+
+		for (int y = 0; y < h; y += band) {
+			int bh = (h - y < band) ? (h - y) : band;
+			unsigned int num = (unsigned int)
+				((long) y * 256 / (h > 1 ? h - 1 : 1));
+
+			g.fillRect(0, y, (unsigned) w, (unsigned) bh,
+				   mixColor(top, bot, num));
+		}
+	}
+};
+
+static DeskView *gDeskView = nullptr;
+
+static void
+wallpaperInstall(int w, int h)
+{
+	if (w <= 0 || h <= 0)
+		return;
+
+	double ppt = argentum::Application::shared().pxPerPt();
+
+	if (!gDesk) {
+		/* created BEFORE the menubar strip, so the strip is above it */
+		gDesk = new argentum::Window();
+		if (!gDesk->init("Argentum Desktop", 0, 0, (unsigned) w,
+				 (unsigned) h)) {
+			fprintf(stderr, "KESTREL: desktop init failed\n");
+			delete gDesk;
+			gDesk = nullptr;
+			return;
+		}
+		gDeskView = new DeskView();
+		gDesk->setContentView(gDeskView);
+		deskX = gDesk->xid();
+		/* mapped directly, like the strip: Kestrel's own chrome is
+		 * never managed (see manageClient's guard) */
+		XMapWindow(dpy, deskX);
+	} else if (w != gDeskW || h != gDeskH) {
+		XResizeWindow(dpy, deskX, (unsigned) w, (unsigned) h);
+	}
+
+	gDeskView->setFrame(
+		{ {0, 0}, { w / ppt, h / ppt } });
+	gDeskView->setNeedsDisplay();
+	gDesk->draw();
+	XSync(dpy, False);
+	/* the desktop is the bottom of the stack */
+	XLowerWindow(dpy, deskX);
+	XSync(dpy, False);
+
+	gDeskW = w;
+	gDeskH = h;
+{
+	std::uint32_t base =
+		argentum::Application::shared().sessionBackground();
+
+	printf("KESTREL: wallpaper %dx%d base=0x%06x top=0x%06x bot=0x%06x\n",
+	       w, h, base, deskTop(base), deskBot(base));
+}
+	fflush(stdout);
+}
 
 /* ---- frame chrome -------------------------------------------------- */
 
@@ -118,6 +257,7 @@ struct Managed {
 
 static std::vector<Managed *> gFrames;
 static void focusClient(Managed *m);	/* S4.1b (defined below) */
+static void stripRefresh();		/* S4.2a (defined below) */
 static Managed *gActive = nullptr;	/* S4.1b focused client */
 static ::Window ewmhRoot = 0;
 
@@ -806,7 +946,13 @@ manageClient(const XMapRequestEvent &ev)
 		XMapWindow(dpy, ev.window);
 		return;
 	}
-	if (ev.window == stripX) {
+	if (ev.window == stripX || ev.window == deskX) {
+		/* Kestrel's own chrome (the menubar strip, the desktop
+		 * surface): never managed. Mapped explicitly — under
+		 * SubstructureRedirect the server did not map it, and a WM
+		 * that drops its own map request leaves its chrome
+		 * invisible. */
+		XMapWindow(dpy, ev.window);
 		return;
 	}
 	Managed *m = new Managed();
@@ -1473,6 +1619,32 @@ kestrelHook(void *xevent)
 	 * latency. Reaping runs on the idle beat instead (~250ms, when
 	 * no events pend), which is plenty for frame cleanup. */
 	dropIfReleased();
+
+	/* S5.2a: the desktop itself changed size (an fb0 mode-set). The
+	 * wallpaper is sized from the screen, so rebuild it; the menubar strip
+	 * spans the screen, so re-span and repaint it. Handled here, before
+	 * the dispatch, deliberately NOT as a `case` with a `break`: GCC's
+	 * switch lowering gave ConfigureNotify a jump-table entry that landed
+	 * on a ud2 trampoline (an early return avoids the table entirely) —
+	 * see the S5.2a record. Not consumed: nothing else acts on a root
+	 * configure. */
+	if (ev->type == ConfigureNotify && ev->xconfigure.window == root) {
+		int nw = ev->xconfigure.width;
+		int nh = ev->xconfigure.height;
+
+		if (nw != screenW || nh != screenH) {
+			screenW = nw;
+			screenH = nh;
+			wallpaperInstall(nw, nh);
+			if (stripX) {
+				XResizeWindow(dpy, stripX, (unsigned) nw,
+					      (unsigned) BAR_H);
+				stripRefresh();
+			}
+		}
+		return false;
+	}
+
 	switch (ev->type) {
 	case ButtonPress:
 		/* a press in a CLIENT arrives through the passive grab
@@ -1835,12 +2007,15 @@ main()
 	scr = DefaultScreen(dpy);
 	root = DefaultRootWindow(dpy);
 	screenW = DisplayWidth(dpy, scr);
+	screenH = DisplayHeight(dpy, scr);
 
 	/* become the WM: redirect root substructure; BadAccess = another
-	 * WM already runs */
+	 * WM already runs. StructureNotify on the root is for S5.2a: an fb0
+	 * mode-set resizes the desktop, and the wallpaper is sized to it. */
 	XSetErrorHandler(xerr);
 	XSelectInput(dpy, root,
-		     SubstructureRedirectMask | SubstructureNotifyMask);
+		     SubstructureRedirectMask | SubstructureNotifyMask |
+		     StructureNotifyMask);
 	XSync(dpy, False);
 	if (xerrCount) {
 		fprintf(stderr, "KESTREL: another WM owns the display\n");
@@ -1848,6 +2023,9 @@ main()
 	}
 	/* keep the handler installed: a stray error must log, not exit */
 	xerrCount = 0;
+
+	/* S5.2a: paint the desktop before any client can map */
+	wallpaperInstall(screenW, screenH);
 
 	/* the menubar strip: a full-width argentum window at the top */
 	argentum::Window bar;
@@ -1885,7 +2063,7 @@ main()
 			for (unsigned int i = 0; i < n; i++) {
 				XWindowAttributes a;
 
-				if (kids[i] == stripX ||
+				if (kids[i] == stripX || kids[i] == deskX ||
 				    !XGetWindowAttributes(dpy, kids[i], &a) ||
 				    a.map_state != IsViewable ||
 				    a.override_redirect) {

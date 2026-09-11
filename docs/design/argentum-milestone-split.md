@@ -330,7 +330,72 @@ structure, S2.5 the reference board + a11y battery).
   root `ConfigureNotify` (an `fb0` mode-set resizes the desktop), and
   keep the S4.3 window-backdrop path untouched. *Acceptance:* the desktop shows
   the wallpaper; it repaints after a mode-set; windows still composite
-  correctly over it; no X errors.
+  correctly over it; no X errors. **As built, the desktop is a Kestrel
+  window rather than the root's background, and the mode-set leg is
+  implemented but unexercised — see below.**
+
+  **As built (DONE).** Kestrel owns the desktop: a Kestrel-owned window at
+  the bottom of the stack (`DeskView` in `userland/kestrel/kestrel.cpp`),
+  painted with a vertical ramp derived from the session colour
+  (`Application::sessionBackground()` = `window.background`), created
+  *before* the menubar strip so the strip stays above it, lowered after
+  every (re)size, and never managed — `manageClient` now maps Kestrel's own
+  chrome explicitly, because under `SubstructureRedirect` the server did
+  **not** map it and a WM that drops its own map request leaves its chrome
+  invisible.
+
+  Why a window rather than the root's background: a server-side pixmap as the
+  root background was tried first. `miPaintWindow` does implement
+  `BackgroundPixmap`, but on this server the tiled root-background fill
+  rendered as garbage. A window instead turns an uncovered region into an
+  ordinary `Expose`, which the toolkit repaints from its own backing — so a
+  window move redraws only the strip of desktop it uncovered.
+
+  Resize: `StructureNotifyMask` on the root (added to the existing redirect
+  selection) drives a rebuild — the wallpaper is sized from the screen, the
+  strip is re-spanned, and the desktop is re-lowered.
+
+  Three findings worth keeping:
+
+  - **A GCC switch landmine.** Adding `case ConfigureNotify:` to the event
+    hook's switch produced a jump-table entry whose `break` compiled to a
+    `ud2` trampoline (`jmp` -> `jmp` -> `ud2`), so the first root configure
+    would have executed `ud2`. The disassembly is unambiguous: every other
+    case breaks to `0x406652`, mine went to `0x406650`, which is `0f 0b`.
+    Worked around by handling the root configure *before* the dispatch with an
+    early `return false;`; the switch is then clean — no `ud2` in the hook,
+    and no jump-table entry pointing at one.
+  - **A double-based colour mix returned garbage.** `mixColor(base, black,
+    0.18)` produced a wrong value while `mixColor(base, white, 0.22)` was
+    exact: a `fillLinearGradient` ramp built from them started at the right
+    tone and ended at `(255,123,164)`, which neither endpoint can produce (the
+    theme's tones never reach 255). The toolkit's gradient is therefore *not*
+    at fault — the mixing was. Now integer (`mixColor(a, b, num)`, `num`
+    0..256), and the WM **logs** the result: `KESTREL: wallpaper WxH base=0x…
+    top=0x… bot=0x…`, which is what lets the gate check the screen against the
+    colours the WM claims to have drawn.
+  - **The gate has to check colours, not just "not flat".** The first
+    assertion compared luma top vs bottom, which a smooth ramp with a wrong
+    endpoint passed happily. It now recomputes the expected tint from the
+    configured base and the band arithmetic, and requires the screen to match
+    the WM's own reported colours at three rows **and two columns**. It also
+    parks the pointer: the X cursor is a 13x13 blob that sat exactly on the
+    centre sample and read as `(0,0,0)`.
+
+  Verification gap, recorded rather than hidden: the live mode-set leg cannot
+  be exercised from this tree. Nothing calls `IO_FB_SETMODE` (only
+  `include/fnx/fb.h` defines it) and `fbdump` is read-only, so triggering a
+  real `fb0` mode-set would mean new tooling, which the standing instruction
+  rules out. The rebuild path is verified by construction and review; the
+  wallpaper's *size-derived* nature is verified by the far-corner check.
+
+  Gate: `.build/s52a_run.sh` + `s52a_drive.py` + `s52a_assert.py` →
+  **S52A-OK, 13 checks** on one boot of the standard image: the WM installed a
+  screen-sized wallpaper; its logged tones are the theme's tints; the screen
+  matches those tones at three rows and two columns; the desktop is not black;
+  the ramp reaches the far corner; the menubar is still drawn; an app launched
+  from the console shell is managed and drew over the wallpaper (211,581 px)
+  with wallpaper still visible where it does not cover; no X protocol errors.
 
   #### S5.2b — the menubar's two ends
 
