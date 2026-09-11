@@ -257,14 +257,14 @@ public:
 	 * font.size 26. See userland/configuration/system.argentum.conf. */
 	std::uint32_t sessionBackground() const;	/* window.background */
 
-	/* S5.2b: read a string setting from the session's Argentum config
-	 * domain (`system.argentum`; the same system -> user -> shared
-	 * precedence and the same .conf the constructor resolves above).
-	 * Copies at most cap bytes into out, always NUL-terminated: def
-	 * when the key is absent, out[0] = 0 when def is null. Returns
-	 * true when the key was found. */
-	bool configString(const char *key, const char *def, char *out,
-			  unsigned int cap) const;
+	/* S5.2b/S5.2c: read a string setting from any config domain (`the
+	 * session's own `system.argentum`, the desktop's `system.workspace`,
+	 * ...) with libconfig's system -> user -> shared precedence. Copies
+	 * at most cap bytes into out, always NUL-terminated: def when the
+	 * key is absent, out[0] = 0 when def is null. Returns true when the
+	 * key was found. */
+	bool configString(const char *domain, const char *key,
+			  const char *def, char *out, unsigned int cap) const;
 	const char *sessionFontFamily() const;	/* font.family */
 	unsigned int sessionFontSize() const;	/* font.size */
 

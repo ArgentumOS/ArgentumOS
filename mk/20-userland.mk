@@ -527,6 +527,8 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# `config write -s system.argentum ...` (System wins on read).
 	@cp userland/configuration/system.argentum.conf \
 		"$(ROOTFS64)/Shared/Configuration/system.argentum.conf"
+	@cp userland/configuration/system.workspace.conf \
+		"$(ROOTFS64)/Shared/Configuration/system.workspace.conf"
 	# Argentum display physical size (S1.1, domain system.display): the
 	# FNX-owned panel's real mm; 0 = unknown -> 96 dpi (4/3 px/pt)
 	# fallback. The S1.1/S1.4 gates override via `config write -s

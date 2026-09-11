@@ -19,7 +19,10 @@
  * RESIZE mode: a press on an edge or corner grip resizes the frame
  * and the client together. */
 #include <argentum/argentum.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -287,6 +290,158 @@ static std::vector<Managed *> gFrames;
 static void focusClient(Managed *m);	/* S4.1b (defined below) */
 static void stripRefresh();		/* S4.2a (defined below) */
 static void clockUpdate(bool force);	/* S5.2b (defined below) */
+static void dockRefresh();		/* S5.2c (defined below) */
+class DockView;
+
+/* ---- S5.2c: the dock ------------------------------------------------
+ *
+ * A bar of app tiles on the edge named by system.workspace.conf
+ * (dock.position = left | right, dock.icon-size), holding PINNED apps —
+ * the running group and its separator arrive with the task list (S5.2f)
+ * — each with a "running" dot when its app has a window. The dock OWNS a
+ * column of the work area: windows are placed and zoomed in what is left,
+ * so nothing hides under it.
+ *
+ * Tiles are vector chrome (a rounded tile, a monogram, a dot): the tree
+ * ships no images and this theme's art is parameterised. Launching is a
+ * direct fork/execve of the pinned PATH — S5.2d replaces that with real
+ * bundles and the launch helper, and until an app has a bundle identity a
+ * tile counts as running when a managed window's title matches its title.
+ */
+#define DOCK_PAD	8	/* padding inside the dock's column, px */
+#define TILE_GAP	8	/* between tiles, px */
+
+struct DockPin {
+	const char *title;	/* matches the managed window's title */
+	const char *monogram;	/* drawn in the tile */
+	const char *path;	/* exec'd (S5.2d: a bundle payload) */
+};
+
+static const DockPin kPins[] = {
+	{ "Argentum widget zoo", "Z", "/System/Shared/tests/widget_zoo" },
+	{ "Argentum S1.3 theme chrome", "C",
+	  "/System/Shared/tests/theme_chrome" },
+};
+static const int kPinCount = (int) (sizeof(kPins) / sizeof(kPins[0]));
+
+static bool gDockLeft = false;		/* dock.position */
+static int gDockIcon = 48;		/* dock.icon-size */
+static ::Window dockX = 0;
+static argentum::Window *gDock = nullptr;
+static DockView *gDockView = nullptr;
+
+static int
+dockW()
+{
+	return gDockIcon + 2 * DOCK_PAD;
+}
+
+static int
+dockLeft()
+{
+	return gDockLeft ? 0 : screenW - dockW();
+}
+
+static int
+dockRight()
+{
+	return gDockLeft ? dockW() : screenW;
+}
+
+/* The work area: what a window may occupy. The strip owns the top, the
+ * dock owns a side column, MARGIN separates them from the windows. */
+static int workTop()	{ return BAR_H + MARGIN; }
+static int workBottom()	{ return screenH - MARGIN; }
+static int workLeft()
+{
+	return gDockLeft ? dockRight() + MARGIN : MARGIN;
+}
+static int workRight()
+{
+	return gDockLeft ? screenW - MARGIN : dockLeft() - MARGIN;
+}
+static int workWidth()	{ return workRight() - workLeft(); }
+static int workHeight()	{ return workBottom() - workTop(); }
+
+/* A tile's top edge inside the dock's own window (dock px). One column,
+ * from the top. */
+static int
+dockTileY(int i)
+{
+	return DOCK_PAD + i * (gDockIcon + TILE_GAP);
+}
+
+/* Which tile is at a point in the dock's window, or -1. The paint and the
+ * hit-test share this (S4.2b's rule). */
+static int
+dockTileAt(int x, int y)
+{
+	if (x < 0 || x >= dockW())
+		return -1;
+	for (int i = 0; i < kPinCount; i++) {
+		int t = dockTileY(i);
+
+		if (y >= t && y < t + gDockIcon)
+			return i;
+	}
+	return -1;
+}
+
+static bool
+dockPinRunning(int i)
+{
+	for (Managed *m : gFrames) {
+		if (strcmp(m->title, kPins[i].title) == 0)
+			return true;
+	}
+	return false;
+}
+
+static Managed *
+findByTitle(const char *title)
+{
+	for (Managed *m : gFrames) {
+		if (strcmp(m->title, title) == 0)
+			return m;
+	}
+	return nullptr;
+}
+
+/* A tile click: raise and focus the app if it is running, launch it if it
+ * is not (initial-release §3.1: "click to focus or re-launch"). */
+static void
+dockActivate(int i)
+{
+	Managed *m = findByTitle(kPins[i].title);
+
+	if (m) {
+		XRaiseWindow(dpy, m->frame->xid());
+		if (stripX) {
+			XRaiseWindow(dpy, stripX);
+		}
+		focusClient(m);
+		printf("KESTREL: dock raise '%s'\n", kPins[i].title);
+		fflush(stdout);
+		return;
+	}
+	{
+		pid_t pid = fork();
+
+		if (pid == 0) {
+			execl(kPins[i].path, kPins[i].path,
+			      (char *) nullptr);
+			_exit(127);	/* exec failed */
+		}
+		if (pid < 0) {
+			fprintf(stderr, "KESTREL: dock exec failed for %s\n",
+				kPins[i].path);
+			return;
+		}
+		printf("KESTREL: dock launch '%s' pid=%d (%s)\n",
+		       kPins[i].title, (int) pid, kPins[i].path);
+		fflush(stdout);
+	}
+}
 static Managed *gActive = nullptr;	/* S4.1b focused client */
 static ::Window ewmhRoot = 0;
 
@@ -1033,7 +1188,7 @@ manageClient(const XMapRequestEvent &ev)
 		XMapWindow(dpy, ev.window);
 		return;
 	}
-	if (ev.window == stripX || ev.window == deskX) {
+	if (ev.window == stripX || ev.window == deskX || ev.window == dockX) {
 		/* Kestrel's own chrome (the menubar strip, the desktop
 		 * surface): never managed. Mapped explicitly — under
 		 * SubstructureRedirect the server did not map it, and a WM
@@ -1083,17 +1238,37 @@ manageClient(const XMapRequestEvent &ev)
 	int fw = cw0 + 2 * FRAME_PX;
 	int fh = BAND_H + ch0 + FRAME_PX;
 
-	/* work area: honor the client's requested spot but keep it below
-	 * the strip and inside the screen (the frame's 1px outline sits
-	 * outside fw/fh) */
-	if (fy < BAR_H + MARGIN) {
-		fy = BAR_H + MARGIN;
+	/* S5.2c: the work area — below the strip, clear of the dock's column,
+	 * MARGIN to spare (the frame's 1px outline sits outside fw/fh). A
+	 * window that does not fit is SHRUNK, the way a WM constrains a window
+	 * to the visible frame: that is why the zoo's screen-sized request now
+	 * comes back narrower than the screen. The client keeps the frame's
+	 * lip, so its own size follows. */
+	if (fw + 2 > workWidth()) {
+		fw = workWidth() - 2;
+		cw0 = fw - 2 * FRAME_PX;
+		if (cw0 < MIN_FRAME_W) {
+			cw0 = MIN_FRAME_W;
+		}
 	}
-	if (fx + fw + 2 > screenW - MARGIN) {
-		fx = screenW - fw - 2 - MARGIN;
+	if (fh + 2 > workHeight()) {
+		fh = workHeight() - 2;
+		ch0 = fh - BAND_H - FRAME_PX;
+		if (ch0 < MIN_FRAME_H) {
+			ch0 = MIN_FRAME_H;
+		}
 	}
-	if (fx < MARGIN) {
-		fx = MARGIN;
+	if (fy < workTop()) {
+		fy = workTop();
+	}
+	if (fy + fh + 2 > workBottom()) {
+		fy = workBottom() - fh - 2;
+	}
+	if (fx < workLeft()) {
+		fx = workLeft();
+	}
+	if (fx + fw + 2 > workRight()) {
+		fx = workRight() - fw - 2;
 	}
 	/* the frame window = an argentum window + a chrome content view */
 	argentum::Window *frame = new argentum::Window();
@@ -1205,6 +1380,8 @@ manageClient(const XMapRequestEvent &ev)
 	       (unsigned long) m->client, m->title,
 	       (unsigned long) frame->xid(), fx, fy, fw, fh,
 	       m->tbH, m->prefW, m->prefH);
+	fflush(stdout);
+	dockRefresh();		/* S5.2c: this app's running dot */
 	fflush(stdout);
 }
 
@@ -1550,7 +1727,30 @@ zoomClient(Managed *m)
 	if (!m->toolbar && m->tbH > 0) {
 		fh -= (int) m->tbH;	/* the strip is hidden */
 	}
-	applyFrameGeometry(m, m->fx, m->fy, fw, fh);
+	/* S5.2c: the zoom box respects the work area (the dock's column) */
+	{
+		int fx = m->fx, fy = m->fy;
+
+		if (fw + 2 > workWidth()) {
+			fw = workWidth() - 2;
+		}
+		if (fh + 2 > workHeight()) {
+			fh = workHeight() - 2;
+		}
+		if (fx + fw + 2 > workRight()) {
+			fx = workRight() - fw - 2;
+		}
+		if (fx < workLeft()) {
+			fx = workLeft();
+		}
+		if (fy + fh + 2 > workBottom()) {
+			fy = workBottom() - fh - 2;
+		}
+		if (fy < workTop()) {
+			fy = workTop();
+		}
+		applyFrameGeometry(m, fx, fy, fw, fh);
+	}
 	printf("KESTREL: zoom 0x%lx '%s' to %dx%d\n",
 	       (unsigned long) m->client, m->title, m->fw, m->fh);
 	fflush(stdout);
@@ -1664,6 +1864,7 @@ reapDeadClients()
 		printf("KESTREL: unmanage 0x%lx '%s'\n",
 		       (unsigned long) m->client, m->title);
 		fflush(stdout);
+		dockRefresh();	/* S5.2c: the running dot goes away */
 		if (gActive == m) {
 			gActive = nullptr;
 		}
@@ -1693,6 +1894,10 @@ idleBeat()
 	dropIfReleased();
 	reapDeadClients();
 	clockUpdate(false);	/* S5.2b: the bar's clock */
+	/* S5.2c: reap the dock's launches (WNOHANG: never block here) */
+	while (waitpid(-1, nullptr, WNOHANG) > 0) {
+		;
+	}
 	return false;
 }
 
@@ -1747,6 +1952,20 @@ kestrelHook(void *xevent)
 				XSync(dpy, False);
 				return true;
 			}
+		}
+		/* S5.2c: a press on the dock — a tile activates (raise the app if
+		 * it is running, launch it if it is not); anywhere else on the
+		 * dock closes an open menu, like the strip. Consumed either way:
+		 * the dock is the WM's own. */
+		if (dockX && ev->xbutton.window == dockX) {
+			int i = dockTileAt(ev->xbutton.x, ev->xbutton.y);
+
+			if (i >= 0) {
+				dockActivate(i);
+			} else {
+				menuPopUpDismiss();
+			}
+			return true;
 		}
 		/* S4.2b: a press on the menubar strip — on a title it drops
 		 * that title's menu, anywhere else it closes an open one.
@@ -1949,6 +2168,103 @@ xerr(Display *, XErrorEvent *e)
 }
 
 /* ---- the menubar strip's content (chrome only until S4.2) ----------- */
+
+/* S5.2c: the dock's content — a column of vector tiles (a rounded tile, a
+ * monogram, a running dot), drawn with the theme's parameters. The hover
+ * comes from the toolkit's pointer tracking, which only fires for views the
+ * pointer is over. */
+class DockView : public View {
+public:
+	void draw(argentum::GraphicsContext &g) override
+	{
+		Application &app = Application::shared();
+		Theme &t = app.theme();
+		Rect f = frame();
+		double ppt = app.pxPerPt();
+		int w = (int) (f.size.w * ppt + 0.5);
+		int h = (int) (f.size.h * ppt + 0.5);
+		int side = (int) (gDockIcon * ppt + 0.5);
+		TextMetrics m = textMetrics(t.fontFamily(), t.fontSizePt(), "Zg");
+		double box = m.ascentPt + m.descentPt + 2.0 / ppt;
+
+		if (w <= 0 || h <= 0 || side <= 0)
+			return;
+		/* the dock's slab: a darker chrome tone, so the tiles read */
+		g.fillRoundedRect(0, 0, (unsigned) w, (unsigned) h, 10,
+				  mixColor(t.chromeBottom(), 0x000000, 46));
+		for (int i = 0; i < kPinCount; i++) {
+			int ty = (int) (dockTileY(i) * ppt + 0.5);
+			bool run = dockPinRunning(i);
+
+			if (ty + side > h)
+				break;
+			/* the tile: page tone, or an accent tint when hovered */
+			if (i == hover_) {
+				g.fillRoundedRect(2, ty, (unsigned) (w - 4),
+						  (unsigned) side, 8,
+						  mixColor(t.page(), t.accent(), 90));
+			} else {
+				g.fillRoundedRect(2, ty, (unsigned) (w - 4),
+						  (unsigned) side, 8, t.page());
+			}
+			/* the monogram, centred in the tile */
+			{
+				const char *mono = kPins[i].monogram;
+				TextMetrics mm = textMetrics(t.fontFamily(),
+							     t.fontSizePt(), mono);
+				int mw = (int) (mm.widthPt * ppt + 0.5);
+				int mx = (w - mw) / 2;
+				int my = ty + (int) ((side - box * ppt) / 2.0);
+
+				g.drawText(t.fontFamily(), t.fontSizePt(), mx,
+					   my, mono, t.text());
+			}
+			/* the running dot under the tile */
+			if (run) {
+				int r = 4;
+				int cx = w / 2;
+				int cy = ty + side - r;
+
+				g.fillRoundedRect(cx - r, cy - r, 2 * r, 2 * r,
+						  r, t.accent());
+			}
+		}
+	}
+
+	void mouseMoved(const MouseEvent &e) override
+	{
+		int i = dockTileAt((int) e.x, (int) e.y);
+
+		if (i != hover_) {
+			hover_ = i;
+			setNeedsDisplay();
+		}
+	}
+
+	void mouseExited(const MouseEvent &e) override
+	{
+		(void) e;
+		if (hover_ != -1) {
+			hover_ = -1;
+			setNeedsDisplay();
+		}
+	}
+
+private:
+	int hover_ = -1;
+};
+
+static void
+dockRefresh()
+{
+	if (gDockView && gDock) {
+		/* drawing: Window::draw() composites and flushes only the
+		 * pending damage rect, so a content change must report itself
+		 * (the strip learned this in S4.2b) */
+		gDockView->setNeedsDisplay();
+		gDock->draw();
+	}
+}
 
 class StripView : public View {
 public:
@@ -2201,6 +2517,54 @@ main()
 	/* S5.2a: paint the desktop before any client can map */
 	wallpaperInstall(screenW, screenH);
 
+	/* S5.2c: the dock's settings (system.workspace.conf), read BEFORE
+	 * anything is placed — the dock owns a column of the work area, so
+	 * its geometry has to be known before the first frame is placed. */
+	{
+		char pos[16] = "right";
+		char isz[16] = "48";
+
+		app.configString("system.workspace", "dock.position", "right",
+				 pos, sizeof(pos));
+		app.configString("system.workspace", "dock.icon-size", "48",
+				 isz, sizeof(isz));
+		gDockLeft = (strcmp(pos, "left") == 0);
+		gDockIcon = atoi(isz);
+		if (gDockIcon < 24 || gDockIcon > 128) {
+			gDockIcon = 48;	/* a usable tile whatever the file says */
+		}
+	}
+	{
+		int dw = dockW();
+		int dx0 = dockLeft();
+		int dy0 = workTop();
+		int dh = workBottom() - workTop();
+
+		gDock = new argentum::Window();
+		if (!gDock->init("Argentum Dock", dx0, dy0, (unsigned) dw,
+				 (unsigned) dh)) {
+			fprintf(stderr, "KESTREL: dock init failed\n");
+			delete gDock;
+			gDock = nullptr;
+		} else {
+			DockView *dv = new DockView();
+
+			dv->setFrame({ {0, 0},
+				       { dw / app.pxPerPt(),
+					 dh / app.pxPerPt() } });
+			gDock->setContentView(dv);
+			gDockView = dv;
+			dockX = gDock->xid();
+			/* mapped directly, like the strip and the desktop */
+			XMapWindow(dpy, dockX);
+			dockRefresh();
+			printf("KESTREL: dock %s %dx%d at %d,%d tiles=%d "
+			       "icon=%d\n", gDockLeft ? "left" : "right", dw, dh,
+			       dx0, dy0, kPinCount, gDockIcon);
+			fflush(stdout);
+		}
+	}
+
 	/* the menubar strip: a full-width argentum window at the top */
 	argentum::Window bar;
 
@@ -2218,8 +2582,8 @@ main()
 	gStrip = stripView;
 	/* S5.2b: the bar's clock — its format comes from the desktop config,
 	 * its zone is reserved so the app's menus cannot reach it */
-	app.configString("desktop.clockFormat", "%a %e %b  %H:%M", gClockFmt,
-			 sizeof(gClockFmt));
+	app.configString("system.argentum", "desktop.clockFormat",
+			 "%a %e %b  %H:%M", gClockFmt, sizeof(gClockFmt));
 	gClockW = clockTextWidth(gClockFmt);
 	clockUpdate(true);
 	printf("KESTREL: strip zones: system=0..%d menus<-%d clock=%d..%d \"%s\"\n",
@@ -2248,6 +2612,7 @@ main()
 				XWindowAttributes a;
 
 				if (kids[i] == stripX || kids[i] == deskX ||
+				    kids[i] == dockX ||
 				    !XGetWindowAttributes(dpy, kids[i], &a) ||
 				    a.map_state != IsViewable ||
 				    a.override_redirect) {

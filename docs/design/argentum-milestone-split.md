@@ -470,6 +470,75 @@ structure, S2.5 the reference board + a11y battery).
   tile launches its app; a running app shows state; edge-placed windows
   are inset; the dock's config keys are honoured.
 
+  **As built (DONE).** A Kestrel-owned column of vector tiles on the edge
+  named by `system.workspace.conf`, and a work area that has a *side* now
+  as well as a top:
+
+  - **The domain is new but needs no registration**: a config domain is
+    just a dotted name, resolved to `<scope>/Configuration/<name>.conf`
+    (`libconfig.c`). So `userland/configuration/system.workspace.conf`
+    ships `dock.position = "right"` / `dock.icon-size = 48` in
+    **`Shared/Configuration/`** (first-party defaults ship there;
+    `mk/20-userland.mk` copies it like `system.argentum.conf`), and a
+    user-scope copy overrides it. `dock.autohide` and `dock.magnify`
+    (§3.1) are **not** read yet: both are animation behaviours and the
+    dock has no animation — recorded, not silently ignored.
+  - **`Application::configString()` grew a `domain` parameter** (S5.2b
+    added it for `system.argentum`; the dock is the first caller that
+    needs a different one). The clock's call was updated with it.
+  - **The work area is now real**: `workTop()/workBottom()/workLeft()/
+    workRight()` (+ `workWidth/Height`) in `kestrel.cpp`, with the dock
+    owning a column. `manageClient()` places a window inside it and
+    **shrinks** one that does not fit, the way a WM constrains a window to
+    the visible frame — which is why the zoo's screen-sized request now
+    comes back `1194x744` at `10,40` instead of `1248x744` at `20,40`.
+    `zoomClient()` clamps its box the same way. **The drag clamp stays
+    screen-wide**: you can still drag a window under the dock, as on
+    macOS; the inset is about placement and zoom.
+  - **Tiles are vector chrome** — a rounded tile, a monogram, a running
+    dot (a filled circle) drawn from the theme's parameters, no asset (the
+    tree ships no images at all). The dock is the S5.2a recipe again: a
+    Kestrel-owned window mapped directly in `main`, never managed, with a
+    `StructureNotifyMask`-style rebuild only where it applies. Paint and
+    hit-test share `dockTileY()`/`dockTileAt()`, per S4.2b's rule.
+  - **A tile click raises or launches**: if a *managed* window's title
+    matches the pin's title, raise + focus it; otherwise `fork`/`execve`
+    the pinned path (the settled S5.2d model — direct exec, unmediated).
+    Children are reaped with `waitpid(..., WNOHANG)` on the idle beat; the
+    servery dock deliberately keeps no `SIGCHLD` handler. Running state is
+    a **title match** until S5.2d gives an app a bundle identity.
+  - **The running group and its separator are S5.2f's**, not this
+    slice's: S5.2c draws the *pinned* tiles and a per-app running dot, and
+    the separator drawing lands with the task list it divides. Likewise
+    per-icon menus (`dock.actions`: Open/Hide/Quit/Remove) and
+    drag-to-reorder — recorded in §3.1 but out of scope here.
+  - Gate: `.build/s52c_run.sh` + `s52c_drive.py` + `s52c_assert.py` →
+    **S52C-OK, 12 checks** on one boot of the *standard* image: the dock's
+    logged geometry (`right`, `icon=48`, `tiles=2`) and its position at
+    the right edge below the bar (`x 1216..1280`, `y 40`); its pixels (a
+    light tile on a darker slab, no black gap, the monogram ink); a tile
+    click launching the zoo and the desktop managing it; that window's
+    frame landing **inside the work area left of the dock**; the running
+    dot appearing afterwards; the window on screen; a second click
+    **raising** instead of launching again; no X errors.
+  - **Not exercised:** the 1x leg of "draws correctly at 1x and 2x" (the
+    session runs at one scale; the dock goes through the same
+    `pxPerPt()` path as the strip and the desktop), and a *config change*
+    (both shipped values are also the code's fallback, so a boot cannot
+    tell the file from the fallback — changing one is how to see it).
+
+  **Gate maintenance this slice forced (a process finding).** S5.2a's
+  wallpaper invalidated **five pixel checks in the s43 gate** — they had
+  been written against an unpainted (black) desktop (`near(px(...),
+  (0,0,0))`, and a `last_nonblack()` edge scan that happily ran to the
+  bottom of a *ramp*). Nobody re-ran s43 after S5.2a, so it surfaced here.
+  Fixed by measuring the desktop **in the same shot** (`x=5` is left of
+  every probe frame and of the dock) and comparing against that, so the
+  checks are now wallpaper-independent; the `segments-bounded` bound went
+  14 → 16 because the desktop and the dock own grow-only backings of their
+  own. **Lesson: when the desktop's appearance changes globally, re-run
+  the pixel/geometry gates of earlier slices in the same session.**
+
   #### S5.2d — reference apps, as bundles the dock can launch
 
   Package the reference apps into `/Applications/<DisplayName>.app/`
