@@ -52,6 +52,26 @@ main()
 	w.setContentView(&v);
 	/* S4.3: the size this content wants (the zoom box grows to it) */
 	w.setPreferredContentSize(300, 160);
+	/* S4.2a: B's menubar — distinct titles from A's */
+	static Menu bBar, bWin, bHelp;
+	static MenuItem bWinItem("Window"), bHelpItem("Help");
+	static MenuItem bMin("Minimize"), bZoom("Zoom"), bAbout("About Krel B");
+
+	bWin.setTitle("Window");
+	bHelp.setTitle("Help");
+	bWin.addItem(&bMin);
+	bWin.addItem(&bZoom);
+	bHelp.addItem(&bAbout);
+	bWinItem.setSubmenu(&bWin);
+	bHelpItem.setSubmenu(&bHelp);
+	bBar.setTitle("Krel B");
+	bBar.addItem(&bWinItem);
+	bBar.addItem(&bHelpItem);
+	app.setOnMenuPick([](int itemId) {
+		printf("KREL-B-PICK %d\n", itemId);
+		fflush(stdout);
+	});
+	app.setMenuBar(&bBar);
 	w.show();
 	printf("KREL-B-READY xid=0x%lx\n", (unsigned long) w.xid());
 	fflush(stdout);

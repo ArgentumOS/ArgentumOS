@@ -101,6 +101,35 @@ main()
 		fflush(stdout);
 		app.terminate();
 	});
+	/* S4.2a: A's menubar goes to Kestrel over the session socket when
+	 * the window maps. Distinct from B's, so the bar's content says
+	 * which app is focused. */
+	static Menu aBar, aFile, aEdit;
+	static MenuItem aFileItem("File"), aEditItem("Edit");
+	static MenuItem aNew("New"), aOpen("Open..."), aQuit("Quit");
+	static MenuItem aUndo("Undo"), aRedo("Redo");
+
+	aFile.setTitle("File");
+	aEdit.setTitle("Edit");
+	aNew.setKeyEquivalent('n', KeyModCommand);
+	aOpen.setKeyEquivalent('o', KeyModCommand);
+	aUndo.setKeyEquivalent('z', KeyModCommand);
+	aFile.addItem(&aNew);
+	aFile.addItem(&aOpen);
+	aFile.addSeparator();
+	aFile.addItem(&aQuit);
+	aEdit.addItem(&aUndo);
+	aEdit.addItem(&aRedo);
+	aFileItem.setSubmenu(&aFile);
+	aEditItem.setSubmenu(&aEdit);
+	aBar.setTitle("Krel A");
+	aBar.addItem(&aFileItem);
+	aBar.addItem(&aEditItem);
+	app.setOnMenuPick([](int itemId) {
+		printf("KREL-A-PICK %d\n", itemId);
+		fflush(stdout);
+	});
+	app.setMenuBar(&aBar);
 	w.show();
 	printf("KREL-A-READY xid=0x%lx\n", (unsigned long) w.xid());
 	fflush(stdout);

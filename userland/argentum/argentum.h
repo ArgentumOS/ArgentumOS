@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <vector>
 
 #define ARGENTUM_VERSION_MAJOR 0
@@ -228,6 +229,10 @@ private:
  * the X session (Display connection + the event loop). Constructed on
  * first shared(); init() opens the display; run() dispatches events to
  * the app's windows until terminate() is called. */
+/* S4.2a: the global menubar is the menu model (declared further
+ * down); Application carries it. */
+class Menu;
+
 class Application {
 public:
 	static Application &shared();
@@ -301,6 +306,30 @@ public:
 	 * when no events are pending. Only Kestrel uses it. */
 	using IdleHook = bool (*)();
 	void setIdleHook(IdleHook hook);
+
+	/* S4.2a: extra file descriptors the loop polls alongside the X
+	 * connection — Kestrel's session socket, and the client side of
+	 * it (the toolkit's own SessionMenu). The handler runs whenever
+	 * the fd is readable or hung up. While any is registered the
+	 * loop never blocks in XNextEvent: it polls the connection and
+	 * these fds together, so a session message is read promptly.
+	 * Registration fails past kMaxFdHandlers. */
+	using FdHook = std::function<void()>;
+	static const int kMaxFdHandlers = 16;
+	bool addFdHandler(int fd, FdHook hook);
+	void removeFdHandler(int fd);
+
+	/* S4.2a: the app's global menubar (the NSMenu that Kestrel's bar
+	 * shows). setMenuBar() publishes the model over the session
+	 * socket for each of the app's windows as it maps, and a pick
+	 * Kestrel routes back fires the picked item's action — plus
+	 * setOnMenuPick's observer, which is how an app logs or counts
+	 * picks. Apps that never call setMenuBar() are unaffected, with
+	 * or without a WM; with no WM (no session socket) the publish is
+	 * a silent no-op. */
+	void setMenuBar(Menu *menubar);
+	Menu *menuBar() const;
+	void setOnMenuPick(std::function<void(int itemId)> cb);
 
 	/* S2.2b: the session Theme (the NSAppearance analog) — loaded
 	 * lazily from the system.theme domain on first access; always
@@ -376,6 +405,14 @@ public:
 
 	/* Map the window and flush the connection. */
 	void show();
+
+	/* S4.2a: an override-redirect window — a WM must leave it alone
+	 * (no frame, no reparent) and it is not a window whose menubar
+	 * belongs on the session bar. The toolkit's transient menus
+	 * (PopupWindow) set it: otherwise a WM frames the popup and the
+	 * menu appears as a decorated window. Set before show(). */
+	void setOverrideRedirect(bool on);
+	bool isOverrideRedirect() const;
 
 	/* S2.3c: request a redraw of the whole window (XClearArea,
 	 * which the server answers with an Expose -> the draw()
@@ -950,14 +987,34 @@ private:
  * NOT views). */
 class Menu;
 
-/* (menu model) A MenuItem has a title, enabled state, an action and
- * an optional submenu; a Menu holds an ordered list of borrowed
- * items. The config-framed wire format + the session socket (Kestrel)
- * come later; S2.3 uses the model in-process (S2.3c PopUpButton). */
+/* S4.2a: key-equivalent modifiers — the wire's bitmask (menu.cpp's
+ * codec carries it; Kestrel draws it). One bit per modifier. */
+enum {
+	KeyModCommand = 1,
+	KeyModShift   = 2,
+	KeyModControl = 4,
+	KeyModOption  = 8,
+};
+
+/* (menu model) A MenuItem has a title, a kind, enabled state, an id,
+ * an optional key equivalent, an action and an optional submenu; a
+ * Menu holds an ordered list of borrowed items. S4.2a: the kinds and
+ * the id/key-equivalent fields are what the session wire carries
+ * (menu.cpp's menuSerialize/menuParse); S2.3 uses the model
+ * in-process (S2.3c PopUpButton). */
 class MenuItem {
 public:
+	/* S4.2a: the kinds the wire carries — Button::Type's menu
+	 * counterpart. A Separator is a row with no title and no
+	 * action that takes part in no pick. */
+	enum class Kind : int { Action = 0, Check, Radio, Separator };
+
 	explicit MenuItem(const char *title);
+	explicit MenuItem(Kind kind);		/* a separator: no title */
 	~MenuItem();
+
+	void setKind(Kind kind);
+	Kind kind() const;
 
 	void setTitle(const char *utf8);	/* copied */
 	const char *title() const;
@@ -967,6 +1024,20 @@ public:
 	void setSubmenu(Menu *submenu);		/* borrowed; may be null */
 	Menu *submenu() const;
 	void activate();			/* fires the action */
+
+	/* S4.2a: the pick id. Menu::addItem() gives an item without
+	 * one an id that is unique in the process, so a published
+	 * menubar always has ids to pick with; Kestrel routes a pick
+	 * back by id and the app looks the item up (itemWithId). */
+	void setId(int id);
+	int id() const;
+
+	/* S4.2a: the key equivalent — a display hint on the wire (the
+	 * accelerator itself is a later slice). key = the character
+	 * (0 = none), mods = KeyMod* bits. */
+	void setKeyEquivalent(char key, unsigned int mods);
+	char keyEquivalent() const;
+	unsigned int keyModifiers() const;
 
 private:
 	struct Impl;
@@ -982,10 +1053,68 @@ public:
 	void setTitle(const char *utf8);
 	/* ordered list; non-owning (the app keeps items alive) */
 	void addItem(MenuItem *item);
+	/* S4.2a: creates a separator and owns it — the one kind of
+	 * item a Menu does own, so `addSeparator()` cannot leak */
+	MenuItem *addSeparator();
 	MenuItem *itemAt(int i) const;
 	int itemCount() const;
+	/* S4.2a: depth-first lookup by pick id (the app's pick
+	 * handler: menu->itemWithId(id)->activate()) */
+	MenuItem *itemWithId(int id) const;
 
 private:
+	/* S4.2a: the wire parser builds trees this Menu then owns */
+	friend Menu *menuParse(const char *, size_t);
+	struct Impl;
+	Impl *impl_;
+};
+
+/* S4.2a: the session wire codec over the menu model (menu.cpp).
+ * menuSerialize appends a self-describing text record — a version
+ * header plus one line per node, tab-indented by depth, the title
+ * last — to out; menuParse builds a fresh tree the CALLER OWNS
+ * (delete the root: a parsed tree frees its items recursively) and
+ * returns null on anything it does not understand. Deliberately
+ * line-oriented and readable: Kestrel logs what it parsed. */
+bool menuSerialize(const Menu *menubar, std::string &out);
+Menu *menuParse(const char *text, size_t len);
+
+/* S4.2a: the session socket's framing — one message is a 4-byte
+ * big-endian length followed by that many bytes of payload. Exported
+ * because Kestrel's server writes its replies (picks) with it. The
+ * socket is non-blocking, so a partial write must be retried: a
+ * discarded one desyncs the stream. Returns false if the peer cannot
+ * take it within ~2s. */
+bool sessionWriteFrame(int fd, const char *payload, size_t len);
+
+/* S4.2a: where the session socket lives — the FSH temporary-files
+ * convention, the same home as the X11 sockets and the lock files.
+ * Kestrel binds it; apps connect to it (menu.cpp). */
+extern const char *const kSessionSocketPath;
+
+/* S4.2a: the client side of the session socket, one per app (the
+ * Application owns it). It connects lazily to Kestrel's socket
+ * (/System/Temporary Files/argentum-session — the FSH temporary-files
+ * home the X11 sockets use), publishes the menubar for each window
+ * that maps, and reads the picks Kestrel routes back. An app with no
+ * WM (no socket) is not an error: it simply has no menubar. */
+class SessionMenu {
+public:
+	explicit SessionMenu(Application *app);
+	~SessionMenu();
+
+	/* send the app's menubar for one window (connects on first use) */
+	bool publish(const Menu *menubar, unsigned long window);
+	bool isConnected() const;
+	void close();
+
+private:
+	/* S4.2a: called by the loop's fd hook and by the Application */
+	friend class Application;
+	void service();			/* read + dispatch what arrived */
+	int fd() const;
+	void setPickHandler(std::function<void(int)> cb);
+
 	struct Impl;
 	Impl *impl_;
 };

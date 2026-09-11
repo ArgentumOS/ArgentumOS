@@ -68,6 +68,17 @@ struct Application::Impl {
 	/* S4.1c: optional idle beat (Kestrel housekeeping). null = off. */
 	Application::IdleHook idleHook = nullptr;
 
+	/* S4.2a: extra polled fds (the session socket) + the app's global
+	 * menubar and its session client. */
+	struct FdHookRec {
+		int fd;
+		Application::FdHook hook;
+	};
+	std::vector<FdHookRec> fdHooks;
+	Menu *menuBar = nullptr;		/* borrowed */
+	std::function<void(int)> onMenuPick;
+	SessionMenu *session = nullptr;		/* ours, lazily made */
+
 	/* S0.4 text stack. fontconfig is process-global (FcInit once);
 	 * FreeType needs one library handle shared by every face. */
 	bool ftInited = false;
@@ -101,6 +112,7 @@ struct Application::Impl {
 struct Window::Impl {
 	Display *dpy = nullptr;		/* borrowed from the session */
 	::Window xwin = 0;		/* the X window id */
+	bool overrideRedirect = false;		/* S4.2a: a WM leaves it alone */
 	int x = 0;			/* root position */
 	int y = 0;
 	unsigned int width = 0;
@@ -325,10 +337,25 @@ struct Label::Impl {
 	double sizePt = 0;		/* 0 = theme font size */
 };
 
-/* S2.3a Menu model state. Menu owns NO items (borrowed). */
+/* S4.2a SessionMenu state — the client side of the session socket. */
+struct SessionMenu::Impl {
+	Application *app = nullptr;
+	int fd = -1;			/* -1 = not connected */
+	bool registered = false;	/* the loop's fd hook is installed */
+	std::string in;			/* bytes read, frames not complete */
+	std::function<void(int)> onPick;
+};
+
+/* S2.3a Menu model state. Menu owns NO items (borrowed) — except the
+ * separators addSeparator() made and, in a parsed tree (S4.2a),
+ * everything menuParse() built; both live in `owned`. */
 struct MenuItem::Impl {
 	char title[128] = { 0 };
+	MenuItem::Kind kind = MenuItem::Kind::Action;	/* S4.2a */
 	bool enabled = true;
+	int id = 0;					/* S4.2a: 0 = none yet */
+	char keyEquivalent = 0;				/* S4.2a: display hint */
+	unsigned int keyModifiers = 0;			/* S4.2a: KeyMod* bits */
 	std::function<void()> action;
 	Menu *submenu = nullptr;
 };
@@ -336,6 +363,8 @@ struct MenuItem::Impl {
 struct Menu::Impl {
 	char title[128] = { 0 };
 	std::vector<MenuItem *> items;
+	std::vector<MenuItem *> owned;	/* S4.2a: items to delete */
+	std::vector<Menu *> ownedMenus;	/* S4.2a: submenus to delete */
 };
 
 /* S2.3a Slider state. */

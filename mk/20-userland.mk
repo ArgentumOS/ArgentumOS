@@ -314,6 +314,10 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/krel_slow.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/krel_slow"
+	# menu_wire: S4.2a — the session wire codec's round trip (no X)
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/menu_wire.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -o "$(ROOTFS64)/System/Shared/tests/menu_wire"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

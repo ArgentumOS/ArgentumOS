@@ -225,6 +225,11 @@ PopupWindow::PopupWindow(Menu *menu, int xRootPx, int yRootPx)
 
 	init(menu->title() ? menu->title() : "menu", xRootPx, yRootPx,
 	     (unsigned) wPx, (unsigned) hPx);
+	/* S4.2a: a transient menu is override-redirect — without this a
+	 * window manager (Kestrel) frames the popup and the menu shows
+	 * up as a decorated window. It is also the flag the toolkit
+	 * leaves out of the session menubar protocol. */
+	setOverrideRedirect(true);
 	listView_->setFrame({ {0, 0},
 			      { wPx / ppt, hPx / ppt } });
 	setContentView(listView_);

@@ -53,17 +53,34 @@ date/time) and the session/workspace behaviour belong to S5 and are
   the active title, and writes `_NET_ACTIVE_WINDOW` (root property,
   `ClientMessage` per EWMH) so focus is externally observable.
   Click-to-focus; click-to-raise is implied (raise on focus).
-- **Session socket + config framing (§6).** Kestrel listens on an
-  AF_UNIX socket under the FSH temporary-files convention (the X11
-  sockets' home, e.g. `/System/Temporary Files/argentum-session`).
-  Apps connect at map time and publish their menu model as config-
-  framed records: menus/titles, item kinds (action/check/radio/
-  separator), enabled state, keyboard equivalents, item ids. Picks
-  flow back as triggers (id -> app); model diffs (enable/disable/
-  relabel) can follow the same records. The toolkit gains a small
-  serialize/parse pair over its `Menu`/`MenuItem` model plus the
-  client-side connect/publish helper; Kestrel deserializes into the
-  same model for its bar.
+- **Session socket (§6).** Kestrel listens on an AF_UNIX socket under
+  the FSH temporary-files convention (the X11 sockets' home,
+  `/System/Temporary Files/argentum-session`, `kSessionSocketPath`).
+  Apps connect at map time and publish their menu model: menus/titles,
+  item kinds (action/check/radio/separator), enabled state, keyboard
+  equivalents, item ids. Picks flow back as triggers (id -> app); model
+  diffs (enable/disable/relabel) can follow the same records. The
+  toolkit has the serialize/parse pair over its `Menu`/`MenuItem` model
+  plus the client-side connect/publish helper; Kestrel deserializes
+  into the same model for its bar.
+  **As built (S4.2a) — the wire is NOT config-framed, and that is a
+  decision, not an oversight:** the plan said "config-framed records",
+  which assumed libconfig could render a tree to memory and parse one
+  back. It cannot: its tree has no public construction API, its only
+  write path is load-modify-write of a whole domain FILE (temp fd +
+  rename), it exposes no render-to-string or parse-from-buffer, and its
+  string renderer does not handle RECORD nodes at all. What is built
+  instead is a small self-contained line-record codec in `menu.cpp`
+  (documented at its head: a version header, one tab-indented record
+  per node with the title last, titles escaped, a 64KB frame cap, a
+  depth cap, strict rejection of anything malformed) framed as
+  `PUBLISH 0x<xid>` + that record, with a 4-byte big-endian length on
+  the socket. Two reasons this is the *right* shape and not a
+  compromise: a session socket is IPC, not configuration (libconfig
+  stays the config system's), and the payload is line-oriented so the
+  WM can log exactly what it parsed — which is how the S4.2a gate
+  checks it. Extending libconfig with public memory render/parse is
+  worth doing on its own merits some day; it is not on this path.
 - **WM_DELETE + the toolkit.** Closing: Kestrel's close glyph sends
   `WM_DELETE_WINDOW` (ClientMessage). `argentum::Window` gains
   `WM_DELETE` handling: a `setOnClose(std::function<void()>)` hook
@@ -264,10 +281,62 @@ renders at every tracked position, so drags look native (the earlier
 root-outline-hidden note is moot).
 
 ### S4.2a — session socket: publish + menubar render
+*Status: **DONE** (2026-09).* `userland/argentum/menu.cpp` (the codec +
+`SessionMenu` + `sessionWriteFrame`), `application.cpp` (the loop's fd
+seam, `setMenuBar`/`setOnMenuPick`, publish on `MapNotify`),
+`window.cpp` (override-redirect), `userland/kestrel/kestrel.cpp` (the
+socket server, the per-window model, the strip's titles).
 *Acceptance:* probe A (and B) publish distinct menus (File/Edit …)
 over the session socket; Kestrel's menubar strip renders the focused
 app's menu titles in the bar chrome (screendump + a Kestrel log of the
 parsed tree).
+
+**As built (deviations and what the slice uncovered):**
+
+- **The model had to grow first.** `MenuItem` had no kind, no id and no
+  key equivalent, and `Menu` had no separators, so the wire had nothing
+  to carry: `MenuItem::Kind` (Action/Check/Radio/Separator), a pick id
+  (`Menu::addItem` assigns a process-unique one to any pickable item
+  without one, so a published menubar always has ids to pick with), a
+  key equivalent (character + `KeyMod*` bits), `Menu::addSeparator()`
+  (the one item kind a Menu owns) and `Menu::itemWithId()` (the app's
+  pick handler, depth-first).
+- **`publish(menubar, window)` takes the window**, not the planned
+  `publish(menubar)`: the socket is a separate connection from the X
+  connection, so the message has to say which window the bar belongs to
+  (and Kestrel keys its model by that xid). V1 therefore also has no
+  client-side `sendPick` — the pick direction that exists is WM -> app,
+  which arrives through the loop's fd hook and dispatches as
+  `Application::setOnMenuPick` + the item's own action.
+- **The toolkit's loop gained an fd seam** (`addFdHandler` /
+  `removeFdHandler`): while one is registered the loop polls the X
+  connection *and* those fds and never blocks in `XNextEvent`. Without
+  a registered fd the old path runs unchanged.
+- **Two toolkit bugs found in use, both fixed here:**
+  - `PopupWindow` mapped as an ordinary window, so a WM framed a
+    transient menu — it is override-redirect now
+    (`Window::setOverrideRedirect`), which is also what keeps a popup's
+    xid out of the menubar protocol.
+  - `Window::show()` called `XSetInputFocus` before the server had made
+    the window viewable, which under a WM (a redirected map) trips
+    `BadMatch` on *every* launch; focus is now set only once the window
+    is viewable (the WM focuses it when it manages it instead).
+- **The strip marks its own damage** (`View::setNeedsDisplay`) before
+  drawing: `Window::draw()` composites and flushes only the *pending*
+  damage rect, so a content change that does not report itself would be
+  painted into the backing and never reach the screen.
+- **Deferred, recorded (trust):** the publish names its window, and the
+  AF_UNIX layer carries no peer credentials (`SO_PEERCRED` /
+  `SCM_CREDENTIALS` did not exist here), so *any* session client could
+  claim another app's window and give it a different menubar. The
+  window's own bar cannot be forged *against the WM* (the WM draws it),
+  but its content can be. Closing this needs peer identity in the
+  transport, and belongs with the sessionmgr work.
+- *Gate:* `.build/s42a_run.sh` + `s42a_drive.py` + `s42a_assert.py`
+  (S42A-OK, 11 checks; the pixel evidence is read as *word runs*, not a
+  fixed x window, so it does not depend on where the theme's font size
+  puts a word — the first version of this gate misread "File Edit" as
+  "no menus" by sampling past both words).
 
 ### S4.2b — picks + focus swap (whole S4)
 *Acceptance:* clicking a bar title drops its items; picking an item

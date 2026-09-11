@@ -241,6 +241,12 @@ structure, S2.5 the reference board + a11y battery).
   screendump shows decoration.
 - **S4.2 — global menubar + menu IPC.** AF_UNIX session-socket protocol
   (§5/§6); menubar model published; picks dispatch to app actions.
+  **S4.2a (publish + render) DONE** — the socket, the wire codec
+  (`menu.cpp`), the toolkit's publish-at-map + fd seam, and the strip
+  rendering the focused app's titles; the record format is a small
+  first-party codec, not config-framed (libconfig has no memory
+  render/parse — `docs/design/argentum-s4-kestrel.md` §S4.2a).
+  **S4.2b (picks + focus swap UI) remains.**
   *Acceptance:* original S4 acceptance — two apps; menubar swaps with
   focus; picks trigger app actions.
 - **S4.3 — Platinum frames + resize in the chrome**

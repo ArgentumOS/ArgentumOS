@@ -1010,10 +1010,23 @@ Window::show()
 		return;
 	}
 	XMapWindow(impl_->dpy, impl_->xwin);
-	/* focus the window so key events reach it without a WM */
-	XSetInputFocus(impl_->dpy, impl_->xwin, RevertToParent, CurrentTime);
 	impl_->mapped = true;
 	XSync(impl_->dpy, False);
+
+	/* S4.2a: focus it only once the server has made it viewable — a
+	 * WM redirects the map, so the window is still unmapped at this
+	 * point and XSetInputFocus answers BadMatch (the WM sets focus
+	 * when it manages the window instead). This is the same
+	 * synchronous check the paint below needs anyway. */
+	XWindowAttributes attrs;
+	bool viewable = XGetWindowAttributes(impl_->dpy, impl_->xwin, &attrs) &&
+			attrs.map_state == IsViewable;
+
+	if (viewable) {
+		XSetInputFocus(impl_->dpy, impl_->xwin, RevertToParent,
+			       CurrentTime);
+		XSync(impl_->dpy, False);
+	}
 
 	/* S4.3b: paint with the map. Requests are ordered, so a draw()
 	 * here lands right after the map in the SAME server batch — the
@@ -1022,13 +1035,8 @@ Window::show()
 	 * took effect: under a WM the map request is redirected and the
 	 * window is not viewable yet, and the Expose from the WM's own map
 	 * is the first paint. */
-	{
-		XWindowAttributes a;
-
-		if (XGetWindowAttributes(impl_->dpy, impl_->xwin, &a) &&
-		    a.map_state == IsViewable) {
-			draw();
-		}
+	if (viewable) {
+		draw();
 	}
 }
 
@@ -1055,6 +1063,25 @@ Window::setNeedsDisplay()
 	ev.count = 0;
 	XSendEvent(impl_->dpy, impl_->xwin, False, ExposureMask,
 		   (XEvent *) &ev);
+}
+
+void
+Window::setOverrideRedirect(bool on)
+{
+	impl_->overrideRedirect = on;
+	if (impl_->dpy && impl_->xwin) {
+		XSetWindowAttributes attrs;
+
+		attrs.override_redirect = on ? True : False;
+		XChangeWindowAttributes(impl_->dpy, impl_->xwin,
+					CWOverrideRedirect, &attrs);
+	}
+}
+
+bool
+Window::isOverrideRedirect() const
+{
+	return impl_->overrideRedirect;
 }
 
 void

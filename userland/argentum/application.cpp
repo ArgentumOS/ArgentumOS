@@ -291,6 +291,72 @@ Application::setIdleHook(Application::IdleHook hook)
 	impl_->idleHook = hook;
 }
 
+bool
+Application::addFdHandler(int fd, Application::FdHook hook)
+{
+	if (fd < 0 || !hook) {
+		return false;
+	}
+	removeFdHandler(fd);
+	if ((int) impl_->fdHooks.size() >= kMaxFdHandlers) {
+		return false;
+	}
+	Application::Impl::FdHookRec rec;
+
+	rec.fd = fd;
+	rec.hook = std::move(hook);
+	impl_->fdHooks.push_back(rec);
+	return true;
+}
+
+void
+Application::removeFdHandler(int fd)
+{
+	for (size_t i = 0; i < impl_->fdHooks.size(); i++) {
+		if (impl_->fdHooks[i].fd == fd) {
+			impl_->fdHooks.erase(impl_->fdHooks.begin() + i);
+			return;
+		}
+	}
+}
+
+/* S4.2a: the app's global menubar. Creating the SessionMenu here (not
+ * in init()) means an app that never sets a menubar never opens a
+ * socket at all. */
+void
+Application::setMenuBar(Menu *menubar)
+{
+	impl_->menuBar = menubar;
+	if (!impl_->session) {
+		impl_->session = new SessionMenu(this);
+		impl_->session->setPickHandler([this](int itemId) {
+			/* the picked item's action runs here — the app
+			 * authored the model, so it owns the action — and
+			 * the observer sees the id too (logging). */
+			if (impl_->menuBar) {
+				if (MenuItem *item = impl_->menuBar->itemWithId(itemId)) {
+					item->activate();
+				}
+			}
+			if (impl_->onMenuPick) {
+				impl_->onMenuPick(itemId);
+			}
+		});
+	}
+}
+
+Menu *
+Application::menuBar() const
+{
+	return impl_->menuBar;
+}
+
+void
+Application::setOnMenuPick(std::function<void(int itemId)> cb)
+{
+	impl_->onMenuPick = std::move(cb);
+}
+
 int
 Application::run()
 {
@@ -302,6 +368,62 @@ Application::run()
 	impl_->stopping = false;
 
 	while (!impl_->stopping) {
+		/* S4.2a: while any fd handler is registered (the session
+		 * socket), never block in XNextEvent — poll the connection
+		 * and those fds together, and take an X event only once one
+		 * is pending. Without handlers this loop is skipped and the
+		 * path below is exactly the pre-S4.2a behaviour. */
+		while (!impl_->stopping && !impl_->fdHooks.empty() &&
+		       XPending(impl_->dpy) <= 0) {
+			struct pollfd pfd[1 + Application::kMaxFdHandlers];
+			int fds[Application::kMaxFdHandlers];
+			int nfd = 0;
+			int n = 0;
+
+			pfd[n].fd = ConnectionNumber(impl_->dpy);
+			pfd[n].events = POLLIN;
+			pfd[n].revents = 0;
+			n++;
+			for (size_t i = 0; i < impl_->fdHooks.size() &&
+			     nfd < Application::kMaxFdHandlers; i++) {
+				fds[nfd] = impl_->fdHooks[i].fd;
+				pfd[n].fd = impl_->fdHooks[i].fd;
+				pfd[n].events = POLLIN;
+				pfd[n].revents = 0;
+				n++;
+				nfd++;
+			}
+
+			int r = poll(pfd, n, 250);
+
+			/* service the registered fds (a HUP counts: the
+			 * peer is gone and the handler must notice). The
+			 * hook is looked up by fd at call time, because a
+			 * handler may unregister itself or another one. */
+			for (int i = 0; i < nfd; i++) {
+				if (!(pfd[i + 1].revents &
+				      (POLLIN | POLLHUP | POLLERR))) {
+					continue;
+				}
+				for (size_t k = 0; k < impl_->fdHooks.size(); k++) {
+					if (impl_->fdHooks[k].fd != fds[i]) {
+						continue;
+					}
+					Application::FdHook hook = impl_->fdHooks[k].hook;
+
+					if (hook) {
+						hook();
+					}
+					break;
+				}
+			}
+			if (r <= 0 && impl_->idleHook && !impl_->idleHook()) {
+				continue;
+			}
+		}
+		if (impl_->stopping) {
+			break;
+		}
 		/* idle hook (Kestrel): when no events are pending, poll
 		 * with a short timeout and give the hook a beat every
 		 * ~250ms (WM housekeeping: reaping dead clients). Apps
@@ -467,6 +589,18 @@ Application::run()
 			}
 			break;
 		}
+		case MapNotify: {
+			/* S4.2a: a mapped window publishes the app's
+			 * menubar to the WM. An override-redirect window
+			 * (a transient menu) is not a bar window and has
+			 * no WM to tell. */
+			if (w && !w->isOverrideRedirect() && impl_->menuBar &&
+			    impl_->session) {
+				impl_->session->publish(impl_->menuBar,
+							(unsigned long) w->xid());
+			}
+			break;
+		}
 		default:
 			break;		/* S0.3: ignore the rest */
 		}
@@ -487,6 +621,10 @@ Application::Application()
 
 Application::~Application()
 {
+	/* S4.2a: the session client closes its socket (and unregisters the
+	 * loop's fd hook) before the display goes away. */
+	delete impl_->session;
+	impl_->session = nullptr;
 	if (impl_->dpy) {
 		XCloseDisplay(impl_->dpy);
 		impl_->dpy = nullptr;

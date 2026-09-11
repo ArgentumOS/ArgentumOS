@@ -25,9 +25,16 @@
 #include <X11/Xutil.h>
 
 #include <cstdio>
-#include <cstring>
-#include <vector>
+#include <cerrno>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
+
+#include <cstring>
+#include <string>
+#include <vector>
 
 using namespace argentum;
 
@@ -126,6 +133,290 @@ setActiveProperty(::Window client)
 	XChangeProperty(dpy, ewmhRoot, netActive, XA_WINDOW, 32,
 			PropModeReplace, (unsigned char *) &client, 1);
 	XSync(dpy, False);
+}
+
+/* ---- S4.2a: the session socket --------------------------------------
+ *
+ * One connection per app. Apps connect at map time and publish their
+ * menubar as a menu record; Kestrel keeps the parsed model per window
+ * and renders the FOCUSED window's titles in the strip. Framing is the
+ * toolkit's (sessionWriteFrame): a 4-byte big-endian length then a text
+ * payload, "PUBLISH 0x<xid>\n" + menuSerialize's record.
+ */
+struct SessionConn {
+	int fd = -1;
+	std::string in;			/* read, frames not complete */
+};
+
+struct PublishedMenu {
+	::Window client = 0;
+	SessionConn *conn = nullptr;	/* borrowed: the socket it came on */
+	Menu *menu = nullptr;		/* ours: menuParse's tree */
+};
+
+static std::vector<SessionConn *> gConns;
+static std::vector<PublishedMenu *> gMenus;
+static int gListenFd = -1;
+static void stripRefresh();		/* defined with the strip, below */
+
+static Menu *
+menuForClient(::Window client)
+{
+	for (size_t i = 0; i < gMenus.size(); i++) {
+		if (gMenus[i]->client == client) {
+			return gMenus[i]->menu;
+		}
+	}
+	return nullptr;
+}
+
+static const char *
+clientNameFor(::Window client)
+{
+	for (size_t i = 0; i < gFrames.size(); i++) {
+		if (gFrames[i]->client == client) {
+			return gFrames[i]->title;
+		}
+	}
+	return "?";
+}
+
+/* the titles we parsed, one line — the S4.2a gate reads this */
+static void
+logMenu(::Window client, const Menu *menu)
+{
+	char titles[512];
+	size_t n = 0;
+
+	titles[0] = 0;
+	for (int i = 0; i < menu->itemCount(); i++) {
+		MenuItem *item = menu->itemAt(i);
+		const char *t = item->title();
+
+		if (item->kind() == MenuItem::Kind::Separator || !t[0]) {
+			continue;
+		}
+		if (n + strlen(t) + 1 >= sizeof(titles)) {
+			break;
+		}
+		if (n) {
+			titles[n++] = ',';
+		}
+		n += (size_t) snprintf(titles + n, sizeof(titles) - n, "%s", t);
+	}
+	printf("KESTREL: menu 0x%lx '%s' titles=%s\n",
+	       (unsigned long) client, clientNameFor(client), titles);
+	fflush(stdout);
+}
+
+static void
+sessionDropConn(SessionConn *c)
+{
+	if (!c) {
+		return;
+	}
+	/* the menus it published go with it */
+	for (size_t i = 0; i < gMenus.size();) {
+		if (gMenus[i]->conn == c) {
+			delete gMenus[i]->menu;
+			delete gMenus[i];
+			gMenus.erase(gMenus.begin() + (long) i);
+		} else {
+			i++;
+		}
+	}
+	if (c->fd >= 0) {
+		Application::shared().removeFdHandler(c->fd);
+		::close(c->fd);
+		c->fd = -1;
+	}
+	for (size_t i = 0; i < gConns.size(); i++) {
+		if (gConns[i] == c) {
+			gConns.erase(gConns.begin() + (long) i);
+			break;
+		}
+	}
+	delete c;
+	stripRefresh();
+}
+
+/* a window died: its menubar entry goes too */
+static void
+dropMenusForClient(::Window client)
+{
+	bool dropped = false;
+
+	for (size_t i = 0; i < gMenus.size();) {
+		if (gMenus[i]->client == client) {
+			delete gMenus[i]->menu;
+			delete gMenus[i];
+			gMenus.erase(gMenus.begin() + (long) i);
+			dropped = true;
+		} else {
+			i++;
+		}
+	}
+	if (dropped) {
+		stripRefresh();
+	}
+}
+
+static void
+sessionPublish(SessionConn *c, const std::string &payload)
+{
+	unsigned long xid = strtoul(payload.c_str() + 8, nullptr, 16);
+	size_t nl = payload.find('\n');
+	Menu *menu;
+	PublishedMenu *entry = nullptr;
+
+	if (nl == std::string::npos) {
+		printf("KESTREL: menu 0x%lx bad record\n", xid);
+		fflush(stdout);
+		return;
+	}
+	menu = menuParse(payload.c_str() + nl + 1, payload.size() - nl - 1);
+	if (!menu) {
+		printf("KESTREL: menu 0x%lx bad record\n", xid);
+		fflush(stdout);
+		return;
+	}
+	for (size_t i = 0; i < gMenus.size(); i++) {
+		if (gMenus[i]->client == (::Window) xid) {
+			entry = gMenus[i];
+			break;
+		}
+	}
+	if (entry) {
+		delete entry->menu;	/* a re-publish replaces the model */
+		entry->menu = menu;
+		entry->conn = c;
+	} else {
+		entry = new PublishedMenu();
+		entry->client = (::Window) xid;
+		entry->conn = c;
+		entry->menu = menu;
+		gMenus.push_back(entry);
+	}
+	logMenu((::Window) xid, menu);
+	stripRefresh();
+}
+
+static void
+sessionMessage(SessionConn *c, const std::string &payload)
+{
+	if (payload.compare(0, 8, "PUBLISH ") == 0) {
+		sessionPublish(c, payload);
+	}
+	/* anything else is ignored (forward compatibility) */
+}
+
+static void
+sessionRead(SessionConn *c)
+{
+	char buf[4096];
+
+	if (!c || c->fd < 0) {
+		return;
+	}
+	for (;;) {
+		ssize_t n = read(c->fd, buf, sizeof(buf));
+
+		if (n > 0) {
+			c->in.append(buf, (size_t) n);
+			continue;
+		}
+		if (n == 0) {
+			sessionDropConn(c);	/* the app closed */
+			return;
+		}
+		if (errno == EINTR) {
+			continue;
+		}
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			break;
+		}
+		sessionDropConn(c);		/* an error: drop it */
+		return;
+	}
+
+	while (c->in.size() >= 4) {
+		const unsigned char *p = (const unsigned char *) c->in.data();
+		size_t len = ((size_t) p[0] << 24) | ((size_t) p[1] << 16) |
+			     ((size_t) p[2] << 8) | (size_t) p[3];
+
+		if (len > 64 * 1024) {
+			sessionDropConn(c);	/* desynced: unusable */
+			return;
+		}
+		if (c->in.size() < 4 + len) {
+			break;			/* wait for the rest */
+		}
+		std::string payload = c->in.substr(4, len);
+
+		c->in.erase(0, 4 + len);
+		sessionMessage(c, payload);
+	}
+}
+
+static void
+sessionAccept()
+{
+	if (gListenFd < 0) {
+		return;
+	}
+	for (;;) {
+		int fd = accept(gListenFd, nullptr, nullptr);
+		int fl;
+		SessionConn *c;
+
+		if (fd < 0) {
+			return;			/* EAGAIN: all drained */
+		}
+		if ((int) gConns.size() >= Application::kMaxFdHandlers - 1) {
+			::close(fd);		/* no slot to poll it in */
+			continue;
+		}
+		fl = fcntl(fd, F_GETFL, 0);
+		if (fl >= 0) {
+			fcntl(fd, F_SETFL, fl | O_NONBLOCK);
+		}
+		c = new SessionConn();
+		c->fd = fd;
+		gConns.push_back(c);
+		Application::shared().addFdHandler(fd, [c] { sessionRead(c); });
+	}
+}
+
+static bool
+sessionOpen()
+{
+	struct sockaddr_un sun;
+	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	int fl;
+
+	if (fd < 0) {
+		return false;
+	}
+	/* a stale node from a session that died without cleaning up */
+	unlink(kSessionSocketPath);
+	memset(&sun, 0, sizeof(sun));
+	sun.sun_family = AF_UNIX;
+	strncpy(sun.sun_path, kSessionSocketPath, sizeof(sun.sun_path) - 1);
+	if (bind(fd, (struct sockaddr *) &sun, sizeof(sun)) < 0 ||
+	    listen(fd, 8) < 0) {
+		fprintf(stderr, "KESTREL: session socket failed\n");
+		::close(fd);
+		return false;
+	}
+	fl = fcntl(fd, F_GETFL, 0);
+	if (fl >= 0) {
+		fcntl(fd, F_SETFL, fl | O_NONBLOCK);
+	}
+	gListenFd = fd;
+	Application::shared().addFdHandler(fd, [] { sessionAccept(); });
+	printf("KESTREL: session socket %s\n", kSessionSocketPath);
+	fflush(stdout);
+	return true;
 }
 
 /* The frame's content: the chrome title band (its controls + the
@@ -725,6 +1016,7 @@ focusClient(Managed *m)
 	printf("KESTREL: focus 0x%lx '%s'\n",
 	       (unsigned long) m->client, m->title);
 	fflush(stdout);
+	stripRefresh();		/* S4.2a: the bar follows focus */
 }
 
 /* ---- S4.1d window drag (title-band move) ----------------------------- */
@@ -1097,6 +1389,7 @@ reapDeadClients()
 		argentum::Window *frame = m->frame;
 		FrameChrome *chrome = m->chrome;
 
+		dropMenusForClient(m->client);	/* S4.2a */
 		gFrames.erase(gFrames.begin() + (long) i);
 		delete frame;
 		delete chrome;	/* the content view is not owned by the frame */
@@ -1328,14 +1621,41 @@ public:
 		g.fillRoundedGradient(0, 0, (unsigned) w, (unsigned) h, 0,
 				      p.fillTop, p.fillBottom);
 		g.fillRect(0, h - 1, (unsigned) w, 1, t.chromeOutline());
-		if (title_[0]) {
+		{
 			TextMetrics m = textMetrics(t.fontFamily(),
 						    t.fontSizePt(), "Ag");
 			double box = m.ascentPt + m.descentPt + 2.0 / ppt;
 			int ty = (int) ((h - box * ppt) / 2.0);
+			int x = 8;
 
-			g.drawText(t.fontFamily(), t.fontSizePt(), 8, ty,
-				   title_, t.text());
+			if (title_[0]) {
+				g.drawText(t.fontFamily(), t.fontSizePt(), x,
+					   ty, title_, t.text());
+				x += (int) (textMetrics(t.fontFamily(),
+							t.fontSizePt(), title_)
+						    .widthPt * ppt + 0.5) + 16;
+			}
+			/* S4.2a: the focused app's menus — the menubar's
+			 * items are the bar titles (a WM with no focused
+			 * client shows its own name and nothing else). */
+			if (menu_) {
+				for (int i = 0; i < menu_->itemCount(); i++) {
+					MenuItem *item = menu_->itemAt(i);
+					const char *t2 = item->title();
+
+					if (item->kind() ==
+					    MenuItem::Kind::Separator ||
+					    !t2[0]) {
+						continue;
+					}
+					g.drawText(t.fontFamily(),
+						   t.fontSizePt(), x, ty, t2,
+						   t.text());
+					x += (int) (textMetrics(t.fontFamily(),
+								t.fontSizePt(), t2)
+						    .widthPt * ppt + 0.5) + 18;
+				}
+			}
 		}
 	}
 
@@ -1344,9 +1664,47 @@ public:
 		strncpy(title_, utf8, sizeof(title_) - 1);
 	}
 
+	/* S4.2a: the focused client's parsed menubar (borrowed) */
+	void setMenu(const Menu *menu)
+	{
+		menu_ = menu;
+	}
+
 private:
 	char title_[64] = { 0 };
+	const Menu *menu_ = nullptr;
 };
+
+static StripView *gStrip = nullptr;	/* the strip's content view */
+static argentum::Window *gBar = nullptr;	/* its window (in main) */
+
+/* S4.2a: what the strip shows — the focused client's name and its
+ * published menus, else Kestrel's own. Called when focus or the menus
+ * change. */
+static void
+stripRefresh()
+{
+	if (!gStrip) {
+		return;
+	}
+	if (gActive) {
+		gStrip->setTitle(gActive->title);
+		gStrip->setMenu(menuForClient(gActive->client));
+	} else {
+		gStrip->setTitle("Kestrel");
+		gStrip->setMenu(nullptr);
+	}
+	if (gBar) {
+		/* Mark the strip damaged before drawing: Window::draw()
+		 * composites and flushes only the pending damage rect,
+		 * so a content change that does not report itself would
+		 * be painted into the backing and never reach the
+		 * screen. The frames' chrome reports its own rect the
+		 * same way (View::setNeedsDisplay). */
+		gStrip->setNeedsDisplay();
+		gBar->draw();
+	}
+}
 
 int
 main()
@@ -1401,6 +1759,8 @@ main()
 		  { screenW / app.pxPerPt(), BAR_H / app.pxPerPt() } });
 	stripView->setTitle("Kestrel");
 	bar.setContentView(stripView);
+	gStrip = stripView;
+	gBar = &bar;
 	stripX = bar.xid();
 	/* map the strip directly: the toolkit's show() also grabs input
 	 * focus, which races the map under SubstructureRedirect and
@@ -1439,6 +1799,9 @@ main()
 			}
 		}
 	}
+	/* S4.2a: the session socket — apps publish their menubars here */
+	sessionOpen();
+
 	printf("KESTREL-READY strip=0x%lx\n", (unsigned long) stripX);
 	fflush(stdout);
 
