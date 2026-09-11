@@ -339,11 +339,52 @@ parsed tree).
   "no menus" by sampling past both words).
 
 ### S4.2b — picks + focus swap (whole S4)
+*Status: **DONE** (2026-09).* `userland/argentum/argentum.h`
+(`menuPopUp`/`menuPopUpDismiss`), `popup.cpp` (the pick handler + the
+one-at-a-time bar dropdown), `userland/kestrel/kestrel.cpp`
+(`stripMenuLayout`, the strip press →`menuPopUp`, the PICK send).
 *Acceptance:* clicking a bar title drops its items; picking an item
 routes the trigger back to the owning app and its `MenuItem` action
 runs (the app logs it). Switching focus between A and B re-renders
 the bar with the newly focused app's menus. Original S4 acceptance:
 two apps, the bar swaps with focus, picks trigger app actions.
+
+**As built:**
+
+- **The toolkit presents the menu, the WM routes the pick.** A new
+  public `menuPopUp(menu, xRootPx, yRootPx, onPick)` rides the existing
+  `PopupWindow`/`PopupMenuView` (S2.3c). With `onPick` a row click hands
+  back the item's **id** instead of running the item's own action — which
+  is the whole point: Kestrel holds the *parsed* copy of the focused
+  app's model, so it cannot run the app's item, and must not pretend to.
+  One bar dropdown at a time, owned by `popup.cpp` and reused for the
+  next menu (a different menu needs a differently sized window, so the
+  old one is deleted there — never inside its own callback).
+- **The strip's layout is one function**, `stripMenuLayout`, used by both
+  the paint and the hit-test (`bandControlAt`'s rule), so a title cannot
+  be painted somewhere other than where it is clickable. It skips
+  separators and reports each title's extent and menu index.
+- **Press rules:** a press on the strip on a title drops that title's
+  menu; a press on the strip elsewhere, on a frame, or in a client
+  closes an open one. Presses *inside* the popup are left to the toolkit
+  (its own blank-click dismissal). All of it consumed by the WM's hook,
+  which is also what keeps the toolkit's `_popupDismissOther` from
+  killing the dropdown the WM just opened.
+- **The pick travels home** as `PICK 0x<xid> <id>` over the owning
+  app's session connection (the app that published that window's
+  menubar), and the app's `SessionMenu` dispatches it to
+  `Application::setOnMenuPick` plus the item's own action via
+  `Menu::itemWithId`. Ids are preserved end to end by the wire codec,
+  which is why the id Kestrel sends is the id the app acts on.
+- *Gate:* `.build/s42b_run.sh` + `s42b_drive.py` + `s42b_assert.py`
+  (S42B-OK, 17 checks). The driver reads *where* to click from the
+  screenshots (the bar's word runs, then the dropdown's first row), so a
+  font-size change cannot stale it; the popup is located by its light
+  chrome fill, because the desktop wallpaper and the frames are dark too
+  (the first version measured the wallpaper). Assertions include that
+  each pick ran in *its own* app (`KREL-A-ACTION New` and not
+  `KREL-B-ACTION New`) and that the dropdown is on screen while open and
+  gone after the pick.
 
 ## 5. Files
 

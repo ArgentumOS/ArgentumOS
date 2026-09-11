@@ -154,6 +154,8 @@ struct PublishedMenu {
 	Menu *menu = nullptr;		/* ours: menuParse's tree */
 };
 
+static int stripMenuLayout(const Menu *menu, const char *title, int *xs,
+			   int *ws, int *idx, int max);	/* with the strip */
 static std::vector<SessionConn *> gConns;
 static std::vector<PublishedMenu *> gMenus;
 static int gListenFd = -1;
@@ -299,6 +301,57 @@ sessionPublish(SessionConn *c, const std::string &payload)
 	}
 	logMenu((::Window) xid, menu);
 	stripRefresh();
+}
+
+/* S4.2b: route a pick home. The app owns the item, so the WM only
+ * names it by id (menuParse preserved the app's ids); the app runs the
+ * action. */
+static void
+sessionSendPick(::Window client, int id)
+{
+	PublishedMenu *entry = nullptr;
+	char msg[64];
+
+	for (size_t i = 0; i < gMenus.size(); i++) {
+		if (gMenus[i]->client == client) {
+			entry = gMenus[i];
+			break;
+		}
+	}
+	snprintf(msg, sizeof(msg), "PICK 0x%lx %d\n", (unsigned long) client, id);
+	if (entry && entry->conn && entry->conn->fd >= 0 &&
+	    sessionWriteFrame(entry->conn->fd, msg, strlen(msg))) {
+		printf("KESTREL: pick 0x%lx %d\n", (unsigned long) client, id);
+	} else {
+		printf("KESTREL: pick 0x%lx %d (no session)\n",
+		       (unsigned long) client, id);
+	}
+	fflush(stdout);
+}
+
+/* S4.2b: drop the focused client's menu #index under its title and
+ * route the pick back to it. */
+static void
+popUpClientMenu(Managed *m, int itemIndex, int xRootPx)
+{
+	Menu *root;
+	MenuItem *item;
+	Menu *sub;
+	::Window client;
+
+	if (!m) {
+		return;
+	}
+	root = menuForClient(m->client);
+	item = root ? root->itemAt(itemIndex) : nullptr;
+	sub = item ? item->submenu() : nullptr;
+	client = m->client;
+	if (!sub) {
+		return;		/* an item with no submenu: nothing to drop */
+	}
+	menuPopUp(sub, xRootPx, BAR_H, [client](int id) {
+		sessionSendPick(client, id);
+	});
 }
 
 static void
@@ -1427,12 +1480,35 @@ kestrelHook(void *xevent)
 		 * client's own UI sees the click. */
 		for (Managed *m : gFrames) {
 			if (ev->xbutton.window == m->client) {
+				menuPopUpDismiss();	/* S4.2b */
 				focusClient(m);
 				XAllowEvents(dpy, ReplayPointer,
 					     CurrentTime);
 				XSync(dpy, False);
 				return true;
 			}
+		}
+		/* S4.2b: a press on the menubar strip — on a title it drops
+		 * that title's menu, anywhere else it closes an open one.
+		 * Consumed either way: the strip is the WM's own. */
+		if (ev->xbutton.window == stripX) {
+			Menu *root = gActive ? menuForClient(gActive->client)
+					     : nullptr;
+			int xs[32], ws[32], idx[32];
+			int n = stripMenuLayout(root,
+						gActive ? gActive->title
+							: "Kestrel",
+						xs, ws, idx, 32);
+			int x = ev->xbutton.x;
+
+			for (int i = 0; i < n; i++) {
+				if (x >= xs[i] - 8 && x < xs[i] + ws[i] + 8) {
+					popUpClientMenu(gActive, idx[i], xs[i]);
+					return true;
+				}
+			}
+			menuPopUpDismiss();
+			return true;
 		}
 		/* S4.3: a press on a FRAME's edge/corner grip resizes it
 		 * (the lip, the band's top edge, or the 1px X border);
@@ -1451,6 +1527,7 @@ kestrelHook(void *xevent)
 			 * FrameChrome runs the close/zoom/toolbar
 			 * callbacks): check it BEFORE the grips, whose
 			 * top band overlaps the controls' first row */
+			menuPopUpDismiss();	/* S4.2b: any frame press */
 			if (ly >= 0 && ly < BAND_H && lx >= 0 && lx < m->fw &&
 			    bandControlAt(m->fw, lx, ly, m->tbH > 0) !=
 				    BAND_NONE) {
@@ -1626,35 +1703,22 @@ public:
 						    t.fontSizePt(), "Ag");
 			double box = m.ascentPt + m.descentPt + 2.0 / ppt;
 			int ty = (int) ((h - box * ppt) / 2.0);
-			int x = 8;
+			int xs[32], ws[32], idx[32];
+			int n;
 
-			if (title_[0]) {
-				g.drawText(t.fontFamily(), t.fontSizePt(), x,
-					   ty, title_, t.text());
-				x += (int) (textMetrics(t.fontFamily(),
-							t.fontSizePt(), title_)
-						    .widthPt * ppt + 0.5) + 16;
-			}
 			/* S4.2a: the focused app's menus — the menubar's
-			 * items are the bar titles (a WM with no focused
-			 * client shows its own name and nothing else). */
-			if (menu_) {
-				for (int i = 0; i < menu_->itemCount(); i++) {
-					MenuItem *item = menu_->itemAt(i);
-					const char *t2 = item->title();
-
-					if (item->kind() ==
-					    MenuItem::Kind::Separator ||
-					    !t2[0]) {
-						continue;
-					}
-					g.drawText(t.fontFamily(),
-						   t.fontSizePt(), x, ty, t2,
-						   t.text());
-					x += (int) (textMetrics(t.fontFamily(),
-								t.fontSizePt(), t2)
-						    .widthPt * ppt + 0.5) + 18;
-				}
+			 * items are the bar titles, laid out by the same
+			 * function the hit-test uses (S4.2b). */
+			if (title_[0]) {
+				g.drawText(t.fontFamily(), t.fontSizePt(), 8,
+					   ty, title_, t.text());
+			}
+			n = stripMenuLayout(menu_, title_, xs, ws, idx, 32);
+			for (int i = 0; i < n; i++) {
+				g.drawText(t.fontFamily(), t.fontSizePt(),
+					   xs[i], ty,
+					   menu_->itemAt(idx[i])->title(),
+					   t.text());
 			}
 		}
 	}
@@ -1674,6 +1738,46 @@ private:
 	char title_[64] = { 0 };
 	const Menu *menu_ = nullptr;
 };
+
+/* S4.2b: where the strip's menu titles sit, in window px — ONE layout
+ * used by both the paint and the hit-test, so they cannot drift
+ * (bandControlAt's rule). xs/ws are the title's extent, idx its index in
+ * the menu (separators are skipped and take no room). Returns how many
+ * titles were laid out (at most max). */
+static int
+stripMenuLayout(const Menu *menu, const char *title, int *xs, int *ws,
+		int *idx, int max)
+{
+	Application &app = Application::shared();
+	Theme &t = app.theme();
+	double ppt = app.pxPerPt();
+	int x = 8;
+	int n = 0;
+
+	if (title && title[0]) {
+		x += (int) (textMetrics(t.fontFamily(), t.fontSizePt(), title)
+			    .widthPt * ppt + 0.5) + 16;
+	}
+	for (int i = 0; menu && i < menu->itemCount(); i++) {
+		MenuItem *item = menu->itemAt(i);
+		const char *s = item->title();
+		int w;
+
+		if (item->kind() == MenuItem::Kind::Separator || !s[0]) {
+			continue;
+		}
+		w = (int) (textMetrics(t.fontFamily(), t.fontSizePt(), s)
+			   .widthPt * ppt + 0.5);
+		if (n < max) {
+			xs[n] = x;
+			ws[n] = w;
+			idx[n] = i;
+			n++;
+		}
+		x += w + 18;
+	}
+	return n;
+}
 
 static StripView *gStrip = nullptr;	/* the strip's content view */
 static argentum::Window *gBar = nullptr;	/* its window (in main) */

@@ -63,10 +63,21 @@ public:
 
 	Menu *menu() const { return menu_; }
 
+	/* S4.2b: when set, a pick hands the item's ID to this handler
+	 * instead of running the item's own action — the global menubar's
+	 * menu is a parsed copy, so the WM routes the pick home and the
+	 * app that owns the item runs it. */
+	void setPickHandler(std::function<void(int)> h)
+	{
+		pick_ = std::move(h);
+	}
+	std::function<void(int)> pickHandler() const { return pick_; }
+
 private:
 	friend class PopupMenuView;
 	Menu *menu_;
 	PopupMenuView *listView_;
+	std::function<void(int)> pick_;
 };
 
 /* geometry helpers shared by draw + row hit-testing */
@@ -199,14 +210,20 @@ PopupMenuView::mouseUp(const MouseEvent &e)
 	MenuItem *it = (row >= 0) ? menu_->itemAt(row) : nullptr;
 
 	if (armed_ >= 0 && row == armed_ && it && it->isEnabled()) {
+		std::function<void(int)> pick = host_->pickHandler();
+
 		armed_ = -1;
 		setHovered(-1);
 		std::fprintf(stderr,
-			     "ARGENTUM-POPUP: activate \"%s\"\n",
-			     it->title());
+			     "ARGENTUM-POPUP: %s \"%s\"\n",
+			     pick ? "picked" : "activate", it->title());
 		std::fflush(stderr);
 		host_->dismiss();
-		it->activate();
+		if (pick) {
+			pick(it->id());	/* S4.2b: the pick goes home */
+		} else {
+			it->activate();
+		}
 		return;
 	}
 	armed_ = -1;
@@ -276,6 +293,47 @@ _popupDismissOther(unsigned long windowXid)
 {
 	if (g_openPopup && g_openPopup->xid() != windowXid) {
 		g_openPopup->dismiss();
+	}
+}
+
+/* ---------- S4.2b: the global menubar's dropdowns -------------------
+ * One dropdown at a time, owned here and reused for the next menu. The
+ * menu is the *parsed* copy of the focused app's model, so a pick must
+ * travel back to the app by item id (Kestrel's PICK) instead of running
+ * an action in the WM.
+ */
+static PopupWindow *g_menuPopup = nullptr;
+
+void
+menuPopUp(Menu *menu, int xRootPx, int yRootPx,
+	  std::function<void(int)> onPick)
+{
+	if (!menu) {
+		return;
+	}
+	/* whatever is open (an app's own popup too) gives way */
+	_popupDismissOther(0);
+	/* a different menu needs a differently sized popup window; deleting
+	 * the old one HERE is safe — this is never inside its callback */
+	if (g_menuPopup && g_menuPopup->menu() != menu) {
+		g_menuPopup->dismiss();
+		delete g_menuPopup;
+		g_menuPopup = nullptr;
+	}
+	if (!g_menuPopup) {
+		g_menuPopup = new PopupWindow(menu, xRootPx, yRootPx);
+	} else {
+		g_menuPopup->moveRoot(xRootPx, yRootPx);
+	}
+	g_menuPopup->setPickHandler(std::move(onPick));
+	g_menuPopup->present();
+}
+
+void
+menuPopUpDismiss()
+{
+	if (g_menuPopup) {
+		g_menuPopup->dismiss();
 	}
 }
 

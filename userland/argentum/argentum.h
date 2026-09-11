@@ -1087,6 +1087,17 @@ Menu *menuParse(const char *text, size_t len);
  * take it within ~2s. */
 bool sessionWriteFrame(int fd, const char *payload, size_t len);
 
+/* S4.2b: present a menu at a root px position — Kestrel's bar
+ * dropdowns (and, later, app context menus). The menu is borrowed and
+ * the popup maps above everything, taking the click that dismisses it.
+ * With onPick the picked item's ID is handed back instead of the item's
+ * own action running: the global menubar's model belongs to the app, so
+ * the WM routes the pick home (S4.2a's PICK) and the app runs it.
+ * menuPopUpDismiss() closes it (a click outside does too). */
+void menuPopUp(Menu *menu, int xRootPx, int yRootPx,
+	       std::function<void(int itemId)> onPick = nullptr);
+void menuPopUpDismiss();
+
 /* S4.2a: where the session socket lives — the FSH temporary-files
  * convention, the same home as the X11 sockets and the lock files.
  * Kestrel binds it; apps connect to it (menu.cpp). */

@@ -62,6 +62,18 @@ main()
 	bWin.addItem(&bMin);
 	bWin.addItem(&bZoom);
 	bHelp.addItem(&bAbout);
+	bMin.setAction([]() {
+		printf("KREL-B-ACTION Minimize\n");
+		fflush(stdout);
+	});
+	bZoom.setAction([]() {
+		printf("KREL-B-ACTION Zoom\n");
+		fflush(stdout);
+	});
+	bAbout.setAction([]() {
+		printf("KREL-B-ACTION About\n");
+		fflush(stdout);
+	});
 	bWinItem.setSubmenu(&bWin);
 	bHelpItem.setSubmenu(&bHelp);
 	bBar.setTitle("Krel B");

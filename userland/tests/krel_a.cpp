@@ -120,6 +120,24 @@ main()
 	aFile.addItem(&aQuit);
 	aEdit.addItem(&aUndo);
 	aEdit.addItem(&aRedo);
+	/* S4.2b: an action per item, so "the pick ran the app's own item"
+	 * is visible in the log rather than inferred */
+	aNew.setAction([]() {
+		printf("KREL-A-ACTION New\n");
+		fflush(stdout);
+	});
+	aOpen.setAction([]() {
+		printf("KREL-A-ACTION Open\n");
+		fflush(stdout);
+	});
+	aQuit.setAction([]() {
+		printf("KREL-A-ACTION Quit\n");
+		fflush(stdout);
+	});
+	aUndo.setAction([]() {
+		printf("KREL-A-ACTION Undo\n");
+		fflush(stdout);
+	});
 	aFileItem.setSubmenu(&aFile);
 	aEditItem.setSubmenu(&aEdit);
 	aBar.setTitle("Krel A");
