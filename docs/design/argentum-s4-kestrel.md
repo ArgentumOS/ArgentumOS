@@ -575,9 +575,26 @@ slice uncovered.
   ~40, with zero `map_page` failures and zero page faults — the zoo
   resize reproduces clean (`.build/zoores_run.sh`, 4 hard legs, 3
   segments).
-  *Residual (kernel):* a failed shm page mapping kills the process with
-  no diagnostic at all — worth a fault report / SIGBUS rather than a
-  silent death; the trigger is gone, the hole is not.
+  *Residual (kernel) — **closed** (S4.3d, `mm/fault.c`):* a page fault the
+  kernel cannot satisfy (a failed `map_page`/page-table allocation, so out
+  of memory — there is no swap here) used to answer with `send_sig(SIGKILL)`
+  and nothing that said *why*: uncatchable, unlogged as a reason, and some
+  of the five user-mode sites had no message at all. Those paths now report
+  the process, the pid, the address and the reason
+  (`do_page_fault(): cannot map the page of process '...' (pid N) at 0x...
+  - out of memory?`, rate-limited) and send **SIGBUS** — Linux's answer for
+  "the page cannot be faulted in", and catchable, so a client can shut
+  itself down cleanly. The two *kernel-mode* sites keep SIGKILL (they
+  already report, and a kernel-side fault that the fault-recovering copy
+  primitives could not absorb is a kernel bug, not something a handler can
+  act on). Held by `userland/tests/oom_probe.cpp`, which eats memory until
+  a fault cannot be satisfied, catches SIGBUS and exits from the handler —
+  a SIGKILL would run no handler and print nothing, which is what makes
+  the gate a real discriminator (§S4.3 gate: `.build/oom_run.sh` +
+  `.build/oom_assert.py`, OOM-GATE-OK, 7 checks: the report, the
+  underlying `map_page() returned 0`, the caught SIGBUS, the probe's
+  clean exit, the session still usable afterwards, and the only fatal
+  fault report naming the probe).
 - **Deferred, not dropped** (decisions, not omissions):
   - **minimize** still needs the task list, and **shading**
     (double-click the title bar) is still undesigned; the inactive

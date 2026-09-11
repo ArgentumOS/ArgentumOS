@@ -314,6 +314,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/krel_slow.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/krel_slow"
+	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
+	# to prove the fault path reports it and sends SIGBUS)
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/oom_probe.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/oom_probe"
 	# textview_c: TXT-c TextView scroll integration acceptance
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/tests/textview_c.cpp \

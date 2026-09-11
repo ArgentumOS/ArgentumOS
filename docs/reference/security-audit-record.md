@@ -184,3 +184,30 @@ beyond `sec_test.c`'s 24 checks.
   ABI requires a `sec_test.c` run **and** a note here when a new class
   is found — the register is how this stays a record instead of
   history.
+
+## 8. Post-audit kernel fixes
+
+Changes to fault handling made after the three rounds, recorded here
+because they change the contract the audits' rules rely on (a process
+that faults must be able to *see* what happened):
+
+- **`mm/fault.c`: an unsatisfiable page fault now reports and sends
+  SIGBUS, not SIGKILL** (S4.3d, found in use: resizing a large window
+  under the WM). The five *user-mode* mapping-failure paths used
+  `send_sig(SIGKILL)` with no reason recorded — uncatchable, so the
+  process vanished, and one of the sites printed nothing at all. They
+  now print the process, pid, address and cause
+  (`cannot map the page of process '...' (pid N) at 0x... - out of
+  memory?`, rate-limited) and deliver **SIGBUS** — the "page cannot be
+  faulted in" signal (SIGSEGV stays for a bad address). The two
+  *kernel-mode* sites keep SIGKILL + their report: a kernel-side fault
+  the fault-recovering copy primitives could not absorb is a kernel bug,
+  not a condition a user handler can act on. Gate:
+  `.build/oom_run.sh` + `.build/oom_assert.py` with
+  `userland/tests/oom_probe.cpp` (eats memory until a fault fails,
+  catches SIGBUS and exits from the handler — proof it is not a SIGKILL).
+- Still absent from this class: **`rlimit` enforcement on address space**
+  (`RLIMIT_AS`/`RLIMIT_DATA` are not applied to `mmap`/`shmget`
+  accounting), so a process can still push the whole system to the point
+  of failing to fault; and there is still no audit logging for repeated
+  unmappable faults per process.

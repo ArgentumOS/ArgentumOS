@@ -33,6 +33,40 @@ static void send_sigsegv(struct sigcontext *sc)
 	send_sig(current, SIGSEGV);
 }
 
+/*
+ * A page fault whose mapping the kernel could not satisfy: map_page()/
+ * map_page_flags() return 0 when a page or a page-table page cannot be
+ * allocated (out of memory - there is no swap here), and the file-backed
+ * path returns 1 when bread_page() fails.
+ *
+ * Linux answers this with SIGBUS - "the page cannot be faulted in" - and
+ * keeps SIGSEGV for a bad address; it also says so. These paths used to
+ * send SIGKILL: uncatchable, with no reason recorded anywhere (the fault
+ * report named the process and the address but never said *why*, and one
+ * of the sites printed nothing at all). That is how a resize churning
+ * MIT-SHM segments took a whole session down with nothing to read. SIGBUS
+ * is catchable, so a client can shut itself down cleanly instead.
+ */
+static void fault_unmappable(addr_t cr2, struct sigcontext *sc)
+{
+	static addr_t last_cr2;
+	static int last_pid;
+	static int reported;
+
+	if(!reported || cr2 != last_cr2 || current->pid != last_pid) {
+		last_cr2 = cr2;
+		last_pid = current->pid;
+		reported = 1;
+#if defined(CONFIG_VERBOSE_SEGFAULTS)
+		dump_registers(14, sc);
+		show_vma_regions(current);
+#endif /* CONFIG_VERBOSE_SEGFAULTS */
+		printk("do_page_fault(): cannot map the page of process '%s' (pid %d) at 0x%lx - out of memory?\n",
+		       current->argv0, current->pid, (unsigned long)cr2);
+	}
+	send_sig(current, SIGBUS);
+}
+
 static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcontext *sc)
 {
 #ifdef __x86_64__
@@ -392,7 +426,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 			if(sc->err & PFAULT_V) {	/* violation */
 				if(sc->err & PFAULT_W) {
 					if((page_protection_violation(vma, cr2, sc))) {
-						send_sig(current, SIGKILL);
+						fault_unmappable(cr2, sc);
 					}
 					return;
 				}
@@ -404,14 +438,14 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 				 * U/S, so this case never existed). Real protection
 				 * violations on U/S pages are writes, handled above. */
 				if((page_not_present(vma, cr2, sc))) {
-					send_sig(current, SIGKILL);
+					fault_unmappable(cr2, sc);
 				}
 #else
 				send_sigsegv(sc);
 #endif /* __x86_64__ */
 			} else {			/* page not present */
 				if((page_not_present(vma, cr2, sc))) {
-					send_sig(current, SIGKILL);
+					fault_unmappable(cr2, sc);
 				}
 			}
 			return;
@@ -452,7 +486,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 				 * the address isn't stack-like). */
 				if(cr2 < USER_STACK_TOP) {
 					if((page_not_present(vma, cr2, sc))) {
-						send_sig(current, SIGKILL);
+						fault_unmappable(cr2, sc);
 					}
 					return;
 				}
@@ -460,7 +494,7 @@ void do_page_fault(unsigned int trap, struct sigcontext *sc)
 				send_sigsegv(sc);
 			} else {			/* stack? */
 				if((page_not_present(vma, cr2, sc))) {
-					send_sig(current, SIGKILL);
+					fault_unmappable(cr2, sc);
 				}
 			}
 			return;
