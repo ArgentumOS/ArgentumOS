@@ -172,9 +172,52 @@ tree-sitter grammars — a Node step.
 hosted, since the submodule needs a URL. If it is not published yet,
 the URL is a placeholder in the site repo until it is.
 
+### 4.2 Local preview (browsing the rendered site on the dev machine)
+
+Two rules make local preview trustworthy rather than decorative:
+
+1. **Serve over HTTP, never `file://`.** The site's links are
+   base-path-aware and (where needed) root-relative; opening the output
+   from the filesystem exercises a link shape that production never
+   uses, so `file://` is explicitly **not** a supported preview. It is
+   also the one environment where the base-path trap (§4.1) hides.
+2. **Serve at the *same base path* as Pages.** The generator writes the
+   output under the configured base (`<base>/…`), and the preview
+   serves that output **root**, so `http://localhost:PORT/<base>/…`
+   matches `https://<org>.github.io/<base>/…` exactly. Preview and
+   production therefore cannot disagree about URLs.
+
+**Server: `darkhttpd`** — single-file C, static-only, and **ISC**
+licence (the same family as lowdown, so the site tooling stays
+ISC-only). Recorded in the manifest as a **host-side** tool. The
+alternatives, recorded rather than adopted:
+
+- **A first-party tiny static server** — the doctrinaire route, and the
+  honest *first step toward the dogfood goal* (§7: serving the site
+  from Argentum needs an HTTP server anyway). It is deliberately **not**
+  written for preview: that would be building an HTTP server to avoid
+  installing one. When it is written for dogfooding it inherits the
+  security discipline — a static server's classic bug is
+  **path traversal**, so it joins the security plan's fuzzing targets
+  (`security-hardening-plan.md` H4) rather than being an exception.
+- **Any host static server already present** (nginx, caddy, `python3
+  -m http.server`). Workable, but the first two add configuration for no
+  benefit and the third is Python — which the site tooling has already
+  excluded (`§2`).
+
+**Targets**: `make site-preview` (build, then serve the configured base
+at a local port) and `make site-check` (build, start the preview, crawl
+it, assert every internal link resolves, then stop) — so the **link
+check runs against a real HTTP server at the production base path**, not
+a local file tree.
+
 ## 5. Verification (anti-rot, in the project's own style)
 
-- **Link check** in the build: an unresolvable internal link fails it.
+- **Link check against a real server**: `make site-check` builds,
+  starts the local preview (§4.2) at the **production base path**, and
+  crawls it — an unresolvable internal link fails. Note that this is a
+  *different* check from grepping the file tree: the base-path and
+  root-relative link shapes only exist over HTTP.
 - **No-JS rule enforced mechanically**: a build step asserts content
   pages contain no `<script>` (optional enhancements must be explicitly
   marked and must degrade).
@@ -197,10 +240,12 @@ the URL is a placeholder in the site repo until it is.
 
 ### U0 — Engine and generator spike
 Vendor lowdown host-side; one real doc rendered through a template;
-wire the no-JS assertion and the link check. **Acceptance**: `make site`
-produces a legible page from a real doc with zero scripts and zero
-broken links; the engine choice (lowdown vs cmark-gfm) is recorded with
-the reason.
+wire the no-JS assertion and the link check; stand up **local preview**
+(`make site-preview` with darkhttpd at the configured base path).
+**Acceptance**: `make site-preview` then visiting
+`http://localhost:PORT/<base>/` shows the rendered page, with URLs
+shaped exactly as Pages will serve them; zero scripts; no broken links;
+the engine choice (lowdown vs cmark-gfm) is recorded with the reason.
 
 ### U1 — IA skeleton and docs rendering
 Every §3 section present, with the UIKit reference rendered from
@@ -244,6 +289,13 @@ works; `sitemap.xml`/`atom.xml` carry correct absolute URLs.
   alternatives considered and rejected: CC0/MIT-0 (permissive, but
   drops the attribution the project's lineage notes depend on),
   CC BY-SA and the GFDL (copyleft), CC BY-NC\*/ND\* (not permissive).
+- **Local preview server** — `darkhttpd` (ISC, single-file, static-only)
+  is the default (§4.2). The alternatives: a **first-party static
+  server**, which is the dogfood project rather than a preview
+  convenience (and, being a static server, inherits path-traversal
+  security work + fuzzing when written); or any host server already
+  installed (nginx/caddy — configuration for no benefit; `python3 -m
+  http.server` — Python, already excluded from the site tooling).
 - **Community channel** — mailing list, forum, or none (with the
   no-tracker/no-analytics policy fixed).
 - **Optional search** — `lunr.js` (MIT) as a progressive enhancement,

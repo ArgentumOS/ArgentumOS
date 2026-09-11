@@ -113,6 +113,12 @@ the plan's G3 gate and SH-0..SH-5.
   directly, and the site is a build artifact. Recorded per the standing
   policy; rejected alternatives: pandoc/source-highlight/highlight
   (GPL), pygments (needs Python).
+- **darkhttpd** (ISC) — **host-side only**: serves the built site for
+  local preview and for the link check (`make site-preview`, `make
+  site-check`) at the production base path (docs/design/website-plan.md
+  §4.2). Single-file C, static-only. Not needed on-FNX; when Argentum
+  serves its own site (the dogfood goal) that is a first-party HTTP
+  server with its own security work, not this tool.
 
 ### E. Volumes/infrastructure (not software, but required)
 
