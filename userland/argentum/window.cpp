@@ -54,8 +54,16 @@ Window::shmEnsure()
 {
 	int screen = DefaultScreen(impl_->dpy);
 
-	if (impl_->shmUp && impl_->shmW == (int) impl_->width &&
-	    impl_->shmH == (int) impl_->height) {
+	/* S4.3c: the segment is allocated to the BACKING's size (the
+	 * grow-only allocation above), not the window's: keeping the two
+	 * in lockstep is what lets XShmPutImage's stride match the
+	 * backing's, and it is why a resize no longer re-creates the
+	 * segment on every step. */
+	unsigned int wpx = impl_->back ? impl_->back->width() : impl_->width;
+	unsigned int hpx = impl_->back ? impl_->back->height() : impl_->height;
+
+	if (impl_->shmUp && impl_->shmW == (int) wpx &&
+	    impl_->shmH == (int) hpx) {
 		return true;
 	}
 	if (impl_->shmUp) {
@@ -64,8 +72,6 @@ Window::shmEnsure()
 	if (!XShmQueryExtension(impl_->dpy)) {
 		return false;
 	}
-	unsigned int wpx = impl_->width;
-	unsigned int hpx = impl_->height;
 
 	/* Use the PERSISTENT XShmSegmentInfo (impl_->shm): libXext keeps
 	 * it as the XImage's obdata (img->obdata = the shminfo pointer),
@@ -731,10 +737,30 @@ Window::draw()
 	if (!impl_->contentView || !impl_->dpy || !impl_->xwin) {
 		return;
 	}
-	if (!impl_->back || impl_->back->width() != impl_->width ||
-	    impl_->back->height() != impl_->height) {
-		delete impl_->back;
-		impl_->back = new BitmapImage(impl_->width, impl_->height);
+	/* S4.3c: the backing (and with it the MIT-SHM segment) is
+	 * GROW-ONLY. A resize drag used to tear down and re-allocate the
+	 * whole buffer per motion step — for a big window that is a
+	 * multi-MB segment (plus its pages) created and freed dozens of
+	 * times a second, which starved the kernel's shm page mapper
+	 * ("shm_map_page(): Oops, map_page() returned 0!") and took the
+	 * session down with it. Keep the buffer while it still fits;
+	 * when it doesn't, grow with slack so a drag that grows
+	 * re-allocates O(log n) times rather than once per step. */
+	if (!impl_->back || impl_->back->width() < impl_->width ||
+	    impl_->back->height() < impl_->height) {
+		unsigned int allocW = impl_->width + impl_->width / 4;
+		unsigned int allocH = impl_->height + impl_->height / 4;
+
+		if (impl_->back) {
+			if (allocW < impl_->back->width()) {
+				allocW = impl_->back->width();
+			}
+			if (allocH < impl_->back->height()) {
+				allocH = impl_->back->height();
+			}
+			delete impl_->back;
+		}
+		impl_->back = new BitmapImage(allocW, allocH);
 		/* fresh backing: the whole window is damaged */
 		impl_->dmgX0 = impl_->dmgY0 = 0;
 		impl_->dmgX1 = (int) impl_->width;

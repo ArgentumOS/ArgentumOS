@@ -162,8 +162,25 @@ typedef struct {
 } XfbShadowRec, *XfbShadowPtr;
 
 static XfbShadowRec xfbShadow;
+static int xfbShadowClosing;	/* the screen is going away: never re-arm */
 static CloseScreenProcPtr xfbShadowPrevCloseScreen;
 static ScreenBlockHandlerProcPtr xfbShadowPrevBlockHandler;
+
+/* The shadow's damage is registered on the ROOT window, and the window
+ * teardown path (damageDestroyWindow, wrapped on DestroyWindow) destroys
+ * and FREES every damage record registered on a window it frees. A screen
+ * close after that — server reset, session teardown — then found
+ * xfbShadow.pDamage dangling and DamageUnregister() dereferenced the
+ * freed record's drawable (a page fault at 0x10, taking the server with
+ * it). This hook is the destruction notice: drop the record the moment it
+ * dies, so the close path never touches it again. */
+static void
+xfbShadowDamageDestroyed(DamagePtr pDamage, void *closure)
+{
+    (void) pDamage;
+    (void) closure;
+    xfbShadow.pDamage = NULL;
+}
 
 /* One-shot arm at the first BlockHandler: the root window only exists
  * after AddScreen returns, and miext/damage keys must be registered
@@ -180,13 +197,13 @@ xfbShadowArm(ScreenPtr pScreen)
     DamagePtr pDamage;
     WindowPtr pRoot = pScreen->root;
 
-    if (!pRoot) {
-        return FALSE;		/* retry next wake */
+    if (!pRoot || xfbShadowClosing) {
+        return FALSE;		/* retry next wake (or never: closing) */
     }
     if (!DamageSetup(pScreen))
         return FALSE;
-    pDamage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
-                           pScreen, pScreen);
+    pDamage = DamageCreate(NULL, xfbShadowDamageDestroyed, DamageReportNone,
+                           TRUE, pScreen, pScreen);
     if (!pDamage)
         return FALSE;
     DamageRegister(&pRoot->drawable, pDamage);
@@ -260,10 +277,12 @@ xfbShadowBlockHandler(ScreenPtr pScreen, void *timeout)
 static Bool
 xfbShadowCloseScreen(ScreenPtr pScreen)
 {
+    xfbShadowClosing = 1;
     ErrorF("XFB-SHADOW: close (flushes=%lu idle=%lu)\n",
            xfbShadow.flushes, xfbShadow.idleDrains);
     if (xfbShadow.pDamage) {
-        DamageUnregister(xfbShadow.pDamage);
+        /* one call: DamageDestroy unregisters a live record itself, and
+         * the hook above clears the pointer if it is already gone */
         DamageDestroy(xfbShadow.pDamage);
         xfbShadow.pDamage = NULL;
     }

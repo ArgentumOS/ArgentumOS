@@ -92,6 +92,23 @@ BlockHandler (the root window only exists after AddScreen). Gate
 session (boot draws flushed, idle 8 s = zero new copies, screendump
 pixel matches); S13 theme_chrome probes stay S13-PIXELS-OK.
 
+### S1b — the shadow's damage must hear about its own death (fix)
+
+Found in use, resizing a big window (the zoo): the shadow's damage is
+registered on the ROOT window, and the window-teardown path
+(`damageDestroyWindow`, wrapped on `DestroyWindow`) destroys and **frees**
+every damage record registered on a window it frees. A screen close after
+that — a server reset or the session's teardown, both reachable when a
+client dies — then found `xfbShadow.pDamage` dangling, and
+`DamageUnregister` dereferenced the freed record's drawable: a page fault
+at `0x10` with `xfbShadowCloseScreen` on the stack (i.e. the shadow turned
+"a client died" into "the X server died"). Two changes: `DamageCreate`
+now passes `xfbShadowDamageDestroyed` as the destroy hook, so the record is
+dropped **the moment it dies** and the close path never touches it; the
+close path calls `DamageDestroy` alone (which unregisters a live record
+itself), and a `xfbShadowClosing` flag stops the lazy arm from re-creating
+the damage on a root that is going away.
+
 ### S2 — Config + fallback
 A `system.xfb` config key to disable the shadow (direct draw) for
 debugging/comparison; shadow on by default.

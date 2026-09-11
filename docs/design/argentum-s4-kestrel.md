@@ -557,6 +557,27 @@ slice uncovered.
   already decorated while the client paints, the client's own area is
   the theme's page with **zero** desktop-colour pixels, and the same
   pixel becomes the content once the paint lands.
+- **The backing/segment is grow-only** (S4.3c — found in use: "when I
+  try to resize the zoo window it crashes"). A resize drag re-allocated
+  the whole backing *and* a fresh MIT-SHM segment per motion step; for a
+  big window that is a multi-MB segment created and freed dozens of times
+  a second, which starved the kernel's shm page mapper
+  (`shm_map_page(): Oops, map_page() returned 0!` — the process then died
+  without a diagnostic), the client's window went with it, and the
+  server's teardown crashed in the shadow's close path (see
+  `xfb-shadow-buffer-plan.md` §S1b — that second bug is fixed too). The
+  toolkit now keeps the buffer while it still fits and grows it with
+  slack (so a growing drag re-allocates O(log n) times), the SHM segment
+  mirrors the backing's allocation (that is what keeps `XShmPutImage`'s
+  stride matching, so the fast path stays on), and a resize marks the
+  whole window damaged because the buffer survives it. Measured: the
+  gate's whole run now allocates **13** segments where one-per-step was
+  ~40, with zero `map_page` failures and zero page faults — the zoo
+  resize reproduces clean (`.build/zoores_run.sh`, 4 hard legs, 3
+  segments).
+  *Residual (kernel):* a failed shm page mapping kills the process with
+  no diagnostic at all — worth a fault report / SIGBUS rather than a
+  silent death; the trigger is gone, the hole is not.
 - **Deferred, not dropped** (decisions, not omissions):
   - **minimize** still needs the task list, and **shading**
     (double-click the title bar) is still undesigned; the inactive
