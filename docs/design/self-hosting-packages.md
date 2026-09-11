@@ -106,6 +106,13 @@ the plan's G3 gate and SH-0..SH-5.
   build** (D0 verifies); the documented fallback is a small
   libclang-based first-party extractor. **Doxygen is GPL-2.0 — out**,
   which is exactly why the pipeline is LLVM-based.
+- **lowdown** (ISC) + **tree-sitter** (MIT) — **host-side only**: the
+  project website's Markdown→HTML engine with templating, and
+  build-time syntax highlighting (docs/design/website-plan.md). Not
+  needed on-FNX — the in-OS documentation volume is Markdown read
+  directly, and the site is a build artifact. Recorded per the standing
+  policy; rejected alternatives: pandoc/source-highlight/highlight
+  (GPL), pygments (needs Python).
 
 ### E. Volumes/infrastructure (not software, but required)
 
