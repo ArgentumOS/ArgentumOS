@@ -535,7 +535,7 @@ int file_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 
 		poffset = f->offset & (PAGE_SIZE - 1);	/* mod PAGE_SIZE */
 		if(!(pg = search_page_hash(i, f->offset & PAGE_MASK))) {
-			if(!(addr = kmalloc(PAGE_SIZE))) {
+			if(!(addr = (addr_t)kmalloc(PAGE_SIZE))) {
 				inode_unlock(i);
 				printk("%s(): returning -ENOMEM\n", __FUNCTION__);
 				return -ENOMEM;

@@ -103,7 +103,7 @@ static int page_protection_violation(struct vma *vma, addr_t cr2, struct sigcont
 		send_sigsegv(sc);
 		return 0;
 	}
-	if(!(newaddr = kmalloc(PAGE_SIZE))) {
+	if(!(newaddr = (addr_t)kmalloc(PAGE_SIZE))) {
 		printk("%s(): not enough memory!\n", __FUNCTION__);
 		return 1;
 	}

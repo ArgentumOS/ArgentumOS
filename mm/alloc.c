@@ -17,11 +17,11 @@
  * - buddy_low() for requests up to 2048KB.
  * - get_free_page() rest of requests up to PAGE_SIZE.
  */
-addr_t kmalloc(__size_t size)
+void *kmalloc(__size_t size)
 {
 	struct page *pg;
 	int max_size;
-	unsigned int addr;
+	addr_t addr;
 
 	/* check if size can be managed by buddy_low */
 #ifdef __x86_64__
@@ -44,8 +44,8 @@ addr_t kmalloc(__size_t size)
 	}
 
 	if((pg = get_free_page())) {
-		addr = pg->page << PAGE_SHIFT;
-		return P2V(addr);
+		addr = (addr_t)pg->page << PAGE_SHIFT;
+		return (void *)P2V(addr);
 	}
 
 	/* out of memory! */

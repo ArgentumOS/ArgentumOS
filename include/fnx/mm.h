@@ -95,7 +95,11 @@ void bl_free(addr_t);
 void buddy_low_init(void);
 
 /* alloc.c */
-addr_t kmalloc(__size_t);
+/* FNX: returns a POINTER. With an `addr_t` (unsigned long) return the
+ * compiler emitted `movslq %eax` at call sites, truncating the page
+ * address to 32 bits - harmless only while P2V's direct map happened to
+ * decode it (phys<2GB at PAGE_OFFSET=-2GiB), fatal at >=4GB. */
+void *kmalloc(__size_t);
 void kfree(addr_t);
 
 /* kernel/boot64/mm64.c - 64-bit kernel heap (high-half VAs, arbitrary sizes:

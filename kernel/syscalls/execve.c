@@ -176,7 +176,7 @@ static int add_strings(struct binargs *barg, char *filename, char *interpreter, 
 	barg->offset = offset;
 	for(n = p; n < ARG_MAX; n++) {
 		if(!barg->page[n]) {
-			if(!(barg->page[n] = kmalloc(PAGE_SIZE))) {
+			if(!(barg->page[n] = (addr_t)kmalloc(PAGE_SIZE))) {
 				free_barg_pages(barg);
 				return -ENOMEM;
 			}
@@ -259,7 +259,7 @@ static int copy_strings(struct binargs *barg, char *argv[], char *envp[])
 	}
 	barg->offset = offset;
 	for(n = p; n < ARG_MAX; n++) {
-		if(!(barg->page[n] = kmalloc(PAGE_SIZE))) {
+		if(!(barg->page[n] = (addr_t)kmalloc(PAGE_SIZE))) {
 			free_barg_pages(barg);
 			return -ENOMEM;
 		}

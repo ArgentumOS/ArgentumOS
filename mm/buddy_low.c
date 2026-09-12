@@ -29,7 +29,7 @@ static void deallocate(struct bl_head *block)
 {
 	struct bl_head **h, *buddy, *p;
 	struct page *pg;
-	unsigned int addr, paddr;
+	addr_t addr, paddr;
 	int level;
 
 	level = block->level;
@@ -93,13 +93,13 @@ static struct bl_head *allocate(int size)
 {
 	struct bl_head *block, *buddy;
 	struct page *pg;
-	unsigned int addr, paddr;
+	addr_t addr, paddr;
 	int level;
 
 	for(level = 0; bl_blocksize[level] < size; level++);
 
 	if(level == BUDDY_MAX_LEVEL) {
-		if((addr = kmalloc(PAGE_SIZE))) {
+		if((addr = (addr_t)kmalloc(PAGE_SIZE))) {
 			paddr = V2P(addr);
 			pg = &page_table[paddr >> PAGE_SHIFT];
 			pg->flags |= PAGE_BUDDYLOW;

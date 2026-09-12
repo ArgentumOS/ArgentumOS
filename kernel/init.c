@@ -150,7 +150,7 @@ void init_init(void)
 
 	/* setup the stack: tss.esp0 is the KERNEL stack used by do_switch to
 	 * enter switch_to_user_mode at CPL0. */
-	if(!(init->tss.esp0 = kmalloc(PAGE_SIZE))) {
+	if(!(init->tss.esp0 = (addr_t)kmalloc(PAGE_SIZE))) {
 		goto init_init__die;
 	}
 	init->tss.esp0 += PAGE_SIZE - 4;

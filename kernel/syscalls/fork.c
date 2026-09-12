@@ -239,7 +239,7 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 #endif /* CONFIG_SYSVIPC */
 
 
-	if(!(child->tss.esp0 = kmalloc(PAGE_SIZE))) {
+	if(!(child->tss.esp0 = (addr_t)kmalloc(PAGE_SIZE))) {
 		if(!is_thread) {
 			kfree((addr_t)child_pgdir);
 			free_vma_table(child);

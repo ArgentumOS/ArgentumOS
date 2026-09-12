@@ -38,7 +38,7 @@ unsigned int page_hash_table_size = 0;
 addr_t map_kaddr(addr_t *page_dir, unsigned int from, unsigned int to, unsigned int addr, int flags)
 {
 	unsigned int n;
-	unsigned int paddr;
+	addr_t paddr;
 	unsigned int *pgtbl;
 	unsigned int pde, pte;
 
@@ -48,7 +48,7 @@ addr_t map_kaddr(addr_t *page_dir, unsigned int from, unsigned int to, unsigned 
 		pte = GET_PGTBL(n);
 		if(!(page_dir[pde] & ~PAGE_MASK)) {
 			if (!addr) {
-				paddr = kmalloc(PAGE_SIZE);
+				paddr = (addr_t)kmalloc(PAGE_SIZE);
 				if (!paddr) {
 					printk("%s(): no memory\n", __FUNCTION__);
 					return 0;
@@ -300,7 +300,7 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, addr_t addr, unsigned int pr
 		}
 	} else {
 		if(!addr) {
-			if(!(addr = kmalloc(PAGE_SIZE))) {
+			if(!(addr = (addr_t)kmalloc(PAGE_SIZE))) {
 				return 0;
 			}
 			addr = V2P(addr);
