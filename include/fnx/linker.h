@@ -24,16 +24,31 @@
  * into pml4[0..255] would hide the kernel from user processes. */
 #define PAGE_OFFSET	0xFFFFFFFF80000000ULL	/* pml4[511]: -2GiB, 2GB span */
 /* FNX: NOTE - this is the ceiling. The direct map can express at most 2GB
- * while PAGE_OFFSET is -2GiB, so RAM above 2GB has no kernel address. Moving
- * to a real base (e.g. 0xFFFF800000000000 = pml4[256], which stays inside the
- * pml4[256..511] range shared with user processes) was implemented and
- * measured: the boot runs all the way to INIT and then takes a supervisor
- * write fault at cr2 = 0x4b6000, the low 32 bits of a P2V'd kernel address -
- * i.e. somewhere on the fork/init path a kernel VA is still truncated to 32
- * bits (or assumed to be the old base). Four such sites were found and fixed
- * on the way (mm/fault.c, mm/memory.c x2, kernel/boot64/user64.c); the rest
- * of that class has to be swept before the base moves. See
- * KERNEL_PHYS_LIMIT below, which is the one constant that must move with it. */
+ * while PAGE_OFFSET is -2GiB, so RAM above 2GB has no kernel address.
+ *
+ * Moving it to a real base (0xFFFF800000000000 = pml4[256], which stays
+ * inside the pml4[256..511] range create_pml4_64() shares with user
+ * processes) plus a 4GB direct map was implemented twice and measured both
+ * times. The boot gets all the way to INIT (mounts, hostname, display mode)
+ * and then takes a supervisor write fault: cr2 = 0x4b6000, which is the
+ * PHYSICAL address of an early kmalloc'd page, i.e. an address that is only
+ * reachable through the kernel's low-4GB identity map.
+ *
+ * That is the real blocker, and it is a class, not one site: the kernel runs
+ * on the boot page tables (activate_kpage_dir() is a no-op on x86-64), whose
+ * identity map at pml4[0] makes "physical address used as a pointer" work by
+ * accident. A user process's pml4 has an empty low half, so the same code
+ * faults the moment it runs in a syscall context. Resolving the fault (print
+ * the image's load base, print rip minus that base and use it as an RVA)
+ * put the first one in the ATA probe: drivers/block/ata.c's
+ * ata_channel_init() on the SECONDARY channel, before ata_hd_init() is
+ * entered - the primary channel passes. Note that kmalloc(), inport_sw/sl()
+ * and memset_l() all take real 64-bit pointers, so it is neither those nor a
+ * plain truncation there.
+ *
+ * So the order is: make the kernel stop relying on the identity map (nothing
+ * low may be dereferenced except through P2V), then move this constant. See
+ * KERNEL_PHYS_LIMIT below, which must move with it. */
 /* FNX (canonical amd64 split): user space is the whole low canonical
  * half, 0 .. 0x00007FFFFFFFFFFF (128TB, pml4[0..255]). The user stack grows
  * down from just below this boundary (matching Linux's TASK_SIZE); the gap
