@@ -10,7 +10,10 @@
 
 #include <fnx/multiboot1.h>
 
-#define NR_BIOS_MM_ENT		50	/* entries in BIOS memory map */
+/* FNX: the loader now passes the real UEFI map (which is long and
+ * fragmented - a 128MB QEMU guest alone reports ~40 descriptors), so this
+ * has to hold that map rather than the handful of BIOS-era entries. */
+#define NR_BIOS_MM_ENT		256	/* entries in the memory map */
 
 struct bios_mem_map {
 	unsigned int from;

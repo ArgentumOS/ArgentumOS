@@ -19,7 +19,7 @@
 /* M4-B: boot the real Fiwix kernel (start_kernel) on top of the 64-bit
  * primitives. See kernel/boot64/kreal64.c. */
 #define KREAL64_BOOT	1
-extern void kreal64_boot(void);
+extern void kreal64_boot(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN);
 
 /* M2-A: installs the kernel's own 4-level page tables and jumps to the high
  * half, re-entering kernel64_main() there. Never returns on first call. */
@@ -168,7 +168,7 @@ void kernel64_main(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size,
 	irq64_init();
 	__asm__ __volatile__("sti");
 
-	kreal64_boot();
+	kreal64_boot(map, map_size, desc_size);
 	for(;;) {
 		/* FNX: IDLE never returns to user mode, so the CPL3 IRQ tail
 		 * can never preempt on its behalf. When every process sleeps,
