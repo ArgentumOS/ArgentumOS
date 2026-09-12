@@ -90,7 +90,12 @@ QEMU_MACHINE ?= -machine pc,i8042=off
 # desktop with a real client on it exhausts 128M. That failure shows up as
 # `shm_map_page(): map_page() returned 0!` plus a page fault - it looks like
 # the S4.3 shm-churn crash but is genuine exhaustion.
-QEMU_MEM ?= 128M
+# Guest RAM. The kernel reserves a low window for its boot structures (page
+# pool, page tables, per-page structs, process and fd tables - ~19MB at 128M,
+# ~26MB at 512M), so the 128M guest is too tight for a real client. 256M is
+# the shipped default and carries a 1920x1080 desktop with an application on
+# it (the kernel handles 512M/1G too; 2G hits the direct-map item).
+QEMU_MEM ?= 256M
 # ---------------------------------------------------------------------------
 
 CC64 = $(CLANG19) -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
