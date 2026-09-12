@@ -500,7 +500,11 @@ structure, S2.5 the reference board + a11y battery).
     chrome, so `MARGIN` insets *windows* from it, not it from the screen.
     A vertical inset of its own left a 10px gap above and below it (the
     logged box read `64x1030 at 1856,40`; it is `64x1050 at 1856,30` now),
-    guarded by `wm_dock/dock-full-height`.
+    guarded by `wm_dock/dock-full-height`. Its **slab is square** for the
+    same reason: chrome flush with the menubar and the screen edge has no
+    corners of its own to round, so the slab is a plain `fillRect` (the
+    *tiles* keep their rounded corners - guarded by
+    `smoke_desktop/dock-square-corners`).
   - **Tiles are vector chrome** — a rounded tile, a monogram, a running
     dot (a filled circle) drawn from the theme's parameters, no asset (the
     tree ships no images at all). The dock is the S5.2a recipe again: a

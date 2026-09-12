@@ -99,6 +99,15 @@ class Case(BaseCase):
                        "the dock reaches the %s edge (x %d..%d of %d)"
                        % (side, dx, dx + dw, shot.w))
 
+            # The slab is square: it is edge chrome flush with the menubar and
+            # the screen edge, so its extreme corner pixel is slab too, not
+            # wallpaper showing through a rounded corner.
+            cx, cy = dx + dw - 1, dy + dh - 1
+            corner = shot.luma(cx, cy)
+            self.check("dock-square-corners", abs(corner - slab_l) < 12,
+                       "dock corner at %d,%d has luma %.0f vs slab luma %.0f"
+                       % (cx, cy, corner, slab_l))
+
         clock = re.search(r'KESTREL: clock "([^"]*)"', log)
         self.check("clock-shown",
                    bool(clock) and any(ch.isdigit() for ch in clock.group(1)),

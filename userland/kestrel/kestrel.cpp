@@ -2189,9 +2189,11 @@ public:
 
 		if (w <= 0 || h <= 0 || side <= 0)
 			return;
-		/* the dock's slab: a darker chrome tone, so the tiles read */
-		g.fillRoundedRect(0, 0, (unsigned) w, (unsigned) h, 10,
-				  mixColor(t.chromeBottom(), 0x000000, 46));
+		/* the dock's slab: a darker chrome tone, so the tiles read. It is
+		 * edge chrome flush with the menubar and the screen edge, so it
+		 * has no corners of its own to round (the tiles keep theirs). */
+		g.fillRect(0, 0, (unsigned) w, (unsigned) h,
+			   mixColor(t.chromeBottom(), 0x000000, 46));
 		for (int i = 0; i < kPinCount; i++) {
 			int ty = (int) (dockTileY(i) * ppt + 0.5);
 			bool run = dockPinRunning(i);
