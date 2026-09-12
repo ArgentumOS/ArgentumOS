@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -29,11 +30,166 @@
 #define NETWORK_DOMAIN	"/System/Configuration/system.network.conf"
 #define MOUNTS_DOMAIN	"/System/Configuration/system.mounts.conf"
 
+/* The display mode the session runs in comes from the system.display
+ * domain; the System scope wins over the Shared default, matching
+ * libconfig's precedence for the two scopes that exist before any user
+ * logs in. The physical-size keys next to width/height (width_mm/
+ * height_mm) belong to the points-per-pixel path, not to this one. */
+#define DISPLAY_DOMAIN_SYS	"/System/Configuration/system.display.conf"
+#define DISPLAY_DOMAIN_SHARED	"/Shared/Configuration/system.display.conf"
+
+/* fb0's mode ioctls and the struct they carry (include/fnx/fb.h:20-27;
+ * spelled out here because that header pulls in kernel-only types). */
+#define IO_FB_GETMODE	4	/* arg: struct fb_mode * (filled in) */
+#define IO_FB_SETMODE	5	/* arg: struct fb_mode * (request) */
+
+struct fb_mode {
+	unsigned int width;
+	unsigned int height;
+	unsigned int bpp;
+	unsigned int pitch;	/* bytes per scanline */
+};
+
 static void try_mount(const char *source, const char *fstype,
 		      const char *target)
 {
 	if (mount(source, target, fstype, 0, NULL) < 0)
 		fprintf(stderr, "INIT: mount %s on %s: %m\n", source, target);
+}
+
+/* Read `<key> = <number>` from the display domain, System scope first.
+ * Returns 1 when a value was found. The key must match EXACTLY: the same
+ * file carries width/height_mm beside width/height. */
+static int
+display_key_int(const char *key, int *out)
+{
+	static const char *paths[] = {
+		DISPLAY_DOMAIN_SYS,
+		DISPLAY_DOMAIN_SHARED,
+	};
+	size_t klen = strlen(key);
+	unsigned int i;
+
+	for (i = 0; i < sizeof paths / sizeof paths[0]; i++) {
+		FILE *f = fopen(paths[i], "r");
+		char line[256];
+
+		if (!f)
+			continue;
+		while (fgets(line, sizeof line, f)) {
+			char *p = line, *v, *end;
+			long n;
+
+			while (*p == ' ' || *p == '\t')
+				p++;
+			if (*p == '#' || *p == '\n' || *p == '\0')
+				continue;
+			if (strncmp(p, key, klen) != 0)
+				continue;
+			if (p[klen] != '=' && p[klen] != ' ' && p[klen] != '\t')
+				continue;
+			v = p + klen;
+			while (*v == ' ' || *v == '\t')
+				v++;
+			if (*v != '=')
+				continue;
+			v++;
+			while (*v == ' ' || *v == '\t')
+				v++;
+			n = strtol(v, &end, 10);
+			if (end == v || n < 0 || n > 65535)
+				continue;
+			*out = (int) n;
+			fclose(f);
+			return 1;
+		}
+		fclose(f);
+	}
+	return 0;
+}
+
+/* Set the framebuffer mode the session will run in (system.display:
+ * display.width/height/bpp; 0 = leave the mode the firmware chose).
+ *
+ * This is the kernel's Bochs-dispi mode-set through /dev/fb0
+ * (drivers/char/fb.c -> video_gop_set_mode), which programs
+ * VBE_DISPI_XRES/YRES/BPP and re-maps the kernel's linear framebuffer,
+ * so the framebuffer console follows too. The firmware's own GOP mode
+ * cannot be moved to 1920x1080 from the QEMU command line: OVMF takes
+ * its mode from the EDID that QEMU's VGA device generates, whose
+ * preferred mode is 1280x800 unless overridden and whose standard-timing
+ * list has no 1920x1080 at all.
+ *
+ * It has to happen BEFORE the X server starts. Switching under a live X
+ * server leaves X and input working but wipes the screen content, so init
+ * does it here and Xfb picks the mode up when it opens /dev/fb0.
+ *
+ * Nothing below is fatal: an unset key, a missing /dev/fb0 or a mode the
+ * controller rejects leaves the firmware's mode in place and boot goes
+ * on. */
+static void
+set_display_mode_from_domain(void)
+{
+	/* the framebuffer node lives in the device topology, the same path
+	 * Xfb opens (hw/xfb/InitOutput.c); /dev/fb0 is only a fallback */
+	static const char *fbpaths[] = {
+		"/System/Devices/Display/fb0",
+		"/dev/fb0",
+	};
+	struct fb_mode cur, req;
+	int w = 0, h = 0, bpp = 0;
+	int fd = -1;
+	unsigned int i;
+
+	for (i = 0; i < sizeof fbpaths / sizeof fbpaths[0]; i++) {
+		fd = open(fbpaths[i], O_RDWR);
+		if (fd >= 0)
+			break;
+	}
+	if (fd < 0) {
+		fprintf(stderr, "INIT: display: %s: %m (no framebuffer mode set)\n",
+			fbpaths[0]);
+		return;
+	}
+	memset(&cur, 0, sizeof cur);
+	if (ioctl(fd, IO_FB_GETMODE, &cur) < 0) {
+		fprintf(stderr, "INIT: display: GETMODE: %m\n");
+		close(fd);
+		return;
+	}
+	display_key_int("width", &w);
+	display_key_int("height", &h);
+	display_key_int("bpp", &bpp);
+	if (w == 0 || h == 0 || bpp == 0) {
+		printf("INIT: display: keeping the firmware mode %ux%u %ubpp "
+		       "(set display.width/height/bpp in %s to change it)\n",
+		       cur.width, cur.height, cur.bpp, DISPLAY_DOMAIN_SYS);
+		fflush(stdout);
+		close(fd);
+		return;
+	}
+	memset(&req, 0, sizeof req);
+	req.width = (unsigned int) w;
+	req.height = (unsigned int) h;
+	req.bpp = (unsigned int) bpp;
+	if (ioctl(fd, IO_FB_SETMODE, &req) < 0) {
+		fprintf(stderr, "INIT: display: SETMODE %ux%ux%d: %m "
+			"(keeping %ux%u %ubpp)\n", w, h, bpp,
+			cur.width, cur.height, cur.bpp);
+		close(fd);
+		return;
+	}
+	memset(&cur, 0, sizeof cur);
+	if (ioctl(fd, IO_FB_GETMODE, &cur) < 0) {
+		fprintf(stderr, "INIT: display: GETMODE after SETMODE: %m\n");
+		close(fd);
+		return;
+	}
+	printf("INIT: display: mode %ux%u %ubpp pitch %u (asked for %ux%ux%d, "
+	       "before the session starts)\n", cur.width, cur.height, cur.bpp,
+	       cur.pitch, w, h, bpp);
+	fflush(stdout);
+	close(fd);
 }
 
 /* M5: set the kernel nodename from the network domain (plan §5.3).
@@ -377,6 +533,9 @@ int main(void)
 
 	/* the network domain is authoritative for the machine name */
 	set_hostname_from_domain();
+
+	/* the mode the session runs in, before anything opens /dev/fb0 */
+	set_display_mode_from_domain();
 
 	/* the X11 desktop owns the display; it starts before the shell */
 	start_xfb();

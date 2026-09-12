@@ -53,6 +53,46 @@ Current display truth (verified in tree):
   non-Bochs controller it ID-probes and returns `-EOPNOTSUPP`. So on a real
   ATI/NVIDIA card (and on QEMU's `ati-vga`), `SETMODE` cannot work, and if
   firmware left no GOP framebuffer there is *no* display driver at all.
+- **As built: the mode a session runs in is a setting, applied by init.**
+  `system.display` now carries `display.width` / `height` / `bpp`, and
+  `userland/tools/init.c`'s `set_display_mode_from_domain()` opens the
+  framebuffer (`/System/Devices/Display/fb0`, the same node Xfb opens; the
+  `/dev/fb0` fallback is *not* on that path) and issues `IO_FB_SETMODE`
+  **before** it starts the session, so Xfb and Kestrel pick the new
+  geometry up when they open the node. All three keys must be non-zero to
+  switch anything; a missing node, an unset key or a rejected mode logs and
+  keeps booting. It has to be before the session because switching under a
+  live X server leaves X and input working but wipes the screen content.
+  - **Why not just tell QEMU?** Because the firmware's mode is not
+    settable that way here. The launcher passes no `-vga`, so OVMF drives
+    the default Bochs-compatible VGA and takes its GOP mode from the EDID
+    QEMU generates, whose preferred mode is **1280x800** by default
+    (`qemu-10.0.11+ds/hw/display/edid-generate.c:402-406`). The knob is
+    the device's `xres`/`yres`, but measured here, *any* 1920-wide
+    preferred mode (`-global VGA.xres=1920 -global VGA.yres=1080`, and
+    `…=1200`) comes up **1280x1024**: OVMF ignores the wider preferred
+    timing and falls back. QEMU's EDID standard-timing list has no
+    1920x1080 at all (`edid-generate.c:28-50`). `-device
+    virtio-vga,xres=1920,yres=1080` is the usual 1080p idiom but is not a
+    route for FNX: this tree is GOP-only with no virtio-gpu driver, and
+    that scanout needs virtio flushes the guest would never issue.
+    The kernel's own mode-set has no such limit: it programs
+    `VBE_DISPI_XRES/YRES/BPP` on the dispi controller (1920x1080x32 needs
+    8.29MB of the device's 16MB VRAM, inside its `-EINVAL` guard), re-maps
+    the kernel's linear framebuffer and updates the console geometry too.
+  - **Shipped UNSET**: a stock boot keeps the firmware's 1280x800. The
+    pixel-driven gate drives click at absolute coordinates derived from
+    1280x800, so 1080p is a display choice, not a gate default:
+    `config write -s system.display display.width 1920` (+
+    `height 1080`, `bpp 32`) turns it on. Points are unaffected — the mode
+    changes how much desktop there is, not how big things are
+    (`width_mm`/`height_mm` above are what change size).
+  - Gate: `.build/initmode_run.sh` + `initmode_assert.py` →
+    **INITMODE-OK, 8 checks** — the mode the *kernel* reports after the
+    switch, the pitch (7680 = 1920x4), Xfb and Kestrel coming up at
+    1920x1080 (so the switch preceded them), the dock at the right edge of
+    the wider screen, the desktop rendered across it, and a host
+    screendump whose header is 1920x1080.
 - The three native adapter drivers written earlier were **removed**
   (7947cd2 added vmware-svga + ATI Rage XL/RV100; ec1ba96 and 6dbad4d
   deleted them) because none could be shown scanning its LFB out under QEMU.
