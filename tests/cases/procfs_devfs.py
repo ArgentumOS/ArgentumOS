@@ -108,3 +108,31 @@ class Case(BaseCase):
                    "ls of the devpts mount works" if reachable
                    else "the devpts mount is unreachable: ls said "
                         + after.strip()[:200])
+
+        # --- the shell's own job-status path ---------------------------
+        # This is where a *bogus wait status* surfaces, and it found one: the
+        # kernel's wait4 returned the interrupting signal number instead of
+        # -EINTR, so the shell paired the number (SIGCHLD's 17) with an
+        # uninitialized status and printed a signal name for a child that
+        # exited 0 - intermittently, and it made `devpts-mount-reachable`
+        # pass while the console said "Unknown signal".  Loop a few children
+        # (the race fires on almost every one) and require a clean report.
+        mark = len(session.log_text())
+        for _ in range(10):
+            session.run("ls %s; echo st=$?" % DEV, secs=60)
+        shell = session.output_since(mark)
+        statuses = [ln.strip() for ln in shell.splitlines()
+                    if ln.strip().startswith("st=")]
+        deaths = [ln.strip() for ln in shell.splitlines()
+                  if any(name in ln for name in
+                         ("Killed", "Stack fault", "Bus error",
+                          "Unknown signal", "Segmentation fault",
+                          "Floating point", "Illegal instruction"))]
+        self.check("shell-status-clean",
+                   not deaths and all(s == "st=0" for s in statuses)
+                   and bool(statuses),
+                   "the shell reports a clean status for every child"
+                   if not deaths and all(s == "st=0" for s in statuses)
+                   and statuses
+                   else "bogus shell report: deaths=%s statuses=%s"
+                        % (deaths[:3], statuses[:6]))

@@ -67,6 +67,17 @@ survey and got the layout wrong. This is the part that pays for the harness:
    into the image but their expectations are not established: one of them
    printed 18 FAIL lines and another printed nothing at all without arguments.
    Ground-truth them before turning them into checks.
+7. **`wait4` returned the interrupting signal number instead of `-EINTR`** -
+   FOUND IN THE DEVPTS CASE'S LOG (not by a check of its own: the console said
+   `Unknown signal` while the case passed) and FIXED. `sys_wait4` ended a
+   signal-interrupted sleep with `return signum`, so a POSIX caller read a
+   signal number as a reaped *pid*; dash (which installs a SIGCHLD handler, so
+   SIGCHLD is delivered rather than dropped) matched SIGCHLD's 17 against its
+   job table and stored an uninitialized wait status for that pid - an
+   intermittent bogus `Stack fault`/`Unknown signal` job report and `$?`
+   (144/248 seen). It is a Fiwix-heritage bug (present since `0f584ad`) that
+   the Linux-ABI userland exposed. Guarded by
+   `procfs_devfs/shell-status-clean`.
 
 ## Gaps, in the order I intend to close them
 

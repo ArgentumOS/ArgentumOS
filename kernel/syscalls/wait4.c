@@ -92,12 +92,24 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 			break;
 		}
 		if((signum = sleep(&sys_wait4, PROC_INTERRUPTIBLE))) {
-			/* a pending SIGCHLD is the normal reason this sleep was
+			/* A pending SIGCHLD is the normal reason this sleep was
 			 * interrupted (a child exited); consume it so the wait4
 			 * retry doesn't busy-loop on issig() returning the same
-			 * SIGCHLD forever (dash's waitpid retries on EINTR). */
+			 * SIGCHLD forever (dash's waitpid retries on EINTR).
+			 *
+			 * The return value must be -EINTR and NOT the signal
+			 * number: on the Linux ABI wait4 returns a pid or a
+			 * negative errno, so a positive signal number reads as
+			 * "child <signum> was reaped" to the caller. A shell that
+			 * installs a SIGCHLD handler (dash does) gets the signal
+			 * *delivered*, i.e. this path, and then matched the
+			 * returned number - SIGCHLD's 17 - against its job table
+			 * and stored an uninitialized wait status for that pid:
+			 * an intermittent bogus "Stack fault"/"Unknown signal"
+			 * report and $? (root-caused 2026-09-12; the same bug
+			 * made the devpts case's log show `Unknown signal`). */
 			current->sigpending &= ~SIG_MASK(SIGCHLD);
-			return signum;
+			return -EINTR;
 		}
 		current->sigpending &= ~SIG_MASK(SIGCHLD);
 	}
