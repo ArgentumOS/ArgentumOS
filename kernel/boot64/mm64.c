@@ -18,6 +18,7 @@
  */
 
 #include <fnx/efi.h>
+#include <fnx/linker.h>
 #include <fnx/kernel.h>
 #include "serial64.h"
 
@@ -26,7 +27,8 @@
 #define PAGE_SHIFT64	12
 #define PAGE_MASK64	(~(PAGE_SIZE64 - 1))
 
-#define LOW_LIMIT	0x40000000ULL		/* allocator covers phys < 1GB */
+/* the allocator covers exactly what the direct map maps (linker.h) */
+#define LOW_LIMIT	KERNEL_PHYS_LIMIT
 #define LOW_1MB		0x100000ULL
 #define MAX_PAGES	(LOW_LIMIT >> PAGE_SHIFT64)	/* 262144 */
 #define BITMAP_BYTES	(MAX_PAGES / 8)			/* 32768 */

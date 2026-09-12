@@ -159,8 +159,9 @@ void bios_map_init(struct multiboot_mmap_entry *bmmap_addr, unsigned int bmmap_l
 			bmmap = (struct multiboot_mmap_entry *)((addr_t)bmmap + bmmap->size + sizeof(bmmap->size));
 		}
 		kstat.physical_pages += (1024 >> 2);	/* add the first MB as a whole */
-		if(kstat.physical_pages > (GDT_BASE >> PAGE_SHIFT)) {
-			printk("WARNING: detected a total of %dMB of available memory below 4GB.\n", (kstat.physical_pages << 2) / 1024);
+		if(kstat.physical_pages > (KERNEL_PHYS_LIMIT >> PAGE_SHIFT)) {
+			printk("WARNING: detected a total of %uMB of available memory below 4GB.\n",
+				(unsigned int)((kstat.physical_pages << PAGE_SHIFT) >> 20));
 		}
 	} else {
 		printk("WARNING: your BIOS has not provided a memory map.\n");
@@ -179,15 +180,17 @@ void bios_map_init(struct multiboot_mmap_entry *bmmap_addr, unsigned int bmmap_l
 	}
 
 	/*
-	 * Truncate physical memory to upper kernel address space size (1GB or 2GB), since
-	 * currently all memory is permanently mapped there.
+	 * Truncate physical memory to the span the kernel maps permanently (the
+	 * direct map, KERNEL_PHYS_LIMIT in linker.h): RAM beyond it has no
+	 * kernel virtual address, so it cannot be used.
 	 */
-	if(kstat.physical_pages > (GDT_BASE >> PAGE_SHIFT)) {
-		kstat.physical_pages = (GDT_BASE >> PAGE_SHIFT);
-		printk("WARNING: only up to %dGB of physical memory will be used.\n", GDT_BASE >> 30);
+	if(kstat.physical_pages > (KERNEL_PHYS_LIMIT >> PAGE_SHIFT)) {
+		kstat.physical_pages = (KERNEL_PHYS_LIMIT >> PAGE_SHIFT);
+		printk("WARNING: only up to %uMB of physical memory will be used.\n",
+			(unsigned int)(KERNEL_PHYS_LIMIT >> 20));
 	}
-	if(kstat.physical_pages_top > (GDT_BASE >> PAGE_SHIFT)) {
-		kstat.physical_pages_top = (GDT_BASE >> PAGE_SHIFT);
+	if(kstat.physical_pages_top > (KERNEL_PHYS_LIMIT >> PAGE_SHIFT)) {
+		kstat.physical_pages_top = (KERNEL_PHYS_LIMIT >> PAGE_SHIFT);
 	}
 
 	memcpy_b(kernel_mem_map, bios_mem_map, NR_BIOS_MM_ENT * sizeof(struct bios_mem_map));

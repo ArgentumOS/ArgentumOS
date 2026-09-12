@@ -129,7 +129,15 @@ static void rebase_image_data(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 
 /* page-table pages, 4K-aligned, in the stub's .bss (identity-mapped) */
 static unsigned long pml4_page[512] __attribute__((aligned(4096)));
+/* identity map (PML4 entry 0), including the 4GB-6GB P2V wrap aliases */
 static unsigned long pdpt_page[512] __attribute__((aligned(4096)));
+/* The direct map's own PDPT (PML4 entry 511). It is NOT shared with the
+ * identity map: sharing made the direct map and the low half the same table,
+ * so the direct map could only ever cover the low 1GB without also
+ * corrupting identity. This is what lets phys 1GB+ be reachable at
+ * PAGE_OFFSET64 + phys - required before the kernel can even be loaded
+ * above 1GB, which is where the firmware puts it on a large guest. */
+static unsigned long pdpt_high[512] __attribute__((aligned(4096)));
 static unsigned long pd_page[512] __attribute__((aligned(4096)));
 /* 1GB-4GB identity (PCI MMIO hole at 2GB+, VGA BAR, APIC, ...) */
 static unsigned long pd_page2[1536] __attribute__((aligned(4096)));
@@ -195,13 +203,13 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	unsigned long cr3;
 	int n;
 
-	/* PML4: identity (entry 0) and high half (entry 511) share the PDPT */
+	/* PML4: entry 0 = identity (its own PDPT), entry 511 = the direct map
+	 * (its own PDPT) */
 	pml4_page[0] = (unsigned long)&pdpt_page | X86_PTE_P | X86_PTE_RW;
-	pml4_page[PML4_INDEX(PAGE_OFFSET64)] = (unsigned long)&pdpt_page | X86_PTE_P | X86_PTE_RW;
+	pml4_page[PML4_INDEX(PAGE_OFFSET64)] = (unsigned long)&pdpt_high | X86_PTE_P | X86_PTE_RW;
 
-	/* PDPT: identity (entry 0) and high half (entry 510) share the PD */
+	/* identity PDPT entry 0: 0GB-1GB */
 	pdpt_page[0] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
-	pdpt_page[PDPT_INDEX(PAGE_OFFSET64)] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
 	/* PDPT entry 1: identity 1GB-2GB */
 	pdpt_page[1] = (unsigned long)&pd_page2[0] | X86_PTE_P | X86_PTE_RW;
 	/* PDPT entries 2-3: identity 2GB-4GB (PCI MMIO, VGA, APIC, ACPI) */
@@ -213,6 +221,14 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	pdpt_page[4] = (unsigned long)&pd_page2[512] | X86_PTE_P | X86_PTE_RW;
 	pdpt_page[5] = (unsigned long)&pd_page2[1024] | X86_PTE_P | X86_PTE_RW;
 
+	/* The direct map: VA PAGE_OFFSET64 + phys. PDPT_INDEX(PAGE_OFFSET64)
+	 * is the 0GB-1GB slot; the next one is 1GB-2GB, so a guest whose image
+	 * the firmware placed above 1GB can reach its own high alias (and the
+	 * kernel can P2V memory above 1GB). P2V64 still wraps above 2GB: the
+	 * direct map cannot express more while PAGE_OFFSET64 is -2GiB. */
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64)] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 1] = (unsigned long)&pd_page2[0] | X86_PTE_P | X86_PTE_RW;
+
 	/* PD: 512 x 2MB pages covering the low 1GB */
 	for(n = 0; n < 512; n++) {
 		pd_page[n] = ((unsigned long)n << 21) | X86_PTE_P | X86_PTE_RW | X86_PTE_PS;
@@ -223,7 +239,7 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	}
 
 	cr3 = (unsigned long)&pml4_page;
-	serial_puts("\n[M2-A] installing 4-level paging (2MB pages, low 1GB identity + high half), CR3=");
+	serial_puts("\n[M2-A] installing 4-level paging (2MB pages, 0-4GB identity + direct map 0-2GB), CR3=");
 	serial_hex((UINT64)cr3);
 	serial_puts("\n");
 

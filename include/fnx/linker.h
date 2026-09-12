@@ -29,10 +29,18 @@
 #define KERNEL_ADDR	0x100000
 #define KERNEL_STACK	4096
 #ifdef __x86_64__
-/* FNX: GDT_BASE was the 32-bit "top of the kernel's 1GB direct map";
- * in long mode the kernel reaches phys via the high half and the physical
- * cap is the 64-bit bitmap's LOW_LIMIT (1GB), so keep this a 64-bit value
- * that bios_map's physical_pages cap can shift. */
+/* FNX: how much physical memory the kernel keeps permanently reachable. The
+ * direct map is built as 2MB pages at boot (kernel/boot64/paging64.c) over
+ * phys [0, KERNEL_PHYS_LIMIT), so this is the hard ceiling on RAM the kernel
+ * can use, and it is what the physical allocator (mm64.c LOW_LIMIT) and the
+ * MM accounting (bios_map.c's physical_pages cap) must agree on. Raise it
+ * together with the direct map, never on its own. PAGE_OFFSET64 is -2GiB, so
+ * the largest span it can express is 2GB; going beyond that means moving the
+ * direct map to its own base (see docs/design/ram-scale-plan.md).
+ *
+ * GDT_BASE is legacy: on x86_64 the GDT is set up by the stub (gdt64) and
+ * this constant is no longer the physical cap. */
+#define KERNEL_PHYS_LIMIT	0x80000000ULL	/* 2GB */
 #define GDT_BASE	0x40000000
 #else
 #define GDT_BASE	(0xFFFFFFFF - (PAGE_OFFSET - 1))
