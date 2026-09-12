@@ -364,6 +364,14 @@ struct inode *iget(struct superblock *sb, __ino_t inode)
 			i->count++;
 			inode_unlock(i);
 			RESTORE_FLAGS(flags);
+			/* read_inode is what sets i->fsop, and a hash hit skips it.  An
+			 * inode without fsop is unusable: do_namei dereferenced
+			 * fsop->followlink and panicked (cr2 = 0x60) on a devpts root
+			 * that came back this way, and the mount that received it could
+			 * not be resolved at all.  Repair it instead of returning it. */
+			if(!i->fsop && i->sb) {
+				read_inode(i);
+			}
 			return i;
 		}
 

@@ -99,7 +99,10 @@ class Case(BaseCase):
                    "the kernel survives listing a mount point under devfs"
                    if not panicked else "PANIC: " + after.strip()[:200])
 
-        reachable = "I/O error" not in after and "No such file" not in after
+        # A panic prints neither message, so it must count as unreachable:
+        # this check passed once while the guest was dying.
+        reachable = ("I/O error" not in after and "No such file" not in after
+                     and not panicked)
         self.check("devpts-mount-reachable", reachable,
                    "ls of the devpts mount works" if reachable
                    else "the devpts root inode has fsop == NULL, so the mount "

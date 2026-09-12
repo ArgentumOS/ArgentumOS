@@ -89,7 +89,9 @@ static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct 
 					__FUNCTION__, (unsigned long)i->inode,
 					(unsigned long)i->dev);
 				iput(dir);
-				iput(i);
+				/* deliberately no iput(i): the inode has no fsop, so it is
+				 * not a real inode we own - releasing it dereferenced a NULL
+				 * sb and panicked in iput (cr2 = 0x88). */
 				return -EIO;
 			}
 			if(S_ISLNK(i->i_mode)) {
@@ -106,7 +108,9 @@ static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct 
 					__FUNCTION__, (unsigned long)i->inode,
 					(unsigned long)i->dev);
 				iput(dir);
-				iput(i);
+				/* deliberately no iput(i): the inode has no fsop, so it is
+				 * not a real inode we own - releasing it dereferenced a NULL
+				 * sb and panicked in iput (cr2 = 0x88). */
 				return -EIO;
 			}
 			if(i->fsop->followlink && follow_links) {
