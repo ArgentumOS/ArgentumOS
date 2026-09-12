@@ -89,6 +89,25 @@ By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf`
 is exported. The ESP image is written by `./tools/mkesp.sh` (run
 automatically by the Makefile).
 
+## Running the tests
+
+`make test` boots the assembled OS under QEMU and asserts on what it does:
+what the guest logs, what it draws, and how it answers input. This is the
+shareable form of the ad-hoc gates that used to live, uncommitted, in
+`.build/` - a collaborator can now reproduce a result:
+
+    make test                # the fast tier (a few minutes, one boot per case)
+    make test-all            # + the slow tier (an exhaustive matrix, many boots)
+    make test TESTS=audio    # one case; globs work: TESTS='wm_*'
+    make test-list           # the cases, their tiers and their timeouts
+
+The cases live in `tests/cases/`, the machinery they share in `tests/harness/`,
+and a run leaves each case's guest log and screenshots in `.build/tests/<case>/`
+for debugging. `tests/README.md` documents the authoring contract, the
+prerequisites (QEMU, OVMF, the two images) and the `FNX_TEST_*` knobs. Note
+that `tests/` is the HOST-side harness; `userland/tests/` is the guest-side
+probe tree that gets installed at `/System/Shared/tests/`.
+
 Once the shell is up (the tools live under `/System/Tools`, device
 names use the `@` shorthand or `/System/Devices`, scratch mounts go
 under `/Volumes`):
