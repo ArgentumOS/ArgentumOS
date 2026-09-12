@@ -108,6 +108,18 @@ void del_mount_point(struct mount *mp)
 		return;
 	}
 
+	/* The mount-point inode holds a pointer to the mounted filesystem's root
+	 * (set by the mount path).  Every teardown funnels through here, but only
+	 * umount2() used to clear it - so a mount torn down by any other route (a
+	 * failed mount, a released superblock) left the target's mount_point
+	 * pointing at a root inode that the free-list recycle then cleared, and
+	 * the next lookup through that mount point followed it and died in
+	 * do_namei (NULL fsop, cr2 = 0x60).  Clear it here so every route is
+	 * covered. */
+	if(mp->sb.dir && mp->sb.dir->mount_point == mp->sb.root) {
+		mp->sb.dir->mount_point = NULL;
+	}
+
 	SAVE_FLAGS(flags); CLI();
 	if(mp->next) {
 		mp->next->prev = mp->prev;
