@@ -11,11 +11,33 @@
 #include <fnx/config.h>
 
 #ifdef __x86_64__
-#define PAGE_OFFSET	0xFFFFFFFF80000000ULL	/* FNX: kernel high half */
+/* FNX: the kernel's virtual base. Phys [0, KERNEL_PHYS_LIMIT) is mapped
+ * permanently at PAGE_OFFSET + phys (the direct map), and the kernel IMAGE
+ * runs there too - all kernel data pointers are re-biased by this offset at
+ * boot (rebase_image_data). It is a real base now, not a fixed -2GiB: with
+ * -2GiB the direct map could only ever express phys < 2GB, so a large
+ * guest's image (the firmware loads it near the top of RAM) had no valid
+ * kernel address at all and the boot died.
+ *
+ * Keep it inside pml4[256..511]: that range is shared into every user
+ * process's pml4 by create_pml4_64() (kernel/boot64/mm64.c), so moving it
+ * into pml4[0..255] would hide the kernel from user processes. */
+#define PAGE_OFFSET	0xFFFFFFFF80000000ULL	/* pml4[511]: -2GiB, 2GB span */
+/* FNX: NOTE - this is the ceiling. The direct map can express at most 2GB
+ * while PAGE_OFFSET is -2GiB, so RAM above 2GB has no kernel address. Moving
+ * to a real base (e.g. 0xFFFF800000000000 = pml4[256], which stays inside the
+ * pml4[256..511] range shared with user processes) was implemented and
+ * measured: the boot runs all the way to INIT and then takes a supervisor
+ * write fault at cr2 = 0x4b6000, the low 32 bits of a P2V'd kernel address -
+ * i.e. somewhere on the fork/init path a kernel VA is still truncated to 32
+ * bits (or assumed to be the old base). Four such sites were found and fixed
+ * on the way (mm/fault.c, mm/memory.c x2, kernel/boot64/user64.c); the rest
+ * of that class has to be swept before the base moves. See
+ * KERNEL_PHYS_LIMIT below, which is the one constant that must move with it. */
 /* FNX (canonical amd64 split): user space is the whole low canonical
- * half, 0 .. 0x00007FFFFFFFFFFF (128TB, pml4[0..255]); the kernel high
- * half starts at pml4[256] = 0x0000800000000000. The user stack grows
- * down from just below this boundary (matching Linux's TASK_SIZE). */
+ * half, 0 .. 0x00007FFFFFFFFFFF (128TB, pml4[0..255]). The user stack grows
+ * down from just below this boundary (matching Linux's TASK_SIZE); the gap
+ * between it and PAGE_OFFSET above is not a valid user address. */
 #define USER_STACK_TOP	0x0000800000000000UL
 #else
 #ifdef CONFIG_VM_SPLIT22
@@ -40,7 +62,7 @@
  *
  * GDT_BASE is legacy: on x86_64 the GDT is set up by the stub (gdt64) and
  * this constant is no longer the physical cap. */
-#define KERNEL_PHYS_LIMIT	0x80000000ULL	/* 2GB */
+#define KERNEL_PHYS_LIMIT	0x80000000ULL	/* 2GB: the -2GiB span */
 #define GDT_BASE	0x40000000
 #else
 #define GDT_BASE	(0xFFFFFFFF - (PAGE_OFFSET - 1))

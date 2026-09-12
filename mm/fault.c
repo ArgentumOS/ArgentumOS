@@ -276,8 +276,8 @@ static int page_not_present(struct vma *vma, addr_t cr2, struct sigcontext *sc)
  * still covered by a supervisor identity huge page (or has no U/S leaf).
  * Returns 0 on success, -EFAULT if a page could not be mapped.
  */
-#define FNX64_P2V(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
-				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
+#define FNX64_P2V(a)	(((unsigned long)(a) < PAGE_OFFSET) ? \
+				((unsigned long)(a) + PAGE_OFFSET) : (unsigned long)(a))
 #define FNX64_PMASK	0x000FFFFFFFFFF000ULL
 int fnx_fault_user_pages(addr_t start, unsigned int size)
 {

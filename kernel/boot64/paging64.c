@@ -21,9 +21,11 @@
  */
 
 #include <fnx/efi.h>
+#include <fnx/linker.h>
 #include "serial64.h"
 
-#define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
+/* the stub's name for the kernel base (include/fnx/linker.h) */
+#define PAGE_OFFSET64	PAGE_OFFSET
 
 #define PML4_INDEX(a)	(((unsigned long)(a) >> 39) & 0x1FF)
 #define PDPT_INDEX(a)	(((unsigned long)(a) >> 30) & 0x1FF)
@@ -221,12 +223,11 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	pdpt_page[4] = (unsigned long)&pd_page2[512] | X86_PTE_P | X86_PTE_RW;
 	pdpt_page[5] = (unsigned long)&pd_page2[1024] | X86_PTE_P | X86_PTE_RW;
 
-	/* The direct map: VA PAGE_OFFSET64 + phys. PDPT_INDEX(PAGE_OFFSET64)
-	 * is the 0GB-1GB slot; the next one is 1GB-2GB, so a guest whose image
-	 * the firmware placed above 1GB can reach its own high alias (and the
-	 * kernel can P2V memory above 1GB). P2V64 still wraps above 2GB: the
-	 * direct map cannot express more while PAGE_OFFSET64 is -2GiB. */
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64)] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
+	/* The direct map AND the kernel image's home: VA PAGE_OFFSET64 + phys,
+	 * 0-2GB in 2MB pages, so the kernel reaches its own image and can P2V
+	 * every page the allocator may hand out. The span is bounded by the base
+	 * (see KERNEL_PHYS_LIMIT in include/fnx/linker.h). */
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 0] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 1] = (unsigned long)&pd_page2[0] | X86_PTE_P | X86_PTE_RW;
 
 	/* PD: 512 x 2MB pages covering the low 1GB */

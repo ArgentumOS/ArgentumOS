@@ -16,9 +16,11 @@
  */
 
 #include <fnx/efi.h>
+#include <fnx/linker.h>
 #include "serial64.h"
 
-#define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
+/* the stub's name for the kernel base (include/fnx/linker.h) */
+#define PAGE_OFFSET64	PAGE_OFFSET
 
 #define KCODE64_SEL	0x08
 #define KDATA64_SEL	0x10

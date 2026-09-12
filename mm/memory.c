@@ -75,8 +75,8 @@ addr_t get_mapped_addr(struct proc *p, addr_t addr)
 	 * PHYSICAL page. Returns the raw PHYSICAL page address; callers
 	 * apply & PAGE_MASK then V2P to read the page contents. */
 	unsigned long pml4, *lvl, e1, e2, e3, e4;
-#define P2V64x(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
-				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
+#define P2V64x(a)	(((unsigned long)(a) < PAGE_OFFSET) ? \
+				((unsigned long)(a) + PAGE_OFFSET) : (unsigned long)(a))
 	extern unsigned long paging64_pml4_phys(void);
 	pml4 = p->cr3_64 ? p->cr3_64 : paging64_pml4_phys();
 	lvl = (unsigned long *)P2V64x(pml4);
@@ -319,8 +319,8 @@ addr_t map_page_flags(struct proc *p, addr_t vaddr, addr_t addr, unsigned int pr
 		 * faults P+U+ID (0x15) even though the leaf is U/S. */
 		{
 			unsigned long *lvl;
-#define P2V64x(a)	(((unsigned long)(a) < 0xFFFFFFFF80000000ULL) ? \
-				((unsigned long)(a) + 0xFFFFFFFF80000000ULL) : (unsigned long)(a))
+#define P2V64x(a)	(((unsigned long)(a) < PAGE_OFFSET) ? \
+				((unsigned long)(a) + PAGE_OFFSET) : (unsigned long)(a))
 			lvl = (unsigned long *)P2V64x(pml4);
 			lvl[((unsigned long)vaddr >> 39) & 0x1FF] |= 0x004UL;	/* US */
 			lvl = (unsigned long *)P2V64x(lvl[((unsigned long)vaddr >> 39) & 0x1FF] & ~0xFFFUL);

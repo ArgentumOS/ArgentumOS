@@ -22,7 +22,8 @@
 #include <fnx/kernel.h>
 #include "serial64.h"
 
-#define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
+/* the stub's name for the kernel base (include/fnx/linker.h) */
+#define PAGE_OFFSET64	PAGE_OFFSET
 #define PAGE_SIZE64	4096
 #define PAGE_SHIFT64	12
 #define PAGE_MASK64	(~(PAGE_SIZE64 - 1))

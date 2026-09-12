@@ -54,7 +54,7 @@ unsigned long fnx_boot_window_size;
  * does not). Scale with RAM, bounded at both ends. */
 #define FNX_WINDOW_MIN		(24UL << 20)
 #define FNX_WINDOW_MAX		(128UL << 20)
-#define FNX_WINDOW_ALLOC_MAX	0x10000000UL	/* ask to land below 256MB */
+#define FNX_WINDOW_ALLOC_MAX	0x80000000UL	/* ask to land below 2GB */
 
 /* Re-take the memory map into a buffer that fits it, growing the buffer if
  * needed. On success the caller holds the CURRENT map and key. */

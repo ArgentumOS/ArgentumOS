@@ -23,10 +23,12 @@
 
 #include <fnx/string.h>
 #include <fnx/efi.h>
+#include <fnx/linker.h>
 #include <fnx/sigcontext.h>
 #include "serial64.h"
 
-#define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
+/* the stub's name for the kernel base (include/fnx/linker.h) */
+#define PAGE_OFFSET64	PAGE_OFFSET
 
 /* M4: compat syscall handler (defined in main64.c) */
 void syscall80_handler(unsigned long *gprs);

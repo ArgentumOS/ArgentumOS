@@ -13,6 +13,7 @@
  * accept its kernel-address arguments (init_argv, the "/dev/console"
  * string, ...) - the same contract as the 32-bit kernel. */
 #include <fnx/efi.h>
+#include <fnx/linker.h>
 #include <fnx/errno.h>
 #include <fnx/kernel.h>
 #include <fnx/process.h>
@@ -21,7 +22,8 @@
 #include <fnx/unistd.h>
 #include <fnx/string.h>
 
-#define PAGE_OFFSET64	0xFFFFFFFF80000000ULL
+/* the stub's name for the kernel base (include/fnx/linker.h) */
+#define PAGE_OFFSET64	PAGE_OFFSET
 
 #define UCODE32_SEL	0x18
 #define UDATA32_SEL	0x20
