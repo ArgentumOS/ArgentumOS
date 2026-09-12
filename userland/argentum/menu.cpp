@@ -367,6 +367,7 @@ public:
 			}
 		}
 		int itemX = (hit >= 0) ? xs_of(hit, xs, ws, idx, n) : 0;
+		int barH = (int) (f.size.h * Application::shared().pxPerPt() + 0.5);
 
 		delete[] xs;
 		delete[] ws;
@@ -390,7 +391,10 @@ public:
 						   0, 0, &rx, &ry, &child)) {
 			return;
 		}
-		menuPopUp(sub, rx + itemX, ry, onPick_);
+		/* the dropdown hangs FROM the bar: its top is the bar's
+		 * bottom edge, not the bar window's origin (which is the
+		 * screen's top - anchoring there would cover the bar). */
+		menuPopUp(sub, rx + itemX, ry + barH, onPick_);
 	}
 
 private:

@@ -2003,6 +2003,8 @@ barsRefresh()
 						(unsigned char *) zone, 4);
 				XMoveResizeWindow(dpy, bar, x, 0,
 						  (unsigned) w, BAR_H);
+				printf("KESTREL: menubar zone x=%d w=%d\n", x, w);
+				fflush(stdout);
 			}
 			if (!gBarMapped[bar]) {
 				gBarMapped[bar] = true;
