@@ -260,16 +260,16 @@ static int write_inode(struct inode *i)
 	return errno;
 }
 
-static struct inode *search_inode_hash(__dev_t dev, __ino_t inode)
+static struct inode *search_inode_hash(struct superblock *sb, __ino_t inode)
 {
 	struct inode *i;
 	int n;
 
-	n = INODE_HASH(dev, inode);
+	n = INODE_HASH(sb->dev, inode);
 	i = inode_hash_table[n];
 
 	while(i) {
-		if(i->dev == dev && i->inode == inode) {
+		if(i->sb == sb && i->inode == inode) {
 			return i;
 		}
 		i = i->next_hash;
@@ -347,7 +347,7 @@ struct inode *iget(struct superblock *sb, __ino_t inode)
 	}
 
 	for(;;) {
-		if((i = search_inode_hash(sb->dev, inode))) {
+		if((i = search_inode_hash(sb, inode))) {
 			SAVE_FLAGS(flags); CLI();
 			if(i->state & INODE_LOCKED) {
 				sleep(i, PROC_UNINTERRUPTIBLE);
