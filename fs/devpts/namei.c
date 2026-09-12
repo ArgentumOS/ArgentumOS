@@ -29,7 +29,7 @@ int devpts_lookup(const char *name, struct inode *dir, struct inode **i_res)
 		iput(dir);
 		return -ENOENT;
 	}
-	if(devpts_list[numpty].count) {
+	if(devpts_list[numpty].count && devpts_list[numpty].inode) {
 		inode = devpts_list[numpty].inode->inode;
 		if(!(*i_res = iget(dir->sb, inode))) {
 			iput(dir);

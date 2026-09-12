@@ -90,7 +90,7 @@ int devpts_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_
 	total_read = 0;
 	memset_b(numstr, 0, sizeof(numstr));
 
-	while(offset < NR_PTYS && count > 0) {
+	while(offset < NR_PTYS + 2 && count > 0) {
 		if(offset == 0) {
 			name = ".";
 			dirent->d_ino = DEVPTS_ROOT_INO;
@@ -98,7 +98,7 @@ int devpts_readdir(struct inode *i, struct fd *f, struct dirent *dirent, __size_
 			name = "..";
 			dirent->d_ino = DEVPTS_ROOT_INO;
 		} else {
-			if(devpts_list[offset - 2].count) {
+			if(devpts_list[offset - 2].count && devpts_list[offset - 2].inode) {
 				dirent->d_ino = devpts_list[offset - 2].inode->inode;
 				sprintk(numstr, "%d", offset - 2);
 				name = numstr;
@@ -143,7 +143,7 @@ int devpts_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __s
 	total_read = 0;
 	memset_b(numstr, 0, sizeof(numstr));
 
-	while(offset < NR_PTYS && count > 0) {
+	while(offset < NR_PTYS + 2 && count > 0) {
 		if(offset == 0) {
 			name = ".";
 			dirent->d_ino = DEVPTS_ROOT_INO;
@@ -151,7 +151,7 @@ int devpts_readdir64(struct inode *i, struct fd *f, struct dirent64 *dirent, __s
 			name = "..";
 			dirent->d_ino = DEVPTS_ROOT_INO;
 		} else {
-			if(devpts_list[offset - 2].count) {
+			if(devpts_list[offset - 2].count && devpts_list[offset - 2].inode) {
 				dirent->d_ino = devpts_list[offset - 2].inode->inode;
 				sprintk(numstr, "%d", offset - 2);
 				name = numstr;

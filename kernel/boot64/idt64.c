@@ -412,6 +412,8 @@ static unsigned long get_cr2(void)
 	return cr2;
 }
 
+extern unsigned long fnx_load_base;
+
 static void panic(const struct x86_frame64 *f)
 {
 	unsigned long a, b, c, d, si, di, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -422,6 +424,8 @@ static void panic(const struct x86_frame64 *f)
 	puthex32((unsigned int)f->error);
 	serial_puts(" rip=");
 	serial_hex((UINT64)f->rip);
+	serial_puts(" img=");
+	serial_hex((UINT64)fnx_load_base);
 	serial_puts(" cr2=");
 	serial_hex((UINT64)get_cr2());
 	serial_puts(" rsp=");

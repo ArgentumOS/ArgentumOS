@@ -74,8 +74,8 @@ int devpts_ialloc(struct inode *i, int mode)
 			break;
 		}
 	}
-	superblock_unlock(sb);
 	if(n == NR_PTYS) {
+		superblock_unlock(sb);
 		return -ENOSPC;
 	}
 
@@ -94,7 +94,13 @@ int devpts_ialloc(struct inode *i, int mode)
 	i->i_nlink = 1;
 	i->i_blocks = 0;
 	i->i_flags = 0;
+	/* Publish the inode while still holding the lock.  Releasing it first
+	 * left a window where the slot was reserved (count = 1) but the pointer
+	 * was still NULL, and a concurrent readdir or lookup dereferences it:
+	 * `inode->inode` is at offset 0x60, which is exactly the cr2 of the page
+	 * fault that `ls` on this directory used to cause. */
 	devpts_list[n].inode = i;
+	superblock_unlock(sb);
 	return 0;
 }
 
