@@ -142,7 +142,8 @@ static unsigned long pdpt_page[512] __attribute__((aligned(4096)));
 static unsigned long pdpt_high[512] __attribute__((aligned(4096)));
 static unsigned long pd_page[512] __attribute__((aligned(4096)));
 /* 1GB-4GB identity (PCI MMIO hole at 2GB+, VGA BAR, APIC, ...) */
-static unsigned long pd_page2[3584] __attribute__((aligned(4096)));
+#define PD2_ENTRIES	(63 * 512)	/* 2MB pages: 1GB..64GB */
+static unsigned long pd_page2[PD2_ENTRIES] __attribute__((aligned(4096)));
 
 void kernel64_main(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN, UINTN, EFI_SYSTEM_TABLE *);
 
@@ -228,25 +229,23 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	 * every page the allocator may hand out. The span is bounded by the base
 	 * (see KERNEL_PHYS_LIMIT in include/fnx/linker.h). */
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 0] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 1] = (unsigned long)&pd_page2[0] | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 2] = (unsigned long)&pd_page2[512] | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 3] = (unsigned long)&pd_page2[1024] | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 4] = (unsigned long)&pd_page2[1536] | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 5] = (unsigned long)&pd_page2[2048] | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 6] = (unsigned long)&pd_page2[2560] | X86_PTE_P | X86_PTE_RW;
-	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 7] = (unsigned long)&pd_page2[3072] | X86_PTE_P | X86_PTE_RW;
+	/* one PDPT entry + one PD (512 x 2MB) per GB, 1GB..64GB */
+	for(n = 0; n < PD2_ENTRIES / 512; n++) {
+		pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 1 + n] =
+			(unsigned long)&pd_page2[512 * n] | X86_PTE_P | X86_PTE_RW;
+	}
 
 	/* PD: 512 x 2MB pages covering the low 1GB */
 	for(n = 0; n < 512; n++) {
 		pd_page[n] = ((unsigned long)n << 21) | X86_PTE_P | X86_PTE_RW | X86_PTE_PS;
 	}
-	/* PD2: 1536 x 2MB pages covering 1GB-4GB */
-	for(n = 0; n < 1536; n++) {
+	/* PD2: 2MB pages covering 1GB-64GB (the direct map's span) */
+	for(n = 0; n < PD2_ENTRIES; n++) {
 		pd_page2[n] = ((unsigned long)(n + 512) << 21) | X86_PTE_P | X86_PTE_RW | X86_PTE_PS;
 	}
 
 	cr3 = (unsigned long)&pml4_page;
-	serial_puts("\n[M2-A] installing 4-level paging (2MB pages, 0-4GB identity + direct map 0-2GB), CR3=");
+	serial_puts("\n[M2-A] installing 4-level paging (2MB pages, 0-4GB identity + direct map 0-64GB), CR3=");
 	serial_hex((UINT64)cr3);
 	serial_puts("\n");
 

@@ -77,7 +77,7 @@
  *
  * GDT_BASE is legacy: on x86_64 the GDT is set up by the stub (gdt64) and
  * this constant is no longer the physical cap. */
-#define KERNEL_PHYS_LIMIT	0x200000000ULL	/* 8GB: direct map 0..8GB */
+#define KERNEL_PHYS_LIMIT	0x1000000000ULL	/* 64GB: direct map 0..64GB */
 #define GDT_BASE	0x40000000
 #else
 #define GDT_BASE	(0xFFFFFFFF - (PAGE_OFFSET - 1))

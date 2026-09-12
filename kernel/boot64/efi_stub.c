@@ -53,7 +53,7 @@ unsigned long fnx_boot_window_size;
  * 1GB (the per-page structs and page tables grow with RAM; the process table
  * does not). Scale with RAM, bounded at both ends. */
 #define FNX_WINDOW_MIN		(24UL << 20)
-#define FNX_WINDOW_MAX		(256UL << 20)
+#define FNX_WINDOW_MAX		(2048UL << 20)
 #define FNX_WINDOW_ALLOC_MAX	0x80000000UL	/* ask to land below 2GB */
 
 /* Re-take the memory map into a buffer that fits it, growing the buffer if
