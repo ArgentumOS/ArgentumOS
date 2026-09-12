@@ -1020,7 +1020,7 @@ Window::handleToolbarToggle(bool visible)
 }
 
 void
-Window::show()
+Window::show(bool focus)
 {
 	if (!impl_->dpy || !impl_->xwin) {
 		return;
@@ -1038,7 +1038,7 @@ Window::show()
 	bool viewable = XGetWindowAttributes(impl_->dpy, impl_->xwin, &attrs) &&
 			attrs.map_state == IsViewable;
 
-	if (viewable) {
+	if (viewable && focus) {
 		XSetInputFocus(impl_->dpy, impl_->xwin, RevertToParent,
 			       CurrentTime);
 		XSync(impl_->dpy, False);

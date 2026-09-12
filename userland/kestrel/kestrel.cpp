@@ -19,6 +19,7 @@
  * RESIZE mode: a press on an edge or corner grip resizes the frame
  * and the client together. */
 #include <argentum/argentum.h>
+#include <map>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -289,6 +290,14 @@ struct Managed {
 static std::vector<Managed *> gFrames;
 static void focusClient(Managed *m);	/* S4.1b (defined below) */
 static void stripRefresh();		/* S4.2a (defined below) */
+static bool manageBarWindow(::Window w);	/* S4.2d (with the strip) */
+static void barsRefresh();			/* S4.2d (with the strip) */
+/* S4.2d: the app's own menubar windows — owner client → bar
+ * window, the zone we last set on each, and whether we have it
+ * mapped (we map it only while its owner is the focused app). */
+static std::map<::Window, ::Window> gBars;
+static std::map<::Window, long> gBarZone;
+static std::map<::Window, bool> gBarMapped;
 static void clockUpdate(bool force);	/* S5.2b (defined below) */
 static void dockRefresh();		/* S5.2c (defined below) */
 class DockView;
@@ -459,225 +468,15 @@ setActiveProperty(::Window client)
 	XSync(dpy, False);
 }
 
-/* ---- S4.2a: the session socket --------------------------------------
- *
- * One connection per app. Apps connect at map time and publish their
- * menubar as a menu record; Kestrel keeps the parsed model per window
- * and renders the FOCUSED window's titles in the strip. Framing is the
- * toolkit's (sessionWriteFrame): a 4-byte big-endian length then a text
- * payload, "PUBLISH 0x<xid>\n" + menuSerialize's record.
- */
-struct SessionConn {
-	int fd = -1;
-	std::string in;			/* read, frames not complete */
-};
-
-struct PublishedMenu {
-	::Window client = 0;
-	SessionConn *conn = nullptr;	/* borrowed: the socket it came on */
-	Menu *menu = nullptr;		/* ours: menuParse's tree */
-};
-
-static int stripMenuLayout(const Menu *menu, const char *title, int *xs,
-			   int *ws, int *idx, int max, int limit);	/* with the strip */
-static std::vector<SessionConn *> gConns;
-static std::vector<PublishedMenu *> gMenus;
-static int gListenFd = -1;
 static void stripRefresh();		/* defined with the strip, below */
 
-static Menu *
-menuForClient(::Window client)
-{
-	for (size_t i = 0; i < gMenus.size(); i++) {
-		if (gMenus[i]->client == client) {
-			return gMenus[i]->menu;
-		}
-	}
-	return nullptr;
-}
-
-static const char *
-clientNameFor(::Window client)
-{
-	for (size_t i = 0; i < gFrames.size(); i++) {
-		if (gFrames[i]->client == client) {
-			return gFrames[i]->title;
-		}
-	}
-	return "?";
-}
-
 /* the titles we parsed, one line — the S4.2a gate reads this */
-static void
-logMenu(::Window client, const Menu *menu)
-{
-	char titles[512];
-	size_t n = 0;
-
-	titles[0] = 0;
-	for (int i = 0; i < menu->itemCount(); i++) {
-		MenuItem *item = menu->itemAt(i);
-		const char *t = item->title();
-
-		if (item->kind() == MenuItem::Kind::Separator || !t[0]) {
-			continue;
-		}
-		if (n + strlen(t) + 1 >= sizeof(titles)) {
-			break;
-		}
-		if (n) {
-			titles[n++] = ',';
-		}
-		n += (size_t) snprintf(titles + n, sizeof(titles) - n, "%s", t);
-	}
-	printf("KESTREL: menu 0x%lx '%s' titles=%s\n",
-	       (unsigned long) client, clientNameFor(client), titles);
-	fflush(stdout);
-}
-
-static void
-sessionDropConn(SessionConn *c)
-{
-	if (!c) {
-		return;
-	}
-	/* the menus it published go with it */
-	for (size_t i = 0; i < gMenus.size();) {
-		if (gMenus[i]->conn == c) {
-			delete gMenus[i]->menu;
-			delete gMenus[i];
-			gMenus.erase(gMenus.begin() + (long) i);
-		} else {
-			i++;
-		}
-	}
-	if (c->fd >= 0) {
-		Application::shared().removeFdHandler(c->fd);
-		::close(c->fd);
-		c->fd = -1;
-	}
-	for (size_t i = 0; i < gConns.size(); i++) {
-		if (gConns[i] == c) {
-			gConns.erase(gConns.begin() + (long) i);
-			break;
-		}
-	}
-	delete c;
-	stripRefresh();
-}
-
 /* a window died: its menubar entry goes too */
-static void
-dropMenusForClient(::Window client)
-{
-	bool dropped = false;
-
-	for (size_t i = 0; i < gMenus.size();) {
-		if (gMenus[i]->client == client) {
-			delete gMenus[i]->menu;
-			delete gMenus[i];
-			gMenus.erase(gMenus.begin() + (long) i);
-			dropped = true;
-		} else {
-			i++;
-		}
-	}
-	if (dropped) {
-		stripRefresh();
-	}
-}
-
-static void
-sessionPublish(SessionConn *c, const std::string &payload)
-{
-	unsigned long xid = strtoul(payload.c_str() + 8, nullptr, 16);
-	size_t nl = payload.find('\n');
-	Menu *menu;
-	PublishedMenu *entry = nullptr;
-
-	if (nl == std::string::npos) {
-		printf("KESTREL: menu 0x%lx bad record\n", xid);
-		fflush(stdout);
-		return;
-	}
-	menu = menuParse(payload.c_str() + nl + 1, payload.size() - nl - 1);
-	if (!menu) {
-		printf("KESTREL: menu 0x%lx bad record\n", xid);
-		fflush(stdout);
-		return;
-	}
-	for (size_t i = 0; i < gMenus.size(); i++) {
-		if (gMenus[i]->client == (::Window) xid) {
-			entry = gMenus[i];
-			break;
-		}
-	}
-	if (entry) {
-		delete entry->menu;	/* a re-publish replaces the model */
-		entry->menu = menu;
-		entry->conn = c;
-	} else {
-		entry = new PublishedMenu();
-		entry->client = (::Window) xid;
-		entry->conn = c;
-		entry->menu = menu;
-		gMenus.push_back(entry);
-	}
-	logMenu((::Window) xid, menu);
-	stripRefresh();
-}
-
 /* S4.2b: route a pick home. The app owns the item, so the WM only
  * names it by id (menuParse preserved the app's ids); the app runs the
  * action. */
-static void
-sessionSendPick(::Window client, int id)
-{
-	PublishedMenu *entry = nullptr;
-	char msg[64];
-
-	for (size_t i = 0; i < gMenus.size(); i++) {
-		if (gMenus[i]->client == client) {
-			entry = gMenus[i];
-			break;
-		}
-	}
-	snprintf(msg, sizeof(msg), "PICK 0x%lx %d\n", (unsigned long) client, id);
-	if (entry && entry->conn && entry->conn->fd >= 0 &&
-	    sessionWriteFrame(entry->conn->fd, msg, strlen(msg))) {
-		printf("KESTREL: pick 0x%lx %d\n", (unsigned long) client, id);
-	} else {
-		printf("KESTREL: pick 0x%lx %d (no session)\n",
-		       (unsigned long) client, id);
-	}
-	fflush(stdout);
-}
-
 /* S4.2b: drop the focused client's menu #index under its title and
  * route the pick back to it. */
-static void
-popUpClientMenu(Managed *m, int itemIndex, int xRootPx)
-{
-	Menu *root;
-	MenuItem *item;
-	Menu *sub;
-	::Window client;
-
-	if (!m) {
-		return;
-	}
-	root = menuForClient(m->client);
-	item = root ? root->itemAt(itemIndex) : nullptr;
-	sub = item ? item->submenu() : nullptr;
-	client = m->client;
-	if (!sub) {
-		return;		/* an item with no submenu: nothing to drop */
-	}
-	menuPopUp(sub, xRootPx, BAR_H, [client](int id) {
-		sessionSendPick(client, id);
-	});
-}
-
 /* S5.2b: Kestrel's own menu, behind the system mark. Its items are DESKTOP
  * actions — session items (log out, restart, sleep) belong to sessionmgr
  * and are deliberately not here. Built once, then reused: menuPopUp without
@@ -734,124 +533,6 @@ popUpSystemMenu()
 	printf("KESTREL: system menu open (%d item(s))\n", m->itemCount());
 	fflush(stdout);
 	menuPopUp(m, 0, BAR_H);
-}
-
-static void
-sessionMessage(SessionConn *c, const std::string &payload)
-{
-	if (payload.compare(0, 8, "PUBLISH ") == 0) {
-		sessionPublish(c, payload);
-	}
-	/* anything else is ignored (forward compatibility) */
-}
-
-static void
-sessionRead(SessionConn *c)
-{
-	char buf[4096];
-
-	if (!c || c->fd < 0) {
-		return;
-	}
-	for (;;) {
-		ssize_t n = read(c->fd, buf, sizeof(buf));
-
-		if (n > 0) {
-			c->in.append(buf, (size_t) n);
-			continue;
-		}
-		if (n == 0) {
-			sessionDropConn(c);	/* the app closed */
-			return;
-		}
-		if (errno == EINTR) {
-			continue;
-		}
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			break;
-		}
-		sessionDropConn(c);		/* an error: drop it */
-		return;
-	}
-
-	while (c->in.size() >= 4) {
-		const unsigned char *p = (const unsigned char *) c->in.data();
-		size_t len = ((size_t) p[0] << 24) | ((size_t) p[1] << 16) |
-			     ((size_t) p[2] << 8) | (size_t) p[3];
-
-		if (len > 64 * 1024) {
-			sessionDropConn(c);	/* desynced: unusable */
-			return;
-		}
-		if (c->in.size() < 4 + len) {
-			break;			/* wait for the rest */
-		}
-		std::string payload = c->in.substr(4, len);
-
-		c->in.erase(0, 4 + len);
-		sessionMessage(c, payload);
-	}
-}
-
-static void
-sessionAccept()
-{
-	if (gListenFd < 0) {
-		return;
-	}
-	for (;;) {
-		int fd = accept(gListenFd, nullptr, nullptr);
-		int fl;
-		SessionConn *c;
-
-		if (fd < 0) {
-			return;			/* EAGAIN: all drained */
-		}
-		if ((int) gConns.size() >= Application::kMaxFdHandlers - 1) {
-			::close(fd);		/* no slot to poll it in */
-			continue;
-		}
-		fl = fcntl(fd, F_GETFL, 0);
-		if (fl >= 0) {
-			fcntl(fd, F_SETFL, fl | O_NONBLOCK);
-		}
-		c = new SessionConn();
-		c->fd = fd;
-		gConns.push_back(c);
-		Application::shared().addFdHandler(fd, [c] { sessionRead(c); });
-	}
-}
-
-static bool
-sessionOpen()
-{
-	struct sockaddr_un sun;
-	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	int fl;
-
-	if (fd < 0) {
-		return false;
-	}
-	/* a stale node from a session that died without cleaning up */
-	unlink(kSessionSocketPath);
-	memset(&sun, 0, sizeof(sun));
-	sun.sun_family = AF_UNIX;
-	strncpy(sun.sun_path, kSessionSocketPath, sizeof(sun.sun_path) - 1);
-	if (bind(fd, (struct sockaddr *) &sun, sizeof(sun)) < 0 ||
-	    listen(fd, 8) < 0) {
-		fprintf(stderr, "KESTREL: session socket failed\n");
-		::close(fd);
-		return false;
-	}
-	fl = fcntl(fd, F_GETFL, 0);
-	if (fl >= 0) {
-		fcntl(fd, F_SETFL, fl | O_NONBLOCK);
-	}
-	gListenFd = fd;
-	Application::shared().addFdHandler(fd, [] { sessionAccept(); });
-	printf("KESTREL: session socket %s\n", kSessionSocketPath);
-	fflush(stdout);
-	return true;
 }
 
 /* The frame's content: the chrome title band (its controls + the
@@ -1183,6 +864,11 @@ findFrameByXid(::Window xid)
 static void
 manageClient(const XMapRequestEvent &ev)
 {
+	if (manageBarWindow(ev.window)) {
+		/* S4.2d: the app's own menubar window — the WM places it,
+		 * it does not frame it */
+		return;
+	}
 	if (findFrame(ev.window)) {
 		/* a remap of an already-managed client */
 		XMapWindow(dpy, ev.window);
@@ -1411,6 +1097,24 @@ unmanageClient(::Window client, bool destroyed)
 
 	if (!m) {
 		return;
+	}
+	/* S4.2d: the client's menubar window goes with it. On a real
+	 * destroy the window is already gone — drop the binding without an
+	 * X call (which would be BadWindow); on a plain unmap only hide it,
+	 * so a remap brings the same bar back. */
+	{
+		std::map<::Window, ::Window>::iterator it = gBars.find(client);
+
+		if (it != gBars.end()) {
+			if (destroyed) {
+				gBarZone.erase(it->second);
+				gBarMapped.erase(it->second);
+				gBars.erase(it);
+			} else if (gBarMapped[it->second]) {
+				gBarMapped[it->second] = false;
+				XUnmapWindow(dpy, it->second);
+			}
+		}
 	}
 	if (destroyed) {
 		/* the client is gone: destroy its frame and drop it */
@@ -1854,7 +1558,6 @@ reapDeadClients()
 		argentum::Window *frame = m->frame;
 		FrameChrome *chrome = m->chrome;
 
-		dropMenusForClient(m->client);	/* S4.2a */
 		gFrames.erase(gFrames.begin() + (long) i);
 		delete frame;
 		delete chrome;	/* the content view is not owned by the frame */
@@ -1953,21 +1656,9 @@ kestrelHook(void *xevent)
 				popUpSystemMenu();
 				return true;
 			}
-			Menu *root = gActive ? menuForClient(gActive->client)
-					     : nullptr;
-			int xs[32], ws[32], idx[32];
-			int n = stripMenuLayout(root,
-						gActive ? gActive->title
-							: "Kestrel",
-						xs, ws, idx, 32,
-						clockZoneLeft());
-
-			for (int i = 0; i < n; i++) {
-				if (x >= xs[i] - 8 && x < xs[i] + ws[i] + 8) {
-					popUpClientMenu(gActive, idx[i], xs[i]);
-					return true;
-				}
-			}
+			/* S4.2d: past the mark the bar belongs to the active
+			 * app (its own window sits there and takes the
+			 * press); we keep only the mark's zone. */
 			menuPopUpDismiss();
 			return true;
 		}
@@ -2225,6 +1916,128 @@ dockRefresh()
 	}
 }
 
+/* ---- S4.2d: the app's own menubar window ---------------------------
+ *
+ * The app draws its own menus (S4.2a's session socket and its
+ * publish/PICK protocol are gone). It maps a window marked
+ * _ARGENTUM_MENUBAR, with _ARGENTUM_MENUBAR_FOR naming the app window it
+ * belongs to; we size it to the app zone (after the mark and our title,
+ * before the clock's reserved zone), tell it that zone through
+ * _ARGENTUM_MENUBAR_ZONE, and map it only while its owner is the
+ * FOCUSED client — so only the active app's menus are ever on screen.
+ * The presses belong to the app: the dropdown and the action both run
+ * there, and no pick crosses a socket.
+ */
+/* One CARDINAL property of a window (0 if absent). */
+static unsigned long
+propertyCardinal(::Window w, const char *name, int index)
+{
+	Atom a = XInternAtom(dpy, name, False);
+	Atom type = 0;
+	int fmt = 0;
+	unsigned long n = 0, left = 0, v = 0;
+	unsigned char *data = nullptr;
+
+	if (XGetWindowProperty(dpy, w, a, index, 1, False, XA_CARDINAL,
+			       &type, &fmt, &n, &left, &data) == Success &&
+	    data) {
+		if (n >= 1 && fmt == 32) {
+			v = ((unsigned long *) data)[0];
+		}
+		XFree(data);
+	}
+	return v;
+}
+
+/* The app zone's left edge: past the mark and the focused app's name —
+ * S4.2b's arithmetic, now only the WM's own half of the bar. */
+static int
+menuZoneX()
+{
+	Application &app = Application::shared();
+	Theme &t = app.theme();
+	const char *title = (gActive && gActive->title[0]) ? gActive->title
+							   : "Kestrel";
+
+	return SYS_ZONE_W + (int) (textMetrics(t.fontFamily(), t.fontSizePt(),
+					       title).widthPt
+				   * app.pxPerPt() + 0.5) + 16;
+}
+
+/* Place the focused app's bar over the zone and map it; hide the rest.
+ * Called from stripRefresh, so focus, the title and the clock's width
+ * all re-assert it (the zone is derived from all three). */
+static void
+barsRefresh()
+{
+	for (std::map<::Window, ::Window>::iterator it = gBars.begin();
+	     it != gBars.end(); ++it) {
+		Managed *m = findFrame(it->first);
+		::Window bar = it->second;
+		bool show = (m && m == gActive);
+		int x = 0, w = 0;
+
+		if (show) {
+			x = menuZoneX();
+			w = clockZoneLeft() - x;
+			if (w < 8) {
+				show = false;	/* no room: leave it hidden */
+			}
+		}
+		if (show) {
+			long key = ((long) x << 32) | (long) (unsigned) w;
+
+			if (gBarZone[bar] != key) {
+				unsigned long zone[4];
+
+				gBarZone[bar] = key;
+				zone[0] = (unsigned long) x;
+				zone[1] = 0;
+				zone[2] = (unsigned long) w;
+				zone[3] = BAR_H;
+				XChangeProperty(dpy, bar,
+						XInternAtom(dpy,
+						    "_ARGENTUM_MENUBAR_ZONE",
+						    False),
+						XA_CARDINAL, 32, PropModeReplace,
+						(unsigned char *) zone, 4);
+				XMoveResizeWindow(dpy, bar, x, 0,
+						  (unsigned) w, BAR_H);
+			}
+			if (!gBarMapped[bar]) {
+				gBarMapped[bar] = true;
+				XMapWindow(dpy, bar);
+			}
+			XRaiseWindow(dpy, bar);	/* above the strip */
+		} else if (gBarMapped[bar]) {
+			gBarMapped[bar] = false;
+			XUnmapWindow(dpy, bar);
+		}
+	}
+}
+
+/* Is this the app's own menubar window (its marker was set before it was
+ * mapped)? If so remember the binding and let barsRefresh decide whether
+ * it is visible; the WM never frames it. */
+static bool
+manageBarWindow(::Window w)
+{
+	unsigned long owner;
+
+	if (!propertyCardinal(w, "_ARGENTUM_MENUBAR", 0)) {
+		return false;
+	}
+	owner = propertyCardinal(w, "_ARGENTUM_MENUBAR_FOR", 0);
+	gBars[owner] = w;
+	gBarZone.erase(w);
+	gBarMapped[w] = false;
+	printf("KESTREL: menubar window 0x%lx for client 0x%lx\n",
+	       (unsigned long) w, owner);
+	fflush(stdout);
+	barsRefresh();		/* visible iff the owner is focused */
+	return true;
+}
+
 class StripView : public View {
 public:
 	void draw(GraphicsContext &g) override
@@ -2245,8 +2058,6 @@ public:
 						    t.fontSizePt(), "Ag");
 			double box = m.ascentPt + m.descentPt + 2.0 / ppt;
 			int ty = (int) ((h - box * ppt) / 2.0);
-			int xs[32], ws[32], idx[32];
-			int n;
 
 			/* S4.2a: the focused app's menus — the menubar's
 			 * items are the bar titles, laid out by the same
@@ -2259,14 +2070,6 @@ public:
 			if (title_[0]) {
 				g.drawText(t.fontFamily(), t.fontSizePt(),
 					   SYS_ZONE_W, ty, title_, t.text());
-			}
-			n = stripMenuLayout(menu_, title_, xs, ws, idx, 32,
-					    clockZoneLeft());
-			for (int i = 0; i < n; i++) {
-				g.drawText(t.fontFamily(), t.fontSizePt(),
-					   xs[i], ty,
-					   menu_->itemAt(idx[i])->title(),
-					   t.text());
 			}
 			/* S5.2b: the clock, in its reserved zone at the right.
 			 * Left-aligned inside the reserved box so it does not
@@ -2284,12 +2087,6 @@ public:
 		strncpy(title_, utf8, sizeof(title_) - 1);
 	}
 
-	/* S4.2a: the focused client's parsed menubar (borrowed) */
-	void setMenu(const Menu *menu)
-	{
-		menu_ = menu;
-	}
-
 	/* S5.2b: the date/time, drawn at the right in its reserved zone */
 	void setClock(const char *utf8)
 	{
@@ -2300,7 +2097,6 @@ public:
 private:
 	char title_[64] = { 0 };
 	char clock_[64] = { 0 };
-	const Menu *menu_ = nullptr;
 };
 
 /* S4.2b: where the strip's menu titles sit, in window px — ONE layout
@@ -2308,46 +2104,6 @@ private:
  * (bandControlAt's rule). xs/ws are the title's extent, idx its index in
  * the menu (separators are skipped and take no room). Returns how many
  * titles were laid out (at most max). */
-static int
-stripMenuLayout(const Menu *menu, const char *title, int *xs, int *ws,
-		int *idx, int max, int limit)
-{
-	Application &app = Application::shared();
-	Theme &t = app.theme();
-	double ppt = app.pxPerPt();
-	int x = SYS_ZONE_W;	/* S5.2b: past the system mark */
-	int n = 0;
-
-	if (title && title[0]) {
-		x += (int) (textMetrics(t.fontFamily(), t.fontSizePt(), title)
-			    .widthPt * ppt + 0.5) + 16;
-	}
-	for (int i = 0; menu && i < menu->itemCount(); i++) {
-		MenuItem *item = menu->itemAt(i);
-		const char *s = item->title();
-		int w;
-
-		if (item->kind() == MenuItem::Kind::Separator || !s[0]) {
-			continue;
-		}
-		w = (int) (textMetrics(t.fontFamily(), t.fontSizePt(), s)
-			   .widthPt * ppt + 0.5);
-		/* S5.2b: the clock's zone is reserved — a title that would
-		 * reach into it is dropped (and, since the hit-test runs this
-		 * same layout, it is not clickable either). */
-		if (x + w > limit)
-			break;
-		if (n < max) {
-			xs[n] = x;
-			ws[n] = w;
-			idx[n] = i;
-			n++;
-		}
-		x += w + 18;
-	}
-	return n;
-}
-
 static StripView *gStrip = nullptr;	/* the strip's content view */
 static argentum::Window *gBar = nullptr;	/* its window (in main) */
 
@@ -2409,15 +2165,14 @@ clockUpdate(bool force)
 static void
 stripRefresh()
 {
+	barsRefresh();	/* S4.2d: the focused app's bar follows focus */
 	if (!gStrip) {
 		return;
 	}
 	if (gActive) {
 		gStrip->setTitle(gActive->title);
-		gStrip->setMenu(menuForClient(gActive->client));
 	} else {
 		gStrip->setTitle("Kestrel");
-		gStrip->setMenu(nullptr);
 	}
 	if (gBar) {
 		/* Mark the strip damaged before drawing: Window::draw()
@@ -2592,9 +2347,6 @@ main()
 			}
 		}
 	}
-	/* S4.2a: the session socket — apps publish their menubars here */
-	sessionOpen();
-
 	printf("KESTREL-READY strip=0x%lx\n", (unsigned long) stripX);
 	fflush(stdout);
 

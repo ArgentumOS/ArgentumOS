@@ -52,6 +52,10 @@ class GraphicsContext;
 class View;
 
 /* Application session state. */
+/* S4.2d (menu.cpp): create the app's menubar window; the caller keeps
+ * *outView alive. */
+Window *menuBarOpen(Menu *menubar, std::function<void(int)> onPick,
+		    View **outView);
 struct Application::Impl {
 	Display *dpy = nullptr;		/* the X connection */
 	int screen = 0;			/* DefaultScreen(dpy) */
@@ -77,7 +81,10 @@ struct Application::Impl {
 	std::vector<FdHookRec> fdHooks;
 	Menu *menuBar = nullptr;		/* borrowed */
 	std::function<void(int)> onMenuPick;
-	SessionMenu *session = nullptr;		/* ours, lazily made */
+	/* S4.2d: the app's own menubar window (created by setMenuBar) and
+	 * its content view — the window keeps a borrowed view pointer. */
+	Window *barWindow = nullptr;		/* ours, lazily made */
+	View *barView = nullptr;		/* ours */
 
 	/* S0.4 text stack. fontconfig is process-global (FcInit once);
 	 * FreeType needs one library handle shared by every face. */
@@ -337,14 +344,7 @@ struct Label::Impl {
 	double sizePt = 0;		/* 0 = theme font size */
 };
 
-/* S4.2a SessionMenu state — the client side of the session socket. */
-struct SessionMenu::Impl {
-	Application *app = nullptr;
-	int fd = -1;			/* -1 = not connected */
-	bool registered = false;	/* the loop's fd hook is installed */
-	std::string in;			/* bytes read, frames not complete */
-	std::function<void(int)> onPick;
-};
+
 
 /* S2.3a Menu model state. Menu owns NO items (borrowed) — except the
  * separators addSeparator() made and, in a parsed tree (S4.2a),

@@ -417,7 +417,7 @@ public:
 		  unsigned int width, unsigned int height);
 
 	/* Map the window and flush the connection. */
-	void show();
+	void show(bool focus = true);
 
 	/* S4.2a: an override-redirect window — a WM must leave it alone
 	 * (no frame, no reparent) and it is not a window whose menubar
@@ -1084,7 +1084,6 @@ public:
 
 private:
 	/* S4.2a: the wire parser builds trees this Menu then owns */
-	friend Menu *menuParse(const char *, size_t);
 	struct Impl;
 	Impl *impl_;
 };
@@ -1096,8 +1095,6 @@ private:
  * (delete the root: a parsed tree frees its items recursively) and
  * returns null on anything it does not understand. Deliberately
  * line-oriented and readable: Kestrel logs what it parsed. */
-bool menuSerialize(const Menu *menubar, std::string &out);
-Menu *menuParse(const char *text, size_t len);
 
 
 /* S4.2a: the session socket's framing — one message is a 4-byte
@@ -1106,50 +1103,18 @@ Menu *menuParse(const char *text, size_t len);
  * socket is non-blocking, so a partial write must be retried: a
  * discarded one desyncs the stream. Returns false if the peer cannot
  * take it within ~2s. */
-bool sessionWriteFrame(int fd, const char *payload, size_t len);
 
 /* S4.2b: present a menu at a root px position — Kestrel's bar
  * dropdowns (and, later, app context menus). The menu is borrowed and
  * the popup maps above everything, taking the click that dismisses it.
  * With onPick the picked item's ID is handed back instead of the item's
- * own action running: the global menubar's model belongs to the app, so
- * the WM routes the pick home (S4.2a's PICK) and the app runs it.
+ * own action running: the global menubar's model belongs to the app
+ * (S4.2d: the app's own bar window), so the pick is handled where it
+ * was authored.
  * menuPopUpDismiss() closes it (a click outside does too). */
 void menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 	       std::function<void(int itemId)> onPick = nullptr);
 void menuPopUpDismiss();
-
-/* S4.2a: where the session socket lives — the FSH temporary-files
- * convention, the same home as the X11 sockets and the lock files.
- * Kestrel binds it; apps connect to it (menu.cpp). */
-extern const char *const kSessionSocketPath;
-
-/* S4.2a: the client side of the session socket, one per app (the
- * Application owns it). It connects lazily to Kestrel's socket
- * (/System/Temporary Files/argentum-session — the FSH temporary-files
- * home the X11 sockets use), publishes the menubar for each window
- * that maps, and reads the picks Kestrel routes back. An app with no
- * WM (no socket) is not an error: it simply has no menubar. */
-class SessionMenu {
-public:
-	explicit SessionMenu(Application *app);
-	~SessionMenu();
-
-	/* send the app's menubar for one window (connects on first use) */
-	bool publish(const Menu *menubar, unsigned long window);
-	bool isConnected() const;
-	void close();
-
-private:
-	/* S4.2a: called by the loop's fd hook and by the Application */
-	friend class Application;
-	void service();			/* read + dispatch what arrived */
-	int fd() const;
-	void setPickHandler(std::function<void(int)> cb);
-
-	struct Impl;
-	Impl *impl_;
-};
 
 /* S2.3a: Slider — a horizontal track + knob control (Control).
  * value is a double in [minValue, maxValue]; clicking the track jumps

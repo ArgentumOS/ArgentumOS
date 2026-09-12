@@ -5,6 +5,8 @@
  * virtuals until terminate() is called. text/.conf land in S0.4/S0.5.
  */
 #include <argentum/argentum.h>
+
+#include <X11/Xatom.h>
 #include <argentum/argentum_p.h>
 
 #include <fontconfig/fontconfig.h>
@@ -345,29 +347,68 @@ Application::removeFdHandler(int fd)
 	}
 }
 
-/* S4.2a: the app's global menubar. Creating the SessionMenu here (not
- * in init()) means an app that never sets a menubar never opens a
- * socket at all. */
+/* S4.2d: the app's global menubar — its OWN window, drawn in this
+ * process (S4.2a's session socket and its publish/PICK protocol are
+ * gone).  Kestrel places the window over the app zone of its bar and
+ * maps it only while this app is active; the presses are ours, so a
+ * picked item runs here.  An app with no WM simply never gets its
+ * window placed or mapped, which is not an error. */
 void
 Application::setMenuBar(Menu *menubar)
 {
 	impl_->menuBar = menubar;
-	if (!impl_->session) {
-		impl_->session = new SessionMenu(this);
-		impl_->session->setPickHandler([this](int itemId) {
-			/* the picked item's action runs here — the app
-			 * authored the model, so it owns the action — and
-			 * the observer sees the id too (logging). */
-			if (impl_->menuBar) {
-				if (MenuItem *item = impl_->menuBar->itemWithId(itemId)) {
-					item->activate();
-				}
-			}
-			if (impl_->onMenuPick) {
-				impl_->onMenuPick(itemId);
-			}
-		});
+	if (impl_->barWindow) {
+		if (impl_->barView) {
+			impl_->barView->setNeedsDisplay();
+		}
+		impl_->barWindow->draw();
+		return;
 	}
+	std::function<void(int)> onPick = [this](int itemId) {
+		/* the picked item's action runs here — the app authored the
+		 * model, so it owns the action — and the observer sees the
+		 * id too (logging). */
+		if (impl_->menuBar) {
+			if (MenuItem *item = impl_->menuBar->itemWithId(itemId)) {
+				item->activate();
+			}
+		}
+		if (impl_->onMenuPick) {
+			impl_->onMenuPick(itemId);
+		}
+	};
+
+	impl_->barWindow = menuBarOpen(menubar, onPick, &impl_->barView);
+	if (!impl_->barWindow) {
+		return;
+	}
+	/* S4.2d: the marker Kestrel keys on (it must not frame this window)
+	 * plus the app window it belongs to — both set BEFORE the window is
+	 * mapped, so the MapRequest already carries them.  The owner is this
+	 * app's first ordinary window: the one Kestrel manages and focuses. */
+	{
+		Display *dpy = impl_->dpy;
+		Atom a = XInternAtom(dpy, "_ARGENTUM_MENUBAR", False);
+		Atom f = XInternAtom(dpy, "_ARGENTUM_MENUBAR_FOR", False);
+		unsigned long one = 1;
+		unsigned long owner = 0;
+
+		for (std::map<unsigned long, Window *>::iterator it =
+			     impl_->windows.begin();
+		     it != impl_->windows.end(); ++it) {
+			if (it->second && !it->second->isOverrideRedirect()) {
+				owner = (unsigned long) it->second->xid();
+				break;
+			}
+		}
+		XChangeProperty(dpy, impl_->barWindow->xid(), a, XA_CARDINAL, 32,
+				PropModeReplace, (unsigned char *) &one, 1);
+		XChangeProperty(dpy, impl_->barWindow->xid(), f, XA_CARDINAL, 32,
+				PropModeReplace, (unsigned char *) &owner, 1);
+	}
+	/* map-only (no focus grab): the WM places the bar and maps it
+	 * when this app is the focused one. */
+	impl_->barWindow->show(false);
 }
 
 Menu *
@@ -382,25 +423,18 @@ Application::setOnMenuPick(std::function<void(int itemId)> cb)
 	impl_->onMenuPick = std::move(cb);
 }
 
-/* S4.2c: publish the menubar again for each of the app's windows, so a
- * model change the WM cannot see on its own (a Check item's state)
- * reaches the bar. */
+/* S4.2c: redraw the app's menubar window, so a model change the WM
+ * cannot see on its own (a Check item's state) reaches the bar. */
 void
 Application::menuBarRefresh()
 {
-	if (!impl_->menuBar || !impl_->session) {
+	if (!impl_->barWindow) {
 		return;
 	}
-	for (std::map<unsigned long, Window *>::iterator it =
-		     impl_->windows.begin(); it != impl_->windows.end(); ++it) {
-		Window *w = it->second;
-
-		if (!w || w->isOverrideRedirect()) {
-			continue;
-		}
-		impl_->session->publish(impl_->menuBar,
-					(unsigned long) w->xid());
+	if (impl_->barView) {
+		impl_->barView->setNeedsDisplay();
 	}
+	impl_->barWindow->draw();
 }
 
 int
@@ -635,18 +669,6 @@ Application::run()
 			}
 			break;
 		}
-		case MapNotify: {
-			/* S4.2a: a mapped window publishes the app's
-			 * menubar to the WM. An override-redirect window
-			 * (a transient menu) is not a bar window and has
-			 * no WM to tell. */
-			if (w && !w->isOverrideRedirect() && impl_->menuBar &&
-			    impl_->session) {
-				impl_->session->publish(impl_->menuBar,
-							(unsigned long) w->xid());
-			}
-			break;
-		}
 		default:
 			break;		/* S0.3: ignore the rest */
 		}
@@ -667,10 +689,12 @@ Application::Application()
 
 Application::~Application()
 {
-	/* S4.2a: the session client closes its socket (and unregisters the
-	 * loop's fd hook) before the display goes away. */
-	delete impl_->session;
-	impl_->session = nullptr;
+	/* S4.2d: the app's own menubar window (and its view) goes away
+	 * with the display. */
+	delete impl_->barView;
+	impl_->barView = nullptr;
+	delete impl_->barWindow;
+	impl_->barWindow = nullptr;
 	if (impl_->dpy) {
 		XCloseDisplay(impl_->dpy);
 		impl_->dpy = nullptr;
