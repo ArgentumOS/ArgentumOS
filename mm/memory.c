@@ -590,7 +590,12 @@ void mem_init(void)
 	page_hash_table = (struct page **)_last_data_addr;
 	_last_data_addr += page_hash_table_size;
 
-	page_table_size = PAGE_ALIGN(kstat.physical_pages * sizeof(struct page));
+	/* sized by the TOP of usable memory, not by the count of usable
+	 * pages: page_table[] is indexed by physical page number, and the
+	 * loader's map has holes (firmware areas, the kernel image), so a
+	 * usable page can sit above the count */
+	page_table_size =
+		PAGE_ALIGN(kstat.physical_pages_top * sizeof(struct page));
 	if(!is_addr_in_bios_map(V2P(_last_data_addr) + page_table_size)) {
 		PANIC("Not enough memory for page_table.\n");
 	}

@@ -82,6 +82,13 @@ struct kernel_stat {
 	unsigned int uptime;		/* seconds since boot */
 	unsigned int processes;		/* number of forks since boot */
 	int physical_pages;		/* physical memory (in pages) */
+	/* The HIGHEST usable physical page + 1, which is not the same thing:
+	 * page_table[] is indexed by physical page NUMBER, so it has to cover
+	 * the top of usable memory rather than the count of usable pages. The
+	 * loader's map has holes (firmware areas, the kernel image, the boot
+	 * structures window), so a physical page above the count is still
+	 * usable - sizing the pool by the count puts those out of bounds. */
+	int physical_pages_top;
 	int kernel_reserved;		/* kernel memory reserved (in KB) */
 	int physical_reserved;		/* physical memory reserved (in KB) */
 	int total_mem_pages;		/* total memory (in pages) */

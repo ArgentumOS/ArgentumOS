@@ -143,6 +143,10 @@ void bios_map_init(struct multiboot_mmap_entry *bmmap_addr, unsigned int bmmap_l
 					if(type == MULTIBOOT_MEMORY_AVAILABLE) {
 						from_low &= PAGE_MASK;
 						to_low &= PAGE_MASK;
+						if((to_low >> PAGE_SHIFT) >
+						   (unsigned int)kstat.physical_pages_top) {
+							kstat.physical_pages_top = to_low >> PAGE_SHIFT;
+						}
 
 						/* the first MB is not counted here */
 						if(from_low >= 0x100000) {
@@ -171,6 +175,7 @@ void bios_map_init(struct multiboot_mmap_entry *bmmap_addr, unsigned int bmmap_l
 		bios_mem_map[1].to_hi = 0;
 		bios_mem_map[1].type = MULTIBOOT_MEMORY_AVAILABLE;
 		kstat.physical_pages = (kparms.extmemsize + 1024) >> 2;
+		kstat.physical_pages_top = kstat.physical_pages;
 	}
 
 	/*
@@ -180,6 +185,9 @@ void bios_map_init(struct multiboot_mmap_entry *bmmap_addr, unsigned int bmmap_l
 	if(kstat.physical_pages > (GDT_BASE >> PAGE_SHIFT)) {
 		kstat.physical_pages = (GDT_BASE >> PAGE_SHIFT);
 		printk("WARNING: only up to %dGB of physical memory will be used.\n", GDT_BASE >> 30);
+	}
+	if(kstat.physical_pages_top > (GDT_BASE >> PAGE_SHIFT)) {
+		kstat.physical_pages_top = (GDT_BASE >> PAGE_SHIFT);
 	}
 
 	memcpy_b(kernel_mem_map, bios_mem_map, NR_BIOS_MM_ENT * sizeof(struct bios_mem_map));
