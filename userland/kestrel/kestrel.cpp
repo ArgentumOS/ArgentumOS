@@ -2537,8 +2537,11 @@ main()
 	{
 		int dw = dockW();
 		int dx0 = dockLeft();
-		int dy0 = workTop();
-		int dh = workBottom() - workTop();
+		/* The dock spans the screen from under the menubar to the bottom
+		 * edge: it is edge chrome, so the work area's MARGIN insets
+		 * *windows* from it, not the dock from the screen. */
+		int dy0 = BAR_H;
+		int dh = screenH - BAR_H;
 
 		gDock = new argentum::Window();
 		if (!gDock->init("Argentum Dock", dx0, dy0, (unsigned) dw,

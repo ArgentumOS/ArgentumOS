@@ -56,6 +56,13 @@ class Case(BaseCase):
         self.check("dock-at-edge", dx + dw == before.w,
                    "the dock reaches the %s edge of a %d-wide screen (x %d..%d)"
                    % (side, before.w, dx, dx + dw))
+        # Edge chrome: the dock spans the whole height left below the menubar
+        # (it starts at the bar's bottom edge and reaches the screen's).  It is
+        # inset only on the inside, where the work area keeps windows off it -
+        # a vertical inset of its own left a gap above and below it.
+        self.check("dock-full-height", dy + dh == before.h and dy > 0,
+                   "the dock spans y %d..%d of %d (below the menubar)"
+                   % (dy, dy + dh, before.h))
 
         # The first tile's centre, from the dock the WM logged - not from a
         # screen coordinate (a 1280-wide screen puts it elsewhere than 1920).

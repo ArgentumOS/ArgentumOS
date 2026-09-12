@@ -495,6 +495,12 @@ structure, S2.5 the reference board + a11y battery).
     `zoomClient()` clamps its box the same way. **The drag clamp stays
     screen-wide**: you can still drag a window under the dock, as on
     macOS; the inset is about placement and zoom.
+  - **The dock itself spans the full height left below the menubar**
+    (`BAR_H` to `screenH`, no vertical margin of its own): it is edge
+    chrome, so `MARGIN` insets *windows* from it, not it from the screen.
+    A vertical inset of its own left a 10px gap above and below it (the
+    logged box read `64x1030 at 1856,40`; it is `64x1050 at 1856,30` now),
+    guarded by `wm_dock/dock-full-height`.
   - **Tiles are vector chrome** — a rounded tile, a monogram, a running
     dot (a filled circle) drawn from the theme's parameters, no asset (the
     tree ships no images at all). The dock is the S5.2a recipe again: a
