@@ -59,12 +59,17 @@ QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n
 QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=$(ROOTIMG),format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
 # Audio: attach a sound card so the OSS /dev/dsp stack has hardware to drive.
-# Only QEMU's BUILT-IN backends are usable in this environment (the tools
-# QEMU ships no modules and the system module dir is a different build), so the
-# default captures playback to a file: verifiable, but silent.  Set
-# QEMU_AUDIODEV=pa (or pipewire/alsa/sdl) with a QEMU whose modules match to
-# actually hear it, or QEMU_AUDIODEV=none to discard it.
-QEMU_AUDIODEV ?= wav,path=.build/qemu-audio.wav
+# The default is audible: tools/qemu.sh prefers the system QEMU (apt), whose
+# module directory matches its binary, so the host backends load - pipewire
+# here, through /run/user/$UID/pipewire-0.  The tools QEMU in
+# ~/.local/share/fiwix-qemu-tools cannot load any host backend (its modules
+# are a different build), so a sound card attached to it is silent; that
+# prefix is only the fallback when no system QEMU exists.
+# Override per run:
+#   make run-uefi QEMU_AUDIODEV=pa     (or alsa/oss/sdl, likewise)
+#   make run-uefi QEMU_AUDIODEV=none   discard playback
+#   make run-uefi QEMU_AUDIODEV=wav,path=.build/qemu-audio.wav   capture to a file
+QEMU_AUDIODEV ?= pipewire
 QEMU_AUDIO ?= -device intel-hda -device hda-output,audiodev=snd -audiodev $(QEMU_AUDIODEV),id=snd
 
 # One system compiler: the kernel builds with clang since M3
