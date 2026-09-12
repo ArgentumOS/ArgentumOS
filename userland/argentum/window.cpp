@@ -12,6 +12,11 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+/* Below this height the draw goes through XPutImage instead of the
+ * MIT-SHM path - see the measured note in flushBacking(). 32px is the
+ * menubar strip (30) with a little room. */
+#define ARGENTUM_SHM_MIN_HEIGHT 32
+
 #include <X11/Xatom.h>		/* XA_CARDINAL (the S4.3 published hints) */
 
 #include <sys/ipc.h>
@@ -674,8 +679,19 @@ Window::flushBacking()
 
 	/* MIT-SHM path: memcpy the damaged rect into the segment and
 	 * XShmPutImage (no image bytes on the wire). Fall back to
-	 * XPutImage when the server lacks XShm or the layout pads. */
-	if (shmEnsure() &&
+	 * XPutImage when the server lacks XShm or the layout pads.
+	 *
+	 * MEASURED EXCEPTION (2026-09): a 30px-tall window's XShmPutImage
+	 * never reaches fb0 on the current Xfb - the *window* is fine (map
+	 * state, geometry, stacking) and the client sends the pixels, but
+	 * the shadow drain reports no damage for it, so the window's screen
+	 * content freezes at its first paint. Kestrel's menubar strip hit
+	 * this exactly: its menu titles were hit-testable but never drawn
+	 * ("the menus don't show"). The same puts through XPutImage land
+	 * correctly (A/B on the strip: menus appear). Wire cost is small
+	 * for a window this short, so short windows take the fallback until
+	 * the server side is understood. */
+	if (impl_->height > ARGENTUM_SHM_MIN_HEIGHT && shmEnsure() &&
 	    impl_->shmImg->bytes_per_line ==
 		    (int) pixman_image_get_stride(b->img)) {
 		char *src = (char *) pixman_image_get_data(b->img);

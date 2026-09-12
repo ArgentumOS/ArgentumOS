@@ -101,6 +101,26 @@ class Case(BaseCase):
         self.check("running-dot", changed > 0,
                    "%d px of the tile changed after its app was mapped" % changed)
 
+        # The global menubar carries the ACTIVE app's menus.  Measured as the
+        # rightmost dark ("ink") column in the bar's strip rows, left of the
+        # clock's zone (x < 900), so a clock tick cannot move it: before the
+        # launch the bar holds only Kestrel's mark and name, and while the zoo
+        # is active its own titles extend further right.  This is the check
+        # that would have caught the menubar strip whose repaints never
+        # reached fb0 - it stayed frozen at the boot paint (the titles were
+        # hit-testable but never drawn).
+        def bar_ink_right(shot):
+            right = 0
+            for x in range(28, 900):
+                if any(shot.luma(x, y) < 140 for y in range(6, 25)):
+                    right = x
+            return right
+
+        was, now = bar_ink_right(before), bar_ink_right(after)
+        self.check("app-menus-in-bar", now > was + 40,
+                   "the bar's text reaches x=%d with the app active (was %d)"
+                   % (now, was))
+
         monitor.click()
         raised = session.wait_for(r"KESTREL: dock raise '[^']*'", 45)
         self.check("second-click-raises", raised,

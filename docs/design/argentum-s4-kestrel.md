@@ -315,6 +315,41 @@ over the session socket; Kestrel's menubar strip renders the focused
 app's menu titles in the bar chrome (screendump + a Kestrel log of the
 parsed tree).
 
+**v8 (2026-09) — the strip's own repaints never reached the screen.**
+Reported as "after I kill and restart the widget zoo the bar shows no
+menus, though they are there and react to clicks": the *model* and the
+*hit-test* were right, the pixels were not.  Measured, not theorised -
+
+- Kestrel paints the titles (`strip-draw … n=3`) and flushes the whole
+  strip rect every time (`flush … rect=0,0 1920x30 shm=1`);
+- the window is `map=2` (viewable), correctly placed, and **above** the
+  desktop in the stacking order (`XQueryTree`: desktop → dock → strip →
+  frame), so it is not obscured;
+- yet the strip's screen content is byte-identical before the launch,
+  after the kill and after the relaunch (`diff_box == 0`): frozen at the
+  boot paint ("Kestrel" + the mark), which is why the menus were
+  clickable but invisible;
+- A/B on the transport: the same puts through `XPutImage` **do** land
+  (the bar's text then reaches x=210 with the zoo active vs 85 at boot),
+  while `XShmPutImage` never does for this window.  `window.cpp` now
+  routes windows shorter than `ARGENTUM_SHM_MIN_HEIGHT` (32px) through
+  the fallback, with the measurement in the comment;
+- the dock (same toolkit, same SHM path, 1050px tall) updates fine, so
+  the *server-side* difference is still unexplained: **open item** - the
+  next measurement is to log inside Xfb's `ShmPutImage`/`PutImage`
+  whether the screen damage report fires for the strip's window
+  (`hw/xfb/InitOutput.c`'s shadow drain is what copies shadow → fb0).
+
+Guarded by `wm_dock/app-menus-in-bar` (rightmost ink in the bar's rows,
+left of the clock zone, before vs after the app becomes active, so a
+clock tick cannot move it): it passes on the fixed build and fails on
+the frozen one.
+
+**The publish/PICK design itself is superseded** - see the redesign plan
+in the memory record `kestrel-menubar-app-drawn-plan` (an app-drawn bar
+window replaces the protocol; this strip is why it is also the natural
+fix for the class above).
+
 **As built (deviations and what the slice uncovered):**
 
 - **The model had to grow first.** `MenuItem` had no kind, no id and no
