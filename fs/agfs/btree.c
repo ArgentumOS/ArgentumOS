@@ -26,6 +26,7 @@
 #include <fnx/kernel.h>
 #include <fnx/types.h>
 #include <fnx/errno.h>
+#include <fnx/mm.h>
 #include <fnx/fs.h>
 #include <fnx/agfs.h>
 #include <fnx/buffer.h>

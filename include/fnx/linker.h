@@ -22,7 +22,7 @@
  * Keep it inside pml4[256..511]: that range is shared into every user
  * process's pml4 by create_pml4_64() (kernel/boot64/mm64.c), so moving it
  * into pml4[0..255] would hide the kernel from user processes. */
-#define PAGE_OFFSET	0xFFFFFFFF80000000ULL	/* pml4[511]: -2GiB, 2GB span */
+#define PAGE_OFFSET	0xFFFF800000000000ULL	/* pml4[256]: the high half */
 /* FNX: NOTE - this is the ceiling. The direct map can express at most 2GB
  * while PAGE_OFFSET is -2GiB, so RAM above 2GB has no kernel address.
  *
@@ -77,7 +77,7 @@
  *
  * GDT_BASE is legacy: on x86_64 the GDT is set up by the stub (gdt64) and
  * this constant is no longer the physical cap. */
-#define KERNEL_PHYS_LIMIT	0x80000000ULL	/* 2GB: the -2GiB span */
+#define KERNEL_PHYS_LIMIT	0x100000000ULL	/* 4GB: direct map 0..4GB */
 #define GDT_BASE	0x40000000
 #else
 #define GDT_BASE	(0xFFFFFFFF - (PAGE_OFFSET - 1))

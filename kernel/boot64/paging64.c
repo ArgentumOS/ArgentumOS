@@ -229,6 +229,8 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	 * (see KERNEL_PHYS_LIMIT in include/fnx/linker.h). */
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 0] = (unsigned long)&pd_page | X86_PTE_P | X86_PTE_RW;
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 1] = (unsigned long)&pd_page2[0] | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 2] = (unsigned long)&pd_page2[512] | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 3] = (unsigned long)&pd_page2[1024] | X86_PTE_P | X86_PTE_RW;
 
 	/* PD: 512 x 2MB pages covering the low 1GB */
 	for(n = 0; n < 512; n++) {
