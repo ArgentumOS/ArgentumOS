@@ -106,7 +106,7 @@ boot_window_pages(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 		}
 	}
 	want = 16UL << 20;			/* base cost */
-	want += (unsigned long)(usable >> 4);	/* + RAM/16 */
+	want += (unsigned long)(usable >> 5);	/* + RAM/32: the pool is 64B per page */
 	if(want < FNX_WINDOW_MIN) {
 		want = FNX_WINDOW_MIN;
 	}
@@ -117,6 +117,16 @@ boot_window_pages(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 		want = (unsigned long)(usable / 4) & ~0xFFFUL;
 	}
 	return want >> 12;
+}
+
+/* A window this size or bigger cannot be placed below the PCI hole next to
+ * the firmware and the image, so let the firmware put it wherever it fits. */
+static int boot_window_anywhere(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
+				UINTN desc_size)
+{
+	UINTN want = boot_window_pages(map, map_size, desc_size);
+
+	return (want << 12) >= (256UL << 20);
 }
 
 /* GOP framebuffer captured by the stub, consumed later by the real kernel */
@@ -463,8 +473,12 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 	{
 		UINTN want = boot_window_pages(map, map_size, desc_size);
 		EFI_PHYSICAL_ADDRESS base = FNX_WINDOW_ALLOC_MAX;
+		EFI_ALLOCATE_TYPE atype = AllocateMaxAddress;
 
-		if(bs->AllocatePages(AllocateMaxAddress, EfiLoaderData, want,
+		if(boot_window_anywhere(map, map_size, desc_size)) {
+			atype = AllocateAnyPages;	/* big guest: no low run that big */
+		}
+		if(bs->AllocatePages(atype, EfiLoaderData, want,
 				     &base) == EFI_SUCCESS) {
 			fnx_boot_window_base = (unsigned long)base;
 			fnx_boot_window_size = (unsigned long)want << 12;

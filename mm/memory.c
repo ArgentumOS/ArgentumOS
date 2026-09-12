@@ -457,6 +457,19 @@ void mem_init(void)
 
 	/* Page Directory and Page Tables initialization */
 	for(n = 0; n < kstat.physical_pages; n++) {
+#ifdef __x86_64__
+		/* The legacy identity PD/PT pair is vestigial on x86-64: the live
+		 * tables come from paging64_init() and activate_kpage_dir() is a
+		 * no-op, so nothing reads this map.  kpage_dir holds PAGE_SIZE * 2
+		 * bytes (1024 PD entries) but the index below is n / 1024 over ALL
+		 * physical pages, so with >= 4GB of RAM the writes ran off the end
+		 * of kpage_dir and clobbered what follows it (a 32G guest died in
+		 * start_kernel() with no output because of exactly this).  Stop at
+		 * the array's capacity. */
+		if(n >= (1024 * 1024)) {
+			break;
+		}
+#endif
 		pgtbl[n] = (n << PAGE_SHIFT) | PAGE_PRESENT | PAGE_RW;
 		if(!(n % 1024)) {
 			kpage_dir[GET_PGDIR(PAGE_OFFSET) + (n / 1024)] = (addr_t)&pgtbl[n] | PAGE_PRESENT | PAGE_RW;
