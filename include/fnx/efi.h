@@ -133,6 +133,16 @@ typedef struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL;
 
 typedef EFI_STATUS (EFIAPI *EFI_RAISE_TPL)(UINTN);
 typedef EFI_STATUS (EFIAPI *EFI_RESTORE_TPL)(UINTN);
+/* EFI_ALLOCATE_TYPE (UEFI 2.x): the selector AllocatePages() takes.
+ * AllocateMaxAddress asks for a run at or below the address passed in, which
+ * is how the boot-structures window below is kept low. */
+typedef enum {
+	AllocateAnyPages,		/* 0 */
+	AllocateMaxAddress,		/* 1 */
+	AllocateAddress,		/* 2 */
+	MaxAllocateType
+} EFI_ALLOCATE_TYPE;
+
 typedef EFI_STATUS (EFIAPI *EFI_ALLOCATE_PAGES)(INTN, EFI_MEMORY_TYPE, UINTN, EFI_PHYSICAL_ADDRESS *);
 typedef EFI_STATUS (EFIAPI *EFI_FREE_PAGES)(EFI_PHYSICAL_ADDRESS, UINTN);
 typedef EFI_STATUS (EFIAPI *EFI_GET_MEMORY_MAP)(UINTN *, EFI_MEMORY_DESCRIPTOR *, UINTN *, UINTN *, UINT32 *);

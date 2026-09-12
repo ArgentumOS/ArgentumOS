@@ -18,6 +18,10 @@
 
 extern char _end[];
 extern char fnx_bss_end[];	/* FNX: highest .bss (last-linked object) */
+
+/* the loader's LOW boot-structures window (kernel/boot64/efi_stub.c) */
+extern unsigned long fnx_boot_window_base;
+extern unsigned long fnx_boot_window_size;
 extern void start_kernel(unsigned int magic, unsigned int info,
 			 unsigned long last_boot_addr);
 
@@ -119,7 +123,16 @@ void kreal64_boot(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 
 		d = (EFI_MEMORY_DESCRIPTOR *)((char *)map + (n * desc_size));
 		len = (unsigned long long)d->NumberOfPages << 12;
-		if(d->Type == EfiConventionalMemory ||
+		if(fnx_boot_window_base &&
+		   d->PhysicalStart >= fnx_boot_window_base &&
+		   d->PhysicalStart < fnx_boot_window_base + fnx_boot_window_size) {
+			/* The kernel's own boot-structures window: AVAILABLE in
+			 * THIS map, so mem_init()'s per-stage is_addr_in_bios_map()
+			 * guards accept the carve-out. It stays EfiLoaderData in the
+			 * UEFI map, which is the one mm64.c walks, so its bitmap
+			 * never frees these pages to the allocator. */
+			type = MULTIBOOT_MEMORY_AVAILABLE;
+		} else if(d->Type == EfiConventionalMemory ||
 		   d->Type == EfiBootServicesCode ||
 		   d->Type == EfiBootServicesData) {
 			type = MULTIBOOT_MEMORY_AVAILABLE;
@@ -140,8 +153,11 @@ void kreal64_boot(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
 	mbi.mmap_addr = PHYS(stub_mmap);
 	mbi.mmap_length = stub_mmap_len * sizeof(struct multiboot_mmap_entry);
 
-	last_boot_addr = (unsigned long)&fnx_bss_end;	/* high address; start_kernel
-						 * subtracts PAGE_OFFSET */
+	/* the low window when the loader got one, else the image's end (which
+	 * only fits small guests: the carve-out then runs into the firmware's
+	 * holes near the top of RAM) */
+	last_boot_addr = fnx_boot_window_base ?
+			 (fnx_boot_window_base + PAGE_OFFSET) : (unsigned long)&fnx_bss_end;
 
 	start_kernel(MULTIBOOT_BOOTLOADER_MAGIC, PHYS(&mbi), last_boot_addr);
 

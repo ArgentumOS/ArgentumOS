@@ -26,6 +26,99 @@
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE, EFI_SYSTEM_TABLE *);
 void kernel64_main(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN, UINTN, EFI_SYSTEM_TABLE *);
 
+/*
+ * FNX: the LOW window the real kernel builds its boot structures in (page
+ * pool, hash tables, page tables, per-page structs, process and fd tables,
+ * video buffer). start_kernel() takes it as its `last_boot_addr`, so the
+ * carve-out lands here instead of after the image.
+ *
+ * Why: the carve-out grows UPWARD. The loader puts the image near the top
+ * of a large machine's RAM, and the top of RAM is full of small firmware
+ * holes, so carving from the image's end ran the kernel's own
+ * is_addr_in_bios_map() stage guards into a RESERVED hole and PANIC'ed -
+ * invisibly, because early printk output is only flushed to the console
+ * much later (serial.c). Every boot above ~256MB died that way.
+ *
+ * Why EfiLoaderData: mm64.c walks the UEFI map and only ever frees
+ * Conventional/BootServices memory, so the window stays the kernel's.
+ * kreal64.c then reports it AVAILABLE in the multiboot map the kernel
+ * itself reads, which is what its stage guards require.
+ *
+ * Zero means "no window": fall back to the image's end.
+ */
+unsigned long fnx_boot_window_base;
+unsigned long fnx_boot_window_size;
+
+/* What the structures cost: ~19MB at 128MB of RAM, ~26MB at 512MB, ~37MB at
+ * 1GB (the per-page structs and page tables grow with RAM; the process table
+ * does not). Scale with RAM, bounded at both ends. */
+#define FNX_WINDOW_MIN		(24UL << 20)
+#define FNX_WINDOW_MAX		(128UL << 20)
+#define FNX_WINDOW_ALLOC_MAX	0x10000000UL	/* ask to land below 256MB */
+
+/* Re-take the memory map into a buffer that fits it, growing the buffer if
+ * needed. On success the caller holds the CURRENT map and key. */
+static void
+fnx_memory_map_again(EFI_BOOT_SERVICES *bs, EFI_MEMORY_DESCRIPTOR **map,
+		     UINTN *map_size, UINTN *map_key, UINTN *desc_size)
+{
+	UINTN size = 0, key = 0, desc = 0;
+	UINT32 ver = 0;
+	EFI_STATUS st;
+
+	st = bs->GetMemoryMap(&size, NULL, &key, &desc, &ver);
+	if(st != EFI_BUFFER_TOO_SMALL) {
+		return;
+	}
+	size += desc * 4;
+	if(size > *map_size) {
+		EFI_MEMORY_DESCRIPTOR *bigger;
+
+		if(bs->AllocatePool(EfiLoaderData, size, (void **)&bigger)
+		   != EFI_SUCCESS) {
+			return;
+		}
+		*map = bigger;
+		*map_size = size;
+	}
+	st = bs->GetMemoryMap(map_size, *map, &key, &desc, &ver);
+	if(st == EFI_SUCCESS) {
+		*map_key = key;
+		*desc_size = desc;
+	}
+}
+
+static unsigned long
+boot_window_pages(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size, UINTN desc_size)
+{
+	EFI_MEMORY_DESCRIPTOR *d;
+	unsigned long long usable = 0;
+	unsigned long want;
+	UINTN n, count;
+
+	count = map_size / desc_size;
+	for(n = 0; n < count; n++) {
+		d = (EFI_MEMORY_DESCRIPTOR *)((char *)map + (n * desc_size));
+		if(d->Type == EfiConventionalMemory ||
+		   d->Type == EfiBootServicesCode ||
+		   d->Type == EfiBootServicesData) {
+			usable += (unsigned long long)d->NumberOfPages << 12;
+		}
+	}
+	want = 16UL << 20;			/* base cost */
+	want += (unsigned long)(usable >> 4);	/* + RAM/16 */
+	if(want < FNX_WINDOW_MIN) {
+		want = FNX_WINDOW_MIN;
+	}
+	if(want > FNX_WINDOW_MAX) {
+		want = FNX_WINDOW_MAX;
+	}
+	if(want > usable / 4) {
+		want = (unsigned long)(usable / 4) & ~0xFFFUL;
+	}
+	return want >> 12;
+}
+
 /* GOP framebuffer captured by the stub, consumed later by the real kernel */
 struct fnx_gop_fb fnx_gop_fb;
 
@@ -362,6 +455,25 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 	st = bs->GetMemoryMap(&map_size, map, &map_key, &desc_size, &desc_ver);
 	if(st != EFI_SUCCESS) {
 		return st;
+	}
+
+	/* Take the kernel's low boot-structures window, then re-take the map:
+	 * the allocation changes it, and ExitBootServices() needs the key from
+	 * the CURRENT map - a stale key drops the firmware to its shell. */
+	{
+		UINTN want = boot_window_pages(map, map_size, desc_size);
+		EFI_PHYSICAL_ADDRESS base = FNX_WINDOW_ALLOC_MAX;
+
+		if(bs->AllocatePages(AllocateMaxAddress, EfiLoaderData, want,
+				     &base) == EFI_SUCCESS) {
+			fnx_boot_window_base = (unsigned long)base;
+			fnx_boot_window_size = (unsigned long)want << 12;
+			fnx_memory_map_again(bs, &map, &map_size, &map_key,
+					     &desc_size);
+		} else {
+			fnx_boot_window_base = 0;
+			fnx_boot_window_size = 0;
+		}
 	}
 
 	/*
