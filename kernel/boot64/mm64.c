@@ -66,7 +66,7 @@ static unsigned long total_pages_count;
  * to release the region above the static tables back to the bitmap. The
  * usable spans from the EFI map are remembered so postmem can free exactly
  * the pages mem_init() left alone. */
-#define MAX_USABLE_RANGES 32
+#define MAX_USABLE_RANGES 256
 static unsigned long usable_ranges[MAX_USABLE_RANGES][2];	/* start, end */
 static int usable_count;
 
