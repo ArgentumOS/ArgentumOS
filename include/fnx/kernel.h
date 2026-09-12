@@ -62,7 +62,12 @@ extern unsigned int _tlbinfo_eax;
 extern unsigned int _tlbinfo_ebx;
 extern unsigned int _tlbinfo_ecx;
 extern unsigned int _tlbinfo_edx;
-extern char _etext[], _edata[], _end[];
+extern char _etext[], _edata[];
+/* hidden: multiboot.c takes _end's ADDRESS (`(addr_t)_end & PAGE_MASK`), and
+ * without the attribute clang materializes it through a GOT that ld -m
+ * i386pep cannot provide - the bytes then AND in _end's CONTENTS instead
+ * (tools/patch_pic_data.py explains why that form is unrewritable). */
+extern char _end[] __attribute__((visibility("hidden")));
 
 extern char kernel_cmdline[NAME_MAX + 1];
 

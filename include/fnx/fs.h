@@ -207,7 +207,16 @@ struct fs_operations {
 	int (*discard_blocks)(__dev_t, __blk_t, __blk_t, int);
 };
 
-extern struct fs_operations def_chr_fsop;
+/* Visibility: the kernel is one image built with -fvisibility=hidden, but a
+ * plain `extern` declaration still makes clang/gcc materialize the symbol's
+ * ADDRESS through a GOT under -fPIC - and ld -m i386pep has no GOT, so the
+ * bytes silently load the symbol's CONTENTS instead (tools/patch_pic_data.py
+ * rewrites the one-byte `mov` form; a conditional address becomes a `cmov`,
+ * which cannot be rewritten).  `def_chr_fsop` and `devpts_dir_fsop` are
+ * chosen between with `cond ? &a : &b` in devpts_read_inode(), i.e. exactly
+ * that conditional form: without the attribute the devpts root inode came
+ * back with fsop == NULL and the mount was unreachable. */
+extern struct fs_operations def_chr_fsop __attribute__((visibility("hidden")));
 extern struct fs_operations def_blk_fsop;
 
 /* fs_minix.h prototypes */
@@ -254,7 +263,9 @@ int get_rrip_symlink(struct inode *, char *);
 
 /* fs_devpts.h prototypes */
 extern struct fs_operations devpts_fsop;
-extern struct fs_operations devpts_dir_fsop;
+/* hidden: picked against def_chr_fsop with `cond ? &a : &b` in
+ * devpts_read_inode() - see the note at def_chr_fsop above. */
+extern struct fs_operations devpts_dir_fsop __attribute__((visibility("hidden")));
 
 
 /* generic VFS function prototypes */

@@ -20,7 +20,7 @@ removed rather than forgotten.
 | Boot to a working desktop | `smoke_desktop` | root mounted, session up, guest mode vs screendump size, wallpaper ramp on screen, menu bar and dock drawn, clock text, zero fatal faults, zero X errors, clean shutdown |
 | Guest RAM / memory map | `boot_matrix` (slow) | desktop + zero fatal faults at every supported size (256M…8G) |
 | Filesystem (AGFS root) | `fs_agfs` | the mount table (`mount`), a create/write/read round trip, `cp` + `cmp` agreeing, `chmod` + `acl get`, a config domain reading through |
-| procfs / devfs / devpts | `procfs_devfs` | the procfs tree under `/System/Processes` (version, meminfo, self/status, the tree itself), the devfs bus directories, the pty multiplexer, the zero device, and the devpts listing panic below |
+| procfs / devfs / devpts | `procfs_devfs` | the procfs tree under `/System/Processes` (version, meminfo, self/status, the tree itself), the devfs bus directories, the pty multiplexer, the zero device, and the devpts mount being listed without error |
 | Audio | `audio` | the HDA driver claims the card, an OSS device exists, `/System/Tools/tone` writes samples, no host backend errors |
 | Window manager input | `wm_dock` (slow) | dock geometry at the screen edge, a tile click launches its app, the frame stays clear of the dock column, the running dot appears, a second click raises without relaunching |
 | Repository hygiene | `host_fshlint` | the FSH path linter is clean over the staged userland (no QEMU) |
@@ -35,12 +35,19 @@ survey and got the layout wrong. This is the part that pays for the harness:
    `/System/Devices/PTS/pts`, the ESP at `/System/ESP`. `mount` prints
    `/dev/root on / type agfs`, and `/System/Processes/mounts` agrees. Any test
    (or tool) written against conventional paths fails for that reason alone.
-2. **Kernel NULL-dereference panic listing the devpts mount.**
-   `ls /System/Devices/PTS/pts` →
-   `KERNEL EXCEPTION vector 0x0e error=0x00 cr2=0x60` → the guest halts. A
-   page fault at offset 0x60 of a NULL pointer, in the directory-listing path
-   for a devpts mount. Reproduced live, recorded as
-   `procfs_devfs/devpts-listing-does-not-panic` with an `xfail` marker.
+2. **Kernel NULL-dereference panic listing the devpts mount** - **FOUND,
+   ROOT-CAUSED AND FIXED.** `ls /System/Devices/PTS/pts` →
+   `KERNEL EXCEPTION vector 0x0e error=0x00 cr2=0x60` → the guest halted: a
+   page fault at offset 0x60 (`fsop->followlink`) of a NULL `fsop`. The root
+   cause was not in devpts: `devpts_read_inode()` chooses the root inode's
+   fsop with `cond ? &devpts_dir_fsop : &def_chr_fsop`, clang if-converted
+   that into a `cmov` that loaded the symbol's first 8 bytes instead of its
+   address (`tools/patch_pic_data.py` explains the relocation trap), and the
+   root inode came back with `fsop == NULL` - an unreachable mount. Marking
+   both fsop declarations `visibility("hidden")` makes clang emit direct
+   PC-relative access, and the tool now *fails the build* on any such form it
+   cannot rewrite. Checks: `procfs_devfs/devpts-listing-does-not-panic` and
+   `procfs_devfs/devpts-mount-reachable`.
 3. **The devfs role aliases are missing from `/System/Devices`.** The kernel
    builds them (`fs/devfs/super.c`, `devfs_aliases()`: `console`, `tty`,
    `ptmx`, `pts`, `kbd`, `mouse`, `psaux`, `fb0`, `dsp`, and the `Memory/*`
@@ -65,8 +72,9 @@ survey and got the layout wrong. This is the part that pays for the harness:
 
 1. **Triage `sec_test`'s three failures**, then land the case (the battery, the
    shm size/leak probes and `test_mmap` - all already built into the image).
-2. **The devfs alias set** and the **devpts listing panic** - the first is a
-   case, the second is a kernel fix with a regression check.
+2. **The devfs alias set** - a case that asserts the role aliases the kernel
+   builds. (The **devpts listing panic** that sat next to it is fixed; see the
+   findings above.)
 3. **Network protocols** - only the boot path (DHCP, `eth0`) and the root-only
    `AF_PACKET` refusal are covered. Nothing asserts UDP/TCP/ICMP
    (`net/ipv4.c`), ARP (`net/ext_net.c`), the AF_UNIX sockaddr rules, or that

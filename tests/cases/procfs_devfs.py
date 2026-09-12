@@ -4,10 +4,11 @@ Everything here is ground-truthed against a real boot, because the FSH layout
 is not the conventional one: procfs is mounted at `/System/Processes` and devfs
 at `/System/Devices` - there is no `/proc` and no `/dev`.
 
-The last check is a **known kernel bug**: listing the devpts mount
-(`ls /System/Devices/PTS/pts`) panics the kernel with a NULL dereference
-(`vector 0x0e error=0x00 cr2=0x60`) and halts the guest.  It is marked xfail so
-it is recorded and gets fixed, and it runs LAST because it takes the guest down.
+The last check covers the devpts mount (`ls /System/Devices/PTS/pts`).  It used
+to panic the kernel (a NULL dereference, `vector 0x0e error=0x00 cr2=0x60`)
+because the devpts root inode came back with `fsop == NULL`; the codegen bug
+behind that is described in tools/patch_pic_data.py, and the check now proves
+the mount is reachable.
 """
 
 import re
@@ -20,7 +21,7 @@ TOPOLOGY = ("Audio", "Disk", "Display", "Memory", "PS2", "PTS", "Serial", "TTY")
 
 
 class Case(BaseCase):
-    title = "procfs at /System/Processes, devfs topology, devpts (one known panic)"
+    title = "procfs at /System/Processes, devfs topology, the devpts mount"
     tier = "fast"
     timeout = 420
 
@@ -105,7 +106,5 @@ class Case(BaseCase):
                      and not panicked)
         self.check("devpts-mount-reachable", reachable,
                    "ls of the devpts mount works" if reachable
-                   else "the devpts root inode has fsop == NULL, so the mount "
-                        "is unreachable (EIO); the panic itself is fixed",
-                   xfail=None if reachable
-                   else "devpts root inode is built without fsop")
+                   else "the devpts mount is unreachable: ls said "
+                        + after.strip()[:200])
