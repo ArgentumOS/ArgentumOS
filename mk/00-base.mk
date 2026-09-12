@@ -58,6 +58,15 @@ QEMU_NET ?= -device virtio-net-pci,disable-modern=on,netdev=n1 -netdev user,id=n
 # it. Set QEMU_DRIVES= to override.
 QEMU_DRIVES ?= -drive file=.build/esp.img,format=raw,if=ide,index=0 -drive file=$(ROOTIMG),format=raw,if=none,id=disk -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
+# Audio: attach a sound card so the OSS /dev/dsp stack has hardware to drive.
+# Only QEMU's BUILT-IN backends are usable in this environment (the tools
+# QEMU ships no modules and the system module dir is a different build), so the
+# default captures playback to a file: verifiable, but silent.  Set
+# QEMU_AUDIODEV=pa (or pipewire/alsa/sdl) with a QEMU whose modules match to
+# actually hear it, or QEMU_AUDIODEV=none to discard it.
+QEMU_AUDIODEV ?= wav,path=.build/qemu-audio.wav
+QEMU_AUDIO ?= -device intel-hda -device hda-output,audiodev=snd -audiodev $(QEMU_AUDIODEV),id=snd
+
 # One system compiler: the kernel builds with clang since M3
 # (docs/llvm-clang-toolchain-plan.md M3); the pre-clang CC64R flag set is
 # kept verbatim. PATCH_PIC stays on: -fPIC extern-data access emits
@@ -226,11 +235,11 @@ run-qemu:
 		exit 1; \
 	fi
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display gtk -serial stdio -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display gtk -serial stdio -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_AUDIO) $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display curses -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display curses -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_AUDIO) $(QEMU_EXTRA); \
 	else \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -nographic -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -nographic -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_AUDIO) $(QEMU_EXTRA); \
 	fi
 
 # ---------------------------------------------------------------------------
