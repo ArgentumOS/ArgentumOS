@@ -119,7 +119,7 @@ void update_page_cache(struct inode *, __off_t, const char *, int);
 int write_page(struct page *, struct inode *, __off_t, unsigned int);
 int bread_page(struct page *, struct inode *, __off_t, char, char);
 int file_read(struct inode *, struct fd *, char *, __size_t);
-void reserve_pages(unsigned int, unsigned int);
+void reserve_pages(addr_t, addr_t);
 void page_init(int);
 
 /* memory.c */

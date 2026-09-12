@@ -142,7 +142,7 @@ static unsigned long pdpt_page[512] __attribute__((aligned(4096)));
 static unsigned long pdpt_high[512] __attribute__((aligned(4096)));
 static unsigned long pd_page[512] __attribute__((aligned(4096)));
 /* 1GB-4GB identity (PCI MMIO hole at 2GB+, VGA BAR, APIC, ...) */
-static unsigned long pd_page2[1536] __attribute__((aligned(4096)));
+static unsigned long pd_page2[3584] __attribute__((aligned(4096)));
 
 void kernel64_main(EFI_MEMORY_DESCRIPTOR *, UINTN, UINTN, UINTN, EFI_SYSTEM_TABLE *);
 
@@ -231,6 +231,10 @@ void paging64_init(EFI_MEMORY_DESCRIPTOR *map, UINTN map_size,
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 1] = (unsigned long)&pd_page2[0] | X86_PTE_P | X86_PTE_RW;
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 2] = (unsigned long)&pd_page2[512] | X86_PTE_P | X86_PTE_RW;
 	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 3] = (unsigned long)&pd_page2[1024] | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 4] = (unsigned long)&pd_page2[1536] | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 5] = (unsigned long)&pd_page2[2048] | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 6] = (unsigned long)&pd_page2[2560] | X86_PTE_P | X86_PTE_RW;
+	pdpt_high[PDPT_INDEX(PAGE_OFFSET64) + 7] = (unsigned long)&pd_page2[3072] | X86_PTE_P | X86_PTE_RW;
 
 	/* PD: 512 x 2MB pages covering the low 1GB */
 	for(n = 0; n < 512; n++) {

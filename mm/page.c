@@ -566,7 +566,7 @@ int file_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 	return total_read;
 }
 
-void reserve_pages(unsigned int from, unsigned int to)
+void reserve_pages(addr_t from, addr_t to)
 {
 	struct page *pg;
 
@@ -588,7 +588,8 @@ void reserve_pages(unsigned int from, unsigned int to)
 void page_init(int pages)
 {
 	struct page *pg;
-	unsigned int n, addr;
+	unsigned long n;
+	addr_t addr;
 
 	memset_b(page_table, 0, page_table_size);
 	memset_b(page_hash_table, 0, page_hash_table_size);

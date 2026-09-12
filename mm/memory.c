@@ -422,7 +422,8 @@ int unmap_page(addr_t vaddr)
 void mem_init(void)
 {
 	unsigned int sizek;
-	unsigned int physical_memory, physical_page_tables;
+	addr_t physical_memory;
+	unsigned int physical_page_tables;
 	unsigned int *pgtbl;
 	int n, pages, last_ramdisk;
 

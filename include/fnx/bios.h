@@ -16,17 +16,15 @@
 #define NR_BIOS_MM_ENT		256	/* entries in the memory map */
 
 struct bios_mem_map {
-	unsigned int from;
-	unsigned int from_hi;
-	unsigned int to;
-	unsigned int to_hi;
+	unsigned long long from;	/* 64-bit: RAM above 4GB must be countable */
+	unsigned long long to;
 	int type;
 };
 extern struct bios_mem_map bios_mem_map[NR_BIOS_MM_ENT];
 extern struct bios_mem_map kernel_mem_map[NR_BIOS_MM_ENT];
 extern char bios_data[256];
 
-int is_addr_in_bios_map(unsigned int);
+int is_addr_in_bios_map(addr_t);
 void bios_map_reserve(unsigned int, unsigned int);
 void bios_map_init(struct multiboot_mmap_entry *, unsigned int);
 
