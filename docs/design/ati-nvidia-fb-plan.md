@@ -80,13 +80,46 @@ Current display truth (verified in tree):
     `VBE_DISPI_XRES/YRES/BPP` on the dispi controller (1920x1080x32 needs
     8.29MB of the device's 16MB VRAM, inside its `-EINVAL` guard), re-maps
     the kernel's linear framebuffer and updates the console geometry too.
-  - **Shipped UNSET**: a stock boot keeps the firmware's 1280x800. The
-    pixel-driven gate drives click at absolute coordinates derived from
-    1280x800, so 1080p is a display choice, not a gate default:
-    `config write -s system.display display.width 1920` (+
-    `height 1080`, `bpp 32`) turns it on. Points are unaffected — the mode
-    changes how much desktop there is, not how big things are
-    (`width_mm`/`height_mm` above are what change size).
+  - **Shipped UNSET, and the reason is not the mode: it is RAM.** Setting
+    all three keys to 0 keeps whatever the firmware left; a mode the
+    controller rejects is logged and ignored. 1920x1080x32 *works*
+    (verified: the kernel reports it, Xfb and Kestrel come up at it, the
+    dock sits at 1856,40, and the host screendump header is 1920x1080) — but
+    the frame buffers are a function of the screen (~8.3MB each for Xfb's
+    shadow and the scanout map at 1080p), every window adds a backing the
+    toolkit mirrors into an MIT-SHM segment, and a 1080p desktop *with a
+    real client on it* exhausts the guest: the client dies with
+    `shm_map_page(): map_page() returned 0!` plus a page fault, which looks
+    like the S4.3 shm-churn crash but is genuine exhaustion. The empty 1080p
+    desktop is fine.
+  - **The guest is capped at 128M by the kernel, not by QEMU.** Raising the
+    RAM knob does not help: `-m 192M` and `-m 256M` both hang with the
+    console stopping right after `[M4-B] calling the real FNX kernel
+    start_kernel()` — i.e. in the paging / allocator setup, before any
+    further print (measured with direct boots, and reproduced by a gate run
+    that sat silent for its whole timeout). `QEMU_MEM` in `mk/00-base.mk` is
+    therefore a knob defaulting to 128M with this recorded, and 1080p needs
+    either that kernel ceiling lifted or a smaller per-window footprint. Points are unaffected with the shipped `width_mm`/`height_mm`
+    of 0 (an unknown physical size falls back to 96 dpi, so `pxPerPt` does
+    not move with the resolution): the mode changes how much desktop there
+    is, not how big things are. Set those two keys and the scale *does*
+    follow the screen, by design.
+  - **Nothing assumes the resolution.** The desktop's layout is a function
+    of the screen — the bar spans it, the dock owns an edge column and the
+    work area is what is left (`workTop/workBottom/workLeft/workRight` in
+    `kestrel.cpp`) — and the pixel-driven gate drives read that geometry
+    back from the WM's own log (`KESTREL: dock … at X,Y … icon=N`,
+    `KESTREL: manage … at X,Y`) instead of assuming a screen size. That is
+    what made the flip to 1080p a setting rather than a rebuild.
+  - **It costs RAM.** The frame buffers are a function of the screen too:
+    Xfb's shadow and the scanout map are ~8.3MB each at 1080p, and every
+    window adds a backing that the toolkit mirrors into an MIT-SHM segment.
+    A 1080p desktop *with a real client on it* exhausts the old 128M
+    guest — and the failure looks like the S4.3 shm-churn crash
+    (`shm_map_page(): map_page() returned 0!` + a page fault) because it is
+    the same mapper running out, this time for real. Hence
+    `QEMU_MEM ?= 256M` in `mk/00-base.mk`, used by every `run*` target and
+    overridable.
   - Gate: `.build/initmode_run.sh` + `initmode_assert.py` →
     **INITMODE-OK, 8 checks** — the mode the *kernel* reports after the
     switch, the pitch (7680 = 1920x4), Xfb and Kestrel coming up at

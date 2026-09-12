@@ -77,6 +77,20 @@ LLVM_OBJCOPY = /usr/lib/llvm-19/bin/llvm-objcopy
 # QEMU_USB= and QEMU_MACHINE= to disable.
 QEMU_USB ?= -device qemu-xhci -device usb-kbd -device usb-mouse
 QEMU_MACHINE ?= -machine pc,i8042=off
+# Guest RAM. 128M is the ceiling the KERNEL currently boots at: 192M and
+# 256M both hang right after `[M4-B] calling the real FNX kernel
+# start_kernel()` (measured; the console stops there, in the paging /
+# allocator setup). So this is a knob, not a workaround - raising it needs
+# kernel work first.
+#
+# 128M is also why the display mode ships as the firmware's 1280x800 rather
+# than 1920x1080: the frame buffers are a function of the screen (Xfb's
+# shadow and the scanout map are ~8.3MB each at 1080p, and every window adds
+# a backing the toolkit mirrors into an MIT-SHM segment), and a 1080p
+# desktop with a real client on it exhausts 128M. That failure shows up as
+# `shm_map_page(): map_page() returned 0!` plus a page fault - it looks like
+# the S4.3 shm-churn crash but is genuine exhaustion.
+QEMU_MEM ?= 128M
 # ---------------------------------------------------------------------------
 
 CC64 = $(CLANG19) -m64 -march=x86-64 $(LANG) -D__KERNEL__ $(CONFFLAGS) -I$(INCLUDE) -O2 \
@@ -207,11 +221,11 @@ run-qemu:
 		exit 1; \
 	fi
 	@if [ -n "$${DISPLAY}$${WAYLAND_DISPLAY}" ] && [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display gtk -serial stdio -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display gtk -serial stdio -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	elif [ -t 1 ]; then \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display curses -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -display curses -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	else \
-		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -nographic -m 128M $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
+		FNX_QEMU_BIOS=ovmf ./tools/qemu.sh $(QEMU_MACHINE) -nographic -m $(QEMU_MEM) $(QEMU_NET) $(QEMU_DRIVES) $(QEMU_USB) $(QEMU_EXTRA); \
 	fi
 
 # ---------------------------------------------------------------------------
