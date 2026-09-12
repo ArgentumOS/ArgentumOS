@@ -280,6 +280,30 @@ Note: with live moves there is no outline to hide; the window itself
 renders at every tracked position, so drags look native (the earlier
 root-outline-hidden note is moot).
 
+v7 (user: "when I drag a window sometimes it 'sticks' dragging even
+after I let go the mouse button"): the deferred end WAS the bug.  The
+button-up + quiet rule (v5/v5.1/v6's `DRAG_DROP_MS`/`DRAG_DROP_FAST_MS`
+and the abrupt-release distrust window) existed to survive ps2 sync slips
+and the xHCI event-ring stall, and both are gone: the shipped session is
+USB HID with i8042 off, and the stall was fixed in f42fab1.  What the
+rule did instead: a release within 60ms of a motion kept the drag alive
+for a *full second*, and every motion while the button was up BOTH moved
+the window AND re-armed that clock — so a flick followed by any hand
+movement dragged the window for as long as the hand kept moving.  The end
+is the release itself now; a release lost in the input path is caught
+from the stream rather than from a timer, because a MotionNotify carries
+the button state at its own time, so motion with the drag button up ends
+the drag instead of following the pointer.  `gBtnDown`/`gBtnUpMs`/
+`gLastMotionMs`/`gAbruptRelease`/`dropIfReleased` and the DRAG_DROP_*
+windows are gone.  On the input side, `mousedev_event` no longer lets a
+full queue drop a record carrying a button or wheel transition
+(`MOUSE_EDGE_RESERVE`): the old policy said "the pointer merely misses one
+motion sample", but a dropped *release* is exactly a stuck drag.  Measured
+both ways by the new `wm_dock/drag-ends-at-release` — a flick drag of
+(150,-30) followed by a 200px post-release pointer move ends the frame at
+170,70 with the fix and at **370,70** without it (the window followed the
+released pointer).  wm_dock 12/12 after v7.
+
 ### S4.2a — session socket: publish + menubar render
 *Status: **DONE** (2026-09).* `userland/argentum/menu.cpp` (the codec +
 `SessionMenu` + `sessionWriteFrame`), `application.cpp` (the loop's fd

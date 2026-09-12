@@ -1401,10 +1401,6 @@ static int gGrabRootY = 0;
 static int gGrabFx = 0, gGrabFy = 0;	/* the frame rect at grab time */
 static int gGrabFw = 0, gGrabFh = 0;
 static bool gDragMoved = false;	/* any actual motion happened */
-static bool gBtnDown = false;	/* button state from press/release events */
-static long long gBtnUpMs = 0;	/* when the button last went up */
-static long long gLastMotionMs = 0;	/* when the pointer last moved in the drag */
-static bool gAbruptRelease = false;	/* the release hit mid fast motion */
 
 static void endDrag(bool moved);
 
@@ -1546,7 +1542,6 @@ beginDrag(Managed *m, int rootX, int rootY)
 	if (gDragActive && gDragFrame == m && gDragMode == DragMode::Move) {
 		gDragOffX = rootX - m->fx;
 		gDragOffY = rootY - m->fy;
-		gBtnDown = true;
 		XGrabPointer(dpy, m->frame->xid(), False,
 			     PointerMotionMask | ButtonReleaseMask,
 			     GrabModeAsync, GrabModeAsync, None, None,
@@ -1560,7 +1555,6 @@ beginDrag(Managed *m, int rootX, int rootY)
 	gDragOffX = rootX - m->fx;
 	gDragOffY = rootY - m->fy;
 	gDragMoved = false;
-	gBtnDown = true;
 	XGrabPointer(dpy, m->frame->xid(), False,
 		     PointerMotionMask | ButtonReleaseMask,
 		     GrabModeAsync, GrabModeAsync, None, None,
@@ -1586,7 +1580,6 @@ beginResize(Managed *m, int edges, int rootX, int rootY)
 	gGrabFw = m->fw;
 	gGrabFh = m->fh;
 	gDragMoved = false;
-	gBtnDown = true;
 	XGrabPointer(dpy, m->frame->xid(), False,
 		     PointerMotionMask | ButtonReleaseMask,
 		     GrabModeAsync, GrabModeAsync, None, None,
@@ -1650,7 +1643,6 @@ dragTo(int rootX, int rootY)
 		    nh == m->fh) {
 			return;		/* no motion yet */
 		}
-		gLastMotionMs = nowMs();
 		applyFrameGeometry(m, nx, ny, nw, nh);
 		gDragMoved = true;
 		return;
@@ -1672,7 +1664,6 @@ dragTo(int rootX, int rootY)
 	 * teleport-on-drop. (v2's XOR outline existed because a move
 	 * was believed to discard the client's pixels; on the current
 	 * Xfb that is not the case.) */
-	gLastMotionMs = nowMs();
 	XMoveWindow(dpy, m->frame->xid(), nx, ny);
 	m->fx = nx;
 	m->fy = ny;
@@ -1706,7 +1697,6 @@ endDrag(bool moved)
 	gDragFrame = nullptr;
 	gDragMode = DragMode::Move;
 	gResizeEdges = 0;
-	gBtnDown = false;
 }
 
 /* ---- S4.3 zoom + toolbar -------------------------------------------- */
@@ -1805,41 +1795,29 @@ toggleToolbar(Managed *m)
 /* ---- drag end -------------------------------------------------------
  *
  * The drag follows the pointer LIVE (above); the end is only a grab
- * release — the window is already at the final position, so ending
- * early or late is visually harmless either way. QEMU's mouse path
- * can deliver phantom press/release pairs mid-drag (ps2 sync slips
- * under fast motion), and an input stall can follow a phantom
- * release before the stream resyncs. The drag therefore ends only
- * when the BUTTON is up AND the pointer is QUIET for the window: a
- * release alone never ends it, and neither does a motion alone —
- * motion re-arms the button-up clock (MotionNotify below), so a
- * phantom release cannot stop the drag while the motion is still
- * flowing, and a mid-drag input stall is survived via the abrupt
- * release window below. A real release after the pointer has
- * already slowed or stopped ends it promptly. Checked on the
- * per-event path and on the idle beat (when events stop). */
-#define DRAG_DROP_MS 250	/* button-up + quiet window before the end */
-#define DRAG_DROP_FAST_MS 1000	/* window after an ABRUPT release (mid fast
-				 * motion): fast drags are exactly when QEMU's
-				 * ps2 slips, and a phantom release can be
-				 * followed by a multi-hundred-ms input stall
-				 * before the resync press re-arms the button.
-				 * A real release after a gentle stop ends in
-				 * DRAG_DROP_MS; only fast flicks pay this. */
-#define DRAG_ABRUPT_GAP_MS 60	/* release within this of the last motion
-				 * = it hit while the pointer was still
-				 * moving fast (phantom-prone) */
-
-static void
-dropIfReleased()
-{
-	long long win = gAbruptRelease ? DRAG_DROP_FAST_MS : DRAG_DROP_MS;
-
-	if (gDragActive && !gBtnDown &&
-	    nowMs() - gBtnUpMs >= win) {
-		endDrag(gDragMoved);
-	}
-}
+ * release - the window is already at its final position, so the end
+ * costs nothing.
+ *
+ * The end is the *release*, immediately.  It used to be deferred by up
+ * to a second (button-up plus a quiet window, longer if the release hit
+ * mid fast motion), distrusting a release that arrived during motion:
+ * that was written for QEMU's ps2 sync slips and for the xHCI
+ * event-ring stall, and both are gone (the shipped session is USB HID
+ * with i8042 off, and the event-ring stall was fixed in f42fab1).  The
+ * deferral was itself the bug the user sees - "it keeps dragging after
+ * I let go": motion while the button was up both moved the window and
+ * re-armed the clock, so a flick followed by any pointer movement kept
+ * the window on the pointer for as long as the pointer kept moving.
+ *
+ * A release lost in the input path is still caught, but from the
+ * stream itself rather than from a timer: a MotionNotify carries the
+ * button state at its own time, so motion with the drag button up ends
+ * the drag instead of following the pointer (see MotionNotify).  The
+ * mouse device also keeps queue room for edge records now
+ * (MOUSE_EDGE_RESERVE, mousedev.h), so a release cannot be dropped
+ * there either. */
+#define DRAG_BUTTON_MASK						\
+	(Button1Mask | Button2Mask | Button3Mask | Button4Mask | Button5Mask)
 
 
 /* ---- the idle + event hooks: WM housekeeping ------------------------ */
@@ -1886,12 +1864,10 @@ reapDeadClients()
 }
 
 /* The idle beat (the app loop polls ~250ms with no events, then calls
- * this): a window whose button has been up and the pointer quiet long
- * enough drops here even when no further events arrive. */
+ * this): WM housekeeping that must not run on the per-event path. */
 static bool
 idleBeat()
 {
-	dropIfReleased();
 	reapDeadClients();
 	clockUpdate(false);	/* S5.2b: the bar's clock */
 	/* S5.2c: reap the dock's launches (WNOHANG: never block here) */
@@ -1911,7 +1887,6 @@ kestrelHook(void *xevent)
 	 * throttle every motion during a drag to server round-trip
 	 * latency. Reaping runs on the idle beat instead (~250ms, when
 	 * no events pend), which is plenty for frame cleanup. */
-	dropIfReleased();
 
 	/* S5.2a: the desktop itself changed size (an fb0 mode-set). The
 	 * wallpaper is sized from the screen, so rebuild it; the menubar strip
@@ -2037,46 +2012,28 @@ kestrelHook(void *xevent)
 		return false;
 	case MotionNotify:
 		if (gDragActive) {
-			/* the window follows the hand on every motion,
-			 * regardless of the button state; the drag ends
-			 * (dropIfReleased) only on button-up AND quiet.
-			 * While the button is up, motion re-arms the
-			 * clock: a phantom release mid-drag (button
-			 * visibly up under a ps2 sync slip) must not
-			 * stop the drag while the user is still
-			 * dragging — the end waits for the motion to
-			 * stop (a real-release glide defers the same
-			 * way, which is what makes phantoms harmless). */
-			dragTo(ev->xmotion.x_root, ev->xmotion.y_root);
-			if (!gBtnDown) {
-				gBtnUpMs = nowMs();
+			/* The event carries the button state at its own
+			 * time, so it is authoritative: a motion with the
+			 * drag button up means the release was already
+			 * delivered - or was lost in the input path - and
+			 * the drag is over.  Ending here (instead of
+			 * following the pointer) is what keeps a lost
+			 * release from leaving the window stuck on the
+			 * pointer. */
+			if (!(ev->xmotion.state & DRAG_BUTTON_MASK)) {
+				endDrag(gDragMoved);
+				return true;
 			}
+			dragTo(ev->xmotion.x_root, ev->xmotion.y_root);
 			return true;
 		}
 		return false;
 	case ButtonRelease:
 		if (gDragActive) {
-			if (gBtnDown) {
-				gBtnDown = false;
-				gBtnUpMs = nowMs();
-				/* an abrupt release (the pointer was still
-				 * moving fast) is phantom-prone: QEMU's ps2
-				 * slip puts a release mid motion-burst, and
-				 * the real button state only resyncs later.
-				 * Distrust it for DRAG_DROP_FAST_MS so a fast
-				 * drag survives the input stall until the
-				 * resync press re-arms; a release after the
-				 * pointer already slowed or stopped is a real
-				 * one and drops in DRAG_DROP_MS. */
-				gAbruptRelease =
-				    (gLastMotionMs != 0 &&
-				     nowMs() - gLastMotionMs <= DRAG_ABRUPT_GAP_MS);
-			}
-			/* the drag ends via dropIfReleased (button up +
-			 * quiet, with the distrust window chosen by how
-			 * abrupt this release was), never on this
-			 * release alone — phantom releases must not
-			 * drop it */
+			/* the release is the end of the drag: immediate,
+			 * never deferred (a fast release used to keep the
+			 * window on the pointer for up to a second) */
+			endDrag(gDragMoved);
 			return true;
 		}
 		return false;

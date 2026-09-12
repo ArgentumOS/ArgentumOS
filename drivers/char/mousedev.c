@@ -197,6 +197,8 @@ void mousedev_event(int buttons, int wheel, int dx, int dy, int hwheel)
 
 	{
 		int n;
+		int edge;
+		unsigned int need;
 
 		/* A record must enter the queue whole.  charq_putchar()
 		 * returns -EAGAIN when the queue is full, so inserting the
@@ -204,19 +206,38 @@ void mousedev_event(int buttons, int wheel, int dx, int dy, int hwheel)
 		 * stream: every later 8-byte record is then shifted and the
 		 * reader decodes garbage - fabricated button edges and wild
 		 * deltas (exactly the "button released while held", "window
-		 * jumps" symptoms).  Drop the whole record instead; the
-		 * pointer merely misses one motion sample. */
-		if(charq_room(&mousedev_table->read_q) < MOUSE_EVENT_SIZE) {
-			mousedev_table->dropped++;
-			if(mousedev_table->dropped == 1 || !(mousedev_table->dropped % 128)) {
-				printk("mouse: record dropped (queue full, total %d)\n",
-					mousedev_table->dropped);
+		 * jumps" symptoms).  Drop the whole record instead.
+		 *
+		 * A dropped record must never be one carrying a button or
+		 * wheel *transition*: lost motion only shortens a pointer
+		 * step, but a lost release leaves the WM - and every client
+		 * - believing the button is still held, so the window keeps
+		 * following the pointer after the user let go.  Motion may
+		 * therefore fill the queue only up to MOUSE_EDGE_RESERVE;
+		 * edge records may use all of it. */
+		edge = (buttons != (int)mousedev_table->queued_buttons) ||
+			wheel || hwheel;
+		need = MOUSE_EVENT_SIZE + (edge ? 0 : MOUSE_EDGE_RESERVE);
+		if(charq_room(&mousedev_table->read_q) < need) {
+			if(edge) {
+				/* the reserve should make this impossible for any
+				 * realistic input; say so loudly if it is not */
+				mousedev_table->edge_dropped++;
+				printk("mouse: button/wheel edge dropped (queue full, total %d)\n",
+					mousedev_table->edge_dropped);
+			} else {
+				mousedev_table->dropped++;
+				if(mousedev_table->dropped == 1 || !(mousedev_table->dropped % 128)) {
+					printk("mouse: record dropped (queue full, total %d)\n",
+						mousedev_table->dropped);
+				}
 			}
 			return;
 		}
 		for(n = 0; n < MOUSE_EVENT_SIZE; n++) {
 			charq_putchar(&mousedev_table->read_q, rec[n]);
 		}
+		mousedev_table->queued_buttons = (unsigned char)(buttons & 0xFF);
 	}
 	wakeup(&mousedev_table->read_q);
 	wakeup(&do_select);

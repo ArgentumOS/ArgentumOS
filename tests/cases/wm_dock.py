@@ -1,9 +1,12 @@
-"""Clicking a dock tile launches its app; a second click raises it instead.
+"""Clicking a dock tile launches its app; a second click raises it instead, and
+a window drag ends when the button comes up - even mid fast motion.
 
 What it proves: the dock sits at the screen edge, a click on its first tile
 starts the pinned app, the app's frame lands inside the work area (clear of the
 dock, which owns a column of the desktop), the tile then shows a running dot,
-and clicking again raises the running app rather than starting a second copy.
+clicking again raises the running app rather than starting a second copy, and a
+flick drag leaves the frame where the release happened (a deferred drag end
+kept the window on the pointer after the button was up).
 
 This is also the case that exercises the pointer machinery in
 tests/harness/monitor.py, so it is the one that says whether input driving
@@ -12,6 +15,7 @@ that comes with no motion.
 """
 
 import re
+import time
 
 from harness import BaseCase
 
@@ -29,7 +33,7 @@ DOCK_PAD = 8
 
 
 class Case(BaseCase):
-    title = "a dock tile launches its app, and a second click raises it"
+    title = "the dock: a tile launches or raises, and a drag ends at the release"
     tier = "slow"
     timeout = 600
 
@@ -104,6 +108,48 @@ class Case(BaseCase):
         launches = session.count(r"KESTREL: dock launch '[^']*'")
         self.check("no-second-launch", launches == 1,
                    "%d launch(es) for two clicks" % launches)
+
+        # --- the drag must END at the release ---------------------------
+        # A drag used to be ended by a TIMER: the release counted only once
+        # the pointer had been quiet for a while (a full second when the
+        # release landed mid fast motion), and motion with the button up
+        # moved the window AND re-armed that clock.  So a flick followed by
+        # any hand movement kept the window on the pointer for as long as
+        # the hand kept moving - "it sticks after I let go".  The end is
+        # the release itself now.  Drag by a known delta, release, then
+        # move the pointer FAR without the button: the frame must stay
+        # where the release left it.
+        if frame:
+            BAND_H = 20			# kestrel.cpp: the title bar
+            flick = [(40, 0), (40, 0), (40, 0), (30, 0), (0, -30)]
+            net = [0, 0]
+
+            monitor.goto(fx + fw // 2, fy + BAND_H // 2)
+            monitor.nudge()		# a bare button change is dropped
+            monitor.send("mouse_button 1")
+            for fdx, fdy in flick:
+                monitor.move(fdx, fdy)
+                net[0] += fdx
+                net[1] -= fdy		# monitor dy is positive UP
+            monitor.send("mouse_button 0")	# the release, mid-motion
+            monitor.move(200, 0)		# the hand keeps going: 200px
+            time.sleep(1.5)			# a deferred end would land here
+
+            end = None
+            for line in session.log_text().splitlines():
+                hit = re.search(r"KESTREL: move 0x[0-9a-f]+ '%s' to (\d+),(\d+)"
+                                % re.escape(APP), line)
+                if hit:
+                    end = (int(hit.group(1)), int(hit.group(2)))
+            want = (fx + net[0], fy + net[1])
+            self.check(
+                "drag-ends-at-release",
+                end is not None and abs(end[0] - want[0]) < 40
+                and abs(end[1] - want[1]) < 40,
+                "the frame ended at %s; the release was at %d,%d (a window "
+                "still following the pointer would land near %d,%d)"
+                % (("%d,%d" % end) if end else "never",
+                   want[0], want[1], want[0] + 200, want[1]))
 
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

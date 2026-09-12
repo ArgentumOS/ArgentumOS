@@ -38,6 +38,15 @@
 
 #define MOUSE_EVENT_SIZE 8
 
+/* Room the queue keeps free for records that carry a button or wheel
+ * transition.  Dropping a *motion* record only shortens a pointer step,
+ * but dropping an edge loses a press or a release: a release that never
+ * arrives leaves the WM - and every client - believing the button is
+ * still held, i.e. a window that keeps following the pointer after the
+ * user let go.  Motion may fill the queue only up to this watermark; an
+ * edge record may use the whole queue. */
+#define MOUSE_EDGE_RESERVE	(8 * MOUSE_EVENT_SIZE)
+
 /* button bits (mouse_event.buttons) */
 #define MOUSE_BTN_LEFT		0x01
 #define MOUSE_BTN_RIGHT		0x02
@@ -45,7 +54,9 @@
 
 struct mousedev {
 	int count;
-	int dropped;		/* records dropped whole (queue full) */
+	int dropped;		/* motion records dropped whole (queue full) */
+	int edge_dropped;	/* edge records that could not be queued */
+	unsigned char queued_buttons;	/* buttons of the last queued record */
 	struct clist read_q;
 };
 extern struct mousedev *mousedev_table;
