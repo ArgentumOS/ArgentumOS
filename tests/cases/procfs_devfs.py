@@ -90,14 +90,19 @@ class Case(BaseCase):
                    "00 00 00 00" in session.output_since(mark),
                    "reading the zero device gives zeroes")
 
-        # --- the known panic, last: it takes the guest down ------------
+        # --- the devpts mount, last: this used to panic the kernel ------
         before = len(session.log_text())
         session.run("ls %s/PTS/pts" % DEV, secs=30)
         after = session.output_since(before)
-        panicked = re.search(r"KERNEL EXCEPTION.*cr2=0x0*60", after, re.S) is not None
+        panicked = "KERNEL EXCEPTION" in after
         self.check("devpts-listing-does-not-panic", not panicked,
-                   "ls of the devpts mount panics the kernel "
-                   "(vector 0x0e, cr2=0x60) and halts the guest"
-                   if panicked else "the devpts listing completed",
-                   xfail="kernel NULL dereference listing the devpts mount"
-                         if panicked else None)
+                   "the kernel survives listing a mount point under devfs"
+                   if not panicked else "PANIC: " + after.strip()[:200])
+
+        reachable = "I/O error" not in after and "No such file" not in after
+        self.check("devpts-mount-reachable", reachable,
+                   "ls of the devpts mount works" if reachable
+                   else "the devpts root inode has fsop == NULL, so the mount "
+                        "is unreachable (EIO); the panic itself is fixed",
+                   xfail=None if reachable
+                   else "devpts root inode is built without fsop")

@@ -79,6 +79,19 @@ static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct 
 				iput(i);
 				return -ENOTDIR;
 			}
+			if(!i->fsop) {
+				/* A lookup returned a valid inode with no filesystem
+				 * operations.  Something upstream built it without
+				 * read_inode, and dereferencing it here is what used to
+				 * panic the kernel at do_namei+0x1ab (cr2 = 0x60, the
+				 * offset of followlink in struct fs_operations). */
+				printk("WARNING: %s(): inode %lu on dev %lu has no fsop.\n",
+					__FUNCTION__, (unsigned long)i->inode,
+					(unsigned long)i->dev);
+				iput(dir);
+				iput(i);
+				return -EIO;
+			}
 			if(S_ISLNK(i->i_mode)) {
 				if(i->fsop->followlink) {
 					if((errno = i->fsop->followlink(dir, i, &i))) {
@@ -88,6 +101,14 @@ static int do_namei(char *path, struct inode *dir, struct inode **i_res, struct 
 				}
 			}
 		} else {
+			if(!i->fsop) {
+				printk("WARNING: %s(): inode %lu on dev %lu has no fsop.\n",
+					__FUNCTION__, (unsigned long)i->inode,
+					(unsigned long)i->dev);
+				iput(dir);
+				iput(i);
+				return -EIO;
+			}
 			if(i->fsop->followlink && follow_links) {
 				if((errno = i->fsop->followlink(dir, i, &i))) {
 					iput(dir);
