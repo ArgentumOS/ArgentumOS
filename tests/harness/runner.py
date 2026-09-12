@@ -188,7 +188,7 @@ def main(argv=None):
         print("")
 
     results, elapsed = {}, {}
-    checks_ok = checks_total = 0
+    checks_ok = checks_total = checks_xfail = 0
     for case in selected:
         print("== %s [%s]%s" % (case.name, case.tier,
                                 (" - " + case.title) if case.title else ""))
@@ -196,6 +196,7 @@ def main(argv=None):
         results[case.name], elapsed[case.name] = outcome, secs
         checks_total += len(case.checks)
         checks_ok += sum(1 for c in case.checks if c.ok)
+        checks_xfail += sum(1 for c in case.checks if c.expected_fail)
         if outcome != "pass":
             print("   -> %s in %.1fs" % (outcome.upper(), secs))
         print("")
@@ -209,14 +210,16 @@ def main(argv=None):
         print("skipped: %s" % ", ".join(sorted(skipped)))
     if failed:
         print("failed:  %s" % ", ".join(sorted(failed)))
+    known = ("  (%d known-broken check(s), marked XFAIL)" % checks_xfail
+             if checks_xfail else "")
     total_time = sum(elapsed.values())
     if failed:
         print("TESTS-FAIL %d/%d case(s), %d/%d check(s) in %.0fs"
               % (len(passed), len(results), checks_ok, checks_total, total_time))
         print("artifacts (logs, screenshots): %s" % paths.rel(paths.ARTIFACTS))
         return 1
-    print("TESTS-OK %d/%d case(s), %d/%d check(s) in %.0fs"
-          % (len(passed), len(results), checks_ok, checks_total, total_time))
+    print("TESTS-OK %d/%d case(s), %d/%d check(s) in %.0fs%s"
+          % (len(passed), len(results), checks_ok, checks_total, total_time, known))
     return 0
 
 

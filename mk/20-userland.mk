@@ -398,6 +398,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
 	$(MUSL64_CC) tools/config_m3_test.c -o "$(ROOTFS64)/System/Tools/config_m3_test"
 	$(MUSL64_CC) userland/tools/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
+	# Probes the test harness drives (tests/cases/*): the security battery from
+	# the audit rounds, the AGFS metadata/stream probes and the mmap probe.
+	# They are committed sources; nothing built them into the image before.
+	$(MUSL64_CC) -Iinclude tools/sec_test.c -o "$(ROOTFS64)/System/Shared/tests/sec_test"
+	$(MUSL64_CC) userland/tests/test_mmap.c -o "$(ROOTFS64)/System/Shared/tests/test_mmap"
+	$(MUSL64_CC) userland/tests/agfsattr.c -o "$(ROOTFS64)/System/Shared/tests/agfsattr"
+	$(MUSL64_CC) userland/tests/agfsdir.c -o "$(ROOTFS64)/System/Shared/tests/agfsdir"
+	$(MUSL64_CC) userland/tests/agfsxattr.c -o "$(ROOTFS64)/System/Shared/tests/agfsxattr"
 	$(MUSL64_CC) userland/tools/agfsquery.c -o "$(ROOTFS64)/System/Tools/agfsquery"
 	$(MUSL64_CC) userland/tools/agfsqtest.c -o "$(ROOTFS64)/System/Tools/agfsqtest"
 	$(MUSL64_CC) userland/tools/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm

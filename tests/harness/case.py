@@ -30,8 +30,24 @@ class Skip(Exception):
 
 
 class Check:
-    def __init__(self, name, ok, detail):
+    """One assertion, and how it should be reported.
+
+    `xfail` marks a check that is *expected* to fail because the behaviour it
+    asserts is known to be broken.  It is reported as XFAIL and does not fail
+    the run, so a suite can record real bugs without being permanently red;
+    when the behaviour is fixed the same check reports XPASS and *does* fail, so
+    the marker has to be removed.
+    """
+
+    def __init__(self, name, ok, detail, xfail=None):
         self.name, self.ok, self.detail = name, bool(ok), detail
+        self.xfail = xfail
+        self.expected_fail = bool(xfail) and not ok
+        self.unexpected_pass = bool(xfail) and ok
+
+    @property
+    def counts_as_failure(self):
+        return (not self.ok and not self.xfail) or (self.ok and bool(self.xfail))
 
 
 class Context:
@@ -117,10 +133,24 @@ class BaseCase:
         self.notes = []
 
     # --- reporting ----------------------------------------------------
-    def check(self, name, ok, detail=""):
-        self.checks.append(Check(name, ok, detail))
-        print(("PASS " if ok else "FAIL ") + self.name + "/" + name
-              + (": " + detail if detail else ""))
+    def check(self, name, ok, detail="", xfail=None):
+        """Record one assertion.
+
+        Pass `xfail="<reason>"` when the behaviour is known to be broken: the
+        check then reports XFAIL instead of FAIL and does not fail the run.  If
+        it starts passing it reports XPASS and *does* fail, so the marker gets
+        removed rather than forgotten.
+        """
+        result = Check(name, ok, detail, xfail)
+        self.checks.append(result)
+        if result.expected_fail:
+            print("XFAIL %s/%s: %s (%s)" % (self.name, name, xfail, detail))
+        elif result.unexpected_pass:
+            print("XPASS %s/%s: %s - it passes now, remove the xfail marker (%s)"
+                  % (self.name, name, xfail, detail))
+        else:
+            print(("PASS " if ok else "FAIL ") + self.name + "/" + name
+                  + (": " + detail if detail else ""))
         return bool(ok)
 
     def note(self, message):
@@ -132,7 +162,7 @@ class BaseCase:
         raise NotImplementedError
 
     def passed(self):
-        return bool(self.checks) and all(c.ok for c in self.checks)
+        return bool(self.checks) and not any(c.counts_as_failure for c in self.checks)
 
     # --- small helpers cases keep re-implementing ---------------------
     @staticmethod
