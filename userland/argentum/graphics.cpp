@@ -103,6 +103,24 @@ BitmapImage::BitmapImage(unsigned int width, unsigned int height)
 	impl_ = new Impl;
 	impl_->width = width;
 	impl_->height = height;
+	/* SECURITY (audit 2026-09): the one allocation every surface goes
+	 * through, so the bound lives here as well as at the wire entry
+	 * (Window::handleResize).  `width * height * 4` must not wrap: the
+	 * product is computed in 64 bits, and a surface over the cap is
+	 * refused outright (a null surface, which every draw already
+	 * tolerates) rather than allocated small and written past.  A
+	 * caller that clamps at the wire never reaches this; a caller that
+	 * does not still cannot overflow the heap. */
+	if (width == 0 || height == 0 ||
+	    width > ARGENTUM_MAX_WINDOW_PX || height > ARGENTUM_MAX_WINDOW_PX ||
+	    (std::uint64_t) width * height >
+		    (std::uint64_t) ARGENTUM_MAX_WINDOW_PX * ARGENTUM_MAX_WINDOW_PX) {
+		std::fprintf(stderr,
+			     "ARGENTUM: refusing a %ux%u surface (bound)\n",
+			     width, height);
+		impl_->img = nullptr;
+		return;
+	}
 	impl_->img = pixman_image_create_bits(PIXMAN_x8r8g8b8,
 					     (int) width, (int) height,
 					     nullptr, 0);

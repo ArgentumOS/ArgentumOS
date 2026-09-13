@@ -29,6 +29,15 @@ patching.
 - **Post-audit discipline**: verify-first, fault-recovering user-memory
   primitives; `tools/sec_test.c` as the regression harness.
 
+## 1a. What round 4 (the userland round) added (2026-09)
+
+`docs/reference/security-audit-record.md` §9: the image's modes are now
+policy-driven and the build fails if they regress; `config` refuses
+System/Shared writes without euid 0; libconfig's parser has a nesting
+bound; and the toolkit bounds untrusted window geometry before any
+surface allocation. What remains absent below is unchanged — none of
+these are H0-H5 layers.
+
 ## 2. What is verified absent
 
 Swept across all docs and code (2026-09): **ASLR** (none anywhere),

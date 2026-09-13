@@ -19,6 +19,7 @@
 #include <string.h>
 #include <errno.h>
 #include <libconfig.h>
+#include <unistd.h>	/* geteuid: the privileged-scope check */
 
 static const char *prog;
 
@@ -780,6 +781,18 @@ static int do_write(config_scope_t scope, int nargs, char **argv,
 	config_value_t *items = NULL;
 	size_t count = 0;
 
+	/* SECURITY (audit 2026-09): System scope is machine state and
+	 * Shared scope is machine-wide defaults; only root writes either.
+	 * The filesystem refuses a non-root write to a 0644 root-owned file
+	 * anyway, but the rule belongs here too: a writable *directory*
+	 * defeats file modes through rename (the image used to ship a
+	 * group-writable /System/Configuration), and the failure should name
+	 * the rule instead of surfacing as EACCES on a temp file. */
+	if(scope != CONFIG_SCOPE_USER && geteuid() != 0) {
+		fprintf(stderr, "%s: %s scope is root-only (euid %d)\n", prog,
+			config_scope_name(scope), (int)geteuid());
+		return 1;
+	}
 	if(nargs < 3) {
 		usage();
 		return 2;
@@ -831,6 +844,18 @@ static int do_delete(config_scope_t scope, int argc, char **argv)
 {
 	config_err_t e;
 
+	/* SECURITY (audit 2026-09): System scope is machine state and
+	 * Shared scope is machine-wide defaults; only root writes either.
+	 * The filesystem refuses a non-root write to a 0644 root-owned file
+	 * anyway, but the rule belongs here too: a writable *directory*
+	 * defeats file modes through rename (the image used to ship a
+	 * group-writable /System/Configuration), and the failure should name
+	 * the rule instead of surfacing as EACCES on a temp file. */
+	if(scope != CONFIG_SCOPE_USER && geteuid() != 0) {
+		fprintf(stderr, "%s: %s scope is root-only (euid %d)\n", prog,
+			config_scope_name(scope), (int)geteuid());
+		return 1;
+	}
 	if(argc < 1) {
 		usage();
 		return 2;

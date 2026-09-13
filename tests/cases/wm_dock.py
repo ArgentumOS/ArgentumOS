@@ -384,5 +384,40 @@ class Case(BaseCase):
                    "clicking 1 2 + 3 = on the key grid produced %s (the app's "
                    "own log of the result)" % (result or "no result"))
 
+        # --- security (audit 2026-09): a hostile GEOMETRY ----------------
+        # Any X client can resize another client's window (X11 checks no
+        # window ownership on ConfigureWindow) and X sizes are CARD16, so a
+        # 65535x65535 ConfigureNotify is untrusted input aimed at a surface
+        # allocation where `w*h*4` in 32-bit `unsigned` wraps: a tiny
+        # surface, then rows copied past its end (the victim may be the
+        # WM).  The toolkit clamps at the wire entry now; this drives the
+        # attack and asserts the clamp fired, the victim survived (the WM
+        # still raises its window) and the session is unharmed.
+        client = re.search(r"KESTREL: manage (0x[0-9a-f]+) '%s'"
+                           % re.escape(APP), session.log_text())
+        self.check("client-id-known", bool(client),
+                   "the WM logged the client window it manages")
+        session.run("DISPLAY=:0 /System/Shared/tests/rogue_resize %s '%s'"
+                    % (client.group(1) if client else "0", APP), secs=45)
+        # the size that arrives may already be capped by the server or the
+        # WM (measured: 65535 arrives as 16384), so the property is the
+        # ORDER — an over-bound size must be clamped and reported, not
+        # allocated — not one literal number
+        clamped = session.wait_for(
+            r"ARGENTUM: window (width|height) (1[6-9]\d{3}|[2-9]\d{4,}) "
+            r"clamped to 8192", 20)
+        self.check("rogue-resize-clamped", clamped,
+                   "a hostile 65535x65535 resize of the app's window was "
+                   "clamped at the toolkit's wire entry (the server caps it "
+                   "at 16384 first; the toolkit caps THAT at 8192 and says "
+                   "so)")
+        monitor.goto(tile_x, tile_y)
+        monitor.click()
+        self.check("victim-survives-hostile-resize",
+                   session.wait_for(r"KESTREL: dock raise '%s'" % re.escape(APP),
+                                    30),
+                   "the app and the WM are both still alive after the hostile "
+                   "resize (the dock raised its window again)")
+
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

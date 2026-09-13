@@ -26,6 +26,7 @@ what the driver's strncmp-based search and descend assume.
 """
 
 import os
+import stat
 import struct
 import sys
 
@@ -259,6 +260,51 @@ def build_inode(block, mode, size, parent, stream, name_attr=None,
         sd += b"\x00"                        # trailing NUL
         i[o:o + len(sd)] = bytes(sd)
     return bytes(i)
+
+
+# --- permission policy (security audit 2026-09) ------------------------
+#
+# Modes in the image used to be whatever the HOST staging tree happened to
+# have, so a builder umask of 002 -- a common default -- shipped
+# group-writable system files AND DIRECTORIES.  A writable directory beats
+# file permissions: any user in that group could replace
+# /System/Tools/toybox (setuid root), /System/Configuration/
+# system.passwd.conf, /System/Libraries/libconfig.so.1, /System/Tools/init
+# or /Applications/*/bin/*, and then run root code -- one rename away from
+# root, with no kernel bug needed.  (Ownership was never the problem:
+# uid/gid are forced to 0 below.)
+#
+# So every entry is normalized here, at the one place modes enter an image,
+# and privilege is granted EXPLICITLY in the table below: what is setuid
+# and what is writable is a decision recorded in this file, not an
+# accident of whoever ran the build.  tools/agfscheck.py verifies the
+# invariant on the packed image independently.
+DIR_MODE = 0o755
+FILE_MODE = 0o644
+EXEC_MODE = 0o755
+LINK_MODE = 0o777
+
+# image-relative path (POSIX separators) -> the mode it gets.  Anything not
+# listed gets the defaults above, so a new setuid or world-writable entry
+# is a visible edit to this table.
+MODE_EXCEPTIONS = {
+    "System/Tools/toybox": 0o4755,     # su: the only privileged tool
+    "System/Temporary Files": 0o1777,  # FNX's temp dir: sticky + writable
+}
+
+
+def image_mode(rel, st_mode):
+    """The mode an entry gets in the packed image (policy above)."""
+    exc = MODE_EXCEPTIONS.get(rel)
+    if exc is not None:
+        return exc
+    if stat.S_ISDIR(st_mode):
+        return DIR_MODE
+    if stat.S_ISLNK(st_mode):
+        return LINK_MODE
+    if st_mode & 0o111:
+        return EXEC_MODE
+    return FILE_MODE
 
 
 def main():
@@ -705,7 +751,7 @@ def main():
                 st = os.stat(fp)
                 ib = alloc_inode()
                 all_inos.append(ib)
-                mode = S_IFREG | (st.st_mode & 0o7777)
+                mode = S_IFREG | image_mode(rel, st.st_mode)
                 nblocks = (len(data) + BLOCK - 1) // BLOCK
                 st2 = build_stream(nblocks)
                 for i, b in enumerate(st2['blocks']):
@@ -735,7 +781,7 @@ def main():
         # parent name, so mkagfs never backfills it; the driver adds it
         # to the indices on its first real modification (index-on-modify)
         write_inodes.append((dblk, build_inode(
-            dblk, S_IFDIR | (st.st_mode & 0o7777),
+            dblk, S_IFDIR | image_mode(path, st.st_mode),
             len(dir_blocks) * BLOCK, parent_blk, stream,
             name_attr=os.path.basename(full) if path else None,
             mtime=int(st.st_mtime) if path else 0)))

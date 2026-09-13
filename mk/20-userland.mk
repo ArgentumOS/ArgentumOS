@@ -403,6 +403,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_geo.c \
 		-L$(X11PREFIX)/lib -lXext -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/xshm_geo"
+	# rogue_resize: security audit 2026-09 — the hostile-geometry probe
+	# (any X client can resize another's window; the toolkit must clamp).
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/rogue_resize.c \
+		-L$(X11PREFIX)/lib -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/rogue_resize"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".

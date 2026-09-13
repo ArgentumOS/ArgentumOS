@@ -958,7 +958,18 @@ struct v2src {
 	size_t *off;		/* next unread byte (a line start) */
 	char line[CONF_MAX_LINE + 1];	/* last line pulled */
 	const char *p;		/* scan cursor within line */
+	int depth;		/* container nesting (see CONFIG_MAX_NEST) */
 };
+
+/* SECURITY (audit 2026-09): how deep a value may nest.  The v2 parser is
+ * mutually recursive — value -> record/array -> value — so without a cap a
+ * config file of a few thousand '[' or '{' bytes overflows the C stack and
+ * crashes whatever parses it.  That includes root-run tools that resolve a
+ * USER-scope file (the toolkit and the WM read system -> user -> shared),
+ * so a user could take down a privileged process with a file of their own.
+ * The deepest shipped config is a record inside an array inside a record
+ * (3); the addressing grammar's `rules[0].edits[1]` needs no more. */
+#define CONFIG_MAX_NEST	32
 
 /* Pull the next physical line into s->line (trimmed: CR + trailing WS
  * removed) and point s->p at it. Returns 1 on a new line, 0 at EOF,
@@ -1028,6 +1039,10 @@ static int v2_skip_ws(struct v2src *s)
 static config_err_t v2_parse_value(struct v2src *s, config_value_t *out);
 static config_err_t v2_parse_record(struct v2src *s, config_value_t *out);
 static config_err_t v2_parse_array(struct v2src *s, config_value_t *out);
+static config_err_t v2_parse_record_inner(struct v2src *s,
+					  config_value_t *out);
+static config_err_t v2_parse_array_inner(struct v2src *s,
+					 config_value_t *out);
 
 /* Parse one scalar array element (quoted or bare) at *s->p; advances
  * past it. Element chars exclude WS, ',', ']', '"', '{', '}'. */
@@ -1210,7 +1225,37 @@ static config_err_t v2_parse_field(struct v2src *s, config_value_t *rec)
 /* Parse a record value. s->p is at '{'. The first field may follow '{'
  * on the same line; subsequent fields each start on their own line;
  * '}' (alone on its line) closes. */
+/* CONFIG_MAX_NEST is enforced here, around the two functions that can
+ * recurse (a record's field may be a record or an array; an array's
+ * element may be either — v2_parse_field dispatches straight to these,
+ * which is why the bound cannot live in the value dispatcher). */
 static config_err_t v2_parse_record(struct v2src *s, config_value_t *out)
+{
+	config_err_t rc;
+
+	if(s->depth >= CONFIG_MAX_NEST) {
+		return CONFIG_ERR_PARSE;
+	}
+	s->depth++;
+	rc = v2_parse_record_inner(s, out);
+	s->depth--;
+	return rc;
+}
+
+static config_err_t v2_parse_array(struct v2src *s, config_value_t *out)
+{
+	config_err_t rc;
+
+	if(s->depth >= CONFIG_MAX_NEST) {
+		return CONFIG_ERR_PARSE;
+	}
+	s->depth++;
+	rc = v2_parse_array_inner(s, out);
+	s->depth--;
+	return rc;
+}
+
+static config_err_t v2_parse_record_inner(struct v2src *s, config_value_t *out)
 {
 	config_err_t rc = CONFIG_OK;
 	const char *q;
@@ -1276,7 +1321,7 @@ fail:
 /* Parse a bracketed array literal. s->p is at '['. Elements are scalars
  * or records separated by commas; whitespace/blank lines may surround
  * items; ']' closes (may be alone on a line). */
-static config_err_t v2_parse_array(struct v2src *s, config_value_t *out)
+static config_err_t v2_parse_array_inner(struct v2src *s, config_value_t *out)
 {
 	config_err_t rc = CONFIG_OK;
 
@@ -1633,6 +1678,7 @@ static config_err_t parse_conf(const char *text, size_t len,
 					vs.text = text;
 					vs.len = len;
 					vs.off = &off;
+					vs.depth = 0;
 					snprintf(vs.line, sizeof(vs.line), "%s", val);
 					vs.p = vs.line;
 					e = v2_parse_value(&vs, &v);

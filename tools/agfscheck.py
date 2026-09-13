@@ -21,6 +21,9 @@ import os
 import struct
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import mkagfs
+
 BLK = 1024
 AG_SHIFT = 13
 BTREE_NULL = 0xFFFFFFFFFFFFFFFF
@@ -332,15 +335,51 @@ def check(path, rootdir=None, allow_dirty_log=False):
         return io, mode
 
     def check_mode(io, path, want_kind):
+        """The packed mode must equal the POLICY mode, not the source's.
+
+        Security audit 2026-09: modes in an image used to be copied
+        verbatim from the host staging tree, so a builder umask of 002
+        shipped group-writable system files and directories -- and a
+        writable directory beats file permissions (replace the setuid
+        tool, the passwd domain or a shared library, then run root code).
+        mkagfs now normalizes every entry (its image_mode()) and grants
+        setuid / world-write only through an explicit table.  This asserts
+        the packed image really carries that policy, and it is checked
+        here rather than trusted from the writer.
+        """
         got = u32(io + 20)
+        rel = path.lstrip('/')
+        if got & S_IFMT != want_kind:
+            raise Fail("%s: kind mismatch" % path)
+        # the invariant, independent of any source tree: nothing in the
+        # image is group- or world-writable, and nothing is setuid/setgid,
+        # unless the policy table says so for this exact path
+        # a symlink's mode bits are POSIX-meaningless (the kernel ignores
+        # them and reports 0777); they carry no permission and no privilege
+        if want_kind == S_IFLNK:
+            assert got & 0o7777 == 0o777, (
+                "%s: symlink mode %o != 777" % (path, got & 0o7777))
+            if rootdir is not None:
+                src = os.path.join(rootdir, rel)
+                assert os.path.islink(src), "%s: image link, source is not" % path
+            return
+        exc = mkagfs.MODE_EXCEPTIONS.get(rel)
+        if exc is None:
+            if got & 0o022:
+                raise Fail("%s: mode %o is group/world-writable"
+                           % (path, got & 0o7777))
+            if got & 0o6000:
+                raise Fail("%s: mode %o carries setuid/setgid outside the "
+                           "policy table" % (path, got & 0o7777))
+        elif got & 0o7777 != exc:
+            raise Fail("%s: mode %o != policy %o" % (path, got & 0o7777, exc))
         if rootdir is not None:
-            src = os.path.join(rootdir, path.lstrip('/'))
+            src = os.path.join(rootdir, rel)
             st = os.lstat(src)
-            exp = st.st_mode
-            assert got & 0o7777 == exp & 0o7777, (
-                "%s: mode %o != source %o" % (path, got & 0o7777,
-                                              exp & 0o7777))
-            assert got & S_IFMT == want_kind, "%s: kind mismatch" % path
+            exp = mkagfs.image_mode(rel, st.st_mode)
+            assert got & 0o7777 == exp, (
+                "%s: mode %o != policy %o (source %o)"
+                % (path, got & 0o7777, exp, st.st_mode & 0o7777))
 
     def walk_dir(ino, parent_ino, path):
         io, mode = check_inode(ino)

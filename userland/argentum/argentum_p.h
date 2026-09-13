@@ -10,6 +10,19 @@
 
 #include <argentum/argentum.h>
 
+/* The largest window this toolkit will prepare a surface for, per
+ * dimension, in pixels (security audit 2026-09).  Not a policy about
+ * window sizes — a bound so the size arithmetic cannot wrap: a window
+ * surface is `w * h * 4` bytes and the MIT-SHM segment is the same, X
+ * sizes are CARD16 (a protocol-legal window may be 65535 px, and
+ * 65535^2*4 wraps a 32-bit `unsigned`), and ANY client can resize
+ * another client's window — so a ConfigureNotify is untrusted input that
+ * must not reach an allocation unchecked.  Enforced at the wire entry
+ * (Window::handleResize) and again in the allocation
+ * (BitmapImage::BitmapImage).  8192 px is 4x the largest dimension any
+ * session runs at and caps a surface at 256 MB. */
+#define ARGENTUM_MAX_WINDOW_PX	8192u
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>

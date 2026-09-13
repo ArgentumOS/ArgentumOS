@@ -211,3 +211,150 @@ that faults must be able to *see* what happened):
   accounting), so a process can still push the whole system to the point
   of failing to fault; and there is still no audit logging for repeated
   unmappable faults per process.
+
+## 9. Round 4 — the userland/session surface (2026-09)
+
+*The first round that is **not** the kernel.* Rounds 1-3 audited `fs/`,
+`mm/`, `net/`, `proc/`, the syscall surface and the driver ioctls. Four
+years of userland were built on top of them with no audit at all: the
+X11 server fork (Xfb), the Argentum toolkit, Kestrel, libconfig and the
+`config` CLI, init, the bundles, the ACL tool, the toybox patches. This
+round took that surface — with the codebase's own rule applied
+throughout: **the untrusted thing is the wire, the filesystem and the
+image, not just the syscall arguments**, and one of these findings was
+in the *build*.
+
+### F1 (high) — the image shipped group-writable system files and directories
+
+**Class:** privilege boundary manufactured by the build; a writable
+*directory* defeats file permissions.
+
+`tools/mkagfs.py` copied each entry's mode verbatim from the host
+staging tree (`st.st_mode & 0o7777`), so a builder umask of `002` — a
+common default — packed **603 group/world-writable entries, 88 of them
+directories**: `/System`, `/System/Tools`, `/System/Configuration`,
+`/System/Libraries`, `/Applications`, `/Shared`, `/Users`, `/Volumes`,
+and group-writable *files* `kestrel`, `init`, `sh`, `config`,
+`System/Shared/X11/bin/Xfb`, `libconfig.so.1`, `libargentum.so.1` and
+both bundle payloads. uid/gid were already forced to root, so only the
+mode bits were wrong.
+
+Any user in that group could therefore rewrite `/System/Tools/toybox`
+(**setuid root**, mode 4755 — but its directory was writable, so the
+file could be replaced outright), `/System/Configuration/
+system.passwd.conf`, or a library that root processes load — one rename
+away from root, with no kernel bug involved. The kernel permission
+checks the earlier rounds audited were never the issue: the bits they
+enforce were wrong.
+
+**Fix.** Modes are normalized where they enter an image: `mkagfs.py`
+gains `image_mode()` (dirs 0755, files 0644, executables 0755, symlinks
+0777) plus an explicit `MODE_EXCEPTIONS` table — `System/Tools/toybox`
+= 04755, `System/Temporary Files` = 01777 — so setuid and world-write
+are *decisions recorded in one table*, not accidents of the builder's
+umask. **Guard:** `tools/agfscheck.py` asserts the invariant on the
+packed image independently (nothing group/world-writable, nothing
+setuid/setgid outside the table, every mode equal to the policy) and it
+runs inside the image target, so the build fails rather than shipping.
+Evidence: `make rootagfs` → `agfscheck` OK over 966 inodes (the guard
+first caught a real gap in the new policy: symlinks are 0777 by POSIX
+convention and are now exempt from the write/setuid assertions).
+
+### F2 (medium) — `config` had no privileged-scope check
+
+**Class:** permission-model gap in a first-party tool.
+
+`config write|delete -s|-g` wrote System/Shared scope with no check at
+all, relying entirely on filesystem modes — which F1 had just shown to
+be unreliable. **Fix:** `userland/tools/config.c` refuses System and
+Shared scope writes unless `euid == 0`, naming the rule. Evidence
+(host-side, as a non-root user): user scope writes `exit 0`; both `-s`
+and `-g` refuse with `system scope is root-only (euid 1000)`.
+
+### F3 (low, hardening) — the v2 config parser nested without a bound
+
+**Class:** unbounded recursion on parsed input (stack exhaustion).
+
+libconfig's second-grammar parser is mutually recursive
+(`v2_parse_value -> v2_parse_record/array -> v2_parse_field -> ...`) and
+had no depth limit. **Fix:** `CONFIG_MAX_NEST` (32) is enforced in
+wrappers around the two recursive functions — the field path dispatches
+straight to them, so the bound cannot live in the value dispatcher
+(found by measuring). Evidence: a host unit test on input the parser
+accepts at shallow depth — the same list parses at depth 0 and is
+refused at depth 32 (`CONFIG_ERR_PARSE`). **Honest caveat:** the
+*reachable* depth is already bounded by `CONFIG_MAX_LINE` (4096) and the
+multi-line block form is handled by the flat parser's iterative block
+stack, so this is defence in depth; a validation path that nests deep
+was not demonstrated.
+
+### F4 (high) — 32-bit surface arithmetic on untrusted window geometry
+
+**Class:** the audits' recurring "how many bytes may I write" trap, this
+time outside the kernel.
+
+Any X client can resize another client's window (X checks no window
+ownership on `ConfigureWindow`), X sizes are CARD16, and the toolkit
+computed a surface from that size in 32-bit `unsigned`: `width +
+width/4`, `w * h * 4` and `dw * 4` all wrap for a protocol-legal
+65535x65535 window. A wrapped product means a *tiny* surface is
+allocated and the next flush copies rows past its end — heap and
+MIT-SHM-segment corruption in the **victim** process (any app, or the
+WM itself).
+
+Reachability is narrower than it looks, and the boundary is worth
+recording: Kestrel already clamps *client-initiated* resizes at 16384
+(measured: the rogue's 65535 arrived as 16384), but that bound still
+means a 1.7 GB allocation, and **override-redirect** windows — the WM's
+own chrome, any popup or bar window — have no WM clamp in front of them
+at all.
+
+**Fix.** The bound lives in the private header (`ARGENTUM_MAX_WINDOW_PX`
+= 8192, used by both the wire entry and the allocation):
+`Window::handleResize` clamps and logs (it is where an untrusted size
+enters), `BitmapImage`'s constructor refuses an over-bound surface in
+64-bit arithmetic, and the flush's row size is `size_t`. **Question
+probe + gate:** `userland/tests/rogue_resize.c` (finds or is given the
+client window and resizes it to 65535x65535) plus
+`tests/cases/wm_dock.py`'s `rogue-resize-clamped` /
+`victim-survives-hostile-resize` legs — `wm_dock` 29/29, `smoke_desktop`
+14/14.
+
+### Open (recorded, not fixed)
+
+- **`toolbox`'s password hash sits in a world-readable file.** The
+  hash lives in the record's `password` key (`system.passwd.conf`,
+  mode 0644) by the `config-design.md` §2 "shadow folding" decision, so
+  any user can read every hash and attack it offline. The mitigation is
+  a root-only hash domain (a shadow split), which is a config-design
+  change, not a patch. `su` itself refuses an empty/locked hash
+  (measured by reading the patched logic), so the shipped
+  `password = ""` admin record is not a free root.
+- **Per-user home ownership.** `/Users/<user>` ships root-owned 0755.
+  Inert while the session runs as root; the chown/0700 step belongs with
+  the session/login milestone.
+- **libconfig's write path** uses a predictable temp file
+  (`open(tmp, ..., 0644)` then `rename`). Low risk now that System
+  writes are root-only; `O_EXCL|O_NOFOLLOW` is the hardening.
+- **The bundle launch stays unmediated by decision** (S5.2d):
+  `bundleResolve()` rejects absolute paths and `..`, but a symlink
+  inside a bundle is followed. That is `bundle-launch-plan.md` N0/N1
+  (kernel `AGFS_INODE_BUNDLE_ENTRY` + the `launch` helper), still its
+  own milestone.
+- **Not audited this round:** Xfb's Xorg-heritage core (only the
+  FNX-specific `hw/xfb` and transport patches were read), the toybox
+  applets beyond `su`, musl and its patches, the third-party stack
+  (freetype/harfbuzz/fontconfig/libpng/expat), and the design-only
+  milestones (keychain, package format, sessionmgr). The kernel keeps
+  its own three rounds + `sec_test.c`.
+
+### Process lesson
+
+Round 1-3's lesson was "point-in-time audits decay; the durable fix is a
+mechanism plus a harness". This round adds one: **the build is part of
+the attack surface.** Every mode in the image came from whoever ran
+`make`, and no amount of kernel permission checking could compensate.
+The fix is therefore also a mechanism (one policy table at the one place
+modes enter an image) plus a guard that fails the build — not a pass of
+`chmod`s over a tree that would go wrong again on the next machine with a
+different umask.

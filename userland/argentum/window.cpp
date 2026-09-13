@@ -214,6 +214,28 @@ Window::handleResize(unsigned int widthPx, unsigned int heightPx)
 	if (!impl_->dpy || !impl_->xwin) {
 		return;
 	}
+	/* SECURITY (audit 2026-09): this is where a UNTRUSTED size enters
+	 * the toolkit.  X sizes are CARD16 (a protocol-legal window may be
+	 * 65535x65535), and any client can resize another client's window —
+	 * so a size from the wire must never reach an allocation unchecked:
+	 * `width + width/4`, `w*h*4` and `dw*4` are 32-bit `unsigned` here,
+	 * and 65535^2*4 wraps a `unsigned`, so a huge ConfigureNotify would
+	 * allocate a tiny surface and then copy rows over the end of it
+	 * (heap/segment overflow in the *victim* process — the WM is one).
+	 * Clamp at the door, once, and log it: everything downstream
+	 * (backing, MIT-SHM segment, damage rect, flush) is then bounded by
+	 * ARGENTUM_MAX_WINDOW_PX.  The old code trusted the server to keep
+	 * sizes sane; the server does not, and neither does a peer client. */
+	if (widthPx > ARGENTUM_MAX_WINDOW_PX) {
+		std::fprintf(stderr, "ARGENTUM: window width %u clamped to %u\n",
+			     widthPx, (unsigned) ARGENTUM_MAX_WINDOW_PX);
+		widthPx = ARGENTUM_MAX_WINDOW_PX;
+	}
+	if (heightPx > ARGENTUM_MAX_WINDOW_PX) {
+		std::fprintf(stderr, "ARGENTUM: window height %u clamped to %u\n",
+			     heightPx, (unsigned) ARGENTUM_MAX_WINDOW_PX);
+		heightPx = ARGENTUM_MAX_WINDOW_PX;
+	}
 	impl_->width = widthPx;
 	impl_->height = heightPx;
 	/* the backing (if any) is now the wrong size: no valid content
@@ -702,7 +724,10 @@ Window::flushBacking()
 		char *src = (char *) pixman_image_get_data(b->img);
 		char *dst = impl_->shmImg->data;
 		int bpl = impl_->shmImg->bytes_per_line;
-		int rowBytes = (int) dw * 4;
+		/* 64-bit: `dw` is bounded by ARGENTUM_MAX_WINDOW_PX now, but
+		 * the size argument of a memcpy is not a place to rely on
+		 * that (audit 2026-09) */
+		size_t rowBytes = (size_t) dw * 4;
 		unsigned int y;
 
 		for (y = 0; y < dh; y++) {
@@ -711,7 +736,7 @@ Window::flushBacking()
 			       src + (size_t) (dy + y) *
 					     pixman_image_get_stride(b->img) +
 				       (size_t) dx * 4,
-			       (size_t) rowBytes);
+			       rowBytes);
 		}
 		GC gc = XCreateGC(impl_->dpy, impl_->xwin, 0, nullptr);
 
