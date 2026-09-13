@@ -753,6 +753,27 @@ the click", plus the first half of Mac-like tracking:
   toolkit's per-draw rounded-rect masks and gradient ramps, which is the other
   item on the original list.
 
+  **Rounded-mask cache (2026-09).** `rounded_mask()` built an a8 pixman image
+  AND rasterized a triangle fan with anti-aliasing on every call — every
+  rounded rect, every gradient interior, every menubar chip and menu row, per
+  draw. The mask is a pure function of `(w, h, radius)`, so it is now cached
+  (`rounded_mask_cached()`): the cache holds its own `pixman_image_ref` so the
+  callers keep their existing unref contract, eviction drops the cache's
+  reference, and it is bounded by entry count (64) and total mask bytes (6MB)
+  so a full-window rounded rect cannot pin memory.
+
+  Measured on the same workload: composite per draw **33ms -> 21ms** (the
+  board's 1240x720 draws 460-520ms -> 440ms). Gates `wm_dock` 33/33,
+  `smoke_desktop` 14/14.
+
+  **Running total on a repaint (wm_dock, 102-103 draws):** composite per draw
+  104ms -> **21ms**, flush 35ms -> **15ms**, worst draw 1140ms -> **440ms**.
+  The board's own draw is now the last big one and it is NOT masks or text
+  (text is cached, the mask cache barely moved it): the remaining suspects are
+  the per-widget gradient fills (`pixman_image_create_linear_gradient` +
+  composite per call, ~50 widgets per board) and per-widget pixman work in
+  general. That is the next target, with `DRAW-MS` as the metric.
+
   Recipe: `ARGENTUM_DRAW_MS=1` (env into the app) makes the toolkit print
   `DRAW-MS: comp=<ms> flush=<ms> rect=<x0>,<y0>-<x1>,<y1>` per draw. NOTE the
   kernel's clock granularity is 10 ms (100 Hz tick), so these figures are

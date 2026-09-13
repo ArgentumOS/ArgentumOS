@@ -450,6 +450,94 @@ clip_rect(int bw, int bh, int x, int y, int w, int h,
 	return true;
 }
 
+/* ---- rounded-mask cache ---------------------------------------------
+ *
+ * Building the a8 coverage mask costs a pixman image PLUS a triangle-fan
+ * rasterization with anti-aliasing, and it was rebuilt on every call: every
+ * rounded rect, every gradient's interior, every menubar chip and menu row,
+ * per draw. Measured 2026-09: a repaint of a heavy window (the widget zoo's
+ * board) spent tens of ms per draw in the view-tree walk with the masks
+ * being the non-text part of it.
+ *
+ * The mask is a pure function of (w, h, radius), so cache it. The cache
+ * holds its OWN reference, so callers keep the existing contract (they unref
+ * what they are handed) and the cached image survives; eviction drops the
+ * cache's reference. Bounded by entry count and total mask bytes, because a
+ * full-window rounded rect is a multi-MB mask.
+ */
+#define MASK_CACHE_ENTRIES 64
+#define MASK_CACHE_BYTES (6u * 1024u * 1024u)
+
+struct MaskEntry {
+	unsigned int w, h, r;
+	pixman_image_t *img;
+};
+static MaskEntry g_maskCache[MASK_CACHE_ENTRIES];
+static int g_maskCount = 0;
+static unsigned long g_maskBytes = 0;
+
+static void
+mask_cache_drop(int i)
+{
+	g_maskBytes -= (unsigned long) g_maskCache[i].w * g_maskCache[i].h;
+	pixman_image_unref(g_maskCache[i].img);
+	/* close the hole: order is least-recent-first after use */
+	for (int j = i; j + 1 < g_maskCount; j++) {
+		g_maskCache[j] = g_maskCache[j + 1];
+	}
+	g_maskCount--;
+}
+
+/* As rounded_mask(), but shared: the caller still owns one reference. */
+static pixman_image_t *
+rounded_mask_cached(unsigned int w, unsigned int h, unsigned int radius)
+{
+	unsigned long bytes = (unsigned long) w * h;
+	int i;
+
+	for (i = 0; i < g_maskCount; i++) {
+		if (g_maskCache[i].w == w && g_maskCache[i].h == h &&
+		    g_maskCache[i].r == radius) {
+			pixman_image_t *img = g_maskCache[i].img;
+
+			if (i > 0) {	/* promote: the hot shape stays */
+				MaskEntry t = g_maskCache[i];
+
+				for (int j = i; j > 0; j--) {
+					g_maskCache[j] = g_maskCache[j - 1];
+				}
+				g_maskCache[0] = t;
+			}
+			pixman_image_ref(img);
+			return img;
+		}
+	}
+	pixman_image_t *img = rounded_mask(w, h, radius);
+
+	if (!img) {
+		return nullptr;
+	}
+	/* cache only what fits the byte budget; a bigger mask is returned
+	 * uncached, which is exactly what the callers did before */
+	if (bytes <= MASK_CACHE_BYTES) {
+		while (g_maskCount > 0 &&
+		       (g_maskCount >= MASK_CACHE_ENTRIES ||
+			g_maskBytes + bytes > MASK_CACHE_BYTES)) {
+			mask_cache_drop(g_maskCount - 1);
+		}
+		for (i = g_maskCount; i > 0; i--) {
+			g_maskCache[i] = g_maskCache[i - 1];
+		}
+		g_maskCache[0].w = w;
+		g_maskCache[0].h = h;
+		g_maskCache[0].r = radius;
+		g_maskCache[0].img = pixman_image_ref(img);
+		g_maskCount++;
+		g_maskBytes += bytes;
+	}
+	return img;
+}
+
 void
 GraphicsContext::fillRoundedRect(int x, int y, unsigned int w,
 				 unsigned int h, unsigned int radius,
@@ -482,7 +570,7 @@ GraphicsContext::fillRoundedRect(int x, int y, unsigned int w,
 		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
 		return;
 	}
-	pixman_image_t *mask = rounded_mask(w, h, radius);
+	pixman_image_t *mask = rounded_mask_cached(w, h, radius);
 
 	if (!mask) {
 		return;
@@ -557,7 +645,7 @@ GraphicsContext::fillRoundedGradient(int x, int y, unsigned int w,
 	}
 	pixman_image_set_repeat(grad, PIXMAN_REPEAT_PAD);
 	if (radius > 0) {
-		mask = rounded_mask(w, h, radius);
+		mask = rounded_mask_cached(w, h, radius);
 		if (!mask) {
 			pixman_image_unref(grad);
 			return;
