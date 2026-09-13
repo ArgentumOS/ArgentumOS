@@ -793,11 +793,27 @@ the click", plus the first half of Mac-like tracking:
   (390ms -> 370-390ms), so the runs are cache HITS and the re-shaping theory
   is dead; that experiment was reverted rather than kept unproven.
 
-  Next measurement: time `v->draw(g)` per view and print the worst offenders
-  with the view's accessibility role (there is no RTTI name), to separate a
-  LAYOUT pass from text from anything else — the zoo's board is layout-heavy
-  (the s25/strut-band slices are layout tests), and a per-draw relayout is the
-  shape that fits ~10ms per view with no drawing.
+  **Eliminations for that 390ms walk, each measured (not argued):**
+
+  | suspect | measurement | verdict |
+  |---|---|---|
+  | pixman primitives | ~6 solid composites, 0 gradients per board draw | not it |
+  | text | 398 `drawText` calls, 1307us each, 520ms across the WHOLE run | not it |
+  | shaped-run cache thrash | 512-entry LRU: 390ms -> 370-390ms | refuted, reverted |
+  | legacy per-call blit path | `ARGENTUM-TEXT: blitted` count in the run log = 0 | not used |
+  | an ungated toolkit print | audited the draw path | none in the view path |
+
+  Two traps worth carrying forward. (1) The zoo's own `ZOO-DRAW %ldms` line is
+  an INTERVAL (ms since the previous draw, including idle), not a duration —
+  reading "ZOO-DRAW 10920ms" as a draw cost sends you the wrong way; and only
+  ~8 board draws happen in a whole case, so per-draw numbers are few. (2) With
+  a 10ms clock, per-view timing is meaningless when each view is ~10ms — use
+  COUNTS of calls inside `draw()`, not timings.
+
+  Next measurement: count the internal calls the widgets make per draw
+  (layout / `setNeedsLayout` / `frame()` re-evaluation), because the board is
+  the layout showcase (s25/strut-band slices) and a per-draw relayout is what
+  fits ~10ms per view with no drawing, no text and no prints.
 
   **RAM sweep (`boot_matrix`): 10/10 PASS** — 256M, 1G, 2G, 4G and 8G each
   boot to a drawn desktop with 0 fatal fault lines (2G: total=2086776KB,
