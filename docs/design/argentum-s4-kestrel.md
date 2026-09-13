@@ -1141,10 +1141,17 @@ dropdown draws what the wire carries.
 
 **As built:**
 
-- **The zoo's menubar is real**: `zoo` (About, Quit), `Widgets` (Reset
-  Values, then Enable All / Disable All), `View` (a Check item over the
-  TabView, Focus First Field, Dump Geometry), with `⌘Q`/`⌘R`/`⌘D` key
-  equivalents. Each action drives board state and logs it, so a gate can
+- **The zoo's menubar is real**: `Widget Zoo` (About, Quit), `View` (a
+  Check item over the TabView), `Widgets` (Reset Values, Enable All /
+  Disable All, then Focus First Field and Dump Geometry), with
+  `⌘Q`/`⌘R`/`⌘D` key equivalents. *Re-slotted 2026-09 to follow
+  `docs/design/argentum-hig.md` §2* — the application menu first and
+  titled with the app's display name, then the standard menus the app has
+  items for, then the app's own menus. Focus First Field and Dump
+  Geometry moved out of `View` (they are the app's tools, not "what the
+  window shows") and `File`/`Edit`/`Windows`/`Help` are omitted because
+  the zoo has nothing for them. The gate's menu indices moved with it:
+  Reset Values is the THIRD title, not the second. Each action drives board state and logs it, so a gate can
   see it happen, and the reset reuses the action the board's own popup
   menu runs.
 - **`MenuItem` gained a checked state** and the wire carries it: a Check

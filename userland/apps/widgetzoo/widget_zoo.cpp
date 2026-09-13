@@ -566,26 +566,27 @@ main()
 	 * the widgets, Enable/Disable All gate them, Show Table is a
 	 * Check item (so a dropdown has state to draw and the tick has to
 	 * come back over the wire after the toggle), Focus First Field
-	 * moves the first responder, Dump Geometry prints the frames. */
-	static argentum::Menu zooBar, mZoo, mWidgets, mView;
-	static argentum::MenuItem tZoo("zoo"), tWidgets("Widgets"),
-		tView("View");
+	 * moves the first responder, Dump Geometry prints the frames.
+	 * The ORDER of the menus follows docs/design/argentum-hig.md §2. */
+	static argentum::Menu zooBar, mApp, mView, mWidgets;
+	static argentum::MenuItem tApp("Widget Zoo"), tView("View"),
+		tWidgets("Widgets");
 	static argentum::MenuItem iAbout("About Zoo"), iQuit("Quit Zoo");
 	static argentum::MenuItem iReset("Reset Values"),
 		iEnable("Enable All"), iDisable("Disable All");
 	static argentum::MenuItem iTable("Show Tabs"),
 		iFocus("Focus First Field"), iDump("Dump Geometry");
 
-	mZoo.setTitle("zoo");
+	mApp.setTitle("Widget Zoo");
 	iAbout.setAction([]() { zoo_log("menu:about"); });
 	iQuit.setAction([&app]() {
 		zoo_log("menu:quit");
 		app.terminate();
 	});
 	iQuit.setKeyEquivalent('q', argentum::KeyModCommand);
-	mZoo.addItem(&iAbout);
-	mZoo.addSeparator();
-	mZoo.addItem(&iQuit);
+	mApp.addItem(&iAbout);
+	mApp.addSeparator();
+	mApp.addItem(&iQuit);
 
 	mWidgets.setTitle("Widgets");
 	iReset.setAction([&v]() {
@@ -654,17 +655,24 @@ main()
 	});
 	iDump.setKeyEquivalent('d', argentum::KeyModCommand);
 	mView.addItem(&iTable);
-	mView.addSeparator();
-	mView.addItem(&iFocus);
-	mView.addItem(&iDump);
+	/* Focus First Field and Dump Geometry are the zoo's own tools, not
+	 * "what the window shows" — they belong in the app's own menu, which
+	 * the guideline places AFTER View (docs/design/argentum-hig.md §2). */
+	mWidgets.addSeparator();
+	mWidgets.addItem(&iFocus);
+	mWidgets.addItem(&iDump);
 
-	tZoo.setSubmenu(&mZoo);
-	tWidgets.setSubmenu(&mWidgets);
+	/* The guideline's order: the application menu first (titled with the
+	 * app's display name), then the standard menus this app has items for,
+	 * then the app's own menus. File, Edit, Windows and Help are OMITTED:
+	 * the zoo has nothing for them, and an empty menu is not shown. */
+	tApp.setSubmenu(&mApp);
 	tView.setSubmenu(&mView);
+	tWidgets.setSubmenu(&mWidgets);
 	zooBar.setTitle("Widget Zoo");
-	zooBar.addItem(&tZoo);
-	zooBar.addItem(&tWidgets);
+	zooBar.addItem(&tApp);
 	zooBar.addItem(&tView);
+	zooBar.addItem(&tWidgets);
 	app.setMenuBar(&zooBar);
 
 	w.show();

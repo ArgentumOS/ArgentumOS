@@ -166,6 +166,18 @@ class Case(BaseCase):
         self.check("bar-title-found", len(run) > 4,
                    "the app's first bar title is at x=%s"
                    % (("%d..%d" % (run[0], run[-1])) if run else "none"))
+        # The whole of the first title, its words joined the way the layout
+        # joins them (a gap of <= 14px is the same title).  `run` stops at
+        # the first word, which is not enough to exclude "the pointer's
+        # columns" below: the application menu's title is two words wide
+        # ("Widget Zoo"), and its chip repaints under the click.
+        ti0, ti1, x, gap = run[0], run[-1], run[-1] + 1, 0
+        while x < 890 and gap <= 14:
+            if any(painted.luma(x, y) < 140 for y in range(6, 25)):
+                ti1, gap = x, 0
+            else:
+                gap += 1
+            x += 1
         if len(run) > 4:
             tx = (run[0] + run[-1]) // 2
             monitor.park()
@@ -174,10 +186,10 @@ class Case(BaseCase):
             monitor.click()
             opened = session.shot("menu-open")
             below = opened.diff_box(ref, (tx - 60, 33, tx + 260, 130))
-            # the bar's own rows, minus the pointer's columns (the click
-            # leaves the cursor on the title, and the guest paints it)
-            bar_changed = (opened.diff_box(ref, (28, 6, tx - 40, 27)) +
-                           opened.diff_box(ref, (tx + 40, 6, 900, 27)))
+            # the bar's own rows, minus the clicked title's own extent (the
+            # click arms its chip and the guest repaints exactly that)
+            bar_changed = (opened.diff_box(ref, (28, 6, ti0 - 12, 27)) +
+                           opened.diff_box(ref, (ti1 + 12, 6, 900, 27)))
             self.check("menus-drop-below-the-bar",
                        below > 800 and bar_changed < 400,
                        "the dropdown fills %d px below the bar (y 33..130) and "
@@ -224,28 +236,35 @@ class Case(BaseCase):
                 merged[-1][1] = r[1]		# words of one title
             else:
                 merged.append(r)
-        self.check("bar-titles-found", len(merged) >= 2,
-                   "the app's bar carries at least two titles: %s" % (merged,))
-        if len(merged) >= 2:
-            ax = (merged[0][0] + merged[0][1]) // 2	# first title
-            bx = (merged[1][0] + merged[1][1]) // 2	# second title
+        # The guideline (docs/design/argentum-hig.md §2) fixes this order:
+        # the application menu first, then the standard menus the app has
+        # items for, then the app's own — and the zoo omits File/Edit/
+        # Windows/Help because it has nothing for them. So its bar is
+        # [Widget Zoo] [View] [Widgets], and the menu whose first row is
+        # Reset Values (menu:reset) is the THIRD title, not the second.
+        self.check("bar-titles-found", len(merged) >= 3,
+                   "the app's bar carries the application menu, View and "
+                   "its own menu, in that order: %s" % (merged,))
+        if len(merged) >= 3:
+            ax = (merged[0][0] + merged[0][1]) // 2	# the application menu
+            bx = (merged[2][0] + merged[2][1]) // 2	# the app's own menu
             rowy = 45					# first dropdown row
 
             about = session.count(r"ZOO-ACT: menu:about")
             reset = session.count(r"ZOO-ACT: menu:reset")
             monitor.park()
             monitor.goto(bx, 15)
-            monitor.click()			# the SECOND title
+            monitor.click()			# the app's own menu
             monitor.goto(bx, rowy)
             monitor.click()			# its first row
             self.check("bar-hit-test-is-right",
                        session.count(r"ZOO-ACT: menu:reset") > reset
                        and session.count(r"ZOO-ACT: menu:about") == about,
-                       "clicking the second title dropped the SECOND title's "
+                       "clicking the app's own title dropped THAT title's "
                        "menu (menu:reset ran, menu:about did not)")
 
-            # Mac-like menu tracking: open the FIRST title, then MOVE the
-            # pointer onto the second WITHOUT clicking.  The popup holds the
+            # Mac-like menu tracking: open the application menu, then MOVE
+            # the pointer onto the app's own menu WITHOUT clicking.  The popup holds the
             # pointer, so this motion reaches IT (not the bar) and the bar
             # answers which title it is over: the menu under the pointer
             # must already be the second one when the click lands.
@@ -260,8 +279,8 @@ class Case(BaseCase):
             self.check("menu-tracks-on-hover",
                        session.count(r"ZOO-ACT: menu:reset") > reset
                        and session.count(r"ZOO-ACT: menu:about") == about,
-                       "moving onto the second title swapped the open menu "
-                       "(menu:reset ran, not menu:about)")
+                       "moving onto the app's own title swapped the open "
+                       "menu (menu:reset ran, not menu:about)")
             dismissed = session.shot("menu-dismissed")
             back_bg = dismissed.luma(bgx, 15)
             self.check("open-title-goes-dark",
@@ -274,17 +293,8 @@ class Case(BaseCase):
             # from the box's left edge alone pads the left by (BAR_CHIP_PAD +
             # the pad) and the right by (BAR_CHIP_PAD - the pad): a visibly
             # lopsided highlight ("more on the left than on the right of the
-            # text").  `run` is only the title's FIRST WORD, so the extent of
-            # the whole title is re-derived here (words joined the way the
-            # layout joins them: a gap of <= 14px is the same title).
-            ti0, ti1, x, gap = run[0], run[-1], run[-1] + 1, 0
-            while x < 890 and gap <= 14:
-                if any(painted.luma(x, y) < 140 for y in range(6, 25)):
-                    ti1, gap = x, 0
-                else:
-                    gap += 1
-                x += 1
-            # the chip, on the OPEN bar: any column whose middle row is not the
+            # text").  ti0/ti1 above are that whole extent.
+            # The chip, on the OPEN bar: any column whose middle row is not the
             # bar's own tone (the chip's fill AND the inverted label differ)
             bg = ref.luma(zx + 1, 15)
             cl, cr = ti0, ti1

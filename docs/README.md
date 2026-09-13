@@ -33,6 +33,7 @@ unchanged (FNX, FSH, AGFS, Xfb, `finch`).
 | doc | status |
 |---|---|
 | `design/argentum-uikit-plan.md` | DECIDED — the GUI toolkit direction |
+| `design/argentum-hig.md` | DECIDED — interface guidelines apps follow (not code-enforced) |
 | `design/x11-xvfb-fb-plan.md` | active X11-on-FNX plan (Xfb implemented to M3) |
 | `design/llvm-clang-toolchain-plan.md` | one compiler = clang; M0-M4 DONE |
 | `design/shared-libraries-plan.md` | dynamic-linking doctrine; M0-M4 DONE |

@@ -399,8 +399,9 @@ main()
 {
 	argentum::Application &app = argentum::Application::shared();
 	argentum::Window w;
-	argentum::Menu bar, mCalc;
-	argentum::MenuItem tCalc("Calculator"), iAbout("About Calculator"),
+	argentum::Menu bar, mCalc, mEdit;
+	argentum::MenuItem tCalc("Calculator"), tEdit("Edit"),
+		iAbout("About Calculator"),
 		iClear("Clear"), iQuit("Quit Calculator");
 
 	int tries;
@@ -441,15 +442,22 @@ main()
 		app.terminate();
 	});
 	iQuit.setKeyEquivalent('q', argentum::KeyModCommand);
+	/* docs/design/argentum-hig.md §2: the application menu first (About
+	 * then Quit), then the standard menus this app has items for. The
+	 * calculator's only other action is Clear, which is an Edit action.
+	 * File, View, Windows and Help are omitted — it has nothing for them,
+	 * and an empty menu is not shown. */
 	mCalc.setTitle("Calculator");
 	mCalc.addItem(&iAbout);
 	mCalc.addSeparator();
-	mCalc.addItem(&iClear);
-	mCalc.addSeparator();
 	mCalc.addItem(&iQuit);
+	mEdit.setTitle("Edit");
+	mEdit.addItem(&iClear);
 	tCalc.setSubmenu(&mCalc);
+	tEdit.setSubmenu(&mEdit);
 	bar.setTitle("Calculator");
 	bar.addItem(&tCalc);
+	bar.addItem(&tEdit);
 	app.setMenuBar(&bar);
 
 	w.show();
