@@ -345,6 +345,79 @@ left of the clock zone, before vs after the app becomes active, so a
 clock tick cannot move it): it passes on the fixed build and fails on
 the frozen one.
 
+**v9 (2026-09) — S4.2d: the app draws its own menus, the WM places
+them.**  The publish/PICK protocol is gone.  Each app draws its own menus
+in its own borderless, menubar-sized window, which the WM places over its
+half of the bar and maps only while that app is the focused client — so
+only the active app's menus are ever on screen, and no pick crosses a
+socket.
+
+The contract (no IPC):
+
+- the app creates a **normal** window (not override-redirect: the WM must
+  see its MapRequest), maps it **without** grabbing focus
+  (`Window::show(bool focus)`; the toolkit's `setMenuBar` uses
+  `show(false)`), and marks it before mapping: `_ARGENTUM_MENUBAR` = 1 and
+  `_ARGENTUM_MENUBAR_FOR` = the app's first ordinary window;
+- the WM never frames a marked window: `manageBarWindow()` — hooked at the
+  **top** of `manageClient`, so the boot pre-manage sweep is covered too —
+  records the binding and lets `barsRefresh()` decide visibility.  The
+  zone is the arithmetic the strip's own layout used (after the system
+  mark and the focused app's name, before the clock's reserved zone),
+  published as `_ARGENTUM_MENUBAR_ZONE` and logged as
+  `KESTREL: menubar zone x=226 w=1510`;
+- `barsRefresh()` runs from `stripRefresh()`, so focus, the app's title
+  and the clock's width all re-assert the placement; it maps the bar only
+  while its owner is `gActive`, hides the rest, and re-raises it after
+  every strip raise;
+- the presses are the app's own: the toolkit hit-tests with the layout it
+  painted (the titles are measured with the same rule the strip used) and
+  opens its own popup (`popup.cpp`), so the dropdown and the picked item's
+  action both run in the app's process.  `menuBarRefresh()` just redraws.
+
+Deleted with the protocol: `menuSerialize`/`menuParse`/`SessionMenu`/
+`sessionWriteFrame`/`kSessionSocketPath` and the codec's unit test
+(`userland/tests/menu_wire.cpp`), and the WM's `sessionOpen`/
+`sessionPublish`/`sessionRead`/`sessionAccept`/`sessionMessage`/
+`sessionDropConn`/`sessionSendPick`/`menuForClient`/`logMenu`/
+`dropMenusForClient`/`popUpClientMenu`/`clientNameFor`/`stripMenuLayout`
+plus the `SessionConn`/`PublishedMenu`/conn/menu tables.  `arrangeWindows`,
+`systemMenu` and `popUpSystemMenu` lived inside that block and stayed.
+
+**Two defects the switch exposed, both measured:**
+
+1. *The dropdown opened over the bar.*  Reported as "pulldown menus should
+   appear with their tops aligned to the bottom of the menubar, but they
+   appear on top of it instead".  The app's bar window sits ON the bar, so
+   its origin is the screen's top edge — anchoring the menu at that origin
+   covered the very titles it belongs to.  The anchor is now the window's
+   own height, the convention Kestrel's system menu already used
+   (`menuPopUp(m, 0, BAR_H)`).
+2. *The app's bar painted and was then hidden.*  The titles never reached
+   the bar while everything reported success, because the WM raises its
+   strip to the top at four sites (startup, `arrangeWindows`,
+   `manageClient`'s frame raise, the dock raise) and only `barsRefresh()`
+   ever raised the bar — so a raise *after* the last placement covered it.
+   Found at the writer: instrumenting the app's own draw made the guest log
+   show `ARGENTUM: menubar draw 1510x30` (the app *did* paint, at the right
+   size) while the bar's rows showed no ink right of the zone — painted,
+   not visible.  Every strip raise now re-raises the focused app's bar.
+
+**v8's guard claim is corrected.**  `wm_dock/app-menus-in-bar` measured
+x=210, and 210 is *Kestrel's own* text: it draws the app's name in its own
+half of the bar (28 + the name's width), so the check passed while the
+app's titles were invisible.  It now waits for the app's bar to paint and
+measures ink **right of the logged zone** — which is what "the app's menus
+are in the bar" means — and it fails on the build where the bar is covered.
+The same case's close/relaunch leg closes the app through its close box
+(`WM_DELETE_WINDOW`, the same `DestroyNotify` the WM sees): toybox's
+`killall` cannot do it, because it reads `/proc` and this boot's mounts do
+not expose one (`killall: no /proc`).
+
+Still open, unchanged: why a ~30px window's `XShmPutImage` never reaches
+fb0 (v8).  `ARGENTUM_SHM_MIN_HEIGHT` is load-bearing for the app's bar
+window too — it is exactly that height.
+
 **The publish/PICK design itself is superseded** - see the redesign plan
 in the memory record `kestrel-menubar-app-drawn-plan` (an app-drawn bar
 window replaces the protocol; this strip is why it is also the natural

@@ -329,6 +329,8 @@ public:
 		if (w <= 0 || h <= 0) {
 			return;
 		}
+		printf("ARGENTUM: menubar draw %dx%d\n", w, h);
+		fflush(stdout);
 		/* the bar's own fill, so our half is seamless with the WM's */
 		g.fillRoundedGradient(0, 0, (unsigned) w, (unsigned) h, 0,
 				      p.fillTop, p.fillBottom);

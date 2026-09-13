@@ -427,6 +427,7 @@ dockActivate(int i)
 		XRaiseWindow(dpy, m->frame->xid());
 		if (stripX) {
 			XRaiseWindow(dpy, stripX);
+	barsRefresh();	/* S4.2d: the app's bar rides above the strip */
 		}
 		focusClient(m);
 		printf("KESTREL: dock raise '%s'\n", kPins[i].title);
@@ -490,7 +491,8 @@ arrangeWindows()
 		}
 	}
 	if (stripX) {
-		XRaiseWindow(dpy, stripX);	/* the bar stays on top */
+		XRaiseWindow(dpy, stripX);
+	barsRefresh();	/* S4.2d: the app's bar rides above the strip */	/* the bar stays on top */
 	}
 	XSync(dpy, False);
 	printf("KESTREL: action arrange (%d frame(s))\n", (int) gFrames.size());
@@ -1057,6 +1059,7 @@ manageClient(const XMapRequestEvent &ev)
 	XSync(dpy, False);
 	m->mapped = true;
 	XRaiseWindow(dpy, stripX);
+	barsRefresh();	/* S4.2d: the app's bar rides above the strip */
 	XSync(dpy, False);
 	if (!gActive) {
 		focusClient(m);		/* first window gets focus */
@@ -2319,6 +2322,7 @@ main()
 	bar.draw();
 	XSync(dpy, False);
 	XRaiseWindow(dpy, stripX);
+	barsRefresh();	/* S4.2d: the app's bar rides above the strip */
 	XSync(dpy, False);
 
 	/* manage clients that mapped before we selected redirect */
