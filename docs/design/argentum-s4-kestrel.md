@@ -541,17 +541,38 @@ when the menu closes however it does. Where it lives:
   first glyph, inside the title's hit zone: idle 224 -> open 143 -> closed
   224 (a 20+ luma drop each way). It also asserts the close repaint.
 
-**Open (measured 2026-09): Kestrel's own system mark does not get the same
-treatment.** The code was written and then withdrawn: with the mark's
-open-state branch in `StripView::draw` the *draw* provably ran with the
-state set (instrumented: the branch was taken) and painted the chip into the
-strip's backing, yet fb0's mark columns never changed — while the app bar's
-identical chip, through `Window`-level refresh, did. So the strip's repaint
-of the mark's columns (x 2..26) does not reach the screen for a state-only
-change; the app bar and the clock/title do. The next measurement is inside
-`Window::flushBacking`/the shadow drain for the strip's rect, not in
-Kestrel. A rogue-*geometry* probe would have been easier than a pixel
-sample: see `userland/tests/rogue_resize.c` for that shape.
+**Open (measured 2026-09, narrowed): Kestrel's own system mark does not get
+the chip, and the loss is *not* in the toolkit.** The code was written,
+instrumented and withdrawn; what the measurement established, in order:
+
+- the draw *runs* with the state set (the branch was taken and emitted) and the
+  chip goes into the strip's backing;
+- `Window::flushBacking` then logs a **full-bar** flush for exactly those draws
+  — `KESDBG flush 0x200007 1920x30 rect=0,0 1920x30 shm=1`, twice while the
+  menu was up — so the damage rect was the whole bar, the composite was not
+  clipped, and the MIT-SHM put covered the mark's columns. The toolkit side is
+  exonerated; the app bar's identical chip (same code path, `Window`-level
+  refresh) reaches fb0;
+- a control probe settles *what* is lost: with `gSysMenuOpen` forcing a
+  **whole-strip fill** (`fillRect(0, 0, w, h, 0xff0000)`) the strip's half of
+  the bar still does not change on screen at all (`0xe0e0e5` at x=24, y=15 in
+  the idle, open *and* closed shots). So it is not the mark's columns, the
+  chip's geometry or its colours: **no draw from this path lands**, while
+  draws of the same window from other paths (focus change, clock tick) do;
+- no X error accompanies it. (The run's only Kestrel error is an unrelated,
+  benign `op=10 code=3 res=0x400002` — `UnmapWindow`/`BadWindow` on the zoo's
+  bar window at teardown. **Gate blind spot worth fixing separately:**
+  `wm_dock`'s `no-x-errors` regex matches `X Error|BadWindow|BadValue|…` but
+  the tree's own handlers print *numeric* codes (`KESTREL: X error op=… code=…`,
+  `ARGENTUM: X error op=… code=…`), so those errors are invisible today.)
+
+So the pixels are lost between the client's put and fb0 — the **shadow drain /
+BlockHandler** is the place to look, not the damage logic. The discriminating
+next experiment is named: force the same whole-strip fill from the *clock*
+path (an idle-driven `stripRefresh()`) with the menu open. If that lands, the
+difference is the draw's *context* — inside the WM's event hook versus idle —
+which points at drain timing; if it does not, the strip's window itself is the
+variable and the comparison moves to its `XShmPutImage` versus `XPutImage`.
 
 ### S4.2b — picks + focus swap (whole S4)
 *Status: **DONE** (2026-09).* `userland/argentum/argentum.h`
