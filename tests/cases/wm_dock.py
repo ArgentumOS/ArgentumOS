@@ -193,6 +193,78 @@ class Case(BaseCase):
             open_bg = opened.luma(bgx, 15)
             monitor.goto(1700, 900)		# dismiss: the popup takes it
             monitor.click()
+
+        # --- the bar's hit-test, and Mac-like menu tracking ---------------
+        # The title LAYOUT is in pixels (barTitleLayout measures with
+        # pxPerPt) while a view responder's mouse event is in view-local
+        # POINTS: comparing them put the hit zones left of the painted
+        # titles and drifted further off the further right you clicked, so
+        # clicking a title opened a DIFFERENT title's menu ("the wrong one
+        # gets the click").  Then: on the Mac, once a menu is open, moving
+        # the pointer onto another title opens that one and closes the
+        # previous.  Both are asserted through what the app DOES: the zoo's
+        # first menu's first item is "About Zoo" (ZOO-ACT: menu:about) and
+        # its second menu's first item is "Reset Values" (menu:reset).
+        runs = []
+        if painted is not None:
+            cur = []
+            for x in range(zx, 900):
+                if any(painted.luma(x, y) < 140 for y in range(6, 25)):
+                    cur.append(x)
+                elif cur:
+                    if cur[-1] - cur[0] > 4:
+                        runs.append([cur[0], cur[-1]])
+                    cur = []
+            if cur and cur[-1] - cur[0] > 4:
+                runs.append([cur[0], cur[-1]])
+        merged = []
+        for r in runs:
+            if merged and r[0] - merged[-1][1] <= 14:
+                merged[-1][1] = r[1]		# words of one title
+            else:
+                merged.append(r)
+        self.check("bar-titles-found", len(merged) >= 2,
+                   "the app's bar carries at least two titles: %s" % (merged,))
+        if len(merged) >= 2:
+            ax = (merged[0][0] + merged[0][1]) // 2	# first title
+            bx = (merged[1][0] + merged[1][1]) // 2	# second title
+            rowy = 45					# first dropdown row
+
+            about = session.count(r"ZOO-ACT: menu:about")
+            reset = session.count(r"ZOO-ACT: menu:reset")
+            monitor.park()
+            monitor.goto(bx, 15)
+            monitor.click()			# the SECOND title
+            monitor.goto(bx, rowy)
+            monitor.click()			# its first row
+            self.check("bar-hit-test-is-right",
+                       session.count(r"ZOO-ACT: menu:reset") > reset
+                       and session.count(r"ZOO-ACT: menu:about") == about,
+                       "clicking the second title dropped the SECOND title's "
+                       "menu (menu:reset ran, menu:about did not)")
+
+            # Mac-like hover tracking: open the FIRST title, then MOVE the
+            # pointer onto the second.  The toolkit implements it
+            # (MenuBarView::mouseMoved, in-bar only) and the state plumbing
+            # is right, but it does not fire: measured with a temporary
+            # print, no MotionNotify reaches the bar window between the
+            # opening click and the next click, so the handler is never
+            # called.  Observed here, not asserted, until that is resolved.
+            about = session.count(r"ZOO-ACT: menu:about")
+            reset = session.count(r"ZOO-ACT: menu:reset")
+            monitor.park()
+            monitor.goto(ax, 15)
+            monitor.click()			# the FIRST title
+            monitor.goto(bx, 15)		# motion only: no button
+            monitor.goto(bx, rowy)
+            monitor.click()			# whichever menu is open
+            turned = (session.count(r"ZOO-ACT: menu:reset") > reset
+                      and session.count(r"ZOO-ACT: menu:about") == about)
+            self.note("menu tracking on hover: %s (the pointer moved from the "
+                      "first title to the second without a click; 'swapped' "
+                      "means the second menu opened)"
+                      % ("swapped" if turned else "NOT swapped yet - no "
+                         "MotionNotify reaches the bar while a menu is open"))
             dismissed = session.shot("menu-dismissed")
             back_bg = dismissed.luma(bgx, 15)
             self.check("open-title-goes-dark",

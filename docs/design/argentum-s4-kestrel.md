@@ -541,8 +541,52 @@ when the menu closes however it does. Where it lives:
   first glyph, inside the title's hit zone: idle 224 -> open 143 -> closed
   224 (a 20+ luma drop each way). It also asserts the close repaint.
 
+**S5.2d follow-up — the bar's hit zones, and a menu that shut itself.**
+Two bugs behind "when I open the zoo and click the menus, the wrong one gets
+the click", plus the first half of Mac-like tracking:
+
+- **The hit test was in the wrong unit.** `barTitleLayout()` lays the titles
+  out in **pixels** (it measures with `pxPerPt`), but a view responder is
+  dispatched in view-local **points** (`hit_in_tree` converts). Comparing the
+  raw event x against the laid-out x put every hit zone left of its painted
+  title — further off the further right you clicked, so a right-hand title hit
+  its left neighbour. Fixed by converting in one place: `MenuBarView::titleAt()`
+  now takes a point and converts it (`e.x * pxPerPt`), and both the press and
+  the hover path go through it (slack `BAR_HIT_PAD 8`, in px).
+- **A menu closed on the release of the click that opened it.** Measured in
+  the guest log with no further input: `ARGENTUM-POPUP: open "zoo" (3 items)`
+  followed immediately by `ARGENTUM-POPUP: closed`. A menu is presented on the
+  *press*, and the popup's trailing "a click that hits no row dismisses it"
+  rule also caught that same click's *release*. It was intermittent (whether
+  the popup is mapped in time decides the delivery), which is why a dropdown
+  sometimes stayed up and sometimes flashed. Now a release dismisses only a
+  popup that **saw a press of its own** (`PopupWindow::notePress()` from both
+  the row view and the window-level press; reset on each `present()`).
+  **This is also the likely explanation for the system-mark chip below**: the
+  chip *was* drawn, then that instant close repainted the strip without it.
+- **Mac-like tracking is implemented but does not fire yet.** With one of the
+  bar's own menus open, `MenuBarView::mouseMoved` drops the hovered title's
+  menu in place of the previous one (shared `openItemMenu()`, which also sets
+  the open index *after* `menuPopUp` — the outgoing popup's `onClosed` clears
+  it first), and it only acts while the pointer is INSIDE the bar, so reading
+  a dropdown never swaps it. Measured with a temporary print: the state
+  plumbing is right (`open=1`, x converted to the correct px) but the handler
+  is never reached — **no `MotionNotify` reaches the bar window between the
+  opening click and the next click**, while the same window gets motion freely
+  before the menu opens. That is the open item; the next measurement is to log
+  the loop's `MotionNotify` (which window receives it once a popup is up: the
+  bar, the popup, or none).
+- Gate: `wm_dock/bar-hit-test-is-right` clicks the **second** title and asserts
+  the second menu's first item ran (`ZOO-ACT: menu:reset`, not `menu:about`);
+  `wm_dock/bar-titles-found` reads the three titles off the bar
+  (`[151,178] [199,264] [285,323]`); the hover half is *observed*, not
+  asserted, until the motion question is answered.
+
 **Open (measured 2026-09) — the system-mark chip does not render, and the
-earlier "frozen strip" reading was WRONG.** The chip was written, gated and
+earlier "frozen strip" reading was WRONG.** (See the block above: the
+instant-close-on-release bug is the likely explanation — the chip was drawn
+and then repainted away by `onClosed` — so this needs a re-gate before it is
+treated as a drawing bug at all.) The chip was written, gated and
 withdrawn; the measurement behind this note was corrected twice, so both the
 correction and the remaining question are recorded:
 

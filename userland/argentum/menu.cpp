@@ -268,6 +268,8 @@ Menu::itemCount() const
  * uses +-8), inset vertically so it reads as a chip in the bar */
 #define BAR_CHIP_PAD	7
 #define BAR_CHIP_INSET	3
+/* the title's hit zone: the laid-out box plus this much slack, in PIXELS */
+#define BAR_HIT_PAD	8
 
 namespace {
 
@@ -371,76 +373,121 @@ public:
 		}
 	}
 
-	void mouseDown(const MouseEvent &e) override
+	/* The title under a view-local POINT (view responders are dispatched
+	 * in points), or -1.  The LAYOUT is in pixels — barTitleLayout measures
+	 * with pxPerPt — so the event must be converted before comparing it:
+	 * without that the hit zones sat left of the painted titles and drifted
+	 * further off the further right you clicked (reported: "when I open the
+	 * zoo and click the menus, the wrong one gets the click"). */
+	int titleAt(double xPt)
 	{
-		Rect f = frame();
+		int xs[32], ws[32], idx[32];
+		int n = barTitleLayout(menu_, widthPx(), xs, ws, idx, 32);
+		int x = (int) (xPt * Application::shared().pxPerPt() + 0.5);
 
-		if (!menu_ || !win_) {
-			return;
+		if (x < 0 || x >= widthPx()) {
+			return -1;
 		}
-		int *xs = new int[32], *ws = new int[32], *idx = new int[32];
-		int n = barTitleLayout(menu_,
-				       (int) (f.size.w * Application::shared()
-						      .pxPerPt() + 0.5),
-				       xs, ws, idx, 32);
-		int hit = -1;
-
 		for (int i = 0; i < n; i++) {
-			int x = (int) e.x;
-
-			if (x >= xs[i] - 8 && x < xs[i] + ws[i] + 8) {
-				hit = idx[i];
+			if (x >= xs[i] - BAR_HIT_PAD &&
+			    x < xs[i] + ws[i] + BAR_HIT_PAD) {
+				return idx[i];
 			}
 		}
-		int itemX = (hit >= 0) ? xs_of(hit, xs, ws, idx, n) : 0;
-		int barH = (int) (f.size.h * Application::shared().pxPerPt() + 0.5);
+		return -1;
+	}
 
-		delete[] xs;
-		delete[] ws;
-		delete[] idx;
-		if (hit < 0) {
-			return;
-		}
-		MenuItem *item = menu_->itemAt(hit);
-		Menu *sub = item ? item->submenu() : nullptr;
-
-		if (!sub) {
-			return;		/* nothing to drop */
-		}
-		/* the popup wants root px; we are the menubar window itself */
+	/* Drop `itemIndex`'s menu under the bar, replacing whatever was open.
+	 * menuPopUp dismisses the previous popup, which fires ITS onClosed and
+	 * clears the open index — so the index is set AFTER the call, or the
+	 * new menu would be left unhighlighted and untracked. */
+	void openItemMenu(int itemIndex, Menu *sub)
+	{
 		Display *dpy = (Display *) Application::shared().display();
 		::Window child;
+		int xs[32], ws[32], idx[32];
+		int n, itemX = BAR_PAD;
 		int rx = 0, ry = 0;
+		int barH;
 
-		if (!dpy || !XTranslateCoordinates(dpy, win_->xid(),
-						   DefaultRootWindow(dpy),
-						   0, 0, &rx, &ry, &child)) {
+		if (!dpy || !win_ || !sub || !menu_) {
 			return;
 		}
-		/* the dropdown hangs FROM the bar: its top is the bar's
-		 * bottom edge, not the bar window's origin (which is the
-		 * screen's top - anchoring there would cover the bar). */
-		openIndex_ = hit;
+		n = barTitleLayout(menu_, widthPx(), xs, ws, idx, 32);
+		for (int i = 0; i < n; i++) {
+			if (idx[i] == itemIndex) {
+				itemX = xs[i];
+			}
+		}
+		barH = (int) (frame().size.h *
+			      Application::shared().pxPerPt() + 0.5);
+		/* the popup wants root px; we are the menubar window itself */
+		if (!XTranslateCoordinates(dpy, win_->xid(),
+					   DefaultRootWindow(dpy), 0, 0, &rx, &ry,
+					   &child)) {
+			return;
+		}
+		/* the dropdown hangs FROM the bar: its top is the bar's bottom
+		 * edge, not the bar window's origin (which is the screen's top —
+		 * anchoring there would cover the bar). */
 		menuPopUp(sub, rx + itemX, ry + barH, onPick_, [this]() {
-			/* however the menu closed (a pick, a click
-			 * outside, a dismissal) the title goes back to
-			 * chrome */
+			/* however the menu closed (a pick, a click outside, a
+			 * dismissal) the title goes back to chrome */
 			openIndex_ = -1;
 			Application::shared().menuBarRefresh();
 		});
+		openIndex_ = itemIndex;
 		Application::shared().menuBarRefresh();
 	}
 
-private:
-	/* the picked title's x (px), for the dropdown's anchor */
-	int xs_of(int itemIndex, int *xs, int *ws, int *idx, int n)
+	void mouseDown(const MouseEvent &e) override
 	{
-		for (int i = 0; i < n; i++) {
-			if (idx[i] == itemIndex) {
-				return xs[i];
-			}
+		int hit = titleAt(e.x);
+		MenuItem *item;
+
+		if (!menu_ || !win_ || hit < 0) {
+			return;
 		}
-		return BAR_PAD;
+		item = menu_->itemAt(hit);
+		if (item && item->submenu()) {
+			openItemMenu(hit, item->submenu());
+		}
+	}
+
+	/* S5.2d follow-up — Mac-like menu tracking: while one of OUR menus is
+	 * open, moving the pointer onto another title drops that title's menu
+	 * and closes the previous one, with no second click.  Moving OFF the bar
+	 * (down into the dropdown, or anywhere else) leaves the open menu alone,
+	 * as it does on the Mac. */
+	void mouseMoved(const MouseEvent &e) override
+	{
+		int it;
+		MenuItem *item;
+
+		if (openIndex_ < 0 || !menu_ || !win_) {
+			return;		/* nothing of ours is open */
+		}
+		/* only a pointer INSIDE the bar counts: a hit-less point (over
+		 * the dropdown, or anywhere else) still reaches this view, and
+		 * tracking there would switch menus while you are reading one */
+		if (e.y < 0 || e.y >= frame().size.h) {
+			return;
+		}
+		it = titleAt(e.x);
+		if (it < 0 || it == openIndex_) {
+			return;
+		}
+		item = menu_->itemAt(it);
+		if (item && item->submenu()) {
+			openItemMenu(it, item->submenu());
+		}
+	}
+
+	/* the bar's width in px (frames are points) */
+	int widthPx()
+	{
+		return (int) (frame().size.w *
+			      Application::shared().pxPerPt() + 0.5);
 	}
 
 	Menu *menu_;

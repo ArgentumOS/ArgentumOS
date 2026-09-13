@@ -84,6 +84,16 @@ public:
 	{
 		closed_ = std::move(h);
 	}
+
+	/* A press the popup itself received (in its rows, or outside them
+	 * while it holds the pointer). A menu must not close on the RELEASE
+	 * of the click that opened it — that release arrives without the
+	 * popup ever having seen a press, and dismissing on it made every menu
+	 * flash open and shut, which also broke Mac-like hover tracking (there
+	 * was nothing left to track) and hid any state the owner painted while
+	 * its menu was up. */
+	void notePress() { sawPress_ = true; }
+	bool sawPress() const { return sawPress_; }
 	std::function<void(int)> pickHandler() const { return pick_; }
 
 private:
@@ -93,6 +103,7 @@ private:
 	std::function<void(int)> pick_;
 	std::function<void()> closed_;
 	bool grabbed_ = false;
+	bool sawPress_ = false;
 };
 
 /* geometry helpers shared by draw + row hit-testing. S4.2c: rows are
@@ -330,6 +341,7 @@ PopupMenuView::mouseDown(const MouseEvent &e)
 {
 	int row = rowAt(e.y);
 
+	host_->notePress();
 	armed_ = row;
 	if (row >= 0) {
 		setHovered(row);
@@ -361,7 +373,13 @@ PopupMenuView::mouseUp(const MouseEvent &e)
 	}
 	armed_ = -1;
 	setHovered(-1);
-	/* blank click inside the popup dismisses it */
+	/* a blank click inside the popup dismisses it — but only one the popup
+	 * SAW PRESSED: the release of the click that opened the menu reaches
+	 * here too (a menu is presented on the press), and dismissing on it
+	 * would shut the menu the instant it appeared */
+	if (!host_->sawPress()) {
+		return;		/* the opening click's own release */
+	}
 	host_->dismiss();
 }
 
@@ -410,6 +428,7 @@ PopupWindow::present()
 		     menu_->title(), menu_->itemCount());
 	std::fflush(stderr);
 	listView_->setHovered(-1);
+	sawPress_ = false;	/* a new gesture */
 	show();			/* map + focus */
 	/* A menu takes the pointer while it is up: that is how a click
 	 * anywhere else reaches the popup at all (nothing else would tell
@@ -466,6 +485,7 @@ PopupWindow::mouseDown(const MouseEvent &e)
 	/* window px (a Window responder's coordinates); a point outside the
 	 * menu's box is a click elsewhere on the screen, which dismisses —
 	 * exactly like a real menu */
+	notePress();
 	if (e.x < 0 || e.y < 0 || e.x >= (double) width() ||
 	    e.y >= (double) height()) {
 		dismiss();
