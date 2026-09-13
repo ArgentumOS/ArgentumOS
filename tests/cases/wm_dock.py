@@ -249,6 +249,36 @@ class Case(BaseCase):
         self.check("bar-titles-found", len(merged) >= 3,
                    "the app's bar carries the application menu, View and "
                    "its own menu, in that order: %s" % (merged,))
+
+        # The application menu is BOLD (docs/design/argentum-hig.md §2; the
+        # toolkit bolds the first bar title).  Measured as STROKE WIDTH - the
+        # mean horizontal ink run through the bar's text rows - which does not
+        # depend on which letters the title happens to use: a bold face runs
+        # more than twice as thick here (measured 4.2px against 2.0px for two
+        # plain titles).  So this compares the app menu with the DENSEST of
+        # the other titles rather than with a magic number.
+        def mean_run(box):
+            runs = []
+            for y in range(6, 26):
+                cur = 0
+                for x in range(box[0], box[1] + 1):
+                    if painted.luma(x, y) < 140:
+                        cur += 1
+                    elif cur:
+                        runs.append(cur)
+                        cur = 0
+                if cur:
+                    runs.append(cur)
+            return (sum(runs) / len(runs)) if runs else 0.0
+
+        if painted is not None and len(merged) >= 2:
+            app_run = mean_run(merged[0])
+            rest = max(mean_run(m) for m in merged[1:])
+            self.check("app-menu-is-bold",
+                       app_run >= rest * 1.5,
+                       "the application menu draws bold (mean ink run %.2f px "
+                       "against %.2f px for the plain menus)"
+                       % (app_run, rest))
         if len(merged) >= 3:
             ax = (merged[0][0] + merged[0][1]) // 2	# the application menu
             bx = (merged[2][0] + merged[2][1]) // 2	# the app's own menu

@@ -298,7 +298,12 @@ barTitleLayout(Menu *menu, int width, int *xs, int *ws, int *idx, int max)
 		if (item->kind() == MenuItem::Kind::Separator || !s[0]) {
 			continue;
 		}
-		w = (int) (textMetrics(t.fontFamily(), t.fontSizePt(), s)
+		/* S4.2c/HIG §2: the FIRST laid-out title is the application
+		 * menu, and it is drawn BOLD — so it has to be MEASURED bold
+		 * too, or the highlight would be sized for the regular face
+		 * and clip its own text. */
+		w = (int) (textMetrics(t.fontFamily(), t.fontSizePt(), s,
+				       n == 0)
 			   .widthPt * ppt + 0.5);
 		if (x + w > width - BAR_PAD) {
 			break;
@@ -375,10 +380,14 @@ public:
 						     armed.fillTop,
 						     armed.fillBottom);
 			}
+			/* the application menu (the first bar title) is bold:
+			 * it is the one item that is not a plain menu, and the
+			 * bar has to say so (docs/design/argentum-hig.md §2) */
 			g.drawText(t.fontFamily(), t.fontSizePt(), xs[i], ty,
 				   menu_->itemAt(idx[i])->title(),
 				   idx[i] == openIndex_ ? armed.label
-							: t.text());
+							: t.text(),
+				   i == 0);
 		}
 	}
 

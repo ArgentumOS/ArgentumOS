@@ -895,7 +895,7 @@ GraphicsContext::drawLine(int x0, int y0, int x1, int y1, std::uint32_t rgb)
 void
 GraphicsContext::drawText(const char *family, double sizePt,
 			  int xPx, int yPx, const char *utf8,
-			  std::uint32_t fg)
+			  std::uint32_t fg, bool bold)
 {
 	BitmapImage::Impl *b = impl_->bitmap ? impl_->bitmap->impl_ : nullptr;
 
@@ -906,7 +906,7 @@ GraphicsContext::drawText(const char *family, double sizePt,
 	unsigned int pixelSize = (unsigned int)
 		((sizePt * app.pxPerPt()) + 0.5);
 
-	TextRun *t = textRunPrepare(family, utf8, pixelSize);
+	TextRun *t = textRunPrepare(family, utf8, pixelSize, false, bold);
 	if (!t) {
 		return;
 	}

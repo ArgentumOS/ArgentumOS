@@ -57,6 +57,14 @@ Rules:
 6. **Order is positional, not a sort key.** Skipping a menu does not move the
    others: an app with an app menu, a View item and its own menu reads
    `[App] View Custom`, not `[App] Custom View`.
+7. **The application menu's title is BOLD**; every other title is regular.
+   It is the one item that is not a plain menu — it is the app itself — and
+   the bar has to say so. The toolkit bolds the **first bar title**, so an app
+   gets this by putting its application menu first (§2.1), not by asking for
+   it. Bold is a real face (`DejaVuSans-Bold`, shipped beside the regular one
+   in `/System/Shared/Fonts`), selected through fontconfig's `FC_WEIGHT` — not
+   a synthesized thickening — so the metrics are the face's own and the
+   highlight is measured with them.
 
 ## 3. The application menu
 

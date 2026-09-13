@@ -82,6 +82,7 @@ static const int PADY = 1;
 struct FaceEntry {
 	char family[64] = { 0 };
 	unsigned int px = 0;
+	bool bold = false;
 	FT_Face face = nullptr;
 	FcPattern *match = nullptr;	/* keeps FC_FILE alive */
 };
@@ -101,13 +102,14 @@ static void runCacheDropFace(FT_Face face);
  * call created the entry (callers log the 'matched' line once). */
 static FT_Face
 textLookupFace(const char *family, unsigned int px, FT_Library lib,
-	       FcPattern **matchRef, bool *firstResolve)
+	       FcPattern **matchRef, bool *firstResolve, bool bold)
 {
 	int i;
 
 	*firstResolve = false;
 	for (i = 0; i < g_faceCount; i++) {
 		if (g_faceCache[i].px == px &&
+		    g_faceCache[i].bold == bold &&
 		    std::strcmp(g_faceCache[i].family, family) == 0) {
 			if (matchRef) {
 				*matchRef = g_faceCache[i].match;
@@ -121,6 +123,10 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
 	if (!pat) {
 		return nullptr;
 	}
+	/* ask fontconfig for the WEIGHT, not just the family: with only the
+	 * family it hands back the regular face however the caller asked */
+	FcPatternAddInteger(pat, FC_WEIGHT,
+			    bold ? FC_WEIGHT_BOLD : FC_WEIGHT_REGULAR);
 	FcConfigSubstitute(nullptr, pat, FcMatchPattern);
 	FcDefaultSubstitute(pat);
 	FcResult res = FcResultNoMatch;
@@ -167,6 +173,7 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
 		     sizeof(g_faceCache[i].family) - 1);
 	g_faceCache[i].family[sizeof(g_faceCache[i].family) - 1] = 0;
 	g_faceCache[i].px = px;
+	g_faceCache[i].bold = bold;
 	g_faceCache[i].face = face;
 	g_faceCache[i].match = match;
 	*firstResolve = true;
@@ -411,7 +418,7 @@ runCacheDropFace(FT_Face face)
 
 TextRun *
 textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
-	       bool quiet)
+	       bool quiet, bool bold)
 {
 	Application &app = Application::shared();
 
@@ -427,8 +434,9 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	 * same glyphs for the life of the process */
 	char ckey[128];
 
-	if (std::snprintf(ckey, sizeof(ckey), "%s|%u|%s", family, pixelSize,
-			  utf8) < (int) sizeof(ckey)) {
+	if (std::snprintf(ckey, sizeof(ckey), "%s|%u|%d|%s", family,
+			  pixelSize, bold ? 1 : 0, utf8) <
+	    (int) sizeof(ckey)) {
 		for (int i = 0; i < g_runCount; i++) {
 			if (g_runCache[i].run &&
 			    std::strcmp(g_runCache[i].key, ckey) == 0) {
@@ -449,7 +457,7 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	FcPattern *matchRef = nullptr;
 	FT_Face face = textLookupFace(
 		family, pixelSize, (FT_Library) app.freeTypeHandle(),
-		&matchRef, &first);
+		&matchRef, &first, bold);
 
 	if (!face) {
 		fprintf(stderr, "ARGENTUM-TEXT: face lookup(%s) failed\n",
@@ -667,7 +675,7 @@ textInkInsetPx(void)
 }
 
 TextMetrics
-textMetrics(const char *family, double sizePt, const char *utf8)
+textMetrics(const char *family, double sizePt, const char *utf8, bool bold)
 {
 	Application &app = Application::shared();
 	TextMetrics m = { 0, 0, 0 };
@@ -677,7 +685,7 @@ textMetrics(const char *family, double sizePt, const char *utf8)
 	}
 	unsigned int pixelSize = (unsigned int)
 		((sizePt * app.pxPerPt()) + 0.5);
-	TextRun *t = textRunPrepare(family, utf8, pixelSize);
+	TextRun *t = textRunPrepare(family, utf8, pixelSize, false, bold);
 	if (!t) {
 		return m;
 	}

@@ -75,7 +75,7 @@ struct TextMetrics {
 	double descentPt = 0;
 };
 TextMetrics textMetrics(const char *family, double sizePt,
-			const char *utf8);
+			const char *utf8, bool bold = false);
 /* The px drawText() leaves between the x it is handed and the run's ink:
  * the run box carries a small horizontal raster pad, so anything that has
  * to HUG the text (a bar chip, an underline, a caret) must offset by this
@@ -672,7 +672,7 @@ public:
 	 * fg is 0xRRGGBB. The run's advance/box fall out of
 	 * textMetrics() when layout needs them. */
 	void drawText(const char *family, double sizePt, int xPx, int yPx,
-		      const char *utf8, std::uint32_t fg);
+		      const char *utf8, std::uint32_t fg, bool bold = false);
 
 	/* S2.3c: draw a BitmapImage into (xPx,yPx,wPx,hPx) in the
 	 * current translated space, clipped to the frame. mode places

@@ -1144,7 +1144,10 @@ dropdown draws what the wire carries.
 - **The zoo's menubar is real**: `Widget Zoo` (About, Quit), `View` (a
   Check item over the TabView), `Widgets` (Reset Values, Enable All /
   Disable All, then Focus First Field and Dump Geometry), with
-  `⌘Q`/`⌘R`/`⌘D` key equivalents. *Re-slotted 2026-09 to follow
+  `⌘Q`/`⌘R`/`⌘D` key equivalents, and its **application menu title is
+  bold** (the toolkit bolds the first bar title; DejaVuSans-Bold ships
+  beside the regular face and is selected via fontconfig `FC_WEIGHT`).
+  *Re-slotted 2026-09 to follow
   `docs/design/argentum-hig.md` §2* — the application menu first and
   titled with the app's display name, then the standard menus the app has
   items for, then the app's own menus. Focus First Field and Dump

@@ -498,7 +498,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# docs/design/fontconfig-config-plan.md) - no XML fonts.conf ships.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts" \
 		"$(ROOTFS64)/System/Variable Data/fontconfig"
-	@cp userland/fonts/DejaVuSans.ttf \
+	@cp userland/fonts/DejaVuSans.ttf userland/fonts/DejaVuSans-Bold.ttf \
 		"$(ROOTFS64)/System/Shared/Fonts/"
 	@cp userland/configuration/system.fonts.conf \
 		"$(ROOTFS64)/System/Configuration/system.fonts.conf"

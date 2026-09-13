@@ -489,7 +489,8 @@ struct TextView::Impl {
 struct TextRun;
 
 TextRun *textRunPrepare(const char *family, const char *utf8,
-			unsigned int pixelSize, bool quiet = false);
+			unsigned int pixelSize, bool quiet = false,
+			bool bold = false);
 void textRunFinish(TextRun *t);
 unsigned int textRunGlyphCount(const TextRun *t);
 /* run box geometry (px), matching the legacy drawText box */
