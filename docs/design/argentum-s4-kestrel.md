@@ -715,6 +715,44 @@ the click", plus the first half of Mac-like tracking:
      (count work per fault, e.g. allocation/zeroing and page-table
      bookkeeping), not a drawing problem.
 
+  **The kernel fault cost, fixed (2026-09).** `alloc_pages64()` (the single
+  bitmap allocator, kernel/boot64/mm64.c) was first-fit but restarted the scan
+  at page 0 on EVERY allocation:
+
+  ```c
+  for(p = 0; p < MAX_PAGES; p++) { if(bit_test(p)) continue; ...
+  ```
+
+  With the low region live in a running session, the first free page sits tens
+  of thousands of bits away — 256MB is 65536 pages — so a single page fault
+  paid for the whole walk. That is the ~250us per 4KB page (16MB/s) measured
+  here, and it is why a full-window paint cost hundreds of milliseconds: every
+  fault that demand-maps a page called `map_page()` -> `kmalloc(PAGE_SIZE)`
+  -> this scan. Fixed with a search cursor (`alloc_hint64`): two straight-line
+  passes ([hint, MAX) then [0, hint), so the wrap is explicit and a run never
+  straddles the array end), the hint set past each allocation, and
+  `free_pages64()` lowering it so a hole below is handed out before the search
+  moves on.
+
+  Measured on the same wm_dock workload:
+
+  | | before | after |
+  |---|---|---|
+  | composite per draw (avg) | 58 ms | **33 ms** |
+  | flush (avg) | 35 ms | **13 ms** |
+  | worst draw | 850 ms | **520 ms** |
+  | the 1248x744 draws | 250-610 ms | **0-110 ms** |
+  | case wall time | 68 s | **62 s** |
+
+  Gates: `wm_dock` 33/33, `smoke_desktop` 14/14. **NOT yet run: `boot_matrix`**
+  (the RAM-size sweep, 30 min) — it is the most relevant remaining check for
+  an allocator change, so it is the recommended first follow-up.
+
+  What is left after this: the zoo's board draws (460-520 ms, a heavy view
+  tree with ~50 text runs) are now the view-tree WALK, not faults — the
+  toolkit's per-draw rounded-rect masks and gradient ramps, which is the other
+  item on the original list.
+
   Recipe: `ARGENTUM_DRAW_MS=1` (env into the app) makes the toolkit print
   `DRAW-MS: comp=<ms> flush=<ms> rect=<x0>,<y0>-<x1>,<y1>` per draw. NOTE the
   kernel's clock granularity is 10 ms (100 Hz tick), so these figures are

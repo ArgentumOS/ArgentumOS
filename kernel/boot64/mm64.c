@@ -249,36 +249,62 @@ void mm64_postmem_init(void)
 	kstat.min_free_pages = (kstat.total_mem_pages * 20) / 100;
 }
 
+/* Where the last search stopped. Scanning the bitmap from page 0 on every
+ * allocation made first-fit O(live pages): the low region is live in a
+ * running session, so the first free page sits tens of thousands of bits
+ * away, and a page fault paid for the whole walk. Measured 2026-09: ~250us
+ * per 4KB page fault (16MB/s) against a healthy fault path, which is what
+ * made a full-window repaint cost hundreds of milliseconds. frees lower the
+ * hint, so a hole below is reused before the search moves on. */
+static unsigned long alloc_hint64;
+
 /* first-fit allocation of n consecutive pages; returns the physical address */
 unsigned long alloc_pages64(int n)
 {
-	unsigned long p, i, run;
+	unsigned long p, i, run, lo, hi;
+	int pass;
 
 	if(n <= 0) {
 		return 0;
 	}
-	for(p = 0; p < MAX_PAGES; p++) {
-		if(bit_test(p)) {
-			continue;
-		}
-		run = 0;
-		for(i = p; i < MAX_PAGES && run < n; i++) {
-			if(bit_test(i)) {
-				break;
+	if(alloc_hint64 >= MAX_PAGES) {
+		alloc_hint64 = 0;
+	}
+	/* two straight-line passes: [hint, MAX) then [0, hint) — the wrap is
+	 * an explicit second pass so a run never has to straddle the array
+	 * end to be found, and the [0, hint) pass is what reuses holes */
+	for(pass = 0; pass < 2; pass++) {
+		lo = pass ? 0 : alloc_hint64;
+		hi = pass ? alloc_hint64 : MAX_PAGES;
+		for(p = lo; p < hi; p++) {
+			if(bit_test(p)) {
+				continue;
 			}
-			run++;
-		}
-		if(run >= n) {
-			for(i = p; i < (p + n); i++) {
-				bit_set(i);
+			run = 0;
+			for(i = p; i < MAX_PAGES && run < n; i++) {
+				if(bit_test(i)) {
+					break;
+				}
+				run++;
 			}
-			free_pages_count -= n;
+			if(run >= n) {
+				for(i = p; i < (p + n); i++) {
+					bit_set(i);
+				}
+				free_pages_count -= n;
+				alloc_hint64 = p + n;
+				if(alloc_hint64 >= MAX_PAGES) {
+					alloc_hint64 = 0;
+				}
 #ifdef M6_BITMAP_DEBUG
-			printk("[bitmap] alloc_pages64(%d) = phys 0x%lx\n", n, p << PAGE_SHIFT64);
+				printk("[bitmap] alloc_pages64(%d) = phys 0x%lx\n", n, p << PAGE_SHIFT64);
 #endif /* M6_BITMAP_DEBUG */
-			return (p << PAGE_SHIFT64);
+				return (p << PAGE_SHIFT64);
+			}
+			if(i > p) {
+				p = i - 1;	/* skip the occupied run */
+			}
 		}
-		p = i;
 	}
 	return 0;
 }
@@ -292,6 +318,10 @@ void free_pages64(unsigned long phys, int n)
 		bit_clear(p);
 	}
 	free_pages_count += n;
+	/* a hole below the search cursor is the next thing to hand out */
+	if(first < alloc_hint64) {
+		alloc_hint64 = first;
+	}
 }
 
 unsigned long pages_free64(void)
