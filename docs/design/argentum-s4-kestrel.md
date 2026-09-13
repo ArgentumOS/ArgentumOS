@@ -956,6 +956,26 @@ the click", plus the first half of Mac-like tracking:
   rasters, rounded-rect masks, gradient ramps), and whether a process that
   draws once on launch should pay it at all before its window is up.
 
+  **Which caches, counted (one cold launch of the app, its board draw):** 81
+  rounded-mask requests with **46 misses** (46 coverage masks rasterized), **26
+  gradient images** created, 90 `textRunPrepare` calls with **46 misses** (46
+  HarfBuzz shapings) and **69 glyph rasterizations** (FreeType). The app's own
+  bar, drawn next in the same process, then reads `shaped=0` — the caches are
+  per process and they hold. So the ~400ms is precisely these: ~46 mask
+  rasterizations + 26 ramps (the chrome) and ~46 shapings + 69 glyph rasters
+  (the text), all paid once.
+
+  **The most important caveat in this section: these are TCG numbers.** The
+  harness passes no `-accel`, and this host has no `/dev/kvm` (verified), so
+  the guest is emulated instruction-by-instruction — routinely 5-20x slower
+  than the hardware this would ship on. Every absolute figure in this whole
+  block (440-470ms cold draws, 30-40ms warm, the splits above) is therefore a
+  TCG figure. The RATIOS are what the probes actually established — cold vs
+  warm, text vs chrome vs fill, computing vs waiting — and those stand; the
+  absolute times do not transfer. Before another round goes into optimizing
+  this draw, re-measure under KVM or on hardware: on real silicon the board's
+  cold first paint is unlikely to be anything worth the effort.
+
 
   Trap to avoid (cost a source file this round): do NOT write a file and read
   it in the same expression — `io.open(p,'w')` truncates BEFORE the inner
