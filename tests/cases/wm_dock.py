@@ -101,26 +101,82 @@ class Case(BaseCase):
         self.check("running-dot", changed > 0,
                    "%d px of the tile changed after its app was mapped" % changed)
 
-        # The global menubar carries the ACTIVE app's menus.  Measured as the
-        # rightmost dark ("ink") column in the bar's strip rows, left of the
-        # clock's zone (x < 900), so a clock tick cannot move it: before the
-        # launch the bar holds only Kestrel's mark and name, and while the zoo
-        # is active its own titles extend further right.  This is the check
-        # that would have caught the menubar strip whose repaints never
-        # reached fb0 - it stayed frozen at the boot paint (the titles were
-        # hit-testable but never drawn).
-        def bar_ink_right(shot):
+        # The global menubar carries the ACTIVE app's menus.  The app draws
+        # them itself, in its own bar-sized window (S4.2d), which the WM sizes
+        # to the zone it logs:
+        #
+        #   KESTREL: menubar zone x=226 w=1510
+        #
+        # Measured RIGHT of that zone: Kestrel draws the app's NAME inside its
+        # own half of the bar, so ink at the zone's left edge is Kestrel's text
+        # and not the app's menus.  The app's bar window paints a moment after
+        # the WM maps it, so wait for the ink instead of assuming it.
+        def bar_ink_right(shot, x0=28):
             right = 0
-            for x in range(28, 900):
+            for x in range(x0, 900):
                 if any(shot.luma(x, y) < 140 for y in range(6, 25)):
                     right = x
             return right
 
-        was, now = bar_ink_right(before), bar_ink_right(after)
-        self.check("app-menus-in-bar", now > was + 40,
-                   "the bar's text reaches x=%d with the app active (was %d)"
-                   % (now, was))
+        was = bar_ink_right(before)		# the idle bar: Kestrel's own name
+        zone = re.search(r"KESTREL: menubar zone x=(\d+) w=(\d+)",
+                         session.log_text())
+        self.check("menubar-zone-logged", bool(zone),
+                   "the WM reported the app zone it gave the bar")
+        zx = int(zone.group(1)) if zone else 0
+        painted = None
+        deadline = time.time() + 25
+        while zx and time.time() < deadline:
+            painted = session.shot("bar-wait")
+            if bar_ink_right(painted, zx + 4) > 0:
+                break
+            time.sleep(1.0)
+        ink_app = bar_ink_right(painted, zx + 4) if painted else 0
+        self.check("app-menus-in-bar", zx > 0 and ink_app > zx + 20,
+                   "the app's own bar window carries its menus: ink reaches "
+                   "x=%d, right of the WM's half (the zone starts at x=%d, the "
+                   "idle bar's ink ends at x=%d)" % (ink_app, zx, was))
 
+        # The dropdown must HANG from the bar: its top edge is the bar's
+        # bottom edge.  Report: "pulldown menus should appear with their tops
+        # aligned to the bottom of the menubar, but they appear on top of it
+        # instead" - the app's bar window sits ON the bar, so its origin is
+        # the screen's top edge, and anchoring there covered the titles.  The
+        # discriminator is the bar itself: while the menu hangs below it
+        # nothing changes in the bar's rows (the app's bar has no hover or
+        # pressed state), while an anchor at the window's origin covers them.
+        run = []
+        if painted is not None:
+            for x in range(zx, 900):
+                if any(painted.luma(x, y) < 140 for y in range(6, 25)):
+                    run.append(x)
+                elif run:
+                    break
+        self.check("bar-title-found", len(run) > 4,
+                   "the app's first bar title is at x=%s"
+                   % (("%d..%d" % (run[0], run[-1])) if run else "none"))
+        if len(run) > 4:
+            tx = (run[0] + run[-1]) // 2
+            monitor.park()
+            ref = session.shot("bar-ref")
+            monitor.goto(tx, 15)
+            monitor.click()
+            opened = session.shot("menu-open")
+            below = opened.diff_box(ref, (tx - 60, 33, tx + 260, 130))
+            # the bar's own rows, minus the pointer's columns (the click
+            # leaves the cursor on the title, and the guest paints it)
+            bar_changed = (opened.diff_box(ref, (28, 6, tx - 40, 27)) +
+                           opened.diff_box(ref, (tx + 40, 6, 900, 27)))
+            self.check("menus-drop-below-the-bar",
+                       below > 800 and bar_changed < 400,
+                       "the dropdown fills %d px below the bar (y 33..130) and "
+                       "leaves the bar's own rows alone (%d px; an anchor at "
+                       "the bar window's origin covers them)"
+                       % (below, bar_changed))
+            monitor.goto(1700, 900)		# dismiss: the popup takes it
+            monitor.click()
+
+        monitor.goto(tile_x, tile_y)
         monitor.click()
         raised = session.wait_for(r"KESTREL: dock raise '[^']*'", 45)
         self.check("second-click-raises", raised,
@@ -170,6 +226,75 @@ class Case(BaseCase):
                 "still following the pointer would land near %d,%d)"
                 % (("%d,%d" % end) if end else "never",
                    want[0], want[1], want[0] + 200, want[1]))
+
+        # --- the app's bar goes with the app and comes back with it ------
+        # The report this guards: after closing and restarting the widget zoo
+        # the bar showed no menus, though they were there and reacted to
+        # clicks.  The titles were Kestrel's to draw then, in the strip whose
+        # repaints never reached fb0.  Now they are the app's own window, which
+        # the WM places and maps only while that app is focused: a closed app's
+        # titles go with it, a relaunched app's must come back.
+        #
+        # The close box, not killall: toybox's killall reads /proc, which this
+        # boot's mounts do not expose (it answers "killall: no /proc").  The
+        # box goes through WM_DELETE_WINDOW, which is the same "the app is
+        # gone" event the WM sees - DestroyNotify on its windows - and the one
+        # a user reaches.
+        fpos = None
+        for line in session.log_text().splitlines():
+            hit = re.search(r"KESTREL: move 0x[0-9a-f]+ '%s' to (\d+),(\d+)"
+                            % re.escape(APP), line)
+            if hit:
+                fpos = (int(hit.group(1)), int(hit.group(2)))
+        self.check("frame-position-known", fpos is not None,
+                   "the frame's position is known (for its close box)")
+        if fpos:
+            monitor.park()
+            monitor.goto(fpos[0] + 12, fpos[1] + 10)	# the close box
+            monitor.click()
+            closed = session.wait_for(
+                r"KESTREL: close-request 0x[0-9a-f]+ '%s'" % re.escape(APP), 20)
+            gone = session.wait_for(
+                r"KESTREL: unmanage 0x[0-9a-f]+ '%s'" % re.escape(APP), 20)
+            self.check("app-closes", closed and gone,
+                       "the close box closed the app (close-request=%s, "
+                       "unmanage=%s)" % (closed, gone))
+            monitor.park()
+            killed = session.shot("closed")
+            # both directions: the app's OWN bar window is gone (nothing
+            # right of the zone) and the WM's half is Kestrel's again - a
+            # closed app used to keep its name in the bar until the next
+            # clock tick repainted the strip.
+            gone_own = bar_ink_right(killed, zx + 4)
+            ink_gone = bar_ink_right(killed)
+            self.check("bar-clears-with-the-app",
+                       gone_own == 0 and ink_gone < was + 40,
+                       "with the app closed its own bar is gone (no ink right "
+                       "of x=%d) and the bar's text falls back to x=%d (was "
+                       "%d with no app)" % (zx, ink_gone, was))
+
+        # relaunch it from its tile and the bar must come back
+        want = session.count(r"KESTREL: dock launch '[^']*'") + 1
+        zones = session.count(r"KESTREL: menubar zone x=") + 1
+        monitor.goto(tile_x, tile_y)
+        monitor.click()
+        deadline = time.time() + 45
+        while (time.time() < deadline and
+               (session.count(r"KESTREL: dock launch '[^']*'") < want or
+                session.count(r"KESTREL: menubar zone x=") < zones)):
+            time.sleep(0.5)
+        ink_back = 0
+        deadline = time.time() + 25
+        while time.time() < deadline:
+            again = session.shot("relaunched")
+            ink_back = bar_ink_right(again, zx + 4)
+            if ink_back > zx + 20:
+                break
+            time.sleep(1.0)
+        self.check("menus-return-after-restart", ink_back > zx + 20,
+                   "after closing and relaunching the app its own bar window "
+                   "is back: ink reaches x=%d, right of the zone at x=%d"
+                   % (ink_back, zx))
 
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

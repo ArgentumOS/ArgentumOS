@@ -1127,6 +1127,12 @@ unmanageClient(::Window client, bool destroyed)
 		if (gActive == m) {
 			gActive = nullptr;
 		}
+		/* S4.2d/S5.2c: the bar and the tile follow at once.  This path
+		 * cleared gActive but refreshed nothing, so a closed app kept
+		 * its name in the menubar (and its running dot in the dock)
+		 * until the next clock tick repainted the strip. */
+		stripRefresh();
+		dockRefresh();
 		/* an active drag on the dying frame must end first or
 		 * gDragFrame dangles into the delete below */
 		if (gDragActive && gDragFrame == m) {

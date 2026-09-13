@@ -403,6 +403,15 @@ plus the `SessionConn`/`PublishedMenu`/conn/menu tables.  `arrangeWindows`,
    size) while the bar's rows showed no ink right of the zone — painted,
    not visible.  Every strip raise now re-raises the focused app's bar.
 
+**A third, smaller one, found by the same case.**  Closing an app left its
+name in the bar (and its running dot in the dock) until the next clock
+tick repainted the strip: `unmanageClient`'s *destroyed* path cleared
+`gActive` and refreshed nothing, while the idle-reap path already called
+`dockRefresh()`.  It now calls `stripRefresh()` and `dockRefresh()` there
+too.  `wm_dock/bar-clears-with-the-app` asserts both directions - the app's
+own bar is gone (no ink right of the zone) *and* the WM's half is Kestrel's
+again.
+
 **v8's guard claim is corrected.**  `wm_dock/app-menus-in-bar` measured
 x=210, and 210 is *Kestrel's own* text: it draws the app's name in its own
 half of the bar (28 + the name's width), so the check passed while the
