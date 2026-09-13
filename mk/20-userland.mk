@@ -403,6 +403,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_geo.c \
 		-L$(X11PREFIX)/lib -lXext -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/xshm_geo"
+	# xwinprobe: the shadow-vs-screen probe (XGetImage over a screen rect,
+	# twice) — written for the menubar strip that never repaints; useful
+	# for any "the draw landed but the screen never changed" question.
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xwinprobe.c \
+		-L$(X11PREFIX)/lib -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xwinprobe"
 	# rogue_resize: security audit 2026-09 — the hostile-geometry probe
 	# (any X client can resize another's window; the toolkit must clamp).
 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/rogue_resize.c \

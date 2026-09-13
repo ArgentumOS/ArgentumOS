@@ -584,15 +584,43 @@ simply its first *user-visible* customer. What was measured, in order:
   own handlers print *numeric* codes (`KESTREL: X error op=… code=…`,
   `ARGENTUM: X error op=… code=…`), so those errors are invisible today.
 
-**Next measurement (named, needs a small probe): the shadow truth.** A
-`XGetImage` of the strip window after a repaint says which side of the shadow
-boundary the loss is on: if the *shadow* is stale too, the server is dropping
-the strip's put (look at that window's clip/shape in Xfb); if the shadow is
-fresh, the **shadow drain is missing the strip's rows** (the root damage it
-copies). The probe shape is `userland/tests/rogue_resize.c`'s: a plain X client
-run from the console shell. Worth pairing with the width clue — the strip is the
-only window as wide as the screen (1920) that has to repaint; every other
-window that *does* repaint is narrower (the app bars are 1594/1606).
+**The freeze is the POPUP's doing, and the loss is the shadow drain
+(measured).** Two more runs pinned both halves:
+
+- **Shadow truth vs screen truth.** `userland/tests/xwinprobe.c` (new: a plain
+  X client that `XGetImage`s a screen rect twice, N seconds apart, and prints a
+  SAME/DIFFERS verdict) sampled the clock's own zone (1740,4 172x23) across a
+  minute boundary. **`WINPROBE-VERDICT: DIFFERS`** — the server's composed
+  buffer *does* update, in both the popup-open and popup-closed phases. So the
+  draw, the damage accumulation, the MIT-SHM put and the toolkit are all
+  exonerated; the missing pixels are lost between the shadow and fb0, i.e. in
+  **Xfb's shadow drain**.
+- **The trigger is an open popup.** With *no* menu open the same clock zone
+  changes on screen across a minute (**87 px in fb0**); with Kestrel's menu up
+  it does not change at all (**0 px**), while its shadow content still updates.
+  That is why the chip (which by definition exists only while a popup is open)
+  never appears, and why the earlier three-trigger probe saw the whole-strip
+  red fill land in none of its states.
+- **Diagnosis recipe this cost a run to learn:** init redirects **Xfb's stdout
+  and stderr to `/System/Variable Data/log/Xfb.log`** (`init.c`, the spawn of
+  the server) — a session's Xfb diagnostics are read there, *not* from the
+  serial console (which carries Kestrel's and the apps' output). Read it with
+  `grep` from the console shell.
+- **Harness gotcha:** `pkill -f 'monitor unix:.build/probe-mon.sock'` matches the
+  *script's own shell* (the pattern is in its command line) and kills the run;
+  use `make qemu-kill`, and kill the guest between runs or the next boot dies on
+  "Failed to get write lock".
+
+**Remaining blocker (one run, written and not yet executed):** the drain-level
+A/B. A temporary `ErrorF` in `xfbShadowFlush` already reports whether a drain's
+region covers the clock's columns (`XFB-SHADOW: drain covers clock [x0,y0-x1,y1]`),
+and `.build/probe_run.sh` phases it (no menu / menu open / menu dismissed, one
+`grep -c 'drain covers clock' "/System/Variable Data/log/Xfb.log"` per phase).
+Expected: the count stops while the popup is up. That would say the **root
+damage region loses the strip's rows when a popup is mapped**, and the fix
+belongs in Xfb's damage registration for the strip (or in what the toolkit does
+when a popup takes the pointer while the WM's own window repaints) — not in
+Kestrel's drawing.
 
 ### S4.2b — picks + focus swap (whole S4)
 *Status: **DONE** (2026-09).* `userland/argentum/argentum.h`
