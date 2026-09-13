@@ -828,9 +828,25 @@ the click", plus the first half of Mac-like tracking:
   6 composites ~= **120ms of 440ms**; ~310ms sits inside `comp` with no pixman
   beyond those, no X calls, no prints and no layout cascade.
 
-  Next probe: count `render_view` VISITS as well as draws (`visited` vs
-  `drawn`), to see whether the walk traverses a much larger tree than the 40
-  views it paints. Two traps for whoever does it: the guard
+  **Walk reach measured: 41 visited, 40 drawn — and a near-empty draw costs
+  260ms.** So the board's walk is tiny and the traversal is not the cost, and
+  a window whose draw makes 1 `setFrame` and 3 `textMetrics` calls still
+  measures `comp=260ms`. Together with ~310ms unaccounted inside a 41-iteration
+  loop (~7.5ms per iteration of trivial code) that is not computing, it is
+  WAITING — and the granularity is ~10ms, i.e. exactly one scheduler tick.
+
+  Next probe (write the patch carefully, see the trap below): compare
+  `CLOCK_PROCESS_CPUTIME_ID` against `CLOCK_MONOTONIC` inside the SAME draw
+  bracket. If CPU time is a small fraction of wall time, the app is being
+  descheduled/blocked per iteration and the problem is the scheduler or a
+  blocking call, not the drawing code at all — which would also explain the
+  ~10ms floor seen on every window's draw (the 181x73 popup measures exactly
+  one tick).
+
+  Trap to avoid (cost a source file this round): do NOT write a file and read
+  it in the same expression — `io.open(p,'w')` truncates BEFORE the inner
+  `io.open(p).read()` evaluates, so the file is written empty. Truncated
+  `window.cpp` exactly that way and restored it with `git checkout --`. Two traps for whoever does it: the guard
   `if (!v || v->isHidden())` appears TWICE in window.cpp (anchor it uniquely,
   or the patch half-applies and the run is wasted), and **a failed toolkit
   build leaves the previous `libargentum.so.1` in the root image, so a gate
