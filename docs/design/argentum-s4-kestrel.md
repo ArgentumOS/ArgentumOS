@@ -541,38 +541,58 @@ when the menu closes however it does. Where it lives:
   first glyph, inside the title's hit zone: idle 224 -> open 143 -> closed
   224 (a 20+ luma drop each way). It also asserts the close repaint.
 
-**Open (measured 2026-09, narrowed): Kestrel's own system mark does not get
-the chip, and the loss is *not* in the toolkit.** The code was written,
-instrumented and withdrawn; what the measurement established, in order:
+**Open (measured 2026-09) — the WM's own menubar strip never repaints on
+screen.** The system mark's chip was written, instrumented and withdrawn; the
+measurement ended up finding a much larger bug behind it, and the chip is
+simply its first *user-visible* customer. What was measured, in order:
 
-- the draw *runs* with the state set (the branch was taken and emitted) and the
-  chip goes into the strip's backing;
-- `Window::flushBacking` then logs a **full-bar** flush for exactly those draws
-  — `KESDBG flush 0x200007 1920x30 rect=0,0 1920x30 shm=1`, twice while the
-  menu was up — so the damage rect was the whole bar, the composite was not
-  clipped, and the MIT-SHM put covered the mark's columns. The toolkit side is
-  exonerated; the app bar's identical chip (same code path, `Window`-level
-  refresh) reaches fb0;
-- a control probe settles *what* is lost: with `gSysMenuOpen` forcing a
-  **whole-strip fill** (`fillRect(0, 0, w, h, 0xff0000)`) the strip's half of
-  the bar still does not change on screen at all (`0xe0e0e5` at x=24, y=15 in
-  the idle, open *and* closed shots). So it is not the mark's columns, the
-  chip's geometry or its colours: **no draw from this path lands**, while
-  draws of the same window from other paths (focus change, clock tick) do;
+- the chip's draw *runs* with the state set, and `Window::flushBacking` logs a
+  **full-bar** flush for exactly those draws
+  (`KESDBG flush 0x200007 1920x30 rect=0,0 1920x30 shm=1`) — so the damage rect,
+  the composite and the MIT-SHM put are all correct. The toolkit is exonerated:
+  the app bar's identical chip (same code path) reaches fb0;
+- a control probe that fills the **whole strip red** in the same state still
+  changes nothing on screen (`0xe0e0e5` at x=24, y=15 across idle/open/closed),
+  so it is not the mark's columns, the chip's geometry or its colours;
+- **the strip is frozen entirely, not just for the chip.** Three-trigger probe
+  (hook + popup, idle clock tick + popup, hook without a popup): the fill never
+  lands in any of them. Then the clincher — the **clock**: the guest logs
+  `KESTREL: clock "…14:48"`, `"…14:49"`, `"…14:50"` while the *pixels* in the
+  clock's zone (x 1740..1912, y 4..27) are **byte-identical** across those
+  minutes (`p-idle` vs `p-c`, 75 s apart: **0 differing pixels**), and so is
+  Kestrel's own half (x 28..142). The only change in the whole strip is the
+  pointer. **The strip's screen content is frozen at its first paint — the v8
+  symptom, which was never actually fixed**; v8 misdiagnosed it as an SHM
+  transport problem, v9 then moved the app's menus into the app's *own* bar
+  window, which hid it. The cost today is user-visible: the menubar clock on
+  screen never advances, and nothing Kestrel draws in its own half (the focused
+  app's name, the mark's state) ever updates;
+- the app's own bar window over the *same* rows (x 142..1652) updates normally,
+  and the dock and desktop do too — so it is the strip window specifically;
 - no X error accompanies it. (The run's only Kestrel error is an unrelated,
-  benign `op=10 code=3 res=0x400002` — `UnmapWindow`/`BadWindow` on the zoo's
-  bar window at teardown. **Gate blind spot worth fixing separately:**
-  `wm_dock`'s `no-x-errors` regex matches `X Error|BadWindow|BadValue|…` but
-  the tree's own handlers print *numeric* codes (`KESTREL: X error op=… code=…`,
-  `ARGENTUM: X error op=… code=…`), so those errors are invisible today.)
+  benign `op=10 code=3 res=0x400002` — `UnmapWindow`/`BadWindow` on the zoo's bar
+  window at teardown, a WM bar-teardown race.)
 
-So the pixels are lost between the client's put and fb0 — the **shadow drain /
-BlockHandler** is the place to look, not the damage logic. The discriminating
-next experiment is named: force the same whole-strip fill from the *clock*
-path (an idle-driven `stripRefresh()`) with the menu open. If that lands, the
-difference is the draw's *context* — inside the WM's event hook versus idle —
-which points at drain timing; if it does not, the strip's window itself is the
-variable and the comparison moves to its `XShmPutImage` versus `XPutImage`.
+**Gate blind spots this exposed** (both worth fixing, neither can land as a
+*red* check today):
+
+- `smoke_desktop/clock-shown` reads the clock text from the *log* and asserts
+  *ink* exists in the clock's zone — a frozen clock passes it. The honest check
+  is that the zone *changes* when the logged minute changes (a minute's wait,
+  or a focus change for the name half).
+- `wm_dock/no-x-errors` matches `X Error|BadWindow|BadValue|…`, but the tree's
+  own handlers print *numeric* codes (`KESTREL: X error op=… code=…`,
+  `ARGENTUM: X error op=… code=…`), so those errors are invisible today.
+
+**Next measurement (named, needs a small probe): the shadow truth.** A
+`XGetImage` of the strip window after a repaint says which side of the shadow
+boundary the loss is on: if the *shadow* is stale too, the server is dropping
+the strip's put (look at that window's clip/shape in Xfb); if the shadow is
+fresh, the **shadow drain is missing the strip's rows** (the root damage it
+copies). The probe shape is `userland/tests/rogue_resize.c`'s: a plain X client
+run from the console shell. Worth pairing with the width clue — the strip is the
+only window as wide as the screen (1920) that has to repaint; every other
+window that *does* repaint is narrower (the app bars are 1594/1606).
 
 ### S4.2b — picks + focus swap (whole S4)
 *Status: **DONE** (2026-09).* `userland/argentum/argentum.h`
