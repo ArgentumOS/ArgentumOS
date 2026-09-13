@@ -635,6 +635,45 @@ the click", plus the first half of Mac-like tracking:
   `shm_map_page` counts per frame on both sides (toolkit flush + Xfb) and see
   whether the mapping survives a frame.
 
+  **Root cause (measured in the kernel, 2026-09): the faults are COPY-ON-WRITE.**
+  Instrumenting `mm/fault.c`'s `page_protection_violation` — the branch that
+  separates a write to a present read-only leaf (COW) from a write to an
+  absent one (demand-page) — and sampling every 5000 faults gives:
+
+  ```
+  PF-PROFILE: total=5000 cow=4999 notpresent=0
+  ```
+
+  Not one demand-page fault: the faults are writes to **present-but-read-only**
+  leaves, i.e. the app's own heap pages, over and over. So each one pays the
+  COW path (`kmalloc` + a 4 KB `memcpy_b` + `map_user_page64_in` +
+  `page_ref_put` + `invalidate_tlb`) for a page that is already private, and
+  the leaf is left unfixed for the next write. This project has recorded this
+  exact class before ("COW fault loop ... the COW copies succeed but the same
+  fault re-fires"), which makes it a known shape, not a new one. Leads, in
+  order: the 64-bit COW path maps the fresh copy with the literal flags
+  `0x003` where the 32-bit path spells out `V2P | PAGE_PRESENT | PAGE_RW |
+  PAGE_USER` (a flag encoding mismatch leaves the leaf read-only), then
+  `invalidate_tlb()`'s coverage.
+
+  **The cheap fix is to sidestep COW entirely: `create_pml4_64` SKIPS
+  `MAP_SHARED` vmas when it write-protects for the fork copy.** Anything the
+  app allocates as shared memory is never COW-marked, so it never takes these
+  faults. That is the SAME change as the toolkit item above (put the window
+  backing in the MIT-SHM segment instead of heap, which also deletes the
+  per-flush `memcpy` of the damage rect): one change, both costs. Verify with
+  the two-fill discriminator (the second fill must stay ~0) and the fault
+  counters.
+
+  **Process fix (also 2026-09): the harness now refuses to run against a stale
+  kernel.** `.build/esp.img` carries the kernel, and the toolkit side rebuilds
+  itself through the root image the harness packs — the kernel does not. Two
+  measurement rounds in this session were invalid that way (`mm/fault.o` hours
+  older than the edit under test), so `tests/harness/paths.py` now fails with
+  `the KERNEL is older than its sources` and the recipe
+  (`make buildfnx && ./tools/mkesp.sh`). Checked, not rebuilt, matching the
+  harness policy; a kernel edit still needs that command by hand.
+
   Recipe: `ARGENTUM_DRAW_MS=1` (env into the app) makes the toolkit print
   `DRAW-MS: comp=<ms> flush=<ms> rect=<x0>,<y0>-<x1>,<y1>` per draw. NOTE the
   kernel's clock granularity is 10 ms (100 Hz tick), so these figures are

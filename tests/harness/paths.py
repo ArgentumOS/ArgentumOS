@@ -119,6 +119,34 @@ def other_qemus():
     return found
 
 
+# The kernel sources whose staleness matters: the ESP image carries the
+# kernel, so a kernel edit without `make buildfnx && ./tools/mkesp.sh` leaves
+# a stale kernel behind. That is not hypothetical: two measurement rounds in
+# 2026-09 were invalid exactly that way (`.build/64real/mm/fault.o` from hours
+# earlier, so the counters under test were not in the running image). The
+# toolkit side rebuilds itself through the root image the harness packs; the
+# kernel does not, and this catches it. Checked, not rebuilt — the harness
+# policy.
+KERNEL_SOURCE_DIRS = ("kernel/boot64", "mm", "include/fnx")
+
+
+def kernel_newer_than_esp():
+    """True when a kernel source is newer than the ESP image."""
+    if not os.path.exists(ESP_IMG):
+        return False
+    esp = os.path.getmtime(ESP_IMG)
+    for d in KERNEL_SOURCE_DIRS:
+        for root, _dirs, files in os.walk(os.path.join(ROOT, d)):
+            for f in files:
+                if f.endswith((".c", ".h", ".S", ".ld", ".py")):
+                    try:
+                        if os.path.getmtime(os.path.join(root, f)) > esp:
+                            return True
+                    except OSError:
+                        pass
+    return False
+
+
 def check_prereqs(need_image=True, need_qemu=True):
     """Raise PrereqError unless the selected cases can run. Returns details."""
     version = qemu_version() if need_qemu else "not needed"
@@ -129,6 +157,11 @@ def check_prereqs(need_image=True, need_qemu=True):
     missing = []
     if need_qemu and not os.path.exists(ESP_IMG):
         missing.append("  .build/esp.img       -> ./tools/mkesp.sh")
+    elif need_qemu and kernel_newer_than_esp():
+        missing.append(
+            "  the KERNEL is older than its sources (.build/esp.img carries\n"
+            "  it, and the toolkit side rebuilds itself but the kernel does\n"
+            "  not)                -> make buildfnx && ./tools/mkesp.sh")
     if need_image and not os.path.exists(root_image()):
         missing.append("  %s -> make rootagfs" % rel(root_image()))
     if need_qemu and not os.path.exists(OVMF_FD):
