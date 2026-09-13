@@ -27,7 +27,7 @@ unsigned long get_ticks64(void)
 	return ticks64;
 }
 
-void irq64_handler(unsigned long vector)
+void irq64_handler(unsigned long vector, unsigned long cs)
 {
 	/* EOI to the 8259 PICs (slave first, then master) */
 	if(vector >= 0x28) {
@@ -53,7 +53,13 @@ void irq64_handler(unsigned long vector)
 
 		irq = (int)(vector - 0x20);
 		memset_b(&sc, 0, sizeof(sc));
-		sc.cs = 0x08;	/* KERNEL_CS: the irq_timer_bh's user check */
+		/* the INTERRUPTED context's CS, not a hardcoded KERNEL_CS.
+		 * irq_timer_bh() (kernel/timer.c) splits each tick into
+		 * ru_stime/ru_utime by this field; pinning it to KERNEL_CS
+		 * made the user branch dead, so NO process ever accrued
+		 * utime and times()/getrusage() reported utime == 0 for
+		 * every workload. */
+		sc.cs = cs;
 		irq_handler(irq, sc);
 		do_bh(sc);
 	}

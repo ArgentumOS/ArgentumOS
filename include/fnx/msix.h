@@ -40,7 +40,7 @@ void msix_handler(int, struct sigcontext);
 void msix_init(void);
 
 /* kernel64 glue: called from idt64 dispatch for vectors 0x30-0x3F */
-void msix64_handler(unsigned long);
+void msix64_handler(unsigned long, unsigned long);
 
 /* drivers/pci/msix.c: program a device's MSI-X table (vector 0) so it
  * delivers messages on the given IDT vector (>= MSIX_VEC_BASE). */

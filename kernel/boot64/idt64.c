@@ -68,7 +68,7 @@ extern struct vma *find_vma_region(unsigned long);
 extern void do_page_fault(unsigned int, struct sigcontext *);
 
 void tlb_flush64(void);
-void irq64_handler(unsigned long);
+void irq64_handler(unsigned long, unsigned long);
 
 static struct idt_entry idt[256] __attribute__((aligned(16)));
 
@@ -718,12 +718,12 @@ void isr64_dispatch(unsigned long *gprs)
 	f = (struct x86_frame64 *)((char *)gprs + (15 * 8));
 	if(f->vector >= 0x30 && f->vector <= 0x3F) {
 		/* MSI-X vectors: delivered by the local APIC, no 8259 EOI */
-		extern void msix64_handler(unsigned long);
-		msix64_handler(f->vector);
+		extern void msix64_handler(unsigned long, unsigned long);
+		msix64_handler(f->vector, f->cs);
 		return;
 	}
 	if(f->vector >= 32 && f->vector <= 47) {
-		irq64_handler(f->vector);
+		irq64_handler(f->vector, f->cs);
 		/* FNX: consume need_resched before iretq when the IRQ
 		 * interrupted USER mode. The timer BH (irq_timer_bh via do_bh)
 		 * sets need_resched when the quantum expired; without a consumer

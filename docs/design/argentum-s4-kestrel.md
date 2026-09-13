@@ -831,51 +831,63 @@ the click", plus the first half of Mac-like tracking:
   **Walk reach measured: 41 visited, 40 drawn — and a near-empty draw costs
   260ms.** So the board's walk is tiny and the traversal is not the cost, and
   a window whose draw makes 1 `setFrame` and 3 `textMetrics` calls still
-  measures `comp=260ms`. Together with ~310ms unaccounted inside a 41-iteration
-  loop (~7.5ms per iteration of trivial code), the "WAITING" reading was the
-  working hypothesis. **It is now RETRACTED — not because it was disproved,
-  but because the instrument that would have tested it is broken.**
+  measures `comp=260ms`.
 
-  **The CPU-time probe is VOID: FNX does not account user CPU time in the
-  64-bit path.** `ARGENTUM_DRAW_MS` was taught to print CPU time for the `comp`
-  bracket and the case went out twice. First `CLOCK_PROCESS_CPUTIME_ID`:
-  `sys_clock_gettime64()` (kernel/syscalls.c:414) treats EVERY clock id other
-  than `1` as `CLOCK_REALTIME`, so that call silently returned WALL time and
-  the run measured nothing at all (comp == "cpu" by construction). The second
-  run used `getrusage(RUSAGE_SELF)` deltas instead — a genuine per-process
-  clock — and read `usr=0` on **all 101 draws of the whole case**, the big
-  board draws included (`comp=460 usr=0 sys=460`). That is not a fact about the
-  board; it is a kernel bug, located at the writer:
+  **The "WAITING" reading is REFUTED — the draw is user CPU, and it took a
+  kernel fix to be able to say so (2026-09).** The CPU-time probe came back
+  void twice before it worked, and the reason was not the board:
 
-  - `irq_timer_bh()` (kernel/timer.c:266) splits the tick by the interrupted
-    context — `sc->cs == KERNEL_CS` -> `ru_stime`, else -> `ru_utime` — and
-    **nothing else in the tree ever increments `ru_utime`**.
-  - the 64-bit IRQ entry hands the BH a sigcontext whose `cs` is HARDCODED:
-    `sc.cs = 0x08; /* KERNEL_CS: the irq_timer_bh's user check */`
-    (kernel/boot64/irq64.c:56), and the same in the MSI-X path
-    (kernel/boot64/msix64.c:30, "KERNEL_CS, like the PIC IRQ path").
-  - so the `else` branch is DEAD: every tick is credited to `ru_stime` for
-    every process, running or sleeping. `sys` in the probe is just the tick
-    count — `sys == comp` is a tautology, and `usr=0` would be reported for
-    ANY workload.
+  - `CLOCK_PROCESS_CPUTIME_ID` first: `sys_clock_gettime64()`
+    (kernel/syscalls.c:414) treats EVERY clock id other than `1` as
+    `CLOCK_REALTIME`, so that call silently returned WALL time and the run
+    measured nothing (comp == "cpu" by construction).
+  - `getrusage(RUSAGE_SELF)` deltas next — a genuine per-process clock — read
+    `usr=0` on **all 101 draws of the case**, the big board draws included
+    (`comp=460 usr=0 sys=460`). That was a real bug, found at the writer:
+    `irq_timer_bh()` (kernel/timer.c:266) splits each tick into `ru_stime` /
+    `ru_utime` by `sc->cs`, and **nothing else in the tree ever increments
+    `ru_utime`** — because the 64-bit IRQ entry handed the BH a sigcontext
+    with `cs` HARDCODED to `KERNEL_CS` (`sc.cs = 0x08`, kernel/boot64/irq64.c,
+    and the same in the MSI-X path, kernel/boot64/msix64.c). The user branch
+    was dead: every tick was credited as system time for every process,
+    running or sleeping, so `sys == comp` was a tautology and `times()` /
+    `getrusage()` lied to every workload in the system.
+  - **Fixed:** the interrupted CS was already in hand at the call site
+    (`idt64.c` uses `(f->cs & 3) == 3` for its own preempt decision) — it is
+    now threaded into both handlers (`irq64_handler(f->vector, f->cs)`,
+    `msix64_handler(f->vector, f->cs)`) and `sc.cs = cs`. `irq_timer_bh` is the
+    only consumer of `sc->cs` on that path.
 
-  The real interrupted CS **is** available at the IRQ entry — `idt64.c` already
-  uses `(f->cs & 3) == 3` for its own preempt decision, at the very call site
-  (`irq64_handler(f->vector)` / `msix64_handler(f->vector)`, kernel/boot64/
-  idt64.c:721-726) where `f` is in hand — it is simply not threaded into the
-  BH, and `irq_timer_bh` is the ONLY consumer of `sc->cs` on that path. Passing
-  the frame's real `cs` through is the whole fix; it is a kernel change with
-  its own gate (`times()`/`getrusage()` must read `utime > 0` for a CPU burner
-  and ~0 for a sleeper), and it must land BEFORE the waiting/computing question
-  can be asked again. The toolkit side is ready to be re-applied when it does:
-  getrusage deltas around the `comp` bracket, printed as `usr=`/`sys=` on the
-  DRAW-MS line. (Both probe patches were reverted, per the rule that an
-  unproven experiment is not kept.)
+  Accepted with toybox `time` on the booted image (three legs, so both
+  branches are shown live, not just the one that changed):
 
-  **Both runs were green gates, and that is the cautionary part:** `wm_dock`
-  33/33 each time. A passing gate says nothing about whether the instrument
-  inside it measured anything — the probe has to be proven to move before its
-  reading can refute a hypothesis.
+  | workload | real | user | sys |
+  |---|---|---|---|
+  | `time sleep 2` (sleeper) | 2.020 | **0.100** | 0.000 |
+  | busy loop (user burner) | 2.380 | **2.370** | 0.000 |
+  | 400x `cat /System/Tools/time > @null` (fork/exec/IO) | 6.130 | 5.620 | **0.510** |
+
+  A sleeper accrues no CPU and `sys` is still credited, so the split is real
+  rather than moved. (Before the fix the sleeper's two seconds would have been
+  billed entirely to `sys`.)
+
+  **With a clock that works, the board's composite is CPU-bound USER time.**
+  The board draws now read `comp=470 usr=470 sys=0` and `comp=460 usr=460
+  sys=0` — CPU time tracks wall time to the tick, and all of it is user time.
+  So the app is NOT descheduled or blocked per iteration and it is NOT in
+  kernel page-fault time: it is running its own code. That refutes the
+  "~7.5ms per iteration that is not computing, it is WAITING" inference AND
+  the fault-bound reading — and it sharpens the open question rather than
+  closing it: ~470ms of user CPU inside a 41-iteration walk, with ~6 pixman
+  composites, 0 gradients, cached text and 45 `setFrame` / 41 `textMetrics`
+  calls, is still ~11ms per drawn view of user code that no counter so far has
+  attributed. The next probe should count/bracket inside the per-view path,
+  not around it (and can now trust CPU time as a second axis).
+
+  Both void runs were green gates (`wm_dock` 33/33 each): **a passing gate says
+  nothing about whether the instrument inside it measured anything.** Prove the
+  probe moves before its reading is allowed to refute a hypothesis.
+
 
   Trap to avoid (cost a source file this round): do NOT write a file and read
   it in the same expression — `io.open(p,'w')` truncates BEFORE the inner

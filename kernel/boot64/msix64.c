@@ -18,7 +18,7 @@
 #include <fnx/string.h>
 #include "serial64.h"
 
-void msix64_handler(unsigned long vector)
+void msix64_handler(unsigned long vector, unsigned long cs)
 {
 	extern void msix_handler(int, struct sigcontext);
 	extern void do_bh(struct sigcontext);
@@ -27,7 +27,7 @@ void msix64_handler(unsigned long vector)
 
 	num = (int)(vector - MSIX_VEC_BASE);
 	memset_b(&sc, 0, sizeof(sc));
-	sc.cs = 0x08;	/* KERNEL_CS, like the PIC IRQ path */
+	sc.cs = cs;	/* the interrupted context's CS (see irq64.c) */
 	msix_handler(num, sc);
 	do_bh(sc);
 }
