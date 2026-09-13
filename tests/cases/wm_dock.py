@@ -183,8 +183,23 @@ class Case(BaseCase):
                        "leaves the bar's own rows alone (%d px; an anchor at "
                        "the bar window's origin covers them)"
                        % (below, bar_changed))
+            # The title whose menu is open must SAY so: it draws dark (the
+            # theme's armed chip) for as long as its dropdown is up, and back
+            # to chrome once the menu closes however it closes. Sampled just
+            # left of the first glyph, inside the title's own hit zone, so the
+            # pixel is background in both states and not a glyph.
+            bgx = max(run[0] - 4, 2)
+            idle_bg = ref.luma(bgx, 15)
+            open_bg = opened.luma(bgx, 15)
             monitor.goto(1700, 900)		# dismiss: the popup takes it
             monitor.click()
+            dismissed = session.shot("menu-dismissed")
+            back_bg = dismissed.luma(bgx, 15)
+            self.check("open-title-goes-dark",
+                       idle_bg - open_bg > 20 and back_bg - open_bg > 20,
+                       "the open menu's title is dark while its dropdown is up "
+                       "(idle %d -> open %d -> closed %d at x=%d)"
+                       % (idle_bg, open_bg, back_bg, bgx))
 
         monitor.goto(tile_x, tile_y)
         monitor.click()

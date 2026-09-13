@@ -514,6 +514,45 @@ fix for the class above).
   puts a word — the first version of this gate misread "File Edit" as
   "no menus" by sampling past both words).
 
+**S5.2d follow-up — the open menu's title.** A menubar item whose menu is
+*dropped* now says so: the title draws dark (the theme's armed chip — the
+same active fill the dropdown's hovered row and a pressed control use, with
+the label inverted) for as long as its dropdown is up, and back to chrome
+when the menu closes however it does. Where it lives:
+
+- `MenuBarView` (menu.cpp) keeps the open item's index and paints the chip;
+  `menuPopUp()` gained an optional `onClosed` handler, fired once by
+  `PopupWindow::dismiss()` on the open -> closed transition, so the bar
+  learns about a close whether it came from a pick, a click elsewhere, or a
+  dismissal (`fireClosed()` runs once and only for the live popup).
+- A press that hits no view in a window is now the WINDOW's
+  (`Window::dispatchMouseToContent`) instead of being dropped: that is what
+  lets a popup dismiss itself on a click outside its rows.
+- The popup also takes the pointer while it is up (`XGrabPointer`), which is
+  how a click anywhere else reaches it at all. **Measured exception:** under
+  Kestrel the grab is refused ("another client holds one" — the WM's passive
+  `GrabModeSync` grabs on client windows), so in-session dismissal comes from
+  the WM's own sites (a press on the strip, the dock, a frame or a client
+  calls `menuPopUpDismiss()`). A dropdown in a session *without* a grabbing
+  WM gets the standard behaviour. Not fixed: a press on another *app's*
+  window cannot reach the popup without the grab, so that app's dropdown
+  stays up until something in its own process or the WM's chrome is touched.
+- Gate: `wm_dock/open-title-goes-dark` — the chip sampled just left of the
+  first glyph, inside the title's hit zone: idle 224 -> open 143 -> closed
+  224 (a 20+ luma drop each way). It also asserts the close repaint.
+
+**Open (measured 2026-09): Kestrel's own system mark does not get the same
+treatment.** The code was written and then withdrawn: with the mark's
+open-state branch in `StripView::draw` the *draw* provably ran with the
+state set (instrumented: the branch was taken) and painted the chip into the
+strip's backing, yet fb0's mark columns never changed — while the app bar's
+identical chip, through `Window`-level refresh, did. So the strip's repaint
+of the mark's columns (x 2..26) does not reach the screen for a state-only
+change; the app bar and the clock/title do. The next measurement is inside
+`Window::flushBacking`/the shadow drain for the strip's rect, not in
+Kestrel. A rogue-*geometry* probe would have been easier than a pixel
+sample: see `userland/tests/rogue_resize.c` for that shape.
+
 ### S4.2b — picks + focus swap (whole S4)
 *Status: **DONE** (2026-09).* `userland/argentum/argentum.h`
 (`menuPopUp`/`menuPopUpDismiss`), `popup.cpp` (the pick handler + the

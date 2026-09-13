@@ -340,6 +340,13 @@ Window::dispatchMouseToContent(const MouseEvent &pxEvent, bool down)
 		 * pointer moved off it (drag-out semantics) */
 		View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
 		if (!hit) {
+			/* SECURITY/behaviour (S5.2d follow-up): a press that
+			 * hits no view is the WINDOW's, not silently dropped:
+			 * a menu popup grabs the pointer, so a click outside
+			 * its rows arrives here and the popup dismisses itself
+			 * (that is what a menu must do). Every other window's
+			 * default mouseDown ignores it. */
+			mouseDown(pxEvent);
 			return;
 		}
 		impl_->pressed = hit;

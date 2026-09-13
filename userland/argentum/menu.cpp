@@ -264,6 +264,10 @@ Menu::itemCount() const
  * allots before mapping); the height it must be is Kestrel's BAR_H. */
 #define BAR_PX		30
 #define BAR_PAD		6
+/* the open title's chip: 1px inside the title's hit zone (the hit-test
+ * uses +-8), inset vertically so it reads as a chip in the bar */
+#define BAR_CHIP_PAD	7
+#define BAR_CHIP_INSET	3
 
 namespace {
 
@@ -323,6 +327,7 @@ public:
 		int w = (int) (f.size.w * ppt + 0.5);
 		int h = (int) (f.size.h * ppt + 0.5);
 		Theme::Params p = t.state(ControlState::Idle);
+		Theme::Params armed = t.state(ControlState::Armed);
 		int xs[32], ws[32], idx[32];
 		int n;
 
@@ -342,8 +347,27 @@ public:
 
 		n = barTitleLayout(menu_, w, xs, ws, idx, 32);
 		for (int i = 0; i < n; i++) {
+			/* S5.2d follow-up: the title whose menu is DOWN is
+			 * drawn dark (the theme's armed fill, the same
+			 * "active" chip the dropdown's hovered row and a
+			 * pressed control use), so the bar says which menu
+			 * is open rather than leaving it to the dropdown
+			 * alone. Cleared when the popup closes. */
+			if (idx[i] == openIndex_) {
+				int bx = xs[i] - BAR_CHIP_PAD;
+				int bw = ws[i] + 2 * BAR_CHIP_PAD;
+
+				g.fillRoundedGradient(bx, BAR_CHIP_INSET,
+						      (unsigned) bw,
+						      (unsigned) (h - 2 *
+								  BAR_CHIP_INSET),
+						      3, armed.fillTop,
+						      armed.fillBottom);
+			}
 			g.drawText(t.fontFamily(), t.fontSizePt(), xs[i], ty,
-				   menu_->itemAt(idx[i])->title(), t.text());
+				   menu_->itemAt(idx[i])->title(),
+				   idx[i] == openIndex_ ? armed.label
+							: t.text());
 		}
 	}
 
@@ -396,7 +420,15 @@ public:
 		/* the dropdown hangs FROM the bar: its top is the bar's
 		 * bottom edge, not the bar window's origin (which is the
 		 * screen's top - anchoring there would cover the bar). */
-		menuPopUp(sub, rx + itemX, ry + barH, onPick_);
+		openIndex_ = hit;
+		menuPopUp(sub, rx + itemX, ry + barH, onPick_, [this]() {
+			/* however the menu closed (a pick, a click
+			 * outside, a dismissal) the title goes back to
+			 * chrome */
+			openIndex_ = -1;
+			Application::shared().menuBarRefresh();
+		});
+		Application::shared().menuBarRefresh();
 	}
 
 private:
@@ -414,6 +446,8 @@ private:
 	Menu *menu_;
 	std::function<void(int)> onPick_;
 	Window *win_;
+	/* the item index whose menu is currently open (-1 = none) */
+	int openIndex_ = -1;
 };
 
 /* S4.2d: create the app's menubar window (unmapped until Kestrel places

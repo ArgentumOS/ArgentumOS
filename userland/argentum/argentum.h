@@ -1111,9 +1111,13 @@ private:
  * own action running: the global menubar's model belongs to the app
  * (S4.2d: the app's own bar window), so the pick is handled where it
  * was authored.
- * menuPopUpDismiss() closes it (a click outside does too). */
+ * menuPopUpDismiss() closes it (a click outside does too), and
+ * onClosed fires once when it closes however that happens — the owner's
+ * cue to drop whatever "my menu is open" state it painted (the menubar
+ * title that opened it draws dark while its dropdown is up). */
 void menuPopUp(Menu *menu, int xRootPx, int yRootPx,
-	       std::function<void(int itemId)> onPick = nullptr);
+	       std::function<void(int itemId)> onPick = nullptr,
+	       std::function<void()> onClosed = nullptr);
 void menuPopUpDismiss();
 
 /* S2.3a: Slider — a horizontal track + knob control (Control).

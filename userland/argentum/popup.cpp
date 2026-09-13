@@ -60,6 +60,11 @@ public:
 	void present();
 	/* Hide + drop out of the open-popup bookkeeping. */
 	void dismiss();
+	/* run the close handler once (see setClosedHandler) */
+	void fireClosed();
+	/* With the pointer grabbed, a press the content view does not claim
+	 * (outside the menu's rows) arrives here: a menu closes on it. */
+	void mouseDown(const MouseEvent &e) override;
 
 	Menu *menu() const { return menu_; }
 
@@ -71,6 +76,14 @@ public:
 	{
 		pick_ = std::move(h);
 	}
+
+	/* S5.2d follow-up: whoever opened this menu hears about its close
+	 * (once, on the open -> closed transition) so a painted "open"
+	 * state — a menubar title's dark background — can be dropped. */
+	void setClosedHandler(std::function<void()> h)
+	{
+		closed_ = std::move(h);
+	}
 	std::function<void(int)> pickHandler() const { return pick_; }
 
 private:
@@ -78,6 +91,8 @@ private:
 	Menu *menu_;
 	PopupMenuView *listView_;
 	std::function<void(int)> pick_;
+	std::function<void()> closed_;
+	bool grabbed_ = false;
 };
 
 /* geometry helpers shared by draw + row hit-testing. S4.2c: rows are
@@ -375,6 +390,15 @@ PopupWindow::~PopupWindow()
 {
 	if (g_openPopup == this) {
 		g_openPopup = nullptr;
+		fireClosed();
+	}
+	if (grabbed_) {
+		Display *dpy = (Display *) Application::shared().display();
+
+		if (dpy) {
+			XUngrabPointer(dpy, CurrentTime);
+		}
+		grabbed_ = false;
 	}
 	delete listView_;
 }
@@ -387,6 +411,26 @@ PopupWindow::present()
 	std::fflush(stderr);
 	listView_->setHovered(-1);
 	show();			/* map + focus */
+	/* A menu takes the pointer while it is up: that is how a click
+	 * anywhere else reaches the popup at all (nothing else would tell
+	 * it), and how the click that dismisses it is delivered to US
+	 * rather than to whatever the pointer was over. owner_events is
+	 * False, so every press/motion/release goes here; a press that
+	 * lands outside the menu's rows arrives as a hit-less press and
+	 * PopupWindow::mouseDown closes the menu (S5.2d follow-up: the
+	 * menubar title that opened it has to learn that it closed). */
+	Display *dpy = (Display *) Application::shared().display();
+
+	if (dpy && !XGrabPointer(dpy, xid(), False,
+				 ButtonPressMask | ButtonReleaseMask |
+					 PointerMotionMask,
+				 GrabModeAsync, GrabModeAsync, None, None,
+				 CurrentTime)) {
+		std::fprintf(stderr, "ARGENTUM-POPUP: pointer grab failed "
+			     "(another client holds one)\n");
+		std::fflush(stderr);
+	}
+	grabbed_ = true;
 	g_openPopup = this;
 	/* first expose paints; force one so the gate can see it even
 	 * before the server delivers the mapping Expose */
@@ -401,8 +445,42 @@ PopupWindow::dismiss()
 	}
 	std::fprintf(stderr, "ARGENTUM-POPUP: closed\n");
 	std::fflush(stderr);
+	if (grabbed_) {
+		Display *dpy = (Display *) Application::shared().display();
+
+		if (dpy) {
+			XUngrabPointer(dpy, CurrentTime);
+		}
+		grabbed_ = false;
+	}
 	unmap();
 	g_openPopup = nullptr;
+	fireClosed();
+}
+
+/* exactly once, and only for the live popup (a stale object that is no
+ * longer g_openPopup must not clear someone else's highlight) */
+void
+PopupWindow::mouseDown(const MouseEvent &e)
+{
+	/* window px (a Window responder's coordinates); a point outside the
+	 * menu's box is a click elsewhere on the screen, which dismisses —
+	 * exactly like a real menu */
+	if (e.x < 0 || e.y < 0 || e.x >= (double) width() ||
+	    e.y >= (double) height()) {
+		dismiss();
+	}
+}
+
+void
+PopupWindow::fireClosed()
+{
+	if (!closed_) {
+		return;
+	}
+	std::function<void()> h = std::move(closed_);
+
+	h();
 }
 
 /* ---------- the open-popup bookkeeping (see p.h) ---------- */
@@ -425,7 +503,7 @@ static PopupWindow *g_menuPopup = nullptr;
 
 void
 menuPopUp(Menu *menu, int xRootPx, int yRootPx,
-	  std::function<void(int)> onPick)
+	  std::function<void(int)> onPick, std::function<void()> onClosed)
 {
 	if (!menu) {
 		return;
@@ -445,6 +523,7 @@ menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 		g_menuPopup->moveRoot(xRootPx, yRootPx);
 	}
 	g_menuPopup->setPickHandler(std::move(onPick));
+	g_menuPopup->setClosedHandler(std::move(onClosed));
 	g_menuPopup->present();
 }
 
