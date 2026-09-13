@@ -596,6 +596,50 @@ the click", plus the first half of Mac-like tracking:
   bar-side `mouseMoved` stays for a session with no grabbing popup.
   As built: one `open "zoo"`, then `tracked to "Widgets" at 196,30` with no
   click in between, then a pick from the SWAPPED menu.
+- **What a repaint costs, measured (2026-09).** Instrumented because a
+  working menubar made the lag obvious; every earlier conclusion about the
+  drawing code was tested and most were wrong, so the numbers and the
+  discriminator are recorded.
+
+  | step | cost |
+  |---|---|
+  | `GraphicsContext` construction | 0 us (not a cost) |
+  | shaping per run | ~1 timer tick, even for one glyph (fixed: shaped-run cache) |
+  | composite per draw, avg over 102 draws | 104 ms -> **58 ms** after that cache |
+  | text per draw | 27.4 ms -> **7.5 ms** |
+  | the backdrop `fillRect` | **up to 610 ms** for a full-window rect |
+  | flush (XPutImage of the damage rect) | ~35 ms avg |
+  | menubar bar repaint | ~50 ms -> **~10 ms**, `shape=0` |
+
+  **The backdrop fill is first-touch of the backing pages, not pixman.**
+  Filling the SAME rect with the SAME colour twice in a row (idempotent, no
+  visual change) separates them: avg `fill` **22,843 us** vs `fill2` **392 us**
+  over 102 draws, with the worst cases like `fill=610000us fill2=0us`. A
+  900k-px fill taking ~230 ms is ~250 us per 4 KB page — the backing write
+  fault path, ~16 MB/s — and it happens on draws whose backing was NOT freshly
+  allocated too (`fresh=0` slow cases), i.e. the pages are lost between draws.
+
+  Ruled out along the way, each by measurement: `pixman_image_composite32`
+  with a solid source vs `pixman_image_fill_rectangles` (neutral: 22,058 vs
+  21,764 us avg — reverted); a sticky pixman clip region (the toolkit's clip is
+  pure software, `clip_rect()` in each op, and nothing calls
+  `pixman_image_set_transform`); the `GraphicsContext` constructor (0 us);
+  per-pixel cost scaling with the rect (an 8192x8192 fill measured `fill=0`).
+
+  **So the remainder is not in the toolkit's drawing code: it is the
+  kernel/backing side** — what makes a write fault to the window backing cost
+  ~250 us per page, and why the pages are not resident on the next draw. The
+  MIT-SHM segment is the prime suspect (S4.3c already records its page mapper
+  being a bottleneck: "shm_map_page(): Oops..." under allocation churn), so
+  the next measurement is to log attach/detach (`shmat`/`shmdt`) and
+  `shm_map_page` counts per frame on both sides (toolkit flush + Xfb) and see
+  whether the mapping survives a frame.
+
+  Recipe: `ARGENTUM_DRAW_MS=1` (env into the app) makes the toolkit print
+  `DRAW-MS: comp=<ms> flush=<ms> rect=<x0>,<y0>-<x1>,<y1>` per draw. NOTE the
+  kernel's clock granularity is 10 ms (100 Hz tick), so these figures are
+  tick-quantized: totals are sound, single-call attribution is not.
+
 - Gates: `wm_dock/bar-hit-test-is-right` clicks the **second** title and
   asserts the second menu's first item ran (`ZOO-ACT: menu:reset`, not
   `menu:about`); `wm_dock/bar-titles-found` reads the three titles off the bar
