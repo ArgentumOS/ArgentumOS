@@ -820,11 +820,27 @@ the click", plus the first half of Mac-like tracking:
   | window primitives a view can call in draw | `setNeedsDisplay` is a self-sent Expose (not `XClearArea`), `noteDamage`/`scheduleDamagePx` carry no `XSync` |
   | per-view X round trip generally | none found in view/label/control/button/theme |
 
-  Next measurement (needs one run): COUNT, not time, the calls a widget makes
-  per draw — `setNeedsDisplay`, the layout entry (`setNeedsLayout`/
-  `layoutSubviews`), and `textMetrics` — since the board is the layout
-  showcase (s25/strut-band slices) and a per-draw relayout is what fits ~10ms
-  per view with no drawing, no text, no prints and no X round trips.
+  **Call counts per draw (measured): the board is NOT a relayout or a text
+  storm.** Counting calls instead of timing them (the 10ms clock forbids
+  per-view timing) gives, for the board's 440-460ms draw: **45 `setFrame` and
+  41 `textMetrics`** calls over ~40 drawn views. So the accounted work is
+  roughly 60ms fill + 41 label draws (`textMetrics` + `drawText` at ~1.5ms) +
+  6 composites ~= **120ms of 440ms**; ~310ms sits inside `comp` with no pixman
+  beyond those, no X calls, no prints and no layout cascade.
+
+  Next probe: count `render_view` VISITS as well as draws (`visited` vs
+  `drawn`), to see whether the walk traverses a much larger tree than the 40
+  views it paints. Two traps for whoever does it: the guard
+  `if (!v || v->isHidden())` appears TWICE in window.cpp (anchor it uniquely,
+  or the patch half-applies and the run is wasted), and **a failed toolkit
+  build leaves the previous `libargentum.so.1` in the root image, so a gate
+  can pass against stale code** — the harness's kernel staleness guard does
+  not cover this side. Read the build output; the gate alone is not the proof.
+
+  (A root-image staleness guard is the obvious fix, but unlike the kernel
+  case the harness builds the root image at case start, so a naive
+  mtime comparison would false-positive; it would have to check the build's
+  exit status instead.)
 
   **RAM sweep (`boot_matrix`): 10/10 PASS** — 256M, 1G, 2G, 4G and 8G each
   boot to a drawn desktop with 0 fatal fault lines (2G: total=2086776KB,
