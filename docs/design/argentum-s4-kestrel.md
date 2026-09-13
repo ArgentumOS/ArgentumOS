@@ -674,6 +674,47 @@ the click", plus the first half of Mac-like tracking:
   (`make buildfnx && ./tools/mkesp.sh`). Checked, not rebuilt, matching the
   harness policy; a kernel edit still needs that command by hand.
 
+  **Fix (2026-09): shared surfaces are exempt from the fork's write-protect,
+  on both sides.** `create_pml4_64()` takes only a pml4 and so cannot see
+  vmas: it read-protected EVERY user leaf for a fork child, including
+  `MAP_SHARED` ones (the 32-bit path skipped those vmas outright). That is
+  why a forking app paid the COW path on its own heap after every launch —
+  Kestrel forks to launch each dock app, so its wallpaper/strip backings went
+  read-only each time (the worst measured fill was `rect=0,0-1920,1080`, the
+  wallpaper). Two changes, together:
+
+  - `clone_pages()` (mm/memory.c, the 64-bit walk — it HAS
+    `current->vma_table`) now keeps `MAP_SHARED` leaves writable in BOTH the
+    child's and the parent's pml4 and never sets `PAGE_COW` for them.
+  - `BitmapImage` (graphics.cpp) allocates surfaces of 64KB or more from a
+    `MAP_SHARED | MAP_ANONYMOUS` mapping — window backings — so their pages
+    are never write-protected for a fork and never copied into a child.
+    Smaller surfaces (the per-draw rounded masks and gradient ramps) keep
+    pixman's allocator: one mmap syscall per mask would cost more than it
+    saves. The mapping is zero-filled, which also matches the documented
+    "cleared to transparent black".
+
+  Measured: the strip/bar repaints went from 20-50ms to **0-30ms** (those
+  draws touch the now-shared surfaces). Gates: `wm_dock` 33/33,
+  `smoke_desktop` 14/14 (fork/exec/shm exercised by the desktop session).
+
+  **Correction to the finding above, worth keeping:** the fault counter ticked
+  only inside `page_protection_violation`, so `notpresent=0` never counted
+  anyone else's faults — a *demand* (not-present) fault does not go through
+  that function. The COW reading (4999 of 5000) is therefore about
+  protection faults; the remaining big-window draws (250-850ms, and the 58x
+  double-fill gap) are **demand-page first-touch on a fresh backing**, a
+  different class. Two levers remain, in order of cost:
+
+  1. **Pre-touch the backing once, at allocation** (a `memset` pass over the
+     shared mapping): the same total fault cost, but paid at window creation
+     instead of during use — the interaction stops stalling on first paint.
+  2. **The kernel's per-page fault cost itself**: ~250us per 4KB page is
+     ~16MB/s, roughly 1000x a healthy fault path, and it is the reason a
+     full-window paint costs hundreds of ms. That is its own investigation
+     (count work per fault, e.g. allocation/zeroing and page-table
+     bookkeeping), not a drawing problem.
+
   Recipe: `ARGENTUM_DRAW_MS=1` (env into the app) makes the toolkit print
   `DRAW-MS: comp=<ms> flush=<ms> rect=<x0>,<y0>-<x1>,<y1>` per draw. NOTE the
   kernel's clock granularity is 10 ms (100 Hz tick), so these figures are

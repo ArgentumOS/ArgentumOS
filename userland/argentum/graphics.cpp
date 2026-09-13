@@ -23,6 +23,15 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <sys/mman.h>
+
+/* Surfaces at least this big get their pixels from a shared anonymous
+ * mapping instead of pixman's own allocator (see the constructor).
+ * Window backings are hundreds of KB; the per-draw masks and ramps are a
+ * few KB, and they must stay on the cheap path — one mmap syscall per
+ * mask would cost more than it saves. */
+#define BITMAP_SHARED_MIN_BYTES (64u * 1024u)
+
 namespace argentum {
 
 #define PI 3.14159265358979323846
@@ -121,9 +130,40 @@ BitmapImage::BitmapImage(unsigned int width, unsigned int height)
 		impl_->img = nullptr;
 		return;
 	}
-	impl_->img = pixman_image_create_bits(PIXMAN_x8r8g8b8,
-					     (int) width, (int) height,
-					     nullptr, 0);
+	/* WHY A SHARED MAPPING (measured 2026-09): a MAPPED_SHARED vma is
+	 * skipped when the kernel marks pages copy-on-write for a fork
+	 * (create_pml4_64 skips MAP_SHARED), so a window's pixels never take
+	 * the COW fault path. That path cost ~250us PER 4KB PAGE and fired
+	 * on every repaint of a heap-backed surface: instrumenting
+	 * mm/fault.c gave cow=4999 of the first 5000 user faults, and the
+	 * backdrop fill of a full window measured 220-610ms where the same
+	 * fill over already-faulted pages measured 0-10ms. Window backings
+	 * are the surfaces that pay it; masks and gradient ramps are small
+	 * and are rebuilt constantly, so they keep pixman's allocator. */
+	unsigned long bytes = (unsigned long) width * 4u * height;
+
+	if (bytes >= BITMAP_SHARED_MIN_BYTES) {
+		void *p = mmap(nullptr, (size_t) bytes,
+			       PROT_READ | PROT_WRITE,
+			       MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+		if (p != MAP_FAILED) {
+			impl_->mapBuf = p;
+			impl_->mapLen = bytes;
+			impl_->img = pixman_image_create_bits(PIXMAN_x8r8g8b8,
+							     (int) width,
+							     (int) height,
+							     (uint32_t *) p,
+							     (int) width * 4);
+		}
+	}
+	if (!impl_->img) {
+		/* small surfaces, and the fallback when mmap is unavailable:
+		 * pixman allocates (and owns) the buffer */
+		impl_->img = pixman_image_create_bits(PIXMAN_x8r8g8b8,
+						     (int) width, (int) height,
+						     nullptr, 0);
+	}
 	if (!impl_->img) {
 		std::fprintf(stderr, "ARGENTUM: pixman surface %ux%u failed\n",
 			     width, height);
@@ -132,8 +172,13 @@ BitmapImage::BitmapImage(unsigned int width, unsigned int height)
 
 BitmapImage::~BitmapImage()
 {
+	/* pixman_unref first: it does not own an externally provided buffer,
+	 * and it must not be left pointing at memory we are about to unmap */
 	if (impl_->img) {
 		pixman_image_unref(impl_->img);
+	}
+	if (impl_->mapBuf) {
+		munmap(impl_->mapBuf, (size_t) impl_->mapLen);
 	}
 	delete impl_;
 }

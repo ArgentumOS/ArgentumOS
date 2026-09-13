@@ -195,6 +195,11 @@ struct BitmapImage::Impl {
 	pixman_image_t *img = nullptr;	/* PIXMAN_x8r8g8b8 surface */
 	unsigned int width = 0;
 	unsigned int height = 0;
+	/* a large surface's pixels live in a SHARED anonymous mapping (see
+	 * the constructor): owned here, released with munmap. Null when
+	 * pixman allocated the buffer itself (small surfaces). */
+	void *mapBuf = nullptr;
+	unsigned long mapLen = 0;
 };
 
 /* S1.2 GraphicsContext state: which bitmap it draws into, plus the
