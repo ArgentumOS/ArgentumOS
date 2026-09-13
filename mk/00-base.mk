@@ -176,11 +176,11 @@ uitest-img: uitest-root
 uitest: .build/ovmf/OVMF.fd uitest-img build64
 	$(MAKE) run-qemu ROOTIMG=$(UITESTIMG)
 
-# --- Widget zoo: the S2.5 reference-app germ. init auto-spawns
-# --- widget_zoo (every S2.2+S2.3 control, live) via session.conf
-# --- desktop="zoo". Run from a terminal with DISPLAY set for a GTK
-# --- window:
-# ---     make zoo       (widget zoo board)
+# --- Widget Zoo: the S2.5 reference app, shipped as the S5.2d bundle
+# --- /Applications/Widget Zoo.app. init auto-spawns its payload
+# --- (every S2.2+S2.3 control, live) via session.conf desktop="zoo".
+# --- Run from a terminal with DISPLAY set for a GTK window:
+# ---     make zoo       (the Widget Zoo bundle)
 ZOOROOT ?= .build/zoo-root
 ZOOIMG  ?= .build/rootagfs-zoo.img
 

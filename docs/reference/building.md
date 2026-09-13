@@ -78,7 +78,7 @@ minix -> ext2 -> iso9660 -> agfs):
     make run-ext2            # same, but booting the legacy ext2 root (.build/root.img)
     make run-xfb             # same, but a root preconfigured to boot the X11 (Xfb) desktop
     make uitest              # ...the UIKit session (theme_chrome) on Xfb
-    make zoo                 # ...Kestrel (WM) + widget_zoo: the live control board
+    make zoo                 # ...Kestrel (WM) + the Widget Zoo bundle: the control board
 
 `make kestrel-img` builds the same kind of preconfigured root for the
 window-manager-only session (used by the Kestrel gates); the sessions are

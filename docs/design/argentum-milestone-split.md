@@ -200,7 +200,8 @@ reference-app + a11y gate.
 - **S2.5 — S2 gate.** *Acceptance:* the Settings reference app
   exercises every v1-cut widget and the a11y battery asserts
   role/label on each (original S2 acceptance, whole). The interim
-  `make zoo` board (widget_zoo, session.conf `desktop = "zoo"`,
+  `make zoo` board (the Widget Zoo bundle from S5.2d, session.conf
+  `desktop = "zoo"`,
   init.c SESSION_ZOO) is the reference-app germ: every S2.2+S2.3
   control live on one window; S2.5 grows it into Settings.
   Status: **DONE** — the zoo grew a Tier-2 band (Box column, a
@@ -299,7 +300,9 @@ structure, S2.5 the reference board + a11y battery).
     console), `KESTREL-READY`, the console shell is there alongside, the
     menubar is drawn across the top, the desktop is *one flat colour*
     over 240/240 samples (nothing open), and an app launched from the
-    console shell (`DISPLAY=:0 …/widget_zoo &`) is managed by the desktop
+    console shell (`DISPLAY=:0 /Applications/Widget Zoo.app/bin/WidgetZoo &`
+    — `…/widget_zoo` when this gate ran; S5.2d moved the app into the
+    bundle) is managed by the desktop
     (464,283 px changed on screen) and its menubar reaches the bar
     (`titles=zoo,Widgets,View` — the S4.2 path working on the standard
     image, not just the probe image), with no X protocol errors.
@@ -559,6 +562,68 @@ structure, S2.5 the reference board + a11y battery).
   this is *not* bundle mediation). *Acceptance:*
   `/Applications` holds bundles whose manifests validate; the dock
   launches them; each runs under the WM and its menubar reaches the bar.
+
+  **As built (DONE, 2026-09).** Two apps — the reference set's first
+  members:
+
+  - **`/Applications/Widget Zoo.app`** (`manifest`, `bin/WidgetZoo`,
+    `Resources/`) and **`/Applications/Calculator.app`**
+    (`bin/Calculator`, `Resources/`). The Widget Zoo is the S2.5
+    reference app: its source moved to `userland/apps/widgetzoo/` and it
+    **no longer ships in `System/Shared/tests/`** — the point of the
+    slice. Calculator is new (`userland/apps/calculator/calculator.cpp`):
+    four-function arithmetic from its key grid or the keyboard, a display
+    panel, and its own menubar. Both manifests are real files in the app's
+    source directory, copied into the bundle by `mk/20-userland.mk`, which
+    also creates each `bin/` and `Resources/` — so the five-entry FSH root
+    is not empty and a stock boot has apps to launch.
+  - **The manifest is read, and validated, by the consumer.** The dock's
+    tile names a *bundle* (`kPins[i].bundle`), and
+    `bundleResolve()` reads `/Applications/<name>.app/manifest` with
+    **libconfig** (`config_read_file` — the same grammar and parser as
+    every other `.conf` in the system, per `app-model.md` §3): required
+    `name`, `identifier`, `version`, `executable`; the payload must be a
+    regular file *inside* the bundle (an absolute path or one with `..`
+    is refused); then `fork`/`execve` of the payload. Resolution logs
+    either way — `KESTREL: bundle '<name>.app' ok name="…"
+    executable=…`, or `… refused: <reason>` — and a refused bundle is
+    never launched. First-party identifiers use the reserved
+    `system.<app>` namespace (`config-design.md` §2, Q-N), not
+    reverse-DNS.
+  - **Unmediated, by decision.** No launch helper and no
+    `AGFS_INODE_BUNDLE_ENTRY`: the payload is exec'd directly, so the
+    bundle is packaging, not a safety boundary (`bundle-launch-plan.md`
+    N0/N1 stay their own milestone). The dock's running dot is therefore
+    still a **title match** — S5.2d did not give apps a bundle identity,
+    and S5.2c's "until S5.2d gives an app a bundle identity" note should
+    be read as "until the launch helper"; `title` in `kPins` is the
+    window title the app is shipped with, equal to the manifest's `name`.
+  - **The session path follows the app**: `init.c`'s `desktop = "zoo"`
+    session spawns `/Applications/Widget Zoo.app/bin/WidgetZoo` (the same
+    payload the dock resolves), `mk/00-base.mk`'s `make zoo` target boots
+    that, and `System/Shared/tests/widget_zoo` is gone.
+  - **`icon` is omitted deliberately**: the tree ships no image assets
+    and the dock draws monogram tiles from the theme's parameters, so
+    there is nothing honest to point it at (the decoder is parked as
+    S5.2h).
+  - **Gate**: `tests/cases/wm_dock.py` — extended, not replaced, because
+    this is the dock's own case — → **26/26 checks**. The new legs: the
+    second tile launches the Calculator; the desktop manages it; its own
+    bar window carries its menu (ink right of the app zone); **both
+    bundles logged a validated manifest**; and the app is *exercised*:
+    the case derives the key grid from the app's own log
+    (`CALC: grid …`, window px) plus the WM's frame log, clicks
+    `1 2 + 3 =`, and asserts the app's own `CALC-ACT: result 15`. No X
+    protocol errors.
+  - **Cost, recorded:** the first run failed one check and one leg for
+    reasons that were the case's, not the system's — `TILE_GAP` was used
+    before it was defined, and the bundle-set assertion counted the zoo
+    **twice** (this case launches it twice: the first click, then the
+    relaunch after its close box), so it now compares the *set* of
+    resolved bundles. Worth noting the geometry still comes from logs: the
+    menubar zone moved 226 → 142 in these runs because the app's display
+    name is now the shorter "Widget Zoo", and every check that measures
+    the bar reads the zone from the log.
 
   #### S5.2e — the FSH skeleton + Application Support per config policy
 

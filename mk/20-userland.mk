@@ -263,13 +263,33 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
 		userland/tests/widgets_g_inj.cpp -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/widgets_g_inj"
-	# widget_zoo: the S2.5 reference-app germ — every S2.2+S2.3 control
-	# on one live board (launched by init when session.conf says
-	# desktop = "zoo"; `make zoo` boots it).
+	# --- S5.2d: the reference apps ship as BUNDLES in /Applications ----
+	# <DisplayName>.app/{manifest, bin/<Executable>, Resources/} per
+	# docs/design/app-model.md §2: a flat directory identified by the
+	# .app extension and the manifest.  The payload is a plain binary
+	# inside the bundle and the dock execs it directly (unmediated —
+	# bundle-launch-plan.md's launch helper is a later milestone), so
+	# every payload lives at /Applications/<DisplayName>.app/bin/.
+	# Widget Zoo is the S2.5 reference app (every S2.2+S2.3 control on
+	# one live board): `make zoo` boots a session that runs this bundle.
+	mkdir -p "$(ROOTFS64)/Applications/Widget Zoo.app/bin" \
+		 "$(ROOTFS64)/Applications/Widget Zoo.app/Resources"
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widget_zoo.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widget_zoo"
+		userland/apps/widgetzoo/widget_zoo.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/Applications/Widget Zoo.app/bin/WidgetZoo"
+	cp userland/apps/widgetzoo/manifest \
+		"$(ROOTFS64)/Applications/Widget Zoo.app/manifest"
+	# Calculator: the S5.2d reference app #2 — four-function arithmetic
+	# from buttons or the keyboard, with its own menubar.
+	mkdir -p "$(ROOTFS64)/Applications/Calculator.app/bin" \
+		 "$(ROOTFS64)/Applications/Calculator.app/Resources"
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/apps/calculator/calculator.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/Applications/Calculator.app/bin/Calculator"
+	cp userland/apps/calculator/manifest \
+		"$(ROOTFS64)/Applications/Calculator.app/manifest"
 	# zoo_inj: redraw-storm driver for the zoo (Expose x10 from a second
 	# X connection; redraw-cost regression counts text resolutions/draw).
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \

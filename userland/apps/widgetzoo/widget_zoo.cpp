@@ -1,4 +1,4 @@
-/* widget_zoo.cpp — Argentum widget zoo (S2.5 reference-app germ): one
+/* widget_zoo.cpp — Widget Zoo (S2.5 reference-app germ): one
  * window with every control built so far, all live — themed chrome,
  * Label, Push/Checkbox/Radio buttons, TextField, Slider, Stepper,
  * SegmentedControl, ProgressIndicator, LevelIndicator, ImageView and
@@ -554,7 +554,7 @@ main()
 		}
 	} w;
 
-	if (!w.init("Argentum widget zoo", WIN_X, WIN_Y, WIN_W, WIN_H)) {
+	if (!w.init("Widget Zoo", WIN_X, WIN_Y, WIN_W, WIN_H)) {
 		std::fprintf(stderr, "ZOO: window init failed\n");
 		return 1;
 	}
@@ -661,7 +661,7 @@ main()
 	tZoo.setSubmenu(&mZoo);
 	tWidgets.setSubmenu(&mWidgets);
 	tView.setSubmenu(&mView);
-	zooBar.setTitle("Argentum widget zoo");
+	zooBar.setTitle("Widget Zoo");
 	zooBar.addItem(&tZoo);
 	zooBar.addItem(&tWidgets);
 	zooBar.addItem(&tView);

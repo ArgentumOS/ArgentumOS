@@ -456,8 +456,8 @@ static enum session_kind read_session(void)
  * while to come up under TCG), so the console shell is not gated on the
  * server. Which client runs after Xfb comes from session.conf: the
  * default demo desktop (xdraw + xkey), the uitest board
- * (theme_chrome, the S1.x acceptance probe), or the widget zoo
- * (widget_zoo, S2.2+S2.3 control catalog; desktop = "zoo"). */
+ * (theme_chrome, the S1.x acceptance probe), or the Widget Zoo
+ * bundle (S2.2+S2.3's control catalog; desktop = "zoo"). */
 static void start_xfb(void)
 {
 	/* the server execs xkbcomp to compile the keymap at startup, so its
@@ -500,12 +500,15 @@ static void start_xfb(void)
 		/* S4: the zoo is the reference app — it runs UNDER
 		 * Kestrel (spawned first so its MapRequest is
 		 * redirected; if it maps first, Kestrel's manage-existing
-		 * pass picks it up) */
+		 * pass picks it up).  S5.2d: the app is a BUNDLE now, so
+		 * the session reaches it at its payload — the same path
+		 * the dock resolves from the manifest. */
 		spawn_gui("/System/Tools/kestrel",
 			  (char *const[]) { "kestrel", NULL }, dpy_env);
-		spawn_gui("/System/Shared/tests/widget_zoo",
-			  (char *const[]) { "widget_zoo", NULL }, dpy_env);
-		puts("XDESK: zoo session launching (kestrel WM + widget_zoo on :0)");
+		spawn_gui("/Applications/Widget Zoo.app/bin/WidgetZoo",
+			  (char *const[]) { "WidgetZoo", NULL }, dpy_env);
+		puts("XDESK: zoo session launching (kestrel WM + the Widget Zoo "
+		     "bundle on :0)");
 	} else if (session == SESSION_KESTREL) {
 		spawn_gui("/System/Tools/kestrel",
 			  (char *const[]) { "kestrel", NULL }, dpy_env);

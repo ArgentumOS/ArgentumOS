@@ -1,0 +1,8 @@
+# Calculator.app/manifest — see WidgetZoo's manifest for the field
+# reference (docs/design/app-model.md §3). `system.<app>` is the
+# first-party domain namespace (docs/design/config-design.md §2, Q-N).
+name = "Calculator"
+identifier = system.calculator
+version = 1.0
+executable = bin/Calculator
+menu-name = "Calculator"

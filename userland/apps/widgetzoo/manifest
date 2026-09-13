@@ -1,0 +1,18 @@
+# Widget Zoo.app/manifest — the app's metadata, written in the config
+# .conf grammar and read with libconfig (docs/design/app-model.md §3).
+#
+# First-party apps use the reserved `system.<app>` domain namespace, not
+# reverse-DNS (docs/design/config-design.md §2, Q-N) — this identifier is
+# also the app's config domain and the name any future keychain ACL or
+# install ledger keys on.
+#
+# Required of every bundle: name, identifier, version, executable. The
+# optional fields (`icon`, `menu-name`, `document-types`, `url-schemes`)
+# are the ones this app has nothing to say about yet: the tree ships no
+# image assets, so there is no icon (S5.2h parks a decoder), and a widget
+# board opens no documents.
+name = "Widget Zoo"
+identifier = system.widgetzoo
+version = 1.0
+executable = bin/WidgetZoo
+menu-name = "Widget Zoo"

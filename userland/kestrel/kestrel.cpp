@@ -21,9 +21,12 @@
 #include <argentum/argentum.h>
 #include <map>
 #include <stdlib.h>
+#include <sys/stat.h>		/* S5.2d: stat() a bundle's payload */
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <libconfig.h>		/* S5.2d: read a bundle's manifest */
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -312,26 +315,120 @@ class DockView;
  * so nothing hides under it.
  *
  * Tiles are vector chrome (a rounded tile, a monogram, a dot): the tree
- * ships no images and this theme's art is parameterised. Launching is a
- * direct fork/execve of the pinned PATH — S5.2d replaces that with real
- * bundles and the launch helper, and until an app has a bundle identity a
- * tile counts as running when a managed window's title matches its title.
+ * ships no images and this theme's art is parameterised.
+ *
+ * S5.2d: a tile names a BUNDLE, not a path.  `bundle` is the display
+ * name whose directory is /Applications/<bundle>.app; the manifest
+ * inside it (a .conf file — app-model.md §2/§3) is read and validated
+ * with libconfig at launch, and the payload it names is exec'd directly.
+ * There is no privileged door yet — bundle-launch-plan.md's `launch`
+ * helper is its own milestone — so this is packaging, not mediation, and
+ * it must not be treated as a safety boundary.  Until an app has a
+ * bundle identity, a tile counts as running when a managed window's
+ * title matches `title`.
  */
 #define DOCK_PAD	8	/* padding inside the dock's column, px */
 #define TILE_GAP	8	/* between tiles, px */
 
 struct DockPin {
+	const char *bundle;	/* /Applications/<bundle>.app */
 	const char *title;	/* matches the managed window's title */
 	const char *monogram;	/* drawn in the tile */
-	const char *path;	/* exec'd (S5.2d: a bundle payload) */
 };
 
 static const DockPin kPins[] = {
-	{ "Argentum widget zoo", "Z", "/System/Shared/tests/widget_zoo" },
-	{ "Argentum S1.3 theme chrome", "C",
-	  "/System/Shared/tests/theme_chrome" },
+	{ "Widget Zoo", "Widget Zoo", "W" },
+	{ "Calculator", "Calculator", "=" },
 };
 static const int kPinCount = (int) (sizeof(kPins) / sizeof(kPins[0]));
+
+/* ---- S5.2d: bundle resolution ---------------------------------------
+ *
+ * A bundle is a flat <DisplayName>.app directory whose `manifest` is a
+ * .conf file, so it is read with the same libconfig every other config
+ * file goes through — no new parser, and the manifest's grammar is the
+ * documented one (docs/design/app-model.md §3).  Required of every
+ * bundle: name, identifier, version, executable.  The payload
+ * `executable` must name a real file inside the bundle: an absolute path
+ * or one climbing out with `..` is refused, since a bundle's binary is
+ * the bundle's.  Optional fields (icon, menu-name, document-types,
+ * url-schemes) are unread here.
+ *
+ * Resolution logs its outcome either way: a bundle that cannot be
+ * resolved is refused with its reason and never launched.
+ */
+#define BUNDLE_DIR	"/Applications"
+
+static bool
+bundleResolve(const DockPin &pin, char *exe, size_t exeLen,
+	      char *name, size_t nameLen)
+{
+	char manifest[512], rel[256];
+	config_value_t v;
+	struct stat st;
+
+	snprintf(manifest, sizeof(manifest), "%s/%s.app/manifest",
+		 BUNDLE_DIR, pin.bundle);
+
+	if (config_read_file(manifest, "name", &v)) {
+		printf("KESTREL: bundle '%s.app' refused: no name\n",
+		       pin.bundle);
+		return false;
+	}
+	if (v.type != CONFIG_TYPE_STRING || !v.v.string) {
+		config_value_free(&v);
+		printf("KESTREL: bundle '%s.app' refused: name is not a "
+		       "string\n", pin.bundle);
+		return false;
+	}
+	snprintf(name, nameLen, "%s", v.v.string);
+	config_value_free(&v);
+
+	if (config_read_file(manifest, "identifier", &v)) {
+		printf("KESTREL: bundle '%s.app' refused: no identifier\n",
+		       pin.bundle);
+		return false;
+	}
+	config_value_free(&v);
+
+	if (config_read_file(manifest, "version", &v)) {
+		printf("KESTREL: bundle '%s.app' refused: no version\n",
+		       pin.bundle);
+		return false;
+	}
+	config_value_free(&v);
+
+	if (config_read_file(manifest, "executable", &v)) {
+		printf("KESTREL: bundle '%s.app' refused: no executable\n",
+		       pin.bundle);
+		return false;
+	}
+	if (v.type != CONFIG_TYPE_STRING || !v.v.string) {
+		config_value_free(&v);
+		printf("KESTREL: bundle '%s.app' refused: executable is not "
+		       "a string\n", pin.bundle);
+		return false;
+	}
+	snprintf(rel, sizeof(rel), "%s", v.v.string);
+	config_value_free(&v);
+
+	if (rel[0] == 0 || rel[0] == '/' || strstr(rel, "..")) {
+		printf("KESTREL: bundle '%s.app' refused: executable '%s' "
+		       "is not a path inside the bundle\n",
+		       pin.bundle, rel);
+		return false;
+	}
+	snprintf(exe, exeLen, "%s/%s.app/%s", BUNDLE_DIR, pin.bundle, rel);
+	if (stat(exe, &st) || !S_ISREG(st.st_mode)) {
+		printf("KESTREL: bundle '%s.app' refused: no payload %s\n",
+		       pin.bundle, exe);
+		return false;
+	}
+	printf("KESTREL: bundle '%s.app' ok name=\"%s\" executable=%s\n",
+	       pin.bundle, name, rel);
+	fflush(stdout);
+	return true;
+}
 
 static bool gDockLeft = false;		/* dock.position */
 static int gDockIcon = 48;		/* dock.icon-size */
@@ -435,20 +532,27 @@ dockActivate(int i)
 		return;
 	}
 	{
-		pid_t pid = fork();
+		char exe[512], name[128];
+		pid_t pid;
 
+		/* S5.2d: resolve the tile's bundle first — a manifest that
+		 * does not validate is refused here, with its reason. */
+		if (!bundleResolve(kPins[i], exe, sizeof(exe), name,
+				   sizeof(name))) {
+			return;
+		}
+		pid = fork();
 		if (pid == 0) {
-			execl(kPins[i].path, kPins[i].path,
-			      (char *) nullptr);
+			execl(exe, exe, (char *) nullptr);
 			_exit(127);	/* exec failed */
 		}
 		if (pid < 0) {
 			fprintf(stderr, "KESTREL: dock exec failed for %s\n",
-				kPins[i].path);
+				exe);
 			return;
 		}
 		printf("KESTREL: dock launch '%s' pid=%d (%s)\n",
-		       kPins[i].title, (int) pid, kPins[i].path);
+		       kPins[i].title, (int) pid, exe);
 		fflush(stdout);
 	}
 }

@@ -26,7 +26,7 @@ which case the message names the make target that fixes it.
 A case that needs an artifact it does not have **skips** with that instruction
 rather than failing, so a fresh clone gives a readable "run make rootagfs"
 instead of a wall of red. Cases that need a program inside the image check for
-it first (`ctx.require_guest_file("widget_zoo")`).
+it first (`ctx.require_guest_file("WidgetZoo")`).
 
 Nothing here rebuilds the images: a test run tests what is on disk, and the
 runner warns when `.build/rootagfs.img` is older than the newest source file

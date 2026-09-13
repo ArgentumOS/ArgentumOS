@@ -563,7 +563,9 @@ two apps, the bar swaps with focus, picks trigger app actions.
   gone after the pick.
 
 ### S4.2c — the reference app's menubar, and real menu rows
-*Status: **DONE** (2026-09).* `userland/tests/widget_zoo.cpp` (the zoo's
+*Status: **DONE** (2026-09).* `userland/apps/widgetzoo/widget_zoo.cpp`
+(`userland/tests/widget_zoo.cpp` at the time; S5.2d moved it into the
+Widget Zoo bundle — the zoo's
 menubar + `Application::menuBarRefresh`), `userland/argentum/popup.cpp`
 (per-row heights, separators, marks, key equivalents),
 `userland/argentum/menu.cpp` (the checked bit), `view.cpp` (a hide/show

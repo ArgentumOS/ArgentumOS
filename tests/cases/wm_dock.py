@@ -19,7 +19,8 @@ import time
 
 from harness import BaseCase
 
-APP = "Argentum widget zoo"
+APP = "Widget Zoo"		# S5.2d: the app is a BUNDLE now
+CALC = "Calculator"
 DOCK_LINE = (r"KESTREL: dock (\w+) (\d+)x(\d+) at (\d+),(\d+) "
              r"tiles=(\d+) icon=(\d+)")
 MANAGE_LINE = (r"KESTREL: manage 0x[0-9a-f]+ '%s' frame=0x[0-9a-f]+ "
@@ -28,8 +29,16 @@ XERR = r"X Error|BadWindow|BadMatch|BadValue|BadDrawable"
 
 # The dock's internal layout, mirroring kestrel.cpp (DOCK_PAD / TILE_GAP).
 # The log gives the dock's box, its tile count and the icon size; the padding
-# above the first tile is the WM's layout contract with this case.
+# above the first tile and the gap between tiles are the WM's layout contract
+# with this case.
 DOCK_PAD = 8
+TILE_GAP = 8
+
+# The frame's client inset, also from kestrel.cpp: the frame window carries a
+# 1px outline (its X border), then FRAME_PX of lip and the BAND_H title band
+# before the client's own origin.
+FRAME_PX = 4
+BAND_H = 20
 
 
 class Case(BaseCase):
@@ -38,7 +47,8 @@ class Case(BaseCase):
     timeout = 600
 
     def run(self, ctx):
-        ctx.require_guest_file("widget_zoo")
+        ctx.require_guest_file("WidgetZoo")
+        ctx.require_guest_file("Calculator")
         session = ctx.boot()
         if not session.wait_for(r"KESTREL-READY", 150):
             self.check("session-up", False, "the desktop never came up")
@@ -196,7 +206,6 @@ class Case(BaseCase):
         # move the pointer FAR without the button: the frame must stay
         # where the release left it.
         if frame:
-            BAND_H = 20			# kestrel.cpp: the title bar
             flick = [(40, 0), (40, 0), (40, 0), (30, 0), (0, -30)]
             net = [0, 0]
 
@@ -295,6 +304,85 @@ class Case(BaseCase):
                    "after closing and relaunching the app its own bar window "
                    "is back: ink reaches x=%d, right of the zone at x=%d"
                    % (ink_back, zx))
+
+        # --- S5.2d: a tile names a BUNDLE -------------------------------
+        # The tiles carry no path any more: each names /Applications/<name>.app,
+        # and the WM reads that bundle's manifest — a .conf file, read with
+        # libconfig, the same grammar as every other config file — validates
+        # it, and execs the payload it names.  The second tile is the
+        # Calculator, a real app, so this leg exercises the app and not just
+        # its launch: its own key grid is clicked through 12+3= and the
+        # arithmetic is asserted from the app's log.
+        calc_y = dy + DOCK_PAD + icon + TILE_GAP + icon // 2
+        monitor.goto(tile_x, calc_y)
+        monitor.click()
+        self.check("calculator-tile-launches",
+                   session.wait_for(r"KESTREL: dock launch 'Calculator'", 45),
+                   "the second tile launched its bundle")
+        self.check("calculator-managed",
+                   session.wait_for(r"KESTREL: manage 0x[0-9a-f]+ '%s'"
+                                    % re.escape(CALC), 45),
+                   "the desktop manages the Calculator's window")
+
+        bundles = re.findall(r"KESTREL: bundle '([^']+)' ok name=\"([^\"]+)\" "
+                             r"executable=(\S+)", session.log_text())
+        # (the zoo is launched twice in this run - the first click and the
+        # relaunch after its close box - so the resolved set is what matters)
+        resolved = sorted(set(b[0] for b in bundles))
+        self.check("bundle-manifests-validated",
+                   resolved == ["Calculator.app", "Widget Zoo.app"],
+                   "both tiles resolved a bundle whose manifest validated: %s"
+                   % "; ".join("%s name=%s exe=%s" % b
+                               for b in sorted(set(bundles))))
+
+        # The Calculator's own bar window must reach the bar's app zone, the
+        # same measure the zoo leg uses - the zone is the WM's own half, so it
+        # is re-read (a different app name means a different zone width).
+        zones = re.findall(r"KESTREL: menubar zone x=(\d+) w=(\d+)",
+                           session.log_text())
+        czx = int(zones[-1][0]) if zones else zx
+        ink_calc = 0
+        deadline = time.time() + 25
+        while time.time() < deadline:
+            shot = session.shot("calc-bar")
+            ink_calc = bar_ink_right(shot, czx + 4)
+            if ink_calc > czx + 20:
+                break
+            time.sleep(1.0)
+        self.check("calculator-bar-in-zone", ink_calc > czx + 20,
+                   "the Calculator's own bar window carries its menu: ink "
+                   "reaches x=%d, right of the zone at x=%d"
+                   % (ink_calc, czx))
+
+        # 1 2 + 3 = / the grid's own geometry: the app logs the grid in window
+        # px and the WM logs the frame, so the click targets are derived, not
+        # guessed (the frame's client origin is its 1px outline + lip + band).
+        grid = re.search(r"CALC: grid (\d+)x(\d+) at (\d+),(\d+) cell (\d+)x(\d+) "
+                         r"gap (\d+)", session.log_text())
+        calc_frame = re.search(MANAGE_LINE % re.escape(CALC), session.log_text())
+        self.check("calculator-grid-logged", bool(grid and calc_frame),
+                   "the app logged its key grid and the WM logged its frame")
+        result = None
+        if grid and calc_frame:
+            (_gc, _gr, gx0, gy0, cw, ch, gap) = (int(grid.group(i))
+                                                 for i in range(1, 8))
+            ox = int(calc_frame.group(1)) + 1 + FRAME_PX
+            oy = int(calc_frame.group(2)) + 1 + BAND_H
+            # the key grid, row 0 at the top: row 3 is 1 2 3 +, row 4 ends =
+            for row, col in ((3, 0), (3, 1), (3, 3), (3, 2), (4, 3)):
+                monitor.goto(ox + gx0 + col * (cw + gap) + cw // 2,
+                             oy + gy0 + row * (ch + gap) + ch // 2)
+                monitor.click()
+            deadline = time.time() + 20
+            while time.time() < deadline:
+                hit = re.search(r"CALC-ACT: result (\S+)", session.log_text())
+                if hit:
+                    result = hit.group(1)
+                    break
+                time.sleep(0.5)
+        self.check("calculator-arithmetic", result == "15",
+                   "clicking 1 2 + 3 = on the key grid produced %s (the app's "
+                   "own log of the result)" % (result or "no result"))
 
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")
