@@ -1,5 +1,6 @@
 """Clicking a dock tile launches its app; a second click raises it instead, and
-a window drag ends when the button comes up - even mid fast motion.
+a window drag ends when the button comes up - even mid fast motion.  It also
+holds that a window is NOT on screen until it is fully drawn.
 
 What it proves: the dock sits at the screen edge, a click on its first tile
 starts the pinned app, the app's frame lands inside the work area (clear of the
@@ -529,6 +530,39 @@ class Case(BaseCase):
                                     30),
                    "the app and the WM are both still alive after the hostile "
                    "resize (the dock raised its window again)")
+
+        # --- a window is not on screen until it is DRAWN ----------------
+        # krel_slow sleeps 6s inside its FIRST paint.  A first paint is not
+        # a normal paint: it fills the text, mask and glyph caches, so it
+        # costs an order of magnitude more than the repaints after it
+        # (measured ~450ms cold against ~35ms warm for the zoo's board).
+        # Mapping first therefore showed a blank window for that whole
+        # time.  Composing BEFORE the map means that while it works there
+        # is not even a MapRequest, so the screen must be untouched until
+        # the window is already drawn - and then it must appear.
+        quiet = session.shot("undrawn-before")
+        session.serial("DISPLAY=:0 /System/Shared/tests/krel_slow &")
+        if session.wait_for(r"KREL-SLOW-PAINTING", 60):
+            time.sleep(2)		# inside the 6s first paint
+            during = session.shot("undrawn-painting")
+            painted = during.diff_box(quiet, (0, 40, 1920, 1080))
+            self.check("window-hidden-while-it-paints", painted <= 4,
+                       "nothing of the window is on screen while it paints "
+                       "its first frame (%d px changed below the bar)"
+                       % painted)
+        else:
+            self.check("window-hidden-while-it-paints", False,
+                       "the slow probe never reported its first paint")
+        session.wait_for(r"KREL-SLOW-DRAWN", 60)
+        session.wait_for(r"KREL-SLOW-READY", 60)
+        time.sleep(1)
+        drawn = session.shot("undrawn-drawn")
+        appeared = drawn.diff_box(quiet, (0, 40, 1920, 1080))
+        self.check("window-appears-already-drawn", appeared > 1000,
+                   "the window is on screen once it is drawn (%d px changed "
+                   "below the bar)" % appeared)
+        session.serial("killall krel_slow 2>@null")
+        time.sleep(1)
 
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

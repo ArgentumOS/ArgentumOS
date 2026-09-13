@@ -1465,7 +1465,31 @@ slice uncovered.
   already decorated while the client paints, the client's own area is
   the theme's page with **zero** desktop-colour pixels, and the same
   pixel becomes the content once the paint lands.
-- **The backing/segment is grow-only** (S4.3c — found in use: "when I
+
+  **Superseded (2026-09): the window is not shown AT ALL until it is
+  drawn** (asked in use: "when a window is mapped, it's still being
+  mapped before it's fully drawn — is it possible to hide each window
+  until it's fully drawn?"). The S4.3b work above made the undrawn
+  moment *look* like a window surface; it did not remove the moment, and
+  the first paint is exactly the wrong one to show it through: a FIRST
+  paint is not a normal paint — it fills the text, mask and glyph caches,
+  so it costs an order of magnitude more than the repaints after it
+  (measured: ~450ms cold against ~35ms warm for the zoo's board, TCG).
+  `Window::show()` now COMPOSES THE FIRST FRAME BEFORE THE MAP. While
+  that runs there is not even a `MapRequest`, so nothing of the window
+  can be on screen; and because composing leaves `painted` true, the
+  Expose the WM's own map generates takes the flush-from-the-backing path
+  (`redrawExposed`) instead of a full recomposite — the window is on
+  screen only once it is already drawn. Nothing else was needed: no extra
+  pixmap, no background change (the page-tone background from S4.3b still
+  covers the no-WM case, where the map takes effect immediately and the
+  composed frame is put straight after it).
+
+  Held by `wm_dock/window-hidden-while-it-paints` (during `krel_slow`'s 6s
+  first paint, **0 px** below the bar change — the same run that shows
+  **71680 px** changing once it is drawn, so the measurement is proven
+  sensitive to exactly that window's pixels) and
+  `wm_dock/window-appears-already-drawn`.- **The backing/segment is grow-only** (S4.3c — found in use: "when I
   try to resize the zoo window it crashes"). A resize drag re-allocated
   the whole backing *and* a fresh MIT-SHM segment per motion step; for a
   big window that is a multi-MB segment created and freed dozens of times

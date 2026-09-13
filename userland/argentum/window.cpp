@@ -1074,6 +1074,21 @@ Window::show(bool focus)
 	if (!impl_->dpy || !impl_->xwin) {
 		return;
 	}
+	/* S4.3b follow-up ("is it possible to hide each window until it is
+	 * fully drawn?"): COMPOSE THE FIRST FRAME BEFORE THE MAP. Mapping
+	 * first put the window on screen for as long as its first paint
+	 * took — and a first paint is not a normal paint: it fills the text,
+	 * mask and glyph caches, so it costs an order of magnitude more than
+	 * the repaints that follow (measured: ~450ms cold against ~35ms warm
+	 * for the zoo's board, under TCG). Composing first spends the
+	 * expensive pass while this window cannot be on screen at all — a WM
+	 * has not even seen a MapRequest — and leaves `painted` true, so the
+	 * Expose the WM's own map generates takes the flush-from-the-backing
+	 * path (redrawExposed) instead of a full recomposite. The window is
+	 * therefore on screen only once it is drawn. */
+	if (impl_->contentView) {
+		draw();
+	}
 	XMapWindow(impl_->dpy, impl_->xwin);
 	impl_->mapped = true;
 	XSync(impl_->dpy, False);
@@ -1093,15 +1108,22 @@ Window::show(bool focus)
 		XSync(impl_->dpy, False);
 	}
 
-	/* S4.3b: paint with the map. Requests are ordered, so a draw()
-	 * here lands right after the map in the SAME server batch — the
-	 * window never shows its background for the round trip that an
-	 * Expose-driven first paint would cost. Only when the map actually
-	 * took effect: under a WM the map request is redirected and the
-	 * window is not viewable yet, and the Expose from the WM's own map
-	 * is the first paint. */
+	/* No WM (the map took effect here): the content-view window was
+	 * already composed above, so this only has to PUT it — a server may
+	 * clear a window to its background as it maps it, and draw() consumed
+	 * the damage rect, so this is an explicit full put. A window that
+	 * paints through its own draw() override instead still needs its one
+	 * draw here. Under a WM the map is redirected and the Expose that
+	 * follows does the put (redrawExposed — `painted` is already true). */
 	if (viewable) {
-		draw();
+		if (impl_->contentView) {
+			impl_->dmgX0 = impl_->dmgY0 = 0;
+			impl_->dmgX1 = (int) impl_->width;
+			impl_->dmgY1 = (int) impl_->height;
+			flushBacking();
+		} else {
+			draw();
+		}
 	}
 }
 
