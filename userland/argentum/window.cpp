@@ -12,11 +12,6 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
-/* Below this height the draw goes through XPutImage instead of the
- * MIT-SHM path - see the measured note in flushBacking(). 32px is the
- * menubar strip (30) with a little room. */
-#define ARGENTUM_SHM_MIN_HEIGHT 32
-
 #include <X11/Xatom.h>		/* XA_CARDINAL (the S4.3 published hints) */
 
 #include <sys/ipc.h>
@@ -681,17 +676,27 @@ Window::flushBacking()
 	 * XShmPutImage (no image bytes on the wire). Fall back to
 	 * XPutImage when the server lacks XShm or the layout pads.
 	 *
-	 * MEASURED EXCEPTION (2026-09): a 30px-tall window's XShmPutImage
-	 * never reaches fb0 on the current Xfb - the *window* is fine (map
-	 * state, geometry, stacking) and the client sends the pixels, but
-	 * the shadow drain reports no damage for it, so the window's screen
-	 * content freezes at its first paint. Kestrel's menubar strip hit
-	 * this exactly: its menu titles were hit-testable but never drawn
-	 * ("the menus don't show"). The same puts through XPutImage land
-	 * correctly (A/B on the strip: menus appear). Wire cost is small
-	 * for a window this short, so short windows take the fallback until
-	 * the server side is understood. */
-	if (impl_->height > ARGENTUM_SHM_MIN_HEIGHT && shmEnsure() &&
+	 * There is no height exception here, and that is measured, not
+	 * assumed: v8 (2026-09) read a frozen menubar strip as "a 30px
+	 * window's XShmPutImage never reaches fb0" and routed short
+	 * windows through XPutImage. That diagnosis was wrong. The
+	 * measurement that settled it (2026-09, `xshm_geo`):
+	 *   - 13 XShmPutImage geometries from a plain X client - 30px,
+	 *     32, 33, 60, 120, 300 tall, 64 wide, 1920 wide, and the
+	 *     toolkit's actual shape (window 1920x30 with a 25%-larger
+	 *     backing, so image 2400x37) - every one landed twice (a
+	 *     repeat put) and the XPutImage control landed with them:
+	 *     XGetImage read back each new colour AND the screendump
+	 *     showed it on fb0;
+	 *   - with the old height gate forced open (short windows back on
+	 *     the SHM path) the standard image's own bar works: both 30px
+	 *     bar windows (`ARGENTUM-SHM: enabled 2400x37` = Kestrel's
+	 *     strip, `1887x37` = the app's bar) repaint on screen (1161
+	 *     pixels changed in Kestrel's half; the app's menu zone went
+	 *     from 0 to 267 ink columns), no X errors.
+	 * So the transport was never the problem; the v8 symptom came
+	 * from the strip's content/raise path, fixed in v9 (S4.2d). */
+	if (shmEnsure() &&
 	    impl_->shmImg->bytes_per_line ==
 		    (int) pixman_image_get_stride(b->img)) {
 		char *src = (char *) pixman_image_get_data(b->img);

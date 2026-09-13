@@ -375,6 +375,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_m0.c \
 		-L$(X11PREFIX)/lib -lXext -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/xshm_m0"
+	# xshm_geo: the Xfb short-window SHM measurement (S4.2a open item).
+	# XShmPutImage into a matrix of geometries - including the toolkit's
+	# real one (window 1920x30 with a 25%-larger backing) - reads each
+	# window back with XGetImage and prints a verdict per geometry; run
+	# from the console shell with DISPLAY=:0 and read the SHMGEO lines.
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_geo.c \
+		-L$(X11PREFIX)/lib -lXext -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xshm_geo"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".

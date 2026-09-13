@@ -331,14 +331,46 @@ menus, though they are there and react to clicks": the *model* and the
   clickable but invisible;
 - A/B on the transport: the same puts through `XPutImage` **do** land
   (the bar's text then reaches x=210 with the zoo active vs 85 at boot),
-  while `XShmPutImage` never does for this window.  `window.cpp` now
-  routes windows shorter than `ARGENTUM_SHM_MIN_HEIGHT` (32px) through
-  the fallback, with the measurement in the comment;
+  while `XShmPutImage` never does for this window.  `window.cpp` routed
+  windows shorter than 32px through the fallback, with the measurement
+  in the comment;
 - the dock (same toolkit, same SHM path, 1050px tall) updates fine, so
-  the *server-side* difference is still unexplained: **open item** - the
-  next measurement is to log inside Xfb's `ShmPutImage`/`PutImage`
-  whether the screen damage report fires for the strip's window
-  (`hw/xfb/InitOutput.c`'s shadow drain is what copies shadow → fb0).
+  the *server-side* difference was left unexplained and recorded as an
+  open item, with the next measurement named (log inside Xfb's
+  `ShmPutImage`/`PutImage` whether the screen damage report fires for
+  the strip's window).
+
+**v8's transport conclusion was WRONG, and it is now measured (2026-09).**
+The item was reopened, the "30px" theory tested directly, and it does not
+hold — `XShmPutImage` into short windows is fine at every layer:
+
+- `xshm_geo` (a plain X client, no toolkit, no Kestrel) does the exact
+  sequence every toolkit flush does — fill the segment, XShmPutImage,
+  `XSync` — twice with different colours, then repeats it through
+  `XPutImage` as the in-situ control, for 13 geometries: 1920x30 (twice),
+  1920x32, 1920x33, 1920x60, 1920x120, 400x300, 64x400, and **the
+  toolkit's real shape** — window 1920x30 behind a 25%-larger backing, so
+  the image is 2400x37 and `srcWidth < totalWidth` (the server's
+  scratch-pixmap `CopyArea` branch, not the `PutImage` fast path), plus
+  width-slack-only and height-slack-only variants of it.  **Every
+  geometry landed twice**, and `XGetImage` read back the new colour each
+  time (`shm1=… OK shm2=… OK put3=… OK`), i.e. the put reached the
+  shadow; the screendump showed the same colours on fb0 (`fb0=… ->
+  LANDED`, all 13);
+- in situ: with the height gate **forced open** (short windows back on
+  the SHM path: `ARGENTUM-SHM: enabled 2400x37` = Kestrel's strip,
+  `1887x37` = the app's own bar) the standard image's bar repaints on
+  screen — Kestrel's half changed **1161** pixels when the app became
+  active, and the app's menu zone went from **0 to 267** ink columns —
+  with no X errors.
+
+So the transport was never the problem, and the height exception was
+removed from `window.cpp` (2026-09): there is no reason to route short
+windows through `XPutImage`.  The v8 symptom belongs to the strip's
+*content and raise* path, which is what v9 (S4.2d) fixed — the app draws
+its own bar window and every strip raise re-raises it.  The probe stays in
+the tree (`userland/tests/xshm_geo`, run it from the console shell with
+`DISPLAY=:0`) so the next person can re-measure instead of re-theorising.
 
 Guarded by `wm_dock/app-menus-in-bar` (rightmost ink in the bar's rows,
 left of the clock zone, before vs after the app becomes active, so a
@@ -423,9 +455,12 @@ The same case's close/relaunch leg closes the app through its close box
 `killall` cannot do it, because it reads `/proc` and this boot's mounts do
 not expose one (`killall: no /proc`).
 
-Still open, unchanged: why a ~30px window's `XShmPutImage` never reaches
-fb0 (v8).  `ARGENTUM_SHM_MIN_HEIGHT` is load-bearing for the app's bar
-window too — it is exactly that height.
+The "30px `XShmPutImage` never reaches fb0" item v8 left open is
+**closed: the premise was wrong** — short-window SHM puts land in the
+shadow *and* on fb0, measured both from a plain X client and in situ
+(see the v8 section above).  The height exception is gone from
+`window.cpp`; the app's bar window takes the same SHM path as every
+other window.
 
 **The publish/PICK design itself is superseded** - see the redesign plan
 in the memory record `kestrel-menubar-app-drawn-plan` (an app-drawn bar
