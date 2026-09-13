@@ -49,6 +49,9 @@ struct TextRun {
 	hb_font_t *hbf = nullptr;
 	hb_buffer_t *buf = nullptr;
 
+	/* owned by the shaped-run cache (textRunFinish must not free it) */
+	bool cached = false;
+
 	/* shaped glyphs (borrowed from buf) */
 	unsigned int nglyphs = 0;
 	hb_glyph_info_t *info = nullptr;
@@ -85,6 +88,13 @@ struct FaceEntry {
 
 static FaceEntry g_faceCache[8];
 static int g_faceCount = 0;
+
+/* defined below (each with the cache it belongs to); a face that is freed
+ * must drop everything that references it — cached glyphs (which copy their
+ * bitmaps but are KEYED on the face pointer) and cached shaped runs (which
+ * borrow the face through their hb_font) */
+static void glyphCacheDropFace(FT_Face face);
+static void runCacheDropFace(FT_Face face);
 
 /* Look up (family, px); on miss resolve via fontconfig + FreeType and
  * cache it. Returns the face or null. *firstResolve is set when this
@@ -145,6 +155,8 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
 	} else {
 		i = 0;
 		if (g_faceCache[i].face) {
+			runCacheDropFace(g_faceCache[i].face);
+			glyphCacheDropFace(g_faceCache[i].face);
 			FT_Done_Face(g_faceCache[i].face);
 		}
 		if (g_faceCache[i].match) {
@@ -254,6 +266,28 @@ struct GlyphEntry {
 static GlyphEntry g_glyphCache[512];
 static int g_glyphCount = 0;
 
+/* Drop every cached glyph belonging to a face that is going away. The
+ * cache key is the FT_Face POINTER: FreeType frees the face and the
+ * allocator can hand the same address to a later FT_New_Face, at which
+ * point the stale entries would be served for a DIFFERENT face — the
+ * wrong glyph, silently, for a font that never rasterized one. (The
+ * bitmap buffers are copies the entries own, so only correctness is at
+ * stake, not memory safety.) */
+static void
+glyphCacheDropFace(FT_Face face)
+{
+	int i;
+
+	for (i = 0; i < g_glyphCount; i++) {
+		if (g_glyphCache[i].face == face) {
+			delete[] g_glyphCache[i].bm.buffer;
+			g_glyphCache[i] = g_glyphCache[g_glyphCount - 1];
+			g_glyphCount--;
+			i--;
+		}
+	}
+}
+
 /* Rasterize (or fetch) a glyph. Returns a stable FT_Bitmap (the entry
  * owns the buffer) or null on failure, with the glyph's bitmap offset
  * in the FreeType metric convention stored in left and top. */
@@ -340,6 +374,41 @@ render_glyphs(TextRun *t, Sink sink)
 	return rasterized;
 }
 
+/* ---- shaped-run cache -------------------------------------------
+ *
+ * Measured: a shaping call costs about one 10ms timer tick (this kernel's
+ * clock granularity) for even a one-glyph run, and "every redraw reshapes
+ * every string": the menubar alone re-shaped its three titles twice per
+ * repaint (metrics + draw), which is ~30ms of every bar repaint, and a
+ * menu row re-shaped its label on every hover repaint. A run's shaped
+ * glyphs are a function of (family, pixel size, text) alone — the face
+ * cache pins the face to one pixel size — so shape once and hand the run
+ * back. Bounded ring; eviction frees the oldest run for real. Runs whose
+ * text does not fit the key are never cached. */
+#define RUN_CACHE 64
+struct RunCacheEntry {
+	char key[128];
+	TextRun *run;
+};
+
+static RunCacheEntry g_runCache[RUN_CACHE];
+static int g_runCount = 0;	/* entries in use */
+static int g_runNext = 0;	/* ring cursor once full */
+
+static void textRunFree(TextRun *t);
+
+/* a run that borrows a face must go when the face does */
+static void
+runCacheDropFace(FT_Face face)
+{
+	for (int i = 0; i < g_runCount; i++) {
+		if (g_runCache[i].run && g_runCache[i].run->face == face) {
+			textRunFree(g_runCache[i].run);
+			g_runCache[i].run = nullptr;
+		}
+	}
+}
+
 TextRun *
 textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	       bool quiet)
@@ -352,6 +421,20 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	}
 	if (!family || !utf8 || pixelSize == 0) {
 		return nullptr;
+	}
+
+	/* the shaped-run cache: the same string at the same size shapes the
+	 * same glyphs for the life of the process */
+	char ckey[128];
+
+	if (std::snprintf(ckey, sizeof(ckey), "%s|%u|%s", family, pixelSize,
+			  utf8) < (int) sizeof(ckey)) {
+		for (int i = 0; i < g_runCount; i++) {
+			if (g_runCache[i].run &&
+			    std::strcmp(g_runCache[i].key, ckey) == 0) {
+				return g_runCache[i].run;
+			}
+		}
 	}
 
 	TextRun *t = new (std::nothrow) TextRun();
@@ -445,11 +528,39 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 		textRunFinish(t);
 		return nullptr;
 	}
+	if (std::strcmp(ckey, "") != 0 && strlen(ckey) < sizeof(ckey)) {
+		/* keep it: metrics and draws repeat the same strings */
+		int slot;
+
+		if (g_runCount < RUN_CACHE) {
+			slot = g_runCount++;
+		} else {
+			slot = g_runNext;
+			g_runNext = (g_runNext + 1) % RUN_CACHE;
+			if (g_runCache[slot].run) {
+				textRunFree(g_runCache[slot].run);
+			}
+		}
+		std::strncpy(g_runCache[slot].key, ckey,
+			     sizeof(g_runCache[0].key) - 1);
+		g_runCache[slot].key[sizeof(g_runCache[0].key) - 1] = 0;
+		g_runCache[slot].run = t;
+		t->cached = true;
+	}
 	return t;
 }
 
 void
 textRunFinish(TextRun *t)
+{
+	if (!t || t->cached) {
+		return;		/* the shaped-run cache owns it */
+	}
+	textRunFree(t);
+}
+
+static void
+textRunFree(TextRun *t)
 {
 	if (!t) {
 		return;
@@ -461,6 +572,8 @@ textRunFinish(TextRun *t)
 		hb_font_destroy(t->hbf);
 	}
 	if (t->face && t->faceOwned) {
+		runCacheDropFace(t->face);
+		glyphCacheDropFace(t->face);
 		FT_Done_Face(t->face);
 	}
 	if (t->match) {
