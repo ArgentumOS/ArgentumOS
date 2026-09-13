@@ -778,12 +778,26 @@ the click", plus the first half of Mac-like tracking:
   remainder of `comp` is the backdrop fill/first-touch term, which is the one
   part of that draw no longer being split out.
 
-  Next measurement (one run, and note the trap that cost one this time):
-  re-apply the ctor/fill split to the EXISTING `DRAW-MS` format line. Adding a
-  *separate* `GFX:`/`fill=` print and anchoring on it later does not work —
-  the format string never changes, so the patch silently half-applies. Also:
-  at 43 ticks, the term being hunted is inside `comp`, so it has to be
-  measured *inside* that bracket, not beside it.
+  **Split, measured (the term is per-view code):** extending the existing
+  `DRAW-MS` line inside the `comp` bracket gives, for that window,
+  `ctor=0`, `fill=60ms` (was 610ms before the shared-backing + allocator-hint
+  work) and **`walk=390ms`** — the walk IS the board's cost — with **40 views
+  drawn** and (per the primitive counters) ~6 solid composites and no
+  gradients. So it is ~10ms per drawn view of code, not drawing: no pixman
+  work, text is cached.
+
+  **Refuted: the shaped-run cache is not thrashing.** The obvious suspect was
+  that 64 entries over more live strings (an app's labels + Kestrel's + the
+  per-minute clock) evict strings the next draw needs, re-shaping them every
+  frame. A 512-entry least-recently-used cache changed the walk not at all
+  (390ms -> 370-390ms), so the runs are cache HITS and the re-shaping theory
+  is dead; that experiment was reverted rather than kept unproven.
+
+  Next measurement: time `v->draw(g)` per view and print the worst offenders
+  with the view's accessibility role (there is no RTTI name), to separate a
+  LAYOUT pass from text from anything else — the zoo's board is layout-heavy
+  (the s25/strut-band slices are layout tests), and a per-draw relayout is the
+  shape that fits ~10ms per view with no drawing.
 
   **RAM sweep (`boot_matrix`): 10/10 PASS** — 256M, 1G, 2G, 4G and 8G each
   boot to a drawn desktop with 0 fatal fault lines (2G: total=2086776KB,
