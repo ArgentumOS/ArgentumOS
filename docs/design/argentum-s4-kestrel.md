@@ -810,10 +810,21 @@ the click", plus the first half of Mac-like tracking:
   a 10ms clock, per-view timing is meaningless when each view is ~10ms — use
   COUNTS of calls inside `draw()`, not timings.
 
-  Next measurement: count the internal calls the widgets make per draw
-  (layout / `setNeedsLayout` / `frame()` re-evaluation), because the board is
-  the layout showcase (s25/strut-band slices) and a per-draw relayout is what
-  fits ~10ms per view with no drawing, no text and no prints.
+  **Five more suspects eliminated (source-audited, no run needed):**
+
+  | suspect | finding |
+  |---|---|
+  | `Application::theme()` | cached — `new Theme()` + `load()` only when null, accessors return cached values |
+  | `Label::draw` | theme fetch + cached `textMetrics` + one `drawText` = ~1.5ms, not 9.75ms |
+  | `GraphicsContext::flush` (XCreateImage+GC+PutImage+**XSync**) | called ONLY by `userland/tests/theme_chrome.cpp` and `theme_primitives.cpp` — not in the widget path |
+  | window primitives a view can call in draw | `setNeedsDisplay` is a self-sent Expose (not `XClearArea`), `noteDamage`/`scheduleDamagePx` carry no `XSync` |
+  | per-view X round trip generally | none found in view/label/control/button/theme |
+
+  Next measurement (needs one run): COUNT, not time, the calls a widget makes
+  per draw — `setNeedsDisplay`, the layout entry (`setNeedsLayout`/
+  `layoutSubviews`), and `textMetrics` — since the board is the layout
+  showcase (s25/strut-band slices) and a per-draw relayout is what fits ~10ms
+  per view with no drawing, no text, no prints and no X round trips.
 
   **RAM sweep (`boot_matrix`): 10/10 PASS** — 256M, 1G, 2G, 4G and 8G each
   boot to a drawn desktop with 0 fatal fault lines (2G: total=2086776KB,
