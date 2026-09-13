@@ -832,16 +832,50 @@ the click", plus the first half of Mac-like tracking:
   260ms.** So the board's walk is tiny and the traversal is not the cost, and
   a window whose draw makes 1 `setFrame` and 3 `textMetrics` calls still
   measures `comp=260ms`. Together with ~310ms unaccounted inside a 41-iteration
-  loop (~7.5ms per iteration of trivial code) that is not computing, it is
-  WAITING — and the granularity is ~10ms, i.e. exactly one scheduler tick.
+  loop (~7.5ms per iteration of trivial code), the "WAITING" reading was the
+  working hypothesis. **It is now RETRACTED — not because it was disproved,
+  but because the instrument that would have tested it is broken.**
 
-  Next probe (write the patch carefully, see the trap below): compare
-  `CLOCK_PROCESS_CPUTIME_ID` against `CLOCK_MONOTONIC` inside the SAME draw
-  bracket. If CPU time is a small fraction of wall time, the app is being
-  descheduled/blocked per iteration and the problem is the scheduler or a
-  blocking call, not the drawing code at all — which would also explain the
-  ~10ms floor seen on every window's draw (the 181x73 popup measures exactly
-  one tick).
+  **The CPU-time probe is VOID: FNX does not account user CPU time in the
+  64-bit path.** `ARGENTUM_DRAW_MS` was taught to print CPU time for the `comp`
+  bracket and the case went out twice. First `CLOCK_PROCESS_CPUTIME_ID`:
+  `sys_clock_gettime64()` (kernel/syscalls.c:414) treats EVERY clock id other
+  than `1` as `CLOCK_REALTIME`, so that call silently returned WALL time and
+  the run measured nothing at all (comp == "cpu" by construction). The second
+  run used `getrusage(RUSAGE_SELF)` deltas instead — a genuine per-process
+  clock — and read `usr=0` on **all 101 draws of the whole case**, the big
+  board draws included (`comp=460 usr=0 sys=460`). That is not a fact about the
+  board; it is a kernel bug, located at the writer:
+
+  - `irq_timer_bh()` (kernel/timer.c:266) splits the tick by the interrupted
+    context — `sc->cs == KERNEL_CS` -> `ru_stime`, else -> `ru_utime` — and
+    **nothing else in the tree ever increments `ru_utime`**.
+  - the 64-bit IRQ entry hands the BH a sigcontext whose `cs` is HARDCODED:
+    `sc.cs = 0x08; /* KERNEL_CS: the irq_timer_bh's user check */`
+    (kernel/boot64/irq64.c:56), and the same in the MSI-X path
+    (kernel/boot64/msix64.c:30, "KERNEL_CS, like the PIC IRQ path").
+  - so the `else` branch is DEAD: every tick is credited to `ru_stime` for
+    every process, running or sleeping. `sys` in the probe is just the tick
+    count — `sys == comp` is a tautology, and `usr=0` would be reported for
+    ANY workload.
+
+  The real interrupted CS **is** available at the IRQ entry — `idt64.c` already
+  uses `(f->cs & 3) == 3` for its own preempt decision, at the very call site
+  (`irq64_handler(f->vector)` / `msix64_handler(f->vector)`, kernel/boot64/
+  idt64.c:721-726) where `f` is in hand — it is simply not threaded into the
+  BH, and `irq_timer_bh` is the ONLY consumer of `sc->cs` on that path. Passing
+  the frame's real `cs` through is the whole fix; it is a kernel change with
+  its own gate (`times()`/`getrusage()` must read `utime > 0` for a CPU burner
+  and ~0 for a sleeper), and it must land BEFORE the waiting/computing question
+  can be asked again. The toolkit side is ready to be re-applied when it does:
+  getrusage deltas around the `comp` bracket, printed as `usr=`/`sys=` on the
+  DRAW-MS line. (Both probe patches were reverted, per the rule that an
+  unproven experiment is not kept.)
+
+  **Both runs were green gates, and that is the cautionary part:** `wm_dock`
+  33/33 each time. A passing gate says nothing about whether the instrument
+  inside it measured anything — the probe has to be proven to move before its
+  reading can refute a hypothesis.
 
   Trap to avoid (cost a source file this round): do NOT write a file and read
   it in the same expression — `io.open(p,'w')` truncates BEFORE the inner
