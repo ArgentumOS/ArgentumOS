@@ -541,86 +541,55 @@ when the menu closes however it does. Where it lives:
   first glyph, inside the title's hit zone: idle 224 -> open 143 -> closed
   224 (a 20+ luma drop each way). It also asserts the close repaint.
 
-**Open (measured 2026-09) — the WM's own menubar strip never repaints on
-screen.** The system mark's chip was written, instrumented and withdrawn; the
-measurement ended up finding a much larger bug behind it, and the chip is
-simply its first *user-visible* customer. What was measured, in order:
+**Open (measured 2026-09) — the system-mark chip does not render, and the
+earlier "frozen strip" reading was WRONG.** The chip was written, gated and
+withdrawn; the measurement behind this note was corrected twice, so both the
+correction and the remaining question are recorded:
 
-- the chip's draw *runs* with the state set, and `Window::flushBacking` logs a
-  **full-bar** flush for exactly those draws
-  (`KESDBG flush 0x200007 1920x30 rect=0,0 1920x30 shm=1`) — so the damage rect,
-  the composite and the MIT-SHM put are all correct. The toolkit is exonerated:
-  the app bar's identical chip (same code path) reaches fb0;
-- a control probe that fills the **whole strip red** in the same state still
-  changes nothing on screen (`0xe0e0e5` at x=24, y=15 across idle/open/closed),
-  so it is not the mark's columns, the chip's geometry or its colours;
-- **the strip is frozen entirely, not just for the chip.** Three-trigger probe
-  (hook + popup, idle clock tick + popup, hook without a popup): the fill never
-  lands in any of them. Then the clincher — the **clock**: the guest logs
-  `KESTREL: clock "…14:48"`, `"…14:49"`, `"…14:50"` while the *pixels* in the
-  clock's zone (x 1740..1912, y 4..27) are **byte-identical** across those
-  minutes (`p-idle` vs `p-c`, 75 s apart: **0 differing pixels**), and so is
-  Kestrel's own half (x 28..142). The only change in the whole strip is the
-  pointer. **The strip's screen content is frozen at its first paint — the v8
-  symptom, which was never actually fixed**; v8 misdiagnosed it as an SHM
-  transport problem, v9 then moved the app's menus into the app's *own* bar
-  window, which hid it. The cost today is user-visible: the menubar clock on
-  screen never advances, and nothing Kestrel draws in its own half (the focused
-  app's name, the mark's state) ever updates;
-- the app's own bar window over the *same* rows (x 142..1652) updates normally,
-  and the dock and desktop do too — so it is the strip window specifically;
-- no X error accompanies it. (The run's only Kestrel error is an unrelated,
-  benign `op=10 code=3 res=0x400002` — `UnmapWindow`/`BadWindow` on the zoo's bar
-  window at teardown, a WM bar-teardown race.)
-
-**Gate blind spots this exposed** (both worth fixing, neither can land as a
-*red* check today):
-
-- `smoke_desktop/clock-shown` reads the clock text from the *log* and asserts
-  *ink* exists in the clock's zone — a frozen clock passes it. The honest check
-  is that the zone *changes* when the logged minute changes (a minute's wait,
-  or a focus change for the name half).
-- `wm_dock/no-x-errors` matches `X Error|BadWindow|BadValue|…`, but the tree's
-  own handlers print *numeric* codes (`KESTREL: X error op=… code=…`,
-  `ARGENTUM: X error op=… code=…`), so those errors are invisible today.
-
-**The freeze is the POPUP's doing, and the loss is the shadow drain
-(measured).** Two more runs pinned both halves:
-
-- **Shadow truth vs screen truth.** `userland/tests/xwinprobe.c` (new: a plain
-  X client that `XGetImage`s a screen rect twice, N seconds apart, and prints a
-  SAME/DIFFERS verdict) sampled the clock's own zone (1740,4 172x23) across a
-  minute boundary. **`WINPROBE-VERDICT: DIFFERS`** — the server's composed
-  buffer *does* update, in both the popup-open and popup-closed phases. So the
-  draw, the damage accumulation, the MIT-SHM put and the toolkit are all
-  exonerated; the missing pixels are lost between the shadow and fb0, i.e. in
-  **Xfb's shadow drain**.
-- **The trigger is an open popup.** With *no* menu open the same clock zone
-  changes on screen across a minute (**87 px in fb0**); with Kestrel's menu up
-  it does not change at all (**0 px**), while its shadow content still updates.
-  That is why the chip (which by definition exists only while a popup is open)
-  never appears, and why the earlier three-trigger probe saw the whole-strip
-  red fill land in none of its states.
-- **Diagnosis recipe this cost a run to learn:** init redirects **Xfb's stdout
-  and stderr to `/System/Variable Data/log/Xfb.log`** (`init.c`, the spawn of
-  the server) — a session's Xfb diagnostics are read there, *not* from the
-  serial console (which carries Kestrel's and the apps' output). Read it with
-  `grep` from the console shell.
-- **Harness gotcha:** `pkill -f 'monitor unix:.build/probe-mon.sock'` matches the
-  *script's own shell* (the pattern is in its command line) and kills the run;
-  use `make qemu-kill`, and kill the guest between runs or the next boot dies on
-  "Failed to get write lock".
-
-**Remaining blocker (one run, written and not yet executed):** the drain-level
-A/B. A temporary `ErrorF` in `xfbShadowFlush` already reports whether a drain's
-region covers the clock's columns (`XFB-SHADOW: drain covers clock [x0,y0-x1,y1]`),
-and `.build/probe_run.sh` phases it (no menu / menu open / menu dismissed, one
-`grep -c 'drain covers clock' "/System/Variable Data/log/Xfb.log"` per phase).
-Expected: the count stops while the popup is up. That would say the **root
-damage region loses the strip's rows when a popup is mapped**, and the fix
-belongs in Xfb's damage registration for the strip (or in what the toolkit does
-when a popup takes the pointer while the WM's own window repaints) — not in
-Kestrel's drawing.
+- **Retracted: "the menubar strip never repaints".** With a mouse driver bug
+  fixed (a `goto` after the park move overshot, so the mark was never actually
+  clicked), a three-phase probe — no menu / menu open / menu dismissed, 70 s
+  each, screendumps either side — shows the clock's own zone (`1740,4 172x23`)
+  changing on screen in **every** phase: **97 / 65 / 89** differing pixels.
+  The strip repaints; the clock ticks on screen; the earlier 0-px readings and
+  the "whole strip is frozen" conclusion came from builds carrying diagnostic
+  scaffolding (a whole-strip fill and per-flush prints), not from the system.
+- **The drain is not implicated either.** A temporary `ErrorF` in
+  `xfbShadowFlush` (reverted) counted the drains whose region covers the clock's
+  columns: **15 → 17 → 21** across the three phases — it covers them, with or
+  without the menu. `xwinprobe`'s `DIFFERS` verdicts said the same thing from
+  the client side: the server's composed buffer updates.
+- **What IS reproducible:** with the chip in place, a click on the mark opens
+  the menu (verified — the popup's own surface is on screen in the "open"
+  screenshot) and yet the mark still draws the plain accent tile, i.e.
+  `StripView::draw` took the **`else`** branch at the draw whose pixels landed.
+  So `gSysMenuOpen` was false at that draw even though `popUpSystemMenu()` sets
+  it immediately before `stripRefresh()`. The app bar's equivalent
+  (`open-title-goes-dark`, idle 224 → open 143 → closed 224) works, through the
+  same toolkit primitive, so this is not the chip's drawing code.
+- **Two candidate mechanisms, for the next session:**
+  1. the *hook-context* repaint (Kestrel's press handler → `stripRefresh()` →
+     `gBar->draw()`) reaching fb0 differently from an *idle* one (the clock
+     tick) — the anchor here is that every landing repaint measured today was
+     idle-driven;
+  2. the chip's own draw path (a `fillRoundedGradient` in a translated view,
+     or an over-large/negative rect) breaking the rest of that draw, so the
+     *same* draw's clock/title would also be stale. One experiment separates
+     them: with the menu open, let a **clock tick** repaint the strip and
+     screenshot *before* dismissing — a chip that appears then indicts (1), a
+     chip that never appears indicts (2).
+- **Recipes** (each cost a run): init redirects Xfb's stdout/stderr to
+  `/System/Variable Data/log/Xfb.log` — session Xfb diagnostics are read there,
+  never from the serial console; `pkill -f` with a monitor-socket pattern
+  matches the running script's own shell (use `make qemu-kill`, and kill the
+  guest between runs or the next boot dies on "Failed to get write lock"); and
+  the harness mouse convention needs its tracked position reset after a park
+  move.
+- **Gate blind spots recorded while measuring:** `smoke_desktop/clock-shown`
+  reads the clock text from the *log* and asserts only *ink* in the zone (a
+  frozen clock would pass it), and `wm_dock/no-x-errors` matches error *names*
+  while the tree's handlers print *numeric* codes (`KESTREL: X error op=… code=…`),
+  so those errors are invisible to it.
 
 ### S4.2b — picks + focus swap (whole S4)
 *Status: **DONE** (2026-09).* `userland/argentum/argentum.h`
