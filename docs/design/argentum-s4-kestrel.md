@@ -888,6 +888,49 @@ the click", plus the first half of Mac-like tracking:
   nothing about whether the instrument inside it measured anything.** Prove the
   probe moves before its reading is allowed to refute a hypothesis.
 
+  **Ablation, measured: the board's 440-470ms draw is the COLD paint — the
+  same full-window redraw warm costs ~35ms.** The clock is tick-quantized, so
+  per-view timing is useless; the instrument that works at this scale is an
+  A/B ablation (the effects are hundreds of ms). `Window::draw` was given arms
+  that skip one thing each and CYCLE per draw, printed on the DRAW-MS line
+  (`arm=`), plus a bounded repaint storm on the mid-size window so one run
+  samples every arm. For the board (damage rect 1240x720 in every sample —
+  a full recomposite each time, `render_view` skips nothing at full damage):
+
+  | arm | skipped | comp, ms (n) |
+  |---|---|---|
+  | 0 | nothing (full) | **470, 450** on the first two draws, then 30-40 (x14) |
+  | 1 | `v->draw(g)` (no view painting) | **0** (x12) |
+  | 2 | the subview recursion | **0** (x12) |
+  | 3 | `drawText` | 20 (x14) |
+  | 4 | the backdrop fill | 20-30 (x10) |
+
+  Two things fall out:
+
+  - **The 440-470ms is not a per-draw cost.** Two full-window draws of the same
+    tree at 470/450ms are followed by draws of *identical* full damage at
+    30-40ms. Whatever dominates it is paid ONCE (caches, first-touch faults,
+    first-use libraries) and not by the 41-view walk that the counters were
+    pointed at. Every "per draw" number in the blocks above was taken on cold
+    draws, which is why ~310ms kept refusing to appear in any counter.
+  - **Warm, the draw is attributable and cheap:** removing all view painting or
+    the recursion takes it to 0ms; text is ~10-20ms of it and the backdrop fill
+    ~10-20ms. So the warm full draw is essentially text + fill + a little
+    traversal, which is what the call counts always said it should be.
+
+  **Not yet attributed: the one-time cost.** The storm changed WHICH arm got the
+  cold draws, so arms 2-4 have no cold sample and the cold cost cannot be
+  charged to text vs fill vs first-touch from this run. Pinning it needs a cold
+  draw per arm: the ablation arm must be fixed per PROCESS, and the first
+  attempt at that (an `ARGENTUM_ABLATE` env var) could not be driven, because a
+  bundle payload refuses a direct launch from the console (`.../Widget Zoo.app/
+  bin/WidgetZoo &` printed nothing at all — no banner, no error) and the dock
+  that CAN start it passes no environment. The fix is a switch the guest can
+  set without env — a file read at Application start — with the app relaunched
+  through the dock per arm. Also still open: whether the storm draws are truly
+  full recomposites (the damage rect says yes; a widget-level content cache
+  would say no, and none is known to exist).
+
 
   Trap to avoid (cost a source file this round): do NOT write a file and read
   it in the same expression — `io.open(p,'w')` truncates BEFORE the inner
