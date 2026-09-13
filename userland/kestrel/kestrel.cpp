@@ -107,8 +107,11 @@ static int xerrCount = 0;
 
 /* ---- S5.2b: the menubar's zones ------------------------------------
  *
- * The mockup's bar has three zones: a system mark on the left, the active
- * app (its name, then its menus), and the date/time on the right. The
+ * The mockup's bar has three zones: the DESKTOP's system mark on the
+ * left, the active app's own menus, and the DESKTOP's date/time on the
+ * right. The app's NAME is not here — it is the first menu of the app's
+ * own bar (docs/design/argentum-hig.md §2), so the desktop draws only
+ * what belongs to the desktop. The
  * clock's zone is RESERVED: a menu that would reach it is dropped rather
  * than drawn over it, and the paint and the hit-test share one layout
  * (S4.2b's rule) so they cannot disagree about where a title is.
@@ -2062,19 +2065,13 @@ propertyCardinal(::Window w, const char *name, int index)
 	return v;
 }
 
-/* The app zone's left edge: past the mark and the focused app's name —
- * S4.2b's arithmetic, now only the WM's own half of the bar. */
+/* The app zone's left edge: past the mark, plus a gap. The app's NAME is
+ * no longer reserved here — it belongs to the app's own bar, as that bar's
+ * first menu, so the WM's half is just the mark. */
 static int
 menuZoneX()
 {
-	Application &app = Application::shared();
-	Theme &t = app.theme();
-	const char *title = (gActive && gActive->title[0]) ? gActive->title
-							   : "Kestrel";
-
-	return SYS_ZONE_W + (int) (textMetrics(t.fontFamily(), t.fontSizePt(),
-					       title).widthPt
-				   * app.pxPerPt() + 0.5) + 16;
+	return SYS_ZONE_W + 16;
 }
 
 /* Place the focused app's bar over the zone and map it; hide the rest.
@@ -2177,14 +2174,13 @@ public:
 			/* S4.2a: the focused app's menus — the menubar's
 			 * items are the bar titles, laid out by the same
 			 * function the hit-test uses (S4.2b). */
-			/* S5.2b: the system mark — the mockup's "system icon" as
-			 * a vector tile (no asset): the theme's accent, centred in
-			 * the bar. A press in its zone opens Kestrel's own menu. */
-			g.fillRoundedRect(6, (h - SYS_ICON_W) / 2, SYS_ICON_W,
-					  SYS_ICON_W, 4, t.accent());
-			if (title_[0]) {
-				g.drawText(t.fontFamily(), t.fontSizePt(),
-					   SYS_ZONE_W, ty, title_, t.text());
+			/* S5.2b: the system mark — the DESKTOP's menu, so it
+			 * carries no title: three lines in the theme's accent,
+			 * centred in the bar. A press in its zone opens
+			 * Kestrel's own menu. */
+			for (int r = 0; r < 3; r++) {
+				g.fillRect(6, (h - SYS_ICON_W) / 2 + 3 + r * 5,
+					   SYS_ICON_W, 2, t.accent());
 			}
 			/* S5.2b: the clock, in its reserved zone at the right.
 			 * Left-aligned inside the reserved box so it does not
@@ -2197,11 +2193,6 @@ public:
 		}
 	}
 
-	void setTitle(const char *utf8)
-	{
-		strncpy(title_, utf8, sizeof(title_) - 1);
-	}
-
 	/* S5.2b: the date/time, drawn at the right in its reserved zone */
 	void setClock(const char *utf8)
 	{
@@ -2210,7 +2201,6 @@ public:
 	}
 
 private:
-	char title_[64] = { 0 };
 	char clock_[64] = { 0 };
 };
 
@@ -2283,11 +2273,6 @@ stripRefresh()
 	barsRefresh();	/* S4.2d: the focused app's bar follows focus */
 	if (!gStrip) {
 		return;
-	}
-	if (gActive) {
-		gStrip->setTitle(gActive->title);
-	} else {
-		gStrip->setTitle("Kestrel");
 	}
 	if (gBar) {
 		/* Mark the strip damaged before drawing: Window::draw()
@@ -2409,7 +2394,6 @@ main()
 	stripView->setFrame(
 		{ {0, 0},
 		  { screenW / app.pxPerPt(), BAR_H / app.pxPerPt() } });
-	stripView->setTitle("Kestrel");
 	bar.setContentView(stripView);
 	gStrip = stripView;
 	/* S5.2b: the bar's clock — its format comes from the desktop config,

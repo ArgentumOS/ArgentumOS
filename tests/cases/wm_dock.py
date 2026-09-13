@@ -118,10 +118,13 @@ class Case(BaseCase):
         #
         #   KESTREL: menubar zone x=226 w=1510
         #
-        # Measured RIGHT of that zone: Kestrel draws the app's NAME inside its
-        # own half of the bar, so ink at the zone's left edge is Kestrel's text
-        # and not the app's menus.  The app's bar window paints a moment after
-        # the WM maps it, so wait for the ink instead of assuming it.
+        # The WM's own half of the bar is now ONLY the desktop's system mark
+        # (three lines in the accent colour): the active app's NAME is the
+        # first menu of the APP's own bar, not something the desktop draws
+        # (docs/design/argentum-hig.md §2).  So the desktop contributes no
+        # ink right of that zone, and the app's menus must be right of it.
+        # The app's bar window paints a moment after the WM maps it, so wait
+        # for the ink instead of assuming it.
         def bar_ink_right(shot, x0=28):
             right = 0
             for x in range(x0, 900):
@@ -145,8 +148,9 @@ class Case(BaseCase):
         ink_app = bar_ink_right(painted, zx + 4) if painted else 0
         self.check("app-menus-in-bar", zx > 0 and ink_app > zx + 20,
                    "the app's own bar window carries its menus: ink reaches "
-                   "x=%d, right of the WM's half (the zone starts at x=%d, the "
-                   "idle bar's ink ends at x=%d)" % (ink_app, zx, was))
+                   "x=%d, right of the WM's mark zone (the zone starts at "
+                   "x=%d; the desktop draws nothing right of it: %d)"
+                   % (ink_app, zx, was))
 
         # The dropdown must HANG from the bar: its top edge is the bar's
         # bottom edge.  Report: "pulldown menus should appear with their tops
@@ -307,6 +311,68 @@ class Case(BaseCase):
                        "the open title's chip pads the text evenly (%d px "
                        "left, %d px right; chip %d..%d around ink %d..%d)"
                        % (ti0 - cl, cr - ti1, cl, cr, ti0, ti1))
+
+            # --- the bar's own rules, on pixels (2026-09) ------------------
+            # 1. the highlight is a RECTANGLE filling the bar from its top
+            #    border to its bottom border - not a rounded chip inset into
+            #    the bar, which reads as a separate object rather than as the
+            #    item being held down.
+            def chip_cols(y):
+                return [x for x in range(zx, 400)
+                        if abs(opened.luma(x, y) - bg) > 20]
+
+            top, bot = chip_cols(1), chip_cols(dy - 2)
+            self.check("bar-highlight-fills-the-bar",
+                       bool(top) and bool(bot) and cl >= top[0] and
+                       cr <= top[-1] and cl >= bot[0] and cr <= bot[-1],
+                       "the open title's highlight fills the bar top to "
+                       "bottom (columns at row 1: %s; row %d: %s; the chip is "
+                       "%d..%d)"
+                       % (("%d..%d" % (top[0], top[-1])) if top else "-",
+                          dy - 2,
+                          ("%d..%d" % (bot[0], bot[-1])) if bot else "-",
+                          cl, cr))
+            # 2. the dropdown is flush with that highlight, and 3. its top row
+            #    IS the bar's bottom border row: the popup is anchored one row
+            #    above the bar's floor, so its content starts ON the bar's
+            #    floor (y = the bar's height) rather than one row below it.
+            prow = [x for x in range(0, 700)
+                    if opened.px(x, dy + 4) != ref.px(x, dy + 4)]
+            self.check("menu-is-flush-with-the-highlight",
+                       bool(prow) and prow[0] == cl,
+                       "the dropdown's left edge is the highlight's left edge "
+                       "(%s vs %d)"
+                       % (prow[0] if prow else "none", cl))
+            first = None
+            for y in range(dy - 8, dy + 8):
+                r = [x for x in range(0, 700)
+                     if opened.px(x, y) != ref.px(x, y)]
+                if r and len(r) > 150:
+                    first = y
+                    break
+            self.check("menu-overlaps-the-bar-border",
+                       first == dy,
+                       "the dropdown's top border IS the bar's bottom border "
+                       "(its content starts on the bar's floor, y=%s; the bar "
+                       "is %d px tall)" % (first, dy))
+
+        # 3. the desktop's system menu carries no title: three lines in the
+        #    theme's ACCENT colour (a filled tile, or any text after it, is
+        #    what this replaced).  Bands are counted only when they are wide
+        #    enough to be a line - the strip's rounded top-left corner also
+        #    puts a few dark pixels in this box.
+        bands, prev = 0, False
+        for y in range(3, dy - 3):
+            xs = [x for x in range(4, zx) if ref.luma(x, y) < 185]
+            line = bool(xs) and (xs[-1] - xs[0]) >= 8
+            if line and not prev:
+                bands += 1
+            prev = line
+        rgb = ref.px(10, 11)
+        self.check("system-menu-is-a-three-line-icon",
+                   bands == 3 and (max(rgb) - min(rgb)) >= 20,
+                   "the system menu is three accent-coloured lines (%d band(s), "
+                   "rgb=%s at the middle line)" % (bands, rgb))
 
         monitor.goto(tile_x, tile_y)
         monitor.click()

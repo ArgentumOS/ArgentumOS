@@ -264,15 +264,15 @@ Menu::itemCount() const
  * allots before mapping); the height it must be is Kestrel's BAR_H. */
 #define BAR_PX		30
 #define BAR_PAD		6
-/* the open title's chip: 1px inside the title's hit zone (the hit-test
- * uses +-8), inset vertically so it reads as a chip in the bar.  The x is
+/* the open title's highlight: 1px inside the title's hit zone (the
+ * hit-test uses +-8), filling the bar from its top border to its bottom
+ * border.  The x is
  * the TITLE's ink origin offset by textInkInsetPx(): drawText() insets the
  * run's ink by that pad inside the box it is handed, so a chip drawn from
  * the box edge alone pads the left by (BAR_CHIP_PAD + the pad) and the
  * right by (BAR_CHIP_PAD - the pad) — a visibly lopsided highlight
  * (reported 2026-09: "more on the left than on the right of the text"). */
 #define BAR_CHIP_PAD	7
-#define BAR_CHIP_INSET	3
 /* the title's hit zone: the laid-out box plus this much slack, in PIXELS */
 #define BAR_HIT_PAD	8
 
@@ -365,12 +365,15 @@ public:
 					 textInkInsetPx();
 				int bw = ws[i] + 2 * BAR_CHIP_PAD;
 
-				g.fillRoundedGradient(bx, BAR_CHIP_INSET,
-						      (unsigned) bw,
-						      (unsigned) (h - 2 *
-								  BAR_CHIP_INSET),
-						      3, armed.fillTop,
-						      armed.fillBottom);
+				/* a RECTANGLE from the bar's top border
+				 * to its bottom border — not a rounded
+				 * chip floating inside the bar, which
+				 * reads as a separate object rather than
+				 * as the item being held down */
+				g.fillLinearGradient(bx, 0, (unsigned) bw,
+						     (unsigned) h,
+						     armed.fillTop,
+						     armed.fillBottom);
 			}
 			g.drawText(t.fontFamily(), t.fontSizePt(), xs[i], ty,
 				   menu_->itemAt(idx[i])->title(),
@@ -410,15 +413,18 @@ public:
 		return -1;
 	}
 
-	/* a title's bar-local x in px (the dropdown's anchor) */
-	int titleXOf(int itemIndex)
+	/* The x a title's dropdown hangs from: the LEFT EDGE OF ITS
+	 * HIGHLIGHT, so the menu is flush with the item it belongs to (the
+	 * same arithmetic the chip is drawn with — they must not drift). */
+	int menuXOf(int itemIndex)
 	{
 		int xs[32], ws[32], idx[32];
 		int n = barTitleLayout(menu_, widthPx(), xs, ws, idx, 32);
 
 		for (int i = 0; i < n; i++) {
 			if (idx[i] == itemIndex) {
-				return xs[i];
+				return xs[i] - BAR_CHIP_PAD +
+				       textInkInsetPx();
 			}
 		}
 		return BAR_PAD;
@@ -446,13 +452,15 @@ public:
 					   &child)) {
 			return;
 		}
-		/* the dropdown hangs FROM the bar: its top is the bar's bottom
-		 * edge, not the bar window's origin (which is the screen's top —
-		 * anchoring there would cover the bar). The tracking handler is
-		 * how Mac-like behaviour happens: the popup holds the pointer, so
-		 * the motion over THIS bar reaches the popup, which asks us which
-		 * title it is over. */
-		menuPopUp(sub, rx + titleXOf(itemIndex), ry + barH, onPick_,
+		/* the dropdown hangs FROM the bar, overlapping it by the bar's
+		 * own bottom border: its top row IS that border row, so the two
+		 * read as one connected shape rather than a bar with a gap under
+		 * it. (Anchoring at the bar window's origin would cover the bar
+		 * instead — the origin is the screen's top.) The tracking handler
+		 * is how Mac-like behaviour happens: the popup holds the pointer,
+		 * so the motion over THIS bar reaches the popup, which asks us
+		 * which title it is over. */
+		menuPopUp(sub, rx + menuXOf(itemIndex), ry + barH - 1, onPick_,
 			  [this]() {
 			/* however the menu closed (a pick, a click outside, a
 			 * dismissal) the title goes back to chrome */
@@ -478,8 +486,8 @@ public:
 				return t;
 			}
 			t.menu = mi->submenu();
-			t.xRootPx = rx + titleXOf(it);
-			t.yRootPx = ry + barH;
+			t.xRootPx = rx + menuXOf(it);
+			t.yRootPx = ry + barH - 1;
 			openIndex_ = it;
 			Application::shared().menuBarRefresh();
 			return t;

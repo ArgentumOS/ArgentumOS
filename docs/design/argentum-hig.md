@@ -87,8 +87,8 @@ These are unresolved, and an app should not invent an answer for them:
   above because the target shape is fixed, not because it can be filled.
 - **The `Help` menu has no content yet.** The documentation plan stages UIKit
   documentation under `/System/Documentation`; no app-facing help API exists.
-- **The strip shows the window title, and the application menu shows the app
-  name** — the same string in the common case, so they can read as a
-  duplicate. Kestrel owns that half (`stripRefresh()` sets the strip's title
-  from the focused client's window title); whether the strip should keep
-  showing it is a Kestrel question, not an app one.
+- **Resolved (2026-09): the desktop's half of the strip carries no app
+  name.** It drew the focused client's *window title* there, which read as a
+  duplicate of the application menu; the name belongs to the app's own bar.
+  The strip now draws only what is the desktop's — the system mark and the
+  clock — and the app zone starts right after the mark.

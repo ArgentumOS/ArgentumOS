@@ -413,11 +413,19 @@ structure, S2.5 the reference board + a11y battery).
   to reach the clock still lays out inside its own zone.
 
   **As built (DONE).** The bar now has the mockup's three zones: the system
-  mark on the left, the active app (its name, then its menus), and the
-  clock at the right.
+  mark on the left, the active app's menus, and the clock at the right.
 
-  - **The system mark** is a vector tile — the theme's accent, a rounded
-    square, **no asset** — and its zone `[0, 28)` opens Kestrel's own menu
+  **Re-split (2026-09): the app's NAME left the desktop's half.** It is the
+  first menu of the app's own bar (`docs/design/argentum-hig.md` §2), so the
+  WM draws only what belongs to the desktop — the mark and the clock — and
+  the app zone is now just `SYS_ZONE_W + 16` (measured: zone x 142 → **44**,
+  with the desktop contributing **0** ink right of it). The strip's title
+  went with it: `stripRefresh()` no longer sets one, and `StripView` has no
+  title member.
+
+  - **The system mark** is a **three-line icon in the theme's accent** (it
+    carries **no title**, being the desktop's menu) and its zone `[0, 28)`
+    opens Kestrel's own menu
     through the S4.2 popup path (`menuPopUp` with no pick handler, so the
     item's own action runs). Its items are **desktop actions**: "About
     Argentum Desktop" (logs) and "Arrange Windows in Front" (raises every
