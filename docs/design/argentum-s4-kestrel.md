@@ -918,18 +918,43 @@ the click", plus the first half of Mac-like tracking:
     ~10-20ms. So the warm full draw is essentially text + fill + a little
     traversal, which is what the call counts always said it should be.
 
-  **Not yet attributed: the one-time cost.** The storm changed WHICH arm got the
-  cold draws, so arms 2-4 have no cold sample and the cold cost cannot be
-  charged to text vs fill vs first-touch from this run. Pinning it needs a cold
-  draw per arm: the ablation arm must be fixed per PROCESS, and the first
-  attempt at that (an `ARGENTUM_ABLATE` env var) could not be driven, because a
-  bundle payload refuses a direct launch from the console (`.../Widget Zoo.app/
-  bin/WidgetZoo &` printed nothing at all — no banner, no error) and the dock
-  that CAN start it passes no environment. The fix is a switch the guest can
-  set without env — a file read at Application start — with the app relaunched
-  through the dock per arm. Also still open: whether the storm draws are truly
-  full recomposites (the damage rect says yes; a widget-level content cache
-  would say no, and none is known to exist).
+  **The one-time cost, attributed.** The blocker was driving an ARM's cold
+  draw: the arm is fixed per process from `ARGENTUM_ABLATE`, and the app has to
+  be launched with it. Two traps cost a round. (1) A bundle-payload launch from
+  the console LOOKS like it does nothing: it connects to no X server (the
+  console shell has no `DISPLAY`), and `Application::init()` retries **120
+  times at 1s** — far longer than any sane probe window — so it prints nothing
+  and never draws a pixel. Drive it with `DISPLAY=:0` (the session runs on
+  `:0`). (2) Redirecting its output makes stdout fully buffered, so an app
+  killed by `timeout` flushes nothing at all; the tty is fine, a `>` is not.
+
+  Cold FIRST full draw of the board (1240x720), one fresh process per arm:
+
+  | arm | skipped | cold comp, ms |
+  |---|---|---|
+  | 0 | nothing | **450** |
+  | 1 | all `v->draw(g)` | **60** |
+  | 2 | the subview recursion | **60** |
+  | 3 | `drawText` | **260** |
+  | 4 | the backdrop fill | **410** |
+
+  Read against the warm numbers above (full warm 30-40, text warm 20, fill warm
+  20-30):
+
+  - the backdrop fill is ~40ms cold, ~20-30 warm — never the problem;
+  - **text is ~190ms cold and ~10-20 warm**: that is warm-up;
+  - the other ~200ms is in the remaining views' `draw()` (chrome: rounded
+    rects, gradients, lines) — the same warm-up shape;
+  - the walk and clip machinery itself is ~20ms once the fill is discounted
+    (`nodraw` = 60, and 40 of that is the fill), which is what the call counts
+    always said.
+
+  **So the board's 440-470ms is ~40ms of real work plus ~400ms of first-use
+  caches filling, paid ONCE per process** — which is why it refused to appear
+  in any counter aimed at the per-view walk. The remaining question is not
+  "where does the 440ms go" but "which caches are cold" (shaped runs, glyph
+  rasters, rounded-rect masks, gradient ramps), and whether a process that
+  draws once on launch should pay it at all before its window is up.
 
 
   Trap to avoid (cost a source file this round): do NOT write a file and read
