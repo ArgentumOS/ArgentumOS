@@ -243,13 +243,11 @@ class Case(BaseCase):
                        "clicking the second title dropped the SECOND title's "
                        "menu (menu:reset ran, menu:about did not)")
 
-            # Mac-like hover tracking: open the FIRST title, then MOVE the
-            # pointer onto the second.  The toolkit implements it
-            # (MenuBarView::mouseMoved, in-bar only) and the state plumbing
-            # is right, but it does not fire: measured with a temporary
-            # print, no MotionNotify reaches the bar window between the
-            # opening click and the next click, so the handler is never
-            # called.  Observed here, not asserted, until that is resolved.
+            # Mac-like menu tracking: open the FIRST title, then MOVE the
+            # pointer onto the second WITHOUT clicking.  The popup holds the
+            # pointer, so this motion reaches IT (not the bar) and the bar
+            # answers which title it is over: the menu under the pointer
+            # must already be the second one when the click lands.
             about = session.count(r"ZOO-ACT: menu:about")
             reset = session.count(r"ZOO-ACT: menu:reset")
             monitor.park()
@@ -257,14 +255,12 @@ class Case(BaseCase):
             monitor.click()			# the FIRST title
             monitor.goto(bx, 15)		# motion only: no button
             monitor.goto(bx, rowy)
-            monitor.click()			# whichever menu is open
-            turned = (session.count(r"ZOO-ACT: menu:reset") > reset
-                      and session.count(r"ZOO-ACT: menu:about") == about)
-            self.note("menu tracking on hover: %s (the pointer moved from the "
-                      "first title to the second without a click; 'swapped' "
-                      "means the second menu opened)"
-                      % ("swapped" if turned else "NOT swapped yet - no "
-                         "MotionNotify reaches the bar while a menu is open"))
+            monitor.click()			# the swapped menu's first row
+            self.check("menu-tracks-on-hover",
+                       session.count(r"ZOO-ACT: menu:reset") > reset
+                       and session.count(r"ZOO-ACT: menu:about") == about,
+                       "moving onto the second title swapped the open menu "
+                       "(menu:reset ran, not menu:about)")
             dismissed = session.shot("menu-dismissed")
             back_bg = dismissed.luma(bgx, 15)
             self.check("open-title-goes-dark",

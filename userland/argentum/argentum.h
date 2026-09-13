@@ -1115,9 +1115,26 @@ private:
  * onClosed fires once when it closes however that happens — the owner's
  * cue to drop whatever "my menu is open" state it painted (the menubar
  * title that opened it draws dark while its dropdown is up). */
+/* S5.2d follow-up — Mac-like menu tracking. While a menu is up the popup
+ * HOLDS THE POINTER (it is how a click outside the rows reaches it at all),
+ * so every pointer motion arrives at the popup, never at the menubar the
+ * menu came from: measured, the bar's own window stops receiving motion the
+ * moment its menu opens. onTrack is therefore asked for each motion, with
+ * ROOT pixel coordinates, and returns the menu to show instead — plus the
+ * root position its dropdown hangs from — or leaves `menu` null to keep the
+ * current one. Returning a menu RE-TARGETS the same popup (no close/open
+ * cycle, no unmap, the grab holds), which is what lets the pointer slide
+ * along a menubar and swap the menus under it. */
+struct MenuTrack {
+	Menu *menu = nullptr;
+	int xRootPx = 0;
+	int yRootPx = 0;
+};
+
 void menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 	       std::function<void(int itemId)> onPick = nullptr,
-	       std::function<void()> onClosed = nullptr);
+	       std::function<void()> onClosed = nullptr,
+	       std::function<MenuTrack(int, int)> onTrack = nullptr);
 void menuPopUpDismiss();
 
 /* S2.3a: Slider — a horizontal track + knob control (Control).

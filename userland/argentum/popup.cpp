@@ -43,6 +43,14 @@ public:
 	int rowAt(double yPt) const;	/* -1 when none */
 	int hoveredRow() const { return hover_; }
 	void setHovered(int row);
+	/* S5.2d follow-up: hover tracking swaps the menu this popup shows. */
+	void setMenu(Menu *m)
+	{
+		menu_ = m;
+		hover_ = -1;
+		armed_ = -1;
+		setNeedsDisplay();
+	}
 
 private:
 	Menu *menu_;
@@ -85,6 +93,30 @@ public:
 		closed_ = std::move(h);
 	}
 
+	/* S5.2d follow-up (Mac-like tracking): the owner supplies the
+	 * "which menubar item is the pointer over now?" answer; see the
+	 * MenuTrack note in argentum.h. */
+	void setTrackHandler(std::function<MenuTrack(int, int)> h)
+	{
+		track_ = std::move(h);
+	}
+	bool hasTrackHandler() const { return (bool) track_; }
+	MenuTrack trackAt(int rootX, int rootY)
+	{
+		return track_ ? track_(rootX, rootY) : MenuTrack();
+	}
+	/* swap the menu shown, without closing anything */
+	void retarget(const MenuTrack &t);
+	int originX() const { return originX_; }
+	int originY() const { return originY_; }
+	/* the root position this popup was placed at (moveRoot() is the
+	 * Window-level one; tracking needs to read the origin back) */
+	void setOrigin(int xPx, int yPx)
+	{
+		originX_ = xPx;
+		originY_ = yPx;
+	}
+
 	/* A press the popup itself received (in its rows, or outside them
 	 * while it holds the pointer). A menu must not close on the RELEASE
 	 * of the click that opened it — that release arrives without the
@@ -102,6 +134,9 @@ private:
 	PopupMenuView *listView_;
 	std::function<void(int)> pick_;
 	std::function<void()> closed_;
+	std::function<MenuTrack(int, int)> track_;
+	int originX_ = 0;
+	int originY_ = 0;
 	bool grabbed_ = false;
 	bool sawPress_ = false;
 };
@@ -333,6 +368,18 @@ PopupMenuView::draw(GraphicsContext &g)
 void
 PopupMenuView::mouseMoved(const MouseEvent &e)
 {
+	/* S5.2d follow-up: while the menu is up the pointer is OURS, so
+	 * tracking the menubar has to happen here — the motion over the bar
+	 * arrives in this window's coordinates (negative y: above it). */
+	if (host_->hasTrackHandler()) {
+		MenuTrack t = host_->trackAt(host_->originX() + (int) e.x,
+					     host_->originY() + (int) e.y);
+
+		if (t.menu) {
+			host_->retarget(t);
+			return;
+		}
+	}
 	setHovered(rowAt(e.y));
 }
 
@@ -394,6 +441,8 @@ PopupWindow::PopupWindow(Menu *menu, int xRootPx, int yRootPx)
 
 	init(menu->title() ? menu->title() : "menu", xRootPx, yRootPx,
 	     (unsigned) wPx, (unsigned) hPx);
+	originX_ = xRootPx;
+	originY_ = yRootPx;
 	/* S4.2a: a transient menu is override-redirect — without this a
 	 * window manager (Kestrel) frames the popup and the menu shows
 	 * up as a decorated window. It is also the flag the toolkit
@@ -419,6 +468,35 @@ PopupWindow::~PopupWindow()
 		grabbed_ = false;
 	}
 	delete listView_;
+}
+
+void
+PopupWindow::retarget(const MenuTrack &t)
+{
+	Application &app = Application::shared();
+	Display *dpy = (Display *) app.display();
+	double ppt = app.pxPerPt();
+	int wPx, hPx;
+
+	if (!dpy || !t.menu) {
+		return;
+	}
+	wPx = (int) (popupWidthPt(t.menu) * ppt + 0.5);
+	hPx = (int) ((rowTops(t.menu, nullptr, 0) + POPUP_PAD_PT * 2.0) * ppt
+		     + 0.5);
+	std::fprintf(stderr, "ARGENTUM-POPUP: tracked to \"%s\" at %d,%d\n",
+		     t.menu->title(), t.xRootPx, t.yRootPx);
+	std::fflush(stderr);
+	menu_ = t.menu;
+	listView_->setMenu(t.menu);
+	listView_->setFrame({ { 0, 0 }, { wPx / ppt, hPx / ppt } });
+	originX_ = t.xRootPx;
+	originY_ = t.yRootPx;
+	XMoveResizeWindow(dpy, xid(), t.xRootPx, t.yRootPx, (unsigned) wPx,
+			  (unsigned) hPx);
+	listView_->setHovered(-1);
+	setNeedsDisplay();
+	XFlush(dpy);
 }
 
 void
@@ -523,7 +601,8 @@ static PopupWindow *g_menuPopup = nullptr;
 
 void
 menuPopUp(Menu *menu, int xRootPx, int yRootPx,
-	  std::function<void(int)> onPick, std::function<void()> onClosed)
+	  std::function<void(int)> onPick, std::function<void()> onClosed,
+	  std::function<MenuTrack(int, int)> onTrack)
 {
 	if (!menu) {
 		return;
@@ -542,8 +621,10 @@ menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 	} else {
 		g_menuPopup->moveRoot(xRootPx, yRootPx);
 	}
+	g_menuPopup->setOrigin(xRootPx, yRootPx);
 	g_menuPopup->setPickHandler(std::move(onPick));
 	g_menuPopup->setClosedHandler(std::move(onClosed));
+	g_menuPopup->setTrackHandler(std::move(onTrack));
 	g_menuPopup->present();
 }
 

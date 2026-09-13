@@ -558,6 +558,7 @@ Application::run()
 		case ButtonRelease: {
 			MouseEvent e;
 
+
 			/* S2.3c: a press anywhere that is NOT the open
 			 * popup dismisses it first (menu-dismiss). The
 			 * popup itself re-dispatches blank clicks. */

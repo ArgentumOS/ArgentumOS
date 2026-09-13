@@ -437,6 +437,18 @@ Window::dispatchMotionToContent(const MouseEvent &pxEvent)
 	Point hl;
 	View *hit = hit_in_tree(cv, ppt, pxEvent, &hl);
 
+	if (!hit) {
+		/* S5.2d follow-up: motion that hits no view is the WINDOW's,
+		 * exactly as a hit-less press is (below). A menu popup holds
+		 * the pointer, so the motion over the MENUBAR it belongs to
+		 * arrives here, outside every view: delivering it to the
+		 * content view (in its own points — negative outside it) is
+		 * what lets the popup track the bar and swap menus. */
+		hl.x = pxEvent.x / ppt - cv->frame().origin.x;
+		hl.y = pxEvent.y / ppt - cv->frame().origin.y;
+		hit = cv;
+	}
+
 	/* S2.3a drag delivery: while a ButtonPress is held, pointer
 	 * motion goes to the PRESSED view (so a Slider tracks the knob
 	 * across the window); enter/exit tracking is suspended for the

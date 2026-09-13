@@ -381,20 +381,41 @@ public:
 	 * zoo and click the menus, the wrong one gets the click"). */
 	int titleAt(double xPt)
 	{
+		return titleAtPx((int) (xPt * Application::shared().pxPerPt()
+					+ 0.5));
+	}
+
+	/* The title at a BAR-LOCAL x in PIXELS, or -1. Root pixel
+	 * coordinates convert with (rootX - the bar's root x). */
+	int titleAtPx(int xPx)
+	{
 		int xs[32], ws[32], idx[32];
 		int n = barTitleLayout(menu_, widthPx(), xs, ws, idx, 32);
-		int x = (int) (xPt * Application::shared().pxPerPt() + 0.5);
 
-		if (x < 0 || x >= widthPx()) {
+		if (xPx < 0 || xPx >= widthPx()) {
 			return -1;
 		}
 		for (int i = 0; i < n; i++) {
-			if (x >= xs[i] - BAR_HIT_PAD &&
-			    x < xs[i] + ws[i] + BAR_HIT_PAD) {
+			if (xPx >= xs[i] - BAR_HIT_PAD &&
+			    xPx < xs[i] + ws[i] + BAR_HIT_PAD) {
 				return idx[i];
 			}
 		}
 		return -1;
+	}
+
+	/* a title's bar-local x in px (the dropdown's anchor) */
+	int titleXOf(int itemIndex)
+	{
+		int xs[32], ws[32], idx[32];
+		int n = barTitleLayout(menu_, widthPx(), xs, ws, idx, 32);
+
+		for (int i = 0; i < n; i++) {
+			if (idx[i] == itemIndex) {
+				return xs[i];
+			}
+		}
+		return BAR_PAD;
 	}
 
 	/* Drop `itemIndex`'s menu under the bar, replacing whatever was open.
@@ -405,19 +426,11 @@ public:
 	{
 		Display *dpy = (Display *) Application::shared().display();
 		::Window child;
-		int xs[32], ws[32], idx[32];
-		int n, itemX = BAR_PAD;
 		int rx = 0, ry = 0;
 		int barH;
 
 		if (!dpy || !win_ || !sub || !menu_) {
 			return;
-		}
-		n = barTitleLayout(menu_, widthPx(), xs, ws, idx, 32);
-		for (int i = 0; i < n; i++) {
-			if (idx[i] == itemIndex) {
-				itemX = xs[i];
-			}
 		}
 		barH = (int) (frame().size.h *
 			      Application::shared().pxPerPt() + 0.5);
@@ -429,12 +442,41 @@ public:
 		}
 		/* the dropdown hangs FROM the bar: its top is the bar's bottom
 		 * edge, not the bar window's origin (which is the screen's top —
-		 * anchoring there would cover the bar). */
-		menuPopUp(sub, rx + itemX, ry + barH, onPick_, [this]() {
+		 * anchoring there would cover the bar). The tracking handler is
+		 * how Mac-like behaviour happens: the popup holds the pointer, so
+		 * the motion over THIS bar reaches the popup, which asks us which
+		 * title it is over. */
+		menuPopUp(sub, rx + titleXOf(itemIndex), ry + barH, onPick_,
+			  [this]() {
 			/* however the menu closed (a pick, a click outside, a
 			 * dismissal) the title goes back to chrome */
 			openIndex_ = -1;
 			Application::shared().menuBarRefresh();
+		},
+			  [this, rx, ry, barH](int rootX, int rootY) {
+			MenuTrack t;
+			int it;
+			MenuItem *mi;
+
+			/* only this bar's own band counts (below it is the
+			 * dropdown, where the rows track instead) */
+			if (rootY < ry || rootY >= ry + barH) {
+				return t;
+			}
+			it = titleAtPx(rootX - rx);
+			if (it < 0 || it == openIndex_) {
+				return t;
+			}
+			mi = menu_->itemAt(it);
+			if (!mi || !mi->submenu()) {
+				return t;
+			}
+			t.menu = mi->submenu();
+			t.xRootPx = rx + titleXOf(it);
+			t.yRootPx = ry + barH;
+			openIndex_ = it;
+			Application::shared().menuBarRefresh();
+			return t;
 		});
 		openIndex_ = itemIndex;
 		Application::shared().menuBarRefresh();

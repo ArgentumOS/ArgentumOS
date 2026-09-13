@@ -564,23 +564,44 @@ the click", plus the first half of Mac-like tracking:
   the row view and the window-level press; reset on each `present()`).
   **This is also the likely explanation for the system-mark chip below**: the
   chip *was* drawn, then that instant close repainted the strip without it.
-- **Mac-like tracking is implemented but does not fire yet.** With one of the
-  bar's own menus open, `MenuBarView::mouseMoved` drops the hovered title's
-  menu in place of the previous one (shared `openItemMenu()`, which also sets
-  the open index *after* `menuPopUp` — the outgoing popup's `onClosed` clears
-  it first), and it only acts while the pointer is INSIDE the bar, so reading
-  a dropdown never swaps it. Measured with a temporary print: the state
-  plumbing is right (`open=1`, x converted to the correct px) but the handler
-  is never reached — **no `MotionNotify` reaches the bar window between the
-  opening click and the next click**, while the same window gets motion freely
-  before the menu opens. That is the open item; the next measurement is to log
-  the loop's `MotionNotify` (which window receives it once a popup is up: the
-  bar, the popup, or none).
-- Gate: `wm_dock/bar-hit-test-is-right` clicks the **second** title and asserts
-  the second menu's first item ran (`ZOO-ACT: menu:reset`, not `menu:about`);
-  `wm_dock/bar-titles-found` reads the three titles off the bar
-  (`[151,178] [199,264] [285,323]`); the hover half is *observed*, not
-  asserted, until the motion question is answered.
+- **Mac-like menu tracking: the popup holds the pointer, so the popup has to
+  drive it.** Instrumenting the app's loop (every motion/button with its
+  window and size) gave the mechanism in one run: while a menu is up the
+  pointer's events go to the POPUP's window, not the bar's —
+
+  ```
+  BTNANY: press win=0x400002 22,15 1594x30     <- the bar: the press lands, menu opens
+  ARGENTUM-POPUP: open "zoo" (3 items)
+  MOVANY: win=0x400020 16,-15 181x73           <- 0x400020 is the POPUP: release too
+  BTNANY: release win=0x400020 16,-15 181x73
+  MOVANY: win=0x400020 83,15 181x73            <- ...and every later motion
+  ```
+
+  (`XGrabPointer` succeeds — the "grab failed" lines are the *other* sessions,
+  where a WM grab is active.) So `MenuBarView::mouseMoved` could never fire,
+  and neither could any bar-side hover. The fix routes tracking through the
+  owner: `menuPopUp()` takes an optional `onTrack(rootX, rootY)` returning a
+  `MenuTrack` (`menu` + the root position its dropdown hangs from), the popup
+  asks it for every motion (`PopupMenuView::mouseMoved` — with the motion over
+  the bar arriving at *negative* y, above the popup), and a non-null answer
+  **re-targets the same popup** (`PopupWindow::retarget`: new menu, new size,
+  `XMoveResizeWindow` to the new title's anchor) — no close/open cycle, no
+  unmap, the pointer grab stays, so `onClosed` is not fired and the drag
+  continues cleanly. The bar's handler is the same hit test as the press
+  (`titleAtPx`, so `(rootX - barRootX)` in px), it only answers inside its own
+  band (below that is the dropdown, where the rows track), and it ignores the
+  title already open. Two supporting rules: motion that hits no view is now
+  the WINDOW's, exactly as a hit-less press is (`dispatchMotionToContent`
+  hands it to the content view in negative-point coords), and the *old*
+  bar-side `mouseMoved` stays for a session with no grabbing popup.
+  As built: one `open "zoo"`, then `tracked to "Widgets" at 196,30` with no
+  click in between, then a pick from the SWAPPED menu.
+- Gates: `wm_dock/bar-hit-test-is-right` clicks the **second** title and
+  asserts the second menu's first item ran (`ZOO-ACT: menu:reset`, not
+  `menu:about`); `wm_dock/bar-titles-found` reads the three titles off the bar
+  (`[151,178] [199,264] [285,323]`); `wm_dock/menu-tracks-on-hover` opens the
+  first title, moves the pointer (no click) onto the second and asserts the
+  pick came from the second menu.
 
 **Open (measured 2026-09) — the system-mark chip does not render, and the
 earlier "frozen strip" reading was WRONG.** (See the block above: the
