@@ -768,11 +768,26 @@ the click", plus the first half of Mac-like tracking:
 
   **Running total on a repaint (wm_dock, 102-103 draws):** composite per draw
   104ms -> **21ms**, flush 35ms -> **15ms**, worst draw 1140ms -> **440ms**.
-  The board's own draw is now the last big one and it is NOT masks or text
-  (text is cached, the mask cache barely moved it): the remaining suspects are
-  the per-widget gradient fills (`pixman_image_create_linear_gradient` +
-  composite per call, ~50 widgets per board) and per-widget pixman work in
-  general. That is the next target, with `DRAW-MS` as the metric.
+
+  **The board's own draw (430-470ms) is NOT drawing work — measured, and the
+  gradient hypothesis is refuted.** Counting the pixman primitives per draw
+  (temporarily, alongside `DRAW-MS`) for that window gives ~6 solid
+  composites, **0** `pixman_image_create_linear_gradient` calls and 2 cached
+  mask hits. So the cost is neither masks, nor text (cached), nor the
+  gradient fills that were named as the next suspect. The un-instrumented
+  remainder of `comp` is the backdrop fill/first-touch term, which is the one
+  part of that draw no longer being split out.
+
+  Next measurement (one run, and note the trap that cost one this time):
+  re-apply the ctor/fill split to the EXISTING `DRAW-MS` format line. Adding a
+  *separate* `GFX:`/`fill=` print and anchoring on it later does not work —
+  the format string never changes, so the patch silently half-applies. Also:
+  at 43 ticks, the term being hunted is inside `comp`, so it has to be
+  measured *inside* that bracket, not beside it.
+
+  **RAM sweep (`boot_matrix`): 10/10 PASS** — 256M, 1G, 2G, 4G and 8G each
+  boot to a drawn desktop with 0 fatal fault lines (2G: total=2086776KB,
+  user=2004144KB), in 53s. That is the allocator hint verified across sizes.
 
   Recipe: `ARGENTUM_DRAW_MS=1` (env into the app) makes the toolkit print
   `DRAW-MS: comp=<ms> flush=<ms> rect=<x0>,<y0>-<x1>,<y1>` per draw. NOTE the
