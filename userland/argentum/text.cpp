@@ -660,6 +660,12 @@ textRunComposeMask(TextRun *t, unsigned char *cov)
 
 /* ---- public metrics (pt) ---------------------------------------- */
 
+int
+textInkInsetPx(void)
+{
+	return PADX;
+}
+
 TextMetrics
 textMetrics(const char *family, double sizePt, const char *utf8)
 {

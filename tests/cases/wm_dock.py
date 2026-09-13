@@ -268,6 +268,34 @@ class Case(BaseCase):
                        "the open menu's title is dark while its dropdown is up "
                        "(idle %d -> open %d -> closed %d at x=%d)"
                        % (idle_bg, open_bg, back_bg, bgx))
+            # The chip must HUG the title EVENLY.  drawText() insets a run's
+            # ink by a raster pad inside the box it is handed, so a chip drawn
+            # from the box's left edge alone pads the left by (BAR_CHIP_PAD +
+            # the pad) and the right by (BAR_CHIP_PAD - the pad): a visibly
+            # lopsided highlight ("more on the left than on the right of the
+            # text").  `run` is only the title's FIRST WORD, so the extent of
+            # the whole title is re-derived here (words joined the way the
+            # layout joins them: a gap of <= 14px is the same title).
+            ti0, ti1, x, gap = run[0], run[-1], run[-1] + 1, 0
+            while x < 890 and gap <= 14:
+                if any(painted.luma(x, y) < 140 for y in range(6, 25)):
+                    ti1, gap = x, 0
+                else:
+                    gap += 1
+                x += 1
+            # the chip, on the OPEN bar: any column whose middle row is not the
+            # bar's own tone (the chip's fill AND the inverted label differ)
+            bg = ref.luma(zx + 1, 15)
+            cl, cr = ti0, ti1
+            while cl > 2 and abs(opened.luma(cl - 1, 15) - bg) > 20:
+                cl -= 1
+            while cr < 890 and abs(opened.luma(cr + 1, 15) - bg) > 20:
+                cr += 1
+            self.check("bar-chip-hugs-the-title-evenly",
+                       abs((ti0 - cl) - (cr - ti1)) <= 2,
+                       "the open title's chip pads the text evenly (%d px "
+                       "left, %d px right; chip %d..%d around ink %d..%d)"
+                       % (ti0 - cl, cr - ti1, cl, cr, ti0, ti1))
 
         monitor.goto(tile_x, tile_y)
         monitor.click()

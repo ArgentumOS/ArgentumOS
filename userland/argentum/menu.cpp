@@ -265,7 +265,12 @@ Menu::itemCount() const
 #define BAR_PX		30
 #define BAR_PAD		6
 /* the open title's chip: 1px inside the title's hit zone (the hit-test
- * uses +-8), inset vertically so it reads as a chip in the bar */
+ * uses +-8), inset vertically so it reads as a chip in the bar.  The x is
+ * the TITLE's ink origin offset by textInkInsetPx(): drawText() insets the
+ * run's ink by that pad inside the box it is handed, so a chip drawn from
+ * the box edge alone pads the left by (BAR_CHIP_PAD + the pad) and the
+ * right by (BAR_CHIP_PAD - the pad) — a visibly lopsided highlight
+ * (reported 2026-09: "more on the left than on the right of the text"). */
 #define BAR_CHIP_PAD	7
 #define BAR_CHIP_INSET	3
 /* the title's hit zone: the laid-out box plus this much slack, in PIXELS */
@@ -356,7 +361,8 @@ public:
 			 * is open rather than leaving it to the dropdown
 			 * alone. Cleared when the popup closes. */
 			if (idx[i] == openIndex_) {
-				int bx = xs[i] - BAR_CHIP_PAD;
+				int bx = xs[i] - BAR_CHIP_PAD +
+					 textInkInsetPx();
 				int bw = ws[i] + 2 * BAR_CHIP_PAD;
 
 				g.fillRoundedGradient(bx, BAR_CHIP_INSET,

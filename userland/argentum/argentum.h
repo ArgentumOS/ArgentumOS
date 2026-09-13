@@ -76,6 +76,11 @@ struct TextMetrics {
 };
 TextMetrics textMetrics(const char *family, double sizePt,
 			const char *utf8);
+/* The px drawText() leaves between the x it is handed and the run's ink:
+ * the run box carries a small horizontal raster pad, so anything that has
+ * to HUG the text (a bar chip, an underline, a caret) must offset by this
+ * or it sits lopsided. In px, not pt — it is a raster pad, not a metric. */
+int textInkInsetPx(void);
 
 /* S2.1b: accessibility roles (catalog §4; grown as widgets appear in
  * S2.2/S2.3). Every View carries role/label/help/value/enabled; the

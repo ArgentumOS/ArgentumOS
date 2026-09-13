@@ -540,6 +540,23 @@ when the menu closes however it does. Where it lives:
 - Gate: `wm_dock/open-title-goes-dark` — the chip sampled just left of the
   first glyph, inside the title's hit zone: idle 224 -> open 143 -> closed
   224 (a 20+ luma drop each way). It also asserts the close repaint.
+- **The chip hugged the run box, not the ink (fixed 2026-09).**
+  `drawText()` insets a run's ink by a raster pad inside the box it is handed
+  (`PADX`, text.cpp), while `barTitleLayout()` measures a title by its advance
+  (ink) width. A chip drawn at `xs - BAR_CHIP_PAD` therefore padded the left
+  by `BAR_CHIP_PAD + PADX` and the right by `BAR_CHIP_PAD - PADX` — a
+  highlight that leans left (reported: "the highlight is uneven, more on the
+  left than on the right of the text"; on screen: chip 142..184 around ink
+  151..178, i.e. 9px left / 6px right). The inset is now exposed as
+  `textInkInsetPx()` — the constant stays in text.cpp, so a caller cannot
+  drift from it — and the chip is drawn from
+  `xs - BAR_CHIP_PAD + textInkInsetPx()`: 8px / 8px. The dropdown rows never
+  had the bug because they highlight the FULL row width, which is why only
+  the menubar items looked wrong.
+- Gate: `wm_dock/bar-chip-hugs-the-title-evenly` — walks out from the title's
+  ink to the chip's edges on the OPEN bar and asserts the two gaps match
+  within 2px. It read 9/6 (FAIL) on the pre-fix screenshots, which is what
+  makes it a discriminator rather than a restatement.
 
 **S5.2d follow-up — the bar's hit zones, and a menu that shut itself.**
 Two bugs behind "when I open the zoo and click the menus, the wrong one gets
