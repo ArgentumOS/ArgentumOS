@@ -670,6 +670,20 @@ class Case(BaseCase):
         session.serial("killall krel_slow 2>@null")
         time.sleep(1)
 
+        # --- a stepper is never wider than half its height --------------
+        # It is the companion of a single-row text field: it takes that
+        # field's height and is at most half as wide. The zoo asks for
+        # 60x26, so the control clamps itself and says so - and the clamp is
+        # in setFrame, so the layout, the paint and the hit-test all see the
+        # same (narrow) control rather than a wide frame with a narrow
+        # picture in it.
+        st = re.search(r"ARGENTUM: stepper width (\S+) clamped to (\S+) "
+                       r"\(half its height (\S+)\)", session.log_text())
+        self.check("stepper-is-narrower-than-half-its-height",
+                   bool(st) and float(st.group(2)) <= float(st.group(3)) / 2.0,
+                   "a too-wide stepper frame is clamped to half its height "
+                   "(%s)" % (st.group(0) if st else "no clamp was reported"))
+
         # --- a DISABLED control is greyed out ---------------------------
         # widgets_c draws the same button twice on one row: "go" enabled and
         # "nope" disabled.  A widget whose own draw() paints from fixed

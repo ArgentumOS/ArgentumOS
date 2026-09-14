@@ -27,7 +27,7 @@ parallel to AppKit's NSAccessibility protocol surface (argentum-plan §4).
 | checkbox / radio (`NSButton` types) | `Button::Type { Push, Checkbox, Radio }` | mirrors NSButton type semantics; radio grouping by parent Box (Cocoa's NSMatrix role) |
 | `NSPopUpButton` | `PopUpButton` | presents a `Menu` |
 | `NSSlider` | `Slider` | |
-| `NSStepper` | `Stepper` | |
+| `NSStepper` | `Stepper` | a single-row text field's height, and never wider than half of it (docs/design/argentum-hig.md §6) |
 | `NSTextField` (+ label role) | `TextField` | single-line; label variant |
 | `NSSecureTextField` | `SecureTextField` | TextField subclass |
 | `NSImageView` | `ImageView` | |

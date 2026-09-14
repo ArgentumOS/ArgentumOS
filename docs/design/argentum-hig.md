@@ -106,7 +106,17 @@ grey-out and must not paint one themselves. The theme's own `Disabled` state
 still exists and is still worth honouring (`Control::state()` returns it), but
 the grey-out no longer DEPENDS on a widget reading it.
 
-## 6. Open items
+## 6. Control sizing
+
+- **A stepper is never wider than half its height**, and it takes the height
+  of a **single-row text field** — it is that field's companion, stepping the
+  value beside it. A frame wider than that is clamped by the control itself
+  (in `setFrame`, so the layout, the paint and the hit-test all see the same
+  narrow control rather than a wide frame with a narrow picture in it), and
+  the clamp is reported (`ARGENTUM: stepper width 60 clamped to 13 (half its
+  height 26)`) rather than applied silently.
+
+## 7. Open items
 
 These are unresolved, and an app should not invent an answer for them:
 

@@ -59,6 +59,29 @@ Stepper::value() const
 	return stp_->value;
 }
 
+/* See the header: a stepper takes a single-row text field's height and is at
+ * most half that wide. The clamp prints once per distinct frame so a layout
+ * that ignores the rule is visible rather than silent. */
+void
+Stepper::setFrame(const Rect &r)
+{
+	Rect c = r;
+
+	if (c.size.h > 0 && c.size.w > c.size.h / 2.0) {
+		double was = c.size.w;
+
+		c.size.w = c.size.h / 2.0;
+		if (was != stp_->lastClamped) {
+			stp_->lastClamped = was;
+			std::printf("ARGENTUM: stepper width %g clamped to %g "
+				    "(half its height %g)\n",
+				    was, c.size.w, c.size.h);
+			std::fflush(stdout);
+		}
+	}
+	View::setFrame(c);
+}
+
 void
 Stepper::draw(GraphicsContext &g)
 {
@@ -92,12 +115,16 @@ Stepper::draw(GraphicsContext &g)
 			      p.fillTop, p.fillBottom);
 	/* +/- glyphs in the label colour */
 	int cx = w / 2;
-	int gx1 = cx - (int) (6 * ppt + 0.5);
-	int gx2 = cx + (int) (6 * ppt + 0.5);
+	/* the glyph is a quarter of the bezel WIDE, not a fixed 6pt: the
+	 * bezel is at most half as wide as it is tall, so a fixed glyph
+	 * would touch its edges */
+	int half = w / 4;
 
-	if (gx2 - gx1 < 3) {
-		gx2 = gx1 + 3;
+	if (half < 2) {
+		half = 2;
 	}
+	int gx1 = cx - half;
+	int gx2 = cx + half;
 	int glyphY1 = mid / 2;
 	int glyphY2 = mid + (h - mid) / 2;
 

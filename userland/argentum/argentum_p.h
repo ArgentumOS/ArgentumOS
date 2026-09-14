@@ -398,6 +398,7 @@ struct Stepper::Impl {
 	double value = 0.0;
 	double increment = 1.0;
 	bool upZone = false;		/* armed zone from mouseDown */
+	double lastClamped = 0.0;	/* the last over-wide frame reported */
 };
 
 /* S2.3b SegmentedControl state. */

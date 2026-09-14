@@ -127,8 +127,11 @@ public:
 	View *superview() const;
 	const std::vector<View *> &subviews() const;
 
-	/* frame (pt, superview coords) + visibility */
-	void setFrame(const Rect &r);
+	/* frame (pt, superview coords) + visibility. Virtual so a control can
+	 * CONSTRAIN its own size (a Stepper is never wider than half its
+	 * height); the frame stays the single source of truth so paint,
+	 * hit-testing and layout cannot disagree about the control. */
+	virtual void setFrame(const Rect &r);
 	Rect frame() const;
 	Rect bounds() const;		/* {0,0,w,h} in local space */
 	void setHidden(bool hidden);
@@ -1198,6 +1201,12 @@ public:
 	void setValue(double v);
 	double value() const;
 	/* number of steps between value and min/max is unbounded in v1 */
+
+	/* A stepper is a companion to a single-row text field: it takes that
+	 * field's height and is NEVER WIDER THAN HALF ITS HEIGHT. A wider
+	 * frame is clamped here rather than at draw time, so the layout, the
+	 * paint and the hit-test all see the same control. */
+	void setFrame(const Rect &r) override;
 
 	void draw(GraphicsContext &g) override;
 	void mouseDown(const MouseEvent &e) override;
