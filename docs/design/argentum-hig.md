@@ -69,6 +69,17 @@ Rules:
    sensitive area of the app menu is pushing into the view menu's area" —
    the hit zones were a fixed ±8px inside an 18px gap, so an item answered
    3px to the LEFT of its own highlight and a dead band sat between items.)
+
+   **There is deliberately NO neutral space between items** (decided
+   2026-09, asked after the equality above was met and it still "felt" like
+   the application menu reached into its neighbour): every pixel of the bar
+   belongs to some item, so leaving one item means being in the next. The
+   alternative — a band belonging to neither, where the open menu holds
+   instead of swapping — reads as unresponsive. Measured, bar-local px:
+   `Widget Zoo [-3,125] View [125,183] Widgets [183,270]`, with the swap
+   firing at exactly 125. A tighter highlight WITH a wider gap is the change
+   to reach for if a band is ever wanted; it must not be done by pulling the
+   highlight away from the hit zone, which is the bug this rule fixes.
 8. **The application menu's title is BOLD**; every other title is regular.
    It is the one item that is not a plain menu — it is the app itself — and
    the bar has to say so. The toolkit bolds the **first bar title**, so an app
