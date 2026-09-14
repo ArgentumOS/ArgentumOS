@@ -21,7 +21,7 @@ rootagfs: userland64 m0clang
 	# payload for indirect blocks, not just for data.
 	python3 tools/mkagfs.py $(ROOTFS64) .build/rootagfs.img 96
 	python3 tools/agfscheck.py .build/rootagfs.img $(ROOTFS64)
-	@echo "rootagfs: .build/rootagfs.img ready (AGFS, 64MB, the Argentum desktop)"
+	@echo "rootagfs: .build/rootagfs.img ready (AGFS, 96MB, the Argentum desktop)"
 
 ovmf: .build/ovmf/OVMF.fd
 
