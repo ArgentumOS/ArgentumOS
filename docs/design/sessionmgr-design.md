@@ -50,8 +50,9 @@ after a desktop app, because it must work before/independent of them.
 
 ## 4. Security / trust model
 
-- **Least privilege at the login screen**: Xfb, the Workspace/menubar,
-  and both greeters run as the unprivileged `Display` principal
+- **Least privilege at the login screen**: Xfb, the menubar (the window
+  manager's — the desktop's owner split is `docs/design/workspace-plan.md`
+  §3.0), and both greeters run as the unprivileged `Display` principal
   (device access via `Video`/`Input` group ACLs on devfs nodes), never
   as System. `sessionmgr` is the only System process in the pre-login
   world; it spawns greeters as `Display` and alone performs

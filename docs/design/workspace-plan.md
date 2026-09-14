@@ -28,6 +28,8 @@ In v1 (W-series):
 - per-column scrolling, selection, and a **draggable column width**;
 - **keyboard access**: arrows within a column, Left/Right across
   columns, Return to open — per the accessibility model;
+- **multiple windows** (Q-W5, D8): Finder-like — the app may have
+  several windows at once, and it outlives them;
 - **open-by-document-type**: a file opens the app whose manifest claims
   its type, with the Terminal as the fallback for executables/scripts;
 - the config keys §3.3 already fixes: `file-manager.start`
@@ -155,9 +157,10 @@ on a directory that is already open to the right).
 `document-types = txt, html` and `identifier`. A file's extension is
 matched against the installed bundles' manifests; no match → the
 **Terminal**, per §3.3, which is also the answer for executables and
-scripts. Two facts to settle while doing it: where the bundle set is
-enumerated from (`/Applications` — the dock already resolves bundles
-there), and whether an explicit "open with" override is in v1 (Q-W4).
+scripts. One fact to settle while doing it: where the bundle set is enumerated
+from (`/Applications` — the dock already resolves bundles there). An
+explicit **"Open with" override is not in v1** (D9): the manifest default
+plus the Terminal fallback is the whole of resolution.
 
 ### 3.5 Roots and start
 
@@ -166,8 +169,40 @@ five top-level entries (`/Applications /Shared /System /Users /Volumes`);
 `volumes` is `/Volumes` and shows mounts; `home` is `Users/$USER`, whose
 contents include `Desktop/` (Q-R2). `/System/Devices` is a topology tree
 of role symlinks (Q3 of the device work) and is browsable like any other
-directory — how symlinks are *presented* (follow, show as a leaf, badge)
-is Q-W3.
+directory. **Symlinks follow, with a badge** (Q-W3, D10): the row looks
+like what it points at and is marked as an alias, and selecting a
+directory symlink walks into the target. That is what makes
+`/System/Devices`'s role-symlink topology browsable at all.
+
+### 3.6 The Trash
+
+Decided (Q-W2'): **delete MOVES the file to the Trash and it can be
+restored; only emptying the Trash is permanent.** So:
+
+- the store is per user and it is a *home directory*: a `Trash/` beside
+  `Desktop/`. That is an FSH statement, not a detail — the home's
+  directories are a documented set (`Desktop/` per Q-R2, and
+  `/System/User Template/` seeds a new user's home), so `Trash/` adds a
+  member to that set. Created on demand rather than seeded, since an empty
+  Trash need not exist (to settle at slicing time).
+- **the tile opens a Workspace window on the Trash**: the dock draws the
+  tile (it is the WM's, §3.0) and the app supplies what it does. Restore
+  needs somewhere to restore *from*, which is why this follows from the
+  decision instead of being a separate one.
+- **two operations, neither a plain delete**: restore (move back to the
+  recorded original path) and Empty Trash (unlink). Both are W7's.
+
+### 3.7 Windows
+
+Decided (Q-W5): **multiple windows**, Finder-like. The app-level
+semantics are then forced by vocabulary the dock already ships — S5.2c's
+context actions are Open, Hide, Quit and a "running" dot, all of which are
+*app*-level: the app keeps running while any window is open, **Hide**
+hides them all, **Quit** closes them all, and the running dot tracks the
+app rather than a window. So multiple windows are not just allowed; the
+running indicator only means anything if the app outlives a window.
+
+Titles: one window per path, titled by it (exact form at slicing time).
 
 ## 4. Slices (split for gating)
 
@@ -219,6 +254,17 @@ window opens on the configured start root and reads that directory.
 the listing (`WORKSPACE: <path>: N entries`); no fatal faults, no X
 errors. The listing is asserted against `ls` of the same path, so the
 count is data, not a magic number.
+
+### W1b — a second window
+
+Status: **PROPOSED.** W1 opens one window; Q-W5 says an app may have
+several, so the app-level lifetime (D8) has to hold before the browser is
+built on top of it.
+*Acceptance:* two windows open at once, each with its own frame and its
+own focus; the dock's running dot does not change when one is closed;
+**Quit** closes both and the dot goes out. If the toolkit's window model
+turns out to be single-window, this slice is where that surfaces — before
+W2, not after.
 
 ### W2 — one column, drawn and scrolled
 
@@ -278,8 +324,9 @@ the prompt path rather than an error dialog that cannot succeed.
 *Acceptance:* per operation, one guest-verifiable assertion on the
 filesystem itself (`stat`/`ls` before and after, from the console — the
 browser's own claim is never the evidence); for delete, that the file left
-the source AND arrived in the Trash (Q-W2'), not merely that it is gone;
-and a cancelled operation leaving the tree unchanged.
+the source AND arrived in the Trash, and for restore that it came back to
+its original path (D7), not merely that it is gone; and a cancelled
+operation leaving the tree unchanged.
 
 ### W8 (unscheduled) — preview pane
 
@@ -302,50 +349,34 @@ Per §3.3, a later addition. Not sliced here.
 - **D6 — A config domain follows its owner** (§3.0): the dock's keys move
   to `system.kestrel`, `system.workspace` keeps the Workspace app's own
   (`wallpaper`, `file-manager.*`). One app per domain file.
+- **D7 — The Trash is real** (Q-W2'): delete moves a file to a per-user
+  `Trash/` in the home and it can be restored; only Empty Trash is
+  permanent. The dock's tile opens it in a window (§3.6).
+- **D8 — The app outlives its windows** (Q-W5, §3.7): multiple windows are
+  supported; Hide, Quit and the dock's running dot are app-level; the app
+  keeps running with none open.
+- **D9 — No "Open with" in v1** (Q-W4): the manifest's `document-types`
+  are the resolution and the Terminal is the fallback; an explicit
+  override is deferred rather than designed here.
+- **D10 — Symlinks follow, marked as aliases** (Q-W3): a symlink row looks
+  like its target and carries a badge; selecting a directory symlink
+  descends (§3.5).
 
 ## 6. Open questions
 
-- **Q-W1 — RESOLVED: the owner split.** The dock belongs to the window
-  manager, the wallpaper to Workspace (§3.0). Its two consequences are
-  sliced as **W0** (the move) and **D6** (the domain), and the documents
-  that said otherwise — `initial-release.md` §3.1's "the session's
-  desktop" and the S5.2c record's domain — were corrected with it.
-- **Q-W1' — RESOLVED: the system menu is the window manager's.** The
-  menubar's system menu belongs to the WM, not to Workspace, so
-  `initial-release.md`'s "owns the global menubar's system menu" is
-  corrected (that claim was in the app roster as well as §3).
-  **This ratifies the existing behaviour rather than changing it**:
-  Kestrel draws the strip's system mark and opens its own menu
-  (`KESTREL: system menu open`), and S5.2b recorded the mark as "Kestrel's
-  own desktop menu". Nothing is owed by any app, and the app-front bar
-  (S4.2) is untouched — an app still publishes its OWN menu bar; the
-  system menu is simply not one of them.
-- **Q-W2 — RESOLVED: the Trash tile exists, in the dock.** Decided: a
-  Trash icon at the **bottom of the dock, separate from the other icons**.
-  That supersedes Q-R1's "no Trash icon" (`initial-release.md` §4), which
-  is corrected with it. Note where the tile falls after the owner split
-  (§3.0): **the dock is the WM's**, so drawing the tile is a Kestrel dock
-  slice — not this plan's to schedule — while what belongs *here* is the
-  store and the operations W7 routes into it.
-- **Q-W2' — what Trash **is**. The tile is decided; its semantics are not.
-  Does W7's delete MOVE the file to a per-user Trash (with restore), or
-  delete outright with the tile as a shortcut to a Trash directory? What
-  opens on a click — a browser window on the Trash? Is there an "Empty
-  Trash" (permanent) path at all? This needs an FSH placement as well as a
-  naming rule that fits the FSH doctrine, so W7 should not be sliced until
-  it is answered.
-- **Q-W3 — Symlinks.** Present as a followable row, a leaf, or a leaf
-  with a badge? `/System/Devices` is a topology of role symlinks, so
-  this is visible in normal browsing.
-- **Q-W4 — "Open with".** Explicit override in v1, or only the
-  type-resolved default plus the Terminal fallback?
-- **Q-W5 — Multiple windows.** Finder-like apps have them; the toolkit
-  has `Window` but the WM's lifetime rules for a multi-window app are
-  unstated. v1 assumes one window unless answered.
-- **Q-W6 — The permission prompt path.** W7's failures must reach
-  whatever privilege prompt the permission model defines; this plan
-  names the requirement but not the mechanism, and the mechanism should
-  be cited here before W7 is sliced.
+- **Q-W6 — the permission prompt path.** Not a question for the user but
+  for the tree: W7's failures must reach whatever the privilege model
+  defines. The design corpus names the ACTORS and no prompt UI — the
+  principals (`docs/design/system-admin-principal.md` §2), the privileged
+  service that would arbitrate (`docs/design/sessionmgr-design.md`), and
+  the helper pattern of "real-caller authorization"
+  (`docs/design/service-management-plan.md`). Cite the actual mechanism
+  here before W7 is sliced, then Q-W6 closes.
+
+Everything else this plan asked is decided: D7 (§3.6, the Trash), D8
+(§3.7, windows), D9 (§3.4, "Open with"), D10 (§3.5, symlinks), and D1–D6
+above.
+
 
 ## 7. Regressions and risks
 
@@ -369,6 +400,11 @@ Per §3.3, a later addition. Not sliced here.
   `ScrollView`s; the divider drag must be tested against the parent
   scroll (a classic gesture-capture bug, and the kind WT-1's gate should
   drive).
+- **Multiple windows (D8) pull app-level lifetime onto the critical
+  path.** The toolkit has `Window` and the WM frames per window (S4.3),
+  but nothing in the tree has run an app with two windows at once, and
+  Hide/Quit/the running dot are app-level claims that must become true.
+  W1b exists to find that out early rather than inside the browser.
 - **Gate economy:** each slice adds assertions to an existing case rather
   than a new case, so the suite's runtime stays bounded.
 - **Self-hosting policy** (`docs/design/self-hosting-packages.md` §6):
