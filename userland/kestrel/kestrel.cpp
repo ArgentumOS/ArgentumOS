@@ -925,6 +925,28 @@ applyFrameGeometry(Managed *m, int fx, int fy, int fw, int fh)
 	XSync(dpy, False);
 }
 
+/* W0a (docs/design/workspace-plan.md): does this client declare itself the
+ * desktop surface?  A presence marker, like the menu and toolbar ones — an
+ * app's window is a CLIENT, so the WM has to be told, and the wallpaper was
+ * the WM's own window until the surface moved to Workspace. */
+static bool
+isDesktopWindow(::Window w)
+{
+	Atom a = XInternAtom(dpy, "_ARGENTUM_DESKTOP", False);
+	Atom type = 0;
+	int fmt = 0;
+	unsigned long cnt = 0, after = 0;
+	unsigned char *data = nullptr;
+	bool yes = false;
+
+	if (XGetWindowProperty(dpy, w, a, 0, 1, False, XA_CARDINAL, &type,
+			       &fmt, &cnt, &after, &data) == Success && data) {
+		yes = (cnt > 0);
+		XFree(data);
+	}
+	return yes;
+}
+
 /* read a CARDINAL property (`n` words) off a client window */
 static bool
 getCardinals(::Window w, const char *name, unsigned long *out, int n)
@@ -989,6 +1011,20 @@ manageClient(const XMapRequestEvent &ev)
 	if (findFrame(ev.window)) {
 		/* a remap of an already-managed client */
 		XMapWindow(dpy, ev.window);
+		return;
+	}
+	if (isDesktopWindow(ev.window)) {
+		/* W0a: the app-owned desktop surface. Not framed, and never
+		 * allowed to come up — it IS the bottom of the stack, so
+		 * every client draws over it. Mapped explicitly for the same
+		 * reason Kestrel's own chrome is: under SubstructureRedirect
+		 * the server did not map it. */
+		XMapWindow(dpy, ev.window);
+		XLowerWindow(dpy, ev.window);
+		XSync(dpy, False);
+		printf("KESTREL: desktop surface 0x%lx is the bottom of the "
+		       "stack (never framed)\n", (unsigned long) ev.window);
+		fflush(stdout);
 		return;
 	}
 	if (ev.window == stripX || ev.window == deskX || ev.window == dockX) {

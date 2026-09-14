@@ -294,13 +294,32 @@ cannot tell the two apart. Hence the split.
 
 ### W0a — the desktop window protocol, and the shell app that paints it
 
-Status: **PROPOSED.** A window property — the `_ARGENTUM_*` pattern the menu
-marker already uses — marks an app's surface as the desktop: the WM does not
-frame it, does not manage it, and keeps it lowered. `Workspace.app` is that
-app: it creates a window covering the screen and paints the theme's ramp the
-way Kestrel's `DeskView` does today. **Kestrel keeps painting until W0b**, so
-the pixels are unchanged by construction: both surfaces draw the same ramp
-off the same `Application::sessionBackground()`.
+Status: **DONE (2026-09).** A window property — the `_ARGENTUM_*` pattern
+the menu marker already uses — marks an app's surface as the desktop: the WM
+does not frame it, does not manage it, and keeps it lowered. `Workspace.app`
+is that app: it creates a window covering the screen and paints the theme's
+ramp the way Kestrel's `DeskView` does today. **Kestrel keeps painting until
+W0b**, so the pixels are unchanged by construction — and that is now
+measured rather than asserted, because both log their ramp and the numbers
+are identical:
+
+```
+WORKSPACE: desktop surface 1920x1080 base=0x2288ee top=0x52a2f1 bot=0x1b6fc3
+KESTREL: wallpaper        1920x1080 base=0x2288ee top=0x52a2f1 bot=0x1b6fc3
+KESTREL: desktop surface 0x400001 is the bottom of the stack (never framed)
+```
+
+As built: the marker is `_ARGENTUM_DESKTOP` (a CARDINAL presence marker, set
+before the map — read too late otherwise); the session spawns the app after
+the WM (`SESSION_KESTREL`), for the same reason the zoo is spawned second;
+`smoke_desktop` is 15/15 unchanged. One API lesson worth keeping:
+**`XChangeProperty` returns 1, not `Success`** (which is 0), so the first cut
+logged "desktop marker failed" on every success — a false error in a log is
+worse than none.
+
+Still W0b's: deleting Kestrel's painter *and* its mode-set resize path; the
+app does not follow a root resize yet, which is safe only while Kestrel's
+surface is still there doing it.
 
 *Acceptance:* the app launches and logs its surface and size; `smoke_desktop`
 passes **unchanged** (its wallpaper checks are the regression test); and a

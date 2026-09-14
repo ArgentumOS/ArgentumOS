@@ -512,7 +512,15 @@ static void start_xfb(void)
 	} else if (session == SESSION_KESTREL) {
 		spawn_gui("/System/Tools/kestrel",
 			  (char *const[]) { "kestrel", NULL }, dpy_env);
-		puts("XDESK: kestrel session launching (kestrel WM on :0)");
+		/* W0a: the desktop shell app, which owns the surface (the
+		 * wallpaper). AFTER the WM for the same reason the zoo is:
+		 * spawned second, its MapRequest is redirected and the WM
+		 * recognises it as the desktop; spawned first, the WM's
+		 * manage-existing pass would frame it like any client. */
+		spawn_gui("/Applications/Workspace.app/bin/Workspace",
+			  (char *const[]) { "Workspace", NULL }, dpy_env);
+		puts("XDESK: kestrel session launching (kestrel WM + the "
+		     "Workspace shell on :0)");
 	} else {
 		spawn_gui("/System/Shared/X11/bin/xdraw",
 			  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },

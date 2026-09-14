@@ -1,0 +1,5 @@
+name = "Workspace"
+identifier = com.argentum.workspace
+version = 1.0
+executable = bin/Workspace
+menu-name = "Workspace"

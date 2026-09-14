@@ -297,6 +297,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/Applications/Calculator.app/bin/Calculator"
 	cp userland/apps/calculator/manifest \
 		"$(ROOTFS64)/Applications/Calculator.app/manifest"
+	# Workspace: W0a — the desktop shell app that owns the surface (the
+	# wallpaper). A bundle like any other, launched by the session at
+	# login; the WM recognises it by the _ARGENTUM_DESKTOP marker and
+	# never frames it. See docs/design/workspace-plan.md W0a.
+	mkdir -p "$(ROOTFS64)/Applications/Workspace.app/bin" \
+		 "$(ROOTFS64)/Applications/Workspace.app/Resources"
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/apps/workspace/workspace.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/Applications/Workspace.app/bin/Workspace"
+	cp userland/apps/workspace/manifest \
+		"$(ROOTFS64)/Applications/Workspace.app/manifest"
 	# zoo_inj: redraw-storm driver for the zoo (Expose x10 from a second
 	# X connection; redraw-cost regression counts text resolutions/draw).
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
