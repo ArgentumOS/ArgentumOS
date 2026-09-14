@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0 + IB1 **DONE**; IB1b is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0 + IB1 + IB1b **DONE**; IB2 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -332,11 +332,22 @@ need input, which §8a addresses directly.
   where a log can carry the fact, and two numbers are stronger evidence than a
   screendump; the first pixel check arrives with IB2, where a canvas is drawn.
   The "forward strut reference" clause is gone with the mechanism (D15).
-- **IB1b — property application, tables, the coverage gate.** Apply a node's
-  properties to the live control through a per-control table (D4), and gate the
-  coverage so a control in the catalog cannot silently lack one. IB1 built
-  structure, geometry and identity; nothing in a document's *properties* reaches
-  a control yet.
+- **IB1b — property application, tables, the coverage gate. DONE (2026-09).**
+  Apply a node's properties to the live control through a per-control table
+  (D4), and gate the coverage so a control in the catalog cannot silently lack
+  one. Landed as hand-written per-control tables (name + kind + getter + setter,
+  one table per class listing only what that control ADDS; `hidden` is View's
+  and every other class inherits it through the two-level lookup), application
+  in `interfaceBuild` with an `InterfaceBuildReport` (built/applied/skipped
+  counts so a document that quietly lost properties cannot look like success),
+  and the coverage gate: every class in the registry must carry at least one
+  property of its OWN. Unknown names and wrong kinds are reported and SKIPPED,
+  never coerced (D7). `ImageView` lost its registry seat because its only
+  scalar-ish setting is an enum and the document model has no enum kind — a
+  decision to take, not a gap to paper over. `userland/tests/interface_build.cpp`
+  + `tests/cases/weaver_ib1.py`, 14/14 checks: build report 3/3/2, values read
+  back through the same reflection the inspector will use (including an
+  inherited `hidden`), and 12/12 classes covered.
 - **IB2 — the editor shell: open, select, save.** (Open and save act on D11's
   `/Users/$USER/Documents/`.) *Acceptance:* with the
   harness clicking the canvas, the editor logs each selection change by

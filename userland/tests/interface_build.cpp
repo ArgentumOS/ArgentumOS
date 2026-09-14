@@ -50,6 +50,8 @@ interface = {
 			w = 240
 			h = 20
 		}
+		text = "Hello"
+		hidden = true
 		mask = {
 			flexibleMaxX = true
 		}
@@ -63,6 +65,9 @@ interface = {
 			w = 240
 			h = 20
 		}
+		text = "0 items"
+		hidden = 3
+		frobnicate = 7
 		mask = {
 			flexibleWidth = true
 		}
@@ -229,12 +234,14 @@ main(void)
 		InterfaceDocument doc;
 		std::string why;
 		View container;
+		InterfaceBuildReport rep;
 
 		if (!loadDoc(dir, "ib1_a.conf", DOC_A, doc, why)) {
 			std::printf("IB1-FAIL (%s)\n", why.c_str());
 			return 1;
 		}
-		View *panel = interfaceBuild(doc, &container, why, noteBuilt);
+		View *panel = interfaceBuild(doc, &container, why, noteBuilt,
+					     &rep);
 
 		if (!panel) {
 			std::printf("IB1: fixture A FAIL: build: %s\n",
@@ -313,6 +320,72 @@ main(void)
 					    "view did not take the delta\n");
 				failed++;
 			}
+
+			/* ---- IB1b: the properties, through the class's table ----
+			 * greeting: text (own) + hidden (INHERITED from View) = 2.
+			 * status: text = 1. Skipped: `hidden = 3` (a number where
+			 * the table declares a boolean) and `frobnicate` (no such
+			 * property) - reported, never coerced. */
+			std::printf("IB1: build report: built=%d applied=%d "
+				    "skipped=%d\n", rep.built, rep.propsApplied,
+				    rep.propsSkipped);
+			if (rep.built == 3 && rep.propsApplied == 3
+			    && rep.propsSkipped == 2) {
+				std::printf("IB1: properties applied through the "
+					    "table, the bad ones skipped OK\n");
+			} else {
+				std::printf("IB1: fixture A FAIL: report is not "
+					    "3/3/2\n");
+				failed++;
+			}
+
+			/* read them back THROUGH THE TABLE — the same reflection
+			 * the inspector will use, and the reason the tables carry
+			 * getters as well as setters */
+			{
+				const InterfaceProperty *tp =
+					interfaceProperty("Label", "text");
+				const InterfaceProperty *hp =
+					interfaceProperty("Label", "hidden");
+				InterfaceNode::Property val;
+				bool textOK = false;
+				bool hiddenOK = false;
+
+				if (tp && tp->get && greeting && status) {
+					val = InterfaceNode::Property();
+					val.kind = tp->kind;
+					tp->get(greeting, val);
+					textOK = (val.text == "Hello");
+					val = InterfaceNode::Property();
+					val.kind = tp->kind;
+					tp->get(status, val);
+					textOK = textOK && (val.text == "0 items");
+				}
+				if (hp && hp->get && greeting) {
+					val = InterfaceNode::Property();
+					val.kind = hp->kind;
+					hp->get(greeting, val);
+					hiddenOK = (val.boolean == true);
+				}
+				if (textOK) {
+					std::printf("IB1: read back Label.text = "
+						    "\"Hello\" and \"0 items\" "
+						    "OK\n");
+				} else {
+					std::printf("IB1: fixture A FAIL: text did "
+						    "not read back\n");
+					failed++;
+				}
+				if (hiddenOK) {
+					std::printf("IB1: read back INHERITED "
+						    "Label.hidden = true OK\n");
+				} else {
+					std::printf("IB1: fixture A FAIL: the "
+						    "inherited property did not "
+						    "read back\n");
+					failed++;
+				}
+			}
 		}
 	}
 
@@ -366,10 +439,49 @@ main(void)
 		}
 	}
 
+	/* ---- IB1b: cover — a registered class must be DESCRIBABLE ----
+	 * A control a document can BUILD but not DESCRIBE is only half
+	 * supported: the loader could create it and the inspector could not
+	 * edit it. So every registered class must have at least one property
+	 * of its OWN (the inherited base does not count - otherwise this check
+	 * would pass vacuously for a class with no table at all). ImageView is
+	 * the class that fails this today, and it is therefore NOT registered:
+	 * its only scalar-ish setting is an enum, and the document model has
+	 * no enum kind. */
+	{
+		int classes = interfaceClassCount();
+		int covered = 0;
+
+		for (int i = 0; i < classes; i++) {
+			const InterfaceClass *c = interfaceClassAt(i);
+			int own = interfaceOwnPropertyCount(c->name);
+
+			std::printf("IB1: class %s: %d own, %d total\n",
+				    c->name, own,
+				    interfacePropertyCount(c->name));
+			if (own >= 1) {
+				covered++;
+			} else {
+				std::printf("IB1: coverage FAIL: %s is "
+					    "registered but has no property "
+					    "table\n", c->name);
+			}
+		}
+		if (classes > 0 && covered == classes) {
+			std::printf("IB1: cover: every registered class has a "
+				    "property table (%d/%d) OK\n", covered,
+				    classes);
+		} else {
+			std::printf("IB1: coverage FAIL: %d of %d covered\n",
+				    covered, classes);
+			failed++;
+		}
+	}
+
 	if (failed) {
 		std::printf("IB1-FAIL (%d check(s) failed)\n", failed);
 		return 1;
 	}
-	std::printf("IB1-OK (build, identity, masks, tolerant reads)\n");
+	std::printf("IB1-OK (build, identity, masks, properties, coverage)\n");
 	return 0;
 }

@@ -65,6 +65,27 @@ class Case(BaseCase):
                    "a flexible WIDTH took the whole delta (240 -> 540)" in out,
                    "flexibleWidth took the whole 300pt delta")
 
+        # IB1b: the properties, through the class's table
+        self.check("properties-applied-and-skipped",
+                   "IB1: build report: built=3 applied=3 skipped=2" in out,
+                   "3 properties applied, 2 reported and skipped (a wrong "
+                   "kind and an unknown name)")
+        self.check("properties-read-back",
+                   'IB1: read back Label.text = "Hello" and "0 items" OK'
+                   in out,
+                   "the document's values read back through the table's "
+                   "getters")
+        self.check("inherited-property",
+                   "IB1: read back INHERITED Label.hidden = true OK" in out,
+                   "a property a class does not declare, reached through the "
+                   "base")
+
+        # IB1b: coverage - a registered class must be describable
+        self.check("coverage-every-class-has-a-table",
+                   "IB1: cover: every registered class has a property table"
+                   in out,
+                   "every registered class carries its own property table")
+
         # tolerant reads, and the fatal case
         self.check("unknown-root-is-fatal",
                    "an unknown ROOT class is fatal and named" in out,

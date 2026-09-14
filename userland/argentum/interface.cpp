@@ -646,6 +646,286 @@ interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 	}
 }
 
+/* ---------- Weaver IB1b: the property tables ---------- */
+
+/*
+ * One table per class, listing only what that control ADDS. The base is
+ * View's own table (`hidden`), reached by inheritance, so nothing repeats it.
+ *
+ * A class earns a place in the registry by having one of these: a control a
+ * document can BUILD but cannot DESCRIBE is only half supported, and the cover
+ * check in the IB1 probe fails when a registered class has no own property.
+ * That is why ImageView is not registered: its only scalar-ish setting is
+ * `setContentMode`, an ENUM, and the document model has no enum kind yet — a
+ * decision to take rather than a gap to paper over with a magic number.
+ */
+static const InterfaceProperty View_PROPS[] = {
+	{ "hidden", InterfaceNode::Kind::Bool,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.boolean = v->isHidden(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  v->setHidden(in.boolean); } },
+};
+
+static const InterfaceProperty Box_PROPS[] = {
+	{ "title", InterfaceNode::Kind::String,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.text = static_cast<Box *>(v)->title(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<Box *>(v)->setTitle(in.text.c_str()); } },
+};
+
+static const InterfaceProperty Label_PROPS[] = {
+	{ "text", InterfaceNode::Kind::String,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.text = static_cast<Label *>(v)->text(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<Label *>(v)->setText(in.text.c_str()); } },
+};
+
+static const InterfaceProperty Button_PROPS[] = {
+	{ "title", InterfaceNode::Kind::String,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.text = static_cast<Button *>(v)->title(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<Button *>(v)->setTitle(in.text.c_str()); } },
+	{ "enabled", InterfaceNode::Kind::Bool,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.boolean = static_cast<Button *>(v)->isEnabled(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<Button *>(v)->setEnabled(in.boolean); } },
+};
+
+static const InterfaceProperty TextField_PROPS[] = {
+	{ "value", InterfaceNode::Kind::String,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.text = static_cast<TextField *>(v)->value(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<TextField *>(v)->setValue(in.text.c_str()); } },
+	{ "secure", InterfaceNode::Kind::Bool,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.boolean = static_cast<TextField *>(v)->isSecure(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<TextField *>(v)->setSecure(in.boolean); } },
+	{ "enabled", InterfaceNode::Kind::Bool,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.boolean = static_cast<TextField *>(v)->isEnabled(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<TextField *>(v)->setEnabled(in.boolean); } },
+};
+
+static const InterfaceProperty Slider_PROPS[] = {
+	{ "value", InterfaceNode::Kind::Number,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.number = static_cast<Slider *>(v)->value(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<Slider *>(v)->setValue(in.number); } },
+};
+
+static const InterfaceProperty Stepper_PROPS[] = {
+	{ "value", InterfaceNode::Kind::Number,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.number = static_cast<Stepper *>(v)->value(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<Stepper *>(v)->setValue(in.number); } },
+};
+
+static const InterfaceProperty ProgressIndicator_PROPS[] = {
+	{ "progress", InterfaceNode::Kind::Number,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.number = static_cast<ProgressIndicator *>(v)->progress(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<ProgressIndicator *>(v)->setProgress(
+			  in.number); } },
+};
+
+static const InterfaceProperty LevelIndicator_PROPS[] = {
+	{ "level", InterfaceNode::Kind::Number,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.number = static_cast<LevelIndicator *>(v)->level(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<LevelIndicator *>(v)->setLevel(in.number); } },
+};
+
+static const InterfaceProperty SegmentedControl_PROPS[] = {
+	{ "selectedIndex", InterfaceNode::Kind::Number,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.number = static_cast<SegmentedControl *>(v)
+			  ->selectedIndex(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<SegmentedControl *>(v)->setSelectedIndex(
+			  (int) in.number); } },
+};
+
+static const InterfaceProperty ComboBox_PROPS[] = {
+	{ "value", InterfaceNode::Kind::String,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.text = static_cast<ComboBox *>(v)->value(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<ComboBox *>(v)->setValue(in.text.c_str()); } },
+};
+
+static const InterfaceProperty PopUpButton_PROPS[] = {
+	{ "title", InterfaceNode::Kind::String,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.text = static_cast<PopUpButton *>(v)->title(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<PopUpButton *>(v)->setTitle(in.text.c_str()); } },
+};
+
+struct ClassProps {
+	const char *name;
+	const InterfaceProperty *props;
+	int count;
+};
+
+#define CLASSPROPS(cls) 	{ #cls, cls##_PROPS, (int) (sizeof(cls##_PROPS) / sizeof(cls##_PROPS[0])) }
+
+static const ClassProps g_props[] = {
+	CLASSPROPS(View),
+	CLASSPROPS(Box),
+	CLASSPROPS(Label),
+	CLASSPROPS(Button),
+	CLASSPROPS(TextField),
+	CLASSPROPS(Slider),
+	CLASSPROPS(Stepper),
+	CLASSPROPS(ProgressIndicator),
+	CLASSPROPS(LevelIndicator),
+	CLASSPROPS(SegmentedControl),
+	CLASSPROPS(ComboBox),
+	CLASSPROPS(PopUpButton),
+};
+
+static const int g_propsCount = (int) (sizeof(g_props) / sizeof(g_props[0]));
+
+static const ClassProps *
+classProps(const char *className)
+{
+	if (!className) {
+		return nullptr;
+	}
+	for (int i = 0; i < g_propsCount; i++) {
+		if (!std::strcmp(g_props[i].name, className)) {
+			return &g_props[i];
+		}
+	}
+	return nullptr;
+}
+
+int
+interfaceOwnPropertyCount(const char *className)
+{
+	const ClassProps *c = classProps(className);
+
+	return c ? c->count : 0;
+}
+
+const InterfaceProperty *
+interfaceOwnPropertyAt(const char *className, int index)
+{
+	const ClassProps *c = classProps(className);
+
+	if (!c || index < 0 || index >= c->count) {
+		return nullptr;
+	}
+	return &c->props[index];
+}
+
+/* View's table IS the base: `hidden` is a View property, and every other class
+ * inherits it rather than restating it. */
+static int
+baseCount()
+{
+	return (int) (sizeof(View_PROPS) / sizeof(View_PROPS[0]));
+}
+
+static bool
+ownHas(const char *className, const char *name)
+{
+	int n = interfaceOwnPropertyCount(className);
+
+	for (int i = 0; i < n; i++) {
+		if (!std::strcmp(interfaceOwnPropertyAt(className, i)->name, name)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool
+isViewClass(const char *className)
+{
+	return className && !std::strcmp(className, "View");
+}
+
+const InterfaceProperty *
+interfaceProperty(const char *className, const char *name)
+{
+	if (!className || !name) {
+		return nullptr;
+	}
+	const ClassProps *c = classProps(className);
+
+	if (c) {
+		for (int i = 0; i < c->count; i++) {
+			if (!std::strcmp(c->props[i].name, name)) {
+				return &c->props[i];
+			}
+		}
+	}
+	if (isViewClass(className)) {
+		return nullptr;		/* its own table IS the base */
+	}
+	for (int i = 0; i < baseCount(); i++) {
+		if (!std::strcmp(View_PROPS[i].name, name)) {
+			return &View_PROPS[i];
+		}
+	}
+	return nullptr;
+}
+
+int
+interfacePropertyCount(const char *className)
+{
+	int n = interfaceOwnPropertyCount(className);
+
+	if (isViewClass(className)) {
+		return n;
+	}
+	for (int i = 0; i < baseCount(); i++) {
+		if (!ownHas(className, View_PROPS[i].name)) {
+			n++;
+		}
+	}
+	return n;
+}
+
+const InterfaceProperty *
+interfacePropertyAt(const char *className, int index)
+{
+	int own = interfaceOwnPropertyCount(className);
+
+	if (index < 0) {
+		return nullptr;
+	}
+	if (index < own) {
+		return interfaceOwnPropertyAt(className, index);
+	}
+	if (isViewClass(className)) {
+		return nullptr;
+	}
+	index -= own;
+	for (int i = 0; i < baseCount(); i++) {
+		if (ownHas(className, View_PROPS[i].name)) {
+			continue;
+		}
+		if (index-- == 0) {
+			return &View_PROPS[i];
+		}
+	}
+	return nullptr;
+}
+
 /* ---------- Weaver IB1: the registry and the builder ---------- */
 
 /* ONE table (plan D5), listing only classes whose constructor was CHECKED to
@@ -664,7 +944,6 @@ static const InterfaceClass g_classes[] = {
 	{ "ProgressIndicator", []() -> View * { return new ProgressIndicator(); } },
 	{ "LevelIndicator", []() -> View * { return new LevelIndicator(); } },
 	{ "SegmentedControl", []() -> View * { return new SegmentedControl(); } },
-	{ "ImageView", []() -> View * { return new ImageView(); } },
 	{ "ComboBox", []() -> View * { return new ComboBox(); } },
 	{ "PopUpButton", []() -> View * { return new PopUpButton(); } },
 };
@@ -712,7 +991,8 @@ warnUnknown(const std::string &where)
 static View *
 buildNode(const InterfaceNode &node, View *parent, std::string &error,
 	  bool isRoot,
-	  const std::function<void(View *, const char *, const char *)> &onBuilt)
+	  const std::function<void(View *, const char *, const char *)> &onBuilt,
+	  InterfaceBuildReport &rep)
 {
 	View *v = interfaceMake(node.className());
 	Rect r;
@@ -745,10 +1025,57 @@ buildNode(const InterfaceNode &node, View *parent, std::string &error,
 	if (onBuilt) {
 		onBuilt(v, node.className(), node.identifier());
 	}
+	rep.built++;
+
+	/* THE PROPERTIES, through the class's table. A name the class does not
+	 * know, or one whose declared kind disagrees with the document, is
+	 * reported and SKIPPED rather than coerced: tolerant reads (D7), and a
+	 * coerce would silently change what the document says. */
+	for (int i = 0; i < node.propertyCount(); i++) {
+		const InterfaceNode::Property *p = node.propertyAt(i);
+		const InterfaceProperty *tbl = interfaceProperty(node.className(),
+								 p->name.c_str());
+
+		if (!tbl) {
+			const std::string where = node.identifier()[0]
+				? std::string(node.className()) + " `"
+					+ node.identifier() + "`"
+				: std::string(node.className());
+
+			std::fprintf(stderr,
+				     "ARGENTUM-IFACE: %s has no property `%s` - "
+				     "skipped\n", where.c_str(),
+				     p->name.c_str());
+			std::fflush(stderr);
+			rep.propsSkipped++;
+			continue;
+		}
+		if (tbl->kind != p->kind) {
+			std::fprintf(stderr,
+				     "ARGENTUM-IFACE: %s.%s is a %s in the "
+				     "document but a %s on the control - "
+				     "skipped\n", node.className(),
+				     p->name.c_str(),
+				     p->kind == InterfaceNode::Kind::String
+					     ? "string"
+					     : p->kind == InterfaceNode::Kind::Bool
+						       ? "boolean" : "number",
+				     tbl->kind == InterfaceNode::Kind::String
+					     ? "string"
+					     : tbl->kind == InterfaceNode::Kind::Bool
+						       ? "boolean" : "number");
+			std::fflush(stderr);
+			rep.propsSkipped++;
+			continue;
+		}
+		tbl->set(v, *p);
+		rep.propsApplied++;
+	}
+
 	for (int i = 0; i < node.childCount(); i++) {
 		/* the child adds ITSELF to v (the tail below), so nothing is
 		 * added twice */
-		(void) buildNode(*node.childAt(i), v, error, false, onBuilt);
+		(void) buildNode(*node.childAt(i), v, error, false, onBuilt, rep);
 	}
 	if (parent) {
 		parent->addSubview(v);
@@ -758,8 +1085,12 @@ buildNode(const InterfaceNode &node, View *parent, std::string &error,
 
 View *
 interfaceBuild(const InterfaceDocument &doc, View *parent, std::string &error,
-	       std::function<void(View *, const char *, const char *)> onBuilt)
+	       std::function<void(View *, const char *, const char *)> onBuilt,
+	       InterfaceBuildReport *report)
 {
+	InterfaceBuildReport rep;
+	View *root;
+
 	error.clear();
 	if (!doc.root()) {
 		error = "the document has no root";
@@ -769,7 +1100,11 @@ interfaceBuild(const InterfaceDocument &doc, View *parent, std::string &error,
 		error = "the document's root names no class";
 		return nullptr;
 	}
-	return buildNode(*doc.root(), parent, error, true, onBuilt);
+	root = buildNode(*doc.root(), parent, error, true, onBuilt, rep);
+	if (report) {
+		*report = rep;
+	}
+	return root;
 }
 
 } /* namespace argentum */

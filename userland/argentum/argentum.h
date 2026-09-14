@@ -1803,6 +1803,44 @@ const InterfaceClass *interfaceClassAt(int index);
 /* nullptr when the document names a class this build does not know */
 View *interfaceMake(const char *className);
 
+/* ---------- Weaver IB1b: properties (plan D4/D5) ---------- */
+
+/* One property of one class. THE REFLECTION IS THIS TABLE — no RTTI, no
+ * member offsets: explicit, greppable, and auditable in one place. The value
+ * is exchanged in the DOCUMENT's own terms, so a property's kind is declared
+ * here and a document that disagrees is reported rather than coerced. */
+struct InterfaceProperty {
+	const char *name;
+	InterfaceNode::Kind kind;
+	/* read the control's value out; `out.kind` arrives already set */
+	std::function<void(View *, InterfaceNode::Property &out)> get;
+	/* write the document's value into the control */
+	std::function<void(View *, const InterfaceNode::Property &in)> set;
+};
+
+/* A class's OWN properties. Each class table lists only what that control
+ * ADDS; `hidden` is View's, and every other class reaches it by inheritance —
+ * which is why the lookup is two-level rather than every table repeating the
+ * base. */
+int interfaceOwnPropertyCount(const char *className);
+const InterfaceProperty *interfaceOwnPropertyAt(const char *className,
+						int index);
+/* Enumeration for the inspector: the class's own properties, then the
+ * inherited ones it does not shadow. */
+int interfacePropertyCount(const char *className);
+const InterfaceProperty *interfacePropertyAt(const char *className, int index);
+/* The lookup the builder uses; nullptr when neither table has the name. */
+const InterfaceProperty *interfaceProperty(const char *className,
+					   const char *name);
+
+/* What a build did — counts, so a document that quietly lost properties cannot
+ * look like a success, and so a gate can assert exact numbers. */
+struct InterfaceBuildReport {
+	int built = 0;
+	int propsApplied = 0;
+	int propsSkipped = 0;	/* unknown to the class, or the wrong kind */
+};
+
 /* Instantiate a document (plan §8, IB1). The document's root node becomes a
  * view added to `parent`; its children follow in sibling order, each with the
  * frame and the parent-relative mask the document records. ONE PASS — with
@@ -1820,7 +1858,8 @@ View *interfaceMake(const char *className);
 View *interfaceBuild(const InterfaceDocument &doc, View *parent,
 		     std::string &error,
 		     std::function<void(View *, const char *className,
-					const char *identifier)> onBuilt = nullptr);
+					const char *identifier)> onBuilt = nullptr,
+		     InterfaceBuildReport *report = nullptr);
 
 } /* namespace argentum */
 
