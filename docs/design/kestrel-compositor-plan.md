@@ -42,6 +42,23 @@ XCOMP-COST-READBACK: 1920x1080 = 14994 ms/frame
 XCOMP-COST-BLEND: 200x150 over 1920x1080 = 0 ms/frame
 ```
 
+and, once `libXrender` was vendored (`XCOMP-RENDER-OK`):
+
+```
+XCOMP-RENDER-OK: composited onto the screen, dest pixel=0x3d8fe0
+```
+
+That last line proves the **RENDER client API links, the server accepts a
+`Composite` whose source is a redirected window's pixmap, and it executes**.
+It does NOT prove the pixels visibly changed, and the reason is worth
+keeping: the composite went onto the ROOT window, and Kestrel's wallpaper
+is a CHILD of the root covering that point — so the readback returns the
+wallpaper's ramp (`0x3d8fe0` is a ramp blue), which is exactly what a
+readback of the root should return there. **A real CM composites into its
+own overlay window above every other child**, not onto the root; proving
+the pixels land needs that overlay, and it is the first thing the plan
+should build.
+
 Three things fall out:
 
 1. **The mechanism works.** The redirect is accepted and
@@ -79,9 +96,14 @@ implements a Rage128-class 2D engine, so it is testable.
 
 ## Open before a plan
 
-- **Render client path**: vendor `libXrender` vs `libxcb-render`. Decide
-  with the toolkit in mind (Argentum is core-protocol-only today:
-  "XPutImage — no XRender/Xft").
+- ~~**Render client path**~~ — **decided and done (2026-09): `libXrender`
+  is vendored.** 0.9.12, pinned as a submodule beside the other X libs
+  (`third_party/x11/libXrender`), built into the prefix by
+  `tools/x11-shared-build.sh` (its `au` helper already ran `autoreconf`
+  when `configure` is absent, so it is reproducible from a fresh clone),
+  and its `libXrender.so.1` is staged into the image. Verified by
+  `xcomp_probe`'s RENDER step above. `libXcomposite`/`libXdamage` are
+  still not vendored — the xcb bindings cover Composite.
 - **The toolkit's rendering model**: window contents arrive as *server*
   pixmaps, while `drawImage()` takes a client-side `BitmapImage`. The
   compositor view needs a server-side surface primitive; the rest of the

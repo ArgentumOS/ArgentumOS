@@ -25,6 +25,8 @@
 #include <xcb/xcb.h>
 #include <xcb/composite.h>
 
+#include <X11/extensions/Xrender.h>
+
 #include <pixman.h>
 
 #include <stdio.h>
@@ -119,6 +121,8 @@ main(void)
 		}
 		printf("XCOMP-REDIRECT: accepted (subwindows of the root)\n");
 	}
+	Pixmap named = 0;
+
 	{
 		/* NameWindowPixmap is a VOID request: the CLIENT allocates
 		 * the pixmap id. It takes a window that is a CHILD OF THE
@@ -163,6 +167,7 @@ main(void)
 				       "0x%lx pixel=0x%06lx\n",
 				       (unsigned long) kids[i],
 				       (unsigned long) pix, p);
+				named = pix;
 				ok = 1;
 				break;
 			}
@@ -173,6 +178,51 @@ main(void)
 		if (!ok) {
 			return 1;
 		}
+	}
+
+	/* --- Q1b: the primitive a compositor actually blends with ---
+	 * Redirect and NameWindowPixmap get the CONTENTS; RENDER is what
+	 * puts them on the screen (with alpha). This is the step that the
+	 * readback route cannot replace, and the one libXrender was
+	 * vendored for. */
+	{
+		int ev = 0, err = 0;
+
+		if (!XRenderQueryExtension(dpy, &ev, &err)) {
+			printf("XCOMP-RENDER: the server does NOT offer RENDER\n");
+			return 1;
+		}
+		XRenderPictFormat *fmt =
+			XRenderFindVisualFormat(dpy, DefaultVisual(dpy, scr));
+		if (!fmt) {
+			printf("XCOMP-RENDER: no pict format for the root's "
+			       "visual\n");
+			return 1;
+		}
+		Picture src = XRenderCreatePicture(dpy, named, fmt, 0, NULL);
+		Picture dst = XRenderCreatePicture(dpy, root, fmt, 0, NULL);
+
+		if (!src || !dst) {
+			printf("XCOMP-RENDER: XRenderCreatePicture FAILED\n");
+			return 1;
+		}
+		/* blend the redirected window onto the screen at 800,400 */
+		XRenderComposite(dpy, PictOpOver, src, None, dst,
+				 0, 0, 0, 0, 800, 400, 200, 150);
+		XSync(dpy, False);
+		{
+			XImage *im = XGetImage(dpy, root, 800, 400, 1, 1,
+					       AllPlanes, ZPixmap);
+
+			printf("XCOMP-RENDER-OK: composited onto the screen, "
+			       "dest pixel=0x%06lx\n",
+			       im ? XGetPixel(im, 0, 0) & 0xffffff : 0);
+			if (im) {
+				XDestroyImage(im);
+			}
+		}
+		XRenderFreePicture(dpy, src);
+		XRenderFreePicture(dpy, dst);
 	}
 
 	/* --- Q2: what a screen-sized frame costs today --- */

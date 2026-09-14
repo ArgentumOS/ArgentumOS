@@ -424,7 +424,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-I$(X11PREFIX)/include/pixman-1 \
 		userland/tests/xcomp_probe.c \
 		-L$(X11PREFIX)/lib -lX11 -lX11-xcb -lxcb -lxcb-composite \
-		-lpixman-1 \
+		-lpixman-1 -lXrender \
 		-o "$(ROOTFS64)/System/Shared/tests/xcomp_probe"
 	# rogue_resize: security audit 2026-09 — the hostile-geometry probe
 	# (any X client can resize another's window; the toolkit must clamp).
@@ -533,15 +533,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# dev symlink libX11.so is link-time only and skipped). Only the libs
 	# today's consumers NEED are staged. libX11-xcb + libxcb-composite are
 	# now staged because something DOES link them: xcomp_probe, which
-	# de-risks a compositing Kestrel (the Xlib wrappers - libXcomposite,
-	# libXdamage, libXrender - are still not built at all).
+	# de-risks a compositing Kestrel. libXrender is vendored too (the
+	# RENDER client the compositor blends through); libXcomposite and
+	# libXdamage are still not - the xcb bindings cover Composite.
 	@if [ ! -d "$(X11PREFIX)/lib" ]; then \
 		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
 		exit 1; \
 	fi
 	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
 		libpixman-1.so libXfont2.so libfontenc.so libz.so libXext.so \
-		libX11-xcb.so libxcb-composite.so; do \
+		libX11-xcb.so libxcb-composite.so libXrender.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the

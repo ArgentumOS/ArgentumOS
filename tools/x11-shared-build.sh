@@ -121,6 +121,13 @@ au libX11 libX11 $SHARED $STATIC
 log libXext
 au Xext libXext $SHARED $STATIC
 
+# libXrender: the RENDER client library — what a compositing manager needs
+# to blend server-side pixmaps (docs/design/kestrel-compositor-plan.md).
+# After libX11, which it needs. (Its sibling wrappers libXcomposite and
+# libXdamage are still NOT vendored: the xcb bindings cover Composite.)
+log libXrender
+au Xrender libXrender $SHARED $STATIC
+
 log libxkbfile
 mes libxkbfile libxkbfile
 log pixman
@@ -141,7 +148,8 @@ log "xkbcomp (dynamic)"
 echo X11-SHARED-DONE
 ls -l "$P"/lib/libX11.so* "$P"/lib/libxcb.so* "$P"/lib/libXau.so* \
 	"$P"/lib/libXdmcp.so* "$P"/lib/libxkbfile.so* "$P"/lib/libpixman-1.so* \
-	"$P"/lib/libXfont2.so* "$P"/lib/libfontenc.so* "$P"/lib/libz.so* 2>&1
+	"$P"/lib/libXfont2.so* "$P"/lib/libfontenc.so* "$P"/lib/libz.so* \
+	"$P"/lib/libXrender.so* 2>&1
 
 # ================= text stack (Argentum UIKit, docs/design/argentum-uikit-plan.md) =====
 # fontconfig -> HarfBuzz -> FreeType (+ libpng/expat leaves). Same
