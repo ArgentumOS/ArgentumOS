@@ -92,12 +92,35 @@ the rule the other plans here follow.
 
   Nothing of C0 is thrown away: the take, the input shape and the unmap are
   the first three things C2 needs.
-- **C1 — claim the CM and redirect, then do nothing else.**
-  `_NET_WM_CM_S0` plus `CompositeRedirectSubwindows(root, Automatic)`.
-  *Acceptance:* the desktop is **pixel-identical** to today — N sampled points
-  match a pre-change screendump — the guest logs the claim and the redirect,
-  and `smoke_desktop` + `wm_dock` stay green. The point of the slice is that
-  redirecting *alone* changes nothing.
+- **C1 — claim the CM and redirect. BLOCKED on an Xfb memory fault
+  (2026-09); the code is in, opt-in, and OFF.** `_NET_WM_CM_S0` is claimed
+  and `CompositeRedirectSubwindows(root, Automatic)` is called, behind
+  `system.workspace.compositor` (default off), because the redirect does not
+  hold up. Measured over a long desktop session (`wm_dock`, which launches
+  and closes many windows):
+
+  ```
+  Page Fault at 0x400014ed8000 (writing)  rip 0x4d8470     <- Xfb, OUT OF MEMORY
+  Page Fault at 0xa (reading) x 11112     rip = OsSigHandler (os/osinit.c:138)
+  ```
+
+  Xfb exhausts memory with the redirect active — **at 256M AND at 512M**, so
+  it is the redirect's cost (a full-size offscreen pixmap per top-level; the
+  wallpaper alone is 8.3 MB) or a leak in it, **not** the RAM ceiling — and
+  its own signal handler's `xorg_backtrace()` then faults in a loop (a
+  ~70-line dump per fault, ~800k lines), which is what actually kills the
+  desktop: late checks fail, the run takes 496s instead of 113s.
+
+  *Acceptance as built:* the claim and redirect exist and are opt-in; with
+  the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
+  **The slice is NOT met** — its whole point was that redirecting alone is
+  invisible, and it is not.
+
+  Next, in order: (a) find where the memory goes — a per-window cost that
+  large is worth measuring, and a leak worth ruling out, in Xfb's redirect
+  path (`composite/compalloc.c`, and Xfb's **shadow**, which is the one thing
+  there that is not upstream); (b) then re-run C1's acceptance with the
+  redirect on.
 - **C2 — pass-through composite.** Every root child is named and blended onto
   the overlay at its geometry, on damage. Pass-through is the strongest
   correctness test available: any mistake is a wrong pixel.

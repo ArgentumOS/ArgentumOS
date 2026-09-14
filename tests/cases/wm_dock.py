@@ -155,6 +155,21 @@ class Case(BaseCase):
                    "x=%d; the desktop draws nothing right of it: %d)"
                    % (ink_app, zx, was))
 
+        # --- C1: the compositor is opt-in, and OFF ----------------------
+        # Claiming _NET_WM_CM_S0 and redirecting the root's children with
+        # automatic update is implemented, but it does NOT hold up: Xfb runs
+        # out of memory under it over a long session (measured at 256M and at
+        # 512M) and then faults in its own signal handler. So it is behind
+        # system.workspace.compositor, and the shipped default is off - which
+        # is what this asserts. Every other check in this case is then
+        # testing a desktop with NO compositor, exactly as before.
+        self.check("compositor-is-opt-in-and-off",
+                   session.count(r"KESTREL: compositor claimed") == 0,
+                   "the desktop runs without the compositor redirect, which "
+                   "is the default until Xfb's memory fault under it is fixed "
+                   "(%d claim line(s))"
+                   % session.count(r"KESTREL: compositor claimed"))
+
         # --- C0: the compositor's overlay window -------------------------
         # The plan's one unknown: does Xfb implement GetOverlayWindow? The
         # WM takes it at startup and says so. It does NOT map it yet:

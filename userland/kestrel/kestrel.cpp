@@ -2413,6 +2413,59 @@ cursorThemeInstall(void)
 	}
 }
 
+/* ---- C1: become the compositing manager -------------------------------
+ *
+ * Claim _NET_WM_CM_S<n> and redirect the root's children with AUTOMATIC
+ * update: every top-level gets an offscreen pixmap while still drawing to
+ * the screen exactly as before, so NOTHING about the desktop changes yet.
+ * That is the whole point of the slice (docs/design/
+ * kestrel-compositor-plan.md): prove that redirecting alone is invisible.
+ *
+ * The CLAIM comes first - the server refuses RedirectSubwindows to a client
+ * that does not own the selection - and the owner has to be a window this
+ * process owns and keeps: the strip, which lives as long as the session.
+ *
+ * BUT IT IS OFF BY DEFAULT, because it does not hold up yet. Measured over a
+ * long desktop session (wm_dock, which launches and closes many windows):
+ *
+ *   Page Fault at 0x400014ed8000 (writing)  rip 0x4d8470   <- Xfb, OUT OF MEMORY
+ *   Page Fault at 0xa (reading) x 11112, rip = OsSigHandler <- its handler's
+ *                                                             own backtrace
+ *
+ * Xfb exhausts memory with the redirect active - at 256M AND at 512M, so it
+ * is the redirect's cost (a full-size offscreen pixmap per top-level: the
+ * wallpaper alone is 8.3 MB) or a leak in it, not the RAM ceiling - and then
+ * its signal handler faults in a loop, 70 lines per fault, and the desktop
+ * dies. Until that is fixed the compositor is opt-in:
+ * system.workspace.compositor = true.
+ *
+ * Everything in this function is what the slice needs; only the switching-on
+ * is withheld. See docs/design/kestrel-compositor-plan.md C1.
+ */
+static void
+compositorClaim(void)
+{
+	char name[32];
+	Atom cm;
+	::Window owner = stripX ? stripX : root;
+
+	snprintf(name, sizeof(name), "_NET_WM_CM_S%d", scr);
+	cm = XInternAtom(dpy, name, False);
+	XSetSelectionOwner(dpy, cm, owner, CurrentTime);
+	XSync(dpy, False);
+	if (XGetSelectionOwner(dpy, cm) != owner) {
+		printf("KESTREL: compositor claim REFUSED (another compositor "
+		       "owns %s)\n", name);
+		fflush(stdout);
+		return;
+	}
+	XCompositeRedirectSubwindows(dpy, root, CompositeRedirectAutomatic);
+	XSync(dpy, False);
+	printf("KESTREL: compositor claimed %s, redirected the root's "
+	       "subwindows (automatic)\n", name);
+	fflush(stdout);
+}
+
 static ::Window gOverlay = 0;
 
 static void
@@ -2624,6 +2677,19 @@ main()
 	}
 	/* the interim cursor theme, before anything is on screen */
 	cursorThemeInstall();
+
+	/* C1: the compositor is opt-in until the Xfb memory fault it exposes
+	 * is fixed (see compositorClaim). Off, the desktop is exactly what it
+	 * was before C1 - which is the slice's acceptance, unmet. */
+	{
+		char on[16] = "false";
+
+		app.configString("system.workspace", "compositor", "false", on,
+				 sizeof(on));
+		if (strcmp(on, "true") == 0) {
+			compositorClaim();
+		}
+	}
 
 	/* C0: take the compositor's overlay window (docs/design/
 	 * kestrel-compositor-plan.md §3). Before the ready marker, so a gate
