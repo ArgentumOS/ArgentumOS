@@ -29,6 +29,7 @@
  */
 #include <argentum/argentum.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -552,6 +553,9 @@ public:
 		std::string kind;	/* "move" or "resize" */
 		Rect before;
 		Rect after;
+		std::vector<std::string> groupIds;	/* group move */
+		std::vector<Rect> groupBefore;
+		std::vector<Rect> groupAfter;
 	};
 
 	std::vector<Command> undoStack;
@@ -565,6 +569,9 @@ public:
 					 * the rubber-band rect) */
 		Handle handle = Handle::BottomRight;
 		bool moved = false;
+		bool group = false;
+		std::vector<std::string> groupIds;
+		std::vector<Rect> groupStarts;
 	};
 
 	Gesture gesture;
@@ -989,10 +996,42 @@ public:
 			guides_.clear();
 			return;
 		}
+		std::string hitName = nodeName(hit);
+
+		/* a press on a node that is part of a multi-selection moves the
+		 * WHOLE group (primary gets the press; every member shifts by the
+		 * same delta). A press on anything else re-targets to one node. */
+		if (selectedIds_.size() > 1
+		    && std::find(selectedIds_.begin(), selectedIds_.end(),
+				 hitName) != selectedIds_.end()) {
+			gesture.kind = GestureKind::Move;
+			gesture.group = true;
+			gesture.id = hitName;
+			gesture.press = pt;
+			gesture.start = nodeFrame(hit);
+			gesture.current = gesture.start;
+			gesture.groupIds = selectedIds_;
+			for (auto &gid : gesture.groupIds) {
+				InterfaceNode *gn =
+					findNode(doc->root(), gid.c_str());
+
+				gesture.groupStarts.push_back(
+					gn ? nodeFrame(gn)
+					   : Rect{ { 0, 0 }, { 0, 0 } });
+			}
+			guides_.clear();
+			std::printf("WEAVER: group-move %d",
+				    (int) gesture.groupIds.size());
+			for (auto &gid : gesture.groupIds) {
+				std::printf(" %s", gid.c_str());
+			}
+			std::printf("\n");
+			std::fflush(stdout);
+			return;
+		}
 		selectNode(hit);
 		gesture.kind = GestureKind::Move;
-		gesture.id = hit->identifier()[0] ? hit->identifier()
-						  : hit->className();
+		gesture.id = hitName;
 		gesture.press = pt;
 		gesture.start = nodeFrame(hit);
 		gesture.current = gesture.start;
@@ -1021,6 +1060,27 @@ public:
 			gesture.current = Rect{ { x0, y0 }, { x1 - x0, y1 - y0 } };
 			gesture.moved = (gesture.current.size.w > 2
 					 && gesture.current.size.h > 2);
+			if (overlay) {
+				overlay->setNeedsDisplay();
+			}
+			return;
+		}
+
+		if (gesture.group) {
+			/* a group move: every member shifts by the SAME delta */
+			gesture.current = Rect{
+				{ gesture.start.origin.x + dx,
+				  gesture.start.origin.y + dy },
+				gesture.start.size
+			};
+			gesture.moved = true;
+			for (size_t i = 0; i < gesture.groupIds.size(); i++) {
+				Rect g = gesture.groupStarts[i];
+
+				g.origin.x += dx;
+				g.origin.y += dy;
+				updateLiveFrame(gesture.groupIds[i].c_str(), g);
+			}
 			if (overlay) {
 				overlay->setNeedsDisplay();
 			}
@@ -1352,31 +1412,89 @@ public:
 			return;
 		}
 		if (gesture.moved) {
-			InterfaceNode *n =
-				findNode(doc->root(), gesture.id.c_str());
+			if (gesture.group && gesture.groupIds.size() > 1) {
+				double gdx = gesture.current.origin.x
+					     - gesture.start.origin.x;
+				double gdy = gesture.current.origin.y
+					     - gesture.start.origin.y;
+				Command c;
 
-			if (n) {
-				Rect old = nodeFrame(n);
-				const char *kind =
-					gesture.kind == GestureKind::Resize
-						? "resize" : "move";
+				c.kind = "move";
+				for (size_t i = 0; i < gesture.groupIds.size();
+				     i++) {
+					InterfaceNode *gn =
+						findNode(doc->root(),
+							 gesture.groupIds[i]
+								 .c_str());
 
-				setNodeFrame(n, gesture.current);
-				undoStack.push_back(
-					{ gesture.id, kind, old,
-					  gesture.current });
-				dirty = true;
-				updateTitle();
-				std::printf("WEAVER: commit %s %s "
-					    "%g,%g %gx%g -> %g,%g %gx%g\n",
-					    kind, gesture.id.c_str(),
-					    old.origin.x, old.origin.y,
-					    old.size.w, old.size.h,
-					    gesture.current.origin.x,
-					    gesture.current.origin.y,
-					    gesture.current.size.w,
-					    gesture.current.size.h);
+					if (!gn) {
+						continue;
+					}
+					Rect before = nodeFrame(gn);
+					Rect after = gesture.groupStarts[i];
+
+					after.origin.x += gdx;
+					after.origin.y += gdy;
+					setNodeFrame(gn, after);
+					c.groupIds.push_back(
+						gesture.groupIds[i]);
+					c.groupBefore.push_back(before);
+					c.groupAfter.push_back(after);
+					std::printf("WEAVER: commit move %s "
+						    "%g,%g %gx%g -> "
+						    "%g,%g %gx%g\n",
+						    gesture.groupIds[i]
+							    .c_str(),
+						    before.origin.x,
+						    before.origin.y,
+						    before.size.w,
+						    before.size.h,
+						    after.origin.x,
+						    after.origin.y,
+						    after.size.w,
+						    after.size.h);
+				}
+				if (!c.groupIds.empty()) {
+					undoStack.push_back(c);
+					dirty = true;
+					updateTitle();
+				}
 				std::fflush(stdout);
+			} else {
+				InterfaceNode *n =
+					findNode(doc->root(),
+						 gesture.id.c_str());
+
+				if (n) {
+					Rect old = nodeFrame(n);
+					const char *kind =
+						gesture.kind
+							== GestureKind::Resize
+							? "resize" : "move";
+
+					setNodeFrame(n, gesture.current);
+					undoStack.push_back(
+						{ gesture.id, kind, old,
+						  gesture.current });
+					dirty = true;
+					updateTitle();
+					std::printf("WEAVER: commit %s %s "
+						    "%g,%g %gx%g -> "
+						    "%g,%g %gx%g\n",
+						    kind,
+						    gesture.id.c_str(),
+						    old.origin.x,
+						    old.origin.y,
+						    old.size.w,
+						    old.size.h,
+						    gesture.current
+							    .origin.x,
+						    gesture.current
+							    .origin.y,
+						    gesture.current.size.w,
+						    gesture.current.size.h);
+					std::fflush(stdout);
+				}
 			}
 		}
 		gesture = Gesture();
@@ -1395,22 +1513,52 @@ public:
 		Command c = undoStack.back();
 
 		undoStack.pop_back();
-		InterfaceNode *n = findNode(doc->root(), c.id.c_str());
+		if (!c.groupIds.empty()) {
+			for (size_t i = 0; i < c.groupIds.size(); i++) {
+				InterfaceNode *n =
+					findNode(doc->root(),
+						 c.groupIds[i].c_str());
 
-		if (!n) {
-			std::printf("WEAVER: undo FAIL no `%s`\n", c.id.c_str());
-			std::fflush(stdout);
-			failed = true;
-			return;
+				if (!n) {
+					std::printf("WEAVER: undo FAIL no "
+						    "`%s`\n",
+						    c.groupIds[i].c_str());
+					std::fflush(stdout);
+					failed = true;
+					return;
+				}
+				setNodeFrame(n, c.groupBefore[i]);
+				updateLiveFrame(c.groupIds[i].c_str(),
+						c.groupBefore[i]);
+				std::printf("WEAVER: undo %s %s -> "
+					    "%g,%g %gx%g\n",
+					    c.kind.c_str(),
+					    c.groupIds[i].c_str(),
+					    c.groupBefore[i].origin.x,
+					    c.groupBefore[i].origin.y,
+					    c.groupBefore[i].size.w,
+					    c.groupBefore[i].size.h);
+			}
+		} else {
+			InterfaceNode *n =
+				findNode(doc->root(), c.id.c_str());
+
+			if (!n) {
+				std::printf("WEAVER: undo FAIL no `%s`\n",
+					    c.id.c_str());
+				std::fflush(stdout);
+				failed = true;
+				return;
+			}
+			setNodeFrame(n, c.before);
+			updateLiveFrame(c.id.c_str(), c.before);
+			std::printf("WEAVER: undo %s %s -> %g,%g %gx%g\n",
+				    c.kind.c_str(), c.id.c_str(),
+				    c.before.origin.x, c.before.origin.y,
+				    c.before.size.w, c.before.size.h);
 		}
-		setNodeFrame(n, c.before);
 		dirty = true;
-		updateLiveFrame(c.id.c_str(), c.before);
 		updateTitle();
-		std::printf("WEAVER: undo %s %s -> %g,%g %gx%g\n",
-			    c.kind.c_str(), c.id.c_str(),
-			    c.before.origin.x, c.before.origin.y,
-			    c.before.size.w, c.before.size.h);
 		std::fflush(stdout);
 		if (overlay) {
 			overlay->setNeedsDisplay();

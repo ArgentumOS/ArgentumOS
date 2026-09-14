@@ -1,11 +1,12 @@
-"""Weaver guides + marquee + snapping (the IB3 refinements, post-IB7).
+"""Weaver guides + marquee + snapping + group move (post-IB7 refinements).
 
 Guides: while a move/resize drag is active, the editor snaps the closest
 edge/centre within GUIDE_HIT to the target (move shifts the frame, resize
 adjusts the moving edge), logs the alignment, and the overlay draws the
 hairlines. Marquee: a press-drag on empty canvas draws a rubber band and,
-on release, logs the hits and selects the topmost one.
-Both are driven through the SAME gesture engine a real pointer reaches.
+on release, selects EVERY hit (primary = topmost). Group move: a drag on a
+selected node moves the whole multi-selection by one delta, with one undo.
+Everything is driven through the SAME gesture engine a real pointer reaches.
 """
 
 from harness import BaseCase
@@ -124,3 +125,35 @@ class Case(BaseCase):
                    "the snapped resize guide is the one logged")
         self.check("resize-snap-exit-zero", "WEAVER-EXIT=0" in out,
                    "the resize-snap run exited 0")
+
+        # --- group move: a drag on one selected node moves the whole set ---
+        mark = len(session.log_text())
+        session.run("%s --open weaver_guides.conf --marquee 10 10 130 90 "
+                    "--drag 65 72 75 82 --undo --rect greeting "
+                    "--rect okButton; echo WEAVER-EXIT=$?" % WEAVER)
+        out = session.output_since(mark)
+        for line in out.strip().splitlines():
+            if "WEAVER" in line:
+                self.note(line)
+
+        self.check("group-move-begins",
+                   "WEAVER: group-move 2 greeting okButton" in out,
+                   "a press on a selected node started a two-node move")
+        self.check("group-moves-greeting",
+                   "WEAVER: commit move greeting 20,16 240x20 -> "
+                   "30,26 240x20" in out,
+                   "the greeting shifted by the group delta")
+        self.check("group-moves-okbutton",
+                   "WEAVER: commit move okButton 20,60 90x24 -> "
+                   "30,70 90x24" in out,
+                   "the pressed button shifted by the same delta")
+        self.check("group-undo-restores-both",
+                   "WEAVER: undo move greeting -> 20,16 240x20" in out
+                   and "WEAVER: undo move okButton -> 20,60 90x24" in out,
+                   "one undo restored every member")
+        self.check("group-rects-after-undo",
+                   "WEAVER: rect greeting = 20,16 240x20" in out
+                   and "WEAVER: rect okButton = 20,60 90x24" in out,
+                   "both rects read back pre-gesture after the undo")
+        self.check("group-exit-zero", "WEAVER-EXIT=0" in out,
+                   "the group-move run exited 0")

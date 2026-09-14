@@ -389,7 +389,8 @@ need input, which §8a addresses directly.
   press-drag on empty canvas rubber-bands a marquee that selects EVERY hit
   (the selection is a set; the topmost hit is the primary, the overlay
   outlines each selected node, and a plain click collapses back to one).
-  (`tests/cases/weaver_guides.py`, 16/16).
+  A drag on any selected node then moves the WHOLE group by one delta, and
+  one undo restores every member (`tests/cases/weaver_guides.py`, 22/22).
 - **IB4 — the inspector. DONE (2026-09).** Driven by the property table (D4):
   a selection change enumerates the control's properties through
   `interfacePropertyCount/At` (own first, then the inherited base) and logs
