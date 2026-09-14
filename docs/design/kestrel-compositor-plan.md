@@ -140,9 +140,24 @@ the rule the other plans here follow.
   (`hw/xfb/InitOutput.c`: `shadowMem` malloc'd, damage registered on the ROOT
   window), and it has a switch — `system.xfb` `shadow`, default true.
 
-  **The separating experiment is one config change:** shadow off + compositor
-  on + the RSS probe. Flat curve => the shadow holds the reference; still
-  rising => damage/fb is next.
+  **Separating experiment RUN — the shadow is EXONERATED.** Shadow off +
+  compositor on + the RSS probe: the same **+3,672 kB per window cycle**, four
+  cycles running. (The baseline drops 20,264 -> 12,664 kB at ready: that
+  difference is the shadow's own ~8 MB screen buffer, nothing to do with this.)
+
+  **The leaked object is the app's MIT-SHM segment.** Read Xfb's own map with
+  every app gone (`cat /System/Processes/4/maps` after `killall`), and the
+  `[shm]` mappings are still attached to the server — 4 regions, **18.43 MB**
+  (12.36 + 0.40 + 0.34 + 5.32 MB; the kernel coalesces adjacent ones). One app
+  cycle leaks one app-sized image: +3,672 kB is 1248x752x4, and the apps use
+  MIT-SHM (`XShmPutImage`) for their window backing.
+
+  **NEXT, in order:** (a) also dump the map at READY, so the delta from ready
+  to post-churn can be attributed region by region instead of by size; (b)
+  then find why a dead client's segment stays attached to Xfb — the server
+  side of that is upstream (`Xext/shm.c`), so the FNX kernel's SysV shm is the
+  place to look, which has form here (SysV shm resize/detach leaks before:
+  ef076fd).
 
   *Acceptance as built:* the claim and redirect exist and are opt-in; with
   the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
