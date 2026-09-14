@@ -1028,10 +1028,10 @@ public:
 			}
 		}
 
+		checkGuides(f);
 		gesture.current = f;
 		gesture.moved = true;
 		updateLiveFrame(gesture.id.c_str(), f);
-		checkGuides(f);
 		if (overlay) {
 			overlay->setNeedsDisplay();
 		}
@@ -1061,15 +1061,148 @@ public:
 		}
 	}
 
-	void checkGuides(const Rect &f)
+	void checkGuides(Rect &f)
 	{
 		std::vector<InterfaceNode *> nodes;
 		const char *const xNames[3] = { "left", "cx", "right" };
 		const char *const yNames[3] = { "top", "cy", "bottom" };
+		struct Match {
+			bool found = false;
+			double d = 0;
+			double myPos = 0;
+			const char *myName = nullptr;
+			const char *theirName = nullptr;
+			const char *oid = nullptr;
+		};
+		Match sx;
+		Match sy;
+		bool useX[3] = { true, true, true };
+		bool useY[3] = { true, true, true };
+
+		/* during a resize only the moving edges can snap; the anchored
+		 * edges must not follow the guide */
+		if (gesture.kind == GestureKind::Resize) {
+			switch (gesture.handle) {
+			case Handle::TopLeft:
+			case Handle::Left:
+			case Handle::BottomLeft:
+				useX[1] = useX[2] = false;	/* left edge moves */
+				break;
+			case Handle::TopRight:
+			case Handle::Right:
+			case Handle::BottomRight:
+				useX[0] = useX[1] = false;	/* right edge moves */
+				break;
+			default:
+				useX[0] = useX[1] = useX[2] = false;
+				break;
+			}
+			switch (gesture.handle) {
+			case Handle::TopLeft:
+			case Handle::Top:
+			case Handle::TopRight:
+				useY[1] = useY[2] = false;	/* top edge moves */
+				break;
+			case Handle::BottomLeft:
+			case Handle::Bottom:
+			case Handle::BottomRight:
+				useY[0] = useY[1] = false;	/* bottom edge moves */
+				break;
+			default:
+				useY[0] = useY[1] = useY[2] = false;
+				break;
+			}
+		}
 
 		collectNodes(doc->root(), &nodes);
 		guides_.clear();
 
+		for (auto *n : nodes) {
+			const char *oid = n->identifier()[0] ? n->identifier()
+							    : n->className();
+
+			if (!std::strcmp(oid, gesture.id.c_str())) {
+				continue;
+			}
+			Rect g = nodeFrame(n);
+			double myX[3] = { f.origin.x, f.origin.x + f.size.w / 2,
+					  f.origin.x + f.size.w };
+			double myY[3] = { f.origin.y, f.origin.y + f.size.h / 2,
+					  f.origin.y + f.size.h };
+			double theirX[3] = { g.origin.x, g.origin.x + g.size.w / 2,
+					     g.origin.x + g.size.w };
+			double theirY[3] = { g.origin.y, g.origin.y + g.size.h / 2,
+					     g.origin.y + g.size.h };
+
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					double d;
+
+					if (useX[i]) {
+						d = myX[i] - theirX[j];
+						if ((d < 0 ? -d : d)
+						    <= GUIDE_HIT
+						    && (!sx.found
+							|| (d < 0 ? -d : d)
+							    < (sx.d < 0
+								       ? -sx.d
+								       : sx.d))) {
+							sx = { true, d, myX[i],
+							       xNames[i], xNames[j],
+							       oid };
+						}
+					}
+					if (useY[i]) {
+						d = myY[i] - theirY[j];
+						if ((d < 0 ? -d : d)
+						    <= GUIDE_HIT
+						    && (!sy.found
+							|| (d < 0 ? -d : d)
+							    < (sy.d < 0
+								       ? -sy.d
+								       : sy.d))) {
+							sy = { true, d, myY[i],
+							       yNames[i], yNames[j],
+							       oid };
+						}
+					}
+				}
+			}
+		}
+
+		/* apply the closest match per axis: a MOVE shifts the whole frame;
+		 * a RESIZE adjusts the moving edge and keeps its anchor put. A
+		 * snap is dropped if it would shrink a control below 8pt. */
+		if (sx.found) {
+			if (gesture.kind == GestureKind::Move) {
+				f.origin.x -= sx.d;
+			} else if (useX[0] && !useX[2]) {
+				if (f.size.w + sx.d >= 8) {
+					f.origin.x -= sx.d;
+					f.size.w += sx.d;
+				}
+			} else if (useX[2] && !useX[0]) {
+				if (f.size.w - sx.d >= 8) {
+					f.size.w -= sx.d;
+				}
+			}
+		}
+		if (sy.found) {
+			if (gesture.kind == GestureKind::Move) {
+				f.origin.y -= sy.d;
+			} else if (useY[0] && !useY[2]) {
+				if (f.size.h + sy.d >= 8) {
+					f.origin.y -= sy.d;
+					f.size.h += sy.d;
+				}
+			} else if (useY[2] && !useY[0]) {
+				if (f.size.h - sy.d >= 8) {
+					f.size.h -= sy.d;
+				}
+			}
+		}
+
+		/* log + draw every near pair of the SNAPPED frame */
 		for (auto *n : nodes) {
 			const char *oid = n->identifier()[0] ? n->identifier()
 							    : n->className();

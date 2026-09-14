@@ -383,10 +383,11 @@ need input, which §8a addresses directly.
   bottom-right resize logs `20,60 90x24 -> 20,60 120x54` and undo restores it;
   two gestures both undone leave the file's md5 byte-identical, and a
   committed+SAVED move changes it and survives reload. Guides + marquee
-  landed post-IB7: a move/resize drag logs alignment guides (edges/centres
-  within GUIDE_HIT, drawn by the overlay) and a press-drag on empty canvas
-  rubber-bands a marquee that selects the topmost hit (`tests/cases/
-  weaver_guides.py`, 8/8).
+  landed post-IB7: a move/resize drag SNAPS the closest edge/centre within
+  GUIDE_HIT (move shifts the frame, resize adjusts the moving edge and keeps
+  its anchor), logs the alignment, and the overlay draws the hairline; a
+  press-drag on empty canvas rubber-bands a marquee that selects the topmost
+  hit (`tests/cases/weaver_guides.py`, 14/14).
 - **IB4 — the inspector. DONE (2026-09).** Driven by the property table (D4):
   a selection change enumerates the control's properties through
   `interfacePropertyCount/At` (own first, then the inherited base) and logs

@@ -1,9 +1,10 @@
-"""Weaver guides + marquee (the IB3 refinements, post-IB7).
+"""Weaver guides + marquee + snapping (the IB3 refinements, post-IB7).
 
-Guides: while a move/resize drag is active, the editor logs every alignment
-guide whose edges/centres fall within GUIDE_HIT of another node, and the
-overlay draws the hairlines. Marquee: a press-drag on empty canvas draws a
-rubber band and, on release, logs the hits and selects the topmost one.
+Guides: while a move/resize drag is active, the editor snaps the closest
+edge/centre within GUIDE_HIT to the target (move shifts the frame, resize
+adjusts the moving edge), logs the alignment, and the overlay draws the
+hairlines. Marquee: a press-drag on empty canvas draws a rubber band and,
+on release, logs the hits and selects the topmost one.
 Both are driven through the SAME gesture engine a real pointer reaches.
 """
 
@@ -74,3 +75,45 @@ class Case(BaseCase):
                    "the marquee found both controls and selected the topmost")
         self.check("marquee-exit-zero", "WEAVER-EXIT=0" in out,
                    "the marquee run exited 0")
+
+        # --- snap (move): the pointer lands 2pt off; the frame snaps on ---
+        mark = len(session.log_text())
+        session.run("%s --open weaver_guides.conf --click 65 72 "
+                    "--drag 65 72 65 30; echo WEAVER-EXIT=$?" % WEAVER)
+        out = session.output_since(mark)
+        for line in out.strip().splitlines():
+            if "WEAVER" in line:
+                self.note(line)
+
+        self.check("move-snap-committed",
+                   "WEAVER: commit move okButton 20,60 90x24 -> "
+                   "20,16 90x24" in out,
+                   "the pointer's 20,18 landing snapped up to greeting's "
+                   "top edge (20,16)")
+        self.check("move-snap-guide",
+                   "WEAVER: guide horizontal y=16 okButton.top ~ "
+                   "greeting.top" in out,
+                   "the snapped guide is the one logged")
+        self.check("move-snap-exit-zero", "WEAVER-EXIT=0" in out,
+                   "the move-snap run exited 0")
+
+        # --- snap (resize): the right edge lands 2pt short; it snaps ---
+        mark = len(session.log_text())
+        session.run("%s --open weaver_guides.conf --click 65 72 "
+                    "--resize 110 84 138 84; echo WEAVER-EXIT=$?" % WEAVER)
+        out = session.output_since(mark)
+        for line in out.strip().splitlines():
+            if "WEAVER" in line:
+                self.note(line)
+
+        self.check("resize-snap-committed",
+                   "WEAVER: commit resize okButton 20,60 90x24 -> "
+                   "20,60 120x24" in out,
+                   "the pointer's 118pt width snapped to greeting's centre "
+                   "(120pt, right edge 140)")
+        self.check("resize-snap-guide",
+                   "WEAVER: guide vertical x=140 okButton.right ~ "
+                   "greeting.cx" in out,
+                   "the snapped resize guide is the one logged")
+        self.check("resize-snap-exit-zero", "WEAVER-EXIT=0" in out,
+                   "the resize-snap run exited 0")
