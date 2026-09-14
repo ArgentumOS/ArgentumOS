@@ -425,6 +425,16 @@ main()
 				/* the rows the column is about to draw: named, so
 				 * the gate reads what was listed rather than
 				 * trusting a pixel */
+				/* which rows are FOLDERS: a gate cannot click what it
+				 * cannot identify, and a row's kind is the app's
+				 * knowledge (the control draws text and knows nothing) */
+				std::printf("WORKSPACE: col0 folders");
+				for (int i = 0; i < n; i++)
+					if (gColumns[0][(size_t) i].dir)
+						std::printf(" %d=%s", i,
+							    gColumns[0][(size_t) i].name.c_str());
+				std::printf("\n");
+				std::fflush(stdout);
 				std::printf("WORKSPACE: column 0 rows=%d first=%s"
 					    " last=%s\n", n,
 					    gColumns[0].front().name.c_str(),

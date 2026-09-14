@@ -577,11 +577,27 @@ window — true on a descend, and NOT at startup. Reporting it early is exactly
 what cost a whole debugging session on the divider drag, and the app now says
 so in a comment where the next person will read it.
 
-**Remaining:** the gate's clicks and the truncation assertion. The recipe is
-written down: aim at a folder row using the frame origin from `KESTREL:
-manage` plus `rowh`, click it, read the chain (it must have grown by one), then
-click a **sibling** and assert the chain is back to one component for that
-column — the second click can use the origin the first descend published.
+**Remaining: the gate's clicks, and they are the one thing that does not
+work yet.** The app publishes everything the recipe needs — the chain, `rowh`,
+which rows are folders (`WORKSPACE: col0 folders 0=Application Support
+1=Applications …`), and the client origin on a descend — and the check was
+written and run. It reports **zero** `WORKSPACE: selected` lines: the click
+never reached the app.
+
+Why that is interesting rather than merely broken: the **same** harness seam
+works on the browser PROBE's window (its clicks log selections and its divider
+drag is asserted and green), and the app's window is the same kind of client
+under a frame. So the input path is fine and the difference is the TARGET —
+z-order, or the coordinates the frame's manage line implies. The check is out
+of the case rather than red for a reason nobody has established yet, which is
+the rule this slice has already followed twice.
+
+**Next measurement, and it is cheap:** the app's own `Browser` already logs
+presses when `ARGENTUM_BROWSER_DBG` is set (the toolkit flag WT-1 added), so
+instrument the APP the way the probe was — the window needs the flag, and the
+session spawns it, so that is where it must be passed. That will say whether the
+press reaches the app's window at all or lands on a different one, in one run,
+which is exactly how the probe's own puzzle was settled.
 
 ### W4 — keyboard, per the a11y model
 
