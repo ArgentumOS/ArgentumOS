@@ -1,4 +1,4 @@
-# Argentum Builder — the interface editor plan (from-scratch C++)
+# Weaver — the interface editor plan (from-scratch C++)
 
 Status: **PROPOSED (2026-09).** A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
@@ -104,11 +104,22 @@ references are `View *` today (`setStrutReference(Edge, &other, …)`), and a
 pointer cannot be written to a file. This is the least obvious part of the
 design and gets its own acceptance in IB1.
 
-**D9. The editor is an ordinary app bundle.** Dock-launchable, manifest,
+**D9. Weaver is an ordinary app bundle.** Dock-launchable, manifest,
 `Resources/` — no privileged path, and no toolkit capability the other apps
 lack. If the editor needs something the other apps cannot have, that is a
 signal the toolkit is missing a concept, not that the editor should be
 special.
+
+**D10. An app's interface is a document in its bundle `Resources/`.** The same
+format and the same loader as any other document — an app ships its interface
+beside its payload, with no privileged path for it.
+
+**D11. A document being edited lives in the user's own home** —
+`/Users/$USER/Documents/`, which FSH already provides as "the user's own files"
+(docs/design/fsh-proposal.md, and the User Template ships the directory). The
+two locations are deliberate rather than one bent to cover both: a *shipped
+interface* and a *file the user owns and edits* are different things, with
+different lifetimes and different permissions.
 
 ## 4. The document format
 
@@ -223,7 +234,8 @@ need input, which §8a addresses directly.
   `viewWithIdentifier("okButton")` that resolves and is logged; a pixel check
   that a control sits on its recorded rect; and a document whose strut binding
   points *forward* resolving anyway.
-- **IB2 — the editor shell: open, select, save.** *Acceptance:* with the
+- **IB2 — the editor shell: open, select, save.** (Open and save act on D11's
+  `/Users/$USER/Documents/`.) *Acceptance:* with the
   harness clicking the canvas, the editor logs each selection change by
   identifier; the file written by save re-reads equal to the in-memory
   document; and a control moved and saved is at its new rect after a reload
@@ -287,16 +299,14 @@ cannot click, is what killed the file manager.
 
 ## 10. Open questions
 
-- **Q-IB1 — the app's name.** The house convention for programs is birds
-  (Kestrel the WM, Finch the shell, Shrike the retired toolkit). Candidates:
-  **Weaver** and **Bower** (both nest-building birds, and both apt), or
-  Magpie. Affects the bundle path, the dock tile, and every reference in this
-  document. Currently written as "the editor"/"Builder".
-- **Q-IB2 — where documents live.** The app bundle's `Resources/` (a
-  design-time resource), a user documents directory, or both? `app-model.md`
-  has no document model, so this needs a decision of its own — and the answer
-  probably differs for "an app's interface" and "a document the user is
-  editing".
+- **Q-IB1 — the app's name. RESOLVED (2026-09): *Weaver*.** The house
+  convention for programs is birds (Kestrel the WM, Finch the shell, Shrike the
+  retired toolkit), and the self-hosting manifest already reserves "Editor" for
+  the *text* editor, so the interface builder needs a name of its own. Weaver
+  birds build elaborate woven nests.
+- **Q-IB2 — where documents live. RESOLVED (2026-09): both, deliberately** —
+  an app's interface in its bundle `Resources/`, a document being edited under
+  the user's home. See D10/D11.
 - **Q-IB3 — live instances or proxies on the canvas?** Recommend live
   instances with interaction suppressed: it is the real control, so what you
   see is what the app gets, and a proxy would be a second renderer to keep

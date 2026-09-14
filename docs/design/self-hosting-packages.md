@@ -58,7 +58,7 @@ the plan's G3 gate and SH-0..SH-5.
   pin 4.3.2): ISC core, musl+clang, built via **CMake only** — its
   autotools layer is never invoked (host or guest). No new
   build-time tools: CMake is already in §C.
-- **The interface builder (docs/design/interface-builder-plan.md)** —
+- **The interface builder (docs/design/weaver-plan.md) — **Weaver**** —
   **first-party**, no third-party code and no vendor format: our own
   program, built like Kestrel and the zoo (musl + clang C++ from the
   toolkit sources, `-largentum`, an app bundle under /Applications).
