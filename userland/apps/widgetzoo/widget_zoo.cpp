@@ -68,6 +68,7 @@ public:
 	argentum::LevelIndicator level;
 	argentum::ImageView image;
 	argentum::PopUpButton pop;
+	argentum::ComboBox combo;
 	/* decor */
 	ChromePanel chrome;
 	argentum::Label hText;
@@ -370,6 +371,39 @@ main()
 		});
 		v.pop.setMenu(file);
 		v.addSubview(&v.pop);
+	}
+
+	/* ---- S2.3e: ComboBox — an editable field with a drop-down list ----
+	 * In the free column under the strut band. A ComboBox is a PopUpButton
+	 * you can TYPE into: the pick writes the item into the field, and any
+	 * other text is allowed (selectedIndex is then -1). Its popup anchors
+	 * from the press's root coordinates, so no window lookup is involved.
+	 * No autoresizing mask yet: the free column is the board's demo area,
+	 * and the strut slider moves the band, not this. */
+	{
+		static const char *COMBO_ITEMS[] = { "Daily", "Weekly", "Monthly" };
+
+		v.combo.setItems(COMBO_ITEMS, 3);
+		/* the frame: free column (x >= 736), under the strut band */
+		v.combo.setFrame({{760, 200}, {150, 24}});
+		v.combo.setOnChange([](argentum::ComboBox *c) {
+			char line[128];
+
+			std::snprintf(line, sizeof(line), "combo:%s idx=%d",
+				      c->value(), c->selectedIndex());
+			zoo_log(line);
+		});
+		v.addSubview(&v.combo);
+		/* a gate reads readiness rather than aiming at pixels: the board
+		 * is driven by coordinates elsewhere, and coordinates in this
+		 * board move with the struts */
+		{
+			char line[128];
+
+			std::snprintf(line, sizeof(line), "combo:ready items=%d",
+				      v.combo.itemCount());
+			zoo_log(line);
+		}
 	}
 
 	/* ---- S2.5: Tier-2 structure band (Box / ScrollView+TableView /
