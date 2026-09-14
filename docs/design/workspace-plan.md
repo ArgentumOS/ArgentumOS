@@ -178,8 +178,8 @@ plus the Terminal fallback is the whole of resolution.
 
 ### 3.5 Roots and start
 
-`file-manager.start = home | root | volumes` (§3.3). `./root` is the
-five top-level entries (`/Applications /Shared /System /Users /Volumes`);
+`file-manager.start = home | root | volumes` (§3.3). The `root` value is
+the five top-level entries (`/Applications /Shared /System /Users /Volumes`);
 `volumes` is `/Volumes` and shows mounts; `home` is `Users/$USER`, whose
 contents include `Desktop/` (Q-R2). `/System/Devices` is a topology tree
 of role symlinks (Q3 of the device work) and is browsable like any other
@@ -346,11 +346,11 @@ Status: **PROPOSED.** Copy, move, new folder, delete (rename is v1's —
 W4b, the same `mv` tool), plus the Trash's restore and Empty Trash — each
 routed through the `/System/Tools` tool that already exists (`cp`, `mv`,
 `rm`, `mkdir`; all five verified present in the image). Delete follows
-Q-W2: the Trash tile exists, so the default is a MOVE into the Trash
-rather than an unlink — but Q-W2' has to settle the store first, so the
-operation is specified here only to that depth. Progress and
-conflict handling over the tool's output; a permission failure surfaces
-the prompt path rather than an error dialog that cannot succeed.
+D7: the Trash is real, so it MOVES the file into it rather than unlinking,
+and restore and Empty Trash are operations in their own right — not
+variations on delete. Progress and conflict handling over the tool's
+output; a permission failure surfaces the prompt path rather than an error
+dialog that cannot succeed (Q-W6 is what names that path).
 *Acceptance:* per operation, one guest-verifiable assertion on the
 filesystem itself (`stat`/`ls` before and after, from the console — the
 browser's own claim is never the evidence); for delete, that the file left
