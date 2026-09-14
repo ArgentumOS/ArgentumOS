@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **PROPOSED (2026-09).** A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0 **DONE**; IB1 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -249,8 +249,15 @@ One acceptance each, stated as an observable, per the split rules. IB0 is a
 probe exit code (rule 1 allows it) and needs no interaction at all; IB2–IB5
 need input, which §8a addresses directly.
 
-- **IB0 — document model, emitter, reader.** An in-memory tree, an emitter to
-  the grammar of §4, a reader back. *Acceptance:* a guest test binary (the
+- **IB0 — document model, emitter, reader. DONE (2026-09).** An in-memory
+  tree, an emitter to the grammar of §4, a reader back. Landed as the toolkit's
+  first serialization: the emitter is first-party and the reader is
+  **libconfig's** — `config_value_t` exposes a record as an ordered field map,
+  so arbitrary property names read back without a second grammar
+  implementation, and the round trip tests the contract that matters (our
+  output parses). `userland/tests/interface_roundtrip.cpp` +
+  `tests/cases/weaver_ib0.py`, 5/5 checks, four fixtures idempotent.
+  *Acceptance:* a guest test binary (the
   `System/Shared/tests` pattern) exits 0 when, for every fixture,
   `emit(load(emit(load(f))))` equals `emit(load(f))` — i.e. the round trip is
   idempotent — and exits non-zero naming the first fixture that is not.

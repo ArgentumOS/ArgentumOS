@@ -1679,6 +1679,125 @@ private:
 	Impl *tb_;
 };
 
+
+/*
+ * Weaver IB0 (docs/design/weaver-plan.md §4): the INTERFACE DOCUMENT.
+ *
+ * A document is a tree of nodes. A node is a class name, an optional
+ * identifier, a frame, flat scalar properties, children in sibling order, and
+ * layout bindings named BY IDENTIFIER — never by pointer, because the
+ * toolkit's setStrutReference() takes a View * and a pointer cannot be
+ * written to a file.
+ *
+ * The emitter is first-party and the reader is libconfig's, deliberately:
+ * libconfig cannot render a .conf, but it can read one back as an ordered
+ * field map, so the round trip tests the contract that actually matters —
+ * that what we emit is what the real parser accepts.
+ *
+ * The format reserves `class`, `id`, `frame`, `childN` and `strutN`; a
+ * property cannot use those names (the emitter skips one that does, loudly).
+ */
+
+/* One node. Children are OWNED by the node and freed with it. */
+class InterfaceNode {
+public:
+	/* the .conf scalars that survive a round trip. Arrays and nested
+	 * records that are not frame/child/strut are skipped with a warning:
+	 * tolerant reads, so that a newer document still loads (plan D7). */
+	enum class Kind : int { String = 0, Number, Bool };
+
+	struct Property {
+		std::string name;
+		Kind kind = Kind::String;
+		std::string text;	/* Kind::String */
+		double number = 0;	/* Kind::Number */
+		bool boolean = false;	/* Kind::Bool */
+	};
+
+	/* A layout binding: one of this node's edges tied to a SIBLING edge,
+	 * with the sibling named rather than pointed at. Mirrors
+	 * View::setStrutReference(own, sibling, ref, offset). */
+	struct Strut {
+		View::Edge edge = View::Edge::Left;	/* this node's edge */
+		std::string ref;			/* sibling identifier */
+		View::Edge refEdge = View::Edge::Left;	/* the sibling's edge */
+		double offset = 0;
+	};
+
+	InterfaceNode();
+	~InterfaceNode();
+	/* nodes own their children, so a shallow copy would double-free */
+	InterfaceNode(const InterfaceNode &) = delete;
+	InterfaceNode &operator=(const InterfaceNode &) = delete;
+
+	void clear();			/* reset to an empty node */
+	void setClassName(const char *utf8);
+	const char *className() const;
+	void setIdentifier(const char *utf8);	/* "" = anonymous */
+	const char *identifier() const;
+
+	void setFrame(double x, double y, double w, double h);
+	double frameX() const;
+	double frameY() const;
+	double frameW() const;
+	double frameH() const;
+
+	void setString(const char *name, const char *value);	/* replaces */
+	void setNumber(const char *name, double value);
+	void setBool(const char *name, bool value);
+	int propertyCount() const;
+	const Property *propertyAt(int index) const;
+	const Property *property(const char *name) const;
+
+	int childCount() const;
+	InterfaceNode *childAt(int index) const;
+	InterfaceNode *addChild(InterfaceNode *child);	/* takes ownership */
+	void insertChild(int index, InterfaceNode *child);	/* owned */
+	void removeChild(int index);				/* and deletes it */
+
+	int strutCount() const;
+	const Strut *strutAt(int index) const;
+	void addStrut(View::Edge edge, const char *refId, View::Edge refEdge,
+		      double offset);
+
+private:
+	Property *find_(const char *name);
+	std::string className_;
+	std::string identifier_;
+	double x_ = 0;
+	double y_ = 0;
+	double w_ = 0;
+	double h_ = 0;
+	std::vector<Property> properties_;
+	std::vector<InterfaceNode *> children_;	/* owned, in z-order */
+	std::vector<Strut> struts_;
+};
+
+/* A document: a version and a root node, which is never null. */
+class InterfaceDocument {
+public:
+	InterfaceDocument();
+
+	int version() const;
+	void setVersion(int version);
+	InterfaceNode *root();
+	const InterfaceNode *root() const;
+
+private:
+	int version_ = 1;
+	InterfaceNode root_;
+};
+
+/* Emit to the §4 grammar. DETERMINISTIC — the same document always emits the
+ * same bytes, which is what makes a round trip checkable at all. */
+std::string interfaceEmit(const InterfaceDocument &doc);
+
+/* Read a document from a file. False + `error` when the document is malformed
+ * (a known field of the wrong type, or no `interface` record); unknown fields
+ * become properties and unknown value forms are skipped with a warning. */
+bool interfaceLoadFile(const char *path, InterfaceDocument &out,
+		       std::string &error);
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

@@ -293,6 +293,7 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 # the session in S0.2.
 ARGENTUM_SRCS = userland/argentum/application.cpp \
 	userland/argentum/combobox.cpp \
+	userland/argentum/interface.cpp \
 	userland/argentum/window.cpp userland/argentum/text.cpp \
 	userland/argentum/graphics.cpp userland/argentum/theme.cpp \
 	userland/argentum/view.cpp userland/argentum/control.cpp \
