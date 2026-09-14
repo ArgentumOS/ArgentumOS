@@ -253,11 +253,35 @@ than a new harness).
 
 ### WT-1 — `Browser`, the column control
 
-Status: **PROPOSED.** A `Browser` View that owns N columns, each a
-`TableView` in a `ScrollView`, with: `columnCount`, `addColumn`,
-`truncateToColumn`, focus per column, a draggable divider per column
-width, and horizontal scroll of the chain. It knows nothing about files
-— a data-source protocol per column, like `TableView`'s.
+Status: **PROPOSED — design settled 2026-09, implementation next.** A
+`Browser` View that owns N columns, each a `TableView` in a `ScrollView`,
+with: `columnCount`, `addColumn`, `truncateTo`, focus per column, a
+draggable divider per column width, and horizontal scroll of the chain. It
+knows nothing about files — a source per column and a delegate for what a
+selection means, like `TableView`'s.
+
+What reconnaissance settled, so the build is mechanical:
+
+- **the columns are `TableView`s and that is the whole row engine** — rows,
+  selection, hit-testing and scrolling already exist (`TableView` + its
+  `TableViewDataSource` / `TableViewDelegate`, and `ScrollView`), and
+  `tableSelectionDidChange` is exactly the hook a chain reacts to. The
+  Browser adds the *chain*, not a second data view;
+- **the divider model is `SplitView`'s, deliberately** — the columns tile
+  the frame minus the grab bands, so a press on a band reaches the Browser
+  and a press on a column reaches the TableView and bubbles up here; an
+  armed drag receives motion through the toolkit's drag delivery (S2.3a), so
+  one handler moves one divider. `SplitView` itself is not reused: its panes
+  are static, and a chain grows and truncates;
+- **a column clips with `GraphicsContext::clipToRect`** (the mechanism
+  ScrollView's viewport uses), which is what keeps one column's rows out of
+  its neighbour;
+- **the focused column draws the active selection style** — the HIG's rule.
+  `TableView` has no active/inactive distinction, so the Browser owns it
+  (an outline on the focused column) rather than smuggling it into the table;
+- **icons are not in this slice.** W2's acceptance is text rows, and D5/D14
+  put the raster story behind the generator, so `TableView` needs no icon
+  hook yet.
 *Acceptance:* a demo board (the widget zoo or a probe) builds a 3-column
 `Browser` over static data; the gate asserts the columns' x/width from
 the app's draw log, that dragging a divider changes the width of exactly
