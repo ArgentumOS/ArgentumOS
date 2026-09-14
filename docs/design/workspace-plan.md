@@ -253,8 +253,8 @@ than a new harness).
 
 ### WT-1 — `Browser`, the column control
 
-Status: **PARTIAL (2026-09)** — the control is built, linked and gated; the
-divider DRAG is not yet asserted. A
+Status: **DONE (2026-09).** The control is built, linked and gated, all three
+acceptance clauses met. A
 `Browser` View that owns N columns, each a `TableView` in a `ScrollView`,
 with: `columnCount`, `addColumn`, `truncateTo`, focus per column, a
 draggable divider per column width, and horizontal scroll of the chain. It
@@ -308,27 +308,44 @@ control bug; it was a two-level fixture, which cannot distinguish "the
 control stopped appending" from "the data ran out". It is three levels deep
 now.)
 
-**The divider drag is NOT asserted, and the diagnosis is now narrow enough
-to state exactly.** Two things were settled by measurement:
+**The divider drag: met, and the reason it took so long is a harness trap
+worth remembering.** The assertions are
 
-- **the suspect was right, and it is fixed.** A client's root origin IS
-  offset inside its WM frame — the probe published `200,150` before the
-  reparent and `205,171` after (+5,+21 = the frame's chrome), and the WM's
-  own `manage ... at 200,150` names the *frame*, so the two agreeing earlier
-  proved nothing. The probe now republishes its origin after the reparent,
-  which is a real bug fixed: any app that reports its own position for
-  another program to aim at has the same trap;
-- **input does reach the app.** A plain click in a column logs a selection
-  (`BROWSER-PROBE: select col=… row=…`), so the press is delivered and the
-  harness's seam works.
+```
+PASS browser-builds-a-column-chain: three columns, equal widths, rows each:
+     [('0','0','240','3'), ('1','247','240','3'), ('2','493','240','2')]
+PASS browser-divider-drag-moves-one-column: ... moved column 0 only ([0]),
+     240 px -> 320 px
+```
 
-So the open question is one layer in: whether a press *in the divider band*
-reaches the `Browser` (rather than a column or the frame), and whether an
-armed drag receives its motion. **Next: instrument `Browser::mouseDown` and
-`mouseMoved` behind an env flag** — the `ARGENTUM_DRAW_MS` pattern — and read
-which fires. The assertion stays out of the case until then; a check that
-fails for a reason nobody understands is worse than no check, and it was left
-red twice already while this was being narrowed.
+Three hypotheses were eliminated by measurement before the real one landed,
+and each is worth keeping because it is the kind of thing that looks like a
+control bug:
+
+1. **the aim** — and this one WAS a bug, in the probe: a client's root origin
+   is offset inside its WM frame (`200,150` before the reparent, `205,171`
+   after), and the WM's `manage` line names the *frame*, so the two agreeing
+   proved nothing. Fixed by republishing after the reparent;
+2. **the window being behind another** — refuted: raising the probe changed
+   nothing (and moved it over the wallpaper sample, which the gate caught);
+3. **the press never arriving** — refuted by instrumenting the control
+   (`Browser::mouseDown`/`mouseMoved` behind `ARGENTUM_BROWSER_DBG`, the
+   `ARGENTUM_DRAW_MS` pattern): with the fix it logs
+   `BROWSER-DBG: down x=… divider=0`, so the press reached the Browser and
+   found the band, which is exactly what the log line was for.
+
+**The real cause was the harness's own input seam.** `Monitor::move` is
+RELATIVE, and `goto()` converts an absolute target through the monitor's
+assumed position — which starts at `[0,0]`. A fresh, unparked monitor aims
+relative to wherever the pointer happens to be, so every coordinate was
+offset. `wm_dock` always calls `monitor.park()` first; this case did not, and
+it is the one place a press was ever aimed at a computed position. The park
+fixed it with no change to the control at all.
+
+(The parked-pointer lesson is already in the HIG's neighbourhood: `park()`
+"drives into the top-left corner, where the guest clamps the pointer, and
+adopts (0,0) as the known position" — the clamp is what makes the adopted
+origin true.)
 
 ### WT-2 — `Browser` keyboard + selection routing
 

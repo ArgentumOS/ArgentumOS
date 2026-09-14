@@ -160,7 +160,11 @@ class Case(BaseCase):
         # bug. It publishes its layout in ROOT pixels (origin + band), so the
         # drag below is aimed at a position the probe itself reported rather
         # than at a hardcoded one that assumes the point scale.
-        session.serial("DISPLAY=:0 /System/Shared/tests/browser_probe &")
+        # ARGENTUM_BROWSER_DBG: the control's own view of a press, which
+        # is what tells "the press never arrived" from "the band lookup
+        # missed" — one run, instead of another guess.
+        session.serial("ARGENTUM_BROWSER_DBG=1 DISPLAY=:0 "
+                       "/System/Shared/tests/browser_probe &")
         if session.wait_for(r"BROWSER-PROBE: ready", 60):
             log = session.log_text()
             # the LAST origin the probe publishes: its first is printed before
@@ -184,6 +188,43 @@ class Case(BaseCase):
 
             self.note("the probe's client origin is offset inside its WM "
                       "frame (%s, published after the reparent)" % (org,))
+            if org:
+                # Drive the drag and REPORT rather than assert: the answer is
+                # what the control logged, and a check written before that
+                # answer is a guess. It becomes a check once the log says why.
+                dx = int(org[0]) + int(cols[0][1]) + int(cols[0][2]) \
+                    + int(org[2]) // 2
+                dy = int(org[1]) + 40
+                monitor = session.monitor()
+                # PARK FIRST. The seam is RELATIVE: goto() converts an absolute
+                # target using the monitor's own assumed position, which starts
+                # at [0,0] — so a fresh, unparked monitor aims at wherever the
+                # pointer happens to be plus the delta. wm_dock always parks
+                # first; this is the one case that did not, and it is why the
+                # press landed nowhere near the divider.
+                monitor.park()
+                monitor.goto(int(org[0]) + 60, dy)
+                monitor.click()
+                time.sleep(0.6)
+                monitor.goto(dx, dy)
+                monitor.send("mouse_button 1")
+                monitor.goto(dx + 80, dy)
+                monitor.send("mouse_button 0")
+                time.sleep(1.0)
+                dbg = re.findall(r"BROWSER-DBG: [^\n]*", session.log_text())
+                self.note("browser drag saw: %s" % (dbg[-4:] or "nothing"))
+                moved = re.findall(
+                    r"BROWSER-PROBE: width col=(\d+) w=(\d+)",
+                    session.log_text())
+                touched = sorted({int(c) for c, _ in moved})
+                grew = [int(w) for c, w in moved if int(c) == 0]
+                self.check("browser-divider-drag-moves-one-column",
+                           len(moved) >= 1 and touched == [0] and grew
+                           and grew[-1] > int(cols[0][2]),
+                           "dragging the first divider moved column 0 only "
+                           "(%s), %s px -> %s px"
+                           % (touched, cols[0][2],
+                              grew[-1] if grew else "nothing"))
             # The divider DRAG is out until the press's LANDING is known, and
             # the diagnosis is now narrow enough to state exactly:
             #   - the aim is right (the origin above is post-reparent, and the
