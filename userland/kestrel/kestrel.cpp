@@ -37,6 +37,7 @@
 #include <xcb/composite.h>
 
 #include <X11/extensions/shape.h>	/* the overlay's input region */
+#include <X11/Xcursor/Xcursor.h>	/* the cursor theme */
 
 #include <cstdio>
 #include <cerrno>
@@ -2371,6 +2372,49 @@ stripRefresh()
  * Composite is reached through the xcb bindings: the Xlib wrapper
  * (libXcomposite) is not vendored, libxcb-composite is.
  */
+/* ---- the cursor theme ------------------------------------------------
+ *
+ * The stock server draws its own built-in bitmap cursor. The desktop uses
+ * the Xcursor theme staged at /System/Shared/Icons (the interim default
+ * theme, shipped in-tree as userland/cursors). Defining it on the ROOT
+ * window gives it to every window that does not set one of its own, which
+ * is all of them today. The log carries the size it loaded: that is both
+ * the acceptance and the thing that says whether the theme was found at
+ * all (a miss falls back to the server's tiny built-in cursor).
+ */
+static void
+cursorThemeInstall(void)
+{
+	const char *dir = "/System/Shared/Icons";
+	const char *theme = "default";
+	XcursorImage *img;
+	Cursor c;
+
+	/* the theme tree is not in libXcursor's default search path (this is
+	 * not /usr), so point it there before the first load */
+	setenv("XCURSOR_PATH", dir, 1);
+	setenv("XCURSOR_THEME", theme, 1);
+	img = XcursorLibraryLoadImage("left_ptr", theme, 24);
+	if (!img) {
+		img = XcursorLibraryLoadImage("default", theme, 24);
+	}
+	if (!img) {
+		printf("KESTREL: cursor theme UNAVAILABLE (%s/%s/cursors)\n",
+		       dir, theme);
+		fflush(stdout);
+		return;	/* the server's built-in cursor stays */
+	}
+	c = XcursorImageLoadCursor(dpy, img);
+	printf("KESTREL: cursor theme '%s' %ux%u hot %u,%u from %s\n",
+	       theme, img->width, img->height, img->xhot, img->yhot, dir);
+	fflush(stdout);
+	XcursorImageDestroy(img);
+	if (c) {
+		XDefineCursor(dpy, root, c);
+		XSync(dpy, False);
+	}
+}
+
 static ::Window gOverlay = 0;
 
 static void
@@ -2609,6 +2653,9 @@ main()
 			}
 		}
 	}
+	/* the interim cursor theme, before anything is on screen */
+	cursorThemeInstall();
+
 	/* C0: take the compositor's overlay window (docs/design/
 	 * kestrel-compositor-plan.md §3). Before the ready marker, so a gate
 	 * that waits for KESTREL-READY already knows the overlay exists. */

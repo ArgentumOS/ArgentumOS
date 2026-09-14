@@ -128,6 +128,15 @@ au Xext libXext $SHARED $STATIC
 log libXrender
 au Xrender libXrender $SHARED $STATIC
 
+# libXfixes + libXcursor: the cursor THEME (userland/cursors). Xcursor is
+# what reads an Xcursor file (the staged theme) and turns it into a Cursor
+# for XDefineCursor; it needs Xfixes, and both need libXrender above.
+log libXfixes
+au Xfixes libXfixes $SHARED $STATIC
+
+log libXcursor
+au Xcursor libXcursor $SHARED $STATIC
+
 log libxkbfile
 mes libxkbfile libxkbfile
 log pixman
@@ -149,7 +158,7 @@ echo X11-SHARED-DONE
 ls -l "$P"/lib/libX11.so* "$P"/lib/libxcb.so* "$P"/lib/libXau.so* \
 	"$P"/lib/libXdmcp.so* "$P"/lib/libxkbfile.so* "$P"/lib/libpixman-1.so* \
 	"$P"/lib/libXfont2.so* "$P"/lib/libfontenc.so* "$P"/lib/libz.so* \
-	"$P"/lib/libXrender.so* 2>&1
+	"$P"/lib/libXrender.so* "$P"/lib/libXcursor.so* "$P"/lib/libXfixes.so* 2>&1
 
 # ================= text stack (Argentum UIKit, docs/design/argentum-uikit-plan.md) =====
 # fontconfig -> HarfBuzz -> FreeType (+ libpng/expat leaves). Same

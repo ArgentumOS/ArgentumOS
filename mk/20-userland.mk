@@ -325,7 +325,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/kestrel/kestrel.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-lX11-xcb -lxcb -lxcb-composite -lXext \
+		-lX11-xcb -lxcb -lxcb-composite -lXext -lXcursor \
 		-o "$(ROOTFS64)/System/Tools/kestrel"
 	# krel_a/b: S4.1a managed probes (mapped under Kestrel)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
@@ -514,6 +514,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# --- FSH fonts (text stack): OS fonts in /System/Shared/Fonts; the
 	# fontconfig config is the libconfig domain system.fonts.conf (M0,
 	# docs/design/fontconfig-config-plan.md) - no XML fonts.conf ships.
+	# --- the interim cursor theme (userland/cursors): an Xcursor theme is
+	# <dir>/<theme>/cursors/<name>, which is the layout libXcursor searches
+	# under XCURSOR_PATH. Kestrel points XCURSOR_PATH at this and defines
+	# the cursor on the root window.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Icons/default"
+	@cp -a userland/cursors \
+		"$(ROOTFS64)/System/Shared/Icons/default/cursors"
 	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts" \
 		"$(ROOTFS64)/System/Variable Data/fontconfig"
 	@cp userland/fonts/DejaVuSans.ttf userland/fonts/DejaVuSans-Bold.ttf \
@@ -543,7 +550,8 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	fi
 	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
 		libpixman-1.so libXfont2.so libfontenc.so libz.so libXext.so \
-		libX11-xcb.so libxcb-composite.so libXrender.so; do \
+		libX11-xcb.so libxcb-composite.so libXrender.so \
+		libXcursor.so libXfixes.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the

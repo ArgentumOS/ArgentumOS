@@ -109,6 +109,19 @@ class Case(BaseCase):
                        % (cx, cy, corner, slab_l))
 
         clock = re.search(r'KESTREL: clock "([^"]*)"', log)
+        # The interim cursor theme (userland/cursors, staged at
+        # /System/Shared/Icons/default/cursors) is loaded by the WM and
+        # defined on the root window, so every window inherits it. The log
+        # carries the size: a miss logs UNAVAILABLE and the server's tiny
+        # built-in cursor stays, which is what the size threshold separates.
+        cur = re.search(r"KESTREL: cursor theme '([^']+)' (\d+)x(\d+) hot "
+                        r"(\d+),(\d+) from (\S+)", session.log_text())
+        self.check("cursor-theme-loaded",
+                   bool(cur) and int(cur.group(2)) >= 20,
+                   "the desktop's cursor comes from the staged theme (%s)"
+                   % (cur.group(0) if cur else
+                      "none loaded - see the UNAVAILABLE line"))
+
         self.check("clock-shown",
                    bool(clock) and any(ch.isdigit() for ch in clock.group(1)),
                    "menu-bar clock renders text: %r"

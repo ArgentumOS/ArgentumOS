@@ -35,3 +35,9 @@
 [submodule "third_party/x11/libXrender"]
 	path = third_party/x11/libXrender
 	url = https://gitlab.freedesktop.org/xorg/lib/libXrender.git
+[submodule "third_party/x11/libXcursor"]
+	path = third_party/x11/libXcursor
+	url = https://gitlab.freedesktop.org/xorg/lib/libXcursor.git
+[submodule "third_party/x11/libXfixes"]
+	path = third_party/x11/libXfixes
+	url = https://gitlab.freedesktop.org/xorg/lib/libXfixes.git
