@@ -1,123 +1,147 @@
-# Kestrel as a compositing WM — findings (probe done, plan not written)
+# Kestrel as a compositing WM — plan
 
-Status: **PROBE RESULTS (2026-09).** No plan yet; this records what the
-de-risking probe established, so the plan starts from measurements.
+Status: **PROPOSED (2026-09).** Decision requested before code starts.
+Nothing here is built; §1 is measured, the rest is design.
 
-Requested: "i was hoping to get a compositing wm out of kestrel".
+Requested: "i was hoping to get a compositing wm out of kestrel" — Kestrel
+redirects every top-level into offscreen storage and paints the screen
+itself, so window effects (shadows, alpha, fades) become possible, and the
+menubar's "above everything" rule becomes **structural** instead of
+re-asserted per event.
 
-## What already exists
+## 1. Basis — what the probe settled
 
-- **Xfb has Composite, DAMAGE, DBE, Present and RENDER compiled in**
-  (`userland/xfb/sources.txt`, and the symbols are in the built server).
-  Xfb also has a **shadow buffer with a damage-driven flush to fb0**
-  (`use_shadow`/`shadowMem`, `docs/design/xfb-shadow-buffer-plan.md`) —
-  which is the compositor's transport, already built.
-- **Kestrel has no compositing-manager code at all**: no `_NET_WM_CM_S0`,
-  no redirect. The only "composite" in it is `Window::draw()`'s own
-  client-side view compositing, which is unrelated.
+All of this is measured (`userland/tests/xcomp_probe.c`, run in the guest
+against the live desktop):
 
-So this is an application-level project, **not** the `hw/xfree86` port:
-see the XAA/EXA history — acceleration in X is a hook layer over the
-server's operation funnel, and Xfb is already the right base.
+| | |
+|---|---|
+| Xfb's extensions | Composite, DAMAGE, DBE, Present and RENDER are compiled in |
+| Xfb's transport | a **shadow buffer with a damage-driven flush to fb0** already exists |
+| Kestrel today | **no** CM code at all — no `_NET_WM_CM_S0`, no redirect |
+| the redirect | accepted; the `_NET_WM_CM_S0` claim works |
+| `NameWindowPixmap` | **works on a root child**, returning real content (`0xf7f7f2` is the theme's page tone that window painted) |
+| `NameWindowPixmap` on a *client* window | **BadMatch** — under a WM the client is reparented into a frame, so it is no longer a child of the root |
+| RENDER | a `Composite` over a redirected pixmap links and **executes** (`libXrender` vendored, 0.9.12) |
+| the client-side route | **dead**: a full-screen `XGetImage` costs **~15 s/frame** |
 
-## What the probe established (`userland/tests/xcomp_probe.c`)
+The last row is why this is server-side compositing — that choice is
+already made by measurement, not proposed.
 
-Run in the guest against the live desktop, via the **xcb** Composite
-bindings. That was forced at the time: **no** Xlib wrapper was built —
-`libXcomposite`, `libXdamage`, `libXrender` and `libXfixes` were all
-absent from `third_party/x11`, and only `libxcb-composite`,
-`libxcb-damage` and `libxcb-render` existed (generated from xcbproto).
-Staging two of those, `libX11-xcb` and `libxcb-composite`, was needed
-before the probe could load at all — the staging rule said they were
-"deliberately left out until something links them", and now something
-does.
+Two facts the probe also fixed, both load-bearing below: naming a pixmap
+works on **the root's children** (the WM's frames), and a client's pixels
+arrive *with* its frame, because a child's drawing lands in its parent's
+drawable.
 
-**`libXrender` has since been vendored** (see the resolved item at the
-end); that is what let the RENDER step below be exercised through the
-Xlib API. `libXcomposite` and `libXdamage` are still not vendored — the
-xcb bindings cover Composite, which is all this probe needed.
+## 2. Architecture (decided here)
 
-```
-XCOMP-EXT: Composite present=1
-XCOMP-CM: owner-is-us=1                 (the _NET_WM_CM_S0 claim works)
-XCOMP-REDIRECT: accepted                (the server allows the redirect)
-XCOMP-TREE: 4 child(ren) of the root
-XCOMP-PIXMAP-OK: child 0x200001 -> pixmap 0x400003 pixel=0xf7f7f2
-XCOMP-NAMEPIXMAP: OK
-XCOMP-COST-READBACK: 1920x1080 = 14994 ms/frame
-XCOMP-COST-BLEND: 200x150 over 1920x1080 = 0 ms/frame
-```
+- **Kestrel is the WM and the CM in one process and one connection.** It
+  owns the frames, so it composites its own frames.
+- **The target is the overlay window** (`CompositeGetOverlayWindow`), not the
+  root. The server keeps the overlay above every other child — that is what
+  makes the menubar rule structural. (The probe composited onto the *root*
+  and the wallpaper covered it, which is the same lesson from the other
+  side.)
+- **Redirect `Automatic`**: windows keep drawing exactly as they do today and
+  the overlay covers them. Nothing else in the desktop changes behaviour to
+  be composited.
+- **Composite = name, then blend**: per root child, `NameWindowPixmap` → an
+  XRender `Picture` → `XRenderComposite` onto the overlay at that child's
+  geometry.
+- **Everything is uniform.** Wallpaper, strip, dock, frames and popups are
+  all root children, so **one code path composites them all** — there is no
+  "app window" special case.
+- **Composite only what damaged** (C3). A whole-screen composite is ~8 MB of
+  blit and Xfb's shadow then drains that to fb0; paying it per frame would
+  pay the dominant cost twice.
+- **The toolkit does not change for pass-through.** Kestrel keeps drawing
+  chrome into its own windows exactly as today; the compositor blends their
+  pixmaps. A server-side surface primitive is only needed if Kestrel ever
+  draws *into* the overlay from server-side sources (§6).
 
-(Those two are readback and pixman-blend timings and involve no RENDER;
-they were re-measured after the vendoring as 16210 ms and 2 ms, so they
-are a property of this stack, not of a pre-`libXrender` build.)
+## 3. The split
 
-and, once `libXrender` was vendored (`XCOMP-RENDER-OK`):
+One acceptance per slice, observable in the guest, green before the next —
+the rule the other plans here follow.
 
-```
-XCOMP-RENDER-OK: composited onto the screen, dest pixel=0x3d8fe0
-```
+- **C0 — the overlay is ours, and it is above.** Kestrel asks the server for
+  the overlay window at startup and paints one recognisable mark into it.
+  *Acceptance:* a screendump shows that mark at a named coordinate, **over**
+  the wallpaper and **over** a mapped app window, asserted as pixels.
+  Fail-fast: if Xfb does not implement `GetOverlayWindow` this says so on the
+  first run, before anything is built on it.
+- **C1 — claim the CM and redirect, then do nothing else.**
+  `_NET_WM_CM_S0` plus `CompositeRedirectSubwindows(root, Automatic)`.
+  *Acceptance:* the desktop is **pixel-identical** to today — N sampled points
+  match a pre-change screendump — the guest logs the claim and the redirect,
+  and `smoke_desktop` + `wm_dock` stay green. The point of the slice is that
+  redirecting *alone* changes nothing.
+- **C2 — pass-through composite.** Every root child is named and blended onto
+  the overlay at its geometry, on damage. Pass-through is the strongest
+  correctness test available: any mistake is a wrong pixel.
+  *Acceptance:* the C1 sampled points are **still** identical, and the gates
+  stay green.
+- **C3 — bound the composite by damage.** Subscribe to DAMAGE on each
+  redirected window and composite the union of the damaged rects rather than
+  the screen. Needs a DAMAGE client path: vendor `libXdamage`, or drive
+  `libxcb-damage` (already staged). *Acceptance:* the guest logs the
+  composited area per frame, that area is far below full-screen during a
+  drag, the sampled pixels are unchanged, and the per-frame cost drops
+  against C2.
+- **C4 — the first real effect: a frame shadow.** An alpha-blended shadow
+  under each frame.
+  *Acceptance:* pixels just outside a frame's lip change to the shadow tone
+  while the frame's own pixels do not — both asserted, so the slice cannot
+  pass by drawing the shadow over the window.
+- **C5 — window alpha.** Inactive windows at reduced alpha (or a launch
+  fade). *Acceptance:* a known blend value at a named pixel, the active
+  window unchanged.
+- **C6 — the gate.** The whole thing on one boot: the desktop composited, an
+  app launched, moved and dragged, a menubar menu pulled down, all existing
+  desktop gates green, zero fatal faults, clean shutdown.
 
-That last line proves the **RENDER client API links, the server accepts a
-`Composite` whose source is a redirected window's pixmap, and it executes**.
-It does NOT prove the pixels visibly changed, and the reason is worth
-keeping: the composite went onto the ROOT window, and Kestrel's wallpaper
-is a CHILD of the root covering that point — so the readback returns the
-wallpaper's ramp (`0x3d8fe0` is a ramp blue), which is exactly what a
-readback of the root should return there. **A real CM composites into its
-own overlay window above every other child**, not onto the root; proving
-the pixels land needs that overlay, and it is the first thing the plan
-should build.
+## 4. Files
 
-Three things fall out:
+| file | what changes |
+|---|---|
+| `userland/kestrel/kestrel.cpp` | claim the selection + redirect at startup; call the compositor on damage (it already owns the frame list) |
+| `userland/kestrel/compositor.cpp` (new) | the overlay, the per-child pixmap/Picture cache, the composite; later the effects |
+| `mk/20-userland.mk` | link Kestrel against `-lXrender` (and `-lxcb-damage` or `-lXdamage` for C3) |
+| `tools/x11-shared-build.sh`, `.gitmodules` | only if `libXdamage` is vendored for C3 |
+| `tests/cases/` | the C0/C4/C5 pixel checks and the C6 whole-desktop case |
 
-1. **The mechanism works.** The redirect is accepted and
-   `NameWindowPixmap` hands back a pixmap holding real window content
-   (`0xf7f7f2` is the theme's page tone — the pixel that window painted).
-2. **A compositor names the ROOT'S CHILDREN, never a client window.**
-   Naming the probe's *own* window failed with **BadMatch**: under a
-   running WM an ordinary window is reparented into a frame, so it is no
-   longer a child of the root — which is precisely `NameWindowPixmap`'s
-   BadMatch condition. The root's children *are* the WM's frames, and
-   naming one succeeded. This is the shape the plan needs: **Kestrel is
-   both the WM and the CM, so it composites its own frames**, and the
-   client's pixels come with them.
-3. **The client-side path is unusable, by measurement.** A full-screen
-   `XGetImage` readback costs **~15 seconds per frame** (8.3 MB; ~0.5
-   MB/s). That kills the readback-and-blend-in-pixman route outright, so
-   compositing must be **server-side**: a RENDER composite of the named
-   pixmaps onto the overlay. That also settled the one dependency question
-   this probe raised — the Render client path — and `libXrender` is now
-   vendored for it (see below).
+## 5. Risks, each with the experiment that settles it
 
-Note the readback figure is so far outside plausible that it is worth its
-own look separately — 8 MB in 15 s is ~500x slower than a slow socket
-should be, so it is probably a small-chunk request/reply path rather than
-raw bandwidth. It is recorded here as measured, not explained.
+- **Does Xfb implement `GetOverlayWindow`?** Unknown. "Compiled in" has
+  already been false comfort once in this area — a client window naming its
+  own pixmap gave BadMatch, and two unstaged libs stopped the probe from
+  loading at all. C0 answers it on its first run.
+- **A whole-screen overlay update through Xfb's shadow drain.** The drain is
+  per-damage and the strip/freeze history shows how subtle it is; whether a
+  full-screen overlay write is flicker-free is unmeasured. C2 measures it
+  with the existing `xwinprobe` (shadow vs screen) *before* C3 optimises it.
+- **The ~15 s readback.** Off the critical path now, but 8 MB in 15 s is
+  ~500x slower than it should be and may be a general X-transport defect that
+  bites elsewhere. Recorded, not adopted as a slice here.
+- **Costs are TCG costs.** Every timing is emulation-inflated (~5–20x); the
+  ratios between slices transfer, the absolute numbers do not.
+- **The menu-above-everything machinery becomes redundant.** With an overlay,
+  a pulled-down menu is a root child and is composited above everything by
+  construction, so `_ARGENTUM_MENU` + the WM's re-raise (2026-09) loses its
+  job. Keep it as belt-and-braces or retire it — a decision for C6, not
+  before: until the overlay is proven, that machinery *is* the guarantee.
 
-## Why acceleration belongs here
+## 6. Deferred (decisions, not omissions)
 
-The compositor's per-frame work is N window pixmaps plus chrome, blended
-over the whole screen — the canonical blit-and-blend workload, and exactly
-what the parked `accel_ops { init, fill, blit, cursor, flip }` seam
-(`docs/eval/gpu-accel-eval.md`, Q-G1/Q-G2) exists for. QEMU's `ati-vga`
-implements a Rage128-class 2D engine, so it is testable.
-
-## Open before a plan
-
-- ~~**Render client path**~~ — **decided and done (2026-09): `libXrender`
-  is vendored.** 0.9.12, pinned as a submodule beside the other X libs
-  (`third_party/x11/libXrender`), built into the prefix by
-  `tools/x11-shared-build.sh` (its `au` helper already ran `autoreconf`
-  when `configure` is absent, so it is reproducible from a fresh clone),
-  and its `libXrender.so.1` is staged into the image. Verified by
-  `xcomp_probe`'s RENDER step above. `libXcomposite`/`libXdamage` are
-  still not vendored — the xcb bindings cover Composite.
-- **The toolkit's rendering model**: window contents arrive as *server*
-  pixmaps, while `drawImage()` takes a client-side `BitmapImage`. The
-  compositor view needs a server-side surface primitive; the rest of the
-  toolkit keeps rendering client-side. Two models, one seam.
-- **Shadow/damage interaction**: the compositor writes a full screen per
-  frame; the shadow's damage-driven flush is the transport (see the
-  strip/freeze history for how subtle that drain is).
-- **The ~15 s readback number**: understand it or rule it out.
+- **Unredirecting a fullscreen window** — the standard performance trick when
+  the compositor is invisible. Needs an "is anything above it?" answer first.
+- **Occlusion tracking** (compositing only visible regions) — a bigger win
+  than damage-bounding, and a bigger problem.
+- **A server-side surface primitive in the toolkit** — only if Kestrel ever
+  draws into the overlay from server-side sources instead of blending the
+  pixmaps itself.
+- **A 2D engine behind this.** The compositor is the canonical blit/blend
+  workload — what the parked `accel_ops { init, fill, blit, cursor, flip }`
+  seam (`docs/eval/gpu-accel-eval.md` Q-G1/Q-G2) exists for. It stays parked:
+  this plan is CPU compositing, and the engine is a separate decision once
+  there is a compositor to measure.
