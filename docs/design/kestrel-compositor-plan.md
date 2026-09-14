@@ -126,11 +126,23 @@ the rule the other plans here follow.
   ~800k lines in the log); that cascade is what actually kills the desktop
   (late checks fail; the run takes 496s instead of 113s).
 
-  **Next slice, precise:** `CompositeRedirectAutomatic` must free the pixmap
-  in the window-destruction path — the `compFreeClientWindow` →
-  `compDestroyWindow` → `FreePixmap` chain in `composite/compalloc.c` /
-  `composite/compwindow.c`. Xfb's **shadow** is the one part of that code
-  which is not upstream, so look there first.
+  **The free path is CORRECT and is NOT a fork regression.** Read, not
+  guessed: `compDestroyWindow` destroys the window's pixmap when
+  `redirectDraw != RedirectDrawNone`, `compFreeClientWindow` does the same on
+  the last client, `fbCreatePixmap` -> `AllocatePixmap` keeps the bits inline
+  with the struct, and `fbDestroyPixmap` -> `FreePixmap` at refcnt 0. And
+  `composite/{compalloc,compwindow,compinit}.c` are **byte-identical to
+  upstream Xorg server-21.1** (0 differing lines each).
+
+  So something **keeps a reference** to each destroyed window's pixmap — the
+  +3,672 kB per window is the size of that window's own pixmap, retained.
+  The remaining non-upstream suspect is Xfb's OWN shadow
+  (`hw/xfb/InitOutput.c`: `shadowMem` malloc'd, damage registered on the ROOT
+  window), and it has a switch — `system.xfb` `shadow`, default true.
+
+  **The separating experiment is one config change:** shadow off + compositor
+  on + the RSS probe. Flat curve => the shadow holds the reference; still
+  rising => damage/fb is next.
 
   *Acceptance as built:* the claim and redirect exist and are opt-in; with
   the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
