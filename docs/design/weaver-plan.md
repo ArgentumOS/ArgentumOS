@@ -442,12 +442,16 @@ need input, which §8a addresses directly.
   tree inside a
   `canvasHost` at the centre, still non-hit-testable per D12), and the
   **inspector** (titled Box + Label/TextField rows filled through the property
-  table for the selection, defaulting to the first child). The editor logs
+  table for the selection, defaulting to the first child). The inspector
+  TextFields are LIVE: an end-edit (Return or focus loss) applies the text
+  through the property table to the canvas AND the document, and the scripted
+  `--field` command drives the same handler (`tests/cases/weaver_inspector.py`,
+  8/8). The editor logs
   `WEAVER: layout …` so gates derive geometry from the log; real mouse events
   convert content→document coordinates through the canvas origin.
   `tests/cases/weaver_layout.py`, 8/8: all four regions are drawn (non-
   background pixels in each), and the IB2 pixel check now accounts for the
-  canvas offset. Full Weaver suite: 9/9 cases, 100/100 checks.
+  canvas offset. Full Weaver suite: 10/10 cases, 108/108 checks.
 
 ## 8a. How the acceptances will be driven (from the record)
 

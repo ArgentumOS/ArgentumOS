@@ -913,12 +913,33 @@ public:
 			failed = true;
 			return;
 		}
+		applyInspectorEdit(n, name, value, "set");
+	}
+
+	/* the SAME edit a visible inspector TextField commits on end-edit
+	 * (Return or focus loss), driven scripted so a gate can assert on it */
+	void editField(const char *name, const char *value)
+	{
+		InterfaceNode *n = selectedNode();
+
+		if (!n) {
+			std::printf("WEAVER: field FAIL (no selection)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		applyInspectorEdit(n, name, value, "inspector set");
+	}
+
+	void applyInspectorEdit(InterfaceNode *n, const char *name,
+				const char *value, const char *verb)
+	{
 		const InterfaceProperty *p =
 			interfaceProperty(n->className(), name);
 
 		if (!p) {
-			std::printf("WEAVER: set FAIL %s has no property `%s`\n",
-				    n->className(), name);
+			std::printf("WEAVER: %s FAIL %s has no property `%s`\n",
+				    verb, n->className(), name);
 			std::fflush(stdout);
 			failed = true;
 			return;
@@ -961,7 +982,7 @@ public:
 			break;
 		}
 		dirty = true;
-		std::printf("WEAVER: set %s.%s = ", id, name);
+		std::printf("WEAVER: %s %s.%s = ", verb, id, name);
 		printValue(v);
 		if (live && p->get) {
 			InterfaceNode::Property back;
@@ -1188,6 +1209,24 @@ public:
 				field->setValue("");
 			}
 			insp->addSubview(field);
+
+			/* the FUNCTIONAL inspector: an end-edit (Return or focus
+			 * loss) applies the field's text through the property
+			 * table to the live canvas AND the document — the same
+			 * path the scripted --field command drives */
+			std::string nodeId = id;
+			std::string propName = p->name;
+
+			field->setOnEndEdit([this, nodeId, propName](TextField *f) {
+				InterfaceNode *n =
+					findNode(doc->root(), nodeId.c_str());
+
+				if (n) {
+					applyInspectorEdit(n, propName.c_str(),
+							   f->value(),
+							   "inspector set");
+				}
+			});
 			y += rowH;
 		}
 	}
@@ -1478,6 +1517,12 @@ main(int argc, char **argv)
 
 			ed.setProperty(name, value);
 			any = true;
+		} else if (a == "--field" && i + 2 < argc) {
+			const char *name = argv[++i];
+			const char *value = argv[++i];
+
+			ed.editField(name, value);
+			any = true;
 		} else if (a == "--palette") {
 			ed.palette();
 			any = true;
@@ -1547,6 +1592,7 @@ main(int argc, char **argv)
 			    "[--click x y] [--drag x0 y0 x1 y1] "
 			    "[--resize x0 y0 x1 y1] [--undo] "
 			    "[--inspect] [--set name value] "
+			    "[--field name value] "
 			    "[--palette] [--outline] [--add class] "
 			    "[--select-outline name] "
 			    "[--move id dx dy] [--save] [--reload] "
