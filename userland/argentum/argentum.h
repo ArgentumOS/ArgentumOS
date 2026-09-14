@@ -1332,6 +1332,40 @@ private:
  * Clicking an enabled item fires the item's action and closes the
  * popup; clicking empty popup space or another of the app's windows
  * closes it. A11y role PopUpButton, label = the title. */
+/* S2.3e: ComboBox — an editable field with a drop-down list. A TextField for
+ * the text (so typing and focus traversal are the toolkit's), a Menu for the
+ * list, the shared popup path for showing it, and a vector chevron because the
+ * icon story is D14's. Picking writes into the field; typing is still allowed,
+ * which is the difference from PopUpButton. IMPORTANT: openList uses the
+ * PRESS's root coordinates (MouseEvent::rootXPx/rootYPx), so no window lookup
+ * is needed. */
+class ComboBox : public Control {
+public:
+	ComboBox();
+	~ComboBox() override;
+
+	void setItems(const char *const *items, int count);	/* copied */
+	int itemCount() const;
+	const char *itemAt(int index) const;
+
+	void setValue(const char *utf8);
+	const char *value() const;
+	int selectedIndex() const;	/* -1 when the text is not an item */
+
+	void setOnChange(std::function<void(ComboBox *)> cb);
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+	void setFrame(const Rect &r) override;
+
+private:
+	void openList(int rootXPx, int rootYPx);
+	void pickItem(int index);
+
+	struct Impl;
+	Impl *impl_;
+};
+
 class PopUpButton : public Control {
 public:
 	PopUpButton();
