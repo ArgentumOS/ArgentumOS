@@ -51,6 +51,19 @@ xfbPixdbgCreate(int w, int h, int depth, long bytes)
            xfbPixdbgBytesAlloc - xfbPixdbgBytesFree);
 }
 
+/* Entry is logged separately from the real free: a call that arrives with
+ * refcnt > 1 returns above and is NOT a free, so a frozen "free" count means
+ * either the call carries an extra reference or it never arrives at all. */
+static void
+xfbPixdbgDestroyEntry(PixmapPtr p)
+{
+    if (!xfb_pixdbg_config)
+        return;
+    ErrorF("XFB-PIX dentry %dx%d d%d refcnt=%ld\n",
+           p->drawable.width, p->drawable.height, p->drawable.depth,
+           (long) p->refcnt);
+}
+
 static void
 xfbPixdbgDestroy(PixmapPtr p)
 {
@@ -128,6 +141,7 @@ fbCreatePixmap(ScreenPtr pScreen, int width, int height, int depth,
 Bool
 fbDestroyPixmap(PixmapPtr pPixmap)
 {
+    xfbPixdbgDestroyEntry(pPixmap);
     if (--pPixmap->refcnt)
         return TRUE;
     xfbPixdbgDestroy(pPixmap);
