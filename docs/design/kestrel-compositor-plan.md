@@ -145,19 +145,29 @@ the rule the other plans here follow.
   cycles running. (The baseline drops 20,264 -> 12,664 kB at ready: that
   difference is the shadow's own ~8 MB screen buffer, nothing to do with this.)
 
-  **The leaked object is the app's MIT-SHM segment.** Read Xfb's own map with
-  every app gone (`cat /System/Processes/4/maps` after `killall`), and the
-  `[shm]` mappings are still attached to the server — 4 regions, **18.43 MB**
-  (12.36 + 0.40 + 0.34 + 5.32 MB; the kernel coalesces adjacent ones). One app
-  cycle leaks one app-sized image: +3,672 kB is 1248x752x4, and the apps use
-  MIT-SHM (`XShmPutImage`) for their window backing.
+  **Attribution run (map at READY, churn 4 windows, map again): the answer is
+  a MIX — the first SHM-only reading was too narrow.** Xfb's
+  `/System/Processes/4/maps`, 72 regions both times:
 
-  **NEXT, in order:** (a) also dump the map at READY, so the delta from ready
-  to post-churn can be attributed region by region instead of by size; (b)
-  then find why a dead client's segment stays attached to Xfb — the server
-  side of that is upstream (`Xext/shm.c`), so the FNX kernel's SysV shm is the
-  place to look, which has form here (SysV shm resize/detach leaks before:
-  ef076fd).
+  | label | at ready | after churn |
+  |---|---|---|
+  | `[mmap]` | 29.85 MB | 33.50 MB (**+3.65**) |
+  | `[shm]` | 13.11 MB | 18.43 MB (**+5.32**) |
+
+  Regions in B but not A: an **8.48 MB `[mmap]`**, a **5.32 MB `[shm]`**, a
+  **3.57 MB `[mmap]`**. RSS grew +14.9 MB while the mapped total grew only
+  +8.5 MB, so part of it is resident pages inside regions that already existed.
+
+  CAVEAT, and it matters: this kernel's map output COALESCES adjacent VMAs and
+  labels the run by its first, so `[text]`/`[data]` totals appear to *shrink*
+  (1.56 -> 1.16 MB) — they cannot. **Label totals are indicative only; the
+  region LIST is what is trustworthy.**
+
+  So: retained `[shm]` segments AND retained pixmap-sized `[mmap]` regions.
+
+  **NEXT: instrument the writer, not the map.** Count `AllocatePixmap` /
+  `FreePixmap` (and shm attach/detach) inside Xfb and compare allocs against
+  frees across the churn — that is decisive where sizes are merely suggestive.
 
   *Acceptance as built:* the claim and redirect exist and are opt-in; with
   the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
