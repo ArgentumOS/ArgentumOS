@@ -154,6 +154,8 @@ user-installed under `Users/$USER/Shared/Images/Wallpaper/` (or
 
 ### 3.3 File manager (Miller-column browser)
 
+*Design + slice split: `docs/design/workspace-plan.md` (PROPOSED).*
+
 The file manager browses the FSH in **adjacent columns** — the
 column-browser model of NeXTSTEP's File Viewer (and the classic macOS
 Finder): the leftmost
