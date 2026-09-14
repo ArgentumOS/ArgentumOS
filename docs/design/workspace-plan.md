@@ -272,24 +272,59 @@ seam; the log names the focused column and the selected row per key.
 
 ### W0 — the desktop surface moves to Workspace
 
-Status: **PROPOSED.** Workspace paints the wallpaper (the bottom-of-stack
-surface, `wallpaper` read from its own domain) and Kestrel stops painting
-it. This is the decided split done as a **move**, not a rewrite: the
-behaviour S5.2a established — a theme-derived ramp filling the screen
-behind every window — is what has to survive.
-*Acceptance:* **the existing desktop checks keep passing unchanged.**
-`smoke_desktop`'s wallpaper-spanning and wallpaper-on-screen pixel checks
-are the regression test for the move, and the log line naming who painted
-the surface changes owner (Kestrel → Workspace). A migration whose
-acceptance is "the old checks still pass" is the point: nothing about the
-desktop may look different. Lands with the domain split (D6), since the
-dock keys are staged in the same file.
+Status: **SPLIT 2026-09 into W0a + W0b** — as written this was not one
+slice. "Workspace paints the wallpaper" turns out to need four things at
+once, and they fail differently:
 
-### W1 — the bundle, and a real directory read
+1. a **desktop-window protocol** in the WM — an app-owned surface the WM
+   keeps at the bottom, unframed and never raised. Today's wallpaper is
+   Kestrel's *own* window, which its `manageClient` guard skips precisely
+   because it is the WM's; an app's window is a client, so the WM has to
+   learn a rule it does not have;
+2. a **new app** — the bundle that W1 claimed to introduce, so the ordering
+   here was wrong;
+3. a **session-launch** change: the surface must exist at login, and today
+   the session names one desktop program;
+4. removing Kestrel's painter, plus its resize path (a mode-set resizes the
+   screen and the surface is sized to it).
 
-Status: **PROPOSED.** `Workspace.app` (identifier
-`com.argentum.workspace`, per `app-model.md` §3) with a dock tile; its
-window opens on the configured start root and reads that directory.
+Bundling those into one gate would make a broken desktop indistinguishable
+from a broken hand-off — the acceptance is "nothing looks different", which
+cannot tell the two apart. Hence the split.
+
+### W0a — the desktop window protocol, and the shell app that paints it
+
+Status: **PROPOSED.** A window property — the `_ARGENTUM_*` pattern the menu
+marker already uses — marks an app's surface as the desktop: the WM does not
+frame it, does not manage it, and keeps it lowered. `Workspace.app` is that
+app: it creates a window covering the screen and paints the theme's ramp the
+way Kestrel's `DeskView` does today. **Kestrel keeps painting until W0b**, so
+the pixels are unchanged by construction: both surfaces draw the same ramp
+off the same `Application::sessionBackground()`.
+
+*Acceptance:* the app launches and logs its surface and size; `smoke_desktop`
+passes **unchanged** (its wallpaper checks are the regression test); and a
+raised client still comes up *above* the desktop, i.e. the surface never
+covers a window. To settle here, because they are not obvious: how the
+session starts it (login must own a surface), and whether the ramp helper
+(`mixColor`/`deskTop`/`deskBot`) moves into the toolkit so the app and the
+WM cannot drift before W0b deletes the WM's copy.
+
+### W0b — the hand-off: Kestrel stops painting
+
+Status: **PROPOSED.** Delete Kestrel's `DeskView` and `wallpaperInstall` and
+its mode-set resize path; the app's surface becomes the only one.
+*Acceptance:* the same checks pass with exactly one difference — the
+`KESTREL: wallpaper ...` line disappears and Workspace's is the one that
+reports the surface. That log line is the migration's whole proof: nothing
+looks different, and there is one painter fewer.
+
+### W1 — the browser window, and a real directory read
+
+Status: **PROPOSED.** The bundle and its identifier
+(`com.argentum.workspace`, per `app-model.md` §3) arrive with W0a; this
+slice gives it the **browser window** — opening on the configured start root
+and reading that directory.
 *Acceptance:* the bundle launches from the dock; the guest log carries
 the listing (`WORKSPACE: <path>: N entries`); no fatal faults, no X
 errors. The listing is asserted against `ls` of the same path, so the
