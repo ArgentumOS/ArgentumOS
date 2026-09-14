@@ -1,6 +1,6 @@
 # Argentum OS
 
-It began as Fiwix, a small (< 50KLoc) Unix-like kernel for i386 systems. I forked it, renamed it FNX, and ported it to run exclusively on AMD64/UEFI systems. I built it up with drivers for everything useful QEMU can emulate. 
+It began as Fiwix, a small (< 50KLoc) Unix-like kernel for i386 systems. I forked it, renamed the kernel to FNX, and ported it to run exclusively on AMD64/UEFI systems. I built it up with drivers for everything useful QEMU can emulate. 
 
 That went so well, I decided to use it as a chance to address every gripe and grievance I've ever had with an OS. I would take features I liked from other OSes and implement them locally from scratch, my way. I would create my own design language, my own applications, my own command line utilities, I would own the entire stack, from soup to nuts.
 
