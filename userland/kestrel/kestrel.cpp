@@ -318,7 +318,7 @@ class DockView;
 
 /* ---- S5.2c: the dock ------------------------------------------------
  *
- * A bar of app tiles on the edge named by system.workspace.conf
+ * A bar of app tiles on the edge named by system.kestrel.conf
  * (dock.position = left | right, dock.icon-size), holding PINNED apps —
  * the running group and its separator arrive with the task list (S5.2f)
  * — each with a "running" dot when its app has a window. The dock OWNS a
@@ -2437,7 +2437,7 @@ cursorThemeInstall(void)
  * wallpaper alone is 8.3 MB) or a leak in it, not the RAM ceiling - and then
  * its signal handler faults in a loop, 70 lines per fault, and the desktop
  * dies. Until that is fixed the compositor is opt-in:
- * system.workspace.compositor = true.
+ * system.kestrel.compositor = true.
  *
  * Everything in this function is what the slice needs; only the switching-on
  * is withheld. See docs/design/kestrel-compositor-plan.md C1.
@@ -2559,16 +2559,17 @@ main()
 	/* S5.2a: paint the desktop before any client can map */
 	wallpaperInstall(screenW, screenH);
 
-	/* S5.2c: the dock's settings (system.workspace.conf), read BEFORE
+	/* S5.2c: the dock's settings (system.kestrel.conf since D6 — the dock
+	 * is the WM's), read BEFORE
 	 * anything is placed — the dock owns a column of the work area, so
 	 * its geometry has to be known before the first frame is placed. */
 	{
 		char pos[16] = "right";
 		char isz[16] = "48";
 
-		app.configString("system.workspace", "dock.position", "right",
+		app.configString("system.kestrel", "dock.position", "right",
 				 pos, sizeof(pos));
-		app.configString("system.workspace", "dock.icon-size", "48",
+		app.configString("system.kestrel", "dock.icon-size", "48",
 				 isz, sizeof(isz));
 		gDockLeft = (strcmp(pos, "left") == 0);
 		gDockIcon = atoi(isz);
@@ -2684,7 +2685,7 @@ main()
 	{
 		char on[16] = "false";
 
-		app.configString("system.workspace", "compositor", "false", on,
+		app.configString("system.kestrel", "compositor", "false", on,
 				 sizeof(on));
 		if (strcmp(on, "true") == 0) {
 			compositorClaim();

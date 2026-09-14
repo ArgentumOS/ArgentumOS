@@ -95,7 +95,7 @@ the rule the other plans here follow.
 - **C1 — claim the CM and redirect. BLOCKED on an Xfb memory fault
   (2026-09); the code is in, opt-in, and OFF.** `_NET_WM_CM_S0` is claimed
   and `CompositeRedirectSubwindows(root, Automatic)` is called, behind
-  `system.workspace.compositor` (default off), because the redirect does not
+  `system.kestrel.compositor` (default off), because the redirect does not
   hold up. Measured over a long desktop session (`wm_dock`, which launches
   and closes many windows):
 
@@ -253,7 +253,10 @@ the rule the other plans here follow.
   **PARKED — by decision, the compositor work stops here.** The diagnosis
   above is the resume point. What is in the tree, committed, and safe:
 
-  - the compositor is behind `system.workspace.compositor`, **default off**, so
+  - the compositor is behind `system.kestrel.compositor` (**moved there by
+    D6 of `docs/design/workspace-plan.md`** — a WM behaviour belongs in the
+    WM's domain, and it read `system.workspace` until that split landed),
+    **default off**, so
     the desktop is exactly what it was before C1 and every gate is green;
   - the diagnostic knob `system.xfb` **`pixdbg`** (default off) is in the tree
     and was built and seen to emit: it counts pixmap create/free and logs

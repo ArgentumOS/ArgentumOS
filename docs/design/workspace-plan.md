@@ -1,6 +1,8 @@
 # Workspace — the file manager (Miller-column browser)
 
-Status: **PROPOSED (2026-09).** The design + slice split for the app the
+Status: **APPROVED (2026-09).** The owner split and the slice list are
+accepted; slices are actioned one at a time, and each carries its own
+status in §4. Design + split for the app the
 release docs call **Workspace**: the adjacent-column file manager of
 `docs/design/initial-release.md` §3.3 (the column-browser model of
 NeXTSTEP's File Viewer and the classic macOS Finder) **and the desktop
@@ -116,11 +118,11 @@ to Workspace.** So the desktop is split by kind, not by app:
 | **Wallpaper** (the desktop surface behind all windows) | **Workspace** | moves out of Kestrel: **W0** |
 | File manager (columns) | Workspace | this plan |
 
-**Consequence: the config domain splits.** `system.workspace.conf` exists
-today and holds BOTH sets of keys — `initial-release.md` §3.1 put the
-dock's `dock.*` keys there and §3.3 the file-manager keys, and S5.2c
-introduced it for the dock. With the owners split, the domain must too,
-because two apps cannot own one file:
+**Consequence: the config domain splits — LANDED 2026-09 (D6).**
+`system.workspace.conf` held BOTH sets of keys: `initial-release.md` §3.1
+put the dock's `dock.*` keys there and §3.3 the file-manager keys, and
+S5.2c introduced it for the dock. With the owners split the domain does
+too, because two apps cannot own one file:
 
 | Keys | Owner | Domain |
 |---|---|---|
@@ -129,9 +131,12 @@ because two apps cannot own one file:
 | `file-manager.start`, `file-manager.column-width` | Workspace | `system.workspace` |
 
 `system.workspace` therefore keeps the *Workspace app's* keys and the
-dock's move to the WM's own domain, named like the other component
-domains (`system.xfb`, `system.argentum`, `system.display`). The shipped
-file is staged with the rest (`Shared/Configuration/`).
+dock's moved to the WM's own domain, named like the other component
+domains (`system.xfb`, `system.argentum`, `system.display`). Both files
+are staged with the rest (`Shared/Configuration/`), and **the WM's
+`compositor` key moved with them** — it is a WM behaviour, so D6's own
+principle puts it in `system.kestrel`, even though the table above lists
+only the dock's keys.
 
 ### 3.1 Reading a directory
 
@@ -379,6 +384,11 @@ Per §3.3, a later addition. Not sliced here.
 - **D6 — A config domain follows its owner** (§3.0): the dock's keys move
   to `system.kestrel`, `system.workspace` keeps the Workspace app's own
   (`wallpaper`, `file-manager.*`). One app per domain file.
+  **LANDED 2026-09**: `system.kestrel.conf` ships the dock keys and
+  `compositor` (a WM behaviour — D6's principle applies to it too, and it
+  was reading `system.workspace` until this landed: the tree contradicted
+  the approved docs). `system.workspace.conf` keeps only the app's keys —
+  none of which is read yet, so the file documents them and says so.
 - **D7 — The Trash is real** (Q-W2'): delete moves a file to a per-user
   `Trash/` in the home and it can be restored; only Empty Trash is
   permanent. The dock's tile opens it in a window (§3.6).
