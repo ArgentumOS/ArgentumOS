@@ -241,10 +241,14 @@ struct Entry {
 	bool dir = false;
 };
 
-static std::vector<Entry> gEntries;
+/* The CHAIN: one entry list per column, and the path each column is showing.
+ * Both are the app's, not the control's — the control owns layout and the
+ * drag, the app owns what a column means (D2). */
+static std::vector<std::vector<Entry> > gColumns;
+static std::vector<std::string> gPath;
 
 static int
-listEntries(const std::string &path)
+listInto(const std::string &path, std::vector<Entry> *out)
 {
 	DIR *d = opendir(path.c_str());
 	struct dirent *de;
@@ -261,42 +265,115 @@ listEntries(const std::string &path)
 		e.name = de->d_name;
 		if (stat((path + "/" + e.name).c_str(), &st) == 0)
 			e.dir = S_ISDIR(st.st_mode);
-		gEntries.push_back(e);
+		out->push_back(e);
 		n++;
 	}
 	closedir(d);
 	return n;
 }
 
+/* The path the chain reads, one component per column: what the slice calls
+ * the chain, and what the gate reads to see it truncate. */
+static argentum::Browser *gBrowser = nullptr;
+static ::Window gBrowserWin = 0;
+
+static void
+logChain(const char *why)
+{
+	std::string line;
+
+	for (size_t i = 0; i < gPath.size(); i++) {
+		line += (i ? " > " : "");
+		line += gPath[i];
+	}
+	std::printf("WORKSPACE: chain%s %s\n", why, line.c_str());
+	if (gBrowser) {
+		std::printf("WORKSPACE: rows rowh=%d\n",
+			    (int) (gBrowser->rowHeightPt() *
+				   argentum::Application::shared().pxPerPt() + 0.5));
+	}
+	if (gBrowser && gBrowserWin && !strcmp(why, " (descend)")) {
+		/* The CLIENT's root origin, and only here: it is offset inside the
+		 * WM's frame, so it is true only once the WM has reparented this
+		 * window — which it has by the time a descend happens, and has NOT
+		 * at startup. Reporting it early is the trap that made a whole
+		 * debugging session chase a divider that was never where it said. */
+		Display *dpy = (Display *) argentum::Application::shared().display();
+		::Window child = 0;
+		int ox = 0, oy = 0;
+
+		if (dpy) {
+			XTranslateCoordinates(dpy, gBrowserWin,
+					      DefaultRootWindow(dpy), 0, 0, &ox,
+					      &oy, &child);
+		}
+		std::printf("WORKSPACE: origin=%d,%d\n", ox, oy);
+	}
+	std::fflush(stdout);
+}
+
+
 class WorkspaceSource : public argentum::BrowserSource {
 public:
 	int browserRowCount(const argentum::Browser *,
 			    int column) const override
 	{
-		return column == 0 ? (int) gEntries.size() : 0;
+		if (column < 0 || column >= (int) gColumns.size())
+			return 0;
+		return (int) gColumns[(size_t) column].size();
 	}
 
 	const char *browserRowText(const argentum::Browser *, int column,
 				   int row) const override
 	{
-		if (column != 0 || row < 0 || row >= (int) gEntries.size())
+		if (column < 0 || column >= (int) gColumns.size() ||
+		    row < 0 || row >= (int) gColumns[(size_t) column].size())
 			return "";
-		return gEntries[row].name.c_str();
+		return gColumns[(size_t) column][(size_t) row].name.c_str();
 	}
 };
 
 class WorkspaceDelegate : public argentum::BrowserDelegate {
 public:
-	void browserSelectionDidChange(argentum::Browser *, int column,
+	void browserSelectionDidChange(argentum::Browser *b, int column,
 				      int row) override
 	{
-		if (column != 0 || row < 0 || row >= (int) gEntries.size())
+		if (column < 0 || column >= (int) gColumns.size() ||
+		    row < 0 || row >= (int) gColumns[(size_t) column].size())
 			return;
-		/* W2 reports what was chosen; W3 is what descends into it */
-		std::printf("WORKSPACE: selected %s%s\n",
-			    gEntries[(size_t) row].name.c_str(),
-			    gEntries[(size_t) row].dir ? "/" : "");
-		std::fflush(stdout);
+		{
+			const Entry &e = gColumns[(size_t) column][(size_t) row];
+
+			std::printf("WORKSPACE: selected %s%s\n", e.name.c_str(),
+				    e.dir ? "/" : "");
+			std::fflush(stdout);
+			if (!e.dir)
+				return;	/* W5 opens files */
+		}
+		/* THE CHAIN RULE: choosing a folder makes it the next column and
+		 * drops every column to its right — the Finder's behaviour, and
+		 * the rule that keeps the path honest. A folder that cannot be
+		 * read says so and leaves the chain as it was. */
+		{
+			std::string next = gPath[(size_t) column] + "/" +
+				gColumns[(size_t) column][(size_t) row].name;
+			std::vector<Entry> entries;
+			int n = listInto(next, &entries);
+
+			if (n < 0) {
+				std::printf("WORKSPACE: %s: unreadable (%s)\n",
+					    next.c_str(), strerror(errno));
+				std::fflush(stdout);
+				return;
+			}
+			b->truncateTo(column + 1);
+			gColumns.resize((size_t) column + 1);
+			gPath.resize((size_t) column + 1);
+			gColumns.push_back(entries);
+			gPath.push_back(next);
+			b->addColumn();
+			logChain(" (descend)");
+		}
 	}
 };
 
@@ -333,7 +410,10 @@ main()
 	{
 		double ppt = app.pxPerPt();
 		std::string root = homeRoot();
-		int n = listEntries(root);
+		gColumns.clear();
+		gPath.clear();
+		gColumns.push_back(std::vector<Entry>());
+		int n = listInto(root, &gColumns[0]);
 
 		if (n < 0) {
 			std::printf("WORKSPACE: %s: unreadable (%s)\n",
@@ -347,8 +427,8 @@ main()
 				 * trusting a pixel */
 				std::printf("WORKSPACE: column 0 rows=%d first=%s"
 					    " last=%s\n", n,
-					    gEntries.front().name.c_str(),
-					    gEntries.back().name.c_str());
+					    gColumns[0].front().name.c_str(),
+					    gColumns[0].back().name.c_str());
 			}
 		}
 		std::fflush(stdout);
@@ -358,6 +438,10 @@ main()
 		static WorkspaceDelegate del;
 		static argentum::Browser browser(&del);
 
+		gBrowser = &browser;
+		gColumns.push_back(gColumns.empty() ? std::vector<Entry>()
+						    : gColumns[0]);
+		gPath.push_back(root);
 		browser.setFrame({{0, 0}, {BROWSER_W_PT, BROWSER_H_PT}});
 		browser.setSource(&src);
 		browser.setFocusedColumn(0);
@@ -369,6 +453,8 @@ main()
 		}
 		bw.setContentView(&browser);
 		bw.show();
+		gBrowserWin = bw.xid();
+		logChain(" (start)");
 	}
 
 	app.run();

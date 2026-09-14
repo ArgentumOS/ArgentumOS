@@ -1628,6 +1628,9 @@ public:
 	void reload();
 
 	int columnCount() const;
+	/* the rows' height in pt: a gate that clicks a ROW needs it, and the
+	 * columns' tables are the only things that know it */
+	double rowHeightPt() const;
 	double columnWidthPt(int column) const;
 	void setColumnWidth(double pt);
 

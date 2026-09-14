@@ -178,6 +178,12 @@ Browser::columnCount() const
 }
 
 double
+Browser::rowHeightPt() const
+{
+	return cols_.empty() ? 0 : cols_[0].table->rowHeight();
+}
+
+double
 Browser::columnWidthPt(int c) const
 {
 	if (c < 0 || c >= (int) cols_.size())

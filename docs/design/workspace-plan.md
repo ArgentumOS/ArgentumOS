@@ -550,12 +550,38 @@ and which cannot go stale the way one coordinate can.
 
 ### W3 — the chain (Miller behaviour)
 
-Status: **PROPOSED.** Selecting a directory appends a column; selecting
-inside a column truncates its right-hand neighbours.
+Status: **PARTIAL (2026-09)** — the app's chain is built and observable; the
+gate's clicks are not in yet.
 *Acceptance:* the log carries the path chain (one component per column);
 the gate steps into `/System/Shared/X11` (a known depth-2 path), then
 selects a sibling and asserts the chain is **truncated** — the specific
 behaviour this slice exists for.
+
+**As built (2026-09), partial.** The app owns the chain (the control owns
+layout and the drag, per D2): a selection on a folder truncates every column
+to its right, reads that folder, appends it, and — if the folder cannot be
+read — says so and leaves the chain as it was rather than dropping columns
+for nothing.
+
+The observable is the chain itself, one component per column:
+
+```
+WORKSPACE: chain (start) /Users/Admin
+WORKSPACE: rows rowh=26
+```
+
+`rowh` is what a gate needs to aim at a row, and it is published always. The
+CLIENT's root origin is published **only on a descend**, deliberately: it is
+offset inside the WM frame, so it is true only once the WM has reparented the
+window — true on a descend, and NOT at startup. Reporting it early is exactly
+what cost a whole debugging session on the divider drag, and the app now says
+so in a comment where the next person will read it.
+
+**Remaining:** the gate's clicks and the truncation assertion. The recipe is
+written down: aim at a folder row using the frame origin from `KESTREL:
+manage` plus `rowh`, click it, read the chain (it must have grown by one), then
+click a **sibling** and assert the chain is back to one component for that
+column — the second click can use the origin the first descend published.
 
 ### W4 — keyboard, per the a11y model
 
