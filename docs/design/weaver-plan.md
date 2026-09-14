@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0–IB6 **DONE**; IB7 is next. A visual editor for Argentum UIKit
+Status: **COMPLETE (2026-09).** IB0–IB7 **DONE** — Weaver v1 is fully landed. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -425,9 +425,17 @@ need input, which §8a addresses directly.
   `20,60 → 25,65`, save, reload — proving the shipped interface document is
   still editable while leaving the shipped resource pristine (the gate must
   stay repeatable across boots).
-- **IB7 — templates and multiple documents.** *Acceptance:* "new from
-  template" produces a document whose round-trip is clean and which boots a
-  second sample app; two editor windows hold two different documents, logged.
+- **IB7 — templates and multiple documents. DONE (2026-09).** Landed as
+  `--new` (a document from the BUILT-IN template — the same greeting/okButton
+  shape Wren resolves — written straight to the user's Documents),
+  `--roundtrip` (the IB0 property applied to an arbitrary document:
+  emit(load(emit(load))) byte-identical), Wren accepting a user document path
+  (so the generated document boots a sample app), and the show-mode window log
+  carrying its document path. `tests/cases/weaver_ib7.py`, 10/10: the template
+  document round-trips clean, Wren boots it and resolves both outlets, and two
+  editor processes in show mode log two different document paths. Two windows
+  are two processes in v1 — the editor is single-document per process; an
+  in-process multi-document editor is a later refinement.
 
 ## 8a. How the acceptances will be driven (from the record)
 

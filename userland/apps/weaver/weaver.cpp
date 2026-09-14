@@ -60,6 +60,42 @@ resolvePath(const char *arg)
 	return base + "/" + p;
 }
 
+static bool
+writeFile(const std::string &path, const std::string &data)
+{
+	FILE *f = std::fopen(path.c_str(), "w");
+	bool ok;
+
+	if (!f) {
+		return false;
+	}
+	ok = (std::fwrite(data.data(), 1, data.size(), f) == data.size());
+	if (std::fclose(f) != 0) {
+		ok = false;
+	}
+	return ok;
+}
+
+/* HOME is / in the guest's serial shell: never derive a path from it. */
+static const char *const TEMP_DIRS[] = {
+	"/System/Temporary Files",
+	"/Users/Admin/Temporary Files",
+};
+
+static std::string
+pickTempDir(void)
+{
+	for (size_t i = 0; i < sizeof(TEMP_DIRS) / sizeof(TEMP_DIRS[0]); i++) {
+		std::string t = std::string(TEMP_DIRS[i]) + "/weaver_probe.tmp";
+
+		if (writeFile(t, "x")) {
+			std::remove(t.c_str());
+			return TEMP_DIRS[i];
+		}
+	}
+	return "";
+}
+
 static InterfaceNode *
 findNode(InterfaceNode *n, const char *id)
 {
@@ -307,6 +343,102 @@ public:
 			    countNodes(doc->root()));
 		std::fflush(stdout);
 		return true;
+	}
+
+	/* IB7: a new document from the BUILT-IN template — the same shape the
+	 * Wren sample resolves (greeting + okButton), so a fresh document can
+	 * boot an app without ever touching the editor's window. */
+	void newDocument(const char *arg)
+	{
+		std::string resolved = resolvePath(arg);
+		InterfaceDocument *fresh = new InterfaceDocument();
+		InterfaceNode *r = fresh->root();
+		InterfaceNode *label = new InterfaceNode();
+		InterfaceNode *button = new InterfaceNode();
+
+		fresh->setVersion(1);
+		r->setClassName("View");
+		r->setIdentifier("panel");
+		r->setFrame(0, 0, 400, 300);
+		label->setClassName("Label");
+		label->setIdentifier("greeting");
+		label->setFrame(20, 16, 240, 20);
+		label->setString("text", "New Document");
+		r->addChild(label);
+		button->setClassName("Button");
+		button->setIdentifier("okButton");
+		button->setFrame(20, 60, 90, 24);
+		button->setString("title", "Action");
+		r->addChild(button);
+
+		delete doc;
+		doc = fresh;
+		path = resolved;
+		dirty = false;
+		selectedId.clear();
+		undoStack.clear();
+		gesture = Gesture();
+		canvas = nullptr;
+		std::printf("WEAVER: new %s from template (3 nodes)\n",
+			    resolved.c_str());
+		std::fflush(stdout);
+		save();
+	}
+
+	/* IB7: the document survives its own emitter — emit(load(emit(load)))
+	 * must be byte-identical, the same check IB0 asserts for fixtures. */
+	void roundtrip()
+	{
+		if (path.empty()) {
+			std::printf("WEAVER: roundtrip FAIL (no document)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		InterfaceDocument a;
+		InterfaceDocument b;
+		std::string err;
+		std::string tmp;
+
+		if (!interfaceLoadFile(path.c_str(), a, err)) {
+			std::printf("WEAVER: roundtrip FAIL %s: %s\n",
+				    path.c_str(), err.c_str());
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		std::string e1 = interfaceEmit(a);
+		std::string dir = pickTempDir();
+
+		if (dir.empty()) {
+			std::printf("WEAVER: roundtrip FAIL (no temp dir)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		tmp = dir + "/weaver_roundtrip.conf";
+		if (!writeFile(tmp, e1)
+		    || !interfaceLoadFile(tmp.c_str(), b, err)) {
+			std::printf("WEAVER: roundtrip FAIL %s\n",
+				    err.empty() ? "write/load" : err.c_str());
+			std::fflush(stdout);
+			std::remove(tmp.c_str());
+			failed = true;
+			return;
+		}
+		std::string e2 = interfaceEmit(b);
+
+		std::remove(tmp.c_str());
+		if (e1 != e2) {
+			std::printf("WEAVER: roundtrip FAIL %s (emissions "
+				    "differ)\n", path.c_str());
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		std::printf("WEAVER: roundtrip %s OK (%zu bytes)\n",
+			    path.c_str(), e1.size());
+		std::fflush(stdout);
 	}
 
 	void logRect(const char *id)
@@ -1021,8 +1153,8 @@ runDisplay(Editor &ed)
 	ed.surface->addSubview(ed.overlay);
 
 	w.show();
-	std::printf("WEAVER: window 0x%lx %ux%u ppt=%g\n", w.xid(),
-		    w.width(), w.height(), ppt);
+	std::printf("WEAVER: window 0x%lx %ux%u ppt=%g doc=%s\n", w.xid(),
+		    w.width(), w.height(), ppt, ed.path.c_str());
 	std::fflush(stdout);
 	app.run();
 	return 0;
@@ -1129,6 +1261,12 @@ main(int argc, char **argv)
 		} else if (a == "--reload") {
 			ed.reload();
 			any = true;
+		} else if (a == "--new" && i + 1 < argc) {
+			ed.newDocument(argv[++i]);
+			any = true;
+		} else if (a == "--roundtrip") {
+			ed.roundtrip();
+			any = true;
 		} else if (a == "--rect" && i + 1 < argc) {
 			ed.logRect(argv[++i]);
 			any = true;
@@ -1152,6 +1290,7 @@ main(int argc, char **argv)
 			    "[--palette] [--outline] [--add class] "
 			    "[--select-outline name] "
 			    "[--move id dx dy] [--save] [--reload] "
+			    "[--new name] [--roundtrip] "
 			    "[--rect id] [--show]\n");
 		return 2;
 	}

@@ -49,8 +49,9 @@ countNodes(const InterfaceNode *n)
 int
 main(int argc, char **argv)
 {
-	(void) argc;
-	std::string res = bundleResourcesPath(argv[0]);
+	/* with a path argument Wren boots a USER document (IB7); without
+	 * one it boots its own bundle Resources (IB6/D10) */
+	std::string res = (argc > 1) ? argv[1] : bundleResourcesPath(argv[0]);
 	InterfaceDocument doc;
 	std::string err;
 
