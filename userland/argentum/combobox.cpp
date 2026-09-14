@@ -45,6 +45,9 @@ ComboBox::ComboBox()
 {
 	impl_->field = new TextField();
 	impl_->field->setValue("");
+	/* the field is part of ONE shape with the button, so the shape's owner
+	 * (this control) draws the bezel and the shared border */
+	impl_->field->setDrawsBezel(false);
 	addSubview(impl_->field);
 }
 
@@ -221,22 +224,31 @@ ComboBox::draw(GraphicsContext &g)
 	Theme &theme = app.theme();
 	double ppt = app.pxPerPt();
 	Rect f = frame();
-	ControlState st = state();
-	Theme::Params p = theme.state(st);
+	Theme::Params p = theme.state(state());
 	int w = (int) (f.size.w * ppt + 0.5);
 	int h = (int) (f.size.h * ppt + 0.5);
-	int bx = w - (int) (kChevronW * ppt + 0.5);	/* button's left edge */
-	int bw = w - bx;
+	int bx = w - (int) (kChevronW * ppt + 0.5);	/* the divider's x */
 	int r, o, ri;
 
-	if (w <= 0 || h <= 0 || bw <= 0) {
+	if (w <= 0 || h <= 0 || bx <= 0 || bx >= w || h - 2 * (int) (theme.outline() * ppt + 0.5) <= 0) {
 		return;
 	}
-	/* ---- the chevron zone: a standard push button's chrome ----
-	 * The same outline ring + state fill gradient as Button::Push,
-	 * derived from the theme the same way and clamped the same way, so
-	 * it tracks the theme alongside a real button. */
-	r = (int) (theme.baseRadius() * ppt + 0.5);
+	/* ONE shape for the whole control, the way SegmentedControl's joined
+	 * segments work: a single outline ring around everything, the interior
+	 * filled part by part, and ONE divider between the parts. That is what
+	 * makes the field's right border and the button's left border the same
+	 * border rather than two that abut.
+	 *
+	 * Both ends are OUTER corners, so both are rounded at the ring's
+	 * radius; the junction is INTERIOR, so both of its corners — the
+	 * field's right pair and the button's left pair — are square. That is
+	 * both rules asked for, falling out of the construction.
+	 *
+	 * The radius is the FIELD's (radius.small, 2pt) rather than a button's
+	 * (radius.base, 3pt): a joined shape has one radius at its ends, 2pt
+	 * is what was asked for, and this way the field's left end is exactly
+	 * as it was before. */
+	r = (int) (theme.smallRadius() * ppt + 0.5);
 	if (r < 1) {
 		r = 1;
 	}
@@ -252,33 +264,48 @@ ComboBox::draw(GraphicsContext &g)
 	}
 	ri = r > o ? r - o : 0;
 
-	g.fillRoundedRect(bx, 0, (unsigned) bw, (unsigned) h, (unsigned) r,
+	g.fillRoundedRect(0, 0, (unsigned) w, (unsigned) h, (unsigned) r,
 			  p.outline);
-	if (bw - 2 * o > 0 && h - 2 * o > 0) {
-		g.fillRoundedGradient(bx + o, o, (unsigned) (bw - 2 * o),
-				      (unsigned) (h - 2 * o), (unsigned) ri,
-				      p.fillTop, p.fillBottom);
+
+	/* the field's interior (page colour): rounded to follow the ring's
+	 * inner arc on the LEFT, then its right corners squared by repainting
+	 * the last ri px. Safe because this interior is a SOLID colour, so the
+	 * repaint cannot disagree with anything it covers. */
+	if (bx - 2 * o > 0 && h - 2 * o > 0) {
+		g.fillRoundedRect(o, o, (unsigned) (bx - 2 * o),
+				  (unsigned) (h - 2 * o), (unsigned) ri,
+				  theme.page());
+		if (ri > 0) {
+			g.fillRect(bx - o - ri, o, (unsigned) ri,
+				   (unsigned) (h - 2 * o), theme.page());
+		}
 	}
 
-	/* ... except that its LEFT corners are square, with the rounding kept
-	 * on the right: this control is something dropping off the field, not
-	 * a button standing on its own. Overpaint the leftmost r px — exactly
-	 * how far both arcs reach (the outer one at r, the inner at
-	 * ri = r - o) — in the outline colour, then restore that strip's fill
-	 * with the SAME gradient. A VERTICAL gradient is what makes this
-	 * work: the strip spans the full height, so its mapping agrees with
-	 * the wide one and no seam shows. */
-	g.fillRect(bx, 0, (unsigned) r, (unsigned) h, p.outline);
-	if (r > o && h - 2 * o > 0) {
-		g.fillLinearGradient(bx + o, o, (unsigned) (r - o),
-				     (unsigned) (h - 2 * o), p.fillTop,
-				     p.fillBottom, true);
+	/* the button's interior (the standard push button's state gradient):
+	 * rounded on the RIGHT for the ring's arc, then its left corners
+	 * squared by repainting the first ri px with the SAME gradient. Sound
+	 * only because that gradient is VERTICAL: a strip spanning the full
+	 * height maps identically to the wide fill, so no seam shows. */
+	if (w - bx - 2 * o > 0 && h - 2 * o > 0) {
+		g.fillRoundedGradient(bx + o, o,
+				      (unsigned) (w - bx - 2 * o),
+				      (unsigned) (h - 2 * o), (unsigned) ri,
+				      p.fillTop, p.fillBottom);
+		if (ri > 0) {
+			g.fillLinearGradient(bx + o, o, (unsigned) ri,
+					     (unsigned) (h - 2 * o), p.fillTop,
+					     p.fillBottom, true);
+		}
 	}
+
+	/* the divider — the single shared border, drawn last so both
+	 * interiors stop at it */
+	g.fillRect(bx, o, (unsigned) o, (unsigned) (h - 2 * o), p.outline);
 
 	/* the mark: stacked bars, because the icon story is D14's and no font
 	 * glyph can be relied on (the HIG has hit a missing-glyph case) */
 	{
-		int cx = bx + bw / 2;
+		int cx = bx + (w - bx) / 2;
 		int cy = h / 2;
 		const int rows = 5;
 

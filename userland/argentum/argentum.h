@@ -930,6 +930,14 @@ public:
 	 * (commit) once. */
 	void setSecure(bool secure);
 	bool isSecure() const;
+
+	/* A field JOINED to a neighbour (a ComboBox's field, which sits under
+	 * the button in the same shape) draws no bezel of its own, so the
+	 * control hosting both can draw ONE outline around them and their
+	 * borders cannot double up. Text, selection and caret are unaffected;
+	 * the host is responsible for the fill behind them. */
+	void setDrawsBezel(bool on);
+	bool drawsBezel() const;
 	void setOnEndEdit(std::function<void(TextField *)> cb);
 	/* caret / selection state (for read-back; caret == anchor and
 	 * no selection when caret == start == end) */

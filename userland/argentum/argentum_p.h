@@ -457,6 +457,7 @@ struct TextField::Impl {
 	unsigned int anchor = 0;	/* selection anchor (byte) */
 	bool selectAll = false;		/* first responder select-all */
 	bool secure = false;		/* S3.2 bullets instead of glyphs */
+	bool bezel = true;		/* false when joined to a neighbour */
 	bool editing = false;		/* S3.2 open edit session */
 	std::function<void(TextField *)> onEndEdit; /* commit callback */
 };

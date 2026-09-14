@@ -402,6 +402,19 @@ toBullets(char *dst, const char *part)
 /* ---- drawing ---------------------------------------------------- */
 
 void
+TextField::setDrawsBezel(bool on)
+{
+	fld_->bezel = on;
+	setNeedsDisplay();
+}
+
+bool
+TextField::drawsBezel() const
+{
+	return fld_->bezel;
+}
+
+void
 TextField::draw(GraphicsContext &g)
 {
 	Application &app = Application::shared();
@@ -411,27 +424,33 @@ TextField::draw(GraphicsContext &g)
 	int w = pxi(f.size.w, ppt);
 	int h = pxi(f.size.h, ppt);
 	Theme::Params p = theme.state(state());
-	int r = pxi(theme.smallRadius(), ppt);
-	int outline = pxi(theme.outline(), ppt);
+	/* The bezel is optional: a field JOINED to a neighbour draws none, so
+	 * the control hosting both owns the shape (see setDrawsBezel). The
+	 * text below is drawn either way. */
+	if (fld_->bezel) {
+		int r = pxi(theme.smallRadius(), ppt);
+		int outline = pxi(theme.outline(), ppt);
+		int o, ri;
 
-	if (outline < 1) {
-		outline = 1;
-	}
-	if (r < 1) {
-		r = 1;
-	}
-	if (r > h / 2) {
-		r = h / 2;
-	}
-	/* bezel: state outline ring + page interior */
-	g.fillRoundedRect(0, 0, (unsigned) w, (unsigned) h,
-			  (unsigned) r, p.outline);
-	int o = outline > h / 2 ? h / 2 : outline;
-	int ri = r > o ? r - o : 0;
+		if (outline < 1) {
+			outline = 1;
+		}
+		if (r < 1) {
+			r = 1;
+		}
+		if (r > h / 2) {
+			r = h / 2;
+		}
+		/* bezel: state outline ring + page interior */
+		g.fillRoundedRect(0, 0, (unsigned) w, (unsigned) h,
+				  (unsigned) r, p.outline);
+		o = outline > h / 2 ? h / 2 : outline;
+		ri = r > o ? r - o : 0;
 
-	g.fillRoundedRect(o, o, (unsigned) (w - 2 * o),
-			  (unsigned) (h - 2 * o), (unsigned) ri,
-			  theme.page());
+		g.fillRoundedRect(o, o, (unsigned) (w - 2 * o),
+				  (unsigned) (h - 2 * o), (unsigned) ri,
+				  theme.page());
+	}
 
 	const char *family = theme.fontFamily();
 	double sizePt = theme.fontSizePt();
