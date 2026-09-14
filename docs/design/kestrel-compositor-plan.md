@@ -104,12 +104,33 @@ the rule the other plans here follow.
   Page Fault at 0xa (reading) x 11112     rip = OsSigHandler (os/osinit.c:138)
   ```
 
-  Xfb exhausts memory with the redirect active — **at 256M AND at 512M**, so
-  it is the redirect's cost (a full-size offscreen pixmap per top-level; the
-  wallpaper alone is 8.3 MB) or a leak in it, **not** the RAM ceiling — and
-  its own signal handler's `xorg_backtrace()` then faults in a loop (a
-  ~70-line dump per fault, ~800k lines), which is what actually kills the
-  desktop: late checks fail, the run takes 496s instead of 113s.
+  Xfb exhausts memory with the redirect active — at 256M AND at 512M — and
+  the reason is **measured, not guessed: it leaks the redirected window's
+  pixmap when the window is destroyed.** Xfb's own `VmRSS` (read from
+  `/System/Processes/4/status`, opening and closing a Widget Zoo window in a
+  loop):
+
+  | | Xfb VmRSS |
+  |---|---|
+  | compositor OFF, at ready | 20,264 kB |
+  | compositor ON, at ready | 28,888 kB (**+8.6 M** = the wallpaper's own pixmap) |
+  | ON, idle for 12s | 28,888 kB — flat |
+  | each app launch + close | **+3,672 kB**, five cycles running |
+
+  3672 kB is the Zoo window's pixmap (1248x744x4 = 3.7 MB) to the kilobyte.
+  So the fixed cost is ONE pixmap, and the leak is one pixmap **per window
+  destroyed** — which is why a long session (`wm_dock` opens and closes
+  dozens: apps, menus, popups) dies while a short one (`smoke_desktop`) does
+  not. The OOM's fault then drives the server into its own signal handler,
+  whose `xorg_backtrace()` faults at 0xa in a loop (a ~70-line dump each,
+  ~800k lines in the log); that cascade is what actually kills the desktop
+  (late checks fail; the run takes 496s instead of 113s).
+
+  **Next slice, precise:** `CompositeRedirectAutomatic` must free the pixmap
+  in the window-destruction path — the `compFreeClientWindow` →
+  `compDestroyWindow` → `FreePixmap` chain in `composite/compalloc.c` /
+  `composite/compwindow.c`. Xfb's **shadow** is the one part of that code
+  which is not upstream, so look there first.
 
   *Acceptance as built:* the claim and redirect exist and are opt-in; with
   the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
