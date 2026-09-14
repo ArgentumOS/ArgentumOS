@@ -95,12 +95,16 @@ If WT-1 turns out to be large, the fallback is recorded in §7.
 
 ### 2.3 Icons
 
-A Finder-like browser wants folder/file icons, and a **default icon theme is
-installed**: `userland/icons` is the freedesktop **Kora** theme — 9,820
-files, **all SVG**, 43 MB, laid out by category (`apps`, `places`,
-`mimetypes`, `devices`, `actions`, `symbolic`, …) × size (`16`, `22`, `24`,
-`scalable`, `scalable@2`, `symbolic`), with an `index.theme` that inherits
-`breeze,hicolor`. It is **untracked** in the tree today.
+A Finder-like browser wants folder/file icons, and the system icon set is
+**Lucide** — `userland/icons/lucide/`, **ISC**, pinned in the `SOURCE.md`
+beside it (`lucide-static` v1.46.0: 2,102 SVGs, 24×24 stroke geometry,
+`currentColor`, 8.4 MB, vendored whole).
+
+It replaced the **Kora** theme that was installed here first, which is
+**GPL-3.0** (its SVGs carry no licence metadata; upstream `bikass/kora` is
+GPLv3). `self-hosting-packages.md` §6 blocks copyleft — "each gap was closed
+by finding the permissive member, never by accepting GPL" — so Kora is not
+adopted, and Lucide is recorded in §6 as adopted *data*.
 
 **Decided (D14): the SVGs are the SOURCE and rasters are generated from
 them ahead of time** — BMP for v1, and PNG once a decoder exists. So:
@@ -440,13 +444,11 @@ Per §3.3, a later addition. Not sliced here.
 
 ## 6. Open questions
 
-- **Q-W11 — the source theme's size in the tree.** `userland/icons` is
-  43 MB of SVG and untracked, and D14 makes it a *source*: whatever is
-  committed has to be everything the generator needs, or the generated
-  BMPs cannot be regenerated (a build that depends on an untracked
-  directory is not reproducible). Pruning to the categories the OS ships —
-  `apps`, `places`, `mimetypes`, `devices`, `actions`, `symbolic` — is the
-  obvious reduction. Decide when the generator lands, i.e. with W2.
+- **Q-W11 — RESOLVED: the set is tracked whole.** Kora is not tracked at
+  all (GPL-3.0). Lucide is, and at 8.4 MB for 2,102 SVGs there is nothing
+  to gain by pruning — D14 sizes down the generator's *output*, not the
+  source. Vendoring the whole set also means a new icon needs no
+  regeneration pass, which is why the flat upstream layout is kept.
 - **Q-W6 — the permission prompt path.** Not a question for the user but
   for the tree: W7's failures must reach whatever the privilege model
   defines. The design corpus names the ACTORS and no prompt UI — the

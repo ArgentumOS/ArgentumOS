@@ -186,6 +186,18 @@ a snapshot:
 4. The check is symmetric: a package is only *adopted for the system*
    when its on-FNX rebuild path is complete and recorded.
 
+**Icon set (2026-09)**: **Lucide**, pinned at the version in
+`userland/icons/lucide/SOURCE.md` (from the `lucide-static` npm package,
+v1.46.0), **ISC** — the permissive replacement for the **GPL-3.0 Kora**
+theme that was first installed here and is **not adopted**, for exactly the
+reason this section exists (Kora's SVGs carry no licence metadata; upstream
+`bikass/kora` is GPLv3). Adopted as *data*: 2,102 SVGs, no library, so there
+is no on-FNX rebuild of the set — the entry that matters is the opposite
+one: **the OS reads pre-rendered BMP crops, not the SVGs**
+(`docs/design/workspace-plan.md` D14), so no SVG parser and no raster decoder
+is a runtime dependency, and the generator is a host-side maintenance step.
+Regenerating = re-run that step against the pinned version.
+
 **Text stack (2026-09)**: fontconfig's stock build synthesizes
 `src/fcobjshash.h` from `fcobjshash.gperf.h` + `fcobjs.h` via
 cpp/sed/awk + **gperf (GPLv3 - blocked)**. **CLOSED by
