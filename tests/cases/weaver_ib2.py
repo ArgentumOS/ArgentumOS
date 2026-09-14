@@ -32,6 +32,9 @@ BAND_H = 20
 MANAGE = (r"KESTREL: manage 0x[0-9a-f]+ 'Weaver' frame=0x[0-9a-f]+ "
           r"at (\d+),(\d+) (\d+)x(\d+)")
 WINDOW = r"WEAVER: window 0x[0-9a-f]+ (\d+)x(\d+) ppt=([0-9.]+)"
+LAYOUT = re.compile(
+    r"WEAVER: layout window=[\d.]+x[\d.]+ "
+    r"canvas=([\d.]+),([\d.]+) ([\d.]+)x([\d.]+)")
 
 
 class Case(BaseCase):
@@ -125,15 +128,23 @@ class Case(BaseCase):
             fx, fy = int(wm.group(1)), int(wm.group(2))
             wl = re.search(WINDOW, session.log_text())
             ppt = float(wl.group(3)) if wl else (4.0 / 3.0)
+            lo = LAYOUT.search(session.log_text())
+            canvas_x = float(lo.group(1)) if lo else 0.0
+            canvas_y = float(lo.group(2)) if lo else 0.0
+            canvas_h = float(lo.group(4)) if lo else 0.0
 
-            # the moved Button: pt 30,80 90x24 -> centre pt (75, 92)
-            bx = fx + FRAME_PX + int(round(75 * ppt))
-            by = fy + BAND_H + int(round(92 * ppt))
+            # the moved Button: doc pt 30,80 90x24 -> centre (75, 92);
+            # the canvas sits inside the chrome at (canvas_x, canvas_y)
+            bx = fx + FRAME_PX + int(round((canvas_x + 75) * ppt))
+            by = fy + BAND_H + int(round((canvas_y + 92) * ppt))
             shot = session.shot("weaver-show")
 
-            # the window's own background, sampled away from every control
-            bg = shot.px(fx + FRAME_PX + int(round(5 * ppt)),
-                         fy + BAND_H + int(round(200 * ppt)))
+            # the window's own background, sampled in the empty centre
+            # area below the canvas (inside the window, outside the chrome)
+            bg = shot.px(fx + FRAME_PX
+                         + int(round((canvas_x + 10) * ppt)),
+                         fy + BAND_H
+                         + int(round((canvas_y + canvas_h + 40) * ppt)))
             changed = 0
             for y in range(by - 9, by + 10):
                 for x in range(bx - 9, bx + 10):

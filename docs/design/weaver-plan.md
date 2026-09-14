@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **COMPLETE (2026-09).** IB0–IB7 **DONE** — Weaver v1 is fully landed. A visual editor for Argentum UIKit
+Status: **COMPLETE (2026-09).** IB0–IB7 **DONE**, and the visible editor layout (palette/outline/inspector chrome) is landed. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -397,8 +397,7 @@ need input, which §8a addresses directly.
   title logs `set greeting.text = "Hello, FNX" (live reads back "Hello, FNX")`;
   the saved file carries `text = "Hello, FNX"`; and after reload the
   enumeration reads the new title. The visible inspector CHROME (D13's
-  Box+Label+TextField region) is deferred: the acceptance needs the logic, not
-  the chrome.
+  Box+Label+TextField region) is landed by the post-IB7 layout slice below.
 - **IB5 — palette and hierarchy. DONE (2026-09).** Landed as the editor's
   palette and outline LOGIC, driven scripted like IB2–IB4: `--palette` lists
   the class registry (the catalog a drag starts from); `--add <class>` appends
@@ -410,8 +409,9 @@ need input, which §8a addresses directly.
   weaver_ib5.py`, 11/11: selecting the root, adding a Button lands in the
   saved document as `child2` with `class = "Button"` (two Buttons total), the
   outline lists the four nodes, and selecting `okButton` in the outline logs
-  both lines. The visual hosts (TableView palette / staged OutlineView) remain
-  window-layout work; the acceptance needs the state, not the chrome.
+  both lines. The visual hosts (TableView palette / an indented Label outline;
+  OutlineView itself remains staged) are landed by the post-IB7 layout slice
+  below.
 - **IB6 — outlets and the app-resource path. DONE (2026-09).** Landed as the
   **Wren** sample bundle (`userland/apps/wren/`, `/Applications/Wren.app`): its
   interface ships as `Resources/Interface.conf` (D10), the payload finds it
@@ -436,6 +436,18 @@ need input, which §8a addresses directly.
   editor processes in show mode log two different document paths. Two windows
   are two processes in v1 — the editor is single-document per process; an
   in-process multi-document editor is a later refinement.
+- **Post-IB7 — the visible editor layout (D13/§6). DONE (2026-09).** `--show`
+  now lays out a real editor window: a **palette** (titled Box + TableView of
+  the registry), an **outline** (titled Box + indented Labels; OutlineView
+  itself stays staged), the **canvas** (the live document tree inside a
+  `canvasHost` at the centre, still non-hit-testable per D12), and the
+  **inspector** (titled Box + Label/TextField rows filled through the property
+  table for the selection, defaulting to the first child). The editor logs
+  `WEAVER: layout …` so gates derive geometry from the log; real mouse events
+  convert content→document coordinates through the canvas origin.
+  `tests/cases/weaver_layout.py`, 8/8: all four regions are drawn (non-
+  background pixels in each), and the IB2 pixel check now accounts for the
+  canvas offset. Full Weaver suite: 9/9 cases, 100/100 checks.
 
 ## 8a. How the acceptances will be driven (from the record)
 

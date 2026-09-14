@@ -213,6 +213,65 @@ public:
 	void draw(GraphicsContext &g) override;
 };
 
+/* ---- the visible editor layout (the chrome, D13/§6) ---- */
+
+static const double SIDE_W = 180;	/* palette + outline column (pt) */
+static const double INSP_W = 240;	/* inspector column (pt) */
+static const double CHROME_GAP = 20;
+static const double CHROME_TOP = 20;
+static const double PAL_H = 220;	/* palette box height (pt) */
+static const double CHROME_MIN_H = 520;
+
+static void
+layoutSizes(const InterfaceNode *r, double *winW, double *winH)
+{
+	double rootH = r ? r->frameH() : 0;
+
+	*winW = SIDE_W + CHROME_GAP + (r ? r->frameW() : 0) + CHROME_GAP
+		+ INSP_W;
+	*winH = (rootH + 2 * CHROME_TOP) > CHROME_MIN_H
+		? (rootH + 2 * CHROME_TOP) : CHROME_MIN_H;
+}
+
+/* the palette's rows are the class registry (D5) */
+class PaletteSource : public TableViewDataSource {
+public:
+	int rowCount() const override
+	{
+		return interfaceClassCount();
+	}
+
+	const char *cellText(int row, int) const override
+	{
+		const InterfaceClass *c = interfaceClassAt(row);
+
+		return c ? c->name : "";
+	}
+};
+
+/* the outline's rows are indented Labels (OutlineView stays staged) */
+static void
+outlineInto(View *rows, const InterfaceNode *n, int depth, double *y)
+{
+	double rowH = 22;
+	Label *row = new Label();
+
+	row->setFrame(Rect{ { depth * 12.0 + 4.0, *y },
+		{ SIDE_W - 20 - depth * 12.0, rowH } });
+	std::string text = n->className();
+
+	if (n->identifier()[0]) {
+		text += " ";
+		text += n->identifier();
+	}
+	row->setText(text.c_str());
+	rows->addSubview(row);
+	*y += rowH;
+	for (int i = 0; i < n->childCount(); i++) {
+		outlineInto(rows, n->childAt(i), depth + 1, y);
+	}
+}
+
 enum class GestureKind : int { None, Move, Resize };
 
 class Editor {
@@ -227,6 +286,19 @@ public:
 	EditorSurface *surface = nullptr;
 	View *canvas = nullptr;
 	EditorOverlay *overlay = nullptr;
+
+	/* the visible layout: the document canvas lives inside a HOST at an
+	 * offset from the content origin; the sidebars sit beside it. chrome_
+	 * keeps the heap views alive (the toolkit tree is non-owning). */
+	View *canvasHost = nullptr;
+	Point canvasOrigin = { 0, 0 };
+	std::vector<View *> chrome_;
+
+	/* content-pt -> document-pt (real mouse events arrive in content pt) */
+	Point contentToDoc(const Point &p) const
+	{
+		return { p.x - canvasOrigin.x, p.y - canvasOrigin.y };
+	}
 
 	/* state mode: the live instances still exist (display-free, like the
 	 * IB1/IB2 probes), so the inspector can read and write the CANVAS even
@@ -1028,14 +1100,180 @@ public:
 			v->setFrame(r);
 		}
 	}
+
+	/* ---- the visible chrome (D13/§6): palette, outline, inspector ---- */
+
+	void populateOutline(View *rows)
+	{
+		double y = 0;
+
+		outlineInto(rows, doc->root(), 0, &y);
+	}
+
+	void populateInspector(View *insp)
+	{
+		InterfaceNode *n = selectedNode();
+
+		/* nothing selected: show the first child so the panel is never
+		 * empty on launch */
+		if (!n && doc->root() && doc->root()->childCount() > 0) {
+			selectNode(doc->root()->childAt(0));
+			n = selectedNode();
+		}
+		if (!n) {
+			return;
+		}
+		const char *id = n->identifier()[0] ? n->identifier()
+						   : n->className();
+		double y = 0;
+		double rowH = 26;
+
+		Label *head = new Label();
+
+		head->setFrame(Rect{ { 0, y }, { INSP_W - 16, 20 } });
+		head->setText((std::string(n->className()) + " " + id).c_str());
+		insp->addSubview(head);
+		y += 26;
+
+		int count = interfacePropertyCount(n->className());
+
+		for (int i = 0; i < count; i++) {
+			const InterfaceProperty *p =
+				interfacePropertyAt(n->className(), i);
+
+			if (!p) {
+				continue;
+			}
+			Label *name = new Label();
+
+			name->setFrame(Rect{ { 0, y }, { 80, 24 } });
+			name->setText(p->name);
+			insp->addSubview(name);
+
+			TextField *field = new TextField();
+
+			field->setFrame(Rect{ { 84, y },
+				{ INSP_W - 16 - 84, 24 } });
+			View *live = canvas ? canvas->viewWithIdentifier(id)
+					    : nullptr;
+
+			if (live && p->get) {
+				InterfaceNode::Property v;
+				char buf[64];
+
+				v.kind = p->kind;
+				p->get(live, v);
+				switch (v.kind) {
+				case InterfaceNode::Kind::String:
+					field->setValue(v.text.c_str());
+					break;
+				case InterfaceNode::Kind::Number:
+					std::snprintf(buf, sizeof(buf), "%g",
+						      v.number);
+					field->setValue(buf);
+					break;
+				case InterfaceNode::Kind::Bool:
+					field->setValue(v.boolean ? "true"
+								  : "false");
+					break;
+				}
+			} else {
+				field->setValue("");
+			}
+			insp->addSubview(field);
+			y += rowH;
+		}
+	}
+
+	void buildChrome()
+	{
+		InterfaceNode *r = doc->root();
+
+		if (!r) {
+			return;
+		}
+		double rootW = r->frameW();
+		double rootH = r->frameH();
+		double winW = 0;
+		double winH = 0;
+
+		layoutSizes(r, &winW, &winH);
+		canvasOrigin = Point{ SIDE_W + CHROME_GAP, CHROME_TOP };
+
+		/* palette (left top): a titled Box with one TableView child */
+		Box *paletteBox = new Box();
+
+		paletteBox->setTitle("Palette");
+		paletteBox->setLayout(BoxLayout::Column);
+		paletteBox->setFrame(Rect{ { 0, 0 }, { SIDE_W, PAL_H } });
+		surface->addSubview(paletteBox);
+		chrome_.push_back(paletteBox);
+
+		TableView *palette = new TableView(new PaletteSource());
+		const char *cols[1] = { "Control" };
+
+		palette->setColumns(cols, 1);
+		palette->setFrame(Rect{ { 0, 0 },
+			{ SIDE_W - 16, PAL_H - 44 } });
+		paletteBox->addSubview(palette);
+		chrome_.push_back(palette);
+
+		/* outline (left bottom): a titled Box with one rows View */
+		double outY = PAL_H + 8;
+
+		Box *outlineBox = new Box();
+
+		outlineBox->setTitle("Outline");
+		outlineBox->setLayout(BoxLayout::Column);
+		outlineBox->setFrame(Rect{ { 0, outY },
+			{ SIDE_W, winH - outY } });
+		surface->addSubview(outlineBox);
+		chrome_.push_back(outlineBox);
+
+		View *rows = new View();
+
+		rows->setFrame(Rect{ { 0, 0 },
+			{ SIDE_W - 16, winH - outY - 44 } });
+		outlineBox->addSubview(rows);
+		chrome_.push_back(rows);
+		populateOutline(rows);
+
+		/* inspector (right): a titled Box with Label/TextField rows */
+		double inspX = SIDE_W + CHROME_GAP + rootW + CHROME_GAP;
+
+		Box *inspectorBox = new Box();
+
+		inspectorBox->setTitle("Inspector");
+		inspectorBox->setLayout(BoxLayout::Column);
+		inspectorBox->setFrame(Rect{ { inspX, 0 }, { INSP_W, winH } });
+		surface->addSubview(inspectorBox);
+		chrome_.push_back(inspectorBox);
+
+		View *insp = new View();
+
+		insp->setFrame(Rect{ { 0, 0 }, { INSP_W - 16, winH - 44 } });
+		inspectorBox->addSubview(insp);
+		chrome_.push_back(insp);
+		populateInspector(insp);
+
+		std::printf("WEAVER: layout window=%gx%g canvas=%g,%g %gx%g "
+			    "palette=%g,%g %gx%g outline=%g,%g %gx%g "
+			    "inspector=%g,%g %gx%g\n",
+			    winW, winH, canvasOrigin.x, canvasOrigin.y,
+			    rootW, rootH, 0.0, 0.0, SIDE_W, PAL_H,
+			    0.0, outY, SIDE_W, winH - outY,
+			    inspX, 0.0, INSP_W, winH);
+		std::fflush(stdout);
+	}
 };
 
 void
 EditorSurface::mouseDown(const MouseEvent &e)
 {
-	/* e.x/e.y are already view-local POINTS (window.cpp dispatch) */
+	/* e.x/e.y are view-local POINTS in CONTENT space (window.cpp
+	 * dispatch); the gesture engine speaks DOCUMENT coordinates */
 	if (editor) {
-		editor->beginGesture(Point{ e.x, e.y });
+		editor->beginGesture(editor->contentToDoc(Point{ e.x, e.y }));
 	}
 }
 
@@ -1043,7 +1281,7 @@ void
 EditorSurface::mouseMoved(const MouseEvent &e)
 {
 	if (editor) {
-		editor->dragTo(Point{ e.x, e.y });
+		editor->dragTo(editor->contentToDoc(Point{ e.x, e.y }));
 	}
 }
 
@@ -1115,15 +1353,18 @@ runDisplay(Editor &ed)
 
 	InterfaceNode *r = ed.doc->root();
 	double ppt = app.pxPerPt();
+	double winW = 0;
+	double winH = 0;
 
 	if (!r) {
 		std::printf("WEAVER: show FAIL (no document)\n");
 		std::fflush(stdout);
 		return 1;
 	}
+	layoutSizes(r, &winW, &winH);
 	if (!w.init("Weaver", 40, 40,
-		    (unsigned) (r->frameW() * ppt + 0.5),
-		    (unsigned) (r->frameH() * ppt + 0.5))) {
+		    (unsigned) (winW * ppt + 0.5),
+		    (unsigned) (winH * ppt + 0.5))) {
 		std::printf("WEAVER: show FAIL (window init)\n");
 		std::fflush(stdout);
 		return 1;
@@ -1131,11 +1372,19 @@ runDisplay(Editor &ed)
 	ed.win = &w;
 	ed.surface = new EditorSurface();
 	ed.surface->editor = &ed;
-	ed.surface->setFrame(Rect{ { 0, 0 }, { r->frameW(), r->frameH() } });
+	ed.surface->setFrame(Rect{ { 0, 0 }, { winW, winH } });
 	w.setContentView(ed.surface);
 
 	std::string why;
-	View *canvas = interfaceBuild(*ed.doc, ed.surface, why);
+	ed.canvasOrigin = Point{ SIDE_W + CHROME_GAP, CHROME_TOP };
+	ed.canvasHost = new View();
+
+	ed.canvasHost->setFrame(Rect{ { ed.canvasOrigin.x, ed.canvasOrigin.y },
+		{ r->frameW(), r->frameH() } });
+	ed.surface->addSubview(ed.canvasHost);
+	ed.chrome_.push_back(ed.canvasHost);
+
+	View *canvas = interfaceBuild(*ed.doc, ed.canvasHost, why);
 
 	if (!canvas) {
 		std::printf("WEAVER: show FAIL (build: %s)\n", why.c_str());
@@ -1143,14 +1392,17 @@ runDisplay(Editor &ed)
 		return 1;
 	}
 	ed.canvas = canvas;
-	canvas->setHitTestEnabled(false);	/* D12: WEAVER owns the press */
+	ed.canvasHost->setHitTestEnabled(false); /* D12: WEAVER owns it */
 
 	/* the overlay draws on top of the canvas and never claims a press */
 	ed.overlay = new EditorOverlay();
 	ed.overlay->editor = &ed;
-	ed.overlay->setFrame(Rect{ { 0, 0 }, { r->frameW(), r->frameH() } });
+	ed.overlay->setFrame(ed.canvasHost->frame());
 	ed.overlay->setHitTestEnabled(false);
 	ed.surface->addSubview(ed.overlay);
+
+	/* the visible chrome: palette + outline + inspector */
+	ed.buildChrome();
 
 	w.show();
 	std::printf("WEAVER: window 0x%lx %ux%u ppt=%g doc=%s\n", w.xid(),
