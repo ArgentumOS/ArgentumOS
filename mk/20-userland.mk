@@ -530,7 +530,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# <dir>/<theme>/cursors/<name>, which is the layout libXcursor searches
 	# under XCURSOR_PATH. Kestrel points XCURSOR_PATH at this and defines
 	# the cursor on the root window.
+	# Idempotent ON PURPOSE: `cp -a src dst` copies src INTO dst when dst
+	# is already a directory, so a second make run nested a whole duplicate
+	# theme at cursors/cursors/ (~11.7MB, 146 entries) and pushed the tree
+	# past the 64MB image. Clear the destination first.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Icons/default"
+	@rm -rf "$(ROOTFS64)/System/Shared/Icons/default/cursors"
 	@cp -a userland/cursors \
 		"$(ROOTFS64)/System/Shared/Icons/default/cursors"
 	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts" \
