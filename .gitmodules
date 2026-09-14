@@ -41,3 +41,6 @@
 [submodule "third_party/x11/libXfixes"]
 	path = third_party/x11/libXfixes
 	url = https://gitlab.freedesktop.org/xorg/lib/libXfixes.git
+[submodule "third_party/x11/libXcomposite"]
+	path = third_party/x11/libXcomposite
+	url = https://gitlab.freedesktop.org/xorg/lib/libXcomposite.git

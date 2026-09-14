@@ -137,6 +137,13 @@ au Xfixes libXfixes $SHARED $STATIC
 log libXcursor
 au Xcursor libXcursor $SHARED $STATIC
 
+# libXcomposite: the Xlib wrapper for the Composite extension. Vendored so
+# the compositor's Composite calls are ordinary Xlib alongside XRender -
+# reaching Composite through xcb means hand-flushing around Xlib's buffer
+# (or the request stream reorders; measured once the hard way).
+log libXcomposite
+au Xcomposite libXcomposite $SHARED $STATIC
+
 log libxkbfile
 mes libxkbfile libxkbfile
 log pixman
@@ -158,7 +165,8 @@ echo X11-SHARED-DONE
 ls -l "$P"/lib/libX11.so* "$P"/lib/libxcb.so* "$P"/lib/libXau.so* \
 	"$P"/lib/libXdmcp.so* "$P"/lib/libxkbfile.so* "$P"/lib/libpixman-1.so* \
 	"$P"/lib/libXfont2.so* "$P"/lib/libfontenc.so* "$P"/lib/libz.so* \
-	"$P"/lib/libXrender.so* "$P"/lib/libXcursor.so* "$P"/lib/libXfixes.so* 2>&1
+	"$P"/lib/libXrender.so* "$P"/lib/libXcursor.so* "$P"/lib/libXfixes.so* \
+	"$P"/lib/libXcomposite.so* 2>&1
 
 # ================= text stack (Argentum UIKit, docs/design/argentum-uikit-plan.md) =====
 # fontconfig -> HarfBuzz -> FreeType (+ libpng/expat leaves). Same

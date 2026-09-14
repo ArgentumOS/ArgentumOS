@@ -86,6 +86,9 @@ the rule the other plans here follow.
      the dock, the app was never launched, and the desktop looked half-dead.
   3. **xcb on Xlib's connection must be preceded by `XSync`** — raw requests
      otherwise overtake the ordinary requests still sitting in Xlib's buffer.
+     `libXcomposite` was then vendored so the compositor's Composite calls are
+     ordinary Xlib alongside XRender, which retires this hazard: C2 mixes the
+     two in one code path, and Kestrel no longer links xcb at all.
 
   Nothing of C0 is thrown away: the take, the input shape and the unmap are
   the first three things C2 needs.
@@ -102,8 +105,9 @@ the rule the other plans here follow.
   stay green.
 - **C3 — bound the composite by damage.** Subscribe to DAMAGE on each
   redirected window and composite the union of the damaged rects rather than
-  the screen. Needs a DAMAGE client path: vendor `libXdamage`, or drive
-  `libxcb-damage` (already staged). *Acceptance:* the guest logs the
+  the screen. Needs a DAMAGE client path: vendoring `libXdamage` is the
+  consistent choice — it is the same Xlib-vs-xcb argument that got
+  `libXcomposite` vendored. *Acceptance:* the guest logs the
   composited area per frame, that area is far below full-screen during a
   drag, the sampled pixels are unchanged, and the per-frame cost drops
   against C2.
@@ -125,8 +129,8 @@ the rule the other plans here follow.
 |---|---|
 | `userland/kestrel/kestrel.cpp` | claim the selection + redirect at startup; call the compositor on damage (it already owns the frame list) |
 | `userland/kestrel/compositor.cpp` (new) | the overlay, the per-child pixmap/Picture cache, the composite; later the effects |
-| `mk/20-userland.mk` | link Kestrel against `-lXrender` (and `-lxcb-damage` or `-lXdamage` for C3) |
-| `tools/x11-shared-build.sh`, `.gitmodules` | only if `libXdamage` is vendored for C3 |
+| `mk/20-userland.mk` | link Kestrel against `-lXcomposite -lXrender` (and `-lXdamage` for C3); stage the themes/lib |
+| `tools/x11-shared-build.sh`, `.gitmodules` | `libXcomposite` (done), `libXdamage` still to vendor for C3 |
 | `tests/cases/` | the C0/C4/C5 pixel checks and the C6 whole-desktop case |
 
 ## 5. Risks, each with the experiment that settles it

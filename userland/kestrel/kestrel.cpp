@@ -29,12 +29,10 @@
 #include <libconfig.h>		/* S5.2d: read a bundle's manifest */
 
 #include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>	/* XGetXCBConnection (the xcb Composite bindings) */
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 
-#include <xcb/xcb.h>
-#include <xcb/composite.h>
+#include <X11/extensions/Xcomposite.h>	/* the overlay window (Xlib, not xcb) */
 
 #include <X11/extensions/shape.h>	/* the overlay's input region */
 #include <X11/Xcursor/Xcursor.h>	/* the cursor theme */
@@ -2420,73 +2418,44 @@ static ::Window gOverlay = 0;
 static void
 overlayInit(void)
 {
-	xcb_connection_t *c;
-	xcb_composite_get_overlay_window_reply_t *r;
 	::Window ov;
-	GC gc;
-	/* a colour no theme in this tree uses, at a place derived from the
-	 * screen (the gate is told where, it never assumes) */
-	const unsigned long mark = 0xff00ff;
-	int mw = 16, mh = 16;
-	int mx = screenW / 3, my = screenH * 2 / 3;
 
-	/* Xlib and xcb share this connection, and Xlib BUFFERS: a raw xcb
-	 * request written now would reach the server BEFORE the ordinary
-	 * requests still sitting in Xlib's buffer, reordering the request
-	 * stream. (Measured the hard way: without this sync the WM stopped
-	 * managing windows — the app was never framed and the desktop went
-	 * half-dead.) Flush Xlib first; every later xcb call in the compositor
-	 * owes the same. */
-	XSync(dpy, False);
-	c = (xcb_connection_t *) XGetXCBConnection(dpy);
-	if (!c) {
-		printf("KESTREL: overlay UNAVAILABLE (no xcb connection)\n");
-		fflush(stdout);
-		return;
-	}
-	r = xcb_composite_get_overlay_window_reply(
-		c, xcb_composite_get_overlay_window(c, root), NULL);
-	if (!r || !r->overlay_win) {
-		if (r) {
-			free(r);
-		}
+	/* Xlib, not xcb. The compositor mixes this with XRender - also Xlib -
+	 * in one code path, and a raw xcb request on Xlib's connection has to
+	 * be flushed around by hand or it overtakes the ordinary requests
+	 * still sitting in Xlib's buffer. (Measured once, the hard way: with
+	 * the xcb call unsynced the WM stopped managing windows and the
+	 * desktop went half-dead.) libXcomposite is vendored so that all of
+	 * it is ordinary Xlib. */
+	ov = XCompositeGetOverlayWindow(dpy, root);
+	if (!ov) {
 		printf("KESTREL: overlay UNAVAILABLE (GetOverlayWindow gave no "
-		       "window)\n");
+		       "window - is another compositor running?)\n");
 		fflush(stdout);
 		return;
 	}
-	ov = (::Window) r->overlay_win;
-	free(r);
 	gOverlay = ov;
-	/* the server creates it; the CM maps and raises it. Raising is belt
-	 * and braces — the overlay is above everything by policy. */
 	/* IT IS NOT MAPPED YET, and that is the finding C0 bought.
 	 *
-	 * An X window is not a transparent layer. Mapping the overlay hides
-	 * the entire desktop behind its contents — there is nothing to see
-	 * through until the compositor paints the screen into it, which is
-	 * C2. Measured: with the overlay mapped, the menubar's ink vanished
-	 * from the framebuffer and every desktop pixel check failed, while
-	 * the WM itself was perfectly healthy.
+	 * An X window is not a transparent layer. The SERVER maps the overlay
+	 * as part of handing it over, and from that moment the whole desktop
+	 * is hidden behind its contents - there is nothing to see through
+	 * until the compositor paints the screen into it, which is C2.
+	 * Measured: with the overlay up, the menubar's ink vanished from the
+	 * framebuffer and every desktop pixel check failed, while the WM
+	 * itself was perfectly healthy. So it is put away again here.
 	 *
-	 * Two more things measured here and needed the moment it IS mapped:
+	 * Two more things, both needed the moment it IS mapped:
 	 *  - the overlay MUST NOT EAT INPUT. It covers the screen and sits
 	 *    above every window, so with a normal input shape every click
 	 *    lands on it: the dock's tile click never reached the dock, the
 	 *    app was never launched, and the desktop looked half-dead. An
 	 *    EMPTY input region lets everything through.
-	 *  - the xcb calls below share this Xlib connection, so Xlib's
-	 *    buffer is flushed first (see the XSync above). */
+	 *  - C2 must map AND paint it in the same breath. */
 	XShapeCombineRectangles(dpy, ov, ShapeInput, 0, 0, NULL, 0, ShapeSet,
 				Unsorted);
-	/* The SERVER maps it as part of taking it, so the desktop is hidden
-	 * from this moment whether we like it or not — that is measured, not
-	 * assumed: with the overlay up, the menubar's ink vanished from the
-	 * framebuffer and every desktop pixel check failed. Put it away again
-	 * until C2 can paint the screen into it. */
 	XUnmapWindow(dpy, ov);
 	XSync(dpy, False);
-	(void) gc; (void) mark; (void) mw; (void) mh; (void) mx; (void) my;
 	printf("KESTREL: overlay 0x%lx taken (input-transparent, unmapped until "
 	       "the compositor paints it)\n", (unsigned long) ov);
 	fflush(stdout);

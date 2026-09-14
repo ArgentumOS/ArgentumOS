@@ -325,7 +325,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/kestrel/kestrel.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-lX11-xcb -lxcb -lxcb-composite -lXext -lXcursor \
+		-lXcomposite -lXext -lXcursor \
 		-o "$(ROOTFS64)/System/Tools/kestrel"
 	# krel_a/b: S4.1a managed probes (mapped under Kestrel)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
@@ -551,7 +551,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
 		libpixman-1.so libXfont2.so libfontenc.so libz.so libXext.so \
 		libX11-xcb.so libxcb-composite.so libXrender.so \
-		libXcursor.so libXfixes.so; do \
+		libXcursor.so libXfixes.so libXcomposite.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
