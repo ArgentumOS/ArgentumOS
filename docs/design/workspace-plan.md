@@ -95,14 +95,21 @@ If WT-1 turns out to be large, the fallback is recorded in §7.
 
 ### 2.3 Icons
 
-A Finder-like browser wants folder/file icons. v1 does **not** need a
-decoder: `System/Shared/Icons/` exists (it holds the interim cursor
-theme) and Kestrel already draws **vector tiles** for the dock, so the
-first cut draws a folder/file tile with the same idiom, and a real icon
-story (per-file icons from a bundle's `Resources/icons/`, per
-`app-model.md` §3) is a later slice. Bundled icons are PNG, and
-initial-release already defers PNG to "when a decoder exists" — so no
-decoder is on this plan's critical path.
+A Finder-like browser wants folder/file icons, and a **default icon theme is
+installed**: `userland/icons` is the freedesktop **Kora** theme — 9,820
+files, **all SVG**, 43 MB, laid out by category (`apps`, `places`,
+`mimetypes`, `devices`, `actions`, `symbolic`, …) × size (`16`, `22`, `24`,
+`scalable`, `scalable@2`, `symbolic`), with an `index.theme` that inherits
+`breeze,hicolor`. It is **untracked** in the tree today.
+
+That changes the *kind* of the problem, and it is not a decoder: the files
+are vector, so the question is an **SVG renderer** (Q-W10) — and the obvious
+one, librsvg, is **LGPL, which this project blocks** (`self-hosting-packages.md`
+§6 requires naming a permissive replacement). So D5 still holds for *raster*
+formats — PNG wallpapers and bundled icon files keep waiting — and v1 draws
+**vector tiles** the way Kestrel's chrome already does. Real theme icons
+arrive with whatever Q-W10 settles, which is also when the theme's size in
+the tree (Q-W11) has to be answered.
 
 ## 3. The design
 
@@ -381,6 +388,9 @@ Per §3.3, a later addition. Not sliced here.
 - **D4 — v1 is browse + open; operations are W7, in this plan** (the
   recorded answer).
 - **D5 — No image decoder on the critical path** (§2.3); v1 draws tiles.
+  **Amended 2026-09:** the installed theme is SVG, so this guarantee covers
+  *raster* formats only — the icon question is now an SVG renderer (Q-W10),
+  and librsvg is out on licence grounds.
 - **D6 — A config domain follows its owner** (§3.0): the dock's keys move
   to `system.kestrel`, `system.workspace` keeps the Workspace app's own
   (`wallpaper`, `file-manager.*`). One app per domain file.
@@ -413,6 +423,23 @@ Per §3.3, a later addition. Not sliced here.
 
 ## 6. Open questions
 
+- **Q-W10 — how SVG icons are rendered.** The theme is 9,820 SVGs (§2.3),
+  so something must turn them into pixels, and the licence does the
+  deciding: a **first-party SVG-subset renderer** emitting the toolkit's
+  existing vector primitives (doctrine-clean — the toolkit already draws
+  vector chrome, so this is "parse a subset, emit drawing ops");
+  **build-time rasterization** (needs a host SVG tool, librsvg is LGPL, so
+  it would have to be written anyway — which collapses into the first
+  option); or **shipping a pre-rasterised subset** (binary assets plus the
+  tool question again). Decide when an icon is first needed — W2's rows —
+  not before.
+- **Q-W11 — the theme's size in the tree.** `userland/icons` is 43 MB and
+  untracked. Committing it whole, pruning to the categories and sizes the
+  OS ships (`apps`, `places`, `mimetypes`, `devices`, and the symbolic
+  set), or staging it into the image from outside git are all defensible;
+  the reproducibility rule argues against the last, since a build that
+  silently depends on an untracked directory cannot be rebuilt. Decide
+  with Q-W10.
 - **Q-W6 — the permission prompt path.** Not a question for the user but
   for the tree: W7's failures must reach whatever the privilege model
   defines. The design corpus names the ACTORS and no prompt UI — the
