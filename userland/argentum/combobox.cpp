@@ -72,11 +72,27 @@ ComboBox::setItems(const char *const *items, int count)
 
 		if (!items[i])
 			continue;
-		/* the item's ID is its index: that is what the popup hands back,
-		 * and it keeps the mapping in one place */
+		/* the item's id is its index PLUS ONE, because 0 is
+		 * MenuItem's "no id" sentinel: Menu::addItem() hands any item
+		 * still sitting at 0 a process-unique id, so an item that
+		 * wants to be index 0 would come back from the popup
+		 * carrying that generated id instead — which is precisely how
+		 * picking the TOP item left the field blank. */
 		it = new MenuItem(items[i]);
-		it->setId((int) impl_->items.size());
+		it->setId((int) impl_->items.size() + 1);
 		impl_->menu->addItem(it);
+		/* Check the id SURVIVED addItem. Losing it makes a pick come home
+		 * unmappable and the field simply stays blank — which is how this
+		 * went wrong the first time. Cheap here, and it says so out loud
+		 * instead of leaving a blank field to explain. */
+		if (it->id() != (int) impl_->items.size() + 1) {
+			std::fprintf(stderr,
+				     "ARGENTUM-COMBO: item %d lost its id "
+				     "(addItem made it %d) — picks will not "
+				     "map back\n",
+				     (int) impl_->items.size(), it->id());
+			std::fflush(stderr);
+		}
 		impl_->owned.push_back(it);
 		impl_->items.push_back(items[i]);
 	}
@@ -180,8 +196,9 @@ ComboBox::openList(const MouseEvent &e)
 		     rootLeftPx, rootBottomPx, minWidthPx);
 	std::fflush(stderr);
 	menuPopUp(impl_->menu, rootLeftPx, rootBottomPx,
-		  [this](int itemId) { pickItem(itemId); }, nullptr, nullptr,
-		  minWidthPx);
+		  /* id - 1: see the sentinel note in setItems */
+		  [this](int itemId) { pickItem(itemId - 1); }, nullptr,
+		  nullptr, minWidthPx);
 }
 
 void
@@ -201,24 +218,77 @@ void
 ComboBox::draw(GraphicsContext &g)
 {
 	Application &app = Application::shared();
-	Theme &t = app.theme();
+	Theme &theme = app.theme();
 	double ppt = app.pxPerPt();
 	Rect f = frame();
+	ControlState st = state();
+	Theme::Params p = theme.state(st);
 	int w = (int) (f.size.w * ppt + 0.5);
 	int h = (int) (f.size.h * ppt + 0.5);
-	int cx = w - (int) (kChevronW * ppt) / 2;
-	int cy = h / 2;
-	int rows = 5;
+	int bx = w - (int) (kChevronW * ppt + 0.5);	/* button's left edge */
+	int bw = w - bx;
+	int r, o, ri;
 
-	if (w <= 0 || h <= 0)
+	if (w <= 0 || h <= 0 || bw <= 0) {
 		return;
-	/* a chevron as stacked bars: 5 rows narrowing by one px each side,
-	 * which reads as a downward mark and needs no font and no path */
-	for (int i = 0; i < rows; i++) {
-		int half = (rows - i) + 1;
+	}
+	/* ---- the chevron zone: a standard push button's chrome ----
+	 * The same outline ring + state fill gradient as Button::Push,
+	 * derived from the theme the same way and clamped the same way, so
+	 * it tracks the theme alongside a real button. */
+	r = (int) (theme.baseRadius() * ppt + 0.5);
+	if (r < 1) {
+		r = 1;
+	}
+	if (r > h / 2) {
+		r = h / 2;
+	}
+	o = (int) (theme.outline() * ppt + 0.5);
+	if (o < 1) {
+		o = 1;
+	}
+	if (o > h / 2) {
+		o = h / 2;
+	}
+	ri = r > o ? r - o : 0;
 
-		g.fillRect((unsigned) (cx - half), (unsigned) (cy - rows + i * 2),
-			   (unsigned) (half * 2), 2, t.text());
+	g.fillRoundedRect(bx, 0, (unsigned) bw, (unsigned) h, (unsigned) r,
+			  p.outline);
+	if (bw - 2 * o > 0 && h - 2 * o > 0) {
+		g.fillRoundedGradient(bx + o, o, (unsigned) (bw - 2 * o),
+				      (unsigned) (h - 2 * o), (unsigned) ri,
+				      p.fillTop, p.fillBottom);
+	}
+
+	/* ... except that its LEFT corners are square, with the rounding kept
+	 * on the right: this control is something dropping off the field, not
+	 * a button standing on its own. Overpaint the leftmost r px — exactly
+	 * how far both arcs reach (the outer one at r, the inner at
+	 * ri = r - o) — in the outline colour, then restore that strip's fill
+	 * with the SAME gradient. A VERTICAL gradient is what makes this
+	 * work: the strip spans the full height, so its mapping agrees with
+	 * the wide one and no seam shows. */
+	g.fillRect(bx, 0, (unsigned) r, (unsigned) h, p.outline);
+	if (r > o && h - 2 * o > 0) {
+		g.fillLinearGradient(bx + o, o, (unsigned) (r - o),
+				     (unsigned) (h - 2 * o), p.fillTop,
+				     p.fillBottom, true);
+	}
+
+	/* the mark: stacked bars, because the icon story is D14's and no font
+	 * glyph can be relied on (the HIG has hit a missing-glyph case) */
+	{
+		int cx = bx + bw / 2;
+		int cy = h / 2;
+		const int rows = 5;
+
+		for (int i = 0; i < rows; i++) {
+			int half = (rows - i) + 1;
+
+			g.fillRect((unsigned) (cx - half),
+				   (unsigned) (cy - rows + i * 2),
+				   (unsigned) (half * 2), 2, theme.text());
+		}
 	}
 }
 

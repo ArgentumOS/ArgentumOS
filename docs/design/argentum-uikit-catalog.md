@@ -60,7 +60,15 @@ excluded (deprecated in later macOS; no FNX counterpart needed).
 | `NSOutlineView` | `OutlineView` | staged | tree; view-based |
 | `NSCollectionView` | `CollectionView` | staged | grid of items |
 | `NSBrowser` | `Browser` | staged | column browser |
-| `NSComboBox` | `ComboBox` | **DONE (2026-09)** | An editable field with a drop-down list, COMPOSED: a `TextField` (typing, caret and S3's focus traversal come free) + a `Menu` rebuilt on `setItems` (Menu has no remove, only add) shown through the shared popup path. The item's id IS its index. A `PopUpButton` cannot be typed into; this can, and an unlisted value simply has `selectedIndex() == -1`. **The list drops from the FIELD's bottom-left corner and is at minimum the width of the whole control** (the popup takes a width floor, default 0 so the menubar's menus are byte-for-byte unchanged). **A control anchors its popup from the PRESS's `rootXPx`/`rootYPx`** — the field `MouseEvent` gained for the menubar hover fix — so a control needs no window lookup to place a popup. The chevron is stacked vector bars: no font glyph (the HIG has already hit a missing-glyph case) and no path primitive. |
+| `NSComboBox` | `ComboBox` | **DONE (2026-09)** | An editable field with a drop-down list, COMPOSED: a `TextField` (typing, caret and S3's focus traversal come free) + a `Menu` rebuilt on `setItems` (Menu has no remove, only add) shown through the shared popup path. The item's id is its index PLUS ONE — 0 is `MenuItem`'s "no id"
+sentinel, and `Menu::addItem()` hands anything still at 0 a process-unique id, so
+index 0 came back from the popup carrying that generated id and picking the TOP
+item left the field blank. (The next control to build a menu will hit this.) A `PopUpButton` cannot be typed into; this can, and an unlisted value simply has `selectedIndex() == -1`. **The list drops from the FIELD's bottom-left corner and is at minimum the width of the whole control** (the popup takes a width floor, default 0 so the menubar's menus are byte-for-byte unchanged). **A control anchors its popup from the PRESS's `rootXPx`/`rootYPx`** — the field `MouseEvent` gained for the menubar hover fix — so a control needs no window lookup to place a popup. The chevron zone wears a standard push button's chrome (the same ring +
+state fill gradient as `Button::Push`, derived and clamped the same way) except
+that its LEFT corners are square and the rounding stays on the right; the left
+`r` px are overpainted and the strip's fill restored with the same gradient,
+which is sound only because that gradient is vertical. The chevron mark itself
+is stacked vector bars: no font glyph (the HIG has already hit a missing-glyph case) and no path primitive. |
 | `NSTokenField` | `TokenField` | staged | |
 | `NSDatePicker` | `DatePicker` | staged | needs a calendar model |
 | `NSRuleEditor` | `RuleEditor` | staged | |
