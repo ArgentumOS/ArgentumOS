@@ -19,7 +19,7 @@ run files, and configure the machine — all speaking the FSH and the
 
 | App | What it does |
 |---|---|
-| **Workspace** | The desktop shell: dock, wallpaper, and the file manager (§3). Runs at session start; owns the global menubar's system menu. |
+| **Workspace** | The desktop surface (the wallpaper) and the file manager (§3). Runs at session start. The **dock** and the global **menubar** — strip *and* system menu — belong to the window manager (`kestrel`): `docs/design/workspace-plan.md` §3.0. |
 | **Terminal** | A shell in a window (the VT100-class emulator from the GUI milestones; the M4 smoke-test app). |
 | **Editor** | A plain-text editor built on the text view — UTF-8, open/save via the file manager, print-free, keyboard-first. |
 | **Settings** | System Configuration: browses and edits config domains (system/shared/user) through `libconfig`; backs the system menu's "System Configuration" item. |
@@ -118,10 +118,10 @@ An ordinary bundle (`Workspace.app`) launched at login; it paints the
 **desktop surface** (the wallpaper behind all windows, §3.2) and hosts the
 **file manager** (§3.3).
 
-The **dock** (§3.1) and the menubar strip belong to the **window
-manager** (`kestrel`), not to this app: the dock/wallpaper split and the
-config domains it implies are recorded in `docs/design/workspace-plan.md`
-§3.0.
+The **dock** (§3.1) and the **menubar** — the strip *and* its **system
+menu** — belong to the **window manager** (`kestrel`), not to this app: the
+owner split and the config domains it implies are recorded in
+`docs/design/workspace-plan.md` §3.0.
 
 ### 3.1 Dock
 

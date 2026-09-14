@@ -103,7 +103,7 @@ to Workspace.** So the desktop is split by kind, not by app:
 | Piece | Owner | Where it is implemented |
 |---|---|---|
 | Dock (pinned + running tiles, edge placement, work-area inset) | the window manager | Kestrel (S5.2c — `e4a071e`) |
-| Menubar strip, clock, system menu mark | the window manager | Kestrel (S5.2b) |
+| Menubar strip, clock, **system menu** (the WM's own — not an app's) | the window manager | Kestrel (S5.2b) |
 | **Wallpaper** (the desktop surface behind all windows) | **Workspace** | moves out of Kestrel: **W0** |
 | File manager (columns) | Workspace | this plan |
 
@@ -310,13 +310,16 @@ Per §3.3, a later addition. Not sliced here.
   sliced as **W0** (the move) and **D6** (the domain), and the documents
   that said otherwise — `initial-release.md` §3.1's "the session's
   desktop" and the S5.2c record's domain — were corrected with it.
-- **Q-W1' — the menubar's system menu.** `initial-release.md` §3 says
-  Workspace "owns the global menubar's system menu", while the strip is
-  Kestrel's (S5.2b) and the app in front publishes its own bar (S4.2). So
-  either Workspace publishes the system menu the way any app publishes
-  its own — nothing is owed, and this is already true — or the system menu
-  is a WM feature that merely looks like an app menu. Not decided here;
-  the dock/wallpaper split does not settle it either way.
+- **Q-W1' — RESOLVED: the system menu is the window manager's.** The
+  menubar's system menu belongs to the WM, not to Workspace, so
+  `initial-release.md`'s "owns the global menubar's system menu" is
+  corrected (that claim was in the app roster as well as §3).
+  **This ratifies the existing behaviour rather than changing it**:
+  Kestrel draws the strip's system mark and opens its own menu
+  (`KESTREL: system menu open`), and S5.2b recorded the mark as "Kestrel's
+  own desktop menu". Nothing is owed by any app, and the app-front bar
+  (S4.2) is untouched — an app still publishes its OWN menu bar; the
+  system menu is simply not one of them.
 - **Q-W2 — RESOLVED: the Trash tile exists, in the dock.** Decided: a
   Trash icon at the **bottom of the dock, separate from the other icons**.
   That supersedes Q-R1's "no Trash icon" (`initial-release.md` §4), which
