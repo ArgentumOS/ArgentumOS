@@ -13,7 +13,13 @@ rootagfs: userland64 m0clang
 	# (xfbdesk/uitest/zoo/kestrel-root) overwrite it in their own staging
 	# dir, so the demo desktop stays reachable by name (`make run-xfb`).
 	printf 'desktop = "kestrel"\n' > $(ROOTFS64)/System/Configuration/session.conf
-	python3 tools/mkagfs.py $(ROOTFS64) .build/rootagfs.img 64
+	# 64MB stopped being enough when the tree reached ~60MB: the session
+	# then failed to start (WORKSPACE "init failed", KESTREL "no display")
+	# with an image that mkagfs and agfscheck both called good - the volume
+	# was too full to write the LARGEST streams correctly, and Xfb (8.4MB
+	# static) is the largest thing in it. A filesystem needs room beyond its
+	# payload for indirect blocks, not just for data.
+	python3 tools/mkagfs.py $(ROOTFS64) .build/rootagfs.img 96
 	python3 tools/agfscheck.py .build/rootagfs.img $(ROOTFS64)
 	@echo "rootagfs: .build/rootagfs.img ready (AGFS, 64MB, the Argentum desktop)"
 
