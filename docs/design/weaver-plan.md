@@ -517,8 +517,11 @@ cannot click, is what killed the file manager.
   error — the plan had already decided it, and a question the plan answers is
   not an open question.
 - **Q-IB6 — undo granularity and any on-disk journal. RESOLVED: in-memory, one
-  entry per gesture, no journal** (§6). A crash journal is speculative for a v1
-  editor and can be added later without changing the command stack's shape.
+  entry per gesture, plus a crash journal (landed post-IB7)** (§6). The journal
+  `<doc>.weaverundo` is written atomically on every committed gesture and
+  replayed by `--open` (dirty, undoable) after a kill; save/reload/clean-exit
+  clear it. The command stack's shape stayed unchanged (`tests/cases/
+  weaver_journal.py`, 11/11).
 - **Q-IB7 — the dirty indicator. RESOLVED (2026-09): the window title** — see
   D14 (landed post-IB7). Kestrel's title band draws close + zoom + title +
   toolbar box and has no dot or proxy icon, so the conventional close-box dot

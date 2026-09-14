@@ -613,6 +613,7 @@ public:
 		selectedIds_.clear();
 		undoStack.clear();
 		gesture = Gesture();
+		loadJournal();
 		canvas = nullptr;	/* rebuilt on demand from the new doc */
 		std::printf("WEAVER: open %s (%d nodes)\n", resolved.c_str(),
 			    countNodes(doc->root()));
@@ -673,6 +674,7 @@ public:
 		selectedIds_.clear();
 		undoStack.clear();
 		gesture = Gesture();
+		discardJournal();
 		canvas = nullptr;	/* rebuilt on demand from the new doc */
 		clearBackground();
 		std::printf("WEAVER: reload %s (%d nodes)\n", path.c_str(),
@@ -722,6 +724,7 @@ public:
 		selectedIds_.clear();
 		undoStack.clear();
 		gesture = Gesture();
+		discardJournal();
 		canvas = nullptr;
 		std::printf("WEAVER: new %s from template (3 nodes)\n",
 			    resolved.c_str());
@@ -799,6 +802,212 @@ public:
 			    n->frameX(), n->frameY(), n->frameW(),
 			    n->frameH());
 		std::fflush(stdout);
+	}
+
+	/* ---------- the undo journal (post-IB7): committed-but-unsaved
+	 * gestures survive a crash; save/reload/clean-exit clear it ---------- */
+
+	std::string journalPath() const
+	{
+		return path + ".weaverundo";
+	}
+
+	void discardJournal()
+	{
+		if (path.empty()) {
+			return;
+		}
+		std::string jp = journalPath();
+
+		::remove(jp.c_str());
+		::remove((jp + ".tmp").c_str());
+	}
+
+	void writeJournal()
+	{
+		if (path.empty() || undoStack.empty()) {
+			return;
+		}
+		std::string jp = journalPath();
+		std::string tmp = jp + ".tmp";
+		FILE *f = std::fopen(tmp.c_str(), "w");
+
+		if (!f) {
+			return;
+		}
+		std::fprintf(f, "# weaver undo journal v1\n");
+		std::fprintf(f, "count %d\n", (int) undoStack.size());
+		for (auto &c : undoStack) {
+			if (!c.groupIds.empty()) {
+				std::fprintf(f, "group %d\n",
+					     (int) c.groupIds.size());
+				for (size_t i = 0; i < c.groupIds.size(); i++) {
+					const Rect &b = c.groupBefore[i];
+					const Rect &a = c.groupAfter[i];
+
+					std::fprintf(f,
+						     "move %s %g,%g "
+						     "%gx%g %g,%g "
+						     "%gx%g\n",
+						     c.groupIds[i].c_str(),
+						     b.origin.x, b.origin.y,
+						     b.size.w, b.size.h,
+						     a.origin.x, a.origin.y,
+						     a.size.w, a.size.h);
+				}
+			} else {
+				std::fprintf(f,
+					     "move %s %g,%g %gx%g "
+					     "%g,%g %gx%g\n",
+					     c.id.c_str(),
+					     c.before.origin.x,
+					     c.before.origin.y,
+					     c.before.size.w,
+					     c.before.size.h,
+					     c.after.origin.x,
+					     c.after.origin.y,
+					     c.after.size.w,
+					     c.after.size.h);
+			}
+		}
+		std::fclose(f);
+		if (std::rename(tmp.c_str(), jp.c_str()) != 0) {
+			::remove(tmp.c_str());
+			return;
+		}
+		std::printf("WEAVER: journal write %d command(s) %s\n",
+			    (int) undoStack.size(), jp.c_str());
+		std::fflush(stdout);
+	}
+
+	void loadJournal()
+	{
+		if (path.empty()) {
+			return;
+		}
+		std::string jp = journalPath();
+		FILE *f = std::fopen(jp.c_str(), "r");
+
+		if (!f) {
+			return;
+		}
+		std::vector<Command> recovered;
+		char line[512];
+		int ncommands = 0;
+		bool ok = std::fgets(line, sizeof(line), f)
+			  && line[0] == '#'
+			  && std::fgets(line, sizeof(line), f)
+			  && std::sscanf(line, "count %d", &ncommands) == 1;
+
+		for (int e = 0; ok && e < ncommands; e++) {
+			if (!std::fgets(line, sizeof(line), f)) {
+				ok = false;
+				break;
+			}
+			int n = 0;
+
+			if (std::sscanf(line, "group %d", &n) == 1) {
+				Command c;
+
+				c.kind = "move";
+				for (int m = 0; m < n; m++) {
+					char id[128];
+					double bx, by, bw, bh;
+					double ax, ay, aw, ah;
+
+					if (!std::fgets(line, sizeof(line), f)
+					    || std::sscanf(line,
+						    "move %127s %lf,%lf %lfx%lf "
+						    "%lf,%lf %lfx%lf",
+						    id, &bx, &by, &bw, &bh,
+						    &ax, &ay, &aw, &ah) != 9) {
+						ok = false;
+						break;
+					}
+					c.groupIds.push_back(id);
+					c.groupBefore.push_back(
+						Rect{ { bx, by }, { bw, bh } });
+					c.groupAfter.push_back(
+						Rect{ { ax, ay }, { aw, ah } });
+				}
+				if (ok) {
+					recovered.push_back(c);
+				}
+			} else {
+				char id[128];
+				double bx, by, bw, bh;
+				double ax, ay, aw, ah;
+
+				if (std::sscanf(line,
+						"move %127s %lf,%lf %lfx%lf "
+						"%lf,%lf %lfx%lf",
+						id, &bx, &by, &bw, &bh,
+						&ax, &ay, &aw, &ah) != 9) {
+					ok = false;
+					break;
+				}
+				Command c;
+
+				c.kind = "move";
+				c.id = id;
+				c.before = Rect{ { bx, by }, { bw, bh } };
+				c.after = Rect{ { ax, ay }, { aw, ah } };
+				recovered.push_back(c);
+			}
+		}
+		std::fclose(f);
+		if (!ok) {
+			std::printf("WEAVER: journal ignore %s (bad format)\n",
+				    jp.c_str());
+			std::fflush(stdout);
+			::remove(jp.c_str());
+			return;
+		}
+		int applied = 0;
+
+		for (auto &c : recovered) {
+			bool all = true;
+
+			if (c.groupIds.empty()) {
+				if (!findNode(doc->root(), c.id.c_str())) {
+					all = false;
+				}
+			} else {
+				for (size_t i = 0; i < c.groupIds.size(); i++) {
+					if (!findNode(doc->root(),
+						      c.groupIds[i].c_str())) {
+						all = false;
+					}
+				}
+			}
+			if (!all) {
+				continue;
+			}
+			if (c.groupIds.empty()) {
+				InterfaceNode *n =
+					findNode(doc->root(), c.id.c_str());
+
+				setNodeFrame(n, c.after);
+			} else {
+				for (size_t i = 0; i < c.groupIds.size(); i++) {
+					InterfaceNode *n =
+						findNode(doc->root(),
+							 c.groupIds[i].c_str());
+
+					setNodeFrame(n, c.groupAfter[i]);
+				}
+			}
+			undoStack.push_back(c);
+			applied++;
+		}
+		if (applied > 0) {
+			dirty = true;
+			updateTitle();
+			std::printf("WEAVER: journal recover %d command(s) "
+				    "from %s (dirty)\n",
+				    applied, jp.c_str());
+			std::fflush(stdout);
+		}
 	}
 
 	/* ---------- selection ---------- */
@@ -1456,6 +1665,7 @@ public:
 				}
 				if (!c.groupIds.empty()) {
 					undoStack.push_back(c);
+					writeJournal();
 					dirty = true;
 					updateTitle();
 				}
@@ -1476,6 +1686,7 @@ public:
 					undoStack.push_back(
 						{ gesture.id, kind, old,
 						  gesture.current });
+					writeJournal();
 					dirty = true;
 					updateTitle();
 					std::printf("WEAVER: commit %s %s "
@@ -2433,9 +2644,11 @@ main(int argc, char **argv)
 			any = true;
 		} else if (a == "--save") {
 			ed.save();
+			ed.discardJournal();
 			any = true;
 		} else if (a == "--reload") {
 			ed.reload();
+			ed.discardJournal();
 			any = true;
 		} else if (a == "--new" && i + 1 < argc) {
 			ed.newDocument(argv[++i]);
@@ -2456,7 +2669,10 @@ main(int argc, char **argv)
 	}
 
 	if (show) {
-		return runDisplay(ed);
+		int rc = runDisplay(ed);
+
+		ed.discardJournal();
+		return rc;
 	}
 	if (!any) {
 		std::printf("WEAVER: usage: weaver --open <name-or-path> "
@@ -2472,5 +2688,6 @@ main(int argc, char **argv)
 			    "[--rect id] [--show]\n");
 		return 2;
 	}
+	ed.discardJournal();
 	return ed.failed ? 1 : 0;
 }

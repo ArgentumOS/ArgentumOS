@@ -32,10 +32,12 @@ class Case(BaseCase):
             return
 
         mark = len(session.log_text())
-        session.run("cp %s %s && echo DOC-COPIED" % (FIXTURE, DOC))
+        session.run("cp %s %s && rm -f %s.weaverundo && echo DOC-COPIED"
+                    % (FIXTURE, DOC, DOC))
         out = session.output_since(mark)
         self.check("fixture-staged", "DOC-COPIED" in out,
-                   "the fixture is in %s" % DOC)
+                   "the fixture is in %s (and any stale journal is gone)"
+                   % DOC)
 
         # --- guides: drag okButton so its top edge aligns with greeting ---
         mark = len(session.log_text())
