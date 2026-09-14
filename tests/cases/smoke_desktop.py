@@ -163,8 +163,15 @@ class Case(BaseCase):
         session.serial("DISPLAY=:0 /System/Shared/tests/browser_probe &")
         if session.wait_for(r"BROWSER-PROBE: ready", 60):
             log = session.log_text()
-            org = re.search(r"BROWSER-PROBE: ready \S+ origin=(\d+),(\d+) "
-                            r"band=(\d+)", log)
+            # the LAST origin the probe publishes: its first is printed before
+            # the WM reparents the window into a frame, so it is the unmanaged
+            # position — and a press aimed through it lands on the frame's
+            # title band, which moves the window and arms no divider.
+            session.wait_for(r"BROWSER-PROBE: origin=", 30)
+            log = session.log_text()
+            orgs = re.findall(
+                r"BROWSER-PROBE: origin=(\d+),(\d+) band=(\d+)", log)
+            org = orgs[-1] if orgs else None
             lay = re.search(r"BROWSER-PROBE: cols=(\d+) \(chain\)(.*)", log)
             cols = re.findall(r"col(\d+) x=(\d+) w=(\d+) rows=(\d+)",
                               lay.group(2) if lay else "")
@@ -175,14 +182,21 @@ class Case(BaseCase):
                        "three columns, equal widths, rows each: %s"
                        % [(c[0], c[1], c[2], c[3]) for c in cols])
 
-            # The divider DRAG is deliberately not asserted yet, and the
-            # reason is in the plan: aiming a press at the divider the probe
-            # publishes did not arm a drag (the probe logged no width change),
-            # so either the aim or the press delivery is wrong. Working theory:
-            # the probe's window is a CLIENT under a WM frame, so the origin it
-            # publishes via XTranslateCoordinates on its own xid may not be the
-            # origin the pointer lands on. Diagnose before asserting; a check
-            # that fails for a reason nobody understands is worse than none.
+            self.note("the probe's client origin is offset inside its WM "
+                      "frame (%s, published after the reparent)" % (org,))
+            # The divider DRAG is out until the press's LANDING is known, and
+            # the diagnosis is now narrow enough to state exactly:
+            #   - the aim is right (the origin above is post-reparent, and the
+            #     click below proves input reaches the probe: it logs a
+            #     selection);
+            #   - so the open question is whether the press reaches the
+            #     BROWSER (a band press) or one of the columns, and whether
+            #     the armed drag gets its motion.
+            # Next: instrument Browser::mouseDown/mouseMoved behind an env
+            # flag (the ARGENTUM_DRAW_MS pattern) and read which of the two
+            # fires. A check that fails for an unknown reason is worse than
+            # none, so it stays out of the case until then.
+
         # --- W1: the browser window, and a real directory read ------------
         # The app reads its start root with opendir/readdir (D3: listing is
         # libc, not a shell-out) and logs the path with its count. The count

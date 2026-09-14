@@ -195,6 +195,28 @@ main()
 	}
 	std::fflush(stdout);
 
+	/* Publish the origin AGAIN once the WM has certainly reparented this
+	 * window into its frame. Read before that, it is the unmanaged position,
+	 * and the client then sits inside the frame offset by the frame's chrome
+	 * — which is what the first drag hit: it aimed at the title band, moved
+	 * the window, and armed nothing. The harness aims through the LAST of
+	 * these lines, so the first one earns nothing but the ready gate. */
+	usleep(500000);
+	{
+		Display *dpy = (Display *) argentum::Application::shared().display();
+		::Window child = 0;
+		int ox = 0, oy = 0;
+
+		if (dpy) {
+			XTranslateCoordinates(dpy, w.xid(),
+					      DefaultRootWindow(dpy), 0, 0, &ox,
+					      &oy, &child);
+		}
+		std::printf("BROWSER-PROBE: origin=%d,%d band=%d\n", ox, oy,
+			    (int) (5.0 * ppt + 0.5));
+		std::fflush(stdout);
+	}
+
 	app.run();
 	return 0;
 }

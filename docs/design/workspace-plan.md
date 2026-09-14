@@ -308,15 +308,27 @@ control bug; it was a two-level fixture, which cannot distinguish "the
 control stopped appending" from "the data ran out". It is three levels deep
 now.)
 
-**The divider drag is NOT asserted, and not because it is hard to check but
-because the aim is not understood.** Aiming a press at the divider the probe
-published armed nothing: the probe logged no width change, so either the aim
-or the press delivery is wrong. Prime suspect — the probe's window is a
-CLIENT under a WM frame, and it publishes the origin it gets from
-`XTranslateCoordinates` on its own xid; if that is the position inside the
-frame rather than on the root, everything downstream is offset by the frame.
-Diagnose that first. A check that fails for a reason nobody understands is
-worse than no check, so it is out of the case until then instead of red.
+**The divider drag is NOT asserted, and the diagnosis is now narrow enough
+to state exactly.** Two things were settled by measurement:
+
+- **the suspect was right, and it is fixed.** A client's root origin IS
+  offset inside its WM frame — the probe published `200,150` before the
+  reparent and `205,171` after (+5,+21 = the frame's chrome), and the WM's
+  own `manage ... at 200,150` names the *frame*, so the two agreeing earlier
+  proved nothing. The probe now republishes its origin after the reparent,
+  which is a real bug fixed: any app that reports its own position for
+  another program to aim at has the same trap;
+- **input does reach the app.** A plain click in a column logs a selection
+  (`BROWSER-PROBE: select col=… row=…`), so the press is delivered and the
+  harness's seam works.
+
+So the open question is one layer in: whether a press *in the divider band*
+reaches the `Browser` (rather than a column or the frame), and whether an
+armed drag receives its motion. **Next: instrument `Browser::mouseDown` and
+`mouseMoved` behind an env flag** — the `ARGENTUM_DRAW_MS` pattern — and read
+which fires. The assertion stays out of the case until then; a check that
+fails for a reason nobody understands is worse than no check, and it was left
+red twice already while this was being narrowed.
 
 ### WT-2 — `Browser` keyboard + selection routing
 
