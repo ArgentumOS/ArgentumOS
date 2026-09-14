@@ -44,6 +44,17 @@ class Case(BaseCase):
         # The guest's idea of the screen against what QEMU actually renders.
         mode = re.search(r"INIT: display: mode (\d+)x(\d+) (\d+)bpp", log)
         shot = session.shot("desktop") if up else None
+
+        # Both of the session's own lines arrive at its own pace — the shell
+        # app starts as its shared library loads, and that library grew when
+        # the Browser control joined it — so WAIT for them, then re-read. One
+        # sample of the log turned a slightly slower start into six geometry
+        # checks SILENTLY SKIPPED (they are gated on dock and wall), which is
+        # the failure mode a single sample cannot distinguish from a broken
+        # session.
+        session.wait_for(r"KESTREL: dock \w+ \d+x\d+", 60)
+        session.wait_for(r"WORKSPACE: desktop surface \d+x\d+", 60)
+        log = session.log_text()
         self.check("resolution-agrees",
                    bool(mode and shot and shot.w == int(mode.group(1))
                         and shot.h == int(mode.group(2))),
