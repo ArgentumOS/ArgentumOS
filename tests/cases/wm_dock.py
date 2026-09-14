@@ -15,8 +15,11 @@ works at all: the guest drops ps/2 chunks sent too fast, and it loses a press
 that comes with no motion.
 """
 
+import os
 import re
 import time
+
+from harness import paths
 
 from harness import BaseCase
 
@@ -774,6 +777,65 @@ class Case(BaseCase):
         else:
             self.check("disabled-control-is-greyed-out", False,
                        "widgets_c never drew")
+
+        # --- S5.2e: Application Support, resolved by a desktop app ------
+        # Behaviour material (scripts, app data) is not configuration: it
+        # lives in Application Support/ keyed by the SAME domain name, and
+        # resolves across the same three scopes with the same precedence
+        # (docs/design/config-design.md §0 — system, then user, then
+        # shared, which is what scope_rank() in libconfig.c defines).
+        ap = re.search(r"ZOO-APPSUPPORT: scope=(\w+) path=([^\n]+)",
+                       session.log_text())
+        self.check("appsupport-resolves-from-a-desktop-app",
+                   bool(ap) and
+                   ap.group(2).endswith(
+                       "/Application Support/system.widgetzoo"),
+                   "the zoo resolves its behaviour material the way it "
+                   "resolves its settings (%s)"
+                   % (ap.group(0) if ap else "nothing was reported"))
+        # The precedence, SHOWN rather than assumed - and self-contained, so
+        # that a root image left dirty by an earlier run cannot decide it:
+        # the guest writes to .build/rootagfs.img, which PERSISTS (this gate
+        # moved the scopes around and a later run then started from the moved
+        # state). Both scopes are created, so the winner is the rank and not
+        # the order they were made in. scope_rank(): system > user > shared.
+        #
+        # NOTE only two scopes are reachable today: the account is `admin`
+        # (uid 0) with home /Users/Admin, but user_name() returns the account
+        # NAME, so the user scope resolves to /Users/admin/... while the FSH
+        # ships /Users/Admin/... - the user override scope is DEAD for the
+        # only account that exists.
+        session.serial('rm -rf "/System/Application Support/system.widgetzoo" '
+                       '"/Shared/Application Support/system.widgetzoo"')
+        session.serial('mkdir -p "/Shared/Application Support/system.widgetzoo" '
+                       '"/System/Application Support/system.widgetzoo"')
+        time.sleep(1)
+        was = session.count(r"ZOO-APPSUPPORT: scope=system")
+        session.serial('DISPLAY=:0 "/Applications/Widget Zoo.app/bin/'
+                       'WidgetZoo" &')
+        system_won = False
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            if session.count(r"ZOO-APPSUPPORT: scope=system") > was:
+                system_won = True
+                break
+            time.sleep(1)
+        self.check("appsupport-precedence-system-beats-shared", system_won,
+                   "with the directory in BOTH the system and shared scopes "
+                   "the system one wins (scope_rank: system > user > shared)")
+        session.serial("killall WidgetZoo 2>@null")
+        # leave the shipped state as the image had it
+        session.serial('rm -rf "/Shared/Application Support/system.widgetzoo"')
+        time.sleep(1)
+
+        # The FSH skeleton: the root carries exactly five entries.
+        root_entries = sorted(os.listdir(os.path.join(paths.ROOT, ".build",
+                                                      "rootfs64")))
+        self.check("root-has-exactly-five-entries",
+                   root_entries == ["Applications", "Shared", "System",
+                                    "Users", "Volumes"],
+                   "the root carries the five FSH entries and nothing else "
+                   "(%s)" % (root_entries,))
 
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

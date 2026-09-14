@@ -93,6 +93,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# FSH maps /tmp to /System/Temporary Files (staged below); fshlint
 	# bans the /tmp string in System/Tools; fs_repair_tmpdir() recreates
 	# /System/Temporary Files at mount if a kill-replay left it non-dir. ---
+	# Application Support: behaviour material (scripts, app data) per the
+	# config policy carve-out - the same domain key and scope tree as
+	# Configuration/, a different payload kind (config-design.md §0).
+	@mkdir -p "$(ROOTFS64)/System/Application Support" \
+		"$(ROOTFS64)/Shared/Application Support" \
+		"$(ROOTFS64)/System/User Template/Application Support" \
+		"$(ROOTFS64)/System/Application Support/system.widgetzoo"
 	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
 		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \

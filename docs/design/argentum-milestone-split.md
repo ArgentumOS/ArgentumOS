@@ -644,8 +644,40 @@ structure, S2.5 the reference board + a11y battery).
   keyed by its domain name, and the three scopes resolve with libconfig's
   precedence (system default, shared overrides, user overrides both).
   *Acceptance:* the root has exactly the five entries and nothing else;
-  an app's settings and scripts resolve system → shared → user, verified
-  from a desktop app rather than from a test.
+  an app's settings and scripts resolve across the scopes with the SAME
+  precedence its settings do (`scope_rank()`: **system, then user, then
+  shared** — this line said "system → shared → user" until 2026-09, which
+  was the §0 prose and not what the code does), verified from a desktop
+  app rather than from a test. NOTE: the user scope is currently
+  unreachable — `/Users/<user_name()>` is `/Users/admin` while the FSH
+  ships `/Users/Admin` — so only system and shared can be shown today.
+
+  **As built (DONE).** `Application Support/` exists at all three scopes
+  (`System/`, `Shared/`, and `User Template/` — which the `/Users/Admin`
+  tree is a copy of), `libconfig` grew `config_app_support()` (a domain's
+  behaviour directory, walked in `scope_rank()` order) and the toolkit
+  exposes it as `Application::appSupportPath()`. The zoo looks up
+  `system.widgetzoo` at start and logs which scope won:
+
+      ZOO-APPSUPPORT: scope=system path=//System/Application Support/system.widgetzoo
+
+  `wm_dock` holds it: `root-has-exactly-five-entries`,
+  `appsupport-resolves-from-a-desktop-app`, and
+  `appsupport-precedence-system-beats-shared` (the directory is created in
+  BOTH scopes, so the winner is the rank and not the order they were made
+  in). The last one is deliberately self-contained: the guest writes to
+  `.build/rootagfs.img`, which PERSISTS, so a gate that moves the scopes
+  around changes what the next run starts from — this one did, and the
+  following run then failed against its own leftovers.
+
+  **Opened here, NOT fixed — the user scope is dead.** The account is
+  `admin` (uid 0) with `home = /Users/Admin`, but `user_name()` returns the
+  account NAME, so a user-scope path is `/Users/admin/...` while the FSH
+  ships `/Users/Admin/...`. Every user-scope read and write therefore misses
+  the tree that exists — for config as much as for Application Support, and
+  for every account that will ever be added. Which side moves (the account,
+  the directory, or `user_name()` deriving the path from the passwd `home`
+  field) is a naming decision, not a slice decision.
 
   #### S5.2f — the window list and minimize
 

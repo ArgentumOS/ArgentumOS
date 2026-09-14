@@ -126,6 +126,25 @@ main()
 		return 1;
 	}
 
+	/* S5.2e: the app looks up its own BEHAVIOUR material the way it looks
+	 * up its settings — by domain name, across the three scopes. The
+	 * directory is what an app would stage its scripts and data in; here
+	 * it is the acceptance: which scope won, and where. */
+	{
+		char dir[512];
+		const char *scope = "";
+
+		if (app.appSupportPath("system.widgetzoo", &scope, dir,
+				       sizeof(dir))) {
+			std::fprintf(stderr,
+				     "ZOO-APPSUPPORT: scope=%s path=%s\n",
+				     scope, dir);
+		} else {
+			std::fprintf(stderr, "ZOO-APPSUPPORT: none\n");
+		}
+		std::fflush(stderr);
+	}
+
 	ContentView v;
 	v.setFrame({ {0, 0}, {930, 540} });	/* 720 + the S2.1d column */
 	double lx = 16;		/* left column */

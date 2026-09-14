@@ -134,6 +134,17 @@ config_err_t config_get_array(const char *domain, const char *key,
 config_err_t config_resolve(const char *domain, const char *key,
 			    config_scope_t *scope);
 
+/*
+ * Behaviour material rather than settings (docs/design/config-design.md
+ * §0): the Application Support directory of `domain` — app scripts and app
+ * data, keyed by domain name like its configuration. `scope` (optional)
+ * reports which scope won; the precedence is the same one its settings
+ * use, i.e. SYSTEM then USER then SHARED. CONFIG_ERR_NOT_FOUND when no
+ * scope has one. `out` receives the directory path.
+ */
+config_err_t config_app_support(const char *domain, config_scope_t *scope,
+				char *out, size_t outsz);
+
 /* Read from one explicit scope (no precedence fallback). */
 config_err_t config_read_scope(config_scope_t scope, const char *domain,
 			       const char *key, config_value_t *out);

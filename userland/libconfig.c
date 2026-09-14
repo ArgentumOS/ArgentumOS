@@ -90,6 +90,28 @@ static void scope_dir_path(config_scope_t scope, char *out, size_t outsz)
 	}
 }
 
+/* Builds "<root>/<scope>/Application Support" into out; the caller
+ * appends "/<domain>". Behaviour material, not settings: the same scope
+ * tree and the same domain key as Configuration/, a different payload
+ * kind (docs/design/config-design.md §0). */
+static void app_support_dir_path(config_scope_t scope, char *out, size_t outsz)
+{
+	switch(scope) {
+	case CONFIG_SCOPE_USER:
+		snprintf(out, outsz, "%s/Users/%s/Application Support",
+			config_root(), user_name());
+		break;
+	case CONFIG_SCOPE_SHARED:
+		snprintf(out, outsz, "%s/Shared/Application Support",
+			config_root());
+		break;
+	default:
+		snprintf(out, outsz, "%s/System/Application Support",
+			config_root());
+		break;
+	}
+}
+
 /*
  * Pinned (single-file) domains: config-design §12 'system.kernel' lives
  * on the ESP at /System/ESP/EFI/BOOT/kernel.conf (where the EFI
@@ -2237,6 +2259,55 @@ static int scope_rank(config_scope_t s)
 	case CONFIG_SCOPE_SHARED:	return 0;
 	default:			return 1;	/* USER */
 	}
+}
+
+/*
+ * Where does `domain`'s behaviour material live? Behaviour material is NOT
+ * configuration (docs/design/config-design.md §0): each app's scripts and
+ * app data live in an Application Support/ directory keyed by the app's
+ * DOMAIN NAME, and the scopes resolve with the SAME precedence its settings
+ * use - scope_rank() above: SYSTEM wins, then USER, then SHARED. (Walked in
+ * rank order rather than through scope_order[], which exists for the merge
+ * loop; the two must stay in step, so this reads the ranks directly.)
+ *
+ * *scope (optional) reports which scope won. CONFIG_ERR_NOT_FOUND when no
+ * scope has a directory for the domain.
+ */
+config_err_t config_app_support(const char *domain, config_scope_t *scope,
+				char *out, size_t outsz)
+{
+	static const config_scope_t by_rank[] = {
+		CONFIG_SCOPE_SYSTEM,
+		CONFIG_SCOPE_USER,
+		CONFIG_SCOPE_SHARED,
+	};
+	size_t k;
+
+	if(!domain || !out || outsz == 0 || !config_valid_domain(domain)) {
+		return CONFIG_ERR_INVALID;
+	}
+	for(k = 0; k < sizeof(by_rank) / sizeof(by_rank[0]); k++) {
+		char dir[PATH_MAX];
+		char path[PATH_MAX];
+		struct stat st;
+
+		app_support_dir_path(by_rank[k], dir, sizeof(dir));
+		if(snprintf(path, sizeof(path), "%s/%s", dir, domain) >=
+		   (int) sizeof(path)) {
+			return CONFIG_ERR_INVALID;
+		}
+		if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+			continue;
+		}
+		if(snprintf(out, outsz, "%s", path) >= (int) outsz) {
+			return CONFIG_ERR_INVALID;
+		}
+		if(scope) {
+			*scope = by_rank[k];
+		}
+		return CONFIG_OK;
+	}
+	return CONFIG_ERR_NOT_FOUND;
 }
 
 config_err_t config_read(const char *domain, const char *key,

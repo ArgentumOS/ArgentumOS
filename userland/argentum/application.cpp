@@ -232,6 +232,31 @@ Application::configString(const char *domain, const char *key,
 	return true;
 }
 
+bool
+Application::appSupportPath(const char *domain, const char **scopeName,
+			    char *out, unsigned int cap) const
+{
+	config_scope_t scope = CONFIG_SCOPE_SYSTEM;
+
+	if (scopeName) {
+		*scopeName = "";
+	}
+	if (!out || cap == 0) {
+		return false;
+	}
+	out[0] = 0;
+	if (!domain || config_app_support(domain, &scope, out, cap) !=
+			      CONFIG_OK) {
+		return false;
+	}
+	if (scopeName) {
+		*scopeName = (scope == CONFIG_SCOPE_SYSTEM) ? "system"
+			     : (scope == CONFIG_SCOPE_USER) ? "user"
+							    : "shared";
+	}
+	return true;
+}
+
 std::uint32_t
 Application::sessionBackground() const
 {

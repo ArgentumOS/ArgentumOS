@@ -280,6 +280,15 @@ public:
 	 * key was found. */
 	bool configString(const char *domain, const char *key,
 			  const char *def, char *out, unsigned int cap) const;
+	/* S5.2e: an app's BEHAVIOUR material — its scripts and app data.
+	 * Keyed by the same domain name as its settings, but living in an
+	 * Application Support/ directory rather than a .conf
+	 * (docs/design/config-design.md §0), and resolved across the same
+	 * three scopes with the same precedence. True when some scope has
+	 * the directory; out receives its path and *scopeName (optional)
+	 * the scope's name — "system", "user" or "shared". */
+	bool appSupportPath(const char *domain, const char **scopeName,
+			    char *out, unsigned int cap) const;
 	const char *sessionFontFamily() const;	/* font.family */
 	unsigned int sessionFontSize() const;	/* font.size */
 

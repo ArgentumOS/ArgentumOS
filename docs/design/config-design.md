@@ -39,11 +39,14 @@ adopted port).
 - **Application Support uses the same domain matching pattern as
   config (policy refinement, 2026-09)**: each app's scripts/data live
   in a **subdirectory keyed by the app's domain name**, and the three
-  scopes resolve with the *same precedence as libconfig domains* —
-  system is the default, shared overrides it, user overrides both
-  (`/System/Application Support/<app>/` →
-  `/Shared/Application Support/<app>/` →
-  `/Users/<user>/Application Support/<app>/`). An app looks up its
+  scopes resolve with the *same precedence as libconfig domains*.
+  **That precedence is SYSTEM, then USER, then SHARED** — `scope_rank()`
+  in `userland/libconfig.c` is the definition and is authoritative; this
+  paragraph said the reverse ("user overrides both") until 2026-09, which
+  the code never did. So the lookup walks
+  `/System/Application Support/<app>/`, then
+  `/Users/<user>/Application Support/<app>/`, then
+  `/Shared/Application Support/<app>/`. An app looks up its
   behaviour material exactly the way it looks up its settings: by
   domain name, walking system → shared → user. The domain-name and
   precedence machinery is shared; only the payload kind differs
