@@ -156,6 +156,7 @@ enum class Handle : int {
 };
 
 static const double HANDLE_HIT = 5.0;	/* pt, around a handle point */
+static const double GUIDE_HIT = 3.0;	/* pt, a guide snaps within this */
 
 static void
 handlePoint(const Rect &f, Handle h, double *x, double *y)
@@ -459,7 +460,7 @@ buildChromeFor(EditorSurface *surface, InterfaceDocument *doc, View *canvas,
 	std::fflush(stdout);
 }
 
-enum class GestureKind : int { None, Move, Resize };
+enum class GestureKind : int { None, Move, Resize, Marquee };
 
 class Editor {
 public:
@@ -560,12 +561,22 @@ public:
 		std::string id;
 		Point press;		/* content pt where the press began */
 		Rect start;		/* frame at the press */
-		Rect current;		/* live frame while dragging */
+		Rect current;		/* live frame while dragging (marquee:
+					 * the rubber-band rect) */
 		Handle handle = Handle::BottomRight;
 		bool moved = false;
 	};
 
 	Gesture gesture;
+
+	struct Guide {
+		bool vertical;
+		double pos;
+		double a0;
+		double a1;
+	};
+
+	std::vector<Guide> guides_;
 
 	/* ---------- document ---------- */
 
@@ -911,8 +922,14 @@ public:
 
 		InterfaceNode *hit = hitNode(pt);
 
-		if (!hit) {
-			selectNode(nullptr);
+		if (!hit || hit == doc->root()) {
+			/* empty canvas / root background: a MARQUEE (rubber-band
+			 * selection). `--click` still selects the root through
+			 * selectAt; this is the press-drag gesture path. */
+			gesture.kind = GestureKind::Marquee;
+			gesture.press = pt;
+			gesture.current = Rect{ { pt.x, pt.y }, { 0, 0 } };
+			guides_.clear();
 			return;
 		}
 		selectNode(hit);
@@ -922,6 +939,7 @@ public:
 		gesture.press = pt;
 		gesture.start = nodeFrame(hit);
 		gesture.current = gesture.start;
+		guides_.clear();
 	}
 
 	void dragTo(const Point &pt)
@@ -932,6 +950,25 @@ public:
 		double dx = pt.x - gesture.press.x;
 		double dy = pt.y - gesture.press.y;
 		Rect f = gesture.start;
+
+		if (gesture.kind == GestureKind::Marquee) {
+			double x0 = gesture.press.x < pt.x ? gesture.press.x
+							   : pt.x;
+			double y0 = gesture.press.y < pt.y ? gesture.press.y
+							   : pt.y;
+			double x1 = gesture.press.x > pt.x ? gesture.press.x
+							   : pt.x;
+			double y1 = gesture.press.y > pt.y ? gesture.press.y
+							   : pt.y;
+
+			gesture.current = Rect{ { x0, y0 }, { x1 - x0, y1 - y0 } };
+			gesture.moved = (gesture.current.size.w > 2
+					 && gesture.current.size.h > 2);
+			if (overlay) {
+				overlay->setNeedsDisplay();
+			}
+			return;
+		}
 
 		if (gesture.kind == GestureKind::Move) {
 			f.origin.x += dx;
@@ -994,11 +1031,133 @@ public:
 		gesture.current = f;
 		gesture.moved = true;
 		updateLiveFrame(gesture.id.c_str(), f);
+		checkGuides(f);
+		if (overlay) {
+			overlay->setNeedsDisplay();
+		}
+	}
+
+	void collectNodes(InterfaceNode *n, std::vector<InterfaceNode *> *out)
+	{
+		for (int i = 0; i < n->childCount(); i++) {
+			InterfaceNode *c = n->childAt(i);
+
+			out->push_back(c);
+			collectNodes(c, out);
+		}
+	}
+
+	void marqueeHits(const Rect &marq, std::vector<InterfaceNode *> *out)
+	{
+		std::vector<InterfaceNode *> nodes;
+
+		collectNodes(doc->root(), &nodes);
+		for (auto *n : nodes) {
+			Rect f = nodeFrame(n);
+
+			if (!rectIsEmpty(rectIntersect(f, marq))) {
+				out->push_back(n);
+			}
+		}
+	}
+
+	void checkGuides(const Rect &f)
+	{
+		std::vector<InterfaceNode *> nodes;
+		const char *const xNames[3] = { "left", "cx", "right" };
+		const char *const yNames[3] = { "top", "cy", "bottom" };
+
+		collectNodes(doc->root(), &nodes);
+		guides_.clear();
+
+		for (auto *n : nodes) {
+			const char *oid = n->identifier()[0] ? n->identifier()
+							    : n->className();
+
+			if (!std::strcmp(oid, gesture.id.c_str())) {
+				continue;
+			}
+			Rect g = nodeFrame(n);
+			double myX[3] = { f.origin.x, f.origin.x + f.size.w / 2,
+					  f.origin.x + f.size.w };
+			double myY[3] = { f.origin.y, f.origin.y + f.size.h / 2,
+					  f.origin.y + f.size.h };
+			double theirX[3] = { g.origin.x, g.origin.x + g.size.w / 2,
+					     g.origin.x + g.size.w };
+			double theirY[3] = { g.origin.y, g.origin.y + g.size.h / 2,
+					     g.origin.y + g.size.h };
+
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					double d = myX[i] - theirX[j];
+
+					if ((d < 0 ? -d : d) <= GUIDE_HIT) {
+						std::printf("WEAVER: guide "
+							    "vertical x=%g "
+							    "%s.%s ~ %s.%s\n",
+							    myX[i],
+							    gesture.id.c_str(),
+							    xNames[i], oid,
+							    xNames[j]);
+						std::fflush(stdout);
+						guides_.push_back(
+							{ true, myX[i],
+							  0, 0 });
+					}
+					d = myY[i] - theirY[j];
+					if ((d < 0 ? -d : d) <= GUIDE_HIT) {
+						std::printf("WEAVER: guide "
+							    "horizontal y=%g "
+							    "%s.%s ~ %s.%s\n",
+							    myY[i],
+							    gesture.id.c_str(),
+							    yNames[i], oid,
+							    yNames[j]);
+						std::fflush(stdout);
+						guides_.push_back(
+							{ false, myY[i],
+							  0, 0 });
+					}
+				}
+			}
+		}
 	}
 
 	void endGesture()
 	{
 		if (gesture.kind == GestureKind::None) {
+			return;
+		}
+		if (gesture.kind == GestureKind::Marquee) {
+			if (gesture.moved) {
+				std::vector<InterfaceNode *> hits;
+				InterfaceNode *top = nullptr;
+
+				marqueeHits(gesture.current, &hits);
+				for (auto *n : hits) {
+					top = n;	/* pre-order: last = topmost */
+				}
+				std::printf("WEAVER: marquee %g,%g %gx%g hits=%d",
+					    gesture.current.origin.x,
+					    gesture.current.origin.y,
+					    gesture.current.size.w,
+					    gesture.current.size.h,
+					    (int) hits.size());
+				if (top) {
+					std::printf(" select=%s\n",
+						    top->identifier()[0]
+							    ? top->identifier()
+							    : top->className());
+					selectNode(top);
+				} else {
+					std::printf("\n");
+				}
+				std::fflush(stdout);
+			}
+			gesture = Gesture();
+			if (overlay) {
+				overlay->setNeedsDisplay();
+			}
 			return;
 		}
 		if (gesture.moved) {
@@ -1601,12 +1760,44 @@ EditorSurface::mouseUp(const MouseEvent &e)
 void
 EditorOverlay::draw(GraphicsContext &g)
 {
-	InterfaceNode *sel = editor ? editor->selectedNode() : nullptr;
+	if (!editor) {
+		return;
+	}
+	double ppt = Application::shared().pxPerPt();
+	int fw = (int) (frame().size.w * ppt + 0.5);
+	int fh = (int) (frame().size.h * ppt + 0.5);
+
+	/* alignment guides (accent-tinted hairlines) */
+	for (auto &gd : editor->guides_) {
+		int pos = (int) (gd.pos * ppt + 0.5);
+
+		if (gd.vertical) {
+			g.drawLine(pos, 0, pos, fh, 0xff8800);
+		} else {
+			g.drawLine(0, pos, fw, pos, 0xff8800);
+		}
+	}
+
+	/* the marquee rubber band */
+	if (editor->gesture.kind == GestureKind::Marquee
+	    && editor->gesture.moved) {
+		Rect m = editor->gesture.current;
+		int x = (int) (m.origin.x * ppt + 0.5);
+		int y = (int) (m.origin.y * ppt + 0.5);
+		int w = (int) (m.size.w * ppt + 0.5);
+		int h = (int) (m.size.h * ppt + 0.5);
+
+		g.drawLine(x, y, x + w, y, 0x333333);
+		g.drawLine(x + w, y, x + w, y + h, 0x333333);
+		g.drawLine(x + w, y + h, x, y + h, 0x333333);
+		g.drawLine(x, y + h, x, y, 0x333333);
+	}
+
+	InterfaceNode *sel = editor->selectedNode();
 
 	if (!sel) {
 		return;
 	}
-	double ppt = Application::shared().pxPerPt();
 	Rect f = nodeFrame(sel);
 	int x = (int) (f.origin.x * ppt + 0.5);
 	int y = (int) (f.origin.y * ppt + 0.5);
@@ -1830,6 +2021,16 @@ main(int argc, char **argv)
 				ed.endGesture();
 			}
 			any = true;
+		} else if (a == "--marquee" && i + 4 < argc) {
+			double x0 = std::atof(argv[++i]);
+			double y0 = std::atof(argv[++i]);
+			double x1 = std::atof(argv[++i]);
+			double y1 = std::atof(argv[++i]);
+
+			ed.beginGesture(Point{ x0, y0 });
+			ed.dragTo(Point{ x1, y1 });
+			ed.endGesture();
+			any = true;
 		} else if (a == "--undo") {
 			ed.undo();
 			any = true;
@@ -1916,7 +2117,8 @@ main(int argc, char **argv)
 	if (!any) {
 		std::printf("WEAVER: usage: weaver --open <name-or-path> "
 			    "[--click x y] [--drag x0 y0 x1 y1] "
-			    "[--resize x0 y0 x1 y1] [--undo] "
+			    "[--resize x0 y0 x1 y1] [--marquee x0 y0 x1 y1] "
+			    "[--undo] "
 			    "[--inspect] [--set name value] "
 			    "[--field name value] "
 			    "[--palette] [--outline] [--add class] "

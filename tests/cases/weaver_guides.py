@@ -1,0 +1,76 @@
+"""Weaver guides + marquee (the IB3 refinements, post-IB7).
+
+Guides: while a move/resize drag is active, the editor logs every alignment
+guide whose edges/centres fall within GUIDE_HIT of another node, and the
+overlay draws the hairlines. Marquee: a press-drag on empty canvas draws a
+rubber band and, on release, logs the hits and selects the topmost one.
+Both are driven through the SAME gesture engine a real pointer reaches.
+"""
+
+from harness import BaseCase
+
+WEAVER = "/Applications/Weaver.app/bin/Weaver"
+FIXTURE = "/System/Shared/tests/weaver_ib2.conf"
+DOC = "/Users/Admin/Documents/weaver_guides.conf"
+
+
+class Case(BaseCase):
+    title = "Weaver guides + marquee: alignment hairlines and rubber-band select"
+    tier = "fast"
+    timeout = 420
+
+    def run(self, ctx):
+        ctx.require_guest_file("Weaver")
+        session = ctx.boot_to_desktop(secs=150)
+        ready = session.shell_ready(90)
+        self.check("shell-ready", ready,
+                   "the serial console has a shell" if ready
+                   else "no shell; guest tail: " + session.tail())
+        if not ready:
+            return
+
+        mark = len(session.log_text())
+        session.run("cp %s %s && echo DOC-COPIED" % (FIXTURE, DOC))
+        out = session.output_since(mark)
+        self.check("fixture-staged", "DOC-COPIED" in out,
+                   "the fixture is in %s" % DOC)
+
+        # --- guides: drag okButton so its top edge aligns with greeting ---
+        mark = len(session.log_text())
+        session.run("%s --open weaver_guides.conf --click 65 72 "
+                    "--drag 65 72 65 28; echo WEAVER-EXIT=$?" % WEAVER)
+        out = session.output_since(mark)
+        for line in out.strip().splitlines():
+            if "WEAVER" in line:
+                self.note(line)
+
+        self.check("vertical-guide",
+                   "WEAVER: guide vertical x=20 okButton.left ~ "
+                   "greeting.left" in out,
+                   "the left edges aligned (a vertical guide)")
+        self.check("horizontal-guide",
+                   "WEAVER: guide horizontal y=16 okButton.top ~ "
+                   "greeting.top" in out,
+                   "the top edges aligned (a horizontal guide)")
+        self.check("commit-after-guide",
+                   "WEAVER: commit move okButton 20,60 90x24 -> "
+                   "20,16 90x24" in out,
+                   "the guided move committed")
+        self.check("guides-exit-zero", "WEAVER-EXIT=0" in out,
+                   "the guide run exited 0")
+
+        # --- marquee: a rubber band over both controls selects the topmost ---
+        mark = len(session.log_text())
+        session.run("%s --open weaver_guides.conf --marquee 10 10 130 90; "
+                    "echo WEAVER-EXIT=$?" % WEAVER)
+        out = session.output_since(mark)
+        for line in out.strip().splitlines():
+            if "WEAVER" in line:
+                self.note(line)
+
+        self.check("marquee-hits",
+                   "WEAVER: marquee 10,10 120x80 hits=2 select=okButton"
+                   in out,
+                   "the marquee found both controls and selected the topmost")
+        self.check("marquee-exit-zero", "WEAVER-EXIT=0" in out,
+                   "the marquee run exited 0")

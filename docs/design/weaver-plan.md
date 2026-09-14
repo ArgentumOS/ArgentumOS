@@ -285,8 +285,8 @@ Each traced to the slice that needs it:
 6. A way to make the canvas's document subtree **non-hit-testable**, so presses
    reach the editor instead of the controls — IB2 (D12), **DONE**
    (`View::setHitTestEnabled`, probed by `userland/tests/weaver_suppress.cpp`).
-7. Selection, drag, resize, guides — IB3, **DONE for selection/drag/resize**
-   (guides deferred: not in the acceptance).
+7. Selection, drag, resize, guides — **DONE** (selection/drag/resize in IB3;
+   guides + marquee landed post-IB7).
 8. A command stack — IB3, **DONE** (in-memory, one entry per gesture, undo).
 9. `OutlineView` — **DONE (2026-09, post-IB7)**; used by Weaver's outline panel and the zoo board.
 10. A palette host: `TableView` exists, `CollectionView` is **staged** — IB5.
@@ -382,8 +382,11 @@ need input, which §8a addresses directly.
   `20,60 90x24 -> 60,100 90x24` and undo restores `20,60 90x24`; a committed
   bottom-right resize logs `20,60 90x24 -> 20,60 120x54` and undo restores it;
   two gestures both undone leave the file's md5 byte-identical, and a
-  committed+SAVED move changes it and survives reload. Guides are not in the
-  acceptance and remain a later refinement.
+  committed+SAVED move changes it and survives reload. Guides + marquee
+  landed post-IB7: a move/resize drag logs alignment guides (edges/centres
+  within GUIDE_HIT, drawn by the overlay) and a press-drag on empty canvas
+  rubber-bands a marquee that selects the topmost hit (`tests/cases/
+  weaver_guides.py`, 8/8).
 - **IB4 — the inspector. DONE (2026-09).** Driven by the property table (D4):
   a selection change enumerates the control's properties through
   `interfacePropertyCount/At` (own first, then the inherited base) and logs
