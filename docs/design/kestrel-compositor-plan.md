@@ -175,11 +175,40 @@ the rule the other plans here follow.
   a file (the "Xfb.log" recipe), *not* to the serial console the harness reads.
   The instrumentation was working; the probe read the wrong stream.
 
-  **NEXT: point the probe at that file** (`cat` the server's log wherever the
-  session sends Xfb's stderr), then the balance answers it: allocs == frees
-  with `out` returning to baseline => the pixmap path is clean and the
-  retention is elsewhere (shm/damage); allocs > frees => the pixmap path leaks
-  and the missing free is findable by size.
+  **The balance ANSWERS it.** Xfb's stderr goes to
+  `/System/Variable Data/log/Xfb.log` (init.c dup2s it there), and read from
+  there the counters say:
+
+  ```
+  ready   alloc=14 free=6 live=8   out= 8.39 MB
+  cycle1  alloc=16 free=6 live=10  out=12.15 MB
+  cycle2  alloc=17 free=6 live=11  out=15.70 MB   create 1250x746 = 3,730,000 B
+  cycle3  alloc=18 free=6 live=12  out=19.26 MB   create 1250x746
+  cycle4  alloc=19 free=6 live=13  out=22.82 MB   create 1250x746
+  ```
+
+  **`free` never moves off 6**, and the pixmap created once per app cycle is
+  3,730,000 B — the +3,672 kB of RSS, to the kilobyte. So the window's
+  offscreen pixmap is created and never destroyed.
+
+  Not a skipped free, though: `DestroyPixmap` is wrapped by fb
+  (`fb/fbscreen.c:117`) and by `ShmDestroyPixmap` (`Xext/shm.c:262`), and both
+  unwrap/call/re-wrap correctly (both upstream). The counter sits AFTER
+  `fbDestroyPixmap`'s `if (--refcnt) return TRUE` — so it counts only real
+  frees, and a frozen `free` means the call arrives with **refcnt > 1**: a
+  retained reference, and SHM is the prime suspect for who holds it (the leak
+  is compositor-only, and with a redirect the window's backing pixmap is what
+  would reference the client's shm).
+
+  **NEXT (small):** log the refcount at `fbDestroyPixmap` ENTRY, not just real
+  frees. If the 1250x746 arrives with refcnt 2, hunt the holder; if entry
+  never happens, the chain is broken after all.
+
+  **BUILD TRAP, cost two runs:** `make rootagfs` does NOT rebuild Xfb —
+  `.build/x11/xfb/Xfb` has no source deps at that level (mk/20-userland.mk).
+  Run **`make xfb64`** first, and check with
+  `strings .build/rootfs64/System/Shared/X11/bin/Xfb | grep <your string>`
+  before spending a guest run.
 
   *Acceptance as built:* the claim and redirect exist and are opt-in; with
   the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
