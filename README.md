@@ -10,6 +10,6 @@ It is a hobby OS, which means I'm working on it because I want to; it also means
 
 Warning: This project makes use of agentic coding. If that is a deal-breaker for you, then stay well clear of it.
 
-Argentum is derived from [Fiwix](https://www.fiwix.org), the 32-bit
-kernel created by Jordi Sanfeliu, and is free software under the MIT
-License — see LICENSE. Credits: <https://www.fiwix.org>.
+All original code is © 2026 Kyle J Cardoza, and is free software released under the MIT license. See LICENSE. The FNX kernel is derived from [Fiwix](https://www.fiwix.org), the 32-bit kernel created by Jordi Sanfeliu, and is free software under the MIT License. 
+
+Credits: <https://www.fiwix.org>.
