@@ -545,7 +545,7 @@ public:
 	 * when no window is up. */
 	View stateSurface_;
 
-	std::string selectedId;
+	std::vector<std::string> selectedIds_;
 
 	struct Command {
 		std::string id;
@@ -603,7 +603,7 @@ public:
 		doc = fresh;
 		path = resolved;
 		dirty = false;
-		selectedId.clear();
+		selectedIds_.clear();
 		undoStack.clear();
 		gesture = Gesture();
 		canvas = nullptr;	/* rebuilt on demand from the new doc */
@@ -663,7 +663,7 @@ public:
 		delete doc;
 		doc = fresh;
 		dirty = false;
-		selectedId.clear();
+		selectedIds_.clear();
 		undoStack.clear();
 		gesture = Gesture();
 		canvas = nullptr;	/* rebuilt on demand from the new doc */
@@ -712,7 +712,7 @@ public:
 		doc = fresh;
 		path = resolved;
 		dirty = false;
-		selectedId.clear();
+		selectedIds_.clear();
 		undoStack.clear();
 		gesture = Gesture();
 		canvas = nullptr;
@@ -798,34 +798,64 @@ public:
 
 	InterfaceNode *selectedNode()
 	{
-		if (selectedId.empty()) {
+		if (selectedIds_.empty()) {
 			return nullptr;
 		}
-		return findNode(doc->root(), selectedId.c_str());
+		return findNode(doc->root(), selectedIds_.back().c_str());
+	}
+
+	const std::vector<std::string> &selectedIds() const
+	{
+		return selectedIds_;
+	}
+
+	std::vector<InterfaceNode *> selectedNodes()
+	{
+		std::vector<InterfaceNode *> out;
+
+		for (auto &id : selectedIds_) {
+			InterfaceNode *n = findNode(doc->root(), id.c_str());
+
+			if (n) {
+				out.push_back(n);
+			}
+		}
+		return out;
+	}
+
+	static std::string nodeName(const InterfaceNode *n)
+	{
+		const char *id = n->identifier();
+
+		return id[0] ? std::string(id) : std::string(n->className());
+	}
+
+	void clearSelection()
+	{
+		if (selectedIds_.empty()) {
+			return;
+		}
+		selectedIds_.clear();
+		std::printf("WEAVER: select (nothing)\n");
+		std::fflush(stdout);
+		if (overlay) {
+			overlay->setNeedsDisplay();
+		}
 	}
 
 	void selectNode(InterfaceNode *n)
 	{
-		const char *id = n ? n->identifier() : "";
-
 		if (!n) {
-			if (selectedId.empty()) {
-				return;
-			}
-			selectedId.clear();
-			std::printf("WEAVER: select (nothing)\n");
-			std::fflush(stdout);
-			if (overlay) {
-				overlay->setNeedsDisplay();
-			}
+			clearSelection();
 			return;
 		}
-		std::string next = id[0] ? id : n->className();
+		std::string next = nodeName(n);
 
-		if (next == selectedId) {
+		if (selectedIds_.size() == 1 && selectedIds_[0] == next) {
 			return;
 		}
-		selectedId = next;
+		selectedIds_.clear();
+		selectedIds_.push_back(next);
 		std::printf("WEAVER: select %s\n", next.c_str());
 		std::fflush(stdout);
 		if (overlay) {
@@ -833,6 +863,33 @@ public:
 		}
 		/* the inspector (plan §6/D13): a selection change enumerates the
 		 * control's properties through the SAME table the builder used */
+		inspectSelection();
+	}
+
+	void selectNodes(const std::vector<InterfaceNode *> &nodes)
+	{
+		selectedIds_.clear();
+		for (auto *n : nodes) {
+			selectedIds_.push_back(nodeName(n));
+		}
+		if (selectedIds_.empty()) {
+			std::printf("WEAVER: select (nothing)\n");
+			std::fflush(stdout);
+			if (overlay) {
+				overlay->setNeedsDisplay();
+			}
+			return;
+		}
+		std::printf("WEAVER: select %d ", (int) selectedIds_.size());
+		for (size_t i = 0; i < selectedIds_.size(); i++) {
+			std::printf("%s%s", i ? "," : "",
+				    selectedIds_[i].c_str());
+		}
+		std::printf(" primary=%s\n", selectedIds_.back().c_str());
+		std::fflush(stdout);
+		if (overlay) {
+			overlay->setNeedsDisplay();
+		}
 		inspectSelection();
 	}
 
@@ -1264,26 +1321,27 @@ public:
 		if (gesture.kind == GestureKind::Marquee) {
 			if (gesture.moved) {
 				std::vector<InterfaceNode *> hits;
-				InterfaceNode *top = nullptr;
 
 				marqueeHits(gesture.current, &hits);
-				for (auto *n : hits) {
-					top = n;	/* pre-order: last = topmost */
-				}
 				std::printf("WEAVER: marquee %g,%g %gx%g hits=%d",
 					    gesture.current.origin.x,
 					    gesture.current.origin.y,
 					    gesture.current.size.w,
 					    gesture.current.size.h,
 					    (int) hits.size());
-				if (top) {
-					std::printf(" select=%s\n",
-						    top->identifier()[0]
-							    ? top->identifier()
-							    : top->className());
-					selectNode(top);
-				} else {
+				if (hits.empty()) {
 					std::printf("\n");
+					clearSelection();
+				} else {
+					std::printf(" select=%d",
+						    (int) hits.size());
+					for (auto *n : hits) {
+						std::printf(" %s",
+							    nodeName(n)
+								    .c_str());
+					}
+					std::printf("\n");
+					selectNodes(hits);
 				}
 				std::fflush(stdout);
 			}
@@ -1926,24 +1984,29 @@ EditorOverlay::draw(GraphicsContext &g)
 		g.drawLine(x, y + h, x, y, 0x333333);
 	}
 
-	InterfaceNode *sel = editor->selectedNode();
+	InterfaceNode *primary = editor->selectedNode();
 
-	if (!sel) {
+	if (!primary) {
 		return;
 	}
-	Rect f = nodeFrame(sel);
-	int x = (int) (f.origin.x * ppt + 0.5);
-	int y = (int) (f.origin.y * ppt + 0.5);
-	int w = (int) (f.size.w * ppt + 0.5);
-	int h = (int) (f.size.h * ppt + 0.5);
+	std::vector<InterfaceNode *> sel = editor->selectedNodes();
 
-	/* the selection outline */
-	g.drawLine(x, y, x + w, y, 0x000000);
-	g.drawLine(x + w, y, x + w, y + h, 0x000000);
-	g.drawLine(x + w, y + h, x, y + h, 0x000000);
-	g.drawLine(x, y + h, x, y, 0x000000);
+	/* selection outlines: one per selected node */
+	for (auto *n : sel) {
+		Rect f = nodeFrame(n);
+		int x = (int) (f.origin.x * ppt + 0.5);
+		int y = (int) (f.origin.y * ppt + 0.5);
+		int w = (int) (f.size.w * ppt + 0.5);
+		int h = (int) (f.size.h * ppt + 0.5);
 
-	/* the handles: white squares with a black hairline */
+		g.drawLine(x, y, x + w, y, 0x000000);
+		g.drawLine(x + w, y, x + w, y + h, 0x000000);
+		g.drawLine(x + w, y + h, x, y + h, 0x000000);
+		g.drawLine(x, y + h, x, y, 0x000000);
+	}
+
+	/* the handles (primary only): white squares with a black hairline */
+	Rect f = nodeFrame(primary);
 	for (int i = 0; i < (int) Handle::Count; i++) {
 		double hx;
 		double hy;

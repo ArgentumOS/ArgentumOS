@@ -16,7 +16,7 @@ DOC = "/Users/Admin/Documents/weaver_guides.conf"
 
 
 class Case(BaseCase):
-    title = "Weaver guides + marquee: alignment hairlines and rubber-band select"
+    title = "Weaver guides + marquee: snapping hairlines, rubber-band multi-select"
     tier = "fast"
     timeout = 420
 
@@ -60,19 +60,26 @@ class Case(BaseCase):
         self.check("guides-exit-zero", "WEAVER-EXIT=0" in out,
                    "the guide run exited 0")
 
-        # --- marquee: a rubber band over both controls selects the topmost ---
+        # --- marquee: a rubber band over both controls selects BOTH ---
         mark = len(session.log_text())
-        session.run("%s --open weaver_guides.conf --marquee 10 10 130 90; "
-                    "echo WEAVER-EXIT=$?" % WEAVER)
+        session.run("%s --open weaver_guides.conf --marquee 10 10 130 90 "
+                    "--click 65 72; echo WEAVER-EXIT=$?" % WEAVER)
         out = session.output_since(mark)
         for line in out.strip().splitlines():
             if "WEAVER" in line:
                 self.note(line)
 
         self.check("marquee-hits",
-                   "WEAVER: marquee 10,10 120x80 hits=2 select=okButton"
+                   "WEAVER: marquee 10,10 120x80 hits=2 select=2 "
+                   "greeting okButton" in out,
+                   "the marquee found both controls and selected both")
+        self.check("marquee-multi-selection",
+                   "WEAVER: select 2 greeting,okButton primary=okButton"
                    in out,
-                   "the marquee found both controls and selected the topmost")
+                   "the selection set holds both, primary = the topmost")
+        self.check("click-collapses-to-single",
+                   "WEAVER: select okButton" in out,
+                   "a plain click replaces the multi-selection with one node")
         self.check("marquee-exit-zero", "WEAVER-EXIT=0" in out,
                    "the marquee run exited 0")
 

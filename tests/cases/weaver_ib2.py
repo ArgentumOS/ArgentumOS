@@ -137,20 +137,28 @@ class Case(BaseCase):
             # the canvas sits inside the chrome at (canvas_x, canvas_y)
             bx = fx + FRAME_PX + int(round((canvas_x + 75) * ppt))
             by = fy + BAND_H + int(round((canvas_y + 92) * ppt))
-            shot = session.shot("weaver-show")
 
             # the window's own background, sampled in the empty centre
             # area below the canvas (inside the window, outside the chrome)
-            bg = shot.px(fx + FRAME_PX
-                         + int(round((canvas_x + 10) * ppt)),
-                         fy + BAND_H
-                         + int(round((canvas_y + canvas_h + 40) * ppt)))
+            bgx = fx + FRAME_PX + int(round((canvas_x + 10) * ppt))
+            bgy = fy + BAND_H + int(round((canvas_y + canvas_h + 40) * ppt))
+
+            # the first paint is asynchronous (Xfb shadow drain): poll the
+            # framebuffer until the Button's box actually differs from the
+            # window background instead of racing a single shot
             changed = 0
-            for y in range(by - 9, by + 10):
-                for x in range(bx - 9, bx + 10):
-                    p = shot.px(x, y)
-                    if any(abs(p[i] - bg[i]) > 30 for i in range(3)):
-                        changed += 1
+            for _attempt in range(15):
+                shot = session.shot("weaver-show")
+                bg = shot.px(bgx, bgy)
+                changed = 0
+                for y in range(by - 9, by + 10):
+                    for x in range(bx - 9, bx + 10):
+                        p = shot.px(x, y)
+                        if any(abs(p[i] - bg[i]) > 30 for i in range(3)):
+                            changed += 1
+                if changed > 0:
+                    break
+                session.run("sleep 1")
             self.check("button-drawn-at-moved-rect", changed > 0,
                        "%d px of the moved Button's box differ from the "
                        "window background" % changed)

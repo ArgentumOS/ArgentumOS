@@ -386,8 +386,10 @@ need input, which §8a addresses directly.
   landed post-IB7: a move/resize drag SNAPS the closest edge/centre within
   GUIDE_HIT (move shifts the frame, resize adjusts the moving edge and keeps
   its anchor), logs the alignment, and the overlay draws the hairline; a
-  press-drag on empty canvas rubber-bands a marquee that selects the topmost
-  hit (`tests/cases/weaver_guides.py`, 14/14).
+  press-drag on empty canvas rubber-bands a marquee that selects EVERY hit
+  (the selection is a set; the topmost hit is the primary, the overlay
+  outlines each selected node, and a plain click collapses back to one).
+  (`tests/cases/weaver_guides.py`, 16/16).
 - **IB4 — the inspector. DONE (2026-09).** Driven by the property table (D4):
   a selection change enumerates the control's properties through
   `interfacePropertyCount/At` (own first, then the inherited base) and logs
