@@ -58,6 +58,15 @@ the plan's G3 gate and SH-0..SH-5.
   pin 4.3.2): ISC core, musl+clang, built via **CMake only** — its
   autotools layer is never invoked (host or guest). No new
   build-time tools: CMake is already in §C.
+- **The interface builder (docs/design/interface-builder-plan.md)** —
+  **first-party**, no third-party code and no vendor format: our own
+  program, built like Kestrel and the zoo (musl + clang C++ from the
+  toolkit sources, `-largentum`, an app bundle under /Applications).
+  **No new build-time requirements** — the document emitter and reader
+  are C++, so it needs no generator, no configure machinery and no host
+  Python for its own build. Palette glyphs use the already-admitted
+  Lucide set (ISC). *Not* the "Editor app" above: that is the text
+  editor, this is the UI designer.
 
 ### C. Build drivers
 
