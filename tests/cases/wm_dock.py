@@ -670,5 +670,57 @@ class Case(BaseCase):
         session.serial("killall krel_slow 2>@null")
         time.sleep(1)
 
+        # --- a DISABLED control is greyed out ---------------------------
+        # widgets_c draws the same button twice on one row: "go" enabled and
+        # "nope" disabled.  A widget whose own draw() paints from fixed
+        # chrome constants (Slider's track is the clear case) cannot be
+        # trusted to dim itself, so the render walk greys a disabled
+        # Control's whole rect with a wash of the surface it recedes into.
+        # The pointer is PARKED first: leaving it on a widget changes hover
+        # state and any comparison against it would be measuring that.
+        session.serial("DISPLAY=:0 /System/Shared/tests/widgets_c &")
+        if session.wait_for(r"S22C-DRAW [1-9]", 60):
+            time.sleep(6)
+            mon = session.monitor()
+            mon.park()
+            time.sleep(2)
+            shot = session.shot("disabled")
+            row = 120			# the button row, from the probe's layout
+            runs, start = [], None
+            for x in range(95, 700):
+                lit = shot.luma(x, row) > 200
+                if lit and start is None:
+                    start = x
+                elif not lit and start is not None:
+                    if x - start > 60:
+                        runs.append((start, x - 1))
+                    start = None
+            if len(runs) >= 2:
+                (ax0, ax1), (bx0, bx1) = runs[0], runs[1]
+
+                def look(x0, x1):
+                    band = [shot.luma(x, y) for y in range(row - 4, row + 26)
+                            for x in range(x0, x1)]
+                    fill = sum(band) / len(band)
+                    ink = min(band)
+                    return fill, ink
+
+                (en_fill, en_ink) = look(ax0, ax1)
+                (dis_fill, dis_ink) = look(bx0, bx1)
+                self.check("disabled-control-is-greyed-out",
+                           dis_fill > en_fill + 8 and dis_ink > en_ink + 60,
+                           "a disabled control is greyed out (fill %.0f vs "
+                           "%.0f enabled; label %.0f vs %.0f)"
+                           % (dis_fill, en_fill, dis_ink, en_ink))
+            else:
+                self.check("disabled-control-is-greyed-out", False,
+                           "could not find the probe's two buttons (%s)"
+                           % (runs,))
+            session.serial("killall widgets_c 2>@null")
+            time.sleep(1)
+        else:
+            self.check("disabled-control-is-greyed-out", False,
+                       "widgets_c never drew")
+
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

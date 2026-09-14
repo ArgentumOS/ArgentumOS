@@ -84,7 +84,29 @@ Titled with the display name, containing in order:
 - Other equivalents belong to the item they act on, in the Edit menu for
   editing verbs.
 
-## 5. Open items
+## 5. Disabled controls are greyed out
+
+A control that cannot be operated must LOOK like it cannot be operated: a
+disabled control is greyed out as a whole — its chrome flattened toward the
+surface and its label dropped to a low-contrast grey.
+
+This is done by the **toolkit**, not by each widget: the render walk greys a
+disabled `Control`'s whole rect (`View::isDimmed()` → a translucent wash), on
+top of whatever the widget's own `draw()` painted. The reason is that a widget
+cannot be trusted to dim itself — several paint their primary surfaces from
+fixed chrome constants rather than from the theme's state palette. `Slider` is
+the clearest: its track ring is `theme.chromeOutline()` and its groove is
+`mixTone(theme.chromeBottom(), black, 0.18)`, so a disabled slider greyed its
+knob and nothing else, and `Disable All` in the widget zoo looked like it had
+done nothing (measured: 674 px changed across the whole board, all of it in
+two checkbox markers and one control).
+
+Apps get this for free by using `Control::setEnabled()`; they do not ask for a
+grey-out and must not paint one themselves. The theme's own `Disabled` state
+still exists and is still worth honouring (`Control::state()` returns it), but
+the grey-out no longer DEPENDS on a widget reading it.
+
+## 6. Open items
 
 These are unresolved, and an app should not invent an answer for them:
 

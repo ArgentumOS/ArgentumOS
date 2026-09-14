@@ -295,9 +295,22 @@ GraphicsContext::clipToRect(int xPx, int yPx, unsigned int wPx,
 static void
 composite_solid(pixman_image_t *dest, std::uint32_t rgb,
 		pixman_image_t *mask, int mask_x, int mask_y,
-		int x, int y, int w, int h)
+		int x, int y, int w, int h, unsigned int alpha = 255)
 {
 	pixman_color_t c = pixcolor(rgb);
+
+	/* alpha 255 is the opaque fill; anything less is the disabled
+	 * control's wash (see washRect). pixman_color_t is PREMULTIPLIED
+	 * 16-bit ARGB: the channels have to be scaled down with the alpha, or
+	 * a translucent wash composites as a saturated white (which is
+	 * exactly what it drew before this line existed — the washed control
+	 * came out a blank white rectangle with its label gone). */
+	if (alpha < 255) {
+		c.red = (std::uint16_t) (c.red * alpha / 255);
+		c.green = (std::uint16_t) (c.green * alpha / 255);
+		c.blue = (std::uint16_t) (c.blue * alpha / 255);
+	}
+	c.alpha = (std::uint16_t) (alpha * 257);
 	pixman_image_t *src = pixman_image_create_solid_fill(&c);
 
 	if (!src) {
@@ -426,6 +439,35 @@ GraphicsContext::fillRect(int x, int y, unsigned int w, unsigned int h,
 	}
 	composite_solid(b->img, rgb, nullptr, 0, 0,
 			x0, y0, x1 - x0, y1 - y0);
+}
+
+/* Composite a solid colour at `alpha` (0..255) over the rect. Used to GREY
+ * OUT a disabled control, so it has no colour of its own: the caller passes
+ * the surface the control should recede into. */
+void
+GraphicsContext::washRect(int x, int y, unsigned int w, unsigned int h,
+			  std::uint32_t rgb, unsigned int alpha)
+{
+	BitmapImage::Impl *b = impl_->bitmap->impl_;
+	int x0, y0, x1, y1;
+
+	if (!b->img || w == 0 || h == 0 || alpha == 0) {
+		return;
+	}
+	frame_state fs = { impl_->ox, impl_->oy, impl_->clipOn,
+			   impl_->clipX, impl_->clipY,
+			   impl_->clipW, impl_->clipH };
+	if (!map_frame(fs, x, y, (int) w, (int) h,
+		       &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	if (!clip_rect((int) impl_->bitmap->width(),
+		       (int) impl_->bitmap->height(),
+		       x0, y0, x1 - x0, y1 - y0, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	composite_solid(b->img, rgb, nullptr, 0, 0,
+			x0, y0, x1 - x0, y1 - y0, alpha);
 }
 
 /* Clip a shape rect to the bitmap surface; returns false when fully

@@ -177,6 +177,15 @@ render_view(View *v, GraphicsContext &g, double pxPerPt,
 			     (unsigned) (cy1 - cy0));
 	}
 	v->draw(g);
+	/* A disabled Control is GREYED OUT AS A WHOLE, after its subtree has
+	 * painted: one translucent wash of the surface it should recede into.
+	 * Greying it inside each widget's own draw() cannot be relied on —
+	 * Slider paints its track from fixed chrome constants, so a disabled
+	 * slider greyed its knob and nothing else. */
+	if (v->isDimmed()) {
+		g.washRect(0, 0, (unsigned) pw, (unsigned) ph,
+			   Application::shared().theme().page(), 72);
+	}
 	for (View *c : v->subviews()) {
 		Rect cr = c->frame();
 

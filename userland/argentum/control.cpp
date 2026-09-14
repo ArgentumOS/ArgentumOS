@@ -36,6 +36,14 @@ Control::isEnabled() const
 	return ctrl_->enabled;
 }
 
+/* a disabled control is greyed out as a whole by the render walk; the
+ * widget's own draw() is not trusted to do it (see View::isDimmed) */
+bool
+Control::isDimmed() const
+{
+	return !ctrl_->enabled;
+}
+
 void
 Control::setAction(Action action)
 {

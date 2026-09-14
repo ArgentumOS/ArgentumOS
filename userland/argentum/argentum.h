@@ -133,6 +133,13 @@ public:
 	Rect bounds() const;		/* {0,0,w,h} in local space */
 	void setHidden(bool hidden);
 	bool isHidden() const;
+	/* True when the render walk must GREY THIS VIEW OUT as a whole, on top
+	 * of whatever its own draw() painted: a disabled Control (docs/design/
+	 * argentum-hig.md §2). It is a virtual rather than a Control cast
+	 * because the walk runs per view per draw, and because a widget that
+	 * paints from fixed chrome constants (Slider's track) cannot be relied
+	 * on to dim itself. */
+	virtual bool isDimmed() const;
 
 	/* display: draw local px content; default paints nothing */
 	virtual void draw(GraphicsContext &g);
@@ -673,6 +680,11 @@ public:
 	 * textMetrics() when layout needs them. */
 	void drawText(const char *family, double sizePt, int xPx, int yPx,
 		      const char *utf8, std::uint32_t fg, bool bold = false);
+	/* Composite a solid colour at `alpha` (0..255) over the rect, in the
+	 * current transform and clip. This is how a DISABLED control is greyed
+	 * out — see View::isDimmed(). */
+	void washRect(int x, int y, unsigned int w, unsigned int h,
+		      std::uint32_t rgb, unsigned int alpha);
 
 	/* S2.3c: draw a BitmapImage into (xPx,yPx,wPx,hPx) in the
 	 * current translated space, clipped to the frame. mode places
@@ -805,6 +817,7 @@ public:
 
 	void setEnabled(bool enabled);
 	bool isEnabled() const;
+	bool isDimmed() const override;	/* a disabled control is greyed out */
 	void setAction(Action action);
 	/* fire the action (no-op when disabled or no action set) */
 	void sendAction();

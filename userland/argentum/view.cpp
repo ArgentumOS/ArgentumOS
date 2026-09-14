@@ -204,6 +204,12 @@ View::setHidden(bool hidden)
 }
 
 bool
+View::isDimmed() const
+{
+	return false;	/* only a disabled Control dims */
+}
+
+bool
 View::isHidden() const
 {
 	return impl_->hidden;
