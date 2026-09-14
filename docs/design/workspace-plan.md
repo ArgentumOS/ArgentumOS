@@ -520,11 +520,33 @@ generator, so the tile follows that rather than being invented here.
 
 Still open for this slice, and honestly not done: the pixel assertions (rows
 are ink), the scroll assertion (scrolling changes them), and the empty-column
-case. **A note for whoever writes them: do not sample where the pointer is.**
-Three failures in this session read as a broken desktop and were the CURSOR —
-the themed 24x24 arrow, white (luma 246), sitting at the screen centre where
-QEMU's mouse starts. It only became visible when the cursor theme was
-installed, which is why an earlier sample point was fine and then was not.
+case.
+
+**Three separate causes were tangled in this slice's pixels, and every one is
+worth keeping:**
+
+1. **A stale binary, because the Makefile does not track header deps.** Adding
+   the `Browser` classes to `argentum.h` did not rebuild their consumers, so
+   Kestrel ran against a toolkit it was not built with and its CHROME drew
+   white — the strip (0 of 30 rows) and the dock (luma 246 across the whole
+   band). Touching the dependents fixed it. This is the same class as the
+   kernel's documented "MUST rm -rf after a header change", now demonstrated
+   on the userland side: **after editing `argentum.h`, force the consumers to
+   rebuild** (or fix the dependency, which nothing has done yet);
+2. **Xfb's drain is asynchronous.** The surface LOGS when it draws, and fb0 can
+   still hold what the firmware left a moment later — white, whose luma 246 is
+   indistinguishable from a themed cursor's arrow. The pixel check settles
+   before shooting now. This is the third instance of "observed before it was
+   ready" in this one case: the layout line, the screenshot, and now the pixels
+   underneath the screenshot;
+3. **the cursor.** A single fixed sample point read the themed 24x24 arrow,
+   white, at the screen centre where QEMU's mouse starts — and it only started
+   happening when the cursor theme was installed, which is why an earlier
+   sample point was fine and then was not.
+
+The check is a grid majority now (53 of 55 points on the ramp, the other two
+being the app's own window), which is what "the desktop shows the ramp" means
+and which cannot go stale the way one coordinate can.
 
 ### W3 — the chain (Miller behaviour)
 

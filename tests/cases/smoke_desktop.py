@@ -93,6 +93,15 @@ class Case(BaseCase):
             # paint read as a broken desktop. A majority sample is what "the
             # desktop shows the ramp" actually means, and it cannot go stale
             # the way one coordinate can.
+            # Xfb's drain is ASYNCHRONOUS: the surface logs when it DRAWS,
+            # and fb0 can still hold what the firmware left a moment later
+            # (white, whose luma 246 is indistinguishable from a themed
+            # cursor's arrow). This is the same "observed before it was ready"
+            # shape as the waits above, one layer down — so settle, then take
+            # the shot here rather than reusing one from before the surface
+            # had drained.
+            time.sleep(2.0)
+            shot = session.shot("desktop-settled")
             samples = []
             for gx in range(1, 12):
                 for gy in range(1, 6):
