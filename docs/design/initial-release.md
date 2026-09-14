@@ -167,7 +167,10 @@ user-installed under `Users/$USER/Shared/Images/Wallpaper/` (or
 
 ### 3.3 File manager (Miller-column browser)
 
-*Design + slice split: `docs/design/workspace-plan.md` (PROPOSED).*
+*Design + slice split: `docs/design/workspace-plan.md` — **DEFERRED
+(2026-09)**: the first attempt was discarded, and the work waits on more
+toolkit controls existing. The file-manager keys stay specified and
+unread.*
 
 The file manager browses the FSH in **adjacent columns** — the
 column-browser model of NeXTSTEP's File Viewer (and the classic macOS

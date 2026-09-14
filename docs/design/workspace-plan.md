@@ -1,22 +1,55 @@
 # Workspace — the file manager (Miller-column browser)
 
-Status: **APPROVED (2026-09).** The owner split and the slice list are
-accepted; slices are actioned one at a time, and each carries its own
-status in §4. Design + split for the app the
-release docs call **Workspace**: the adjacent-column file manager of
-`docs/design/initial-release.md` §3.3 (the column-browser model of
-NeXTSTEP's File Viewer and the classic macOS Finder) **and the desktop
-surface — the wallpaper**.
+Status: **DEFERRED (2026-09).** The user's call, verbatim: *"This isn't working.
+Discard all current code for the file manager, and defer it until later on when
+we have more controls defined."* The code is gone from the tree, the design and
+the measurements below stand, and nothing here is a plan of record until it is
+resumed.
 
-**The owner split is decided (§3.0): the dock belongs to the window
-manager, the wallpaper to Workspace.** The plan is still mostly about the
-browser, but it now owns the surface too, and it carries the hand-off
-(W0) and the config-domain consequence (D6).
+## What was discarded
 
-Read with: `docs/design/initial-release.md` §3 (the app and its settled
-Q-R decisions), `docs/design/app-model.md` §3 (the manifest),
-`docs/design/argentum-uikit-catalog.md` (what the toolkit has),
-`docs/design/argentum-hig.md` (the interface rules this must obey).
+- `userland/argentum/browser.cpp`, the `Browser` / `BrowserSource` /
+  `BrowserDelegate` declarations in `argentum.h`, and the `rowHeightPt()`
+  accessor WT-1 added;
+- `userland/tests/browser_probe.cpp` and its build rule;
+- the app's browser window, its listing, its column and its chain — the app is
+  the desktop SURFACE again, which is W0/W0b and stands (Kestrel does not paint
+  the wallpaper any more);
+- four browser-era checks in `smoke_desktop`. 15/15 with the surface checks.
+
+## What the attempt established — the reason to keep this document
+
+Not one of these is about the file manager, and every one cost real time:
+
+- **a client's root origin sits inside its WM frame** (`200,150` before the
+  reparent, `205,171` after) while the WM's `manage` line names the FRAME — so
+  a program that reports its position for another to aim at must report it
+  AFTER the reparent;
+- **`make rootagfs` does not rebuild consumers of a changed toolkit header**,
+  so Kestrel ran against a toolkit it was not built with and its chrome drew
+  white;
+- **Xfb's drain is asynchronous**, so a screenshot taken on the strength of a
+  log line can photograph an undrained screen;
+- **the cursor is white and 24x24** at the screen centre, so one fixed pixel
+  sample is not a desktop test — a grid majority is;
+- **`Monitor::move` is relative**, and `goto()` converts through an assumed
+  position: a case must `park()` first;
+- **read the log AFTER the thing you are asserting about has happened** — the
+  same staleness mistake in four forms.
+
+And one thing that IS about this work, and worked: **the chain**. Descend +
+truncate is implemented and observable, and the app published its chain, its
+row height and which rows are folders. What did not work was a gate driving
+clicks at the app's window: the seam that succeeds on a probe's window logged
+**zero** selections from the app's. That is one measurement from being
+explained, and it is where a resumption should start.
+
+## The slices below
+
+Kept as written — they were not wrong. The app was simply being built ahead of
+the controls it needs: the toolkit's `TableView` has no icon or mark hook, the
+file manager's rows want one, and the icon story is D14/Q-W10's. Resume when
+those exist.
 
 ## 1. Scope
 

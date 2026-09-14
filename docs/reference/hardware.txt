@@ -1,36 +1,122 @@
-FNX hardware support
-=====================
+Argentum hardware support
+=========================
 
-This document enumerates the hardware FNX drives. The UEFI build
-(`make buildfnx` -> `.build/64/fnx.efi`) runs on x86-64 QEMU with
-OVMF; the classic Fiwix 32-bit PC build is still supported by the same
-driver layer. Device nodes (major/minor) are listed separately in
-`docs/reference/devices.txt`.
+This document enumerates the hardware the Argentum kernel ("FNX" as an
+engineering name) drives. The standard build (`make run-uefi`) is a
+64-bit UEFI image (`.build/64/fnx.efi`) running on x86-64 with OVMF;
+`make buildfnx` produces that image standalone. Device nodes
+(major/minor) are listed separately in `docs/reference/devices.txt`.
 
 Driver source lives under `drivers/`; configuration knobs are in
 `include/fnx/config.h` (CONFIG_* below).
 
 
+Platform
+--------
+
+| Component    | Hardware        | I/O / interface       | Notes |
+|--------------|-----------------|-----------------------|-------|
+| CPU          | x86-64 / AMD64  | long mode             | single processor (no SMP) |
+| RAM          | system memory   | -                     | boots from 256 MB up to 64 GB |
+| Firmware     | 64-bit UEFI     | EFI services + GOP    | kernel/main.c, kernel/boot64/ (OVMF) |
+| PCI / PCIe   | config space    | 0xCF8/0xCFC           | drivers/pci/pci.c; CONFIG_PCI + CONFIG_PCI_NAMES |
+| MSI / MSI-X  | PCI interrupt   | config-space caps     | drivers/pci/msix.c, kernel/boot64/msix64.c |
+| PIC          | 8259A           | 0x20/0xA0             | include/fnx/pic.h |
+| APIC         | Local + I/O APIC| MSR / MMIO            | kernel/boot64/irq64.c |
+| PIT          | 8254 timer      | 0x40-0x43             | include/fnx/pit.h |
+| RTC / CMOS   | MC146818        | 0x70/0x71             | include/fnx/cmos.h (time/date) |
+
+
+Display
+-------
+
+| Device             | Hardware                  | I/O / interface | Driver |
+|--------------------|---------------------------|-----------------|--------|
+| Framebuffer        | UEFI GOP (firmware-set)   | linear LFB       | kernel/main.c gop_video_init(); drivers/video/video.c, fbcon.c |
+| GOP mode-set       | Bochs-compatible dispi    | 0x01CE/0x01CF    | drivers/video/video.c (runtime resolution/depth switch) |
+| VGA text console   | VGA                       | 0x3D4/0x3D5, text 0xB8000 | drivers/video/vgacon.c |
+
+- `drivers/char/fb.c` exposes `/dev/fb0` (major 29) with mmap support
+  and `IO_FB_GETMODE`/`IO_FB_SETMODE` for runtime mode changes
+  (verified at 640x480x16, 800x600x32 and 1920x1080x32; 1080p is the
+  default).
+- The display path is **GOP-only**: the native adapter drivers
+  (vmware-svga, ATI Rage XL, Bochs BGA) were removed — none could scan
+  its LFB out under QEMU — so only the firmware-set GOP framebuffer is
+  used. The Xfb server and the whole GUI sit on this one path.
+- Built-in console fonts: 8x8/8x14/8x16 (drivers/video/fonts.c).
+
+
+Input
+-----
+
+| Device             | Hardware                     | Interface     | Driver |
+|--------------------|------------------------------|---------------|--------|
+| USB HID keyboard   | USB boot-protocol keyboard (class 3, proto 1) | via a USB HCD | drivers/usb/usb-kbd.c |
+| USB HID mouse      | USB boot-protocol mouse (class 3, proto 2)    | via a USB HCD | drivers/usb/usb-mouse.c |
+| PS/2 keyboard      | 8042                         | 0x60/0x64, IRQ 1 | drivers/char/keyboard.c, ps2.c |
+| PS/2 mouse         | 8042 aux channel             | 0x60/0x64, IRQ 12 | drivers/char/psaux.c, ps2.c (CONFIG_PSAUX) |
+
+- Input is delivered as native devices, not emulation of PS/2: a HID
+  keyboard or mouse becomes `/System/Devices/kbd` (resolved-keysym
+  records) or `/System/Devices/mouse` (record packets), and Xfb reads
+  those records directly.
+- Defkeymap provides the US layout (drivers/char/defkeymap.c).
+- A generic HID layer (consumer keys, wheel/extra buttons, absolute
+  pointing, gamepads) is planned, not yet implemented — see
+  `docs/design/usb-hid-plan.md` and `docs/design/native-input-plan.md`.
+
+
+USB
+---
+
+| Component            | Hardware                          | Interface        | Driver |
+|----------------------|-----------------------------------|------------------|--------|
+| xHCI host controller | USB 3.x, class 0x0C03 prog-if 0x30 (incl. 1B36:000D, 1033:0194) | BAR0 MMIO | drivers/usb/xhci.c |
+| EHCI host controller | USB 2.0, class 0x0C03 prog-if 0x20 (8086:24CD ICH4) | MMIO | drivers/usb/ehci.c |
+| UHCI host controller | USB 1.1, class 0x0C03 prog-if 0x00 (8086:*, 1106:3038) | 16-bit I/O at BAR4 | drivers/usb/uhci.c |
+| OHCI host controller | USB 1.1, class 0x0C03 prog-if 0x10 | MMIO | drivers/usb/ohci.c |
+| Hubs                 | USB class 9 (root and external, cascaded) | -         | drivers/usb/usb-hub.c |
+| HID keyboard / mouse | class 3, boot protocol (proto 1 / 2) | -            | drivers/usb/usb-kbd.c, usb-mouse.c |
+| Mass storage         | class 8, subclass 6, protocol 0x50 (Bulk-Only) | -   | drivers/usb/usb-storage.c |
+| Ethernet (CDC-ECM)   | USB CDC Ethernet (e.g. 0525:a4a2) | -              | drivers/usb/usb-net.c |
+
+- The full host-controller set is implemented; devices may sit directly
+  on a root port or behind a cascaded hub.
+- EHCI defers to its companion UHCI controllers for low/full-speed
+  devices (companion routing).
+- `usb-storage` presents the device as a SCSI disk block device
+  (major 8, `/dev/sda`); `usb-net` registers an Ethernet NIC that the
+  shared network core drives like any other.
+
+
 Block devices
 -------------
 
-| Device            | Hardware                    | I/O / interface              | IRQ | Driver |
-|-------------------|-----------------------------|------------------------------|-----|--------|
-| IDE hard disks    | PATA/SATA (IDE mode)        | primary 0x1F0, secondary 0x170 (plus 0x3F6/0x376); PCI IDE controllers also probed via BAR/IRQ | 14 / 15 | drivers/block/ata.c, ata_pci.c, ata_hd.c |
-| ATAPI CD-ROM      | IDE CD drives               | same IDE controllers         | 14 / 15 | drivers/block/atapi.c, atapi_cd.c |
-| Floppy            | 82077AA-style FDC           | 0x3F0-0x3F7                  | 6      | drivers/block/floppy.c |
-| DMA controller    | 8237                        | DMA channels                 | -      | drivers/block/dma.c |
-| Ramdisk           | in-memory                   | -                            | -      | drivers/block/ramdisk.c |
-| Partition table   | MBR                        | -                            | -      | drivers/block/part.c |
+| Device             | Hardware                     | I/O / interface              | IRQ | Driver |
+|--------------------|------------------------------|------------------------------|-----|--------|
+| IDE hard disks     | PATA/SATA (IDE mode)         | primary 0x1F0, secondary 0x170 (plus 0x3F6/0x376); PCI IDE controllers also probed via BAR/IRQ | 14 / 15 | drivers/block/ata.c, ata_pci.c, ata_hd.c |
+| ATAPI CD-ROM       | IDE CD drives                | same IDE controllers         | 14 / 15 | drivers/block/atapi.c, atapi_cd.c |
+| AHCI (SATA native) | Intel ICH9 AHCI (8086:2922)  | ABAR MMIO on BAR5, class 0x0106 prog-if 0x01 | PCI | drivers/block/ahci.c |
+| NVMe               | Intel 8086:5845, Red Hat 1B36:0010 | 64-bit BAR0 MMIO, class 0x0108 | PCI / MSI-X | drivers/block/nvme.c |
+| SCSI (paravirt)    | VMware PVSCSI (15AD:07C0)    | MMIO on BAR0, class 0x0100   | PCI | drivers/block/pvscsi.c |
+| USB mass storage   | USB Bulk-Only (class 8/6/0x50) | via a USB HCD; presents as SCSI disk | PCI | drivers/usb/usb-storage.c |
+| Floppy             | 82077AA-style FDC            | 0x3F0-0x3F7                  | 6   | drivers/block/floppy.c |
+| DMA controller     | 8237                         | DMA channels                 | -   | drivers/block/dma.c |
+| Ramdisk            | in-memory                    | -                            | -   | drivers/block/ramdisk.c |
+| Partition table    | MBR (4 primaries)            | -                            | -   | drivers/block/part.c |
 
-- ext2 is the on-disk root filesystem on the ATA/IDE disk (`hda`/`hdb`);
-  minixfs is compiled out (`CONFIG_FS_MINIX` undef).
-- The block layer (`blk_queue.c`) provides a cache with a shutdown flush.
-- Partitioned IDE disks are supported (part.c).
+- The OS boots from an AGFS root on a persistent ATA/NVMe/SCSI/IDE
+  disk; the ext2, XBFS, FAT/exFAT and ISO 9660 filesystems are served
+  by the same drivers (see `fs/`).
+- The block layer (`blk_queue.c`) provides a cache with a shutdown
+  flush.
+- Partitioning is MBR only today; GPT is designed but not implemented
+  (`docs/reference/partition-support-plan.md`).
 
 
-Network devices (11/11 QEMU NIC models)
----------------------------------------
+Network devices (12 NIC drivers)
+--------------------------------
 
 All NICs are PCI except ne2k_isa; the driver core is shared (Ethernet
 framing, ARP/IP/ICMP/UDP/TCP, DHCP client, AF_PACKET in
@@ -50,6 +136,7 @@ in `drivers/net/ext_dev.c`; only one NIC driver is active at a time.
 | vmxnet3        | VMware PV Ethernet v3  | 15AD:07B0     | BAR0/BAR1 MMIO              | PCI | drivers/net/vmxnet3.c |
 | e1000e         | Intel 82574L            | 8086:10D3     | MMIO 128KiB (BAR)           | PCI | drivers/net/e1000e.c |
 | igb            | Intel 82576             | 8086:10C9     | MMIO 128KiB (BAR)           | PCI | drivers/net/igb.c |
+| usb-net        | USB CDC-ECM adapter    | (USB, e.g. 0525:a4a2) | via a USB HCD       | PCI | drivers/usb/usb-net.c |
 
 Notes:
 - eepro100's QEMU model name is a variant such as `i82559c` (not
@@ -57,10 +144,29 @@ Notes:
 - All NIC drivers use MMIO/iomem mapped at fixed high VAs
   (0xFFFFBF0000000000 family) and IRQ 11 by default (BAR/PCI IRQ
   otherwise).
+- A USB CDC-ECM NIC may register before the PCI probe; a found PCI NIC
+  overrides it.
 - 802.3 framing, broadcast/unicast/multicast filtering and a loopback
   interface complete the stack. `CONFIG_NET` gates all of it.
-- QEMU's `usb-net` and `xen-net-device` are deliberately unsupported
-  (no USB stack, no Xen).
+- No wireless (802.11); QEMU's `xen-net-device` is deliberately
+  unsupported (no Xen).
+
+
+Audio
+-----
+
+All audio drivers implement the OSS `/dev/dsp` API in the playback (DAC)
+direction. See `docs/design/audio-mixer-plan.md` for the planned mixing
+service.
+
+| QEMU -device       | Chipset                        | Interface              | Driver |
+|--------------------|--------------------------------|------------------------|--------|
+| AC97               | Intel 82801AA (8086:2415)      | BAR0 NAM (mixer) + BAR1 NABMB (bus-master DMA) | drivers/char/ac97.c |
+| ES1370             | Ensoniq AudioPCI (1274:1371)   | 256-byte I/O BAR, DAC1 channel | drivers/char/es1370.c |
+| intel-hda / ich9-intel-hda | Intel HD Audio (8086:2668 / 8086:293E) | BAR0 MMIO, CORB/RIRB + BDL stream | drivers/char/hda.c |
+| sb16               | Sound Blaster 16 (ISA)         | 0x226/0x22A/0x22C/0x224 (IRQ 5, DMA 1/5) | drivers/char/sb16.c |
+| gus                | Gravis Ultrasound (ISA)        | 0x240/0x342-0x347      | drivers/char/gus.c |
+| virtio-snd         | virtio sound (1AF4:1059, virtio-1) | modern PCI transport, BAR4 caps + vrings | drivers/char/virtio_snd.c |
 
 
 Character / console devices
@@ -68,43 +174,29 @@ Character / console devices
 
 | Device             | Hardware                     | I/O / interface | IRQ | Driver |
 |--------------------|------------------------------|-----------------|-----|--------|
-| PS/2 keyboard      | 8042                         | 0x60/0x64       | 1   | drivers/char/keyboard.c, ps2.c |
-| PS/2 mouse         | 8042 aux channel             | 0x60/0x64       | 12  | drivers/char/psaux.c, ps2.c (CONFIG_PSAUX) |
 | Serial ports 1-4   | 16550 UART                   | 0x3F8/0x2F8/0x3E8/0x2E8 | 4 (1&3), 3 (2&4) | drivers/char/serial.c |
 | Parallel port      | PC-style LPT                 | 0x378 (also 0x3BC, 0x278 compile-time) | - | drivers/char/lp.c |
-| VGA text console   | VGA                          | 0x3D4/0x3D5, text 0xB8000 | - | drivers/video/vgacon.c |
-| Framebuffer console| BGA/VBE (bochs-display)      | 0x01CE/0x01CF  | -   | drivers/video/bga.c, fbcon.c (CONFIG_BGA) |
 | TTY / VT / PTY     | virtual                      | -              | -   | drivers/char/tty.c, vt.c, pty.c (CONFIG_UNIX98_PTYS) |
 | Memory devices     | virtual (/dev/mem, /dev/zero, ...) | -         | -   | drivers/char/memdev.c |
 | SysRq              | keyboard-triggered           | -              | -   | drivers/char/sysrq.c |
 | char queues        | kernel abstraction           | -              | -   | drivers/char/charq.c |
 
 Notes:
-- On the UEFI build, the console comes up on the GOP framebuffer
-  (identity-mapped `video.address` from `kernel/main.c` `gop_video_init()`);
-  serial is the reliable debug/log console (`CONFIG_QEMU_DEBUGCON`).
-- `fb.c` exposes `/dev/fb0` (major 29) with mmap support.
-- Defkeymap provides the US layout; 8x14/8x16/8x8 fonts are built in.
-
-
-Platform
---------
-
-| Component    | Hardware        | I/O / interface       | Notes |
-|--------------|-----------------|-----------------------|-------|
-| PCI bus      | PCI config space| 0xCF8/0xCFC           | drivers/pci/pci.c; CONFIG_PCI + CONFIG_PCI_NAMES |
-| PIC          | 8259A           | 0x20/0xA0             | include/fnx/pic.h |
-| PIT          | 8254 timer      | 0x40-0x43             | include/fnx/pit.h |
-| RTC / CMOS   | MC146818        | 0x70/0x71             | include/fnx/cmos.h (time/date) |
-| UEFI         | OVMF (64-bit)   | EFI services + GOP    | kernel/main.c, kernel/boot64/ (64-bit UEFI port) |
+- The console can be the GOP framebuffer or a serial line; serial is
+  the reliable debug/log console (`CONFIG_QEMU_DEBUGCON`), and
+  `console=/dev/ttyS*` gives a fully interactive serial console.
 
 
 Not supported (explicitly out of scope for now)
 -----------------------------------------------
 
-- USB (no host controller or stack) -> no usb-net, no USB storage/input
-- Xen (no xen-net-device)
-- AHCI/SATA-native mode (ATA/IDE emulation only)
-- Sound cards
-- SCSI / virtio-blk / virtio-scsi (virtio-net only)
-- Wireless
+- SMP — one processor only.
+- Wireless (802.11); Xen paravirt networking (`xen-net-device`).
+- Native GPU 2D/3D acceleration — the display path is the GOP
+  framebuffer only.
+- Sound capture (audio drivers are playback-only).
+- USB device classes beyond HID boot keyboard/mouse, mass storage
+  (Bulk-Only), CDC-ECM Ethernet and hubs — e.g. USB audio, video (UVC),
+  printers, USB-serial, MIDI.
+- GPT partitions (MBR only); virtio-blk / virtio-scsi (virtio-net and
+  virtio-snd only).
