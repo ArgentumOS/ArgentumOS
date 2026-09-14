@@ -271,6 +271,194 @@ outlineIntoView(OutlineView *view, const InterfaceNode *n, int depth,
 	}
 }
 
+/* the inspector rows for one document, filled through the property table
+ * for the node named `nodeId` (id or class); the first child is the default
+ * when the document has no selection of its own. Shared by the interactive
+ * window and the background (multi-document) windows. */
+static void
+populateInspectorFor(View *insp, InterfaceDocument *doc, View *canvas,
+		     const char *nodeId,
+		     std::function<void(const std::string &,
+					const std::string &,
+					const std::string &)> onEdit)
+{
+	InterfaceNode *n = findNode(doc->root(), nodeId);
+
+	if (!n && doc->root() && doc->root()->childCount() > 0) {
+		n = doc->root()->childAt(0);
+	}
+	if (!n) {
+		return;
+	}
+	const char *id = n->identifier()[0] ? n->identifier()
+					   : n->className();
+	double y = 0;
+	double rowH = 26;
+
+	Label *head = new Label();
+
+	head->setFrame(Rect{ { 0, y }, { INSP_W - 16, 20 } });
+	head->setText((std::string(n->className()) + " " + id).c_str());
+	insp->addSubview(head);
+	y += 26;
+
+	int count = interfacePropertyCount(n->className());
+
+	for (int i = 0; i < count; i++) {
+		const InterfaceProperty *p =
+			interfacePropertyAt(n->className(), i);
+
+		if (!p) {
+			continue;
+		}
+		Label *name = new Label();
+
+		name->setFrame(Rect{ { 0, y }, { 80, 24 } });
+		name->setText(p->name);
+		insp->addSubview(name);
+
+		TextField *field = new TextField();
+
+		field->setFrame(Rect{ { 84, y },
+			{ INSP_W - 16 - 84, 24 } });
+		View *live = canvas ? canvas->viewWithIdentifier(id)
+				    : nullptr;
+
+		if (live && p->get) {
+			InterfaceNode::Property v;
+			char buf[64];
+
+			v.kind = p->kind;
+			p->get(live, v);
+			switch (v.kind) {
+			case InterfaceNode::Kind::String:
+				field->setValue(v.text.c_str());
+				break;
+			case InterfaceNode::Kind::Number:
+				std::snprintf(buf, sizeof(buf), "%g",
+					      v.number);
+				field->setValue(buf);
+				break;
+			case InterfaceNode::Kind::Bool:
+				field->setValue(v.boolean ? "true"
+							  : "false");
+				break;
+			}
+		} else {
+			field->setValue("");
+		}
+		insp->addSubview(field);
+		if (onEdit) {
+			std::string nodeId = id;
+			std::string propName = p->name;
+
+			field->setOnEndEdit(
+				[onEdit, nodeId, propName](TextField *f) {
+					onEdit(nodeId, propName,
+					       f->value());
+				});
+		}
+		y += rowH;
+	}
+}
+
+/* the four visible regions (palette, outline, canvas-side inspector) for
+ * ONE editor window. `keep` keeps the heap views alive; `outlineOut` /
+ * `outlineIds` are null for background windows (view-only outlines). */
+static void
+buildChromeFor(EditorSurface *surface, InterfaceDocument *doc, View *canvas,
+	       Point canvasOrigin, std::vector<View *> *keep,
+	       OutlineView **outlineOut, std::vector<std::string> *outlineIds,
+	       const char *selectedId,
+	       std::function<void(const std::string &,
+				  const std::string &,
+				  const std::string &)> onEdit)
+{
+	InterfaceNode *r = doc->root();
+
+	if (!r) {
+		return;
+	}
+	double rootW = r->frameW();
+	double rootH = r->frameH();
+	double winW = 0;
+	double winH = 0;
+
+	layoutSizes(r, &winW, &winH);
+
+	Box *paletteBox = new Box();
+
+	paletteBox->setTitle("Palette");
+	paletteBox->setLayout(BoxLayout::Column);
+	paletteBox->setFrame(Rect{ { 0, 0 }, { SIDE_W, PAL_H } });
+	surface->addSubview(paletteBox);
+	keep->push_back(paletteBox);
+
+	TableView *palette = new TableView(new PaletteSource());
+	const char *cols[1] = { "Control" };
+
+	palette->setColumns(cols, 1);
+	palette->setFrame(Rect{ { 0, 0 },
+		{ SIDE_W - 16, PAL_H - 44 } });
+	paletteBox->addSubview(palette);
+	keep->push_back(palette);
+
+	double outY = PAL_H + 8;
+
+	Box *outlineBox = new Box();
+
+	outlineBox->setTitle("Outline");
+	outlineBox->setLayout(BoxLayout::Column);
+	outlineBox->setFrame(Rect{ { 0, outY },
+		{ SIDE_W, winH - outY } });
+	surface->addSubview(outlineBox);
+	keep->push_back(outlineBox);
+
+	OutlineView *rows = new OutlineView();
+
+	rows->setFrame(Rect{ { 0, 0 },
+		{ SIDE_W - 16, winH - outY - 44 } });
+	outlineBox->addSubview(rows);
+	keep->push_back(rows);
+	if (outlineOut) {
+		*outlineOut = rows;
+	}
+	if (outlineIds) {
+		outlineIds->clear();
+		outlineIntoView(rows, r, 0, outlineIds);
+	} else {
+		std::vector<std::string> scratch;
+
+		outlineIntoView(rows, r, 0, &scratch);
+	}
+
+	double inspX = SIDE_W + CHROME_GAP + rootW + CHROME_GAP;
+
+	Box *inspectorBox = new Box();
+
+	inspectorBox->setTitle("Inspector");
+	inspectorBox->setLayout(BoxLayout::Column);
+	inspectorBox->setFrame(Rect{ { inspX, 0 }, { INSP_W, winH } });
+	surface->addSubview(inspectorBox);
+	keep->push_back(inspectorBox);
+
+	View *insp = new View();
+
+	insp->setFrame(Rect{ { 0, 0 }, { INSP_W - 16, winH - 44 } });
+	inspectorBox->addSubview(insp);
+	keep->push_back(insp);
+	populateInspectorFor(insp, doc, canvas, selectedId, onEdit);
+
+	std::printf("WEAVER: layout window=%gx%g canvas=%g,%g %gx%g "
+		    "palette=%g,%g %gx%g outline=%g,%g %gx%g "
+		    "inspector=%g,%g %gx%g\n",
+		    winW, winH, canvasOrigin.x, canvasOrigin.y,
+		    rootW, rootH, 0.0, 0.0, SIDE_W, PAL_H,
+		    0.0, outY, SIDE_W, winH - outY,
+		    inspX, 0.0, INSP_W, winH);
+	std::fflush(stdout);
+}
+
 enum class GestureKind : int { None, Move, Resize };
 
 class Editor {
@@ -295,6 +483,18 @@ public:
 	OutlineView *outline_ = nullptr;
 	std::vector<std::string> outlineIds_;
 
+	/* in-process multi-document: --open accumulates the PREVIOUS document
+	 * as a background window; --show builds one window for each. */
+	struct BackgroundDoc {
+		InterfaceDocument *doc;
+		std::string path;
+		bool dirty;
+	};
+
+	std::vector<BackgroundDoc> background_;
+	std::vector<View *> backgroundKeep_;	/* keep background views alive */
+	std::vector<Window *> backgroundWins_;
+
 	/* content-pt -> document-pt (real mouse events arrive in content pt) */
 	Point contentToDoc(const Point &p) const
 	{
@@ -302,12 +502,12 @@ public:
 	}
 
 	/* D14: an edited document marks itself in the WINDOW TITLE */
-	std::string windowTitle() const
+	std::string titleFor(const std::string &p, bool d) const
 	{
 		std::string t = "Weaver";
 
-		if (dirty) {
-			std::string base = path;
+		if (d) {
+			std::string base = p;
 			size_t slash = base.rfind('/');
 
 			if (slash != std::string::npos) {
@@ -318,6 +518,11 @@ public:
 			t += " (edited)";
 		}
 		return t;
+	}
+
+	std::string windowTitle() const
+	{
+		return titleFor(path, dirty);
 	}
 
 	void updateTitle()
@@ -378,7 +583,12 @@ public:
 			failed = true;
 			return false;
 		}
-		delete doc;
+		if (!path.empty()) {
+			/* in-process multi-document: the PREVIOUS document becomes a
+			 * background window when --show builds one window per doc */
+			background_.push_back({ doc, path, dirty });
+			doc = nullptr;
+		}
 		doc = fresh;
 		path = resolved;
 		dirty = false;
@@ -446,10 +656,19 @@ public:
 		undoStack.clear();
 		gesture = Gesture();
 		canvas = nullptr;	/* rebuilt on demand from the new doc */
+		clearBackground();
 		std::printf("WEAVER: reload %s (%d nodes)\n", path.c_str(),
 			    countNodes(doc->root()));
 		std::fflush(stdout);
 		return true;
+	}
+
+	void clearBackground()
+	{
+		for (auto &bd : background_) {
+			delete bd.doc;
+		}
+		background_.clear();
 	}
 
 	/* IB7: a new document from the BUILT-IN template — the same shape the
@@ -1489,6 +1708,73 @@ runDisplay(Editor &ed)
 
 	/* the visible chrome: palette + outline + inspector */
 	ed.buildChrome();
+
+	/* in-process multi-document: every --open before this one is a
+	 * background window with the same chrome (view-only: no editor wired
+	 * to its surface) */
+	{
+		int offset = 0;
+
+		for (auto &bd : ed.background_) {
+			offset += 40;
+			double bw = 0;
+			double bh = 0;
+
+			layoutSizes(bd.doc->root(), &bw, &bh);
+			Window *bwnd = new Window();
+
+			ed.backgroundWins_.push_back(bwnd);
+			if (!bwnd->init(ed.titleFor(bd.path, bd.dirty).c_str(),
+					40 + offset, 40 + offset,
+					(unsigned) (bw * ppt + 0.5),
+					(unsigned) (bh * ppt + 0.5))) {
+				std::printf("WEAVER: show FAIL (background "
+					    "window init)\n");
+				std::fflush(stdout);
+				continue;
+			}
+			EditorSurface *bsurf = new EditorSurface();
+
+			bsurf->setFrame(Rect{ { 0, 0 }, { bw, bh } });
+			bwnd->setContentView(bsurf);
+			ed.backgroundKeep_.push_back(bsurf);
+
+			Point origin = { SIDE_W + CHROME_GAP, CHROME_TOP };
+			View *bhost = new View();
+
+			bhost->setFrame(Rect{ { origin.x, origin.y },
+				{ bd.doc->root()->frameW(),
+				  bd.doc->root()->frameH() } });
+			bsurf->addSubview(bhost);
+			ed.backgroundKeep_.push_back(bhost);
+
+			std::string why;
+			View *bcv = interfaceBuild(*bd.doc, bhost, why);
+
+			if (!bcv) {
+				std::printf("WEAVER: show FAIL (background "
+					    "build: %s)\n", why.c_str());
+				std::fflush(stdout);
+				continue;
+			}
+			bhost->setHitTestEnabled(false);
+			EditorOverlay *bov = new EditorOverlay();
+
+			bov->setFrame(bhost->frame());
+			bov->setHitTestEnabled(false);
+			bsurf->addSubview(bov);
+			ed.backgroundKeep_.push_back(bov);
+
+			buildChromeFor(bsurf, bd.doc, bcv, origin,
+				       &ed.backgroundKeep_, nullptr, nullptr,
+				       "", nullptr);
+			bwnd->show();
+			std::printf("WEAVER: window 0x%lx %ux%u ppt=%g "
+				    "doc=%s\n", bwnd->xid(), bwnd->width(),
+				    bwnd->height(), ppt, bd.path.c_str());
+			std::fflush(stdout);
+		}
+	}
 
 	w.show();
 	std::printf("WEAVER: window 0x%lx %ux%u ppt=%g doc=%s\n", w.xid(),

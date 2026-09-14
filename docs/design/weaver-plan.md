@@ -432,9 +432,9 @@ need input, which §8a addresses directly.
   (so the generated document boots a sample app), and the show-mode window log
   carrying its document path. `tests/cases/weaver_ib7.py`, 10/10: the template
   document round-trips clean, Wren boots it and resolves both outlets, and two
-  editor processes in show mode log two different document paths. Two windows
-  are two processes in v1 — the editor is single-document per process; an
-  in-process multi-document editor is a later refinement.
+  editor processes in show mode log two different document paths. The
+  in-process refinement landed later: `--open` accumulates and one process
+  builds a window per document (`tests/cases/weaver_multi.py`, 5/5).
 - **Post-IB7 — the visible editor layout (D13/§6). DONE (2026-09).** `--show`
   now lays out a real editor window: a **palette** (titled Box + TableView of
   the registry), an **outline** (titled Box + the OutlineView widget, its rows
