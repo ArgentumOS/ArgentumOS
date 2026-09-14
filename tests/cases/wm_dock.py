@@ -684,6 +684,33 @@ class Case(BaseCase):
                    "a too-wide stepper frame is clamped to half its height "
                    "(%s)" % (st.group(0) if st else "no clamp was reported"))
 
+        # --- "Disable All" covers EVERY control -------------------------
+        # The action used to name six controls by hand while the board also
+        # carries the log button, the checkbox and both radios, so it
+        # disabled some of the visible controls and not others. It now walks
+        # the tree and reports how many it touched, which is what this reads.
+        # The menu row is found by probing rather than by a row number: the
+        # rows are laid out from the theme's font metrics.
+        dis_before = session.count(r"ZOO-ACT: menu:disable-all")
+        found = None
+        for row in range(90, 150, 6):
+            monitor.goto(bx, 15)
+            monitor.click()
+            time.sleep(0.5)
+            monitor.goto(bx, row)
+            monitor.click()
+            time.sleep(0.5)
+            if session.count(r"ZOO-ACT: menu:disable-all") > dis_before:
+                found = row
+                break
+        covered = re.search(r"ZOO-ACT: menu:disable-all \((\d+) controls\)",
+                            session.log_text())
+        self.check("disable-all-covers-every-control",
+                   bool(covered) and int(covered.group(1)) >= 8,
+                   "Disable All reaches every control on the board (%s)"
+                   % (covered.group(0) if covered
+                      else "no count was reported (row found: %s)" % found))
+
         # --- a DISABLED control is greyed out ---------------------------
         # widgets_c draws the same button twice on one row: "go" enabled and
         # "nope" disabled.  A widget whose own draw() paints from fixed

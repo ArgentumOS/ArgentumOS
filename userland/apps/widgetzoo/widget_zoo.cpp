@@ -87,6 +87,31 @@ public:
 
 /* ---------------------------------------------------------------- */
 
+/* Enable or disable EVERY control on the board, by walking the tree.
+ * A hand-kept list of widget names drifts the moment one is added, and this
+ * one had: "Disable All" named six controls while the board also carries
+ * the log button, the checkbox and both radios, so it disables some and not
+ * others (reported in use). Returns how many it touched, so the log says
+ * what it did. */
+static int
+setControlsEnabled(argentum::View *v, bool on)
+{
+	int n = 0;
+
+	for (argentum::View *c : v->subviews()) {
+		argentum::Control *ctl = dynamic_cast<argentum::Control *>(c);
+
+		if (ctl) {
+			ctl->setEnabled(on);
+			n++;
+		}
+		n += setControlsEnabled(c, on);
+	}
+	return n;
+}
+
+/* ---------------------------------------------------------------- */
+
 int
 main()
 {
@@ -602,22 +627,18 @@ main()
 	});
 	iReset.setKeyEquivalent('r', argentum::KeyModCommand);
 	iEnable.setAction([&v]() {
-		zoo_log("menu:enable-all");
-		v.field.setEnabled(true);
-		v.setBtn.setEnabled(true);
-		v.slider.setEnabled(true);
-		v.stepper.setEnabled(true);
-		v.seg.setEnabled(true);
-		v.pop.setEnabled(true);
+		char buf[64];
+
+		std::snprintf(buf, sizeof(buf), "menu:enable-all (%d controls)",
+			      setControlsEnabled(&v, true));
+		zoo_log(buf);
 	});
 	iDisable.setAction([&v]() {
-		zoo_log("menu:disable-all");
-		v.field.setEnabled(false);
-		v.setBtn.setEnabled(false);
-		v.slider.setEnabled(false);
-		v.stepper.setEnabled(false);
-		v.seg.setEnabled(false);
-		v.pop.setEnabled(false);
+		char buf[64];
+
+		std::snprintf(buf, sizeof(buf), "menu:disable-all (%d controls)",
+			      setControlsEnabled(&v, false));
+		zoo_log(buf);
 	});
 	mWidgets.addItem(&iReset);
 	mWidgets.addSeparator();

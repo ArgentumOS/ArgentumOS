@@ -1143,7 +1143,11 @@ dropdown draws what the wire carries.
 
 - **The zoo's menubar is real**: `Widget Zoo` (About, Quit), `View` (a
   Check item over the TabView), `Widgets` (Reset Values, Enable All /
-  Disable All, then Focus First Field and Dump Geometry), with
+  Disable All, then Focus First Field and Dump Geometry — Enable/Disable All
+  gate EVERY control, found by walking the tree, not a list of names: the
+  hand-kept version named six while the board carried fourteen, so it
+  disabled some of the visible controls and not others, and it now reports
+  the count it touched), with
   `⌘Q`/`⌘R`/`⌘D` key equivalents, and its **application menu title is
   bold** (the toolkit bolds the first bar title; DejaVuSans-Bold ships
   beside the regular face and is selected via fontconfig `FC_WEIGHT`).
