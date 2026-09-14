@@ -273,8 +273,30 @@ Menu::itemCount() const
  * right by (BAR_CHIP_PAD - the pad) — a visibly lopsided highlight
  * (reported 2026-09: "more on the left than on the right of the text"). */
 #define BAR_CHIP_PAD	7
-/* the title's hit zone: the laid-out box plus this much slack, in PIXELS */
-#define BAR_HIT_PAD	8
+/* The extent of a title's menubar ITEM: its box plus the padding the
+ * highlight is drawn with.  ONE definition, used by the paint, the
+ * dropdown's anchor and the hit-test — so the SENSITIVE AREA of an item is
+ * exactly the area it highlights (asked in use: "the sensitive area of a
+ * menubar item should be exactly equal to the highlighted area when it is
+ * selected").  The layout spaces the titles by TWICE this padding, so
+ * neighbouring items tile the bar: they meet exactly, with no overlap for
+ * one to steal from its neighbour and no dead band between them. */
+static int
+barItemPad(void)
+{
+	/* the highlight's own padding, plus the inset drawText() leaves
+	 * between the box it is handed and the run's ink */
+	return BAR_CHIP_PAD + textInkInsetPx();
+}
+
+static void
+barItemZone(int x, int w, int *z0, int *z1)
+{
+	int pad = barItemPad();
+
+	*z0 = x - pad;
+	*z1 = x + w + pad;
+}
 
 namespace {
 
@@ -314,7 +336,9 @@ barTitleLayout(Menu *menu, int width, int *xs, int *ws, int *idx, int max)
 			idx[n] = i;
 			n++;
 		}
-		x += w + 18;
+		/* the gap IS twice the item padding, so items tile: see
+		 * barItemZone() — the two must not drift apart. */
+		x += w + 2 * barItemPad();
 	}
 	return n;
 }
@@ -366,16 +390,18 @@ public:
 			 * is open rather than leaving it to the dropdown
 			 * alone. Cleared when the popup closes. */
 			if (idx[i] == openIndex_) {
-				int bx = xs[i] - BAR_CHIP_PAD +
-					 textInkInsetPx();
-				int bw = ws[i] + 2 * BAR_CHIP_PAD;
+				int z0, z1;
 
+				/* the SAME extent the hit-test uses: what is
+				 * highlighted is what is sensitive */
+				barItemZone(xs[i], ws[i], &z0, &z1);
 				/* a RECTANGLE from the bar's top border
 				 * to its bottom border — not a rounded
 				 * chip floating inside the bar, which
 				 * reads as a separate object rather than
 				 * as the item being held down */
-				g.fillLinearGradient(bx, 0, (unsigned) bw,
+				g.fillLinearGradient(z0, 0,
+						     (unsigned) (z1 - z0),
 						     (unsigned) h,
 						     armed.fillTop,
 						     armed.fillBottom);
@@ -414,8 +440,10 @@ public:
 			return -1;
 		}
 		for (int i = 0; i < n; i++) {
-			if (xPx >= xs[i] - BAR_HIT_PAD &&
-			    xPx < xs[i] + ws[i] + BAR_HIT_PAD) {
+			int z0, z1;
+
+			barItemZone(xs[i], ws[i], &z0, &z1);
+			if (xPx >= z0 && xPx < z1) {
 				return idx[i];
 			}
 		}
@@ -432,8 +460,10 @@ public:
 
 		for (int i = 0; i < n; i++) {
 			if (idx[i] == itemIndex) {
-				return xs[i] - BAR_CHIP_PAD +
-				       textInkInsetPx();
+				int z0, z1;
+
+				barItemZone(xs[i], ws[i], &z0, &z1);
+				return z0;
 			}
 		}
 		return BAR_PAD;

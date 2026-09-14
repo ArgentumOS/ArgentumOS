@@ -57,7 +57,19 @@ Rules:
 6. **Order is positional, not a sort key.** Skipping a menu does not move the
    others: an app with an app menu, a View item and its own menu reads
    `[App] View Custom`, not `[App] Custom View`.
-7. **The application menu's title is BOLD**; every other title is regular.
+7. **A menubar item's sensitive area IS its highlight** — exactly, not
+   approximately. The area that answers a click is the area that lights up
+   when the item is selected, so there are no dead pixels beside an item and
+   no item reaching into its neighbour's space. One definition produces both
+   (`barItemZone()` in `menu.cpp`: paint, the dropdown's anchor and the
+   hit-test all call it), and the layout spaces the titles by **twice that
+   padding** so neighbouring items meet exactly — the two facts have to stay
+   tied together, since a gap bigger than the padding is a dead band and a
+   smaller one lets an item steal from its neighbour. (Asked in use: "the
+   sensitive area of the app menu is pushing into the view menu's area" —
+   the hit zones were a fixed ±8px inside an 18px gap, so an item answered
+   3px to the LEFT of its own highlight and a dead band sat between items.)
+8. **The application menu's title is BOLD**; every other title is regular.
    It is the one item that is not a plain menu — it is the app itself — and
    the bar has to say so. The toolkit bolds the **first bar title**, so an app
    gets this by putting its application menu first (§2.1), not by asking for

@@ -357,6 +357,42 @@ class Case(BaseCase):
                        "left, %d px right; chip %d..%d around ink %d..%d)"
                        % (ti0 - cl, cr - ti1, cl, cr, ti0, ti1))
 
+            # ...and the SENSITIVE area of an item IS the area it highlights.
+            # Both come from ONE definition (barItemZone), and the layout
+            # spaces the titles by twice its padding, so neighbouring items
+            # MEET: the next item begins at the pixel after this one's
+            # highlight. That is the observable - walk off this item's
+            # highlight and the next item's menu must appear at exactly the
+            # pixel after it, not several pixels later (the old +-8px hit
+            # zones inside an 18px gap left a dead band between items, which
+            # is what "the sensitive area of the app menu is pushing into
+            # View's" felt like).
+            monitor.park()
+            monitor.goto(ax, 15)
+            monitor.click()                  # open the application menu
+            time.sleep(0.8)
+            was_view = session.count(r'ARGENTUM-POPUP: tracked to "View"')
+            for x in range(cr - 2, cr + 10):
+                monitor.goto(x, 15)
+                time.sleep(0.5)
+                if session.count(r'ARGENTUM-POPUP: tracked to "View"') > was_view:
+                    break
+            v = None
+            for line in reversed(session.log_text().splitlines()):
+                m = re.search(r'ARGENTUM-POPUP: tracked to "View" at (\d+),', line)
+                if m:
+                    v = int(m.group(1))
+                    break
+            self.check("menubar-item-sensitive-area-is-the-highlight",
+                       v is not None and abs(v - (cr + 1)) <= 2,
+                       "the next item's menu starts at the pixel after this "
+                       "item's highlight, so the sensitive area IS the "
+                       "highlighted area (View anchors at %s, the highlight "
+                       "ends at %d)" % (v, cr))
+            monitor.goto(ax, 15)
+            monitor.click()                  # dismiss
+            time.sleep(0.5)
+
             # --- the bar's own rules, on pixels (2026-09) ------------------
             # 1. the highlight is a RECTANGLE filling the bar from its top
             #    border to its bottom border - not a rounded chip inset into
@@ -383,8 +419,11 @@ class Case(BaseCase):
             #    floor (y = the bar's height) rather than one row below it.
             prow = [x for x in range(0, 700)
                     if opened.px(x, dy + 4) != ref.px(x, dy + 4)]
+            # (tolerance: both edges now come from barItemZone(), but the
+            # highlight's outermost columns blend into the bar, so the colour
+            # scan reports it a couple of px inside where it was drawn)
             self.check("menu-is-flush-with-the-highlight",
-                       bool(prow) and prow[0] == cl,
+                       bool(prow) and abs(prow[0] - cl) <= 4,
                        "the dropdown's left edge is the highlight's left edge "
                        "(%s vs %d)"
                        % (prow[0] if prow else "none", cl))
