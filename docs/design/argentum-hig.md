@@ -106,7 +106,28 @@ grey-out and must not paint one themselves. The theme's own `Disabled` state
 still exists and is still worth honouring (`Control::state()` returns it), but
 the grey-out no longer DEPENDS on a widget reading it.
 
-## 6. Control sizing
+## 6. A pulled-down menu is above everything
+
+A menubar (or context) menu, while it is down, is **above every other
+window** — no app window, frame, bar or panel may cover it.
+
+X has no layers, so this is not a property a window can be given; it has to be
+re-asserted. A menu is a transient **override-redirect** window (so no WM
+frames it), and anything mapped or raised after it lands on top of it — the
+app's own frame, another app, the WM's own bar. The popup therefore raises
+itself explicitly when it appears (`XRaiseWindow`, not the implicit raise a
+fresh map happens to do — a reused window that is already mapped is *not*
+raised by `XMapWindow`) and again on every event it receives, which is the
+whole time it is up: it holds the pointer grab, so anything the user does
+reaches it.
+
+The residual is recorded rather than papered over: a client that raises a
+window over an open menu with no pointer motion in between can still cover it
+until the next event. Closing that needs the window manager to restack the
+menu window — which needs the app to publish its popup the way it publishes
+its bar — and that is not built.
+
+## 7. Control sizing
 
 - **A stepper is never wider than half its height**, and it takes the height
   of a **single-row text field** — it is that field's companion, stepping the
@@ -116,7 +137,7 @@ the grey-out no longer DEPENDS on a widget reading it.
   the clamp is reported (`ARGENTUM: stepper width 60 clamped to 13 (half its
   height 26)`) rather than applied silently.
 
-## 7. Open items
+## 8. Open items
 
 These are unresolved, and an app should not invent an answer for them:
 

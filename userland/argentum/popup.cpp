@@ -66,6 +66,15 @@ public:
 
 	/* Show under the anchor, raised above other windows. */
 	void present();
+	/* A menubar menu is above EVERYTHING, always: nothing an app or a
+	 * WM can raise is ever allowed over one while it is down. X has no
+	 * layers, so that has to be re-asserted — a menu is a transient
+	 * override-redirect window, and anything mapped or raised after it
+	 * (the app's own frame, another app, the WM's bar) lands on top of
+	 * it. Called when the menu appears and again on every event it
+	 * receives, which is the whole time it is up: it holds the pointer
+	 * grab, so anything the user does reaches it. */
+	void riseAboveAll();
 	/* Hide + drop out of the open-popup bookkeeping. */
 	void dismiss();
 	/* run the close handler once (see setClosedHandler) */
@@ -368,6 +377,11 @@ PopupMenuView::draw(GraphicsContext &g)
 void
 PopupMenuView::mouseMoved(const MouseEvent &e)
 {
+	/* a menu is above everything for as long as it is up; the pointer
+	 * grab makes this the event that proves someone is still using it */
+	if (host_) {
+		host_->riseAboveAll();
+	}
 	/* S5.2d follow-up: while the menu is up the pointer is OURS, so
 	 * tracking the menubar has to happen here — the motion over the bar
 	 * arrives in this window's coordinates (negative y: above it). */
@@ -529,9 +543,25 @@ PopupWindow::present()
 	}
 	grabbed_ = true;
 	g_openPopup = this;
+	/* explicit, not the implicit raise a fresh map happens to do: a
+	 * reused window that is already mapped is NOT raised by XMapWindow,
+	 * and anything raised since would stay over the menu */
+	riseAboveAll();
 	/* first expose paints; force one so the gate can see it even
 	 * before the server delivers the mapping Expose */
 	setNeedsDisplay();
+}
+
+void
+PopupWindow::riseAboveAll()
+{
+	Display *dpy = (Display *) Application::shared().display();
+
+	if (!dpy || !xid()) {
+		return;
+	}
+	XRaiseWindow(dpy, xid());
+	XSync(dpy, False);
 }
 
 void
@@ -563,6 +593,7 @@ PopupWindow::mouseDown(const MouseEvent &e)
 	/* window px (a Window responder's coordinates); a point outside the
 	 * menu's box is a click elsewhere on the screen, which dismisses —
 	 * exactly like a real menu */
+	riseAboveAll();
 	notePress();
 	if (e.x < 0 || e.y < 0 || e.x >= (double) width() ||
 	    e.y >= (double) height()) {
