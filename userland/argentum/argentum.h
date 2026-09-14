@@ -127,6 +127,16 @@ public:
 	View *superview() const;
 	const std::vector<View *> &subviews() const;
 
+	/* Weaver IB1: identity (docs/design/weaver-plan.md §3 D3). A view may be
+	 * NAMED; the name is what a document binds to (never a pointer — D8),
+	 * what an app finds a control by, and what an editor selection refers
+	 * to. Names are not required to be unique: viewWithIdentifier returns
+	 * the FIRST match in a pre-order walk, which is the documented answer
+	 * rather than an error, because the format does not forbid duplicates. */
+	void setIdentifier(const char *utf8);	/* copied; "" = anonymous */
+	const char *identifier() const;
+	View *viewWithIdentifier(const char *utf8);	/* pre-order, from here */
+
 	/* frame (pt, superview coords) + visibility. Virtual so a control can
 	 * CONSTRAIN its own size (a Stepper is never wider than half its
 	 * height); the frame stays the single source of truth so paint,
@@ -197,26 +207,6 @@ public:
 	void resizeSubviewsWithOldBounds(const Rect &oldBounds,
 					 const Rect &newBounds);
 
-	/* Sibling-relative struts (S2.1d). Bind one edge of this view to an
-	 * edge of a SIBLING: that edge is then held `offset` pt from the
-	 * reference's edge and follows it. The binding decides POSITION
-	 * only; the size is re-derived from the two edges afterwards, so
-	 * binding one edge leaves the other keeping whatever the springs
-	 * gave it and the view grows with it - 'my left is that view's
-	 * right' fills the space beside a view that resizes. Binding both
-	 * edges on an axis fixes the size to the distance between them.
-	 *
-	 * The reference must be an EARLIER sibling: the pass resolves in
-	 * subview order, against the reference's already-final frame. A
-	 * self-reference, a view under another parent, or a later sibling is
-	 * reported and the binding dropped (see the diagnostic below), since
-	 * silently ignoring it would leave a layout that looks arbitrary.
-	 * Bindings are resolved when the PARENT relayouts (its frame is set
-	 * or its size changes), not when a sibling moves by itself. Pass
-	 * nullptr as the sibling to clear a binding. */
-	enum class Edge { Left = 0, Right, Top, Bottom };
-	void setStrutReference(Edge own, View *sibling, Edge ref,
-			       double offset);
 
 	/* a11y metadata (S2.1b) */
 	void setAccessibilityRole(AccessibilityRole role);
@@ -1714,15 +1704,6 @@ public:
 		bool boolean = false;	/* Kind::Bool */
 	};
 
-	/* A layout binding: one of this node's edges tied to a SIBLING edge,
-	 * with the sibling named rather than pointed at. Mirrors
-	 * View::setStrutReference(own, sibling, ref, offset). */
-	struct Strut {
-		View::Edge edge = View::Edge::Left;	/* this node's edge */
-		std::string ref;			/* sibling identifier */
-		View::Edge refEdge = View::Edge::Left;	/* the sibling's edge */
-		double offset = 0;
-	};
 
 	InterfaceNode();
 	~InterfaceNode();
@@ -1742,6 +1723,13 @@ public:
 	double frameW() const;
 	double frameH() const;
 
+	/* THE LAYOUT CONTRACT (plan D15): a document's layout is frames plus
+	 * the parent-relative autoresizing mask (View::Autoresizing*) — nothing
+	 * in a document references another view, so nothing here needs order,
+	 * identity or a second pass. */
+	void setAutoresizingMask(unsigned int mask);
+	unsigned int autoresizingMask() const;
+
 	void setString(const char *name, const char *value);	/* replaces */
 	void setNumber(const char *name, double value);
 	void setBool(const char *name, bool value);
@@ -1755,10 +1743,6 @@ public:
 	void insertChild(int index, InterfaceNode *child);	/* owned */
 	void removeChild(int index);				/* and deletes it */
 
-	int strutCount() const;
-	const Strut *strutAt(int index) const;
-	void addStrut(View::Edge edge, const char *refId, View::Edge refEdge,
-		      double offset);
 
 private:
 	Property *find_(const char *name);
@@ -1770,7 +1754,7 @@ private:
 	double h_ = 0;
 	std::vector<Property> properties_;
 	std::vector<InterfaceNode *> children_;	/* owned, in z-order */
-	std::vector<Strut> struts_;
+	unsigned int mask_ = 0;	/* View::Autoresizing* */
 };
 
 /* A document: a version and a root node, which is never null. */
@@ -1797,6 +1781,46 @@ std::string interfaceEmit(const InterfaceDocument &doc);
  * become properties and unknown value forms are skipped with a warning. */
 bool interfaceLoadFile(const char *path, InterfaceDocument &out,
 		       std::string &error);
+
+
+/* ---------- Weaver IB1: the class registry and the builder ---------- */
+
+/* The class registry maps a document's `class` to a factory. ONE table, in
+ * the toolkit (plan D5), rather than each control registering itself: one
+ * place to read, to audit, and to gate. It starts with the controls whose
+ * constructors were CHECKED to need no Application and no display, and grows
+ * as more are verified — a control that needs a window to exist cannot be
+ * built from a document anyway. */
+typedef View *(*InterfaceFactory)(void);
+
+struct InterfaceClass {
+	const char *name;
+	InterfaceFactory make;
+};
+
+int interfaceClassCount();
+const InterfaceClass *interfaceClassAt(int index);
+/* nullptr when the document names a class this build does not know */
+View *interfaceMake(const char *className);
+
+/* Instantiate a document (plan §8, IB1). The document's root node becomes a
+ * view added to `parent`; its children follow in sibling order, each with the
+ * frame and the parent-relative mask the document records. ONE PASS — with
+ * sibling bindings removed (D15) there is nothing to resolve afterwards, and
+ * nothing in a document refers to another node, so the result cannot depend
+ * on the order the document happens to list things in.
+ *
+ * An unknown class: the ROOT is fatal (there is nothing to return); a
+ * descendant is skipped with a warning and its subtree with it — tolerant
+ * reads are the rule (D7), and the document itself is untouched, so nothing
+ * is lost: the editor still holds the node.
+ *
+ * Returns the root view, or nullptr with `error` set. `onBuilt` sees every
+ * node built, in pre-order, with its class name and identifier. */
+View *interfaceBuild(const InterfaceDocument &doc, View *parent,
+		     std::string &error,
+		     std::function<void(View *, const char *className,
+					const char *identifier)> onBuilt = nullptr);
 
 } /* namespace argentum */
 

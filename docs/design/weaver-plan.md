@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0 **DONE**; IB1 is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0 + IB1 **DONE**; IB1b is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -99,10 +99,10 @@ field plus tolerant reads, because we add widgets constantly and a document
 format that hard-fails on an unrecognized class would break on every
 toolkit addition.
 
-**D8. Layout bindings are recorded by identifier, not by pointer.** Strut
-references are `View *` today (`setStrutReference(Edge, &other, …)`), and a
-pointer cannot be written to a file. This is the least obvious part of the
-design and gets its own acceptance in IB1.
+**D8. ~~Layout bindings are recorded by identifier, not by pointer.~~
+WITHDRAWN (2026-09) — see D15.** It was written before the mechanism was
+examined: the indirection existed only to serve one toolkit feature, whose one
+consumer was a demo.
 
 **D9. Weaver is an ordinary app bundle.** Dock-launchable, manifest,
 `Resources/` — no privileged path, and no toolkit capability the other apps
@@ -142,6 +142,37 @@ proxy icon — is Kestrel work: its title band draws close + zoom + title +
 toolbar box and nothing else, so that refinement is deferred rather than made a
 prerequisite.
 
+**D15. Layout is frames plus parent-relative masks; sibling bindings are
+REMOVED (2026-09).** The toolkit's `setStrutReference(own, sibling, refEdge,
+offset)` bound one view's edge to another view's — a pointer in the layout
+model, which is why D8 existed at all. It is gone, and `View::Edge` with it.
+
+Why: its **only call site in the tree was a demo** (the zoo's band). What it
+cost was not the 95 lines of layout pass but the chain it forced: a pointer
+that cannot be serialized, so an identifier indirection, so a two-pass build,
+so a `ref`/`refEdge` concept in the format. And the rule that made it work —
+*the reference must be an EARLIER SIBLING*, because resolution reads the
+reference's already-final frame and the rule doubles as cheap cycle detection —
+meant **the document's z-order silently decided whether a constraint worked**.
+An editor normalizing z-order on save would change layout. It had already made
+this plan wrong once (IB1's acceptance asserted that a forward reference would
+resolve; it cannot, by design).
+
+What is lost, stated plainly: **a constant gap between siblings.** Masks cannot
+express it — a mask distributes the parent's delta among the parent's edges and
+the child's own, so the gap between two children changes. That capability
+belongs in a constraint the *editor* can show and manipulate, which is a Weaver
+feature, not a toolkit primitive; dropping the primitive now is better
+sequencing than keeping it because it exists.
+
+A document therefore carries, per node, a frame and an autoresizing mask — and
+**nothing that refers to another node**, which is why the build is one pass and
+why nothing about a document's layout depends on the order it lists things in.
+The format spells the mask as **a record of booleans** naming only the SET bits
+(`VIEW::Autoresizing*`), in a fixed order; a node with no flexible component
+writes no `mask` record at all, so an empty mask and an absent one are the same
+thing.
+
 ## 4. The document format
 
 A node is a nested record: class, optional identifier, frame, properties,
@@ -165,7 +196,10 @@ interface = {
     frame = { x = 370  y = 280  w = 90  h = 24 }
     title = "OK"
     enabled = true
-    strut0 = { edge = "left"  ref = "greeting"  gap = 8 }
+    mask = {
+      flexibleWidth = true
+      flexibleMaxX = true
+    }
   }
 }
 ```
@@ -179,6 +213,11 @@ interface = {
   wrong type, is a warning and is skipped.
 - **`id` is optional.** An unnamed control is still fully described; it just
   cannot be referenced or found.
+- **`mask` is the layout contract** (D15): the parent-relative autoresizing
+  bits, only the set ones, in a fixed order. Nothing else in a document
+  describes layout, and no node refers to another — so a node's layout is
+  self-contained, order-free, and survives being copied, moved or instantiated
+  on its own.
 - **What is deliberately NOT saved:** caret position, selection, scroll
   offsets, focus, and any other live state. Stating the exclusion prevents a
   great deal of accidental complexity.
@@ -188,13 +227,23 @@ interface = {
 `interfaceBuild` walks the document, asks the registry (D5) for a factory,
 applies properties through the table (D4), and attaches children in order.
 
-**It takes two passes, and that matters.** Identifiers must be registered for
-every node *before* any binding is resolved, because a strut reference may
-point forward (a control bound to one that appears later in the document, or
-to its own parent). Pass 1 builds the tree and registers identifiers; pass 2
-resolves `strutN` bindings. A reference that resolves to nothing is a warning
-and is dropped — the layout then behaves as if the binding were never made,
-which is the same degradation as an unbound strut today.
+**It is ONE pass.** With sibling bindings removed (D15) there is nothing to
+resolve after the tree exists: identifiers are set on the views as they are
+built and are found later by `View::viewWithIdentifier()` (a pre-order walk),
+which is a *naming* service rather than a layout one. Nothing in a document
+refers to another node, so the result cannot depend on the order the document
+lists things in.
+
+The class registry (D5) decides what can be built: one table, listing only the
+classes whose constructor was checked to need no `Application` and no display —
+a control that cannot exist without a window cannot be built from a document
+anyway. `Window` is the notable absence, so a document whose root is a window is
+a later slice.
+
+An unknown class is treated by position: the **root** is fatal (there is nothing
+to return), a **descendant** is skipped with a warning and its subtree with it —
+tolerant reads (D7), and the document itself is untouched, so the editor still
+holds the node.
 
 ## 6. The editor's own architecture
 
@@ -224,9 +273,13 @@ Each traced to the slice that needs it:
 
 1. `View::setIdentifier` / `viewWithIdentifier` — IB1. Useful immediately
    outside the editor, including to tests.
-2. Property tables + the registry + the coverage gate — IB1 (D4/D5).
+2. Property tables + the coverage gate — **IB1b** (D4/D5). The registry
+   itself landed in IB1, and it is not a formality: it lists only the classes
+   whose constructor was *checked* to need no `Application` and no display.
 3. Document model, emitter, reader — IB0.
-4. Two-pass instantiation and identifier-based strut resolution — IB1 (D8).
+4. ~~Two-pass instantiation and identifier-based strut resolution~~ —
+   **withdrawn with D8 (D15)**: sibling bindings are gone, so there is nothing
+   to resolve after the tree exists, and the build is one pass.
 5. A hit-transparent overlay — IB3.
 6. A way to make the canvas's document subtree **non-hit-testable**, so presses
    reach the editor instead of the controls — IB2 (D12). This is the concrete
@@ -240,7 +293,7 @@ Each traced to the slice that needs it:
 11. `Toolbar`/`Panel` stay **staged**, and D13 takes them off the critical path
     entirely.
 
-Items 1–4 are the load-bearing ones and none of them depend on the staged
+Items 1–3 are the load-bearing ones and none of them depend on the staged
 controls, which is what makes IB0/IB1 startable now.
 
 ## 8. Milestones
@@ -262,12 +315,28 @@ need input, which §8a addresses directly.
   `emit(load(emit(load(f))))` equals `emit(load(f))` — i.e. the round trip is
   idempotent — and exits non-zero naming the first fixture that is not.
   No toolkit instance, no window, no interaction.
-- **IB1 — instantiate, identity, registry.** Build live views from a
-  document; `viewWithIdentifier()`; strut bindings by identifier. *Acceptance:*
-  a guest log naming every control built (class + id, in tree order); a
-  `viewWithIdentifier("okButton")` that resolves and is logged; a pixel check
-  that a control sits on its recorded rect; and a document whose strut binding
-  points *forward* resolving anyway.
+- **IB1 — instantiate, identity, registry. DONE (2026-09).** Build live views
+  from a document; `viewWithIdentifier()`; the class registry. Landed as
+  `View::setIdentifier`/`identifier()`/`viewWithIdentifier()` (a pre-order
+  walk), the registry table (13 classes, each constructor checked for
+  `Application`-free construction), and `interfaceBuild` — one pass, frames and
+  masks. `userland/tests/interface_build.cpp` + `tests/cases/weaver_ib1.py`,
+  10/10. *Acceptance (as landed):* a guest log naming every control built
+  (class + id + mask, in pre-order); a `viewWithIdentifier("status")` that
+  resolves to the view that was built; and the layout contract as two exact
+  numbers — a `flexibleMaxX` child left at 20 + 240 when its parent grows by
+  300, a `flexibleWidth` child taking the whole delta (240 → 540). Plus an
+  unknown ROOT class fatal and named, and an unknown DESCENDANT skipped with a
+  warning while the rest builds.
+  **Placement is asserted from the FRAMES, not from pixels** — §8a prefers a log
+  where a log can carry the fact, and two numbers are stronger evidence than a
+  screendump; the first pixel check arrives with IB2, where a canvas is drawn.
+  The "forward strut reference" clause is gone with the mechanism (D15).
+- **IB1b — property application, tables, the coverage gate.** Apply a node's
+  properties to the live control through a per-control table (D4), and gate the
+  coverage so a control in the catalog cannot silently lack one. IB1 built
+  structure, geometry and identity; nothing in a document's *properties* reaches
+  a control yet.
 - **IB2 — the editor shell: open, select, save.** (Open and save act on D11's
   `/Users/$USER/Documents/`.) *Acceptance:* with the
   harness clicking the canvas, the editor logs each selection change by

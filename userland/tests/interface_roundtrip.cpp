@@ -64,11 +64,9 @@ interface = {
 		enabled = true
 		scale = 1.5
 		count = 3
-		strut0 = {
-			edge = "left"
-			ref = "greeting"
-			refEdge = "right"
-			offset = 8
+		mask = {
+			flexibleMinX = true
+			flexibleWidth = true
 		}
 	}
 }
@@ -85,10 +83,9 @@ static const char *const EXP1[] = {
 	"count = 3",
 	"child0 = {",
 	"child1 = {",
-	"edge = \"left\"",
-	"ref = \"greeting\"",
-	"refEdge = \"right\"",
-	"offset = 8",
+	"mask = {",
+	"flexibleMinX = true",
+	"flexibleWidth = true",
 	nullptr
 };
 
@@ -158,6 +155,31 @@ static const char *const EXP4[] = {
 	nullptr
 };
 
+/* every bit false: the emitter writes no `mask` record at all, because only
+ * SET bits are written - so an empty mask and an absent one are the same
+ * thing, and the round trip has to agree */
+static const char *const TEXT5 = R"(version = 1
+interface = {
+	class = "View"
+	frame = {
+		x = 0
+		y = 0
+		w = 10
+		h = 10
+	}
+	mask = {
+		flexibleMinX = false
+		flexibleMaxX = false
+	}
+}
+)";
+
+static const char *const EXP5[] = {
+	"class = \"View\"",
+	"!mask = {",
+	nullptr
+};
+
 struct Fixture {
 	const char *name;
 	const char *text;
@@ -169,6 +191,7 @@ static const Fixture FIXTURES[] = {
 	{ "the four escapes", TEXT2, EXP2 },
 	{ "minimal node", TEXT3, EXP3 },
 	{ "an array is skipped, not fatal", TEXT4, EXP4 },
+	{ "an all-false mask writes no record", TEXT5, EXP5 },
 };
 
 /* ---------- helpers ---------- */

@@ -255,19 +255,15 @@ struct View::Impl {
 	bool hidden = false;
 	bool needsDisplay = false;
 	unsigned int autoresizeMask = View::AutoresizingNone;
-	/* Sibling-relative struts, indexed by View::Edge. An edge with a
-	 * non-null ref is positioned from that view's edge when the parent
-	 * relayouts; see View::setStrutReference for the contract. */
-	struct StrutRef {
-		View *ref = nullptr;
-		View::Edge refEdge = View::Edge::Left;
-		double offset = 0;
-	};
-	StrutRef struts[4];
 	/* the window that owns this view's content root (set only on the
 	 * root view by Window::setContentView) — damage reports through
 	 * it so a redraw only flushes the dirty rect */
 	class Window *hostWindow = nullptr;
+
+	/* Weaver IB1: the view's NAME. A document binds to this, never to a
+	 * pointer (plan D8), an app finds a control by it, and it is what the
+	 * editor's selection refers to. Not required to be unique. */
+	char identifier[128] = { 0 };
 
 	AccessibilityRole a11yRole = AccessibilityRole::Unknown;
 	bool a11yEnabled = true;

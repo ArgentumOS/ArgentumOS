@@ -45,7 +45,7 @@ InterfaceNode::clear()
 	identifier_.clear();
 	x_ = y_ = w_ = h_ = 0;
 	properties_.clear();
-	struts_.clear();
+	mask_ = 0;
 	for (size_t i = 0; i < children_.size(); i++) {
 		delete children_[i];
 	}
@@ -89,6 +89,18 @@ double InterfaceNode::frameX() const { return x_; }
 double InterfaceNode::frameY() const { return y_; }
 double InterfaceNode::frameW() const { return w_; }
 double InterfaceNode::frameH() const { return h_; }
+
+void
+InterfaceNode::setAutoresizingMask(unsigned int mask)
+{
+	mask_ = mask;
+}
+
+unsigned int
+InterfaceNode::autoresizingMask() const
+{
+	return mask_;
+}
 
 InterfaceNode::Property *
 InterfaceNode::find_(const char *name)
@@ -220,33 +232,8 @@ InterfaceNode::removeChild(int index)
 	children_.erase(children_.begin() + index);
 }
 
-int
-InterfaceNode::strutCount() const
-{
-	return (int) struts_.size();
-}
 
-const InterfaceNode::Strut *
-InterfaceNode::strutAt(int index) const
-{
-	if (index < 0 || index >= (int) struts_.size()) {
-		return nullptr;
-	}
-	return &struts_[(size_t) index];
-}
 
-void
-InterfaceNode::addStrut(View::Edge edge, const char *refId, View::Edge refEdge,
-			double offset)
-{
-	Strut st;
-
-	st.edge = edge;
-	st.ref = refId ? refId : "";
-	st.refEdge = refEdge;
-	st.offset = offset;
-	struts_.push_back(st);
-}
 
 /* ---------- the document ---------- */
 
@@ -321,17 +308,6 @@ emitNumber(std::string &out, double v)
 	out += buf;
 }
 
-static const char *
-edgeName(View::Edge e)
-{
-	switch (e) {
-	case View::Edge::Left:		return "left";
-	case View::Edge::Right:		return "right";
-	case View::Edge::Top:		return "top";
-	case View::Edge::Bottom:	return "bottom";
-	}
-	return "left";
-}
 
 static void
 emitNodeBody(std::string &out, const InterfaceNode &n, int depth)
@@ -389,25 +365,38 @@ emitNodeBody(std::string &out, const InterfaceNode &n, int depth)
 		out += "\n";
 	}
 
-	for (int i = 0; i < n.strutCount(); i++) {
-		const InterfaceNode::Strut *st = n.strutAt(i);
-		char key[32];
+	/* the layout contract: only the SET bits, in a fixed order, so the
+	 * output is deterministic; an empty mask writes no record at all */
+	{
+		static const struct {
+			unsigned int bit;
+			const char *name;
+		} BITS[6] = {
+			{ View::AutoresizingFlexibleMinX, "flexibleMinX" },
+			{ View::AutoresizingFlexibleWidth, "flexibleWidth" },
+			{ View::AutoresizingFlexibleMaxX, "flexibleMaxX" },
+			{ View::AutoresizingFlexibleMinY, "flexibleMinY" },
+			{ View::AutoresizingFlexibleHeight, "flexibleHeight" },
+			{ View::AutoresizingFlexibleMaxY, "flexibleMaxY" },
+		};
+		bool any = false;
 
-		std::snprintf(key, sizeof(key), "strut%d", i);
-		out += ind + key + " = {\n";
-		out += ind + "\tedge = ";
-		emitString(out, edgeName(st->edge));
-		out += "\n";
-		out += ind + "\tref = ";
-		emitString(out, st->ref);
-		out += "\n";
-		out += ind + "\trefEdge = ";
-		emitString(out, edgeName(st->refEdge));
-		out += "\n";
-		out += ind + "\toffset = ";
-		emitNumber(out, st->offset);
-		out += "\n";
-		out += ind + "}\n";
+		for (int b = 0; b < 6; b++) {
+			if (n.autoresizingMask() & BITS[b].bit) {
+				any = true;
+				break;
+			}
+		}
+		if (any) {
+			out += ind + "mask = {\n";
+			for (int b = 0; b < 6; b++) {
+				if (n.autoresizingMask() & BITS[b].bit) {
+					out += ind + "\t" + BITS[b].name
+						+ " = true\n";
+				}
+			}
+			out += ind + "}\n";
+		}
 	}
 
 	for (int i = 0; i < n.childCount(); i++) {
@@ -441,22 +430,6 @@ interfaceEmit(const InterfaceDocument &doc)
 
 /* ---------- the reader (libconfig) ---------- */
 
-static bool
-edgeFromName(const char *name, View::Edge &out)
-{
-	if (!std::strcmp(name, "left")) {
-		out = View::Edge::Left;
-	} else if (!std::strcmp(name, "right")) {
-		out = View::Edge::Right;
-	} else if (!std::strcmp(name, "top")) {
-		out = View::Edge::Top;
-	} else if (!std::strcmp(name, "bottom")) {
-		out = View::Edge::Bottom;
-	} else {
-		return false;
-	}
-	return true;
-}
 
 static bool
 numberOf(const config_value_t *v, double &out)
@@ -504,46 +477,49 @@ loadFrame(const config_value_t &rec, InterfaceNode &node,
 	return true;
 }
 
-static bool
-loadStrut(const config_value_t &rec, InterfaceNode &node,
-	  const std::string &where, std::string &error)
-{
-	config_value_t *f = nullptr;
-	View::Edge edge = View::Edge::Left;
-	View::Edge refEdge = View::Edge::Left;
-	const char *ref = "";
-	double offset = 0;
 
-	if (config_record_child(&rec, "edge", &f) != CONFIG_OK || !f
-	    || f->type != CONFIG_TYPE_STRING) {
-		error = where + ": no `edge` string";
-		return false;
+/* The mask's bits, in a fixed order — the same order the emitter writes them
+ * in, so a document round-trips through this table and nothing else. */
+static const struct {
+	unsigned int bit;
+	const char *name;
+} MASK_BITS[6] = {
+	{ View::AutoresizingFlexibleMinX, "flexibleMinX" },
+	{ View::AutoresizingFlexibleWidth, "flexibleWidth" },
+	{ View::AutoresizingFlexibleMaxX, "flexibleMaxX" },
+	{ View::AutoresizingFlexibleMinY, "flexibleMinY" },
+	{ View::AutoresizingFlexibleHeight, "flexibleHeight" },
+	{ View::AutoresizingFlexibleMaxY, "flexibleMaxY" },
+};
+
+static bool
+loadMask(const config_value_t &rec, InterfaceNode &node,
+	 const std::string &where, std::string &error)
+{
+	unsigned int mask = 0;
+
+	for (size_t i = 0; i < rec.v.record.count; i++) {
+		const config_record_field_t *f = &rec.v.record.fields[i];
+		int b;
+
+		for (b = 0; b < 6; b++) {
+			if (!std::strcmp(f->name, MASK_BITS[b].name)) {
+				break;
+			}
+		}
+		if (b == 6) {
+			warnSkip(where + "." + f->name);
+			continue;
+		}
+		if (f->value.type != CONFIG_TYPE_BOOL) {
+			error = where + "." + f->name + " is not a boolean";
+			return false;
+		}
+		if (f->value.v.boolean) {
+			mask |= MASK_BITS[b].bit;
+		}
 	}
-	if (!edgeFromName(f->v.string, edge)) {
-		error = where + ": unknown edge `" + f->v.string + "`";
-		return false;
-	}
-	if (config_record_child(&rec, "ref", &f) != CONFIG_OK || !f
-	    || f->type != CONFIG_TYPE_STRING) {
-		error = where + ": no `ref` string";
-		return false;
-	}
-	ref = f->v.string;
-	if (config_record_child(&rec, "refEdge", &f) != CONFIG_OK || !f
-	    || f->type != CONFIG_TYPE_STRING) {
-		error = where + ": no `refEdge` string";
-		return false;
-	}
-	if (!edgeFromName(f->v.string, refEdge)) {
-		error = where + ": unknown refEdge `" + f->v.string + "`";
-		return false;
-	}
-	if (config_record_child(&rec, "offset", &f) != CONFIG_OK || !f
-	    || !numberOf(f, offset)) {
-		error = where + ": no `offset` number";
-		return false;
-	}
-	node.addStrut(edge, ref, refEdge, offset);
+	node.setAutoresizingMask(mask);
 	return true;
 }
 
@@ -594,13 +570,12 @@ loadNode(const config_value_t &rec, InterfaceNode &node,
 			 * order is the KEY ORDER rather than whatever order
 			 * the parser happened to hand the fields over in */
 			node.insertChild(std::atoi(name + 5), child);
-		} else if (!std::strncmp(name, "strut", 5)
-			   && std::isdigit((unsigned char) name[5])) {
+		} else if (!std::strcmp(name, "mask")) {
 			if (val->type != CONFIG_TYPE_RECORD) {
 				error = sub + " is not a record";
 				return false;
 			}
-			if (!loadStrut(*val, node, sub, error)) {
+			if (!loadMask(*val, node, sub, error)) {
 				return false;
 			}
 		} else if (val->type == CONFIG_TYPE_STRING) {
@@ -669,6 +644,132 @@ interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 		config_value_free(&v);
 		return ok;
 	}
+}
+
+/* ---------- Weaver IB1: the registry and the builder ---------- */
+
+/* ONE table (plan D5), listing only classes whose constructor was CHECKED to
+ * need no Application and no display: a control that cannot exist without a
+ * window cannot be built from a document anyway, so it does not belong here.
+ * "Window" is the notable absence — it needs a display, so a document whose
+ * root is a window is a later slice, not this one. */
+static const InterfaceClass g_classes[] = {
+	{ "View", []() -> View * { return new View(); } },
+	{ "Box", []() -> View * { return new Box(); } },
+	{ "Label", []() -> View * { return new Label(); } },
+	{ "Button", []() -> View * { return new Button(); } },
+	{ "TextField", []() -> View * { return new TextField(); } },
+	{ "Slider", []() -> View * { return new Slider(); } },
+	{ "Stepper", []() -> View * { return new Stepper(); } },
+	{ "ProgressIndicator", []() -> View * { return new ProgressIndicator(); } },
+	{ "LevelIndicator", []() -> View * { return new LevelIndicator(); } },
+	{ "SegmentedControl", []() -> View * { return new SegmentedControl(); } },
+	{ "ImageView", []() -> View * { return new ImageView(); } },
+	{ "ComboBox", []() -> View * { return new ComboBox(); } },
+	{ "PopUpButton", []() -> View * { return new PopUpButton(); } },
+};
+
+int
+interfaceClassCount()
+{
+	return (int) (sizeof(g_classes) / sizeof(g_classes[0]));
+}
+
+const InterfaceClass *
+interfaceClassAt(int index)
+{
+	if (index < 0 || index >= interfaceClassCount()) {
+		return nullptr;
+	}
+	return &g_classes[index];
+}
+
+View *
+interfaceMake(const char *className)
+{
+	if (!className || !className[0]) {
+		return nullptr;
+	}
+	for (int i = 0; i < interfaceClassCount(); i++) {
+		if (!std::strcmp(g_classes[i].name, className)) {
+			return g_classes[i].make();
+		}
+	}
+	return nullptr;
+}
+
+static void
+warnUnknown(const std::string &where)
+{
+	std::fprintf(stderr, "ARGENTUM-IFACE: %s: skipped, unknown class\n",
+		     where.c_str());
+	std::fflush(stderr);
+}
+
+/* ONE PASS. With sibling bindings gone (D15) there is nothing to resolve
+ * afterwards, and because nothing in a document refers to another node, the
+ * result cannot depend on the order the document lists things in. */
+static View *
+buildNode(const InterfaceNode &node, View *parent, std::string &error,
+	  bool isRoot,
+	  const std::function<void(View *, const char *, const char *)> &onBuilt)
+{
+	View *v = interfaceMake(node.className());
+	Rect r;
+
+	if (!v) {
+		if (isRoot) {
+			error = std::string("the document's root names class `")
+				+ node.className()
+				+ "`, which this build does not know";
+			return nullptr;
+		}
+		/* tolerant reads (D7): skip this subtree and keep the rest. The
+		 * document is untouched, so nothing is lost — the editor still
+		 * holds the node; it just cannot be shown yet. */
+		warnUnknown(node.identifier()[0]
+				    ? std::string("`") + node.identifier() + "` ("
+					      + node.className() + ")"
+				    : node.className());
+		return nullptr;
+	}
+	r.origin.x = node.frameX();
+	r.origin.y = node.frameY();
+	r.size.w = node.frameW();
+	r.size.h = node.frameH();
+	v->setFrame(r);
+	v->setAutoresizingMask(node.autoresizingMask());
+	if (node.identifier()[0]) {
+		v->setIdentifier(node.identifier());
+	}
+	if (onBuilt) {
+		onBuilt(v, node.className(), node.identifier());
+	}
+	for (int i = 0; i < node.childCount(); i++) {
+		/* the child adds ITSELF to v (the tail below), so nothing is
+		 * added twice */
+		(void) buildNode(*node.childAt(i), v, error, false, onBuilt);
+	}
+	if (parent) {
+		parent->addSubview(v);
+	}
+	return v;
+}
+
+View *
+interfaceBuild(const InterfaceDocument &doc, View *parent, std::string &error,
+	       std::function<void(View *, const char *, const char *)> onBuilt)
+{
+	error.clear();
+	if (!doc.root()) {
+		error = "the document has no root";
+		return nullptr;
+	}
+	if (!doc.root()->className()[0]) {
+		error = "the document's root names no class";
+		return nullptr;
+	}
+	return buildNode(*doc.root(), parent, error, true, onBuilt);
 }
 
 } /* namespace argentum */

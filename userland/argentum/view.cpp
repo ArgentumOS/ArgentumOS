@@ -444,17 +444,41 @@ View::autoresizingMask() const
 }
 
 void
-View::setStrutReference(Edge own, View *sibling, Edge ref, double offset)
+View::setIdentifier(const char *utf8)
 {
-	int i = (int) own;
-
-	if (i < 0 || i > (int) Edge::Bottom) {
+	if (!utf8) {
+		impl_->identifier[0] = 0;
 		return;
 	}
-	impl_->struts[i].ref = sibling;
-	impl_->struts[i].refEdge = ref;
-	impl_->struts[i].offset = offset;
+	std::strncpy(impl_->identifier, utf8, sizeof(impl_->identifier) - 1);
+	impl_->identifier[sizeof(impl_->identifier) - 1] = 0;
 }
+
+const char *
+View::identifier() const
+{
+	return impl_->identifier;
+}
+
+View *
+View::viewWithIdentifier(const char *utf8)
+{
+	/* Pre-order: this view first, then each subtree in z-order. The FIRST
+	 * match wins — the format does not require identifiers to be unique, so
+	 * "first" is the answer rather than an error. */
+	if (utf8 && utf8[0] && !std::strcmp(impl_->identifier, utf8)) {
+		return this;
+	}
+	for (size_t i = 0; i < impl_->subviews.size(); i++) {
+		View *found = impl_->subviews[i]->viewWithIdentifier(utf8);
+
+		if (found) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
 
 void
 View::resizeSubviewsWithOldBounds(const Rect &oldBounds,
@@ -483,23 +507,6 @@ View::resizeSubviewsWithOldBounds(const Rect &oldBounds,
 		double nw = f.size.w, nh = f.size.h;
 		int n;
 
-		/* A bound edge is not a spring: the strut below positions it,
-		 * so it must not take a share of the delta as well. Left in,
-		 * it would inflate n and the flexible edge we DO want to move
-		 * would take half the delta - the view growing by half of what
-		 * it should, with the right edge trailing the parent. */
-		if (c->impl_->struts[(int) Edge::Left].ref) {
-			mask &= ~AutoresizingFlexibleMinX;
-		}
-		if (c->impl_->struts[(int) Edge::Right].ref) {
-			mask &= ~AutoresizingFlexibleMaxX;
-		}
-		if (c->impl_->struts[(int) Edge::Top].ref) {
-			mask &= ~AutoresizingFlexibleMinY;
-		}
-		if (c->impl_->struts[(int) Edge::Bottom].ref) {
-			mask &= ~AutoresizingFlexibleMaxY;
-		}
 		n = 0;
 		if (mask & AutoresizingFlexibleMinX) {
 			n++;
@@ -540,97 +547,18 @@ View::resizeSubviewsWithOldBounds(const Rect &oldBounds,
 				nh += share;
 			}
 		}
-		/* Sibling-relative struts: applied after the parent-relative
-		 * springs above, against the reference's ALREADY-FINAL frame.
-		 * We walk the subviews in order, so an earlier sibling has been
-		 * placed by the time we get here.
+		/* Apply - but only on a real change. A setFrame on every pass
+		 * would make each composite schedule a redraw, and layout passes
+		 * do re-apply frames on every draw (Box, SplitView, TabView);
+		 * View::setFrame's own no-op guard is what keeps this cheap.
 		 *
-		 * Edges, not sizes: the bound edges move, then the size is
-		 * re-derived from the pair. For a view with no struts that is
-		 * arithmetically a no-op, so it is only done when a binding
-		 * actually applied - re-deriving unconditionally would risk an
-		 * ulp difference and make setFrame() relayout on every pass. */
-		double x0 = nx;
-		double x1 = nx + nw;
-		double y0 = ny;
-		double y1 = ny + nh;
-		bool boundX = false;
-		bool boundY = false;
-
-		for (int e = 0; e < 4; e++) {
-			Impl::StrutRef &s = c->impl_->struts[e];
-			double val = 0;
-
-			if (!s.ref) {
-				continue;
-			}
-			/* the reference must be an EARLIER sibling: a cycle
-			 * among siblings always has a forward reference, so
-			 * this one rule catches cycles, self-references and
-			 * views under another parent alike */
-			bool earlier = false;
-
-			for (size_t j = 0; j < i; j++) {
-				if (impl_->subviews[j] == s.ref) {
-					earlier = true;
-					break;
-				}
-			}
-			if (!earlier) {
-				fprintf(stderr,
-					"ARGENTUM: strut edge %d of '%s' references "
-					"%p, which is not an earlier sibling - "
-					"binding ignored\n",
-					e, c->accessibilityLabel(), (void *) s.ref);
-				s.ref = nullptr;	/* report once, then behave */
-				continue;	/* as if unbound */
-			}
-			Rect rf = s.ref->frame();
-
-			switch (s.refEdge) {
-			case View::Edge::Left:
-				val = rf.origin.x;
-				break;
-			case View::Edge::Right:
-				val = rf.origin.x + rf.size.w;
-				break;
-			case View::Edge::Top:
-				val = rf.origin.y;
-				break;
-			default:
-				val = rf.origin.y + rf.size.h;
-				break;
-			}
-			val += s.offset;
-			switch ((View::Edge) e) {
-			case View::Edge::Left:
-				x0 = val;
-				boundX = true;
-				break;
-			case View::Edge::Right:
-				x1 = val;
-				boundX = true;
-				break;
-			case View::Edge::Top:
-				y0 = val;
-				boundY = true;
-				break;
-			default:
-				y1 = val;
-				boundY = true;
-				break;
-			}
-		}
-		if (boundX) {
-			nx = x0;
-			nw = x1 - x0;
-		}
-		if (boundY) {
-			ny = y0;
-			nh = y1 - y0;
-		}
-		if (nx != f.origin.x || ny != f.origin.y ||
-		    nw != f.size.w || nh != f.size.h) {
+		 * This block is the whole point of the pass: without it the
+		 * masks are computed and then DISCARDED, so nothing ever moves.
+		 * It was collaterally deleted with the sibling-binding code
+		 * (2026-09) and only the IB1 acceptance caught it - the zoo's
+		 * board sets its frames explicitly, so no gate noticed. */
+		if (nx != f.origin.x || ny != f.origin.y || nw != f.size.w
+		    || nh != f.size.h) {
 			Rect nf = { {nx, ny}, {nw, nh} };
 
 			c->setFrame(nf);

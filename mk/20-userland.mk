@@ -202,6 +202,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/interface_roundtrip.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/interface_roundtrip"
+	# interface_build: Weaver IB1 acceptance (docs/design/weaver-plan.md §8)
+	# — instantiate a document, find a control by identifier, and lay it out
+	# from the frames and parent-relative masks the document records. No
+	# window and no input: the evidence is the log and the resulting frames.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/interface_build.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/interface_build"
 	# viewtree_a: Argentum S2.1a acceptance — the View core + tree +
 	# composite display (bare window over a 2-level hierarchy; child
 	# clipping). Same link recipe as the theme probes.

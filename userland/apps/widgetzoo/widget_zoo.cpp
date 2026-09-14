@@ -374,7 +374,7 @@ main()
 	}
 
 	/* ---- S2.3e: ComboBox — an editable field with a drop-down list ----
-	 * In the free column under the strut band. A ComboBox is a PopUpButton
+	 * In the free column under the springs band. A ComboBox is a PopUpButton
 	 * you can TYPE into: the pick writes the item into the field, and any
 	 * other text is allowed (selectedIndex is then -1). Its popup anchors
 	 * from the press's root coordinates, so no window lookup is involved.
@@ -384,7 +384,7 @@ main()
 		static const char *COMBO_ITEMS[] = { "Daily", "Weekly", "Monthly" };
 
 		v.combo.setItems(COMBO_ITEMS, 3);
-		/* the frame: free column (x >= 736), under the strut band */
+		/* the frame: free column (x >= 736), under the springs band */
 		v.combo.setFrame({{760, 200}, {150, 24}});
 		v.combo.setOnChange([](argentum::ComboBox *c) {
 			char line[128];
@@ -396,7 +396,7 @@ main()
 		v.addSubview(&v.combo);
 		/* a gate reads readiness rather than aiming at pixels: the board
 		 * is driven by coordinates elsewhere, and coordinates in this
-		 * board move with the struts */
+		 * board move with the springs */
 		{
 			char line[128];
 
@@ -525,53 +525,53 @@ main()
 
 	zoo_log("s25:band");
 
-	/* ---- S2.1d: sibling-relative strut, in the free column right of the
-	 * board (x >= 736 is clear for the whole height; the screen is
-	 * 1280x800, so the board grows sideways rather than down). The right
-	 * panel's LEFT edge is bound to the left panel's RIGHT edge + 8pt,
-	 * so it slides with the panel it is tied to instead of being pinned
-	 * to the band. The slider resizes the BAND, and that is what
-	 * re-runs the springs pass which resolves the binding: the gap stays
-	 * 8pt and the trailing panel keeps its width as the leading one
-	 * grows. Resizing the window does the same thing. ---- */
+	/* ---- S2.1d: the springs band, in the free column right of the board
+	 * (x >= 736 is clear for the whole height; the screen is 1280x800, so
+	 * the board grows sideways rather than down). Both panes take a
+	 * FlexibleWidth share, so growing the band grows both. The slider
+	 * resizes the BAND, and that is what re-runs the springs pass;
+	 * resizing the window does the same thing. ---- */
 	{
-		static argentum::View strutBand;
-		static PaneView strutRef(0x2288ee), strutBound(0xf0a030);
-		static argentum::Slider strutDrive;
+		static argentum::View springBand;
+		static PaneView springRef(0x2288ee), springBound(0xf0a030);
+		static argentum::Slider springDrive;
 
-		strutBand.setFrame({ {760, 40}, {150, 144} });
+		/* The sibling binding that used to hold the second pane 8pt past
+		 * the first is GONE - plan D15, 2026-09: a document's layout is
+		 * frames plus parent-relative masks, and a constraint that named
+		 * another view could not be serialized without a pointer, an
+		 * identifier indirection, and an ordering rule that let z-order
+		 * decide whether it worked at all. Both panes simply take a
+		 * FlexibleWidth share now. */
+		springBand.setFrame({ {760, 40}, {150, 144} });
 		/* the band resizes with the window, and the slider below
-		 * resizes it directly - either way its own pass runs, which is
-		 * what resolves the binding. Pinned, it would never relayout. */
-		strutBand.setAutoresizingMask(
+		 * resizes it directly - either way its own springs pass runs.
+		 * Pinned, it would never relayout. */
+		springBand.setAutoresizingMask(
 			argentum::View::AutoresizingFlexibleWidth |
 			argentum::View::AutoresizingFlexibleHeight);
-		strutRef.setFrame({ {0, 0}, {60, 36} });
-		strutRef.setAutoresizingMask(
+		springRef.setFrame({ {0, 0}, {60, 36} });
+		springRef.setAutoresizingMask(
 			argentum::View::AutoresizingFlexibleWidth);
-		strutBound.setFrame({ {68, 0}, {70, 36} });
-		strutBound.setAutoresizingMask(
+		springBound.setFrame({ {68, 0}, {70, 36} });
+		springBound.setAutoresizingMask(
 			argentum::View::AutoresizingFlexibleWidth);
-		/* the binding itself: sBound's left is 8pt past sRef's right */
-		strutBound.setStrutReference(argentum::View::Edge::Left,
-					     &strutRef,
-					     argentum::View::Edge::Right, 8);
-		strutBand.addSubview(&strutRef);
-		strutBand.addSubview(&strutBound);
+		springBand.addSubview(&springRef);
+		springBand.addSubview(&springBound);
 
-		strutDrive.setRange(0.0, 1.0);
-		strutDrive.setValue(1.0);
-		strutDrive.setFrame({ {0, 60}, {140, 22} });
-		strutDrive.setAction([](argentum::Control *c) {
+		springDrive.setRange(0.0, 1.0);
+		springDrive.setValue(1.0);
+		springDrive.setFrame({ {0, 60}, {140, 22} });
+		springDrive.setAction([](argentum::Control *c) {
 			argentum::Slider *s = static_cast<argentum::Slider *>(c);
 
-			zoo_log("strut");
-			strutBand.setFrame({ {760, 40},
-					     {90 + 60 * s->value(), 144} });
+			zoo_log("spring");
+			springBand.setFrame({ {760, 40},
+					      {90 + 60 * s->value(), 144} });
 		});
-		strutBand.addSubview(&strutDrive);
-		v.addSubview(&strutBand);
-		zoo_log("s21d:strut-band");
+		springBand.addSubview(&springDrive);
+		v.addSubview(&springBand);
+		zoo_log("s21d:spring-band");
 	}
 
 	/* a11y battery: every v1-cut widget's role (S2.5 whole-board) */
