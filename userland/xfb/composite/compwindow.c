@@ -566,6 +566,8 @@ compCopyWindow(WindowPtr pWin, DDXPointRec ptOldOrg, RegionPtr prgnSrc)
     compCheckTree(pWin->drawable.pScreen);
 }
 
+extern int xfb_pixdbg_config;	/* hw/xfb/configargs.c: system.xfb `pixdbg` */
+
 Bool
 compCreateWindow(WindowPtr pWin)
 {
@@ -611,6 +613,10 @@ compDestroyWindow(WindowPtr pWin)
     while ((csw = GetCompSubwindows(pWin)))
         FreeResource(csw->clients->id, RT_NONE);
 
+    if (xfb_pixdbg_config)
+        ErrorF("XFB-COMP destroywin %dx%d redirectDraw=%d\n",
+               pWin->drawable.width, pWin->drawable.height,
+               (int) pWin->redirectDraw);
     if (pWin->redirectDraw != RedirectDrawNone) {
         PixmapPtr pPixmap = (*pScreen->GetWindowPixmap) (pWin);
 
