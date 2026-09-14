@@ -102,14 +102,24 @@ files, **all SVG**, 43 MB, laid out by category (`apps`, `places`,
 `scalable`, `scalable@2`, `symbolic`), with an `index.theme` that inherits
 `breeze,hicolor`. It is **untracked** in the tree today.
 
-That changes the *kind* of the problem, and it is not a decoder: the files
-are vector, so the question is an **SVG renderer** (Q-W10) — and the obvious
-one, librsvg, is **LGPL, which this project blocks** (`self-hosting-packages.md`
-§6 requires naming a permissive replacement). So D5 still holds for *raster*
-formats — PNG wallpapers and bundled icon files keep waiting — and v1 draws
-**vector tiles** the way Kestrel's chrome already does. Real theme icons
-arrive with whatever Q-W10 settles, which is also when the theme's size in
-the tree (Q-W11) has to be answered.
+**Decided (D14): the SVGs are the SOURCE and rasters are generated from
+them ahead of time** — BMP for v1, and PNG once a decoder exists. So:
+
+- **no renderer ships.** Generation is a *maintenance-time host step*
+  (`rsvg-convert`, ImageMagick and python `gi`/rsvg are all present on the
+  development host) and its output is what the OS reads — which keeps an
+  SVG parser, and librsvg's LGPL, out of the tree entirely. The precedent
+  is the repo's other host-side tools (`mkagfs.py`, `bfscheck.py`);
+- **BMP for v1**, because BMP *is* the v1 raster format
+  (`initial-release.md`: "trivial, no dependencies"). So D5's "no raster
+  decoder on the critical path" survives **as written** rather than
+  becoming an exception for icons. PNG output joins the generator when a
+  decoder lands — for wallpapers and bundle icons as much as for this;
+- **the sizes are the ones the system asks for**, not the theme's full
+  matrix: the dock's `dock.icon-size` (48), the browser's rows (16/22/24/32)
+  and the menubar/toolbar symbolic set, each at 1× **and 2×** — `pxPerPt`
+  is 2 at the shipped 1080p session. Nothing that no one asks for is
+  generated.
 
 ## 3. The design
 
@@ -388,9 +398,11 @@ Per §3.3, a later addition. Not sliced here.
 - **D4 — v1 is browse + open; operations are W7, in this plan** (the
   recorded answer).
 - **D5 — No image decoder on the critical path** (§2.3); v1 draws tiles.
-  **Amended 2026-09:** the installed theme is SVG, so this guarantee covers
-  *raster* formats only — the icon question is now an SVG renderer (Q-W10),
-  and librsvg is out on licence grounds.
+  *Amended 2026-09, then RESOLVED:* the installed theme is SVG, which for
+  two turns made this guarantee cover raster formats only and turned the
+  icon question into an SVG renderer (with librsvg out on licence grounds).
+  D14 removes the exception — the SVGs are pre-rendered to BMP ahead of
+  time, so no renderer ships and this holds as written.
 - **D6 — A config domain follows its owner** (§3.0): the dock's keys move
   to `system.kestrel`, `system.workspace` keeps the Workspace app's own
   (`wallpaper`, `file-manager.*`). One app per domain file.
@@ -420,26 +432,21 @@ Per §3.3, a later addition. Not sliced here.
 - **D13 — No drag & drop in v1** (Q-W9): it arrives with W7, whose
   operations are what can act on a drop — including onto the dock's Trash
   tile.
+- **D14 — SVG icons are pre-rendered ahead of time, to BMP for v1**
+  (Q-W10, §2.3): the theme's SVGs are the source, the generator runs on the
+  host at maintenance time, its output is what the OS reads, PNG output
+  joins it when a decoder lands, and nothing that parses SVG — least of all
+  librsvg, which is LGPL — ships.
 
 ## 6. Open questions
 
-- **Q-W10 — how SVG icons are rendered.** The theme is 9,820 SVGs (§2.3),
-  so something must turn them into pixels, and the licence does the
-  deciding: a **first-party SVG-subset renderer** emitting the toolkit's
-  existing vector primitives (doctrine-clean — the toolkit already draws
-  vector chrome, so this is "parse a subset, emit drawing ops");
-  **build-time rasterization** (needs a host SVG tool, librsvg is LGPL, so
-  it would have to be written anyway — which collapses into the first
-  option); or **shipping a pre-rasterised subset** (binary assets plus the
-  tool question again). Decide when an icon is first needed — W2's rows —
-  not before.
-- **Q-W11 — the theme's size in the tree.** `userland/icons` is 43 MB and
-  untracked. Committing it whole, pruning to the categories and sizes the
-  OS ships (`apps`, `places`, `mimetypes`, `devices`, and the symbolic
-  set), or staging it into the image from outside git are all defensible;
-  the reproducibility rule argues against the last, since a build that
-  silently depends on an untracked directory cannot be rebuilt. Decide
-  with Q-W10.
+- **Q-W11 — the source theme's size in the tree.** `userland/icons` is
+  43 MB of SVG and untracked, and D14 makes it a *source*: whatever is
+  committed has to be everything the generator needs, or the generated
+  BMPs cannot be regenerated (a build that depends on an untracked
+  directory is not reproducible). Pruning to the categories the OS ships —
+  `apps`, `places`, `mimetypes`, `devices`, `actions`, `symbolic` — is the
+  obvious reduction. Decide when the generator lands, i.e. with W2.
 - **Q-W6 — the permission prompt path.** Not a question for the user but
   for the tree: W7's failures must reach whatever the privilege model
   defines. The design corpus names the ACTORS and no prompt UI — the
