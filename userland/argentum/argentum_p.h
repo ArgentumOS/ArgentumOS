@@ -344,6 +344,20 @@ struct TableView::Impl {
 	int selected = -1;
 };
 
+/* Post-S5 OutlineView state (see argentum.h): the flat row model. */
+struct OutlineView::Impl {
+	struct Row {
+		std::string text;
+		int depth = 0;
+		bool expandable = false;
+		bool expanded = false;
+		int tag = -1;
+	};
+
+	std::vector<Row> rows;
+	int selected = -1;
+};
+
 /* S2.4d TabView state (see argentum.h). */
 struct TabView::Impl {
 	std::vector<TabViewItem *> items;	/* borrowed */

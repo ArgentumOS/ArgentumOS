@@ -69,6 +69,7 @@ public:
 	argentum::ImageView image;
 	argentum::PopUpButton pop;
 	argentum::ComboBox combo;
+	argentum::OutlineView outline;
 	/* decor */
 	ChromePanel chrome;
 	argentum::Label hText;
@@ -402,6 +403,26 @@ main()
 
 			std::snprintf(line, sizeof(line), "combo:ready items=%d",
 				      v.combo.itemCount());
+			zoo_log(line);
+		}
+	}
+
+	/* ---- Post-S5: OutlineView — the hierarchical list. Same free
+	 * column, under the ComboBox; a small two-level tree so the
+	 * disclosure triangle and indentation are visible. ---- */
+	{
+		v.outline.setFrame({{760, 240}, {150, 132}});
+		v.outline.addRow("Documents", 0, true, true, 0);
+		v.outline.addRow("Fonts", 1, false, false, 1);
+		v.outline.addRow("Images", 1, true, false, 2);
+		v.outline.addRow("Icons", 2, false, false, 3);
+		v.outline.addRow("Sounds", 1, false, false, 4);
+		v.addSubview(&v.outline);
+		{
+			char line[128];
+
+			std::snprintf(line, sizeof(line), "outline:ready rows=%d",
+				      v.outline.rowCount());
 			zoo_log(line);
 		}
 	}

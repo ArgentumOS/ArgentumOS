@@ -57,7 +57,7 @@ excluded (deprecated in later macOS; no FNX counterpart needed).
 |---|---|---|---|
 | `NSTableView` | `TableView` | first data view (v1-basic or immediately after) | columns, rows, selection, data-source/delegate; editing + sorting within its own milestone |
 | `NSTextView` | `TextView` | after TableView | multi-line rich text — SL's text system is large; v1 has single-line `TextField` only |
-| `NSOutlineView` | `OutlineView` | staged | tree; view-based |
+| `NSOutlineView` | `OutlineView` | **DONE (2026-09)** | hierarchical list, v1 = flat row model (text, depth, expandable/expanded, tag); draws visible rows (ancestor-expanded) with depth indentation + vector disclosure triangles; row selection fires the Control action, triangle clicks toggle expansion; view-based rows are a later richness. Used by Weaver's outline panel and on the widget zoo board. |
 | `NSCollectionView` | `CollectionView` | staged | grid of items |
 | `NSBrowser` | `Browser` | staged | column browser |
 | `NSComboBox` | `ComboBox` | **DONE (2026-09)** | An editable field with a drop-down list, COMPOSED: a `TextField` (typing, caret and S3's focus traversal come free) + a `Menu` rebuilt on `setItems` (Menu has no remove, only add) shown through the shared popup path. The item's id is its index PLUS ONE — 0 is `MenuItem`'s "no id"

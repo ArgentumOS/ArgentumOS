@@ -1678,6 +1678,42 @@ private:
 };
 
 
+/* Post-S5 (2026-09): OutlineView — the hierarchical list (the NSOutlineView
+ * analog), v1 as a FLAT ROW MODEL: the app pushes rows (text, depth,
+ * expandable/expanded, tag) and the view draws the VISIBLE ones (rows whose
+ * ancestors are expanded) with depth indentation and vector disclosure
+ * triangles. Row selection fires the Control action; clicking a disclosure
+ * triangle toggles expansion. View-based rows are a later richness. */
+class OutlineView : public Control {
+public:
+	OutlineView();
+	~OutlineView() override;
+
+	void clear();
+	void addRow(const char *text, int depth, bool expandable,
+		    bool expanded, int tag);
+	int rowCount() const;
+	const char *rowText(int row) const;
+	int rowDepth(int row) const;
+	bool rowExpandable(int row) const;
+	bool rowExpanded(int row) const;
+	void setRowExpanded(int row, bool expanded);
+	int rowTag(int row) const;
+
+	void selectRow(int row);	/* -1 clears */
+	int selectedRow() const;
+	int rowAt(const Point &pt) const;	/* local pt; -1 = none */
+	double rowHeight() const;	/* derived from the theme font */
+
+	void draw(GraphicsContext &g) override;
+	void mouseDown(const MouseEvent &e) override;
+
+private:
+	struct Impl;
+	Impl *ov_;
+};
+
+
 /*
  * Weaver IB0 (docs/design/weaver-plan.md §4): the INTERFACE DOCUMENT.
  *

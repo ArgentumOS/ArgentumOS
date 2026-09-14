@@ -249,26 +249,25 @@ public:
 	}
 };
 
-/* the outline's rows are indented Labels (OutlineView stays staged) */
+/* the outline's rows come from the document tree, pushed into the
+ * OutlineView as a flat record (text, depth, expandable/expanded, tag);
+ * the parallel ids vector maps a row's tag back to the document node. */
 static void
-outlineInto(View *rows, const InterfaceNode *n, int depth, double *y)
+outlineIntoView(OutlineView *view, const InterfaceNode *n, int depth,
+		std::vector<std::string> *ids)
 {
-	double rowH = 22;
-	Label *row = new Label();
-
-	row->setFrame(Rect{ { depth * 12.0 + 4.0, *y },
-		{ SIDE_W - 20 - depth * 12.0, rowH } });
 	std::string text = n->className();
 
 	if (n->identifier()[0]) {
 		text += " ";
 		text += n->identifier();
 	}
-	row->setText(text.c_str());
-	rows->addSubview(row);
-	*y += rowH;
+	int tag = (int) ids->size();
+
+	ids->push_back(n->identifier()[0] ? n->identifier() : n->className());
+	view->addRow(text.c_str(), depth, n->childCount() > 0, true, tag);
 	for (int i = 0; i < n->childCount(); i++) {
-		outlineInto(rows, n->childAt(i), depth + 1, y);
+		outlineIntoView(view, n->childAt(i), depth + 1, ids);
 	}
 }
 
@@ -293,6 +292,8 @@ public:
 	View *canvasHost = nullptr;
 	Point canvasOrigin = { 0, 0 };
 	std::vector<View *> chrome_;
+	OutlineView *outline_ = nullptr;
+	std::vector<std::string> outlineIds_;
 
 	/* content-pt -> document-pt (real mouse events arrive in content pt) */
 	Point contentToDoc(const Point &p) const
@@ -1103,11 +1104,17 @@ public:
 
 	/* ---- the visible chrome (D13/§6): palette, outline, inspector ---- */
 
-	void populateOutline(View *rows)
+	void populateOutline(OutlineView *view)
 	{
-		double y = 0;
+		outlineIds_.clear();
+		outlineIntoView(view, doc->root(), 0, &outlineIds_);
+		view->setAction([this](Control *) {
+			int row = outline_ ? outline_->selectedRow() : -1;
 
-		outlineInto(rows, doc->root(), 0, &y);
+			if (row >= 0 && row < (int) outlineIds_.size()) {
+				selectOutline(outlineIds_[row].c_str());
+			}
+		});
 	}
 
 	void populateInspector(View *insp)
@@ -1230,12 +1237,13 @@ public:
 		surface->addSubview(outlineBox);
 		chrome_.push_back(outlineBox);
 
-		View *rows = new View();
+		OutlineView *rows = new OutlineView();
 
 		rows->setFrame(Rect{ { 0, 0 },
 			{ SIDE_W - 16, winH - outY - 44 } });
 		outlineBox->addSubview(rows);
 		chrome_.push_back(rows);
+		outline_ = rows;
 		populateOutline(rows);
 
 		/* inspector (right): a titled Box with Label/TextField rows */

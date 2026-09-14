@@ -305,7 +305,7 @@ ARGENTUM_SRCS = userland/argentum/application.cpp \
 	userland/argentum/box.cpp userland/argentum/scroll.cpp \
 	userland/argentum/scrollbar.cpp \
 	userland/argentum/split.cpp userland/argentum/tab.cpp \
-	userland/argentum/table.cpp \
+	userland/argentum/table.cpp userland/argentum/outline.cpp \
 	userland/argentum/imageview.cpp userland/argentum/popup.cpp \
 	userland/argentum/textview.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1

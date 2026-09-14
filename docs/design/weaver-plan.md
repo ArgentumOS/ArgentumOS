@@ -288,7 +288,7 @@ Each traced to the slice that needs it:
 7. Selection, drag, resize, guides — IB3, **DONE for selection/drag/resize**
    (guides deferred: not in the acceptance).
 8. A command stack — IB3, **DONE** (in-memory, one entry per gesture, undo).
-9. `OutlineView` (**staged**) — IB5.
+9. `OutlineView` — **DONE (2026-09, post-IB7)**; used by Weaver's outline panel and the zoo board.
 10. A palette host: `TableView` exists, `CollectionView` is **staged** — IB5.
     Recommend TableView for v1.
 11. `Toolbar`/`Panel` stay **staged**, and D13 takes them off the critical path
@@ -409,9 +409,8 @@ need input, which §8a addresses directly.
   weaver_ib5.py`, 11/11: selecting the root, adding a Button lands in the
   saved document as `child2` with `class = "Button"` (two Buttons total), the
   outline lists the four nodes, and selecting `okButton` in the outline logs
-  both lines. The visual hosts (TableView palette / an indented Label outline;
-  OutlineView itself remains staged) are landed by the post-IB7 layout slice
-  below.
+  both lines. The visual hosts (TableView palette / an OutlineView outline)
+  are landed by the post-IB7 layout slice below.
 - **IB6 — outlets and the app-resource path. DONE (2026-09).** Landed as the
   **Wren** sample bundle (`userland/apps/wren/`, `/Applications/Wren.app`): its
   interface ships as `Resources/Interface.conf` (D10), the payload finds it
@@ -438,8 +437,9 @@ need input, which §8a addresses directly.
   in-process multi-document editor is a later refinement.
 - **Post-IB7 — the visible editor layout (D13/§6). DONE (2026-09).** `--show`
   now lays out a real editor window: a **palette** (titled Box + TableView of
-  the registry), an **outline** (titled Box + indented Labels; OutlineView
-  itself stays staged), the **canvas** (the live document tree inside a
+  the registry), an **outline** (titled Box + the OutlineView widget, its rows
+  bound back to document nodes through tags), the **canvas** (the live document
+  tree inside a
   `canvasHost` at the centre, still non-hit-testable per D12), and the
   **inspector** (titled Box + Label/TextField rows filled through the property
   table for the selection, defaulting to the first child). The editor logs
