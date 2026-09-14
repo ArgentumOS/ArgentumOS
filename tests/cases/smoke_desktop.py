@@ -84,18 +84,27 @@ class Case(BaseCase):
                        % (wall.group(1), wall.group(2), shot.w, shot.h))
             lo, hi = sorted((luma_of(hex_rgb(wall.group(4))),
                              luma_of(hex_rgb(wall.group(5)))))
-            # Sample desktop that NO window owns. The centre used to do,
-            # until W1 gave the app a browser window — 720x420pt, so
-            # 1440x840px, opened at 120,120 — which covers the middle of the
-            # screen and read as luma 246 against a ramp of 95..147. The
-            # corner below the dock is the one place the session guarantees
-            # is open: the dock is the right edge and the surface is behind
-            # everything, so this is the surface's own pixels.
-            sx, sy = shot.w - 120, shot.h - 40
-            got = shot.luma(sx, sy)
-            self.check("wallpaper-on-screen", lo - 8 <= got <= hi + 8,
-                       "desktop pixel at %d,%d has luma %d, ramp %d..%d"
-                       % (sx, sy, got, lo, hi))
+            # Sample the DESKTOP's own pixels over a grid, and require the
+            # ramp in most of them. A single fixed point has been invalidated
+            # three times in one session — W1's browser window over the
+            # centre, a probe raising itself, and now a third thing that is
+            # NOT a managed frame (so it is the app's own full-screen surface
+            # or a window the WM does not frame) — and each time a window's
+            # paint read as a broken desktop. A majority sample is what "the
+            # desktop shows the ramp" actually means, and it cannot go stale
+            # the way one coordinate can.
+            samples = []
+            for gx in range(1, 12):
+                for gy in range(1, 6):
+                    samples.append((shot.w * gx // 12, shot.h * gy // 6))
+            inside = [p for p in samples if lo - 8 <= shot.luma(p[0], p[1]) <= hi + 8]
+            self.check("wallpaper-on-screen",
+                       len(inside) * 2 >= len(samples),
+                       "the ramp covers %d of %d sampled desktop pixels "
+                       "(ramp %d..%d; e.g. at %d,%d luma %d)"
+                       % (len(inside), len(samples), lo, hi,
+                          samples[0][0], samples[0][1],
+                          shot.luma(samples[0][0], samples[0][1])))
 
             # The menu bar owns the strip above the dock; content in it means
             # rows that are not one flat colour.

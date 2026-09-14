@@ -495,12 +495,36 @@ W2, not after.
 
 ### W2 — one column, drawn and scrolled
 
-Status: **PROPOSED.** Column 1 draws the listing (tile + name), scrolled
-by `ScrollView`.
+Status: **PARTIAL (2026-09)** — the column is real and lists the start root;
+its pixel and scrolling assertions are not in yet.
 *Acceptance:* the app's draw log (the board-logs-from-draw pattern) names
 the rows and the visible index range; pixel checks confirm rows are ink
 and that scrolling changes them; an empty directory draws the empty
 column, not a stale one.
+
+**As built (2026-09), partial.** The window now holds the `Browser` control
+over the real listing instead of a placeholder line, so the app's first
+column is the directory it reports:
+
+```
+WORKSPACE: /Users/Admin: 11 entries
+WORKSPACE: column 0 rows=11 first=Application Support last=Videos
+```
+
+The listing is read ONCE into a `std::vector` and kept, because a source that
+re-read the directory per row would be both slow and lying (it can change
+mid-draw) — and each row already carries whether it is a folder, which is the
+mark W3's descent needs. TEXT rows only: the slice's prose says "tile + name"
+but its acceptance asks for rows and ink, and D5/D14 put the icons behind the
+generator, so the tile follows that rather than being invented here.
+
+Still open for this slice, and honestly not done: the pixel assertions (rows
+are ink), the scroll assertion (scrolling changes them), and the empty-column
+case. **A note for whoever writes them: do not sample where the pointer is.**
+Three failures in this session read as a broken desktop and were the CURSOR —
+the themed 24x24 arrow, white (luma 246), sitting at the screen centre where
+QEMU's mouse starts. It only became visible when the cursor theme was
+installed, which is why an earlier sample point was fine and then was not.
 
 ### W3 — the chain (Miller behaviour)
 

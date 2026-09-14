@@ -39,6 +39,8 @@
 #include <cstring>
 #include <dirent.h>
 #include <pwd.h>
+#include <sys/stat.h>
+#include <vector>
 #include <string>
 #include <sys/types.h>
 #include <unistd.h>
@@ -227,36 +229,75 @@ countEntries(const char *path, std::string *why)
 	return n;
 }
 
-/* W1 draws one line — the path and its entry count. W2 replaces this with
- * the first column; the point of the slice is that a real directory was
- * READ, so the line is the observable. */
-class PathView : public argentum::View {
+/* ---- W2: the first column ------------------------------------------- */
+
+/* The listing, read ONCE and kept: the control asks its source for rows as it
+ * draws, so a source that re-read the directory per row would both be slow and
+ * lie (the directory can change mid-draw). This is also where a row learns
+ * whether it is a folder — the mark W3 needs and the reason a file manager
+ * stats at all. */
+struct Entry {
+	std::string name;
+	bool dir = false;
+};
+
+static std::vector<Entry> gEntries;
+
+static int
+listEntries(const std::string &path)
+{
+	DIR *d = opendir(path.c_str());
+	struct dirent *de;
+	int n = 0;
+
+	if (!d)
+		return -1;
+	while ((de = readdir(d))) {
+		struct stat st;
+		Entry e;
+
+		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+			continue;
+		e.name = de->d_name;
+		if (stat((path + "/" + e.name).c_str(), &st) == 0)
+			e.dir = S_ISDIR(st.st_mode);
+		gEntries.push_back(e);
+		n++;
+	}
+	closedir(d);
+	return n;
+}
+
+class WorkspaceSource : public argentum::BrowserSource {
 public:
-	void setLine(const std::string &s)
+	int browserRowCount(const argentum::Browser *,
+			    int column) const override
 	{
-		line_ = s;
-		setNeedsDisplay();
+		return column == 0 ? (int) gEntries.size() : 0;
 	}
 
-	void draw(argentum::GraphicsContext &g) override
+	const char *browserRowText(const argentum::Browser *, int column,
+				   int row) const override
 	{
-		argentum::Application &app = argentum::Application::shared();
-		argentum::Theme &t = app.theme();
-		double ppt = app.pxPerPt();
-		argentum::Rect f = frame();
-		unsigned w = (unsigned) (f.size.w * ppt + 0.5);
-		unsigned h = (unsigned) (f.size.h * ppt + 0.5);
+		if (column != 0 || row < 0 || row >= (int) gEntries.size())
+			return "";
+		return gEntries[row].name.c_str();
+	}
+};
 
-		if (w == 0 || h == 0)
+class WorkspaceDelegate : public argentum::BrowserDelegate {
+public:
+	void browserSelectionDidChange(argentum::Browser *, int column,
+				      int row) override
+	{
+		if (column != 0 || row < 0 || row >= (int) gEntries.size())
 			return;
-		g.fillRect(0, 0, w, h, t.page());
-		g.drawText(t.fontFamily(), t.fontSizePt(),
-			   (int) (8 * ppt + 0.5), (int) (20 * ppt + 0.5),
-			   line_.c_str(), t.text());
+		/* W2 reports what was chosen; W3 is what descends into it */
+		std::printf("WORKSPACE: selected %s%s\n",
+			    gEntries[(size_t) row].name.c_str(),
+			    gEntries[(size_t) row].dir ? "/" : "");
+		std::fflush(stdout);
 	}
-
-private:
-	std::string line_;
 };
 
 int
@@ -292,34 +333,41 @@ main()
 	{
 		double ppt = app.pxPerPt();
 		std::string root = homeRoot();
-		std::string why;
-		int n = countEntries(root.c_str(), &why);
-		char line[512];
+		int n = listEntries(root);
 
 		if (n < 0) {
-			std::snprintf(line, sizeof(line), "%s — unreadable: %s",
-				      root.c_str(), why.c_str());
 			std::printf("WORKSPACE: %s: unreadable (%s)\n",
-				    root.c_str(), why.c_str());
+				    root.c_str(), strerror(errno));
 		} else {
-			std::snprintf(line, sizeof(line), "%s — %d entries",
-				      root.c_str(), n);
 			std::printf("WORKSPACE: %s: %d entries\n",
 				    root.c_str(), n);
+			if (n > 0) {
+				/* the rows the column is about to draw: named, so
+				 * the gate reads what was listed rather than
+				 * trusting a pixel */
+				std::printf("WORKSPACE: column 0 rows=%d first=%s"
+					    " last=%s\n", n,
+					    gEntries.front().name.c_str(),
+					    gEntries.back().name.c_str());
+			}
 		}
 		std::fflush(stdout);
 
 		static argentum::Window bw;
-		static PathView pathView;
+		static WorkspaceSource src;
+		static WorkspaceDelegate del;
+		static argentum::Browser browser(&del);
 
+		browser.setFrame({{0, 0}, {BROWSER_W_PT, BROWSER_H_PT}});
+		browser.setSource(&src);
+		browser.setFocusedColumn(0);
 		if (!bw.init("Workspace", 120, 120,
 			     (unsigned) (BROWSER_W_PT * ppt + 0.5),
 			     (unsigned) (BROWSER_H_PT * ppt + 0.5))) {
 			std::fprintf(stderr, "WORKSPACE: browser init failed\n");
 			return 1;
 		}
-		pathView.setLine(line);
-		bw.setContentView(&pathView);
+		bw.setContentView(&browser);
 		bw.show();
 	}
 

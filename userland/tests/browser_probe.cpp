@@ -217,9 +217,6 @@ main()
 		std::fflush(stdout);
 	}
 
-	}
-
-
 	app.run();
 	return 0;
 }
