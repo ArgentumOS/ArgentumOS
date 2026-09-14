@@ -121,6 +121,27 @@ two locations are deliberate rather than one bent to cover both: a *shipped
 interface* and a *file the user owns and edits* are different things, with
 different lifetimes and different permissions.
 
+**D12. The canvas shows live instances built from the document, with their
+interaction suppressed.** Weaver owns the presses, so a drag selects and moves
+instead of activating the control. What is drawn is the real control, so there
+is no second renderer to drift from what the app will show. The price is one
+toolkit mechanism: the toolkit's hit-testing delivers to the deepest view, so
+without a way to make the document subtree non-hit-testable a click in the
+canvas would activate the control rather than select it (§7 item 6).
+
+**D13. The inspector is a region of the same window (v1).** Canvas in the
+centre, inspector on the right — no Panel or utility-window work, and no new WM
+behaviour. Interface Builder's floating palettes are a later refinement, not
+the starting point, and this keeps `Toolbar`/`Panel` off the critical path
+entirely.
+
+**D14. An edited document marks itself in the window title (v1).** The frame
+already draws the title (`setTitle`), so a marker there costs nothing and is
+trivially reversible. The conventional place — a dot in the close box, or a
+proxy icon — is Kestrel work: its title band draws close + zoom + title +
+toolbar box and nothing else, so that refinement is deferred rather than made a
+prerequisite.
+
 ## 4. The document format
 
 A node is a nested record: class, optional identifier, frame, properties,
@@ -177,16 +198,18 @@ which is the same degradation as an unbound strut today.
 
 ## 6. The editor's own architecture
 
-- **Window layout (v1):** canvas in the centre, inspector on the right. The
-  palette and the hierarchy outline are IB5; the inspector's chrome is Box +
-  Label + TextField rather than a new Toolbar/Panel (Q-IB4).
+- **Window layout (v1):** canvas in the centre, inspector on the right
+  (D13). The palette and the hierarchy outline are IB5; the inspector's chrome
+  is Box + Label + TextField, so no new control is needed for it.
 - **The editing overlay.** Selection handles, guides, and a marquee must be
   drawn over live instances without joining the document tree. No new layer
   system is needed: the toolkit draws subviews in order, so **an overlay
   added after the canvas in the same parent draws on top of it**. What *is*
-  needed is a way for that overlay to not swallow presses — a
-  hit-transparent flag, or the canvas's parent routing presses and consulting
-  the overlay first. That is a small toolkit addition, named in §7.
+  needed is for that overlay to not swallow presses. With live instances (D12)
+  the whole canvas is the editor's input surface: the document subtree is made
+  non-hit-testable, the overlay is hit-transparent, and the editor's work area
+  becomes the single press target that decides between select, drag, resize,
+  and marquee. That is a small toolkit addition, named in §7.
 - **Undo is a command stack over document mutations, one entry per gesture**,
   not per mouse-move (D2 is what makes that clean). In-memory; it survives
   saves and ends when the document closes. A structural change (add, remove,
@@ -205,13 +228,17 @@ Each traced to the slice that needs it:
 3. Document model, emitter, reader — IB0.
 4. Two-pass instantiation and identifier-based strut resolution — IB1 (D8).
 5. A hit-transparent overlay — IB3.
-6. Selection, drag, resize, guides — IB3.
-7. A command stack — IB3.
-8. `OutlineView` (**staged**) — IB5.
-9. A palette host: `TableView` exists, `CollectionView` is **staged** — IB5.
-   Recommend TableView for v1.
-10. `Toolbar`/`Panel` are **staged** and are *not* on the critical path if
-    Q-IB4 goes the cheap way.
+6. A way to make the canvas's document subtree **non-hit-testable**, so presses
+   reach the editor instead of the controls — IB2 (D12). This is the concrete
+   price of live instances, and it is small; without it a click in the canvas
+   activates the control instead of selecting it.
+7. Selection, drag, resize, guides — IB3.
+8. A command stack — IB3.
+9. `OutlineView` (**staged**) — IB5.
+10. A palette host: `TableView` exists, `CollectionView` is **staged** — IB5.
+    Recommend TableView for v1.
+11. `Toolbar`/`Panel` stay **staged**, and D13 takes them off the critical path
+    entirely.
 
 Items 1–4 are the load-bearing ones and none of them depend on the staged
 controls, which is what makes IB0/IB1 startable now.
@@ -237,7 +264,9 @@ need input, which §8a addresses directly.
 - **IB2 — the editor shell: open, select, save.** (Open and save act on D11's
   `/Users/$USER/Documents/`.) *Acceptance:* with the
   harness clicking the canvas, the editor logs each selection change by
-  identifier; the file written by save re-reads equal to the in-memory
+  identifier; a click on a *Button* in the canvas selects it and does **not**
+  fire its action (D12 — the document's controls must not act); the file
+  written by save re-reads equal to the in-memory
   document; and a control moved and saved is at its new rect after a reload
   (a log line plus a pixel check).
 - **IB3 — manipulation: move, resize, handles, undo.** *Acceptance:* a log
@@ -307,18 +336,21 @@ cannot click, is what killed the file manager.
 - **Q-IB2 — where documents live. RESOLVED (2026-09): both, deliberately** —
   an app's interface in its bundle `Resources/`, a document being edited under
   the user's home. See D10/D11.
-- **Q-IB3 — live instances or proxies on the canvas?** Recommend live
-  instances with interaction suppressed: it is the real control, so what you
-  see is what the app gets, and a proxy would be a second renderer to keep
-  faithful.
-- **Q-IB4 — does the inspector need Toolbar/Panel?** Recommend no for v1: Box
-  + Label + TextField covers a property list, and Toolbar/Panel stay staged.
-- **Q-IB5 — reconcile how?** Recommend live mutation during a gesture and a
-  document commit on release (D2), rather than rebuilding the subtree.
-- **Q-IB6 — undo granularity and any on-disk journal.** v1: in-memory, one
-  entry per gesture, no journal.
-- **Q-IB7 — the dirty indicator.** Does the toolkit's window-state path reach
-  the frame, or does this need Kestrel work?
+- **Q-IB3 — canvas contents. RESOLVED (2026-09): live instances, interaction
+  suppressed** — see D12, including the hit-testing price it carries.
+- **Q-IB4 — the inspector's chrome. RESOLVED (2026-09): a region of the same
+  window for v1** — see D13. `Toolbar`/`Panel` leave the critical path.
+- **Q-IB5 — reconcile how. RESOLVED: D2 already answered it** (live mutation
+  during a gesture, document commit on release). It was listed as open in
+  error — the plan had already decided it, and a question the plan answers is
+  not an open question.
+- **Q-IB6 — undo granularity and any on-disk journal. RESOLVED: in-memory, one
+  entry per gesture, no journal** (§6). A crash journal is speculative for a v1
+  editor and can be added later without changing the command stack's shape.
+- **Q-IB7 — the dirty indicator. RESOLVED (2026-09): the window title** — see
+  D14. Kestrel's title band draws close + zoom + title + toolbar box and has no
+  dot or proxy icon, so the conventional close-box dot is deferred Kestrel
+  work, not a prerequisite.
 
 ## 11. Relationship to prior docs
 
