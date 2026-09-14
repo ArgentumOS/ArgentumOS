@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0–IB4 **DONE**; IB5 is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0–IB5 **DONE**; IB6 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -399,10 +399,19 @@ need input, which §8a addresses directly.
   enumeration reads the new title. The visible inspector CHROME (D13's
   Box+Label+TextField region) is deferred: the acceptance needs the logic, not
   the chrome.
-- **IB5 — palette and hierarchy.** *Acceptance:* a control dragged from the
-  palette appears in the saved document with the right class, parent, and
-  sibling index; the outline lists the tree; selecting in the outline selects
-  in the canvas, both logged.
+- **IB5 — palette and hierarchy. DONE (2026-09).** Landed as the editor's
+  palette and outline LOGIC, driven scripted like IB2–IB4: `--palette` lists
+  the class registry (the catalog a drag starts from); `--add <class>` appends
+  a new node (v1 parent rule — a selected View/Box is the container, otherwise
+  the root; sibling index = the parent's child count; default rect 20,20
+  90x24) and logs `add <class> to <parent> at <index>`; `--outline` lists the
+  tree indented by depth (class, id when named, frame); `--select-outline
+  <name>` logs the outline pick AND the canvas selection. `tests/cases/
+  weaver_ib5.py`, 11/11: selecting the root, adding a Button lands in the
+  saved document as `child2` with `class = "Button"` (two Buttons total), the
+  outline lists the four nodes, and selecting `okButton` in the outline logs
+  both lines. The visual hosts (TableView palette / staged OutlineView) remain
+  window-layout work; the acceptance needs the state, not the chrome.
 - **IB6 — outlets and the app-resource path.** *Acceptance:* a sample app
   boots its interface from a bundle `Resources/` document and resolves a named
   control, logged, with the document still editable afterwards.

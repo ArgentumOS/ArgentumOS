@@ -773,6 +773,118 @@ public:
 		std::fflush(stdout);
 	}
 
+	/* ---------- the palette and the outline (IB5, plan §6) ---------- */
+
+	static bool isPaletteClass(const char *name)
+	{
+		for (int i = 0; i < interfaceClassCount(); i++) {
+			const InterfaceClass *c = interfaceClassAt(i);
+
+			if (c && !std::strcmp(c->name, name)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void palette()
+	{
+		std::printf("WEAVER: palette");
+		for (int i = 0; i < interfaceClassCount(); i++) {
+			const InterfaceClass *c = interfaceClassAt(i);
+
+			if (c) {
+				std::printf(" %s", c->name);
+			}
+		}
+		std::printf("\n");
+		std::fflush(stdout);
+	}
+
+	void addNode(const char *className)
+	{
+		if (!isPaletteClass(className)) {
+			std::printf("WEAVER: add FAIL `%s` is not in the palette\n",
+				    className);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+
+		/* v1 parent rule: a selected View/Box is a container; anything
+		 * else (including an empty selection) adds to the root. */
+		InterfaceNode *parent = selectedNode();
+
+		if (!parent
+		    || (std::strcmp(parent->className(), "View")
+			&& std::strcmp(parent->className(), "Box"))) {
+			parent = doc->root();
+		}
+
+		InterfaceNode *node = new InterfaceNode();
+
+		node->setClassName(className);
+		node->setFrame(20, 20, 90, 24);	/* the v1 default rect */
+		int index = parent->childCount();
+
+		parent->addChild(node);
+		dirty = true;
+		const char *pid = parent->identifier()[0] ? parent->identifier()
+							 : parent->className();
+		std::printf("WEAVER: add %s to %s at %d (20,20 90x24)\n",
+			    className, pid, index);
+		std::fflush(stdout);
+	}
+
+	static void outlineNode(const InterfaceNode *n, int depth)
+	{
+		std::printf("WEAVER: outline ");
+
+		for (int i = 0; i < depth; i++) {
+			std::printf("  ");
+		}
+		std::printf("%s", n->className());
+		if (n->identifier()[0]) {
+			std::printf(" %s", n->identifier());
+		}
+		std::printf(" (%g,%g %gx%g)\n", n->frameX(), n->frameY(),
+			    n->frameW(), n->frameH());
+		for (int i = 0; i < n->childCount(); i++) {
+			outlineNode(n->childAt(i), depth + 1);
+		}
+	}
+
+	void outline()
+	{
+		if (!doc->root()) {
+			std::printf("WEAVER: outline FAIL (no document)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		outlineNode(doc->root(), 0);
+		std::fflush(stdout);
+	}
+
+	void selectOutline(const char *name)
+	{
+		InterfaceNode *n = findNode(doc->root(), name);
+
+		if (!n) {
+			std::printf("WEAVER: outline select FAIL no `%s`\n",
+				    name);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		const char *id = n->identifier()[0] ? n->identifier()
+						   : n->className();
+
+		std::printf("WEAVER: outline select %s\n", id);
+		std::fflush(stdout);
+		selectNode(n);
+	}
+
 	void updateLiveFrame(const char *id, const Rect &r)
 	{
 		if (!canvas) {
@@ -974,6 +1086,18 @@ main(int argc, char **argv)
 
 			ed.setProperty(name, value);
 			any = true;
+		} else if (a == "--palette") {
+			ed.palette();
+			any = true;
+		} else if (a == "--outline") {
+			ed.outline();
+			any = true;
+		} else if (a == "--add" && i + 1 < argc) {
+			ed.addNode(argv[++i]);
+			any = true;
+		} else if (a == "--select-outline" && i + 1 < argc) {
+			ed.selectOutline(argv[++i]);
+			any = true;
 		} else if (a == "--move" && i + 3 < argc) {
 			const char *id = argv[++i];
 			double dx = std::atof(argv[++i]);
@@ -1025,6 +1149,8 @@ main(int argc, char **argv)
 			    "[--click x y] [--drag x0 y0 x1 y1] "
 			    "[--resize x0 y0 x1 y1] [--undo] "
 			    "[--inspect] [--set name value] "
+			    "[--palette] [--outline] [--add class] "
+			    "[--select-outline name] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--rect id] [--show]\n");
 		return 2;
