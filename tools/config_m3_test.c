@@ -4,7 +4,7 @@
  * colon files (docs/design/system-config-files-plan.md M3).
  *
  * getpwnam/getpwuid/getgrnam/getgrgid/getpwent/getgrent/getgrouplist
- * must all resolve the shipped records (uid 0 admin, group gid 0).
+ * must all resolve the shipped records (uid 0 Admin, group gid 0).
  * Prints PASS/FAIL per check; exit status = number of failures. Run
  * in the guest (the reader uses absolute /System/Configuration paths).
  */
@@ -30,17 +30,17 @@ static void check(int cond, const char *what)
 
 static void check_pw(const struct passwd *pw)
 {
-	check(pw && pw->pw_name && !strcmp(pw->pw_name, "admin"),
-	      "getpwnam(admin) record name");
-	check(pw && pw->pw_uid == 0, "getpwnam(admin) uid == 0");
-	check(pw && pw->pw_gid == 0, "getpwnam(admin) gid == 0");
+	check(pw && pw->pw_name && !strcmp(pw->pw_name, "Admin"),
+	      "getpwnam(Admin) record name");
+	check(pw && pw->pw_uid == 0, "getpwnam(Admin) uid == 0");
+	check(pw && pw->pw_gid == 0, "getpwnam(Admin) gid == 0");
 	check(pw && pw->pw_gecos && !strcmp(pw->pw_gecos, "Admin"),
-	      "getpwnam(admin) gecos");
+	      "getpwnam(Admin) gecos");
 	check(pw && pw->pw_dir && !strcmp(pw->pw_dir, "/Users/Admin"),
-	      "getpwnam(admin) home");
+	      "getpwnam(Admin) home");
 	check(pw && pw->pw_shell &&
 	      !strcmp(pw->pw_shell, "/System/Tools/sh"),
-	      "getpwnam(admin) shell");
+	      "getpwnam(Admin) shell");
 }
 
 int main(void)
@@ -54,26 +54,26 @@ int main(void)
 	int n = 0;
 
 	errno = 0;
-	pw = getpwnam("admin");
-	check(pw != NULL, "getpwnam(admin) found");
+	pw = getpwnam("Admin");
+	check(pw != NULL, "getpwnam(Admin) found");
 	check_pw(pw);
 	check(errno == 0, "getpwnam leaves errno 0");
 
 	pw = getpwuid(0);
-	check(pw && !strcmp(pw->pw_name, "admin"), "getpwuid(0) == admin");
+	check(pw && !strcmp(pw->pw_name, "Admin"), "getpwuid(0) == Admin");
 	check(pw && pw->pw_uid == 0, "getpwuid(0) uid == 0");
 
 	check(getpwnam("nobody") == NULL, "getpwnam(nobody) == NULL");
 	check(getpwuid(65534) == NULL, "getpwuid(65534) == NULL");
 
-	gr = getgrnam("admin");
-	check(gr && !strcmp(gr->gr_name, "admin"), "getgrnam(admin) name");
-	check(gr && gr->gr_gid == 0, "getgrnam(admin) gid == 0");
+	gr = getgrnam("Admin");
+	check(gr && !strcmp(gr->gr_name, "Admin"), "getgrnam(Admin) name");
+	check(gr && gr->gr_gid == 0, "getgrnam(Admin) gid == 0");
 	check(gr && gr->gr_mem && !gr->gr_mem[0],
-	      "getgrnam(admin) has no members");
+	      "getgrnam(Admin) has no members");
 
 	gr = getgrgid(0);
-	check(gr && !strcmp(gr->gr_name, "admin"), "getgrgid(0) == admin");
+	check(gr && !strcmp(gr->gr_name, "Admin"), "getgrgid(0) == Admin");
 	check(getgrnam("root") == NULL, "getgrnam(root) == NULL");
 
 	/* sequential passwd iteration (uid-sorted) */
@@ -91,7 +91,7 @@ int main(void)
 	while((grent = getgrent())) {
 		n++;
 		if(grent->gr_gid == 0) {
-			check(!strcmp(grent->gr_name, "admin"),
+			check(!strcmp(grent->gr_name, "Admin"),
 			      "getgrent first record admin gid 0");
 		}
 	}
@@ -99,7 +99,7 @@ int main(void)
 	check(n == 1, "getgrent yields exactly the admin group");
 
 	/* supplementary-group resolution from the domain */
-	ret = getgrouplist("admin", 0, groups, &ngroups);
+	ret = getgrouplist("Admin", 0, groups, &ngroups);
 	check(ret != -1 && ngroups == 1 && groups[0] == 0,
 	      "getgrouplist(admin, 0) returns gid 0");
 

@@ -35,13 +35,13 @@ cp "$CFG/system.xfb.conf"    "$ROOT/Shared/Configuration/"
 	|| bad "legacy files staged"
 
 # 2) acceptance reads
-[ "$("$CONF" read system.passwd user.admin.uid)" = "0" ] \
-	&& ok "config read system.passwd user.admin.uid == 0" \
+[ "$("$CONF" read system.passwd user.Admin.uid)" = "0" ] \
+	&& ok "config read system.passwd user.Admin.uid == 0" \
 	|| bad "read passwd uid"
-[ "$("$CONF" read system.passwd user.admin.gecos)" = "Admin" ] \
+[ "$("$CONF" read system.passwd user.Admin.gecos)" = "Admin" ] \
 	&& ok "admin record re-expresses the Admin account" \
 	|| bad "admin record"
-[ "$("$CONF" read system.group group.admin.gid)" = "0" ] \
+[ "$("$CONF" read system.group group.Admin.gid)" = "0" ] \
 	&& ok "group domain reads gid 0" || bad "read group gid"
 [ "$("$CONF" read system.shells shells)" = "/System/Tools/sh" ] \
 	&& ok "shells list domain reads" || bad "read shells"
@@ -60,7 +60,7 @@ printf 'display = 7\n' > "$ROOT/System/Configuration/system.xfb.conf"
 # 5) shipped record files parse canonically: a rewrite preserves the
 #    key set (the writer strips comments, so compare parsed content)
 "$CONF" read -s system.passwd > "$ROOT/pw.before"
-"$CONF" write -s system.passwd user.admin.uid 0 >/dev/null
+"$CONF" write -s system.passwd user.Admin.uid 0 >/dev/null
 "$CONF" read -s system.passwd > "$ROOT/pw.after"
 cmp -s "$ROOT/pw.before" "$ROOT/pw.after" \
 	&& ok "passwd domain round-trips (key set stable)" \

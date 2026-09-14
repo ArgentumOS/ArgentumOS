@@ -797,35 +797,40 @@ class Case(BaseCase):
         # that a root image left dirty by an earlier run cannot decide it:
         # the guest writes to .build/rootagfs.img, which PERSISTS (this gate
         # moved the scopes around and a later run then started from the moved
-        # state). Both scopes are created, so the winner is the rank and not
-        # the order they were made in. scope_rank(): system > user > shared.
+        # state).
         #
-        # NOTE only two scopes are reachable today: the account is `admin`
-        # (uid 0) with home /Users/Admin, but user_name() returns the account
-        # NAME, so the user scope resolves to /Users/admin/... while the FSH
-        # ships /Users/Admin/... - the user override scope is DEAD for the
-        # only account that exists.
+        # scope_rank(): system > user > shared. The first launch above found
+        # the shipped SYSTEM directory, which is already one half. The other
+        # half: with the directory in BOTH the user and shared scopes and
+        # none in system, the USER one must win - which it only can now that
+        # the account is `Admin` and so /Users/<user_name()> is the
+        # /Users/Admin the FSH actually ships.
         session.serial('rm -rf "/System/Application Support/system.widgetzoo" '
+                       '"/Users/Admin/Application Support/system.widgetzoo" '
                        '"/Shared/Application Support/system.widgetzoo"')
         session.serial('mkdir -p "/Shared/Application Support/system.widgetzoo" '
-                       '"/System/Application Support/system.widgetzoo"')
+                       '"/Users/Admin/Application Support/system.widgetzoo"')
         time.sleep(1)
-        was = session.count(r"ZOO-APPSUPPORT: scope=system")
+        was = session.count(r"ZOO-APPSUPPORT: scope=user")
         session.serial('DISPLAY=:0 "/Applications/Widget Zoo.app/bin/'
                        'WidgetZoo" &')
-        system_won = False
+        user_won = False
         deadline = time.time() + 30
         while time.time() < deadline:
-            if session.count(r"ZOO-APPSUPPORT: scope=system") > was:
-                system_won = True
+            if session.count(r"ZOO-APPSUPPORT: scope=user") > was:
+                user_won = True
                 break
             time.sleep(1)
-        self.check("appsupport-precedence-system-beats-shared", system_won,
-                   "with the directory in BOTH the system and shared scopes "
-                   "the system one wins (scope_rank: system > user > shared)")
+        self.check("appsupport-precedence-user-beats-shared", user_won,
+                   "with the directory in the user and shared scopes and none "
+                   "in system, the USER one wins (scope_rank: system > user > "
+                   "shared)")
         session.serial("killall WidgetZoo 2>@null")
         # leave the shipped state as the image had it
-        session.serial('rm -rf "/Shared/Application Support/system.widgetzoo"')
+        session.serial('rm -rf "/Users/Admin/Application Support/system.widgetzoo" '
+                       '"/Shared/Application Support/system.widgetzoo" '
+                       '"/System/Application Support/system.widgetzoo"')
+        session.serial('mkdir -p "/System/Application Support/system.widgetzoo"')
         time.sleep(1)
 
         # The FSH skeleton: the root carries exactly five entries.
@@ -836,6 +841,20 @@ class Case(BaseCase):
                                     "Users", "Volumes"],
                    "the root carries the five FSH entries and nothing else "
                    "(%s)" % (root_entries,))
+
+        # The account is `Admin` — the same spelling as /Users/Admin, so the
+        # user scope is the tree the FSH actually ships. musl's identity
+        # readers are served from the domains, so they are the other end of
+        # the rename.
+        before = len(session.log_text())
+        session.run("/System/Tools/config_m3_test", secs=30)
+        m3 = session.log_text()[before:]
+        self.check("identity-domains-serve-musl",
+                   "ALL PASS" in m3,
+                   "musl's getpw*/getgr* resolve the shipped identity domains "
+                   "with the account named Admin (%s)"
+                   % ("ALL PASS" if "ALL PASS" in m3
+                      else (m3.strip().splitlines() or ["no output"])[-1]))
 
         self.check("no-x-errors", session.count(XERR) == 0,
                    "no X protocol error")

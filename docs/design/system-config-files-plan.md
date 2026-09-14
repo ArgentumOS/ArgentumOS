@@ -266,7 +266,7 @@ baseline ships).
 
 ```
 user = {
-    admin = {
+    Admin = {
         uid = 0
         gid = 0
         gecos = "Admin"
@@ -277,7 +277,7 @@ user = {
 }
 
 group = {
-    admin = {
+    Admin = {
         gid = 0
         members =
     }
@@ -429,13 +429,13 @@ for the new order (0 failures) and the M0 suites still pass.
 `system.passwd.conf`, `system.group.conf` and the
 `shells` domain land in `/System/Configuration` (identity, D4) and
 replace the Makefile legacy `printf`s (Makefile userland64); the
-`Admin` account re-expressed as the `admin` record. Separately, the
+`Admin` account expressed as the `Admin` record. Separately, the
 staging target for *overridable* first-party settings changes per
 §5.0: `system.xfb` (today) and later first-party apps ship
 their overridable settings to `/Shared/Configuration` (their domain
 files' home by convention), not to `/System/Configuration` (config-design
 role change).
-Acceptance: `config read system.passwd user.admin.uid` → `0`;
+Acceptance: `config read system.passwd user.Admin.uid` → `0`;
 images build without legacy `passwd`/`group`/`shells` files; Xfb's
 default domain reads from Shared and a System copy overrides it.
 
@@ -450,10 +450,10 @@ uid/gid over a self-contained `fmemopen(NULL, len, "w+")` stream (musl
 It does not link `userland/libconfig.c` (libc cannot depend on userland
 code; libconfig's scope machinery calls getpwuid). Legacy `/etc` copies
 stop being consulted. fgetpwent/fgetgrent keep FILE-stream parsing.
-Acceptance: guest `getpwnam("admin")` (all fields), `getpwuid(0)`,
+Acceptance: guest `getpwnam("Admin")` (all fields), `getpwuid(0)`,
 `getgrnam`/`getgrgid`, `getpwent`/`getgrent` (uid/gid-sorted),
 `getgrouplist` all served from the domains — 27/27 via
-`tools/config_m3_test.c`; toybox `id` → `uid=0(admin) gid=0(admin)
+`tools/config_m3_test.c`; toybox `id` → `uid=0(Admin) gid=0(Admin)
 groups=0(admin)`; musl + dash + toybox + userland64 rebuild cleanly.
 
 ### M4 — toybox account tools on the domains — DONE

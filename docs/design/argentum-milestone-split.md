@@ -670,14 +670,21 @@ structure, S2.5 the reference board + a11y battery).
   around changes what the next run starts from — this one did, and the
   following run then failed against its own leftovers.
 
-  **Opened here, NOT fixed — the user scope is dead.** The account is
-  `admin` (uid 0) with `home = /Users/Admin`, but `user_name()` returns the
-  account NAME, so a user-scope path is `/Users/admin/...` while the FSH
-  ships `/Users/Admin/...`. Every user-scope read and write therefore misses
-  the tree that exists — for config as much as for Application Support, and
-  for every account that will ever be added. Which side moves (the account,
-  the directory, or `user_name()` deriving the path from the passwd `home`
-  field) is a naming decision, not a slice decision.
+  **The user scope WAS dead here, and was fixed in the same session.**
+  The account was `admin` (uid 0) with `home = /Users/Admin`, but
+  `user_name()` returns the account NAME, so a user-scope path was
+  `/Users/admin/...` while the FSH ships `/Users/Admin/...`: every
+  user-scope read and write missed the tree that exists, for config as much
+  as for Application Support. The account is now **`Admin`** — the same
+  spelling as its home — so `/Users/<user_name()>` IS `/Users/Admin`, and
+  the domains, the musl identity readers and the tests moved with it
+  (`system.passwd.conf`, `system.group.conf`, `tools/config_m2_test.sh`,
+  `tools/config_m3_test.c`).
+
+  That is what makes the third scope provable: the gate's precedence check
+  reads `appsupport-precedence-user-beats-shared` — with the directory in
+  the user AND shared scopes and none in system, USER wins — which could not
+  pass while the user scope pointed at a directory that did not exist.
 
   #### S5.2f — the window list and minimize
 
