@@ -309,6 +309,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/Applications/Workspace.app/bin/Workspace"
 	cp userland/apps/workspace/manifest \
 		"$(ROOTFS64)/Applications/Workspace.app/manifest"
+	# browser_probe: WT-1's acceptance instrument (the Browser control). A
+	# probe rather than a board in the zoo, which is single-board: the plan
+	# allows either, and the zoo's existing checks must not move.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/browser_probe.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/browser_probe"
 	# zoo_inj: redraw-storm driver for the zoo (Expose x10 from a second
 	# X connection; redraw-cost regression counts text resolutions/draw).
 	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \

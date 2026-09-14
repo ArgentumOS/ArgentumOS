@@ -43,18 +43,18 @@ class Case(BaseCase):
 
         # The guest's idea of the screen against what QEMU actually renders.
         mode = re.search(r"INIT: display: mode (\d+)x(\d+) (\d+)bpp", log)
-        shot = session.shot("desktop") if up else None
-
         # Both of the session's own lines arrive at its own pace — the shell
         # app starts as its shared library loads, and that library grew when
-        # the Browser control joined it — so WAIT for them, then re-read. One
-        # sample of the log turned a slightly slower start into six geometry
-        # checks SILENTLY SKIPPED (they are gated on dock and wall), which is
-        # the failure mode a single sample cannot distinguish from a broken
-        # session.
-        session.wait_for(r"KESTREL: dock \w+ \d+x\d+", 60)
-        session.wait_for(r"WORKSPACE: desktop surface \d+x\d+", 60)
+        # the Browser control joined it. So WAIT for them, and wait BEFORE the
+        # screenshot: the shot IS an observation, and taking it first
+        # photographed a desktop that had not been painted yet (luma 0 where
+        # the ramp should be). Waiting only for the parsed checks fixed half
+        # the problem and left the pixels reading black.
+        if up:
+            session.wait_for(r"KESTREL: dock \w+ \d+x\d+", 60)
+            session.wait_for(r"WORKSPACE: desktop surface \d+x\d+", 60)
         log = session.log_text()
+        shot = session.shot("desktop") if up else None
         self.check("resolution-agrees",
                    bool(mode and shot and shot.w == int(mode.group(1))
                         and shot.h == int(mode.group(2))),
@@ -152,6 +152,37 @@ class Case(BaseCase):
                    % (clock.group(1) if clock else None))
 
         faults = len(re.findall(FATAL, log))
+        # --- WT-1: the Browser control (the column view) ------------------
+        # Served by a PROBE, not a board in the zoo: the zoo is single-board
+        # and its existing checks must not move, and the plan allows either.
+        # The probe is over STATIC data on purpose — this slice proves the
+        # CHAIN, and a file tree would hide a chain bug behind a filesystem
+        # bug. It publishes its layout in ROOT pixels (origin + band), so the
+        # drag below is aimed at a position the probe itself reported rather
+        # than at a hardcoded one that assumes the point scale.
+        session.serial("DISPLAY=:0 /System/Shared/tests/browser_probe &")
+        if session.wait_for(r"BROWSER-PROBE: ready", 60):
+            log = session.log_text()
+            org = re.search(r"BROWSER-PROBE: ready \S+ origin=(\d+),(\d+) "
+                            r"band=(\d+)", log)
+            lay = re.search(r"BROWSER-PROBE: cols=(\d+) \(chain\)(.*)", log)
+            cols = re.findall(r"col(\d+) x=(\d+) w=(\d+) rows=(\d+)",
+                              lay.group(2) if lay else "")
+            widths = {c[2] for c in cols}
+            self.check("browser-builds-a-column-chain",
+                       len(cols) == 3 and len(widths) == 1
+                       and all(int(c[3]) > 0 for c in cols),
+                       "three columns, equal widths, rows each: %s"
+                       % [(c[0], c[1], c[2], c[3]) for c in cols])
+
+            # The divider DRAG is deliberately not asserted yet, and the
+            # reason is in the plan: aiming a press at the divider the probe
+            # publishes did not arm a drag (the probe logged no width change),
+            # so either the aim or the press delivery is wrong. Working theory:
+            # the probe's window is a CLIENT under a WM frame, so the origin it
+            # publishes via XTranslateCoordinates on its own xid may not be the
+            # origin the pointer lands on. Diagnose before asserting; a check
+            # that fails for a reason nobody understands is worse than none.
         # --- W1: the browser window, and a real directory read ------------
         # The app reads its start root with opendir/readdir (D3: listing is
         # libc, not a shell-out) and logs the path with its count. The count

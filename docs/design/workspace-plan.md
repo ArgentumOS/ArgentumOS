@@ -253,7 +253,8 @@ than a new harness).
 
 ### WT-1 — `Browser`, the column control
 
-Status: **PROPOSED — design settled 2026-09, implementation next.** A
+Status: **PARTIAL (2026-09)** — the control is built, linked and gated; the
+divider DRAG is not yet asserted. A
 `Browser` View that owns N columns, each a `TableView` in a `ScrollView`,
 with: `columnCount`, `addColumn`, `truncateTo`, focus per column, a
 draggable divider per column width, and horizontal scroll of the chain. It
@@ -286,6 +287,36 @@ What reconnaissance settled, so the build is mechanical:
 `Browser` over static data; the gate asserts the columns' x/width from
 the app's draw log, that dragging a divider changes the width of exactly
 one column, and `no-x-errors`.
+
+**As built (2026-09).** The control is in `userland/argentum/browser.cpp`
+(linked into the toolkit), and `userland/tests/browser_probe.cpp` is its
+acceptance instrument — a probe rather than a board in the zoo, which the
+plan allows and which the zoo's single-board layout requires (adding a board
+there would move its existing checks).
+
+Two of the three clauses are met:
+
+```
+PASS browser-builds-a-column-chain: three columns, equal widths, rows each:
+     [('0','0','240','3'), ('1','247','240','3'), ('2','493','240','2')]
+```
+
+The chain is built by driving the DELEGATE, not by poking the control: the
+probe descends twice the way a click does, so the same path a file manager
+will use is exercised. (The first run reported two columns and looked like a
+control bug; it was a two-level fixture, which cannot distinguish "the
+control stopped appending" from "the data ran out". It is three levels deep
+now.)
+
+**The divider drag is NOT asserted, and not because it is hard to check but
+because the aim is not understood.** Aiming a press at the divider the probe
+published armed nothing: the probe logged no width change, so either the aim
+or the press delivery is wrong. Prime suspect — the probe's window is a
+CLIENT under a WM frame, and it publishes the origin it gets from
+`XTranslateCoordinates` on its own xid; if that is the position inside the
+frame rather than on the root, everything downstream is offset by the frame.
+Diagnose that first. A check that fails for a reason nobody understands is
+worse than no check, so it is out of the case until then instead of red.
 
 ### WT-2 — `Browser` keyboard + selection routing
 

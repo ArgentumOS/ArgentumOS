@@ -171,6 +171,12 @@ Browser::reload()
 	setNeedsDisplay();
 }
 
+int
+Browser::columnCount() const
+{
+	return (int) cols_.size();
+}
+
 double
 Browser::columnWidthPt(int c) const
 {
@@ -306,6 +312,12 @@ Browser::mouseMoved(const MouseEvent &e)
 		cols_[(size_t) dragging_].w = w;
 		layout_();
 		setNeedsDisplay();
+		/* a width is a thing the app persists (a file manager stores it),
+		 * and the only place that knows it changed is here */
+		if (delegate_) {
+			delegate_->browserColumnWidthDidChange(
+				this, dragging_, cols_[(size_t) dragging_].w);
+		}
 	}
 }
 

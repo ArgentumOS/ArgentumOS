@@ -1612,6 +1612,9 @@ class BrowserDelegate {
 public:
 	virtual ~BrowserDelegate() {}
 	virtual void browserSelectionDidChange(Browser *b, int column, int row) {}
+	/* a width is something the app persists, and only the drag knows */
+	virtual void browserColumnWidthDidChange(Browser *b, int column,
+						 double pt) {}
 };
 
 class Browser : public View {
