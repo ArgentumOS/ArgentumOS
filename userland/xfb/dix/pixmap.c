@@ -43,6 +43,14 @@ from The Open Group.
 #include "X11/extensions/render.h"
 #include "picturestr.h"
 #include "randrstr.h"
+
+extern int xfb_pixdbg_config;	/* hw/xfb/configargs.c: system.xfb `pixdbg` */
+
+#define XFB_REFDBG(p, where) do { \
+	if (xfb_pixdbg_config) \
+		ErrorF("XFB-REF %s %dx%d refcnt=%ld\n", (where), \
+		       (p)->drawable.width, (p)->drawable.height, (long) (p)->refcnt); \
+} while (0)
 /*
  *  Scratch pixmap management and device independent pixmap allocation
  *  function.
@@ -160,6 +168,7 @@ PixmapPtr PixmapShareToSecondary(PixmapPtr pixmap, ScreenPtr secondary)
     /* have the secondary pixmap take a reference on the primary pixmap
        later we destroy them both at the same time */
     pixmap->refcnt++;
+    XFB_REFDBG(pixmap, "shared-primary");
 
     spix->primary_pixmap = pixmap;
 

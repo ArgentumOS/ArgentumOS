@@ -135,6 +135,14 @@ Equipment Corporation.
 
 #include <X11/Xatom.h>          /* must come after server includes */
 
+extern int xfb_pixdbg_config;	/* hw/xfb/configargs.c: system.xfb `pixdbg` */
+
+#define XFB_REFDBG(p, where) do { \
+	if (xfb_pixdbg_config) \
+		ErrorF("XFB-REF %s %dx%d refcnt=%ld\n", (where), \
+		       (p)->drawable.width, (p)->drawable.height, (long) (p)->refcnt); \
+} while (0)
+
 /******
  * Window stuff for server
  *
@@ -878,8 +886,10 @@ CreateWindow(Window wid, WindowPtr pParent, int x, int y, unsigned w,
 
     pWin->borderIsPixel = pParent->borderIsPixel;
     pWin->border = pParent->border;
-    if (pWin->borderIsPixel == FALSE)
+    if (pWin->borderIsPixel == FALSE) {
+        XFB_REFDBG(pWin->border.pixmap, "border-inherit");
         pWin->border.pixmap->refcnt++;
+    }
 
     pWin->origin.x = x + (int) bw;
     pWin->origin.y = y + (int) bw;
@@ -1228,6 +1238,7 @@ ChangeWindowAttributes(WindowPtr pWin, Mask vmask, XID *vlist, ClientPtr client)
                     pWin->backgroundState = BackgroundPixmap;
                     pWin->background.pixmap = pPixmap;
                     pPixmap->refcnt++;
+                    XFB_REFDBG(pPixmap, "window-background");
                 }
                 else {
                     error = rc;
@@ -1282,6 +1293,7 @@ ChangeWindowAttributes(WindowPtr pWin, Mask vmask, XID *vlist, ClientPtr client)
                 pWin->borderIsPixel = FALSE;
                 pWin->border.pixmap = pPixmap;
                 pPixmap->refcnt++;
+                XFB_REFDBG(pPixmap, "window-border");
             }
             else {
                 error = rc;

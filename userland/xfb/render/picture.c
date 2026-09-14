@@ -43,6 +43,14 @@
 #include "xace.h"
 #ifdef PANORAMIX
 #include "panoramiXsrv.h"
+
+extern int xfb_pixdbg_config;	/* hw/xfb/configargs.c: system.xfb `pixdbg` */
+
+#define XFB_REFDBG(p, where) do { \
+	if (xfb_pixdbg_config) \
+		ErrorF("XFB-REF %s %dx%d refcnt=%ld\n", (where), \
+		       (p)->drawable.width, (p)->drawable.height, (long) (p)->refcnt); \
+} while (0)
 #endif
 
 DevPrivateKeyRec PictureScreenPrivateKeyRec;
@@ -1166,6 +1174,7 @@ ChangePicture(PicturePtr pPicture,
                 else {
                     clipType = CT_PIXMAP;
                     pPixmap->refcnt++;
+                    XFB_REFDBG(pPixmap, "picture-clip");
                 }
             }
             error = (*ps->ChangePictureClip) (pPicture, clipType,

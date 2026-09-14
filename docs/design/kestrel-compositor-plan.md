@@ -250,11 +250,43 @@ the rule the other plans here follow.
   - **realloc** — `compReallocPixmap` logs same-size calls that create no
     pixmap, so `cw->pOldPixmap` is not the leaked object.
 
-  **NEXT (small and decisive):** log the geometry at the remaining bump sites —
-  `dix/window.c:1230/1284` (background/border pixmap), `dix/pixmap.c:162`,
-  `render/picture.c:1168` (Picture on a pixmap), `dix/cursor.c:366` (cursor
-  bits). Whichever fires for `1250x746` names the holder; the cursor signal
-  says to look at the window-setup path first.
+  **PARKED — by decision, the compositor work stops here.** The diagnosis
+  above is the resume point. What is in the tree, committed, and safe:
+
+  - the compositor is behind `system.workspace.compositor`, **default off**, so
+    the desktop is exactly what it was before C1 and every gate is green;
+  - the diagnostic knob `system.xfb` **`pixdbg`** (default off) is in the tree
+    and was built and seen to emit: it counts pixmap create/free and logs
+    outstanding bytes (`XFB-PIX`), the refcount at `fbDestroyPixmap` entry
+    (`XFB-PIX dentry ... refcnt=`), composite's alloc staging and
+    window-destroy branch (`XFB-PIXREF`), and the five refcount bump sites
+    (`XFB-REF`: `border-inherit`, `window-background`, `window-border`,
+    `shared-primary`, `picture-clip` — the labels are distinct string literals
+    so each is verifiable in the binary);
+  - all of it is read out of `/System/Variable Data/log/Xfb.log`: Xfb has no log
+    file of its own (`os/osinit.c` calls `LogInit(NULL, NULL)`), and `init.c`
+    dup2s its stderr there.
+
+  **RESUME HERE, in order:**
+
+  1. **`make xfb64` then `make rootagfs`** — `make rootagfs` alone does NOT
+     rebuild Xfb (`.build/x11/xfb/Xfb` has no source deps at that level; the
+     Makefile says so). Confirm the code is really in the image before spending
+     a run: `strings .build/rootfs64/System/Shared/X11/bin/Xfb | grep XFB-`.
+  2. Set `pixdbg = true` (`system.xfb.conf`) and `compositor = "true"`
+     (`system.workspace.conf`), rebuild, boot, open and close **one** app, then
+     `grep XFB-REF /System/Variable Data/log/Xfb.log`. Whichever site logs a
+     pixmap of the leaked size (`1250x746`, or the dock's `64x1050` / strip's
+     `1692x30`) **names the holder of the second reference**. Give the dump
+     several seconds before halting — the console reader drops it otherwise,
+     which is what lost the last run of exactly this probe.
+  3. With the holder named, the fix is either where the reference is taken or
+     where it is not released on teardown. Then re-run C1's acceptance with the
+     redirect on: the desktop must be pixel-identical and `wm_dock` green.
+
+  The one thing NOT to redo: the elimination work. Composite is upstream-
+  identical, the shadow's render path is measured out, damage bumps no
+  refcounts, and our own clients create no Pictures (no XRender at all).
 
   **BUILD TRAP, cost two runs:** `make rootagfs` does NOT rebuild Xfb —
   `.build/x11/xfb/Xfb` has no source deps at that level (mk/20-userland.mk).
