@@ -216,6 +216,18 @@ View::isHidden() const
 }
 
 void
+View::setHitTestEnabled(bool enabled)
+{
+	impl_->hitTestEnabled = enabled;
+}
+
+bool
+View::isHitTestEnabled() const
+{
+	return impl_->hitTestEnabled;
+}
+
+void
 View::draw(GraphicsContext &)
 {
 }
@@ -405,10 +417,14 @@ View::nextResponder()
 View *
 View::hitTest(const Point &pt)
 {
-	/* pt is in THIS view's local space. Hidden views never hit.
-	 * Reverse draw order (topmost first): the deepest visible
-	 * descendant containing pt wins; this view itself when no child
-	 * claims it; nullptr outside our bounds. */
+	/* pt is in THIS view's local space. A view that is hidden, or whose
+	 * hit-testing is disabled (Weaver D12), never hits: the press falls
+	 * through to the superview / the window. Reverse draw order (topmost
+	 * first): the deepest visible descendant containing pt wins; this
+	 * view itself when no child claims it; nullptr outside our bounds. */
+	if (!impl_->hitTestEnabled) {
+		return nullptr;
+	}
 	if (impl_->hidden) {
 		return nullptr;
 	}

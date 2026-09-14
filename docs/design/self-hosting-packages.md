@@ -223,3 +223,11 @@ History of this discipline: CMake (BSD-3) ships so clang reconfigures
 in-guest; byacc (public domain) ships so awk's parser regenerates
 in-guest; awk = onetrueawk, patch = NetBSD usr.bin/patch — each gap was
 closed by finding the permissive member, never by accepting GPL.
+
+**Weaver (2026-09)**: first-party, in-tree (`userland/apps/weaver/`,
+MIT like the rest of the house code). No pinned third-party version and
+no new build-time requirement: it is one C++ source built by the
+existing `MUSL64_CXX` recipe against in-tree `libargentum` + `libconfig` + the X11 prefix, staged as an ordinary bundle by `make userland64` /
+`make rootagfs`. Its document format is the house `.conf` grammar via the
+in-tree `InterfaceDocument` model — no new parser, no new data files, so
+the self-hosted rebuild path is the userland build itself.

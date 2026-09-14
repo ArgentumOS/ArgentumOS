@@ -146,6 +146,14 @@ public:
 	Rect bounds() const;		/* {0,0,w,h} in local space */
 	void setHidden(bool hidden);
 	bool isHidden() const;
+	/* Weaver D12: a view whose hit-testing is disabled never claims a
+	 * press, so the point falls through to its superview (or to the
+	 * window when the content root itself is disabled). Drawing is
+	 * unaffected — the editor's canvas still SHOWS the live controls,
+	 * it just does not let them swallow the presses that must select
+	 * them. Default is enabled. */
+	void setHitTestEnabled(bool enabled);
+	bool isHitTestEnabled() const;
 	/* True when the render walk must GREY THIS VIEW OUT as a whole, on top
 	 * of whatever its own draw() painted: a disabled Control (docs/design/
 	 * argentum-hig.md §2). It is a virtual rather than a Control cast

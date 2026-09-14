@@ -253,6 +253,8 @@ struct View::Impl {
 	std::vector<View *> subviews;	/* draw order; last = topmost */
 	Rect frame;			/* pt, superview space */
 	bool hidden = false;
+	bool hitTestEnabled = true;	/* Weaver D12: false = transparent to
+					 * hit-testing (the editor's canvas) */
 	bool needsDisplay = false;
 	unsigned int autoresizeMask = View::AutoresizingNone;
 	/* the window that owns this view's content root (set only on the

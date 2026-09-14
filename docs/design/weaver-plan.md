@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0 + IB1 + IB1b **DONE**; IB2 is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0–IB2 **DONE**; IB3 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -282,9 +282,8 @@ Each traced to the slice that needs it:
    to resolve after the tree exists, and the build is one pass.
 5. A hit-transparent overlay — IB3.
 6. A way to make the canvas's document subtree **non-hit-testable**, so presses
-   reach the editor instead of the controls — IB2 (D12). This is the concrete
-   price of live instances, and it is small; without it a click in the canvas
-   activates the control instead of selecting it.
+   reach the editor instead of the controls — IB2 (D12), **DONE**
+   (`View::setHitTestEnabled`, probed by `userland/tests/weaver_suppress.cpp`).
 7. Selection, drag, resize, guides — IB3.
 8. A command stack — IB3.
 9. `OutlineView` (**staged**) — IB5.
@@ -348,14 +347,24 @@ need input, which §8a addresses directly.
   + `tests/cases/weaver_ib1.py`, 14/14 checks: build report 3/3/2, values read
   back through the same reflection the inspector will use (including an
   inherited `hidden`), and 12/12 classes covered.
-- **IB2 — the editor shell: open, select, save.** (Open and save act on D11's
-  `/Users/$USER/Documents/`.) *Acceptance:* with the
-  harness clicking the canvas, the editor logs each selection change by
-  identifier; a click on a *Button* in the canvas selects it and does **not**
-  fire its action (D12 — the document's controls must not act); the file
-  written by save re-reads equal to the in-memory
-  document; and a control moved and saved is at its new rect after a reload
-  (a log line plus a pixel check).
+- **IB2 — the editor shell: open, select, save. DONE (2026-09).** (Open and
+  save act on D11's `/Users/$USER/Documents/`.) Landed as the Weaver app
+  bundle (`userland/apps/weaver/`, `/Applications/Weaver.app`): it opens a
+  document (a bare name resolves to the user's Documents), builds it as LIVE
+  views on a canvas whose hit-testing is suppressed (`View::setHitTestEnabled`,
+  D12), selects by identifier through its own document hit-test, moves a
+  control in both document and live tree, saves via `interfaceEmit`, and
+  reloads. Driven by SCRIPTED argv commands per the §8a fallback (decided
+  2026-09), so the gate asserts on the editor's state rather than the
+  harness's aim; a real X click reaches the same selection code through
+  `EditorSurface::mouseDown`. The D12 clause — a click on a live *Button* must
+  select it and NOT fire its action — is proven by `weaver_suppress.cpp`,
+  which drives the real Window dispatch path over the same point with the
+  canvas hit-testing on/off/on (action fires, is suppressed, fires again).
+  `userland/tests/weaver_ib2.conf` + `tests/cases/weaver_ib2.py`, 15/15
+  checks: the state run logs open/select/move/save/reload and the moved rect
+  after reload (20,60 → 30,80), the saved file re-reads with the moved frame,
+  and a pixel check finds the moved Button drawn at its new rect.
 - **IB3 — manipulation: move, resize, handles, undo.** *Acceptance:* a log
   line per committed gesture (old rect → new rect); undo restores the exact
   previous rect, logged; and a checksum taken before an edit-then-revert shows
