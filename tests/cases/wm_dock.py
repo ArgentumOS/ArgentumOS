@@ -155,6 +155,19 @@ class Case(BaseCase):
                    "x=%d; the desktop draws nothing right of it: %d)"
                    % (ink_app, zx, was))
 
+        # --- C0: the compositor's overlay window -------------------------
+        # The plan's one unknown: does Xfb implement GetOverlayWindow? The
+        # WM takes it at startup and says so. It does NOT map it yet:
+        # mapping the overlay covers the whole desktop behind its contents
+        # (an X window is not a transparent layer), so the overlay only
+        # becomes usable once the compositor paints the screen into it (C2).
+        # The proof that it is ABOVE everything is therefore C2's, not C0's.
+        ov = re.search(r"KESTREL: overlay 0x([0-9a-f]+) taken", session.log_text())
+        self.check("compositor-overlay-taken", bool(ov),
+                   "the WM took the compositor's overlay window (%s)"
+                   % (ov.group(0) if ov else
+                      "not reported - is the extension there?"))
+
         # The dropdown must HANG from the bar: its top edge is the bar's
         # bottom edge.  Report: "pulldown menus should appear with their tops
         # aligned to the bottom of the menubar, but they appear on top of it

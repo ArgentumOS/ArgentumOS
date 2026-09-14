@@ -325,6 +325,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/kestrel/kestrel.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-lX11-xcb -lxcb -lxcb-composite -lXext \
 		-o "$(ROOTFS64)/System/Tools/kestrel"
 	# krel_a/b: S4.1a managed probes (mapped under Kestrel)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

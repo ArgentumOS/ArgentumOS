@@ -64,12 +64,31 @@ drawable.
 One acceptance per slice, observable in the guest, green before the next —
 the rule the other plans here follow.
 
-- **C0 — the overlay is ours, and it is above.** Kestrel asks the server for
-  the overlay window at startup and paints one recognisable mark into it.
-  *Acceptance:* a screendump shows that mark at a named coordinate, **over**
-  the wallpaper and **over** a mapped app window, asserted as pixels.
-  Fail-fast: if Xfb does not implement `GetOverlayWindow` this says so on the
-  first run, before anything is built on it.
+- **C0 — the overlay is ours. DONE (2026-09).** Kestrel takes the overlay at
+  startup. *Acceptance as built:* the guest logs the take, and **every
+  existing desktop gate stays green** (`wm_dock` 51/51).
+
+  The unknown is answered: **Xfb DOES implement `GetOverlayWindow`.** Three
+  measured facts reshaped the slice, and all three are load-bearing for C2:
+
+  1. **The server maps the overlay as part of taking it**, so the desktop is
+     hidden from that instant — an X window is not a transparent layer and
+     there is nothing to see through until the compositor paints the screen
+     into it. Measured: with the overlay up, the menubar's ink vanished from
+     the framebuffer and every desktop pixel check failed *while the WM
+     itself was perfectly healthy* (its clock kept ticking). So the overlay
+     cannot be "taken now, painted later": C0 puts it away again with
+     `XUnmapWindow`, and **C2 maps and paints it in the same breath**. The
+     visual proof that it is above everything is therefore C2's, not C0's.
+  2. **The overlay eats input** unless its input region is emptied
+     (`XShapeCombineRectangles` with `ShapeInput` and no rectangles).
+     Measured: with a normal input shape the dock's tile click never reached
+     the dock, the app was never launched, and the desktop looked half-dead.
+  3. **xcb on Xlib's connection must be preceded by `XSync`** — raw requests
+     otherwise overtake the ordinary requests still sitting in Xlib's buffer.
+
+  Nothing of C0 is thrown away: the take, the input shape and the unmap are
+  the first three things C2 needs.
 - **C1 — claim the CM and redirect, then do nothing else.**
   `_NET_WM_CM_S0` plus `CompositeRedirectSubwindows(root, Automatic)`.
   *Acceptance:* the desktop is **pixel-identical** to today — N sampled points
