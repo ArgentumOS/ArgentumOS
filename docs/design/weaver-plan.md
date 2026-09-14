@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0–IB2 **DONE**; IB3 is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0–IB3 **DONE**; IB4 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -280,12 +280,14 @@ Each traced to the slice that needs it:
 4. ~~Two-pass instantiation and identifier-based strut resolution~~ —
    **withdrawn with D8 (D15)**: sibling bindings are gone, so there is nothing
    to resolve after the tree exists, and the build is one pass.
-5. A hit-transparent overlay — IB3.
+5. A hit-transparent overlay — IB3, **DONE** (the editor's `EditorOverlay`,
+   reusing `setHitTestEnabled(false)` from D12).
 6. A way to make the canvas's document subtree **non-hit-testable**, so presses
    reach the editor instead of the controls — IB2 (D12), **DONE**
    (`View::setHitTestEnabled`, probed by `userland/tests/weaver_suppress.cpp`).
-7. Selection, drag, resize, guides — IB3.
-8. A command stack — IB3.
+7. Selection, drag, resize, guides — IB3, **DONE for selection/drag/resize**
+   (guides deferred: not in the acceptance).
+8. A command stack — IB3, **DONE** (in-memory, one entry per gesture, undo).
 9. `OutlineView` (**staged**) — IB5.
 10. A palette host: `TableView` exists, `CollectionView` is **staged** — IB5.
     Recommend TableView for v1.
@@ -365,10 +367,23 @@ need input, which §8a addresses directly.
   checks: the state run logs open/select/move/save/reload and the moved rect
   after reload (20,60 → 30,80), the saved file re-reads with the moved frame,
   and a pixel check finds the moved Button drawn at its new rect.
-- **IB3 — manipulation: move, resize, handles, undo.** *Acceptance:* a log
-  line per committed gesture (old rect → new rect); undo restores the exact
-  previous rect, logged; and a checksum taken before an edit-then-revert shows
-  the file on disk unchanged until save.
+- **IB3 — manipulation: move, resize, handles, undo. DONE (2026-09).** Landed
+  as the editor's gesture engine: `beginGesture`/`dragTo`/`endGesture` over the
+  selection (a press inside a selected control moves it; a press on one of its
+  eight handles resizes it), which a real pointer reaches through
+  `EditorSurface`'s mouse virtuals and the scripted `--drag`/`--resize` argv
+  commands drive through the SAME methods. Per D2 the live view mutates as the
+  pointer moves and the DOCUMENT commits on release, so one gesture is one
+  undo entry. The command stack (`--undo`) restores the exact previous rect,
+  logged. A hit-transparent overlay (an `EditorOverlay : View` added after the
+  canvas with `setHitTestEnabled(false)`, §7 item 5) draws the selection
+  outline + handles without joining the document tree or claiming presses.
+  `tests/cases/weaver_ib3.py`, 16/16 checks: a committed move logs
+  `20,60 90x24 -> 60,100 90x24` and undo restores `20,60 90x24`; a committed
+  bottom-right resize logs `20,60 90x24 -> 20,60 120x54` and undo restores it;
+  two gestures both undone leave the file's md5 byte-identical, and a
+  committed+SAVED move changes it and survives reload. Guides are not in the
+  acceptance and remain a later refinement.
 - **IB4 — the inspector.** Driven by the property table. *Acceptance:* the
   inspector logs the properties it enumerated for the selection; setting a
   title through it appears in the canvas, in the saved document, and after a
