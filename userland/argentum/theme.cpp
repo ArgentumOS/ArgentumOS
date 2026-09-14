@@ -277,18 +277,31 @@ Theme::load()
 		impl_->states[(int)ControlState::Armed].label = 0xffffff;
 	}
 	{
-		/* disabled: desaturated chrome, muted label */
+		/* disabled: FLAT, faint chrome and a muted label.
+		 *
+		 * Deriving this by DESATURATING the chrome does nothing here:
+		 * the Argentum chrome is already near-grey (#e8e8ec), so a 55%
+		 * pull toward its own luminance moved the fill by one or two
+		 * levels — a disabled control drew exactly like an enabled one.
+		 * Measured: running the zoo's "Disable All" changed 452 px across
+		 * the whole board, and the fill read 230 regardless of state.
+		 *
+		 * What reads as "disabled" is a control that has STOPPED BEING
+		 * RAISED: one flat fill instead of the bevel's gradient, an
+		 * outline that fades toward the surface instead of drawing a
+		 * hard edge, and a label dropped to a mid-grey. */
 		std::uint32_t f = read_color(path, "derived.disabled_fill");
+		std::uint32_t flat = lighten(desaturate(impl_->chromeTop, 0.85),
+					     0.45);
 
 		impl_->states[(int)ControlState::Disabled].fillTop =
-			f ? f : desaturate(impl_->chromeTop, 0.55);
+			f ? f : flat;
 		impl_->states[(int)ControlState::Disabled].fillBottom =
-			f ? darken(f, 0.05)
-			  : desaturate(impl_->chromeBottom, 0.55);
+			f ? darken(f, 0.05) : flat;	/* flat: no bevel */
 		impl_->states[(int)ControlState::Disabled].outline =
-			desaturate(impl_->chromeOutline, 0.6);
+			mix(impl_->chromeOutline, 0xffffff, 0.55);
 		impl_->states[(int)ControlState::Disabled].label =
-			mix(impl_->text, 0xffffff, 0.45);
+			mix(impl_->text, 0xffffff, 0.55);
 	}
 	{
 		/* focused: idle chrome + accent outline (the focus ring) */
