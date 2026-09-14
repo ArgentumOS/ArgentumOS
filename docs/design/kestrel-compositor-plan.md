@@ -200,9 +200,36 @@ the rule the other plans here follow.
   is compositor-only, and with a redirect the window's backing pixmap is what
   would reference the client's shm).
 
-  **NEXT (small):** log the refcount at `fbDestroyPixmap` ENTRY, not just real
-  frees. If the 1250x746 arrives with refcnt 2, hunt the holder; if entry
-  never happens, the chain is broken after all.
+  **The refcount at entry: `refcnt=2`.** Logged at `fbDestroyPixmap` ENTRY:
+
+  ```
+  XFB-PIX dentry 1250x746 d24 refcnt=2          <- every app cycle
+  XFB-PIX dentry 16x16    d1  refcnt=7,8,9,10   <- and this CLIMBS +1 per cycle
+  ```
+
+  The destroy is called and decrements 2 -> 1, then returns: **one retained
+  reference is the leak.** The second line is the same fault in miniature — a
+  shared 16x16 depth-1 pixmap (a cursor/1-bit tile) whose refcount grows by one
+  per app window and never comes back down. Bytes are trivial; the signal is not.
+
+  Not a missing decrement in the bumpers, either: `dix/gc.c` (GCTile,
+  GCStipple), `dix/window.c:1230/1284` (background/border pixmap) and
+  `render/picture.c:1168` (Picture on a pixmap) are all upstream and each bump
+  is balanced by a `DestroyPixmap`. And the holder cannot be the app: the
+  redirect's backing pixmap has no XID a client could name (nothing calls
+  `NameWindowPixmap` until C2). So a **server-side** reference is kept.
+
+  **CORRECTION to the earlier "shadow exonerated".** The shadow-off run removed
+  the shadow's RENDER path, but `xfbShadowArm()` registers damage on the ROOT
+  window regardless of that flag, and the teardown path is
+  `damageDestroyWindow` (upstream, wrapped on `DestroyWindow`). So that
+  experiment exonerated the shadow's rendering, NOT its damage. Damage remains
+  in play.
+
+  **NEXT (small and decisive):** instrument the known bump sites — log
+  `refcnt++` for a pixmap whose size is the leaked one (1250x746) — so
+  whichever site fires for the redirect pixmap names the holder. Or, cheaper
+  first: check whether Xfb's root damage is what keeps a reference.
 
   **BUILD TRAP, cost two runs:** `make rootagfs` does NOT rebuild Xfb —
   `.build/x11/xfb/Xfb` has no source deps at that level (mk/20-userland.mk).
