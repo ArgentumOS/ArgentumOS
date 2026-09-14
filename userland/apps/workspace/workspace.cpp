@@ -19,13 +19,33 @@
  * do this for its own wallpaper window; W0b deleted that, so this is the only
  * thing keeping the surface covering the screen.
  *
- * Not here yet: a PNG wallpaper (S5.2h: no decoder).
+ * W1 adds the browser window: an ordinary MANAGED window (the WM frames it,
+ * it takes focus) alongside the surface, which is a client the WM ignores —
+ * the app has both kinds at once, which is the multi-window model D8 settled.
+ * The window opens on the user's home and reads it.
+ *
+ * The start root comes from the IDENTITY plumbing, not from $HOME: the
+ * session deliberately sets HOME=/ (there is no login), while this OS already
+ * serves getpwuid() from the system.passwd domain — so the real home is one
+ * call away, and no account name is hardcoded here.
+ *
+ * Not here yet: a PNG wallpaper (S5.2h: no decoder); the columns (W2).
  */
 #include <argentum/argentum.h>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
+#include <dirent.h>
+#include <pwd.h>
+#include <string>
+#include <sys/types.h>
 #include <unistd.h>
+
+/* the browser window's size, in points (the WM is free to re-place it) */
+#define BROWSER_W_PT 720
+#define BROWSER_H_PT 420
 
 static Display *dpy = nullptr;
 static ::Window deskX = 0;
@@ -167,6 +187,78 @@ surfacePaint(int w, int h)
 	return true;
 }
 
+/* ---- W1: the browser window ---------------------------------------- */
+
+/* The start root: the real home, from getpwuid (musl here answers it from
+ * the system.passwd domain), with the shipped account as the fallback so a
+ * missing identity degrades to something browsable instead of to "/". */
+static std::string
+homeRoot()
+{
+	struct passwd *pw = getpwuid(getuid());
+
+	if (pw && pw->pw_dir && pw->pw_dir[0] == '/') {
+		return std::string(pw->pw_dir);
+	}
+	return std::string("/Users/Admin");
+}
+
+/* D3: listing is libc, not a shell-out. Parsing `ls` would break on names
+ * with spaces or newlines and would make the browser's latency a
+ * process-launch problem. Dot entries are excluded, which is what `ls -A`
+ * counts — the number the gate compares against. */
+static int
+countEntries(const char *path, std::string *why)
+{
+	DIR *d = opendir(path);
+	int n = 0;
+	struct dirent *de;
+
+	if (!d) {
+		*why = std::string(strerror(errno));
+		return -1;
+	}
+	while ((de = readdir(d))) {
+		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+			continue;
+		n++;
+	}
+	closedir(d);
+	return n;
+}
+
+/* W1 draws one line — the path and its entry count. W2 replaces this with
+ * the first column; the point of the slice is that a real directory was
+ * READ, so the line is the observable. */
+class PathView : public argentum::View {
+public:
+	void setLine(const std::string &s)
+	{
+		line_ = s;
+		setNeedsDisplay();
+	}
+
+	void draw(argentum::GraphicsContext &g) override
+	{
+		argentum::Application &app = argentum::Application::shared();
+		argentum::Theme &t = app.theme();
+		double ppt = app.pxPerPt();
+		argentum::Rect f = frame();
+		unsigned w = (unsigned) (f.size.w * ppt + 0.5);
+		unsigned h = (unsigned) (f.size.h * ppt + 0.5);
+
+		if (w == 0 || h == 0)
+			return;
+		g.fillRect(0, 0, w, h, t.page());
+		g.drawText(t.fontFamily(), t.fontSizePt(),
+			   (int) (8 * ppt + 0.5), (int) (20 * ppt + 0.5),
+			   line_.c_str(), t.text());
+	}
+
+private:
+	std::string line_;
+};
+
 int
 main()
 {
@@ -194,6 +286,41 @@ main()
 	if (!surfacePaint(DisplayWidth(dpy, DefaultScreen(dpy)),
 			  DisplayHeight(dpy, DefaultScreen(dpy)))) {
 		return 1;
+	}
+
+	/* the browser window, on the user's home */
+	{
+		double ppt = app.pxPerPt();
+		std::string root = homeRoot();
+		std::string why;
+		int n = countEntries(root.c_str(), &why);
+		char line[512];
+
+		if (n < 0) {
+			std::snprintf(line, sizeof(line), "%s — unreadable: %s",
+				      root.c_str(), why.c_str());
+			std::printf("WORKSPACE: %s: unreadable (%s)\n",
+				    root.c_str(), why.c_str());
+		} else {
+			std::snprintf(line, sizeof(line), "%s — %d entries",
+				      root.c_str(), n);
+			std::printf("WORKSPACE: %s: %d entries\n",
+				    root.c_str(), n);
+		}
+		std::fflush(stdout);
+
+		static argentum::Window bw;
+		static PathView pathView;
+
+		if (!bw.init("Workspace", 120, 120,
+			     (unsigned) (BROWSER_W_PT * ppt + 0.5),
+			     (unsigned) (BROWSER_H_PT * ppt + 0.5))) {
+			std::fprintf(stderr, "WORKSPACE: browser init failed\n");
+			return 1;
+		}
+		pathView.setLine(line);
+		bw.setContentView(&pathView);
+		bw.show();
 	}
 
 	app.run();

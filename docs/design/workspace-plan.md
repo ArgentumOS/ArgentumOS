@@ -362,14 +362,41 @@ new path in this slice.
 
 ### W1 — the browser window, and a real directory read
 
-Status: **PROPOSED.** The bundle and its identifier
-(`com.argentum.workspace`, per `app-model.md` §3) arrive with W0a; this
-slice gives it the **browser window** — opening on the configured start root
-and reading that directory.
-*Acceptance:* the bundle launches from the dock; the guest log carries
-the listing (`WORKSPACE: <path>: N entries`); no fatal faults, no X
-errors. The listing is asserted against `ls` of the same path, so the
-count is data, not a magic number.
+Status: **DONE (2026-09).** The bundle and identifier (`com.argentum.workspace`,
+per `app-model.md` §3) arrived with W0a; this slice adds the **browser
+window** — an ordinary *managed* window (framed, focusable) beside the
+surface, which is a client the WM ignores. The app therefore runs both kinds
+of window at once, which is the multi-window model D8 settled.
+
+The start root is the real home, and it is **not** `$HOME`: the session
+deliberately exports `HOME=/` (there is no login), while this OS already
+serves `getpwuid()` from the `system.passwd` domain (`home = /Users/Admin`),
+so one call gives the real path and no account name is hardcoded. The listing
+is `opendir`/`readdir` (D3 — libc, not a shell-out), dot entries excluded,
+which is exactly the set `ls -A` counts.
+
+*Acceptance, met:* the guest log carries the listing and the count is the
+filesystem's, not a constant:
+
+```
+WORKSPACE: /Users/Admin: 11 entries
+PASS workspace-lists-its-start-root: ... ls -A counts 11
+```
+
+Two things doing it taught, both recorded in place:
+
+- **The wallpaper check had to move its sample point.** It read the screen
+  CENTRE, which the browser window (720x420 pt = 1440x840 px, opened at
+  120,120) now covers — luma 246 against a ramp of 95..147. It now samples the
+  corner below the dock, the one place the session guarantees is open, and
+  the reason is in the check rather than in this document alone.
+- **This does NOT prove the dock's raise-a-running-app path.** The app is
+  started by the session, so nothing clicked its tile; "launches from the
+  dock" was always about a tile that exists (it does — `/Applications`
+  enumerates into the dock) and a launch that works. Whether clicking the tile
+  *raises* the running Workspace is untested, and **W1b is where the WM's
+  multi-window rules get exercised properly** — the surface is a window the
+  WM ignores, so it proves nothing about them.
 
 ### W1b — a second window
 

@@ -11,6 +11,7 @@ theme - which is exactly what broke the older gates.
 """
 
 import re
+import time
 
 from harness import BaseCase, hex_rgb, luma_of
 
@@ -72,7 +73,14 @@ class Case(BaseCase):
                        % (wall.group(1), wall.group(2), shot.w, shot.h))
             lo, hi = sorted((luma_of(hex_rgb(wall.group(4))),
                              luma_of(hex_rgb(wall.group(5)))))
-            sx, sy = dx // 2, (dy + shot.h) // 2
+            # Sample desktop that NO window owns. The centre used to do,
+            # until W1 gave the app a browser window — 720x420pt, so
+            # 1440x840px, opened at 120,120 — which covers the middle of the
+            # screen and read as luma 246 against a ramp of 95..147. The
+            # corner below the dock is the one place the session guarantees
+            # is open: the dock is the right edge and the surface is behind
+            # everything, so this is the surface's own pixels.
+            sx, sy = shot.w - 120, shot.h - 40
             got = shot.luma(sx, sy)
             self.check("wallpaper-on-screen", lo - 8 <= got <= hi + 8,
                        "desktop pixel at %d,%d has luma %d, ramp %d..%d"
@@ -133,6 +141,27 @@ class Case(BaseCase):
                    % (clock.group(1) if clock else None))
 
         faults = len(re.findall(FATAL, log))
+        # --- W1: the browser window, and a real directory read ------------
+        # The app reads its start root with opendir/readdir (D3: listing is
+        # libc, not a shell-out) and logs the path with its count. The count
+        # is asserted against the FILESYSTEM rather than trusted: `ls -A` is
+        # the same set the reader enumerates — dot entries excluded, dotfiles
+        # included — so the number is data and not a magic constant.
+        m = re.search(r"WORKSPACE: (\S+): (\d+) entries",
+                      session.log_text())
+        if not m:
+            self.check("workspace-lists-its-start-root", False,
+                       "the browser never reported its start root")
+        else:
+            path, n = m.group(1), int(m.group(2))
+            session.serial("echo WSCOUNT=$(ls -A %s | wc -l)" % path)
+            time.sleep(1.5)
+            c = re.search(r"WSCOUNT=(\d+)", session.log_text())
+            self.check("workspace-lists-its-start-root",
+                       bool(c) and int(c.group(1)) == n,
+                       "the browser read %s: %d entries; ls -A counts %s"
+                       % (path, n, c.group(1) if c else "nothing"))
+
         self.check("no-fatal-faults", faults == 0,
                    "%d fatal fault line(s)" % faults)
         xerr = len(re.findall(XERR, log))
