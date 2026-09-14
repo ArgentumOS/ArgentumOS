@@ -335,6 +335,20 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/Applications/Weaver.app/bin/Weaver"
 	cp userland/apps/weaver/manifest \
 		"$(ROOTFS64)/Applications/Weaver.app/manifest"
+	# Wren: the IB6 sample app (weaver-plan §8, D10) — its interface ships
+	# as a document in its own Resources/, loaded by the same loader and
+	# bound by identifier (D1). Display-free: the gate runs it from the
+	# shell and reads its outlet log.
+	mkdir -p "$(ROOTFS64)/Applications/Wren.app/bin" \
+		 "$(ROOTFS64)/Applications/Wren.app/Resources"
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/apps/wren/wren.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/Applications/Wren.app/bin/Wren"
+	cp userland/apps/wren/manifest \
+		"$(ROOTFS64)/Applications/Wren.app/manifest"
+	cp userland/apps/wren/Interface.conf \
+		"$(ROOTFS64)/Applications/Wren.app/Resources/Interface.conf"
 	# Workspace: W0a — the desktop shell app that owns the surface (the
 	# wallpaper). A bundle like any other, launched by the session at
 	# login; the WM recognises it by the _ARGENTUM_DESKTOP marker and

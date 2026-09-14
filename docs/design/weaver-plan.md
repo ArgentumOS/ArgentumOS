@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0–IB5 **DONE**; IB6 is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0–IB6 **DONE**; IB7 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -412,9 +412,19 @@ need input, which §8a addresses directly.
   outline lists the four nodes, and selecting `okButton` in the outline logs
   both lines. The visual hosts (TableView palette / staged OutlineView) remain
   window-layout work; the acceptance needs the state, not the chrome.
-- **IB6 — outlets and the app-resource path.** *Acceptance:* a sample app
-  boots its interface from a bundle `Resources/` document and resolves a named
-  control, logged, with the document still editable afterwards.
+- **IB6 — outlets and the app-resource path. DONE (2026-09).** Landed as the
+  **Wren** sample bundle (`userland/apps/wren/`, `/Applications/Wren.app`): its
+  interface ships as `Resources/Interface.conf` (D10), the payload finds it
+  beside itself (argv[0] is `<bundle>/bin/Wren`), loads it with the same
+  `interfaceLoadFile`/`interfaceBuild` the editor uses, and resolves its named
+  controls by identifier — the outlets (D1) — logging
+  `WREN: outlet greeting resolved` / `WREN: outlet okButton resolved`.
+  `tests/cases/weaver_ib6.py`, 11/11: Wren boots its bundle document and
+  resolves both outlets; the gate copies that document byte-for-byte into the
+  user's Documents (md5s equal) and edits the copy with Weaver — open, move
+  `20,60 → 25,65`, save, reload — proving the shipped interface document is
+  still editable while leaving the shipped resource pristine (the gate must
+  stay repeatable across boots).
 - **IB7 — templates and multiple documents.** *Acceptance:* "new from
   template" produces a document whose round-trip is clean and which boots a
   second sample app; two editor windows hold two different documents, logged.
