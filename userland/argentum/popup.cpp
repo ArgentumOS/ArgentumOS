@@ -386,10 +386,23 @@ PopupMenuView::mouseMoved(const MouseEvent &e)
 	}
 	/* S5.2d follow-up: while the menu is up the pointer is OURS, so
 	 * tracking the menubar has to happen here — the motion over the bar
-	 * arrives in this window's coordinates (negative y: above it). */
+	 * arrives in this window's coordinates (negative y: above it).
+	 *
+	 * The handler speaks ROOT PIXELS (originX/Y are px) and `e` is in this
+	 * view's POINTS, exactly as every other view responder receives it
+	 * (Window::dispatchMotionToContent divides by pxPerPt before it hands a
+	 * MouseEvent to a view). Adding them raw was a mixed-unit sum: the
+	 * bar-local x it produced fell short by (pxPerPt-1) per point, so the
+	 * title it named sat further LEFT the further right the pointer was —
+	 * "it selects the wrong menu item by hovering". A click was always
+	 * right because a click reaches the BAR's own view, where titleAt()
+	 * converts pt->px itself. */
 	if (host_->hasTrackHandler()) {
-		MenuTrack t = host_->trackAt(host_->originX() + (int) e.x,
-					     host_->originY() + (int) e.y);
+		Application &app = Application::shared();
+		double ppt = app.pxPerPt();
+		MenuTrack t = host_->trackAt(
+			host_->originX() + (int) (e.x * ppt + 0.5),
+			host_->originY() + (int) (e.y * ppt + 0.5));
 
 		if (t.menu) {
 			host_->retarget(t);
