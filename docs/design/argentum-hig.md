@@ -121,11 +121,16 @@ raised by `XMapWindow`) and again on every event it receives, which is the
 whole time it is up: it holds the pointer grab, so anything the user does
 reaches it.
 
-The residual is recorded rather than papered over: a client that raises a
-window over an open menu with no pointer motion in between can still cover it
-until the next event. Closing that needs the window manager to restack the
-menu window — which needs the app to publish its popup the way it publishes
-its bar — and that is not built.
+The app and the WM both hold a side of this, because neither can do it alone:
+
+- The **app marks its popup** `_ARGENTUM_MENU` before it is mapped (the same
+  way it marks its bar), and re-raises it on every event the menu receives.
+- The **WM tracks it and re-raises it after every restack it performs**. The
+  bar it raises over the strip is exactly the thing that used to end up
+  covering an open menu's top row — they share a row by design. A menu is
+  override-redirect, so it never arrives as a `MapRequest` the way the bar
+  does; the WM finds it on the root's `MapNotify` (`SubstructureNotify` was
+  already selected) and drops it on `UnmapNotify`/`DestroyNotify`.
 
 ## 7. Control sizing
 

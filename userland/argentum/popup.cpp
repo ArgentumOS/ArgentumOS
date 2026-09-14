@@ -14,6 +14,8 @@
 #include <argentum/argentum.h>
 #include <argentum/argentum_p.h>
 
+#include <X11/Xatom.h>		/* XA_CARDINAL (the _ARGENTUM_MENU marker) */
+
 #include <cstdio>
 #include <cstring>
 
@@ -457,6 +459,23 @@ PopupWindow::PopupWindow(Menu *menu, int xRootPx, int yRootPx)
 	     (unsigned) wPx, (unsigned) hPx);
 	originX_ = xRootPx;
 	originY_ = yRootPx;
+	/* S4.2d: the marker the WM keys on to keep a menu ABOVE everything.
+	 * Set BEFORE the map so the MapNotify already carries it — a menu is
+	 * override-redirect, so it never reaches the WM as a MapRequest the
+	 * way the app's bar does. */
+	{
+		Display *dpy = (Display *) Application::shared().display();
+
+		if (dpy && xid()) {
+			Atom a = XInternAtom(dpy, "_ARGENTUM_MENU", False);
+			unsigned long one = 1;
+
+			XChangeProperty(dpy, xid(), a, XA_CARDINAL, 32,
+					PropModeReplace,
+					(unsigned char *) &one, 1);
+			XSync(dpy, False);
+		}
+	}
 	/* S4.2a: a transient menu is override-redirect — without this a
 	 * window manager (Kestrel) frames the popup and the menu shows
 	 * up as a decorated window. It is also the flag the toolkit

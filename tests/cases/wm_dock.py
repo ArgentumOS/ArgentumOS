@@ -194,6 +194,18 @@ class Case(BaseCase):
             # click arms its chip and the guest repaints exactly that)
             bar_changed = (opened.diff_box(ref, (28, 6, ti0 - 12, 27)) +
                            opened.diff_box(ref, (ti1 + 12, 6, 900, 27)))
+            # The WM tracks the menu it must keep above everything: a menu is
+            # override-redirect, so it never arrives as a MapRequest the way
+            # the app's bar does - it is found on the root's MapNotify, and
+            # the WM re-raises it after every restack it performs (the bar it
+            # raises over the strip shares a row with an open menu).
+            mw = re.search(r"KESTREL: menu window 0x[0-9a-f]+ "
+                           r"\(raised above everything\)", session.log_text())
+            self.check("wm-keeps-the-menu-above-everything", bool(mw),
+                       "the WM found the client's open menu and raised it above "
+                       "everything (%s)"
+                       % (mw.group(0) if mw else "no menu window was reported"))
+
             self.check("menus-drop-below-the-bar",
                        below > 800 and bar_changed < 400,
                        "the dropdown fills %d px below the bar (y 33..130) and "

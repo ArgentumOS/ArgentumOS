@@ -297,6 +297,9 @@ static std::vector<Managed *> gFrames;
 static void focusClient(Managed *m);	/* S4.1b (defined below) */
 static void stripRefresh();		/* S4.2a (defined below) */
 static bool manageBarWindow(::Window w);	/* S4.2d (with the strip) */
+static void menuRaiseAbove();		/* S4.2d: a menu is above EVERYTHING */
+static bool manageMenuWindow(::Window w);
+static ::Window gMenu = 0;		/* the client's open menu, if any */
 static void barsRefresh();			/* S4.2d (with the strip) */
 /* S4.2d: the app's own menubar windows — owner client → bar
  * window, the zone we last set on each, and whether we have it
@@ -1901,13 +1904,27 @@ kestrelHook(void *xevent)
 		}
 		return true;
 	}
+	case MapNotify:
+		/* S4.2d: a client's menu, pulled down. It is override-redirect
+		 * so there is no MapRequest for it; this is where the WM
+		 * learns it exists, and the marker was set before the map. */
+		if (ev->xmap.event == root) {
+			manageMenuWindow(ev->xmap.window);
+		}
+		return true;
 	case UnmapNotify:
+		if (ev->xunmap.window == gMenu) {
+			gMenu = 0;	/* the menu went away */
+		}
 		if (ev->xunmap.event == root ||
 		    findFrameByXid(ev->xunmap.event)) {
 			unmanageClient(ev->xunmap.window, false);
 		}
 		return true;
 	case DestroyNotify:
+		if (ev->xdestroywindow.window == gMenu) {
+			gMenu = 0;
+		}
 		if (ev->xdestroywindow.event == root ||
 		    findFrameByXid(ev->xdestroywindow.event)) {
 			unmanageClient(ev->xdestroywindow.window, true);
@@ -2121,11 +2138,61 @@ barsRefresh()
 				XMapWindow(dpy, bar);
 			}
 			XRaiseWindow(dpy, bar);	/* above the strip */
+			/* ...and the menu above the bar: raising the bar is
+			 * precisely what used to cover an open menu's top
+			 * row (they share a row by design). */
+			menuRaiseAbove();
 		} else if (gBarMapped[bar]) {
 			gBarMapped[bar] = false;
 			XUnmapWindow(dpy, bar);
 		}
 	}
+}
+
+/* The menu a client currently has pulled down, if any (see
+ * docs/design/argentum-hig.md §6). A menu is ABOVE EVERYTHING, and that
+ * cannot be a property of the window: X has no layers and anything raised
+ * after it lands on top. So the app MARKS its popup (_ARGENTUM_MENU, set
+ * before the map) and the WM re-raises it after every restack it performs
+ * - the bar it raises over the strip is exactly the thing that used to end
+ * up covering a menu's top row.  (gMenu itself is declared with the other
+ * WM state, above the event loop that fills it in.) */
+
+/* A menu is override-redirect, so it never arrives as a MapRequest the way
+ * the app's bar does; it arrives as a MapNotify, which is why the WM
+ * selects SubstructureNotify on the root. */
+static bool
+manageMenuWindow(::Window w)
+{
+	if (!propertyCardinal(w, "_ARGENTUM_MENU", 0)) {
+		return false;
+	}
+	gMenu = w;
+	printf("KESTREL: menu window 0x%lx (raised above everything)\n",
+	       (unsigned long) w);
+	fflush(stdout);
+	menuRaiseAbove();
+	return true;
+}
+
+static void
+menuRaiseAbove()
+{
+	if (!gMenu) {
+		return;
+	}
+	/* it may have been closed since: a dead OR unmapped menu is not
+	 * something to raise (and XRaiseWindow on a dead window is an
+	 * error the WM would have to swallow) */
+	XWindowAttributes attrs;
+
+	if (!XGetWindowAttributes(dpy, gMenu, &attrs) ||
+	    attrs.map_state != IsViewable) {
+		gMenu = 0;
+		return;
+	}
+	XRaiseWindow(dpy, gMenu);
+	XSync(dpy, False);
 }
 
 /* Is this the app's own menubar window (its marker was set before it was
