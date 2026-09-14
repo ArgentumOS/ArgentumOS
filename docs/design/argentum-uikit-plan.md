@@ -404,7 +404,11 @@ focus, input, and menus before any other app exists. It is small
   WM-owned,
   *S5.2 decisions (rationale in the milestone split):* the dock ships
   **pinned + running only, no Trash tile** — `initial-release.md` Q-R1
-  overrides this list's "trash at the bottom", and the Trash returns with
+  overrides this list's "trash at the bottom" **[RESTORED 2026-09 — the
+  Trash tile now exists at the bottom of the dock, separate from the app
+  icons: `docs/design/workspace-plan.md` Q-W2, correcting Q-R1. The
+  "returns with a Trash view" condition stated just below is still unmet —
+  that plan's Q-W2'.]**, and the Trash returns with
   a Trash view; and the wallpaper is **theme parameters, not an image**,
   a PNG wallpaper being parked as S5.2h because the toolkit's
   `BitmapImage` has no loader and the tree ships no image assets,

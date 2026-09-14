@@ -134,6 +134,8 @@ right edge — sized to the icons, presenting:
 - **Running apps** — with an indicator; click to focus or re-launch.
 - **Actions** — context menu per icon (Open, Hide, Quit, Remove from
   Dock), and a "running" dot; dragging reorders pins.
+- **Trash** — a tile at the **bottom of the dock, separate from the app
+  icons** (Q-R1, amended): the dock's own end tile, not a pinned app.
 
 User configuration (config domain `system.kestrel.conf` — the dock is
 the window manager's, see `docs/design/workspace-plan.md` §3.0 — per-user
@@ -192,10 +194,13 @@ file-manager.column-width = 200
 
 ## 4. Decisions
 
-- **Q-R1 — Dock contents: pinned + running only.** No Trash icon, no
-  minimized-windows section — minimized windows live elsewhere (the
-  Window menu). Pinned apps, running indicators, context actions
-  (Open/Hide/Quit/Remove), drag-reorder.
+- **Q-R1 — Dock contents: pinned + running, plus the Trash tile.**
+  *Amended 2026-09.* The app icons are pinned + running only (minimized
+  windows live elsewhere — the Window menu): pinned apps, running
+  indicators, context actions (Open/Hide/Quit/Remove), drag-reorder. A
+  **Trash** tile also exists, at the bottom of the dock and separate from
+  the app icons (`docs/design/workspace-plan.md` Q-W2); what it opens, and
+  what delete means for it, is that plan's Q-W2'.
 - **Q-R2 — File manager start: home, with Desktop visible.** The
   default start column is `Users/$USER` (home), which naturally shows
   `Desktop/` among its contents.

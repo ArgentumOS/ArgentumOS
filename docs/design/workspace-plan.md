@@ -269,13 +269,17 @@ cannot tell them apart, so the gate changes one).
 
 Status: **PROPOSED.** Copy, move, rename, new folder, delete — each
 routed through the `/System/Tools` tool that already exists (`cp`, `mv`,
-`rm`, `mkdir`; all five verified present in the image). Progress and
+`rm`, `mkdir`; all five verified present in the image). Delete follows
+Q-W2: the Trash tile exists, so the default is a MOVE into the Trash
+rather than an unlink — but Q-W2' has to settle the store first, so the
+operation is specified here only to that depth. Progress and
 conflict handling over the tool's output; a permission failure surfaces
 the prompt path rather than an error dialog that cannot succeed.
 *Acceptance:* per operation, one guest-verifiable assertion on the
 filesystem itself (`stat`/`ls` before and after, from the console — the
-browser's own claim is never the evidence), plus a cancelled operation
-leaving the tree unchanged.
+browser's own claim is never the evidence); for delete, that the file left
+the source AND arrived in the Trash (Q-W2'), not merely that it is gone;
+and a cancelled operation leaving the tree unchanged.
 
 ### W8 (unscheduled) — preview pane
 
@@ -313,10 +317,20 @@ Per §3.3, a later addition. Not sliced here.
   its own — nothing is owed, and this is already true — or the system menu
   is a WM feature that merely looks like an app menu. Not decided here;
   the dock/wallpaper split does not settle it either way.
-- **Q-W2 — Trash semantics.** Nothing in the tree defines a Trash beyond
-  Q-R1's "no Trash icon on the dock". If W7 deletes, does it delete, or
-  move to a per-user Trash with restore? (Needs an FSH placement and a
-  naming rule that fits the FSH doctrine.)
+- **Q-W2 — RESOLVED: the Trash tile exists, in the dock.** Decided: a
+  Trash icon at the **bottom of the dock, separate from the other icons**.
+  That supersedes Q-R1's "no Trash icon" (`initial-release.md` §4), which
+  is corrected with it. Note where the tile falls after the owner split
+  (§3.0): **the dock is the WM's**, so drawing the tile is a Kestrel dock
+  slice — not this plan's to schedule — while what belongs *here* is the
+  store and the operations W7 routes into it.
+- **Q-W2' — what Trash **is**. The tile is decided; its semantics are not.
+  Does W7's delete MOVE the file to a per-user Trash (with restore), or
+  delete outright with the tile as a shortcut to a Trash directory? What
+  opens on a click — a browser window on the Trash? Is there an "Empty
+  Trash" (permanent) path at all? This needs an FSH placement as well as a
+  naming rule that fits the FSH doctrine, so W7 should not be sliced until
+  it is answered.
 - **Q-W3 — Symlinks.** Present as a followable row, a leaf, or a leaf
   with a badge? `/System/Devices` is a topology of role symlinks, so
   this is visible in normal browsing.

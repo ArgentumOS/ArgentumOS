@@ -480,7 +480,10 @@ structure, S2.5 the reference board + a11y battery).
   that launches or raises. The **work area** grows a right inset
   (today's work area is only "below the bar"), so a window placed at the
   right edge is inset rather than under the dock. Contents are pinned +
-  running only — **no Trash tile** (decision above). *Acceptance:* the dock draws correctly at 1x and 2x; a
+  running only — **no Trash tile** (decision above). **[Amended 2026-09: a
+  Trash tile now exists, at the bottom of the dock and separate from the app
+  icons, superseding that part of Q-R1 — `docs/design/workspace-plan.md`
+  Q-W2. The record below stands as what S5.2c built.]** *Acceptance:* the dock draws correctly at 1x and 2x; a
   tile launches its app; a running app shows state; edge-placed windows
   are inset; the dock's config keys are honoured.
 
@@ -726,6 +729,17 @@ structure, S2.5 the reference board + a11y battery).
     view and delete/restore semantics, which is a milestone of its own.
     The trash returns when that exists; S5.2c is a deliberate override of
     the mockup, not an omission.
+    **[Amended 2026-09 — the trash returns, under this bullet's own
+    condition: the user restored `uikit-plan.md` §5's "trash at the
+    bottom" as the placement (bottom of the dock, separate from the app
+    icons). Q-R1 was corrected in `initial-release.md` §4 and the tile is
+    recorded there; the plan for it is
+    `docs/design/workspace-plan.md` Q-W2. The condition this bullet set —
+    "a Trash view and delete/restore semantics" — is still UNMET, so the
+    tile's BEHAVIOUR is that plan's Q-W2' and must wait for it. Two
+    clauses here are also superseded: the dock's config domain is now
+    `system.kestrel` (the dock is the window manager's, that plan §3.0),
+    and drawing the tile is the WM's work, not the app's.]**
   - **Wallpaper: parametric/vector, from the theme.** Consistent with
     "chrome is vector-parameter driven" (§3), and it needs no image
     decoder and no shipped asset — of which the repo has none. The PNG
