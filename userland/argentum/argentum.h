@@ -1172,7 +1172,8 @@ struct MenuTrack {
 void menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 	       std::function<void(int itemId)> onPick = nullptr,
 	       std::function<void()> onClosed = nullptr,
-	       std::function<MenuTrack(int, int)> onTrack = nullptr);
+	       std::function<MenuTrack(int, int)> onTrack = nullptr,
+	       int minWidthPx = 0);
 void menuPopUpDismiss();
 
 /* S2.3a: Slider — a horizontal track + knob control (Control).
@@ -1359,7 +1360,11 @@ public:
 	void setFrame(const Rect &r) override;
 
 private:
-	void openList(int rootXPx, int rootYPx);
+	/* the anchor is derived from the PRESS (its root coordinates and its
+	 * position inside this control), so the list lands on the field's
+	 * bottom-left corner wherever the WM put the window, and is never
+	 * narrower than the control */
+	void openList(const MouseEvent &e);
 	void pickItem(int index);
 
 	struct Impl;

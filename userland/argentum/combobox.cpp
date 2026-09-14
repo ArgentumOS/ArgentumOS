@@ -153,12 +153,35 @@ ComboBox::pickItem(int index)
 }
 
 void
-ComboBox::openList(int rootXPx, int rootYPx)
+ComboBox::openList(const MouseEvent &e)
 {
-	if (impl_->items.empty())
+	Application &app = Application::shared();
+	double ppt = app.pxPerPt();
+	Rect f = frame();
+	int rootLeftPx, rootBottomPx, minWidthPx;
+
+	if (impl_->items.empty()) {
 		return;
-	menuPopUp(impl_->menu, rootXPx, rootYPx,
-		  [this](int itemId) { pickItem(itemId); });
+	}
+	/* The press arrives as a point in THIS control's coordinates plus the
+	 * root position the server reported for it, so the control's own
+	 * rectangle in root pixels is recoverable from the pair — no window
+	 * lookup, and no assumption about where the WM decided to put us.
+	 *
+	 * The list hangs from the FIELD's bottom-left corner. setFrame lays the
+	 * field out from the control's left edge across its full height, so
+	 * that corner IS the control's bottom-left. */
+	rootLeftPx = e.rootXPx - (int) (e.x * ppt + 0.5);
+	rootBottomPx = e.rootYPx - (int) (e.y * ppt + 0.5)
+		       + (int) (f.size.h * ppt + 0.5);
+	/* and the list is never narrower than the control it drops from */
+	minWidthPx = (int) (f.size.w * ppt + 0.5);
+	std::fprintf(stderr, "ARGENTUM-COMBO: open root=%d,%d min=%d\n",
+		     rootLeftPx, rootBottomPx, minWidthPx);
+	std::fflush(stderr);
+	menuPopUp(impl_->menu, rootLeftPx, rootBottomPx,
+		  [this](int itemId) { pickItem(itemId); }, nullptr, nullptr,
+		  minWidthPx);
 }
 
 void
@@ -171,7 +194,7 @@ ComboBox::mouseDown(const MouseEvent &e)
 	 * because a zero-width field would leave the whole control to us */
 	if (e.x < f.size.w - kChevronW)
 		return;
-	openList(e.rootXPx, e.rootYPx);
+	openList(e);
 }
 
 void

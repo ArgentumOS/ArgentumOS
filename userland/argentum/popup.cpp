@@ -63,7 +63,11 @@ private:
 
 class PopupWindow : public Window {
 public:
-	PopupWindow(Menu *menu, int xRootPx, int yRootPx);
+	/* minWidthPx: a floor on the popup's width, in pixels (0 = size to the
+	 * menu's content). A control that owns a popup — a ComboBox — is wider
+	 * than its items, and a list narrower than the control it drops from
+	 * reads as broken. */
+	PopupWindow(Menu *menu, int xRootPx, int yRootPx, int minWidthPx = 0);
 	~PopupWindow() override;
 
 	/* Show under the anchor, raised above other windows. */
@@ -128,6 +132,12 @@ public:
 		originY_ = yPx;
 	}
 
+	/* Floor the popup's width, in pixels (0 = content width). Sizing
+	 * happens in the constructor and in retarget(); menuPopUp keeps ONE
+	 * popup window alive and reuses it, so a reused popup has to be
+	 * resized here or the previous owner's floor would stick to it. */
+	void setMinWidthPx(int pxPx);
+
 	/* A press the popup itself received (in its rows, or outside them
 	 * while it holds the pointer). A menu must not close on the RELEASE
 	 * of the click that opened it — that release arrives without the
@@ -147,6 +157,7 @@ private:
 	std::function<void()> closed_;
 	std::function<MenuTrack(int, int)> track_;
 	int originX_ = 0;
+	int minWidthPx_ = 0;	/* width floor, px; 0 = content */
 	int originY_ = 0;
 	bool grabbed_ = false;
 	bool sawPress_ = false;
@@ -457,12 +468,18 @@ PopupMenuView::mouseUp(const MouseEvent &e)
 	host_->dismiss();
 }
 
-PopupWindow::PopupWindow(Menu *menu, int xRootPx, int yRootPx)
-	: menu_(menu), listView_(new PopupMenuView(menu, this))
+PopupWindow::PopupWindow(Menu *menu, int xRootPx, int yRootPx,
+		       int minWidthPx)
+	: menu_(menu), listView_(new PopupMenuView(menu, this)),
+	  minWidthPx_(minWidthPx)
 {
 	Application &app = Application::shared();
 	double ppt = app.pxPerPt();
 	int wPx = (int) (popupWidthPt(menu) * ppt + 0.5);
+
+	if (wPx < minWidthPx_) {
+		wPx = minWidthPx_;
+	}
 	int hPx = (int) ((rowTops(menu, nullptr, 0) + POPUP_PAD_PT * 2.0) * ppt
 			 + 0.5);
 
@@ -526,6 +543,9 @@ PopupWindow::retarget(const MenuTrack &t)
 		return;
 	}
 	wPx = (int) (popupWidthPt(t.menu) * ppt + 0.5);
+	if (wPx < minWidthPx_) {
+		wPx = minWidthPx_;
+	}
 	hPx = (int) ((rowTops(t.menu, nullptr, 0) + POPUP_PAD_PT * 2.0) * ppt
 		     + 0.5);
 	std::fprintf(stderr, "ARGENTUM-POPUP: tracked to \"%s\" at %d,%d\n",
@@ -541,6 +561,42 @@ PopupWindow::retarget(const MenuTrack &t)
 	listView_->setHovered(-1);
 	setNeedsDisplay();
 	XFlush(dpy);
+}
+
+void
+PopupWindow::setMinWidthPx(int pxPx)
+{
+	Application &app = Application::shared();
+	Display *dpy = (Display *) app.display();
+	double ppt = app.pxPerPt();
+	int wPx, hPx;
+
+	/* The common case is "no floor" — a menubar menu passes 0, and a popup
+	 * that has already been sized carries the right width from its
+	 * constructor or from retarget(). Staying out of the window entirely
+	 * there keeps the menubar path bit-for-bit what it was. */
+	if (pxPx == minWidthPx_) {
+		return;
+	}
+	minWidthPx_ = pxPx;
+	if (!menu_) {
+		return;
+	}
+	wPx = (int) (popupWidthPt(menu_) * ppt + 0.5);
+	if (wPx < minWidthPx_) {
+		wPx = minWidthPx_;
+	}
+	hPx = (int) ((rowTops(menu_, nullptr, 0) + POPUP_PAD_PT * 2.0) * ppt
+		     + 0.5);
+	listView_->setFrame({ { 0, 0 }, { wPx / ppt, hPx / ppt } });
+	/* only a mapped popup can be moved/resized: before present() the
+	 * constructor's own size already carries the floor */
+	if (dpy && xid()) {
+		XMoveResizeWindow(dpy, xid(), originX_, originY_, (unsigned) wPx,
+				  (unsigned) hPx);
+		XFlush(dpy);
+	}
+	setNeedsDisplay();
 }
 
 void
@@ -663,7 +719,7 @@ static PopupWindow *g_menuPopup = nullptr;
 void
 menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 	  std::function<void(int)> onPick, std::function<void()> onClosed,
-	  std::function<MenuTrack(int, int)> onTrack)
+	  std::function<MenuTrack(int, int)> onTrack, int minWidthPx)
 {
 	if (!menu) {
 		return;
@@ -678,11 +734,14 @@ menuPopUp(Menu *menu, int xRootPx, int yRootPx,
 		g_menuPopup = nullptr;
 	}
 	if (!g_menuPopup) {
-		g_menuPopup = new PopupWindow(menu, xRootPx, yRootPx);
+		g_menuPopup = new PopupWindow(menu, xRootPx, yRootPx, minWidthPx);
 	} else {
 		g_menuPopup->moveRoot(xRootPx, yRootPx);
 	}
 	g_menuPopup->setOrigin(xRootPx, yRootPx);
+	/* applied on every call: the popup is REUSED across owners, so a
+	 * floor left over from a ComboBox must not stick to a menubar menu */
+	g_menuPopup->setMinWidthPx(minWidthPx);
 	g_menuPopup->setPickHandler(std::move(onPick));
 	g_menuPopup->setClosedHandler(std::move(onClosed));
 	g_menuPopup->setTrackHandler(std::move(onTrack));
