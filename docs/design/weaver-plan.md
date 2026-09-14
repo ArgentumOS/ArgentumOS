@@ -1,6 +1,6 @@
 # Weaver — the interface editor plan (from-scratch C++)
 
-Status: **APPROVED (2026-09).** IB0–IB3 **DONE**; IB4 is next. A visual editor for Argentum UIKit
+Status: **APPROVED (2026-09).** IB0–IB4 **DONE**; IB5 is next. A visual editor for Argentum UIKit
 interfaces: drag controls, arrange them, set their properties, save a
 document — and have an app load that document and show it. The goal is the
 *editor*; the loader exists because an editor is useless without one.
@@ -384,10 +384,21 @@ need input, which §8a addresses directly.
   two gestures both undone leave the file's md5 byte-identical, and a
   committed+SAVED move changes it and survives reload. Guides are not in the
   acceptance and remain a later refinement.
-- **IB4 — the inspector.** Driven by the property table. *Acceptance:* the
-  inspector logs the properties it enumerated for the selection; setting a
-  title through it appears in the canvas, in the saved document, and after a
-  reload.
+- **IB4 — the inspector. DONE (2026-09).** Driven by the property table (D4):
+  a selection change enumerates the control's properties through
+  `interfacePropertyCount/At` (own first, then the inherited base) and logs
+  each with its kind and its LIVE value read through the table's getter;
+  `--set name value` resolves the property through the same table, applies it
+  to the live canvas view through the setter AND to the document node in the
+  same step, then reads the live value back. State mode builds the canvas
+  display-free (like the IB1/IB2 probes), so the acceptance is asserted on the
+  editor's own log without a window. `tests/cases/weaver_ib4.py`, 10/10: the
+  Label enumerates `text(string)="Hello" hidden(bool)=false`; setting the
+  title logs `set greeting.text = "Hello, FNX" (live reads back "Hello, FNX")`;
+  the saved file carries `text = "Hello, FNX"`; and after reload the
+  enumeration reads the new title. The visible inspector CHROME (D13's
+  Box+Label+TextField region) is deferred: the acceptance needs the logic, not
+  the chrome.
 - **IB5 — palette and hierarchy.** *Acceptance:* a control dragged from the
   palette appears in the saved document with the right class, parent, and
   sibling index; the outline lists the tree; selecting in the outline selects

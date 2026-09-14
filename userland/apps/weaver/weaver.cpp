@@ -192,6 +192,11 @@ public:
 	View *canvas = nullptr;
 	EditorOverlay *overlay = nullptr;
 
+	/* state mode: the live instances still exist (display-free, like the
+	 * IB1/IB2 probes), so the inspector can read and write the CANVAS even
+	 * when no window is up. */
+	View stateSurface_;
+
 	std::string selectedId;
 
 	struct Command {
@@ -238,6 +243,7 @@ public:
 		selectedId.clear();
 		undoStack.clear();
 		gesture = Gesture();
+		canvas = nullptr;	/* rebuilt on demand from the new doc */
 		std::printf("WEAVER: open %s (%d nodes)\n", resolved.c_str(),
 			    countNodes(doc->root()));
 		std::fflush(stdout);
@@ -296,6 +302,7 @@ public:
 		selectedId.clear();
 		undoStack.clear();
 		gesture = Gesture();
+		canvas = nullptr;	/* rebuilt on demand from the new doc */
 		std::printf("WEAVER: reload %s (%d nodes)\n", path.c_str(),
 			    countNodes(doc->root()));
 		std::fflush(stdout);
@@ -338,19 +345,26 @@ public:
 			}
 			selectedId.clear();
 			std::printf("WEAVER: select (nothing)\n");
-		} else {
-			std::string next = id[0] ? id : n->className();
-
-			if (next == selectedId) {
-				return;
+			std::fflush(stdout);
+			if (overlay) {
+				overlay->setNeedsDisplay();
 			}
-			selectedId = next;
-			std::printf("WEAVER: select %s\n", next.c_str());
+			return;
 		}
+		std::string next = id[0] ? id : n->className();
+
+		if (next == selectedId) {
+			return;
+		}
+		selectedId = next;
+		std::printf("WEAVER: select %s\n", next.c_str());
 		std::fflush(stdout);
 		if (overlay) {
 			overlay->setNeedsDisplay();
 		}
+		/* the inspector (plan §6/D13): a selection change enumerates the
+		 * control's properties through the SAME table the builder used */
+		inspectSelection();
 	}
 
 	/* deepest node whose frame contains pt (reverse z-order), in the
@@ -593,6 +607,172 @@ public:
 		}
 	}
 
+	/* ---------- the inspector (IB4, plan §6/D13): the property table is
+	 * the reflection — no RTTI, no per-control code ---------- */
+
+	static const char *kindName(InterfaceNode::Kind k)
+	{
+		return k == InterfaceNode::Kind::String ? "string"
+			: k == InterfaceNode::Kind::Number ? "number"
+			: "bool";
+	}
+
+	static void printValue(const InterfaceNode::Property &v)
+	{
+		switch (v.kind) {
+		case InterfaceNode::Kind::String:
+			std::printf("\"%s\"", v.text.c_str());
+			break;
+		case InterfaceNode::Kind::Number:
+			std::printf("%g", v.number);
+			break;
+		case InterfaceNode::Kind::Bool:
+			std::printf("%s", v.boolean ? "true" : "false");
+			break;
+		}
+	}
+
+	/* state mode builds the SAME live tree the window would show, so the
+	 * inspector's getters/setters run against the canvas either way */
+	void ensureCanvas()
+	{
+		if (canvas) {
+			return;
+		}
+		InterfaceNode *r = doc->root();
+		std::string why;
+
+		if (!r) {
+			std::printf("WEAVER: build FAIL (no document)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		stateSurface_.setFrame(Rect{ { 0, 0 },
+			{ r->frameW(), r->frameH() } });
+		canvas = interfaceBuild(*doc, &stateSurface_, why);
+		if (!canvas) {
+			std::printf("WEAVER: build FAIL %s\n", why.c_str());
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		canvas->setHitTestEnabled(false);
+	}
+
+	void inspectSelection()
+	{
+		InterfaceNode *n = selectedNode();
+
+		if (!n) {
+			std::printf("WEAVER: inspect FAIL (no selection)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		const char *cls = n->className();
+		const char *id = n->identifier()[0] ? n->identifier() : cls;
+
+		ensureCanvas();
+		View *live = canvas ? canvas->viewWithIdentifier(id) : nullptr;
+		int count = interfacePropertyCount(cls);
+
+		std::printf("WEAVER: inspect %s %s:", cls, id);
+		for (int i = 0; i < count; i++) {
+			const InterfaceProperty *p = interfacePropertyAt(cls, i);
+
+			if (!p) {
+				continue;
+			}
+			std::printf(" %s(%s)", p->name, kindName(p->kind));
+			if (live && p->get) {
+				InterfaceNode::Property v;
+
+				v.kind = p->kind;
+				p->get(live, v);
+				std::printf("=");
+				printValue(v);
+			}
+		}
+		std::printf("\n");
+		std::fflush(stdout);
+	}
+
+	void setProperty(const char *name, const char *value)
+	{
+		InterfaceNode *n = selectedNode();
+
+		if (!n) {
+			std::printf("WEAVER: set FAIL (no selection)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		const InterfaceProperty *p =
+			interfaceProperty(n->className(), name);
+
+		if (!p) {
+			std::printf("WEAVER: set FAIL %s has no property `%s`\n",
+				    n->className(), name);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+
+		InterfaceNode::Property v;
+
+		v.name = name;
+		v.kind = p->kind;
+		switch (p->kind) {
+		case InterfaceNode::Kind::String:
+			v.text = value;
+			break;
+		case InterfaceNode::Kind::Number:
+			v.number = std::atof(value);
+			break;
+		case InterfaceNode::Kind::Bool:
+			v.boolean = (!std::strcmp(value, "true")
+				     || !std::strcmp(value, "1"));
+			break;
+		}
+
+		ensureCanvas();
+		const char *id = n->identifier()[0] ? n->identifier()
+						   : n->className();
+		View *live = canvas ? canvas->viewWithIdentifier(id) : nullptr;
+
+		if (live && p->set) {
+			p->set(live, v);
+		}
+		switch (p->kind) {
+		case InterfaceNode::Kind::String:
+			n->setString(name, value);
+			break;
+		case InterfaceNode::Kind::Number:
+			n->setNumber(name, v.number);
+			break;
+		case InterfaceNode::Kind::Bool:
+			n->setBool(name, v.boolean);
+			break;
+		}
+		dirty = true;
+		std::printf("WEAVER: set %s.%s = ", id, name);
+		printValue(v);
+		if (live && p->get) {
+			InterfaceNode::Property back;
+
+			back.kind = p->kind;
+			p->get(live, back);
+			std::printf(" (live reads back ");
+			printValue(back);
+			std::printf(")");
+		} else {
+			std::printf(" (document only)");
+		}
+		std::printf("\n");
+		std::fflush(stdout);
+	}
+
 	void updateLiveFrame(const char *id, const Rect &r)
 	{
 		if (!canvas) {
@@ -785,6 +965,15 @@ main(int argc, char **argv)
 		} else if (a == "--undo") {
 			ed.undo();
 			any = true;
+		} else if (a == "--inspect") {
+			ed.inspectSelection();
+			any = true;
+		} else if (a == "--set" && i + 2 < argc) {
+			const char *name = argv[++i];
+			const char *value = argv[++i];
+
+			ed.setProperty(name, value);
+			any = true;
 		} else if (a == "--move" && i + 3 < argc) {
 			const char *id = argv[++i];
 			double dx = std::atof(argv[++i]);
@@ -835,6 +1024,7 @@ main(int argc, char **argv)
 		std::printf("WEAVER: usage: weaver --open <name-or-path> "
 			    "[--click x y] [--drag x0 y0 x1 y1] "
 			    "[--resize x0 y0 x1 y1] [--undo] "
+			    "[--inspect] [--set name value] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--rect id] [--show]\n");
 		return 2;
