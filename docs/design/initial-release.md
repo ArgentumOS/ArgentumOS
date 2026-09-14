@@ -114,8 +114,14 @@ Question: should the Installer also ship in the installed system's
 
 ## 3. Workspace app (detailed)
 
-An ordinary bundle (`Workspace.app`) launched at login; it is the
-session's desktop and the first app the compositor runs.
+An ordinary bundle (`Workspace.app`) launched at login; it paints the
+**desktop surface** (the wallpaper behind all windows, §3.2) and hosts the
+**file manager** (§3.3).
+
+The **dock** (§3.1) and the menubar strip belong to the **window
+manager** (`kestrel`), not to this app: the dock/wallpaper split and the
+config domains it implies are recorded in `docs/design/workspace-plan.md`
+§3.0.
 
 ### 3.1 Dock
 
@@ -129,7 +135,8 @@ right edge — sized to the icons, presenting:
 - **Actions** — context menu per icon (Open, Hide, Quit, Remove from
   Dock), and a "running" dot; dragging reorders pins.
 
-User configuration (config domain `system.workspace.conf`, per-user
+User configuration (config domain `system.kestrel.conf` — the dock is
+the window manager's, see `docs/design/workspace-plan.md` §3.0 — per-user
 scope by default):
 
 ```
@@ -147,6 +154,10 @@ configurable:
 ```
 wallpaper = System/Shared/Images/Wallpaper/Default.png
 ```
+
+Its domain is `system.workspace.conf` (Workspace's own; the dock's keys
+moved to the window manager's domain — `docs/design/workspace-plan.md`
+§3.0).
 
 Sources: OS-shipped wallpaper under `System/Shared/Images/Wallpaper/`,
 user-installed under `Users/$USER/Shared/Images/Wallpaper/` (or

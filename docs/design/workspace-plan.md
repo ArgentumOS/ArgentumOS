@@ -1,12 +1,15 @@
 # Workspace — the file manager (Miller-column browser)
 
-Status: **PROPOSED (2026-09).** The design + slice split for the file
-manager the release docs assign to **Workspace** — the adjacent-column
-browser of `docs/design/initial-release.md` §3.3 (the column-browser
-model of NeXTSTEP's File Viewer and the classic macOS Finder). It is a
-plan for a *browser*, not for the desktop shell: the shell's dock,
-wallpaper and menubar are already implemented (Kestrel, S5.2), and how the
-two relate is **Q-W1** below, deliberately not decided here.
+Status: **PROPOSED (2026-09).** The design + slice split for the app the
+release docs call **Workspace**: the adjacent-column file manager of
+`docs/design/initial-release.md` §3.3 (the column-browser model of
+NeXTSTEP's File Viewer and the classic macOS Finder) **and the desktop
+surface — the wallpaper**.
+
+**The owner split is decided (§3.0): the dock belongs to the window
+manager, the wallpaper to Workspace.** The plan is still mostly about the
+browser, but it now owns the surface too, and it carries the hand-off
+(W0) and the config-domain consequence (D6).
 
 Read with: `docs/design/initial-release.md` §3 (the app and its settled
 Q-R decisions), `docs/design/app-model.md` §3 (the manifest),
@@ -17,6 +20,9 @@ Q-R decisions), `docs/design/app-model.md` §3 (the manifest),
 
 In v1 (W-series):
 
+- the **desktop surface**: Workspace paints the wallpaper behind all
+  windows, as the decided split assigns it (§3.0, W0 — Kestrel paints it
+  today);
 - a window that browses the FSH in **adjacent columns**, one directory
   level per column, the path reading left to right;
 - per-column scrolling, selection, and a **draggable column width**;
@@ -39,8 +45,8 @@ Out of scope (not deferred-by-omission, but excluded):
 - network/remote volumes, file sharing, search-as-you-type, tags;
 - the preview pane (§3.3 calls it "a later addition" — W8 if wanted);
 - image thumbnails beyond the icon story in §2.3;
-- the desktop shell itself (dock/wallpaper/menubar) — implemented, and
-  Q-W1 asks who owns it in the long run, not this doc.
+- the **dock** and the **menubar**: the window manager's (Kestrel), per
+  §3.0. Workspace neither draws nor configures them.
 
 ## 2. What is reused vs new
 
@@ -88,6 +94,35 @@ initial-release already defers PNG to "when a decoder exists" — so no
 decoder is on this plan's critical path.
 
 ## 3. The design
+
+### 3.0 What Workspace owns, and what the window manager owns
+
+**Decided: the dock belongs to the window manager; the wallpaper belongs
+to Workspace.** So the desktop is split by kind, not by app:
+
+| Piece | Owner | Where it is implemented |
+|---|---|---|
+| Dock (pinned + running tiles, edge placement, work-area inset) | the window manager | Kestrel (S5.2c — `e4a071e`) |
+| Menubar strip, clock, system menu mark | the window manager | Kestrel (S5.2b) |
+| **Wallpaper** (the desktop surface behind all windows) | **Workspace** | moves out of Kestrel: **W0** |
+| File manager (columns) | Workspace | this plan |
+
+**Consequence: the config domain splits.** `system.workspace.conf` exists
+today and holds BOTH sets of keys — `initial-release.md` §3.1 put the
+dock's `dock.*` keys there and §3.3 the file-manager keys, and S5.2c
+introduced it for the dock. With the owners split, the domain must too,
+because two apps cannot own one file:
+
+| Keys | Owner | Domain |
+|---|---|---|
+| `dock.position`, `dock.icon-size`, `dock.autohide`, `dock.magnify` | Kestrel (the WM) | `system.kestrel` |
+| `wallpaper` | Workspace | `system.workspace` |
+| `file-manager.start`, `file-manager.column-width` | Workspace | `system.workspace` |
+
+`system.workspace` therefore keeps the *Workspace app's* keys and the
+dock's move to the WM's own domain, named like the other component
+domains (`system.xfb`, `system.argentum`, `system.display`). The shipped
+file is staged with the rest (`Shared/Configuration/`).
 
 ### 3.1 Reading a directory
 
@@ -159,6 +194,21 @@ Status: **PROPOSED.** Left/Right move the focused column; Up/Down move
 the selection within it; the focused column draws the active selection
 style. *Acceptance:* the same board driven from the harness's input
 seam; the log names the focused column and the selected row per key.
+
+### W0 — the desktop surface moves to Workspace
+
+Status: **PROPOSED.** Workspace paints the wallpaper (the bottom-of-stack
+surface, `wallpaper` read from its own domain) and Kestrel stops painting
+it. This is the decided split done as a **move**, not a rewrite: the
+behaviour S5.2a established — a theme-derived ramp filling the screen
+behind every window — is what has to survive.
+*Acceptance:* **the existing desktop checks keep passing unchanged.**
+`smoke_desktop`'s wallpaper-spanning and wallpaper-on-screen pixel checks
+are the regression test for the move, and the log line naming who painted
+the surface changes owner (Kestrel → Workspace). A migration whose
+acceptance is "the old checks still pass" is the point: nothing about the
+desktop may look different. Lands with the domain split (D6), since the
+dock keys are staged in the same file.
 
 ### W1 — the bundle, and a real directory read
 
@@ -233,9 +283,10 @@ Per §3.3, a later addition. Not sliced here.
 
 ## 5. Decisions
 
-- **D1 — The browser is a first-party app, not a shell component.**
-  Workspace's bundle owns the browser window; the shell (dock,
-  wallpaper, menubar) stays where it is implemented today.
+- **D1 — The owner split: the desktop surface is Workspace's; the dock
+  and menubar are the window manager's** (§3.0). Workspace's bundle owns
+  the wallpaper and the browser window; the WM owns the chrome it already
+  draws. The shipped config domains follow the owners (D6).
 - **D2 — Columns are `TableView`s inside a reusable `Browser` control**
   (§2.2). Not a Workspace-private column stack.
 - **D3 — Listing is libc, operations are CLI tools** (§3.1). This is the
@@ -244,20 +295,24 @@ Per §3.3, a later addition. Not sliced here.
 - **D4 — v1 is browse + open; operations are W7, in this plan** (the
   recorded answer).
 - **D5 — No image decoder on the critical path** (§2.3); v1 draws tiles.
+- **D6 — A config domain follows its owner** (§3.0): the dock's keys move
+  to `system.kestrel`, `system.workspace` keeps the Workspace app's own
+  (`wallpaper`, `file-manager.*`). One app per domain file.
 
 ## 6. Open questions
 
-- **Q-W1 — Workspace vs Kestrel: who owns the shell?** The release docs
-  make **Workspace** the desktop shell — "dock, wallpaper, and the file
-  manager" — and give it the config domain `system.workspace.conf`. The
-  shell is in fact implemented by **Kestrel** (S5.2), which reads that
-  same domain for `dock.position` / `dock.icon-size`. So either (a)
-  Workspace becomes the shell app and Kestrel stays the window manager,
-  with the dock/wallpaper migrating later, or (b) the docs are corrected
-  to say Kestrel owns the shell and Workspace is its file manager,
-  taking a domain of its own. **This doc takes no position**; it matters
-  because the config domain currently belongs to the shell and two apps
-  cannot both own it.
+- **Q-W1 — RESOLVED: the owner split.** The dock belongs to the window
+  manager, the wallpaper to Workspace (§3.0). Its two consequences are
+  sliced as **W0** (the move) and **D6** (the domain), and the documents
+  that said otherwise — `initial-release.md` §3.1's "the session's
+  desktop" and the S5.2c record's domain — were corrected with it.
+- **Q-W1' — the menubar's system menu.** `initial-release.md` §3 says
+  Workspace "owns the global menubar's system menu", while the strip is
+  Kestrel's (S5.2b) and the app in front publishes its own bar (S4.2). So
+  either Workspace publishes the system menu the way any app publishes
+  its own — nothing is owed, and this is already true — or the system menu
+  is a WM feature that merely looks like an app menu. Not decided here;
+  the dock/wallpaper split does not settle it either way.
 - **Q-W2 — Trash semantics.** Nothing in the tree defines a Trash beyond
   Q-R1's "no Trash icon on the dock". If W7 deletes, does it delete, or
   move to a per-user Trash with restore? (Needs an FSH placement and a
@@ -282,9 +337,12 @@ Per §3.3, a later addition. Not sliced here.
   column chain **inside** Workspace and *then* extract it — but that is
   a second implementation to retire, so it is a last resort, not a
   parallel path.
-- **The `system.workspace` collision (Q-W1)** is a real trap: the dock
-  keys in that domain are read today by Kestrel, so a file manager that
-  later claims the same domain would fight it. Decide before W6.
+- **The domain rename (D6) is a shipped-config change, and W0 needs it.**
+  Kestrel reads the dock keys and the file is staged, so W0 and D6 land
+  together with the doc corrections — a half-done rename leaves the dock
+  unconfigured, which is exactly the kind of thing a pixel gate would
+  catch only if it checks the dock's edge placement (it does — S5.2c's
+  dock checks).
 - **Listing large directories** (`/System/Devices`, a volume root) must
   not block the UI thread — the row source is lazy and the first paint
   shows what is read so far. A gate that browses only small directories

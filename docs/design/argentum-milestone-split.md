@@ -327,7 +327,10 @@ structure, S2.5 the reference board + a11y battery).
   #### S5.2a — the wallpaper surface
 
   Kestrel paints the desktop (today nothing paints the root, so the empty
-  desktop is black — recorded at S5.1). The source is the theme's
+  desktop is black — recorded at S5.1). **[Owner changed 2026-09: the
+  desktop surface is Workspace's, the dock and menubar the WM's —
+  `docs/design/workspace-plan.md` §3.0/W0. Everything below stands as what
+  S5.2a built; only who owns it afterwards moved.]** The source is the theme's
   parameters — a vector wallpaper, so no decoder and no asset. Set the
   root window's background from the desktop configuration, repaint on
   root `ConfigureNotify` (an `fb0` mode-set resizes the desktop), and
@@ -484,6 +487,13 @@ structure, S2.5 the reference board + a11y battery).
   **As built (DONE).** A Kestrel-owned column of vector tiles on the edge
   named by `system.workspace.conf`, and a work area that has a *side* now
   as well as a top:
+
+  > **Correction (2026-09).** The dock's keys have since been assigned to
+  > the **window manager's own domain** (`system.kestrel`), because the
+  > owner split gives the WM the dock and the menubar while the wallpaper
+  > goes to Workspace (`docs/design/workspace-plan.md` §3.0, D6). The
+  > hand-off is that plan's **W0**; the record below stands as what S5.2c
+  > built and what it called the domain at the time.
 
   - **The domain is new but needs no registration**: a config domain is
     just a dotted name, resolved to `<scope>/Configuration/<name>.conf`
