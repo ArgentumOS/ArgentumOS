@@ -27,7 +27,10 @@ In v1 (W-series):
   level per column, the path reading left to right;
 - per-column scrolling, selection, and a **draggable column width**;
 - **keyboard access**: arrows within a column, Left/Right across
-  columns, Return to open — per the accessibility model;
+  columns, **Return renames**, **⌘O opens** — per the accessibility model
+  (D12);
+- **the click model**: a folder descends on a **single** click; a file
+  opens on a **double** click (D11);
 - **multiple windows** (Q-W5, D8): Finder-like — the app may have
   several windows at once, and it outlives them;
 - **open-by-document-type**: a file opens the app whose manifest claims
@@ -37,10 +40,12 @@ In v1 (W-series):
   Workspace domain, with the established system → user → shared
   precedence.
 
-Following milestone (W7): **file operations** — copy, move, rename, new
-folder, delete — driven through `/System/Tools` tools (the Disks
-precedent: one scriptable implementation, reusable). Per the decision
-recorded here, W7 is part of this plan but not of v1.
+Following milestone (W7): the rest of **file operations** — copy, move,
+new folder, delete, plus the Trash's restore and Empty Trash — driven
+through `/System/Tools` tools (the Disks precedent: one scriptable
+implementation, reusable). Per the decision recorded here, W7 is part of
+this plan but not of v1. It is *the rest* because **rename is v1's**: the
+decided Return binding makes it so (D12, W4b).
 
 Out of scope (not deferred-by-omission, but excluded):
 
@@ -48,7 +53,9 @@ Out of scope (not deferred-by-omission, but excluded):
 - the preview pane (§3.3 calls it "a later addition" — W8 if wanted);
 - image thumbnails beyond the icon story in §2.3;
 - the **dock** and the **menubar**: the window manager's (Kestrel), per
-  §3.0. Workspace neither draws nor configures them.
+  §3.0. Workspace neither draws nor configures them;
+- **drag & drop** (D13): it arrives with W7's operations, which are what
+  can act on a drop — including a row dragged onto the dock's Trash tile.
 
 ## 2. What is reused vs new
 
@@ -150,6 +157,13 @@ selection is the one drawn in the active style — the HIG's rule, and the
 reason the two must not be conflated: clicking a second column both
 moves focus and selects its row (or its parent row, if the click lands
 on a directory that is already open to the right).
+
+The click model (D11) is the Finder's column view, which is also
+NeXTSTEP's File Viewer and what §3.3 already describes: a **folder
+descends on a single click** ("selecting a subdirectory opens the next
+column"), and a **file opens on a double click** — the single click
+selects it, which is also where the deferred preview pane would hook in.
+Return is not the open gesture: it **renames** (D12), and ⌘O opens.
 
 ### 3.4 Open by document type
 
@@ -286,20 +300,35 @@ behaviour this slice exists for.
 
 ### W4 — keyboard, per the a11y model
 
-Status: **PROPOSED.** Arrows within/across columns, Return opens,
-Tab/Shift-Tab per the toolkit's traversal rules.
+Status: **PROPOSED.** Arrows within/across columns, Tab/Shift-Tab per the
+toolkit's traversal rules, and ⌘O to open the selection (D12). For whoever
+slices it: the desktop's ⌘ is the toolkit's `KeyModCommand` (`argentum.h`)
+and the physical key comes from `mods_from_state` (`application.cpp`) —
+confirm which, because the gate has to send it.
 *Acceptance:* driven from the input seam; the log shows focus+selection
-transitions; a keyboard-only walk to a file and Return (W5) is asserted.
+transitions; a keyboard-only walk to a file and ⌘O (W5) is asserted.
+
+### W4b — rename in place (Return)
+
+Status: **PROPOSED.** Decided (D12): Return renames the selection, so
+rename is v1's rather than W7's. An editable field over the row's name,
+with the usual guards — no separators, no empty name, and no silent
+overwrite of an existing sibling.
+*Acceptance:* Return on a row, type a name, Enter → the console's `ls`
+shows the new name and the old one gone (the filesystem, not the app's
+claim); Return then Escape leaves the name untouched; an existing name is
+refused rather than clobbered. The operation under it is `mv` — the same
+tool W7 uses — which is why this is the one operation v1 needs early.
 
 ### W5 — open by document type
 
 Status: **PROPOSED.** Extension → manifest `document-types` → launch
 that bundle with the file; unknown/executable → Terminal.
-*Acceptance:* Return on a `.txt` file starts the app whose manifest
-claims `txt` (that app's own log proves it, plus the path it was handed);
-Return on an executable starts Terminal; Return on an unclaimed extension
-starts Terminal — all three, because the fallback is the part that is
-easy to get wrong.
+*Acceptance:* ⌘O on a `.txt` file starts the app whose manifest claims
+`txt` (that app's own log proves it, plus the path it was handed); ⌘O on
+an executable starts Terminal; ⌘O on an unclaimed extension starts
+Terminal — all three, because the fallback is the part that is easy to get
+wrong. (A double click is the pointer's route to the same thing, D11.)
 
 ### W6 — roots, start, config
 
@@ -313,7 +342,8 @@ cannot tell them apart, so the gate changes one).
 
 ### W7 — operations (the following milestone, per the decision)
 
-Status: **PROPOSED.** Copy, move, rename, new folder, delete — each
+Status: **PROPOSED.** Copy, move, new folder, delete (rename is v1's —
+W4b, the same `mv` tool), plus the Trash's restore and Empty Trash — each
 routed through the `/System/Tools` tool that already exists (`cp`, `mv`,
 `rm`, `mkdir`; all five verified present in the image). Delete follows
 Q-W2: the Trash tile exists, so the default is a MOVE into the Trash
@@ -361,6 +391,15 @@ Per §3.3, a later addition. Not sliced here.
 - **D10 — Symlinks follow, marked as aliases** (Q-W3): a symlink row looks
   like its target and carries a badge; selecting a directory symlink
   descends (§3.5).
+- **D11 — The click model is the column view's** (Q-W7): a folder descends
+  on a single click, a file opens on a double click. Both ancestors —
+  NeXTSTEP's File Viewer and the Finder's column view — agree with §3.3's
+  own wording; only the file case needed deciding (§3.3).
+- **D12 — Return renames; ⌘O opens** (Q-W8), the Finder's binding — and
+  the reason **rename is v1's** rather than W7's (W4b).
+- **D13 — No drag & drop in v1** (Q-W9): it arrives with W7, whose
+  operations are what can act on a drop — including onto the dock's Trash
+  tile.
 
 ## 6. Open questions
 
@@ -374,8 +413,8 @@ Per §3.3, a later addition. Not sliced here.
   here before W7 is sliced, then Q-W6 closes.
 
 Everything else this plan asked is decided: D7 (§3.6, the Trash), D8
-(§3.7, windows), D9 (§3.4, "Open with"), D10 (§3.5, symlinks), and D1–D6
-above.
+(§3.7, windows), D9 (§3.4, "Open with"), D10 (§3.5, symlinks), D11–D13
+(the click model, Return/⌘O, no drag & drop), and D1–D6 above.
 
 
 ## 7. Regressions and risks
@@ -400,6 +439,12 @@ above.
   `ScrollView`s; the divider drag must be tested against the parent
   scroll (a classic gesture-capture bug, and the kind WT-1's gate should
   drive).
+- **Rename in v1 (D12) is more UI than it sounds.** An editable field over
+  a row needs the toolkit's text input to work inside a LIST rather than a
+  full-width TextField, plus name validation (no separators, no empty, no
+  clobbering a sibling) and a refusal that is legible instead of silent.
+  W4b's acceptance includes the refusal for that reason. It also means v1
+  touches `mv`, so W7's tool discipline starts early.
 - **Multiple windows (D8) pull app-level lifetime onto the critical
   path.** The toolkit has `Window` and the WM frames per window (S4.3),
   but nothing in the tree has run an app with two windows at once, and
