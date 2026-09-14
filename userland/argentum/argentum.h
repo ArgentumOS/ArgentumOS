@@ -446,6 +446,12 @@ public:
 	bool init(const char *title, int x, int y,
 		  unsigned int width, unsigned int height);
 
+	/* D14: the window title is LIVE — setTitle updates WM_NAME (so a WM
+	 * that re-reads it shows the change; Kestrel reads it at manage);
+	 * title() reads the stored copy back. Copied, truncated to 255. */
+	void setTitle(const char *utf8);
+	const char *title() const;
+
 	/* Map the window and flush the connection. */
 	void show(bool focus = true);
 

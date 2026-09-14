@@ -301,6 +301,39 @@ public:
 		return { p.x - canvasOrigin.x, p.y - canvasOrigin.y };
 	}
 
+	/* D14: an edited document marks itself in the WINDOW TITLE */
+	std::string windowTitle() const
+	{
+		std::string t = "Weaver";
+
+		if (dirty) {
+			std::string base = path;
+			size_t slash = base.rfind('/');
+
+			if (slash != std::string::npos) {
+				base = base.substr(slash + 1);
+			}
+			t += " - ";
+			t += base;
+			t += " (edited)";
+		}
+		return t;
+	}
+
+	void updateTitle()
+	{
+		if (!win) {
+			return;
+		}
+		std::string t = windowTitle();
+
+		if (std::strcmp(win->title(), t.c_str()) != 0) {
+			win->setTitle(t.c_str());
+		}
+		std::printf("WEAVER: title \"%s\"\n", t.c_str());
+		std::fflush(stdout);
+	}
+
 	/* state mode: the live instances still exist (display-free, like the
 	 * IB1/IB2 probes), so the inspector can read and write the CANVAS even
 	 * when no window is up. */
@@ -388,6 +421,7 @@ public:
 		std::printf("WEAVER: save %s (%zu bytes)\n", path.c_str(),
 			    out.size());
 		std::fflush(stdout);
+		updateTitle();
 		return true;
 	}
 
@@ -763,6 +797,7 @@ public:
 					{ gesture.id, kind, old,
 					  gesture.current });
 				dirty = true;
+				updateTitle();
 				std::printf("WEAVER: commit %s %s "
 					    "%g,%g %gx%g -> %g,%g %gx%g\n",
 					    kind, gesture.id.c_str(),
@@ -802,6 +837,7 @@ public:
 		setNodeFrame(n, c.before);
 		dirty = true;
 		updateLiveFrame(c.id.c_str(), c.before);
+		updateTitle();
 		std::printf("WEAVER: undo %s %s -> %g,%g %gx%g\n",
 			    c.kind.c_str(), c.id.c_str(),
 			    c.before.origin.x, c.before.origin.y,
@@ -982,6 +1018,7 @@ public:
 			break;
 		}
 		dirty = true;
+		updateTitle();
 		std::printf("WEAVER: %s %s.%s = ", verb, id, name);
 		printValue(v);
 		if (live && p->get) {
@@ -1055,6 +1092,7 @@ public:
 
 		parent->addChild(node);
 		dirty = true;
+		updateTitle();
 		const char *pid = parent->identifier()[0] ? parent->identifier()
 							 : parent->className();
 		std::printf("WEAVER: add %s to %s at %d (20,20 90x24)\n",
@@ -1409,7 +1447,7 @@ runDisplay(Editor &ed)
 		return 1;
 	}
 	layoutSizes(r, &winW, &winH);
-	if (!w.init("Weaver", 40, 40,
+	if (!w.init(ed.windowTitle().c_str(), 40, 40,
 		    (unsigned) (winW * ppt + 0.5),
 		    (unsigned) (winH * ppt + 0.5))) {
 		std::printf("WEAVER: show FAIL (window init)\n");
@@ -1417,6 +1455,7 @@ runDisplay(Editor &ed)
 		return 1;
 	}
 	ed.win = &w;
+	ed.updateTitle();
 	ed.surface = new EditorSurface();
 	ed.surface->editor = &ed;
 	ed.surface->setFrame(Rect{ { 0, 0 }, { winW, winH } });
@@ -1554,6 +1593,7 @@ main(int argc, char **argv)
 				setNodeFrame(n, now);
 				ed.dirty = true;
 				ed.updateLiveFrame(id, now);
+				ed.updateTitle();
 				std::printf("WEAVER: move %s %g,%g -> %g,%g\n",
 					    id, old.origin.x, old.origin.y,
 					    now.origin.x, now.origin.y);

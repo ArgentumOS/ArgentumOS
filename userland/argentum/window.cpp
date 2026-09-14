@@ -967,7 +967,9 @@ Window::init(const char *title, int x, int y,
 		return false;
 	}
 	if (title) {
-		XStoreName(impl_->dpy, impl_->xwin, title);
+		std::snprintf(impl_->title, sizeof(impl_->title), "%s",
+			      title);
+		XStoreName(impl_->dpy, impl_->xwin, impl_->title);
 	}
 	/* S4.1c: advertise the WM_DELETE_WINDOW protocol so a window
 	 * manager (Kestrel) can ask us to close cleanly */
@@ -990,6 +992,23 @@ Window::init(const char *title, int x, int y,
 	/* register for event dispatch (idempotent on re-init) */
 	app.impl_->windows[(unsigned long) impl_->xwin] = this;
 	return true;
+}
+
+void
+Window::setTitle(const char *utf8)
+{
+	std::snprintf(impl_->title, sizeof(impl_->title), "%s",
+		      utf8 ? utf8 : "");
+	if (impl_->dpy && impl_->xwin) {
+		XStoreName(impl_->dpy, impl_->xwin, impl_->title);
+		XFlush(impl_->dpy);
+	}
+}
+
+const char *
+Window::title() const
+{
+	return impl_->title;
 }
 
 /* S4.1c: the WM asked us to close (WM_DELETE_WINDOW). Run the

@@ -133,6 +133,7 @@ struct Window::Impl {
 	Display *dpy = nullptr;		/* borrowed from the session */
 	::Window xwin = 0;		/* the X window id */
 	bool overrideRedirect = false;		/* S4.2a: a WM leaves it alone */
+	char title[256] = { 0 };		/* D14: live window title */
 	int x = 0;			/* root position */
 	int y = 0;
 	unsigned int width = 0;

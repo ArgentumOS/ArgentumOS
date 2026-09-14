@@ -135,12 +135,12 @@ behaviour. Interface Builder's floating palettes are a later refinement, not
 the starting point, and this keeps `Toolbar`/`Panel` off the critical path
 entirely.
 
-**D14. An edited document marks itself in the window title (v1).** The frame
-already draws the title (`setTitle`), so a marker there costs nothing and is
-trivially reversible. The conventional place — a dot in the close box, or a
-proxy icon — is Kestrel work: its title band draws close + zoom + title +
-toolbar box and nothing else, so that refinement is deferred rather than made a
-prerequisite.
+**D14. An edited document marks itself in the window title (v1) — DONE
+(2026-09).** The toolkit gained `Window::setTitle`/`title()` (WM_NAME is
+live); Weaver maps a dirty document as `Weaver - <doc> (edited)` and clears
+the marker on save (`weaver_dirty.py` gates both states). The conventional
+close-box dot / proxy icon remains Kestrel work: its title band draws close +
+zoom + title + toolbar box and nothing else.
 
 **D15. Layout is frames plus parent-relative masks; sibling bindings are
 REMOVED (2026-09).** The toolkit's `setStrutReference(own, sibling, refEdge,
@@ -513,9 +513,9 @@ cannot click, is what killed the file manager.
   entry per gesture, no journal** (§6). A crash journal is speculative for a v1
   editor and can be added later without changing the command stack's shape.
 - **Q-IB7 — the dirty indicator. RESOLVED (2026-09): the window title** — see
-  D14. Kestrel's title band draws close + zoom + title + toolbar box and has no
-  dot or proxy icon, so the conventional close-box dot is deferred Kestrel
-  work, not a prerequisite.
+  D14 (landed post-IB7). Kestrel's title band draws close + zoom + title +
+  toolbar box and has no dot or proxy icon, so the conventional close-box dot
+  is deferred Kestrel work, not a prerequisite.
 
 ## 11. Relationship to prior docs
 
