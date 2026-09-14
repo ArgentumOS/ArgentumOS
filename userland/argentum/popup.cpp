@@ -388,21 +388,19 @@ PopupMenuView::mouseMoved(const MouseEvent &e)
 	 * tracking the menubar has to happen here — the motion over the bar
 	 * arrives in this window's coordinates (negative y: above it).
 	 *
-	 * The handler speaks ROOT PIXELS (originX/Y are px) and `e` is in this
-	 * view's POINTS, exactly as every other view responder receives it
-	 * (Window::dispatchMotionToContent divides by pxPerPt before it hands a
-	 * MouseEvent to a view). Adding them raw was a mixed-unit sum: the
-	 * bar-local x it produced fell short by (pxPerPt-1) per point, so the
-	 * title it named sat further LEFT the further right the pointer was —
-	 * "it selects the wrong menu item by hovering". A click was always
-	 * right because a click reaches the BAR's own view, where titleAt()
-	 * converts pt->px itself. */
+	 * Use the ROOT position the server put in the event, NOT
+	 * originX_ + the event's own offset. The offset is measured against
+	 * the window's position when the SERVER generated the event, and
+	 * retarget() MOVES this popup under the pointer — so every motion
+	 * already in flight was measured against the previous origin, and the
+	 * sum overshot by the distance the popup had just travelled. That is
+	 * the single frame of the wrong menu: sliding from the application
+	 * menu to View flashed the menu one title further right. x_root is
+	 * measured from the root and cannot drift. (It also removes the
+	 * pt->px scaling the offset would need: e.x is in this view's POINTS
+	 * while every root position here is pixels.) */
 	if (host_->hasTrackHandler()) {
-		Application &app = Application::shared();
-		double ppt = app.pxPerPt();
-		MenuTrack t = host_->trackAt(
-			host_->originX() + (int) (e.x * ppt + 0.5),
-			host_->originY() + (int) (e.y * ppt + 0.5));
+		MenuTrack t = host_->trackAt(e.rootXPx, e.rootYPx);
 
 		if (t.menu) {
 			host_->retarget(t);

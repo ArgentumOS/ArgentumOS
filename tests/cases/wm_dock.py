@@ -340,6 +340,43 @@ class Case(BaseCase):
                        "clicking the app's own title dropped THAT title's "
                        "menu (menu:reset ran, menu:about did not)")
 
+            # ...and the SAME hover must not FLASH a menu it passed beyond.
+            # The bar is [Widget Zoo] [View] [Widgets], so sliding from the
+            # application menu onto the ADJACENT title (View) may open View
+            # and nothing else.  The popup MOVES under the pointer as it
+            # tracks, and the position it hands the menubar used to be
+            # reconstructed as its own origin + the event's offset - both
+            # measured against where the server saw the popup when it
+            # generated that event, i.e. the OLD position once the popup has
+            # moved.  The sum overshot by the distance just travelled, so one
+            # frame named the title one beyond the target: moving onto View
+            # showed Widgets.  The popup logs every menu it retargets to, so
+            # the log is the observable; the counts are snapshotted because a
+            # later step opens Widgets legitimately.
+            vx = (merged[1][0] + merged[1][1]) // 2	# View
+            wtrack = session.count(r'ARGENTUM-POPUP: tracked to "Widgets"')
+            wopen = session.count(r'ARGENTUM-POPUP: open "Widgets"')
+            monitor.park()
+            monitor.goto(ax, 15)
+            monitor.click()			# the application menu
+            monitor.goto(vx, 15)		# motion only: onto View
+            self.check("hover-onto-adjacent-title-does-not-flash-the-next",
+                       session.count(r'ARGENTUM-POPUP: tracked to "Widgets"') == wtrack
+                       and session.count(r'ARGENTUM-POPUP: open "Widgets"') == wopen,
+                       "sliding from the application menu onto View never opened "
+                       "the title beyond it (Widgets tracked %d->%d, opened %d->%d)"
+                       % (wtrack,
+                          session.count(r'ARGENTUM-POPUP: tracked to "Widgets"'),
+                          wopen,
+                          session.count(r'ARGENTUM-POPUP: open "Widgets"')))
+
+            # Leave the desktop as this gesture found it.  The popup holds
+            # the pointer, so a click away from its rows is what dismisses it
+            # (park() only MOVES - it would leave View's menu up, and the
+            # next step's opening click would be spent dismissing it).
+            monitor.goto(1700, 900)
+            monitor.click()
+
             # Mac-like menu tracking: open the application menu, then MOVE
             # the pointer onto the app's own menu WITHOUT clicking.  The popup holds the
             # pointer, so this motion reaches IT (not the bar) and the bar

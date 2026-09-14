@@ -418,6 +418,14 @@ struct KeyEvent {
 struct MouseEvent {
 	double x = 0;
 	double y = 0;
+	/* The pointer's ROOT position in PIXELS, taken straight from the X
+	 * event and NEVER rewritten. x/y above are the window's pixels until
+	 * the dispatcher converts them to the receiving view's POINTS, so they
+	 * are only meaningful to whoever they were addressed to; this pair is
+	 * the position the SERVER computed, which is what a handler needs when
+	 * the window itself may have moved since the event was generated. */
+	int rootXPx = 0;
+	int rootYPx = 0;
 	int button = 0;
 	unsigned int modifiers = 0;
 };

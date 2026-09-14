@@ -593,6 +593,8 @@ Application::run()
 			}
 			e.x = ev.xbutton.x;
 			e.y = ev.xbutton.y;
+			e.rootXPx = ev.xbutton.x_root;
+			e.rootYPx = ev.xbutton.y_root;
 			e.button = (int) ev.xbutton.button;
 			e.modifiers = mods_from_state(ev.xbutton.state);
 			if (w->contentView()) {
@@ -634,6 +636,8 @@ Application::run()
 
 				e.x = ev.xmotion.x;
 				e.y = ev.xmotion.y;
+				e.rootXPx = ev.xmotion.x_root;
+				e.rootYPx = ev.xmotion.y_root;
 				e.button = 0;
 				e.modifiers = mods_from_state(ev.xmotion.state);
 				w->dispatchMotionToContent(e);
