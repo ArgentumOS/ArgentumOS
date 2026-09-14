@@ -23,13 +23,19 @@ server's operation funnel, and Xfb is already the right base.
 ## What the probe established (`userland/tests/xcomp_probe.c`)
 
 Run in the guest against the live desktop, via the **xcb** Composite
-bindings — because the Xlib wrappers are **not built**: `libXcomposite`,
-`libXdamage`, `libXrender` and `libXfixes` are all absent from
-`third_party/x11` (only `libxcb-composite`, `libxcb-damage`,
-`libxcb-render` exist, generated from xcbproto). Staging two of those,
-`libX11-xcb` and `libxcb-composite`, was needed before the probe could
-even load — the staging rule said they were "deliberately left out until
-something links them", and now something does.
+bindings. That was forced at the time: **no** Xlib wrapper was built —
+`libXcomposite`, `libXdamage`, `libXrender` and `libXfixes` were all
+absent from `third_party/x11`, and only `libxcb-composite`,
+`libxcb-damage` and `libxcb-render` existed (generated from xcbproto).
+Staging two of those, `libX11-xcb` and `libxcb-composite`, was needed
+before the probe could load at all — the staging rule said they were
+"deliberately left out until something links them", and now something
+does.
+
+**`libXrender` has since been vendored** (see the resolved item at the
+end); that is what let the RENDER step below be exercised through the
+Xlib API. `libXcomposite` and `libXdamage` are still not vendored — the
+xcb bindings cover Composite, which is all this probe needed.
 
 ```
 XCOMP-EXT: Composite present=1
@@ -41,6 +47,10 @@ XCOMP-NAMEPIXMAP: OK
 XCOMP-COST-READBACK: 1920x1080 = 14994 ms/frame
 XCOMP-COST-BLEND: 200x150 over 1920x1080 = 0 ms/frame
 ```
+
+(Those two are readback and pixman-blend timings and involve no RENDER;
+they were re-measured after the vendoring as 16210 ms and 2 ms, so they
+are a property of this stack, not of a pre-`libXrender` build.)
 
 and, once `libXrender` was vendored (`XCOMP-RENDER-OK`):
 
@@ -74,12 +84,11 @@ Three things fall out:
    client's pixels come with them.
 3. **The client-side path is unusable, by measurement.** A full-screen
    `XGetImage` readback costs **~15 seconds per frame** (8.3 MB; ~0.5
-   MB/s). That kills the readback-and-blend-in-pixman route outright —
-   which was the only route available without Render. Compositing must be
-   **server-side** (Render composite of the named pixmaps onto the
-   overlay), which needs a Render client path: either vendor
-   `libXrender` (MIT, small, and the natural fit for an Xlib toolkit) or
-   drive `libxcb-render` directly.
+   MB/s). That kills the readback-and-blend-in-pixman route outright, so
+   compositing must be **server-side**: a RENDER composite of the named
+   pixmaps onto the overlay. That also settled the one dependency question
+   this probe raised — the Render client path — and `libXrender` is now
+   vendored for it (see below).
 
 Note the readback figure is so far outside plausible that it is worth its
 own look separately — 8 MB in 15 s is ~500x slower than a slow socket
