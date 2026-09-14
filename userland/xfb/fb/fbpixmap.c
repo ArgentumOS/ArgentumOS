@@ -27,6 +27,44 @@
 #include <stdlib.h>
 
 #include "fb.h"
+#include "os.h"
+
+/*
+ * system.xfb `pixdbg` (hw/xfb/configargs.c): pixmap accounting. "out" is
+ * bytes still held by live pixmaps - it must return to where it started when
+ * every window is gone. Off unless the key is set; one line per pixmap.
+ */
+extern int xfb_pixdbg_config;
+
+static long xfbPixdbgAlloc, xfbPixdbgFree;      /* counts */
+static long xfbPixdbgBytesAlloc, xfbPixdbgBytesFree;
+
+static void
+xfbPixdbgCreate(int w, int h, int depth, long bytes)
+{
+    if (!xfb_pixdbg_config)
+        return;
+    xfbPixdbgAlloc++;
+    xfbPixdbgBytesAlloc += bytes;
+    ErrorF("XFB-PIX create %dx%d d%d %ldB | n=%ld/%ld out=%ldB\n",
+           w, h, depth, bytes, xfbPixdbgAlloc, xfbPixdbgFree,
+           xfbPixdbgBytesAlloc - xfbPixdbgBytesFree);
+}
+
+static void
+xfbPixdbgDestroy(PixmapPtr p)
+{
+    long bytes = (long) p->devKind * p->drawable.height;
+
+    if (!xfb_pixdbg_config)
+        return;
+    xfbPixdbgFree++;
+    xfbPixdbgBytesFree += bytes;
+    ErrorF("XFB-PIX destroy %dx%d d%d %ldB | n=%ld/%ld out=%ldB\n",
+           p->drawable.width, p->drawable.height, p->drawable.depth, bytes,
+           xfbPixdbgAlloc, xfbPixdbgFree,
+           xfbPixdbgBytesAlloc - xfbPixdbgBytesFree);
+}
 
 PixmapPtr
 fbCreatePixmap(ScreenPtr pScreen, int width, int height, int depth,
@@ -54,6 +92,7 @@ fbCreatePixmap(ScreenPtr pScreen, int width, int height, int depth,
     pPixmap = AllocatePixmap(pScreen, datasize);
     if (!pPixmap)
         return NullPixmap;
+    xfbPixdbgCreate(width, height, depth, (long) datasize);
     pPixmap->drawable.type = DRAWABLE_PIXMAP;
     pPixmap->drawable.class = 0;
     pPixmap->drawable.pScreen = pScreen;
@@ -91,6 +130,7 @@ fbDestroyPixmap(PixmapPtr pPixmap)
 {
     if (--pPixmap->refcnt)
         return TRUE;
+    xfbPixdbgDestroy(pPixmap);
     FreePixmap(pPixmap);
     return TRUE;
 }

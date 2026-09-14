@@ -29,6 +29,27 @@
  * init. (configargs.c has no X headers, so int not Bool.) */
 int xfb_shadow_config = 1;
 
+/* system.xfb `pixdbg` key - count pixmap create/destroy in the fb layer and
+ * log each one with its size. DIAGNOSTIC ONLY, default OFF. It is how the
+ * compositor's per-window leak was separated from the SHM one: map forensics
+ * gives sizes, this gives a balance. (configargs.c has no X headers.) */
+int xfb_pixdbg_config = 0;
+
+static void
+xfb_apply_pixdbg_key(char **keys, config_value_t *values, size_t nkeys)
+{
+	size_t i;
+
+	for (i = 0; i < nkeys; i++) {
+		if (strcmp(keys[i], "pixdbg"))
+			continue;
+		if (values[i].type != CONFIG_TYPE_BOOL)
+			continue;
+		xfb_pixdbg_config = values[i].v.boolean;
+		break;
+	}
+}
+
 static void
 xfb_apply_shadow_key(char **keys, config_value_t *values, size_t nkeys)
 {
@@ -212,6 +233,7 @@ xfb_config_args(int *argcp, char ***argvp)
 		return;
 	}
 	xfb_apply_shadow_key(keys, values, nkeys);
+	xfb_apply_pixdbg_key(keys, values, nkeys);
 
 	/* Emit in table order; suppress a key whose option appears in the
 	 * real argv (per-key override). */

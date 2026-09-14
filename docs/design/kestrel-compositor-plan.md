@@ -165,9 +165,21 @@ the rule the other plans here follow.
 
   So: retained `[shm]` segments AND retained pixmap-sized `[mmap]` regions.
 
-  **NEXT: instrument the writer, not the map.** Count `AllocatePixmap` /
-  `FreePixmap` (and shm attach/detach) inside Xfb and compare allocs against
-  frees across the churn — that is decisive where sizes are merely suggestive.
+  **Instrumentation written: `system.xfb` `pixdbg` (default OFF).** It counts
+  pixmap create/destroy in `fb/fbpixmap.c` and logs each with its size and the
+  bytes still outstanding — a BALANCE, where the map gives only sizes. Built
+  and run with it on: the leak reproduced exactly (28,920 -> 43,836 kB) but
+  **not one `XFB-PIX` line reached the guest log**. Cause found:
+  `os/osinit.c` calls `LogInit(NULL, NULL)` — "No log file by default" — so
+  the server's `ErrorF` goes to its **stderr**, which the session redirects to
+  a file (the "Xfb.log" recipe), *not* to the serial console the harness reads.
+  The instrumentation was working; the probe read the wrong stream.
+
+  **NEXT: point the probe at that file** (`cat` the server's log wherever the
+  session sends Xfb's stderr), then the balance answers it: allocs == frees
+  with `out` returning to baseline => the pixmap path is clean and the
+  retention is elsewhere (shm/damage); allocs > frees => the pixmap path leaks
+  and the missing free is findable by size.
 
   *Acceptance as built:* the claim and redirect exist and are opt-in; with
   the default off the desktop is exactly what it was, and `wm_dock` is 52/52.
