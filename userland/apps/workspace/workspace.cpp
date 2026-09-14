@@ -14,9 +14,12 @@
  * colour is exactly the kind of thing that hides (the screen still looks
  * like a ramp).
  *
- * Not here yet, and both are W0b's: following a mode-set (the root resizes
- * and this surface is sized to it — Kestrel's own painter still handles that
- * until it is deleted), and a PNG wallpaper (S5.2h: no decoder).
+ * It follows a mode-set itself: the root resizes, the surface is sized to it
+ * (Xfb's mode changes are a root resize, not a window one). Kestrel used to
+ * do this for its own wallpaper window; W0b deleted that, so this is the only
+ * thing keeping the surface covering the screen.
+ *
+ * Not here yet: a PNG wallpaper (S5.2h: no decoder).
  */
 #include <argentum/argentum.h>
 #include <X11/Xlib.h>
@@ -86,6 +89,22 @@ public:
 };
 
 static DeskView *gDeskView = nullptr;
+static bool surfacePaint(int w, int h);
+
+/* A root resize is a mode-set: the surface is sized to the screen. Not
+ * consumed — returning false lets the toolkit keep processing the event. */
+static bool
+onEvent(void *xevent)
+{
+	XEvent *ev = (XEvent *) xevent;
+
+	if (ev->type == ConfigureNotify &&
+	    ev->xconfigure.window == DefaultRootWindow(dpy)) {
+		surfacePaint(DisplayWidth(dpy, DefaultScreen(dpy)),
+			     DisplayHeight(dpy, DefaultScreen(dpy)));
+	}
+	return false;
+}
 
 /* Declare this window the desktop BEFORE mapping it: the WM reads the marker
  * when it decides whether to frame the client, and by then it is too late. */
@@ -167,6 +186,10 @@ main()
 		std::fprintf(stderr, "WORKSPACE: no display\n");
 		return 1;
 	}
+
+	/* the root's size changes are OURS to follow now (W0b) */
+	XSelectInput(dpy, DefaultRootWindow(dpy), StructureNotifyMask);
+	app.setEventHook(onEvent);
 
 	if (!surfacePaint(DisplayWidth(dpy, DefaultScreen(dpy)),
 			  DisplayHeight(dpy, DefaultScreen(dpy)))) {

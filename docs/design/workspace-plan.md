@@ -272,7 +272,7 @@ seam; the log names the focused column and the selected row per key.
 
 ### W0 — the desktop surface moves to Workspace
 
-Status: **SPLIT 2026-09 into W0a + W0b** — as written this was not one
+Status: **DONE (2026-09) as W0a + W0b.** As written this was not one
 slice. "Workspace paints the wallpaper" turns out to need four things at
 once, and they fail differently:
 
@@ -331,12 +331,34 @@ WM cannot drift before W0b deletes the WM's copy.
 
 ### W0b — the hand-off: Kestrel stops painting
 
-Status: **PROPOSED.** Delete Kestrel's `DeskView` and `wallpaperInstall` and
-its mode-set resize path; the app's surface becomes the only one.
-*Acceptance:* the same checks pass with exactly one difference — the
-`KESTREL: wallpaper ...` line disappears and Workspace's is the one that
-reports the surface. That log line is the migration's whole proof: nothing
-looks different, and there is one painter fewer.
+Status: **DONE (2026-09).** Kestrel's `DeskView`, `wallpaperInstall`, its
+desk statics and its mode-set resize call are gone (zero references remain);
+`mixColor` stayed, because the frame chrome uses it. The app took the resize
+over in the same step — it selects `StructureNotifyMask` on the root and
+repaints from an event hook, which the toolkit hands *every* event first
+(`Application::run`: the hook "sees every event first") — so the surface
+follows a mode-set rather than being left covering part of the screen.
+
+*Acceptance, met:* the same 15 checks pass with exactly the one difference
+the slice predicted — the surface's report changes hands:
+
+```
+$ grep -c "KESTREL: wallpaper" guest.log
+0
+WORKSPACE: desktop surface 1920x1080 base=0x2288ee top=0x52a2f1 bot=0x1b6fc3
+KESTREL: desktop surface 0x200001 is the bottom of the stack (never framed)
+```
+
+The check itself changed hands with it: the case's `WALL_LINE` now reads the
+app's line (same fields, so the geometry checks that hang off it are
+untouched) and its message says whose dock and whose surface. That is the
+migration's whole proof: nothing looks different, and there is one painter
+fewer.
+
+**One thing this does NOT prove:** the resize path. The gate boots one
+resolution, so the root never resizes under it — the code is wired (the hook
+sees root events; the app selects them) but unexercised, and it is the one
+new path in this slice.
 
 ### W1 — the browser window, and a real directory read
 

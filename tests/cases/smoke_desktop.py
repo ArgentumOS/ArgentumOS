@@ -16,7 +16,11 @@ from harness import BaseCase, hex_rgb, luma_of
 
 DOCK_LINE = (r"KESTREL: dock (\w+) (\d+)x(\d+) at (\d+),(\d+) "
              r"tiles=(\d+) icon=(\d+)")
-WALL_LINE = (r"KESTREL: wallpaper (\d+)x(\d+) base=0x([0-9a-f]+) "
+# W0b: the SURFACE's report is the app's now. The wallpaper began as the WM's
+# own window (S5.2a) and moved to Workspace in W0; the dock line stays
+# Kestrel's, because the dock is the window manager's (D6). Same fields, so
+# the geometry checks below read it exactly as before.
+WALL_LINE = (r"WORKSPACE: desktop surface (\d+)x(\d+) base=0x([0-9a-f]+) "
              r"top=0x([0-9a-f]+) bot=0x([0-9a-f]+)")
 FATAL = r"KERNEL EXCEPTION|cannot map the page|Page Fault at 0x"
 XERR = r"X Error|BadWindow|BadMatch|BadValue|BadDrawable"
@@ -50,7 +54,8 @@ class Case(BaseCase):
         dock = re.search(DOCK_LINE, log)
         wall = re.search(WALL_LINE, log)
         self.check("wm-logged-its-layout", bool(dock and wall),
-                   "the WM reported its dock and wallpaper")
+                   "the session reported its layout: the dock from the WM, "
+                   "the desktop surface from Workspace")
 
         if shot and dock and wall:
             side = dock.group(1)

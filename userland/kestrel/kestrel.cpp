@@ -140,29 +140,6 @@ clockZoneLeft()
 	return (left < SYS_ZONE_W + 40) ? SYS_ZONE_W + 40 : left;
 }
 
-/* ---- S5.2a: the wallpaper surface ---------------------------------
- *
- * Kestrel owns the desktop, so it owns the wallpaper: an ordinary
- * Kestrel window at the BOTTOM of the stack, painted with the theme's
- * ramp through the toolkit's own draw path. Being a window (rather than
- * the root's background) is what makes an uncovered region a normal
- * Expose: the toolkit repaints exactly the damaged rect, so a window
- * move only redraws the strip of desktop it uncovered.
- *
- * The colour is configuration (Application::sessionBackground(),
- * i.e. window.background), so the desktop follows the theme, and the
- * ramp is parametric rather than an image — the S5.2 decision. A PNG
- * wallpaper is parked as S5.2h: BitmapImage has no loader.
- *
- * (A server-side PIXMAP as the root's background was tried first.
- * miPaintWindow does implement BackgroundPixmap, but Xfb's tiled fill of
- * the root background rendered as garbage stripes — see the S5.2a
- * record — so the desktop is a window.)
- */
-static ::Window deskX = 0;
-static argentum::Window *gDesk = nullptr;
-static int gDeskW = 0, gDeskH = 0;
-
 static std::uint32_t
 mixColor(std::uint32_t a, std::uint32_t b, unsigned int num)
 {
@@ -177,105 +154,6 @@ mixColor(std::uint32_t a, std::uint32_t b, unsigned int num)
 	unsigned int bl = (ab * (256 - num) + bb * num) >> 8;
 
 	return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (bl & 0xff);
-}
-
-/* The desktop's two endpoint tones: 22% toward white, 18% toward black.
- * Kept as functions so the WM's log and the painter cannot drift. */
-static std::uint32_t
-deskTop(std::uint32_t base)
-{
-	return mixColor(base, 0xffffff, 56);	/* 56/256 = 22% */
-}
-
-static std::uint32_t
-deskBot(std::uint32_t base)
-{
-	return mixColor(base, 0x000000, 46);	/* 46/256 = 18% */
-}
-
-/* The desktop's content: one vertical ramp off the session colour,
- * drawn as solid bands. A `fillLinearGradient` version rendered a smooth
- * ramp whose *start* colour matched the theme and whose *end* colour did
- * not (it reached R=255, which the theme's colours never contain) — so
- * the desktop does not depend on that path; see the S5.2a record. */
-class DeskView : public argentum::View {
-public:
-	void draw(argentum::GraphicsContext &g) override
-	{
-		argentum::Rect f = frame();
-		double ppt = argentum::Application::shared().pxPerPt();
-		int w = (int) (f.size.w * ppt + 0.5);
-		int h = (int) (f.size.h * ppt + 0.5);
-		std::uint32_t base =
-			argentum::Application::shared().sessionBackground();
-		const int band = 4;	/* ~0.3 luma per step: invisible */
-
-		if (w <= 0 || h <= 0)
-			return;
-
-		std::uint32_t top = deskTop(base);
-		std::uint32_t bot = deskBot(base);
-
-		for (int y = 0; y < h; y += band) {
-			int bh = (h - y < band) ? (h - y) : band;
-			unsigned int num = (unsigned int)
-				((long) y * 256 / (h > 1 ? h - 1 : 1));
-
-			g.fillRect(0, y, (unsigned) w, (unsigned) bh,
-				   mixColor(top, bot, num));
-		}
-	}
-};
-
-static DeskView *gDeskView = nullptr;
-
-static void
-wallpaperInstall(int w, int h)
-{
-	if (w <= 0 || h <= 0)
-		return;
-
-	double ppt = argentum::Application::shared().pxPerPt();
-
-	if (!gDesk) {
-		/* created BEFORE the menubar strip, so the strip is above it */
-		gDesk = new argentum::Window();
-		if (!gDesk->init("Argentum Desktop", 0, 0, (unsigned) w,
-				 (unsigned) h)) {
-			fprintf(stderr, "KESTREL: desktop init failed\n");
-			delete gDesk;
-			gDesk = nullptr;
-			return;
-		}
-		gDeskView = new DeskView();
-		gDesk->setContentView(gDeskView);
-		deskX = gDesk->xid();
-		/* mapped directly, like the strip: Kestrel's own chrome is
-		 * never managed (see manageClient's guard) */
-		XMapWindow(dpy, deskX);
-	} else if (w != gDeskW || h != gDeskH) {
-		XResizeWindow(dpy, deskX, (unsigned) w, (unsigned) h);
-	}
-
-	gDeskView->setFrame(
-		{ {0, 0}, { w / ppt, h / ppt } });
-	gDeskView->setNeedsDisplay();
-	gDesk->draw();
-	XSync(dpy, False);
-	/* the desktop is the bottom of the stack */
-	XLowerWindow(dpy, deskX);
-	XSync(dpy, False);
-
-	gDeskW = w;
-	gDeskH = h;
-{
-	std::uint32_t base =
-		argentum::Application::shared().sessionBackground();
-
-	printf("KESTREL: wallpaper %dx%d base=0x%06x top=0x%06x bot=0x%06x\n",
-	       w, h, base, deskTop(base), deskBot(base));
-}
-	fflush(stdout);
 }
 
 /* ---- frame chrome -------------------------------------------------- */
@@ -1027,12 +905,13 @@ manageClient(const XMapRequestEvent &ev)
 		fflush(stdout);
 		return;
 	}
-	if (ev.window == stripX || ev.window == deskX || ev.window == dockX) {
-		/* Kestrel's own chrome (the menubar strip, the desktop
-		 * surface): never managed. Mapped explicitly — under
-		 * SubstructureRedirect the server did not map it, and a WM
-		 * that drops its own map request leaves its chrome
-		 * invisible. */
+	if (ev.window == stripX || ev.window == dockX) {
+		/* Kestrel's own chrome (the menubar strip, the dock): never
+		 * managed. Mapped explicitly — under SubstructureRedirect
+		 * the server did not map it, and a WM that drops its own map
+		 * request leaves its chrome invisible. (The desktop surface
+		 * is not here any more: W0 moved it to Workspace, whose
+		 * window is a client the isDesktopWindow rule above takes.) */
 		XMapWindow(dpy, ev.window);
 		return;
 	}
@@ -1766,7 +1645,6 @@ kestrelHook(void *xevent)
 		if (nw != screenW || nh != screenH) {
 			screenW = nw;
 			screenH = nh;
-			wallpaperInstall(nw, nh);
 			if (stripX) {
 				XResizeWindow(dpy, stripX, (unsigned) nw,
 					      (unsigned) BAR_H);
@@ -2346,7 +2224,7 @@ clockTextWidth(const char *fmt)
 
 /* S5.2b: tick the clock. Runs on the idle beat, redraws only when the text
  * actually changes (once a minute), and logs the text so a run can see it
- * tick — the same trick the wallpaper tones use. */
+ * tick — the same trick the surface's tones use. */
 static void
 clockUpdate(bool force)
 {
@@ -2592,9 +2470,6 @@ main()
 	/* keep the handler installed: a stray error must log, not exit */
 	xerrCount = 0;
 
-	/* S5.2a: paint the desktop before any client can map */
-	wallpaperInstall(screenW, screenH);
-
 	/* S5.2c: the dock's settings (system.kestrel.conf since D6 — the dock
 	 * is the WM's), read BEFORE
 	 * anything is placed — the dock owns a column of the work area, so
@@ -2693,8 +2568,7 @@ main()
 			for (unsigned int i = 0; i < n; i++) {
 				XWindowAttributes a;
 
-				if (kids[i] == stripX || kids[i] == deskX ||
-				    kids[i] == dockX ||
+				if (kids[i] == stripX || kids[i] == dockX ||
 				    !XGetWindowAttributes(dpy, kids[i], &a) ||
 				    a.map_state != IsViewable ||
 				    a.override_redirect) {
