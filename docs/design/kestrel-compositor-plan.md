@@ -226,10 +226,35 @@ the rule the other plans here follow.
   experiment exonerated the shadow's rendering, NOT its damage. Damage remains
   in play.
 
-  **NEXT (small and decisive):** instrument the known bump sites — log
-  `refcnt++` for a pixmap whose size is the leaked one (1250x746) — so
-  whichever site fires for the redirect pixmap names the holder. Or, cheaper
-  first: check whether Xfb's root damage is what keeps a reference.
+  **Where the +1 comes from: LATER than allocation.** `compalloc.c` is
+  instrumented around the alloc, and allocation is clean:
+
+  ```
+  XFB-PIXREF after-compNewPixmap 1250x746 refcnt=1
+  XFB-PIXREF after-compSetPixmap 1250x746 refcnt=1
+  XFB-PIX dentry  1250x746 d24 refcnt=2      <- one destroy attempt, ends at 1
+  XFB-PIXREF realloc 1692x30 -> 1692x30 (old refcnt=1)   <- same size: no new pixmap
+  ```
+
+  **And it is EVERY redirected window, from boot** — the dock (`64x1050`), the
+  strip (`1692x30`/`1920x30`) and the app (`1250x746`) all arrive at destroy
+  with refcnt=2. Nothing redirected is ever freed: `free` is frozen at 6 from
+  the first frame and `out` climbs for the session's life. The 16x16 depth-1
+  pixmap climbing +1 *per window* is the same fault in miniature and points at
+  the window-setup path.
+
+  Ruled out by measurement, not argument:
+  - **damage** — `miext/` bumps no refcounts (`damage.c` only tests `== 1`);
+  - **our own clients** — Argentum/Kestrel use no XRender at all (plain core
+    protocol), so no client Picture is created on a window;
+  - **realloc** — `compReallocPixmap` logs same-size calls that create no
+    pixmap, so `cw->pOldPixmap` is not the leaked object.
+
+  **NEXT (small and decisive):** log the geometry at the remaining bump sites —
+  `dix/window.c:1230/1284` (background/border pixmap), `dix/pixmap.c:162`,
+  `render/picture.c:1168` (Picture on a pixmap), `dix/cursor.c:366` (cursor
+  bits). Whichever fires for `1250x746` names the holder; the cursor signal
+  says to look at the window-setup path first.
 
   **BUILD TRAP, cost two runs:** `make rootagfs` does NOT rebuild Xfb —
   `.build/x11/xfb/Xfb` has no source deps at that level (mk/20-userland.mk).

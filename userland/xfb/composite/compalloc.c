@@ -47,6 +47,14 @@
 
 #include "compint.h"
 
+extern int xfb_pixdbg_config;	/* hw/xfb/configargs.c: system.xfb `pixdbg` */
+
+#define XFB_PIXDBG(p, where) do { \
+	if (xfb_pixdbg_config) \
+		ErrorF("XFB-PIXREF %s %dx%d refcnt=%ld\n", (where), \
+		       (p)->drawable.width, (p)->drawable.height, (long) (p)->refcnt); \
+} while (0)
+
 static Bool
 compScreenUpdate(ClientPtr pClient, void *closure)
 {
@@ -612,12 +620,14 @@ compAllocPixmap(WindowPtr pWin)
         status = FALSE;
         goto out;
     }
+    XFB_PIXDBG(pPixmap, "after-compNewPixmap");
     if (cw->update == CompositeRedirectAutomatic)
         pWin->redirectDraw = RedirectDrawAutomatic;
     else
         pWin->redirectDraw = RedirectDrawManual;
 
     compSetPixmap(pWin, pPixmap, bw);
+    XFB_PIXDBG(pPixmap, "after-compSetPixmap");
     cw->oldx = COMP_ORIGIN_INVALID;
     cw->oldy = COMP_ORIGIN_INVALID;
     cw->damageRegistered = FALSE;
@@ -685,6 +695,10 @@ compReallocPixmap(WindowPtr pWin, int draw_x, int draw_y,
     pix_y = draw_y - bw;
     pix_w = w + (bw << 1);
     pix_h = h + (bw << 1);
+    if (xfb_pixdbg_config)
+        ErrorF("XFB-PIXREF realloc %dx%d -> %dx%d (old refcnt=%ld)\n",
+               pOld->drawable.width, pOld->drawable.height, pix_w, pix_h,
+               (long) pOld->refcnt);
     if (pix_w != pOld->drawable.width || pix_h != pOld->drawable.height) {
         pNew = compNewPixmap(pWin, pix_x, pix_y, pix_w, pix_h);
         if (!pNew)
