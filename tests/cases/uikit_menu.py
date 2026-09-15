@@ -94,12 +94,12 @@ class Case(BaseCase):
                    "(Small, Medium, Large)" % n)
 
         # pick the SECOND row: button -> menu -> row -> action, in one step.
-        # The menu is a WINDOW, so its content starts below the window's
-        # chrome, exactly as the board's own rows sit 22pt down from ZOO-WIN.
-        chrome = 22
+        # NO chrome offset: a menu is BORDERLESS, so its view IS the surface and
+        # the rows start at the reported point. (Adding the board's 22pt here
+        # over-reaches by exactly one row - which is how this check first read
+        # "Large" when it was aiming at "Medium".)
         t0 = len(session.log_text())
-        mon.click_at(int(x + 40),
-                     int(screen_h - (y + chrome + rowh * 1.5)), settle=0.8)
+        mon.click_at(int(x + 40), int(screen_h - (y + rowh * 1.5)), settle=0.8)
         session.wait_for(r"ZOO-POPUP", 15)
         got = [l for l in session.output_since(t0).splitlines()
                if l.startswith("ZOO-POPUP")]

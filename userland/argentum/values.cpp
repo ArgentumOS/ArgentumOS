@@ -1759,11 +1759,14 @@ Menu::popUp(const Point &atScreen)
 		return;
 	}
 	MenuView *mv = new MenuView(this);
+	View *content = new View();	/* the window needs one: Cocoa's always
+					 * has a content view, this toolkit's is the
+					 * app's to set and a fresh window has none */
 
 	mv->setFrame(Rect{ { 0, 0 }, { width, height } });
-	if (View *content = w.contentView()) {
-		content->addSubview(mv);
-	}
+	content->addSubview(mv);
+	/* this sizes the content to the window's content rect, and owns it */
+	w.setContentView(content);
 	Application *app = Application::sharedApplication();
 
 	app->addWindow(&w);
