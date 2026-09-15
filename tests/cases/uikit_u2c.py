@@ -284,6 +284,23 @@ class Case(BaseCase):
                    "the board ran to its own end: status %s (expected 0); "
                    "tail: %s" % (status, session.tail()))
 
+        # THE SERVER IS STILL ALIVE AND STILL DRAWING. A shadow that stops
+        # draining shows up as a screen that stops changing: the toolkit runs
+        # on and nothing reaches the framebuffer - even the pointer stops.
+        # The count of changed pixels is not subtle about it: a window
+        # appearing moves ~100000 of them, a frozen screen moves none.
+        shot_a = session.shot("after-exit")
+        session.run("%s 5 &" % ZOO)
+        deadline = time.time() + 60
+        while time.time() < deadline and session.count(r"ZOO-READY") < 2:
+            time.sleep(0.25)
+        shot_b = session.shot("after-second")
+        changed = shot_a.diff(shot_b)
+        self.check("screen-still-updates-after-exit", changed > 1000,
+                   "reopening the board after the first one exited changed %d "
+                   "pixels; a frozen screen changes none, pointer included"
+                   % changed)
+
         self.check("board-still-alive",
                    "ZOO-TIMEOUT" in session.output_since(mark)
                    or "ZOO-CLOSED" in session.output_since(mark)
