@@ -72,6 +72,102 @@ View::View()
 {
 }
 
+/* ---- the layout lifecycle (U0b) -------------------------------------- */
+
+void
+View::setFrame(const Rect &r)
+{
+	double oldW = frame_.size.w;
+	double oldH = frame_.size.h;
+
+	frame_ = r;
+	if (oldW == r.size.w && oldH == r.size.h) {
+		return;
+	}
+	/* springs/struts: a child whose mask is on follows its superview's
+	 * size (Cocoa: resizeSubviewsWithOldSize:) ... */
+	double dw = r.size.w - oldW;
+	double dh = r.size.h - oldH;
+
+	for (View *c : children_) {
+		if (!c->translatesMask_) {
+			/* ... and a constrained child is left to the solver */
+			c->setNeedsLayout();
+			continue;
+		}
+		/* distribute the delta over the FLEXIBLE parts, equally, with
+		 * the remainder carried — the classic autoresize algorithm */
+		unsigned int m = c->mask_;
+
+		if (m == AutoresizingNone) {
+			continue;	/* not sizable: keep size and position */
+		}
+		double x = c->frame_.origin.x;
+		double y = c->frame_.origin.y;
+		double w = c->frame_.size.w;
+		double h = c->frame_.size.h;
+
+		if (dw != 0) {
+			double parts[3] = { (m & AutoresizingMinXMargin) ? 1.0 : 0.0,
+					    (m & AutoresizingWidthSizable) ? 1.0 : 0.0,
+					    (m & AutoresizingMaxXMargin) ? 1.0 : 0.0 };
+			double flex = parts[0] + parts[1] + parts[2];
+			double left = parts[0] / flex * dw;
+			double grow = parts[1] / flex * dw;
+
+			x += left;
+			w += grow;
+		}
+		if (dh != 0) {
+			double parts[3] = { (m & AutoresizingMinYMargin) ? 1.0 : 0.0,
+					    (m & AutoresizingHeightSizable) ? 1.0 : 0.0,
+					    (m & AutoresizingMaxYMargin) ? 1.0 : 0.0 };
+			double flex = parts[0] + parts[1] + parts[2];
+			double top = parts[0] / flex * dh;
+			double grow = parts[1] / flex * dh;
+
+			y += top;
+			h += grow;
+		}
+		c->frame_ = Rect{ { x, y }, { w, h } };
+	}
+	setNeedsLayout();
+}
+
+void
+View::setNeedsLayout()
+{
+	needsLayout_ = true;
+}
+
+bool
+View::needsLayout() const
+{
+	return needsLayout_;
+}
+
+void
+View::layout()
+{
+	/* the override point: nothing by default */
+}
+
+void
+View::layoutSubtreeIfNeeded()
+{
+	/* 1. satisfy the constraints of this subtree (a no-op when nothing
+	 *    here is constraint-based) */
+	layoutSolve(this);
+	/* 2. the class's own layout hook, then the children's */
+	if (needsLayout_) {
+		layout();
+	}
+	for (View *c : children_) {
+		c->layoutSubtreeIfNeeded();
+	}
+	needsLayout_ = false;
+}
+
 View::~View()
 {
 	removeFromSuperview();

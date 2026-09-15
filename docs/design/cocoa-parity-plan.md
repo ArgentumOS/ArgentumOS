@@ -242,10 +242,25 @@ of a constraint is its reference** (only the first item's variables move)
 and **each row moves one variable**, its first item's dominant one.
 Verified: `U0-OK`, gate 4/4.
 
-**U0b — the View lifecycle (next):** `setNeedsLayout`/
-`layoutSubtreeIfNeeded`, the autoresizing mask → constraint bridge, the
-window's layout pass, and the widget zoo's first constraint-laid-out
-control (the zoo returns with U2's first widget).
+**U0b — the View lifecycle. DONE (2026-09).** `setNeedsLayout`/
+`needsLayout`/`layoutSubtreeIfNeeded` and the `layout()` override point,
+plus the **autoresizing mask** (`AutoresizingMinXMargin` …,
+Cocoa's NSAutoresizingMaskOptions) and the springs/struts reflow on a
+superview size change (`setFrame` → `resizeSubviewsWithOldSize`
+semantics). The two paths meet where Cocoa puts them: a mask-ON child
+follows its superview's size, a mask-OFF child is left to the solver, and
+`layoutSubtreeIfNeeded()` solves the subtree's constraints and runs the
+`layout()` hooks. Gate `tests/cases/uikit_u0b.py` 4/4; the probe
+(`userland/tests/view_layout.cpp`) covers the flexible-width case, the
+flexible-right-margin case (the view stays put, the margin absorbs the
+delta), the three-way split, a constrained child, and `layout()` running
+once while dirty and not again when clean.
+
+**Next:** U1 — the missing bases (the `NSObject`-analog, the property
+tables for KVC, `NSNotificationCenter`, `NSViewController`/
+`NSWindowController`, `NSCell`/`NSActionCell`), which is also where the
+documentation rule pays off: every one of those classes lands with its
+page.
 
 ## 6. Status bookkeeping
 

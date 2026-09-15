@@ -257,6 +257,20 @@ const std::vector<LayoutConstraint *> &layoutActiveConstraints();
  * effort — Cocoa reports such conflicts and keeps the last good values). */
 bool layoutSolve(View *root);
 
+/// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each
+/// bit marks one margin or size as FLEXIBLE, so a superview resize is
+/// absorbed by the parts that carry a bit. A view with no bits set is not
+/// sizable — it keeps its size and its top-left distance.
+enum AutoresizingMask : unsigned int {
+	AutoresizingNone		= 0,
+	AutoresizingMinXMargin		= 1u << 0,	///< left margin flexes
+	AutoresizingWidthSizable	= 1u << 1,	///< width flexes
+	AutoresizingMaxXMargin		= 1u << 2,	///< right margin flexes
+	AutoresizingMinYMargin		= 1u << 3,	///< top margin flexes
+	AutoresizingHeightSizable	= 1u << 4,	///< height flexes
+	AutoresizingMaxYMargin		= 1u << 5,	///< bottom margin flexes
+};
+
 /* ---- View (U0: the first class of the new layer) --------------------
  *
  * @purpose The base of every drawable, interactive object: a rectangle
@@ -297,8 +311,11 @@ public:
 	View *superview() const { return parent_; }
 	const std::vector<View *> &subviews() const { return children_; }
 
-	/* frame (pt, in the superview's space) */
-	void setFrame(const Rect &r) { frame_ = r; }
+	/// Set the frame (points, in the superview's space). A SIZE change
+	/// reflows this view's children whose masks are on (springs/struts,
+	/// Cocoa's resizeSubviewsWithOldSize) and marks the constrained ones
+	/// as needing layout; a pure move changes nothing else.
+	void setFrame(const Rect &r);
 	Rect frame() const { return frame_; }
 	Rect bounds() const { return Rect{ { 0, 0 }, frame_.size }; }
 	void setHidden(bool hidden) { hidden_ = hidden; }
@@ -310,6 +327,42 @@ public:
 	void setIdentifier(const char *utf8);
 	const char *identifier() const { return identifier_.c_str(); }
 	View *viewWithIdentifier(const char *utf8);	/* pre-order, from here */
+
+	/* ---- the layout lifecycle (U0b) ---------------------------------
+	 * Cocoa's protocol, at the size this milestone needs:
+	 *
+	 *   setNeedsLayout()          mark this view as needing layout
+	 *   layoutSubtreeIfNeeded()   perform layout for this subtree now
+	 *   layout()                  the override point (default: nothing)
+	 *
+	 * The springs/struts path and the constraint path meet here: when a
+	 * view's SIZE changes, its children whose
+	 * translatesAutoresizingMaskIntoConstraints() is TRUE are reflowed
+	 * from their masks immediately (resizeSubviewsWithOldSize, as in
+	 * Cocoa), and the constraint-based ones are marked for the next
+	 * layout pass. layoutSubtreeIfNeeded() then solves the constraints
+	 * of the subtree and runs the layout() hooks.
+	 */
+	/// Mark this view as needing layout: the next layoutSubtreeIfNeeded()
+	/// run on it or an ancestor calls layout().
+	void setNeedsLayout();
+	/// True while this view is marked as needing layout.
+	bool needsLayout() const;
+	/// Perform layout for this subtree NOW if it is dirty: solve this
+	/// subtree's constraints, run layout() for every view that needs it,
+	/// then recurse into the children.
+	void layoutSubtreeIfNeeded();
+
+	/// The layout override point: called during layoutSubtreeIfNeeded()
+	/// when this view needs layout. The default does nothing; a subclass
+	/// positions its children here (or uses constraints instead).
+	/// The layout override point (see above).
+	virtual void layout();
+
+	/// The springs/struts mask. Meaningful only while
+	/// translatesAutoresizingMaskIntoConstraints() is TRUE.
+	unsigned int autoresizingMask() const { return mask_; }
+	void setAutoresizingMask(unsigned int mask) { mask_ = mask; }
 
 	/* ---- Auto Layout (U0) ------------------------------------------
 	 * A view participates in the constraint pass only while its
@@ -347,6 +400,8 @@ private:
 	Rect frame_;
 	bool hidden_ = false;
 	bool translatesMask_ = true;	/* U0: the mask stands in until off */
+	bool needsLayout_ = false;	/* U0b */
+	unsigned int mask_ = AutoresizingNone;	/* U0b: springs/struts */
 	std::string identifier_;
 	View *parent_ = nullptr;
 	std::vector<View *> children_;	/* non-owning, in z-order */
