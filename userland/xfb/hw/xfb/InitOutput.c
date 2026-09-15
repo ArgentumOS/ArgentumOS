@@ -293,7 +293,12 @@ xfbShadowBlockHandler(ScreenPtr pScreen, void *timeout)
         xfbShadowFlush(&xfbShadow);
     }
     pScreen->BlockHandler = xfbShadowPrevBlockHandler;
-    xfbShadowPrevBlockHandler(pScreen, timeout);
+    /* never walk a chain that leads back to us (see the hook-once note in
+     * xfbShadowEnable: this was a spin, not a chain) */
+    if (xfbShadowPrevBlockHandler
+        && xfbShadowPrevBlockHandler != xfbShadowBlockHandler) {
+        xfbShadowPrevBlockHandler(pScreen, timeout);
+    }
     pScreen->BlockHandler = xfbShadowBlockHandler;
 }
 
@@ -327,6 +332,22 @@ xfbShadowEnable(ScreenPtr pScreen, char *fb0, size_t stride,
     xfbShadow.width = width;
     xfbShadow.height = height;
 
+    /* HOOK ONCE. Screen init runs again whenever the screen is re-created -
+     * which is what happens when the last client goes away - and hooking a
+     * second time made xfbShadowPrevBlockHandler point at OUR OWN handler:
+     * the block handler then called itself, the server spun, and it stopped
+     * reading input (the kernel's mouse queue overflowed and dropped records)
+     * while the screen kept its last frame. A double hook is not a chain, it
+     * is a loop.
+     *
+     * And a screen being INITIALIZED is not one that is closing: the close
+     * hook sets xfbShadowClosing to stop re-arming during teardown, nothing
+     * ever cleared it, and so a re-initialized screen was told "never re-arm"
+     * for the rest of its life and never drained again. */
+    xfbShadowClosing = 0;
+    if (pScreen->BlockHandler == xfbShadowBlockHandler) {
+        return TRUE;
+    }
     xfbShadowPrevBlockHandler = pScreen->BlockHandler;
     pScreen->BlockHandler = xfbShadowBlockHandler;
     xfbShadowPrevCloseScreen = pScreen->CloseScreen;

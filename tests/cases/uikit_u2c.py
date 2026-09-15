@@ -272,6 +272,12 @@ class Case(BaseCase):
         # and a non-zero status, which a clean-looking console tail cannot
         # fake. The first instance must go, or two boards race for the
         # markers these checks read.
+        # THE EVIDENCE TO WATCH IS THE KERNEL'S, not the screen's: when Xfb
+        # hangs it stops reading its input devices and the mouse driver says so
+        # - "mouse: record dropped (queue full)". A screen that merely stopped
+        # draining would still be reading input, so that line is what tells a
+        # hang apart from a frozen shadow. From here on there must be none.
+        t_exit = len(session.log_text())
         session.run("killall WidgetZoo >/dev/null 2>&1")
         mark2 = len(session.log_text())
         session.run("%s 6; echo ZOO-EXIT=$?" % ZOO)
@@ -343,6 +349,11 @@ class Case(BaseCase):
         self.check("pointer-still-moves-after-close", moved > 100,
                    "after closing the window the pointer moved %d pixels (a "
                    "dead input path or a stopped drain changes none)" % moved)
+
+        self.check("input-not-overrunning-after-exits",
+                   "record dropped" not in session.output_since(t_exit),
+                   "no input record was dropped while the board exited and the "
+                   "pointer moved: tail %s" % session.tail(3))
 
         self.check("board-still-alive",
                    "ZOO-TIMEOUT" in session.output_since(mark)
