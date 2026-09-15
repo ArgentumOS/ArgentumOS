@@ -582,10 +582,16 @@ Window::setFrame(const Rect &r)
 	}
 	if (!resized) {
 		/* a move is still a move: without telling X the window would
-		 * move in the model and stay put on screen */
+		 * move in the model and stay put on screen.
+		 *
+		 * XFlush, NOT XSync: a move happens once per motion event, and
+		 * XSync is a ROUND TRIP - one per event, with the client waiting
+		 * for the server to answer each time. A flush hands the request
+		 * over and returns. (Measured: the server is fine with either,
+		 * but a drag is a stream of these and only one of them scales.) */
 		XMoveWindow(gDpy, impl_->xwin, (int) r.origin.x,
 			    (int) r.origin.y);
-		XSync(gDpy, False);
+		XFlush(gDpy);
 		return;
 	}
 	double pp = impl_->pxPerPt;

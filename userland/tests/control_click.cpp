@@ -16,6 +16,7 @@
 #include <X11/Xlib.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <unistd.h>
 
@@ -63,8 +64,18 @@ now_s()
 }
 
 int
-main()
+main(int argc, char **argv)
 {
+	/* how long to stay up, in seconds: a gate that finishes early should
+	 * not wait out the full window */
+	double runFor = 90.0;
+
+	if (argc > 1) {
+		runFor = std::atof(argv[1]);
+		if (runFor <= 0) {
+			runFor = 90.0;
+		}
+	}
 	bool up = false;
 
 	for (int i = 0; i < 80 && !up; i++) {
@@ -143,7 +154,7 @@ main()
 	double lastOriginX = w.frame().origin.x;
 	double lastOriginY = w.frame().origin.y;
 
-	while (now_s() - t0 < 90.0) {
+	while (now_s() - t0 < runFor) {
 		bool had = w.pumpEvent();
 
 		w.displayIfNeeded();

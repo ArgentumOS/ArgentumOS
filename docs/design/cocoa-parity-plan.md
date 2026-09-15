@@ -263,14 +263,24 @@ as a compatibility path for un-migrated views, with a migration list.
     * **A chrome drag must be CAPTURED.** Testing `inChrome()` first meant
       the drag died as soon as the pointer left the titlebar — i.e. on any
       downward drag after one step.
-  **STILL BROKEN, isolated in `tests/cases/uikit_u2b_drag.py` (2 XFAILs,
-  not quietly skipped):** the drag's delta stops after the first motion
-  event and the probe then stops answering — a window MOVE
-  (`XMoveWindow`) inside the motion path wedges the client. Candidates to
-  separate, in order: the `XSync` after every move against Xfb's
-  asynchronous drain, or Xfb's own handling of a moving window. A pure
-  move also had to stop returning early in `setFrame` (it never told X at
-  all), which is what brought the wedge into view.
+  **THE DRAG IS VERIFIED TOO — and the "wedge" was never real.** The
+  first version of the drag case waited for the FIRST `U2B-MOVED` line and
+  compared it against the FINAL expected position, so it judged a drag
+  that was still in progress and called the still-arriving motion a
+  "wedge"; both candidates I recorded (the per-move `XSync`, Xfb's
+  handling of a moving window) were wrong. Two experiments settled it: a
+  raw-Xlib mover with no toolkit in the path
+  (`userland/tests/x_move.cpp`, now a permanent case
+  `tests/cases/xfb_move.py` 4/4) moves an EMPTY and a CONTENT-BEARING
+  window 20 times and the server never stops answering — so the server was
+  exonerated — while the drag's own log showed the window stepping with
+  the pointer and landing exactly on target. Reading the case's log was
+  what ended it: the evidence was there in the run I had already called a
+  failure. `tests/cases/uikit_u2b_drag.py` 5/5 now asserts the END of the
+  drag (30 steps, ending at `(80,60) -> (170,120)` for a (+90,+60) drag).
+  Two real fixes did come out of the hunt: a pure move must not return
+  early in `setFrame` (it never told X at all), and the move uses
+  `XFlush`, not a round trip, since a drag is a stream of them.
 
   **THE EARLIER BLOCKER, for the record: the test guest has no pointer
   input path.** The harness
