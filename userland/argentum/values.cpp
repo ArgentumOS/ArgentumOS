@@ -1524,4 +1524,76 @@ Application::terminate()
 	stopped_ = true;
 }
 
+
+/* ---- Event ----------------------------------------------------------- */
+
+Event
+Event::mouseEvent(EventType type, const Point &locationInWindow,
+		  unsigned int modifierFlags, double timestamp, long windowNumber,
+		  long eventNumber, int clickCount, double pressure)
+{
+	Event e;
+
+	e.type_ = type;
+	e.location_ = locationInWindow;
+	e.modifierFlags_ = modifierFlags;
+	e.timestamp_ = timestamp;
+	e.windowNumber_ = windowNumber;
+	e.eventNumber_ = eventNumber;
+	e.clickCount_ = clickCount;
+	e.pressure_ = pressure;
+	switch (type) {
+	case EventType::RightMouseDown:
+	case EventType::RightMouseUp:
+	case EventType::RightMouseDragged:
+		e.button_ = 1;
+		break;
+	case EventType::OtherMouseDown:
+	case EventType::OtherMouseUp:
+	case EventType::OtherMouseDragged:
+		e.button_ = 2;
+		break;
+	default:
+		e.button_ = 0;		/* left */
+		break;
+	}
+	return e;
+}
+
+Event
+Event::keyEvent(EventType type, const Point &locationInWindow,
+		unsigned int modifierFlags, double timestamp, long windowNumber,
+		const char *characters, const char *charactersIgnoringModifiers,
+		bool isARepeat, unsigned short keyCode)
+{
+	Event e;
+
+	e.type_ = type;
+	e.location_ = locationInWindow;
+	e.modifierFlags_ = modifierFlags;
+	e.timestamp_ = timestamp;
+	e.windowNumber_ = windowNumber;
+	e.characters_ = characters ? characters : "";
+	e.ignoring_ = charactersIgnoringModifiers ? charactersIgnoringModifiers
+						  : "";
+	e.isARepeat_ = isARepeat;
+	e.keyCode_ = keyCode;
+	return e;
+}
+
+Event
+Event::otherEvent(EventType type, const Point &locationInWindow,
+		  unsigned int modifierFlags, double timestamp,
+		  long windowNumber)
+{
+	Event e;
+
+	e.type_ = type;
+	e.location_ = locationInWindow;
+	e.modifierFlags_ = modifierFlags;
+	e.timestamp_ = timestamp;
+	e.windowNumber_ = windowNumber;
+	return e;
+}
+
 } /* namespace argentum */

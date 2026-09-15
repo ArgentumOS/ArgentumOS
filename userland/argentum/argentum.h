@@ -890,6 +890,152 @@ struct MouseEvent {
 
 /// A button's BEHAVIOUR type (Cocoa's NSButtonType, the subset the
 /// toolkit implements today).
+
+/// @purpose What kind of event an Event is. Cocoa's NSEventType.
+///
+/// The subset this toolkit can actually emit today is listed; the numbered
+/// gaps are deliberate so a future kind can take its Cocoa name rather than
+/// being appended at whatever value happens to come next.
+enum class EventType {
+	LeftMouseDown,
+	LeftMouseUp,
+	RightMouseDown,
+	RightMouseUp,
+	OtherMouseDown,
+	OtherMouseUp,
+	LeftMouseDragged,
+	RightMouseDragged,
+	OtherMouseDragged,
+	MouseMoved,
+	MouseEntered,
+	MouseExited,
+	KeyDown,
+	KeyUp,
+	FlagsChanged,
+	ScrollWheel,
+	CursorUpdate,
+	ApplicationDefined,
+	Periodic,
+};
+
+/// @purpose The modifier keys held during an event, as a bit set. Cocoa's
+/// NSEventModifierFlags.
+///
+/// The VALUES ARE COCOA'S - not the low bits - so that anything which records
+/// or compares them means the same thing Cocoa means.
+enum ModifierFlags {
+	ModifierCapsLock = 1 << 16,
+	ModifierShift = 1 << 17,
+	ModifierControl = 1 << 18,
+	ModifierOption = 1 << 19,
+	ModifierCommand = 1 << 20,
+	ModifierNumericPad = 1 << 21,
+	ModifierHelp = 1 << 22,
+	ModifierFunction = 1 << 23,
+};
+
+/// @purpose One event: a kind, where and when it happened, and the fields that
+/// kind carries. Cocoa's NSEvent.
+///
+/// It REPLACES the toolkit's two former substrates, MouseEvent and KeyEvent,
+/// whose split had no Cocoa counterpart: Cocoa has one event class with a type,
+/// not a struct per device.
+///
+/// @lifetime An event is a value; it owns its character strings and knows its
+/// window by number, not by pointer.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants Only the fields belonging to type() are meaningful; the
+/// factories set them and leave the rest at their defaults.
+///
+/// @see Application, Window
+class Event {
+public:
+	/// A mouse event (Cocoa's
+	/// +mouseEventWithType:location:modifierFlags:timestamp:windowNumber:
+	/// context:eventNumber:clickCount:pressure:).
+	static Event mouseEvent(EventType type, const Point &locationInWindow,
+				unsigned int modifierFlags, double timestamp,
+				long windowNumber, long eventNumber, int clickCount,
+				double pressure);
+
+	/// A key event (Cocoa's
+	/// +keyEventWithType:location:modifierFlags:timestamp:windowNumber:
+	/// context:characters:charactersIgnoringModifiers:isARepeat:keyCode:).
+	static Event keyEvent(EventType type, const Point &locationInWindow,
+			      unsigned int modifierFlags, double timestamp,
+			      long windowNumber, const char *characters,
+			      const char *charactersIgnoringModifiers, bool isARepeat,
+			      unsigned short keyCode);
+
+	/// An event of no particular device (Cocoa's +otherEventWithType:...).
+	static Event otherEvent(EventType type, const Point &locationInWindow,
+				unsigned int modifierFlags, double timestamp,
+				long windowNumber);
+
+	/// The kind.
+	EventType type() const { return type_; }
+	/// Where it happened, in the window's space (points).
+	const Point &locationInWindow() const { return location_; }
+	/// When, in seconds (Cocoa's timeIntervalSinceBoot).
+	double timestamp() const { return timestamp_; }
+	/// Which window, by number.
+	long windowNumber() const { return windowNumber_; }
+	/// A distinguishing number for this event (Cocoa's eventNumber).
+	long eventNumber() const { return eventNumber_; }
+
+	/// The modifier keys held (Cocoa's +[NSEvent modifierFlags]).
+	unsigned int modifierFlags() const { return modifierFlags_; }
+
+	/// Which button: 0 = left, 1 = right, 2 = other (Cocoa's numbering).
+	int buttonNumber() const { return button_; }
+	/// 1 for a single click.
+	int clickCount() const { return clickCount_; }
+	/// 0..1.
+	double pressure() const { return pressure_; }
+
+	/// The key's code (Cocoa's keyCode; here the X keysym, which is stable
+	/// and layout-independent).
+	unsigned short keyCode() const { return keyCode_; }
+	/// The text the key produces, UTF-8 ('' for a key that types nothing).
+	const char *characters() const { return characters_.c_str(); }
+	/// The same, ignoring modifiers other than Shift.
+	const char *
+	charactersIgnoringModifiers() const { return ignoring_.c_str(); }
+	/// True when this is an auto-repeat.
+	bool isARepeat() const { return isARepeat_; }
+
+	/// The wheel deltas (Cocoa's deltaX/deltaY).
+	double deltaX() const { return deltaX_; }
+	double deltaY() const { return deltaY_; }
+	/// The precise wheel deltas (Cocoa's scrollingDeltaX/Y).
+	double scrollingDeltaX() const { return scrollingDeltaX_; }
+	double scrollingDeltaY() const { return scrollingDeltaY_; }
+
+private:
+	EventType type_ = EventType::ApplicationDefined;
+	Point location_ = { 0, 0 };
+	double timestamp_ = 0;
+	long windowNumber_ = 0;
+	long eventNumber_ = 0;
+	unsigned int modifierFlags_ = 0;
+	int button_ = 0;
+	int clickCount_ = 1;
+	double pressure_ = 0;
+	unsigned short keyCode_ = 0;
+	std::string characters_;
+	std::string ignoring_;
+	bool isARepeat_ = false;
+	double deltaX_ = 0;
+	double deltaY_ = 0;
+	double scrollingDeltaX_ = 0;
+	double scrollingDeltaY_ = 0;
+};
+
+
+/// A button's BEHAVIOUR type (Cocoa's NSButtonType, the subset the
+/// toolkit implements today).
 enum class ButtonType {
 	/// Presses do not stick: the state is on while held only.
 	MomentaryPushIn,
