@@ -644,6 +644,167 @@ TextField::acceptsFirstResponder() const
 	return editable_;
 }
 
+/* THE COMMANDS. Each is the same work keyDown used to do by testing bools,
+ * reached the way Cocoa reaches it: a key binding turns the event into a
+ * command, and the control answers whether it handled it. */
+bool
+TextField::insertText(const char *text)
+{
+	TextFieldCell *c = fieldCell();
+
+	/* ARGENTUM_KEYLOG, stage 2: WHICH field is asked, whether it has a cell,
+	 * whether it is editable. Its frame identifies it against ZOO-AT. */
+	if (getenv("ARGENTUM_KEYLOG")) {
+		Rect f = frame();
+
+		std::printf("ARGENTUM-INSERT field=%.0f,%.0f %.0fx%.0f text=\"%s\" "
+			    "cell=%d editable=%d\n",
+			    f.origin.x, f.origin.y, f.size.w, f.size.h,
+			    text ? text : "", c ? 1 : 0, editable_ ? 1 : 0);
+		std::fflush(stdout);
+	}
+
+	if (!c || !editable_) {
+		return false;
+	}
+	c->insertText(text);
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::insertNewline()
+{
+	if (!fieldCell() || !editable_) {
+		return false;
+	}
+	sendAction();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::deleteBackward()
+{
+	TextFieldCell *c = fieldCell();
+
+	if (!c || !editable_) {
+		return false;
+	}
+	c->deleteBackward();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::deleteForward()
+{
+	TextFieldCell *c = fieldCell();
+
+	if (!c || !editable_) {
+		return false;
+	}
+	c->deleteForward();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::moveLeft(const Event &e)
+{
+	TextFieldCell *c = fieldCell();
+
+	(void) e;
+	if (!c || !editable_) {
+		return false;
+	}
+	c->moveLeft();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::moveRight(const Event &e)
+{
+	TextFieldCell *c = fieldCell();
+
+	(void) e;
+	if (!c || !editable_) {
+		return false;
+	}
+	c->moveRight();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::moveToBeginningOfLine()
+{
+	TextFieldCell *c = fieldCell();
+
+	if (!c || !editable_) {
+		return false;
+	}
+	c->moveToStart();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::moveToEndOfLine()
+{
+	TextFieldCell *c = fieldCell();
+
+	if (!c || !editable_) {
+		return false;
+	}
+	c->moveToEnd();
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextField::cancelOperation()
+{
+	/* Escape ends editing in a field editor, and this is not one: unhandled,
+	 * so the chain can decide. */
+	return false;
+}
+
+bool
+TokenField::insertNewline()
+{
+	commitEntry();
+	sendAction();		/* Return commits AND sends */
+	return true;
+}
+
+bool
+TokenField::insertText(const char *text)
+{
+	/* a comma commits WITHOUT sending: "a, b, c" is one edit, not three
+	 * actions (Cocoa's rule for a token field) */
+	if (text && std::strcmp(text, ",") == 0) {
+		commitEntry();
+		return true;
+	}
+	return TextField::insertText(text);
+}
+
+bool
+TokenField::deleteBackward()
+{
+	TokenFieldCell *c = tokenCell();
+
+	if (c && stringValue()[0] == '\0' && !c->tokens().empty()) {
+		/* backspace on an EMPTY entry takes the last token back */
+		c->removeLastToken();
+		setNeedsDisplay();
+		return true;
+	}
+	return TextField::deleteBackward();
+}
+
 Color
 TextField::caretColor() const
 {

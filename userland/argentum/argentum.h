@@ -2603,6 +2603,24 @@ public:
 
 	/// The class record (see Object::objectClass).
 	const ObjectClass *objectClass() const override { return &kClass; }
+	/// Cocoa's -insertNewline: on the focused field: Return commits.
+	bool insertNewline() override;
+	/// Cocoa's -insertText:.
+	bool insertText(const char *text) override;
+	/// Cocoa's -deleteBackward:.
+	bool deleteBackward() override;
+	/// Cocoa's -deleteForward:.
+	bool deleteForward() override;
+	/// Cocoa's -moveLeft:.
+	bool moveLeft(const Event &e) override;
+	/// Cocoa's -moveRight:.
+	bool moveRight(const Event &e) override;
+	/// Cocoa's -moveToBeginningOfLine:.
+	bool moveToBeginningOfLine() override;
+	/// Cocoa's -moveToEndOfLine:.
+	bool moveToEndOfLine() override;
+	/// Cocoa's -cancelOperation:.
+	bool cancelOperation() override;
 
 	/// A bezeled, single-line, editable-intent field with no text.
 	TextField();
@@ -2816,6 +2834,12 @@ public:
 
 	/// The class record (see Object::objectClass).
 	const ObjectClass *objectClass() const override { return &kClass; }
+	/// Cocoa's -insertNewline: Return commits the entry AND sends.
+	bool insertNewline() override;
+	/// Cocoa's -insertText: a comma commits the entry WITHOUT sending.
+	bool insertText(const char *text) override;
+	/// Cocoa's -deleteBackward: on an empty entry it takes the last token.
+	bool deleteBackward() override;
 
 	/// A token field with no tokens, sending on Return.
 	TokenField();

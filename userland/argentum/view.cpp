@@ -678,6 +678,14 @@ Responder::moveDown(const Event &e)
 bool
 Responder::doCommandBySelector(const char *selector)
 {
+	/* ARGENTUM_KEYLOG, stage 3: reaching here means NOBODY implemented the
+	 * command, so this line appearing for a command a control THINKS it
+	 * implements means its override is not being dispatched. */
+	if (getenv("ARGENTUM_KEYLOG")) {
+		std::printf("ARGENTUM-UNHANDLED-COMMAND %s\n",
+			    selector ? selector : "?");
+		std::fflush(stdout);
+	}
 	(void) selector;
 	return false;
 }
