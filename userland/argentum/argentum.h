@@ -1267,6 +1267,13 @@ public:
 	Rect contentRect() const;
 
 	/// The frame in points.
+	/// The stacking level (Cocoa's level).
+	int level() const;
+	/// Set it. MEANINGFUL ONLY BEFORE open(): X decides override-redirect at
+	/// creation, and the level is what decides it (see WindowLevel).
+	void setLevel(int l);
+
+	/// The window's frame, in screen points.
 	Rect frame() const;
 	/// Move and/or resize; a size change re-lays the content view.
 	void setFrame(const Rect &r);
@@ -3330,6 +3337,34 @@ private:
 ///
 /// @invariants At most one modal session runs at a time; stopModal() with no
 /// session does nothing.
+///
+/// @see Window, Menu
+/// @purpose How high a window stacks, as Cocoa's NSWindowLevel.
+///
+/// X HAS NO LEVELS, so this toolkit maps them: anything above Normal is created
+/// as an OVERRIDE-REDIRECT window, which is what lets a pop-up menu take input
+/// while it is over its own application's window. X decides that AT CREATION,
+/// so set the level before open() - which is also the order Cocoa's callers use.
+///
+/// @see Window, Menu
+enum WindowLevel {
+	/// Cocoa's NSNormalWindowLevel.
+	WindowLevelNormal = 0,
+	/// Cocoa's NSFloatingWindowLevel.
+	WindowLevelFloating = 3,
+	/// Cocoa's NSPopUpMenuWindowLevel.
+	WindowLevelPopUpMenu = 101,
+};
+
+/// @purpose The application object: the event loop, and the modal session that
+/// a menu or a panel runs in. Cocoa's NSApplication.
+///
+/// @lifetime The application is a singleton. It owns its own state and tracks
+/// windows without owning them, as AppKit does.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants At most one modal session runs at a time.
 ///
 /// @see Window, Menu
 class Application {

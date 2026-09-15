@@ -1742,6 +1742,11 @@ void
 Menu::popUp(const Point &atScreen)
 {
 	Window w;
+
+	/* a menu is a POP-UP: override-redirect, so it takes input while it is over
+	 * its own application's window. Set BEFORE open, because X decides it at
+	 * creation. */
+	w.setLevel(WindowLevelPopUpMenu);
 	double width = MenuView::preferredWidth(this);
 	double height = MenuView::preferredHeight(this);
 

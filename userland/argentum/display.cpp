@@ -759,6 +759,7 @@ static const double kTitleInsetPt = 10.0;
 struct Window::Impl {
 	XID xwin = 0;
 	bool open = false;
+	int level = WindowLevelNormal;	/* see WindowLevel */
 	double pxPerPt = 1.0;
 	unsigned int wPx = 0, hPx = 0;
 	XImage *ximg = nullptr;
@@ -975,9 +976,22 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 	if (impl_->wPx < 1 || impl_->hPx < 1) {
 		return false;
 	}
-	impl_->xwin = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-					  xPt, yPt, impl_->wPx, impl_->hPx,
-					  0, 0, 0);
+	{
+		/* XCreateWindow rather than the simple form, because
+		 * override_redirect CANNOT BE CHANGED AFTER CREATION: a level above
+		 * normal has to be decided here (see WindowLevel). */
+		XSetWindowAttributes attrs;
+
+		attrs.override_redirect =
+			(impl_->level != WindowLevelNormal) ? True : False;
+		attrs.background_pixel = 0;
+		attrs.border_pixel = 0;
+		impl_->xwin = XCreateWindow(
+			dpy, DefaultRootWindow(dpy), xPt, yPt, impl_->wPx,
+			impl_->hPx, 0, CopyFromParent, InputOutput,
+			CopyFromParent,
+			CWOverrideRedirect | CWBackPixel | CWBorderPixel, &attrs);
+	}
 	if (!impl_->xwin) {
 		return false;
 	}
@@ -1035,6 +1049,20 @@ bool
 Window::isOpen() const
 {
 	return impl_ && impl_->open;
+}
+
+int
+Window::level() const
+{
+	return impl_ ? impl_->level : WindowLevelNormal;
+}
+
+void
+Window::setLevel(int l)
+{
+	if (impl_) {
+		impl_->level = l;
+	}
 }
 
 void
