@@ -79,6 +79,13 @@ def member_docs(body):
             cur += " " + s
         if ";" in cur or "{" in cur:
             out.append({"sig": cur, "doc": "\n".join(pending).strip()})
+            # an inline definition's BODY is not a member list: skip to its
+            # closing brace, or the statements inside are reported as
+            # undocumented members
+            depth = cur.count("{") - cur.count("}")
+            while depth > 0 and i + 1 < len(body):
+                i += 1
+                depth += body[i].count("{") - body[i].count("}")
             pending, cur = [], None
         i += 1
     return out

@@ -713,6 +713,118 @@ private:
 	std::string action_;
 };
 
+/// @purpose A controller for one piece of UI: it owns a view, builds it
+/// when asked (Cocoa's lazy -loadView), and is the place an app's
+/// behaviour lives, so a view class stays a drawing/layout object and
+/// nothing else. Cocoa's NSViewController, which is the composition
+/// pattern the whole toolkit is built on.
+///
+/// @lifetime The controller OWNS its view (the destructor deletes it),
+/// whether the view came from loadView() or from setView(). It does NOT
+/// own its children or its represented object: those are non-owning
+/// references, as everywhere else in the tree.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants view() is lazy and idempotent: the first call runs
+/// loadView() (which must end by handing a view to setView()) and then
+/// viewDidLoad() exactly once; later calls return the same pointer. If
+/// loadView() leaves no view, view() answers nullptr and viewDidLoad() is
+/// NOT called — the subclass is broken, and the toolkit does not invent a
+/// view to hide it. Containment (addChild) is bookkeeping only: it does
+/// NOT put the child's view anywhere, because placement is the host's
+/// job (Cocoa's rule, and a classic surprise).
+///
+/// @see View, Cell
+class ViewController : public Object {
+public:
+	/// The class record KVC walks (Object <- ViewController).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A controller with no view yet.
+	ViewController();
+	/// Destroy the controller. It deletes its view and detaches from its
+	/// parent; its children are not deleted.
+	~ViewController() override;
+
+	/* ---- the view ---- */
+	/// The controller's view, created on first use (see the class's
+	/// @invariants).
+	View *view();
+	/// True once the view exists (call view() to create it).
+	bool isViewLoaded() const { return view_ != nullptr; }
+	/// The view if it has already been created, nullptr when not loaded
+	/// yet. Unlike view(), this does NOT create it.
+	View *viewIfLoaded() const { return view_; }
+	/// Take ownership of `v`: the controller deletes it. Replaces any
+	/// earlier view (which is deleted too).
+	void setView(View *v);
+	/// The override point that builds the view when it is first needed.
+	/// The default creates an empty View.
+	virtual void loadView();
+	/// Called once, right after the view first exists.
+	virtual void viewDidLoad();
+
+	/* ---- presentation hooks ----
+	 * A host calls these when it puts the view on screen and takes it
+	 * away again (a window, a tab view, a popover). NOTHING calls them
+	 * yet: the window layer is U8, and until it lands these are override
+	 * points with no driver.
+	 */
+	/// About to appear.
+	virtual void viewWillAppear();
+	/// Has appeared.
+	virtual void viewDidAppear();
+	/// About to disappear.
+	virtual void viewWillDisappear();
+	/// Has disappeared.
+	virtual void viewDidDisappear();
+
+	/* ---- containment (Cocoa's child view controllers) ---- */
+	/// Make `child` a child of this controller (detaching it from any
+	/// previous parent). Non-owning, and it does not place the view.
+	void addChild(ViewController *child);
+	/// Detach from the parent (non-owning: the parent does not delete it).
+	void removeFromParent();
+	/// The parent, or nullptr.
+	ViewController *parent() const { return parent_; }
+	/// The children, in the order they were added.
+	const std::vector<ViewController *> &children() const
+	{
+		return children_;
+	}
+
+	/* ---- identity ---- */
+	/// A title for the UI that presents this controller.
+	const char *title() const { return title_.c_str(); }
+	/// Set the title.
+	void setTitle(const char *utf8);
+	/// The controller's name ('' when anonymous).
+	const char *identifier() const { return identifier_.c_str(); }
+	/// Set the identifier.
+	void setIdentifier(const char *utf8);
+	/// The object this controller speaks for (non-owning).
+	Object *representedObject() const { return represented_; }
+	/// Set the represented object (non-owning).
+	void setRepresentedObject(Object *o) { represented_ = o; }
+	/// The size the controller would like its content to have.
+	Size preferredContentSize() const { return preferred_; }
+	/// Set the preferred content size.
+	void setPreferredContentSize(const Size &s) { preferred_ = s; }
+
+private:
+	View *view_ = nullptr;
+	ViewController *parent_ = nullptr;
+	std::vector<ViewController *> children_;
+	std::string title_;
+	std::string identifier_;
+	Object *represented_ = nullptr;
+	Size preferred_ = { 0, 0 };
+};
+
 /// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each
 /// bit marks one margin or size as FLEXIBLE, so a superview resize is
 /// absorbed by the parts that carry a bit. A view with no bits set is not

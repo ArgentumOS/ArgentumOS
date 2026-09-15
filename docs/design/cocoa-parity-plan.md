@@ -160,15 +160,41 @@ as a compatibility path for un-migrated views, with a migration list.
   / `sendAction` walk it as `valueForKey` walks the property tables) — the
   toolkit's stand-in for `@selector`, which menus and the responder chain
   will use. Gate `tests/cases/uikit_u1c.py` 4/4 (36 assertions).
-  **Remaining in U1:** `NSViewController` /
-  `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
-  path.
-- **U1 (plan wording) — the missing bases + property tables.** `NSObject`-analog base
-  (class name, description), the **property tables** (name → get/set,
-  class-chain lookup) with `valueForKey`/`setValueForKey`, key paths and
-  the array operators, then `NSNotificationCenter`, `NSViewController` +
-  `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
-  path. Gate: a property is read and written by name through the class
+  **U1d — `ViewController`. DONE.** Lazy `view()` (the first call runs
+  `loadView()`, which must hand a view to `setView()`, and then
+  `viewDidLoad()` exactly once; a `loadView()` that leaves no view gets
+  no `viewDidLoad()` and a null answer — the toolkit does not invent a
+  view to hide a broken subclass), the controller **owning** its view
+  (deleted in the destructor, and a replaced view is deleted with it),
+  containment (`addChild`/`removeFromParent`/`parent`/`children`) that is
+  **bookkeeping only** — it does not place the child's view, which is the
+  host's job (Cocoa's rule and its classic surprise), plus
+  `title`/`identifier`/`representedObject`/`preferredContentSize` and the
+  `viewWillAppear`/`viewDidAppear`/`viewWillDisappear`/
+  `viewDidDisappear` override points, which **nothing drives yet** (the
+  window layer is U8). Gate `tests/cases/uikit_u1d.py` 4/4 (31
+  assertions).
+
+  **U1 IS COMPLETE.** The one U1 item NOT landed here is
+  `NSWindowController`, and that is a deliberate reconciliation:
+  its meaningful surface is window lifecycle and document ownership, and
+  this plan already assigns those to **U8** ("windows and controllers —
+  `NSPanel`, sheets, window styles, `NSWindowController` semantics") and
+  **U9** (the controller family). Landing a window controller before a
+  `Window` class exists would mean inventing API that U8 must then redo;
+  the class lands with its window. The **cell-based control path**
+  (`Control`) is likewise U2's first half, where the display path gives
+  `Cell::drawInFrame` something to draw into.
+- **U1 — the missing bases + property tables. COMPLETE (U1a–U1d).**
+  `NSObject`-analog base (class name, description, `isKindOf`), the
+  **property tables** (name → get/set, class-chain lookup) with
+  `valueForKey`/`setValueForKey` and key paths, `NSNotificationCenter` +
+  `NSNotification`, `NSCell`/`NSActionCell` with the **action tables**
+  (target/action by name, the `@selector` stand-in), and
+  `NSViewController`. `NSWindowController` moved to **U8** (its subject
+  is the window). The cell-based control path (`Control`) is U2's first
+  half. **Array operators** (`@count`, `@sum`, …) are NOT implemented:
+  they need the collection classes (U5), and are recorded as a U5 item. Gate: a property is read and written by name through the class
   chain (including an inherited one) and a key path resolves; a
   controller hosts a view tree; a notification reaches two observers; a
   cell-based Button fires through its cell.
@@ -292,11 +318,12 @@ flexible-right-margin case (the view stays put, the margin absorbs the
 delta), the three-way split, a constrained child, and `layout()` running
 once while dirty and not again when clean.
 
-**Next:** U1 — the missing bases (the `NSObject`-analog, the property
-tables for KVC, `NSNotificationCenter`, `NSViewController`/
-`NSWindowController`, `NSCell`/`NSActionCell`), which is also where the
-documentation rule pays off: every one of those classes lands with its
-page.
+**Next:** U2 — the display path, `Control` and the first real control
+(`Button`). U1 is closed: the base object + KVC (U1a), the notification
+center (U1b), the cell + target/action (U1c) and the view controller
+(U1d) all landed, each with its reference page, and the documentation
+rule paid off exactly as intended — every class arrived documented, with
+the coverage gate in the build catching the gaps (42 pages).
 
 ## 6. Status bookkeeping
 

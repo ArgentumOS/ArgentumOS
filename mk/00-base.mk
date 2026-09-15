@@ -241,7 +241,8 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 # the session in S0.2.
 ARGENTUM_SRCS = userland/argentum/text.cpp userland/argentum/object.cpp \
 	userland/argentum/notification.cpp userland/argentum/cell.cpp \
-	userland/argentum/view.cpp userland/argentum/layout.cpp
+	userland/argentum/viewcontroller.cpp userland/argentum/view.cpp \
+	userland/argentum/layout.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 
 $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h $(MUSL64_CXX)
