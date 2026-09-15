@@ -66,9 +66,10 @@ static const unsigned char hid2sc[0x64] = {
 	0x56, 0x80 | 0x5D, 0x00, 0x00
 };
 
-/* modifier usages 0xE0..0xE7 (sent via the report modifier byte; we also
- * emit press/release scancodes from the 6-key rollover list, so these are
- * only a fallback for keys not in the list) */
+/* modifier usages 0xE0..0xE7, indexed by their bit in report byte 0. These
+ * ARE the modifier path: a HID boot report keeps the eight modifiers in byte
+ * 0 and the rollover keys in bytes 2..7, and the key diff below reads only
+ * the latter - so without this table a modifier was never delivered at all. */
 static const unsigned char hidmod2sc[8] = {
 	0x1D, 0x2A, 0x38, 0x80 | 0x5B,	/* lctrl lshift lalt lgui */
 	0x80 | 0x1D, 0x36, 0x80 | 0x38, 0x80 | 0x5C	/* rctrl rshift ralt rgui */
@@ -81,6 +82,7 @@ struct usb_kbd {
 	struct usb_ring ring;
 	unsigned char *buf;	/* 8-byte boot report (kmalloc'd) */
 	unsigned char prev[6];
+	unsigned char prevMods;	/* the previous report's modifier byte (0) */
 	unsigned char *config;
 } kbd;
 
@@ -123,6 +125,25 @@ if(slotid != k->slotid || epid != k->epid) {
 		usb_kbd_submit(k);	/* retry */
 		return;
 	}
+
+	/* THE MODIFIER BYTE FIRST, and before the keys: the kernel folds Shift
+	 * and Ctrl into the key VALUE (drivers/char/keyboard.c), so a report
+	 * that carries both a modifier and a key - which is every shifted
+	 * keystroke - has to deliver the modifier press before the key press,
+	 * or the key is translated unshifted. This is also why Shift did nothing
+	 * at all on a USB keyboard before: byte 0 was never read. */
+	for(i = 0; i < 8; i++) {
+		if((k->buf[0] & (1 << i)) == (k->prevMods & (1 << i))) {
+			continue;
+		}
+		sc = hidmod2sc[i];
+		if(k->buf[0] & (1 << i)) {
+			kbd_process_scancode(sc & 0x7F, !!(sc & 0x80));
+		} else {
+			kbd_process_scancode((sc & 0x7F) | 0x80, !!(sc & 0x80));
+		}
+	}
+	k->prevMods = k->buf[0];
 
 	/* diff: keys in prev but not in buf -> release; in buf not prev -> press */
 	for(i = 0; i < 6; i++) {

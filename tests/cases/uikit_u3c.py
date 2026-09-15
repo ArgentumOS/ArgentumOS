@@ -90,6 +90,26 @@ class Case(BaseCase):
                          "so the focus IS taken). Next: log isFirstResponder() "
                          "from drawValue and read one run.")
 
+        # SHIFT, THROUGH THE REAL KEYBOARD PATH. mon.key() injects at the X
+        # level, so no gate has ever touched the kernel's scancode
+        # translation; QEMU's sendkey drives the EMULATED USB KEYBOARD, so the
+        # event goes usb-kbd -> HID report -> kernel (which folds Shift into
+        # the key value) -> the device node -> X. That path never read the
+        # report's modifier byte, so Shift did nothing on a real keyboard.
+        t5 = len(session.log_text())
+        mon.sendkey("shift-a")
+        session.wait_for(r"ZOO-EDIT", 20)
+        edits5 = re.findall(r"ZOO-EDIT (.*)", session.output_since(t5))
+        self.check("shift-reaches-the-kernel",
+                   any("A" in e for e in edits5[:3]),
+                   "after shift-a on the emulated keyboard the field's edit "
+                   "stream was %s: an unfolded key arrives as 'a', and no key "
+                   "at all means the emulated keyboard path is broken"
+                   % (edits5[:3] or "empty"))
+        # whatever the shifted key inserted is cleared before the typing
+        # checks below, which assert on the field's edit stream
+        mon.key("backspace", settle=0.4)
+
         # and then keys edit it
         for ch in "hi":
             mon.key(ch, settle=0.35)

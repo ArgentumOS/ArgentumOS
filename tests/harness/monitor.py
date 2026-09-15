@@ -129,6 +129,19 @@ class Monitor:
             self.key(ch, settle)
 
     # --- screen -------------------------------------------------------
+    def sendkey(self, keys, settle=0.08):
+        """Press and release a key ON THE GUEST'S OWN KEYBOARD.
+
+        `keys` is QEMU's syntax ("shift-a", "ctrl-alt-f1"), and the event
+        travels the REAL path: the emulated USB keyboard, the kernel's HID
+        report handling and scancode translation, then out through the device
+        node to X. `key()` below injects at the X level and bypasses every
+        one of those layers, which is why a modifier bug lived in them
+        unnoticed - a case that only ever types through X can never see it.
+        """
+        self.send("sendkey %s" % keys)
+        time.sleep(settle)
+
     def screendump(self, path, timeout=25):
         """Ask for a PPM and wait until the file has stopped growing."""
         try:
