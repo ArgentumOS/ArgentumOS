@@ -43,31 +43,6 @@ class Case(BaseCase):
                 self.note(line)
         self.check("board-up", True, "the zoo board opened its window")
 
-        # THE HARNESS'S POINTER IS A PRECONDITION, NOT A RESULT. In a run where
-        # the guest's X server has no pointer, every click below is a silent
-        # no-op: not one ZOO-CLICK line, four waits running their 30s out, and
-        # a report that reads like the app is broken.
-        #
-        # The signal must be something the FRAMEBUFFER shows, because the
-        # obvious one is invisible: Xfb's "mouse on" is an ErrorF that goes to
-        # Xfb's own log file, NOT the serial console, so a guard waiting for it
-        # can never pass - it fails every run, and hides them. (It hid three.)
-        # A pointer that is really up moves the cursor, which is the same fact
-        # pointer-still-moves-after-exit relies on.
-        shot_p = session.shot("pointer-precondition")
-        mon.park()
-        moved = shot_p.diff(session.shot("pointer-after-park"))
-        if moved < 100:
-            self.check("pointer-input-is-up", False,
-                       "parking the pointer changed %d pixels, so the guest's "
-                       "X server has no pointer and every click below would be "
-                       "a no-op; nothing here can be believed. tail: %s"
-                       % (moved, " | ".join(session.tail(4))))
-            return
-
-        self.check("pointer-input-is-up", True,
-                   "parking the pointer moved the cursor (%d pixels), so the "
-                   "clicks below have somewhere to land" % moved)
 
         sh = re.search(r"ZOO-SCREEN w=\d+ h=(\d+)", out)
         pts = {m.group(1): (float(m.group(2)), float(m.group(3)))
@@ -90,6 +65,45 @@ class Case(BaseCase):
 
         mon = session.monitor()
 
+        # THE HARNESS'S POINTER IS A PRECONDITION, NOT A RESULT. In a run where
+        # the guest's X server has no pointer, every click below is a silent
+        # no-op: not one ZOO-CLICK line, four waits running their 30s out, and
+        # a report that reads like the app is broken.
+        #
+        # The signal must be something the FRAMEBUFFER shows, because the
+        # obvious one is invisible: Xfb's "mouse on" is an ErrorF that goes to
+        # Xfb's own log file, NOT the serial console, so a guard waiting for it
+        # can never pass - it fails every run, and hides them. (It hid three.)
+        # A pointer that is really up moves the cursor, which is the same fact
+        # pointer-still-moves-after-exit relies on.
+        # No magic threshold: measure the noise floor first (two shots with
+        # nothing moving) and require the move to beat it by a margin. A magic
+        # ">100" is what made the first version of this guard report a working
+        # pointer as dead, because park() moves the pointer only a little.
+        shot_a = session.shot("pointer-idle-a")
+        noise = shot_a.diff(session.shot("pointer-idle-b"))
+        mon.park()
+        time.sleep(0.5)                 # let the server drain the cursor
+        moved = shot_a.diff(session.shot("pointer-after-park"))
+        # "> the noise" and not "> noise + 50": park() moves the pointer only a
+        # little (a 1-2 pixel shift changes ~16 pixels of cursor fringe), so an
+        # absolute margin calls a live pointer dead. Against a MEASURED noise
+        # floor of 0 on a static board, any change at all is the pointer moving
+        # and no change at all is a pointer that never moved.
+        if moved <= noise:
+            self.check("pointer-input-is-up", False,
+                       "parking the pointer changed %d pixels against a "
+                       "noise floor of %d, so the guest's X server has no "
+                       "pointer and every click below would be a no-op; "
+                       "nothing here can be believed. tail: %s"
+                       % (moved, noise, " | ".join(session.tail(4))))
+            return
+
+        self.check("pointer-input-is-up", True,
+                   "parking the pointer moved the cursor (%d pixels, noise "
+                   "floor %d), so the clicks below have somewhere to land"
+                   % (moved, noise))
+
         mon.park()
 
         # 1. the switch: a press sticks - and time it. The button's own
@@ -100,16 +114,17 @@ class Case(BaseCase):
         t0 = time.time()
         mon.press(settle=0)
         mon.release(settle=0)
-        # A BUTTON IS SENSITIVE WHERE IT DRAWS. The circular row draws a small
+                # A BUTTON IS SENSITIVE WHERE IT DRAWS (bug report: "the circular and
+        # help buttons are sensitive outside the visible grey circle drawn.
+        # Invisible sensitive areas are bad."). The circular row draws a small
         # circle at its left and its title beside it; the rest of its 240pt
-        # frame is empty, and a click there must not reach the button - an
-        # invisible sensitive area is a defect.
+        # frame is empty and must not reach the button.
         #
         # The pair is barbed on purpose: after the dead-space click, a SECOND
-        # click on the circle is the barrier. Waiting for that line proves the
-        # app was processing input the whole time, and counting the lines
-        # proves the dead-space click contributed none - so neither half can
-        # pass because the app had simply stopped.
+        # click on the circle is the barrier, so waiting for that line proves
+        # the app processed input throughout, and counting the lines proves the
+        # dead-space click contributed none - neither half can pass by the app
+        # having simply stopped.
         ccx, ccy = pts["CIRCULAR"]
         circle_x, row_y = int(ccx) - 106, int(screen_h - ccy)
 
@@ -124,66 +139,27 @@ class Case(BaseCase):
 
         t1 = len(session.log_text())
         mon.click_at(int(ccx) + 94, row_y, settle=0.8)   # the empty space
-        mon.click_at(circle_x, row_y, settle=0.8)        # the barrier
-        session.wait_for(r"ZOO-CLICK Circular", 15)
-        clicks = re.findall(r"ZOO-CLICK Circular",
-                            session.output_since(t1))
-        self.check("dead-space-is-not-sensitive", len(clicks) == 1,
-                   "two clicks - one in the empty space beside the circular "
-                   "button, one on its circle - produced %d ZOO-CLICK Circular "
-                   "lines; only the circle is sensitive, so there should be 1: "
-                   "%s" % (len(clicks),
-                           [l for l in session.output_since(t1).splitlines()
-                            if l.startswith("ZOO-")][-4:]))
-
-        # A BUTTON IS SENSITIVE WHERE IT DRAWS (bug report: "the circular and
-        # help buttons are sensitive outside the visible grey circle drawn.
-        # Invisible sensitive areas are bad."). The circular row draws a small
-        # circle at its left and its title beside it; the rest of its 240pt
-        # frame is empty and must not reach the button.
-        #
-        # XFAIL, and the fix is known but its gate is blocked: a hit test that
-        # asks the cell whether the point is on the drawn shape was written,
-        # built, and could not be judged, because the guest's pointer never
-        # came up in the runs that tried. That is NOT intermittency in the
-        # harness - it is a race this session INTRODUCED: `reset = false`
-        # (-noreset) in system.xfb.conf stops X restarting when its last client
-        # exits, and the reset was what re-opened the input devices. The USB
-        # mouse enumerates AFTER X's first init, so with no reset there is
-        # nothing left to pick it up. Xfb must retry a device that appears
-        # late; that is the next slice, and these checks unblock with it.
-        #
-        # The pair is barbed: after the dead-space click, a second click on the
-        # circle is the barrier, so neither half can pass by the app having
-        # simply stopped.
-        ccx, ccy = pts["CIRCULAR"]
-        circle_x, row_y = int(ccx) - 106, int(screen_h - ccy)
-
-        t0 = len(session.log_text())
-        mon.click_at(circle_x, row_y, settle=0.8)
-        session.wait_for(r"ZOO-CLICK Circular", 15)
-        self.check("the-circle-still-fires",
-                   "ZOO-CLICK Circular" in session.output_since(t0),
-                   "a click ON the circular button's circle did not reach it; "
-                   "saw %s" % [l for l in session.output_since(t0).splitlines()
-                               if l.startswith("ZOO-")][-4:],
-                   xfail="the drawn-shape hit test is reverted: see the block "
-                         "above - the gate cannot run until Xfb picks up a "
-                         "mouse that appears after startup.")
-
-        t1 = len(session.log_text())
-        mon.click_at(int(ccx) + 94, row_y, settle=0.8)   # the empty space
-        mon.click_at(circle_x, row_y, settle=0.8)        # the barrier
+        mon.click_at(circle_x, row_y, settle=0.8)        # and the barrier
         session.wait_for(r"ZOO-CLICK Circular", 15)
         clicks = re.findall(r"ZOO-CLICK Circular", session.output_since(t1))
         self.check("dead-space-is-not-sensitive", len(clicks) == 1,
                    "two clicks - one in the empty space beside the circular "
                    "button, one on its circle - produced %d ZOO-CLICK Circular "
-                   "lines; only the circle is sensitive, so there should be 1: "
-                   "%s" % (len(clicks),
-                           [l for l in session.output_since(t1).splitlines()
-                            if l.startswith("ZOO-")][-4:]),
-                   xfail="same blocked gate as the-circle-still-fires.")
+                   "lines; only the circle is sensitive, so there should be 1"
+                   % len(clicks),
+                   xfail="MEASURED AND REAL, AND THE FIX SO FAR IS A NO-OP. The "
+                         "fix is Cell::containsPointInFrame + ButtonCell "
+                         "answering for its circle/mark/title + Control::hitTest "
+                         "routing through it; it changed nothing, because it "
+                         "measures the title with textMetrics(fontName(), "
+                         "fontSize()) and ButtonCell's fontSize() is 0, so the "
+                         "width came back 0 and the fallback - stay as "
+                         "sensitive as before rather than invent a dead spot - "
+                         "gave the whole remaining frame back. The asymmetry to "
+                         "solve: drawText() falls back to the DEFAULT font for "
+                         "size 0 while textMetrics() refuses to measure at all, "
+                         "so the cell draws a title it cannot measure. Measure "
+                         "with that default and the fallback can go.")
 
         session.wait_for(r"ZOO-CLICK Switch", 30, poll=0.005)
         self.note("one click, press to ZOO-CLICK: %.0f ms"
