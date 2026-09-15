@@ -157,13 +157,46 @@ static int g_faceCount = 0;
 static void glyphCacheDropFace(FT_Face face);
 static void runCacheDropFace(FT_Face face);
 
+/* Report a failed face lookup: full detail for the first few, then a
+ * periodic count. See the call site for why this is rate-limited. */
+static void
+reportFaceFailure(const char *family, unsigned int px, bool bold,
+		  const char *why, int ftErr)
+{
+	static int shown = 0;
+	static int suppressed = 0;
+
+	if (shown < 4) {
+		shown++;
+		fprintf(stderr,
+			"ARGENTUM-TEXT: face lookup(%s) failed at %upx bold=%d: "
+			"%s (ft=%d), %d face(s) cached\n",
+			family, px, bold ? 1 : 0, why, ftErr, g_faceCount);
+		for (int i = 0; i < g_faceCount; i++) {
+			fprintf(stderr,
+				"ARGENTUM-TEXT:   cache[%d] %s %upx bold=%d\n",
+				i, g_faceCache[i].family, g_faceCache[i].px,
+				g_faceCache[i].bold ? 1 : 0);
+		}
+		return;
+	}
+	suppressed++;
+	if (suppressed % 250 == 0) {
+		fprintf(stderr, "ARGENTUM-TEXT: %d further face lookups failed "
+			"(same %s at %upx bold=%d)\n",
+			suppressed, family, px, bold ? 1 : 0);
+	}
+}
+
 /* Look up (family, px); on miss resolve via fontconfig + FreeType and
  * cache it. Returns the face or null. *firstResolve is set when this
  * call created the entry (callers log the 'matched' line once). */
 static FT_Face
 textLookupFace(const char *family, unsigned int px, FT_Library lib,
-	       FcPattern **matchRef, bool *firstResolve, bool bold)
+	       FcPattern **matchRef, bool *firstResolve, bool bold,
+	       const char **why, int *ftErr)
 {
+	*why = "hit";
 	int i;
 
 	*firstResolve = false;
@@ -181,6 +214,7 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
 	FcPattern *pat = FcNameParse((const FcChar8 *) family);
 
 	if (!pat) {
+		*why = "name-parse";
 		return nullptr;
 	}
 	/* ask fontconfig for the WEIGHT, not just the family: with only the
@@ -197,21 +231,56 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
 		if (match) {
 			FcPatternDestroy(match);
 		}
+		*why = "no-match";
 		return nullptr;
 	}
 	FcChar8 *file = nullptr;
 	int index = 0;
 
-	if (FcPatternGetString(match, FC_FILE, 0, &file) != FcResultMatch ||
-	    FcPatternGetInteger(match, FC_INDEX, 0, &index) !=
-		    FcResultMatch) {
+	if (FcPatternGetString(match, FC_FILE, 0, &file) != FcResultMatch) {
 		FcPatternDestroy(match);
+		*why = "no-file";
+		return nullptr;
+	}
+	if (FcPatternGetInteger(match, FC_INDEX, 0, &index) != FcResultMatch) {
+		FcPatternDestroy(match);
+		*why = "no-index";
 		return nullptr;
 	}
 	FT_Face face = nullptr;
 
-	if (FT_New_Face(lib, (char *) file, index, &face) || !face) {
+	/* The path fontconfig gave us, ONCE, and again just before FreeType
+	 * is handed it: if those two differ, the string was dangling (it
+	 * belongs to the pattern, and fontconfig may rebuild its config
+	 * behind us). FT_Err_Unknown_File_Format is what you get when what
+	 * you opened was not a font at all - a directory, or rubble. */
+	char pathCopy[512];
+	char pathAgain[512];
+
+	std::strncpy(pathCopy, (const char *) file, sizeof(pathCopy) - 1);
+	pathCopy[sizeof(pathCopy) - 1] = 0;
+	pathAgain[0] = 0;
+
+	FcChar8 *file2 = nullptr;
+
+	if (FcPatternGetString(match, FC_FILE, 0, &file2) == FcResultMatch
+	    && file2) {
+		std::strncpy(pathAgain, (const char *) file2,
+			     sizeof(pathAgain) - 1);
+		pathAgain[sizeof(pathAgain) - 1] = 0;
+	}
+	FT_Error fterr = FT_New_Face(lib, pathCopy, index, &face);
+
+	if (fterr || !face) {
+		fprintf(stderr, "ARGENTUM-TEXT: open failed: '%s' index %d "
+			"(re-read as '%s', %s) ft=%d\n",
+			pathCopy, index, pathAgain,
+			std::strcmp(pathCopy, pathAgain) == 0 ? "stable"
+							      : "CHANGED",
+			(int) fterr);
 		FcPatternDestroy(match);
+		*why = "ft-new-face";
+		*ftErr = (int) fterr;
 		return nullptr;
 	}
 	/* store (evict slot 0 when full) */
@@ -522,13 +591,20 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	 * face is borrowed — finish() must not destroy it) */
 	bool first = false;
 	FcPattern *matchRef = nullptr;
+	const char *why = nullptr;
+	int ftErr = 0;
 	FT_Face face = textLookupFace(
 		family, pixelSize, gFt,
-		&matchRef, &first, bold);
+		&matchRef, &first, bold, &why, &ftErr);
 
 	if (!face) {
-		fprintf(stderr, "ARGENTUM-TEXT: face lookup(%s) failed\n",
-			family);
+		/* A DIAGNOSTIC MUST NOT FLOOD. This used to print on every
+		 * draw - 2600 lines in one run - which buried the real fault
+		 * report and hid the shape of the failure: one face
+		 * resolving, then everything failing. The first few print in
+		 * full (with the branch that failed and the cache's
+		 * contents); the rest are counted and summarised every 250. */
+		reportFaceFailure(family, pixelSize, bold, why, ftErr);
 		textRunFinish(t);
 		return nullptr;
 	}
