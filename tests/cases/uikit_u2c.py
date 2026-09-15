@@ -50,7 +50,10 @@ class Case(BaseCase):
         # gate runs, and very nearly a working fix - which was reverted on the
         # strength of it. Say so at once instead. (When it fails, the other
         # pointer cases want the same guard.)
-        if not session.wait_for(r"Xfb: mouse on", 20):
+        # 45s: the USB pointer enumerates late on some boots, and waiting is
+        # free when it is already up. A late pointer ENDS the case rather
+        # than letting any click be believed.
+        if not session.wait_for(r"Xfb: mouse on", 45):
             self.check("pointer-input-is-up", False,
                        "the guest's X server never reported its pointer, so "
                        "every click below would be a no-op and no result here "
@@ -93,6 +96,91 @@ class Case(BaseCase):
         t0 = time.time()
         mon.press(settle=0)
         mon.release(settle=0)
+        # A BUTTON IS SENSITIVE WHERE IT DRAWS. The circular row draws a small
+        # circle at its left and its title beside it; the rest of its 240pt
+        # frame is empty, and a click there must not reach the button - an
+        # invisible sensitive area is a defect.
+        #
+        # The pair is barbed on purpose: after the dead-space click, a SECOND
+        # click on the circle is the barrier. Waiting for that line proves the
+        # app was processing input the whole time, and counting the lines
+        # proves the dead-space click contributed none - so neither half can
+        # pass because the app had simply stopped.
+        ccx, ccy = pts["CIRCULAR"]
+        circle_x, row_y = int(ccx) - 106, int(screen_h - ccy)
+
+        t0 = len(session.log_text())
+        mon.click_at(circle_x, row_y, settle=0.8)
+        session.wait_for(r"ZOO-CLICK Circular", 15)
+        self.check("the-circle-still-fires",
+                   "ZOO-CLICK Circular" in session.output_since(t0),
+                   "a click ON the circular button's circle did not reach it; "
+                   "saw %s" % [l for l in session.output_since(t0).splitlines()
+                               if l.startswith("ZOO-")][-4:])
+
+        t1 = len(session.log_text())
+        mon.click_at(int(ccx) + 94, row_y, settle=0.8)   # the empty space
+        mon.click_at(circle_x, row_y, settle=0.8)        # the barrier
+        session.wait_for(r"ZOO-CLICK Circular", 15)
+        clicks = re.findall(r"ZOO-CLICK Circular",
+                            session.output_since(t1))
+        self.check("dead-space-is-not-sensitive", len(clicks) == 1,
+                   "two clicks - one in the empty space beside the circular "
+                   "button, one on its circle - produced %d ZOO-CLICK Circular "
+                   "lines; only the circle is sensitive, so there should be 1: "
+                   "%s" % (len(clicks),
+                           [l for l in session.output_since(t1).splitlines()
+                            if l.startswith("ZOO-")][-4:]))
+
+        # A BUTTON IS SENSITIVE WHERE IT DRAWS (bug report: "the circular and
+        # help buttons are sensitive outside the visible grey circle drawn.
+        # Invisible sensitive areas are bad."). The circular row draws a small
+        # circle at its left and its title beside it; the rest of its 240pt
+        # frame is empty and must not reach the button.
+        #
+        # XFAIL, and the fix is known but its gate is blocked: a hit test that
+        # asks the cell whether the point is on the drawn shape was written,
+        # built, and could not be judged, because the guest's pointer never
+        # came up in the runs that tried. That is NOT intermittency in the
+        # harness - it is a race this session INTRODUCED: `reset = false`
+        # (-noreset) in system.xfb.conf stops X restarting when its last client
+        # exits, and the reset was what re-opened the input devices. The USB
+        # mouse enumerates AFTER X's first init, so with no reset there is
+        # nothing left to pick it up. Xfb must retry a device that appears
+        # late; that is the next slice, and these checks unblock with it.
+        #
+        # The pair is barbed: after the dead-space click, a second click on the
+        # circle is the barrier, so neither half can pass by the app having
+        # simply stopped.
+        ccx, ccy = pts["CIRCULAR"]
+        circle_x, row_y = int(ccx) - 106, int(screen_h - ccy)
+
+        t0 = len(session.log_text())
+        mon.click_at(circle_x, row_y, settle=0.8)
+        session.wait_for(r"ZOO-CLICK Circular", 15)
+        self.check("the-circle-still-fires",
+                   "ZOO-CLICK Circular" in session.output_since(t0),
+                   "a click ON the circular button's circle did not reach it; "
+                   "saw %s" % [l for l in session.output_since(t0).splitlines()
+                               if l.startswith("ZOO-")][-4:],
+                   xfail="the drawn-shape hit test is reverted: see the block "
+                         "above - the gate cannot run until Xfb picks up a "
+                         "mouse that appears after startup.")
+
+        t1 = len(session.log_text())
+        mon.click_at(int(ccx) + 94, row_y, settle=0.8)   # the empty space
+        mon.click_at(circle_x, row_y, settle=0.8)        # the barrier
+        session.wait_for(r"ZOO-CLICK Circular", 15)
+        clicks = re.findall(r"ZOO-CLICK Circular", session.output_since(t1))
+        self.check("dead-space-is-not-sensitive", len(clicks) == 1,
+                   "two clicks - one in the empty space beside the circular "
+                   "button, one on its circle - produced %d ZOO-CLICK Circular "
+                   "lines; only the circle is sensitive, so there should be 1: "
+                   "%s" % (len(clicks),
+                           [l for l in session.output_since(t1).splitlines()
+                            if l.startswith("ZOO-")][-4:]),
+                   xfail="same blocked gate as the-circle-still-fires.")
+
         session.wait_for(r"ZOO-CLICK Switch", 30, poll=0.005)
         self.note("one click, press to ZOO-CLICK: %.0f ms"
                   % ((time.time() - t0) * 1000.0))
