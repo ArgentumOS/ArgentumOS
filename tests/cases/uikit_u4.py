@@ -256,12 +256,20 @@ class Case(BaseCase):
         # also say what the frame's own middle reads, so a sample that has
         # missed the control entirely is obvious at a glance
         mid = shot.px(int(sx), int(sy))
+        # AND THE BRIGHTEST SPOKE'S WHOLE COLOUR, picked by argmax so this stays
+        # phase-independent: a component over 1 must SATURATE. Before the clamp
+        # in Color::rgb this read (255, 255, 12) - a wrapped blue - where white
+        # was meant, and it reads (255, 255, 255) after.
+        bx, by = SPOKE[lit.index(max(lit))]
+        top = shot.px(int(sx + 7.2 * bx), int(sy + 7.2 * by))
         self.check("spinner-spokes-vary-around-the-circle",
-                   max(lit) > min(lit) + 60,
+                   max(lit) > min(lit) + 60 and min(top) > 200,
                    "the spinner's twelve spokes read (green channel, from 0 "
-                   "degrees round): %s, and the centre reads %s - a gradient "
-                   "around the circle, so brightest and dimmest must differ"
-                   % (lit, mid))
+                   "degrees round): %s, the centre reads %s, and the "
+                   "brightest spoke's own colour is %s - a brightness gradient "
+                   "around the circle, and a component over 1 saturating rather "
+                   "than wrapping"
+                   % (lit, mid, top))
 
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but
