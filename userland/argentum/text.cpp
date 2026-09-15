@@ -37,6 +37,10 @@ namespace argentum {
 
 /* ---- the engine (this file owns its fontconfig + FreeType handles) --- */
 
+/* the family a caller gets by naming none (fontconfig resolves the
+ * generic name to the system's sans face) */
+#define TEXT_DEFAULT_FAMILY "sans-serif"
+
 static FT_Library gFt = nullptr;
 static bool gReady = false;
 /* px per point: the session sets it once the display is known (96 dpi
@@ -470,7 +474,16 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 		fprintf(stderr, "ARGENTUM-TEXT: text engine not inited\n");
 		return nullptr;
 	}
-	if (!family || !utf8 || pixelSize == 0) {
+	/* NAMING NO FAMILY MEANS THE DEFAULT ONE: passing '' (or nullptr) used
+	 * to return nullptr here, so the whole toolkit could not draw or
+	 * measure a single glyph unless the caller named a family - silently,
+	 * because a caller that gets no run draws nothing and looks fine. The
+	 * session's configured default family takes this over when the font
+	 * configuration lands. */
+	if (!family || !family[0]) {
+		family = TEXT_DEFAULT_FAMILY;
+	}
+	if (!utf8 || pixelSize == 0) {
 		return nullptr;
 	}
 
@@ -723,8 +736,11 @@ textMetrics(const char *family, double sizePt, const char *utf8, bool bold)
 {
 	TextMetrics m = { 0, 0, 0 };
 
-	if (!family || !utf8 || sizePt <= 0) {
+	if (!utf8 || sizePt <= 0) {
 		return m;
+	}
+	if (!family || !family[0]) {
+		family = TEXT_DEFAULT_FAMILY;	/* see textRunPrepare */
 	}
 	unsigned int pixelSize = (unsigned int)
 		((sizePt * gPxPerPt) + 0.5);

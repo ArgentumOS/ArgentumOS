@@ -1664,6 +1664,334 @@ private:
 	void notifyRadioGroup();
 };
 
+/* ---- U3: the text stack ----------------------------------------------
+ *
+ * Cocoa's model, three pieces, in the same places:
+ *
+ *   TextStorage    the characters and their attributes (a mutable
+ *                  attributed string that tells the layout when it changed)
+ *   TextContainer  the region the text flows into, and how it breaks
+ *   LayoutManager  the engine: storage + container -> lines, and drawing
+ *
+ * INDICES ARE UTF-8 BYTE OFFSETS, not Cocoa's UTF-16 units: the whole
+ * toolkit is UTF-8 (the engine shapes UTF-8, the helpers in text_utf8.h
+ * step by bytes), and pretending otherwise would need a conversion at
+ * every boundary. Character stepping is nextCharEnd()/prevCharStart().
+ */
+
+/// A font: family, size in points, and whether it is bold (Cocoa's
+/// NSFont). Italic is deliberately absent — the engine cannot shape it
+/// yet, and a flag that silently does nothing is worse than no flag.
+struct Font {
+	/// The family; '' means the session's default family.
+	std::string family;
+	/// The size in points.
+	double sizePt = 13.0;
+	/// Shape it bold.
+	bool bold = false;
+};
+
+/// The attributes one run of text carries (Cocoa's attribute dictionary,
+/// at the size this milestone needs).
+struct TextAttributes {
+	/// The font.
+	Font font;
+	/// The colour the run is drawn in.
+	Color color = Color::rgb(0.10, 0.10, 0.12);
+	/// Draw a line under the run.
+	bool underline = false;
+};
+
+/// One slice of text sharing one set of attributes (Cocoa's attribute
+/// run). Runs are kept sorted and non-overlapping by the storage.
+struct AttributeRun {
+	/// Where the run starts (a byte offset into the string).
+	int location = 0;
+	/// How long it is, in bytes.
+	int length = 0;
+	/// What it looks like.
+	TextAttributes attributes;
+};
+
+/// How a line ends when the text does not fit (Cocoa's NSLineBreakMode).
+enum class LineBreakMode {
+	/// Break between words; a word too long for a line breaks anyway.
+	WordWrap,
+	/// Break at the last character that fits.
+	CharWrap,
+	/// One line; whatever does not fit is clipped away.
+	Clip,
+	/// One line, with the HEAD replaced by an ellipsis.
+	TruncateHead,
+	/// One line, with the TAIL replaced by an ellipsis.
+	TruncateTail,
+	/// One line, with the MIDDLE removed.
+	TruncateMiddle,
+};
+
+/// One line the layout produced: what it holds and where it sits.
+struct TextLine {
+	/// The first character on the line (a byte offset).
+	int location = 0;
+	/// How many bytes of the string are on the line (the line break
+	/// itself is not part of it).
+	int length = 0;
+	/// The line's frame in the CONTAINER's coordinates.
+	Rect frame = { { 0, 0 }, { 0, 0 } };
+	/// The text actually SHOWN on the line when the layout had to
+	/// truncate it (a Clip/Truncate* container); empty when the line is
+	/// a plain slice of the storage, which is the normal case.
+	std::string text;
+};
+
+/// @purpose Text with attributes: the string and the runs that describe
+/// how to draw it. Cocoa's NSAttributedString. It knows nothing about
+/// layout or drawing — it is the model the rest of the stack reads.
+///
+/// @lifetime A plain value-like object (owned by whoever makes it); the
+/// TextStorage subclass is the one the layout watches.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants Indices are UTF-8 BYTE offsets. attributesAt() always
+/// answers: a character no run covers gets the default attributes, so
+/// text is never invisible for lack of a run. Runs are sorted and never
+/// overlap; addAttributes() rewrites the runs it covers.
+///
+/// @see TextStorage, LayoutManager
+class AttributedString : public Object {
+public:
+	/// The class record KVC walks (Object <- AttributedString).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty string.
+	AttributedString();
+	/// A string with the default attributes.
+	AttributedString(const char *utf8);
+	/// Destroy it: an attributed string owns only its own text and runs.
+	~AttributedString() override;
+
+	/// The characters (never nullptr).
+	const char *string() const { return text_.c_str(); }
+	/// The length in BYTES (see the section note).
+	int length() const { return (int) text_.size(); }
+	/// True when there are no characters.
+	bool isEmpty() const { return text_.empty(); }
+
+	/// Replace the characters (and the runs with them: the whole string
+	/// takes the default attributes).
+	void setString(const char *utf8);
+	/// The attributes in effect at `index`: the run covering it, or the
+	/// default attributes.
+	TextAttributes attributesAt(int index) const;
+	/// Give `length` bytes from `location` the attributes `a`.
+	void addAttributes(const TextAttributes &a, int location, int length);
+	/// Give the whole string the attributes `a`.
+	void setAttributes(const TextAttributes &a);
+	/// The attributes a character gets when no run covers it ('' family,
+	/// the default size and colour).
+	TextAttributes defaultAttributes() const { return default_; }
+	/// Set them.
+	void setDefaultAttributes(const TextAttributes &a);
+	/// How many attribute runs the string carries.
+	int runCount() const { return (int) runs_.size(); }
+	/// One run, by index (0..runCount()-1).
+	const AttributeRun &run(int index) const;
+	/// `length` bytes from `location` as a string (clamped, never throws).
+	std::string substring(int location, int length) const;
+
+protected:
+	std::string text_;
+	std::vector<AttributeRun> runs_;
+	TextAttributes default_;
+};
+
+/// @purpose An attributed string that can be EDITED: replacing characters
+/// bumps a change count, which is how the layout manager knows to lay the
+/// text out again. Cocoa's NSTextStorage.
+///
+/// @lifetime Owned by the layout manager that watches it (or by the app);
+/// it does not own anything.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants Every mutation bumps changeCount(), even one that changes
+/// nothing: a watcher compares counts, and a "smart" that skipped the
+/// bump would leave the layout stale. An edit shifts the runs after it by
+/// the delta, and text inserted at a point takes the attributes in effect
+/// there — attributes are NOT split around an edit beyond that, which is
+/// the documented v1 boundary (Cocoa is fussier: it splits runs at the
+/// edit's edges).
+///
+/// @see AttributedString, LayoutManager
+class TextStorage : public AttributedString {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty storage.
+	TextStorage();
+
+	/// Replace `length` bytes at `location` with `utf8`.
+	void replaceCharacters(int location, int length, const char *utf8);
+	/// Append `utf8` at the end.
+	void appendString(const char *utf8);
+	/// Insert `utf8` at `location`.
+	void insertString(int location, const char *utf8);
+	/// Remove `length` bytes at `location`.
+	void deleteCharacters(int location, int length);
+	/// How many edits have been made (the layout watches this).
+	int changeCount() const { return changeCount_; }
+
+private:
+	int changeCount_ = 0;
+
+	/* keep the runs consistent with an edit at [location, location+removed) */
+	void adjustRuns(int location, int removed, int inserted);
+};
+
+/// @purpose The region text flows into, and the rules it breaks by.
+/// Cocoa's NSTextContainer.
+///
+/// @lifetime Owned by the layout manager; it owns nothing.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The size is the area the text may occupy; the padding is
+/// taken off BOTH sides of it, so the text width is size.w - 2*padding
+/// (Cocoa's rule). A container with a size of 0 lays out one unlimited
+/// line — useful for measuring, and the documented way to ask "how wide
+/// is this text".
+///
+/// @see LayoutManager
+class TextContainer : public Object {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A container with no size (one unlimited line) and word wrapping.
+	TextContainer();
+
+	/// The area the text may occupy (points).
+	Size size() const { return size_; }
+	/// Set it.
+	void setSize(const Size &s) { size_ = s; }
+	/// The padding taken off both sides.
+	double lineFragmentPadding() const { return padding_; }
+	/// Set it.
+	void setLineFragmentPadding(double pt) { padding_ = pt; }
+	/// How lines break.
+	LineBreakMode breakMode() const { return mode_; }
+	/// Set it.
+	void setBreakMode(LineBreakMode m) { mode_ = m; }
+	/// The width text may actually use (size.w - 2*padding, never < 1).
+	double textWidth() const;
+
+private:
+	Size size_ = { 0, 0 };
+	double padding_ = 5.0;
+	LineBreakMode mode_ = LineBreakMode::WordWrap;
+};
+
+/// @purpose The engine: it lays a storage out in a container and answers
+/// questions about the result — how many lines, where they are, which
+/// character is at a point — and draws them. Cocoa's NSLayoutManager.
+///
+/// @lifetime The manager does NOT own its storage or its container; it
+/// holds references, and the app (or a text view) owns them. One manager
+/// serves one container in v1; Cocoa's multi-container flow (text
+/// spilling from one column to the next) is a later milestone.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants Layout is LAZY: asking a question lays the text out if the
+/// storage changed since the last pass (changeCount()), and edits never
+/// lay out on their own. Widths are summed from per-unit measurements
+/// (word by word, or character by character), so cross-unit kerning is
+/// not applied — the documented v1 boundary. truncate modes produce ONE
+/// line whose text is a truncated COPY; the storage itself is never
+/// modified by laying out.
+///
+/// @see TextStorage, TextContainer, TextView
+class LayoutManager : public Object {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A manager with no storage and no container.
+	LayoutManager();
+	/// Destroy the manager: it owns its LINES and nothing else — the
+	/// storage and the container are somebody else's.
+	~LayoutManager() override;
+
+	/// The text being laid out (non-owning).
+	TextStorage *textStorage() const { return storage_; }
+	/// Watch `s`.
+	void setTextStorage(TextStorage *s);
+	/// The region (non-owning).
+	TextContainer *textContainer() const { return container_; }
+	/// Use `c`.
+	void setTextContainer(TextContainer *c);
+
+	/// Lay out if the storage or the container changed. Every query below
+	/// calls this first, so a caller never has to.
+	void ensureLayout();
+	/// True when the next query will lay out again.
+	bool needsLayout() const;
+
+	/// How many lines the layout produced.
+	int lineCount() const;
+	/// One line (0..lineCount()-1). Invalid index: an empty line.
+	const TextLine &line(int index) const;
+	/// The extent the text occupies in the container.
+	Rect usedRect() const;
+	/// How far the text reaches vertically.
+	double usedHeight() const;
+	/// Which line a point (container coordinates) falls on; -1 when it is
+	/// above the text, the last line when it is below.
+	int lineIndexAt(const Point &p) const;
+	/// The character (byte offset) at a point: the nearest character on
+	/// the nearest line, so a click past the end of a line gives that
+	/// line's end (Cocoa's rule).
+	int characterIndexAt(const Point &p) const;
+	/// The line's text, as laid out (truncation included).
+	std::string lineString(int index) const;
+
+	/// Draw the laid-out text with `ctx`, its container origin at
+	/// `origin` (in the current view's points).
+	void drawInContext(Context &ctx, const Point &origin);
+
+private:
+	TextStorage *storage_ = nullptr;
+	TextContainer *container_ = nullptr;
+	std::vector<TextLine> lines_;
+	int laidOutChange_ = -1;
+	Size laidOutSize_ = { -1, -1 };
+	LineBreakMode laidOutMode_ = LineBreakMode::WordWrap;
+
+	void layout();
+	/* one line's worth, from `start`: how many bytes fit, and the width */
+	int breakLine(int start, double maxWidth, double *usedWidth);
+	double measure(const char *utf8, int length,
+		       const TextAttributes &a) const;
+	double lineHeightFor(int location, int length) const;
+	/* the truncated COPY a Clip/Truncate* container shows */
+	std::string truncatedCopy(int start, double maxWidth,
+				  LineBreakMode mode) const;
+};
+
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

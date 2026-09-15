@@ -340,7 +340,39 @@ as a compatibility path for un-migrated views, with a migration list.
     4. The zoo board's own window was too short for its rows, so the last
        row's centre fell outside the content rect and its click was
        (correctly) rejected: the board now sizes itself to its rows.
-- **U3 — the text family and the FULL text stack** (user decision):
+- **U3 — the text family and the FULL text stack** (user decision).
+  **U3a — the stack itself. DONE (2026-09).** Cocoa's three pieces in the
+  same places: `AttributedString` (the characters + attribute runs, with
+  UTF-8 BYTE offsets throughout — the engine shapes UTF-8, so a byte index
+  is the one that needs no conversion), `TextStorage` (mutable, and every
+  edit bumps a change count — that count is how the layout knows it is
+  stale; runs follow an edit instead of staying on the old bytes),
+  `TextContainer` (the region, the padding, and `LineBreakMode`:
+  WordWrap, CharWrap, Clip, TruncateHead/Tail/Middle), and
+  `LayoutManager` (lazy layout: wrapping word by word with a character
+  fallback for an over-long word, explicit newlines, one line per
+  truncating container, `usedRect`, `characterIndexAt` for hit testing,
+  and `drawInContext` which draws each run in its own font and colour,
+  underline included).
+  **THE FINDING: the text engine could not draw or measure a SINGLE
+  GLYPH unless the caller named a font family.** `textRunPrepare` and
+  `textMetrics` both returned early when handed `nullptr`/'' — which is
+  exactly what "use the default font" means — so every default-family
+  string silently drew nothing and measured zero. It had been invisible
+  because the U2a text check asked the harness for `ink()` (DARK pixels)
+  inside a box whose whole fill is darker than the threshold: it was
+  counting the tile, and would have passed with no text at all. Both are
+  fixed: the engine substitutes fontconfig's generic `sans-serif` for an
+  unnamed family (the session's configured default takes it over later),
+  and the U2a check now counts NEAR-WHITE pixels (1.91% of the tile) so it
+  can only pass with real glyphs.
+  Gate `tests/cases/uikit_u3a.py` 4/4 (44 assertions): wrapping picks the
+  break from the words' own measured widths, explicit newlines, all five
+  break modes, edits marking the layout stale, and hit testing.
+  **U3b — the views. NEXT:** `TextView` (display + the field editor),
+  `TextField` and `Label` on the stack, each landing with its place on the
+  widget zoo board.
+- **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
   `NSTextView`, shaped like Cocoa's, over our own glyph/measurement

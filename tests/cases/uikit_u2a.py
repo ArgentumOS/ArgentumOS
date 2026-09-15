@@ -104,7 +104,14 @@ class Case(BaseCase):
                    "the titlebar pixel is chrome, not content: got %s"
                    % (chrome_px,))
 
-        ink = shot.ink((int(wx + tx), int(gy + ty),
-                        int(wx + tx + tw), int(gy + ty + th)), thresh=200)
-        self.check("text-drawn", ink > 0,
-                   "%d light pixel(s) of text on the tile" % ink)
+        # BRIGHT pixels, not ink(): the harness's ink() counts DARK pixels,
+        # and the tile itself is darker than the threshold - so asking for
+        # ink here counted the whole tile and passed with no text at all
+        # (it did, until the text engine's null-family bug was fixed).
+        tbox = (int(wx + tx), int(gy + ty), int(wx + tx + tw),
+                int(gy + ty + th))
+        bright = shot.light_frac(tbox, thresh=230)
+        self.check("text-drawn", bright > 0.01,
+                   "%.2f%% of the tile is near-white text (the tile's own "
+                   "luma is below 200, so this can only be the glyphs)"
+                   % (bright * 100.0))
