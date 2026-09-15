@@ -628,9 +628,34 @@ gate in the build catching the gaps (52 pages now).
 
 ## 6. Status bookkeeping
 
-- U0–U9: not started (U0 = autolayout + the view foundation; U1 = bases;
-  U2 = buttons; U3 = text + the full text stack; U4 = values; U5 =
-  containers/collections; U6 = tables; U7 = panels/toolbar; U8 = windows;
-  U9 = data transfer/undo/binding). Nothing of Weaver's interface-builder work remains
-  (removed 2026-09); `OutlineView` and the View/Window capabilities it
-  exercised stay, as does the app-owned-menubar fix.
+**Where the parity work stands (2026-09).** Each slice has a guest gate, and
+the gate is the claim; the sections above record what each one settled.
+
+| slice | what | gate |
+|---|---|---|
+| U0a/U0b | the constraint model + solver, and the view/layout lifecycle | `uikit_u0`, `uikit_u0b` |
+| U1a-d | `Object`/`Property`/KVC, notifications, `Cell`/`ActionCell`, `ViewController` | `uikit_u1`, `uikit_u1b`, `uikit_u1c`, `uikit_u1d` |
+| U2a | the display path: `Window`, `Context`, the draw protocol, the damage model | `uikit_u2a` |
+| U2b | the input substrate, `Control`, `ButtonCell`, `Button` | `uikit_u2b`, `uikit_u2b_drag` |
+| U2c | the button family — type x bezel style, radio groups by siblings | `uikit_u2c` |
+| U3a-d | the text stack, the text views, editing, `SearchField` + `TokenField` | `uikit_u3a` … `uikit_u3d` |
+| U4a | the value controls: `Slider`, `Stepper`, `ProgressIndicator`, `LevelIndicator` | `uikit_u4` |
+
+**Next: U5 — containers and collections.** `StackView`, `GridView`,
+`CollectionView` with a flow layout, `Browser`, and the `ScrollView` /
+`SplitView` / `TabView` fidelity passes.
+
+**Open inside finished slices** (fidelity, not absence):
+
+- U4: the circular slider, `DatePicker`, `ColorWell`, and the progress/level
+  style passes.
+- U3: the separate field editor (editing is in place, in the cell's storage),
+  the search field's recents menu, and token *objects* (tokens are strings).
+- U2a's damage model was narrowed after this table was first written: the
+  PAINT is still coarse (any damage repaints the whole content tree) but the
+  PUSH is per-view, over MIT-SHM. The coarse half is what remains expensive,
+  and narrowing it is U5's business.
+
+**Not on this plan:** Weaver's interface-builder work (removed 2026-09).
+`OutlineView` and the `View`/`Window` capabilities it exercised stay, as does
+the app-owned-menubar fix.
