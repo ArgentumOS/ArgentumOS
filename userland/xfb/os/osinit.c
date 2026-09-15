@@ -317,10 +317,15 @@ OsInit(void)
     OsVendorInit();
     OsResetSignals();
     /*
-     * No log file by default.  OsVendorInit() should call LogInit() with the
-     * log file name if logging to a file is desired.
-     */
-    LogInit(NULL, NULL);
+     * LOG TO A FILE, and to the FSH's temporary directory. The upstream
+     * default is no log at all, which on this system means the server's
+     * diagnostics go to whatever stderr it was started with - and in a session
+     * that is not the console, so nothing the server says about itself is
+     * readable. That cost real time: a server-side stall was chased through
+     * console output that could never have carried it. The file is
+     * world-readable and lives where the OS's own temporary files belong, so
+     * both a person and a test case can read it. */
+    LogInit("/System/Temporary Files/xfb.log", NULL);
     SmartScheduleInit();
 }
 

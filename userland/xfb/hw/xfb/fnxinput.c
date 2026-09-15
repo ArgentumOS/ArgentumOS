@@ -202,6 +202,28 @@ vfbNoteNotify(int mouse)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     now = (long) ts.tv_sec;
 
+    /* AND SAY WHEN IT IS CALLED AT ALL - bounded, so it cannot flood. The
+     * gap line above is silent when this function never runs, and silent
+     * looks exactly like "the path is clean". The keyboard doubles as the
+     * control: its notify is known to fire (QEMU sendkey drives the real
+     * keyboard), so a keyboard line with no mouse line means the MOUSE device
+     * is not being delivered to, not that notifies are broken. */
+    if (mouse) {
+        static int n;
+        if (++n <= 3 || n % 200 == 0) {
+            /* THE GAP IS PRINTED, not just tested: "no silence line" is
+             * ambiguous between "the gaps are never long" and "the clock is
+             * producing nothing usable". The value settles it. */
+            ErrorF("XFB-INPUT: mouse notify #%d gap=%ld\n", n,
+                   last ? now - *last : -1L);
+        }
+    } else {
+        static int n;
+        if (++n <= 3 || n % 200 == 0) {
+            ErrorF("XFB-INPUT: kbd notify #%d\n", n);
+        }
+    }
+
     /* SELF-LIMITING STALL REPORT. Input arrives through SetNotifyFd, so every
      * notify is a select wakeup on an input fd and SHOULD be immediate. A gap
      * of seconds between two of them therefore means the server was not in
@@ -508,6 +530,7 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
     if (vfbKbdFd >= 0) {
         vfbSetRaw(vfbKbdFd);
         SetNotifyFd(vfbKbdFd, vfbKbdNotify, X_NOTIFY_READ, NULL);
+        ErrorF("XFB-INPUT: fds mouse=%d kbd=%d\n", vfbMouseFd, vfbKbdFd);
         ErrorF("Xfb: keyboard on %s\n", src);
     }
     else {

@@ -307,6 +307,27 @@ class Case(BaseCase):
                    "pixels; a frozen screen changes none, pointer included"
                    % changed)
 
+        # THE SERVER'S OWN LOG IS READABLE NOW (LogInit to the FSH temporary
+        # dir). Before this, everything the server said about itself went to a
+        # stderr nobody could see, which is why several rounds of input
+        # diagnosis were argued from a console that could never carry them.
+        session.run("cat '/System/Temporary Files/xfb.log' | tail -40")
+        time.sleep(0.6)
+
+        # IS THE INPUT BACKEND LIVE AT ALL? It reports the fds it opened, and
+        # every notify (bounded) says so. Without this, a silent console reads
+        # as "the path is clean" when it may mean the path was never taken.
+        lines = [l for l in session.log_text().splitlines()
+                 if "XFB-INPUT:" in l]
+        fds = [l for l in lines if "fds mouse=" in l]
+        self.check("input-backend-is-live", bool(fds),
+                   "the input backend never reported its fds; XFB-INPUT lines "
+                   "seen: %s" % (lines[-6:] or "none"))
+        self.note("input lines: mouse notifies %d, kbd notifies %d, banners %d"
+                  % (len([l for l in lines if "mouse notify" in l]),
+                     len([l for l in lines if "kbd notify" in l]),
+                     len(fds)))
+
         # THE STALL REPORT ITSELF IS TESTED, not assumed: input arrives through
         # SetNotifyFd, so a gap of seconds between two wakeups is the shape of
         # "the server stopped reading its input" - and it is the line that says
@@ -323,16 +344,7 @@ class Case(BaseCase):
                    "XFB-INPUT:" in session.log_text(),
                    "a deliberate 2s gap between pointer moves produced no "
                    "XFB-INPUT line, so the server never reported the gap",
-                   xfail="THE INSTRUMENT IS BROKEN, VERIFIED HERE: a deliberate "
-                         "2s gap produces no line even with CLOCK_MONOTONIC, "
-                         "and the same line is absent from every harness run. "
-                         "Either vfbMouseNotify is not called on this path (the "
-                         "harness's pointer moves may not reach the kernel's "
-                         "mouse device at all, which would also explain why the "
-                         "reporter's dropped records never reproduce here) or "
-                         "the call is not in the executed code. Next: an "
-                         "unconditional print in the notify, and a startup "
-                         "banner naming the input fds.")
+                   )
 
         # AND THE POINTER STILL MOVES. The reported signature is a server that
         # is ALIVE - the cursor is still on screen - with a pointer that will
