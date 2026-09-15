@@ -379,6 +379,18 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 		layout_->drawInContext(*ctx, Point{ frame.origin.x,
 						    frame.origin.y + 3.0 });
 	}
+	/* TEMPORARY DIAGNOSTIC (ARGENTUM_CARET_DEBUG): what the draw believes
+	 * about its own focus. A click into an empty field shows no caret while
+	 * a keystroke does, and the condition below is the same for both - so the
+	 * question is which of these three is false, and at which frame. */
+	if (std::getenv("ARGENTUM_CARET_DEBUG")) {
+		std::fprintf(stderr,
+			     "ARGENTUM-CARET view=%p placeholder=%d editing=%d "
+			     "focused=%d\n",
+			     (void *) inView, placeholder ? 1 : 0, editing_ ? 1 : 0,
+			     (inView && inView->isFirstResponder()) ? 1 : 0);
+	}
+
 	/* THE CARET DRAWS ON BOTH PATHS. This used to `return` right after the
 	 * placeholder, so an empty field that had the focus showed NO cursor at
 	 * all until the first keystroke replaced the placeholder with text -

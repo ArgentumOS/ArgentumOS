@@ -1798,6 +1798,9 @@ Window::makeFirstResponder(View *v)
 	if (firstResponder_ && firstResponder_ != v) {
 		firstResponder_->setNeedsDisplay();
 	}
+	if (std::getenv("ARGENTUM_CARET_DEBUG")) {
+		std::fprintf(stderr, "ARGENTUM-FOCUS -> %p\n", (void *) v);
+	}
 	firstResponder_ = v;
 	v->setNeedsDisplay();
 	return true;

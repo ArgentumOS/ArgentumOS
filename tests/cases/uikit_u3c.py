@@ -67,7 +67,7 @@ class Case(BaseCase):
         shot0 = session.shot("u3c-click")
         ex0, ey0 = pts["EDITTEXT"]
         tallest0 = 0
-        for x in range(int(ex0) - 106, int(ex0) + 104):
+        for x in range(int(ex0) - 116, int(ex0) + 104):
             run = best = 0
             for y in range(int(ey0) - 11, int(ey0) + 11):
                 if shot0.luma(x, y) < 140:
@@ -80,15 +80,7 @@ class Case(BaseCase):
                    "after the click and before any key, the tallest dark run "
                    "in the field is %d rows (a caret is the field's interior)"
                    % tallest0,
-                   xfail="REPRODUCED, not yet fixed: a click into a field "
-                         "shows no caret until the first keystroke. One cause "
-                         "was found and fixed in this pass - the placeholder "
-                         "path returned before the caret, so an EMPTY focused "
-                         "field could not draw one - and this still fails, so "
-                         "the click-time repaint itself is not reaching the "
-                         "draw with the focus set (the keys land in the field, "
-                         "so the focus IS taken). Next: log isFirstResponder() "
-                         "from drawValue and read one run.")
+                   )
 
         # SHIFT, THROUGH THE REAL KEYBOARD PATH. mon.key() injects at the X
         # level, so no gate has ever touched the kernel's scancode
@@ -128,7 +120,7 @@ class Case(BaseCase):
         # tallest glyph stem is its ascender (~13): so the longest dark run
         # in any one column is the caret, and nothing else gets close.
         tallest = 0
-        for x in range(int(ex) - 106, int(ex) + 104):
+        for x in range(int(ex) - 116, int(ex) + 104):
             run = best = 0
             for y in range(int(ey) - 11, int(ey) + 11):
                 if shot.luma(x, y) < 140:
@@ -185,7 +177,7 @@ class Case(BaseCase):
                      settle=0.6)
         shot5 = session.shot("u3c-after")
         tallest5 = 0
-        for x in range(int(fx) - 106, int(fx) + 104):
+        for x in range(int(fx) - 116, int(fx) + 104):
             run = best = 0
             for y in range(int(fy) - 11, int(fy) + 11):
                 if shot5.luma(x, y) < 140:
