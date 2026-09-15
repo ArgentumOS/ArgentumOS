@@ -21,6 +21,10 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/XShm.h>
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #include <unistd.h>
 
@@ -750,7 +754,181 @@ struct Window::Impl {
 	XImage *ximg = nullptr;
 	pixman_image_t *pimg = nullptr;
 	bool dirty = true;
+	/* the flush region: what changed since the last frame, in SURFACE
+	 * pixels. dmgAll is the whole surface (a resize, an expose, a window
+	 * level change); otherwise the rect is the union of the view damage
+	 * that arrived since. */
+	bool dmgAll = true;
+	int dmgX0 = 0, dmgY0 = 0, dmgX1 = 0, dmgY1 = 0;
+	/* the pixels, in shared memory when the server has MIT-SHM */
+	XShmSegmentInfo shm {};
+	bool shmAttached = false;
 };
+
+/* ---- the window's pixels ---------------------------------------------
+ *
+ * One buffer holds the window: pixman rasterises into it and X is handed
+ * the result. Both halves of that are measured (ARGENTUM_PAINT_MS),
+ * because they are the two costs a slow control is made of. MIT-SHM takes
+ * the push off the socket when the server has it, and the push is limited
+ * to the region that actually changed. The PAINT stays coarse on purpose:
+ * the whole tree repaints, so the buffer is always a complete frame and
+ * any sub-rect of it is correct to send. */
+static Bool gShmOk = False;
+
+template <typename ImplT>
+static void
+surfaceDestroy(ImplT *impl)
+{
+	if (impl->pimg) {
+		pixman_image_unref(impl->pimg);
+		impl->pimg = nullptr;
+	}
+	if (impl->ximg) {
+		if (impl->shmAttached) {
+			/* those pixels belong to the shared segment, not to
+			 * Xlib: detach and drop the pointer before Xlib's
+			 * destroy tries to free memory it never allocated */
+			XShmDetach(gDpy, &impl->shm);
+			impl->shmAttached = False;
+			impl->ximg->data = nullptr;
+		}
+		XDestroyImage(impl->ximg);
+		impl->ximg = nullptr;
+	}
+	if (impl->shm.shmid >= 0) {
+		if (impl->shm.shmaddr && impl->shm.shmaddr != (char *) -1) {
+			shmdt(impl->shm.shmaddr);
+		}
+		shmctl(impl->shm.shmid, IPC_RMID, nullptr);
+		impl->shm.shmid = -1;
+		impl->shm.shmaddr = nullptr;
+	}
+}
+
+template <typename ImplT>
+static bool
+surfaceCreate(ImplT *impl, unsigned int wPx, unsigned int hPx)
+{
+	Visual *vis = DefaultVisual(gDpy, DefaultScreen(gDpy));
+	int depth = DefaultDepth(gDpy, DefaultScreen(gDpy));
+
+	impl->shm.shmid = -1;
+	impl->shm.shmaddr = nullptr;
+	impl->shmAttached = False;
+
+	if (gShmOk) {
+		impl->ximg = XShmCreateImage(gDpy, vis, (unsigned int) depth,
+					     ZPixmap, nullptr, &impl->shm,
+					     wPx, hPx);
+		if (impl->ximg) {
+			size_t bytes = (size_t) impl->ximg->bytes_per_line
+				       * (size_t) hPx;
+
+			impl->shm.shmid = shmget(IPC_PRIVATE, bytes,
+						 IPC_CREAT | 0666);
+			if (impl->shm.shmid >= 0) {
+				impl->shm.shmaddr = impl->ximg->data =
+					(char *) shmat(impl->shm.shmid,
+						       nullptr, 0);
+				impl->shm.readOnly = False;
+				if (impl->shm.shmaddr != (char *) -1
+				    && XShmAttach(gDpy, &impl->shm)) {
+					impl->shmAttached = true;
+				}
+			}
+		}
+		if (!impl->shmAttached) {
+			surfaceDestroy(impl);	/* a private buffer then */
+		}
+	}
+	if (!impl->ximg) {
+		char *bits = (char *) std::malloc((size_t) wPx
+						  * (size_t) hPx * 4);
+
+		if (!bits) {
+			return false;
+		}
+		/* XDestroyImage() frees `bits`: Xlib owns an image it made */
+		impl->ximg = XCreateImage(gDpy, vis, (unsigned int) depth,
+					  ZPixmap, 0, bits, wPx, hPx, 32, 0);
+		if (!impl->ximg) {
+			std::free(bits);
+			return false;
+		}
+	}
+	impl->pimg = pixman_image_create_bits(PIXMAN_x8r8g8b8, (int) wPx,
+					      (int) hPx,
+					      (std::uint32_t *) impl->ximg->data,
+					      impl->ximg->bytes_per_line);
+	if (!impl->pimg) {
+		surfaceDestroy(impl);
+		return false;
+	}
+	return true;
+}
+
+template <typename ImplT>
+static void
+damageAll(ImplT *impl)
+{
+	impl->dmgAll = true;
+	impl->dirty = true;
+}
+
+/* Narrow the damage to include a rect given in WINDOW POINTS - what a view
+ * knows about itself. Once the whole surface is damaged it stays that way:
+ * a window level change is not undone by a control that also touched
+ * itself. */
+template <typename ImplT>
+static void
+damagePt(ImplT *impl, const Rect &r)
+{
+	int x0, y0, x1, y1;
+
+	impl->dirty = true;
+	if (impl->dmgAll) {
+		return;
+	}
+	x0 = (int) std::floor(r.origin.x * impl->pxPerPt);
+	y0 = (int) std::floor(r.origin.y * impl->pxPerPt);
+	x1 = (int) std::ceil((r.origin.x + r.size.w) * impl->pxPerPt);
+	y1 = (int) std::ceil((r.origin.y + r.size.h) * impl->pxPerPt);
+	if (x0 < 0) {
+		x0 = 0;
+	}
+	if (y0 < 0) {
+		y0 = 0;
+	}
+	if (x1 > (int) impl->wPx) {
+		x1 = (int) impl->wPx;
+	}
+	if (y1 > (int) impl->hPx) {
+		y1 = (int) impl->hPx;
+	}
+	if (x1 <= x0 || y1 <= y0) {
+		return;		/* outside the window: nothing to send */
+	}
+	if (impl->dmgX1 <= impl->dmgX0 || impl->dmgY1 <= impl->dmgY0) {
+		impl->dmgX0 = x0;	/* the first damage defines it */
+		impl->dmgY0 = y0;
+		impl->dmgX1 = x1;
+		impl->dmgY1 = y1;
+		return;
+	}
+	if (x0 < impl->dmgX0) {
+		impl->dmgX0 = x0;
+	}
+	if (y0 < impl->dmgY0) {
+		impl->dmgY0 = y0;
+	}
+	if (x1 > impl->dmgX1) {
+		impl->dmgX1 = x1;
+	}
+	if (y1 > impl->dmgY1) {
+		impl->dmgY1 = y1;
+	}
+}
 
 Window::Window()
 	: impl_(new Impl())
@@ -812,29 +990,14 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 				PropModeReplace, (unsigned char *) &pid, 1);
 	}
 
-	char *bits = (char *) std::malloc((size_t) impl_->wPx
-					  * (size_t) impl_->hPx * 4);
-
-	if (!bits) {
+	/* MIT-SHM if this server has it: it removes the per-frame socket
+	 * copy, which was 250ms of a 300ms repaint */
+	gShmOk = XShmQueryExtension(dpy) ? True : False;
+	if (!surfaceCreate(impl_, impl_->wPx, impl_->hPx)) {
 		XDestroyWindow(dpy, impl_->xwin);
 		impl_->xwin = 0;
 		return false;
 	}
-	/* XDestroyImage() frees `bits` (Xlib owns an image it created) */
-	impl_->ximg = XCreateImage(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
-				   DefaultDepth(dpy, DefaultScreen(dpy)),
-				   ZPixmap, 0, bits, impl_->wPx, impl_->hPx, 32, 0);
-	if (!impl_->ximg) {
-		std::free(bits);
-		XDestroyWindow(dpy, impl_->xwin);
-		impl_->xwin = 0;
-		return false;
-	}
-	impl_->pimg = pixman_image_create_bits(PIXMAN_x8r8g8b8,
-					       (int) impl_->wPx,
-					       (int) impl_->hPx,
-					       (std::uint32_t *) impl_->ximg->data,
-					       impl_->ximg->bytes_per_line);
 	impl_->open = true;
 	XMapWindow(dpy, impl_->xwin);
 	XSync(dpy, False);
@@ -849,14 +1012,7 @@ Window::close()
 	if (!impl_ || !impl_->open) {
 		return;
 	}
-	if (impl_->pimg) {
-		pixman_image_unref(impl_->pimg);
-		impl_->pimg = nullptr;
-	}
-	if (impl_->ximg) {
-		XDestroyImage(impl_->ximg);	/* frees the pixel buffer */
-		impl_->ximg = nullptr;
-	}
+	surfaceDestroy(impl_);
 	if (gDpy && impl_->xwin) {
 		XDestroyWindow(gDpy, impl_->xwin);
 		XSync(gDpy, False);
@@ -1023,30 +1179,11 @@ Window::setFrame(const Rect &r)
 	XMoveResizeWindow(gDpy, impl_->xwin, (int) r.origin.x,
 			  (int) r.origin.y, impl_->wPx, impl_->hPx);
 	/* the surface is a new size: a fresh image over a fresh buffer */
-	if (impl_->pimg) {
-		pixman_image_unref(impl_->pimg);
-		impl_->pimg = nullptr;
-	}
-	if (impl_->ximg) {
-		XDestroyImage(impl_->ximg);
-	}
-	char *bits = (char *) std::malloc((size_t) impl_->wPx
-					  * (size_t) impl_->hPx * 4);
-
-	if (!bits) {
+	surfaceDestroy(impl_);
+	if (!surfaceCreate(impl_, impl_->wPx, impl_->hPx)) {
 		close();
 		return;
 	}
-	impl_->ximg = XCreateImage(gDpy, DefaultVisual(gDpy,
-						       DefaultScreen(gDpy)),
-				   DefaultDepth(gDpy, DefaultScreen(gDpy)),
-				   ZPixmap, 0, bits, impl_->wPx, impl_->hPx,
-				   32, 0);
-	impl_->pimg = pixman_image_create_bits(PIXMAN_x8r8g8b8,
-					       (int) impl_->wPx,
-					       (int) impl_->hPx,
-					       (std::uint32_t *) impl_->ximg->data,
-					       impl_->ximg->bytes_per_line);
 	layoutContent();
 	setNeedsDisplay();
 }
@@ -1073,7 +1210,7 @@ Window::setChromeDirty()
 void
 Window::setNeedsDisplay()
 {
-	impl_->dirty = true;
+	damageAll(impl_);
 	markTreeForDisplay(content_);
 }
 
@@ -1096,10 +1233,10 @@ Window::focusFromClick(View *hit)
 void
 Window::noteViewDamage()
 {
-	impl_->dirty = true;
-	/* and re-mark the tree: the v1 damage model is COARSE - a pass clears
-	 * the surface to the background and repaints what is dirty - so a
-	 * view's damage that did not mark the rest would ERASE the rest.
+	damageAll(impl_);
+	/* and re-mark the tree: the PAINT is COARSE - a pass clears the
+	 * surface to the background and repaints what is dirty - so a view's
+	 * damage that did not mark the rest would ERASE the rest.
 	 * (Documented as coarse from the start; this is the other half of
 	 * making the code say what the docs say.) */
 	markTreeForDisplay(content_);
@@ -1108,10 +1245,13 @@ Window::noteViewDamage()
 void
 Window::setNeedsDisplayInRect(const Rect &r)
 {
-	(void) r;
-	/* v1: damage is coarse (the whole content tree repaints); the rect
-	 * is still the right call for a caller to make */
-	setNeedsDisplay();
+	/* Damage is COARSE for the PAINT and NARROW for the PUSH. The whole
+	 * content tree repaints (so the buffer is a complete frame and this
+	 * sub-rect of it is correct to send), but the flush sends only the
+	 * union of what changed - which is what stops one click from
+	 * shipping a megabyte: a click damages one control's frame. */
+	damagePt(impl_, r);
+	markTreeForDisplay(content_);
 }
 
 bool
@@ -1667,14 +1807,43 @@ Window::flush()
 	if (!impl_->open || !impl_->ximg) {
 		return;
 	}
+	int x = 0, y = 0, w = (int) impl_->wPx, h = (int) impl_->hPx;
+
+	if (!impl_->dmgAll) {
+		x = impl_->dmgX0;
+		y = impl_->dmgY0;
+		w = impl_->dmgX1 - x;
+		h = impl_->dmgY1 - y;
+	}
+	if (timingOn("ARGENTUM_PAINT_MS")) {
+		/* what actually goes to the server, per frame: the whole point
+		 * of narrowing the damage is this number */
+		std::printf("ARGENTUM-PUSH %dx%d at %d,%d%s\n", w, h, x, y,
+			    impl_->shmAttached ? " shm" : " noshm");
+		std::fflush(stdout);
+	}
+	if (w <= 0 || h <= 0) {
+		XFlush(gDpy);		/* nothing changed on screen */
+		return;
+	}
 	GC gc = XCreateGC(gDpy, impl_->xwin, 0, nullptr);
 
 	if (gc) {
-		XPutImage(gDpy, impl_->xwin, gc, impl_->ximg, 0, 0, 0, 0,
-			  impl_->wPx, impl_->hPx);
+		if (impl_->shmAttached) {
+			XShmPutImage(gDpy, impl_->xwin, gc, impl_->ximg,
+				     x, y, x, y, (unsigned int) w,
+				     (unsigned int) h, False);
+		} else {
+			XPutImage(gDpy, impl_->xwin, gc, impl_->ximg, x, y,
+				  x, y, (unsigned int) w, (unsigned int) h);
+		}
 		XFreeGC(gDpy, gc);
 	}
+	/* the sync is what makes the shared buffer safe to reuse: the server
+	 * reads it, and only this says it is done */
 	XSync(gDpy, False);
+	impl_->dmgAll = false;
+	impl_->dmgX0 = impl_->dmgY0 = impl_->dmgX1 = impl_->dmgY1 = 0;
 }
 
 /* the class record */

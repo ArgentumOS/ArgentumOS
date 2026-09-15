@@ -164,7 +164,10 @@ View::setNeedsDisplay()
 {
 	markNeedsDisplay(true);
 	if (window_) {
-		window_->noteViewDamage();
+		/* the view's OWN rect: the window narrows the flush to it (the
+		 * paint is coarse either way, so this loses nothing) */
+		window_->setNeedsDisplayInRect(
+			rectInWindow(Rect{ { 0, 0 }, frame_.size }));
 	}
 }
 
@@ -172,10 +175,9 @@ void
 View::setNeedsDisplayInRect(const Rect &r)
 {
 	needsDisplay_ = true;
-	/* v1 narrows nothing: the recorded rect is the view's whole frame */
-	dirty_ = Rect{ { 0, 0 }, frame_.size };
+	dirty_ = r;
 	if (window_) {
-		window_->noteViewDamage();
+		window_->setNeedsDisplayInRect(rectInWindow(r));
 	}
 }
 

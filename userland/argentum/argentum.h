@@ -1142,7 +1142,13 @@ public:
 
 	/// Mark the whole surface as needing a redraw.
 	void setNeedsDisplay();
-	/// Mark a region (window content POINTS) as needing a redraw.
+	/// Mark a region (window POINTS) as needing a redraw.
+	///
+	/// The PAINT is coarse either way - any damage repaints the whole
+	/// content tree, so the surface is always a complete frame - but the
+	/// region is what the FLUSH sends to X. Narrowing it is what keeps a
+	/// click from shipping the whole window, so views pass their own
+	/// rect rather than marking everything.
 	void setNeedsDisplayInRect(const Rect &r);
 	/// True while something is waiting to be drawn.
 	bool needsDisplay() const;
