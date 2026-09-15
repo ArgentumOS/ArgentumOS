@@ -1675,7 +1675,15 @@ kestrelHook(void *xevent)
 		 * dock closes an open menu, like the strip. Consumed either way:
 		 * the dock is the WM's own. */
 		if (dockX && ev->xbutton.window == dockX) {
-			int i = dockTileAt(ev->xbutton.x, ev->xbutton.y);
+			/* X button events carry PIXELS; the dock's tile
+			 * geometry (dockTileY/dockW) is in POINTS, the same
+			 * units the toolkit hands DockView::mouseMoved. At
+			 * pxPerPt != 1 the unscaled comparison made every
+			 * tile's hit zone sit ABOVE its painted tile, so by
+			 * the third tile a click on the visible icon missed. */
+			double ppt = Application::shared().pxPerPt();
+			int i = dockTileAt((int) (ev->xbutton.x / ppt),
+					   (int) (ev->xbutton.y / ppt));
 
 			/* every dock press is logged: a silent miss is how a
 			 * "click does nothing" report stays undiagnosable */
@@ -2523,8 +2531,9 @@ main()
 			XMapWindow(dpy, dockX);
 			dockRefresh();
 			printf("KESTREL: dock %s %dx%d at %d,%d tiles=%d "
-			       "icon=%d\n", gDockLeft ? "left" : "right", dw, dh,
-			       dx0, dy0, kPinCount, gDockIcon);
+			       "icon=%d ppt=%g\n", gDockLeft ? "left" : "right",
+			       dw, dh, dx0, dy0, kPinCount, gDockIcon,
+			       app.pxPerPt());
 			fflush(stdout);
 		}
 	}
