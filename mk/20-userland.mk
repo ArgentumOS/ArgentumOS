@@ -192,54 +192,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/theme_chrome.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/theme_chrome"
-	# interface_roundtrip: Weaver IB0 acceptance (docs/design/weaver-plan.md
-	# §8) — the interface document survives its own emitter: every fixture is
-	# loaded, emitted, reloaded and emitted again, and the two emissions must
-	# be byte-identical, with content assertions on top because dropping
-	# every field would satisfy idempotence on its own. Display-free on
-	# purpose: no window, no input, no staged control is involved.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/interface_roundtrip.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/interface_roundtrip"
-	# interface_v2: Weaver W0 acceptance (docs/design/weaver-gorm-model.md
-	# §4) — the v2 object-graph document round-trips: proxies, non-view
-	# objects, connections and classes. Display-free, like the IB0 probe.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/interface_v2.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/interface_v2"
-	# interface_codegen: Weaver W4 acceptance (docs/design/
-	# weaver-gorm-model.md) — the class emitters are deterministic and
-	# carry outlets, actions and the D6 bindings.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/interface_codegen.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/interface_codegen"
-	# interface_dispatch: Weaver W2 acceptance (docs/design/
-	# weaver-gorm-model.md) — the load-time dispatcher: an action
-	# connection runs the app's binding, an unbound selector is refused.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/interface_dispatch.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/interface_dispatch"
-	# interface_build: Weaver IB1 acceptance (docs/design/weaver-plan.md §8)
-	# — instantiate a document, find a control by identifier, and lay it out
-	# from the frames and parent-relative masks the document records. No
-	# window and no input: the evidence is the log and the resulting frames.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/interface_build.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/interface_build"
-	# weaver_suppress: Weaver IB2 D12 probe — a non-hit-testable canvas
-	# gives the press to the editor surface instead of firing the live
-	# Button's action (synthetic dispatch, display-free like IB0/IB1).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/weaver_suppress.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/weaver_suppress"
-	cp userland/tests/weaver_ib2.conf \
-		"$(ROOTFS64)/System/Shared/tests/weaver_ib2.conf"
 	# viewtree_a: Argentum S2.1a acceptance — the View core + tree +
 	# composite display (bare window over a 2-level hierarchy; child
 	# clipping). Same link recipe as the theme probes.
@@ -345,31 +297,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/Applications/Calculator.app/bin/Calculator"
 	cp userland/apps/calculator/manifest \
 		"$(ROOTFS64)/Applications/Calculator.app/manifest"
-	# Weaver: the interface editor (docs/design/weaver-plan.md) — opens a
-	# document, builds it on a non-hit-testable canvas, and drives its own
-	# state from scripted argv commands (IB2, plan §8a fallback).
-	mkdir -p "$(ROOTFS64)/Applications/Weaver.app/bin" \
-		 "$(ROOTFS64)/Applications/Weaver.app/Resources"
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/apps/weaver/weaver.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/Applications/Weaver.app/bin/Weaver"
-	cp userland/apps/weaver/manifest \
-		"$(ROOTFS64)/Applications/Weaver.app/manifest"
-	# Wren: the IB6 sample app (weaver-plan §8, D10) — its interface ships
-	# as a document in its own Resources/, loaded by the same loader and
-	# bound by identifier (D1). Display-free: the gate runs it from the
-	# shell and reads its outlet log.
-	mkdir -p "$(ROOTFS64)/Applications/Wren.app/bin" \
-		 "$(ROOTFS64)/Applications/Wren.app/Resources"
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/apps/wren/wren.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/Applications/Wren.app/bin/Wren"
-	cp userland/apps/wren/manifest \
-		"$(ROOTFS64)/Applications/Wren.app/manifest"
-	cp userland/apps/wren/Interface.conf \
-		"$(ROOTFS64)/Applications/Wren.app/Resources/Interface.conf"
 	# Workspace: W0a — the desktop shell app that owns the surface (the
 	# wallpaper). A bundle like any other, launched by the session at
 	# login; the WM recognises it by the _ARGENTUM_DESKTOP marker and

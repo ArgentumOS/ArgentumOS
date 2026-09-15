@@ -254,7 +254,7 @@ struct View::Impl {
 	std::vector<View *> subviews;	/* draw order; last = topmost */
 	Rect frame;			/* pt, superview space */
 	bool hidden = false;
-	bool hitTestEnabled = true;	/* Weaver D12: false = transparent to
+	bool hitTestEnabled = true;	/* D12: false = transparent to
 					 * hit-testing (the editor's canvas) */
 	bool needsDisplay = false;
 	unsigned int autoresizeMask = View::AutoresizingNone;
@@ -263,7 +263,7 @@ struct View::Impl {
 	 * it so a redraw only flushes the dirty rect */
 	class Window *hostWindow = nullptr;
 
-	/* Weaver IB1: the view's NAME. A document binds to this, never to a
+	/* The view's NAME. A document binds to this, never to a
 	 * pointer (plan D8), an app finds a control by it, and it is what the
 	 * editor's selection refers to. Not required to be unique. */
 	char identifier[128] = { 0 };

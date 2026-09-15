@@ -1,8 +1,0 @@
-# Weaver.app/manifest — the interface editor's bundle metadata
-# (docs/design/app-model.md §3). First-party apps use the reserved
-# `system.<app>` domain namespace (docs/design/config-design.md §2, Q-N).
-name = "Weaver"
-identifier = system.weaver
-version = 1.0
-executable = bin/Weaver
-menu-name = "Weaver"

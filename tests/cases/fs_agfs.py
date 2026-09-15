@@ -77,9 +77,11 @@ class Case(BaseCase):
 
         # --- a configuration domain is a file, so it reads through --
         mark = len(session.log_text())
-        session.run("config read system.workspace")
+        # D6 moved the DOCK's keys out of system.workspace into
+        # system.kestrel, so the domain to read back is kestrel's
+        session.run("config read system.kestrel")
         conf = session.output_since(mark)
         self.check("config-domain-readable", "dock" in conf,
-                   "system.workspace.conf reads back through the config tool")
+                   "system.kestrel.conf reads back through the config tool")
 
         session.run("rm -rf " + TMP)

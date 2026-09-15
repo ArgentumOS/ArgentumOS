@@ -418,7 +418,7 @@ View *
 View::hitTest(const Point &pt)
 {
 	/* pt is in THIS view's local space. A view that is hidden, or whose
-	 * hit-testing is disabled (Weaver D12), never hits: the press falls
+	 * hit-testing is disabled (D12), never hits: the press falls
 	 * through to the superview / the window. Reverse draw order (topmost
 	 * first): the deepest visible descendant containing pt wins; this
 	 * view itself when no child claims it; nullptr outside our bounds. */

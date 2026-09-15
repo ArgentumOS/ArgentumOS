@@ -1,7 +1,0 @@
-# Wren.app/manifest — the IB6 sample app (docs/design/weaver-plan.md §8,
-# D10): an app whose interface ships as a document in its own Resources/.
-name = "Wren"
-identifier = system.wren
-version = 1.0
-executable = bin/Wren
-menu-name = "Wren"

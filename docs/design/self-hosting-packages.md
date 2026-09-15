@@ -58,15 +58,6 @@ the plan's G3 gate and SH-0..SH-5.
   pin 4.3.2): ISC core, musl+clang, built via **CMake only** — its
   autotools layer is never invoked (host or guest). No new
   build-time tools: CMake is already in §C.
-- **The interface builder (docs/design/weaver-plan.md) — **Weaver**** —
-  **first-party**, no third-party code and no vendor format: our own
-  program, built like Kestrel and the zoo (musl + clang C++ from the
-  toolkit sources, `-largentum`, an app bundle under /Applications).
-  **No new build-time requirements** — the document emitter and reader
-  are C++, so it needs no generator, no configure machinery and no host
-  Python for its own build. Palette glyphs use the already-admitted
-  Lucide set (ISC). *Not* the "Editor app" above: that is the text
-  editor, this is the UI designer.
 
 ### C. Build drivers
 
@@ -224,7 +215,6 @@ in-guest; byacc (public domain) ships so awk's parser regenerates
 in-guest; awk = onetrueawk, patch = NetBSD usr.bin/patch — each gap was
 closed by finding the permissive member, never by accepting GPL.
 
-**Weaver (2026-09)**: first-party, in-tree (`userland/apps/weaver/`,
 MIT like the rest of the house code). No pinned third-party version and
 no new build-time requirement: it is one C++ source built by the
 existing `MUSL64_CXX` recipe against in-tree `libargentum` + `libconfig` + the X11 prefix, staged as an ordinary bundle by `make userland64` /
