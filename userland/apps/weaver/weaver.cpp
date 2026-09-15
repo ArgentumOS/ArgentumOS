@@ -2878,6 +2878,98 @@ PaletteTable::mouseUp(const MouseEvent &e)
 	}
 }
 
+/* W5 (docs/design/weaver-gorm-model.md): Test Interface. The document is
+ * built into a REAL window with NO editor chrome; each action connection
+ * is bound to a logging stub (Weaver plays the owner in test mode), so a
+ * click during the test proves the wiring. The test ends when the window
+ * is closed (or the process is stopped). */
+static int
+runTest(Editor &ed)
+{
+	Application &app = Application::shared();
+	Window w;
+	int tries;
+
+	for (tries = 0; tries < 120 && !app.init(); tries++) {
+		usleep(1000000);
+	}
+	if (!app.isRunning()) {
+		std::printf("WEAVER: test FAIL (init)\n");
+		std::fflush(stdout);
+		return 1;
+	}
+
+	InterfaceNode *r = ed.doc->root();
+	double ppt = app.pxPerPt();
+	double winW = 0;
+	double winH = 0;
+
+	if (!r) {
+		std::printf("WEAVER: test FAIL (no document)\n");
+		std::fflush(stdout);
+		return 1;
+	}
+	/* the INTERFACE's own size — not the editor's chrome layout */
+	winW = r->frameW();
+	winH = r->frameH();
+
+	static View *testRoot = new View();
+
+	testRoot->setFrame(Rect{ { 0, 0 },
+		{ r->frameW(), r->frameH() } });
+
+	std::string why;
+	View *built = interfaceBuild(*ed.doc, testRoot, why);
+
+	if (!built) {
+		std::printf("WEAVER: test FAIL (build: %s)\n", why.c_str());
+		std::fflush(stdout);
+		return 1;
+	}
+
+	/* the test-mode dispatcher: every action connection logs, so the
+	 * gate can see a click cross the wiring (the app's real bindings
+	 * arrive with W4's generated code) */
+	static InterfaceDispatcher testDispatch;
+
+	for (int i = 0; i < ed.doc->connectionCount(); i++) {
+		const InterfaceConnection *c = ed.doc->connectionAt(i);
+
+		if (!c || c->kind != "action") {
+			continue;
+		}
+		std::string target = c->target;
+		std::string selector = c->selector;
+
+		testDispatch.bind(target.c_str(), selector.c_str(),
+				  [selector, target]() {
+			std::printf("WEAVER: test action %s %s\n",
+				    selector.c_str(), target.c_str());
+			std::fflush(stdout);
+		});
+		std::printf("WEAVER: test bind %s %s\n", selector.c_str(),
+			    target.c_str());
+		std::fflush(stdout);
+	}
+	testDispatch.install(*ed.doc, built);
+
+	if (!w.init("Weaver Test", 60, 60, (unsigned) (winW * ppt + 0.5),
+		    (unsigned) (winH * ppt + 0.5))) {
+		std::printf("WEAVER: test FAIL (window init)\n");
+		std::fflush(stdout);
+		return 1;
+	}
+	w.setContentView(testRoot);
+	w.show();
+	std::printf("WEAVER: test window 0x%lx %ux%u ppt=%g\n", w.xid(),
+		    w.width(), w.height(), ppt);
+	std::fflush(stdout);
+	app.run();
+	std::printf("WEAVER: test done\n");
+	std::fflush(stdout);
+	return 0;
+}
+
 static int
 runDisplay(Editor &ed)
 {
@@ -3075,6 +3167,7 @@ main(int argc, char **argv)
 {
 	Editor ed;
 	bool show = false;
+	bool test = false;
 	bool any = false;
 
 	/* the dock launches the payload with no arguments (bin/Weaver): an
@@ -3248,6 +3341,9 @@ main(int argc, char **argv)
 		} else if (a == "--rect" && i + 1 < argc) {
 			ed.logRect(argv[++i]);
 			any = true;
+		} else if (a == "--test") {
+			show = true;
+			test = true;
 		} else if (a == "--show") {
 			show = true;
 		} else {
@@ -3257,6 +3353,12 @@ main(int argc, char **argv)
 		}
 	}
 
+	if (show && test) {
+		int rc = runTest(ed);
+
+		ed.discardJournal();
+		return rc;
+	}
 	if (show) {
 		int rc = runDisplay(ed);
 
@@ -3277,7 +3379,7 @@ main(int argc, char **argv)
 			    "[--add-outlet class name] "
 			    "[--add-action class selector] "
 			    "[--instantiate class id] "
-			    "[--gen-class class dir] [--classes] "
+			    "[--gen-class class dir] [--classes] [--test] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--new name] [--roundtrip] "
 			    "[--rect id] [--show]\n");

@@ -308,7 +308,15 @@ dock pin.
   the guest and checks the files; the emitted shape compiles with
   `tools/musl-clang++64.sh -fsyntax-only` against libargentum (host-side,
   exit 0). Full weaver suite 22/22, 222/222.
-- W5–W6: not started.
+- **W5 — DONE (2026-09).** `--test` builds the document into a REAL
+  window at the INTERFACE's own size (no editor chrome), binds every
+  action connection to a logging stub (Weaver plays the owner in test
+  mode) and runs the event loop; closing the window ends the test
+  (`WEAVER: test done`). Gate `tests/cases/weaver_w5.py` 7/7: the bind
+  logs, the window is the interface's size, a REAL click on the button
+  dispatches through the connection, and the close box ends the test.
+  Full weaver suite 23/23, 229/229.
+- W6: not started.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting
