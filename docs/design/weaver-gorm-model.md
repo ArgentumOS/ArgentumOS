@@ -217,6 +217,31 @@ Carried over as-is: guides/snapping, marquee multi-select, group move,
 undo with the crash journal, dirty title, multi-document, menubar,
 dock pin.
 
+## 4a. The menubar expresses the model (2026-09)
+
+Every no-input W-series operation is now a menu item, each running the
+SAME `Editor` method its scripted twin calls:
+
+- **File**: New (an untitled document), Save, Reload, Test Interface
+- **Edit**: Undo, **Group ▸** Box / Scroll View / Split View, Ungroup
+- **Classes** (GORM's own menu): List Classes, Generate C++
+  (the document's directory — v1 has no file dialog)
+- **Test**: Run Test, Quit Test
+
+Items that need a name or path (Open…, Set Name…, New Class…, Add
+Outlet/Action…, Instantiate…) stay scripted until the toolkit has a
+prompt panel; that is the documented v1 boundary.
+
+**Fixed on the way (the user's directive): an Argentum application owns
+its menu, not any one window.** The bar was keyed to ONE window
+(`_ARGENTUM_MENUBAR_FOR`), so with a second window (the live Test
+window) focused the menu vanished. Now every window carries
+`_NET_WM_PID` and the bar carries `_ARGENTUM_MENUBAR_PID`; Kestrel shows
+a bar while **any window of that process** is the active one (the owner
+window remains only the bar's lifecycle anchor). Gate:
+`tests/cases/weaver_menubar2.py` 9/9 — the Classes and Test menus run
+with the test window active.
+
 ## 5. Decisions
 
 - **D1 — design only.** GORM is the model; the implementation is C++

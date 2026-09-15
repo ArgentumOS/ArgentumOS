@@ -10,6 +10,7 @@
  * clip, local-px drawRect) and flushes.
  */
 #include <argentum/argentum.h>
+#include <unistd.h>
 #include <argentum/argentum_p.h>
 
 #include <X11/Xatom.h>		/* XA_CARDINAL (the S4.3 published hints) */
@@ -970,6 +971,16 @@ Window::init(const char *title, int x, int y,
 		std::snprintf(impl_->title, sizeof(impl_->title), "%s",
 			      title);
 		XStoreName(impl_->dpy, impl_->xwin, impl_->title);
+	/* the APPLICATION's pid: an Argentum app OWNS its menu, so the WM
+	 * keys the menubar to the process, not to one window */
+	{
+		Atom pidA = XInternAtom(impl_->dpy, "_NET_WM_PID", False);
+		unsigned long pid = (unsigned long) getpid();
+
+		XChangeProperty(impl_->dpy, impl_->xwin, pidA, XA_CARDINAL,
+				32, PropModeReplace,
+				(unsigned char *) &pid, 1);
+	}
 	}
 	/* S4.1c: advertise the WM_DELETE_WINDOW protocol so a window
 	 * manager (Kestrel) can ask us to close cleanly */

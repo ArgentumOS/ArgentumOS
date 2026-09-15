@@ -190,6 +190,9 @@ static void barsRefresh();			/* S4.2d (with the strip) */
 static std::map<::Window, ::Window> gBars;
 static std::map<::Window, long> gBarZone;
 static std::map<::Window, bool> gBarMapped;
+/* the app (pid) each bar belongs to: an Argentum app owns its menu, so a
+ * bar shows while ANY window of that process is active */
+static std::map<::Window, unsigned long> gBarPid;
 static void clockUpdate(bool force);	/* S5.2b (defined below) */
 static void dockRefresh();		/* S5.2c (defined below) */
 class DockView;
@@ -2035,7 +2038,21 @@ barsRefresh()
 	     it != gBars.end(); ++it) {
 		Managed *m = findFrame(it->first);
 		::Window bar = it->second;
-		bool show = (m && m == gActive);
+		/* the bar belongs to the PROCESS: show it while any of the
+		 * app's windows is active. Fall back to the owner-window match
+		 * for a bar that never advertised a pid. */
+		unsigned long barPid = gBarPid.count(bar) ? gBarPid[bar] : 0;
+		bool show;
+
+		if (barPid) {
+			unsigned long activePid = gActive
+				? propertyCardinal(gActive->client,
+						   "_NET_WM_PID", 0) : 0;
+
+			show = activePid != 0 && activePid == barPid;
+		} else {
+			show = (m && m == gActive);
+		}
 		int x = 0, w = 0;
 
 		if (show) {
@@ -2142,10 +2159,11 @@ manageBarWindow(::Window w)
 	}
 	owner = propertyCardinal(w, "_ARGENTUM_MENUBAR_FOR", 0);
 	gBars[owner] = w;
+	gBarPid[w] = propertyCardinal(w, "_ARGENTUM_MENUBAR_PID", 0);
 	gBarZone.erase(w);
 	gBarMapped[w] = false;
-	printf("KESTREL: menubar window 0x%lx for client 0x%lx\n",
-	       (unsigned long) w, owner);
+	printf("KESTREL: menubar window 0x%lx for client 0x%lx pid=%lu\n",
+	       (unsigned long) w, owner, gBarPid[w]);
 	fflush(stdout);
 	barsRefresh();		/* visible iff the owner is focused */
 	return true;

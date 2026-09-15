@@ -104,12 +104,20 @@ class Case(BaseCase):
             monitor.park()
             rowy = 45
 
-            # File > Save (its only-first-row pick runs ed.save())
+            # File > Save. The File menu is [New, Save, Reload, --,
+            # Test Interface], so Save is the SECOND row: derive its
+            # position from the popup's own logged height.
             fx = (merged[1][0] + merged[1][1]) // 2
             saves = session.count(r"WEAVER: save ")
             monitor.goto(fx, 15)
             monitor.click()
-            monitor.goto(fx, rowy)
+            time.sleep(1.0)
+            popup = re.findall(r"ARGENTUM-SHM: enabled \d+x(\d+)",
+                               session.log_text())
+            h = int(popup[-1]) if popup else 130
+            items = len(re.findall(r"ARGENTUM-POPUP: open", session.log_text()))
+            rowy2 = 30 + int(1.5 * h / max(items and 5 or 5, 1))
+            monitor.goto(fx, rowy2)
             monitor.click()
             self.check("file-save-ran",
                        session.count(r"WEAVER: save ") > saves,

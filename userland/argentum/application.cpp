@@ -5,6 +5,7 @@
  * virtuals until terminate() is called. text/.conf land in S0.4/S0.5.
  */
 #include <argentum/argentum.h>
+#include <unistd.h>
 
 #include <X11/Xatom.h>
 #include <argentum/argentum_p.h>
@@ -430,6 +431,17 @@ Application::setMenuBar(Menu *menubar)
 				PropModeReplace, (unsigned char *) &one, 1);
 		XChangeProperty(dpy, impl_->barWindow->xid(), f, XA_CARDINAL, 32,
 				PropModeReplace, (unsigned char *) &owner, 1);
+		/* the bar belongs to the APPLICATION: Kestrel shows it while
+		 * ANY of this process's windows is the active one (the owner
+		 * above is only the lifecycle anchor). */
+		{
+			Atom p = XInternAtom(dpy, "_ARGENTUM_MENUBAR_PID", False);
+			unsigned long pid = (unsigned long) getpid();
+
+			XChangeProperty(dpy, impl_->barWindow->xid(), p,
+					XA_CARDINAL, 32, PropModeReplace,
+					(unsigned char *) &pid, 1);
+		}
 	}
 	/* map-only (no focus grab): the WM places the bar and maps it
 	 * when this app is the focused one. */

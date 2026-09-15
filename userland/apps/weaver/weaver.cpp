@@ -2390,6 +2390,126 @@ public:
 		refreshDisplay();
 	}
 
+	/* ---- the Test Interface window (menu-driven) -------------------
+	 * Unlike --test (which REPLACES the editor's loop), the menu builds
+	 * the document into a second, chrome-free window and leaves the
+	 * editor running; Quit Test unmaps it. The test-mode dispatcher logs
+	 * every action, so a click proves the wiring. */
+	Window *testWin_ = nullptr;
+
+	void startTest()
+	{
+		Application &app = Application::shared();
+
+		if (!app.isRunning()) {
+			std::printf("WEAVER: test FAIL (no display)\n");
+			std::fflush(stdout);
+			return;
+		}
+		if (testWin_) {
+			testWin_->show();
+			return;
+		}
+		InterfaceNode *r = doc->root();
+
+		if (!r) {
+			std::printf("WEAVER: test FAIL (no document)\n");
+			std::fflush(stdout);
+			return;
+		}
+		static View *testRoot = nullptr;
+		static InterfaceDispatcher testDispatch;
+
+		testRoot = new View();
+		testRoot->setFrame(Rect{ { 0, 0 },
+			{ r->frameW(), r->frameH() } });
+
+		std::string why;
+		View *built = interfaceBuild(*doc, testRoot, why);
+
+		if (!built) {
+			std::printf("WEAVER: test FAIL (build: %s)\n",
+				    why.c_str());
+			std::fflush(stdout);
+			return;
+		}
+		for (int i = 0; i < doc->connectionCount(); i++) {
+			const InterfaceConnection *c = doc->connectionAt(i);
+
+			if (!c || c->kind != "action") {
+				continue;
+			}
+			std::string target = c->target;
+			std::string selector = c->selector;
+
+			testDispatch.bind(target.c_str(), selector.c_str(),
+					  [selector, target]() {
+				std::printf("WEAVER: test action %s %s\n",
+					    selector.c_str(), target.c_str());
+				std::fflush(stdout);
+			});
+			std::printf("WEAVER: test bind %s %s\n",
+				    c->selector.c_str(), c->target.c_str());
+		}
+		std::fflush(stdout);
+		testDispatch.install(*doc, built);
+
+		double ppt = app.pxPerPt();
+
+		testWin_ = new Window();
+		if (!testWin_->init("Weaver Test", 60, 60,
+				    (unsigned) (r->frameW() * ppt + 0.5),
+				    (unsigned) (r->frameH() * ppt + 0.5))) {
+			std::printf("WEAVER: test FAIL (window init)\n");
+			std::fflush(stdout);
+			delete testWin_;
+			testWin_ = nullptr;
+			return;
+		}
+		testWin_->setContentView(testRoot);
+		testWin_->show();
+		std::printf("WEAVER: test window 0x%lx %ux%u\n",
+			    testWin_->xid(), testWin_->width(),
+			    testWin_->height());
+		std::fflush(stdout);
+	}
+
+	void endTest()
+	{
+		if (!testWin_) {
+			std::printf("WEAVER: test quit (no test)\n");
+			std::fflush(stdout);
+			return;
+		}
+		testWin_->unmap();
+		delete testWin_;
+		testWin_ = nullptr;
+		std::printf("WEAVER: test quit\n");
+		std::fflush(stdout);
+	}
+
+	/* Generate C++ for the document's ONLY class record into the
+	 * document's own directory (v1: no file dialog yet). */
+	void genClassDefault()
+	{
+		if (doc->classCount() != 1) {
+			std::printf("WEAVER: gen-class FAIL (exactly one class "
+				    "record is needed; %d present)\n",
+				    doc->classCount());
+			std::fflush(stdout);
+			return;
+		}
+		std::string dir = ".";
+
+		if (!path.empty()) {
+			size_t slash = path.rfind('/');
+
+			dir = slash == std::string::npos ? "."
+				: path.substr(0, slash);
+		}
+		genClass(doc->classAt(0)->name.c_str(), dir.c_str());
+	}
+
 	/* W4: emit C++ for a class record — a header and a source, the
 	 * same bytes every time (the emitter's discipline). */
 	void genClass(const char *className, const char *dir)
@@ -2440,6 +2560,7 @@ public:
 
 	void listClasses()
 	{
+		std::printf("WEAVER: classes %d\n", doc->classCount());
 		for (int i = 0; i < doc->classCount(); i++) {
 			const InterfaceClassInfo *c = doc->classAt(i);
 
@@ -3330,6 +3451,15 @@ runDisplay(Editor &ed)
 	static argentum::MenuItem iAbout("About Weaver"), iQuit("Quit Weaver");
 	static argentum::MenuItem iSave("Save"), iReload("Reload");
 	static argentum::MenuItem iUndo("Undo");
+	static argentum::MenuItem iNew("New"), iTest("Test Interface");
+	static argentum::MenuItem tGroup("Group"), iGroupBox("Box"),
+		iGroupScroll("Scroll View"), iGroupSplit("Split View"),
+		iUngroup("Ungroup");
+	static argentum::MenuItem tClasses("Classes"), iListClasses("List Classes"),
+		iGenCpp("Generate C++");
+	static argentum::MenuItem tTest("Test"), iRunTest("Run Test"),
+		iQuitTest("Quit Test");
+	static argentum::Menu mGroup, mClasses, mTest;
 
 	mApp.setTitle("Weaver");
 	iAbout.setAction([]() {
@@ -3350,14 +3480,48 @@ runDisplay(Editor &ed)
 	iSave.setAction([&ed]() { ed.save(); });
 	iSave.setKeyEquivalent('s', argentum::KeyModCommand);
 	iReload.setAction([&ed]() { ed.reload(); });
+	iNew.setAction([&ed]() {
+		ed.newUntitled();
+		ed.updateTitle();
+		ed.refreshDisplay();
+	});
+	iNew.setKeyEquivalent('n', argentum::KeyModCommand);
+	mFile.addItem(&iNew);
 	mFile.addItem(&iSave);
 	mFile.addItem(&iReload);
+	mFile.addSeparator();
+	iTest.setAction([&ed]() { ed.startTest(); });
+	mFile.addItem(&iTest);
 
 	mEdit.setTitle("Edit");
 	iUndo.setAction([&ed]() { ed.undo(); });
 	iUndo.setKeyEquivalent('z', argentum::KeyModCommand);
 	mEdit.addItem(&iUndo);
+	mEdit.addSeparator();
+	iGroupBox.setAction([&ed]() { ed.group("box"); });
+	iGroupScroll.setAction([&ed]() { ed.group("scroll"); });
+	iGroupSplit.setAction([&ed]() { ed.group("split"); });
+	mGroup.setTitle("Group");
+	mGroup.addItem(&iGroupBox);
+	mGroup.addItem(&iGroupScroll);
+	mGroup.addItem(&iGroupSplit);
+	tGroup.setSubmenu(&mGroup);
+	mEdit.addItem(&tGroup);
+	iUngroup.setAction([&ed]() { ed.ungroup(); });
+	mEdit.addItem(&iUngroup);
 
+	iListClasses.setAction([&ed]() { ed.listClasses(); });
+	mClasses.setTitle("Classes");
+	mClasses.addItem(&iListClasses);
+	iGenCpp.setAction([&ed]() { ed.genClassDefault(); });
+	mClasses.addItem(&iGenCpp);
+	tClasses.setSubmenu(&mClasses);
+	iRunTest.setAction([&ed]() { ed.startTest(); });
+	iQuitTest.setAction([&ed]() { ed.endTest(); });
+	mTest.setTitle("Test");
+	mTest.addItem(&iRunTest);
+	mTest.addItem(&iQuitTest);
+	tTest.setSubmenu(&mTest);
 	tApp.setSubmenu(&mApp);
 	tFile.setSubmenu(&mFile);
 	tEdit.setSubmenu(&mEdit);
@@ -3365,6 +3529,8 @@ runDisplay(Editor &ed)
 	weaverBar.addItem(&tApp);
 	weaverBar.addItem(&tFile);
 	weaverBar.addItem(&tEdit);
+	weaverBar.addItem(&tClasses);
+	weaverBar.addItem(&tTest);
 	app.setMenuBar(&weaverBar);
 
 	w.show();
