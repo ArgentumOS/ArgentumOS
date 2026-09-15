@@ -39,6 +39,7 @@ static Slider *dial = nullptr;	/* the circular one */
 static Stepper *stepper = nullptr;
 static ProgressIndicator *progress = nullptr;
 static LevelIndicator *level = nullptr;
+static LevelIndicator *rating = nullptr;
 static std::string lastEdit;
 static std::string lastTokens;
 
@@ -337,6 +338,16 @@ main(int argc, char **argv)
 	level->setCriticalValue(9);
 	level->setDoubleValue(9.5);
 	content->addSubview(level);
+	y += 20;
+
+	rating = new LevelIndicator();
+	rating->setFrame(Rect{ { 16, y }, { 90, 14 } });
+	rating->setStyle(LevelIndicator::Style::Rating);
+	rating->setMinValue(0);
+	rating->setMaxValue(5);
+	rating->setNumberOfSteps(5);
+	rating->setDoubleValue(3.6);		/* whole steps: this reads as four */
+	content->addSubview(rating);
 	y += 22;
 
 	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
@@ -386,6 +397,7 @@ main(int argc, char **argv)
 	logAt("STEPPER", stepper);
 	logAt("PROGRESS", progress);
 	logAt("LEVEL", level);
+	logAt("RATING", rating);
 	/* the two bars' own geometry, and the fraction each draws, so a gate
 	 * can ask the framebuffer about the SAME numbers the board used */
 	std::printf("ZOO-FRACTION progress=%g level=%g\n", progress->fraction(),

@@ -985,6 +985,25 @@ LevelIndicator::fillColor() const
 	return Color::rgb(0.30, 0.65, 0.35);
 }
 
+/* A FAN FROM THE CENTRE IS EXACT FOR A STAR. Context::fillPolygon fans from
+ * its first vertex and is exact for a CONVEX polygon, which a five-pointed star
+ * is not - but a star IS star-shaped about its centre, so putting the centre
+ * first makes every triangle of the fan lie inside it. */
+static void
+fillStar(Context *ctx, double cx, double cy, double r, const Color &c)
+{
+	Point p[11];
+
+	p[0] = Point{ cx, cy };
+	for (int i = 0; i < 10; i++) {
+		double rr = (i % 2 == 0) ? r : r * 0.44;
+		double a = -1.5707963 + i * 0.6283185;	/* -90deg, 36deg steps */
+
+		p[i + 1] = Point{ cx + rr * cos(a), cy + rr * sin(a) };
+	}
+	ctx->fillPolygon(p, 11, c);
+}
+
 void
 LevelIndicator::drawRect(const Rect &dirty)
 {
@@ -996,6 +1015,24 @@ LevelIndicator::drawRect(const Rect &dirty)
 	(void) dirty;
 	Rect b = bounds();
 
+	if (style_ == Style::Rating) {
+		/* WHOLE STEPS, so it reads as stars: 3.6 of 5 shows four. The count
+		 * of stars is steps_ (five when unset), each star takes an equal
+		 * cell, and the filled ones take fillColor() - so a rating past the
+		 * warning or critical threshold reads red, like the bar does. */
+		int n = steps_ > 0 ? steps_ : 5;
+		int on = (int) (fraction() * n + 0.5);
+		double cell = b.size.w / n;
+		double r = (cell < b.size.h ? cell : b.size.h) * 0.5 * 0.92;
+
+		for (int i = 0; i < n; i++) {
+			fillStar(ctx, b.origin.x + cell * (i + 0.5),
+				 b.origin.y + b.size.h / 2.0, r,
+				 i < on ? fillColor()
+					: Color::rgb(0.78, 0.78, 0.82));
+		}
+		return;
+	}
 	ctx->fillRoundRect(b, 2.0, Color::rgb(0.90, 0.90, 0.93));
 	/* the discrete styles show their divisions, whether or not they are
 	 * filled: a meter that hides its scale cannot be read at a glance */

@@ -190,3 +190,28 @@ class Case(BaseCase):
                    fill is not None and fill[0] > 150 and fill[1] < 120,
                    "the level indicator's fill at 9.5/10 (critical at 9) is "
                    "%s: a red, not the normal green" % (fill,))
+
+        # WHOLE STEPS, SO IT READS AS STARS. The row is five cells and the value
+        # is 3.6, so four stars are filled and the fifth is not. Sampling the
+        # CENTRE of each is safe for the same reason the drawing can fan from
+        # there: a star is star-shaped about its centre, so the centre is always
+        # inside it.
+        rx, ry = pts["RATING"]
+        cell = 90.0 / 5.0
+        # NOT mirrored: the monitor's INPUT y is mirrored, the SCREENSHOT is
+        # not (the dial check samples the guest's own 808 and finds the knob).
+        # Getting this wrong samples the other half of the screen, which is how
+        # this first read a progress bar's track and called it a flat rating.
+        yrow = int(ry)
+        ink = shot.px(int(rx - 45.0 + cell * 3.5), yrow)   # the fourth star
+        off = shot.px(int(rx - 45.0 + cell * 4.5), yrow)   # the fifth
+        # WHICH SIDE IS INK: the filled star is a GREEN (the fill colour, whose
+        # G dominates), the empty one the neutral track grey - so the filled
+        # star is not "greener", it is a different HUE. Measured: (76,166,89)
+        # against (199,199,209).
+        self.check("rating-reads-as-whole-stars",
+                   ink[1] > ink[0] + 40 and ink[1] > ink[2] + 40
+                   and off[2] > off[1],
+                   "a rating of 3.6 out of five: the FOURTH star's centre is "
+                   "%s and the fifth's is %s - four whole stars should be "
+                   "filled and the fifth left empty" % (ink, off))
