@@ -1267,8 +1267,10 @@ public:
 	/// Set the frame (points, in the superview's space). A SIZE change
 	/// reflows this view's children whose masks are on (springs/struts,
 	/// Cocoa's resizeSubviewsWithOldSize) and marks the constrained ones
-	/// as needing layout; a pure move changes nothing else.
-	void setFrame(const Rect &r);
+	/// as needing layout; a pure move changes nothing else. VIRTUAL: a
+	/// subclass that owns geometry derived from its bounds (a text view's
+	/// container, for one) has to hear about a resize.
+	virtual void setFrame(const Rect &r);
 	/// The frame, in the SUPERVIEW's space (points).
 	Rect frame() const { return frame_; }
 	/// The same rectangle in THIS view's own space: origin always (0,0),
@@ -1511,6 +1513,8 @@ public:
 	bool mouseUp(const MouseEvent &e) override;
 
 protected:
+	friend class TextField;
+
 	/// Called on a release INSIDE the control: the default sends the
 	/// action. A subclass changes what a click means here.
 	virtual void mouseUpInside(const MouseEvent &e);
@@ -1990,6 +1994,257 @@ private:
 	/* the truncated COPY a Clip/Truncate* container shows */
 	std::string truncatedCopy(int start, double maxWidth,
 				  LineBreakMode mode) const;
+};
+
+/// @purpose A view that DISPLAYS text through the stack: it owns a
+/// storage, a container sized to its bounds and the layout that flows one
+/// into the other, and draws the result with its padding. Cocoa's
+/// NSTextView, read-only for now — the field editor and the keyboard are
+/// the editing milestone.
+///
+/// @lifetime The view owns its storage, container and layout manager (they
+/// are its internals); it does not own anything else.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The CONTAINER FOLLOWS THE VIEW: a resize resizes the
+/// container, and the lazy layout then re-wraps the text to the new width
+/// — which is why a text view never needs to be told to lay out again.
+/// setEditable()/setSelectable() exist and are honoured as "not yet": they
+/// record the intent and the class says plainly that no key reaches the
+/// text until the keyboard milestone, rather than pretending otherwise.
+///
+/// @see TextField, LayoutManager, TextStorage
+class TextView : public View {
+public:
+	/// The class record KVC walks (Object <- View <- TextView).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty text view.
+	TextView();
+	/// Destroy the view: the storage, container and layout are its own.
+	~TextView() override;
+
+	/// The text ('' when empty).
+	const char *string() const;
+	/// Replace the text.
+	void setString(const char *utf8);
+
+	/// The text's attributes (applied to the whole string).
+	TextAttributes textAttributes() const;
+	/// Set them.
+	void setTextAttributes(const TextAttributes &a);
+
+	/// The layout, for asking about lines and hit testing (never nullptr).
+	LayoutManager *layoutManager() const { return layout_; }
+	/// The storage behind the text (never nullptr).
+	TextStorage *textStorage() const { return storage_; }
+	/// The region the text flows into (never nullptr).
+	TextContainer *textContainer() const { return container_; }
+
+	/// The padding between the bounds and the text.
+	double textInset() const { return inset_; }
+	/// Set it.
+	void setTextInset(double pt);
+	/// True when the view paints its own background behind the text.
+	bool drawsBackground() const { return drawsBackground_; }
+	/// Set it.
+	void setDrawsBackground(bool on) { drawsBackground_ = on; }
+	/// The colour it paints behind the text.
+	Color backgroundColor() const { return bg_; }
+	/// Set it.
+	void setBackgroundColor(const Color &c) { bg_ = c; }
+	/// How lines break in this view.
+	LineBreakMode breakMode() const;
+	/// Set it.
+	void setBreakMode(LineBreakMode m);
+
+	/// Draw the text.
+	void drawRect(const Rect &dirty) override;
+	/// A resize re-sizes the container (see the @invariants).
+	void setFrame(const Rect &r) override;
+
+	/// True when the text view would accept edits (see the @invariants).
+	bool isEditable() const { return editable_; }
+	/// Record the intent (no key reaches the text yet).
+	void setEditable(bool on) { editable_ = on; }
+	/// True when the text could be selected (see the @invariants).
+	bool isSelectable() const { return selectable_; }
+	/// Record the intent (no selection yet).
+	void setSelectable(bool on) { selectable_ = on; }
+
+protected:
+	TextStorage *storage_ = nullptr;
+	TextContainer *container_ = nullptr;
+	LayoutManager *layout_ = nullptr;
+	double inset_ = 4.0;
+	bool editable_ = false;
+	bool selectable_ = false;
+	bool drawsBackground_ = false;
+	Color bg_ = Color::rgb(1.0, 1.0, 1.0);
+
+	void syncContainer();
+};
+
+/// @purpose The cell behind a text field: it owns the STRING (in a
+/// storage, so the stack's editing and truncation apply), the placeholder,
+/// and how the field is drawn. Cocoa's NSTextFieldCell, which is why a
+/// text field's value lives in its cell like every other control's.
+///
+/// @lifetime Owned by its TextField; copy() hands out an owned copy.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants A single-line field TRUNCATES its tail by default (Cocoa's
+/// rule for a field: the text is one line and the end is what gives), and
+/// a multi-line one wraps — which is the container's business, not new
+/// code. The cell sizes the container to the frame it is asked to draw in,
+/// so a field re-truncates on its own when it is resized.
+///
+/// @see TextField, TextView, LayoutManager
+class TextFieldCell : public ActionCell {
+public:
+	/// The class record KVC walks (Object <- Cell <- ActionCell <-
+	/// TextFieldCell).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty, bezeled, single-line cell.
+	TextFieldCell();
+	/// Destroy the cell: its storage, container and layout go with it.
+	~TextFieldCell() override;
+
+	/// The field's text.
+	const char *stringValue() const;
+	/// Set it.
+	void setStringValue(const char *utf8);
+
+	/// The text the field contains (never nullptr).
+	TextStorage *textStorage() const { return storage_; }
+	/// The layout behind the field (never nullptr).
+	LayoutManager *layoutManager() const { return layout_; }
+
+	/// The text drawn when the field is empty.
+	const char *placeholder() const { return placeholder_.c_str(); }
+	/// Set it.
+	void setPlaceholder(const char *utf8);
+	/// True when the field draws a bezel around itself.
+	bool isBezeled() const { return bezeled_; }
+	/// Set it.
+	void setBezeled(bool on) { bezeled_ = on; }
+	/// True when it draws its own background.
+	bool drawsBackground() const { return drawsBackground_; }
+	/// Set it.
+	void setDrawsBackground(bool on) { drawsBackground_ = on; }
+	/// The colour of the bezel's fill (when it draws a background).
+	Color backgroundColor() const { return bg_; }
+	/// Set it.
+	void setBackgroundColor(const Color &c) { bg_ = c; }
+	/// How many lines the field's text laid out to.
+	int lineCount() const;
+
+	/// Draw the bezel, the background and the text.
+	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+
+private:
+	TextStorage *storage_ = nullptr;
+	TextContainer *container_ = nullptr;
+	LayoutManager *layout_ = nullptr;
+	/// The colour of the bezel's outline.
+	Color borderColor() const { return border_; }
+	/// Set it.
+	void setBorderColor(const Color &c) { border_ = c; }
+
+private:
+	/* the attributes the field draws with (the placeholder is greyed) */
+	TextAttributes defaultAttributesOrMarked(bool placeholder) const;
+
+	std::string placeholder_;
+	bool bezeled_ = true;
+	bool drawsBackground_ = true;
+	Color bg_ = Color::rgb(1.0, 1.0, 1.0);
+	Color border_ = Color::rgb(0.62, 0.62, 0.66);
+};
+
+/// @purpose A text field: a control whose value is TEXT, with the cell
+/// doing the drawing and the string. Cocoa's NSTextField — and, like
+/// Cocoa, a LABEL is a text field configured not to edit, draw a bezel or
+/// take a background (see the label() factory) rather than a class of its
+/// own.
+///
+/// @lifetime The field owns its cell (Control's rule).
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants stringValue() IS the cell's text. An editable field takes
+/// no keystrokes YET: the keyboard and the field editor are the editing
+/// milestone, and the class says so instead of looking broken. A field
+/// with no text draws its placeholder, greyed — so an empty form field is
+/// still legible.
+///
+/// @see TextFieldCell, TextView, Control
+class TextField : public Control {
+public:
+	/// The class record KVC walks (Object <- View <- Control <- TextField).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A bezeled, single-line, editable-intent field with no text.
+	TextField();
+
+	/// A field configured as a LABEL: no bezel, no background, not
+	/// editable and not selectable — the common case, made explicit
+	/// (Cocoa's +labelWithString:).
+	static TextField *label(const char *utf8);
+
+	/// The field's text.
+	const char *stringValue() const;
+	/// Set it.
+	void setStringValue(const char *utf8);
+
+	/// The field's cell (never nullptr; the class installs one).
+	TextFieldCell *fieldCell() const;
+	/// The text drawn when the field is empty.
+	const char *placeholder() const;
+	/// Set it.
+	void setPlaceholder(const char *utf8);
+	/// The cell's storage, for putting attributes on the text.
+	TextStorage *textStorage() const;
+	/// How many lines the text laid out to (1 for a normal field).
+	int lineCount() const;
+	/// True when the field draws a bezel.
+	bool isBezeled() const;
+	/// Set it.
+	void setBezeled(bool on);
+	/// True when it draws a background.
+	bool drawsBackground() const;
+	/// Set it.
+	void setDrawsBackground(bool on);
+	/// The text colour.
+	Color textColor() const;
+	/// Set it.
+	void setTextColor(const Color &c);
+	/// True when the field would accept edits (see the @invariants).
+	bool isEditable() const;
+	/// Record the intent (no key reaches the text yet).
+	void setEditable(bool on);
+	/// True when the text could be selected (see the @invariants).
+	bool isSelectable() const;
+	/// Record the intent (no selection yet).
+	void setSelectable(bool on);
+
+private:
+	bool editable_ = false;
+	bool selectable_ = false;
 };
 
 } /* namespace argentum */

@@ -34,15 +34,15 @@ static Button *gradBtn = nullptr;
 
 /* where a control's centre is, in SCREEN coordinates */
 static void
-logAt(const char *name, Button *b)
+logAt(const char *name, View *v)
 {
-	argentum::Window *w = b->window();
+	argentum::Window *w = v->window();
 
 	if (!w) {
 		return;
 	}
 	double ch = w->chromeHeightPt();
-	Rect f = b->frame();
+	Rect f = v->frame();
 
 	std::printf("ZOO-AT %s x=%g y=%g\n", name,
 		    w->frame().origin.x + f.origin.x + f.size.w / 2.0,
@@ -163,6 +163,49 @@ main(int argc, char **argv)
 		     BezelStyle::Rounded); y += 34;
 	radioB = row(content, zoo, "Radio B", y, ButtonType::Radio,
 		     BezelStyle::Rounded); y += 34;
+	/* ---- the text family (U3b) -------------------------------------
+	 * A label IS a text field configured not to edit or draw a bezel
+	 * (Cocoa's +labelWithString:), so the board shows the CONFIGURATIONS
+	 * rather than a class of its own. */
+	TextField *lbl = TextField::label("A label (a text field, no bezel)");
+
+	lbl->setFrame(Rect{ { 16, y }, { 240, 22 } });
+	content->addSubview(lbl);
+	y += 30;
+
+	TextField *ph = new TextField();
+
+	ph->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	ph->setPlaceholder("Placeholder text");
+	content->addSubview(ph);
+	y += 34;
+
+	/* too long for its frame: the container truncates the tail */
+	TextField *cut = TextField::label(
+		"A label whose text is far too long for the frame it was given");
+
+	cut->setFrame(Rect{ { 16, y }, { 200, 22 } });
+	content->addSubview(cut);
+	y += 30;
+
+	/* wrapped prose, drawn by the stack through the view */
+	TextView *tview = new TextView();
+
+	tview->setFrame(Rect{ { 16, y }, { 240, 66 } });
+	tview->setDrawsBackground(true);
+	tview->setBackgroundColor(Color::rgb(1.0, 1.0, 1.0));
+	tview->setString("A text view wraps its text to its own width, and lays "
+			 "it out lazily, so a resize needs no other telling.");
+	content->addSubview(tview);
+	y += 74;
+
+	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
+	 * not merely clipped: the hit test rejects points outside it, so an
+	 * unclickable control looks like a broken control. This is also why
+	 * the text family below forced the window to grow - and until this
+	 * line existed, the board's own model was taller than its window and
+	 * the lower rows were drawn where the server had no window at all. */
+	w.setFrame(Rect{ { 70, 50 }, { 300, y + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
 	w.setNeedsDisplay();
 	w.displayIfNeeded();
@@ -176,6 +219,21 @@ main(int argc, char **argv)
 	logAt("RADIO-A", radioA);
 	logAt("RADIO-B", radioB);
 	logAt("GRADIENT", gradBtn);
+	logAt("TEXTVIEW", tview);
+	logAt("PLACEHOLDER", ph);
+	/* a LAYOUT answer only exists once the controls have drawn at their
+	 * size (a field's cell sizes its container as it draws), so one draw
+	 * pass happens before anything is reported */
+	w.displayIfNeeded();
+	std::printf("ZOO-TEXT LABEL lines=%d", lbl->lineCount());
+	std::printf("\n");
+	std::printf("ZOO-TEXT PLACEHOLDER lines=%d", ph->lineCount());
+	std::printf("\n");
+	std::printf("ZOO-TEXT VIEW lines=%d", tview->layoutManager()->lineCount());
+	std::printf("\n");
+	std::printf("ZOO-SHOWN %s",
+		    cut->fieldCell()->layoutManager()->lineString(0).c_str());
+	std::printf("\n");
 	std::printf("ZOO-READY\n");
 	std::fflush(stdout);
 

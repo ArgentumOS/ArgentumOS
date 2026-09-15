@@ -9,6 +9,8 @@ first thing to establish is which side is at fault.
   XMOVE-NO-ANSWER  it stopped answering after the moves
 """
 
+import re
+
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/x_move"
@@ -41,6 +43,13 @@ class Case(BaseCase):
                    if "XMOVE-ALIVE" in out
                    else "the server stopped answering: Xfb wedges on a "
                         "window move, and no toolkit on it can drag")
+        rs = re.search(r"XMOVE-RESIZE asked=(\d+)x(\d+) got=(\d+)x(\d+)", out)
+        self.check("resize-is-honoured",
+                   rs is not None and rs.group(1) == rs.group(2 + 1)
+                   and rs.group(2) == rs.group(4),
+                   "the window was %sx%s after asking for %sx%s"
+                   % (rs.group(3), rs.group(4), rs.group(1), rs.group(2))
+                   if rs else "the server never answered the resize")
         self.check("probe-completed", "XMOVE-DONE" in out,
                    "the mover ran to the end" if "XMOVE-DONE" in out
                    else "the mover never finished")

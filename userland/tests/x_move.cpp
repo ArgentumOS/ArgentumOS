@@ -73,6 +73,24 @@ main()
 		std::fflush(stdout);
 		usleep(100 * 1000);
 	}
+	/* RESIZE, and ask the server what it thinks: XGetGeometry is a round
+	 * trip and reports the SERVER's view, so a client that "resized" a
+	 * window the server ignored is caught right here */
+	{
+		XResizeWindow(d, w, 320, 240);
+		XSync(d, False);
+
+		XWindowAttributes a;
+
+		if (XGetWindowAttributes(d, w, &a)) {
+			std::printf("XMOVE-RESIZE asked=320x240 got=%dx%d\n",
+				    a.width, a.height);
+		} else {
+			std::printf("XMOVE-RESIZE no-answer\n");
+		}
+		std::fflush(stdout);
+	}
+
 	/* then prove the connection still answers */
 	Window retRoot, retChild;
 	int rx, ry, wx, wy;

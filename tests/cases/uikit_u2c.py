@@ -45,11 +45,15 @@ class Case(BaseCase):
         sh = re.search(r"ZOO-SCREEN w=\d+ h=(\d+)", out)
         pts = {m.group(1): (float(m.group(2)), float(m.group(3)))
                for m in re.finditer(r"ZOO-AT (\S+) x=([\d.]+) y=([\d.]+)", out)}
-        self.check("controls-located",
-                   sh is not None and len(pts) == 4,
-                   "screen %s, controls at %s"
-                   % (sh.group(1) if sh else "?", sorted(pts)))
-        if sh is None or len(pts) != 4:
+        # the controls THIS case drives must be located; the board may
+        # gain more (it did: the text family), so do not count them
+        need = ("SWITCH", "RADIO-A", "RADIO-B", "GRADIENT")
+        missing = [n for n in need if n not in pts]
+        self.check("controls-located", sh is not None and not missing,
+                   "screen %s, controls at %s" % (sh.group(1), sorted(pts))
+                   if sh and not missing else
+                   "missing %s" % (missing or "the screen size"))
+        if sh is None or missing:
             return
         screen_h = int(sh.group(1))
 

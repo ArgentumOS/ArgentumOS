@@ -240,6 +240,7 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 # the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
 # the session in S0.2.
 ARGENTUM_SRCS = userland/argentum/text.cpp userland/argentum/textstack.cpp \
+	userland/argentum/textview.cpp \
 	userland/argentum/object.cpp \
 	userland/argentum/notification.cpp userland/argentum/cell.cpp \
 	userland/argentum/control.cpp userland/argentum/viewcontroller.cpp \

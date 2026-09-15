@@ -369,9 +369,39 @@ as a compatibility path for un-migrated views, with a migration list.
   Gate `tests/cases/uikit_u3a.py` 4/4 (44 assertions): wrapping picks the
   break from the words' own measured widths, explicit newlines, all five
   break modes, edits marking the layout stale, and hit testing.
-  **U3b — the views. NEXT:** `TextView` (display + the field editor),
-  `TextField` and `Label` on the stack, each landing with its place on the
-  widget zoo board.
+  **U3b — the views. DONE (2026-09).** `TextView` (a view that owns a
+  storage, a container sized to its bounds and the layout between them, and
+  draws the wrapped result with its inset — a resize re-sizes the container
+  and the lazy layout re-wraps, so nothing else ever has to be told),
+  `TextFieldCell` (the string lives in the CELL, like every other
+  control's value; a single-line field TRUNCATES its tail by default, and
+  the cell sizes its container to the frame it is asked to draw in, so a
+  field re-truncates on its own when resized) and `TextField` (Cocoa's
+  NSTextField, with `TextField::label()` as the factory for the label
+  case — Cocoa expresses a label as a text field configured not to edit or
+  draw a bezel, and so do we: no invented `Label` class). Editable and
+  selectable are recorded intent: no key reaches the text until the
+  editing milestone, and the docs say so rather than looking broken.
+  `View::setFrame` became VIRTUAL for this (a subclass that owns geometry
+  derived from its bounds has to hear about a resize).
+  The **widget zoo board** gained the text family: a label, a field
+  showing its placeholder, a label too long for its frame, and a wrapped
+  text view. Gate `tests/cases/uikit_u3b.py` 10/10: the label is one line,
+  the text view wraps the prose to THREE, the too-long label shows
+  "A label whose text is far to…" (the stack's truncation, on screen),
+  816 of 8000 pixels (10.2%) inside the text view are glyphs, and an
+  EMPTY field still draws its placeholder.
+  **A CORRECTION.** The U2c entry above claims the board "sizes itself to
+  its rows" and lists that among the bugs fixed. It did not:
+  `git show c315ac72:userland/apps/widgetzoo.cpp` has no `setFrame` call,
+  so the edit never landed and the board passed its gate only because the
+  BUTTON rows happened to fit the window's opened size (460pt). The text
+  family needs 616, and that is what exposed it: the model was taller than
+  the window and the lower rows were drawn where the server had no window
+  at all. The line is in now, and the board's rows are on screen.
+  **U3c — editing. NEXT:** the keyboard (key events, first responder, the
+  caret and the field editor) and the rest of the text family
+  (`NSSearchField`, `NSTokenField`, the field-editor view).
 - **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
