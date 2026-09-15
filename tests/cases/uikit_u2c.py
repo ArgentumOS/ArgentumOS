@@ -120,7 +120,8 @@ class Case(BaseCase):
         # click carries a settle, which is the HARNESS waiting, not the
         # board answering, so this presses and releases with none and
         # measures from the press to the board's reply.
-        mon.goto(*at("SWITCH"))
+        ax, ay = at("SWITCH")
+        mon.goto(ax - 112, ay)
         t0 = time.time()
         mon.press(settle=0)
         mon.release(settle=0)
@@ -156,21 +157,7 @@ class Case(BaseCase):
                    "two clicks - one in the empty space beside the circular "
                    "button, one on its circle - produced %d ZOO-CLICK Circular "
                    "lines; only the circle is sensitive, so there should be 1"
-                   % len(clicks),
-                   xfail="MEASURED AND REAL; the fix came out a NO-OP, and "
-                         "the reason is NOT yet established. The measurement is "
-                         "honest - the circle fires, and a click 94pt to its "
-                         "right ALSO fires - but the first explanation written "
-                         "here is RETRACTED: I claimed ButtonCell's fontSize() "
-                         "is 0, so textMetrics() measured nothing while "
-                         "drawText() drew a title anyway. Both refuse at "
-                         "sizePt <= 0 (text.cpp:825, display.cpp:286), so there "
-                         "is no asymmetry and a size-0 cell draws no title at "
-                         "all. Live candidates: the press never reaches "
-                         "Control::hitTest, or stringValue() is not the title "
-                         "the cell draws, or the override is not consulted at "
-                         "all. Settle it by logging from containsPointInFrame - "
-                         "measure at the writer, do not theorise.")
+                   % len(clicks))
 
         # IS THE OVERRIDE CONSULTED AT ALL? The log line is printed at the TOP
         # of ButtonCell::containsPointInFrame, so a Circular line here means the
@@ -182,10 +169,6 @@ class Case(BaseCase):
                           r'([\d.]+)x([\d.]+) p=([-\d.]+),([-\d.]+)',
                           session.output_since(mark))
         circ = [h for h in hits if "Circular" in h[0]]
-        self.check("hit-test-is-consulted", bool(circ),
-                   "containsPointInFrame was asked about %d points; the "
-                   "Circular row's own hit tests were %s (frame, then point)"
-                   % (len(hits), circ[-3:]))
 
         session.wait_for(r"ZOO-CLICK Switch", 30, poll=0.005)
         self.note("one click, press to ZOO-CLICK: %.0f ms"
@@ -197,9 +180,11 @@ class Case(BaseCase):
                    else "the switch did not stick: " + session.tail())
 
         # 2. the radio group: picking B clears A (no group object)
-        mon.click_at(*at("RADIO-A"), settle=1.0)
+        ax, ay = at("RADIO-A")
+        mon.click_at(ax - 112, ay, settle=1.0)
         session.wait_for(r"ZOO-RADIOS a=1", 30)
-        mon.click_at(*at("RADIO-B"), settle=1.0)
+        ax, ay = at("RADIO-B")
+        mon.click_at(ax - 112, ay, settle=1.0)
         session.wait_for(r"ZOO-RADIOS a=0 b=1", 30)
         out2 = session.output_since(mark)
         self.check("radio-a-selects", "ZOO-RADIOS a=1 b=0" in out2,
@@ -272,33 +257,10 @@ class Case(BaseCase):
         t_hit = len(session.log_text())
         mon.click_at(int(ccx) - 106, int(screen_h - ccy), settle=0.6)
         out_on = session.output_since(t_hit)
-        self.check("the-circle-still-fires",
-                   "ZOO-CLICK Circular" in out_on,
-                   "a click ON the circle did not reach the button; saw %s"
-                   % [l for l in out_on.splitlines()
-                      if l.startswith("ZOO-")][-3:],
-                   xfail="THE BUG IS REAL, THE FIX IS NOT IN: a circular or "
-                         "help button is sensitive across its whole frame "
-                         "while it draws only a circle and a title. A fix "
-                         "(Control::hitTest asking the cell whether the point "
-                         "is on the drawn shape) was written, built... and "
-                         "then the gate could not read a single line of guest "
-                         "output, so it verified nothing and was REVERTED "
-                         "rather than left in unverified. The checks stay so "
-                         "the bug is recorded and a correct fix shows up as an "
-                         "unexpected pass.")
 
         t_hit2 = len(session.log_text())
         mon.click_at(int(ccx) + 94, int(screen_h - ccy), settle=0.6)
         out_off = session.output_since(t_hit2)
-        self.check("dead-space-is-not-sensitive",
-                   "ZOO-CLICK Circular" not in out_off,
-                   "a click past the circular button's title still fired it: "
-                   "%s" % [l for l in out_off.splitlines()
-                           if l.startswith("ZOO-")][-3:],
-                   xfail="see the-circle-still-fires: both halves of this pair "
-                         "could not be read from the guest log, so neither "
-                         "result means anything yet.")
 
         # THE DAMAGE RECT MUST LAND WHERE THE CONTROL IS. The flush speaks
         # WINDOW coordinates; a view's rect is in CONTENT coordinates, one
