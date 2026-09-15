@@ -2540,6 +2540,432 @@ private:
 	/* the entry is empty again after a commit, so the caret goes home */
 	void setInsertionPointFor(const char *utf8);
 };
+/// @purpose The cell behind a slider: the track, the ticks and the knob,
+/// and the arithmetic that turns an x into a value. Cocoa's NSSliderCell.
+///
+/// @lifetime Owned by its Slider; copy() hands out an owned copy.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The value is CLAMPED to min/max on every set, so a drag
+/// past the end parks at the end rather than wrapping. With tick marks,
+/// the x is snapped to the nearest tick — which is what makes
+/// allowsTickMarkValuesOnly meaningful, and the same computation the
+/// drawing uses to place them, so the knob always sits ON a tick.
+///
+/// @see Slider, ActionCell
+class SliderCell : public ActionCell {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A slider cell spanning 0..1 at 0, continuous, with no ticks.
+	SliderCell();
+
+	/// The lowest value the slider can take.
+	double minValue() const { return minValue_; }
+	/// Set it (the value is clamped to the new range).
+	void setMinValue(double v);
+	/// The highest value.
+	double maxValue() const { return maxValue_; }
+	/// Set it.
+	void setMaxValue(double v);
+	/// The current value.
+	double value() const { return value_; }
+	/// Set it (clamped).
+	void setValue(double v);
+	/// True when a drag sends the action as it goes (Cocoa's continuous);
+	/// false means the action waits for the release.
+	bool isContinuous() const { return continuous_; }
+	/// Set it.
+	void setContinuous(bool on) { continuous_ = on; }
+	/// How many tick marks the track carries (0 = none).
+	int tickMarks() const { return tickMarks_; }
+	/// Set them.
+	void setTickMarks(int n);
+
+	/// The knob's centre x inside `frame` (points).
+	double knobCenterX(const Rect &frame) const;
+	/// The knob's thickness (points).
+	double knobThickness() const { return 18.0; }
+	/// Where the track runs, inside `frame`.
+	Rect trackRect(const Rect &frame) const;
+	/// Turn an x inside `frame` into a value and SET it (clamping and
+	/// snapping to a tick when there are ticks).
+	void setValueForPointX(const Rect &frame, double x);
+
+	/// Draw the track, the ticks and the knob.
+	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+
+	/// The track's colour.
+	Color trackColor() const { return track_; }
+	/// Set it.
+	void setTrackColor(const Color &c) { track_ = c; }
+
+private:
+	double minValue_ = 0;
+	double maxValue_ = 1;
+	double value_ = 0;
+	bool continuous_ = true;
+	int tickMarks_ = 0;
+	Color track_ = Color::rgb(0.80, 0.80, 0.84);
+};
+
+/// @purpose A slider: a track with a knob the user drags, holding a number
+/// in a range. Cocoa's NSSlider.
+///
+/// @lifetime The slider owns its cell.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The action is sent as the knob moves when the slider is
+/// CONTINUOUS (Cocoa's default for a slider) and once on the release when
+/// it is not — so a continuous slider's handler must tolerate being called
+/// many times per drag, and the docs say so rather than leaving it to be
+/// discovered. A press anywhere on the track jumps the knob there first
+/// (Cocoa's behaviour for a slider without a "scroll" setting).
+///
+/// @see SliderCell, Stepper, Control
+class Slider : public Control {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A horizontal 0..1 slider at 0, continuous.
+	Slider();
+
+	/// The slider's cell (never nullptr).
+	SliderCell *sliderCell() const;
+
+	/// The current value.
+	double doubleValue() const;
+	/// Set it (clamped).
+	void setDoubleValue(double v);
+	/// The lowest value.
+	double minValue() const;
+	/// Set it.
+	void setMinValue(double v);
+	/// The highest value.
+	double maxValue() const;
+	/// Set it.
+	void setMaxValue(double v);
+	/// True when the action fires as the knob moves.
+	bool isContinuous() const;
+	/// Set it.
+	void setContinuous(bool on);
+	/// How many tick marks the track carries.
+	int tickMarks() const;
+	/// Set them.
+	void setTickMarks(int n);
+
+	/// Press: jump the knob here and start tracking.
+	bool mouseDown(const MouseEvent &e) override;
+	/// Drag: follow the pointer (sending as it goes when continuous).
+	bool mouseDragged(const MouseEvent &e) override;
+	/// Release: finish tracking.
+	bool mouseUp(const MouseEvent &e) override;
+	/// The release INSIDE the slider: a DISCRETE slider sends here (a
+	/// continuous one has already sent as the knob moved).
+	void mouseUpInside(const MouseEvent &e) override;
+};
+
+/// @purpose The cell behind a stepper: two arrow halves and the increment
+/// arithmetic. Cocoa's NSStepperCell.
+///
+/// @lifetime Owned by its Stepper.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The value is clamped to min/max unless the stepper WRAPS,
+/// in which case it rolls over (Cocoa's wrapping rule). The upper half
+/// increments and the lower half decrements.
+///
+/// @see Stepper, ActionCell
+class StepperCell : public ActionCell {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A stepper spanning 0..100 by 1, not wrapping, at 0.
+	StepperCell();
+
+	/// The lowest value.
+	double minValue() const { return minValue_; }
+	/// Set it.
+	void setMinValue(double v);
+	/// The highest value.
+	double maxValue() const { return maxValue_; }
+	/// Set it.
+	void setMaxValue(double v);
+	/// The current value.
+	double value() const { return value_; }
+	/// Set it (clamped, or wrapped when the stepper wraps).
+	void setValue(double v);
+	/// How much one step moves.
+	double increment() const { return increment_; }
+	/// Set it.
+	void setIncrement(double v);
+	/// True when the value rolls over instead of stopping.
+	bool wraps() const { return wraps_; }
+	/// Set it.
+	void setWraps(bool on) { wraps_ = on; }
+
+	/// Move one step up (true when the value changed).
+	bool stepUp();
+	/// Move one step down.
+	bool stepDown();
+	/// True when `p` (in the cell's coordinates) is in the UPPER half.
+	bool pointIsUp(const Point &p) const;
+	/// The height the cell was last DRAWN at (the halves are halves of
+	/// that; the cell has no frame of its own, as in Cocoa).
+	void setDrawHeight(double h) { drawHeight_ = h; }
+
+	/// Draw the two halves and their arrows.
+	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+
+private:
+	double minValue_ = 0;
+	double maxValue_ = 100;
+	double value_ = 0;
+	double increment_ = 1;
+	bool wraps_ = false;
+	double drawHeight_ = 0;
+
+	/// The height of the last draw (see setDrawHeight).
+	double boundsHeightHint() const { return drawHeight_; }
+};
+
+/// @purpose A stepper: two arrow halves that move a number up and down.
+/// Cocoa's NSStepper, the control a form uses for "a small number".
+///
+/// @lifetime The stepper owns its cell.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants A click acts on the RELEASE inside the half it landed on
+/// (a press outside does nothing); auto-repeat while the button is held is
+/// NOT here yet — Cocoa repeats, and this class says so rather than
+/// feeling unresponsive for no stated reason. The action is sent once per
+/// step, with the stepper as the sender.
+///
+/// @see StepperCell, Slider, Control
+class Stepper : public Control {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A stepper spanning 0..100 by 1, not wrapping.
+	Stepper();
+
+	/// The stepper's cell (never nullptr).
+	StepperCell *stepperCell() const;
+
+	/// The current value.
+	double doubleValue() const;
+	/// Set it.
+	void setDoubleValue(double v);
+	/// The lowest value.
+	double minValue() const;
+	/// Set it.
+	void setMinValue(double v);
+	/// The highest value.
+	double maxValue() const;
+	/// Set it.
+	void setMaxValue(double v);
+	/// One step's size.
+	double increment() const;
+	/// Set it.
+	void setIncrement(double v);
+	/// True when the value wraps.
+	bool wraps() const;
+	/// Set it.
+	void setWraps(bool on);
+
+	/// Increase by one step and send the action (false when nothing moved).
+	bool stepUp();
+	/// Decrease by one step and send the action.
+	bool stepDown();
+
+	/// A release inside a half steps that way and sends the action.
+	void mouseUpInside(const MouseEvent &e) override;
+};
+
+/// @purpose A progress indicator: a bar that fills to show how far along
+/// something is, or a spinner that turns when the length is unknown.
+/// Cocoa's NSProgressIndicator — a VIEW, not a control (there is nothing
+/// here for a user to do).
+///
+/// @lifetime The indicator owns nothing but its own state.
+///
+/// @threading Single-threaded (the UI thread). The spinner is ANIMATED by
+/// the app calling advanceAnimation() on a tick; the class does not own a
+/// timer, because a toolkit that starts timers on its own is a toolkit
+/// that keeps a machine awake.
+///
+/// @invariants fraction() is the single number everything else follows
+/// from: a determinate bar shows exactly that fraction of its width, and
+/// an indeterminate one ignores the value and paints a moving stripe.
+///
+/// @see LevelIndicator, View
+class ProgressIndicator : public View {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// What the indicator looks like.
+	enum class Style {
+		/// A bar that fills.
+		Bar,
+		/// A spinning element for an unknown length.
+		Spinner,
+	};
+
+	/// An indeterminate bar, 0..1.
+	ProgressIndicator();
+
+	/// The style.
+	Style style() const { return style_; }
+	/// Set it.
+	void setStyle(Style s) { style_ = s; }
+	/// The lowest value.
+	double minValue() const { return minValue_; }
+	/// Set it.
+	void setMinValue(double v) { minValue_ = v; }
+	/// The highest value.
+	double maxValue() const { return maxValue_; }
+	/// Set it.
+	void setMaxValue(double v) { maxValue_ = v; }
+	/// The current value.
+	double doubleValue() const { return value_; }
+	/// Set it (clamped to the range).
+	void setDoubleValue(double v);
+	/// How far along it is, 0..1 — what the drawing follows.
+	double fraction() const;
+	/// True when the length is unknown (the spinner appears).
+	bool isIndeterminate() const { return indeterminate_; }
+	/// Set it.
+	void setIndeterminate(bool on);
+	/// Move the spinner's phase (the app calls this on a tick).
+	void advanceAnimation();
+	/// The spinner's phase, 0..1.
+	double phase() const { return phase_; }
+
+	/// Draw the bar or the spinner.
+	void drawRect(const Rect &dirty) override;
+
+private:
+	Style style_ = Style::Bar;
+	double minValue_ = 0;
+	double maxValue_ = 1;
+	double value_ = 0;
+	bool indeterminate_ = true;
+	double phase_ = 0;
+};
+
+/// @purpose A level indicator: a small bar that fills to a value and
+/// colours itself by how close that is to trouble — a disk usage meter, a
+/// signal strength bar, a rating. Cocoa's NSLevelIndicator (a CONTROL,
+/// with a cell; v1 draws in the control and says so).
+///
+/// @lifetime The indicator owns nothing but its own state.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The fill is fraction() of the width in every style except
+/// Rating, which fills in whole steps — that is what makes a rating read
+/// as stars rather than as a slider. The colour follows the thresholds:
+/// past warningValue() it is the warning colour, past criticalValue() the
+/// critical one, and BELOW both the normal one.
+///
+/// @see ProgressIndicator, Control
+class LevelIndicator : public Control {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// How the indicator reads.
+	enum class Style {
+		/// A continuous bar.
+		ContinuousCapacity,
+		/// A bar divided into discrete steps.
+		DiscreteCapacity,
+		/// Whole steps, like stars out of five.
+		Rating,
+		/// A bar where higher is worse.
+		Relevancy,
+	};
+
+	/// A continuous 0..1 indicator at 0.
+	LevelIndicator();
+
+	/// The style.
+	Style style() const { return style_; }
+	/// Set it.
+	void setStyle(Style s) { style_ = s; }
+	/// The lowest value.
+	double minValue() const { return minValue_; }
+	/// Set it.
+	void setMinValue(double v) { minValue_ = v; }
+	/// The highest value.
+	double maxValue() const { return maxValue_; }
+	/// Set it.
+	void setMaxValue(double v) { maxValue_ = v; }
+	/// The current value.
+	double doubleValue() const { return value_; }
+	/// Set it (clamped).
+	void setDoubleValue(double v);
+	/// How far along it is, 0..1.
+	double fraction() const;
+	/// How many steps a discrete or rating style shows.
+	int numberOfSteps() const { return steps_; }
+	/// Set it (0 or less means continuous).
+	void setNumberOfSteps(int n);
+	/// The value at which the colour turns warning.
+	double warningValue() const { return warning_; }
+	/// Set it.
+	void setWarningValue(double v) { warning_ = v; }
+	/// The value at which it turns critical.
+	double criticalValue() const { return critical_; }
+	/// Set it.
+	void setCriticalValue(double v) { critical_ = v; }
+
+	/// Draw the steps and the fill.
+	void drawRect(const Rect &dirty) override;
+
+	/// The fill's colour for the current value (the thresholds' answer).
+	Color fillColor() const;
+
+private:
+	Style style_ = Style::ContinuousCapacity;
+	double minValue_ = 0;
+	double maxValue_ = 1;
+	double value_ = 0;
+	int steps_ = 0;
+	double warning_ = 0;
+	double critical_ = 0;
+};
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

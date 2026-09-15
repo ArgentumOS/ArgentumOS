@@ -472,6 +472,42 @@ as a compatibility path for un-migrated views, with a migration list.
   engine.
 - **U4 — value controls.** `NSSlider` circular, `NSDatePicker`,
   `NSColorWell`, `NSProgressIndicator` spinner, `NSLevelIndicator` styles.
+  **U4a — the value controls themselves. DONE (2026-09).** The plan's list
+  above assumed a baseline that no longer existed: after the restart there
+  was no Slider, Stepper, ProgressIndicator or LevelIndicator at all, so
+  they are here first, and the styles and the extra controls are what
+  remains.
+  * `SliderCell` / `Slider` (Cocoa's NSSlider): the track, the ticks, the
+    knob, and ONE arithmetic — `setValueForPointX` — that both the drawing
+    and the hit testing use, so the knob can never disagree with the value
+    it reports. Value clamped to the range; with ticks the value SNAPS to
+    them. A press anywhere on the track jumps the knob there; a
+    CONTINUOUS slider sends as the knob moves and NOT again on the release,
+    a discrete one sends once, on the release (which is what the action is
+    for).
+  * `StepperCell` / `Stepper` (NSStepper): two arrow halves, one step
+    each, clamped or WRAPPING, acting on the release inside a half.
+    Auto-repeat while held is not here yet, and the class says so.
+  * `ProgressIndicator` (NSProgressIndicator — a VIEW, as in Cocoa):
+    determinate bar, indeterminate stripe, or a twelve-spoke spinner.
+    `fraction()` is the single number the drawing follows, and the app
+    calls `advanceAnimation()` on a tick — the toolkit starts no timer of
+    its own.
+  * `LevelIndicator` (NSLevelIndicator — a CONTROL): continuous, discrete,
+    rating (whole steps, so it reads as stars) and relevancy styles, with
+    the fill COLOURED by the warning and critical thresholds.
+  Gate `tests/cases/uikit_u4.py` 10/10. The slider's check is worth
+  reading: the drag's readings are `[0.0, 0.45045, 4.95495, 9.45946,
+  13.964]` — equal pointer steps giving EQUAL value steps (4.505 per 10pt
+  on a 222pt track), which is the linear mapping verified exactly rather
+  than approximately.
+  **A MEASURED CONSEQUENCE OF THE COARSE DAMAGE MODEL:** the guest DROPS
+  pointer motion during a drag — five of ten injected steps arrived —
+  because every slider step repaints the whole board (a ~1MB XPutImage on a
+  board this tall). The gate is written to assert the MAPPING and not the
+  event count, because the missing events are the input path's business
+  and not the control's; but the measurement is the concrete argument for
+  narrowing damage, which U2a recorded as a v1 boundary.
 - **U5 — containers and collections.** `NSStackView` (gravity/
   distribution, now constraint-backed), `NSGridView`, `NSCollectionView`
   (+flow layout), `NSBrowser`, `NSScrollView`/`NSSplitView`/`NSTabView`

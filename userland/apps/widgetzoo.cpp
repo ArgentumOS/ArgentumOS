@@ -34,6 +34,10 @@ static Button *gradBtn = nullptr;
 static TextField *editField = nullptr;
 static SearchField *searchField = nullptr;
 static TokenField *tokenField = nullptr;
+static Slider *slider = nullptr;
+static Stepper *stepper = nullptr;
+static ProgressIndicator *progress = nullptr;
+static LevelIndicator *level = nullptr;
 static std::string lastEdit;
 static std::string lastTokens;
 
@@ -85,6 +89,16 @@ static const Action Zoo_ACTIONS[] = {
 
 		std::printf("ZOO-TOKENS n=%d\n",
 			    f ? (int) f->tokens().size() : -1);
+		std::fflush(stdout); } },
+	{ "slide", [](Object *sender) {
+		Slider *s = dynamic_cast<Slider *>(sender);
+
+		std::printf("ZOO-SLIDE %g\n", s ? s->doubleValue() : -1.0);
+		std::fflush(stdout); } },
+	{ "step", [](Object *sender) {
+		Stepper *s = dynamic_cast<Stepper *>(sender);
+
+		std::printf("ZOO-STEP %g\n", s ? s->doubleValue() : -1.0);
 		std::fflush(stdout); } },
 	{ "commit", [](Object *sender) {
 		TextField *f = dynamic_cast<TextField *>(sender);
@@ -249,6 +263,49 @@ main(int argc, char **argv)
 	content->addSubview(tokenField);
 	y += 34;
 
+	/* ---- the value controls (U4) ----------------------------------- */
+	slider = new Slider();
+	slider->setFrame(Rect{ { 16, y }, { 240, 24 } });
+	slider->setMinValue(0);
+	slider->setMaxValue(100);
+	slider->setDoubleValue(0);
+	slider->setContinuous(true);
+	slider->setTarget(&zoo);
+	slider->setAction("slide");
+	content->addSubview(slider);
+	y += 32;
+
+	stepper = new Stepper();
+	stepper->setFrame(Rect{ { 16, y }, { 24, 26 } });
+	stepper->setMinValue(0);
+	stepper->setMaxValue(100);
+	stepper->setDoubleValue(0);
+	stepper->setTarget(&zoo);
+	stepper->setAction("step");
+	content->addSubview(stepper);
+	y += 34;
+
+	progress = new ProgressIndicator();
+	progress->setFrame(Rect{ { 16, y }, { 240, 14 } });
+	progress->setIndeterminate(false);
+	progress->setMinValue(0);
+	progress->setMaxValue(1);
+	progress->setDoubleValue(0.25);
+	content->addSubview(progress);
+	y += 22;
+
+	level = new LevelIndicator();
+	level->setFrame(Rect{ { 16, y }, { 240, 14 } });
+	level->setStyle(LevelIndicator::Style::DiscreteCapacity);
+	level->setMinValue(0);
+	level->setMaxValue(10);
+	level->setNumberOfSteps(10);
+	level->setWarningValue(8);
+	level->setCriticalValue(9);
+	level->setDoubleValue(9.5);
+	content->addSubview(level);
+	y += 22;
+
 	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
 	 * not merely clipped: the hit test rejects points outside it, so an
 	 * unclickable control looks like a broken control. This is also why
@@ -272,6 +329,14 @@ main(int argc, char **argv)
 	logAt("TEXTVIEW", tview);
 	logAt("PLACEHOLDER", ph);
 	logAt("EDITTEXT", editField);
+	logAt("SLIDER", slider);
+	logAt("STEPPER", stepper);
+	logAt("PROGRESS", progress);
+	logAt("LEVEL", level);
+	/* the two bars' own geometry, and the fraction each draws, so a gate
+	 * can ask the framebuffer about the SAME numbers the board used */
+	std::printf("ZOO-FRACTION progress=%g level=%g\n", progress->fraction(),
+		    level->fraction());
 	logAt("SEARCH", searchField);
 	logAt("TOKEN", tokenField);
 	/* the clear button's own zone, which is the cell's to say and the
