@@ -43,6 +43,25 @@ class Case(BaseCase):
                 self.note(line)
         self.check("board-up", True, "the zoo board opened its window")
 
+        # THE HARNESS'S POINTER IS A PRECONDITION, NOT A RESULT. In a run where
+        # the guest's X server never brought its pointer up, every click below
+        # is a silent no-op: not one ZOO-CLICK line, four waits running their
+        # 30s out, and a report that reads like the app is broken. That cost two
+        # gate runs, and very nearly a working fix - which was reverted on the
+        # strength of it. Say so at once instead. (When it fails, the other
+        # pointer cases want the same guard.)
+        if not session.wait_for(r"Xfb: mouse on", 20):
+            self.check("pointer-input-is-up", False,
+                       "the guest's X server never reported its pointer, so "
+                       "every click below would be a no-op and no result here "
+                       "can be believed. tail: %s"
+                       % " | ".join(session.tail(4)))
+            return
+
+        self.check("pointer-input-is-up", True,
+                   "the guest's X server reported its pointer, so the clicks "
+                   "below have somewhere to land")
+
         sh = re.search(r"ZOO-SCREEN w=\d+ h=(\d+)", out)
         pts = {m.group(1): (float(m.group(2)), float(m.group(3)))
                for m in re.finditer(r"ZOO-AT (\S+) x=([\d.]+) y=([\d.]+)", out)}
