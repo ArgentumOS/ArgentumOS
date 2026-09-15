@@ -346,25 +346,29 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 	if (!ctx || !layout_) {
 		return;
 	}
-	/* the placeholder when there is no value, greyed */
 	std::string shown = storage_->string();
 	bool placeholder = shown.empty() && !placeholder_.empty();
-	TextAttributes attrs = defaultAttributesOrMarked(placeholder);
 
-	if (placeholder) {
-		shown = placeholder_;
-	}
+	/* THE STORAGE KEEPS THE CELL'S OWN COLOUR, NEVER THE PLACEHOLDER'S.
+	 * Writing the grey in here is what greyed the FIRST typed character:
+	 * an empty field draws grey and wrote that grey into the storage's
+	 * default, so the insert that replaced the placeholder took ITS
+	 * attributes from the grey - one grey run at position 0 - while every
+	 * later insert took the black default the following frame had written
+	 * back. The placeholder is drawn from a temporary storage below and
+	 * needs nothing of this. */
+	TextAttributes want = defaultAttributesOrMarked(false);
+
 	/* size the container to the text area and lay the string out */
 	container_->setSize(Size{ frame.size.w, frame.size.h });
-	TextAttributes want = attrs;
-
 	storage_->setDefaultAttributes(want);
 	if (placeholder) {
-		/* draw the placeholder WITHOUT touching the cell's string */
+		/* draw the placeholder WITHOUT touching the cell's string, and in
+		 * the grey a placeholder is */
 		TextStorage tmp;
 
-		tmp.setString(shown.c_str());
-		tmp.setDefaultAttributes(want);
+		tmp.setString(placeholder_.c_str());
+		tmp.setDefaultAttributes(defaultAttributesOrMarked(true));
 		LayoutManager lm;
 
 		lm.setTextStorage(&tmp);

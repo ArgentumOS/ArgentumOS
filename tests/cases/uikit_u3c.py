@@ -88,13 +88,20 @@ class Case(BaseCase):
                    "the tallest dark run in the field is %d rows; a caret is "
                    "the field's interior height" % tallest)
 
-        darkest = min((shot.luma(x, y)
-                       for x in range(int(ex) - 110, int(ex) + 110)
-                       for y in range(int(ey) - 11, int(ey) + 11)),
-                      default=None)
-        self.check("typed-text-is-ink", darkest is not None and darkest < 100,
-                   "the darkest pixel in the typed field is %s: real ink is "
-                   "near 0, the placeholder grey is ~140" % darkest)
+        # THE FIRST TYPED CHARACTER TOO. Measuring "the darkest pixel in the
+        # field" was satisfied by the caret, which sits after the text; the
+        # LEFTMOST ink column is the first character, where the placeholder's
+        # grey would still be showing.
+        cols = [(x, min(shot.luma(x, y)
+                        for y in range(int(ey) - 11, int(ey) + 11)))
+                for x in range(int(ex) - 110, int(ex) + 110)]
+        first = next((c for c in cols if c[1] < 200), None)
+        self.check("first-typed-character-is-ink",
+                   first is not None and first[1] < 100,
+                   "the leftmost ink column is %s at x=%s: the placeholder "
+                   "grey is ~140, so a greyed first character cannot pass"
+                   % (first[1] if first else None,
+                      first[0] if first else None))
 
         # Return commits (sends the action, the field as the sender)
         mon.key("ret", settle=0.5)
