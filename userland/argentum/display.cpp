@@ -315,6 +315,394 @@ Context::drawText(const char *family, double sizePt, const Point &at,
 	textRunFinish(t);
 }
 
+/* ---- shapes -----------------------------------------------------------
+ *
+ * Every shape is rasterized into an A8 coverage mask with pixman's
+ * triangle rasterizer and then composited in the requested colour, so the
+ * edges are anti-aliased at any px/pt factor. The mask is built in SURFACE
+ * pixels for the shape's clipped bounding box: the triangle coordinates are
+ * mapped (points -> pixels, through the view's origin) and then made
+ * relative to that box, which is what makes clipping and scaling fall out
+ * for free.
+ */
+
+struct MaskBox {
+	pixman_image_t *mask = nullptr;
+	int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+
+	bool valid() const { return mask != nullptr; }
+};
+
+/* allocate an A8 mask over the clipped box of `pts` (view points) */
+static MaskBox
+mask_begin(const Context::Impl &im, const Point *pts, int count)
+{
+	MaskBox b;
+	double minx = pts[0].x, miny = pts[0].y;
+	double maxx = minx, maxy = miny;
+
+	for (int i = 1; i < count; i++) {
+		if (pts[i].x < minx) minx = pts[i].x;
+		if (pts[i].y < miny) miny = pts[i].y;
+		if (pts[i].x > maxx) maxx = pts[i].x;
+		if (pts[i].y > maxy) maxy = pts[i].y;
+	}
+	Rect r = { { minx, miny }, { maxx - minx, maxy - miny } };
+	int x0, y0, x1, y1;
+
+	if (!map_rect(im, r, &x0, &y0, &x1, &y1)) {
+		return b;
+	}
+	b.x0 = x0; b.y0 = y0; b.x1 = x1; b.y1 = y1;
+	b.mask = pixman_image_create_bits(PIXMAN_a8, x1 - x0, y1 - y0,
+					  nullptr, 0);
+	return b;
+}
+
+static void
+mask_end(MaskBox &b)
+{
+	if (b.mask) {
+		pixman_image_unref(b.mask);
+		b.mask = nullptr;
+	}
+}
+
+/* the shape's own point -> mask coordinates */
+static void
+mask_pt(const Context::Impl &im, const MaskBox &b, const Point &p,
+	double *mx, double *my)
+{
+	*mx = (double) (im.ox + p.x * im.pxPerPt - b.x0);
+	*my = (double) (im.oy + p.y * im.pxPerPt - b.y0);
+}
+
+/* rasterize `count` triangles (a multiple of 3) into `b.mask` */
+static bool
+mask_triangles(const Context::Impl &im, MaskBox &b, const Point *pts,
+	       int count)
+{
+	if (!b.valid() || count < 3 || count % 3) {
+		return false;
+	}
+	int n = count / 3;
+	pixman_triangle_t *tris = (pixman_triangle_t *)
+		std::calloc((size_t) n, sizeof(pixman_triangle_t));
+
+	if (!tris) {
+		return false;
+	}
+	for (int i = 0; i < n; i++) {
+		double x, y;
+
+		mask_pt(im, b, pts[i * 3 + 0], &x, &y);
+		tris[i].p1.x = pixman_double_to_fixed(x);
+		tris[i].p1.y = pixman_double_to_fixed(y);
+		mask_pt(im, b, pts[i * 3 + 1], &x, &y);
+		tris[i].p2.x = pixman_double_to_fixed(x);
+		tris[i].p2.y = pixman_double_to_fixed(y);
+		mask_pt(im, b, pts[i * 3 + 2], &x, &y);
+		tris[i].p3.x = pixman_double_to_fixed(x);
+		tris[i].p3.y = pixman_double_to_fixed(y);
+	}
+	pixman_color_t white = { 0xffff, 0xffff, 0xffff, 0xffff };
+	pixman_image_t *wsrc = pixman_image_create_solid_fill(&white);
+	bool ok = false;
+
+	if (wsrc) {
+		/* ADD: overlapping triangles accumulate coverage */
+		pixman_composite_triangles(PIXMAN_OP_ADD, wsrc, b.mask,
+					   PIXMAN_a8, 0, 0, 0, 0, n, tris);
+		pixman_image_unref(wsrc);
+		ok = true;
+	}
+	std::free(tris);
+	return ok;
+}
+
+/* composite `color` through `b.mask` onto the surface */
+static void
+mask_paint(const Context::Impl &im, const MaskBox &b, const Color &color)
+{
+	if (!b.valid() || color.a <= 0) {
+		return;
+	}
+	pixman_color_t c;
+
+	c.red = (unsigned short) (color.r * color.a * 65535.0 + 0.5);
+	c.green = (unsigned short) (color.g * color.a * 65535.0 + 0.5);
+	c.blue = (unsigned short) (color.b * color.a * 65535.0 + 0.5);
+	c.alpha = (unsigned short) (color.a * 65535.0 + 0.5);
+	pixman_image_t *src = pixman_image_create_solid_fill(&c);
+
+	if (!src) {
+		return;
+	}
+	pixman_image_composite32(PIXMAN_OP_OVER, src, b.mask, im.img, 0, 0,
+				 0, 0, b.x0, b.y0, (unsigned int) (b.x1 - b.x0),
+				 (unsigned int) (b.y1 - b.y0));
+	pixman_image_unref(src);
+}
+
+void
+Context::fillTriangles(const Point *pts, int count, const Color &color)
+{
+	if (!impl_ || !impl_->img || !pts || count < 3 || count % 3) {
+		return;
+	}
+	MaskBox b = mask_begin(*impl_, pts, count);
+
+	if (!b.valid()) {
+		return;
+	}
+	if (mask_triangles(*impl_, b, pts, count)) {
+		mask_paint(*impl_, b, color);
+	}
+	mask_end(b);
+}
+
+void
+Context::fillPolygon(const Point *pts, int count, const Color &color)
+{
+	if (!impl_ || !pts || count < 3) {
+		return;
+	}
+	/* a fan from the first vertex: exact for a CONVEX polygon, which is
+	 * what the toolkit's chrome is made of */
+	std::vector<Point> tris;
+
+	tris.reserve((size_t) (count - 2) * 3);
+	for (int i = 1; i + 1 < count; i++) {
+		tris.push_back(pts[0]);
+		tris.push_back(pts[i]);
+		tris.push_back(pts[i + 1]);
+	}
+	fillTriangles(tris.data(), (int) tris.size(), color);
+}
+
+#define ARC_STEPS 12	/* samples per quarter arc */
+
+void
+Context::fillCircle(const Point &center, double radius, const Color &color)
+{
+	if (!impl_ || radius <= 0) {
+		return;
+	}
+	Rect r = { { center.x - radius, center.y - radius },
+		   { radius * 2, radius * 2 } };
+
+	fillEllipse(r, color);
+}
+
+void
+Context::fillEllipse(const Rect &rect, const Color &color)
+{
+	if (!impl_ || rect.size.w <= 0 || rect.size.h <= 0) {
+		return;
+	}
+	double rx = rect.size.w / 2.0;
+	double ry = rect.size.h / 2.0;
+	double cx = rect.origin.x + rx;
+	double cy = rect.origin.y + ry;
+	int n = ARC_STEPS * 4;
+	std::vector<Point> pts;
+	std::vector<Point> tris;
+
+	pts.reserve((size_t) n);
+	for (int i = 0; i < n; i++) {
+		double a = 2.0 * 3.14159265358979 * i / n;
+
+		pts.push_back(Point{ cx + rx * std::cos(a),
+				     cy + ry * std::sin(a) });
+	}
+	tris.reserve((size_t) n * 3);
+	for (int i = 0; i < n; i++) {
+		tris.push_back(Point{ cx, cy });
+		tris.push_back(pts[(size_t) i]);
+		tris.push_back(pts[(size_t) ((i + 1) % n)]);
+	}
+	fillTriangles(tris.data(), (int) tris.size(), color);
+}
+
+/* the outline points of a rounded rect, clockwise from the top-left arc */
+static void
+rounded_outline(const Rect &rect, double radius, std::vector<Point> &out)
+{
+	double x = rect.origin.x, y = rect.origin.y;
+	double w = rect.size.w, h = rect.size.h;
+	double rr = radius;
+
+	if (rr > w / 2.0) {
+		rr = w / 2.0;
+	}
+	if (rr > h / 2.0) {
+		rr = h / 2.0;
+	}
+	if (rr < 0) {
+		rr = 0;
+	}
+	struct Corner { double cx, cy, a0, a1; };
+	const Corner corners[4] = {
+		{ x + w - rr, y + rr, -1.5707963267948966, 0.0 },
+		{ x + w - rr, y + h - rr, 0.0, 1.5707963267948966 },
+		{ x + rr, y + h - rr, 1.5707963267948966, 3.141592653589793 },
+		{ x + rr, y + rr, 3.141592653589793, 4.71238898038469 },
+	};
+
+	out.clear();
+	for (const Corner &c : corners) {
+		for (int i = 0; i <= ARC_STEPS; i++) {
+			double a = c.a0 + (c.a1 - c.a0) * i / ARC_STEPS;
+
+			out.push_back(Point{ c.cx + rr * std::cos(a),
+					     c.cy + rr * std::sin(a) });
+		}
+	}
+}
+
+void
+Context::fillRoundRect(const Rect &rect, double radius, const Color &color)
+{
+	if (!impl_ || rect.size.w <= 0 || rect.size.h <= 0) {
+		return;
+	}
+	if (radius <= 0) {
+		fillRect(rect, color);
+		return;
+	}
+	std::vector<Point> per;
+
+	rounded_outline(rect, radius, per);
+	/* the centre, relative to the outline: a rounded rect is convex, so
+	 * a fan from its centre covers it exactly */
+	Point c = { rect.origin.x + rect.size.w / 2.0,
+		    rect.origin.y + rect.size.h / 2.0 };
+	std::vector<Point> tris;
+
+	tris.reserve(per.size() * 3);
+	for (size_t i = 0; i < per.size(); i++) {
+		tris.push_back(c);
+		tris.push_back(per[i]);
+		tris.push_back(per[(i + 1) % per.size()]);
+	}
+	fillTriangles(tris.data(), (int) tris.size(), color);
+}
+
+void
+Context::strokeRect(const Rect &rect, const Color &color, double width)
+{
+	if (width <= 0) {
+		return;
+	}
+	fillRect(Rect{ rect.origin, { rect.size.w, width } }, color);
+	fillRect(Rect{ { rect.origin.x, rect.origin.y + rect.size.h - width },
+		       { rect.size.w, width } }, color);
+	fillRect(Rect{ rect.origin, { width, rect.size.h } }, color);
+	fillRect(Rect{ { rect.origin.x + rect.size.w - width, rect.origin.y },
+		       { width, rect.size.h } }, color);
+}
+
+void
+Context::strokeRoundRect(const Rect &rect, double radius, const Color &color,
+			 double width)
+{
+	if (!impl_ || width <= 0 || rect.size.w <= 0 || rect.size.h <= 0) {
+		return;
+	}
+	if (radius <= 0) {
+		strokeRect(rect, color, width);
+		return;
+	}
+	std::vector<Point> outer, inner;
+
+	rounded_outline(rect, radius, outer);
+	Rect in = { { rect.origin.x + width, rect.origin.y + width },
+		    { rect.size.w - 2 * width, rect.size.h - 2 * width } };
+
+	if (in.size.w < 0 || in.size.h < 0) {
+		fillRoundRect(rect, radius, color);
+		return;
+	}
+	rounded_outline(in, radius - width, inner);
+
+	/* the ring between the two outlines, as a strip of quads (two
+	 * triangles each): a ring is NOT convex, so no fan */
+	size_t n = outer.size() < inner.size() ? inner.size() : outer.size();
+	std::vector<Point> tris;
+
+	tris.reserve(n * 6);
+	for (size_t i = 0; i < n; i++) {
+		const Point &o0 = outer[i % outer.size()];
+		const Point &o1 = outer[(i + 1) % outer.size()];
+		const Point &i0 = inner[i % inner.size()];
+		const Point &i1 = inner[(i + 1) % inner.size()];
+
+		tris.push_back(o0); tris.push_back(o1); tris.push_back(i1);
+		tris.push_back(o0); tris.push_back(i1); tris.push_back(i0);
+	}
+	fillTriangles(tris.data(), (int) tris.size(), color);
+}
+
+void
+Context::fillLinearGradient(const Rect &rect, const Color &top,
+			    const Color &bottom, bool vertical)
+{
+	if (!impl_ || !impl_->img || rect.size.w <= 0 || rect.size.h <= 0) {
+		return;
+	}
+	int x0, y0, x1, y1;
+
+	if (!map_rect(*impl_, rect, &x0, &y0, &x1, &y1)) {
+		return;
+	}
+	pixman_point_fixed_t p1, p2;
+
+	/* the gradient's geometry is in the SOURCE image's space, and the
+	 * composite below samples it from the source's origin - so these are
+	 * relative to the box, NOT absolute surface pixels. (Absolute
+	 * coordinates put the whole gradient off to one side, where PAD
+	 * repeat clamped everything to a single colour.) */
+	if (vertical) {
+		p1.x = pixman_double_to_fixed(0);
+		p1.y = pixman_double_to_fixed(0);
+		p2.x = pixman_double_to_fixed(0);
+		p2.y = pixman_double_to_fixed(y1 - y0);
+	} else {
+		p1.x = pixman_double_to_fixed(0);
+		p1.y = pixman_double_to_fixed(0);
+		p2.x = pixman_double_to_fixed(x1 - x0);
+		p2.y = pixman_double_to_fixed(0);
+	}
+	pixman_color_t c0, c1;
+
+	c0.red = (unsigned short) (top.r * top.a * 65535.0 + 0.5);
+	c0.green = (unsigned short) (top.g * top.a * 65535.0 + 0.5);
+	c0.blue = (unsigned short) (top.b * top.a * 65535.0 + 0.5);
+	c0.alpha = (unsigned short) (top.a * 65535.0 + 0.5);
+	c1.red = (unsigned short) (bottom.r * bottom.a * 65535.0 + 0.5);
+	c1.green = (unsigned short) (bottom.g * bottom.a * 65535.0 + 0.5);
+	c1.blue = (unsigned short) (bottom.b * bottom.a * 65535.0 + 0.5);
+	c1.alpha = (unsigned short) (bottom.a * 65535.0 + 0.5);
+
+	pixman_gradient_stop_t stops[2];
+
+	stops[0].color = c0;
+	stops[0].x = 0;
+	stops[1].color = c1;
+	stops[1].x = 0xffff;
+	pixman_image_t *grad = pixman_image_create_linear_gradient(&p1, &p2,
+								   stops, 2);
+
+	if (!grad) {
+		return;
+	}
+	pixman_image_set_repeat(grad, PIXMAN_REPEAT_PAD);
+	pixman_image_composite32(PIXMAN_OP_OVER, grad, nullptr, impl_->img,
+				 0, 0, 0, 0, x0, y0, (unsigned int) (x1 - x0),
+				 (unsigned int) (y1 - y0));
+	pixman_image_unref(grad);
+}
+
 /* ---- the window ------------------------------------------------------
  *
  * The surface is an x8r8g8b8 image that goes straight to X, with a pixman
@@ -665,6 +1053,12 @@ void
 Window::noteViewDamage()
 {
 	impl_->dirty = true;
+	/* and re-mark the tree: the v1 damage model is COARSE - a pass clears
+	 * the surface to the background and repaints what is dirty - so a
+	 * view's damage that did not mark the rest would ERASE the rest.
+	 * (Documented as coarse from the start; this is the other half of
+	 * making the code say what the docs say.) */
+	markTreeForDisplay(content_);
 }
 
 void
@@ -708,10 +1102,11 @@ markTreeForDisplay(View *v)
 	if (!v) {
 		return;
 	}
-	v->setNeedsDisplay();
-	for (View *c : v->subviews()) {
-		markTreeForDisplay(c);
-	}
+	/* the QUIET entry point: markNeedsDisplay() marks the view and its
+	 * subtree without calling back into the window. Using the public
+	 * setNeedsDisplay() here would recurse - it tells the window, which
+	 * marks the tree again (that was a stack overflow, not a theory). */
+	v->markNeedsDisplay(true);
 }
 
 /* the window's own chrome: the titlebar, its title and the close box */

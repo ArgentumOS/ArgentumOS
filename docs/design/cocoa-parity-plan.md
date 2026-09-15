@@ -296,9 +296,50 @@ as a compatibility path for un-migrated views, with a migration list.
   therefore a documented **Skip**, not a quiet pass, and the harness
   monitor gained the `press`/`release`/`drag` primitives the scenario
   needs so the gate is ready the moment input exists.
-  **Still to do in U2b:** the gate's run, then the rest of the button
-  family (switch/checkbox, radio, disclosure, gradient, help, inline,
-  recessed) and the widget zoo board showing every type (U2c).
+  **U2c — the button family + the widget zoo board. DONE (2026-09).**
+  Two things had to exist first:
+  * **The shape vocabulary on `Context`** — the toolkit could only fill
+    rectangles and draw text, so a checkbox, a radio, a triangle or a
+    rounded bezel had nowhere to come from: `fillTriangles` (a triangle
+    list, rasterized to an A8 coverage mask with pixman and composited),
+    `fillPolygon` (a fan: exact for the convex shapes chrome is made of),
+    `fillEllipse`/`fillCircle`, `fillRoundRect`, `strokeRect`/
+    `strokeRoundRect` (a ring as a strip of quads — a ring is not convex,
+    so no fan), and `fillLinearGradient`. Every shape is anti-aliased and
+    clipped, at any px/pt factor.
+  * **The two dimensions Cocoa actually has**: `ButtonType` (behaviour:
+    MomentaryPushIn, PushOnPushOff, Toggle, Switch, Radio, OnOff) and
+    `BezelStyle` (appearance: Rounded, RoundRect, RegularSquare,
+    Disclosure, Circular, HelpButton, Inline, Recessed, Gradient). The
+    cell owns both, the Button forwards. A **Radio group is the
+    siblings**: turning one on turns the others (same superview, same
+    type) off, so a group needs no group object — and a radio selects on
+    the RELEASE (a decision), while the other sticking types preview on
+    the press and take it back if the pointer is dragged off.
+  * **The widget zoo board is back** (`/Applications/WidgetZoo`,
+    `userland/apps/widgetzoo.cpp`) — one control per bezel style and
+    behaviour, logging its readiness, the screen position of the controls
+    a gate needs, every action and the radio group's state. The standing
+    rule has its board again.
+  Gate `tests/cases/uikit_u2c.py` 10/10 with the real pointer: the switch
+  sticks, Radio A selects, **picking B clears A**, the gradient bezel
+  differs top-to-bottom (244,244,250 -> 232,232,239) and a rounded bezel's
+  corner is the background rather than the bezel.
+  **Four real bugs the gate found**, all fixed:
+    1. `noteViewDamage()` set the window's dirty flag but did NOT re-mark
+       the tree, so a pass cleared the surface and repainted only the view
+       that had asked — every other control vanished (the screenshot showed
+       only the rows clicked last). The documented coarse model and the
+       code now agree.
+    2. Marking the tree then used the PUBLIC `setNeedsDisplay()`, which
+       tells the window, which marks the tree... a stack overflow that
+       halted the guest. The tree marking uses the quiet entry point.
+    3. `fillLinearGradient` passed absolute surface pixels as the
+       gradient's geometry, but pixman samples a gradient in the SOURCE
+       image's space — so it clamped to a single colour. Box-relative now.
+    4. The zoo board's own window was too short for its rows, so the last
+       row's centre fell outside the content rect and its click was
+       (correctly) rejected: the board now sizes itself to its rows.
 - **U3 — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under

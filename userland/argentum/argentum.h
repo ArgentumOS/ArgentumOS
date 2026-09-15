@@ -873,13 +873,49 @@ struct MouseEvent {
 	bool alt = false;
 };
 
-/// A button's behaviour type (Cocoa's NSButtonType, at the size this
-/// milestone needs).
+/// A button's BEHAVIOUR type (Cocoa's NSButtonType, the subset the
+/// toolkit implements today).
 enum class ButtonType {
-	/// Presses do not stick: the state goes on while held.
+	/// Presses do not stick: the state is on while held only.
 	MomentaryPushIn,
-	/// Presses toggle the state on and off.
+	/// Presses flip the state, and it sticks (Cocoa's PushOnPushOff).
+	PushOnPushOff,
+	/// A toggle drawn as a switch; the state sticks.
 	Toggle,
+	/// A checkbox: the state sticks, and the bezel is a box with a check.
+	Switch,
+	/// A radio button: picking one clears its siblings in the same
+	/// superview (see Button's @invariants).
+	Radio,
+	/// Sticks, and draws its state as a lit lamp rather than a press
+	/// (Cocoa's OnOff).
+	OnOff,
+};
+
+/// A button's APPEARANCE (Cocoa's NSBezelStyle). Behaviour and look are
+/// separate in Cocoa, and they are separate here for the same reason: a
+/// switch can be drawn square or rounded, and the same rounded bezel can
+/// be momentary or stick.
+enum class BezelStyle {
+	/// The default: a rounded rectangle with the title centred.
+	Rounded,
+	/// Like Rounded, with a smaller radius.
+	RoundRect,
+	/// A plain square bezel.
+	RegularSquare,
+	/// No bezel: a triangle that points right when off and down when on,
+	/// with the title to its right.
+	Disclosure,
+	/// A circular bezel with the title to its right.
+	Circular,
+	/// A circle with a question mark in it (Cocoa's HelpButton).
+	HelpButton,
+	/// No bezel at all: the title alone, drawn as a link.
+	Inline,
+	/// A darker bezel that reads as pressed in (Cocoa's Recessed).
+	Recessed,
+	/// A bezel filled with a vertical gradient.
+	Gradient,
 };
 /* ---- U2a: the display path — connection, surface, context, window ----
  *
@@ -928,6 +964,34 @@ public:
 	/// `family` may be nullptr for the session's default family.
 	void drawText(const char *family, double sizePt, const Point &at,
 		      const char *utf8, const Color &color, bool bold = false);
+
+	/* ---- shapes -----------------------------------------------------
+	 * The vocabulary a control's chrome is drawn with. Everything is an
+	 * anti-aliased mask composited in the current colour, so a shape is
+	 * as smooth as the surface allows at any px/pt factor.
+	 */
+	/// Rasterize a TRIANGLE LIST (`count` points, a multiple of 3) in
+	/// `color`. This is the primitive the rest are built from; use it
+	/// directly only for shapes the named calls cannot express.
+	void fillTriangles(const Point *pts, int count, const Color &color);
+	/// Fill a convex polygon (`count` points, in order).
+	void fillPolygon(const Point *pts, int count, const Color &color);
+	/// Fill the ellipse inscribed in `rect`.
+	void fillEllipse(const Rect &rect, const Color &color);
+	/// Fill a circle.
+	void fillCircle(const Point &center, double radius, const Color &color);
+	/// Fill `rect` with `radius`-point rounded corners (radius is clamped
+	/// to half the shorter side).
+	void fillRoundRect(const Rect &rect, double radius, const Color &color);
+	/// Stroke `rect`'s outline, INSIDE its bounds, `width` points thick.
+	void strokeRect(const Rect &rect, const Color &color, double width = 1.0);
+	/// Stroke a rounded rectangle's outline inside its bounds.
+	void strokeRoundRect(const Rect &rect, double radius, const Color &color,
+			     double width = 1.0);
+	/// Fill `rect` with a linear gradient: `top` to `bottom` when
+	/// `vertical`, left to right otherwise.
+	void fillLinearGradient(const Rect &rect, const Color &top,
+				const Color &bottom, bool vertical = true);
 
 	/// The surface's size in pixels (what the pass actually has).
 	unsigned int widthPx() const;
@@ -1492,9 +1556,9 @@ public:
 	Cell *copy() const override;
 
 	/// The bezel's fill.
-	Color bezelColor() const { return bezel_; }
+	Color bezelColor() const { return bezelFill_; }
 	/// Set it.
-	void setBezelColor(const Color &c) { bezel_ = c; }
+	void setBezelColor(const Color &c) { bezelFill_ = c; }
 	/// The bezel's fill while pressed.
 	Color pressedColor() const { return pressed_; }
 	/// Set it.
@@ -1503,11 +1567,37 @@ public:
 	Color borderColor() const { return border_; }
 	/// Set it.
 	void setBorderColor(const Color &c) { border_ = c; }
+	/// The gradient's far colour (BezelStyle::Gradient).
+	Color gradientColor() const { return grad_; }
+	/// Set it.
+	void setGradientColor(const Color &c) { grad_ = c; }
+	/// The colour of a check, a radio dot or a disclosure triangle.
+	Color markColor() const { return mark_; }
+	/// Set it.
+	void setMarkColor(const Color &c) { mark_ = c; }
+	/// The behaviour this cell's control applies.
+	ButtonType type() const { return type_; }
+	/// Set it.
+	void setType(ButtonType t) { type_ = t; }
+	/// The appearance this cell draws (Cocoa's bezelStyle).
+	BezelStyle bezelStyle() const { return bezel_; }
+	/// Set it.
+	void setBezelStyle(BezelStyle b) { bezel_ = b; }
 
 private:
-	Color bezel_ = Color::rgb(0.90, 0.90, 0.93);
+	Color bezelFill_ = Color::rgb(0.90, 0.90, 0.93);
 	Color pressed_ = Color::rgb(0.72, 0.72, 0.78);
 	Color border_ = Color::rgb(0.55, 0.55, 0.60);
+	Color grad_ = Color::rgb(0.97, 0.97, 0.99);
+	Color mark_ = Color::rgb(0.15, 0.35, 0.75);
+	BezelStyle bezel_ = BezelStyle::Rounded;
+	ButtonType type_ = ButtonType::MomentaryPushIn;
+
+	/* the boxed shapes (a check, a radio dot, a triangle) are drawn by
+	 * these, so the geometry lives in one place */
+	void drawCheck(const Rect &box);
+	void drawRadioDot(const Rect &box);
+	void drawDisclosure(const Rect &box);
 };
 
 /// @purpose A push button: a title, a press behaviour, and an action sent
@@ -1519,11 +1609,18 @@ private:
 ///
 /// @threading Single-threaded (the UI thread).
 ///
-/// @invariants title() IS the cell's stringValue: a button has one piece
-/// of text and the cell is where it lives, so setting either is the same
-/// act. A momentary button returns to ControlState::Off when released; a
-/// toggle flips its state per press and stays there. The action fires on
-/// the RELEASE inside the button, never on the press.
+/// @invariants title() IS the cell's stringValue, and type() and
+/// bezelStyle() ARE the cell's: a button has one piece of text, one
+/// behaviour and one look, and the cell is where they live, so setting
+/// either is the same act. A momentary button returns to
+/// ControlState::Off when released; the sticking types (PushOnPushOff,
+/// Toggle, Switch, Radio, OnOff) flip per press and stay. The action
+/// fires on the RELEASE inside the button, never on the press. A Radio
+/// that turns on turns its SIBLINGS off — same superview, same type — so
+/// a radio group is expressed by putting radios together (Cocoa's rule);
+/// it does not need a separate group object, and a radio SELECTS on the
+/// release rather than previewing on the press (picking a radio is a
+/// decision, not a preview).
 ///
 /// @see Control, ButtonCell, ActionCell
 class Button : public Control {
@@ -1542,10 +1639,15 @@ public:
 	/// Set the title.
 	void setTitle(const char *utf8);
 
-	/// The button's behaviour (momentary or toggle).
-	ButtonType type() const { return type_; }
-	/// Set the behaviour.
-	void setType(ButtonType type) { type_ = type; }
+	/// The button's behaviour (the cell's).
+	ButtonType type() const;
+	/// Set the behaviour (a Radio also clears its siblings on the next
+	/// press: see the class's @invariants).
+	void setType(ButtonType type);
+	/// The button's appearance.
+	BezelStyle bezelStyle() const;
+	/// Set the appearance.
+	void setBezelStyle(BezelStyle b);
 
 	/// The button's state.
 	ControlState state() const;
@@ -1558,8 +1660,8 @@ public:
 	bool mouseUp(const MouseEvent &e) override;
 
 private:
-	ButtonType type_ = ButtonType::MomentaryPushIn;
-	ControlState state_ = ControlState::Off;
+	/* turning a radio on turns its siblings off (same superview) */
+	void notifyRadioGroup();
 };
 
 } /* namespace argentum */

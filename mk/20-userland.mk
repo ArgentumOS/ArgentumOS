@@ -217,6 +217,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/x_move.cpp -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/x_move"
+	# Widget Zoo: the board every control is shown on (the standing rule).
+	# It lives in /Applications, where the FSH puts apps.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/apps/widgetzoo.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/Applications/WidgetZoo"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

@@ -198,6 +198,85 @@ ButtonCell::ButtonCell()
 	setAlignment(TextAlignment::Center);
 }
 
+/* the box a switch's check or a radio's dot lives in: square, centred
+ * vertically, at the left of the frame (Cocoa's title follows it) */
+static Rect
+markBox(const Rect &frame)
+{
+	double d = 13.0;	/* v1: a fixed mark size in points */
+	double y = frame.origin.y + (frame.size.h - d) / 2.0;
+
+	return Rect{ { frame.origin.x + 1.0, y }, { d, d } };
+}
+
+void
+ButtonCell::drawCheck(const Rect &box)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	/* a check mark as two filled quads: the toolkit has no stroke path,
+	 * and a quad is the smallest honest thing to build one from */
+	double w = box.size.w;
+	double x = box.origin.x, y = box.origin.y;
+	double t = w * 0.16;			/* the stroke's thickness */
+	double midx = x + w * 0.44, midy = y + w * 0.72;
+	double endx = x + w * 0.80, endy = y + w * 0.26;
+	double startx = x + w * 0.22, starty = y + w * 0.50;
+	Point a[4] = { { startx, starty - t / 2 }, { midx, midy - t / 2 },
+		       { midx, midy + t / 2 }, { startx, starty + t / 2 } };
+	Point b[4] = { { midx, midy - t / 2 }, { endx, endy - t / 2 },
+		       { endx, endy + t / 2 }, { midx, midy + t / 2 } };
+
+	ctx->fillPolygon(a, 4, mark_);
+	ctx->fillPolygon(b, 4, mark_);
+}
+
+void
+ButtonCell::drawRadioDot(const Rect &box)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	double d = box.size.w * 0.45;
+	Point c = { box.origin.x + box.size.w / 2.0,
+		    box.origin.y + box.size.h / 2.0 };
+
+	ctx->fillCircle(c, d / 2.0, mark_);
+}
+
+void
+ButtonCell::drawDisclosure(const Rect &box)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	double w = box.size.w;
+	double x = box.origin.x, y = box.origin.y;
+
+	if (state() == ControlState::On) {
+		/* pointing down */
+		Point p[3] = { { x + w * 0.15, y + w * 0.30 },
+			       { x + w * 0.85, y + w * 0.30 },
+			       { x + w * 0.50, y + w * 0.80 } };
+
+		ctx->fillPolygon(p, 3, mark_);
+	} else {
+		/* pointing right */
+		Point p[3] = { { x + w * 0.30, y + w * 0.15 },
+			       { x + w * 0.80, y + w * 0.50 },
+			       { x + w * 0.30, y + w * 0.85 } };
+
+		ctx->fillPolygon(p, 3, mark_);
+	}
+}
+
 void
 ButtonCell::drawInFrame(const Rect &frame, View *inView)
 {
@@ -206,24 +285,149 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 	if (!ctx) {
 		return;
 	}
-	bool down = isHighlighted() || state() == ControlState::On;
-	Color fill = down ? pressed_ : bezel_;
+	bool on = state() == ControlState::On;
+	bool down = isHighlighted();
+	double radius = 0;
 
-	/* the bezel: flat in v1 (the theme's rounded chrome comes later) */
-	ctx->fillRect(frame, fill);
-	/* the outline, drawn as four hairlines so it stays 1px at any scale */
-	double t = 1.0;
+	switch (bezel_) {
+	case BezelStyle::Rounded:
+		radius = frame.size.h / 2.0;
+		break;
+	case BezelStyle::RoundRect:
+	case BezelStyle::Gradient:
+	case BezelStyle::Recessed:
+		radius = 4.0;
+		break;
+	case BezelStyle::Circular:
+	case BezelStyle::HelpButton:
+		radius = frame.size.h / 2.0;
+		break;
+	default:
+		radius = 0;
+		break;
+	}
 
-	ctx->fillRect(Rect{ frame.origin, { frame.size.w, t } }, border_);
-	ctx->fillRect(Rect{ { frame.origin.x,
-			      frame.origin.y + frame.size.h - t },
-			    { frame.size.w, t } }, border_);
-	ctx->fillRect(Rect{ frame.origin, { t, frame.size.h } }, border_);
-	ctx->fillRect(Rect{ { frame.origin.x + frame.size.w - t,
-			      frame.origin.y }, { t, frame.size.h } }, border_);
+	if (bezel_ != BezelStyle::Inline) {
+		Color fill = down ? pressed_ : bezelFill_;
 
-	/* the title, through Cell's own drawing (aligned + centred) */
-	Cell::drawInFrame(frame, inView);
+		if (bezel_ == BezelStyle::Recessed) {
+			fill = down ? bezelFill_ : pressed_;
+		}
+		switch (bezel_) {
+		case BezelStyle::Circular:
+		case BezelStyle::HelpButton: {
+			Point c = { frame.origin.x + frame.size.h / 2.0,
+				    frame.origin.y + frame.size.h / 2.0 };
+
+			ctx->fillCircle(c, frame.size.h / 2.0, fill);
+			ctx->fillCircle(c, frame.size.h / 2.0 - 1.0,
+					Color::rgb(bezelFill_.r, bezelFill_.g,
+						   bezelFill_.b));
+			ctx->fillCircle(c, frame.size.h / 2.0 - 1.5, fill);
+			break;
+		}
+		case BezelStyle::Gradient:
+			ctx->fillLinearGradient(frame, down ? pressed_ : grad_,
+						down ? pressed_ : bezelFill_,
+						true);
+			break;
+		default:
+			if (radius > 0) {
+				ctx->fillRoundRect(frame, radius, fill);
+			} else {
+				ctx->fillRect(frame, fill);
+			}
+			break;
+		}
+		if (radius > 0) {
+			ctx->strokeRoundRect(frame, radius, border_, 1.0);
+		} else {
+			ctx->strokeRect(frame, border_, 1.0);
+		}
+	}
+
+	/* the marks, drawn by the styles that have them */
+	Rect box = markBox(frame);
+	Rect text = frame;
+
+	switch (bezel_) {
+	case BezelStyle::HelpButton:
+		/* a question mark centred in the circle */
+		Cell::drawInFrame(frame, inView);
+		return;
+	case BezelStyle::Circular:
+		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
+				  box.origin.y + box.size.h / 2.0 },
+				box.size.w / 2.0 - 0.5,
+				on ? mark_ : Color::rgb(0.98, 0.98, 0.99));
+		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
+				  box.origin.y + box.size.h / 2.0 },
+				box.size.w / 2.0 - 0.5, border_);
+		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
+				  box.origin.y + box.size.h / 2.0 },
+				box.size.w / 2.0 - 1.5,
+				on ? mark_ : Color::rgb(0.98, 0.98, 0.99));
+		if (on) {
+			drawRadioDot(box);
+		}
+		text.origin.x += box.size.w + 6.0;
+		break;
+	case BezelStyle::Disclosure:
+		drawDisclosure(box);
+		text.origin.x += box.size.w + 6.0;
+		break;
+	case BezelStyle::Inline:
+		/* the title alone, in the mark colour when on */
+		break;
+	default:
+		if (type() == ButtonType::Switch || type() == ButtonType::Toggle
+		    || type() == ButtonType::Radio) {
+			/* a box at the left, the title after it */
+			ctx->fillRect(box, Color::rgb(0.99, 0.99, 1.0));
+			ctx->strokeRect(box, border_, 1.0);
+			if (type() == ButtonType::Radio) {
+				ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
+						  box.origin.y + box.size.h / 2.0 },
+						box.size.w / 2.0 - 0.5,
+						Color::rgb(0.99, 0.99, 1.0));
+				ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
+						  box.origin.y + box.size.h / 2.0 },
+						box.size.w / 2.0 - 0.5, border_);
+				ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
+						  box.origin.y + box.size.h / 2.0 },
+						box.size.w / 2.0 - 1.5,
+						Color::rgb(0.99, 0.99, 1.0));
+				if (on) {
+					drawRadioDot(box);
+				}
+			} else if (on) {
+				drawCheck(box);
+			}
+			text.origin.x += box.size.w + 6.0;
+		}
+		break;
+	}
+
+	/* the title, through Cell's own drawing, in the box that is left */
+	bool savedCenter = align_ == TextAlignment::Center;
+
+	if (text.origin.x != frame.origin.x) {
+		align_ = TextAlignment::Left;
+		Cell::drawInFrame(text, inView);
+		align_ = savedCenter ? TextAlignment::Center : align_;
+		return;
+	}
+	if (on && (bezel_ == BezelStyle::Inline
+		   || type() == ButtonType::OnOff)) {
+		/* a lit look: the title in the mark colour */
+		Color saved = textColor_;
+
+		textColor_ = mark_;
+		Cell::drawInFrame(text, inView);
+		textColor_ = saved;
+		return;
+	}
+	Cell::drawInFrame(text, inView);
 }
 
 Cell *
@@ -329,18 +533,92 @@ Button::setState(ControlState s)
 	}
 }
 
+ButtonType
+Button::type() const
+{
+	ButtonCell *bc = dynamic_cast<ButtonCell *>(cell_);
+
+	return bc ? bc->type() : ButtonType::MomentaryPushIn;
+}
+
+void
+Button::setType(ButtonType type)
+{
+	ButtonCell *bc = dynamic_cast<ButtonCell *>(cell_);
+
+	if (bc) {
+		bc->setType(type);
+		setNeedsDisplay();
+	}
+}
+
+BezelStyle
+Button::bezelStyle() const
+{
+	ButtonCell *bc = dynamic_cast<ButtonCell *>(cell_);
+
+	return bc ? bc->bezelStyle() : BezelStyle::Rounded;
+}
+
+void
+Button::setBezelStyle(BezelStyle b)
+{
+	ButtonCell *bc = dynamic_cast<ButtonCell *>(cell_);
+
+	if (bc) {
+		bc->setBezelStyle(b);
+		setNeedsDisplay();
+	}
+}
+
+/* the sticking behaviours: the state survives the release */
+static bool
+sticks(ButtonType t)
+{
+	return t != ButtonType::MomentaryPushIn;
+}
+
+/* turning a radio on turns its SIBLINGS off: same superview, same type
+ * (Cocoa's rule, and the reason a radio group needs no group object) */
+void
+Button::notifyRadioGroup()
+{
+	View *parent = superview();
+
+	if (!parent) {
+		return;
+	}
+	for (View *sib : parent->subviews()) {
+		Button *b = dynamic_cast<Button *>(sib);
+
+		if (!b || b == this || b->type() != ButtonType::Radio) {
+			continue;
+		}
+		b->setState(ControlState::Off);
+	}
+}
+
+/* the state a press would produce */
+static ControlState
+flipped(ControlState s)
+{
+	return s == ControlState::On ? ControlState::Off : ControlState::On;
+}
+
 bool
 Button::mouseDown(const MouseEvent &e)
 {
 	if (!Control::mouseDown(e)) {
 		return false;
 	}
-	/* a toggle shows the state it is about to take while the pointer is
-	 * down, so the press is visible in the bezel (Cocoa's push-in) */
-	if (type_ == ButtonType::Toggle && containsPoint(e)) {
-		cell_->setState(state() == ControlState::On ? ControlState::Off
-							    : ControlState::On);
-		setNeedsDisplay();
+	ButtonType t = type();
+
+	/* everything that sticks except a radio shows the state it is about
+	 * to take WHILE the pointer is down (Cocoa's push-in), so a drag off
+	 * can take it back. A radio selects on the RELEASE instead: picking
+	 * a radio is a decision, not a preview. */
+	if (sticks(t) && t != ButtonType::Radio && containsPoint(e)) {
+		setState(flipped(state()));
 	}
 	return true;
 }
@@ -352,11 +630,16 @@ Button::mouseUp(const MouseEvent &e)
 		return false;
 	}
 	bool inside = containsPoint(e);
+	ButtonType t = type();
 
-	if (type_ == ButtonType::Toggle && !inside) {
+	if (!inside && sticks(t) && t != ButtonType::Radio
+	    && cell_ && cell_->isHighlighted()) {
 		/* dragged off: put the state back where it was */
-		cell_->setState(state() == ControlState::On ? ControlState::Off
-							    : ControlState::On);
+		setState(flipped(state()));
+	}
+	if (inside && t == ButtonType::Radio) {
+		setState(ControlState::On);
+		notifyRadioGroup();
 	}
 	return Control::mouseUp(e);
 }
