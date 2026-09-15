@@ -1743,9 +1743,13 @@ Menu::popUp(const Point &atScreen)
 {
 	Window w;
 
-	/* a menu is a POP-UP: override-redirect, so it takes input while it is over
-	 * its own application's window. Set BEFORE open, because X decides it at
-	 * creation. */
+	/* A MENU IS A POP-UP, and both of these are load-bearing:
+	 * - BORDERLESS, because a titled window's chrome eats the top of the
+	 *   content, and the dispatch REJECTS a press above the content rect. The
+	 *   menu's own view is the whole surface, so its first rows would be dead.
+	 * - OVERRIDE-REDIRECT, so it takes input while it is over its own
+	 *   application's window. Set BEFORE open: X decides it at creation. */
+	w.setStyle(WindowStyle::Borderless);
 	w.setLevel(WindowLevelPopUpMenu);
 	double width = MenuView::preferredWidth(this);
 	double height = MenuView::preferredHeight(this);
