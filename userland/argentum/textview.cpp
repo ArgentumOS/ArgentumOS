@@ -309,7 +309,6 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 	if (!ctx || !layout_) {
 		return;
 	}
-	(void) inView;
 	double pad = 6.0;
 	double radius = bezeled_ ? 4.0 : 0;
 
@@ -326,7 +325,28 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 			ctx->strokeRoundRect(frame, radius, border_, 1.0);
 		}
 	}
-	/* the value: the placeholder when there is none, greyed */
+	/* THE CHROME IS THIS CELL'S; THE VALUE IS NOT. A cell that has already
+	 * drawn a bezel of its own - the search field's, the token field's -
+	 * must not get a SECOND one around its entry area, and that is exactly
+	 * what delegating to this function did: one box outlined inside
+	 * another. A subclass hands drawValue() the entry rect instead. */
+	Rect inner = { { frame.origin.x + pad, frame.origin.y },
+		       { frame.size.w - 2.0 * pad, frame.size.h } };
+
+	drawValue(inner, inView);
+}
+
+/* the value: drawn in exactly the rect it is given, so a subclass that has
+ * drawn its own chrome can hand over its entry area */
+void
+TextFieldCell::drawValue(const Rect &frame, View *inView)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx || !layout_) {
+		return;
+	}
+	/* the placeholder when there is no value, greyed */
 	std::string shown = storage_->string();
 	bool placeholder = shown.empty() && !placeholder_.empty();
 	TextAttributes attrs = defaultAttributesOrMarked(placeholder);
@@ -335,7 +355,7 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 		shown = placeholder_;
 	}
 	/* size the container to the text area and lay the string out */
-	container_->setSize(Size{ frame.size.w - 2.0 * pad, frame.size.h });
+	container_->setSize(Size{ frame.size.w, frame.size.h });
 	TextAttributes want = attrs;
 
 	storage_->setDefaultAttributes(want);
@@ -349,11 +369,11 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 
 		lm.setTextStorage(&tmp);
 		lm.setTextContainer(container_);
-		lm.drawInContext(*ctx, Point{ frame.origin.x + pad,
+		lm.drawInContext(*ctx, Point{ frame.origin.x,
 					      frame.origin.y + 3.0 });
 		return;
 	}
-	layout_->drawInContext(*ctx, Point{ frame.origin.x + pad,
+	layout_->drawInContext(*ctx, Point{ frame.origin.x,
 					    frame.origin.y + 3.0 });
 	/* the insertion point: a hairline where the next character lands.
 	 * Its x comes from measuring the text BEFORE the insertion point,
@@ -377,7 +397,7 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 			x += layout_->textWidthOf(at, next - at);
 			at = next;
 		}
-		ctx->fillRect(Rect{ { frame.origin.x + pad + x,
+		ctx->fillRect(Rect{ { frame.origin.x + x,
 				      frame.origin.y + 4.0 },
 				    { 1.0, frame.size.h - 8.0 } }, caretColor_);
 	}
@@ -794,7 +814,7 @@ SearchFieldCell::drawInFrame(const Rect &frame, View *inView)
 		lm.setTextContainer(&tc);
 		lm.drawInContext(*ctx, Point{ text.origin.x, text.origin.y + 3.0 });
 	} else {
-		TextFieldCell::drawInFrame(text, inView);
+		drawValue(text, inView);
 	}
 	/* the clear button, when there is something to clear */
 	if (stringValue()[0] != '\0') {
@@ -976,7 +996,7 @@ TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 					      entry.origin.y + 3.0 });
 		return;
 	}
-	TextFieldCell::drawInFrame(entry, inView);
+	drawValue(entry, inView);
 }
 
 Cell *

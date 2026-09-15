@@ -2281,6 +2281,15 @@ protected:
 	void setBorderColor(const Color &c) { border_ = c; }
 
 protected:
+	/// Draw the VALUE alone - the placeholder or the text, and the caret -
+	/// in exactly the rect given, with no bezel and no background.
+	///
+	/// For a subclass that has drawn its own chrome: SearchFieldCell behind
+	/// its magnifier, TokenFieldCell behind its chips. Calling drawInFrame()
+	/// for that entry area instead drew a SECOND bezel there - one outlined
+	/// box inside the field's own.
+	void drawValue(const Rect &frame, View *inView);
+
 	/* the attributes the field draws with (the placeholder is greyed) */
 	TextAttributes defaultAttributesOrMarked(bool placeholder) const;
 

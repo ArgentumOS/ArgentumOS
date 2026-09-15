@@ -195,6 +195,24 @@ class Case(BaseCase):
                    % (first[4] if first else "?", walked or "none",
                       len(click_paints)))
 
+        # NO BOX INSIDE THE BOX. SearchFieldCell and TokenFieldCell delegate
+        # their entry area to the text cell, which used to draw its OWN bezel
+        # around it too - an outlined input cell inside the field's bezel.
+        # Counting a field's full-width horizontal lines is how to see that:
+        # one bezel is exactly two (top and bottom), an outlined entry makes
+        # four. The entry's own edges are the same fill as the field's now,
+        # so only the field's outline registers.
+        for name in ("SEARCH", "TOKEN"):
+            zx, zy = pts[name]
+            cols = list(range(int(zx) - 100, int(zx) + 100, 2))
+            lines = [y for y in range(int(zy) - 20, int(zy) + 20)
+                     if sum(1 for x in cols if shot.luma(x, y) < 228)
+                     >= 0.8 * len(cols)]
+            self.check("no-box-inside-%s" % name.lower(), len(lines) == 2,
+                       "the %s field's full-width lines are %s: one bezel has "
+                       "two, an outlined entry inside it makes four"
+                       % (name, lines))
+
         # TEXT SITS IN ITS BOX. Context::drawText's y is the TOP of the run
         # box, but the layout used to hand it a BASELINE - one ascent too
         # low, so every text-stack view rode low and a field's text was
