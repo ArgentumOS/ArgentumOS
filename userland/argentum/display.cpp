@@ -991,6 +991,12 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 			impl_->hPx, 0, CopyFromParent, InputOutput,
 			CopyFromParent,
 			CWOverrideRedirect | CWBackPixel | CWBorderPixel, &attrs);
+	if (getenv("ARGENTUM_KEYLOG")) {
+		std::printf("ARGENTUM-WINOPEN %s x=%d y=%d %ux%u override=%d\n",
+			    title ? title : "?", xPt, yPt, impl_->wPx, impl_->hPx,
+			    attrs.override_redirect ? 1 : 0);
+		std::fflush(stdout);
+	}
 	}
 	if (!impl_->xwin) {
 		return false;
@@ -1547,6 +1553,15 @@ Window::pumpEvent()
 	case ButtonPress:
 	case ButtonRelease:
 	case MotionNotify: {
+		if (getenv("ARGENTUM_KEYLOG")
+		    && (ev.type == ButtonPress || ev.type == ButtonRelease)) {
+			/* WHICH WINDOW'S PUMP SAW THE PRESS: the board's or the
+			 * menu's. Neither seeing it means the coordinates are wrong. */
+			std::printf("ARGENTUM-PUMP xwin=%lu %s\n",
+				    (unsigned long) impl_->xwin,
+				    ev.type == ButtonPress ? "press" : "release");
+			std::fflush(stdout);
+		}
 		Point winPt = { ev.xbutton.x / pp, ev.xbutton.y / pp };
 		bool pressed = (ev.type == ButtonPress);
 		bool released = (ev.type == ButtonRelease);
