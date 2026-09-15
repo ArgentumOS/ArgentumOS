@@ -242,6 +242,45 @@ window remains only the bar's lifecycle anchor). Gate:
 `tests/cases/weaver_menubar2.py` 9/9 — the Classes and Test menus run
 with the test window active.
 
+## 4b. The GORM USER INTERFACE (2026-09, USER DECISION)
+
+The user's target is GORM's *arrangement*, not just its model — three
+windows, as GORM has:
+
+- **The document window**: the interface canvas, with the object list
+  beside it (GORM's document window holds the canvas plus the
+  Objects/Images/Sounds/Classes panes; v1 shows ONE list — proxies,
+  non-view objects, class records, then the view tree — because Images
+  and Sounds are deferred).
+- **The Palettes panel** (its own window): category tabs, a class table
+  per palette, draggable out into the canvas.
+- **The Inspector** (its own window): tabbed panes — **Attributes**
+  (the property table), **Connections** (the selection's connections),
+  **Size** (numeric frame fields), **Custom Class** (change an
+  instance's class).
+
+### Slices
+
+- **W7a — the Inspector window.** The inspector leaves the document
+  window: a second window with a TabView (Attributes / Connections /
+  Size). Gate: the window is managed, the tabs switch, each pane logs
+  its content.
+- **W7b — the Palettes panel.** The palette leaves the document window:
+  its own window, one tab per category, the class table below. Because
+  the panel and the canvas are now DIFFERENT windows, W1's drag no
+  longer works through the toolkit's per-window drag-out — this slice
+  adds a toolkit **pointer-drag session** (grab + root-coordinate
+  delivery, the pattern `PopupWindow` already uses) so the drop lands in
+  the document window's canvas at the pointer. Gate: a drag from the
+  panel into the canvas instantiates at the drop point (W1's gate,
+  re-pointed).
+- **W7c — the document window.** It becomes the canvas plus the object
+  list only; the chrome that moved out is gone. Gate: the layout log and
+  the region pixel checks follow the new arrangement.
+
+Nothing else in the plan changes: the graph, connections, classes,
+codegen and test mode are window-agnostic.
+
 ## 5. Decisions
 
 - **D1 — design only.** GORM is the model; the implementation is C++
