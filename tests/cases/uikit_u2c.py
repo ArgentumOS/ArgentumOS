@@ -149,6 +149,44 @@ class Case(BaseCase):
                    "a radio's circle is at its left: %s against the "
                    "background %s" % (mark_px, bg))
 
+        # AN INVISIBLE SENSITIVE AREA IS A DEFECT. The circular row draws a
+        # small circle at its left and its title beside it; the rest of its
+        # 240pt frame is empty, and a click there must not reach the button.
+        # It did - the hit test was the whole frame - so most of the row was
+        # sensitivity nobody could see. The pair matters: the circle itself
+        # must STILL fire, or the fix would just be a dead button.
+        ccx, ccy = pts["CIRCULAR"]
+        t_hit = len(session.log_text())
+        mon.click_at(int(ccx) - 106, int(screen_h - ccy), settle=0.6)
+        out_on = session.output_since(t_hit)
+        self.check("the-circle-still-fires",
+                   "ZOO-CLICK Circular" in out_on,
+                   "a click ON the circle did not reach the button; saw %s"
+                   % [l for l in out_on.splitlines()
+                      if l.startswith("ZOO-")][-3:],
+                   xfail="THE BUG IS REAL, THE FIX IS NOT IN: a circular or "
+                         "help button is sensitive across its whole frame "
+                         "while it draws only a circle and a title. A fix "
+                         "(Control::hitTest asking the cell whether the point "
+                         "is on the drawn shape) was written, built... and "
+                         "then the gate could not read a single line of guest "
+                         "output, so it verified nothing and was REVERTED "
+                         "rather than left in unverified. The checks stay so "
+                         "the bug is recorded and a correct fix shows up as an "
+                         "unexpected pass.")
+
+        t_hit2 = len(session.log_text())
+        mon.click_at(int(ccx) + 94, int(screen_h - ccy), settle=0.6)
+        out_off = session.output_since(t_hit2)
+        self.check("dead-space-is-not-sensitive",
+                   "ZOO-CLICK Circular" not in out_off,
+                   "a click past the circular button's title still fired it: "
+                   "%s" % [l for l in out_off.splitlines()
+                           if l.startswith("ZOO-")][-3:],
+                   xfail="see the-circle-still-fires: both halves of this pair "
+                         "could not be read from the guest log, so neither "
+                         "result means anything yet.")
+
         # THE DAMAGE RECT MUST LAND WHERE THE CONTROL IS. The flush speaks
         # WINDOW coordinates; a view's rect is in CONTENT coordinates, one
         # chrome-height higher. Mixing them is a silent offset - the strip
