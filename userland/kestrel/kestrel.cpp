@@ -1677,6 +1677,12 @@ kestrelHook(void *xevent)
 		if (dockX && ev->xbutton.window == dockX) {
 			int i = dockTileAt(ev->xbutton.x, ev->xbutton.y);
 
+			/* every dock press is logged: a silent miss is how a
+			 * "click does nothing" report stays undiagnosable */
+			printf("KESTREL: dock press %d,%d -> %s\n",
+			       ev->xbutton.x, ev->xbutton.y,
+			       i >= 0 ? kPins[i].title : "(no tile)");
+			fflush(stdout);
 			if (i >= 0) {
 				dockActivate(i);
 			} else {
