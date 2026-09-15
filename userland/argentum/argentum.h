@@ -117,6 +117,132 @@ class GraphicsContext;
  * (0,0) is this view's top-left and clipped to its bounds — draw in
  * LOCAL PX (frame pt × pxPerPt). The default draw() paints nothing.
  */
+class View;	/* U0: the anchors below reference views by pointer */
+
+/* ---------- U0 (docs/design/cocoa-parity-plan.md): AUTO LAYOUT ----------
+ *
+ * The Cocoa model: views are laid out by CONSTRAINTS describing relations
+ * between their edges, centres and sizes. Our translation of it:
+ *
+ *   - NSLayoutAttribute -> LayoutAttribute (left/right/top/bottom/
+ *     leading/trailing/centerX/centerY/width/height/baseline)
+ *   - NSLayoutRelation  -> LayoutRelation
+ *   - NSLayoutConstraint -> LayoutConstraint (item, attribute, relation,
+ *     second item/attribute, multiplier, constant, priority, active)
+ *   - NSLayoutAnchor/NSLayoutDimension -> LayoutAnchor/LayoutDimension,
+ *     which manufacture constraints through `constraintEqualTo…`
+ *   - NSLayoutConstraint.activate -> LayoutConstraint::activate
+ *
+ * A view participates only while
+ * translatesAutoresizingMaskIntoConstraints() is FALSE — its autoresizing
+ * mask supplies constraints otherwise, as in Cocoa.
+ *
+ * Solver (v1, in layout.cpp): priority-ordered iterative projection over
+ * the base variables (x, y, w, h per view). Exact for the tree-shaped
+ * systems the framework generates; a full Cassowary-grade incremental
+ * solver is a follow-on (the API does not change).
+ */
+enum class LayoutAttribute : int {
+	Left, Right, Top, Bottom, Width, Height,
+	CenterX, CenterY, Leading, Trailing, Baseline,
+	Count
+};
+
+enum class LayoutRelation : int { LessThanOrEqual, Equal, GreaterThanOrEqual };
+
+/* Cocoa's NSLayoutPriorityRequired */
+static const double LayoutPriorityRequired = 1000.0;
+
+class LayoutConstraint;
+
+class LayoutAnchor {
+public:
+	LayoutAnchor(View *item, LayoutAttribute attribute)
+		: item_(item), attribute_(attribute) {}
+
+	View *item() const { return item_; }
+	LayoutAttribute attribute() const { return attribute_; }
+
+	LayoutConstraint *constraintEqualTo(const LayoutAnchor &other,
+					    double constant = 0) const;
+	LayoutConstraint *constraintGreaterThanOrEqualTo(
+		const LayoutAnchor &other, double constant = 0) const;
+	LayoutConstraint *constraintLessThanOrEqualTo(const LayoutAnchor &other,
+						      double constant = 0) const;
+
+protected:
+	View *item_;
+	LayoutAttribute attribute_;
+};
+
+/* a dimension anchor adds the constant and multiplier forms, as Cocoa's
+ * NSLayoutDimension does */
+class LayoutDimension : public LayoutAnchor {
+public:
+	LayoutDimension(View *item, LayoutAttribute attribute)
+		: LayoutAnchor(item, attribute) {}
+
+	LayoutConstraint *constraintEqualToConstant(double constant) const;
+	LayoutConstraint *constraintGreaterThanOrEqualToConstant(
+		double constant) const;
+	LayoutConstraint *constraintLessThanOrEqualToConstant(
+		double constant) const;
+	/* this = multiplier * other + constant */
+	LayoutConstraint *constraintEqualTo(const LayoutDimension &other,
+					    double multiplier = 1,
+					    double constant = 0) const;
+};
+
+class LayoutConstraint {
+public:
+	View *firstItem() const { return first_; }
+	LayoutAttribute firstAttribute() const { return firstAttr_; }
+	LayoutRelation relation() const { return relation_; }
+	View *secondItem() const { return second_; }
+	LayoutAttribute secondAttribute() const { return secondAttr_; }
+	double multiplier() const { return multiplier_; }
+	double constant() const { return constant_; }
+
+	double priority() const { return priority_; }
+	void setPriority(double p) { priority_ = p; }
+	bool isActive() const { return active_; }
+	void setActive(bool on);
+
+	static void activate(const std::vector<LayoutConstraint *> &constraints);
+	/* the factory the anchors use (Cocoa builds constraints through its
+	 * convenience constructors the same way) */
+	static LayoutConstraint *create(View *first, LayoutAttribute firstAttr,
+					LayoutRelation relation,
+					View *second, LayoutAttribute secondAttr,
+					double multiplier, double constant);
+	static void deactivate(const std::vector<LayoutConstraint *> &constraints);
+
+private:
+	friend class LayoutAnchor;
+	friend class LayoutDimension;
+
+	View *first_ = nullptr;
+	LayoutAttribute firstAttr_ = LayoutAttribute::Left;
+	LayoutRelation relation_ = LayoutRelation::Equal;
+	View *second_ = nullptr;
+	LayoutAttribute secondAttr_ = LayoutAttribute::Left;
+	double multiplier_ = 1;
+	double constant_ = 0;
+	double priority_ = LayoutPriorityRequired;
+	bool active_ = true;
+};
+
+std::map<int, double> layoutBaseTerms(View *item, LayoutAttribute attribute);
+
+/* the layout pass: solve the ACTIVE constraints over the views in root's
+ * subtree and write their frames. Returns false when a REQUIRED
+ * constraint could not be satisfied (the layout is still written, best
+ * effort — Cocoa reports such conflicts and keeps the last good values). */
+bool layoutSolve(View *root);
+
+/* the active constraints, in activation order (the solver's input) */
+const std::vector<LayoutConstraint *> &layoutActiveConstraints();
+
 class View {
 public:
 	View();
@@ -162,6 +288,26 @@ public:
 	 * paints from fixed chrome constants (Slider's track) cannot be relied
 	 * on to dim itself. */
 	virtual bool isDimmed() const;
+
+	/* ---- U0: Auto Layout (docs/design/cocoa-parity-plan.md) ----------
+	 * The anchor accessors are Cocoa's NSView anchor properties. A view
+	 * participates in the constraint pass only while its translates…
+	 * flag is false; otherwise its autoresizing mask supplies
+	 * constraints (Cocoa's rule). */
+	LayoutAnchor leftAnchor() const;
+	LayoutAnchor rightAnchor() const;
+	LayoutAnchor topAnchor() const;
+	LayoutAnchor bottomAnchor() const;
+	LayoutAnchor leadingAnchor() const;
+	LayoutAnchor trailingAnchor() const;
+	LayoutAnchor centerXAnchor() const;
+	LayoutAnchor centerYAnchor() const;
+	LayoutAnchor baselineAnchor() const;
+	LayoutDimension widthAnchor() const;
+	LayoutDimension heightAnchor() const;
+
+	bool translatesAutoresizingMaskIntoConstraints() const;
+	void setTranslatesAutoresizingMaskIntoConstraints(bool on);
 
 	/* display: draw local px content; default paints nothing */
 	virtual void draw(GraphicsContext &g);

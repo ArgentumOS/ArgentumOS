@@ -199,6 +199,34 @@ as a compatibility path for un-migrated views, with a migration list.
   (`View`, `Button`, `TableView`); the catalog's mapping is the documented
   answer.
 
+## 5a. U0 progress
+
+**U0a — the constraint model + the first solver. DONE (2026-09).**
+`LayoutAttribute`/`LayoutRelation`, `LayoutAnchor`/`LayoutDimension`,
+`LayoutConstraint` (+ `activate`/`deactivate`), the `View` anchor
+accessors, and `translatesAutoresizingMaskIntoConstraints` — a view
+participates only while that flag is false, as in Cocoa.
+`layoutSolve(root)` is the layout pass; gate `tests/cases/uikit_u0.py`
+4/4 and the probe `userland/tests/layout_solve.cpp` (`U0-OK`): edges,
+sizes, centres, a multiplier, an inequality and a priority conflict all
+solve to exact frames.
+
+The solver is **priority-ordered iterative projection over the base
+variables** (x, y, w, h per view): the second item of a row is its
+REFERENCE, and each row moves only ONE variable — its first item's
+dominant one. Both rules came out of the probe failing: with corrections
+distributed across every variable in a row, a container drifted and a
+centre constraint ate a view's width, and the system only converged
+slowly. Documented v1 boundaries (the API does not change when they are
+lifted): one coordinate space (no sibling-space conversion yet);
+baseline behaves as bottom; over-constrained systems resolve last-wins;
+a full Cassowary-grade incremental solver replaces the body later.
+
+**U0b — the View lifecycle (not started):** `setNeedsLayout`/
+`layoutSubtreeIfNeeded`, the autoresizing mask → constraint bridge, the
+window's layout pass, and the zoo board's first constraint-laid-out
+control.
+
 ## 6. Status bookkeeping
 
 - U0–U9: not started (U0 = autolayout + the view foundation; U1 = bases;

@@ -17,6 +17,21 @@
 
 namespace argentum {
 
+/* ---- U0: Auto Layout (docs/design/cocoa-parity-plan.md) ---------------- */
+
+bool
+View::translatesAutoresizingMaskIntoConstraints() const
+{
+	return impl_->translatesMask;
+}
+
+void
+View::setTranslatesAutoresizingMaskIntoConstraints(bool on)
+{
+	impl_->translatesMask = on;
+}
+
+
 /* ---- geometry helpers ------------------------------------------ */
 
 bool

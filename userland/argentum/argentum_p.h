@@ -254,6 +254,7 @@ struct View::Impl {
 	std::vector<View *> subviews;	/* draw order; last = topmost */
 	Rect frame;			/* pt, superview space */
 	bool hidden = false;
+	bool translatesMask = true;	/* U0: mask stands in until turned off */
 	bool hitTestEnabled = true;	/* D12: false = transparent to
 					 * hit-testing (the editor's canvas) */
 	bool needsDisplay = false;
