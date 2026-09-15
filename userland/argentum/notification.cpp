@@ -62,7 +62,8 @@ static const Property Notification_PROPS[] = {
 
 const ObjectClass Notification::kClass = {
 	"Notification", &Object::kClass, Notification_PROPS,
-	(int) (sizeof(Notification_PROPS) / sizeof(Notification_PROPS[0]))
+	(int) (sizeof(Notification_PROPS) / sizeof(Notification_PROPS[0])),
+	nullptr, 0
 };
 
 /* ---- NotificationCenter ---------------------------------------------- */
@@ -78,7 +79,7 @@ static const Property NotificationCenter_PROPS[] = {
 const ObjectClass NotificationCenter::kClass = {
 	"NotificationCenter", &Object::kClass, NotificationCenter_PROPS,
 	(int) (sizeof(NotificationCenter_PROPS)
-	       / sizeof(NotificationCenter_PROPS[0]))
+	       / sizeof(NotificationCenter_PROPS[0])), nullptr, 0
 };
 
 NotificationCenter::NotificationCenter() = default;

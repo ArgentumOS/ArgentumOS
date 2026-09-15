@@ -338,7 +338,7 @@ static const Property View_PROPS[] = {
 
 const ObjectClass View::kClass = {
 	"View", &Object::kClass, View_PROPS,
-	(int) (sizeof(View_PROPS) / sizeof(View_PROPS[0]))
+	(int) (sizeof(View_PROPS) / sizeof(View_PROPS[0])), nullptr, 0
 };
 
 } /* namespace argentum */

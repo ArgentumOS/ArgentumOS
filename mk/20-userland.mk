@@ -185,6 +185,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/notification_basic.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/notification_basic"
+	# cell_basic: U1c acceptance (docs/design/cocoa-parity-plan.md) — the
+	# cell's content/state/measurement and target/action dispatch.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/cell_basic.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/cell_basic"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

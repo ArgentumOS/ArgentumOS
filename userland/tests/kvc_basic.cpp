@@ -49,7 +49,7 @@ const ObjectClass MyView::kClass = {
 			  static_cast<MyView *>(o)->tag = (int) v.number;
 			  return true; } },
 	},
-	1,
+	1, nullptr, 0,
 };
 
 int

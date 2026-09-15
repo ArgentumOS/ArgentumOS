@@ -327,6 +327,14 @@ struct Property {
 	std::function<bool(Object *, const Value &)> set;
 };
 
+/// One named action a class responds to: Cocoa's target/action pair
+/// without a selector runtime. The name is what a control stores and what
+/// the responder chain looks up.
+struct Action {
+	const char *name = nullptr;
+	std::function<void(Object *sender)> handler;
+};
+
 /// A class's identity and its OWN properties. `super` links the chain, so
 /// a lookup walks from the most-derived class up.
 struct ObjectClass {
@@ -334,6 +342,8 @@ struct ObjectClass {
 	const ObjectClass *super = nullptr;
 	const Property *props = nullptr;
 	int count = 0;
+	const Action *actions = nullptr;
+	int actionCount = 0;
 };
 
 /// @purpose The root of the class hierarchy and the KVC entry point: a
@@ -383,6 +393,15 @@ public:
 	Value valueForKeyPath(const char *path) const;
 	/// Write a dot-separated path.
 	bool setValueForKeyPath(const char *path, const Value &v);
+
+	/// The Action descriptor for `name`, searched from the receiver's
+	/// class up the chain; nullptr when no class implements it.
+	const Action *actionForName(const char *name) const;
+	/// True when this object (or a superclass) implements `name`.
+	bool respondsToAction(const char *name) const;
+	/// Run `name` with `sender`. False when nobody up the chain
+	/// implements it (the caller then decides what that means).
+	bool sendAction(const char *name, Object *sender);
 };
 
 /// @purpose One posted message: its name, the sender, and a small by-name
@@ -511,6 +530,187 @@ private:
 	int delivering_ = 0;
 
 	void reap();
+};
+
+/// Text alignment (Cocoa's NSTextAlignment), used by the cell classes and
+/// later by the text controls.
+enum class TextAlignment { Left, Center, Right };
+
+/// A control cell's state (Cocoa's NSControlStateValue).
+enum class ControlState { Off = 0, On = 1, Mixed = 2 };
+
+/// @purpose The content, state and measurement of a control, separate from
+/// the control's place on screen. Cocoa's NSCell: one cell instance can be
+/// shared by many NSControls, and a control may copy a prototype cell
+/// instead of owning a unique one. This is the class a button's title and
+/// a text field's value actually live in.
+///
+/// @lifetime Plain C++ ownership; a Control that holds a cell destroys it
+/// (or the prototype lives as long as the app). copy() returns a heap
+/// instance the caller owns.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants stringValue() is the text form of the cell's value and
+/// intValue()/doubleValue() the numeric form of the SAME value: setting
+/// any one of them updates the others (Cocoa's behaviour). cellSize() is
+/// in POINTS and includes the cell's insets; it uses the text engine when
+/// one is ready and otherwise falls back to a documented estimate, so it
+/// is meaningful before any display exists. drawInFrame() is a no-op until
+/// the display path lands (U2/U3) — the cell knows what to draw, the
+/// graphics context that can draw it does not exist yet.
+///
+/// @see ActionCell, View
+class Cell : public Object {
+public:
+	/// The class record KVC walks (Object <- Cell).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty, enabled, unhidden cell with no value.
+	Cell();
+	/// Destroy the cell. It owns nothing but its own content.
+	~Cell() override;
+
+	/* ---- content ---- */
+	/// The cell's value as text.
+	const char *stringValue() const { return string_.c_str(); }
+	/// Set the value from text.
+	void setStringValue(const char *utf8);
+	/// The cell's value, type-erased (Text or Number).
+	Value objectValue() const { return object_; }
+	/// Set the value from a Value.
+	void setObjectValue(const Value &v);
+	/// The value's integer form (0 when it is not numeric).
+	int intValue() const;
+	/// The value's floating-point form (0 when it is not numeric).
+	double doubleValue() const;
+	/// Set the value from an integer.
+	void setIntValue(int n);
+	/// Set the value from a double.
+	void setDoubleValue(double n);
+
+	/* ---- state ---- */
+	/// The control state (off/on/mixed).
+	ControlState state() const { return state_; }
+	/// Set the control state.
+	void setState(ControlState s) { state_ = s; }
+	/// True while the cell accepts input.
+	bool isEnabled() const { return enabled_; }
+	/// Enable or disable the cell.
+	void setEnabled(bool on) { enabled_ = on; }
+	/// True while the cell is drawn pressed/highlighted.
+	bool isHighlighted() const { return highlighted_; }
+	/// Set the highlight (the control does this while tracking).
+	void setHighlighted(bool on) { highlighted_ = on; }
+	/// The cell's tag: an integer for the app to recognise this cell by.
+	int tag() const { return tag_; }
+	/// Set the tag.
+	void setTag(int t) { tag_ = t; }
+	/// The object the cell speaks for (Cocoa's representedObject).
+	Object *representedObject() const { return represented_; }
+	/// Set the represented object (non-owning).
+	void setRepresentedObject(Object *o) { represented_ = o; }
+
+	/* ---- appearance the measurement depends on ---- */
+	/// How the content is aligned inside the cell.
+	TextAlignment alignment() const { return align_; }
+	/// Set the alignment.
+	void setAlignment(TextAlignment a) { align_ = a; }
+	/// The font name the cell measures with ('' = the session default).
+	const char *fontName() const { return fontName_.c_str(); }
+	/// Set the font name.
+	void setFontName(const char *utf8);
+	/// The font size in points (0 = the session default).
+	double fontSize() const { return fontSize_; }
+	/// Set the font size.
+	void setFontSize(double pt) { fontSize_ = pt; }
+	/// True when long content wraps instead of being clipped.
+	bool wraps() const { return wraps_; }
+	/// Set wrapping.
+	void setWraps(bool on) { wraps_ = on; }
+
+	/* ---- measurement ---- */
+	/// The size (points) this cell needs for its content, insets included.
+	Size cellSize();
+	/// The size this cell needs when it may be at most `max` big.
+	Size cellSizeForBounds(const Size &max);
+	/// The cell's inset on each side, in points.
+	static double contentInset() { return 6.0; }
+
+	/* ---- drawing (the display path lands later) ---- */
+	/// Draw the cell's content into `frame` of `inView`. A no-op today:
+	/// there is no graphics context yet. Subclasses override it to say
+	/// what they would draw; the display milestone supplies the surface.
+	virtual void drawInFrame(const Rect &frame, View *inView);
+
+	/// A copy of the cell, owned by the caller (Cocoa's copy).
+	virtual Cell *copy() const;
+
+protected:
+	std::string string_;
+	Value object_;
+	ControlState state_ = ControlState::Off;
+	bool enabled_ = true;
+	bool highlighted_ = false;
+	bool wraps_ = false;
+	int tag_ = 0;
+	Object *represented_ = nullptr;
+	TextAlignment align_ = TextAlignment::Left;
+	std::string fontName_;
+	double fontSize_ = 0;
+};
+
+/// @purpose A cell that can send an action to a target: the mechanism
+/// behind every button, menu item and text field committing its value.
+/// Cocoa's NSActionCell.
+///
+/// @lifetime The cell does NOT own its target, and the target does not own
+/// the cell: the pairing is two non-owning references, so a target must
+/// clear its cells' targets (or be torn down with them) before it dies.
+///
+/// @threading sendAction() runs the handler SYNCHRONOUSLY, on the caller's
+/// thread (the UI thread), exactly like NotificationCenter's post.
+///
+/// @invariants The action is addressed by NAME and resolved against the
+/// target's action table up its class chain (Object::sendAction), which is
+/// this toolkit's stand-in for Cocoa's @selector. With no target set,
+/// sendAction() returns false and does nothing: the responder chain is not
+/// built yet, so there is nowhere to forward to.
+///
+/// @see Cell, Object, NotificationCenter
+class ActionCell : public Cell {
+public:
+	/// The class record KVC walks (Object <- Cell <- ActionCell).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty cell with no target and no action.
+	ActionCell();
+
+	/// The object that receives the action (non-owning; may be nullptr).
+	Object *target() const { return target_; }
+	/// Set the target (non-owning).
+	void setTarget(Object *o) { target_ = o; }
+	/// The action's name ('' when unset).
+	const char *action() const { return action_.c_str(); }
+	/// Set the action's name.
+	void setAction(const char *name);
+
+	/// Deliver the action to the target. False when there is no target or
+	/// the target does not respond to the action's name.
+	bool sendAction();
+
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+
+private:
+	Object *target_ = nullptr;
+	std::string action_;
 };
 
 /// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each

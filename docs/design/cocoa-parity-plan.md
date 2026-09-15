@@ -148,6 +148,18 @@ as a compatibility path for un-migrated views, with a migration list.
   delivery is not called and its token dies at once; dead entries are
   reaped when the outermost delivery returns. Gate
   `tests/cases/uikit_u1b.py` 4/4 (22 assertions).
+  **U1c — `Cell` / `ActionCell` and target/action. DONE.** `Cell` holds
+  the content (`stringValue`/`intValue`/`doubleValue` as three views of one
+  value), the state (`ControlState` off/on/mixed), the appearance the
+  measurement depends on, and `cellSize()`/`cellSizeForBounds()` in points
+  (text engine when ready, a documented estimate otherwise — so a cell can
+  be sized before any display exists). `drawInFrame()` is the override
+  point and a documented **no-op until the display path lands**.
+  `ActionCell` adds target + action, addressed **by name** and resolved up
+  the class chain (`ObjectClass` grew an `Action` table; `respondsToAction`
+  / `sendAction` walk it as `valueForKey` walks the property tables) — the
+  toolkit's stand-in for `@selector`, which menus and the responder chain
+  will use. Gate `tests/cases/uikit_u1c.py` 4/4 (36 assertions).
   **Remaining in U1:** `NSViewController` /
   `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
   path.

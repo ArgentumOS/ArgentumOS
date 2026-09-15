@@ -16,7 +16,8 @@
 
 namespace argentum {
 
-const ObjectClass Object::kClass = { "Object", nullptr, nullptr, 0 };
+const ObjectClass Object::kClass = { "Object", nullptr, nullptr, 0,
+				     nullptr, 0 };
 
 Object::~Object()
 {
