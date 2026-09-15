@@ -1040,6 +1040,14 @@ SearchField::mouseUpInside(const Event &e)
 	 * a click anywhere else in the field is not a press of anything, so
 	 * no action (Cocoa does the same: a field sends on Return and on the
 	 * clear button, not on a plain click) */
+	if (getenv("ARGENTUM_KEYLOG")) {
+		/* the magnifier's instrument: a MISSING line means mouseUpInside was
+		 * never called, n=0 means the branch ran with no recents to show */
+		std::printf("ARGENTUM-SEARCHUP n=%d p=%.0f,%.0f\n",
+			    (int) recentSearches_.size(), e.locationInWindow().x,
+			    e.locationInWindow().y);
+		std::fflush(stdout);
+	}
 	/* the MAGNIFIER opens the recent searches: Cocoa's searchMenuTemplate,
 	 * presented with the pop-up machinery the menu family just gained. */
 	if (rectContains(c->magnifierRect(bounds()), e.locationInWindow())) {

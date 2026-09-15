@@ -1743,6 +1743,16 @@ Menu::popUp(const Point &atScreen)
 {
 	Window w;
 
+	if (getenv("ARGENTUM_KEYLOG")) {
+		/* EVERY menu logs where it lands and how tall a row is, so a check
+		 * can aim at a row rather than guessing the geometry - and so this
+		 * works for a menu opened by anything, not just a pop-up button */
+		std::printf("ARGENTUM-POPUP x=%.0f y=%.0f rowh=%.0f n=%d\n",
+			    atScreen.x, atScreen.y, MenuView::itemHeight(),
+			    numberOfItems());
+		std::fflush(stdout);
+	}
+
 	/* A MENU IS A POP-UP, and both of these are load-bearing:
 	 * - BORDERLESS, because a titled window's chrome eats the top of the
 	 *   content, and the dispatch REJECTS a press above the content rect. The
@@ -1846,13 +1856,6 @@ PopUpButton::mouseDown(const Event &e)
 	/* the row that is picked sends ITS action; the app chooses what to do,
 	 * including selecting it here (Cocoa's button selects on its own, which
 	 * needs an item-to-button binding this toolkit does not have yet) */
-	if (getenv("ARGENTUM_KEYLOG")) {
-		/* where the menu lands and how tall a row is, so a check can aim at
-		 * a row instead of guessing the geometry */
-		std::printf("ARGENTUM-POPUP x=%.0f y=%.0f rowh=%.0f n=%d\n", sx, sy,
-			    MenuView::itemHeight(), numberOfItems());
-		std::fflush(stdout);
-	}
 	menu_->popUp(Point{ sx, sy });
 	setNeedsDisplay();
 	return true;
