@@ -251,6 +251,34 @@ public:
 	}
 };
 
+/* The canvas host paints the WINDOW background (the theme page tone)
+ * behind the live document tree, so the edited interface looks like a
+ * real Kestrel-managed window rather than the session-blue surface. */
+class CanvasHostView : public View {
+public:
+	void draw(GraphicsContext &g) override
+	{
+		Application &app = Application::shared();
+		double ppt = app.pxPerPt();
+		Rect f = frame();
+
+		g.fillRect(0, 0,
+			   (unsigned) (f.size.w * ppt + 0.5),
+			   (unsigned) (f.size.h * ppt + 0.5),
+			   app.theme().page());
+	}
+};
+
+/* A palette click adds the class (the same Editor::addNode the scripted
+ * --add command runs): the TableView's row selection is the only hook the
+ * visible palette needs. */
+class PaletteDelegate : public TableViewDelegate {
+public:
+	Editor *editor = nullptr;
+
+	void tableSelectionDidChange(TableView *table, int row) override;
+};
+
 /* the outline's rows come from the document tree, pushed into the
  * OutlineView as a flat record (text, depth, expandable/expanded, tag);
  * the parallel ids vector maps a row's tag back to the document node. */
@@ -2063,6 +2091,32 @@ public:
 		std::fflush(stdout);
 	}
 
+	/* display mode: the palette added a node to the DOCUMENT; rebuild the
+	 * live canvas tree and the outline so the change is visible. */
+	void refreshDisplay()
+	{
+		if (!canvasHost || !doc) {
+			return;
+		}
+		if (canvas) {
+			canvas->removeFromSuperview();
+			canvas = nullptr;
+		}
+		std::string why;
+		View *cv = interfaceBuild(*doc, canvasHost, why);
+
+		if (cv) {
+			canvas = cv;
+		}
+		if (outline_) {
+			populateOutline(outline_);
+		}
+		canvasHost->setNeedsDisplay();
+		if (overlay) {
+			overlay->setNeedsDisplay();
+		}
+	}
+
 	static void outlineNode(const InterfaceNode *n, int depth)
 	{
 		std::printf("WEAVER: outline ");
@@ -2256,13 +2310,21 @@ public:
 		surface->addSubview(paletteBox);
 		chrome_.push_back(paletteBox);
 
-		TableView *palette = new TableView(new PaletteSource());
+		static PaletteDelegate paletteDelegate;
+
+		paletteDelegate.editor = this;
+		TableView *palette =
+			new TableView(new PaletteSource(), &paletteDelegate);
 		const char *cols[1] = { "Control" };
 
 		palette->setColumns(cols, 1);
 		palette->setFrame(Rect{ { 0, 0 },
 			{ SIDE_W - 16, PAL_H - 44 } });
 		paletteBox->addSubview(palette);
+		std::printf("WEAVER: palette rows=%d rowH=%g header=%g\n",
+			    interfaceClassCount(), palette->rowHeight(),
+			    palette->rowHeight() + 2.0);
+		std::fflush(stdout);
 		chrome_.push_back(palette);
 
 		/* outline (left bottom): a titled Box with one rows View */
@@ -2420,6 +2482,21 @@ EditorOverlay::draw(GraphicsContext &g)
 	}
 }
 
+void
+PaletteDelegate::tableSelectionDidChange(TableView *, int row)
+{
+	if (!editor || row < 0) {
+		return;
+	}
+	const InterfaceClass *c = interfaceClassAt(row);
+
+	if (!c) {
+		return;
+	}
+	editor->addNode(c->name);
+	editor->refreshDisplay();
+}
+
 static int
 runDisplay(Editor &ed)
 {
@@ -2463,7 +2540,7 @@ runDisplay(Editor &ed)
 
 	std::string why;
 	ed.canvasOrigin = Point{ SIDE_W + CHROME_GAP, CHROME_TOP };
-	ed.canvasHost = new View();
+	ed.canvasHost = new CanvasHostView();
 
 	ed.canvasHost->setFrame(Rect{ { ed.canvasOrigin.x, ed.canvasOrigin.y },
 		{ r->frameW(), r->frameH() } });
