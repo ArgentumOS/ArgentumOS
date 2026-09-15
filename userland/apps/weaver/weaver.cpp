@@ -730,7 +730,7 @@ public:
 		InterfaceNode *label = new InterfaceNode();
 		InterfaceNode *button = new InterfaceNode();
 
-		fresh->setVersion(1);
+		fresh->setVersion(2);
 		r->setClassName("View");
 		r->setIdentifier("panel");
 		r->setFrame(0, 0, 400, 300);
@@ -767,7 +767,7 @@ public:
 		InterfaceNode *label = new InterfaceNode();
 		InterfaceNode *button = new InterfaceNode();
 
-		fresh->setVersion(1);
+		fresh->setVersion(2);
 		r->setClassName("View");
 		r->setIdentifier("panel");
 		r->setFrame(0, 0, 400, 300);
@@ -2135,8 +2135,19 @@ public:
 		}
 	}
 
+	/* the W0 object graph: proxies and non-view objects lead the outline,
+	 * then the window/view tree (GORM's Objects pane). */
 	void outline()
 	{
+		std::printf("WEAVER: outline proxy owner\n");
+		std::printf("WEAVER: outline proxy firstResponder\n");
+		std::printf("WEAVER: outline proxy fontManager\n");
+		for (int i = 0; i < doc->objectCount(); i++) {
+			const InterfaceNode *o = doc->objectAt(i);
+
+			std::printf("WEAVER: outline object %s (%s)\n",
+				    o->identifier(), o->className());
+		}
 		if (!doc->root()) {
 			std::printf("WEAVER: outline FAIL (no document)\n");
 			std::fflush(stdout);
@@ -2183,6 +2194,21 @@ public:
 	void populateOutline(OutlineView *view)
 	{
 		outlineIds_.clear();
+		view->clear();
+		view->addRow("proxy owner", 0, false, false, 0);
+		outlineIds_.push_back("owner");
+		view->addRow("proxy firstResponder", 0, false, false, 0);
+		outlineIds_.push_back("firstResponder");
+		view->addRow("proxy fontManager", 0, false, false, 0);
+		outlineIds_.push_back("fontManager");
+		for (int i = 0; i < doc->objectCount(); i++) {
+			const InterfaceNode *o = doc->objectAt(i);
+			std::string text = "object " + std::string(o->identifier())
+				+ " (" + o->className() + ")";
+
+			view->addRow(text.c_str(), 0, false, false, 0);
+			outlineIds_.push_back(o->identifier());
+		}
 		outlineIntoView(view, doc->root(), 0, &outlineIds_);
 		view->setAction([this](Control *) {
 			int row = outline_ ? outline_->selectedRow() : -1;

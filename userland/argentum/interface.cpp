@@ -253,6 +253,124 @@ InterfaceDocument::setVersion(int version)
 	version_ = version;
 }
 
+InterfaceDocument::~InterfaceDocument()
+{
+	for (auto *o : objects_) {
+		delete o;
+	}
+}
+
+std::string
+InterfaceDocument::proxyIdentifier(const char *name) const
+{
+	int i = !std::strcmp(name, "owner") ? 0
+		: !std::strcmp(name, "firstResponder") ? 1
+		: 2;	/* fontManager, and anything unknown reads as it */
+
+	return proxyIds_[i];
+}
+
+void
+InterfaceDocument::setProxyIdentifier(const char *name, const char *id)
+{
+	int i = !std::strcmp(name, "owner") ? 0
+		: !std::strcmp(name, "firstResponder") ? 1
+		: 2;
+
+	proxyIds_[i] = id ? id : "";
+}
+
+int
+InterfaceDocument::objectCount() const
+{
+	return (int) objects_.size();
+}
+
+InterfaceNode *
+InterfaceDocument::objectAt(int index)
+{
+	if (index < 0 || index >= (int) objects_.size()) {
+		return nullptr;
+	}
+	return objects_[(size_t) index];
+}
+
+const InterfaceNode *
+InterfaceDocument::objectAt(int index) const
+{
+	if (index < 0 || index >= (int) objects_.size()) {
+		return nullptr;
+	}
+	return objects_[(size_t) index];
+}
+
+InterfaceNode *
+InterfaceDocument::addObject(const char *className, const char *id)
+{
+	InterfaceNode *o = new InterfaceNode();
+
+	o->setClassName(className ? className : "");
+	o->setIdentifier(id ? id : "");
+	objects_.push_back(o);
+	return o;
+}
+
+int
+InterfaceDocument::connectionCount() const
+{
+	return (int) connections_.size();
+}
+
+const InterfaceConnection *
+InterfaceDocument::connectionAt(int index) const
+{
+	if (index < 0 || index >= (int) connections_.size()) {
+		return nullptr;
+	}
+	return &connections_[(size_t) index];
+}
+
+void
+InterfaceDocument::addConnection(const char *source, const char *kind,
+				 const char *selector, const char *target)
+{
+	InterfaceConnection c;
+
+	c.source = source ? source : "";
+	c.kind = kind ? kind : "";
+	c.selector = selector ? selector : "";
+	c.target = target ? target : "";
+	connections_.push_back(c);
+}
+
+int
+InterfaceDocument::classCount() const
+{
+	return (int) classes_.size();
+}
+
+const InterfaceClassInfo *
+InterfaceDocument::classAt(int index) const
+{
+	if (index < 0 || index >= (int) classes_.size()) {
+		return nullptr;
+	}
+	return &classes_[(size_t) index];
+}
+
+void
+InterfaceDocument::addClassInfo(const char *name, const char *superClass,
+				const char *outlets, const char *actions)
+{
+	InterfaceClassInfo c;
+
+	c.name = name ? name : "";
+	c.superClass = superClass ? superClass : "";
+	c.outlets = outlets ? outlets : "";
+	c.actions = actions ? actions : "";
+	classes_.push_back(c);
+}
+
 InterfaceNode *
 InterfaceDocument::root()
 {
@@ -409,6 +527,23 @@ emitNodeBody(std::string &out, const InterfaceNode &n, int depth)
 	}
 }
 
+static std::string
+escV2(const std::string &in)
+{
+	std::string out;
+
+	for (char ch : in) {
+		switch (ch) {
+		case '"': out += "\\\""; break;
+		case '\\': out += "\\\\"; break;
+		case '\n': out += "\\n"; break;
+		case '\t': out += "\\t"; break;
+		default: out += ch; break;
+		}
+	}
+	return out;
+}
+
 std::string
 interfaceEmit(const InterfaceDocument &doc)
 {
@@ -425,6 +560,49 @@ interfaceEmit(const InterfaceDocument &doc)
 	out += "interface = {\n";
 	emitNodeBody(out, *doc.root(), 1);
 	out += "}\n";
+	if (doc.version() >= 2) {
+		out += "proxies = {\n";
+		out += "\towner = \"" + escV2(doc.proxyIdentifier("owner")) + "\"\n";
+		out += "\tfirst-responder = \""
+		     + escV2(doc.proxyIdentifier("firstResponder")) + "\"\n";
+		out += "\tfont-manager = \""
+		     + escV2(doc.proxyIdentifier("fontManager")) + "\"\n";
+		out += "}\n";
+		out += "objects = {\n";
+		for (int i = 0; i < doc.objectCount(); i++) {
+			const InterfaceNode *o = doc.objectAt(i);
+
+			out += "\to" + std::to_string(i) + " = {\n";
+			out += "\t\tclass = \"" + escV2(o->className()) + "\"\n";
+			out += "\t\tid = \"" + escV2(o->identifier()) + "\"\n";
+			out += "\t}\n";
+		}
+		out += "}\n";
+		out += "connections = {\n";
+		for (int i = 0; i < doc.connectionCount(); i++) {
+			const InterfaceConnection *c = doc.connectionAt(i);
+
+			out += "\tc" + std::to_string(i) + " = {\n";
+			out += "\t\tsource = \"" + escV2(c->source) + "\"\n";
+			out += "\t\tkind = \"" + escV2(c->kind) + "\"\n";
+			out += "\t\tselector = \"" + escV2(c->selector) + "\"\n";
+			out += "\t\ttarget = \"" + escV2(c->target) + "\"\n";
+			out += "\t}\n";
+		}
+		out += "}\n";
+		out += "classes = {\n";
+		for (int i = 0; i < doc.classCount(); i++) {
+			const InterfaceClassInfo *c = doc.classAt(i);
+
+			out += "\tc" + std::to_string(i) + " = {\n";
+			out += "\t\tname = \"" + escV2(c->name) + "\"\n";
+			out += "\t\tsuper = \"" + escV2(c->superClass) + "\"\n";
+			out += "\t\toutlets = \"" + escV2(c->outlets) + "\"\n";
+			out += "\t\tactions = \"" + escV2(c->actions) + "\"\n";
+			out += "\t}\n";
+		}
+		out += "}\n";
+	}
 	return out;
 }
 
@@ -597,6 +775,99 @@ loadNode(const config_value_t &rec, InterfaceNode &node,
 	return true;
 }
 
+static const char *
+strField(const config_value_t &rec, const char *name)
+{
+	config_value_t *c = nullptr;
+
+	if (config_record_child(&rec, name, &c) == CONFIG_OK && c
+	    && c->type == CONFIG_TYPE_STRING && c->v.string) {
+		return c->v.string;
+	}
+	return "";
+}
+
+/* W0: the v2 sections are TOLERANT — a missing record keeps the defaults
+ * and empty tables, so a v1 document read by this build round-trips as v1
+ * and a v2 document is fully described. */
+static void
+loadV2Sections(const char *path, InterfaceDocument &out)
+{
+	config_value_t v;
+
+	out.setProxyIdentifier("owner", "owner");
+	out.setProxyIdentifier("firstResponder", "firstResponder");
+	out.setProxyIdentifier("fontManager", "fontManager");
+
+	std::memset(&v, 0, sizeof(v));
+	if (config_read_file(path, "proxies", &v) == CONFIG_OK
+	    && v.type == CONFIG_TYPE_RECORD) {
+		for (size_t i = 0; i < v.v.record.count; i++) {
+			const config_record_field_t *f = &v.v.record.fields[i];
+			const char *name = f->name;
+
+			/* the format's keys are hyphenated; the model's are not */
+			if (!std::strcmp(name, "first-responder")) {
+				name = "firstResponder";
+			} else if (!std::strcmp(name, "font-manager")) {
+				name = "fontManager";
+			}
+			if (f->value.type == CONFIG_TYPE_STRING
+			    && f->value.v.string) {
+				out.setProxyIdentifier(name,
+						       f->value.v.string);
+			}
+		}
+	}
+	config_value_free(&v);
+
+	std::memset(&v, 0, sizeof(v));
+	if (config_read_file(path, "objects", &v) == CONFIG_OK
+	    && v.type == CONFIG_TYPE_RECORD) {
+		for (size_t i = 0; i < v.v.record.count; i++) {
+			const config_value_t *r = &v.v.record.fields[i].value;
+
+			if (r->type == CONFIG_TYPE_RECORD) {
+				out.addObject(strField(*r, "class"),
+					      strField(*r, "id"));
+			}
+		}
+	}
+	config_value_free(&v);
+
+	std::memset(&v, 0, sizeof(v));
+	if (config_read_file(path, "connections", &v) == CONFIG_OK
+	    && v.type == CONFIG_TYPE_RECORD) {
+		for (size_t i = 0; i < v.v.record.count; i++) {
+			const config_value_t *r = &v.v.record.fields[i].value;
+
+			if (r->type == CONFIG_TYPE_RECORD) {
+				out.addConnection(strField(*r, "source"),
+						  strField(*r, "kind"),
+						  strField(*r, "selector"),
+						  strField(*r, "target"));
+			}
+		}
+	}
+	config_value_free(&v);
+
+	std::memset(&v, 0, sizeof(v));
+	if (config_read_file(path, "classes", &v) == CONFIG_OK
+	    && v.type == CONFIG_TYPE_RECORD) {
+		for (size_t i = 0; i < v.v.record.count; i++) {
+			const config_value_t *r = &v.v.record.fields[i].value;
+
+			if (r->type == CONFIG_TYPE_RECORD) {
+				out.addClassInfo(strField(*r, "name"),
+						 strField(*r, "super"),
+						 strField(*r, "outlets"),
+						 strField(*r, "actions"));
+			}
+		}
+	}
+	config_value_free(&v);
+}
+
 bool
 interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 {
@@ -631,10 +902,10 @@ interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 		config_value_free(&v);
 		return false;
 	}
-	if (out.version() > 1) {
+	if (out.version() > 2) {
 		std::fprintf(stderr,
 			     "ARGENTUM-IFACE: %s: version %d is newer than this "
-			     "build writes (1); reading tolerantly\n", path,
+			     "build writes (2); reading tolerantly\n", path,
 			     out.version());
 		std::fflush(stderr);
 	}
@@ -642,6 +913,9 @@ interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 		bool ok = loadNode(v, *out.root(), "interface", error);
 
 		config_value_free(&v);
+		if (ok && out.version() >= 2) {
+			loadV2Sections(path, out);
+		}
 		return ok;
 	}
 }

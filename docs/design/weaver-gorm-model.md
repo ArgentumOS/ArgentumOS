@@ -267,7 +267,13 @@ dock pin.
 
 ## 7. Status bookkeeping
 
-- W0–W6: not started.
+- **W0 — DONE (2026-09).** Document v2: the tree plus the three proxy
+  identifier records, non-view `objects`, `connections` and `classes`
+  tables; `interfaceEmit`/`interfaceLoadFile` round-trip them; the
+  template emits v2; the outline (Objects pane) lists proxies and
+  objects above the tree. Gate `tests/cases/weaver_w0.py` 7/7; probe
+  `userland/tests/interface_v2.cpp` (`V2-OK`).
+- W1–W6: not started.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting

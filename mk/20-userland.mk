@@ -202,6 +202,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/interface_roundtrip.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/interface_roundtrip"
+	# interface_v2: Weaver W0 acceptance (docs/design/weaver-gorm-model.md
+	# §4) — the v2 object-graph document round-trips: proxies, non-view
+	# objects, connections and classes. Display-free, like the IB0 probe.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/interface_v2.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/interface_v2"
 	# interface_build: Weaver IB1 acceptance (docs/design/weaver-plan.md §8)
 	# — instantiate a document, find a control by identifier, and lay it out
 	# from the frames and parent-relative masks the document records. No

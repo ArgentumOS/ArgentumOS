@@ -1807,19 +1807,64 @@ private:
 	unsigned int mask_ = 0;	/* View::Autoresizing* */
 };
 
+/* A document connection (W2's data, W0's format): a control sends an
+ * action selector to a target object, or a target's outlet names another
+ * object. Everything is an identifier — never a pointer (D3). */
+struct InterfaceConnection {
+	std::string source;
+	std::string kind;	/* "action" or "outlet" */
+	std::string selector;	/* kind=action: the selector name */
+	std::string target;	/* kind=action: receiver; kind=outlet: owner */
+};
+
+/* A custom class record (W3's data, W0's format): the subclass of a
+ * registered class plus its outlets/actions, comma-separated. */
+struct InterfaceClassInfo {
+	std::string name;
+	std::string superClass;
+	std::string outlets;
+	std::string actions;
+};
+
 /* A document: a version and a root node, which is never null. */
 class InterfaceDocument {
 public:
 	InterfaceDocument();
+	~InterfaceDocument();
 
 	int version() const;
 	void setVersion(int version);
 	InterfaceNode *root();
 	const InterfaceNode *root() const;
 
+	/* W0 proxies: identifier records only (Q-W0). The three names are
+	 * the abstract objects every document carries; apps resolve them. */
+	std::string proxyIdentifier(const char *name) const;
+	void setProxyIdentifier(const char *name, const char *id);
+
+	/* non-view objects in the graph */
+	int objectCount() const;
+	InterfaceNode *objectAt(int index);
+	const InterfaceNode *objectAt(int index) const;
+	InterfaceNode *addObject(const char *className, const char *id);
+
+	int connectionCount() const;
+	const InterfaceConnection *connectionAt(int index) const;
+	void addConnection(const char *source, const char *kind,
+			  const char *selector, const char *target);
+
+	int classCount() const;
+	const InterfaceClassInfo *classAt(int index) const;
+	void addClassInfo(const char *name, const char *superClass,
+			  const char *outlets, const char *actions);
+
 private:
 	int version_ = 1;
 	InterfaceNode root_;
+	std::string proxyIds_[3];	/* owner, firstResponder, fontManager */
+	std::vector<InterfaceNode *> objects_;		/* owned */
+	std::vector<InterfaceConnection> connections_;
+	std::vector<InterfaceClassInfo> classes_;
 };
 
 /* Emit to the §4 grammar. DETERMINISTIC — the same document always emits the
