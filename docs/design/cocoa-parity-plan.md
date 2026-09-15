@@ -127,11 +127,19 @@ as a compatibility path for un-migrated views, with a migration list.
   that is the semantics Cocoa's API implies. Gate: a display-free probe
   solves a set of constraints and asserts the resulting frames, including
   a priority conflict and an inequality.
-- **U1 — the missing bases.** `NSObject`-analog base (class name,
-  description), `NSNotificationCenter`, `NSViewController` +
+- **U1 — the missing bases + property tables.** `NSObject`-analog base
+  (class name, description), the **property tables** (name → get/set,
+  class-chain lookup) with `valueForKey`/`setValueForKey`, key paths and
+  the array operators, then `NSNotificationCenter`, `NSViewController` +
   `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
-  path. Gate: a controller hosts a view tree; a notification reaches two
-  observers; a cell-based Button draws and fires through its cell.
+  path. Gate: a property is read and written by name through the class
+  chain (including an inherited one) and a key path resolves; a
+  controller hosts a view tree; a notification reaches two observers; a
+  cell-based Button fires through its cell.
+- **U1b — KVO.** Observation by key path with `willChange`/`didChange`,
+  dependent keys, `.initial`/`.old`, and the documented "mutate through
+  the table" discipline. Gate: an observer receives a change with the old
+  and new values; removing it stops delivery; a dependent key fires.
 - **U2 — the button family.** `NSButton` types (switch/checkbox, radio,
   disclosure, gradient, help, inline, recessed) + `NSButtonCell`.
   Gate: the zoo board shows every type; each fires and reports state.
@@ -154,20 +162,36 @@ as a compatibility path for un-migrated views, with a migration list.
 - **U8 — windows and controllers.** `NSPanel`, sheets, window styles,
   `NSWindowController` semantics (document ownership).
 - **U9 — data transfer, undo, binding.** `NSPasteboard` fidelity,
-  dragging (`NSDraggingSession` analog), `NSUndoManager`, and KVC-like
-  binding if Q-U2 says yes.
+  dragging (`NSDraggingSession` analog), `NSUndoManager`, and **bindings**
+  plus the controller family (`ObjectController`, `ArrayController`,
+  `DictionaryController`) with the real option set (continuous,
+  validate-immediately, placeholders, value transformers).
 
 ## 5. Open questions (yours to answer)
 
 - **Q-U1 — layout. RESOLVED (2026-09, user): AUTOLAYOUT EARLY.** It is
   the framework's layout model (U0); springs/struts remain a
   compatibility path for un-migrated views only.
-- **Q-U2 — the runtime-flavoured patterns.** `NSNotificationCenter` needs
-  no runtime and is recommended for U0. KVC/KVO and bindings *do* need a
-  string-keyed property system; our property access is table-driven
-  (`InterfaceProperty`-style tables were the pattern, and that file is
-  gone). Do we grow an explicit table-driven KVC (recommended, deferred to
-  U9) or skip bindings entirely?
+- **Q-U2 — the runtime-flavoured patterns. RESOLVED (2026-09, user):
+  FULL KVC + KVO + BINDINGS (table-driven).** The Shrike-era carve-out
+  ("no selectors/KVC/KVO/@property/autorelease") is **retired** — it is
+  superseded by the same-patterns-in-the-same-places direction. Shape:
+  - **Property tables** (name → get/set descriptors, walked up the class
+    chain) land in **U1 with the bases**, because `NSCell`, the
+    controllers, `NSSortDescriptor`/`NSPredicate` and bindings all address
+    properties by name. `valueForKey`/`setValueForKey` + key paths +
+    the array operators (`@sum`, `@count`, …) are built on them.
+  - **KVO** right after the tables: `addObserver(object, keyPath,
+    options)`, `willChange`/`didChange`, dependent-key tables, `.initial`
+    and `.old`. Documented divergence: C++ cannot swizzle setters, so a
+    property is observable when it is mutated **through the table**
+    (framework classes adopt that discipline; a plain C++ member written
+    directly is not observed).
+  - **Bindings + controllers** (`ObjectController`, `ArrayController`,
+    `DictionaryController`) at **U9**, with options
+    (continuous/validate/placeholders/value transformers) and the
+    `content`/`selectionIndexes`-style contracts on `TableView`,
+    `CollectionView` and `TextField`.
 - **Q-U3 — the text system. RESOLVED (2026-09, user): THE FULL COCOA
   STACK**, in U3 (`NSTextStorage` → `NSLayoutManager` → `NSTextContainer`
   under `NSTextView`).
