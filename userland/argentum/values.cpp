@@ -1596,4 +1596,161 @@ Event::otherEvent(EventType type, const Point &locationInWindow,
 	return e;
 }
 
+
+/* ---- MenuView and Menu::popUp ---------------------------------------- */
+
+/* ONE ROW HEIGHT, used by the drawing and the hit test alike */
+static const double kMenuItemH = 22.0;
+static const double kMenuPad = 4.0;
+static const double kMenuMinW = 120.0;
+
+double
+MenuView::itemHeight()
+{
+	return kMenuItemH;
+}
+
+double
+MenuView::preferredWidth(const Menu *menu)
+{
+	double w = kMenuMinW;
+
+	if (!menu) {
+		return w;
+	}
+	for (int i = 0; i < menu->numberOfItems(); i++) {
+		MenuItem *it = menu->itemAt(i);
+
+		if (!it) {
+			continue;
+		}
+		/* the label, plus room for a check mark and the padding */
+		TextMetrics m = textMetrics(nullptr, 12.0, it->title());
+		double need = m.widthPt + 3.0 * kMenuPad + 16.0;
+
+		if (need > w) {
+			w = need;
+		}
+	}
+	return w;
+}
+
+double
+MenuView::preferredHeight(const Menu *menu)
+{
+	if (!menu) {
+		return kMenuItemH;
+	}
+	return menu->numberOfItems() * kMenuItemH + 2.0 * kMenuPad;
+}
+
+MenuView::MenuView(Menu *menu) : menu_(menu)
+{
+}
+
+int
+MenuView::itemIndexAt(const Point &p) const
+{
+	if (!menu_ || p.y < kMenuPad) {
+		return -1;
+	}
+	int i = (int) ((p.y - kMenuPad) / kMenuItemH);
+
+	if (i < 0 || i >= menu_->numberOfItems()) {
+		return -1;
+	}
+	return i;
+}
+
+bool
+MenuView::mouseDown(const MouseEvent &e)
+{
+	int i = itemIndexAt(e.location);
+	MenuItem *it = menu_ ? menu_->itemAt(i) : nullptr;
+
+	if (!it || !it->isEnabled()) {
+		return false;		/* a separator or a disabled row: nothing */
+	}
+	/* Cocoa's rule: picking a row SENDS ITS ACTION */
+	it->sendAction();
+	/* and the pop-up ends: the menu was presented modally */
+	Application::sharedApplication()->stopModal();
+	return true;
+}
+
+void
+MenuView::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	Rect b = bounds();
+
+	ctx->fillRoundRect(b, 4.0, Color::rgb(0.98, 0.98, 0.99));
+	ctx->strokeRoundRect(b, 4.0, Color::rgb(0.60, 0.60, 0.64), 1.0);
+	if (!menu_) {
+		return;
+	}
+	for (int i = 0; i < menu_->numberOfItems(); i++) {
+		MenuItem *it = menu_->itemAt(i);
+		double y = b.origin.y + kMenuPad + i * kMenuItemH;
+
+		if (!it) {
+			continue;
+		}
+		if (it->isSeparatorItem()) {
+			ctx->fillRect(Rect{ { b.origin.x + kMenuPad,
+					      y + kMenuItemH / 2.0 },
+					    { b.size.w - 2.0 * kMenuPad, 1.0 } },
+				      Color::rgb(0.80, 0.80, 0.84));
+			continue;
+		}
+		if (it->state() == ControlState::On) {
+			/* the check mark, in the gutter the width reserved */
+			Point c[3] = { { b.origin.x + 8.0, y + kMenuItemH / 2.0 },
+				       { b.origin.x + 11.0, y + kMenuItemH / 2.0 + 4.0 },
+				       { b.origin.x + 17.0, y + kMenuItemH / 2.0 - 5.0 } };
+
+			ctx->fillPolygon(c, 3, Color::rgb(0.20, 0.20, 0.25));
+		}
+		ctx->drawText(nullptr, 12.0,
+			      Point{ b.origin.x + 3.0 * kMenuPad + 8.0,
+				     y + kMenuItemH / 2.0 - 7.0 },
+			      it->title(),
+			      it->isEnabled() ? Color::rgb(0.10, 0.10, 0.13)
+					      : Color::rgb(0.60, 0.60, 0.64));
+	}
+}
+
+const ObjectClass MenuView::kClass = {
+	"MenuView", &View::kClass, nullptr, 0, nullptr, 0
+};
+
+void
+Menu::popUp(const Point &atScreen)
+{
+	Window w;
+	double width = MenuView::preferredWidth(this);
+	double height = MenuView::preferredHeight(this);
+
+	if (!w.open("Menu", (int) atScreen.x, (int) atScreen.y,
+		    (unsigned int) width, (unsigned int) height)) {
+		return;
+	}
+	MenuView *mv = new MenuView(this);
+
+	mv->setFrame(Rect{ { 0, 0 }, { width, height } });
+	if (View *content = w.contentView()) {
+		content->addSubview(mv);
+	}
+	Application *app = Application::sharedApplication();
+
+	app->addWindow(&w);
+	app->runModal(&w);
+	app->removeWindow(&w);
+}
+
 } /* namespace argentum */

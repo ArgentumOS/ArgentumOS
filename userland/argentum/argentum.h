@@ -3455,6 +3455,60 @@ private:
 	ControlState state_ = ControlState::Off;
 };
 
+class Menu;			/* MenuView is declared before Menu */
+
+/// @purpose The view that draws a Menu and sends the action of the row that is
+/// picked.
+///
+/// Cocoa's menu rendering is private to AppKit, so there is no class here to
+/// match; this is the toolkit's own, named for what it is. It draws one row per
+/// item at ONE row height, used by the drawing and the hit test alike - the rule
+/// every control here follows.
+///
+/// @lifetime The view does not own the menu; the menu owns its items.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants itemIndexAt returns -1 outside every row; a separator is drawn
+/// but cannot be picked.
+///
+/// @see Menu, MenuItem
+class MenuView : public View {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A view showing `menu` (which it does not own).
+	MenuView(Menu *menu);
+
+	/// The height of one row, in points.
+	static double itemHeight();
+	/// The width the menu wants, in points.
+	static double preferredWidth(const Menu *menu);
+	/// How tall the menu wants to be, in points.
+	static double preferredHeight(const Menu *menu);
+
+	/// The Menu shown.
+	Menu *menu() const { return menu_; }
+
+	/// The index of the row at `p` (in this view's space), or -1.
+	int itemIndexAt(const Point &p) const;
+
+	/// A click sends the picked row's action and ends the pop-up.
+	///
+	/// It takes a MouseEvent because that is still this toolkit's mouse
+	/// substrate: the key path was migrated to Event, the mouse path has not.
+	bool mouseDown(const MouseEvent &e) override;
+	/// The rows, drawn.
+	void drawRect(const Rect &dirty) override;
+
+private:
+	Menu *menu_ = nullptr;
+};
+
 /// @purpose An ordered list of menu items: what a pop-up shows and what a menu
 /// bar is built from. Cocoa's NSMenu.
 ///
@@ -3499,6 +3553,17 @@ public:
 	void removeItemAtIndex(int i);
 	/// Remove every item (Cocoa's removeAllItems).
 	void removeAllItems();
+
+	/// Pop this menu up at a screen point and RUN it, as Cocoa's
+	/// -popUpPositioningItem:atLocation:inView: does: a modal session over a
+	/// window holding a MenuView, ended by picking a row. As in Cocoa it
+	/// returns NOTHING: the caller learns which row was picked from the
+	/// action the row sent.
+	///
+	/// The caller gives a SCREEN point where Cocoa gives a point in a view;
+	/// converting needs the window's origin, which the pop-up already needs to
+	/// place itself, so it takes the answer rather than the question.
+	void popUp(const Point &atScreen);
 
 private:
 	std::vector<MenuItem *> items_;
