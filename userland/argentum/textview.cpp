@@ -967,8 +967,15 @@ TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 			      { m.widthPt + 14.0, h } };
 
 		ctx->fillRoundRect(chip, h / 2.0, chip_);
+		/* Context::drawText's y is the TOP of the run box, not a baseline.
+		 * Handing it the chip's centre + 4 (a baseline-shaped value) hung
+		 * every token's text a line low, so it was clipped by the field's
+		 * bottom edge. Centre it the way Cell centres a title. */
 		ctx->drawText(nullptr, 12.0,
-			      Point{ x + 7.0, chip.origin.y + h * 0.5 + 4.0 },
+			      Point{ x + 7.0,
+				      chip.origin.y
+					      + (h - (m.ascentPt
+						      + m.descentPt)) * 0.5 },
 			      t.c_str(), Color::rgb(0.15, 0.18, 0.24));
 		x += chip.size.w;
 	}

@@ -98,6 +98,27 @@ class Case(BaseCase):
         mon.key("ret", settle=0.6)		# commits AND sends
         session.wait_for(r"ZOO-TOKENS \[one,two\]", 30)
         out4 = session.output_since(mark)
+        # A CHIP'S TEXT SITS IN THE CHIP. It was drawn at the chip's centre as
+        # if that were a BASELINE, while Context::drawText takes the TOP of
+        # the run box - so each token's text hung a line low and was clipped.
+        # The chip is centred in the field (pad 4, height h-8), so the check
+        # compares the ink's centre against the FIELD's centre. The scan skips
+        # the field's own border rows: they are symmetric about the centre and
+        # would make this pass for any text position.
+        shot = session.shot("u3d")
+        tx2, ty2 = pts["TOKEN"]
+        left = tx2 - 120		# the zoo's token field is 240 wide
+        rows = [y for y in range(int(ty2) - 10, int(ty2) + 10)
+                if shot.ink((int(left) + 8, y, int(left) + 40, y + 1),
+                            thresh=200) > 2]
+        centre = (rows[0] + rows[-1]) / 2.0 if rows else None
+        self.check("chip-text-sits-in-its-chip",
+                   centre is not None and len(rows) >= 5
+                   and abs(centre - ty2) <= 5,
+                   "the first chip's text rows are %s (%d of them), centre %s "
+                   "against the field's centre %.0f"
+                   % (rows, len(rows), centre, ty2))
+
         self.check("tokens-commit",
                    "ZOO-TOKENS [one,two]" in out4,
                    "the token list became one,two (a comma and a Return "
