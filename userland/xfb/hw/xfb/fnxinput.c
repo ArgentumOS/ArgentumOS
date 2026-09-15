@@ -189,9 +189,18 @@ vfbDrainMouse(int fd)
 static void
 vfbNoteNotify(int mouse)
 {
-    static time_t lastMouse, lastKbd;
-    time_t *last = mouse ? &lastMouse : &lastKbd;
-    time_t now = time(NULL);
+    static long lastMouse, lastKbd;
+    long *last = mouse ? &lastMouse : &lastKbd;
+    struct timespec ts;
+    long now;
+
+    /* CLOCK_MONOTONIC, NOT time(): time() is useless here. The first version
+     * of this used it, and the line never appeared once - not in the
+     * reporter's session and not in any harness run, both of which certainly
+     * have multi-second quiet periods. A diagnostic that cannot fire is worse
+     * than none, because it looks like evidence that the path is clean. */
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    now = (long) ts.tv_sec;
 
     /* SELF-LIMITING STALL REPORT. Input arrives through SetNotifyFd, so every
      * notify is a select wakeup on an input fd and SHOULD be immediate. A gap

@@ -207,9 +207,14 @@ xfbShadowArm(ScreenPtr pScreen)
          * while the root window did not exist yet. The elapsed seconds are the
          * point: they are the same seconds the input is stalled for. */
         {
-            static time_t lastRefusal;
-            time_t now = time(NULL);
-            long gap = lastRefusal ? (long) (now - lastRefusal) : -1;
+            static long lastRefusal;
+            struct timespec ts;
+            long now, gap;
+
+            /* CLOCK_MONOTONIC, not time() - see the note in fnxinput.c */
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            now = (long) ts.tv_sec;
+            gap = lastRefusal ? now - lastRefusal : -1;
 
             ErrorF("XFB-SHADOW: arm refused (%s)%s%ld%s\n",
                    xfbShadowClosing ? "closing" : "no root window",

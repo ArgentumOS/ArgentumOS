@@ -307,6 +307,33 @@ class Case(BaseCase):
                    "pixels; a frozen screen changes none, pointer included"
                    % changed)
 
+        # THE STALL REPORT ITSELF IS TESTED, not assumed: input arrives through
+        # SetNotifyFd, so a gap of seconds between two wakeups is the shape of
+        # "the server stopped reading its input" - and it is the line that says
+        # so. A deliberate gap makes that deterministic instead of hoping the
+        # run happens to have a quiet stretch, and it catches the instrument
+        # going deaf (the first version of it used time(), which never fired
+        # once, in any run).
+        mon.move(20, 0)
+        time.sleep(2.2)
+        mon.move(-20, 0)
+        mon.nudge()
+        time.sleep(0.5)
+        self.check("input-stall-report-works",
+                   "XFB-INPUT:" in session.log_text(),
+                   "a deliberate 2s gap between pointer moves produced no "
+                   "XFB-INPUT line, so the server never reported the gap",
+                   xfail="THE INSTRUMENT IS BROKEN, VERIFIED HERE: a deliberate "
+                         "2s gap produces no line even with CLOCK_MONOTONIC, "
+                         "and the same line is absent from every harness run. "
+                         "Either vfbMouseNotify is not called on this path (the "
+                         "harness's pointer moves may not reach the kernel's "
+                         "mouse device at all, which would also explain why the "
+                         "reporter's dropped records never reproduce here) or "
+                         "the call is not in the executed code. Next: an "
+                         "unconditional print in the notify, and a startup "
+                         "banner naming the input fds.")
+
         # AND THE POINTER STILL MOVES. The reported signature is a server that
         # is ALIVE - the cursor is still on screen - with a pointer that will
         # not move, while the console works. Moving the pointer is the cheapest
