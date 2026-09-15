@@ -228,6 +228,7 @@ struct DockPin {
 static const DockPin kPins[] = {
 	{ "Widget Zoo", "Widget Zoo", "W" },
 	{ "Calculator", "Calculator", "=" },
+	{ "Weaver", "Weaver", "≡" },
 };
 static const int kPinCount = (int) (sizeof(kPins) / sizeof(kPins[0]));
 
