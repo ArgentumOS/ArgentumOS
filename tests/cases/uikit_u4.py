@@ -241,24 +241,27 @@ class Case(BaseCase):
         r = 12.0 * 0.6
         bright = shot.px(int(sx + r), int(sy))
         dim = shot.px(int(sx + r * 0.866), int(sy + r * 0.5))
-        self.check("spinner-has-a-bright-spoke", bright[1] > dim[1] + 80,
-                   "the spinner's spoke under the phase reads %s and the one at "
-                   "330 degrees reads %s - twelve spokes with a gradient, the "
-                   "phase-brightest lit" % (bright, dim),
-                   xfail="THE SAMPLE DOES NOT LAND ON THE SPINNER, and that is "
-                         "the check's fault, not the drawing's: these two "
-                         "readings did not change AT ALL when the row moved "
-                         "from mid-board to the end, which they would have if "
-                         "they were reading the control. Two things to settle "
-                         "before this check means anything - where "
-                         "ZOO-AT SPINNER now lands versus where the 24x24 frame "
-                         "is, and what phase_ actually is, because the check "
-                         "assumes 0 (nothing on this board calls "
-                         "advanceAnimation) while the toolkit may tick it. The "
-                         "phase-independent property is the one to assert: the "
-                         "twelve spokes' brightness VARIES around the circle, "
-                         "max over min, with no assumption about which spoke is "
-                         "lit.")
+        # THE PHASE-INDEPENDENT PROPERTY, and all twelve spokes on purpose: a
+        # spinner is a brightness gradient around the circle, so the brightest
+        # and the dimmest spoke differ whatever phase it happens to be in. The
+        # last two runs asserted on two points and could only say pass or fail;
+        # twelve say WHERE, which is what they needed.
+        sx, sy = pts["SPINNER"]
+        SPOKE = [(1.0, 0.0), (0.866, 0.5), (0.5, 0.866), (0.0, 1.0),
+                 (-0.5, 0.866), (-0.866, 0.5), (-1.0, 0.0), (-0.866, -0.5),
+                 (-0.5, -0.866), (0.0, -1.0), (0.5, -0.866), (0.866, -0.5)]
+        lit = []
+        for dx, dy in SPOKE:
+            lit.append(shot.px(int(sx + 7.2 * dx), int(sy + 7.2 * dy))[1])
+        # also say what the frame's own middle reads, so a sample that has
+        # missed the control entirely is obvious at a glance
+        mid = shot.px(int(sx), int(sy))
+        self.check("spinner-spokes-vary-around-the-circle",
+                   max(lit) > min(lit) + 60,
+                   "the spinner's twelve spokes read (green channel, from 0 "
+                   "degrees round): %s, and the centre reads %s - a gradient "
+                   "around the circle, so brightest and dimmest must differ"
+                   % (lit, mid))
 
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but
