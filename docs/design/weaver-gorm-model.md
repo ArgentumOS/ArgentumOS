@@ -247,10 +247,12 @@ dock pin.
   TextField, Slider, Stepper, ProgressIndicator, LevelIndicator,
   SegmentedControl, ComboBox, PopUpButton). Non-view custom objects
   come from the Classes pane's Instantiate path, not a palette.
-- **Q-W2 — action dispatch shape.** Argentum `Control::setAction` takes
-  `std::function<void()>`; the document names a selector string. The
-  dispatcher needs a selector-to-lambda table per target — define it
-  with W2 (first-party codec, like the menubar's line records).
+- **Q-W2 — action dispatch shape. RESOLVED (2026-09): selector → lambda
+  table per target.** Each target object's class record lists its
+  actions; at load the dispatcher builds a selector → lambda table per
+  target (first-party codec, like the menubar's line records) and wires
+  `Control::setAction` to forward to the named target's lambda. Targets
+  default to `owner` (the application object) when omitted.
 
 ## 7. Status bookkeeping
 
