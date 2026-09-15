@@ -1277,4 +1277,122 @@ const ObjectClass DatePicker::kClass = {
 	"DatePicker", &Control::kClass, nullptr, 0, nullptr, 0
 };
 
+
+/* ---- MenuItem and Menu ----------------------------------------------- */
+
+MenuItem *
+MenuItem::separatorItem()
+{
+	MenuItem *m = new MenuItem(nullptr);
+
+	m->separator_ = true;
+	return m;
+}
+
+MenuItem::MenuItem(const char *title, const char *action,
+		   const char *keyEquivalent)
+	: title_(title ? title : ""),
+	  key_(keyEquivalent ? keyEquivalent : ""),
+	  action_(action ? action : "")
+{
+}
+
+void
+MenuItem::setKeyEquivalent(const char *k)
+{
+	key_ = k ? k : "";
+}
+
+void
+MenuItem::setAction(const char *name)
+{
+	action_ = name ? name : "";
+}
+
+bool
+MenuItem::sendAction()
+{
+	if (!isEnabled() || !target_ || action_.empty()) {
+		return false;
+	}
+	return target_->sendAction(action_.c_str(), this);
+}
+
+const ObjectClass MenuItem::kClass = {
+	"MenuItem", &Object::kClass, nullptr, 0, nullptr, 0
+};
+
+Menu::Menu()
+{
+}
+
+MenuItem *
+Menu::addItem(const char *title, const char *action, const char *keyEquivalent)
+{
+	MenuItem *m = new MenuItem(title, action, keyEquivalent);
+
+	items_.push_back(m);
+	return m;
+}
+
+void
+Menu::addItem(MenuItem *item)
+{
+	if (item) {
+		items_.push_back(item);
+	}
+}
+
+void
+Menu::insertItem(MenuItem *item, int at)
+{
+	if (!item) {
+		return;
+	}
+	if (at < 0 || at > (int) items_.size()) {
+		at = (int) items_.size();
+	}
+	items_.insert(items_.begin() + at, item);
+}
+
+void
+Menu::addSeparator()
+{
+	items_.push_back(MenuItem::separatorItem());
+}
+
+MenuItem *
+Menu::itemAt(int i) const
+{
+	if (i < 0 || i >= (int) items_.size()) {
+		return nullptr;
+	}
+	return items_[i];
+}
+
+void
+Menu::removeItemAtIndex(int i)
+{
+	if (i < 0 || i >= (int) items_.size()) {
+		return;
+	}
+	delete items_[i];
+	items_.erase(items_.begin() + i);
+}
+
+void
+Menu::removeAllItems()
+{
+	for (size_t i = 0; i < items_.size(); i++) {
+		delete items_[i];
+	}
+	items_.clear();
+}
+
+const ObjectClass Menu::kClass = {
+	"Menu", &Object::kClass, nullptr, 0, nullptr, 0
+};
+
+
+
 } /* namespace argentum */

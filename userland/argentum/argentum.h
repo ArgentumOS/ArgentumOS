@@ -3065,6 +3065,130 @@ private:
 	time_t date_ = 0;
 };
 
+/// @purpose One row of a menu: a title, a key equivalent, an action, and the
+/// state a row carries. Cocoa's NSMenuItem.
+///
+/// It is DATA - it draws nothing and sends nothing itself; a view draws it and
+/// the item sends its action when it is picked.
+///
+/// @lifetime The item owns its strings and points at its target without owning
+/// it.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The separator row has no title, no action, no key equivalent and
+/// no target, and isEnabled() is false for it, so nothing can pick it.
+///
+/// @see Menu, PopUpButton
+class MenuItem : public Object {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// The separator row (Cocoa's +separatorItem).
+	static MenuItem *separatorItem();
+
+	/// An item with a title and, optionally, an action and a key equivalent.
+	MenuItem(const char *title, const char *action = nullptr,
+		 const char *keyEquivalent = nullptr);
+
+	/// The title ('' for the separator).
+	const char *title() const { return title_.c_str(); }
+
+	/// The key that picks this row while the menu is not open ('' for none).
+	const char *keyEquivalent() const { return key_.c_str(); }
+	/// Set it.
+	void setKeyEquivalent(const char *k);
+
+	/// The action's name ('' when unset).
+	const char *action() const { return action_.c_str(); }
+	/// Set it.
+	void setAction(const char *name);
+
+	/// The object that receives the action (non-owning; may be nullptr).
+	Object *target() const { return target_; }
+	/// Set it (non-owning).
+	void setTarget(Object *o) { target_ = o; }
+
+	/// True for the separator (Cocoa's isSeparatorItem).
+	bool isSeparatorItem() const { return separator_; }
+
+	/// Whether the row can be picked.
+	bool isEnabled() const { return !separator_ && enabled_; }
+	/// Set it.
+	void setEnabled(bool on) { enabled_ = on; }
+
+	/// The check state (Cocoa's state).
+	ControlState state() const { return state_; }
+	/// Set it.
+	void setState(ControlState s) { state_ = s; }
+
+	/// Send this item's action to its target. False when the row cannot be
+	/// picked: the separator, a disabled row, no action, or no target.
+	bool sendAction();
+
+private:
+	std::string title_;
+	std::string key_;
+	std::string action_;
+	Object *target_ = nullptr;
+	bool separator_ = false;
+	bool enabled_ = true;
+	ControlState state_ = ControlState::Off;
+};
+
+/// @purpose An ordered list of menu items: what a pop-up shows and what a menu
+/// bar is built from. Cocoa's NSMenu.
+///
+/// It is DATA, like MenuItem - drawing belongs to a view, and picking to
+/// whoever presented it.
+///
+/// @lifetime The menu owns its items.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The index accessors answer null and zero out of range; the menu
+/// never renumbers the items it keeps.
+///
+/// @see MenuItem, PopUpButton
+class Menu : public Object {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty menu.
+	Menu();
+
+	/// Add an item by title, action and key equivalent (Cocoa's
+	/// addItemWithTitle:action:keyEquivalent:).
+	MenuItem *addItem(const char *title, const char *action = nullptr,
+			  const char *keyEquivalent = nullptr);
+	/// Add an item someone else built (Cocoa's addItem:).
+	void addItem(MenuItem *item);
+	/// Insert an item at `at` (Cocoa's insertItem:atIndex:).
+	void insertItem(MenuItem *item, int at);
+	/// Add the separator row (Cocoa's addItem: with +separatorItem).
+	void addSeparator();
+
+	/// How many rows (Cocoa's numberOfItems).
+	int numberOfItems() const { return (int) items_.size(); }
+	/// The item at `i`, or null (Cocoa's itemAtIndex:).
+	MenuItem *itemAt(int i) const;
+	/// Remove the item at `i` (Cocoa's removeItemAtIndex:).
+	void removeItemAtIndex(int i);
+	/// Remove every item (Cocoa's removeAllItems).
+	void removeAllItems();
+
+private:
+	std::vector<MenuItem *> items_;
+};
+
 /// @purpose A level indicator: a small bar that fills to a value and
 /// colours itself by how close that is to trouble — a disk usage meter, a
 /// signal strength bar, a rating. Cocoa's NSLevelIndicator (a CONTROL,
