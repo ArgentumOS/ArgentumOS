@@ -1197,6 +1197,18 @@ DatePicker::mouseDown(const MouseEvent &e)
 {
 	Rect b = bounds();
 
+	/* THE INSTRUMENT, not another guess about the coordinate space: this is
+	 * the same env-gated line that settled the button hit test, and it prints
+	 * the point the control was ASKED about and the bounds it compared it
+	 * with, then the verdict it drew from them. */
+	if (getenv("ARGENTUM_HITLOG")) {
+		std::printf("ARGENTUM-DATE p=%.1f,%.1f b=%.1f,%.1f %.0fx%.0f %s\n",
+			    e.location.x, e.location.y, b.origin.x, b.origin.y,
+			    b.size.w, b.size.h,
+			    e.location.x < b.origin.x + b.size.w - kDateArrowW
+				    ? "FIELD" : "ARROW");
+		std::fflush(stdout);
+	}
 	if (e.location.x < b.origin.x + b.size.w - kDateArrowW) {
 		return false;			/* the field, not an arrow */
 	}

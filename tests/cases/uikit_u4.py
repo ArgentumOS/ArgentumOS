@@ -31,6 +31,7 @@ class Case(BaseCase):
                                   "-device", "usb-mouse",
                                   "-device", "usb-kbd"])
         ready = session.shell_ready(150)
+        session.run("export ARGENTUM_HITLOG=1")
         self.check("shell-ready", ready, "the serial console has a shell")
         if not ready:
             return
@@ -337,24 +338,33 @@ class Case(BaseCase):
         # slice that is still catching up.
         mon.click_at(arrow_x, up_y, settle=0.8)
         session.wait_for(r"ZOO-DATE", 15)
-        sent = [l for l in session.output_since(t1).splitlines()
-                if l.startswith("ZOO-DATE")]
+        tail = session.output_since(t1).splitlines()
+        sent = [l for l in tail if l.startswith("ZOO-DATE")]
+        asked = [l for l in tail if l.startswith("ARGENTUM-DATE")]
+        # THE COUNT is the assertion - the barrier proves the app is live and
+        # the count proves the field click added nothing. The ARGENTUM-DATE
+        # lines go in the MESSAGE as diagnostics, not in the condition: the
+        # slice contains the barrier's own line (p=160, an ARROW), so demanding
+        # a FIELD verdict here would fail a correct control.
         self.check("date-field-is-not-a-button", len(sent) == 1,
-                   "clicking the date text and then the arrow produced %d "
-                   "ZOO-DATE lines; only the arrow is live, so it should be 1: "
-                   "%s" % (len(sent), sent),
-                   xfail="THE STEP WORKS, THIS GUARD DOES NOT. date-up-arrow-"
-                         "steps-a-day passes with exactly 86400 between clicks, "
-                         "so the arrows are right; but a click on the date text "
-                         "ALSO sends, even with a barrier proving the app was "
-                         "processing input. DatePicker::mouseDown tests "
-                         "e.location.x against bounds(), which reads as local "
-                         "coordinates on both sides - yet the guard lets the "
-                         "click through, so the two disagree in a way nobody has "
-                         "measured yet. Settle it by printing e.location and "
-                         "bounds() from mouseDown in one instrumented run, the "
-                         "way ARGENTUM_HITLOG settled the button hit test; do "
-                         "not guess the space a third time.")
+                   "%d ZOO-DATE lines (expected 1) and mouseDown reported %s - "
+                   "no ARGENTUM-DATE line at all means the press never reached "
+                   "the control; an ARROW verdict means it judged the point "
+                   "wrong" % (len(sent), asked[-3:]),
+                   xfail="THE FEATURE IS VERIFIED, THIS GUARD IS NOT - and the "
+                         "instrument has already answered half the question. "
+                         "mouseDown logs p and the bounds it compared, and it "
+                         "reported 'p=160.0,5.0 b=0.0,0.0 170x24 ARROW': the "
+                         "bounds ARE local (0,0 170x24) and x=160 is inside the "
+                         "20pt strip (150..170), so that point was a real arrow "
+                         "click - the barrier. A field click at local x=45 is "
+                         "refused correctly. What does not yet add up is WHICH "
+                         "clicks reach the control at all: the run's log holds "
+                         "fewer ARGENTUM-DATE lines than the clicks made. The "
+                         "next run should print every ARGENTUM-DATE line from "
+                         "the WHOLE RUN in the message, not just the slice, so "
+                         "the check says which of its own clicks the control "
+                         "saw. Do not guess: count what was asked.")
 
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but
