@@ -309,6 +309,10 @@ InterfaceDocument::addObject(const char *className, const char *id)
 {
 	InterfaceNode *o = new InterfaceNode();
 
+	if (version_ < 2) {
+		version_ = 2;
+	}
+
 	o->setClassName(className ? className : "");
 	o->setIdentifier(id ? id : "");
 	objects_.push_back(o);
@@ -335,6 +339,10 @@ InterfaceDocument::addConnection(const char *source, const char *kind,
 				 const char *selector, const char *target)
 {
 	InterfaceConnection c;
+
+	if (version_ < 2) {
+		version_ = 2;	/* the sections exist only in v2; grow or lose */
+	}
 
 	c.source = source ? source : "";
 	c.kind = kind ? kind : "";
@@ -363,6 +371,10 @@ InterfaceDocument::addClassInfo(const char *name, const char *superClass,
 				const char *outlets, const char *actions)
 {
 	InterfaceClassInfo c;
+
+	if (version_ < 2) {
+		version_ = 2;
+	}
 
 	c.name = name ? name : "";
 	c.superClass = superClass ? superClass : "";
@@ -918,6 +930,66 @@ interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 		}
 		return ok;
 	}
+}
+
+/* ---------- W2: the load-time dispatcher (D4/D6) ---------- */
+
+void
+InterfaceDispatcher::bind(const char *target, const char *selector, Action fn)
+{
+	table_[std::string(target ? target : "") + "\n"
+	       + (selector ? selector : "")] = fn;
+}
+
+bool
+InterfaceDispatcher::send(const char *target, const char *selector)
+{
+	std::string key = std::string(target ? target : "") + "\n"
+		+ (selector ? selector : "");
+	auto it = table_.find(key);
+
+	if (it == table_.end()) {
+		std::fprintf(stderr, "ARGENTUM-DISPATCH: no binding for "
+			     "`%s` on `%s`\n", selector ? selector : "",
+			     target ? target : "");
+		std::fflush(stderr);
+		return false;
+	}
+	it->second();
+	return true;
+}
+
+int
+InterfaceDispatcher::install(const InterfaceDocument &doc, View *root)
+{
+	int wired = 0;
+
+	for (int i = 0; i < doc.connectionCount(); i++) {
+		const InterfaceConnection *c = doc.connectionAt(i);
+
+		if (!c || c->kind != "action" || c->source.empty()) {
+			continue;	/* outlet connections are the app's */
+		}
+		View *v = root ? root->viewWithIdentifier(c->source.c_str())
+			       : nullptr;
+		Control *ctl = dynamic_cast<Control *>(v);
+
+		if (!ctl) {
+			std::fprintf(stderr, "ARGENTUM-DISPATCH: connection "
+				     "source `%s` is not a control\n",
+				     c->source.c_str());
+			std::fflush(stderr);
+			continue;
+		}
+		std::string target = c->target;
+		std::string selector = c->selector;
+
+		ctl->setAction([this, target, selector](Control *) {
+			send(target.c_str(), selector.c_str());
+		});
+		wired++;
+	}
+	return wired;
 }
 
 /* ---------- Weaver IB1b: the property tables ---------- */

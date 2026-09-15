@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -1865,6 +1866,27 @@ private:
 	std::vector<InterfaceNode *> objects_;		/* owned */
 	std::vector<InterfaceConnection> connections_;
 	std::vector<InterfaceClassInfo> classes_;
+};
+
+/* W2 (docs/design/weaver-gorm-model.md, D4/D6): the load-time dispatcher.
+ * The DOCUMENT names selectors; C++ has no reflection, so the APP fills the
+ * binding table (bind) and the loader wires each action connection onto the
+ * built control (install) as a forwarding closure. Outlets need no table —
+ * they are the identifier lookups (viewWithIdentifier) an app already does. */
+class InterfaceDispatcher {
+public:
+	using Action = std::function<void()>;
+
+	void bind(const char *target, const char *selector, Action fn);
+	/* wire the document's ACTION connections onto the built tree; returns
+	 * how many were wired. Outlet connections are left to the app. */
+	int install(const InterfaceDocument &doc, View *root);
+	/* forward a selector to its target's closure; false (and a log) when
+	 * the app never bound it */
+	bool send(const char *target, const char *selector);
+
+private:
+	std::map<std::string, Action> table_;	/* "target\nselector" */
 };
 
 /* Emit to the §4 grammar. DETERMINISTIC — the same document always emits the

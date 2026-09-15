@@ -2029,6 +2029,44 @@ public:
 			}
 		}
 		std::printf("\n");
+		/* W2: the selection's connections (the Connections pane's
+		 * content: every connection this node takes part in) */
+		for (int i = 0; i < doc->connectionCount(); i++) {
+			const InterfaceConnection *c = doc->connectionAt(i);
+
+			if (!c) {
+				continue;
+			}
+			if (!std::strcmp(c->source.c_str(), id)
+			    || !std::strcmp(c->target.c_str(), id)) {
+				std::printf("WEAVER: connection %s %s %s %s\n",
+					    c->source.c_str(), c->kind.c_str(),
+					    c->selector.c_str(),
+					    c->target.c_str());
+			}
+		}
+		std::fflush(stdout);
+	}
+
+	/* W2: record a connection (the scripted twin of the Connections
+	 * pane's Connect button / a control-drag on the canvas). */
+	void connect(const char *src, const char *kind, const char *selector,
+		     const char *target)
+	{
+		if (!src || !src[0]
+		    || !findNode(doc->root(), src)) {
+			std::printf("WEAVER: connect FAIL no `%s`\n",
+				    src ? src : "");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		doc->addConnection(src, kind, selector, target);
+		dirty = true;
+		updateTitle();
+		std::printf("WEAVER: connect %s %s %s %s\n", src,
+			    kind ? kind : "", selector ? selector : "",
+			    target ? target : "");
 		std::fflush(stdout);
 	}
 
@@ -2941,6 +2979,14 @@ main(int argc, char **argv)
 		} else if (a == "--add" && i + 1 < argc) {
 			ed.addNode(argv[++i]);
 			any = true;
+		} else if (a == "--connect" && i + 4 < argc) {
+			const char *src = argv[++i];
+			const char *kind = argv[++i];
+			const char *sel = argv[++i];
+			const char *tgt = argv[++i];
+
+			ed.connect(src, kind, sel, tgt);
+			any = true;
 		} else if (a == "--select-outline" && i + 1 < argc) {
 			ed.selectOutline(argv[++i]);
 			any = true;
@@ -3011,6 +3057,7 @@ main(int argc, char **argv)
 			    "[--field name value] "
 			    "[--palette] [--outline] [--add class] "
 			    "[--select-outline name] "
+			    "[--connect src kind selector target] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--new name] [--roundtrip] "
 			    "[--rect id] [--show]\n");

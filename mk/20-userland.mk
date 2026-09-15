@@ -209,6 +209,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/interface_v2.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/interface_v2"
+	# interface_dispatch: Weaver W2 acceptance (docs/design/
+	# weaver-gorm-model.md) — the load-time dispatcher: an action
+	# connection runs the app's binding, an unbound selector is refused.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/interface_dispatch.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/interface_dispatch"
 	# interface_build: Weaver IB1 acceptance (docs/design/weaver-plan.md §8)
 	# — instantiate a document, find a control by identifier, and lay it out
 	# from the frames and parent-relative masks the document records. No

@@ -281,7 +281,16 @@ dock pin.
   release over the palette adds at the default position. Gate
   `tests/cases/weaver_w1.py` 6/6 (drag into the canvas lands at the drop
   point + a drop-box pixel diff); full weaver suite 19/19, 185/185.
-- W2–W6: not started.
+- **W2 — DONE (2026-09).** The toolkit gains `InterfaceDispatcher` (D4/
+  D6): the app binds selector→lambda per target, `install()` wires the
+  document's ACTION connections onto the built controls as forwarding
+  closures, and an unbound selector is refused with a log. Weaver records
+  connections (`--connect src kind selector target`, unknown sources
+  refused), the inspector lists the selection's connections, and growing
+  the graph promotes a v1 document to v2 so the sections are not lost.
+  Gates: `interface_dispatch.cpp` probe (`W2-OK`) and
+  `tests/cases/weaver_w2.py` 12/12; full weaver suite 20/20, 197/197.
+- W3–W6: not started.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting
