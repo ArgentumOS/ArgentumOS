@@ -12,7 +12,9 @@ rootagfs: userland64 m0clang
 	# and runs Xfb + Kestrel as the session. The variant images
 	# (xfbdesk/uitest/zoo/kestrel-root) overwrite it in their own staging
 	# dir, so the demo desktop stays reachable by name (`make run-xfb`).
-	printf 'desktop = "kestrel"\n' > $(ROOTFS64)/System/Configuration/session.conf
+	# the UIKit restart (2026-09): the class layer and its apps are gone,
+	# so the session boots Xfb + a console shell and nothing else.
+	printf 'desktop = "xfb"\n' > $(ROOTFS64)/System/Configuration/session.conf
 	# 64MB stopped being enough when the tree reached ~60MB: the session
 	# then failed to start (WORKSPACE "init failed", KESTREL "no display")
 	# with an image that mkagfs and agfscheck both called good - the volume
@@ -21,7 +23,7 @@ rootagfs: userland64 m0clang
 	# payload for indirect blocks, not just for data.
 	python3 tools/mkagfs.py $(ROOTFS64) .build/rootagfs.img 96
 	python3 tools/agfscheck.py .build/rootagfs.img $(ROOTFS64)
-	@echo "rootagfs: .build/rootagfs.img ready (AGFS, 96MB, the Argentum desktop)"
+	@echo "rootagfs: .build/rootagfs.img ready (AGFS, 96MB)"
 
 ovmf: .build/ovmf/OVMF.fd
 

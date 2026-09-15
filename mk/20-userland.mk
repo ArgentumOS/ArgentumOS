@@ -99,7 +99,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@mkdir -p "$(ROOTFS64)/System/Application Support" \
 		"$(ROOTFS64)/Shared/Application Support" \
 		"$(ROOTFS64)/System/User Template/Application Support" \
-		"$(ROOTFS64)/System/Application Support/system.widgetzoo"
 	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
 		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
@@ -155,19 +154,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
 	$(MUSL64_CC) userland/tools/init.c -o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
-	# argentum_hello: Argentum S0.1 acceptance — dynamic link against the
-	# shared libargentum.so.1 (NEEDED libargentum.so.1 resolved from
-	# /System/Libraries at exec; no static copy).
-	$(MUSL64_CXX) -Iuserland -L$(CURDIR)/$(FNXLIB) \
-		userland/tests/argentum_hello.cpp -largentum -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/argentum_hello"
-	# argentum_demo: Argentum S0.2 acceptance — opens a window on Xfb and
-	# blits a solid fill via core protocol (Window::fill/XPutImage).
-	# Run from the shell with DISPLAY=:0 once Xfb is up.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/argentum_demo.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/argentum_demo"
 	# units_probe: Argentum S1.1 acceptance — prints the session
 	# px/pt factor (Application::pxPerPt). The S1.1 gate runs it with
 	# system.display width_mm/height_mm unset (expect 4/3 fallback)
@@ -177,241 +163,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/units_probe.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/units_probe"
-	# theme_primitives: Argentum S1.2 acceptance — draws the chrome
-	# shape set (solid/linear/radial/rounded-rect/1px lines) into a
-	# BitmapImage via GraphicsContext and flushes it to the window.
-	# The S1.2 gate screendumps Xfb and pixel-probes the fixed board.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/theme_primitives.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/theme_primitives"
-	# theme_chrome: Argentum S1.3 acceptance — the themed frame+button
-	# render at the fallback factor: loads the active Theme and draws
-	# a chrome window frame + three state buttons with theme params.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/theme_chrome.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/theme_chrome"
-	# layout_solve: U0 acceptance (docs/design/cocoa-parity-plan.md) —
-	# the Auto Layout model + solver, display-free: constraints are
-	# solved and the resulting frames asserted.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/layout_solve.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/layout_solve"
-	# viewtree_a: Argentum S2.1a acceptance — the View core + tree +
-	# composite display (bare window over a 2-level hierarchy; child
-	# clipping). Same link recipe as the theme probes.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/viewtree_a.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/viewtree_a"
-	# viewtree_b: Argentum S2.1b acceptance — a11y metadata + role
-	# read-back (parents-before-children VTREE-B: lines, indented).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/viewtree_b.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/viewtree_b"
-	# viewtree_c: Argentum S2.1c acceptance — responder chain +
-	# hit-testing (XSendEvent clicks -> HIT <view>@<local pt> logs).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/viewtree_c.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/viewtree_c"
-	# viewtree_d: Argentum S2.1d acceptance — springs/struts
-	# relayout (XResizeWindow -> VTREE-D frame read-back lines).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/viewtree_d.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/viewtree_d"
-	# text_gc: Argentum S2.2a acceptance — GraphicsContext::drawText
-	# (text in the view-tree composite, clipped) + Window::drawText
-	# parity (S22A-CAPTURED / S22A-M / ARGENTUM-TEXT: blitted).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/text_gc.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/text_gc"
-	# widgets_b: Argentum S2.2b acceptance — Control (enabled +
-	# action + state machine) + Label (theme text + a11y); logs
-	# S22B-STATE/S22B-ACTION/S22B-A11Y/S22B-CAPTURED.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widgets_b.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_b"
-	# widgets_c: Argentum S2.2c acceptance — Button
-	# (Push/Checkbox/Radio) + hover + minimal focus; logs
-	# S22C-EVT/S22C-ACTION/S22C-CHECK/S22C-RADIO/S22C-A11Y/S22C-DRAW.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widgets_c.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_c"
-	# widgets_d: Argentum S2.2d acceptance — TextField edit engine on
-	# the S2.2 interactive board (label + field + button); logs
-	# S22D-EDIT (per edit) / S22D-A11Y / S22D-DRAW / S22D-READY.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widgets_d.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_d"
-	# widgets_e: Argentum S2.3a acceptance — drag + Slider + Stepper
-	# + Menu model (S23A-FINAL / S23A-ACTION / S23A-A11Y / S23A-MENU).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widgets_e.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_e"
-	# widgets_f: Argentum S2.3b acceptance â SegmentedControl +
-	# ProgressIndicator + LevelIndicator (S23B-FINAL / S23B-ACTION /
-	# S23B-A11Y / S23B-DRAW).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widgets_f.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_f"
-	# widgets_g: Argentum S2.3c acceptance app — ImageView content modes
-	# + PopUpButton (image painted via a BitmapImage+GC); driven by the
-	# widgets_g_inj helper below (S23C-A11Y / S23C-DRAW / S23C-APP-READY).
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/widgets_g.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_g"
-	# widgets_g_inj: the S2.3c helper (second X connection; phases
-	# S23C-A..D markers the gate screendumps between).
-	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
-		userland/tests/widgets_g_inj.cpp -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/widgets_g_inj"
-	# --- S5.2d: the reference apps ship as BUNDLES in /Applications ----
-	# <DisplayName>.app/{manifest, bin/<Executable>, Resources/} per
-	# docs/design/app-model.md §2: a flat directory identified by the
-	# .app extension and the manifest.  The payload is a plain binary
-	# inside the bundle and the dock execs it directly (unmediated —
-	# bundle-launch-plan.md's launch helper is a later milestone), so
-	# every payload lives at /Applications/<DisplayName>.app/bin/.
-	# Widget Zoo is the S2.5 reference app (every S2.2+S2.3 control on
-	# one live board): `make zoo` boots a session that runs this bundle.
-	mkdir -p "$(ROOTFS64)/Applications/Widget Zoo.app/bin" \
-		 "$(ROOTFS64)/Applications/Widget Zoo.app/Resources"
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/apps/widgetzoo/widget_zoo.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/Applications/Widget Zoo.app/bin/WidgetZoo"
-	cp userland/apps/widgetzoo/manifest \
-		"$(ROOTFS64)/Applications/Widget Zoo.app/manifest"
-	# Calculator: the S5.2d reference app #2 — four-function arithmetic
-	# from buttons or the keyboard, with its own menubar.
-	mkdir -p "$(ROOTFS64)/Applications/Calculator.app/bin" \
-		 "$(ROOTFS64)/Applications/Calculator.app/Resources"
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/apps/calculator/calculator.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/Applications/Calculator.app/bin/Calculator"
-	cp userland/apps/calculator/manifest \
-		"$(ROOTFS64)/Applications/Calculator.app/manifest"
-	# Workspace: W0a — the desktop shell app that owns the surface (the
-	# wallpaper). A bundle like any other, launched by the session at
-	# login; the WM recognises it by the _ARGENTUM_DESKTOP marker and
-	# never frames it. See docs/design/workspace-plan.md W0a.
-	mkdir -p "$(ROOTFS64)/Applications/Workspace.app/bin" \
-		 "$(ROOTFS64)/Applications/Workspace.app/Resources"
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/apps/workspace/workspace.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/Applications/Workspace.app/bin/Workspace"
-	cp userland/apps/workspace/manifest \
-		"$(ROOTFS64)/Applications/Workspace.app/manifest"
-	# zoo_inj: redraw-storm driver for the zoo (Expose x10 from a second
-	# X connection; redraw-cost regression counts text resolutions/draw).
-	$(MUSL64_CXX) -I$(X11PREFIX)/include -L$(X11PREFIX)/lib \
-		userland/tests/zoo_inj.cpp -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/zoo_inj"
-	# structure_a: S2.4a Box acceptance — titled Column Box packs buttons
-	# + a nested Row Box; logs BOX-A arranged frames for the gate.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_a.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_a"
-	# structure_b: S2.4b ScrollView acceptance — banded doc in a ScrollView,
-	# Down/Up scroll by 60 pt; logs SCROLL-B offsets for the gate.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_b.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_b"
-	# scrollbar_a: S2.4b (external) ScrollBar acceptance — arrows, track
-	# and scroller driven by a real USB pointer, the wheel via QMP;
-	# logs SBAR offsets for the gate.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/scrollbar_a.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/scrollbar_a"
-	# kestrel: the S4 window manager (uikit-plan §5) — System/Tools
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/kestrel/kestrel.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-lXcomposite -lXext -lXcursor \
-		-o "$(ROOTFS64)/System/Tools/kestrel"
-	# krel_a/b: S4.1a managed probes (mapped under Kestrel)
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/krel_a.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/krel_a"
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/krel_b.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/krel_b"
-	# krel_slow: S4.3b probe (a window that dawdles before its first
-	# paint, so the gate can sample "created but not yet drawn")
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/krel_slow.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/krel_slow"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/tests/oom_probe.cpp \
 		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/oom_probe"
-	# textview_c: TXT-c TextView scroll integration acceptance
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/textview_c.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/textview_c"
-	# textview_b: TXT-b TextView document-editing acceptance
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/textview_b.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/textview_b"
-	# textview_a: TXT-a TextView layout + read-only draw acceptance
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/textview_a.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/textview_a"
-	# structure_h: S3.2 secure-field acceptance — bullets + Return commit
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_h.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_h"
-	# structure_g: S3.1b keyboard-equivalents acceptance — arrows/Space by Tab
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_g.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_g"
-	# structure_f: S3.1a focus-traversal acceptance — Tab/Shift-Tab
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_f.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_f"
-	# structure_e: S2.4e TableView acceptance — data-source rows in a ScrollView
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_e.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_e"
-	# structure_d: S2.4d TabView acceptance — tab clicks switch the page
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_d.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_d"
-	# structure_c: S2.4c SplitView acceptance — divider drag resizes panes
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		userland/tests/structure_c.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/structure_c"
 	# xclick: generic synthetic-click injector for the S2.4 gates
 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xclick.c \
 		-L$(X11PREFIX)/lib -lX11 \
@@ -446,23 +203,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(X11PREFIX)/lib -lX11 -lX11-xcb -lxcb -lxcb-composite \
 		-lpixman-1 -lXrender \
 		-o "$(ROOTFS64)/System/Shared/tests/xcomp_probe"
-	# rogue_resize: security audit 2026-09 — the hostile-geometry probe
-	# (any X client can resize another's window; the toolkit must clamp).
-	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/rogue_resize.c \
-		-L$(X11PREFIX)/lib -lX11 \
-		-o "$(ROOTFS64)/System/Shared/tests/rogue_resize"
 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
 	# it and expects "XBTN: button 1 press/release".
 	$(MUSL64_CC) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/X11 \
 		-L$(X11PREFIX)/lib \
 		userland/tests/xbtn.c -lX11 -o "$(ROOTFS64)/System/Shared/tests/xbtn"
-	$(MUSL64_CXX) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/freetype2 \
-		-I$(X11PREFIX)/include/harfbuzz \
-		-L$(X11PREFIX)/lib -L$(CURDIR)/$(FNXLIB) \
-		userland/tests/text_pipeline.cpp \
-		-lfontconfig -lharfbuzz -lfreetype -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/text_pipeline"
 	$(MUSL64_CC) userland/tools/acl.c -o "$(ROOTFS64)/System/Tools/acl"
 	$(MUSL64_CC) -Iinclude -Iuserland userland/tools/config.c -L$(CURDIR)/$(FNXLIB) \
 		-lconfig -o "$(ROOTFS64)/System/Tools/config"
@@ -624,10 +370,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# `config write -s system.argentum ...` (System wins on read).
 	@cp userland/configuration/system.argentum.conf \
 		"$(ROOTFS64)/Shared/Configuration/system.argentum.conf"
-	@cp userland/configuration/system.workspace.conf \
-		"$(ROOTFS64)/Shared/Configuration/system.workspace.conf"
-	@cp userland/configuration/system.kestrel.conf \
-		"$(ROOTFS64)/Shared/Configuration/system.kestrel.conf"
 	# Argentum display physical size (S1.1, domain system.display): the
 	# FNX-owned panel's real mm; 0 = unknown -> 96 dpi (4/3 px/pt)
 	# fallback. The S1.1/S1.4 gates override via `config write -s

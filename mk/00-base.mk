@@ -137,7 +137,6 @@ run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 # ---     make uitest       (theme_chrome UI test board)
 XFBROOT ?= .build/xfbdesk-root
 XFBIMG  ?= .build/rootagfs-xfbdesk.img
-UITESTROOT ?= .build/uitest-root
 UITESTIMG  ?= .build/rootagfs-uitest.img
 XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 
@@ -148,67 +147,16 @@ XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 	$(MUSL64_CC) -I .build/x11-prefix/include -I .build/x11-prefix/include/X11 \
 		userland/demos/xkey.c -L .build/x11-prefix/lib -lX11 -lxcb -lXdmcp -lXau -o $@
 
-xfbdesk-root: $(XFB_DEMO_BIN) $(XFB_BIN)
-	rm -rf $(XFBROOT)
-	cp -a $(ROOTFS64) $(XFBROOT)
-	cp $(XFB_BIN) "$(XFBROOT)/System/Shared/X11/bin/Xfb"
-	cp .build/x11/xdraw "$(XFBROOT)/System/Shared/X11/bin/xdraw"
-	cp .build/x11/xkey "$(XFBROOT)/System/Shared/X11/bin/xkey"
-	printf 'desktop = "xfb"\n' > "$(XFBROOT)/System/Configuration/session.conf"
 xfbdesk: xfbdesk-root
 	python3 tools/mkagfs.py $(XFBROOT) $(XFBIMG) 64
 	python3 tools/agfscheck.py $(XFBIMG) $(XFBROOT)
 run-xfb: .build/ovmf/OVMF.fd xfbdesk build64
 	$(MAKE) run-qemu ROOTIMG=$(XFBIMG)
 
-# --- UI test board: same boot, but init auto-spawns theme_chrome (the
-# --- S1.x themed frame+button acceptance probe) instead of the demo
-# --- clients, via session.conf desktop="uitest". self-contained: it
-# --- rebuilds userland so the session hook in init is always current.
-uitest-root: userland64
-	rm -rf $(UITESTROOT)
-	cp -a $(ROOTFS64) $(UITESTROOT)
-	cp $(XFB_BIN) "$(UITESTROOT)/System/Shared/X11/bin/Xfb"
-	printf 'desktop = "uitest"\n' > "$(UITESTROOT)/System/Configuration/session.conf"
-uitest-img: uitest-root
-	python3 tools/mkagfs.py $(UITESTROOT) $(UITESTIMG) 64
-	python3 tools/agfscheck.py $(UITESTIMG) $(UITESTROOT)
-uitest: .build/ovmf/OVMF.fd uitest-img build64
-	$(MAKE) run-qemu ROOTIMG=$(UITESTIMG)
 
-# --- Widget Zoo: the S2.5 reference app, shipped as the S5.2d bundle
-# --- /Applications/Widget Zoo.app. init auto-spawns its payload
-# --- (every S2.2+S2.3 control, live) via session.conf desktop="zoo".
-# --- Run from a terminal with DISPLAY set for a GTK window:
-# ---     make zoo       (the Widget Zoo bundle)
-ZOOROOT ?= .build/zoo-root
 ZOOIMG  ?= .build/rootagfs-zoo.img
 
-zoo-root: userland64
-	rm -rf $(ZOOROOT)
-	cp -a $(ROOTFS64) $(ZOOROOT)
-	cp $(XFB_BIN) "$(ZOOROOT)/System/Shared/X11/bin/Xfb"
-	printf 'desktop = "zoo"\n' > "$(ZOOROOT)/System/Configuration/session.conf"
-zoo-img: zoo-root
-	python3 tools/mkagfs.py $(ZOOROOT) $(ZOOIMG) 64
-	python3 tools/agfscheck.py $(ZOOIMG) $(ZOOROOT)
-zoo: .build/ovmf/OVMF.fd zoo-img build64
-	$(MAKE) run-qemu ROOTIMG=$(ZOOIMG)
 
-# --- Kestrel: the S4 window manager runs as the session (init spawns it
-# --- instead of the demo clients) via session.conf desktop="kestrel".
-# --- Managed probe clients (krel_a/krel_b) are launched by the gate.
-KRELROOT ?= .build/kestrel-root
-KRELIMG  ?= .build/rootagfs-kestrel.img
-
-kestrel-root: userland64
-	rm -rf $(KRELROOT)
-	cp -a $(ROOTFS64) $(KRELROOT)
-	cp $(XFB_BIN) "$(KRELROOT)/System/Shared/X11/bin/Xfb"
-	printf 'desktop = "kestrel"\n' > "$(KRELROOT)/System/Configuration/session.conf"
-kestrel-img: kestrel-root
-	python3 tools/mkagfs.py $(KRELROOT) $(KRELIMG) 64
-	python3 tools/agfscheck.py $(KRELIMG) $(KRELROOT)
 
 # Boot the AGFS root image (.build/rootagfs.img) as /dev/sda. The kernel's
 # cmdline carries no rootfstype=, so mount_root() probes the disk
