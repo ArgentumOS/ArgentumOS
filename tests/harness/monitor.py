@@ -97,9 +97,19 @@ class Monitor:
         time.sleep(settle)
 
     def release(self, button=0, settle=0.4):
-        """Let the button up (0 = none held)."""
-        self.nudge()
+        """Let the button up (0 = none held).
+
+        THE BUTTON GOES UP BEFORE THE NUDGE, and the order is load-bearing.
+        nudge() moves the pointer +1 then -1 so the guest delivers the pending
+        event; doing that while the button is still DOWN means the control is
+        still tracking, so whatever is being dragged follows the nudge. It
+        showed up as a slider drag whose last two readings were +0.45 and -0.45
+        - exactly +-1pt on that slider's 222pt track - and it swallowed the
+        tenth step, because the release's motion merged with it. Nudging AFTER
+        the release moves an unheld pointer and costs nothing.
+        """
         self.send("mouse_button %d" % button)
+        self.nudge()
         time.sleep(settle)
 
     def drag(self, x0, y0, x1, y1, steps=14, settle=0.6):
