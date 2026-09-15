@@ -237,13 +237,16 @@ dock pin.
 
 ## 6. Open questions (answer before the milestone that needs them)
 
-- **Q-W0 — proxy fidelity.** Do the three proxies need runtime
-  substitution in `interfaceBuild`, or are they document-only records
-  that apps resolve by identifier (the Wren way)? Decided at W0; the
-  leaner answer is identifiers.
-- **Q-W1 — palette categories.** Which registry classes form
-  "Containers" vs "Controls" vs "Windows", and where do the non-view
-  custom objects live in the palette model? Decided at W1.
+- **Q-W0 — proxy fidelity. RESOLVED (2026-09): identifier records
+  only.** The three proxies are document-only records; `interfaceBuild`
+  stays display-free and apps resolve them by identifier at load
+  (`owner` → `Application::shared()`, `firstResponder` → the window's
+  responder head, `fontManager` → the shared font/theme manager).
+- **Q-W1 — palette categories. RESOLVED (2026-09):** **Windows**
+  (Window), **Containers** (View, Box), **Controls** (Label, Button,
+  TextField, Slider, Stepper, ProgressIndicator, LevelIndicator,
+  SegmentedControl, ComboBox, PopUpButton). Non-view custom objects
+  come from the Classes pane's Instantiate path, not a palette.
 - **Q-W2 — action dispatch shape.** Argentum `Control::setAction` takes
   `std::function<void()>`; the document names a selector string. The
   dispatcher needs a selector-to-lambda table per target — define it
