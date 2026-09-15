@@ -201,10 +201,21 @@ xfbShadowArm(ScreenPtr pScreen)
     if (!pRoot || xfbShadowClosing) {
         /* retry next wake (or never: closing). Say so once: a silent
          * refusal is indistinguishable from a shadow that never armed. */
-        if (!xfbShadowArmRefused) {
-            xfbShadowArmRefused = 1;
-            ErrorF("XFB-SHADOW: arm refused (%s)\n",
-                   xfbShadowClosing ? "closing" : "no root window");
+        /* EVERY REFUSAL, WITH THE WAIT SINCE THE LAST ONE - not once. A
+         * refusal that repeats every second is a screen that is not draining
+         * (a stale picture), which is a different failure from one refusal
+         * while the root window did not exist yet. The elapsed seconds are the
+         * point: they are the same seconds the input is stalled for. */
+        {
+            static time_t lastRefusal;
+            time_t now = time(NULL);
+            long gap = lastRefusal ? (long) (now - lastRefusal) : -1;
+
+            ErrorF("XFB-SHADOW: arm refused (%s)%s%ld%s\n",
+                   xfbShadowClosing ? "closing" : "no root window",
+                   gap < 0 ? "" : " after ", gap < 0 ? 0 : gap,
+                   gap < 0 ? "" : "s");
+            lastRefusal = now;
         }
         return FALSE;
     }

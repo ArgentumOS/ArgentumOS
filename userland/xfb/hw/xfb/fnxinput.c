@@ -15,6 +15,8 @@
  */
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
+
+#include <time.h>
 #endif
 
 #include <X11/X.h>
@@ -185,8 +187,30 @@ vfbDrainMouse(int fd)
 }
 
 static void
+vfbNoteNotify(int mouse)
+{
+    static time_t lastMouse, lastKbd;
+    time_t *last = mouse ? &lastMouse : &lastKbd;
+    time_t now = time(NULL);
+
+    /* SELF-LIMITING STALL REPORT. Input arrives through SetNotifyFd, so every
+     * notify is a select wakeup on an input fd and SHOULD be immediate. A gap
+     * of seconds between two of them therefore means the server was not in
+     * its wait at all - it was stuck in the server - and the kernel's input
+     * queue filled up behind it, which is what "mouse: record dropped (queue
+     * full)" reports. One line per stall: it costs nothing until the thing it
+     * is looking for happens, and it says which device and how long. */
+    if (*last && now - *last > 1) {
+        ErrorF("XFB-INPUT: %s notify after %lds of silence\n",
+               mouse ? "mouse" : "keyboard", (long) (now - *last));
+    }
+    *last = now;
+}
+
+static void
 vfbMouseNotify(int fd, int readmask, void *data)
 {
+    vfbNoteNotify(1);
     vfbDrainMouse(fd);
 }
 
@@ -421,6 +445,7 @@ vfbDrainKbd(int fd)
 static void
 vfbKbdNotify(int fd, int readmask, void *data)
 {
+    vfbNoteNotify(0);
     (void) data;
     vfbDrainKbd(fd);
 }
