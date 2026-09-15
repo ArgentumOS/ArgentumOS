@@ -1575,6 +1575,8 @@ public:
 
 protected:
 	friend class TextField;
+	friend class SearchField;
+	friend class TokenField;
 
 	/// Called on a release INSIDE the control: the default sends the
 	/// action. A subclass changes what a click means here.
@@ -2248,7 +2250,7 @@ public:
 	/// A copy of the cell, owned by the caller.
 	Cell *copy() const override;
 
-private:
+protected:
 	TextStorage *storage_ = nullptr;
 	TextContainer *container_ = nullptr;
 	LayoutManager *layout_ = nullptr;
@@ -2257,7 +2259,7 @@ private:
 	/// Set it.
 	void setBorderColor(const Color &c) { border_ = c; }
 
-private:
+protected:
 	/* the attributes the field draws with (the placeholder is greyed) */
 	TextAttributes defaultAttributesOrMarked(bool placeholder) const;
 
@@ -2359,10 +2361,185 @@ public:
 	void setSelectable(bool on);
 
 private:
-	bool editable_ = false;
-	bool selectable_ = false;
+	/* EDITABLE BY DEFAULT, as Cocoa's NSTextField is: a field you cannot
+	 * type into is the exception (that is what label() is for), and a
+	 * subclass like a search or token field inherits the behaviour
+	 * without having to remember to switch it on. */
+	bool editable_ = true;
+	bool selectable_ = true;
 };
 
+/// @purpose The cell behind a search field: a text field's cell that also
+/// draws a magnifier at its left and a CLEAR button at its right once
+/// there is something to clear. Cocoa's NSSearchFieldCell.
+///
+/// @lifetime Owned by its SearchField.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The clear button is PRESENT whenever the text is not empty
+/// (Cocoa's rule: no text, nothing to clear) and its zone is reported by
+/// clearButtonRect() so the field can hit-test it — a control's chrome is
+/// the cell's to draw and the control's to interpret, which is why the
+/// two are separate calls.
+///
+/// @see SearchField, TextFieldCell
+class SearchFieldCell : public TextFieldCell {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A search cell with the magnifier and no text.
+	SearchFieldCell();
+
+	/// The clear button's rectangle inside `frame` (points).
+	Rect clearButtonRect(const Rect &frame) const;
+
+	/// Draw the magnifier, the text and (when there is text) the clear
+	/// button.
+	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+};
+
+/// @purpose A field for searching: a text field with a magnifier and a
+/// clear button. Cocoa's NSSearchField.
+///
+/// @lifetime The field owns its cell (Control's rule).
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants Clicking the clear button EMPTIES the field and sends the
+/// action — the same action a Return sends, so an app listens in one
+/// place. Recents, the menu and the search-menu template are not here yet
+/// (Cocoa has a whole recents mechanism); the class says so rather than
+/// looking half-wired.
+///
+/// @see SearchFieldCell, TextField
+class SearchField : public TextField {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A search field, with "Search" as its placeholder.
+	SearchField();
+
+	/// The field's cell (never nullptr).
+	SearchFieldCell *searchCell() const;
+
+	/// A release INSIDE the field clears it when it landed on the clear
+	/// button (and then sends the action); anywhere else keeps the base
+	/// behaviour.
+	void mouseUpInside(const MouseEvent &e) override;
+};
+
+/// @purpose The cell behind a token field: it draws the committed tokens
+/// as chips and the text being typed after them. Cocoa's
+/// NSTokenFieldCell.
+///
+/// @lifetime Owned by its TokenField.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants A token is its STRING in v1 (Cocoa's tokens carry
+/// represented objects and a style); the accessor name says so, and the
+/// object-valued form is the follow-on. The chips are laid out from the
+/// left, each as wide as its text plus padding, and the entry text starts
+/// after the last one — so a chip never overlaps the thing being typed.
+///
+/// @see TokenField, TextFieldCell
+class TokenFieldCell : public TextFieldCell {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A token cell with no tokens.
+	TokenFieldCell();
+
+	/// The committed tokens, in order.
+	const std::vector<std::string> &tokens() const { return tokens_; }
+	/// Add one at the end.
+	void addToken(const std::string &token);
+	/// Remove the last one (false when there were none).
+	bool removeLastToken();
+	/// Remove them all.
+	void removeAllTokens();
+	/// Where the entry text begins inside `frame` (after the chips).
+	double entryOriginX(const Rect &frame) const;
+
+	/// Draw the chips and the entry text.
+	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+
+	/// The chip's fill.
+	Color chipColor() const { return chip_; }
+	/// Set it.
+	void setChipColor(const Color &c) { chip_ = c; }
+
+private:
+	std::vector<std::string> tokens_;
+	Color chip_ = Color::rgb(0.88, 0.90, 0.94);
+};
+
+/// @purpose A field whose value is a LIST of tokens: typing and pressing
+/// Return (or a comma) commits what was typed as a token; Backspace on an
+/// empty entry takes the last one back. Cocoa's NSTokenField, which is how
+/// Cocoa expresses "a set of things" in a text field (an address list, a
+/// tag editor).
+///
+/// @lifetime The field owns its cell (Control's rule).
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The ENTRY text is the field's stringValue; the tokens are
+/// the cell's. Committing moves the text into the token list, so the two
+/// never hold the same thing twice. Return both commits and sends the
+/// action; a comma commits without sending it (typing "a, b, c" is one
+/// edit, not three actions).
+///
+/// @see TokenFieldCell, TextField
+class TokenField : public TextField {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A token field with no tokens, sending on Return.
+	TokenField();
+
+	/// The field's cell (never nullptr).
+	TokenFieldCell *tokenCell() const;
+
+	/// The committed tokens, in order.
+	const std::vector<std::string> &tokens() const;
+	/// Add a token directly.
+	void addToken(const char *utf8);
+	/// Remove them all.
+	void removeAllTokens();
+
+	/// Commit the entry text as a token (nothing happens on empty text).
+	void commitEntry();
+
+	/// Return and comma commit; Backspace on an empty entry takes the last
+	/// token back; everything else is the base field's behaviour.
+	bool keyDown(const KeyEvent &e) override;
+
+private:
+	/* the entry is empty again after a commit, so the caret goes home */
+	void setInsertionPointFor(const char *utf8);
+};
 } /* namespace argentum */
 
 #endif /* FNX_ARGENTUM_ARGENTUM_H */

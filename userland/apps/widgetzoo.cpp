@@ -32,7 +32,10 @@ static Button *radioB = nullptr;
 static Button *switchBtn = nullptr;
 static Button *gradBtn = nullptr;
 static TextField *editField = nullptr;
+static SearchField *searchField = nullptr;
+static TokenField *tokenField = nullptr;
 static std::string lastEdit;
+static std::string lastTokens;
 
 /* where a control's centre is, in SCREEN coordinates */
 static void
@@ -71,6 +74,17 @@ static const Action Zoo_ACTIONS[] = {
 			std::printf("ZOO-RADIOS a=%d b=%d\n",
 				    (int) radioA->state(), (int) radioB->state());
 		}
+		std::fflush(stdout); } },
+	{ "search", [](Object *sender) {
+		SearchField *f = dynamic_cast<SearchField *>(sender);
+
+		std::printf("ZOO-SEARCH [%s]\n", f ? f->stringValue() : "?");
+		std::fflush(stdout); } },
+	{ "tokens", [](Object *sender) {
+		TokenField *f = dynamic_cast<TokenField *>(sender);
+
+		std::printf("ZOO-TOKENS n=%d\n",
+			    f ? (int) f->tokens().size() : -1);
 		std::fflush(stdout); } },
 	{ "commit", [](Object *sender) {
 		TextField *f = dynamic_cast<TextField *>(sender);
@@ -213,10 +227,26 @@ main(int argc, char **argv)
 	editField = new TextField();
 	editField->setFrame(Rect{ { 16, y }, { 240, 26 } });
 	editField->setPlaceholder("Type here, then Return");
-	editField->setEditable(true);
 	editField->setTarget(&zoo);
 	editField->setAction("commit");
 	content->addSubview(editField);
+	y += 34;
+
+	/* a SEARCH field (U3d): a magnifier, and a clear button once there is
+	 * something to clear */
+	searchField = new SearchField();
+	searchField->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	searchField->setTarget(&zoo);
+	searchField->setAction("search");
+	content->addSubview(searchField);
+	y += 34;
+
+	/* a TOKEN field (U3d): Return or a comma commits what was typed */
+	tokenField = new TokenField();
+	tokenField->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	tokenField->setTarget(&zoo);
+	tokenField->setAction("tokens");
+	content->addSubview(tokenField);
 	y += 34;
 
 	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
@@ -242,6 +272,23 @@ main(int argc, char **argv)
 	logAt("TEXTVIEW", tview);
 	logAt("PLACEHOLDER", ph);
 	logAt("EDITTEXT", editField);
+	logAt("SEARCH", searchField);
+	logAt("TOKEN", tokenField);
+	/* the clear button's own zone, which is the cell's to say and the
+	 * field's to interpret */
+	if (searchField && searchField->searchCell()) {
+		Rect cb = searchField->searchCell()->clearButtonRect(
+			searchField->bounds());
+
+		std::printf("ZOO-ATCLEAR x=%g y=%g\n",
+			    searchField->window()->frame().origin.x
+				    + searchField->frame().origin.x
+				    + cb.origin.x + cb.size.w / 2.0,
+			    searchField->window()->frame().origin.y
+				    + searchField->window()->chromeHeightPt()
+				    + searchField->frame().origin.y
+				    + cb.origin.y + cb.size.h / 2.0);
+	}
 	/* a LAYOUT answer only exists once the controls have drawn at their
 	 * size (a field's cell sizes its container as it draws), so one draw
 	 * pass happens before anything is reported */
@@ -275,6 +322,23 @@ main(int argc, char **argv)
 			if (now != lastEdit) {
 				lastEdit = now;
 				std::printf("ZOO-EDIT %s\n", now.c_str());
+				std::fflush(stdout);
+			}
+		}
+		if (tokenField) {
+			/* the token list as it changes: the gate watches the chips
+			 * appear and disappear, not just the final count */
+			std::string now;
+
+			for (const std::string &t : tokenField->tokens()) {
+				if (!now.empty()) {
+					now += ",";
+				}
+				now += t;
+			}
+			if (now != lastTokens) {
+				lastTokens = now;
+				std::printf("ZOO-TOKENS [%s]\n", now.c_str());
 				std::fflush(stdout);
 			}
 		}

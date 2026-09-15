@@ -443,8 +443,28 @@ as a compatibility path for un-migrated views, with a migration list.
   first run clicked the SWITCH instead of the field (it asked for y=673,
   landed on 407) — `screen_h - y`, every time, and the board's own
   `ZOO-CLICK Switch` line is what gave it away.
-  **U3d — the rest of the text family. NEXT:** `NSSearchField`,
-  `NSTokenField`, and the separate field-editor view.
+  **U3d — the rest of the text family. DONE (2026-09).** `SearchFieldCell`
+  / `SearchField` (a magnifier at the left; a CLEAR button at the right
+  whenever there is text, and clicking it EMPTIES the field *and* sends
+  the action, so an app listens in one place; the cell reports the
+  button's zone and the field interprets it — the control's chrome is the
+  cell's to draw and the control's to act on), and `TokenFieldCell` /
+  `TokenField` (Cocoa's way of putting a SET in a text field: chips laid
+  out from the left with the entry text after them, Return commits and
+  sends, a COMMA commits without sending — "a, b, c" is one edit, not
+  three actions — and Backspace on an empty entry takes the last token
+  back; a token is its string in v1, with Cocoa's represented objects
+  still to come). Gate `uikit_u3d` 7/7 with real keys and a real click on
+  the clear button.
+  **A FIDELITY BUG THIS TURNED UP: `TextField` defaulted to NOT
+  editable.** Cocoa's NSTextField is editable by default — a field you
+  cannot type into is the exception, which is what `label()` is for — and
+  the wrong default was inherited silently by the search and token fields,
+  which is why the first run of this gate typed into nothing at all. The
+  default is now Cocoa's, and `label()` still turns it off explicitly.
+  **Still to do in the text family:** the separate FIELD EDITOR view
+  (editing is in place in the cell's storage today), the search field's
+  recents menu, and token objects.
 - **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
