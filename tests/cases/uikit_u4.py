@@ -271,6 +271,34 @@ class Case(BaseCase):
                    "than wrapping"
                    % (lit, mid, top))
 
+        # THE SWATCH IS THE COLOUR THAT WAS SET, and activating it changes
+        # exactly one other thing: the border. Both are read, because either
+        # alone could pass by accident - a well drawing nothing but its border,
+        # or one that never activates.
+        wx, wy = pts["WELL"]
+        swatch = shot.px(int(wx), int(wy))
+        rim_before = shot.px(int(wx), int(wy) - 11)
+        self.check("well-swatch-is-the-colour",
+                   abs(swatch[0] - 230) < 8 and abs(swatch[1] - 89) < 8
+                   and abs(swatch[2] - 64) < 8,
+                   "the well was set to rgb(0.90, 0.35, 0.25) = (230, 89, 64) "
+                   "and its swatch reads %s (the border above it reads %s)"
+                   % (swatch, rim_before))
+
+        mon.click_at(int(wx), int(screen_h - wy), settle=0.8)
+        session.wait_for(r"ZOO-WELL", 15)
+        out = session.output_since(mark)
+        rim_after = shot.px(int(wx), int(wy) - 11)
+        self.check("well-activates-and-says-so", False,
+                   "NOT IMPLEMENTED, and it is an engine gap rather than a "
+                   "ColorWell one: Control delegates setTarget, setAction and "
+                   "sendAction to an ActionCell only, so a control that draws "
+                   "itself cannot hold or deliver an action. setAction stored "
+                   "nothing and the click sent nothing. The fix (give Control "
+                   "its own target and action, deliver from them when there is "
+                   "no cell) is described in the commit that left this red.",
+                   xfail="engine gap: a cell-less control cannot send")
+
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but
         # track. That zero is what makes this checkable at all.

@@ -40,6 +40,7 @@ static Stepper *stepper = nullptr;
 static ProgressIndicator *progress = nullptr;
 static ProgressIndicator *spinner = nullptr;
 static ProgressIndicator *indet = nullptr;
+static ColorWell *well = nullptr;
 static LevelIndicator *level = nullptr;
 static LevelIndicator *rating = nullptr;
 static LevelIndicator *relevancy = nullptr;
@@ -103,6 +104,18 @@ static const Action Zoo_ACTIONS[] = {
 	/* the dial also reports WHERE THE CELL SAYS ITS KNOB IS, in screen
 	 * coordinates: a pixel check then aims at the library's own answer
 	 * rather than at a guess about the geometry */
+	/* the well reports the colour it holds, so a check can compare what the
+	 * app was told against what the swatch actually shows */
+	{ "well", [](Object *sender) {
+		ColorWell *wl = dynamic_cast<ColorWell *>(sender);
+
+		if (wl) {
+			Color c = wl->color();
+
+			std::printf("ZOO-WELL r=%g g=%g b=%g active=%d\n",
+				    c.r, c.g, c.b, wl->isActive() ? 1 : 0);
+		}
+	} },
 	{ "dial", [](Object *sender) {
 		Slider *s = dynamic_cast<Slider *>(sender);
 
@@ -391,6 +404,14 @@ main(int argc, char **argv)
 	indet->setIndeterminate(true);
 	indet->setDoubleValue(0.0);
 	content->addSubview(indet);
+	y += 26;
+
+	well = new ColorWell();
+	well->setFrame(Rect{ { x, y }, { 60, 22 } });
+	well->setColor(Color::rgb(0.90, 0.35, 0.25));	/* an unambiguous red */
+	well->setTarget(&zoo);
+	well->setAction("well");
+	content->addSubview(well);
 	y += 20;
 	y += 22;
 
@@ -448,6 +469,7 @@ main(int argc, char **argv)
 	logAt("PROGRESS", progress);
 	logAt("SPINNER", spinner);
 	logAt("INDET", indet);
+	logAt("WELL", well);
 	logAt("LEVEL", level);
 	logAt("RATING", rating);
 	logAt("RELEVANCY", relevancy);
