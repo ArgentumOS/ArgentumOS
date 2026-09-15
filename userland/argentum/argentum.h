@@ -1144,6 +1144,11 @@ public:
 	void setNeedsDisplay();
 	/// Mark a region (window POINTS) as needing a redraw.
 	///
+	/// WINDOW points: (0,0) is the window's own top-left, chrome included.
+	/// A view's rect is in CONTENT space - see View::rectInWindow() - so
+	/// it must be offset by contentRect().origin first; passing a content
+	/// rect here pushes every flush one chrome-height too high.
+	///
 	/// The PAINT is coarse either way - any damage repaints the whole
 	/// content tree, so the surface is always a complete frame - but the
 	/// region is what the FLUSH sends to X. Narrowing it is what keeps a

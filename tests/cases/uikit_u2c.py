@@ -149,6 +149,34 @@ class Case(BaseCase):
                    "a radio's circle is at its left: %s against the "
                    "background %s" % (mark_px, bg))
 
+        # THE DAMAGE RECT MUST LAND WHERE THE CONTROL IS. The flush speaks
+        # WINDOW coordinates; a view's rect is in CONTENT coordinates, one
+        # chrome-height higher. Mixing them is a silent offset - the strip
+        # below the region never repaints - and the pixel checks CANNOT see
+        # it, because the board's first full push masked it. So: arithmetic.
+        # ZOO-AT gives a row's centre in SCREEN coordinates, so the row in
+        # window points is (centre - window origin - half the row).
+        win = re.search(r"ZOO-WIN x=(-?[\d.]+) y=(-?[\d.]+) chrome=([\d.]+)",
+                        out)
+        sw = pts.get("SWITCH")
+        pushes = re.findall(r"ARGENTUM-PUSH (\d+)x(\d+) at (\d+),(\d+)",
+                            session.output_since(mark))
+        row_push = next((p for p in pushes if int(p[0]) < 300), None)
+        ok, msg = False, "no control-sized push seen"
+        if win and sw and row_push:
+            wx, wy = float(win.group(1)), float(win.group(2))
+            px_, py_ = int(row_push[2]), int(row_push[3])
+            wpx, hpx = int(row_push[0]), int(row_push[1])
+            ex, ey = sw[0] - wx - 240 / 2.0, sw[1] - wy - 28 / 2.0
+            ok = (abs(px_ - ex) <= 1 and abs(py_ - ey) <= 1
+                  and wpx == 240 and hpx == 28)
+            msg = ("the switch's damage rect is %dx%d at %d,%d; the row is at "
+                   "%.0f,%.0f 240x28 in window points (window %g,%g)"
+                   % (wpx, hpx, px_, py_, ex, ey, wx, wy))
+        elif not win:
+            msg = "the board did not report ZOO-WIN"
+        self.check("damage-rect-is-in-window-space", ok, msg)
+
         # THE CIRCULAR ROW IS ONE CIRCLE AND NOTHING INSIDE IT. It was
         # drawing a radio's light disc inside the round bezel and pushing
         # its title over the rim, so the bezel's interior must now be

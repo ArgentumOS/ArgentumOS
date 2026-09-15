@@ -318,6 +318,11 @@ main(int argc, char **argv)
 	w.setNeedsDisplay();
 	w.displayIfNeeded();
 
+	/* the window's own geometry: the damage rects are in WINDOW
+	 * coordinates, and a gate can only check that against the board's
+	 * screen positions if it knows where the window starts */
+	std::printf("ZOO-WIN x=%g y=%g chrome=%g\n", w.frame().origin.x,
+		    w.frame().origin.y, w.chromeHeightPt());
 	if (diag) {
 		std::printf("ZOO-SCREEN w=%d h=%d\n",
 			    DisplayWidth(diag, DefaultScreen(diag)),

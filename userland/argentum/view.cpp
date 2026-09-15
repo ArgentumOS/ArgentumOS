@@ -159,6 +159,25 @@ View::markNeedsDisplay(bool recursive)
 	}
 }
 
+/* CONTENT SPACE IS NOT WINDOW SPACE. rectInWindow() is content-relative
+ * on purpose (the mouse path subtracts it from the content point to get a
+ * view-local one), and a window's own coordinates start BELOW the chrome -
+ * the content origin. Handing a content rect to the window's damage API
+ * pushes every flush one chrome-height too high: the top of the region is
+ * repainted twice and the bottom of it is never repainted at all, which is
+ * a stale strip on screen rather than a cosmetic slip. */
+static Rect
+contentToWindow(argentum::Window *w, const Rect &r)
+{
+	if (!w) {
+		return r;
+	}
+	Rect cr = w->contentRect();
+
+	return Rect{ { r.origin.x + cr.origin.x, r.origin.y + cr.origin.y },
+		     r.size };
+}
+
 void
 View::setNeedsDisplay()
 {
@@ -166,8 +185,8 @@ View::setNeedsDisplay()
 	if (window_) {
 		/* the view's OWN rect: the window narrows the flush to it (the
 		 * paint is coarse either way, so this loses nothing) */
-		window_->setNeedsDisplayInRect(
-			rectInWindow(Rect{ { 0, 0 }, frame_.size }));
+		window_->setNeedsDisplayInRect(contentToWindow(
+			window_, rectInWindow(Rect{ { 0, 0 }, frame_.size })));
 	}
 }
 
@@ -177,7 +196,8 @@ View::setNeedsDisplayInRect(const Rect &r)
 	needsDisplay_ = true;
 	dirty_ = r;
 	if (window_) {
-		window_->setNeedsDisplayInRect(rectInWindow(r));
+		window_->setNeedsDisplayInRect(
+			contentToWindow(window_, rectInWindow(r)));
 	}
 }
 
