@@ -3065,6 +3065,66 @@ private:
 	time_t date_ = 0;
 };
 
+/// @purpose The application object: the event loop, and the modal session that
+/// a menu or a panel runs in. Cocoa's NSApplication.
+///
+/// The loop is the one the toolkit already documents on Window - pump an event,
+/// pause when there was none, display what changed. What this class adds is the
+/// single place that OWNS that loop, plus the two things that need an owner:
+/// stop(), so a loop can be ended from inside a handler, and a MODAL session, a
+/// nested loop over the same events, which is what makes a synchronous
+/// NSMenu.popUp possible at all.
+///
+/// @lifetime The application is a singleton. It owns its own state and tracks
+/// windows without owning them, as AppKit does.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants At most one modal session runs at a time; stopModal() with no
+/// session does nothing.
+///
+/// @see Window, Menu
+class Application {
+public:
+	/// The one application object (Cocoa's +sharedApplication).
+	static Application *sharedApplication();
+
+	/// The windows being pumped, in the order they were added (Cocoa's
+	/// windows property).
+	const std::vector<Window *> &windows() const { return windows_; }
+	/// Track a window. AppKit's NSWindow registers itself on init; here an
+	/// app registers the window it is about to pump.
+	void addWindow(Window *w);
+	/// Stop tracking it.
+	void removeWindow(Window *w);
+
+	/// Pump events until stop() (Cocoa's run).
+	void run();
+	/// Ask the loop to stop once the current pass is done (Cocoa's stop:).
+	void stop();
+
+	/// Run a modal session over `w` until stopModal() (Cocoa's
+	/// runModalForWindow:), and answer its code.
+	int runModal(Window *w);
+	/// End the running session (Cocoa's stopModal).
+	void stopModal();
+	/// End it with a code (Cocoa's stopModalWithCode:).
+	void stopModalWithCode(int code);
+	/// The active session's window, or null.
+	Window *modalWindow() const { return modal_; }
+
+	/// Stop everything: the session and the loop (Cocoa's terminate:).
+	void terminate();
+
+private:
+	Application();
+
+	std::vector<Window *> windows_;
+	Window *modal_ = nullptr;
+	bool stopped_ = false;
+	int modalCode_ = 0;
+};
+
 /// @purpose One row of a menu: a title, a key equivalent, an action, and the
 /// state a row carries. Cocoa's NSMenuItem.
 ///

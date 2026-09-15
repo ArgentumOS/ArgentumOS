@@ -1,3 +1,4 @@
+#include <unistd.h>	/* usleep: the loop's no-event pause */
 /*
  * The value controls (U4): Slider, Stepper, ProgressIndicator,
  * LevelIndicator (docs/design/cocoa-parity-plan.md).
@@ -1394,5 +1395,133 @@ const ObjectClass Menu::kClass = {
 };
 
 
+
+
+/* ---- Application ----------------------------------------------------- */
+
+/* the no-event pause, as the Window::pumpEvent() idiom documents it */
+static const unsigned int kAppIdleUs = 4 * 1000;
+
+Application::Application()
+{
+}
+
+Application *
+Application::sharedApplication()
+{
+	static Application app;
+
+	return &app;
+}
+
+void
+Application::addWindow(Window *w)
+{
+	if (!w) {
+		return;
+	}
+	for (size_t i = 0; i < windows_.size(); i++) {
+		if (windows_[i] == w) {
+			return;
+		}
+	}
+	windows_.push_back(w);
+}
+
+void
+Application::removeWindow(Window *w)
+{
+	for (size_t i = 0; i < windows_.size(); i++) {
+		if (windows_[i] == w) {
+			windows_.erase(windows_.begin() + i);
+			return;
+		}
+	}
+}
+
+/* ONE PASS over every window: pump, pause when nothing happened, display. The
+ * modal session is this same pass with a different stopping condition, which is
+ * the whole reason a nested loop is safe here - it does not re-enter the
+ * toolkit, it just keeps pumping what the toolkit already pumps. */
+static bool
+appPumpPass(std::vector<Window *> &wins)
+{
+	bool any = false;
+
+	for (size_t i = 0; i < wins.size(); i++) {
+		if (wins[i]->pumpEvent()) {
+			any = true;
+		}
+	}
+	if (!any) {
+		usleep(kAppIdleUs);
+	}
+	for (size_t i = 0; i < wins.size(); i++) {
+		wins[i]->displayIfNeeded();
+	}
+	return any;
+}
+
+void
+Application::run()
+{
+	stopped_ = false;
+	while (!stopped_) {
+		appPumpPass(windows_);
+	}
+}
+
+void
+Application::stop()
+{
+	stopped_ = true;
+}
+
+int
+Application::runModal(Window *w)
+{
+	if (!w) {
+		return 0;
+	}
+	modal_ = w;
+	modalCode_ = 0;
+	stopped_ = false;
+
+	std::vector<Window *> only;
+
+	only.push_back(w);
+	while (!stopped_ && modal_ == w) {
+		appPumpPass(only);
+		if (w->isCloseRequested()) {
+			break;
+		}
+	}
+	if (modal_ == w) {
+		modal_ = nullptr;
+	}
+	return modalCode_;
+}
+
+void
+Application::stopModal()
+{
+	stopModalWithCode(0);
+}
+
+void
+Application::stopModalWithCode(int code)
+{
+	if (modal_) {
+		modalCode_ = code;
+		modal_ = nullptr;
+	}
+}
+
+void
+Application::terminate()
+{
+	modal_ = nullptr;
+	stopped_ = true;
+}
 
 } /* namespace argentum */
