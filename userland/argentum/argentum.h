@@ -1331,7 +1331,17 @@ public:
 	Rect bounds() const { return Rect{ { 0, 0 }, frame_.size }; }
 	/// Show or hide the view. A hidden view draws nothing and takes no
 	/// hits (once those paths exist); its frame is untouched.
-	void setHidden(bool hidden) { hidden_ = hidden; }
+	void setHidden(bool hidden)
+	{
+		if (hidden_ == hidden) {
+			return;
+		}
+		hidden_ = hidden;
+		/* the area it vacates, or now covers, is damage: the damage
+		 * drives the paint pass, so a view that changed visibility
+		 * without damaging would keep its old picture on screen */
+		setNeedsDisplay();
+	}
 	/// True while the view is hidden.
 	bool isHidden() const { return hidden_; }
 

@@ -161,7 +161,17 @@ struct Context::Impl {
 };
 
 static Context *gCurrent = nullptr;
-static void markTreeForDisplay(View *v);
+/* How many views the last paint pass actually walked. This is the number
+ * that says whether damage narrowing works: a click must not paint a
+ * screenful. Logged with ARGENTUM_PAINT_MS and asserted by the gate. */
+static int gViewsDrawn;
+
+static bool
+rectsIntersectPx(int ax0, int ay0, int ax1, int ay1, int bx0, int by0,
+		 int bx1, int by1)
+{
+	return ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1;
+}
 
 void
 Context::pushFrame(int x0, int y0, int x1, int y1)
@@ -1211,7 +1221,6 @@ void
 Window::setNeedsDisplay()
 {
 	damageAll(impl_);
-	markTreeForDisplay(content_);
 }
 
 bool
@@ -1233,13 +1242,10 @@ Window::focusFromClick(View *hit)
 void
 Window::noteViewDamage()
 {
+	/* a caller that cannot say WHAT changed damages the whole surface.
+	 * Conservative, and correct: the erase then covers exactly the region
+	 * the pass is allowed to draw, so nothing is missed. */
 	damageAll(impl_);
-	/* and re-mark the tree: the PAINT is COARSE - a pass clears the
-	 * surface to the background and repaints what is dirty - so a view's
-	 * damage that did not mark the rest would ERASE the rest.
-	 * (Documented as coarse from the start; this is the other half of
-	 * making the code say what the docs say.) */
-	markTreeForDisplay(content_);
 }
 
 void
@@ -1251,7 +1257,6 @@ Window::setNeedsDisplayInRect(const Rect &r)
 	 * union of what changed - which is what stops one click from
 	 * shipping a megabyte: a click damages one control's frame. */
 	damagePt(impl_, r);
-	markTreeForDisplay(content_);
 }
 
 bool
@@ -1280,19 +1285,6 @@ Window::pxPerPt() const
 
 /* ---- the draw pass --------------------------------------------------- */
 
-static void
-markTreeForDisplay(View *v)
-{
-	if (!v) {
-		return;
-	}
-	/* the QUIET entry point: markNeedsDisplay() marks the view and its
-	 * subtree without calling back into the window. Using the public
-	 * setNeedsDisplay() here would recurse - it tells the window, which
-	 * marks the tree again (that was a stack overflow, not a theory). */
-	v->markNeedsDisplay(true);
-}
-
 /* the window's own chrome: the titlebar, its title and the close box */
 void
 Window::drawChrome(Context &ctx)
@@ -1320,7 +1312,8 @@ Window::drawChrome(Context &ctx)
 }
 
 static void
-draw_view(View *v, Context &ctx, int oxPx, int oyPx, double pxPerPt)
+draw_view(View *v, Context &ctx, int oxPx, int oyPx, double pxPerPt,
+	  int dx0, int dy0, int dx1, int dy1)
 {
 	if (!v || v->isHidden()) {
 		return;
@@ -1331,14 +1324,31 @@ draw_view(View *v, Context &ctx, int oxPx, int oyPx, double pxPerPt)
 	int vw = (int) std::ceil(f.size.w * pxPerPt);
 	int vh = (int) std::ceil(f.size.h * pxPerPt);
 
-	ctx.pushFrame(vx, vy, vx + vw, vy + vh);
-	if (v->needsDisplay()) {
-		v->drawRect(v->needsDisplayRect());
-		v->clearNeedsDisplay();
+	/* a subtree that cannot touch the damage contributes no pixel, so it
+	 * is not walked: this is where the cost of a repaint is decided */
+	if (!rectsIntersectPx(vx, vy, vx + vw, vy + vh, dx0, dy0, dx1, dy1)) {
+		return;
 	}
+	gViewsDrawn++;
+	ctx.pushFrame(vx, vy, vx + vw, vy + vh);
+	/* THE DAMAGE IS THE ERASE'S CONTRACT. The region was just cleared to
+	 * the background, so EVERY view intersecting it has to draw - a view
+	 * skipped here would leave a HOLE, not a stale pixel. That is why this
+	 * is deliberately NOT gated on needsDisplay(): the flag is the app's
+	 * record of what it changed, the damage rect is the renderer's. What
+	 * the view is told is the part of itself the damage covers. */
+	int ix0 = vx > dx0 ? vx : dx0;
+	int iy0 = vy > dy0 ? vy : dy0;
+	int ix1 = vx + vw < dx1 ? vx + vw : dx1;
+	int iy1 = vy + vh < dy1 ? vy + vh : dy1;
+	Rect local{ { (ix0 - vx) / pxPerPt, (iy0 - vy) / pxPerPt },
+		    { (ix1 - ix0) / pxPerPt, (iy1 - iy0) / pxPerPt } };
+
+	v->drawRect(local);
+	v->clearNeedsDisplay();
 	/* children after their superview: painter's order */
 	for (View *c : v->subviews()) {
-		draw_view(c, ctx, vx, vy, pxPerPt);
+		draw_view(c, ctx, vx, vy, pxPerPt, dx0, dy0, dx1, dy1);
 	}
 	ctx.popFrame();
 }
@@ -1351,38 +1361,64 @@ Window::displayIfNeeded()
 	}
 	bool timing = timingOn("ARGENTUM_PAINT_MS");
 	double tPaint0 = timing ? nowMs() : 0.0;
+	/* THE DAMAGE, in surface pixels: the whole surface for a window-level
+	 * change, otherwise the union of what the views reported. It is both
+	 * the clip the pass draws through and the region erased first, and
+	 * that is what removes the need for per-view bookkeeping - anything
+	 * the erase touched must be redrawn, anything outside it is already
+	 * right on screen. */
+	int dx0 = 0, dy0 = 0, dx1 = (int) impl_->wPx, dy1 = (int) impl_->hPx;
+
+	if (!impl_->dmgAll) {
+		dx0 = impl_->dmgX0;
+		dy0 = impl_->dmgY0;
+		dx1 = impl_->dmgX1;
+		dy1 = impl_->dmgY1;
+		if (dx1 <= dx0 || dy1 <= dy0) {
+			impl_->dirty = false;	/* nothing changed, nothing to do */
+			return;
+		}
+	}
 	Context::Impl ci;
 
 	ci.img = impl_->pimg;
 	ci.wPx = impl_->wPx;
 	ci.hPx = impl_->hPx;
 	ci.pxPerPt = impl_->pxPerPt;
-	ci.cx0 = 0;
-	ci.cy0 = 0;
-	ci.cx1 = (int) impl_->wPx;
-	ci.cy1 = (int) impl_->hPx;
+	ci.cx0 = dx0;
+	ci.cy0 = dy0;
+	ci.cx1 = dx1;
+	ci.cy1 = dy1;
 	Context ctx;
 
 	ctx.impl_ = &ci;
 	gCurrent = &ctx;
+	gViewsDrawn = 0;
 
-	/* 1. the background covers the whole surface */
-	ctx.fillRect(Rect{ { 0, 0 }, frame_.size }, bg_);
-	/* 2. the chrome (the window's own: no window manager draws it) */
-	if (style_ == WindowStyle::Titled) {
+	double pp = impl_->pxPerPt;
+	/* 1. the background over the damage, outward-rounded so no sliver of
+	 * the previous frame survives at the edges (the clip keeps it in) */
+	double bx0 = std::floor(dx0 / pp), by0 = std::floor(dy0 / pp);
+	double bx1 = std::ceil(dx1 / pp), by1 = std::ceil(dy1 / pp);
+
+	ctx.fillRect(Rect{ { bx0, by0 }, { bx1 - bx0, by1 - by0 } }, bg_);
+	/* 2. the chrome, when the damage reaches it (the window's own: no
+	 * window manager draws it) */
+	int chPx = (int) std::ceil(chromeHeightPt() * pp);
+
+	if (style_ == WindowStyle::Titled
+	    && rectsIntersectPx(dx0, dy0, dx1, dy1, 0, 0, (int) impl_->wPx,
+				chPx)) {
 		drawChrome(ctx);
 	}
-	/* 3. the content tree, inside the content rect */
-	Rect cr = contentRect();
-
+	/* 3. the content tree, from the content origin, damage-limited */
 	if (content_) {
-		ci.cx0 = (int) std::floor(cr.origin.x * ci.pxPerPt);
-		ci.cy0 = (int) std::floor(cr.origin.y * ci.pxPerPt);
-		ci.cx1 = ci.cx0
-			+ (int) std::ceil(cr.size.w * ci.pxPerPt);
-		ci.cy1 = ci.cy0
-			+ (int) std::ceil(cr.size.h * ci.pxPerPt);
-		draw_view(content_, ctx, ci.cx0, ci.cy0, ci.pxPerPt);
+		Rect cr = contentRect();
+
+		draw_view(content_, ctx,
+			  (int) std::floor(cr.origin.x * pp),
+			  (int) std::floor(cr.origin.y * pp), pp, dx0, dy0,
+			  dx1, dy1);
 	}
 	gCurrent = nullptr;
 	ctx.impl_ = nullptr;
@@ -1393,9 +1429,11 @@ Window::displayIfNeeded()
 	if (timing) {
 		/* paint = our own rasterisation; flush = the XPutImage to X.
 		 * The split is what tells drawing apart from transport. */
-		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld\n",
+		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
+			    "views=%d dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
-			    (long) impl_->wPx, (long) impl_->hPx);
+			    (long) impl_->wPx, (long) impl_->hPx, gViewsDrawn,
+			    dx1 - dx0, dy1 - dy0);
 		std::fflush(stdout);
 	}
 }

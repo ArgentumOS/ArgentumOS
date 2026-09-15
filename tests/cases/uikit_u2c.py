@@ -74,7 +74,7 @@ class Case(BaseCase):
         t0 = time.time()
         mon.press(settle=0)
         mon.release(settle=0)
-        session.wait_for(r"ZOO-CLICK Switch", 30)
+        session.wait_for(r"ZOO-CLICK Switch", 30, poll=0.005)
         self.note("one click, press to ZOO-CLICK: %.0f ms"
                   % ((time.time() - t0) * 1000.0))
         out1 = session.output_since(mark)
@@ -176,6 +176,24 @@ class Case(BaseCase):
         elif not win:
             msg = "the board did not report ZOO-WIN"
         self.check("damage-rect-is-in-window-space", ok, msg)
+
+        # PER-VIEW DAMAGE: the pass must WALK only the damaged subtree.
+        # The pair is the check - the board's first paint walks the whole
+        # tree, a click's walks one control - because "few views" on its own
+        # would also be true of a pass that drew nothing at all.
+        paints = re.findall(r"ARGENTUM-PAINT paint=([\d.]+) flush=([\d.]+) "
+                            r"ms (\d+)x(\d+) views=(\d+) dmg=(\d+)x(\d+)",
+                            session.output_since(mark))
+        first = paints[0] if paints else None
+        click_paints = [p for p in paints if int(p[5]) < 300]
+        walked = [int(p[4]) for p in click_paints]
+        self.check("per-view-damage",
+                   first is not None and int(first[4]) >= 10
+                   and walked and max(walked) <= 5,
+                   "the board's first paint walked %s views; the damage-sized "
+                   "paints walked %s (%d of them)"
+                   % (first[4] if first else "?", walked or "none",
+                      len(click_paints)))
 
         # THE CIRCULAR ROW IS ONE CIRCLE AND NOTHING INSIDE IT. It was
         # drawing a radio's light disc inside the round bezel and pushing

@@ -57,11 +57,17 @@ class Session:
         except OSError:
             return ""
 
-    def wait_for(self, pattern, secs=60):
+    def wait_for(self, pattern, secs=60, poll=0.25):
         """Wait for a regex to appear in the guest log.
 
         Cases wait for markers the guest actually prints; sleeping a fixed
         time is what makes a gate flaky on a slower machine.
+
+        `poll` is the granularity of the wait, and it is a MEASUREMENT
+        DECISION when the answer is a latency: at the 0.25s default a case
+        that times a click reads the board's reply up to a quarter second
+        late, and reports the harness's polling as the board's latency. A
+        latency measurement passes a small `poll`.
         """
         rx = re.compile(pattern)
         deadline = time.time() + secs
@@ -70,7 +76,7 @@ class Session:
                 return True
             if self.proc.poll() is not None:
                 return bool(rx.search(self.log_text()))
-            time.sleep(0.25)
+            time.sleep(poll)
         return False
 
     def count(self, pattern):

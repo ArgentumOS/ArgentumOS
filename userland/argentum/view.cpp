@@ -230,8 +230,22 @@ View::setFrame(const Rect &r)
 {
 	double oldW = frame_.size.w;
 	double oldH = frame_.size.h;
+	Rect old = frame_;
+	bool moved = (old.origin.x != r.origin.x || old.origin.y != r.origin.y
+		      || oldW != r.size.w || oldH != r.size.h);
 
 	frame_ = r;
+	if (window_ && moved) {
+		/* THE AREA IT LEAVES IS DAMAGE TOO. The damage drives the pass
+		 * now, so a view that only damaged where it ARRIVED would leave
+		 * its old picture on screen - the opposite of the hole a skipped
+		 * view makes, and just as visible. */
+		window_->setNeedsDisplayInRect(contentToWindow(
+			window_,
+			rectInWindow(Rect{ { 0, 0 }, { oldW, oldH } })));
+		window_->setNeedsDisplayInRect(contentToWindow(
+			window_, rectInWindow(Rect{ { 0, 0 }, r.size })));
+	}
 	if (oldW == r.size.w && oldH == r.size.h) {
 		return;
 	}
@@ -352,6 +366,11 @@ View::removeFromSuperview()
 {
 	if (!parent_) {
 		return;
+	}
+	if (window_) {
+		/* its picture is still on screen where it stood */
+		window_->setNeedsDisplayInRect(contentToWindow(
+			window_, rectInWindow(Rect{ { 0, 0 }, frame_.size })));
 	}
 	std::vector<View *> &sib = parent_->children_;
 
