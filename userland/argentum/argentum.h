@@ -1454,6 +1454,101 @@ enum AutoresizingMask : unsigned int {
  *
  * @see LayoutConstraint, LayoutAnchor, layoutSolve
  */
+/// @purpose Something that can receive an event and respond to it: the base of
+/// the responder chain. Cocoa's NSResponder.
+///
+/// KEYS REACH A RESPONDER AS COMMANDS, not as key codes. keyDown() default is
+/// to interpret the event, which turns it into one of the command methods below
+/// and performs it on this object (walking up the chain when it does not
+/// handle it), falling back to doCommandBySelector() - which is why no control
+/// asks whether a key "is Return": it implements insertNewline() or it does not.
+///
+/// The binding table is BUILT IN and matches the keys a field editor needs. Cocoa
+/// lets a user rewrite it (DefaultKeyBinding.dict); that is not here yet and
+/// this class says so.
+///
+/// @lifetime A responder owns nothing but its state.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants A command that is not implemented answers false, so the chain
+/// continues to the next responder.
+///
+/// @see View, Event
+class Responder : public Object {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A key was pressed. Cocoa's -keyDown:; the default interprets it.
+	virtual bool keyDown(const Event &e);
+	/// A key was released. Cocoa's -keyUp:.
+	virtual bool keyUp(const Event &e);
+	/// Turn a key event into a command and perform it (Cocoa's
+	/// -interpretKeyEvents:).
+	bool interpretKeyEvents(const Event &e);
+
+	/* The standard command methods, Cocoa's NSResponder set. Each answers
+	 * true when it handled the command; the default calls
+	 * doCommandBySelector(). */
+
+	/// Cocoa's -insertText:.
+	virtual bool insertText(const char *text);
+	/// Cocoa's -insertNewline:.
+	virtual bool insertNewline();
+	/// Cocoa's -insertTab:.
+	virtual bool insertTab();
+	/// Cocoa's -insertBacktab:.
+	virtual bool insertBacktab();
+	/// Cocoa's -insertNewlineIgnoringFieldEditor:.
+	virtual bool insertNewlineIgnoringFieldEditor();
+	/// Cocoa's -deleteBackward:.
+	virtual bool deleteBackward();
+	/// Cocoa's -deleteForward:.
+	virtual bool deleteForward();
+	/// Cocoa's -moveLeft:.
+	virtual bool moveLeft(const Event &e);
+	/// Cocoa's -moveRight:.
+	virtual bool moveRight(const Event &e);
+	/// Cocoa's -moveUp:.
+	virtual bool moveUp(const Event &e);
+	/// Cocoa's -moveDown:.
+	virtual bool moveDown(const Event &e);
+	/// Cocoa's -moveToBeginningOfLine:.
+	virtual bool moveToBeginningOfLine();
+	/// Cocoa's -moveToEndOfLine:.
+	virtual bool moveToEndOfLine();
+	/// Cocoa's -moveToBeginningOfDocument:.
+	virtual bool moveToBeginningOfDocument();
+	/// Cocoa's -moveToEndOfDocument:.
+	virtual bool moveToEndOfDocument();
+	/// Cocoa's -moveToBeginningOfParagraph:.
+	virtual bool moveToBeginningOfParagraph();
+	/// Cocoa's -moveToEndOfParagraph:.
+	virtual bool moveToEndOfParagraph();
+	/// Cocoa's -pageUp:.
+	virtual bool pageUp();
+	/// Cocoa's -pageDown:.
+	virtual bool pageDown();
+	/// Cocoa's -cancelOperation:.
+	virtual bool cancelOperation();
+	/// Cocoa's -complete:.
+	virtual bool complete();
+	/// Cocoa's -selectAll:.
+	virtual bool selectAll();
+
+	/// The last resort for a command nobody handled (Cocoa's
+	/// -doCommandBySelector:). The default answers false.
+	virtual bool doCommandBySelector(const char *selector);
+
+	/// The command a key event means, or null when it means text: the built-in
+	/// binding table.
+	const char *commandForEvent(const Event &e) const;
+};
+
 class View : public Object {
 public:
 	/// The class record KVC walks (Object <- View).

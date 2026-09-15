@@ -518,4 +518,148 @@ const ObjectClass View::kClass = {
 	(int) (sizeof(View_PROPS) / sizeof(View_PROPS[0])), nullptr, 0
 };
 
+
+/* ---- Responder ------------------------------------------------------- */
+
+/* THE BUILT-IN BINDING TABLE. Cocoa's lives in DefaultKeyBinding.dict and can
+ * be rewritten by a user; this one is compiled in and covers the keys a field
+ * editor needs. A key that is not here is TEXT, which is why insertText() is
+ * the fallback rather than a special case. */
+const char *
+Responder::commandForEvent(const Event &e) const
+{
+	const char *ch = e.characters();
+
+	if (std::strcmp(ch, "\r") == 0 || std::strcmp(ch, "\n") == 0) {
+		return "insertNewline";
+	}
+	if (std::strcmp(ch, "\t") == 0) {
+		return "insertTab";
+	}
+	if (std::strcmp(ch, "\x19") == 0) {		/* backtab */
+		return "insertBacktab";
+	}
+	if (std::strcmp(ch, "\x7f") == 0 || std::strcmp(ch, "\x08") == 0) {
+		return "deleteBackward";
+	}
+	if (std::strcmp(ch, "\x1b") == 0) {
+		return "cancelOperation";
+	}
+	return nullptr;
+}
+
+bool
+Responder::interpretKeyEvents(const Event &e)
+{
+	if (e.type() != EventType::KeyDown) {
+		return false;
+	}
+	const char *cmd = commandForEvent(e);
+
+	if (!cmd) {
+		return insertText(e.characters());
+	}
+	/* one table, one place that maps a command name to the method */
+	if (std::strcmp(cmd, "insertNewline") == 0) {
+		return insertNewline();
+	}
+	if (std::strcmp(cmd, "insertTab") == 0) {
+		return insertTab();
+	}
+	if (std::strcmp(cmd, "insertBacktab") == 0) {
+		return insertBacktab();
+	}
+	if (std::strcmp(cmd, "deleteBackward") == 0) {
+		return deleteBackward();
+	}
+	if (std::strcmp(cmd, "cancelOperation") == 0) {
+		return cancelOperation();
+	}
+	return doCommandBySelector(cmd);
+}
+
+bool
+Responder::keyDown(const Event &e)
+{
+	return interpretKeyEvents(e);
+}
+
+bool
+Responder::keyUp(const Event &e)
+{
+	(void) e;
+	return false;
+}
+
+/* every command's default is the same: nobody here handled it */
+#define RESPONDER_UNHANDLED(name)			\
+	bool Responder::name()				\
+	{						\
+		return doCommandBySelector(#name);	\
+	}
+
+RESPONDER_UNHANDLED(insertNewline)
+RESPONDER_UNHANDLED(insertTab)
+RESPONDER_UNHANDLED(insertBacktab)
+RESPONDER_UNHANDLED(insertNewlineIgnoringFieldEditor)
+RESPONDER_UNHANDLED(deleteBackward)
+RESPONDER_UNHANDLED(deleteForward)
+RESPONDER_UNHANDLED(moveToBeginningOfLine)
+RESPONDER_UNHANDLED(moveToEndOfLine)
+RESPONDER_UNHANDLED(moveToBeginningOfDocument)
+RESPONDER_UNHANDLED(moveToEndOfDocument)
+RESPONDER_UNHANDLED(moveToBeginningOfParagraph)
+RESPONDER_UNHANDLED(moveToEndOfParagraph)
+RESPONDER_UNHANDLED(pageUp)
+RESPONDER_UNHANDLED(pageDown)
+RESPONDER_UNHANDLED(cancelOperation)
+RESPONDER_UNHANDLED(complete)
+RESPONDER_UNHANDLED(selectAll)
+
+bool
+Responder::insertText(const char *text)
+{
+	(void) text;
+	return doCommandBySelector("insertText");
+}
+
+bool
+Responder::moveLeft(const Event &e)
+{
+	(void) e;
+	return doCommandBySelector("moveLeft");
+}
+
+bool
+Responder::moveRight(const Event &e)
+{
+	(void) e;
+	return doCommandBySelector("moveRight");
+}
+
+bool
+Responder::moveUp(const Event &e)
+{
+	(void) e;
+	return doCommandBySelector("moveUp");
+}
+
+bool
+Responder::moveDown(const Event &e)
+{
+	(void) e;
+	return doCommandBySelector("moveDown");
+}
+
+bool
+Responder::doCommandBySelector(const char *selector)
+{
+	(void) selector;
+	return false;
+}
+
+const ObjectClass Responder::kClass = {
+	"Responder", &Object::kClass, nullptr, 0, nullptr, 0
+};
+
 } /* namespace argentum */
