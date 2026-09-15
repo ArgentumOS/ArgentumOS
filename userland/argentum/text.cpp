@@ -21,7 +21,6 @@
  * glyph bitmap. No XRender/Xft client lib is involved.
  */
 #include <argentum/argentum.h>
-#include <argentum/argentum_p.h>
 
 #include <hb.h>
 #include <hb-ft.h>
@@ -32,8 +31,55 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <new>
 
 namespace argentum {
+
+/* ---- the engine (this file owns its fontconfig + FreeType handles) --- */
+
+static FT_Library gFt = nullptr;
+static bool gReady = false;
+/* px per point: the session sets it once the display is known (96 dpi
+ * fallback until then, the same default the old toolkit used) */
+static double gPxPerPt = 4.0 / 3.0;
+
+bool
+textEngineInit()
+{
+	if (gReady) {
+		return true;
+	}
+	if (!FcInit()) {
+		std::fprintf(stderr, "ARGENTUM-TEXT: FcInit failed\n");
+		return false;
+	}
+	if (FT_Init_FreeType(&gFt)) {
+		std::fprintf(stderr, "ARGENTUM-TEXT: FT_Init_FreeType failed\n");
+		return false;
+	}
+	gReady = true;
+	return true;
+}
+
+bool
+textEngineReady()
+{
+	return gReady;
+}
+
+void
+textEngineSetPxPerPt(double pxPerPt)
+{
+	if (pxPerPt > 0) {
+		gPxPerPt = pxPerPt;
+	}
+}
+
+double
+textEnginePxPerPt()
+{
+	return gPxPerPt;
+}
 
 /* ---- shared run core ------------------------------------------- */
 
@@ -420,10 +466,8 @@ TextRun *
 textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	       bool quiet, bool bold)
 {
-	Application &app = Application::shared();
-
-	if (!app.textStackReady()) {
-		fprintf(stderr, "ARGENTUM-TEXT: text stack not inited\n");
+	if (!textEngineReady()) {
+		fprintf(stderr, "ARGENTUM-TEXT: text engine not inited\n");
 		return nullptr;
 	}
 	if (!family || !utf8 || pixelSize == 0) {
@@ -456,7 +500,7 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 	bool first = false;
 	FcPattern *matchRef = nullptr;
 	FT_Face face = textLookupFace(
-		family, pixelSize, (FT_Library) app.freeTypeHandle(),
+		family, pixelSize, gFt,
 		&matchRef, &first, bold);
 
 	if (!face) {
@@ -677,77 +721,22 @@ textInkInsetPx(void)
 TextMetrics
 textMetrics(const char *family, double sizePt, const char *utf8, bool bold)
 {
-	Application &app = Application::shared();
 	TextMetrics m = { 0, 0, 0 };
 
 	if (!family || !utf8 || sizePt <= 0) {
 		return m;
 	}
 	unsigned int pixelSize = (unsigned int)
-		((sizePt * app.pxPerPt()) + 0.5);
+		((sizePt * gPxPerPt) + 0.5);
 	TextRun *t = textRunPrepare(family, utf8, pixelSize, false, bold);
 	if (!t) {
 		return m;
 	}
-	m.widthPt = ((double) t->adv26 / 64.0) / app.pxPerPt();
-	m.ascentPt = (double) t->ascPx / app.pxPerPt();
-	m.descentPt = (double) t->descPx / app.pxPerPt();
+	m.widthPt = ((double) t->adv26 / 64.0) / gPxPerPt;
+	m.ascentPt = (double) t->ascPx / gPxPerPt;
+	m.descentPt = (double) t->descPx / gPxPerPt;
 	textRunFinish(t);
 	return m;
-}
-
-/* ---- legacy window-level draw (S0.4; parity path) --------------- */
-
-void
-Window::drawText(const char *family, int x, int y, const char *utf8,
-		 unsigned int pixelSize, std::uint32_t fg,
-		 std::uint32_t bg)
-{
-	if (!impl_->dpy || !impl_->xwin) {
-		return;
-	}
-	TextRun *t = textRunPrepare(family, utf8, pixelSize);
-	if (!t) {
-		return;
-	}
-
-	int boxW = t->boxW;
-	int boxH = t->boxH;
-	std::uint32_t *box = (std::uint32_t *)
-		std::calloc((size_t) boxW * boxH, sizeof(std::uint32_t));
-	if (!box) {
-		textRunFinish(t);
-		return;
-	}
-	unsigned int rasterized = textRunComposeRgb(t, box, fg, bg);
-
-	/* 4) core-protocol blit of the run box (mirrors Window::fill) */
-	Display *dpy = impl_->dpy;
-	::Window xwin = impl_->xwin;
-	int screen = DefaultScreen(dpy);
-	Visual *vis = DefaultVisual(dpy, screen);
-	unsigned int depth = (unsigned int) DefaultDepth(dpy, screen);
-	XImage *img = XCreateImage(dpy, vis, depth, ZPixmap, 0,
-				   (char *) box, (unsigned int) boxW,
-				   (unsigned int) boxH, 32, boxW * 4);
-	if (img) {
-		GC gc = XCreateGC(dpy, xwin, 0, nullptr);
-		if (gc) {
-			fprintf(stderr, "ARGENTUM-TEXT: blitted %u glyph(s) "
-				"box %dx%d at %d,%d\n", rasterized, boxW,
-				boxH, x, y);
-			XPutImage(dpy, xwin, gc, img, 0, 0, x, y,
-				  (unsigned int) boxW,
-				  (unsigned int) boxH);
-			XFreeGC(dpy, gc);
-		}
-		XDestroyImage(img);	/* frees box */
-	} else {
-		std::free(box);
-	}
-	XSync(dpy, False);
-
-	textRunFinish(t);
 }
 
 } /* namespace argentum */

@@ -26,8 +26,8 @@ class Case(BaseCase):
     timeout = 420
 
     def run(self, ctx):
-        session = ctx.boot_to_desktop(secs=150)
-        ready = session.shell_ready(90)
+        session = ctx.boot()
+        ready = session.shell_ready(150)
         self.check("shell-ready", ready,
                    "the serial console has a shell" if ready
                    else "no shell; guest tail: " + session.tail())

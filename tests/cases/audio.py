@@ -26,7 +26,8 @@ class Case(BaseCase):
 
     def run(self, ctx):
         ctx.require_guest_file("/System/Tools/tone")
-        session = ctx.boot_to_desktop(secs=150)
+        session = ctx.boot()
+        ready = session.shell_ready(150)
         log = session.log_text()
 
         card = self.find(log, CARD)

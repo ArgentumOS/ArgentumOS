@@ -29,7 +29,8 @@ class Case(BaseCase):
     timeout = 420
 
     def run(self, ctx):
-        session = ctx.boot_to_desktop(secs=150)
+        session = ctx.boot()
+        ready = session.shell_ready(150)
 
         # --- the mount table ------------------------------------------
         # Two sources, because they differ: toybox `mount` prints the
@@ -77,11 +78,12 @@ class Case(BaseCase):
 
         # --- a configuration domain is a file, so it reads through --
         mark = len(session.log_text())
-        # D6 moved the DOCK's keys out of system.workspace into
-        # system.kestrel, so the domain to read back is kestrel's
-        session.run("config read system.kestrel")
+        # the desktop's domains (system.kestrel / system.workspace) went
+        # with the apps in the 2026-09 restart, so read back a domain that
+        # ships: the network domain carries the machine name
+        session.run("config read system.network")
         conf = session.output_since(mark)
-        self.check("config-domain-readable", "dock" in conf,
-                   "system.kestrel.conf reads back through the config tool")
+        self.check("config-domain-readable", "hostname" in conf,
+                   "system.network.conf reads back through the config tool")
 
         session.run("rm -rf " + TMP)

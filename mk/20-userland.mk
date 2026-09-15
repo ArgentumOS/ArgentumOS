@@ -159,15 +159,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# system.display width_mm/height_mm unset (expect 4/3 fallback)
 	# then after `config write -s system.display ...` (expect 8/3 =
 	# 2x). Needs the X session like the demo.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/units_probe.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/units_probe"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		userland/tests/oom_probe.cpp \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -largentum -lconfig -lX11 \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -lconfig -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/oom_probe"
 	# xclick: generic synthetic-click injector for the S2.4 gates
 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xclick.c \

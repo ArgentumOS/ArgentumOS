@@ -405,7 +405,9 @@ static enum session_kind read_session(void)
 {
 	FILE *f;
 	char line[256];
-	enum session_kind kind = SESSION_KESTREL;	/* S5.1: the desktop */
+	/* S5.1: the desktop; the UIKit restart (2026-09) leaves it with no
+	 * client until the new class layer lands (Xfb + the console) */
+	enum session_kind kind = SESSION_KESTREL;
 
 	f = fopen("/System/Configuration/session.conf", "r");
 	if (!f)
@@ -439,7 +441,9 @@ static enum session_kind read_session(void)
 					    end[-1] == ' ' || end[-1] == '\t'))
 				*--end = 0;
 		}
-		if (strcmp(v, "uitest") == 0)
+		if (strcmp(v, "xfb") == 0)
+			kind = SESSION_XFB;
+		else if (strcmp(v, "uitest") == 0)
 			kind = SESSION_UITEST;
 		else if (strcmp(v, "zoo") == 0)
 			kind = SESSION_ZOO;
@@ -510,17 +514,12 @@ static void start_xfb(void)
 		puts("XDESK: zoo session launching (kestrel WM + the Widget Zoo "
 		     "bundle on :0)");
 	} else if (session == SESSION_KESTREL) {
-		spawn_gui("/System/Tools/kestrel",
-			  (char *const[]) { "kestrel", NULL }, dpy_env);
-		/* W0a: the desktop shell app, which owns the surface (the
-		 * wallpaper). AFTER the WM for the same reason the zoo is:
-		 * spawned second, its MapRequest is redirected and the WM
-		 * recognises it as the desktop; spawned first, the WM's
-		 * manage-existing pass would frame it like any client. */
-		spawn_gui("/Applications/Workspace.app/bin/Workspace",
-			  (char *const[]) { "Workspace", NULL }, dpy_env);
-		puts("XDESK: kestrel session launching (kestrel WM + the "
-		     "Workspace shell on :0)");
+		/* the UIKit restart (2026-09): the WM and the desktop shell
+		 * app were discarded with the class layer, so no client is
+		 * spawned — Xfb runs and the console shell is the interface
+		 * until the new classes land. */
+		puts("XDESK: no desktop client (the UIKit class layer is "
+		     "being rebuilt; Xfb + the console shell)");
 	} else {
 		spawn_gui("/System/Shared/X11/bin/xdraw",
 			  (char *const[]) { "xdraw", "100", "100", "400", "300", NULL },

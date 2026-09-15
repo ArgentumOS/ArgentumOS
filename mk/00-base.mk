@@ -239,26 +239,10 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 # The C++ wrapper supplies the libc++/libc++abi/libunwind NEEDEDs and
 # the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
 # the session in S0.2.
-ARGENTUM_SRCS = userland/argentum/application.cpp \
-	userland/argentum/layout.cpp \
-	userland/argentum/combobox.cpp \
-	userland/argentum/window.cpp userland/argentum/text.cpp \
-	userland/argentum/graphics.cpp userland/argentum/theme.cpp \
-	userland/argentum/view.cpp userland/argentum/control.cpp \
-	userland/argentum/label.cpp userland/argentum/button.cpp \
-	userland/argentum/textfield.cpp \
-	userland/argentum/menu.cpp userland/argentum/slider.cpp \
-	userland/argentum/stepper.cpp userland/argentum/segmented.cpp \
-	userland/argentum/progress.cpp userland/argentum/level.cpp \
-	userland/argentum/box.cpp userland/argentum/scroll.cpp \
-	userland/argentum/scrollbar.cpp \
-	userland/argentum/split.cpp userland/argentum/tab.cpp \
-	userland/argentum/table.cpp userland/argentum/outline.cpp \
-	userland/argentum/imageview.cpp userland/argentum/popup.cpp \
-	userland/argentum/textview.cpp
+ARGENTUM_SRCS = userland/argentum/text.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 
-$(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h userland/argentum/argentum_p.h $(MUSL64_CXX)
+$(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h $(MUSL64_CXX)
 	@mkdir -p $(FNXLIB)
 	@if [ ! -d "$(X11PREFIX)/include/X11" ]; then \
 		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
