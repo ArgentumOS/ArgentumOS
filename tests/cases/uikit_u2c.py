@@ -195,6 +195,31 @@ class Case(BaseCase):
                    % (first[4] if first else "?", walked or "none",
                       len(click_paints)))
 
+        # TEXT SITS IN ITS BOX. Context::drawText's y is the TOP of the run
+        # box, but the layout used to hand it a BASELINE - one ascent too
+        # low, so every text-stack view rode low and a field's text was
+        # clipped along its bottom edge. Geometric on purpose: the text's own
+        # centre has to be the box's centre. It measures the PLACEHOLDER,
+        # the one field that always has text (and grey, hence the
+        # threshold); the typed fields are empty in this shot.
+        zx, zy = pts["PLACEHOLDER"]
+        half = 13		# the zoo's fields are 26pt tall
+        # The box's own border rows are dark too, and they are symmetric
+        # about the centre - including them made this check pass for any
+        # text position at all. Scan the INTERIOR, and require the spread a
+        # real line of text has.
+        rows = [(y, shot.ink((int(zx) - 110, y, int(zx) + 110, y + 1),
+                             thresh=190))
+                for y in range(int(zy) - half + 2, int(zy) + half - 2)]
+        ink_rows = [y for y, n in rows if n > 3]
+        centre = (ink_rows[0] + ink_rows[-1]) / 2.0 if ink_rows else None
+        self.check("field-text-sits-in-its-box",
+                   centre is not None and len(ink_rows) >= 6
+                   and abs(centre - zy) <= 4,
+                   "the placeholder's text rows are %s (%d of them), centre "
+                   "%s against its box centre %.0f"
+                   % (ink_rows, len(ink_rows), centre, zy))
+
         # THE CIRCULAR ROW IS ONE CIRCLE AND NOTHING INSIDE IT. It was
         # drawing a radio's light disc inside the round bezel and pushing
         # its title over the rim, so the bezel's interior must now be

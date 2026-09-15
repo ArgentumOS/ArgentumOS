@@ -874,6 +874,12 @@ LayoutManager::drawInContext(Context &ctx, const Point &origin)
 						     : first.font.family.c_str(),
 					     first.font.sizePt, "Ag",
 					     first.font.bold);
+		/* Context::drawText's y is the TOP of the run's box, NOT a
+		 * baseline - and handing it a baseline drew every text-stack run
+		 * one ascent too low. That is a field's text sitting on its
+		 * bottom edge, clipped, and a text view's whole block riding low
+		 * in its frame (which a tall frame hides). The underline IS
+		 * measured from the baseline, so it keeps one. */
 		double lineTop = origin.y + l.frame.origin.y;
 		double penX = origin.x + l.frame.origin.x;
 		double baseline = lineTop + fm.ascentPt;
@@ -901,7 +907,7 @@ LayoutManager::drawInContext(Context &ctx, const Point &origin)
 			ctx.drawText(a.font.family.empty()
 					     ? nullptr
 					     : a.font.family.c_str(),
-				     a.font.sizePt, Point{ penX, baseline },
+				     a.font.sizePt, Point{ penX, lineTop },
 				     piece.c_str(), a.color, a.font.bold);
 			if (a.underline) {
 				TextMetrics m = textMetrics(
