@@ -68,6 +68,33 @@ SliderCell::trackRect(const Rect &frame) const
 	return Rect{ { left, y }, { right - left, h } };
 }
 
+/* the dial's centre and radius: the control's box squared off, inset so the
+ * knob's own radius stays inside it. A circular slider ignores any extra
+ * width, as Cocoa's does. */
+static Point
+dialCentre(const Rect &frame)
+{
+	return Point{ frame.origin.x + frame.size.w / 2.0,
+		      frame.origin.y + frame.size.h / 2.0 };
+}
+
+static double
+dialRadius(const Rect &frame)
+{
+	double r = frame.size.h / 2.0 - 1.0;
+
+	return r > 2.0 ? r : 2.0;
+}
+
+/* the fraction the value sits at, in the range */
+static double
+sliderFraction(double value, double min, double max)
+{
+	double span = max - min;
+
+	return span > 0 ? (value - min) / span : 0;
+}
+
 double
 SliderCell::knobCenterX(const Rect &frame) const
 {
@@ -78,12 +105,56 @@ SliderCell::knobCenterX(const Rect &frame) const
 	return t.origin.x + t.size.w * f;
 }
 
+Point
+SliderCell::knobPoint(const Rect &frame) const
+{
+	double f = sliderFraction(value_, minValue_, maxValue_);
+
+	if (type_ == SliderType::Circular) {
+		/* A DIAL: 0 points up and the value turns clockwise. This is the
+		 * inverse of setValueForPoint()'s circular branch, and those two
+		 * are the only places the mapping exists. */
+		const double pi = 3.14159265358979323846;
+		double rad = (f * 360.0 - 90.0) * pi / 180.0;
+		Point c = dialCentre(frame);
+		double r = dialRadius(frame);
+
+		return Point{ c.x + r * std::cos(rad),
+			      c.y + r * std::sin(rad) };
+	}
+	Rect t = trackRect(frame);
+
+	return Point{ t.origin.x + t.size.w * f,
+		      t.origin.y + t.size.h / 2.0 };
+}
+
 void
 SliderCell::setValueForPointX(const Rect &frame, double x)
 {
-	Rect t = trackRect(frame);
-	double f = t.size.w > 0 ? (x - t.origin.x) / t.size.w : 0;
+	/* the linear caller: y plays no part in the linear mapping */
+	setValueForPoint(frame, Point{ x, frame.origin.y });
+}
 
+void
+SliderCell::setValueForPoint(const Rect &frame, const Point &p)
+{
+	double f;
+
+	if (type_ == SliderType::Circular) {
+		/* the angle about the centre, 0 up and clockwise */
+		const double pi = 3.14159265358979323846;
+		Point c = dialCentre(frame);
+		double deg = std::atan2(p.y - c.y, p.x - c.x) * 180.0 / pi;
+
+		f = (deg + 90.0) / 360.0;
+		if (f < 0) {
+			f += 1.0;
+		}
+	} else {
+		Rect t = trackRect(frame);
+
+		f = t.size.w > 0 ? (p.x - t.origin.x) / t.size.w : 0;
+	}
 	if (f < 0) {
 		f = 0;
 	}
@@ -109,6 +180,25 @@ SliderCell::drawInFrame(const Rect &frame, View *inView)
 		return;
 	}
 	(void) inView;
+	if (type_ == SliderType::Circular) {
+		/* the ring is the track and the knob is at the value's ANGLE. The
+		 * dot's position comes from knobPoint(), the same function a drag
+		 * maps back through, so it cannot sit anywhere else. */
+		Point c = dialCentre(frame);
+		double r = dialRadius(frame);
+		Rect dial = { { c.x - r, c.y - r }, { 2.0 * r, 2.0 * r } };
+
+		/* the face, then the track as a RING: a round rect whose radius is
+		 * half its box is a circle, and stroking it is the only way to an
+		 * outline with the shapes the toolkit has */
+		ctx->fillCircle(c, r, Color::rgb(0.97, 0.97, 0.98));
+		ctx->strokeRoundRect(dial, r, track_, 5.0);
+		Point k = knobPoint(frame);
+
+		ctx->fillCircle(k, 5.0, Color::rgb(0.35, 0.55, 0.85));
+		ctx->fillCircle(k, 2.5, Color::rgb(0.98, 0.98, 0.99));
+		return;
+	}
 	Rect t = trackRect(frame);
 
 	/* the track, then the filled part up to the knob */
@@ -276,6 +366,23 @@ Slider::setTickMarks(int n)
 	}
 }
 
+SliderType
+Slider::type() const
+{
+	SliderCell *c = sliderCell();
+
+	return c ? c->type() : SliderType::Linear;
+}
+
+void
+Slider::setType(SliderType t)
+{
+	if (SliderCell *c = sliderCell()) {
+		c->setType(t);
+		setNeedsDisplay();
+	}
+}
+
 bool
 Slider::mouseDown(const MouseEvent &e)
 {
@@ -287,7 +394,7 @@ Slider::mouseDown(const MouseEvent &e)
 	SliderCell *c = sliderCell();
 
 	if (c && isTrackingMouse()) {
-		c->setValueForPointX(bounds(), e.location.x);
+		c->setValueForPoint(bounds(), e.location);
 		setNeedsDisplay();
 		if (c->isContinuous()) {
 			sendAction();
@@ -309,7 +416,7 @@ Slider::mouseDragged(const MouseEvent &e)
 	}
 	double before = c->value();
 
-	c->setValueForPointX(bounds(), e.location.x);
+	c->setValueForPoint(bounds(), e.location);
 	if (c->value() != before) {
 		setNeedsDisplay();
 		if (c->isContinuous()) {

@@ -2592,6 +2592,10 @@ private:
 /// drawing uses to place them, so the knob always sits ON a tick.
 ///
 /// @see Slider, ActionCell
+/// The shape of a slider (Cocoa's NSSliderType): a straight track with a
+/// knob along it, or a dial whose knob is the ANGLE of the value.
+enum class SliderType { Linear, Circular };
+
 class SliderCell : public ActionCell {
 public:
 	/// The class record KVC walks.
@@ -2625,8 +2629,21 @@ public:
 	/// Set them.
 	void setTickMarks(int n);
 
-	/// The knob's centre x inside `frame` (points).
+	/// The knob's centre x inside `frame` (points) - the LINEAR placement.
 	double knobCenterX(const Rect &frame) const;
+	/// The knob's centre inside `frame` (points), for whichever shape this
+	/// cell is. The inverse of setValueForPoint(), and deliberately the SAME
+	/// arithmetic: the knob is drawn where the hit test would put a value,
+	/// so the two cannot disagree about where the value is.
+	Point knobPoint(const Rect &frame) const;
+	/// The shape (Cocoa's NSSliderType).
+	SliderType type() const { return type_; }
+	/// Set it.
+	void setType(SliderType t) { type_ = t; }
+	/// Move the value to the point `p` in `frame`. THE one mapping: the
+	/// drawing, the dragging and a click all come through here, so the knob
+	/// is always where the value says.
+	void setValueForPoint(const Rect &frame, const Point &p);
 	/// The knob's thickness (points).
 	double knobThickness() const { return 18.0; }
 	/// Where the track runs, inside `frame`.
@@ -2652,6 +2669,7 @@ private:
 	bool continuous_ = true;
 	int tickMarks_ = 0;
 	Color track_ = Color::rgb(0.80, 0.80, 0.84);
+	SliderType type_ = SliderType::Linear;
 };
 
 /// @purpose A slider: a track with a knob the user drags, holding a number
@@ -2682,6 +2700,11 @@ public:
 
 	/// The slider's cell (never nullptr).
 	SliderCell *sliderCell() const;
+
+	/// The shape (Cocoa's NSSliderType): a track with a knob, or a dial.
+	SliderType type() const;
+	/// Set it.
+	void setType(SliderType t);
 
 	/// The current value.
 	double doubleValue() const;
