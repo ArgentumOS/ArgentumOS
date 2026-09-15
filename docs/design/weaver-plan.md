@@ -460,6 +460,14 @@ need input, which §8a addresses directly.
   background pixels in each), and the IB2 pixel check now accounts for the
   canvas offset. Full Weaver suite: 10/10 cases, 108/108 checks.
 
+- **Post-IB7 — the app-owned menubar (S4.2d). DONE (2026-09).** `--show`
+  publishes a `Menu` model through `Application::setMenuBar()`; the toolkit
+  opens the bar as its OWN window and Kestrel places it over the app zone.
+  Weaver's bar is `[Weaver] [File] [Edit]` (HIG §2 order): About/Quit, Save/
+  Reload, Undo — each item runs the SAME method the scripted command calls.
+  `tests/cases/weaver_menubar.py`, 8/8: real title/row clicks run `save` and
+  `undo`.
+
 ## 8a. How the acceptances will be driven (from the record)
 
 IB2–IB5 assert on interaction with the *editor's own window*, which is exactly

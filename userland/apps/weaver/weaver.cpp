@@ -2522,6 +2522,53 @@ runDisplay(Editor &ed)
 		}
 	}
 
+	/* ---- the app-owned menubar (S4.2d): the toolkit opens its OWN
+	 * bar-sized window, drawn in this process; Kestrel places it over
+	 * the app zone and maps it while Weaver is active.  The order
+	 * follows docs/design/argentum-hig.md §2: the application menu,
+	 * then File, then Edit. */
+	static argentum::Menu weaverBar, mApp, mFile, mEdit;
+	static argentum::MenuItem tApp("Weaver"), tFile("File"), tEdit("Edit");
+	static argentum::MenuItem iAbout("About Weaver"), iQuit("Quit Weaver");
+	static argentum::MenuItem iSave("Save"), iReload("Reload");
+	static argentum::MenuItem iUndo("Undo");
+
+	mApp.setTitle("Weaver");
+	iAbout.setAction([]() {
+		std::printf("WEAVER: menu about\n");
+		std::fflush(stdout);
+	});
+	iQuit.setAction([&app]() {
+		std::printf("WEAVER: menu quit\n");
+		std::fflush(stdout);
+		app.terminate();
+	});
+	iQuit.setKeyEquivalent('q', argentum::KeyModCommand);
+	mApp.addItem(&iAbout);
+	mApp.addSeparator();
+	mApp.addItem(&iQuit);
+
+	mFile.setTitle("File");
+	iSave.setAction([&ed]() { ed.save(); });
+	iSave.setKeyEquivalent('s', argentum::KeyModCommand);
+	iReload.setAction([&ed]() { ed.reload(); });
+	mFile.addItem(&iSave);
+	mFile.addItem(&iReload);
+
+	mEdit.setTitle("Edit");
+	iUndo.setAction([&ed]() { ed.undo(); });
+	iUndo.setKeyEquivalent('z', argentum::KeyModCommand);
+	mEdit.addItem(&iUndo);
+
+	tApp.setSubmenu(&mApp);
+	tFile.setSubmenu(&mFile);
+	tEdit.setSubmenu(&mEdit);
+	weaverBar.setTitle("Weaver");
+	weaverBar.addItem(&tApp);
+	weaverBar.addItem(&tFile);
+	weaverBar.addItem(&tEdit);
+	app.setMenuBar(&weaverBar);
+
 	w.show();
 	std::printf("WEAVER: window 0x%lx %ux%u ppt=%g doc=%s\n", w.xid(),
 		    w.width(), w.height(), ppt, ed.path.c_str());
