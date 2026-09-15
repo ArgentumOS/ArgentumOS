@@ -215,3 +215,19 @@ class Case(BaseCase):
                    "a rating of 3.6 out of five: the FOURTH star's centre is "
                    "%s and the fifth's is %s - four whole stars should be "
                    "filled and the fifth left empty" % (ink, off))
+
+        # A RELEVANCE BAR FILLS IN WHOLE SEGMENTS and colours them by level: ten
+        # segments at 9.0 with critical at 8, so nine are RED and the tenth
+        # keeps the track grey. Sampling segment CENTRES keeps the aim away from
+        # the 1pt gaps between them - and the y is NOT mirrored, because the
+        # screenshot is not (see the rating check, which learned it the hard way).
+        vx, vy = pts["RELEVANCY"]
+        seg = 120.0 / 10.0
+        ink = shot.px(int(vx - 60.0 + seg * 8.5), int(vy))
+        off = shot.px(int(vx - 60.0 + seg * 9.5), int(vy))
+        self.check("relevancy-fills-in-whole-segments",
+                   ink[0] > ink[1] + 60 and ink[0] > ink[2] + 60
+                   and off[0] == off[1] == 230,
+                   "past critical the ninth segment's centre is %s (a red) and "
+                   "the tenth's is %s (the track) - whole segments, coloured by "
+                   "level" % (ink, off))

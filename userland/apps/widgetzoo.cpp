@@ -40,6 +40,7 @@ static Stepper *stepper = nullptr;
 static ProgressIndicator *progress = nullptr;
 static LevelIndicator *level = nullptr;
 static LevelIndicator *rating = nullptr;
+static LevelIndicator *relevancy = nullptr;
 static std::string lastEdit;
 static std::string lastTokens;
 
@@ -348,6 +349,18 @@ main(int argc, char **argv)
 	rating->setNumberOfSteps(5);
 	rating->setDoubleValue(3.6);		/* whole steps: this reads as four */
 	content->addSubview(rating);
+	y += 20;
+
+	relevancy = new LevelIndicator();
+	relevancy->setFrame(Rect{ { 16, y }, { 120, 14 } });
+	relevancy->setStyle(LevelIndicator::Style::Relevancy);
+	relevancy->setMinValue(0);
+	relevancy->setMaxValue(10);
+	relevancy->setNumberOfSteps(10);
+	relevancy->setWarningValue(6);
+	relevancy->setCriticalValue(8);
+	relevancy->setDoubleValue(9.0);	/* past critical: nine segments, red */
+	content->addSubview(relevancy);
 	y += 22;
 
 	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
@@ -398,6 +411,7 @@ main(int argc, char **argv)
 	logAt("PROGRESS", progress);
 	logAt("LEVEL", level);
 	logAt("RATING", rating);
+	logAt("RELEVANCY", relevancy);
 	/* the two bars' own geometry, and the fraction each draws, so a gate
 	 * can ask the framebuffer about the SAME numbers the board used */
 	std::printf("ZOO-FRACTION progress=%g level=%g\n", progress->fraction(),

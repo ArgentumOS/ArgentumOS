@@ -1033,6 +1033,29 @@ LevelIndicator::drawRect(const Rect &dirty)
 		}
 		return;
 	}
+	if (style_ == Style::Relevancy) {
+		/* A RELEVANCE BAR FILLS IN WHOLE SEGMENTS and takes its colour from
+		 * the level, so a high relevance reads hot the way a high capacity
+		 * does. Drawing it here, in its own branch, keeps the continuous and
+		 * discrete bars byte-identical to what they were. */
+		int n = steps_ > 0 ? steps_ : 10;
+		int on = (int) (fraction() * n + 0.5);
+		double seg = b.size.w / n;
+
+		for (int i = 0; i < n; i++) {
+			double w = seg - 2.0;
+
+			if (w > 0) {
+				ctx->fillRect(Rect{ { b.origin.x + seg * i + 1.0,
+						      b.origin.y + 1.0 },
+						    { w, b.size.h - 2.0 } },
+					      i < on ? fillColor()
+						     : Color::rgb(0.90, 0.90, 0.93));
+			}
+		}
+		ctx->strokeRoundRect(b, 2.0, Color::rgb(0.62, 0.62, 0.66), 1.0);
+		return;
+	}
 	ctx->fillRoundRect(b, 2.0, Color::rgb(0.90, 0.90, 0.93));
 	/* the discrete styles show their divisions, whether or not they are
 	 * filled: a meter that hides its scale cannot be read at a glance */
