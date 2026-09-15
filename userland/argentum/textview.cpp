@@ -349,6 +349,17 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 	std::string shown = storage_->string();
 	bool placeholder = shown.empty() && !placeholder_.empty();
 
+	/* DIAGNOSTIC (ARGENTUM_CARET_DEBUG): what the draw believes about its own
+	 * focus. A field that takes a click without showing a cursor is a draw
+	 * that believes it has no focus, so this is the question to ask first. */
+	if (std::getenv("ARGENTUM_CARET_DEBUG")) {
+		std::fprintf(stderr,
+			     "ARGENTUM-CARET view=%p placeholder=%d editing=%d "
+			     "focused=%d\n",
+			     (void *) inView, placeholder ? 1 : 0, editing_ ? 1 : 0,
+			     (inView && inView->isFirstResponder()) ? 1 : 0);
+	}
+
 	/* THE STORAGE KEEPS THE CELL'S OWN COLOUR, NEVER THE PLACEHOLDER'S.
 	 * Writing the grey in here is what greyed the FIRST typed character:
 	 * an empty field draws grey and wrote that grey into the storage's
@@ -379,33 +390,32 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 		layout_->drawInContext(*ctx, Point{ frame.origin.x,
 						    frame.origin.y + 3.0 });
 	}
-	/* TEMPORARY DIAGNOSTIC (ARGENTUM_CARET_DEBUG): what the draw believes
-	 * about its own focus. A click into an empty field shows no caret while
-	 * a keystroke does, and the condition below is the same for both - so the
-	 * question is which of these three is false, and at which frame. */
-	if (std::getenv("ARGENTUM_CARET_DEBUG")) {
-		std::fprintf(stderr,
-			     "ARGENTUM-CARET view=%p placeholder=%d editing=%d "
-			     "focused=%d\n",
-			     (void *) inView, placeholder ? 1 : 0, editing_ ? 1 : 0,
-			     (inView && inView->isFirstResponder()) ? 1 : 0);
-	}
+	drawCaret(frame, inView);
+}
 
-	/* THE CARET DRAWS ON BOTH PATHS. This used to `return` right after the
-	 * placeholder, so an empty field that had the focus showed NO cursor at
-	 * all until the first keystroke replaced the placeholder with text -
-	 * the caret appeared only once there was something to put it after,
-	 * which reads as "the click didn't take" and is exactly how it was
-	 * reported. The click DOES take the focus; the draw threw it away. */
+/* THE CARET, ON WHATEVER PATH DREW THE VALUE. A field with no text draws its
+ * PLACEHOLDER instead of a value, and a subclass that draws the placeholder
+ * ITSELF - the search field's, the token field's, each laid out around its own
+ * chrome - used to skip the value path entirely, and the caret went with it.
+ * So a click that HAD taken the focus showed no cursor until a keystroke
+ * replaced the placeholder with text, which reads as "the click didn't take".
+ *
+ * THE CARET FOLLOWS THE FOCUS: editing_ was the only switch and nothing ever
+ * set it, so a field could be typed into with no cursor at all. A field with
+ * the keyboard focus IS being edited - which is also what Cocoa shows - and
+ * the cell can ask, because the draw is handed the view. */
+void
+TextFieldCell::drawCaret(const Rect &frame, View *inView)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx || !layout_) {
+		return;
+	}
 	/* the insertion point: a hairline where the next character lands.
 	 * Its x comes from measuring the text BEFORE the insertion point,
 	 * which is the same measurement the layout draws with, so the caret
 	 * sits where the gap is. */
-	/* THE CARET FOLLOWS THE FOCUS. editing_ was the only switch, and nothing
-	 * in the toolkit ever set it, so a field could be typed into with no
-	 * cursor at all. A field with the keyboard focus IS being edited -
-	 * which is also what Cocoa shows - and the cell can ask, because the
-	 * draw is handed the view. */
 	if (editing_ || (inView && inView->isFirstResponder())) {
 		const char *s = storage_->string();
 		double x = 0;
@@ -835,6 +845,7 @@ SearchFieldCell::drawInFrame(const Rect &frame, View *inView)
 		lm.setTextStorage(&tmp);
 		lm.setTextContainer(&tc);
 		lm.drawInContext(*ctx, Point{ text.origin.x, text.origin.y + 3.0 });
+		drawCaret(text, inView);
 	} else {
 		drawValue(text, inView);
 	}
@@ -1024,6 +1035,7 @@ TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 		lm.setTextContainer(&tc);
 		lm.drawInContext(*ctx, Point{ entry.origin.x,
 					      entry.origin.y + 3.0 });
+		drawCaret(entry, inView);
 		return;
 	}
 	drawValue(entry, inView);

@@ -66,6 +66,31 @@ class Case(BaseCase):
         mon.park()
         sx, sy = pts["SEARCH"]
         mon.click_at(*at(sx, sy), settle=1.0)
+
+        # AN EMPTY FIELD'S CARET. Both of these cells draw the PLACEHOLDER
+        # themselves and used to skip the value path, which is where the caret
+        # lives - so a click showed no cursor until a keystroke replaced the
+        # placeholder with text. 16 rows separates a caret (18) from the
+        # placeholder's line (~11) and from the magnifier's ring.
+        def caret_rows(shot, cx, cy):
+            best = 0
+            for x in range(int(cx) - 116, int(cx) + 104):
+                run = tall = 0
+                for y in range(int(cy) - 11, int(cy) + 11):
+                    if shot.luma(x, y) < 140:
+                        run += 1
+                        tall = max(tall, run)
+                    else:
+                        run = 0
+                best = max(best, tall)
+            return best
+
+        shot_s = session.shot("u3d-search-caret")
+        rows_s = caret_rows(shot_s, sx, sy)
+        self.check("search-shows-the-caret-on-click", rows_s >= 16,
+                   "after a click into the empty search field the tallest dark "
+                   "run is %d rows (a caret is 18, its placeholder ~11)"
+                   % rows_s)
         for ch in "abc":
             mon.key(ch, settle=0.3)
         mon.key("ret", settle=0.6)
@@ -90,6 +115,12 @@ class Case(BaseCase):
         # ---- the token field ----
         tx, ty = pts["TOKEN"]
         mon.click_at(*at(tx, ty), settle=1.0)
+        shot_t = session.shot("u3d-token-caret")
+        rows_t = caret_rows(shot_t, tx, ty)
+        self.check("token-shows-the-caret-on-click", rows_t >= 16,
+                   "after a click into the empty token field the tallest dark "
+                   "run is %d rows (a caret is 18, its placeholder ~11)"
+                   % rows_t)
         for ch in "one":
             mon.key(ch, settle=0.25)
         mon.key("comma", settle=0.5)		# commits WITHOUT sending

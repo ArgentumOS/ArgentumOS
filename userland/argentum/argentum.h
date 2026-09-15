@@ -2281,6 +2281,14 @@ protected:
 	void setBorderColor(const Color &c) { border_ = c; }
 
 protected:
+	/// Draw the CARET alone, in the rect the value was drawn in.
+	///
+	/// For a subclass that drew its own placeholder (SearchFieldCell,
+	/// TokenFieldCell - each lays it out around its own chrome) and so never
+	/// reached the value path: the caret is not part of the value, and a
+	/// field with the focus shows one whether or not it has text.
+	void drawCaret(const Rect &frame, View *inView);
+
 	/// Draw the VALUE alone - the placeholder or the text, and the caret -
 	/// in exactly the rect given, with no bezel and no background.
 	///
