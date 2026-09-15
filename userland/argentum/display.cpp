@@ -24,6 +24,8 @@
 
 #include <unistd.h>
 
+#include <ctime>
+
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -33,6 +35,31 @@
 namespace argentum {
 
 /* ---- the process's connection ---------------------------------------- */
+
+/* --- timing the interactive path -------------------------------------
+ *
+ * A window's felt latency is two costs added together, and guessing at
+ * them is how you "fix" the wrong one: the whole-window repaint this
+ * toolkit does for ANY damage (displayIfNeeded), and the transport that
+ * pushes the result to X. Both halves are timed, and the rasterisation is
+ * timed apart from the flush, when ARGENTUM_PAINT_MS is set. Off by
+ * default: a clock read per frame is not worth paying for unasked. */
+static double
+nowMs()
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (double) ts.tv_sec * 1000.0 + (double) ts.tv_nsec / 1000000.0;
+}
+
+static bool
+timingOn(const char *name)
+{
+	const char *v = std::getenv(name);
+
+	return v && v[0] && v[0] != '0';
+}
 
 static Display *gDpy = nullptr;
 static double gPxPerPt = 1.0;
@@ -1182,6 +1209,8 @@ Window::displayIfNeeded()
 	if (!impl_->open || !impl_->dirty) {
 		return;
 	}
+	bool timing = timingOn("ARGENTUM_PAINT_MS");
+	double tPaint0 = timing ? nowMs() : 0.0;
 	Context::Impl ci;
 
 	ci.img = impl_->pimg;
@@ -1217,8 +1246,18 @@ Window::displayIfNeeded()
 	}
 	gCurrent = nullptr;
 	ctx.impl_ = nullptr;
+	double tPaint1 = timing ? nowMs() : 0.0;
+
 	flush();
 	impl_->dirty = false;
+	if (timing) {
+		/* paint = our own rasterisation; flush = the XPutImage to X.
+		 * The split is what tells drawing apart from transport. */
+		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld\n",
+			    tPaint1 - tPaint0, nowMs() - tPaint1,
+			    (long) impl_->wPx, (long) impl_->hPx);
+		std::fflush(stdout);
+	}
 }
 
 /* ---- input (U2b) ------------------------------------------------------

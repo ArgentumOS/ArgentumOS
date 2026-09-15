@@ -10,6 +10,7 @@ are a GROUP, so picking B clears A — with no group object anywhere.
 """
 
 import re
+import time
 
 from harness import BaseCase
 
@@ -31,7 +32,7 @@ class Case(BaseCase):
             return
 
         mark = len(session.log_text())
-        session.run("%s 60 &" % ZOO)
+        session.run("ARGENTUM_PAINT_MS=1 %s 60 &" % ZOO)
         if not session.wait_for(r"ZOO-READY", 120):
             self.check("board-up", False,
                        "no ZOO-READY; guest tail: " + session.tail())
@@ -65,9 +66,17 @@ class Case(BaseCase):
 
         mon.park()
 
-        # 1. the switch: a press sticks
-        mon.click_at(*at("SWITCH"), settle=1.0)
+        # 1. the switch: a press sticks - and time it. The button's own
+        # click carries a settle, which is the HARNESS waiting, not the
+        # board answering, so this presses and releases with none and
+        # measures from the press to the board's reply.
+        mon.goto(*at("SWITCH"))
+        t0 = time.time()
+        mon.press(settle=0)
+        mon.release(settle=0)
         session.wait_for(r"ZOO-CLICK Switch", 30)
+        self.note("one click, press to ZOO-CLICK: %.0f ms"
+                  % ((time.time() - t0) * 1000.0))
         out1 = session.output_since(mark)
         self.check("switch-sticks", "ZOO-CLICK Switch state=1" in out1,
                    "the switch reported state=1 after its click"
