@@ -54,6 +54,27 @@ bool rectIsEmpty(const Rect &r);
 
 /* ---- text metrics (points) ------------------------------------------ */
 
+/// A colour: components 0..1 (Cocoa's NSColor), alpha last.
+struct Color {
+	double r = 0, g = 0, b = 0, a = 1;
+
+	/// A colour from its components (0..1).
+	static Color rgb(double r, double g, double b, double a = 1.0)
+	{
+		Color c;
+
+		c.r = r;
+		c.g = g;
+		c.b = b;
+		c.a = a;
+		return c;
+	}
+	/// A colour from 0xRRGGBB.
+	static Color hex(unsigned int rgb, double a = 1.0);
+};
+
+/// The metrics of one laid-out string, in points relative to the
+/// baseline (see the text engine section).
 struct TextMetrics {
 	double widthPt = 0;
 	double ascentPt = 0;
@@ -114,6 +135,7 @@ unsigned int textRunComposeRgb(TextRun *t, std::uint32_t *box,
 unsigned int textRunComposeMask(TextRun *t, unsigned char *cov);
 
 class View;	/* U0: the anchors below reference views by pointer */
+class Window;	/* U2a: the display path */
 
 /* ---------- U0 (docs/design/cocoa-parity-plan.md): AUTO LAYOUT ----------
  *
@@ -556,9 +578,11 @@ enum class ControlState { Off = 0, On = 1, Mixed = 2 };
 /// any one of them updates the others (Cocoa's behaviour). cellSize() is
 /// in POINTS and includes the cell's insets; it uses the text engine when
 /// one is ready and otherwise falls back to a documented estimate, so it
-/// is meaningful before any display exists. drawInFrame() is a no-op until
-/// the display path lands (U2/U3) — the cell knows what to draw, the
-/// graphics context that can draw it does not exist yet.
+/// is meaningful before any display exists. drawInFrame() draws the cell's
+/// content through the CURRENT context (Context::current()), in the
+/// cell's own terms: a control calls it from its drawRect(). With no
+/// context bound — no draw pass in progress — it does nothing, so a cell
+/// can be measured or asked to draw outside a window without crashing.
 ///
 /// @see ActionCell, View
 class Cell : public Object {
@@ -631,6 +655,10 @@ public:
 	bool wraps() const { return wraps_; }
 	/// Set wrapping.
 	void setWraps(bool on) { wraps_ = on; }
+	/// The colour the cell's content is drawn in.
+	Color textColor() const { return textColor_; }
+	/// Set it.
+	void setTextColor(const Color &c) { textColor_ = c; }
 
 	/* ---- measurement ---- */
 	/// The size (points) this cell needs for its content, insets included.
@@ -641,9 +669,11 @@ public:
 	static double contentInset() { return 6.0; }
 
 	/* ---- drawing (the display path lands later) ---- */
-	/// Draw the cell's content into `frame` of `inView`. A no-op today:
-	/// there is no graphics context yet. Subclasses override it to say
-	/// what they would draw; the display milestone supplies the surface.
+	/// Draw the cell's content into `frame` of `inView` (both in the
+	/// view's coordinates). The base draws the string, aligned per
+	/// alignment() and vertically centred; a subclass adds its chrome by
+	/// overriding and, usually, calling this first. Does nothing when no
+	/// context is current.
 	virtual void drawInFrame(const Rect &frame, View *inView);
 
 	/// A copy of the cell, owned by the caller (Cocoa's copy).
@@ -659,6 +689,7 @@ protected:
 	int tag_ = 0;
 	Object *represented_ = nullptr;
 	TextAlignment align_ = TextAlignment::Left;
+	Color textColor_ = Color::rgb(0.10, 0.10, 0.12);
 	std::string fontName_;
 	double fontSize_ = 0;
 };
@@ -825,6 +856,232 @@ private:
 	Size preferred_ = { 0, 0 };
 };
 
+/* ---- U2a: the display path — connection, surface, context, window ----
+ *
+ * The layer that makes the toolkit visible. Three ideas, the same ones
+ * Cocoa uses in the same places:
+ *
+ *   - a WINDOW is a surface on screen with a content view;
+ *   - the pass that draws it walks the view tree and calls each view's
+ *     drawRect() with a CONTEXT bound to the surface;
+ *   - coordinates are POINTS: the context converts to pixels with the
+ *     session's px/pt factor, so the view tree never thinks in pixels.
+ *
+ * (Color lives up with the geometry; it outlived the drawing code.)
+ *
+ * The binding to X is by way of Xfb (the session's X server); nothing
+ * above this file knows that X exists.
+ */
+
+/// @purpose The drawing destination for one pass — Cocoa's
+/// NSGraphicsContext. A view's drawRect() draws into the context that is
+/// CURRENT during that pass (Context::current()), in the view's own
+/// coordinates and in POINTS: the context scales to the surface's pixels
+/// with the session's px/pt factor.
+///
+/// @lifetime Contexts are created by the window's draw pass and live only
+/// for it; a view must not keep a Context pointer. The CURRENT context is
+/// valid only inside drawRect().
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants Drawing outside the surface is CLIPPED, never wrapped or
+/// an error: a view may draw past its own bounds and the surface keeps
+/// only what fits. The clip is the view's frame in surface terms, so a
+/// sibling's drawing cannot bleed into another view. There is no
+/// per-view transform yet beyond the origin translation.
+///
+/// @see Window, View::drawRect
+class Context {
+public:
+	/// The context of the pass in progress, or nullptr outside a draw.
+	static Context *current();
+
+	/// Fill `rect` (in the current view's points) with `color`.
+	void fillRect(const Rect &rect, const Color &color);
+	/// Draw `utf8` with its origin at `at` (the current view's points).
+	/// `family` may be nullptr for the session's default family.
+	void drawText(const char *family, double sizePt, const Point &at,
+		      const char *utf8, const Color &color, bool bold = false);
+
+	/// The surface's size in pixels (what the pass actually has).
+	unsigned int widthPx() const;
+	/// The surface's height in pixels.
+	unsigned int heightPx() const;
+
+	/* ---- (internal) the pass's own machinery, for Window ---- */
+	/// The context's state (surface, scale, origin, clip, saved frames).
+	struct Impl;
+	/// The context's state; owned by the pass that made the context.
+	Impl *impl_ = nullptr;
+
+	/// Narrow the clip to a view's frame and move the origin there.
+	void pushFrame(int x0, int y0, int x1, int y1);
+	/// Undo the last pushFrame() (the tree walk pops as it ascends).
+	void popFrame();
+};
+
+/// A window's decoration style (Cocoa's NSWindowStyleMask, at the size
+/// this milestone needs).
+enum class WindowStyle {
+	/// No chrome: the content view fills the surface.
+	Borderless,
+	/// A titlebar with the title and a close box, drawn BY THE WINDOW.
+	Titled,
+};
+
+/// @purpose A surface on screen with a title, a frame in POINTS and one
+/// content view whose tree is drawn into it. Cocoa's NSWindow at the size
+/// this milestone needs: the surface, the chrome, the draw pass, and
+/// damage.
+///
+/// THE WINDOW DRAWS ITS OWN CHROME. There is no window manager drawing
+/// frames, titlebars or close boxes for us: a titled window paints its
+/// titlebar, its title and its close box as part of its own surface, and
+/// the content view sits inside contentRect(). That is the house rule (the
+/// desktop shell tracks and stacks windows, it does not decorate them),
+/// and it is why chromeHeightPt()/contentRect() exist on this class and
+/// not on a theme object: the decoration and the window it decorates are
+/// the same drawing pass.
+///
+/// @lifetime The window OWNS its content view (it is deleted with the
+/// window, and a replaced one is deleted with it), like a
+/// ViewController's view. A closed window is inert: every drawing call
+/// becomes a no-op rather than an error.
+///
+/// @threading Single-threaded (the UI thread); the X connection is the
+/// process's, opened on first use.
+///
+/// @invariants The window draws its own chrome (see @purpose): a titled
+/// window's titlebar, title and close box are painted by this class, and
+/// the content view is laid out inside contentRect(). The close box's
+/// hit zone and the titlebar drag are claimed when input lands (U2b), so
+/// they are drawn but not yet live. Frames are POINTS and the surface is
+/// frame.size * pxPerPt pixels — a 2x session makes them differ, and the
+/// context is what reconciles them. The damage model is COARSE in v1: any
+/// damage repaints the whole content tree, while the region handed to X
+/// is the recorded damage only. Narrowing the repaint is a local change
+/// later; the API does not change.
+///
+/// @see View, Context, ViewController
+class Window : public Object {
+public:
+	/// The class record KVC walks (Object <- Window).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A window that is not open yet.
+	Window();
+	/// Destroy the window: closes the surface and deletes the content
+	/// view (see the @lifetime).
+	~Window() override;
+
+	/// Open the surface: `title` at (xPt,yPt) sized in points. Returns
+	/// false when there is no display to open it on (which is a normal
+	/// answer in a headless context, not a crash).
+	bool open(const char *title, int xPt, int yPt, unsigned int wPt,
+		  unsigned int hPt);
+	/// Close and destroy the surface. Idempotent.
+	void close();
+	/// True while the surface exists.
+	bool isOpen() const;
+
+	/// Put the surface on screen / take it off.
+	void show();
+	/// Take the surface off screen (it keeps its ContentView and its
+	/// backing pixels).
+	void hide();
+
+	/// The window's title (drawn in its own chrome).
+	const char *title() const;
+	/// Set it.
+	void setTitle(const char *utf8);
+
+	/// The content view (the root of the drawn tree), or nullptr.
+	View *contentView() const;
+	/// Take ownership of `v` as the content view (see the @lifetime).
+	void setContentView(View *v);
+
+	/// The decoration style.
+	WindowStyle style() const;
+	/// Set it (the chrome height is kept; a borderless window ignores it).
+	void setStyle(WindowStyle style);
+	/// The titlebar's height in points (0 for a borderless window).
+	double chromeHeightPt() const;
+	/// Set the titlebar's height (the theme's hook; it is chrome, not
+	/// content, so it is the window's — and the theme's — business).
+	void setChromeHeightPt(double pt);
+	/// The content area in the window's own space (points): the surface
+	/// minus the chrome. The content view's space starts at its origin.
+	Rect contentRect() const;
+
+	/// The frame in points.
+	Rect frame() const;
+	/// Move and/or resize; a size change re-lays the content view.
+	void setFrame(const Rect &r);
+
+	/// The colour the surface is cleared to.
+	Color backgroundColor() const;
+	/// Set it.
+	void setBackgroundColor(const Color &c);
+
+	/// Mark the whole surface as needing a redraw.
+	void setNeedsDisplay();
+	/// Mark a region (window content POINTS) as needing a redraw.
+	void setNeedsDisplayInRect(const Rect &r);
+	/// True while something is waiting to be drawn.
+	bool needsDisplay() const;
+	/// (internal) A view marked itself dirty: record damage without
+	/// re-marking the tree. Apps call setNeedsDisplay().
+	void noteViewDamage();
+
+	/// Run the draw pass if anything is dirty, then present the damage.
+	void displayIfNeeded();
+	/// Present what has been drawn (no draw pass).
+	void flush();
+
+	/// The surface size in pixels.
+	unsigned int widthPx() const;
+	/// The surface height in pixels.
+	unsigned int heightPx() const;
+	/// The session's points-to-pixels factor.
+	double pxPerPt() const;
+
+private:
+	struct Impl;
+	Impl *impl_ = nullptr;
+
+	std::string title_;
+	Rect frame_ = { { 0, 0 }, { 400, 300 } };
+	WindowStyle style_ = WindowStyle::Titled;
+	double chromePt_ = 22.0;
+	Color bg_ = Color::rgb(0.93, 0.93, 0.95);
+	Color chromeColor_ = Color::rgb(0.82, 0.82, 0.85);
+	Color titleColor_ = Color::rgb(0.10, 0.10, 0.12);
+	Color closeColor_ = Color::rgb(0.85, 0.30, 0.25);
+	Color borderColor_ = Color::rgb(0.55, 0.55, 0.58);
+	View *content_ = nullptr;	/* owned (see the @lifetime) */
+
+	void layoutContent();
+	void drawChrome(Context &ctx);
+	void setChromeDirty();
+};
+
+/// Open the process's connection to the display. `name` defaults to
+/// $DISPLAY, and to ":0" when that is unset (the session's Xfb). Returns
+/// false when the connection cannot be made. Idempotent.
+bool displayOpen(const char *name = nullptr);
+/// Close the connection (all windows must be closed first).
+void displayClose();
+/// True once the connection is up.
+bool displayIsOpen();
+/// The session's points-to-pixels factor.
+double displayPxPerPt();
+/// Set it (also told to the text engine, which shapes in pixels).
+void displaySetPxPerPt(double pxPerPt);
+
 /// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each
 /// bit marks one margin or size as FLEXIBLE, so a superview resize is
 /// absorbed by the parts that carry a bit. A view with no bits set is not
@@ -915,6 +1172,40 @@ public:
 	/// walk) whose identifier is `utf8`; nullptr when nothing matches.
 	View *viewWithIdentifier(const char *utf8);
 
+	/* ---- drawing (U2a) ----------------------------------------------
+	 * The pass the window runs: a view that needs display has its
+	 * drawRect() called with the dirty rectangle (in THIS view's own
+	 * coordinates), while Context::current() is the surface to draw
+	 * into. A view never draws its children: the pass walks the tree.
+	 */
+	/// The drawing override point. The default draws nothing.
+	virtual void drawRect(const Rect &dirty);
+	/// Mark the whole view as needing a redraw (app entry point; it also
+	/// tells the window there is damage).
+	void setNeedsDisplay();
+	/// (internal) Mark this view, and with `recursive` its subtree, as
+	/// needing a redraw WITHOUT telling the window. The window's pass
+	/// uses this to seed a whole-tree repaint.
+	void markNeedsDisplay(bool recursive);
+	/// (internal) Clear the flag after the pass drew the view.
+	void clearNeedsDisplay() { needsDisplay_ = false; }
+	/// (internal) Set the window back-link for this subtree. The window
+	/// does this when a content view is installed, and addSubview() keeps
+	/// it true for views added later.
+	void setWindow(Window *w);
+	/// Mark `dirty` (in THIS view's coordinates) as needing a redraw.
+	void setNeedsDisplayInRect(const Rect &dirty);
+	/// True while the view is waiting to be drawn.
+	bool needsDisplay() const { return needsDisplay_; }
+	/// The region waiting to be drawn, in this view's coordinates.
+	const Rect &needsDisplayRect() const { return dirty_; }
+	/// This view's rectangle in the window's content space (the frame
+	/// plus every ancestor's origin).
+	Rect rectInWindow(const Rect &r) const;
+	/// The window this view is in, or nullptr (set by the window's
+	/// content view, and inherited by subviews as they are added).
+	Window *window() const { return window_; }
+
 	/* ---- the layout lifecycle (U0b) ---------------------------------
 	 * Cocoa's protocol, at the size this milestone needs:
 	 *
@@ -989,6 +1280,9 @@ private:
 	bool hidden_ = false;
 	bool translatesMask_ = true;	/* U0: the mask stands in until off */
 	bool needsLayout_ = false;	/* U0b */
+	bool needsDisplay_ = false;	/* U2a */
+	Rect dirty_ = { { 0, 0 }, { 0, 0 } };	/* U2a */
+	Window *window_ = nullptr;	/* U2a (non-owning back-link) */
 	unsigned int mask_ = AutoresizingNone;	/* U0b: springs/struts */
 	std::string identifier_;
 	View *parent_ = nullptr;

@@ -194,12 +194,43 @@ Cell::cellSize()
 void
 Cell::drawInFrame(const Rect &frame, View *inView)
 {
-	/* No graphics context exists yet (the display path arrives with the
-	 * window/view drawing milestone). Kept as the override point so a
-	 * subclass's drawing description is already in place, and so the
-	 * question "what would this cell draw?" has an answer in code. */
-	(void) frame;
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;		/* no draw pass in progress: nothing to draw on */
+	}
 	(void) inView;
+	double pt = fontSize_ > 0 ? fontSize_ : CELL_DEFAULT_PT;
+	const char *family = fontName_.empty() ? nullptr : fontName_.c_str();
+	double textW = 0;
+	double textH = pt * CELL_FALLBACK_LINE;
+
+	if (textEngineReady()) {
+		TextMetrics m = textMetrics(family, pt, string_.c_str());
+
+		textW = m.widthPt;
+		textH = m.ascentPt + m.descentPt;
+	} else {
+		textW = (double) string_.size() * pt
+			* CELL_FALLBACK_ADVANCE;
+	}
+	/* horizontally per the alignment, vertically centred in the cell */
+	double x = frame.origin.x;
+	double y = frame.origin.y + (frame.size.h - textH) * 0.5;
+
+	switch (align_) {
+	case TextAlignment::Center:
+		x += (frame.size.w - textW) * 0.5;
+		break;
+	case TextAlignment::Right:
+		x += frame.size.w - textW;
+		break;
+	case TextAlignment::Left:
+	default:
+		break;
+	}
+	ctx->drawText(family, pt, Point{ x, y }, string_.c_str(),
+		      textColor_);
 }
 
 Cell *

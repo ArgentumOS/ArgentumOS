@@ -72,6 +72,69 @@ View::View()
 {
 }
 
+/* ---- drawing (U2a) ---------------------------------------------------- */
+
+void
+View::drawRect(const Rect &dirty)
+{
+	(void) dirty;		/* the default view draws nothing */
+}
+
+void
+View::markNeedsDisplay(bool recursive)
+{
+	needsDisplay_ = true;
+	dirty_ = Rect{ { 0, 0 }, frame_.size };
+	if (!recursive) {
+		return;
+	}
+	for (View *c : children_) {
+		c->markNeedsDisplay(true);
+	}
+}
+
+void
+View::setNeedsDisplay()
+{
+	markNeedsDisplay(true);
+	if (window_) {
+		window_->noteViewDamage();
+	}
+}
+
+void
+View::setNeedsDisplayInRect(const Rect &r)
+{
+	needsDisplay_ = true;
+	/* v1 narrows nothing: the recorded rect is the view's whole frame */
+	dirty_ = Rect{ { 0, 0 }, frame_.size };
+	if (window_) {
+		window_->noteViewDamage();
+	}
+}
+
+Rect
+View::rectInWindow(const Rect &r) const
+{
+	double x = r.origin.x;
+	double y = r.origin.y;
+
+	for (const View *v = this; v; v = v->parent_) {
+		x += v->frame_.origin.x;
+		y += v->frame_.origin.y;
+	}
+	return Rect{ { x, y }, r.size };
+}
+
+void
+View::setWindow(Window *w)
+{
+	window_ = w;
+	for (View *c : children_) {
+		c->setWindow(w);
+	}
+}
+
 /* ---- the layout lifecycle (U0b) -------------------------------------- */
 
 void
@@ -187,6 +250,13 @@ View::addSubview(View *v)
 	v->removeFromSuperview();
 	v->parent_ = this;
 	children_.push_back(v);
+	/* a view added after the window was installed still learns its
+	 * window, so its drawing and damage reach the pass */
+	if (window_) {
+		v->setWindow(window_);
+	}
+	v->setNeedsLayout();
+	setNeedsDisplay();
 }
 
 void

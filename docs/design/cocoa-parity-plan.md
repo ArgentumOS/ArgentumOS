@@ -202,9 +202,35 @@ as a compatibility path for un-migrated views, with a migration list.
   dependent keys, `.initial`/`.old`, and the documented "mutate through
   the table" discipline. Gate: an observer receives a change with the old
   and new values; removing it stops delivery; a dependent key fires.
-- **U2 — the button family.** `NSButton` types (switch/checkbox, radio,
-  disclosure, gradient, help, inline, recessed) + `NSButtonCell`.
-  Gate: the zoo board shows every type; each fires and reports state.
+- **U2 — the display path, then the button family.**
+  **U2a — the display path. DONE (2026-09).** `Window` (a surface on
+  screen: title, frame in points, content view, damage, the draw pass and
+  the present), `Context` (Cocoa's NSGraphicsContext: a pass-scoped
+  drawing target with `fillRect`/`drawText`, in points, clipped to the
+  view that is drawing), `View::drawRect`/`setNeedsDisplay`/
+  `rectInWindow`/`window()`, the process's X connection (through Xfb),
+  `pxPerPt` scaling (also told to the text engine, which shapes in
+  pixels), and `Cell::drawInFrame` now drawing for real through the
+  current context (aligned, vertically centred, safe with no context).
+  v1 boundaries, all documented: damage is COARSE (any damage repaints the
+  whole content tree while the region handed to X is the recorded damage),
+  and the present is a plain `XPutImage` (the SHM fast path is a later
+  change to that one function).
+  **THE WINDOW DRAWS ITS OWN CHROME (user decision, 2026-09).** No window
+  manager decorates for us: a titled window paints its titlebar, its
+  title and its close box as part of its own surface, and the content
+  view is laid out inside `contentRect()`. `WindowStyle` (Borderless /
+  Titled) and `chromeHeightPt()` are therefore the WINDOW's API, not a
+  theme object's. The close box's hit zone and the titlebar drag are
+  DRawn but not yet live — they land with input in U2b. Gate
+  `tests/cases/uikit_u2a.py` 9/9 (slow tier): the probe opens a real
+  window on Xfb, logs its geometry and colours, and the case checks the
+  FRAMEBUFFER — the tile colour, the content colour, the chrome pixel
+  (proving the window's own chrome is on screen) and the text's ink.
+  **U2b — `Control` + the button family. NEXT.** `NSButton` types
+  (switch/checkbox, radio, disclosure, gradient, help, inline, recessed)
+  + `NSButtonCell`, on top of `Cell`/`ActionCell`. Gate: the zoo board
+  shows every type; each fires and reports state.
 - **U3 — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
@@ -318,12 +344,17 @@ flexible-right-margin case (the view stays put, the margin absorbs the
 delta), the three-way split, a constrained child, and `layout()` running
 once while dirty and not again when clean.
 
-**Next:** U2 — the display path, `Control` and the first real control
-(`Button`). U1 is closed: the base object + KVC (U1a), the notification
-center (U1b), the cell + target/action (U1c) and the view controller
-(U1d) all landed, each with its reference page, and the documentation
-rule paid off exactly as intended — every class arrived documented, with
-the coverage gate in the build catching the gaps (42 pages).
+**U2a (the display path) is DONE** — see the U2 bullet for what landed,
+the two documented v1 boundaries and the self-drawn-chrome rule. **Next:
+U2b** — `Control` (the cell host) and the first real control, `Button`,
+plus the input the chrome needs (titlebar drag, close box) — the toolkit
+is display-capable as of U2a, so U2b is where a control first draws
+itself and responds.
+U1 is closed: the base object + KVC (U1a), the notification center
+(U1b), the cell + target/action (U1c) and the view controller (U1d) all
+landed, each with its reference page, and the documentation rule paid off
+exactly as intended — every class arrived documented, with the coverage
+gate in the build catching the gaps (52 pages now).
 
 ## 6. Status bookkeeping
 
