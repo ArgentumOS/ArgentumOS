@@ -317,6 +317,33 @@ class Case(BaseCase):
                    "cursor's own area is a few hundred; a dead input path or a "
                    "stopped drain changes none)" % moved)
 
+        # THE WAY A PERSON EXITS: closing the window. Everything above exits
+        # through the TIMER (ZOO-TIMEOUT), which is what a gate does; a user
+        # clicks the close box, and that goes through the window's close
+        # request - a different teardown, and the one the shadow's close hook
+        # is on. Then the same two properties are asked again.
+        session.run("%s 30 &" % ZOO)
+        deadline = time.time() + 60
+        while time.time() < deadline and session.count(r"ZOO-READY") < 4:
+            time.sleep(0.25)
+        cb = re.search(r"ZOO-CLOSE x=([\d.]+) y=([\d.]+)",
+                       session.log_text())
+        if cb:
+            mon.click_at(int(float(cb.group(1))),
+                         int(screen_h - float(cb.group(2))), settle=0.6)
+        closed = session.wait_for(r"ZOO-CLOSED", 30)
+        self.check("close-box-closes-the-window", bool(cb) and closed,
+                   "clicking the close box made the board exit: %s (close box "
+                   "%s)" % (closed, cb.groups() if cb else "not logged"))
+        shot_e = session.shot("after-close")
+        mon.move(-30, 0)
+        mon.nudge()
+        shot_f = session.shot("after-close-move")
+        moved = shot_e.diff(shot_f)
+        self.check("pointer-still-moves-after-close", moved > 100,
+                   "after closing the window the pointer moved %d pixels (a "
+                   "dead input path or a stopped drain changes none)" % moved)
+
         self.check("board-still-alive",
                    "ZOO-TIMEOUT" in session.output_since(mark)
                    or "ZOO-CLOSED" in session.output_since(mark)

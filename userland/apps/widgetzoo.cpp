@@ -323,6 +323,15 @@ main(int argc, char **argv)
 	 * screen positions if it knows where the window starts */
 	std::printf("ZOO-WIN x=%g y=%g chrome=%g\n", w.frame().origin.x,
 		    w.frame().origin.y, w.chromeHeightPt());
+	/* the close box's own screen position: a gate that exits the way a
+	 * PERSON does - closing the window - has to click it */
+	{
+		Rect cb = w.closeBoxRect();
+
+		std::printf("ZOO-CLOSE x=%g y=%g\n",
+			    w.frame().origin.x + cb.origin.x + cb.size.w / 2.0,
+			    w.frame().origin.y + cb.origin.y + cb.size.h / 2.0);
+	}
 	if (diag) {
 		std::printf("ZOO-SCREEN w=%d h=%d\n",
 			    DisplayWidth(diag, DefaultScreen(diag)),
