@@ -89,7 +89,9 @@ Control::sendAction()
 	}
 	ActionCell *ac = dynamic_cast<ActionCell *>(cell_);
 
-	return ac ? ac->sendAction() : false;
+	/* the CONTROL is the sender, not the cell: a handler that wants to
+	 * know which control was clicked gets the control */
+	return ac ? ac->sendAction(this) : false;
 }
 
 bool

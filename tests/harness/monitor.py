@@ -102,7 +102,7 @@ class Monitor:
         self.send("mouse_button %d" % button)
         time.sleep(settle)
 
-    def drag(self, x0, y0, x1, y1, steps=8, settle=0.4):
+    def drag(self, x0, y0, x1, y1, steps=14, settle=0.6):
         """Press at (x0,y0), move to (x1,y1) in steps, release.
 
         Steps matter: a drag is a sequence of motion events, and a control
@@ -112,8 +112,11 @@ class Monitor:
         self.goto(x0, y0)
         self.press()
         for i in range(1, steps + 1):
+            # dt is deliberately large: the guest drops pointer chunks sent
+            # faster than it drains them, and a drag that loses motion
+            # halfway looks like a control that does not track
             self.goto(int(x0 + (x1 - x0) * i / steps),
-                      int(y0 + (y1 - y0) * i / steps), dt=0.05)
+                      int(y0 + (y1 - y0) * i / steps), dt=0.12)
         self.release(settle=settle)
 
     # --- keyboard -----------------------------------------------------

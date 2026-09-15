@@ -240,7 +240,40 @@ as a compatibility path for un-migrated views, with a migration list.
   (flat bezel + title) and `Button` (title IS the cell's stringValue;
   momentary or toggle; a toggle shows the state it is about to take while
   pressed and puts it back if dragged off).
-  **THE BLOCKER: the test guest has no pointer input path.** The harness
+  **U2b IS VERIFIED (2026-09, after the USB-mouse decision).** The gate
+  boots a real pointer device — `-machine pc,i8042=off` + `qemu-xhci` +
+  `usb-mouse`, exactly what mk/00-base.mk gives the dev flow, and the
+  i8042=off is load-bearing because with a PS/2 mouse present QEMU routes
+  the monitor's `mouse_move` to that device while the kernel's PS/2 path
+  is retired. `tests/cases/uikit_u2b.py` 11/11 drives the REAL pointer:
+  the server sees it (the probe reads the pointer position on its own X
+  connection), it reaches the button, one click sends exactly one action,
+  the toggle flips to state 1, and a click on the window's own close box
+  closes the window.
+  Three findings the gate produced, all fixed:
+    * **THE HARNESS MONITOR'S Y IS MIRRORED** against the guest's:
+      measured, not assumed — asking for y=120 put the X pointer at y=959
+      on a 1080-tall screen. Every screen coordinate in a case needs
+      `screen_h - y`, and the case now derives screen_h from the probe's
+      own log.
+    * **`Control` sent the CELL as the action's sender.** Cocoa sends the
+      CONTROL, which is how a handler knows which button was clicked;
+      `ActionCell::sendAction(sender)` now takes the sender and the
+      control passes itself.
+    * **A chrome drag must be CAPTURED.** Testing `inChrome()` first meant
+      the drag died as soon as the pointer left the titlebar — i.e. on any
+      downward drag after one step.
+  **STILL BROKEN, isolated in `tests/cases/uikit_u2b_drag.py` (2 XFAILs,
+  not quietly skipped):** the drag's delta stops after the first motion
+  event and the probe then stops answering — a window MOVE
+  (`XMoveWindow`) inside the motion path wedges the client. Candidates to
+  separate, in order: the `XSync` after every move against Xfb's
+  asynchronous drain, or Xfb's own handling of a moving window. A pure
+  move also had to stop returning early in `setFrame` (it never told X at
+  all), which is what brought the wedge into view.
+
+  **THE EARLIER BLOCKER, for the record: the test guest has no pointer
+  input path.** The harness
   boots `pc,usb=off` with no pointer device and the kernel's PS/2 code
   path is retired (psaux → the native `/System/Devices/mouse`), so the
   monitor's relative `mouse_move` reaches nothing; the probe's log shows

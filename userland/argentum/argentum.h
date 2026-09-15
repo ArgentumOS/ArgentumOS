@@ -732,9 +732,10 @@ public:
 	/// Set the action's name.
 	void setAction(const char *name);
 
-	/// Deliver the action to the target. False when there is no target or
+	/// Deliver the action to the target, with `sender` as the sender
+	/// (nullptr means the CELL itself). False when there is no target or
 	/// the target does not respond to the action's name.
-	bool sendAction();
+	bool sendAction(Object *sender = nullptr);
 
 	/// A copy of the cell, owned by the caller.
 	Cell *copy() const override;
@@ -1425,8 +1426,10 @@ public:
 	const char *action() const;
 	/// Set it.
 	void setAction(const char *name);
-	/// Send the action now (the cell's sendAction()). False when there is
-	/// nothing to send or nobody to send it to.
+	/// Send the action now. THE CONTROL IS THE SENDER — Cocoa's rule, and
+	/// the reason a handler can ask which button was clicked; the cell is
+	/// only the sender when a cell sends on its own behalf. False when
+	/// there is nothing to send or nobody to send it to.
 	bool sendAction();
 
 	/// True while the control accepts input.

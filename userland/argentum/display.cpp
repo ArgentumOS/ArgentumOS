@@ -577,7 +577,15 @@ Window::setFrame(const Rect &r)
 	bool resized = (r.size.w != frame_.size.w || r.size.h != frame_.size.h);
 
 	frame_ = r;
-	if (!impl_->open || !resized) {
+	if (!impl_->open) {
+		return;
+	}
+	if (!resized) {
+		/* a move is still a move: without telling X the window would
+		 * move in the model and stay put on screen */
+		XMoveWindow(gDpy, impl_->xwin, (int) r.origin.x,
+			    (int) r.origin.y);
+		XSync(gDpy, False);
 		return;
 	}
 	double pp = impl_->pxPerPt;
@@ -887,6 +895,28 @@ Window::pumpEvent()
 		me.shift = (ev.xbutton.state & ShiftMask) != 0;
 		me.control = (ev.xbutton.state & ControlMask) != 0;
 		me.alt = (ev.xbutton.state & Mod1Mask) != 0;
+
+		/* 0. a drag in progress is CAPTURED: it follows the pointer
+		 * wherever it goes. Testing the chrome first would stop the drag
+		 * the moment the pointer left the titlebar - which a downward
+		 * drag does immediately. */
+		if (dragging_) {
+			if (released) {
+				dragging_ = false;
+				return true;
+			}
+			if (ev.type == MotionNotify) {
+				setFrame(Rect{ { dragWinX_
+						 + (ev.xbutton.x_root - dragRootX_)
+						 / pp,
+						 dragWinY_
+						 + (ev.xbutton.y_root - dragRootY_)
+						 / pp },
+					       frame_.size });
+				return true;
+			}
+			return true;
+		}
 
 		/* 1. the chrome: the window's own, so the window handles it */
 		if (inChrome(winPt)) {

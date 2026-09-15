@@ -21,23 +21,45 @@ class Case(BaseCase):
     timeout = 420
 
     def run(self, ctx):
-        # BLOCKED, and deliberately not skipped quietly: the test guest has
-        # NO POINTER INPUT PATH.  The harness boots "pc,usb=off" with no
-        # pointer device, and the kernel's PS/2 code path was retired
-        # (psaux -> the native /System/Devices/mouse device), so the
-        # monitor's relative mouse_move reaches nothing.  The probe logs
-        # that no event ever arrived (presses=0) and the window never even
-        # opened its drag.  Xfb already carries the seam for this
-        # (XFB_MOUSE / XFB_KBD, "so test harnesses can feed PS/2 packets
-        # over a raw serial line"); what is missing is the harness side:
-        # either an extra serial wired to XFB_MOUSE, or a real pointer
-        # device attached at boot (usb=on + usb-tablet, which also needs
-        # the kernel's USB HID mouse and Xfb's poller to see it).
-        raise Skip("no pointer input reaches the guest: harness boots "
-                   "pc,usb=off and psaux is retired; wire XFB_MOUSE to an "
-                   "extra serial (or attach usb-tablet) before this can be "
-                   "verified - see docs/design/cocoa-parity-plan.md (U2b)")
-        session = ctx.boot()
+        # A REAL pointer device, the way mk/00-base.mk gives the dev flow
+        # one: a USB mouse on xHCI with the PS/2 controller absent.  The
+        # i8042=off is load-bearing - with a PS/2 mouse present QEMU routes
+        # the monitor's mouse_move to THAT device, and the kernel's PS/2
+        # path is retired (psaux -> the native /System/Devices/mouse), so
+        # the injection would reach nothing.
+        session = ctx.boot(machine="pc,i8042=off",
+                           extra=["-device", "qemu-xhci",
+                                  "-device", "usb-mouse"])
+        ready = session.shell_ready(150)
+        self.check("shell-ready", ready,
+                   "the serial console has a shell" if ready
+                   else "no shell; guest tail: " + session.tail())
+        if not ready:
+            return
+
+        # What the kernel did with the USB mouse is verifiable directly:
+        # the guest log shows the xHCI enumeration and "usb-mouse: mouse on
+        # slot 1".  What is NOT yet verified is Xfb's side of the path -
+        # whether the device Xfb opens (/System/Devices/mouse, the by-role
+        # alias) exists and whether pointer records arrive through it.
+        mark0 = len(session.log_text())
+        session.run("ls -l /System/Devices/mouse; "
+                    "ls -l /System/Devices/USB/Mouse 2>&1 | head -3")
+        devs = session.output_since(mark0)
+        for line in devs.strip().splitlines():
+            if line.startswith(("l", "-", "c", "ls:")):
+                self.note("device: " + line.strip())
+        # the alias is a relative symlink (mouse -> USB/Mouse), so ask the
+        # TARGET, not the alias' own line
+        if "USB/Mouse" not in devs:
+            raise Skip("the role alias /System/Devices/mouse does not point "
+                       "at a mouse device, so Xfb (hw/xfb/fnxinput.c reads "
+                       "it; XFB_MOUSE overrides) has nothing to poll - "
+                       "docs/design/cocoa-parity-plan.md (U2b)")
+        session.run("tail -12 '/System/Variable Data/log/Xfb.log' 2>&1")
+        xlog = session.output_since(mark0)
+        for line in xlog.strip().splitlines()[-12:]:
+            self.note("xfb: " + line.strip()[:120])
         ready = session.shell_ready(150)
         self.check("shell-ready", ready,
                    "the serial console has a shell" if ready
@@ -71,11 +93,46 @@ class Case(BaseCase):
 
         mon = session.monitor()
 
+        # The seam is RELATIVE: park in the corner so the guest clamps the
+        # pointer and (0,0) is a known starting point.
+        mon.park()
+
+        # And its Y is MIRRORED against the guest's: measured, not assumed -
+        # asking for y=120 put the X pointer at y=959 on a 1080-tall screen.
+        # Every screen coordinate below is converted with that.
+        hm = re.search(r"U2B-SCREEN w=(\d+) h=(\d+)",
+                       session.output_since(mark))
+        if hm is None:
+            self.check("screen-size-known", False,
+                       "the probe did not report its screen size")
+            return
+        screen_h = int(hm.group(2))
+        self.check("screen-size-known", screen_h > 0,
+                   "the X screen is %sx%s" % (hm.group(1), hm.group(2)))
+
+        def at(x, y):
+            """(x, y) in X screen coordinates -> monitor coordinates."""
+            return int(x), int(screen_h - y)
+        session.wait_for(r"U2B-POINTER", 20)
+        out0 = session.output_since(mark)
+        self.check("server-sees-the-pointer",
+                   "U2B-POINTER" in out0,
+                   "the X server reported a pointer position (input reaches "
+                   "the guest)" if "U2B-POINTER" in out0 else
+                   "the server never moved its pointer: the input path from "
+                   "the USB mouse to Xfb is the failure, not the toolkit")
+
         # 1. a click on the first button fires its action
         px, py = point("PRESS")
-        mon.click_at(int(px), int(py), settle=1.0)
+        mon.click_at(*at(px, py), settle=1.0)
         session.wait_for(r"U2B-ACTION pressed n=1", 30)
         out2 = session.output_since(mark)
+        ptr = re.findall(r"U2B-POINTER x=(-?\d+) y=(-?\d+)", out2)
+        self.check("pointer-went-to-the-button",
+                   any(abs(int(x) - int(px)) <= 6 and abs(int(y) - int(py)) <= 6
+                       for x, y in ptr),
+                   "the pointer reached (%d,%d) on screen; positions seen: %s"
+                   % (int(px), int(py), ptr[-3:]))
         self.check("click-fires-action", "U2B-ACTION pressed n=1" in out2,
                    "one click on the button sent the action exactly once"
                    if "U2B-ACTION pressed n=1" in out2
@@ -83,7 +140,7 @@ class Case(BaseCase):
 
         # 2. a click on the toggle flips its state (and it stays)
         tx, ty = point("TOGGLE")
-        mon.click_at(int(tx), int(ty), settle=1.0)
+        mon.click_at(*at(tx, ty), settle=1.0)
         session.wait_for(r"U2B-ACTION toggled n=1", 30)
         out3 = session.output_since(mark)
         self.check("toggle-flips", "U2B-ACTION toggled n=1 state=1" in out3,
@@ -92,31 +149,21 @@ class Case(BaseCase):
                    else "toggle did not reach state 1; tail: "
                    + session.tail())
 
-        # 3. dragging the titlebar moves the window (root-coordinate delta)
-        wx, wy = float(win.group(1)), float(win.group(2))
-        gx, gy = point("TITLEBAR")
-        mon.drag(int(gx), int(gy), int(gx) + 90, int(gy) + 60)
-        moved = session.wait_for(r"U2B-MOVED x=([\d.]+)", 30)
-        out4 = session.output_since(mark)
-        m = re.search(r"U2B-MOVED x=([\d.]+) y=([\d.]+)", out4)
-        self.check("titlebar-drag-moves-window", moved and m is not None,
-                   "the window reported a new origin (%s,%s) after the drag"
-                   % (m.group(1), m.group(2)) if m else "the window never moved")
-        if m is not None:
-            nx, ny = float(m.group(1)), float(m.group(2))
-            self.check("drag-follows-the-pointer",
-                       abs(nx - (wx + 90)) <= 12 and abs(ny - (wy + 60)) <= 12,
-                       "moved (%g,%g) -> (%g,%g): a drag of (+90,+60)"
-                       % (wx, wy, nx, ny))
-
-        # 4. the close box closes the window (the window's own chrome)
+        # 3. the close box closes the window (the window's own chrome).
+        # The titlebar DRAG is deliberately NOT here: it is unverified and
+        # its wedge would hide this check - see uikit_u2b_drag.py.
         cx, cy = point("CLOSE")
-        mon.click_at(int(cx), int(cy), settle=1.0)
-        closed = session.wait_for(r"U2B-OK", 30)
+        mon.click_at(*at(cx, cy), settle=1.0)
+        session.wait_for(r"U2B-OK", 60)
         out5 = session.output_since(mark)
-        self.check("close-box-closes", closed and "U2B-CLOSED" in out5,
+        # U2B-CLOSED, not U2B-OK: the probe also prints OK when its loop
+        # times out, and that is exactly the vacuous pass to avoid
+        self.check("close-box-closes", "U2B-CLOSED" in out5,
                    "clicking the window's own close box closed it"
-                   if closed else "the close box did nothing")
+                   if "U2B-CLOSED" in out5
+                   else "the close box did nothing (probe said: "
+                   + ("TIMEOUT" if "U2B-TIMEOUT" in out5 else "nothing")
+                   + ")")
         m2 = re.search(r"U2B-CLOSED presses=(\d+) toggles=(\d+) state=(\d+)",
                        out5)
         if m2 is not None:

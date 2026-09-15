@@ -9,6 +9,12 @@
  */
 #include <argentum/argentum.h>
 
+/* the probe opens its OWN X connection for one diagnostic: XQueryPointer
+ * tells us where the SERVER thinks the pointer is. Without that, a gate
+ * failure cannot be attributed between "the input never reached the
+ * server" and "the server delivered it and the toolkit dropped it". */
+#include <X11/Xlib.h>
+
 #include <cstdio>
 #include <ctime>
 #include <unistd.h>
@@ -72,7 +78,7 @@ main()
 		std::fflush(stdout);
 		return 1;
 	}
-	Window w;
+	argentum::Window w;
 
 	if (!w.open("U2B", 80, 60, 300, 220)) {
 		std::printf("U2B-NO-WINDOW\n");
@@ -117,12 +123,27 @@ main()
 	std::printf("U2B-READY\n");
 	std::fflush(stdout);
 
+	/* second connection, for the pointer-position diagnostic only */
+	/* ":0", not NULL: $DISPLAY is unset in the guest shell, which is
+	 * exactly why displayOpen() falls back to ":0" */
+	Display *diag = XOpenDisplay(":0");
+	::Window rootWin = diag ? DefaultRootWindow(diag) : 0;
+	int lastPx = -1, lastPy = -1;
+
+	std::printf("U2B-DIAG display=%s\n", diag ? "open" : "closed");
+	if (diag) {
+		std::printf("U2B-SCREEN w=%d h=%d\n",
+			    DisplayWidth(diag, DefaultScreen(diag)),
+			    DisplayHeight(diag, DefaultScreen(diag)));
+	}
+	std::fflush(stdout);
+
 	/* pump REAL events until the close box is hit (or we time out) */
 	double t0 = now_s();
 	double lastOriginX = w.frame().origin.x;
 	double lastOriginY = w.frame().origin.y;
 
-	while (now_s() - t0 < 40.0) {
+	while (now_s() - t0 < 90.0) {
 		bool had = w.pumpEvent();
 
 		w.displayIfNeeded();
@@ -137,12 +158,33 @@ main()
 				    lastOriginY);
 			std::fflush(stdout);
 		}
+		if (diag) {
+			::Window r, c;
+			int rx, ry, wx, wy;
+			unsigned int m;
+
+			if (XQueryPointer(diag, rootWin, &r, &c, &rx, &ry, &wx, &wy,
+					  &m)
+			    && (rx != lastPx || ry != lastPy)) {
+				lastPx = rx;
+				lastPy = ry;
+				std::printf("U2B-POINTER x=%d y=%d\n", rx, ry);
+				std::fflush(stdout);
+			}
+		}
 		if (!had) {
 			usleep(4 * 1000);
 		}
 	}
-	std::printf("U2B-CLOSED presses=%d toggles=%d state=%d\n", presses,
-		    toggles, (int) toggleState);
+	/* "closed" and "gave up" must be distinguishable: a probe that prints
+	 * its OK line on timeout makes every gate check vacuous */
+	if (w.isCloseRequested()) {
+		std::printf("U2B-CLOSED presses=%d toggles=%d state=%d\n",
+			    presses, toggles, (int) toggleState);
+	} else {
+		std::printf("U2B-TIMEOUT presses=%d toggles=%d state=%d\n",
+			    presses, toggles, (int) toggleState);
+	}
 	std::printf("U2B-OK\n");
 	std::fflush(stdout);
 	usleep(300 * 1000);

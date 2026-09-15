@@ -374,12 +374,12 @@ ActionCell::setAction(const char *name)
 }
 
 bool
-ActionCell::sendAction()
+ActionCell::sendAction(Object *sender)
 {
 	if (!target_ || action_.empty()) {
 		return false;
 	}
-	return target_->sendAction(action_.c_str(), this);
+	return target_->sendAction(action_.c_str(), sender ? sender : this);
 }
 
 Cell *
