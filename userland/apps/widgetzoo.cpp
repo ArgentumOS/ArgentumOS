@@ -146,12 +146,12 @@ now_s()
 
 /* one row of the board: a named button of the given type and bezel */
 static Button *
-row(View *content, Zoo &zoo, const char *title, double y,
+row(View *content, Zoo &zoo, double x, const char *title, double y,
     ButtonType type, BezelStyle bezel)
 {
 	Button *b = new Button();
 
-	b->setFrame(Rect{ { 16, y }, { 240, 28 } });
+	b->setFrame(Rect{ { x, y }, { 240, 28 } });
 	b->setTitle(title);
 	b->setType(type);
 	b->setBezelStyle(bezel);
@@ -198,32 +198,37 @@ main(int argc, char **argv)
 	}
 	Zoo zoo;
 	View *content = new View();
+	/* THREE COLUMNS, by kind: the button family, then the text family, then
+	 * the value controls. One `y` cursor per column, and the window is sized
+	 * at the end to the TALLEST of them - a board that is one long list runs
+	 * off the bottom of the screen and is slow to read. */
 	double y = 12;
+	double x = 16;
 
-	row(content, zoo, "Rounded", y, ButtonType::MomentaryPushIn,
+	row(content, zoo, x, "Rounded", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::Rounded); y += 34;
-	row(content, zoo, "RoundRect", y, ButtonType::MomentaryPushIn,
+	row(content, zoo, x, "RoundRect", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::RoundRect); y += 34;
-	row(content, zoo, "Square", y, ButtonType::MomentaryPushIn,
+	row(content, zoo, x, "Square", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::RegularSquare); y += 34;
-	gradBtn = row(content, zoo, "Gradient", y, ButtonType::MomentaryPushIn,
+	gradBtn = row(content, zoo, x, "Gradient", y, ButtonType::MomentaryPushIn,
 		      BezelStyle::Gradient); y += 34;
-	row(content, zoo, "Recessed", y, ButtonType::MomentaryPushIn,
+	row(content, zoo, x, "Recessed", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::Recessed); y += 34;
-	row(content, zoo, "Inline", y, ButtonType::MomentaryPushIn,
+	row(content, zoo, x, "Inline", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::Inline); y += 34;
-	Button *circular = row(content, zoo, "Circular",
+	Button *circular = row(content, zoo, x, "Circular",
 	    y, ButtonType::MomentaryPushIn,
 	    BezelStyle::Circular); y += 34;
-	Button *help = row(content, zoo, "Help", y, ButtonType::MomentaryPushIn,
+	Button *help = row(content, zoo, x, "Help", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::HelpButton); y += 34;
-	row(content, zoo, "Disclosure", y, ButtonType::Toggle,
+	row(content, zoo, x, "Disclosure", y, ButtonType::Toggle,
 	    BezelStyle::Disclosure); y += 34;
-	switchBtn = row(content, zoo, "Switch", y, ButtonType::Switch,
+	switchBtn = row(content, zoo, x, "Switch", y, ButtonType::Switch,
 			BezelStyle::Rounded); y += 34;
-	radioA = row(content, zoo, "Radio A", y, ButtonType::Radio,
+	radioA = row(content, zoo, x, "Radio A", y, ButtonType::Radio,
 		     BezelStyle::Rounded); y += 34;
-	radioB = row(content, zoo, "Radio B", y, ButtonType::Radio,
+	radioB = row(content, zoo, x, "Radio B", y, ButtonType::Radio,
 		     BezelStyle::Rounded); y += 34;
 	/* ---- the text family (U3b) -------------------------------------
 	 * A label IS a text field configured not to edit or draw a bezel
@@ -231,13 +236,17 @@ main(int argc, char **argv)
 	 * rather than a class of its own. */
 	TextField *lbl = TextField::label("A label (a text field, no bezel)");
 
-	lbl->setFrame(Rect{ { 16, y }, { 240, 22 } });
+	double yButtons = y;		/* column 1 is done */
+
+	x = 286;			/* column 2: the text family */
+	y = 12;
+	lbl->setFrame(Rect{ { x, y }, { 240, 22 } });
 	content->addSubview(lbl);
 	y += 30;
 
 	TextField *ph = new TextField();
 
-	ph->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	ph->setFrame(Rect{ { x, y }, { 240, 26 } });
 	ph->setPlaceholder("Placeholder text");
 	content->addSubview(ph);
 	y += 34;
@@ -246,14 +255,14 @@ main(int argc, char **argv)
 	TextField *cut = TextField::label(
 		"A label whose text is far too long for the frame it was given");
 
-	cut->setFrame(Rect{ { 16, y }, { 200, 22 } });
+	cut->setFrame(Rect{ { x, y }, { 200, 22 } });
 	content->addSubview(cut);
 	y += 30;
 
 	/* wrapped prose, drawn by the stack through the view */
 	TextView *tview = new TextView();
 
-	tview->setFrame(Rect{ { 16, y }, { 240, 66 } });
+	tview->setFrame(Rect{ { x, y }, { 240, 66 } });
 	tview->setDrawsBackground(true);
 	tview->setBackgroundColor(Color::rgb(1.0, 1.0, 1.0));
 	tview->setString("A text view wraps its text to its own width, and lays "
@@ -264,7 +273,7 @@ main(int argc, char **argv)
 	/* an EDITABLE field (U3c): a click focuses it, keys edit it, Return
 	 * commits (the action) */
 	editField = new TextField();
-	editField->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	editField->setFrame(Rect{ { x, y }, { 240, 26 } });
 	editField->setPlaceholder("Type here, then Return");
 	editField->setTarget(&zoo);
 	editField->setAction("commit");
@@ -274,7 +283,7 @@ main(int argc, char **argv)
 	/* a SEARCH field (U3d): a magnifier, and a clear button once there is
 	 * something to clear */
 	searchField = new SearchField();
-	searchField->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	searchField->setFrame(Rect{ { x, y }, { 240, 26 } });
 	searchField->setTarget(&zoo);
 	searchField->setAction("search");
 	content->addSubview(searchField);
@@ -282,7 +291,7 @@ main(int argc, char **argv)
 
 	/* a TOKEN field (U3d): Return or a comma commits what was typed */
 	tokenField = new TokenField();
-	tokenField->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	tokenField->setFrame(Rect{ { x, y }, { 240, 26 } });
 	tokenField->setTarget(&zoo);
 	tokenField->setAction("tokens");
 	content->addSubview(tokenField);
@@ -290,7 +299,11 @@ main(int argc, char **argv)
 
 	/* ---- the value controls (U4) ----------------------------------- */
 	slider = new Slider();
-	slider->setFrame(Rect{ { 16, y }, { 240, 24 } });
+	double yText = y;		/* column 2 is done */
+
+	x = 556;			/* column 3: the value controls */
+	y = 12;
+	slider->setFrame(Rect{ { x, y }, { 240, 24 } });
 	slider->setMinValue(0);
 	slider->setMaxValue(100);
 	slider->setDoubleValue(0);
@@ -303,7 +316,7 @@ main(int argc, char **argv)
 	/* the CIRCULAR slider: a dial in a square box (a dial ignores extra
 	 * width, as Cocoa's does), 0..1 so that a point's angle is the value */
 	dial = new Slider();
-	dial->setFrame(Rect{ { 16, y }, { 30, 30 } });
+	dial->setFrame(Rect{ { x, y }, { 30, 30 } });
 	dial->setType(SliderType::Circular);
 	dial->setMinValue(0);
 	dial->setMaxValue(1);
@@ -314,7 +327,7 @@ main(int argc, char **argv)
 	y += 36;
 
 	stepper = new Stepper();
-	stepper->setFrame(Rect{ { 16, y }, { 24, 26 } });
+	stepper->setFrame(Rect{ { x, y }, { 24, 26 } });
 	stepper->setMinValue(0);
 	stepper->setMaxValue(100);
 	stepper->setDoubleValue(0);
@@ -324,7 +337,7 @@ main(int argc, char **argv)
 	y += 34;
 
 	progress = new ProgressIndicator();
-	progress->setFrame(Rect{ { 16, y }, { 240, 14 } });
+	progress->setFrame(Rect{ { x, y }, { 240, 14 } });
 	progress->setIndeterminate(false);
 	progress->setMinValue(0);
 	progress->setMaxValue(1);
@@ -333,7 +346,7 @@ main(int argc, char **argv)
 	y += 22;
 
 	level = new LevelIndicator();
-	level->setFrame(Rect{ { 16, y }, { 240, 14 } });
+	level->setFrame(Rect{ { x, y }, { 240, 14 } });
 	level->setStyle(LevelIndicator::Style::DiscreteCapacity);
 	level->setMinValue(0);
 	level->setMaxValue(10);
@@ -345,7 +358,7 @@ main(int argc, char **argv)
 	y += 20;
 
 	rating = new LevelIndicator();
-	rating->setFrame(Rect{ { 16, y }, { 90, 14 } });
+	rating->setFrame(Rect{ { x, y }, { 90, 14 } });
 	rating->setStyle(LevelIndicator::Style::Rating);
 	rating->setMinValue(0);
 	rating->setMaxValue(5);
@@ -355,7 +368,7 @@ main(int argc, char **argv)
 	y += 20;
 
 	relevancy = new LevelIndicator();
-	relevancy->setFrame(Rect{ { 16, y }, { 120, 14 } });
+	relevancy->setFrame(Rect{ { x, y }, { 120, 14 } });
 	relevancy->setStyle(LevelIndicator::Style::Relevancy);
 	relevancy->setMinValue(0);
 	relevancy->setMaxValue(10);
@@ -366,7 +379,7 @@ main(int argc, char **argv)
 	content->addSubview(relevancy);	y += 30;
 
 	spinner = new ProgressIndicator();
-	spinner->setFrame(Rect{ { 16, y }, { 24, 24 } });
+	spinner->setFrame(Rect{ { x, y }, { 24, 24 } });
 	spinner->setStyle(ProgressIndicator::Style::Spinner);
 	content->addSubview(spinner);
 	y += 30;
@@ -374,7 +387,7 @@ main(int argc, char **argv)
 	/* an INDETERMINATE bar at ZERO: a determinate one would draw nothing at
 	 * all there, which is exactly what makes the stripe checkable */
 	indet = new ProgressIndicator();
-	indet->setFrame(Rect{ { 16, y }, { 160, 12 } });
+	indet->setFrame(Rect{ { x, y }, { 160, 12 } });
 	indet->setIndeterminate(true);
 	indet->setDoubleValue(0.0);
 	content->addSubview(indet);
@@ -387,7 +400,13 @@ main(int argc, char **argv)
 	 * the text family below forced the window to grow - and until this
 	 * line existed, the board's own model was taller than its window and
 	 * the lower rows were drawn where the server had no window at all. */
-	w.setFrame(Rect{ { 70, 50 }, { 300, y + 6 + w.chromeHeightPt() } });
+	double tallest = y > yButtons ? y : yButtons;
+
+	if (yText > tallest) {
+		tallest = yText;
+	}
+	w.setFrame(Rect{ { 70, 50 },
+			 { 830.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
 	w.setNeedsDisplay();
 	w.displayIfNeeded();
