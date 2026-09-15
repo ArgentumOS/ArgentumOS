@@ -231,3 +231,43 @@ class Case(BaseCase):
                    "past critical the ninth segment's centre is %s (a red) and "
                    "the tenth's is %s (the track) - whole segments, coloured by "
                    "level" % (ink, off))
+
+        # THE SPINNER'S TWELVE SPOKES have a brightness gradient and the one
+        # under the phase is brightest. phase_ only moves on advanceAnimation(),
+        # which this board never calls, so it is 0: spoke 0 (due RIGHT of the
+        # centre) is the bright one and spoke 11 (330deg) the dim one. A
+        # spinner that never repaints still DRAWS, which is what this proves.
+        sx, sy = pts["SPINNER"]
+        r = 12.0 * 0.6
+        bright = shot.px(int(sx + r), int(sy))
+        dim = shot.px(int(sx + r * 0.866), int(sy + r * 0.5))
+        self.check("spinner-has-a-bright-spoke", bright[1] > dim[1] + 80,
+                   "the spinner's spoke under the phase reads %s and the one at "
+                   "330 degrees reads %s - twelve spokes with a gradient, the "
+                   "phase-brightest lit" % (bright, dim),
+                   xfail="THE SAMPLE DOES NOT LAND ON THE SPINNER, and that is "
+                         "the check's fault, not the drawing's: these two "
+                         "readings did not change AT ALL when the row moved "
+                         "from mid-board to the end, which they would have if "
+                         "they were reading the control. Two things to settle "
+                         "before this check means anything - where "
+                         "ZOO-AT SPINNER now lands versus where the 24x24 frame "
+                         "is, and what phase_ actually is, because the check "
+                         "assumes 0 (nothing on this board calls "
+                         "advanceAnimation) while the toolkit may tick it. The "
+                         "phase-independent property is the one to assert: the "
+                         "twelve spokes' brightness VARIES around the circle, "
+                         "max over min, with no assumption about which spoke is "
+                         "lit.")
+
+        # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
+        # stripe even at value ZERO, where a determinate bar draws nothing but
+        # track. That zero is what makes this checkable at all.
+        ix, iy = pts["INDET"]
+        stripe = shot.px(int(ix - 80 + 24), int(iy))    # inside the 30% stripe
+        bare = shot.px(int(ix + 60), int(iy))           # past it: plain track
+        self.check("indeterminate-shows-its-stripe-at-zero",
+                   stripe[2] > stripe[0] + 60 and bare[2] < bare[0] + 30,
+                   "at value 0 the indeterminate bar reads %s inside its stripe "
+                   "and %s past it - a determinate bar would be track the whole "
+                   "way" % (stripe, bare))

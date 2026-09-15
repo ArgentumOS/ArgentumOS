@@ -828,7 +828,11 @@ ProgressIndicator::advanceAnimation()
 	if (phase_ > 1.0) {
 		phase_ -= 1.0;
 	}
-	if (indeterminate_) {
+	/* A SPINNER IS AN ANIMATION. It used to redraw only when
+	 * setIndeterminate() had been called as well, which is not something a
+	 * spinner asks for - the spokes just sat there lit. A determinate bar
+	 * still has nothing to redraw, since its fraction is the app's. */
+	if (indeterminate_ || style_ == Style::Spinner) {
 		setNeedsDisplay();
 	}
 }

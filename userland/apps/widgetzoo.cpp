@@ -38,6 +38,8 @@ static Slider *slider = nullptr;
 static Slider *dial = nullptr;	/* the circular one */
 static Stepper *stepper = nullptr;
 static ProgressIndicator *progress = nullptr;
+static ProgressIndicator *spinner = nullptr;
+static ProgressIndicator *indet = nullptr;
 static LevelIndicator *level = nullptr;
 static LevelIndicator *rating = nullptr;
 static LevelIndicator *relevancy = nullptr;
@@ -156,6 +158,7 @@ row(View *content, Zoo &zoo, const char *title, double y,
 	b->setTarget(&zoo);
 	b->setAction("click");
 	content->addSubview(b);
+
 	return b;
 }
 
@@ -360,7 +363,22 @@ main(int argc, char **argv)
 	relevancy->setWarningValue(6);
 	relevancy->setCriticalValue(8);
 	relevancy->setDoubleValue(9.0);	/* past critical: nine segments, red */
-	content->addSubview(relevancy);
+	content->addSubview(relevancy);	y += 30;
+
+	spinner = new ProgressIndicator();
+	spinner->setFrame(Rect{ { 16, y }, { 24, 24 } });
+	spinner->setStyle(ProgressIndicator::Style::Spinner);
+	content->addSubview(spinner);
+	y += 30;
+
+	/* an INDETERMINATE bar at ZERO: a determinate one would draw nothing at
+	 * all there, which is exactly what makes the stripe checkable */
+	indet = new ProgressIndicator();
+	indet->setFrame(Rect{ { 16, y }, { 160, 12 } });
+	indet->setIndeterminate(true);
+	indet->setDoubleValue(0.0);
+	content->addSubview(indet);
+	y += 20;
 	y += 22;
 
 	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
@@ -409,6 +427,8 @@ main(int argc, char **argv)
 	logAt("DIAL", dial);
 	logAt("STEPPER", stepper);
 	logAt("PROGRESS", progress);
+	logAt("SPINNER", spinner);
+	logAt("INDET", indet);
 	logAt("LEVEL", level);
 	logAt("RATING", rating);
 	logAt("RELEVANCY", relevancy);
