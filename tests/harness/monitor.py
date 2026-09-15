@@ -89,6 +89,33 @@ class Monitor:
         self.goto(x, y)
         self.click(button, settle)
 
+    # --- press / drag / release ---------------------------------------
+    def press(self, button=1, settle=0.3):
+        """Hold a button down.  Pair with release() to script a drag."""
+        self.nudge()
+        self.send("mouse_button %d" % button)
+        time.sleep(settle)
+
+    def release(self, button=0, settle=0.4):
+        """Let the button up (0 = none held)."""
+        self.nudge()
+        self.send("mouse_button %d" % button)
+        time.sleep(settle)
+
+    def drag(self, x0, y0, x1, y1, steps=8, settle=0.4):
+        """Press at (x0,y0), move to (x1,y1) in steps, release.
+
+        Steps matter: a drag is a sequence of motion events, and a control
+        that only looks at the release would pass even if tracking were
+        broken.
+        """
+        self.goto(x0, y0)
+        self.press()
+        for i in range(1, steps + 1):
+            self.goto(int(x0 + (x1 - x0) * i / steps),
+                      int(y0 + (y1 - y0) * i / steps), dt=0.05)
+        self.release(settle=settle)
+
     # --- keyboard -----------------------------------------------------
     def key(self, name, settle=0.1):
         self.send("sendkey %s" % name)

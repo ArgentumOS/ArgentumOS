@@ -227,10 +227,35 @@ as a compatibility path for un-migrated views, with a migration list.
   window on Xfb, logs its geometry and colours, and the case checks the
   FRAMEBUFFER — the tile colour, the content colour, the chrome pixel
   (proving the window's own chrome is on screen) and the text's ink.
-  **U2b — `Control` + the button family. NEXT.** `NSButton` types
-  (switch/checkbox, radio, disclosure, gradient, help, inline, recessed)
-  + `NSButtonCell`, on top of `Cell`/`ActionCell`. Gate: the zoo board
-  shows every type; each fires and reports state.
+  **U2b — input + `Control` + `Button`. CODE LANDED, GATE BLOCKED
+  (2026-09).** Landed: the mouse input substrate (`MouseEvent`; the
+  window converts an X event to points, hit-tests the content tree
+  front-to-back, dispatches, and CAPTURES the press so the same view gets
+  the drags and the release), the chrome's own input (titlebar drag using
+  the event's ROOT coordinates — the window-relative point under the
+  pointer does not move while the window moves — and the close box), the
+  `Window::pumpEvent()` loop entry (expose, resize, mouse, close
+  request), `Control` (owns a cell, forwards title/target/action, press →
+  highlight, release inside → action, i.e. Cocoa's tracking), `ButtonCell`
+  (flat bezel + title) and `Button` (title IS the cell's stringValue;
+  momentary or toggle; a toggle shows the state it is about to take while
+  pressed and puts it back if dragged off).
+  **THE BLOCKER: the test guest has no pointer input path.** The harness
+  boots `pc,usb=off` with no pointer device and the kernel's PS/2 code
+  path is retired (psaux → the native `/System/Devices/mouse`), so the
+  monitor's relative `mouse_move` reaches nothing; the probe's log shows
+  it plainly (no event, `presses=0`, the drag never started). Xfb already
+  carries the seam — `XFB_MOUSE`/`XFB_KBD`, documented as "so test
+  harnesses can feed PS/2 packets over a raw serial line" — so the fix is
+  on the HARNESS side: wire an extra serial to `XFB_MOUSE`, or attach a
+  real pointer device (`usb=on` + `usb-tablet`, which also needs the
+  kernel's USB HID mouse and Xfb's poller to see it). The case is
+  therefore a documented **Skip**, not a quiet pass, and the harness
+  monitor gained the `press`/`release`/`drag` primitives the scenario
+  needs so the gate is ready the moment input exists.
+  **Still to do in U2b:** the gate's run, then the rest of the button
+  family (switch/checkbox, radio, disclosure, gradient, help, inline,
+  recessed) and the widget zoo board showing every type (U2c).
 - **U3 — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under

@@ -72,6 +72,55 @@ View::View()
 {
 }
 
+/* ---- mouse input (U2b) ------------------------------------------------ */
+
+View *
+View::hitTest(const Point &p)
+{
+	if (hidden_) {
+		return nullptr;
+	}
+	Rect b = bounds();
+
+	if (p.x < b.origin.x || p.y < b.origin.y || p.x >= b.origin.x + b.size.w
+	    || p.y >= b.origin.y + b.size.h) {
+		return nullptr;
+	}
+	/* children are in z-order, so the TOPMOST match wins: search back
+	 * to front, and their frames are in this view's space */
+	for (size_t i = children_.size(); i > 0; i--) {
+		View *c = children_[i - 1];
+		Point cp = { p.x - c->frame_.origin.x,
+			     p.y - c->frame_.origin.y };
+
+		if (View *hit = c->hitTest(cp)) {
+			return hit;
+		}
+	}
+	return this;
+}
+
+bool
+View::mouseDown(const MouseEvent &e)
+{
+	(void) e;
+	return false;		/* the default view ignores the mouse */
+}
+
+bool
+View::mouseDragged(const MouseEvent &e)
+{
+	(void) e;
+	return false;
+}
+
+bool
+View::mouseUp(const MouseEvent &e)
+{
+	(void) e;
+	return false;
+}
+
 /* ---- drawing (U2a) ---------------------------------------------------- */
 
 void

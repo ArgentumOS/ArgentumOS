@@ -856,6 +856,30 @@ private:
 	Size preferred_ = { 0, 0 };
 };
 
+/// A mouse event, delivered in the coordinates of the view that receives
+/// it. Cocoa hands views an NSEvent; this is the part of it a control
+/// needs.
+struct MouseEvent {
+	/// Where it happened, in the receiving view's own space (points).
+	Point location = { 0, 0 };
+	/// 1 = left, 2 = middle, 3 = right (X's numbering).
+	int button = 1;
+	/// 1 for a single click.
+	int clickCount = 1;
+	/// Modifier state as it was at the press.
+	bool shift = false;
+	bool control = false;
+	bool alt = false;
+};
+
+/// A button's behaviour type (Cocoa's NSButtonType, at the size this
+/// milestone needs).
+enum class ButtonType {
+	/// Presses do not stick: the state goes on while held.
+	MomentaryPushIn,
+	/// Presses toggle the state on and off.
+	Toggle,
+};
 /* ---- U2a: the display path — connection, surface, context, window ----
  *
  * The layer that makes the toolkit visible. Three ideas, the same ones
@@ -1037,6 +1061,22 @@ public:
 	/// re-marking the tree. Apps call setNeedsDisplay().
 	void noteViewDamage();
 
+	/// Read and handle at most ONE pending event (expose, resize, a mouse
+	/// press/drag/release, a close request). Returns false when nothing is
+	/// pending, so a caller can own the loop:
+	///
+	///     for (;;) { if (!win.pumpEvent()) sleep(); win.displayIfNeeded(); }
+	bool pumpEvent();
+
+	/// The close box's rectangle in the window's own points (chrome).
+	Rect closeBoxRect() const;
+	/// True while the titlebar is being dragged.
+	bool isChromeDragging() const { return dragging_; }
+	/// Ask the window to close itself: the next pumpEvent() closes it.
+	void requestClose();
+	/// True once a close has been asked for (or the close box was hit).
+	bool isCloseRequested() const { return closeRequested_; }
+
 	/// Run the draw pass if anything is dirty, then present the damage.
 	void displayIfNeeded();
 	/// Present what has been drawn (no draw pass).
@@ -1063,10 +1103,20 @@ private:
 	Color closeColor_ = Color::rgb(0.85, 0.30, 0.25);
 	Color borderColor_ = Color::rgb(0.55, 0.55, 0.58);
 	View *content_ = nullptr;	/* owned (see the @lifetime) */
+	View *pressView_ = nullptr;	/* U2b: the view holding the press */
+	View *hoverView_ = nullptr;	/* U2b: the view under the pointer */
+	bool dragging_ = false;		/* U2b: the chrome is being dragged */
+	bool closeRequested_ = false;	/* U2b: the close box was hit */
+	double dragRootX_ = 0, dragRootY_ = 0;	/* U2b: root point at press */
+	double dragWinX_ = 0, dragWinY_ = 0;	/* U2b: the frame's origin then */
 
 	void layoutContent();
 	void drawChrome(Context &ctx);
 	void setChromeDirty();
+	/// True when `p` (window points) is inside the titlebar.
+	bool inChrome(const Point &p) const;
+	/// The view under a content-space point, or nullptr.
+	View *dispatchToContent(const Point &pt, const MouseEvent &e);
 };
 
 /// Open the process's connection to the display. `name` defaults to
@@ -1081,6 +1131,9 @@ bool displayIsOpen();
 double displayPxPerPt();
 /// Set it (also told to the text engine, which shapes in pixels).
 void displaySetPxPerPt(double pxPerPt);
+
+/* ---- U2b: input, Control, Button ------------------------------------ */
+
 
 /// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each
 /// bit marks one margin or size as FLEXIBLE, so a superview resize is
@@ -1193,6 +1246,13 @@ public:
 	/// does this when a content view is installed, and addSubview() keeps
 	/// it true for views added later.
 	void setWindow(Window *w);
+	/// (internal) Mark or clear the press-tracking flag.
+	void setTrackingMouse(bool on) { tracking_ = on; }
+	/// True while the pointer is over this view (the window sets it as
+	/// motion arrives).
+	bool isHovered() const { return hovered_; }
+	/// (internal) Mark the hover state.
+	void setHovered(bool on) { hovered_ = on; }
 	/// Mark `dirty` (in THIS view's coordinates) as needing a redraw.
 	void setNeedsDisplayInRect(const Rect &dirty);
 	/// True while the view is waiting to be drawn.
@@ -1202,6 +1262,28 @@ public:
 	/// This view's rectangle in the window's content space (the frame
 	/// plus every ancestor's origin).
 	Rect rectInWindow(const Rect &r) const;
+
+	/* ---- mouse input (U2b) ------------------------------------------
+	 * The window converts an X event to a point in the content view's
+	 * space and calls hitTest(), then hands the event to the view it
+	 * found. A press is CAPTURED: while the button is down, the same view
+	 * receives the drags and the release, wherever the pointer goes
+	 * (Cocoa's mouse-tracking, and what makes a button that is dragged
+	 * off and released not fire).
+	 */
+	/// The deepest visible view containing `p` (in THIS view's
+	/// coordinates), searching children front-to-back (topmost first).
+	/// nullptr when nothing is hit.
+	virtual View *hitTest(const Point &p);
+	/// A press. Return true when handled; false offers the event to the
+	/// superview (the first link of the responder chain).
+	virtual bool mouseDown(const MouseEvent &e);
+	/// A drag while tracking. Same contract.
+	virtual bool mouseDragged(const MouseEvent &e);
+	/// The release that ends a press. Same contract.
+	virtual bool mouseUp(const MouseEvent &e);
+	/// True while this view is waiting for the button to come up.
+	bool isTrackingMouse() const { return tracking_; }
 	/// The window this view is in, or nullptr (set by the window's
 	/// content view, and inherited by subviews as they are added).
 	Window *window() const { return window_; }
@@ -1283,10 +1365,198 @@ private:
 	bool needsDisplay_ = false;	/* U2a */
 	Rect dirty_ = { { 0, 0 }, { 0, 0 } };	/* U2a */
 	Window *window_ = nullptr;	/* U2a (non-owning back-link) */
+	bool tracking_ = false;		/* U2b: this view has the press */
+	bool hovered_ = false;		/* U2b: the pointer is over it */
 	unsigned int mask_ = AutoresizingNone;	/* U0b: springs/struts */
 	std::string identifier_;
 	View *parent_ = nullptr;
 	std::vector<View *> children_;	/* non-owning, in z-order */
+};
+
+/// @purpose A view whose appearance and value live in a CELL: the control
+/// supplies the frame and the input behaviour, the cell supplies what is
+/// drawn and what the value means, and one cell can back several controls.
+/// Cocoa's NSControl, which is the base of every button, field and slider.
+///
+/// @lifetime The control OWNS its cell (a replaced cell is deleted with
+/// it), and it does not own its target (see ActionCell). A control with no
+/// cell draws nothing and does nothing: setCell() is not optional in
+/// practice, and the subclasses do it for you.
+///
+/// @threading Single-threaded (the UI thread), like every view.
+///
+/// @invariants The control's size comes from its frame (a control does not
+/// size itself to its cell yet: intrinsic sizing needs the layout hooks
+/// that arrive with the text controls). A press puts the cell in the
+/// highlighted state, a drag updates it as the pointer enters and leaves,
+/// and the release fires the action ONLY if the pointer is still inside —
+/// Cocoa's behaviour, and the reason mouseDown() captures the press
+/// instead of acting on it.
+///
+/// @see Button, Cell, ActionCell
+class Control : public View {
+public:
+	/// The class record KVC walks (Object <- View <- Control).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A control with no cell (a subclass installs one).
+	Control();
+	/// Destroy the control: its cell goes with it (see the @lifetime).
+	~Control() override;
+
+	/// The cell that draws and describes this control.
+	Cell *cell() const { return cell_; }
+	/// Take ownership of `c` as the cell.
+	void setCell(Cell *c);
+
+	/// The cell's value as text ('' when there is no cell).
+	const char *stringValue() const;
+	/// Set the cell's value from text.
+	void setStringValue(const char *utf8);
+
+	/// The object the action is sent to (the cell's target).
+	Object *target() const;
+	/// Set it.
+	void setTarget(Object *o);
+	/// The action's name ('' when unset).
+	const char *action() const;
+	/// Set it.
+	void setAction(const char *name);
+	/// Send the action now (the cell's sendAction()). False when there is
+	/// nothing to send or nobody to send it to.
+	bool sendAction();
+
+	/// True while the control accepts input.
+	bool isEnabled() const;
+	/// Enable or disable the control (its cell carries the flag).
+	void setEnabled(bool on);
+
+	/// Draw the cell into the control's bounds.
+	void drawRect(const Rect &dirty) override;
+	/// Press: highlight and capture.
+	bool mouseDown(const MouseEvent &e) override;
+	/// Drag while captured: highlight only while inside.
+	bool mouseDragged(const MouseEvent &e) override;
+	/// Release: fire the action when the pointer is inside, then unhilite.
+	bool mouseUp(const MouseEvent &e) override;
+
+protected:
+	/// Called on a release INSIDE the control: the default sends the
+	/// action. A subclass changes what a click means here.
+	virtual void mouseUpInside(const MouseEvent &e);
+	/// Push the control's state into the cell before it draws (Cocoa's
+	/// updateCell: the cell has no idea where the pointer is).
+	virtual void updateCell();
+	/// True while the pointer is inside the control's bounds.
+	bool containsPoint(const MouseEvent &e) const;
+
+	Cell *cell_ = nullptr;		/* owned */
+	bool hilite_ = false;		/* the press is showing */
+};
+
+/// @purpose The cell that draws a push button: a bezel and a centred
+/// title, highlighted while pressed, and (for a toggle) on or off. Cocoa's
+/// NSButtonCell.
+///
+/// @lifetime Owned by its Button; copy() hands out an owned copy.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The bezel is FLAT in v1: the rounded chrome, gradients and
+/// the rest arrive with the theme layer (the old chrome engine was retired
+/// with the class layer). The colours are settable here so an app (or a
+/// theme loader later) can describe a button without a new class.
+///
+/// @see Button, ActionCell
+class ButtonCell : public ActionCell {
+public:
+	/// The class record KVC walks (Object <- Cell <- ActionCell <-
+	/// ButtonCell).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty button cell with the default bezel colours.
+	ButtonCell();
+
+	/// Draw the bezel and the title into `frame`.
+	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A copy of the cell, owned by the caller.
+	Cell *copy() const override;
+
+	/// The bezel's fill.
+	Color bezelColor() const { return bezel_; }
+	/// Set it.
+	void setBezelColor(const Color &c) { bezel_ = c; }
+	/// The bezel's fill while pressed.
+	Color pressedColor() const { return pressed_; }
+	/// Set it.
+	void setPressedColor(const Color &c) { pressed_ = c; }
+	/// The bezel's outline.
+	Color borderColor() const { return border_; }
+	/// Set it.
+	void setBorderColor(const Color &c) { border_ = c; }
+
+private:
+	Color bezel_ = Color::rgb(0.90, 0.90, 0.93);
+	Color pressed_ = Color::rgb(0.72, 0.72, 0.78);
+	Color border_ = Color::rgb(0.55, 0.55, 0.60);
+};
+
+/// @purpose A push button: a title, a press behaviour, and an action sent
+/// to a target. Cocoa's NSButton, and the first control that draws itself
+/// and responds (docs/design/cocoa-parity-plan.md, U2b).
+///
+/// @lifetime The button owns its ButtonCell (Control's rule) and does not
+/// own its target.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants title() IS the cell's stringValue: a button has one piece
+/// of text and the cell is where it lives, so setting either is the same
+/// act. A momentary button returns to ControlState::Off when released; a
+/// toggle flips its state per press and stays there. The action fires on
+/// the RELEASE inside the button, never on the press.
+///
+/// @see Control, ButtonCell, ActionCell
+class Button : public Control {
+public:
+	/// The class record KVC walks (Object <- View <- Control <- Button).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A momentary button, titled "", with a ButtonCell installed.
+	Button();
+
+	/// The button's title (the cell's stringValue).
+	const char *title() const;
+	/// Set the title.
+	void setTitle(const char *utf8);
+
+	/// The button's behaviour (momentary or toggle).
+	ButtonType type() const { return type_; }
+	/// Set the behaviour.
+	void setType(ButtonType type) { type_ = type; }
+
+	/// The button's state.
+	ControlState state() const;
+	/// Set the state.
+	void setState(ControlState s);
+
+	/// Press: highlight, capture, and (for a toggle) hold the new state.
+	bool mouseDown(const MouseEvent &e) override;
+	/// Release: fire when the pointer is inside, then settle the state.
+	bool mouseUp(const MouseEvent &e) override;
+
+private:
+	ButtonType type_ = ButtonType::MomentaryPushIn;
+	ControlState state_ = ControlState::Off;
 };
 
 } /* namespace argentum */

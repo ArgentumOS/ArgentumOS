@@ -378,7 +378,9 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 	if (!impl_->xwin) {
 		return false;
 	}
-	XSelectInput(dpy, impl_->xwin, ExposureMask | StructureNotifyMask);
+	XSelectInput(dpy, impl_->xwin, ExposureMask | StructureNotifyMask
+		     | ButtonPressMask | ButtonReleaseMask
+		     | PointerMotionMask | EnterWindowMask | LeaveWindowMask);
 	if (title) {
 		XStoreName(dpy, impl_->xwin, title);
 		title_ = title;
@@ -793,6 +795,227 @@ Window::displayIfNeeded()
 	impl_->dirty = false;
 }
 
+/* ---- input (U2b) ------------------------------------------------------
+ *
+ * X hands us an event in the window's own pixel coordinates; the window
+ * converts that to POINTS, works out whether the chrome or the content was
+ * hit, and dispatches. A press is captured: the same view gets the drags
+ * and the release (X's implicit pointer grab does the same job at the
+ * protocol level while a button is down).
+ *
+ * The chrome's drag uses the event's ROOT coordinates, not the window-
+ * relative ones: while the window moves, the window-relative point under
+ * the pointer stays put, so subtracting two of them yields a delta of
+ * zero and the window stops following the pointer.
+ */
+
+Rect
+Window::closeBoxRect() const
+{
+	double ch = chromeHeightPt();
+	double wPt = frame_.size.w;
+	double bs = kCloseBoxPt;
+
+	return Rect{ { wPt - bs - 6.0, (ch - bs) * 0.5 }, { bs, bs } };
+}
+
+bool
+Window::inChrome(const Point &p) const
+{
+	return style_ == WindowStyle::Titled && chromeHeightPt() > 0
+		&& p.y < chromeHeightPt();
+}
+
+View *
+Window::dispatchToContent(const Point &contentPt, const MouseEvent &e)
+{
+	if (!content_) {
+		return nullptr;
+	}
+	Rect cr = contentRect();
+
+	if (contentPt.x < 0 || contentPt.y < 0 || contentPt.x >= cr.size.w
+	    || contentPt.y >= cr.size.h) {
+		return nullptr;
+	}
+	return content_->hitTest(contentPt);
+}
+
+bool
+Window::pumpEvent()
+{
+	if (!impl_->open || !gDpy) {
+		return false;
+	}
+	if (!XPending(gDpy)) {
+		return false;
+	}
+	XEvent ev;
+
+	XNextEvent(gDpy, &ev);
+	double pp = impl_->pxPerPt;
+
+	switch (ev.type) {
+	case Expose:
+		if (ev.xexpose.count == 0) {
+			setNeedsDisplay();
+		}
+		return true;
+
+	case ConfigureNotify:
+		if (ev.xconfigure.width != (int) impl_->wPx
+		    || ev.xconfigure.height != (int) impl_->hPx) {
+			frame_.origin.x = ev.xconfigure.x;
+			frame_.origin.y = ev.xconfigure.y;
+			setFrame(Rect{ frame_.origin,
+				       { ev.xconfigure.width / pp,
+					 ev.xconfigure.height / pp } });
+		}
+		return true;
+
+	case ButtonPress:
+	case ButtonRelease:
+	case MotionNotify: {
+		Point winPt = { ev.xbutton.x / pp, ev.xbutton.y / pp };
+		bool pressed = (ev.type == ButtonPress);
+		bool released = (ev.type == ButtonRelease);
+		MouseEvent me;
+
+		me.location = winPt;
+		me.button = ev.xbutton.button ? ev.xbutton.button : 1;
+		me.clickCount = 1;
+		me.shift = (ev.xbutton.state & ShiftMask) != 0;
+		me.control = (ev.xbutton.state & ControlMask) != 0;
+		me.alt = (ev.xbutton.state & Mod1Mask) != 0;
+
+		/* 1. the chrome: the window's own, so the window handles it */
+		if (inChrome(winPt)) {
+			if (pressed) {
+				Point p = winPt;
+
+				if (me.button == 1) {
+					Rect cb = closeBoxRect();
+
+					if (p.x >= cb.origin.x
+					    && p.x < cb.origin.x + cb.size.w
+					    && p.y >= cb.origin.y
+					    && p.y < cb.origin.y + cb.size.h) {
+						requestClose();
+						return true;
+					}
+				}
+				/* anywhere else in the bar starts a drag, and the
+				 * delta comes from the ROOT coordinates */
+				if (ev.xbutton.button == 1 && me.button == 1) {
+					dragging_ = true;
+					dragRootX_ = ev.xbutton.x_root;
+					dragRootY_ = ev.xbutton.y_root;
+					dragWinX_ = frame_.origin.x;
+					dragWinY_ = frame_.origin.y;
+				}
+				return true;
+			}
+			if (released) {
+				dragging_ = false;
+				return true;
+			}
+			if (dragging_) {
+				/* XMoveWindow keeps the pointer in the right
+				 * place; the frame follows it */
+				setFrame(Rect{ { dragWinX_
+						 + (ev.xbutton.x_root - dragRootX_)
+						 / pp,
+						 dragWinY_
+						 + (ev.xbutton.y_root - dragRootY_)
+						 / pp },
+					       frame_.size });
+				return true;
+			}
+			return true;
+		}
+
+		/* 2. the content: hit test, then capture on the press */
+		Rect cr = contentRect();
+		Point contentPt = { winPt.x - cr.origin.x,
+				    winPt.y - cr.origin.y };
+
+		if (pressed) {
+			View *hit = dispatchToContent(contentPt, me);
+
+			pressView_ = hit;
+			if (hit) {
+				hit->setTrackingMouse(true);
+			}
+			/* offer it to the view, then up the parent chain */
+			for (View *v = hit; v; v = v->superview()) {
+				me.location = Point{ contentPt.x
+						     - v->rectInWindow(
+							       Rect{ { 0, 0 },
+								     { 0, 0 } })
+							       .origin.x,
+						     contentPt.y
+						     - v->rectInWindow(
+							       Rect{ { 0, 0 },
+								     { 0, 0 } })
+							       .origin.y };
+
+				if (v->mouseDown(me)) {
+					break;
+				}
+			}
+			return true;
+		}
+		if (me.button != 1 && pressView_ == nullptr) {
+			return true;
+		}
+		/* drags and releases go to the view that captured the press */
+		if (pressView_) {
+			View *v = pressView_;
+			Rect off = v->rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
+
+			me.location = Point{ contentPt.x - off.origin.x,
+					     contentPt.y - off.origin.y };
+			if (released) {
+				v->mouseUp(me);
+				v->setTrackingMouse(false);
+				pressView_ = nullptr;
+				dragging_ = false;
+			} else {
+				v->mouseDragged(me);
+			}
+			return true;
+		}
+		/* plain motion: hover bookkeeping, so a control can react */
+		View *under = dispatchToContent(contentPt, me);
+
+		if (under != hoverView_) {
+			if (hoverView_) {
+				hoverView_->setHovered(false);
+			}
+			hoverView_ = under;
+			if (under) {
+				under->setHovered(true);
+			}
+		}
+		return true;
+	}
+
+	case ClientMessage:
+		/* the close-box protocol: a window manager would send this */
+		requestClose();
+		return true;
+
+	default:
+		return true;
+	}
+}
+
+void
+Window::requestClose()
+{
+	closeRequested_ = true;
+}
+
 void
 Window::flush()
 {
@@ -830,6 +1053,11 @@ static const Property Window_PROPS[] = {
 	{ "pxPerPt",
 	  [](const Object *o) {
 		  return Value::of(static_cast<const Window *>(o)->pxPerPt()); },
+	  nullptr },
+	{ "closeRequested",
+	  [](const Object *o) {
+		  return Value::of(static_cast<const Window *>(o)
+				   ->isCloseRequested()); },
 	  nullptr },
 };
 
