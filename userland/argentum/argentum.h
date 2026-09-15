@@ -3526,6 +3526,22 @@ private:
 	bool pullsDown_ = false;
 };
 
+/// @purpose The view that draws a Menu and sends the action of the row that is
+/// picked.
+///
+/// Cocoa's menu rendering is private to AppKit, so there is no class here to
+/// match; this is the toolkit's own, named for what it is. It draws one row per
+/// item at ONE row height, used by the drawing and the hit test alike - the rule
+/// every control here follows.
+///
+/// @lifetime The view does not own the menu; the menu owns its items.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants itemIndexAt returns -1 outside every row; a separator is drawn
+/// but cannot be picked.
+///
+/// @see Menu, MenuItem
 class MenuView : public View {
 public:
 	/// The class record KVC walks.

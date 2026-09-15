@@ -42,6 +42,7 @@ static ProgressIndicator *spinner = nullptr;
 static ProgressIndicator *indet = nullptr;
 static ColorWell *well = nullptr;
 static DatePicker *picker = nullptr;
+static PopUpButton *pop = nullptr;
 static LevelIndicator *level = nullptr;
 static LevelIndicator *rating = nullptr;
 static LevelIndicator *relevancy = nullptr;
@@ -124,6 +125,17 @@ static const Action Zoo_ACTIONS[] = {
 
 		if (d) {
 			std::printf("ZOO-DATE epoch=%ld\n", (long) d->dateValue());
+			std::fflush(stdout);
+		}
+	} },
+	/* the menu row reports WHICH row was picked, so the gate can check the
+	 * round trip: button -> menu -> row -> action */
+	{ "size", [](Object *sender) {
+		MenuItem *mi = dynamic_cast<MenuItem *>(sender);
+
+		if (mi) {
+			std::printf("ZOO-POPUP title=\"%s\"\n",
+				    mi->title());
 			std::fflush(stdout);
 		}
 	} },
@@ -431,6 +443,22 @@ main(int argc, char **argv)
 	picker->setTarget(&zoo);
 	picker->setAction("date");
 	content->addSubview(picker);
+	y += 30;
+
+	pop = new PopUpButton();
+	pop->setFrame(Rect{ { x, y }, { 140, 24 } });
+	pop->addItemWithTitle("Small");
+	pop->addItemWithTitle("Medium");
+	pop->addItemWithTitle("Large");
+	/* EACH ROW sends its own action, so each one needs the target: the menu
+	 * row is what is clicked, not the button */
+	for (int i = 0; i < pop->numberOfItems(); i++) {
+		if (MenuItem *mi = pop->menu()->itemAt(i)) {
+			mi->setTarget(&zoo);
+			mi->setAction("size");
+		}
+	}
+	content->addSubview(pop);
 	y += 20;
 	y += 22;
 
@@ -490,6 +518,7 @@ main(int argc, char **argv)
 	logAt("INDET", indet);
 	logAt("WELL", well);
 	logAt("DATEPICKER", picker);
+	logAt("POPUP", pop);
 	logAt("LEVEL", level);
 	logAt("RATING", rating);
 	logAt("RELEVANCY", relevancy);

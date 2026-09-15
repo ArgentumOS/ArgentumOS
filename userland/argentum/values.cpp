@@ -1668,6 +1668,15 @@ MenuView::mouseDown(const Event &e)
 	int i = itemIndexAt(e.locationInWindow());
 	MenuItem *it = menu_ ? menu_->itemAt(i) : nullptr;
 
+	if (getenv("ARGENTUM_KEYLOG")) {
+		/* the row click's instrument: a MISSING line means the click never
+		 * reached this view; idx=-1 means it landed outside every row */
+		std::printf("ARGENTUM-MENUCLICK p=%.0f,%.0f idx=%d item=%d\n",
+			    e.locationInWindow().x, e.locationInWindow().y, i,
+			    it ? 1 : 0);
+		std::fflush(stdout);
+	}
+
 	if (!it || !it->isEnabled()) {
 		return false;		/* a separator or a disabled row: nothing */
 	}
@@ -1825,6 +1834,13 @@ PopUpButton::mouseDown(const Event &e)
 	/* the row that is picked sends ITS action; the app chooses what to do,
 	 * including selecting it here (Cocoa's button selects on its own, which
 	 * needs an item-to-button binding this toolkit does not have yet) */
+	if (getenv("ARGENTUM_KEYLOG")) {
+		/* where the menu lands and how tall a row is, so a check can aim at
+		 * a row instead of guessing the geometry */
+		std::printf("ARGENTUM-POPUP x=%.0f y=%.0f rowh=%.0f n=%d\n", sx, sy,
+			    MenuView::itemHeight(), numberOfItems());
+		std::fflush(stdout);
+	}
 	menu_->popUp(Point{ sx, sy });
 	setNeedsDisplay();
 	return true;
