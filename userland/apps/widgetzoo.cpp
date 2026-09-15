@@ -41,6 +41,7 @@ static ProgressIndicator *progress = nullptr;
 static ProgressIndicator *spinner = nullptr;
 static ProgressIndicator *indet = nullptr;
 static ColorWell *well = nullptr;
+static DatePicker *picker = nullptr;
 static LevelIndicator *level = nullptr;
 static LevelIndicator *rating = nullptr;
 static LevelIndicator *relevancy = nullptr;
@@ -114,6 +115,16 @@ static const Action Zoo_ACTIONS[] = {
 
 			std::printf("ZOO-WELL r=%g g=%g b=%g active=%d\n",
 				    c.r, c.g, c.b, wl->isActive() ? 1 : 0);
+		}
+	} },
+	/* the picker reports its date as an EPOCH SECOND, so a check can verify
+	 * the step arithmetically rather than by reading the field's pixels */
+	{ "date", [](Object *sender) {
+		DatePicker *d = dynamic_cast<DatePicker *>(sender);
+
+		if (d) {
+			std::printf("ZOO-DATE epoch=%ld\n", (long) d->dateValue());
+			std::fflush(stdout);
 		}
 	} },
 	{ "dial", [](Object *sender) {
@@ -412,6 +423,14 @@ main(int argc, char **argv)
 	well->setTarget(&zoo);
 	well->setAction("well");
 	content->addSubview(well);
+	y += 30;
+
+	picker = new DatePicker();
+	picker->setFrame(Rect{ { x, y }, { 170, 24 } });
+	picker->setDateValue(time(NULL));	/* a real date, UTC */
+	picker->setTarget(&zoo);
+	picker->setAction("date");
+	content->addSubview(picker);
 	y += 20;
 	y += 22;
 
@@ -470,6 +489,7 @@ main(int argc, char **argv)
 	logAt("SPINNER", spinner);
 	logAt("INDET", indet);
 	logAt("WELL", well);
+	logAt("DATEPICKER", picker);
 	logAt("LEVEL", level);
 	logAt("RATING", rating);
 	logAt("RELEVANCY", relevancy);

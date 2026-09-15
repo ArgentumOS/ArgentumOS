@@ -3014,6 +3014,57 @@ private:
 	bool active_ = false;
 };
 
+#include <ctime>
+
+/// @purpose A date field with a stepper: Cocoa's NSDatePicker in its
+/// textFieldAndStepper style, the one that reads as a field.
+///
+/// The date is a time_t in UTC, which is what makes it checkable: a day is
+/// exactly 86400 seconds with no timezone data and no DST, so stepping is
+/// arithmetic rather than a calendar. A clock-and-calendar style is out of
+/// scope for v1 and the class says so.
+///
+/// @lifetime The picker owns nothing but its own state.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The date never changes except through the arrows or
+/// setDateValue(); the arrow strip is ONE constant, shared by the drawing and
+/// the hit test - the same rule SliderCell and StepperCell follow.
+///
+/// @see Stepper, TextView
+class DatePicker : public Control {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A picker at the epoch.
+	DatePicker();
+
+	/// Seconds since the epoch, UTC.
+	time_t dateValue() const { return date_; }
+	/// Set it.
+	void setDateValue(time_t t);
+	/// A day later. UTC, so this is exactly 86400 seconds.
+	void stepUp();
+	/// A day earlier.
+	void stepDown();
+
+	/// Clicking an arrow steps the date and sends the action.
+	bool mouseDown(const MouseEvent &e) override;
+	/// Consumed WITHOUT sending: this control acts on the press, and the base
+	/// class's release-path send made every click fire twice.
+	bool mouseUp(const MouseEvent &e) override;
+	/// The field, the date, and the two arrows.
+	void drawRect(const Rect &dirty) override;
+
+private:
+	time_t date_ = 0;
+};
+
 /// @purpose A level indicator: a small bar that fills to a value and
 /// colours itself by how close that is to trouble — a disk usage meter, a
 /// signal strength bar, a rating. Cocoa's NSLevelIndicator (a CONTROL,

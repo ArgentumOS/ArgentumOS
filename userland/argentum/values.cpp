@@ -1163,4 +1163,106 @@ const ObjectClass ColorWell::kClass = {
 	"ColorWell", &Control::kClass, nullptr, 0, nullptr, 0
 };
 
+
+/* ---- DatePicker ------------------------------------------------------ */
+
+/* the arrow strip: ONE constant for the drawing and the hit test */
+static const double kDateArrowW = 20.0;
+
+DatePicker::DatePicker()
+{
+}
+
+void
+DatePicker::setDateValue(time_t t)
+{
+	date_ = t;
+	setNeedsDisplay();
+}
+
+void
+DatePicker::stepUp()
+{
+	setDateValue(date_ + 86400);		/* UTC: a day is exactly this */
+}
+
+void
+DatePicker::stepDown()
+{
+	setDateValue(date_ - 86400);
+}
+
+bool
+DatePicker::mouseDown(const MouseEvent &e)
+{
+	Rect b = bounds();
+
+	if (e.location.x < b.origin.x + b.size.w - kDateArrowW) {
+		return false;			/* the field, not an arrow */
+	}
+	if (e.location.y < b.origin.y + b.size.h / 2.0) {
+		stepUp();
+	} else {
+		stepDown();
+	}
+	sendAction();
+	return true;
+}
+
+bool
+DatePicker::mouseUp(const MouseEvent &e)
+{
+	(void) e;
+	return true;			/* the press already did the work */
+}
+
+void
+DatePicker::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	Rect b = bounds();
+
+	ctx->fillRoundRect(b, 4.0, Color::rgb(0.98, 0.98, 0.99));
+	ctx->strokeRoundRect(b, 4.0, Color::rgb(0.70, 0.70, 0.74), 1.0);
+
+	/* the date, UTC, as YYYY-MM-DD: no locale, so a check can predict it */
+	struct tm tmv;
+	char text[32];
+
+	if (gmtime_r(&date_, &tmv)) {
+		std::snprintf(text, sizeof(text), "%04d-%02d-%02d",
+			      tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday);
+	} else {
+		std::snprintf(text, sizeof(text), "?");
+	}
+	ctx->drawText("DejaVu Sans", 12.0,
+		      Point{ b.origin.x + 6.0, b.origin.y + b.size.h / 2.0 - 7.0 },
+		      text, Color::rgb(0.12, 0.12, 0.15));
+
+	double ax = b.origin.x + b.size.w - kDateArrowW;
+	double mid = b.origin.y + b.size.h / 2.0;
+	Point up[3] = { { ax + 5.0, mid - 3.0 },
+			{ ax + kDateArrowW - 5.0, mid - 3.0 },
+			{ ax + kDateArrowW / 2.0, mid - 9.0 } };
+	Point dn[3] = { { ax + 5.0, mid + 3.0 },
+			{ ax + kDateArrowW - 5.0, mid + 3.0 },
+			{ ax + kDateArrowW / 2.0, mid + 9.0 } };
+	Color arrow = Color::rgb(0.30, 0.30, 0.34);
+	Point sep_top = { ax, b.origin.y + 3.0 };
+	Point sep_bot = { ax, b.origin.y + b.size.h - 3.0 };
+
+	ctx->strokeRect(Rect{ sep_top, { 1.0, b.size.h - 6.0 } }, arrow, 1.0);
+	ctx->fillPolygon(up, 3, arrow);
+	ctx->fillPolygon(dn, 3, arrow);
+}
+
+const ObjectClass DatePicker::kClass = {
+	"DatePicker", &Control::kClass, nullptr, 0, nullptr, 0
+};
+
 } /* namespace argentum */

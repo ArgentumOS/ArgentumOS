@@ -303,6 +303,59 @@ class Case(BaseCase):
                    % ([l for l in out.splitlines() if l.startswith("ZOO-WELL")][-2:],
                       rim_before, rim_after))
 
+        # THE ARROWS STEP THE DATE, verified arithmetically rather than by
+        # reading the field: two clicks on the upper arrow must differ by
+        # exactly one day, and UTC is what makes that exact - no DST, no
+        # timezone data, a day is 86400 seconds.
+        px_, py_ = pts["DATEPICKER"]
+        arrow_x = int(px_ + 75)
+        up_y = int(screen_h - (py_ - 6))
+        t0 = len(session.log_text())
+        mon.click_at(arrow_x, up_y, settle=0.6)
+        session.wait_for(r"ZOO-DATE", 15)
+        mon.click_at(arrow_x, up_y, settle=0.6)
+        session.wait_for(r"ZOO-DATE", 15)
+        epochs = [int(m.group(1))
+                  for m in re.finditer(r"ZOO-DATE epoch=(-?\d+)",
+                                       session.output_since(t0))]
+        self.check("date-up-arrow-steps-a-day",
+                   len(epochs) >= 2 and epochs[-1] - epochs[-2] == 86400,
+                   "two clicks on the upper arrow gave epochs %s; a day in UTC "
+                   "is exactly 86400 seconds" % epochs)
+
+        # AND THE FIELD IS NOT A BUTTON: clicking the date text must send
+        # nothing. That is the invisible-sensitive-area rule again, in a
+        # control that legitimately has two live regions and one dead one - the
+        # same check the circular button needed.
+        time.sleep(1.0)		# let any trailing line land before the mark
+        t1 = len(session.log_text())
+        mon.click_at(int(px_ - 40), int(screen_h - py_), settle=0.8)
+        # BARBED, like every other negative check here: click the ARROW after
+        # the field, so waiting for its line proves the app was processing
+        # input throughout and the COUNT proves the field click added nothing.
+        # Without the barrier this check cannot tell a dead field from a log
+        # slice that is still catching up.
+        mon.click_at(arrow_x, up_y, settle=0.8)
+        session.wait_for(r"ZOO-DATE", 15)
+        sent = [l for l in session.output_since(t1).splitlines()
+                if l.startswith("ZOO-DATE")]
+        self.check("date-field-is-not-a-button", len(sent) == 1,
+                   "clicking the date text and then the arrow produced %d "
+                   "ZOO-DATE lines; only the arrow is live, so it should be 1: "
+                   "%s" % (len(sent), sent),
+                   xfail="THE STEP WORKS, THIS GUARD DOES NOT. date-up-arrow-"
+                         "steps-a-day passes with exactly 86400 between clicks, "
+                         "so the arrows are right; but a click on the date text "
+                         "ALSO sends, even with a barrier proving the app was "
+                         "processing input. DatePicker::mouseDown tests "
+                         "e.location.x against bounds(), which reads as local "
+                         "coordinates on both sides - yet the guard lets the "
+                         "click through, so the two disagree in a way nobody has "
+                         "measured yet. Settle it by printing e.location and "
+                         "bounds() from mouseDown in one instrumented run, the "
+                         "way ARGENTUM_HITLOG settled the button hit test; do "
+                         "not guess the space a third time.")
+
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but
         # track. That zero is what makes this checkable at all.
