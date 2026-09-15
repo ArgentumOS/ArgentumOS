@@ -647,8 +647,16 @@ the gate is the claim; the sections above record what each one settled.
 
 **Open inside finished slices** (fidelity, not absence):
 
-- U4: the circular slider, `DatePicker`, `ColorWell`, and the progress/level
-  style passes.
+- U4: the VALUE CONTROLS are done and gated (`uikit_u4` 17/17) - the circular
+  slider, and all three progress/level style passes: rating draws whole stars,
+  relevancy fills whole segments coloured by level, and the twelve-spoke
+  spinner runs off `advanceAnimation` (which used to redraw only when
+  `setIndeterminate` had been called, so a spinner never repainted). Reading
+  those draw paths also turned up `Color::rgb` not clamping, so a component
+  over 1 wrapped instead of saturating - `rgb(1.0, 1.0, 1.05)` gave a blue
+  channel of 12 where white was meant - now clamped, with a check asserting it.
+  Remaining in U4: `DatePicker` and `ColorWell`, which need new classes rather
+  than the style passes the others turned out to be.
 - U3: the separate field editor (editing is in place, in the cell's storage),
   the search field's recents menu, and token *objects* (tokens are strings).
 - U2a's damage model was narrowed after this table was first written: the
