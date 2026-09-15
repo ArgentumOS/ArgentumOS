@@ -647,7 +647,7 @@ the gate is the claim; the sections above record what each one settled.
 
 **Open inside finished slices** (fidelity, not absence):
 
-- U4: the VALUE CONTROLS are done and gated (`uikit_u4` 17/17) - the circular
+- U4: the VALUE CONTROLS are done and gated (`uikit_u4` 21/21) - the circular
   slider, and all three progress/level style passes: rating draws whole stars,
   relevancy fills whole segments coloured by level, and the twelve-spoke
   spinner runs off `advanceAnimation` (which used to redraw only when
