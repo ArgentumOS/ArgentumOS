@@ -1753,4 +1753,85 @@ Menu::popUp(const Point &atScreen)
 	app->removeWindow(&w);
 }
 
+
+/* ---- PopUpButton ----------------------------------------------------- */
+
+PopUpButton::PopUpButton()
+{
+	menu_ = new Menu();
+}
+
+void
+PopUpButton::addItemWithTitle(const char *title)
+{
+	menu_->addItem(title);
+	if (selected_ < 0) {
+		/* the first row added is the selection, as Cocoa's is: a pop-up with
+		 * rows and nothing chosen would show an empty title */
+		selectItemAtIndex(0);
+	}
+}
+
+int
+PopUpButton::numberOfItems() const
+{
+	return menu_ ? menu_->numberOfItems() : 0;
+}
+
+const char *
+PopUpButton::titleOfSelectedItem() const
+{
+	MenuItem *it = menu_ ? menu_->itemAt(selected_) : nullptr;
+
+	return it ? it->title() : "";
+}
+
+void
+PopUpButton::selectItemAtIndex(int i)
+{
+	if (!menu_ || i < 0 || i >= menu_->numberOfItems()) {
+		selected_ = -1;
+	} else {
+		selected_ = i;
+	}
+	setTitle(titleOfSelectedItem());
+	setNeedsDisplay();
+}
+
+bool
+PopUpButton::selectItemWithTitle(const char *title)
+{
+	for (int i = 0; menu_ && i < menu_->numberOfItems(); i++) {
+		MenuItem *it = menu_->itemAt(i);
+
+		if (it && title && std::strcmp(it->title(), title) == 0) {
+			selectItemAtIndex(i);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool
+PopUpButton::mouseDown(const Event &e)
+{
+	(void) e;
+	Window *w = window();
+	Rect mine = rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
+	double sx = (w ? w->frame().origin.x : 0) + mine.origin.x;
+	double sy = (w ? w->frame().origin.y : 0) + mine.origin.y
+		    + bounds().size.h;
+
+	/* the row that is picked sends ITS action; the app chooses what to do,
+	 * including selecting it here (Cocoa's button selects on its own, which
+	 * needs an item-to-button binding this toolkit does not have yet) */
+	menu_->popUp(Point{ sx, sy });
+	setNeedsDisplay();
+	return true;
+}
+
+const ObjectClass PopUpButton::kClass = {
+	"PopUpButton", &Button::kClass, nullptr, 0, nullptr, 0
+};
+
 } /* namespace argentum */

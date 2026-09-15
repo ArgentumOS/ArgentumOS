@@ -3466,6 +3466,66 @@ class Menu;			/* MenuView is declared before Menu */
 /// but cannot be picked.
 ///
 /// @see Menu, MenuItem
+/// @purpose A button that opens a menu and shows the item chosen from it.
+/// Cocoa's NSPopUpButton.
+///
+/// It OWNS an NSMenu, as Cocoa's does, and a click pops that menu up beneath
+/// the button. The chosen row is what the button displays.
+///
+/// @lifetime The button owns its menu, and the menu owns its items.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants indexOfSelectedItem is -1 or a valid row; the title shown is
+/// always titleOfSelectedItem().
+///
+/// @see Menu, Button
+class PopUpButton : public Button {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A button with an empty menu and nothing selected.
+	PopUpButton();
+
+	/// The menu it owns (Cocoa's menu).
+	Menu *menu() const { return menu_; }
+
+	/// Add a row (Cocoa's addItemWithTitle:). The first one added becomes the
+	/// selection when nothing is selected yet.
+	void addItemWithTitle(const char *title);
+	/// How many rows (Cocoa's numberOfItems).
+	int numberOfItems() const;
+	/// The chosen row, or -1 (Cocoa's indexOfSelectedItem).
+	int indexOfSelectedItem() const { return selected_; }
+	/// Its title, or '' (Cocoa's titleOfSelectedItem).
+	const char *titleOfSelectedItem() const;
+
+	/// Choose a row by index (Cocoa's selectItemAtIndex:); out of range
+	/// selects nothing. The button's title follows.
+	void selectItemAtIndex(int i);
+	/// Choose a row by its title (Cocoa's selectItemWithTitle:). Returns
+	/// false when no row has that title.
+	bool selectItemWithTitle(const char *title);
+
+	/// True when the FIRST row is the button's own title rather than a row to
+	/// pick (Cocoa's pullsDown).
+	bool pullsDown() const { return pullsDown_; }
+	/// Set it.
+	void setPullsDown(bool on) { pullsDown_ = on; }
+
+	/// A click pops the menu up under the button (Cocoa's behaviour).
+	bool mouseDown(const Event &e) override;
+
+private:
+	Menu *menu_ = nullptr;
+	int selected_ = -1;
+	bool pullsDown_ = false;
+};
+
 class MenuView : public View {
 public:
 	/// The class record KVC walks.
