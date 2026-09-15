@@ -43,24 +43,44 @@ FUNC = re.compile(r"^[A-Za-z_][A-Za-z0-9_:<>, *&]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*
 
 
 def member_docs(body):
-    """Public members of a class body, with their doc blocks."""
+    """Public members of a class body, with their doc blocks.
+
+    Declarations may span lines, so a member is accumulated until its
+    terminating ';' or '{' — otherwise the second line of a wrapped
+    signature is taken for a member of its own. Block comments inside the
+    body are skipped, not treated as a declaration.
+    """
     out, pending, in_public = [], [], False
-    for raw in body[1:]:
-        s = raw.strip()
-        if s in ("public:", "private:", "protected:"):
-            in_public = (s == "public:")
-            pending = []
-            continue
-        if s.startswith("///"):
-            pending.append(s[3:].strip())
-            continue
-        if in_public and "(" in s and s.endswith(";") \
-                and not s.startswith("//") and not s.startswith("*"):
-            out.append({"sig": s, "doc": "\n".join(pending).strip()})
-            pending = []
-            continue
-        if s:
-            pending = []
+    i, cur = 1, None
+    while i < len(body):
+        s = body[i].strip()
+        if cur is None:
+            if s.startswith("/*"):
+                while i < len(body) and "*/" not in body[i]:
+                    i += 1
+                i += 1
+                continue
+            if s in ("public:", "private:", "protected:"):
+                in_public = (s == "public:")
+                pending = []
+                i += 1
+                continue
+            if s.startswith("///"):
+                pending.append(s[3:].strip())
+                i += 1
+                continue
+            if not in_public or not s or s.startswith(("//", "*", "}")):
+                if s:
+                    pending = []
+                i += 1
+                continue
+            cur = s
+        else:
+            cur += " " + s
+        if ";" in cur or "{" in cur:
+            out.append({"sig": cur, "doc": "\n".join(pending).strip()})
+            pending, cur = [], None
+        i += 1
     return out
 
 

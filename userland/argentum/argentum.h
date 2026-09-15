@@ -15,6 +15,7 @@
 #define FNX_ARGENTUM_ARGENTUM_H
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -158,16 +159,22 @@ class LayoutConstraint;
 /// (leftAnchor() and so on) rather than constructing one.
 class LayoutAnchor {
 public:
+	/// Build an anchor for `attribute` of `item`.
 	LayoutAnchor(View *item, LayoutAttribute attribute)
 		: item_(item), attribute_(attribute) {}
 
+	/// The view this anchor belongs to.
 	View *item() const { return item_; }
+	/// Which part of the view this anchor names.
 	LayoutAttribute attribute() const { return attribute_; }
 
+	/// This anchor == other + constant (the common case).
 	LayoutConstraint *constraintEqualTo(const LayoutAnchor &other,
 					    double constant = 0) const;
+	/// This anchor >= other + constant.
 	LayoutConstraint *constraintGreaterThanOrEqualTo(
 		const LayoutAnchor &other, double constant = 0) const;
+	/// This anchor <= other + constant.
 	LayoutConstraint *constraintLessThanOrEqualTo(const LayoutAnchor &other,
 						      double constant = 0) const;
 
@@ -180,16 +187,20 @@ protected:
  * NSLayoutDimension does */
 class LayoutDimension : public LayoutAnchor {
 public:
+	/// Build a dimension anchor for a view's width or height.
 	LayoutDimension(View *item, LayoutAttribute attribute)
 		: LayoutAnchor(item, attribute) {}
 
 	/// This dimension == constant, at LayoutPriorityRequired.
 	LayoutConstraint *constraintEqualToConstant(double constant) const;
+	/// This dimension >= constant.
 	LayoutConstraint *constraintGreaterThanOrEqualToConstant(
 		double constant) const;
+	/// This dimension <= constant.
 	LayoutConstraint *constraintLessThanOrEqualToConstant(
 		double constant) const;
 	/* this = multiplier * other + constant */
+	/// This dimension == multiplier * other + constant.
 	LayoutConstraint *constraintEqualTo(const LayoutDimension &other,
 					    double multiplier = 1,
 					    double constant = 0) const;
@@ -204,16 +215,26 @@ public:
 /// activation means). layoutSolve() is the pass that satisfies them.
 class LayoutConstraint {
 public:
+	/// The constraint's FIRST item — the one the solver may move.
 	View *firstItem() const { return first_; }
+	/// The part of the first item that is constrained.
 	LayoutAttribute firstAttribute() const { return firstAttr_; }
+	/// The relation between the two items.
 	LayoutRelation relation() const { return relation_; }
+	/// The REFERENCE item. Its frame is not moved by this constraint.
 	View *secondItem() const { return second_; }
+	/// The part of the reference item that is measured.
 	LayoutAttribute secondAttribute() const { return secondAttr_; }
+	/// The scale applied to the second item (usually 1).
 	double multiplier() const { return multiplier_; }
+	/// The constant added to the second item.
 	double constant() const { return constant_; }
 
+	/// The priority: LayoutPriorityRequired to break rather than fail.
 	double priority() const { return priority_; }
+	/// Change the priority (the solver reads it on the next pass).
 	void setPriority(double p) { priority_ = p; }
+	/// True while this constraint is installed in the active set.
 	bool isActive() const { return active_; }
 	/// Install or remove this constraint from the active set.
 	void setActive(bool on);
@@ -222,6 +243,9 @@ public:
 	static void activate(const std::vector<LayoutConstraint *> &constraints);
 	/* the factory the anchors use (Cocoa builds constraints through its
 	 * convenience constructors the same way) */
+	/// Build a constraint without going through an anchor: the general
+	/// form (first.firstAttr RELATION multiplier * second.secondAttr +
+	/// constant). Ownership passes to the caller.
 	static LayoutConstraint *create(View *first, LayoutAttribute firstAttr,
 					LayoutRelation relation,
 					View *second, LayoutAttribute secondAttr,
@@ -361,6 +385,134 @@ public:
 	bool setValueForKeyPath(const char *path, const Value &v);
 };
 
+/// @purpose One posted message: its name, the sender, and a small by-name
+/// bag of extra values. Cocoa's NSNotification. The name is the contract
+/// between the sender and the observers; the sender is what lets an
+/// observer filter ("only from this window").
+///
+/// @lifetime Posted notifications are created by the poster and are alive
+/// only for the duration of the delivery — an observer must copy anything
+/// it wants to keep. Cocoa's is no different.
+///
+/// @threading Delivered on the posting thread, synchronously.
+///
+/// @invariants The name is copied at construction and never empty;
+/// userInfo() answers Nil for a key nobody set.
+///
+/// @see NotificationCenter
+class Notification : public Object {
+public:
+	/// The class record KVC walks (Object <- Notification).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// Construct an empty notification.
+	Notification();
+	/// Construct one for `name`, sent by `object`.
+	Notification(const char *name, Object *object = nullptr);
+
+	/// The notification's name.
+	const char *name() const { return name_.c_str(); }
+	/// The sender, or nullptr when the notification is anonymous.
+	Object *object() const { return object_; }
+
+	/// A value carried along with the notification. The toolkit has no
+	/// dictionary class yet (U5), so the bag is a by-name map; Nil when
+	/// nobody set that key.
+	Value userInfo(const char *key) const;
+	/// Set a carried value.
+	void setUserInfo(const char *key, const Value &v);
+
+private:
+	std::string name_;
+	Object *object_ = nullptr;
+	std::map<std::string, Value> info_;
+};
+
+/// @purpose The session's broadcast hub: objects register interest in a
+/// name (optionally filtered by sender) and are called when someone posts
+/// it. Cocoa's NSNotificationCenter, which is the decoupling tool the
+/// toolkit needs most — the app and its controls talk through names
+/// instead of holding pointers to each other.
+///
+/// @lifetime The center is a process-wide singleton (defaultCenter());
+/// nobody owns it and it is never destroyed. It does NOT own observers or
+/// senders — it holds non-owning references, so removing an observer
+/// before it dies is the observer's job (a dead observer left registered
+/// is a dangling reference, and the center cannot see it).
+///
+/// @threading Single-threaded (the UI thread). Delivery is SYNCHRONOUS:
+/// post() runs every matching handler before it returns, so a handler
+/// that posts another notification nests (Cocoa's behaviour), and a slow
+/// handler slows the poster.
+///
+/// @invariants Delivery is in registration order. The set of handlers for
+/// an in-flight post is fixed when the post starts: a handler added during
+/// delivery does NOT receive that notification, while one removed during
+/// delivery is not called by it (the token goes dead immediately, and the
+/// dead entries are reaped once the outermost delivery returns).
+///
+/// @see Notification, Object
+class NotificationCenter : public Object {
+public:
+	/// The class record KVC walks (Object <- NotificationCenter).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A subscription's identity, as returned by addObserver(). The
+	/// value stays meaningful until the observer is removed.
+	typedef unsigned long Observer;
+
+	/// The session's center (Cocoa's defaultCenter).
+	static NotificationCenter &defaultCenter();
+
+	/// The center starts empty: no subscriptions.
+	NotificationCenter();
+
+	/// Register `handler` for notifications named `name` sent by `object`
+	/// (`nullptr` on either means "any"). `observer` is the identity
+	/// removeObserver(Object *) matches; it may be nullptr for an
+	/// anonymous subscription. Returns the token for removeObserver().
+	Observer addObserver(Object *observer, const char *name, Object *object,
+			     std::function<void(Notification &)> handler);
+	/// Register for every sender carrying `name`.
+	Observer addObserver(Object *observer, const char *name,
+			     std::function<void(Notification &)> handler);
+
+	/// Remove one subscription by token. Harmless when already removed.
+	void removeObserver(Observer token);
+	/// Remove every subscription registered by `observer`.
+	void removeObserver(Object *observer);
+
+	/// Post `name` from `sender`, carrying `info`.
+	void post(const char *name, Object *sender = nullptr,
+		  const std::map<std::string, Value> &info = {});
+
+	/// How many subscriptions are registered (read-only; for tests and
+	/// debugging).
+	std::size_t count() const { return entries_.size(); }
+
+private:
+	struct Entry {
+		Observer token = 0;
+		Object *observer = nullptr;
+		std::string name;		/* empty = any name */
+		Object *object = nullptr;	/* null = any sender */
+		std::function<void(Notification &)> handler;
+		bool alive = true;
+	};
+
+	std::vector<Entry> entries_;
+	Observer next_ = 1;
+	int delivering_ = 0;
+
+	void reap();
+};
+
 /// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each
 /// bit marks one margin or size as FLEXIBLE, so a superview resize is
 /// absorbed by the parts that carry a bit. A view with no bits set is not
@@ -406,6 +558,7 @@ public:
 	/// The class record KVC walks (Object <- View).
 	static const ObjectClass kClass;
 
+	/// The class record (see Object::objectClass).
 	const ObjectClass *objectClass() const override { return &kClass; }
 
 	/// Construct an empty view: no superview, no children, mask on.
@@ -414,10 +567,14 @@ public:
 	~View() override;
 
 	/* tree (non-owning, like Cocoa's: the parent does not free children) */
-	void addSubview(View *v);		/* append (topmost) */
+	/// Add `v` as the topmost child (it is removed from any old parent
+	/// first). The tree does not own it — see the class's @lifetime.
+	void addSubview(View *v);
 	/// Unlink from the superview. Harmless when already unlinked.
 	void removeFromSuperview();
+	/// The parent, or nullptr at the root of the tree.
 	View *superview() const { return parent_; }
+	/// The children, bottom-most first (the last one is topmost).
 	const std::vector<View *> &subviews() const { return children_; }
 
 	/// Set the frame (points, in the superview's space). A SIZE change
@@ -425,17 +582,26 @@ public:
 	/// Cocoa's resizeSubviewsWithOldSize) and marks the constrained ones
 	/// as needing layout; a pure move changes nothing else.
 	void setFrame(const Rect &r);
+	/// The frame, in the SUPERVIEW's space (points).
 	Rect frame() const { return frame_; }
+	/// The same rectangle in THIS view's own space: origin always (0,0),
+	/// the frame's size.
 	Rect bounds() const { return Rect{ { 0, 0 }, frame_.size }; }
+	/// Show or hide the view. A hidden view draws nothing and takes no
+	/// hits (once those paths exist); its frame is untouched.
 	void setHidden(bool hidden) { hidden_ = hidden; }
+	/// True while the view is hidden.
 	bool isHidden() const { return hidden_; }
 
 	/* identity: the name a document or an app resolves a view by */
 	/// Name this view (copied). '' is anonymous; the name is what an app
 	/// resolves a control by.
 	void setIdentifier(const char *utf8);
+	/// This view's name ('' when anonymous).
 	const char *identifier() const { return identifier_.c_str(); }
-	View *viewWithIdentifier(const char *utf8);	/* pre-order, from here */
+	/// The first view in this subtree (this view first, then a pre-order
+	/// walk) whose identifier is `utf8`; nullptr when nothing matches.
+	View *viewWithIdentifier(const char *utf8);
 
 	/* ---- the layout lifecycle (U0b) ---------------------------------
 	 * Cocoa's protocol, at the size this milestone needs:
@@ -471,6 +637,7 @@ public:
 	/// The springs/struts mask. Meaningful only while
 	/// translatesAutoresizingMaskIntoConstraints() is TRUE.
 	unsigned int autoresizingMask() const { return mask_; }
+	/// Set the mask. The next superview size change applies it.
 	void setAutoresizingMask(unsigned int mask) { mask_ = mask; }
 
 	/* ---- Auto Layout (U0) ------------------------------------------

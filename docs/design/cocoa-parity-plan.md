@@ -139,7 +139,16 @@ as a compatibility path for un-migrated views, with a migration list.
   silently ignored. `View` is now an `Object` with its own record and
   properties (`identifier`, `hidden`, read-only `superview`). Gate
   `tests/cases/uikit_u1.py` 4/4 (15 assertions in the probe).
-  **Remaining in U1:** `NSNotificationCenter`, `NSViewController` /
+  **U1b — `NotificationCenter` + `Notification`. DONE.**
+  `defaultCenter()`, `addObserver` (an `Observer` token, with name and
+  sender filters), `removeObserver(token)` / `removeObserver(Object *)`,
+  `post` with user info. Delivery is synchronous and in registration
+  order, and **the in-flight set is frozen when the post starts**: an
+  observer added during delivery misses that post, one removed during
+  delivery is not called and its token dies at once; dead entries are
+  reaped when the outermost delivery returns. Gate
+  `tests/cases/uikit_u1b.py` 4/4 (22 assertions).
+  **Remaining in U1:** `NSViewController` /
   `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
   path.
 - **U1 (plan wording) — the missing bases + property tables.** `NSObject`-analog base
