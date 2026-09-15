@@ -1006,11 +1006,13 @@ public:
 	/// True when this is an auto-repeat.
 	bool isARepeat() const { return isARepeat_; }
 
-	/// The wheel deltas (Cocoa's deltaX/deltaY).
+	/// The wheel's horizontal delta (Cocoa's deltaX).
 	double deltaX() const { return deltaX_; }
+	/// The wheel's vertical delta (Cocoa's deltaY).
 	double deltaY() const { return deltaY_; }
-	/// The precise wheel deltas (Cocoa's scrollingDeltaX/Y).
+	/// The precise horizontal delta (Cocoa's scrollingDeltaX).
 	double scrollingDeltaX() const { return scrollingDeltaX_; }
+	/// The precise vertical delta (Cocoa's scrollingDeltaY).
 	double scrollingDeltaY() const { return scrollingDeltaY_; }
 
 private:
@@ -1080,27 +1082,7 @@ enum class BezelStyle {
 };
 /// A key event, delivered to the window's FIRST RESPONDER. Cocoa hands
 /// views an NSEvent; this is the part a control needs.
-struct KeyEvent {
-	/// The X keysym (a stable, layout-independent code).
-	unsigned long keySym = 0;
-	/// The text the key produces, UTF-8 ('' for a key that types nothing,
-	/// such as an arrow or a modifier).
-	std::string characters;
-	/// A named key, when the key is one — the codes a control edits by.
-	bool isReturn = false;
-	bool isTab = false;
-	bool isDelete = false;		///< backspace (delete BACKWARD)
-	bool isForwardDelete = false;
-	bool isEscape = false;
-	bool isLeft = false;
-	bool isRight = false;
-	bool isHome = false;
-	bool isEnd = false;
-	/// Modifier state as it was at the press.
-	bool shift = false;
-	bool control = false;
-	bool alt = false;
-};
+
 
 /* ---- U2a: the display path — connection, surface, context, window ----
  *
@@ -1391,7 +1373,7 @@ private:
 	/// The view under a content-space point, or nullptr.
 	View *dispatchToContent(const Point &pt, const MouseEvent &e);
 	/// Send a key to the first responder, up the chain.
-	void dispatchKey(const KeyEvent &ke);
+	void dispatchKey(const Event &ke);
 	/// Give the focus to the view a press landed on, when it wants it.
 	bool focusFromClick(View *hit);
 	/// Gather the views that accept the first responder, in pre-order.
@@ -1546,10 +1528,21 @@ public:
 
 	/// The command a key event means, or null when it means text: the built-in
 	/// binding table.
-	const char *commandForEvent(const Event &e) const;
+	static const char *commandForEvent(const Event &e);
 };
 
-class View : public Object {
+/// @purpose The base of everything drawn: a rectangle in a window that can
+/// draw itself and receive events. Cocoa's NSView.
+///
+/// @lifetime A view owns its subviews.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants A view draws inside its own bounds and hit-tests in its
+/// own space; a hidden view is neither drawn nor hit.
+///
+/// @see Responder, Window, Control
+class View : public Responder {
 public:
 	/// The class record KVC walks (Object <- View).
 	static const ObjectClass kClass;
@@ -1662,7 +1655,6 @@ public:
 	/// A key went down while this view was the first responder (or while
 	/// the event was walking up to it). Return true when handled; false
 	/// passes it to the superview.
-	virtual bool keyDown(const KeyEvent &e);
 	/// The next responder: this view's superview (or nullptr at the top).
 	View *nextResponder() const { return parent_; }
 	/// True while this view is the window's first responder.
@@ -2654,7 +2646,6 @@ public:
 	/// arrows and Home/End move the insertion point, Delete removes, and
 	/// Return COMMITS (the action is sent). Anything else is offered to
 	/// the superview.
-	bool keyDown(const KeyEvent &e) override;
 	/// The colour of the insertion point.
 	Color caretColor() const;
 	/// Set it.
@@ -2844,7 +2835,6 @@ public:
 
 	/// Return and comma commit; Backspace on an empty entry takes the last
 	/// token back; everything else is the base field's behaviour.
-	bool keyDown(const KeyEvent &e) override;
 
 private:
 	/* the entry is empty again after a commit, so the caret goes home */

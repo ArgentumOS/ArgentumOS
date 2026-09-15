@@ -1670,68 +1670,44 @@ Window::pumpEvent()
 		/* X's key events carry a keycode; the KEYSYM and the TEXT come
 		 * from the server's keymap (Xfb loads the host's), so the
 		 * toolkit never has to know a layout */
-		KeyEvent ke;
 		char buf[32] = { 0 };
 		KeySym ks = NoSymbol;
 		Status st = 0;
-		int n = XLookupString((XKeyEvent *) &ev, buf, (int) sizeof(buf) - 1,
-				      &ks, nullptr);
+		int n = XLookupString((XKeyEvent *) &ev, buf,
+				      (int) sizeof(buf) - 1, &ks, nullptr);
 
 		(void) st;
-		ke.keySym = (unsigned long) ks;
-		if (n > 0) {
-			ke.characters.assign(buf, (size_t) n);
+		/* COCOA'S RULE: AN EVENT KEEPS ITS CHARACTERS. This block used to
+		 * erase them for Return, Tab and the arrows and set a bool for each
+		 * instead, which is why every control asked what key it was. The
+		 * binding table (Responder::commandForEvent) reads the characters
+		 * now, and the keysyms for the keys that type nothing. */
+		unsigned int flags = 0;
+
+		if (ev.xkey.state & ShiftMask) {
+			flags |= ModifierShift;
 		}
-		ke.shift = (ev.xkey.state & ShiftMask) != 0;
-		ke.control = (ev.xkey.state & ControlMask) != 0;
-		ke.alt = (ev.xkey.state & Mod1Mask) != 0;
-		switch (ks) {
-		case XK_Return:
-		case XK_KP_Enter:
-			ke.isReturn = true;
-			ke.characters.clear();
-			break;
-		case XK_Tab:
-			ke.isTab = true;
-			ke.characters.clear();
-			break;
-		case XK_BackSpace:
-			ke.isDelete = true;
-			ke.characters.clear();
-			break;
-		case XK_Delete:
-			ke.isForwardDelete = true;
-			ke.characters.clear();
-			break;
-		case XK_Escape:
-			ke.isEscape = true;
-			ke.characters.clear();
-			break;
-		case XK_Left:
-			ke.isLeft = true;
-			ke.characters.clear();
-			break;
-		case XK_Right:
-			ke.isRight = true;
-			ke.characters.clear();
-			break;
-		case XK_Home:
-			ke.isHome = true;
-			ke.characters.clear();
-			break;
-		case XK_End:
-			ke.isEnd = true;
-			ke.characters.clear();
-			break;
-		default:
-			break;
+		if (ev.xkey.state & ControlMask) {
+			flags |= ModifierControl;
 		}
-		/* a control character is not text: Ctrl-A must not insert 0x01
-		 * into a field */
-		if (!ke.characters.empty()
-		    && (unsigned char) ke.characters[0] < 0x20) {
-			ke.characters.clear();
+		if (ev.xkey.state & Mod1Mask) {
+			flags |= ModifierOption;
 		}
+		if (ev.xkey.state & LockMask) {
+			flags |= ModifierCapsLock;
+		}
+		if (ev.xkey.state & Mod4Mask) {
+			flags |= ModifierCommand;
+		}
+		/* XLookupString gives the MODIFIED text; Cocoa separates the two,
+		 * and the producing side of that split is not here yet, so both
+		 * carry the same string for now. */
+		Event ke = Event::keyEvent(
+			EventType::KeyDown,
+			Point{ (double) ev.xkey.x, (double) ev.xkey.y }, flags,
+			(double) ev.xkey.time / 1000.0, 0, buf, buf, false,
+			(unsigned short) ks);
+
 		dispatchKey(ke);
 		return true;
 	}
@@ -1749,10 +1725,16 @@ Window::pumpEvent()
 /* the keyboard's dispatch: Tab walks the focus, everything else goes to
  * the first responder and, if it does not handle it, up the chain */
 void
-Window::dispatchKey(const KeyEvent &ke)
+Window::dispatchKey(const Event &ke)
 {
-	if (ke.isTab) {
-		advanceFirstResponder(ke.shift);
+	const char *cmd = Responder::commandForEvent(ke);
+
+	/* Tab moves the focus, and Cocoa reaches that through the command
+	 * chain: an unhandled insertTab: ends editing and the window takes it.
+	 * This toolkit has no field editors yet, so the window answers it here. */
+	if (cmd && std::strcmp(cmd, "insertTab") == 0) {
+		advanceFirstResponder(
+			(ke.modifierFlags() & ModifierShift) != 0);
 		return;
 	}
 	for (View *v = firstResponder_; v; v = v->nextResponder()) {

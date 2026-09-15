@@ -7,6 +7,7 @@
 #include <argentum/argentum.h>
 
 #include <cstring>
+#include <X11/keysym.h>
 
 namespace argentum {
 
@@ -73,13 +74,6 @@ View::View()
 }
 
 /* ---- the responder chain (U3c) --------------------------------------- */
-
-bool
-View::keyDown(const KeyEvent &e)
-{
-	(void) e;
-	return false;		/* the default view takes no keys */
-}
 
 bool
 View::isFirstResponder() const
@@ -526,8 +520,12 @@ const ObjectClass View::kClass = {
  * editor needs. A key that is not here is TEXT, which is why insertText() is
  * the fallback rather than a special case. */
 const char *
-Responder::commandForEvent(const Event &e) const
+Responder::commandForEvent(const Event &e)
 {
+	/* TEXT FIRST, as Cocoa's bindings do: a key that produces characters is
+	 * text unless a binding claims it, and the notable claim is the line
+	 * ending. The producer no longer erases characters for these keys - that
+	 * erasure is what made the old bools necessary. */
 	const char *ch = e.characters();
 
 	if (std::strcmp(ch, "\r") == 0 || std::strcmp(ch, "\n") == 0) {
@@ -536,7 +534,7 @@ Responder::commandForEvent(const Event &e) const
 	if (std::strcmp(ch, "\t") == 0) {
 		return "insertTab";
 	}
-	if (std::strcmp(ch, "\x19") == 0) {		/* backtab */
+	if (std::strcmp(ch, "\x19") == 0) {
 		return "insertBacktab";
 	}
 	if (std::strcmp(ch, "\x7f") == 0 || std::strcmp(ch, "\x08") == 0) {
@@ -544,6 +542,32 @@ Responder::commandForEvent(const Event &e) const
 	}
 	if (std::strcmp(ch, "\x1b") == 0) {
 		return "cancelOperation";
+	}
+	/* keys that TYPE NOTHING are named by their keysym instead */
+	switch ((unsigned long) e.keyCode()) {
+	case XK_Delete:
+	case XK_KP_Delete:
+		return "deleteForward";
+	case XK_Left:
+		return "moveLeft";
+	case XK_Right:
+		return "moveRight";
+	case XK_Up:
+		return "moveUp";
+	case XK_Down:
+		return "moveDown";
+	case XK_Home:
+	case XK_KP_Home:
+		return "moveToBeginningOfLine";
+	case XK_End:
+	case XK_KP_End:
+		return "moveToEndOfLine";
+	case XK_Page_Up:
+		return "pageUp";
+	case XK_Page_Down:
+		return "pageDown";
+	default:
+		break;
 	}
 	return nullptr;
 }

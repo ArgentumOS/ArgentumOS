@@ -644,48 +644,6 @@ TextField::acceptsFirstResponder() const
 	return editable_;
 }
 
-bool
-TextField::keyDown(const KeyEvent &e)
-{
-	TextFieldCell *c = fieldCell();
-
-	if (!c || !editable_) {
-		return false;
-	}
-	Cell *cell = c;
-
-	(void) cell;
-	if (e.isReturn) {
-		/* COMMIT: the action is the field's reason to exist, and it goes
-		 * with the field as the sender (Control's rule) */
-		TextField *self = this;
-
-		sendAction();
-		(void) self;
-		setNeedsDisplay();
-		return true;
-	}
-	if (e.isDelete) {
-		c->deleteBackward();
-	} else if (e.isForwardDelete) {
-		c->deleteForward();
-	} else if (e.isLeft) {
-		c->moveLeft();
-	} else if (e.isRight) {
-		c->moveRight();
-	} else if (e.isHome) {
-		c->moveToStart();
-	} else if (e.isEnd) {
-		c->moveToEnd();
-	} else if (!e.characters.empty()) {
-		c->insertText(e.characters.c_str());
-	} else {
-		return false;		/* Tab and Escape are not ours */
-	}
-	setNeedsDisplay();
-	return true;
-}
-
 Color
 TextField::caretColor() const
 {
@@ -1128,34 +1086,6 @@ TokenField::setInsertionPointFor(const char *utf8)
 	if (TokenFieldCell *c = tokenCell()) {
 		c->setInsertionPoint(0);
 	}
-}
-
-bool
-TokenField::keyDown(const KeyEvent &e)
-{
-	TokenFieldCell *c = tokenCell();
-
-	if (!c) {
-		return false;
-	}
-	if (e.isReturn) {
-		commitEntry();
-		sendAction();		/* Return commits AND sends */
-		return true;
-	}
-	/* a comma commits WITHOUT sending: "a, b, c" is one edit, not three
-	 * actions (Cocoa's rule for a token field) */
-	if (!e.characters.empty() && e.characters == ",") {
-		commitEntry();
-		return true;
-	}
-	if (e.isDelete && stringValue()[0] == '\0' && !c->tokens().empty()) {
-		/* backspace on an EMPTY entry takes the last token back */
-		c->removeLastToken();
-		setNeedsDisplay();
-		return true;
-	}
-	return TextField::keyDown(e);
 }
 
 const ObjectClass TokenField::kClass = {
