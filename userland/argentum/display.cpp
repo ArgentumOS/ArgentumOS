@@ -1470,7 +1470,7 @@ Window::inChrome(const Point &p) const
 }
 
 View *
-Window::dispatchToContent(const Point &contentPt, const MouseEvent &e)
+Window::dispatchToContent(const Point &contentPt, const Event &e)
 {
 	if (!content_) {
 		return nullptr;
@@ -1522,14 +1522,42 @@ Window::pumpEvent()
 		Point winPt = { ev.xbutton.x / pp, ev.xbutton.y / pp };
 		bool pressed = (ev.type == ButtonPress);
 		bool released = (ev.type == ButtonRelease);
-		MouseEvent me;
+		unsigned int mods = 0;
+		int xbutton = ev.xbutton.button ? (int) ev.xbutton.button : 1;
+		EventType kind;
 
-		me.location = winPt;
-		me.button = ev.xbutton.button ? ev.xbutton.button : 1;
-		me.clickCount = 1;
-		me.shift = (ev.xbutton.state & ShiftMask) != 0;
-		me.control = (ev.xbutton.state & ControlMask) != 0;
-		me.alt = (ev.xbutton.state & Mod1Mask) != 0;
+		if (ev.xbutton.state & ShiftMask) {
+			mods |= ModifierShift;
+		}
+		if (ev.xbutton.state & ControlMask) {
+			mods |= ModifierControl;
+		}
+		if (ev.xbutton.state & Mod1Mask) {
+			mods |= ModifierOption;
+		}
+		if (ev.xbutton.state & LockMask) {
+			mods |= ModifierCapsLock;
+		}
+		/* the KIND comes from the X event and the button, as Cocoa's does: a
+		 * motion with a button held is a DRAG, not a move */
+		if (pressed) {
+			kind = (xbutton == 3) ? EventType::RightMouseDown
+					      : EventType::LeftMouseDown;
+		} else if (released) {
+			kind = (xbutton == 3) ? EventType::RightMouseUp
+					      : EventType::LeftMouseUp;
+		} else if (ev.xbutton.state & (Button1Mask | Button3Mask)) {
+			kind = EventType::LeftMouseDragged;
+		} else {
+			kind = EventType::MouseMoved;
+		}
+		/* the name is Cocoa's; the SPACE is this toolkit's. The point is
+		 * converted into the receiving view's space by the dispatch below,
+		 * where Cocoa's locationInWindow is window space and its
+		 * convertPoint:fromView: does the rest - a later fidelity step. */
+		Event me = Event::mouseEvent(kind, winPt, mods,
+					     (double) ev.xbutton.time / 1000.0, 0,
+					     0, 1, 0.0);
 
 		/* 0. a drag in progress is CAPTURED: it follows the pointer
 		 * wherever it goes. Testing the chrome first would stop the drag
@@ -1558,7 +1586,7 @@ Window::pumpEvent()
 			if (pressed) {
 				Point p = winPt;
 
-				if (me.button == 1) {
+				if (me.buttonNumber() == 0) {
 					Rect cb = closeBoxRect();
 
 					if (p.x >= cb.origin.x
@@ -1571,7 +1599,7 @@ Window::pumpEvent()
 				}
 				/* anywhere else in the bar starts a drag, and the
 				 * delta comes from the ROOT coordinates */
-				if (ev.xbutton.button == 1 && me.button == 1) {
+				if (ev.xbutton.button == 1 && me.buttonNumber() == 0) {
 					dragging_ = true;
 					dragRootX_ = ev.xbutton.x_root;
 					dragRootY_ = ev.xbutton.y_root;
@@ -1614,7 +1642,7 @@ Window::pumpEvent()
 			}
 			/* offer it to the view, then up the parent chain */
 			for (View *v = hit; v; v = v->superview()) {
-				me.location = Point{ contentPt.x
+				me.setLocationInWindow(Point{ contentPt.x
 						     - v->rectInWindow(
 							       Rect{ { 0, 0 },
 								     { 0, 0 } })
@@ -1623,7 +1651,7 @@ Window::pumpEvent()
 						     - v->rectInWindow(
 							       Rect{ { 0, 0 },
 								     { 0, 0 } })
-							       .origin.y };
+							       .origin.y });
 
 				if (v->mouseDown(me)) {
 					break;
@@ -1631,7 +1659,7 @@ Window::pumpEvent()
 			}
 			return true;
 		}
-		if (me.button != 1 && pressView_ == nullptr) {
+		if (me.buttonNumber() != 1 && pressView_ == nullptr) {
 			return true;
 		}
 		/* drags and releases go to the view that captured the press */
@@ -1639,8 +1667,8 @@ Window::pumpEvent()
 			View *v = pressView_;
 			Rect off = v->rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
 
-			me.location = Point{ contentPt.x - off.origin.x,
-					     contentPt.y - off.origin.y };
+			me.setLocationInWindow(Point{ contentPt.x - off.origin.x,
+					     contentPt.y - off.origin.y });
 			if (released) {
 				v->mouseUp(me);
 				v->setTrackingMouse(false);

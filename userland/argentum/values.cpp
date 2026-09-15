@@ -393,7 +393,7 @@ Slider::setType(SliderType t)
 }
 
 bool
-Slider::mouseDown(const MouseEvent &e)
+Slider::mouseDown(const Event &e)
 {
 	if (!Control::mouseDown(e)) {
 		return false;
@@ -403,7 +403,7 @@ Slider::mouseDown(const MouseEvent &e)
 	SliderCell *c = sliderCell();
 
 	if (c && isTrackingMouse()) {
-		c->setValueForPoint(bounds(), e.location);
+		c->setValueForPoint(bounds(), e.locationInWindow());
 		setNeedsDisplay();
 		if (c->isContinuous()) {
 			sendAction();
@@ -413,7 +413,7 @@ Slider::mouseDown(const MouseEvent &e)
 }
 
 bool
-Slider::mouseDragged(const MouseEvent &e)
+Slider::mouseDragged(const Event &e)
 {
 	if (!isEnabled() || !isTrackingMouse()) {
 		return false;
@@ -425,7 +425,7 @@ Slider::mouseDragged(const MouseEvent &e)
 	}
 	double before = c->value();
 
-	c->setValueForPoint(bounds(), e.location);
+	c->setValueForPoint(bounds(), e.locationInWindow());
 	if (c->value() != before) {
 		setNeedsDisplay();
 		if (c->isContinuous()) {
@@ -436,7 +436,7 @@ Slider::mouseDragged(const MouseEvent &e)
 }
 
 bool
-Slider::mouseUp(const MouseEvent &e)
+Slider::mouseUp(const Event &e)
 {
 	if (!isEnabled() || !isTrackingMouse()) {
 		return false;
@@ -445,7 +445,7 @@ Slider::mouseUp(const MouseEvent &e)
 }
 
 void
-Slider::mouseUpInside(const MouseEvent &e)
+Slider::mouseUpInside(const Event &e)
 {
 	SliderCell *c = sliderCell();
 
@@ -749,7 +749,7 @@ Stepper::stepDown()
 }
 
 void
-Stepper::mouseUpInside(const MouseEvent &e)
+Stepper::mouseUpInside(const Event &e)
 {
 	StepperCell *c = stepperCell();
 
@@ -758,7 +758,7 @@ Stepper::mouseUpInside(const MouseEvent &e)
 	}
 	Rect b = bounds();
 
-	if (e.location.y - b.origin.y < b.size.h / 2.0) {
+	if (e.locationInWindow().y - b.origin.y < b.size.h / 2.0) {
 		stepUp();
 	} else {
 		stepDown();
@@ -1131,7 +1131,7 @@ ColorWell::setActive(bool on)
 }
 
 bool
-ColorWell::mouseDown(const MouseEvent &e)
+ColorWell::mouseDown(const Event &e)
 {
 	(void) e;
 	setActive(true);
@@ -1194,7 +1194,7 @@ DatePicker::stepDown()
 }
 
 bool
-DatePicker::mouseDown(const MouseEvent &e)
+DatePicker::mouseDown(const Event &e)
 {
 	Rect b = bounds();
 
@@ -1204,16 +1204,16 @@ DatePicker::mouseDown(const MouseEvent &e)
 	 * with, then the verdict it drew from them. */
 	if (getenv("ARGENTUM_HITLOG")) {
 		std::printf("ARGENTUM-DATE p=%.1f,%.1f b=%.1f,%.1f %.0fx%.0f %s\n",
-			    e.location.x, e.location.y, b.origin.x, b.origin.y,
+			    e.locationInWindow().x, e.locationInWindow().y, b.origin.x, b.origin.y,
 			    b.size.w, b.size.h,
-			    e.location.x < b.origin.x + b.size.w - kDateArrowW
+			    e.locationInWindow().x < b.origin.x + b.size.w - kDateArrowW
 				    ? "FIELD" : "ARROW");
 		std::fflush(stdout);
 	}
-	if (e.location.x < b.origin.x + b.size.w - kDateArrowW) {
+	if (e.locationInWindow().x < b.origin.x + b.size.w - kDateArrowW) {
 		return false;			/* the field, not an arrow */
 	}
-	if (e.location.y < b.origin.y + b.size.h / 2.0) {
+	if (e.locationInWindow().y < b.origin.y + b.size.h / 2.0) {
 		stepUp();
 	} else {
 		stepDown();
@@ -1223,7 +1223,7 @@ DatePicker::mouseDown(const MouseEvent &e)
 }
 
 bool
-DatePicker::mouseUp(const MouseEvent &e)
+DatePicker::mouseUp(const Event &e)
 {
 	(void) e;
 	return true;			/* the press already did the work */
@@ -1663,9 +1663,9 @@ MenuView::itemIndexAt(const Point &p) const
 }
 
 bool
-MenuView::mouseDown(const MouseEvent &e)
+MenuView::mouseDown(const Event &e)
 {
-	int i = itemIndexAt(e.location);
+	int i = itemIndexAt(e.locationInWindow());
 	MenuItem *it = menu_ ? menu_->itemAt(i) : nullptr;
 
 	if (!it || !it->isEnabled()) {

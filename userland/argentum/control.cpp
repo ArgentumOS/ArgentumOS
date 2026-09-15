@@ -227,17 +227,17 @@ Control::hitTest(const Point &p)
 }
 
 bool
-Control::containsPoint(const MouseEvent &e) const
+Control::containsPoint(const Event &e) const
 {
 	Rect b = bounds();
 
-	return e.location.x >= b.origin.x && e.location.y >= b.origin.y
-		&& e.location.x < b.origin.x + b.size.w
-		&& e.location.y < b.origin.y + b.size.h;
+	return e.locationInWindow().x >= b.origin.x && e.locationInWindow().y >= b.origin.y
+		&& e.locationInWindow().x < b.origin.x + b.size.w
+		&& e.locationInWindow().y < b.origin.y + b.size.h;
 }
 
 bool
-Control::mouseDown(const MouseEvent &e)
+Control::mouseDown(const Event &e)
 {
 	if (!isEnabled()) {
 		return false;
@@ -249,7 +249,7 @@ Control::mouseDown(const MouseEvent &e)
 }
 
 bool
-Control::mouseDragged(const MouseEvent &e)
+Control::mouseDragged(const Event &e)
 {
 	if (!isEnabled() || !isTrackingMouse()) {
 		return false;
@@ -265,7 +265,7 @@ Control::mouseDragged(const MouseEvent &e)
 }
 
 bool
-Control::mouseUp(const MouseEvent &e)
+Control::mouseUp(const Event &e)
 {
 	if (!isEnabled() || !isTrackingMouse()) {
 		return false;
@@ -283,7 +283,7 @@ Control::mouseUp(const MouseEvent &e)
 }
 
 void
-Control::mouseUpInside(const MouseEvent &e)
+Control::mouseUpInside(const Event &e)
 {
 	(void) e;
 	sendAction();
@@ -720,7 +720,7 @@ flipped(ControlState s)
 }
 
 bool
-Button::mouseDown(const MouseEvent &e)
+Button::mouseDown(const Event &e)
 {
 	if (!Control::mouseDown(e)) {
 		return false;
@@ -738,7 +738,7 @@ Button::mouseDown(const MouseEvent &e)
 }
 
 bool
-Button::mouseUp(const MouseEvent &e)
+Button::mouseUp(const Event &e)
 {
 	if (!isEnabled() || !isTrackingMouse()) {
 		return false;

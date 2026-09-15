@@ -112,21 +112,21 @@ View::hitTest(const Point &p)
 }
 
 bool
-View::mouseDown(const MouseEvent &e)
+View::mouseDown(const Event &e)
 {
 	(void) e;
 	return false;		/* the default view ignores the mouse */
 }
 
 bool
-View::mouseDragged(const MouseEvent &e)
+View::mouseDragged(const Event &e)
 {
 	(void) e;
 	return false;
 }
 
 bool
-View::mouseUp(const MouseEvent &e)
+View::mouseUp(const Event &e)
 {
 	(void) e;
 	return false;

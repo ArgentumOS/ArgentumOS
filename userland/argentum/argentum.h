@@ -875,19 +875,6 @@ private:
 /// A mouse event, delivered in the coordinates of the view that receives
 /// it. Cocoa hands views an NSEvent; this is the part of it a control
 /// needs.
-struct MouseEvent {
-	/// Where it happened, in the receiving view's own space (points).
-	Point location = { 0, 0 };
-	/// 1 = left, 2 = middle, 3 = right (X's numbering).
-	int button = 1;
-	/// 1 for a single click.
-	int clickCount = 1;
-	/// Modifier state as it was at the press.
-	bool shift = false;
-	bool control = false;
-	bool alt = false;
-};
-
 /// A button's BEHAVIOUR type (Cocoa's NSButtonType, the subset the
 /// toolkit implements today).
 
@@ -937,7 +924,7 @@ enum ModifierFlags {
 /// @purpose One event: a kind, where and when it happened, and the fields that
 /// kind carries. Cocoa's NSEvent.
 ///
-/// It REPLACES the toolkit's two former substrates, MouseEvent and KeyEvent,
+/// It REPLACES the toolkit's two former substrates, Event and KeyEvent,
 /// whose split had no Cocoa counterpart: Cocoa has one event class with a type,
 /// not a struct per device.
 ///
@@ -980,6 +967,12 @@ public:
 	const Point &locationInWindow() const { return location_; }
 	/// When, in seconds (Cocoa's timeIntervalSinceBoot).
 	double timestamp() const { return timestamp_; }
+
+	/// Move the event's point. THE DELIVERY SEAM, not a Cocoa API: Cocoa's
+	/// NSEvent is read-only and a receiver converts with
+	/// convertPoint:fromView:, while this toolkit hands each view a copy with
+	/// the point already in its space. When that conversion lands, this goes.
+	void setLocationInWindow(const Point &p) { location_ = p; }
 	/// Which window, by number.
 	long windowNumber() const { return windowNumber_; }
 	/// A distinguishing number for this event (Cocoa's eventNumber).
@@ -1371,7 +1364,7 @@ private:
 	/// True when `p` (window points) is inside the titlebar.
 	bool inChrome(const Point &p) const;
 	/// The view under a content-space point, or nullptr.
-	View *dispatchToContent(const Point &pt, const MouseEvent &e);
+	View *dispatchToContent(const Point &pt, const Event &e);
 	/// Send a key to the first responder, up the chain.
 	void dispatchKey(const Event &ke);
 	/// Give the focus to the view a press landed on, when it wants it.
@@ -1674,11 +1667,11 @@ public:
 	virtual View *hitTest(const Point &p);
 	/// A press. Return true when handled; false offers the event to the
 	/// superview (the first link of the responder chain).
-	virtual bool mouseDown(const MouseEvent &e);
+	virtual bool mouseDown(const Event &e);
 	/// A drag while tracking. Same contract.
-	virtual bool mouseDragged(const MouseEvent &e);
+	virtual bool mouseDragged(const Event &e);
 	/// The release that ends a press. Same contract.
-	virtual bool mouseUp(const MouseEvent &e);
+	virtual bool mouseUp(const Event &e);
 	/// True while this view is waiting for the button to come up.
 	bool isTrackingMouse() const { return tracking_; }
 	/// The window this view is in, or nullptr (set by the window's
@@ -1836,11 +1829,11 @@ public:
 	/// Draw the cell into the control's bounds.
 	void drawRect(const Rect &dirty) override;
 	/// Press: highlight and capture.
-	bool mouseDown(const MouseEvent &e) override;
+	bool mouseDown(const Event &e) override;
 	/// Drag while captured: highlight only while inside.
-	bool mouseDragged(const MouseEvent &e) override;
+	bool mouseDragged(const Event &e) override;
 	/// Release: fire the action when the pointer is inside, then unhilite.
-	bool mouseUp(const MouseEvent &e) override;
+	bool mouseUp(const Event &e) override;
 
 protected:
 	friend class TextField;
@@ -1849,12 +1842,12 @@ protected:
 
 	/// Called on a release INSIDE the control: the default sends the
 	/// action. A subclass changes what a click means here.
-	virtual void mouseUpInside(const MouseEvent &e);
+	virtual void mouseUpInside(const Event &e);
 	/// Push the control's state into the cell before it draws (Cocoa's
 	/// updateCell: the cell has no idea where the pointer is).
 	virtual void updateCell();
 	/// True while the pointer is inside the control's bounds.
-	bool containsPoint(const MouseEvent &e) const;
+	bool containsPoint(const Event &e) const;
 
 	/// The hit test: a control is hit where its cell DRAWS, so a button whose
 	/// chrome is a circle is not hit in the empty space beside it.
@@ -2007,9 +2000,9 @@ public:
 	void setState(ControlState s);
 
 	/// Press: highlight, capture, and (for a toggle) hold the new state.
-	bool mouseDown(const MouseEvent &e) override;
+	bool mouseDown(const Event &e) override;
 	/// Release: fire when the pointer is inside, then settle the state.
-	bool mouseUp(const MouseEvent &e) override;
+	bool mouseUp(const Event &e) override;
 
 private:
 	/* turning a radio on turns its siblings off (same superview) */
@@ -2755,7 +2748,7 @@ public:
 	/// A release INSIDE the field clears it when it landed on the clear
 	/// button (and then sends the action); anywhere else keeps the base
 	/// behaviour.
-	void mouseUpInside(const MouseEvent &e) override;
+	void mouseUpInside(const Event &e) override;
 };
 
 /// @purpose The cell behind a token field: it draws the committed tokens
@@ -3014,14 +3007,14 @@ public:
 	void setTickMarks(int n);
 
 	/// Press: jump the knob here and start tracking.
-	bool mouseDown(const MouseEvent &e) override;
+	bool mouseDown(const Event &e) override;
 	/// Drag: follow the pointer (sending as it goes when continuous).
-	bool mouseDragged(const MouseEvent &e) override;
+	bool mouseDragged(const Event &e) override;
 	/// Release: finish tracking.
-	bool mouseUp(const MouseEvent &e) override;
+	bool mouseUp(const Event &e) override;
 	/// The release INSIDE the slider: a DISCRETE slider sends here (a
 	/// continuous one has already sent as the knob moved).
-	void mouseUpInside(const MouseEvent &e) override;
+	void mouseUpInside(const Event &e) override;
 };
 
 /// @purpose The cell behind a stepper: two arrow halves and the increment
@@ -3150,7 +3143,7 @@ public:
 	bool stepDown();
 
 	/// A release inside a half steps that way and sends the action.
-	void mouseUpInside(const MouseEvent &e) override;
+	void mouseUpInside(const Event &e) override;
 };
 
 /// @purpose A progress indicator: a bar that fills to show how far along
@@ -3260,7 +3253,7 @@ public:
 	void setActive(bool on);
 
 	/// A click activates the well and sends its action.
-	bool mouseDown(const MouseEvent &e) override;
+	bool mouseDown(const Event &e) override;
 	/// The swatch, its border, and the active highlight.
 	void drawRect(const Rect &dirty) override;
 
@@ -3309,10 +3302,10 @@ public:
 	void stepDown();
 
 	/// Clicking an arrow steps the date and sends the action.
-	bool mouseDown(const MouseEvent &e) override;
+	bool mouseDown(const Event &e) override;
 	/// Consumed WITHOUT sending: this control acts on the press, and the base
 	/// class's release-path send made every click fire twice.
-	bool mouseUp(const MouseEvent &e) override;
+	bool mouseUp(const Event &e) override;
 	/// The field, the date, and the two arrows.
 	void drawRect(const Rect &dirty) override;
 
@@ -3499,9 +3492,9 @@ public:
 
 	/// A click sends the picked row's action and ends the pop-up.
 	///
-	/// It takes a MouseEvent because that is still this toolkit's mouse
+	/// It takes a Event because that is still this toolkit's mouse
 	/// substrate: the key path was migrated to Event, the mouse path has not.
-	bool mouseDown(const MouseEvent &e) override;
+	bool mouseDown(const Event &e) override;
 	/// The rows, drawn.
 	void drawRect(const Rect &dirty) override;
 

@@ -1016,7 +1016,7 @@ SearchField::searchCell() const
 }
 
 void
-SearchField::mouseUpInside(const MouseEvent &e)
+SearchField::mouseUpInside(const Event &e)
 {
 	SearchFieldCell *c = searchCell();
 
@@ -1030,10 +1030,10 @@ SearchField::mouseUpInside(const MouseEvent &e)
 	 * clear button, not on a plain click) */
 	Rect cb = c->clearButtonRect(bounds());
 
-	if (e.location.x >= cb.origin.x
-	    && e.location.x < cb.origin.x + cb.size.w
-	    && e.location.y >= cb.origin.y
-	    && e.location.y < cb.origin.y + cb.size.h) {
+	if (e.locationInWindow().x >= cb.origin.x
+	    && e.locationInWindow().x < cb.origin.x + cb.size.w
+	    && e.locationInWindow().y >= cb.origin.y
+	    && e.locationInWindow().y < cb.origin.y + cb.size.h) {
 		setStringValue("");
 		setNeedsDisplay();
 		sendAction();
