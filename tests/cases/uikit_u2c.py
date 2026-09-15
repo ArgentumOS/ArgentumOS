@@ -133,12 +133,58 @@ class Case(BaseCase):
         # goes. It is a WHITE disc with a dark rim, so it is BRIGHTER than
         # the background - the check is that it is not the background, not
         # that it is dark (asking for dark here was my mistake).
-        mark = shot.px(int(rx - 112), int(ry))
+        mark_px = shot.px(int(rx - 112), int(ry))
         bg = shot.px(int(rx + 60), int(ry))
         self.check("radio-mark-is-drawn",
-                   mark is not None and bg is not None and mark != bg,
+                   mark_px is not None and bg is not None and mark_px != bg,
                    "a radio's circle is at its left: %s against the "
-                   "background %s" % (mark, bg))
+                   "background %s" % (mark_px, bg))
+
+        # THE CIRCULAR ROW IS ONE CIRCLE AND NOTHING INSIDE IT. It was
+        # drawing a radio's light disc inside the round bezel and pushing
+        # its title over the rim, so the bezel's interior must now be
+        # uniform: the same colour where that mark sat as at its centre.
+        # (ZOO-AT logs a frame's ORIGIN, so the row's centre is y + 14.)
+        cx, cy = pts["CIRCULAR"]
+        at_old_mark = shot.px(int(cx - 112), int(cy))
+        at_centre = shot.px(int(cx - 106), int(cy))
+        self.check("circular-has-no-mark",
+                   at_old_mark is not None and at_old_mark == at_centre,
+                   "the round bezel's interior is uniform: %s where the mark "
+                   "used to be, %s at its centre" % (at_old_mark, at_centre))
+
+        # THE HELP ROW DRAWS ITS QUESTION MARK IN THE CIRCLE, NOT ITS TITLE
+        # ACROSS THE FRAME. Ink inside the 28pt circle, none where a centred
+        # label used to be painted.
+        hx, hy = pts["HELP"]
+        circle_ink = shot.ink((int(hx - 120), int(hy - 14),
+                               int(hx - 92), int(hy + 14)))
+        middle_ink = shot.ink((int(hx - 60), int(hy - 14),
+                               int(hx + 100), int(hy + 14)))
+        self.check("help-shows-question-mark",
+                   circle_ink > 0 and middle_ink == 0,
+                   "the glyph is in the circle (%d ink px) and the middle is "
+                   "clean (%d ink px)" % (circle_ink, middle_ink))
+
+        # THE BOARD'S OWN EXIT. Every check above leaves the board running
+        # and the harness kills the guest, so the exit path - ZOO-TIMEOUT,
+        # then the window's destructor - was never exercised, and that is
+        # where the board was reported to fault. Run it to its own end and
+        # ask the SHELL for its status: a fault arrives as SIGBUS/SIGSEGV
+        # and a non-zero status, which a clean-looking console tail cannot
+        # fake. The first instance must go, or two boards race for the
+        # markers these checks read.
+        session.run("killall WidgetZoo >/dev/null 2>&1")
+        mark2 = len(session.log_text())
+        session.run("%s 6; echo ZOO-EXIT=$?" % ZOO)
+        session.wait_for(r"ZOO-EXIT=", 150)
+        out3 = session.output_since(mark2)
+        m3 = re.search(r"ZOO-EXIT=(\d+)", out3)
+        status = int(m3.group(1)) if m3 else None
+        self.check("board-exits-clean",
+                   status is not None and status == 0,
+                   "the board ran to its own end: status %s (expected 0); "
+                   "tail: %s" % (status, session.tail()))
 
         self.check("board-still-alive",
                    "ZOO-TIMEOUT" in session.output_since(mark)

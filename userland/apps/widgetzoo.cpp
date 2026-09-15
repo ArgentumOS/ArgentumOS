@@ -188,9 +188,10 @@ main(int argc, char **argv)
 	    BezelStyle::Recessed); y += 34;
 	row(content, zoo, "Inline", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::Inline); y += 34;
-	row(content, zoo, "Circular", y, ButtonType::MomentaryPushIn,
+	Button *circular = row(content, zoo, "Circular",
+	    y, ButtonType::MomentaryPushIn,
 	    BezelStyle::Circular); y += 34;
-	row(content, zoo, "Help", y, ButtonType::MomentaryPushIn,
+	Button *help = row(content, zoo, "Help", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::HelpButton); y += 34;
 	row(content, zoo, "Disclosure", y, ButtonType::Toggle,
 	    BezelStyle::Disclosure); y += 34;
@@ -326,6 +327,11 @@ main(int argc, char **argv)
 	logAt("RADIO-A", radioA);
 	logAt("RADIO-B", radioB);
 	logAt("GRADIENT", gradBtn);
+	/* the two round bezels, whose pixels are the only way to see that a
+	 * circular button has no mark in it and that a help button draws its
+	 * question mark rather than its title */
+	logAt("CIRCULAR", circular);
+	logAt("HELP", help);
 	logAt("TEXTVIEW", tview);
 	logAt("PLACEHOLDER", ph);
 	logAt("EDITTEXT", editField);

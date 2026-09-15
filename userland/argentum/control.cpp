@@ -399,26 +399,31 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 			return;
 		}
 	} else if (isCircle) {
+		/* A ROUND BEZEL HAS ONE LOOK, and a mark is not part of it.
+		 * The circle is the whole control, so there is nothing beside
+		 * it to put a box in - and drawing one put a radio's light
+		 * disc inside the dark circle while shoving the title to the
+		 * right of a box that was never there, over the rim. */
 		if (bezel_ == BezelStyle::HelpButton) {
-			/* a question mark centred in the circle */
-			Cell::drawInFrame(frame, inView);
+			/* A help button IS its question mark: the glyph is the
+			 * control's identity, whatever title the app set (that
+			 * title is its name for accessibility and menus, not
+			 * something to paint). It goes in the circle, centred. */
+			std::string saved = string_;
+			TextAlignment savedAlign = align_;
+			Rect circ = { { frame.origin.x, frame.origin.y },
+				      { frame.size.h, frame.size.h } };
+
+			string_ = "?";
+			align_ = TextAlignment::Center;
+			Cell::drawInFrame(circ, inView);
+			string_ = saved;
+			align_ = savedAlign;
 			return;
 		}
-		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
-				  box.origin.y + box.size.h / 2.0 },
-				box.size.w / 2.0 - 0.5,
-				on ? mark_ : Color::rgb(0.98, 0.98, 0.99));
-		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
-				  box.origin.y + box.size.h / 2.0 },
-				box.size.w / 2.0 - 0.5, border_);
-		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
-				  box.origin.y + box.size.h / 2.0 },
-				box.size.w / 2.0 - 1.5,
-				on ? mark_ : Color::rgb(0.98, 0.98, 0.99));
-		if (on) {
-			drawRadioDot(box);
-		}
-		text.origin.x += box.size.w + 6.0;
+		/* Circular: the round bezel and then the title, which starts
+		 * clear of the circle rather than on top of it */
+		text.origin.x += frame.size.h + 6.0;
 	}
 	/* the title, through Cell's own drawing, in the box that is left */
 	bool savedCenter = align_ == TextAlignment::Center;
