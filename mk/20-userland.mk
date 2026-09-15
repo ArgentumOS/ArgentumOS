@@ -229,6 +229,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/text_stack.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/text_stack"
+	# x_keys: raw-Xlib key reader — proves a typed key reaches the guest's X
+	# server with no toolkit in the path (the keyboard's x_move).
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/x_keys.cpp -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/x_keys"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

@@ -463,7 +463,13 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
 
     src = getenv("XFB_KBD");
     if (!src || !*src)
-        src = "/System/Devices/PS2/Keyboard";
+        /* the BY-ROLE ALIAS, as the mouse above uses: the keyboard device
+         * is whichever one the machine has (the kernel publishes
+         * USB/Keyboard and PS2/Keyboard and points this alias at the one
+         * that is present). The old default was the hardcoded PS/2
+         * topology path, which cannot exist when the PS/2 controller is
+         * off - so on a USB-only machine X had no keyboard at all. */
+        src = "/System/Devices/keyboard";
     vfbKbdFd = open(src, O_RDONLY | O_NONBLOCK);
     if (vfbKbdFd >= 0) {
         vfbSetRaw(vfbKbdFd);

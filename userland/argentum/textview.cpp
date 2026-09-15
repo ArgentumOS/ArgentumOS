@@ -10,6 +10,10 @@
  */
 #include <argentum/argentum.h>
 
+#include "argentum/text_utf8.h"
+
+#include <cstring>
+
 namespace argentum {
 
 /* ---- TextView -------------------------------------------------------- */
@@ -194,6 +198,109 @@ TextFieldCell::lineCount() const
 	return layout_ ? layout_->lineCount() : 0;
 }
 
+/* ---- editing (U3c) ---------------------------------------------------
+ *
+ * The insertion point is a byte offset, and every operation keeps it on a
+ * CHARACTER boundary by stepping with the UTF-8 helpers - so a backspace
+ * on a multi-byte character removes the whole character, not a byte of it.
+ */
+void
+TextFieldCell::setInsertionPoint(int index)
+{
+	int len = storage_ ? storage_->length() : 0;
+
+	if (index < 0) {
+		index = 0;
+	}
+	if (index > len) {
+		index = len;
+	}
+	caret_ = index;
+}
+
+void
+TextFieldCell::insertText(const char *utf8)
+{
+	if (!storage_ || !utf8 || !utf8[0]) {
+		return;
+	}
+	storage_->insertString(caret_, utf8);
+	caret_ += (int) std::strlen(utf8);
+}
+
+void
+TextFieldCell::deleteBackward()
+{
+	if (!storage_ || caret_ <= 0) {
+		return;
+	}
+	const char *s = storage_->string();
+	int start = prevCharStart(s, (unsigned) caret_);
+
+	if (start < 0) {
+		start = 0;
+	}
+	storage_->deleteCharacters(start, caret_ - start);
+	caret_ = start;
+}
+
+void
+TextFieldCell::deleteForward()
+{
+	if (!storage_ || caret_ >= storage_->length()) {
+		return;
+	}
+	const char *s = storage_->string();
+	int end = nextCharEnd(s, (unsigned) caret_);
+
+	if (end <= caret_) {
+		return;
+	}
+	storage_->deleteCharacters(caret_, end - caret_);
+}
+
+void
+TextFieldCell::moveLeft()
+{
+	if (!storage_ || caret_ <= 0) {
+		return;
+	}
+	int at = prevCharStart(storage_->string(), (unsigned) caret_);
+
+	caret_ = at < 0 ? 0 : at;
+}
+
+void
+TextFieldCell::moveRight()
+{
+	if (!storage_) {
+		return;
+	}
+	int end = nextCharEnd(storage_->string(), (unsigned) caret_);
+
+	if (end > caret_ && end <= storage_->length()) {
+		caret_ = end;
+	}
+}
+
+void
+TextFieldCell::moveToStart()
+{
+	caret_ = 0;
+}
+
+void
+TextFieldCell::moveToEnd()
+{
+	caret_ = storage_ ? storage_->length() : 0;
+}
+
+void
+TextFieldCell::setEditing(bool on)
+{
+	editing_ = on;
+}
+
 void
 TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 {
@@ -248,6 +355,27 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 	}
 	layout_->drawInContext(*ctx, Point{ frame.origin.x + pad,
 					    frame.origin.y + 3.0 });
+	/* the insertion point: a hairline where the next character lands.
+	 * Its x comes from measuring the text BEFORE the insertion point,
+	 * which is the same measurement the layout draws with, so the caret
+	 * sits where the gap is. */
+	if (editing_) {
+		const char *s = storage_->string();
+		double x = 0;
+
+		for (int at = 0; at < caret_ && s[at]; ) {
+			int next = nextCharEnd(s, (unsigned) at);
+
+			if (next <= at || next > caret_) {
+				next = caret_;
+			}
+			x += layout_->textWidthOf(at, next - at);
+			at = next;
+		}
+		ctx->fillRect(Rect{ { frame.origin.x + pad + x,
+				      frame.origin.y + 4.0 },
+				    { 1.0, frame.size.h - 8.0 } }, caretColor_);
+	}
 }
 
 /* the attributes the field draws with, with the placeholder greyed */
@@ -338,9 +466,14 @@ TextField::setStringValue(const char *utf8)
 {
 	if (TextFieldCell *c = fieldCell()) {
 		c->setStringValue(utf8);
+		c->setInsertionPoint(c->textStorage()
+					     ? c->textStorage()->length()
+					     : 0);
 		setNeedsDisplay();
 	}
 }
+
+
 
 TextFieldCell *
 TextField::fieldCell() const
@@ -438,6 +571,82 @@ TextField::setTextColor(const Color &c)
 			setNeedsDisplay();
 		}
 	}
+}
+
+bool
+TextField::acceptsFirstResponder() const
+{
+	/* an editable field takes the keyboard; a label does not (Cocoa: a
+	 * label is a text field configured not to edit, and it stays out of
+	 * the key loop) */
+	return editable_;
+}
+
+bool
+TextField::keyDown(const KeyEvent &e)
+{
+	TextFieldCell *c = fieldCell();
+
+	if (!c || !editable_) {
+		return false;
+	}
+	Cell *cell = c;
+
+	(void) cell;
+	if (e.isReturn) {
+		/* COMMIT: the action is the field's reason to exist, and it goes
+		 * with the field as the sender (Control's rule) */
+		TextField *self = this;
+
+		sendAction();
+		(void) self;
+		setNeedsDisplay();
+		return true;
+	}
+	if (e.isDelete) {
+		c->deleteBackward();
+	} else if (e.isForwardDelete) {
+		c->deleteForward();
+	} else if (e.isLeft) {
+		c->moveLeft();
+	} else if (e.isRight) {
+		c->moveRight();
+	} else if (e.isHome) {
+		c->moveToStart();
+	} else if (e.isEnd) {
+		c->moveToEnd();
+	} else if (!e.characters.empty()) {
+		c->insertText(e.characters.c_str());
+	} else {
+		return false;		/* Tab and Escape are not ours */
+	}
+	setNeedsDisplay();
+	return true;
+}
+
+Color
+TextField::caretColor() const
+{
+	TextFieldCell *c = fieldCell();
+
+	return c ? c->caretColor() : Color::rgb(0.15, 0.15, 0.20);
+}
+
+void
+TextField::setCaretColor(const Color &c)
+{
+	if (TextFieldCell *cell = fieldCell()) {
+		cell->setCaretColor(c);
+		setNeedsDisplay();
+	}
+}
+
+int
+TextField::insertionPoint() const
+{
+	TextFieldCell *c = fieldCell();
+
+	return c ? c->insertionPoint() : 0;
 }
 
 bool

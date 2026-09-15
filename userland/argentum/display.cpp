@@ -768,7 +768,8 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 	}
 	XSelectInput(dpy, impl_->xwin, ExposureMask | StructureNotifyMask
 		     | ButtonPressMask | ButtonReleaseMask
-		     | PointerMotionMask | EnterWindowMask | LeaveWindowMask);
+		     | PointerMotionMask | EnterWindowMask | LeaveWindowMask
+		     | KeyPressMask | KeyReleaseMask | FocusChangeMask);
 	if (title) {
 		XStoreName(dpy, impl_->xwin, title);
 		title_ = title;
@@ -1047,6 +1048,22 @@ Window::setNeedsDisplay()
 {
 	impl_->dirty = true;
 	markTreeForDisplay(content_);
+}
+
+bool
+Window::focusFromClick(View *hit)
+{
+	if (!hit) {
+		return false;
+	}
+	/* a click gives the focus to a view that wants it (Cocoa: the field's
+	 * mouseDown makes itself the first responder), so an editable field
+	 * starts taking keys from the click, with no separate "focus" API for
+	 * the app to call */
+	if (hit->acceptsFirstResponder()) {
+		return makeFirstResponder(hit);
+	}
+	return false;
 }
 
 void
@@ -1373,6 +1390,7 @@ Window::pumpEvent()
 		if (pressed) {
 			View *hit = dispatchToContent(contentPt, me);
 
+			focusFromClick(hit);
 			pressView_ = hit;
 			if (hit) {
 				hit->setTrackingMouse(true);
@@ -1431,6 +1449,76 @@ Window::pumpEvent()
 		return true;
 	}
 
+	case KeyPress: {
+		/* X's key events carry a keycode; the KEYSYM and the TEXT come
+		 * from the server's keymap (Xfb loads the host's), so the
+		 * toolkit never has to know a layout */
+		KeyEvent ke;
+		char buf[32] = { 0 };
+		KeySym ks = NoSymbol;
+		Status st = 0;
+		int n = XLookupString((XKeyEvent *) &ev, buf, (int) sizeof(buf) - 1,
+				      &ks, nullptr);
+
+		(void) st;
+		ke.keySym = (unsigned long) ks;
+		if (n > 0) {
+			ke.characters.assign(buf, (size_t) n);
+		}
+		ke.shift = (ev.xkey.state & ShiftMask) != 0;
+		ke.control = (ev.xkey.state & ControlMask) != 0;
+		ke.alt = (ev.xkey.state & Mod1Mask) != 0;
+		switch (ks) {
+		case XK_Return:
+		case XK_KP_Enter:
+			ke.isReturn = true;
+			ke.characters.clear();
+			break;
+		case XK_Tab:
+			ke.isTab = true;
+			ke.characters.clear();
+			break;
+		case XK_BackSpace:
+			ke.isDelete = true;
+			ke.characters.clear();
+			break;
+		case XK_Delete:
+			ke.isForwardDelete = true;
+			ke.characters.clear();
+			break;
+		case XK_Escape:
+			ke.isEscape = true;
+			ke.characters.clear();
+			break;
+		case XK_Left:
+			ke.isLeft = true;
+			ke.characters.clear();
+			break;
+		case XK_Right:
+			ke.isRight = true;
+			ke.characters.clear();
+			break;
+		case XK_Home:
+			ke.isHome = true;
+			ke.characters.clear();
+			break;
+		case XK_End:
+			ke.isEnd = true;
+			ke.characters.clear();
+			break;
+		default:
+			break;
+		}
+		/* a control character is not text: Ctrl-A must not insert 0x01
+		 * into a field */
+		if (!ke.characters.empty()
+		    && (unsigned char) ke.characters[0] < 0x20) {
+			ke.characters.clear();
+		}
+		dispatchKey(ke);
+		return true;
+	}
+
 	case ClientMessage:
 		/* the close-box protocol: a window manager would send this */
 		requestClose();
@@ -1438,6 +1526,93 @@ Window::pumpEvent()
 
 	default:
 		return true;
+	}
+}
+
+/* the keyboard's dispatch: Tab walks the focus, everything else goes to
+ * the first responder and, if it does not handle it, up the chain */
+void
+Window::dispatchKey(const KeyEvent &ke)
+{
+	if (ke.isTab) {
+		advanceFirstResponder(ke.shift);
+		return;
+	}
+	for (View *v = firstResponder_; v; v = v->nextResponder()) {
+		if (v->keyDown(ke)) {
+			return;
+		}
+	}
+}
+
+bool
+Window::makeFirstResponder(View *v)
+{
+	if (v == firstResponder_) {
+		return true;
+	}
+	if (v == nullptr) {
+		firstResponder_ = nullptr;
+		return true;
+	}
+	/* the view must be IN this window's tree (walk up to the content
+	 * view) and must want the job */
+	View *root = v;
+
+	while (root->superview()) {
+		root = root->superview();
+	}
+	if (root != content_) {
+		return false;
+	}
+	if (!v->acceptsFirstResponder()) {
+		return false;
+	}
+	firstResponder_ = v;
+	v->setNeedsDisplay();
+	return true;
+}
+
+bool
+Window::advanceFirstResponder(bool backwards)
+{
+	/* a pre-order walk of the content tree, the same order hit-testing
+	 * and drawing use, so Tab visits views in the order they are built */
+	std::vector<View *> order;
+
+	collectResponders(content_, order);
+	if (order.empty()) {
+		return false;
+	}
+	int at = -1;
+
+	for (size_t i = 0; i < order.size(); i++) {
+		if (order[i] == firstResponder_) {
+			at = (int) i;
+			break;
+		}
+	}
+	int n = (int) order.size();
+	int next = backwards ? (at <= 0 ? n - 1 : at - 1)
+			     : (at < 0 || at + 1 >= n ? 0 : at + 1);
+
+	if (firstResponder_) {
+		firstResponder_->setNeedsDisplay();
+	}
+	return makeFirstResponder(order[(size_t) next]);
+}
+
+void
+Window::collectResponders(View *v, std::vector<View *> &out)
+{
+	if (!v || v->isHidden()) {
+		return;
+	}
+	if (v->acceptsFirstResponder()) {
+		out.push_back(v);
+	}
+	for (View *c : v->subviews()) {
+		collectResponders(c, out);
 	}
 }
 

@@ -417,14 +417,34 @@ as a compatibility path for un-migrated views, with a migration list.
        exist with `i8042=off`. The mouse's default in the same file is the
        by-role alias, which is the pattern the keyboard should follow —
        `/System/Devices/keyboard` is what the kernel now publishes.
-  Then the toolkit work: the key event substrate (X key events →
-  `KeyEvent`, with XLookupString for the text), the FIRST RESPONDER chain
-  (a window's first responder, `acceptsFirstResponder`, key events walking
-  up to the superview — the same shape as the mouse chain), the caret, the
-  field editor, and the rest of the text family (`NSSearchField`,
-  `NSTokenField`). The gate attaches `usb-kbd`, parks the pointer, makes a
-  field the first responder and TYPES with the monitor — the keyboard's
-  version of the U2b gate.
+  **U3c — editing. DONE (2026-09), and it works end to end.** The key
+  event substrate (`KeyEvent`: the keysym, the UTF-8 text from
+  `XLookupString`, and the named keys a control edits by — Return, Tab,
+  Delete, forward-delete, Escape, the arrows, Home, End; a control
+  character is not text, so Ctrl-A does not insert 0x01 into a field), the
+  **first-responder chain** (the window owns one first responder; key
+  events go to it and walk up to its superview if it does not handle them
+  — the same shape as the mouse chain, and the same reason), **focus by
+  click** (a press that lands on a view wanting the focus gives it the
+  focus, so a field starts taking keys with no separate API to call), and
+  **Tab traversal** (a pre-order walk of the views that accept the first
+  responder; Shift-Tab goes backwards). `TextField` edits: insert,
+  backspace, forward-delete, the arrows, Home/End, a painted insertion
+  point, and **Return commits** (the action, with the field as the sender).
+  Indices are byte offsets and every operation steps on CHARACTER
+  boundaries, so a backspace on a multi-byte character removes the whole
+  character. Editing is in place in the cell's storage for now — Cocoa
+  runs a separate FIELD EDITOR view, which is the next milestone.
+  Gates: `xfb_keys` 4/4 (the raw-X probe: a typed key reaches the guest's
+  X server at all — `f`, `n`, `x`, with keysyms) and `uikit_u3c` 5/5 (a
+  real click focuses the field, real keys land — the edit stream reads
+  `['h', 'hi']` — Return commits the action, BackSpace deletes).
+  **A gate lesson repeated: the monitor's Y is MIRRORED.** This case's
+  first run clicked the SWITCH instead of the field (it asked for y=673,
+  landed on 407) — `screen_h - y`, every time, and the board's own
+  `ZOO-CLICK Switch` line is what gave it away.
+  **U3d — the rest of the text family. NEXT:** `NSSearchField`,
+  `NSTokenField`, and the separate field-editor view.
 - **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under

@@ -216,6 +216,9 @@ void kbdaux_init(void)
 		printk("WARNING: %s(): unable to register kbd device.\n", __FUNCTION__);
 	}
 	devfs_make_node("PS2/Keyboard", MKDEV(KBD_MAJOR, KBD_MINOR), S_IFCHR | S_IRUSR | S_IWUSR);
+	/* the by-role alias, exactly as psaux does for the mouse: whichever
+	 * keyboard is present points /System/Devices/keyboard at itself */
+	devfs_make_symlink("keyboard", "PS2/Keyboard", 0777);
 	printk("kbdaux    /dev/kbd        -\tGUI keyboard device\n");
 }
 #endif /* CONFIG_KBDAUX */

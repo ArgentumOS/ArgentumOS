@@ -72,6 +72,23 @@ View::View()
 {
 }
 
+/* ---- the responder chain (U3c) --------------------------------------- */
+
+bool
+View::keyDown(const KeyEvent &e)
+{
+	(void) e;
+	return false;		/* the default view takes no keys */
+}
+
+bool
+View::isFirstResponder() const
+{
+	Window *w = window();
+
+	return w && w->firstResponder() == this;
+}
+
 /* ---- mouse input (U2b) ------------------------------------------------ */
 
 View *

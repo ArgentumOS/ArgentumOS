@@ -31,6 +31,8 @@ static Button *radioA = nullptr;
 static Button *radioB = nullptr;
 static Button *switchBtn = nullptr;
 static Button *gradBtn = nullptr;
+static TextField *editField = nullptr;
+static std::string lastEdit;
 
 /* where a control's centre is, in SCREEN coordinates */
 static void
@@ -70,10 +72,17 @@ static const Action Zoo_ACTIONS[] = {
 				    (int) radioA->state(), (int) radioB->state());
 		}
 		std::fflush(stdout); } },
+	{ "commit", [](Object *sender) {
+		TextField *f = dynamic_cast<TextField *>(sender);
+
+		std::printf("ZOO-COMMIT %s\n", f ? f->stringValue() : "?");
+		std::fflush(stdout); } },
 };
 
-const ObjectClass Zoo::kClass = { "Zoo", &Object::kClass, nullptr, 0,
-				  Zoo_ACTIONS, 1 };
+const ObjectClass Zoo::kClass = {
+	"Zoo", &Object::kClass, nullptr, 0, Zoo_ACTIONS,
+	(int) (sizeof(Zoo_ACTIONS) / sizeof(Zoo_ACTIONS[0]))
+};
 
 static double
 now_s()
@@ -199,6 +208,17 @@ main(int argc, char **argv)
 	content->addSubview(tview);
 	y += 74;
 
+	/* an EDITABLE field (U3c): a click focuses it, keys edit it, Return
+	 * commits (the action) */
+	editField = new TextField();
+	editField->setFrame(Rect{ { 16, y }, { 240, 26 } });
+	editField->setPlaceholder("Type here, then Return");
+	editField->setEditable(true);
+	editField->setTarget(&zoo);
+	editField->setAction("commit");
+	content->addSubview(editField);
+	y += 34;
+
 	/* SIZE THE BOARD TO ITS ROWS. A control outside the content rect is
 	 * not merely clipped: the hit test rejects points outside it, so an
 	 * unclickable control looks like a broken control. This is also why
@@ -221,6 +241,7 @@ main(int argc, char **argv)
 	logAt("GRADIENT", gradBtn);
 	logAt("TEXTVIEW", tview);
 	logAt("PLACEHOLDER", ph);
+	logAt("EDITTEXT", editField);
 	/* a LAYOUT answer only exists once the controls have drawn at their
 	 * size (a field's cell sizes its container as it draws), so one draw
 	 * pass happens before anything is reported */
@@ -245,6 +266,17 @@ main(int argc, char **argv)
 		w.displayIfNeeded();
 		if (w.isCloseRequested()) {
 			break;
+		}
+		/* the edit stream: a change to the field's text is reported as
+		 * it happens, so a gate can see each KEY land */
+		if (editField) {
+			std::string now = editField->stringValue();
+
+			if (now != lastEdit) {
+				lastEdit = now;
+				std::printf("ZOO-EDIT %s\n", now.c_str());
+				std::fflush(stdout);
+			}
 		}
 		if (!had) {
 			usleep(4 * 1000);

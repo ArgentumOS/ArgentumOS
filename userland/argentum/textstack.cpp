@@ -823,6 +823,38 @@ LayoutManager::lineString(int index) const
 	return storage_->substring(l.location, l.length);
 }
 
+double
+LayoutManager::textWidthOf(int location, int length) const
+{
+	if (!storage_ || length <= 0) {
+		return 0;
+	}
+	const char *s = storage_->string();
+	double x = 0;
+	int at = location;
+	int end = location + length;
+
+	while (at < end) {
+		TextAttributes a = storage_->attributesAt(at);
+		int next = end;
+
+		for (int i = 0; i < storage_->runCount(); i++) {
+			const AttributeRun &r = storage_->run(i);
+
+			if (at >= r.location && at < r.location + r.length) {
+				next = r.location + r.length;
+				break;
+			}
+		}
+		if (next > end) {
+			next = end;
+		}
+		x += measure(s + at, next - at, a);
+		at = next;
+	}
+	return x;
+}
+
 void
 LayoutManager::drawInContext(Context &ctx, const Point &origin)
 {

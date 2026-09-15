@@ -917,6 +917,30 @@ enum class BezelStyle {
 	/// A bezel filled with a vertical gradient.
 	Gradient,
 };
+/// A key event, delivered to the window's FIRST RESPONDER. Cocoa hands
+/// views an NSEvent; this is the part a control needs.
+struct KeyEvent {
+	/// The X keysym (a stable, layout-independent code).
+	unsigned long keySym = 0;
+	/// The text the key produces, UTF-8 ('' for a key that types nothing,
+	/// such as an arrow or a modifier).
+	std::string characters;
+	/// A named key, when the key is one — the codes a control edits by.
+	bool isReturn = false;
+	bool isTab = false;
+	bool isDelete = false;		///< backspace (delete BACKWARD)
+	bool isForwardDelete = false;
+	bool isEscape = false;
+	bool isLeft = false;
+	bool isRight = false;
+	bool isHome = false;
+	bool isEnd = false;
+	/// Modifier state as it was at the press.
+	bool shift = false;
+	bool control = false;
+	bool alt = false;
+};
+
 /* ---- U2a: the display path — connection, surface, context, window ----
  *
  * The layer that makes the toolkit visible. Three ideas, the same ones
@@ -1137,6 +1161,17 @@ public:
 	Rect closeBoxRect() const;
 	/// True while the titlebar is being dragged.
 	bool isChromeDragging() const { return dragging_; }
+	/// The view that receives key events, or nullptr (Cocoa's first
+	/// responder; the window itself is not a responder here).
+	View *firstResponder() const { return firstResponder_; }
+	/// Make `v` the first responder. False when `v` is not in this
+	/// window's content tree or does not accept the role.
+	bool makeFirstResponder(View *v);
+	/// Move the first responder to the next (or previous) view that
+	/// accepts it, in a pre-order walk of the content tree — what Tab
+	/// does, and the only keyboard navigation there is.
+	bool advanceFirstResponder(bool backwards);
+
 	/// Ask the window to close itself: the next pumpEvent() closes it.
 	void requestClose();
 	/// True once a close has been asked for (or the close box was hit).
@@ -1170,6 +1205,7 @@ private:
 	View *content_ = nullptr;	/* owned (see the @lifetime) */
 	View *pressView_ = nullptr;	/* U2b: the view holding the press */
 	View *hoverView_ = nullptr;	/* U2b: the view under the pointer */
+	View *firstResponder_ = nullptr;	/* U3c: the key target */
 	bool dragging_ = false;		/* U2b: the chrome is being dragged */
 	bool closeRequested_ = false;	/* U2b: the close box was hit */
 	double dragRootX_ = 0, dragRootY_ = 0;	/* U2b: root point at press */
@@ -1182,6 +1218,12 @@ private:
 	bool inChrome(const Point &p) const;
 	/// The view under a content-space point, or nullptr.
 	View *dispatchToContent(const Point &pt, const MouseEvent &e);
+	/// Send a key to the first responder, up the chain.
+	void dispatchKey(const KeyEvent &ke);
+	/// Give the focus to the view a press landed on, when it wants it.
+	bool focusFromClick(View *hit);
+	/// Gather the views that accept the first responder, in pre-order.
+	void collectResponders(View *v, std::vector<View *> &out);
 };
 
 /// Open the process's connection to the display. `name` defaults to
@@ -1329,6 +1371,25 @@ public:
 	/// This view's rectangle in the window's content space (the frame
 	/// plus every ancestor's origin).
 	Rect rectInWindow(const Rect &r) const;
+
+	/* ---- the first responder and the keyboard (U3c) -----------------
+	 * Cocoa's responder chain, in the shape this toolkit needs: the
+	 * WINDOW owns one first responder; a key event goes to it, and if it
+	 * does not handle the event the window offers it to the view's
+	 * superview, then its superview's, and so on — the same walk the
+	 * mouse press takes (U2b), and for the same reason.
+	 */
+	/// True when this view is willing to become the first responder. The
+	/// default is FALSE: a plain view takes no keys (Cocoa's rule).
+	virtual bool acceptsFirstResponder() const { return false; }
+	/// A key went down while this view was the first responder (or while
+	/// the event was walking up to it). Return true when handled; false
+	/// passes it to the superview.
+	virtual bool keyDown(const KeyEvent &e);
+	/// The next responder: this view's superview (or nullptr at the top).
+	View *nextResponder() const { return parent_; }
+	/// True while this view is the window's first responder.
+	bool isFirstResponder() const;
 
 	/* ---- mouse input (U2b) ------------------------------------------
 	 * The window converts an X event to a point in the content view's
@@ -1972,6 +2033,10 @@ public:
 	int characterIndexAt(const Point &p) const;
 	/// The line's text, as laid out (truncation included).
 	std::string lineString(int index) const;
+	/// The width (points) of `length` bytes of the STORAGE from
+	/// `location`, as this layout measures it — the value the caret and
+	/// hit testing are placed with.
+	double textWidthOf(int location, int length) const;
 
 	/// Draw the laid-out text with `ctx`, its container origin at
 	/// `origin` (in the current view's points).
@@ -2148,6 +2213,36 @@ public:
 	/// How many lines the field's text laid out to.
 	int lineCount() const;
 
+	/* ---- editing (U3c) ---- */
+	/// The insertion point, as a BYTE OFFSET into the string (see the
+	/// text stack's note on indices).
+	int insertionPoint() const { return caret_; }
+	/// Put the insertion point at `index` (clamped).
+	void setInsertionPoint(int index);
+	/// Insert `utf8` at the insertion point (and step past it).
+	void insertText(const char *utf8);
+	/// Delete the character BEFORE the insertion point.
+	void deleteBackward();
+	/// Delete the character AFTER the insertion point.
+	void deleteForward();
+	/// Move the insertion point one character left/right.
+	void moveLeft();
+	/// Move it one character right.
+	void moveRight();
+	/// Move it to the start of the text.
+	void moveToStart();
+	/// Move it to the end.
+	void moveToEnd();
+	/// True when the cell paints an insertion point (the control that owns
+	/// it is the first responder and the field is editable).
+	bool isEditing() const { return editing_; }
+	/// Tell the cell whether to paint the insertion point.
+	void setEditing(bool on);
+	/// The colour of the insertion point.
+	Color caretColor() const { return caretColor_; }
+	/// Set the insertion-point colour.
+	void setCaretColor(const Color &c) { caretColor_ = c; }
+
 	/// Draw the bezel, the background and the text.
 	void drawInFrame(const Rect &frame, View *inView) override;
 	/// A copy of the cell, owned by the caller.
@@ -2167,10 +2262,13 @@ private:
 	TextAttributes defaultAttributesOrMarked(bool placeholder) const;
 
 	std::string placeholder_;
+	int caret_ = 0;
+	bool editing_ = false;
 	bool bezeled_ = true;
 	bool drawsBackground_ = true;
 	Color bg_ = Color::rgb(1.0, 1.0, 1.0);
 	Color border_ = Color::rgb(0.62, 0.62, 0.66);
+	Color caretColor_ = Color::rgb(0.15, 0.15, 0.20);
 };
 
 /// @purpose A text field: a control whose value is TEXT, with the cell
@@ -2180,6 +2278,10 @@ private:
 /// own.
 ///
 /// @lifetime The field owns its cell (Control's rule).
+/// A field is a RESPONDER: an editable one accepts the first responder, so
+/// a click focuses it (Control::mouseDown asks the window) and Tab walks
+/// to it. Editing is IN PLACE in the cell's storage for now — Cocoa runs a
+/// separate field editor view, which is a later milestone.
 ///
 /// @threading Single-threaded (the UI thread).
 ///
@@ -2233,6 +2335,20 @@ public:
 	Color textColor() const;
 	/// Set it.
 	void setTextColor(const Color &c);
+	/// True when an EDITABLE field takes the keyboard: yes (it is the
+	/// first responder a click gives the focus to, and Tab walks to it).
+	bool acceptsFirstResponder() const override;
+	/// A key went down while the field had the focus: text inserts, the
+	/// arrows and Home/End move the insertion point, Delete removes, and
+	/// Return COMMITS (the action is sent). Anything else is offered to
+	/// the superview.
+	bool keyDown(const KeyEvent &e) override;
+	/// The colour of the insertion point.
+	Color caretColor() const;
+	/// Set it.
+	void setCaretColor(const Color &c);
+	/// The insertion point (a byte offset into the string).
+	int insertionPoint() const;
 	/// True when the field would accept edits (see the @invariants).
 	bool isEditable() const;
 	/// Record the intent (no key reaches the text yet).
