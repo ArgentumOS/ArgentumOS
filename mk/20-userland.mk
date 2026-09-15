@@ -363,8 +363,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@rm -rf "$(ROOTFS64)/System/Shared/Icons/default/cursors"
 	@cp -a userland/cursors \
 		"$(ROOTFS64)/System/Shared/Icons/default/cursors"
-	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts" \
-		"$(ROOTFS64)/System/Variable Data/fontconfig"
+	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts"
 	@cp userland/fonts/DejaVuSans.ttf userland/fonts/DejaVuSans-Bold.ttf \
 		"$(ROOTFS64)/System/Shared/Fonts/"
 	@cp userland/configuration/system.fonts.conf \
