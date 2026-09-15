@@ -44,26 +44,30 @@ class Case(BaseCase):
         self.check("board-up", True, "the zoo board opened its window")
 
         # THE HARNESS'S POINTER IS A PRECONDITION, NOT A RESULT. In a run where
-        # the guest's X server never brought its pointer up, every click below
-        # is a silent no-op: not one ZOO-CLICK line, four waits running their
-        # 30s out, and a report that reads like the app is broken. That cost two
-        # gate runs, and very nearly a working fix - which was reverted on the
-        # strength of it. Say so at once instead. (When it fails, the other
-        # pointer cases want the same guard.)
-        # 45s: the USB pointer enumerates late on some boots, and waiting is
-        # free when it is already up. A late pointer ENDS the case rather
-        # than letting any click be believed.
-        if not session.wait_for(r"Xfb: mouse on", 45):
+        # the guest's X server has no pointer, every click below is a silent
+        # no-op: not one ZOO-CLICK line, four waits running their 30s out, and
+        # a report that reads like the app is broken.
+        #
+        # The signal must be something the FRAMEBUFFER shows, because the
+        # obvious one is invisible: Xfb's "mouse on" is an ErrorF that goes to
+        # Xfb's own log file, NOT the serial console, so a guard waiting for it
+        # can never pass - it fails every run, and hides them. (It hid three.)
+        # A pointer that is really up moves the cursor, which is the same fact
+        # pointer-still-moves-after-exit relies on.
+        shot_p = session.shot("pointer-precondition")
+        mon.park()
+        moved = shot_p.diff(session.shot("pointer-after-park"))
+        if moved < 100:
             self.check("pointer-input-is-up", False,
-                       "the guest's X server never reported its pointer, so "
-                       "every click below would be a no-op and no result here "
-                       "can be believed. tail: %s"
-                       % " | ".join(session.tail(4)))
+                       "parking the pointer changed %d pixels, so the guest's "
+                       "X server has no pointer and every click below would be "
+                       "a no-op; nothing here can be believed. tail: %s"
+                       % (moved, " | ".join(session.tail(4))))
             return
 
         self.check("pointer-input-is-up", True,
-                   "the guest's X server reported its pointer, so the clicks "
-                   "below have somewhere to land")
+                   "parking the pointer moved the cursor (%d pixels), so the "
+                   "clicks below have somewhere to land" % moved)
 
         sh = re.search(r"ZOO-SCREEN w=\d+ h=(\d+)", out)
         pts = {m.group(1): (float(m.group(2)), float(m.group(3)))

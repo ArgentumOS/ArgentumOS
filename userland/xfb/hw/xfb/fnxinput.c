@@ -537,3 +537,62 @@ vfbFnxInputInit(DeviceIntPtr pMouse, DeviceIntPtr pKbd)
         ErrorF("Xfb: no keyboard (%s)\n", strerror(errno));
     }
 }
+
+/*
+ * A DEVICE THAT APPEARS LATE MUST STILL BE PICKED UP.
+ *
+ * The opens above happen ONCE, at server init, and the USB mouse enumerates
+ * AFTER X has started: on a boot that loses that race the mouse node does not
+ * exist yet, the open fails, and X runs with no pointer for the whole session.
+ * It used to be rescued by accident - a server RESET re-opens the input
+ * devices - which is why nobody noticed until `-noreset` removed the reset
+ * (system.xfb.conf, reset = false). A reset is the wrong mechanism for this
+ * anyway: it re-initializes every extension and wipes the screen. Retrying is
+ * the right one.
+ *
+ * Called from the block handler, which runs whenever the server goes idle, and
+ * rate-limited to one attempt a second so a missing device costs nothing.
+ */
+void
+vfbFnxInputRetry(void)
+{
+    static time_t last = 0;
+    time_t now;
+
+    if (vfbMouseFd >= 0 && vfbKbdFd >= 0) {
+        return;                         /* nothing is missing */
+    }
+    now = time(NULL);
+    if (now == last) {
+        return;                         /* at most one attempt a second */
+    }
+    last = now;
+
+    if (vfbMouseFd < 0) {
+        const char *src = getenv("XFB_MOUSE");
+
+        if (!src || !*src) {
+            src = "/System/Devices/mouse";
+        }
+        vfbMouseFd = open(src, O_RDONLY | O_NONBLOCK);
+        if (vfbMouseFd >= 0) {
+            vfbSetRaw(vfbMouseFd);
+            SetNotifyFd(vfbMouseFd, vfbMouseNotify, X_NOTIFY_READ, NULL);
+            ErrorF("Xfb: mouse on %s (late: it appeared after startup)\n",
+                   src);
+        }
+    }
+    if (vfbKbdFd < 0) {
+        const char *src = getenv("XFB_KBD");
+
+        if (!src || !*src) {
+            src = "/System/Devices/keyboard";
+        }
+        vfbKbdFd = open(src, O_RDONLY | O_NONBLOCK);
+        if (vfbKbdFd >= 0) {
+            vfbSetRaw(vfbKbdFd);
+            SetNotifyFd(vfbKbdFd, vfbKbdNotify, X_NOTIFY_READ, NULL);
+            ErrorF("Xfb: keyboard on %s (late)\n", src);
+        }
+    }
+}

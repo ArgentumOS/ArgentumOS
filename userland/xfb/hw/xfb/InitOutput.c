@@ -165,6 +165,9 @@ static XfbShadowRec xfbShadow;
 static int xfbShadowClosing;	/* the screen is going away: never re-arm */
 static int xfbShadowArmRefused;	/* the refusal above, reported once */
 static CloseScreenProcPtr xfbShadowPrevCloseScreen;
+/* fnxinput.c: pick up an input device that appeared after server startup. */
+extern void vfbFnxInputRetry(void);
+
 static ScreenBlockHandlerProcPtr xfbShadowPrevBlockHandler;
 
 /* The shadow's damage is registered on the ROOT window, and the window
@@ -292,6 +295,10 @@ xfbShadowFlush(XfbShadowPtr pShadow)
 static void
 xfbShadowBlockHandler(ScreenPtr pScreen, void *timeout)
 {
+	/* first thing, before any early return: a device that appeared
+	 * after startup (the USB mouse loses this race often) */
+	vfbFnxInputRetry();
+
     /* A FLUSH NEEDS A LIVE DAMAGE RECORD. The screen close destroys the
      * record and marks the screen as going away (xfbShadowClosing), so the
      * arm below FAILS BY DESIGN - and this used to flush anyway.
