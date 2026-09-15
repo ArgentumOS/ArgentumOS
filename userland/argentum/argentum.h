@@ -2578,6 +2578,10 @@ private:
 	/* the entry is empty again after a commit, so the caret goes home */
 	void setInsertionPointFor(const char *utf8);
 };
+/// The shape of a slider (Cocoa's NSSliderType): a straight track with a
+/// knob along it, or a dial whose knob is the ANGLE of the value.
+enum class SliderType { Linear, Circular };
+
 /// @purpose The cell behind a slider: the track, the ticks and the knob,
 /// and the arithmetic that turns an x into a value. Cocoa's NSSliderCell.
 ///
@@ -2592,10 +2596,6 @@ private:
 /// drawing uses to place them, so the knob always sits ON a tick.
 ///
 /// @see Slider, ActionCell
-/// The shape of a slider (Cocoa's NSSliderType): a straight track with a
-/// knob along it, or a dial whose knob is the ANGLE of the value.
-enum class SliderType { Linear, Circular };
-
 class SliderCell : public ActionCell {
 public:
 	/// The class record KVC walks.

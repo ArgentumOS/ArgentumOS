@@ -78,10 +78,17 @@ dialCentre(const Rect &frame)
 		      frame.origin.y + frame.size.h / 2.0 };
 }
 
+/* the knob's radius, in points: one constant, because the dial's own radius
+ * has to leave room for it. The first version inset the ring by a point and
+ * the knob then hung OUTSIDE the control's frame at the extremes, where the
+ * frame's clip cut half of it away - which a gate caught by sampling exactly
+ * where the cell reported the knob. */
+static const double DIAL_KNOB_R = 5.0;
+
 static double
 dialRadius(const Rect &frame)
 {
-	double r = frame.size.h / 2.0 - 1.0;
+	double r = frame.size.h / 2.0 - DIAL_KNOB_R - 1.0;
 
 	return r > 2.0 ? r : 2.0;
 }
@@ -195,8 +202,9 @@ SliderCell::drawInFrame(const Rect &frame, View *inView)
 		ctx->strokeRoundRect(dial, r, track_, 5.0);
 		Point k = knobPoint(frame);
 
-		ctx->fillCircle(k, 5.0, Color::rgb(0.35, 0.55, 0.85));
-		ctx->fillCircle(k, 2.5, Color::rgb(0.98, 0.98, 0.99));
+		ctx->fillCircle(k, DIAL_KNOB_R, Color::rgb(0.35, 0.55, 0.85));
+		ctx->fillCircle(k, DIAL_KNOB_R / 2.0,
+				Color::rgb(0.98, 0.98, 0.99));
 		return;
 	}
 	Rect t = trackRect(frame);

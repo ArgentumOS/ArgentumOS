@@ -35,6 +35,7 @@ static TextField *editField = nullptr;
 static SearchField *searchField = nullptr;
 static TokenField *tokenField = nullptr;
 static Slider *slider = nullptr;
+static Slider *dial = nullptr;	/* the circular one */
 static Stepper *stepper = nullptr;
 static ProgressIndicator *progress = nullptr;
 static LevelIndicator *level = nullptr;
@@ -94,6 +95,24 @@ static const Action Zoo_ACTIONS[] = {
 		Slider *s = dynamic_cast<Slider *>(sender);
 
 		std::printf("ZOO-SLIDE %g\n", s ? s->doubleValue() : -1.0);
+		std::fflush(stdout); } },
+	/* the dial also reports WHERE THE CELL SAYS ITS KNOB IS, in screen
+	 * coordinates: a pixel check then aims at the library's own answer
+	 * rather than at a guess about the geometry */
+	{ "dial", [](Object *sender) {
+		Slider *s = dynamic_cast<Slider *>(sender);
+
+		std::printf("ZOO-DIAL %g\n", s ? s->doubleValue() : -1.0);
+		if (s && s->sliderCell() && s->window()) {
+			Point k = s->sliderCell()->knobPoint(s->bounds());
+
+			std::printf("ZOO-KNOB x=%g y=%g\n",
+				    s->window()->frame().origin.x
+					    + s->frame().origin.x + k.x,
+				    s->window()->frame().origin.y
+					    + s->window()->chromeHeightPt()
+					    + s->frame().origin.y + k.y);
+		}
 		std::fflush(stdout); } },
 	{ "step", [](Object *sender) {
 		Stepper *s = dynamic_cast<Stepper *>(sender);
@@ -276,6 +295,19 @@ main(int argc, char **argv)
 	content->addSubview(slider);
 	y += 32;
 
+	/* the CIRCULAR slider: a dial in a square box (a dial ignores extra
+	 * width, as Cocoa's does), 0..1 so that a point's angle is the value */
+	dial = new Slider();
+	dial->setFrame(Rect{ { 16, y }, { 30, 30 } });
+	dial->setType(SliderType::Circular);
+	dial->setMinValue(0);
+	dial->setMaxValue(1);
+	dial->setDoubleValue(0);
+	dial->setTarget(&zoo);
+	dial->setAction("dial");
+	content->addSubview(dial);
+	y += 36;
+
 	stepper = new Stepper();
 	stepper->setFrame(Rect{ { 16, y }, { 24, 26 } });
 	stepper->setMinValue(0);
@@ -350,6 +382,7 @@ main(int argc, char **argv)
 	logAt("PLACEHOLDER", ph);
 	logAt("EDITTEXT", editField);
 	logAt("SLIDER", slider);
+	logAt("DIAL", dial);
 	logAt("STEPPER", stepper);
 	logAt("PROGRESS", progress);
 	logAt("LEVEL", level);

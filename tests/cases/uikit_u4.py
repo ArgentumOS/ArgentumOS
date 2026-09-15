@@ -114,10 +114,62 @@ class Case(BaseCase):
                    "clicking the lower half brought it back to 0")
 
         # ---- the two bars, in the framebuffer ---------------------------
+        # ---- the CIRCULAR slider: a point's ANGLE is the value ----------
+        # 0 points up and the value turns clockwise, so a click due RIGHT of
+        # the centre is a quarter of the range - and the dial is 0..1, so the
+        # value it reports IS the fraction.
+        dx, dy = pts["DIAL"]
+        mon.click_at(*at(dx + 11, dy), settle=0.8)
+        session.wait_for(r"ZOO-DIAL", 30)
+        out_dial = session.output_since(mark)
+        dials = re.findall(r"ZOO-DIAL ([\d.]+)", out_dial)
+        self.check("dial-angle-is-the-value",
+                   bool(dials) and abs(float(dials[-1]) - 0.25) <= 0.05,
+                   "a click due right of the dial's centre gave %s; a quarter "
+                   "of the range is 0.25"
+                   % (dials[-1] if dials else "nothing"))
+
+        # THE POINTER MUST NOT BE IN THE PICTURE. It sits where the last click
+        # landed - over the dial - and the cursor is drawn into the
+        # framebuffer, so a pixel check aimed at the knob sampled a black
+        # cursor instead. park() first, as every other pixel check in this
+        # project does.
+        mon.park()
+
         shot = session.shot("u4")
         self.check("shot-taken", shot is not None, "a framebuffer dump")
         if shot is None:
             return
+
+        # the dial: a CIRCLE, not a bar - its centre is the face and the
+        # corner of its (square) frame is outside the ring
+        dcx, dcy = pts["DIAL"]
+        face = shot.px(int(dcx), int(dcy))
+        corner = shot.px(int(dcx) - 14, int(dcy) - 14)
+        self.check("dial-is-round",
+                   face is not None and corner is not None
+                   and face != corner,
+                   "the dial's centre %s and the outside of its frame %s: a "
+                   "round slider leaves the corners of its box alone"
+                   % (face, corner))
+
+        # and its knob is DRAWN where the cell says it is: the zoo logs the
+        # cell's own knobPoint(), so this aims at the library's answer rather
+        # than at a guess about the geometry. The knob is a blue disc with a
+        # light centre, so its rim is the place to look.
+        knob = re.search(r"ZOO-KNOB x=([\d.]+) y=([\d.]+)", out_dial)
+        rim = None
+        if knob:
+            # +4, not +3: the knob is a blue disc of radius 5 with a LIGHT
+            # centre of 2.5, so three points out lands on the centre and the
+            # blue is the band between the two
+            rim = shot.px(int(float(knob.group(1))) + 4,
+                          int(float(knob.group(2))))
+        self.check("dial-knob-is-where-the-cell-says",
+                   rim is not None and rim[2] > rim[0] + 60,
+                   "the knob's rim reads %s at the position the cell reported "
+                   "(%s); the knob is blue, the face and ring are not"
+                   % (rim, knob.groups() if knob else "no ZOO-KNOB line"))
 
         # the progress bar: filled to its fraction and not beyond
         wx, wy = 70, 50
