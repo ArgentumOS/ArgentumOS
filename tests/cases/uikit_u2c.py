@@ -147,19 +147,20 @@ class Case(BaseCase):
                    "button, one on its circle - produced %d ZOO-CLICK Circular "
                    "lines; only the circle is sensitive, so there should be 1"
                    % len(clicks),
-                   xfail="MEASURED AND REAL, AND THE FIX SO FAR IS A NO-OP. The "
-                         "fix is Cell::containsPointInFrame + ButtonCell "
-                         "answering for its circle/mark/title + Control::hitTest "
-                         "routing through it; it changed nothing, because it "
-                         "measures the title with textMetrics(fontName(), "
-                         "fontSize()) and ButtonCell's fontSize() is 0, so the "
-                         "width came back 0 and the fallback - stay as "
-                         "sensitive as before rather than invent a dead spot - "
-                         "gave the whole remaining frame back. The asymmetry to "
-                         "solve: drawText() falls back to the DEFAULT font for "
-                         "size 0 while textMetrics() refuses to measure at all, "
-                         "so the cell draws a title it cannot measure. Measure "
-                         "with that default and the fallback can go.")
+                   xfail="MEASURED AND REAL; the fix came out a NO-OP, and "
+                         "the reason is NOT yet established. The measurement is "
+                         "honest - the circle fires, and a click 94pt to its "
+                         "right ALSO fires - but the first explanation written "
+                         "here is RETRACTED: I claimed ButtonCell's fontSize() "
+                         "is 0, so textMetrics() measured nothing while "
+                         "drawText() drew a title anyway. Both refuse at "
+                         "sizePt <= 0 (text.cpp:825, display.cpp:286), so there "
+                         "is no asymmetry and a size-0 cell draws no title at "
+                         "all. Live candidates: the press never reaches "
+                         "Control::hitTest, or stringValue() is not the title "
+                         "the cell draws, or the override is not consulted at "
+                         "all. Settle it by logging from containsPointInFrame - "
+                         "measure at the writer, do not theorise.")
 
         session.wait_for(r"ZOO-CLICK Switch", 30, poll=0.005)
         self.note("one click, press to ZOO-CLICK: %.0f ms"
