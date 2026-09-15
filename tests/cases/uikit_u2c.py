@@ -301,6 +301,22 @@ class Case(BaseCase):
                    "pixels; a frozen screen changes none, pointer included"
                    % changed)
 
+        # AND THE POINTER STILL MOVES. The reported signature is a server that
+        # is ALIVE - the cursor is still on screen - with a pointer that will
+        # not move, while the console works. Moving the pointer is the cheapest
+        # test of both halves at once: Xfb has to receive the motion AND drain
+        # the result, so a cursor that does not move after an exit means either
+        # the input path is dead or the drain has stopped.
+        shot_c = session.shot("before-move")
+        mon.move(30, 0)
+        mon.nudge()
+        shot_d = session.shot("after-move")
+        moved = shot_c.diff(shot_d)
+        self.check("pointer-still-moves-after-exit", moved > 100,
+                   "moving the pointer after the exit changed %d pixels (the "
+                   "cursor's own area is a few hundred; a dead input path or a "
+                   "stopped drain changes none)" % moved)
+
         self.check("board-still-alive",
                    "ZOO-TIMEOUT" in session.output_since(mark)
                    or "ZOO-CLOSED" in session.output_since(mark)
