@@ -300,4 +300,45 @@ LayoutDimension View::heightAnchor() const
 	return LayoutDimension(const_cast<View *>(this), LayoutAttribute::Height);
 }
 
+
+/* ---- the class record and the property table (U1) --------------------
+ *
+ * View's OWN properties. The base's are reached through the chain, which
+ * is why "hidden" declared here and "description" (a method, not a
+ * property) stay separate concerns: the table lists what KVC can address.
+ */
+static const Property View_PROPS[] = {
+	{ "identifier",
+	  [](const Object *o) {
+		  return Value::of(static_cast<const View *>(o)
+					   ->identifier()); },
+	  [](Object *o, const Value &v) {
+		  if (v.kind != Value::Text) {
+			  return false;
+		  }
+		  static_cast<View *>(o)->setIdentifier(v.text.c_str());
+		  return true; } },
+	{ "hidden",
+	  [](const Object *o) {
+		  return Value::of(static_cast<const View *>(o)->isHidden()); },
+	  [](Object *o, const Value &v) {
+		  if (v.kind != Value::Bool) {
+			  return false;
+		  }
+		  static_cast<View *>(o)->setHidden(v.boolean);
+		  return true; } },
+	{ "superview",
+	  [](const Object *o) {
+		  View *p = static_cast<const View *>(o)->superview();
+
+		  return p ? Value::of(static_cast<Object *>(p))
+			   : Value::nil(); },
+	  nullptr },		/* read-only: the tree is edited with addSubview */
+};
+
+const ObjectClass View::kClass = {
+	"View", &Object::kClass, View_PROPS,
+	(int) (sizeof(View_PROPS) / sizeof(View_PROPS[0]))
+};
+
 } /* namespace argentum */

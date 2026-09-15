@@ -7,7 +7,7 @@ and asserts the resulting frames.
 
 from harness import BaseCase
 
-PROBE = "/System/Shared/tests/view_layout"
+PROBE = "/System/Shared/tests/kvc_basic"
 
 
 class Case(BaseCase):
@@ -27,15 +27,15 @@ class Case(BaseCase):
             return
 
         mark = len(session.log_text())
-        session.run("test -x %s && %s; echo U0B-EXIT=$?" % (PROBE, PROBE))
+        session.run("test -x %s && %s; echo U1-EXIT=$?" % (PROBE, PROBE))
         out = session.output_since(mark)
         for line in out.strip().splitlines():
-            if line.startswith("U0B"):
+            if line.startswith("U1"):
                 self.note(line)
 
-        self.check("probe-ran", "U0B-OK" in out,
-                   "the view layout probe ran")
-        self.check("probe-exit-zero", "U0B-EXIT=0" in out,
+        self.check("probe-ran", "U1-OK" in out,
+                   "the KVC probe ran")
+        self.check("probe-exit-zero", "U1-EXIT=0" in out,
                    "the probe exited 0")
-        self.check("no-failures", "U0B-FAIL" not in out,
+        self.check("no-failures", "U1-FAIL" not in out,
                    "no assertion failed")

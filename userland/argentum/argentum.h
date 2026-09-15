@@ -257,6 +257,110 @@ const std::vector<LayoutConstraint *> &layoutActiveConstraints();
  * effort — Cocoa reports such conflicts and keeps the last good values). */
 bool layoutSolve(View *root);
 
+/* ---- U1: the base object and its property tables (KVC) --------------
+ *
+ * Cocoa's NSObject, and the piece of it everything else leans on: a class
+ * NAME, and a table of properties that code can address BY NAME. C++ has
+ * no runtime to introspect with, so the table is explicit - one static
+ * record per class, chained to its superclass's record. That chain is
+ * what makes valueForKey() find an inherited property.
+ */
+
+class Object;	/* the tables below reference objects by pointer */
+
+/// A type-erased property value. ObjectKind carries a reference to another
+/// object, which is what makes key paths work.
+struct Value {
+	enum Kind { Nil, Bool, Number, Text, ObjectKind };
+
+	Kind kind = Nil;
+	bool boolean = false;
+	double number = 0;
+	std::string text;
+	Object *object = nullptr;
+
+	/// The empty value.
+	static Value nil() { return Value(); }
+	/// A boolean value.
+	static Value of(bool b) { Value v; v.kind = Bool; v.boolean = b;
+				  return v; }
+	/// A numeric value.
+	static Value of(double n) { Value v; v.kind = Number; v.number = n;
+				    return v; }
+	/// A text value.
+	static Value of(const char *t) { Value v; v.kind = Text;
+					 v.text = t ? t : ""; return v; }
+	/// An object reference.
+	static Value of(Object *o) { Value v; v.kind = ObjectKind;
+				     v.object = o; return v; }
+};
+
+/// One addressable property of one class: its name and the accessors the
+/// table calls. A read-only property leaves `set` empty.
+struct Property {
+	const char *name = nullptr;
+	std::function<Value(const Object *)> get;
+	std::function<bool(Object *, const Value &)> set;
+};
+
+/// A class's identity and its OWN properties. `super` links the chain, so
+/// a lookup walks from the most-derived class up.
+struct ObjectClass {
+	const char *name = nullptr;
+	const ObjectClass *super = nullptr;
+	const Property *props = nullptr;
+	int count = 0;
+};
+
+/// @purpose The root of the class hierarchy and the KVC entry point: a
+/// class name, a description, class-chain queries, and by-name read/write
+/// of properties. Cocoa's NSObject, minus the memory management (C++ owns
+/// the objects) and minus the runtime (the tables are explicit).
+///
+/// @lifetime Plain C++ objects; the creator destroys them. Nothing in the
+/// base allocates.
+///
+/// @threading Single-threaded (UI thread), like the rest of the toolkit.
+///
+/// @invariants A subclass's objectClass() must return a record whose
+/// `super` chain reaches Object's - that chain IS the class hierarchy for
+/// everything that is not a C++ virtual. valueForKey() yields a Nil Value
+/// for an unknown key; setValueForKey() returns false when the key is
+/// unknown or the property is read-only.
+///
+/// @see View, Property, ObjectClass
+class Object {
+public:
+	/// Destroy the object. The base owns nothing, so nothing is freed.
+	virtual ~Object();
+
+	/// The root of every class chain (Object has no superclass).
+	static const ObjectClass kClass;
+
+	/// This object's own class record. The base returns Object's, so a
+	/// chain always ends at a record rather than at a null pointer.
+	virtual const ObjectClass *objectClass() const { return &kClass; }
+	/// The class name (shorthand for objectClass()->name).
+	const char *className() const;
+	/// True when the receiver is `name` or a subclass of it.
+	bool isKindOf(const char *name) const;
+	/// A short debug string: "<ClassName 0xADDR>".
+	virtual std::string description() const;
+
+	/// The descriptor for `key`, searched from the receiver's class up the
+	/// chain; nullptr when no class declares it.
+	const Property *propertyForKey(const char *key) const;
+	/// Read a property by name (a Nil Value when the key is unknown).
+	Value valueForKey(const char *key) const;
+	/// Write a property by name (false when unknown or read-only).
+	bool setValueForKey(const char *key, const Value &v);
+	/// Read a dot-separated path ("superview.identifier"): every component
+	/// but the last must be an object-valued property.
+	Value valueForKeyPath(const char *path) const;
+	/// Write a dot-separated path.
+	bool setValueForKeyPath(const char *path, const Value &v);
+};
+
 /// The autoresizing mask's parts (Cocoa's NSAutoresizingMaskOptions): each
 /// bit marks one margin or size as FLEXIBLE, so a superview resize is
 /// absorbed by the parts that carry a bit. A view with no bits set is not
@@ -297,12 +401,17 @@ enum AutoresizingMask : unsigned int {
  *
  * @see LayoutConstraint, LayoutAnchor, layoutSolve
  */
-class View {
+class View : public Object {
 public:
+	/// The class record KVC walks (Object <- View).
+	static const ObjectClass kClass;
+
+	const ObjectClass *objectClass() const override { return &kClass; }
+
 	/// Construct an empty view: no superview, no children, mask on.
 	View();
 	/// Unlink from the superview; children are unlinked, not deleted.
-	virtual ~View();
+	~View() override;
 
 	/* tree (non-owning, like Cocoa's: the parent does not free children) */
 	void addSubview(View *v);		/* append (topmost) */

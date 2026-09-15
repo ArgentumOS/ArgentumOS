@@ -173,6 +173,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/view_layout.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/view_layout"
+	# kvc_basic: U1 acceptance (docs/design/cocoa-parity-plan.md) — the
+	# base object's class chain and by-name property access. Display-free.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/kvc_basic.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/kvc_basic"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

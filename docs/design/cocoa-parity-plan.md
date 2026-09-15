@@ -127,7 +127,22 @@ as a compatibility path for un-migrated views, with a migration list.
   that is the semantics Cocoa's API implies. Gate: a display-free probe
   solves a set of constraints and asserts the resulting frames, including
   a priority conflict and an inequality.
-- **U1 — the missing bases + property tables.** `NSObject`-analog base
+- **U1 — the missing bases + property tables. IN PROGRESS (2026-09).**
+  **U1a — the base object and KVC. DONE.** `Object` (the NSObject analog:
+  class identity, `isKindOf`, `description`) with the **explicit class
+  chain** (`ObjectClass { name, super, props, count }` — one static record
+  per class, `super` linking upward) and the **property tables**
+  (`Property { name, get, set }` over a type-erased `Value`); `valueForKey`
+  / `setValueForKey` walk the chain, `valueForKeyPath` /
+  `setValueForKeyPath` resolve dot paths through object-valued properties,
+  and unknown keys / read-only properties are refused rather than
+  silently ignored. `View` is now an `Object` with its own record and
+  properties (`identifier`, `hidden`, read-only `superview`). Gate
+  `tests/cases/uikit_u1.py` 4/4 (15 assertions in the probe).
+  **Remaining in U1:** `NSNotificationCenter`, `NSViewController` /
+  `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
+  path.
+- **U1 (plan wording) — the missing bases + property tables.** `NSObject`-analog base
   (class name, description), the **property tables** (name → get/set,
   class-chain lookup) with `valueForKey`/`setValueForKey`, key paths and
   the array operators, then `NSNotificationCenter`, `NSViewController` +
