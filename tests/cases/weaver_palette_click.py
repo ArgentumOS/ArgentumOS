@@ -72,8 +72,9 @@ class Case(BaseCase):
         row_h = float(pr.group(2))
         header = float(pr.group(3))
         tx = float(br.group(1)) + float(br.group(3)) / 2.0
-        # rows: [Containers] View Box [Controls] Label Button ... -> 5
-        ty = float(br.group(2)) + header + 5.5 * row_h	# row 5 = Button
+        # rows: [Containers] View Box ScrollView SplitView [Controls]
+        #       Label Button ... -> 7
+        ty = float(br.group(2)) + header + 7.5 * row_h	# row 7 = Button
 
         # the canvas host should paint the WINDOW-grey page tone: sample
         # the empty area inside the panel, right of the two controls

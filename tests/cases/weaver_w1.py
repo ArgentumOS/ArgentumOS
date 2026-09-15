@@ -24,7 +24,7 @@ BOXROW = (r"BOX-A: box='Palette' child\[0\] x=([0-9.]+) y=([0-9.]+) "
           r"w=([0-9.]+) h=([0-9.]+)")
 FRAME_PX = 4
 BAND_H = 20
-BUTTON_ROW = 5			# [Containers] View Box [Controls] Label Button
+BUTTON_ROW = 7		# [Containers] View Box ScrollView SplitView [Controls] Label Button
 
 
 class Case(BaseCase):

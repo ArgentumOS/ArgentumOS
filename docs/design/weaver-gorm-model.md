@@ -316,7 +316,14 @@ dock pin.
   logs, the window is the interface's size, a REAL click on the button
   dispatches through the connection, and the close box ends the test.
   Full weaver suite 23/23, 229/229.
-- W6: not started.
+- **W6 — DONE (2026-09). PLAN COMPLETE (W0–W6).** Grouping and names:
+  the selection groups into a container — `--group box|scroll|split`
+  (ScrollView and SplitView joined the registry as Containers, with
+  `scrollX` / `vertical` as their own properties) — with the members
+  re-homed into the container's coordinates and their Z-ORDER preserved;
+  `--ungroup` restores them; a mixed-parent selection is refused.
+  `--setname <id> <name>` is GORM's Set Name. Gate
+  `tests/cases/weaver_w6.py` 11/11; full weaver suite 24/24, 240/240.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting

@@ -996,6 +996,18 @@ interfaceLoadFile(const char *path, InterfaceDocument &out, std::string &error)
 	}
 }
 
+InterfaceNode *
+InterfaceNode::takeChild(int index)
+{
+	if (index < 0 || index >= (int) children_.size()) {
+		return nullptr;
+	}
+	InterfaceNode *c = children_[(size_t) index];
+
+	children_.erase(children_.begin() + index);
+	return c;
+}
+
 /* ---------- W4: code generation ---------- */
 
 /* walk a comma-separated identifier list */
@@ -1243,6 +1255,26 @@ static const InterfaceProperty ComboBox_PROPS[] = {
 		  static_cast<ComboBox *>(v)->setValue(in.text.c_str()); } },
 };
 
+/* W6 grouping containers: a ScrollView's scalar is its scroll position,
+ * a SplitView's its axis. */
+static const InterfaceProperty ScrollView_PROPS[] = {
+	{ "scrollX", InterfaceNode::Kind::Number,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.number = static_cast<ScrollView *>(v)->contentOffsetX(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  ScrollView *sv = static_cast<ScrollView *>(v);
+
+		  sv->scrollTo(in.number, sv->contentOffsetY()); } },
+};
+
+static const InterfaceProperty SplitView_PROPS[] = {
+	{ "vertical", InterfaceNode::Kind::Bool,
+	  [](View *v, InterfaceNode::Property &out) {
+		  out.boolean = static_cast<SplitView *>(v)->isVertical(); },
+	  [](View *v, const InterfaceNode::Property &in) {
+		  static_cast<SplitView *>(v)->setVertical(in.boolean); } },
+};
+
 static const InterfaceProperty PopUpButton_PROPS[] = {
 	{ "title", InterfaceNode::Kind::String,
 	  [](View *v, InterfaceNode::Property &out) {
@@ -1272,6 +1304,8 @@ static const ClassProps g_props[] = {
 	CLASSPROPS(SegmentedControl),
 	CLASSPROPS(ComboBox),
 	CLASSPROPS(PopUpButton),
+	CLASSPROPS(ScrollView),
+	CLASSPROPS(SplitView),
 };
 
 static const int g_propsCount = (int) (sizeof(g_props) / sizeof(g_props[0]));
@@ -1424,6 +1458,8 @@ static const InterfaceClass g_classes[] = {
 	{ "SegmentedControl", []() -> View * { return new SegmentedControl(); }, "Control" },
 	{ "ComboBox", []() -> View * { return new ComboBox(); }, "Control" },
 	{ "PopUpButton", []() -> View * { return new PopUpButton(); }, "Control" },
+	{ "ScrollView", []() -> View * { return new ScrollView(); }, "Container" },
+	{ "SplitView", []() -> View * { return new SplitView(); }, "Container" },
 };
 
 int

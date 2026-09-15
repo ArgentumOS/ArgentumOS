@@ -1793,6 +1793,10 @@ public:
 	InterfaceNode *addChild(InterfaceNode *child);	/* takes ownership */
 	void insertChild(int index, InterfaceNode *child);	/* owned */
 	void removeChild(int index);				/* and deletes it */
+	/* W6: DETACH a child and hand back ownership (grouping re-parents
+	 * nodes, so removeChild's delete is the wrong tool). nullptr when the
+	 * index is out of range; the caller owns the result. */
+	InterfaceNode *takeChild(int index);
 
 
 private:

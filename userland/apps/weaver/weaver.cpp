@@ -2177,6 +2177,219 @@ public:
 		refreshDisplay();
 	}
 
+	/* ---- W6: grouping and names ---------------------------------- */
+
+	static InterfaceNode *parentOf(const InterfaceNode *root,
+				       const InterfaceNode *n)
+	{
+		for (int i = 0; i < root->childCount(); i++) {
+			InterfaceNode *c = root->childAt(i);
+
+			if (c == n) {
+				return const_cast<InterfaceNode *>(root);
+			}
+			InterfaceNode *p = parentOf(c, n);
+
+			if (p) {
+				return p;
+			}
+		}
+		return nullptr;
+	}
+
+	static int indexOfChild(const InterfaceNode *parent,
+				const InterfaceNode *n)
+	{
+		for (int i = 0; i < parent->childCount(); i++) {
+			if (parent->childAt(i) == n) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	/* Group the SELECTION into a container (GORM: Group in Box /
+	 * ScrollView / SplitView). v1 requires one common parent. */
+	void group(const char *kind)
+	{
+		const char *cls = nullptr;
+
+		if (kind && !std::strcmp(kind, "box")) {
+			cls = "Box";
+		} else if (kind && !std::strcmp(kind, "scroll")) {
+			cls = "ScrollView";
+		} else if (kind && !std::strcmp(kind, "split")) {
+			cls = "SplitView";
+		}
+		if (!cls) {
+			std::printf("WEAVER: group FAIL unknown kind `%s`\n",
+				    kind ? kind : "");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		std::vector<InterfaceNode *> sel = selectedNodes();
+
+		if (sel.empty()) {
+			std::printf("WEAVER: group FAIL (nothing selected)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		InterfaceNode *parent = parentOf(doc->root(), sel[0]);
+
+		if (!parent) {
+			std::printf("WEAVER: group FAIL (the root cannot be "
+				    "grouped)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		Rect u = nodeFrame(sel[0]);
+		std::vector<int> idx;
+
+		for (auto *n : sel) {
+			if (parentOf(doc->root(), n) != parent) {
+				std::printf("WEAVER: group FAIL (the selection "
+					    "must share a parent)\n");
+				std::fflush(stdout);
+				failed = true;
+				return;
+			}
+			Rect f = nodeFrame(n);
+
+			if (f.origin.x < u.origin.x) {
+				u.size.w += u.origin.x - f.origin.x;
+				u.origin.x = f.origin.x;
+			}
+			if (f.origin.y < u.origin.y) {
+				u.size.h += u.origin.y - f.origin.y;
+				u.origin.y = f.origin.y;
+			}
+			if (f.origin.x + f.size.w > u.origin.x + u.size.w) {
+				u.size.w = f.origin.x + f.size.w - u.origin.x;
+			}
+			if (f.origin.y + f.size.h > u.origin.y + u.size.h) {
+				u.size.h = f.origin.y + f.size.h - u.origin.y;
+			}
+			idx.push_back(indexOfChild(parent, n));
+		}
+		int at = idx[0];
+
+		for (int i : idx) {
+			if (i < at) {
+				at = i;
+			}
+		}
+		/* detach the members (highest index first, or the indices move)
+		 * and re-home them in the container's coordinates */
+		std::vector<int> sorted = idx;
+
+		std::sort(sorted.begin(), sorted.end());
+		InterfaceNode *box = new InterfaceNode();
+
+		box->setClassName(cls);
+		box->setFrame(u.origin.x, u.origin.y, u.size.w, u.size.h);
+		std::vector<InterfaceNode *> moved(sorted.size());
+
+		/* detach highest-index-first (indices shift), but RE-ADD in the
+		 * original order, or grouping would reverse the z-order */
+		for (int k = (int) sorted.size() - 1; k >= 0; k--) {
+			moved[(size_t) k] = parent->takeChild(sorted[k]);
+		}
+		for (size_t k = 0; k < moved.size(); k++) {
+			InterfaceNode *c = moved[k];
+
+			if (!c) {
+				continue;
+			}
+			Rect f = nodeFrame(c);
+
+			setNodeFrame(c, Rect{ { f.origin.x - u.origin.x,
+						f.origin.y - u.origin.y },
+					      { f.size.w, f.size.h } });
+			box->addChild(c);
+		}
+		parent->insertChild(at, box);
+		dirty = true;
+		selectedIds_.clear();
+		selectedIds_.push_back(nodeName(box));
+		updateTitle();
+		std::printf("WEAVER: group %s %d (%g,%g %gx%g)\n", cls,
+			    (int) sel.size(), u.origin.x, u.origin.y, u.size.w,
+			    u.size.h);
+		std::fflush(stdout);
+		refreshDisplay();
+	}
+
+	/* Ungroup the selection: its children take its place. */
+	void ungroup()
+	{
+		InterfaceNode *n = selectedNode();
+
+		if (!n || n->childCount() == 0) {
+			std::printf("WEAVER: ungroup FAIL (select a container "
+				    "with children)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		InterfaceNode *p = parentOf(doc->root(), n);
+
+		if (!p) {
+			std::printf("WEAVER: ungroup FAIL (the root cannot be "
+				    "ungrouped)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		Rect nf = nodeFrame(n);
+		int at = indexOfChild(p, n);
+		int count = n->childCount();
+		std::vector<InterfaceNode *> kids;
+
+		for (int i = 0; i < count; i++) {
+			kids.push_back(n->takeChild(0));
+		}
+		for (auto *c : kids) {
+			Rect f = nodeFrame(c);
+
+			setNodeFrame(c, Rect{ { f.origin.x + nf.origin.x,
+						f.origin.y + nf.origin.y },
+					      { f.size.w, f.size.h } });
+		}
+		p->removeChild(at);	/* the now-empty container */
+		for (int i = 0; i < (int) kids.size(); i++) {
+			p->insertChild(at + i, kids[(size_t) i]);
+		}
+		dirty = true;
+		selectedIds_.clear();
+		updateTitle();
+		std::printf("WEAVER: ungroup %d\n", count);
+		std::fflush(stdout);
+		refreshDisplay();
+	}
+
+	/* GORM's Set Name: the outline's identity for an object. */
+	void setName(const char *id, const char *name)
+	{
+		InterfaceNode *n = findNode(doc->root(), id);
+
+		if (!n || !name) {
+			std::printf("WEAVER: setname FAIL no `%s`\n",
+				    id ? id : "");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		n->setIdentifier(name);
+		dirty = true;
+		updateTitle();
+		std::printf("WEAVER: setname %s %s\n", id, name);
+		std::fflush(stdout);
+		refreshDisplay();
+	}
+
 	/* W4: emit C++ for a class record — a header and a source, the
 	 * same bytes every time (the emitter's discipline). */
 	void genClass(const char *className, const char *dir)
@@ -3278,6 +3491,18 @@ main(int argc, char **argv)
 
 			ed.instantiate(cls, id);
 			any = true;
+		} else if (a == "--group" && i + 1 < argc) {
+			ed.group(argv[++i]);
+			any = true;
+		} else if (a == "--ungroup") {
+			ed.ungroup();
+			any = true;
+		} else if (a == "--setname" && i + 2 < argc) {
+			const char *id = argv[++i];
+			const char *name = argv[++i];
+
+			ed.setName(id, name);
+			any = true;
 		} else if (a == "--gen-class" && i + 2 < argc) {
 			const char *cls = argv[++i];
 			const char *dir = argv[++i];
@@ -3379,6 +3604,8 @@ main(int argc, char **argv)
 			    "[--add-outlet class name] "
 			    "[--add-action class selector] "
 			    "[--instantiate class id] "
+			    "[--group box|scroll|split] [--ungroup] "
+			    "[--setname id name] "
 			    "[--gen-class class dir] [--classes] [--test] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--new name] [--roundtrip] "
