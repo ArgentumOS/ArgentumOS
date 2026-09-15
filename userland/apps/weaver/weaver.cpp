@@ -732,6 +732,41 @@ public:
 		save();
 	}
 
+	void newUntitled()
+	{
+		InterfaceDocument *fresh = new InterfaceDocument();
+		InterfaceNode *r = fresh->root();
+		InterfaceNode *label = new InterfaceNode();
+		InterfaceNode *button = new InterfaceNode();
+
+		fresh->setVersion(1);
+		r->setClassName("View");
+		r->setIdentifier("panel");
+		r->setFrame(0, 0, 400, 300);
+		label->setClassName("Label");
+		label->setIdentifier("greeting");
+		label->setFrame(20, 16, 240, 20);
+		label->setString("text", "New Document");
+		r->addChild(label);
+		button->setClassName("Button");
+		button->setIdentifier("okButton");
+		button->setFrame(20, 60, 90, 24);
+		button->setString("title", "Action");
+		r->addChild(button);
+
+		delete doc;
+		doc = fresh;
+		path = resolvePath("Untitled");
+		dirty = true;		/* unsaved; File > Save writes it */
+		selectedIds_.clear();
+		undoStack.clear();
+		gesture = Gesture();
+		discardJournal();
+		canvas = nullptr;
+		std::printf("WEAVER: new untitled from template (3 nodes)\n");
+		std::fflush(stdout);
+	}
+
 	/* IB7: the document survives its own emitter — emit(load(emit(load)))
 	 * must be byte-identical, the same check IB0 asserts for fixtures. */
 	void roundtrip()
@@ -2583,6 +2618,14 @@ main(int argc, char **argv)
 	Editor ed;
 	bool show = false;
 	bool any = false;
+
+	/* the dock launches the payload with no arguments (bin/Weaver): an
+	 * IDE opened that way shows a NEW UNTITLED document window instead of
+	 * printing usage and exiting. */
+	if (argc == 1) {
+		ed.newUntitled();
+		show = true;
+	}
 
 	for (int i = 1; i < argc; i++) {
 		std::string a = argv[i];
