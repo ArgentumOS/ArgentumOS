@@ -675,6 +675,14 @@ public:
 	/// overriding and, usually, calling this first. Does nothing when no
 	/// context is current.
 	virtual void drawInFrame(const Rect &frame, View *inView);
+	/// True when `p` - in `frame`'s coordinates - is on the part of the cell
+	/// that is VISIBLE.
+	///
+	/// The default is the whole frame, which is right for a cell that fills
+	/// it. A cell that draws a SHAPE narrows it, because an invisible
+	/// sensitive area is a defect and not a convenience.
+	virtual bool containsPointInFrame(const Rect &frame,
+					  const Point &p) const;
 
 	/// A copy of the cell, owned by the caller (Cocoa's copy).
 	virtual Cell *copy() const;
@@ -1608,6 +1616,10 @@ protected:
 	/// True while the pointer is inside the control's bounds.
 	bool containsPoint(const MouseEvent &e) const;
 
+	/// The hit test: a control is hit where its cell DRAWS, so a button whose
+	/// chrome is a circle is not hit in the empty space beside it.
+	View *hitTest(const Point &p) override;
+
 	Cell *cell_ = nullptr;		/* owned */
 	bool hilite_ = false;		/* the press is showing */
 };
@@ -1640,6 +1652,12 @@ public:
 
 	/// Draw the bezel and the title into `frame`.
 	void drawInFrame(const Rect &frame, View *inView) override;
+	/// A button is sensitive on what it DRAWS: the bezelled styles fill
+	/// their frame and answer for all of it, while a circular, help, mark,
+	/// disclosure or inline button answers only for its shape and for the
+	/// title actually drawn beside it.
+	bool containsPointInFrame(const Rect &frame,
+				  const Point &p) const override;
 	/// A copy of the cell, owned by the caller.
 	Cell *copy() const override;
 

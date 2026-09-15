@@ -28,6 +28,16 @@ class Case(BaseCase):
                                   "-device", "usb-mouse"])
         ready = session.shell_ready(150)
         self.check("shell-ready", ready, "the serial console has a shell")
+
+        # THE INSTRUMENT, for the whole case: ButtonCell::containsPointInFrame
+        # prints ARGENTUM-HIT (with the frame it believes it has and the point
+        # it was asked about) when this is set. The fix for the invisible
+        # sensitive area was a no-op twice, and each guess at why cost a gate -
+        # this makes the next run answer it instead.
+        # (ARGENTUM_HITLOG was set here for the one run that settled whether
+        # containsPointInFrame is consulted at all. It is: 144 hit tests, the
+        # Circular row's frame 0,0 240x28. The instrument stays in the toolkit,
+        # off by default, like ARGENTUM_DRAW_MS.)
         if not ready:
             return
 
@@ -161,6 +171,21 @@ class Case(BaseCase):
                          "the cell draws, or the override is not consulted at "
                          "all. Settle it by logging from containsPointInFrame - "
                          "measure at the writer, do not theorise.")
+
+        # IS THE OVERRIDE CONSULTED AT ALL? The log line is printed at the TOP
+        # of ButtonCell::containsPointInFrame, so a Circular line here means the
+        # override RAN and the ANSWER is what is wrong; no line at all means the
+        # press never reaches it and the subject is the dispatch instead. The
+        # message carries the frame and points either way, because the harness
+        # prints PASS messages too.
+        hits = re.findall(r'ARGENTUM-HIT "([^"]*)" f=([-\d.]+),([-\d.]+) '
+                          r'([\d.]+)x([\d.]+) p=([-\d.]+),([-\d.]+)',
+                          session.output_since(mark))
+        circ = [h for h in hits if "Circular" in h[0]]
+        self.check("hit-test-is-consulted", bool(circ),
+                   "containsPointInFrame was asked about %d points; the "
+                   "Circular row's own hit tests were %s (frame, then point)"
+                   % (len(hits), circ[-3:]))
 
         session.wait_for(r"ZOO-CLICK Switch", 30, poll=0.005)
         self.note("one click, press to ZOO-CLICK: %.0f ms"

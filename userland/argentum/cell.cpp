@@ -233,6 +233,14 @@ Cell::drawInFrame(const Rect &frame, View *inView)
 		      textColor_);
 }
 
+bool
+Cell::containsPointInFrame(const Rect &frame, const Point &p) const
+{
+	return p.x >= frame.origin.x && p.y >= frame.origin.y
+	       && p.x < frame.origin.x + frame.size.w
+	       && p.y < frame.origin.y + frame.size.h;
+}
+
 Cell *
 Cell::copy() const
 {

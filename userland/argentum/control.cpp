@@ -128,6 +128,95 @@ Control::drawRect(const Rect &dirty)
 	}
 }
 
+static Rect markBox(const Rect &frame);	/* below: the mark's box */
+
+/* the width of the title the cell DRAWS. Context::drawText refuses sizePt <= 0
+ * (display.cpp), so a cell with no font size draws NO title - measuring it as
+ * zero wide is then correct, and nothing to the right of the mark is visible. */
+static double
+titleWidthPt(const Cell *cell, const char *fontFamily, double fontPt)
+{
+	if (!cell || !cell->stringValue()[0]) {
+		return 0.0;
+	}
+	TextMetrics m = textMetrics(fontFamily && fontFamily[0] ? fontFamily
+							      : nullptr,
+				    fontPt, cell->stringValue());
+
+	return m.widthPt;
+}
+
+static bool
+pointInRect(const Rect &r, const Point &p)
+{
+	return p.x >= r.origin.x && p.y >= r.origin.y
+	       && p.x < r.origin.x + r.size.w && p.y < r.origin.y + r.size.h;
+}
+
+bool
+ButtonCell::containsPointInFrame(const Rect &frame, const Point &p) const
+{
+	/* THE INSTRUMENT, not another theory. The question this settles is
+	 * whether the press reaches this override AT ALL - the fix was twice a
+	 * no-op and guessing why cost a gate each time. Gated by an env var
+	 * (ARGENTUM_HITLOG, like ARGENTUM_DRAW_MS) and printed to stdout, which
+	 * is the serial console the harness reads. */
+	if (getenv("ARGENTUM_HITLOG")) {
+		printf("ARGENTUM-HIT \"%s\" f=%.0f,%.0f %.0fx%.0f p=%.0f,%.0f\n",
+		       stringValue(), frame.origin.x, frame.origin.y,
+		       frame.size.w, frame.size.h, p.x, p.y);
+	}
+	bool isMark = (type() == ButtonType::Switch
+		       || type() == ButtonType::Radio);
+	bool isCircle = bezel_ == BezelStyle::Circular
+			|| bezel_ == BezelStyle::HelpButton;
+	bool isDisclosure = bezel_ == BezelStyle::Disclosure;
+	bool isInline = bezel_ == BezelStyle::Inline;
+
+	/* the styles that fill their frame answer for all of it */
+	if (!isMark && !isCircle && !isDisclosure && !isInline) {
+		return Cell::containsPointInFrame(frame, p);
+	}
+	double x0 = frame.origin.x;
+
+	if (isCircle) {
+		/* the circle at the frame's left, and the title after it */
+		double r = frame.size.h / 2.0;
+		double dx = p.x - (frame.origin.x + r);
+		double dy = p.y - (frame.origin.y + r);
+
+		if (dx * dx + dy * dy <= r * r) {
+			return true;
+		}
+		x0 = frame.origin.x + 2.0 * r + 6.0;
+	} else if (isMark || isDisclosure) {
+		Rect box = markBox(frame);
+
+		if (pointInRect(box, p)) {
+			return true;
+		}
+		x0 = box.origin.x + box.size.w + 6.0;
+	}
+	/* and the title's own drawn width, and NOTHING when there is no title
+	 * drawn there to see */
+	double tw = titleWidthPt(this, fontName(), fontSize());
+	Rect title = { { x0, frame.origin.y },
+		       { tw > 0.0 ? tw + 2.0 : 0.0, frame.size.h } };
+
+	return pointInRect(title, p);
+}
+
+View *
+Control::hitTest(const Point &p)
+{
+	if (cell_ && !cell_->containsPointInFrame(bounds(), p)) {
+		/* not on the drawn part: answer nothing, so the search falls
+		 * through to whatever is behind or around this control */
+		return nullptr;
+	}
+	return View::hitTest(p);
+}
+
 bool
 Control::containsPoint(const MouseEvent &e) const
 {
