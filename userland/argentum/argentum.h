@@ -59,14 +59,21 @@ struct Color {
 	double r = 0, g = 0, b = 0, a = 1;
 
 	/// A colour from its components (0..1).
+	///
+	/// COMPONENTS ARE CLAMPED, because the contract is 0..1 and a caller that
+	/// goes over is asking for saturation, not for a wrap. The spinner's
+	/// brightest spoke is rgb(1.0, 1.0, 1.05) and its blue channel came out 12
+	/// (1.05 * 255 = 267) instead of 255 - a yellow spoke where a white one was
+	/// meant. This does not cover a caller that writes the fields directly;
+	/// this is the entry point the toolkit uses.
 	static Color rgb(double r, double g, double b, double a = 1.0)
 	{
 		Color c;
 
-		c.r = r;
-		c.g = g;
-		c.b = b;
-		c.a = a;
+		c.r = r < 0 ? 0 : (r > 1 ? 1 : r);
+		c.g = g < 0 ? 0 : (g > 1 ? 1 : g);
+		c.b = b < 0 ? 0 : (b > 1 ? 1 : b);
+		c.a = a < 0 ? 0 : (a > 1 ? 1 : a);
 		return c;
 	}
 	/// A colour from 0xRRGGBB.
