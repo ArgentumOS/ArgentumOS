@@ -60,6 +60,7 @@ Control::target() const
 void
 Control::setTarget(Object *o)
 {
+	actionTarget_ = o;
 	if (ActionCell *ac = dynamic_cast<ActionCell *>(cell_)) {
 		ac->setTarget(o);
 	}
@@ -76,6 +77,7 @@ Control::action() const
 void
 Control::setAction(const char *name)
 {
+	actionName_ = name ? name : "";
 	if (ActionCell *ac = dynamic_cast<ActionCell *>(cell_)) {
 		ac->setAction(name);
 	}
@@ -89,9 +91,16 @@ Control::sendAction()
 	}
 	ActionCell *ac = dynamic_cast<ActionCell *>(cell_);
 
-	/* the CONTROL is the sender, not the cell: a handler that wants to
-	 * know which control was clicked gets the control */
-	return ac ? ac->sendAction(this) : false;
+	if (ac) {
+		/* the CONTROL is the sender, not the cell: a handler that wants
+		 * to know which control was clicked gets the control */
+		return ac->sendAction(this);
+	}
+	/* NO CELL, and the action is still the control's - delivered from the
+	 * control's own target and name, which is what its accessors promise. */
+	return actionTarget_
+		       ? actionTarget_->sendAction(actionName_.c_str(), this)
+		       : false;
 }
 
 bool

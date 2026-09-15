@@ -655,8 +655,11 @@ the gate is the claim; the sections above record what each one settled.
   those draw paths also turned up `Color::rgb` not clamping, so a component
   over 1 wrapped instead of saturating - `rgb(1.0, 1.0, 1.05)` gave a blue
   channel of 12 where white was meant - now clamped, with a check asserting it.
-  Remaining in U4: `DatePicker` and `ColorWell`, which need new classes rather
-  than the style passes the others turned out to be.
+  `ColorWell` joined them, and it turned up a real gap rather than needing a
+  style pass: `Control`'s setTarget/setAction/sendAction delegated only to an
+  ActionCell, so a control that DRAWS ITSELF could neither hold nor deliver an
+  action. The control now keeps its own target and action and delivers from them
+  when there is no cell. Remaining in U4: `DatePicker`, the last of them.
 - U3: the separate field editor (editing is in place, in the cell's storage),
   the search field's recents menu, and token *objects* (tokens are strings).
 - U2a's damage model was narrowed after this table was first written: the

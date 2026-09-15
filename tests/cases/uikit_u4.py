@@ -289,15 +289,19 @@ class Case(BaseCase):
         session.wait_for(r"ZOO-WELL", 15)
         out = session.output_since(mark)
         rim_after = shot.px(int(wx), int(wy) - 11)
-        self.check("well-activates-and-says-so", False,
-                   "NOT IMPLEMENTED, and it is an engine gap rather than a "
-                   "ColorWell one: Control delegates setTarget, setAction and "
-                   "sendAction to an ActionCell only, so a control that draws "
-                   "itself cannot hold or deliver an action. setAction stored "
-                   "nothing and the click sent nothing. The fix (give Control "
-                   "its own target and action, deliver from them when there is "
-                   "no cell) is described in the commit that left this red.",
-                   xfail="engine gap: a cell-less control cannot send")
+        # THEN ACTIVATE IT: a click must report active=1 and darken the border.
+        # The border is re-shot AFTER the click - the screenshot above is from
+        # before it, and a stale one would read the same on both sides.
+        mon.click_at(int(wx), int(screen_h - wy), settle=0.8)
+        session.wait_for(r"ZOO-WELL", 15)
+        out = session.output_since(mark)
+        rim_after = session.shot("well-active").px(int(wx), int(wy) - 11)
+        self.check("well-activates-and-says-so",
+                   "active=1" in out and rim_after[0] < rim_before[0] - 50,
+                   "clicking the well should report active=1 and darken its "
+                   "border: the log tail is %s and the border went %s -> %s"
+                   % ([l for l in out.splitlines() if l.startswith("ZOO-WELL")][-2:],
+                      rim_before, rim_after))
 
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but

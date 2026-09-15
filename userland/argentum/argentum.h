@@ -1628,6 +1628,12 @@ protected:
 	View *hitTest(const Point &p) override;
 
 	Cell *cell_ = nullptr;		/* owned */
+	/* A CONTROL'S OWN ACTION. target_/action_ live on ActionCell, and a
+	 * control whose cell is not one (ColorWell draws itself and has no cell
+	 * at all) could otherwise neither hold nor deliver an action: setAction
+	 * silently dropped the name and sendAction returned false. */
+	Object *actionTarget_ = nullptr;
+	std::string actionName_;
 	bool hilite_ = false;		/* the press is showing */
 };
 
