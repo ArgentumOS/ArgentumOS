@@ -106,16 +106,39 @@ class Case(BaseCase):
                    "the Gradient bezel is %s at its top and %s at its bottom"
                    % (top, bot))
 
-        # a rounded bezel: the pixel just inside its TOP-LEFT CORNER is not
-        # the bezel colour, because the corner was cut away
-        rx, ry = pts["RADIO-A"]
-        corner = shot.px(int(rx - 118), int(ry - 12))
-        middle = shot.px(int(rx), int(ry))
+        # A BUTTON keeps its bezel, and a rounded one cuts its corners:
+        # the corner pixel is the background, the middle is the bezel.
+        gx2, gy2 = pts["GRADIENT"]
+        corner = shot.px(int(gx2 - 118), int(gy2 - 12))
+        middle = shot.px(int(gx2), int(gy2))
         self.check("bezel-is-round",
                    corner is not None and middle is not None
                    and corner != middle,
                    "corner %s vs middle %s: the bezel does not fill its "
                    "bounding box" % (corner, middle))
+
+        # A RADIO HAS NO BEZEL (user-reported: radios were drawing one).
+        # Its chrome is the small circle at its left and nothing else, so
+        # the space to the right of the title is the window background.
+        rx, ry = pts["RADIO-A"]
+        right = shot.px(int(rx + 60), int(ry))
+        luma_right = None if right is None else (right[0] * 299 + right[1] * 587
+                                                + right[2] * 114) // 1000
+        self.check("radio-has-no-bezel",
+                   luma_right is not None and luma_right >= 236,
+                   "the pixel right of a radio's title is %s (luma %s): the "
+                   "background, not a bezel" % (right, luma_right))
+
+        # ... and the circle IS drawn, at the left where a radio's mark
+        # goes. It is a WHITE disc with a dark rim, so it is BRIGHTER than
+        # the background - the check is that it is not the background, not
+        # that it is dark (asking for dark here was my mistake).
+        mark = shot.px(int(rx - 112), int(ry))
+        bg = shot.px(int(rx + 60), int(ry))
+        self.check("radio-mark-is-drawn",
+                   mark is not None and bg is not None and mark != bg,
+                   "a radio's circle is at its left: %s against the "
+                   "background %s" % (mark, bg))
 
         self.check("board-still-alive",
                    "ZOO-TIMEOUT" in session.output_since(mark)

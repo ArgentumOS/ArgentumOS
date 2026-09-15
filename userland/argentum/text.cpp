@@ -137,8 +137,18 @@ struct FaceEntry {
 	FcPattern *match = nullptr;	/* keeps FC_FILE alive */
 };
 
-static FaceEntry g_faceCache[8];
+/* THE FACE CACHE MUST HOLD A WORKING SET, NOT A PUDDLE. Eight slots
+ * thrashed on a board with more than eight (family, size, bold)
+ * combinations: every new combination evicted slot 0, and eviction
+ * DESTROYS the face (FT_Done_Face) along with its run and glyph caches -
+ * so a run already prepared against that face was left pointing at a
+ * destroyed FT_Face, which is how text started failing wholesale and the
+ * process faulted. Reference-counted faces are the real answer when an app
+ * uses more combinations than this; until then the cache is big enough
+ * that it is not the limit. */
+static FaceEntry g_faceCache[32];
 static int g_faceCount = 0;
+
 
 /* defined below (each with the cache it belongs to); a face that is freed
  * must drop everything that references it — cached glyphs (which copy their

@@ -287,6 +287,27 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 	}
 	bool on = state() == ControlState::On;
 	bool down = isHighlighted();
+
+	/* WHO OWNS THE CHROME.
+	 *
+	 * A button that is a MARK - a checkbox, a radio, a disclosure
+	 * triangle - has no bezel: the box, the circle or the triangle IS
+	 * what the control looks like, and the bezel style is IGNORED
+	 * (Cocoa's rule for NSButtonTypeSwitch and NSButtonTypeRadio: those
+	 * types draw the switch themselves). Drawing a bezel around them put
+	 * a rounded outline around every radio on the board, which is what a
+	 * radio must never have.
+	 *
+	 * Everything else draws the bezel its style asks for: Rounded,
+	 * RoundRect, RegularSquare, Gradient, Recessed, Circular? no -
+	 * Circular and HelpButton draw a LIMIT: see below. */
+	bool isMark = (type() == ButtonType::Switch
+		       || type() == ButtonType::Radio);
+	bool isDisclosure = bezel_ == BezelStyle::Disclosure;
+	bool isInline = bezel_ == BezelStyle::Inline;
+	bool isCircle = bezel_ == BezelStyle::Circular
+			|| bezel_ == BezelStyle::HelpButton;
+	bool drawBezel = !isMark && !isDisclosure && !isInline && !isCircle;
 	double radius = 0;
 
 	switch (bezel_) {
@@ -298,64 +319,91 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 	case BezelStyle::Recessed:
 		radius = 4.0;
 		break;
-	case BezelStyle::Circular:
-	case BezelStyle::HelpButton:
-		radius = frame.size.h / 2.0;
-		break;
 	default:
 		radius = 0;
 		break;
 	}
 
-	if (bezel_ != BezelStyle::Inline) {
+	if (drawBezel) {
 		Color fill = down ? pressed_ : bezelFill_;
 
 		if (bezel_ == BezelStyle::Recessed) {
 			fill = down ? bezelFill_ : pressed_;
 		}
-		switch (bezel_) {
-		case BezelStyle::Circular:
-		case BezelStyle::HelpButton: {
-			Point c = { frame.origin.x + frame.size.h / 2.0,
-				    frame.origin.y + frame.size.h / 2.0 };
-
-			ctx->fillCircle(c, frame.size.h / 2.0, fill);
-			ctx->fillCircle(c, frame.size.h / 2.0 - 1.0,
-					Color::rgb(bezelFill_.r, bezelFill_.g,
-						   bezelFill_.b));
-			ctx->fillCircle(c, frame.size.h / 2.0 - 1.5, fill);
-			break;
-		}
-		case BezelStyle::Gradient:
+		if (bezel_ == BezelStyle::Gradient) {
 			ctx->fillLinearGradient(frame, down ? pressed_ : grad_,
 						down ? pressed_ : bezelFill_,
 						true);
-			break;
-		default:
-			if (radius > 0) {
-				ctx->fillRoundRect(frame, radius, fill);
-			} else {
-				ctx->fillRect(frame, fill);
-			}
-			break;
+		} else if (radius > 0) {
+			ctx->fillRoundRect(frame, radius, fill);
+		} else {
+			ctx->fillRect(frame, fill);
 		}
 		if (radius > 0) {
 			ctx->strokeRoundRect(frame, radius, border_, 1.0);
 		} else {
 			ctx->strokeRect(frame, border_, 1.0);
 		}
+	} else if (isCircle) {
+		/* a round bezel, drawn as a ring: fill, cut a lighter interior,
+		 * then fill again so the outline is a circle and not a square */
+		Point c = { frame.origin.x + frame.size.h / 2.0,
+			    frame.origin.y + frame.size.h / 2.0 };
+		double r = frame.size.h / 2.0;
+		Color fill = down ? pressed_ : bezelFill_;
+		double d = (bezel_ == BezelStyle::HelpButton) ? 2.0 : 1.0;
+
+		ctx->fillCircle(c, r, fill);
+		ctx->fillCircle(c, r - d, Color::rgb(fill.r * 0.86,
+						     fill.g * 0.86,
+						     fill.b * 0.86));
 	}
 
-	/* the marks, drawn by the styles that have them */
+	/* the marks: a box for a checkbox, a circle for a radio, a triangle
+	 * for a disclosure */
 	Rect box = markBox(frame);
 	Rect text = frame;
 
-	switch (bezel_) {
-	case BezelStyle::HelpButton:
-		/* a question mark centred in the circle */
-		Cell::drawInFrame(frame, inView);
-		return;
-	case BezelStyle::Circular:
+	if (isMark) {
+		double half = box.size.w / 2.0;
+		Point c = { box.origin.x + half, box.origin.y + half };
+		Color ink = isEnabled() ? Color::rgb(1.0, 1.0, 1.0)
+					: Color::rgb(0.96, 0.96, 0.97);
+
+		if (type() == ButtonType::Radio) {
+			ctx->fillCircle(c, half, ink);
+			ctx->fillCircle(c, half, border_);
+			ctx->fillCircle(c, half - 1.0, ink);
+			if (on) {
+				drawRadioDot(box);
+			}
+		} else {
+			ctx->fillRect(box, ink);
+			ctx->strokeRect(box, border_, 1.0);
+			if (on) {
+				drawCheck(box);
+			}
+		}
+		text.origin.x += box.size.w + 6.0;
+	} else if (isDisclosure) {
+		drawDisclosure(box);
+		text.origin.x += box.size.w + 6.0;
+	} else if (isInline) {
+		/* no chrome at all: the title alone, lit when it is on */
+		if (on) {
+			Color saved = textColor_;
+
+			textColor_ = mark_;
+			Cell::drawInFrame(text, inView);
+			textColor_ = saved;
+			return;
+		}
+	} else if (isCircle) {
+		if (bezel_ == BezelStyle::HelpButton) {
+			/* a question mark centred in the circle */
+			Cell::drawInFrame(frame, inView);
+			return;
+		}
 		ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
 				  box.origin.y + box.size.h / 2.0 },
 				box.size.w / 2.0 - 0.5,
@@ -371,43 +419,7 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 			drawRadioDot(box);
 		}
 		text.origin.x += box.size.w + 6.0;
-		break;
-	case BezelStyle::Disclosure:
-		drawDisclosure(box);
-		text.origin.x += box.size.w + 6.0;
-		break;
-	case BezelStyle::Inline:
-		/* the title alone, in the mark colour when on */
-		break;
-	default:
-		if (type() == ButtonType::Switch || type() == ButtonType::Toggle
-		    || type() == ButtonType::Radio) {
-			/* a box at the left, the title after it */
-			ctx->fillRect(box, Color::rgb(0.99, 0.99, 1.0));
-			ctx->strokeRect(box, border_, 1.0);
-			if (type() == ButtonType::Radio) {
-				ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
-						  box.origin.y + box.size.h / 2.0 },
-						box.size.w / 2.0 - 0.5,
-						Color::rgb(0.99, 0.99, 1.0));
-				ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
-						  box.origin.y + box.size.h / 2.0 },
-						box.size.w / 2.0 - 0.5, border_);
-				ctx->fillCircle({ box.origin.x + box.size.w / 2.0,
-						  box.origin.y + box.size.h / 2.0 },
-						box.size.w / 2.0 - 1.5,
-						Color::rgb(0.99, 0.99, 1.0));
-				if (on) {
-					drawRadioDot(box);
-				}
-			} else if (on) {
-				drawCheck(box);
-			}
-			text.origin.x += box.size.w + 6.0;
-		}
-		break;
 	}
-
 	/* the title, through Cell's own drawing, in the box that is left */
 	bool savedCenter = align_ == TextAlignment::Center;
 
@@ -417,8 +429,7 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 		align_ = savedCenter ? TextAlignment::Center : align_;
 		return;
 	}
-	if (on && (bezel_ == BezelStyle::Inline
-		   || type() == ButtonType::OnOff)) {
+	if (on && type() == ButtonType::OnOff) {
 		/* a lit look: the title in the mark colour */
 		Color saved = textColor_;
 
