@@ -395,6 +395,69 @@ InterfaceDocument::root() const
 	return &root_;
 }
 
+const InterfaceClassInfo *
+InterfaceDocument::classByName(const char *name) const
+{
+	if (!name) {
+		return nullptr;
+	}
+	for (auto &c : classes_) {
+		if (c.name == name) {
+			return &c;
+		}
+	}
+	return nullptr;
+}
+
+/* the outlets/actions lists are comma-separated identifiers */
+static void
+appendCsv(std::string &list, const char *item)
+{
+	if (!item || !item[0]) {
+		return;
+	}
+	if (!list.empty()) {
+		list += ",";
+	}
+	list += item;
+}
+
+bool
+InterfaceDocument::addOutlet(const char *className, const char *outlet)
+{
+	for (auto &c : classes_) {
+		if (c.name == className) {
+			appendCsv(c.outlets, outlet);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool
+InterfaceDocument::addAction(const char *className, const char *action)
+{
+	for (auto &c : classes_) {
+		if (c.name == className) {
+			appendCsv(c.actions, action);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool
+InterfaceDocument::removeClass(const char *name)
+{
+	for (size_t i = 0; i < classes_.size(); i++) {
+		if (classes_[i].name == name) {
+			classes_.erase(classes_.begin() + (long) i);
+			return true;
+		}
+	}
+	return false;
+}
+
 /* ---------- the emitter ---------- */
 
 /* the field names the format owns; a property cannot use one */

@@ -2070,6 +2070,126 @@ public:
 		std::fflush(stdout);
 	}
 
+	/* ---- W3: the Classes pane (subclass, outlets/actions, instantiate) */
+
+	void newClass(const char *name, const char *superClass)
+	{
+		if (!name || !name[0] || !superClass || !superClass[0]) {
+			std::printf("WEAVER: new-class FAIL (name and super "
+				    "are required)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		if (doc->classByName(name)) {
+			std::printf("WEAVER: new-class FAIL `%s` exists\n", name);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		if (std::strcmp(superClass, "Object")
+		    && !interfaceMake(superClass)) {
+			std::printf("WEAVER: new-class FAIL unknown super `%s`\n",
+				    superClass);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		doc->addClassInfo(name, superClass, "", "");
+		dirty = true;
+		updateTitle();
+		std::printf("WEAVER: new-class %s super %s\n", name, superClass);
+		std::fflush(stdout);
+	}
+
+	void classAddOutlet(const char *className, const char *outlet)
+	{
+		if (!outlet || !outlet[0]
+		    || !doc->addOutlet(className, outlet)) {
+			std::printf("WEAVER: add-outlet FAIL `%s`\n",
+				    className ? className : "");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		dirty = true;
+		updateTitle();
+		std::printf("WEAVER: add-outlet %s %s\n", className, outlet);
+		std::fflush(stdout);
+	}
+
+	void classAddAction(const char *className, const char *action)
+	{
+		if (!action || !action[0]
+		    || !doc->addAction(className, action)) {
+			std::printf("WEAVER: add-action FAIL `%s`\n",
+				    className ? className : "");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		dirty = true;
+		updateTitle();
+		std::printf("WEAVER: add-action %s %s\n", className, action);
+		std::fflush(stdout);
+	}
+
+	/* Instantiate a class into the graph as a NON-VIEW object (GORM's
+	 * Classes pane -> Instantiate): an object the app's connections can
+	 * target. */
+	void instantiate(const char *className, const char *id)
+	{
+		if (!className || !id || !id[0]) {
+			std::printf("WEAVER: instantiate FAIL (class and id are "
+				    "required)\n");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		if (!doc->classByName(className)
+		    && !interfaceMake(className)) {
+			std::printf("WEAVER: instantiate FAIL unknown class "
+				    "`%s`\n", className);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		bool taken = findNode(doc->root(), id) != nullptr;
+
+		for (int i = 0; i < doc->objectCount() && !taken; i++) {
+			const InterfaceNode *o = doc->objectAt(i);
+
+			if (o && !std::strcmp(o->identifier(), id)) {
+				taken = true;
+			}
+		}
+		if (taken) {
+			std::printf("WEAVER: instantiate FAIL `%s` exists\n", id);
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		doc->addObject(className, id);
+		dirty = true;
+		updateTitle();
+		std::printf("WEAVER: instantiate %s as %s\n", className, id);
+		std::fflush(stdout);
+		refreshDisplay();
+	}
+
+	void listClasses()
+	{
+		for (int i = 0; i < doc->classCount(); i++) {
+			const InterfaceClassInfo *c = doc->classAt(i);
+
+			std::printf("WEAVER: class %s super=%s outlets=%s "
+				    "actions=%s\n", c->name.c_str(),
+				    c->superClass.c_str(), c->outlets.c_str(),
+				    c->actions.c_str());
+		}
+		std::fflush(stdout);
+	}
+
 	void setProperty(const char *name, const char *value)
 	{
 		InterfaceNode *n = selectedNode();
@@ -2299,6 +2419,12 @@ public:
 			std::printf("WEAVER: outline object %s (%s)\n",
 				    o->identifier(), o->className());
 		}
+		for (int i = 0; i < doc->classCount(); i++) {
+			const InterfaceClassInfo *c = doc->classAt(i);
+
+			std::printf("WEAVER: outline class %s : %s\n",
+				    c->name.c_str(), c->superClass.c_str());
+		}
 		if (!doc->root()) {
 			std::printf("WEAVER: outline FAIL (no document)\n");
 			std::fflush(stdout);
@@ -2359,6 +2485,14 @@ public:
 
 			view->addRow(text.c_str(), 0, false, false, 0);
 			outlineIds_.push_back(o->identifier());
+		}
+		for (int i = 0; i < doc->classCount(); i++) {
+			const InterfaceClassInfo *c = doc->classAt(i);
+			std::string text = "class " + c->name + " : "
+				+ c->superClass;
+
+			view->addRow(text.c_str(), 0, false, false, 0);
+			outlineIds_.push_back(c->name);
 		}
 		outlineIntoView(view, doc->root(), 0, &outlineIds_);
 		view->setAction([this](Control *) {
@@ -2979,6 +3113,33 @@ main(int argc, char **argv)
 		} else if (a == "--add" && i + 1 < argc) {
 			ed.addNode(argv[++i]);
 			any = true;
+		} else if (a == "--new-class" && i + 2 < argc) {
+			const char *name = argv[++i];
+			const char *sup = argv[++i];
+
+			ed.newClass(name, sup);
+			any = true;
+		} else if (a == "--add-outlet" && i + 2 < argc) {
+			const char *cls = argv[++i];
+			const char *name = argv[++i];
+
+			ed.classAddOutlet(cls, name);
+			any = true;
+		} else if (a == "--add-action" && i + 2 < argc) {
+			const char *cls = argv[++i];
+			const char *sel = argv[++i];
+
+			ed.classAddAction(cls, sel);
+			any = true;
+		} else if (a == "--instantiate" && i + 2 < argc) {
+			const char *cls = argv[++i];
+			const char *id = argv[++i];
+
+			ed.instantiate(cls, id);
+			any = true;
+		} else if (a == "--classes") {
+			ed.listClasses();
+			any = true;
 		} else if (a == "--connect" && i + 4 < argc) {
 			const char *src = argv[++i];
 			const char *kind = argv[++i];
@@ -3058,6 +3219,10 @@ main(int argc, char **argv)
 			    "[--palette] [--outline] [--add class] "
 			    "[--select-outline name] "
 			    "[--connect src kind selector target] "
+			    "[--new-class name super] "
+			    "[--add-outlet class name] "
+			    "[--add-action class selector] "
+			    "[--instantiate class id] [--classes] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--new name] [--roundtrip] "
 			    "[--rect id] [--show]\n");

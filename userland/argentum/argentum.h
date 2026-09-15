@@ -1858,6 +1858,12 @@ public:
 	const InterfaceClassInfo *classAt(int index) const;
 	void addClassInfo(const char *name, const char *superClass,
 			  const char *outlets, const char *actions);
+	/* W3: the Classes pane's edits. Names are unique; the helpers return
+	 * false when the class is unknown or the name is taken. */
+	const InterfaceClassInfo *classByName(const char *name) const;
+	bool addOutlet(const char *className, const char *outlet);
+	bool addAction(const char *className, const char *action);
+	bool removeClass(const char *name);
 
 private:
 	int version_ = 1;

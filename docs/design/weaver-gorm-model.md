@@ -290,7 +290,15 @@ dock pin.
   the graph promotes a v1 document to v2 so the sections are not lost.
   Gates: `interface_dispatch.cpp` probe (`W2-OK`) and
   `tests/cases/weaver_w2.py` 12/12; full weaver suite 20/20, 197/197.
-- W3–W6: not started.
+- **W3 — DONE (2026-09).** The Classes pane: `--new-class name super`
+  (duplicates and unknown supers refused), `--add-outlet` / `--add-action`
+  (comma-separated class records), `--instantiate class id` (a NON-VIEW
+  object in the graph, which W2's dispatcher can target), `--classes` and
+  the outline list the records. A v1 document grows to v2 so the records
+  are kept. The dispatcher probe now also dispatches to a CUSTOM object
+  target. Gates: `interface_dispatch.cpp` (`W2-OK`) and
+  `tests/cases/weaver_w3.py` 17/17; full weaver suite 21/21, 214/214.
+- W4–W6: not started.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting
