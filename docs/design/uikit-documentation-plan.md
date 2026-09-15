@@ -19,6 +19,27 @@ that actually compile. The public surface is **~41 classes/structs in
 `userland/argentum/argentum.h`** (the private `argentum_p.h` is not
 public API), so the work is bounded and completable.
 
+## 1a. THE RULE (2026-09, user)
+
+**Documentation rides with the class.** From now on — while the class
+hierarchy is re-implemented class by class — each class lands WITH its
+API documentation: doc comments on every public declaration in
+`argentum.h`, and its generated reference page. The docs are part of the
+class's acceptance, not a sweep to run later. The user's words: "This API
+is for humans to use, humans need documentation."
+
+The extractor and the coverage check run INSIDE the build
+(`mk/20-userland.mk`), so an undocumented public declaration fails
+`make rootagfs` rather than drifting.
+
+## 1b. Where the restart leaves this
+
+The UIKit class layer was discarded and is being rebuilt
+(docs/design/cocoa-parity-plan.md). The public surface is therefore tiny
+and grows one class at a time — which is exactly when the rule above is
+cheapest to keep. Current surface: `View`, the geometry types, the Auto
+Layout model, the text engine. All of it is documented and gated.
+
 ## 2. Decisions (settled)
 
 - **Pipeline: `clang-doc`** — LLVM's own documentation extractor
@@ -103,7 +124,7 @@ docs/uikit/            (hand-written, committed)
 
 ## 6. Milestones
 
-### D0 — Pipeline spike, one class
+### D0 — Pipeline spike, one class — **DONE (2026-09)**
 `clang-doc` available in-tree (or the libclang fallback chosen and
 recorded); comment syntax settled (Markdown-first in `///` / `/** */`,
 with only the commands clang-doc actually understands — verified, not
@@ -115,18 +136,40 @@ Also: verify **clang-doc builds in-guest** (it lives in LLVM's
 standing policy) — if it cannot, the fallback becomes the self-hosting
 route and is recorded as such.
 
-### D1 — Annotate the public surface + the coverage gate
+**D0 as landed:** the extractor is **first-party** —
+`tools/uikitdoc.py`, dependency-free Python over the header's doc
+comments. clang-doc stayed the plan's first choice, but it is not built
+in this tree (its sources sit in `clang-tools-extra`, unbuilt, and
+building them drags in that whole target), and the plan already names a
+first-party extractor as the fallback. The tool both GENERATES the
+reference and RUNS the coverage check; the `View` page is the template
+pilot (Purpose / Identity and lifetime / Event and threading semantics /
+Invariants and gotchas / See also / Methods).
+
+### D1 — Annotate the public surface + the coverage gate — **IN PROGRESS (by construction, per §1a)**
 Doc comments across the ~41 public classes in `argentum.h` (private
 header excluded), with the coverage gate wired into the build.
 **Acceptance**: every public symbol is documented; removing one doc
 comment fails the build; the gate runs on a clean tree.
 
-### D2 — Generated reference
+**D1 as landed:** every public declaration in the current surface has a
+doc comment and the coverage check is wired into `mk/20-userland.mk`
+(a missing comment fails `make rootagfs`). It stays "in progress" only in
+the sense that the surface keeps growing: each class's milestone extends
+it.
+
+### D2 — Generated reference — **PARTIAL (2026-09)**
 Per-class Markdown + generated index + cross-links, built into
 `.build/uikit-doc/` and staged to `/System/Documentation/UIKit/`.
 **Acceptance**: every public class has a page with all mandatory
 sections; the generated tree reads legibly in a terminal pager; the
 catalog completeness check passes.
+
+**D2 as landed:** `tools/uikitdoc.py --out …` writes one Markdown page
+per public class/struct plus an index, straight into the image at
+`/System/Documentation/UIKit/` (11 pages today), regenerated on every
+build — never committed, so it cannot drift. Guides and the HTML render
+are not started.
 
 ### D3 — Guides and compiled examples
 Getting-started guide plus the example snippets wired into the build.

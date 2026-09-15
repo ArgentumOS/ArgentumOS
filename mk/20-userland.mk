@@ -330,6 +330,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
+	# UIKit reference (docs/design/uikit-documentation-plan.md): the
+	# first-party extractor writes one Markdown page per public class and
+	# FAILS the build when a public declaration has no doc comment — the
+	# documentation rides with the class it describes.
+	python3 tools/uikitdoc.py --out "$(ROOTFS64)/System/Documentation/UIKit"
+
 	# FNX's C++ GUI toolkit (first-party): libargentum.so.1 staged under
 	# the same rule — argentum_hello (S0.1) NEEDs it at runtime.
 	@cp $(FNXLIB_ARGENTUM) "$(ROOTFS64)/System/Libraries/libargentum.so.1"
