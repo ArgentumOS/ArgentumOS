@@ -111,8 +111,13 @@ def run_case(case, verbose):
         case.check("timeout", False, str(exc))
     except Exception:
         outcome = "fail"
-        case.check("harness-error", False, "the case raised an exception:")
-        traceback.print_exc()
+        # INTO THE MESSAGE, not just stderr: a traceback that only reaches the
+        # terminal is lost the moment the run is captured with `> file`, which
+        # is how every gate here is recorded - and a case that failed with an
+        # unreadable reason wastes a whole boot.
+        case.check("harness-error", False,
+                   "the case raised an exception:\n%s"
+                   % traceback.format_exc())
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)

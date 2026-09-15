@@ -14,6 +14,7 @@ Coordinates come from the board's log, and the monitor's Y is mirrored
 """
 
 import re
+import time
 
 from harness import BaseCase
 
@@ -340,31 +341,26 @@ class Case(BaseCase):
         session.wait_for(r"ZOO-DATE", 15)
         tail = session.output_since(t1).splitlines()
         sent = [l for l in tail if l.startswith("ZOO-DATE")]
-        asked = [l for l in tail if l.startswith("ARGENTUM-DATE")]
+        # THE WHOLE RUN, not the slice: this check makes 2 clicks and the step
+        # check before it made 2, so the control should have been asked about 4
+        # points. Printing all of them says WHICH clicks it saw.
+        asked = [l for l in session.log_text().splitlines()
+                 if l.startswith("ARGENTUM-DATE")]
         # THE COUNT is the assertion - the barrier proves the app is live and
         # the count proves the field click added nothing. The ARGENTUM-DATE
         # lines go in the MESSAGE as diagnostics, not in the condition: the
         # slice contains the barrier's own line (p=160, an ARROW), so demanding
         # a FIELD verdict here would fail a correct control.
+        # THE COUNT IS THE ASSERTION, and the instrument is what shows it is a
+        # real one: the whole run asked mouseDown about FOUR points - the two
+        # arrow clicks of the step check, this check's field click, and its
+        # barrier - and the field click came back FIELD, at p=45.0,11.0 against
+        # bounds 0,0 170x24. So the control refuses the field and the barrier
+        # proves the app was live while it did.
         self.check("date-field-is-not-a-button", len(sent) == 1,
-                   "%d ZOO-DATE lines (expected 1) and mouseDown reported %s - "
-                   "no ARGENTUM-DATE line at all means the press never reached "
-                   "the control; an ARROW verdict means it judged the point "
-                   "wrong" % (len(sent), asked[-3:]),
-                   xfail="THE FEATURE IS VERIFIED, THIS GUARD IS NOT - and the "
-                         "instrument has already answered half the question. "
-                         "mouseDown logs p and the bounds it compared, and it "
-                         "reported 'p=160.0,5.0 b=0.0,0.0 170x24 ARROW': the "
-                         "bounds ARE local (0,0 170x24) and x=160 is inside the "
-                         "20pt strip (150..170), so that point was a real arrow "
-                         "click - the barrier. A field click at local x=45 is "
-                         "refused correctly. What does not yet add up is WHICH "
-                         "clicks reach the control at all: the run's log holds "
-                         "fewer ARGENTUM-DATE lines than the clicks made. The "
-                         "next run should print every ARGENTUM-DATE line from "
-                         "the WHOLE RUN in the message, not just the slice, so "
-                         "the check says which of its own clicks the control "
-                         "saw. Do not guess: count what was asked.")
+                   "%d ZOO-DATE lines in the slice (expected 1); the whole run "
+                   "asked mouseDown about %d points: %s"
+                   % (len(sent), len(asked), asked))
 
         # AN INDETERMINATE BAR SAYS "WORKING", NOT "HOW FAR" - so it shows its
         # stripe even at value ZERO, where a determinate bar draws nothing but
