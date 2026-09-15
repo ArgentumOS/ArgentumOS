@@ -139,6 +139,15 @@ static const Action Zoo_ACTIONS[] = {
 			std::fflush(stdout);
 		}
 	} },
+	/* a RECENT row was picked from the search field's magnifier */
+	{ "recent", [](Object *sender) {
+		MenuItem *mi = dynamic_cast<MenuItem *>(sender);
+
+		if (mi) {
+			std::printf("ZOO-RECENT title=\"%s\"\n", mi->title());
+			std::fflush(stdout);
+		}
+	} },
 	{ "dial", [](Object *sender) {
 		Slider *s = dynamic_cast<Slider *>(sender);
 
@@ -319,6 +328,19 @@ main(int argc, char **argv)
 	/* a SEARCH field (U3d): a magnifier, and a clear button once there is
 	 * something to clear */
 	searchField = new SearchField();
+	/* THE RECENT SEARCHES the magnifier offers: Cocoa's recentSearches, canned
+	 * so a gate can predict them. The rows the magnifier builds get the
+	 * field's target, which is the board. */
+	{
+		std::vector<std::string> recents;
+
+		recents.push_back("alpha");
+		recents.push_back("beta");
+		recents.push_back("gamma");
+		searchField->setRecentSearches(recents);
+		searchField->setTarget(&zoo);
+	}
+
 	searchField->setFrame(Rect{ { x, y }, { 240, 26 } });
 	searchField->setTarget(&zoo);
 	searchField->setAction("search");

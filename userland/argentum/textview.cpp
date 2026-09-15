@@ -901,6 +901,18 @@ SearchFieldCell::SearchFieldCell()
 }
 
 Rect
+SearchFieldCell::magnifierRect(const Rect &frame) const
+{
+	/* ONE arithmetic for the drawing and the hit test, as clearButtonRect is
+	 * for the clear button: the magnifier sits in the field's left padding. */
+	double d = SEARCH_GLYPH_PT;
+	double pad = 6.0;
+
+	return Rect{ { frame.origin.x + pad,
+		       frame.origin.y + (frame.size.h - d) / 2.0 }, { d, d } };
+}
+
+Rect
 SearchFieldCell::clearButtonRect(const Rect &frame) const
 {
 	double d = SEARCH_CLEAR_PT;
@@ -930,8 +942,8 @@ SearchFieldCell::drawInFrame(const Rect &frame, View *inView)
 	/* the magnifier: a ring with a handle, drawn from the same shapes a
 	 * button's chrome uses */
 	double g = SEARCH_GLYPH_PT;
-	Point c = { frame.origin.x + pad + g * 0.4,
-		    frame.origin.y + frame.size.h / 2.0 - g * 0.1 };
+	Rect mb = magnifierRect(frame);
+	Point c = { mb.origin.x + g * 0.4, mb.origin.y + g * 0.5 };
 	Color mark = Color::rgb(0.45, 0.45, 0.50);
 
 	ctx->fillCircle(c, g * 0.32, mark);
@@ -1028,6 +1040,31 @@ SearchField::mouseUpInside(const Event &e)
 	 * a click anywhere else in the field is not a press of anything, so
 	 * no action (Cocoa does the same: a field sends on Return and on the
 	 * clear button, not on a plain click) */
+	/* the MAGNIFIER opens the recent searches: Cocoa's searchMenuTemplate,
+	 * presented with the pop-up machinery the menu family just gained. */
+	if (rectContains(c->magnifierRect(bounds()), e.locationInWindow())) {
+		Menu m;
+
+		for (size_t i = 0; i < recentSearches_.size(); i++) {
+			MenuItem *mi = m.addItem(recentSearches_[i].c_str(),
+						 "recent");
+
+			if (mi) {
+				mi->setTarget(target());
+			}
+		}
+		if (m.numberOfItems() > 0) {
+			Window *w = window();
+			Rect mrf = c->magnifierRect(bounds());
+			Rect inWin = rectInWindow(mrf);
+			double sx = (w ? w->frame().origin.x : 0) + inWin.origin.x;
+			double sy = (w ? w->frame().origin.y : 0) + inWin.origin.y
+				    + inWin.size.h;
+
+			m.popUp(Point{ sx, sy });
+		}
+		return;
+	}
 	Rect cb = c->clearButtonRect(bounds());
 
 	if (e.locationInWindow().x >= cb.origin.x
@@ -1252,5 +1289,44 @@ TokenField::setInsertionPointFor(const char *utf8)
 const ObjectClass TokenField::kClass = {
 	"TokenField", &TextField::kClass, nullptr, 0, nullptr, 0
 };
+
+
+bool
+SearchField::insertNewline()
+{
+	/* a COMMIT records the search, as Cocoa's does */
+	bool sent = TextField::insertNewline();
+
+	addRecentSearch(stringValue());
+	return sent;
+}
+
+
+/* ---- SearchField: the recent searches -------------------------------- */
+
+void
+SearchField::setRecentSearches(const std::vector<std::string> &v)
+{
+	recentSearches_ = v;
+}
+
+void
+SearchField::addRecentSearch(const char *s)
+{
+	if (!s || !s[0]) {
+		return;
+	}
+	std::string text(s);
+	std::vector<std::string> out;
+
+	out.push_back(text);
+	for (size_t i = 0; i < recentSearches_.size(); i++) {
+		if (recentSearches_[i] != text
+		    && (int) out.size() < maximumRecents_) {
+			out.push_back(recentSearches_[i]);
+		}
+	}
+	recentSearches_ = out;
+}
 
 } /* namespace argentum */

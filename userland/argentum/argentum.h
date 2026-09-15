@@ -2716,6 +2716,8 @@ public:
 
 	/// The clear button's rectangle inside `frame` (points).
 	Rect clearButtonRect(const Rect &frame) const;
+	/// The magnifier's box, for the hit test that opens the recent searches.
+	Rect magnifierRect(const Rect &frame) const;
 
 	/// Draw the magnifier, the text and (when there is text) the clear
 	/// button.
@@ -2745,6 +2747,22 @@ public:
 
 	/// The class record (see Object::objectClass).
 	const ObjectClass *objectClass() const override { return &kClass; }
+	/// The recent searches, newest first (Cocoa's recentSearches).
+	const std::vector<std::string> &recentSearches() const
+	{
+	}
+	/// Set them (Cocoa's setRecentSearches:).
+	void setRecentSearches(const std::vector<std::string> &v);
+	/// How many are kept (Cocoa's maximumRecents).
+	int maximumRecents() const { return maximumRecents_; }
+	/// Set it.
+	void setMaximumRecents(int n) { maximumRecents_ = n; }
+	/// Record a search, newest first, keeping at most maximumRecents().
+	void addRecentSearch(const char *s);
+	/// Return COMMITS the search, so the commit records it (Cocoa does the
+	/// same through its search delegate).
+	bool insertNewline() override;
+
 
 	/// A search field, with "Search" as its placeholder.
 	SearchField();
@@ -2756,6 +2774,9 @@ public:
 	/// button (and then sends the action); anywhere else keeps the base
 	/// behaviour.
 	void mouseUpInside(const Event &e) override;
+private:
+	std::vector<std::string> recentSearches_;
+	int maximumRecents_ = 10;	/* Cocoa's default */
 };
 
 /// @purpose The cell behind a token field: it draws the committed tokens

@@ -1510,12 +1510,34 @@ Window::dispatchToContent(const Point &contentPt, const Event &e)
 		return nullptr;
 	}
 	Rect cr = contentRect();
+	bool log = getenv("ARGENTUM_KEYLOG") != nullptr;
 
 	if (contentPt.x < 0 || contentPt.y < 0 || contentPt.x >= cr.size.w
 	    || contentPt.y >= cr.size.h) {
+		if (log) {
+			const ObjectClass *oc = content_->objectClass();
+
+			std::printf("ARGENTUM-DISPATCH p=%.0f,%.0f REJECTED "
+				    "cr=%.0fx%.0f content=%s\n",
+				    contentPt.x, contentPt.y, cr.size.w, cr.size.h,
+				    oc ? oc->name : "?");
+			std::fflush(stdout);
+		}
 		return nullptr;
 	}
-	return content_->hitTest(contentPt);
+	View *hit = content_->hitTest(contentPt);
+
+	if (log) {
+		const ObjectClass *oc = content_->objectClass();
+		const ObjectClass *hc = hit ? hit->objectClass() : nullptr;
+
+		std::printf("ARGENTUM-DISPATCH p=%.0f,%.0f cr=%.0fx%.0f content=%s "
+			    "hit=%s\n",
+			    contentPt.x, contentPt.y, cr.size.w, cr.size.h,
+			    oc ? oc->name : "?", hc ? hc->name : "(none)");
+		std::fflush(stdout);
+	}
+	return hit;
 }
 
 bool
