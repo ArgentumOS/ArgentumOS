@@ -113,62 +113,73 @@ system, the controllers).
 Each milestone: the zoo board gets every new control in the SAME work
 (standing rule), plus a case under `tests/cases/` and a green run.
 
-- **U0 — the missing bases.** `NSObject`-analog base (class name,
+**RESOLVED 2026-09 (user): autolayout is EARLY** — it is the framework's
+layout model from now on, not a later milestone; springs/struts stay only
+as a compatibility path for un-migrated views, with a migration list.
+
+- **U0 — autolayout + the view foundation.** The constraint classes
+  (`LayoutConstraint`, `LayoutXAxisAnchor`/`LayoutYAxisAnchor`/
+  `LayoutDimension`, `LayoutGuide`) and the solver, plus `View`'s
+  constraint ownership and layout pass (constraints affect a view only
+  when its `translatesAutoresizingMaskIntoConstraints` is off, exactly as
+  Cocoa). Solver: an incremental **Cassowary-style** linear solver —
+  required/optional priorities, equalities and inequalities — because
+  that is the semantics Cocoa's API implies. Gate: a display-free probe
+  solves a set of constraints and asserts the resulting frames, including
+  a priority conflict and an inequality.
+- **U1 — the missing bases.** `NSObject`-analog base (class name,
   description), `NSNotificationCenter`, `NSViewController` +
   `NSWindowController`, `NSCell`/`NSActionCell` and the cell-based control
   path. Gate: a controller hosts a view tree; a notification reaches two
   observers; a cell-based Button draws and fires through its cell.
-- **U1 — the button family.** `NSButton` types (switch/checkbox, radio,
+- **U2 — the button family.** `NSButton` types (switch/checkbox, radio,
   disclosure, gradient, help, inline, recessed) + `NSButtonCell`.
   Gate: the zoo board shows every type; each fires and reports state.
-- **U2 — the text family.** `NSTextField` styles (label/editable/bezeled/
-  focus ring), `NSSearchField`, `NSTokenField`, then the text system
-  (`NSTextStorage`/`NSLayoutManager`/`NSTextContainer`) under `NSTextView`
-  (Q-U3 decides the depth).
-- **U3 — value controls.** `NSSlider` circular, `NSDatePicker`,
+- **U3 — the text family and the FULL text stack** (user decision):
+  `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
+  `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
+  `NSTextView`, shaped like Cocoa's, over our own glyph/measurement
+  engine.
+- **U4 — value controls.** `NSSlider` circular, `NSDatePicker`,
   `NSColorWell`, `NSProgressIndicator` spinner, `NSLevelIndicator` styles.
-- **U4 — containers and collections.** `NSStackView` (real gravity/
-  distribution), `NSGridView`, `NSCollectionView` (+flow layout),
-  `NSBrowser`, `NSScrollView`/`NSSplitView`/`NSTabView` fidelity passes.
-- **U5 — table and outline fidelity.** View-based rows, cells, columns and
+- **U5 — containers and collections.** `NSStackView` (gravity/
+  distribution, now constraint-backed), `NSGridView`, `NSCollectionView`
+  (+flow layout), `NSBrowser`, `NSScrollView`/`NSSplitView`/`NSTabView`
+  fidelity passes.
+- **U6 — table and outline fidelity.** View-based rows, cells, columns and
   headers, sorting, selection modes, drag&drop, variable row heights.
-- **U6 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
+- **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
   `NSSavePanel`, `NSFontPanel`/`NSColorPanel`, `NSToolbar` (+items),
   `NSStatusItem`, `NSPopover`.
-- **U7 — windows and controllers.** `NSPanel`, sheets, window styles,
+- **U8 — windows and controllers.** `NSPanel`, sheets, window styles,
   `NSWindowController` semantics (document ownership).
-- **U8 — data transfer and undo.** `NSPasteboard` fidelity, dragging
-  (`NSDraggingSession` analog), `NSUndoManager` as a framework service.
-- **U9 — layout and binding.** `NSLayoutConstraint`/`NSLayoutAnchor` (if
-  Q-U1 says yes) and KVC-like binding (if Q-U2 says yes).
+- **U9 — data transfer, undo, binding.** `NSPasteboard` fidelity,
+  dragging (`NSDraggingSession` analog), `NSUndoManager`, and KVC-like
+  binding if Q-U2 says yes.
 
 ## 5. Open questions (yours to answer)
 
-- **Q-U1 — layout.** Cocoa today is autolayout-first. Do we implement
-  `NSLayoutConstraint`/`NSLayoutAnchor` (faithful, and a large subsystem),
-  or keep springs/struts as the shipped layout model and treat autolayout
-  as a later milestone? My recommendation: **springs/struts now, U9 for
-  autolayout** — it keeps U0–U8 about the control inventory, which is what
-  "every class cloned" asks for.
+- **Q-U1 — layout. RESOLVED (2026-09, user): AUTOLAYOUT EARLY.** It is
+  the framework's layout model (U0); springs/struts remain a
+  compatibility path for un-migrated views only.
 - **Q-U2 — the runtime-flavoured patterns.** `NSNotificationCenter` needs
   no runtime and is recommended for U0. KVC/KVO and bindings *do* need a
   string-keyed property system; our property access is table-driven
   (`InterfaceProperty`-style tables were the pattern, and that file is
   gone). Do we grow an explicit table-driven KVC (recommended, deferred to
   U9) or skip bindings entirely?
-- **Q-U3 — the text system.** `NSTextView` in Cocoa sits on
-  `NSTextStorage`→`NSLayoutManager`→`NSTextContainer`. We currently draw
-  text directly. Do we build the full stack (faithful; large), or a
-  pragmatic subset (storage + layout manager, no typesetter/glyph
-  generator)? My recommendation: **the stack, in U2, shaped like Cocoa's
-  but with our own text engine underneath it.**
-- **Q-U4 — naming.** Keep the unprefixed names (`View`, `Button`) as the
-  catalog already maps them, or adopt `NS`-prefixed names for literal
-  fidelity? My recommendation: **keep ours** (the catalog's mapping is the
-  documented answer).
+- **Q-U3 — the text system. RESOLVED (2026-09, user): THE FULL COCOA
+  STACK**, in U3 (`NSTextStorage` → `NSLayoutManager` → `NSTextContainer`
+  under `NSTextView`).
+- **Q-U4 — naming. RESOLVED (2026-09, user): KEEP OUR UNPREFIXED NAMES**
+  (`View`, `Button`, `TableView`); the catalog's mapping is the documented
+  answer.
 
 ## 6. Status bookkeeping
 
-- U0–U9: not started. Nothing of Weaver's interface-builder work remains
+- U0–U9: not started (U0 = autolayout + the view foundation; U1 = bases;
+  U2 = buttons; U3 = text + the full text stack; U4 = values; U5 =
+  containers/collections; U6 = tables; U7 = panels/toolbar; U8 = windows;
+  U9 = data transfer/undo/binding). Nothing of Weaver's interface-builder work remains
   (removed 2026-09); `OutlineView` and the View/Window capabilities it
   exercised stay, as does the app-owned-menubar fix.
