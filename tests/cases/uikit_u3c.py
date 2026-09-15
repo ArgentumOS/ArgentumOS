@@ -174,3 +174,27 @@ class Case(BaseCase):
                    "the field went back to \"h\" after one backspace"
                    if re.search(r"ZOO-EDIT h\n", out4)
                    else "the deletion did not land; tail: " + session.tail())
+
+        # NOTHING LEFT BEHIND. Moving the focus away has to take the caret
+        # with it: the outgoing view used to keep drawing one, so a field that
+        # had been typed in and cleared kept a stray vertical line - the
+        # caret - until something else happened to repaint it. The check reads
+        # the field after the focus has moved, and 16 rows separates a caret
+        # (18) from the text it was sitting after (~10).
+        mon.click_at(int(pts["SEARCH"][0]), int(screen_h - pts["SEARCH"][1]),
+                     settle=0.6)
+        shot5 = session.shot("u3c-after")
+        tallest5 = 0
+        for x in range(int(fx) - 106, int(fx) + 104):
+            run = best = 0
+            for y in range(int(fy) - 11, int(fy) + 11):
+                if shot5.luma(x, y) < 140:
+                    run += 1
+                    best = max(best, run)
+                else:
+                    run = 0
+            tallest5 = max(tallest5, best)
+        self.check("no-caret-left-behind", tallest5 < 16,
+                   "with the focus moved to another field, the tallest dark "
+                   "run left in the first is %d rows (a caret is 18, its text "
+                   "is ~10)" % tallest5)

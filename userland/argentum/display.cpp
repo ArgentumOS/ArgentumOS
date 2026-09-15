@@ -1769,6 +1769,11 @@ Window::makeFirstResponder(View *v)
 		return true;
 	}
 	if (v == nullptr) {
+		if (firstResponder_) {
+			/* its caret goes with the focus: the outgoing view has to be
+			 * repainted, or it keeps drawing a cursor it no longer has */
+			firstResponder_->setNeedsDisplay();
+		}
 		firstResponder_ = nullptr;
 		return true;
 	}
@@ -1784,6 +1789,14 @@ Window::makeFirstResponder(View *v)
 	}
 	if (!v->acceptsFirstResponder()) {
 		return false;
+	}
+	/* BOTH ENDS ARE REPAINTED. Marking only the view that GAINS the focus
+	 * left the one that lost it drawing its caret, so clicking out of a
+	 * field left a stray vertical line in it - the caret the field no longer
+	 * had. advanceFirstResponder() (the Tab path) always marked the outgoing
+	 * view; this path did not. */
+	if (firstResponder_ && firstResponder_ != v) {
+		firstResponder_->setNeedsDisplay();
 	}
 	firstResponder_ = v;
 	v->setNeedsDisplay();
