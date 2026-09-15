@@ -234,6 +234,17 @@ dock pin.
 - **D5 — codegen is first-party.** The emitter follows interfaceEmit's
   discipline (deterministic, escapes known, roundtrip-gated), targeting
   the musl-clang toolchain, not any IDE meta-build.
+- **D6 — the selector→lambda table is APP code.** C++ has no reflection,
+  so the document never names code; it names selectors. The app fills a
+  two-level binding table (`bind(target, selector, fn)`) at load, and
+  the dispatcher installs each control's action as a forwarding closure
+  that looks the selector up in that table. Outlets need no table (the
+  existing `viewWithIdentifier` path). Unbound selectors log an error at
+  dispatch time, not at build time. W4 codegen emits the `bind` calls as
+  stubs from each class record's actions.
+- **Scope limits (v1, from D6):** actions are zero-argument
+  (`std::function<void()>`); value controls keep their programmatic
+  `setAction` until the document grows a sender/argument model.
 
 ## 6. Open questions (answer before the milestone that needs them)
 
