@@ -375,10 +375,16 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 		lm.setTextContainer(container_);
 		lm.drawInContext(*ctx, Point{ frame.origin.x,
 					      frame.origin.y + 3.0 });
-		return;
+	} else {
+		layout_->drawInContext(*ctx, Point{ frame.origin.x,
+						    frame.origin.y + 3.0 });
 	}
-	layout_->drawInContext(*ctx, Point{ frame.origin.x,
-					    frame.origin.y + 3.0 });
+	/* THE CARET DRAWS ON BOTH PATHS. This used to `return` right after the
+	 * placeholder, so an empty field that had the focus showed NO cursor at
+	 * all until the first keystroke replaced the placeholder with text -
+	 * the caret appeared only once there was something to put it after,
+	 * which reads as "the click didn't take" and is exactly how it was
+	 * reported. The click DOES take the focus; the draw threw it away. */
 	/* the insertion point: a hairline where the next character lands.
 	 * Its x comes from measuring the text BEFORE the insertion point,
 	 * which is the same measurement the layout draws with, so the caret
@@ -972,7 +978,8 @@ TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 		 * every token's text a line low, so it was clipped by the field's
 		 * bottom edge. Centre it the way Cell centres a title. */
 		ctx->drawText(nullptr, 12.0,
-			      Point{ x + 7.0,
+			      Point{ chip.origin.x
+					      + (chip.size.w - m.widthPt) * 0.5,
 				      chip.origin.y
 					      + (h - (m.ascentPt
 						      + m.descentPt)) * 0.5 },
@@ -1073,10 +1080,17 @@ TokenField::commitEntry()
 		return;
 	}
 	std::string entry = stringValue();
+	size_t a = entry.find_first_not_of(" \t,");
+	size_t b = entry.find_last_not_of(" \t,");
 
-	if (entry.empty()) {
-		return;
+	/* A TOKEN IS ITS TEXT. A space typed before the comma was stored as
+	 * part of the token, and because a chip measures the string it stores,
+	 * the chip came out wider than its text - which reads as text sitting
+	 * left-aligned in its chip. Separators do not belong to the token. */
+	if (a == std::string::npos) {
+		return;			/* nothing but separators */
 	}
+	entry = entry.substr(a, b - a + 1);
 	c->addToken(entry);
 	setStringValue("");
 	setInsertionPointFor("");

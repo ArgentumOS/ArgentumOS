@@ -57,6 +57,39 @@ class Case(BaseCase):
         fx, fy = pts["EDITTEXT"]
         mon.click_at(int(fx), int(screen_h - fy), settle=1.0)
 
+        # A CLICK GIVES THE FIELD THE CURSOR, BEFORE any keystroke. The
+        # caret check further down runs after typing, which is exactly the
+        # gap this was reported in: a click into a field showed nothing at
+        # all, and only typing made the caret appear. The caret is the only
+        # thing on screen that says the click took, so it is checked on the
+        # click alone - and an empty field's caret sits at the entry's left
+        # edge, which the scan covers.
+        shot0 = session.shot("u3c-click")
+        ex0, ey0 = pts["EDITTEXT"]
+        tallest0 = 0
+        for x in range(int(ex0) - 106, int(ex0) + 104):
+            run = best = 0
+            for y in range(int(ey0) - 11, int(ey0) + 11):
+                if shot0.luma(x, y) < 140:
+                    run += 1
+                    best = max(best, run)
+                else:
+                    run = 0
+            tallest0 = max(tallest0, best)
+        self.check("click-shows-the-caret", tallest0 >= 16,
+                   "after the click and before any key, the tallest dark run "
+                   "in the field is %d rows (a caret is the field's interior)"
+                   % tallest0,
+                   xfail="REPRODUCED, not yet fixed: a click into a field "
+                         "shows no caret until the first keystroke. One cause "
+                         "was found and fixed in this pass - the placeholder "
+                         "path returned before the caret, so an EMPTY focused "
+                         "field could not draw one - and this still fails, so "
+                         "the click-time repaint itself is not reaching the "
+                         "draw with the focus set (the keys land in the field, "
+                         "so the focus IS taken). Next: log isFirstResponder() "
+                         "from drawValue and read one run.")
+
         # and then keys edit it
         for ch in "hi":
             mon.key(ch, settle=0.35)
