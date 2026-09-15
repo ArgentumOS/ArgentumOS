@@ -659,7 +659,10 @@ the gate is the claim; the sections above record what each one settled.
   style pass: `Control`'s setTarget/setAction/sendAction delegated only to an
   ActionCell, so a control that DRAWS ITSELF could neither hold nor deliver an
   action. The control now keeps its own target and action and delivers from them
-  when there is no cell. Remaining in U4: `DatePicker`, the last of them.
+  when there is no cell. `DatePicker` closed U4: a UTC date
+  field with arrows, and its guard is verified too (`uikit_u4` 21/21 - the whole
+  run asked mouseDown about four points and the field click came back FIELD at
+  p=45,11 against bounds 0,0 170x24). Nothing remains in U4.
 - U3: the separate field editor (editing is in place, in the cell's storage),
   the search field's recents menu, and token *objects* (tokens are strings).
 - U2a's damage model was narrowed after this table was first written: the
