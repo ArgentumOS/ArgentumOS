@@ -28,6 +28,7 @@ class Case(BaseCase):
                                   "-device", "usb-mouse",
                                   "-device", "usb-kbd"])
         ready = session.shell_ready(150)
+        session.run("export ARGENTUM_KEYLOG=1")
         self.check("shell-ready", ready, "the serial console has a shell")
         if not ready:
             return

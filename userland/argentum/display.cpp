@@ -1728,6 +1728,19 @@ void
 Window::dispatchKey(const Event &ke)
 {
 	const char *cmd = Responder::commandForEvent(ke);
+	/* ARGENTUM_KEYLOG: the key path's instrument, the same shape that settled
+	 * the button hit test (ARGENTUM_HITLOG) and the DatePicker
+	 * (ARGENTUM-DATE). It answers the whole question in one run: what the
+	 * event carries, what the table makes of it, WHO the first responder is,
+	 * and whether that responder took it. */
+	bool log = getenv("ARGENTUM_KEYLOG") != nullptr;
+
+	if (log) {
+		std::printf("ARGENTUM-KEY chars=\"%s\" keysym=%u cmd=%s\n",
+			    ke.characters(), (unsigned) ke.keyCode(),
+			    cmd ? cmd : "(text)");
+		std::fflush(stdout);
+	}
 
 	/* Tab moves the focus, and Cocoa reaches that through the command
 	 * chain: an unhandled insertTab: ends editing and the window takes it.
@@ -1738,9 +1751,22 @@ Window::dispatchKey(const Event &ke)
 		return;
 	}
 	for (View *v = firstResponder_; v; v = v->nextResponder()) {
-		if (v->keyDown(ke)) {
+		bool took = v->keyDown(ke);
+
+		if (log) {
+			const ObjectClass *oc = v->objectClass();
+
+			std::printf("ARGENTUM-KEYTRY %s took=%d\n",
+				    oc ? oc->name : "?", took ? 1 : 0);
+			std::fflush(stdout);
+		}
+		if (took) {
 			return;
 		}
+	}
+	if (log) {
+		std::printf("ARGENTUM-KEY-UNHANDLED\n");
+		std::fflush(stdout);
 	}
 }
 
