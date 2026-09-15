@@ -163,6 +163,7 @@ typedef struct {
 
 static XfbShadowRec xfbShadow;
 static int xfbShadowClosing;	/* the screen is going away: never re-arm */
+static int xfbShadowArmRefused;	/* the refusal above, reported once */
 static CloseScreenProcPtr xfbShadowPrevCloseScreen;
 static ScreenBlockHandlerProcPtr xfbShadowPrevBlockHandler;
 
@@ -198,7 +199,14 @@ xfbShadowArm(ScreenPtr pScreen)
     WindowPtr pRoot = pScreen->root;
 
     if (!pRoot || xfbShadowClosing) {
-        return FALSE;		/* retry next wake (or never: closing) */
+        /* retry next wake (or never: closing). Say so once: a silent
+         * refusal is indistinguishable from a shadow that never armed. */
+        if (!xfbShadowArmRefused) {
+            xfbShadowArmRefused = 1;
+            ErrorF("XFB-SHADOW: arm refused (%s)\n",
+                   xfbShadowClosing ? "closing" : "no root window");
+        }
+        return FALSE;
     }
     if (!DamageSetup(pScreen))
         return FALSE;
@@ -219,6 +227,9 @@ xfbShadowArm(ScreenPtr pScreen)
 static void
 xfbShadowFlush(XfbShadowPtr pShadow)
 {
+    if (!pShadow->pDamage) {
+        return;		/* nothing registered: nothing to drain */
+    }
     RegionPtr pRegion = DamageRegion(pShadow->pDamage);
     PixmapPtr pPixmap = pShadow->pScreen->GetScreenPixmap(pShadow->pScreen);
     FbBits *shaBase;
@@ -265,10 +276,22 @@ xfbShadowFlush(XfbShadowPtr pShadow)
 static void
 xfbShadowBlockHandler(ScreenPtr pScreen, void *timeout)
 {
+    /* A FLUSH NEEDS A LIVE DAMAGE RECORD. The screen close destroys the
+     * record and marks the screen as going away (xfbShadowClosing), so the
+     * arm below FAILS BY DESIGN - and this used to flush anyway.
+     * DamageRegion() is not a field read, it is `return &pDamage->damage`:
+     * with a NULL record it returns 0x10, not 0, so the empty-region test
+     * that follows read 0x18 and killed the server with a page fault at
+     * exactly that address - right after the last client disconnected and
+     * began the session teardown. It is the sibling of the 0x10 fault the
+     * destruction hook above was added for: that fix made pDamage
+     * legitimately NULL, and this call site never expected it. */
     if (!xfbShadow.pDamage) {
         (void) xfbShadowArm(pScreen);
     }
-    xfbShadowFlush(&xfbShadow);
+    if (xfbShadow.pDamage) {
+        xfbShadowFlush(&xfbShadow);
+    }
     pScreen->BlockHandler = xfbShadowPrevBlockHandler;
     xfbShadowPrevBlockHandler(pScreen, timeout);
     pScreen->BlockHandler = xfbShadowBlockHandler;
