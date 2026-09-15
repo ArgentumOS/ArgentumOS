@@ -209,6 +209,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/interface_v2.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/interface_v2"
+	# interface_codegen: Weaver W4 acceptance (docs/design/
+	# weaver-gorm-model.md) — the class emitters are deterministic and
+	# carry outlets, actions and the D6 bindings.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/interface_codegen.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/interface_codegen"
 	# interface_dispatch: Weaver W2 acceptance (docs/design/
 	# weaver-gorm-model.md) — the load-time dispatcher: an action
 	# connection runs the app's binding, an unbound selector is refused.

@@ -298,7 +298,17 @@ dock pin.
   are kept. The dispatcher probe now also dispatches to a CUSTOM object
   target. Gates: `interface_dispatch.cpp` (`W2-OK`) and
   `tests/cases/weaver_w3.py` 17/17; full weaver suite 21/21, 214/214.
-- W4–W6: not started.
+- **W4 — DONE (2026-09).** `interfaceEmitClassHeader` /
+  `interfaceEmitClassSource` are deterministic first-party emitters:
+  a header with the class, its outlets and actions; a source with the
+  ctor, the action stubs and the D6 binding entry (`weaverBind_<class>`,
+  selector → lambda). `--gen-class <class> <dir>` writes both files.
+  Verified: the probe (`interface_codegen.cpp`, `W4-OK`) asserts
+  determinism and the shape; `tests/cases/weaver_w4.py` 8/8 generates in
+  the guest and checks the files; the emitted shape compiles with
+  `tools/musl-clang++64.sh -fsyntax-only` against libargentum (host-side,
+  exit 0). Full weaver suite 22/22, 222/222.
+- W5–W6: not started.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting

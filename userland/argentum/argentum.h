@@ -1874,6 +1874,16 @@ private:
 	std::vector<InterfaceClassInfo> classes_;
 };
 
+/* W4 (docs/design/weaver-gorm-model.md): code generation from a class
+ * record. Deterministic first-party emitters — the same record always
+ * produces the same bytes — targeting the C++ Argentum UIKit, not ObjC:
+ * a header with the class and its outlet/action declarations, and a
+ * source with the action stubs and the D6 binding table entry. */
+std::string interfaceEmitClassHeader(const char *className,
+				     const InterfaceClassInfo &info);
+std::string interfaceEmitClassSource(const char *className,
+				     const InterfaceClassInfo &info);
+
 /* W2 (docs/design/weaver-gorm-model.md, D4/D6): the load-time dispatcher.
  * The DOCUMENT names selectors; C++ has no reflection, so the APP fills the
  * binding table (bind) and the loader wires each action connection onto the

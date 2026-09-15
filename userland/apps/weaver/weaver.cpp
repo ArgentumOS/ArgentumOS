@@ -2177,6 +2177,54 @@ public:
 		refreshDisplay();
 	}
 
+	/* W4: emit C++ for a class record — a header and a source, the
+	 * same bytes every time (the emitter's discipline). */
+	void genClass(const char *className, const char *dir)
+	{
+		const InterfaceClassInfo *c = doc->classByName(className);
+
+		if (!c || !dir || !dir[0]) {
+			std::printf("WEAVER: gen-class FAIL `%s`\n",
+				    className ? className : "");
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		std::string base = std::string(dir);
+		std::string h = base + "/" + className + ".h";
+		std::string cpp = base + "/" + className + ".cpp";
+		std::string htext = interfaceEmitClassHeader(className, *c);
+		std::string ctext = interfaceEmitClassSource(className, *c);
+		FILE *fh = std::fopen(h.c_str(), "w");
+		FILE *fc = std::fopen(cpp.c_str(), "w");
+		bool ok = fh && fc
+			&& std::fwrite(htext.data(), 1, htext.size(), fh)
+			   == htext.size()
+			&& std::fwrite(ctext.data(), 1, ctext.size(), fc)
+			   == ctext.size();
+
+		if (fh) {
+			if (std::fclose(fh) != 0) {
+				ok = false;
+			}
+		}
+		if (fc) {
+			if (std::fclose(fc) != 0) {
+				ok = false;
+			}
+		}
+		if (!ok) {
+			std::printf("WEAVER: gen-class FAIL write %s\n",
+				    base.c_str());
+			std::fflush(stdout);
+			failed = true;
+			return;
+		}
+		std::printf("WEAVER: gen-class %s %s %s\n", className,
+			    h.c_str(), cpp.c_str());
+		std::fflush(stdout);
+	}
+
 	void listClasses()
 	{
 		for (int i = 0; i < doc->classCount(); i++) {
@@ -3137,6 +3185,12 @@ main(int argc, char **argv)
 
 			ed.instantiate(cls, id);
 			any = true;
+		} else if (a == "--gen-class" && i + 2 < argc) {
+			const char *cls = argv[++i];
+			const char *dir = argv[++i];
+
+			ed.genClass(cls, dir);
+			any = true;
 		} else if (a == "--classes") {
 			ed.listClasses();
 			any = true;
@@ -3222,7 +3276,8 @@ main(int argc, char **argv)
 			    "[--new-class name super] "
 			    "[--add-outlet class name] "
 			    "[--add-action class selector] "
-			    "[--instantiate class id] [--classes] "
+			    "[--instantiate class id] "
+			    "[--gen-class class dir] [--classes] "
 			    "[--move id dx dy] [--save] [--reload] "
 			    "[--new name] [--roundtrip] "
 			    "[--rect id] [--show]\n");
