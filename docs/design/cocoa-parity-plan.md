@@ -201,6 +201,14 @@ as a compatibility path for un-migrated views, with a migration list.
 
 ## 5a. U0 progress
 
+**The restart (2026-09).** The user's call: discard every view/control
+class and reimplement from scratch, big bang. Two commits did it —
+consumers/WM/UI gates first (5145d29f), then the class layer itself
+(c6e30f24) — leaving the library as the font engine alone and the guest
+booting Xfb + a console shell (no desktop). The Cocoa-parity plan below
+governs what comes back. This section resumes from there.
+
+
 **U0a — the constraint model + the first solver. DONE (2026-09).**
 `LayoutAttribute`/`LayoutRelation`, `LayoutAnchor`/`LayoutDimension`,
 `LayoutConstraint` (+ `activate`/`deactivate`), the `View` anchor
@@ -222,10 +230,22 @@ lifted): one coordinate space (no sibling-space conversion yet);
 baseline behaves as bottom; over-constrained systems resolve last-wins;
 a full Cassowary-grade incremental solver replaces the body later.
 
-**U0b — the View lifecycle (not started):** `setNeedsLayout`/
+**Re-landed after the restart (2026-09).** The U0a work was deleted with
+the old class layer and has been brought back on the NEW core: `View`
+(the first class of the rebuilt UIKit — geometry, the non-owning subview
+tree, identity, visibility, the `translates…` flag and the anchor
+accessors), the constraint model and solver (`layout.cpp`), the
+display-free probe (`userland/tests/layout_solve.cpp`) and the gate
+(`tests/cases/uikit_u0.py`, now booting to a SHELL since there is no
+desktop). The two rules the probe forced are unchanged: **the second item
+of a constraint is its reference** (only the first item's variables move)
+and **each row moves one variable**, its first item's dominant one.
+Verified: `U0-OK`, gate 4/4.
+
+**U0b — the View lifecycle (next):** `setNeedsLayout`/
 `layoutSubtreeIfNeeded`, the autoresizing mask → constraint bridge, the
-window's layout pass, and the zoo board's first constraint-laid-out
-control.
+window's layout pass, and the widget zoo's first constraint-laid-out
+control (the zoo returns with U2's first widget).
 
 ## 6. Status bookkeeping
 

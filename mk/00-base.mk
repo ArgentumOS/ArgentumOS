@@ -239,7 +239,8 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 # The C++ wrapper supplies the libc++/libc++abi/libunwind NEEDEDs and
 # the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
 # the session in S0.2.
-ARGENTUM_SRCS = userland/argentum/text.cpp
+ARGENTUM_SRCS = userland/argentum/text.cpp userland/argentum/view.cpp \
+	userland/argentum/layout.cpp
 FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
 
 $(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h $(MUSL64_CXX)

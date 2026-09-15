@@ -159,6 +159,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# system.display width_mm/height_mm unset (expect 4/3 fallback)
 	# then after `config write -s system.display ...` (expect 8/3 =
 	# 2x). Needs the X session like the demo.
+	# layout_solve: U0 acceptance (docs/design/cocoa-parity-plan.md) —
+	# the Auto Layout model + solver, display-free: constraints are
+	# solved and the resulting frames asserted.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/layout_solve.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/layout_solve"
 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
 	# to prove the fault path reports it and sends SIGBUS)
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
