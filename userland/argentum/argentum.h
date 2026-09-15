@@ -2967,6 +2967,47 @@ private:
 	double phase_ = 0;
 };
 
+/// @purpose A colour well: a swatch that shows the colour it holds.
+///
+/// A click makes it the ACTIVE well and sends its action. Cocoa's well opens a
+/// colour panel instead, which needs a pop-up this toolkit does not have yet,
+/// so activation is reported and the app decides what it means.
+///
+/// @lifetime The well owns nothing but its own state.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The swatch is the colour that was set, drawn whole: the only
+/// things that change its pixels are setColor() and the active highlight.
+///
+/// @see Control, LevelIndicator
+class ColorWell : public Control {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// The colour the well holds.
+	Color color() const { return color_; }
+	/// Set it (repaints).
+	void setColor(const Color &c);
+	/// True when this is the active well.
+	bool isActive() const { return active_; }
+	/// Set it (repaints).
+	void setActive(bool on);
+
+	/// A click activates the well and sends its action.
+	bool mouseDown(const MouseEvent &e) override;
+	/// The swatch, its border, and the active highlight.
+	void drawRect(const Rect &dirty) override;
+
+private:
+	Color color_ = Color::rgb(0.30, 0.55, 0.90);
+	bool active_ = false;
+};
+
 /// @purpose A level indicator: a small bar that fills to a value and
 /// colours itself by how close that is to trouble — a disk usage meter, a
 /// signal strength bar, a rating. Cocoa's NSLevelIndicator (a CONTROL,

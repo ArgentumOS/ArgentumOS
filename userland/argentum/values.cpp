@@ -1079,6 +1079,7 @@ LevelIndicator::drawRect(const Rect &dirty)
 				   fillColor());
 	}
 	ctx->strokeRoundRect(b, 2.0, Color::rgb(0.62, 0.62, 0.66), 1.0);
+
 }
 
 static const Property LevelIndicator_PROPS[] = {
@@ -1108,6 +1109,58 @@ const ObjectClass LevelIndicator::kClass = {
 	"LevelIndicator", &Control::kClass, LevelIndicator_PROPS,
 	(int) (sizeof(LevelIndicator_PROPS)
 	       / sizeof(LevelIndicator_PROPS[0])), nullptr, 0
+};
+
+/* ---- ColorWell ------------------------------------------------------- */
+
+void
+ColorWell::setColor(const Color &c)
+{
+	color_ = c;
+	setNeedsDisplay();
+}
+
+void
+ColorWell::setActive(bool on)
+{
+	if (active_ != on) {
+		active_ = on;
+		setNeedsDisplay();
+	}
+}
+
+bool
+ColorWell::mouseDown(const MouseEvent &e)
+{
+	(void) e;
+	setActive(true);
+	sendAction();
+	return true;			/* the click was ours */
+}
+
+void
+ColorWell::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	Rect b = bounds();
+
+	ctx->fillRoundRect(b, 3.0, color_);
+	if (active_) {
+		/* activation changes exactly one thing on the pixels: a heavier,
+		 * darker border around the same swatch */
+		ctx->strokeRoundRect(b, 3.0, Color::rgb(0.15, 0.15, 0.18), 2.0);
+	} else {
+		ctx->strokeRoundRect(b, 3.0, Color::rgb(0.55, 0.55, 0.60), 1.0);
+	}
+}
+
+const ObjectClass ColorWell::kClass = {
+	"ColorWell", &Control::kClass, nullptr, 0, nullptr, 0
 };
 
 } /* namespace argentum */
