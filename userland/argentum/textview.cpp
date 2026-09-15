@@ -359,7 +359,12 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 	 * Its x comes from measuring the text BEFORE the insertion point,
 	 * which is the same measurement the layout draws with, so the caret
 	 * sits where the gap is. */
-	if (editing_) {
+	/* THE CARET FOLLOWS THE FOCUS. editing_ was the only switch, and nothing
+	 * in the toolkit ever set it, so a field could be typed into with no
+	 * cursor at all. A field with the keyboard focus IS being edited -
+	 * which is also what Cocoa shows - and the cell can ask, because the
+	 * draw is handed the view. */
+	if (editing_ || (inView && inView->isFirstResponder())) {
 		const char *s = storage_->string();
 		double x = 0;
 
@@ -384,9 +389,14 @@ TextFieldCell::defaultAttributesOrMarked(bool placeholder) const
 {
 	TextAttributes a = storage_->defaultAttributes();
 
-	if (placeholder) {
-		a.color = Color::rgb(0.55, 0.55, 0.58);
-	}
+	/* THE COLOUR IS THE CELL'S, DECIDED FRESH EVERY FRAME. Taking the
+	 * value's colour from the storage's CURRENT default made the
+	 * placeholder colour STICKY: an empty field draws its placeholder grey,
+	 * that grey is written back into the storage's default so the layout can
+	 * draw with it, and the next frame reads it back as the colour of the
+	 * VALUE - so text typed into any field that had ever shown a placeholder
+	 * came out grey for the rest of the session. */
+	a.color = placeholder ? Color::rgb(0.55, 0.55, 0.58) : textColor_;
 	return a;
 }
 

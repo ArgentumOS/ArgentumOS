@@ -66,6 +66,36 @@ class Case(BaseCase):
         self.check("keys-edit-the-field", "hi" in edits,
                    "the field's edit stream was %s" % (edits[-4:] or "empty"))
 
+        # THE CARET AND THE INK COLOUR, in pixels - both were reported from
+        # the screen: a field that takes keystrokes with no cursor, and text
+        # typed into a field that had shown a placeholder coming out grey.
+        shot = session.shot("u3c")
+        ex, ey = pts["EDITTEXT"]
+        # the caret is as tall as the field's interior (18pt) where the
+        # tallest glyph stem is its ascender (~13): so the longest dark run
+        # in any one column is the caret, and nothing else gets close.
+        tallest = 0
+        for x in range(int(ex) - 106, int(ex) + 104):
+            run = best = 0
+            for y in range(int(ey) - 11, int(ey) + 11):
+                if shot.luma(x, y) < 140:
+                    run += 1
+                    best = max(best, run)
+                else:
+                    run = 0
+            tallest = max(tallest, best)
+        self.check("caret-is-visible", tallest >= 16,
+                   "the tallest dark run in the field is %d rows; a caret is "
+                   "the field's interior height" % tallest)
+
+        darkest = min((shot.luma(x, y)
+                       for x in range(int(ex) - 110, int(ex) + 110)
+                       for y in range(int(ey) - 11, int(ey) + 11)),
+                      default=None)
+        self.check("typed-text-is-ink", darkest is not None and darkest < 100,
+                   "the darkest pixel in the typed field is %s: real ink is "
+                   "near 0, the placeholder grey is ~140" % darkest)
+
         # Return commits (sends the action, the field as the sender)
         mon.key("ret", settle=0.5)
         session.wait_for(r"ZOO-COMMIT", 30)
