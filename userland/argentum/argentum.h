@@ -1891,6 +1891,9 @@ typedef View *(*InterfaceFactory)(void);
 struct InterfaceClass {
 	const char *name;
 	InterfaceFactory make;
+	/* W1 (docs/design/weaver-gorm-model.md, Q-W1): the palette the class
+	 * belongs to — "Window", "Container" or "Control". */
+	const char *category;
 };
 
 int interfaceClassCount();

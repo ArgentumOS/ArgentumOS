@@ -273,7 +273,15 @@ dock pin.
   template emits v2; the outline (Objects pane) lists proxies and
   objects above the tree. Gate `tests/cases/weaver_w0.py` 7/7; probe
   `userland/tests/interface_v2.cpp` (`V2-OK`).
-- W1–W6: not started.
+- **W1 — DONE (2026-09).** The registry carries a palette category
+  (Window/Container/Control); the palette table is grouped with
+  non-selectable category header rows (Containers, Controls). A press on
+  a class row starts a drag; the release over the canvas instantiates the
+  class AT the drop point (identifier-bound parent rule unchanged), a
+  release over the palette adds at the default position. Gate
+  `tests/cases/weaver_w1.py` 6/6 (drag into the canvas lands at the drop
+  point + a drop-box pixel diff); full weaver suite 19/19, 185/185.
+- W2–W6: not started.
 - The previous "Window root + content View" rework is stashed and
   superseded: GORM's answer is an object graph whose windows are
   top-level objects and whose owner is a proxy — not a nesting

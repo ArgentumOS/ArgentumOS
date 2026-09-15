@@ -1208,18 +1208,18 @@ interfacePropertyAt(const char *className, int index)
  * "Window" is the notable absence — it needs a display, so a document whose
  * root is a window is a later slice, not this one. */
 static const InterfaceClass g_classes[] = {
-	{ "View", []() -> View * { return new View(); } },
-	{ "Box", []() -> View * { return new Box(); } },
-	{ "Label", []() -> View * { return new Label(); } },
-	{ "Button", []() -> View * { return new Button(); } },
-	{ "TextField", []() -> View * { return new TextField(); } },
-	{ "Slider", []() -> View * { return new Slider(); } },
-	{ "Stepper", []() -> View * { return new Stepper(); } },
-	{ "ProgressIndicator", []() -> View * { return new ProgressIndicator(); } },
-	{ "LevelIndicator", []() -> View * { return new LevelIndicator(); } },
-	{ "SegmentedControl", []() -> View * { return new SegmentedControl(); } },
-	{ "ComboBox", []() -> View * { return new ComboBox(); } },
-	{ "PopUpButton", []() -> View * { return new PopUpButton(); } },
+	{ "View", []() -> View * { return new View(); }, "Container" },
+	{ "Box", []() -> View * { return new Box(); }, "Container" },
+	{ "Label", []() -> View * { return new Label(); }, "Control" },
+	{ "Button", []() -> View * { return new Button(); }, "Control" },
+	{ "TextField", []() -> View * { return new TextField(); }, "Control" },
+	{ "Slider", []() -> View * { return new Slider(); }, "Control" },
+	{ "Stepper", []() -> View * { return new Stepper(); }, "Control" },
+	{ "ProgressIndicator", []() -> View * { return new ProgressIndicator(); }, "Control" },
+	{ "LevelIndicator", []() -> View * { return new LevelIndicator(); }, "Control" },
+	{ "SegmentedControl", []() -> View * { return new SegmentedControl(); }, "Control" },
+	{ "ComboBox", []() -> View * { return new ComboBox(); }, "Control" },
+	{ "PopUpButton", []() -> View * { return new PopUpButton(); }, "Control" },
 };
 
 int

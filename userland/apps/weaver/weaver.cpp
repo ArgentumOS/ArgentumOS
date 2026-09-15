@@ -236,19 +236,131 @@ layoutSizes(const InterfaceNode *r, double *winW, double *winH)
 }
 
 /* the palette's rows are the class registry (D5) */
+/* W1 palettes (docs/design/weaver-gorm-model.md, Q-W1): the registry
+ * grouped into categories. The table shows a non-selectable header row
+ * per category, then that category's classes. */
+static const char *PALETTE_CATS[2] = { "Container", "Control" };
+static const char *PALETTE_CAT_LABEL[2] = { "Containers", "Controls" };
+
+static int
+paletteCatCount(int k)
+{
+	int n = 0;
+
+	for (int i = 0; i < interfaceClassCount(); i++) {
+		const InterfaceClass *c = interfaceClassAt(i);
+
+		if (c && c->category && !std::strcmp(c->category, PALETTE_CATS[k])) {
+			n++;
+		}
+	}
+	return n;
+}
+
+/* the class at a palette row, or nullptr for a category header */
+static const InterfaceClass *
+paletteRowClass(int row)
+{
+	int r = 0;
+
+	for (int k = 0; k < 2; k++) {
+		int count = paletteCatCount(k);
+
+		if (count == 0) {
+			continue;
+		}
+		if (row == r) {
+			return nullptr;
+		}
+		r++;
+		if (row < r + count) {
+			int want = row - r;
+
+			for (int i = 0; i < interfaceClassCount(); i++) {
+				const InterfaceClass *c = interfaceClassAt(i);
+
+				if (c && c->category
+				    && !std::strcmp(c->category, PALETTE_CATS[k])) {
+					if (want-- == 0) {
+						return c;
+					}
+				}
+			}
+		}
+		r += count;
+	}
+	return nullptr;
+}
+
+static int
+paletteRowCount()
+{
+	int n = 0;
+
+	for (int k = 0; k < 2; k++) {
+		int count = paletteCatCount(k);
+
+		if (count > 0) {
+			n += 1 + count;
+		}
+	}
+	return n;
+}
+
+static bool
+paletteRowIsHeader(int row)
+{
+	return paletteRowClass(row) == nullptr;
+}
+
 class PaletteSource : public TableViewDataSource {
 public:
 	int rowCount() const override
 	{
-		return interfaceClassCount();
+		return paletteRowCount();
 	}
 
 	const char *cellText(int row, int) const override
 	{
-		const InterfaceClass *c = interfaceClassAt(row);
+		const InterfaceClass *c = paletteRowClass(row);
 
-		return c ? c->name : "";
+		if (c) {
+			return c->name;
+		}
+		int r = 0;
+
+		for (int k = 0; k < 2; k++) {
+			int count = paletteCatCount(k);
+
+			if (count == 0) {
+				continue;
+			}
+			if (row == r) {
+				return PALETTE_CAT_LABEL[k];
+			}
+			r += 1 + count;
+		}
+		return "";
 	}
+};
+
+/* The palette's drag-out (GORM: drag a component into the window). A
+ * press records the row; the release either stays on the palette (a
+ * plain click — add at the default position) or lands over the canvas,
+ * in which case the class is instantiated at the DROP POINT. The toolkit
+ * delivers motion and the release to the PRESSED view (window.cpp's
+ * drag-out semantics), so no pointer grab is needed. */
+class PaletteTable : public TableView {
+public:
+	explicit PaletteTable(TableViewDataSource *source) : TableView(source) {}
+
+	Editor *editor = nullptr;
+
+	void mouseDown(const MouseEvent &e) override;
+	void mouseUp(const MouseEvent &e) override;
+
+private:
+	int pressedRow_ = -1;
 };
 
 /* The canvas host paints the WINDOW background (the theme page tone)
@@ -267,16 +379,6 @@ public:
 			   (unsigned) (f.size.h * ppt + 0.5),
 			   app.theme().page());
 	}
-};
-
-/* A palette click adds the class (the same Editor::addNode the scripted
- * --add command runs): the TableView's row selection is the only hook the
- * visible palette needs. */
-class PaletteDelegate : public TableViewDelegate {
-public:
-	Editor *editor = nullptr;
-
-	void tableSelectionDidChange(TableView *table, int row) override;
 };
 
 /* the outline's rows come from the document tree, pushed into the
@@ -2057,6 +2159,11 @@ public:
 
 	void addNode(const char *className)
 	{
+		addNodeAt(className, 20, 20);
+	}
+
+	void addNodeAt(const char *className, double x, double y)
+	{
 		if (!isPaletteClass(className)) {
 			std::printf("WEAVER: add FAIL `%s` is not in the palette\n",
 				    className);
@@ -2078,7 +2185,7 @@ public:
 		InterfaceNode *node = new InterfaceNode();
 
 		node->setClassName(className);
-		node->setFrame(20, 20, 90, 24);	/* the v1 default rect */
+		node->setFrame(x, y, 90, 24);	/* the v1 default size */
 		int index = parent->childCount();
 
 		parent->addChild(node);
@@ -2086,9 +2193,10 @@ public:
 		updateTitle();
 		const char *pid = parent->identifier()[0] ? parent->identifier()
 							 : parent->className();
-		std::printf("WEAVER: add %s to %s at %d (20,20 90x24)\n",
-			    className, pid, index);
+		std::printf("WEAVER: add %s to %s at %d (%g,%g 90x24)\n",
+			    className, pid, index, x, y);
 		std::fflush(stdout);
+		refreshDisplay();
 	}
 
 	/* display mode: the palette added a node to the DOCUMENT; rebuild the
@@ -2114,6 +2222,11 @@ public:
 		canvasHost->setNeedsDisplay();
 		if (overlay) {
 			overlay->setNeedsDisplay();
+		}
+		/* a content change marks damage but does not itself flush: the
+		 * window must be told to draw (the same pattern as the dock) */
+		if (win) {
+			win->draw();
 		}
 	}
 
@@ -2336,11 +2449,9 @@ public:
 		surface->addSubview(paletteBox);
 		chrome_.push_back(paletteBox);
 
-		static PaletteDelegate paletteDelegate;
+		PaletteTable *palette = new PaletteTable(new PaletteSource());
 
-		paletteDelegate.editor = this;
-		TableView *palette =
-			new TableView(new PaletteSource(), &paletteDelegate);
+		palette->editor = this;
 		const char *cols[1] = { "Control" };
 
 		palette->setColumns(cols, 1);
@@ -2348,8 +2459,11 @@ public:
 			{ SIDE_W - 16, PAL_H - 44 } });
 		paletteBox->addSubview(palette);
 		std::printf("WEAVER: palette rows=%d rowH=%g header=%g\n",
-			    interfaceClassCount(), palette->rowHeight(),
+			    paletteRowCount(), palette->rowHeight(),
 			    palette->rowHeight() + 2.0);
+		std::printf("WEAVER: palette categories Containers=%d "
+			    "Controls=%d\n", paletteCatCount(0),
+			    paletteCatCount(1));
 		std::fflush(stdout);
 		chrome_.push_back(palette);
 
@@ -2509,18 +2623,39 @@ EditorOverlay::draw(GraphicsContext &g)
 }
 
 void
-PaletteDelegate::tableSelectionDidChange(TableView *, int row)
+PaletteTable::mouseDown(const MouseEvent &e)
 {
-	if (!editor || row < 0) {
-		return;
-	}
-	const InterfaceClass *c = interfaceClassAt(row);
+	TableView::mouseDown(e);
+	pressedRow_ = selectedRow();
+}
 
-	if (!c) {
-		return;
+void
+PaletteTable::mouseUp(const MouseEvent &e)
+{
+	const InterfaceClass *c = paletteRowClass(pressedRow_);
+
+	pressedRow_ = -1;
+	if (!editor || !c) {
+		return;		/* a header row, or no editor */
 	}
-	editor->addNode(c->name);
-	editor->refreshDisplay();
+	/* the release point in the window's CONTENT coordinates */
+	Point p = { e.x, e.y };
+
+	for (View *v = this; v; v = v->superview()) {
+		Rect f = v->frame();
+
+		p.x += f.origin.x;
+		p.y += f.origin.y;
+	}
+	Point doc = editor->contentToDoc(p);
+	InterfaceNode *r = editor->doc->root();
+
+	if (r && doc.x >= 0 && doc.y >= 0 && doc.x < r->frameW()
+	    && doc.y < r->frameH()) {
+		editor->addNodeAt(c->name, doc.x, doc.y);
+	} else {
+		editor->addNodeAt(c->name, 20, 20);
+	}
 }
 
 static int
