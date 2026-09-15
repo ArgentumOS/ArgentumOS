@@ -18,6 +18,9 @@
 #include <fnx/tty.h>
 #include <fnx/types.h>
 #include <fnx/usb.h>
+#include <fnx/fs_devfs.h>	/* devfs_make_node/devfs_make_symlink */
+#include <fnx/kbdaux.h>	/* KBD_MAJOR / KBD_MINOR */
+#include <fnx/stat.h>		/* S_IFCHR, S_IRUSR, S_IWUSR */
 
 #define USB_DIR_IN		0x80
 #define USB_DIR_OUT		0x00
@@ -234,6 +237,15 @@ int usb_kbd_init(int slotid, unsigned char *configdesc)
 	if((ret = usb_control(slotid, 0x00, USB_REQ_SET_CONFIGURATION, 1, 0,
 			       0, NULL)) < 0) {
 		printk("usb-kbd: SET_CONFIGURATION failed (%d)\n", ret);
+
+	/* PUBLISH the node, like usb-mouse does. Without this a USB keyboard
+	 * was invisible to userspace: the keys reached the kernel's scancode
+	 * pipeline and nothing could open a device to read them, and Xfb's
+	 * default (a hardcoded /System/Devices/PS2/Keyboard) had nothing to
+	 * find on a machine whose PS/2 controller is off. */
+	devfs_make_node("USB/Keyboard", MKDEV(KBD_MAJOR, KBD_MINOR),
+			S_IFCHR | S_IRUSR | S_IWUSR);
+	devfs_make_symlink("keyboard", "USB/Keyboard", 0777);
 		return ret;
 	}
 

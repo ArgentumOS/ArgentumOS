@@ -399,9 +399,32 @@ as a compatibility path for un-migrated views, with a migration list.
   family needs 616, and that is what exposed it: the model was taller than
   the window and the lower rows were drawn where the server had no window
   at all. The line is in now, and the board's rows are on screen.
-  **U3c — editing. NEXT:** the keyboard (key events, first responder, the
-  caret and the field editor) and the rest of the text family
-  (`NSSearchField`, `NSTokenField`, the field-editor view).
+  **U3c — editing. NEXT, and its FIRST PREREQUISITE IS IN THE KERNEL.**
+  Asking "does a key reach the toolkit at all?" turned up two gaps that
+  have to close before any key handling can be written or verified:
+    1. **`usb-kbd.c` published NO device node.** It decoded HID reports
+       into `kbd_process_scancode()` — the same pipeline the PS/2 path
+       uses — and stopped there, while `usb-mouse.c` publishes
+       `USB/Mouse` plus a by-role `mouse` alias. So on a machine whose USB
+       keyboard is the only keyboard, the keys reached the kernel and
+       NOTHING in userspace could open a device to read them. It now
+       publishes `USB/Keyboard` and the `keyboard` role alias, exactly as
+       the mouse does. (Verified as far as compiling: `make buildfnx`.
+       NOT verified end to end — no gate attaches a USB keyboard yet, so
+       the change is inert today.)
+    2. **Xfb's `XFB_KBD` default is the hardcoded topology path**
+       `/System/Devices/PS2/Keyboard` (hw/xfb/fnxinput.c), which cannot
+       exist with `i8042=off`. The mouse's default in the same file is the
+       by-role alias, which is the pattern the keyboard should follow —
+       `/System/Devices/keyboard` is what the kernel now publishes.
+  Then the toolkit work: the key event substrate (X key events →
+  `KeyEvent`, with XLookupString for the text), the FIRST RESPONDER chain
+  (a window's first responder, `acceptsFirstResponder`, key events walking
+  up to the superview — the same shape as the mouse chain), the caret, the
+  field editor, and the rest of the text family (`NSSearchField`,
+  `NSTokenField`). The gate attaches `usb-kbd`, parks the pointer, makes a
+  field the first responder and TYPES with the monitor — the keyboard's
+  version of the U2b gate.
 - **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
