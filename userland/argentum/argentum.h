@@ -3404,6 +3404,13 @@ public:
 
 	/// Pump events until stop() (Cocoa's run).
 	void run();
+
+	/// ONE pass over every tracked window: pump each, then display each.
+	/// The bounded form of run(), and every app-owned loop must use it -
+	/// a loop that pumps only its own window leaves a window it tracked
+	/// (a menu, a colour panel) unpumped: mapped, undrawn and deaf.
+	/// Answers whether any window had an event.
+	bool pumpOnce();
 	/// Ask the loop to stop once the current pass is done (Cocoa's stop:).
 	void stop();
 

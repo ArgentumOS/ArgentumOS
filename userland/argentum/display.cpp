@@ -28,6 +28,14 @@
 
 #include <unistd.h>
 
+/* The events a window asks for. ONE list: XSelectInput() above and the pump's
+ * XCheckWindowEvent() below must agree, or the pump will never see an event
+ * the server was told to send. */
+static const long kWindowEventMask =
+	ExposureMask | StructureNotifyMask | ButtonPressMask | ButtonReleaseMask
+	| PointerMotionMask | EnterWindowMask | LeaveWindowMask | KeyPressMask
+	| KeyReleaseMask | FocusChangeMask;
+
 #include <ctime>
 
 #include <cmath>
@@ -992,19 +1000,19 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 			CopyFromParent,
 			CWOverrideRedirect | CWBackPixel | CWBorderPixel, &attrs);
 	if (getenv("ARGENTUM_KEYLOG")) {
-		std::printf("ARGENTUM-WINOPEN %s x=%d y=%d %ux%u override=%d\n",
-			    title ? title : "?", xPt, yPt, impl_->wPx, impl_->hPx,
-			    attrs.override_redirect ? 1 : 0);
+		/* xwin so this can be matched against ARGENTUM-PUMP: one window id
+		 * in the pumps, or two, says which window the press reached */
+		std::printf("ARGENTUM-WINOPEN %s x=%d y=%d %ux%u override=%d "
+			    "xwin=%lu\n", title ? title : "?", xPt, yPt, impl_->wPx,
+			    impl_->hPx, attrs.override_redirect ? 1 : 0,
+			    (unsigned long) impl_->xwin);
 		std::fflush(stdout);
 	}
 	}
 	if (!impl_->xwin) {
 		return false;
 	}
-	XSelectInput(dpy, impl_->xwin, ExposureMask | StructureNotifyMask
-		     | ButtonPressMask | ButtonReleaseMask
-		     | PointerMotionMask | EnterWindowMask | LeaveWindowMask
-		     | KeyPressMask | KeyReleaseMask | FocusChangeMask);
+	XSelectInput(dpy, impl_->xwin, kWindowEventMask);
 	if (title) {
 		XStoreName(dpy, impl_->xwin, title);
 		title_ = title;
@@ -1029,7 +1037,7 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 		return false;
 	}
 	impl_->open = true;
-	XMapWindow(dpy, impl_->xwin);
+	XMapRaised(dpy, impl_->xwin);
 	XSync(dpy, False);
 	layoutContent();
 	setNeedsDisplay();
@@ -1075,7 +1083,14 @@ void
 Window::show()
 {
 	if (impl_->open) {
-		XMapWindow(gDpy, impl_->xwin);
+		/* A POP-UP (a menu, a colour panel) must come up ABOVE the window it
+		 * belongs to, and with no window manager there is nobody else to
+		 * raise it. An ordinary window just maps where X puts it. */
+		if (impl_->level != WindowLevelNormal) {
+			XMapRaised(gDpy, impl_->xwin);
+		} else {
+			XMapWindow(gDpy, impl_->xwin);
+		}
 		XSync(gDpy, False);
 	}
 }
@@ -1546,12 +1561,25 @@ Window::pumpEvent()
 	if (!impl_->open || !gDpy) {
 		return false;
 	}
-	if (!XPending(gDpy)) {
-		return false;
-	}
 	XEvent ev;
 
-	XNextEvent(gDpy, &ev);
+	/* THIS WINDOW'S EVENTS ONLY, and this is load-bearing. A plain
+	 * XPending()/XNextEvent() takes whatever is at the head of the queue, so
+	 * the FIRST window in the pass swallows every event - including ones
+	 * addressed to another window, whose xbutton.x/y are relative to THAT
+	 * window. It was invisible while only one window was ever pumped, which is
+	 * exactly what runModal() does (it pumps one window), and it silently
+	 * breaks the moment a second window exists: a menu, a colour panel.
+	 *
+	 * XCheckWindowEvent() SEARCHES the queue for an event for this window and
+	 * leaves the rest, so a modal loop cannot wedge behind another window's
+	 * event the way a peek-and-bail would. */
+	if (!XCheckWindowEvent(gDpy, impl_->xwin, kWindowEventMask, &ev)) {
+		return false;
+	}
+	if (!XPending(gDpy)) {
+		/* nothing else waiting: let the caller pause */
+	}
 	double pp = impl_->pxPerPt;
 
 	switch (ev.type) {

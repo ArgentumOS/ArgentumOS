@@ -1483,6 +1483,12 @@ Application::run()
 	}
 }
 
+bool
+Application::pumpOnce()
+{
+	return appPumpPass(windows_);
+}
+
 void
 Application::stop()
 {

@@ -508,6 +508,11 @@ main(int argc, char **argv)
 	w.setFrame(Rect{ { 70, 50 },
 			 { 830.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
+	/* TRACK THE WINDOW ON THE APPLICATION. The board pumps through the app
+	 * (see pumpOnce below), and so does anything the board opens - the
+	 * colour panel a ColourWell activates. A window the app does not track
+	 * is never pumped. */
+	argentum::Application::sharedApplication()->addWindow(&w);
 	w.setNeedsDisplay();
 	w.displayIfNeeded();
 
@@ -593,9 +598,16 @@ main(int argc, char **argv)
 
 	double t0 = now_s();
 
-	while (now_s() - t0 < runFor) {
-		bool had = w.pumpEvent();
+	argentum::Application *app = argentum::Application::sharedApplication();
 
+	while (now_s() - t0 < runFor) {
+		/* PUMP THROUGH THE APPLICATION, not just this window. Pumping
+		 * w.pumpEvent() alone leaves every OTHER tracked window unpumped:
+		 * the colour panel came up mapped, black and deaf for exactly this
+		 * reason. app->pumpOnce() pumps and displays them all. */
+		bool had = app->pumpOnce();
+
+		(void) had;
 		w.displayIfNeeded();
 		if (w.isCloseRequested()) {
 			break;
