@@ -1847,6 +1847,11 @@ Menu::popUp(const Point &atScreen)
 PopUpButton::PopUpButton()
 {
 	menu_ = new Menu();
+	/* A POP-UP IS A ROUNDED RECT, NOT A CAPSULE. BezelStyle::Rounded draws
+	 * radius = height/2, which on a 24pt button is a pill; the rounded
+	 * RECTANGLE is BezelStyle::RoundRect (radius 4). Cocoa's pop-up button
+	 * sets its own cell's style, and so does this. */
+	setBezelStyle(BezelStyle::RoundRect);
 }
 
 void

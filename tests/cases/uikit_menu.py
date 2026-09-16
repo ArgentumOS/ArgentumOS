@@ -98,6 +98,44 @@ class Case(BaseCase):
                        "a pop-up button carries an up/down chevron in its right "
                        "segment; the ink there was up=%d down=%d" % (u, d))
 
+        # THE POP-UP IS A ROUNDED RECT, NOT A CAPSULE. BezelStyle::Rounded is
+        # radius = height/2 - a pill at 24pt - and that is what the pop-up had.
+        # The board already draws BOTH styles as reference rows, so this check
+        # is DIFFERENTIAL: the pop-up's corner must measure like the RoundRect
+        # button's, not like the Rounded one's.
+        ref = {}
+        for m in re.finditer(r"ZOO-FRAME (\S+) x=(-?[\d.]+) y=(-?[\d.]+) "
+                             r"w=([\d.]+) h=([\d.]+)", session.log_text()):
+            ref[m.group(1)] = tuple(float(m.group(i)) for i in (2, 3, 4, 5))
+        self.check("the-board-draws-both-bezels-to-compare",
+                   "BEZEL-ROUNDED" in ref and "BEZEL-ROUNDRECT" in ref,
+                   "the button column should carry both bezel styles; the board "
+                   "reported %s" % sorted(ref))
+        if "BEZEL-ROUNDED" in ref and "BEZEL-ROUNDRECT" in ref and pf:
+            # HOW DEEP the bezel's left edge is below the button's top, at the
+            # leftmost column. A capsule (radius = height/2) does not REACH the
+            # corner at all - the shape only begins ~9pt down - while a rounded
+            # rect (radius 4) begins ~1pt down. Counting ink was useless: every
+            # bezel colour is lighter than the ink threshold, so all three
+            # measured 0 and the check passed on nothing at all.
+            def edge_depth(box):
+                x0, y0, _w, hh = box
+                back = shot.luma(int(x0) - 8, int(y0 + hh / 2))
+                for dy in range(int(hh)):
+                    if abs(shot.luma(int(x0) + 1, int(y0) + dy) - back) > 6:
+                        return dy
+                return int(hh)
+
+            pill = edge_depth(ref["BEZEL-ROUNDED"])
+            rect = edge_depth(ref["BEZEL-ROUNDRECT"])
+            mine = edge_depth((fx, fy, fw, fh))
+            self.check("the-pop-up-is-a-rounded-rect-not-a-capsule",
+                       abs(mine - rect) <= 2 and mine < pill,
+                       "the bezel's left edge should start near the top like "
+                       "the RoundRect button (%d), not far down like the "
+                       "Rounded capsule (%d); the pop-up measured %d"
+                       % (rect, pill, mine))
+
         # point the pointer at the button, then click it: the menu opens
         bx, by = pts["POPUP"]
         mon.click_at(int(bx), int(screen_h - by), settle=0.8)

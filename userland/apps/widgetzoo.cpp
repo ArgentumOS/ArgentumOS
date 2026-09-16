@@ -49,6 +49,8 @@ static LevelIndicator *relevancy = nullptr;
 static std::string lastEdit;
 static std::string lastTokens;
 static int lastPopIndex = -1;
+static Button *bezelRounded = nullptr;	/* the two style references */
+static Button *bezelRoundRect = nullptr;
 
 /* where a control's centre is, in SCREEN coordinates */
 static void
@@ -273,10 +275,14 @@ main(int argc, char **argv)
 	double y = 12;
 	double x = 16;
 
-	row(content, zoo, x, "Rounded", y, ButtonType::MomentaryPushIn,
-	    BezelStyle::Rounded); y += 34;
-	row(content, zoo, x, "RoundRect", y, ButtonType::MomentaryPushIn,
-	    BezelStyle::RoundRect); y += 34;
+	/* KEPT, because these two are the reference for every bezel question a
+	 * gate asks: the same button in the two styles IS the control group. */
+	bezelRounded = row(content, zoo, x, "Rounded", y,
+			   ButtonType::MomentaryPushIn,
+			   BezelStyle::Rounded); y += 34;
+	bezelRoundRect = row(content, zoo, x, "RoundRect", y,
+			     ButtonType::MomentaryPushIn,
+			     BezelStyle::RoundRect); y += 34;
 	row(content, zoo, x, "Square", y, ButtonType::MomentaryPushIn,
 	    BezelStyle::RegularSquare); y += 34;
 	gradBtn = row(content, zoo, x, "Gradient", y, ButtonType::MomentaryPushIn,
@@ -549,6 +555,8 @@ main(int argc, char **argv)
 			    DisplayHeight(diag, DefaultScreen(diag)));
 	}
 	logAt("SWITCH", switchBtn);
+	logAt("BEZEL-ROUNDED", bezelRounded);
+	logAt("BEZEL-ROUNDRECT", bezelRoundRect);
 	logAt("RADIO-A", radioA);
 	logAt("RADIO-B", radioB);
 	logAt("GRADIENT", gradBtn);
