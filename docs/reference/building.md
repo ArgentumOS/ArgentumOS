@@ -144,6 +144,15 @@ accident. It found three such things the first time it ran (a `#include
 <ctime>` sitting inside `namespace argentum`, and `values.cpp` calling
 `std::cos`/`std::sin`/`std::strcmp` without including `<cmath>`/`<cstring>`).
 
+And for the same reason - the host has a real, *reparenting* window manager,
+where Xfb has none - it also catches behaviour that only worked by accident.
+The first one: `Window::pumpEvent()` adopted the size from every
+`ConfigureNotify`, so under mutter a window fought its own `setFrame` and
+flickered between two geometries every frame (Xfb never showed it, because it
+sends exactly one `ConfigureNotify`, for the size the toolkit itself asked
+for). Worth remembering when a host run looks wrong: ask what the guest is
+**not** doing, not just what the host is doing differently.
+
 Once the shell is up (the tools live under `/System/Tools`, device
 names use the `@` shorthand or `/System/Devices`, scratch mounts go
 under `/Volumes`):

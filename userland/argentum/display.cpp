@@ -785,6 +785,12 @@ struct Window::Impl {
 	int level = WindowLevelNormal;	/* see WindowLevel */
 	double pxPerPt = 1.0;
 	unsigned int wPx = 0, hPx = 0;
+	/* THE SIZE WE CAME FROM. XMoveResizeWindow is asynchronous, so the
+	 * ConfigureNotify for the size we just LEFT can still be in the queue
+	 * when we ask for the new one, and a reparenting window manager adds
+	 * frame negotiation of its own. Remembering the previous size is what
+	 * lets pumpEvent tell that echo apart from a real resize. */
+	unsigned int prevW = 0, prevH = 0;
 	XImage *ximg = nullptr;
 	pixman_image_t *pimg = nullptr;
 	bool dirty = true;
@@ -999,6 +1005,9 @@ Window::open(const char *title, int xPt, int yPt, unsigned int wPt,
 	if (impl_->wPx < 1 || impl_->hPx < 1) {
 		return false;
 	}
+	/* a freshly opened window has no size behind it */
+	impl_->prevW = impl_->wPx;
+	impl_->prevH = impl_->hPx;
 	{
 		/* XCreateWindow rather than the simple form, because
 		 * override_redirect CANNOT BE CHANGED AFTER CREATION: a level above
@@ -1242,6 +1251,10 @@ Window::setFrame(const Rect &r)
 	}
 	double pp = impl_->pxPerPt;
 
+	/* remember where we were: the ConfigureNotify for this size is on its
+	 * way, and the one for the size we are LEAVING may arrive after it */
+	impl_->prevW = impl_->wPx;
+	impl_->prevH = impl_->hPx;
 	impl_->wPx = (unsigned int) (r.size.w * pp + 0.5);
 	impl_->hPx = (unsigned int) (r.size.h * pp + 0.5);
 	if (impl_->wPx < 1) {
@@ -1770,6 +1783,31 @@ Window::pumpEvent()
 		return true;
 
 	case ConfigureNotify:
+		/* A CONFIGURE EVENT IS NOT ALWAYS NEWS. XMoveResizeWindow is
+		 * asynchronous, so when the application resizes its own window the
+		 * ConfigureNotify for the size it just LEFT can still be in the
+		 * queue - and a REPARENTING WINDOW MANAGER (GNOME's mutter; Xfb has
+		 * none) adds frame negotiation of its own on top.
+		 *
+		 * Adopting every event made the window fight its own setFrame: it
+		 * resized back to the size it had just left, which generated
+		 * another event, which it adopted again - so the board flickered
+		 * between two geometries every frame (measured on the host: one
+		 * window, 830x448 and 300x460 alternating, and it never settled).
+		 * Nothing in the guest ever showed it because Xfb sends exactly one
+		 * ConfigureNotify, for the size the toolkit itself asked for.
+		 *
+		 * So two sizes are not news:
+		 *   - the size we are ALREADY at (the confirmation of our request)
+		 *   - the size we just CAME FROM (the echo of the one before it)
+		 * Anything else is somebody else's resize - a user dragging the
+		 * window's edge - and is still adopted. */
+		if ((ev.xconfigure.width == (int) impl_->wPx
+		     && ev.xconfigure.height == (int) impl_->hPx)
+		    || (ev.xconfigure.width == (int) impl_->prevW
+			&& ev.xconfigure.height == (int) impl_->prevH)) {
+			return true;
+		}
 		if (ev.xconfigure.width != (int) impl_->wPx
 		    || ev.xconfigure.height != (int) impl_->hPx) {
 			frame_.origin.x = ev.xconfigure.x;
