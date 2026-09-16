@@ -164,6 +164,22 @@ class Case(BaseCase):
                        "a pop-up left-aligns its title, so the ink should sit "
                        "left of centre in the box it is drawn in; it measured "
                        "%.2f (centred reads about 0.50)" % mine_t)
+            # AND INSET FROM THE BORDER. With no padding the first character
+            # began against the bezel. Measured directly as the GAP, which is
+            # what "too little space" means: the centroid cannot see it, since
+            # a title jammed left and one nicely inset both sit left.
+            first = -1
+            for gx in range(int(fx) + 2, int(fx + fw) - 20):
+                col = [shot.luma(gx, gy) for gy in range(int(fy) + 5,
+                                                         int(fy + fh) - 5)]
+                if min(col) < 140:
+                    first = gx - int(fx)
+                    break
+            self.check("the-pop-up-title-is-inset-from-the-border",
+                       3 <= first <= 14,
+                       "there should be a margin between the bezel and the "
+                       "first character; the title's ink starts %d pt in "
+                       "(Cocoa's content inset is about 6)" % first)
         # point the pointer at the button, then click it: the menu opens
         bx, by = pts["POPUP"]
         mon.click_at(int(bx), int(screen_h - by), settle=0.8)

@@ -547,6 +547,19 @@ ButtonCell::drawInFrame(const Rect &frame, View *inView)
 		align_ = savedCenter ? TextAlignment::Center : align_;
 		return;
 	}
+	/* THE TITLE IS INSET FROM THE BEZEL, and it goes HERE rather than beside
+	 * the text box above, because the forced-Left branch just above fires on
+	 * ANY movement of the box - a mark's shift is what it is looking for, and
+	 * an inset would have made it fire for every plain button and left-align
+	 * all of them. Nothing has shifted the box by this point but the mark
+	 * paths, which returned. The inset is symmetric, so a CENTRED title does
+	 * not move; a LEFT-aligned one - a pop-up's - gets the margin. */
+	if (drawBezel) {
+		const double kTitleInset = 6.0;
+
+		text.origin.x += kTitleInset;
+		text.size.w -= 2.0 * kTitleInset;
+	}
 	if (on && type() == ButtonType::OnOff) {
 		/* a lit look: the title in the mark colour */
 		Color saved = textColor_;
