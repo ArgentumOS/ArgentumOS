@@ -2852,9 +2852,12 @@ public:
 ///
 /// @invariants Clicking the clear button EMPTIES the field and sends the
 /// action — the same action a Return sends, so an app listens in one
-/// place. Recents, the menu and the search-menu template are not here yet
-/// (Cocoa has a whole recents mechanism); the class says so rather than
-/// looking half-wired.
+/// place. Clicking the MAGNIFIER shows the RECENT SEARCHES, which is
+/// Cocoa's search menu in its default shape: a heading, the recents
+/// newest first, a separator and a Clear item (see presentRecentsMenu()).
+/// PICKING a recent puts it back in the field AND runs the search — the
+/// field sends its own action, so an app that listens in one place hears a
+/// remembered search exactly as it hears a typed one.
 ///
 /// @see SearchFieldCell, TextField
 class SearchField : public TextField {
@@ -2869,14 +2872,20 @@ public:
 	{
 		return recentSearches_;
 	}
-	/// Set them (Cocoa's setRecentSearches:).
+	/// Set them (Cocoa's setRecentSearches:). Keeps at most
+	/// maximumRecents() of them.
 	void setRecentSearches(const std::vector<std::string> &v);
 	/// How many are kept (Cocoa's maximumRecents).
 	int maximumRecents() const { return maximumRecents_; }
-	/// Set it.
-	void setMaximumRecents(int n) { maximumRecents_ = n; }
+	/// Set it, TRIMMING the list to fit (Cocoa's setMaximumRecents:).
+	void setMaximumRecents(int n);
 	/// Record a search, newest first, keeping at most maximumRecents().
 	void addRecentSearch(const char *s);
+	/// Forget them all — what the menu's Clear item does (Cocoa's
+	/// NSSearchFieldClearRecentsMenuItemTag).
+	void clearRecentSearches();
+	/// True when there is nothing remembered.
+	bool hasRecentSearches() const { return !recentSearches_.empty(); }
 	/// Return COMMITS the search, so the commit records it (Cocoa does the
 	/// same through its search delegate).
 	bool insertNewline() override;
@@ -2888,11 +2897,15 @@ public:
 	/// The field's cell (never nullptr).
 	SearchFieldCell *searchCell() const;
 
-	/// A release INSIDE the field clears it when it landed on the clear
-	/// button (and then sends the action); anywhere else keeps the base
-	/// behaviour.
+	/// A release INSIDE the field shows the recent searches when it landed
+	/// on the magnifier; on the clear button it empties the field and sends
+	/// the action; anywhere else keeps the base behaviour.
 	void mouseUpInside(const Event &e) override;
 private:
+	/// Build and run the recents menu — Cocoa's searchMenuTemplate in its
+	/// DEFAULT shape — and act on the pick. True when it was presented.
+	bool presentRecentsMenu();
+
 	std::vector<std::string> recentSearches_;
 	int maximumRecents_ = 10;	/* Cocoa's default */
 };

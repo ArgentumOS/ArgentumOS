@@ -164,15 +164,6 @@ static const Action Zoo_ACTIONS[] = {
 			std::fflush(stdout);
 		}
 	} },
-	/* a RECENT row was picked from the search field's magnifier */
-	{ "recent", [](Object *sender) {
-		MenuItem *mi = dynamic_cast<MenuItem *>(sender);
-
-		if (mi) {
-			std::printf("ZOO-RECENT title=\"%s\"\n", mi->title());
-			std::fflush(stdout);
-		}
-	} },
 	{ "dial", [](Object *sender) {
 		Slider *s = dynamic_cast<Slider *>(sender);
 
@@ -358,8 +349,9 @@ main(int argc, char **argv)
 	 * something to clear */
 	searchField = new SearchField();
 	/* THE RECENT SEARCHES the magnifier offers: Cocoa's recentSearches, canned
-	 * so a gate can predict them. The rows the magnifier builds get the
-	 * field's target, which is the board. */
+	 * so a gate can predict them. PICKING one puts it back in the field and
+	 * sends the field's OWN action (the toolkit's rule), so the board hears
+	 * it through "search" below — the same line a typed search produces. */
 	{
 		std::vector<std::string> recents;
 
@@ -367,7 +359,6 @@ main(int argc, char **argv)
 		recents.push_back("beta");
 		recents.push_back("gamma");
 		searchField->setRecentSearches(recents);
-		searchField->setTarget(&zoo);
 	}
 
 	searchField->setFrame(Rect{ { x, y }, { 240, 26 } });

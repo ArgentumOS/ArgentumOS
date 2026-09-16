@@ -505,8 +505,39 @@ as a compatibility path for un-migrated views, with a migration list.
   was declared to return a `std::vector` by reference and had an EMPTY body —
   undefined behaviour the compiler warned about on every translation unit.
   It returns the member now.
-  **Still to do in the text family:** the search field's recents menu, and
-  token objects.
+  **THE RECENTS MENU, to Cocoa's default template. DONE (2026-09).** The
+  magnifier already opened a menu of the remembered searches, but the rows
+  were wired to the APP's target, so the menu was a display: the pick went
+  straight to the application and the field never heard about it. It is now
+  Cocoa's search menu, in the shape AppKit uses with no `searchMenuTemplate`
+  set — and that shape is the whole change:
+
+      Recent Searches          a heading, not pickable
+         alpha                 the recents, newest first
+         beta
+         gamma
+      ---------------------
+      Clear Recent Searches    forgets them
+
+  and, with nothing remembered, the single disabled row Cocoa shows instead
+  ("No Recent Searches"), so the magnifier always opens SOMETHING. The two
+  non-search rows are the tags AppKit distinguishes by
+  (`...RecentsTitleMenuItemTag`, `...ClearRecentsMenuItemTag`,
+  `...NoRecentsMenuItemTag`); being DISABLED is what makes them inert, since
+  `MenuItem::sendAction()` refuses a disabled row.
+  **PICKING a recent puts it back in the field AND RUNS the search.** Cocoa's
+  cell does the work, and so does the field here: the rows carry no action
+  and no target of their own — `Menu::popUp()` hands back the row NUMBER
+  (the same seam `PopUpButton` selects through) and `presentRecentsMenu()`
+  maps it. A remembered search therefore arrives at the application through
+  the field's own action, exactly as a typed one does.
+  `setMaximumRecents()` TRIMS the list, as Cocoa's does, and
+  `setRecentSearches()` keeps at most that many.
+  Gate `uikit_menu` 22/22 (the three new checks: the menu is 6 rows for the
+  board's three; picking the first recent logs `ZOO-SEARCH [alpha]` — the
+  field's OWN action, so the round trip is read whole; and Clear leaves the
+  one-row empty menu).
+  **Still to do in the text family:** token objects.
 - **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
@@ -706,8 +737,9 @@ the gate is the claim; the sections above record what each one settled.
   run asked mouseDown about four points and the field click came back FIELD at
   p=45,11 against bounds 0,0 170x24). Nothing remains in U4.
 - U3: the separate FIELD EDITOR is done (the window lends ONE `TextView` to
-  every field; `uikit_u3c` 10/10, `uikit_u3d` 10/10). What is left is the
-  search field's recents menu, and token *objects* (tokens are strings).
+  every field; `uikit_u3c` 10/10, `uikit_u3d` 10/10) and the RECENTS MENU is
+  Cocoa's default template (`uikit_menu` 22/22). What is left is token
+  *objects* (tokens are strings).
 - U2a's damage model was narrowed after this table was first written: the
   PAINT is still coarse (any damage repaints the whole content tree) but the
   PUSH is per-view, over MIT-SHM. The coarse half is what remains expensive,

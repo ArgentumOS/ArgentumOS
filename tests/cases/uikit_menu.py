@@ -263,29 +263,65 @@ class Case(BaseCase):
         # THE MAGNIFIER OPENS THE RECENT SEARCHES: the same round trip, driven
         # by a different control. The field is 240 wide and its centre is what
         # ZOO-AT reports, so the magnifier sits at left + pad + half its glyph.
+        #
+        # The menu is Cocoa's DEFAULT search menu, whose shape is the claim
+        # here: a heading, the recents newest first, a separator, a Clear item
+        # - six rows for the three the board remembers. Rows 0 and 4 are the
+        # heading and the separator, so the first RECENT is row 1.
         sxf, syf = pts["SEARCH"]
         mag_x = int(sxf - 120 + 6 + 7)
+
+        def open_recents(mark_at):
+            mon.click_at(mag_x, int(screen_h - syf), settle=0.8)
+            session.wait_for(r"ARGENTUM-POPUP", 15)
+            return re.search(r"ARGENTUM-POPUP x=(-?[\d.]+) y=(-?[\d.]+) "
+                             r"rowh=([\d.]+) n=(\d+)",
+                             session.output_since(mark_at))
+
         t2 = len(session.log_text())
-        mon.click_at(mag_x, int(screen_h - syf), settle=0.8)
-        session.wait_for(r"ARGENTUM-POPUP", 15)
-        at2 = re.search(r"ARGENTUM-POPUP x=(-?[\d.]+) y=(-?[\d.]+) "
-                        r"rowh=([\d.]+) n=(\d+)", session.output_since(t2))
+        at2 = open_recents(t2)
         self.check("the-magnifier-opens-the-recent-searches", at2 is not None,
                    "clicking the search field's magnifier opened no menu: no "
                    "ARGENTUM-POPUP line in that click's output. tail: %s"
                    % " | ".join(session.tail(3)))
         if at2:
             rx, ry = float(at2.group(1)), float(at2.group(2))
-            self.check("the-recents-are-the-ones-set", int(at2.group(4)) == 3,
-                       "the recents menu holds %s rows; the board set three "
-                       "(alpha, beta, gamma)" % at2.group(4))
+            rowh = float(at2.group(3))
+            self.check("the-menu-is-cocoas-default-search-menu",
+                       int(at2.group(4)) == 6,
+                       "the default search menu is a heading, the recents, a "
+                       "separator and a Clear item (6 rows for the board's "
+                       "three); this one holds %s" % at2.group(4))
+
+            # PICKING A RECENT: it goes back in the FIELD and the search RUNS.
+            # The board hears it through the field's own action, which is the
+            # line a TYPED search produces - so this reads the whole round
+            # trip, not just "a row's action arrived".
             t3 = len(session.log_text())
-            mon.click_at(int(rx + 40), int(screen_h - (ry + float(at2.group(3)) * 0.5)),
+            mon.click_at(int(rx + 40), int(screen_h - (ry + rowh * 1.5)),
                          settle=0.8)
-            session.wait_for(r"ZOO-RECENT", 15)
-            picked = [l for l in session.output_since(t3).splitlines()
-                      if l.startswith("ZOO-RECENT")]
-            self.check("a-recent-sends-its-action", 'title="alpha"' in "".join(picked),
-                       "picking the first recent should send that row's action; "
-                       "the log says %s" % picked)
+            session.wait_for(r"ZOO-SEARCH", 15)
+            ran = [l for l in session.output_since(t3).splitlines()
+                   if l.startswith("ZOO-SEARCH")]
+            self.check("picking-a-recent-puts-it-in-the-field-and-runs-it",
+                       "ZOO-SEARCH [alpha]" in "".join(ran),
+                       "picking the first recent must put it in the field and "
+                       "run the search; the log says %s" % ran)
+
+            # THE CLEAR ITEM empties the recents, so the next time the menu
+            # opens it is the single disabled row Cocoa shows instead.
+            t4 = len(session.log_text())
+            at4 = open_recents(t4)
+            if at4:
+                mon.click_at(int(float(at4.group(1)) + 40),
+                             int(screen_h - (float(at4.group(2))
+                                             + float(at4.group(3)) * 5.5)),
+                             settle=0.8)
+            t5 = len(session.log_text())
+            at5 = open_recents(t5)
+            self.check("clear-empties-the-recents",
+                       at5 is not None and int(at5.group(4)) == 1,
+                       "after Clear the menu is the one row Cocoa shows with "
+                       "nothing remembered; it holds %s rows"
+                       % (at5.group(4) if at5 else "no menu at all"))
 

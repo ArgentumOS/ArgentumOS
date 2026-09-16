@@ -1234,29 +1234,9 @@ SearchField::mouseUpInside(const Event &e)
 			    e.locationInWindow().y);
 		std::fflush(stdout);
 	}
-	/* the MAGNIFIER opens the recent searches: Cocoa's searchMenuTemplate,
-	 * presented with the pop-up machinery the menu family just gained. */
+	/* the MAGNIFIER opens the recent searches */
 	if (rectContains(c->magnifierRect(bounds()), e.locationInWindow())) {
-		Menu m;
-
-		for (size_t i = 0; i < recentSearches_.size(); i++) {
-			MenuItem *mi = m.addItem(recentSearches_[i].c_str(),
-						 "recent");
-
-			if (mi) {
-				mi->setTarget(target());
-			}
-		}
-		if (m.numberOfItems() > 0) {
-			Window *w = window();
-			Rect mrf = c->magnifierRect(bounds());
-			Rect inWin = rectInWindow(mrf);
-			double sx = (w ? w->frame().origin.x : 0) + inWin.origin.x;
-			double sy = (w ? w->frame().origin.y : 0) + inWin.origin.y
-				    + inWin.size.h;
-
-			m.popUp(Point{ sx, sy });
-		}
+		presentRecentsMenu();
 		return;
 	}
 	Rect cb = c->clearButtonRect(bounds());
@@ -1269,6 +1249,82 @@ SearchField::mouseUpInside(const Event &e)
 		setNeedsDisplay();
 		sendAction();
 	}
+}
+
+/* THE RECENTS MENU — Cocoa's searchMenuTemplate in the shape AppKit uses
+ * when no template is set. Its rows are its own; the FIELD builds them each
+ * time it opens, because the recents change under it.
+ *
+ * The two rows that are not searches, and why they are DISABLED rather than
+ * absent: Cocoa distinguishes them by tag (NSSearchFieldRecentsTitleMenuItem-
+ * Tag, ...ClearRecentsMenuItemTag, ...NoRecentsMenuItemTag) and shows or
+ * hides each as the recents come and go. A disabled row cannot be picked —
+ * MenuItem::sendAction() refuses one — so the heading and the empty-state
+ * line are inert but still tell the reader what the menu is.
+ *
+ * The PICK is the field's own: Cocoa's cell puts the chosen string back in
+ * the field and runs the search, so a remembered search behaves exactly like
+ * a typed one. That is why the rows carry no action and no target: the row
+ * NUMBER is the answer, and Menu::popUp() hands it back (the same seam
+ * PopUpButton selects through). */
+bool
+SearchField::presentRecentsMenu()
+{
+	SearchFieldCell *c = searchCell();
+
+	if (!c) {
+		return false;
+	}
+	Menu m;
+	int recentBase = -1;	/* the first row that IS a recent */
+	int clearRow = -1;	/* the Clear item's row */
+
+	if (!hasRecentSearches()) {
+		MenuItem *none = m.addItem("No Recent Searches");
+
+		if (none) {
+			none->setEnabled(false);
+		}
+	} else {
+		MenuItem *head = m.addItem("Recent Searches");
+
+		if (head) {
+			head->setEnabled(false);
+		}
+		recentBase = m.numberOfItems();
+		for (size_t i = 0; i < recentSearches_.size(); i++) {
+			m.addItem(recentSearches_[i].c_str());
+		}
+		m.addSeparator();
+		clearRow = m.numberOfItems();
+		m.addItem("Clear Recent Searches");
+	}
+	Window *w = window();
+	Rect mrf = c->magnifierRect(bounds());
+	Rect inWin = rectInWindow(mrf);
+	/* the menu hangs from the magnifier's bottom-left, in SCREEN terms */
+	double sx = (w ? w->frame().origin.x : 0) + inWin.origin.x;
+	double sy = (w ? w->frame().origin.y : 0) + inWin.origin.y + inWin.size.h;
+	int picked = m.popUp(Point{ sx, sy });
+
+	if (picked < 0) {
+		return true;		/* dismissed without a pick */
+	}
+	if (picked == clearRow) {
+		clearRecentSearches();
+		return true;
+	}
+	if (recentBase >= 0 && picked >= recentBase
+	    && picked < recentBase + (int) recentSearches_.size()) {
+		/* copy it out FIRST: the list is the thing the pick is about */
+		const std::string chosen = recentSearches_[(size_t) (picked
+								     - recentBase)];
+
+		setStringValue(chosen.c_str());
+		setNeedsDisplay();
+		sendAction();
+	}
+	return true;
 }
 
 const ObjectClass SearchField::kClass = {
@@ -1524,7 +1580,33 @@ SearchField::insertNewline()
 void
 SearchField::setRecentSearches(const std::vector<std::string> &v)
 {
-	recentSearches_ = v;
+	recentSearches_.clear();
+	/* AT MOST maximumRecents() OF THEM, newest first: the list arrives
+	 * ordered, so the TAIL is what gives */
+	for (size_t i = 0; i < v.size()
+	     && (int) recentSearches_.size() < maximumRecents_; i++) {
+		recentSearches_.push_back(v[i]);
+	}
+}
+
+void
+SearchField::setMaximumRecents(int n)
+{
+	if (n < 0) {
+		n = 0;
+	}
+	maximumRecents_ = n;
+	/* SETTING THE CEILING TRIMS, as Cocoa's does: the oldest searches are
+	 * the ones that give, and they are at the END of the list */
+	while ((int) recentSearches_.size() > maximumRecents_) {
+		recentSearches_.pop_back();
+	}
+}
+
+void
+SearchField::clearRecentSearches()
+{
+	recentSearches_.clear();
 }
 
 void
