@@ -415,10 +415,25 @@ class Case(BaseCase):
             # flag; the loop performs it and tells the panel, which takes
             # itself down. Both halves are asserted: the panel HANDLED it, and
             # its pixels left the screen.
+            # THE PANEL KEEPS ITS FRAME. Cocoa's orderFront: takes no position,
+            # so a panel is not pinned under the control that opened it - and
+            # once a person drags it, that is where it belongs. Dragging it
+            # here is what makes the reopen below DISCRIMINATING: the old
+            # behaviour would put it back under the well, ~60x48 away.
+            pwd = float(pn.group(3))
+            # LEFT and down: the panel is first placed at the screen's top
+            # right, so dragging it RIGHT pushes its close box off the edge and
+            # the close below has nothing to hit.
+            dx, dy = -60, 48
+            mon.drag(int(px_ + pwd / 2), int(screen_h - (py_ + 11)),
+                     int(px_ + pwd / 2) + dx, int(screen_h - (py_ + 11 + dy)),
+                     steps=10, settle=0.6)
+            mx, my = px_ + dx, py_ + dy
+
             before_close = session.shot("panel-before-close")
             t6 = len(session.log_text())
-            mon.click_at(int(px_ + float(pn.group(3)) - 12),
-                         int(screen_h - (py_ + 11)), settle=0.8)
+            mon.click_at(int(mx + pwd - 12), int(screen_h - (my + 11)),
+                         settle=0.8)
             closed = []
             for _ in range(30):
                 closed = [l for l in session.output_since(t6).splitlines()
@@ -450,6 +465,12 @@ class Case(BaseCase):
                 if reopened:
                     break
                 time.sleep(0.5)
-            self.check("the-palette-reopens-after-closing", bool(reopened),
-                       "the released palette should open again; the log says %s"
-                       % reopened)
+            again = re.search(r"ARGENTUM-PANEL x=(\d+) y=(\d+)", " ".join(reopened))
+            self.check("the-palette-reopens-where-it-was-left",
+                       again is not None
+                       and abs(int(again.group(1)) - mx) <= 3
+                       and abs(int(again.group(2)) - my) <= 3,
+                       "a panel keeps the frame it was dragged to: it was moved "
+                       "to (%d,%d) and should reopen there (at most 3pt out), "
+                       "not under the well at (%d,%d); the log says %s"
+                       % (mx, my, int(px_), int(py_), reopened))

@@ -1137,20 +1137,13 @@ ColorWell::mouseDown(const Event &e)
 	setActive(true);
 	/* ACTIVATE THE SHARED PANEL, as Cocoa's NSColorWell does: the panel takes
 	 * this well's target and action, so a pick reaches the same place a click
-	 * on the well would, and it drops below the well. */
+	 * on the well would. The WELL does not position it - a panel keeps its
+	 * own frame - so this is no longer a geometry computation at all. */
 	ColorPanel *p = ColorPanel::sharedColorPanel();
-	Window *w = window();
-	/* rectInWindow() sums the view chain and does NOT add the window's chrome,
-	 * so the chrome has to be added here or the panel lands one chrome too
-	 * high - which put it ON TOP of the well it belongs to. */
-	double ch = w ? w->chromeHeightPt() : 0.0;
-	Rect mine = rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
 
 	p->setTarget(target());
 	p->setAction(action());
-	p->orderFront(Point{ (w ? w->frame().origin.x : 0) + mine.origin.x,
-			     (w ? w->frame().origin.y : 0) + ch + mine.origin.y
-				     + bounds().size.h });
+	p->orderFront();
 	sendAction();
 	return true;			/* the click was ours */
 }
@@ -2121,20 +2114,34 @@ ColorPanel::setAction(const char *name)
 }
 
 void
-ColorPanel::orderFront(const Point &atScreen)
+ColorPanel::orderFront()
 {
 	if (isVisible()) {
 		refresh();
 		return;
 	}
+	double w = ColorPanelView::columns() * kSwatchCell + 4.0;
+	double h = ColorPanelView::rows() * kSwatchCell + 4.0;
+	/* NO POSITION, and the frame is KEPT - the two halves of Cocoa's
+	 * behaviour that this had wrong. A panel is not pinned under the control
+	 * that opened it; the first one goes where a utility panel belongs, near
+	 * the top right of the screen, well clear of the control. */
+	Point at = origin_;
+
+	if (!placed_) {
+		Point screen = displayScreenPt();
+
+		at = Point{ screen.x - w - 24.0, 72.0 };
+		if (at.x < 0) {
+			at.x = 0;
+		}
+	}
 	win_ = new Window();
 	/* a PANEL is floating, not a pop-up: Cocoa's NSColorPanel has a title bar
 	 * and floats above the app's ordinary windows. */
 	win_->setLevel(WindowLevelFloating);
-	double w = ColorPanelView::columns() * kSwatchCell + 4.0;
-	double h = ColorPanelView::rows() * kSwatchCell + 4.0;
 
-	if (!win_->open("Colors", (int) atScreen.x, (int) atScreen.y,
+	if (!win_->open("Colors", (int) at.x, (int) at.y,
 			(unsigned int) w, (unsigned int) h)) {
 		delete win_;
 		win_ = nullptr;
@@ -2153,7 +2160,7 @@ ColorPanel::orderFront(const Point &atScreen)
 	Application::sharedApplication()->addWindow(win_);
 	if (getenv("ARGENTUM_KEYLOG")) {
 		std::printf("ARGENTUM-PANEL x=%.0f y=%.0f %gx%g cw=%.0f ch=%.0f\n",
-			    atScreen.x, atScreen.y, w, h, w, h);
+			    at.x, at.y, w, h, w, h);
 		std::fflush(stdout);
 	}
 }
@@ -2164,8 +2171,16 @@ ColorPanel::orderOut()
 	if (!win_) {
 		return;
 	}
+	/* IT KEEPS ITS FRAME: recorded here, where it is known, so the next
+	 * orderFront() puts it back where the person left it - including a frame
+	 * they dragged it to. */
+	origin_ = win_->frame().origin;
+	placed_ = true;
 	if (getenv("ARGENTUM_KEYLOG")) {
-		std::printf("ARGENTUM-PANELCLOSE\n");
+		/* WHERE it was when it went: the frame it keeps, so a check can tell
+		 * a panel that stayed put from one that never moved. */
+		std::printf("ARGENTUM-PANELCLOSE x=%.0f y=%.0f\n",
+			    win_->frame().origin.x, win_->frame().origin.y);
 		std::fflush(stdout);
 	}
 	Application::sharedApplication()->removeWindow(win_);

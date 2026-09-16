@@ -122,6 +122,21 @@ displayPxPerPt()
 	return gPxPerPt;
 }
 
+Point
+displayScreenPt()
+{
+	double pp = displayPxPerPt();
+
+	if (pp <= 0) {
+		pp = 1.0;
+	}
+	if (!gDpy) {
+		return Point{ 1024.0 / pp, 768.0 / pp };
+	}
+	return Point{ DisplayWidth(gDpy, DefaultScreen(gDpy)) / pp,
+		      DisplayHeight(gDpy, DefaultScreen(gDpy)) / pp };
+}
+
 void
 displaySetPxPerPt(double pxPerPt)
 {

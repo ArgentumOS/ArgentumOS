@@ -1409,6 +1409,8 @@ void displayClose();
 bool displayIsOpen();
 /// The session's points-to-pixels factor.
 double displayPxPerPt();
+/// The screen's size in POINTS (Cocoa's NSScreen frame).
+Point displayScreenPt();
 /// Set it (also told to the text engine, which shapes in pixels).
 void displaySetPxPerPt(double pxPerPt);
 
@@ -3646,9 +3648,11 @@ public:
 	/// Set it.
 	void setAction(const char *name);
 
-	/// Show the panel with its top-left at a screen point (Cocoa's
-	/// orderFront:).
-	void orderFront(const Point &atScreen);
+	/// Show the panel (Cocoa's orderFront:). It TAKES NO POSITION: a panel
+	/// keeps the frame it has and is not pinned to the control that opened
+	/// it. The first one is placed near the screen's top right; after that it
+	/// stays wherever it is, including a frame the person dragged it to.
+	void orderFront();
 	/// Take it down (Cocoa's orderOut:).
 	void orderOut();
 	/// True while it is up.
@@ -3661,6 +3665,8 @@ private:
 	ColorPanel();
 
 	Color color_ = Color::rgb(0.30, 0.55, 0.90);
+	bool placed_ = false;	/* has it been shown, and so kept a frame? */
+	Point origin_ = { 0, 0 };	/* the frame it keeps */
 	Object *target_ = nullptr;
 	std::string action_;
 	Window *win_ = nullptr;
