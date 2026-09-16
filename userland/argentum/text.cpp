@@ -109,6 +109,10 @@ struct TextRun {
 
 	/* run geometry: total 26.6 advance + FreeType size metrics */
 	long adv26 = 0;
+	/* the PIXEL SIZE this run was shaped at: one face serves every size now
+	 * (see textLookupFace), so a run must carry its own, or drawing it back
+	 * would rasterize glyphs at whatever size the face was left at */
+	unsigned int px = 0;
 	int ascPx = 0;		/* ascent, px above the baseline */
 	int descPx = 0;		/* descent, px below the baseline */
 
@@ -200,10 +204,24 @@ textLookupFace(const char *family, unsigned int px, FT_Library lib,
 	int i;
 
 	*firstResolve = false;
+	/* THE CACHE IS KEYED BY STYLE, NOT BY SIZE, and that is what keeps the
+	 * number of OPEN FILES down. A face per size is a FILE OPEN per size,
+	 * and the guest allows one file to be open only TWICE (measured with
+	 * userland/tests/font_twice.cpp: a third FT_New_Face on the same file
+	 * returns FT error 2, which FreeType reports as "not a font at all" for
+	 * what is really a failed READ). The toolkit already holds fontconfig's
+	 * handles, so its SECOND size was the third open - every size but the
+	 * first was invisible in the guest, and the font got the blame.
+	 *
+	 * One face per style is the standard arrangement regardless: the SIZE is
+	 * set per use (FT_Set_Pixel_Sizes, below), and a face of a 760KB font
+	 * costs megabytes of tables that a size no longer multiplies. */
 	for (i = 0; i < g_faceCount; i++) {
-		if (g_faceCache[i].px == px &&
-		    g_faceCache[i].bold == bold &&
+		if (g_faceCache[i].bold == bold &&
 		    std::strcmp(g_faceCache[i].family, family) == 0) {
+			/* the size this face was last used at, for the failure
+			 * diagnostic's "cache[N]" listing */
+			g_faceCache[i].px = px;
 			if (matchRef) {
 				*matchRef = g_faceCache[i].match;
 			}
@@ -393,6 +411,12 @@ compose_glyph_mask(unsigned char *cov, int boxW, int boxH,
  * is well under a megabyte. */
 struct GlyphEntry {
 	FT_Face face = nullptr;
+	/* THE SIZE IT WAS RASTERIZED AT. One face is shared between every size
+	 * now (see textLookupFace): a face per size meant a FILE OPEN per size,
+	 * and the guest allows only two concurrent opens of one file. A glyph
+	 * BITMAP, unlike the metrics, is size-dependent — so the key has to say
+	 * which size, or a 12px bitmap would be served for a 13px request. */
+	unsigned int px = 0;
 	unsigned int glyph = 0;
 	FT_Bitmap bm = {};		/* buffer owned by the entry */
 	int left = 0;
@@ -428,18 +452,27 @@ glyphCacheDropFace(FT_Face face)
  * owns the buffer) or null on failure, with the glyph's bitmap offset
  * in the FreeType metric convention stored in left and top. */
 static const FT_Bitmap *
-glyphBitmap(FT_Face face, unsigned int glyph, int *left, int *top)
+glyphBitmap(FT_Face face, unsigned int px, unsigned int glyph, int *left,
+	    int *top)
 {
 	int i;
 
 	for (i = 0; i < g_glyphCount; i++) {
 		if (g_glyphCache[i].face == face &&
+		    g_glyphCache[i].px == px &&
 		    g_glyphCache[i].glyph == glyph) {
 			*left = g_glyphCache[i].left;
 			*top = g_glyphCache[i].top;
 			return &g_glyphCache[i].bm;
 		}
 	}
+	/* THE SIZE GOES WITH THE GLYPH REQUEST. One face is shared between
+	 * sizes now, so at a MISS the face may be sitting at the size its LAST
+	 * user set - and a run drawn from the run cache does not shape again,
+	 * so nobody else would set it. Rasterize at the size the caller asked
+	 * for, or this stores a bitmap under a key that names a size the face
+	 * was never at. */
+	FT_Set_Pixel_Sizes(face, 0, px);
 	if (FT_Load_Glyph(face, glyph, FT_LOAD_RENDER)) {
 		return nullptr;
 	}
@@ -460,6 +493,7 @@ glyphBitmap(FT_Face face, unsigned int glyph, int *left, int *top)
 	FT_Bitmap &bm = e.bm;
 
 	e.face = face;
+	e.px = px;
 	e.glyph = glyph;
 	e.left = s->bitmap_left;
 	e.top = s->bitmap_top;
@@ -494,7 +528,7 @@ render_glyphs(TextRun *t, Sink sink)
 		pen26 += t->pos[i].x_advance;
 		int left = 0;
 		int top = 0;
-		const FT_Bitmap *bm = glyphBitmap(t->face,
+		const FT_Bitmap *bm = glyphBitmap(t->face, t->px,
 						 t->info[i].codepoint,
 						 &left, &top);
 
@@ -620,6 +654,7 @@ textRunPrepare(const char *family, const char *utf8, unsigned int pixelSize,
 		}
 	}
 	t->face = face;		/* borrowed from the cache */
+	t->px = pixelSize;
 	FT_Set_Pixel_Sizes(t->face, 0, pixelSize);
 
 	/* 3) HarfBuzz shapes the run (glyph order + 26.6 advances) */
