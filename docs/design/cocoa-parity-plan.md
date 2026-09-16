@@ -30,21 +30,34 @@ Faithful, in this plan, means four things — and NOT "identical source":
 
 From `userland/argentum/argentum.h`:
 
-**Core**: `View`, `Control`, `Window`, `Application`, `GraphicsContext`,
-`Theme`, `BitmapImage`, `Menu`/`MenuItem`/`MenuTrack`,
-`KeyEvent`/`MouseEvent`, `Point`/`Size`/`Rect`/`TextMetrics`.
+**Core**: `Object` (+ `Notification`/`NotificationCenter`), `View`,
+`Responder`, `Control`, `Window`, `Application`, `Context`, `Event`,
+`Cell`/`ActionCell`, `ViewController`, `Theme`, and the Auto Layout layer
+(`LayoutConstraint`/`LayoutAnchor`/`LayoutDimension` + the solver in
+`layout.cpp`).
 
-**Views/containers**: `Box` (row/column), `ScrollView` (+`ScrollBar`),
-`SplitView`, `TabView`/`TabViewItem`, `ImageView`, `Label`.
+**Text**: `AttributedString`, `TextStorage`, `TextContainer`,
+`LayoutManager` (U3a).
 
-**Controls**: `Button`, `TextField` (+secure), `TextView`, `Slider`,
-`Stepper`, `SegmentedControl`, `ComboBox`, `PopUpButton`,
-`ProgressIndicator`, `LevelIndicator`, `TableView`
-(+`TableViewDataSource`/`TableViewDelegate`), `OutlineView`.
+**Views (leaves)**: `Button` (+`Cell`), `TextField` (+`Cell`, and `label()`
+is the factory for the label case — there is deliberately no `Label` class),
+`SearchField` (+`Cell`), `TokenField` (+`Cell`), `TextView`, `Slider`
+(+`Cell`), `Stepper` (+`Cell`), `ProgressIndicator`, `LevelIndicator`,
+`ColorWell`, `DatePicker`, `PopUpButton`, `Menu`/`MenuItem`/`MenuView`,
+`ColorPanel`.
 
-That is **20 of the ~60** AppKit view/control classes, and it is missing
-every *base* class that makes the rest faithful (`NSCell`, the text
-system, the controllers).
+**Containers: NONE.** This inventory used to list `Box`, `ScrollView`,
+`SplitView`, `TabView`, `ImageView` and `Label` — that was the toolkit
+BEFORE the restart, and after it the container layer was never rebuilt. U5
+is therefore a BUILD, not the "fidelity passes" its own milestone text
+still says, and U6 builds `TableView`/`OutlineView` from nothing as well.
+`TextView` scroll-follows itself; nothing else can scroll, stack, split or
+tab yet — which is why the widget zoo still positions every control by hand
+with `x`/`y` cursors.
+
+The base classes the rest of the plan needs are no longer missing: `NSCell`
+is `Cell`/`ActionCell` (U1c) and the text system is `TextStorage` →
+`LayoutManager` → `TextContainer` (U3a).
 
 ## 3. Inventory — the target
 
