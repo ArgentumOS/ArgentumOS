@@ -1541,6 +1541,70 @@ Window::performClose()
 	hide();			/* nobody is listening: take it off the screen */
 }
 
+TextView *
+Window::fieldEditor()
+{
+	if (!fieldEditor_) {
+		fieldEditor_ = new TextView();
+		fieldEditor_->setEditable(true);
+		fieldEditor_->setHidden(true);
+		if (content_) {
+			content_->addSubview(fieldEditor_);
+		}
+	}
+	return fieldEditor_;
+}
+
+bool
+Window::beginEditing(Control *c)
+{
+	if (!c || !c->cell() || !content_) {
+		return false;
+	}
+	TextView *ed = fieldEditor();
+	Cell *cell = c->cell();
+	const char *v = cell->stringValue();
+
+	editingControl_ = c;
+	ed->setEditingOwner(c);
+	ed->setString(v ? v : "");
+	ed->setInsertionPoint((int) std::strlen(v ? v : ""));
+	/* OVER THE CONTROL, in the CONTENT view's coordinates. rectInWindow()
+	 * sums the view chain, so a nested control lands correctly without the
+	 * editor having to become a child of that control's own superview. */
+	ed->setFrame(c->rectInWindow(Rect{ { 0, 0 }, c->bounds().size }));
+	ed->setHidden(false);
+	ed->setEditing(true);
+	makeFirstResponder(ed);
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+Window::endEditing(bool commit)
+{
+	if (!editingControl_) {
+		return false;
+	}
+	Control *c = editingControl_;
+
+	editingControl_ = nullptr;
+	if (fieldEditor_) {
+		if (commit && c->cell()) {
+			c->cell()->setStringValue(fieldEditor_->string());
+		}
+		fieldEditor_->setEditing(false);
+		fieldEditor_->setHidden(true);
+		fieldEditor_->setEditingOwner(nullptr);
+	}
+	makeFirstResponder(c);
+	c->setNeedsDisplay();
+	if (commit) {
+		c->sendAction();
+	}
+	return true;
+}
+
 bool
 Window::inChrome(const Point &p) const
 {

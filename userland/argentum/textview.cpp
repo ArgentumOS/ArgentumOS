@@ -105,6 +105,151 @@ TextView::setBreakMode(LineBreakMode m)
 	setNeedsDisplay();
 }
 
+/* ---- editing: this view IS the field editor ------------------------- *
+ * The operations work on the view's own text storage and keep the insertion
+ * point on a CHARACTER boundary, stepping with the same UTF-8 helpers the
+ * cell used - so a backspace on a multi-byte character removes the whole
+ * character, not a byte of it.
+ */
+void
+TextView::setInsertionPoint(int index)
+{
+	int len = storage_ ? storage_->length() : 0;
+
+	if (index < 0) {
+		index = 0;
+	}
+	if (index > len) {
+		index = len;
+	}
+	caret_ = index;
+}
+
+bool
+TextView::insertText(const char *text)
+{
+	if (!storage_ || !text || !text[0]) {
+		return false;
+	}
+	storage_->insertString(caret_, text);
+	caret_ += (int) std::strlen(text);
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextView::deleteBackward()
+{
+	if (!storage_ || caret_ <= 0) {
+		return false;
+	}
+	const char *s = storage_->string();
+	int start = prevCharStart(s, (unsigned) caret_);
+
+	if (start < 0) {
+		start = 0;
+	}
+	storage_->deleteCharacters(start, caret_ - start);
+	caret_ = start;
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextView::deleteForward()
+{
+	if (!storage_ || caret_ >= storage_->length()) {
+		return false;
+	}
+	const char *s = storage_->string();
+	int end = nextCharEnd(s, (unsigned) caret_);
+
+	if (end <= caret_) {
+		return false;
+	}
+	storage_->deleteCharacters(caret_, end - caret_);
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextView::moveLeft(const Event &)
+{
+	if (!storage_ || caret_ <= 0) {
+		return false;
+	}
+	int at = prevCharStart(storage_->string(), (unsigned) caret_);
+
+	caret_ = at < 0 ? 0 : at;
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextView::moveRight(const Event &)
+{
+	if (!storage_) {
+		return false;
+	}
+	int end = nextCharEnd(storage_->string(), (unsigned) caret_);
+
+	if (end > caret_ && end <= storage_->length()) {
+		caret_ = end;
+		setNeedsDisplay();
+		return true;
+	}
+	return false;
+}
+
+bool
+TextView::moveToBeginningOfLine()
+{
+	if (caret_ == 0) {
+		return false;
+	}
+	caret_ = 0;
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextView::moveToEndOfLine()
+{
+	int len = storage_ ? storage_->length() : 0;
+
+	if (caret_ == len) {
+		return false;
+	}
+	caret_ = len;
+	setNeedsDisplay();
+	return true;
+}
+
+bool
+TextView::insertNewline()
+{
+	/* RETURN COMMITS. An editor does not OWN the value it edits, so it hands
+	 * the edit back to the control it is editing - Cocoa's delegate path, and
+	 * the reason the field editor can be shared by every field. */
+	if (owner_) {
+		if (Window *w = window()) {
+			return w->endEditing(true);
+		}
+	}
+	return false;
+}
+
+bool
+TextView::cancelOperation()
+{
+	if (owner_) {
+		if (Window *w = window()) {
+			return w->endEditing(false);
+		}
+	}
+	return false;
+}
+
 void
 TextView::drawRect(const Rect &dirty)
 {
@@ -122,6 +267,25 @@ TextView::drawRect(const Rect &dirty)
 	}
 	layout_->drawInContext(*ctx, Point{ b.origin.x + inset_,
 					    b.origin.y + inset_ });
+	if (editing_) {
+		/* THE INSERTION POINT, where the next character lands: its x comes
+		 * from measuring the text BEFORE the caret, with the same layout that
+		 * just drew it, so the hairline sits in the gap it belongs in. */
+		const char *s = storage_ ? storage_->string() : "";
+		double x = 0;
+
+		for (int at = 0; at < caret_ && s[at]; ) {
+			int next = nextCharEnd(s, (unsigned) at);
+
+			if (next <= at || next > caret_) {
+				next = caret_;
+			}
+			x += layout_->textWidthOf(at, next - at);
+			at = next;
+		}
+		ctx->fillRect(Rect{ { b.origin.x + inset_ + x, b.origin.y + 3.0 },
+				    { 1.0, b.size.h - 6.0 } }, caretColor_);
+	}
 }
 
 static const Property TextView_PROPS[] = {

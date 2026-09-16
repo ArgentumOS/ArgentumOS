@@ -1073,6 +1073,9 @@ enum class BezelStyle {
 	/// A bezel filled with a vertical gradient.
 	Gradient,
 };
+
+class Control;		/* the window's field editor edits one */
+class TextView;		/* and it IS a text view (Cocoa's field editor is) */
 /// A key event, delivered to the window's FIRST RESPONDER. Cocoa hands
 /// views an NSEvent; this is the part a control needs.
 
@@ -1326,6 +1329,20 @@ public:
 	/// does, and the only keyboard navigation there is.
 	bool advanceFirstResponder(bool backwards);
 
+	/// The window's ONE field editor, created on first use (Cocoa's
+	/// -fieldEditor:forObject:). A window lends this view out while a control
+	/// is being edited and takes it back when the edit ends.
+	TextView *fieldEditor();
+
+	/// Put the field editor over `c` and give it the keyboard (Cocoa's
+	/// -[NSCell editWithFrame:inView:editor:delegate:event:]).
+	bool beginEditing(Control *c);
+	/// End the edit: commit the text back to the control, or drop it.
+	/// Answers whether an edit was in progress.
+	bool endEditing(bool commit);
+	/// The control being edited, or null.
+	Control *editingControl() const { return editingControl_; }
+
 	/// Ask the window to close itself: the next pumpEvent() closes it.
 	void requestClose();
 	/// True once a close has been asked for (or the close box was hit).
@@ -1377,6 +1394,8 @@ private:
 	View *pressView_ = nullptr;	/* U2b: the view holding the press */
 	View *hoverView_ = nullptr;	/* U2b: the view under the pointer */
 	View *firstResponder_ = nullptr;	/* U3c: the key target */
+	TextView *fieldEditor_ = nullptr;	/* owned, created on first use */
+	Control *editingControl_ = nullptr;	/* whose cell is being edited */
 	bool dragging_ = false;		/* U2b: the chrome is being dragged */
 	bool closeRequested_ = false;	/* U2b: the close box was hit */
 	Object *closeTarget_ = nullptr;	/* who is told when we close */
@@ -2453,10 +2472,60 @@ public:
 	/// Record the intent (no selection yet).
 	void setSelectable(bool on) { selectable_ = on; }
 
+	/* ---- editing (the FIELD EDITOR) -------------------------------- *
+	 * Cocoa's field editor IS an NSTextView, so the editing lives here and
+	 * a window lends the view out while a control is being edited.         */
+
+	/// The insertion point, as a BYTE OFFSET. Every operation below steps by
+	/// whole characters, so a backspace on a multi-byte character removes the
+	/// character and not a byte of it.
+	int insertionPoint() const { return caret_; }
+	/// Put it at `index`, clamped to the string.
+	void setInsertionPoint(int index);
+
+	/// True while this view is editing, and so painting an insertion point.
+	bool isEditing() const { return editing_; }
+	/// Set it.
+	void setEditing(bool on) { editing_ = on; }
+	/// The insertion point's colour.
+	Color caretColor() const { return caretColor_; }
+	/// Set it.
+	void setCaretColor(const Color &c) { caretColor_ = c; }
+
+	/// The control being edited, or null - the editor's DELEGATE, which is
+	/// how it hands the edit back instead of owning the value.
+	View *editingOwner() const { return owner_; }
+	/// Set it.
+	void setEditingOwner(View *o) { owner_ = o; }
+
+	/// Insert `text` at the insertion point (Cocoa's command).
+	bool insertText(const char *text) override;
+	/// Delete the character before it.
+	bool deleteBackward() override;
+	/// Delete the character after it.
+	bool deleteForward() override;
+	/// Move it one character left.
+	bool moveLeft(const Event &e) override;
+	/// Move it one character right.
+	bool moveRight(const Event &e) override;
+	/// Put it at the start of the line.
+	bool moveToBeginningOfLine() override;
+	/// Put it at its end.
+	bool moveToEndOfLine() override;
+	/// Return COMMITS: the edit goes back to the owner (Cocoa's text view
+	/// asks its delegate, and the delegate ends the edit).
+	bool insertNewline() override;
+	/// Escape CANCELS it, again through the owner.
+	bool cancelOperation() override;
+
 protected:
 	TextStorage *storage_ = nullptr;
 	TextContainer *container_ = nullptr;
 	LayoutManager *layout_ = nullptr;
+	int caret_ = 0;		/* the insertion point, a byte offset */
+	bool editing_ = false;	/* painting the insertion point */
+	Color caretColor_ = Color::rgb(0.15, 0.15, 0.20);
+	View *owner_ = nullptr;	/* the control being edited, if any */
 	double inset_ = 4.0;
 	bool editable_ = false;
 	bool selectable_ = false;
