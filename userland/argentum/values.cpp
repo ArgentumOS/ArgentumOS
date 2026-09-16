@@ -1469,6 +1469,18 @@ appPumpPass(std::vector<Window *> &wins)
 			any = true;
 		}
 	}
+	/* A CLOSE BOX HAS TO CLOSE SOMETHING, and the loop is the only place that
+	 * can. It walks a COPY, because an owner that handles the close REMOVES
+	 * its window from the list - mutating what we are iterating. */
+	{
+		std::vector<Window *> closing = wins;
+
+		for (size_t i = 0; i < closing.size(); i++) {
+			if (closing[i]->isCloseRequested()) {
+				closing[i]->performClose();
+			}
+		}
+	}
 	if (!any) {
 		usleep(kAppIdleUs);
 	}
@@ -2128,6 +2140,10 @@ ColorPanel::orderFront(const Point &atScreen)
 		win_ = nullptr;
 		return;
 	}
+	/* THE CLOSE BOX BELONGS TO THE PANEL: it is told, and it takes itself
+	 * down. Without this the box only sets a flag that nothing reads. */
+	win_->setCloseTarget(this);
+	win_->setCloseAction("close");
 	view_ = new ColorPanelView(this);
 	view_->setFrame(Rect{ { 0, 0 }, { w, h } });
 	View *content = new View();
@@ -2148,6 +2164,10 @@ ColorPanel::orderOut()
 	if (!win_) {
 		return;
 	}
+	if (getenv("ARGENTUM_KEYLOG")) {
+		std::printf("ARGENTUM-PANELCLOSE\n");
+		std::fflush(stdout);
+	}
 	Application::sharedApplication()->removeWindow(win_);
 	delete win_;			/* owns its content view */
 	win_ = nullptr;
@@ -2162,8 +2182,18 @@ ColorPanel::refresh()
 	}
 }
 
+static const Action ColorPanel_ACTIONS[] = {
+	{ "close", [](Object *) {
+		/* the palette's own close box: take it down AND release it, which
+		 * is what keeps isVisible() honest - a hidden window that is still
+		 * held would make the next orderFront() a no-op */
+		ColorPanel::sharedColorPanel()->orderOut();
+	} },
+};
+
 const ObjectClass ColorPanel::kClass = {
-	"ColorPanel", &Object::kClass, nullptr, 0, nullptr, 0
+	"ColorPanel", &Object::kClass, nullptr, 0, ColorPanel_ACTIONS,
+	(int) (sizeof(ColorPanel_ACTIONS) / sizeof(ColorPanel_ACTIONS[0]))
 };
 
 } /* namespace argentum */

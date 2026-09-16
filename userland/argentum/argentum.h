@@ -1331,6 +1331,23 @@ public:
 	/// True once a close has been asked for (or the close box was hit).
 	bool isCloseRequested() const { return closeRequested_; }
 
+	/// Where the close box's action goes - the window's OWNER, which has to
+	/// release the window (Cocoa's delegate's windowWillClose:).
+	Object *closeTarget() const { return closeTarget_; }
+	/// Set it.
+	void setCloseTarget(Object *o) { closeTarget_ = o; }
+	/// The action's name.
+	const char *closeAction() const { return closeAction_.c_str(); }
+	/// Set it.
+	void setCloseAction(const char *name) { closeAction_ = name ? name : ""; }
+
+	/// Perform the close the close box asked for (Cocoa's -performClose:):
+	/// send the owner the close action, or just hide when there is no owner.
+	/// A CLOSE BOX THAT CLOSES NOTHING IS THE BUG THIS EXISTS FOR: the box
+	/// only SETS a flag, and only a modal session or the app read it, so a
+	/// panel whose owner never polled could not be closed at all.
+	void performClose();
+
 	/// Run the draw pass if anything is dirty, then present the damage.
 	void displayIfNeeded();
 	/// Present what has been drawn (no draw pass).
@@ -1362,6 +1379,8 @@ private:
 	View *firstResponder_ = nullptr;	/* U3c: the key target */
 	bool dragging_ = false;		/* U2b: the chrome is being dragged */
 	bool closeRequested_ = false;	/* U2b: the close box was hit */
+	Object *closeTarget_ = nullptr;	/* who is told when we close */
+	std::string closeAction_;	/* and by what name */
 	double dragRootX_ = 0, dragRootY_ = 0;	/* U2b: root point at press */
 	double dragWinX_ = 0, dragWinY_ = 0;	/* U2b: the frame's origin then */
 

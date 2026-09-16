@@ -409,3 +409,47 @@ class Case(BaseCase):
                 time.sleep(0.5)
             self.check("a-swatch-pick-reaches-the-well", bool(picked5),
                        "picking a swatch in the panel sent nothing: %s" % picked5)
+
+            # AND THE PALETTE CAN BE CLOSED. Its close box is at the TOP-RIGHT
+            # of the chrome (closeBoxRect: wPt - bs - 6). The box only SETS a
+            # flag; the loop performs it and tells the panel, which takes
+            # itself down. Both halves are asserted: the panel HANDLED it, and
+            # its pixels left the screen.
+            before_close = session.shot("panel-before-close")
+            t6 = len(session.log_text())
+            mon.click_at(int(px_ + float(pn.group(3)) - 12),
+                         int(screen_h - (py_ + 11)), settle=0.8)
+            closed = []
+            for _ in range(30):
+                closed = [l for l in session.output_since(t6).splitlines()
+                          if l.startswith("ARGENTUM-PANELCLOSE")]
+                if closed:
+                    break
+                time.sleep(0.5)
+            self.check("the-palette-handles-its-close-box", bool(closed),
+                       "clicking the palette's close box should take it down; "
+                       "the log says %s" % closed)
+            after_close = session.shot("panel-after-close")
+            gone = before_close.diff_box(after_close,
+                                         (int(px_), int(py_),
+                                          int(px_ + float(pn.group(3))),
+                                          int(py_ + float(pn.group(4)))))
+            self.check("the-palette-is-gone-from-the-screen", gone > 100,
+                       "the palette's area should return to the board behind "
+                       "it; only %d pixels changed" % gone)
+
+            # AND IT COMES BACK. The panel RELEASES its window on close, so a
+            # fresh orderFront() is not a no-op against a stale one - which is
+            # what "hidden but still held" would look like.
+            t7 = len(session.log_text())
+            mon.click_at(int(wx), int(screen_h - wy), settle=0.8)
+            reopened = []
+            for _ in range(30):
+                reopened = [l for l in session.output_since(t7).splitlines()
+                            if l.startswith("ARGENTUM-PANEL ")]
+                if reopened:
+                    break
+                time.sleep(0.5)
+            self.check("the-palette-reopens-after-closing", bool(reopened),
+                       "the released palette should open again; the log says %s"
+                       % reopened)

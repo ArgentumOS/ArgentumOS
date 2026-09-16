@@ -1511,6 +1511,21 @@ Window::closeBoxRect() const
 	return Rect{ { wPt - bs - 6.0, (ch - bs) * 0.5 }, { bs, bs } };
 }
 
+void
+Window::performClose()
+{
+	/* THE FLAG IS NOT CLEARED. An owner that POLLS isCloseRequested() - the
+	 * modal session, an app's own loop - must still see the request after
+	 * this pass has acted on it; clearing it here silently ate the signal. */
+	if (closeTarget_ && !closeAction_.empty()
+	    && closeTarget_->sendAction(closeAction_.c_str(), this)) {
+		/* the OWNER took it: it hides us, or destroys us - either way this
+		 * is our last act, so touch nothing but the return */
+		return;
+	}
+	hide();			/* nobody is listening: take it off the screen */
+}
+
 bool
 Window::inChrome(const Point &p) const
 {
