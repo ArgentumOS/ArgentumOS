@@ -1702,10 +1702,30 @@ MenuView::mouseDown(const Event &e)
 	if (!it || !it->isEnabled()) {
 		return false;		/* a separator or a disabled row: nothing */
 	}
+	picked_ = i;
 	/* Cocoa's rule: picking a row SENDS ITS ACTION */
 	it->sendAction();
 	/* and the pop-up ends: the menu was presented modally */
 	Application::sharedApplication()->stopModal();
+	return true;
+}
+
+bool
+MenuView::mouseMoved(const Event &e)
+{
+	int i = itemIndexAt(e.locationInWindow());
+
+	if (getenv("ARGENTUM_MOTIONLOG")) {
+		/* a MISSING line means the motion never reached this view at all */
+		std::printf("ARGENTUM-MENUMOVE p=%.0f,%.0f idx=%d\n",
+			    e.locationInWindow().x, e.locationInWindow().y, i);
+		std::fflush(stdout);
+	}
+	if (i == hoverIndex_) {
+		return true;
+	}
+	hoverIndex_ = i;
+	setNeedsDisplay();
 	return true;
 }
 
@@ -1739,6 +1759,15 @@ MenuView::drawRect(const Rect &dirty)
 				      Color::rgb(0.80, 0.80, 0.84));
 			continue;
 		}
+		if (i == hoverIndex_ && it->isEnabled()) {
+			/* THE ROW UNDER THE POINTER IS THE ROW A CLICK WOULD TAKE, so
+			 * it is drawn as chosen. Cocoa's menu follows the mouse. */
+			ctx->fillRoundRect(Rect{ { b.origin.x + 2.0, y },
+						 { b.size.w - 4.0,
+						   kMenuItemH } },
+					   3.0,
+					   Color::rgb(0.20, 0.45, 0.85));
+		}
 		if (it->state() == ControlState::On) {
 			/* the check mark, in the gutter the width reserved */
 			Point c[3] = { { b.origin.x + 8.0, y + kMenuItemH / 2.0 },
@@ -1751,8 +1780,12 @@ MenuView::drawRect(const Rect &dirty)
 			      Point{ b.origin.x + 3.0 * kMenuPad + 8.0,
 				     y + kMenuItemH / 2.0 - 7.0 },
 			      it->title(),
-			      it->isEnabled() ? Color::rgb(0.10, 0.10, 0.13)
-					      : Color::rgb(0.60, 0.60, 0.64));
+			      !it->isEnabled()
+				      ? Color::rgb(0.60, 0.60, 0.64)
+				      : (i == hoverIndex_
+						 ? Color::rgb(1.0, 1.0, 1.0)
+						 : Color::rgb(0.10, 0.10,
+							      0.13)));
 	}
 }
 
@@ -1760,7 +1793,7 @@ const ObjectClass MenuView::kClass = {
 	"MenuView", &View::kClass, nullptr, 0, nullptr, 0
 };
 
-void
+int
 Menu::popUp(const Point &atScreen)
 {
 	Window w;
@@ -1788,7 +1821,7 @@ Menu::popUp(const Point &atScreen)
 
 	if (!w.open("Menu", (int) atScreen.x, (int) atScreen.y,
 		    (unsigned int) width, (unsigned int) height)) {
-		return;
+		return -1;
 	}
 	MenuView *mv = new MenuView(this);
 	View *content = new View();	/* the window needs one: Cocoa's always
@@ -1804,6 +1837,8 @@ Menu::popUp(const Point &atScreen)
 	app->addWindow(&w);
 	app->runModal(&w);
 	app->removeWindow(&w);
+	/* the pick travels back, so a pop-up button can SELECT what was chosen */
+	return mv->pickedIndex();
 }
 
 
@@ -1875,12 +1910,49 @@ PopUpButton::mouseDown(const Event &e)
 	double sy = (w ? w->frame().origin.y : 0) + mine.origin.y
 		    + bounds().size.h;
 
-	/* the row that is picked sends ITS action; the app chooses what to do,
-	 * including selecting it here (Cocoa's button selects on its own, which
-	 * needs an item-to-button binding this toolkit does not have yet) */
-	menu_->popUp(Point{ sx, sy });
+	/* COCOA'S BUTTON SELECTS WHAT WAS PICKED and shows it. The row still sends
+	 * its own action so the app can act on the pick, but the SELECTION belongs
+	 * to the button - without this the title it draws never changes, which is
+	 * what "it stays on Small" was. */
+	int picked = menu_->popUp(Point{ sx, sy });
+
+	if (picked >= 0) {
+		selectItemAtIndex(picked);
+	}
 	setNeedsDisplay();
 	return true;
+}
+
+void
+PopUpButton::drawRect(const Rect &dirty)
+{
+	Button::drawRect(dirty);
+
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	Rect b = bounds();
+	/* A POP-UP IS NOT AN ORDINARY BUTTON, and Cocoa draws the difference: a
+	 * segment is carved off the right and an up/down chevron sits in it. With
+	 * nothing there, nothing says the control opens anything. */
+	double seg = 18.0;
+	double dx = b.origin.x + b.size.w - seg;
+	double cx = dx + seg / 2.0;
+	double cy = b.origin.y + b.size.h / 2.0;
+	Color ink = Color::rgb(0.20, 0.20, 0.24);
+
+	ctx->fillRect(Rect{ { dx, b.origin.y + 3.0 },
+			    { 1.0, b.size.h - 6.0 } },
+		      Color::rgb(0.72, 0.72, 0.76));	/* the divider */
+	Point up[3] = { { cx - 4.0, cy - 1.0 }, { cx + 4.0, cy - 1.0 },
+			{ cx, cy - 6.0 } };
+	Point down[3] = { { cx - 4.0, cy + 1.0 }, { cx + 4.0, cy + 1.0 },
+			  { cx, cy + 6.0 } };
+
+	ctx->fillPolygon(up, 3, ink);
+	ctx->fillPolygon(down, 3, ink);
 }
 
 const ObjectClass PopUpButton::kClass = {

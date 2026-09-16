@@ -1677,6 +1677,10 @@ public:
 	virtual bool mouseDown(const Event &e);
 	/// A drag while tracking. Same contract.
 	virtual bool mouseDragged(const Event &e);
+	/// The pointer moved over this view with no button down (Cocoa's
+	/// mouseMoved:). Answers whether the view handled it; the default does
+	/// not, as NSResponder forwards to the next responder.
+	virtual bool mouseMoved(const Event &e);
 	/// The release that ends a press. Same contract.
 	virtual bool mouseUp(const Event &e);
 	/// True while this view is waiting for the button to come up.
@@ -3689,6 +3693,11 @@ public:
 	/// false when no row has that title.
 	bool selectItemWithTitle(const char *title);
 
+	/// Draw the button, and its POP-UP AFFORDANCE: Cocoa's pop-up button
+	/// carves a segment off its right and puts an up/down chevron there,
+	/// which is the only thing that says the control opens a menu.
+	void drawRect(const Rect &dirty) override;
+
 	/// True when the FIRST row is the button's own title rather than a row to
 	/// pick (Cocoa's pullsDown).
 	bool pullsDown() const { return pullsDown_; }
@@ -3744,16 +3753,26 @@ public:
 	/// The index of the row at `p` (in this view's space), or -1.
 	int itemIndexAt(const Point &p) const;
 
+	/// The row the pointer is over, or -1 (see mouseMoved:).
+	int hoveredIndex() const { return hoverIndex_; }
+	/// The row the last pick chose, or -1; read once the pop-up ends.
+	int pickedIndex() const { return picked_; }
+
 	/// A click sends the picked row's action and ends the pop-up.
 	///
 	/// It takes a Event because that is still this toolkit's mouse
 	/// substrate: the key path was migrated to Event, the mouse path has not.
 	bool mouseDown(const Event &e) override;
+	/// The pointer moved: the row under it is the row a click would take, so
+	/// it is DRAWN chosen (Cocoa's menu follows the mouse).
+	bool mouseMoved(const Event &e) override;
 	/// The rows, drawn.
 	void drawRect(const Rect &dirty) override;
 
 private:
 	Menu *menu_ = nullptr;
+	int hoverIndex_ = -1;	/* the row the pointer is over */
+	int picked_ = -1;	/* the row the last pick chose */
 };
 
 /// @purpose An ordered list of menu items: what a pop-up shows and what a menu
@@ -3810,7 +3829,9 @@ public:
 	/// The caller gives a SCREEN point where Cocoa gives a point in a view;
 	/// converting needs the window's origin, which the pop-up already needs to
 	/// place itself, so it takes the answer rather than the question.
-	void popUp(const Point &atScreen);
+	/// Answers the row that was picked, or -1 when the menu was dismissed
+	/// without a pick.
+	int popUp(const Point &atScreen);
 
 private:
 	std::vector<MenuItem *> items_;

@@ -1603,13 +1603,20 @@ Window::pumpEvent()
 	case ButtonPress:
 	case ButtonRelease:
 	case MotionNotify: {
-		if (getenv("ARGENTUM_KEYLOG")
-		    && (ev.type == ButtonPress || ev.type == ButtonRelease)) {
-			/* WHICH WINDOW'S PUMP SAW THE PRESS: the board's or the
-			 * menu's. Neither seeing it means the coordinates are wrong. */
+		if (getenv("ARGENTUM_MOTIONLOG")
+		    || (getenv("ARGENTUM_KEYLOG")
+			&& (ev.type == ButtonPress
+			    || ev.type == ButtonRelease))) {
+			/* WHICH WINDOW'S PUMP SAW IT: the board's or the menu's.
+			 * MOTION is behind its own switch because it is frequent and
+			 * a gate has no use for it - but "is the pointer even moving
+			 * over that window" is exactly the question a hover bug asks. */
+			const char *what = ev.type == ButtonPress ? "press"
+					 : ev.type == ButtonRelease ? "release"
+					 : "motion";
+
 			std::printf("ARGENTUM-PUMP xwin=%lu %s\n",
-				    (unsigned long) impl_->xwin,
-				    ev.type == ButtonPress ? "press" : "release");
+				    (unsigned long) impl_->xwin, what);
 			std::fflush(stdout);
 		}
 		Point winPt = { ev.xbutton.x / pp, ev.xbutton.y / pp };
@@ -1752,7 +1759,13 @@ Window::pumpEvent()
 			}
 			return true;
 		}
-		if (me.buttonNumber() != 1 && pressView_ == nullptr) {
+		/* A BUTTON EVENT that is not ours and was not captured is ignored.
+		 * MOTION IS NOT: it has no button to be "not 1", so this guard used
+		 * to swallow every button-less motion and leave the hover block
+		 * below DEAD CODE - which is why hover never worked anywhere in this
+		 * toolkit, and why a menu could not follow the pointer. */
+		if ((pressed || released) && me.buttonNumber() != 1
+		    && pressView_ == nullptr) {
 			return true;
 		}
 		/* drags and releases go to the view that captured the press */
@@ -1782,6 +1795,19 @@ Window::pumpEvent()
 			hoverView_ = under;
 			if (under) {
 				under->setHovered(true);
+			}
+		}
+		/* AND THE VIEW GETS IT, in its own space, up the chain - the same
+		 * delivery a press gets. setHovered() says only WHICH VIEW the
+		 * pointer is in; a menu needs to know WHICH ROW, and that is what
+		 * mouseMoved: is for. */
+		for (View *v = under; v; v = v->superview()) {
+			Rect off = v->rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
+
+			me.setLocationInWindow(Point{ contentPt.x - off.origin.x,
+					     contentPt.y - off.origin.y });
+			if (v->mouseMoved(me)) {
+				break;
 			}
 		}
 		return true;

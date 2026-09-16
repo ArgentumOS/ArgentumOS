@@ -48,6 +48,7 @@ static LevelIndicator *rating = nullptr;
 static LevelIndicator *relevancy = nullptr;
 static std::string lastEdit;
 static std::string lastTokens;
+static int lastPopIndex = -1;
 
 /* where a control's centre is, in SCREEN coordinates */
 static void
@@ -61,9 +62,16 @@ logAt(const char *name, View *v)
 	double ch = w->chromeHeightPt();
 	Rect f = v->frame();
 
-	std::printf("ZOO-AT %s x=%g y=%g\n", name,
-		    w->frame().origin.x + f.origin.x + f.size.w / 2.0,
-		    w->frame().origin.y + ch + f.origin.y + f.size.h / 2.0);
+	double sx = w->frame().origin.x + f.origin.x;
+	double sy = w->frame().origin.y + ch + f.origin.y;
+
+	std::printf("ZOO-AT %s x=%g y=%g\n", name, sx + f.size.w / 2.0,
+		    sy + f.size.h / 2.0);
+	/* the BOX as well as the centre: a pixel check has to know what to look
+	 * at, and guessing a control's width from its centre is how a gate ends
+	 * up measuring the wallpaper */
+	std::printf("ZOO-FRAME %s x=%g y=%g w=%g h=%g\n", name, sx, sy,
+		    f.size.w, f.size.h);
 }
 
 class Zoo : public Object {
@@ -144,8 +152,13 @@ static const Action Zoo_ACTIONS[] = {
 		MenuItem *mi = dynamic_cast<MenuItem *>(sender);
 
 		if (mi) {
-			std::printf("ZOO-POPUP title=\"%s\"\n",
-				    mi->title());
+			/* BOTH the row that was picked AND what the button now
+			 * SHOWS. The row alone could not show that the button
+			 * updated, which is exactly the defect this line was
+			 * blind to: it passed while the button still said Small. */
+			std::printf("ZOO-POPUP title=\"%s\" button=\"%s\"\n",
+				    mi->title(),
+				    pop ? pop->titleOfSelectedItem() : "");
 			std::fflush(stdout);
 		}
 	} },
@@ -611,6 +624,17 @@ main(int argc, char **argv)
 		w.displayIfNeeded();
 		if (w.isCloseRequested()) {
 			break;
+		}
+		/* WHAT THE POP-UP BUTTON NOW SHOWS. Reported here, from the loop,
+		 * and NOT from the row's action: the action is sent INSIDE
+		 * popUp(), before the button has selected anything, so a log line
+		 * written there shows the title BEFORE the pick landed - which is
+		 * what made a broken button look fine. */
+		if (pop && pop->indexOfSelectedItem() != lastPopIndex) {
+			lastPopIndex = pop->indexOfSelectedItem();
+			std::printf("ZOO-POPUP-SELECT title=\"%s\"\n",
+				    pop->titleOfSelectedItem());
+			std::fflush(stdout);
 		}
 		/* the edit stream: a change to the field's text is reported as
 		 * it happens, so a gate can see each KEY land */

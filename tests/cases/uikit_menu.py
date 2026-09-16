@@ -31,6 +31,7 @@ class Case(BaseCase):
             return
 
         session.run("export ARGENTUM_KEYLOG=1")
+        session.run("export ARGENTUM_MOTIONLOG=1")
         mark = len(session.log_text())
         session.run("%s 90 &" % ZOO)
         if not session.wait_for(r"ZOO-READY", 120):
@@ -75,6 +76,28 @@ class Case(BaseCase):
         if "POPUP" not in pts:
             return
 
+        # THE POP-UP AFFORDANCE. A pop-up button must SAY it opens something:
+        # Cocoa carves a segment off its right and puts an up/down chevron
+        # there. The board reports the button's box, so this is MEASURED - ink
+        # in BOTH halves of the right-hand strip, which a plain button would
+        # have only if its title happened to reach there.
+        shot = session.shot("board-before-popup")
+        pf = re.search(r"ZOO-FRAME POPUP x=(-?[\d.]+) y=(-?[\d.]+) "
+                       r"w=([\d.]+) h=([\d.]+)", session.log_text())
+        self.check("the-board-reports-the-buttons-box", pf is not None,
+                   "no ZOO-FRAME line for POPUP; tail: %s"
+                   % " | ".join(session.tail(3)))
+        fx = fy = fw = fh = 0.0
+        if pf:
+            fx, fy, fw, fh = (float(pf.group(i)) for i in (1, 2, 3, 4))
+            u = shot.ink((int(fx + fw - 16), int(fy) + 2, int(fx + fw - 2),
+                          int(fy + fh / 2)))
+            d = shot.ink((int(fx + fw - 16), int(fy + fh / 2),
+                          int(fx + fw - 2), int(fy + fh) - 2))
+            self.check("the-pop-up-button-shows-its-chevron", u >= 6 and d >= 6,
+                       "a pop-up button carries an up/down chevron in its right "
+                       "segment; the ink there was up=%d down=%d" % (u, d))
+
         # point the pointer at the button, then click it: the menu opens
         bx, by = pts["POPUP"]
         mon.click_at(int(bx), int(screen_h - by), settle=0.8)
@@ -93,6 +116,26 @@ class Case(BaseCase):
                    "the pop-up button holds %d rows; the board gave it three "
                    "(Small, Medium, Large)" % n)
 
+        # THE MENU FOLLOWS THE POINTER: the row under it is the row a click
+        # would take, so it is DRAWN chosen. Move there with no press. Row i
+        # spans kMenuPad + i*rowh from the menu's top, and the menu is
+        # borderless so its view IS the surface.
+        mon.goto(int(x + 40), int(screen_h - (y + 4 + rowh * 1.5)))
+        time.sleep(0.6)
+        hs = session.shot("menu-hover-row-1")
+        # the GUTTER, left of where the title starts: with no ink there the
+        # pixel is pure row fill, blue when chosen and near-white when not
+        hot = hs.px(int(x + 10), int(y + 4 + rowh * 1.5))
+        cold = hs.px(int(x + 10), int(y + 4 + rowh * 0.5))
+        self.check("the-menu-draws-the-hovered-row-chosen",
+                   hot[2] > hot[0] + 60 and hot[2] > hot[1],
+                   "the row under the pointer should be drawn with the "
+                   "selection colour; the pixel there is %s" % (hot,))
+        self.check("a-row-not-under-the-pointer-is-not-chosen",
+                   cold[2] < cold[0] + 60,
+                   "only the row under the pointer should be drawn chosen; row "
+                   "0's pixel is %s" % (cold,))
+
         # pick the SECOND row: button -> menu -> row -> action, in one step.
         # NO chrome offset: a menu is BORDERLESS, so its view IS the surface and
         # the rows start at the reported point. (Adding the board's 22pt here
@@ -106,6 +149,34 @@ class Case(BaseCase):
         self.check("picking-a-row-sends-its-action", 'title="Medium"' in "".join(got),
                    "clicking the middle row should send that ROW's action; the "
                    "log says %s" % got)
+
+        # AND THE BUTTON ITSELF FOLLOWS. The clicked row's title is NOT the
+        # same thing as the button's - the check above passed for a whole
+        # session while the button still read "Small", which is exactly the
+        # defect. So: the button's own title, AND its face in pixels.
+        # The board reports the button's OWN title from its loop, so this is
+        # the state AFTER the selection settled - not the row's action, which
+        # is sent before the button has selected anything. Poll for a NEW line:
+        # the board also reports its initial selection at start-up.
+        sel = []
+        for _ in range(30):
+            sel = [l for l in session.output_since(t0).splitlines()
+                   if l.startswith("ZOO-POPUP-SELECT")]
+            if sel:
+                break
+            time.sleep(0.5)
+        self.check("the-button-reports-the-picked-row",
+                   'title="Medium"' in "".join(sel),
+                   "the button's OWN title must follow the pick - the clicked "
+                   "row's title is not the same thing; the board says %s" % sel)
+        if pf:
+            after = session.shot("board-after-pick")
+            changed = shot.diff_box(after, (int(fx), int(fy),
+                                            int(fx + fw), int(fy + fh)))
+            self.check("the-button-shows-the-picked-row", changed > 12,
+                       "the button's face must change when its title does "
+                       "(Small -> Medium): %d pixels changed in its box"
+                       % changed)
 
         # THE MAGNIFIER OPENS THE RECENT SEARCHES: the same round trip, driven
         # by a different control. The field is 240 wide and its centre is what

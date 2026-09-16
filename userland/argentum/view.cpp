@@ -208,6 +208,15 @@ View::rectInWindow(const Rect &r) const
 	return Rect{ { x, y }, r.size };
 }
 
+bool
+View::mouseMoved(const Event &)
+{
+	/* NOTHING BY DEFAULT: Cocoa's NSResponder forwards an unhandled event to
+	 * the next responder, and a view that cares - a menu, which follows the
+	 * pointer to show which row a click would take - overrides this. */
+	return false;
+}
+
 void
 View::setWindow(Window *w)
 {
