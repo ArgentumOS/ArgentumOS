@@ -15,6 +15,7 @@
 #define FNX_ARGENTUM_ARGENTUM_H
 
 #include <cstdint>
+#include <ctime>
 #include <functional>
 #include <map>
 #include <string>
@@ -3424,8 +3425,6 @@ private:
 	Color color_ = Color::rgb(0.30, 0.55, 0.90);
 	bool active_ = false;
 };
-
-#include <ctime>
 
 /// @purpose A date field with a stepper: Cocoa's NSDatePicker in its
 /// textFieldAndStepper style, the one that reads as a field.

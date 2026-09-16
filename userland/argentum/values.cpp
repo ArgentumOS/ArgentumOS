@@ -11,6 +11,14 @@
  */
 #include <argentum/argentum.h>
 
+/* THE MATHS AND THE STRINGS ARE THIS FILE'S OWN BUSINESS, and naming them is
+ * not optional: the dial's spokes, the rating's star and the spinner all call
+ * cos/sin/atan2, and every title comparison calls strcmp. It used to work only
+ * because the libc++ headers pulled these in transitively, which libstdc++
+ * does not do - the host build (mk/60-host.mk) is what caught it. */
+#include <cmath>
+#include <cstring>
+
 namespace argentum {
 
 /* ---- SliderCell ------------------------------------------------------ */
@@ -1004,7 +1012,7 @@ fillStar(Context *ctx, double cx, double cy, double r, const Color &c)
 		double rr = (i % 2 == 0) ? r : r * 0.44;
 		double a = -1.5707963 + i * 0.6283185;	/* -90deg, 36deg steps */
 
-		p[i + 1] = Point{ cx + rr * cos(a), cy + rr * sin(a) };
+		p[i + 1] = Point{ cx + rr * std::cos(a), cy + rr * std::sin(a) };
 	}
 	ctx->fillPolygon(p, 11, c);
 }

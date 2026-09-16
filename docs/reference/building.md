@@ -19,6 +19,10 @@ images, and the X server — all from one tree, all with one compiler.
    enforces that no gcc/g++ appears in the build definition).
  - For the QEMU harness: `qemu-system-x86_64` and the OVMF firmware
    image (fetched by `tools/fetch-ovmf.sh` or `make ovmf`).
+ - For the host toolkit build only (`make hostapps`, `make run-host`):
+   `pkg-config` and the development packages for X11, Xext, pixman,
+   fontconfig, HarfBuzz and FreeType, plus a running X server for
+   `run-host`. The guest build does not need any of them.
 
 ## Building
 
@@ -107,6 +111,38 @@ for debugging. `tests/README.md` documents the authoring contract, the
 prerequisites (QEMU, OVMF, the two images) and the `FNX_TEST_*` knobs. Note
 that `tests/` is the HOST-side harness; `userland/tests/` is the guest-side
 probe tree that gets installed at `/System/Shared/tests/`.
+
+## Building and running the toolkit on the host
+
+The Argentum UIKit is plain C++ over Xlib - it calls nothing FNX-specific (no
+syscalls, no `/dev`, no FSH paths, and `displayOpen()` already honours
+`$DISPLAY`) and links only X11, pixman, fontconfig, HarfBuzz and FreeType. So
+the same sources build against the host's libraries and run on the host's X
+server, which turns a toolkit edit from an image rebuild plus a QEMU boot into
+a few seconds:
+
+    make hostlib             # libconfig + libargentum for this machine
+    make hostapps            # WidgetZoo + the toolkit test binaries
+    make host-tests          # run them (each prints its own verdict)
+    make run-host            # the Widget Zoo on $DISPLAY
+
+`make host-tests` needs no display for seven of the nine binaries; `run-host`
+needs a live X server and says so if `$DISPLAY` is unset or dead. The build
+lands in `.build/host/` and never touches `.build/64` or `.build/rootagfs.img`.
+The compiler is the same clang the system build uses, aimed at the host's
+glibc/libstdc++ instead of musl/libc++.
+
+**What a host run is not.** It never touches the kernel, Xfb, the framebuffer,
+`/dev` input, USB HID, the FSH config domains or the session's px/pt factor. A
+host run can say "the toolkit does this"; it cannot say "the OS does this".
+The guest gates above stay the verification of record - a host run is for
+looking at a change quickly, not for claiming one.
+
+It does pay for itself in another way: because the host toolchain is a
+different standard library, it catches toolkit code that only compiled by
+accident. It found three such things the first time it ran (a `#include
+<ctime>` sitting inside `namespace argentum`, and `values.cpp` calling
+`std::cos`/`std::sin`/`std::strcmp` without including `<cmath>`/`<cstring>`).
 
 Once the shell is up (the tools live under `/System/Tools`, device
 names use the `@` shorthand or `/System/Devices`, scratch mounts go
