@@ -397,6 +397,36 @@ LayoutManager::lineHeightFor(int location, int length) const
 
 		return m.ascentPt + m.descentPt;
 	}
+	/* THE CALLER'S RANGE IS CLAMPED TO THE STORAGE, and that is the
+	 * library's own invariant rather than the caller's care: a range may be
+	 * measured against a COPY of the text — a truncated line's shown string
+	 * is not the storage's string, and the ellipsis can make it LONGER than
+	 * the text it came from — so walking it reads past the storage's
+	 * terminator. What the walk finds there is whatever the allocator put
+	 * next, which is how a line's height came back as an unrelated font
+	 * ("cache[0] sans-serif 12px" answering a lookup for 13px) and how the
+	 * scrolling board turned every text gate red. */
+	int slen = (int) storage_->length();
+
+	if (location < 0) {
+		location = 0;
+	}
+	if (location > slen) {
+		location = slen;
+	}
+	if (length > slen - location) {
+		length = slen - location;
+	}
+	if (length <= 0) {
+		/* an empty run: the standard line height for the attributes here */
+		TextAttributes a = storage_->attributesAt(location);
+		TextMetrics m = textMetrics(a.font.family.empty()
+						    ? nullptr
+						    : a.font.family.c_str(),
+					    a.font.sizePt, "Ag", a.font.bold);
+
+		return m.ascentPt + m.descentPt;
+	}
 	/* walk the run boundaries inside the line */
 	int at = location;
 	int end = location + length;
@@ -863,10 +893,28 @@ LayoutManager::drawInContext(Context &ctx, const Point &origin)
 		return;
 	}
 	const char *s = storage_->string();
+	int slen = (int) storage_->length();
 
 	for (const TextLine &l : lines_) {
 		int at = l.location;
 		int end = l.location + l.length;
+
+		/* A LINE'S RANGE IS A STORAGE RANGE, SO IT IS CLAMPED TO THE
+		 * STORAGE. A truncated line carries the length of the shown COPY,
+		 * and once the ellipsis is in that copy can be LONGER than the text
+		 * it came from - so the loop below would read `s` past its
+		 * terminator. That read is one byte past a std::string (what the
+		 * address sanitiser reports) and what it finds there is whatever
+		 * the allocator left behind. */
+		if (at < 0) {
+			at = 0;
+		}
+		if (at > slen) {
+			at = slen;
+		}
+		if (end > slen) {
+			end = slen;
+		}
 		/* the baseline sits at the line's top + the font's ascent */
 		TextAttributes first = storage_->attributesAt(at);
 		TextMetrics fm = textMetrics(first.font.family.empty()
