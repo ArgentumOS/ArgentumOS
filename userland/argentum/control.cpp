@@ -317,9 +317,23 @@ static Rect
 markBox(const Rect &frame)
 {
 	double d = 13.0;	/* v1: a fixed mark size in points */
+	double pp = displayPxPerPt();
+	double x = frame.origin.x + 1.0;
 	double y = frame.origin.y + (frame.size.h - d) / 2.0;
 
-	return Rect{ { frame.origin.x + 1.0, y }, { d, d } };
+	if (pp <= 0) {
+		pp = 1.0;
+	}
+	/* SNAP THE BOX TO WHOLE PIXELS. (28 - 13) / 2 is 7.5, so the box sat on a
+	 * HALF point: strokeRect() draws four 1pt fills, and the TOP and BOTTOM
+	 * ones then straddled a pixel boundary and spread over two rows while the
+	 * left and right - already integral - covered one. That is the outline
+	 * being visibly thicker on top and bottom. Snapping the origin fixes all
+	 * four edges, because d is a whole number of points. */
+	x = (double) (long) (x * pp + 0.5) / pp;
+	y = (double) (long) (y * pp + 0.5) / pp;
+
+	return Rect{ { x, y }, { d, d } };
 }
 
 void

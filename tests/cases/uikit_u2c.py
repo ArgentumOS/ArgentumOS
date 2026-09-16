@@ -198,6 +198,44 @@ class Case(BaseCase):
         # 3. the shapes, in the framebuffer
         shot = session.shot("u2c")
 
+        # THE CHECKBOX OUTLINE IS THE SAME WEIGHT ALL ROUND. Its box's y was a
+        # HALF point, so the 1pt top and bottom strokes straddled a pixel
+        # boundary and spread over two rows while the left and right - already
+        # integral - covered one. The claim is SYMMETRY, so that is what is
+        # measured: the lengths of the dark runs crossing the box.
+        swf = re.search(r"ZOO-FRAME SWITCH x=(-?[\d.]+) y=(-?[\d.]+) "
+                        r"w=([\d.]+) h=([\d.]+)", session.log_text())
+        self.check("the-board-reports-the-checkbox-box", swf is not None,
+                   "no ZOO-FRAME line for SWITCH; tail: %s"
+                   % " | ".join(session.tail(3)))
+        if swf:
+            fx, fy, fw, fh = (float(swf.group(i)) for i in (1, 2, 3, 4))
+
+            # the mark box, as markBox computes it: a 13pt square, 1pt in
+            # from the frame's left, vertically centred
+            bx = int(fx) + 1
+            by = int(fy + (fh - 13) / 2 + 0.5)
+            mx, my = bx + 6, by + 6
+
+            def dark(box):
+                return sum(1 for x, y in shot.points(box)
+                           if shot.luma(x, y) < 225)
+
+            # ONE TIGHT WINDOW PER EDGE. The check's own ink starts 2.8pt
+            # inside the box and the button's border is 7pt outside it, so
+            # nothing but the edge can land in a 3px window.
+            edges = [dark((mx, by - 1, mx + 1, by + 2)),      # top
+                     dark((mx, by + 12, mx + 1, by + 15)),    # bottom
+                     dark((bx - 1, my, bx + 2, my + 1)),      # left
+                     dark((bx + 12, my, bx + 15, my + 1))]    # right
+            self.check("the-checkbox-outline-is-the-same-weight-all-round",
+                       max(edges) == min(edges) and min(edges) >= 1,
+                       "the box outline must be the same weight on all four "
+                       "sides - map_rect rounds a 1pt span OUTWARD, so a half "
+                       "point on an axis makes that side 2px; the edges "
+                       "measured %s (top, bottom, left, right) in 3px windows"
+                       % edges)
+
         # THE HELP BUTTON'S "?" IS CENTRED IN ITS CIRCLE. A run box carries a
         # pad BEFORE its ink (textInkInsetPx, 2px) and nothing compensated for
         # it, so the glyph sat 2pt right of centre - the reported complaint.
