@@ -1852,6 +1852,13 @@ PopUpButton::PopUpButton()
 	 * RECTANGLE is BezelStyle::RoundRect (radius 4). Cocoa's pop-up button
 	 * sets its own cell's style, and so does this. */
 	setBezelStyle(BezelStyle::RoundRect);
+	/* AND ITS TITLE IS LEFT-ALIGNED. ButtonCell centres every title, which is
+	 * right for a push button and wrong for a pop-up: a pop-up reads as a
+	 * FIELD holding the current choice, so its title starts at the left and
+	 * the chevron sits at the right. Cocoa's cell does the same. */
+	if (ButtonCell *bc = dynamic_cast<ButtonCell *>(cell_)) {
+		bc->setAlignment(TextAlignment::Left);
+	}
 }
 
 void

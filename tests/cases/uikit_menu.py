@@ -136,6 +136,34 @@ class Case(BaseCase):
                        "Rounded capsule (%d); the pop-up measured %d"
                        % (rect, pill, mine))
 
+
+        # THE POP-UP'S TITLE IS LEFT-ALIGNED. ButtonCell centres every button's
+        # title - right for a push button, wrong for a pop-up, which reads as a
+        # field. The reference button is the SAME control centred, so this is
+        # differential: where does the title's ink sit, as a fraction of the
+        # width it is drawn in (skipping the pop-up's chevron segment)?
+        def ink_centroid(box, seg):
+            x0, y0, ww, hh = box
+            tot = n = 0
+            for x, y in shot.points((int(x0), int(y0) + 5,
+                                     int(x0 + ww - seg), int(y0 + hh) - 5)):
+                if shot.luma(x, y) < 150:
+                    tot += x - x0
+                    n += 1
+            return (tot / n / ww) if n else -1.0
+
+        if "BEZEL-ROUNDRECT" in ref and pf:
+            centred = ink_centroid(ref["BEZEL-ROUNDRECT"], 0)
+            self.check("the-reference-button-is-centred",
+                       0.40 <= centred <= 0.60,
+                       "a plain push button centres its title, so the reference "
+                       "should measure near the middle; it measured %.2f"
+                       % centred)
+            mine_t = ink_centroid((fx, fy, fw, fh), 20)
+            self.check("the-pop-up-title-is-left-aligned", 0.0 < mine_t < 0.38,
+                       "a pop-up left-aligns its title, so the ink should sit "
+                       "left of centre in the box it is drawn in; it measured "
+                       "%.2f (centred reads about 0.50)" % mine_t)
         # point the pointer at the button, then click it: the menu opens
         bx, by = pts["POPUP"]
         mon.click_at(int(bx), int(screen_h - by), settle=0.8)
