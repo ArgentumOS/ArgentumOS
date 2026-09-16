@@ -604,6 +604,61 @@ as a compatibility path for un-migrated views, with a migration list.
   distribution, now constraint-backed), `NSGridView`, `NSCollectionView`
   (+flow layout), `NSBrowser`, `NSScrollView`/`NSSplitView`/`NSTabView`
   fidelity passes.
+  **A CORRECTION TO THIS LIST: there are no "fidelity passes" to make,
+  because there ARE no containers** (the restart left the toolkit with leaves
+  only — see §2), so every name here is a BUILD, and U6's
+  `TableView`/`OutlineView` likewise.
+  **U5a — `StackView`. DONE (2026-09).** Orientation, alignment, all six
+  distributions (GravityAreas, Fill, FillEqually, FillProportionally,
+  EqualSpacing, EqualCentering), spacing, edge insets,
+  `addArrangedSubview`/`insertArrangedSubview`/`removeArrangedSubview`,
+  `detachesHiddenViews`, and per-view custom spacing. **The arrangement IS
+  constraints** — the stack installs LayoutConstraints and the solver
+  satisfies them — and each names the ARRANGED SUBVIEW first, which is what
+  the solver's movability rule needs: a view can move only while some active
+  constraint names it first, so the stack (placed by its owner by frame)
+  holds its ground while its children are positioned.
+  **THREE THINGS HAD TO EXIST FIRST, and the slice turned up all three:**
+  * **The window never ran a layout pass.** `layoutSubtreeIfNeeded()` was
+    called by the test binaries and by nothing else, so a constraint had no
+    effect on a window at all. `View::setNeedsLayout()` now tells its window
+    and `Window::displayIfNeeded()` settles a pending layout before it draws
+    — AppKit's display cycle, and the thing that makes Auto Layout real in
+    an application.
+  * **`LayoutConstraint` had no destructor**, though `create()` files every
+    constraint in a global registry. A container that REBUILDS its
+    constraints — a stack whose arrangement changed — would have left that
+    registry holding freed pointers. It unlinks on death now.
+  * **THE SOLVER HAS NO COORDINATE SPACES.** `layoutSolve()` treats every
+    view's x/y as one flat space, while a frame is relative to its
+    superview — so `child.leading == stack.leading` set the child's x to the
+    STACK's origin (556, for the zoo's third column). The board's controls
+    were drawn at a double offset, fell outside their own container's clip
+    and vanished, and every click landed on the StackView. A stack's children
+    live in the stack's space, so the stack pins them with CONSTANTS (pinTo,
+    containers.cpp); the limitation is recorded on `LayoutConstraint` for
+    whoever makes the solver ancestor-aware.
+  * (A fourth, smaller: a hidden arranged view changes the arrangement
+    without changing the stack's SIZE, which `layout()`'s size check could
+    never see. `View::setHidden` now tells its superview and
+    `StackView::subviewHiddenChanged` rebuilds.)
+  **THE BOARD'S THREE COLUMNS ARE STACKS NOW** (the standing rule — a new
+  class joins the board in the same work — and a container is only proved by
+  a real consumer). The columns were positioned by a `y` cursor; those gaps
+  are the stack's spacing, and column 3's gaps genuinely differ row by row,
+  which is what `setCustomSpacingAfterView` is for. The migration is
+  **FRAME-PRESERVING** — every control sits exactly where the cursor put it,
+  which is what the gates that aim through `ZOO-AT` depend on. Three places
+  in the board that turned a frame origin into a screen position (logAt,
+  `ZOO-ATCLEAR`, `ZOO-KNOB`) shared the same flat-space assumption and now
+  walk the chain with `rectInWindow()`.
+  Gates: `uikit_u5` 9/9 — the display-free `stack_view` probe, whose numbers
+  are the CONTRACT (its first version asserted what the buggy layout
+  produced, which is exactly how a wrong expectation hides a real bug), plus
+  the board's own `ZOO-STACK` rows/heights and row pitches. **The whole board
+  set was then re-verified against the migration: `uikit_u2c`, `uikit_u3b`,
+  `uikit_u3c`, `uikit_u3d`, `uikit_u4`, `uikit_menu`, `uikit_u5` — 7/7
+  cases, 123/123 checks.**
 - **U6 — table and outline fidelity.** View-based rows, cells, columns and
   headers, sorting, selection modes, drag&drop, variable row heights.
 - **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/

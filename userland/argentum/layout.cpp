@@ -129,6 +129,27 @@ LayoutConstraint::setActive(bool on)
 	}
 }
 
+/* UNLINK ON DEATH. create() files every constraint in gAll, and in gActive
+ * while it is active - both plain lists of pointers, so freeing one without
+ * unlinking leaves a list holding freed memory. The active set is walked on
+ * every solve, so a stale entry there is a crash; gAll is only a registry
+ * today, which is exactly the kind of trap that waits for its first reader. */
+LayoutConstraint::~LayoutConstraint()
+{
+	for (size_t i = 0; i < gActive.size(); i++) {
+		if (gActive[i] == this) {
+			gActive.erase(gActive.begin() + (long) i);
+			break;
+		}
+	}
+	for (size_t i = 0; i < gAll.size(); i++) {
+		if (gAll[i] == this) {
+			gAll.erase(gAll.begin() + (long) i);
+			break;
+		}
+	}
+}
+
 void
 LayoutConstraint::activate(const std::vector<LayoutConstraint *> &cs)
 {

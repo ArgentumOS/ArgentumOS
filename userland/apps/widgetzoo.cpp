@@ -49,6 +49,11 @@ static LevelIndicator *relevancy = nullptr;
 static std::string lastEdit;
 static std::string lastTokens;
 static int lastPopIndex = -1;
+/* THE COLUMNS ARE STACKS (U5): one per board column, so a row joins its
+ * column instead of the content view. See the note at the placement. */
+static StackView *colButtons = nullptr;
+static StackView *colText = nullptr;
+static StackView *colValues = nullptr;
 static Button *bezelRounded = nullptr;	/* the two style references */
 static Button *bezelRoundRect = nullptr;
 
@@ -63,9 +68,14 @@ logAt(const char *name, View *v)
 	}
 	double ch = w->chromeHeightPt();
 	Rect f = v->frame();
-
-	double sx = w->frame().origin.x + f.origin.x;
-	double sy = w->frame().origin.y + ch + f.origin.y;
+	/* WHERE THE VIEW ACTUALLY IS, not where its own frame origin says. A
+	 * control a container places — a stack's row — has a frame relative to
+	 * that container, so the chain is the only way to the screen position;
+	 * rectInWindow() is the toolkit's own answer, and the reason a nested
+	 * control still reports where it is. */
+	Rect inWin = v->rectInWindow(Rect{ { 0, 0 }, f.size });
+	double sx = w->frame().origin.x + inWin.origin.x;
+	double sy = w->frame().origin.y + ch + inWin.origin.y;
 
 	std::printf("ZOO-AT %s x=%g y=%g\n", name, sx + f.size.w / 2.0,
 		    sy + f.size.h / 2.0);
@@ -170,13 +180,18 @@ static const Action Zoo_ACTIONS[] = {
 		std::printf("ZOO-DIAL %g\n", s ? s->doubleValue() : -1.0);
 		if (s && s->sliderCell() && s->window()) {
 			Point k = s->sliderCell()->knobPoint(s->bounds());
+			/* the dial sits in a column stack, so its frame origin is
+			 * relative to that stack: the window position comes from the
+			 * chain (rectInWindow), as logAt and ZOO-ATCLEAR do it */
+			Rect inWin = s->rectInWindow(
+				Rect{ { 0, 0 }, s->frame().size });
 
 			std::printf("ZOO-KNOB x=%g y=%g\n",
 				    s->window()->frame().origin.x
-					    + s->frame().origin.x + k.x,
+					    + inWin.origin.x + k.x,
 				    s->window()->frame().origin.y
 					    + s->window()->chromeHeightPt()
-					    + s->frame().origin.y + k.y);
+					    + inWin.origin.y + k.y);
 		}
 		std::fflush(stdout); } },
 	{ "step", [](Object *sender) {
@@ -218,7 +233,15 @@ row(View *content, Zoo &zoo, double x, const char *title, double y,
 	b->setBezelStyle(bezel);
 	b->setTarget(&zoo);
 	b->setAction("click");
-	content->addSubview(b);
+	/* THE COLUMN'S STACK PLACES THE ROW (U5). While a column stack is set
+	 * the row joins it — the stack's constraints decide where the row goes,
+	 * and the x/y above only seed its size, which is why they are still
+	 * being set. The stacks are placed and laid out at the foot of main(). */
+	if (colButtons) {
+		colButtons->addArrangedSubview(b);
+	} else {
+		content->addSubview(b);
+	}
 
 	return b;
 }
@@ -265,6 +288,13 @@ main(int argc, char **argv)
 	 * off the bottom of the screen and is slow to read. */
 	double y = 12;
 	double x = 16;
+
+	/* COLUMN 1 BECOMES A STACK (U5). Every button sits on a 34pt pitch and
+	 * is 28 tall, so the gap is the single number 6 — no per-row spacing. */
+	colButtons = new StackView();
+	colButtons->setOrientation(StackOrientation::Vertical);
+	colButtons->setAlignment(StackAlignment::Leading);
+	colButtons->setSpacing(6);
 
 	/* KEPT, because these two are the reference for every bezel question a
 	 * gate asks: the same button in the two styles IS the control group. */
@@ -523,8 +553,78 @@ main(int argc, char **argv)
 	 * colour panel a ColourWell activates. A window the app does not track
 	 * is never pumped. */
 	argentum::Application::sharedApplication()->addWindow(&w);
+
+	/* MOVE COLUMNS 2 AND 3 ONTO THEIR STACKS (U5), then let the display cycle
+	 * lay them out: displayIfNeeded() runs the layout pass before it draws,
+	 * and the ZOO-AT logging below reads what that pass produces.
+	 *
+	 * The widgets were built with their own sizes and their own y cursors
+	 * (still above), so the stacks only PLACE them — a vertical stack's chain
+	 * fixes each row's y and its alignment fixes x, while the sizes stay the
+	 * views' own. That is why the frames come out exactly as they did, which
+	 * is what every gate aiming at ZOO-AT depends on.
+	 *
+	 * Column 2's pitch is a uniform 30/34 over 22/26-tall rows — a gap of 8
+	 * throughout — while column 3's gaps genuinely differ, which is what
+	 * setCustomSpacingAfterView() is for. */
+	colText = new StackView();
+	colText->setOrientation(StackOrientation::Vertical);
+	colText->setAlignment(StackAlignment::Leading);
+	colText->setSpacing(8);
+	content->addSubview(colText);
+
+	View *textColumn[] = { lbl, ph, cut, tview, editField, searchField,
+			       tokenField };
+
+	for (View *v : textColumn) {
+		colText->addArrangedSubview(v);
+	}
+
+	colValues = new StackView();
+	colValues->setOrientation(StackOrientation::Vertical);
+	colValues->setAlignment(StackAlignment::Leading);
+	colValues->setSpacing(0);	/* every gap is set per row, below */
+	content->addSubview(colValues);
+
+	struct ValueRow {
+		View *v;
+		double gapAfter;
+	};
+	const ValueRow valueColumn[] = {
+		{ slider, 8 },	   { dial, 6 },	   { stepper, 8 },
+		{ progress, 8 },   { level, 6 },	   { rating, 6 },
+		{ relevancy, 16 }, { spinner, 6 }, { indet, 14 },
+		{ well, 8 },	   { picker, 6 },  { pop, 18 },
+	};
+
+	for (const ValueRow &r : valueColumn) {
+		colValues->addArrangedSubview(r.v);
+		colValues->setCustomSpacingAfterView(r.gapAfter, r.v);
+	}
+	/* the button column was filled as its rows were built (see row()), and
+	 * joins the content view here with the other two */
+	content->addSubview(colButtons);
+	colButtons->setFrame(Rect{ { 16, 12 },
+				   { 240, colButtons->fittingSize().h } });
+	colText->setFrame(Rect{ { 286, 12 }, { 240, colText->fittingSize().h } });
+	colValues->setFrame(Rect{ { 556, 12 },
+				  { 240, colValues->fittingSize().h } });
+
 	w.setNeedsDisplay();
 	w.displayIfNeeded();
+
+	/* THE COLUMNS, IN THE LOG. The standing rule: a board that shows a new
+	 * class reports it, so a gate can assert the board really uses one. */
+	std::printf("ZOO-STACK buttons rows=%d h=%g\n",
+		    (int) colButtons->arrangedSubviews().size(),
+		    colButtons->fittingSize().h);
+	std::printf("ZOO-STACK text rows=%d h=%g\n",
+		    (int) colText->arrangedSubviews().size(),
+		    colText->fittingSize().h);
+	std::printf("ZOO-STACK values rows=%d h=%g\n",
+		    (int) colValues->arrangedSubviews().size(),
+		    colValues->fittingSize().h);
+	std::fflush(stdout);
 
 	/* the window's own geometry: the damage rects are in WINDOW
 	 * coordinates, and a gate can only check that against the board's
@@ -582,14 +682,21 @@ main(int argc, char **argv)
 	if (searchField && searchField->searchCell()) {
 		Rect cb = searchField->searchCell()->clearButtonRect(
 			searchField->bounds());
+		/* THE FIELD IS PLACED BY ITS COLUMN'S STACK now, so its own frame
+		 * origin is relative to that stack: where it is in the window comes
+		 * from the chain — rectInWindow() — exactly as logAt gets it.
+		 * Adding its frame origin to the window's was right only while every
+		 * control was a direct child of the content view. */
+		Rect inWin = searchField->rectInWindow(
+			Rect{ { 0, 0 }, searchField->frame().size });
 
 		std::printf("ZOO-ATCLEAR x=%g y=%g\n",
 			    searchField->window()->frame().origin.x
-				    + searchField->frame().origin.x
+				    + inWin.origin.x
 				    + cb.origin.x + cb.size.w / 2.0,
 			    searchField->window()->frame().origin.y
 				    + searchField->window()->chromeHeightPt()
-				    + searchField->frame().origin.y
+				    + inWin.origin.y
 				    + cb.origin.y + cb.size.h / 2.0);
 	}
 	/* a LAYOUT answer only exists once the controls have drawn at their

@@ -173,6 +173,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/view_layout.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/view_layout"
+	# stack_view: U5 acceptance (docs/design/cocoa-parity-plan.md) — the
+	# StackView, whose arrangement IS constraints: the chain, the cross
+	# axis, all six distributions, insets, custom spacing and detached
+	# hidden views. Display-free.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/stack_view.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/stack_view"
 	# kvc_basic: U1 acceptance (docs/design/cocoa-parity-plan.md) — the
 	# base object's class chain and by-name property access. Display-free.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

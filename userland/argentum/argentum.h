@@ -243,6 +243,16 @@ public:
 /// Constraints are created through the anchor methods and installed by
 /// activate() (or by the constructor path setActive(true), which is what
 /// activation means). layoutSolve() is the pass that satisfies them.
+///
+/// A CONSTRAINT MUST NOT RELATE A VIEW TO ITS OWN SUPERVIEW. The solver works
+/// in ONE flat coordinate space — every view's x/y is the same kind of
+/// variable — while a frame is relative to its SUPERVIEW, so
+/// `child.left == parent.left` sets the child's x to the parent's ORIGIN
+/// rather than to 0. Sibling relations (same parent) and size relations are
+/// exact; a superview relation has to be written as the CONSTANT it means in
+/// the child's space (see StackView, which does exactly that). Making the
+/// solver carry each view's origin relative to a common ancestor is the
+/// constraint layer's own follow-on work.
 class LayoutConstraint {
 public:
 	/// The constraint's FIRST item — the one the solver may move.
@@ -282,6 +292,13 @@ public:
 					double multiplier, double constant);
 	/// Deactivate several constraints at once.
 	static void deactivate(const std::vector<LayoutConstraint *> &constraints);
+
+	/// Destroy the constraint, unlinking it from the active set and from the
+	/// registry (layout.cpp's gAll/gActive). A CONTAINER THAT REBUILDS ITS
+	/// CONSTRAINTS — a stack view whose arrangement changed — needs this: the
+	/// registry is a list of pointers, and without the unlink it would hold
+	/// freed ones.
+	~LayoutConstraint();
 
 private:
 	friend class LayoutAnchor;
@@ -1395,6 +1412,15 @@ public:
 	/// Present what has been drawn (no draw pass).
 	void flush();
 
+	/// Mark the content tree as needing a LAYOUT pass: the next
+	/// displayIfNeeded() settles it before it draws. A view tells its window
+	/// (View::setNeedsLayout), the same way a view tells it about damage —
+	/// which is what makes Auto Layout actually run in an app, since the
+	/// window's display cycle is the only thing driving it.
+	void setNeedsLayout();
+	/// True while a layout pass is pending.
+	bool needsLayout() const;
+
 	/// The surface size in pixels.
 	unsigned int widthPx() const;
 	/// The surface height in pixels.
@@ -1656,9 +1682,19 @@ public:
 		 * drives the paint pass, so a view that changed visibility
 		 * without damaging would keep its old picture on screen */
 		setNeedsDisplay();
+		/* AND A CONTAINER MAY LAY OUT AROUND IT, so its superview hears
+		 * about it: a stack with detachesHiddenViews takes a hidden child
+		 * out of its arrangement, and nothing else would tell it to. */
+		if (parent_) {
+			parent_->subviewHiddenChanged(this);
+		}
 	}
 	/// True while the view is hidden.
 	bool isHidden() const { return hidden_; }
+	/// A subview of this view changed its hidden state (see setHidden).
+	/// Nothing by default; a container that arranges around hidden children
+	/// overrides it.
+	virtual void subviewHiddenChanged(View *child) { (void) child; }
 
 	/* identity: the name a document or an app resolves a view by */
 	/// Name this view (copied). '' is anonymous; the name is what an app
@@ -4078,6 +4114,174 @@ private:
 	int steps_ = 0;
 	double warning_ = 0;
 	double critical_ = 0;
+};
+
+/* ---- U5: containers -------------------------------------------------- */
+
+/// Which way a stack lays its arranged subviews out.
+enum class StackOrientation { Horizontal, Vertical };
+
+/// Where a stack puts a view ACROSS its axis: the leading edge, centred, or
+/// the trailing edge — which for a vertical stack is left/centre/right and
+/// for a horizontal one is top/centre/bottom. (Cocoa takes a whole
+/// NSLayoutAttribute here, including the two BASELINE alignments; those are
+/// not here yet.)
+enum class StackAlignment { Leading, Center, Trailing };
+
+/// What a stack does with the space it has LEFT OVER — Cocoa's
+/// NSStackViewDistribution, the same six cases and the same default.
+enum class StackDistribution {
+	/// The slack pools at the END of the axis: the views keep their natural
+	/// sizes and their gaps the stack's spacing.
+	GravityAreas,
+	/// The views stretch to fill the axis. (Cocoa divides the room by hugging
+	/// priority; this toolkit has no per-view hugging yet, so — as in Cocoa
+	/// when the priorities are equal — the room is split equally, which makes
+	/// this the same as FillEqually until hugging lands. The class says so.)
+	Fill,
+	/// The views stretch to the SAME size along the axis.
+	FillEqually,
+	/// They stretch in proportion to the natural size they had when arranged.
+	FillProportionally,
+	/// The views keep their natural sizes and the GAPS take up the slack,
+	/// equally.
+	EqualSpacing,
+	/// The views keep their natural sizes and their CENTRES are evenly spaced.
+	EqualCentering
+};
+
+/// The space a stack leaves between its own edge and its arranged subviews —
+/// Cocoa's NSEdgeInsets.
+struct EdgeInsets {
+	double top = 0;
+	double left = 0;
+	double bottom = 0;
+	double right = 0;
+};
+
+/// @purpose A stack: a container that arranges its subviews along one axis
+/// with a spacing between them. Cocoa's NSStackView — the modern container,
+/// and the reason Auto Layout exists.
+///
+/// @lifetime The stack does not own its arranged subviews (a superview does
+/// not own its subviews, Cocoa's rule). It owns the CONSTRAINTS it makes.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants THE ARRANGEMENT IS CONSTRAINTS, not arithmetic: the stack
+/// installs a set of LayoutConstraints over its arranged subviews and the
+/// solver satisfies them, so an app's own constraints interleave with them —
+/// which is the whole point of a constraint-backed stack. Those constraints
+/// name each ARRANGED SUBVIEW first and the stack second, and that is what
+/// the solver's movability rule needs: a view can move only while some active
+/// constraint names it first, so the stack — placed by whoever owns it —
+/// holds its ground while its children are positioned.
+///
+/// The views it arranges are its subviews (one list stands for both), and
+/// each is taken OFF the autoresizing-mask path, because a view still on that
+/// path is skipped by the solver.
+///
+/// @see View, LayoutConstraint, LayoutAnchor
+class StackView : public View {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty horizontal stack, centred across the axis, 8pt apart, with
+	/// hidden arranged subviews detached — Cocoa's defaults.
+	StackView();
+	/// Destroy the stack: the constraints it made go with it.
+	~StackView() override;
+
+	/// The axis the arranged subviews run along.
+	StackOrientation orientation() const { return orientation_; }
+	/// Set it (the arrangement is rebuilt).
+	void setOrientation(StackOrientation o);
+	/// Where a view sits across the axis.
+	StackAlignment alignment() const { return alignment_; }
+	/// Set it (the arrangement is rebuilt).
+	void setAlignment(StackAlignment a);
+	/// What happens to the space left over.
+	StackDistribution distribution() const { return distribution_; }
+	/// Set it (the arrangement is rebuilt).
+	void setDistribution(StackDistribution d);
+	/// The gap between neighbouring arranged subviews.
+	double spacing() const { return spacing_; }
+	/// Set it (the arrangement is rebuilt).
+	void setSpacing(double s);
+	/// The gap from the stack's own edge to its content.
+	EdgeInsets edgeInsets() const { return insets_; }
+	/// Set it (the arrangement is rebuilt).
+	void setEdgeInsets(const EdgeInsets &e);
+	/// True when a hidden arranged subview is taken OUT of the arrangement
+	/// instead of holding its place.
+	bool detachesHiddenViews() const { return detachesHidden_; }
+	/// Set it (the arrangement is rebuilt).
+	void setDetachesHiddenViews(bool on);
+
+	/// Arrange `v` at the end (it becomes a subview as well).
+	void addArrangedSubview(View *v);
+	/// Arrange `v` at `index` (clamped to the ends).
+	void insertArrangedSubview(View *v, int index);
+	/// Stop arranging `v` (it also leaves the view tree).
+	void removeArrangedSubview(View *v);
+	/// The arranged subviews, in order.
+	const std::vector<View *> &arrangedSubviews() const { return arranged_; }
+
+	/// Leave `s` after `v` instead of the stack's own spacing (Cocoa's
+	/// setCustomSpacing:afterView:).
+	void setCustomSpacingAfterView(double s, View *v);
+	/// The gap this stack will leave AFTER `v`: its custom one, or spacing().
+	double customSpacingAfterView(View *v) const;
+
+	/// The size the stack needs to hold its arranged subviews AS THEY STAND:
+	/// their main-axis sizes plus the gaps and insets, and the largest across
+	/// the axis.
+	Size fittingSize() const;
+
+	/// The `index`th constraint of the current arrangement, for a caller that
+	/// wants to look at it (nullptr past the end).
+	LayoutConstraint *constraintAt(int index) const;
+	/// How many constraints the current arrangement made.
+	int constraintCount() const { return (int) constraints_.size(); }
+
+	/// The layout hook: rebuild the arrangement when the stack's own size
+	/// changed — Fill*/EqualSpacing/EqualCentering work their constants out
+	/// from it — and re-solve, so the new set applies at once instead of one
+	/// frame later.
+	void layout() override;
+
+	/// An arranged view was hidden or shown: with detachesHiddenViews() on,
+	/// that decides which views the arrangement places, so rebuild it.
+	void subviewHiddenChanged(View *child) override;
+
+private:
+	/// The subviews this arrangement actually places: the arranged list, less
+	/// the hidden ones while detachesHiddenViews() is on.
+	std::vector<View *> placedViews() const;
+	/// Tear down and rebuild the constraint set from the current state.
+	void rebuildConstraints();
+	/// The gap that follows `v`.
+	double gapAfter(View *v) const;
+
+	StackOrientation orientation_ = StackOrientation::Horizontal;
+	StackAlignment alignment_ = StackAlignment::Center;
+	StackDistribution distribution_ = StackDistribution::GravityAreas;
+	double spacing_ = 8.0;
+	EdgeInsets insets_;
+	bool detachesHidden_ = true;
+	std::vector<View *> arranged_;
+	/* the constraint set, OWNED here: a rebuild frees what it replaces, and
+	 * LayoutConstraint's destructor unlinks it from the solver's lists */
+	std::vector<LayoutConstraint *> constraints_;
+	/* setCustomSpacingAfterView:'s table */
+	std::vector<std::pair<View *, double> > customSpacing_;
+	/* the size the arrangement was built for, so layout() can tell a resize
+	 * from a pass that changed nothing */
+	double builtW_ = -1;
+	double builtH_ = -1;
 };
 } /* namespace argentum */
 

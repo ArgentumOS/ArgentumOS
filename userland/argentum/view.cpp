@@ -306,6 +306,12 @@ void
 View::setNeedsLayout()
 {
 	needsLayout_ = true;
+	/* AND THE WINDOW HEARS IT, exactly as it hears about damage: the
+	 * window's display cycle is what runs the layout pass, so a view whose
+	 * geometry has gone stale has to be able to ask for one. */
+	if (window_) {
+		window_->setNeedsLayout();
+	}
 }
 
 bool

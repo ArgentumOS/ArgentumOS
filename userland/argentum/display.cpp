@@ -794,6 +794,9 @@ struct Window::Impl {
 	XImage *ximg = nullptr;
 	pixman_image_t *pimg = nullptr;
 	bool dirty = true;
+	/* a LAYOUT pass is pending: the display cycle settles it before it draws
+	 * (which is Auto Layout's only driver in an application) */
+	bool layoutDirty = false;
 	/* the flush region: what changed since the last frame, in SURFACE
 	 * pixels. dmgAll is the whole surface (a resize, an expose, a window
 	 * level change); otherwise the rect is the union of the view damage
@@ -1300,6 +1303,22 @@ Window::setNeedsDisplay()
 	damageAll(impl_);
 }
 
+/* A PENDING LAYOUT IS NOT A DRAW. Marking it here and settling it in the
+ * display cycle is what makes Auto Layout run in an APPLICATION: until this
+ * existed, layoutSubtreeIfNeeded() was called by the test binaries and by
+ * nothing else, so a constraint had no effect on a window at all. */
+void
+Window::setNeedsLayout()
+{
+	impl_->layoutDirty = true;
+}
+
+bool
+Window::needsLayout() const
+{
+	return impl_->layoutDirty;
+}
+
 bool
 Window::focusFromClick(View *hit)
 {
@@ -1459,7 +1478,20 @@ draw_view(View *v, Context &ctx, int oxPx, int oyPx, double pxPerPt,
 void
 Window::displayIfNeeded()
 {
-	if (!impl_->open || !impl_->dirty) {
+	if (!impl_->open) {
+		return;
+	}
+	/* THE LAYOUT PASS RIDES THE DISPLAY CYCLE, as it does in AppKit: a
+	 * pending layout is settled BEFORE the draw, so what is drawn is the
+	 * laid-out tree. It runs even when nothing is dirty, because a layout is
+	 * often what makes something dirty. */
+	if (impl_->layoutDirty) {
+		impl_->layoutDirty = false;
+		if (content_) {
+			content_->layoutSubtreeIfNeeded();
+		}
+	}
+	if (!impl_->dirty) {
 		return;
 	}
 	bool timing = timingOn("ARGENTUM_PAINT_MS");
