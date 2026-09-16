@@ -1468,9 +1468,17 @@ draw_view(View *v, Context &ctx, int oxPx, int oyPx, double pxPerPt,
 
 	v->drawRect(local);
 	v->clearNeedsDisplay();
-	/* children after their superview: painter's order */
+	/* children after their superview: painter's order. A CLIP CONTAINER'S
+	 * OFFSET is applied HERE, to the SUBTREE only: the view keeps its own
+	 * origin (its clip is still its frame, and drawRect above drew it in
+	 * place) while everything below it is translated by -offset. That is the
+	 * whole of what scrolling does to a picture. */
+	Point off = v->contentOffset();
+	int cx = vx - (int) std::floor(off.x * pxPerPt);
+	int cy = vy - (int) std::floor(off.y * pxPerPt);
+
 	for (View *c : v->subviews()) {
-		draw_view(c, ctx, vx, vy, pxPerPt, dx0, dy0, dx1, dy1);
+		draw_view(c, ctx, cx, cy, pxPerPt, dx0, dy0, dx1, dy1);
 	}
 	ctx.popFrame();
 }
@@ -1879,6 +1887,43 @@ Window::pumpEvent()
 			std::printf("ARGENTUM-PUMP xwin=%lu %s\n",
 				    (unsigned long) impl_->xwin, what);
 			std::fflush(stdout);
+		}
+		/* X HAS NO WHEEL EVENT. A notch arrives as an ordinary ButtonPress
+		 * on button 4 (up), 5 (down) or 6/7 (across) — with no release to
+		 * pair with and no button to capture, so it is not a press at all.
+		 * It becomes a ScrollWheel and goes straight to the view under the
+		 * pointer, which is where a wheel belongs. */
+		if (ev.type == ButtonPress && ev.xbutton.button >= 4
+		    && ev.xbutton.button <= 7) {
+			Point wp = { ev.xbutton.x / pp, ev.xbutton.y / pp };
+			Event we = Event::otherEvent(EventType::ScrollWheel, wp, 0,
+					(double) ev.xbutton.time / 1000.0, 0);
+			/* UP IS POSITIVE: the deltas read the way the wheel was
+			 * rolled, and a scroll view moves its offset against them */
+			double across = ev.xbutton.button == 6 ? -1.0
+				      : ev.xbutton.button == 7 ? 1.0 : 0.0;
+			double up = ev.xbutton.button == 4 ? 1.0
+				  : ev.xbutton.button == 5 ? -1.0 : 0.0;
+
+			we.setScrollDeltas(across, up, across, up);
+			Rect cr = contentRect();
+			Point cp = { wp.x - cr.origin.x, wp.y - cr.origin.y };
+			View *hit = dispatchToContent(cp, we);
+
+			/* the view under the pointer first, then up the chain: a
+			 * view with nothing to scroll DECLINES, which is what gives
+			 * an enclosing scroll view its turn */
+			for (View *v = hit; v; v = v->superview()) {
+				Rect off = v->rectInWindow(Rect{ { 0, 0 },
+								 { 0, 0 } });
+
+				we.setLocationInWindow(Point{ cp.x - off.origin.x,
+							      cp.y - off.origin.y });
+				if (v->scrollWheel(we)) {
+					break;
+				}
+			}
+			return true;
 		}
 		Point winPt = { ev.xbutton.x / pp, ev.xbutton.y / pp };
 		bool pressed = (ev.type == ButtonPress);

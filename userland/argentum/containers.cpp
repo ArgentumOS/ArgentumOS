@@ -496,4 +496,607 @@ StackView::subviewHiddenChanged(View *child)
 	setNeedsDisplay();
 }
 
+/* ---- U5b: Scroller ---------------------------------------------------- */
+
+const ObjectClass Scroller::kClass = { "Scroller", &View::kClass, nullptr, 0,
+				       nullptr, 0 };
+
+static bool
+scrollerIsVertical(ScrollerOrientation o)
+{
+	return o == ScrollerOrientation::Vertical;
+}
+
+static bool
+rectHasPoint(const Rect &r, const Point &p)
+{
+	return p.x >= r.origin.x && p.y >= r.origin.y
+		&& p.x < r.origin.x + r.size.w && p.y < r.origin.y + r.size.h;
+}
+
+Scroller::Scroller()
+{
+	setIdentifier("scroller");
+}
+
+double
+Scroller::span(const Rect &r) const
+{
+	return scrollerIsVertical(orientation_) ? r.size.h : r.size.w;
+}
+
+void
+Scroller::setOrientation(ScrollerOrientation o)
+{
+	if (orientation_ == o) {
+		return;
+	}
+	orientation_ = o;
+	setNeedsDisplay();
+}
+
+void
+Scroller::setKnobProportion(double proportion, double value)
+{
+	if (proportion < 0) {
+		proportion = 0;
+	}
+	if (proportion > 1) {
+		proportion = 1;
+	}
+	if (value < 0) {
+		value = 0;
+	}
+	if (value > 1) {
+		value = 1;
+	}
+	if (proportion_ == proportion && value_ == value) {
+		return;
+	}
+	proportion_ = proportion;
+	value_ = value;
+	setNeedsDisplay();
+}
+
+void
+Scroller::setArrowSize(double size)
+{
+	if (size < 1) {
+		size = 1;
+	}
+	if (arrowSize_ == size) {
+		return;
+	}
+	arrowSize_ = size;
+	setNeedsDisplay();
+}
+
+Rect
+Scroller::arrowRect(bool increment) const
+{
+	Rect b = bounds();
+
+	if (scrollerIsVertical(orientation_)) {
+		double y = increment ? b.size.h - arrowSize_ : 0;
+
+		return Rect{ { 0, y }, { b.size.w, arrowSize_ } };
+	}
+	double x = increment ? b.size.w - arrowSize_ : 0;
+
+	return Rect{ { x, 0 }, { arrowSize_, b.size.h } };
+}
+
+Rect
+Scroller::trackRect() const
+{
+	Rect b = bounds();
+
+	if (scrollerIsVertical(orientation_)) {
+		double h = b.size.h - 2 * arrowSize_;
+
+		return Rect{ { 0, arrowSize_ },
+			     { b.size.w, h > 0 ? h : 0 } };
+	}
+	double w = b.size.w - 2 * arrowSize_;
+
+	return Rect{ { arrowSize_, 0 }, { w > 0 ? w : 0, b.size.h } };
+}
+
+/* THE KNOB'S ONE ARITHMETIC. drawRect and partAt both come through here, so
+ * a click cannot land anywhere the knob is not drawn. The knob keeps a
+ * minimum length: a proportion of a hundredth of a long document would
+ * otherwise be a knob too small to grab. */
+Rect
+Scroller::knobRect() const
+{
+	Rect t = trackRect();
+	double track = span(t);
+	double len = track * proportion_;
+
+	if (len < 12.0) {
+		len = 12.0;
+	}
+	if (len > track) {
+		len = track;
+	}
+	double travel = track - len;
+	double pos = travel > 0 ? value_ * travel : 0;
+
+	if (scrollerIsVertical(orientation_)) {
+		return Rect{ { t.origin.x, t.origin.y + pos }, { t.size.w, len } };
+	}
+	return Rect{ { t.origin.x + pos, t.origin.y }, { len, t.size.h } };
+}
+
+ScrollerPart
+Scroller::partAt(const Point &p) const
+{
+	if (rectHasPoint(arrowRect(true), p)) {
+		return ScrollerPart::IncrementArrow;
+	}
+	if (rectHasPoint(arrowRect(false), p)) {
+		return ScrollerPart::DecrementArrow;
+	}
+	Rect k = knobRect();
+
+	if (rectHasPoint(k, p)) {
+		return ScrollerPart::Knob;
+	}
+	/* what is left is the track, and which side of the knob it is on is
+	 * the whole of the answer */
+	double a = scrollerIsVertical(orientation_) ? p.y : p.x;
+	double at = scrollerIsVertical(orientation_) ? k.origin.y : k.origin.x;
+
+	return a < at ? ScrollerPart::DecrementPage : ScrollerPart::IncrementPage;
+}
+
+void
+Scroller::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	Rect b = bounds();
+
+	/* the track: a recessed channel with the buttons' dividers */
+	ctx->fillRect(b, Color::rgb(0.94, 0.94, 0.96));
+	ctx->strokeRect(b, Color::rgb(0.70, 0.70, 0.74), 1.0);
+	/* the buttons are marked off from the track */
+	Rect dec = arrowRect(false);
+	Rect inc = arrowRect(true);
+
+	ctx->strokeRect(dec, Color::rgb(0.78, 0.78, 0.82), 1.0);
+	ctx->strokeRect(inc, Color::rgb(0.78, 0.78, 0.82), 1.0);
+
+	/* the knob: lifted while it is being dragged, so a held knob reads as
+	 * held */
+	Rect k = knobRect();
+	double r = (scrollerIsVertical(orientation_) ? k.size.w : k.size.h) * 0.3;
+	Color fill = dragging_ ? Color::rgb(0.74, 0.79, 0.90)
+			       : Color::rgb(0.97, 0.97, 0.98);
+
+	ctx->fillRoundRect(k, r, fill);
+	ctx->strokeRoundRect(k, r, Color::rgb(0.55, 0.55, 0.60), 1.0);
+
+	/* the arrows: one triangle per button, pointing the way it scrolls */
+	Color ac = Color::rgb(0.30, 0.30, 0.35);
+
+	for (int i = 0; i < 2; i++) {
+		bool increment = (i == 1);
+		Rect a = increment ? inc : dec;
+		double cx = a.origin.x + a.size.w / 2.0;
+		double cy = a.origin.y + a.size.h / 2.0;
+		double d = 3.5;		/* the half-span of the triangle */
+		Point t[3];
+
+		if (scrollerIsVertical(orientation_)) {
+			/* decrement points UP, increment DOWN */
+			double tip = increment ? cy + d : cy - d;
+
+			t[0] = Point{ cx, tip };
+			t[1] = Point{ cx - d, increment ? cy - d : cy + d };
+			t[2] = Point{ cx + d, increment ? cy - d : cy + d };
+		} else {
+			double tip = increment ? cx + d : cx - d;
+
+			t[0] = Point{ tip, cy };
+			t[1] = Point{ increment ? cx - d : cx + d, cy - d };
+			t[2] = Point{ increment ? cx - d : cx + d, cy + d };
+		}
+		ctx->fillTriangles(t, 3, ac);
+	}
+}
+
+bool
+Scroller::mouseDown(const Event &e)
+{
+	ScrollerPart part = partAt(e.locationInWindow());
+
+	if (part == ScrollerPart::None) {
+		return false;
+	}
+	if (part == ScrollerPart::Knob) {
+		/* remember WHERE in the knob the press landed, so the knob does
+		 * not jump to centre itself under the pointer */
+		Rect k = knobRect();
+
+		grabOffset_ = scrollerIsVertical(orientation_)
+				      ? e.locationInWindow().y - k.origin.y
+				      : e.locationInWindow().x - k.origin.x;
+		dragging_ = true;
+		setNeedsDisplay();
+	}
+	if (scrollView_) {
+		scrollView_->scrollerPartPressed(this, part);
+	}
+	return true;		/* the press is captured either way */
+}
+
+bool
+Scroller::mouseDragged(const Event &e)
+{
+	if (!dragging_) {
+		return false;
+	}
+	if (scrollView_) {
+		Rect t = trackRect();
+		Rect k = knobRect();
+		double travel = span(t) - span(k);
+
+		if (travel > 0) {
+			bool v = scrollerIsVertical(orientation_);
+			double at = v ? t.origin.y : t.origin.x;
+			double a = v ? e.locationInWindow().y
+				     : e.locationInWindow().x;
+			double f = (a - grabOffset_ - at) / travel;
+
+			if (f < 0) {
+				f = 0;
+			}
+			if (f > 1) {
+				f = 1;
+			}
+			scrollView_->scrollerKnobDragged(this, f);
+		}
+	}
+	return true;
+}
+
+bool
+Scroller::mouseUp(const Event &e)
+{
+	(void) e;
+	if (!dragging_) {
+		return false;
+	}
+	dragging_ = false;
+	setNeedsDisplay();
+	return true;
+}
+
+/* ---- U5b: ScrollView -------------------------------------------------- */
+
+const ObjectClass ScrollView::kClass = { "ScrollView", &View::kClass, nullptr, 0,
+					 nullptr, 0 };
+
+ScrollView::ScrollView()
+{
+	/* the clip view is the ScrollView's OWN child and the first one, so
+	 * the bars - added later - draw over it */
+	clip_ = new View();
+	clip_->setIdentifier("scrollClip");
+	/* and it needs NO clip flag of its own: a view's frame is already the
+	 * boundary its children are clipped to (Context::pushFrame narrows the
+	 * clip to it, and View::hitTest refuses to descend outside it) */
+	addSubview(clip_);
+	/* Cocoa's default is a scroll view with NO bars: a view that scrolls
+	 * by wheel or by its owner's scrollTo: is a complete scroll view, and
+	 * an application asks for the bars it wants. */
+}
+
+ScrollView::~ScrollView()
+{
+	delete vScroller_;	/* unlinks from the tree */
+	delete hScroller_;
+	delete clip_;
+}
+
+void
+ScrollView::setDocumentView(View *v)
+{
+	if (document_ == v) {
+		return;
+	}
+	if (document_) {
+		document_->removeFromSuperview();
+	}
+	document_ = v;
+	if (v) {
+		clip_->addSubview(v);
+		/* THE CONTENT STARTS AT THE CLIP VIEW'S ORIGIN. The scroll range
+		 * is the content size less the visible size, and that only means
+		 * anything if the content's own origin is the clip's - so the
+		 * origin is normalised here and the SIZE is left alone (it is
+		 * the application's, and it is what the range comes from). */
+		v->setFrame(Rect{ { 0, 0 }, v->frame().size });
+	}
+	updateScrollers();
+	setNeedsDisplay();
+}
+
+Point
+ScrollView::contentOffset() const
+{
+	return clip_ ? clip_->contentOffset() : Point{ 0, 0 };
+}
+
+Point
+ScrollView::maxOffset() const
+{
+	Size c = contentSize();
+	Size v = visibleSize();
+	Point m = { c.w - v.w, c.h - v.h };
+
+	if (m.x < 0) {
+		m.x = 0;
+	}
+	if (m.y < 0) {
+		m.y = 0;
+	}
+	return m;
+}
+
+void
+ScrollView::setContentOffset(const Point &p)
+{
+	if (!clip_) {
+		return;
+	}
+	Point m = maxOffset();
+	Point c = p;
+
+	if (c.x < 0) {
+		c.x = 0;
+	}
+	if (c.x > m.x) {
+		c.x = m.x;
+	}
+	if (c.y < 0) {
+		c.y = 0;
+	}
+	if (c.y > m.y) {
+		c.y = m.y;
+	}
+	clip_->setContentOffset(c);
+	/* THE BARS ARE TOLD FROM THE SAME CLAMPED NUMBERS the offset came
+	 * from, so a bar can never disagree with the content it describes */
+	updateScrollers();
+}
+
+void
+ScrollView::scrollBy(const Point &d)
+{
+	Point o = contentOffset();
+
+	setContentOffset(Point{ o.x + d.x, o.y + d.y });
+}
+
+Size
+ScrollView::contentSize() const
+{
+	if (document_) {
+		return document_->frame().size;
+	}
+	return clip_ ? clip_->frame().size : Size{ 0, 0 };
+}
+
+Size
+ScrollView::visibleSize() const
+{
+	return clip_ ? clip_->frame().size : frame().size;
+}
+
+void
+ScrollView::setHasVerticalScroller(bool on)
+{
+	if (on && !vScroller_) {
+		vScroller_ = new Scroller();
+		vScroller_->setOrientation(ScrollerOrientation::Vertical);
+		vScroller_->setScrollView(this);
+		addSubview(vScroller_);
+	} else if (!on && vScroller_) {
+		vScroller_->setScrollView(nullptr);
+		delete vScroller_;
+		vScroller_ = nullptr;
+	} else {
+		return;
+	}
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+void
+ScrollView::setHasHorizontalScroller(bool on)
+{
+	if (on && !hScroller_) {
+		hScroller_ = new Scroller();
+		hScroller_->setOrientation(ScrollerOrientation::Horizontal);
+		hScroller_->setScrollView(this);
+		addSubview(hScroller_);
+	} else if (!on && hScroller_) {
+		hScroller_->setScrollView(nullptr);
+		delete hScroller_;
+		hScroller_ = nullptr;
+	} else {
+		return;
+	}
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+void
+ScrollView::layout()
+{
+	if (tiling_) {
+		return;
+	}
+	tiling_ = true;
+	Rect b = bounds();
+	double bar = barSize_;
+	double barW = vScroller_ ? bar : 0;
+	double barH = hScroller_ ? bar : 0;
+	double clipW = b.size.w - barW;
+	double clipH = b.size.h - barH;
+
+	if (clipW < 0) {
+		clipW = 0;
+	}
+	if (clipH < 0) {
+		clipH = 0;
+	}
+	if (clip_) {
+		clip_->setFrame(Rect{ { 0, 0 }, { clipW, clipH } });
+	}
+	if (vScroller_) {
+		/* the vertical bar takes the full height it can have, so the two
+		 * bars do not overlap in the corner */
+		vScroller_->setFrame(Rect{ { b.size.w - bar, 0 },
+					   { bar, clipH } });
+	}
+	if (hScroller_) {
+		hScroller_->setFrame(Rect{ { 0, b.size.h - bar },
+					   { clipW, bar } });
+	}
+	updateScrollers();
+	tiling_ = false;
+}
+
+double
+ScrollView::knobFraction(ScrollerOrientation o) const
+{
+	Point m = maxOffset();
+	Point off = contentOffset();
+	double max = scrollerIsVertical(o) ? m.y : m.x;
+
+	if (max <= 0) {
+		return 0;	/* nothing to scroll: the knob sits at the start */
+	}
+	double at = scrollerIsVertical(o) ? off.y : off.x;
+
+	return at / max;
+}
+
+void
+ScrollView::updateScrollers()
+{
+	Size vis = visibleSize();
+	Size content = contentSize();
+
+	if (vScroller_) {
+		double p = content.h > 0 ? vis.h / content.h : 1.0;
+
+		vScroller_->setKnobProportion(p, knobFraction(ScrollerOrientation::Vertical));
+	}
+	if (hScroller_) {
+		double p = content.w > 0 ? vis.w / content.w : 1.0;
+
+		hScroller_->setKnobProportion(p, knobFraction(ScrollerOrientation::Horizontal));
+	}
+}
+
+void
+ScrollView::scrollerPartPressed(Scroller *bar, ScrollerPart part)
+{
+	if (!bar) {
+		return;
+	}
+	bool vertical = bar->orientation() == ScrollerOrientation::Vertical;
+	Size vis = visibleSize();
+	double line = lineScroll_;
+	double page = (vertical ? vis.h : vis.w) - line;
+
+	if (page < line) {
+		page = line;
+	}
+	double delta = 0;
+
+	switch (part) {
+	case ScrollerPart::DecrementArrow:
+		delta = -line;
+		break;
+	case ScrollerPart::IncrementArrow:
+		delta = line;
+		break;
+	case ScrollerPart::DecrementPage:
+		delta = -page;
+		break;
+	case ScrollerPart::IncrementPage:
+		delta = page;
+		break;
+	case ScrollerPart::Knob:
+	case ScrollerPart::None:
+		/* a knob press only STARTS a drag; it moves nothing by itself */
+		return;
+	}
+	if (vertical) {
+		scrollBy(Point{ 0, delta });
+	} else {
+		scrollBy(Point{ delta, 0 });
+	}
+}
+
+void
+ScrollView::scrollerKnobDragged(Scroller *bar, double fraction)
+{
+	if (!bar) {
+		return;
+	}
+	bool vertical = bar->orientation() == ScrollerOrientation::Vertical;
+	Point m = maxOffset();
+	Point o = contentOffset();
+
+	if (vertical) {
+		o.y = fraction * m.y;
+	} else {
+		o.x = fraction * m.x;
+	}
+	setContentOffset(o);
+}
+
+bool
+ScrollView::scrollWheel(const Event &e)
+{
+	Point m = maxOffset();
+
+	/* NOTHING TO SCROLL: say so, and the event climbs to an enclosing
+	 * scroll view rather than dying here */
+	if (m.x <= 0 && m.y <= 0) {
+		return false;
+	}
+	double step = lineScroll_;
+
+	/* the deltas are the DEVICE's (positive = the wheel rolled up or the
+	 * content should follow the hand), so the offset moves against them */
+	scrollBy(Point{ -e.scrollingDeltaX() * step,
+			-e.scrollingDeltaY() * step });
+	return true;
+}
+
+void
+ScrollView::subviewResized(View *child)
+{
+	if (child != document_) {
+		return;
+	}
+	/* the range changed with it */
+	updateScrollers();
+	Point o = contentOffset();
+
+	setContentOffset(o);	/* re-clamp: content may have shrunk */
+	setNeedsDisplay();
+}
+
 } /* namespace argentum */

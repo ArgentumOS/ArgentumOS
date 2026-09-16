@@ -1041,6 +1041,18 @@ public:
 	/// The precise vertical delta (Cocoa's scrollingDeltaY).
 	double scrollingDeltaY() const { return scrollingDeltaY_; }
 
+	/// Fill in the wheel deltas. THE CONSTRUCTION SEAM, the counterpart of
+	/// setLocationInWindow: Cocoa's NSEvent gets these straight from the
+	/// device, while here the pump reads them off the X wheel button (4/5
+	/// vertical, 6/7 horizontal).
+	void setScrollDeltas(double dx, double dy, double sx, double sy)
+	{
+		deltaX_ = dx;
+		deltaY_ = dy;
+		scrollingDeltaX_ = sx;
+		scrollingDeltaY_ = sy;
+	}
+
 private:
 	EventType type_ = EventType::ApplicationDefined;
 	Point location_ = { 0, 0 };
@@ -1697,6 +1709,28 @@ public:
 	/// overrides it.
 	virtual void subviewHiddenChanged(View *child) { (void) child; }
 
+	/* ---- the clip container's offset (NSClipView's bounds origin) ---- */
+	/// Shift this view's SUBTREE without moving the view. The view still
+	/// clips to its own frame and draws its own chrome exactly where it is,
+	/// while everything BELOW it is drawn `offset` points up and to the
+	/// left. This is the mechanism a ScrollView scrolls its content with,
+	/// borrowed whole from Cocoa: the content view keeps its frame, so the
+	/// constraint solver can still lay it out, and only the DRAWING moves.
+	///
+	/// Both the paint pass and hit-testing read it, so what is on screen and
+	/// what a click lands on cannot drift apart — a point outside the
+	/// container's frame never reaches the subtree, wherever the subtree has
+	/// been scrolled to.
+	void setContentOffset(const Point &offset);
+	/// The subtree's drawing offset (zero unless set).
+	Point contentOffset() const { return offset_; }
+
+	/// A subview of this view changed SIZE (see setFrame). Nothing by
+	/// default; a container that measures itself around a child overrides it
+	/// — a scroll view's bars are sized from the DOCUMENT's size, and the
+	/// document is the one that changes it.
+	virtual void subviewResized(View *child) { (void) child; }
+
 	/* identity: the name a document or an app resolves a view by */
 	/// Name this view (copied). '' is anonymous; the name is what an app
 	/// resolves a control by.
@@ -1786,6 +1820,16 @@ public:
 	virtual bool mouseMoved(const Event &e);
 	/// The release that ends a press. Same contract.
 	virtual bool mouseUp(const Event &e);
+	/// The wheel turned over this view (Cocoa's scrollWheel:). Return true
+	/// when handled; false offers it to the superview, so a scroll view that
+	/// does not want it — content that already fits — lets it climb. The
+	/// default returns false, which is what makes a wheel over an ordinary
+	/// view reach the container that CAN scroll.
+	virtual bool scrollWheel(const Event &e)
+	{
+		(void) e;
+		return false;
+	}
 	/// A TICK, once per event-loop pass, while THIS view holds the press
 	/// (the window captured it). Cocoa's analog is the periodic event a
 	/// tracking loop asks for (+[NSEvent startPeriodicEventsAfterDelay:
@@ -1871,6 +1915,9 @@ public:
 private:
 	Rect frame_;
 	bool hidden_ = false;
+	Point offset_ = { 0, 0 };	/* U5b: this view's SUBTREE is drawn
+					 * shifted by this (NSClipView's bounds
+					 * origin) - the view itself does not move */
 	bool translatesMask_ = true;	/* U0: the mask stands in until off */
 	bool needsLayout_ = false;	/* U0b */
 	bool needsDisplay_ = false;	/* U2a */
@@ -4283,6 +4330,237 @@ private:
 	 * from a pass that changed nothing */
 	double builtW_ = -1;
 	double builtH_ = -1;
+};
+
+/* ---- U5b: the ScrollView ----------------------------------------------
+ *
+ * A SCROLL VIEW IS A CLIP VIEW WITH BARS. The content keeps its frame and
+ * its constraints — what moves is the DRAWING — so a document view can be
+ * laid out by the solver while it is scrolled. That is
+ * View::setContentOffset() (NSClipView's bounds origin), and the paint pass
+ * and hit-testing both read it, so the pixels and the clicks cannot drift
+ * apart.
+ *
+ * The bars are the CLASSIC kind: a square arrow button at each end of a
+ * track, and a knob whose length is the visible fraction of the content.
+ */
+
+class ScrollView;
+
+/// Which axis one scroll bar drives.
+enum class ScrollerOrientation { Vertical, Horizontal };
+
+/// The part of a bar a point falls on (Cocoa's NSScrollerPart).
+enum class ScrollerPart {
+	None,
+	IncrementArrow,		/* the button at the far end */
+	DecrementArrow,		/* the button at the near end */
+	IncrementPage,		/* track past the knob */
+	DecrementPage,		/* track before it */
+	Knob,
+};
+
+/// @purpose One bar of a ScrollView: a track, a knob whose length is the
+/// visible fraction of the content, and a square arrow button at each end —
+/// the classic NSScroller.
+///
+/// @lifetime Owned by the ScrollView that made it (deleted with it), and it
+/// holds a NON-OWNING back-pointer to that view. A bar can be built
+/// standalone, as the widget zoo does: it still draws and tracks, it simply
+/// has nothing to scroll.
+///
+/// @invariants The knob's geometry is ONE arithmetic for drawing and for
+/// hit-testing — knobRect() answers both — so a click can never land a pixel
+/// away from the knob that was drawn. HOW FAR an arrow or a page moves is the
+/// SCROLL VIEW's business: a bar reports which part was pressed and never
+/// computes an offset itself (which is what keeps the direction rules in one
+/// place).
+///
+/// @see ScrollView, View::setContentOffset
+class Scroller : public View {
+public:
+	/// The class record KVC walks (Object <- View <- Scroller).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A bar of the default orientation (vertical), belonging to no scroll
+	/// view until one adopts it.
+	Scroller();
+
+	/// The axis this bar drives.
+	ScrollerOrientation orientation() const { return orientation_; }
+	/// Set it (re-draws).
+	void setOrientation(ScrollerOrientation o);
+
+	/// The share of the content that is visible, 0..1: the knob's length as
+	/// a fraction of the track. 1 means there is nothing to scroll.
+	double knobProportion() const { return proportion_; }
+	/// Where the visible part sits in the content, 0..1: how far along the
+	/// track the knob is.
+	double doubleValue() const { return value_; }
+	/// Set both at once, as the ScrollView does after a scroll (Cocoa's
+	/// setKnobProportion: plus setDoubleValue:).
+	void setKnobProportion(double proportion, double value);
+
+	/// The arrow buttons' size (points). Classic scrollers are 15pt across
+	/// with 15pt square buttons.
+	double arrowSize() const { return arrowSize_; }
+	/// Set it.
+	void setArrowSize(double size);
+
+	/// Which part of the bar `p` (in this view's space) falls on.
+	ScrollerPart partAt(const Point &p) const;
+	/// The knob's rectangle (this view's space).
+	Rect knobRect() const;
+	/// The rectangle of the arrow at one end: the incrementing end (the
+	/// bottom or the right) when `increment`.
+	Rect arrowRect(bool increment) const;
+	/// The track: what is left between the two arrows.
+	Rect trackRect() const;
+
+	/// Draw the track, the arrows and the knob.
+	void drawRect(const Rect &dirty) override;
+	/// A press: on the knob it starts a drag, on an arrow or the track it
+	/// reports the part to the scroll view.
+	bool mouseDown(const Event &e) override;
+	/// A drag of the knob: report where it was dragged to.
+	bool mouseDragged(const Event &e) override;
+	/// The release: stop dragging.
+	bool mouseUp(const Event &e) override;
+
+	/// The ScrollView this bar drives, or nullptr. NON-OWNING.
+	ScrollView *scrollView() const { return scrollView_; }
+	/// Set it (the ScrollView does, when it adopts a bar).
+	void setScrollView(ScrollView *s) { scrollView_ = s; }
+
+private:
+	/// The axis' length of a rect (height when vertical).
+	double span(const Rect &r) const;
+
+	ScrollerOrientation orientation_ = ScrollerOrientation::Vertical;
+	double proportion_ = 1.0;	/* the knob's share of the track */
+	double value_ = 0.0;		/* 0..1 along it */
+	double arrowSize_ = 15.0;
+	bool dragging_ = false;		/* the knob is being dragged */
+	/* where in the knob the press landed, so the knob does not jump under
+	 * the pointer when the drag starts */
+	double grabOffset_ = 0.0;
+	ScrollView *scrollView_ = nullptr;	/* NON-OWNING */
+};
+
+/// @purpose A view onto content larger than it is: a clip view holding a
+/// document view, with a classic scroll bar per axis. Cocoa's NSScrollView
+/// at the size this milestone needs.
+///
+/// @lifetime Owns its clip view (contentView()) and its bars, and holds the
+/// document view as a NON-OWNING reference — the application owns its
+/// content — exactly as StackView treats its arranged subviews.
+///
+/// @invariants SCROLLING NEVER TOUCHES THE DOCUMENT VIEW'S FRAME. The offset
+/// lives on the clip view and moves the drawing (View::setContentOffset), so
+/// a document view can be laid out by constraints while it is scrolled, and
+/// nothing the layout system decides is overwritten from underneath it. The
+/// offset is CLAMPED to what there is to see — never negative, never past the
+/// content — and the bars are told what to paint from the same clamped
+/// numbers the offset came from, so a bar and its content cannot disagree.
+///
+/// @see Scroller, View::setContentOffset
+class ScrollView : public View {
+public:
+	/// The class record KVC walks (Object <- View <- ScrollView).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A scroll view with its clip view and NO bars — Cocoa's default, and
+	/// the reason a board asks for the bars it wants.
+	ScrollView();
+	/// Destroy it: the clip view and the bars go with it, the DOCUMENT does
+	/// not (it was never ours).
+	~ScrollView() override;
+
+	/// Make `v` the content. NOT owned; `v` keeps its own size, which is
+	/// what the scroll range is computed from.
+	void setDocumentView(View *v);
+	/// The content, or nullptr.
+	View *documentView() const { return document_; }
+
+	/// The clip view: the child that carries the offset.
+	View *contentView() const { return clip_; }
+
+	/// How far the content is scrolled, in points from its origin.
+	Point contentOffset() const;
+	/// Scroll there, clamped to what the content allows.
+	void setContentOffset(const Point &p);
+	/// Scroll by a delta, clamped.
+	void scrollBy(const Point &d);
+
+	/// The content's size (the document view's; the clip view's when there
+	/// is no document view).
+	Size contentSize() const;
+	/// The visible area's size (the clip view's).
+	Size visibleSize() const;
+
+	/// True while there is a vertical bar.
+	bool hasVerticalScroller() const { return vScroller_ != nullptr; }
+	/// Show or hide the vertical bar (Cocoa's hasVerticalScroller).
+	void setHasVerticalScroller(bool on);
+	/// True while there is a horizontal bar.
+	bool hasHorizontalScroller() const { return hScroller_ != nullptr; }
+	/// Show or hide it.
+	void setHasHorizontalScroller(bool on);
+
+	/// The vertical bar itself, or nullptr (Cocoa's verticalScroller). A bar
+	/// is what an application colours, disables or aims an input at, so it
+	/// is REACHABLE rather than internal — the board logs its position for a
+	/// gate to click, which is how the bar's press is verified end to end.
+	Scroller *verticalScroller() const { return vScroller_; }
+	/// The horizontal bar itself, or nullptr.
+	Scroller *horizontalScroller() const { return hScroller_; }
+
+	/// The step one arrow click takes (Cocoa's lineScroll); a page is the
+	/// visible size less one line.
+	double lineScroll() const { return lineScroll_; }
+	/// Set it.
+	void setLineScroll(double s) { lineScroll_ = s; }
+
+	/// An arrow or the track was pressed: act on it. Called BY the bar.
+	void scrollerPartPressed(Scroller *bar, ScrollerPart part);
+	/// The knob was dragged to `fraction` (0..1 down the track).
+	void scrollerKnobDragged(Scroller *bar, double fraction);
+
+	/// The wheel turned over this view: scroll by its deltas. Returns false
+	/// when there is nothing to scroll, so the event climbs to an enclosing
+	/// scroll view instead of being swallowed here.
+	bool scrollWheel(const Event &e) override;
+
+	/// Place the clip view and the bars inside the scroll view, then tell the
+	/// bars what to paint.
+	void layout() override;
+
+	/// A document view that changed size changes the scroll range.
+	void subviewResized(View *child) override;
+
+private:
+	/// Push the real proportions into the bars (Cocoa's -tile).
+	void updateScrollers();
+	/// Where the visible part sits on one axis, 0..1.
+	double knobFraction(ScrollerOrientation o) const;
+	/// The largest offset the content allows (never negative).
+	Point maxOffset() const;
+
+	View *clip_ = nullptr;		/* OWNED: clips and carries the offset */
+	View *document_ = nullptr;	/* NOT owned */
+	Scroller *vScroller_ = nullptr;	/* OWNED */
+	Scroller *hScroller_ = nullptr;	/* OWNED */
+	double lineScroll_ = 16.0;
+	/* the bar size, and the guard that keeps a re-layout from recursing
+	 * through the frames it is setting */
+	double barSize_ = 15.0;
+	bool tiling_ = false;
 };
 } /* namespace argentum */
 

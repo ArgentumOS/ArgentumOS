@@ -181,6 +181,21 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/stack_view.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/stack_view"
+	# scroll_view: U5b acceptance (docs/design/cocoa-parity-plan.md) — the
+	# ScrollView: the offset is clamped to content-less-hole, the document's
+	# frame never moves, the bars are derived from the same numbers, the
+	# wheel and the arrows scroll it. Display-free.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/scroll_view.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/scroll_view"
+	# font_twice: TEMPORARY DIAGNOSTIC - asks the guest's own FreeType whether
+	# it can open one font file twice (the toolkit keeps a face per size, so a
+	# second size is a second FT_New_Face). No toolkit, no fontconfig.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-I$(X11PREFIX)/include/freetype2 -L$(X11PREFIX)/lib \
+		userland/tests/font_twice.cpp -lfreetype \
+		-o "$(ROOTFS64)/System/Shared/tests/font_twice"
 	# kvc_basic: U1 acceptance (docs/design/cocoa-parity-plan.md) — the
 	# base object's class chain and by-name property access. Display-free.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

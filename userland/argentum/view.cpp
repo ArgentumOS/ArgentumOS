@@ -99,16 +99,34 @@ View::hitTest(const Point &p)
 	}
 	/* children are in z-order, so the TOPMOST match wins: search back
 	 * to front, and their frames are in this view's space */
+	/* A CLIP CONTAINER'S OFFSET COMES BACK OUT HERE. Its children are
+	 * DRAWN at (frame - offset), so the point in a child's space is
+	 * p - (frame - offset). Reading the same offset the paint pass reads is
+	 * what keeps a scrolled subtree's clicks landing where its pixels are. */
+	Point off = offset_;
+
 	for (size_t i = children_.size(); i > 0; i--) {
 		View *c = children_[i - 1];
-		Point cp = { p.x - c->frame_.origin.x,
-			     p.y - c->frame_.origin.y };
+		Point cp = { p.x - c->frame_.origin.x + off.x,
+			     p.y - c->frame_.origin.y + off.y };
 
 		if (View *hit = c->hitTest(cp)) {
 			return hit;
 		}
 	}
 	return this;
+}
+
+void
+View::setContentOffset(const Point &offset)
+{
+	if (offset_.x == offset.x && offset_.y == offset.y) {
+		return;
+	}
+	offset_ = offset;
+	/* what moved is the content INSIDE the frame, so the frame is what
+	 * gets repainted; the view itself is where it was */
+	setNeedsDisplay();
 }
 
 bool
@@ -204,6 +222,17 @@ View::rectInWindow(const Rect &r) const
 	for (const View *v = this; v; v = v->parent_) {
 		x += v->frame_.origin.x;
 		y += v->frame_.origin.y;
+		/* A CLIP CONTAINER DRAWS ITS CHILDREN SHIFTED, so a view under
+		 * one is that much nearer the window origin than its frames say
+		 * (View::setContentOffset). Leaving this out would not merely
+		 * misreport a position: the mouse path subtracts this rect from
+		 * a content point to get a view-local one, and the damage path
+		 * feeds it to the window, so a scrolled view would get clicks
+		 * offset by its scroll AND leave a stale strip behind. */
+		if (v->parent_) {
+			x -= v->parent_->offset_.x;
+			y -= v->parent_->offset_.y;
+		}
 	}
 	return Rect{ { x, y }, r.size };
 }
@@ -298,6 +327,12 @@ View::setFrame(const Rect &r)
 			h += grow;
 		}
 		c->frame_ = Rect{ { x, y }, { w, h } };
+	}
+	if (parent_) {
+		/* A CONTAINER MAY SIZE ITSELF AROUND THIS VIEW, and only the size
+		 * matters: a scroll view's bars are as long as the DOCUMENT is
+		 * tall, and the document is the one that changed here. */
+		parent_->subviewResized(this);
 	}
 	setNeedsLayout();
 }

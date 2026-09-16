@@ -10,6 +10,10 @@
  *   ZOO-READY            the board is up
  *   ZOO-SCREEN w= h=     the X screen size (the gate converts coordinates)
  *   ZOO-AT <name> x= y=  the SCREEN centre of a named control
+ *   ZOO-STACK <col> rows= h=          a column's arrangement (U5)
+ *   ZOO-SCROLL ...                    the scroll view's content, hole,
+ *                                     bars and where its document sits (U5b)
+ *   ZOO-SCROLL-OFFSET x= y= doc=x,y   a scroll, as it happened (U5b)
  *   ZOO-CLICK <title> state=<n>       an action arrived
  *   ZOO-RADIOS a=<n> b=<n>            the radio group's state after a pick
  *   ZOO-TIMEOUT / ZOO-CLOSED          how it ended
@@ -56,6 +60,12 @@ static StackView *colText = nullptr;
 static StackView *colValues = nullptr;
 static Button *bezelRounded = nullptr;	/* the two style references */
 static Button *bezelRoundRect = nullptr;
+/* THE SCROLL VIEW (U5b) and the stack that is its content: a list taller and
+ * wider than the hole it is seen through. */
+static ScrollView *scrollList = nullptr;
+static StackView *scrollRows = nullptr;
+static Point lastScroll = { 0, 0 };	/* the offset it starts at, so the first
+					 * ZOO-SCROLL-OFFSET is a real scroll */
 
 /* where a control's centre is, in SCREEN coordinates */
 static void
@@ -545,8 +555,50 @@ main(int argc, char **argv)
 	if (yText > tallest) {
 		tallest = yText;
 	}
+
+	/* A FOURTH REGION, TO THE RIGHT OF THE COLUMNS (U5b): the scroll view.
+	 * The board got WIDER for it, which moves nothing — a control's screen
+	 * position comes from the window's ORIGIN, so a wider window leaves all
+	 * of them exactly where they were and every ZOO-AT gate keeps its aim. */
+	scrollList = new ScrollView();
+	scrollList->setHasVerticalScroller(true);
+	scrollList->setHasHorizontalScroller(true);
+	content->addSubview(scrollList);
+
+	/* THE CONTENT IS A STACK: 14 rows of 300x24 on an 8pt gap, so 300x440
+	 * inside a 249x305 hole — bigger both ways, which is what gives the
+	 * wheel and both bars something to do. That a stack arranges INSIDE a
+	 * scroll view is the composition this container layer exists for.
+	 *
+	 * THE ROWS CARRY TITLES, and they can again. When this region was first
+	 * built the guest could not render text at any size but the first, so
+	 * the rows were sliders to keep the demonstration silent. That was the
+	 * GUEST letting one file be open only twice, which made the toolkit's
+	 * face-per-size cache fail on its second size; the toolkit now keeps one
+	 * face per style and sets the size per use, so text at any size works.
+	 * (An earlier comment here blamed a CLIPPED DOCUMENT for the font
+	 * failure — "a view beyond its clip corrupts memory in the masked-shape
+	 * path". The address sanitiser disproved that: the shape path is clean.)
+	 * Fourteen titled buttons IN a scroll view is also the better picture of
+	 * what a container layer is for. */
+	scrollRows = new StackView();
+	scrollRows->setOrientation(StackOrientation::Vertical);
+	scrollRows->setAlignment(StackAlignment::Leading);
+	scrollRows->setSpacing(8);
+	for (int i = 1; i <= 14; i++) {
+		Button *b = new Button();
+		char title[32];
+
+		std::snprintf(title, sizeof(title), "Row %d", i);
+		b->setTitle(title);
+		b->setFrame(Rect{ { 0, 0 }, { 300, 28 } });
+		scrollRows->addArrangedSubview(b);
+	}
+	scrollRows->setFrame(Rect{ { 0, 0 }, scrollRows->fittingSize() });
+	scrollList->setDocumentView(scrollRows);
+	scrollList->setFrame(Rect{ { 826, 12 }, { 264, 320 } });
 	w.setFrame(Rect{ { 70, 50 },
-			 { 830.0, tallest + 6 + w.chromeHeightPt() } });
+			 { 1106.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
 	/* TRACK THE WINDOW ON THE APPLICATION. The board pumps through the app
 	 * (see pumpOnce below), and so does anything the board opens - the
@@ -624,6 +676,25 @@ main(int argc, char **argv)
 	std::printf("ZOO-STACK values rows=%d h=%g\n",
 		    (int) colValues->arrangedSubviews().size(),
 		    colValues->fittingSize().h);
+	/* AND THE SCROLL VIEW, with the numbers that matter: the content it
+	 * looks at, the hole it looks through, where the DOCUMENT view sits,
+	 * and which bars it has. The document's origin is the invariant —
+	 * scrolling moves the VIEW of the content (the clip view's offset),
+	 * never the content's own frame, so it stays 0,0 however far the list
+	 * is scrolled (see the ZOO-SCROLL-OFFSET line the loop writes). */
+	if (scrollList) {
+		std::printf("ZOO-SCROLL rows=%d content=%gx%g visible=%gx%g "
+			    "offset=%g,%g doc=%g,%g bars=%d,%d\n",
+			    (int) scrollRows->arrangedSubviews().size(),
+			    scrollList->contentSize().w, scrollList->contentSize().h,
+			    scrollList->visibleSize().w, scrollList->visibleSize().h,
+			    scrollList->contentOffset().x,
+			    scrollList->contentOffset().y,
+			    scrollRows->frame().origin.x,
+			    scrollRows->frame().origin.y,
+			    scrollList->hasVerticalScroller() ? 1 : 0,
+			    scrollList->hasHorizontalScroller() ? 1 : 0);
+	}
 	std::fflush(stdout);
 
 	/* the window's own geometry: the damage rects are in WINDOW
@@ -656,6 +727,14 @@ main(int argc, char **argv)
 	 * question mark rather than its title */
 	logAt("CIRCULAR", circular);
 	logAt("HELP", help);
+	/* the scroll view and its vertical bar, so a gate can aim an ordinary
+	 * click at the bar's arrows: the test guest's mouse path cannot send a
+	 * WHEEL notch (QEMU's mouse_button is a three-bit mask), but it sends
+	 * button presses all day */
+	if (scrollList) {
+		logAt("SCROLL", scrollList);
+		logAt("VSCROLLER", scrollList->verticalScroller());
+	}
 	logAt("TEXTVIEW", tview);
 	logAt("PLACEHOLDER", ph);
 	logAt("EDITTEXT", editField);
@@ -730,6 +809,22 @@ main(int argc, char **argv)
 		w.displayIfNeeded();
 		if (w.isCloseRequested()) {
 			break;
+		}
+		/* A SCROLL, AS IT HAPPENS. The offset is the ScrollView's own
+		 * number, and the DOCUMENT's origin is logged beside it because
+		 * that is the invariant: the list scrolls without its content view
+		 * ever moving (View::setContentOffset). */
+		if (scrollList) {
+			Point off = scrollList->contentOffset();
+
+			if (off.x != lastScroll.x || off.y != lastScroll.y) {
+				lastScroll = off;
+				std::printf("ZOO-SCROLL-OFFSET x=%g y=%g doc=%g,%g\n",
+					    off.x, off.y,
+					    scrollRows->frame().origin.x,
+					    scrollRows->frame().origin.y);
+				std::fflush(stdout);
+			}
 		}
 		/* WHAT THE POP-UP BUTTON NOW SHOWS. Reported here, from the loop,
 		 * and NOT from the row's action: the action is sent INSIDE

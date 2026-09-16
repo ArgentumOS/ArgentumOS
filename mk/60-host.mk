@@ -60,7 +60,8 @@ $(HOST_LIBARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h $(HOST_LIBCON
 # The toolkit's own test programs. Seven are pure logic and need no display;
 # control_click and window_draw open one, as the app does.
 HOST_TEST_NAMES = cell_basic control_click view_layout layout_solve kvc_basic \
-	notification_basic viewcontroller_basic window_draw text_stack stack_view
+	notification_basic viewcontroller_basic window_draw text_stack stack_view \
+	scroll_view
 HOST_TESTS = $(addprefix $(HOST_APPDIR)/,$(HOST_TEST_NAMES))
 HOST_APP   = $(HOST_APPDIR)/WidgetZoo
 
