@@ -32,6 +32,8 @@ class Case(BaseCase):
                                   "-device", "usb-mouse",
                                   "-device", "usb-kbd"])
         ready = session.shell_ready(150)
+        session.run("export ARGENTUM_HITLOG=1")   # the hit-test instrument
+        session.run("export ARGENTUM_KEYLOG=1")   # the pop-up and panel ones
         session.run("export ARGENTUM_HITLOG=1")
         self.check("shell-ready", ready, "the serial console has a shell")
         if not ready:
@@ -373,3 +375,30 @@ class Case(BaseCase):
                    "at value 0 the indeterminate bar reads %s inside its stripe "
                    "and %s past it - a determinate bar would be track the whole "
                    "way" % (stripe, bare))
+
+        # THE WELL ACTIVATES THE SHARED COLOUR PANEL, and a swatch picked there
+        # reaches the same place a click on the well does: the same round trip
+        # the menu family proved, with a panel instead of a menu. The panel is
+        # TITLED (Cocoa's NSColorPanel has a title bar), so its swatches sit
+        # below the chrome.
+        t4 = len(session.log_text())
+        mon.click_at(int(wx), int(screen_h - wy), settle=0.8)
+        session.wait_for(r"ARGENTUM-PANEL", 15)
+        # THE WHOLE LOG, not the slice: the well was already clicked by its own
+        # earlier checks, so the panel may already be up and its line may
+        # predate this click. orderFront is idempotent, which is the point.
+        pn = re.search(r"ARGENTUM-PANEL x=(-?[\d.]+) y=(-?[\d.]+) "
+                       r"([\d.]+)x([\d.]+)", session.log_text())
+        self.check("the-well-opens-the-colour-panel", pn is not None,
+                   "clicking the well opened no panel: no ARGENTUM-PANEL line "
+                   "in that click's output. tail: %s" % " | ".join(session.tail(3)))
+        if pn:
+            px_, py_ = float(pn.group(1)), float(pn.group(2))
+            t5 = len(session.log_text())
+            mon.click_at(int(px_ + 13), int(screen_h - (py_ + 22 + 13)),
+                         settle=0.8)
+            session.wait_for(r"ZOO-WELL", 15)
+            picked5 = [l for l in session.output_since(t5).splitlines()
+                       if l.startswith("ZOO-WELL")]
+            self.check("a-swatch-pick-reaches-the-well", bool(picked5),
+                       "picking a swatch in the panel sent nothing: %s" % picked5)

@@ -1135,6 +1135,18 @@ ColorWell::mouseDown(const Event &e)
 {
 	(void) e;
 	setActive(true);
+	/* ACTIVATE THE SHARED PANEL, as Cocoa's NSColorWell does: the panel takes
+	 * this well's target and action, so a pick reaches the same place a click
+	 * on the well would, and it drops below the well. */
+	ColorPanel *p = ColorPanel::sharedColorPanel();
+	Window *w = window();
+	Rect mine = rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
+
+	p->setTarget(target());
+	p->setAction(action());
+	p->orderFront(Point{ (w ? w->frame().origin.x : 0) + mine.origin.x,
+			     (w ? w->frame().origin.y : 0) + mine.origin.y
+				     + bounds().size.h });
 	sendAction();
 	return true;			/* the click was ours */
 }
@@ -1863,6 +1875,201 @@ PopUpButton::mouseDown(const Event &e)
 
 const ObjectClass PopUpButton::kClass = {
 	"PopUpButton", &Button::kClass, nullptr, 0, nullptr, 0
+};
+
+
+/* ---- ColorPanel ------------------------------------------------------ */
+
+/* THE PRESETS: one table, used by the drawing AND the hit test */
+static const Color kSwatches[] = {
+	Color::rgb(0.85, 0.20, 0.20), Color::rgb(0.90, 0.55, 0.15),
+	Color::rgb(0.90, 0.85, 0.20), Color::rgb(0.30, 0.70, 0.35),
+	Color::rgb(0.25, 0.55, 0.85), Color::rgb(0.45, 0.35, 0.75),
+	Color::rgb(0.15, 0.15, 0.18), Color::rgb(0.95, 0.95, 0.97),
+	Color::rgb(0.55, 0.35, 0.25), Color::rgb(0.20, 0.65, 0.65),
+	Color::rgb(0.75, 0.35, 0.60), Color::rgb(0.60, 0.60, 0.62),
+};
+
+static const int kSwatchCount = (int) (sizeof(kSwatches) / sizeof(kSwatches[0]));
+static const double kSwatchCell = 26.0;
+
+int
+ColorPanelView::columns()
+{
+	return 4;
+}
+
+int
+ColorPanelView::rows()
+{
+	return (kSwatchCount + columns() - 1) / columns();
+}
+
+const Color *
+ColorPanelView::swatchColor(int i)
+{
+	if (i < 0 || i >= kSwatchCount) {
+		return nullptr;
+	}
+	return &kSwatches[i];
+}
+
+ColorPanelView::ColorPanelView(ColorPanel *panel) : panel_(panel)
+{
+}
+
+int
+ColorPanelView::swatchIndexAt(const Point &p) const
+{
+	if (p.x < 0 || p.y < 0) {
+		return -1;
+	}
+	int cx = (int) (p.x / kSwatchCell);
+	int cy = (int) (p.y / kSwatchCell);
+
+	if (cx >= columns() || cy >= rows()) {
+		return -1;
+	}
+	int i = cy * columns() + cx;
+
+	return swatchColor(i) ? i : -1;
+}
+
+bool
+ColorPanelView::mouseDown(const Event &e)
+{
+	int i = swatchIndexAt(e.locationInWindow());
+	const Color *c = swatchColor(i);
+
+	if (getenv("ARGENTUM_KEYLOG")) {
+		/* a MISSING line means the click never reached this view; idx=-1 means
+		 * it landed between swatches */
+		std::printf("ARGENTUM-SWATCH p=%.0f,%.0f idx=%d c=%d\n",
+			    e.locationInWindow().x, e.locationInWindow().y, i,
+			    c ? 1 : 0);
+		std::fflush(stdout);
+	}
+	if (!c) {
+		return false;
+	}
+	if (panel_) {
+		/* the PANEL does the telling, so the well and the panel agree */
+		panel_->setColor(*c);
+	}
+	return true;
+}
+
+void
+ColorPanelView::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	Rect b = bounds();
+
+	ctx->fillRect(b, Color::rgb(0.96, 0.96, 0.97));
+	for (int i = 0; i < kSwatchCount; i++) {
+		int cx = i % columns();
+		int cy = i / columns();
+		Rect s = { { b.origin.x + cx * kSwatchCell + 2.0,
+			     b.origin.y + cy * kSwatchCell + 2.0 },
+			   { kSwatchCell - 4.0, kSwatchCell - 4.0 } };
+
+		ctx->fillRect(s, kSwatches[i]);
+		ctx->strokeRect(s, Color::rgb(0.45, 0.45, 0.50), 1.0);
+	}
+}
+
+const ObjectClass ColorPanelView::kClass = {
+	"ColorPanelView", &View::kClass, nullptr, 0, nullptr, 0
+};
+
+ColorPanel::ColorPanel()
+{
+}
+
+ColorPanel *
+ColorPanel::sharedColorPanel()
+{
+	static ColorPanel panel;
+
+	return &panel;
+}
+
+void
+ColorPanel::setColor(const Color &c)
+{
+	color_ = c;
+	if (target_ && !action_.empty()) {
+		target_->sendAction(action_.c_str(), this);
+	}
+}
+
+void
+ColorPanel::setAction(const char *name)
+{
+	action_ = name ? name : "";
+}
+
+void
+ColorPanel::orderFront(const Point &atScreen)
+{
+	if (isVisible()) {
+		refresh();
+		return;
+	}
+	win_ = new Window();
+	/* a PANEL is floating, not a pop-up: Cocoa's NSColorPanel has a title bar
+	 * and floats above the app's ordinary windows. */
+	win_->setLevel(WindowLevelFloating);
+	double w = ColorPanelView::columns() * kSwatchCell + 4.0;
+	double h = ColorPanelView::rows() * kSwatchCell + 4.0;
+
+	if (!win_->open("Colors", (int) atScreen.x, (int) atScreen.y,
+			(unsigned int) w, (unsigned int) h)) {
+		delete win_;
+		win_ = nullptr;
+		return;
+	}
+	view_ = new ColorPanelView(this);
+	view_->setFrame(Rect{ { 0, 0 }, { w, h } });
+	View *content = new View();
+
+	content->addSubview(view_);
+	win_->setContentView(content);
+	Application::sharedApplication()->addWindow(win_);
+	if (getenv("ARGENTUM_KEYLOG")) {
+		std::printf("ARGENTUM-PANEL x=%.0f y=%.0f %gx%g cw=%.0f ch=%.0f\n",
+			    atScreen.x, atScreen.y, w, h, w, h);
+		std::fflush(stdout);
+	}
+}
+
+void
+ColorPanel::orderOut()
+{
+	if (!win_) {
+		return;
+	}
+	Application::sharedApplication()->removeWindow(win_);
+	delete win_;			/* owns its content view */
+	win_ = nullptr;
+	view_ = nullptr;
+}
+
+void
+ColorPanel::refresh()
+{
+	if (view_) {
+		view_->setNeedsDisplay();
+	}
+}
+
+const ObjectClass ColorPanel::kClass = {
+	"ColorPanel", &Object::kClass, nullptr, 0, nullptr, 0
 };
 
 } /* namespace argentum */

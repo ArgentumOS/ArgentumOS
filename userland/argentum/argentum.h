@@ -3536,6 +3536,121 @@ class Menu;			/* MenuView is declared before Menu */
 /// always titleOfSelectedItem().
 ///
 /// @see Menu, Button
+class ColorPanel;		/* ColorPanelView is declared before ColorPanel */
+
+/// @purpose A grid of colour swatches that reports the one you pick. The v1
+/// picker for the colour panel; Cocoa's wheel and sliders come later.
+///
+/// @lifetime The view does not own the panel; the panel owns the window.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants The swatch under a point is computed by the SAME arithmetic the
+/// drawing uses, so the pick cannot disagree with what is shown.
+///
+/// @see ColorPanel, ColorWell
+class ColorPanelView : public View {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A view over `panel`, which it does not own.
+	ColorPanelView(ColorPanel *panel);
+
+	/// How many swatches across and down.
+	static int columns();
+	/// Rows.
+	static int rows();
+	/// The colour of the swatch at `i`, or null past the end.
+	static const Color *swatchColor(int i);
+
+	/// The swatch index at `p`, or -1.
+	int swatchIndexAt(const Point &p) const;
+
+	/// A click picks the swatch and tells the panel.
+	bool mouseDown(const Event &e) override;
+	/// The grid, drawn.
+	void drawRect(const Rect &dirty) override;
+
+private:
+	ColorPanel *panel_ = nullptr;
+};
+
+/// @purpose The colour panel: ONE shared window that a colour well activates,
+/// as Cocoa's NSColorPanel is shared. It holds the colour and reports a pick
+/// to its target, like a control does.
+///
+/// @lifetime The panel is a singleton and owns the window it shows.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants setColor() always tells the target, so the well and the panel
+/// cannot drift; the panel is shown or not, never two.
+///
+/// @see ColorWell, ColorPanelView
+class ColorPanel : public Object {
+public:
+	/// The class record KVC walks.
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// The one panel (Cocoa's +sharedColorPanel).
+	static ColorPanel *sharedColorPanel();
+
+	/// The colour it holds.
+	Color color() const { return color_; }
+	/// Set it and send the action (Cocoa's setColor:).
+	void setColor(const Color &c);
+
+	/// Where a pick is sent (Cocoa's target).
+	Object *target() const { return target_; }
+	/// Set it.
+	void setTarget(Object *o) { target_ = o; }
+	/// The action's name (Cocoa's action).
+	const char *action() const { return action_.c_str(); }
+	/// Set it.
+	void setAction(const char *name);
+
+	/// Show the panel with its top-left at a screen point (Cocoa's
+	/// orderFront:).
+	void orderFront(const Point &atScreen);
+	/// Take it down (Cocoa's orderOut:).
+	void orderOut();
+	/// True while it is up.
+	bool isVisible() const { return win_ != nullptr; }
+
+	/// Repaint the panel's view, for setColor() from inside it.
+	void refresh();
+
+private:
+	ColorPanel();
+
+	Color color_ = Color::rgb(0.30, 0.55, 0.90);
+	Object *target_ = nullptr;
+	std::string action_;
+	Window *win_ = nullptr;
+	ColorPanelView *view_ = nullptr;
+};
+
+/// @purpose A button that opens a menu and shows the item chosen from it.
+/// Cocoa's NSPopUpButton.
+///
+/// It OWNS an NSMenu, as Cocoa's does, and a click pops that menu up beneath
+/// the button. The chosen row is what the button displays.
+///
+/// @lifetime The button owns its menu, and the menu owns its items.
+///
+/// @threading Single-threaded (the UI thread).
+///
+/// @invariants indexOfSelectedItem is -1 or a valid row; the title shown is
+/// always titleOfSelectedItem().
+///
+/// @see Menu, Button
 class PopUpButton : public Button {
 public:
 	/// The class record KVC walks.

@@ -111,6 +111,16 @@ static const Action Zoo_ACTIONS[] = {
 	{ "well", [](Object *sender) {
 		ColorWell *wl = dynamic_cast<ColorWell *>(sender);
 
+		/* A PICK FROM THE PANEL arrives with the PANEL as the sender, not the
+		 * well: the panel is what the person clicked. The board's own well is
+		 * the one that takes the colour, which is what keeps the well and the
+		 * panel from disagreeing. */
+		if (!wl && ColorPanel::sharedColorPanel()->isVisible()) {
+			wl = well;
+		}
+		if (wl && ColorPanel::sharedColorPanel()->isVisible()) {
+			wl->setColor(ColorPanel::sharedColorPanel()->color());
+		}
 		if (wl) {
 			Color c = wl->color();
 
