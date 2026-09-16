@@ -1140,12 +1140,16 @@ ColorWell::mouseDown(const Event &e)
 	 * on the well would, and it drops below the well. */
 	ColorPanel *p = ColorPanel::sharedColorPanel();
 	Window *w = window();
+	/* rectInWindow() sums the view chain and does NOT add the window's chrome,
+	 * so the chrome has to be added here or the panel lands one chrome too
+	 * high - which put it ON TOP of the well it belongs to. */
+	double ch = w ? w->chromeHeightPt() : 0.0;
 	Rect mine = rectInWindow(Rect{ { 0, 0 }, { 0, 0 } });
 
 	p->setTarget(target());
 	p->setAction(action());
 	p->orderFront(Point{ (w ? w->frame().origin.x : 0) + mine.origin.x,
-			     (w ? w->frame().origin.y : 0) + mine.origin.y
+			     (w ? w->frame().origin.y : 0) + ch + mine.origin.y
 				     + bounds().size.h });
 	sendAction();
 	return true;			/* the click was ours */

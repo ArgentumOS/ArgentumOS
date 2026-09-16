@@ -54,7 +54,15 @@ Control::target() const
 {
 	ActionCell *ac = dynamic_cast<ActionCell *>(cell_);
 
-	return ac ? ac->target() : nullptr;
+	/* THE CELL IS NOT THE ONLY PLACE THIS LIVES. setTarget() stores in BOTH
+	 * actionTarget_ and the cell, so a cell that is not an ActionCell - or one
+	 * that is attached after the target was set - must not hide what the
+	 * setter recorded. Reading only the cell made target() answer nullptr for a
+	 * control whose sendAction() worked perfectly. */
+	if (ac && ac->target()) {
+		return ac->target();
+	}
+	return actionTarget_;
 }
 
 void
@@ -71,7 +79,14 @@ Control::action() const
 {
 	ActionCell *ac = dynamic_cast<ActionCell *>(cell_);
 
-	return ac ? ac->action() : "";
+	/* as target(): setAction() stores in BOTH actionName_ and the cell, so the
+	 * getter must fall back to what the setter recorded. Returning "" here
+	 * while sendAction() delivered "well" is the asymmetry that left a
+	 * ColorWell's target/action hand-off empty. */
+	if (ac && ac->action() && ac->action()[0]) {
+		return ac->action();
+	}
+	return actionName_.c_str();
 }
 
 void

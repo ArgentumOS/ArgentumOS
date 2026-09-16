@@ -397,8 +397,15 @@ class Case(BaseCase):
             t5 = len(session.log_text())
             mon.click_at(int(px_ + 13), int(screen_h - (py_ + 22 + 13)),
                          settle=0.8)
-            session.wait_for(r"ZOO-WELL", 15)
-            picked5 = [l for l in session.output_since(t5).splitlines()
-                       if l.startswith("ZOO-WELL")]
+            # WAIT FOR A NEW LINE, not for the pattern: ZOO-WELL is already in
+            # the log from the well's own clicks, so wait_for() would return at
+            # once and the case would end before the pick was even flushed.
+            picked5 = []
+            for _ in range(30):
+                picked5 = [l for l in session.output_since(t5).splitlines()
+                           if l.startswith("ZOO-WELL")]
+                if picked5:
+                    break
+                time.sleep(0.5)
             self.check("a-swatch-pick-reaches-the-well", bool(picked5),
                        "picking a swatch in the panel sent nothing: %s" % picked5)
