@@ -559,8 +559,14 @@ as a compatibility path for un-migrated views, with a migration list.
     a discrete one sends once, on the release (which is what the action is
     for).
   * `StepperCell` / `Stepper` (NSStepper): two arrow halves, one step
-    each, clamped or WRAPPING, acting on the release inside a half.
-    Auto-repeat while held is not here yet, and the class says so.
+    each, clamped or WRAPPING. A press STEPS — Cocoa's stepper steps on the
+    mouse DOWN, not the up — and a press HELD DOWN keeps stepping, to
+    `NSStepper.autorepeat`'s contract (default true): one step on the
+    press, the next after **0.5 seconds**, then **ten a second**. The
+    timing lives in the Stepper and the clock is read once per event-loop
+    pass — `View::trackingTick()`, driven by `Window::pumpEvent()` while the
+    press is captured — so the control owns no timer, and a stall (a modal
+    menu, a slow frame) RESCHEDULES instead of firing a burst.
   * `ProgressIndicator` (NSProgressIndicator — a VIEW, as in Cocoa):
     determinate bar, indeterminate stripe, or a twelve-spoke spinner.
     `fraction()` is the single number the drawing follows, and the app

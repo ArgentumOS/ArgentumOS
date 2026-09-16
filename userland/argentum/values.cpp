@@ -18,8 +18,23 @@
  * does not do - the host build (mk/60-host.mk) is what caught it. */
 #include <cmath>
 #include <cstring>
+#include <time.h>	/* clock_gettime: the held-down repeat's clock */
 
 namespace argentum {
+
+/* A MONOTONIC CLOCK FOR THE HELD-DOWN REPEAT. The toolkit's event loop is a
+ * polling loop (Application::pumpOnce, or an app's own `pumpEvent()` loop), so
+ * a control that has to act on the passage of time ASKS the clock on each pass
+ * rather than owning a timer - a toolkit that starts timers on its own is a
+ * toolkit that keeps a machine awake (see ProgressIndicator's note). */
+static double
+nowMs()
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (double) ts.tv_sec * 1000.0 + (double) ts.tv_nsec / 1000000.0;
+}
 
 /* ---- SliderCell ------------------------------------------------------ */
 
@@ -756,20 +771,86 @@ Stepper::stepDown()
 	return true;
 }
 
+/* WHICH HALF a point is in, from the control's BOUNDS - which is the space a
+ * mouse event arrives in. (The cell answers the same question for its own
+ * callers in StepperCell::pointIsUp, from the frame it drew into.) */
+static bool
+pointInUpperHalf(const Rect &bounds, const Point &p)
+{
+	return p.y - bounds.origin.y < bounds.size.h / 2.0;
+}
+
+/* COCOA'S STEPPER TIMING, quoted from NSStepper.autorepeat (which defaults to
+ * true): "the first mouse down does one increment (or decrement) and, after a
+ * delay of 0.5 seconds, increments (or decrements) at a rate of ten times per
+ * second". So: one step at once, the next after half a second, and one every
+ * tenth of a second after that. */
+static const double kStepperRepeatDelayMs = 500.0;
+static const double kStepperRepeatPeriodMs = 100.0;
+
+bool
+Stepper::mouseDown(const Event &e)
+{
+	if (!Control::mouseDown(e)) {	/* disabled: the base refuses it */
+		return false;
+	}
+	bool up = pointInUpperHalf(bounds(), e.locationInWindow());
+
+	/* THE FIRST STEP IS THE PRESS, not the release - Cocoa's rule, and the
+	 * reason a held press can repeat: the press is what the window captures,
+	 * so it is what trackingTick can keep advancing. */
+	if (up) {
+		(void) stepUp();
+	} else {
+		(void) stepDown();
+	}
+	repeating_ = true;
+	repeatUp_ = up;
+	repeatNextMs_ = nowMs() + kStepperRepeatDelayMs;
+	return true;
+}
+
 void
 Stepper::mouseUpInside(const Event &e)
 {
-	StepperCell *c = stepperCell();
+	/* NOTHING. The step was the mouse DOWN and the repeat ran while the
+	 * button was held; the base class would SEND THE ACTION here, which would
+	 * be a second step for one click. */
+	(void) e;
+}
 
-	if (!c) {
+bool
+Stepper::mouseUp(const Event &e)
+{
+	/* the button came up: the repeat is over, wherever the pointer ended */
+	repeating_ = false;
+	return Control::mouseUp(e);
+}
+
+void
+Stepper::trackingTick()
+{
+	if (!repeating_) {
 		return;
 	}
-	Rect b = bounds();
+	double now = nowMs();
 
-	if (e.locationInWindow().y - b.origin.y < b.size.h / 2.0) {
-		stepUp();
-	} else {
-		stepDown();
+	if (now < repeatNextMs_) {
+		return;			/* still inside the half-second delay */
+	}
+	bool moved = repeatUp_ ? stepUp() : stepDown();
+
+	if (!moved) {
+		/* clamped at the end (or disabled): there is nothing to repeat */
+		repeating_ = false;
+		return;
+	}
+	repeatNextMs_ += kStepperRepeatPeriodMs;
+	if (repeatNextMs_ < now) {
+		/* A STALL MUST NOT BURST. The loop can be away for longer than one
+		 * period - a modal menu, a slow frame - and catching up would fire a
+		 * run of steps at once. The next one is due a period from NOW. */
+		repeatNextMs_ = now + kStepperRepeatPeriodMs;
 	}
 }
 

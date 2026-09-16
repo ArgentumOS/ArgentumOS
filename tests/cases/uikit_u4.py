@@ -3,7 +3,9 @@ level indicator.
 
 The interactive two are DRIVEN: the slider's knob is dragged to a known
 fraction of its track and the value it reports is checked against the
-position, and the stepper's two halves are clicked. The other two are
+position, and the stepper's two halves are clicked — and then HELD DOWN,
+because a stepper that repeats while pressed is the difference between one
+step and nine. The other two are
 LOOKED AT: a determinate progress bar must be filled for exactly its
 fraction of the width, and the level indicator past its critical threshold
 must be drawn in the critical colour — which is the only way to see that a
@@ -116,6 +118,39 @@ class Case(BaseCase):
         out4 = session.output_since(mark)
         self.check("stepper-down", re.search(r"ZOO-STEP 0\b", out4) is not None,
                    "clicking the lower half brought it back to 0")
+
+        # ---- the stepper, HELD DOWN -------------------------------------
+        # NSStepper.autorepeat defaults to true: "the first mouse down does one
+        # increment ... and, after a delay of 0.5 seconds, increments at a rate
+        # of ten times per second". So the PRESS steps (which is why the clicks
+        # above still step exactly once), a hold under half a second is still
+        # one step, and a hold past it keeps stepping.
+        def steps_since(t):
+            return [float(v) for v in
+                    re.findall(r"ZOO-STEP ([\d.]+)", session.output_since(t))]
+
+        t5 = len(session.log_text())
+        mon.goto(*at(tx, ty - 8))
+        mon.press(settle=0.3)		# held 0.3s: under the 0.5s delay
+        short = steps_since(t5)
+        mon.release()
+        self.check("a-short-hold-is-one-step", short == [1.0],
+                   "holding the upper arrow for 0.3s produced %s; the repeat "
+                   "waits half a second, so it must be exactly one step"
+                   % (short or "nothing"))
+
+        t6 = len(session.log_text())
+        mon.goto(*at(tx, ty - 8))
+        mon.press(settle=0.3)
+        time.sleep(1.0)			# ~1.3s held in total
+        mon.release()
+        long_hold = steps_since(t6)
+        # one on the press + about (1.3 - 0.5) / 0.1 = 8 more. The floor is what
+        # separates "repeats" from "one step"; the ceiling catches a runaway.
+        self.check("holding-the-arrow-repeats", 4 <= len(long_hold) <= 15,
+                   "a ~1.3s hold stepped %d times (%s); one on the press and "
+                   "then ten a second after 0.5s is about 9"
+                   % (len(long_hold), long_hold))
 
         # ---- the two bars, in the framebuffer ---------------------------
         # ---- the CIRCULAR slider: a point's ANGLE is the value ----------

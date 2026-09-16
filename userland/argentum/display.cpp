@@ -1754,6 +1754,17 @@ Window::pumpEvent()
 	if (!impl_->open || !gDpy) {
 		return false;
 	}
+	/* THE TICK FOR A CONTROL THAT IS HELD. pumpEvent() runs ONCE PER PASS in
+	 * both loop idioms - Application::pumpOnce()'s pass and an app's own
+	 * `for (;;) { win.pumpEvent(); ... }` - so a view that has to act on the
+	 * passage of time (the stepper's auto-repeat) is ticked here, once per
+	 * pass, while the window still has its press captured. It is at the TOP
+	 * because everything below may return early having found no event for
+	 * this window, and a held control must be ticked whether or not anyone is
+	 * generating events. */
+	if (pressView_) {
+		pressView_->trackingTick();
+	}
 	XEvent ev;
 
 	/* THIS WINDOW'S EVENTS ONLY, and this is load-bearing. A plain

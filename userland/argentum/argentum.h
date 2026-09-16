@@ -1749,6 +1749,13 @@ public:
 	virtual bool mouseMoved(const Event &e);
 	/// The release that ends a press. Same contract.
 	virtual bool mouseUp(const Event &e);
+	/// A TICK, once per event-loop pass, while THIS view holds the press
+	/// (the window captured it). Cocoa's analog is the periodic event a
+	/// tracking loop asks for (+[NSEvent startPeriodicEventsAfterDelay:
+	/// withPeriod:]) — it is what a control that REPEATS WHILE HELD advances
+	/// on, and how it learns that time has passed without owning a timer.
+	/// Nothing by default.
+	virtual void trackingTick() {}
 	/// True while this view is waiting for the button to come up.
 	bool isTrackingMouse() const { return tracking_; }
 	/// The window this view is in, or nullptr (set by the window's
@@ -3259,11 +3266,13 @@ private:
 ///
 /// @threading Single-threaded (the UI thread).
 ///
-/// @invariants A click acts on the RELEASE inside the half it landed on
-/// (a press outside does nothing); auto-repeat while the button is held is
-/// NOT here yet — Cocoa repeats, and this class says so rather than
-/// feeling unresponsive for no stated reason. The action is sent once per
-/// step, with the stepper as the sender.
+/// @invariants A press ACTS — Cocoa's stepper steps on the mouse DOWN, not
+/// the up — and a press HELD DOWN keeps acting: NSStepper's `autorepeat`
+/// defaults to true, "the first mouse down does one increment ... and,
+/// after a delay of 0.5 seconds, increments at a rate of ten times per
+/// second". Those two numbers are the delay and the period here. A release
+/// does not step again (the press already did), so a click is still exactly
+/// one step. The action is sent once per step, with the stepper as sender.
 ///
 /// @see StepperCell, Slider, Control
 class Stepper : public Control {
@@ -3306,8 +3315,22 @@ public:
 	/// Decrease by one step and send the action.
 	bool stepDown();
 
-	/// A release inside a half steps that way and sends the action.
+	/// Press inside a half: one step, and the half it landed on is ARMED so
+	/// a held press keeps stepping (see trackingTick).
+	bool mouseDown(const Event &e) override;
+	/// The release inside a half does NOT step: the press already did.
 	void mouseUpInside(const Event &e) override;
+	/// The release ends the repeat.
+	bool mouseUp(const Event &e) override;
+	/// The window's per-pass tick: step again once the repeat is due.
+	void trackingTick() override;
+
+private:
+	/* THE HELD-DOWN REPEAT. Armed by mouseDown, disarmed by mouseUp; the
+	 * clock comes from trackingTick, so the stepper owns no timer. */
+	bool repeating_ = false;
+	bool repeatUp_ = false;		/* which half is armed */
+	double repeatNextMs_ = 0;	/* when the next step is due */
 };
 
 /// @purpose A progress indicator: a bar that fills to show how far along
