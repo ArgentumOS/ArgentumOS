@@ -462,9 +462,51 @@ as a compatibility path for un-migrated views, with a migration list.
   the wrong default was inherited silently by the search and token fields,
   which is why the first run of this gate typed into nothing at all. The
   default is now Cocoa's, and `label()` still turns it off explicitly.
-  **Still to do in the text family:** the separate FIELD EDITOR view
-  (editing is in place in the cell's storage today), the search field's
-  recents menu, and token objects.
+  **THE SEPARATE FIELD EDITOR. DONE (2026-09).** Cocoa's field editor is ONE
+  `NSTextView` the window lends out while a control is being edited, and that
+  is what it is now: `Window::fieldEditor()` creates it on first use, and
+  `beginEditing()`/`endEditing()` (Cocoa's `editWithFrame:` and end-editing)
+  place it and hand it back. The split that makes ONE editor serve every
+  field is that **the CELL keeps the string and the EDITOR owns only the
+  insertion point**: `Window::beginEditing()` binds the editor to the cell's
+  own `TextStorage` (`TextView::setEditedStorage`), so the edit is IN PLACE —
+  `Control::stringValue()` is current on every keystroke, a commit has
+  nothing to copy back, and a token field's "the chips grew, the entry
+  moved" is seen by the editor at once. `TextFieldCell` GAVE UP the editing
+  state it used to hold (the caret, the insert/delete/move operations, the
+  caret's colour and `drawCaret`), and keeps its string, its placeholder and
+  its chrome.
+  Everything the editor needs is one rect per cell: `Cell::valueRectInFrame`
+  (the search field's entry right of the magnifier, the token field's after
+  the chips, the plain field's inner box offset by the run box's 3pt), so
+  the editor draws the text and the caret EXACTLY where the cell drew them —
+  the same arithmetic, not a second offset to keep in step. The cell stops
+  drawing the value while the editor draws it (`Cell::setHidesValue`), and
+  the editor is HIT-TRANSPARENT (`TextView::hitTest` answers null while it is
+  a field editor), because the control keeps the mouse and a click inside the
+  field being edited must reach the field.
+  The commands are Cocoa's: **Return COMMITS AND KEEPS EDITING** (the action
+  is sent, the caret stays — `Window::commitEditing()`; this is why a
+  BackSpace after a Return still deletes), Escape CANCELS and puts the
+  original string back (`Window::endEditing(false)` plus `editOriginal_`),
+  Tab commits the edit and opens the next field's, and clicking anywhere else
+  ends it. Starting the edit is the WINDOW's: a click
+  (`focusFromClick`) or a Tab into an editable field calls `beginEditing`,
+  so the caret is on screen BEFORE the first key — which is what the gates
+  check.
+  `TextView`'s edit operations act on `editedStorage()` and CLAMP the caret
+  first, because the storage can change under the editor when a token
+  commits.
+  Gates: `uikit_u3c` 10/10 and `uikit_u3d` 10/10 (real click, real keys, the
+  caret 20 rows on the click alone, Return commits and editing continues,
+  the clear button empties and fires, chips stay drawn while the entry is
+  edited, no caret left behind when the focus moves).
+  **A PRE-EXISTING BUG FIXED IN PASSING:** `SearchField::recentSearches()`
+  was declared to return a `std::vector` by reference and had an EMPTY body —
+  undefined behaviour the compiler warned about on every translation unit.
+  It returns the member now.
+  **Still to do in the text family:** the search field's recents menu, and
+  token objects.
 - **U3 (plan wording) — the text family and the FULL text stack** (user decision):
   `NSTextField` styles, `NSSearchField`, `NSTokenField`, and
   `NSTextStorage` → `NSLayoutManager` → `NSTextContainer` under
@@ -663,8 +705,9 @@ the gate is the claim; the sections above record what each one settled.
   field with arrows, and its guard is verified too (`uikit_u4` 21/21 - the whole
   run asked mouseDown about four points and the field click came back FIELD at
   p=45,11 against bounds 0,0 170x24). Nothing remains in U4.
-- U3: the separate field editor (editing is in place, in the cell's storage),
-  the search field's recents menu, and token *objects* (tokens are strings).
+- U3: the separate FIELD EDITOR is done (the window lends ONE `TextView` to
+  every field; `uikit_u3c` 10/10, `uikit_u3d` 10/10). What is left is the
+  search field's recents menu, and token *objects* (tokens are strings).
 - U2a's damage model was narrowed after this table was first written: the
   PAINT is still coarse (any damage repaints the whole content tree) but the
   PUSH is per-view, over MIT-SHM. The coarse half is what remains expensive,

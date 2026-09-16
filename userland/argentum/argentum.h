@@ -675,6 +675,19 @@ public:
 	/// The cell's inset on each side, in points.
 	static double contentInset() { return 6.0; }
 
+	/// The rect inside `frame` where this cell draws its VALUE — the text a
+	/// field editor takes over. The base fills the frame; a cell with chrome
+	/// of its own (a search field's magnifier, a token field's chips) narrows
+	/// it, so the window's field editor lands exactly where the value goes.
+	virtual Rect valueRectInFrame(const Rect &frame) const { return frame; }
+
+	/// True while the WINDOW's field editor is drawing the value in this
+	/// cell's place. The cell keeps its chrome (bezel, magnifier, chips) and
+	/// stops drawing the value, so the text is not drawn twice.
+	bool hidesValue() const { return hidesValue_; }
+	/// Set it.
+	void setHidesValue(bool on) { hidesValue_ = on; }
+
 	/* ---- drawing (the display path lands later) ---- */
 	/// Draw the cell's content into `frame` of `inView` (both in the
 	/// view's coordinates). The base draws the string, aligned per
@@ -707,6 +720,7 @@ protected:
 	Color textColor_ = Color::rgb(0.10, 0.10, 0.12);
 	std::string fontName_;
 	double fontSize_ = 0;
+	bool hidesValue_ = false;	/* the window's field editor draws the value */
 };
 
 /// @purpose A cell that can send an action to a target: the mechanism
@@ -1333,13 +1347,23 @@ public:
 	/// -fieldEditor:forObject:). A window lends this view out while a control
 	/// is being edited and takes it back when the edit ends.
 	TextView *fieldEditor();
+	/// The field editor IF one has been created — no creation, safe from a
+	/// const accessor (a field asking for its caret's colour).
+	TextView *fieldEditorIfAny() const { return fieldEditor_; }
 
 	/// Put the field editor over `c` and give it the keyboard (Cocoa's
 	/// -[NSCell editWithFrame:inView:editor:delegate:event:]).
 	bool beginEditing(Control *c);
-	/// End the edit: commit the text back to the control, or drop it.
-	/// Answers whether an edit was in progress.
+	/// Send the edited value's action WITHOUT ending the edit — Cocoa's
+	/// Return in a text field: the action goes and the caret stays.
+	bool commitEditing();
+	/// End the edit: keep the text (commit) or drop it. Answers whether an
+	/// edit was in progress.
 	bool endEditing(bool commit);
+	/// Re-place the field editor on the control's value rect — the rect can
+	/// MOVE under the editor (a token field's chips grow as entry is
+	/// committed), so every change to the control's value asks for this.
+	void updateFieldEditorFrame();
 	/// The control being edited, or null.
 	Control *editingControl() const { return editingControl_; }
 
@@ -1396,6 +1420,7 @@ private:
 	View *firstResponder_ = nullptr;	/* U3c: the key target */
 	TextView *fieldEditor_ = nullptr;	/* owned, created on first use */
 	Control *editingControl_ = nullptr;	/* whose cell is being edited */
+	std::string editOriginal_;	/* the value when the edit began (Escape) */
 	bool dragging_ = false;		/* U2b: the chrome is being dragged */
 	bool closeRequested_ = false;	/* U2b: the close box was hit */
 	Object *closeTarget_ = nullptr;	/* who is told when we close */
@@ -1876,6 +1901,11 @@ public:
 	bool isEnabled() const;
 	/// Enable or disable the control (its cell carries the flag).
 	void setEnabled(bool on);
+
+	/// True when this control edits its text through the WINDOW's shared
+	/// field editor — a text field, and only while it is editable. The window
+	/// asks on a click or a Tab, and starts the edit; the base says no.
+	virtual bool wantsFieldEditor() const { return false; }
 
 	/// Draw the cell into the control's bounds.
 	void drawRect(const Rect &dirty) override;
@@ -2441,6 +2471,14 @@ public:
 	/// The region the text flows into (never nullptr).
 	TextContainer *textContainer() const { return container_; }
 
+	/// Edit a storage that is NOT this view's own — how the window's FIELD
+	/// EDITOR edits a control's text: the cell owns the string, the editor
+	/// owns only the insertion point, so there is one copy of the text and a
+	/// commit has nothing to copy back. nullptr restores the view's own.
+	void setEditedStorage(TextStorage *s);
+	/// The storage being edited (the view's own unless setEditedStorage).
+	TextStorage *editedStorage() const { return edited_ ? edited_ : storage_; }
+
 	/// The padding between the bounds and the text.
 	double textInset() const { return inset_; }
 	/// Set it.
@@ -2462,6 +2500,10 @@ public:
 	void drawRect(const Rect &dirty) override;
 	/// A resize re-sizes the container (see the @invariants).
 	void setFrame(const Rect &r) override;
+	/// The hit test. A view acting as the WINDOW's field editor answers
+	/// null: it is drawn over a control that keeps the mouse, so a click
+	/// inside the field being edited must reach the field, not the editor.
+	View *hitTest(const Point &p) override;
 
 	/// True when the text view would accept edits (see the @invariants).
 	bool isEditable() const { return editable_; }
@@ -2482,6 +2524,10 @@ public:
 	int insertionPoint() const { return caret_; }
 	/// Put it at `index`, clamped to the string.
 	void setInsertionPoint(int index);
+	/// Pull the insertion point back inside the storage being edited. The
+	/// storage can change under the editor (a token commit clears the entry),
+	/// so every edit operation clamps first.
+	void clampCaret();
 
 	/// True while this view is editing, and so painting an insertion point.
 	bool isEditing() const { return editing_; }
@@ -2520,6 +2566,7 @@ public:
 
 protected:
 	TextStorage *storage_ = nullptr;
+	TextStorage *edited_ = nullptr;	/* the storage being edited, if not ours */
 	TextContainer *container_ = nullptr;
 	LayoutManager *layout_ = nullptr;
 	int caret_ = 0;		/* the insertion point, a byte offset */
@@ -2594,35 +2641,10 @@ public:
 	/// How many lines the field's text laid out to.
 	int lineCount() const;
 
-	/* ---- editing (U3c) ---- */
-	/// The insertion point, as a BYTE OFFSET into the string (see the
-	/// text stack's note on indices).
-	int insertionPoint() const { return caret_; }
-	/// Put the insertion point at `index` (clamped).
-	void setInsertionPoint(int index);
-	/// Insert `utf8` at the insertion point (and step past it).
-	void insertText(const char *utf8);
-	/// Delete the character BEFORE the insertion point.
-	void deleteBackward();
-	/// Delete the character AFTER the insertion point.
-	void deleteForward();
-	/// Move the insertion point one character left/right.
-	void moveLeft();
-	/// Move it one character right.
-	void moveRight();
-	/// Move it to the start of the text.
-	void moveToStart();
-	/// Move it to the end.
-	void moveToEnd();
-	/// True when the cell paints an insertion point (the control that owns
-	/// it is the first responder and the field is editable).
-	bool isEditing() const { return editing_; }
-	/// Tell the cell whether to paint the insertion point.
-	void setEditing(bool on);
-	/// The colour of the insertion point.
-	Color caretColor() const { return caretColor_; }
-	/// Set the insertion-point colour.
-	void setCaretColor(const Color &c) { caretColor_ = c; }
+	/// Where the editable text is drawn inside `frame`. The window's field
+	/// editor takes over exactly this rect while the field is edited; the
+	/// cell keeps its bezel and background.
+	Rect valueRectInFrame(const Rect &frame) const override;
 
 	/// Draw the bezel, the background and the text.
 	void drawInFrame(const Rect &frame, View *inView) override;
@@ -2638,17 +2660,9 @@ protected:
 	/// Set it.
 	void setBorderColor(const Color &c) { border_ = c; }
 
-protected:
-	/// Draw the CARET alone, in the rect the value was drawn in.
-	///
-	/// For a subclass that drew its own placeholder (SearchFieldCell,
-	/// TokenFieldCell - each lays it out around its own chrome) and so never
-	/// reached the value path: the caret is not part of the value, and a
-	/// field with the focus shows one whether or not it has text.
-	void drawCaret(const Rect &frame, View *inView);
-
-	/// Draw the VALUE alone - the placeholder or the text, and the caret -
-	/// in exactly the rect given, with no bezel and no background.
+	/// Draw the VALUE alone - the placeholder or the text - in exactly the
+	/// rect given, with no bezel and no background. Does nothing while the
+	/// window's field editor is drawing it instead (hidesValue()).
 	///
 	/// For a subclass that has drawn its own chrome: SearchFieldCell behind
 	/// its magnifier, TokenFieldCell behind its chips. Calling drawInFrame()
@@ -2660,13 +2674,10 @@ protected:
 	TextAttributes defaultAttributesOrMarked(bool placeholder) const;
 
 	std::string placeholder_;
-	int caret_ = 0;
-	bool editing_ = false;
 	bool bezeled_ = true;
 	bool drawsBackground_ = true;
 	Color bg_ = Color::rgb(1.0, 1.0, 1.0);
 	Color border_ = Color::rgb(0.62, 0.62, 0.66);
-	Color caretColor_ = Color::rgb(0.15, 0.15, 0.20);
 };
 
 /// @purpose A text field: a control whose value is TEXT, with the cell
@@ -2678,16 +2689,18 @@ protected:
 /// @lifetime The field owns its cell (Control's rule).
 /// A field is a RESPONDER: an editable one accepts the first responder, so
 /// a click focuses it (Control::mouseDown asks the window) and Tab walks
-/// to it. Editing is IN PLACE in the cell's storage for now — Cocoa runs a
-/// separate field editor view, which is a later milestone.
+/// to it. An editable one then edits through the WINDOW's shared FIELD
+/// EDITOR (Window::beginEditing) — Cocoa's NSTextField, where the text
+/// stays the cell's and the editor owns the insertion point.
 ///
 /// @threading Single-threaded (the UI thread).
 ///
-/// @invariants stringValue() IS the cell's text. An editable field takes
-/// no keystrokes YET: the keyboard and the field editor are the editing
-/// milestone, and the class says so instead of looking broken. A field
-/// with no text draws its placeholder, greyed — so an empty form field is
-/// still legible.
+/// @invariants stringValue() IS the cell's text, and it is CURRENT while
+/// the field is edited: the editor edits the cell's own storage in place,
+/// so there is nothing to copy back at the end. A field with no text draws
+/// its placeholder, greyed — so an empty form field is still legible —
+/// except while it is being edited, when the editor draws the caret there
+/// instead (Cocoa shows the caret, not the prompt).
 ///
 /// @see TextFieldCell, TextView, Control
 class TextField : public Control {
@@ -2754,6 +2767,8 @@ public:
 	/// True when an EDITABLE field takes the keyboard: yes (it is the
 	/// first responder a click gives the focus to, and Tab walks to it).
 	bool acceptsFirstResponder() const override;
+	/// An editable field edits through the window's shared FIELD EDITOR.
+	bool wantsFieldEditor() const override;
 	/// A key went down while the field had the focus: text inserts, the
 	/// arrows and Home/End move the insertion point, Delete removes, and
 	/// Return COMMITS (the action is sent). Anything else is offered to
@@ -2780,6 +2795,10 @@ private:
 	 * without having to remember to switch it on. */
 	bool editable_ = true;
 	bool selectable_ = true;
+
+	/* The window's field editor, starting the edit if it is not open yet.
+	 * Null when there is no window, or it refused. */
+	TextView *editingEditor();
 };
 
 /// @purpose The cell behind a search field: a text field's cell that also
@@ -2813,6 +2832,10 @@ public:
 	/// The magnifier's box, for the hit test that opens the recent searches.
 	Rect magnifierRect(const Rect &frame) const;
 
+	/// The entry area the window's field editor takes over: the field minus
+	/// the room the magnifier leaves.
+	Rect valueRectInFrame(const Rect &frame) const override;
+
 	/// Draw the magnifier, the text and (when there is text) the clear
 	/// button.
 	void drawInFrame(const Rect &frame, View *inView) override;
@@ -2844,6 +2867,7 @@ public:
 	/// The recent searches, newest first (Cocoa's recentSearches).
 	const std::vector<std::string> &recentSearches() const
 	{
+		return recentSearches_;
 	}
 	/// Set them (Cocoa's setRecentSearches:).
 	void setRecentSearches(const std::vector<std::string> &v);
@@ -2909,6 +2933,10 @@ public:
 	void removeAllTokens();
 	/// Where the entry text begins inside `frame` (after the chips).
 	double entryOriginX(const Rect &frame) const;
+
+	/// The entry area the window's field editor takes over: what is left of
+	/// the field after the chips.
+	Rect valueRectInFrame(const Rect &frame) const override;
 
 	/// Draw the chips and the entry text.
 	void drawInFrame(const Rect &frame, View *inView) override;

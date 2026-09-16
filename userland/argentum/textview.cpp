@@ -58,6 +58,20 @@ TextView::setFrame(const Rect &r)
 	syncContainer();
 }
 
+/* A FIELD EDITOR IS NOT A MOUSE TARGET. It is drawn OVER the control it
+ * edits, and the CONTROL keeps the mouse: a click inside the field being
+ * edited has to reach the field (which keeps the focus and the caret), not
+ * the editor floating above it. A TextView used as an ordinary view (the zoo
+ * board's) hit-tests as usual. */
+View *
+TextView::hitTest(const Point &p)
+{
+	if (owner_) {
+		return nullptr;
+	}
+	return View::hitTest(p);
+}
+
 const char *
 TextView::string() const
 {
@@ -106,15 +120,28 @@ TextView::setBreakMode(LineBreakMode m)
 }
 
 /* ---- editing: this view IS the field editor ------------------------- *
- * The operations work on the view's own text storage and keep the insertion
- * point on a CHARACTER boundary, stepping with the same UTF-8 helpers the
- * cell used - so a backspace on a multi-byte character removes the whole
- * character, not a byte of it.
+ * The operations work on the storage being edited — the view's OWN, or the
+ * CONTROL's when the window has lent this view out as its field editor
+ * (setEditedStorage) — and keep the insertion point on a CHARACTER boundary,
+ * stepping with the same UTF-8 helpers the cell used, so a backspace on a
+ * multi-byte character removes the whole character, not a byte of it.
  */
+void
+TextView::setEditedStorage(TextStorage *s)
+{
+	edited_ = s;
+	/* The LAYOUT draws what is EDITED, so it has to follow the binding: a
+	 * field editor draws the cell's text, not its own. */
+	layout_->setTextStorage(s ? s : storage_);
+	syncContainer();
+	setNeedsDisplay();
+}
+
 void
 TextView::setInsertionPoint(int index)
 {
-	int len = storage_ ? storage_->length() : 0;
+	TextStorage *st = editedStorage();
+	int len = st ? st->length() : 0;
 
 	if (index < 0) {
 		index = 0;
@@ -125,13 +152,30 @@ TextView::setInsertionPoint(int index)
 	caret_ = index;
 }
 
+void
+TextView::clampCaret()
+{
+	TextStorage *st = editedStorage();
+	int len = st ? st->length() : 0;
+
+	if (caret_ < 0) {
+		caret_ = 0;
+	}
+	if (caret_ > len) {
+		caret_ = len;
+	}
+}
+
 bool
 TextView::insertText(const char *text)
 {
-	if (!storage_ || !text || !text[0]) {
+	TextStorage *st = editedStorage();
+
+	if (!st || !text || !text[0]) {
 		return false;
 	}
-	storage_->insertString(caret_, text);
+	clampCaret();
+	st->insertString(caret_, text);
 	caret_ += (int) std::strlen(text);
 	setNeedsDisplay();
 	return true;
@@ -140,16 +184,19 @@ TextView::insertText(const char *text)
 bool
 TextView::deleteBackward()
 {
-	if (!storage_ || caret_ <= 0) {
+	TextStorage *st = editedStorage();
+
+	clampCaret();
+	if (!st || caret_ <= 0) {
 		return false;
 	}
-	const char *s = storage_->string();
+	const char *s = st->string();
 	int start = prevCharStart(s, (unsigned) caret_);
 
 	if (start < 0) {
 		start = 0;
 	}
-	storage_->deleteCharacters(start, caret_ - start);
+	st->deleteCharacters(start, caret_ - start);
 	caret_ = start;
 	setNeedsDisplay();
 	return true;
@@ -158,16 +205,19 @@ TextView::deleteBackward()
 bool
 TextView::deleteForward()
 {
-	if (!storage_ || caret_ >= storage_->length()) {
+	TextStorage *st = editedStorage();
+
+	clampCaret();
+	if (!st || caret_ >= st->length()) {
 		return false;
 	}
-	const char *s = storage_->string();
+	const char *s = st->string();
 	int end = nextCharEnd(s, (unsigned) caret_);
 
 	if (end <= caret_) {
 		return false;
 	}
-	storage_->deleteCharacters(caret_, end - caret_);
+	st->deleteCharacters(caret_, end - caret_);
 	setNeedsDisplay();
 	return true;
 }
@@ -175,10 +225,13 @@ TextView::deleteForward()
 bool
 TextView::moveLeft(const Event &)
 {
-	if (!storage_ || caret_ <= 0) {
+	TextStorage *st = editedStorage();
+
+	clampCaret();
+	if (!st || caret_ <= 0) {
 		return false;
 	}
-	int at = prevCharStart(storage_->string(), (unsigned) caret_);
+	int at = prevCharStart(st->string(), (unsigned) caret_);
 
 	caret_ = at < 0 ? 0 : at;
 	setNeedsDisplay();
@@ -188,12 +241,15 @@ TextView::moveLeft(const Event &)
 bool
 TextView::moveRight(const Event &)
 {
-	if (!storage_) {
+	TextStorage *st = editedStorage();
+
+	clampCaret();
+	if (!st) {
 		return false;
 	}
-	int end = nextCharEnd(storage_->string(), (unsigned) caret_);
+	int end = nextCharEnd(st->string(), (unsigned) caret_);
 
-	if (end > caret_ && end <= storage_->length()) {
+	if (end > caret_ && end <= st->length()) {
 		caret_ = end;
 		setNeedsDisplay();
 		return true;
@@ -215,7 +271,8 @@ TextView::moveToBeginningOfLine()
 bool
 TextView::moveToEndOfLine()
 {
-	int len = storage_ ? storage_->length() : 0;
+	TextStorage *st = editedStorage();
+	int len = st ? st->length() : 0;
 
 	if (caret_ == len) {
 		return false;
@@ -228,12 +285,13 @@ TextView::moveToEndOfLine()
 bool
 TextView::insertNewline()
 {
-	/* RETURN COMMITS. An editor does not OWN the value it edits, so it hands
-	 * the edit back to the control it is editing - Cocoa's delegate path, and
-	 * the reason the field editor can be shared by every field. */
+	/* RETURN COMMITS. Cocoa's field editor sends the action through its
+	 * delegate and KEEPS EDITING — the caret stays and the next key still
+	 * lands — which is what Window::commitEditing() does. The editor does not
+	 * OWN the value, so it never copies it back itself. */
 	if (owner_) {
 		if (Window *w = window()) {
-			return w->endEditing(true);
+			return w->commitEditing();
 		}
 	}
 	return false;
@@ -242,6 +300,8 @@ TextView::insertNewline()
 bool
 TextView::cancelOperation()
 {
+	/* ESCAPE ENDS it: the edit goes back to the owner, and the value is
+	 * dropped (Window::endEditing(false)). */
 	if (owner_) {
 		if (Window *w = window()) {
 			return w->endEditing(false);
@@ -271,7 +331,7 @@ TextView::drawRect(const Rect &dirty)
 		/* THE INSERTION POINT, where the next character lands: its x comes
 		 * from measuring the text BEFORE the caret, with the same layout that
 		 * just drew it, so the hairline sits in the gap it belongs in. */
-		const char *s = storage_ ? storage_->string() : "";
+		const char *s = editedStorage() ? editedStorage()->string() : "";
 		double x = 0;
 
 		for (int at = 0; at < caret_ && s[at]; ) {
@@ -283,8 +343,9 @@ TextView::drawRect(const Rect &dirty)
 			x += layout_->textWidthOf(at, next - at);
 			at = next;
 		}
-		ctx->fillRect(Rect{ { b.origin.x + inset_ + x, b.origin.y + 3.0 },
-				    { 1.0, b.size.h - 6.0 } }, caretColor_);
+		ctx->fillRect(Rect{ { b.origin.x + inset_ + x, b.origin.y + inset_ },
+				    { 1.0, b.size.h - 2.0 * inset_ } },
+			      caretColor_);
 	}
 }
 
@@ -362,107 +423,21 @@ TextFieldCell::lineCount() const
 	return layout_ ? layout_->lineCount() : 0;
 }
 
-/* ---- editing (U3c) ---------------------------------------------------
- *
- * The insertion point is a byte offset, and every operation keeps it on a
- * CHARACTER boundary by stepping with the UTF-8 helpers - so a backspace
- * on a multi-byte character removes the whole character, not a byte of it.
- */
-void
-TextFieldCell::setInsertionPoint(int index)
+/* THE VALUE'S RECT is what the window's field editor takes over while the
+ * field is edited: the cell keeps its bezel and background, and the text is
+ * drawn by the editor, exactly where the cell would have drawn it. The one
+ * arithmetic for it is here, so the drawing and the editor cannot disagree:
+ * the run box sits kValueTopPt below the top of the value area. */
+static const double kValueTopPt = 3.0;
+
+Rect
+TextFieldCell::valueRectInFrame(const Rect &frame) const
 {
-	int len = storage_ ? storage_->length() : 0;
+	double pad = 6.0;
 
-	if (index < 0) {
-		index = 0;
-	}
-	if (index > len) {
-		index = len;
-	}
-	caret_ = index;
-}
-
-void
-TextFieldCell::insertText(const char *utf8)
-{
-	if (!storage_ || !utf8 || !utf8[0]) {
-		return;
-	}
-	storage_->insertString(caret_, utf8);
-	caret_ += (int) std::strlen(utf8);
-}
-
-void
-TextFieldCell::deleteBackward()
-{
-	if (!storage_ || caret_ <= 0) {
-		return;
-	}
-	const char *s = storage_->string();
-	int start = prevCharStart(s, (unsigned) caret_);
-
-	if (start < 0) {
-		start = 0;
-	}
-	storage_->deleteCharacters(start, caret_ - start);
-	caret_ = start;
-}
-
-void
-TextFieldCell::deleteForward()
-{
-	if (!storage_ || caret_ >= storage_->length()) {
-		return;
-	}
-	const char *s = storage_->string();
-	int end = nextCharEnd(s, (unsigned) caret_);
-
-	if (end <= caret_) {
-		return;
-	}
-	storage_->deleteCharacters(caret_, end - caret_);
-}
-
-void
-TextFieldCell::moveLeft()
-{
-	if (!storage_ || caret_ <= 0) {
-		return;
-	}
-	int at = prevCharStart(storage_->string(), (unsigned) caret_);
-
-	caret_ = at < 0 ? 0 : at;
-}
-
-void
-TextFieldCell::moveRight()
-{
-	if (!storage_) {
-		return;
-	}
-	int end = nextCharEnd(storage_->string(), (unsigned) caret_);
-
-	if (end > caret_ && end <= storage_->length()) {
-		caret_ = end;
-	}
-}
-
-void
-TextFieldCell::moveToStart()
-{
-	caret_ = 0;
-}
-
-void
-TextFieldCell::moveToEnd()
-{
-	caret_ = storage_ ? storage_->length() : 0;
-}
-
-void
-TextFieldCell::setEditing(bool on)
-{
-	editing_ = on;
+	return Rect{ { frame.origin.x + pad, frame.origin.y + kValueTopPt },
+		     { frame.size.w - 2.0 * pad,
+		       frame.size.h - 2.0 * kValueTopPt } };
 }
 
 void
@@ -473,7 +448,6 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 	if (!ctx || !layout_) {
 		return;
 	}
-	double pad = 6.0;
 	double radius = bezeled_ ? 4.0 : 0;
 
 	if (bezeled_ || drawsBackground_) {
@@ -494,14 +468,13 @@ TextFieldCell::drawInFrame(const Rect &frame, View *inView)
 	 * must not get a SECOND one around its entry area, and that is exactly
 	 * what delegating to this function did: one box outlined inside
 	 * another. A subclass hands drawValue() the entry rect instead. */
-	Rect inner = { { frame.origin.x + pad, frame.origin.y },
-		       { frame.size.w - 2.0 * pad, frame.size.h } };
-
-	drawValue(inner, inView);
+	drawValue(valueRectInFrame(frame), inView);
 }
 
-/* the value: drawn in exactly the rect it is given, so a subclass that has
- * drawn its own chrome can hand over its entry area */
+/* the value: drawn in exactly the rect it is given — the run box's top is
+ * that rect's top — so a subclass that has drawn its own chrome can hand
+ * over its entry area, and the window's field editor takes over the SAME
+ * rect without a second offset to keep in step */
 void
 TextFieldCell::drawValue(const Rect &frame, View *inView)
 {
@@ -513,15 +486,12 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 	std::string shown = storage_->string();
 	bool placeholder = shown.empty() && !placeholder_.empty();
 
-	/* DIAGNOSTIC (ARGENTUM_CARET_DEBUG): what the draw believes about its own
-	 * focus. A field that takes a click without showing a cursor is a draw
-	 * that believes it has no focus, so this is the question to ask first. */
-	if (std::getenv("ARGENTUM_CARET_DEBUG")) {
-		std::fprintf(stderr,
-			     "ARGENTUM-CARET view=%p placeholder=%d editing=%d "
-			     "focused=%d\n",
-			     (void *) inView, placeholder ? 1 : 0, editing_ ? 1 : 0,
-			     (inView && inView->isFirstResponder()) ? 1 : 0);
+	/* THE WINDOW'S FIELD EDITOR DRAWS THE VALUE WHILE THE FIELD IS EDITED.
+	 * The cell keeps its bezel and background and stops here, so the text is
+	 * not drawn twice - and the placeholder goes with it, which is what Cocoa
+	 * shows (a focused, empty field shows the caret, not the prompt). */
+	if (hidesValue()) {
+		return;
 	}
 
 	/* THE STORAGE KEEPS THE CELL'S OWN COLOUR, NEVER THE PLACEHOLDER'S.
@@ -549,53 +519,10 @@ TextFieldCell::drawValue(const Rect &frame, View *inView)
 		lm.setTextStorage(&tmp);
 		lm.setTextContainer(container_);
 		lm.drawInContext(*ctx, Point{ frame.origin.x,
-					      frame.origin.y + 3.0 });
+					      frame.origin.y });
 	} else {
 		layout_->drawInContext(*ctx, Point{ frame.origin.x,
-						    frame.origin.y + 3.0 });
-	}
-	drawCaret(frame, inView);
-}
-
-/* THE CARET, ON WHATEVER PATH DREW THE VALUE. A field with no text draws its
- * PLACEHOLDER instead of a value, and a subclass that draws the placeholder
- * ITSELF - the search field's, the token field's, each laid out around its own
- * chrome - used to skip the value path entirely, and the caret went with it.
- * So a click that HAD taken the focus showed no cursor until a keystroke
- * replaced the placeholder with text, which reads as "the click didn't take".
- *
- * THE CARET FOLLOWS THE FOCUS: editing_ was the only switch and nothing ever
- * set it, so a field could be typed into with no cursor at all. A field with
- * the keyboard focus IS being edited - which is also what Cocoa shows - and
- * the cell can ask, because the draw is handed the view. */
-void
-TextFieldCell::drawCaret(const Rect &frame, View *inView)
-{
-	Context *ctx = Context::current();
-
-	if (!ctx || !layout_) {
-		return;
-	}
-	/* the insertion point: a hairline where the next character lands.
-	 * Its x comes from measuring the text BEFORE the insertion point,
-	 * which is the same measurement the layout draws with, so the caret
-	 * sits where the gap is. */
-	if (editing_ || (inView && inView->isFirstResponder())) {
-		const char *s = storage_->string();
-		double x = 0;
-
-		for (int at = 0; at < caret_ && s[at]; ) {
-			int next = nextCharEnd(s, (unsigned) at);
-
-			if (next <= at || next > caret_) {
-				next = caret_;
-			}
-			x += layout_->textWidthOf(at, next - at);
-			at = next;
-		}
-		ctx->fillRect(Rect{ { frame.origin.x + x,
-				      frame.origin.y + 4.0 },
-				    { 1.0, frame.size.h - 8.0 } }, caretColor_);
+						    frame.origin.y });
 	}
 }
 
@@ -692,9 +619,18 @@ TextField::setStringValue(const char *utf8)
 {
 	if (TextFieldCell *c = fieldCell()) {
 		c->setStringValue(utf8);
-		c->setInsertionPoint(c->textStorage()
-					     ? c->textStorage()->length()
-					     : 0);
+		/* the insertion point lives in the window's field editor now; a
+		 * programmatic set puts it at the end, as the cell used to */
+		if (Window *w = window()) {
+			if (w->editingControl() == this) {
+				if (TextView *ed = w->fieldEditorIfAny()) {
+					ed->setInsertionPoint(
+						c->textStorage()
+							? c->textStorage()->length()
+							: 0);
+				}
+			}
+		}
 		setNeedsDisplay();
 	}
 }
@@ -808,9 +744,37 @@ TextField::acceptsFirstResponder() const
 	return editable_;
 }
 
+bool
+TextField::wantsFieldEditor() const
+{
+	/* Cocoa's NSTextField edits through the window's FIELD EDITOR, and a
+	 * label never does. The window asks this on a click and on a Tab. */
+	return editable_;
+}
+
 /* THE COMMANDS. Each is the same work keyDown used to do by testing bools,
  * reached the way Cocoa reaches it: a key binding turns the event into a
- * command, and the control answers whether it handled it. */
+ * command, and the control answers whether it handled it. The text lives in
+ * the CELL (its string is the value, like every control's); the EDITING —
+ * the insertion point and the drawing — belongs to the window's ONE field
+ * editor, which the field reaches through Window::beginEditing().
+ *
+ * Starts the edit on demand, so a command that arrives with no edit open
+ * (a focus taken by some path other than a click) still lands. */
+TextView *
+TextField::editingEditor()
+{
+	Window *w = window();
+
+	if (!w) {
+		return nullptr;
+	}
+	if (w->editingControl() != this && !w->beginEditing(this)) {
+		return nullptr;
+	}
+	return w->fieldEditor();
+}
+
 bool
 TextField::insertText(const char *text)
 {
@@ -831,9 +795,15 @@ TextField::insertText(const char *text)
 	if (!c || !editable_) {
 		return false;
 	}
-	c->insertText(text);
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
+	bool took = ed->insertText(text);
+
 	setNeedsDisplay();
-	return true;
+	return took;
 }
 
 bool
@@ -841,6 +811,13 @@ TextField::insertNewline()
 {
 	if (!fieldCell() || !editable_) {
 		return false;
+	}
+	/* RETURN COMMITS AND KEEPS EDITING — Cocoa sends the action without
+	 * ending the edit, so the caret stays and the next key still lands. */
+	if (Window *w = window()) {
+		if (w->editingControl() == this) {
+			return w->commitEditing();
+		}
 	}
 	sendAction();
 	setNeedsDisplay();
@@ -850,88 +827,104 @@ TextField::insertNewline()
 bool
 TextField::deleteBackward()
 {
-	TextFieldCell *c = fieldCell();
-
-	if (!c || !editable_) {
+	if (!fieldCell() || !editable_) {
 		return false;
 	}
-	c->deleteBackward();
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
 	setNeedsDisplay();
-	return true;
+	return ed->deleteBackward();
 }
 
 bool
 TextField::deleteForward()
 {
-	TextFieldCell *c = fieldCell();
-
-	if (!c || !editable_) {
+	if (!fieldCell() || !editable_) {
 		return false;
 	}
-	c->deleteForward();
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
 	setNeedsDisplay();
-	return true;
+	return ed->deleteForward();
 }
 
 bool
 TextField::moveLeft(const Event &e)
 {
-	TextFieldCell *c = fieldCell();
-
 	(void) e;
-	if (!c || !editable_) {
+	if (!fieldCell() || !editable_) {
 		return false;
 	}
-	c->moveLeft();
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
 	setNeedsDisplay();
-	return true;
+	return ed->moveLeft(e);
 }
 
 bool
 TextField::moveRight(const Event &e)
 {
-	TextFieldCell *c = fieldCell();
-
 	(void) e;
-	if (!c || !editable_) {
+	if (!fieldCell() || !editable_) {
 		return false;
 	}
-	c->moveRight();
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
 	setNeedsDisplay();
-	return true;
+	return ed->moveRight(e);
 }
 
 bool
 TextField::moveToBeginningOfLine()
 {
-	TextFieldCell *c = fieldCell();
-
-	if (!c || !editable_) {
+	if (!fieldCell() || !editable_) {
 		return false;
 	}
-	c->moveToStart();
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
 	setNeedsDisplay();
-	return true;
+	return ed->moveToBeginningOfLine();
 }
 
 bool
 TextField::moveToEndOfLine()
 {
-	TextFieldCell *c = fieldCell();
-
-	if (!c || !editable_) {
+	if (!fieldCell() || !editable_) {
 		return false;
 	}
-	c->moveToEnd();
+	TextView *ed = editingEditor();
+
+	if (!ed) {
+		return false;
+	}
 	setNeedsDisplay();
-	return true;
+	return ed->moveToEndOfLine();
 }
 
 bool
 TextField::cancelOperation()
 {
-	/* Escape ends editing in a field editor, and this is not one: unhandled,
-	 * so the chain can decide. */
+	/* ESCAPE ENDS the edit, and drops the value (Cocoa's field editor). */
+	if (Window *w = window()) {
+		if (w->editingControl() == this) {
+			return w->endEditing(false);
+		}
+	}
 	return false;
 }
 
@@ -963,6 +956,10 @@ TokenField::deleteBackward()
 	if (c && stringValue()[0] == '\0' && !c->tokens().empty()) {
 		/* backspace on an EMPTY entry takes the last token back */
 		c->removeLastToken();
+		/* the chips shrank, so the entry moved: the editor follows it */
+		if (Window *w = window()) {
+			w->updateFieldEditorFrame();
+		}
 		setNeedsDisplay();
 		return true;
 	}
@@ -972,26 +969,40 @@ TokenField::deleteBackward()
 Color
 TextField::caretColor() const
 {
-	TextFieldCell *c = fieldCell();
+	Window *w = window();
 
-	return c ? c->caretColor() : Color::rgb(0.15, 0.15, 0.20);
+	if (w && w->editingControl() == this) {
+		if (TextView *ed = w->fieldEditorIfAny()) {
+			return ed->caretColor();
+		}
+	}
+	return Color::rgb(0.15, 0.15, 0.20);
 }
 
 void
 TextField::setCaretColor(const Color &c)
 {
-	if (TextFieldCell *cell = fieldCell()) {
-		cell->setCaretColor(c);
-		setNeedsDisplay();
+	Window *w = window();
+
+	if (w && w->editingControl() == this) {
+		if (TextView *ed = w->fieldEditorIfAny()) {
+			ed->setCaretColor(c);
+			setNeedsDisplay();
+		}
 	}
 }
 
 int
 TextField::insertionPoint() const
 {
-	TextFieldCell *c = fieldCell();
+	Window *w = window();
 
-	return c ? c->insertionPoint() : 0;
+	if (w && w->editingControl() == this) {
+		if (TextView *ed = w->fieldEditorIfAny()) {
+			return ed->insertionPoint();
+		}
+	}
+	return 0;
 }
 
 bool
@@ -1085,6 +1096,19 @@ SearchFieldCell::clearButtonRect(const Rect &frame) const
 		       frame.origin.y + (frame.size.h - d) / 2.0 }, { d, d } };
 }
 
+/* The entry area: the field's own value rect (the same one the base cell
+ * computes), shifted right by the room the magnifier leaves. The window's
+ * field editor takes over exactly this rect, so the caret lands on the text. */
+Rect
+SearchFieldCell::valueRectInFrame(const Rect &frame) const
+{
+	Rect text = TextFieldCell::valueRectInFrame(frame);
+
+	text.origin.x += SEARCH_GLYPH_PT;
+	text.size.w -= SEARCH_GLYPH_PT;
+	return text;
+}
+
 void
 SearchFieldCell::drawInFrame(const Rect &frame, View *inView)
 {
@@ -1120,11 +1144,10 @@ SearchFieldCell::drawInFrame(const Rect &frame, View *inView)
 		ctx->fillPolygon(handle, 4, mark);
 	}
 	/* the text: drawn by the base cell into the room the glyphs leave */
-	Rect text = frame;
+	Rect text = valueRectInFrame(frame);
 
-	text.origin.x += g + pad;
-	text.size.w -= g + pad;
-	if (stringValue()[0] == '\0' && placeholder()[0] != '\0') {
+	if (stringValue()[0] == '\0' && placeholder()[0] != '\0'
+	    && !hidesValue()) {
 		TextStorage tmp;
 
 		tmp.setString(placeholder());
@@ -1139,8 +1162,7 @@ SearchFieldCell::drawInFrame(const Rect &frame, View *inView)
 		tc.setLineFragmentPadding(0);
 		lm.setTextStorage(&tmp);
 		lm.setTextContainer(&tc);
-		lm.drawInContext(*ctx, Point{ text.origin.x, text.origin.y + 3.0 });
-		drawCaret(text, inView);
+		lm.drawInContext(*ctx, Point{ text.origin.x, text.origin.y });
 	} else {
 		drawValue(text, inView);
 	}
@@ -1297,6 +1319,20 @@ TokenFieldCell::entryOriginX(const Rect &frame) const
 	return x;
 }
 
+/* What is left of the field after the chips: the rect the window's field
+ * editor takes over. It MOVES as tokens are committed, which is why the
+ * window re-reads it after every change (Window::updateFieldEditorFrame). */
+Rect
+TokenFieldCell::valueRectInFrame(const Rect &frame) const
+{
+	double x = entryOriginX(frame);
+	double w = frame.origin.x + frame.size.w - x - 5.0;
+	Rect base = TextFieldCell::valueRectInFrame(frame);	/* y + top inset */
+
+	return Rect{ { x, base.origin.y },
+		     { w > 1.0 ? w : 1.0, base.size.h } };
+}
+
 void
 TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 {
@@ -1338,15 +1374,13 @@ TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 		x += chip.size.w;
 	}
 	/* the entry text after the last chip */
-	Rect entry = { { entryOriginX(frame), frame.origin.y },
-		       { frame.origin.x + frame.size.w - entryOriginX(frame)
-			 - 5.0, frame.size.h } };
+	Rect entry = valueRectInFrame(frame);
 
 	if (entry.size.w < 4.0) {
 		return;
 	}
 	if (stringValue()[0] == '\0' && placeholder()[0] != '\0'
-	    && tokens_.empty()) {
+	    && tokens_.empty() && !hidesValue()) {
 		TextStorage tmp;
 
 		tmp.setString(placeholder());
@@ -1362,8 +1396,7 @@ TokenFieldCell::drawInFrame(const Rect &frame, View *inView)
 		lm.setTextStorage(&tmp);
 		lm.setTextContainer(&tc);
 		lm.drawInContext(*ctx, Point{ entry.origin.x,
-					      entry.origin.y + 3.0 });
-		drawCaret(entry, inView);
+					      entry.origin.y });
 		return;
 	}
 	drawValue(entry, inView);
@@ -1446,6 +1479,12 @@ TokenField::commitEntry()
 	c->addToken(entry);
 	setStringValue("");
 	setInsertionPointFor("");
+	/* THE CHIPS GREW, so the entry moved right: the window's field editor
+	 * has to follow it, or the text and the caret would be drawn over the
+	 * chip that was just committed. */
+	if (Window *w = window()) {
+		w->updateFieldEditorFrame();
+	}
 	setNeedsDisplay();
 }
 
@@ -1453,8 +1492,14 @@ void
 TokenField::setInsertionPointFor(const char *utf8)
 {
 	(void) utf8;
-	if (TokenFieldCell *c = tokenCell()) {
-		c->setInsertionPoint(0);
+	/* the entry is empty again after a commit, so the insertion point goes
+	 * home — in the WINDOW's field editor, which is what holds it */
+	if (Window *w = window()) {
+		if (w->editingControl() == this) {
+			if (TextView *ed = w->fieldEditorIfAny()) {
+				ed->setInsertionPoint(0);
+			}
+		}
 	}
 }
 

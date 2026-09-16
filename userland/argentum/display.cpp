@@ -1291,16 +1291,42 @@ bool
 Window::focusFromClick(View *hit)
 {
 	if (!hit) {
+		/* A CLICK ON BARE CONTENT ends any edit in progress: there is
+		 * nowhere for the focus to go, and Cocoa's window takes it back. */
+		if (editingControl_) {
+			endEditing(true);
+		}
 		return false;
 	}
 	/* a click gives the focus to a view that wants it (Cocoa: the field's
 	 * mouseDown makes itself the first responder), so an editable field
 	 * starts taking keys from the click, with no separate "focus" API for
 	 * the app to call */
-	if (hit->acceptsFirstResponder()) {
-		return makeFirstResponder(hit);
+	if (!hit->acceptsFirstResponder()) {
+		/* a click on something that is NOT a responder still ends the edit
+		 * it moved the focus away from (Cocoa: clicking a button commits
+		 * the field) */
+		if (editingControl_ && editingControl_ != hit) {
+			endEditing(true);
+		}
+		return false;
 	}
-	return false;
+	if (editingControl_ && editingControl_ != hit) {
+		endEditing(true);
+	}
+	if (!makeFirstResponder(hit)) {
+		return false;
+	}
+	/* A TEXT FIELD EDITS THROUGH THE WINDOW'S FIELD EDITOR: the click has
+	 * given it the keyboard, and this is what opens the edit and shows the
+	 * caret before a single key is typed. A click INSIDE the field already
+	 * being edited keeps the edit (and its caret) as it is. */
+	if (Control *c = dynamic_cast<Control *>(hit)) {
+		if (c->wantsFieldEditor() && editingControl_ != c) {
+			beginEditing(c);
+		}
+	}
+	return true;
 }
 
 void
@@ -1547,6 +1573,12 @@ Window::fieldEditor()
 	if (!fieldEditor_) {
 		fieldEditor_ = new TextView();
 		fieldEditor_->setEditable(true);
+		/* NO INSET: the cell's value rect is the text area, and the editor
+		 * draws its text at the frame's own origin, exactly where the cell
+		 * would have - so the caret lands on the glyphs the cell drew. ONE
+		 * LINE, truncating the tail, like the cell it stands in for. */
+		fieldEditor_->setTextInset(0);
+		fieldEditor_->setBreakMode(LineBreakMode::TruncateTail);
 		fieldEditor_->setHidden(true);
 		if (content_) {
 			content_->addSubview(fieldEditor_);
@@ -1563,20 +1595,65 @@ Window::beginEditing(Control *c)
 	}
 	TextView *ed = fieldEditor();
 	Cell *cell = c->cell();
-	const char *v = cell->stringValue();
 
+	/* THE VALUE AS IT WAS, so an Escape can put it back: the editor edits
+	 * the cell's storage IN PLACE, so without this there would be nothing to
+	 * revert to. */
+	if (editingControl_ != c) {
+		editOriginal_ = cell->stringValue() ? cell->stringValue() : "";
+	}
 	editingControl_ = c;
 	ed->setEditingOwner(c);
-	ed->setString(v ? v : "");
-	ed->setInsertionPoint((int) std::strlen(v ? v : ""));
-	/* OVER THE CONTROL, in the CONTENT view's coordinates. rectInWindow()
-	 * sums the view chain, so a nested control lands correctly without the
-	 * editor having to become a child of that control's own superview. */
-	ed->setFrame(c->rectInWindow(Rect{ { 0, 0 }, c->bounds().size }));
+	/* THE CELL KEEPS THE STRING; THE EDITOR EDITS IT IN PLACE. Binding the
+	 * editor to the cell's storage is what makes the edit live: the value
+	 * the app reads (Control::stringValue) is current on every keystroke, a
+	 * commit has nothing to copy back, and a token commit's "clear the
+	 * entry" is seen by the editor at once. */
+	if (TextFieldCell *fc = dynamic_cast<TextFieldCell *>(cell)) {
+		ed->setEditedStorage(fc->textStorage());
+	}
+	ed->setInsertionPoint(ed->editedStorage()
+				      ? ed->editedStorage()->length() : 0);
+	/* the cell stops drawing the value while the editor draws it */
+	cell->setHidesValue(true);
+	updateFieldEditorFrame();
 	ed->setHidden(false);
 	ed->setEditing(true);
-	makeFirstResponder(ed);
 	setNeedsDisplay();
+	return true;
+}
+
+void
+Window::updateFieldEditorFrame()
+{
+	if (!fieldEditor_ || !editingControl_ || !editingControl_->cell()) {
+		return;
+	}
+	Cell *cell = editingControl_->cell();
+	/* THE VALUE'S RECT, not the whole control: a search field's magnifier
+	 * and a token field's chips are the CELL's chrome and stay visible, so
+	 * the editor takes exactly the room the text goes in. rectInWindow()
+	 * sums the view chain, so a nested control lands correctly without the
+	 * editor becoming a child of that control's own superview. */
+	Rect vr = cell->valueRectInFrame(Rect{ { 0, 0 },
+					      editingControl_->bounds().size });
+
+	fieldEditor_->setFrame(editingControl_->rectInWindow(vr));
+	fieldEditor_->setNeedsDisplay();
+}
+
+bool
+Window::commitEditing()
+{
+	/* COCOA'S RETURN: the action goes, the edit stays open. The value is
+	 * already the cell's (the editor edits it in place), so there is nothing
+	 * to copy back - only the action to send. */
+	if (!editingControl_) {
+		return false;
+	}
+	Control *c = editingControl_;
+
+	c->sendAction();
 	return true;
 }
 
@@ -1590,14 +1667,23 @@ Window::endEditing(bool commit)
 
 	editingControl_ = nullptr;
 	if (fieldEditor_) {
-		if (commit && c->cell()) {
-			c->cell()->setStringValue(fieldEditor_->string());
-		}
+		/* the value is ALREADY the cell's; a cancel only has to stop the
+		 * editor drawing it and give the cell its value back */
 		fieldEditor_->setEditing(false);
 		fieldEditor_->setHidden(true);
 		fieldEditor_->setEditingOwner(nullptr);
+		fieldEditor_->setEditedStorage(nullptr);
 	}
-	makeFirstResponder(c);
+	if (c->cell()) {
+		/* ESCAPE PUTS THE VALUE BACK: the edit went into the cell in place,
+		 * so a cancel restores the string the edit started from; a commit
+		 * leaves what was typed. */
+		if (!commit) {
+			c->cell()->setStringValue(editOriginal_.c_str());
+		}
+		c->cell()->setHidesValue(false);
+	}
+	editOriginal_.clear();
 	c->setNeedsDisplay();
 	if (commit) {
 		c->sendAction();
@@ -2066,6 +2152,13 @@ Window::advanceFirstResponder(bool backwards)
 	if (order.empty()) {
 		return false;
 	}
+	/* TAB COMMITS THE EDIT IT LEAVES — Cocoa's rule. The editor is not in
+	 * the walk (a TextView takes no first-responder role here), so the
+	 * field being left is still the first responder and the walk is
+	 * unaffected. */
+	if (editingControl_) {
+		endEditing(true);
+	}
 	int at = -1;
 
 	for (size_t i = 0; i < order.size(); i++) {
@@ -2081,7 +2174,18 @@ Window::advanceFirstResponder(bool backwards)
 	if (firstResponder_) {
 		firstResponder_->setNeedsDisplay();
 	}
-	return makeFirstResponder(order[(size_t) next]);
+	View *tos = order[(size_t) next];
+
+	if (!makeFirstResponder(tos)) {
+		return false;
+	}
+	/* a Tab INTO a field opens its edit, so the caret is there to type at */
+	if (Control *c = dynamic_cast<Control *>(tos)) {
+		if (c->wantsFieldEditor()) {
+			beginEditing(c);
+		}
+	}
+	return true;
 }
 
 void
