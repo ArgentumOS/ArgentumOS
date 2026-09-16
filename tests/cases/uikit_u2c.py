@@ -197,6 +197,29 @@ class Case(BaseCase):
 
         # 3. the shapes, in the framebuffer
         shot = session.shot("u2c")
+
+        # THE HELP BUTTON'S "?" IS CENTRED IN ITS CIRCLE. A run box carries a
+        # pad BEFORE its ink (textInkInsetPx, 2px) and nothing compensated for
+        # it, so the glyph sat 2pt right of centre - the reported complaint.
+        # The circle is 14pt radius at the row's left, exactly as the circular
+        # row measured above (the row's centre is 106pt to its right).
+        hcx, hcy = pts["HELP"]
+        circle_cx = int(hcx) - 106
+        row_cy = int(screen_h - hcy)
+        xs = [x for x, y in shot.points((circle_cx - 11, row_cy - 11,
+                                         circle_cx + 11, row_cy + 11))
+              if shot.luma(x, y) < 140]
+        self.check("the-help-glyph-is-drawn", bool(xs),
+                   "no ink inside the help button's circle; either the glyph "
+                   "is missing or it is not dark against the disc")
+        if xs:
+            ink_cx = (min(xs) + max(xs)) / 2.0
+            off = ink_cx - circle_cx
+            self.check("the-question-mark-is-centred-in-its-circle",
+                       abs(off) <= 1.5,
+                       "the help button's ? should sit in the middle of its "
+                       "circle; its ink centre is %.1f against the circle's "
+                       "%d (off by %+.1f pt)" % (ink_cx, circle_cx, off))
         self.check("shot-taken", shot is not None, "a framebuffer dump")
         if shot is None:
             return

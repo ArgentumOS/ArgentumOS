@@ -229,7 +229,15 @@ Cell::drawInFrame(const Rect &frame, View *inView)
 	default:
 		break;
 	}
-	ctx->drawText(family, pt, Point{ x, y }, string_.c_str(),
+	/* A RUN BOX CARRIES A PAD BEFORE ITS INK (PADX, exposed as
+	 * textInkInsetPx) - so a pen position puts the INK that much further
+	 * right. Nothing compensated for it, and the function exists for exactly
+	 * this: every centred title sat 2pt right of centre, and the help
+	 * button's "?" sat off its circle. Everything above asks where the INK
+	 * goes, so the pad comes off here, once, for all three alignments. */
+	double inkPadPt = textInkInsetPx() / displayPxPerPt();
+
+	ctx->drawText(family, pt, Point{ x - inkPadPt, y }, string_.c_str(),
 		      textColor_);
 }
 
