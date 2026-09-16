@@ -276,12 +276,61 @@ main()
 		   "fittingSize is the sizes, the gaps and nothing else");
 	}
 
+	/* ---- THE SOLVER IS ANCESTOR-AWARE ------------------------------- *
+	 * A relation against a SUPERVIEW has to mean what it reads, wherever
+	 * that superview is — and the case that cannot be written any other way
+	 * is a relation to an ancestor TWO levels up. These three are the
+	 * regression: before the solver carried the root's space, a pin to a
+	 * stack's own edge set the child to the STACK's origin. */
+	{
+		StackView s;
+		View kid;
+
+		s.setFrame(Rect{ { 556, 318 }, { 240, 100 } });
+		s.setAlignment(StackAlignment::Leading);
+		s.setEdgeInsets(EdgeInsets{ 4, 6, 4, 6 });
+		kid.setFrame(Rect{ { 0, 0 }, { 100, 30 } });
+		s.addArrangedSubview(&kid);
+		s.layoutSubtreeIfNeeded();
+		ok(near(kid.frame().origin.x, 6) && near(kid.frame().origin.y, 4),
+		   "a pin to the superview measures INSIDE it, wherever it is");
+
+		s.setFrame(Rect{ { 20, 30 }, { 240, 100 } });
+		s.layoutSubtreeIfNeeded();
+		ok(near(kid.frame().origin.x, 6) && near(kid.frame().origin.y, 4),
+		   "and the child stays there when the stack moves");
+
+		/* leaf.left == root.left + 12, with a view in between */
+		View root, mid, leaf;
+
+		root.setFrame(Rect{ { 0, 0 }, { 400, 300 } });
+		mid.setFrame(Rect{ { 50, 60 }, { 200, 100 } });
+		leaf.setFrame(Rect{ { 0, 0 }, { 20, 20 } });
+		root.addSubview(&mid);
+		mid.addSubview(&leaf);
+		/* A VIEW PARTICIPATES ONLY OFF THE AUTORESIZING-MASK PATH: the
+		 * solver skips a masked one, which is how the first version of this
+		 * check measured "nothing happened" and blamed the solver for it. */
+		leaf.setTranslatesAutoresizingMaskIntoConstraints(false);
+		LayoutConstraint::activate({
+			leaf.leftAnchor().constraintEqualTo(root.leftAnchor(), 12),
+			leaf.topAnchor().constraintEqualTo(root.topAnchor(), 15),
+		});
+		root.layoutSubtreeIfNeeded();
+		/* the LEAF's frame is relative to ITS superview, so the relation
+		 * shows up as 12 - 50 in the leaf's own space */
+		ok(near(leaf.frame().origin.x, 12 - 50)
+		   && near(leaf.frame().origin.y, 15 - 60),
+		   "a relation to an ancestor holds across nesting");
+	}
+
 	if (failures) {
 		std::printf("U5-FAIL (%d)\n", failures);
 		return 1;
 	}
 	std::printf("U5-OK (the stack arranges by constraint: the chain, the "
 		    "cross axis, all six distributions, insets, custom spacing, "
-		    "detached hidden views, and the arranged list)\n");
+		    "detached hidden views, the arranged list, and ancestor-aware "
+		    "superview relations)\n");
 	return 0;
 }

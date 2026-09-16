@@ -24,26 +24,13 @@ stackIsVertical(StackOrientation o)
 	return o == StackOrientation::Vertical;
 }
 
-/* A CONSTRAINT IN THE CHILD'S OWN SPACE. The solver works in ONE FLAT
- * coordinate space — layoutSolve() treats every view's x/y as the same kind
- * of variable — but a view's frame is relative to its SUPERVIEW. A relation
- * naming a child and its own superview therefore compares two different
- * spaces: `child.leading == stack.leading` sets the child's x to the stack's
- * ORIGIN (556, for the zoo's third column) rather than to 0, which draws the
- * control at a double offset — outside the container's clip, so it vanishes —
- * and puts it out of reach of the hit test. That is exactly what the board
- * showed: blank controls, and every click landing on the StackView.
- *
- * A stack's children live in the stack's space, so the stack's own edges are
- * plain NUMBERS there — 0, and the stack's size — and that is what this
- * builds. (Relating a view to its superview directly needs the solver to
- * carry each view's origin relative to a common ancestor; that is the
- * constraint layer's own work, not a container's.) */
-static LayoutConstraint *
-pinTo(View *v, LayoutAttribute attr, LayoutRelation rel, double constant)
-{
-	return LayoutConstraint::create(v, attr, rel, nullptr, attr, 0, constant);
-}
+/* A STACK'S CHILDREN LIVE IN THE STACK'S SPACE, and the solver is
+ * ANCESTOR-AWARE now (see layoutSolve), so a constraint between a view and
+ * its superview means exactly what it reads: `child.leading ==
+ * stack.leading + 8` is eight points INSIDE the stack, because the solver
+ * works in the root's space and converts back to the view's own on the way
+ * out. Before that, these pins had to be written as bare constants in the
+ * child's space — which is worth remembering if one of them ever looks odd. */
 
 StackView::StackView()
 {
@@ -156,45 +143,42 @@ StackView::rebuildConstraints()
 		 * arranging one has to take it off that path */
 		v->setTranslatesAutoresizingMaskIntoConstraints(false);
 
-		/* ACROSS the axis: leading, centred, or trailing — as a CONSTANT in
-		 * the child's own space (see pinTo) */
-		double cross = vert ? bounds().size.w : bounds().size.h;
-
+		/* ACROSS the axis: leading, centred, or trailing. A relation against
+		 * the stack's own edge means what it reads — the solver is
+		 * ancestor-aware — so this is the natural anchor form. */
 		switch (alignment_) {
 		case StackAlignment::Leading:
-			constraints_.push_back(pinTo(
-				v, vert ? LayoutAttribute::Left
-					: LayoutAttribute::Top,
-				LayoutRelation::Equal,
-				vert ? insets_.left : insets_.top));
+			constraints_.push_back(vert
+				? v->leadingAnchor().constraintEqualTo(
+					leadingAnchor(), insets_.left)
+				: v->topAnchor().constraintEqualTo(
+					topAnchor(), insets_.top));
 			break;
 		case StackAlignment::Trailing:
-			constraints_.push_back(pinTo(
-				v, vert ? LayoutAttribute::Right
-					: LayoutAttribute::Bottom,
-				LayoutRelation::Equal,
-				cross - (vert ? insets_.right : insets_.bottom)));
+			constraints_.push_back(vert
+				? v->trailingAnchor().constraintEqualTo(
+					trailingAnchor(), -insets_.right)
+				: v->bottomAnchor().constraintEqualTo(
+					bottomAnchor(), -insets_.bottom));
 			break;
 		case StackAlignment::Center:
-			constraints_.push_back(pinTo(
-				v, vert ? LayoutAttribute::CenterX
-					: LayoutAttribute::CenterY,
-				LayoutRelation::Equal,
-				cross / 2.0
-				+ (vert ? (insets_.left - insets_.right) / 2.0
-					: (insets_.top - insets_.bottom) / 2.0)));
+			constraints_.push_back(vert
+				? v->centerXAnchor().constraintEqualTo(
+					centerXAnchor(),
+					(insets_.left - insets_.right) / 2.0)
+				: v->centerYAnchor().constraintEqualTo(
+					centerYAnchor(),
+					(insets_.top - insets_.bottom) / 2.0));
 			break;
 		}
-		/* ALONG the axis: the chain, one view pinned to the one before it.
-		 * SIBLINGS share a coordinate space, so these rows are ordinary
-		 * relations between two children of the stack; only the FIRST one
-		 * has no predecessor and pins to the stack itself, which is a
-		 * constant in the child's space. */
+		/* ALONG the axis: the chain, one view pinned to the one before it,
+		 * and the FIRST one pinned to the stack itself. */
 		if (i == 0) {
-			constraints_.push_back(pinTo(
-				v, vert ? LayoutAttribute::Top
-					: LayoutAttribute::Left,
-				LayoutRelation::Equal, insetNear));
+			constraints_.push_back(vert
+				? v->topAnchor().constraintEqualTo(
+					topAnchor(), insetNear)
+				: v->leadingAnchor().constraintEqualTo(
+					leadingAnchor(), insetNear));
 		} else {
 			double gap = gapAfter(items[i - 1]);
 
@@ -232,8 +216,8 @@ StackView::rebuildConstraints()
 	if (distribution_ == StackDistribution::EqualCentering) {
 		/* the CENTRES are evenly spaced: each centre one step from the
 		 * first, the step being what is left once the end views' halves are
-		 * accounted for. Both are constants in the child's own space, like
-		 * every other pin to the stack. */
+		 * accounted for — measured from the stack's own centre, which is
+		 * what a relation against the stack's anchor means now. */
 		double total = vert ? bounds().size.h : bounds().size.w;
 		double firstHalf = (vert ? items[0]->frame().size.h
 					 : items[0]->frame().size.w) / 2.0;
@@ -246,12 +230,14 @@ StackView::rebuildConstraints()
 			double step = span / (double) (items.size() - 1);
 
 			for (size_t i = 1; i < items.size(); i++) {
-				constraints_.push_back(pinTo(
-					items[i],
-					vert ? LayoutAttribute::CenterY
-						: LayoutAttribute::CenterX,
-					LayoutRelation::Equal,
-					c0 + step * (double) i));
+				double fromCentre = c0 + step * (double) i
+						    - total / 2.0;
+
+				constraints_.push_back(vert
+					? items[i]->centerYAnchor().constraintEqualTo(
+						centerYAnchor(), fromCentre)
+					: items[i]->centerXAnchor().constraintEqualTo(
+						centerXAnchor(), fromCentre));
 			}
 		}
 		return;

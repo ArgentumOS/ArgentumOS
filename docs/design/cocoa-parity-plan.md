@@ -629,15 +629,22 @@ as a compatibility path for un-migrated views, with a migration list.
     constraint in a global registry. A container that REBUILDS its
     constraints — a stack whose arrangement changed — would have left that
     registry holding freed pointers. It unlinks on death now.
-  * **THE SOLVER HAS NO COORDINATE SPACES.** `layoutSolve()` treats every
-    view's x/y as one flat space, while a frame is relative to its
-    superview — so `child.leading == stack.leading` set the child's x to the
-    STACK's origin (556, for the zoo's third column). The board's controls
-    were drawn at a double offset, fell outside their own container's clip
-    and vanished, and every click landed on the StackView. A stack's children
-    live in the stack's space, so the stack pins them with CONSTANTS (pinTo,
-    containers.cpp); the limitation is recorded on `LayoutConstraint` for
-    whoever makes the solver ancestor-aware.
+  * **THE SOLVER HAD NO COORDINATE SPACES — fixed in the same slice.**
+    `layoutSolve()` treated every view's x/y as one flat space while a frame
+    is relative to its SUPERVIEW, so `child.leading == stack.leading` set the
+    child's x to the STACK's origin (556, for the zoo's third column). The
+    controls were drawn at a double offset, fell outside their own
+    container's clip and vanished, and every click landed on the StackView.
+    The solver now carries each view's position relative to the ROOT of the
+    solve and converts back to the view's own frame on the way out, so a
+    superview relation — and a relation to an ancestor three levels up —
+    means exactly what it reads; `StackView` went back to the natural anchor
+    form as a result. The fix turned up a second, latent one: a solve covers
+    a SUBTREE, and a constraint reaching out of it was built as a TRUNCATED
+    row whose right-hand side was never set (its first item's terms were
+    pushed, then `rowTerms` returned early), so it came back as
+    `leaf.left == 0`. Such a constraint is dropped from that solve now,
+    which is where the enclosing solve applies it.
   * (A fourth, smaller: a hidden arranged view changes the arrangement
     without changing the stack's SIZE, which `layout()`'s size check could
     never see. `View::setHidden` now tells its superview and

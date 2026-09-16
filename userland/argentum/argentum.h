@@ -244,15 +244,16 @@ public:
 /// activate() (or by the constructor path setActive(true), which is what
 /// activation means). layoutSolve() is the pass that satisfies them.
 ///
-/// A CONSTRAINT MUST NOT RELATE A VIEW TO ITS OWN SUPERVIEW. The solver works
-/// in ONE flat coordinate space — every view's x/y is the same kind of
-/// variable — while a frame is relative to its SUPERVIEW, so
-/// `child.left == parent.left` sets the child's x to the parent's ORIGIN
-/// rather than to 0. Sibling relations (same parent) and size relations are
-/// exact; a superview relation has to be written as the CONSTANT it means in
-/// the child's space (see StackView, which does exactly that). Making the
-/// solver carry each view's origin relative to a common ancestor is the
-/// constraint layer's own follow-on work.
+/// A CONSTRAINT RELATES TWO VIEWS IN ONE SPACE, whatever their nesting: the
+/// solver carries each view's position relative to the ROOT of the solve and
+/// converts back to the view's own frame on the way out, so
+/// `child.left == parent.left + 8` means "eight points inside the parent",
+/// and `leaf.left == ancestor.left + 12` holds across however many levels.
+/// Two rules follow from what the solver can move: a view takes part only
+/// once its translatesAutoresizingMaskIntoConstraints() is FALSE, and a view
+/// moves only while some active constraint names it FIRST — which is why a
+/// constraint's second item reads as the reference and the root of a solve
+/// holds still.
 class LayoutConstraint {
 public:
 	/// The constraint's FIRST item — the one the solver may move.

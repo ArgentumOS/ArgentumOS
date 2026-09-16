@@ -263,8 +263,18 @@ static void
 rowTerms(const std::vector<View *> &views, const LayoutConstraint *c, Row *row)
 {
 	int f = indexOfView(views, c->firstItem());
-
+	/* A CONSTRAINT OUTSIDE THIS SOLVE IS NOT PART OF IT — and it must leave
+	 * NO trace. A solve covers one subtree (layoutSubtreeIfNeeded() runs one
+	 * per view on the way down), while a constraint may reach out of it: the
+	 * enclosing solve is where that constraint belongs. Returning with the
+	 * FIRST item's terms half pushed left a truncated row whose right-hand
+	 * side was never set, so `leaf.left == root.left + 12` — with root
+	 * outside the subtree — came back as `leaf.left == 0` and dragged the
+	 * leaf to the origin. Clearing the row is the whole fix. */
 	if (f < 0) {
+		row->var.clear();
+		row->coeff.clear();
+		row->isFirst.clear();
 		return;
 	}
 	double cf[4], off;
@@ -284,6 +294,9 @@ rowTerms(const std::vector<View *> &views, const LayoutConstraint *c, Row *row)
 		int sIdx = indexOfView(views, c->secondItem());
 
 		if (sIdx < 0) {
+			row->var.clear();
+			row->coeff.clear();
+			row->isFirst.clear();
 			return;
 		}
 		double cs[4], soff;
@@ -372,13 +385,29 @@ layoutSolve(View *root)
 	collectViews(root, &views);
 
 	std::vector<double> vars(views.size() * 4, 0);
+	std::vector<int> parentAt(views.size(), -1);
 	bool anyConstrained = false;
 
 	for (size_t i = 0; i < views.size(); i++) {
 		Rect f = views[i]->frame();
 
-		vars[i * 4 + VAR_X] = f.origin.x;
-		vars[i * 4 + VAR_Y] = f.origin.y;
+		parentAt[i] = indexOfView(views, views[i]->superview());
+		/* POSITIONS ARE SEEDED IN THE ROOT'S SPACE and written back in the
+		 * view's own at the end. A FRAME is relative to its superview, but a
+		 * constraint relates two edges AS THEY APPEAR IN ONE SPACE — which
+		 * is why `child.left == parent.left + 8` has to mean "eight inside
+		 * the parent" and not "at the parent's origin". So what the solver
+		 * moves is the sum of the frame origins from the root down to the
+		 * view, and the root's own frame is the base of that sum. */
+		double x = root->frame().origin.x;
+		double y = root->frame().origin.y;
+
+		for (View *p = views[i]; p && p != root; p = p->superview()) {
+			x += p->frame().origin.x;
+			y += p->frame().origin.y;
+		}
+		vars[i * 4 + VAR_X] = x;
+		vars[i * 4 + VAR_Y] = y;
 		vars[i * 4 + VAR_W] = f.size.w;
 		vars[i * 4 + VAR_H] = f.size.h;
 	}
@@ -471,8 +500,22 @@ layoutSolve(View *root)
 	for (size_t i = 0; i < views.size(); i++) {
 		Rect f = views[i]->frame();
 
-		f.origin.x = vars[i * 4 + VAR_X];
-		f.origin.y = vars[i * 4 + VAR_Y];
+		/* BACK INTO THE VIEW'S OWN SPACE. The solved positions are the
+		 * root's, and a frame is the superview's, so the parent's solved
+		 * position comes back out. (The root's own frame is the base of the
+		 * sum, so it does not move; it is the space itself.) */
+		if (views[i] == root) {
+			f.origin.x = root->frame().origin.x;
+			f.origin.y = root->frame().origin.y;
+		} else if (parentAt[i] >= 0) {
+			f.origin.x = vars[i * 4 + VAR_X]
+				     - vars[(size_t) parentAt[i] * 4 + VAR_X];
+			f.origin.y = vars[i * 4 + VAR_Y]
+				     - vars[(size_t) parentAt[i] * 4 + VAR_Y];
+		} else {
+			f.origin.x = vars[i * 4 + VAR_X];
+			f.origin.y = vars[i * 4 + VAR_Y];
+		}
 		f.size.w = vars[i * 4 + VAR_W];
 		f.size.h = vars[i * 4 + VAR_H];
 		views[i]->setFrame(f);
