@@ -1,18 +1,24 @@
 musl64: $(MUSL64_LIBC)
-$(MUSL64_LIBC): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_party/musl-hosts.patch
+# P3d: libc's domain reader (src/passwd/pwconf.c, added by the patches) reads
+# BOTH spellings, and the plist half is the SHARED CORE — include/plist.h and
+# userland/plist.c are copied into the tree for the build and removed by the
+# cleanup below, so there is one XML implementation rather than a second one in
+# libc. They are prerequisites: a core change rebuilds libc.
+$(MUSL64_LIBC): third_party/musl-fsh.patch third_party/musl-pwconf.patch third_party/musl-hosts.patch include/plist.h userland/plist.c
 	cd third_party/musl && \
 		make clean >/dev/null 2>&1 || true && \
 		rm -f src/passwd/pwconf.c src/passwd/pwconf.h && \
 		git apply $(CURDIR)/third_party/musl-fsh.patch && \
 		git apply $(CURDIR)/third_party/musl-pwconf.patch && \
 		git apply $(CURDIR)/third_party/musl-hosts.patch && \
+		cp $(CURDIR)/include/plist.h $(CURDIR)/userland/plist.c src/passwd/ && \
 		CC="$(MUSL64_BUILD_CC)" ./configure --target=x86_64 --prefix=$(CURDIR)/$(MUSL64_PREFIX) --syslibdir=/System/Libraries && \
 		sed -i 's/^CROSS_COMPILE = .*/CROSS_COMPILE =/' config.mak && \
 		sed -i 's|^LIBCC = .*|LIBCC = $(CURDIR)/$(COMPILER_RT_BUILTINS)|' config.mak && \
 		$(MAKE) && $(MAKE) install && \
 		ln -f $(CURDIR)/$(MUSL64_PREFIX)/lib/libc.so $(CURDIR)/$(MUSL64_PREFIX)/lib/ld-musl-x86_64.so.1 && \
 		git checkout -- . && \
-		rm -f src/passwd/pwconf.c src/passwd/pwconf.h
+		rm -f src/passwd/pwconf.c src/passwd/pwconf.h src/passwd/plist.c src/passwd/plist.h
 
 # crtbegin.o/crtend.o for C++ (docs/llvm-clang-toolchain-plan.md M2): the
 # standalone builtins cmake does not emit crt objects, but clang++ links

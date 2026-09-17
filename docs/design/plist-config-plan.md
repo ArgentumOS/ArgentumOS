@@ -174,42 +174,53 @@ wrong TYPE reads as missing, so that record is refused with the existing
 "missing fstype/target" error; and `init` gained a dynamic dependency on
 `libconfig.so`, which the root image already carries for every other tool.
 
-### P3d — musl parses plists (DESIGNED + instrument in place; the reader port is next)
-`musl-pwconf.patch` (987 lines) and `musl-hosts.patch` (319) own libc's readers for
-the identity and name domains: `src/passwd/pwconf.c` parses a domain into
+### P3d — musl parses plists (DONE: libc reads both spellings; the identity domains are plists)
+`musl-pwconf.patch` (now 1294 lines) and `musl-hosts.patch` (319) own libc's readers
+for the identity and name domains: `src/passwd/pwconf.c` parses a domain into
 `struct pwentry { char *key; char *val; }` — **raw** right-hand-side text, with all
 interpretation (unquoting, integers, member lists) happening at RENDER time — and
-renders classic passwd/group/hosts lines for musl's own getpw*/getgr*/lookup_name
-to consume. **That is the seam**: a plist arm inside `pwconf_parse` producing the
-same key/raw-value list leaves every consumer untouched.
+renders classic passwd/group/hosts lines for musl's own getpw*/getgr*/lookup_name to
+consume. **That was the seam**, and the plist arm sits in it: a plist domain is parsed
+with the shared core and flattened into the same key/raw-value list, so every
+consumer below is untouched by which spelling the file uses. Detection is by CONTENT
+(the first non-blank character is `<`), the rule libconfig already uses.
 
-Two decisions taken while measuring:
-* **the plist grammar is NOT re-implemented in libc.** The core (`include/plist.h` +
-  `userland/plist.c`) is plain C over libc, so the toolchain rule copies those two
-  files into `third_party/musl/src/passwd/` before the build and removes them after
-  — like the patches it already applies. One implementation, three consumers
-  (libconfig, Foundation, libc). The cost, stated rather than discovered later:
-  `plist_*` would then also exist in libc's symbol table, which changes nothing
-  observable because the same code already lives in both libconfig.so and
-  libfoundation.so.
-* **`pwconf.c` is touched by BOTH patches**, so the two must be regenerated from one
-  working tree (per-file `git diff`) or `musl-hosts.patch` will not apply after the
-  pwconf edit. The build rule already applies them in order and cleans up afterwards
-  (`git checkout -- .` plus the explicit `rm -f src/passwd/pwconf.[ch]`).
+**The core is compiled into libc, not re-implemented there.** The toolchain rule
+copies `include/plist.h` + `userland/plist.c` into `third_party/musl/src/passwd/`
+before the build and removes them in the cleanup it already had, and they are now
+rule prerequisites so a core change rebuilds libc. One XML implementation, three
+consumers (libconfig, Foundation, libc). The cost, stated rather than discovered
+later: `plist_*` also exists in libc's symbol table now, which changes nothing
+observable because the same code already lives in libconfig.so and libfoundation.so.
 
-The INSTRUMENT exists and is green on the LEGACY files — `tests/cases/fs_agfs.py`
-**9/9**: `id` resolves `uid=0(Admin) gid=0(Admin)` (the passwd AND group domains,
-through musl's own module) and `ls -l` names its owner through getpwuid. Two gaps
-are recorded rather than hidden: the HOSTS leg has no guest instrument yet (every
-caller reaches musl's resolver through a socket first and no interface is up in the
-test guest, so `ping` dies at `socket SOCK_DGRAM 3a: Invalid argument` before it
-resolves — it needs either a NIC+DHCP in the case or a resolver probe), and `su` to
-a second account needs a second account in the domain, which the shipped
-`system.passwd.conf` does not have (one `Admin` record).
+Two mechanical facts worth keeping. `pwconf.c` is touched by BOTH patches, so it was
+regenerated as a full-file addition for that ONE path (the other paths' hunks carried
+over verbatim), and the hosts patch was PROVED to still apply on top — a clean-room
+three-way apply, and then the real `make musl64` as the end-to-end check.
 
-Then `system.passwd.conf`, `system.group.conf` and `system.hosts.conf` convert, in
-the same commit as the reader port, and the guest gate must show a login and a name
-lookup working on the converted files.
+What converted: `system.passwd.conf`, `system.group.conf`, `system.hosts.conf` — in
+the same commit as the reader, because libc was their LAST reader (`init` reads
+mounts/display/network/session, never these; the account tools go through libconfig).
+**Seven of the ten shipped domains are plists now**; the legacy three are
+`system.network` (init's, librarized since P3c-b — convertible), `system.shells`
+(toybox-only), and `fonts.conf` (not a libconfig domain, and not shipped).
+
+Evidence, all measured on a guest — `tests/cases/fs_agfs.py` **9/9**:
+`account-domains-read-by-libc` (`id` prints `uid=0(Admin) gid=0(Admin)`: both NAMES
+resolved from the CONVERTED plists through the new arm), `owner-name-resolved`
+(`ls -l` through getpwuid), and `hosts-domain-resolves` (`wget http://localhost:1/`
+does not report "bad address"). The last one is the sharp one: `localhost` is
+resolvable ONLY from the hosts domain — no DNS server knows it — so getpw*/lookup
+succeeding IS the evidence that the domains were read. The toolchain is the other
+half: `make musl64` rebuilds libc from the regenerated patches with the core inside.
+
+THE INSTRUMENT'S OWN HISTORY, because it shaped the port: `ping` cannot be used here
+— it creates an ICMP DGRAM socket BEFORE it looks a name up and this kernel refuses
+that socket (`socket SOCK_DGRAM 3a: Invalid argument`; attaching a NIC did not change
+it, so the refusal is the socket TYPE, not the interface). `wget` resolves first,
+which is the order the check needs. Still open and NOT papered over: `su` to a second
+account — the plan's full acceptance — needs a second account in the domain, and the
+shipped `system.passwd.conf` has one `Admin` record.
 
 ### P3e — the kernel's `kernel.conf`
 `kernel/kconf.c` (223 lines) gains a **freestanding** plist parser: the kernel has

@@ -100,10 +100,9 @@ index 549b8aba..ed9e49d3 100644
  	return res;
 diff --git a/src/passwd/pwconf.c b/src/passwd/pwconf.c
 new file mode 100644
-index 00000000..1d45ac87
 --- /dev/null
 +++ b/src/passwd/pwconf.c
-@@ -0,0 +1,854 @@
+@@ -0,0 +1,1162 @@
 +/* pwconf.c — libc-internal reader for the FNX identity .conf domains.
 + *
 + * getpwnam/getpwuid and getgrnam/getgrgid read the record domains in
@@ -120,6 +119,14 @@ index 00000000..1d45ac87
 + * docs/config-design.md §10 + §10.1 — flat and block values (group
 + * records), full-line comments, quoted strings with \escapes, integers,
 + * comma arrays. Input is bounded and failures leave errno set.
++ *
++ * THE PLIST SPELLING IS READ WITH THE SHARED CORE (P3d, P3c:
++ * docs/design/plist-config-plan.md): `include/plist.h` + `userland/plist.c` are
++ * copied into this directory by the toolchain rule and compiled into libc, so
++ * there is ONE XML implementation in the system rather than a second one here.
++ * The core's tree is flattened into the SAME (full dotted key -> RAW value)
++ * list the legacy parser produces, which is why every consumer below is
++ * untouched by the choice of spelling.
 + */
 +
 +#include <errno.h>
@@ -128,6 +135,7 @@ index 00000000..1d45ac87
 +#include <stdlib.h>
 +#include <string.h>
 +
++#include "plist.h"
 +#include "pwf.h"
 +#include "pwconf.h"
 +
@@ -158,6 +166,291 @@ index 00000000..1d45ac87
 +	}
 +}
 +
++/* ---- the plist spelling (P3d) -------------------------------------
++ *
++ * See the header note: the core does the XML, this arm flattens its tree into
++ * the raw key/value list above. Detection is by CONTENT (the first non-blank
++ * character is '<'), the same rule libconfig uses, so a domain's spelling is
++ * never guessed from its name.
++ */
++
++/* A growable raw-text buffer; the renderers below build into one. */
++static int pwconf_append(char **buf, size_t *len, size_t *cap, const char *text,
++			 size_t n)
++{
++	char *fresh;
++
++	if(*len + n + 1 > *cap) {
++		size_t grown = *cap ? *cap : 64;
++
++		while(*len + n + 1 > grown) {
++			grown *= 2;
++		}
++		fresh = realloc(*buf, grown);
++		if(!fresh) {
++			return ENOMEM;
++		}
++		*buf = fresh;
++		*cap = grown;
++	}
++	memcpy(*buf + *len, text, n);
++	*len += n;
++	(*buf)[*len] = '\0';
++	return 0;
++}
++
++/* Does this text need quoting to survive the raw-value grammar? Empty text
++ * does (an empty raw value reads as absent), as does anything carrying
++ * whitespace, a comma, a '#' or a quote: unquoted, those read as something
++ * else — or, for a comma, as two members. */
++static int pwconf_needs_quotes(const char *s)
++{
++	if(!*s) {
++		return 1;
++	}
++	for(; *s; s++) {
++		if(*s == ' ' || *s == '\t' || *s == ',' || *s == '#' ||
++		   *s == '"' || *s == '\'' || *s == '\\') {
++			return 1;
++		}
++	}
++	return 0;
++}
++
++static int pwconf_raw_string(char **buf, size_t *len, size_t *cap,
++			     const char *s)
++{
++	int rc;
++
++	if(!pwconf_needs_quotes(s)) {
++		return pwconf_append(buf, len, cap, s, strlen(s));
++	}
++	rc = pwconf_append(buf, len, cap, "\"", 1);
++	for(; *s && !rc; s++) {
++		switch(*s) {
++		case '"':
++			rc = pwconf_append(buf, len, cap, "\\\"", 2);
++			break;
++		case '\\':
++			rc = pwconf_append(buf, len, cap, "\\\\", 2);
++			break;
++		case '\n':
++			rc = pwconf_append(buf, len, cap, "\\n", 2);
++			break;
++		case '\t':
++			rc = pwconf_append(buf, len, cap, "\\t", 2);
++			break;
++		default:
++			rc = pwconf_append(buf, len, cap, s, 1);
++			break;
++		}
++	}
++	if(!rc) {
++		rc = pwconf_append(buf, len, cap, "\"", 1);
++	}
++	return rc;
++}
++
++/* One plist value as the RAW text the renderers expect: an integer as bare
++ * digits, a real as %g, a boolean as true/false, a string quoted only when it
++ * must be, and an ARRAY as the comma list pwconf_members splits. A <date> or
++ * <data> is EINVAL: the identity model has no such field, and inventing one is
++ * how a reader starts losing an account. */
++static int pwconf_plist_raw(const plist_value_t *v, int depth, char **out)
++{
++	char *buf = NULL;
++	size_t len = 0, cap = 0;
++	int rc = 0;
++
++	*out = NULL;
++	if(depth > 32) {
++		return EINVAL;
++	}
++	switch(plist_type_of(v)) {
++	case PLIST_STRING:
++		rc = pwconf_raw_string(&buf, &len, &cap,
++				       v->u.string ? v->u.string : "");
++		break;
++	case PLIST_INTEGER:
++		{
++			char n[32];
++
++			snprintf(n, sizeof n, "%lld", v->u.integer);
++			rc = pwconf_append(&buf, &len, &cap, n, strlen(n));
++		}
++		break;
++	case PLIST_REAL:
++		{
++			char n[64];
++
++			snprintf(n, sizeof n, "%g", v->u.real);
++			rc = pwconf_append(&buf, &len, &cap, n, strlen(n));
++		}
++		break;
++	case PLIST_BOOLEAN:
++		rc = pwconf_append(&buf, &len, &cap,
++				   v->u.boolean ? "true" : "false",
++				   v->u.boolean ? 4 : 5);
++		break;
++	case PLIST_ARRAY:
++		{
++			size_t i;
++
++			for(i = 0; i < v->u.array.count && !rc; i++) {
++				char *item = NULL;
++
++				if(i) {
++					rc = pwconf_append(&buf, &len, &cap,
++							   ", ", 2);
++				}
++				if(!rc) {
++					rc = pwconf_plist_raw(v->u.array.items[i],
++							      depth + 1, &item);
++				}
++				if(!rc) {
++					rc = pwconf_append(&buf, &len, &cap, item,
++							   strlen(item));
++				}
++				free(item);
++			}
++		}
++		break;
++	default:
++		rc = EINVAL;
++		break;
++	}
++	if(rc) {
++		free(buf);
++		return rc;
++	}
++	if(!buf) {
++		buf = malloc(1);
++		if(!buf) {
++			return ENOMEM;
++		}
++		buf[0] = '\0';
++	}
++	*out = buf;
++	return 0;
++}
++
++/* the list being built, so a nested walk needs no tail pointer */
++struct pwbuild {
++	struct pwentry *head;
++	struct pwentry *tail;
++};
++
++/* Put one (key, raw) pair: an exact duplicate is LAST-WINS but keeps its FIRST
++ * position, which is what the legacy parser does — a domain read twice must
++ * neither grow nor reshuffle. Takes ownership of both on success. */
++static int pwconf_put(struct pwbuild *b, char *key, char *val)
++{
++	struct pwentry *e;
++
++	for(e = b->head; e; e = e->next) {
++		if(!strcmp(e->key, key)) {
++			free(e->val);
++			e->val = val;
++			free(key);
++			return 0;
++		}
++	}
++	e = malloc(sizeof *e);
++	if(!e) {
++		return ENOMEM;
++	}
++	e->key = key;
++	e->val = val;
++	e->next = NULL;
++	if(b->tail) {
++		b->tail->next = e;
++	} else {
++		b->head = e;
++	}
++	b->tail = e;
++	return 0;
++}
++
++/* Walk a dictionary into full dotted keys: a nested dictionary is a dotted
++ * PREFIX (the plist spelling of a block) and everything else is a leaf. A NULL
++ * key is a COMMENT slot — prose, for which the identity model has no place. */
++static int pwconf_plist_walk(const plist_value_t *dict, const char *prefix,
++			     struct pwbuild *b, int depth)
++{
++	size_t i, pl = strlen(prefix);
++
++	if(depth > 32) {
++		return EINVAL;
++	}
++	for(i = 0; i < dict->u.dictionary.count; i++) {
++		const char *name = dict->u.dictionary.keys[i];
++		const plist_value_t *v = dict->u.dictionary.values[i];
++		char *key, *raw = NULL;
++		int rc;
++
++		if(!name) {
++			continue;
++		}
++		key = malloc(pl + (pl ? 1 : 0) + strlen(name) + 1);
++		if(!key) {
++			return ENOMEM;
++		}
++		if(pl) {
++			memcpy(key, prefix, pl);
++			key[pl] = '.';
++			strcpy(key + pl + 1, name);
++		} else {
++			strcpy(key, name);
++		}
++		if(plist_type_of(v) == PLIST_DICTIONARY) {
++			rc = pwconf_plist_walk(v, key, b, depth + 1);
++			free(key);
++			if(rc) {
++				return rc;
++			}
++			continue;
++		}
++		rc = pwconf_plist_raw(v, depth, &raw);
++		if(!rc) {
++			rc = pwconf_put(b, key, raw);
++		}
++		if(rc) {
++			free(key);
++			free(raw);
++			return rc;
++		}
++	}
++	return 0;
++}
++
++/* The plist route: the core parses, this flattens. */
++static int pwconf_parse_plist(const char *text, size_t len, struct pwentry **out)
++{
++	struct pwbuild b;
++	char message[64];
++	plist_value_t *root;
++	int rc;
++
++	*out = NULL;
++	b.head = b.tail = NULL;
++	root = plist_parse(text, len, message, sizeof message);
++	if(!root) {
++		return EINVAL;
++	}
++	if(plist_type_of(root) != PLIST_DICTIONARY) {
++		rc = EINVAL;
++	} else {
++		rc = pwconf_plist_walk(root, "", &b, 0);
++	}
++	plist_free(root);
++	if(rc) {
++		pwconf_entries_free(b.head);
++		return rc;
++	}
++	*out = b.head;
++	return 0;
++}
++
 +/* parse whole-file text into an ordered list of full dotted keys with
 + * raw values; exact-key duplicates are last-wins keeping the first
 + * position. Returns 0 or an errno value (ENOMEM/EINVAL). */
@@ -173,6 +466,20 @@ index 00000000..1d45ac87
 +	if(len >= 3 && (unsigned char)text[0] == 0xEF &&
 +	   (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) {
 +		off = 3;	/* skip a UTF-8 BOM */
++	}
++	{
++		/* A plist domain is read by the core arm above and produces the
++		 * same entry list, so nothing below this line knows which
++		 * spelling the file used. */
++		size_t i = off;
++
++		while(i < len && (text[i] == ' ' || text[i] == '\t' ||
++				  text[i] == '\r' || text[i] == '\n')) {
++			i++;
++		}
++		if(i < len && text[i] == '<') {
++			return pwconf_parse_plist(text + off, len - off, out);
++		}
 +	}
 +	while(off < len) {
 +		char line[PWCONF_MAX_LINE + 1];

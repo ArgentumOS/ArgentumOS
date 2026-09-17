@@ -114,20 +114,34 @@ class Case(BaseCase):
                    if "Admin" in owner
                    else "ls -l said: " + owner.strip()[:160])
 
-        # THE HOSTS DOMAIN HAS NO INSTRUMENT HERE YET, and that is recorded
-        # rather than papered over: musl reads it in the same in-libc module
-        # (lookup_name -> __pwconf_hosts_fopen), but every caller in this image
-        # reaches it through a socket FIRST — `ping` needs an ICMP DGRAM socket,
-        # refused while no interface is up ("socket SOCK_DGRAM 3a: Invalid
-        # argument"), and no other shipped tool resolves a name. The hosts leg of
-        # P3d therefore needs either a NIC+DHCP in the test or a resolver probe;
-        # until one exists this check only proves the FILE is readable.
+        # THE HOSTS DOMAIN is read by the same in-libc module (lookup_name ->
+        # __pwconf_hosts_fopen), and the instrument is a RESOLUTION. `ping` cannot
+        # provide one here: it creates an ICMP DGRAM socket BEFORE it looks the
+        # name up, and this kernel refuses that socket ("socket SOCK_DGRAM 3a:
+        # Invalid argument" — measured, and a NIC attached to the guest did not
+        # change it, so the refusal is the socket TYPE, not the interface). `wget`
+        # resolves first and only then opens anything, which is the order this
+        # check needs.
+        #
+        # "localhost" can ONLY come from the hosts domain: no DNS server knows it
+        # and there is no other hosts source in this system. So the property is
+        # that getaddrinfo SUCCEEDS — wget says "bad address" when it does not —
+        # and whatever the connect that follows does is irrelevant here. (No
+        # timeout flag: this toybox build has none, and the session's own bound
+        # covers it.)
         mark = len(session.log_text())
-        session.run("config read system.hosts")
-        hosts = session.output_since(mark)
-        self.check("hosts-domain-readable",
-                   "localhost" in hosts,
-                   "system.hosts.conf reads back through the config tool — NOT "
-                   "yet a musl resolution (see the note above)")
+        session.run("wget http://localhost:1/", secs=40)
+        res = session.output_since(mark)
+        for line in res.splitlines():
+            if "localhost" in line or "bad address" in line:
+                self.note(line)
+        resolved = "bad address" not in res
+        self.check("hosts-domain-resolves",
+                   resolved,
+                   "getaddrinfo resolved localhost through the hosts domain "
+                   "(the connect that follows is not what this checks)"
+                   if resolved
+                   else "could not resolve localhost from the hosts domain: "
+                        + res.strip()[:200])
 
         session.run("rm -rf " + TMP)
