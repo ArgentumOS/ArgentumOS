@@ -84,7 +84,8 @@ int main(void)
 		static const char *classSelectors[] = {
 			"alloc", "allocWithZone:", "new", "class", "superclass",
 			"conformsToProtocol:", "respondsToSelector:",
-			"instancesRespondToSelector:", "load", "initialize", NULL
+			"instancesRespondToSelector:", "load", "initialize",
+			"methodSignatureForSelector:", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"init", "copy", "mutableCopy", "copyWithZone:", "mutableCopyWithZone:",
@@ -94,14 +95,15 @@ int main(void)
 			"performSelector:", "performSelector:withObject:",
 			"performSelector:withObject:withObject:", "methodForSelector:",
 			"doesNotRecognizeSelector:", "isEqual:", "hash", "description",
-			"debugDescription", "self", "zone", "isProxy", NULL
+			"debugDescription", "self", "zone", "isProxy",
+			"methodSignatureForSelector:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs NSInvocation/NSMethodSignature, which this Foundation does not
-			 * ship; an unimplemented message reaches -doesNotRecognizeSelector: and
-			 * aborts loudly instead. */
-			"forwardInvocation:", "methodSignatureForSelector:",
-			"forwardingTargetForSelector:", NULL
+			/* Needs NSInvocation — and with it -forwardInvocation:, the half of the
+			 * forwarding trio that must MARSHAL the arguments. Stage F's second half;
+			 * until then an unimplemented message still reaches
+			 * -doesNotRecognizeSelector: and aborts loudly. */
+			"forwardInvocation:", "forwardingTargetForSelector:", NULL
 		};
 		NSObject *probe = [[NSObject alloc] init];
 		int complete = 1;
@@ -127,6 +129,99 @@ int main(void)
 		}
 		check("nsobject-api-complete", complete,
 		      "the audited Cocoa inventory for NSObject");
+	}
+
+	{
+		/* NSMethodSignature (stage F, first half). The parser is exercised DIRECTLY
+		 * — its grammar, its widths and its walk — and then through the runtime
+		 * lookup, which is the path a caller actually takes. The first clause below
+		 * is the ISOLATION one: the class reachable, the factory answered. */
+		NSMethodSignature *plain = [NSMethodSignature signatureWithObjCTypes:"@@:@@"];
+		NSMethodSignature *rich = [NSMethodSignature signatureWithObjCTypes:
+					   "Vv@:i^v{Point=dd}d[4s]r^i"];
+		char seen[128];
+
+		snprintf(seen, sizeof seen, "signature=%s args=%lu return=%s frame=%lu oneway=%d",
+			 (plain != nil) ? "yes" : "NIL",
+			 (unsigned long)((plain != nil) ? [plain numberOfArguments] : 0UL),
+			 (plain != nil && [plain methodReturnType] != NULL)
+				 ? [plain methodReturnType] : "?",
+			 (unsigned long)((plain != nil) ? [plain frameLength] : 0UL),
+			 (plain != nil) ? (int)[plain isOneway] : -1);
+
+		check("methodsignature-parses",
+		      [NSMethodSignature class] != nil &&
+		      [NSMethodSignature respondsToSelector:@selector(signatureWithObjCTypes:)] &&
+		      [[NSMethodSignature class] isSubclassOfClass:[NSObject class]] &&
+		      plain != nil && [plain numberOfArguments] == 4 &&
+		      [[NSString stringWithUTF8String:[plain methodReturnType]] isEqualToString:@"@"] &&
+		      [[NSString stringWithUTF8String:[plain getArgumentTypeAtIndex:0]] isEqualToString:@"@"] &&
+		      [[NSString stringWithUTF8String:[plain getArgumentTypeAtIndex:1]] isEqualToString:@":"] &&
+		      [[NSString stringWithUTF8String:[plain getArgumentTypeAtIndex:2]] isEqualToString:@"@"] &&
+		      [[NSString stringWithUTF8String:[plain getArgumentTypeAtIndex:3]] isEqualToString:@"@"] &&
+		      [plain methodReturnLength] == sizeof(void *) &&
+		      [plain frameLength] == 4 * sizeof(void *) &&
+		      [plain isOneway] == NO,
+		      seen);
+
+		check("methodsignature-grammar",
+		      rich != nil && [rich numberOfArguments] == 8 &&
+		      [[NSString stringWithUTF8String:[rich getArgumentTypeAtIndex:2]] isEqualToString:@"i"] &&
+		      [[NSString stringWithUTF8String:[rich getArgumentTypeAtIndex:3]] isEqualToString:@"^v"] &&
+		      [[NSString stringWithUTF8String:[rich getArgumentTypeAtIndex:4]] isEqualToString:@"{Point=dd}"] &&
+		      [[NSString stringWithUTF8String:[rich getArgumentTypeAtIndex:6]] isEqualToString:@"[4s]"] &&
+		      [[NSString stringWithUTF8String:[rich getArgumentTypeAtIndex:7]] isEqualToString:@"r^i"] &&
+		      [rich methodReturnLength] == 0 &&
+		      [rich frameLength] == 9 * sizeof(void *) &&
+		      [rich isOneway] == YES,
+		      "pointers, a nested struct, an array, a qualifier and the oneway marker");
+
+		check("methodsignature-offsets",
+		      [[NSMethodSignature signatureWithObjCTypes:"@16@0:8"] numberOfArguments] == 2 &&
+		      [[NSString stringWithUTF8String:
+			[[NSMethodSignature signatureWithObjCTypes:"@16@0:8"]
+				getArgumentTypeAtIndex:0]] isEqualToString:@"@"] &&
+		      [[NSString stringWithUTF8String:
+			[[NSMethodSignature signatureWithObjCTypes:"@16@0:8"]
+				getArgumentTypeAtIndex:1]] isEqualToString:@":"],
+		      "the older encoding form carries a frame OFFSET between types, which is skipped rather than read as a type");
+
+		check("methodsignature-sizes",
+		      [[NSMethodSignature signatureWithObjCTypes:"{Point=dd}@:"] methodReturnLength] == 16 &&
+		      [[NSString stringWithUTF8String:
+			[[NSMethodSignature signatureWithObjCTypes:"{Point=dd}@:"] methodReturnType]]
+				isEqualToString:@"{Point=dd}"] &&
+		      [[NSMethodSignature signatureWithObjCTypes:"d@:"] methodReturnLength] == 8 &&
+		      [[NSMethodSignature signatureWithObjCTypes:"v@:"] methodReturnLength] == 0 &&
+		      [[NSMethodSignature signatureWithObjCTypes:"v@:B"] frameLength] == 3 * sizeof(void *) &&
+		      [NSMethodSignature signatureWithObjCTypes:NULL] == nil,
+		      "a struct's width is its fields with alignment, void is 0, and a NULL encoding is nil");
+	}
+
+	{
+		/* THE RUNTIME LOOKUP, both sides: the answer comes from a REAL method's
+		 * encoding, instance and class variant, which is what makes it useful to a
+		 * forwarding implementer. */
+		NSObject *probe = [[NSObject alloc] init];
+		NSMethodSignature *instance = [probe methodSignatureForSelector:@selector(description)];
+		NSMethodSignature *classSide = [NSObject methodSignatureForSelector:@selector(alloc)];
+		char seen[128];
+
+		snprintf(seen, sizeof seen, "instance=%s args=%lu return=%s classSide=%s",
+			 (instance != nil) ? "yes" : "NIL",
+			 (unsigned long)((instance != nil) ? [instance numberOfArguments] : 0UL),
+			 (instance != nil && [instance methodReturnType] != NULL)
+				 ? [instance methodReturnType] : "?",
+			 (classSide != nil) ? "yes" : "NIL");
+
+		check("methodsignature-lookup",
+		      instance != nil && [instance numberOfArguments] == 2 &&
+		      [[NSString stringWithUTF8String:[instance methodReturnType]] isEqualToString:@"@"] &&
+		      [[NSString stringWithUTF8String:[instance getArgumentTypeAtIndex:0]] isEqualToString:@"@"] &&
+		      [[NSString stringWithUTF8String:[instance getArgumentTypeAtIndex:1]] isEqualToString:@":"] &&
+		      classSide != nil && [classSide numberOfArguments] == 2 &&
+		      [[NSString stringWithUTF8String:[classSide methodReturnType]] isEqualToString:@"@"],
+		      seen);
 	}
 
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);

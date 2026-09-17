@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #import <foundation/NSString.h>	/* -description has to return one */
+#import <foundation/NSMethodSignature.h>	/* stage F: the selector's types */
 #include <objc/objc-arc.h>
 
 /*
@@ -274,6 +275,45 @@ extern id object_dispose(id obj);
 	return ((id (*)(id, SEL, id, id))objc_msgSend)(self, aSelector, object1, object2);
 }
 
+/*
+ * THE SIGNATURE OF ANY SELECTOR (stage F, first half: NSMethodSignature).
+ *
+ * One helper serves both variants, because `object_getClass(self)` is the right
+ * starting point for each: for an instance it is that instance's class, and for a
+ * class object it is the metaclass — so one lookup finds an instance method in
+ * the first case and a class method in the second, which is exactly what the two
+ * variants mean.
+ *
+ * TWO SOURCES, in order: the METHOD (the runtime's encoding, authoritative when
+ * some class implements the selector) and then the SELECTOR's own registered type
+ * — which is how a selector nothing has implemented can still answer, the case
+ * forwarding will depend on. nil when neither knows.
+ */
+static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
+{
+	Method method = class_getInstanceMethod(object_getClass(receiver), aSelector);
+	const char *types = (method != NULL) ? method_getTypeEncoding(method) : NULL;
+
+	if (types == NULL) {
+		types = sel_getType_np(aSelector);
+	}
+	if (types == NULL) {
+		return nil;
+	}
+	return [NSMethodSignature signatureWithObjCTypes:types];
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+	return fn_signature_for(self, aSelector);
+}
+
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+	/* `self` IS the class here, and the helper starts from the metaclass. */
+	return fn_signature_for(self, aSelector);
+}
+
 
 /*
  * THE REST OF THE PUBLIC ROOT-CLASS API (the hard rule: a class passes only when
@@ -289,10 +329,10 @@ extern id object_dispose(id obj);
  *   +load / +initialize       declared and empty so a subclass's overrides match
  *                             the signatures the runtime calls them with.
  *
- * NOT here: -forwardInvocation: / -methodSignatureForSelector:, which need
- * NSInvocation and NSMethodSignature — classes this Foundation does not ship yet,
- * so they are an ORDERING DEPENDENCY, not a gap. A message nothing implements
- * therefore reaches -doesNotRecognizeSelector: and aborts loudly.
+ * NOT here YET: -forwardInvocation: / -forwardingTargetForSelector:, which need
+ * NSInvocation — stage F's second half, where the x86-64 argument marshalling
+ * lives. They stay an ORDERING DEPENDENCY, not a gap: a message nothing
+ * implements still reaches -doesNotRecognizeSelector: and aborts loudly.
  */
 + (void)load
 {

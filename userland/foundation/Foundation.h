@@ -32,6 +32,7 @@
 #import <foundation/NSIndexSet.h>
 #import <foundation/NSIndexPath.h>
 #import <foundation/NSLocale.h>
+#import <foundation/NSMethodSignature.h>
 #import <foundation/NSEnumerator.h>
 #import <foundation/NSPropertyListSerialization.h>
 

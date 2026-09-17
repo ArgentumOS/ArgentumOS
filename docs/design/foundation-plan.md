@@ -5,9 +5,10 @@ skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
 not an array dependency: see the work queue), `NSLocale` (stage E — the localised case
-rules) and `NSPropertyListSerialization`. Gated on a
+rules), `NSMethodSignature` (stage F, first half — a selector's types) and
+`NSPropertyListSerialization`. Gated on a
 guest boot by six cases (`foundation_core`, `foundation_string`, `foundation_value`,
-`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **6 / 27 /
+`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **11 / 27 /
 17 / 34 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
 (the public headers are already staged, so it is a deliberate later step rather than a gap).
 The work queue
@@ -212,6 +213,11 @@ status.
   shipped: a canon-keeping identifier value type plus the Turkic case rule
   (Unicode SpecialCasing: i with İ, I with ı), which is what makes the case-insensitive
   comparisons real. Ordering and search folding stay byte-wise, and say so.
+- **`NSMethodSignature` — stage F, FIRST HALF. DONE (§9).** A selector's types, parsed
+  from the runtime's encoding, plus `-methodSignatureForSelector:` on NSObject (both
+  variants) — the half of the forwarding trio that needs no invocation. `NSInvocation`,
+  and with it `-forwardInvocation:` / `-forwardingTargetForSelector:`, is the second half,
+  where the x86-64 argument marshalling lives.
 - **F5 — self-hosting. DEFERRED (user, 2026-09-17).** The enabling half is DONE and stays:
   the public headers are staged to `/System/Shared/Headers/foundation/` beside
   `libfoundation.so.1`, so an on-guest rebuild is possible. What is deferred is the GATE —
@@ -219,6 +225,15 @@ status.
   commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
   deferral removes the gate, not the standing requirement to track self-hosting needs
   there.
+- **F6 — nullability annotations. QUEUED (2026-09), for the Sterling front end.**
+  The language reads an *unannotated* import as **nullable** (`sterling-syntax.md` §9.5), so
+  today every Foundation call answers `T?` and every one of them needs a `!` or a binding. The
+  fix is the annotations themselves: **0 today, across 19 headers and 434 methods** — and no
+  `@property` in the library at all, so it is a methods-only pass — added as
+  `_Nonnull`/`_Nullable` on every return and parameter. The gate is the shape the language
+  makes testable: with the sweep done, the `!`s disappear from a Sterling consumer and **nothing
+  else changes**, because the annotations are declarations only and the library's behaviour is
+  untouched. Worth slicing per class, so a partial pass is already useful.
 
 ## 6. Risks / gotchas
 
@@ -659,7 +674,7 @@ mechanism's fatal flaw.
 
 | class | audited | complete | what remains |
 |---|---|---|---|
-| `NSObject` | yes | **yes** | `-forwardInvocation:`/`-methodSignatureForSelector:` need `NSInvocation`/`NSMethodSignature` (not shipped) |
+| `NSObject` | yes | **yes** | `-methodSignatureForSelector:` SHIPPED (stage F, first half, both variants). `-forwardInvocation:`/`-forwardingTargetForSelector:` still need `NSInvocation` — the argument marshalling |
 | `NSNumber` | yes | **yes** | — |
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (the localised CASE comparisons — shipped at stage E; ordering stays byte-wise), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet` (the `…AtIndexes:` family) and `NSEnumerator` (the enumerator objects — `for-in` covers the need). Both shipped; `NSIndexPath` used to be named here too and is NOT one of them — no array form takes a path (corrected at stage D) |
@@ -668,8 +683,9 @@ mechanism's fatal flaw.
 | `NSDate` | yes | **yes** | — |
 
 **Ordering dependencies are recorded, not called gaps:** the `:options:error:`
-file variants wait on `NSError` (F4), and forwarding waits on
-`NSInvocation`/`NSMethodSignature`.
+file variants wait on `NSError` (F4), and forwarding — `-forwardInvocation:` and
+`-forwardingTargetForSelector:` — now waits only on `NSInvocation` and the x86-64
+marshalling it needs, since `NSMethodSignature` landed at stage F's first half.
 
 **Declared deviations stay allowed, but are stated:** `-length` counts BYTES and
 `-characterCount` counts CHARACTERS (the user's decision; Cocoa's `-length` is
@@ -755,7 +771,8 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSCharacterSet` — **SHIPPED** | `-rangeOfCharacterFromSet:`, `-componentsSeparatedByCharactersInSet:`, `-stringByTrimmingCharactersInSet:` |
 | a plist reader/writer — **SHIPPED** | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
 | `NSLocale` — **SHIPPED (stage E)** | the localised CASE comparisons: the Turkic rule a locale needs, not a catalogue. Ordering stays byte order (no collation tables ship) and search folding stays byte-wise |
-| `NSInvocation`, `NSMethodSignature` | the forwarding trio |
+| `NSMethodSignature` — **SHIPPED (stage F, first half)** | a selector's types: the parser (primitives, qualifiers, pointers, arrays, structs/unions, bitfields, `@"Class"` names, and the older offset form) and `-methodSignatureForSelector:` on NSObject, both variants. The widths are OURS and stated |
+| `NSInvocation` | the forwarding trio's other half: `-forwardInvocation:` needs it, and it needs the x86-64 argument marshalling the runtime does not provide |
 | `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
@@ -920,3 +937,37 @@ which (the split localised it in one gate run); and MEASURE THE COMPILER rather 
 reasoning about it — the layout was in loader.c and the encoding choice was a comment in
 clang's own source, both already on disk.
 `foundation_string` 27/27 on a guest boot.
+
+### Stage F, first half (2026-09-17): `NSMethodSignature`, and the two bugs its checks found
+
+The queue row was "NSInvocation, NSMethodSignature — the forwarding trio". The runtime
+ships NEITHER class, but it does expose the two hooks forwarding is built on:
+`objc_proxy_lookup(receiver, sel)` for argument-free redirection, and
+`__objc_msg_forward2/3(receiver, sel) → IMP`, whose returned IMP is called WITH THE
+ORIGINAL ARGUMENTS. That last fact is what splits the item — a signature needs a PARSER, an
+invocation needs the x86-64 MARSHALLING — so `NSMethodSignature` shipped first, on its own,
+with `-methodSignatureForSelector:` on NSObject (both variants, one helper: for an instance
+`object_getClass(self)` is the class and for a class object it is the metaclass, which is
+exactly what the two variants mean).
+
+The class is a parser over the runtime's encoding — the primitive codes, the qualifiers
+(with `V` read as oneway), `^` pointers, `[n type]` arrays, `{name=...}` structs,
+`(name=...)` unions, `bN` bitfields, `@"Class"` quoted names, `@?` blocks, and the older
+form's frame OFFSET numbers between types. The WIDTHS are ours and documented (LP64,
+natural alignment) rather than borrowed, and `-frameLength` is a stated definition: the
+word-aligned total of the arguments.
+
+TWO REAL BUGS, both found by the checks rather than by reading:
+
+  * the accessors answered a POINTER INTO the whole encoding, so `-methodReturnType` on
+    `"@@:@"`+`"@"` returned the whole string — a type must be its own NUL-terminated string
+    (Cocoa's contract), so each type is now copied;
+  * the trailing frame-size number was counted as an argument, so `"@16@0:8"` reported 3
+    arguments instead of 2: a trailing number is the frame size, not a type.
+
+One gate run localised both, because the failing checks carry the MEASUREMENT in the
+failure detail — `signature=yes args=4 return=@@:@@ frame=32 oneway=0` named the first
+bug outright. That is stage E's split-check lesson taken one step further: not just "split
+the check", but "make the detail report what was seen".
+
+`foundation_core` 11/11 on a guest boot.

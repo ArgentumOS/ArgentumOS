@@ -25,6 +25,7 @@
 #include <foundation/NSObjCRuntime.h>
 
 @class NSString;
+@class NSMethodSignature;
 
 /*
  * The copying protocols, in COCOA'S SHAPE (the public-API audit, item B4): the
@@ -127,6 +128,12 @@ __attribute__((objc_root_class))
 - (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
 
 /* Messaging and introspection, the rest of Cocoa's root-class surface. */
+/* THE SIGNATURE OF A SELECTOR (stage F, first half: NSMethodSignature). These two
+ * are the lookup, which needs no invocation at all; NSInvocation — and with it
+ * -forwardInvocation: — is the second half. */
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
+
 - (IMP)methodForSelector:(SEL)aSelector;
 + (BOOL)respondsToSelector:(SEL)aSelector;
 + (BOOL)instancesRespondToSelector:(SEL)aSelector;
