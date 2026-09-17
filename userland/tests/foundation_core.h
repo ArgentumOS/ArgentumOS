@@ -42,4 +42,38 @@ int foundation_core_lifecycle(void);
 /* isEqual: is identity and hash is the pointer, for a fresh object. */
 int foundation_core_equality(void);
 
+/*
+ * THE FORWARDING PROBES (stage F, second half). TWO classes, because forwarding
+ * has two paths and they are wired differently:
+ *
+ *   FastForwarder overrides -forwardingTargetForSelector:, which the runtime
+ *   consults BEFORE it hands a call over (objc_proxy_lookup) — the message is
+ *   re-looked-up on the real object and NO invocation is built at all.
+ *
+ *   SlowForwarder overrides -forwardInvocation:, so the call arrives as an
+ *   NSInvocation whose arguments were captured from the register file (that is
+ *   what ninvoke_amd64.S is for). It re-invokes on a real Counter, which is what
+ *   "-forwardInvocation: with arguments" has to mean.
+ *
+ * The forwarded methods are DECLARED here and NOT implemented: that is the point
+ * of the classes, and the declaration is also what registers the selector's type,
+ * which is how -methodSignatureForSelector: can answer for them.
+ */
+@interface FastForwarder : NSObject
+{
+	Counter *_backing;		/* the object it forwards to */
+}
+- (int)marker;			/* forwarded, not implemented */
+@end
+
+@interface SlowForwarder : NSObject
+{
+	Counter *_backing;
+	unsigned long _forwarded;
+}
+- (int)value;			/* forwarded, not implemented */
+- (void)setValue:(int)v;	/* forwarded, not implemented */
+- (unsigned long)forwardedCount;
+@end
+
 #endif /* FOUNDATION_CORE_H */

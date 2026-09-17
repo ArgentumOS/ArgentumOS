@@ -425,3 +425,66 @@ static char *fn_copy_type(const char *start, int *oneway)
 }
 
 @end
+
+/*
+ * THE PRIVATE ADDITIONS NSInvocation MARSHALS BY (fnmethodsignature.h). They are
+ * the PARSER's own answers, asked rather than recomputed: the width table and the
+ * type walk live above, and a second copy would be two sources of truth for the
+ * same thing.
+ *
+ * "Floating" means the argument travels in an SSE register rather than an integer
+ * one — the classification NSInvocation needs — and it is decided by the type's
+ * leading code (f, d, D), not by its width.
+ */
+@implementation NSMethodSignature (FNPrivate)
+
+- (NSUInteger)fnSizeOfArgumentAtIndex:(NSUInteger)index
+{
+	size_t size = 0, align = 1;
+
+	if (index >= _argumentCount) {
+		return 0;
+	}
+	fn_type_metrics(_argumentTypes[index], &size, &align);
+	return size;
+}
+
+- (BOOL)fnArgumentIsFloatingAtIndex:(NSUInteger)index
+{
+	const char *type;
+
+	if (index >= _argumentCount) {
+		return NO;
+	}
+	type = _argumentTypes[index];
+	while (fn_is_qualifier(*type)) {
+		type++;
+	}
+	return (*type == 'f' || *type == 'd' || *type == 'D');
+}
+
+- (NSUInteger)fnSizeOfReturnValue
+{
+	size_t size = 0, align = 1;
+
+	if (_returnType == NULL) {
+		return 0;
+	}
+	fn_type_metrics(_returnType, &size, &align);
+	return size;
+}
+
+- (BOOL)fnReturnIsFloating
+{
+	const char *type = _returnType;
+
+	if (type == NULL) {
+		return NO;
+	}
+	while (fn_is_qualifier(*type)) {
+		type++;
+	}
+	return (*type == 'f' || *type == 'd' || *type == 'D');
+}
+
+@end

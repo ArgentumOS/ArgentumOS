@@ -26,6 +26,7 @@
 
 @class NSString;
 @class NSMethodSignature;
+@class NSInvocation;
 
 /*
  * The copying protocols, in COCOA'S SHAPE (the public-API audit, item B4): the
@@ -128,11 +129,13 @@ __attribute__((objc_root_class))
 - (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
 
 /* Messaging and introspection, the rest of Cocoa's root-class surface. */
-/* THE SIGNATURE OF A SELECTOR (stage F, first half: NSMethodSignature). These two
- * are the lookup, which needs no invocation at all; NSInvocation — and with it
- * -forwardInvocation: — is the second half. */
+/* THE SIGNATURE OF A SELECTOR, and the FORWARDING that uses it (stage F). The
+ * lookup needs no invocation; -forwardInvocation: IS the invocation — built by the
+ * runtime's __objc_msg_forward2 hook (ninvocation.m) and delivered here. */
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
 + (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
+- (id)forwardingTargetForSelector:(SEL)aSelector;	/* default: nil */
+- (void)forwardInvocation:(NSInvocation *)anInvocation;	/* default: doesNotRecognizeSelector: */
 
 - (IMP)methodForSelector:(SEL)aSelector;
 + (BOOL)respondsToSelector:(SEL)aSelector;

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #import <foundation/NSString.h>	/* -description has to return one */
 #import <foundation/NSMethodSignature.h>	/* stage F: the selector's types */
+#import <foundation/NSInvocation.h>	/* stage F: what forwarding is handed */
 #include <objc/objc-arc.h>
 
 /*
@@ -312,6 +313,31 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
 {
 	/* `self` IS the class here, and the helper starts from the metaclass. */
 	return fn_signature_for(self, aSelector);
+}
+
+/*
+ * THE FORWARDING PAIR (stage F, second half). Both are the DEFAULTS Cocoa
+ * documents, and having both is what makes the mechanism terminate:
+ *
+ *   -forwardingTargetForSelector:  no fast forwarding, so a message nothing
+ *                                  implements does not silently retarget;
+ *   -forwardInvocation:            the LOUD failure. An unimplemented message
+ *                                  arrives here as a real NSInvocation, built by
+ *                                  ninvocation.m's __objc_msg_forward2 hook, and
+ *                                  the honest answer is -doesNotRecognizeSelector:.
+ *
+ * A subclass forwards by overriding either one: the fast path needs no invocation
+ * at all, and the slow one has the arguments.
+ */
+- (id)forwardingTargetForSelector:(SEL)aSelector
+{
+	(void)aSelector;
+	return nil;
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+	[self doesNotRecognizeSelector:[anInvocation selector]];
 }
 
 

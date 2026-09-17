@@ -110,6 +110,9 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/nindexpath.m \
 	$(FOUNDATION_SRC)/nlocale.m \
 	$(FOUNDATION_SRC)/nmethodsignature.m \
+	$(FOUNDATION_SRC)/ninvocation.m \
+	$(FOUNDATION_SRC)/ninvoke_amd64.S \
+	$(FOUNDATION_SRC)/fninvoke.h $(FOUNDATION_SRC)/fnmethodsignature.h \
 	$(FOUNDATION_SRC)/nenumerator.m $(FOUNDATION_SRC)/npropertylistserialization.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
@@ -121,6 +124,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSIndexSet.h $(FOUNDATION_SRC)/NSIndexPath.h \
 	$(FOUNDATION_SRC)/NSLocale.h \
 	$(FOUNDATION_SRC)/NSMethodSignature.h \
+	$(FOUNDATION_SRC)/NSInvocation.h \
 	$(FOUNDATION_SRC)/NSEnumerator.h \
 	$(FOUNDATION_SRC)/NSPropertyListSerialization.h \
 	$(FOUNDATION_SRC)/Foundation.h
@@ -161,6 +165,9 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/nlocale.m -o .build/foundation-nlocale.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nmethodsignature.m -o .build/foundation-nmethodsignature.o
+	$(MUSL64_CC) -c -fPIC $(FOUNDATION_SRC)/ninvoke_amd64.S -o .build/foundation-ninvoke-asm.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/ninvocation.m -o .build/foundation-ninvocation.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nenumerator.m -o .build/foundation-nenumerator.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
@@ -171,7 +178,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-ndata.o .build/foundation-ndate.o \
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o \
-		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-nenumerator.o \
+		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
 		.build/foundation-npropertylistserialization.o .build/plist.o -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)

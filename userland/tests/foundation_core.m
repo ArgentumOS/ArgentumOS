@@ -96,14 +96,14 @@ int main(void)
 			"performSelector:withObject:withObject:", "methodForSelector:",
 			"doesNotRecognizeSelector:", "isEqual:", "hash", "description",
 			"debugDescription", "self", "zone", "isProxy",
-			"methodSignatureForSelector:", NULL
+			"methodSignatureForSelector:",
+			"forwardingTargetForSelector:", "forwardInvocation:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs NSInvocation — and with it -forwardInvocation:, the half of the
-			 * forwarding trio that must MARSHAL the arguments. Stage F's second half;
-			 * until then an unimplemented message still reaches
-			 * -doesNotRecognizeSelector: and aborts loudly. */
-			"forwardInvocation:", "forwardingTargetForSelector:", NULL
+			/* EMPTY, and that is the point: the forwarding trio was the last thing
+			 * this class was missing. The loop below still runs, so a future
+			 * exclusion has a place to go. */
+			NULL
 		};
 		NSObject *probe = [[NSObject alloc] init];
 		int complete = 1;
@@ -222,6 +222,79 @@ int main(void)
 		      classSide != nil && [classSide numberOfArguments] == 2 &&
 		      [[NSString stringWithUTF8String:[classSide methodReturnType]] isEqualToString:@"@"],
 		      seen);
+	}
+
+	{
+		/* FORWARDING (stage F, second half). Two paths, wired differently: the fast
+		 * one is the runtime's objc_proxy_lookup hook (no invocation is built at
+		 * all), the slow one is an NSInvocation built from the captured register
+		 * file. The slow check is the one that proves the MARSHALLING — an argument
+		 * goes in and a value comes back. */
+		FastForwarder *fast = [[FastForwarder alloc] init];
+		SlowForwarder *slow = [[SlowForwarder alloc] init];
+		char seen[128];
+
+		/*
+		 * THE DIAGNOSTIC FIRST, and it is a SPLIT on purpose: three things have to
+		 * be true for the fast path to work, and one "forwarding failed" line
+		 * cannot say which of them is false. The hook is the runtime's own global,
+		 * so this asks it directly.
+		 */
+		{
+			extern id (*objc_proxy_lookup)(id receiver, SEL op);	/* objc/hooks.h */
+			BOOL responds = [fast respondsToSelector:@selector(forwardingTargetForSelector:)];
+			id answer = objc_proxy_lookup(fast, @selector(marker));
+
+			snprintf(seen, sizeof seen, "responds=%d hook=%s",
+				 responds ? 1 : 0, (answer != nil) ? "yes" : "NIL");
+			check("forwarding-hook", responds && answer != nil, seen);
+		}
+
+		/*
+		 * THE END-TO-END HALF IS NOT ASSERTED HERE, and that is a REAL open item
+		 * rather than an omission: the check above PASSES, and yet a message to an
+		 * un-implemented selector still reaches -doesNotRecognizeSelector: — because
+		 * the runtime does not consult objc_proxy_lookup on the path this build
+		 * takes. The mechanism is in place and gated (the trampolines, the
+		 * invocation, the two installed hooks); what is missing is the runtime's
+		 * side of the contract. See the plan's §9 stage F record for the diagnosis,
+		 * what was ruled out, and the next experiment.
+		 */
+		(void)slow;
+	}
+
+	{
+		/* THE INVOCATION'S OWN VALUE API, exercised directly: the argument written
+		 * and read back, -invoke actually calling the method, and a return value
+		 * round-tripped through a signature that has a four-byte one. */
+		NSMethodSignature *setter =
+			[NSMethodSignature signatureWithObjCTypes:"v@:i"];
+		NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:setter];
+		NSMethodSignature *getter =
+			[NSMethodSignature signatureWithObjCTypes:"i@:"];
+		NSInvocation *returner = [NSInvocation invocationWithMethodSignature:getter];
+		Counter *counter = [[Counter alloc] init];
+		int argument = 41;
+		int readBack = 0;
+		int returned = 7;
+		int out = 0;
+
+		[invocation setTarget:counter];
+		[invocation setSelector:@selector(setValue:)];
+		[invocation setArgument:&argument atIndex:2];
+		[invocation getArgument:&readBack atIndex:2];
+		[invocation retainArguments];
+		[invocation invoke];
+		[returner setReturnValue:&returned];
+		[returner getReturnValue:&out];
+
+		check("invocation-api",
+		      [invocation methodSignature] == setter &&
+		      [invocation target] == counter &&
+		      [invocation selector] == @selector(setValue:) &&
+		      [invocation argumentsRetained] &&
+		      readBack == 41 && out == 7 && [counter value] == 41,
+		      "the signature, target and selector are kept; an argument and a return value round-trip; -invoke ran the method");
 	}
 
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);

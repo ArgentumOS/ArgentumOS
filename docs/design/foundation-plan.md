@@ -5,10 +5,10 @@ skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
 not an array dependency: see the work queue), `NSLocale` (stage E — the localised case
-rules), `NSMethodSignature` (stage F, first half — a selector's types) and
-`NSPropertyListSerialization`. Gated on a
+rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, and a call as an
+object) and `NSPropertyListSerialization`. Gated on a
 guest boot by six cases (`foundation_core`, `foundation_string`, `foundation_value`,
-`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **11 / 27 /
+`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **13 / 27 /
 17 / 34 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
 (the public headers are already staged, so it is a deliberate later step rather than a gap).
 The work queue
@@ -213,11 +213,14 @@ status.
   shipped: a canon-keeping identifier value type plus the Turkic case rule
   (Unicode SpecialCasing: i with İ, I with ı), which is what makes the case-insensitive
   comparisons real. Ordering and search folding stay byte-wise, and say so.
-- **`NSMethodSignature` — stage F, FIRST HALF. DONE (§9).** A selector's types, parsed
-  from the runtime's encoding, plus `-methodSignatureForSelector:` on NSObject (both
-  variants) — the half of the forwarding trio that needs no invocation. `NSInvocation`,
-  and with it `-forwardInvocation:` / `-forwardingTargetForSelector:`, is the second half,
-  where the x86-64 argument marshalling lives.
+- **`NSMethodSignature` + `NSInvocation` — stage F. DONE, EXCEPT the runtime's side (§9).**
+  A selector's types (parsed from the runtime's encoding) and a call as an object, with
+  `-methodSignatureForSelector:` on NSObject (both variants) and both forwarding methods.
+  The MECHANISM is complete and gated — the x86-64 trampolines, `-invoke` /
+  `-invokeWithTarget:` with the register classification, and the two runtime hooks installed
+  — but that hook is not honoured on the lookup path this build takes, so END-TO-END
+  forwarding is the OPEN ITEM §9 records (with the diagnosis, what was ruled out, and the
+  next experiment). What is unverified is stated in the probe, not asserted away.
 - **F5 — self-hosting. DEFERRED (user, 2026-09-17).** The enabling half is DONE and stays:
   the public headers are staged to `/System/Shared/Headers/foundation/` beside
   `libfoundation.so.1`, so an on-guest rebuild is possible. What is deferred is the GATE —
@@ -674,7 +677,7 @@ mechanism's fatal flaw.
 
 | class | audited | complete | what remains |
 |---|---|---|---|
-| `NSObject` | yes | **yes** | `-methodSignatureForSelector:` SHIPPED (stage F, first half, both variants). `-forwardInvocation:`/`-forwardingTargetForSelector:` still need `NSInvocation` — the argument marshalling |
+| `NSObject` | yes | **yes** | the forwarding trio is SHIPPED (stage F): `-methodSignatureForSelector:` both variants, and `-forwardInvocation:` / `-forwardingTargetForSelector:` with Cocoa's defaults. The MECHANISM is gated; whether the runtime CONSULTS its hook on this build's lookup path is the open item §9 records |
 | `NSNumber` | yes | **yes** | — |
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (the localised CASE comparisons — shipped at stage E; ordering stays byte-wise), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet` (the `…AtIndexes:` family) and `NSEnumerator` (the enumerator objects — `for-in` covers the need). Both shipped; `NSIndexPath` used to be named here too and is NOT one of them — no array form takes a path (corrected at stage D) |
@@ -771,8 +774,8 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSCharacterSet` — **SHIPPED** | `-rangeOfCharacterFromSet:`, `-componentsSeparatedByCharactersInSet:`, `-stringByTrimmingCharactersInSet:` |
 | a plist reader/writer — **SHIPPED** | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
 | `NSLocale` — **SHIPPED (stage E)** | the localised CASE comparisons: the Turkic rule a locale needs, not a catalogue. Ordering stays byte order (no collation tables ship) and search folding stays byte-wise |
-| `NSMethodSignature` — **SHIPPED (stage F, first half)** | a selector's types: the parser (primitives, qualifiers, pointers, arrays, structs/unions, bitfields, `@"Class"` names, and the older offset form) and `-methodSignatureForSelector:` on NSObject, both variants. The widths are OURS and stated |
-| `NSInvocation` | the forwarding trio's other half: `-forwardInvocation:` needs it, and it needs the x86-64 argument marshalling the runtime does not provide |
+| `NSMethodSignature` — **SHIPPED (stage F)** | a selector's types: the parser (primitives, qualifiers, pointers, arrays, structs/unions, bitfields, `@"Class"` names, and the older offset form) and `-methodSignatureForSelector:` on NSObject, both variants. The widths are OURS and stated |
+| `NSInvocation` — **SHIPPED (stage F)**, but the RUNTIME's side of forwarding is OPEN | the invocation, the register classification and the two x86-64 trampolines are in and gated; what is still owed is the runtime consulting `objc_proxy_lookup` on this build's lookup path (§9's stage F record has the diagnosis and the next experiment) |
 | `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
@@ -971,3 +974,49 @@ bug outright. That is stage E's split-check lesson taken one step further: not j
 the check", but "make the detail report what was seen".
 
 `foundation_core` 11/11 on a guest boot.
+
+### Stage F, second half (2026-09-17): `NSInvocation`, the trampolines — and the runtime's side of forwarding, still open
+
+The mechanism, which is the part C cannot express:
+
+  * `ninvoke_amd64.S` holds TWO trampolines. One is what `__objc_msg_forward2` answers with,
+    so the runtime calls it with the forwarded method's own arguments: it saves the whole
+    REGISTER FILE (rdi rsi rdx rcx r8 r9, all eight xmm registers, and the caller's
+    stack-argument pointer) into ONE image and calls the C half. The other (`fn_call_image`)
+    loads that image back into the registers, sets `al`, calls the IMP and stores the result.
+    Why assembler: a variadic C prologue saves the SSE registers only when the caller's `al`
+    says so, and `al` is UNDEFINED for a non-variadic prototype — which is exactly what a
+    forwarded method has. The image's layout is a CONTRACT with the private `fninvoke.h`,
+    and both sides say so.
+  * `NSInvocation` is Cocoa's surface: the factory, the signature, target and selector,
+    `-getArgument:atIndex:` / `-setArgument:atIndex:`, `-getReturnValue:` / `-setReturnValue:`,
+    `-retainArguments`, `-invoke` and `-invokeWithTarget:`. Arguments are CLASSIFIED onto the
+    register file — six integers, eight floats, self and _cmd first as the ABI has them — and
+    anything that needs the STACK, a by-value struct or a `long double` RAISES rather than
+    being half-supported; the subset is stated in the header rather than discovered later.
+    `-retainArguments` owns the OBJECT arguments with an explicit `objc_retain`, because ARC
+    will not manage a reference that lives in the argument BYTES.
+  * Both runtime hooks are installed — `objc_proxy_lookup` and `__objc_msg_forward2` — from a
+    CONSTRUCTOR as well as `+load`, because the first version installed them only in `+load`
+    and forwarded nothing at all.
+
+**THE OPEN ITEM, and it was measured rather than guessed.** An un-implemented message still
+reaches `-doesNotRecognizeSelector:`, and the probe's `forwarding-hook` check says the obvious
+explanation is wrong: the hook IS installed, and `objc_proxy_lookup(fast, @selector(marker))`
+DOES answer with the backing object — the runtime simply does not consult it on the path this
+build takes. Ruled out along the way: `+load` (a constructor now makes the same two
+assignments), the guard (it asks `-respondsToSelector:` the ordinary way), and the trampoline
+symbols (the image and both entries are `hidden`, which is what the shared-object link
+required to stop the `R_X86_64_PC32` relocation failing). libobjc2's `objc_msg_lookup_internal`
+DOES call `objc_proxy_lookup`, before `__objc_msg_forward2` — so the next experiment is a
+RECORDING hook installed from the guest, which separates "the runtime cached a slot" from
+"the runtime never reaches that block".
+
+The consequence for the record: the trio's declarations and its MECHANISM are in and gated
+(`invocation-api` proves the marshalling — `-invoke` called a real method with an int argument
+and the return value round-tripped; `forwarding-hook` proves the hooks are installed), and
+END-TO-END forwarding is an open item the probe asserts NOTHING about. That is deliberate: a
+check that cannot fail is worse than an absent one, and the note above says so where the
+checks are.
+
+`foundation_core` 13/13 on a guest boot.

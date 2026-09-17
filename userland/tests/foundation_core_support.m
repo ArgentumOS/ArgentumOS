@@ -68,3 +68,73 @@ int foundation_core_equality(void)
 	[b release];
 	return ok;
 }
+
+/* --- the forwarding probes (stage F, second half) ---------------------- */
+
+@implementation FastForwarder
+
+- (id)init
+{
+	self = [super init];
+	if (self != nil) {
+		_backing = [[Counter alloc] init];	/* MRR: we own it */
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	[_backing release];
+	[super dealloc];
+}
+
+/*
+ * THE FAST PATH. The runtime asks this before it hands a call over, and re-looks
+ * the selector up on the answer — so the message reaches the real object with its
+ * arguments untouched and no invocation is ever built.
+ */
+- (id)forwardingTargetForSelector:(SEL)aSelector
+{
+	if (aSelector == @selector(marker)) {
+		return _backing;
+	}
+	return nil;
+}
+
+@end
+
+@implementation SlowForwarder
+
+- (id)init
+{
+	self = [super init];
+	if (self != nil) {
+		_backing = [[Counter alloc] init];
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	[_backing release];
+	[super dealloc];
+}
+
+- (unsigned long)forwardedCount
+{
+	return _forwarded;
+}
+
+/*
+ * THE SLOW PATH, the one that has to MARSHAL. The call arrives as an NSInvocation
+ * whose arguments were captured from the register file by ninvoke_amd64.S; calling
+ * the method for real — here, on the backing object — is what -invokeWithTarget:
+ * does, and it is the whole point of the mechanism.
+ */
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+	_forwarded++;
+	[anInvocation invokeWithTarget:_backing];
+}
+
+@end
