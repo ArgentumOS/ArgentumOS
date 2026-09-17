@@ -522,11 +522,21 @@ int main(void)
 
 
 	{
-		/* THE HARD RULE, mechanically, for the dictionary family. */
+		/*
+		 * THE AUDITED COCOA INVENTORY for NSDictionary/NSMutableDictionary.
+		 *
+		 * `implemented` is Cocoa's documented surface and must all EXIST;
+		 * `excluded` is what we deliberately do not ship and must all be ABSENT.
+		 * The old check only confirmed what our own header declared — how
+		 * +stringWithFormat:arguments: shipped missing — and this one named four
+		 * gaps, all implemented in the same pass: +dictionaryWithObjects:forKeys:,
+		 * -keysSortedByValueUsingSelector:, -keysSortedByValueUsingComparator: and
+		 * -enumerateKeysAndObjectsUsingBlock:.
+		 */
 		static const char *classSelectors[] = {
 			"dictionary", "dictionaryWithObject:forKey:", "dictionaryWithDictionary:",
-			"dictionaryWithObjects:forKeys:count:",
-			"dictionaryWithObjectsAndKeys:", NULL
+			"dictionaryWithObjects:forKeys:count:", "dictionaryWithObjectsAndKeys:",
+			"dictionaryWithObjects:forKeys:", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithObject:forKey:", "initWithDictionary:",
@@ -534,6 +544,8 @@ int main(void)
 			"count", "objectForKey:", "objectForKeyedSubscript:",
 			"allKeys", "allValues", "allKeysForObject:",
 			"objectsForKeys:notFoundMarker:", "getObjects:andKeys:",
+			"keysSortedByValueUsingSelector:", "keysSortedByValueUsingComparator:",
+			"enumerateKeysAndObjectsUsingBlock:",
 			"isEqualToDictionary:", "isEqual:", "hash", "description",
 			"copy", "mutableCopy",
 			"countByEnumeratingWithState:objects:count:", NULL
@@ -546,6 +558,19 @@ int main(void)
 			"removeObjectForKey:", "removeAllObjects",
 			"addEntriesFromDictionary:", "setDictionary:",
 			"removeObjectsForKeys:", NULL
+		};
+		static const char *excluded[] = {
+			/* Needs NSEnumerator, which this Foundation does not ship; for-in
+			 * covers the need and is what the tests exercise. */
+			"keyEnumerator", "objectEnumerator",
+			/* Needs KVC. */
+			"valueForKey:", "setValue:forKey:",
+			/* Needs a plist reader or writer. */
+			"dictionaryWithContentsOfFile:", "initWithContentsOfFile:",
+			"writeToFile:atomically:", "descriptionInStringsFileFormat",
+			/* Needs NSURL. */
+			"dictionaryWithContentsOfURL:", "initWithContentsOfURL:",
+			"writeToURL:atomically:", NULL
 		};
 		NSDictionary *probe = [NSDictionary dictionary];
 		NSMutableDictionary *mutable = [[NSMutableDictionary alloc] init];
@@ -576,9 +601,16 @@ int main(void)
 				printf("FOUNDATION-COLLECTION missing -%s (mutable)\n", mutableSelectors[i]);
 			}
 		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
 		check("dict-api-complete", complete,
-		      "every public NSDictionary/NSMutableDictionary selector exists (the hard rule)");
+		      "the audited Cocoa inventory for NSDictionary/NSMutableDictionary");
 	}
+
 
 	{
 		/* THE NIL-TERMINATED CONSTRUCTOR, on its own: the array family's version

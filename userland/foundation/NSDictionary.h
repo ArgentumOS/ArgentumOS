@@ -53,6 +53,7 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 				 forKeys:(const id *)keys
 				   count:(NSUInteger)count;
 + (NSDictionary *)dictionaryWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
++ (NSDictionary *)dictionaryWithObjects:(NSArray *)objects forKeys:(NSArray *)keys;
 
 - (id)initWithObject:(id)value forKey:(id)key;
 - (id)initWithDictionary:(NSDictionary *)other;
@@ -67,6 +68,9 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 - (NSArray *)allValues;
 - (NSArray *)allKeysForObject:(id)object;
 - (NSArray *)objectsForKeys:(NSArray *)keys notFoundMarker:(id)marker;
+- (NSArray *)keysSortedByValueUsingSelector:(SEL)comparator;
+- (NSArray *)keysSortedByValueUsingComparator:(NSComparator)comparator;
+- (void)enumerateKeysAndObjectsUsingBlock:(void (^)(id key, id value, BOOL *stop))block;
 - (void)getObjects:(id __unsafe_unretained *)objects
 	   andKeys:(id __unsafe_unretained *)keys;
 /* Cocoa's subscript: `dict[k]` lowers to this. */

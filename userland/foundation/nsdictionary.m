@@ -275,6 +275,29 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	[self dropKeySnapshot];
 }
 
++ (NSDictionary *)dictionaryWithObjects:(NSArray *)objects forKeys:(NSArray *)keys
+{
+	/*
+	 * TWO ARRAYS, and this is the shape the inventory corrected: the method written
+	 * first was a VARIADIC +dictionaryWithObjects:, which is not Cocoa's selector at
+	 * all — Cocoa's takes one array of objects and one of keys. (The variadic pair
+	 * constructor is the separate +dictionaryWithObjectsAndKeys:.) Mismatched
+	 * lengths are CLAMPED to the shorter rather than raising, and that is documented
+	 * here because Cocoa raises.
+	 */
+	NSMutableDictionary *built = [[NSMutableDictionary alloc] init];
+	NSUInteger n = [objects count];
+	NSUInteger i;
+
+	if ([keys count] < n) {
+		n = [keys count];
+	}
+	for (i = 0; i < n; i++) {
+		[built setObject:[objects objectAtIndex:i] forKey:[keys objectAtIndex:i]];
+	}
+	return built;
+}
+
 + (NSDictionary *)dictionaryWithDictionary:(NSDictionary *)other
 {
 	return [[self alloc] initAsCopyOf:other];
@@ -415,6 +438,50 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 		}
 	}
 	return keys;
+}
+
+- (NSArray *)keysSortedByValueUsingSelector:(SEL)comparator
+{
+	NSArray *keys = [self allKeys];
+
+	return [keys sortedArrayUsingComparator:^NSComparisonResult(id left, id right) {
+		return ((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(
+			[self objectForKey:left], comparator, [self objectForKey:right]);
+	}];
+}
+
+- (NSArray *)keysSortedByValueUsingComparator:(NSComparator)comparator
+{
+	NSArray *keys = [self allKeys];
+
+	if (comparator == NULL) {
+		return keys;
+	}
+	return [keys sortedArrayUsingComparator:^NSComparisonResult(id left, id right) {
+		return comparator([self objectForKey:left], [self objectForKey:right]);
+	}];
+}
+
+- (void)enumerateKeysAndObjectsUsingBlock:(void (^)(id key, id value, BOOL *stop))block
+{
+	/* Over the key SNAPSHOT: the chains are rebuilt by any mutation, and a block
+	 * that mutates the dictionary must not be handed storage that is freed under
+	 * it — the same rule -countByEnumeratingWithState: follows. */
+	NSArray *keys = [self allKeys];
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+
+		block(key, [self objectForKey:key], &stop);
+		if (stop) {
+			break;
+		}
+	}
 }
 
 - (NSArray *)objectsForKeys:(NSArray *)keys notFoundMarker:(id)marker
