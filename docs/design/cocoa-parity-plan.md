@@ -776,16 +776,27 @@ as a compatibility path for un-migrated views, with a migration list.
   divider's arithmetic, the clamp, both axes; 22 cases) plus a REAL DRAG of the
   board's divider, logged at the END of the drag (an interaction in progress is
   not something to judge) and asserting where it came to rest: 147/147 -> 197/97.
-  MEASURED AFTERWARDS, with the toolkit's own instrument (`ARGENTUM_PAINT_MS=1`,
-  which `uikit_u5e` now exports the way `uikit_u5b` does): a drag step is 0–10ms
-  across 13 views, and the first version's blanket `setNeedsDisplay()` on the
-  whole split was MERGING the panes' own damage into one coarse rect — the view
-  now damages only the old and the new divider strip, so the panes' precise
-  rects survive (2 merged -> 4 correct). The board's panes hold a Button each,
-  because an empty-pane split is a drag with nothing in it to measure. COPYING
-  the moving pane's pixels — the `copiesOnScroll` idea, and the real lever if a
-  pane holds a rich hierarchy — is PARKED BY THE USER'S CHOICE
-  (dec-2ef665304e989ea2): revisit only if a drag is reported slow again.
+  MEASURED AFTERWARDS — and the FIRST answer was wrong, which is worth keeping.
+  The paint is cheap: a drag step is 0–10ms across 13 views, and the first
+  version's blanket `setNeedsDisplay()` on the whole split was merging the panes'
+  own damage into one coarse rect (the view now damages only the old and the new
+  divider strip, so the panes' precise rects survive: 2 merged -> 4 correct). But
+  that was not the slowness, and a test could not see it: the harness's own drag
+  sleeps 0.12s per event, by design, so the guest cannot drop pointer chunks —
+  and so it can never show a drag that falls BEHIND either. `uikit_u5e` now
+  floods instead: 120 moves 1pt apart.
+  THE REAL COST IS EVENT INTAKE. `Window::pumpEvent()` handled ONE event per
+  pass and the application paints once per pass, so a drag could only follow the
+  pointer at the PAINT rate — ~50–70 events a second, which a hand on a mouse
+  beats. Before: 46 events still being chewed through 2.71s after the hand
+  stopped, 63 paints, and the divider crawling in behind the cursor. After: the
+  pump drains a run of motion events for the window and dispatches only the
+  LATEST (each carries the absolute pointer position, and anything that is not
+  motion is `XPutBackEvent`-ed so a release is never lost) — 120 events become 3
+  moves and 20 paints, and the divider lands where the mouse is. That is the fix
+  for "the divider crawls behind the cursor", and the flood is now part of
+  `uikit_u5e`'s gate. COPYING the moving pane's pixels (the `copiesOnScroll`
+  idea) stays PARKED BY THE USER'S CHOICE (dec-2ef665304e989ea2).
   **U5f — `GridView`. DONE (2026-09); this closes U5.** Views in a grid of cells,
   each column as wide as its widest cell and each row as tall as its tallest —
   `NSGridView`. It is a LAYOUT and not a data view: the cells hold whatever views

@@ -92,20 +92,34 @@ logTabs(TabView *tv)
  * of it: an interaction in progress is not something to judge, and the last
  * line is the one that says where the divider came to rest. */
 static void
-logSplit(SplitView *sv)
+logSplit(SplitView *sv, int moves)
 {
 	Rect d = sv->frameOfDivider(0);
 	View *a = sv->paneViewAt(0);
 	View *b = sv->paneViewAt(1);
 
-	std::printf("ZOO-SPLIT panes=%d divider=%g,%g,%gx%g sizes=%g,%g\n",
+	std::printf("ZOO-SPLIT panes=%d divider=%g,%g,%gx%g sizes=%g,%g moves=%d\n",
 		    sv->paneCount(), d.origin.x, d.origin.y, d.size.w, d.size.h,
-		    a ? a->frame().size.w : 0.0, b ? b->frame().size.w : 0.0);
+		    a ? a->frame().size.w : 0.0, b ? b->frame().size.w : 0.0,
+		    moves);
 	std::fflush(stdout);
 }
 
 class BoardSplit : public SplitView {
 public:
+	/* A DRAG IN PROGRESS IS COUNTED, because "the divider crawls behind the
+	 * cursor" is a question about EVENTS, not about pixels: the count says how
+	 * many of the mouse's motion events this board actually received, and the
+	 * gap between that and the number sent is the whole story. */
+	bool mouseDragged(const Event &e) override
+	{
+		if (!SplitView::mouseDragged(e)) {
+			return false;
+		}
+		movesThisDrag++;
+		return true;
+	}
+
 	bool mouseUp(const Event &e) override
 	{
 		bool dragging = draggingDivider() >= 0;
@@ -114,10 +128,13 @@ public:
 			return false;
 		}
 		if (dragging) {
-			logSplit(this);
+			logSplit(this, movesThisDrag);
 		}
+		movesThisDrag = 0;
 		return true;
 	}
+
+	int movesThisDrag = 0;
 };
 static BoardSplit *splitBoard = nullptr;
 
@@ -900,7 +917,7 @@ main(int argc, char **argv)
 	 * mark. A DRAG writes this same line again, at the END of the drag (see
 	 * BoardSplit) - an in-progress drag is not something to judge. */
 	if (splitBoard) {
-		logSplit(splitBoard);
+		logSplit(splitBoard, 0);	/* no drag has happened yet */
 		logAt("SPLIT", splitBoard);	/* where to press for its divider */
 	}
 	if (collectionTiles) {

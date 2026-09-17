@@ -142,3 +142,43 @@ class Case(BaseCase):
                    == (197.0, 97.0),
                    "the board logged %s at the end of the drag"
                    % (m2.group(0) if m2 else "nothing new"))
+
+        # ---- AND A FLOOD: what a hand on a mouse actually does ------------
+        # The drag above is the harness's own, and it sleeps 0.12s between
+        # events so the guest cannot drop pointer chunks - which also means it
+        # can never show a drag that falls BEHIND. A real mouse does not sleep,
+        # it floods. So: grab the divider again, move it 1pt at a time as fast
+        # as the seam allows (120 events), release, and TIME how long the board
+        # takes to catch up. That number is what "it crawls behind the cursor"
+        # means, and it is the one my earlier measurement could not see.
+        #
+        # THE PRESS MUST LAND ON THE DIVIDER, which the drag above moved 50pt
+        # right: logAt's point described the OLD one, and a press on a pane is
+        # not a drag. (The first version of this phase pressed there and so
+        # measured nothing at all - no drag ever started.)
+        x0 = int(sx) + 50
+        y0 = int(screen_h - sy)
+
+        mon.goto(x0, y0, dt=0.01)
+        mon.press()
+        for _ in range(120):
+            mon.move(1, 0, dt=0.002)
+        t_release = time.time()
+        mon.release(settle=0.1)
+        # 197 + 120pt passes the floor, so the divider lands on the clamp: if it
+        # got there, the board followed the mouse to the end.
+        caught = session.wait_for(r"ZOO-SPLIT .* sizes=270,24 moves=\d+", 30)
+        lag = time.time() - t_release
+        seen = session.output_since(marker)
+        ms = [int(v) for v in re.findall(r"ZOO-SPLIT .* moves=(\d+)", seen)]
+
+        self.check("a-flood-of-motion-events-is-absorbed",
+                   bool(caught) and lag < 1.5,
+                   "120 moves 1pt apart, then release: the board caught up in"
+                   " %.2fs%s" % (lag, "" if caught else " - never caught up"))
+        self.check("the-flood-moved-the-divider-without-queueing",
+                   ms and ms[-1] >= 1,
+                   "120 motion events became %s drag(s): the pump drains a run of"
+                   " motion and dispatches only the LATEST, so a flood costs one"
+                   " move per frame and the divider tracks the cursor instead of"
+                   " trailing it" % (ms[-1] if ms else "no"))

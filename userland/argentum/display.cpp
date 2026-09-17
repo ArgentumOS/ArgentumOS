@@ -2277,8 +2277,35 @@ Window::pumpEvent()
 	if (!XCheckWindowEvent(gDpy, impl_->xwin, kWindowEventMask, &ev)) {
 		return false;
 	}
-	if (!XPending(gDpy)) {
-		/* nothing else waiting: let the caller pause */
+	/* A POINTER THAT FLOODS IS STILL ONE POINTER. This call handles exactly
+	 * ONE event and the application paints once per pass, so the rate a drag
+	 * can follow is the PAINT rate - and a hand on a mouse beats it easily.
+	 * Measured on the board's divider: 120 motion events sent as fast as the
+	 * seam allowed, and 2.7s after the hand stopped the board was still
+	 * chewing through them, 46 events and 49 paints later - which is exactly
+	 * what "the divider crawls behind the cursor" looks like from inside.
+	 *
+	 * While a press is captured, only the LATEST position in a run of motion
+	 * events can matter: the ones before it describe a moment that has already
+	 * passed. So they are drained here and the last is dispatched, which is
+	 * safe because each carries the ABSOLUTE pointer position (xbutton.x_root)
+	 * - nothing is lost by skipping the rest. Anything that is not motion is
+	 * PUT BACK, so a release is still seen by the pass that follows.
+	 *
+	 * This sits BEFORE the switch: every other event type, and every other part
+	 * of this call (the once-per-pass tick above, the window's own drag), keeps
+	 * exactly the behaviour it had. */
+	if ((pressView_ || dragging_) && ev.type == MotionNotify) {
+		XEvent newer;
+
+		while (XCheckWindowEvent(gDpy, impl_->xwin, kWindowEventMask,
+					 &newer)) {
+			if (newer.type != MotionNotify) {
+				XPutBackEvent(gDpy, &newer);
+				break;
+			}
+			ev = newer;
+		}
 	}
 	double pp = impl_->pxPerPt;
 
