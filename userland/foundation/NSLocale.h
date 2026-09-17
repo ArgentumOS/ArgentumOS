@@ -40,6 +40,17 @@
 #import <foundation/NSArray.h>
 #import <foundation/NSDictionary.h>
 
+/* NULLABILITY (F6, the last slice): NONNULL by default, and two documented
+ * exceptions, both MEASURED in nlocale.m:
+ *   - -initWithLocaleIdentifier: is a `return nil;` site, and
+ *     +localeWithLocaleIdentifier: is `return [[self alloc] initWithLocaleIdentifier:]`,
+ *     so it inherits that — a garbage identifier can be refused;
+ *   - -objectForKey: answers nil "for a key that needs the database", which the
+ *     header below has said all along.
+ * +currentLocale is NOT: it reads LC_ALL then LANG and falls back to en_US_POSIX,
+ * so it always answers a locale (that is the POSIX convention, not a guess). */
+NS_ASSUME_NONNULL_BEGIN
+
 /* The keys -objectForKey: answers. Cocoa's other NSLocale… keys — the decimal
  * separator, the currency, the collation — need the locale database this library
  * does not ship, and answer nil here. */
@@ -54,7 +65,7 @@ extern NSString *const NSLocaleCountryCode;
 }
 
 + (instancetype)currentLocale;
-+ (instancetype)localeWithLocaleIdentifier:(NSString *)identifier;
++ (nullable instancetype)localeWithLocaleIdentifier:(NSString *)identifier;
 
 /* The identifiers whose CASE rules this library implements — not Cocoa's
  * catalogue of hundreds: every other identifier behaves as the neutral default. */
@@ -65,10 +76,12 @@ extern NSString *const NSLocaleCountryCode;
 + (NSString *)canonicalLanguageIdentifierFromString:(NSString *)string;
 + (NSString *)canonicalLocaleIdentifierFromString:(NSString *)string;
 
-- (id)initWithLocaleIdentifier:(NSString *)identifier;		/* designated */
+- (nullable id)initWithLocaleIdentifier:(NSString *)identifier;		/* designated */
 
 - (NSString *)localeIdentifier;
-- (id)objectForKey:(NSString *)key;	/* nil for a key that needs the database */
+- (nullable id)objectForKey:(NSString *)key;	/* nil for a key that needs the database */
+
+NS_ASSUME_NONNULL_END
 
 @end
 

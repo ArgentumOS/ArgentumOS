@@ -227,7 +227,7 @@ status.
   commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
   deferral removes the gate, not the standing requirement to track self-hosting needs
   there.
-- **F6 — nullability annotations. SLICES 1–4 DONE (§9); only `NSCharacterSet` and `NSLocale` left, for the Sterling front end.**
+- **F6 — nullability annotations. DONE (§9): every staged public header is annotated.**
   The language reads an *unannotated* import as **nullable** (`sterling-syntax.md` §9.5), so
   today every Foundation call answers `T?` and every one of them needs a `!` or a binding. The
   fix is the annotations themselves: **0 today, across 19 headers and 434 methods** — and no
@@ -240,12 +240,16 @@ status.
   `-Werror=nullability-completeness` in the library's own flags: a header with SOME annotations
   and not others does not build, while an untouched file stays silent, which is what lets the
   sweep land one slice at a time.
-  **Slices 1–4 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
-  `NSEnumerator`, the strings (`NSString`/`NSMutableString`/`NSOwnedString`), the value types
-  (`NSNumber`/`NSData`/`NSDate`) with `NSError`/`NSException`, `NSFastEnumeration`, the (empty)
-  `NSTinyString`, and `NSMethodSignature`/`NSInvocation`/`NSPropertyListSerialization`.
-  **Remaining:** `NSCharacterSet` and `NSLocale` — `Foundation.h` is only imports and needs
-  nothing.
+  **Slices 1–5 (ALL DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
+  `NSEnumerator`, `NSCharacterSet`, `NSLocale`, the strings
+  (`NSString`/`NSMutableString`/`NSOwnedString`), the value types (`NSNumber`/`NSData`/`NSDate`)
+  with `NSError`/`NSException`, `NSFastEnumeration`, the (empty) `NSTinyString`, and
+  `NSMethodSignature`/`NSInvocation`/`NSPropertyListSerialization`. Every staged header carries
+  a region — 20 of the 21 files, `Foundation.h` being imports only. The two PRIVATE headers
+  (`fninvoke.h`, `fnmethodsignature.h`) are deliberately OUT of the sweep: they are not staged,
+  and they exist to carry the image layout and a private category between the library's own
+  units. The line above that called this "0 today, across 19 headers and 434 methods" is now
+  spent — the annotations are the state of the tree, not a plan.
 
 ## 6. Risks / gotchas
 
@@ -1206,3 +1210,48 @@ things, and the rules have to be read per half.
 
 `foundation_core` 15/15 on a guest boot — with the probe untouched, which is the point — and
 `make rootagfs` clean.
+
+### F6, slice 5 (2026-09-17): the last two, and the sweep CLOSES
+
+Slice 5 is `NSCharacterSet` and `NSLocale`, the final two public headers. **F6 is DONE**: every
+staged header carries `NS_ASSUME_NONNULL_BEGIN`/`END` — 20 of the 21 files, `Foundation.h` being
+imports only, and the two private headers out of scope by design.
+
+Both writers were measured, and this slice exposed a PROPAGATION shape that is easy to MISS while
+reading the code. NSCharacterSet's ten built-ins are each `static NSCharacterSet *set = nil; if
+(set == nil) { set = [[NSCharacterSet alloc] initWithRange:...]; } return set;` — a lazy CACHE,
+but what it caches is a CONSTRUCTOR's result, so a failed build answers nil and every built-in is
+nullable. That is the same reading that made `+data:` nullable in slice 3. Calling them nonnull
+because they "are" constants would have been a lie an inspection cannot see through — the shape
+hides the construction. `-invertedSet` is the contrast: it builds from the receiver's own ranges,
+so it stays nonnull.
+
+NSLocale's two exceptions were both already written down in prose before this slice: the header
+has said "-objectForKey: answers nil for a key that needs the database" since stage E, and the
+design note excludes the data-driven half by name. The annotation now makes that visible to a
+COMPILER rather than only to a reader.
+
+THE SWEEP'S TALLY — what it cost, and what it caught:
+
+  * five slices (1860b928, 7a715d61, 2ad1b593, 0ad0c5d4 and this one) of judged annotations,
+    and the two flags never once needed loosening;
+  * the COMPLETENESS half caught 20 real omissions in slice 1 (four rounds of grammar), then ONE
+    in slice 3 (the struct field), then NOTHING — because the grammar was learned once rather
+    than re-learned. Slice 2's single build and slices 4–5's clean first builds are that curve;
+  * the CONVERSION half caught FIVE things the eye had passed over: two inline
+    `[NSData dataWithBytes:...]` flows and an inline `[NSError errorWithDomain:...]` in slice 3's
+    probes (fixed by binding and guarding so a nil FAILS the check), and in slice 4 a wrong
+    PARAMETER in NSString.h that had shipped in slice 2 — a nil return implying a nullable
+    parameter;
+  * every one of those five was a real defect of the kind the sweep exists to find, and NONE of
+    them changed a runtime behaviour: foundation_core 15/15, foundation_string 27/27,
+    foundation_value 17/17 and foundation_error 6/6, before and after.
+
+WHAT IT UNBLOCKS: F6 was queued for the Sterling front end, whose §9.5 reads an unannotated
+import as NULLABLE — so before this sweep every Foundation call answered `T?` and every one of
+them needed a `!` or a binding. That is now a property of the headers rather than of a consumer's
+guesswork, which is exactly what the gate was written to make checkable. F5 (self-hosting on the
+guest) stays deferred by the user, and the sweep never depended on it: the annotations are
+DECLARATIONS, and the headers were already staged.
+
+`foundation_string` 27/27 on a guest boot, and `make rootagfs` clean.
