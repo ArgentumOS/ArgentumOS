@@ -803,6 +803,13 @@ first two versions were wrong in ways worth keeping:
     real value is simpler than either theory — the class-side form had NO caller in any
     probe, so this is the first CHECK that calls it and asserts what it renders.
 
-Left open, and its own question: `%@` with a **tagged** literal (`@"x"`) faulted while
-this work was being done. The shipped check passes a real string object for that leg, so
-nothing here depends on it.
+CLOSED, and it was a MIS-ATTRIBUTION rather than a bug: `%@` with a **tagged** literal
+never faulted. The shipped `string-format` check has always ended with
+`[[NSString stringWithFormat:@"%@-%@", @"a", @"b"] isEqualToString:@"a-b"]` — two
+one-character literals, so two TAGGED pointers — and the run that faulted printed
+`FOUNDATION-STRING string-format ok` immediately before the fault. Two things changed
+between the failing and the passing run (the library edit reverted AND the check's
+own-list leg removed), and the tagged value was named without isolating it: the library
+edit was the cause, and the tagged path was cleared by evidence that was already on the
+log. The probe now names the property anyway (`string-format-tagged-object`), so a tagged
+`%@` is asserted rather than incidental.

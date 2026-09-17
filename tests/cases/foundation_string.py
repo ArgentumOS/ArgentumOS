@@ -35,7 +35,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_string"
 CHECKS = ("tiny", "owned", "mixed", "utf8", "mutable", "description", "cross-tu",
-          "string-api-complete", "string-format", "class-format-arguments",
+          "string-api-complete", "string-format", "string-format-tagged-object",
+          "class-format-arguments",
           "string-compare",
           "string-transform", "string-convert", "string-path",
           "string-encoding", "string-mutable", "characterset-api-complete")

@@ -56,9 +56,11 @@ NSString *foundation_string_constant(void)
  *    Measured, and reverted: `va_copy` inside a method whose `va_list` parameter
  *    has already decayed to a pointer is not a form this code should rely on.)
  *
- * `%d-%@` covers the object conversion, with a REAL string rather than a literal
- * so the conversion path is exercised without depending on the tagged
- * representation (a separate question, recorded in the plan).
+ * `%d-%@` covers the object conversion, with a REAL string rather than a literal so this
+ * leg does not also depend on the tagged representation — the dependency that was
+ * SUSPECTED of the F4 fault and then cleared by evidence: the shipped `string-format`
+ * check had a tagged `%@` all along and passed in the very run that faulted (see the
+ * plan; the probe now names that property too).
  */
 static int class_arguments_through_copy(NSString *format, ...)
 {

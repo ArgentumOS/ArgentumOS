@@ -298,6 +298,27 @@ int main(void)
 		      [[NSString stringWithFormat:@"%@-%@", @"a", @"b"] isEqualToString:@"a-b"],
 		      "the conversions render, width and precision pass through, nil is (null)");
 
+		/* `%@` with a TAGGED literal — named rather than incidental. A literal of
+		 * fewer than 9 ASCII characters is a pointer clang packs, not an object, so
+		 * this is the representation that most easily goes wrong. `string-format`
+		 * above has always covered one; this check says so on purpose, because when
+		 * the F4 work faulted this path was SUSPECTED and cleared: the run that
+		 * faulted printed `string-format ok` first, and that check ends with exactly
+		 * this conversion. Tagged, owned and boxed values must all render. */
+		{
+			NSString *tagged = [NSString stringWithFormat:@"<%@>", @"x"];
+			NSString *owned = [NSString stringWithFormat:@"<%@>",
+					   [NSString stringWithUTF8String:"owned"]];
+			NSString *boxed = [NSString stringWithFormat:@"<%@>",
+					   [NSNumber numberWithInt:7]];
+
+			check("string-format-tagged-object",
+			      [tagged isEqualToString:@"<x>"] &&
+			      [owned isEqualToString:@"<owned>"] &&
+			      [boxed isEqualToString:@"<7>"],
+			      "a TAGGED literal, an owned string and a boxed number all render through %@");
+		}
+
 		/* The class-side form with an explicit list, from a unit that does not
 		 * implement it — the first caller any probe ever gave it. It renders
 		 * through a handed-over `va_copy` and requires the OWNER's list to still
