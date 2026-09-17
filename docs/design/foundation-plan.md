@@ -4,9 +4,10 @@ Status: **DRAFT (2026-09). F0–F4 LANDED, the audited inventories CLOSED, and t
 skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
-not an array dependency: see the work queue) and `NSPropertyListSerialization`. Gated on a
+not an array dependency: see the work queue), `NSLocale` (stage E — the localised case
+rules) and `NSPropertyListSerialization`. Gated on a
 guest boot by six cases (`foundation_core`, `foundation_string`, `foundation_value`,
-`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **6 / 18 /
+`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **6 / 27 /
 17 / 34 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
 (the public headers are already staged, so it is a deliberate later step rather than a gap).
 The work queue
@@ -206,6 +207,11 @@ status.
   toolkit's addressing — a table or collection view names a cell by (row, section) or
   (item, section) — so it was built as a value type and gated on its own, with no
   library-side consumer to lean on.
+- **`NSLocale` — stage E. DONE (§9).** The queue said it would unblock "the localised
+  comparisons", and the half of that which needs a RULE rather than a TABLE is what
+  shipped: a canon-keeping identifier value type plus the Turkic case rule
+  (Unicode SpecialCasing: i with İ, I with ı), which is what makes the case-insensitive
+  comparisons real. Ordering and search folding stay byte-wise, and say so.
 - **F5 — self-hosting. DEFERRED (user, 2026-09-17).** The enabling half is DONE and stays:
   the public headers are staged to `/System/Shared/Headers/foundation/` beside
   `libfoundation.so.1`, so an on-guest rebuild is possible. What is deferred is the GATE —
@@ -655,7 +661,7 @@ mechanism's fatal flaw.
 |---|---|---|---|
 | `NSObject` | yes | **yes** | `-forwardInvocation:`/`-methodSignatureForSelector:` need `NSInvocation`/`NSMethodSignature` (not shipped) |
 | `NSNumber` | yes | **yes** | — |
-| `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (localized comparison), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
+| `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (the localised CASE comparisons — shipped at stage E; ordering stays byte-wise), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet` (the `…AtIndexes:` family) and `NSEnumerator` (the enumerator objects — `for-in` covers the need). Both shipped; `NSIndexPath` used to be named here too and is NOT one of them — no array form takes a path (corrected at stage D) |
 | `NSDictionary`/`NSMutableDictionary` | yes | **yes** | dependency only: `NSEnumerator` (the key/object enumerator objects — `for-in` covers that need) |
 | `NSData`/`NSMutableData` | yes | **yes** | dependency only: `NSError` for the `:options:error:` file variants (F4) |
@@ -748,7 +754,7 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSIndexPath` — **SHIPPED (stage D)** | NOT those array forms: a table or collection view's addressing (row/section, item/section), which the toolkit layer reads. The queue had paired the two names — corrected when stage D shipped, see §9 |
 | `NSCharacterSet` — **SHIPPED** | `-rangeOfCharacterFromSet:`, `-componentsSeparatedByCharactersInSet:`, `-stringByTrimmingCharactersInSet:` |
 | a plist reader/writer — **SHIPPED** | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
-| `NSLocale` | the localised comparisons (which currently answer unlocalised, and say so) |
+| `NSLocale` — **SHIPPED (stage E)** | the localised CASE comparisons: the Turkic rule a locale needs, not a catalogue. Ordering stays byte order (no collation tables ship) and search folding stays byte-wise |
 | `NSInvocation`, `NSMethodSignature` | the forwarding trio |
 | `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
@@ -859,3 +865,58 @@ hierarchy. The exclusions the audit asserts ABSENT are the toolkit's `row`/`sect
 `item` accessors (a UIKit-side category here, not Foundation) and the coding protocols,
 which this library does not ship at all — the plist skin is its serialization surface.
 `foundation_collection` 34/34 on a guest boot.
+
+### Stage E lands (2026-09-17): `NSLocale`, and what "the localised comparisons" can mean
+
+The queue promised NSLocale would unblock "the localised comparisons (which currently
+answer unlocalised, and say so)". That promise splits in two, and only one half needs a
+database:
+
+  * ORDERING needs COLLATION TABLES. This Foundation ships none, so `-localizedCompare:`
+    still compares by byte — unchanged, and now stated where the locale is documented
+    rather than only in a comment;
+  * CASE needs a RULE. The Turkic languages (tr, az) are the ones Unicode's
+    SpecialCasing marks CONDITIONAL: upper-case i is İ (U+0130), lower-case I is ı
+    (U+0131). That is a rule, and it SHIPS: `-uppercaseStringWithLocale:`,
+    `-lowercaseStringWithLocale:`, `-compare:options:range:locale:` and
+    `-localizedCaseInsensitiveCompare:` (which asks `+[NSLocale currentLocale]`) honour
+    it. The fold maps CODE POINTS, not bytes, because İ and ı are two bytes in UTF-8 — a
+    byte-wise fold cannot express the rule at all, which is why the localised section
+    owns its own fold instead of reusing `utf8_lower`.
+
+`NSLocale` is an identifier VALUE TYPE: canonicalised (`TR-tr` and `tr_TR` are one
+locale, a POSIX charset tail is dropped, and the POSIX names C/POSIX become
+`en_US_POSIX`), parsed into language/script/region, with `-objectForKey:` answering
+exactly the keys those subtags derive and nil for the ones that would need data.
+`+currentLocale` reads `LC_ALL` then `LANG` — which is also what makes the rule testable
+end to end: setting the variable changes `-localizedCaseInsensitiveCompare:`'s answer on
+the guest, and that is what the `locale-current` check asserts.
+
+SEARCH folding deliberately stays byte-wise: `-rangeOfString:` answers a RANGE into the
+receiver, and the Turkic fold changes lengths, so a folded search would report offsets
+the searched string does not have. The exclusions the inventory asserts ABSENT are the
+database's: `+autoupdatingCurrentLocale`, `+systemLocale`, `+preferredLanguages`, the ISO
+code lists and `-displayNameForKey:value:` (plus `-languageCode`/`-countryCode`, which
+Cocoa deprecated in favour of `-objectForKey:`).
+
+**AND THE PROBE FOUND A PRE-EXISTING BUG, which the checks above had to work around.**
+Asserting the Turkic mapping byte by byte meant writing the expected value as a literal,
+and the first attempt failed: `@"\xC4\xB0"` did not have those two bytes. clang's own
+`GenerateConstantString` says why — "For now, all non-ASCII strings are represented as
+UTF-16" — so a non-ASCII literal is emitted as an `NSConstantString` with `flags` = 2
+(loader.c: the low two bits are the encoding, 0 ASCII / 1 UTF-8 / 2 UTF-16 / 3 UTF-32) and
+`data` pointing at UTF-16 units. Our `NSConstantString` returned `_rstr` as though it were
+UTF-8, so EVERY non-ASCII literal in the library was misread — and an all-ASCII literal
+could never reveal it, because there `length == size`. Fixed in nstring.m: the encoding is
+read from `flags`, a UTF-16 constant is CONVERTED to UTF-8 (into a buffer cached per
+constant, so a byte-by-byte comparison loop does not refill a shared one), and `-length`
+computes the UTF-8 byte count arithmetically so it never materialises a buffer at all.
+`locale-literal-high-byte` now asserts 2-, 3- and 4-byte literals — the last a surrogate
+PAIR — byte by byte, and the Turkic checks assert the literal form as well as the derived.
+
+Two method lessons, both from this stage: SPLIT a check when it fails, because "the fold
+is wrong" and "the literal is wrong" are different claims and a combined check cannot say
+which (the split localised it in one gate run); and MEASURE THE COMPILER rather than
+reasoning about it — the layout was in loader.c and the encoding choice was a comment in
+clang's own source, both already on disk.
+`foundation_string` 27/27 on a guest boot.

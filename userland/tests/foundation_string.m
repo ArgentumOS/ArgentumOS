@@ -536,6 +536,224 @@ int main(void)
 		      "the audited Cocoa inventory for NSCharacterSet/NSMutableCharacterSet");
 	}
 
+	{
+		/* NSLocale (stage E): the identifier value type and the canon it enforces.
+		 * The locale-SENSITIVE behaviour is the next two blocks. */
+		NSLocale *turkish = [NSLocale localeWithLocaleIdentifier:@"TR-tr"];
+		NSLocale *same = [NSLocale localeWithLocaleIdentifier:@"tr_TR"];
+		NSLocale *other = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+		NSLocale *chinese = [NSLocale localeWithLocaleIdentifier:@"zh-Hans-CN"];
+		NSLocale *posix = [NSLocale localeWithLocaleIdentifier:@"C"];
+		NSDictionary *components = [NSLocale componentsFromLocaleIdentifier:@"tr_TR"];
+		NSDictionary *rebuilt = [NSDictionary dictionaryWithObjectsAndKeys:
+					 @"tr", NSLocaleLanguageCode,
+					 @"TR", NSLocaleCountryCode, nil];
+
+		check("locale-basics",
+		      [[turkish localeIdentifier] isEqualToString:@"tr_TR"] &&
+		      [[turkish objectForKey:NSLocaleLanguageCode] isEqualToString:@"tr"] &&
+		      [[turkish objectForKey:NSLocaleCountryCode] isEqualToString:@"TR"] &&
+		      [[turkish objectForKey:NSLocaleIdentifier] isEqualToString:[turkish localeIdentifier]] &&
+		      [[chinese objectForKey:NSLocaleScriptCode] isEqualToString:@"Hans"] &&
+		      [[chinese objectForKey:NSLocaleCountryCode] isEqualToString:@"CN"] &&
+		      [[posix localeIdentifier] isEqualToString:@"en_US_POSIX"] &&
+		      [[NSLocale canonicalLanguageIdentifierFromString:@"zh-Hans"] isEqualToString:@"zh"] &&
+		      [[NSLocale canonicalLocaleIdentifierFromString:@"tr-tr.UTF-8"] isEqualToString:@"tr_TR"] &&
+		      [[components objectForKey:NSLocaleLanguageCode] isEqualToString:@"tr"] &&
+		      [[NSLocale localeIdentifierFromComponents:rebuilt] isEqualToString:@"tr_TR"] &&
+		      [turkish isEqual:same] && [turkish hash] == [same hash] &&
+		      ![turkish isEqual:other] && ![turkish isEqual:@"tr_TR"] &&
+		      [turkish objectForKey:@"NSLocaleDecimalSeparator"] == nil &&
+		      [[NSLocale availableLocaleIdentifiers] count] == 2 &&
+		      [turkish copy] == turkish &&
+		      [[turkish description] isEqualToString:@"<NSLocale: tr_TR>"],
+		      "canonicalisation, subtag access, components, equality/hash, the POSIX name and the nil data key");
+	}
+
+	{
+		/* THE TURKIC CASE RULE, which is what "the localised comparisons" mean
+		 * here. Two DIFFERENT claims are asserted separately, because the failure
+		 * of one says nothing about the other:
+		 *
+		 *   - the FOLD's output, asserted as BYTES (İ is U+0130 = c4 b0 and ı is
+		 *     U+0131 = c4 b1, the two code points Unicode's SpecialCasing makes
+		 *     conditional for tr/az), with the Turkic operands BUILT by the rule so
+		 *     the checks do not rest on a literal;
+		 *   - a two-byte non-ASCII LITERAL round-tripping — its own check below.
+		 */
+		NSLocale *turkish = [NSLocale localeWithLocaleIdentifier:@"tr_TR"];
+		NSLocale *neutral = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+		NSString *upper_i = [@"i" uppercaseStringWithLocale:turkish];		/* İ */
+		NSString *lower_I = [@"I" lowercaseStringWithLocale:turkish];		/* ı */
+		NSString *upper_istanbul = [[upper_i stringByAppendingString:@"stanbul"]
+					     uppercaseStringWithLocale:turkish];
+
+		check("locale-turkic-upper",
+		      [upper_i length] == 2 && [upper_i byteAtIndex:0] == 0xC4 &&
+		      [upper_i byteAtIndex:1] == 0xB0 &&
+		      [upper_i isEqualToString:@"\xC4\xB0"] &&
+		      [[lower_I uppercaseStringWithLocale:turkish] isEqualToString:@"I"] &&
+		      [upper_istanbul length] == 9 && [upper_istanbul byteAtIndex:0] == 0xC4 &&
+		      [upper_istanbul byteAtIndex:1] == 0xB0 &&
+		      [upper_istanbul byteAtIndex:2] == 'S' && [upper_istanbul byteAtIndex:8] == 'L',
+		      "upper(i) must be the two bytes c4 b0 (İ), upper(ı) is I, and ASCII still upper-cases");
+
+		check("locale-turkic-lower",
+		      [lower_I length] == 2 && [lower_I byteAtIndex:0] == 0xC4 &&
+		      [lower_I byteAtIndex:1] == 0xB1 &&
+		      [[upper_i lowercaseStringWithLocale:turkish] isEqualToString:@"i"],
+		      "lower(I) must be the two bytes c4 b1 (ı), and lower(İ) is i");
+
+		check("locale-turkic-neutral",
+		      [[@"i" uppercaseStringWithLocale:neutral] isEqualToString:@"I"] &&
+		      [[@"I" lowercaseStringWithLocale:neutral] isEqualToString:@"i"] &&
+		      [[@"i" uppercaseStringWithLocale:nil] isEqualToString:@"I"] &&
+		      [[lower_I lowercaseStringWithLocale:neutral] isEqualToString:lower_I],
+		      "a neutral locale and a nil locale keep the plain mapping");
+
+		check("locale-literal-high-byte",
+		      [@"\xC4\xB0" length] == 2 && [@"\xC4\xB0" byteAtIndex:0] == 0xC4 &&
+		      [@"\xC4\xB0" byteAtIndex:1] == 0xB0 &&
+		      [@"\xC4\xB0" characterCount] == 1 &&
+		      strcmp([@"\xC4\xB0" UTF8String], "\xC4\xB0") == 0 &&
+		      [@"\xC4\xB1" length] == 2 && [@"\xC4\xB1" byteAtIndex:0] == 0xC4 &&
+		      [@"\xC4\xB1" byteAtIndex:1] == 0xB1 &&
+		      [@"\xE2\x82\xAC" length] == 3 && [@"\xE2\x82\xAC" byteAtIndex:0] == 0xE2 &&
+		      [@"\xE2\x82\xAC" byteAtIndex:1] == 0x82 &&
+		      [@"\xE2\x82\xAC" byteAtIndex:2] == 0xAC &&
+		      [@"\xF0\x9F\x98\x80" length] == 4 &&
+		      [@"\xF0\x9F\x98\x80" byteAtIndex:0] == 0xF0 &&
+		      [@"\xF0\x9F\x98\x80" byteAtIndex:3] == 0x80 &&
+		      [@"\xF0\x9F\x98\x80" characterCount] == 1,
+		      "2-, 3- and 4-byte non-ASCII literals must decode to their own UTF-8 bytes (clang emits them as UTF-16)");
+	}
+
+	{
+		/* The COMPARISONS, and the two boundaries the header states: ORDERING stays
+		 * byte order (no collation tables ship), and SEARCH folding stays byte-wise
+		 * (the Turkic fold changes lengths, and -rangeOfString: answers a range into
+		 * the receiver). The ranged form applies ONE range to both strings, so every
+		 * clause here works on operands of the same length. */
+		NSLocale *turkish = [NSLocale localeWithLocaleIdentifier:@"tr_TR"];
+		NSLocale *neutral = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+		NSString *upper_i = [@"i" uppercaseStringWithLocale:turkish];	/* İ */
+		NSString *lower_I = [@"I" lowercaseStringWithLocale:turkish];	/* ı */
+		NSRange whole = NSMakeRange(0, 1);
+
+		check("locale-turkic-compare",
+		      [@"i" compare:@"I" options:NSCaseInsensitiveSearch
+			     range:whole locale:turkish] != NSOrderedSame &&
+		      [@"i" compare:@"I" options:NSCaseInsensitiveSearch
+			     range:whole locale:neutral] == NSOrderedSame &&
+		      [lower_I compare:upper_i options:NSCaseInsensitiveSearch
+			     range:NSMakeRange(0, 2) locale:turkish] != NSOrderedSame &&
+		      [@"a" compare:@"B" options:NSCaseInsensitiveSearch
+			     range:whole locale:turkish] == NSOrderedAscending,
+		      "the Turkic fold changes the case-insensitive comparison; a neutral locale does not");
+
+		check("locale-boundaries",
+		      [@"b" localizedCompare:@"a"] == NSOrderedDescending &&
+		      [@"i" rangeOfString:@"I" options:NSCaseInsensitiveSearch
+				  range:NSMakeRange(0, 1) locale:turkish].location == 0,
+		      "ordering stays byte order (no collation) and search folding stays byte-wise");
+	}
+
+	{
+		/* +currentLocale READS THE ENVIRONMENT, and the localised case-insensitive
+		 * comparison USES it — the end-to-end assertion that the two are wired
+		 * together. <stdlib.h> is included here because this block is its only
+		 * user; the environment is put back as it was found. */
+		#include <stdlib.h>
+		char *kept_all = getenv("LC_ALL") ? strdup(getenv("LC_ALL")) : NULL;
+		char *kept_lang = getenv("LANG") ? strdup(getenv("LANG")) : NULL;
+		int wired;
+
+		setenv("LC_ALL", "tr_TR.UTF-8", 1);
+		wired = [[[NSLocale currentLocale] localeIdentifier] isEqualToString:@"tr_TR"] &&
+			[@"i" localizedCaseInsensitiveCompare:@"I"] != NSOrderedSame;
+		unsetenv("LC_ALL");
+		unsetenv("LANG");
+		wired = wired &&
+			[[[NSLocale currentLocale] localeIdentifier] isEqualToString:@"en_US_POSIX"] &&
+			[@"i" localizedCaseInsensitiveCompare:@"I"] == NSOrderedSame;
+		setenv("LANG", "de_DE", 1);
+		wired = wired &&
+			[[[NSLocale currentLocale] localeIdentifier] isEqualToString:@"de_DE"] &&
+			[@"i" localizedCaseInsensitiveCompare:@"I"] == NSOrderedSame;
+		if (kept_all != NULL) {
+			setenv("LC_ALL", kept_all, 1);
+			free(kept_all);
+		} else {
+			unsetenv("LC_ALL");
+		}
+		if (kept_lang != NULL) {
+			setenv("LANG", kept_lang, 1);
+			free(kept_lang);
+		} else {
+			unsetenv("LANG");
+		}
+		check("locale-current", wired,
+		      "currentLocale reads LC_ALL then LANG, defaults to en_US_POSIX, and localisedCaseInsensitiveCompare: follows it");
+	}
+
+	{
+		/* The audited Cocoa inventory for NSLocale: what SHIPS, and — asserted
+		 * absent — the data-driven half, which needs the locale database. */
+		static const char *classSelectors[] = {
+			"currentLocale", "localeWithLocaleIdentifier:",
+			"availableLocaleIdentifiers",
+			"componentsFromLocaleIdentifier:", "localeIdentifierFromComponents:",
+			"canonicalLanguageIdentifierFromString:",
+			"canonicalLocaleIdentifierFromString:", NULL
+		};
+		static const char *classExcluded[] = {
+			/* The database: a separate system locale, change-notified locales, the
+			 * identifier catalogues and the ISO code registries. */
+			"autoupdatingCurrentLocale", "systemLocale", "preferredLanguages",
+			"ISOLanguageCodes", "ISOCountryCodes", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithLocaleIdentifier:", "localeIdentifier", "objectForKey:",
+			"isEqual:", "hash", "description", "copy", "copyWithZone:", NULL
+		};
+		static const char *excluded[] = {
+			/* Needs the locale's name tables. */
+			"displayNameForKey:value:",
+			/* Deprecated in Cocoa in favour of -objectForKey: with a key. */
+			"languageCode", "countryCode", NULL
+		};
+		NSLocale *probe = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSLocale respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing +%s (locale)\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; classExcluded[i] != NULL; i++) {
+			if ([NSLocale respondsToSelector:sel_registerName(classExcluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING present but EXCLUDED (locale class): %s\n", classExcluded[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing -%s (locale)\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING present but EXCLUDED (locale): %s\n", excluded[i]);
+			}
+		}
+		check("locale-api-complete", complete,
+		      "the audited Cocoa inventory for NSLocale");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-STRING DONE\n");
 	return failc ? 1 : 0;

@@ -117,6 +117,14 @@ typedef enum {
 		      options:(NSStringCompareOptions)options
 			range:(NSRange)range
 			locale:(id)locale;
+/* The localised forms. A locale is HONOURED FOR CASE and for nothing else here.
+ * The Turkic languages (tr, az) pair i with İ and I with ı — Unicode's
+ * SpecialCasing makes their mapping conditional — so a Turkic locale changes the
+ * case-insensitive result through the locale-taking form, and
+ * -localizedCaseInsensitiveCompare: asks +[NSLocale currentLocale]. ORDERING is
+ * NOT localised (no collation tables ship: the order is byte order), a nil locale
+ * means "no locale-sensitive rules", and -rangeOfString:…locale: ignores it
+ * because a search answers a RANGE and the Turkic fold changes lengths. */
 - (NSComparisonResult)localizedCompare:(NSString *)other;
 - (NSComparisonResult)localizedCaseInsensitiveCompare:(NSString *)other;
 - (BOOL)hasPrefix:(NSString *)prefix;
@@ -132,8 +140,10 @@ typedef enum {
 		   range:(NSRange)range
 		  locale:(id)locale;
 
-/* Case, substrings, appending and replacing. Case mapping is ASCII: this
- * Foundation is UTF-8 and makes no Unicode case claims. */
+/* Case, substrings, appending and replacing. The BASE mapping is ASCII — this
+ * Foundation is UTF-8 and makes no general Unicode case claims — and the two
+ * locale-taking forms below add the one locale rule that does ship: the Turkic
+ * pairing of i with İ and I with ı. */
 - (NSString *)uppercaseString;
 - (NSString *)lowercaseString;
 - (NSString *)uppercaseStringWithLocale:(id)locale;
@@ -216,6 +226,14 @@ typedef enum {
  * (NEW_ABI): flags, length (UTF-16 code units), size (BYTES), hash, then a
  * POINTER to the characters — not trailing character data, which is what
  * loader.c's older `struct nsstr` comment suggests.
+ *
+ * `flags`' LOW TWO BITS ARE THE ENCODING (loader.c: 0 ASCII, 1 UTF-8, 2 UTF-16,
+ * 3 UTF-32), and clang uses UTF-16 for EVERY non-ASCII literal — its
+ * GenerateConstantString says "all non-ASCII strings are represented as UTF-16".
+ * So the character data is not always UTF-8, and nstring.m CONVERTS a UTF-16
+ * constant rather than reinterpreting it. An all-ASCII literal cannot notice the
+ * difference (there length == size), which is why this went unseen until a
+ * non-ASCII literal was asserted byte by byte.
  *
  * Instances are marked permanent by the runtime (class_table.c special-cases
  * this name), so they take no part in reference counting.

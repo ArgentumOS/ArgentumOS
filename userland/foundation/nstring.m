@@ -28,6 +28,8 @@
 #import <foundation/NSData.h>
 #import <foundation/NSError.h>
 #import <foundation/NSCharacterSet.h>
+#import <foundation/NSLocale.h>
+#import <foundation/NSException.h>
 
 /*
  * THE FORMAT ENGINE, and the one conversion it has to get right is the va_arg
@@ -1058,11 +1060,97 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 /* ------------------------------------------------- the ranged and localised forms
  *
- * The locale arguments are ACCEPTED AND IGNORED, and the header says so: this
- * Foundation ships no locale data, so the localised comparisons answer exactly as
- * the unlocalised ones do. Returning the unlocalised answer is honest; pretending
- * to localise would not be.
+ * THE LOCALE ARGUMENTS ARE HONOURED FOR CASE, and that is the whole of what
+ * "localised" means in this Foundation (stage E):
+ *
+ *   - CASE is localised. The Turkic languages (tr, az) are the ones whose case
+ *     mapping is CONDITIONAL in Unicode's SpecialCasing: upper-case i is İ
+ *     (U+0130) and lower-case I is ı (U+0131). A Turkic locale therefore changes
+ *     -uppercaseStringWithLocale:, -lowercaseStringWithLocale: and every
+ *     case-insensitive comparison. The fold maps CODE POINTS, because İ and ı are
+ *     two bytes in UTF-8 and a byte-wise fold cannot express them;
+ *   - ORDERING is NOT localised: this Foundation ships no collation tables, so
+ *     -localizedCompare: compares by byte exactly as -compare: does;
+ *   - SEARCH folding is NOT localised: -rangeOfString: answers a RANGE into the
+ *     receiver, and the Turkic fold changes lengths, so a folded search would
+ *     report offsets the string it searched does not have.
+ *
+ * A nil locale means "no locale-sensitive rules", which is the plain mapping.
  */
+static NSString *fn_locale_language(id locale)
+{
+	if (locale == nil) {
+		return nil;
+	}
+	if ([locale isKindOfClass:[NSString class]]) {
+		locale = [NSLocale localeWithLocaleIdentifier:(NSString *)locale];
+	}
+	return (NSString *)[locale objectForKey:NSLocaleLanguageCode];
+}
+
+/* THE TURKIC LANGUAGES, and only these: Unicode's SpecialCasing marks exactly
+ * Turkish, Azeri and their close relatives as conditional. */
+static int fn_language_is_turkic(NSString *language)
+{
+	return language != nil &&
+	       ([language isEqualToString:@"tr"] || [language isEqualToString:@"az"]);
+}
+
+/* One string's Turkic fold: upper != 0 upper-cases, otherwise it lower-cases.
+ * Every other byte passes through, so nothing outside the rule moves. */
+static NSString *fn_string_with_turkic_case(NSString *string, int upper)
+{
+	size_t len = [string length];
+	char *buffer = (char *)malloc(len * 2 + 1);
+	size_t i, n = 0;
+	NSString *result;
+
+	if (buffer == NULL) {
+		return [[NSOwnedString alloc] initWithUTF8String:""];
+	}
+	for (i = 0; i < len; i++) {
+		unsigned char c = [string byteAtIndex:i];
+
+		if (upper && c == 0x69) {			/* i -> İ */
+			buffer[n++] = (char)0xC4;
+			buffer[n++] = (char)0xB0;
+			continue;
+		}
+		if (upper && c == 0xC4 && i + 1 < len && [string byteAtIndex:i + 1] == 0xB1) {
+			buffer[n++] = 'I';			/* ı -> I */
+			i++;
+			continue;
+		}
+		if (!upper && c == 0x49) {			/* I -> ı */
+			buffer[n++] = (char)0xC4;
+			buffer[n++] = (char)0xB1;
+			continue;
+		}
+		if (!upper && c == 0xC4 && i + 1 < len && [string byteAtIndex:i + 1] == 0xB0) {
+			buffer[n++] = 'i';			/* İ -> i */
+			i++;
+			continue;
+		}
+		buffer[n++] = (char)(upper ? utf8_upper(c) : utf8_lower(c));
+	}
+	buffer[n] = '\0';
+	result = [[NSOwnedString alloc] initWithUTF8String:buffer];
+	free(buffer);
+	return result;
+}
+
+/* The Turkic case-insensitive comparison: fold BOTH sides to lower case with the
+ * locale's rule, then compare the folded forms. */
+static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCompareOptions options)
+{
+	if (options & NSCaseInsensitiveSearch) {
+		a = fn_string_with_turkic_case(a, 0);
+		b = fn_string_with_turkic_case(b, 0);
+		return [a compare:b];
+	}
+	return [a compare:b options:options];
+}
+
 - (NSComparisonResult)compare:(NSString *)other
 		      options:(NSStringCompareOptions)options
 			range:(NSRange)range
@@ -1077,17 +1165,24 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 			range:(NSRange)range
 		       locale:(id)locale
 {
-	(void)locale;
+	if (fn_language_is_turkic(fn_locale_language(locale))) {
+		return fn_compare_turkic([self substringWithRange:range],
+					 [other substringWithRange:range], options);
+	}
 	return [self compare:other options:options range:range];
 }
 
 - (NSComparisonResult)localizedCompare:(NSString *)other
 {
+	/* No collation tables: the order stays byte order, and the plan says so. */
 	return [self compare:other];
 }
 
 - (NSComparisonResult)localizedCaseInsensitiveCompare:(NSString *)other
 {
+	if (fn_language_is_turkic(fn_locale_language([NSLocale currentLocale]))) {
+		return fn_compare_turkic(self, other, NSCaseInsensitiveSearch);
+	}
 	return [self caseInsensitiveCompare:other];
 }
 
@@ -1096,19 +1191,23 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 		   range:(NSRange)range
 		  locale:(id)locale
 {
-	(void)locale;
+	(void)locale;	/* search folding stays byte-wise: see the note above */
 	return [self rangeOfString:substring options:options range:range];
 }
 
 - (NSString *)uppercaseStringWithLocale:(id)locale
 {
-	(void)locale;
+	if (fn_language_is_turkic(fn_locale_language(locale))) {
+		return fn_string_with_turkic_case(self, 1);
+	}
 	return [self uppercaseString];
 }
 
 - (NSString *)lowercaseStringWithLocale:(id)locale
 {
-	(void)locale;
+	if (fn_language_is_turkic(fn_locale_language(locale))) {
+		return fn_string_with_turkic_case(self, 0);
+	}
 	return [self lowercaseString];
 }
 
@@ -1542,17 +1641,150 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 @end
 
+/*
+ * THE ENCODING IS THE COMPILER'S CHOICE, and it is NOT always UTF-8. libobjc2's
+ * loader.c defines the low two bits of `flags` as the encoding — 0 ASCII,
+ * 1 UTF-8, 2 UTF-16, 3 UTF-32 — and clang's GenerateConstantString says which it
+ * emits: "For now, all non-ASCII strings are represented as UTF-16." So a
+ * non-ASCII literal arrives UTF-16 (`@"İ"` is the two bytes b0 01) and must be
+ * CONVERTED, not reinterpreted: reading it as UTF-8 corrupts every non-ASCII
+ * literal in the program, and the ASCII path cannot notice, because there
+ * length == size.
+ */
+#define FN_CONST_ENCODING_MASK	3u
+#define FN_CONST_ENCODING_ASCII	0u
+#define FN_CONST_ENCODING_UTF8	1u
+#define FN_CONST_ENCODING_UTF16	2u
+#define FN_CONST_SLOTS		32u
+
+/* One cached conversion per distinct constant, so a loop that reads the same
+ * literal byte by byte hits the same buffer instead of refilling a shared one. */
+static const void *fn_const_keys[FN_CONST_SLOTS];
+static char *fn_const_buffers[FN_CONST_SLOTS];
+static size_t fn_const_capacity[FN_CONST_SLOTS];
+static unsigned int fn_const_next;
+
+/* The UTF-8 byte count of a UTF-16 unit sequence, with NO buffer involved:
+ * -length is called far more often than -UTF8String, and a shared buffer would
+ * be refilled under the caller. */
+static size_t fn_utf16_utf8_length(const unsigned char *data, size_t units)
+{
+	size_t n = 0;
+	size_t i;
+
+	for (i = 0; i < units; i++) {
+		unsigned int unit = (unsigned int)data[i * 2] |
+				    ((unsigned int)data[i * 2 + 1] << 8);
+
+		if (unit < 0x80) {
+			n += 1;
+		} else if (unit < 0x800) {
+			n += 2;
+		} else if (unit >= 0xD800 && unit <= 0xDBFF && i + 1 < units) {
+			n += 4;		/* a surrogate PAIR is one 4-byte character */
+			i++;
+		} else {
+			n += 3;
+		}
+	}
+	return n;
+}
+
+static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
+{
+	size_t i;
+	size_t n = 0;
+
+	for (i = 0; i < units; i++) {
+		unsigned int unit = (unsigned int)data[i * 2] |
+				    ((unsigned int)data[i * 2 + 1] << 8);
+		unsigned int code = unit;
+
+		if (unit >= 0xD800 && unit <= 0xDBFF && i + 1 < units) {
+			unsigned int low = (unsigned int)data[(i + 1) * 2] |
+					   ((unsigned int)data[(i + 1) * 2 + 1] << 8);
+
+			if (low >= 0xDC00 && low <= 0xDFFF) {
+				code = 0x10000u + ((unit - 0xD800u) << 10) + (low - 0xDC00u);
+				i++;
+			}
+		}
+		if (code < 0x80) {
+			out[n++] = (char)code;
+		} else if (code < 0x800) {
+			out[n++] = (char)(0xC0u | (code >> 6));
+			out[n++] = (char)(0x80u | (code & 0x3Fu));
+		} else if (code < 0x10000) {
+			out[n++] = (char)(0xE0u | (code >> 12));
+			out[n++] = (char)(0x80u | ((code >> 6) & 0x3Fu));
+			out[n++] = (char)(0x80u | (code & 0x3Fu));
+		} else {
+			out[n++] = (char)(0xF0u | (code >> 18));
+			out[n++] = (char)(0x80u | ((code >> 12) & 0x3Fu));
+			out[n++] = (char)(0x80u | ((code >> 6) & 0x3Fu));
+			out[n++] = (char)(0x80u | (code & 0x3Fu));
+		}
+	}
+	out[n] = '\0';
+}
+
 @implementation NSConstantString
 
 /* The runtime's layout, read through its own fields. */
 - (const char *)UTF8String
 {
-	return (_rstr != NULL) ? _rstr : "";
+	unsigned int encoding = _rflags & FN_CONST_ENCODING_MASK;
+	size_t units, wanted, i;
+
+	if (_rstr == NULL) {
+		return "";
+	}
+	if (encoding == FN_CONST_ENCODING_ASCII || encoding == FN_CONST_ENCODING_UTF8) {
+		return _rstr;		/* already UTF-8: the pointer is stable */
+	}
+	if (encoding != FN_CONST_ENCODING_UTF16) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSConstantString: unsupported encoding %u", encoding];
+	}
+	units = _rsize / 2;
+	wanted = fn_utf16_utf8_length((const unsigned char *)_rstr, units) + 1;
+	for (i = 0; i < FN_CONST_SLOTS; i++) {
+		if (fn_const_keys[i] == (const void *)_rstr) {
+			break;
+		}
+	}
+	if (i == FN_CONST_SLOTS) {
+		i = (size_t)(fn_const_next++ % FN_CONST_SLOTS);
+	}
+	if (fn_const_capacity[i] < wanted) {
+		char *fresh = (char *)realloc(fn_const_buffers[i], wanted);
+
+		if (fresh == NULL) {
+			return "";
+		}
+		fn_const_buffers[i] = fresh;
+		fn_const_capacity[i] = wanted;
+	}
+	fn_const_keys[i] = (const void *)_rstr;
+	fn_utf16_to_utf8((const unsigned char *)_rstr, units, fn_const_buffers[i]);
+	return fn_const_buffers[i];
 }
 
 - (size_t)length
 {
-	return _rsize;		/* the runtime's `size` is BYTES */
+	unsigned int encoding = _rflags & FN_CONST_ENCODING_MASK;
+
+	if (encoding == FN_CONST_ENCODING_ASCII || encoding == FN_CONST_ENCODING_UTF8) {
+		return _rsize;		/* the runtime's `size` is BYTES */
+	}
+	if (encoding == FN_CONST_ENCODING_UTF16 && _rstr != NULL) {
+		return fn_utf16_utf8_length((const unsigned char *)_rstr, _rsize / 2);
+	}
+	if (encoding != FN_CONST_ENCODING_UTF16) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSConstantString: unsupported encoding %u", encoding];
+	}
+	return 0;
 }
 
 - (size_t)characterCount

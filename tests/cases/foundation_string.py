@@ -39,7 +39,11 @@ CHECKS = ("tiny", "owned", "mixed", "utf8", "mutable", "description", "cross-tu"
           "class-format-arguments",
           "string-compare",
           "string-transform", "string-convert", "string-path",
-          "string-encoding", "string-mutable", "characterset-api-complete")
+          "string-encoding", "string-mutable", "characterset-api-complete",
+          "locale-basics", "locale-turkic-upper", "locale-turkic-lower",
+          "locale-turkic-neutral", "locale-literal-high-byte",
+          "locale-turkic-compare", "locale-boundaries",
+          "locale-current", "locale-api-complete")
 
 
 class Case(BaseCase):
