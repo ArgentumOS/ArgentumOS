@@ -143,9 +143,15 @@ plist_value_t *plist_new_comment(const char *text);
 
 /* Both return 0 on success, -1 on failure (no memory). Adding a duplicate key
  * REPLACES the value and keeps the key's original position. A NULL key is
- * REFUSED here: only the parser creates comment slots, through its own path. */
+ * REFUSED here: comment slots go in through plist_comment_append. */
 int plist_array_append(plist_value_t *array, plist_value_t *item);
 int plist_dictionary_set(plist_value_t *dictionary, const char *key, plist_value_t *value);
+
+/* Put a comment into a container — an ordinary item of an array, a NULL-key slot
+ * of a dictionary — which is how a WRITER that must not delete a file's prose
+ * builds its tree (libconfig). The parser uses this same path. Returns 0, or -1
+ * for a container that is neither, or no memory. */
+int plist_comment_append(plist_value_t *container, const char *text);
 
 #ifdef __cplusplus
 }

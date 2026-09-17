@@ -1,19 +1,21 @@
 # Converting FNX config to XML plists — plan
 
-Status: **P3a DONE** (the core keeps comments, landed 2026-09-17; the core probe
-is 39/39). **Next: P3b** — libconfig on the core. Decisions taken 2026-09-17 by
-the user: format is **XML plist v1.0**; sharing is **one C core, two skins** (see
-`docs/design/foundation-plan.md`); scope is **everything, `kernel.conf`
-included**; and **comments are preserved** — the core keeps them.
+Status: **P3a and P3b DONE** (2026-09-17: the core keeps comments, and libconfig
+reads plists — its writer now EMITS them). **Next: P3c**, converting the files
+libconfig owns, `system.mounts.conf` first because `init` reads it at boot.
+Decisions taken 2026-09-17 by the user: format is **XML plist v1.0**; sharing is
+**one C core, two skins** (see `docs/design/foundation-plan.md`); scope is
+**everything, `kernel.conf` included**; and **comments are preserved** — the core
+keeps them.
 
 ## What exists today, measured
 
 | thing | size | note |
 |---|---|---|
-| `userland/libconfig.c` | **4069 lines** | the home-grown parser, renderer and tree |
+| `userland/libconfig.c` + `libconfig_plist.c` | 4104 + 930 lines | the config library: the legacy grammar and the plist spelling over ONE entry model (`libconfig_internal.h`), P3b |
 | `userland/tools/config.c` | 937 lines | the `config` CLI |
-| `include/plist.h` + `userland/plist.c` | 154 + 1247 lines | the plist core and its skin (P1/P2/P3a, landed) |
-| `userland/tests/plist_test.c` | 337 lines, 39 checks | the core's acceptance (host-run, also staged for the guest) |
+| `include/plist.h` + `userland/plist.c` | 160 + 1261 lines | the plist core and its skin (P1/P2/P3a, landed) |
+| `userland/tests/plist_test.c` + `config_plist_test.c` | 337 + 495 lines | the core's acceptance (39 checks) and P3b's both-ways acceptance |
 | the shipped files | **10 `.conf`** | under `userland/configuration/` |
 | `kernel/kconf.c` | 223 lines | the KERNEL's own parser for `kernel.conf` |
 | `third_party/musl-pwconf.patch` | **987 lines** | libc's own reader for passwd/group |
@@ -80,22 +82,61 @@ precede, a `config set`-style rewrite leaves the prose alone, an unterminated
 comment is REFUSED, and the 28 pre-existing checks still pass unchanged — the
 core probe is **39/39**.
 
-### P3b — libconfig reads plists, and writes them
-Reimplement `libconfig.c` on the core, **keeping its public API** (`libconfig.h`
-is what `init`, the `config` tool, Xfb's `configargs` and toybox's account tools
-use). During the transition it reads **both** the legacy syntax and XML plists,
-and writes plists. Nothing converts yet, so this stage is invisible to the system
-except for the writer.
+### P3b — libconfig reads plists, and writes them (DONE, 2026-09-17)
+`libconfig.c` is now **two translation units over the core**: `libconfig.c` (the
+legacy grammar, the resolver and the public API — unchanged) and a new
+`libconfig_plist.c` (the plist spelling), sharing the entry model in
+`libconfig_internal.h`. Both spellings parse into the same flat, ordered entry
+list, so nothing downstream of the parse knows which one the file used: a nested
+`<dict>` is the plist spelling of `key = { … }` and flattens to `key.child`, and
+a `<dict>` nested deeper is a `CONFIG_TYPE_RECORD`, exactly as a `{ … }` value
+inside an array is. A file's spelling is decided by CONTENT (its first non-blank
+character is `<`), never by name.
 
-Acceptance: every existing `.conf` parses identically through both readers —
-asserted by loading each file both ways and comparing the resulting trees, which
-is the only honest way to show a parser rewrite is faithful.
+**The writer emits plists, unconditionally** — the user's decision
+(2026-09-17), taken with its consequence in view: a `config set` on a domain
+whose other readers lag (`system.passwd.conf`, `system.group.conf`,
+`system.hosts.conf` through musl's patches, and `kernel.conf` through
+`kernel/kconf.c`) CONVERTS that file to a spelling those readers cannot yet
+read, so **P3d/P3e are now on the critical path for writes as well as reads**.
+
+Prose survives the conversion: a legacy `#` line and a plist `<!-- … -->` both
+land on the entry they precede, and the writer emits them as XML comments — the
+whole reason P3a exists. A comment that preceded nothing is the file's closing
+prose, read back out of the file being replaced (`config_trailer_prose`), so the
+read paths never have to carry it. A file whose only content is prose is no
+longer deleted by an `unset` of its last key.
+
+Three consequences recorded rather than discovered later: a comment INSIDE an
+array is dropped (the config model has no comment slot in a value); a
+comment that opened a block moves one line in, to the entry it precedes; and a
+top-level group whose keys interleave with another group's is regrouped by the
+writer, which is what the legacy writer already did.
+
+Also added: `plist_comment_append` in the core — a WRITER must be able to build
+a commented tree, not only the parser, or the first `config set` deletes the
+prose P3a was built to keep.
+
+Acceptance MET by `userland/tests/config_plist_test.c`, which takes every shipped
+`.conf`, copies it into a scratch tree, forces a rewrite (the rewrite IS the
+conversion), and compares every key in order, every type and value, the prose
+line count and the first comment's text — then asserts the plist spelling is
+STABLE across a second rewrite, which holds only if the plist reader produced the
+same entries the writer wrote. **9 of the 10 shipped files convert with every
+check green**; the tenth is skipped as not a libconfig domain, and says so (see
+P3c). The probe is staged for the guest.
 
 ### P3c — convert the files libconfig owns
 One domain per commit, each verified in the guest: `system.mounts.conf` (`init`
 reads it at boot — the riskiest, do it first while the guest is being watched),
-then `system.fonts.conf`, `fonts.conf`, `system.display.conf`, `system.xfb.conf`.
+then `system.fonts.conf`, `system.display.conf`, `system.xfb.conf`.
 Comments become XML comments and are preserved.
+
+**`fonts.conf` is NOT one of them** (measured while writing P3b's probe): it is
+fontconfig's own XML — `<fontconfig>`, `<dir>`, `<match>` — read by libfontconfig,
+with no `<plist>` in it and no `key = value` line either. It converts only if
+fontconfig's reader moves onto the core, which is a separate decision from this
+plan's. The probe reports it as skipped rather than failing it.
 
 `system.shells.conf` is decided here by which reader owns it: if libc serves
 `getusershell`, it waits for P3d.
@@ -120,6 +161,13 @@ because a boot that cannot read its own config does not boot.
 ### P3f — retire the legacy reader
 With every file converted and every reader on plists, `libconfig.c`'s legacy
 syntax goes. One commit, no behaviour change, and the diff is a deletion.
+
+**This is also where the legacy WRITER goes.** P3b left `libconfig.c`'s emitter
+chain (`emit_leaf`, `emit_value_lines`, `write_indented`, `value_to_text`,
+`emit_children`, `emit_grouped`) in place but uncalled — `emit_grouped` is the
+root of that dead subgraph, and the section is labelled as dead in the source.
+They are the writer half of the grammar P3f deletes, so they go in the same
+deletion rather than swelling P3b's diff.
 
 ## What this plan refuses to do
 

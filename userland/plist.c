@@ -386,6 +386,18 @@ static int plist_append_comment(plist_value_t *container, const char *text)
 	return -1;
 }
 
+/*
+ * The PUBLIC spelling of the above. The parser is no longer the only creator of
+ * a comment slot: libconfig REWRITES config files, and it has to be able to
+ * build a commented tree or the first `config set` would delete the prose that
+ * explains a setting — the whole reason comments are kept at all (P3a). One
+ * implementation, two names, so there is no second code path to drift.
+ */
+int plist_comment_append(plist_value_t *container, const char *text)
+{
+	return plist_append_comment(container, text);
+}
+
 /* ---- lifetime ------------------------------------------------------------ */
 
 void plist_free(plist_value_t *value)

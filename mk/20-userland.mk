@@ -28,9 +28,13 @@ RECOVERY64      = .build/recovery64
 DASH64_RECOVERY = $(RECOVERY64)/dash-static
 TOYBOX64_RECOVERY = $(RECOVERY64)/toybox-static
 
-$(FNXLIB)/libconfig.a: $(FNXLIB_CONFIG) userland/libconfig.c userland/libconfig.h
+$(FNXLIB)/libconfig.a: $(FNXLIB_CONFIG) userland/libconfig.c \
+	userland/libconfig_plist.c userland/libconfig_internal.h \
+	userland/plist.c userland/libconfig.h
 	$(MUSL64_CC) -Iinclude -Iuserland -c userland/libconfig.c -o $(FNXLIB)/libconfig.o
-	ar rcs $@ $(FNXLIB)/libconfig.o
+	$(MUSL64_CC) -Iinclude -Iuserland -c userland/libconfig_plist.c -o $(FNXLIB)/libconfig-plist.o
+	$(MUSL64_CC) -Iinclude -Iuserland -c userland/plist.c -o $(FNXLIB)/libconfig-core.o
+	ar rcs $@ $(FNXLIB)/libconfig.o $(FNXLIB)/libconfig-plist.o $(FNXLIB)/libconfig-core.o
 
 $(DASH64_RECOVERY): $(MUSL64_LIBC) third_party/dash-fsh.patch
 	@mkdir -p $(RECOVERY64)
@@ -313,6 +317,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# runtime in the path.
 	$(MUSL64_CC) -Iinclude userland/tests/plist_test.c userland/plist.c -lm \
 		-o "$(ROOTFS64)/System/Shared/tests/plist_test"
+	# config_plist_test: P3b's acceptance (docs/design/plist-config-plan.md) — a
+	# .conf reads the SAME in both spellings. It copies each shipped file into a
+	# scratch tree, forces a rewrite (the writer emits plists now), and compares
+	# every key, every value and the prose, both ways. Linked from the same
+	# sources the library builds, like plist_test: one implementation either way.
+	$(MUSL64_CC) -Iinclude -Iuserland userland/tests/config_plist_test.c \
+		userland/libconfig.c userland/libconfig_plist.c userland/plist.c \
+		-o "$(ROOTFS64)/System/Shared/tests/config_plist_test"
 	# x_move: raw-Xlib window mover — attributes a window-move wedge
 	# between the server (Xfb) and any client, with no toolkit involved.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

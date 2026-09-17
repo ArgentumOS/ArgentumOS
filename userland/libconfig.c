@@ -29,20 +29,12 @@
 
 #include <libconfig.h>
 
-/* ---- limits (docs §10, protective) -------------------------------- */
-
-#define CONF_MAX_LINE		4096
-#define CONF_MAX_FILE		(1024 * 1024)
-#define CONF_MAX_SEGMENT	64
-#define CONF_MAX_KEY		255
-
-/* ---- one parsed key/value ------------------------------------------ */
-
-struct entry {
-	char *key;
-	config_value_t val;
-	struct entry *next;
-};
+/* The limits and `struct entry` are shared with libconfig_plist.c, so they live
+ * in the internal header: this file is the legacy grammar, the resolver and the
+ * public API; the plist spelling — the other way the same model is written
+ * down — is that other translation unit
+ * (docs/design/plist-config-plan.md P3b). */
+#include "libconfig_internal.h"
 
 /* ---- path helpers -------------------------------------------------- */
 
@@ -1463,13 +1455,14 @@ static config_err_t v2_parse_value(struct v2src *s, config_value_t *out)
 
 static config_err_t parse_conf(const char *text, size_t len,
 			       struct entry **list, char ***blocks,
-			       int *nblocks)
+			       int *nblocks, char **trailer)
 {
 	size_t off = 0;
 	struct entry *head = NULL, *tail = NULL;
 	struct pctx *top;
 	struct pctx *cur;
 	char **explicit = NULL;
+	char *pending = NULL;	/* prose not yet attached to an entry */
 
 	top = calloc(1, sizeof(*top));
 	if(!top) {
@@ -1486,9 +1479,25 @@ static config_err_t parse_conf(const char *text, size_t len,
 	if(nblocks) {
 		*nblocks = 0;
 	}
+	if(trailer) {
+		*trailer = NULL;
+	}
 	if(len >= 3 && (unsigned char)text[0] == 0xEF &&
 	   (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) {
 		off = 3;	/* skip a UTF-8 BOM */
+	}
+	/* A .conf file may not be the legacy text at all: the writer emits XML
+	 * plists now (docs/design/plist-config-plan.md P3b), and during the
+	 * transition BOTH spellings are read. Detection is by CONTENT, never by
+	 * name, and the plist reader hands back this very entry list — so
+	 * nothing below this line knows which syntax the file used. */
+	if(config_text_is_plist(text + off, len - off)) {
+		config_err_t pe = config_plist_parse(text + off, len - off,
+						     list, blocks, nblocks,
+						     trailer, NULL, 0);
+
+		pctx_free_chain(top);
+		return pe;
 	}
 	while(off < len && !rc) {
 		char line[CONF_MAX_LINE + 1];
@@ -1514,8 +1523,18 @@ static config_err_t parse_conf(const char *text, size_t len,
 		while(*p == ' ' || *p == '\t') {
 			p++;
 		}
-		if(!*p || *p == '#') {
-			continue;	/* empty or full-line comment */
+		if(!*p) {
+			continue;	/* a blank line is not prose */
+		}
+		if(*p == '#') {
+			/* PROSE, and it is KEPT: a config file is mostly
+			 * documentation, and the writer emits these lines as XML
+			 * comments attached to the entry they precede. */
+			rc = config_comment_append(&pending, p + 1);
+			if(rc) {
+				break;
+			}
+			continue;
 		}
 		if(*p == '}') {
 			/* close a group (only whitespace may follow) */
@@ -1758,6 +1777,10 @@ static config_err_t parse_conf(const char *text, size_t len,
 					break;
 				}
 				en->key = full;
+				/* the PROSE that preceded it — the lines the file
+				 * used to explain this setting */
+				en->comment = pending;
+				pending = NULL;
 				en->val = v;
 				en->next = NULL;
 				if(tail) {
@@ -1774,6 +1797,13 @@ next_line:
 	if(!rc && cur != top) {
 		rc = CONFIG_ERR_PARSE;	/* unbalanced '{' */
 	}
+	if(!rc && pending && trailer) {
+		/* prose after the last entry: the file's closing words, which
+		 * the writer carries across a rewrite from the file itself */
+		*trailer = pending;
+		pending = NULL;
+	}
+	free(pending);
 	/* hand ownership out on success, clean up on error. The chain of
 	 * still-open containers (always including the heap `top`) is freed
 	 * uniformly; containers closed during the parse were already
@@ -1802,6 +1832,7 @@ static void entries_free(struct entry *list)
 		struct entry *n = list->next;
 
 		free(list->key);
+		free(list->comment);
 		value_free(&list->val);
 		free(list);
 		list = n;
@@ -1865,7 +1896,7 @@ static config_err_t load_path(const char *path, struct entry **list,
 	}
 	close(fd);
 	text[n] = '\0';
-	e = parse_conf(text, n, list, blocks, nblocks);
+	e = parse_conf(text, n, list, blocks, nblocks, NULL);
 	free(text);
 	return e;
 }
@@ -3007,7 +3038,17 @@ static config_err_t mkdir_p(const char *dir)
 	return CONFIG_OK;
 }
 
-/* ---- canonical writer (group records, docs §3.1) ------------------- */
+/* ---- the legacy writer: DEAD CODE, for exactly one stage -------------
+ *
+ * Nothing calls into this section any more. Since P3b the writer emits XML
+ * plists (`config_plist_write` in libconfig_plist.c), so `emit_leaf`,
+ * `emit_value_lines`, `write_indented`, `value_to_text`, `emit_children` and
+ * `emit_grouped` have no callers left — `emit_grouped` is the only one gcc names,
+ * because the rest hang off it. They are KEPT ON PURPOSE for one stage: they are
+ * the writer half of the legacy grammar, P3f deletes that grammar, and one
+ * deletion is a better diff than swelling P3b's. `grep emit_grouped(` finds the
+ * root of the dead subgraph.
+ */
 
 static config_err_t emit_value_lines(int fd, const char *indent,
 				     const char *name,
@@ -3485,9 +3526,10 @@ static config_err_t emit_grouped(int fd, struct entry *list,
  * blocks/nblocks carry the top-level explicit-block names from the
  * parse: when present, the file is written in nested record spelling;
  * otherwise (a pure flat domain) exactly as before. */
-static config_err_t write_entries(config_scope_t scope, const char *domain,
-				  struct entry *list, bool remove_if_empty,
-				  char **blocks, int nblocks)
+static config_err_t write_entries_prose(config_scope_t scope, const char *domain,
+					struct entry *list, bool remove_if_empty,
+					char **blocks, int nblocks,
+					const char *trailer)
 {
 	char path[PATH_MAX];
 	char tmp[PATH_MAX + 32];
@@ -3503,7 +3545,10 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 		for(en = list; en; en = en->next) {
 			nlines++;
 		}
-		if(!nlines) {
+		/* A file with no entries is removed — unless it still has prose
+		 * or an empty block to say something with: deleting a file whose
+		 * whole content is the explanation of a setting is data loss. */
+		if(!nlines && !trailer && (!blocks || nblocks <= 0)) {
 			if(!unlink(path) || errno == ENOENT) {
 				return CONFIG_OK;
 			}
@@ -3529,13 +3574,10 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 	if(fd < 0) {
 		return errno == EACCES ? CONFIG_ERR_ACCESS : CONFIG_ERR_IO;
 	}
-	if(blocks && nblocks > 0) {
-		e = emit_grouped(fd, list, blocks, nblocks);
-	} else {
-		for(en = list; en && !e; en = en->next) {
-			e = emit_leaf(fd, "", en->key, &en->val);
-		}
-	}
+	/* THE FILE IS WRITTEN AS AN XML PLIST, always (the decision in
+	 * docs/design/plist-config-plan.md P3b). The plist writer owns the shape,
+	 * the grouping and the prose; this function owns the atomicity. */
+	e = config_plist_write(fd, list, blocks, nblocks, trailer);
 	if(e) {
 		close(fd);
 		unlink(tmp);
@@ -3552,6 +3594,25 @@ static config_err_t write_entries(config_scope_t scope, const char *domain,
 		return CONFIG_ERR_IO;
 	}
 	return CONFIG_OK;
+}
+
+/* The writer every caller uses. The file's CLOSING PROSE is read from the file
+ * being replaced — a set or an unset cannot change words that stand after the
+ * last entry — so the trailer never has to be threaded through the read paths,
+ * which have no use for it. */
+static config_err_t write_entries(config_scope_t scope, const char *domain,
+				  struct entry *list, bool remove_if_empty,
+				  char **blocks, int nblocks)
+{
+	char path[PATH_MAX];
+	char *trailer = NULL;
+
+	if(domain_path(scope, domain, path, sizeof(path))) {
+		return CONFIG_ERR_INVALID;
+	}
+	config_trailer_prose(path, &trailer);
+	return write_entries_prose(scope, domain, list, remove_if_empty, blocks,
+				   nblocks, trailer);
 }
 
 /* true when an addressing key uses bare-digit array indexes (`a.1`,
@@ -3676,6 +3737,7 @@ static config_err_t set_key_replace(struct entry **listp, const char *key,
 			free(en);
 			return CONFIG_ERR_NOMEM;
 		}
+		en->comment = NULL;	/* a key set from code carries no prose */
 		en->next = NULL;
 		if(!list) {
 			*listp = en;
@@ -3890,6 +3952,7 @@ config_err_t config_unset(config_scope_t scope, const char *domain,
 						list = en->next;
 					}
 					free(en->key);
+					free(en->comment);	/* its prose goes with it */
 					value_free(&en->val);
 					free(en);
 				}
@@ -3908,6 +3971,7 @@ config_err_t config_unset(config_scope_t scope, const char *domain,
 					list = en->next;
 				}
 				free(en->key);
+				free(en->comment);	/* the prose documented it */
 				value_free(&en->val);
 				free(en);
 				e = write_entries(scope, domain, list, true,

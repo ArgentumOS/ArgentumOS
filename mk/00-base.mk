@@ -225,10 +225,15 @@ X11PREFIX     = .build/x11-prefix
 FNXLIB        = .build/fnxlib
 FNXLIB_CONFIG = $(FNXLIB)/libconfig.so.1
 
-$(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
+$(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig_plist.c \
+	userland/libconfig_internal.h userland/plist.c userland/libconfig.h
 	@mkdir -p $(FNXLIB)
+	# libconfig is two translation units over the shared plist CORE (P3b:
+	# docs/design/plist-config-plan.md), and plist.c is compiled in rather than
+	# linked as a third library: one source, no forked implementation.
 	$(MUSL64_CC) -fPIC -shared -Iinclude -Iuserland -Wl,-soname,libconfig.so.1 \
-		-o $@ userland/libconfig.c
+		-o $@ userland/libconfig.c userland/libconfig_plist.c \
+		userland/plist.c
 	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
 
 # (The Argentum UIKit toolkit — libargentum.so.1, the ARGENTUM_SRCS list and its
