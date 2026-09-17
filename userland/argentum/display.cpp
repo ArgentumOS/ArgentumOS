@@ -875,6 +875,14 @@ Context::strokeRoundRect(const Rect &rect, double radius, const Color &color,
 	fillTriangles(tris.data(), (int) tris.size(), color);
 }
 
+/* THE GRADIENT FILLS. fillLinearGradient composites a PIXMAN GRADIENT with no
+ * mask, which means pixman walks the ramp per pixel: the one draw path in the
+ * Context with no fast path at all, and the only one the counters above cannot
+ * see. The button bezels are gradients, so if a frame's unattributed time has
+ * a single home, this is the candidate. */
+static double gGradMs;
+static long gGradPx;
+
 void
 Context::fillLinearGradient(const Rect &rect, const Color &top,
 			    const Color &bottom, bool vertical)
@@ -929,9 +937,13 @@ Context::fillLinearGradient(const Rect &rect, const Color &top,
 		return;
 	}
 	pixman_image_set_repeat(grad, PIXMAN_REPEAT_PAD);
+	double t0 = nowMs();
+
 	pixman_image_composite32(PIXMAN_OP_OVER, grad, nullptr, impl_->img,
 				 0, 0, 0, 0, x0, y0, (unsigned int) (x1 - x0),
 				 (unsigned int) (y1 - y0));
+	gGradMs += nowMs() - t0;
+	gGradPx += (long) (x1 - x0) * (long) (y1 - y0);
 	pixman_image_unref(grad);
 }
 
@@ -2003,12 +2015,14 @@ Window::displayIfNeeded()
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
 			    "views=%d rects=%d masks=%d hits=%d maskpx=%ld "
 			    "build=%ld comp=%ld fill=%ld fillpx=%ld "
-			    "textprep=%ld textpaint=%ld textpx=%ld dmg=%dx%d\n",
+			    "textprep=%ld textpaint=%ld textpx=%ld "
+			    "grad=%ld gradpx=%ld dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
 			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
 			    gMasks, gMaskHits, gMaskPx, (long) gBuildMs,
 			    (long) gCompMs, (long) gFillMs, gFillPx,
 			    (long) gTextPrepMs, (long) gTextPaintMs, gTextPx,
+			    (long) gGradMs, gGradPx,
 			    ux1 - ux0, uy1 - uy0);
 		gBuildMs = 0.0;		/* per frame, not cumulative */
 		gCompMs = 0.0;
@@ -2017,6 +2031,8 @@ Window::displayIfNeeded()
 		gTextPrepMs = 0.0;
 		gTextPaintMs = 0.0;
 		gTextPx = 0;
+		gGradMs = 0.0;
+		gGradPx = 0;
 		std::fflush(stdout);
 	}
 }
