@@ -115,12 +115,12 @@ class Case(BaseCase):
         # the day it was added, this check failed with "0 of 0 paints" - which
         # is the check doing its job, on the telemetry instead of the paint.
         p2 = re.findall(r"ARGENTUM-PAINT paint=\S+ flush=\S+ ms \S+ "
-                        r"views=(\d+) rects=(\d+) dmg=(\d+)x(\d+)", out2)
+                        r"views=(\d+).*?dmg=(\d+)x(\d+)", out2)
         sizes = [(int(a), int(b))
                  for a, b in re.findall(r" ms (\d+)x(\d+) views=", out2)]
         board = max(sizes, key=lambda s: s[0] * s[1]) if sizes else (0, 0)
         area = board[0] * board[1]
-        small = [int(v) for v, _, w, h in p2 if int(w) * int(h) * 4 < area]
+        small = [int(v) for v, w, h in p2 if int(w) * int(h) * 4 < area]
         self.check("a-small-damage-walks-a-small-part-of-the-tree",
                    len(small) >= 8 and max(small) <= 12,
                    "on a %dx%d board, %d of %d paints have damage under a "

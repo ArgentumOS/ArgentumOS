@@ -181,8 +181,8 @@ class Case(BaseCase):
         # The damage is a REGION now; a step that walks the whole list again
         # fails this.
         sp = re.findall(r"ARGENTUM-PAINT paint=\S+ flush=\S+ ms \S+ "
-                        r"views=(\d+) rects=(\d+) dmg=", scrolled)
-        stepped = [int(v) for v, _ in sp]
+                        r"views=(\d+).*?dmg=", scrolled)
+        stepped = [int(v) for v in sp]
         self.check("a-scroll-step-does-not-repaint-the-list",
                    len(sp) >= 1 and max(stepped) < 20,
                    "the paints this scroll caused walked %s views (the whole"

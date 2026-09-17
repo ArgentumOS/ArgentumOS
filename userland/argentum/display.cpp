@@ -395,9 +395,106 @@ Context::drawText(const char *family, double sizePt, const Point &at,
 struct MaskBox {
 	pixman_image_t *mask = nullptr;
 	int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+	/* true when the mask came out of the cache: it is already rasterized,
+	 * so mask_triangles() has nothing to do */
+	bool cached = false;
 
 	bool valid() const { return mask != nullptr; }
 };
+
+/* HOW MUCH SHAPE there was in a frame, in the pixels each mask covers. The
+ * per-pixel cost of a paint is the shapes' own area, not the damage's - a
+ * button's bezel is drawn from its mask, and those add up to more than the
+ * damage that caused them. Counted here and printed with the frame, because
+ * the pair (mask pixels, paint ms) is what says whether the shape path or
+ * something else is what a slow frame is made of. */
+static int gMasks;
+static long gMaskPx;
+static int gMaskHits;
+
+/* ---- the mask cache ---------------------------------------------------
+ *
+ * A MASK IS A PURE FUNCTION OF THE SHAPE'S GEOMETRY: mask_pt() puts the points
+ * in the box's OWN coordinates, so where the shape sits on the screen - and
+ * which frame is drawing it - do not enter into it. A button's bezel is
+ * therefore the same mask in every frame, which is what made caching it look
+ * worthwhile. A hit still COMPOSITES (that is what puts the shape on screen)
+ * but skips the allocation, the clearing and the rasterization. The key is the
+ * box plus the shape's own points, compared in FULL rather than by hash: two
+ * shapes that agree on every bit deserve the same mask, and a collision would
+ * draw the wrong shape. The cache holds its own reference to each image, so
+ * the caller's mask_end() is just its own unref either way.
+ *
+ * IT DID NOT SURVIVE ITS OWN MEASUREMENT, and that is worth more than the
+ * cache: with it in place the board's steady-state frame is UNCHANGED (1210 /
+ * 270 / 170 ms before and after, 103 masks over 277620 covered pixels). The
+ * rasterization it removes is NOT the bottleneck - the per-shape COMPOSITE is,
+ * at about a microsecond for each of those pixels. The cache is kept because
+ * it is correct and costs a few-dozen-point comparison per shape, but it is
+ * not the win it was built to be; saying so here is cheaper than the next
+ * reader finding out.
+ *
+ * HOW MANY IT HOLDS: the board's full frame is 103 masks, and the first
+ * version held 24 - a round-robin that evicted every entry before its shape
+ * came round again, so a cache that should have hit almost always hit never.
+ * 512 is headroom rather than a measured working set: the entries are 32
+ * points each and the masks they name are a few kilobytes. */
+#define MASK_CACHE_N 512
+#define MASK_CACHE_PTS 32
+
+struct MaskEntry {
+	bool used = false;
+	int w = 0, h = 0, count = 0;
+	Point pts[MASK_CACHE_PTS];
+	pixman_image_t *img = nullptr;
+};
+static MaskEntry gMaskCache[MASK_CACHE_N];
+static int gMaskNext;
+
+static bool
+mask_lookup(const Point *pts, int count, int w, int h, pixman_image_t **out)
+{
+	if (count > MASK_CACHE_PTS) {
+		return false;
+	}
+	for (int i = 0; i < MASK_CACHE_N; i++) {
+		MaskEntry &e = gMaskCache[i];
+		bool same = e.used && e.w == w && e.h == h && e.count == count;
+
+		for (int k = 0; same && k < count; k++) {
+			same = e.pts[k].x == pts[k].x && e.pts[k].y == pts[k].y;
+		}
+		if (same) {
+			*out = pixman_image_ref(e.img);
+			return *out != nullptr;
+		}
+	}
+	return false;
+}
+
+static void
+mask_store(const Point *pts, int count, int w, int h, pixman_image_t *img)
+{
+	MaskEntry &e = gMaskCache[gMaskNext];
+
+	gMaskNext = (gMaskNext + 1) % MASK_CACHE_N;
+	if (e.img) {
+		pixman_image_unref(e.img);
+		e.img = nullptr;
+	}
+	e.used = false;
+	if (count > MASK_CACHE_PTS) {
+		return;		/* too wide to key on: simply not cached */
+	}
+	e.w = w;
+	e.h = h;
+	e.count = count;
+	for (int k = 0; k < count; k++) {
+		e.pts[k] = pts[k];
+	}
+	e.img = pixman_image_ref(img);
+	e.used = e.img != nullptr;
+}
 
 /* allocate an A8 mask over the clipped box of `pts` (view points) */
 static MaskBox
@@ -420,6 +517,13 @@ mask_begin(const Context::Impl &im, const Point *pts, int count)
 		return b;
 	}
 	b.x0 = x0; b.y0 = y0; b.x1 = x1; b.y1 = y1;
+	gMasks++;
+	gMaskPx += (long) (x1 - x0) * (long) (y1 - y0);
+	if (mask_lookup(pts, count, x1 - x0, y1 - y0, &b.mask)) {
+		gMaskHits++;
+		b.cached = true;
+		return b;
+	}
 	b.mask = pixman_image_create_bits(PIXMAN_a8, x1 - x0, y1 - y0,
 					  nullptr, 0);
 	return b;
@@ -429,7 +533,7 @@ static void
 mask_end(MaskBox &b)
 {
 	if (b.mask) {
-		pixman_image_unref(b.mask);
+		pixman_image_unref(b.mask);	/* the cache keeps its own */
 		b.mask = nullptr;
 	}
 }
@@ -472,9 +576,14 @@ mask_triangles(const Context::Impl &im, MaskBox &b, const Point *pts,
 		tris[i].p3.y = pixman_double_to_fixed(y);
 	}
 	pixman_color_t white = { 0xffff, 0xffff, 0xffff, 0xffff };
-	pixman_image_t *wsrc = pixman_image_create_solid_fill(&white);
+	pixman_image_t *wsrc = nullptr;
 	bool ok = false;
 
+	if (b.cached) {
+		std::free(tris);
+		return true;	/* rasterized in an earlier frame: see the cache */
+	}
+	wsrc = pixman_image_create_solid_fill(&white);
 	if (wsrc) {
 		/* ADD: overlapping triangles accumulate coverage */
 		pixman_composite_triangles(PIXMAN_OP_ADD, wsrc, b.mask,
@@ -483,6 +592,12 @@ mask_triangles(const Context::Impl &im, MaskBox &b, const Point *pts,
 		ok = true;
 	}
 	std::free(tris);
+	if (ok) {
+		/* the shape's own points ARE the key mask_begin() looked up: the
+		 * box is derived from them, so every caller that draws this shape
+		 * again - the next frame, the same bezel one row down - hits */
+		mask_store(pts, count, b.x1 - b.x0, b.y1 - b.y0, b.mask);
+	}
 	return ok;
 }
 
@@ -1789,6 +1904,8 @@ Window::displayIfNeeded()
 		ci.cy1 = py1;
 		gCurrent = &ctx;
 		gViewsDrawn = 0;
+		gMasks = 0;
+		gMaskPx = 0;
 		/* 1. the background over THIS rect, outward-rounded so no sliver
 		 * of the previous frame survives at the edges (the clip keeps it
 		 * in) */
@@ -1827,12 +1944,14 @@ Window::displayIfNeeded()
 		/* paint = our own rasterisation; flush = the XPutImage to X.
 		 * The split is what tells drawing apart from transport. views is
 		 * the sum over the rects and rects is how many passes they took -
-		 * that pair is what shows whether a change was damage-limited. */
+		 * that pair is what shows whether a change was damage-limited.
+		 * masks/maskpx are the SHAPE work: the pixels the coverage masks
+		 * covered, which is what the per-pixel cost is really over. */
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
-			    "views=%d rects=%d dmg=%dx%d\n",
+			    "views=%d rects=%d masks=%d maskpx=%ld dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
 			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
-			    ux1 - ux0, uy1 - uy0);
+			    gMasks, gMaskPx, ux1 - ux0, uy1 - uy0);
 		std::fflush(stdout);
 	}
 }
