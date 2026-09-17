@@ -308,6 +308,7 @@ int main(void)
 			"subarrayWithRange:", "getObjects:range:", "componentsJoinedByString:",
 			"sortedArrayUsingSelector:", "sortedArrayUsingComparator:",
 			"enumerateObjectsUsingBlock:",
+			"objectsAtIndexes:", "indexesOfObjectsPassingTest:",
 			"isEqualToArray:", "isEqual:", "hash", "description", "copy", "mutableCopy",
 			"countByEnumeratingWithState:objects:count:",
 			NULL
@@ -326,14 +327,11 @@ int main(void)
 			"replaceObjectsInRange:withObjectsFromArray:range:",
 			"setArray:", "exchangeObjectAtIndex:withObjectAtIndex:",
 			"sortUsingSelector:", "sortUsingComparator:",
+			"insertObjects:atIndexes:", "removeObjectsAtIndexes:",
+			"replaceObjectsAtIndexes:withObjects:",
 			"setObject:atIndexedSubscript:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs NSIndexSet, which this Foundation does not ship. */
-			"objectsAtIndexes:",			/* an NSIndexSet result */
-			"insertObjects:atIndexes:",		/* an NSIndexSet argument */
-			"replaceObjectsAtIndexes:withObjects:",	/* an NSIndexSet argument */
-			"indexesOfObjectsPassingTest:",		/* an NSIndexSet result */
 			/* Needs predicates, descriptors, function pointers or plists. */
 			"filteredArrayUsingPredicate:",		/* NSPredicate */
 			"sortedArrayUsingDescriptors:",		/* NSSortDescriptor */
@@ -385,6 +383,78 @@ int main(void)
 		}
 		check("array-api-complete", complete,
 		      "the audited Cocoa inventory for NSArray/NSMutableArray");
+	}
+
+	{
+		/* The audited Cocoa inventory for NSIndexSet/NSMutableIndexSet — the class
+		 * the four methods above are specified in terms of. */
+		static const char *classSelectors[] = {
+			"indexSet", "indexSetWithIndex:", "indexSetWithIndexesInRange:", NULL
+		};
+		static const char *mutableClassSelectors[] = {
+			"indexSet", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithIndex:", "initWithIndexesInRange:",
+			"containsIndex:", "containsIndexesInRange:", "count",
+			"firstIndex", "lastIndex",
+			"indexGreaterThanIndex:", "indexLessThanIndex:",
+			"enumerateIndexesUsingBlock:", "isEqualToIndexSet:",
+			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+		};
+		static const char *mutableSelectors[] = {
+			"addIndex:", "addIndexesInRange:", "removeIndex:",
+			"removeIndexesInRange:", "removeAllIndexes", NULL
+		};
+		static const char *excluded[] = {
+			/* The range- and buffer-based queries: a caller walks the set with
+			 * -enumerateIndexesUsingBlock: instead. */
+			"countOfIndexesInRange:", "getIndexes:maxCount:inIndexRange:",
+			"indexGreaterThanOrEqualToIndex:", "indexLessThanOrEqualToIndex:",
+			"firstIndexInRange:", "lastIndexInRange:",
+			"enumerateRangesUsingBlock:",
+			"enumerateRangesInRange:options:usingBlock:",
+			"shiftIndexesStartingAtIndex:by:",
+			"addIndexes:", "removeIndexes:", "containsIndexes:",
+			NULL
+		};
+		NSIndexSet *probe = [NSIndexSet indexSetWithIndex:1];
+		NSMutableIndexSet *mutable = [[NSMutableIndexSet alloc] init];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSIndexSet respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s (indexset)\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; mutableClassSelectors[i] != NULL; i++) {
+			if (![NSMutableIndexSet respondsToSelector:sel_registerName(mutableClassSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s (indexset mutable)\n", mutableClassSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s (indexset)\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; mutableSelectors[i] != NULL; i++) {
+			if (![mutable respondsToSelector:sel_registerName(mutableSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s (indexset mutable)\n", mutableSelectors[i]);
+			}
+		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION present but EXCLUDED (indexset): %s\n", excluded[i]);
+			}
+		}
+		check("indexset-api-complete", complete,
+		      "the audited Cocoa inventory for NSIndexSet/NSMutableIndexSet");
 	}
 
 

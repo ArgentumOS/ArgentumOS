@@ -11,6 +11,8 @@
 
 #import <foundation/NSArray.h>
 #import <foundation/NSString.h>
+#import <foundation/NSException.h>
+#import <foundation/NSIndexSet.h>
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
@@ -341,6 +343,39 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	}
 }
 
+- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes
+{
+	NSMutableArray *selected = [[NSMutableArray alloc] init];
+	NSUInteger index = [indexes firstIndex];
+
+	while (index != NSNotFound) {
+		if (index >= _count) {
+			/* Cocoa RAISES here rather than returning a short array: the caller
+			 * asked for an element that is not there. */
+			[NSException raise:NSRangeException
+				    format:@"-[NSArray objectsAtIndexes:]: index %lu beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)_count];
+		}
+		[selected addObject:_items[index]];
+		index = [indexes indexGreaterThanIndex:index];
+	}
+	return selected;
+}
+
+- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];
+	NSUInteger i;
+	BOOL stop = NO;
+
+	for (i = 0; i < _count && !stop; i++) {
+		if (predicate(_items[i], i, &stop)) {
+			[matches addIndex:i];
+		}
+	}
+	return matches;
+}
+
 - (NSUInteger)indexOfObject:(id)object
 	      inSortedRange:(NSRange)range
 		  options:(NSBinarySearchingOptions)options
@@ -655,6 +690,58 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 	for (i = 0; i < [other count]; i++) {
 		[self addObject:[other objectAtIndex:i]];
+	}
+}
+
+- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes
+{
+	NSUInteger index;
+	NSUInteger taken = 0;
+	NSUInteger offset = 0;
+
+	if ([objects count] != [indexes count]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[NSMutableArray insertObjects:atIndexes:]: %lu objects but %lu indexes",
+				   (unsigned long)[objects count], (unsigned long)[indexes count]];
+	}
+	index = [indexes firstIndex];
+	while (index != NSNotFound) {
+		/* Every insertion shifts the LATER positions right, which is what the
+		 * offset is for. */
+		[self insertObject:[objects objectAtIndex:taken] atIndex:index + offset];
+		offset++;
+		taken++;
+		index = [indexes indexGreaterThanIndex:index];
+	}
+}
+
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes
+{
+	/* DESCENDING: a removal shifts everything after it, so walking down means
+	 * every remaining position is still the one the caller asked for. */
+	NSUInteger index = [indexes lastIndex];
+
+	while (index != NSNotFound) {
+		[self removeObjectAtIndex:index];
+		index = [indexes indexLessThanIndex:index];
+	}
+}
+
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects
+{
+	NSUInteger index;
+	NSUInteger taken = 0;
+
+	if ([objects count] != [indexes count]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[NSMutableArray replaceObjectsAtIndexes:withObjects:]: %lu objects but %lu indexes",
+				   (unsigned long)[objects count], (unsigned long)[indexes count]];
+	}
+	index = [indexes firstIndex];
+	while (index != NSNotFound) {
+		[self replaceObjectAtIndex:index withObject:[objects objectAtIndex:taken]];
+		taken++;
+		index = [indexes indexGreaterThanIndex:index];
 	}
 }
 

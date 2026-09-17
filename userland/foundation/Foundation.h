@@ -29,5 +29,6 @@
 #import <foundation/NSError.h>
 #import <foundation/NSException.h>
 #import <foundation/NSCharacterSet.h>
+#import <foundation/NSIndexSet.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

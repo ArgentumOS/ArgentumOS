@@ -5,7 +5,7 @@
 /*
  * NSArray / NSMutableArray — an ordered collection.
  * docs/design/foundation-plan.md, F3; subscripting and NSNotFound from the
- * public-API audit.
+ * public-API audit. The NSIndexSet methods came with the dependency queue.
  *
  * ORDERED AND ZERO-BASED, and one concrete class rather than a cluster (v1's
  * rule). Elements are RETAINED, not copied — Cocoa's rule for arrays, and the
@@ -25,6 +25,7 @@
 #import <foundation/NSFastEnumeration.h>
 
 @class NSString;
+@class NSIndexSet;
 
 @interface NSArray : NSObject <NSCopying, NSFastEnumeration>
 {
@@ -74,6 +75,12 @@
 - (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator;
 - (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block;
 
+/* The NSIndexSet forms. -objectsAtIndexes: RAISES NSRangeException for an index
+ * past the end — the caller asked for something that is not there — while
+ * -indexesOfObjectsPassingTest: hands back the indexes that passed. */
+- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes;
+- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate;
+
 - (BOOL)isEqualToArray:(NSArray *)other;
 
 @end
@@ -104,6 +111,13 @@
 			  range:(NSRange)otherRange;
 - (void)sortUsingComparator:(NSComparator)comparator;
 - (void)sortUsingSelector:(SEL)comparator;
+
+/* The NSIndexSet forms. The counts of objects and indexes must AGREE, and the
+ * mismatches raise NSInvalidArgumentException because the message is the only
+ * thing that makes the bug diagnosable. */
+- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes;
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes;
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects;
 
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
 - (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
