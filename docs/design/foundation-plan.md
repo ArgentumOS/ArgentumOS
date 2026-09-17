@@ -541,3 +541,79 @@ depends on it any more, but an API that hands out a single shared buffer is a tr
 Worth stating plainly: F1's probe passed while this was broken, because it never
 compared two tagged strings of the same length. F3's did on its first run. That
 is the argument for probes built from *decisions* rather than from coverage.
+
+### The public-API audit (2026-09-17)
+
+Asked to check the implementation against the public Foundation API: the eight
+public headers were read first-hand and compared against Cocoa's DOCUMENTED
+contract (in bounds — no external source was opened). Findings that could be
+measured were measured.
+
+**A — broken, measured.**
+
+1. **NSNumber could not be a dictionary key, silently.** It implemented neither
+   `NSCopying` nor `-copy`, and this runtime answers NIL for an unimplemented
+   selector rather than raising — so `[key copy]` returned nil and the table
+   filed a PHANTOM entry: the insert "succeeded", the count grew to 1, and the
+   value was unreachable. The claim in NSNumber.h's own header comment ("what
+   makes a number usable as a collection key") was false.
+2. **The dictionary would file that entry.** It now refuses a nil key-copy.
+   (With NSObject's copying family added, such a class aborts loudly before the
+   guard is reached; the guard remains for a class that implements `-copy` and
+   returns nil — the same belt-and-braces shape as F2's capacity invariant.)
+
+**B — would not compile for Cocoa-shaped code.** `-conformsToProtocol:` was not
+declared on NSObject (the compiler refused it *during* the measurement);
+`NSCopying` declared `-copy`/`-mutableCopy` instead of `-copyWithZone:` and there
+was no `NSMutableCopying`; no subscripting methods (`dict[k]`, `array[i]`); and
+none of `NSInteger`/`NSUInteger`/`NSNotFound`/`NSRange`/`NSComparisonResult`/
+`unichar`.
+
+**Fixed — A + B (the user's call).** NSObject gained the copying family (with the
+zone methods' default a LOUD abort; Cocoa raises `NSInvalidArgumentException` and
+v1 has no exception objects until F4), `-doesNotRecognizeSelector:`,
+`-conformsToProtocol:`/`+conformsToProtocol:`, `-performSelector:[withObject:]`,
+`-self` and NSUInteger spellings. `NSCopying`/`NSMutableCopying` took Cocoa's
+shape with the zone argument accepted, ignored and documented (`NSZone` stays an
+incomplete type: one allocator, nothing dereferences it). NSNumber conforms to
+`NSCopying` and copies as self. The collections gained the four subscript methods
+(with Cocoa's nil-removes rule for keys), the zone methods, and
+`-replaceObjectAtIndex:withObject:`. `-indexOfObject:` returns `NSNotFound`
+instead of `(NSUInteger)-1`, which never equalled it. `-compare:` returns
+`NSComparisonResult`.
+
+**Measured during the fix, worth recording:**
+
+- `+conformsToProtocol:` first walked from `object_getClass(self)` — the
+  METACLASS — so every conformance query answered NO, while
+  `class_conformsToProtocol` on the class said YES. `self` is the class.
+- `NSMakeRange`/`NSMaxRange`/`NSLocationInRange` are FUNCTIONS here, not Cocoa's
+  macros. As macros, `NSLocationInRange(2, range)` failed to compile with
+  "expected identifier" pointing INTO the macro name — while its one-parameter
+  neighbour worked, `NSMakeRange` worked, and the fully-expanded expression
+  compiled fine on its own. Not diagnosed; worked around, because functions
+  cannot be mis-expanded, are type-checked, and `NSMakeRange` stops being a
+  compound literal (which C++ mode dislikes too).
+
+**Deliberately NOT fixed — the backlog**, each a real gap for code that names it:
+`NSString`'s `-compare:`/`-hasPrefix:`/`-hasSuffix:`/`-substringToIndex:`/
+`-componentsSeparatedByString:`/`-stringByAppendingString:`/`-intValue`/
+`-doubleValue`/`-stringWithFormat:`; `NSArray`'s `-removeLastObject`/
+`-removeObject:`/`-addObjectsFromArray:`/`-subarrayWithRange:`/
+`-componentsJoinedByString:`/`-indexOfObjectIdenticalTo:`; `NSDictionary`'s
+`-allKeys`/`-allValues`/`-addEntriesFromDictionary:`/
+`+dictionaryWithObjects:forKeys:count:`; `NSNumber`'s `-integerValue`/
+`-floatValue`/`-stringValue`/`-objCType` and the `+numberWithInteger:`/
+`+numberWithFloat:` family; `NSData`'s `-subdataWithRange:`/`-getBytes:length:`/
+`-initWithContentsOfFile:`/`-writeToFile:atomically:` and base64; `NSDate`'s
+`+dateWithTimeIntervalSinceNow:`/`-dateByAddingTimeInterval:`/
+`-timeIntervalSinceNow`/`+distantPast`/`+distantFuture`; `NSObject`'s `-zone`/
+`+allocWithZone:` (the no-zones decision) and `-isProxy`.
+
+**Deviations that stay deliberate** (they were before the audit too): `-length`
+counts BYTES and `-characterCount`/`-characterAtIndex:` count CHARACTERS (the
+user's decision; Cocoa's `-length` is UTF-16 code units); `-objectAtIndex:` out
+of range returns nil where Cocoa raises `NSRangeException` (F4 revisits);
+`-description` shapes are one-line. **Names that are ours, not the contract:**
+`NSOwnedString`, `NSTinyString`, `-byteAtIndex:`, `-characterCount`,
+`-appendUTF8String:`.

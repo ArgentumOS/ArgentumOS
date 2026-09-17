@@ -1,6 +1,7 @@
 /*
  * NSDate — a point in time, as seconds since the Unix epoch.
- * docs/design/foundation-plan.md, F2.
+ * docs/design/foundation-plan.md, F2; the copying family and NSComparisonResult
+ * from the public-API audit.
  *
  * No calendar, no time zones, no locales in v1: a date is a number, comparisons
  * are number comparisons, and `-description` renders it in UTC using libc's own
@@ -27,9 +28,15 @@
 - (double)timeIntervalSinceDate:(NSDate *)other;
 
 - (BOOL)isEqualToDate:(NSDate *)other;
-- (int)compare:(NSDate *)other;		/* -1, 0, or 1 */
+- (NSComparisonResult)compare:(NSDate *)other;
 - (NSDate *)earlierDate:(NSDate *)other;
 - (NSDate *)laterDate:(NSDate *)other;
+
+/* Immutable, so copying returns self. */
+- (id)copy;
+- (id)mutableCopy;
+- (id)copyWithZone:(NSZone *)zone;
+- (id)mutableCopyWithZone:(NSZone *)zone;
 
 @end
 

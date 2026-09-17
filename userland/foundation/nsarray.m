@@ -99,6 +99,12 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 	return _items[index];
 }
 
+/* Cocoa's subscript: `array[0]` lowers to this. */
+- (id)objectAtIndexedSubscript:(NSUInteger)index
+{
+	return [self objectAtIndex:index];
+}
+
 - (id)firstObject
 {
 	return (_count == 0) ? nil : _items[0];
@@ -118,12 +124,12 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 			return i;
 		}
 	}
-	return (unsigned long)-1;
+	return NSNotFound;
 }
 
 - (BOOL)containsObject:(id)object
 {
-	return [self indexOfObject:object] != (unsigned long)-1;
+	return [self indexOfObject:object] != NSNotFound;
 }
 
 - (NSArray *)arrayByAddingObject:(id)object
@@ -217,7 +223,7 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 
 /* NSCopying keeps Cocoa's SHAPE with the zone accepted and ignored (the plan's
  * §7 decision): there are no zones, but the selector stays for compatibility. */
-- (id)copyWithZone:(void *)zone
+- (id)copyWithZone:(NSZone *)zone
 {
 	(void)zone;
 	return [self copy];
@@ -328,6 +334,30 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 	}
 	_count = 0;
 	_mutations++;
+}
+
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object
+{
+	if (index >= _count || object == nil) {
+		return;
+	}
+	objc_retain(object);
+	objc_release(_items[index]);
+	_items[index] = object;
+	_mutations++;
+}
+
+/* `array[i] = x`: Cocoa replaces at i, and APPENDS when i == count. */
+- (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index
+{
+	if (object == nil) {
+		return;
+	}
+	if (index == _count) {
+		[self addObject:object];
+		return;
+	}
+	[self replaceObjectAtIndex:index withObject:object];
 }
 
 - (id)copy

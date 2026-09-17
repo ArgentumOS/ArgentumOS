@@ -152,6 +152,23 @@ static unsigned short utf8_character_at(const char *bytes, size_t size, size_t i
 	return [[NSMutableString alloc] initWithUTF8String:[self UTF8String]];
 }
 
+/*
+ * The zone forms (the public-API audit, B4). Declared ONCE, on the base class:
+ * each delegates to -copy / -mutableCopy, and DYNAMIC DISPATCH picks the right
+ * one for a mutable subclass (whose -copy is the snapshot).
+ */
+- (id)copyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return [self copy];
+}
+
+- (id)mutableCopyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return [self mutableCopy];
+}
+
 - (NSString *)description
 {
 	return self;		/* a string describes itself */

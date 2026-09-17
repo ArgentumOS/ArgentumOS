@@ -18,18 +18,23 @@
 
 #include <objc/runtime.h>
 #include <stdint.h>
+#include <foundation/NSObjCRuntime.h>
 
 @class NSString;
 
 /*
- * The copying contract, without zones (the user's decision, 2026-09-17). `-copy`
- * and `-mutableCopy` are the API, and they are the +1 method family ARC knows by
- * name. Cocoa's `-copyWithZone:` shape is not reproduced because there is one
- * allocator and therefore no Zone to pass.
+ * The copying protocols, in COCOA'S SHAPE (the public-API audit, item B4): the
+ * zone method is the protocol's member, and `-copy` / `-mutableCopy` are
+ * declared on NSObject below, because every object can be *sent* them. The zone
+ * argument is accepted, ignored and documented — there is one allocator here,
+ * so `NSZone` is an incomplete type that nothing ever dereferences.
  */
 @protocol NSCopying
-- (id)copy;
-- (id)mutableCopy;
+- (id)copyWithZone:(NSZone *)zone;
+@end
+
+@protocol NSMutableCopying
+- (id)mutableCopyWithZone:(NSZone *)zone;
 @end
 
 /*
@@ -80,31 +85,50 @@ __attribute__((objc_root_class))
 - (id)retain;
 - (oneway void)release;
 - (id)autorelease;
-- (unsigned long)retainCount;
+- (NSUInteger)retainCount;
 - (void)dealloc;		/* the root class frees the allocation */
 
 /* Identity, class membership and introspection. */
 + (Class)class;
 + (Class)superclass;
 + (BOOL)isSubclassOfClass:(Class)aClass;
++ (BOOL)conformsToProtocol:(Protocol *)aProtocol;
 - (Class)class;
 - (Class)superclass;
 - (BOOL)isKindOfClass:(Class)aClass;
 - (BOOL)isMemberOfClass:(Class)aClass;
 - (BOOL)respondsToSelector:(SEL)aSelector;
+- (BOOL)conformsToProtocol:(Protocol *)aProtocol;
+- (id)self;
+
+/*
+ * THE COPYING FAMILY, declared here because every object can be sent it (Cocoa
+ * declares them on NSObject too). `-copy` and `-mutableCopy` delegate to the
+ * zone methods, and the zone methods' DEFAULT IS A LOUD FAILURE — which is the
+ * whole point of the audit's fix A: before this existed, sending `-copy` to a
+ * class that did not implement it did not raise, it returned NIL (the runtime's
+ * forwarding path), so a dictionary handed an NSNumber key filed a phantom entry
+ * under a nil key and the value became unreachable — silently, with a count that
+ * said otherwise.
+ */
+- (id)copy;			/* [self copyWithZone:NULL] */
+- (id)mutableCopy;		/* [self mutableCopyWithZone:NULL] */
+- (id)copyWithZone:(NSZone *)zone;	/* default: doesNotRecognizeSelector: */
+- (id)mutableCopyWithZone:(NSZone *)zone;
+- (void)doesNotRecognizeSelector:(SEL)aSelector;
+
+/* Messaging, which is how Cocoa code calls a selector it only knows by name. */
+- (id)performSelector:(SEL)aSelector;
+- (id)performSelector:(SEL)aSelector withObject:(id)object;
 
 /*
  * Equality and hashing. The defaults are identity and the pointer, which is
  * exactly what a Dictionary key has to override.
  */
 - (BOOL)isEqual:(id)other;
-- (unsigned long)hash;
+- (NSUInteger)hash;
 
-/*
- * Every object describes itself. The DECLARATION lives here so the root-class
- * contract is complete; the BODY lands with NSString (F1) and returns nil until
- * then — see the plan's F0 record.
- */
+/* Every object describes itself: this names the class (docs, F1). */
 - (NSString *)description;
 
 @end

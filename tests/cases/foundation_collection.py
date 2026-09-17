@@ -29,7 +29,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_collection"
 CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "dict-basic", "dict-key-copy", "dict-equality", "dict-enumerate",
-          "ownership")
+          "ownership", "number-key", "cocoa-spellings")
 
 
 class Case(BaseCase):

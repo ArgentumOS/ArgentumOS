@@ -14,6 +14,7 @@
 #ifndef FOUNDATION_FOUNDATION_H
 #define FOUNDATION_FOUNDATION_H
 
+#import <foundation/NSObjCRuntime.h>
 #import <foundation/NSObject.h>
 #import <foundation/NSString.h>
 #import <foundation/NSNumber.h>

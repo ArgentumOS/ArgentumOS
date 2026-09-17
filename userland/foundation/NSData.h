@@ -29,7 +29,7 @@
 
 @end
 
-@interface NSMutableData : NSData
+@interface NSMutableData : NSData <NSMutableCopying>
 {
 	size_t _capacity;
 }

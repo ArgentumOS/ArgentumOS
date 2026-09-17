@@ -1,6 +1,7 @@
 /*
  * NSArray / NSMutableArray — an ordered collection.
- * docs/design/foundation-plan.md, F3.
+ * docs/design/foundation-plan.md, F3; subscripting and NSNotFound from the
+ * public-API audit.
  *
  * ORDERED AND ZERO-BASED, and one concrete class rather than a cluster (v1's
  * rule). Elements are RETAINED, not copied — Cocoa's rule for arrays, and the
@@ -29,16 +30,21 @@
 
 + (NSArray *)array;
 + (NSArray *)arrayWithObject:(id)object;
-+ (NSArray *)arrayWithObjects:(const id *)objects count:(unsigned long)count;
++ (NSArray *)arrayWithObjects:(const id *)objects count:(NSUInteger)count;
 
 - (id)initWithObject:(id)object;
-- (id)initWithObjects:(const id *)objects count:(unsigned long)count;
+- (id)initWithObjects:(const id *)objects count:(NSUInteger)count;
 
-- (unsigned long)count;
-- (id)objectAtIndex:(unsigned long)index;
+- (NSUInteger)count;
+- (id)objectAtIndex:(NSUInteger)index;
+/* Cocoa's subscript: `array[0]` lowers to this. */
+- (id)objectAtIndexedSubscript:(NSUInteger)index;
+
 - (id)firstObject;
 - (id)lastObject;
-- (unsigned long)indexOfObject:(id)object;
+/* NSNotFound for a missing element — NOT (NSUInteger)-1, which is what this
+ * answered before the audit and which never equals NSNotFound. */
+- (NSUInteger)indexOfObject:(id)object;
 - (BOOL)containsObject:(id)object;
 
 - (NSArray *)arrayByAddingObject:(id)object;	/* a new array; self is untouched */
@@ -46,16 +52,20 @@
 
 @end
 
-@interface NSMutableArray : NSArray
+@interface NSMutableArray : NSArray <NSMutableCopying>
 
 + (NSMutableArray *)array;
-+ (NSMutableArray *)arrayWithCapacity:(unsigned long)capacity;
-- (id)initWithCapacity:(unsigned long)capacity;
++ (NSMutableArray *)arrayWithCapacity:(NSUInteger)capacity;
+- (id)initWithCapacity:(NSUInteger)capacity;
 
 - (void)addObject:(id)object;
-- (void)insertObject:(id)object atIndex:(unsigned long)index;
-- (void)removeObjectAtIndex:(unsigned long)index;
+- (void)insertObject:(id)object atIndex:(NSUInteger)index;
+- (void)removeObjectAtIndex:(NSUInteger)index;
 - (void)removeAllObjects;
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object;
+
+/* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
+- (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
 
 @end
 

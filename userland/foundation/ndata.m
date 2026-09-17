@@ -96,6 +96,23 @@
 	return self;		/* immutable */
 }
 
+/*
+ * The zone forms (the public-API audit, B4). Declared ONCE, on the base class:
+ * each delegates to -copy / -mutableCopy, and DYNAMIC DISPATCH picks the right
+ * one for a mutable subclass (whose -copy is the snapshot).
+ */
+- (id)copyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return [self copy];
+}
+
+- (id)mutableCopyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return [self mutableCopy];
+}
+
 - (id)mutableCopy
 {
 	NSMutableData *copy = [[NSMutableData alloc] initWithCapacity:_length];

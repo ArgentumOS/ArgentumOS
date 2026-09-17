@@ -141,6 +141,12 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	return nil;
 }
 
+/* Cocoa's subscript: `dict[key]` lowers to this. */
+- (id)objectForKeyedSubscript:(id)key
+{
+	return [self objectForKey:key];
+}
+
 - (void)setObjectInternal:(id)value forKey:(id)key
 {
 	struct FNDictEntry *entry;
@@ -188,7 +194,22 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	if (entry == NULL) {
 		return;
 	}
-	entry->key = objc_retain([key copy]);	/* the COPY is what the table owns */
+	{
+		id copied = [key copy];
+
+		/*
+		 * THE AUDIT'S FIX A. A class that does not implement the copying
+		 * protocol does NOT raise here — the runtime's forwarding path answers
+		 * nil — and filing an entry under a nil key produced a PHANTOM: the
+		 * count grew, the value was unreachable, and nothing complained. Refuse
+		 * instead of filing it. (When F4 brings exceptions, this becomes one.)
+		 */
+		if (copied == nil) {
+			free(entry);
+			return;
+		}
+		entry->key = objc_retain(copied);
+	}
 	entry->value = objc_retain(value);
 	entry->next = _buckets[index];
 	_buckets[index] = entry;
@@ -345,7 +366,7 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	return [[NSMutableDictionary alloc] initAsCopyOf:self];
 }
 
-- (id)copyWithZone:(void *)zone
+- (id)copyWithZone:(NSZone *)zone
 {
 	(void)zone;
 	return [self copy];
@@ -442,6 +463,17 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 - (void)removeAllObjects
 {
 	[self removeAllInternalObjects];
+}
+
+/* `dict[k] = v` lowers to this, and `dict[k] = nil` REMOVES the key (Cocoa's
+ * rule) — which is why it cannot simply forward to -setObject:forKey:. */
+- (void)setObject:(id)object forKeyedSubscript:(id)key
+{
+	if (object == nil) {
+		[self removeObjectForKey:key];
+		return;
+	}
+	[self setObject:object forKey:key];
 }
 
 - (id)copy

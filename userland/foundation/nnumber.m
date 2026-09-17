@@ -134,18 +134,46 @@
 	return [self doubleValue] == [other doubleValue];
 }
 
-- (int)compare:(NSNumber *)other
+- (NSComparisonResult)compare:(NSNumber *)other
 {
 	double a = [self doubleValue];
 	double b = [other doubleValue];
 
 	if (a < b) {
-		return -1;
+		return NSOrderedAscending;
 	}
 	if (a > b) {
-		return 1;
+		return NSOrderedDescending;
 	}
-	return 0;
+	return NSOrderedSame;
+}
+
+/*
+ * THE AUDIT'S FIX A. A number is immutable, so copying returns self — and the
+ * conformance is what makes a number usable as a dictionary KEY, since the table
+ * copies its keys. Without it, [key copy] answered nil and the table filed a
+ * phantom entry.
+ */
+- (id)copy
+{
+	return self;
+}
+
+- (id)mutableCopy
+{
+	return self;
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return self;
+}
+
+- (id)mutableCopyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return self;
 }
 
 - (BOOL)isEqual:(id)other

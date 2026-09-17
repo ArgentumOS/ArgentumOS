@@ -56,17 +56,17 @@
 	return _timeIntervalSince1970 == [other timeIntervalSince1970];
 }
 
-- (int)compare:(NSDate *)other
+- (NSComparisonResult)compare:(NSDate *)other
 {
 	double b = [other timeIntervalSince1970];
 
 	if (_timeIntervalSince1970 < b) {
-		return -1;
+		return NSOrderedAscending;
 	}
 	if (_timeIntervalSince1970 > b) {
-		return 1;
+		return NSOrderedDescending;
 	}
-	return 0;
+	return NSOrderedSame;
 }
 
 - (NSDate *)earlierDate:(NSDate *)other
@@ -116,6 +116,23 @@
 - (id)copy
 {
 	return self;		/* immutable */
+}
+
+- (id)mutableCopy
+{
+	return self;
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return self;
+}
+
+- (id)mutableCopyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return self;
 }
 
 - (NSString *)description

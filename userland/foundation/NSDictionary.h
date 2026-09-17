@@ -1,6 +1,7 @@
 /*
  * NSDictionary / NSMutableDictionary — key → value.
- * docs/design/foundation-plan.md, F3.
+ * docs/design/foundation-plan.md, F3; subscripting and the nil-key guard from
+ * the public-API audit.
  *
  * KEYS ARE COPIED, VALUES ARE RETAINED. That asymmetry is Cocoa's, and it is not
  * a detail: a key is a lookup TOKEN, so if the caller hands over a mutable string
@@ -10,8 +11,12 @@
  * equality. Values are the caller's objects, held by reference like an array's
  * elements.
  *
- * A key's equality and hash are NSObject's contract (`-isEqual:`/`-hash`), so
- * anything can be a key as long as it implements those two — and `-copy`.
+ * A key's equality and hash are NSObject's contract, so anything can be a key as
+ * long as it implements `-isEqual:`, `-hash` AND the copying protocol. That last
+ * requirement was aspirational until the audit: NSNumber did not conform to
+ * NSCopying, and `[key copy]` on it returned NIL instead of raising, so a number
+ * key filed a phantom entry and its value was unreachable. The table now REFUSES
+ * a nil key-copy rather than filing one.
  *
  * The table is CHAINING over a power-of-two bucket array, which grows before the
  * load factor reaches one. No class cluster (v1's rule): this is the class.
@@ -40,19 +45,26 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 
 - (id)initWithObject:(id)value forKey:(id)key;
 
-- (unsigned long)count;
+- (NSUInteger)count;
 - (id)objectForKey:(id)key;
+/* Cocoa's subscript: `dict[k]` lowers to this. */
+- (id)objectForKeyedSubscript:(id)key;
+
 - (BOOL)isEqualToDictionary:(NSDictionary *)other;
 
 @end
 
-@interface NSMutableDictionary : NSDictionary
+@interface NSMutableDictionary : NSDictionary <NSMutableCopying>
 
 + (NSMutableDictionary *)dictionary;
 
 - (void)setObject:(id)value forKey:(id)key;
 - (void)removeObjectForKey:(id)key;
 - (void)removeAllObjects;
+
+/* `dict[k] = v` lowers to this, and `dict[k] = nil` REMOVES the key (Cocoa's
+ * rule) — which is why it cannot simply forward to -setObject:forKey:. */
+- (void)setObject:(id)object forKeyedSubscript:(id)key;
 
 @end
 

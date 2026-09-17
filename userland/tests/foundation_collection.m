@@ -216,6 +216,66 @@ int main(void)
 		      "an array element is RETAINED on insert and released on removal");
 	}
 
+
+	{
+		/* THE AUDIT, fix A: a NUMBER as a dictionary key. This used to file a
+		 * phantom entry - the count grew to 1 and the value was unreachable -
+		 * because NSNumber did not implement the copying protocol and this
+		 * runtime answers nil for an unimplemented selector instead of raising. */
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		NSNumber *key = [NSNumber numberWithInt:7];
+
+		[d setObject:@"seven" forKey:key];
+
+		check("number-key",
+		      [d count] == 1 &&
+		      [[d objectForKey:[NSNumber numberWithInt:7]] isEqualToString:@"seven"] &&
+		      [[d objectForKey:[NSNumber numberWithDouble:7.0]] isEqualToString:@"seven"] &&
+		      [key conformsToProtocol:@protocol(NSCopying)],
+		      "an NSNumber key round-trips; a double 7.0 finds the integer 7");
+	}
+
+	{
+		/* THE AUDIT, fix B: the spellings Cocoa-shaped code uses. If any of
+		 * these names or methods were missing this would not COMPILE - the
+		 * compiler is part of the check. */
+		NSMutableArray *m = [NSMutableArray array];
+		NSArray *snapshot;
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		NSRange range = NSMakeRange(1, 2);
+		NSComparisonResult order =
+			[[NSNumber numberWithInt:1] compare:[NSNumber numberWithInt:2]];
+		NSUInteger i;
+
+		for (i = 0; i < 3; i++) {
+			[m addObject:[NSNumber numberWithInt:(int)i]];
+		}
+		snapshot = [m copy];
+		m[0] = [NSNumber numberWithInt:9];
+		[m addObject:[NSNumber numberWithInt:3]];
+		m[3] = [NSNumber numberWithInt:4];	/* index == count appends */
+		d[@"k"] = @"v";
+		d[@"gone"] = @"x";
+		d[@"gone"] = nil;			/* nil REMOVES the key */
+
+		check("cocoa-spellings",
+		      [[m objectAtIndexedSubscript:0] intValue] == 9 &&
+		      [[m objectAtIndexedSubscript:3] intValue] == 4 &&
+		      [m count] == 4 &&
+		      [[snapshot firstObject] intValue] == 0 && [snapshot count] == 3 &&
+		      [snapshot indexOfObject:[NSNumber numberWithInt:5]] == NSNotFound &&
+		      ![snapshot containsObject:[NSNumber numberWithInt:5]] &&
+		      NSLocationInRange(2, range) && !NSLocationInRange(3, range) &&
+		      NSMaxRange(range) == 3 &&
+		      order == NSOrderedAscending &&
+		      [d count] == 1 && [[d objectForKeyedSubscript:@"k"] isEqualToString:@"v"] &&
+		      [d objectForKeyedSubscript:@"gone"] == nil &&
+		      [m conformsToProtocol:@protocol(NSFastEnumeration)] &&
+		      [m conformsToProtocol:@protocol(NSCopying)] &&
+		      [[snapshot performSelector:@selector(firstObject)] intValue] == 0,
+		      "subscripts, NSNotFound, NSRange, NSComparisonResult, -performSelector:, conformance");
+	}
+
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-COLLECTION DONE\n");
 	return failc ? 1 : 0;

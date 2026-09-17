@@ -8,6 +8,8 @@
  */
 
 #import <foundation/NSObject.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <foundation/NSString.h>	/* -description has to return one */
 #include <objc/objc-arc.h>
 
@@ -174,6 +176,93 @@ extern id object_dispose(id obj);
 	 * it knows nothing else about.
 	 */
 	return [NSString stringWithUTF8String:class_getName(object_getClass(self))];
+}
+
+
+/*
+ * THE COPYING FAMILY (the public-API audit, A). -copy and -mutableCopy delegate
+ * to the ZONE methods, and the zone methods' default here is a LOUD failure.
+ *
+ * The loudness is the fix, not the boilerplate: before this existed, sending
+ * -copy to a class that did not implement it was answered NIL by the runtime's
+ * forwarding path, so a dictionary handed such an object as a key filed a
+ * phantom entry under a nil key — the count grew and the value was unreachable,
+ * silently. Cocoa raises NSInvalidArgumentException here; v1 has no exception
+ * objects until F4, so this aborts with the class and selector named.
+ */
+- (id)copy
+{
+	return [self copyWithZone:NULL];
+}
+
+- (id)mutableCopy
+{
+	return [self mutableCopyWithZone:NULL];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	[self doesNotRecognizeSelector:_cmd];
+	return nil;		/* unreachable: doesNotRecognizeSelector does not return */
+}
+
+- (id)mutableCopyWithZone:(NSZone *)zone
+{
+	(void)zone;
+	[self doesNotRecognizeSelector:_cmd];
+	return nil;
+}
+
+- (void)doesNotRecognizeSelector:(SEL)aSelector
+{
+	fprintf(stderr, "Foundation: -[%s %s] is not implemented\n",
+		class_getName(object_getClass(self)), sel_getName(aSelector));
+	abort();
+}
+
+/*
+ * Protocol conformance, WITH the superclass walk: a class that inherits a
+ * protocol from a superclass conforms to it (which is how NSMutableArray
+ * answers YES for NSCopying without redeclaring it, as Cocoa's does).
+ */
++ (BOOL)conformsToProtocol:(Protocol *)aProtocol
+{
+	/*
+	 * `self` IS the class here. NOT object_getClass(self), which is the
+	 * METACLASS: starting the walk there made every conformance query answer NO
+	 * — measured, with class_conformsToProtocol on the class saying YES while
+	 * this said NO.
+	 */
+	Class cls;
+
+	for (cls = self; cls != Nil; cls = class_getSuperclass(cls)) {
+		if (class_conformsToProtocol(cls, aProtocol)) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+- (BOOL)conformsToProtocol:(Protocol *)aProtocol
+{
+	return [[self class] conformsToProtocol:aProtocol];
+}
+
+- (id)self
+{
+	return self;
+}
+
+/* Messaging a selector the caller only knows by name. */
+- (id)performSelector:(SEL)aSelector
+{
+	return ((id (*)(id, SEL))objc_msgSend)(self, aSelector);
+}
+
+- (id)performSelector:(SEL)aSelector withObject:(id)object
+{
+	return ((id (*)(id, SEL, id))objc_msgSend)(self, aSelector, object);
 }
 
 @end

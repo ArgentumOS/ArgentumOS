@@ -68,7 +68,7 @@
 - (id)initWithUTF8String:(const char *)utf8;
 @end
 
-@interface NSMutableString : NSOwnedString
+@interface NSMutableString : NSOwnedString <NSMutableCopying>
 - (void)setString:(NSString *)other;
 - (void)appendString:(NSString *)other;
 - (void)appendUTF8String:(const char *)utf8;

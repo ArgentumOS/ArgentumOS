@@ -1,6 +1,7 @@
 /*
  * NSNumber — a boxed scalar, so the collections can hold numbers.
- * docs/design/foundation-plan.md, F2.
+ * docs/design/foundation-plan.md, F2; the copying family from the public-API
+ * audit (item A).
  *
  * A PLAIN OBJECT, NOT A TAGGED ONE, in v1. The runtime does have the machinery
  * for tagging — `SmallObjectClasses[0]` exists and class.h says it is "typically
@@ -13,6 +14,14 @@
  * number usable as a collection key no matter how it was built — and it is why
  * `-hash` canonicalises an integral value to its integer form, since 1 and 1.0
  * must hash alike if they are equal.
+ *
+ * THE COPYING FAMILY IS NOT DECORATION HERE. That last sentence about keys was
+ * FALSE until the audit: NSNumber did not conform to NSCopying, and because the
+ * runtime's forwarding path answers nil for an unimplemented selector (rather
+ * than raising), a dictionary handed a number key filed a phantom entry under a
+ * nil key — the count grew and the value was unreachable, silently. A number is
+ * immutable, so copying returns self; the conformance is what makes the key
+ * contract real.
  */
 
 #ifndef FOUNDATION_NSNUMBER_H
@@ -20,7 +29,7 @@
 
 #import <foundation/NSObject.h>
 
-@interface NSNumber : NSObject
+@interface NSNumber : NSObject <NSCopying>
 {
 	union {
 		long long _signedValue;
@@ -49,7 +58,13 @@
 - (BOOL)boolValue;
 
 - (BOOL)isEqualToNumber:(NSNumber *)other;
-- (int)compare:(NSNumber *)other;		/* -1, 0, or 1 */
+- (NSComparisonResult)compare:(NSNumber *)other;
+
+/* Immutable, so every one of these returns self — Cocoa's behaviour. */
+- (id)copy;
+- (id)mutableCopy;
+- (id)copyWithZone:(NSZone *)zone;
+- (id)mutableCopyWithZone:(NSZone *)zone;
 
 @end
 

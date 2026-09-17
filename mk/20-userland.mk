@@ -101,7 +101,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/ntinystring.m $(FOUNDATION_SRC)/nnumber.m \
 	$(FOUNDATION_SRC)/ndata.m $(FOUNDATION_SRC)/ndate.m \
 	$(FOUNDATION_SRC)/nsarray.m $(FOUNDATION_SRC)/nsdictionary.m
-FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObject.h $(FOUNDATION_SRC)/NSString.h \
+FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
+	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
 	$(FOUNDATION_SRC)/NSData.h $(FOUNDATION_SRC)/NSDate.h \
 	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
