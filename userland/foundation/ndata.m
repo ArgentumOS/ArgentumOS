@@ -11,6 +11,7 @@
 
 #import <foundation/NSData.h>
 #import <foundation/NSString.h>
+#import <foundation/NSError.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -385,6 +386,85 @@ static int base64Value(unsigned char c)
 	return fclose(file) == 0;
 }
 
++ (NSData *)dataWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError **)errorPtr
+{
+	return [[self alloc] initWithContentsOfFile:path options:options error:errorPtr];
+}
+
++ (NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options
+{
+	return [[self alloc] initWithBase64EncodedString:string options:options];
+}
+
+- (id)initWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError **)errorPtr
+{
+	/*
+	 * The OPTIONS ARE ACCEPTED AND IGNORED, and that is documented rather than
+	 * silent: mapped-if-safe and uncached are hints about how the pages are held,
+	 * and this implementation reads the file into its own buffer either way. The
+	 * error out parameter is honoured, so a caller can tell why it failed.
+	 */
+	id result = [self initWithContentsOfFile:path];
+
+	(void)options;
+	if (result == nil && errorPtr != NULL) {
+		*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain"
+						code:260
+					    userInfo:[NSDictionary dictionaryWithObject:
+							@"The file could not be read."
+								      forKey:NSLocalizedDescriptionKey]];
+	}
+	return result;
+}
+
+- (id)initWithBase64EncodedData:(NSData *)base64Data options:(NSDataBase64EncodingOptions)options
+{
+	NSString *asText = [[NSString alloc] initWithData:base64Data
+						  encoding:NSASCIIStringEncoding];
+
+	if (asText == nil) {
+		return nil;
+	}
+	return [self initWithBase64EncodedString:asText options:options];
+}
+
+- (NSData *)base64EncodedDataWithOptions:(NSDataBase64EncodingOptions)options
+{
+	/* The encoded form is ASCII, so its bytes and its characters are the same. */
+	return [[self base64EncodedStringWithOptions:options]
+		dataUsingEncoding:NSASCIIStringEncoding];
+}
+
+- (BOOL)writeToFile:(NSString *)path options:(NSDataWritingOptions)options error:(NSError **)errorPtr
+{
+	BOOL ok = [self writeToFile:path atomically:(options & NSDataWritingAtomic) ? YES : NO];
+
+	if (!ok && errorPtr != NULL) {
+		*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain"
+						code:513
+					    userInfo:[NSDictionary dictionaryWithObject:
+							@"The file could not be written."
+								      forKey:NSLocalizedDescriptionKey]];
+	}
+	return ok;
+}
+
+- (void)enumerateByteRangesUsingBlock:(void (^)(const void *bytes, NSRange byteRange, BOOL *stop))block
+{
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	/*
+	 * ONE RANGE COVERING EVERYTHING, which the contract allows: it says the
+	 * ranges may be any decomposition of the data, and this reads into one
+	 * contiguous buffer, so there is nothing to split. `stop` is honoured by
+	 * simply not calling again.
+	 */
+	block(_bytes, NSMakeRange(0, _length), &stop);
+}
+
 - (BOOL)isEqualToData:(NSData *)other
 {
 	if (other == nil) {
@@ -650,6 +730,13 @@ static int base64Value(unsigned char c)
 	_bytes = fresh;
 	_length = newTotal;
 	_capacity = newTotal;
+}
+
+- (void)setData:(NSData *)other
+{
+	[self replaceBytesInRange:NSMakeRange(0, _length)
+			withBytes:[other bytes]
+			   length:[other length]];
 }
 
 - (void)resetBytesInRange:(NSRange)range

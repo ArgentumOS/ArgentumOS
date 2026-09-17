@@ -17,6 +17,9 @@
 #import <foundation/NSObject.h>
 #include <stddef.h>
 
+/* Forward-declared for the :options:error: forms; a pointer is all they need. */
+@class NSError;
+
 @interface NSData : NSObject <NSCopying>
 {
 	unsigned char *_bytes;		/* owned; NULL only while empty */
@@ -40,21 +43,38 @@ typedef enum {
 	NSDataSearchAnchored = 2
 } NSDataSearchOptions;
 
+/* Reading and writing options. Only the flags we honour are defined; the rest of
+ * Cocoa's set is absent rather than silently accepted. */
+typedef enum {
+	NSDataReadingDefault = 0,
+	NSDataReadingMappedIfSafe = 1,
+	NSDataReadingUncached = 2
+} NSDataReadingOptions;
+
+typedef enum {
+	NSDataWritingDefault = 0,
+	NSDataWritingAtomic = 1
+} NSDataWritingOptions;
+
 + (NSData *)data;
 + (NSData *)dataWithBytes:(const void *)bytes length:(size_t)length;
 + (NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length;
 + (NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
 + (NSData *)dataWithData:(NSData *)other;
 + (NSData *)dataWithContentsOfFile:(NSString *)path;
++ (NSData *)dataWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError **)errorPtr;
 + (NSData *)dataWithBase64EncodedString:(NSString *)string;
++ (NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options;
 
 - (id)initWithBytes:(const void *)bytes length:(size_t)length;
 - (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length;
 - (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
 - (id)initWithData:(NSData *)other;
 - (id)initWithContentsOfFile:(NSString *)path;
+- (id)initWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError **)errorPtr;
 - (id)initWithBase64EncodedString:(NSString *)string
 			  options:(NSDataBase64EncodingOptions)options;
+- (id)initWithBase64EncodedData:(NSData *)base64Data options:(NSDataBase64EncodingOptions)options;
 
 - (size_t)length;
 - (const void *)bytes;
@@ -66,7 +86,10 @@ typedef enum {
 		 range:(NSRange)range;
 
 - (NSString *)base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)options;
+- (NSData *)base64EncodedDataWithOptions:(NSDataBase64EncodingOptions)options;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
+- (BOOL)writeToFile:(NSString *)path options:(NSDataWritingOptions)options error:(NSError **)errorPtr;
+- (void)enumerateByteRangesUsingBlock:(void (^)(const void *bytes, NSRange byteRange, BOOL *stop))block;
 
 - (BOOL)isEqualToData:(NSData *)other;
 
@@ -92,6 +115,7 @@ typedef enum {
 		  withBytes:(const void *)bytes
 		     length:(size_t)replacementLength;
 - (void)resetBytesInRange:(NSRange)range;
+- (void)setData:(NSData *)other;
 
 @end
 

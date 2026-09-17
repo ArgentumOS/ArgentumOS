@@ -244,30 +244,63 @@ int main(void)
 
 
 	{
-		/* THE HARD RULE, mechanically, for NSData/NSMutableData. */
+		/*
+		 * THE AUDITED COCOA INVENTORY for NSData/NSMutableData.
+		 *
+		 * `implemented` is Cocoa's documented surface and must all EXIST;
+		 * `excluded` is what we deliberately do not ship and must all be ABSENT.
+		 * The old check only confirmed what our own header declared — how
+		 * +stringWithFormat:arguments: shipped missing — and this one named eight
+		 * gaps, all of them implemented in the same pass rather than recorded as
+		 * debt: the two :options:error: constructors (they had no error path at
+		 * all), +dataWithBase64EncodedString:options: and the base64-Data pair,
+		 * -writeToFile:options:error:, -enumerateByteRangesUsingBlock: and
+		 * -setData:.
+		 */
 		static const char *classSelectors[] = {
 			"data", "dataWithBytes:length:", "dataWithBytesNoCopy:length:",
 			"dataWithBytesNoCopy:length:freeWhenDone:", "dataWithData:",
-			"dataWithContentsOfFile:", "dataWithBase64EncodedString:", NULL
+			"dataWithContentsOfFile:", "dataWithContentsOfFile:options:error:",
+			"dataWithBase64EncodedString:", "dataWithBase64EncodedString:options:",
+			NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithBytes:length:", "initWithBytesNoCopy:length:",
 			"initWithBytesNoCopy:length:freeWhenDone:", "initWithData:",
-			"initWithContentsOfFile:", "initWithBase64EncodedString:options:",
+			"initWithContentsOfFile:", "initWithContentsOfFile:options:error:",
+			"initWithBase64EncodedString:options:", "initWithBase64EncodedData:options:",
 			"length", "bytes", "getBytes:length:", "getBytes:range:",
 			"subdataWithRange:", "rangeOfData:options:range:",
-			"base64EncodedStringWithOptions:", "writeToFile:atomically:",
-			"isEqualToData:", "isEqual:", "hash", "description",
-			"copy", "mutableCopy", NULL
+			"base64EncodedStringWithOptions:", "base64EncodedDataWithOptions:",
+			"writeToFile:atomically:", "writeToFile:options:error:",
+			"enumerateByteRangesUsingBlock:",
+			"isEqualToData:", "isEqual:", "hash", "description", "copy", "mutableCopy",
+			NULL
 		};
 		static const char *mutableClassSelectors[] = {
 			"dataWithCapacity:", "dataWithLength:", NULL
 		};
 		static const char *mutableSelectors[] = {
-			"initWithCapacity:", "initWithLength:", "appendBytes:length:",
-			"appendData:", "setLength:", "increaseLengthBy:", "mutableBytes",
+			"initWithCapacity:", "initWithLength:", "appendBytes:length:", "appendData:",
+			"setLength:", "increaseLengthBy:", "mutableBytes", "setData:",
 			"replaceBytesInRange:withBytes:", "replaceBytesInRange:withBytes:length:",
 			"resetBytesInRange:", NULL
+		};
+		static const char *excluded[] = {
+			/* Deprecated by Cocoa itself. */
+			"dataWithContentsOfMappedFile:",	/* superseded by the :options: form */
+			"initWithContentsOfMappedFile:",	/* superseded by the :options: form */
+			"getBytes:",				/* superseded by -getBytes:length: */
+			/* Needs classes or codecs this Foundation does not ship. */
+			"dataWithContentsOfURL:",		/* NSURL */
+			"dataWithContentsOfURL:options:error:",	/* NSURL */
+			"initWithContentsOfURL:",		/* NSURL */
+			"initWithContentsOfURL:options:error:",	/* NSURL */
+			"writeToURL:atomically:",		/* NSURL */
+			"writeToURL:options:error:",		/* NSURL */
+			"compressedDataUsingAlgorithm:error:",	/* a compression codec */
+			"decompressedDataUsingAlgorithm:error:",	/* a compression codec */
+			NULL
 		};
 		NSData *probe = [NSData data];
 		NSMutableData *mutable = [[NSMutableData alloc] init];
@@ -298,9 +331,16 @@ int main(void)
 				printf("FOUNDATION-VALUE missing -%s (mutable)\n", mutableSelectors[i]);
 			}
 		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-VALUE present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
 		check("data-api-complete", complete,
-		      "every public NSData/NSMutableData selector exists (the hard rule)");
+		      "the audited Cocoa inventory for NSData/NSMutableData (implemented present, excluded absent)");
 	}
+
 
 	{
 		/*
