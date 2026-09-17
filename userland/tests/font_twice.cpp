@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #define FONT "/System/Shared/Fonts/DejaVuSans.ttf"
@@ -337,6 +338,66 @@ main()
 				    "of=%lu\n", k + 1, (void *) s[k], err,
 				    err ? std::strerror(err) : "-", (long) n,
 				    (unsigned long) sizeof(big));
+		}
+	}
+
+	/* ---- I: MMAP — the primitive that started all of this ----
+	 * FreeType's Unix stream maps a font and reads through the mapping, and
+	 * a THIRD face of one file came back as a bad format. Nothing in this
+	 * probe had ever mapped anything, which is why every descriptor-level
+	 * test above was clean and the fault still looked like the font's.
+	 *
+	 * Three concurrent mappings of ONE file, each checked against a plain
+	 * read of the same bytes. The mapping is MAP_PRIVATE/PROT_READ, exactly
+	 * what FreeType asks for. */
+	{
+		int fd = open(FONT, O_RDONLY);
+
+		if (fd >= 0) {
+			static unsigned char truth[8];
+			ssize_t t = read(fd, truth, sizeof(truth));
+
+			std::printf("OPEN3 mmap-truth path=%s read=%ld first=%02x%02x"
+				    "%02x%02x\n", FONT, (long) t, truth[0],
+				    truth[1], truth[2], truth[3]);
+
+			for (int k = 0; k < 3; k++) {
+				/* A FRESH DESCRIPTOR PER MAPPING, CLOSED AS SOON AS IT
+				 * IS MAPPED — which is what FreeType's stream does, and
+				 * the shape that failed. */
+				int fd = open(FONT, O_RDONLY);
+				void *m = MAP_FAILED;
+				int err = 0;
+
+				if (fd < 0) {
+					err = errno;
+				} else {
+					m = mmap(NULL, 759720, PROT_READ,
+						 MAP_PRIVATE, fd, 0);
+					if (m == MAP_FAILED) {
+						err = errno;
+					}
+					close(fd);
+				}
+				if (m == MAP_FAILED) {
+					std::printf("OPEN3 mmap#%d path=%s errno=%d"
+						    "(%s) MAP_FAILED\n", k + 1, FONT,
+						    err, std::strerror(err));
+				} else {
+					unsigned char *p = (unsigned char *) m;
+					bool same = (p[0] == truth[0]
+						     && p[1] == truth[1]
+						     && p[2] == truth[2]
+						     && p[3] == truth[3]);
+
+					std::printf("OPEN3 mmap#%d path=%s base=%p "
+						    "first=%02x%02x%02x%02x "
+						    "matches=%s\n", k + 1, FONT, m,
+						    p[0], p[1], p[2], p[3],
+						    same ? "yes" : "NO");
+				}
+				std::fflush(stdout);
+			}
 		}
 	}
 
