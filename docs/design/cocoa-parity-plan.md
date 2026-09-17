@@ -835,9 +835,9 @@ the gate is the claim; the sections above record what each one settled.
 | U5b | `ScrollView` — the offset on the clip view, scrollers, wheel | `uikit_u5b` |
 
 **Next: U5, the rest of the containers and collections.** The DAMAGE
-NARROWING first (the paint is still coarse and that is what is left
-expensive), then `CollectionView` with a flow layout, `SplitView` /
-`TabView`, and `GridView` / `Browser`.
+NARROWING turned out to be already done — measured, and recorded under
+"the paint was never coarse" — so what remains is `CollectionView` with a
+flow layout, then `SplitView` / `TabView`, then `GridView` / `Browser`.
 
 **Open inside finished slices** (fidelity, not absence):
 
@@ -861,10 +861,23 @@ expensive), then `CollectionView` with a flow layout, `SplitView` /
   every field; `uikit_u3c` 10/10, `uikit_u3d` 10/10) and the RECENTS MENU is
   Cocoa's default template (`uikit_menu` 22/22). What is left is token
   *objects* (tokens are strings).
-- U2a's damage model was narrowed after this table was first written: the
-  PAINT is still coarse (any damage repaints the whole content tree) but the
-  PUSH is per-view, over MIT-SHM. The coarse half is what remains expensive,
-  and narrowing it is U5's business.
+- U2a's damage model: BOTH halves are per-view. The PUSH goes over MIT-SHM,
+  and the PAINT walks only the subtrees that intersect the damage
+  (`draw_view` returns before descending into one that cannot), with
+  `noteViewDamage()` as the whole-surface fallback for a caller that cannot
+  say what changed. **THE PAINT WAS NEVER COARSE, and this note claimed it
+  was** — "still coarse (any damage repaints the whole content tree) ... the
+  coarse half is what remains expensive" — until the U5 slice measured it,
+  which is the only reason the claim survived as long as it did. One slider
+  drag step on the widget zoo, with `ARGENTUM_PAINT_MS=1`:
+  ```
+    views walked 3, damage 240x24, paint 10ms, flush 0ms
+  ```
+  against the once-per-structural-change full frame: 52 views, 1106x448,
+  paint 1060ms, flush 50ms. So what remains expensive is the PIXELS a full
+  repaint rasterises, not the width of the damage — and a regression that
+  made one control's drag repaint the tree now fails `uikit_u4`, which
+  asserts the pruning (`a-small-damage-walks-a-small-part-of-the-tree`).
 
 **Not on this plan:** Weaver's interface-builder work (removed 2026-09).
 `OutlineView` and the `View`/`Window` capabilities it exercised stay, as does

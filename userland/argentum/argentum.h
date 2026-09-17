@@ -1255,10 +1255,14 @@ enum class WindowStyle {
 /// hit zone and the titlebar drag are claimed when input lands (U2b), so
 /// they are drawn but not yet live. Frames are POINTS and the surface is
 /// frame.size * pxPerPt pixels — a 2x session makes them differ, and the
-/// context is what reconciles them. The damage model is COARSE in v1: any
-/// damage repaints the whole content tree, while the region handed to X
-/// is the recorded damage only. Narrowing the repaint is a local change
-/// later; the API does not change.
+/// context is what reconciles them. The damage model is NARROW, and that is
+/// measured rather than assumed: a view that can say WHAT changed passes its
+/// own rect, the paint walks only the subtrees that intersect that damage
+/// (`draw_view` returns before descending into one that cannot), and the
+/// flush sends that region. `noteViewDamage()` is the whole-surface fallback
+/// for a caller that cannot say what changed. The expense that remains is the
+/// PIXELS a full repaint rasterises, not the width of the damage — see the
+/// plan doc's U5 item for the numbers.
 ///
 /// @see View, Context, ViewController
 class Window : public Object {

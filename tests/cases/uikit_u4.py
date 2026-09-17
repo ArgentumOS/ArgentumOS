@@ -37,6 +37,10 @@ class Case(BaseCase):
         session.run("export ARGENTUM_HITLOG=1")   # the hit-test instrument
         session.run("export ARGENTUM_KEYLOG=1")   # the pop-up and panel ones
         session.run("export ARGENTUM_HITLOG=1")
+        # the damage model's cost, which is what the next U5 item (narrowing
+        # the paint) has to move: every paint prints the views it walked and
+        # the size of the damage it was given
+        session.run("export ARGENTUM_PAINT_MS=1")
         self.check("shell-ready", ready, "the serial console has a shell")
         if not ready:
             return
@@ -47,6 +51,14 @@ class Case(BaseCase):
                        "no ZOO-READY; guest tail: " + session.tail())
             return
         out = session.output_since(mark)
+        paint = re.findall(r"ARGENTUM-PAINT paint=\S+ flush=\S+ ms \S+ "
+                           r"views=(\d+) dmg=(\d+)x(\d+)", out)
+        win = re.search(r"ARGENTUM-PAINT .* (\d+)x(\d+) views=", out)
+        self.note("paint cost on this board: %d paints so far, views=%s, "
+                  "dmg=%s, window=%s"
+                  % (len(paint), sorted({int(v) for v, _, _ in paint}),
+                     sorted({(int(w), int(h)) for _, w, h in paint}),
+                     win.groups() if win else "?"))
         sh = re.search(r"ZOO-SCREEN w=\d+ h=(\d+)", out)
         pts = {m.group(1): (float(m.group(2)), float(m.group(3)))
                for m in re.finditer(r"ZOO-AT (\S+) x=([\d.]+) y=([\d.]+)", out)}
@@ -70,11 +82,14 @@ class Case(BaseCase):
         # the knob starts at the far left (value 0), so the drag starts there
         mon.goto(*at(sx - 120, sy))
         mon.press()
-        # 10 steps of 10 points, SLOWLY: a slider repaint is a full board
-        # repaint (the coarse damage model), so a fast drag overruns the
-        # guest's input queue and it DROPS motion - which shows up as a
-        # value that stops short of where the pointer went. dt=0.25 keeps
-        # the client inside its own drain rate.
+        # 10 steps of 10 points, SLOWLY. This used to say "a slider repaint is
+        # a full board repaint (the coarse damage model), so a fast drag
+        # overruns the guest's input queue and it DROPS motion": the repaint is
+        # NOT the reason. Measured with ARGENTUM_PAINT_MS=1, a step walks 3
+        # views, damages 240x24 and costs 10ms - the paint is already
+        # damage-limited, and the check below keeps it that way. Motion does
+        # still drop at this rate; why is not this case's question. dt=0.25
+        # keeps the client inside its own drain rate.
         for i in range(1, 11):
             mon.goto(*at(sx - 120 + 10 * i, sy), dt=0.25)
         mon.release(settle=0.8)
@@ -84,10 +99,33 @@ class Case(BaseCase):
         self.check("slider-reports-its-value", len(slides) > 1,
                    "a continuous drag sent %d action(s), the last reading %s"
                    % (len(slides), slides[-1] if slides else None))
+
+        # ---- THE DAMAGE PRUNING, as a property of the LIBRARY -------------
+        # A control that says WHAT changed must not cost a tree walk: the paint
+        # returns before descending into any subtree that cannot touch the
+        # damage. Stated over the paints this drag produced, so it does not
+        # depend on how many steps arrived - for every paint whose damage is
+        # small, the walk must be small too. A whole-tree repaint for one
+        # control's step fails this (measured: 52 views for the full frame
+        # against 3 for a step).
+        p2 = re.findall(r"ARGENTUM-PAINT paint=\S+ flush=\S+ ms \S+ "
+                        r"views=(\d+) dmg=(\d+)x(\d+)", out2)
+        sizes = [(int(a), int(b))
+                 for a, b in re.findall(r" ms (\d+)x(\d+) views=", out2)]
+        board = max(sizes, key=lambda s: s[0] * s[1]) if sizes else (0, 0)
+        area = board[0] * board[1]
+        small = [int(v) for v, w, h in p2 if int(w) * int(h) * 4 < area]
+        self.check("a-small-damage-walks-a-small-part-of-the-tree",
+                   len(small) >= 8 and max(small) <= 12,
+                   "on a %dx%d board, %d of %d paints have damage under a "
+                   "quarter of it and their walks are %s (the full frame walks "
+                   "the tree; a control must not)"
+                   % (board[0], board[1], len(small), len(p2),
+                      sorted(set(small))))
         if slides:
             seen = [float(v) for v in slides]
-            # The input path DROPS motion during a drag (each step repaints
-            # the whole board, and the guest's queue is small), so the
+            # The input path DROPS motion during a drag (the guest's queue is
+            # small; the repaint is NOT the cost - see the check above), so the
             # number of readings is not the number of steps sent. What IS
             # checkable is the thing the slider promises: the value maps
             # LINEARLY to the pointer's x. The steps I inject are equal, so
