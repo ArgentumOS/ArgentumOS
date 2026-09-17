@@ -1,17 +1,19 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4 LANDED, the audited inventories CLOSED, and the plist
+Status: **DRAFT (2026-09). F0–F4, F6 and F7 LANDED, the audited inventories CLOSED, and the plist
 skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
 not an array dependency: see the work queue), `NSLocale` (stage E — the localised case
 rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, and a call as an
-object) and `NSPropertyListSerialization`. Gated on a
-guest boot by six cases (`foundation_core`, `foundation_string`, `foundation_value`,
-`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **15 / 27 /
-17 / 34 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
-(the public headers are already staged, so it is a deliberate later step rather than a gap).
-The work queue
+object), `NSPropertyListSerialization`, and `NSCalendar`/`NSTimeZone`/`NSDateComponents` (F7 — a
+fixed-offset time zone and the Gregorian calendar AS RULES) — with every staged public header
+annotated for nullability (F6, and enforced since as a standing rule). Gated on a
+guest boot by seven cases (`foundation_core`, `foundation_string`, `foundation_value`,
+`foundation_collection`, `foundation_error`, `foundation_calendar`, `objc_smoke`), whose probes
+carry **15 / 27 / 17 / 34 / 6 / 10** checks. **F5 (self-hosting) is DEFERRED — the user's call,
+2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
+than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
 Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md` §8–§9):
@@ -264,6 +266,55 @@ status.
   compiler cannot cover: `-Werror=nullability-completeness` polices a header once it
   carries ANY annotation, but a header carrying NONE is silent — and none is exactly
   the state a newly written class lands in.
+
+- **F7 — `NSCalendar`, `NSTimeZone` and `NSDateComponents`. DONE (2026-09-17).**
+  `foundation_calendar` 10/10 on a guest boot, and §9 records the two things the probe found on the
+  way (the clamp's roll — a real bug — and, for the second time in this plan, a check whose detail
+  did not carry its measurement).
+  The
+  LAST family F2 deliberately left out ("no calendar, time zones or locales — a later fidelity
+  slice", this section's F2 note). The boundary is NSLocale's, drawn the same way — **a RULE,
+  not a TABLE** — and NSDate's own note names the substrate: "there is no reason to hand-roll
+  what libc already has", so the arithmetic sits on libc's `struct tm`, `gmtime_r`/`timegm`
+  plus our own field normalisation rather than on a hand-written calendar.
+
+  **What ships** — all Gregorian, all exact, because the time zone is a FIXED OFFSET and a day
+  is therefore exactly 86400 seconds:
+  * `NSTimeZone` as a fixed offset from UTC: `+timeZoneForSecondsFromGMT:`, `+systemTimeZone`
+    and `+localTimeZone` (both UTC — there is no tzdata to read, and saying so beats guessing
+    a user's), `-secondsFromGMT`, `-secondsFromGMTForDate:`, `-name`,
+    `-isDaylightSavingTime` (NO: a fixed offset has no transition rules to consult),
+    `-isEqualToTimeZone:`, `-hash`, `-description`;
+  * `NSDateComponents` as the calendar's data type: era/quarter/year/month/day/hour/minute/
+    second/nanosecond/weekday/weekdayOrdinal/weekOfMonth/weekOfYear/yearForWeekOfYear, the
+    week fields derived from `firstWeekday` + `minimumDaysInFirstWeek` (a RULE), with
+    NSDateComponentUndefined = NSIntegerMax = NSNotFound as the "not set" sentinel;
+  * `NSCalendar` (Gregorian): `+currentCalendar`, `+calendarWithIdentifier:`,
+    `-components:fromDate:`, `-dateFromComponents:`, `-dateByAddingComponents:toDate:options:`,
+    `-dateByAddingUnit:value:toDate:options:`, `-rangeOfUnit:inUnit:forDate:`,
+    `-rangeOfUnit:startDate:interval:forDate:`, `-isDate:inSameDayAsDate:`,
+    `-firstWeekday`/`-setFirstWeekday:`, `-minimumDaysInFirstWeek`/`-setMinimumDaysInFirstWeek:`,
+    `-timeZone`/`-setTimeZone:`, `-isEqualToCalendar:`, `-description`.
+
+  **What is REFUSED BY NAME, each because it needs a table this library does not ship** (the
+  shape NSLocale's exclusions already have, and asserted ABSENT by the probe):
+  * time-zone NAMES — `+timeZoneWithName:`, `+timeZoneWithAbbreviation:`, `+knownTimeZoneNames`,
+    `+abbreviationDictionary`, `+timeZoneWithName:data:`: the IANA identifiers ARE the database;
+  * DST transitions — `-nextDaylightSavingTimeTransition…`: a transition IS a table;
+  * non-Gregorian calendars — the Buddhist/Japanese/Hebrew/Islamic/… identifiers, and
+    `NSCalendarIdentifierISO8601` for now (the same calendar, but a different rule set);
+  * the parser and formatter family — `NSDateFormatter`, `-dateFromString:`, `-stringFromDate:`,
+    and `-components:fromDate:toDate:options:` (the field-wise DIFFERENCE: its option semantics
+    are a table of cases). `-dateByAdding…` answers the arithmetic question instead, which is
+    the part a calendar is actually for.
+
+  AND ONE INPUT MODE IS REFUSED: `-dateFromComponents:` reads the CALENDAR fields
+  (era/year/month/day/hour/minute/second). The week-based fields (`weekOfYear`,
+  `weekOfMonth`, `yearForWeekOfYear`) are ANSWERS — what a conversion fills in — not a second
+  way to say a date, so a component that sets only those is invalid and
+  `-isValidDateInCalendar:` says so.
+
+  Recorded BEFORE the code, because the boundary IS the design.
 
 ## 6. Risks / gotchas
 
@@ -812,7 +863,8 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSLocale` — **SHIPPED (stage E)** | the localised CASE comparisons: the Turkic rule a locale needs, not a catalogue. Ordering stays byte order (no collation tables ship) and search folding stays byte-wise |
 | `NSMethodSignature` — **SHIPPED (stage F)** | a selector's types: the parser (primitives, qualifiers, pointers, arrays, structs/unions, bitfields, `@"Class"` names, and the older offset form) and `-methodSignatureForSelector:` on NSObject, both variants. The widths are OURS and stated |
 | `NSInvocation` — **SHIPPED (stage F)** | the invocation, the register classification and the two x86-64 trampolines, with the runtime's hooks installed: forwarding works end to end along both paths (§9's stage F, second half) |
-| `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
+| `NSCalendar`/`NSTimeZone` (+ `NSDateComponents`) — **SHIPPED (F7)** | a fixed-offset time zone and the Gregorian calendar AS RULES: conversion both ways, field arithmetic with the clamp (31 Jan + 1 month is the last day of February), ranges, and the week rule — all on libc's `struct tm`. Refused by name and asserted ABSENT by the probe: the tz database, DST transitions, the non-Gregorian calendars, the date parser and the formatter |
+| `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
 `unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
@@ -1284,3 +1336,53 @@ guest) stays deferred by the user, and the sweep never depended on it: the annot
 DECLARATIONS, and the headers were already staged.
 
 `foundation_string` 27/27 on a guest boot, and `make rootagfs` clean.
+
+### F7 landed (2026-09-17): the calendar family, and the two things its probe found
+
+`NSTimeZone`, `NSDateComponents` and `NSCalendar` — the last family F2 left out — with
+`foundation_calendar` **10/10** on a guest boot, and every staged header still annotated (the
+gate now reports 22 of 26, the four new headers included).
+
+THE BOUNDARY IS NSLOCALE'S, drawn again: a RULE, not a TABLE. A fixed-offset time zone and the
+Gregorian calendar ARE rules, so they ship; the IANA database, the DST transition tables, the
+non-Gregorian calendars, the parser and the formatter are tables, so they are REFUSED BY NAME and
+the probe asserts them ABSENT. The substrate is libc, which is NSDate's own note applied:
+`gmtime_r` for fields, `timegm` for the inverse — and for its NORMALISATION, which is where the
+first bug hid.
+
+THE PROBE FOUND TWO THINGS, and the first was a REAL BUG in the new code:
+
+  * THE CLAMP'S ROLL. `-dateByAddingComponents:` rolled months with `timegm` while the day was
+    still 31, and `timegm` normalises the day too — so 31 January + 1 month became 3 MARCH, and
+    the clamp then clamped March: the answer was 31 March, not the last day of February. The fix
+    is to take the day OUT of the roll: set it to 1, roll, clamp against the target month's
+    length, and put the wanted day back. The same rule governs a YEAR add, where 29 February 2024
+    + 1 year must give 28 February 2025;
+  * A CHECK WHOSE DETAIL DID NOT CARRY ITS MEASUREMENT — this plan's own §9 lesson, earned a
+    second time. `calendar-ranges` failed with "month lengths, 12 months, 24 hours, and a month's
+    start", which says nothing about WHICH clause gave way or by how much. The checks now format
+    the fields they measured into the detail (`fn_why`/`fn_why2`), so a failure reads
+    `first: y=2026 m=3 d=31 | second: …` rather than describing itself. That is also how the
+    clamp bug above was finally located.
+
+AND THE STANDING RULE'S GATES CAUGHT MY OWN NEW CODE THREE TIMES, which is the argument for that
+rule being mechanical rather than a convention:
+
+  * `foundation-gate` refused `NSCalendar.h` — the FIRST header written under the rule — because I
+    wrote `NS_ASSUME_NONNULL_END` and forgot the `BEGIN`. Every downstream completeness error
+    cascaded from that single omission;
+  * `-Werror=nullable-to-nonnull-conversion` then caught four nullable flows in the new probe and
+    its support unit: an inline `[NSTimeZone timeZoneForSecondsFromGMT:]` passed to
+    `-setTimeZone:` (which RAISES on nil, so that one would have been a crash), an inline
+    `-dateFromComponents:` passed as a `toDate:` argument, and the support unit returning a
+    nullable constructor's result from a nonnull-declared function. Each fix was the established
+    one: bind it, guard with `!= nil` inside the `&&` chain, or correct the declaration;
+  * and applying the sweep's own rule FORWARD changed the annotations I had just written: every
+    constructor here has a `[super init]` check, so `+timeZoneForSecondsFromGMT:`,
+    `+systemTimeZone`, `+localTimeZone`, `-initWithSecondsFromGMT:`, `+currentCalendar`, `-init`
+    and `-initWithCalendarIdentifier:` are all `nullable` — the same reading as `NSError`'s
+    constructors. Three declared units (`NSCalendarUnitDayOfYear`, `…Calendar`, `…TimeZone`) were
+    REMOVED rather than left as silent no-ops, because a unit that fills in nothing is exactly the
+    half-answer this family refuses.
+
+`foundation_calendar` 10/10, and `make rootagfs` clean — the gate included.

@@ -378,12 +378,16 @@ int main(void)
 			"addTimeInterval:",					/* superseded by -dateByAddingTimeInterval: */
 			"initWithString:",					/* removed from Cocoa's documented API */
 			"dateWithString:",					/* removed from Cocoa's documented API */
-			/* Needs classes this Foundation does not ship. */
+			/* Needs a piece this Foundation does not ship: a date PARSER. */
 			"dateWithNaturalLanguageString:",			/* needs a date parser */
 			"dateWithNaturalLanguageString:locale:",		/* needs a date parser */
-			"descriptionWithCalendarFormat:timeZone:locale:",	/* NSCalendar, NSTimeZone, NSLocale */
-			"dateByAddingComponents:toDate:options:",		/* NSCalendar */
-			"dateByAddingUnit:value:toDate:options:",		/* NSCalendar */
+			/* NOT absent for want of a class — NSCalendar, NSTimeZone and NSLocale all
+			 * SHIP (F7 and stage E). These are absent from NSDATE's own surface
+			 * because they are the CALENDAR's methods, which is where Cocoa puts them:
+			 * the arithmetic lives on the calendar as -dateByAdding…. */
+			"descriptionWithCalendarFormat:timeZone:locale:",	/* deprecated, and the calendar's */
+			"dateByAddingComponents:toDate:options:",		/* NSCalendar's method, not NSDate's */
+			"dateByAddingUnit:value:toDate:options:",		/* NSCalendar's method, not NSDate's */
 			"initWithCoder:",					/* NSCoding */
 			"encodeWithCoder:",					/* NSCoding */
 			NULL

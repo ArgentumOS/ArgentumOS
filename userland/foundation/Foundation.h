@@ -24,6 +24,9 @@
 #import <foundation/NSNumber.h>
 #import <foundation/NSData.h>
 #import <foundation/NSDate.h>
+#import <foundation/NSDateComponents.h>
+#import <foundation/NSTimeZone.h>
+#import <foundation/NSCalendar.h>
 #import <foundation/NSArray.h>
 #import <foundation/NSDictionary.h>
 #import <foundation/NSError.h>
