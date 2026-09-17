@@ -1,12 +1,15 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F3 LANDED (2026-09-17)** — the root class, the
-strings, the value types and the collections are in and gated on a guest boot
-(`foundation_core` 5/5, `foundation_string` 7/7, `foundation_value` 8/8,
-`foundation_collection` 9/9; `TESTS-OK 4/4 case(s), 24/24 check(s)`). F4
-(`NSError`/`NSException`) is next. Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
-the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md`
-§8–§9):
+Status: **DRAFT (2026-09). F0–F4 LANDED, the audited inventories CLOSED, and the plist
+skin ships** — the root class, the strings, the value types, the collections,
+`NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
+`NSIndexSet`, `NSEnumerator`) and `NSPropertyListSerialization`. Gated on a guest boot by
+six cases (`foundation_core`, `foundation_string`, `foundation_value`,
+`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **6 / 18 /
+17 / 31 / 6** checks. **F5 (self-hosting) is the one phase not started.** The work queue
+is the exclusions table below, and §9 records what each audit found and what it cost.
+Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
+the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md` §8–§9):
 
 - **the object, memory and collections core first** — the layer whose contracts
   (ownership, equality, copying, description) are hardest to change later;
@@ -175,20 +178,28 @@ status.
   identity, the runtime's pools with the library linked, and a subclass in a
   second translation unit — five checks, green on a guest boot. No pool class
   (§7.5).
-- **F1 — `NSString`/`NSMutableString`. DONE 2026-09-17 (§9).** The family
+- **F1 — `NSString`/`NSMutableString`. DONE 2026-09-17 (§9; its probe carries 18 checks
+  today).** The family
   (`NSString` abstract, `NSOwnedString`, `NSMutableString`, `NSConstantString`,
   `NSTinyString`), `@"…"` usable at *both* representations clang produces (tagged
   under 9 ASCII characters, an object at 9+), and `-description` real on every
-  class. Gated: `foundation_string` 7/7 on a guest boot.
+  class.
 - **F2 — `NSNumber`, `NSData`/`NSMutableData`, `NSDate`. DONE 2026-09-17 (§9).**
 - **F3 — `NSArray`/`NSMutableArray`, `NSDictionary`/`NSMutableDictionary`. DONE 2026-09-17 (§9).** With
   `-copy`/`-mutableCopy`, fast enumeration, and the equality/hash contract
   exercised on a custom key type.
-- **F4 — `NSError` and `NSException`**, including `@throw`/`@catch` of an
-  `NSException` across a call boundary, and `NSError` as an out-parameter.
+- **F4 — `NSError` and `NSException`. DONE 2026-09-17 (§9)**, including `@throw`/`@catch`
+  of an `NSException` across a call boundary, and `NSError` as an out-parameter. Its one
+  loose end — the `+stringWithFormat:arguments:` crash — was root-caused afterwards (the
+  CALLER's side of C99 7.15.1.4: the callee consumes what it is handed) and closed, with
+  the library unchanged.
+- **The three dependency classes the audits named — `NSCharacterSet`, `NSIndexSet`,
+  `NSEnumerator`. DONE (§9)**, plus the **plist skin**
+  (`NSPropertyListSerialization`), which is where this plan meets
+  `docs/design/plist-config-plan.md`.
 - **F5 — self-hosting**: headers staged, and a trivial ObjC program compiled *on
   the guest* against the staged Foundation — the manifest commitment in
-  `docs/design/self-hosting-packages.md` §6 made real.
+  `docs/design/self-hosting-packages.md` §6 made real. **NOT STARTED.**
 
 ## 6. Risks / gotchas
 
