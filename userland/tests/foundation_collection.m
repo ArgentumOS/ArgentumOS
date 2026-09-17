@@ -282,35 +282,71 @@ int main(void)
 
 
 	{
-		/* THE HARD RULE, mechanically, for the array family. */
+		/*
+		 * THE AUDITED COCOA INVENTORY for NSArray/NSMutableArray.
+		 *
+		 * `implemented` is Cocoa's documented surface and must all EXIST;
+		 * `excluded` is what we deliberately do not ship and must all be ABSENT.
+		 * The old check only confirmed what our own header declared — how
+		 * +stringWithFormat:arguments: shipped missing — and this one named six
+		 * gaps, all implemented in the same pass: the comparator-sort pair,
+		 * -enumerateObjectsUsingBlock:, the sorted-range search,
+		 * -removeObjectIdenticalTo:inRange: and the ranged replacement.
+		 */
 		static const char *classSelectors[] = {
-			"array", "arrayWithObject:", "arrayWithObjects:count:",
-			"arrayWithArray:", "arrayWithObjects:", NULL
+			"array", "arrayWithObject:", "arrayWithObjects:count:", "arrayWithArray:",
+			"arrayWithObjects:", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithObject:", "initWithObjects:count:", "initWithArray:",
 			"initWithObjects:",
 			"count", "objectAtIndex:", "objectAtIndexedSubscript:",
-			"firstObject", "lastObject", "indexOfObject:", "indexOfObject:inRange:",
-			"indexOfObjectIdenticalTo:", "containsObject:",
+			"firstObject", "lastObject",
+			"indexOfObject:", "indexOfObject:inRange:", "indexOfObjectIdenticalTo:",
+			"indexOfObject:inSortedRange:options:usingComparator:", "containsObject:",
 			"arrayByAddingObject:", "arrayByAddingObjectsFromArray:",
-			"subarrayWithRange:", "getObjects:range:",
-			"componentsJoinedByString:", "sortedArrayUsingSelector:",
-			"isEqualToArray:", "isEqual:", "hash", "description",
-			"copy", "mutableCopy",
-			"countByEnumeratingWithState:objects:count:", NULL
+			"subarrayWithRange:", "getObjects:range:", "componentsJoinedByString:",
+			"sortedArrayUsingSelector:", "sortedArrayUsingComparator:",
+			"enumerateObjectsUsingBlock:",
+			"isEqualToArray:", "isEqual:", "hash", "description", "copy", "mutableCopy",
+			"countByEnumeratingWithState:objects:count:",
+			NULL
 		};
 		static const char *mutableClassSelectors[] = {
 			"array", "arrayWithCapacity:", NULL
 		};
 		static const char *mutableSelectors[] = {
 			"initWithCapacity:", "addObject:", "addObjectsFromArray:",
-			"insertObject:atIndex:", "removeObjectAtIndex:",
-			"removeLastObject", "removeObject:", "removeObjectIdenticalTo:",
-			"removeObject:inRange:", "removeObjectsInRange:", "removeAllObjects",
-			"replaceObjectAtIndex:withObject:", "replaceObjectsInRange:withObjectsFromArray:",
+			"insertObject:atIndex:", "removeObjectAtIndex:", "removeLastObject",
+			"removeObject:", "removeObject:inRange:",
+			"removeObjectIdenticalTo:", "removeObjectIdenticalTo:inRange:",
+			"removeObjectsInRange:", "removeAllObjects",
+			"replaceObjectAtIndex:withObject:",
+			"replaceObjectsInRange:withObjectsFromArray:",
+			"replaceObjectsInRange:withObjectsFromArray:range:",
 			"setArray:", "exchangeObjectAtIndex:withObjectAtIndex:",
-			"sortUsingSelector:", "setObject:atIndexedSubscript:", NULL
+			"sortUsingSelector:", "sortUsingComparator:",
+			"setObject:atIndexedSubscript:", NULL
+		};
+		static const char *excluded[] = {
+			/* Needs NSIndexSet, which this Foundation does not ship. */
+			"objectsAtIndexes:",			/* an NSIndexSet result */
+			"insertObjects:atIndexes:",		/* an NSIndexSet argument */
+			"replaceObjectsAtIndexes:withObjects:",	/* an NSIndexSet argument */
+			"indexesOfObjectsPassingTest:",		/* an NSIndexSet result */
+			/* Needs predicates, descriptors, function pointers or plists. */
+			"filteredArrayUsingPredicate:",		/* NSPredicate */
+			"sortedArrayUsingDescriptors:",		/* NSSortDescriptor */
+			"sortedArrayUsingFunction:context:",	/* C function comparators */
+			"sortUsingFunction:context:",		/* C function comparators */
+			"arrayWithContentsOfFile:",		/* a plist reader */
+			"initWithContentsOfFile:",		/* a plist reader */
+			"writeToFile:atomically:",		/* a plist writer */
+			/* Needs NSURL. */
+			"arrayWithContentsOfURL:",		/* NSURL */
+			"initWithContentsOfURL:",		/* NSURL */
+			"writeToURL:atomically:",		/* NSURL */
+			NULL
 		};
 		NSArray *probe = [NSArray arrayWithObject:@"x"];
 		NSMutableArray *mutable = [[NSMutableArray alloc] init];
@@ -341,9 +377,16 @@ int main(void)
 				printf("FOUNDATION-COLLECTION missing -%s (mutable)\n", mutableSelectors[i]);
 			}
 		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
 		check("array-api-complete", complete,
-		      "every public NSArray/NSMutableArray selector exists (the hard rule)");
+		      "the audited Cocoa inventory for NSArray/NSMutableArray");
 	}
+
 
 	{
 		/* The array surface, SPLIT ONE CHECK PER STEP. The combined version

@@ -295,6 +295,96 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 	return NSNotFound;
 }
 
+/* The comparator sort, shared by the immutable and mutable forms. */
+static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator comparator)
+{
+	NSMutableArray *sorted = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	[sorted addObjectsFromArray:source];
+	for (i = 1; i < [sorted count]; i++) {
+		id key = [sorted objectAtIndex:i];
+		NSUInteger j = i;
+
+		while (j > 0 && comparator([sorted objectAtIndex:j - 1], key) ==
+			       NSOrderedDescending) {
+			[sorted replaceObjectAtIndex:j
+					   withObject:[sorted objectAtIndex:j - 1]];
+			j--;
+		}
+		[sorted replaceObjectAtIndex:j withObject:key];
+	}
+	return sorted;
+}
+
+- (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return [[NSArray alloc] initWithArray:self];
+	}
+	return array_sorted_with_comparator(self, comparator);
+}
+
+- (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	for (i = 0; i < _count; i++) {
+		block(_items[i], i, &stop);
+		if (stop) {
+			break;
+		}
+	}
+}
+
+- (NSUInteger)indexOfObject:(id)object
+	      inSortedRange:(NSRange)range
+		  options:(NSBinarySearchingOptions)options
+	      usingComparator:(NSComparator)comparator
+{
+	/*
+	 * A LINEAR SCAN over an assumed-sorted range, which answers every option the
+	 * set defines: the first equal index, the last, or where the object would be
+	 * inserted. The contract asks for the ANSWER, not for a binary search.
+	 */
+	size_t start = range.location;
+	size_t end = start + range.length;
+	size_t i;
+	NSUInteger first = NSNotFound;
+	NSUInteger last = NSNotFound;
+
+	if (end > _count) {
+		end = _count;
+	}
+	for (i = start; i < end; i++) {
+		NSComparisonResult order = comparator(_items[i], object);
+
+		if (order == NSOrderedSame) {
+			if (first == NSNotFound) {
+				first = i;
+			}
+			last = i;
+			continue;
+		}
+		if (order == NSOrderedDescending && first == NSNotFound) {
+			if (options & NSBinarySearchingInsertionIndex) {
+				return i;
+			}
+		}
+	}
+	if (options & NSBinarySearchingInsertionIndex) {
+		return (first != NSNotFound) ? last + 1 : end;
+	}
+	if (options & NSBinarySearchingLastEqual) {
+		return (last != NSNotFound) ? last : NSNotFound;
+	}
+	return first;
+}
+
 - (NSString *)componentsJoinedByString:(NSString *)separator
 {
 	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:""];
@@ -590,6 +680,56 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 			return;
 		}
 	}
+}
+
+- (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range
+{
+	NSUInteger i;
+
+	for (i = range.location; i < _count && i < range.location + range.length; i++) {
+		if (_items[i] == object) {
+			[self removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
+- (void)sortUsingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return;
+	}
+	[self setArray:array_sorted_with_comparator(self, comparator)];
+}
+
+- (void)replaceObjectsInRange:(NSRange)range
+	 withObjectsFromArray:(NSArray *)other
+			range:(NSRange)otherRange
+{
+	/*
+	 * Built into a FRESH array and swapped in: replacing in place while reading
+	 * from a range of a possibly-identical array is the aliasing hazard the
+	 * collection work already met once.
+	 */
+	NSMutableArray *built = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		if (i == range.location) {
+			NSUInteger k;
+
+			for (k = 0; k < otherRange.length && k < [other count]; k++) {
+				[built addObject:[other objectAtIndex:otherRange.location + k]];
+			}
+			for (k = 0; k < range.length && range.location + k < [self count]; k++) {
+				(void)k;
+			}
+			i = range.location + (range.length > 0 ? range.length - 1 : 0);
+			continue;
+		}
+		[built addObject:[self objectAtIndex:i]];
+	}
+	[self setArray:built];
 }
 
 - (void)removeObject:(id)object inRange:(NSRange)range

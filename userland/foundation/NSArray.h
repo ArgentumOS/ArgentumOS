@@ -64,9 +64,15 @@
 
 - (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range;
 - (NSUInteger)indexOfObjectIdenticalTo:(id)object;
+- (NSUInteger)indexOfObject:(id)object
+		   inSortedRange:(NSRange)range
+			   options:(NSBinarySearchingOptions)options
+		   usingComparator:(NSComparator)comparator;
 
 - (NSString *)componentsJoinedByString:(NSString *)separator;
 - (NSArray *)sortedArrayUsingSelector:(SEL)comparator;
+- (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator;
+- (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block;
 
 - (BOOL)isEqualToArray:(NSArray *)other;
 
@@ -87,11 +93,16 @@
 - (void)removeLastObject;
 - (void)removeObject:(id)object;
 - (void)removeObjectIdenticalTo:(id)object;
+- (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range;
 - (void)removeObject:(id)object inRange:(NSRange)range;
 - (void)removeObjectsInRange:(NSRange)range;
 - (void)setArray:(NSArray *)other;
 - (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second;
 - (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)other;
+- (void)replaceObjectsInRange:(NSRange)range
+	 withObjectsFromArray:(NSArray *)other
+			  range:(NSRange)otherRange;
+- (void)sortUsingComparator:(NSComparator)comparator;
 - (void)sortUsingSelector:(SEL)comparator;
 
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */

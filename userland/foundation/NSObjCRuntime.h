@@ -87,6 +87,16 @@ static inline BOOL NSLocationInRange(NSUInteger location, NSRange range)
 
 typedef unsigned short unichar;
 
+/* The block comparator the sorted/sort ...UsingComparator: forms take, and the
+ * options for the binary-search family. Both are Cocoa's spellings. */
+typedef NSComparisonResult (^NSComparator)(id object1, id object2);
+
+typedef enum {
+	NSBinarySearchingFirstEqual = 1,
+	NSBinarySearchingLastEqual = 2,
+	NSBinarySearchingInsertionIndex = 4
+} NSBinarySearchingOptions;
+
 /*
  * Cocoa spells this on its nil-terminated variadic methods. The attribute only
  * means something for C functions, so as written here it is documentation that
