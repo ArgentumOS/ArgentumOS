@@ -127,6 +127,147 @@ int main(void)
 		}
 	}
 
+	/* ---- comments SURVIVE A REWRITE -------------------------------------
+	 *
+	 * The shipped config files are MOSTLY PROSE, so the property that matters
+	 * is not "comments parse" but "nothing deletes them": parse -> serialise is
+	 * BYTE-IDENTICAL, a comment stays attached to the entry it precedes, and a
+	 * `config set`-style change leaves the prose where it was. */
+	{
+		static const char commented[] =
+			"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+			"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+			"\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+			"<plist version=\"1.0\">\n"
+			"<dict>\n"
+			"\t<!-- head prose -->\n"
+			"\t<key>greeting</key>\n"
+			"\t<string>hello</string>\n"
+			"\t<key>list</key>\n"
+			"\t<array>\n"
+			"\t\t<!-- first -->\n"
+			"\t\t<string>one</string>\n"
+			"\t\t<string>two</string>\n"
+			"\t</array>\n"
+			"\t<!-- before the last entry -->\n"
+			"\t<key>last</key>\n"
+			"\t<true/>\n"
+			"</dict>\n"
+			"</plist>\n";
+		plist_value_t *parsed = plist_parse(commented, strlen(commented),
+						    error, sizeof(error));
+		char *written = NULL;
+		size_t written_length = 0;
+
+		check("comments-parse", parsed != NULL, error);
+		if (parsed != NULL) {
+			plist_value_t *list = plist_dictionary_get(parsed, "list");
+
+			/* A comment is a SLOT of the storage — a NULL key here — and
+			 * INVISIBLE to the accessors, which is what keeps an index from
+			 * ever landing on prose. The two slots asserted are the one at
+			 * the head and the one standing before "last": ATTACHMENT is
+			 * exactly "the comment sits immediately before its entry". */
+			check("comment-occupies-a-slot",
+			      parsed->u.dictionary.count == 5 &&
+			      parsed->u.dictionary.keys[0] == NULL &&
+			      plist_type_of(parsed->u.dictionary.values[0]) == PLIST_COMMENT &&
+			      strcmp(parsed->u.dictionary.values[0]->u.string, " head prose ") == 0 &&
+			      parsed->u.dictionary.keys[3] == NULL &&
+			      plist_type_of(parsed->u.dictionary.values[3]) == PLIST_COMMENT &&
+			      strcmp(parsed->u.dictionary.values[3]->u.string,
+				     " before the last entry ") == 0 &&
+			      strcmp(parsed->u.dictionary.keys[4], "last") == 0,
+			      "the comments are not NULL-key slots beside their entries");
+			check("comment-yields-to-lookup",
+			      plist_dictionary_get(parsed, "greeting") != NULL &&
+			      strcmp(plist_dictionary_get(parsed, "greeting")->u.string,
+				     "hello") == 0,
+			      NULL);
+			check("comment-in-an-array-is-an-item",
+			      list != NULL && list->u.array.count == 3 &&
+			      plist_type_of(list->u.array.items[0]) == PLIST_COMMENT,
+			      NULL);
+			check("comment-yields-to-index",
+			      plist_array_count(list) == 2 &&
+			      plist_array_get(list, 0) != NULL &&
+			      strcmp(plist_array_get(list, 0)->u.string, "one") == 0 &&
+			      plist_array_get(list, 1) != NULL &&
+			      strcmp(plist_array_get(list, 1)->u.string, "two") == 0,
+			      NULL);
+
+			/* THE ACCEPTANCE: a rewrite is the same document, byte for
+			 * byte — which is what makes keeping comments worth the tree's
+			 * extra shape. */
+			written = plist_serialize(parsed, &written_length);
+			check("comments-roundtrip-byte-identical",
+			      written != NULL && written_length == strlen(commented) &&
+			      memcmp(written, commented, written_length) == 0,
+			      written == NULL ? "serialise failed"
+					      : "the writer moved or lost a comment");
+
+			if (written != NULL) {
+				char *rewritten;
+				size_t rewritten_length = 0;
+
+				/* A `config set`: one value changes, the prose does not. */
+				plist_dictionary_set(parsed, "greeting", plist_new_string("goodbye"));
+				rewritten = plist_serialize(parsed, &rewritten_length);
+				check("comments-survive-a-set",
+				      rewritten != NULL &&
+				      strstr(rewritten, "<!-- head prose -->") != NULL &&
+				      strstr(rewritten, "<!-- before the last entry -->") != NULL &&
+				      strstr(rewritten, "<string>goodbye</string>") != NULL,
+				      NULL);
+				free(rewritten);
+			}
+			free(written);
+			plist_free(parsed);
+		}
+	}
+
+	/* A comment BEFORE the root value is accepted and then DISCARDED: a file's
+	 * header prose belongs INSIDE the root dictionary, where it round-trips,
+	 * and hoisting one into a <string> root would have nowhere to put it. */
+	{
+		static const char header[] =
+			"<plist version=\"1.0\">\n"
+			"<!-- a header, which has no slot to go in -->\n"
+			"<dict>\n"
+			"\t<key>a</key>\n"
+			"\t<string>b</string>\n"
+			"</dict>\n"
+			"</plist>\n";
+		plist_value_t *parsed = plist_parse(header, strlen(header), error, sizeof(error));
+		char *written = NULL;
+
+		check("leading-comment-accepted", parsed != NULL, error);
+		if (parsed != NULL) {
+			written = plist_serialize(parsed, NULL);
+			check("leading-comment-dropped",
+			      written != NULL && strstr(written, "no slot to go in") == NULL,
+			      NULL);
+			free(written);
+			plist_free(parsed);
+		}
+	}
+
+	/* A comment that never ends is REFUSED, like everything else this parser
+	 * cannot read, rather than swallowed to the end of the file. */
+	{
+		static const char unterminated[] =
+			"<plist version=\"1.0\"><dict><!-- oops</dict></plist>";
+		plist_value_t *refused = plist_parse(unterminated, strlen(unterminated),
+						     error, sizeof(error));
+
+		check("unterminated-comment-refused", refused == NULL, NULL);
+		check("unterminated-comment-named",
+		      strstr(error, "unterminated comment") != NULL, error);
+		if (refused != NULL) {
+			plist_free(refused);
+		}
+	}
+
 	/* ---- a document in APPLE'S OWN SPELLING ---------------------------- */
 	{
 		static const char apple[] =

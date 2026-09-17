@@ -5,6 +5,7 @@
 /*
  * plist.h — XML property lists (v1.0) in plain C.
  * docs/design/foundation-plan.md; the sharing decision is recorded there.
+ * docs/design/plist-config-plan.md — P3a made comments survive, see below.
  *
  * THE ONE CORE, TWO SKINS. This is the whole plist implementation: no runtime,
  * no allocator of its own, no iostream, nothing but <stdlib.h>. libconfig will
@@ -26,6 +27,18 @@
  *
  * WHAT IS NOT: entities beyond the five XML predefined ones plus numeric
  * character references; DTD-internal subsets; and OpenStep/binary formats.
+ *
+ * COMMENTS ARE PART OF THE TREE, NOT WHITESPACE. The shipped config files are
+ * mostly prose — system.display.conf is 53 comment lines of 60 — and a writer
+ * that emitted none would silently delete that documentation the first time a
+ * value was set. So a comment is a PLIST_COMMENT holding the text between
+ * <!-- and --> verbatim, and the serialiser writes it back where it stood.
+ * IN AN ARRAY it is an ordinary item; IN A DICTIONARY it occupies a slot whose
+ * KEY IS NULL, which is the one sentinel in the pair arrays — plist_dictionary_get
+ * and the count/iteration accessors skip it (and would fault on strcmp(NULL)).
+ * The Objective-C skin DROPS comments, and that asymmetry is deliberate rather
+ * than a gap: Cocoa has no comment type, so NSPropertyListSerialization must
+ * not invent one.
  */
 
 #ifndef FNX_PLIST_H
@@ -46,11 +59,14 @@ typedef enum {
 	PLIST_DATE,		/* u.date is SECONDS since 2001-01-01T00:00:00Z */
 	PLIST_DATA,
 	PLIST_ARRAY,
-	PLIST_DICTIONARY
+	PLIST_DICTIONARY,
+	PLIST_COMMENT		/* u.string, the text between <!-- and --> */
 } plist_type_t;
 
 typedef struct plist_value plist_value_t;
 
+/* The struct is public, so a writer that must be comment-aware can walk the
+ * pair arrays itself — the accessors below deliberately cannot see a comment. */
 struct plist_value {
 	plist_type_t type;
 	union {
@@ -68,7 +84,8 @@ struct plist_value {
 			size_t count;
 		} array;
 		struct {
-			char **keys;			/* insertion order is preserved */
+			char **keys;			/* insertion order is preserved;
+							 * NULL == a COMMENT slot */
 			plist_value_t **values;
 			size_t count;
 			size_t capacity;
@@ -99,7 +116,12 @@ char *plist_serialize(const plist_value_t *value, size_t *length_out);
 
 void plist_free(plist_value_t *value);
 
-/* ---- accessors ----------------------------------------------------------- */
+/* ---- accessors -----------------------------------------------------------
+ *
+ * These see the SEQUENCE, not the storage: a comment item in an array is
+ * skipped, so an index never lands on one, and plist_dictionary_get never
+ * matches a comment slot (whose key is NULL).
+ */
 
 plist_value_t *plist_dictionary_get(const plist_value_t *dictionary, const char *key);
 size_t plist_array_count(const plist_value_t *array);
@@ -116,9 +138,12 @@ plist_value_t *plist_new_date(double seconds_since_2001);
 plist_value_t *plist_new_data(const unsigned char *bytes, size_t length);
 plist_value_t *plist_new_array(void);
 plist_value_t *plist_new_dictionary(void);
+/* The prose a config file carries, kept verbatim. */
+plist_value_t *plist_new_comment(const char *text);
 
 /* Both return 0 on success, -1 on failure (no memory). Adding a duplicate key
- * REPLACES the value and keeps the key's original position. */
+ * REPLACES the value and keeps the key's original position. A NULL key is
+ * REFUSED here: only the parser creates comment slots, through its own path. */
 int plist_array_append(plist_value_t *array, plist_value_t *item);
 int plist_dictionary_set(plist_value_t *dictionary, const char *key, plist_value_t *value);
 

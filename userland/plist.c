@@ -266,6 +266,18 @@ plist_value_t *plist_new_dictionary(void)
 	return plist_new(PLIST_DICTIONARY);
 }
 
+/* A comment: the prose of a config file, kept verbatim in u.string — which is
+ * what lets it be freed and written with no new machinery of its own. */
+plist_value_t *plist_new_comment(const char *text)
+{
+	plist_value_t *value = plist_new(PLIST_COMMENT);
+
+	if (value != NULL) {
+		value->u.string = plist_strdup(text == NULL ? "" : text);
+	}
+	return value;
+}
+
 int plist_array_append(plist_value_t *array, plist_value_t *item)
 {
 	plist_value_t **fresh;
@@ -283,19 +295,30 @@ int plist_array_append(plist_value_t *array, plist_value_t *item)
 	return 0;
 }
 
-int plist_dictionary_set(plist_value_t *dictionary, const char *key, plist_value_t *value)
+/*
+ * The append/replace core. `key` MAY BE NULL here, and that is the COMMENT
+ * SLOT — the one legitimate NULL, which is why this is separate from the public
+ * setter: a caller who passes a NULL key to plist_dictionary_set is a bug, and
+ * gets -1, while the parser's comment path must be able to write one.
+ */
+static int plist_dictionary_put(plist_value_t *dictionary, const char *key,
+				plist_value_t *value)
 {
 	size_t i;
 
-	if (dictionary == NULL || dictionary->type != PLIST_DICTIONARY || key == NULL) {
+	if (dictionary == NULL || dictionary->type != PLIST_DICTIONARY) {
 		return -1;
 	}
-	for (i = 0; i < dictionary->u.dictionary.count; i++) {
-		if (strcmp(dictionary->u.dictionary.keys[i], key) == 0) {
-			/* Replace IN PLACE: the key keeps its position, so a config file
-			 * does not reshuffle because a field was set twice. */
-			dictionary->u.dictionary.values[i] = value;
-			return 0;
+	if (key != NULL) {
+		for (i = 0; i < dictionary->u.dictionary.count; i++) {
+			if (dictionary->u.dictionary.keys[i] != NULL &&
+			    strcmp(dictionary->u.dictionary.keys[i], key) == 0) {
+				/* Replace IN PLACE: the key keeps its position, so a
+				 * config file does not reshuffle because a field was
+				 * set twice. */
+				dictionary->u.dictionary.values[i] = value;
+				return 0;
+			}
 		}
 	}
 	if (dictionary->u.dictionary.count + 1 > dictionary->u.dictionary.capacity) {
@@ -316,10 +339,51 @@ int plist_dictionary_set(plist_value_t *dictionary, const char *key, plist_value
 		dictionary->u.dictionary.values = values;
 		dictionary->u.dictionary.capacity = grown;
 	}
-	dictionary->u.dictionary.keys[dictionary->u.dictionary.count] = plist_strdup(key);
 	dictionary->u.dictionary.values[dictionary->u.dictionary.count] = value;
+	dictionary->u.dictionary.keys[dictionary->u.dictionary.count] =
+		(key == NULL) ? NULL : plist_strdup(key);
 	dictionary->u.dictionary.count++;
 	return 0;
+}
+
+int plist_dictionary_set(plist_value_t *dictionary, const char *key, plist_value_t *value)
+{
+	if (key == NULL) {
+		return -1;
+	}
+	return plist_dictionary_put(dictionary, key, value);
+}
+
+/* Put a comment INTO a container: an ordinary item when the container is an
+ * array, a slot with a NULL key when it is a dictionary. This is the parser's
+ * only way in, and it returns -1 rather than half-inserting. */
+static int plist_append_comment(plist_value_t *container, const char *text)
+{
+	plist_value_t *comment;
+
+	if (container == NULL) {
+		return -1;
+	}
+	comment = plist_new_comment(text);
+	if (comment == NULL) {
+		return -1;
+	}
+	if (container->type == PLIST_ARRAY) {
+		if (plist_array_append(container, comment) != 0) {
+			plist_free(comment);
+			return -1;
+		}
+		return 0;
+	}
+	if (container->type == PLIST_DICTIONARY) {
+		if (plist_dictionary_put(container, NULL, comment) != 0) {
+			plist_free(comment);
+			return -1;
+		}
+		return 0;
+	}
+	plist_free(comment);
+	return -1;
 }
 
 /* ---- lifetime ------------------------------------------------------------ */
@@ -333,6 +397,7 @@ void plist_free(plist_value_t *value)
 	}
 	switch (value->type) {
 	case PLIST_STRING:
+	case PLIST_COMMENT:		/* both carry the text in u.string */
 		free(value->u.string);
 		break;
 	case PLIST_DATA:
@@ -346,6 +411,8 @@ void plist_free(plist_value_t *value)
 		break;
 	case PLIST_DICTIONARY:
 		for (i = 0; i < value->u.dictionary.count; i++) {
+			/* A COMMENT SLOT has a NULL key, and free(NULL) is the
+			 * correct disposal of one. */
 			free(value->u.dictionary.keys[i]);
 			plist_free(value->u.dictionary.values[i]);
 		}
@@ -373,24 +440,57 @@ plist_value_t *plist_dictionary_get(const plist_value_t *dictionary, const char 
 		return NULL;
 	}
 	for (i = 0; i < dictionary->u.dictionary.count; i++) {
-		if (strcmp(dictionary->u.dictionary.keys[i], key) == 0) {
+		/* A NULL KEY IS A COMMENT SLOT: it can never match a caller's key,
+		 * and strcmp would fault on it. */
+		if (dictionary->u.dictionary.keys[i] != NULL &&
+		    strcmp(dictionary->u.dictionary.keys[i], key) == 0) {
 			return dictionary->u.dictionary.values[i];
 		}
 	}
 	return NULL;
 }
 
+/* Comments are items of the tree but not of the SEQUENCE: the count and the
+ * index accessor both step over them, so an index never lands on prose. */
+static int plist_array_skips(const plist_value_t *item)
+{
+	return item == NULL || item->type == PLIST_COMMENT;
+}
+
 size_t plist_array_count(const plist_value_t *array)
 {
-	return (array != NULL && array->type == PLIST_ARRAY) ? array->u.array.count : 0;
+	size_t i, count = 0;
+
+	if (array == NULL || array->type != PLIST_ARRAY) {
+		return 0;
+	}
+	for (i = 0; i < array->u.array.count; i++) {
+		if (!plist_array_skips(array->u.array.items[i])) {
+			count++;
+		}
+	}
+	return count;
 }
 
 plist_value_t *plist_array_get(const plist_value_t *array, size_t index)
 {
-	if (array == NULL || array->type != PLIST_ARRAY || index >= array->u.array.count) {
+	size_t i, seen = 0;
+
+	if (array == NULL || array->type != PLIST_ARRAY) {
 		return NULL;
 	}
-	return array->u.array.items[index];
+	for (i = 0; i < array->u.array.count; i++) {
+		plist_value_t *item = array->u.array.items[i];
+
+		if (plist_array_skips(item)) {
+			continue;
+		}
+		if (seen == index) {
+			return item;
+		}
+		seen++;
+	}
+	return NULL;
 }
 
 /* ---- the parser ---------------------------------------------------------- */
@@ -419,31 +519,86 @@ static void plist_fail(plist_parser_t *parser, const char *message, const char *
 	}
 }
 
+/* WHITESPACE, AND ONLY WHITESPACE. A comment used to be eaten here, and that is
+ * exactly why the parser could not keep one: prose in a config file is now an
+ * ITEM of the tree (P3a), captured where it stands by plist_capture_comments. */
 static void plist_skip_space(plist_parser_t *parser)
 {
-	for (;;) {
-		if (parser->position < parser->length &&
-		    (parser->text[parser->position] == ' ' ||
-		     parser->text[parser->position] == '\t' ||
-		     parser->text[parser->position] == '\r' ||
-		     parser->text[parser->position] == '\n')) {
+	while (parser->position < parser->length) {
+		char character = parser->text[parser->position];
+
+		if (character == ' ' || character == '\t' ||
+		    character == '\r' || character == '\n') {
 			parser->position++;
 			continue;
 		}
-		/* A comment is whitespace as far as the grammar is concerned. */
-		if (parser->position + 3 < parser->length &&
-		    strncmp(parser->text + parser->position, "<!--", 4) == 0) {
-			const char *end = strstr(parser->text + parser->position + 4, "-->");
-
-			if (end == NULL) {
-				plist_fail(parser, "unterminated comment", NULL);
-				parser->position = parser->length;
-				return;
-			}
-			parser->position = (size_t)(end - parser->text) + 3;
-			continue;
-		}
 		return;
+	}
+}
+
+/* Is a comment standing at the cursor? */
+static int plist_at_comment(const plist_parser_t *parser)
+{
+	return parser->position + 4 <= parser->length &&
+	       strncmp(parser->text + parser->position, "<!--", 4) == 0;
+}
+
+/* Where the comment at the cursor ENDS — its "-->" — or NULL. The search is
+ * BOUNDED BY THE TEXT'S LENGTH, because a plist need not be NUL-terminated and
+ * strstr would read past the end of the buffer it was handed. */
+static const char *plist_comment_end(const plist_parser_t *parser)
+{
+	const char *start = parser->text + parser->position + 4;
+	size_t remaining = parser->length - (parser->position + 4);
+	size_t i;
+
+	for (i = 0; i + 3 <= remaining; i++) {
+		if (start[i] == '-' && start[i + 1] == '-' && start[i + 2] == '>') {
+			return start + i;
+		}
+	}
+	return NULL;
+}
+
+/* Take every comment standing at the cursor, appending each to `container` as
+ * an item of it — or CONSUMING AND DISCARDING them when container is NULL,
+ * which is what a position with nowhere to keep one passes (see plist_parse:
+ * a comment before the root value). Returns 0, or -1 when a comment is
+ * unterminated or there is no memory for one. */
+static int plist_capture_comments(plist_parser_t *parser, plist_value_t *container)
+{
+	for (;;) {
+		const char *end;
+		char *text;
+		size_t length;
+
+		plist_skip_space(parser);
+		if (!plist_at_comment(parser)) {
+			return 0;
+		}
+		end = plist_comment_end(parser);
+		if (end == NULL) {
+			plist_fail(parser, "unterminated comment", NULL);
+			parser->position = parser->length;
+			return -1;
+		}
+		/* The comment's text is what stood between <!-- and -->, verbatim:
+		 * no escaping on the way in, none on the way out. */
+		length = (size_t)(end - (parser->text + parser->position + 4));
+		text = (char *)plist_xmalloc(length + 1);
+		if (text == NULL) {
+			plist_fail(parser, "out of memory", NULL);
+			return -1;
+		}
+		memcpy(text, parser->text + parser->position + 4, length);
+		text[length] = '\0';
+		parser->position = (size_t)(end - parser->text) + 3;
+		if (container != NULL && plist_append_comment(container, text) != 0) {
+			free(text);
+			plist_fail(parser, "out of memory", NULL);
+			return -1;
+		}
+		free(text);
 	}
 }
 
@@ -620,7 +775,12 @@ static plist_value_t *plist_parse_array(plist_parser_t *parser)
 	for (;;) {
 		plist_value_t *item;
 
-		plist_skip_space(parser);
+		/* In an ARRAY a comment is an ordinary item, so it is captured INTO
+		 * the array and written back out where it stood. */
+		if (plist_capture_comments(parser, array) != 0) {
+			plist_free(array);
+			return NULL;
+		}
 		if (plist_at_close(parser)) {
 			break;
 		}
@@ -653,7 +813,13 @@ static plist_value_t *plist_parse_dictionary(plist_parser_t *parser)
 		char *key;
 		plist_value_t *value;
 
-		plist_skip_space(parser);
+		/* Comments are captured at EVERY position an entry may follow, so a
+		 * commented table keeps its prose. plist_capture_comments takes the
+		 * whitespace too, which is why there is no separate skip here. */
+		if (plist_capture_comments(parser, dictionary) != 0) {
+			plist_free(dictionary);
+			return NULL;
+		}
 		if (plist_at_close(parser)) {
 			break;
 		}
@@ -674,6 +840,14 @@ static plist_value_t *plist_parse_dictionary(plist_parser_t *parser)
 		}
 		key = plist_read_text(parser);
 		if (plist_expect_close(parser, "key") != 0) {
+			free(key);
+			plist_free(dictionary);
+			return NULL;
+		}
+		/* The position BETWEEN a key and its value: a comment standing there
+		 * belongs to the same entry, so it is captured BEFORE the pair is
+		 * written into the dict and stays attached to it on the way out. */
+		if (plist_capture_comments(parser, dictionary) != 0) {
 			free(key);
 			plist_free(dictionary);
 			return NULL;
@@ -842,6 +1016,14 @@ plist_value_t *plist_parse(const char *text, size_t length, char *error, size_t 
 		plist_fail(&parser, "expected <plist>", tag);
 		return NULL;
 	}
+	/* A comment between <plist …> and the root value is ACCEPTED AND THEN
+	 * DISCARDED, rather than hoisted into the tree: a file's header prose
+	 * belongs to the ROOT DICTIONARY, where it round-trips natively, and
+	 * hoisting it here would mean re-shaping whichever type the root happens
+	 * to be — a plist whose root is a <string> has no slot for a comment. */
+	if (plist_capture_comments(&parser, NULL) != 0) {
+		return NULL;		/* the first error is already recorded */
+	}
 	root = plist_parse_value(&parser);
 	if (root == NULL) {
 		return NULL;
@@ -911,6 +1093,15 @@ static void plist_serialize_value(char **buffer, size_t *length, size_t *capacit
 		return;
 	}
 	switch (value->type) {
+	case PLIST_COMMENT:
+		/* The prose a config file carries, written back where it stood.
+		 * The body is NOT escaped: a comment is not markup, and escaping
+		 * it would hand a reader different bytes. */
+		plist_buffer_append(buffer, length, capacity, "<!--", 4);
+		plist_buffer_append(buffer, length, capacity, value->u.string,
+				    strlen(value->u.string));
+		plist_buffer_append(buffer, length, capacity, "-->\n", 4);
+		break;
 	case PLIST_STRING:
 		plist_buffer_append(buffer, length, capacity, "<string>", 8);
 		plist_append_escaped(buffer, length, capacity, value->u.string);
@@ -1013,11 +1204,17 @@ static void plist_serialize_value(char **buffer, size_t *length, size_t *capacit
 			plist_buffer_append(buffer, length, capacity, "<dict>\n", 7);
 			for (i = 0; i < value->u.dictionary.count; i++) {
 				plist_append_indent(buffer, length, capacity, depth + 1);
-				plist_buffer_append(buffer, length, capacity, "<key>", 5);
-				plist_append_escaped(buffer, length, capacity,
-						     value->u.dictionary.keys[i]);
-				plist_buffer_append(buffer, length, capacity, "</key>\n", 7);
-				plist_append_indent(buffer, length, capacity, depth + 1);
+				/* A NULL KEY IS A COMMENT SLOT: it gets no <key>, and
+				 * the comment is indented where the entry it precedes
+				 * stands — which is what makes a commented config file
+				 * round-trip byte for byte. */
+				if (value->u.dictionary.keys[i] != NULL) {
+					plist_buffer_append(buffer, length, capacity, "<key>", 5);
+					plist_append_escaped(buffer, length, capacity,
+							     value->u.dictionary.keys[i]);
+					plist_buffer_append(buffer, length, capacity, "</key>\n", 7);
+					plist_append_indent(buffer, length, capacity, depth + 1);
+				}
 				plist_serialize_value(buffer, length, capacity,
 						      value->u.dictionary.values[i], depth + 1);
 			}

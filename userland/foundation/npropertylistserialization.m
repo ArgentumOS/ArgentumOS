@@ -69,8 +69,17 @@ static id fn_object_from_plist(const plist_value_t *value, NSPropertyListReadOpt
 			id array = [NSMutableArray array];
 
 			for (i = 0; i < value->u.array.count; i++) {
-				id item = fn_object_from_plist(value->u.array.items[i], options);
+				id item;
 
+				/* A COMMENT ITEM IS DROPPED BY THIS SKIN, deliberately:
+				 * Cocoa has no comment type, so NSPropertyListSerialization
+				 * must not invent one. The C path keeps them; this one
+				 * cannot. */
+				if (value->u.array.items[i] != NULL &&
+				    value->u.array.items[i]->type == PLIST_COMMENT) {
+					continue;
+				}
+				item = fn_object_from_plist(value->u.array.items[i], options);
 				if (item == nil) {
 					return nil;
 				}
@@ -90,9 +99,18 @@ static id fn_object_from_plist(const plist_value_t *value, NSPropertyListReadOpt
 			id dictionary = [NSMutableDictionary dictionary];
 
 			for (i = 0; i < value->u.dictionary.count; i++) {
-				NSString *key = [NSString stringWithUTF8String:value->u.dictionary.keys[i]];
-				id item = fn_object_from_plist(value->u.dictionary.values[i], options);
+				NSString *key;
+				id item;
 
+				/* A NULL KEY IS A COMMENT SLOT, and this skin DROPS it. A
+				 * comment is not an entry of a Cocoa dictionary, and Cocoa
+				 * has no comment type for us to invent; the C path (libconfig,
+				 * the config tool) is where a comment is preserved. */
+				if (value->u.dictionary.keys[i] == NULL) {
+					continue;
+				}
+				key = [NSString stringWithUTF8String:value->u.dictionary.keys[i]];
+				item = fn_object_from_plist(value->u.dictionary.values[i], options);
 				if (key == nil || item == nil) {
 					return nil;
 				}
@@ -105,6 +123,7 @@ static id fn_object_from_plist(const plist_value_t *value, NSPropertyListReadOpt
 			return dictionary;
 		}
 	default:
+		/* Anything else — a comment included — has no Cocoa form by design. */
 		return nil;
 	}
 }
