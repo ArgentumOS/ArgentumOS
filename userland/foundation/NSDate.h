@@ -25,11 +25,22 @@
 
 + (NSDate *)date;
 + (NSDate *)dateWithTimeIntervalSince1970:(double)seconds;
++ (NSDate *)dateWithTimeIntervalSinceNow:(double)seconds;
++ (NSDate *)dateWithTimeInterval:(double)seconds sinceDate:(NSDate *)date;
++ (NSDate *)distantPast;
++ (NSDate *)distantFuture;
++ (double)timeIntervalSinceReferenceDate;
 
 - (id)initWithTimeIntervalSince1970:(double)seconds;
+- (id)initWithTimeIntervalSinceNow:(double)seconds;
+- (id)initWithTimeInterval:(double)seconds sinceDate:(NSDate *)date;
 
 - (double)timeIntervalSince1970;
+- (double)timeIntervalSinceNow;
+- (double)timeIntervalSinceReferenceDate;
 - (double)timeIntervalSinceDate:(NSDate *)other;
+- (NSDate *)dateByAddingTimeInterval:(double)seconds;
+- (NSString *)descriptionWithLocale:(id)locale;
 
 - (BOOL)isEqualToDate:(NSDate *)other;
 - (NSComparisonResult)compare:(NSDate *)other;

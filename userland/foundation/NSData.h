@@ -23,11 +23,50 @@
 	size_t _length;
 }
 
+/* Cocoa's option set for the base64 methods; both flags are honoured. */
+typedef enum {
+	NSDataBase64EncodingDefault = 0,
+	NSDataBase64Encoding64CharacterLineLength = 1,
+	NSDataBase64EncodingEndLineWithLineFeed = 2,
+	NSDataBase64DecodingIgnoreUnknownCharacters = 4
+} NSDataBase64EncodingOptions;
+
+/* A DIFFERENT option set: -rangeOfData:options:range: searches, it does not
+ * decode. Only the plain forward, unanchored search is implemented, and the
+ * header says so rather than pretending otherwise. */
+typedef enum {
+	NSDataSearchDefault = 0,
+	NSDataSearchBackwards = 1,
+	NSDataSearchAnchored = 2
+} NSDataSearchOptions;
+
++ (NSData *)data;
 + (NSData *)dataWithBytes:(const void *)bytes length:(size_t)length;
++ (NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length;
++ (NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
++ (NSData *)dataWithData:(NSData *)other;
++ (NSData *)dataWithContentsOfFile:(NSString *)path;
++ (NSData *)dataWithBase64EncodedString:(NSString *)string;
+
 - (id)initWithBytes:(const void *)bytes length:(size_t)length;
+- (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length;
+- (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
+- (id)initWithData:(NSData *)other;
+- (id)initWithContentsOfFile:(NSString *)path;
+- (id)initWithBase64EncodedString:(NSString *)string
+			  options:(NSDataBase64EncodingOptions)options;
 
 - (size_t)length;
 - (const void *)bytes;
+- (void)getBytes:(void *)buffer length:(size_t)length;
+- (void)getBytes:(void *)buffer range:(NSRange)range;
+- (NSData *)subdataWithRange:(NSRange)range;
+- (NSRange)rangeOfData:(NSData *)other
+	       options:(NSDataSearchOptions)options
+		 range:(NSRange)range;
+
+- (NSString *)base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)options;
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 
 - (BOOL)isEqualToData:(NSData *)other;
 
@@ -39,12 +78,20 @@
 }
 
 + (NSMutableData *)dataWithCapacity:(size_t)capacity;
++ (NSMutableData *)dataWithLength:(size_t)length;
 - (id)initWithCapacity:(size_t)capacity;
+- (id)initWithLength:(size_t)length;
 
 - (void)appendBytes:(const void *)bytes length:(size_t)length;
 - (void)appendData:(NSData *)other;
 - (void)setLength:(size_t)length;
+- (void)increaseLengthBy:(size_t)extraLength;
 - (void *)mutableBytes;
+- (void)replaceBytesInRange:(NSRange)range withBytes:(const void *)bytes;
+- (void)replaceBytesInRange:(NSRange)range
+		  withBytes:(const void *)bytes
+		     length:(size_t)replacementLength;
+- (void)resetBytesInRange:(NSRange)range;
 
 @end
 

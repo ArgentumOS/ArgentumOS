@@ -635,8 +635,8 @@ gap fails the gate instead of living in prose.
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (localized comparison), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet`/`NSIndexPath` (the `…AtIndexes:` families) and `NSEnumerator` (the enumerator objects — `for-in` covers the need) |
 | `NSDictionary`/`NSMutableDictionary` | yes | **yes** | dependency only: `NSEnumerator` (the key/object enumerator objects — `for-in` covers that need) |
-| `NSData`/`NSMutableData` | yes | no | ranges, `-getBytes:length:`, the no-copy initialisers, file I/O, base64 |
-| `NSDate` | yes | no | relative dates, distant past/future, the interval constructors |
+| `NSData`/`NSMutableData` | yes | **yes** | dependency only: `NSError` for the `:options:error:` file variants (F4) |
+| `NSDate` | yes | **yes** | — |
 
 **Ordering dependencies are recorded, not called gaps:** the `:options:error:`
 file variants wait on `NSError` (F4), and forwarding waits on
@@ -649,8 +649,8 @@ NULL, `+allocWithZone:` ignores its argument); `-description` shapes are
 one-line. Names that are OURS rather than the contract: `NSOwnedString`,
 `NSTinyString`, `-byteAtIndex:`, `-characterCount`, `-appendUTF8String:`.
 
-**Order of work:** `NSObject`, `NSNumber`, `NSString`/`NSMutableString` and BOTH
-collection families are complete; then `NSData`/`NSDate`.
+**Order of work:** COMPLETE. `NSObject`, `NSNumber`, `NSString`/`NSMutableString`,
+both collection families and `NSData`/`NSDate` all pass their api-complete gates.
 
 ## Copyright and licence (2026-09-17)
 

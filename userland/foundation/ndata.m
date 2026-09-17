@@ -13,6 +13,7 @@
 #import <foundation/NSString.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 @implementation NSData
 
@@ -51,6 +52,337 @@
 - (const void *)bytes
 {
 	return _bytes;
+}
+
++ (NSData *)data
+{
+	return [[self alloc] initWithBytes:NULL length:0];
+}
+
++ (NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length
+{
+	return [[self alloc] initWithBytesNoCopy:bytes length:length];
+}
+
++ (NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone
+{
+	return [[self alloc] initWithBytesNoCopy:bytes length:length freeWhenDone:freeWhenDone];
+}
+
++ (NSData *)dataWithData:(NSData *)other
+{
+	return [[self alloc] initWithData:other];
+}
+
++ (NSData *)dataWithContentsOfFile:(NSString *)path
+{
+	return [[self alloc] initWithContentsOfFile:path];
+}
+
++ (NSData *)dataWithBase64EncodedString:(NSString *)string
+{
+	return [[self alloc] initWithBase64EncodedString:string
+						options:NSDataBase64EncodingDefault];
+}
+
+- (id)initWithData:(NSData *)other
+{
+	return [self initWithBytes:[other bytes] length:[other length]];
+}
+
+/*
+ * NO-COPY IS HONOURED BY TAKING THE BYTES, not by adopting the pointer: v1 has no
+ * flag to remember whether a buffer is ours to free, and the OBSERVABLE contract
+ * is what matters — the caller hands the bytes over, and with freeWhenDone: the
+ * buffer is consumed (freed) here. One copy, documented, rather than an ivar and a
+ * lifetime rule to get wrong.
+ */
+- (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length
+{
+	return [self initWithBytesNoCopy:bytes length:length freeWhenDone:NO];
+}
+
+- (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	self = [self initWithBytes:bytes length:length];
+	if (freeWhenDone && bytes != NULL) {
+		free(bytes);
+	}
+	return self;
+}
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+	FILE *file = fopen([path UTF8String], "rb");
+	long size;
+	unsigned char *buffer;
+	id result;
+
+	if (file == NULL) {
+		return nil;
+	}
+	if (fseek(file, 0, SEEK_END) != 0) {
+		fclose(file);
+		return nil;
+	}
+	size = ftell(file);
+	if (size < 0) {
+		fclose(file);
+		return nil;
+	}
+	if (fseek(file, 0, SEEK_SET) != 0) {
+		fclose(file);
+		return nil;
+	}
+	buffer = (unsigned char *)malloc((size_t)size + 1);
+	if (buffer == NULL) {
+		fclose(file);
+		return nil;
+	}
+	{
+		size_t got = fread(buffer, 1, (size_t)size, file);
+
+		fclose(file);
+		result = [self initWithBytes:buffer length:got];
+	}
+	free(buffer);
+	return result;
+}
+
+- (void)getBytes:(void *)buffer length:(size_t)length
+{
+	[self getBytes:buffer range:NSMakeRange(0, length)];
+}
+
+- (void)getBytes:(void *)buffer range:(NSRange)range
+{
+	size_t n = range.length;
+
+	if (buffer == NULL) {
+		return;
+	}
+	if (range.location > _length) {
+		return;
+	}
+	if (n > _length - range.location) {
+		n = _length - range.location;
+	}
+	if (n > 0) {
+		memcpy(buffer, _bytes + range.location, n);
+	}
+}
+
+- (NSData *)subdataWithRange:(NSRange)range
+{
+	size_t start = range.location;
+	size_t n = range.length;
+
+	if (start > _length) {
+		start = _length;
+	}
+	if (n > _length - start) {
+		n = _length - start;
+	}
+	return [[NSData alloc] initWithBytes:_bytes + start length:n];
+}
+
+- (NSRange)rangeOfData:(NSData *)other
+	       options:(NSDataSearchOptions)options
+		 range:(NSRange)range
+{
+	size_t haystack = _length;
+	size_t needle = [other length];
+	size_t start = range.location;
+	size_t end;
+	size_t i;
+
+	(void)options;		/* only the plain forward search is implemented */
+	if (needle == 0) {
+		return NSMakeRange(start, 0);
+	}
+	if (start > haystack) {
+		return NSMakeRange(NSNotFound, 0);
+	}
+	end = start + range.length;
+	if (end > haystack) {
+		end = haystack;
+	}
+	for (i = start; i + needle <= end; i++) {
+		if (memcmp(_bytes + i, [other bytes], needle) == 0) {
+			return NSMakeRange(i, needle);
+		}
+	}
+	return NSMakeRange(NSNotFound, 0);
+}
+
+static const char base64Alphabet[] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+- (NSString *)base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)options
+{
+	const unsigned char *bytes = (const unsigned char *)_bytes;
+	size_t outSize = ((_length + 2) / 3) * 4;
+	char *out;
+	size_t i;
+	size_t o = 0;
+	NSMutableString *wrapped = nil;
+	NSString *result;
+
+	out = (char *)malloc(outSize + 1);
+	if (out == NULL) {
+		return [[NSOwnedString alloc] initWithUTF8String:""];
+	}
+	for (i = 0; i + 2 < _length; i += 3) {
+		unsigned long triple = ((unsigned long)bytes[i] << 16) |
+				       ((unsigned long)bytes[i + 1] << 8) |
+				       bytes[i + 2];
+
+		out[o++] = base64Alphabet[(triple >> 18) & 0x3F];
+		out[o++] = base64Alphabet[(triple >> 12) & 0x3F];
+		out[o++] = base64Alphabet[(triple >> 6) & 0x3F];
+		out[o++] = base64Alphabet[triple & 0x3F];
+	}
+	if (i < _length) {
+		unsigned long triple = (unsigned long)bytes[i] << 16;
+		int remaining = (int)(_length - i);
+
+		if (remaining == 2) {
+			triple |= (unsigned long)bytes[i + 1] << 8;
+		}
+		out[o++] = base64Alphabet[(triple >> 18) & 0x3F];
+		out[o++] = base64Alphabet[(triple >> 12) & 0x3F];
+		out[o++] = (remaining == 2) ? base64Alphabet[(triple >> 6) & 0x3F] : '=';
+		out[o++] = '=';
+	}
+	out[o] = '\0';
+
+	if (options & NSDataBase64Encoding64CharacterLineLength) {
+		size_t k;
+
+		wrapped = [[NSMutableString alloc] initWithUTF8String:""];
+		for (k = 0; k < o; k++) {
+			if (k > 0 && k % 64 == 0) {
+				[wrapped appendUTF8String:(options & NSDataBase64EncodingEndLineWithLineFeed)
+					? "\n" : "\r\n"];
+			}
+			{
+				char one[2];
+
+				one[0] = out[k];
+				one[1] = '\0';
+				[wrapped appendUTF8String:one];
+			}
+		}
+		free(out);
+		return wrapped;
+	}
+	result = [[NSOwnedString alloc] initWithUTF8String:out];
+	free(out);
+	return result;
+}
+
+static int base64Value(unsigned char c)
+{
+	if (c >= 'A' && c <= 'Z') { return c - 'A'; }
+	if (c >= 'a' && c <= 'z') { return c - 'a' + 26; }
+	if (c >= '0' && c <= '9') { return c - '0' + 52; }
+	if (c == '+') { return 62; }
+	if (c == '/') { return 63; }
+	return -1;
+}
+
+- (id)initWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options
+{
+	size_t n = [string length];
+	unsigned char *out = (unsigned char *)malloc(n + 1);
+	size_t o = 0;
+	size_t i;
+	int carry = 0;
+	int bits = 0;
+	id result;
+
+	if (out == NULL) {
+		return nil;
+	}
+	for (i = 0; i < n; i++) {
+		unsigned char c = (unsigned char)[string byteAtIndex:i];
+		int value = base64Value(c);
+
+		if (value < 0) {
+			if (c == '=') {
+				break;
+			}
+			if (options & NSDataBase64DecodingIgnoreUnknownCharacters) {
+				continue;
+			}
+			free(out);
+			return nil;
+		}
+		carry = (carry << 6) | value;
+		bits += 6;
+		if (bits >= 8) {
+			bits -= 8;
+			out[o++] = (unsigned char)((carry >> bits) & 0xFF);
+		}
+	}
+	result = [self initWithBytes:out length:o];
+	free(out);
+	return result;
+}
+
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile
+{
+	const char *target = [path UTF8String];
+	FILE *file;
+
+	if (useAuxiliaryFile) {
+		/* Write beside the target, then rename over it: FSH paths are ordinary
+		 * files, and rename within a directory is the atomic step. */
+		size_t length = strlen(target);
+		char *staging = (char *)malloc(length + 9);
+
+		if (staging == NULL) {
+			return NO;
+		}
+		memcpy(staging, target, length);
+		memcpy(staging + length, ".tmpdata", 9);
+		file = fopen(staging, "wb");
+		if (file == NULL) {
+			free(staging);
+			return NO;
+		}
+		if (_length > 0 && fwrite(_bytes, 1, _length, file) != _length) {
+			fclose(file);
+			remove(staging);
+			free(staging);
+			return NO;
+		}
+		if (fclose(file) != 0) {
+			remove(staging);
+			free(staging);
+			return NO;
+		}
+		if (rename(staging, target) != 0) {
+			remove(staging);
+			free(staging);
+			return NO;
+		}
+		free(staging);
+		return YES;
+	}
+	file = fopen(target, "wb");
+	if (file == NULL) {
+		return NO;
+	}
+	if (_length > 0 && fwrite(_bytes, 1, _length, file) != _length) {
+		fclose(file);
+		return NO;
+	}
+	return fclose(file) == 0;
 }
 
 - (BOOL)isEqualToData:(NSData *)other
@@ -243,6 +575,97 @@
 - (void *)mutableBytes
 {
 	return _bytes;
+}
+
++ (NSMutableData *)dataWithLength:(size_t)length
+{
+	return [[self alloc] initWithLength:length];
+}
+
+- (id)initWithLength:(size_t)length
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	if (length > 0) {
+		_bytes = (unsigned char *)calloc(length, 1);
+		if (_bytes == NULL) {
+			return nil;
+		}
+		_capacity = length;
+	}
+	_length = length;
+	return self;
+}
+
+- (void)increaseLengthBy:(size_t)extraLength
+{
+	size_t wanted = _length + extraLength;
+
+	[self setLength:wanted];
+}
+
+- (void)replaceBytesInRange:(NSRange)range withBytes:(const void *)bytes
+{
+	[self replaceBytesInRange:range withBytes:bytes length:range.length];
+}
+
+- (void)replaceBytesInRange:(NSRange)range
+		  withBytes:(const void *)bytes
+		     length:(size_t)replacementLength
+{
+	size_t start = range.location;
+	size_t oldLength;
+	size_t newTotal;
+	unsigned char *fresh;
+
+	if (start > _length) {
+		/* Cocoa extends with zeros first when the range is past the end. */
+		[self setLength:start];
+	}
+	if (start > _length) {
+		return;
+	}
+	oldLength = range.length;
+	if (oldLength > _length - start) {
+		oldLength = _length - start;
+	}
+	newTotal = _length - oldLength + replacementLength;
+	fresh = (unsigned char *)malloc(newTotal > 0 ? newTotal : 1);
+	if (fresh == NULL) {
+		return;
+	}
+	if (start > 0) {
+		memcpy(fresh, _bytes, start);
+	}
+	if (replacementLength > 0 && bytes != NULL) {
+		memcpy(fresh + start, bytes, replacementLength);
+	}
+	if (_length > start + oldLength) {
+		memcpy(fresh + start + replacementLength, _bytes + start + oldLength,
+		       _length - start - oldLength);
+	}
+	free(_bytes);
+	_bytes = fresh;
+	_length = newTotal;
+	_capacity = newTotal;
+}
+
+- (void)resetBytesInRange:(NSRange)range
+{
+	size_t start = range.location;
+	size_t n = range.length;
+
+	if (start > _length) {
+		return;
+	}
+	if (n > _length - start) {
+		n = _length - start;
+	}
+	if (n > 0 && _bytes != NULL) {
+		memset(_bytes + start, 0, n);
+	}
 }
 
 - (id)copy

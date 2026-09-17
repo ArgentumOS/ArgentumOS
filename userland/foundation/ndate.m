@@ -33,6 +33,72 @@
 	return [[self alloc] initWithTimeIntervalSince1970:seconds];
 }
 
+/* The reference date is Cocoa's: 1 January 2001, GMT. */
+#define FN_REFERENCE_DATE_SECONDS	978307200.0
+
++ (NSDate *)dateWithTimeIntervalSinceNow:(double)seconds
+{
+	return [[self alloc] initWithTimeIntervalSinceNow:seconds];
+}
+
++ (NSDate *)dateWithTimeInterval:(double)seconds sinceDate:(NSDate *)date
+{
+	return [[self alloc] initWithTimeInterval:seconds sinceDate:date];
+}
+
++ (double)timeIntervalSinceReferenceDate
+{
+	return [[self date] timeIntervalSinceReferenceDate];
+}
+
++ (NSDate *)distantPast
+{
+	return [[self alloc] initWithTimeIntervalSince1970:-62135596800.0];	/* 0001-01-01 */
+}
+
++ (NSDate *)distantFuture
+{
+	return [[self alloc] initWithTimeIntervalSince1970:64092211200.0];	/* 4001-01-01 */
+}
+
+- (id)initWithTimeIntervalSinceNow:(double)seconds
+{
+	return [self initWithTimeIntervalSince1970:
+		[[NSDate date] timeIntervalSince1970] + seconds];
+}
+
+- (id)initWithTimeInterval:(double)seconds sinceDate:(NSDate *)date
+{
+	return [self initWithTimeIntervalSince1970:
+		[date timeIntervalSince1970] + seconds];
+}
+
+- (double)timeIntervalSinceNow
+{
+	/*
+	 * self MINUS now, the same subtraction direction as -timeIntervalSinceDate:
+	 * The inverted version reported a NEGATIVE interval for a future date, which
+	 * the date-extras check caught: a date an hour ahead has +3600, not -3600.
+	 */
+	return _timeIntervalSince1970 - [[NSDate date] timeIntervalSince1970];
+}
+
+- (double)timeIntervalSinceReferenceDate
+{
+	return _timeIntervalSince1970 - FN_REFERENCE_DATE_SECONDS;
+}
+
+- (NSDate *)dateByAddingTimeInterval:(double)seconds
+{
+	return [[NSDate alloc] initWithTimeIntervalSince1970:_timeIntervalSince1970 + seconds];
+}
+
+- (NSString *)descriptionWithLocale:(id)locale
+{
+	(void)locale;
+	return [self description];
+}
+
 - (id)initWithTimeIntervalSince1970:(double)seconds
 {
 	self = [super init];
