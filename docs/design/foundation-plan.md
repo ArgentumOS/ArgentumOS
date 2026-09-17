@@ -6,7 +6,9 @@ skin ships** — the root class, the strings, the value types, the collections,
 `NSIndexSet`, `NSEnumerator`) and `NSPropertyListSerialization`. Gated on a guest boot by
 six cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **6 / 18 /
-17 / 31 / 6** checks. **F5 (self-hosting) is the one phase not started.** The work queue
+17 / 31 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
+(the public headers are already staged, so it is a deliberate later step rather than a gap).
+The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
 Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md` §8–§9):
@@ -197,9 +199,13 @@ status.
   `NSEnumerator`. DONE (§9)**, plus the **plist skin**
   (`NSPropertyListSerialization`), which is where this plan meets
   `docs/design/plist-config-plan.md`.
-- **F5 — self-hosting**: headers staged, and a trivial ObjC program compiled *on
-  the guest* against the staged Foundation — the manifest commitment in
-  `docs/design/self-hosting-packages.md` §6 made real. **NOT STARTED.**
+- **F5 — self-hosting. DEFERRED (user, 2026-09-17).** The enabling half is DONE and stays:
+  the public headers are staged to `/System/Shared/Headers/foundation/` beside
+  `libfoundation.so.1`, so an on-guest rebuild is possible. What is deferred is the GATE —
+  a trivial ObjC program compiled *on the guest* against those headers, the manifest
+  commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
+  deferral removes the gate, not the standing requirement to track self-hosting needs
+  there.
 
 ## 6. Risks / gotchas
 
