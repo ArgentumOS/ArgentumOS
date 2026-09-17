@@ -265,4 +265,69 @@ extern id object_dispose(id obj);
 	return ((id (*)(id, SEL, id))objc_msgSend)(self, aSelector, object);
 }
 
+
+/*
+ * THE REST OF THE PUBLIC ROOT-CLASS API (the hard rule: a class passes only when
+ * its public API is complete).
+ *
+ *   -zone / +allocWithZone:   NO ZONES: one allocator, so the argument is
+ *                             accepted, ignored and documented. -zone answers
+ *                             NULL rather than a fake zone, so nothing can be
+ *                             handed to an allocator that does not exist.
+ *   -isProxy                  the root class is not a proxy.
+ *   -debugDescription         the same text as -description.
+ *   -methodForSelector:       the runtime's own answer.
+ *   +load / +initialize       declared and empty so a subclass's overrides match
+ *                             the signatures the runtime calls them with.
+ *
+ * NOT here: -forwardInvocation: / -methodSignatureForSelector:, which need
+ * NSInvocation and NSMethodSignature — classes this Foundation does not ship yet,
+ * so they are an ORDERING DEPENDENCY, not a gap. A message nothing implements
+ * therefore reaches -doesNotRecognizeSelector: and aborts loudly.
+ */
++ (void)load
+{
+}
+
++ (void)initialize
+{
+}
+
++ (BOOL)respondsToSelector:(SEL)aSelector
+{
+	/* The receiver IS a class here, so the metaclass carries its class methods. */
+	return class_respondsToSelector(object_getClass(self), aSelector);
+}
+
++ (BOOL)instancesRespondToSelector:(SEL)aSelector
+{
+	return class_respondsToSelector(self, aSelector);
+}
+
++ (id)allocWithZone:(NSZone *)zone
+{
+	(void)zone;
+	return [self alloc];
+}
+
+- (BOOL)isProxy
+{
+	return NO;
+}
+
+- (NSZone *)zone
+{
+	return NULL;
+}
+
+- (IMP)methodForSelector:(SEL)aSelector
+{
+	return class_getMethodImplementation(object_getClass(self), aSelector);
+}
+
+- (NSString *)debugDescription
+{
+	return [self description];
+}
+
 @end

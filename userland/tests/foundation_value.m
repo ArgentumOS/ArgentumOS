@@ -13,6 +13,7 @@
 
 #import "foundation_value.h"
 #include <stdio.h>
+#import <objc/runtime.h>
 #include <string.h>
 
 static int okc, failc;
@@ -134,6 +135,79 @@ int main(void)
 		      [foundation_value_date()
 		          isEqualToDate:[NSDate dateWithTimeIntervalSince1970:1000.0]],
 		      "values built in the support unit equal local ones");
+	}
+
+
+	{
+		/* THE HARD RULE, mechanically: every public NSNumber selector must EXIST.
+		 * This list IS the audit (docs/design/foundation-plan.md), turned into
+		 * something that fails a gate instead of living in prose. */
+		static const char *classSelectors[] = {
+			"numberWithBool:", "numberWithChar:", "numberWithShort:",
+			"numberWithInt:", "numberWithLong:", "numberWithLongLong:",
+			"numberWithInteger:", "numberWithUnsignedChar:",
+			"numberWithUnsignedShort:", "numberWithUnsignedInt:",
+			"numberWithUnsignedLong:", "numberWithUnsignedLongLong:",
+			"numberWithUnsignedInteger:", "numberWithFloat:",
+			"numberWithDouble:", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithBool:", "initWithChar:", "initWithShort:", "initWithInt:",
+			"initWithLong:", "initWithLongLong:", "initWithInteger:",
+			"initWithUnsignedChar:", "initWithUnsignedShort:",
+			"initWithUnsignedInt:", "initWithUnsignedLong:",
+			"initWithUnsignedLongLong:", "initWithUnsignedInteger:",
+			"initWithFloat:", "initWithDouble:",
+			"boolValue", "charValue", "shortValue", "intValue", "longValue",
+			"longLongValue", "integerValue", "unsignedCharValue",
+			"unsignedShortValue", "unsignedIntValue", "unsignedLongValue",
+			"unsignedLongLongValue", "unsignedIntegerValue", "floatValue",
+			"doubleValue", "stringValue", "objCType", "descriptionWithLocale:",
+			"isEqualToNumber:", "compare:", "isEqual:", "hash", "description",
+			"copy", "mutableCopy", NULL
+		};
+		NSNumber *n = [NSNumber numberWithInt:42];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSNumber respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-VALUE missing +%s\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![n respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-VALUE missing -%s\n", instanceSelectors[i]);
+			}
+		}
+		check("number-api-complete", complete,
+		      "every public NSNumber selector exists (the hard rule)");
+	}
+
+	{
+		/* ...and the whole matrix BEHAVES, not merely exists. */
+		check("number-matrix",
+		      [[NSNumber numberWithChar:'A'] charValue] == 'A' &&
+		      [[NSNumber numberWithShort:-2] shortValue] == -2 &&
+		      [[NSNumber numberWithLong:3L] longValue] == 3L &&
+		      [[NSNumber numberWithInteger:-4] integerValue] == -4 &&
+		      [[NSNumber numberWithUnsignedInt:5u] unsignedIntValue] == 5u &&
+		      [[NSNumber numberWithUnsignedLongLong:6ull] unsignedLongLongValue] == 6ull &&
+		      [[NSNumber numberWithUnsignedInteger:7ul] unsignedIntegerValue] == 7ul &&
+		      [[NSNumber numberWithUnsignedShort:8] unsignedShortValue] == 8 &&
+		      [[NSNumber numberWithFloat:1.5f] floatValue] == 1.5f &&
+		      [[NSNumber numberWithFloat:1.5f] objCType][0] == 'f' &&
+		      [[NSNumber numberWithInt:1] objCType][0] == 'i' &&
+		      [[NSNumber numberWithBool:YES] boolValue] == YES &&
+		      strcmp([[[NSNumber numberWithInt:42] stringValue] UTF8String], "42") == 0 &&
+		      strcmp([[NSNumber numberWithInt:42] objCType], "i") == 0 &&
+		      strcmp([[NSNumber numberWithDouble:1.5] objCType], "d") == 0 &&
+		      [[NSNumber numberWithUnsignedLongLong:18446744073709551615ull] doubleValue] > 0 &&
+		      [[NSNumber numberWithInt:-1]
+		          isEqual:[NSNumber numberWithUnsignedLongLong:18446744073709551615ull]],
+		      "the matrix converts and -objCType reports the CREATION type");
 	}
 
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);

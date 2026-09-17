@@ -121,6 +121,18 @@ __attribute__((objc_root_class))
 - (id)performSelector:(SEL)aSelector;
 - (id)performSelector:(SEL)aSelector withObject:(id)object;
 
+/* Messaging and introspection, the rest of Cocoa's root-class surface. */
+- (IMP)methodForSelector:(SEL)aSelector;
++ (BOOL)respondsToSelector:(SEL)aSelector;
++ (BOOL)instancesRespondToSelector:(SEL)aSelector;
++ (void)load;			/* the runtime calls these; declared so overrides match */
++ (void)initialize;
++ (id)allocWithZone:(NSZone *)zone;	/* NO ZONES: the argument is ignored */
+
+- (BOOL)isProxy;
+- (NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it */
+- (NSString *)debugDescription;
+
 /*
  * Equality and hashing. The defaults are identity and the pointer, which is
  * exactly what a Dictionary key has to override.

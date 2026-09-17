@@ -617,3 +617,37 @@ of range returns nil where Cocoa raises `NSRangeException` (F4 revisits);
 `-description` shapes are one-line. **Names that are ours, not the contract:**
 `NSOwnedString`, `NSTinyString`, `-byteAtIndex:`, `-characterCount`,
 `-appendUTF8String:`.
+
+## The hard rule (2026-09-17): a class passes only when its public API is complete
+
+**Every shipped class is audited against the public (documented Cocoa) API and
+must have FULL working implementations.** The audit in §9 split its findings into
+A (broken — fixed), B (would not compile — fixed) and C/E (the backlog). Under
+this rule **the backlog is the work queue, not an end state**, and "pass" is
+MECHANICAL: each class's probe carries an `api-complete` check that asserts every
+public selector exists — naming what is missing — beside behavioural checks, so a
+gap fails the gate instead of living in prose.
+
+| class | audited | complete | what remains |
+|---|---|---|---|
+| `NSObject` | yes | **yes** | `-forwardInvocation:`/`-methodSignatureForSelector:` need `NSInvocation`/`NSMethodSignature` (not shipped) |
+| `NSNumber` | yes | **yes** | — |
+| `NSString`/`NSMutableString` | yes | no | comparison, prefix/suffix, substring, splitting, joining, conversions, formatting |
+| `NSArray`/`NSMutableArray` | yes | no | enumeration helpers, bulk mutation, slicing, joining, identity lookup |
+| `NSDictionary`/`NSMutableDictionary` | yes | no | `-allKeys`/`-allValues`, bulk set, key and object enumerators |
+| `NSData`/`NSMutableData` | yes | no | ranges, `-getBytes:length:`, the no-copy initialisers, file I/O, base64 |
+| `NSDate` | yes | no | relative dates, distant past/future, the interval constructors |
+
+**Ordering dependencies are recorded, not called gaps:** the `:options:error:`
+file variants wait on `NSError` (F4), and forwarding waits on
+`NSInvocation`/`NSMethodSignature`.
+
+**Declared deviations stay allowed, but are stated:** `-length` counts BYTES and
+`-characterCount` counts CHARACTERS (the user's decision; Cocoa's `-length` is
+UTF-16 code units); NO ZONES (`NSZone` is an incomplete type, `-zone` answers
+NULL, `+allocWithZone:` ignores its argument); `-description` shapes are
+one-line. Names that are OURS rather than the contract: `NSOwnedString`,
+`NSTinyString`, `-byteAtIndex:`, `-characterCount`, `-appendUTF8String:`.
+
+**Order of work:** `NSObject` and `NSNumber` are complete (this commit); then
+`NSString`/`NSMutableString`, then the collections, then `NSData`/`NSDate`.
