@@ -230,7 +230,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@chmod 4755 "$(ROOTFS64)/System/Tools/toybox"
 	@chmod 0755 "$(ROOTFS64)/System/Tools/config" \
 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
-	$(MUSL64_CC) userland/tools/init.c -o "$(ROOTFS64)/System/Tools/init"
+	# init reads the machine configuration THROUGH LIBCONFIG (P3c-b): one reader
+	# for the domains it needs, and the reason a domain written as a plist can no
+	# longer strand the boot mounts. -lconfig is the staged shared library, like
+	# every other userland tool's.
+	$(MUSL64_CC) -Iuserland -L$(FNXLIB) userland/tools/init.c -lconfig \
+		-o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
 	# objc_smoke: the Objective-C runtime (docs/design/objc-toolchain-plan.md
 	# P2/P3). TWO translation units on purpose: the class is implemented in

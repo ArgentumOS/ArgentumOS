@@ -45,24 +45,57 @@ class Case(BaseCase):
             self.note(line)
 
         # --- the mount table's OWN SPELLING, in the guest ---------------
-        # system.mounts.conf is read by init's OWN hand-rolled parser
-        # (tools/init.c: mount_from_table) and NOT by libconfig — measured while
-        # converting the domains for P3c (docs/design/plist-config-plan.md).
-        # Until init reads its domains THROUGH the library, this file must stay
-        # in the legacy spelling: converting it early breaks the boot mounts
-        # silently (init parses nothing, so it mounts nothing), which is exactly
-        # what this check is here to catch.
+        # system.mounts.conf is an XML plist (P3c-b) and init reads it through
+        # libconfig (tools/init.c: mount_from_table is now record enumeration).
+        # The mount-table check above proves the mounts happened; THIS proves
+        # they came from the CONVERTED file — a working mount table says nothing
+        # about which spelling produced it, and a hand parser reading a plist
+        # would have mounted nothing while the boot still came up.
         mark = len(session.log_text())
         session.run("cat /System/Configuration/system.mounts.conf")
         conf = session.output_since(mark)
-        legacy = "processes = {" in conf and "<plist" not in conf
-        self.check("mounts-domain-still-legacy",
-                   legacy,
-                   "init's own parser can still read the mount table"
-                   if legacy
-                   else "the mount table was converted, but init parses it "
-                        "itself — port init to libconfig first: "
+        self.check("mounts-domain-is-a-plist",
+                   '<plist version="1.0">' in conf
+                   and "<key>processes</key>" in conf
+                   and "<string>/System/Processes</string>" in conf
+                   and "<key>esp</key>" in conf,
+                   "the shipped mount table is the converted plist"
+                   if '<plist version="1.0">' in conf
+                   else "the guest has the legacy file, or no file: "
                         + conf.strip()[:160])
+
+        # --- the display domain, read by init before the session ---------
+        # Same argument as the mount table: this shows the guest has the
+        # CONVERTED file, and the check below shows init read it through
+        # libconfig. It ships in the SHARED scope (the file's own header says a
+        # System-scope copy wins over this default) — which is what the old
+        # hand-written two-path loop emulated, and what libconfig's precedence
+        # now does for real.
+        mark = len(session.log_text())
+        session.run("cat /Shared/Configuration/system.display.conf")
+        dconf = session.output_since(mark)
+        self.check("display-domain-is-a-plist",
+                   '<plist version="1.0">' in dconf
+                   and "<key>display</key>" in dconf
+                   and "<integer>1920</integer>" in dconf,
+                   "the shipped display domain is the converted plist"
+                   if '<plist version="1.0">' in dconf
+                   else "the guest has the legacy file, or no file: "
+                        + dconf.strip()[:160])
+
+        # init APPLIED what it read: this line prints the mode the framebuffer
+        # reported AFTER the ioctl, so the 1920x1080x32 came from the converted
+        # domain through libconfig — the strongest evidence that init's reader
+        # is the library, not a parser that happened to see the same numbers.
+        log = session.log_text()
+        applied = "INIT: display: mode 1920x1080 32bpp" in log
+        self.check("init-applied-the-display-domain",
+                   applied,
+                   "init read display.width/height/bpp through libconfig and "
+                   "set the mode" if applied
+                   else "no mode-set line for 1920x1080x32: "
+                        + " | ".join(ln for ln in log.splitlines()
+                                     if "INIT: display" in ln)[:200])
 
         # --- procfs ---------------------------------------------------
         mark = len(session.log_text())

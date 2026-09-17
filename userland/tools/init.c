@@ -11,6 +11,15 @@
  * then spawns a shell on /System/Tools/sh, restarting it when it exits.
  * The layout is the FNX hierarchy (docs/design/fsh-proposal.md): the root has
  * only Applications/, Shared/, System/, Users/, Volumes/.
+ *
+ * THE MACHINE CONFIGURATION IS READ THROUGH LIBCONFIG — one reader, the same
+ * one the config tool, Xfb, fontconfig and toybox use. init used to parse these
+ * files itself, which was fine only while every writer wrote the legacy text:
+ * toybox's `mount`/`umount` write the mounts domain through the library and
+ * `config set` can write any domain, and since P3b that writer emits XML plists
+ * (docs/design/plist-config-plan.md) — so a hand parser would silently mount
+ * nothing (or resolve no hostname) after the first such write. The library reads
+ * BOTH spellings, so this cannot rot again.
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -25,18 +34,22 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libconfig.h>
 
 #define PATH_DEFAULT	"/System/Tools:/Applications"
+
+/* DOMAIN ids (what libconfig resolves) and the paths they live at in System
+ * scope (what a message can name when the domain is missing). */
+#define NETWORK_DOMAIN_ID	"system.network"
+#define MOUNTS_DOMAIN_ID	"system.mounts"
+#define DISPLAY_DOMAIN_ID	"system.display"
 #define NETWORK_DOMAIN	"/System/Configuration/system.network.conf"
 #define MOUNTS_DOMAIN	"/System/Configuration/system.mounts.conf"
-
-/* The display mode the session runs in comes from the system.display
- * domain; the System scope wins over the Shared default, matching
- * libconfig's precedence for the two scopes that exist before any user
- * logs in. The physical-size keys next to width/height (width_mm/
- * height_mm) belong to the points-per-pixel path, not to this one. */
 #define DISPLAY_DOMAIN_SYS	"/System/Configuration/system.display.conf"
-#define DISPLAY_DOMAIN_SHARED	"/Shared/Configuration/system.display.conf"
+
+/* The session is a FILE, not a scope tree position, so it is read by path
+ * (libconfig's raw-file read) rather than as a domain. */
+#define SESSION_PATH	"/System/Configuration/session.conf"
 
 /* fb0's mode ioctls and the struct they carry (include/fnx/fb.h:20-27;
  * spelled out here because that header pulls in kernel-only types). */
@@ -57,55 +70,34 @@ static void try_mount(const char *source, const char *fstype,
 		fprintf(stderr, "INIT: mount %s on %s: %m\n", source, target);
 }
 
-/* Read `<key> = <number>` from the display domain, System scope first.
- * Returns 1 when a value was found. The key must match EXACTLY: the same
- * file carries width/height_mm beside width/height. */
+/* Read `display.<key>` from the display domain as a number, through libconfig's
+ * precedence (System first, then Shared — what this used to spell out by hand).
+ * Returns 1 when a usable value was found. The key must match EXACTLY: the same
+ * record carries width/height_mm beside width/height, which is not our key. */
 static int
 display_key_int(const char *key, int *out)
 {
-	static const char *paths[] = {
-		DISPLAY_DOMAIN_SYS,
-		DISPLAY_DOMAIN_SHARED,
-	};
-	size_t klen = strlen(key);
-	unsigned int i;
+	char full[64];
+	config_value_t v;
+	long n;
 
-	for (i = 0; i < sizeof paths / sizeof paths[0]; i++) {
-		FILE *f = fopen(paths[i], "r");
-		char line[256];
-
-		if (!f)
-			continue;
-		while (fgets(line, sizeof line, f)) {
-			char *p = line, *v, *end;
-			long n;
-
-			while (*p == ' ' || *p == '\t')
-				p++;
-			if (*p == '#' || *p == '\n' || *p == '\0')
-				continue;
-			if (strncmp(p, key, klen) != 0)
-				continue;
-			if (p[klen] != '=' && p[klen] != ' ' && p[klen] != '\t')
-				continue;
-			v = p + klen;
-			while (*v == ' ' || *v == '\t')
-				v++;
-			if (*v != '=')
-				continue;
-			v++;
-			while (*v == ' ' || *v == '\t')
-				v++;
-			n = strtol(v, &end, 10);
-			if (end == v || n < 0 || n > 65535)
-				continue;
-			*out = (int) n;
-			fclose(f);
-			return 1;
-		}
-		fclose(f);
+	if (snprintf(full, sizeof full, "display.%s", key) >= (int) sizeof full)
+		return 0;
+	if (config_read(DISPLAY_DOMAIN_ID, full, NULL, &v) != CONFIG_OK)
+		return 0;
+	if (v.type == CONFIG_TYPE_INT)
+		n = (long) v.v.integer;
+	else if (v.type == CONFIG_TYPE_FLOAT)
+		n = (long) v.v.floating;
+	else {
+		config_value_free(&v);
+		return 0;
 	}
-	return 0;
+	config_value_free(&v);
+	if (n < 0 || n > 65535)
+		return 0;
+	*out = (int) n;
+	return 1;
 }
 
 /* Set the framebuffer mode the session will run in (system.display:
@@ -192,189 +184,104 @@ set_display_mode_from_domain(void)
 	close(fd);
 }
 
-/* M5: set the kernel nodename from the network domain (plan §5.3).
- * `hostname` = value may be bare or quoted; comments (#) and other
- * assignments are ignored. A read failure or an empty value leaves the
- * kernel default ("(none)") in place. */
+/* M5: set the kernel nodename from the network domain (plan §5.3), through
+ * libconfig. An absent domain or key, a value that is not a string, or an empty
+ * one leaves the kernel default ("(none)") in place. */
 static void set_hostname_from_domain(void)
 {
-	FILE *f;
-	char line[256];
+	config_value_t v;
 	char name[128];
 
-	f = fopen(NETWORK_DOMAIN, "r");
-	if (!f)
+	if (config_read(NETWORK_DOMAIN_ID, "hostname", NULL, &v) != CONFIG_OK)
 		return;
-	while (fgets(line, sizeof line, f)) {
-		char *p, *eq, *v, *end;
-
-		for (p = line; *p == ' ' || *p == '\t'; p++)
-			;
-		if (*p == '#' || !*p)
-			continue;
-		if (strncmp(p, "hostname", 8) ||
-		    (p[8] != '=' && p[8] != ' ' && p[8] != '\t'))
-			continue;
-		v = p + 8;
-		while (*v == ' ' || *v == '\t')
-			v++;
-		if (*v != '=')
-			continue;
-		v++;
-		while (*v == ' ' || *v == '\t')
-			v++;
-		if (*v == '"') {
-			v++;
-			end = strchr(v, '"');
-			if (end)
-				*end = 0;
-		} else {
-			end = v + strlen(v);
-			while (end > v && (end[-1] == '\n' || end[-1] == '\r' ||
-					    end[-1] == ' ' || end[-1] == '\t'))
-				*--end = 0;
-		}
-		if (!*v)
-			break;
-		if (strlen(v) >= sizeof name)
-			break;
-		strcpy(name, v);
-		if (sethostname(name, strlen(name)) == 0) {
-			fprintf(stderr, "INIT: hostname '%s' (network domain)\n",
-				name);
-		}
-		break;
+	if (v.type != CONFIG_TYPE_STRING || !v.v.string || !v.v.string[0] ||
+	    strlen(v.v.string) >= sizeof name) {
+		config_value_free(&v);
+		return;
 	}
-	fclose(f);
+	strcpy(name, v.v.string);
+	config_value_free(&v);
+	if (sethostname(name, strlen(name)) == 0)
+		fprintf(stderr, "INIT: hostname '%s' (network domain)\n", name);
 }
 
-/* M6: mount the boot table from system.mounts.conf (plan §5.5). The
- * domain is dedicated to mount records, so each top-level group is one
- * record (system.mounts.processes - no 'mount' container wrapper, the
- * domain name already says it). Record order is mount order; the mount
- * source defaults to the filesystem type. A record missing
- * fstype/target is skipped with a clear error; structural problems
- * (nesting, unbalanced braces) stop the parse with an error. The old
- * hardcoded try_mount calls are gone: the boot mount set is machine
- * config. */
+/* One string field of a mounts record, or 0 when the field is absent, is not a
+ * string, or is longer than the buffer it must fit in — a record whose target
+ * does not fit is a record to REFUSE, not one to mount somewhere else. */
+static int mount_field(const char *record, const char *field, char *out,
+		       size_t outsz)
+{
+	char key[160];
+	config_value_t v;
+
+	if (snprintf(key, sizeof key, "%s.%s", record, field) >= (int) sizeof key)
+		return 0;
+	if (config_read_scope(CONFIG_SCOPE_SYSTEM, MOUNTS_DOMAIN_ID, key,
+			      &v) != CONFIG_OK)
+		return 0;
+	if (v.type != CONFIG_TYPE_STRING || !v.v.string || !v.v.string[0] ||
+	    strlen(v.v.string) >= outsz) {
+		config_value_free(&v);
+		return 0;
+	}
+	strcpy(out, v.v.string);
+	config_value_free(&v);
+	return 1;
+}
+
+/* M6 + P3c-b: mount the boot table from the system.mounts DOMAIN (plan §5.5),
+ * read through libconfig — see the note at the top of this file for why the
+ * hand parser had to go.
+ *
+ * The domain is dedicated to mount records, so each top-level group is one
+ * record (system.mounts.processes — no 'mount' container wrapper, the domain
+ * name already says it). Record order is mount order; the mount source defaults
+ * to the filesystem type; a record missing fstype/target is skipped with a clear
+ * error. Fields the record does not need are ignored, and a field of the wrong
+ * TYPE reads as missing: the library resolves keys, not columns. */
 static void mount_from_table(void)
 {
-	FILE *f;
-	char line[256];
-	char cur[64], fstype[64], source[256], target[256];
-	int depth = 0, bad = 0;
+	char *name = NULL;
+	char *prev = NULL;
+	config_err_t e;
 
-	f = fopen(MOUNTS_DOMAIN, "r");
-	if (!f) {
-		fprintf(stderr, "INIT: mounts: %s: %m\n", MOUNTS_DOMAIN);
+	e = config_record_first(CONFIG_SCOPE_SYSTEM, MOUNTS_DOMAIN_ID, "",
+				&name);
+	if (e == CONFIG_ERR_NOT_FOUND) {
+		fprintf(stderr, "INIT: mounts: %s: no boot mount table\n",
+			MOUNTS_DOMAIN);
 		return;
 	}
-	cur[0] = fstype[0] = source[0] = target[0] = 0;
-	while (fgets(line, sizeof line, f)) {
-		char *p, *end, *eq, *v;
-
-		for (p = line; *p == ' ' || *p == '\t'; p++)
-			;
-		end = p + strlen(p);
-		while (end > p && (end[-1] == '\n' || end[-1] == '\r' ||
-				    end[-1] == ' ' || end[-1] == '\t'))
-			*--end = 0;
-		if (!*p || *p == '#')
-			continue;
-		if (*p == '}') {
-			if (depth == 1) {	/* end of a record: mount it */
-				if (fstype[0] && target[0])
-					try_mount(source[0] ? source : fstype,
-						  fstype, target);
-				else
-					fprintf(stderr,
-						"INIT: mounts: record '%s': missing %s\n",
-						cur, fstype[0] ? "target" : "fstype");
-				cur[0] = fstype[0] = source[0] = target[0] = 0;
-			}
-			depth--;
-			if (depth < 0) {
-				fprintf(stderr,
-					"INIT: mounts: unbalanced '}'\n");
-				bad = 1;
-				break;
-			}
-			continue;
-		}
-		eq = strchr(p, '=');
-		if (!eq) {
-			fprintf(stderr, "INIT: mounts: malformed line: %s\n",
-				p);
-			bad = 1;
-			break;
-		}
-		*eq = 0;
-		end = eq - 1;
-		while (end > p && (*end == ' ' || *end == '\t'))
-			*end-- = 0;
-		v = eq + 1;
-		while (*v == ' ' || *v == '\t')
-			v++;
-		if (*v == '{') {	/* record open (top level, no wrapper) */
-			if (depth == 0) {
-				if (strlen(p) >= sizeof cur) {
-					fprintf(stderr,
-						"INIT: mounts: record name too long\n");
-					bad = 1;
-					break;
-				}
-				strcpy(cur, p);
-				fstype[0] = source[0] = target[0] = 0;
-			} else {
-				fprintf(stderr,
-					"INIT: mounts: nested '%s' unsupported\n",
-					p);
-				bad = 1;
-				break;
-			}
-			depth++;
-			if (depth > 1) {
-				bad = 1;
-				break;
-			}
-			continue;
-		}
-		/* assignment inside a record */
-		if (depth == 1) {
-			char *dst = !strcmp(p, "fstype") ? fstype :
-				    !strcmp(p, "source") ? source :
-				    !strcmp(p, "target") ? target : NULL;
-			char *w;
-
-			if (!dst) {
-				fprintf(stderr,
-					"INIT: mounts: record '%s': unknown field '%s'\n",
-					cur, p);
-				bad = 1;
-				break;
-			}
-			w = dst;
-			if (*v == '"') {
-				v++;
-				while (*v && *v != '"') {
-					if (*v == '\\' && v[1])
-						v++;
-					if (w < dst + 250)
-						*w++ = *v;
-					v++;
-				}
-			} else {
-				while (*v && *v != '#' && w < dst + 250)
-					*w++ = *v++;
-			}
-			*w = 0;
-		}
+	if (e != CONFIG_OK) {
+		fprintf(stderr, "INIT: mounts: %s: %s\n", MOUNTS_DOMAIN,
+			config_strerror(e));
+		return;
 	}
-	if (!bad && depth) {
-		fprintf(stderr, "INIT: mounts: unbalanced '{'\n");
-		bad = 1;
+	while (e == CONFIG_OK && name) {
+		char fstype[64], source[256], target[256];
+
+		fstype[0] = source[0] = target[0] = 0;
+		mount_field(name, "fstype", fstype, sizeof fstype);
+		mount_field(name, "source", source, sizeof source);
+		mount_field(name, "target", target, sizeof target);
+		if (fstype[0] && target[0])
+			try_mount(source[0] ? source : fstype, fstype, target);
+		else
+			fprintf(stderr,
+				"INIT: mounts: record '%s': missing %s\n",
+				name, fstype[0] ? "target" : "fstype");
+
+		free(prev);
+		prev = name;
+		name = NULL;
+		e = config_record_next(CONFIG_SCOPE_SYSTEM, MOUNTS_DOMAIN_ID, "",
+				       prev, &name);
 	}
-	fclose(f);
+	if (e != CONFIG_OK && e != CONFIG_ERR_NOT_FOUND)
+		fprintf(stderr, "INIT: mounts: %s: %s\n", MOUNTS_DOMAIN,
+			config_strerror(e));
+	free(prev);
+	free(name);
 }
 
 /* Fork+exec a desktop client. */
@@ -405,55 +312,22 @@ enum session_kind {
 
 static enum session_kind read_session(void)
 {
-	FILE *f;
-	char line[256];
+	config_value_t v;
 	/* The parked clients are still recognised by name, so an old
 	 * session.conf reads as written; only Xfb has a client. DEFAULT. */
 	enum session_kind kind = SESSION_XFB;
 
-	f = fopen("/System/Configuration/session.conf", "r");
-	if (!f)
+	if (config_read_file(SESSION_PATH, "desktop", &v) != CONFIG_OK)
 		return kind;
-	while (fgets(line, sizeof line, f)) {
-		char *p, *v, *end;
-
-		for (p = line; *p == ' ' || *p == '\t'; p++)
-			;
-		if (*p == '#' || !*p)
-			continue;
-		if (strncmp(p, "desktop", 7) ||
-		    (p[7] != '=' && p[7] != ' ' && p[7] != '\t'))
-			continue;
-		v = p + 7;
-		while (*v == ' ' || *v == '\t')
-			v++;
-		if (*v != '=')
-			continue;
-		v++;
-		while (*v == ' ' || *v == '\t')
-			v++;
-		if (*v == '"') {
-			v++;
-			end = strchr(v, '"');
-			if (end)
-				*end = 0;
-		} else {
-			end = v + strlen(v);
-			while (end > v && (end[-1] == '\n' || end[-1] == '\r' ||
-					    end[-1] == ' ' || end[-1] == '\t'))
-				*--end = 0;
-		}
-		if (strcmp(v, "xfb") == 0)
-			kind = SESSION_XFB;
-		else if (strcmp(v, "uitest") == 0)
+	if (v.type == CONFIG_TYPE_STRING && v.v.string) {
+		if (!strcmp(v.v.string, "uitest"))
 			kind = SESSION_UITEST;
-		else if (strcmp(v, "zoo") == 0)
+		else if (!strcmp(v.v.string, "zoo"))
 			kind = SESSION_ZOO;
-		else if (strcmp(v, "kestrel") == 0)
+		else if (!strcmp(v.v.string, "kestrel"))
 			kind = SESSION_KESTREL;
-		break;
 	}
-	fclose(f);
+	config_value_free(&v);
 	return kind;
 }
 

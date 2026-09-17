@@ -126,50 +126,53 @@ same entries the writer wrote. **9 of the 10 shipped files convert with every
 check green**; the tenth is skipped as not a libconfig domain, and says so (see
 P3c). The probe is staged for the guest.
 
-### P3c — convert the files libconfig owns (`system.fonts` + `system.xfb` DONE; mounts/display BLOCKED on init)
+### P3c — the files libconfig owns (mounts, display, fonts, xfb: DONE)
 **The reader audit reshaped this stage, and the guest gate is what proved it.**
 The rule at the top of this plan — a file may only change format in the same
 commit that its LAST reader learns the new spelling — was applied domain by
-domain, and two of them have a reader that is NOT libconfig:
+domain. The four libconfig-owned shipped domains are now plists:
 
 | domain | readers (measured) | state |
 |---|---|---|
-| `system.fonts.conf` | fontconfig, through the **libconfig C API** (`third_party/x11/fontconfig-libconf.patch`: `fclibconf.c`) | **CONVERTED** |
-| `system.xfb.conf` | Xfb's `hw/xfb/configargs.c`, through libconfig | **CONVERTED** |
-| `system.mounts.conf` | `init`'s OWN line parser (`tools/init.c`: `mount_from_table`), beside libconfig | BLOCKED |
-| `system.display.conf` | `init`'s own parser (`set_display_mode_from_domain`, which re-implements libconfig's System-over-Shared precedence) | BLOCKED |
+| `system.fonts.conf` | fontconfig, through the **libconfig C API** (`fclibconf.c`) | CONVERTED |
+| `system.xfb.conf` | Xfb's `hw/xfb/configargs.c` | CONVERTED |
+| `system.mounts.conf` | **`init`** — now reading the domain through libconfig (record enumeration) | CONVERTED |
+| `system.display.conf` | **`init`** — now through libconfig (System-over-Shared precedence is the library's) | CONVERTED |
 | `fonts.conf` | libfontconfig — and it is not SHIPPED (`mk/20-userland.mk` stages no XML `fonts.conf`) | out of scope |
-| `system.shells.conf` | toybox's account tools, through libconfig (no libc reader exists) | convertible |
+| `system.shells.conf` | toybox's account tools, through libconfig (no libc reader exists) | convertible, not converted |
 
-**What the gate caught.** Converting `system.mounts.conf` first — as this stage
-originally prescribed — booted a guest with no procfs: `init` read the plist with
-its line parser, found no `=`/`}` records and mounted nothing, while libconfig was
+**What the gate caught, and what fixed it.** `init` used to parse its domains
+itself, and converting `system.mounts.conf` first — as this stage originally
+prescribed — booted a guest with NO procfs: `init` read the plist with its line
+parser, found no `=`/`}` records and mounted nothing, while libconfig was
 perfectly happy. The boot still came up (devfs is mounted by the kernel, not from
-the table), which is exactly why the mount-table check exists. The conversion was
-**reverted**, and `tests/cases/procfs_devfs.py` now carries the tripwire
-`mounts-domain-still-legacy`: it fails if that file converts before `init` can
-read it.
+the table), so only the mount-table check noticed. That conversion was reverted
+and the tripwire `mounts-domain-still-legacy` was added; then the real fix landed:
+**`init` reads all four of its domains through libconfig** — `mounts` as records,
+`display` as keys, `network` for the hostname, `session.conf` by raw-file read —
+with `-lconfig` on its link line and not one `fgets` left in the file. This is
+also why the port was necessary rather than nice: toybox's `mount`/`umount` write
+the mounts domain through the library, and since P3b that writer emits plists, so
+the hand parser would have stranded the boot mounts on the first `mount` in a
+session.
 
-**So what remains here is a CODE change, not a file change:** `init` must read its
-four domains (`mounts`, `display`, `network`, `session`) through libconfig instead
-of parsing them itself — the plan's own "convert the reader FIRST" rule applied to
-the last non-libconfig reader. `system.mounts.conf` and `system.display.conf`
-convert in that same commit.
+Acceptance, all measured on guests: `tests/cases/procfs_devfs.py` **15/15** — the
+mount table is right (`agfs`, `proc`, `devpts`), the guest's own
+`system.mounts.conf` and `system.display.conf` ARE the converted plists, and
+`init-applied-the-display-domain` shows `init` read `display.width/height/bpp`
+through libconfig and set 1920x1080x32 (that line prints the mode the framebuffer
+reported after the ioctl, so the numbers came from the converted file).
+`tests/cases/xfb_keys.py` **6/6** with `xfb-domain-is-a-plist` and
+`fonts-domain-is-a-plist`. `config_plist_test` **81/81** over the ten shipped
+files, and its prose check holds for a plist SOURCE too; the writer also places a
+block's prose above the block's KEY, so a file's header stays at the top of the
+file.
 
-**`fonts.conf` is NOT one of them** (measured while writing P3b's probe): it is
-fontconfig's own XML — `<fontconfig>`, `<dir>`, `<match>` — read by libfontconfig,
-with no `<plist>` in it and no `key = value` line either. It converts only if
-fontconfig's reader moves onto the core, which is a separate decision from this
-plan's. The probe reports it as skipped rather than failing it.
-
-Acceptance for what DID convert, all measured on a guest:
-`tests/cases/xfb_keys.py` asserts `xfb-domain-is-a-plist` and
-`fonts-domain-is-a-plist` — the guest's own copies ARE the converted files — with
-the X server up and answering typed keys from the `system.xfb.conf` it read.
-`config_plist_test` shows both files keep every key in order, every type and
-value, and their prose, and are byte-stable across a rewrite; the writer also
-places a block's prose above the block's KEY, so a file's header stays at the top
-of the file instead of inside its first record.
+Three behaviour notes from the reader port, all deliberate: a mounts record's
+EXTRA fields are ignored (the library resolves keys, not columns); a field of the
+wrong TYPE reads as missing, so that record is refused with the existing
+"missing fstype/target" error; and `init` gained a dynamic dependency on
+`libconfig.so`, which the root image already carries for every other tool.
 
 ### P3d — musl parses plists
 `musl-pwconf.patch` (987 lines) and `musl-hosts.patch` (319) rework their readers
