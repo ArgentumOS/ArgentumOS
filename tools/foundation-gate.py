@@ -13,10 +13,19 @@ gate rather than a promise:
     `<foundation/...>`);
   * no first-party file imports `<objc/Object.h>` — the runtime we ship declares
     a legacy class of that name, and it is declared off-limits so that our root
-    class can be called Object (the user's decision, 2026-09-17).
+    class can be called Object (the user's decision, 2026-09-17);
+  * every PUBLIC header of the library OPENS a nullability region
+    (`NS_ASSUME_NONNULL_BEGIN`, closed by `NS_ASSUME_NONNULL_END`) — the
+    standing rule (user, 2026-09-17): a class is annotated WHILE it is written.
+    The compiler's own `-Werror=nullability-completeness` polices a header once
+    it carries ANY annotation, but a header carrying NONE is silent, and none is
+    exactly the state a newly written class lands in. Four files are exempt,
+    each named with a reason in NULLABILITY_EXEMPT.
 
-What this deliberately does NOT police: prose. Naming Cocoa, GNUstep or a legacy
-runtime in a comment is normal and useful; importing their headers is not.
+What this deliberately does NOT police: prose (naming Cocoa, GNUstep or a legacy
+runtime in a comment is normal and useful — importing their headers is not), and
+how COMPLETE a region is: that is the compiler's half, and in FOUNDATION_CFLAGS it
+is already an error.
 """
 
 import os
@@ -83,6 +92,44 @@ def offence(path):
     return None
 
 
+# --- the nullability rule (docs/design/foundation-plan.md §5, F6) -----------
+#
+# A class is annotated while it is WRITTEN, so a public header must open a
+# region. The compiler catches a HALF-annotated header; it cannot catch an
+# unannotated one, and that is the gap this closes.
+NULLABILITY_EXEMPT = {
+    "NSObjCRuntime.h": "it DEFINES the two macros; a region there would be circular",
+    "fninvoke.h": "private: the x86-64 argument image, shared by the library's own units",
+    "fnmethodsignature.h": "private: a category declaration for the library's own units",
+    "Foundation.h": "the umbrella: imports only, no declarations of its own",
+}
+# Anchored at the START of a line, so a PROSE mention (which begins with a comment
+# marker) cannot be mistaken for the directive, and a trailing comment is fine.
+NULLABILITY_BEGIN_RE = re.compile(r'^\s*NS_ASSUME_NONNULL_BEGIN\b')
+NULLABILITY_END_RE = re.compile(r'^\s*NS_ASSUME_NONNULL_END\b')
+
+
+def nullability_offence(path):
+    """Why this public header fails the annotation rule, or None."""
+    if os.path.basename(path) in NULLABILITY_EXEMPT:
+        return None
+    opens = closes = 0
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if NULLABILITY_BEGIN_RE.match(line):
+                opens += 1
+            elif NULLABILITY_END_RE.match(line):
+                closes += 1
+    if opens == 0:
+        return ("no NS_ASSUME_NONNULL_BEGIN: annotate the class WHILE you write "
+                "it (F6), or add the file to NULLABILITY_EXEMPT with a reason")
+    if opens != closes:
+        return ("%d NS_ASSUME_NONNULL_BEGIN but %d NS_ASSUME_NONNULL_END: an "
+                "unbalanced region leaks into every unit that imports the "
+                "header" % (opens, closes))
+    return None
+
+
 def main():
     files = scanned_files()
     if not files:
@@ -94,16 +141,44 @@ def main():
         found = offence(path)
         if found:
             bad.append((os.path.relpath(path, ROOT), found[0], found[1]))
-    if bad:
-        print("FOUNDATION-GATE: FAIL - the clean-room wall was crossed "
-              "(docs/design/foundation-plan.md §2):")
-        for rel, lineno, target in bad:
-            print("  %s:%d imports <%s>" % (rel, lineno, target))
-        print("GNUstep/ObjFW/Apple-Foundation sources are not inputs to this "
-              "work, and <objc/Object.h> is off-limits.")
+
+    headers = [p for p in files
+               if os.path.relpath(p, ROOT).startswith("userland/foundation/")
+               and p.endswith(".h")]
+    if not headers:
+        print("FOUNDATION-GATE: no public headers found under "
+              "userland/foundation/ - refusing to pass the annotation rule "
+              "vacuously")
         return 1
+    unannotated = []
+    for path in headers:
+        why = nullability_offence(path)
+        if why:
+            unannotated.append((os.path.relpath(path, ROOT), why))
+
+    if bad or unannotated:
+        if bad:
+            print("FOUNDATION-GATE: FAIL - the clean-room wall was crossed "
+                  "(docs/design/foundation-plan.md §2):")
+            for rel, lineno, target in bad:
+                print("  %s:%d imports <%s>" % (rel, lineno, target))
+            print("GNUstep/ObjFW/Apple-Foundation sources are not inputs to this "
+                  "work, and <objc/Object.h> is off-limits.")
+        if unannotated:
+            print("FOUNDATION-GATE: FAIL - a public header does not open a "
+                  "nullability region (docs/design/foundation-plan.md §5, F6):")
+            for rel, why in unannotated:
+                print("  %s: %s" % (rel, why))
+            print("A class is annotated WHILE it is written. Exempt files: %s."
+                  % ", ".join(sorted(NULLABILITY_EXEMPT)))
+        return 1
+
+    exempt = sum(1 for p in headers
+                 if os.path.basename(p) in NULLABILITY_EXEMPT)
     print("FOUNDATION-GATE: OK - %d file(s) scanned, no foreign or legacy "
-          "import" % len(files))
+          "import; %d of %d public header(s) open a nullability region "
+          "(%d exempt by name)"
+          % (len(files), len(headers) - exempt, len(headers), exempt))
     return 0
 
 

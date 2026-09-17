@@ -244,12 +244,26 @@ status.
   `NSEnumerator`, `NSCharacterSet`, `NSLocale`, the strings
   (`NSString`/`NSMutableString`/`NSOwnedString`), the value types (`NSNumber`/`NSData`/`NSDate`)
   with `NSError`/`NSException`, `NSFastEnumeration`, the (empty) `NSTinyString`, and
-  `NSMethodSignature`/`NSInvocation`/`NSPropertyListSerialization`. Every staged header carries
-  a region — 20 of the 21 files, `Foundation.h` being imports only. The two PRIVATE headers
+  `NSMethodSignature`/`NSInvocation`/`NSPropertyListSerialization`. Every staged header that
+  DECLARES anything opens a region — **19 of the 21 files**, which is the gate's own count and not
+  a hand tally: it excludes `Foundation.h` (imports only) and `NSObjCRuntime.h`, which DEFINES the
+  two macros rather than opening a region. That last one is why a plain
+  `grep -l NS_ASSUME_NONNULL_BEGIN` says 20 — it counts the definition — and the gate's matcher is
+  anchored at the start of a line precisely so it does not. The two PRIVATE headers
   (`fninvoke.h`, `fnmethodsignature.h`) are deliberately OUT of the sweep: they are not staged,
   and they exist to carry the image layout and a private category between the library's own
   units. The line above that called this "0 today, across 19 headers and 434 methods" is now
   spent — the annotations are the state of the tree, not a plan.
+
+  **AND IT IS NOW A STANDING RULE, ENFORCED (user, 2026-09-17): every class is
+  annotated WHILE it is written.** `tools/foundation-gate.py` — already a
+  prerequisite of `userland64`, so `make rootagfs` runs it — checks that each public
+  header opens a BALANCED region, with four files exempt by name and reason
+  (`NSObjCRuntime.h`, which defines the macros; the two private headers, which are
+  not staged; and `Foundation.h`, which is imports only). That is the half the
+  compiler cannot cover: `-Werror=nullability-completeness` polices a header once it
+  carries ANY annotation, but a header carrying NONE is silent — and none is exactly
+  the state a newly written class lands in.
 
 ## 6. Risks / gotchas
 
@@ -257,6 +271,15 @@ status.
   implement `-retain`/`-release` (the root class, and anything overriding them)
   are MRR; everything else is ARC. An ARC file that tries to implement them does
   not compile — a *good* failure mode, and this plan keeps it.
+- **Nullability is a rule too, and it is CHECKED** (user, 2026-09-17): a new class
+  is annotated WHILE it is written, so its header opens `NS_ASSUME_NONNULL_BEGIN`
+  and closes it with `NS_ASSUME_NONNULL_END` in the same commit. Two mechanical
+  halves back that up, and neither is advice: `-Werror=nullability-completeness`
+  in `FOUNDATION_CFLAGS` refuses a HALF-annotated header, and `tools/foundation-gate.py`
+  refuses an UNANNOTATED one (the compiler is silent there, which is the gap).
+  The gate is anchored at the start of a line, so naming the macro in prose does
+  not satisfy it; the four exemptions are named in `NULLABILITY_EXEMPT` with a
+  reason each, and the check refuses to pass vacuously if no headers are found.
 - **The runtime already owns some class names — `Object` among them, and it is a
   RUNTIME collision, not just a header one.** Measured in F0: the runtime's
   `builtin_classes.c` *defines and registers* `Object` (plus `Protocol`,
@@ -1214,8 +1237,14 @@ things, and the rules have to be read per half.
 ### F6, slice 5 (2026-09-17): the last two, and the sweep CLOSES
 
 Slice 5 is `NSCharacterSet` and `NSLocale`, the final two public headers. **F6 is DONE**: every
-staged header carries `NS_ASSUME_NONNULL_BEGIN`/`END` — 20 of the 21 files, `Foundation.h` being
-imports only, and the two private headers out of scope by design.
+staged header that declares anything opens `NS_ASSUME_NONNULL_BEGIN`, closes it with
+`NS_ASSUME_NONNULL_END`, and marks its exceptions — **19 of the 21 files**, per
+`tools/foundation-gate.py`'s own count. The two it does not count are `Foundation.h` (imports
+only) and `NSObjCRuntime.h` (it DEFINES the macros, so a region there would be circular). A
+`grep -l NS_ASSUME_NONNULL_BEGIN` says 20 because it counts that definition, and this record
+carried the grep's number for a turn before the gate was written to say it properly — which is
+worth remembering as a small lesson: a count is only as good as the matcher behind it. The two
+private headers are out of scope by design.
 
 Both writers were measured, and this slice exposed a PROPAGATION shape that is easy to MISS while
 reading the code. NSCharacterSet's ten built-ins are each `static NSCharacterSet *set = nil; if
