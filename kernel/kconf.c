@@ -40,20 +40,6 @@
 #include <fnx/string.h>
 #include "kconf.h"
 
-static int kconf_is_keychar(char c)
-{
-	if(c >= 'a' && c <= 'z') {
-		return 1;
-	}
-	if(c >= 'A' && c <= 'Z') {
-		return 1;
-	}
-	if(c >= '0' && c <= '9') {
-		return 1;
-	}
-	return c == '_' || c == '-' || c == '.' || c == '/' || c == '+';
-}
-
 static int kconf_hexval(char c)
 {
 	if(c >= '0' && c <= '9') {
@@ -477,10 +463,6 @@ static int kconf_plist_next(const char *data, unsigned int size, unsigned int *o
 	return 1;
 }
 
-/* the line grammar, defined below (retired: see kconf_next) */
-static int kconf_legacy_next(const char *data, unsigned int size, unsigned int *off,
-			     struct kconf_kv *out);
-
 /*
  * kconf_text_is_plist() - is the buffer in the plist spelling? The public face
  * of the detection rule above, for kernel_conf_apply(): the kernel has to be
@@ -493,189 +475,18 @@ int kconf_text_is_plist(const char *data, unsigned int size)
 }
 
 /*
- * kconf_next() - parse the next setting from 'data' (size-bounded, may
- * also be NUL-terminated) starting at *off, from either spelling: an XML plist
- * (P3e) or the `key = value` line grammar. Returns 1 and fills *out on a
- * setting (kind KCONF_KV_ERR for a skipped malformed line), 0 at EOF.
+ * kconf_next() - parse the next setting from an XML plist. Returns 1 and fills
+ * *out on a setting, 0 at the end of the file.
  *
- * The line grammar is RETIRED as of P3f — the writer emits plists, the shipped
- * kernel.conf is a plist, and kernel_conf_apply() now checks the spelling first
- * — so nothing in the running system reaches the legacy arm below. It is kept
- * only until the deletion pass recorded in docs/design/plist-config-plan.md
- * removes it together with libconfig's retired grammar.
+ * The `key = value` line grammar this used to fall back to is GONE (P3f): every
+ * FNX configuration is a plist, kernel.conf included, the kernel's own copy on
+ * the ESP is one, and kernel_conf_apply() reports a file in the old spelling by
+ * name rather than half-reading it. A buffer that is not a plist therefore
+ * yields no settings here — the caller is the one that decides what to say.
  */
 int kconf_next(const char *data, unsigned int size, unsigned int *off,
 	       struct kconf_kv *out)
 {
 	out->kind = KCONF_KV_ERR;
-	if(kconf_is_plist(data, size)) {
-		return kconf_plist_next(data, size, off, out);
-	}
-	return kconf_legacy_next(data, size, off, out);
-}
-
-/*
- * kconf_legacy_next() - the line grammar: `key = value` settings with '#'
- * comments and blank lines.
- */
-static int kconf_legacy_next(const char *data, unsigned int size, unsigned int *off,
-	       struct kconf_kv *out)
-{
-	const char *p, *end, *eq;
-	char key[128], val[512];
-	int n, kind, is_true;
-
-	out->kind = KCONF_KV_ERR;
-	for(;;) {
-		/* find the next line */
-		p = data + *off;
-		end = p;
-		while(end < data + size && *end != '\n') {
-			end++;
-		}
-		*off = (unsigned int)(end - data);
-		if(end < data + size) {
-			(*off)++;	/* consume '\n' */
-		}
-
-		/* skip leading WS, strip a trailing CR */
-		while(p < end && (*p == ' ' || *p == '\t')) {
-			p++;
-		}
-		while(end > p && (end[-1] == '\r' || end[-1] == ' ' ||
-				  end[-1] == '\t')) {
-			end--;
-		}
-
-		if(end == p) {
-			if(p >= data + size && *off >= size) {
-				return 0;	/* clean EOF */
-			}
-			continue;	/* blank line in the middle */
-		}
-		if(*p == '#') {
-			continue;	/* comment */
-		}
-		if(*p == '{' || *p == '}') {
-			return 1;	/* KCONF_KV_ERR: no scopes in the subset */
-		}
-		break;
-	}
-
-	/* split at the first '=' */
-	eq = p;
-	while(eq < end && *eq != '=') {
-		eq++;
-	}
-	if(eq == end) {
-		return 1;	/* no '=': malformed */
-	}
-
-	/* key: trim trailing WS before '=' */
-	n = 0;
-	while(p < eq) {
-		if(n >= (int)sizeof(key) - 1) {
-			return 1;	/* key too long */
-		}
-		key[n++] = *p++;
-	}
-	while(n > 0 && (key[n - 1] == ' ' || key[n - 1] == '\t')) {
-		n--;
-	}
-	if(n == 0) {
-		return 1;
-	}
-	{
-		int i;
-
-		for(i = 0; i < n; i++) {
-			if(!kconf_is_keychar(key[i])) {
-				return 1;	/* invalid key */
-			}
-		}
-	}
-	key[n] = 0;
-
-	/* value: trim leading WS; empty `key =` is accepted */
-	p = eq + 1;
-	while(p < end && (*p == ' ' || *p == '\t')) {
-		p++;
-	}
-	kind = KCONF_KV_STRING;
-	is_true = 0;
-	if(p == end) {
-		/* empty value */
-		val[0] = 0;
-	} else if(*p == '"') {
-		/* quoted string (backslash-escaped \" and \\) */
-		n = 0;
-		p++;
-		while(p < end && *p != '"') {
-			if(*p == '\\' && p + 1 < end &&
-			   (p[1] == '"' || p[1] == '\\')) {
-				p++;
-			}
-			if(n < (int)sizeof(val) - 1) {
-				val[n++] = *p;
-			}
-			p++;
-		}
-		if(p == end) {
-			return 1;	/* unterminated quote */
-		}
-		val[n] = 0;
-	} else {
-		/* bare value: a single token to end-of-line */
-		n = 0;
-		while(p < end && n < (int)sizeof(val) - 1) {
-			val[n++] = *p++;
-		}
-		val[n] = 0;
-		/* trailing WS was already trimmed from the line */
-
-		/* classify: bool / int / string */
-		if(!strcmp(val, "true") || !strcmp(val, "false")) {
-			kind = KCONF_KV_BOOL;
-			is_true = !strcmp(val, "true");
-		} else {
-			const char *q = val;
-			int isnum = 1;
-
-			if(*q == '-') {
-				q++;	/* signed ints are accepted */
-			}
-			if(!*q) {
-				isnum = 0;
-			} else if(q[0] == '0' && q[1] == 'x') {
-				int i;
-
-				q += 2;
-				for(i = 0; q[i]; i++) {
-					if(kconf_hexval(q[i]) < 0) {
-						isnum = 0;
-					}
-				}
-				if(i == 0) {
-					isnum = 0;
-				}
-			} else {
-				int i;
-
-				for(i = 0; q[i]; i++) {
-					if(q[i] < '0' || q[i] > '9') {
-						isnum = 0;
-					}
-				}
-			}
-			if(isnum) {
-				kind = KCONF_KV_INT;
-			}
-		}
-	}
-
-	strncpy(out->key, key, sizeof(out->key));
-	strncpy(out->value, val, sizeof(out->value));
-	out->kind = kind;
-	out->is_true = is_true;
-	return 1;
+	return kconf_plist_next(data, size, off, out);
 }

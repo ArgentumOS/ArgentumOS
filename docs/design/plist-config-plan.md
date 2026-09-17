@@ -312,18 +312,36 @@ way: a comment containing `getpw*/getgr*` ends at that `*/` (the first libc buil
 failed on it), and a FAILED `make musl64` leaves the patches applied, so the next
 run's `git apply` collides — clean the tree before retrying.
 
-**What is left of P3f is the deletion, and it is mechanical.**
-`libconfig.c`'s unreachable legacy body plus its labelled-dead emitter chain — 23
-functions, ~1,100 lines, enumerated by the reachability audit in this stage (every
-helper defined in the legacy region that no caller outside it names: `parse_quoted`,
-`parse_value`, the `v2_parse_*` family, `pctx_*`, `emit_leaf`/`emit_value_lines`/
-`write_indented`/`value_to_text`/`emit_children`/`emit_grouped`, while `entries_free`,
-`blocks_free` and `parse_conf` itself stay) — and `kconf.c`'s `kconf_legacy_next`.
-It is kept out of this commit deliberately, because a ~1,100-line retype is exactly
-the change that should not be rushed at a commit boundary: the behaviour above is
-what "every reader on plists" means, and the code removal changes nothing
-observable. The recipe for that pass: confirm the dispatch refuses, then let
-`-Wunused-function` enumerate what became unreachable and delete it in path order.
+**The deletion is DONE.** `libconfig.c` is **1,787 lines lighter** (4,140 → 2,353)
+and `kconf.c` 189 lines lighter (681 → 492): the line scanner (`parse_quoted`,
+`parse_element`, `parse_value`), the scalar inference it fed (`infer_scalar`,
+`token_is_int`, `token_is_float`), the `pctx` container stack, the entire v2
+`[ … ]`/`{ … }` grammar and the labelled-dead emitter chain (`emit_leaf`,
+`emit_value_lines`, `write_indented`, `emit_record_body`, `emit_record_array`,
+`emit_children`, `emit_grouped`, `putl`, `indent_of`, `value_has_records`,
+`value_to_text`, `string_to_text`, `string_needs_quotes`, `float_to_text`) are
+gone, along with the kernel's `kconf_legacy_next` and `kconf_is_keychar`. What
+stays is exactly what the plist path needs: `entries_free`, `blocks_free`,
+`mkdir_p`, and `parse_conf` — now a spelling check plus a delegation to
+`config_plist_parse()`.
+
+The METHOD is what made the diff safe to read: `parse_conf`'s dead span went
+first, then the compiler pointed at what that stranded — `-Wunused-function`
+named `infer_scalar` and `emit_grouped` — and each was deleted in path order, so
+every intermediate state compiled. (The audit's estimate of ~1,100 lines was the
+PARSER half alone; the writer half brought the total to ~1,980.)
+
+Evidence that nothing changed:
+* `libconfig.c` compiles with `-Wall -Wextra` with **no warnings** (before this
+  commit it warned about `emit_grouped` and `infer_scalar`);
+* `userland/tests/config_plist_test.c` reports the SAME **81 green** over the ten
+  shipped `.conf` files plus the ESP template — its single red is the key-less
+  template the probe wants keys from, unchanged since P3e;
+* `tools/kconf_corpus.sh` is **all-pass**, which now also says the kernel's plist
+  walk ALONE still agrees with libconfig on every fixture;
+* `procfs_devfs` **16/16** on the rebuilt image and the rebuilt ESP: the guest
+  boots the new kernel, init applies the plist mounts and display domains, and
+  the ESP tripwire reads the converted `kernel.conf` back.
 
 ## What this plan refuses to do
 
