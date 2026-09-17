@@ -71,6 +71,35 @@ static CollectionView *collectionTiles = nullptr;
 static Point lastScroll = { 0, 0 };	/* the offset it starts at, so the first
 					 * ZOO-SCROLL-OFFSET is a real scroll */
 
+/* THE TAB VIEW (U5d), and the one-method subclass that gets its SELECTION into
+ * the log: the toolkit cannot print a board's lines, so the PRESS is where this
+ * board reports which tab was chosen — the same place the scroll region reports
+ * where it scrolled to. A selection the app made another way would not be
+ * logged, which is the point: the gate is testing the press. */
+static void
+logTabs(TabView *tv)
+{
+	Rect pane = tv->contentRect();
+
+	std::printf("ZOO-TABS tabs=%d selected=%d strip=%gx%g pane=%gx%g\n",
+		    tv->tabCount(), tv->selectedIndex(), tv->tabWidth(),
+		    tv->tabHeight(), pane.size.w, pane.size.h);
+	std::fflush(stdout);
+}
+
+class BoardTabs : public TabView {
+public:
+	bool mouseDown(const Event &e) override
+	{
+		if (!TabView::mouseDown(e)) {
+			return false;
+		}
+		logTabs(this);
+		return true;
+	}
+};
+static BoardTabs *tabView = nullptr;
+
 /* where a control's centre is, in SCREEN coordinates */
 static void
 logAt(const char *name, View *v)
@@ -630,8 +659,27 @@ main(int argc, char **argv)
 	collectionTiles->layout();
 	collectionGrid->setDocumentView(collectionTiles);
 	collectionGrid->setFrame(Rect{ { 826, 340 }, { 264, 96 } });
+
+	/* A SIXTH REGION, BESIDE THE COLLECTION (U5d): a TAB VIEW — a strip of
+	 * three tabs and the one pane that shows. The board is WIDER for it,
+	 * which moves nothing: a control's screen position comes from the
+	 * window's ORIGIN, so every ZOO-AT gate keeps its aim. */
+	tabView = new BoardTabs();
+	tabView->setTabWidth(84);
+	tabView->setTabHeight(24);
+	tabView->setFrame(Rect{ { 0, 0 }, { 224, 120 } });
+	for (int i = 1; i <= 3; i++) {
+		View *pane = new View();
+		char title[32];
+
+		std::snprintf(title, sizeof(title), "Tab %d", i);
+		tabView->addTabView(pane, title);
+	}
+	content->addSubview(tabView);
+	tabView->layout();
+	tabView->setFrame(Rect{ { 1106, 12 }, { 224, 120 } });
 	w.setFrame(Rect{ { 70, 50 },
-			 { 1106.0, tallest + 6 + w.chromeHeightPt() } });
+			 { 1350.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
 	/* TRACK THE WINDOW ON THE APPLICATION. The board pumps through the app
 	 * (see pumpOnce below), and so does anything the board opens - the
@@ -727,6 +775,12 @@ main(int argc, char **argv)
 			    scrollRows->frame().origin.y,
 			    scrollList->hasVerticalScroller() ? 1 : 0,
 			    scrollList->hasHorizontalScroller() ? 1 : 0);
+	}
+	/* AND THE TAB VIEW, at rest: the tab view opens on its first tab, and a
+	 * press writes this same line again (see BoardTabs). */
+	if (tabView) {
+		logTabs(tabView);
+		logAt("TABS", tabView);	/* where to press for the strip's tabs */
 	}
 	if (collectionTiles) {
 		std::printf("ZOO-COLLECTION items=%d size=%gx%g visible=%gx%g "

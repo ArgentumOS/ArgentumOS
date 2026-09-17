@@ -196,6 +196,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/collection_view.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/collection_view"
+	# tab_view: U5d acceptance (docs/design/cocoa-parity-plan.md) — the tab
+	# strip's arithmetic (where each tab is, what a point falls on, where the
+	# panes go) and what a selection does to the panes. Display-free; the
+	# PRESS is the board's half of the case.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/tab_view.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/tab_view"
 	# font_twice: TEMPORARY DIAGNOSTIC - asks the guest's own FreeType whether
 	# it can open one font file twice (the toolkit keeps a face per size, so a
 	# second size is a second FT_New_Face). No toolkit, no fontconfig.

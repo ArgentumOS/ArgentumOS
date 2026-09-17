@@ -4482,6 +4482,90 @@ enum class ScrollerPart {
 	Knob,
 };
 
+/// A tab view: a strip of tabs along the top and ONE pane showing at a time
+/// (Cocoa's `NSTabView`). A tab is a view plus the title its tab shows, and
+/// the panes ARE the views — so switching tabs is nothing but which one is
+/// hidden, and everything a pane already does keeps working.
+///
+/// @purpose A container for mutually exclusive content: the third of U5's
+/// containers, after `StackView` and `CollectionView`.
+///
+/// @lifetime The panes are NOT owned: they are subviews the way a stack's
+/// arranged subviews are, and removing the TabView unlinks them.
+///
+/// @invariants ONE ARITHMETIC for the strip, as the Scroller does for its
+/// knob: `tabRectAt()` decides where a tab is and `indexOfTabAt()` asks that
+/// same question, so the strip that is DRAWN and the strip that is CLICKED
+/// cannot drift apart. The view draws its own strip (the house rule for
+/// chrome) and the panes draw themselves.
+///
+/// v1 gives every tab the same width (`setTabWidth`) and the strip a fixed
+/// height (`setTabHeight`) instead of measuring the title: Cocoa measures both
+/// from the font, which would make the LAYOUT depend on the text engine — and
+/// a layout is worth being able to test without a display or a font. Measuring
+/// the title is a fidelity pass for later.
+class TabView : public View {
+public:
+	/// The class record KVC walks (Object <- View <- TabView).
+	static const ObjectClass kClass;
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty tab view: no tabs, nothing selected, a default strip.
+	TabView();
+
+	/// Add `v` as a pane with `title` on its tab (Cocoa's
+	/// addTabViewItem:). The FIRST tab added becomes the selected one.
+	void addTabView(View *v, const char *title);
+	/// How many tabs there are.
+	int tabCount() const { return (int) tabs_.size(); }
+	/// The pane at `index`, or nullptr past the ends.
+	View *tabViewAt(int index) const;
+	/// The title of the tab at `index` ("" past the ends).
+	const char *tabTitleAt(int index) const;
+	/// Remove every tab (the panes are only unlinked).
+	void removeAllTabs();
+
+	/// Which tab is showing: -1 when there is none.
+	int selectedIndex() const { return selected_; }
+	/// Show `index` (clamped to the ends); -1 hides every pane.
+	void selectTab(int index);
+
+	/// The rectangle of the tab at `index`, in BOUNDS — the one arithmetic the
+	/// drawing and the hit test share.
+	Rect tabRectAt(int index) const;
+	/// Which tab contains `p` (bounds space), or -1.
+	int indexOfTabAt(const Point &p) const;
+	/// Where the panes go: everything below the strip.
+	Rect contentRect() const;
+
+	/// The strip's per-tab width (v1: no font measurement).
+	double tabWidth() const { return tabWidth_; }
+	/// Set it.
+	void setTabWidth(double w);
+	/// The strip's height.
+	double tabHeight() const { return tabHeight_; }
+	/// Set it.
+	void setTabHeight(double h);
+
+	/// Draw the strip; the panes draw themselves.
+	void drawRect(const Rect &dirty) override;
+	/// A press on a tab selects it.
+	bool mouseDown(const Event &e) override;
+	/// Put the panes in the content area, hiding all but the selected one.
+	void layout() override;
+
+private:
+	struct Tab {
+		View *view = nullptr;
+		std::string title;
+	};
+	std::vector<Tab> tabs_;
+	int selected_ = -1;
+	double tabWidth_ = 84.0;
+	double tabHeight_ = 24.0;
+};
+
 /// @purpose One bar of a ScrollView: a track, a knob whose length is the
 /// visible fraction of the content, and a square arrow button at each end —
 /// the classic NSScroller.

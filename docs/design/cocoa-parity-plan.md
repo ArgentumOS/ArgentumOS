@@ -728,6 +728,28 @@ as a compatibility path for un-migrated views, with a migration list.
   frames, the height, the self-sizing, the hit test and the re-flow after a
   removal; 13 cases, whose numbers are the contract) plus the board's
   `ZOO-COLLECTION` line.
+  **U5d — `TabView`. DONE (2026-09).** A strip of tabs and ONE pane showing:
+  a tab is a view plus the title on its tab, and the panes ARE the views, so
+  switching is nothing but which one is hidden and everything a pane already
+  does keeps working.
+  * **ONE ARITHMETIC for the strip**, the same rule the Scroller follows for
+    its knob: `tabRectAt()` decides where a tab is and `indexOfTabAt()` walks
+    that sequence through `rectHasPoint` — so the strip that is DRAWN and the
+    strip that is CLICKED cannot drift apart. The view draws its own strip (the
+    house rule for chrome) and the panes draw themselves; the switch itself is
+    a layout pass and a repaint, through `setHidden`'s damage, not a second
+    drawing path.
+  * v1 gives every tab the same width and the strip a fixed height instead of
+    measuring the title. Cocoa measures both from the font, which would make
+    the LAYOUT depend on the text engine — and a layout is worth being able to
+    test with neither a display nor a font. Measuring the title is a later
+    fidelity pass.
+  Gates: `uikit_u5d` — the display-free `tab_view` probe (the tab rects, the
+  hit test including the points past the strip, the pane area, the selection
+  and the unlink; 13 cases) plus a REAL PRESS on the board's third tab, which
+  the board reports with `ZOO-TABS` when the selection changes. Worth noting:
+  the probe caught one of MY expectations — three 84-wide tabs cover 0..252,
+  so a point at x=250 is inside the third, not past it.
 - **U6 — table and outline fidelity.** View-based rows, cells, columns and
   headers, sorting, selection modes, drag&drop, variable row heights.
 - **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
@@ -860,8 +882,8 @@ the gate is the claim; the sections above record what each one settled.
 | U5b | `ScrollView` — the offset on the clip view, scrollers, wheel | `uikit_u5b` |
 
 **Next: U5, the rest of the containers and collections.** `CollectionView` with
-a flow layout is DONE (U5c), so what remains is `SplitView` / `TabView`, then
-`GridView` / `Browser`.
+a flow layout (U5c) and `TabView` (U5d) are DONE, so what remains is
+`SplitView`, then `GridView` / `Browser`.
 
 **Open inside finished slices** (fidelity, not absence):
 

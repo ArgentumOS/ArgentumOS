@@ -1235,4 +1235,195 @@ CollectionView::layout()
 	}
 }
 
+/* ---- TabView ----------------------------------------------------------
+ *
+ * The strip's geometry is ONE arithmetic: tabRectAt() lays the tabs end to end
+ * from the bounds' top-left, and indexOfTabAt() walks that same sequence
+ * through rectHasPoint. The drawing and the press both ask it, so a click
+ * cannot land on a tab other than the one under it.
+ */
+const ObjectClass TabView::kClass = { "TabView", &View::kClass, nullptr, 0,
+				      nullptr, 0 };
+
+TabView::TabView()
+{
+	setIdentifier("tabView");
+}
+
+void
+TabView::addTabView(View *v, const char *title)
+{
+	if (!v) {
+		return;
+	}
+	Tab t;
+
+	t.view = v;
+	t.title = title ? title : "";
+	tabs_.push_back(t);
+	addSubview(v);
+	if (selected_ < 0) {
+		selected_ = 0;	/* the first tab added is the one that shows */
+	}
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+View *
+TabView::tabViewAt(int index) const
+{
+	if (index < 0 || index >= (int) tabs_.size()) {
+		return nullptr;
+	}
+	return tabs_[(size_t) index].view;
+}
+
+const char *
+TabView::tabTitleAt(int index) const
+{
+	if (index < 0 || index >= (int) tabs_.size()) {
+		return "";
+	}
+	return tabs_[(size_t) index].title.c_str();
+}
+
+void
+TabView::removeAllTabs()
+{
+	for (size_t i = 0; i < tabs_.size(); i++) {
+		if (tabs_[i].view && tabs_[i].view->superview() == this) {
+			tabs_[i].view->removeFromSuperview();
+		}
+	}
+	tabs_.clear();
+	selected_ = -1;
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+void
+TabView::selectTab(int index)
+{
+	int want = index;
+
+	if (want >= (int) tabs_.size()) {
+		want = (int) tabs_.size() - 1;
+	}
+	if (want == selected_) {
+		return;
+	}
+	selected_ = want;
+	/* the panes follow the selection in layout(), and hiding or showing one
+	 * damages the area it vacates (View::setHidden) — so switching tabs is a
+	 * layout pass and a repaint, never a second drawing path */
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+Rect
+TabView::tabRectAt(int index) const
+{
+	return Rect{ { index * tabWidth_, 0 }, { tabWidth_, tabHeight_ } };
+}
+
+int
+TabView::indexOfTabAt(const Point &p) const
+{
+	for (int i = 0; i < (int) tabs_.size(); i++) {
+		if (rectHasPoint(tabRectAt(i), p)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+Rect
+TabView::contentRect() const
+{
+	Size b = bounds().size;
+
+	return Rect{ { 0, tabHeight_ }, { b.w, b.h - tabHeight_ } };
+}
+
+void
+TabView::setTabWidth(double w)
+{
+	if (w > 0 && w != tabWidth_) {
+		tabWidth_ = w;
+		setNeedsDisplay();
+	}
+}
+
+void
+TabView::setTabHeight(double h)
+{
+	if (h > 0 && h != tabHeight_) {
+		tabHeight_ = h;
+		setNeedsLayout();
+		setNeedsDisplay();
+	}
+}
+
+void
+TabView::layout()
+{
+	Rect c = contentRect();
+
+	for (size_t i = 0; i < tabs_.size(); i++) {
+		View *v = tabs_[i].view;
+
+		if (!v) {
+			continue;
+		}
+		v->setFrame(Rect{ c.origin, c.size });
+		/* ONE pane shows. setHidden damages the area it vacates, which is
+		 * what makes the switch a repaint rather than a fresh path. */
+		v->setHidden((int) i != selected_);
+	}
+}
+
+bool
+TabView::mouseDown(const Event &e)
+{
+	int i = indexOfTabAt(e.locationInWindow());
+
+	if (i < 0) {
+		return false;	/* a press below the strip belongs to the pane */
+	}
+	selectTab(i);
+	setNeedsDisplay();
+	return true;
+}
+
+void
+TabView::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	Size b = bounds().size;
+
+	/* the strip and the pane area, then one tab per title */
+	ctx->fillRect(Rect{ { 0, 0 }, { b.w, tabHeight_ } },
+		      Color::rgb(0.90, 0.90, 0.93));
+	ctx->fillRect(contentRect(), Color::rgb(0.97, 0.97, 0.98));
+	for (int i = 0; i < (int) tabs_.size(); i++) {
+		Rect t = tabRectAt(i);
+		bool on = (i == selected_);
+
+		ctx->fillRect(t, on ? Color::rgb(0.99, 0.99, 1.00)
+				    : Color::rgb(0.86, 0.86, 0.90));
+		ctx->strokeRect(t, Color::rgb(0.62, 0.62, 0.68), 1.0);
+		ctx->drawText(nullptr, 12,
+			      Point{ t.origin.x + 8, t.origin.y + 6 },
+			      tabTitleAt(i),
+			      on ? Color::rgb(0.10, 0.10, 0.14)
+				 : Color::rgb(0.35, 0.35, 0.40),
+			      on);
+	}
+}
+
 } /* namespace argentum */
