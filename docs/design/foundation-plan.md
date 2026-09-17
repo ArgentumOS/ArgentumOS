@@ -624,9 +624,8 @@ of range returns nil where Cocoa raises `NSRangeException` (F4 revisits);
 must have FULL working implementations.** The audit in §9 split its findings into
 A (broken — fixed), B (would not compile — fixed) and C/E (the backlog). Under
 this rule **the backlog is the work queue, not an end state**, and "pass" is
-MECHANICAL: each class's probe carries an `api-complete` check that asserts every
-public selector exists — naming what is missing — beside behavioural checks, so a
-gap fails the gate instead of living in prose.
+MECHANICAL — see "The mechanism, corrected" below for how, and for the first
+mechanism's fatal flaw.
 
 | class | audited | complete | what remains |
 |---|---|---|---|
@@ -680,3 +679,71 @@ apps and tools, `mk/**`, the Argentum UIKit, and the tests outside the Foundatio
 — need a PER-FILE review before they carry the notice, for the same reason the
 exclusions above exist: a file that turns out to be derived must not be claimed.
 The Foundation and its immediate surroundings are this pass's boundary.
+
+### The mechanism, corrected (2026-09-17)
+
+The hard-rule section above describes the FIRST mechanism — a per-class `api-complete`
+check asserting that every selector in OUR headers exists. **That check was
+SELF-REFERENTIAL, and it is not what the classes carry now.** It can only catch a method
+that was declared and not implemented; it is structurally blind to a method nobody
+declared at all. That is exactly how `+stringWithFormat:arguments:` shipped missing while
+the check reported "complete" — the F4 gap, and the honest answer to why it happened.
+
+What every class carries now is the **AUDITED COCOA INVENTORY**, and it runs BOTH ways:
+
+- `classSelectors` / `instanceSelectors` / the mutable pair are the documented Cocoa
+  surface, and every entry must EXIST;
+- `excluded` is what we deliberately do not ship, and every entry must be ABSENT — so
+  shipping one fails the check and the inventory cannot drift away from the code;
+- each exclusion states its REASON in the probe source.
+
+**What it found, per class** — the old check had called every one of them complete:
+
+| class | gaps | outcome |
+|---|---|---|
+| `NSObject` | 1 | implemented (`-performSelector:withObject:withObject:`) — it had **no check at all** before |
+| `NSNumber` | 0 | clean |
+| `NSDate` | 2 | implemented |
+| `NSData`/`NSMutableData` | 8 | implemented, including constructors with no error path at all |
+| `NSArray`/`NSMutableArray` | 6 | implemented |
+| `NSDictionary`/`NSMutableDictionary` | 4 | implemented, including a method shipped under the WRONG SELECTOR |
+| `NSString`/`NSMutableString` | 12 | implemented |
+| **total** | **33** | |
+
+**The inventory's own blind spot, found and closed the same day:** it proves a selector
+EXISTS, not that a block FIRES — and every block/comparator method the inventories named
+sat in exactly that position. Three checks now exercise them: `data-block-enumeration`,
+`array-blocks`, `dict-blocks`.
+
+### The exclusions ARE the work queue
+
+| dependency | what shipping it would unblock |
+|---|---|
+| `NSEnumerator` | `-keyEnumerator`/`-objectEnumerator` (dictionaries), the array and string enumerator forms |
+| `NSIndexSet`, `NSIndexPath` | the four `…AtIndexes:` / `indexesOf…` array forms |
+| `NSCharacterSet` | `-rangeOfCharacterFromSet:`, `-componentsSeparatedByCharactersInSet:`, `-stringByTrimmingCharactersInSet:` |
+| a plist reader/writer | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
+| `NSLocale` | the localised comparisons (which currently answer unlocalised, and say so) |
+| `NSInvocation`, `NSMethodSignature` | the forwarding trio |
+| `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
+
+**NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
+`unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
+the storage is UTF-8 (the user's decision), so the `…Characters:` forms are absent by
+design.
+
+### F4 landed (2026-09-17), with one thing left open
+
+`NSError` (a value: the userInfo is COPIED; Cocoa's `-description` shape; equality by
+domain, code and userInfo) and `NSException` (`-raise` hands the receiver to
+`objc_exception_throw`, so `@try`/`@catch` unwinds for real). Neither name is owned by
+the runtime — checked: zero matches in libobjc2 — unlike `Object` and
+`NSAutoreleasePool`, the two it does own.
+
+**AN OPEN ONE, recorded rather than papered over.** `+stringWithFormat:arguments:`
+crashed when called. Instrumenting it proved the method was ENTERED with the right
+format and then died — while `-initWithFormat:arguments:`, the same three statements
+consuming a passed `va_list`, works. The class form now DELEGATES to the instance form,
+which is a MEASURED choice; the difference between two identical bodies that differ only
+in being a class method and an instance method is **unexplained**. `va_copy` before
+consuming was tried first and did not change it.
