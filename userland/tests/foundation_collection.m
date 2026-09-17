@@ -617,6 +617,114 @@ int main(void)
 		      "the audited Cocoa inventory for NSIndexSet/NSMutableIndexSet");
 	}
 
+	{
+		/* NSIndexPath: the ordered path (stage D). Construction in both shapes,
+		 * O(1) position reads, the two derived forms, ordering, value semantics
+		 * and our one-line -description — plus the REFUSALS, exercised as real
+		 * exceptions because that is what the header documents: a position past
+		 * -length, trimming an empty path, and -compare: with nil. */
+		NSUInteger two[2] = { 3, 1 };
+		NSIndexPath *path = [NSIndexPath indexPathWithIndexes:two length:2];
+		NSIndexPath *same = [NSIndexPath indexPathWithIndexes:two length:2];
+		NSIndexPath *single = [NSIndexPath indexPathWithIndex:5];
+		NSIndexPath *extended = [path indexPathByAddingIndex:4];
+		NSIndexPath *trimmed = [extended indexPathByRemovingLastIndex];
+		NSIndexPath *reversed = [NSIndexPath indexPathWithIndexes:two length:1];	/* the {3} prefix */
+		NSIndexPath *empty = [[NSIndexPath alloc] init];
+		NSUInteger buffer[2] = { 0, 0 };
+		NSUInteger slice[1] = { 0 };
+		NSUInteger one = 0;
+		BOOL refusedPosition = NO;
+		BOOL refusedTrim = NO;
+		BOOL refusedNil = NO;
+
+		[path getIndexes:buffer];
+		[path getIndexes:slice range:NSMakeRange(1, 1)];
+		[single getIndexes:&one];
+
+		check("indexpath-basics",
+		      [path length] == 2 &&
+		      [path indexAtPosition:0] == 3 && [path indexAtPosition:1] == 1 &&
+		      buffer[0] == 3 && buffer[1] == 1 && slice[0] == 1 && one == 5 &&
+		      [single length] == 1 &&
+		      [extended length] == 3 && [extended indexAtPosition:2] == 4 &&
+		      [trimmed isEqual:path] && [trimmed length] == 2 &&
+		      [empty length] == 0 &&
+		      [path isEqual:same] && [path hash] == [same hash] &&
+		      ![path isEqual:reversed] && [reversed compare:path] == NSOrderedAscending &&
+		      [path compare:same] == NSOrderedSame &&
+		      [path compare:extended] == NSOrderedAscending &&
+		      [path copy] == path &&	/* immutable: -copy is self */
+		      [[path description] isEqualToString:@"<NSIndexPath: 2 position(s) 3-1>"],
+		      "construction, O(1) positions, both derived forms, ordering, equality/hash and -description");
+		@try {
+			(void)[path indexAtPosition:2];
+		} @catch (NSException *e) {
+			refusedPosition = [[e name] isEqualToString:NSRangeException];
+		}
+		@try {
+			(void)[empty indexPathByRemovingLastIndex];
+		} @catch (NSException *e) {
+			refusedTrim = [[e name] isEqualToString:NSRangeException];
+		}
+		@try {
+			(void)[path compare:nil];
+		} @catch (NSException *e) {
+			refusedNil = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("indexpath-refusals",
+		      refusedPosition && refusedTrim && refusedNil,
+		      "a position past -length and trimming an empty path raise NSRangeException; -compare: with nil raises NSInvalidArgumentException");
+	}
+
+	{
+		/* The audited Cocoa inventory for NSIndexPath. The exclusions are the
+		 * toolkit's additions (row/section/item are a UIKit-side category here, not
+		 * Foundation) and the CODING protocols, which this library does not ship —
+		 * the plist codec is its serialization surface. */
+		static const char *classSelectors[] = {
+			"indexPathWithIndex:", "indexPathWithIndexes:length:", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithIndex:", "initWithIndexes:length:",
+			"indexAtPosition:", "length",
+			"getIndexes:", "getIndexes:range:",
+			"indexPathByAddingIndex:", "indexPathByRemovingLastIndex",
+			"compare:", "isEqual:", "hash", "description",
+			"copy", "copyWithZone:", NULL
+		};
+		static const char *excluded[] = {
+			"indexPathForRow:inSection:", "indexPathForItem:inSection:",
+			"section", "row", "item",
+			"encodeWithCoder:", "initWithCoder:",
+			NULL
+		};
+		NSIndexPath *probe = [NSIndexPath indexPathWithIndex:1];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSIndexPath respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s (indexpath)\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s (indexpath)\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION present but EXCLUDED (indexpath): %s\n", excluded[i]);
+			}
+		}
+		check("indexpath-api-complete", complete,
+		      "the audited Cocoa inventory for NSIndexPath");
+	}
+
 
 	{
 		/* The array surface, SPLIT ONE CHECK PER STEP. The combined version

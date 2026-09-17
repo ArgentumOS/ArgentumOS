@@ -21,7 +21,13 @@ docs/design/foundation-plan.md §5 (F3). The probe is
   * `dict-enumerate`  — `for (id k in dict)` yields every key once, and a nested
                         collection is held by reference;
   * `ownership`       — an array element is retained on insert, released on
-                        removal (measured with the runtime's retain count).
+                        removal (measured with the runtime's retain count);
+  * `indexpath-basics` — the ordered path: construction, -indexAtPosition:,
+                        -length, both derived forms, -compare:, equality/hash, our
+                        -description, and the RANGE REFUSALS as exceptions;
+  * `indexpath-api-complete` — the audited Cocoa inventory for NSIndexPath, both
+                        directions (the toolkit's row/section/item accessors and the
+                        coding protocols are asserted ABSENT).
 """
 
 import re
@@ -38,6 +44,7 @@ CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "dict-api-complete", "dict-constructors", "dict-views", "dict-bulk",
           "dict-getobjects",
           "array-blocks", "dict-blocks", "indexset-api-complete",
+          "indexpath-basics", "indexpath-refusals", "indexpath-api-complete",
           "enumerator-api-complete", "plist-serialization")
 
 

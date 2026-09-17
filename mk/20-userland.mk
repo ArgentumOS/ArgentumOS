@@ -107,6 +107,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/nsarray.m $(FOUNDATION_SRC)/nsdictionary.m \
 	$(FOUNDATION_SRC)/nerror.m $(FOUNDATION_SRC)/nexception.m \
 	$(FOUNDATION_SRC)/ncharacterset.m $(FOUNDATION_SRC)/nindexset.m \
+	$(FOUNDATION_SRC)/nindexpath.m \
 	$(FOUNDATION_SRC)/nenumerator.m $(FOUNDATION_SRC)/npropertylistserialization.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
@@ -115,7 +116,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
 	$(FOUNDATION_SRC)/NSDictionary.h $(FOUNDATION_SRC)/NSError.h \
 	$(FOUNDATION_SRC)/NSException.h $(FOUNDATION_SRC)/NSCharacterSet.h \
-	$(FOUNDATION_SRC)/NSIndexSet.h $(FOUNDATION_SRC)/NSEnumerator.h \
+	$(FOUNDATION_SRC)/NSIndexSet.h $(FOUNDATION_SRC)/NSIndexPath.h \
+	$(FOUNDATION_SRC)/NSEnumerator.h \
 	$(FOUNDATION_SRC)/NSPropertyListSerialization.h \
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
@@ -150,6 +152,8 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nindexset.m -o .build/foundation-nindexset.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nindexpath.m -o .build/foundation-nindexpath.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nenumerator.m -o .build/foundation-nenumerator.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/npropertylistserialization.m -o .build/foundation-npropertylistserialization.o
@@ -159,7 +163,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-ndata.o .build/foundation-ndate.o \
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o \
-		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nenumerator.o \
+		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nenumerator.o \
 		.build/foundation-npropertylistserialization.o .build/plist.o -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)

@@ -30,6 +30,7 @@
 #import <foundation/NSException.h>
 #import <foundation/NSCharacterSet.h>
 #import <foundation/NSIndexSet.h>
+#import <foundation/NSIndexPath.h>
 #import <foundation/NSEnumerator.h>
 #import <foundation/NSPropertyListSerialization.h>
 

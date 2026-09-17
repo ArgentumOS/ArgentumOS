@@ -3,10 +3,11 @@
 Status: **DRAFT (2026-09). F0–F4 LANDED, the audited inventories CLOSED, and the plist
 skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
-`NSIndexSet`, `NSEnumerator`) and `NSPropertyListSerialization`. Gated on a guest boot by
-six cases (`foundation_core`, `foundation_string`, `foundation_value`,
+`NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
+not an array dependency: see the work queue) and `NSPropertyListSerialization`. Gated on a
+guest boot by six cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **6 / 18 /
-17 / 31 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
+17 / 34 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
 (the public headers are already staged, so it is a deliberate later step rather than a gap).
 The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
@@ -199,6 +200,12 @@ status.
   `NSEnumerator`. DONE (§9)**, plus the **plist skin**
   (`NSPropertyListSerialization`), which is where this plan meets
   `docs/design/plist-config-plan.md`.
+- **`NSIndexPath` — stage D. DONE (§9).** Not one of the audits' three, and not the
+  array dependency the work queue once made it: the four `…AtIndexes:`/`indexesOf…`
+  methods take an `NSIndexSet` and landed with it. What `NSIndexPath` is for is the
+  toolkit's addressing — a table or collection view names a cell by (row, section) or
+  (item, section) — so it was built as a value type and gated on its own, with no
+  library-side consumer to lean on.
 - **F5 — self-hosting. DEFERRED (user, 2026-09-17).** The enabling half is DONE and stays:
   the public headers are staged to `/System/Shared/Headers/foundation/` beside
   `libfoundation.so.1`, so an on-guest rebuild is possible. What is deferred is the GATE —
@@ -649,7 +656,7 @@ mechanism's fatal flaw.
 | `NSObject` | yes | **yes** | `-forwardInvocation:`/`-methodSignatureForSelector:` need `NSInvocation`/`NSMethodSignature` (not shipped) |
 | `NSNumber` | yes | **yes** | — |
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (localized comparison), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
-| `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet`/`NSIndexPath` (the `…AtIndexes:` families) and `NSEnumerator` (the enumerator objects — `for-in` covers the need) |
+| `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet` (the `…AtIndexes:` family) and `NSEnumerator` (the enumerator objects — `for-in` covers the need). Both shipped; `NSIndexPath` used to be named here too and is NOT one of them — no array form takes a path (corrected at stage D) |
 | `NSDictionary`/`NSMutableDictionary` | yes | **yes** | dependency only: `NSEnumerator` (the key/object enumerator objects — `for-in` covers that need) |
 | `NSData`/`NSMutableData` | yes | **yes** | dependency only: `NSError` for the `:options:error:` file variants (F4) |
 | `NSDate` | yes | **yes** | — |
@@ -736,10 +743,11 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 
 | dependency | what shipping it would unblock |
 |---|---|
-| `NSEnumerator` | `-keyEnumerator`/`-objectEnumerator` (dictionaries), the array and string enumerator forms |
-| `NSIndexSet`, `NSIndexPath` | the four `…AtIndexes:` / `indexesOf…` array forms |
-| `NSCharacterSet` | `-rangeOfCharacterFromSet:`, `-componentsSeparatedByCharactersInSet:`, `-stringByTrimmingCharactersInSet:` |
-| a plist reader/writer | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
+| `NSEnumerator` — **SHIPPED** | `-keyEnumerator`/`-objectEnumerator` (dictionaries), the array and string enumerator forms |
+| `NSIndexSet` — **SHIPPED** | the four `…AtIndexes:` / `indexesOf…` array forms |
+| `NSIndexPath` — **SHIPPED (stage D)** | NOT those array forms: a table or collection view's addressing (row/section, item/section), which the toolkit layer reads. The queue had paired the two names — corrected when stage D shipped, see §9 |
+| `NSCharacterSet` — **SHIPPED** | `-rangeOfCharacterFromSet:`, `-componentsSeparatedByCharactersInSet:`, `-stringByTrimmingCharactersInSet:` |
+| a plist reader/writer — **SHIPPED** | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
 | `NSLocale` | the localised comparisons (which currently answer unlocalised, and say so) |
 | `NSInvocation`, `NSMethodSignature` | the forwarding trio |
 | `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
@@ -830,3 +838,24 @@ own-list leg removed), and the tagged value was named without isolating it: the 
 edit was the cause, and the tagged path was cleared by evidence that was already on the
 log. The probe now names the property anyway (`string-format-tagged-object`), so a tagged
 `%@` is asserted rather than incidental.
+
+### Stage D lands (2026-09-17): `NSIndexPath`, and a correction to the work queue
+
+What the queue's pairing hid: the four `…AtIndexes:`/`indexesOf…` array methods take an
+`NSIndexSet`, which is why they landed with it in stage B — `NSIndexPath` was never their
+dependency. What it is for is ADDRESSING: (row, section) or (item, section) is a path,
+and that is the toolkit's layer, not the array surface. So it was built as a value type
+with no library-side consumer to lean on, and gated on its own three checks:
+`indexpath-basics` (construction in both shapes, O(1) `-indexAtPosition:`, both derived
+forms, ordering, equality/hash and our one-line `-description`), `indexpath-refusals` (a
+position past `-length` and trimming an empty path raise `NSRangeException`; `-compare:`
+with nil raises `NSInvalidArgumentException`) and `indexpath-api-complete` (the audited
+inventory, both directions).
+
+The storage is one flat `NSUInteger` buffer plus its length, held the same way
+`NSIndexSet` holds its range list — the two derived forms are COPIES, because Cocoa's
+`NSIndexPath` is immutable, which is what lets a view hold one while a model walks its
+hierarchy. The exclusions the audit asserts ABSENT are the toolkit's `row`/`section`/
+`item` accessors (a UIKit-side category here, not Foundation) and the coding protocols,
+which this library does not ship at all — the plist skin is its serialization surface.
+`foundation_collection` 34/34 on a guest boot.
