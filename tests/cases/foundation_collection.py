@@ -36,7 +36,8 @@ CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "array-sort", "array-search", "array-getobjects", "array-bulk",
           "array-copy-and-grow", "array-identity",
           "dict-api-complete", "dict-constructors", "dict-views", "dict-bulk",
-          "dict-getobjects")
+          "dict-getobjects",
+          "array-blocks", "dict-blocks")
 
 
 class Case(BaseCase):

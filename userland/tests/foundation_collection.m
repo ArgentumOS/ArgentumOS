@@ -726,6 +726,99 @@ int main(void)
 		      "getObjects:andKeys: fills parallel arrays with each pair intact");
 	}
 
+
+	{
+		/*
+		 * The array's block and comparator forms, EXERCISED. The inventory proves
+		 * they exist; this proves they work, which is the difference between a
+		 * declaration and an implementation.
+		 */
+		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"b", @"a", @"c", nil];
+		NSArray *sorted = [NSArray arrayWithObjects:@"a", @"b", @"c", nil];
+		NSArray *reverse = [m sortedArrayUsingComparator:^NSComparisonResult(id left, id right) {
+			return [right compare:left];
+		}];
+		__block NSUInteger seen = 0;
+		__block int indexesOk = 1;
+		__block int sawExpected = 1;
+		NSUInteger insertion;
+
+		[m enumerateObjectsUsingBlock:^(id object, NSUInteger index, BOOL *stop) {
+			if (index != seen) {
+				indexesOk = 0;
+			}
+			if (index == 0 && ![object isEqualToString:@"b"]) {
+				sawExpected = 0;
+			}
+			seen++;
+			if (index == 1) {
+				*stop = YES;	/* stops after the second element */
+			}
+		}];
+		[m sortUsingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		insertion = [sorted indexOfObject:@"b"
+				    inSortedRange:NSMakeRange(0, 3)
+					    options:NSBinarySearchingInsertionIndex
+				    usingComparator:^NSComparisonResult(id left, id right) {
+					    return [left compare:right];
+				    }];
+
+		check("array-blocks",
+		      seen == 2 && indexesOk && sawExpected &&
+		      [reverse count] == 3 && [[reverse objectAtIndex:0] isEqualToString:@"c"] &&
+		      [[reverse objectAtIndex:2] isEqualToString:@"a"] &&
+		      [[m objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[m objectAtIndex:2] isEqualToString:@"c"] &&
+		      insertion == 2 &&
+		      [sorted indexOfObject:@"a" inSortedRange:NSMakeRange(0, 3)
+				     options:NSBinarySearchingFirstEqual
+			     usingComparator:^NSComparisonResult(id left, id right) {
+				     return [left compare:right];
+			     }] == 0 &&
+		      [sorted indexOfObject:@"zz" inSortedRange:NSMakeRange(0, 3)
+				     options:NSBinarySearchingInsertionIndex
+			     usingComparator:^NSComparisonResult(id left, id right) {
+				     return [left compare:right];
+			     }] == 3,
+		      "enumerateObjectsUsingBlock: (index and stop), both comparator sorts, and the sorted-range search");
+	}
+
+	{
+		/* The dictionary's block and keys-sorted-by-value forms, exercised. */
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		__block NSUInteger seen = 0;
+		__block int pairsMatch = 1;
+		NSArray *byComparator;
+		NSArray *bySelector;
+
+		[d setObject:[NSNumber numberWithInt:2] forKey:@"b"];
+		[d setObject:[NSNumber numberWithInt:1] forKey:@"a"];
+		[d setObject:[NSNumber numberWithInt:3] forKey:@"c"];
+		[d enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
+			(void)stop;
+			seen++;
+			if (![[d objectForKey:key] isEqual:value]) {
+				pairsMatch = 0;
+			}
+		}];
+		byComparator = [d keysSortedByValueUsingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		bySelector = [d keysSortedByValueUsingSelector:@selector(compare:)];
+
+		check("dict-blocks",
+		      seen == 3 && pairsMatch &&
+		      [byComparator count] == 3 &&
+		      [[byComparator objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[byComparator objectAtIndex:1] isEqualToString:@"b"] &&
+		      [[byComparator objectAtIndex:2] isEqualToString:@"c"] &&
+		      [[bySelector objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[bySelector objectAtIndex:2] isEqualToString:@"c"],
+		      "enumerateKeysAndObjectsUsingBlock: pairs each key with its own value, and both keys-sorted-by-value forms order by the VALUES");
+	}
+
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-COLLECTION DONE\n");
 	return failc ? 1 : 0;

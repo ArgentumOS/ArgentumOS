@@ -33,7 +33,8 @@ CHECKS = ("number-convert", "number-value", "number-compare", "number-descriptio
           "number-api-complete", "number-matrix",
           "data-roundtrip", "data-mutable", "date", "cross-tu",
           "data-api-complete", "date-api-complete", "data-extras",
-          "data-base64", "data-mutable-extras", "date-extras")
+          "data-base64", "data-mutable-extras", "date-extras",
+          "data-block-enumeration")
 
 
 class Case(BaseCase):

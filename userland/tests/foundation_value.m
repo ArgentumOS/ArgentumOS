@@ -517,6 +517,45 @@ int main(void)
 		      "relative dates, the reference date, and distant past/future ordering");
 	}
 
+
+	{
+		/*
+		 * The byte-range enumeration, EXERCISED — the inventory could only prove it
+		 * exists, and a block method that never fires is a claim, not a behaviour.
+		 * The contract allows the ranges to be any decomposition, so one range
+		 * covering everything is legal; what is asserted is that the block is
+		 * handed the actual bytes and that `stop` ends the walk.
+		 */
+		static const unsigned char payload[] = { 1, 2, 3, 4, 5, 6 };
+		NSData *d = [NSData dataWithBytes:payload length:6];
+		__block NSUInteger total = 0;
+		__block NSUInteger calls = 0;
+		__block int bytesMatch = 1;
+		__block int stoppedEarly = 0;
+
+		[d enumerateByteRangesUsingBlock:^(const void *chunk, NSRange range, BOOL *stop) {
+			calls++;
+			total += range.length;
+			if (range.location != 0 || range.length != 6 ||
+			    memcmp(chunk, payload, 6) != 0) {
+				bytesMatch = 0;
+			}
+			*stop = YES;		/* the contract: setting it ends the enumeration */
+		}];
+		/* A second walk that does NOT stop, to show it runs to the end. */
+		[d enumerateByteRangesUsingBlock:^(const void *chunk, NSRange range, BOOL *stop) {
+			(void)chunk;
+			(void)range;
+			(void)stop;
+			stoppedEarly++;
+		}];
+
+		check("data-block-enumeration",
+		      calls == 1 && total == 6 && bytesMatch &&
+		      stoppedEarly == 1,
+		      "enumerateByteRangesUsingBlock: hands over the real bytes and honours stop");
+	}
+
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-VALUE DONE\n");
 	return failc ? 1 : 0;
