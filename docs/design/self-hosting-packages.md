@@ -248,7 +248,7 @@ the artefact we ship.
 `NSObject`, in `userland/foundation/`, built as **`libfoundation.so.1`** by the
 `$(FOUNDATION_LIB)` rule (make + the clang wrappers; **no scripting dependency**)
 and staged into `/System/Libraries/` (F1 added the string family: `NSString`,
-`NSOwnedString`, `NSMutableString`, `NSConstantString`, `NSTinyString`) and F2 the value types (`NSNumber`, `NSData`, `NSMutableData`, `NSDate`).
+`NSOwnedString`, `NSMutableString`, `NSConstantString`, `NSTinyString`) and F2 the value types (`NSNumber`, `NSData`, `NSMutableData`, `NSDate`), and F3 the collections (`NSArray`, `NSMutableArray`, `NSDictionary`, `NSMutableDictionary`, with the `NSFastEnumeration` protocol).
 **Its public headers ARE staged**, to
 `/System/Shared/Headers/foundation/`, which closes the half of the gap the entry
 above records for Objective-C: an on-guest ObjC rebuild now has the *Foundation's*
@@ -258,7 +258,7 @@ enforced rather than promised: `tools/foundation-gate.py`, run by a
 Apple-Foundation header import and on the runtime's legacy `objc/Object.h`
 (`docs/design/foundation-plan.md` §2). The v1 class list, the phases F0–F5 and the
 measured traps are in that plan; the acceptances are `tests/cases/foundation_core.py`
-`tests/cases/foundation_string.py` and `tests/cases/foundation_value.py`. **A runtime API the Foundation CALLS:**
+`tests/cases/foundation_string.py`, `tests/cases/foundation_value.py` and `tests/cases/foundation_collection.py`. **A runtime API the Foundation CALLS:**
 `objc_registerSmallObjectClass_np` (F1) — clang emits a `@"…"` literal of fewer
 than 9 ASCII characters as a *tagged pointer*, and the runtime dispatches tag 4
 through that table, so the Foundation registers a class there. That is a

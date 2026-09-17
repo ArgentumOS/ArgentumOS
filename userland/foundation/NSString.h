@@ -43,6 +43,16 @@
 - (const char *)UTF8String;
 - (size_t)length;		/* BYTES */
 - (size_t)characterCount;	/* Unicode characters */
+/*
+ * THE FAMILY'S ONE ENCODING PRIMITIVE, implemented by every concrete string.
+ * Comparisons MUST go through it rather than -UTF8String: a tagged string has
+ * no storage of its own, so its -UTF8String materialises into a shared scratch
+ * buffer, and two of those in one expression compare that buffer with ITSELF.
+ * That is the bug F3's probe caught — memcmp of two equal-length tagged strings
+ * always answered "equal", so -indexOfObject: found the first element for every
+ * key of the same length.
+ */
+- (unsigned char)byteAtIndex:(size_t)index;
 - (unsigned short)characterAtIndex:(size_t)index;	/* by CHARACTER */
 
 - (BOOL)isEqualToString:(NSString *)other;

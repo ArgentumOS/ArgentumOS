@@ -1,10 +1,10 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0, F1 and F2 LANDED (2026-09-17)** — the root
-class, the strings, and the value types are in and gated on a guest boot
-(`foundation_core` 5/5, `foundation_string` 7/7, `foundation_value` 8/8;
-`TESTS-OK 3/3 case(s), 18/18 check(s)`). F3 (the collections) is next. Every open
-question is answered (§7). Direction, decided by the user (2026-09-17), after
+Status: **DRAFT (2026-09). F0–F3 LANDED (2026-09-17)** — the root class, the
+strings, the value types and the collections are in and gated on a guest boot
+(`foundation_core` 5/5, `foundation_string` 7/7, `foundation_value` 8/8,
+`foundation_collection` 9/9; `TESTS-OK 4/4 case(s), 24/24 check(s)`). F4
+(`NSError`/`NSException`) is next. Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md`
 §8–§9):
 
@@ -181,7 +181,7 @@ status.
   under 9 ASCII characters, an object at 9+), and `-description` real on every
   class. Gated: `foundation_string` 7/7 on a guest boot.
 - **F2 — `NSNumber`, `NSData`/`NSMutableData`, `NSDate`. DONE 2026-09-17 (§9).**
-- **F3 — `NSArray`/`NSMutableArray`, `NSDictionary`/`NSMutableDictionary`**, with
+- **F3 — `NSArray`/`NSMutableArray`, `NSDictionary`/`NSMutableDictionary`. DONE 2026-09-17 (§9).** With
   `-copy`/`-mutableCopy`, fast enumeration, and the equality/hash contract
   exercised on a custom key type.
 - **F4 — `NSError` and `NSException`**, including `@throw`/`@catch` of an
@@ -499,3 +499,45 @@ Deliberately NOT in F2: no calendar, time zones or locales (a later fidelity
 slice), no `+stringWithFormat:` (hence `NSNumber` and `NSData` render themselves
 with libc instead), and NSNumber stays a plain object rather than a tagged one —
 the header records tagging as the optimisation it is.
+
+### F3 LANDS (2026-09-17) — and it found a bug in F1
+
+`foundation_collection` 9/9 on a guest boot: arrays, dictionaries, clang's
+`for-in` lowering over both, the key-copy decision measured in both directions,
+and element ownership measured through the runtime's retain count.
+
+**THE FIND, and it is in F1's strings rather than in F3's collections.**
+`array-basic` and `array-equality` failed on the first run while the other seven
+checks passed. Measuring host-side showed the array's *storage* was right — its
+`-description` listed all three elements — while `-objectAtIndex:0`, `:1` and `:2`
+ALL returned the last one, `-firstObject` disagreed with `-objectAtIndex:0`, and
+`-indexOfObject:@"two"` answered 0. The readings also *changed between runs*
+(`objectAtIndex:0` was right in one run and wrong in the next), which is the
+signature of undefined behaviour rather than of a swap.
+
+The cause was the tagged string's materialisation, from F1. A `@"…"` literal of
+fewer than 9 ASCII characters is a tagged pointer and has no storage, so its
+`-UTF8String` fills a **one-slot static buffer** — and `-isEqualToString:` was
+
+```objc
+memcmp([other UTF8String], [self UTF8String], [self length])
+```
+
+two calls that return the **same pointer**, so two equal-length tagged strings
+compared that buffer with itself and were *always* equal ("one" == "two"). The
+length check above it hid the bug for strings of different lengths, which is why
+`indexOfObject:@"three"` looked right. The print anomalies were the same aliasing
+seen from the caller's side: two materialisations in one `printf` share the
+buffer, and which one survives depends on argument evaluation order.
+
+The fix is the primitive the family should have had from F1: **`-byteAtIndex:`**,
+one declared primitive implemented per concrete string. The default reads through
+`-UTF8String` — safe, because the byte is consumed before another call can refill
+a buffer — and the tagged class decodes exactly. `-isEqualToString:` and `-hash`
+now go through it and never materialise anything. The tagged class's scratch
+became a 16-slot ring as well: convenience, not correctness, since no comparison
+depends on it any more, but an API that hands out a single shared buffer is a trap.
+
+Worth stating plainly: F1's probe passed while this was broken, because it never
+compared two tagged strings of the same length. F3's did on its first run. That
+is the argument for probes built from *decisions* rather than from coverage.

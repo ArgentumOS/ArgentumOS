@@ -14,6 +14,7 @@
 #define TINY_FIRST_SHIFT	57
 #define TINY_CHAR_STRIDE	7
 #define TINY_MAX_LENGTH		8u
+#define TINY_SCRATCH_SLOTS	16u
 
 static size_t tiny_length(id self)
 {
@@ -60,6 +61,12 @@ static char tiny_character(id self, size_t index)
 	return (unsigned short)(unsigned char)tiny_character(self, index);
 }
 
+/* The exact decode, with no buffer involved at all. */
+- (unsigned char)byteAtIndex:(size_t)index
+{
+	return (unsigned char)tiny_character(self, index);
+}
+
 - (const char *)UTF8String
 {
 	/*
@@ -69,7 +76,15 @@ static char tiny_character(id self, size_t index)
 	 * rather than hidden. Nothing else here needs one: -length,
 	 * -characterAtIndex: and the value methods all decode the bits directly.
 	 */
-	static char buffer[TINY_MAX_LENGTH + 1];
+	/*
+	 * A SMALL RING rather than one buffer: a caller may reasonably hold a few
+	 * of these at once (three of them in one printf, say). Correctness does not
+	 * depend on the ring — comparisons go through -byteAtIndex: — but an API
+	 * that hands out a single shared buffer is a trap, and sixteen is cheap.
+	 */
+	static char ring[TINY_SCRATCH_SLOTS][TINY_MAX_LENGTH + 1];
+	static unsigned int slot;
+	char *buffer = ring[slot++ % TINY_SCRATCH_SLOTS];
 	size_t n = tiny_length(self);
 	size_t i;
 

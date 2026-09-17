@@ -77,6 +77,17 @@ static unsigned short utf8_character_at(const char *bytes, size_t size, size_t i
 	return [[NSOwnedString alloc] initWithUTF8String:utf8];
 }
 
+- (unsigned char)byteAtIndex:(size_t)index
+{
+	/*
+	 * The DEFAULT: one byte read out of -UTF8String. Safe for every concrete
+	 * string here precisely because the byte is consumed before another call
+	 * can refill a materialised buffer — the aliasing bug was in comparing two
+	 * such POINTERS, not in reading through one.
+	 */
+	return (unsigned char)[self UTF8String][index];
+}
+
 - (BOOL)isEqualToString:(NSString *)other
 {
 	if (other == nil) {
@@ -88,7 +99,16 @@ static unsigned short utf8_character_at(const char *bytes, size_t size, size_t i
 	if ([other length] != [self length]) {
 		return NO;
 	}
-	return memcmp([other UTF8String], [self UTF8String], [self length]) == 0;
+	{
+		size_t i;
+
+		for (i = 0; i < [self length]; i++) {
+			if ([self byteAtIndex:i] != [other byteAtIndex:i]) {
+				return NO;
+			}
+		}
+	}
+	return YES;
 }
 
 - (BOOL)isEqual:(id)other
@@ -111,13 +131,12 @@ static unsigned short utf8_character_at(const char *bytes, size_t size, size_t i
 	 * based here, unlike NSObject's identity defaults, because that is what a
 	 * string is for.
 	 */
-	const char *bytes = [self UTF8String];
 	size_t size = [self length];
 	unsigned long h = 2166136261UL;
 	size_t i;
 
 	for (i = 0; i < size; i++) {
-		h ^= (unsigned char)bytes[i];
+		h ^= [self byteAtIndex:i];
 		h *= 16777619UL;
 	}
 	return h;

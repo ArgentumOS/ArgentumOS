@@ -99,11 +99,13 @@ TOYBOX64_STAGE = .build/toybox-root
 #                   implemented by the concrete subclasses.
 FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/ntinystring.m $(FOUNDATION_SRC)/nnumber.m \
-	$(FOUNDATION_SRC)/ndata.m $(FOUNDATION_SRC)/ndate.m
+	$(FOUNDATION_SRC)/ndata.m $(FOUNDATION_SRC)/ndate.m \
+	$(FOUNDATION_SRC)/nsarray.m $(FOUNDATION_SRC)/nsdictionary.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObject.h $(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
 	$(FOUNDATION_SRC)/NSData.h $(FOUNDATION_SRC)/NSDate.h \
-	$(FOUNDATION_SRC)/Foundation.h
+	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
+	$(FOUNDATION_SRC)/NSDictionary.h $(FOUNDATION_SRC)/Foundation.h
 FOUNDATION_CFLAGS = -fPIC -Wno-objc-missing-super-calls -Wno-incomplete-implementation
 
 $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
@@ -120,10 +122,15 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/ndata.m -o .build/foundation-ndata.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/ndate.m -o .build/foundation-ndate.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nsarray.m -o .build/foundation-nsarray.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nsdictionary.m -o .build/foundation-nsdictionary.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
-		.build/foundation-ndata.o .build/foundation-ndate.o -o $@
+		.build/foundation-ndata.o .build/foundation-ndate.o \
+		.build/foundation-nsarray.o .build/foundation-nsdictionary.o -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
@@ -241,6 +248,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/foundation-value-support.o .build/foundation-value-main.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_value"
+	# foundation_collection: F3 acceptance. The support unit builds a NESTED
+	# collection, which is the cheapest check that collections are ordinary
+	# objects; the main unit exercises clang's for-in lowering.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_collection_support.m -o .build/foundation-collection-support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_collection.m -o .build/foundation-collection-main.o
+	$(MUSL64_OBJC) .build/foundation-collection-support.o .build/foundation-collection-main.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_collection"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
