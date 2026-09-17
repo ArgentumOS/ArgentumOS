@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSObject — the root class of the Foundation (docs/design/foundation-plan.md).
  *
  * WHY THE NAME HAS A PREFIX. The runtime we ship declares a class called

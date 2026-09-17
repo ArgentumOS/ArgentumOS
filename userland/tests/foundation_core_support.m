@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_core, unit 1 of 2 — the subclass and the MRR lifetime exercises.
  *
  * MRR on purpose: this is the regime a root class forces on the files that

@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * objc_smoke, unit 1 of 2 - the root class, the class under test, and blocks.
  *
  * MRR on purpose: ARC forbids implementing -retain/-release in ARC code, and a

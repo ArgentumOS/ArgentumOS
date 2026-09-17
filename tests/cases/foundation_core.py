@@ -1,3 +1,5 @@
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 """The Foundation's root class — F0's acceptance.
 
 docs/design/foundation-plan.md §5. The probe is `/System/Shared/tests/foundation_core`,

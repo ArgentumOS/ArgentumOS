@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 # Fetch the sources needed to build the GNUstep Objective-C runtime (libobjc2)
 # for the FNX musl userland — docs/design/objc-toolchain-plan.md P0.
 #

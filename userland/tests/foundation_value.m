@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_value, unit 2 of 2 — the checks (ARC).
  *
  *   number-convert      every scalar conversion

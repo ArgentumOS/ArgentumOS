@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_value, unit 1 of 2 — the support unit (MRR).
  *
  * It imports ONLY <foundation/Foundation.h>, which is also what proves the

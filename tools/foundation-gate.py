@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 """The clean-room wall's mechanical half (docs/design/foundation-plan.md §2).
 
 The Foundation is first-party and clean-room. Its design reads Cocoa's

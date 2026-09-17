@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSDate — a point in time, as seconds since the Unix epoch.
  * docs/design/foundation-plan.md, F2; the copying family and NSComparisonResult
  * from the public-API audit.

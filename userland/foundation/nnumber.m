@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * nnumber.m — the boxed scalar of the whole C-type matrix.
  *
  * ARC file: nothing here implements -retain/-release.

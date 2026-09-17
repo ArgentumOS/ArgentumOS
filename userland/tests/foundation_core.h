@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_core — the F0 acceptance probe for the Foundation
  * (docs/design/foundation-plan.md §5).
  *

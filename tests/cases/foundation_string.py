@@ -1,3 +1,5 @@
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 """The Foundation's strings — F1's acceptance.
 
 docs/design/foundation-plan.md §5 (F1) and §9. The probe is

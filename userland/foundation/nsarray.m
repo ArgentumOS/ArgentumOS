@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * nsarray.m — the ordered collection.
  *
  * ARC file: it owns its storage but implements no -retain/-release, so the
@@ -138,6 +142,163 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 
 	[copy addObject:object];
 	return copy;
+}
+
+/* Count the nil-terminated arguments, then collect them: two passes, because the
+ * storage has to be exactly sized and a va_list cannot be rewound without a copy
+ * of it. */
+static NSArray *array_from_varargs(Class cls, va_list args)
+{
+	va_list counter;
+	id *objects;
+	size_t count = 0;
+	size_t i;
+	NSArray *result;
+
+	va_copy(counter, args);
+	while (va_arg(counter, id) != nil) {
+		count++;
+	}
+	va_end(counter);
+	objects = (id *)calloc(count + 1, sizeof(id));
+	if (objects == NULL) {
+		return nil;
+	}
+	for (i = 0; i < count; i++) {
+		objects[i] = va_arg(args, id);
+	}
+	result = [[cls alloc] initWithObjects:objects count:count];
+	free(objects);
+	return result;
+}
+
++ (NSArray *)arrayWithArray:(NSArray *)other
+{
+	return [[self alloc] initWithArray:other];
+}
+
++ (NSArray *)arrayWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	NSArray *result;
+
+	va_start(args, firstObject);
+	result = array_from_varargs(self, args);
+	va_end(args);
+	(void)firstObject;
+	return result;
+}
+
+- (id)initWithArray:(NSArray *)other
+{
+	return [self initWithObjects:[other _items] count:[other count]];
+}
+
+- (id)initWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	NSArray *built;
+
+	va_start(args, firstObject);
+	built = array_from_varargs([NSArray class], args);
+	va_end(args);
+	return [self initWithObjects:[built _items] count:[built count]];
+}
+
+- (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other
+{
+	NSMutableArray *copy = [[NSMutableArray alloc] initWithObjects:_items count:_count];
+
+	[copy addObjectsFromArray:other];
+	return copy;
+}
+
+- (NSArray *)subarrayWithRange:(NSRange)range
+{
+	size_t start = range.location;
+	size_t length = range.length;
+
+	if (start > _count) {
+		start = _count;
+	}
+	if (length > _count - start) {
+		length = _count - start;
+	}
+	return [[NSArray alloc] initWithObjects:_items + start count:length];
+}
+
+- (void)getObjects:(id __unsafe_unretained *)buffer range:(NSRange)range
+{
+	size_t i;
+
+	if (buffer == NULL) {
+		return;
+	}
+	for (i = 0; i < range.length; i++) {
+		buffer[i] = (range.location + i < _count) ? _items[range.location + i] : nil;
+	}
+}
+
+- (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range
+{
+	size_t i;
+
+	for (i = range.location; i < _count && i < range.location + range.length; i++) {
+		if (_items[i] == object || [_items[i] isEqual:object]) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+- (NSUInteger)indexOfObjectIdenticalTo:(id)object
+{
+	size_t i;
+
+	for (i = 0; i < _count; i++) {
+		if (_items[i] == object) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+- (NSString *)componentsJoinedByString:(NSString *)separator
+{
+	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:""];
+	size_t i;
+
+	for (i = 0; i < _count; i++) {
+		if (i > 0) {
+			[out appendString:separator];
+		}
+		[out appendString:[_items[i] description]];
+	}
+	return out;
+}
+
+/* An insertion sort over the elements' -compare: (or whatever the comparator
+ * selector answers). Quadratic, and honest about being a v1: correct first. */
+- (NSArray *)sortedArrayUsingSelector:(SEL)comparator
+{
+	NSMutableArray *sorted = [[NSMutableArray alloc] initWithObjects:_items count:_count];
+	size_t i;
+
+	for (i = 1; i < [sorted count]; i++) {
+		id key = [sorted objectAtIndex:i];
+		size_t j = i;
+
+		while (j > 0 &&
+		       ((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(
+			       [sorted objectAtIndex:j - 1], comparator, key) ==
+		       NSOrderedDescending) {
+			[sorted replaceObjectAtIndex:j
+					   withObject:[sorted objectAtIndex:j - 1]];
+			j--;
+		}
+		[sorted replaceObjectAtIndex:j withObject:key];
+	}
+	return sorted;
 }
 
 - (BOOL)isEqualToArray:(NSArray *)other
@@ -364,6 +525,105 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 {
 	/* A snapshot, like every other mutable type here. */
 	return [[NSArray alloc] initWithObjects:_items count:_count];
+}
+
+- (void)addObjectsFromArray:(NSArray *)other
+{
+	NSUInteger i;
+
+	for (i = 0; i < [other count]; i++) {
+		[self addObject:[other objectAtIndex:i]];
+	}
+}
+
+- (void)removeLastObject
+{
+	if (_count > 0) {
+		[self removeObjectAtIndex:_count - 1];
+	}
+}
+
+- (void)removeObject:(id)object
+{
+	[self removeObject:object inRange:NSMakeRange(0, _count)];
+}
+
+- (void)removeObjectIdenticalTo:(id)object
+{
+	NSUInteger i;
+
+	for (i = 0; i < _count; i++) {
+		if (_items[i] == object) {
+			[self removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
+- (void)removeObject:(id)object inRange:(NSRange)range
+{
+	NSUInteger i;
+
+	for (i = range.location; i < _count && i < range.location + range.length; i++) {
+		if (_items[i] == object || [_items[i] isEqual:object]) {
+			[self removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
+- (void)removeObjectsInRange:(NSRange)range
+{
+	NSUInteger i;
+
+	for (i = 0; i < range.length; i++) {
+		if (range.location < _count) {
+			[self removeObjectAtIndex:range.location];
+		}
+	}
+}
+
+- (void)setArray:(NSArray *)other
+{
+	[self removeAllObjects];
+	[self addObjectsFromArray:other];
+}
+
+- (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second
+{
+	id held;
+
+	if (first >= _count || second >= _count || first == second) {
+		return;
+	}
+	held = _items[first];
+	_items[first] = _items[second];
+	_items[second] = held;
+	_mutations++;
+}
+
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)other
+{
+	NSUInteger i = 0;
+
+	if (range.location >= _count) {
+		return;
+	}
+	for (i = 0; i < range.length && range.location + i < _count; i++) {
+		if (i < [other count]) {
+			[self replaceObjectAtIndex:range.location + i
+				     withObject:[other objectAtIndex:i]];
+		} else {
+			[self removeObjectAtIndex:range.location + i];
+		}
+	}
+}
+
+- (void)sortUsingSelector:(SEL)comparator
+{
+	NSArray *sorted = [[NSArray alloc] initWithObjects:_items count:_count];
+
+	[self setArray:[sorted sortedArrayUsingSelector:comparator]];
 }
 
 @end

@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * ndate.m — a point in time.
  *
  * ARC file. `+date` reads the system clock through libc (the kernel provides

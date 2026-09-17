@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSObjCRuntime.h — the scalar types, the comparison enum, ranges, and
  * NSNotFound. docs/design/foundation-plan.md, the public-API audit (item B).
  *
@@ -82,5 +86,12 @@ static inline BOOL NSLocationInRange(NSUInteger location, NSRange range)
 }
 
 typedef unsigned short unichar;
+
+/*
+ * Cocoa spells this on its nil-terminated variadic methods. The attribute only
+ * means something for C functions, so as written here it is documentation that
+ * keeps the spelling compiling.
+ */
+#define NS_REQUIRES_NIL_TERMINATION
 
 #endif /* FOUNDATION_NSOBJCRUNTIME_H */

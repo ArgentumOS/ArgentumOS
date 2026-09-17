@@ -1,3 +1,5 @@
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 """Objective-C on the guest: the runtime, across two translation units.
 
 `libobjc2` is the runtime this OS adopted (docs/design/objc-toolchain-plan.md),

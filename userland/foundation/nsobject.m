@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * nsobject.m — the root class.
  *
  * THE ONE MRR FILE. ARC forbids implementing -retain/-release (measured:

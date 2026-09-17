@@ -1,3 +1,5 @@
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 """The Foundation's value types — F2's acceptance.
 
 docs/design/foundation-plan.md §5 (F2). The probe is

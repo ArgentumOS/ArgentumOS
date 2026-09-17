@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSTinyString — the class for clang's TAGGED constant strings.
  * docs/design/foundation-plan.md, F1.
  *

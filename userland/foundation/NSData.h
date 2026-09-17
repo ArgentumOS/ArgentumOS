@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSData / NSMutableData — an owned byte buffer.
  * docs/design/foundation-plan.md, F2.
  *

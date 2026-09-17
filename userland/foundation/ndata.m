@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * ndata.m — the byte buffer.
  *
  * ARC file. -copy of a MUTABLE data is a snapshot, as with the strings; -copy of

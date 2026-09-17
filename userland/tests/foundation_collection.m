@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_collection, unit 2 of 2 — the checks (ARC).
  *
  *   array-basic      count/index/first/last/contains, and out of range is nil
@@ -274,6 +278,111 @@ int main(void)
 		      [m conformsToProtocol:@protocol(NSCopying)] &&
 		      [[snapshot performSelector:@selector(firstObject)] intValue] == 0,
 		      "subscripts, NSNotFound, NSRange, NSComparisonResult, -performSelector:, conformance");
+	}
+
+
+	{
+		/* THE HARD RULE, mechanically, for the array family. */
+		static const char *classSelectors[] = {
+			"array", "arrayWithObject:", "arrayWithObjects:count:",
+			"arrayWithArray:", "arrayWithObjects:", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithObject:", "initWithObjects:count:", "initWithArray:",
+			"initWithObjects:",
+			"count", "objectAtIndex:", "objectAtIndexedSubscript:",
+			"firstObject", "lastObject", "indexOfObject:", "indexOfObject:inRange:",
+			"indexOfObjectIdenticalTo:", "containsObject:",
+			"arrayByAddingObject:", "arrayByAddingObjectsFromArray:",
+			"subarrayWithRange:", "getObjects:range:",
+			"componentsJoinedByString:", "sortedArrayUsingSelector:",
+			"isEqualToArray:", "isEqual:", "hash", "description",
+			"copy", "mutableCopy",
+			"countByEnumeratingWithState:objects:count:", NULL
+		};
+		static const char *mutableClassSelectors[] = {
+			"array", "arrayWithCapacity:", NULL
+		};
+		static const char *mutableSelectors[] = {
+			"initWithCapacity:", "addObject:", "addObjectsFromArray:",
+			"insertObject:atIndex:", "removeObjectAtIndex:", "removeLastObject:",
+			"removeLastObject", "removeObject:", "removeObjectIdenticalTo:",
+			"removeObject:inRange:", "removeObjectsInRange:", "removeAllObjects",
+			"replaceObjectAtIndex:withObject:", "replaceObjectsInRange:withObjectsFromArray:",
+			"setArray:", "exchangeObjectAtIndex:withObjectAtIndex:",
+			"sortUsingSelector:", "setObject:atIndexedSubscript:", NULL
+		};
+		NSArray *probe = [NSArray arrayWithObject:@"x"];
+		NSMutableArray *mutable = [[NSMutableArray alloc] init];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSArray respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; mutableClassSelectors[i] != NULL; i++) {
+			if (![NSMutableArray respondsToSelector:sel_registerName(mutableClassSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s (mutable)\n", mutableClassSelectors[i]);
+			}
+		}
+		for (i = 0; mutableSelectors[i] != NULL; i++) {
+			if (![mutable respondsToSelector:sel_registerName(mutableSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s (mutable)\n", mutableSelectors[i]);
+			}
+		}
+		check("array-api-complete", complete,
+		      "every public NSArray/NSMutableArray selector exists (the hard rule)");
+	}
+
+	{
+		/* ...and the surface behaves. */
+		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"b", @"a", @"c", nil];
+		NSArray *sorted = [m sortedArrayUsingSelector:@selector(compare:)];
+		NSArray *joined = [NSArray arrayWithObjects:@"x", @"y", nil];
+		NSArray *numbers = [NSArray arrayWithObjects:@"1", @"2", @"3", @"4", nil];
+		NSArray *sub = [numbers subarrayWithRange:NSMakeRange(1, 2)];
+		NSMutableArray *changed = [NSMutableArray arrayWithObjects:@"p", @"q", @"r", nil];
+		NSString *distinct = [[NSMutableString alloc] initWithUTF8String:"2"];
+		id __unsafe_unretained held[2];
+
+		[numbers getObjects:held range:NSMakeRange(1, 2)];
+		[changed exchangeObjectAtIndex:0 withObjectAtIndex:2];
+		[changed removeLastObject];
+		[changed addObjectsFromArray:joined];
+		[changed replaceObjectsInRange:NSMakeRange(0, 2)
+			 withObjectsFromArray:[NSArray arrayWithObject:@"z"]];
+
+		check("array-extras",
+		      [m count] == 3 &&
+		      [[joined componentsJoinedByString:@"-"] isEqualToString:@"x-y"] &&
+		      [[[NSArray arrayWithObject:@"solo"] componentsJoinedByString:@"-"]
+		          isEqualToString:@"solo"] &&
+		      [sub count] == 2 && [[sub objectAtIndex:0] isEqualToString:@"2"] &&
+		      [[sub objectAtIndex:1] isEqualToString:@"3"] &&
+		      [[sorted objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[sorted objectAtIndex:2] isEqualToString:@"c"] &&
+		      [sorted indexOfObjectIdenticalTo:[sorted objectAtIndex:0]] == 0 &&
+		      [m indexOfObject:@"a" inRange:NSMakeRange(0, 3)] == 1 &&
+		      [m indexOfObject:@"a" inRange:NSMakeRange(2, 1)] == NSNotFound &&
+		      [held[0] isEqualToString:@"2"] && [held[1] isEqualToString:@"3"] &&
+		      [changed count] == 3 && [[changed objectAtIndex:0] isEqualToString:@"z"] &&
+		      [[changed objectAtIndex:1] isEqualToString:@"x"] &&
+		      [changed indexOfObject:@"r"] == NSNotFound &&
+		      [[NSArray arrayWithArray:joined] isEqualToArray:joined] &&
+		      [[m arrayByAddingObjectsFromArray:joined] count] == 5 &&
+		      [numbers indexOfObjectIdenticalTo:@"2"] == NSNotFound,
+		      "varargs creation, joining, subarrays, sorting, identity, ranges and bulk mutation");
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);

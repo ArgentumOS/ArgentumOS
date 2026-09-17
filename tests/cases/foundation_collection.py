@@ -1,3 +1,5 @@
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 """The Foundation's collections — F3's acceptance.
 
 docs/design/foundation-plan.md §5 (F3). The probe is
@@ -29,7 +31,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_collection"
 CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "dict-basic", "dict-key-copy", "dict-equality", "dict-enumerate",
-          "ownership", "number-key", "cocoa-spellings")
+          "ownership", "number-key", "cocoa-spellings",
+          "array-api-complete", "array-extras")
 
 
 class Case(BaseCase):

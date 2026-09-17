@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSArray / NSMutableArray — an ordered collection.
  * docs/design/foundation-plan.md, F3; subscripting and NSNotFound from the
  * public-API audit.
@@ -20,6 +24,8 @@
 #import <foundation/NSObject.h>
 #import <foundation/NSFastEnumeration.h>
 
+@class NSString;
+
 @interface NSArray : NSObject <NSCopying, NSFastEnumeration>
 {
 	id __unsafe_unretained *_items;	/* owned BY HAND: every slot is retained */
@@ -31,9 +37,13 @@
 + (NSArray *)array;
 + (NSArray *)arrayWithObject:(id)object;
 + (NSArray *)arrayWithObjects:(const id *)objects count:(NSUInteger)count;
++ (NSArray *)arrayWithArray:(NSArray *)other;
++ (NSArray *)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)object;
 - (id)initWithObjects:(const id *)objects count:(NSUInteger)count;
+- (id)initWithArray:(NSArray *)other;
+- (id)initWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
 - (id)objectAtIndex:(NSUInteger)index;
@@ -48,6 +58,16 @@
 - (BOOL)containsObject:(id)object;
 
 - (NSArray *)arrayByAddingObject:(id)object;	/* a new array; self is untouched */
+- (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other;
+- (NSArray *)subarrayWithRange:(NSRange)range;
+- (void)getObjects:(id __unsafe_unretained *)buffer range:(NSRange)range;
+
+- (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range;
+- (NSUInteger)indexOfObjectIdenticalTo:(id)object;
+
+- (NSString *)componentsJoinedByString:(NSString *)separator;
+- (NSArray *)sortedArrayUsingSelector:(SEL)comparator;
+
 - (BOOL)isEqualToArray:(NSArray *)other;
 
 @end
@@ -63,6 +83,16 @@
 - (void)removeObjectAtIndex:(NSUInteger)index;
 - (void)removeAllObjects;
 - (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object;
+- (void)addObjectsFromArray:(NSArray *)other;
+- (void)removeLastObject;
+- (void)removeObject:(id)object;
+- (void)removeObjectIdenticalTo:(id)object;
+- (void)removeObject:(id)object inRange:(NSRange)range;
+- (void)removeObjectsInRange:(NSRange)range;
+- (void)setArray:(NSArray *)other;
+- (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second;
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)other;
+- (void)sortUsingSelector:(SEL)comparator;
 
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
 - (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;

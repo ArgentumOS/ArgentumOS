@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_value — F2's acceptance probe (docs/design/foundation-plan.md).
  *
  * Two translation units again. The support unit BUILDS one value of each kind,

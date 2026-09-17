@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * objc_smoke - the Objective-C acceptance probe (docs/design/objc-toolchain-plan.md).
  *
  * TWO TRANSLATION UNITS ON PURPOSE. The class under test and its root class are

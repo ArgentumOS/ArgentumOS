@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
 # musl-clang-objc wrapper for the FNX native x86_64 userland (Objective-C and
 # Objective-C++) - docs/design/objc-toolchain-plan.md P2.
 #

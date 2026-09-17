@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * Foundation.h — the umbrella.
  *
  * A consumer writes `#import <foundation/Foundation.h>`. The path is lower-case

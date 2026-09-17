@@ -633,7 +633,7 @@ gap fails the gate instead of living in prose.
 | `NSObject` | yes | **yes** | `-forwardInvocation:`/`-methodSignatureForSelector:` need `NSInvocation`/`NSMethodSignature` (not shipped) |
 | `NSNumber` | yes | **yes** | — |
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (localized comparison), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
-| `NSArray`/`NSMutableArray` | yes | no | enumeration helpers, bulk mutation, slicing, joining, identity lookup |
+| `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet`/`NSIndexPath` (the `…AtIndexes:` families) and `NSEnumerator` (the enumerator objects — `for-in` covers the need) |
 | `NSDictionary`/`NSMutableDictionary` | yes | no | `-allKeys`/`-allValues`, bulk set, key and object enumerators |
 | `NSData`/`NSMutableData` | yes | no | ranges, `-getBytes:length:`, the no-copy initialisers, file I/O, base64 |
 | `NSDate` | yes | no | relative dates, distant past/future, the interval constructors |
@@ -651,3 +651,32 @@ one-line. Names that are OURS rather than the contract: `NSOwnedString`,
 
 **Order of work:** `NSObject`, `NSNumber` and `NSString`/`NSMutableString` are
 complete; then the collections, then `NSData`/`NSDate`.
+
+## Copyright and licence (2026-09-17)
+
+**Every file of original Argentum/FNX work carries, at its top:**
+
+    Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+    SPDX-License-Identifier: MIT
+
+That covers the Foundation itself (`userland/foundation/**`), its probes and the
+cases that run them, and the Objective-C toolchain and build files written for it.
+
+The ROOT `LICENSE` KEEPS ITS UPSTREAM FIWIX COPYRIGHT UNTOUCHED and gained an
+ADDITIVE section for the original work: they are different authors under the same
+MIT terms, so the right move is a second notice, not a rewrite of the first.
+
+**Changes to the KERNEL keep their existing copyright and licence status** and
+are not covered by this. Vendored trees (`third_party/**`, the X11 forks in
+`xvfb-src/`/`xfb-src/`) and anything derived from an upstream project are
+EXCLUDED as well — this notice is for work WE authored, and claiming it over
+derived code would be false.
+
+Documentation is CC BY 4.0 for prose and MIT for code and samples (`docs/LICENSE`),
+which now names the holder.
+
+**Not yet swept, deliberately:** the rest of our original sources — the userland
+apps and tools, `mk/**`, the Argentum UIKit, and the tests outside the Foundation
+— need a PER-FILE review before they carry the notice, for the same reason the
+exclusions above exist: a file that turns out to be derived must not be claimed.
+The Foundation and its immediate surroundings are this pass's boundary.

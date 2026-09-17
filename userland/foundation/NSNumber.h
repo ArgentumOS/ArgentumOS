@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSNumber — a boxed scalar of the whole C-type matrix.
  * docs/design/foundation-plan.md, F2 + the public-API audit + the hard rule.
  *

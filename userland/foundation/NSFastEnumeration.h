@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSFastEnumeration — the protocol behind `for (id x in collection)`, and the
  * state record clang reads. docs/design/foundation-plan.md, F3.
  *

@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSString — the immutable string, with its concrete and constant subclasses.
  * docs/design/foundation-plan.md, F1 + the hard rule.
  *

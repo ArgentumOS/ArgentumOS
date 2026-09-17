@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_string — F1's acceptance probe (docs/design/foundation-plan.md).
  *
  * TWO TRANSLATION UNITS, for the reason the other probes have two: one of the

@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * nstring.m — NSString, NSOwnedString, NSMutableString and NSConstantString.
  *
  * ARC (the house default): none of the four implements -retain/-release, so

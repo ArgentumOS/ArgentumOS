@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * NSDictionary / NSMutableDictionary — key → value.
  * docs/design/foundation-plan.md, F3; subscripting and the nil-key guard from
  * the public-API audit.

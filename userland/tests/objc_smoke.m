@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * objc_smoke, unit 2 of 2 - the CATEGORY on the other unit's class, the ARC
  * side, and the checks.
  *

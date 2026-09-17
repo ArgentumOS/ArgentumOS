@@ -55,3 +55,21 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Argentum/FNX original work
+--------------------------
+
+Portions of this repository are ORIGINAL work of the Argentum/FNX project and
+are NOT derived from Fiwix: the Objective-C runtime integration and the
+Foundation class library (`userland/foundation/`), their tests, and the
+toolchain and build files written for them.
+
+    Copyright © 2026 Kyle J. Cardoza.
+
+Those portions are released under the MIT licence, on the same terms as the text
+above (and every such file carries the notice, with an
+`SPDX-License-Identifier: MIT` line, at its top).
+
+Changes to the KERNEL keep their existing copyright and licence status and are
+NOT covered by this section.

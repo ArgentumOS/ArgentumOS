@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * nsdictionary.m — the hash table. See NSDictionary.h for why keys are copied.
  *
  * ARC file: the entry slots are C storage, so they are retained and released by

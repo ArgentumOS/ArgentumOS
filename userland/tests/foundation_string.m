@@ -1,4 +1,8 @@
 /*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
  * foundation_string, unit 2 of 2 — the checks (ARC, the house default).
  *
  * The checks are grouped by what they prove:
@@ -96,13 +100,14 @@ int main(void)
 	 * string describes itself. */
 	{
 		NSObject *rootObject = [[NSObject alloc] init];
+		NSString *literal = @"hello";
 		NamedThing *named = [[NamedThing alloc] init];
 
 		check("description",
 		      strcmp([[rootObject description] UTF8String], "NSObject") == 0 &&
 		      strcmp([[named description] UTF8String],
 			     "a NamedThing, thank you") == 0 &&
-		      [@"hello" description] == @"hello",
+		      [literal description] == literal,
 		      "root class names itself; an override wins; a string is its own");
 	}
 
