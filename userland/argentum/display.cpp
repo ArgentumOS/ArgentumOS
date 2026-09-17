@@ -274,6 +274,13 @@ map_rect(const Context::Impl &im, const Rect &r, int *x0, int *y0, int *x1,
 	return true;
 }
 
+/* THE FILLS, in a frame's totals. A full-window pass fills 495488 pixels
+ * before it draws anything - more than every shape's mask put together
+ * (277620) - so this is the next place a frame's milliseconds could be
+ * hiding, and it gets measured rather than argued, like the shapes did. */
+static double gFillMs;
+static long gFillPx;
+
 void
 Context::fillRect(const Rect &rect, const Color &color)
 {
@@ -298,9 +305,13 @@ Context::fillRect(const Rect &rect, const Color &color)
 	if (!src) {
 		return;
 	}
+	double t0 = nowMs();
+
 	pixman_image_composite32(PIXMAN_OP_OVER, src, nullptr, impl_->img,
 				 0, 0, 0, 0, x0, y0, (unsigned int) (x1 - x0),
 				 (unsigned int) (y1 - y0));
+	gFillMs += nowMs() - t0;
+	gFillPx += (long) (x1 - x0) * (long) (y1 - y0);
 	pixman_image_unref(src);
 }
 
@@ -1976,13 +1987,16 @@ Window::displayIfNeeded()
 		 * per-shape cost is the mask BUILD or the per-pixel COMPOSITE. */
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
 			    "views=%d rects=%d masks=%d hits=%d maskpx=%ld "
-			    "build=%ld comp=%ld dmg=%dx%d\n",
+			    "build=%ld comp=%ld fill=%ld fillpx=%ld dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
 			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
 			    gMasks, gMaskHits, gMaskPx, (long) gBuildMs,
-			    (long) gCompMs, ux1 - ux0, uy1 - uy0);
+			    (long) gCompMs, (long) gFillMs, gFillPx,
+			    ux1 - ux0, uy1 - uy0);
 		gBuildMs = 0.0;		/* per frame, not cumulative */
 		gCompMs = 0.0;
+		gFillMs = 0.0;
+		gFillPx = 0;
 		std::fflush(stdout);
 	}
 }
