@@ -143,34 +143,55 @@ int main(void)
 
 
 	{
-		/* THE HARD RULE, mechanically: every public NSNumber selector must EXIST.
-		 * This list IS the audit (docs/design/foundation-plan.md), turned into
-		 * something that fails a gate instead of living in prose. */
+		/*
+		 * THE AUDITED COCOA INVENTORY for NSNumber.
+		 *
+		 * The previous check was SELF-REFERENTIAL: it asserted that every selector
+		 * in OUR header exists, which cannot see a method nobody declared — that is
+		 * exactly how +stringWithFormat:arguments: shipped missing. This list is
+		 * Cocoa's documented surface, and the excluded list is asserted ABSENT, so
+		 * the inventory cannot drift away from the code.
+		 */
 		static const char *classSelectors[] = {
-			"numberWithBool:", "numberWithChar:", "numberWithShort:",
-			"numberWithInt:", "numberWithLong:", "numberWithLongLong:",
-			"numberWithInteger:", "numberWithUnsignedChar:",
-			"numberWithUnsignedShort:", "numberWithUnsignedInt:",
+			"numberWithBool:", "numberWithChar:", "numberWithShort:", "numberWithInt:",
+			"numberWithLong:", "numberWithLongLong:", "numberWithInteger:",
+			"numberWithUnsignedChar:", "numberWithUnsignedShort:", "numberWithUnsignedInt:",
 			"numberWithUnsignedLong:", "numberWithUnsignedLongLong:",
-			"numberWithUnsignedInteger:", "numberWithFloat:",
-			"numberWithDouble:", NULL
+			"numberWithUnsignedInteger:", "numberWithFloat:", "numberWithDouble:",
+			NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithBool:", "initWithChar:", "initWithShort:", "initWithInt:",
 			"initWithLong:", "initWithLongLong:", "initWithInteger:",
-			"initWithUnsignedChar:", "initWithUnsignedShort:",
-			"initWithUnsignedInt:", "initWithUnsignedLong:",
-			"initWithUnsignedLongLong:", "initWithUnsignedInteger:",
-			"initWithFloat:", "initWithDouble:",
+			"initWithUnsignedChar:", "initWithUnsignedShort:", "initWithUnsignedInt:",
+			"initWithUnsignedLong:", "initWithUnsignedLongLong:",
+			"initWithUnsignedInteger:", "initWithFloat:", "initWithDouble:",
 			"boolValue", "charValue", "shortValue", "intValue", "longValue",
-			"longLongValue", "integerValue", "unsignedCharValue",
-			"unsignedShortValue", "unsignedIntValue", "unsignedLongValue",
-			"unsignedLongLongValue", "unsignedIntegerValue", "floatValue",
-			"doubleValue", "stringValue", "objCType", "descriptionWithLocale:",
-			"isEqualToNumber:", "compare:", "isEqual:", "hash", "description",
-			"copy", "mutableCopy", NULL
+			"longLongValue", "integerValue", "unsignedCharValue", "unsignedShortValue",
+			"unsignedIntValue", "unsignedLongValue", "unsignedLongLongValue",
+			"unsignedIntegerValue", "floatValue", "doubleValue",
+			"stringValue", "objCType", "descriptionWithLocale:",
+			"isEqualToNumber:", "compare:",
+			"isEqual:", "hash", "description", "copy", "mutableCopy",
+			NULL
 		};
-		NSNumber *n = [NSNumber numberWithInt:42];
+		static const char *excluded[] = {
+			/* NSDecimalNumber / NSDecimal are not shipped. */
+			"decimalValue",			/* the NSDecimal conversion */
+			"numberWithDecimal:",		/* the NSDecimal constructor */
+			"initWithDecimal:",		/* the NSDecimal initialiser */
+			/* NSValue is not shipped, so the API NSNumber inherits from it in
+			 * Cocoa has no home here. */
+			"valueWithBytes:objCType:",	/* NSValue */
+			"initWithBytes:objCType:",	/* NSValue */
+			"getValue:",			/* NSValue */
+			"valueWithPointer:",		/* NSValue */
+			"initWithPointer:",		/* NSValue */
+			"pointerValue",			/* NSValue */
+			"isEqualToValue:",		/* NSValue */
+			NULL
+		};
+		NSNumber *probe = [NSNumber numberWithInt:1];
 		int complete = 1;
 		int i;
 
@@ -181,14 +202,21 @@ int main(void)
 			}
 		}
 		for (i = 0; instanceSelectors[i] != NULL; i++) {
-			if (![n respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
 				complete = 0;
 				printf("FOUNDATION-VALUE missing -%s\n", instanceSelectors[i]);
 			}
 		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-VALUE present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
 		check("number-api-complete", complete,
-		      "every public NSNumber selector exists (the hard rule)");
+		      "the audited Cocoa inventory for NSNumber (implemented present, excluded absent)");
 	}
+
 
 	{
 		/* ...and the whole matrix BEHAVES, not merely exists. */
