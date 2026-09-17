@@ -23,6 +23,10 @@
 
 #import <foundation/NSObject.h>
 
+/* NULLABILITY (F6): NONNULL throughout — every accessor here answers a number, a
+ * BOOL or a sentinel, never an object that could be absent. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSIndexSet : NSObject <NSCopying>
 {
 	unsigned long *_ranges;		/* pairs of (location, length) */
@@ -58,6 +62,8 @@
 - (void)removeIndex:(NSUInteger)value;
 - (void)removeIndexesInRange:(NSRange)range;
 - (void)removeAllIndexes;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

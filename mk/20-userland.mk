@@ -130,7 +130,13 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
 # consumes it from C — see the one-core-two-skins decision in the plan.
-FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation
+# F6 (nullability): a header that carries ANY annotation must carry them ALL —
+# clang's -Wnullability-completeness is what says so, and as an ERROR it is the
+# sweep's own gate: a file with some annotations and not others fails the build,
+# while an untouched file (no annotations at all) stays silent, which is what lets
+# the sweep land one slice at a time.
+FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation \
+	-Werror=nullability-completeness
 
 $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	@mkdir -p $(FNXLIB)
@@ -277,6 +283,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fno-objc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_core_support.m -o .build/foundation-core-support.o
 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_core.m -o .build/foundation-core-main.o
 	$(MUSL64_OBJC) .build/foundation-core-support.o .build/foundation-core-main.o \
 		-L$(FNXLIB) -lfoundation \

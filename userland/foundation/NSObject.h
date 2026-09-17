@@ -29,6 +29,16 @@
 @class NSInvocation;
 
 /*
+ * NULLABILITY (F6). The sweep's rules, in one place: everything below is NONNULL
+ * by default, and the handful of declarations that can legitimately answer nil say
+ * so — a class with no superclass, a selector the runtime cannot find, a
+ * -performSelector: whose method answers nil, a -forwardingTargetForSelector:
+ * meaning "no fast forwarding", and -zone, which answers NULL because there is one
+ * allocator here and nothing dereferences a zone.
+ */
+NS_ASSUME_NONNULL_BEGIN
+
+/*
  * The copying protocols, in COCOA'S SHAPE (the public-API audit, item B4): the
  * zone method is the protocol's member, and `-copy` / `-mutableCopy` are
  * declared on NSObject below, because every object can be *sent* them. The zone
@@ -96,11 +106,11 @@ __attribute__((objc_root_class))
 
 /* Identity, class membership and introspection. */
 + (Class)class;
-+ (Class)superclass;
++ (nullable Class)superclass;
 + (BOOL)isSubclassOfClass:(Class)aClass;
 + (BOOL)conformsToProtocol:(Protocol *)aProtocol;
 - (Class)class;
-- (Class)superclass;
+- (nullable Class)superclass;
 - (BOOL)isKindOfClass:(Class)aClass;
 - (BOOL)isMemberOfClass:(Class)aClass;
 - (BOOL)respondsToSelector:(SEL)aSelector;
@@ -124,20 +134,20 @@ __attribute__((objc_root_class))
 - (void)doesNotRecognizeSelector:(SEL)aSelector;
 
 /* Messaging, which is how Cocoa code calls a selector it only knows by name. */
-- (id)performSelector:(SEL)aSelector;
-- (id)performSelector:(SEL)aSelector withObject:(id)object;
-- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
+- (nullable id)performSelector:(SEL)aSelector;
+- (nullable id)performSelector:(SEL)aSelector withObject:(nullable id)object;
+- (nullable id)performSelector:(SEL)aSelector withObject:(nullable id)object1 withObject:(nullable id)object2;
 
 /* Messaging and introspection, the rest of Cocoa's root-class surface. */
 /* THE SIGNATURE OF A SELECTOR, and the FORWARDING that uses it (stage F). The
  * lookup needs no invocation; -forwardInvocation: IS the invocation — built by the
  * runtime's __objc_msg_forward2 hook (ninvocation.m) and delivered here. */
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
-+ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
-- (id)forwardingTargetForSelector:(SEL)aSelector;	/* default: nil */
+- (nullable NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
++ (nullable NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector;
+- (nullable id)forwardingTargetForSelector:(SEL)aSelector;	/* default: nil */
 - (void)forwardInvocation:(NSInvocation *)anInvocation;	/* default: doesNotRecognizeSelector: */
 
-- (IMP)methodForSelector:(SEL)aSelector;
+- (nullable IMP)methodForSelector:(SEL)aSelector;
 + (BOOL)respondsToSelector:(SEL)aSelector;
 + (BOOL)instancesRespondToSelector:(SEL)aSelector;
 + (void)load;			/* the runtime calls these; declared so overrides match */
@@ -145,7 +155,7 @@ __attribute__((objc_root_class))
 + (id)allocWithZone:(NSZone *)zone;	/* NO ZONES: the argument is ignored */
 
 - (BOOL)isProxy;
-- (NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it */
+- (nullable NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it */
 - (NSString *)debugDescription;
 
 /*
@@ -157,6 +167,8 @@ __attribute__((objc_root_class))
 
 /* Every object describes itself: this names the class (docs, F1). */
 - (NSString *)description;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

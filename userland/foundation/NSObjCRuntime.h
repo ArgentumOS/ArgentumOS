@@ -26,6 +26,21 @@
 #include <limits.h>
 #include <objc/objc.h>	/* BOOL, YES, NO */
 
+/*
+ * NULLABILITY (F6). These are the STANDARD spellings, and they are defined here
+ * because the sweep needs them: a header wraps its declarations in BEGIN/END and
+ * then annotates only the exceptions. `_Nonnull` and `_Nullable` are clang
+ * keywords, so only the two region macros need defining — and the fallback keeps a
+ * non-clang compiler seeing exactly the header it saw before.
+ */
+#if defined(__clang__)
+#	define NS_ASSUME_NONNULL_BEGIN	_Pragma("clang assume_nonnull begin")
+#	define NS_ASSUME_NONNULL_END	_Pragma("clang assume_nonnull end")
+#else
+#	define NS_ASSUME_NONNULL_BEGIN
+#	define NS_ASSUME_NONNULL_END
+#endif
+
 typedef signed long NSInteger;
 typedef unsigned long NSUInteger;
 

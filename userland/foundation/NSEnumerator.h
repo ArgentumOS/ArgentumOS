@@ -26,6 +26,10 @@
 
 @class NSArray;
 
+/* NULLABILITY (F6): NONNULL by default, and the ONE exception is -nextObject,
+ * which answers nil once the cursor is exhausted. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSEnumerator : NSObject <NSFastEnumeration>
 {
 	NSArray *_sequence;		/* the snapshot this cursor walks */
@@ -34,11 +38,13 @@
 	BOOL _reverse;
 }
 
-- (id)nextObject;
+- (nullable id)nextObject;
 - (NSArray *)allObjects;		/* what is LEFT, and the cursor is exhausted */
 
 /* Ours, not Cocoa's: the collections are the ones that construct enumerators. */
 - (id)initWithSequence:(NSArray *)sequence reverse:(BOOL)reverse;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

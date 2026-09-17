@@ -38,6 +38,11 @@
 
 #import <foundation/NSObject.h>
 
+/* NULLABILITY (F6): NONNULL throughout — an index path is a value, and the
+ * operations that could not answer (a position past -length, trimming an empty
+ * path) RAISE rather than returning an absent thing. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSIndexPath : NSObject <NSCopying>
 {
 	NSUInteger *_indexes;	/* _length positions, kept in order */
@@ -45,11 +50,11 @@
 }
 
 + (instancetype)indexPathWithIndex:(NSUInteger)index;
-+ (instancetype)indexPathWithIndexes:(const NSUInteger [])indexes
++ (instancetype)indexPathWithIndexes:(const NSUInteger [_Nonnull])indexes
 			      length:(NSUInteger)length;
 
 - (id)initWithIndex:(NSUInteger)index;
-- (id)initWithIndexes:(const NSUInteger [])indexes length:(NSUInteger)length;
+- (id)initWithIndexes:(const NSUInteger [_Nonnull])indexes length:(NSUInteger)length;
 
 - (NSIndexPath *)indexPathByAddingIndex:(NSUInteger)index;
 - (NSIndexPath *)indexPathByRemovingLastIndex;	/* empty path: NSRangeException */
@@ -60,6 +65,8 @@
 - (void)getIndexes:(NSUInteger *)indexes range:(NSRange)positionRange;
 
 - (NSComparisonResult)compare:(NSIndexPath *)otherObject;	/* nil: NSInvalidArgumentException */
+
+NS_ASSUME_NONNULL_END
 
 @end
 

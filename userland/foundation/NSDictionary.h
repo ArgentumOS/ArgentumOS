@@ -35,6 +35,11 @@
 
 @class NSArray;
 
+/* NULLABILITY (F6): NONNULL by default. -objectForKey: and its subscript answer
+ * nil for a key that is not there, and -setObject:forKeyedSubscript: takes nil
+ * because `dict[k] = nil` REMOVES the key (Cocoa's rule). */
+NS_ASSUME_NONNULL_BEGIN
+
 struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 
 @interface NSDictionary : NSObject <NSCopying, NSFastEnumeration>
@@ -50,21 +55,21 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 + (NSDictionary *)dictionary;
 + (NSDictionary *)dictionaryWithObject:(id)value forKey:(id)key;
 + (NSDictionary *)dictionaryWithDictionary:(NSDictionary *)other;
-+ (NSDictionary *)dictionaryWithObjects:(const id *)values
-				 forKeys:(const id *)keys
++ (NSDictionary *)dictionaryWithObjects:(const id _Nonnull * _Nonnull)values
+				 forKeys:(const id _Nonnull * _Nonnull)keys
 				   count:(NSUInteger)count;
 + (NSDictionary *)dictionaryWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 + (NSDictionary *)dictionaryWithObjects:(NSArray *)objects forKeys:(NSArray *)keys;
 
 - (id)initWithObject:(id)value forKey:(id)key;
 - (id)initWithDictionary:(NSDictionary *)other;
-- (id)initWithObjects:(const id *)values
-	      forKeys:(const id *)keys
+- (id)initWithObjects:(const id _Nonnull * _Nonnull)values
+	      forKeys:(const id _Nonnull * _Nonnull)keys
 		count:(NSUInteger)count;
 - (id)initWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
-- (id)objectForKey:(id)key;
+- (nullable id)objectForKey:(id)key;
 - (NSArray *)allKeys;
 - (NSArray *)allValues;
 - (NSArray *)allKeysForObject:(id)object;
@@ -74,10 +79,10 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 - (void)enumerateKeysAndObjectsUsingBlock:(void (^)(id key, id value, BOOL *stop))block;
 - (NSEnumerator *)keyEnumerator;
 - (NSEnumerator *)objectEnumerator;
-- (void)getObjects:(id __unsafe_unretained *)objects
-	   andKeys:(id __unsafe_unretained *)keys;
+- (void)getObjects:(id __unsafe_unretained _Nonnull * _Nonnull)objects
+	   andKeys:(id __unsafe_unretained _Nonnull * _Nonnull)keys;
 /* Cocoa's subscript: `dict[k]` lowers to this. */
-- (id)objectForKeyedSubscript:(id)key;
+- (nullable id)objectForKeyedSubscript:(id)key;
 
 - (BOOL)isEqualToDictionary:(NSDictionary *)other;
 
@@ -99,7 +104,9 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 
 /* `dict[k] = v` lowers to this, and `dict[k] = nil` REMOVES the key (Cocoa's
  * rule) — which is why it cannot simply forward to -setObject:forKey:. */
-- (void)setObject:(id)object forKeyedSubscript:(id)key;
+- (void)setObject:(nullable id)object forKeyedSubscript:(id)key;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

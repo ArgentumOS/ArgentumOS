@@ -28,6 +28,10 @@
 @class NSString;
 @class NSIndexSet;
 
+/* NULLABILITY (F6): NONNULL by default, and the two that can legitimately be nil
+ * are -firstObject and -lastObject, because an EMPTY array has neither. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSArray : NSObject <NSCopying, NSFastEnumeration>
 {
 	id __unsafe_unretained *_items;	/* owned BY HAND: every slot is retained */
@@ -38,12 +42,12 @@
 
 + (instancetype)array;
 + (instancetype)arrayWithObject:(id)object;
-+ (instancetype)arrayWithObjects:(const id *)objects count:(NSUInteger)count;
++ (instancetype)arrayWithObjects:(const id _Nonnull * _Nonnull)objects count:(NSUInteger)count;
 + (instancetype)arrayWithArray:(NSArray *)other;
 + (instancetype)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)object;
-- (id)initWithObjects:(const id *)objects count:(NSUInteger)count;
+- (id)initWithObjects:(const id _Nonnull * _Nonnull)objects count:(NSUInteger)count;
 - (id)initWithArray:(NSArray *)other;
 - (id)initWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
@@ -52,8 +56,8 @@
 /* Cocoa's subscript: `array[0]` lowers to this. */
 - (id)objectAtIndexedSubscript:(NSUInteger)index;
 
-- (id)firstObject;
-- (id)lastObject;
+- (nullable id)firstObject;
+- (nullable id)lastObject;
 /* NSNotFound for a missing element — NOT (NSUInteger)-1, which is what this
  * answered before the audit and which never equals NSNotFound. */
 - (NSUInteger)indexOfObject:(id)object;
@@ -62,7 +66,7 @@
 - (NSArray *)arrayByAddingObject:(id)object;	/* a new array; self is untouched */
 - (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other;
 - (NSArray *)subarrayWithRange:(NSRange)range;
-- (void)getObjects:(id __unsafe_unretained *)buffer range:(NSRange)range;
+- (void)getObjects:(id __unsafe_unretained _Nonnull * _Nonnull)buffer range:(NSRange)range;
 
 - (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range;
 - (NSUInteger)indexOfObjectIdenticalTo:(id)object;
@@ -125,6 +129,8 @@
 
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
 - (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

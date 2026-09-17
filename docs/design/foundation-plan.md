@@ -227,15 +227,23 @@ status.
   commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
   deferral removes the gate, not the standing requirement to track self-hosting needs
   there.
-- **F6 — nullability annotations. QUEUED (2026-09), for the Sterling front end.**
+- **F6 — nullability annotations. SLICE 1 DONE (§9); the rest queued, for the Sterling front end.**
   The language reads an *unannotated* import as **nullable** (`sterling-syntax.md` §9.5), so
   today every Foundation call answers `T?` and every one of them needs a `!` or a binding. The
   fix is the annotations themselves: **0 today, across 19 headers and 434 methods** — and no
   `@property` in the library at all, so it is a methods-only pass — added as
   `_Nonnull`/`_Nullable` on every return and parameter. The gate is the shape the language
-  makes testable: with the sweep done, the `!`s disappear from a Sterling consumer and **nothing
-  else changes**, because the annotations are declarations only and the library's behaviour is
-  untouched. Worth slicing per class, so a partial pass is already useful.
+  makes testable: with a slice done, a consumer that passes a possibly-nil value where the
+  header promises an object **fails to compile** — which is what
+  `-Werror=nullable-to-nonnull-conversion` on the probe does — and **nothing else changes**,
+  because the annotations are declarations only. The completeness half is
+  `-Werror=nullability-completeness` in the library's own flags: a header with SOME annotations
+  and not others does not build, while an untouched file stays silent, which is what lets the
+  sweep land one slice at a time.
+  **Slice 1 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
+  `NSEnumerator`. **Remaining:** the strings (`NSString`/`NSMutableString` — the biggest), the
+  value types, `NSError`/`NSException`, `NSCharacterSet`, `NSMethodSignature`/`NSInvocation`,
+  `NSLocale`, `NSPropertyListSerialization`, and the two protocol headers.
 
 ## 6. Risks / gotchas
 
@@ -1036,3 +1044,40 @@ TWO CHECK-DESIGN LESSONS, both of a check lying rather than a mechanism failing:
     calls `-doesNotRecognizeSelector:`), which used to hide whether the marshalling worked.
 
 `foundation_core` 15/15 on a guest boot.
+
+### F6, slice 1 (2026-09-17): the nullability sweep starts, and its own gate caught 20 real omissions
+
+Slice 1 is `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath` and
+`NSEnumerator`: each header wraps its declarations in `NS_ASSUME_NONNULL_BEGIN`/`END`, and the
+EXCEPTIONS are annotated by hand — a class with no superclass, a selector the runtime cannot
+find, a `-performSelector:` whose method answers nil, a `-forwardingTargetForSelector:` meaning
+"no fast forwarding", `-zone`, `-firstObject`/`-lastObject`, `-objectForKey:` and its
+subscript, the OBJECT of `-setObject:forKeyedSubscript:` (because `dict[k] = nil` REMOVES), and
+`-nextObject` once its cursor is exhausted.
+
+THE GATE IS TWO FLAGS, and the first one earned its place immediately:
+`-Werror=nullability-completeness` in `FOUNDATION_CFLAGS` — a header with SOME annotations and
+not others FAILS THE BUILD, while an untouched file (no annotations at all) stays silent, which
+is exactly what makes one slice landable at a time — and
+`-Werror=nullable-to-nonnull-conversion` on the `foundation_core` probe, the consumer half:
+passing a possibly-nil value where the header promises an object is now a compile error.
+
+IT TOOK FOUR BUILD ROUNDS, and each taught a rule of the grammar rather than guessing it:
+
+  * `NS_ASSUME_NONNULL` covers only the OUTERMOST pointer level. `(const id *)objects` still
+    needs its pointee annotated — the first round failed on 18 such sites;
+  * once ONE level of a pointer type is annotated, EVERY level must be: `(const id _Nonnull *)`
+    simply moved the error to the outer `*`, so both are now written
+    (`const id _Nonnull * _Nonnull`);
+  * ARRAY parameters have their own diagnostic (`-Wnullability-completeness-on-arrays`), and
+    their specifier goes INSIDE the brackets: `(const NSUInteger [_Nonnull])indexes`;
+  * plain scalar pointers (`BOOL *`, `NSZone *`) and block-type parameters were fine as
+    `NS_ASSUME_NONNULL` left them — the diagnostic is about OBJECT pointers.
+
+The two macros themselves are DEFINED here, in `NSObjCRuntime.h`: `_Nonnull`/`_Nullable` are
+clang keywords, but `NS_ASSUME_NONNULL_BEGIN`/`END` are library spellings, so a header could not
+use them until the library said what they mean (with an empty fallback for a non-clang
+compiler).
+
+`foundation_core` 15/15 on a guest boot — unchanged, which is the point: the annotations are
+declarations, and the slice changed nothing observable.
