@@ -305,8 +305,10 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# umbrella header, so a complete <foundation/Foundation.h> is part of the
 	# acceptance too.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_value_support.m -o .build/foundation-value-support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_value.m -o .build/foundation-value-main.o
 	$(MUSL64_OBJC) .build/foundation-value-support.o .build/foundation-value-main.o \
 		-L$(FNXLIB) -lfoundation \
@@ -315,8 +317,10 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# collection, which is the cheapest check that collections are ordinary
 	# objects; the main unit exercises clang's for-in lowering.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_collection_support.m -o .build/foundation-collection-support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_collection.m -o .build/foundation-collection-main.o
 	$(MUSL64_OBJC) .build/foundation-collection-support.o .build/foundation-collection-main.o \
 		-L$(FNXLIB) -lfoundation \
@@ -325,8 +329,10 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# another unit; the main unit exercises @try/@catch, so the runtime's throw
 	# path is part of the check.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_error_support.m -o .build/foundation-error-support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_error.m -o .build/foundation-error-main.o
 	$(MUSL64_OBJC) .build/foundation-error-support.o .build/foundation-error-main.o \
 		-L$(FNXLIB) -lfoundation \

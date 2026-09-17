@@ -28,16 +28,23 @@
 
 typedef struct {
 	unsigned long state;		/* the collection's cursor; opaque to the loop */
-	id __unsafe_unretained *itemsPtr;	/* a batch of elements, valid until the next call */
-	unsigned long *mutationsPtr;	/* a word this collection bumps on mutation */
+	id __unsafe_unretained _Nonnull * _Nullable itemsPtr;	/* a batch of elements, valid until the next call */
+	unsigned long * _Nonnull mutationsPtr;	/* a word this collection bumps on mutation */
 	unsigned long extra[5];		/* reserved for the collection */
 } NSFastEnumerationState;
+
+/* NULLABILITY (F6, slice 3). The elements a batch points at are objects, so the
+ * buffer needs BOTH levels annotated — and itemsPtr is nullable on purpose: a
+ * loop starts from a zeroed state, so before the first call it is NULL. */
+NS_ASSUME_NONNULL_BEGIN
 
 @protocol NSFastEnumeration
 
 - (unsigned long)countByEnumeratingWithState:(NSFastEnumerationState *)state
-                                     objects:(id __unsafe_unretained *)buffer
+                                     objects:(id __unsafe_unretained _Nonnull * _Nonnull)buffer
                                        count:(unsigned long)length;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

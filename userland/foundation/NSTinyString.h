@@ -35,7 +35,14 @@
 
 #import <foundation/NSString.h>
 
+/* NULLABILITY (F6, slice 3): the interface is EMPTY — there is nothing to
+ * annotate, and the region is here only so this file is a finished member of the
+ * sweep rather than a silent one. consumers never name the class. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSTinyString : NSConstantString
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSTINYSTRING_H */

@@ -27,6 +27,15 @@
 @class NSString;
 @class NSDictionary;
 
+/* NULLABILITY (F6, slice 3): NONNULL by default. -name is required (the init takes
+ * it nonnull and nothing clears it), while the other two are optional — both are
+ * `[<arg> copy]` of an argument Cocoa allows to be nil, nexception.m passes
+ * userInfo:nil itself when raising from a format, and -description branches on
+ * `_reason != nil`. The two constructs are nullable for the same reason as
+ * NSError's: -initWithName:... is a measured `return nil;` site and the factory
+ * returns its result. */
+NS_ASSUME_NONNULL_BEGIN
+
 /* Cocoa's standard names; code that catches by name expects these spellings. */
 extern NSString *const NSGenericException;
 extern NSString *const NSRangeException;
@@ -40,21 +49,23 @@ extern NSString *const NSInternalInconsistencyException;
 	NSDictionary *_userInfo;
 }
 
-+ (NSException *)exceptionWithName:(NSString *)name
-			    reason:(NSString *)reason
-			  userInfo:(NSDictionary *)userInfo;
++ (nullable NSException *)exceptionWithName:(NSString *)name
+			    reason:(nullable NSString *)reason
+			  userInfo:(nullable NSDictionary *)userInfo;
 
-- (id)initWithName:(NSString *)name
-	    reason:(NSString *)reason
-	  userInfo:(NSDictionary *)userInfo;
+- (nullable id)initWithName:(NSString *)name
+	    reason:(nullable NSString *)reason
+	  userInfo:(nullable NSDictionary *)userInfo;
 
 - (NSString *)name;
-- (NSString *)reason;
-- (NSDictionary *)userInfo;
+- (nullable NSString *)reason;
+- (nullable NSDictionary *)userInfo;
 
 - (void)raise;
 + (void)raise:(NSString *)name format:(NSString *)format, ...;
 + (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)arguments;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

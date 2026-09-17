@@ -111,6 +111,9 @@ int main(void)
 				       userInfo:[NSDictionary dictionaryWithObject:@"the reason"
 									    forKey:NSLocalizedFailureReasonKey]];
 		differentCode = [NSError errorWithDomain:@"FNDomain" code:43 userInfo:nil];
+		/* F6: built through the same nullable constructor, bound here so the check
+		 * below can guard it. */
+		NSError *secondPlain = [NSError errorWithDomain:@"FNDomain" code:42 userInfo:nil];
 
 		check("error-value",
 		      [[plain domain] isEqualToString:@"FNDomain"] && [plain code] == 42 &&
@@ -118,8 +121,7 @@ int main(void)
 		      [[described localizedDescription] isEqualToString:@"described"] &&
 		      [[plain localizedDescription] length] > 0 &&
 		      [plain isEqual:same] &&
-		      ![plain isEqual:[NSError errorWithDomain:@"FNDomain" code:42
-						      userInfo:nil]] &&
+		      secondPlain != nil && ![plain isEqual:secondPlain] &&
 		      ![plain isEqual:differentCode] &&
 		      ![plain isEqual:@"not an error"] &&
 		      [plain hash] == [same hash] &&

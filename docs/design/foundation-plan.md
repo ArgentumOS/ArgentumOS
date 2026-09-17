@@ -227,7 +227,7 @@ status.
   commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
   deferral removes the gate, not the standing requirement to track self-hosting needs
   there.
-- **F6 — nullability annotations. SLICES 1–2 DONE (§9); the rest queued, for the Sterling front end.**
+- **F6 — nullability annotations. SLICES 1–3 DONE (§9); the rest queued, for the Sterling front end.**
   The language reads an *unannotated* import as **nullable** (`sterling-syntax.md` §9.5), so
   today every Foundation call answers `T?` and every one of them needs a `!` or a binding. The
   fix is the annotations themselves: **0 today, across 19 headers and 434 methods** — and no
@@ -240,11 +240,12 @@ status.
   `-Werror=nullability-completeness` in the library's own flags: a header with SOME annotations
   and not others does not build, while an untouched file stays silent, which is what lets the
   sweep land one slice at a time.
-  **Slices 1–2 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
-  `NSEnumerator`, and the strings (`NSString`/`NSMutableString`/`NSOwnedString`).
-  **Remaining:** the value types, `NSError`/`NSException`, `NSCharacterSet`,
-  `NSMethodSignature`/`NSInvocation`, `NSLocale`, `NSPropertyListSerialization`, and the two
-  protocol headers.
+  **Slices 1–3 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
+  `NSEnumerator`, the strings (`NSString`/`NSMutableString`/`NSOwnedString`), the value types
+  (`NSNumber`/`NSData`/`NSDate`) with `NSError`/`NSException`, plus `NSFastEnumeration` and the
+  (empty) `NSTinyString`. **Remaining:** `NSCharacterSet`, `NSLocale`,
+  `NSMethodSignature`/`NSInvocation` and `NSPropertyListSerialization` — `Foundation.h` is only
+  imports and needs nothing.
 
 ## 6. Risks / gotchas
 
@@ -1116,3 +1117,55 @@ NSOwnedString) is not unique in the file, so the anchor has to be a PAIR of neig
 
 `foundation_string` 27/27 on a guest boot, with the probe itself now compiling under the
 conversion flag — unchanged, which is the point.
+
+### F6, slice 3 (2026-09-17): the value types and the error pair — and the gate fixed three consumers
+
+Slice 3 is `NSNumber`, `NSData`, `NSDate`, `NSError`, `NSException`, `NSFastEnumeration` and
+`NSTinyString` (whose interface is EMPTY — the region is there so the file is a finished member
+of the sweep rather than a silent one). The probes that consume them are gated too:
+`foundation_value` (F2), `foundation_error` (F4) and — closing a gap slice 1 left — the
+`foundation_collection` probe, which is the real consumer of the collection headers.
+
+THE MEASUREMENT GREW A SECOND AND THIRD LEG. Slice 2's rule was "measure at the writer"; this
+slice needed three classes of exception, and the third is one a nil-return grep cannot see:
+
+  * MEASURED `return nil;`/`return NULL;` sites — ndata.m has eight (the byte/no-copy forms, the
+    file and base64 forms, the mutable capacity/length ones), nerror.m and nexception.m one each,
+    and nnumber.m and ndate.m **NONE AT ALL**, so those two headers needed only the region pair;
+  * PROPAGATION — a factory that is `return [[self alloc] initWith...]` inherits the init's
+    nullability. That is why `+dataWithBase64EncodedString:` and `+errorWithDomain:` are
+    nullable, and why `+data:` is (`-initWithBytes:NULL length:0`);
+  * STORED OPTIONALS — a getter whose ivar is `[<arg> copy]` of a nullable argument is nullable,
+    and the writer corroborates it: nerror.m's `-isEqualToError:` branches on `_userInfo == nil`,
+    nexception.m's `-description` on `_reason != nil`, and nexception.m itself passes
+    `userInfo:nil`. The COUNTER-CASE matters as much: `-localizedDescription` is NOT nullable,
+    because the writer falls back to a rendered string.
+
+A NEW GRAMMAR RULE, and it is a struct one: `-Wnullability-completeness` checks a STRUCT FIELD
+even though it never checked scalar-pointer PARAMETERS — NSFastEnumeration's
+`unsigned long *mutationsPtr` failed the build where slice 1's `NSZone *zone` never did. Nor is
+placement a shield: that struct sits ABOVE the file's `NS_ASSUME_NONNULL_BEGIN` and was still
+checked.
+
+THE CONSUMER HALF PAID FOR ITSELF, which is new: it did not merely refuse a deliberate misuse,
+it found THREE REAL ONES in the repo's own probes, and each fix was a genuine improvement.
+`foundation_value.m` passed two inline `[NSData dataWithBytes:...]` results straight into
+`-rangeOfData:` and `-isEqualToData:`, and `foundation_error.m` passed an inline
+`[NSError errorWithDomain:...]` into `-isEqual:`. All three are now bound to locals and guarded
+with `!= nil` INSIDE the `&&` chain — not `||`, and not a ternary that could pass vacuously: if
+such a constructor ever answers nil, the check FAILS loudly. Both cases then ran green on a
+guest (`foundation_value` 17/17, `foundation_error` 6/6), so the guards never fired in practice.
+
+WHY SOME PASSES FIRE AND OTHERS DO NOT — worth stating, because it looks arbitrary at first: a
+message EXPRESSION carries its annotated type, while a local variable declared without a
+specifier carries no nullability at all. So `NSData *needle = [NSData dataWithBytes:...]` never
+warned even though the type is nullable, while the same call written inline did. The flag
+catches exactly the INLINE nullable flows — the ones a consumer cannot inspect — which is the
+right place for it to be strict.
+
+A DOCUMENTED DEVIATION falls out of this: Cocoa declares `+dataWithBytes:length:` nonnull, but
+ours answers nil when `malloc` fails (ndata.m:36), so the annotation says nullable. The
+annotation states what the WRITER does; where that differs from Cocoa, the difference is the
+point rather than an accident.
+
+`foundation_value` 17/17, `foundation_error` 6/6, and `make rootagfs` clean.

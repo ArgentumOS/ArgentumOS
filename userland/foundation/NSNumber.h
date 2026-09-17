@@ -28,6 +28,12 @@
 
 #import <foundation/NSObject.h>
 
+/* NULLABILITY (F6, slice 3): NONNULL by default, and the ONE exception is a
+ * locale parameter — the same rule as the strings: a nil locale means no
+ * locale-sensitive rules. Every constructor here is total: the file has no
+ * `return nil` and no `return NULL` at all (measured, not assumed). */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSNumber : NSObject <NSCopying>
 {
 	union {
@@ -89,7 +95,7 @@
 - (double)doubleValue;
 
 - (NSString *)stringValue;			/* == -description */
-- (NSString *)descriptionWithLocale:(id)locale;
+- (NSString *)descriptionWithLocale:(nullable id)locale;
 - (const char *)objCType;
 
 - (BOOL)isEqualToNumber:(NSNumber *)other;
@@ -100,6 +106,8 @@
 - (id)mutableCopy;
 - (id)copyWithZone:(NSZone *)zone;
 - (id)mutableCopyWithZone:(NSZone *)zone;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

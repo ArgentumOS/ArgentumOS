@@ -27,6 +27,21 @@
 @class NSString;
 @class NSDictionary;
 
+/* NULLABILITY (F6, slice 3): NONNULL by default. An error is a VALUE, so most of
+ * it is total — but three things are genuinely optional, and each one is a fact
+ * from the writer (nerror.m), not a guess:
+ *   - the two constructs are nullable: -initWithDomain:... is one of the measured
+ *     `return nil;` sites, and +errorWithDomain:... is
+ *     `return [[self alloc] initWithDomain:...]`, so it PROPAGATES that;
+ *   - -userInfo is nullable because the property is `[userInfo copy]` of a
+ *     nullable argument, and -isEqualToError: itself branches on `_userInfo == nil`;
+ *   - -localizedFailureReason is nullable because it is `[_userInfo objectForKey:]`,
+ *     whose result is nullable by definition. -localizedDescription is NOT: the
+ *     method falls back to a rendered string, so it always answers an object.
+ * The userInfo PARAMETERS are nullable too: Cocoa allows nil, and nexception.m
+ * passes nil itself when it builds an exception from a format. */
+NS_ASSUME_NONNULL_BEGIN
+
 /* Cocoa's domain type is just a string. */
 typedef NSString *NSErrorDomain;
 
@@ -45,20 +60,22 @@ extern NSString *const NSUnderlyingErrorKey;
 	NSDictionary *_userInfo;
 }
 
-+ (instancetype)errorWithDomain:(NSErrorDomain)domain
++ (nullable instancetype)errorWithDomain:(NSErrorDomain)domain
 			   code:(NSInteger)code
-		       userInfo:(NSDictionary *)userInfo;
+		       userInfo:(nullable NSDictionary *)userInfo;
 
-- (id)initWithDomain:(NSErrorDomain)domain
+- (nullable id)initWithDomain:(NSErrorDomain)domain
 		code:(NSInteger)code
-	    userInfo:(NSDictionary *)userInfo;
+	    userInfo:(nullable NSDictionary *)userInfo;
 
 - (NSErrorDomain)domain;
 - (NSInteger)code;
-- (NSDictionary *)userInfo;
+- (nullable NSDictionary *)userInfo;
 
 - (NSString *)localizedDescription;
-- (NSString *)localizedFailureReason;
+- (nullable NSString *)localizedFailureReason;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

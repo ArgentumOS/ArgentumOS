@@ -426,6 +426,13 @@ int main(void)
 		NSMutableData *m = [NSMutableData dataWithLength:4];
 		NSData *needle = [NSData dataWithBytes:bytes length:4];
 		NSRange found;
+		/* F6: the constructors are nullable by MEASUREMENT (a malloc or file-read
+		 * failure really can answer nil), so a consumer binds them and checks. The
+		 * `!= nil` terms are not decoration: they are inside an && chain, so a nil
+		 * here FAILS the check rather than letting it pass vacuously. */
+		NSData *absent = [NSData dataWithBytes:"zz" length:2];
+		NSData *equalA = [NSData dataWithBytes:bytes length:4];
+		NSData *equalB = [NSData dataWithBytes:bytes length:4];
 
 		memset(held, 0, sizeof held);
 		[d getBytes:held range:NSMakeRange(1, 2)];
@@ -438,11 +445,12 @@ int main(void)
 		      [sub length] == 2 && memcmp([sub bytes], bytes + 1, 2) == 0 &&
 		      held[0] == 0xad && held[1] == 0xbe &&
 		      found.location == 0 && found.length == 4 &&
-		      [d rangeOfData:[NSData dataWithBytes:"zz" length:2]
+		      absent != nil &&
+		      [d rangeOfData:absent
 			     options:NSDataSearchDefault
 			       range:NSMakeRange(0, 4)].location == NSNotFound &&
-		      [[NSData dataWithBytes:bytes length:4]
-		          isEqualToData:[NSData dataWithBytes:bytes length:4]] &&
+		      equalA != nil && equalB != nil &&
+		      [equalA isEqualToData:equalB] &&
 		      searched != nil,
 		      "subdataWithRange:, getBytes:range:, rangeOfData: (found and not found)");
 	}

@@ -18,6 +18,12 @@
 
 #import <foundation/NSObject.h>
 
+/* NULLABILITY (F6, slice 3): NONNULL by default. A date is a number, so every
+ * constructor is total (measured: ndate.m has no `return nil`/`return NULL`), and
+ * the only exception is the locale parameter. -earlierDate:/-laterDate: always
+ * answer one of their two operands, which is why neither is nullable. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSDate : NSObject <NSCopying>
 {
 	double _timeIntervalSince1970;
@@ -42,7 +48,7 @@
 - (double)timeIntervalSinceReferenceDate;
 - (double)timeIntervalSinceDate:(NSDate *)other;
 - (NSDate *)dateByAddingTimeInterval:(double)seconds;
-- (NSString *)descriptionWithLocale:(id)locale;
+- (NSString *)descriptionWithLocale:(nullable id)locale;
 
 - (BOOL)isEqualToDate:(NSDate *)other;
 - (NSComparisonResult)compare:(NSDate *)other;
@@ -54,6 +60,8 @@
 - (id)mutableCopy;
 - (id)copyWithZone:(NSZone *)zone;
 - (id)mutableCopyWithZone:(NSZone *)zone;
+
+NS_ASSUME_NONNULL_END
 
 @end
 
