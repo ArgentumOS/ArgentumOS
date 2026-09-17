@@ -317,8 +317,12 @@ static void check_domain(const char *src, const char *domain, const char *root)
 		check(domain, 0, "cannot read the source file");
 		return;
 	}
-	snprintf(dir, sizeof(dir), "%s/System/Configuration", root);
-	snprintf(dst, sizeof(dst), "%s/%s.conf", dir, domain);
+	/* Explicit bounds, so gcc's truncation analysis has nothing to warn about:
+	 * a scratch root under /tmp and a domain taken from a FILENAME (<= 255
+	 * bytes) cannot reach them, and a path that did would be refused loudly
+	 * rather than silently cut. */
+	snprintf(dir, sizeof(dir), "%.3000s/System/Configuration", root);
+	snprintf(dst, sizeof(dst), "%.3600s/%.200s.conf", dir, domain);
 	if(ensure_dir(dir) || write_all(dst, original)) {
 		check(domain, 0, "cannot stage the file into the scratch tree");
 		free(original);
@@ -499,7 +503,8 @@ int main(int argc, char **argv)
 			if(config_is_pinned(domain)) {
 				continue;
 			}
-			snprintf(path, sizeof(path), "%s/%s", dir, de->d_name);
+			snprintf(path, sizeof(path), "%.3800s/%.200s", dir,
+				 de->d_name);
 			check_domain(path, domain, root);
 			files++;
 		}
