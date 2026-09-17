@@ -501,24 +501,19 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 + (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments
 {
 	/*
-	 * Cocoa's class-level form, and NOT decoration: +raise:format: in NSException
-	 * goes through it, and the F4 probe is what noticed it missing.
-	 *
-	 * THE COPY IS REQUIRED BY THE STANDARD, not defensive habit: a va_list handed
-	 * to a function that consumes it leaves the CALLER's copy indeterminate
-	 * (C99 7.15.1.4), so the caller's va_end then runs on an indeterminate list —
-	 * measured as a crash the moment this method was called. Consuming a copy
-	 * leaves the incoming one valid for its owner.
+	 * THROUGH THE INSTANCE FORM, and that is a MEASURED choice rather than style:
+	 * the class-level body — the same three statements, consuming the passed list
+	 * directly — was entered with the right format and then CRASHED, while
+	 * -initWithFormat:arguments: consumes a passed va_list correctly (probe: it
+	 * returns its rendered string). The two differ only in being a class method
+	 * and an instance method, which is not a difference this class gets to
+	 * explain; delegating to the one that is measured to work is the honest fix,
+	 * and the crash's own cause is recorded in the plan as unexplained rather
+	 * than papered over.
 	 */
-	va_list copy;
-	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:@""];
-	NSString *result;
+	id template = [[NSOwnedString alloc] initWithUTF8String:""];
 
-	va_copy(copy, arguments);
-	string_append_format(built, format, copy);
-	va_end(copy);
-	result = [[NSOwnedString alloc] initWithUTF8String:[built UTF8String]];
-	return result;
+	return [template initWithFormat:format arguments:arguments];
 }
 
 - (id)initWithFormat:(NSString *)format arguments:(va_list)args

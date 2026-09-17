@@ -26,5 +26,7 @@
 #import <foundation/NSDate.h>
 #import <foundation/NSArray.h>
 #import <foundation/NSDictionary.h>
+#import <foundation/NSError.h>
+#import <foundation/NSException.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
