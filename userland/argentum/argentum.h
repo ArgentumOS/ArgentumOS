@@ -4773,6 +4773,187 @@ private:
 	double padding_ = 0.0;
 };
 
+/// Cocoa's `NSTableViewSelectionMode`: what may be selected, not what is.
+enum RowSelectionMode {
+	/// Nothing may be selected (the rows are a read-only list).
+	RowSelectionNone = 0,
+	/// One row at a time — Cocoa's default.
+	RowSelectionSingle,
+	/// Any number, with extending.
+	RowSelectionMultiple,
+};
+
+/// @purpose What a table asks when it needs to know about rows — the classic
+/// `NSTableViewDataSource`, as a class with virtuals rather than a protocol (this
+/// toolkit has no selector protocols). A flat table asks for its row count; an
+/// OUTLINE is the same source asked about CHILDREN instead, which is why both
+/// views can be built on one interface.
+///
+/// @lifetime A table never owns its data source: the pointer is non-owning and
+/// the source outlives whatever asks it, exactly as in Cocoa.
+///
+/// @see RowModel
+class TableDataSource : public Object {
+public:
+	/// The class record KVC walks (Object <- TableDataSource).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// How many rows the table has, flat. An outline never asks this: it asks
+	/// about children, and the flattening is the model's (see RowModel).
+	virtual int numberOfRows() = 0;
+
+	/// The value in a cell, or null for "nothing there". A view-based table
+	/// asks a delegate for a view instead; this is the value half.
+	virtual Object *valueAt(int row, int column)
+	{
+		(void) row;
+		(void) column;
+		return nullptr;
+	}
+
+	/// How many children an item has — the tree half. Zero for a leaf, and zero
+	/// for a flat table, which is why a flat table can ignore the tree half.
+	virtual int numberOfChildren(Object *item)
+	{
+		(void) item;
+		return 0;
+	}
+
+	/// The child at an index, or null.
+	virtual Object *childOf(Object *item, int index)
+	{
+		(void) item;
+		(void) index;
+		return nullptr;
+	}
+
+	/// Whether an item can be expanded at all: a leaf draws no disclosure
+	/// triangle, and answering true for one would put a dead triangle on it.
+	virtual bool isItemExpandable(Object *item)
+	{
+		(void) item;
+		return false;
+	}
+};
+
+/// @purpose The rows a table has (or a tree, flattened) and which of them are
+/// SELECTED — the half of a table view that is not a view. `TableView` and
+/// `OutlineView` are both built on it, which is why it exists before either of
+/// them draws anything.
+///
+/// @lifetime It holds a NON-OWNING data source and a non-owning view pointer
+/// (the notification's sender). Deleting a source that rows still refer to is
+/// the caller's bug, as it is in Cocoa.
+///
+/// @invariants
+///  - A ROW IS AN INDEX and an ITEM is an object; for a flat table they are the
+///    same thing. For a tree, `rowForItem()`/`itemAtRow()` are the ONE mapping
+///    between them, and the flattening (depth-first, collapsed items' children
+///    excluded) is computed HERE rather than in either view — so a table and an
+///    outline cannot disagree about which row an item is on.
+///  - SELECTION LIVES HERE, so both views mean the same thing by it. The modes
+///    are Cocoa's; `select()` ignores a row that does not exist rather than
+///    clamping (there is no such row to select); `extending` does what Cocoa's
+///    `byExtendingSelection:` does; and a selection that is no longer in range
+///    after the data changed is DROPPED rather than remembered.
+///  - A CHANGE IS ANNOUNCED ONCE. `RowSelectionDidChange` is posted for a real
+///    change only — setting the mode is not one, and selecting a row that is
+///    already selected is not one either. That is what lets a view redraw on the
+///    notification without wondering whether it moved.
+///
+/// @see TableDataSource, NotificationCenter
+class RowModel {
+public:
+	/// A model with no data source: no rows, nothing selected.
+	RowModel();
+
+	/// The source that answers for the rows (non-owning), or null.
+	TableDataSource *dataSource() const { return source_; }
+	/// Set it; the rows are re-read and the selection is dropped (the rows it
+	/// referred to belonged to the old source).
+	void setDataSource(TableDataSource *source);
+
+	/// The view told about changes, as the notification's sender (non-owning).
+	/// Null means "no view yet", which is the normal state before U6b.
+	Object *view() const { return view_; }
+	/// Set it.
+	void setView(Object *view) { view_ = view; }
+
+	/// How many rows there are: the source's count for a flat table, or the
+	/// VISIBLE items of a tree (a collapsed item's children are not rows).
+	int rowCount();
+
+	/// The item on a row, for a tree; a flat table has no items, so null.
+	Object *itemAtRow(int row);
+
+	/// The row an item is on, or -1 when it is not visible (under a collapsed
+	/// ancestor, or not in the tree at all). The inverse of `itemAtRow()`.
+	int rowForItem(Object *item);
+
+	/// How deep a row's item is — 0 for a root row — which is what a view
+	/// indents by.
+	int depthOfRow(int row);
+
+	/// Whether an item is expanded. A leaf answers false.
+	bool isItemExpanded(Object *item) const;
+	/// Expand or collapse it. This changes which rows EXIST, so the selection is
+	/// re-checked and kept only where it still means something (Cocoa drops it
+	/// for the same reason). This is not itself a selection change.
+	void setItemExpanded(Object *item, bool expanded);
+
+	/// Read the rows again after the data changed: the count is re-asked and the
+	/// selection is dropped where it no longer exists.
+	void reloadData();
+
+	/// What may be selected.
+	RowSelectionMode selectionMode() const { return mode_; }
+	/// Set it. Narrowing drops what no longer fits (a single-row mode keeps the
+	/// FIRST selected row, so the choice is stable and not the last click). A
+	/// mode change is not a selection change: no notification is posted.
+	void setSelectionMode(RowSelectionMode mode);
+
+	/// Whether a row is selected (false for a row that does not exist).
+	bool isRowSelected(int row);
+	/// The selected rows, ascending.
+	std::vector<int> selectedRows();
+
+	/// Select a row. With `extending`, the range from the last selected row to
+	/// this one is selected (Cocoa's `byExtendingSelection:`), or just this row
+	/// when nothing was selected. A row that does not exist is ignored.
+	void select(int row, bool extending = false);
+	/// Deselect a row; no change if it was not selected.
+	void deselect(int row);
+	/// Select every row there is — nothing to do under None or Single.
+	void selectAll();
+	/// Select nothing.
+	void deselectAll();
+
+	/// The notification posted when the selection changes (`sender` is the view,
+	/// when one was set).
+	static const char *kSelectionDidChange;
+
+private:
+	bool validRow(int row);
+	void flatten();
+	void pruneSelection();
+	void announce();
+
+	TableDataSource *source_ = nullptr;
+	Object *view_ = nullptr;
+	RowSelectionMode mode_ = RowSelectionSingle;
+	std::vector<int> selected_;	/* ascending, no repeats */
+	int anchor_ = -1;		/* where an extending selection starts */
+
+	/* the flattened tree, rebuilt when it is stale */
+	bool flat_ = false;
+	std::vector<Object *> items_;	/* one per visible row */
+	std::vector<int> depths_;
+	std::vector<Object *> expanded_;
+};
+
 /// @purpose One bar of a ScrollView: a track, a knob whose length is the
 /// visible fraction of the content, and a square arrow button at each end —
 /// the classic NSScroller.

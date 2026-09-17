@@ -242,6 +242,7 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 ARGENTUM_SRCS = userland/argentum/text.cpp userland/argentum/textstack.cpp \
 	userland/argentum/values.cpp \
 	userland/argentum/containers.cpp \
+	userland/argentum/tables.cpp \
 	userland/argentum/textview.cpp \
 	userland/argentum/object.cpp \
 	userland/argentum/notification.cpp userland/argentum/cell.cpp \
