@@ -38,7 +38,7 @@ CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "dict-api-complete", "dict-constructors", "dict-views", "dict-bulk",
           "dict-getobjects",
           "array-blocks", "dict-blocks", "indexset-api-complete",
-          "enumerator-api-complete")
+          "enumerator-api-complete", "plist-serialization")
 
 
 class Case(BaseCase):

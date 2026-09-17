@@ -306,6 +306,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-I$(X11PREFIX)/include/freetype2 -L$(X11PREFIX)/lib \
 		userland/tests/font_twice.cpp -lfreetype \
 		-o "$(ROOTFS64)/System/Shared/tests/font_twice"
+	# plist_test: the C plist CORE's acceptance (include/plist.h + userland/plist.c)
+	# — the shared core libconfig will consume from C. Compiled from the same
+	# source the library builds, rather than linked out of libfoundation: it is a C
+	# probe of a C core, so there is one implementation either way and no Objective-C
+	# runtime in the path.
+	$(MUSL64_CC) -Iinclude userland/tests/plist_test.c userland/plist.c -lm \
+		-o "$(ROOTFS64)/System/Shared/tests/plist_test"
 	# x_move: raw-Xlib window mover — attributes a window-move wedge
 	# between the server (Xfb) and any client, with no toolkit involved.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \

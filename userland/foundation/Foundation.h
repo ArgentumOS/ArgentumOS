@@ -31,5 +31,6 @@
 #import <foundation/NSCharacterSet.h>
 #import <foundation/NSIndexSet.h>
 #import <foundation/NSEnumerator.h>
+#import <foundation/NSPropertyListSerialization.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

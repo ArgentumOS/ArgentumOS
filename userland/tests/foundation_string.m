@@ -232,11 +232,13 @@ int main(void)
 		 * fails the check, so the inventory cannot drift away from the code.
 		 */
 		static const char *excluded[] = {
+			/* THE UTF-16 BOUNDARY: a DELIBERATE deviation rather than debt.
+			 * -length counts bytes and character access is by character, so these
+			 * forms have no honest UTF-8 implementation here. */
 			"stringWithCharacters:length:",
 			"initWithCharacters:length:",
 			"initWithCharactersNoCopy:length:freeWhenDone:",
 			"getCharacters:range:",
-			"propertyList",
 			NULL
 		};
 		NSString *probe = @"x";

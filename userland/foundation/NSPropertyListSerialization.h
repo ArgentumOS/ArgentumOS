@@ -24,13 +24,16 @@
 #define FOUNDATION_NSPROPERTYLISTSERIALIZATION_H
 
 #import <foundation/NSObject.h>
+/* The convenience forms below are CATEGORIES, and a category needs the class's
+ * FULL interface — a forward declaration will not carry one. None of these three
+ * headers imports this one, so the dependency runs one way. */
+#import <foundation/NSString.h>
+#import <foundation/NSArray.h>
+#import <foundation/NSDictionary.h>
 #include <stddef.h>
 
 @class NSData;
 @class NSError;
-@class NSString;
-@class NSArray;
-@class NSDictionary;
 
 /* Apple's raw values, so a numeric comparison in existing code still holds. */
 typedef enum {
@@ -71,6 +74,35 @@ typedef NSUInteger NSPropertyListWriteOptions;
  * every integer/real/boolean/dictionary KEY can be spelled in the format. */
 + (BOOL)propertyList:(id)plist isValidForFormat:(NSPropertyListFormat)format;
 
+@end
+
+/*
+ * THE CONVENIENCE FORMS, as CATEGORIES rather than additions to the classes.
+ * Cocoa declares them this way, and it keeps NSString, NSArray and NSDictionary
+ * untouched while making the selectors EXIST — which is what the audited
+ * inventories check. They are implemented in the skin, because they are plist
+ * behaviour and nothing else, and they sit on NSData's own file methods so the
+ * atomic-write semantics stay in one place.
+ *
+ * -propertyList is Cocoa's odd one: the RECEIVER is the document. It has no
+ * error out-parameter, so a parse failure answers nil; use
+ * NSPropertyListSerialization when the reason matters.
+ */
+
+@interface NSString (NSPropertyListAdditions)
+- (id)propertyList;
+@end
+
+@interface NSArray (NSPropertyListAdditions)
++ (instancetype)arrayWithContentsOfFile:(NSString *)path;
+- (id)initWithContentsOfFile:(NSString *)path;
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
+@end
+
+@interface NSDictionary (NSPropertyListAdditions)
++ (NSDictionary *)dictionaryWithContentsOfFile:(NSString *)path;
+- (id)initWithContentsOfFile:(NSString *)path;
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 @end
 
 #endif /* FOUNDATION_NSPROPERTYLISTSERIALIZATION_H */

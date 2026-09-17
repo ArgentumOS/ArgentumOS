@@ -308,3 +308,111 @@ static plist_value_t *fn_plist_from_object(id object)
 }
 
 @end
+
+/* ---- the convenience forms (declared as categories in the header) ---------
+ *
+ * They are plist behaviour, so they live with the plist code rather than being
+ * sprinkled into the class implementations. All the file I/O is NSData's —
+ * +dataWithContentsOfFile: and -writeToFile:atomically: — so the atomic-write
+ * semantics exist in one place and these methods stay conversion plus policy.
+ */
+
+@implementation NSString (NSPropertyListAdditions)
+
+- (id)propertyList
+{
+	NSData *data = [self dataUsingEncoding:NSUTF8StringEncoding];
+
+	if (data == nil) {
+		return nil;
+	}
+	return [NSPropertyListSerialization propertyListWithData:data
+							 options:NSPropertyListImmutable
+							  format:NULL
+							   error:NULL];
+}
+
+@end
+
+@implementation NSArray (NSPropertyListAdditions)
+
++ (instancetype)arrayWithContentsOfFile:(NSString *)path
+{
+	return [[self alloc] initWithContentsOfFile:path];
+}
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+	NSData *data = [NSData dataWithContentsOfFile:path];
+	id parsed;
+
+	if (data == nil) {
+		return nil;
+	}
+	parsed = [NSPropertyListSerialization propertyListWithData:data
+							   options:NSPropertyListImmutable
+							    format:NULL
+							     error:NULL];
+	/* The file must hold an ARRAY. Answering an array from a file whose root is a
+	 * dictionary would be a silent type lie, which is exactly what a config
+	 * reader must not do. */
+	if (parsed == nil || ![parsed isKindOfClass:[NSArray class]]) {
+		return nil;
+	}
+	return [self initWithArray:parsed];
+}
+
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile
+{
+	NSData *data = [NSPropertyListSerialization dataWithPropertyList:self
+								  format:NSPropertyListXMLFormat_v1_0
+								 options:0
+								   error:NULL];
+
+	if (data == nil) {
+		return NO;
+	}
+	return [data writeToFile:path atomically:useAuxiliaryFile];
+}
+
+@end
+
+@implementation NSDictionary (NSPropertyListAdditions)
+
++ (NSDictionary *)dictionaryWithContentsOfFile:(NSString *)path
+{
+	return [[self alloc] initWithContentsOfFile:path];
+}
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+	NSData *data = [NSData dataWithContentsOfFile:path];
+	id parsed;
+
+	if (data == nil) {
+		return nil;
+	}
+	parsed = [NSPropertyListSerialization propertyListWithData:data
+							   options:NSPropertyListImmutable
+							    format:NULL
+							     error:NULL];
+	if (parsed == nil || ![parsed isKindOfClass:[NSDictionary class]]) {
+		return nil;
+	}
+	return [self initWithDictionary:parsed];
+}
+
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile
+{
+	NSData *data = [NSPropertyListSerialization dataWithPropertyList:self
+								  format:NSPropertyListXMLFormat_v1_0
+								 options:0
+								   error:NULL];
+
+	if (data == nil) {
+		return NO;
+	}
+	return [data writeToFile:path atomically:useAuxiliaryFile];
+}
+
+@end

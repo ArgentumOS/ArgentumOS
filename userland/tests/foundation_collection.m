@@ -332,14 +332,11 @@ int main(void)
 			"setObject:atIndexedSubscript:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs predicates, descriptors, function pointers or plists. */
+			/* Needs predicates, descriptors or function pointers. */
 			"filteredArrayUsingPredicate:",		/* NSPredicate */
 			"sortedArrayUsingDescriptors:",		/* NSSortDescriptor */
 			"sortedArrayUsingFunction:context:",	/* C function comparators */
 			"sortUsingFunction:context:",		/* C function comparators */
-			"arrayWithContentsOfFile:",		/* a plist reader */
-			"initWithContentsOfFile:",		/* a plist reader */
-			"writeToFile:atomically:",		/* a plist writer */
 			/* Needs NSURL. */
 			"arrayWithContentsOfURL:",		/* NSURL */
 			"initWithContentsOfURL:",		/* NSURL */
@@ -438,6 +435,114 @@ int main(void)
 			check("enumerator-api-complete", complete && ok,
 			      "the audited Cocoa inventory for NSEnumerator, and the cursor walks");
 		}
+	}
+
+	{
+		/* PLIST SERIALIZATION — a new class, so the audited inventory applies to
+		 * it, AND a real round trip through the PUBLIC endpoints: Apple-shaped XML
+		 * in, objects out, written back, and required to come home equal. The
+		 * refusal clause is the contract that matters most: an UNKNOWN element must
+		 * fail rather than be skipped, because libconfig reads these files through
+		 * the same C core. */
+		static const char *classSelectors[] = {
+			"propertyListWithData:options:format:error:",
+			"dataWithPropertyList:format:options:error:",
+			"propertyList:isValidForFormat:", NULL
+		};
+		static const char *excluded[] = {
+			/* NSStream forms, and the deprecation-era entry points. */
+			"propertyListWithStream:options:format:error:",
+			"writePropertyList:toStream:format:options:error:",
+			"propertyListFromData:mutabilityOption:format:errorDescription:",
+			NULL
+		};
+		static const char document[] =
+			"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+			"<plist version=\"1.0\"><dict>"
+			"<key>a</key><integer>7</integer>"
+			"<key>b</key><string>x &amp; y</string>"
+			"<key>c</key><true/>"
+			"<key>d</key><real>0.5</real>"
+			"<key>e</key><data>AAEC</data>"
+			"<key>f</key><array><string>one</string></array>"
+			"</dict></plist>\n";
+		static const char unknownElement[] =
+			"<plist version=\"1.0\"><dict><key>a</key><widget/></dict></plist>";
+		int complete = 1;
+		int behaviour = 1;
+		int i;
+		NSData *input = [NSData dataWithBytes:document length:strlen(document)];
+		NSError *error = nil;
+		NSPropertyListFormat format = (NSPropertyListFormat)0;
+		id parsed;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSPropertyListSerialization respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s (plist)\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([NSPropertyListSerialization respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION present but EXCLUDED (plist): %s\n", excluded[i]);
+			}
+		}
+		parsed = [NSPropertyListSerialization propertyListWithData:input
+								  options:NSPropertyListImmutable
+								   format:&format
+								    error:&error];
+		if (![parsed isKindOfClass:[NSDictionary class]] ||
+		    [[parsed objectForKey:@"a"] longLongValue] != 7 ||
+		    ![[parsed objectForKey:@"b"] isEqualToString:@"x & y"] ||
+		    ![[parsed objectForKey:@"c"] boolValue] ||
+		    [[parsed objectForKey:@"d"] doubleValue] != 0.5 ||
+		    [[parsed objectForKey:@"e"] length] != 3 ||
+		    [[parsed objectForKey:@"f"] count] != 1 ||
+		    format != NSPropertyListXMLFormat_v1_0) {
+			behaviour = 0;
+		}
+		/* Written back, then read again: the object must come home EQUAL. */
+		if (behaviour) {
+			NSData *written = [NSPropertyListSerialization dataWithPropertyList:parsed
+										     format:NSPropertyListXMLFormat_v1_0
+										    options:0
+										      error:&error];
+			id again = (written != nil)
+				? [NSPropertyListSerialization propertyListWithData:written
+									    options:NSPropertyListImmutable
+									     format:NULL
+									      error:&error]
+				: nil;
+
+			if (again == nil || ![again isEqual:parsed]) {
+				behaviour = 0;
+			}
+		}
+		/* REFUSAL: an unknown element is an error that says why. */
+		{
+			NSData *bad = [NSData dataWithBytes:unknownElement length:strlen(unknownElement)];
+			NSError *badError = nil;
+
+			if ([NSPropertyListSerialization propertyListWithData:bad
+								      options:NSPropertyListImmutable
+								       format:NULL
+									error:&badError] != nil ||
+			    badError == nil) {
+				behaviour = 0;
+			}
+		}
+		/* The convenience CATEGORIES exist on the classes, and agree. */
+		{
+			NSString *text = [NSString stringWithUTF8String:document];
+			id viaString = [text propertyList];
+
+			if (viaString == nil || ![viaString isEqual:parsed]) {
+				behaviour = 0;
+			}
+		}
+		check("plist-serialization", complete && behaviour,
+		      "the NSPropertyListSerialization inventory, a round trip through the public endpoints, -propertyList, and the refusal of an unknown element");
 	}
 
 	{
@@ -688,9 +793,9 @@ int main(void)
 		static const char *excluded[] = {
 			/* Needs KVC. */
 			"valueForKey:", "setValue:forKey:",
-			/* Needs a plist reader or writer. */
-			"dictionaryWithContentsOfFile:", "initWithContentsOfFile:",
-			"writeToFile:atomically:", "descriptionInStringsFileFormat",
+			/* A strings-file form is NOT a property list: it needs its own
+			 * writer, so it stays excluded while the plist forms above ship. */
+			"descriptionInStringsFileFormat",
 			/* Needs NSURL. */
 			"dictionaryWithContentsOfURL:", "initWithContentsOfURL:",
 			"writeToURL:atomically:", NULL
