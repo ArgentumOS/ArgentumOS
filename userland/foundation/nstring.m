@@ -168,7 +168,12 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 		if (conv == 's') {
 			const char *text = va_arg(args, const char *);
 
-			[out appendUTF8String:(text == NULL) ? "(null)" : text];
+			/*
+			 * THROUGH THE RENDERER: a plain append dropped width and precision,
+			 * so [%8s] came out as [ab]. The string check caught it - which is
+			 * what the checks are for.
+			 */
+			string_append_rendered(out, spec, (text == NULL) ? "(null)" : text);
 			continue;
 		}
 		if (conv == 'p') {

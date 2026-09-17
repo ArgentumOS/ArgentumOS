@@ -632,7 +632,7 @@ gap fails the gate instead of living in prose.
 |---|---|---|---|
 | `NSObject` | yes | **yes** | `-forwardInvocation:`/`-methodSignatureForSelector:` need `NSInvocation`/`NSMethodSignature` (not shipped) |
 | `NSNumber` | yes | **yes** | — |
-| `NSString`/`NSMutableString` | yes | no | comparison, prefix/suffix, substring, splitting, joining, conversions, formatting |
+| `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (localized comparison), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | no | enumeration helpers, bulk mutation, slicing, joining, identity lookup |
 | `NSDictionary`/`NSMutableDictionary` | yes | no | `-allKeys`/`-allValues`, bulk set, key and object enumerators |
 | `NSData`/`NSMutableData` | yes | no | ranges, `-getBytes:length:`, the no-copy initialisers, file I/O, base64 |
@@ -649,5 +649,5 @@ NULL, `+allocWithZone:` ignores its argument); `-description` shapes are
 one-line. Names that are OURS rather than the contract: `NSOwnedString`,
 `NSTinyString`, `-byteAtIndex:`, `-characterCount`, `-appendUTF8String:`.
 
-**Order of work:** `NSObject` and `NSNumber` are complete (this commit); then
-`NSString`/`NSMutableString`, then the collections, then `NSData`/`NSDate`.
+**Order of work:** `NSObject`, `NSNumber` and `NSString`/`NSMutableString` are
+complete; then the collections, then `NSData`/`NSDate`.

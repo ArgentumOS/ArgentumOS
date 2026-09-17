@@ -14,6 +14,8 @@
 #import "foundation_string.h"
 #include <stdio.h>
 #include <string.h>
+#import <objc/runtime.h>
+#include <string.h>
 
 static int okc, failc;
 
@@ -109,6 +111,230 @@ int main(void)
 		check("cross-tu", [foundation_string_constant() length] == 4 &&
 		      [foundation_string_constant() isEqualToString:@"supt"],
 		      "a tagged constant string from the support unit");
+	}
+
+
+	{
+		/* THE HARD RULE, mechanically: every public NSString/NSMutableString
+		 * selector must EXIST. This list is the audit turned into something that
+		 * fails a gate instead of living in prose. */
+		static const char *classSelectors[] = {
+			"string", "stringWithString:", "stringWithUTF8String:",
+			"stringWithFormat:", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"init", "initWithString:", "initWithUTF8String:", "initWithFormat:",
+			"initWithFormat:arguments:", "initWithData:encoding:",
+			"UTF8String", "length", "characterCount", "byteAtIndex:",
+			"characterAtIndex:", "lengthOfBytesUsingEncoding:", "dataUsingEncoding:",
+			"isEqualToString:", "compare:", "caseInsensitiveCompare:",
+			"compare:options:", "hasPrefix:", "hasSuffix:", "containsString:",
+			"rangeOfString:", "rangeOfString:options:", "rangeOfString:options:range:",
+			"uppercaseString", "lowercaseString", "capitalizedString",
+			"substringFromIndex:", "substringToIndex:", "substringWithRange:",
+			"stringByAppendingString:", "stringByAppendingFormat:",
+			"stringByReplacingOccurrencesOfString:withString:",
+			"stringByReplacingOccurrencesOfString:withString:options:range:",
+			"componentsSeparatedByString:",
+			"intValue", "integerValue", "longLongValue", "floatValue",
+			"doubleValue", "boolValue",
+			"lastPathComponent", "pathExtension", "stringByDeletingLastPathComponent",
+			"stringByDeletingPathExtension", "stringByAppendingPathComponent:",
+			"pathComponents",
+			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+		};
+		static const char *mutableClassSelectors[] = {
+			"string", "stringWithCapacity:", NULL
+		};
+		static const char *mutableSelectors[] = {
+			"initWithCapacity:", "setString:",
+			"appendString:", "appendUTF8String:", "appendFormat:",
+			"insertString:atIndex:", "deleteCharactersInRange:",
+			"replaceCharactersInRange:withString:",
+			"replaceOccurrencesOfString:withString:options:range:", NULL
+		};
+		NSString *probe = @"x";
+		NSMutableString *mutable = [[NSMutableString alloc] init];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSString respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing +%s\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing -%s\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; mutableClassSelectors[i] != NULL; i++) {
+			if (![NSMutableString respondsToSelector:sel_registerName(mutableClassSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing +%s (mutable)\n", mutableClassSelectors[i]);
+			}
+		}
+		for (i = 0; mutableSelectors[i] != NULL; i++) {
+			if (![mutable respondsToSelector:sel_registerName(mutableSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing -%s (mutable)\n", mutableSelectors[i]);
+			}
+		}
+		check("string-api-complete", complete,
+		      "every public NSString/NSMutableString selector exists (the hard rule)");
+	}
+
+	{
+		/* The format engine: conversions, width/precision, and Cocoa's (null). */
+		NSString *rendered = [NSString stringWithFormat:@"%d/%s/%@/%g/%%",
+				      42, "xy", [NSNumber numberWithInt:7], 1.5];
+		NSString *padded = [NSString stringWithFormat:@"[%05d][%.2f][%8s]", 42, 1.5, "ab"];
+		NSString *wide = [NSString stringWithFormat:@"%ld/%llu", 1234567890L, 99ULL];
+		NSString *nilObject = [NSString stringWithFormat:@"<%@>", nil];
+
+		check("string-format",
+		      [rendered isEqualToString:@"42/xy/7/1.5/%"] &&
+		      [padded isEqualToString:@"[00042][1.50][      ab]"] &&
+		      [wide isEqualToString:@"1234567890/99"] &&
+		      [nilObject isEqualToString:@"<(null)>"] &&
+		      [[NSString stringWithFormat:@"%@-%@", @"a", @"b"] isEqualToString:@"a-b"],
+		      "the conversions render, width and precision pass through, nil is (null)");
+	}
+
+	{
+		/* Comparison, search and ranges. */
+		NSString *hay = @"the quick brown fox";
+		NSRange found = [hay rangeOfString:@"brown"];
+		NSRange missing = [hay rangeOfString:@"zebra"];
+		NSRange fromIndex = [hay rangeOfString:@"o" options:NSLiteralSearch
+						 range:NSMakeRange(10, 9)];
+
+		check("string-compare",
+		      [@"abc" compare:@"abd"] == NSOrderedAscending &&
+		      [@"abd" compare:@"abc"] == NSOrderedDescending &&
+		      [@"abc" compare:@"abc"] == NSOrderedSame &&
+		      [@"abc" compare:@"ab"] == NSOrderedDescending &&
+		      [@"ABC" caseInsensitiveCompare:@"abc"] == NSOrderedSame &&
+		      [@"ABC" compare:@"abc" options:NSCaseInsensitiveSearch] == NSOrderedSame &&
+		      [@"ABC" compare:@"abc" options:NSLiteralSearch] != NSOrderedSame &&
+		      [hay hasPrefix:@"the "] && [hay hasSuffix:@"fox"] &&
+		      ![hay hasPrefix:@"quick"] && ![hay hasSuffix:@"the"] &&
+		      [hay containsString:@"quick"] && ![hay containsString:@"zebra"] &&
+		      found.location == 10 && found.length == 5 &&
+		      missing.location == NSNotFound &&
+		      fromIndex.location == 12 && fromIndex.length == 1,
+		      "ordering, case-insensitivity, prefix/suffix/contains, and NSNotFound");
+	}
+
+	{
+		/* Case, substrings, appending, replacing, splitting. */
+		static const unsigned char accentedBytes[] = { 'h', 0xC3, 0xA9, 'l', 'l', 'o', 0 };
+		NSArray *parts = [@"a,b,,c" componentsSeparatedByString:@","];
+		NSString *joined = @"hello world";
+		NSString *accented = [NSString stringWithUTF8String:(const char *)accentedBytes];
+
+		check("string-transform",
+		      [[@"MiXeD" uppercaseString] isEqualToString:@"MIXED"] &&
+		      [[@"MiXeD" lowercaseString] isEqualToString:@"mixed"] &&
+		      [[@"hello world" capitalizedString] isEqualToString:@"Hello World"] &&
+		      [accented length] == 6 && [accented characterCount] == 5 &&
+		      [[@"abcdef" substringFromIndex:3] isEqualToString:@"def"] &&
+		      [[@"abcdef" substringToIndex:2] isEqualToString:@"ab"] &&
+		      [[@"abcdef" substringWithRange:NSMakeRange(1, 3)] isEqualToString:@"bcd"] &&
+		      [[@"abcdef" substringFromIndex:99] isEqualToString:@""] &&
+		      [[@"a" stringByAppendingString:@"b"] isEqualToString:@"ab"] &&
+		      [[@"a" stringByAppendingFormat:@"%d%@", 1, @"z"] isEqualToString:@"a1z"] &&
+		      [[@"a-b-a" stringByReplacingOccurrencesOfString:@"a" withString:@"X"]
+		          isEqualToString:@"X-b-X"] &&
+		      [[@"a-b-a" stringByReplacingOccurrencesOfString:@"A" withString:@"X"
+						   options:NSCaseInsensitiveSearch
+						     range:NSMakeRange(0, 5)]
+		          isEqualToString:@"X-b-X"] &&
+		      [parts count] == 4 && [[parts objectAtIndex:2] isEqualToString:@""] &&
+		      [[@"solo" componentsSeparatedByString:@","] count] == 1 &&
+		      [joined length] == 11,
+		      "case, substrings, appending, replacing and splitting");
+	}
+
+	{
+		/* Conversions, with Cocoa's documented -boolValue rule. */
+		check("string-convert",
+		      [@"42" intValue] == 42 && [@"-7" integerValue] == -7 &&
+		      [@"9223372036854775807" longLongValue] == 9223372036854775807LL &&
+		      [@"1.5" floatValue] == 1.5f && [@"-2.25" doubleValue] == -2.25 &&
+		      [@"  12abc" intValue] == 12 &&
+		      [@"YES" boolValue] == YES && [@"true" boolValue] == YES &&
+		      [@"1" boolValue] == YES && [@"0" boolValue] == NO &&
+		      [@"" boolValue] == NO && [@"no" boolValue] == NO,
+		      "the numeric conversions, and -boolValue's first-character rule");
+	}
+
+	{
+		/* Paths — pure string operations on FSH-shaped, slash-separated paths. */
+		NSArray *components = [@"/System/Devices/ATA" pathComponents];
+
+		check("string-path",
+		      [[@"/System/Devices/ATA" lastPathComponent] isEqualToString:@"ATA"] &&
+		      [[@"/a/b/" lastPathComponent] isEqualToString:@"b"] &&
+		      [[@"/" lastPathComponent] isEqualToString:@"/"] &&
+		      [[@"x.conf" pathExtension] isEqualToString:@"conf"] &&
+		      [[@"/a/b.conf" pathExtension] isEqualToString:@"conf"] &&
+		      [[@"noext" pathExtension] isEqualToString:@""] &&
+		      [[@"/a/b/c" stringByDeletingLastPathComponent] isEqualToString:@"/a/b"] &&
+		      [[@"/a/b.conf" stringByDeletingPathExtension] isEqualToString:@"/a/b"] &&
+		      [[@"/a" stringByAppendingPathComponent:@"b"] isEqualToString:@"/a/b"] &&
+		      [[@"/a/" stringByAppendingPathComponent:@"b"] isEqualToString:@"/a/b"] &&
+		      [components count] == 4 &&
+		      [[components objectAtIndex:3] isEqualToString:@"ATA"],
+		      "last component, extension, deleting, appending, components");
+	}
+
+	{
+		/* Encodings: only the storage encoding is real, and the ASCII query
+		 * answers honestly for non-ASCII content. */
+		static const unsigned char encAccented[] = { 'h', 0xC3, 0xA9, 'l', 'l', 'o', 0 };
+		NSString *accented = [NSString stringWithUTF8String:(const char *)encAccented];
+		NSData *utf8 = [@"hello" dataUsingEncoding:NSUTF8StringEncoding];
+		NSString *roundTrip = [[NSString alloc] initWithData:utf8
+							    encoding:NSUTF8StringEncoding];
+
+		check("string-encoding",
+		      [utf8 length] == 5 &&
+		      [roundTrip isEqualToString:@"hello"] &&
+		      [accented lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
+		      [accented lengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 0 &&
+		      [@"abc" lengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 3 &&
+		      [@"x" dataUsingEncoding:NSUnicodeStringEncoding] == nil,
+		      "the UTF-8 round trip, and honest answers for the encodings we do not store");
+	}
+
+	{
+		/* The mutable family. */
+		NSMutableString *mutable = [NSMutableString stringWithCapacity:8];
+		NSMutableString *snapshotSource;
+
+		[mutable appendFormat:@"%d", 12];
+		[mutable appendString:@"ab"];
+		[mutable insertString:@"-" atIndex:2];
+		[mutable deleteCharactersInRange:NSMakeRange(0, 1)];
+		[mutable replaceCharactersInRange:NSMakeRange(0, 1) withString:@"X"];
+		snapshotSource = [[NSMutableString alloc] initWithString:mutable];
+		{
+			NSMutableString *before = [snapshotSource copy];
+
+			[mutable appendString:@"!"];
+			check("string-mutable",
+			      [mutable isEqualToString:@"X-ab!"] &&
+			      [before isEqualToString:@"X-ab"] &&
+			      [mutable replaceOccurrencesOfString:@"X" withString:@"Y"
+						       options:NSLiteralSearch
+							 range:NSMakeRange(0, [mutable length])] == 1 &&
+			      [mutable isEqualToString:@"Y-ab!"] &&
+			      [[NSMutableString string] length] == 0,
+			      "append/insert/delete/replace, the count-returning replace, and -copy as a snapshot");
+		}
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

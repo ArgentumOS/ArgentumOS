@@ -27,7 +27,10 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_string"
-CHECKS = ("tiny", "owned", "mixed", "utf8", "mutable", "description", "cross-tu")
+CHECKS = ("tiny", "owned", "mixed", "utf8", "mutable", "description", "cross-tu",
+          "string-api-complete", "string-format", "string-compare",
+          "string-transform", "string-convert", "string-path",
+          "string-encoding", "string-mutable")
 
 
 class Case(BaseCase):
