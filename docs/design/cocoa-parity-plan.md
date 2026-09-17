@@ -797,6 +797,19 @@ as a compatibility path for un-migrated views, with a migration list.
   for "the divider crawls behind the cursor", and the flood is now part of
   `uikit_u5e`'s gate. COPYING the moving pane's pixels (the `copiesOnScroll`
   idea) stays PARKED BY THE USER'S CHOICE (dec-2ef665304e989ea2).
+  AND THE LAST BLANKET IS GONE. `adjustPanes()` ended with a
+  `setNeedsDisplay()` over the whole split, and it runs from `layout()`, which
+  runs on every motion event — so each of those repainted the split's area for
+  changes the panes had already described. The invariant moved to the ONE place
+  every pane move goes through: `placePane()` now damages the dividers its pane
+  BORDERS, old and new, because a divider's old strip stands just outside the
+  pane whose edge it was (a 1pt move would otherwise leave a 1pt trail). A drag
+  and a layout pass both come through there, so neither needs a blanket.
+  Measured: an event whose only change was a divider now costs
+  `paint=0.0ms views=2 fillpx=1200 dmg=6x100` instead of a whole-split repaint —
+  and the flood's catch-up fell again, 2.71s -> 0.20s. What is left of a drag
+  step is the panes' own `setFrame` damage, which is the toolkit's and is what
+  the parked copy-on-drag would remove.
   **U5f — `GridView`. DONE (2026-09); this closes U5.** Views in a grid of cells,
   each column as wide as its widest cell and each row as tall as its tallest —
   `NSGridView`. It is a LAYOUT and not a data view: the cells hold whatever views

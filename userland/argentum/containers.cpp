@@ -1472,6 +1472,19 @@ SplitView::placePane(int i, double start, double size)
 	View *v = panes_[i];
 	Rect f = v->frame();
 
+	/* THE DIVIDERS THIS PANE BORDERS MOVE WITH IT, and this view draws them.
+	 * A divider's OLD strip stands just OUTSIDE the pane whose edge it was, so
+	 * the pane's own damage - setFrame reports where it left and where it
+	 * arrived - does not cover it, and a 1pt move would leave a 1pt trail.
+	 * Damaging them around the move is what lets EVERY path through this class
+	 * be honest about damage: a drag (setPosition) and a layout pass
+	 * (adjustPanes, which runs on every motion event) both come through here,
+	 * so neither one needs to blanket-repaint the whole split. */
+	for (int d = i - 1; d <= i; d++) {
+		if (d >= 0 && d < dividerCount()) {
+			setNeedsDisplayInRect(frameOfDivider(d));
+		}
+	}
 	if (size < 0) {
 		size = 0;
 	}
@@ -1492,6 +1505,11 @@ SplitView::placePane(int i, double start, double size)
 		f.size.w = bounds().size.w;
 	}
 	v->setFrame(f);
+	for (int d = i - 1; d <= i; d++) {
+		if (d >= 0 && d < dividerCount()) {
+			setNeedsDisplayInRect(frameOfDivider(d));
+		}
+	}
 }
 
 void
@@ -1666,7 +1684,15 @@ SplitView::adjustPanes()
 		used += (size > 0 ? size : 0);
 		at += (size > 0 ? size : 0) + dividerWidth_;
 	}
-	setNeedsDisplay();
+	/* NO BLANKET HERE. Every pane went through placePane(), which damages the
+	 * pane (setFrame reports where it left and where it arrived) and the
+	 * dividers it borders, OLD and NEW - so the only thing left to report is
+	 * what those calls have already reported, and a whole-split repaint would
+	 * be exactly the coarse damage a drag must not do. This matters because
+	 * adjustPanes() runs from layout(), which runs on every motion event: the
+	 * blanket made each of those repaint the split's whole area (with the
+	 * board's two buttons in the panes, 0-10ms a step) for changes the panes
+	 * had already described precisely. */
 }
 
 void
