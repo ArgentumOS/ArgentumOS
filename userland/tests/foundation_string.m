@@ -297,6 +297,15 @@ int main(void)
 		      [nilObject isEqualToString:@"<(null)>"] &&
 		      [[NSString stringWithFormat:@"%@-%@", @"a", @"b"] isEqualToString:@"a-b"],
 		      "the conversions render, width and precision pass through, nil is (null)");
+
+		/* The class-side form with an explicit list, from a unit that does not
+		 * implement it — the first caller any probe ever gave it. It renders
+		 * through a handed-over `va_copy` and requires the OWNER's list to still
+		 * work in the same call: C99 7.15.1.4 says the callee consumes what it is
+		 * handed, so the caller passes a copy. The support unit records what each
+		 * version of this check cost; the plan records the F4 crash it explains. */
+		check("class-format-arguments", foundation_string_class_arguments_ok(),
+		      "the handed-over copy renders, and the owner's list still works afterwards");
 	}
 
 	{

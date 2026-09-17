@@ -21,7 +21,12 @@ literal:
   * `mutable`     — `NSMutableString` mutation, and `-copy` returning a snapshot;
   * `description` — the root class's names its class, an override wins, and a
                     string describes itself;
-  * `cross-tu`    — a constant string defined in the other translation unit.
+  * `cross-tu`    — a constant string defined in the other translation unit;
+  * `class-format-arguments` — the class-side `+stringWithFormat:arguments:` must
+                    consume a COPY of the caller's `va_list` (C99 7.15.1.4), so
+                    TWO renders from one caller list have to agree. That is the
+                    contract the F4 crash was an instance of, and the check the
+                    probe was missing when the crash was recorded as unexplained.
 """
 
 import re
@@ -30,7 +35,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_string"
 CHECKS = ("tiny", "owned", "mixed", "utf8", "mutable", "description", "cross-tu",
-          "string-api-complete", "string-format", "string-compare",
+          "string-api-complete", "string-format", "class-format-arguments",
+          "string-compare",
           "string-transform", "string-convert", "string-path",
           "string-encoding", "string-mutable", "characterset-api-complete")
 

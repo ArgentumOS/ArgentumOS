@@ -770,27 +770,39 @@ quietly. **A probe that can fail silently is worse than no probe.**
 
 ### THE CAUSE, FOUND AND REPRODUCED (2026-09-17, later)
 
-It is the `va_list` ownership rule, C99 7.15.1.4, hiding in the one place the delegation
-had removed: **`+stringWithFormat:arguments:` consumed the list it was handed.** A
-`va_list` PARAMETER is a pointer to the caller's `__va_list_tag` on this ABI, so walking
-the argument *is* advancing the caller's own list — and the caller's `va_end`, or a second
-use of that list, then runs on an indeterminate one.
-`+[NSException raise:format:arguments:]` is the shipped call site and does exactly that:
-it `va_copy`s, hands the copy over, and `va_end`s it when the call returns. That is why
-the failure surfaced here as "entered with the right format, then died".
+It is the CALLER's side of the `va_list` rule (C99 7.15.1.4), and the record above had
+the polarity backwards in both directions.
 
-The measurement is a probe check, `class-format-arguments`, and its FIRST version was
-wrong in an instructive way: it handed the method a `va_copy` and required two renders to
-agree — which can never fail, because a copy is an INDEPENDENT tag, so the owner is
-protected however destructive the callee is (measured: that version passed against a
-library that consumed its argument). The check now hands over the caller's OWN list and
-renders it twice, with `%d` so a violation reports garbage instead of faulting:
+**A function that takes a `va_list` CONSUMES it.** That is the standard's model — it is
+what `vsnprintf` does — and it is not a defect in this library. On x86-64 a `va_list`
+PARAMETER is a pointer to the caller's `__va_list_tag`, so walking the argument *is*
+advancing the caller's own list; the rule then says the CALLER must hand over a list it
+will not need again. `+[NSException raise:format:arguments:]` does exactly that (it
+`va_copy`s, hands the copy over, and `va_end`s it when the call returns), which is why
+the shipped path is sound. What is NOT safe — and what the F4 crash was — is a call site
+that hands over its OWN list and then uses or ends it.
 
-  * pre-fix library: `foundation_string` **16/17**, exit 1, the second render garbage;
-  * with a `va_copy` in both public entry points (`+stringWithFormat:arguments:` and
-    `-initWithFormat:arguments:`): the value twice, **17/17**.
+So "the delegation is unnecessary but harmless" was right, and this section's predecessor
+was right too: the delegation caused nothing. An attempt to make the library
+non-destructive instead — an internal `va_copy` in both entry points — made the probe
+FAULT: a jump to an unmapped address with every register zero, measured at the guest's
+fault dump. Reverted, and the shipped library needs no change. (`+stringWithFormat:
+arguments:` cannot copy its own argument anyway: its `va_list` parameter has already
+decayed to a pointer.)
 
-So the delegating form was not "harmless": it dropped the copy the body before it had, and
-the DISCIPLINE — not the class-vs-instance shape — is what the method needs. The fix is
-the `va_copy` at both entry points, the delegation goes with it, and the check lands with
-the fix.
+The probe check `class-format-arguments` is what makes this concrete, and both of its
+first two versions were wrong in ways worth keeping:
+
+  * version 1 handed over a `va_copy` and required two renders to agree — it can never
+    fail, because a copy is an INDEPENDENT tag, so a destructive callee cannot touch it;
+  * version 2 handed over the caller's OWN list and required it to survive — asserting
+    something the standard does not promise. It "failed" **16/17** against the shipped
+    library, and that failure was the CHECK being wrong, not the library;
+  * version 3 (shipped) renders through a handed-over copy and requires the owner's list
+    to still work in the same call: **`foundation_string` 17/17** on a guest boot. Its
+    real value is simpler than either theory — the class-side form had NO caller in any
+    probe, so this is the first CHECK that calls it and asserts what it renders.
+
+Left open, and its own question: `%@` with a **tagged** literal (`@"x"`) faulted while
+this work was being done. The shipped check passes a real string object for that leg, so
+nothing here depends on it.
