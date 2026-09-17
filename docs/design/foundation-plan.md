@@ -227,7 +227,7 @@ status.
   commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
   deferral removes the gate, not the standing requirement to track self-hosting needs
   there.
-- **F6 — nullability annotations. SLICE 1 DONE (§9); the rest queued, for the Sterling front end.**
+- **F6 — nullability annotations. SLICES 1–2 DONE (§9); the rest queued, for the Sterling front end.**
   The language reads an *unannotated* import as **nullable** (`sterling-syntax.md` §9.5), so
   today every Foundation call answers `T?` and every one of them needs a `!` or a binding. The
   fix is the annotations themselves: **0 today, across 19 headers and 434 methods** — and no
@@ -240,10 +240,11 @@ status.
   `-Werror=nullability-completeness` in the library's own flags: a header with SOME annotations
   and not others does not build, while an untouched file stays silent, which is what lets the
   sweep land one slice at a time.
-  **Slice 1 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
-  `NSEnumerator`. **Remaining:** the strings (`NSString`/`NSMutableString` — the biggest), the
-  value types, `NSError`/`NSException`, `NSCharacterSet`, `NSMethodSignature`/`NSInvocation`,
-  `NSLocale`, `NSPropertyListSerialization`, and the two protocol headers.
+  **Slices 1–2 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
+  `NSEnumerator`, and the strings (`NSString`/`NSMutableString`/`NSOwnedString`).
+  **Remaining:** the value types, `NSError`/`NSException`, `NSCharacterSet`,
+  `NSMethodSignature`/`NSInvocation`, `NSLocale`, `NSPropertyListSerialization`, and the two
+  protocol headers.
 
 ## 6. Risks / gotchas
 
@@ -1081,3 +1082,37 @@ compiler).
 
 `foundation_core` 15/15 on a guest boot — unchanged, which is the point: the annotations are
 declarations, and the slice changed nothing observable.
+
+### F6, slice 2 (2026-09-17): the strings, and the nullable set comes from the WRITER
+
+Slice 2 is `NSString` / `NSMutableString` / `NSOwnedString` — one header, 251 lines, the biggest
+of the sweep. Unlike slice 1, THE NULLABLE SET WAS MEASURED RATHER THAN REASONED: an `awk` over
+nstring.m's `return nil;` / `return NULL;` sites, naming the enclosing method, answered "which
+of these can answer nil" directly — seven of them: `-cStringUsingEncoding:`,
+`-initWithBytes:length:`, `-initWithData:encoding:`, `-initWithUTF8String:`, the
+`+stringWithContentsOfFile:` pair, `-dataUsingEncoding:` and `-pathComponents`. A name-based
+guess would have got `-pathComponents` WRONG: it answers nil for an empty path here, where Cocoa
+answers an empty array. That is now written in the header, because the annotation is the only
+place a consumer can see it.
+
+Also nullable: the three `NSError **` out-parameters (at BOTH levels — a caller may pass NULL
+for "no error report"), and the six `locale:` parameters, because the header already documents
+what a nil locale means.
+
+IT TOOK ONE BUILD. Slice 1's four grammar rules were the whole lesson: no completeness error
+appeared on the first try, where slice 1 needed four rounds and 20 corrections. The sweep's cost
+is front-loaded into learning the grammar, not paid again per header.
+
+THE CONSUMER HALF IS NOW DEMONSTRATED rather than argued — slice 1 could only declare it. A
+deliberate misuse was compiled in the build directory (NOT the repo, and removed afterwards):
+`[a arrayByAddingObject:[d objectForKey:@"k"]]`, a nullable `-objectForKey:` feeding a nonnull
+parameter. WITH `-Werror=nullable-to-nonnull-conversion`: `error: implicit conversion from
+nullable pointer 'id _Nullable' to non-nullable pointer type 'id _Nonnull'`, exit 1. WITHOUT it:
+no such line, exit 0. Both halves of the gate are therefore live AND measured.
+
+One edit detail this header forced: a declaration RE-DECLARED by a concrete subclass
+(`+stringWithUTF8String:`, `-initWithUTF8String:` are at lines 76/88 for NSString and 198/199 for
+NSOwnedString) is not unique in the file, so the anchor has to be a PAIR of neighbouring lines.
+
+`foundation_string` 27/27 on a guest boot, with the probe itself now compiling under the
+conversion flag — unchanged, which is the point.

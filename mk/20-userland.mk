@@ -293,8 +293,10 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# cases live (a 4-character literal is a TAGGED pointer, a 20-character one
 	# is an object - both paths have to work).
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_string_support.m -o .build/foundation-string-support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_string.m -o .build/foundation-string-main.o
 	$(MUSL64_OBJC) .build/foundation-string-support.o .build/foundation-string-main.o \
 		-L$(FNXLIB) -lfoundation \

@@ -49,6 +49,22 @@
 @class NSError;
 @class NSCharacterSet;
 
+/* NULLABILITY (F6, slice 2): NONNULL by default, and the exceptions are MEASURED —
+ * every one below is a method nstring.m actually answers nil or NULL from (awk
+ * over its `return nil;`/`return NULL;` sites), not a guess from the name:
+ *   -stringWithUTF8String: and -initWithUTF8String: (a NULL or invalid argument),
+ *   -initWithData:encoding: (data that is not valid in that encoding),
+ *   +stringWithContentsOfFile:... (a file that did not read),
+ *   -dataUsingEncoding: and -cStringUsingEncoding: (unconvertible), and
+ *   -pathComponents (measured: an empty path answers nil here, where Cocoa
+ *   answers an empty array).
+ * The rest of the file RAISES rather than answering an absent thing. The locale
+ * parameters are nullable because the header already says what a nil locale
+ * means ("a nil locale means 'no locale-sensitive rules'"), and an NSError**
+ * out-parameter is nullable at BOTH levels: the caller may pass NULL for
+ * "no error report". */
+NS_ASSUME_NONNULL_BEGIN
+
 
 /* Cocoa's option set, reduced to the ones a UTF-8 byte comparison can honour. */
 typedef enum {
@@ -73,22 +89,22 @@ typedef enum {
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */
 + (id)string;
 + (id)stringWithString:(NSString *)other;
-+ (id)stringWithUTF8String:(const char *)utf8;
++ (nullable id)stringWithUTF8String:(const char *)utf8;
 + (id)stringWithFormat:(NSString *)format, ...;
-+ (id)stringWithContentsOfFile:(NSString *)path
++ (nullable id)stringWithContentsOfFile:(NSString *)path
 			  encoding:(NSStringEncoding)encoding
-			     error:(NSError **)errorPtr;
-+ (id)stringWithContentsOfFile:(NSString *)path
+			     error:(NSError * _Nullable * _Nullable)errorPtr;
++ (nullable id)stringWithContentsOfFile:(NSString *)path
 		  usedEncoding:(NSStringEncoding *)encoding
-			 error:(NSError **)errorPtr;
+			 error:(NSError * _Nullable * _Nullable)errorPtr;
 + (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments;
 
 - (id)init;
 - (id)initWithString:(NSString *)other;
-- (id)initWithUTF8String:(const char *)utf8;
+- (nullable id)initWithUTF8String:(const char *)utf8;
 - (id)initWithFormat:(NSString *)format, ...;
 - (id)initWithFormat:(NSString *)format arguments:(va_list)arguments;
-- (id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding;
+- (nullable id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding;
 
 /* The primitives every concrete subclass implements. */
 - (const char *)UTF8String;
@@ -97,12 +113,12 @@ typedef enum {
 - (unsigned char)byteAtIndex:(size_t)index;
 - (unsigned short)characterAtIndex:(size_t)index;	/* by CHARACTER */
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
-- (NSData *)dataUsingEncoding:(NSStringEncoding)encoding;
-- (const char *)cStringUsingEncoding:(NSStringEncoding)encoding;
+- (nullable NSData *)dataUsingEncoding:(NSStringEncoding)encoding;
+- (nullable const char *)cStringUsingEncoding:(NSStringEncoding)encoding;
 - (BOOL)writeToFile:(NSString *)path
 	 atomically:(BOOL)useAuxiliaryFile
 	   encoding:(NSStringEncoding)encoding
-	      error:(NSError **)errorPtr;
+	      error:(NSError * _Nullable * _Nullable)errorPtr;
 
 /* Value semantics. */
 - (BOOL)isEqualToString:(NSString *)other;
@@ -116,7 +132,7 @@ typedef enum {
 - (NSComparisonResult)compare:(NSString *)other
 		      options:(NSStringCompareOptions)options
 			range:(NSRange)range
-			locale:(id)locale;
+			locale:(nullable id)locale;
 /* The localised forms. A locale is HONOURED FOR CASE and for nothing else here.
  * The Turkic languages (tr, az) pair i with İ and I with ı — Unicode's
  * SpecialCasing makes their mapping conditional — so a Turkic locale changes the
@@ -138,7 +154,7 @@ typedef enum {
 - (NSRange)rangeOfString:(NSString *)substring
 		 options:(NSStringCompareOptions)options
 		   range:(NSRange)range
-		  locale:(id)locale;
+		  locale:(nullable id)locale;
 
 /* Case, substrings, appending and replacing. The BASE mapping is ASCII — this
  * Foundation is UTF-8 and makes no general Unicode case claims — and the two
@@ -146,8 +162,8 @@ typedef enum {
  * pairing of i with İ and I with ı. */
 - (NSString *)uppercaseString;
 - (NSString *)lowercaseString;
-- (NSString *)uppercaseStringWithLocale:(id)locale;
-- (NSString *)lowercaseStringWithLocale:(id)locale;
+- (NSString *)uppercaseStringWithLocale:(nullable id)locale;
+- (NSString *)lowercaseStringWithLocale:(nullable id)locale;
 - (NSString *)capitalizedString;
 - (NSString *)substringFromIndex:(NSUInteger)index;
 - (NSString *)substringToIndex:(NSUInteger)index;
@@ -184,7 +200,7 @@ typedef enum {
 - (NSString *)stringByDeletingLastPathComponent;
 - (NSString *)stringByDeletingPathExtension;
 - (NSString *)stringByAppendingPathComponent:(NSString *)component;
-- (NSArray *)pathComponents;
+- (nullable NSArray *)pathComponents;
 - (NSString *)stringByStandardizingPath;
 - (BOOL)isAbsolutePath;
 
@@ -195,9 +211,9 @@ typedef enum {
 	char *_bytes;		/* owned, NUL-terminated, UTF-8 */
 	size_t _length;		/* bytes, excluding the terminating NUL */
 }
-+ (id)stringWithUTF8String:(const char *)utf8;
-- (id)initWithUTF8String:(const char *)utf8;
-- (id)initWithBytes:(const char *)bytes length:(size_t)length;
++ (nullable id)stringWithUTF8String:(const char *)utf8;
+- (nullable id)initWithUTF8String:(const char *)utf8;
+- (nullable id)initWithBytes:(const char *)bytes length:(size_t)length;
 @end
 
 @interface NSMutableString : NSOwnedString <NSMutableCopying>
@@ -247,5 +263,7 @@ typedef enum {
 	const char * const _rstr;
 }
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSSTRING_H */
