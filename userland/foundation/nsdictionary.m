@@ -17,6 +17,7 @@
 
 #import <foundation/NSDictionary.h>
 #import <foundation/NSString.h>
+#import <foundation/NSArray.h>	/* the allKeys/allValues family returns one */
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
@@ -30,6 +31,7 @@ struct FNDictEntry {
 /* The private surface, declared where it belongs: here. */
 @interface NSDictionary ()
 - (id)initAsCopyOf:(NSDictionary *)source;
+- (void)fillWithFirstObject:(id)firstObject arguments:(va_list)args;
 - (void)setObjectInternal:(id)value forKey:(id)key;
 - (void)removeObjectInternalForKey:(id)key;
 - (void)removeAllInternalObjects;
@@ -273,6 +275,183 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	[self dropKeySnapshot];
 }
 
++ (NSDictionary *)dictionaryWithDictionary:(NSDictionary *)other
+{
+	return [[self alloc] initAsCopyOf:other];
+}
+
++ (NSDictionary *)dictionaryWithObjects:(const id *)values
+				forKeys:(const id *)keys
+				  count:(NSUInteger)count
+{
+	return [[self alloc] initWithObjects:values forKeys:keys count:count];
+}
+
++ (NSDictionary *)dictionaryWithObjectsAndKeys:(id)firstObject, ...
+{
+	va_list args;
+	id result = [[self alloc] init];
+
+	va_start(args, firstObject);
+	[result fillWithFirstObject:firstObject arguments:args];
+	va_end(args);
+	return result;
+}
+
+- (id)initWithDictionary:(NSDictionary *)other
+{
+	return [self initAsCopyOf:other];
+}
+
+- (id)initWithObjects:(const id *)values
+	      forKeys:(const id *)keys
+		count:(NSUInteger)count
+{
+	NSUInteger i;
+
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	for (i = 0; i < count; i++) {
+		if (values[i] != nil && keys[i] != nil) {
+			[self setObjectInternal:values[i] forKey:keys[i]];
+		}
+	}
+	return self;
+}
+
+/*
+ * The nil-terminated form takes OBJECT, KEY, OBJECT, KEY ... so the FIRST
+ * argument is named and the list carries the rest — the same trap the array
+ * family hit, where reading the list as though it began at the named argument
+ * silently dropped it. Here the named argument is the first VALUE, and its key
+ * is the first list entry.
+ */
+- (id)initWithObjectsAndKeys:(id)firstObject, ...
+{
+	va_list args;
+
+	self = [self init];
+	if (self == nil) {
+		return nil;
+	}
+	va_start(args, firstObject);
+	[self fillWithFirstObject:firstObject arguments:args];
+	va_end(args);
+	return self;
+}
+
+/*
+ * THE PAIR WALK, in ONE place, because a variadic method cannot be handed a
+ * va_list: the class factory below used to write `initWithObjectsAndKeys:firstObject,
+ * args`, which is a COMMA EXPRESSION rather than a call, so the va_list went in as
+ * the first variadic argument — the crash the step markers localized. Both entry
+ * points hand the list to this instead.
+ */
+- (void)fillWithFirstObject:(id)firstObject arguments:(va_list)args
+{
+	id value = firstObject;
+	id key;
+
+	if (value == nil) {
+		return;
+	}
+	for (;;) {
+		key = va_arg(args, id);
+		if (key == nil) {
+			break;
+		}
+		[self setObjectInternal:value forKey:key];
+		value = va_arg(args, id);
+		if (value == nil) {
+			break;
+		}
+	}
+}
+
+- (NSArray *)allKeys
+{
+	NSMutableArray *keys = [[NSMutableArray alloc] init];
+	unsigned long i;
+
+	for (i = 0; i < _bucketCount; i++) {
+		struct FNDictEntry *entry;
+
+		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
+			[keys addObject:entry->key];
+		}
+	}
+	return keys;
+}
+
+- (NSArray *)allValues
+{
+	NSMutableArray *values = [[NSMutableArray alloc] init];
+	unsigned long i;
+
+	for (i = 0; i < _bucketCount; i++) {
+		struct FNDictEntry *entry;
+
+		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
+			[values addObject:entry->value];
+		}
+	}
+	return values;
+}
+
+- (NSArray *)allKeysForObject:(id)object
+{
+	NSMutableArray *keys = [[NSMutableArray alloc] init];
+	unsigned long i;
+
+	for (i = 0; i < _bucketCount; i++) {
+		struct FNDictEntry *entry;
+
+		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
+			if (entry->value == object || [entry->value isEqual:object]) {
+				[keys addObject:entry->key];
+			}
+		}
+	}
+	return keys;
+}
+
+- (NSArray *)objectsForKeys:(NSArray *)keys notFoundMarker:(id)marker
+{
+	NSMutableArray *values = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+		id found = [self objectForKey:key];
+
+		[values addObject:(found != nil) ? found : marker];
+	}
+	return values;
+}
+
+- (void)getObjects:(id __unsafe_unretained *)objects
+	   andKeys:(id __unsafe_unretained *)keys
+{
+	unsigned long i;
+	unsigned long n = 0;
+
+	for (i = 0; i < _bucketCount; i++) {
+		struct FNDictEntry *entry;
+
+		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
+			if (keys != NULL) {
+				keys[n] = entry->key;
+			}
+			if (objects != NULL) {
+				objects[n] = entry->value;
+			}
+			n++;
+		}
+	}
+}
+
 - (BOOL)isEqualToDictionary:(NSDictionary *)other
 {
 	unsigned long i;
@@ -478,6 +657,46 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 		return;
 	}
 	[self setObject:object forKey:key];
+}
+
++ (NSMutableDictionary *)dictionaryWithCapacity:(NSUInteger)capacity
+{
+	(void)capacity;		/* the bucket array grows on demand */
+	return [[self alloc] init];
+}
+
+- (id)initWithCapacity:(NSUInteger)capacity
+{
+	(void)capacity;
+	return [super init];
+}
+
+- (void)addEntriesFromDictionary:(NSDictionary *)other
+{
+	/* Through allKeys, so nothing is read from a chain the insert may rebuild. */
+	NSArray *keys = [other allKeys];
+	NSUInteger i;
+
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+
+		[self setObject:[other objectForKey:key] forKey:key];
+	}
+}
+
+- (void)setDictionary:(NSDictionary *)other
+{
+	[self removeAllObjects];
+	[self addEntriesFromDictionary:other];
+}
+
+- (void)removeObjectsForKeys:(NSArray *)keys
+{
+	NSUInteger i;
+
+	for (i = 0; i < [keys count]; i++) {
+		[self removeObjectForKey:[keys objectAtIndex:i]];
+	}
 }
 
 - (id)copy

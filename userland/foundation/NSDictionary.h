@@ -32,6 +32,8 @@
 #import <foundation/NSObject.h>
 #import <foundation/NSFastEnumeration.h>
 
+@class NSArray;
+
 struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 
 @interface NSDictionary : NSObject <NSCopying, NSFastEnumeration>
@@ -46,11 +48,27 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 
 + (NSDictionary *)dictionary;
 + (NSDictionary *)dictionaryWithObject:(id)value forKey:(id)key;
++ (NSDictionary *)dictionaryWithDictionary:(NSDictionary *)other;
++ (NSDictionary *)dictionaryWithObjects:(const id *)values
+				 forKeys:(const id *)keys
+				   count:(NSUInteger)count;
++ (NSDictionary *)dictionaryWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)value forKey:(id)key;
+- (id)initWithDictionary:(NSDictionary *)other;
+- (id)initWithObjects:(const id *)values
+	      forKeys:(const id *)keys
+		count:(NSUInteger)count;
+- (id)initWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
 - (id)objectForKey:(id)key;
+- (NSArray *)allKeys;
+- (NSArray *)allValues;
+- (NSArray *)allKeysForObject:(id)object;
+- (NSArray *)objectsForKeys:(NSArray *)keys notFoundMarker:(id)marker;
+- (void)getObjects:(id __unsafe_unretained *)objects
+	   andKeys:(id __unsafe_unretained *)keys;
 /* Cocoa's subscript: `dict[k]` lowers to this. */
 - (id)objectForKeyedSubscript:(id)key;
 
@@ -61,6 +79,12 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 @interface NSMutableDictionary : NSDictionary <NSMutableCopying>
 
 + (NSMutableDictionary *)dictionary;
++ (NSMutableDictionary *)dictionaryWithCapacity:(NSUInteger)capacity;
+- (id)initWithCapacity:(NSUInteger)capacity;
+
+- (void)addEntriesFromDictionary:(NSDictionary *)other;
+- (void)setDictionary:(NSDictionary *)other;
+- (void)removeObjectsForKeys:(NSArray *)keys;
 
 - (void)setObject:(id)value forKey:(id)key;
 - (void)removeObjectForKey:(id)key;

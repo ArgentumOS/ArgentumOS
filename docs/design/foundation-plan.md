@@ -634,7 +634,7 @@ gap fails the gate instead of living in prose.
 | `NSNumber` | yes | **yes** | — |
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (localized comparison), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet`/`NSIndexPath` (the `…AtIndexes:` families) and `NSEnumerator` (the enumerator objects — `for-in` covers the need) |
-| `NSDictionary`/`NSMutableDictionary` | yes | no | `-allKeys`/`-allValues`, bulk set, key and object enumerators |
+| `NSDictionary`/`NSMutableDictionary` | yes | **yes** | dependency only: `NSEnumerator` (the key/object enumerator objects — `for-in` covers that need) |
 | `NSData`/`NSMutableData` | yes | no | ranges, `-getBytes:length:`, the no-copy initialisers, file I/O, base64 |
 | `NSDate` | yes | no | relative dates, distant past/future, the interval constructors |
 
@@ -649,8 +649,8 @@ NULL, `+allocWithZone:` ignores its argument); `-description` shapes are
 one-line. Names that are OURS rather than the contract: `NSOwnedString`,
 `NSTinyString`, `-byteAtIndex:`, `-characterCount`, `-appendUTF8String:`.
 
-**Order of work:** `NSObject`, `NSNumber` and `NSString`/`NSMutableString` are
-complete; then the collections, then `NSData`/`NSDate`.
+**Order of work:** `NSObject`, `NSNumber`, `NSString`/`NSMutableString` and BOTH
+collection families are complete; then `NSData`/`NSDate`.
 
 ## Copyright and licence (2026-09-17)
 

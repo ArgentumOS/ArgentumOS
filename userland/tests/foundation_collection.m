@@ -477,6 +477,180 @@ int main(void)
 		      "equality finds it where identity does not (a tagged literal is not the owned copy)");
 	}
 
+
+	{
+		/* THE HARD RULE, mechanically, for the dictionary family. */
+		static const char *classSelectors[] = {
+			"dictionary", "dictionaryWithObject:forKey:", "dictionaryWithDictionary:",
+			"dictionaryWithObjects:forKeys:count:",
+			"dictionaryWithObjectsAndKeys:", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithObject:forKey:", "initWithDictionary:",
+			"initWithObjects:forKeys:count:", "initWithObjectsAndKeys:",
+			"count", "objectForKey:", "objectForKeyedSubscript:",
+			"allKeys", "allValues", "allKeysForObject:",
+			"objectsForKeys:notFoundMarker:", "getObjects:andKeys:",
+			"isEqualToDictionary:", "isEqual:", "hash", "description",
+			"copy", "mutableCopy",
+			"countByEnumeratingWithState:objects:count:", NULL
+		};
+		static const char *mutableClassSelectors[] = {
+			"dictionary", "dictionaryWithCapacity:", NULL
+		};
+		static const char *mutableSelectors[] = {
+			"initWithCapacity:", "setObject:forKey:", "setObject:forKeyedSubscript:",
+			"removeObjectForKey:", "removeAllObjects",
+			"addEntriesFromDictionary:", "setDictionary:",
+			"removeObjectsForKeys:", NULL
+		};
+		NSDictionary *probe = [NSDictionary dictionary];
+		NSMutableDictionary *mutable = [[NSMutableDictionary alloc] init];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSDictionary respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; mutableClassSelectors[i] != NULL; i++) {
+			if (![NSMutableDictionary respondsToSelector:sel_registerName(mutableClassSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing +%s (mutable)\n", mutableClassSelectors[i]);
+			}
+		}
+		for (i = 0; mutableSelectors[i] != NULL; i++) {
+			if (![mutable respondsToSelector:sel_registerName(mutableSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s (mutable)\n", mutableSelectors[i]);
+			}
+		}
+		check("dict-api-complete", complete,
+		      "every public NSDictionary/NSMutableDictionary selector exists (the hard rule)");
+	}
+
+	{
+		/* THE NIL-TERMINATED CONSTRUCTOR, on its own: the array family's version
+		 * dropped its first element because va_start points PAST the argument
+		 * named in the signature, and this one alternates value/key — the same
+		 * trap, so it gets its own check with its own markers. */
+		NSDictionary *pairs = nil;
+		NSDictionary *arrays = nil;
+		NSDictionary *copied = nil;
+		id values[2];
+		id keys[2];
+
+		printf("FOUNDATION-COLLECTION step dict pairs\n");
+		pairs = [NSDictionary dictionaryWithObjectsAndKeys:@"v1", @"k1", @"v2", @"k2", nil];
+		values[0] = @"a"; values[1] = @"b";
+		keys[0] = @"x"; keys[1] = @"y";
+		printf("FOUNDATION-COLLECTION step dict arrays\n");
+		arrays = [NSDictionary dictionaryWithObjects:values forKeys:keys count:2];
+		printf("FOUNDATION-COLLECTION step dict copy\n");
+		copied = [NSDictionary dictionaryWithDictionary:arrays];
+		printf("FOUNDATION-COLLECTION step dict init varargs\n");
+		{
+			NSMutableDictionary *built =
+				[[NSMutableDictionary alloc] initWithObjectsAndKeys:@"p", @"q", nil];
+
+			check("dict-constructors",
+			      [pairs count] == 2 &&
+			      [[pairs objectForKey:@"k1"] isEqualToString:@"v1"] &&
+			      [[pairs objectForKey:@"k2"] isEqualToString:@"v2"] &&
+			      [arrays count] == 2 && [[arrays objectForKey:@"x"] isEqualToString:@"a"] &&
+			      [copied isEqualToDictionary:arrays] &&
+			      [built count] == 1 && [[built objectForKey:@"q"] isEqualToString:@"p"],
+			      "the nil-terminated pairs keep BOTH halves (the array family dropped its first), the two-array form, and the copy constructor");
+		}
+	}
+
+	{
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		NSArray *keys = nil;
+		NSArray *values = nil;
+		NSArray *found = nil;
+		NSArray *missing = nil;
+
+		[d setObject:@"one" forKey:@"1"];
+		[d setObject:@"two" forKey:@"2"];
+		[d setObject:@"two" forKey:@"deux"];
+		[d setObject:@"drei" forKey:@"trois"];
+		printf("FOUNDATION-COLLECTION step dict allKeys\n");
+		keys = [d allKeys];
+		printf("FOUNDATION-COLLECTION step dict allValues\n");
+		values = [d allValues];
+		printf("FOUNDATION-COLLECTION step dict allKeysForObject\n");
+		found = [d allKeysForObject:@"two"];
+		printf("FOUNDATION-COLLECTION step dict notFoundMarker\n");
+		missing = [d objectsForKeys:[NSArray arrayWithObjects:@"1", @"nope", nil]
+			       notFoundMarker:@"?"];
+
+		check("dict-views",
+		      [keys count] == 4 && [values count] == 4 && [found count] == 2 &&
+		      [missing count] == 2 && [[missing objectAtIndex:0] isEqualToString:@"one"] &&
+		      [[missing objectAtIndex:1] isEqualToString:@"?"] &&
+		      [d count] == 4 && [[d allKeysForObject:@"nope"] count] == 0,
+		      "allKeys/allValues, allKeysForObject: for a shared value, and objectsForKeys:notFoundMarker:");
+	}
+
+	{
+		NSMutableDictionary *a = [NSMutableDictionary dictionary];
+		NSMutableDictionary *b = [NSMutableDictionary dictionary];
+		NSMutableDictionary *target = [NSMutableDictionary dictionary];
+		int ok = 1;
+
+		[a setObject:@"1" forKey:@"one"];
+		[a setObject:@"3" forKey:@"three"];
+		[b setObject:@"2" forKey:@"two"];
+		printf("FOUNDATION-COLLECTION step dict addEntries\n");
+		[target addEntriesFromDictionary:a];
+		[target addEntriesFromDictionary:b];
+		ok = ok && [target count] == 3 &&
+		     [[target objectForKey:@"two"] isEqualToString:@"2"];
+		printf("FOUNDATION-COLLECTION step dict setDictionary\n");
+		[target setDictionary:b];
+		ok = ok && [target count] == 1 && [target objectForKey:@"one"] == nil;
+		printf("FOUNDATION-COLLECTION step dict removeObjectsForKeys\n");
+		[target addEntriesFromDictionary:a];
+		[target removeObjectsForKeys:[NSArray arrayWithObjects:@"one", @"three", nil]];
+		ok = ok && [target count] == 1 && [[target objectForKey:@"two"] isEqualToString:@"2"];
+
+		check("dict-bulk", ok,
+		      "addEntriesFromDictionary: accumulates, setDictionary: replaces, removeObjectsForKeys: drops a list");
+	}
+
+	{
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		id __unsafe_unretained gotValues[3];
+		id __unsafe_unretained gotKeys[3];
+		unsigned long i;
+		int sawOne = 0;
+
+		[d setObject:@"1" forKey:@"one"];
+		[d setObject:@"2" forKey:@"two"];
+		[d setObject:@"3" forKey:@"three"];
+		gotValues[0] = nil; gotKeys[0] = nil;
+		gotValues[2] = nil; gotKeys[2] = nil;
+		[d getObjects:gotValues andKeys:gotKeys];
+		for (i = 0; i < 3; i++) {
+			if (gotKeys[i] != nil && [gotKeys[i] isEqualToString:@"one"] &&
+			    [gotValues[i] isEqualToString:@"1"]) {
+				sawOne = 1;
+			}
+		}
+		check("dict-getobjects",
+		      sawOne && gotValues[0] != nil && gotKeys[1] != nil,
+		      "getObjects:andKeys: fills parallel arrays with each pair intact");
+	}
+
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-COLLECTION DONE\n");
 	return failc ? 1 : 0;
