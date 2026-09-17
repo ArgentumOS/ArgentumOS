@@ -31,6 +31,7 @@
 
 #import <foundation/NSObject.h>
 #import <foundation/NSFastEnumeration.h>
+#import <foundation/NSEnumerator.h>
 
 @class NSArray;
 
@@ -71,6 +72,8 @@ struct FNDictEntry;			/* opaque; defined in nsdictionary.m */
 - (NSArray *)keysSortedByValueUsingSelector:(SEL)comparator;
 - (NSArray *)keysSortedByValueUsingComparator:(NSComparator)comparator;
 - (void)enumerateKeysAndObjectsUsingBlock:(void (^)(id key, id value, BOOL *stop))block;
+- (NSEnumerator *)keyEnumerator;
+- (NSEnumerator *)objectEnumerator;
 - (void)getObjects:(id __unsafe_unretained *)objects
 	   andKeys:(id __unsafe_unretained *)keys;
 /* Cocoa's subscript: `dict[k]` lowers to this. */

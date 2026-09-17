@@ -458,6 +458,16 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	return sorted;
 }
 
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSEnumerator alloc] initWithSequence:self reverse:NO];
+}
+
+- (NSEnumerator *)reverseObjectEnumerator
+{
+	return [[NSEnumerator alloc] initWithSequence:self reverse:YES];
+}
+
 - (BOOL)isEqualToArray:(NSArray *)other
 {
 	unsigned long i;

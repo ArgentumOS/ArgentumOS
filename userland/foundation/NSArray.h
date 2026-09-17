@@ -23,6 +23,7 @@
 
 #import <foundation/NSObject.h>
 #import <foundation/NSFastEnumeration.h>
+#import <foundation/NSEnumerator.h>
 
 @class NSString;
 @class NSIndexSet;
@@ -80,6 +81,9 @@
  * -indexesOfObjectsPassingTest: hands back the indexes that passed. */
 - (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes;
 - (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate;
+
+- (NSEnumerator *)objectEnumerator;
+- (NSEnumerator *)reverseObjectEnumerator;
 
 - (BOOL)isEqualToArray:(NSArray *)other;
 

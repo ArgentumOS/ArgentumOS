@@ -519,6 +519,18 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	}
 }
 
+- (NSEnumerator *)keyEnumerator
+{
+	/* The SNAPSHOT is built here, from the key array, so the enumerator needs no
+	 * knowledge of the table at all. */
+	return [[NSEnumerator alloc] initWithSequence:[self allKeys] reverse:NO];
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSEnumerator alloc] initWithSequence:[self allValues] reverse:NO];
+}
+
 - (BOOL)isEqualToDictionary:(NSDictionary *)other
 {
 	unsigned long i;

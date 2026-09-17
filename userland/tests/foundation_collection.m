@@ -386,6 +386,61 @@ int main(void)
 	}
 
 	{
+		/* THE AUDITED COCOA INVENTORY for NSEnumerator — the class the array and
+		 * dictionary enumerator methods hand back — plus the cursor walking a
+		 * sequence, because a declared method that never runs proves nothing. */
+		static const char *instanceSelectors[] = {
+			"nextObject", "allObjects",
+			"countByEnumeratingWithState:objects:count:",
+			"isEqual:", "hash", "description", NULL
+		};
+		NSEnumerator *probe = [[NSArray arrayWithObject:@"x"] objectEnumerator];
+		int complete = 1;
+		int i;
+
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-COLLECTION missing -%s (enumerator)\n", instanceSelectors[i]);
+			}
+		}
+		{
+			NSArray *sequence = [NSArray arrayWithObjects:@"a", @"b", @"c", nil];
+			NSEnumerator *forward = [sequence objectEnumerator];
+			NSEnumerator *backward = [sequence reverseObjectEnumerator];
+			NSEnumerator *spent = [sequence objectEnumerator];
+			id object = nil;
+			int ok = 1;
+
+			if (![[forward nextObject] isEqualToString:@"a"] ||
+			    ![[forward nextObject] isEqualToString:@"b"] ||
+			    ![[forward nextObject] isEqualToString:@"c"]) {
+				ok = 0;
+			}
+			/* A spent cursor answers nil, for ever, rather than wrapping. */
+			if ([forward nextObject] != nil || [forward nextObject] != nil) {
+				ok = 0;
+			}
+			if (![[backward nextObject] isEqualToString:@"c"] ||
+			    ![[backward nextObject] isEqualToString:@"b"] ||
+			    ![[backward nextObject] isEqualToString:@"a"] ||
+			    [backward nextObject] != nil) {
+				ok = 0;
+			}
+			object = [[[sequence objectEnumerator] allObjects] lastObject];
+			if (![object isEqualToString:@"c"]) {
+				ok = 0;
+			}
+			/* -allObjects takes what is LEFT and leaves the cursor spent. */
+			if ([[spent allObjects] count] != 3 || [spent nextObject] != nil) {
+				ok = 0;
+			}
+			check("enumerator-api-complete", complete && ok,
+			      "the audited Cocoa inventory for NSEnumerator, and the cursor walks");
+		}
+	}
+
+	{
 		/* The audited Cocoa inventory for NSIndexSet/NSMutableIndexSet — the class
 		 * the four methods above are specified in terms of. */
 		static const char *classSelectors[] = {
@@ -616,6 +671,7 @@ int main(void)
 			"objectsForKeys:notFoundMarker:", "getObjects:andKeys:",
 			"keysSortedByValueUsingSelector:", "keysSortedByValueUsingComparator:",
 			"enumerateKeysAndObjectsUsingBlock:",
+			"keyEnumerator", "objectEnumerator",
 			"isEqualToDictionary:", "isEqual:", "hash", "description",
 			"copy", "mutableCopy",
 			"countByEnumeratingWithState:objects:count:", NULL
@@ -630,9 +686,6 @@ int main(void)
 			"removeObjectsForKeys:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs NSEnumerator, which this Foundation does not ship; for-in
-			 * covers the need and is what the tests exercise. */
-			"keyEnumerator", "objectEnumerator",
 			/* Needs KVC. */
 			"valueForKey:", "setValue:forKey:",
 			/* Needs a plist reader or writer. */

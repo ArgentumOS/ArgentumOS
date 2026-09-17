@@ -30,5 +30,6 @@
 #import <foundation/NSException.h>
 #import <foundation/NSCharacterSet.h>
 #import <foundation/NSIndexSet.h>
+#import <foundation/NSEnumerator.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
