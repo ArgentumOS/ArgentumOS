@@ -172,6 +172,23 @@ class Case(BaseCase):
         session.wait_for(r"ZOO-SCROLL-OFFSET", 15)
         scrolled = session.output_since(marker)
 
+        # ---- AND WHAT THE SCROLL COST, which is why the copy exists --------
+        # A scroll step MOVES the pixels (View::setCopiesOnScroll) and must
+        # then repaint only what the shift VACATED. The damage used to be one
+        # union rectangle, so the union of {that strip, the knob that moved}
+        # spanned the whole clip and all 14 visible rows were walked and drawn
+        # again - measured, 100ms a step, which is what "slow to move" was.
+        # The damage is a REGION now; a step that walks the whole list again
+        # fails this.
+        sp = re.findall(r"ARGENTUM-PAINT paint=\S+ flush=\S+ ms \S+ "
+                        r"views=(\d+) rects=(\d+) dmg=", scrolled)
+        stepped = [int(v) for v, _ in sp]
+        self.check("a-scroll-step-does-not-repaint-the-list",
+                   len(sp) >= 1 and max(stepped) < 20,
+                   "the paints this scroll caused walked %s views (the whole"
+                   " list is 52 views; the strip and the bar must be far"
+                   " fewer)" % (stepped or "nothing"))
+
         sm = OFFSET.search(scrolled)
         self.check("the-arrow-scrolled-the-list", sm is not None,
                    "the board reported a scroll"

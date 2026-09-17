@@ -799,12 +799,22 @@ struct Window::Impl {
 	/* a LAYOUT pass is pending: the display cycle settles it before it draws
 	 * (which is Auto Layout's only driver in an application) */
 	bool layoutDirty = false;
-	/* the flush region: what changed since the last frame, in SURFACE
-	 * pixels. dmgAll is the whole surface (a resize, an expose, a window
-	 * level change); otherwise the rect is the union of the view damage
-	 * that arrived since. */
+	/* THE FLUSH REGION AND THE PAINT REGION ARE NOT THE SAME THING. dmgAll is
+	 * the whole surface (a resize, an expose, a window level change).
+	 * Otherwise dmgX0..dmgY1 is the UNION of everything that arrived, and
+	 * that is what the FLUSH is given: XPutImage takes one rect, and
+	 * transport is not the cost (measured: 10ms for a whole window).
+	 * The PAINT walks the LIST instead. Painting a union draws everything
+	 * BETWEEN two far-apart damages, which is how a copied scroll strip came
+	 * to be drawn over again - 14 views and 70ms for a 16pt move. Each list
+	 * rect is painted as a complete picture of itself, so a few damages cost
+	 * a few small passes instead of one big one. The list is bounded: a rect
+	 * already covered by one in it is not added, covering entries replace
+	 * them, and a full list GROWS its last rect rather than drop damage. */
 	bool dmgAll = true;
 	int dmgX0 = 0, dmgY0 = 0, dmgX1 = 0, dmgY1 = 0;
+	int dmgN = 0;			/* how many are in the paint list */
+	int dmgR[4][4] = {};		/* x0, y0, x1, y1 in surface pixels */
 	/* the pixels, in shared memory when the server has MIT-SHM */
 	XShmSegmentInfo shm {};
 	bool shmAttached = false;
@@ -921,6 +931,12 @@ damageAll(ImplT *impl)
 	impl->dirty = true;
 }
 
+/* THE ACCUMULATION LIVES IN PIXELS (defined below, where the scroll copy needs
+ * it too): this is only the points-to-pixels half, because a view knows its
+ * own frame in points. */
+template <typename ImplT>
+static void damagePx(ImplT *impl, int x0, int y0, int x1, int y1);
+
 /* Narrow the damage to include a rect given in WINDOW POINTS - what a view
  * knows about itself. Once the whole surface is damaged it stays that way:
  * a window level change is not undone by a control that also touched
@@ -929,50 +945,11 @@ template <typename ImplT>
 static void
 damagePt(ImplT *impl, const Rect &r)
 {
-	int x0, y0, x1, y1;
-
-	impl->dirty = true;
-	if (impl->dmgAll) {
-		return;
-	}
-	x0 = (int) std::floor(r.origin.x * impl->pxPerPt);
-	y0 = (int) std::floor(r.origin.y * impl->pxPerPt);
-	x1 = (int) std::ceil((r.origin.x + r.size.w) * impl->pxPerPt);
-	y1 = (int) std::ceil((r.origin.y + r.size.h) * impl->pxPerPt);
-	if (x0 < 0) {
-		x0 = 0;
-	}
-	if (y0 < 0) {
-		y0 = 0;
-	}
-	if (x1 > (int) impl->wPx) {
-		x1 = (int) impl->wPx;
-	}
-	if (y1 > (int) impl->hPx) {
-		y1 = (int) impl->hPx;
-	}
-	if (x1 <= x0 || y1 <= y0) {
-		return;		/* outside the window: nothing to send */
-	}
-	if (impl->dmgX1 <= impl->dmgX0 || impl->dmgY1 <= impl->dmgY0) {
-		impl->dmgX0 = x0;	/* the first damage defines it */
-		impl->dmgY0 = y0;
-		impl->dmgX1 = x1;
-		impl->dmgY1 = y1;
-		return;
-	}
-	if (x0 < impl->dmgX0) {
-		impl->dmgX0 = x0;
-	}
-	if (y0 < impl->dmgY0) {
-		impl->dmgY0 = y0;
-	}
-	if (x1 > impl->dmgX1) {
-		impl->dmgX1 = x1;
-	}
-	if (y1 > impl->dmgY1) {
-		impl->dmgY1 = y1;
-	}
+	damagePx(impl,
+		 (int) std::floor(r.origin.x * impl->pxPerPt),
+		 (int) std::floor(r.origin.y * impl->pxPerPt),
+		 (int) std::ceil((r.origin.x + r.size.w) * impl->pxPerPt),
+		 (int) std::ceil((r.origin.y + r.size.h) * impl->pxPerPt));
 }
 
 Window::Window()
@@ -1392,25 +1369,75 @@ damagePx(ImplT *impl, int x0, int y0, int x1, int y1)
 	if (x1 <= x0 || y1 <= y0) {
 		return;
 	}
+	/* THE UNION, which is what the FLUSH is given (XPutImage takes one rect,
+	 * and transport is not the cost) */
 	if (impl->dmgX1 <= impl->dmgX0 || impl->dmgY1 <= impl->dmgY0) {
-		impl->dmgX0 = x0;
+		impl->dmgX0 = x0;	/* the first damage defines it */
 		impl->dmgY0 = y0;
 		impl->dmgX1 = x1;
 		impl->dmgY1 = y1;
+	} else {
+		if (x0 < impl->dmgX0) {
+			impl->dmgX0 = x0;
+		}
+		if (y0 < impl->dmgY0) {
+			impl->dmgY0 = y0;
+		}
+		if (x1 > impl->dmgX1) {
+			impl->dmgX1 = x1;
+		}
+		if (y1 > impl->dmgY1) {
+			impl->dmgY1 = y1;
+		}
+	}
+	/* AND THE LIST THE PAINT WALKS, kept short by two rules: a rect already
+	 * inside one of them is not added (one control damaged twice in a frame
+	 * is one rect), and a rect that COVERS entries drops them. */
+	for (int i = 0; i < impl->dmgN; i++) {
+		if (x0 >= impl->dmgR[i][0] && y0 >= impl->dmgR[i][1]
+		    && x1 <= impl->dmgR[i][2] && y1 <= impl->dmgR[i][3]) {
+			return;
+		}
+	}
+	int keep = 0;
+
+	for (int i = 0; i < impl->dmgN; i++) {
+		if (impl->dmgR[i][0] >= x0 && impl->dmgR[i][1] >= y0
+		    && impl->dmgR[i][2] <= x1 && impl->dmgR[i][3] <= y1) {
+			continue;	/* covered by the new rect */
+		}
+		if (keep != i) {
+			for (int k = 0; k < 4; k++) {
+				impl->dmgR[keep][k] = impl->dmgR[i][k];
+			}
+		}
+		keep++;
+	}
+	impl->dmgN = keep;
+	if (impl->dmgN >= (int) (sizeof(impl->dmgR) / sizeof(impl->dmgR[0]))) {
+		/* FULL: grow the last entry rather than lose the damage - losing it
+		 * would leave the pixels it names as the previous frame left them */
+		int *last = impl->dmgR[impl->dmgN - 1];
+
+		if (x0 < last[0]) {
+			last[0] = x0;
+		}
+		if (y0 < last[1]) {
+			last[1] = y0;
+		}
+		if (x1 > last[2]) {
+			last[2] = x1;
+		}
+		if (y1 > last[3]) {
+			last[3] = y1;
+		}
 		return;
 	}
-	if (x0 < impl->dmgX0) {
-		impl->dmgX0 = x0;
-	}
-	if (y0 < impl->dmgY0) {
-		impl->dmgY0 = y0;
-	}
-	if (x1 > impl->dmgX1) {
-		impl->dmgX1 = x1;
-	}
-	if (y1 > impl->dmgY1) {
-		impl->dmgY1 = y1;
-	}
+	impl->dmgR[impl->dmgN][0] = x0;
+	impl->dmgR[impl->dmgN][1] = y0;
+	impl->dmgR[impl->dmgN][2] = x1;
+	impl->dmgR[impl->dmgN][3] = y1;
+	impl->dmgN++;
 }
 
 /* MOVE THE PIXELS INSTEAD OF DRAWING THEM AGAIN. A scroll of a clipping view
@@ -1474,9 +1501,17 @@ Window::scrollRegionInRect(const Rect &r, int dxPx, int dyPx)
 	 * scroll is even asked for, so demanding a completely clean window would
 	 * never copy anything. Damage INSIDE this rect is different: those pixels
 	 * are not what a repaint would produce, so the copy would carry the stale
-	 * row forward. The union is one rectangle, so a pending mark anywhere
-	 * across it is enough to fall back. */
-	if (impl_->dmgX1 > impl_->dmgX0 && impl_->dmgY1 > impl_->dmgY0
+	 * row forward. It is the LIST that matters, not the union: the union of
+	 * the bar and this rect spans the clip, and testing it would refuse every
+	 * copy on the one frame this exists for. */
+	for (int i = 0; i < impl_->dmgN; i++) {
+		if (impl_->dmgR[i][0] < x1 && impl_->dmgR[i][2] > x0
+		    && impl_->dmgR[i][1] < y1 && impl_->dmgR[i][3] > y0) {
+			return false;
+		}
+	}
+	if (impl_->dmgN <= 0
+	    && impl_->dmgX1 > impl_->dmgX0 && impl_->dmgY1 > impl_->dmgY0
 	    && impl_->dmgX0 < x1 && impl_->dmgX1 > x0
 	    && impl_->dmgY0 < y1 && impl_->dmgY1 > y0) {
 		return false;
@@ -1693,63 +1728,94 @@ Window::displayIfNeeded()
 	bool timing = timingOn("ARGENTUM_PAINT_MS");
 	double tPaint0 = timing ? nowMs() : 0.0;
 	/* THE DAMAGE, in surface pixels: the whole surface for a window-level
-	 * change, otherwise the union of what the views reported. It is both
-	 * the clip the pass draws through and the region erased first, and
-	 * that is what removes the need for per-view bookkeeping - anything
-	 * the erase touched must be redrawn, anything outside it is already
-	 * right on screen. */
-	int dx0 = 0, dy0 = 0, dx1 = (int) impl_->wPx, dy1 = (int) impl_->hPx;
+	 * change, otherwise THE LIST of what the views reported. The UNION is
+	 * not what is painted - painting it draws everything BETWEEN two
+	 * far-apart damages, which is what made a copied scroll strip get drawn
+	 * over again. Each rect here is painted as a COMPLETE picture of itself
+	 * (background, chrome, tree), so anything outside every rect is left
+	 * exactly as the last frame left it; that is what removes the need for
+	 * per-view bookkeeping. */
+	struct { int x0, y0, x1, y1; } rects[8];
+	int nrects = 0;
+	int ux0 = 0, uy0 = 0, ux1 = (int) impl_->wPx, uy1 = (int) impl_->hPx;
 
-	if (!impl_->dmgAll) {
-		dx0 = impl_->dmgX0;
-		dy0 = impl_->dmgY0;
-		dx1 = impl_->dmgX1;
-		dy1 = impl_->dmgY1;
-		if (dx1 <= dx0 || dy1 <= dy0) {
-			impl_->dirty = false;	/* nothing changed, nothing to do */
-			return;
+	if (impl_->dmgAll) {
+		rects[0] = { 0, 0, (int) impl_->wPx, (int) impl_->hPx };
+		nrects = 1;
+	} else if (impl_->dmgX1 <= impl_->dmgX0 || impl_->dmgY1 <= impl_->dmgY0) {
+		impl_->dirty = false;	/* nothing changed, nothing to do */
+		return;
+	} else {
+		ux0 = impl_->dmgX0;
+		uy0 = impl_->dmgY0;
+		ux1 = impl_->dmgX1;
+		uy1 = impl_->dmgY1;
+		/* an empty list with a union set cannot happen (the two are
+		 * written together), but the union is the right answer if it ever
+		 * does: paint MORE, never less */
+		if (impl_->dmgN <= 0) {
+			rects[0] = { ux0, uy0, ux1, uy1 };
+			nrects = 1;
+		} else {
+			for (int i = 0; i < impl_->dmgN; i++) {
+				rects[i] = { impl_->dmgR[i][0], impl_->dmgR[i][1],
+					     impl_->dmgR[i][2], impl_->dmgR[i][3] };
+			}
+			nrects = impl_->dmgN;
 		}
 	}
 	Context::Impl ci;
+	Context ctx;
+	double pp = impl_->pxPerPt;
+	int chPx = (int) std::ceil(chromeHeightPt() * pp);
+	int views = 0;
 
 	ci.img = impl_->pimg;
 	ci.wPx = impl_->wPx;
 	ci.hPx = impl_->hPx;
-	ci.pxPerPt = impl_->pxPerPt;
-	ci.cx0 = dx0;
-	ci.cy0 = dy0;
-	ci.cx1 = dx1;
-	ci.cy1 = dy1;
-	Context ctx;
-
+	ci.pxPerPt = pp;
 	ctx.impl_ = &ci;
-	gCurrent = &ctx;
-	gViewsDrawn = 0;
+	for (int i = 0; i < nrects; i++) {
+		int px0 = rects[i].x0, py0 = rects[i].y0;
+		int px1 = rects[i].x1, py1 = rects[i].y1;
+		double bx0, by0, bx1, by1;
 
-	double pp = impl_->pxPerPt;
-	/* 1. the background over the damage, outward-rounded so no sliver of
-	 * the previous frame survives at the edges (the clip keeps it in) */
-	double bx0 = std::floor(dx0 / pp), by0 = std::floor(dy0 / pp);
-	double bx1 = std::ceil(dx1 / pp), by1 = std::ceil(dy1 / pp);
+		if (px1 <= px0 || py1 <= py0) {
+			continue;
+		}
+		ci.cx0 = px0;
+		ci.cy0 = py0;
+		ci.cx1 = px1;
+		ci.cy1 = py1;
+		gCurrent = &ctx;
+		gViewsDrawn = 0;
+		/* 1. the background over THIS rect, outward-rounded so no sliver
+		 * of the previous frame survives at the edges (the clip keeps it
+		 * in) */
+		bx0 = std::floor(px0 / pp);
+		by0 = std::floor(py0 / pp);
+		bx1 = std::ceil(px1 / pp);
+		by1 = std::ceil(py1 / pp);
+		ctx.fillRect(Rect{ { bx0, by0 }, { bx1 - bx0, by1 - by0 } },
+			     bg_);
+		/* 2. the chrome, when THIS damage reaches it (the window's own:
+		 * no window manager draws it) */
+		if (style_ == WindowStyle::Titled
+		    && rectsIntersectPx(px0, py0, px1, py1, 0, 0,
+					(int) impl_->wPx, chPx)) {
+			drawChrome(ctx);
+		}
+		/* 3. the content tree, from the content origin, damage-limited
+		 * to this rect */
+		if (content_) {
+			Rect cr = contentRect();
 
-	ctx.fillRect(Rect{ { bx0, by0 }, { bx1 - bx0, by1 - by0 } }, bg_);
-	/* 2. the chrome, when the damage reaches it (the window's own: no
-	 * window manager draws it) */
-	int chPx = (int) std::ceil(chromeHeightPt() * pp);
-
-	if (style_ == WindowStyle::Titled
-	    && rectsIntersectPx(dx0, dy0, dx1, dy1, 0, 0, (int) impl_->wPx,
-				chPx)) {
-		drawChrome(ctx);
-	}
-	/* 3. the content tree, from the content origin, damage-limited */
-	if (content_) {
-		Rect cr = contentRect();
-
-		draw_view(content_, ctx,
-			  (int) std::floor(cr.origin.x * pp),
-			  (int) std::floor(cr.origin.y * pp), pp, dx0, dy0,
-			  dx1, dy1);
+			draw_view(content_, ctx,
+				  (int) std::floor(cr.origin.x * pp),
+				  (int) std::floor(cr.origin.y * pp), pp, px0,
+				  py0, px1, py1);
+		}
+		views += gViewsDrawn;
 	}
 	gCurrent = nullptr;
 	ctx.impl_ = nullptr;
@@ -1759,12 +1825,14 @@ Window::displayIfNeeded()
 	impl_->dirty = false;
 	if (timing) {
 		/* paint = our own rasterisation; flush = the XPutImage to X.
-		 * The split is what tells drawing apart from transport. */
+		 * The split is what tells drawing apart from transport. views is
+		 * the sum over the rects and rects is how many passes they took -
+		 * that pair is what shows whether a change was damage-limited. */
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
-			    "views=%d dmg=%dx%d\n",
+			    "views=%d rects=%d dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
-			    (long) impl_->wPx, (long) impl_->hPx, gViewsDrawn,
-			    dx1 - dx0, dy1 - dy0);
+			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
+			    ux1 - ux0, uy1 - uy0);
 		std::fflush(stdout);
 	}
 }
@@ -2565,6 +2633,10 @@ Window::flush()
 	XSync(gDpy, False);
 	impl_->dmgAll = false;
 	impl_->dmgX0 = impl_->dmgY0 = impl_->dmgX1 = impl_->dmgY1 = 0;
+	/* the PAINT LIST clears with the union: leaving it behind would repaint
+	 * those rects for ever (harmless - every rect is painted as a complete
+	 * picture - but the frame would never be damage-limited again) */
+	impl_->dmgN = 0;
 }
 
 /* the class record */
