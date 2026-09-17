@@ -130,14 +130,12 @@ run-ext2: .build/ovmf/OVMF.fd rootdisk64 build64
 # --- window) with demo windows + a console shell, from the real FSH root.
 # --- The image is the standard FSH rootfs plus a session.conf steering
 # --- init (init.c read_session -> start_xfb): `desktop = "xfb"` runs the
-# --- xdraw+xkey demo desktop; `desktop = "uitest"` runs the theme_chrome
-# --- acceptance board instead. Run from a terminal with DISPLAY set so
-# --- the GOP fb is shown in a GTK window:
+# --- xdraw+xkey demo desktop. (The `uitest` variant image, which ran the
+# --- removed theme_chrome board, is gone.) Run from a terminal with DISPLAY
+# --- set so the GOP fb is shown in a GTK window:
 # ---     make run-xfb      (demo desktop)
-# ---     make uitest       (theme_chrome UI test board)
 XFBROOT ?= .build/xfbdesk-root
 XFBIMG  ?= .build/rootagfs-xfbdesk.img
-UITESTIMG  ?= .build/rootagfs-uitest.img
 XFB_DEMO_BIN = .build/x11/xdraw .build/x11/xkey
 
 .build/x11/xdraw: userland/demos/xdraw.c
@@ -233,45 +231,22 @@ $(FNXLIB_CONFIG): userland/libconfig.c userland/libconfig.h
 		-o $@ userland/libconfig.c
 	ln -sf libconfig.so.1 $(FNXLIB)/libconfig.so
 
-# --- Argentum (docs/design/argentum-uikit-plan.md): FNX's C++ GUI toolkit. S0.1
-# skeleton = the namespace + Application/Window shells in one shared
-# libargentum.so.1 (same fnxlib staging + soname pattern as libconfig).
-# The C++ wrapper supplies the libc++/libc++abi/libunwind NEEDEDs and
-# the -shared crt pieces (crtbeginS/crtendS); X11 linkage arrives with
-# the session in S0.2.
-ARGENTUM_SRCS = userland/argentum/text.cpp userland/argentum/textstack.cpp \
-	userland/argentum/values.cpp \
-	userland/argentum/containers.cpp \
-	userland/argentum/tables.cpp \
-	userland/argentum/textview.cpp \
-	userland/argentum/object.cpp \
-	userland/argentum/notification.cpp userland/argentum/cell.cpp \
-	userland/argentum/control.cpp userland/argentum/viewcontroller.cpp \
-	userland/argentum/display.cpp userland/argentum/view.cpp \
-	userland/argentum/layout.cpp
-FNXLIB_ARGENTUM = $(FNXLIB)/libargentum.so.1
+# (The Argentum UIKit toolkit — libargentum.so.1, the ARGENTUM_SRCS list and its
+# shared-library rule — was removed 2026-09-17 when the toolkit was parked:
+# docs/design/argentum-uikit-plan.md (DEFERRED), branch park/argentum-uikit.)
 
-$(FNXLIB_ARGENTUM): $(ARGENTUM_SRCS) userland/argentum/argentum.h $(MUSL64_CXX)
-	@mkdir -p $(FNXLIB)
-	@if [ ! -d "$(X11PREFIX)/include/X11" ]; then \
-		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
-		exit 1; \
-	fi
-	@if [ ! -f "$(X11PREFIX)/include/freetype2/ft2build.h" ]; then \
-		echo "text stack missing - run the fontconfig/harfbuzz/freetype port first"; \
-		exit 1; \
-	fi
-	$(MUSL64_CXX) -fPIC -shared -Iuserland -I$(X11PREFIX)/include \
-		-I$(X11PREFIX)/include/pixman-1 \
-		-I$(X11PREFIX)/include/freetype2 -I$(X11PREFIX)/include/harfbuzz \
-		-I$(X11PREFIX)/include/fontconfig \
-		-L$(X11PREFIX)/lib -L$(FNXLIB) -Wl,-soname,libargentum.so.1 \
-		-o $@ $(ARGENTUM_SRCS) -lX11 -lXext -lpixman-1 \
-		-lfontconfig -lharfbuzz -lfreetype -lconfig
-	ln -sf libargentum.so.1 $(FNXLIB)/libargentum.so
 # C++: LLVM libc++/libc++abi/libunwind via tools/musl-clang++64.sh
 # (docs/cpp-toolchain-plan.md; runtimes built by the llvm-cxx target).
 MUSL64_CXX    = $(CURDIR)/tools/musl-clang++64.sh
+# Objective-C (docs/design/objc-toolchain-plan.md P2): the C++ wrapper plus the
+# gnustep-2.0 ABI, blocks, the runtime's headers and -lobjc.
+MUSL64_OBJC   = $(CURDIR)/tools/musl-clang-objc64.sh
+# The Foundation (docs/design/foundation-plan.md): F0's root class, built as a
+# shared library beside libconfig. The MRR and ARC files are compiled with their
+# OWN flags (ARC is a per-file choice, never a wrapper default) and -fPIC, because
+# a shared object cannot take the ABI's PC-relative ivar-offset relocations.
+FOUNDATION_SRC = userland/foundation
+FOUNDATION_LIB = $(FNXLIB)/libfoundation.so.1
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile
 LLVM_CXX_PREFIX = .build/llvm-cxx-prefix
@@ -280,7 +255,13 @@ ROOTFS64      = .build/rootfs64
 DASH64_BIN    = third_party/dash/src/dash64
 TOYBOX64_BIN  = third_party/toybox/toybox64
 
-.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint toolchain-gate
+.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint toolchain-gate foundation-gate
+
+# The clean-room wall's mechanical half (docs/design/foundation-plan.md §2): no
+# GNUstep/ObjFW/Apple-Foundation header import by first-party code, and never the
+# runtime's legacy <objc/Object.h>.
+foundation-gate:
+	@python3 tools/foundation-gate.py
 
 # FSH porting linter gate (proposal 6.1/Q1): zero-allow on System/Tools.
 fshlint:

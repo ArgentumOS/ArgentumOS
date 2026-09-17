@@ -1,0 +1,19 @@
+/*
+ * Foundation.h — the umbrella.
+ *
+ * A consumer writes `#import <foundation/Foundation.h>`. The path is lower-case
+ * on purpose: Apple's Foundation is <Foundation/…>, and the wall's gate fails
+ * the build if a first-party file ever imports that spelling.
+ *
+ * docs/design/foundation-plan.md — F0 ships the ROOT CLASS. It ships no pool
+ * class, because the RUNTIME adopts any class named NSAutoreleasePool as its own
+ * pool object (§6 of the plan), so pools are the runtime's and ARC's
+ * `@autoreleasepool` is the interface to them.
+ */
+
+#ifndef FOUNDATION_FOUNDATION_H
+#define FOUNDATION_FOUNDATION_H
+
+#import <foundation/NSObject.h>
+
+#endif /* FOUNDATION_FOUNDATION_H */

@@ -69,13 +69,13 @@ names the layers; the identifiers name the machinery.
   Template/` copied to each new user, a classic-workstation global
   menubar (system menu, bold app menu, File/Edit/View/Window/Help,
   right-side extras, click-time menu validation).
-- **GUI**: X11 desktop — **Xfb** (native X server, owns /dev/fb0)
-  with the **Argentum** from-scratch C++ toolkit (Cocoa-resemblant API,
-  pixman vector chrome, real-point units) and the **Kestrel** window
-  manager (global menubar); no Wayland; a first-party terminal — the
-  **libvterm** emulation core (MIT) behind an Argentum view
+- **GUI**: X11 desktop — **Xfb** (native X server, owns /dev/fb0) plus raw-Xlib
+  client demos; no Wayland. The **Argentum** from-scratch C++ toolkit
+  (Cocoa-resemblant API, px/pt units) and the **Kestrel** window manager were
+  built, then PARKED (2026-09-17): `docs/design/argentum-uikit-plan.md`
+  (DEFERRED) is the record, including the measured cost. A first-party
+  terminal is planned — the **libvterm** emulation core (MIT) behind a view
   (docs/design/terminal-plan.md).
-  Design: docs/design/argentum-uikit-plan.md + docs/design/argentum-uikit-catalog.md.
 - **Initial release**: eight apps — Workspace, Terminal, Editor,
   Settings, Viewer, Calculator, Installer, Disks — plus `config`,
   `acl`, and `mkfs` tools.

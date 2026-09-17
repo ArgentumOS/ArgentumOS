@@ -217,7 +217,42 @@ closed by finding the permissive member, never by accepting GPL.
 
 MIT like the rest of the house code). No pinned third-party version and
 no new build-time requirement: it is one C++ source built by the
-existing `MUSL64_CXX` recipe against in-tree `libargentum` + `libconfig` + the X11 prefix, staged as an ordinary bundle by `make userland64` /
-`make rootagfs`. Its document format is the house `.conf` grammar via the
-in-tree `InterfaceDocument` model — no new parser, no new data files, so
-the self-hosted rebuild path is the userland build itself.
+existing `MUSL64_CXX` recipe against in-tree `libconfig` + the X11 prefix,
+staged as an ordinary bundle by `make userland64` / `make rootagfs`. Its
+document format is the house `.conf` grammar via `libconfig` — no new parser, no
+new data files, so the self-hosted rebuild path is the userland build itself.
+(The C++ toolkit `libargentum` and the `InterfaceDocument` model it carried were
+parked on 2026-09-17: docs/design/argentum-uikit-plan.md, DEFERRED.)
+
+**Objective-C runtime (2026-09)**: **libobjc2** v2.3 (commit `e877e782`) and its
+one dependency **robin-map** v1.4.1 (commit `bd14e683`), both **MIT** — libobjc2's
+own `COPYING` is the authority (some distro specs still say GPL, a stale
+carry-over from before the GPL'd runtime code was removed upstream; the tree's
+evaluation doc has been corrected accordingly). Pinned by
+`tools/fetch-libobjc2.sh` **by commit**, because libobjc2's CMakeLists otherwise
+FetchContent's robin-map from an unpinned git URL. Built for the guest by
+`make libobjc64` (cmake + make + the clang wrappers, against `.build/musl64`), with
+`third_party/libobjc2-fnx.patch` carrying the two FNX fixes (`LINKER_LANGUAGE
+C -> CXX`; robin-map's includes for the static target). Toolchain seam:
+`tools/musl-clang-objc64.sh`. Acceptance: `tests/cases/objc_smoke.py`.
+docs/design/objc-toolchain-plan.md.
+
+*Self-hosting state:* the build needs **no scripting dependency** (no python, no
+perl) — which is why it fits this manifest. Two gaps to close before an
+*on-guest* ObjC rebuild is complete: the runtime's headers (`include/objc/`) are
+not staged on the guest, and upstream's static `libobjc.a` omits the Objective-C++
+sources (`arc.mm`), so ARC code can only be linked against the shared library —
+the artefact we ship.
+
+**The Foundation (2026-09)**: the first-party class library on libobjc2 — F0 is
+`NSObject`, in `userland/foundation/`, built as **`libfoundation.so.1`** by the
+`$(FOUNDATION_LIB)` rule (make + the clang wrappers; **no scripting dependency**)
+and staged into `/System/Libraries/`. **Its public headers ARE staged**, to
+`/System/Shared/Headers/foundation/`, which closes the half of the gap the entry
+above records for Objective-C: an on-guest ObjC rebuild now has the *Foundation's*
+headers (the runtime's own `objc/…` still need staging). Clean-room by decision,
+enforced rather than promised: `tools/foundation-gate.py`, run by a
+`foundation-gate` target in `userland64`, fails the build on any GNUstep, ObjFW or
+Apple-Foundation header import and on the runtime's legacy `objc/Object.h`
+(`docs/design/foundation-plan.md` §2). The v1 class list, the phases F0–F5 and the
+measured traps are in that plan; the acceptance is `tests/cases/foundation_core.py`.

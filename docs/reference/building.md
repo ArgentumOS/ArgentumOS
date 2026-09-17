@@ -19,10 +19,6 @@ images, and the X server — all from one tree, all with one compiler.
    enforces that no gcc/g++ appears in the build definition).
  - For the QEMU harness: `qemu-system-x86_64` and the OVMF firmware
    image (fetched by `tools/fetch-ovmf.sh` or `make ovmf`).
- - For the host toolkit build only (`make hostapps`, `make run-host`):
-   `pkg-config` and the development packages for X11, Xext, pixman,
-   fontconfig, HarfBuzz and FreeType, plus a running X server for
-   `run-host`. The guest build does not need any of them.
 
 ## Building
 
@@ -54,7 +50,8 @@ The classic Unix kernel layout, with the userland and documentation
 organized by purpose:
 
     Makefile, mk/*.mk   top-level driver + per-area fragments (mk/00-base,
-                        10-toolchain, 20-userland, 30-images, 40-kernel)
+                        10-toolchain, 20-userland, 30-images, 40-kernel,
+                        50-tests)
     kernel/             the real kernel (main.c start_kernel, init, sched,
                         process, syscalls/, ...)
     kernel/boot64/      the UEFI boot half: EFI entry, long-mode setup, and
@@ -81,13 +78,11 @@ minix -> ext2 -> iso9660 -> agfs):
     make run-uefi            # OVMF + esp.img + rootagfs.img + a virtio-net NIC
     make run-ext2            # same, but booting the legacy ext2 root (.build/root.img)
     make run-xfb             # same, but a root preconfigured to boot the X11 (Xfb) desktop
-    make uitest              # ...the UIKit session (theme_chrome) on Xfb
-    make zoo                 # ...Kestrel (WM) + the Widget Zoo bundle: the control board
 
-`make kestrel-img` builds the same kind of preconfigured root for the
-window-manager-only session (used by the Kestrel gates); the sessions are
-chosen by `desktop = "..."` in `/System/Configuration/session.conf`, and
-init defaults to the demo desktop when the file is absent.
+The sessions are chosen by `desktop = "..."` in
+`/System/Configuration/session.conf`, and init defaults to the demo desktop
+when the file is absent. (The `uitest` / `zoo` / `kestrel-img` variants went
+away with the UIKit work; see `docs/design/argentum-uikit-plan.md`, DEFERRED.)
 
 By default the harness falls back to SeaBIOS unless `FNX_QEMU_BIOS=ovmf`
 is exported. The ESP image is written by `./tools/mkesp.sh` (run
@@ -114,44 +109,14 @@ probe tree that gets installed at `/System/Shared/tests/`.
 
 ## Building and running the toolkit on the host
 
-The Argentum UIKit is plain C++ over Xlib - it calls nothing FNX-specific (no
-syscalls, no `/dev`, no FSH paths, and `displayOpen()` already honours
-`$DISPLAY`) and links only X11, pixman, fontconfig, HarfBuzz and FreeType. So
-the same sources build against the host's libraries and run on the host's X
-server, which turns a toolkit edit from an image rebuild plus a QEMU boot into
-a few seconds:
+The Argentum UIKit was plain C++ over Xlib, so the SAME sources also built and
+ran on the host (`make hostlib` / `hostapps` / `host-tests` / `run-host`) -
+against the host's X11, pixman, fontconfig, HarfBuzz and FreeType, with no
+kernel, Xfb or FSH in the path.
 
-    make hostlib             # libconfig + libargentum for this machine
-    make hostapps            # WidgetZoo + the toolkit test binaries
-    make host-tests          # run them (each prints its own verdict)
-    make run-host            # the Widget Zoo on $DISPLAY
-
-`make host-tests` needs no display for seven of the nine binaries; `run-host`
-needs a live X server and says so if `$DISPLAY` is unset or dead. The build
-lands in `.build/host/` and never touches `.build/64` or `.build/rootagfs.img`.
-The compiler is the same clang the system build uses, aimed at the host's
-glibc/libstdc++ instead of musl/libc++.
-
-**What a host run is not.** It never touches the kernel, Xfb, the framebuffer,
-`/dev` input, USB HID, the FSH config domains or the session's px/pt factor. A
-host run can say "the toolkit does this"; it cannot say "the OS does this".
-The guest gates above stay the verification of record - a host run is for
-looking at a change quickly, not for claiming one.
-
-It does pay for itself in another way: because the host toolchain is a
-different standard library, it catches toolkit code that only compiled by
-accident. It found three such things the first time it ran (a `#include
-<ctime>` sitting inside `namespace argentum`, and `values.cpp` calling
-`std::cos`/`std::sin`/`std::strcmp` without including `<cmath>`/`<cstring>`).
-
-And for the same reason - the host has a real, *reparenting* window manager,
-where Xfb has none - it also catches behaviour that only worked by accident.
-The first one: `Window::pumpEvent()` adopted the size from every
-`ConfigureNotify`, so under mutter a window fought its own `setFrame` and
-flickered between two geometries every frame (Xfb never showed it, because it
-sends exactly one `ConfigureNotify`, for the size the toolkit itself asked
-for). Worth remembering when a host run looks wrong: ask what the guest is
-**not** doing, not just what the host is doing differently.
+**Those targets were REMOVED on 2026-09-17 along with the toolkit itself**
+(the `mk/60-host.mk` fragment is gone). What the host run was for, and what it
+found, is recorded in `docs/design/argentum-uikit-plan.md` (DEFERRED).
 
 Once the shell is up (the tools live under `/System/Tools`, device
 names use the `@` shorthand or `/System/Devices`, scratch mounts go

@@ -389,11 +389,13 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[])
 }
 
 /* Which desktop session init should run, from /System/Configuration/
- * session.conf (the standard image writes `desktop = "kestrel"`; the
- * variant images write "xfb" / "uitest" / "zoo"). S5.1: the DEFAULT is
- * the Argentum desktop — a missing file or an unknown value boots
- * Kestrel, not the xdraw+xkey demo clients. The demo is still reachable
- * by name (`make run-xfb`, `desktop = "xfb"`). */
+ * session.conf. The one client that exists today is Xfb (`desktop = "xfb"`:
+ * Xfb on :0 plus a console shell), which is what the standard image writes and
+ * what `make run-xfb` uses. The `uitest` / `zoo` / `kestrel` values named the
+ * Argentum UIKit's desktop clients; the toolkit and the Kestrel window manager
+ * were parked in 2026-09 (docs/design/argentum-uikit-plan.md, DEFERRED), so Xfb
+ * is now also the DEFAULT: a missing file, or a value this build has no client
+ * for, must not try to launch a binary that is not there. */
 enum session_kind {
 	SESSION_XFB,
 	SESSION_UITEST,
@@ -405,9 +407,9 @@ static enum session_kind read_session(void)
 {
 	FILE *f;
 	char line[256];
-	/* S5.1: the desktop; the UIKit restart (2026-09) leaves it with no
-	 * client until the new class layer lands (Xfb + the console) */
-	enum session_kind kind = SESSION_KESTREL;
+	/* The parked clients are still recognised by name, so an old
+	 * session.conf reads as written; only Xfb has a client. DEFAULT. */
+	enum session_kind kind = SESSION_XFB;
 
 	f = fopen("/System/Configuration/session.conf", "r");
 	if (!f)

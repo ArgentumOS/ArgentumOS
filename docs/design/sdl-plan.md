@@ -72,6 +72,10 @@ window visible on the desktop, tone audible through the same
 OSS family the wired drivers already verify.
 
 ### S3 — UIKit-embeddable SDL view (the sanctioned bridge)
+
+> NOTE (2026-09-17): the Argentum UIKit (`libargentum`) is PARKED, so this
+> bridge has no container to attach to yet. Record:
+> `docs/design/argentum-uikit-plan.md` (DEFERRED).
 SDL apps must not be separate windows floating beside the desktop;
 they embed inside Argentum windows like any UIKit content.
 Architecture — X11-idiomatic, **no SDL fork**:

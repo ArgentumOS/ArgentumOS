@@ -1,0 +1,174 @@
+/*
+ * nsobject.m — the root class.
+ *
+ * THE ONE MRR FILE. ARC forbids implementing -retain/-release (measured:
+ * `error: ARC forbids implementation of 'retain'`), and a root class has to
+ * implement them, so this file is compiled with -fno-objc-arc while the rest of
+ * the library is ARC. That is the seam the plan describes, not an accident.
+ */
+
+#import <foundation/NSObject.h>
+#include <objc/objc-arc.h>
+
+/*
+ * The runtime's ownership entry points. The reference count is kept in a word
+ * before the allocation, so these — and not a count of our own — are the single
+ * source of truth for both ARC and MRR callers.
+ */
+extern id objc_retain(id obj);
+extern void objc_release(id obj);
+extern id objc_autorelease(id obj);
+extern id object_dispose(id obj);
+
+@implementation NSObject
+
++ (id)alloc
+{
+	return class_createInstance(self, 0);
+}
+
++ (id)new
+{
+	return [[self alloc] init];
+}
+
+- (id)init
+{
+	return self;
+}
+
+/*
+ * THE MARKER, AND WHY IT IS NOT OPTIONAL.
+ *
+ * The runtime decides whether a class may use its fast (word-based) reference
+ * count by looking for exactly this method: a class that implements
+ * -retain/-release/-autorelease WITHOUT it has objc_class_flag_fast_arc *cleared*
+ * (dtable.c: checkARCAccessorsSlow, which scans cls->methods for the selector
+ * `_ARCCompliantRetainRelease` and returns early when it is missing). When the
+ * flag is absent the runtime's objc_retain() does not use the count word — it
+ * MESSAGES -retain (arc.mm: `return ManualRetainReleaseMessage(obj, retain, …)`)
+ * — and since -retain here calls objc_retain(), that is infinite recursion:
+ * measured as a SIGSEGV in -[NSObject retain] with a backtrace of nothing but
+ * that method, stack overflowing.
+ *
+ * The body is empty by design: the marker means "my hand-written lifetime
+ * methods are ARC-correct", and ours are, because they delegate to the runtime's
+ * own count. The runtime's own test suite marks its classes exactly this way
+ * (Test/FastARC.m).
+ */
+- (void)_ARCCompliantRetainRelease
+{
+}
+
+- (id)retain
+{
+	return objc_retain(self);
+}
+
+- (oneway void)release
+{
+	objc_release(self);
+}
+
+- (id)autorelease
+{
+	return objc_autorelease(self);
+}
+
+- (unsigned long)retainCount
+{
+	/*
+	 * The runtime's count accessor (objc/objc-arc.h). The `_np` suffix is the
+	 * runtime's own note that it is non-portable *across runtimes* — fine here,
+	 * where the Foundation and the runtime are one thing. Cocoa discourages
+	 * reading this in anger; it is part of the contract, and the tests use it.
+	 */
+	return (unsigned long)object_getRetainCount_np(self);
+}
+
+- (void)dealloc
+{
+	/*
+	 * The ROOT class is where the allocation goes away: at reference count 0
+	 * the runtime sends -dealloc and does NOT free afterwards (arc.mm:
+	 * `[obj dealloc];` in the release path), so this is the free. Subclasses
+	 * release their own state and reach here through the super chain — which
+	 * an ARC-compiled subclass does automatically, since clang emits
+	 * objc_msg_lookup_super(dealloc) even though ARC forbids *writing*
+	 * `[super dealloc]`.
+	 */
+	object_dispose(self);
+}
+
++ (Class)class
+{
+	return self;
+}
+
++ (Class)superclass
+{
+	return class_getSuperclass(self);
+}
+
++ (BOOL)isSubclassOfClass:(Class)aClass
+{
+	Class c;
+
+	for (c = self; c != Nil; c = class_getSuperclass(c)) {
+		if (c == aClass) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+- (Class)class
+{
+	return object_getClass(self);
+}
+
+- (Class)superclass
+{
+	return class_getSuperclass(object_getClass(self));
+}
+
+- (BOOL)isKindOfClass:(Class)aClass
+{
+	Class c;
+
+	for (c = object_getClass(self); c != Nil; c = class_getSuperclass(c)) {
+		if (c == aClass) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass
+{
+	return object_getClass(self) == aClass;
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector
+{
+	return (aSelector != NULL) &&
+	       class_respondsToSelector(object_getClass(self), aSelector);
+}
+
+- (BOOL)isEqual:(id)other
+{
+	return self == other;
+}
+
+- (unsigned long)hash
+{
+	return (unsigned long)(uintptr_t)self;
+}
+
+- (NSString *)description
+{
+	/* F1 (NSString) replaces this body: an NSString naming the class. */
+	return nil;
+}
+
+@end

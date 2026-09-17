@@ -32,7 +32,9 @@ unchanged (FNX, FSH, AGFS, Xfb, `finch`).
 
 | doc | status |
 |---|---|
-| `design/argentum-uikit-plan.md` | DECIDED — the GUI toolkit direction |
+| `design/argentum-uikit-plan.md` | **DEFERRED** — the GUI toolkit direction + its measured record (parked 2026-09-17) |
+| `design/objc-toolchain-plan.md` | **DRAFT** — Objective-C: clang frontend + the libobjc2 runtime, and the language for the Cocoa-parity class library |
+| `design/foundation-plan.md` | **DRAFT** — the clean-room first-party Foundation: the object/memory/collections core, ARC, house names |
 | `design/argentum-hig.md` | DECIDED — interface guidelines apps follow (not code-enforced) |
 | `design/x11-xvfb-fb-plan.md` | active X11-on-FNX plan (Xfb implemented to M3) |
 | `design/llvm-clang-toolchain-plan.md` | one compiler = clang; M0-M4 DONE |

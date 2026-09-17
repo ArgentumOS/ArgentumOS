@@ -116,9 +116,9 @@ class Case(BaseCase):
         # from one in-memory buffer — while a SECOND file-backed face of one
         # font still failed with new=2. That "2" was never an open count: it
         # was FreeType's stream mapping the font, and the mapping returning
-        # zeros (see check I above). The toolkit does not need FreeType's file
+        # zeros (see check I above). The toolkit did not need FreeType's file
         # path to behave differently any more (one face per family+bold, sized
-        # per use, userland/argentum/text.cpp), and the FONT2 lines stay in
+        # per use; the toolkit is parked, 2026-09), and the FONT2 lines stay in
         # this case's evidence, below, where they say exactly what they said
         # while the font was being blamed.
         # exactly what they said while the font was being blamed.

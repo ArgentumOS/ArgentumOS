@@ -113,3 +113,71 @@ $(COMPILER_RT_CRTENDS): .build/llvm-src/compiler-rt/lib/builtins/crtend.c $(MUSL
 # static - and staged under System/Shared/tests (a lint carve-out tree,
 # so the static ELF does not trip the System/Tools zero-allow gate).
 M0CLANG_DIR = $(ROOTFS64)/System/Shared/tests
+
+# --- Objective-C runtime (libobjc2) for the musl userland ---------------
+# docs/design/objc-toolchain-plan.md P1. An EXPLICIT target, deliberately
+# NOT in userland64's dependency chain: the sources need a fetch (network)
+# and nothing ships the runtime yet, so it must not enter the default
+# build. P3 is what stages it and wires the guest gate.
+#
+# Same contract as llvm-cxx above: no CMAKE_SYSROOT (the clang wrappers
+# carry the musl/FSH link contract), and CMAKE_TRY_COMPILE_TARGET_TYPE=
+# STATIC_LIBRARY so the configure probes don't try to LINK a musl binary.
+# All four compilers are set because libobjc2 enables both OBJC and OBJCXX.
+OBJC_SRC        = .build/libobjc2-src
+OBJC_BUILD      = .build/objc-build
+OBJC_PREFIX     = .build/objc-prefix
+OBJC_STAMP      = $(OBJC_PREFIX)/.installed
+OBJC_SOURCES    = .build/libobjc2-src/.pinned
+ROBINMAP_SRC    = .build/robin-map
+ROBINMAP_PREFIX = .build/robin-map-prefix
+ROBINMAP_STAMP  = $(ROBINMAP_PREFIX)/.installed
+
+$(OBJC_SOURCES): tools/fetch-libobjc2.sh
+	./tools/fetch-libobjc2.sh
+	touch $@
+
+# robin-map is header-only. Installing our PINNED copy is what keeps
+# libobjc2's `find_package(tsl-robin-map)` from falling back to
+# FetchContent-ing an unpinned robin-map at configure time.
+$(ROBINMAP_STAMP): $(OBJC_SOURCES) $(ROBINMAP_SRC)/CMakeLists.txt
+	rm -rf .build/robin-map-build $(ROBINMAP_PREFIX)
+	cmake -G "Unix Makefiles" -S $(ROBINMAP_SRC) -B .build/robin-map-build \
+	  -DCMAKE_INSTALL_PREFIX=$(CURDIR)/$(ROBINMAP_PREFIX) \
+	  -DCMAKE_BUILD_TYPE=Release
+	cmake --install .build/robin-map-build
+	touch $@
+
+.PHONY: libobjc64
+libobjc64: $(OBJC_STAMP)
+
+$(OBJC_STAMP): $(OBJC_SOURCES) third_party/libobjc2-fnx.patch $(ROBINMAP_STAMP) $(MUSL64_LIBC) $(LLVM_CXX_STAMP)
+	rm -rf $(OBJC_BUILD) $(OBJC_PREFIX)
+	# FNX port patch (third_party/libobjc2-fnx.patch), applied idempotently:
+	#  * LINKER_LANGUAGE C -> CXX. Upstream links the runtime with the C
+	#    driver; a Debian/glibc `cc -shared` silently supplies crtbeginS.o
+	#    (and so __dso_handle), but the FNX C wrapper deliberately does NOT
+	#    add crt objects to a -shared link ("plain C needs none"), so the
+	#    .so link died on `undefined reference to __dso_handle`. The runtime
+	#    contains C++ (objcxx_eh.cc) and its EH interop must pair with OUR
+	#    libc++abi, so the C++ driver is the correct linker here.
+	#  * the STATIC target must see robin-map's include dirs (upstream only
+	#    links tsl::robin_map into the shared target), or selector_table.cc
+	#    fails with 'tsl/robin_set.h' file not found.
+	@cd $(OBJC_SRC) && (git apply --reverse --check $(CURDIR)/third_party/libobjc2-fnx.patch 2>/dev/null \
+		|| git apply $(CURDIR)/third_party/libobjc2-fnx.patch)
+	cmake -G "Unix Makefiles" -S $(OBJC_SRC) -B $(OBJC_BUILD) \
+	  -DCMAKE_C_COMPILER=$(CURDIR)/tools/musl-clang64.sh \
+	  -DCMAKE_CXX_COMPILER=$(CURDIR)/tools/musl-clang++64.sh \
+	  -DCMAKE_OBJC_COMPILER=$(CURDIR)/tools/musl-clang64.sh \
+	  -DCMAKE_OBJCXX_COMPILER=$(CURDIR)/tools/musl-clang++64.sh \
+	  -DCMAKE_INSTALL_PREFIX=$(CURDIR)/$(OBJC_PREFIX) \
+	  -DCMAKE_BUILD_TYPE=Release \
+	  -DCMAKE_PREFIX_PATH=$(CURDIR)/$(ROBINMAP_PREFIX) \
+	  -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+	  -DGNUSTEP_INSTALL_TYPE=NONE -DCMAKE_INSTALL_LIBDIR=lib \
+	  -DTESTS=OFF -DOLDABI_COMPAT=OFF -DLLVM_OPTS=OFF \
+	  -DBUILD_STATIC_LIBOBJC=ON
+	cmake --build $(OBJC_BUILD) -j$$(nproc)
+	cmake --install $(OBJC_BUILD)
+	touch $@

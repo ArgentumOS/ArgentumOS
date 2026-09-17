@@ -13,6 +13,15 @@ conditional on GNUstep adoption and are now **moot** (kept for the
 record). The toolkit direction returns to candidate A (Momo/Motif fork)
 vs a from-scratch native toolkit from the momo_* spec.
 
+> **Correction (2026-09-17).** The "Alpine is existence proof" line above is
+> **not substantiated** and should not be reused: Alpine's `libobjc` in `main`
+> is **GCC's** (GPL), not libobjc2, and GNUstep is poorly tested on musl
+> (`gnustep/libs-base#356` — ICU/locale failures; the reporter used GCC +
+> vanilla libobjc). Nothing above changes: **GNUstep stays rejected.** But the
+> *runtime* (libobjc2) is a far smaller target than gnustep-base and is planned
+> separately, with the musl build as its explicit risk gate —
+> `docs/design/objc-toolchain-plan.md`.
+
 Toolchain doctrine is unchanged by this: one system compiler = Clang,
 languages open per subsystem (the plain-C rule stays gone).
 

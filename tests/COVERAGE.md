@@ -22,6 +22,8 @@ removed rather than forgotten.
 | Filesystem (AGFS root) | `fs_agfs` | the mount table (`mount`), a create/write/read round trip, `cp` + `cmp` agreeing, `chmod` + `acl get`, a config domain reading through |
 | procfs / devfs / devpts | `procfs_devfs` | the procfs tree under `/System/Processes` (version, meminfo, self/status, the tree itself), the devfs bus directories, the pty multiplexer, the zero device, and the devpts mount being listed without error |
 | Audio | `audio` | the HDA driver claims the card, an OSS device exists, `/System/Tools/tone` writes samples, no host backend errors |
+| Objective-C runtime | `objc_smoke` | the runtime loads on the guest: a class implemented in ONE translation unit and its CATEGORY in another both register, plus a protocol, a property, blocks, ARC, `@try/@catch`, `@synchronized` and an autorelease pool — all eleven checks asserted by name, with the probe's own tally and its exit status |
+| Foundation root class | `foundation_core` | `NSObject`'s three lifetimes reach `-dealloc` exactly once through the runtime's fast-ARC path, the default `isEqual:`/`hash`, identity and introspection, the RUNTIME's pools with `libfoundation` linked, and a subclass defined in a second translation unit — all five asserted by name, plus the tally and the exit status |
 | Window manager input | `wm_dock` (slow) | dock geometry at the screen edge, a tile click launches its app, the frame stays clear of the dock column, the running dot appears, a second click raises without relaunching |
 | Repository hygiene | `host_fshlint` | the FSH path linter is clean over the staged userland (no QEMU) |
 
@@ -109,10 +111,9 @@ survey and got the layout wrong. This is the part that pays for the harness:
 10. **USB storage hotplug** - attach/detach and a read-back.
 11. **Crash consistency** (slow) - XBFS/AGFS kill cycles: write, kill, remount,
     assert.
-12. **UI toolkit acceptance** - the ~15 committed Argentum probes
-    (`viewtree_*`, `widgets_*`, `structure_*`, `textview_*`) draw but print no
-    markers, so each needs its own screenshot assertion; the historical
-    `.build/s2*` gates encode those expectations.
+12. **UI toolkit acceptance** - N/A (parked): the Argentum UIKit and its
+    `uikit_*` gates were removed on 2026-09-17
+    (`docs/design/argentum-uikit-plan.md`, DEFERRED).
 13. **WM chrome** (slow) - frame resize/zoom/toolbar (`.build/s43_assert.py`),
     menus and dropdown picks (S4.2b), focus swap, drags.
 14. **rlimits** - `RLIMIT_AS`/`RLIMIT_DATA` are unenforced
@@ -130,5 +131,5 @@ survey and got the layout wrong. This is the part that pays for the harness:
   boots QEMU by construction.
 * **Wall-clock performance** - the gate corpus has profiling runs
   (`ARGENTUM_DRAW_MS`, frame timing), but a timing assertion is a flake generator.
-* **A full X client suite** - the X server is exercised through the toolkit and
-  the WM, not by porting `x11perf`/`xterm`.
+* **A full X client suite** - `Xfb` is exercised through the raw-Xlib probes
+  (`x_move`, `x_keys`, `xshm_*`, `xclick`), not by porting `x11perf`/`xterm`.

@@ -1,0 +1,23 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3f07337..7340fdf 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -273,7 +273,7 @@ endif()
+ target_link_libraries(objc PRIVATE tsl::robin_map)
+ 
+ set_target_properties(objc PROPERTIES
+-	LINKER_LANGUAGE C
++	LINKER_LANGUAGE CXX
+ 	SOVERSION ${libobjc_VERSION}
+ 	OUTPUT_NAME ${LIBOBJC_NAME}
+ 	LINK_FLAGS "${objc_LINK_FLAGS}"
+@@ -287,6 +287,9 @@ if (BUILD_STATIC_LIBOBJC)
+ 	set_target_properties(objc-static PROPERTIES
+ 		POSITION_INDEPENDENT_CODE true
+ 		OUTPUT_NAME ${LIBOBJC_NAME})
++	# FNX: the static target must see the same robin-map include dirs
++	# the shared target gets, or selector_table.cc cannot find tsl/robin_set.h.
++	target_link_libraries(objc-static PRIVATE tsl::robin_map)
+ 	list(APPEND INSTALL_TARGETS objc-static)
+ endif ()
+ 

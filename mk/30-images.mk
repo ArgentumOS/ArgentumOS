@@ -8,12 +8,10 @@ rootdisk64: userland64
 # (make run / run-uefi); 64MB leaves headroom for the X11 userland (Xfb
 # is a ~16MB static binary).
 rootagfs: userland64 m0clang
-	# S5.1: the standard image IS the Argentum desktop — init reads this
-	# and runs Xfb + Kestrel as the session. The variant images
-	# (xfbdesk/uitest/zoo/kestrel-root) overwrite it in their own staging
-	# dir, so the demo desktop stays reachable by name (`make run-xfb`).
-	# the UIKit restart (2026-09): the class layer and its apps are gone,
-	# so the session boots Xfb + a console shell and nothing else.
+	# The session boots Xfb + a console shell and nothing else: the class
+	# layer and its apps were removed in the 2026-09 UIKit restart, and the
+	# toolkit itself is parked (docs/design/argentum-uikit-plan.md, DEFERRED).
+	# `make run-xfb` still reaches the demo desktop by name.
 	printf 'desktop = "xfb"\n' > $(ROOTFS64)/System/Configuration/session.conf
 	# 64MB stopped being enough when the tree reached ~60MB: the session
 	# then failed to start (WORKSPACE "init failed", KESTREL "no display")
@@ -31,7 +29,7 @@ rootagfs: userland64 m0clang
 	# cause was elsewhere entirely — the GUEST lets one file be open only
 	# twice, and the toolkit opened a font face per SIZE, so its second size
 	# was a third open and FreeType reports a failed READ as a bad format
-	# (fixed in userland/argentum/text.cpp; the probe that proved it is
+	# (fixed by keeping one face per style; the probe that proved it is
 	# userland/tests/font_twice.cpp). Raising the size is still right on its
 	# own terms, and the way to watch it is mkagfs's own "blocks: N
 	# referenced" against the volume's block count.

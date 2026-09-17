@@ -84,7 +84,20 @@ xfb64: $(FNXLIB_CONFIG)
 # toybox installs applets into PREFIX/{bin,sbin,usr/...} per toy flags;
 # stage into a scratch root and merge every applet dir into System/Tools.
 TOYBOX64_STAGE = .build/toybox-root
-userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(FNXLIB_ARGENTUM) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+
+# The Foundation (docs/design/foundation-plan.md F0): the root class, as a shared
+# library beside libconfig. Declared HERE, not in mk/00-base.mk, because a make
+# target's name and prerequisites are expanded when the rule is READ - and
+# $(OBJC_STAMP) only exists once mk/10-toolchain.mk has been included.
+$(FOUNDATION_LIB): $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/NSObject.h \
+		$(FOUNDATION_SRC)/Foundation.h $(OBJC_STAMP)
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_OBJC) -c -fPIC -Wno-objc-root-class -fno-objc-arc -Iuserland \
+		$(FOUNDATION_SRC)/nsobject.m -o .build/foundation-nsobject.o
+	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
+		.build/foundation-nsobject.o -o $@
+	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
+userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -154,71 +167,36 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
 	$(MUSL64_CC) userland/tools/init.c -o "$(ROOTFS64)/System/Tools/init"
 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
-	# units_probe: Argentum S1.1 acceptance — prints the session
-	# px/pt factor (Application::pxPerPt). The S1.1 gate runs it with
-	# system.display width_mm/height_mm unset (expect 4/3 fallback)
-	# then after `config write -s system.display ...` (expect 8/3 =
-	# 2x). Needs the X session like the demo.
-	# layout_solve: U0 acceptance (docs/design/cocoa-parity-plan.md) —
-	# the Auto Layout model + solver, display-free: constraints are
-	# solved and the resulting frames asserted.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/layout_solve.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/layout_solve"
-	# view_layout: U0b acceptance (docs/design/cocoa-parity-plan.md) —
-	# the View layout lifecycle: springs/struts reflow, the constraint
-	# pass during layout, and the layout() override point. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/view_layout.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/view_layout"
-	# stack_view: U5 acceptance (docs/design/cocoa-parity-plan.md) — the
-	# StackView, whose arrangement IS constraints: the chain, the cross
-	# axis, all six distributions, insets, custom spacing and detached
-	# hidden views. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/stack_view.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/stack_view"
-	# scroll_view: U5b acceptance (docs/design/cocoa-parity-plan.md) — the
-	# ScrollView: the offset is clamped to content-less-hole, the document's
-	# frame never moves, the bars are derived from the same numbers, the
-	# wheel and the arrows scroll it. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/scroll_view.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/scroll_view"
-	# collection_view: U5c acceptance (docs/design/cocoa-parity-plan.md) — the
-	# FlowLayout's arithmetic (the wrap, the frames, the height) and the
-	# CollectionView placing items and SIZING ITSELF to the flow. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/collection_view.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/collection_view"
-	# tab_view: U5d acceptance (docs/design/cocoa-parity-plan.md) — the tab
-	# strip's arithmetic (where each tab is, what a point falls on, where the
-	# panes go) and what a selection does to the panes. Display-free; the
-	# PRESS is the board's half of the case.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/tab_view.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/tab_view"
-	# split_view: U5e acceptance (docs/design/cocoa-parity-plan.md) — the
-	# panes, the dividers and the arithmetic they share (where a divider is,
-	# what a point falls on, where the panes go), including the clamp. The
-	# DRAG is the board's half of the case.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/split_view.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/split_view"
-	# grid_view: U5f acceptance (docs/design/cocoa-parity-plan.md) — the cells,
-	# the column and row measurements, the placement, the fitting size, and
-	# that laying out twice is the same as laying out once. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/grid_view.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/grid_view"
+	# objc_smoke: the Objective-C runtime (docs/design/objc-toolchain-plan.md
+	# P2/P3). TWO translation units on purpose: the class is implemented in
+	# objc_smoke_support.m and its CATEGORY in objc_smoke.m, because cross-TU
+	# class registration is the case that was misdiagnosed during P1 - it stays
+	# in the acceptance now. The support unit is MRR (a root class cannot be
+	# ARC), the other is ARC; they link into one binary.
+	# -Wno-objc-root-class: SmokeObject IS a root class, deliberately.
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -Iuserland/tests \
+		userland/tests/objc_smoke_support.m -o .build/objc-smoke-support.o
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland/tests \
+		userland/tests/objc_smoke.m -o .build/objc-smoke-main.o
+	$(MUSL64_OBJC) .build/objc-smoke-support.o .build/objc-smoke-main.o \
+		-o "$(ROOTFS64)/System/Shared/tests/objc_smoke"
+	# foundation_core: F0 acceptance (docs/design/foundation-plan.md). Two units
+	# AND two ownership regimes: the subclass and the MRR lifetime exercises in
+	# the support unit, the checks in the ARC unit. The ARC flag is EXPLICIT -
+	# the wrapper never adds it - and without it clang emits no release at all and
+	# the pool check fails (measured).
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -fno-objc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_core_support.m -o .build/foundation-core-support.o
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_core.m -o .build/foundation-core-main.o
+	$(MUSL64_OBJC) .build/foundation-core-support.o .build/foundation-core-main.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
+	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
+	# collection_view, tab_view, split_view, grid_view, kvc_basic,
+	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
+	# control_click, text_stack — and the Widget Zoo were removed with the
+	# toolkit, 2026-09-17: docs/design/argentum-uikit-plan.md, DEFERRED.)
 	# font_twice: TEMPORARY DIAGNOSTIC - asks the guest's own FreeType whether
 	# it can open one font file twice (the toolkit keeps a face per size, so a
 	# second size is a second FT_New_Face). No toolkit, no fontconfig.
@@ -226,62 +204,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-I$(X11PREFIX)/include/freetype2 -L$(X11PREFIX)/lib \
 		userland/tests/font_twice.cpp -lfreetype \
 		-o "$(ROOTFS64)/System/Shared/tests/font_twice"
-	# kvc_basic: U1 acceptance (docs/design/cocoa-parity-plan.md) — the
-	# base object's class chain and by-name property access. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/kvc_basic.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/kvc_basic"
-	# notification_basic: U1b acceptance (docs/design/cocoa-parity-plan.md)
-	# — NotificationCenter delivery rules. Display-free.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/notification_basic.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/notification_basic"
-	# cell_basic: U1c acceptance (docs/design/cocoa-parity-plan.md) — the
-	# cell's content/state/measurement and target/action dispatch.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/cell_basic.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/cell_basic"
-	# viewcontroller_basic: U1d acceptance (docs/design/cocoa-parity-plan.md)
-	# — the controller lifecycle, view ownership and containment.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/viewcontroller_basic.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/viewcontroller_basic"
-	# window_draw: U2a acceptance (docs/design/cocoa-parity-plan.md) — the
-	# display path: a real window, its own chrome, and a content view
-	# drawing through the context.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/window_draw.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/window_draw"
-	# control_click: U2b acceptance (docs/design/cocoa-parity-plan.md) —
-	# input + Control + Button: a real click fires the action, a toggle
-	# flips, the titlebar drags the window, the close box closes it.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/control_click.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/control_click"
 	# x_move: raw-Xlib window mover — attributes a window-move wedge
 	# between the server (Xfb) and any client, with no toolkit involved.
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/x_move.cpp -lX11 \
 		-o "$(ROOTFS64)/System/Shared/tests/x_move"
-	# Widget Zoo: the board every control is shown on (the standing rule).
-	# It lives in /Applications, where the FSH puts apps.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/apps/widgetzoo.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/Applications/WidgetZoo"
-	# text_stack: U3a acceptance (docs/design/cocoa-parity-plan.md) — the
-	# text stack: storage, editing, wrapping, truncation, hit testing.
-	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-		userland/tests/text_stack.cpp -largentum -lX11 -lconfig \
-		-o "$(ROOTFS64)/System/Shared/tests/text_stack"
 	# x_keys: raw-Xlib key reader — proves a typed key reaches the guest's X
 	# server with no toolkit in the path (the keyboard's x_move).
 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
@@ -451,21 +379,24 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
-	# UIKit reference (docs/design/uikit-documentation-plan.md): the
-	# first-party extractor writes one Markdown page per public class and
-	# FAILS the build when a public declaration has no doc comment — the
-	# documentation rides with the class it describes.
-	python3 tools/uikitdoc.py --out "$(ROOTFS64)/System/Documentation/UIKit"
+	# The Objective-C runtime (docs/design/objc-toolchain-plan.md P3): same
+	# rule as libconfig and the C++ stack - the versioned file, whose SONAME
+	# ("libobjc.so.4.6") the guest loader resolves. Upstream tries to suppress
+	# the soname with a malformed set_property() call, so it has one.
+	@cp $(OBJC_PREFIX)/lib/libobjc.so.4.6 "$(ROOTFS64)/System/Libraries/libobjc.so.4.6"
+	# The Foundation (docs/design/foundation-plan.md F0): the same staging rule.
+	@cp $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
+	# Its PUBLIC HEADERS, which is what makes an on-guest Objective-C rebuild
+	# possible - the gap docs/design/self-hosting-packages.md §6 records for the
+	# runtime. Lower-case directory on purpose: <foundation/...>, never Apple's.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/foundation"
+	@cp $(FOUNDATION_SRC)/*.h "$(ROOTFS64)/System/Shared/Headers/foundation/"
 
-	# FNX's C++ GUI toolkit (first-party): libargentum.so.1 staged under
-	# the same rule — argentum_hello (S0.1) NEEDs it at runtime.
-	@cp $(FNXLIB_ARGENTUM) "$(ROOTFS64)/System/Libraries/libargentum.so.1"
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the
 	# dynamic-C++ milestone). Same staging rule as the X stack: the glob
 	# carries the soname symlink + the versioned real file; the bare dev
-	# symlink is link-time only and skipped. cpp_smoke (and libargentum
-	# later) NEED these sonames at runtime.
+	# symlink is link-time only and skipped. cpp_smoke NEEDs these sonames at runtime.
 	@if [ ! -d "$(LLVM_CXX_PREFIX)/lib" ]; then \
 		echo "llvm-cxx prefix missing - run make llvm-cxx first"; \
 		exit 1; \
@@ -473,7 +404,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@for l in libc++.so libc++abi.so libunwind.so; do \
 		cp -a $(LLVM_CXX_PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
-	# --- shared text stack (docs/design/argentum-uikit-plan.md): fontconfig +
+	# --- shared text stack (the X11/font port, tools/x11-shared-build.sh): fontconfig +
 	# HarfBuzz + FreeType + the libpng/expat leaves, built SHARED into the
 	# X prefix. Only what a consumer NEEDs today is staged (libharfbuzz-
 	# subset/gobject are left out until something links them); the glob
@@ -495,26 +426,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# Overridable first-party defaults ship in Shared (plan §5.0); a
 	# System copy overrides them (Xfb reads via resolved libconfig reads).
 	@cp userland/configuration/system.xfb.conf "$(ROOTFS64)/Shared/Configuration/system.xfb.conf"
-	# Argentum session defaults (S0.5, domain system.argentum): same
-	# Shared-scope convention; the S0.5 acceptance overrides via
-	# `config write -s system.argentum ...` (System wins on read).
-	@cp userland/configuration/system.argentum.conf \
-		"$(ROOTFS64)/Shared/Configuration/system.argentum.conf"
 	# Argentum display physical size (S1.1, domain system.display): the
 	# FNX-owned panel's real mm; 0 = unknown -> 96 dpi (4/3 px/pt)
 	# fallback. The S1.1/S1.4 gates override via `config write -s
 	# system.display display.width_mm <mm> display.height_mm <mm>`.
 	@cp userland/configuration/system.display.conf \
 		"$(ROOTFS64)/Shared/Configuration/system.display.conf"
-	# Argentum active theme (S1.3, domain system.theme): names the
-	# theme file under /Shared/Themes. Same Shared-scope convention.
-	@cp userland/configuration/system.theme.conf \
-		"$(ROOTFS64)/Shared/Configuration/system.theme.conf"
-	# Argentum theme files (S1.3, plan §3 Themes): plain .conf data
-	# under /Shared/Themes/<name>.conf, read raw via config_read_file
-	# (NOT domains — they live outside the Configuration/ scope dirs).
-	@cp userland/configuration/themes/Argentum.conf \
-		"$(ROOTFS64)/Shared/Themes/Argentum.conf"
 	# --- the Admin home: the User Template, copied (Q9) ---
 	rm -rf "$(ROOTFS64)/Users"
 	@mkdir -p "$(ROOTFS64)/Users"

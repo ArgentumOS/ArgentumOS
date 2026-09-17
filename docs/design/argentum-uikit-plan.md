@@ -1,17 +1,123 @@
-# Argentum UIKit — the FNX toolkit plan (from-scratch C++)
+# Argentum UIKit — DEFERRED (parked 2026-09-17)
 
-Status: **DECIDED (direction, 2026-09).** FNX's GUI toolkit is the
-**Argentum UIKit**: a from-scratch **C++ toolkit over X11**, built on
-the stack FNX already owns. It was conceived under the working name
-"Shrike" (the butcher bird — small, sharp), renamed to **Argentum**
-when the monobrand decision (2026-09) made Argentum the single house
-brand qualified by layer; the engineering identifiers are the
-namespace `argentum::`, `libargentum.so`, and the `userland/argentum/`
-source tree. This supersedes the Motif-fork direction
-(`docs/archive/motif-fork-plan.md`,
-`docs/archive/momo-coding-plan.md` — kept as records) and the EMWM fork decision
-(`docs/archive/emwm-window-manager.md`); the view catalog is now defined by
-`docs/design/argentum-uikit-catalog.md` (Snow Leopard-parallel target).
+Status: **DEFERRED (2026-09-17) — the user's call: park the C++ UIKit work
+safely and remove it from the active tree.** This document is now the RECORD of
+what was built and what it cost, not an active plan. §1 onward is the design as
+it stood when the work was parked (purpose, architecture, chrome, catalog, the
+Kestrel/menu designs). It was not wrong and nothing in it is deleted.
+
+The toolkit was the **Argentum UIKit**: a from-scratch **C++ toolkit over X11**,
+built on the stack FNX already owns. Conceived under the working name "Shrike",
+renamed to **Argentum** at the monobrand decision (2026-09); the identifiers are
+the namespace `argentum::`, `libargentum.so`, and the `userland/argentum/`
+source tree. It supersedes the Motif-fork direction
+(`docs/archive/motif-fork-plan.md`, `docs/archive/momo-coding-plan.md` — kept as
+records) and the EMWM fork decision (`docs/archive/emwm-window-manager.md`); the
+view catalog is `docs/design/argentum-uikit-catalog.md` (Snow Leopard-parallel).
+
+## 0. What was parked, what survives, and how to get it back
+
+**PARKED — removed from the tree, recoverable in full:**
+
+- `userland/argentum/` — the library (14 `.cpp` + `argentum.h` + `text_utf8.h`,
+  ~19.4k lines), its `mk/00-base.mk` `ARGENTUM_SRCS` + `$(FNXLIB_ARGENTUM)` rule,
+  and the `/System/Libraries/libargentum.so.1` staging;
+- `userland/apps/widgetzoo.cpp` — the Widget Zoo board (the standing rule's
+  surface);
+- the 15 toolkit probes in `userland/tests/`: `cell_basic`, `control_click`,
+  `layout_solve`, `view_layout`, `stack_view`, `scroll_view`, `collection_view`,
+  `tab_view`, `split_view`, `grid_view`, `kvc_basic`, `notification_basic`,
+  `viewcontroller_basic`, `window_draw`, `text_stack` (and their mk rules);
+- the 22 `tests/cases/uikit_*.py` gates;
+- `mk/60-host.mk` — the host build (`hostlib` / `hostapps` / `host-tests` /
+  `run-host`);
+- `tools/uikitdoc.py` and the `/System/Documentation/UIKit` staging;
+- `userland/configuration/system.argentum.conf`, `system.theme.conf`,
+  `themes/Argentum.conf` and their staging.
+
+**RECOVERY — in-repo; no external archive is needed:**
+
+```
+git checkout park/argentum-uikit-u6a -- <paths>   # restore selected paths
+git checkout park/argentum-uikit                  # restore the whole parked tree
+```
+
+Both refs sit at `1fdf92f4` ("U6a: the row model — rows, identity and selection,
+shared by both views"): the branch `park/argentum-uikit` and the annotated tag
+`park/argentum-uikit-u6a`.
+
+**SURVIVES — not the toolkit's:** the C++ toolchain (libc++/libc++abi/libunwind,
+`cpp_smoke`, `docs/design/cpp-toolchain-plan.md`); Xfb and the raw-Xlib probes
+(`x_move`, `x_keys`); the font/text *libraries* the toolkit linked (the
+fontconfig / HarfBuzz / FreeType ports); and every other design doc —
+`cocoa-parity-plan.md` (the U-series record), `argentum-uikit-catalog.md`,
+`argentum-hig.md`, the S-series splits, `terminal-plan.md`. The standard image
+already ships `desktop = "xfb"` (Xfb + a console shell), so a guest still boots.
+
+## 0a. What it cost, measured (the expensive part — keep these)
+
+These are the numbers the runs produced. The ones that were WRONG are kept too,
+because the way a number was wrong is the lesson.
+
+- **The paint was never coarse — a correction.** The U2a damage model did the
+  PUSH over MIT-SHM and the PAINT walked only the subtrees intersecting the
+  damage (`draw_view` returns before descending into one that cannot). One slider
+  drag step on the zoo, `ARGENTUM_PAINT_MS=1`:
+  `views walked 3, damage 240x24, paint 10ms, flush 0ms` — against a
+  once-per-structural-change full frame of `52 views, 1106x448, paint 1060ms,
+  flush 50ms`. What is expensive is the PIXELS a full repaint rasterises, not the
+  width of the damage. `uikit_u4` came to assert the pruning
+  (`a-small-damage-walks-a-small-part-of-the-tree`), so a regression that made
+  one control's drag repaint the tree failed the gate.
+- **A drag's real cost was EVENT INTAKE, not paint.** `Window::pumpEvent()`
+  handled ONE event per pass while the application painted once per pass, so a
+  drag could only follow the pointer at the paint rate (~50–70/s). One drag: 46
+  events still being chewed through **2.71 s after the hand stopped**, 63 paints,
+  the divider crawling in behind the cursor. After draining a run of motion events
+  and dispatching only the latest (non-motion events `XPutBackEvent`-ed so a
+  release is never lost): 120 events became 3 moves and 20 paints, catch-up
+  **2.71 s → 0.20 s**.
+- **A coarse damage model drops input, measurably.** Before the SplitView work,
+  each drag step repainted the whole board and the guest DROPPED 5 of 10 drag
+  steps. A divider-only event came to cost
+  `paint=0.0ms views=2 fillpx=1200 dmg=6x100` instead of a whole-split repaint.
+  What was left of a drag step is the panes' own `setFrame` damage — the parked
+  copy-on-drag (`dec-2ef665304e989ea2`) would have removed it.
+- **ONE ARITHMETIC for draw and hit test** is the rule every container converged
+  on (the tab strip's rects, the dividers, `columnWidth`/`rowHeight`). It is what
+  makes "what is measured cannot disagree with what is placed" checkable, and it
+  is the property the probes were written to assert.
+- **The host build is not verification.** The same sources built and ran on the
+  host over Xlib (`make run-host`, `DISPLAY`) in seconds instead of an image
+  rebuild plus a QEMU boot — but a host run never touches the kernel, Xfb, `/dev`
+  input, USB HID, the FSH config domains, or the px/pt factor. The guest gates
+  stayed the verification of record.
+- **A different standard library finds what compiled by accident.** The first
+  host run caught three: a `#include <ctime>` sitting inside `namespace argentum`,
+  and `values.cpp` calling `std::cos`/`std::sin`/`std::strcmp` without including
+  `<cmath>`/`<cstring>`.
+- **A real, reparenting window manager finds what worked by accident.** Under the
+  host WM (Xfb has none) `Window::pumpEvent()` adopted the size from every
+  `ConfigureNotify`, so a window fought its own `setFrame` and flickered between
+  two geometries every frame; Xfb never showed it, because it sends exactly one
+  `ConfigureNotify`, for the size the toolkit asked for (`3400451d`). Worth
+  remembering when a host run looks wrong: ask what the guest is NOT doing, not
+  just what the host does differently.
+- **Measure the pointer; do not assume it.** Asking for `y=120` put the X pointer
+  at `y=959` — the test guest's monitor Y is MIRRORED relative to the request.
+- **One face per style, not per size.** The guest's "font failure" (`ft=2`) was
+  one font-file open per face, not a two-open limit; fixed by keeping one face
+  per style (`aad1045a`).
+- **Where it stopped.** U6a landed the row model only (`TableDataSource` +
+  `RowModel` in `userland/argentum/{argentum.h,tables.cpp}`); `TableView`'s view
+  half was never built and the `row_model` probe was never written. `Browser`, the
+  U7 panels/toolbar and the rest of the U-series are unstarted.
+- **The gate lesson, generally.** Assert a PAIR (the pass ran AND the property
+  held), and read the log AFTER the thing asserted about has happened: an
+  interaction in progress is not something to judge (wait for the end marker),
+  and a case that passes vacuously is worse than one that fails. Xfb's drain is
+  asynchronous, so a screenshot taken on the strength of a log line can
+  photograph an undrained screen.
 
 ## 1. Why (from the record)
 
