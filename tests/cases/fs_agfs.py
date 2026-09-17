@@ -86,4 +86,48 @@ class Case(BaseCase):
         self.check("config-domain-readable", "hostname" in conf,
                    "system.network.conf reads back through the config tool")
 
+        # --- the identity + name domains, read by LIBC ------------------
+        # P3d's instrument (docs/design/plist-config-plan.md): musl renders
+        # system.passwd.conf / system.group.conf through its own in-libc module
+        # (src/passwd/pwconf.c) and resolves names through the hosts domain. This
+        # has to be GREEN ON THE LEGACY FILES before those domains convert —
+        # otherwise a plist-reader bug would look like a conversion failure.
+        #
+        # `id` prints the account and group NAMES, which can only come from the
+        # two domains (they are the only source of identity names in this
+        # system); `ls -l` names an owner through the same getpwuid call.
+        mark = len(session.log_text())
+        session.run("id")
+        ident = session.output_since(mark)
+        self.check("account-domains-read-by-libc",
+                   "uid=0(Admin)" in ident and "gid=0(Admin)" in ident,
+                   "id resolved both names from the identity domains"
+                   if "uid=0(Admin)" in ident
+                   else "id said: " + ident.strip()[:160])
+
+        mark = len(session.log_text())
+        session.run("ls -l /System/Tools/sh")
+        owner = session.output_since(mark)
+        self.check("owner-name-resolved",
+                   "Admin" in owner,
+                   "ls -l named the owner through getpwuid"
+                   if "Admin" in owner
+                   else "ls -l said: " + owner.strip()[:160])
+
+        # THE HOSTS DOMAIN HAS NO INSTRUMENT HERE YET, and that is recorded
+        # rather than papered over: musl reads it in the same in-libc module
+        # (lookup_name -> __pwconf_hosts_fopen), but every caller in this image
+        # reaches it through a socket FIRST — `ping` needs an ICMP DGRAM socket,
+        # refused while no interface is up ("socket SOCK_DGRAM 3a: Invalid
+        # argument"), and no other shipped tool resolves a name. The hosts leg of
+        # P3d therefore needs either a NIC+DHCP in the test or a resolver probe;
+        # until one exists this check only proves the FILE is readable.
+        mark = len(session.log_text())
+        session.run("config read system.hosts")
+        hosts = session.output_since(mark)
+        self.check("hosts-domain-readable",
+                   "localhost" in hosts,
+                   "system.hosts.conf reads back through the config tool — NOT "
+                   "yet a musl resolution (see the note above)")
+
         session.run("rm -rf " + TMP)
