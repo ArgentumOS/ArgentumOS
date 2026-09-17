@@ -26,6 +26,7 @@
 #include <stdio.h>
 #import <foundation/NSArray.h>
 #import <foundation/NSData.h>
+#import <foundation/NSError.h>
 
 /*
  * THE FORMAT ENGINE, and the one conversion it has to get right is the va_arg
@@ -497,6 +498,29 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	return result;
 }
 
++ (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments
+{
+	/*
+	 * Cocoa's class-level form, and NOT decoration: +raise:format: in NSException
+	 * goes through it, and the F4 probe is what noticed it missing.
+	 *
+	 * THE COPY IS REQUIRED BY THE STANDARD, not defensive habit: a va_list handed
+	 * to a function that consumes it leaves the CALLER's copy indeterminate
+	 * (C99 7.15.1.4), so the caller's va_end then runs on an indeterminate list —
+	 * measured as a crash the moment this method was called. Consuming a copy
+	 * leaves the incoming one valid for its owner.
+	 */
+	va_list copy;
+	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:@""];
+	NSString *result;
+
+	va_copy(copy, arguments);
+	string_append_format(built, format, copy);
+	va_end(copy);
+	result = [[NSOwnedString alloc] initWithUTF8String:[built UTF8String]];
+	return result;
+}
+
 - (id)initWithFormat:(NSString *)format arguments:(va_list)args
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
@@ -940,6 +964,256 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 - (NSArray *)pathComponents
 {
 	return [self componentsSeparatedByString:@"/"];
+}
+
+/* ------------------------------------------------- the ranged and localised forms
+ *
+ * The locale arguments are ACCEPTED AND IGNORED, and the header says so: this
+ * Foundation ships no locale data, so the localised comparisons answer exactly as
+ * the unlocalised ones do. Returning the unlocalised answer is honest; pretending
+ * to localise would not be.
+ */
+- (NSComparisonResult)compare:(NSString *)other
+		      options:(NSStringCompareOptions)options
+			range:(NSRange)range
+{
+	/* Compared as the two ranged substrings, which is what the range means. */
+	return [[self substringWithRange:range] compare:[other substringWithRange:range]
+						options:options];
+}
+
+- (NSComparisonResult)compare:(NSString *)other
+		      options:(NSStringCompareOptions)options
+			range:(NSRange)range
+		       locale:(id)locale
+{
+	(void)locale;
+	return [self compare:other options:options range:range];
+}
+
+- (NSComparisonResult)localizedCompare:(NSString *)other
+{
+	return [self compare:other];
+}
+
+- (NSComparisonResult)localizedCaseInsensitiveCompare:(NSString *)other
+{
+	return [self caseInsensitiveCompare:other];
+}
+
+- (NSRange)rangeOfString:(NSString *)substring
+		 options:(NSStringCompareOptions)options
+		   range:(NSRange)range
+		  locale:(id)locale
+{
+	(void)locale;
+	return [self rangeOfString:substring options:options range:range];
+}
+
+- (NSString *)uppercaseStringWithLocale:(id)locale
+{
+	(void)locale;
+	return [self uppercaseString];
+}
+
+- (NSString *)lowercaseStringWithLocale:(id)locale
+{
+	(void)locale;
+	return [self lowercaseString];
+}
+
+- (const char *)cStringUsingEncoding:(NSStringEncoding)encoding
+{
+	size_t i;
+
+	if (encoding == NSUTF8StringEncoding) {
+		/*
+		 * The storage itself. For an owned or constant string the pointer is
+		 * stable; for a TAGGED one it is the shared scratch ring, so two calls in
+		 * one expression alias — the F1 lesson, and the reason -byteAtIndex:
+		 * exists for comparisons.
+		 */
+		return [self UTF8String];
+	}
+	if (encoding == NSASCIIStringEncoding) {
+		for (i = 0; i < [self length]; i++) {
+			if ([self byteAtIndex:i] > 0x7F) {
+				return NULL;
+			}
+		}
+		return [self UTF8String];
+	}
+	return NULL;		/* an encoding we do not store */
+}
+
+/* ------------------------------------------------------------------ composition */
+- (NSString *)stringByAppendingPathExtension:(NSString *)extension
+{
+	if ([extension length] == 0) {
+		return [[NSOwnedString alloc] initWithUTF8String:[self UTF8String]];
+	}
+	return [self stringByAppendingFormat:@".%@", extension];
+}
+
+- (NSString *)stringByPaddingToLength:(NSUInteger)newLength
+			   withString:(NSString *)pad
+		      startingAtIndex:(NSUInteger)index
+{
+	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:[self UTF8String]];
+	NSUInteger padLength = [pad length];
+
+	if (newLength <= [self length] || padLength == 0) {
+		return built;
+	}
+	if (index >= padLength) {
+		index = 0;
+	}
+	while ([built length] < newLength) {
+		NSUInteger taken = 0;
+
+		while (taken < padLength && [built length] < newLength) {
+			[built appendString:utf8_substring(pad, (index + taken) % padLength, 1)];
+			taken++;
+		}
+	}
+	return built;
+}
+
+- (NSString *)stringByReplacingCharactersInRange:(NSRange)range withString:(NSString *)replacement
+{
+	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:@""];
+	size_t size = [self length];
+	size_t start = range.location;
+	size_t end;
+
+	if (start > size) {
+		start = size;
+	}
+	end = start + range.length;
+	if (end > size) {
+		end = size;
+	}
+	[built appendString:[self substringToIndex:start]];
+	[built appendString:replacement];
+	[built appendString:[self substringFromIndex:end]];
+	return built;
+}
+
+/* ------------------------------------------------------------------------ paths */
+- (BOOL)isAbsolutePath
+{
+	return ([self length] > 0 && [self byteAtIndex:0] == '/') ? YES : NO;
+}
+
+- (NSString *)stringByStandardizingPath
+{
+	/*
+	 * LEXICAL AND FILESYSTEM-FREE, which is what the name promises here: collapse
+	 * repeated slashes, drop "." components, and resolve ".." by popping the last
+	 * component. No symlinks are followed and nothing is looked up — there is no
+	 * filesystem in this library to look anything up in.
+	 */
+	NSArray *parts = [(NSString *)self pathComponents];
+	NSMutableArray *stack = [[NSMutableArray alloc] init];
+	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
+	NSUInteger i;
+	int absolute = [self isAbsolutePath];
+
+	for (i = 0; i < [parts count]; i++) {
+		NSString *part = [parts objectAtIndex:i];
+
+		if ([part length] == 0 || [part isEqualToString:@"."]) {
+			continue;
+		}
+		if ([part isEqualToString:@".."]) {
+			if ([stack count] > 0) {
+				[stack removeLastObject];
+			}
+			continue;
+		}
+		[stack addObject:part];
+	}
+	if (absolute) {
+		[built appendString:@"/"];
+	}
+	for (i = 0; i < [stack count]; i++) {
+		if (i > 0) {
+			[built appendString:@"/"];
+		}
+		[built appendString:[stack objectAtIndex:i]];
+	}
+	if ([built length] == 0) {
+		return absolute ? [[NSOwnedString alloc] initWithUTF8String:"/"]
+				: [[NSOwnedString alloc] initWithUTF8String:"."];
+	}
+	return built;
+}
+
+/* -------------------------------------------------------------------- the files
+ *
+ * Through NSData, which owns the byte-level file handling: this class only has to
+ * decide what the bytes MEAN, and the error out parameter is honoured so a caller
+ * can tell why the read or write failed.
+ */
++ (id)stringWithContentsOfFile:(NSString *)path
+		      encoding:(NSStringEncoding)encoding
+			 error:(NSError **)errorPtr
+{
+	NSData *data = [NSData dataWithContentsOfFile:path options:NSDataReadingDefault error:errorPtr];
+	NSString *result;
+
+	if (data == nil) {
+		return nil;
+	}
+	result = [[self alloc] initWithData:data encoding:encoding];
+	if (result == nil && errorPtr != NULL) {
+		*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain"
+						code:261
+					    userInfo:[NSDictionary dictionaryWithObject:
+							@"The file could not be decoded in the requested encoding."
+								      forKey:NSLocalizedDescriptionKey]];
+	}
+	return result;
+}
+
++ (id)stringWithContentsOfFile:(NSString *)path
+		  usedEncoding:(NSStringEncoding *)encoding
+			 error:(NSError **)errorPtr
+{
+	NSData *data = [NSData dataWithContentsOfFile:path options:NSDataReadingDefault error:errorPtr];
+	NSString *result;
+
+	if (data == nil) {
+		return nil;
+	}
+	/* One encoding is stored, so that is what was used. */
+	result = [[self alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	if (result != nil && encoding != NULL) {
+		*encoding = NSUTF8StringEncoding;
+	}
+	return result;
+}
+
+- (BOOL)writeToFile:(NSString *)path
+	 atomically:(BOOL)useAuxiliaryFile
+	   encoding:(NSStringEncoding)encoding
+	      error:(NSError **)errorPtr
+{
+	NSData *encoded = [self dataUsingEncoding:encoding];
+
+	if (encoded == nil) {
+		if (errorPtr != NULL) {
+			*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain"
+							code:517
+						    userInfo:[NSDictionary dictionaryWithObject:
+								@"The string cannot be represented in that encoding."
+									  forKey:NSLocalizedDescriptionKey]];
+		}
+		return NO;
+	}
+	return [encoded writeToFile:path
+			    options:(useAuxiliaryFile ? NSDataWritingAtomic : NSDataWritingDefault)
+			      error:errorPtr];
 }
 
 

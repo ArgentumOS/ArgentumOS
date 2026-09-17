@@ -120,43 +120,124 @@ int main(void)
 
 
 	{
-		/* THE HARD RULE, mechanically: every public NSString/NSMutableString
-		 * selector must EXIST. This list is the audit turned into something that
-		 * fails a gate instead of living in prose. */
+		/*
+		 * THE AUDITED COCOA INVENTORY, not a list of what we happened to declare.
+		 *
+		 * The previous version of this check was SELF-REFERENTIAL: it asserted
+		 * that every selector in OUR headers existed, which cannot see a method we
+		 * never declared — and that is precisely how +stringWithFormat:arguments:
+		 * shipped missing while this reported "complete". The lists below are the
+		 * DOCUMENTED Cocoa surface, split into what we implement and what we
+		 * deliberately do not, and the check runs BOTH ways: everything in
+		 * `implemented` must exist, and everything in `excluded` must NOT (so
+		 * shipping one of them forces the inventory to be updated rather than
+		 * quietly widening the gap).
+		 */
 		static const char *classSelectors[] = {
-			"string", "stringWithString:", "stringWithUTF8String:",
-			"stringWithFormat:", NULL
+			"string",
+			"stringWithString:",
+			"stringWithUTF8String:",
+			"stringWithFormat:",
+			"stringWithFormat:arguments:",
+			"stringWithContentsOfFile:encoding:error:",
+			"stringWithContentsOfFile:usedEncoding:error:",
+			NULL
 		};
 		static const char *instanceSelectors[] = {
-			"init", "initWithString:", "initWithUTF8String:", "initWithFormat:",
-			"initWithFormat:arguments:", "initWithData:encoding:",
-			"UTF8String", "length", "characterCount", "byteAtIndex:",
-			"characterAtIndex:", "lengthOfBytesUsingEncoding:", "dataUsingEncoding:",
-			"isEqualToString:", "compare:", "caseInsensitiveCompare:",
-			"compare:options:", "hasPrefix:", "hasSuffix:", "containsString:",
-			"rangeOfString:", "rangeOfString:options:", "rangeOfString:options:range:",
-			"uppercaseString", "lowercaseString", "capitalizedString",
-			"substringFromIndex:", "substringToIndex:", "substringWithRange:",
-			"stringByAppendingString:", "stringByAppendingFormat:",
+			"init",
+			"initWithString:",
+			"initWithUTF8String:",
+			"initWithFormat:",
+			"initWithFormat:arguments:",
+			"initWithData:encoding:",
+			"length",
+			"characterCount",
+			"byteAtIndex:",
+			"characterAtIndex:",
+			"UTF8String",
+			"lengthOfBytesUsingEncoding:",
+			"dataUsingEncoding:",
+			"cStringUsingEncoding:",
+			"isEqualToString:",
+			"compare:",
+			"caseInsensitiveCompare:",
+			"compare:options:",
+			"compare:options:range:",
+			"compare:options:range:locale:",
+			"localizedCompare:",
+			"localizedCaseInsensitiveCompare:",
+			"hasPrefix:",
+			"hasSuffix:",
+			"containsString:",
+			"rangeOfString:",
+			"rangeOfString:options:",
+			"rangeOfString:options:range:",
+			"rangeOfString:options:range:locale:",
+			"uppercaseString",
+			"lowercaseString",
+			"capitalizedString",
+			"uppercaseStringWithLocale:",
+			"lowercaseStringWithLocale:",
+			"substringFromIndex:",
+			"substringToIndex:",
+			"substringWithRange:",
+			"stringByAppendingString:",
+			"stringByAppendingFormat:",
+			"stringByAppendingPathComponent:",
+			"stringByAppendingPathExtension:",
+			"stringByPaddingToLength:withString:startingAtIndex:",
 			"stringByReplacingOccurrencesOfString:withString:",
 			"stringByReplacingOccurrencesOfString:withString:options:range:",
+			"stringByReplacingCharactersInRange:withString:",
 			"componentsSeparatedByString:",
-			"intValue", "integerValue", "longLongValue", "floatValue",
-			"doubleValue", "boolValue",
-			"lastPathComponent", "pathExtension", "stringByDeletingLastPathComponent",
-			"stringByDeletingPathExtension", "stringByAppendingPathComponent:",
+			"lastPathComponent",
+			"pathExtension",
 			"pathComponents",
-			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+			"stringByDeletingLastPathComponent",
+			"stringByDeletingPathExtension",
+			"stringByStandardizingPath",
+			"isAbsolutePath",
+			"intValue",
+			"integerValue",
+			"longLongValue",
+			"floatValue",
+			"doubleValue",
+			"boolValue",
+			"writeToFile:atomically:encoding:error:",
+			"isEqual:",
+			"hash",
+			"description",
+			"copy",
+			"mutableCopy",
+			NULL
 		};
 		static const char *mutableClassSelectors[] = {
-			"string", "stringWithCapacity:", NULL
+			"string", "stringWithCapacity:", "stringWithString:", NULL
 		};
 		static const char *mutableSelectors[] = {
-			"initWithCapacity:", "setString:",
-			"appendString:", "appendUTF8String:", "appendFormat:",
-			"insertString:atIndex:", "deleteCharactersInRange:",
+			"initWithCapacity:", "setString:", "appendString:", "appendFormat:",
+			"appendUTF8String:", "insertString:atIndex:", "deleteCharactersInRange:",
 			"replaceCharactersInRange:withString:",
-			"replaceOccurrencesOfString:withString:options:range:", NULL
+			"replaceOccurrencesOfString:withString:options:range:",
+			"stringByAppendingFormat:", NULL
+		};
+
+		/*
+		 * DELIBERATELY ABSENT, and asserted absent: each of these is Cocoa API we
+		 * do not ship, and every one is recorded in the plan's checklist with its
+		 * reason. Adding one to the library without moving it out of this list
+		 * fails the check, so the inventory cannot drift away from the code.
+		 */
+		static const char *excluded[] = {
+			"stringWithCharacters:length:",
+			"initWithCharacters:length:",
+			"initWithCharactersNoCopy:length:freeWhenDone:",
+			"getCharacters:range:",
+			"rangeOfCharacterFromSet:",
+			"componentsSeparatedByCharactersInSet:",
+			"stringByTrimmingCharactersInSet:",
+			"propertyList",
+			NULL
 		};
 		NSString *probe = @"x";
 		NSMutableString *mutable = [[NSMutableString alloc] init];
@@ -187,9 +268,17 @@ int main(void)
 				printf("FOUNDATION-STRING missing -%s (mutable)\n", mutableSelectors[i]);
 			}
 		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING present but EXCLUDED: %s (move it into the inventory)\n",
+				       excluded[i]);
+			}
+		}
 		check("string-api-complete", complete,
-		      "every public NSString/NSMutableString selector exists (the hard rule)");
+		      "the audited Cocoa inventory: every implemented selector exists, and nothing listed as excluded does");
 	}
+
 
 	{
 		/* The format engine: conversions, width/precision, and Cocoa's (null). */

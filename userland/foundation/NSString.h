@@ -46,6 +46,7 @@
  * imports if NSData or NSArray ever needed to come back here). */
 @class NSData;
 @class NSArray;
+@class NSError;
 
 
 /* Cocoa's option set, reduced to the ones a UTF-8 byte comparison can honour. */
@@ -73,6 +74,13 @@ typedef enum {
 + (id)stringWithString:(NSString *)other;
 + (id)stringWithUTF8String:(const char *)utf8;
 + (id)stringWithFormat:(NSString *)format, ...;
++ (id)stringWithContentsOfFile:(NSString *)path
+			  encoding:(NSStringEncoding)encoding
+			     error:(NSError **)errorPtr;
++ (id)stringWithContentsOfFile:(NSString *)path
+		  usedEncoding:(NSStringEncoding *)encoding
+			 error:(NSError **)errorPtr;
++ (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments;
 
 - (id)init;
 - (id)initWithString:(NSString *)other;
@@ -89,6 +97,11 @@ typedef enum {
 - (unsigned short)characterAtIndex:(size_t)index;	/* by CHARACTER */
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
 - (NSData *)dataUsingEncoding:(NSStringEncoding)encoding;
+- (const char *)cStringUsingEncoding:(NSStringEncoding)encoding;
+- (BOOL)writeToFile:(NSString *)path
+	 atomically:(BOOL)useAuxiliaryFile
+	   encoding:(NSStringEncoding)encoding
+	      error:(NSError **)errorPtr;
 
 /* Value semantics. */
 - (BOOL)isEqualToString:(NSString *)other;
@@ -96,6 +109,15 @@ typedef enum {
 - (NSComparisonResult)caseInsensitiveCompare:(NSString *)other;
 - (NSComparisonResult)compare:(NSString *)other
 		      options:(NSStringCompareOptions)options;
+- (NSComparisonResult)compare:(NSString *)other
+		      options:(NSStringCompareOptions)options
+			range:(NSRange)range;
+- (NSComparisonResult)compare:(NSString *)other
+		      options:(NSStringCompareOptions)options
+			range:(NSRange)range
+			locale:(id)locale;
+- (NSComparisonResult)localizedCompare:(NSString *)other;
+- (NSComparisonResult)localizedCaseInsensitiveCompare:(NSString *)other;
 - (BOOL)hasPrefix:(NSString *)prefix;
 - (BOOL)hasSuffix:(NSString *)suffix;
 - (BOOL)containsString:(NSString *)substring;
@@ -104,16 +126,26 @@ typedef enum {
 - (NSRange)rangeOfString:(NSString *)substring
 		 options:(NSStringCompareOptions)options
 		   range:(NSRange)range;
+- (NSRange)rangeOfString:(NSString *)substring
+		 options:(NSStringCompareOptions)options
+		   range:(NSRange)range
+		  locale:(id)locale;
 
 /* Case, substrings, appending and replacing. Case mapping is ASCII: this
  * Foundation is UTF-8 and makes no Unicode case claims. */
 - (NSString *)uppercaseString;
 - (NSString *)lowercaseString;
+- (NSString *)uppercaseStringWithLocale:(id)locale;
+- (NSString *)lowercaseStringWithLocale:(id)locale;
 - (NSString *)capitalizedString;
 - (NSString *)substringFromIndex:(NSUInteger)index;
 - (NSString *)substringToIndex:(NSUInteger)index;
 - (NSString *)substringWithRange:(NSRange)range;
 - (NSString *)stringByAppendingString:(NSString *)other;
+- (NSString *)stringByAppendingPathExtension:(NSString *)extension;
+- (NSString *)stringByPaddingToLength:(NSUInteger)newLength
+			 withString:(NSString *)pad
+		    startingAtIndex:(NSUInteger)index;
 - (NSString *)stringByAppendingFormat:(NSString *)format, ...;
 - (NSString *)stringByReplacingOccurrencesOfString:(NSString *)target
 					 withString:(NSString *)replacement;
@@ -122,6 +154,7 @@ typedef enum {
 					    options:(NSStringCompareOptions)options
 					      range:(NSRange)range;
 - (NSArray *)componentsSeparatedByString:(NSString *)separator;
+- (NSString *)stringByReplacingCharactersInRange:(NSRange)range withString:(NSString *)replacement;
 
 /* Conversions. */
 - (int)intValue;
@@ -138,6 +171,8 @@ typedef enum {
 - (NSString *)stringByDeletingPathExtension;
 - (NSString *)stringByAppendingPathComponent:(NSString *)component;
 - (NSArray *)pathComponents;
+- (NSString *)stringByStandardizingPath;
+- (BOOL)isAbsolutePath;
 
 @end
 
