@@ -269,6 +269,11 @@ extern id object_dispose(id obj);
 	return ((id (*)(id, SEL, id))objc_msgSend)(self, aSelector, object);
 }
 
+- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2
+{
+	return ((id (*)(id, SEL, id, id))objc_msgSend)(self, aSelector, object1, object2);
+}
+
 
 /*
  * THE REST OF THE PUBLIC ROOT-CLASS API (the hard rule: a class passes only when

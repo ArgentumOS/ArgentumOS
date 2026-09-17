@@ -8,6 +8,7 @@
 
 #import "foundation_core.h"
 #include <stdio.h>
+#import <objc/runtime.h>
 
 static int okc, failc;
 
@@ -68,6 +69,64 @@ int main(void)
 
 		check("cross-tu", [c marker] == 4242,
 		      "a method implemented in the support unit answers");
+	}
+
+	{
+		/*
+		 * THE AUDITED COCOA INVENTORY for NSObject. The old per-class checks were
+		 * SELF-REFERENTIAL — they asserted that what OUR headers declare exists,
+		 * which cannot see a method nobody declared, and that is how
+		 * +stringWithFormat:arguments: shipped missing. This list is Cocoa's
+		 * documented root-class surface, and the exclusion list is asserted ABSENT,
+		 * so the inventory cannot drift away from the code. NSObject previously had
+		 * no api-complete check at all.
+		 */
+		static const char *classSelectors[] = {
+			"alloc", "allocWithZone:", "new", "class", "superclass",
+			"conformsToProtocol:", "respondsToSelector:",
+			"instancesRespondToSelector:", "load", "initialize", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"init", "copy", "mutableCopy", "copyWithZone:", "mutableCopyWithZone:",
+			"retain", "release", "autorelease", "retainCount", "dealloc",
+			"class", "superclass", "isKindOfClass:", "isMemberOfClass:",
+			"respondsToSelector:", "conformsToProtocol:",
+			"performSelector:", "performSelector:withObject:",
+			"performSelector:withObject:withObject:", "methodForSelector:",
+			"doesNotRecognizeSelector:", "isEqual:", "hash", "description",
+			"debugDescription", "self", "zone", "isProxy", NULL
+		};
+		static const char *excluded[] = {
+			/* Needs NSInvocation/NSMethodSignature, which this Foundation does not
+			 * ship; an unimplemented message reaches -doesNotRecognizeSelector: and
+			 * aborts loudly instead. */
+			"forwardInvocation:", "methodSignatureForSelector:",
+			"forwardingTargetForSelector:", NULL
+		};
+		NSObject *probe = [[NSObject alloc] init];
+		int complete = 1;
+		int i;
+
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSObject respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-CORE missing +%s\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-CORE missing -%s\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-CORE present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
+		check("nsobject-api-complete", complete,
+		      "the audited Cocoa inventory for NSObject");
 	}
 
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);

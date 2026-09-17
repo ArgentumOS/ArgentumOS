@@ -124,6 +124,7 @@ __attribute__((objc_root_class))
 /* Messaging, which is how Cocoa code calls a selector it only knows by name. */
 - (id)performSelector:(SEL)aSelector;
 - (id)performSelector:(SEL)aSelector withObject:(id)object;
+- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
 
 /* Messaging and introspection, the rest of Cocoa's root-class surface. */
 - (IMP)methodForSelector:(SEL)aSelector;

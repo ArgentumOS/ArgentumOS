@@ -28,7 +28,7 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_core"
-CHECKS = ("lifecycle", "equality", "identity", "arc-pool", "cross-tu")
+CHECKS = ("lifecycle", "equality", "identity", "arc-pool", "cross-tu", "nsobject-api-complete")
 
 
 class Case(BaseCase):
