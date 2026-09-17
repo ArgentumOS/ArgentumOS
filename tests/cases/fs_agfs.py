@@ -86,6 +86,48 @@ class Case(BaseCase):
         self.check("config-domain-readable", "hostname" in conf,
                    "system.network.conf reads back through the config tool")
 
+        # The last two legacy domains converted (P4): the SPELLING is checked
+        # directly, because a working read says nothing about which grammar
+        # produced it. system.network is init's (it sets the kernel nodename at
+        # boot) and system.shells is the login-shell list chsh/su read.
+        mark = len(session.log_text())
+        session.run("cat /System/Configuration/system.network.conf")
+        netconf = session.output_since(mark)
+        self.check("network-domain-is-a-plist",
+                   '<plist version="1.0">' in netconf
+                   and "<key>hostname</key>" in netconf,
+                   "the shipped network domain is the converted plist"
+                   if '<plist version="1.0">' in netconf
+                   else "the guest has the legacy file, or no file: "
+                        + netconf.strip()[:160])
+
+        # init APPLIED it: the nodename comes from the converted domain through
+        # libconfig, so a plist the boot could not read would leave this empty.
+        mark = len(session.log_text())
+        session.run("hostname")
+        applied = session.output_since(mark)
+        self.check("hostname-applied-from-the-network-domain",
+                   "fnx" in applied,
+                   "init read hostname from the converted network domain"
+                   if "fnx" in applied
+                   else "the nodename is not fnx: " + applied.strip()[:120])
+
+        mark = len(session.log_text())
+        session.run("config read system.shells")
+        shells = session.output_since(mark)
+        mark = len(session.log_text())
+        session.run("cat /System/Configuration/system.shells.conf")
+        shellsfile = session.output_since(mark)
+        self.check("shells-domain-is-a-plist",
+                   '<plist version="1.0">' in shellsfile
+                   and "<key>shells</key>" in shellsfile
+                   and "/System/Tools/sh" in shells,
+                   "the shipped shells domain is the converted plist, and it "
+                   "still reads back through the config tool"
+                   if '<plist version="1.0">' in shellsfile and shells.strip()
+                   else "the guest has the legacy file, or no file: "
+                        + shellsfile.strip()[:160])
+
         # --- the identity + name domains, read by LIBC ------------------
         # P3d's instrument (docs/design/plist-config-plan.md): musl renders
         # system.passwd.conf / system.group.conf through its own in-libc module
