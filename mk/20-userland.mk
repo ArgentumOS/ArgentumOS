@@ -89,13 +89,31 @@ TOYBOX64_STAGE = .build/toybox-root
 # library beside libconfig. Declared HERE, not in mk/00-base.mk, because a make
 # target's name and prerequisites are expanded when the rule is READ - and
 # $(OBJC_STAMP) only exists once mk/10-toolchain.mk has been included.
-$(FOUNDATION_LIB): $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/NSObject.h \
-		$(FOUNDATION_SRC)/Foundation.h $(OBJC_STAMP)
+# The string family (F1) and the tagged-string class (F2 of the build, F1 of the
+# plan). The compile flags are per file and each for a measured reason:
+#   -fno-objc-arc   nsobject.m and ntinystring.m IMPLEMENT -retain/-release,
+#                   which ARC forbids (they are the MRR files);
+#   -Wno-objc-missing-super-calls  every ARC -dealloc: clang emits the super
+#                   chain itself, so the warning is unactionable noise;
+#   -Wno-incomplete-implementation  NSString is ABSTRACT: its primitives are
+#                   implemented by the concrete subclasses.
+FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
+	$(FOUNDATION_SRC)/ntinystring.m
+FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObject.h $(FOUNDATION_SRC)/NSString.h \
+	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/Foundation.h
+FOUNDATION_CFLAGS = -fPIC -Wno-objc-missing-super-calls -Wno-incomplete-implementation
+
+$(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	@mkdir -p $(FNXLIB)
-	$(MUSL64_OBJC) -c -fPIC -Wno-objc-root-class -fno-objc-arc -Iuserland \
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -fno-objc-arc -Iuserland \
 		$(FOUNDATION_SRC)/nsobject.m -o .build/foundation-nsobject.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nstring.m -o .build/foundation-nstring.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -fno-objc-arc -Iuserland \
+		$(FOUNDATION_SRC)/ntinystring.m -o .build/foundation-ntinystring.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
-		.build/foundation-nsobject.o -o $@
+		.build/foundation-nsobject.o .build/foundation-nstring.o \
+		.build/foundation-ntinystring.o -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
@@ -192,6 +210,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/foundation-core-support.o .build/foundation-core-main.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
+	# foundation_string: F1 acceptance (docs/design/foundation-plan.md). Two
+	# units again, and the support unit is where the OTHER constant-string
+	# cases live (a 4-character literal is a TAGGED pointer, a 20-character one
+	# is an object - both paths have to work).
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_string_support.m -o .build/foundation-string-support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_string.m -o .build/foundation-string-main.o
+	$(MUSL64_OBJC) .build/foundation-string-support.o .build/foundation-string-main.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

@@ -247,7 +247,9 @@ the artefact we ship.
 **The Foundation (2026-09)**: the first-party class library on libobjc2 — F0 is
 `NSObject`, in `userland/foundation/`, built as **`libfoundation.so.1`** by the
 `$(FOUNDATION_LIB)` rule (make + the clang wrappers; **no scripting dependency**)
-and staged into `/System/Libraries/`. **Its public headers ARE staged**, to
+and staged into `/System/Libraries/` (F1 added the string family: `NSString`,
+`NSOwnedString`, `NSMutableString`, `NSConstantString`, `NSTinyString`).
+**Its public headers ARE staged**, to
 `/System/Shared/Headers/foundation/`, which closes the half of the gap the entry
 above records for Objective-C: an on-guest ObjC rebuild now has the *Foundation's*
 headers (the runtime's own `objc/…` still need staging). Clean-room by decision,
@@ -255,4 +257,9 @@ enforced rather than promised: `tools/foundation-gate.py`, run by a
 `foundation-gate` target in `userland64`, fails the build on any GNUstep, ObjFW or
 Apple-Foundation header import and on the runtime's legacy `objc/Object.h`
 (`docs/design/foundation-plan.md` §2). The v1 class list, the phases F0–F5 and the
-measured traps are in that plan; the acceptance is `tests/cases/foundation_core.py`.
+measured traps are in that plan; the acceptances are `tests/cases/foundation_core.py`
+and `tests/cases/foundation_string.py`. **A runtime API the Foundation CALLS:**
+`objc_registerSmallObjectClass_np` (F1) — clang emits a `@"…"` literal of fewer
+than 9 ASCII characters as a *tagged pointer*, and the runtime dispatches tag 4
+through that table, so the Foundation registers a class there. That is a
+version-sensitive coupling to libobjc2 worth knowing before either side moves.

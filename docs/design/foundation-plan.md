@@ -1,7 +1,9 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09) — every open question is answered (§7) and the plan
-awaits approval to start F0.** Direction, decided by the user (2026-09-17), after
+Status: **DRAFT (2026-09). F0 LANDED and F1 LANDED (2026-09-17)** — the root
+class and then the string family are in and gated on a guest boot
+(`foundation_core` 5/5, `foundation_string` 7/7). F2 (`NSNumber`/`NSData`/
+`NSDate`) is next. Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md`
 §8–§9):
 
@@ -104,6 +106,8 @@ and the prefix is what keeps them out of the runtime's way (§6).
 |---|---|
 | `NSObject` | the root class. MRR file. `isa` storage. `+alloc`/`+new`/`-init`, `-retain`/`-release`/`-autorelease`, `-dealloc`, `-isEqual:`/`-hash`/`-description`, `+class`/`-class`, `-isKindOfClass:`/`-respondsToSelector:` |
 | `NSString`, `NSMutableString` | UTF-8 storage; `@"…"` constants must be usable as `NSString` (the runtime's `__objc_constant_string` metadata is what makes that possible — **an F1 experiment, not an assumption**); `-length`, `-characterAtIndex:`, `-isEqualToString:`, `-UTF8String`, `-description` |
+| `NSOwnedString` | the concrete immutable string: owns a UTF-8 buffer. **Split out of `NSString` because the ABI demands it** (§9) — a constant-string class cannot inherit storage |
+| `NSTinyString` | the class for clang's TAGGED literals: `@"…"` of fewer than 9 ASCII characters is a pointer, and this class (registered at clang's tag 4 in `+load`) decodes it. Not in the umbrella — a consumer never names it |
 | `NSNumber` | the boxed scalars collections need; `-intValue`, `-doubleValue`, `-stringValue`, `-compare:` |
 | `NSData`, `NSMutableData` | bytes; `-length`, `-bytes`, `-appendBytes:length:` |
 | `NSArray`, `NSMutableArray` | ordered, zero-based; `-count`, `-objectAtIndex:`, `-addObject:`, `-removeObjectAtIndex:` |
@@ -170,8 +174,11 @@ status.
   identity, the runtime's pools with the library linked, and a subclass in a
   second translation unit — five checks, green on a guest boot. No pool class
   (§7.5).
-- **F1 — `NSString`/`NSMutableString`**, including `@"constant"` strings being usable
-  and `-description` on every other class returning one.
+- **F1 — `NSString`/`NSMutableString`. DONE 2026-09-17 (§9).** The family
+  (`NSString` abstract, `NSOwnedString`, `NSMutableString`, `NSConstantString`,
+  `NSTinyString`), `@"…"` usable at *both* representations clang produces (tagged
+  under 9 ASCII characters, an object at 9+), and `-description` real on every
+  class. Gated: `foundation_string` 7/7 on a guest boot.
 - **F2 — `NSNumber`, `NSData`/`NSMutableData`, `NSDate`.**
 - **F3 — `NSArray`/`NSMutableArray`, `NSDictionary`/`NSMutableDictionary`**, with
   `-copy`/`-mutableCopy`, fast enumeration, and the equality/hash contract
@@ -328,3 +335,139 @@ Landed, all in the tree (nothing committed):
    showed one line of its output and the crash looked like load-time corruption; a
    pty (`python3 -c "import pty; pty.spawn([...])"`) is what made the real point of
    death visible. Guest runs are line-buffered, so this is a host-debugging trap.
+
+## 9. F1 in progress (2026-09-17) — the string family, and what `@"..."` needs
+
+**Landed so far** (in the tree, NOT yet wired into the build — the `$(FOUNDATION_LIB)`
+rule still compiles `nsobject.m` alone, so `make rootagfs` is unaffected):
+
+- `NSString.h` / `nstring.m`: `NSString` (**abstract, no instance variables**),
+  `NSOwnedString` (owns a UTF-8 buffer), `NSMutableString`, `NSConstantString`;
+- `NSObject -description` is real: it returns an `NSString` naming the class;
+- the constant-string configuration: the runtime is built with `-DGNUSTEP` (its
+  only use is naming the constant-string class, and `class_table.c` *hardcodes*
+  the `NSConstantString` spelling for its `permanent_instances` special case), and
+  the wrapper passes `-fconstant-string-class=NSConstantString`.
+
+### Why NSString has no ivars — the measurement that forced it
+
+The compiler emits `@"..."` with its fields at **fixed offsets** from the object
+pointer. A subclass that inherited storage would push its own fields past them,
+and every constant string would read foreign words. Our runtime's own
+`Test/Test.h` confirms it from the other side: its `NSConstantString` subclasses a
+**bare root class**, not a storage-carrying one. So the storage lives in the
+concrete subclasses (as in Cocoa), which is a deviation from §4.2's "no class
+clusters" — not a cluster, but a *family*: the ABI requires the split.
+
+Measured the hard way: both earlier attempts (trailing character data per
+`loader.c`'s `struct nsstr`, then storage inherited from `NSString`) died with a
+SIGSEGV on a message send to a string literal. The layout is
+`{ flags, length (UTF-16 code units), size (BYTES), hash, const char *str }`.
+
+### The open blocker, precisely
+
+- **the runtime's own constant-string test PASSES through our toolchain**
+  (`Test/Test.m` + `Test/ConstantString.m`, exit 0) — so the configuration is
+  sound;
+- **but `@"cd"` in a first-party program evaluates to a garbage pointer**
+  (measured: `0xc790000000000014`), not to an object. clang's
+  `__objc_constant_string` section in such a TU is **all zeros with no
+  relocations** (measured), i.e. the placeholder nothing fills — which is also why
+  the message send to it faulted inside the runtime's fast send path (the
+  receiver was that garbage, and `object_getClassName` on it answered "nil").
+- next experiment: diff the runtime's *own* test TU against a first-party one
+  (both compiled by the same wrapper) — the same section, the same symbols, and
+  the same use site — to find what the test has that ours lacks.
+
+### The blocker, characterized (2026-09-17) — a CLANG threshold, not ours
+
+F1's `@"..."` failures are a **compiler** behaviour, isolated by bisection:
+
+| variable | result |
+|---|---|
+| the runtime's own `Test/ConstantString.m` (10-char literal) | emitted correctly |
+| **`@"..."` of 8 characters or fewer** | **folded into a garbage immediate** (`movabs $0xc790000000000014` for `@"cd"`), no `__objc_constant_string` relocations, no `.objc_str_NNN` symbol — a message send to it faults inside the runtime's fast send path |
+| `@"aaaaaaaaa"` (9 characters) and up | emitted correctly |
+| our headers, and the `objc_root_class` attribute | **irrelevant** — my header with a 10-char literal compiles correctly, and the runtime's own `Test.h` shape folds with a 2-char literal. (I first hypothesized the attribute and the header shape; both were wrong, and the bisect said so.) |
+| `-fconstant-string-class=NSConstantString` | not involved (folds without it too) |
+| the runtime ABI (`gnustep-2.0` vs legacy `gcc`) | folds under both |
+| the libc target (musl guest vs glibc host) | folds under both |
+| `-fno-constant-cfstrings`, `-fconst-strings`, `-fno-const-strings` | no effect |
+
+So the runtime's own test *passing* was a coincidence of its 10-character
+literals — which is exactly why this hid for so long, and why the first
+hypotheses were wrong.
+
+### …and SOLVED (2026-09-17) — clang was right, the Foundation was missing a registration
+
+The "threshold" is not a bug and not a compiler quirk. clang's own
+`CGObjCGNU.cpp:1005`:
+
+```cpp
+if ((CGM.getTarget().getPointerWidth(LangAS::Default) == 64) &&
+    (LiteralLength < 9) && !isNonASCII) {
+  // Tiny strings ... 8 7-bit ASCII characters in the high 56 bits,
+  // followed by a 4-bit length and a 3-bit tag (which is always 4).
+```
+
+So **a `@"..."` literal of fewer than 9 ASCII characters is not an object: it is
+a TAGGED POINTER** — characters in the high 56 bits, a 4-bit length in bits 3-6,
+tag 4 in bits 0-2. My measured "garbage" decoded exactly: `0xc790000000000014`
+is tag 4, length 2, `'c'`, `'d'`.
+
+And the runtime has a mechanism for it: `OBJC_SMALL_OBJECT_MASK` is 7 on 64-bit,
+`objc_msgSend.x86_64.S` dispatches any pointer whose low three bits are non-zero
+through `SmallObjectClasses[tag]` (`class.h`), and `objc/runtime.h:1002` publishes
+`objc_registerSmallObjectClass_np(Class, uintptr_t)`. **Tag 4 is clang's tiny
+string, and the Foundation has to register a class for it** — which is exactly
+what our runtime's own test harness does (`Test/Test.m`):
+
+```objc
+@interface NSTinyString : NSConstantString @end
+@implementation NSTinyString
++ (void)load { if (sizeof(void*) > 4) objc_registerSmallObjectClass_np(self, 4); }
+- (id)retain { return self; }  - (void)release {}  - (id)autorelease { return self; }
+@end
+```
+
+`arc.mm:isPersistentObject()` returns YES for a small object *before* it reads the
+`isa`, so ARC's retains and releases never dereference a tagged pointer.
+
+**The fix, implemented:** `userland/foundation/NSTinyString.{h,m}` — the class
+registered at tag 4, whose accessors *decode the pointer* (`-length` from the
+4-bit field, `-characterAtIndex:` from the 7-bit groups) and whose `-retain`/
+`-release`/`-autorelease`/`-dealloc` are no-ops. `-UTF8String` is the one awkward
+member: the characters have to be materialised, so it returns a static buffer,
+documented. It is NOT in the umbrella — a consumer never names it; it only has to
+be *in* the library, where its `+load` runs.
+
+Measured, host-side, against the shipped shared library:
+
+```
+S1 const class=NSTinyString len=5 str=hello          @"hello" is tagged and decodes
+S1 value equal=1 hash-equal=1                        a tagged and an owned string compare and hash alike
+S1 mutable now=abcd! snapshot=abcd                   mutation, and -copy as a snapshot
+S1 desc=hello desc-is-self=1 / S1 objdesc=NSObject   -description, and the inherited one
+U8 bytes=6 chars=5 at1=233 str=héllo                 -length BYTES, -characterCount CHARACTERS, UTF-8 decode
+```
+
+**Correction to the record:** the earlier "clang threshold / compiler bug" framing
+was WRONG and is left above as the hypothesis it was. clang is correct here; the
+Foundation was missing a registration the runtime's own tests had all along — and
+the reason the runtime's test *passed* while ours failed is now obvious: its
+literals are 10 characters, which take the *object* path.
+
+### F1 LANDS (2026-09-17)
+
+Shipped and gated: `foundation_string` 7/7 (`tiny`, `owned`, `mixed`, `utf8`,
+`mutable`, `description`, `cross-tu`) with `foundation_core` still 5/5 — two
+cases, twelve checks, on a real guest boot (`make rootagfs` green, 1096 inodes).
+
+The library rule now compiles three units with per-file flags (the two MRR files,
+the abstract class's `-Wno-incomplete-implementation`, the ARC `-dealloc` noise),
+and the public headers are staged as before.
+
+One probe bug worth remembering, because it is the kind that hides: `owned`
+asserted `[big length] == 20` for a 19-character literal. The probe now DERIVES
+the length (`strlen(...)`) instead of counting it — a hand-counted constant in a
+test is a test bug shaped exactly like a library bug.

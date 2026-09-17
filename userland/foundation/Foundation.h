@@ -15,5 +15,6 @@
 #define FOUNDATION_FOUNDATION_H
 
 #import <foundation/NSObject.h>
+#import <foundation/NSString.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

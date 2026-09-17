@@ -48,11 +48,26 @@ for a in "$@"; do
 	esac
 done
 
+# THE OBJC FLAGS, in one place:
+#   -fobjc-runtime=gnustep-2.0   the ABI libobjc2 implements (NOT clang's ELF
+#                                default, which is the legacy GNU runtime's);
+#   -fblocks                     blocks; libobjc2 embeds their runtime, so
+#                                libBlocksRuntime must NOT also be linked;
+#   -fconstant-string-class=NSConstantString
+#                                which class `@"..."` names. The runtime's own
+#                                constant-string class defaults to the old NeXT
+#                                spelling unless it is built with -DGNUSTEP
+#                                (constant_string.h) -- and OUR runtime IS built
+#                                with it, because class_table.c hardcodes the
+#                                NSConstantString special case. Both sides must
+#                                say the same name, or constant strings end up
+#                                with two different classes (upstream warns about
+#                                exactly this mixing).
+OBJC_FLAGS="-fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -I$OBJC/include"
+
 if [ "$link" = 0 ]; then
-	exec "$ROOT/tools/musl-clang++64.sh" \
-		-fobjc-runtime=gnustep-2.0 -fblocks -I"$OBJC/include" "$@"
+	exec "$ROOT/tools/musl-clang++64.sh" $OBJC_FLAGS "$@"
 fi
 
-exec "$ROOT/tools/musl-clang++64.sh" \
-	-fobjc-runtime=gnustep-2.0 -fblocks -I"$OBJC/include" \
+exec "$ROOT/tools/musl-clang++64.sh" $OBJC_FLAGS \
 	"$@" -L"$OBJC/lib" -lobjc

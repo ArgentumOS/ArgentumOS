@@ -8,6 +8,7 @@
  */
 
 #import <foundation/NSObject.h>
+#import <foundation/NSString.h>	/* -description has to return one */
 #include <objc/objc-arc.h>
 
 /*
@@ -167,8 +168,12 @@ extern id object_dispose(id obj);
 
 - (NSString *)description
 {
-	/* F1 (NSString) replaces this body: an NSString naming the class. */
-	return nil;
+	/*
+	 * F1: the class name, as a real NSString. Subclasses override it freely; a
+	 * class name is what a default description can honestly say about an object
+	 * it knows nothing else about.
+	 */
+	return [NSString stringWithUTF8String:class_getName(object_getClass(self))];
 }
 
 @end

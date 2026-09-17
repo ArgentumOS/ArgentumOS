@@ -32,6 +32,21 @@
 - (id)mutableCopy;
 @end
 
+/*
+ * THE ROOT-CLASS ATTRIBUTE, and it is LOAD-BEARING — not decoration to silence a
+ * warning. Without it, clang does not treat this as a root class of the modern
+ * ABI, and in a translation unit that includes this header a `@"..."` literal is
+ * NOT emitted as an object: it is folded into a bogus immediate constant
+ * (measured: `movabs $0xc790000000000014`, with no relocation and no
+ * `__objc_constant_string` entry to fill it), so every constant string is
+ * garbage and a message send to it faults inside the runtime.
+ *
+ * Our runtime's own tests mark their root class exactly this way (Test/Test.h),
+ * which is how the difference was found.
+ */
+#if __has_attribute(objc_root_class)
+__attribute__((objc_root_class))
+#endif
 @interface NSObject
 {
 	/*
