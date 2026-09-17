@@ -95,7 +95,11 @@ int foundation_core_equality(void)
  */
 - (id)forwardingTargetForSelector:(SEL)aSelector
 {
-	if (aSelector == @selector(marker)) {
+	/* BY NAME, not by pointer: the runtime unifies selectors by name, but the
+	 * selector this is handed is the CALL SITE's typed registration, and a `==`
+	 * against this translation unit's @selector() is comparing two spellings of the
+	 * same name rather than the same word. */
+	if (sel_isEqual(aSelector, @selector(marker))) {
 		return _backing;
 	}
 	return nil;

@@ -23,6 +23,23 @@ static void check(const char *name, int ok, const char *detail)
 	}
 }
 
+/*
+ * THE RECORDING HOOK, for the one question the probe cannot answer any other way:
+ * does the runtime REACH objc_proxy_lookup at all on this build's lookup path? It
+ * PRINTS on every call (so the finding is in the log even if something later dies)
+ * and counts (so a check can assert it).
+ */
+static int probe_recording_calls;
+
+static id probe_recording_hook(id receiver, SEL op)
+{
+	(void)receiver;
+	probe_recording_calls++;
+	printf("FOUNDATION-CORE forward-probe: objc_proxy_lookup reached (%s)\n",
+	       sel_getName(op));
+	return nil;
+}
+
 int main(void)
 {
 	/* MRR side: the lifetimes and the equality defaults. */
@@ -251,16 +268,57 @@ int main(void)
 		}
 
 		/*
-		 * THE END-TO-END HALF IS NOT ASSERTED HERE, and that is a REAL open item
-		 * rather than an omission: the check above PASSES, and yet a message to an
-		 * un-implemented selector still reaches -doesNotRecognizeSelector: — because
-		 * the runtime does not consult objc_proxy_lookup on the path this build
-		 * takes. The mechanism is in place and gated (the trampolines, the
-		 * invocation, the two installed hooks); what is missing is the runtime's
-		 * side of the contract. See the plan's §9 stage F record for the diagnosis,
-		 * what was ruled out, and the next experiment.
+		 * THE REACHABILITY EXPERIMENT, and it is PRINT-ONLY on purpose: the finding
+		 * has to be readable whatever it turns out to be. A lookup is RESOLVED with
+		 * objc_msg_lookup — which runs the runtime's lookup path and hands back an
+		 * IMP without calling it, so nothing can abort here — while OUR hook is
+		 * installed. If the runtime enters that path the hook prints; if it does not,
+		 * that IS the answer, and it separates "the runtime cached a slot" from "the
+		 * runtime never enters that block".
 		 */
-		(void)slow;
+		{
+			extern id (*objc_proxy_lookup)(id receiver, SEL op);
+			extern IMP objc_msg_lookup(id receiver, SEL selector);
+			id (*saved)(id, SEL) = objc_proxy_lookup;
+			IMP resolved;
+
+			objc_proxy_lookup = probe_recording_hook;
+			resolved = objc_msg_lookup(fast, @selector(marker));
+			objc_proxy_lookup = saved;
+
+			printf("FOUNDATION-CORE forward-probe: hook called %d time(s), lookup resolved to %p\n",
+			       probe_recording_calls, (void *)(uintptr_t)resolved);
+		}
+
+		/*
+		 * THE END-TO-END HALF, SLOW PATH FIRST: the slow path does not depend on the
+		 * fast hook at all (the call arrives as an NSInvocation whose arguments were
+		 * captured from the register file, and re-invoking it on the real object is
+		 * what forwarding MEANS), so running it first means a fast-path failure
+		 * cannot hide whether the mechanism works. It is also the check that proves
+		 * the MARSHALLING: an argument goes in and a value comes back.
+		 */
+		[slow setValue:9];					/* forwards: 1 */
+		{
+			/* THE VALUES ARE SNAPSHOTTED, and that is not style: reading -value
+			 * FORWARDS, so the check's own first clause would bump the counter that
+			 * its second clause then reads. A check that changes what it measures is
+			 * measuring itself. */
+			int value = [slow value];				/* forwards: 2 */
+			unsigned long forwarded = [slow forwardedCount];	/* SlowForwarder's own */
+
+			snprintf(seen, sizeof seen, "slow value=%d forwarded=%lu",
+				 value, forwarded);
+			check("forwarding-invocation",
+			      value == 9 && forwarded == 2,
+			      seen);
+		}
+
+		/* The fast path: the runtime redirects the lookup instead of building an
+		 * invocation at all. */
+		check("forwarding-target",
+		      [fast marker] == 4242 && [fast marker] == 4242,
+		      "-forwardingTargetForSelector: sends -marker to the backing object, twice");
 	}
 
 	{

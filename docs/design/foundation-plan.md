@@ -8,7 +8,7 @@ not an array dependency: see the work queue), `NSLocale` (stage E — the locali
 rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, and a call as an
 object) and `NSPropertyListSerialization`. Gated on a
 guest boot by six cases (`foundation_core`, `foundation_string`, `foundation_value`,
-`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **13 / 27 /
+`foundation_collection`, `foundation_error`, `objc_smoke`), whose probes carry **15 / 27 /
 17 / 34 / 6** checks. **F5 (self-hosting) is DEFERRED — the user's call, 2026-09-17**
 (the public headers are already staged, so it is a deliberate later step rather than a gap).
 The work queue
@@ -215,12 +215,11 @@ status.
   comparisons real. Ordering and search folding stay byte-wise, and say so.
 - **`NSMethodSignature` + `NSInvocation` — stage F. DONE, EXCEPT the runtime's side (§9).**
   A selector's types (parsed from the runtime's encoding) and a call as an object, with
-  `-methodSignatureForSelector:` on NSObject (both variants) and both forwarding methods.
-  The MECHANISM is complete and gated — the x86-64 trampolines, `-invoke` /
-  `-invokeWithTarget:` with the register classification, and the two runtime hooks installed
-  — but that hook is not honoured on the lookup path this build takes, so END-TO-END
-  forwarding is the OPEN ITEM §9 records (with the diagnosis, what was ruled out, and the
-  next experiment). What is unverified is stated in the probe, not asserted away.
+  `-methodSignatureForSelector:` on NSObject (both variants) and BOTH forwarding paths
+  working end to end: the fast one (the runtime redirects the lookup instead of building an
+  invocation) and the slow one (the call arrives as an NSInvocation whose arguments were
+  captured from the register file by the x86-64 trampolines, and re-invoking it on the real
+  object gives the value back). §9 records the three real causes it took to get there.
 - **F5 — self-hosting. DEFERRED (user, 2026-09-17).** The enabling half is DONE and stays:
   the public headers are staged to `/System/Shared/Headers/foundation/` beside
   `libfoundation.so.1`, so an on-guest rebuild is possible. What is deferred is the GATE —
@@ -677,7 +676,7 @@ mechanism's fatal flaw.
 
 | class | audited | complete | what remains |
 |---|---|---|---|
-| `NSObject` | yes | **yes** | the forwarding trio is SHIPPED (stage F): `-methodSignatureForSelector:` both variants, and `-forwardInvocation:` / `-forwardingTargetForSelector:` with Cocoa's defaults. The MECHANISM is gated; whether the runtime CONSULTS its hook on this build's lookup path is the open item §9 records |
+| `NSObject` | yes | **yes** | the forwarding trio is SHIPPED and WORKS (stage F): `-methodSignatureForSelector:` both variants, `-forwardInvocation:` / `-forwardingTargetForSelector:` with Cocoa's defaults, and `__objc_msg_forward2` / `objc_proxy_lookup` installed — so a message nothing implements forwards along both paths |
 | `NSNumber` | yes | **yes** | — |
 | `NSString`/`NSMutableString` | yes | **yes** | dependencies only: `NSCharacterSet` (the `…InSet:` families), `NSLocale` (the localised CASE comparisons — shipped at stage E; ordering stays byte-wise), `NSError` (the file variants), and the UTF-16 boundary (`-initWithCharacters:length:`, `-getCharacters:range:`) which the UTF-8 storage deliberately does not have |
 | `NSArray`/`NSMutableArray` | yes | **yes** | dependencies only: `NSIndexSet` (the `…AtIndexes:` family) and `NSEnumerator` (the enumerator objects — `for-in` covers the need). Both shipped; `NSIndexPath` used to be named here too and is NOT one of them — no array form takes a path (corrected at stage D) |
@@ -775,7 +774,7 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | a plist reader/writer — **SHIPPED** | the file constructors and `-writeToFile:atomically:` across strings, arrays and dictionaries, plus `-propertyList` |
 | `NSLocale` — **SHIPPED (stage E)** | the localised CASE comparisons: the Turkic rule a locale needs, not a catalogue. Ordering stays byte order (no collation tables ship) and search folding stays byte-wise |
 | `NSMethodSignature` — **SHIPPED (stage F)** | a selector's types: the parser (primitives, qualifiers, pointers, arrays, structs/unions, bitfields, `@"Class"` names, and the older offset form) and `-methodSignatureForSelector:` on NSObject, both variants. The widths are OURS and stated |
-| `NSInvocation` — **SHIPPED (stage F)**, but the RUNTIME's side of forwarding is OPEN | the invocation, the register classification and the two x86-64 trampolines are in and gated; what is still owed is the runtime consulting `objc_proxy_lookup` on this build's lookup path (§9's stage F record has the diagnosis and the next experiment) |
+| `NSInvocation` — **SHIPPED (stage F)** | the invocation, the register classification and the two x86-64 trampolines, with the runtime's hooks installed: forwarding works end to end along both paths (§9's stage F, second half) |
 | `NSCalendar`/`NSTimeZone`, `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
@@ -1000,23 +999,40 @@ The mechanism, which is the part C cannot express:
     CONSTRUCTOR as well as `+load`, because the first version installed them only in `+load`
     and forwarded nothing at all.
 
-**THE OPEN ITEM, and it was measured rather than guessed.** An un-implemented message still
-reaches `-doesNotRecognizeSelector:`, and the probe's `forwarding-hook` check says the obvious
-explanation is wrong: the hook IS installed, and `objc_proxy_lookup(fast, @selector(marker))`
-DOES answer with the backing object — the runtime simply does not consult it on the path this
-build takes. Ruled out along the way: `+load` (a constructor now makes the same two
-assignments), the guard (it asks `-respondsToSelector:` the ordinary way), and the trampoline
-symbols (the image and both entries are `hidden`, which is what the shared-object link
-required to stop the `R_X86_64_PC32` relocation failing). libobjc2's `objc_msg_lookup_internal`
-DOES call `objc_proxy_lookup`, before `__objc_msg_forward2` — so the next experiment is a
-RECORDING hook installed from the guest, which separates "the runtime cached a slot" from
-"the runtime never reaches that block".
+**IT TOOK THREE REAL FIXES, and the first diagnosis was WRONG.** The first run forwarded
+nothing — every un-implemented message reached `-doesNotRecognizeSelector:` — and it was
+recorded here as "the runtime does not consult `objc_proxy_lookup` on this path". That
+conclusion was drawn from a run which PREDATED the fixes below, and it was wrong: the
+recording hook described at the end proved the runtime does reach the hook. The three causes,
+in the order they were found:
 
-The consequence for the record: the trio's declarations and its MECHANISM are in and gated
-(`invocation-api` proves the marshalling — `-invoke` called a real method with an int argument
-and the return value round-tripped; `forwarding-hook` proves the hooks are installed), and
-END-TO-END forwarding is an open item the probe asserts NOTHING about. That is deliberate: a
-check that cannot fail is worse than an absent one, and the note above says so where the
-checks are.
+  * `+load` IS NOT CALLED for this library's classes early enough to matter. Installing the
+    two hooks from `+load` alone forwarded nothing; a CONSTRUCTOR
+    (`__attribute__((constructor))`) making the same two assignments fixed it. Both are kept,
+    doing the same thing.
+  * `class_respondsToSelector(object_getClass(receiver), sel_registerName(...))` was the
+    wrong guard for the proxy hook: it compares an UNTYPED selector against the method's
+    TYPED one. Asking the ordinary way — `[receiver respondsToSelector:@selector(...)]` — is
+    what a library should do and what works.
+  * the fast path's own comparison was `aSelector == @selector(marker)`: SEL POINTER identity.
+    The runtime unifies selectors by name, but the selector handed to the hook is the CALL
+    SITE's typed registration, so this compared two spellings of a name. `sel_isEqual` is the
+    comparison that means "the same selector", and the fast path started working.
 
-`foundation_core` 13/13 on a guest boot.
+The instrument that settled it is still in the probe: a RECORDING hook installed from the
+guest (`objc_proxy_lookup = probe_recording_hook`) plus a RESOLVED lookup — `objc_msg_lookup`,
+which returns an IMP without calling it, so nothing can abort — which PRINTS whether the
+runtime entered the hook at all. It printed; the conclusion above had to go.
+
+TWO CHECK-DESIGN LESSONS, both of a check lying rather than a mechanism failing:
+
+  * a check must not HIDE what it measures: `check("forwarding-invocation", [slow value] == 9
+    && [slow forwardedCount] == 2, ...)` FAILED while printing `value=9 forwarded=2` — because
+    reading `-value` FORWARDS, and bumped the counter its own second clause then read. The
+    values are snapshotted before the check now. A check that changes what it measures is
+    measuring itself.
+  * the end-to-end checks run SLOW PATH FIRST, because the slow path does not depend on the
+    fast hook: a fast-path failure aborts the probe (NSObject's default `-forwardInvocation:`
+    calls `-doesNotRecognizeSelector:`), which used to hide whether the marshalling worked.
+
+`foundation_core` 15/15 on a guest boot.
