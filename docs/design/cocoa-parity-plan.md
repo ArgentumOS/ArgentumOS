@@ -750,6 +750,32 @@ as a compatibility path for un-migrated views, with a migration list.
   the board reports with `ZOO-TABS` when the selection changes. Worth noting:
   the probe caught one of MY expectations — three 84-wide tabs cover 0..252,
   so a point at x=250 is inside the third, not past it.
+  **U5e — `SplitView`. DONE (2026-09).** Panes along one axis with a draggable
+  divider between them: the classic `NSSplitView`.
+  * **THE PANES' FRAMES ARE THE STATE**, as they are in Cocoa: a divider's
+    position is READ from the panes and a move WRITES them, so there is no
+    second copy of the layout to keep in step. Over that sits the house rule for
+    chrome — `frameOfDivider()` decides where a divider is and
+    `dividerIndexAt()` asks through `rectHasPoint` — so the divider that is
+    DRAWN and the divider that is DRAGGED cannot disagree.
+  * A split divides ONE dimension and STRETCHES each pane across the other, and
+    the division is proportional to what the panes already had, so a resize
+    keeps the split the user dragged to. `setPosition` clamps to keep both
+    neighbours at `minPaneSize`.
+  * THE PROBE EARNED ITS KEEP THREE TIMES, and the three failures are worth
+    keeping: (1) a fresh pane is 0x0, so "proportional to what each pane had"
+    gave it a proportion of ZERO and it stayed 0-wide forever — a split that is
+    not yet laid out is now divided EVENLY; (2) the last pane's "takes the
+    rounding" used the cursor, which has the dividers in it, so a 300pt split
+    came out 147/141 instead of 147/147; (3) a pane kept the cross-axis ORIGIN
+    it was given before the axis changed — and that one PASSED the probe, which
+    is the lesson: the class says a pane fills the cross axis, so the probe now
+    asserts the width as well as the height. All three were found by asking for
+    the property, not by reading the code.
+  Gates: `uikit_u5e` — the display-free `split_view` probe (the pane frames, the
+  divider's arithmetic, the clamp, both axes; 22 cases) plus a REAL DRAG of the
+  board's divider, logged at the END of the drag (an interaction in progress is
+  not something to judge) and asserting where it came to rest: 147/147 -> 197/97.
 - **U6 — table and outline fidelity.** View-based rows, cells, columns and
   headers, sorting, selection modes, drag&drop, variable row heights.
 - **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
@@ -880,10 +906,13 @@ the gate is the claim; the sections above record what each one settled.
 | U4a | the value controls: `Slider`, `Stepper`, `ProgressIndicator`, `LevelIndicator` | `uikit_u4` |
 | U5a | `StackView` — the arrangement IS constraints, and the solver gets coordinate spaces | `uikit_u5` |
 | U5b | `ScrollView` — the offset on the clip view, scrollers, wheel | `uikit_u5b` |
+| U5c | `CollectionView` + `FlowLayout` — one arithmetic, sized by its own flow | `uikit_u5c` |
+| U5d | `TabView` — one arithmetic for the strip's rects and its hit test | `uikit_u5d` |
+| U5e | `SplitView` — the panes' frames are the state, the dividers drag | `uikit_u5e` |
 
 **Next: U5, the rest of the containers and collections.** `CollectionView` with
-a flow layout (U5c) and `TabView` (U5d) are DONE, so what remains is
-`SplitView`, then `GridView` / `Browser`.
+a flow layout (U5c), `TabView` (U5d) and `SplitView` (U5e) are DONE, so what
+remains is `GridView` / `Browser`.
 
 **Open inside finished slices** (fidelity, not absence):
 

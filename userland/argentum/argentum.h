@@ -4566,6 +4566,119 @@ private:
 	double tabHeight_ = 24.0;
 };
 
+/// @purpose A row (or column) of panes with draggable dividers between them —
+/// the classic NSSplitView. The panes are ordinary views, so everything a view
+/// already does keeps working inside one.
+///
+/// @lifetime A SplitView owns no panes: adding one does not take ownership,
+/// removing one does not destroy it. The dividers are not views at all — they
+/// are geometry, and geometry is not a thing to own.
+///
+/// @invariants
+///  - THE PANES' FRAMES ARE THE STATE, as they are in Cocoa: a divider's
+///    position is READ from the panes (`positionOfDivider`) and a move WRITES
+///    them (`setPosition`), so there is no second copy of the layout to keep in
+///    step.
+///  - ONE ARITHMETIC for the dividers, the rule this toolkit's chrome follows
+///    everywhere: `frameOfDivider()` decides where a divider is and
+///    `dividerIndexAt()` asks that same question through `rectHasPoint`, so the
+///    divider that is DRAWN and the divider that is DRAGGED cannot disagree.
+///  - `setPosition` clamps to keep BOTH neighbours at `minPaneSize` or more.
+///    v1 gives every pane the same floor; Cocoa lets a delegate give each pane
+///    its own range, which is a later fidelity pass.
+///  - `adjustPanes()` divides the bounds' ONE split dimension and STRETCHES
+///    each pane across the other, so a vertical split's panes are full height.
+///    The division is PROPORTIONAL to what each pane already had, so a resize
+///    keeps the split the user dragged to — but a pane with no extent along the
+///    axis has no share to keep (a proportion of zero would stay zero, which is
+///    exactly what a second pane added to a fresh split did), so a split that is
+///    not yet laid out is divided EVENLY instead.
+///  - v1 has no collapsible or holding-priority panes (Cocoa's
+///    NSSplitViewItem behaviours) and no resize cursor on the divider.
+class SplitView : public View {
+public:
+	/// The class record KVC walks (Object <- View <- SplitView).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A vertical split with no panes.
+	SplitView();
+
+	/// Add a pane at the end of the row (or column).
+	void addPaneView(View *v);
+	/// How many panes there are.
+	int paneCount() const { return (int) panes_.size(); }
+	/// The pane at an index, or null if there is none there.
+	View *paneViewAt(int i) const;
+	/// Unlink every pane (the views are not destroyed).
+	void removeAllPaneViews();
+
+	/// A VERTICAL split puts the panes SIDE BY SIDE and draws vertical
+	/// dividers between them, which is Cocoa's meaning for `isVertical` — not
+	/// "the split is stacked vertically".
+	bool isVertical() const { return vertical_; }
+	/// Set which axis the split divides (re-places the panes).
+	void setVertical(bool v);
+
+	/// How wide the divider between two panes is, in points.
+	double dividerWidth() const { return dividerWidth_; }
+	/// Set it (re-places the panes).
+	void setDividerWidth(double w);
+
+	/// The smallest a pane may be squeezed to, along the split axis.
+	double minPaneSize() const { return minPaneSize_; }
+	/// Set it.
+	void setMinPaneSize(double s) { minPaneSize_ = s; }
+
+	/// A divider is numbered by the pane before it: divider i sits between
+	/// panes i and i+1, so there are paneCount()-1 of them.
+	int dividerCount() const;
+	/// Where divider i is: the strip it occupies, for drawing and for hits.
+	Rect frameOfDivider(int i) const;
+	/// Which divider a point falls on, or -1 if it falls on none.
+	int dividerIndexAt(const Point &p) const;
+
+	/// The boundary divider i sits on — the far edge of pane i.
+	double positionOfDivider(int i) const;
+	/// Move divider i there, clamped so BOTH panes keep `minPaneSize`, and
+	/// re-place the two panes it separates.
+	void setPosition(double pos, int i);
+
+	/// Which divider the press grabbed, or -1. A drag lasts until mouseUp.
+	int draggingDivider() const { return dragging_; }
+
+	/// Divide the bounds among the panes, per the class's invariants. This is
+	/// also what `layout()` runs, so a resize keeps the split as it was.
+	void adjustPanes();
+
+	/// Draw the dividers (the panes draw themselves).
+	void drawRect(const Rect &dirty) override;
+	/// Grab a divider, if the press landed on one.
+	bool mouseDown(const Event &e) override;
+	/// Drag the grabbed divider.
+	bool mouseDragged(const Event &e) override;
+	/// Let go of it.
+	bool mouseUp(const Event &e) override;
+	/// Re-divide the bounds (see `adjustPanes`).
+	void layout() override;
+
+private:
+	double splitLength() const;		/* the bounds' size along the axis */
+	double axisCoordinate(const Point &p) const;	/* a point, along the axis */
+	double paneStart(int i) const;		/* pane i's origin on the axis */
+	double paneExtent(int i) const;		/* pane i's size on the axis */
+	void placePane(int i, double start, double size);
+
+	std::vector<View *> panes_;
+	bool vertical_ = true;
+	double dividerWidth_ = 6.0;
+	double minPaneSize_ = 24.0;
+	int dragging_ = -1;
+	double grabOffset_ = 0;	/* where in the divider the press landed */
+};
+
 /// @purpose One bar of a ScrollView: a track, a knob whose length is the
 /// visible fraction of the content, and a square arrow button at each end —
 /// the classic NSScroller.

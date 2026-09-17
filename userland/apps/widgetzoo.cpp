@@ -87,6 +87,40 @@ logTabs(TabView *tv)
 	std::fflush(stdout);
 }
 
+/* THE SPLIT VIEW (U5e), and the two-method subclass that gets a DRAG into the
+ * log. It writes its line at the END of the drag (mouseUp), not on every step
+ * of it: an interaction in progress is not something to judge, and the last
+ * line is the one that says where the divider came to rest. */
+static void
+logSplit(SplitView *sv)
+{
+	Rect d = sv->frameOfDivider(0);
+	View *a = sv->paneViewAt(0);
+	View *b = sv->paneViewAt(1);
+
+	std::printf("ZOO-SPLIT panes=%d divider=%g,%g,%gx%g sizes=%g,%g\n",
+		    sv->paneCount(), d.origin.x, d.origin.y, d.size.w, d.size.h,
+		    a ? a->frame().size.w : 0.0, b ? b->frame().size.w : 0.0);
+	std::fflush(stdout);
+}
+
+class BoardSplit : public SplitView {
+public:
+	bool mouseUp(const Event &e) override
+	{
+		bool dragging = draggingDivider() >= 0;
+
+		if (!SplitView::mouseUp(e)) {
+			return false;
+		}
+		if (dragging) {
+			logSplit(this);
+		}
+		return true;
+	}
+};
+static BoardSplit *splitBoard = nullptr;
+
 class BoardTabs : public TabView {
 public:
 	bool mouseDown(const Event &e) override
@@ -678,8 +712,24 @@ main(int argc, char **argv)
 	content->addSubview(tabView);
 	tabView->layout();
 	tabView->setFrame(Rect{ { 1106, 12 }, { 224, 120 } });
+
+	/* A SEVENTH REGION, BELOW THE TAB STRIP (U5e): a SPLIT VIEW — two panes
+	 * with a divider between them, and that divider DRAGS. The board is wider
+	 * again; as before, nothing moves, because a control's screen position
+	 * comes from the window's ORIGIN. The panes are plain views, so they draw
+	 * nothing: the divider is what the eye (and the gate) sees. */
+	splitBoard = new BoardSplit();
+	splitBoard->setVertical(true);
+	splitBoard->setDividerWidth(6);
+	splitBoard->setMinPaneSize(24);
+	splitBoard->setFrame(Rect{ { 0, 0 }, { 300, 100 } });
+	splitBoard->addPaneView(new View());
+	splitBoard->addPaneView(new View());
+	content->addSubview(splitBoard);
+	splitBoard->layout();
+	splitBoard->setFrame(Rect{ { 1106, 148 }, { 300, 100 } });
 	w.setFrame(Rect{ { 70, 50 },
-			 { 1350.0, tallest + 6 + w.chromeHeightPt() } });
+			 { 1440.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
 	/* TRACK THE WINDOW ON THE APPLICATION. The board pumps through the app
 	 * (see pumpOnce below), and so does anything the board opens - the
@@ -781,6 +831,13 @@ main(int argc, char **argv)
 	if (tabView) {
 		logTabs(tabView);
 		logAt("TABS", tabView);	/* where to press for the strip's tabs */
+	}
+	/* AND THE SPLIT VIEW, at rest: two panes and one divider at the halfway
+	 * mark. A DRAG writes this same line again, at the END of the drag (see
+	 * BoardSplit) - an in-progress drag is not something to judge. */
+	if (splitBoard) {
+		logSplit(splitBoard);
+		logAt("SPLIT", splitBoard);	/* where to press for its divider */
 	}
 	if (collectionTiles) {
 		std::printf("ZOO-COLLECTION items=%d size=%gx%g visible=%gx%g "

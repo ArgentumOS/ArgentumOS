@@ -1426,4 +1426,297 @@ TabView::drawRect(const Rect &dirty)
 	}
 }
 
+/* ---- U5e: SplitView -------------------------------------------------- */
+
+const ObjectClass SplitView::kClass = { "SplitView", &View::kClass, nullptr, 0,
+					nullptr, 0 };
+
+SplitView::SplitView()
+{
+}
+
+double
+SplitView::splitLength() const
+{
+	Size b = bounds().size;
+
+	return vertical_ ? b.w : b.h;
+}
+
+double
+SplitView::axisCoordinate(const Point &p) const
+{
+	return vertical_ ? p.x : p.y;
+}
+
+double
+SplitView::paneStart(int i) const
+{
+	Rect f = panes_[i]->frame();
+
+	return vertical_ ? f.origin.x : f.origin.y;
+}
+
+double
+SplitView::paneExtent(int i) const
+{
+	Rect f = panes_[i]->frame();
+
+	return vertical_ ? f.size.w : f.size.h;
+}
+
+void
+SplitView::placePane(int i, double start, double size)
+{
+	View *v = panes_[i];
+	Rect f = v->frame();
+
+	if (size < 0) {
+		size = 0;
+	}
+	if (vertical_) {
+		f.origin.x = start;
+		f.size.w = size;
+		/* ACROSS the axis a pane is the WHOLE of the split, from its
+		 * origin: a split divides ONE dimension, and filling the other is
+		 * what makes the panes fill the view instead of sitting in a corner
+		 * - or keeping a corner they were given back when the axis was the
+		 * other one. */
+		f.origin.y = 0;
+		f.size.h = bounds().size.h;
+	} else {
+		f.origin.y = start;
+		f.size.h = size;
+		f.origin.x = 0;
+		f.size.w = bounds().size.w;
+	}
+	v->setFrame(f);
+}
+
+void
+SplitView::addPaneView(View *v)
+{
+	if (!v) {
+		return;
+	}
+	panes_.push_back(v);
+	addSubview(v);
+	adjustPanes();
+}
+
+View *
+SplitView::paneViewAt(int i) const
+{
+	return (i >= 0 && i < (int) panes_.size()) ? panes_[i] : nullptr;
+}
+
+void
+SplitView::removeAllPaneViews()
+{
+	for (size_t i = 0; i < panes_.size(); i++) {
+		panes_[i]->removeFromSuperview();
+	}
+	panes_.clear();
+	setNeedsDisplay();
+}
+
+void
+SplitView::setVertical(bool v)
+{
+	if (v == vertical_) {
+		return;
+	}
+	vertical_ = v;
+	/* The panes trade width for height, so this refits them along the axis
+	 * that is now the split's - not just a transposed copy of stale sizes. */
+	adjustPanes();
+	setNeedsDisplay();
+}
+
+void
+SplitView::setDividerWidth(double w)
+{
+	if (w >= 0 && w != dividerWidth_) {
+		dividerWidth_ = w;
+		adjustPanes();
+	}
+}
+
+int
+SplitView::dividerCount() const
+{
+	return panes_.size() > 0 ? (int) panes_.size() - 1 : 0;
+}
+
+Rect
+SplitView::frameOfDivider(int i) const
+{
+	Size b = bounds().size;
+
+	if (i < 0 || i >= dividerCount()) {
+		return Rect{ { 0, 0 }, { 0, 0 } };
+	}
+	double at = positionOfDivider(i);
+
+	if (vertical_) {
+		return Rect{ { at, 0 }, { dividerWidth_, b.h } };
+	}
+	return Rect{ { 0, at }, { b.w, dividerWidth_ } };
+}
+
+int
+SplitView::dividerIndexAt(const Point &p) const
+{
+	for (int i = 0; i < dividerCount(); i++) {
+		if (rectHasPoint(frameOfDivider(i), p)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+double
+SplitView::positionOfDivider(int i) const
+{
+	if (i < 0 || i >= dividerCount()) {
+		return 0;
+	}
+	return paneStart(i) + paneExtent(i);
+}
+
+void
+SplitView::setPosition(double pos, int i)
+{
+	if (i < 0 || i >= dividerCount()) {
+		return;
+	}
+	double start = paneStart(i);
+	double far = paneStart(i + 1) + paneExtent(i + 1);
+	double lo = start + minPaneSize_;
+	double hi = far - dividerWidth_ - minPaneSize_;
+
+	if (hi < lo) {
+		return;	/* the two floors cannot both be met: leave it alone */
+	}
+	if (pos < lo) {
+		pos = lo;
+	}
+	if (pos > hi) {
+		pos = hi;
+	}
+	placePane(i, start, pos - start);
+	placePane(i + 1, pos + dividerWidth_, far - pos - dividerWidth_);
+	setNeedsDisplay();
+}
+
+void
+SplitView::adjustPanes()
+{
+	int n = (int) panes_.size();
+	double total;
+	double have = 0;
+	double at = 0;
+	double used = 0;	/* the panes' own sum: `at` has dividers in it */
+	bool proportional = true;
+
+	if (n == 0) {
+		return;
+	}
+	total = splitLength() - dividerWidth_ * (n - 1);
+	if (total < 0) {
+		total = 0;	/* not even room for the dividers themselves */
+	}
+	for (int i = 0; i < n; i++) {
+		double e = paneExtent(i);
+
+		have += e;
+		if (e <= 0) {
+			/* A pane that has never been placed has no share to keep, and a
+			 * proportion of zero would keep it at zero FOREVER (that is what
+			 * a second pane added to a fresh split did). Such a split is
+			 * divided evenly instead. */
+			proportional = false;
+		}
+	}
+	for (int i = 0; i < n; i++) {
+		double size;
+
+		if (proportional && have > 0) {
+			/* PROPORTIONAL to what each pane already had, so a resize
+			 * keeps the split the user dragged to. */
+			size = total * (paneExtent(i) / have);
+		} else {
+			size = total / n;	/* nothing to go on: equal shares */
+		}
+		if (i == n - 1) {
+			/* The last pane takes the rounding — `used` is the panes' own
+			 * sum, NOT the cursor `at`, which has the dividers in it. */
+			size = total - used;
+		}
+		placePane(i, at, size);
+		used += (size > 0 ? size : 0);
+		at += (size > 0 ? size : 0) + dividerWidth_;
+	}
+	setNeedsDisplay();
+}
+
+void
+SplitView::drawRect(const Rect &dirty)
+{
+	Context *ctx = Context::current();
+
+	if (!ctx) {
+		return;
+	}
+	(void) dirty;
+	/* THE PANES DRAW THEMSELVES. What is left here is the dividers, on the
+	 * same arithmetic the drag hits (frameOfDivider), so the divider that is
+	 * drawn and the divider that is grabbed cannot disagree. */
+	for (int i = 0; i < dividerCount(); i++) {
+		ctx->fillRect(frameOfDivider(i), Color::rgb(0.80, 0.80, 0.84));
+	}
+}
+
+bool
+SplitView::mouseDown(const Event &e)
+{
+	Point p = e.locationInWindow();
+	int i = dividerIndexAt(p);
+
+	if (i < 0) {
+		return false;	/* a press on a pane belongs to the pane */
+	}
+	dragging_ = i;
+	grabOffset_ = axisCoordinate(p) - positionOfDivider(i);
+	return true;
+}
+
+bool
+SplitView::mouseDragged(const Event &e)
+{
+	if (dragging_ < 0) {
+		return false;
+	}
+	setPosition(axisCoordinate(e.locationInWindow()) - grabOffset_,
+		    dragging_);
+	return true;
+}
+
+bool
+SplitView::mouseUp(const Event &e)
+{
+	(void) e;
+	if (dragging_ < 0) {
+		return false;
+	}
+	dragging_ = -1;
+	return true;
+}
+
+void
+SplitView::layout()
+{
+	adjustPanes();
+}
+
 } /* namespace argentum */
