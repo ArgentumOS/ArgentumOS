@@ -189,6 +189,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
 		userland/tests/scroll_view.cpp -largentum -lX11 -lconfig \
 		-o "$(ROOTFS64)/System/Shared/tests/scroll_view"
+	# collection_view: U5c acceptance (docs/design/cocoa-parity-plan.md) — the
+	# FlowLayout's arithmetic (the wrap, the frames, the height) and the
+	# CollectionView placing items and SIZING ITSELF to the flow. Display-free.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/collection_view.cpp -largentum -lX11 -lconfig \
+		-o "$(ROOTFS64)/System/Shared/tests/collection_view"
 	# font_twice: TEMPORARY DIAGNOSTIC - asks the guest's own FreeType whether
 	# it can open one font file twice (the toolkit keeps a face per size, so a
 	# second size is a second FT_New_Face). No toolkit, no fontconfig.

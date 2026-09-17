@@ -16,6 +16,8 @@
  */
 #include <argentum/argentum.h>
 
+#include <cmath>
+
 namespace argentum {
 
 static bool
@@ -1105,6 +1107,132 @@ ScrollView::subviewResized(View *child)
 
 	setContentOffset(o);	/* re-clamp: content may have shrunk */
 	setNeedsDisplay();
+}
+
+/* ---- FlowLayout -------------------------------------------------------
+ *
+ * The wrap IS the layout: items of one size, lines filled left to right, with
+ * the gaps and insets asked for. itemsPerLine() and frameForItem() are the ONE
+ * arithmetic, and contentHeight() is derived from them rather than computing
+ * the wrap again - so nothing here can disagree with itself.
+ */
+int
+FlowLayout::itemsPerLine(double width) const
+{
+	double usable = width - inset_.left - inset_.right;
+	int n;
+
+	if (itemSize_.w <= 0) {
+		return 1;
+	}
+	/* n items fit when n*w + (n-1)*gap <= usable, solved for n */
+	n = (int) std::floor((usable + interitem_) / (itemSize_.w + interitem_));
+	return n < 1 ? 1 : n;	/* a too-wide item still gets its own line */
+}
+
+Rect
+FlowLayout::frameForItem(int index, double width) const
+{
+	int per = itemsPerLine(width);
+	int row, col;
+
+	if (index < 0) {
+		index = 0;
+	}
+	row = index / per;
+	col = index % per;
+	return Rect{ { inset_.left + col * (itemSize_.w + interitem_),
+		       inset_.top + row * (itemSize_.h + line_) },
+		     itemSize_ };
+}
+
+double
+FlowLayout::contentHeight(int count, double width) const
+{
+	int per, rows;
+
+	if (count <= 0) {
+		return inset_.top + inset_.bottom;
+	}
+	per = itemsPerLine(width);
+	rows = (count + per - 1) / per;
+	return inset_.top + inset_.bottom + rows * itemSize_.h
+	       + (rows - 1) * line_;
+}
+
+/* ---- CollectionView --------------------------------------------------- */
+
+const ObjectClass CollectionView::kClass = { "CollectionView", &View::kClass,
+					     nullptr, 0, nullptr, 0 };
+
+CollectionView::CollectionView()
+{
+	/* the items ARE the picture: this view draws nothing of its own */
+	setIdentifier("collectionView");
+}
+
+void
+CollectionView::addItemView(View *v)
+{
+	if (!v) {
+		return;
+	}
+	items_.push_back(v);
+	addSubview(v);
+	setNeedsLayout();	/* the flow decides where it goes */
+	setNeedsDisplay();
+}
+
+void
+CollectionView::removeItemView(View *v)
+{
+	if (!v) {
+		return;
+	}
+	for (size_t i = 0; i < items_.size(); i++) {
+		if (items_[i] == v) {
+			items_.erase(items_.begin() + (long) i);
+			break;
+		}
+	}
+	/* removeFromSuperview only UNLINKS: the item was never ours to free */
+	v->removeFromSuperview();
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+void
+CollectionView::removeAllItems()
+{
+	while (!items_.empty()) {
+		removeItemView(items_.back());
+	}
+}
+
+Size
+CollectionView::fittingSize() const
+{
+	return Size{ frame().size.w,
+		     layout_.contentHeight(itemCount(), frame().size.w) };
+}
+
+void
+CollectionView::layout()
+{
+	double width = frame().size.w;
+	Size need = fittingSize();
+
+	/* PLACE EVERY ITEM FROM THE FLOW, then TAKE THE HEIGHT IT NEEDS. A
+	 * collection view inside a scroll view IS its content, so the scroll
+	 * range has to come from here - which is why setting our own frame is
+	 * part of laying out, and why the scroll view hears about it through
+	 * subviewResized() like any other child that grew. */
+	for (size_t i = 0; i < items_.size(); i++) {
+		items_[i]->setFrame(layout_.frameForItem((int) i, width));
+	}
+	if (need.h != frame().size.h) {
+		setFrame(Rect{ frame().origin, { width, need.h } });
+	}
 }
 
 } /* namespace argentum */

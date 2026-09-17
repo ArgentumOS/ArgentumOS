@@ -4373,6 +4373,100 @@ private:
  * track, and a knob whose length is the visible fraction of the content.
  */
 
+/// A flow layout: items of one size, laid left to right and wrapped into
+/// lines, with the gaps and insets asked for (Cocoa's
+/// `NSCollectionViewFlowLayout`, at the size this toolkit needs first).
+///
+/// ONE ARITHMETIC, the way the value controls do it: `itemsPerLine()` decides
+/// the wrap, `frameForItem()` places an item, and `contentHeight()` is the
+/// height of the lines that wrap produces. A collection view and anything else
+/// that wants to know where an item is go through the same two functions, so
+/// the layout and the hit test cannot drift apart.
+class FlowLayout {
+public:
+	/// The size every item is given.
+	Size itemSize() const { return itemSize_; }
+	/// Set it.
+	void setItemSize(const Size &s) { itemSize_ = s; }
+	/// The gap between items on one line.
+	double minimumInteritemSpacing() const { return interitem_; }
+	/// Set it.
+	void setMinimumInteritemSpacing(double d) { interitem_ = d; }
+	/// The gap between lines.
+	double minimumLineSpacing() const { return line_; }
+	/// Set it.
+	void setMinimumLineSpacing(double d) { line_ = d; }
+	/// The distance from the container's edge to the first item.
+	EdgeInsets sectionInset() const { return inset_; }
+	/// Set it.
+	void setSectionInset(const EdgeInsets &e) { inset_ = e; }
+
+	/// How many items fit on one line of `width`. Never zero: an item wider
+	/// than the container still gets a line of its own, which is what stops a
+	/// narrow window from dividing by zero.
+	int itemsPerLine(double width) const;
+	/// The frame of item `index` in a container `width` wide. Lines run from
+	/// the TOP and items from the left.
+	Rect frameForItem(int index, double width) const;
+	/// The height `count` items need at `width`, insets included.
+	double contentHeight(int count, double width) const;
+
+private:
+	Size itemSize_ = { 24, 24 };
+	double interitem_ = 8;
+	double line_ = 8;
+	EdgeInsets inset_;
+};
+
+/// A collection of items laid out in a flow (Cocoa's `NSCollectionView` with
+/// a flow layout). The items are VIEWS, added the way a stack's arranged
+/// subviews are, so drawing and hit-testing come from the view tree and this
+/// class only decides where each one goes.
+///
+/// IT SIZES ITSELF TO ITS CONTENT, which is what lets a `ScrollView` own it:
+/// the flow's height at the width this view has becomes its own height, so the
+/// scroll range comes out right with nothing else measuring anything. Cocoa's
+/// collection view does exactly this inside a scroll view.
+///
+/// v1 draws every item and does NOT recycle them — a collection here is as
+/// large as its items, which is the same bargain `StackView` makes. Virtual
+/// items are U6's business.
+class CollectionView : public View {
+public:
+	/// The class record KVC walks (Object <- View <- CollectionView).
+	static const ObjectClass kClass;
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// An empty collection and the default flow.
+	CollectionView();
+
+	/// The flow that places the items (Cocoa's collectionViewLayout:).
+	FlowLayout &collectionViewLayout() { return layout_; }
+	/// The flow, read-only.
+	const FlowLayout &collectionViewLayout() const { return layout_; }
+
+	/// Add `v` as the last item (it becomes a subview as well).
+	void addItemView(View *v);
+	/// Stop collecting `v` (it also leaves the view tree).
+	void removeItemView(View *v);
+	/// Remove every item.
+	void removeAllItems();
+	/// The items, in order.
+	const std::vector<View *> &items() const { return items_; }
+	/// How many there are.
+	int itemCount() const { return (int) items_.size(); }
+
+	/// Place every item by the flow and take the height it needs.
+	void layout() override;
+	/// The size the flow wants at the width this view has.
+	Size fittingSize() const;
+
+private:
+	FlowLayout layout_;
+	std::vector<View *> items_;
+};
+
 class ScrollView;
 
 /// Which axis one scroll bar drives.

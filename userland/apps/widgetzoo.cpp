@@ -64,6 +64,10 @@ static Button *bezelRoundRect = nullptr;
  * wider than the hole it is seen through. */
 static ScrollView *scrollList = nullptr;
 static StackView *scrollRows = nullptr;
+/* THE COLLECTION VIEW (U5c) and the scroll view that owns it: a flow of items
+ * whose height comes from the flow itself. */
+static ScrollView *collectionGrid = nullptr;
+static CollectionView *collectionTiles = nullptr;
 static Point lastScroll = { 0, 0 };	/* the offset it starts at, so the first
 					 * ZOO-SCROLL-OFFSET is a real scroll */
 
@@ -597,6 +601,35 @@ main(int argc, char **argv)
 	scrollRows->setFrame(Rect{ { 0, 0 }, scrollRows->fittingSize() });
 	scrollList->setDocumentView(scrollRows);
 	scrollList->setFrame(Rect{ { 826, 12 }, { 264, 320 } });
+
+	/* A FIFTH REGION, UNDER THE SCROLL LIST (U5c): a COLLECTION VIEW inside a
+	 * scroll view. Nothing here computes where an item goes - the flow does,
+	 * and the collection TAKES THE FLOW'S HEIGHT AS ITS OWN, so the bars come
+	 * out of the layout instead of out of arithmetic written twice. Twelve
+	 * 56x28 tiles: three to a line at this width, four lines, so 138 tall
+	 * inside a 96-tall hole, which is what the vertical bar is for. */
+	collectionGrid = new ScrollView();
+	collectionGrid->setHasVerticalScroller(true);
+	content->addSubview(collectionGrid);
+	collectionTiles = new CollectionView();
+	collectionTiles->collectionViewLayout().setItemSize(Size{ 56, 28 });
+	collectionTiles->collectionViewLayout().setMinimumInteritemSpacing(6);
+	collectionTiles->collectionViewLayout().setMinimumLineSpacing(6);
+	collectionTiles->collectionViewLayout().setSectionInset(
+		EdgeInsets{ 4, 4, 4, 4 });
+	/* the hole's width, so the flow wraps where the user sees it wrap */
+	collectionTiles->setFrame(Rect{ { 0, 0 }, { 249, 96 } });
+	for (int i = 1; i <= 12; i++) {
+		Button *b = new Button();
+		char title[32];
+
+		std::snprintf(title, sizeof(title), "T%d", i);
+		b->setTitle(title);
+		collectionTiles->addItemView(b);
+	}
+	collectionTiles->layout();
+	collectionGrid->setDocumentView(collectionTiles);
+	collectionGrid->setFrame(Rect{ { 826, 340 }, { 264, 96 } });
 	w.setFrame(Rect{ { 70, 50 },
 			 { 1106.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
@@ -694,6 +727,18 @@ main(int argc, char **argv)
 			    scrollRows->frame().origin.y,
 			    scrollList->hasVerticalScroller() ? 1 : 0,
 			    scrollList->hasHorizontalScroller() ? 1 : 0);
+	}
+	if (collectionTiles) {
+		std::printf("ZOO-COLLECTION items=%d size=%gx%g visible=%gx%g "
+			    "offset=%g,%g bars=%d\n",
+			    collectionTiles->itemCount(),
+			    collectionGrid->contentSize().w,
+			    collectionGrid->contentSize().h,
+			    collectionGrid->visibleSize().w,
+			    collectionGrid->visibleSize().h,
+			    collectionGrid->contentOffset().x,
+			    collectionGrid->contentOffset().y,
+			    collectionGrid->hasVerticalScroller() ? 1 : 0);
 	}
 	std::fflush(stdout);
 

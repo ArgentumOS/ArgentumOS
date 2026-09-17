@@ -703,6 +703,31 @@ as a compatibility path for un-migrated views, with a migration list.
   * One face per family+bold, sized per use (aad1045a) stays regardless of the
     above: a face of a 760KB font is megabytes of tables, and a scrolling list
     asks for more sizes than a board does.
+  **U5c — `CollectionView` + `FlowLayout`. DONE (2026-09).** A flow layout
+  (item size, interitem and line spacing, section insets) and a collection
+  view whose items are VIEWS, so drawing and hit-testing come from the view
+  tree while the layout decides where each one goes.
+  * **THE FLOW HAS ONE ARITHMETIC**, the rule the value controls follow:
+    `itemsPerLine()` decides the wrap, `frameForItem()` places an item and
+    `contentHeight()` is derived from them rather than computing the wrap a
+    second time — so nothing in the class can disagree with itself, and a
+    caller that wants to know where an item is asks the same two functions. An
+    item wider than its container still gets a line of its own, which is also
+    what stops a narrow window from dividing by zero.
+  * **IT SIZES ITSELF TO ITS CONTENT**, which is what lets a `ScrollView` own
+    it: `layout()` places the items and then takes the flow's height as its own
+    frame, so the scroll range and the bars come out of the layout with nothing
+    else measuring anything — the composition this container layer exists for.
+    It is on the board as a fifth region: twelve 56x28 tiles in a 249-wide hole
+    are three to a line and four lines, 138 tall in an 81-tall visible area,
+    and the vertical bar is the difference.
+  * v1 draws every item and does not recycle them — the same bargain
+    `StackView` makes. Virtual items are U6's business, since they are what
+    `TableView` needs.
+  Gates: `uikit_u5c` — the display-free `collection_view` probe (the wrap, the
+  frames, the height, the self-sizing, the hit test and the re-flow after a
+  removal; 13 cases, whose numbers are the contract) plus the board's
+  `ZOO-COLLECTION` line.
 - **U6 — table and outline fidelity.** View-based rows, cells, columns and
   headers, sorting, selection modes, drag&drop, variable row heights.
 - **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
@@ -834,10 +859,9 @@ the gate is the claim; the sections above record what each one settled.
 | U5a | `StackView` — the arrangement IS constraints, and the solver gets coordinate spaces | `uikit_u5` |
 | U5b | `ScrollView` — the offset on the clip view, scrollers, wheel | `uikit_u5b` |
 
-**Next: U5, the rest of the containers and collections.** The DAMAGE
-NARROWING turned out to be already done — measured, and recorded under
-"the paint was never coarse" — so what remains is `CollectionView` with a
-flow layout, then `SplitView` / `TabView`, then `GridView` / `Browser`.
+**Next: U5, the rest of the containers and collections.** `CollectionView` with
+a flow layout is DONE (U5c), so what remains is `SplitView` / `TabView`, then
+`GridView` / `Browser`.
 
 **Open inside finished slices** (fidelity, not absence):
 
