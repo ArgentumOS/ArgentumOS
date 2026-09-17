@@ -24,4 +24,14 @@ struct kconf_kv {
 int kconf_next(const char *data, unsigned int size, unsigned int *off,
 	       struct kconf_kv *out);
 
+/*
+ * Is a kernel.conf buffer in the plist spelling? The same content rule libconfig
+ * uses (userland/libconfig_plist.c config_text_is_plist): skip a UTF-8 BOM and
+ * whitespace, then look for '<'. Exposed because kernel_conf_apply() has to
+ * REPORT a file it cannot read: as of P3f the line grammar is retired, so the
+ * kernel takes its settings from an XML plist or says so, rather than reading a
+ * spelling nothing writes any more.
+ */
+int kconf_text_is_plist(const char *data, unsigned int size);
+
 #endif /* _KERNEL_KCONF_H */

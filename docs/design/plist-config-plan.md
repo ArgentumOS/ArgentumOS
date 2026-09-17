@@ -278,16 +278,52 @@ translation unit the kernel links. That split — corpus for the grammar, a boot
 the integration — is the acceptance `kernel-conf-plan.md` M1 already used, so the
 plist spelling is held to the standard the line grammar always was.
 
-### P3f — retire the legacy reader
-With every file converted and every reader on plists, `libconfig.c`'s legacy
-syntax goes. One commit, no behaviour change, and the diff is a deletion.
+### P3f — retire the legacy reader (DONE: one spelling, every reader)
+Every shipped domain is a plist — the last two, `system.network.conf` and
+`system.shells.conf`, converted in P4 (68651bce) — so the line grammar has no
+reader left that anything depends on, and the three readers now SAY SO instead of
+guessing at a spelling nothing writes:
 
-**This is also where the legacy WRITER goes.** P3b left `libconfig.c`'s emitter
-chain (`emit_leaf`, `emit_value_lines`, `write_indented`, `value_to_text`,
-`emit_children`, `emit_grouped`) in place but uncalled — `emit_grouped` is the
-root of that dead subgraph, and the section is labelled as dead in the source.
-They are the writer half of the grammar P3f deletes, so they go in the same
-deletion rather than swelling P3b's diff.
+* **libconfig** (631e6d78): `parse_conf` refuses anything that is not a plist,
+  returning CONFIG_ERR_PARSE. Measured: a scratch domain holding `console = ttyS0`
+  returns error 7 instead of parsing. The corpus fixtures moved with it — 01-05 are
+  plists now, each verified a fixed point of the writer's own rewrite — because
+  `tools/kconf_corpus.sh` diffs the two parsers on the SAME file, and a legacy
+  fixture would have been refused by one side while the other still read it.
+* **libc** (P3f 2/3): `pwconf_parse` (musl-pwconf.patch) keeps the plist arm, the
+  entry model and every renderer, and refuses a non-plist with EINVAL — so
+  getpwnam/getgrnam/lookup_name report the lookup as failing, which is the honest
+  answer for a file this libc cannot read. Gate: `fs_agfs` 12/12, with `id`,
+  `ls -l` and `wget localhost` all still resolving through the CONVERTED domains.
+* **the kernel** (P3f 3/3): `kernel_conf_apply()` checks the spelling first and
+  prints `kernel.conf: not an XML plist - no settings applied (the line grammar was
+  retired; the compiled-in defaults stand).` — a REPORTED refusal, not a silent
+  half-read. Gate: `procfs_devfs` 16/16, the boot reading the ESP's plist.
+
+**The two patches' coupling, measured rather than assumed.** `pwconf.c` is touched
+by BOTH the pwconf and the hosts patch, and this stage deletes ~220 lines from it,
+which moved the hosts patch's `pwconf.c` hunks past their context. The fix is the
+split the file always wanted: the pwconf patch CREATES `pwconf.c` whole (regenerated
+as a full-file addition, the other paths carried over verbatim), and the hosts patch
+now carries only its resolver wiring (`getnameinfo.c`, `lookup_name.c`, `pwconf.h`).
+Proved on a pristine tree: the three patches apply in order and the resulting
+`pwconf.c` is byte-identical to the edited file. Two more things learned the hard
+way: a comment containing `getpw*/getgr*` ends at that `*/` (the first libc build
+failed on it), and a FAILED `make musl64` leaves the patches applied, so the next
+run's `git apply` collides — clean the tree before retrying.
+
+**What is left of P3f is the deletion, and it is mechanical.**
+`libconfig.c`'s unreachable legacy body plus its labelled-dead emitter chain — 23
+functions, ~1,100 lines, enumerated by the reachability audit in this stage (every
+helper defined in the legacy region that no caller outside it names: `parse_quoted`,
+`parse_value`, the `v2_parse_*` family, `pctx_*`, `emit_leaf`/`emit_value_lines`/
+`write_indented`/`value_to_text`/`emit_children`/`emit_grouped`, while `entries_free`,
+`blocks_free` and `parse_conf` itself stay) — and `kconf.c`'s `kconf_legacy_next`.
+It is kept out of this commit deliberately, because a ~1,100-line retype is exactly
+the change that should not be rushed at a commit boundary: the behaviour above is
+what "every reader on plists" means, and the code removal changes nothing
+observable. The recipe for that pass: confirm the dispatch refuses, then let
+`-Wunused-function` enumerate what became unreachable and delete it in path order.
 
 ## What this plan refuses to do
 

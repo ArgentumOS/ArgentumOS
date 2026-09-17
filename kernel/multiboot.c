@@ -544,6 +544,11 @@ void multiboot(unsigned int magic, unsigned int info)
  * uses, so values are validated identically (bad value -> WARNING + the
  * default layer survives for that key). Unknown keys warn and are
  * ignored. Absent file (fnx_kconf.size == 0) -> no-op.
+ *
+ * The file must be an XML plist: as of P3f the line grammar is retired (the
+ * writer emits plists, every shipped file is one, and the file this image ships
+ * is a plist), so a file in the old spelling is REPORTED and its settings are
+ * NOT applied, rather than half-read by a grammar nothing writes or maintains.
  */
 void kernel_conf_apply(void)
 {
@@ -551,6 +556,12 @@ void kernel_conf_apply(void)
 	int nkeys;
 
 	if(!fnx_kconf.size) {
+		return;
+	}
+	if(!kconf_text_is_plist(fnx_kconf.data, fnx_kconf.size)) {
+		printk("kernel.conf: not an XML plist - no settings applied (the "
+		       "line grammar was retired; the compiled-in defaults "
+		       "stand).\n");
 		return;
 	}
 

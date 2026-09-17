@@ -477,15 +477,32 @@ static int kconf_plist_next(const char *data, unsigned int size, unsigned int *o
 	return 1;
 }
 
-/* the line grammar, defined below */
+/* the line grammar, defined below (retired: see kconf_next) */
 static int kconf_legacy_next(const char *data, unsigned int size, unsigned int *off,
 			     struct kconf_kv *out);
+
+/*
+ * kconf_text_is_plist() - is the buffer in the plist spelling? The public face
+ * of the detection rule above, for kernel_conf_apply(): the kernel has to be
+ * able to SAY "this file is not a plist" instead of walking it with a grammar
+ * nothing writes any more (P3f).
+ */
+int kconf_text_is_plist(const char *data, unsigned int size)
+{
+	return kconf_is_plist(data, size);
+}
 
 /*
  * kconf_next() - parse the next setting from 'data' (size-bounded, may
  * also be NUL-terminated) starting at *off, from either spelling: an XML plist
  * (P3e) or the `key = value` line grammar. Returns 1 and fills *out on a
  * setting (kind KCONF_KV_ERR for a skipped malformed line), 0 at EOF.
+ *
+ * The line grammar is RETIRED as of P3f — the writer emits plists, the shipped
+ * kernel.conf is a plist, and kernel_conf_apply() now checks the spelling first
+ * — so nothing in the running system reaches the legacy arm below. It is kept
+ * only until the deletion pass recorded in docs/design/plist-config-plan.md
+ * removes it together with libconfig's retired grammar.
  */
 int kconf_next(const char *data, unsigned int size, unsigned int *off,
 	       struct kconf_kv *out)
