@@ -46,14 +46,14 @@ is the factory for the label case — there is deliberately no `Label` class),
 `ColorWell`, `DatePicker`, `PopUpButton`, `Menu`/`MenuItem`/`MenuView`,
 `ColorPanel`.
 
-**Containers: NONE.** This inventory used to list `Box`, `ScrollView`,
-`SplitView`, `TabView`, `ImageView` and `Label` — that was the toolkit
-BEFORE the restart, and after it the container layer was never rebuilt. U5
-is therefore a BUILD, not the "fidelity passes" its own milestone text
-still says, and U6 builds `TableView`/`OutlineView` from nothing as well.
-`TextView` scroll-follows itself; nothing else can scroll, stack, split or
-tab yet — which is why the widget zoo still positions every control by hand
-with `x`/`y` cursors.
+**Containers: `StackView` and `ScrollView`, so far.** This inventory used to
+list `Box`, `ScrollView`, `SplitView`, `TabView`, `ImageView` and `Label` —
+that was the toolkit BEFORE the restart, and after it the container layer was
+never rebuilt. U5 is therefore a BUILD, not the "fidelity passes" its own
+milestone text still says, and U6 builds `TableView`/`OutlineView` from
+nothing as well. U5a and U5b have since built `StackView` and `ScrollView` —
+the zoo's columns are stacks and its scroll region is a `ScrollView` —
+`TextView` scroll-follows itself, and nothing else can stack, split or tab yet.
 
 The base classes the rest of the plan needs are no longer missing: `NSCell`
 is `Cell`/`ActionCell` (U1c) and the text system is `TextStorage` →
@@ -666,6 +666,43 @@ as a compatibility path for un-migrated views, with a migration list.
   set was then re-verified against the migration: `uikit_u2c`, `uikit_u3b`,
   `uikit_u3c`, `uikit_u3d`, `uikit_u4`, `uikit_menu`, `uikit_u5` — 7/7
   cases, 123/123 checks.**
+  **U5b — `ScrollView`. DONE (2026-09).** Both scrollers (arrows, knob, page
+  and line steps), wheel scrolling, and a document view that keeps its own
+  frame. **THE OFFSET LIVES ON THE CLIP VIEW** — Cocoa's `NSClipView` bounds
+  origin — so the child is DRAWN translated while the solver still lays it out
+  at its real position: a scrolled container is not a special case for layout,
+  for hit-testing or for the responder chain, and that is the whole reason for
+  choosing this model over moving the document. `View` gained
+  `setContentOffset`/`contentOffset` and `subviewResized` (a document that
+  grows tells its container, which updates the bars); `hitTest` and
+  `rectInWindow` subtract the parent's offset, which is what lands a click on
+  the row the user sees. `Scroller::knobRect()` is the ONE arithmetic behind
+  both `partAt()` and the drawing (the bar reports the PART, the view supplies
+  the step), with a minimum knob of 12 and 15pt arrows. Wheel events arrive as
+  X buttons 4/5/6/7, become a `ScrollWheel` event with deltas, and go up the
+  chain from the hit view; `ScrollView` declines when there is nothing to
+  scroll. Gates: `uikit_u5b` — the display-free `scroll_view` probe, whose
+  numbers are the contract (content 300x496 in a 249x305 hole, document at
+  0,0, both bars present), plus the board: `scrollRows` is a StackView of 14
+  titled buttons in the clear sideways zone, and one arrow click must move the
+  offset exactly one 16pt line (0,16) and nothing on the other axis.
+  * **THE GUEST FONT FAILURE WAS FOUND FROM THIS SLICE, AND IT WAS NEVER A
+    FONT.** A second face of one font failed with a format error while every
+    open/read/lseek of that file measured perfect — which sent this slice
+    hunting a two-open limit that does not exist. The defect was `mmap`: a
+    SECOND mapping of one file read ZEROS. `mm/mmap.c`'s `can_be_merged()`
+    required two adjacent mappings' file offsets to be EQUAL, so two separate
+    mmaps of one file at offset 0 were merged into a single vma whose one
+    (start, offset) pair then read everything past the first from a file offset
+    the file does not have (past EOF -> `bmap()` 0 -> `bread_page()` zero-filled
+    the block). Fixed in b7f3e736: for a file mapping the offset must CONTINUE
+    where the first ends, not merely equal it. The reproduction is the
+    `font_twice` probe's mapping section and check I of `fs_open_many`, and the
+    local FreeType workaround (381e1a76, which made FT read fonts rather than
+    map them) is reverted in 86477843 now that FT can map them again.
+  * One face per family+bold, sized per use (aad1045a) stays regardless of the
+    above: a face of a 760KB font is megabytes of tables, and a scrolling list
+    asks for more sizes than a board does.
 - **U6 — table and outline fidelity.** View-based rows, cells, columns and
   headers, sorting, selection modes, drag&drop, variable row heights.
 - **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
@@ -794,10 +831,13 @@ the gate is the claim; the sections above record what each one settled.
 | U2c | the button family — type x bezel style, radio groups by siblings | `uikit_u2c` |
 | U3a-d | the text stack, the text views, editing, `SearchField` + `TokenField` | `uikit_u3a` … `uikit_u3d` |
 | U4a | the value controls: `Slider`, `Stepper`, `ProgressIndicator`, `LevelIndicator` | `uikit_u4` |
+| U5a | `StackView` — the arrangement IS constraints, and the solver gets coordinate spaces | `uikit_u5` |
+| U5b | `ScrollView` — the offset on the clip view, scrollers, wheel | `uikit_u5b` |
 
-**Next: U5 — containers and collections.** `StackView`, `GridView`,
-`CollectionView` with a flow layout, `Browser`, and the `ScrollView` /
-`SplitView` / `TabView` fidelity passes.
+**Next: U5, the rest of the containers and collections.** The DAMAGE
+NARROWING first (the paint is still coarse and that is what is left
+expensive), then `CollectionView` with a flow layout, `SplitView` /
+`TabView`, and `GridView` / `Browser`.
 
 **Open inside finished slices** (fidelity, not absence):
 
