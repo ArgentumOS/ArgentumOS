@@ -44,6 +44,26 @@ class Case(BaseCase):
         for line in mounts.strip().splitlines()[:5]:
             self.note(line)
 
+        # --- the mount table's OWN SPELLING, in the guest ---------------
+        # system.mounts.conf is read by init's OWN hand-rolled parser
+        # (tools/init.c: mount_from_table) and NOT by libconfig — measured while
+        # converting the domains for P3c (docs/design/plist-config-plan.md).
+        # Until init reads its domains THROUGH the library, this file must stay
+        # in the legacy spelling: converting it early breaks the boot mounts
+        # silently (init parses nothing, so it mounts nothing), which is exactly
+        # what this check is here to catch.
+        mark = len(session.log_text())
+        session.run("cat /System/Configuration/system.mounts.conf")
+        conf = session.output_since(mark)
+        legacy = "processes = {" in conf and "<plist" not in conf
+        self.check("mounts-domain-still-legacy",
+                   legacy,
+                   "init's own parser can still read the mount table"
+                   if legacy
+                   else "the mount table was converted, but init parses it "
+                        "itself — port init to libconfig first: "
+                        + conf.strip()[:160])
+
         # --- procfs ---------------------------------------------------
         mark = len(session.log_text())
         session.run("cat %s/version" % PROC)

@@ -400,16 +400,47 @@ static void check_domain(const char *src, const char *domain, const char *root)
 	check(name, same_values && n == n_again,
 	      "the plist spelling changed a value");
 
-	/* 4. THE PROSE: one XML comment per legacy '#' line, and the first line's
-	 * text is still there. */
+	/* 4. THE PROSE, in WHICHEVER SPELLING the file arrived in: one legacy '#'
+	 * line, or one `<!-- … -->` item, per comment the rewrite emits — and the
+	 * first comment's text still there. After P3c the shipped files ARE plists,
+	 * so this has to hold for a plist SOURCE too: that is the evidence the
+	 * conversion kept the prose rather than merely the values. */
 	if(converted) {
-		long was = count_prose_lines(original);
+		int plist_source = strstr(original, "<plist") != NULL;
+		long was = plist_source ? count_occurrences(original, "<!--")
+					: count_prose_lines(original);
 		long now = count_occurrences(converted, "<!--");
+		int have_prose = 0;
 
+		if(plist_source) {
+			const char *open = strstr(original, "<!--");
+			const char *close = open ? strstr(open + 4, "-->") : NULL;
+
+			if(close) {
+				const char *s = open + 4;
+				size_t sn = (size_t)(close - s);
+
+				while(sn && (*s == ' ' || *s == '\t')) {
+					s++;
+					sn--;
+				}
+				while(sn && (s[sn - 1] == ' ' || s[sn - 1] == '\t')) {
+					sn--;
+				}
+				if(sn && sn + 1 < sizeof(prose)) {
+					memcpy(prose, s, sn);
+					prose[sn] = '\0';
+					have_prose = 1;
+				}
+			}
+		} else {
+			have_prose = first_prose(original, prose,
+						 sizeof(prose)) == 0;
+		}
 		snprintf(name, sizeof(name), "%s:prose-line-count", domain);
 		check(name, was == now,
 		      "a comment line was dropped or invented");
-		if(first_prose(original, prose, sizeof(prose)) == 0) {
+		if(have_prose) {
 			snprintf(name, sizeof(name),
 				 "%s:first-comment-text-present", domain);
 			check(name, strstr(converted, prose) != NULL, prose);

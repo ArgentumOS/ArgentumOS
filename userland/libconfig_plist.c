@@ -719,12 +719,28 @@ static config_err_t set_child(plist_value_t *parent, const char *name,
  * arithmetic the legacy `emit_children` uses — an exact entry means a leaf,
  * anything else means a container.
  *
- * An entry's PROSE is emitted immediately before that entry's own value, at
- * whatever depth the entry lands. A container key therefore carries no comment
- * of its own: its first child's prose precedes that child, just inside.
+ * An entry's PROSE is emitted immediately before the entry's own value, at
+ * whatever depth it lands — and a BLOCK's PROSE STANDS ABOVE THE BLOCK'S KEY,
+ * not inside it: a file's header belongs at the top of the file, not buried in
+ * its first record. `consumed` is the entry whose prose the CALLER emitted for
+ * exactly that reason, and is skipped here so nothing is written twice.
  */
+static struct entry *first_contributing(struct entry *list, const char *prefix)
+{
+	size_t plen = strlen(prefix);
+
+	for(; list; list = list->next) {
+		if(!strncmp(list->key, prefix, plen) &&
+		   (list->key[plen] == '\0' || list->key[plen] == '.')) {
+			return list;
+		}
+	}
+	return NULL;
+}
+
 static config_err_t build_level(plist_value_t *parent, struct entry *list,
-				const char *prefix, int depth)
+				const char *prefix, int depth,
+				const struct entry *consumed)
 {
 	size_t plen = prefix ? strlen(prefix) : 0;
 	struct entry *en;
@@ -785,18 +801,34 @@ static config_err_t build_level(plist_value_t *parent, struct entry *list,
 		}
 		exact = find_entry(list, full);
 		if(exact) {
-			e = prose_emit(parent, exact->comment);
+			if(exact != consumed) {
+				e = prose_emit(parent, exact->comment);
+			}
 			if(!e) {
 				e = set_child(parent, kids[i],
 					      value_to_plist(&exact->val, depth));
 			}
 		} else {
-			plist_value_t *child = plist_new_dictionary();
+			struct entry *first = first_contributing(list, full);
+			plist_value_t *child;
 
-			if(!child) {
+			/* THE BLOCK'S PROSE STANDS ABOVE THE BLOCK: the first
+			 * entry inside it hands its prose over here, and the
+			 * recursion is told WHICH entry did, so the same words
+			 * are not written twice. */
+			if(first && first != consumed) {
+				e = prose_emit(parent, first->comment);
+			}
+			child = plist_new_dictionary();
+			if(e) {
+				if(child) {
+					plist_free(child);
+				}
+			} else if(!child) {
 				e = CONFIG_ERR_NOMEM;
 			} else {
-				e = build_level(child, list, full, depth + 1);
+				e = build_level(child, list, full, depth + 1,
+						first);
 				if(!e) {
 					e = set_child(parent, kids[i], child);
 				} else {
@@ -888,12 +920,23 @@ static config_err_t build_root(plist_value_t *root, struct entry *list,
 					      value_to_plist(&leaf->val, 0));
 			}
 		} else if(block_listed(blocks, nblocks, tops[i])) {
-			plist_value_t *child = plist_new_dictionary();
+			struct entry *first = first_contributing(list, tops[i]);
+			plist_value_t *child;
 
-			if(!child) {
+			/* the block's prose stands above the block's KEY, which is
+			 * what keeps a file's header at the top of the file */
+			if(first && first->comment) {
+				e = prose_emit(root, first->comment);
+			}
+			child = plist_new_dictionary();
+			if(e) {
+				if(child) {
+					plist_free(child);
+				}
+			} else if(!child) {
 				e = CONFIG_ERR_NOMEM;
 			} else {
-				e = build_level(child, list, tops[i], 1);
+				e = build_level(child, list, tops[i], 1, first);
 				if(!e) {
 					e = set_child(root, tops[i], child);
 				} else {

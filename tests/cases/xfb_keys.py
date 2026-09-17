@@ -59,3 +59,37 @@ class Case(BaseCase):
         text = "".join(l.split("text=")[-1] for l in keys)
         self.check("the-word-arrived", WORD in text,
                    "the server read \"%s\"" % text)
+
+        # --- the shipped X environment, in the guest --------------------
+        # P3c: system.xfb.conf and system.fonts.conf are XML plists now
+        # (docs/design/plist-config-plan.md) and both are read through libconfig
+        # (hw/xfb/configargs.c, fontconfig's fclibconf.c). The keys above prove
+        # the server is up and answering; THIS proves the files behind it are the
+        # CONVERTED ones and not stale copies of the legacy files — a working X
+        # server says nothing about which spelling it read.
+        # A SEPARATE read per file: `cat a; echo ---; cat b` puts the console's
+        # own command echo (which contains the separator) into the output, and a
+        # split on it cuts at the wrong place — measured, not guessed.
+        mark = len(session.log_text())
+        session.run("cat /Shared/Configuration/system.xfb.conf")
+        xfb_part = session.output_since(mark)
+        self.check("xfb-domain-is-a-plist",
+                   '<plist version="1.0">' in xfb_part
+                   and "<key>display</key>" in xfb_part
+                   and "<key>reset</key>" in xfb_part,
+                   "the shipped X settings are the converted plist"
+                   if '<plist version="1.0">' in xfb_part
+                   else "the guest still has the legacy file: "
+                        + xfb_part.strip()[:160])
+
+        mark = len(session.log_text())
+        session.run("cat /System/Configuration/system.fonts.conf")
+        fonts_part = session.output_since(mark)
+        self.check("fonts-domain-is-a-plist",
+                   '<plist version="1.0">' in fonts_part
+                   and "<key>dirs</key>" in fonts_part
+                   and "<key>cachedir</key>" in fonts_part,
+                   "the shipped font configuration is the converted plist"
+                   if '<plist version="1.0">' in fonts_part
+                   else "the guest still has the legacy file: "
+                        + fonts_part.strip()[:160])
