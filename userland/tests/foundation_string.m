@@ -209,6 +209,9 @@ int main(void)
 			"description",
 			"copy",
 			"mutableCopy",
+			"rangeOfCharacterFromSet:",
+			"componentsSeparatedByCharactersInSet:",
+			"stringByTrimmingCharactersInSet:",
 			NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -233,9 +236,6 @@ int main(void)
 			"initWithCharacters:length:",
 			"initWithCharactersNoCopy:length:freeWhenDone:",
 			"getCharacters:range:",
-			"rangeOfCharacterFromSet:",
-			"componentsSeparatedByCharactersInSet:",
-			"stringByTrimmingCharactersInSet:",
 			"propertyList",
 			NULL
 		};
@@ -429,6 +429,79 @@ int main(void)
 			      [[NSMutableString string] length] == 0,
 			      "append/insert/delete/replace, the count-returning replace, and -copy as a snapshot");
 		}
+	}
+
+	{
+		/* THE AUDITED COCOA INVENTORY for NSCharacterSet, the class the three
+		 * ...InSet: methods above are specified in terms of. */
+		static const char *classSelectors[] = {
+			"characterSetWithCharactersInString:", "characterSetWithRange:",
+			"whitespaceCharacterSet", "whitespaceAndNewlineCharacterSet",
+			"newlineCharacterSet", "decimalDigitCharacterSet", "letterCharacterSet",
+			"alphanumericCharacterSet", "punctuationCharacterSet", "controlCharacterSet",
+			"lowercaseLetterCharacterSet", "uppercaseLetterCharacterSet",
+			NULL
+		};
+		static const char *mutableClassSelectors[] = {
+			"characterSet", NULL
+		};
+		static const char *instanceSelectors[] = {
+			"initWithCharactersInString:", "initWithRange:", "characterIsMember:",
+			"invertedSet", "isSupersetOfSet:", "isEqualToCharacterSet:",
+			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+		};
+		static const char *mutableSelectors[] = {
+			"addCharactersInString:", "addCharactersInRange:",
+			"removeCharactersInString:", "removeCharactersInRange:",
+			"invert", "formUnionWithCharacterSet:",
+			"formIntersectionWithCharacterSet:", NULL
+		};
+		static const char *excluded[] = {
+			/* Needs the Unicode character tables. */
+			"symbolCharacterSet", "capitalizedLetterCharacterSet",
+			"nonBaseCharacterSet", "decomposableCharacterSet",
+			"illegalCharacterSet", "longCharacterIsMember:", "hasMemberInPlane:",
+			/* Needs a bitmap representation or a file to read one from. */
+			"bitmapRepresentation", "characterSetWithBitmapRepresentation:",
+			"characterSetWithContentsOfFile:", NULL
+		};
+		NSCharacterSet *probe = [NSCharacterSet whitespaceCharacterSet];
+		NSMutableCharacterSet *mutable = [[NSMutableCharacterSet alloc] init];
+		int complete = 1;
+		int i;
+
+		for (i = 0; mutableClassSelectors[i] != NULL; i++) {
+			if (![NSMutableCharacterSet respondsToSelector:sel_registerName(mutableClassSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing +%s (mutable)\n", mutableClassSelectors[i]);
+			}
+		}
+		for (i = 0; classSelectors[i] != NULL; i++) {
+			if (![NSCharacterSet respondsToSelector:sel_registerName(classSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing +%s\n", classSelectors[i]);
+			}
+		}
+		for (i = 0; instanceSelectors[i] != NULL; i++) {
+			if (![probe respondsToSelector:sel_registerName(instanceSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing -%s\n", instanceSelectors[i]);
+			}
+		}
+		for (i = 0; mutableSelectors[i] != NULL; i++) {
+			if (![mutable respondsToSelector:sel_registerName(mutableSelectors[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING missing -%s (mutable)\n", mutableSelectors[i]);
+			}
+		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-STRING present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
+		check("characterset-api-complete", complete,
+		      "the audited Cocoa inventory for NSCharacterSet/NSMutableCharacterSet");
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

@@ -101,14 +101,16 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/ntinystring.m $(FOUNDATION_SRC)/nnumber.m \
 	$(FOUNDATION_SRC)/ndata.m $(FOUNDATION_SRC)/ndate.m \
 	$(FOUNDATION_SRC)/nsarray.m $(FOUNDATION_SRC)/nsdictionary.m \
-	$(FOUNDATION_SRC)/nerror.m $(FOUNDATION_SRC)/nexception.m
+	$(FOUNDATION_SRC)/nerror.m $(FOUNDATION_SRC)/nexception.m \
+	$(FOUNDATION_SRC)/ncharacterset.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
 	$(FOUNDATION_SRC)/NSData.h $(FOUNDATION_SRC)/NSDate.h \
 	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
 	$(FOUNDATION_SRC)/NSDictionary.h $(FOUNDATION_SRC)/NSError.h \
-	$(FOUNDATION_SRC)/NSException.h $(FOUNDATION_SRC)/Foundation.h
+	$(FOUNDATION_SRC)/NSException.h $(FOUNDATION_SRC)/NSCharacterSet.h \
+	$(FOUNDATION_SRC)/Foundation.h
 FOUNDATION_CFLAGS = -fPIC -Wno-objc-missing-super-calls -Wno-incomplete-implementation
 
 $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
@@ -133,12 +135,15 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/nerror.m -o .build/foundation-nerror.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nexception.m -o .build/foundation-nexception.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/ncharacterset.m -o .build/foundation-ncharacterset.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
 		.build/foundation-ndata.o .build/foundation-ndate.o \
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
-		.build/foundation-nerror.o .build/foundation-nexception.o -o $@
+		.build/foundation-nerror.o .build/foundation-nexception.o \
+		.build/foundation-ncharacterset.o -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)

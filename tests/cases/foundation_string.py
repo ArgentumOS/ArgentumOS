@@ -32,7 +32,7 @@ PROBE = "/System/Shared/tests/foundation_string"
 CHECKS = ("tiny", "owned", "mixed", "utf8", "mutable", "description", "cross-tu",
           "string-api-complete", "string-format", "string-compare",
           "string-transform", "string-convert", "string-path",
-          "string-encoding", "string-mutable")
+          "string-encoding", "string-mutable", "characterset-api-complete")
 
 
 class Case(BaseCase):

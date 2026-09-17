@@ -27,6 +27,7 @@
 #import <foundation/NSArray.h>
 #import <foundation/NSData.h>
 #import <foundation/NSError.h>
+#import <foundation/NSCharacterSet.h>
 
 /*
  * THE FORMAT ENGINE, and the one conversion it has to get right is the va_arg
@@ -800,6 +801,100 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	}
 	[built appendString:utf8_substring(self, cursor, size - cursor)];
 	return [[NSOwnedString alloc] initWithUTF8String:[built UTF8String]];
+}
+
+/* ------------------------------------------------- the character-set methods
+ *
+ * The RANGES these return are in the same units -length uses: BYTES. So each walk
+ * carries a byte offset alongside a character index, because that is the only way
+ * the two stay in step in a UTF-8 string.
+ */
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set
+{
+	size_t offset = 0;
+	size_t character = 0;
+
+	while (offset < [self length]) {
+		size_t width = utf8_seq_length([self byteAtIndex:offset]);
+
+		if ([set characterIsMember:[self characterAtIndex:character]]) {
+			return NSMakeRange(offset, width);
+		}
+		offset += width;
+		character++;
+	}
+	return NSMakeRange(NSNotFound, 0);
+}
+
+- (NSArray *)componentsSeparatedByCharactersInSet:(NSCharacterSet *)set
+{
+	/* A RUN of separators is ONE break, and empty components are not produced —
+	 * Cocoa's rule, and the difference from -componentsSeparatedByString: with an
+	 * empty separator, which this class rejects. */
+	NSMutableArray *parts = [[NSMutableArray alloc] init];
+	size_t offset = 0;
+	size_t character = 0;
+	size_t start = 0;
+	size_t size = [self length];
+
+	while (offset <= size) {
+		int breaking = 0;
+
+		if (offset < size) {
+			if ([set characterIsMember:[self characterAtIndex:character]]) {
+				breaking = 1;
+			}
+		} else {
+			breaking = 1;		/* the end closes the last component */
+		}
+		if (breaking) {
+			if (offset > start) {
+				[parts addObject:[self substringWithRange:NSMakeRange(start, offset - start)]];
+			}
+			{			/* skip the whole run of separators */
+				while (offset < size &&
+				       [set characterIsMember:[self characterAtIndex:character]]) {
+					offset += utf8_seq_length([self byteAtIndex:offset]);
+					character++;
+				}
+			}
+			start = offset;
+		}
+		if (offset < size) {
+			offset += utf8_seq_length([self byteAtIndex:offset]);
+			character++;
+		}
+	}
+	return parts;
+}
+
+- (NSString *)stringByTrimmingCharactersInSet:(NSCharacterSet *)set
+{
+	size_t offset = 0;
+	size_t character = 0;
+	size_t start = 0;
+	size_t end = 0;
+	int leading = 1;
+
+	while (offset < [self length]) {
+		size_t width = utf8_seq_length([self byteAtIndex:offset]);
+		BOOL member = [set characterIsMember:[self characterAtIndex:character]];
+
+		if (member) {
+			if (leading) {
+				start = offset + width;
+			}
+		} else {
+			leading = 0;
+			end = offset + width;
+		}
+		offset += width;
+		character++;
+	}
+	if (start > end) {
+		start = end;
+	}
+	return [self substringWithRange:NSMakeRange(start, end - start)];
 }
 
 - (NSArray *)componentsSeparatedByString:(NSString *)separator

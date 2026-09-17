@@ -28,5 +28,6 @@
 #import <foundation/NSDictionary.h>
 #import <foundation/NSError.h>
 #import <foundation/NSException.h>
+#import <foundation/NSCharacterSet.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

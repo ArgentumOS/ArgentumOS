@@ -47,6 +47,7 @@
 @class NSData;
 @class NSArray;
 @class NSError;
+@class NSCharacterSet;
 
 
 /* Cocoa's option set, reduced to the ones a UTF-8 byte comparison can honour. */
@@ -154,6 +155,9 @@ typedef enum {
 					    options:(NSStringCompareOptions)options
 					      range:(NSRange)range;
 - (NSArray *)componentsSeparatedByString:(NSString *)separator;
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set;
+- (NSArray *)componentsSeparatedByCharactersInSet:(NSCharacterSet *)set;
+- (NSString *)stringByTrimmingCharactersInSet:(NSCharacterSet *)set;
 - (NSString *)stringByReplacingCharactersInRange:(NSRange)range withString:(NSString *)replacement;
 
 /* Conversions. */
