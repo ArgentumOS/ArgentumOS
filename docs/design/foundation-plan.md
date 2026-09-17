@@ -767,3 +767,30 @@ the method* — its dump line never printed — which looked like the bug itself
 probe's fault: to avoid depending on `NSObject` it built a *root class* via
 `class_createInstance`, and a message send to an instance of such a class goes nowhere
 quietly. **A probe that can fail silently is worse than no probe.**
+
+### THE CAUSE, FOUND AND REPRODUCED (2026-09-17, later)
+
+It is the `va_list` ownership rule, C99 7.15.1.4, hiding in the one place the delegation
+had removed: **`+stringWithFormat:arguments:` consumed the list it was handed.** A
+`va_list` PARAMETER is a pointer to the caller's `__va_list_tag` on this ABI, so walking
+the argument *is* advancing the caller's own list — and the caller's `va_end`, or a second
+use of that list, then runs on an indeterminate one.
+`+[NSException raise:format:arguments:]` is the shipped call site and does exactly that:
+it `va_copy`s, hands the copy over, and `va_end`s it when the call returns. That is why
+the failure surfaced here as "entered with the right format, then died".
+
+The measurement is a probe check, `class-format-arguments`, and its FIRST version was
+wrong in an instructive way: it handed the method a `va_copy` and required two renders to
+agree — which can never fail, because a copy is an INDEPENDENT tag, so the owner is
+protected however destructive the callee is (measured: that version passed against a
+library that consumed its argument). The check now hands over the caller's OWN list and
+renders it twice, with `%d` so a violation reports garbage instead of faulting:
+
+  * pre-fix library: `foundation_string` **16/17**, exit 1, the second render garbage;
+  * with a `va_copy` in both public entry points (`+stringWithFormat:arguments:` and
+    `-initWithFormat:arguments:`): the value twice, **17/17**.
+
+So the delegating form was not "harmless": it dropped the copy the body before it had, and
+the DISCIPLINE — not the class-vs-instance shape — is what the method needs. The fix is
+the `va_copy` at both entry points, the delegation goes with it, and the check lands with
+the fix.
