@@ -27,6 +27,7 @@
 + (NSDate *)dateWithTimeIntervalSince1970:(double)seconds;
 + (NSDate *)dateWithTimeIntervalSinceNow:(double)seconds;
 + (NSDate *)dateWithTimeInterval:(double)seconds sinceDate:(NSDate *)date;
++ (NSDate *)dateWithTimeIntervalSinceReferenceDate:(double)seconds;
 + (NSDate *)distantPast;
 + (NSDate *)distantFuture;
 + (double)timeIntervalSinceReferenceDate;
@@ -34,6 +35,7 @@
 - (id)initWithTimeIntervalSince1970:(double)seconds;
 - (id)initWithTimeIntervalSinceNow:(double)seconds;
 - (id)initWithTimeInterval:(double)seconds sinceDate:(NSDate *)date;
+- (id)initWithTimeIntervalSinceReferenceDate:(double)seconds;
 
 - (double)timeIntervalSince1970;
 - (double)timeIntervalSinceNow;

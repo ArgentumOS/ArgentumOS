@@ -303,20 +303,50 @@ int main(void)
 	}
 
 	{
-		/* THE HARD RULE for NSDate. */
+		/*
+		 * THE AUDITED COCOA INVENTORY for NSDate.
+		 *
+		 * `implemented` is Cocoa's documented surface and must all EXIST;
+		 * `excluded` is what we deliberately do not ship and must all be ABSENT,
+		 * so shipping one fails here rather than quietly widening the gap. The
+		 * previous check was self-referential — it could only confirm what our own
+		 * header declared, which is how +stringWithFormat:arguments: shipped
+		 * missing. Running this inventory named two gaps, and both are implemented
+		 * above rather than recorded as debt:
+		 *   +dateWithTimeIntervalSinceReferenceDate: and
+		 *   -initWithTimeIntervalSinceReferenceDate:.
+		 */
 		static const char *classSelectors[] = {
-			"date", "dateWithTimeIntervalSince1970:", "dateWithTimeIntervalSinceNow:",
-			"dateWithTimeInterval:sinceDate:", "distantPast", "distantFuture",
-			"timeIntervalSinceReferenceDate", NULL
+			"date", "dateWithTimeIntervalSinceNow:", "dateWithTimeIntervalSince1970:",
+			"dateWithTimeInterval:sinceDate:", "dateWithTimeIntervalSinceReferenceDate:",
+			"distantPast", "distantFuture", "timeIntervalSinceReferenceDate",
+			NULL
 		};
 		static const char *instanceSelectors[] = {
-			"initWithTimeIntervalSince1970:", "initWithTimeIntervalSinceNow:",
-			"initWithTimeInterval:sinceDate:",
-			"timeIntervalSince1970", "timeIntervalSinceNow",
-			"timeIntervalSinceReferenceDate", "timeIntervalSinceDate:",
-			"dateByAddingTimeInterval:", "descriptionWithLocale:",
-			"isEqualToDate:", "compare:", "earlierDate:", "laterDate:",
-			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+			"init", "initWithTimeIntervalSinceNow:", "initWithTimeIntervalSince1970:",
+			"initWithTimeInterval:sinceDate:", "initWithTimeIntervalSinceReferenceDate:",
+			"timeIntervalSince1970", "timeIntervalSinceReferenceDate",
+			"timeIntervalSinceNow", "timeIntervalSinceDate:",
+			"dateByAddingTimeInterval:", "earlierDate:", "laterDate:",
+			"compare:", "isEqualToDate:",
+			"isEqual:", "hash", "description", "descriptionWithLocale:",
+			"copy", "mutableCopy",
+			NULL
+		};
+		static const char *excluded[] = {
+			/* Deprecated by Cocoa itself. */
+			"addTimeInterval:",					/* superseded by -dateByAddingTimeInterval: */
+			"initWithString:",					/* removed from Cocoa's documented API */
+			"dateWithString:",					/* removed from Cocoa's documented API */
+			/* Needs classes this Foundation does not ship. */
+			"dateWithNaturalLanguageString:",			/* needs a date parser */
+			"dateWithNaturalLanguageString:locale:",		/* needs a date parser */
+			"descriptionWithCalendarFormat:timeZone:locale:",	/* NSCalendar, NSTimeZone, NSLocale */
+			"dateByAddingComponents:toDate:options:",		/* NSCalendar */
+			"dateByAddingUnit:value:toDate:options:",		/* NSCalendar */
+			"initWithCoder:",					/* NSCoding */
+			"encodeWithCoder:",					/* NSCoding */
+			NULL
 		};
 		NSDate *probe = [NSDate dateWithTimeIntervalSince1970:0];
 		int complete = 1;
@@ -334,9 +364,16 @@ int main(void)
 				printf("FOUNDATION-VALUE missing -%s\n", instanceSelectors[i]);
 			}
 		}
+		for (i = 0; excluded[i] != NULL; i++) {
+			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+				complete = 0;
+				printf("FOUNDATION-VALUE present but EXCLUDED: %s\n", excluded[i]);
+			}
+		}
 		check("date-api-complete", complete,
-		      "every public NSDate selector exists (the hard rule)");
+		      "the audited Cocoa inventory for NSDate (implemented present, excluded absent)");
 	}
+
 
 	{
 		/* NSData's added surface. */

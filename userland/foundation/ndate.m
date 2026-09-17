@@ -46,6 +46,11 @@
 	return [[self alloc] initWithTimeInterval:seconds sinceDate:date];
 }
 
++ (NSDate *)dateWithTimeIntervalSinceReferenceDate:(double)seconds
+{
+	return [[self alloc] initWithTimeIntervalSinceReferenceDate:seconds];
+}
+
 + (double)timeIntervalSinceReferenceDate
 {
 	return [[self date] timeIntervalSinceReferenceDate];
@@ -81,6 +86,11 @@
 	 * the date-extras check caught: a date an hour ahead has +3600, not -3600.
 	 */
 	return _timeIntervalSince1970 - [[NSDate date] timeIntervalSince1970];
+}
+
+- (id)initWithTimeIntervalSinceReferenceDate:(double)seconds
+{
+	return [self initWithTimeIntervalSince1970:FN_REFERENCE_DATE_SECONDS + seconds];
 }
 
 - (double)timeIntervalSinceReferenceDate
