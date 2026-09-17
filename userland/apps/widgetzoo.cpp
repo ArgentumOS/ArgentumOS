@@ -723,8 +723,27 @@ main(int argc, char **argv)
 	splitBoard->setDividerWidth(6);
 	splitBoard->setMinPaneSize(24);
 	splitBoard->setFrame(Rect{ { 0, 0 }, { 300, 100 } });
-	splitBoard->addPaneView(new View());
-	splitBoard->addPaneView(new View());
+	/* THE PANES HAVE CONTENT. A split whose panes are empty is a drag with
+	 * nothing in it, and the measurement of a drag is about what an app would
+	 * really be moving: a button in each pane means real widget pixels sit on
+	 * the wrong side of the divider if the damage is wrong. The tags keep
+	 * their own frames - a pane is a plain view, so its children stay put
+	 * (parent-relative) while the PANE takes the new space. */
+	{
+		View *left = new View();
+		View *right = new View();
+		Button *leftTag = new Button();
+		Button *rightTag = new Button();
+
+		leftTag->setTitle("Left");
+		leftTag->setFrame(Rect{ { 10, 10 }, { 96, 24 } });
+		left->addSubview(leftTag);
+		rightTag->setTitle("Right");
+		rightTag->setFrame(Rect{ { 10, 10 }, { 96, 24 } });
+		right->addSubview(rightTag);
+		splitBoard->addPaneView(left);
+		splitBoard->addPaneView(right);
+	}
 	content->addSubview(splitBoard);
 	splitBoard->layout();
 	splitBoard->setFrame(Rect{ { 1106, 148 }, { 300, 100 } });

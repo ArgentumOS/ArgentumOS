@@ -1605,9 +1605,17 @@ SplitView::setPosition(double pos, int i)
 	if (pos > hi) {
 		pos = hi;
 	}
+	/* DAMAGE THE TWO DIVIDERS, NOT THE SPLIT. This view draws nothing but its
+	 * dividers, and the panes damage themselves where their frames changed
+	 * (setFrame does that) - so a blanket setNeedsDisplay() here only MERGES
+	 * those precise rects into one coarse one, which is exactly what a drag
+	 * must not do (measured: 303x100 of damage per drag step, where the strips
+	 * that actually changed are two thin ones). The OLD strip and the NEW one
+	 * are both damaged, so nothing of the divider is left behind. */
+	setNeedsDisplayInRect(frameOfDivider(i));
 	placePane(i, start, pos - start);
 	placePane(i + 1, pos + dividerWidth_, far - pos - dividerWidth_);
-	setNeedsDisplay();
+	setNeedsDisplayInRect(frameOfDivider(i));
 }
 
 void

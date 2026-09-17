@@ -60,7 +60,10 @@ class Case(BaseCase):
 
         # ---- the board: two panes, and a real drag on the divider --------
         mark = len(session.log_text())
-        session.run("%s 30 &" % ZOO)
+        # ARGENTUM_PAINT_MS: the toolkit's own instrument, on for this board so
+        # the drag's cost is in the log rather than in an opinion (the u5b gate
+        # exports it too).
+        session.run("ARGENTUM_PAINT_MS=1 %s 30 &" % ZOO)
         if not session.wait_for(r"ZOO-READY", 120):
             self.check("board-up", False,
                        "no ZOO-READY; guest tail: " + session.tail(4))
