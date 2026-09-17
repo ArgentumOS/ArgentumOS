@@ -1,9 +1,10 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0 LANDED and F1 LANDED (2026-09-17)** — the root
-class and then the string family are in and gated on a guest boot
-(`foundation_core` 5/5, `foundation_string` 7/7). F2 (`NSNumber`/`NSData`/
-`NSDate`) is next. Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
+Status: **DRAFT (2026-09). F0, F1 and F2 LANDED (2026-09-17)** — the root
+class, the strings, and the value types are in and gated on a guest boot
+(`foundation_core` 5/5, `foundation_string` 7/7, `foundation_value` 8/8;
+`TESTS-OK 3/3 case(s), 18/18 check(s)`). F3 (the collections) is next. Every open
+question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md`
 §8–§9):
 
@@ -179,7 +180,7 @@ status.
   `NSTinyString`), `@"…"` usable at *both* representations clang produces (tagged
   under 9 ASCII characters, an object at 9+), and `-description` real on every
   class. Gated: `foundation_string` 7/7 on a guest boot.
-- **F2 — `NSNumber`, `NSData`/`NSMutableData`, `NSDate`.**
+- **F2 — `NSNumber`, `NSData`/`NSMutableData`, `NSDate`. DONE 2026-09-17 (§9).**
 - **F3 — `NSArray`/`NSMutableArray`, `NSDictionary`/`NSMutableDictionary`**, with
   `-copy`/`-mutableCopy`, fast enumeration, and the equality/hash contract
   exercised on a custom key type.
@@ -471,3 +472,30 @@ One probe bug worth remembering, because it is the kind that hides: `owned`
 asserted `[big length] == 20` for a 19-character literal. The probe now DERIVES
 the length (`strlen(...)`) instead of counting it — a hand-counted constant in a
 test is a test bug shaped exactly like a library bug.
+
+### F2 LANDS (2026-09-17)
+
+`foundation_value` 8/8 on a guest boot — `TESTS-OK 3/3 case(s), 18/18 check(s)`
+with the F1 and F0 probes: boxed numbers with cross-type value equality, data
+buffers, and dates.
+
+**THE GATE EARNED ITS KEEP.** The value probe's first run SEGFAULTED five checks
+in (status 139), and the fault was real, not a harness artefact:
+`NSMutableData -initWithCapacity:` recorded the capacity **without allocating the
+buffer**, so `-appendBytes:` compared the needed length against a capacity that
+nothing was behind, decided it fitted, and `memcpy`'d through a NULL `_bytes`.
+The class's invariant was assumed rather than enforced — the same failure shape
+as F1's tagged pointer, an assumption about a representation instead of a rule the
+code holds to. Fixed at both ends: capacity now means an allocated buffer, AND
+the growth test no longer trusts it blindly (`_bytes == NULL ||` grows). Host-side
+the sequence then ran clean: append 2, copy (a 2-byte snapshot), append 2 more —
+4 bytes visible through the immutable interface, the snapshot still 2.
+
+MEASURED while gating: `+date` reads the guest's own clock, which reports
+`1.78965e+09` (2026-09) — so the kernel clock path works end to end, which is what
+NSDate's real value will hang on.
+
+Deliberately NOT in F2: no calendar, time zones or locales (a later fidelity
+slice), no `+stringWithFormat:` (hence `NSNumber` and `NSData` render themselves
+with libc instead), and NSNumber stays a plain object rather than a tagged one —
+the header records tagging as the optimisation it is.

@@ -16,5 +16,8 @@
 
 #import <foundation/NSObject.h>
 #import <foundation/NSString.h>
+#import <foundation/NSNumber.h>
+#import <foundation/NSData.h>
+#import <foundation/NSDate.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
