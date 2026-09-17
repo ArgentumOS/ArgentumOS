@@ -77,6 +77,10 @@ class Case(BaseCase):
 
         # ---- the board: the scroll view is real, and sized from its content
         mark = len(session.log_text())
+        # the paint cost of a SCROLL step, which is the number a user feels:
+        # every paint reports the views it walked, the damage it was given and
+        # the time it took (see the damage section of tests/cases/uikit_u4.py)
+        session.run("export ARGENTUM_PAINT_MS=1")
         session.run("%s 30 &" % ZOO)
         if not session.wait_for(r"ZOO-READY", 120):
             self.check("board-up", False,

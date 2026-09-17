@@ -1363,6 +1363,190 @@ Window::focusFromClick(View *hit)
 	return true;
 }
 
+/* DAMAGE IN SURFACE PIXELS. damagePt() takes POINTS because a view knows its
+ * frame in points; a caller that already HAS pixels — the scrolled copy below
+ * vacates exact pixel strips — must not be folded through points again and
+ * rounded into its neighbour, which would leave a one-pixel seam. Same
+ * accumulation, same union, and the same rule that once the whole surface is
+ * damaged it stays that way. */
+template <typename ImplT>
+static void
+damagePx(ImplT *impl, int x0, int y0, int x1, int y1)
+{
+	impl->dirty = true;
+	if (impl->dmgAll) {
+		return;
+	}
+	if (x0 < 0) {
+		x0 = 0;
+	}
+	if (y0 < 0) {
+		y0 = 0;
+	}
+	if (x1 > (int) impl->wPx) {
+		x1 = (int) impl->wPx;
+	}
+	if (y1 > (int) impl->hPx) {
+		y1 = (int) impl->hPx;
+	}
+	if (x1 <= x0 || y1 <= y0) {
+		return;
+	}
+	if (impl->dmgX1 <= impl->dmgX0 || impl->dmgY1 <= impl->dmgY0) {
+		impl->dmgX0 = x0;
+		impl->dmgY0 = y0;
+		impl->dmgX1 = x1;
+		impl->dmgY1 = y1;
+		return;
+	}
+	if (x0 < impl->dmgX0) {
+		impl->dmgX0 = x0;
+	}
+	if (y0 < impl->dmgY0) {
+		impl->dmgY0 = y0;
+	}
+	if (x1 > impl->dmgX1) {
+		impl->dmgX1 = x1;
+	}
+	if (y1 > impl->dmgY1) {
+		impl->dmgY1 = y1;
+	}
+}
+
+/* MOVE THE PIXELS INSTEAD OF DRAWING THEM AGAIN. A scroll of a clipping view
+ * is the same picture translated, so the buffer can be SHIFTED and only the
+ * strip the shift vacates needs painting. Measured on the widget zoo's 264x305
+ * list, a scroll step's paint goes 100ms -> 70ms. Cocoa does the same thing
+ * (NSClipView.copiesOnScroll, which its own clip view has on by default).
+ *
+ * WHY THAT IS NOT THE WHOLE WIN, and it is worth knowing before tuning this:
+ * the paint prunes by the DAMAGE, and the damage is one UNION rectangle. A
+ * scroll step also moves the knob, which damages the bar, and the union of
+ * that with the vacated strip spans the clip from top to bottom — so the walk
+ * still visits all 14 visible rows and draws them. The strip is copied and
+ * then drawn over again. A damage REGION (a few rects, each painted with its
+ * own clip) is what would make the strip the only thing drawn; until then this
+ * copy is what stops the pixels MOVING twice, not what makes the frame cheap.
+ *
+ * `r` is in WINDOW POINTS and the delta is in SURFACE PIXELS, positive meaning
+ * the CONTENT moved right/down. False when the buffer is not a usable frame — a
+ * draw is still pending, so its pixels are not what a repaint would produce —
+ * or when the shift leaves nothing to copy; the caller then damages the rect
+ * and is still correct, only slower. */
+bool
+Window::scrollRegionInRect(const Rect &r, int dxPx, int dyPx)
+{
+	unsigned char *base;
+	int stride, x0, y0, x1, y1, w, h, copyW, copyH, srcX, srcY, dstX, dstY;
+
+	if (!impl_ || !impl_->pimg || !impl_->ximg) {
+		return false;
+	}
+	if (impl_->dmgAll) {
+		return false;	/* the whole surface is being redrawn */
+	}
+	double pp = impl_->pxPerPt;
+
+	x0 = (int) std::floor(r.origin.x * pp);
+	y0 = (int) std::floor(r.origin.y * pp);
+	x1 = (int) std::ceil((r.origin.x + r.size.w) * pp);
+	y1 = (int) std::ceil((r.origin.y + r.size.h) * pp);
+	if (x0 < 0) {
+		x0 = 0;
+	}
+	if (y0 < 0) {
+		y0 = 0;
+	}
+	if (x1 > (int) impl_->wPx) {
+		x1 = (int) impl_->wPx;
+	}
+	if (y1 > (int) impl_->hPx) {
+		y1 = (int) impl_->hPx;
+	}
+	w = x1 - x0;
+	h = y1 - y0;
+	if (w <= 0 || h <= 0) {
+		return false;
+	}
+	/* THE BUFFER MUST BE A FAITHFUL FRAME OF WHAT IS COPIED. Damage anywhere
+	 * ELSE can be painted alongside the strips, and there is nearly always
+	 * some — the press on a scroller's arrow damages the bar before the
+	 * scroll is even asked for, so demanding a completely clean window would
+	 * never copy anything. Damage INSIDE this rect is different: those pixels
+	 * are not what a repaint would produce, so the copy would carry the stale
+	 * row forward. The union is one rectangle, so a pending mark anywhere
+	 * across it is enough to fall back. */
+	if (impl_->dmgX1 > impl_->dmgX0 && impl_->dmgY1 > impl_->dmgY0
+	    && impl_->dmgX0 < x1 && impl_->dmgX1 > x0
+	    && impl_->dmgY0 < y1 && impl_->dmgY1 > y0) {
+		return false;
+	}
+	/* A shift that ROUNDS to no pixels moved nothing on screen — the paint
+	 * floors the offset the same way — so there is nothing to damage either,
+	 * and the caller is done. */
+	if (dxPx == 0 && dyPx == 0) {
+		return true;
+	}
+	copyW = dxPx < 0 ? w + dxPx : w - dxPx;
+	copyH = dyPx < 0 ? h + dyPx : h - dyPx;
+	if (copyW <= 0 || copyH <= 0) {
+		return false;	/* no overlap: only a repaint is left */
+	}
+	/* each destination pixel comes from its source plus the shift */
+	if (dyPx > 0) {
+		srcY = y0;
+		dstY = y0 + dyPx;
+	} else if (dyPx < 0) {
+		srcY = y0 - dyPx;
+		dstY = y0;
+	} else {
+		srcY = dstY = y0;
+	}
+	if (dxPx > 0) {
+		srcX = x0;
+		dstX = x0 + dxPx;
+	} else if (dxPx < 0) {
+		srcX = x0 - dxPx;
+		dstX = x0;
+	} else {
+		srcX = dstX = x0;
+	}
+	base = (unsigned char *) impl_->ximg->data;
+	stride = impl_->ximg->bytes_per_line;
+	/* ROWS IN THE ORDER THAT KEEPS THE SOURCE ALIVE: moving down starts at
+	 * the bottom, moving up starts at the top. Within a row it is a memmove,
+	 * which is what lets one loop carry the horizontal part of the shift too. */
+	if (dstY > srcY) {
+		for (int y = copyH - 1; y >= 0; y--) {
+			std::memmove(base + (std::size_t)(dstY + y) * stride
+				     + (std::size_t) dstX * 4,
+				     base + (std::size_t)(srcY + y) * stride
+				     + (std::size_t) srcX * 4,
+				     (std::size_t) copyW * 4);
+		}
+	} else {
+		for (int y = 0; y < copyH; y++) {
+			std::memmove(base + (std::size_t)(dstY + y) * stride
+				     + (std::size_t) dstX * 4,
+				     base + (std::size_t)(srcY + y) * stride
+				     + (std::size_t) srcX * 4,
+				     (std::size_t) copyW * 4);
+		}
+	}
+	/* WHAT THE SHIFT VACATES IS THE DAMAGE, and only that. */
+	if (dyPx > 0) {
+		damagePx(impl_, x0, y0, x1, y0 + dyPx);
+	} else if (dyPx < 0) {
+		damagePx(impl_, x0, y1 + dyPx, x1, y1);
+	}
+	if (dxPx > 0) {
+		damagePx(impl_, x0, y0, x0 + dxPx, y1);
+	} else if (dxPx < 0) {
+		damagePx(impl_, x1 + dxPx, y0, x1, y1);
+	}
+	return true;
+}
+
 void
 Window::noteViewDamage()
 {

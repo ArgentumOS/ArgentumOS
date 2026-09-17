@@ -1355,6 +1355,11 @@ public:
 	/// (internal) A view marked itself dirty: record damage without
 	/// re-marking the tree. Apps call setNeedsDisplay().
 	void noteViewDamage();
+	/// (internal) Shift the pixels inside a window-points rect by a
+	/// surface-pixel delta, so a scroll repaints only the strip it vacates
+	/// (View::setCopiesOnScroll). False when the buffer is not a usable
+	/// frame, in which case the caller must damage the rect instead.
+	bool scrollRegionInRect(const Rect &r, int dxPx, int dyPx);
 
 	/// Read and handle at most ONE pending event (expose, resize, a mouse
 	/// press/drag/release, a close request). Returns false when nothing is
@@ -1728,6 +1733,21 @@ public:
 	void setContentOffset(const Point &offset);
 	/// The subtree's drawing offset (zero unless set).
 	Point contentOffset() const { return offset_; }
+	/// MOVE THE PIXELS when the offset changes, instead of drawing the frame
+	/// again (Cocoa's NSClipView.copiesOnScroll).
+	///
+	/// Correct only for a view whose children are CLIPPED to its frame — then
+	/// what is inside is the same picture, shifted, so the back buffer can be
+	/// copied and just the strip the shift vacates repainted. Off until asked
+	/// for, because a view whose content spills outside its frame would leave
+	/// the spill behind. Measured on the board's 264x305 list: a scroll step's
+	/// paint went 100ms -> 70ms. THE REST OF THE WIN IS NOT HERE — it is in
+	/// the damage: the knob that moved damages the bar, and the union of that
+	/// with the vacated strip covers the whole clip, so the paint still walks
+	/// and draws the entire visible list. A damage REGION (a few rects, each
+	/// painted with its own clip) is what would let the strip be the only
+	/// thing drawn.
+	void setCopiesOnScroll(bool on) { copiesOnScroll_ = on; }
 
 	/// A subview of this view changed SIZE (see setFrame). Nothing by
 	/// default; a container that measures itself around a child overrides it
@@ -1922,6 +1942,10 @@ private:
 	Point offset_ = { 0, 0 };	/* U5b: this view's SUBTREE is drawn
 					 * shifted by this (NSClipView's bounds
 					 * origin) - the view itself does not move */
+	bool copiesOnScroll_ = false;	/* U5b: a change of offset MOVES the
+					 * pixels instead of drawing the frame
+					 * again (see setCopiesOnScroll) - only
+					 * for a view that clips its children */
 	bool translatesMask_ = true;	/* U0: the mask stands in until off */
 	bool needsLayout_ = false;	/* U0b */
 	bool needsDisplay_ = false;	/* U2a */

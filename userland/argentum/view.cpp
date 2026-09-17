@@ -6,6 +6,7 @@
  */
 #include <argentum/argentum.h>
 
+#include <cmath>
 #include <cstring>
 #include <X11/keysym.h>
 
@@ -117,13 +118,40 @@ View::hitTest(const Point &p)
 	return this;
 }
 
+/* defined below; setContentOffset() has to say WHERE the pixels it moves are,
+ * in the window's own points */
+static Rect contentToWindow(argentum::Window *w, const Rect &r);
+
 void
 View::setContentOffset(const Point &offset)
 {
 	if (offset_.x == offset.x && offset_.y == offset.y) {
 		return;
 	}
+	Point was = offset_;
+
 	offset_ = offset;
+	/* A VIEW WHOSE CHILDREN ARE CLIPPED TO ITS FRAME CAN MOVE ITS PIXELS
+	 * instead of drawing them again: what is inside is the same picture,
+	 * shifted, so the buffer is copied and only the strip the shift vacates
+	 * is repainted (setCopiesOnScroll; Window::scrollRegionInRect explains
+	 * why the copy is exact). The paint FLOORS the offset to whole pixels,
+	 * so the shift it would draw is exactly this floored delta - which is
+	 * why a scroll smaller than one pixel correctly damages NOTHING: the
+	 * screen does not change. */
+	if (copiesOnScroll_ && window_) {
+		double pp = window_->pxPerPt();
+		int dxPx = (int) std::floor(was.x * pp)
+			   - (int) std::floor(offset.x * pp);
+		int dyPx = (int) std::floor(was.y * pp)
+			   - (int) std::floor(offset.y * pp);
+		Rect inWin = contentToWindow(
+			window_, rectInWindow(Rect{ { 0, 0 }, frame_.size }));
+
+		if (window_->scrollRegionInRect(inWin, dxPx, dyPx)) {
+			return;
+		}
+	}
 	/* what moved is the content INSIDE the frame, so the frame is what
 	 * gets repainted; the view itself is where it was */
 	setNeedsDisplay();
