@@ -740,10 +740,30 @@ domain, code and userInfo) and `NSException` (`-raise` hands the receiver to
 the runtime — checked: zero matches in libobjc2 — unlike `Object` and
 `NSAutoreleasePool`, the two it does own.
 
-**AN OPEN ONE, recorded rather than papered over.** `+stringWithFormat:arguments:`
-crashed when called. Instrumenting it proved the method was ENTERED with the right
-format and then died — while `-initWithFormat:arguments:`, the same three statements
-consuming a passed `va_list`, works. The class form now DELEGATES to the instance form,
-which is a MEASURED choice; the difference between two identical bodies that differ only
-in being a class method and an instance method is **unexplained**. `va_copy` before
-consuming was tried first and did not change it.
+**THE `+stringWithFormat:arguments:` CRASH: the recorded theory was WRONG (measured
+2026-09-17).** The method crashed when called; instrumenting showed it was ENTERED with
+the right format and then died, while `-initWithFormat:arguments:` — the same
+statements, consuming a passed `va_list` — worked. That was recorded as "a class method
+vs an instance method, unexplained", and the class form was made to DELEGATE.
+
+Three host probes later, the explanation is **refuted**:
+
+  * a CLASS method consuming the `va_list` **inline** (the original body) works: a mini
+    class built on Foundation's real `NSString` answered `7-x` for `@"%d-%@"`;
+  * the DELEGATING form works too: `7-x`;
+  * dumping the `__va_list_tag` in the caller and on entry to each callee showed
+    `gp_offset=8, first=3` in every frame — the list was intact and untouched the whole
+    way.
+
+So class-vs-instance is NOT the cause, and the delegating form we ship is
+**unnecessary** — harmless, and it stays, but not for the reason recorded. What remains
+open is narrower and points elsewhere: the ORIGINAL CALL SITE. The crash happened in a
+probe, and a probe is exactly where an already-`va_end`ed or already-consumed list, or a
+format/list mismatch, would live. Candidates, in order: (1) that call site, (2) a
+`va_list` type mismatch between the declaration and the definition.
+
+**The probe trap it cost.** The first probe's INSTANCE leg returned 0 *without entering
+the method* — its dump line never printed — which looked like the bug itself. It was the
+probe's fault: to avoid depending on `NSObject` it built a *root class* via
+`class_createInstance`, and a message send to an instance of such a class goes nowhere
+quietly. **A probe that can fail silently is worse than no probe.**
