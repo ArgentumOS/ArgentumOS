@@ -182,7 +182,17 @@ static int can_be_merged(struct vma *a, struct vma *b)
 	if((a->end == b->start) &&
 	   (a->prot == b->prot) &&
 	   (a->flags == b->flags) &&
-	   (a->offset == b->offset) &&
+	   /* A merged vma keeps ONE (start, offset) pair, so for a file
+	    * mapping the second one's file offset must CONTINUE where the
+	    * first ends — it is not enough for the two offsets to be equal.
+	    * Two separate mmaps of one file at offset 0 are exactly that:
+	    * equal offsets, adjacent addresses, and merging them made every
+	    * page after the first read from a file offset the file does not
+	    * have (past EOF -> bmap() returns 0 -> zero-filled pages). This
+	    * is the same rule free_vma_region() already applies to a partial
+	    * unmap. Anonymous mappings have no meaningful offset (always 0). */
+	   (a->inode ? (b->offset == a->offset + (b->start - a->start))
+		     : (a->offset == b->offset)) &&
 	   (a->s_type == b->s_type) &&
 #ifdef CONFIG_SYSVIPC
 	   (a->s_type != P_SHM) &&

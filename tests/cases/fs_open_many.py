@@ -1,10 +1,12 @@
 """A file may be opened more than twice at once.
 
-THE DEFECT THIS PINS: the guest allowed TWO concurrent opens of one file, not
-three. FreeType reports a failed READ as "Unknown_File_Format", so the third
-font face failed with an error that reads like a corrupt font — and that is
-how it was chased (the file, the image, the library, the clipping path) before
-anything counted the opens.
+THE DEFECT THIS PINS: this case was written for a guest that appeared to allow
+TWO concurrent opens of one file and not three — because FreeType reports a
+failed READ as "Unknown_File_Format", so the third font face failed with an
+error that reads like a corrupt font, and that is how it was chased (the file,
+the image, the library, the clipping path) before anything counted the opens.
+There was no such limit. The openings were always fine; the MAPPING was not,
+and check I below is where that lives now.
 
 It matters beyond fonts: any application that holds a file open twice and then
 opens it again — a library loading two copies, a tool reading its own input —
@@ -31,6 +33,8 @@ OPEN3 = re.compile(
     r"OPEN3 (\S+)\s+path=(\S+) fd=(-?\d+) errno=(\d+)\(([^)]*)\) read=(-?\d+)"
     r" first=([0-9a-f]{2})([0-9a-f]{2})")
 FONT2 = re.compile(r"FONT2 (\S+)\s+new=(-?\d+)")
+MMAP = re.compile(r"OPEN3 mmap#(\d)\s+path=(\S+) base=(\S+) first=([0-9a-f]{8})"
+                  r" matches=(\w+)")
 
 
 class Case(BaseCase):
@@ -89,18 +93,34 @@ class Case(BaseCase):
                    "three different files held open at once must all read:\n%s"
                    % raw)
 
-        # WHAT IS **NOT** THIS CASE'S TO ASSERT, and is worth stating: FreeType
-        # cannot make a THIRD file-backed face of one font in this guest
-        # (new=2 on the second face of the same file, while a face of a
-        # DIFFERENT file opens fine and three faces from one in-memory buffer
-        # open fine). Every layer beneath it is clean, measured to the byte
-        # and with errno: open/read/lseek at offsets 0, 300000 and 700000 on
-        # three concurrent descriptors, and the same interleaved seek/read
-        # pattern through three stdio FILE*. So THERE IS NO TWO-OPEN LIMIT in
-        # the kernel or the filesystem — the "2" was FreeType's own file path,
-        # and it is FreeType's to answer for. The toolkit no longer needs it:
-        # one face per family+bold, sized per use (userland/argentum/text.cpp).
-        # The FONT2 lines stay in this case's evidence, below, where they say
+        # I. THE MAPPING, which is what actually broke, and what no
+        # descriptor-level test above could see. FreeType's Unix stream maps a
+        # font and reads through the mapping, so a THIRD face of one file came
+        # back as a bad format while every open/read/lseek was perfect. Three
+        # concurrent mappings of one file must each read the file's bytes.
+        maps = {int(m.group(1)): m for m in MMAP.finditer(out)}
+        self.check("three-mappings-of-one-file-all-read-it",
+                   len(maps) == 3
+                   and all(m.group(5) == "yes" for m in maps.values()),
+                   "every mapping of one file must show the file's bytes "
+                   "(first=00010000 matches=yes): the kernel merged adjacent "
+                   "mappings of one file into a single vma and read everything "
+                   "past the first from a file offset the file does not have:\n%s"
+                   % "\n".join(m.group(0) for m in maps.values()))
+
+        # WHAT THIS CASE IS NOT ABOUT, and what it cost to learn: there is NO
+        # two-open limit, in the kernel or the filesystem. Every layer was
+        # clean and measured to the byte with errno — open/read/lseek at
+        # offsets 0, 300000 and 700000 on three concurrent descriptors, the
+        # same interleaved seek/read through three stdio FILE*, three FT faces
+        # from one in-memory buffer — while a SECOND file-backed face of one
+        # font still failed with new=2. That "2" was never an open count: it
+        # was FreeType's stream mapping the font, and the mapping returning
+        # zeros (see check I above). The toolkit does not need FreeType's file
+        # path to behave differently any more (one face per family+bold, sized
+        # per use, userland/argentum/text.cpp), and the FONT2 lines stay in
+        # this case's evidence, below, where they say exactly what they said
+        # while the font was being blamed.
         # exactly what they said while the font was being blamed.
 
         # D/E say WHERE the fault is, once the kernel and the filesystem are
