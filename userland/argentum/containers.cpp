@@ -1433,6 +1433,7 @@ const ObjectClass SplitView::kClass = { "SplitView", &View::kClass, nullptr, 0,
 
 SplitView::SplitView()
 {
+	setIdentifier("splitView");
 }
 
 double
@@ -1717,6 +1718,236 @@ void
 SplitView::layout()
 {
 	adjustPanes();
+}
+
+/* ---- U5f: GridView ---------------------------------------------------
+ *
+ * ONE ARITHMETIC for the whole widget: columnWidth() and rowHeight() read the
+ * cells, frameOfCell() places a cell at those numbers, and fittingSize() is the
+ * same numbers plus the spacing and the padding. So the size the grid REPORTS
+ * and the places it PUTS its cells cannot disagree, which is the failure a grid
+ * is most prone to.
+ */
+const ObjectClass GridView::kClass = { "GridView", &View::kClass, nullptr, 0,
+				       nullptr, 0 };
+
+GridView::GridView()
+{
+	setIdentifier("gridView");
+}
+
+size_t
+GridView::cellIndex(int col, int row) const
+{
+	return (size_t) row * (size_t) columns_ + (size_t) col;
+}
+
+Size
+GridView::naturalSizeOf(int col, int row) const
+{
+	if (col < 0 || col >= columns_ || row < 0 || row >= rows_) {
+		return Size{ 0, 0 };
+	}
+	return natural_[cellIndex(col, row)];
+}
+
+void
+GridView::growTo(int cols, int rows)
+{
+	std::vector<View *> keep;
+	std::vector<Size> keepNatural;
+
+	keep.assign((size_t) cols * (size_t) rows, nullptr);
+	keepNatural.assign((size_t) cols * (size_t) rows, Size{ 0, 0 });
+	/* Row-major on both sides, so every cell keeps its (column, row). */
+	for (int r = 0; r < rows_; r++) {
+		for (int c = 0; c < columns_; c++) {
+			keep[(size_t) r * (size_t) cols + (size_t) c] =
+				cells_[cellIndex(c, r)];
+			keepNatural[(size_t) r * (size_t) cols + (size_t) c] =
+				natural_[cellIndex(c, r)];
+		}
+	}
+	cells_.swap(keep);
+	natural_.swap(keepNatural);
+	columns_ = cols;
+	rows_ = rows;
+}
+
+void
+GridView::setViewAt(View *v, int col, int row)
+{
+	size_t at;
+
+	if (col < 0 || row < 0) {
+		return;
+	}
+	if (col >= columns_ || row >= rows_) {
+		growTo(col + 1 > columns_ ? col + 1 : columns_,
+		       row + 1 > rows_ ? row + 1 : rows_);
+	}
+	at = cellIndex(col, row);
+	if (cells_[at] == v) {
+		return;
+	}
+	if (cells_[at]) {
+		cells_[at]->removeFromSuperview();
+	}
+	cells_[at] = v;
+	/* THE SIZE THE CELL ASKS FOR, captured here. It is never read back from the
+	 * frame layout() writes: a cell stretched to its column would otherwise
+	 * report the stretched width next time and the columns could only grow. */
+	natural_[at] = v ? v->frame().size : Size{ 0, 0 };
+	if (v) {
+		addSubview(v);
+	}
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+View *
+GridView::viewAt(int col, int row) const
+{
+	if (col < 0 || col >= columns_ || row < 0 || row >= rows_) {
+		return nullptr;
+	}
+	return cells_[cellIndex(col, row)];
+}
+
+void
+GridView::removeAllViews()
+{
+	for (size_t i = 0; i < cells_.size(); i++) {
+		if (cells_[i]) {
+			cells_[i]->removeFromSuperview();
+		}
+	}
+	cells_.clear();
+	natural_.clear();
+	columns_ = 0;
+	rows_ = 0;
+	setNeedsLayout();
+	setNeedsDisplay();
+}
+
+void
+GridView::setColumnSpacing(double s)
+{
+	if (s >= 0 && s != columnSpacing_) {
+		columnSpacing_ = s;
+		setNeedsLayout();
+	}
+}
+
+void
+GridView::setRowSpacing(double s)
+{
+	if (s >= 0 && s != rowSpacing_) {
+		rowSpacing_ = s;
+		setNeedsLayout();
+	}
+}
+
+void
+GridView::setPadding(double p)
+{
+	if (p >= 0 && p != padding_) {
+		padding_ = p;
+		setNeedsLayout();
+	}
+}
+
+double
+GridView::columnWidth(int col) const
+{
+	double w = 0;
+
+	if (col < 0 || col >= columns_) {
+		return 0;
+	}
+	for (int r = 0; r < rows_; r++) {
+		double cw = naturalSizeOf(col, r).w;
+
+		if (cw > w) {
+			w = cw;
+		}
+	}
+	return w;
+}
+
+double
+GridView::rowHeight(int row) const
+{
+	double h = 0;
+
+	if (row < 0 || row >= rows_) {
+		return 0;
+	}
+	for (int c = 0; c < columns_; c++) {
+		double rh = naturalSizeOf(c, row).h;
+
+		if (rh > h) {
+			h = rh;
+		}
+	}
+	return h;
+}
+
+Rect
+GridView::frameOfCell(int col, int row) const
+{
+	double x = padding_;
+	double y = padding_;
+
+	for (int c = 0; c < col && c < columns_; c++) {
+		x += columnWidth(c) + columnSpacing_;
+	}
+	for (int r = 0; r < row && r < rows_; r++) {
+		y += rowHeight(r) + rowSpacing_;
+	}
+	return Rect{ { x, y }, { columnWidth(col), rowHeight(row) } };
+}
+
+Size
+GridView::fittingSize() const
+{
+	Size s{ padding_ * 2, padding_ * 2 };
+
+	for (int c = 0; c < columns_; c++) {
+		s.w += columnWidth(c);
+		if (c > 0) {
+			s.w += columnSpacing_;
+		}
+	}
+	for (int r = 0; r < rows_; r++) {
+		s.h += rowHeight(r);
+		if (r > 0) {
+			s.h += rowSpacing_;
+		}
+	}
+	return s;
+}
+
+void
+GridView::layout()
+{
+	Size need = fittingSize();
+
+	for (int r = 0; r < rows_; r++) {
+		for (int c = 0; c < columns_; c++) {
+			View *v = cells_[cellIndex(c, r)];
+
+			if (v) {
+				v->setFrame(frameOfCell(c, r));
+			}
+		}
+	}
+	/* THE GRID IS ITS CELLS' SIZE (see the invariants): a scroll view that owns
+	 * a grid needs the grid to say how much room it wants. The guard is what
+	 * stops a resize from asking for another layout for ever. */
+	if (need.w != frame().size.w || need.h != frame().size.h) {
+		setFrame(Rect{ frame().origin, need });
+	}
 }
 
 } /* namespace argentum */

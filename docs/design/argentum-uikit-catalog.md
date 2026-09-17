@@ -58,8 +58,9 @@ excluded (deprecated in later macOS; no FNX counterpart needed).
 | `NSTableView` | `TableView` | first data view (v1-basic or immediately after) | columns, rows, selection, data-source/delegate; editing + sorting within its own milestone |
 | `NSTextView` | `TextView` | after TableView | multi-line rich text — SL's text system is large; v1 has single-line `TextField` only |
 | `NSOutlineView` | `OutlineView` | **DONE (2026-09)** | hierarchical list, v1 = flat row model (text, depth, expandable/expanded, tag); draws visible rows (ancestor-expanded) with depth indentation + vector disclosure triangles; row selection fires the Control action, triangle clicks toggle expansion; view-based rows are a later richness. Used on the widget zoo board. |
-| `NSCollectionView` | `CollectionView` | staged | grid of items |
-| `NSBrowser` | `Browser` | staged | column browser |
+| `NSCollectionView` | `CollectionView` | **DONE (2026-09)** | grid of items, sized by its own flow (`FlowLayout`); item views are not recycled in v1 (virtual items are U6's). |
+| `NSGridView` | `GridView` | **DONE (2026-09)** | views in a grid of cells: a column is as wide as its widest cell and a row as tall as its tallest, and the size a cell asks for is captured when its view goes IN — so laying out twice is the same as laying out once, and the grid sizes itself to its cells. v1: no cell spanning, no per-cell placement, no hidden row or column. |
+| `NSBrowser` | `Browser` | staged | column browser — a delegate-driven DATA view, so it is U6's with `TableView`/`OutlineView` |
 | `NSComboBox` | `ComboBox` | **DONE (2026-09)** | An editable field with a drop-down list, COMPOSED: a `TextField` (typing, caret and S3's focus traversal come free) + a `Menu` rebuilt on `setItems` (Menu has no remove, only add) shown through the shared popup path. The item's id is its index PLUS ONE — 0 is `MenuItem`'s "no id"
 sentinel, and `Menu::addItem()` hands anything still at 0 a process-unique id, so
 index 0 came back from the popup carrying that generated id and picking the TOP

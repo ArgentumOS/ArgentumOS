@@ -776,8 +776,37 @@ as a compatibility path for un-migrated views, with a migration list.
   divider's arithmetic, the clamp, both axes; 22 cases) plus a REAL DRAG of the
   board's divider, logged at the END of the drag (an interaction in progress is
   not something to judge) and asserting where it came to rest: 147/147 -> 197/97.
+  **U5f — `GridView`. DONE (2026-09); this closes U5.** Views in a grid of cells,
+  each column as wide as its widest cell and each row as tall as its tallest —
+  `NSGridView`. It is a LAYOUT and not a data view: the cells hold whatever views
+  you put there, and the grid's only opinion is where they go.
+  * ONE ARITHMETIC, as in every container here: `columnWidth` and `rowHeight`
+    read the cells, `frameOfCell` places a cell at exactly those numbers, and
+    `fittingSize` is the same numbers plus the spacing and the padding — so what
+    is MEASURED and what is PLACED cannot disagree.
+  * THE SIZE A CELL ASKS FOR IS CAPTURED WHEN ITS VIEW IS PUT IN, never read back
+    from the frame the grid placed it in. That single decision is the difference
+    between a grid that settles and a grid that grows: a cell stretched to its
+    column would report the stretched width on the next pass. So laying out twice
+    is the same as laying out once — the check this widget most needs, and the
+    probe makes it say so out loud.
+  * The grid SIZES ITSELF to its cells (the CollectionView pattern), so a
+    ScrollView can own one. An empty cell still takes part, holding its column and
+    row open at zero width. v1 has no cell spanning, no per-cell placement and no
+    hidden row or column; sizes come from the views' own frames because this
+    toolkit's views have no intrinsic content size.
+  Gates: `uikit_u5f` — the display-free `grid_view` probe (the column and row
+  measurements, the placement, the fitting size, the empty cell, the growth, the
+  replacement and the idempotence; 24 checks) plus the board's `ZOO-GRID` line,
+  which is all a layout needs: the board reports what the grid measured (cols=3
+  rows=2 size=240x70 colw=56,72,88 rowh=24,32) and the case asserts those are the
+  numbers the cells asked for. A grid is not a control, so this case has no
+  interaction half.
 - **U6 — table and outline fidelity.** View-based rows, cells, columns and
-  headers, sorting, selection modes, drag&drop, variable row heights.
+  headers, sorting, selection modes, drag&drop, variable row heights. `Browser`
+  (the column browser) belongs HERE rather than in U5: it is a delegate-driven
+  DATA view, the same family as `TableView`/`OutlineView`, not a container —
+  moved by the user's decision (2026-09).
 - **U7 — panels, toolbar, status items.** `NSAlert`, `NSOpenPanel`/
   `NSSavePanel`, `NSFontPanel`/`NSColorPanel`, `NSToolbar` (+items),
   `NSStatusItem`, `NSPopover`.
@@ -909,10 +938,13 @@ the gate is the claim; the sections above record what each one settled.
 | U5c | `CollectionView` + `FlowLayout` — one arithmetic, sized by its own flow | `uikit_u5c` |
 | U5d | `TabView` — one arithmetic for the strip's rects and its hit test | `uikit_u5d` |
 | U5e | `SplitView` — the panes' frames are the state, the dividers drag | `uikit_u5e` |
+| U5f | `GridView` — one arithmetic for the cells, and it measures itself | `uikit_u5f` |
 
-**Next: U5, the rest of the containers and collections.** `CollectionView` with
-a flow layout (U5c), `TabView` (U5d) and `SplitView` (U5e) are DONE, so what
-remains is `GridView` / `Browser`.
+**U5 (the containers and collections) is COMPLETE.** `StackView` (U5a),
+`ScrollView` (U5b), `CollectionView` + `FlowLayout` (U5c), `TabView` (U5d),
+`SplitView` (U5e) and `GridView` (U5f) are all done and gated. `Browser` moved to
+U6: it is a delegate-driven data view, not a container (the user's decision,
+2026-09).
 
 **Open inside finished slices** (fidelity, not absence):
 

@@ -4679,6 +4679,100 @@ private:
 	double grabOffset_ = 0;	/* where in the divider the press landed */
 };
 
+/// @purpose Views in a grid of cells, each column as wide as its widest cell and
+/// each row as tall as its tallest — the classic NSGridView. It is a LAYOUT, not
+/// a data view: the cells hold whatever views you put there, and the grid's only
+/// opinion is where they go.
+///
+/// @lifetime A GridView owns no cell's view: putting one in a cell does not take
+/// ownership, and emptying a cell does not destroy it.
+///
+/// @invariants
+///  - ONE ARITHMETIC, the rule this toolkit's containers follow: a column's width
+///    (`columnWidth`) and a row's height (`rowHeight`) come from the cells, and
+///    `frameOfCell` places a cell at exactly those numbers. So what is MEASURED
+///    and what is PLACED cannot disagree, and `fittingSize()` is the same numbers
+///    plus the spacing and the padding.
+///  - THE SIZE A CELL ASKS FOR IS CAPTURED WHEN ITS VIEW IS PUT IN, not read back
+///    from the frame the grid placed it in. Otherwise a layout pass feeds its own
+///    output back in — a cell stretched to its column would report the stretched
+///    width next time — and the widths could only ever grow. Laying out twice is
+///    therefore the same as laying out once.
+///  - THE GRID SIZES ITSELF TO ITS CELLS, as a CollectionView sizes itself to its
+///    flow: `layout()` places every cell and then takes the size the cells need,
+///    so a ScrollView can own a grid. That is what makes a grid worth scrolling.
+///  - A cell may be EMPTY (no view): it still takes part, holding its column and
+///    row open at zero width, as Cocoa's empty cell does. A view put outside the
+///    grid GROWS the grid to include it.
+///  - v1 has no cell spanning (Cocoa's mergeCellsInHorizontalRange:), no per-cell
+///    placement (xPlacement/yPlacement — a cell's view is stretched to its cell),
+///    and no hidden row or column. Sizes come from the views' own frames because
+///    this toolkit's views have no intrinsic content size; a later pass can add
+///    one and ask for it here.
+class GridView : public View {
+public:
+	/// The class record KVC walks (Object <- View <- GridView).
+	static const ObjectClass kClass;
+
+	/// The class record (see Object::objectClass).
+	const ObjectClass *objectClass() const override { return &kClass; }
+
+	/// A grid with no rows and no columns.
+	GridView();
+
+	/// How many columns there are.
+	int columnCount() const { return columns_; }
+	/// How many rows there are.
+	int rowCount() const { return rows_; }
+
+	/// Put a view in a cell, growing the grid to include it. A null view
+	/// leaves the cell empty (see the invariants).
+	void setViewAt(View *v, int col, int row);
+	/// The view in a cell, or null if that cell has none.
+	View *viewAt(int col, int row) const;
+	/// Empty every cell, unlinking the views without destroying them.
+	void removeAllViews();
+
+	/// The gutter between columns, in points.
+	double columnSpacing() const { return columnSpacing_; }
+	/// Set it (re-places the cells).
+	void setColumnSpacing(double s);
+	/// The gutter between rows, in points.
+	double rowSpacing() const { return rowSpacing_; }
+	/// Set it (re-places the cells).
+	void setRowSpacing(double s);
+
+	/// The margin inside the grid's frame, on every side.
+	double padding() const { return padding_; }
+	/// Set it (re-places the cells).
+	void setPadding(double p);
+
+	/// How wide a column is: its widest cell's own width.
+	double columnWidth(int col) const;
+	/// How tall a row is: its tallest cell's own height.
+	double rowHeight(int row) const;
+	/// The size the cells need, spacing and padding included.
+	Size fittingSize() const;
+	/// Where a cell goes, from those two numbers.
+	Rect frameOfCell(int col, int row) const;
+
+	/// Place every cell and take the size they need (see the invariants).
+	void layout() override;
+
+private:
+	void growTo(int cols, int rows);
+	size_t cellIndex(int col, int row) const;
+	Size naturalSizeOf(int col, int row) const;
+
+	std::vector<View *> cells_;	/* columns_ * rows_, ROW-major */
+	std::vector<Size> natural_;	/* what each cell asked for (see above) */
+	int columns_ = 0;
+	int rows_ = 0;
+	double columnSpacing_ = 8.0;
+	double rowSpacing_ = 8.0;
+	double padding_ = 0.0;
+};
+
 /// @purpose One bar of a ScrollView: a track, a knob whose length is the
 /// visible fraction of the content, and a square arrow button at each end —
 /// the classic NSScroller.

@@ -728,8 +728,39 @@ main(int argc, char **argv)
 	content->addSubview(splitBoard);
 	splitBoard->layout();
 	splitBoard->setFrame(Rect{ { 1106, 148 }, { 300, 100 } });
+
+	/* AN EIGHTH REGION, BESIDE THE SPLIT (U5f): a GRID VIEW — three columns of
+	 * two cells, each column as wide as its widest cell. The grid takes its own
+	 * size from its cells (that is the class's rule), so the board hands it an
+	 * origin and then asks it how big it turned out. */
+	GridView *gridBoard = new GridView();
+
+	gridBoard->setColumnSpacing(8);
+	gridBoard->setRowSpacing(6);
+	gridBoard->setPadding(4);
+	{
+		const double widths[3] = { 56, 72, 88 };
+		const double heights[2] = { 24, 32 };
+
+		for (int row = 0; row < 2; row++) {
+			for (int col = 0; col < 3; col++) {
+				Button *b = new Button();
+				char title[32];
+
+				std::snprintf(title, sizeof(title), "G%d%d", col,
+					      row);
+				b->setTitle(title);
+				b->setFrame(Rect{ { 0, 0 },
+						  { widths[col], heights[row] } });
+				gridBoard->setViewAt(b, col, row);
+			}
+		}
+	}
+	content->addSubview(gridBoard);
+	gridBoard->layout();
+	gridBoard->setFrame(Rect{ { 1440, 12 }, gridBoard->frame().size });
 	w.setFrame(Rect{ { 70, 50 },
-			 { 1440.0, tallest + 6 + w.chromeHeightPt() } });
+			 { 1800.0, tallest + 6 + w.chromeHeightPt() } });
 	w.setContentView(content);
 	/* TRACK THE WINDOW ON THE APPLICATION. The board pumps through the app
 	 * (see pumpOnce below), and so does anything the board opens - the
@@ -807,6 +838,20 @@ main(int argc, char **argv)
 	std::printf("ZOO-STACK values rows=%d h=%g\n",
 		    (int) colValues->arrangedSubviews().size(),
 		    colValues->fittingSize().h);
+	/* AND THE GRID VIEW, whose columns and rows are its own measurements: a
+	 * gate can assert those numbers rather than trust a picture. */
+	if (gridBoard) {
+		std::printf("ZOO-GRID cols=%d rows=%d size=%gx%g colw=%g,%g,%g "
+			    "rowh=%g,%g\n",
+			    gridBoard->columnCount(), gridBoard->rowCount(),
+			    gridBoard->frame().size.w,
+			    gridBoard->frame().size.h,
+			    gridBoard->columnWidth(0),
+			    gridBoard->columnWidth(1),
+			    gridBoard->columnWidth(2),
+			    gridBoard->rowHeight(0), gridBoard->rowHeight(1));
+		std::fflush(stdout);
+	}
 	/* AND THE SCROLL VIEW, with the numbers that matter: the content it
 	 * looks at, the hole it looks through, where the DOCUMENT view sits,
 	 * and which bars it has. The document's origin is the invariant —
