@@ -636,19 +636,33 @@ mask_paint(const Context::Impl &im, const MaskBox &b, const Color &color)
 	pixman_image_unref(src);
 }
 
+/* WHERE A SHAPE'S MILLISECONDS GO, totalled over a frame: the mask BUILD
+ * (allocation, clearing, rasterization) against the COMPOSITE that puts it on
+ * the screen. Two counters rather than an argument, because the argument has
+ * been wrong twice already - 2.7ms for each shape, with the cache skipping 17
+ * of 103 and the frame time not moving, is not a ratio to reason about. */
+static double gBuildMs;
+static double gCompMs;
+
 void
 Context::fillTriangles(const Point *pts, int count, const Color &color)
 {
 	if (!impl_ || !impl_->img || !pts || count < 3 || count % 3) {
 		return;
 	}
+	double t0 = nowMs();
 	MaskBox b = mask_begin(*impl_, pts, count);
 
 	if (!b.valid()) {
 		return;
 	}
-	if (mask_triangles(*impl_, b, pts, count)) {
+	bool built = mask_triangles(*impl_, b, pts, count);
+	double t1 = nowMs();
+
+	gBuildMs += t1 - t0;
+	if (built) {
 		mask_paint(*impl_, b, color);
+		gCompMs += nowMs() - t1;
 	}
 	mask_end(b);
 }
@@ -1962,10 +1976,13 @@ Window::displayIfNeeded()
 		 * per-shape cost is the mask BUILD or the per-pixel COMPOSITE. */
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
 			    "views=%d rects=%d masks=%d hits=%d maskpx=%ld "
-			    "dmg=%dx%d\n",
+			    "build=%ld comp=%ld dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
 			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
-			    gMasks, gMaskHits, gMaskPx, ux1 - ux0, uy1 - uy0);
+			    gMasks, gMaskHits, gMaskPx, (long) gBuildMs,
+			    (long) gCompMs, ux1 - ux0, uy1 - uy0);
+		gBuildMs = 0.0;		/* per frame, not cumulative */
+		gCompMs = 0.0;
 		std::fflush(stdout);
 	}
 }
