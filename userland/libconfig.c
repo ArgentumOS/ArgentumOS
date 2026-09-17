@@ -1486,12 +1486,19 @@ static config_err_t parse_conf(const char *text, size_t len,
 	   (unsigned char)text[1] == 0xBB && (unsigned char)text[2] == 0xBF) {
 		off = 3;	/* skip a UTF-8 BOM */
 	}
-	/* A .conf file may not be the legacy text at all: the writer emits XML
-	 * plists now (docs/design/plist-config-plan.md P3b), and during the
-	 * transition BOTH spellings are read. Detection is by CONTENT, never by
-	 * name, and the plist reader hands back this very entry list — so
-	 * nothing below this line knows which syntax the file used. */
-	if(config_text_is_plist(text + off, len - off)) {
+	/* EVERY .conf is an XML plist: the writer has emitted plists since P3b,
+	 * every shipped domain converted by P4, and this stage retires the line
+	 * grammar (docs/design/plist-config-plan.md P3f). Detection is by CONTENT,
+	 * never by name. A file that is not a plist is a PARSE ERROR rather than a
+	 * fallback — guessing a format is how a config file gets silently mangled,
+	 * and the old `key = value` text is no longer a spelling of anything. To
+	 * migrate one, rewrite it as a plist: every shipped file was converted with
+	 * this library's own writer, and a `config set` is what did it. */
+	if(!config_text_is_plist(text + off, len - off)) {
+		pctx_free_chain(top);
+		return CONFIG_ERR_PARSE;
+	}
+	{
 		config_err_t pe = config_plist_parse(text + off, len - off,
 						     list, blocks, nblocks,
 						     trailer, NULL, 0);
