@@ -279,6 +279,67 @@ main()
 		std::fflush(stdout);
 	}
 
+	/* ---- H: LARGE READS, which is what loading a font's tables IS ----
+	 * FreeType reads a whole table in one call - `glyf` in these fonts is
+	 * hundreds of kilobytes - so the one read shape still untested is a big
+	 * one. A short read here and FreeType rejects the face as a bad format,
+	 * which is exactly the error being chased. */
+	{
+		static unsigned char big[600000];
+		int fds[3];
+
+		for (int k = 0; k < 3; k++) {
+			fds[k] = open(FONT, O_RDONLY);
+		}
+		for (int k = 0; k < 3; k++) {
+			long n = -1;
+			int err = 0;
+
+			if (fds[k] < 0) {
+				err = errno;
+			} else if (lseek(fds[k], 0, SEEK_SET) < 0) {
+				err = errno;
+			} else {
+				ssize_t r = read(fds[k], big, sizeof(big));
+
+				n = (long) r;
+				if (r < 0) {
+					err = errno;
+				}
+			}
+			std::printf("OPEN3 big#%d path=%s fd=%d errno=%d(%s) read=%ld "
+				    "of=%lu\n", k + 1, FONT, fds[k], err,
+				    err ? std::strerror(err) : "-", n,
+				    (unsigned long) sizeof(big));
+		}
+	}
+
+	/* and the same through stdio, with three FILE* held open */
+	{
+		static unsigned char big[600000];
+		FILE *s[3] = { std::fopen(FONT, "rb"), std::fopen(FONT, "rb"),
+			       std::fopen(FONT, "rb") };
+
+		for (int k = 0; k < 3; k++) {
+			size_t n = 0;
+			int err = 0;
+
+			if (!s[k]) {
+				err = errno;
+			} else {
+				std::fseek(s[k], 0, SEEK_SET);
+				n = std::fread(big, 1, sizeof(big), s[k]);
+				if (n != sizeof(big)) {
+					err = std::ferror(s[k]) ? errno : 0;
+				}
+			}
+			std::printf("STDIO big#%d fp=%p errno=%d(%s) read=%ld "
+				    "of=%lu\n", k + 1, (void *) s[k], err,
+				    err ? std::strerror(err) : "-", (long) n,
+				    (unsigned long) sizeof(big));
+		}
+	}
+
 	std::printf("OPEN3 done\n");
 	std::fflush(stdout);
 	return 0;

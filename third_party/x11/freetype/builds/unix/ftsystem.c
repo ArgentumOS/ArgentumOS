@@ -306,16 +306,29 @@
     /* This cast potentially truncates a 64bit to 32bit! */
     stream->size = (unsigned long)stat_buf.st_size;
     stream->pos  = 0;
-    stream->base = (unsigned char *)mmap( NULL,
-                                          stream->size,
-                                          PROT_READ,
-                                          MAP_FILE | MAP_PRIVATE,
-                                          file,
-                                          0 );
-
-    if ( stream->base != MAP_FAILED )
-      stream->close = ft_close_stream_by_munmap;
-    else
+    /* FNX LOCAL PATCH — READ THE FONT, DO NOT MAP IT.
+     *
+     * FNX's mmap cannot be trusted for a THIRD concurrent mapping of one
+     * file: the mapping "succeeds" and reads as something other than the
+     * file's bytes. That is invisible to the fallback below, which only
+     * covers a FAILED mmap — so the sfnt driver is handed an empty header
+     * and answers Unknown_File_Format (2) for a font whose bytes are
+     * perfect.
+     *
+     * Measured (userland/tests/font_twice.cpp, tests/cases/fs_open_many.py):
+     * a THIRD FT_New_Face on one pathname fails while a face of a DIFFERENT
+     * file opens fine and three faces from one in-memory buffer open fine —
+     * and every descriptor-level primitive is correct meanwhile (open, read
+     * and lseek at offsets 0/300000/700000 on three concurrent descriptors;
+     * 600000-byte reads; the same through three stdio FILE*). The guest's
+     * libfreetype.so imports mmap and not fopen, which is what put this file
+     * in the picture. It cost a long hunt: the error reads like corrupt font
+     * data, and it is not.
+     *
+     * Taking the read path costs one buffer per face (this font is 759720
+     * bytes) and buys a text stack that works. The mmap-side defect is FNX's
+     * and is still there for anyone who maps the same file three times.
+     */
     {
       ssize_t  total_read_count;
 
