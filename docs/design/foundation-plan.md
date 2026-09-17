@@ -227,7 +227,7 @@ status.
   commitment in `docs/design/self-hosting-packages.md` §6 made real. Note that the
   deferral removes the gate, not the standing requirement to track self-hosting needs
   there.
-- **F6 — nullability annotations. SLICES 1–3 DONE (§9); the rest queued, for the Sterling front end.**
+- **F6 — nullability annotations. SLICES 1–4 DONE (§9); only `NSCharacterSet` and `NSLocale` left, for the Sterling front end.**
   The language reads an *unannotated* import as **nullable** (`sterling-syntax.md` §9.5), so
   today every Foundation call answers `T?` and every one of them needs a `!` or a binding. The
   fix is the annotations themselves: **0 today, across 19 headers and 434 methods** — and no
@@ -240,12 +240,12 @@ status.
   `-Werror=nullability-completeness` in the library's own flags: a header with SOME annotations
   and not others does not build, while an untouched file stays silent, which is what lets the
   sweep land one slice at a time.
-  **Slices 1–3 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
+  **Slices 1–4 (DONE):** `NSObject`, `NSArray`, `NSDictionary`, `NSIndexSet`, `NSIndexPath`,
   `NSEnumerator`, the strings (`NSString`/`NSMutableString`/`NSOwnedString`), the value types
-  (`NSNumber`/`NSData`/`NSDate`) with `NSError`/`NSException`, plus `NSFastEnumeration` and the
-  (empty) `NSTinyString`. **Remaining:** `NSCharacterSet`, `NSLocale`,
-  `NSMethodSignature`/`NSInvocation` and `NSPropertyListSerialization` — `Foundation.h` is only
-  imports and needs nothing.
+  (`NSNumber`/`NSData`/`NSDate`) with `NSError`/`NSException`, `NSFastEnumeration`, the (empty)
+  `NSTinyString`, and `NSMethodSignature`/`NSInvocation`/`NSPropertyListSerialization`.
+  **Remaining:** `NSCharacterSet` and `NSLocale` — `Foundation.h` is only imports and needs
+  nothing.
 
 ## 6. Risks / gotchas
 
@@ -1169,3 +1169,40 @@ annotation states what the WRITER does; where that differs from Cocoa, the diffe
 point rather than an accident.
 
 `foundation_value` 17/17, `foundation_error` 6/6, and `make rootagfs` clean.
+
+### F6, slice 4 (2026-09-17): the signature, the invocation and the plist skin — and the gate corrected SLICE 2
+
+Slice 4 is `NSMethodSignature`, `NSInvocation` and `NSPropertyListSerialization` (whose header
+carries the three category conveniences as well: `-propertyList` on NSString, and the file forms
+on NSArray/NSDictionary). Only `NSCharacterSet` and `NSLocale` are left.
+
+THE TECHNIQUE NEEDED NOTHING NEW — slice 3's three legs covered this slice: measured nil sites
+(2 in nmethodsignature.m, 2 in ninvocation.m, 4 in npropertylistserialization.m), PROPAGATION
+(the two `...WithContentsOfFile:` factories are `[[self alloc] initWithContentsOfFile:]`, so they
+inherit its nil), and one stored optional (`-target`, which Cocoa also declares nullable; a
+fresh invocation has none). Two judgement calls worth recording: `-getArgumentTypeAtIndex:` and
+`-methodReturnType` stay NONNULL even though their writer is a parser — an index past the end
+raises, and the type strings are owned copies the parser always fills.
+
+THE GATE'S FINDING THIS TIME WAS A CORRECTION TO SLICE 2, not to a probe. Three sites in
+`foundation_core.m` failed with `implicit conversion from nullable pointer 'const char *' to
+non-nullable pointer type 'const char *'`, and the nullable came through a nullable RECEIVER
+(`[[NSMethodSignature signatureWithObjCTypes:...] getArgumentTypeAtIndex:0]` — sound, because if
+the signature is nil the result is). The honest fix was NOT in the probe: slice 2 had annotated
+`+stringWithUTF8String:` and `-initWithUTF8String:` against a measurement that said the writer
+answers nil **for a NULL or invalid argument** — which means the PARAMETER is nullable too, and
+it had been annotated nonnull. Both now read `const char * _Nullable`, and the probe compiles
+UNCHANGED.
+
+That is the second refinement the conversion half has forced, and the more subtle one:
+**measuring a nil RETURN can imply a nullable PARAMETER.** A method that answers nil "because the
+argument was NULL" has said, in the same breath, that NULL is an acceptable argument.
+
+IT ALSO REFINED A GRAMMAR RULE. Rule 4 (plain scalar pointers need no specifier) is true of the
+COMPLETENESS diagnostic, which never demanded one for `const char *` or `NSZone *`. But the
+CONVERSION diagnostic checks any explicit `_Nullable` flow whatever the pointer's kind, so a
+scalar pointer that is genuinely nullable WILL be caught. The two diagnostics police different
+things, and the rules have to be read per half.
+
+`foundation_core` 15/15 on a guest boot — with the probe untouched, which is the point — and
+`make rootagfs` clean.

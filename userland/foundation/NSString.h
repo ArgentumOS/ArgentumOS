@@ -89,7 +89,7 @@ typedef enum {
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */
 + (id)string;
 + (id)stringWithString:(NSString *)other;
-+ (nullable id)stringWithUTF8String:(const char *)utf8;
++ (nullable id)stringWithUTF8String:(const char * _Nullable)utf8;
 + (id)stringWithFormat:(NSString *)format, ...;
 + (nullable id)stringWithContentsOfFile:(NSString *)path
 			  encoding:(NSStringEncoding)encoding
@@ -101,7 +101,7 @@ typedef enum {
 
 - (id)init;
 - (id)initWithString:(NSString *)other;
-- (nullable id)initWithUTF8String:(const char *)utf8;
+- (nullable id)initWithUTF8String:(const char * _Nullable)utf8;
 - (id)initWithFormat:(NSString *)format, ...;
 - (id)initWithFormat:(NSString *)format arguments:(va_list)arguments;
 - (nullable id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding;
@@ -211,8 +211,8 @@ typedef enum {
 	char *_bytes;		/* owned, NUL-terminated, UTF-8 */
 	size_t _length;		/* bytes, excluding the terminating NUL */
 }
-+ (nullable id)stringWithUTF8String:(const char *)utf8;
-- (nullable id)initWithUTF8String:(const char *)utf8;
++ (nullable id)stringWithUTF8String:(const char * _Nullable)utf8;
+- (nullable id)initWithUTF8String:(const char * _Nullable)utf8;
 - (nullable id)initWithBytes:(const char *)bytes length:(size_t)length;
 @end
 

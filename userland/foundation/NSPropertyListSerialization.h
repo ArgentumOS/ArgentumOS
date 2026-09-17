@@ -35,6 +35,20 @@
 @class NSData;
 @class NSError;
 
+/* NULLABILITY (F6, slice 4): NONNULL by default, and the exceptions are MEASURED
+ * (npropertylistserialization.m) or inherited by PROPAGATION:
+ *   - both serialisation entry points answer nil on failure — a parse that failed
+ *     and a tree that cannot be written are exactly what the NSError out-parameter
+ *     is for, and the class simply returns nil when the caller passed NULL for it;
+ *   - the category conveniences inherit that: -propertyList (the receiver is the
+ *     document and there is no error out-parameter, so a parse failure answers
+ *     nil), -initWithContentsOfFile: and the two +...WithContentsOfFile: factories,
+ *     which are `[[self alloc] initWithContentsOfFile:]`;
+ *   - the format out-parameter of +propertyListWithData: is nullable because Cocoa
+ *     lets a caller pass NULL for "I do not care which format it was";
+ *   - the NSError out-parameters are nullable at BOTH levels, as everywhere else. */
+NS_ASSUME_NONNULL_BEGIN
+
 /* Apple's raw values, so a numeric comparison in existing code still holds. */
 typedef enum {
 	NSPropertyListOpenStepFormat = 1,
@@ -59,16 +73,16 @@ typedef NSUInteger NSPropertyListWriteOptions;
  * which names the offset and the offending text, because a config file's reader
  * should say WHERE it gave up.
  */
-+ (id)propertyListWithData:(NSData *)data
++ (nullable id)propertyListWithData:(NSData *)data
 		   options:(NSPropertyListReadOptions)options
-		    format:(NSPropertyListFormat *)format
-		     error:(NSError **)errorPtr;
+		    format:(NSPropertyListFormat * _Nullable)format
+		     error:(NSError * _Nullable * _Nullable)errorPtr;
 
 /* Serialise `plist` (strings, numbers, dates, data, arrays and dictionaries). */
-+ (NSData *)dataWithPropertyList:(id)plist
++ (nullable NSData *)dataWithPropertyList:(id)plist
 			  format:(NSPropertyListFormat)format
 			 options:(NSPropertyListWriteOptions)options
-			   error:(NSError **)errorPtr;
+			   error:(NSError * _Nullable * _Nullable)errorPtr;
 
 /* Whether every object in the tree is one this serialiser can write, and whether
  * every integer/real/boolean/dictionary KEY can be spelled in the format. */
@@ -90,19 +104,21 @@ typedef NSUInteger NSPropertyListWriteOptions;
  */
 
 @interface NSString (NSPropertyListAdditions)
-- (id)propertyList;
+- (nullable id)propertyList;
 @end
 
 @interface NSArray (NSPropertyListAdditions)
-+ (instancetype)arrayWithContentsOfFile:(NSString *)path;
-- (id)initWithContentsOfFile:(NSString *)path;
++ (nullable instancetype)arrayWithContentsOfFile:(NSString *)path;
+- (nullable id)initWithContentsOfFile:(NSString *)path;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 @end
 
 @interface NSDictionary (NSPropertyListAdditions)
-+ (NSDictionary *)dictionaryWithContentsOfFile:(NSString *)path;
-- (id)initWithContentsOfFile:(NSString *)path;
++ (nullable NSDictionary *)dictionaryWithContentsOfFile:(NSString *)path;
+- (nullable id)initWithContentsOfFile:(NSString *)path;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSPROPERTYLISTSERIALIZATION_H */

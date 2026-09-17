@@ -33,6 +33,13 @@
 
 @class NSMethodSignature;
 
+/* NULLABILITY (F6, slice 4): NONNULL by default. The factory is a measured
+ * `return nil;` site in ninvocation.m; -methodSignature is not (it is the object
+ * the invocation was built from); and -target is genuinely optional — Cocoa's own
+ * property is nullable, and a fresh invocation has no target until -setTarget: or
+ * -invokeWithTarget: gives it one. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSInvocation : NSObject
 {
 	NSMethodSignature *_signature;
@@ -44,15 +51,15 @@
 	BOOL _argumentsRetained;
 }
 
-+ (NSInvocation *)invocationWithMethodSignature:(NSMethodSignature *)signature;
++ (nullable NSInvocation *)invocationWithMethodSignature:(NSMethodSignature *)signature;
 
 - (NSMethodSignature *)methodSignature;
 
 - (void)retainArguments;
 - (BOOL)argumentsRetained;
 
-- (id)target;
-- (void)setTarget:(id)target;
+- (nullable id)target;
+- (void)setTarget:(nullable id)target;
 - (SEL)selector;
 - (void)setSelector:(SEL)selector;
 
@@ -65,6 +72,8 @@
  * target first. Both raise when the call cannot be expressed in the subset. */
 - (void)invoke;
 - (void)invokeWithTarget:(id)target;
+
+NS_ASSUME_NONNULL_END
 
 @end
 

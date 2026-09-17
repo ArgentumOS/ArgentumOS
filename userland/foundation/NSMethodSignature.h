@@ -41,6 +41,13 @@
 
 #import <foundation/NSObject.h>
 
+/* NULLABILITY (F6, slice 4): NONNULL by default. The ONE exception is the factory,
+ * which is a measured `return nil;` site in nmethodsignature.m — it refuses an
+ * encoding it cannot parse rather than answering a half-built signature. The
+ * accessors are not nullable: an index past the end RAISES NSRangeException, and
+ * the type strings are owned copies the parser always fills in. */
+NS_ASSUME_NONNULL_BEGIN
+
 @interface NSMethodSignature : NSObject
 {
 	char *_types;			/* our own copy of the encoding */
@@ -52,7 +59,7 @@
 	BOOL _oneway;
 }
 
-+ (NSMethodSignature *)signatureWithObjCTypes:(const char *)types;
++ (nullable NSMethodSignature *)signatureWithObjCTypes:(const char *)types;
 
 - (NSUInteger)numberOfArguments;	/* self and _cmd included, as Cocoa counts them */
 - (const char *)getArgumentTypeAtIndex:(NSUInteger)index;
@@ -60,6 +67,8 @@
 - (NSUInteger)methodReturnLength;	/* 0 for void */
 - (NSUInteger)frameLength;		/* our definition: word-aligned argument bytes */
 - (BOOL)isOneway;
+
+NS_ASSUME_NONNULL_END
 
 @end
 
