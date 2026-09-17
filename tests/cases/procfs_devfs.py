@@ -97,6 +97,26 @@ class Case(BaseCase):
                         + " | ".join(ln for ln in log.splitlines()
                                      if "INIT: display" in ln)[:200])
 
+        # --- the kernel's own boot config, on the ESP -------------------
+        # kernel.conf is read by the EFI stub BEFORE ExitBootServices and then
+        # parsed by the kernel's own freestanding subset parser (kernel/kconf.c,
+        # P3e) — the one config file that cannot use the userland core. What
+        # this image ships is the converted plist: this check shows the ESP
+        # carries it, and the fact that the boot came up at all shows the kernel
+        # read it (the dict is empty, so it overrides nothing and the
+        # compiled-in defaults stand — exactly what the all-commented legacy
+        # file did).
+        mark = len(session.log_text())
+        session.run("cat /System/ESP/EFI/BOOT/kernel.conf")
+        kconf = session.output_since(mark)
+        self.check("kernel-conf-on-the-esp-is-a-plist",
+                   '<?xml version="1.0"' in kconf and "<dict>" in kconf
+                   and "<key>console</key>" in kconf,
+                   "the ESP carries the converted kernel.conf"
+                   if '<?xml version="1.0"' in kconf
+                   else "the ESP has the legacy file, or no file: "
+                        + kconf.strip()[:160])
+
         # --- procfs ---------------------------------------------------
         mark = len(session.log_text())
         session.run("cat %s/version" % PROC)

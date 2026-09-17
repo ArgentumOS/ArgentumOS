@@ -222,12 +222,61 @@ which is the order the check needs. Still open and NOT papered over: `su` to a s
 account — the plan's full acceptance — needs a second account in the domain, and the
 shipped `system.passwd.conf` has one `Admin` record.
 
-### P3e — the kernel's `kernel.conf`
-`kernel/kconf.c` (223 lines) gains a **freestanding** plist parser: the kernel has
-no libc, and the core uses `malloc`, so it cannot be shared there. This is the one
-place the "one core" decision does not reach, and pretending otherwise would be
-worse than saying so. `kernel.conf` converts with its parser in the same commit,
-because a boot that cannot read its own config does not boot.
+### P3e — the kernel's `kernel.conf` (DONE: the kernel reads both spellings)
+`kernel/kconf.c` is the one config reader that cannot use the shared core: the
+kernel has no libc, and the core allocates. So the plist spelling is a
+**freestanding arm in the same file** — and because `kconf_next()`'s contract is
+"emit the next `struct kconf_kv`", the arm produces the same key/value stream from
+a plist as the line scanner does from `key = value` text. Nothing under it changed:
+`kernel_conf_apply()` (kernel/multiboot.c) is blind to which spelling the EFI stub
+loaded.
+
+The arm is a flat, stateless walk — it must resume from an offset like the line
+scanner, so no parse tree and no allocation: `<key>` then the scalar value element
+that follows, `<!-- … -->` skipped wherever it stands, `<?xml?>`/`<!DOCTYPE>`/the
+root `<dict>` skipped as non-settings, and entities decoded
+(`amp`/`lt`/`gt`/`quot`/`apos` plus numeric ASCII) exactly as the core does. The
+subset stays SCALAR: a `<dict>`, `<array>`, `<real>`, `<date>` or `<data>` VALUE is
+refused (`KCONF_KV_ERR`) and skipped whole, exactly as a `{` line is, so one
+unusable setting cannot derail the file. Detection is by content —
+`config_text_is_plist`'s rule, BOM then whitespace then `<` — never by name.
+
+EVIDENCE, and it needed no new tooling: `tools/kconf_corpus.sh` is the project's own
+conformance corpus, and it diffs the kernel parser against libconfig on the same
+file. It was **stale since P3b** — it still compiled libconfig as one translation
+unit, so it had not run since libconfig became two over the core — which the first
+run exposed; fixed, then extended with four plist fixtures (basic, dot-keys,
+entities incl. a numeric one, empty dict) plus the shipped file itself.
+**corpus: all-pass, 10/10.** Both parsers emit the identical listing, so the arm is
+not "a plist parser that looks right", it is the same reading.
+
+`tools/esp-kernel.conf` converted with it, and the two facts that shaped the file
+were MEASURED on the host before writing it, not assumed:
+* **the prose must live INSIDE the root dict.** A comment between `<plist …>` and
+  the root value is accepted and DISCARDED (P3a's recorded simplification), so a
+  pre-`<dict>` header is eaten by the first `config set` — measured: 57 lines in,
+  33 out, the header gone. The header prose is now the dict's leading comments.
+* **the writer re-emits one `<!-- … -->` per LINE**, so a block comment becomes a
+  run of line comments (and a blank line an empty `<!---->`). The file is written
+  in that shape, which makes it a **fixed point** of libconfig's own rewrite
+  (rewrite #1 byte-identical to the shipped file, rewrite #2 to #1) — the property
+  that keeps a `config set` on the `system.kernel` domain a no-diff operation.
+
+The options stay as commented examples, so the file is still the template it was:
+its dict is EMPTY, which is what the all-commented legacy file amounted to, and the
+kernel therefore keeps every compiled-in default.
+
+THE GUEST GATE, `tests/cases/procfs_devfs.py` **16/16**: its new
+`kernel-conf-on-the-esp-is-a-plist` check reads the ESP's own copy through the
+running guest, and the case booting at all is the rest of the evidence — the EFI
+stub loaded a plist and the kernel's arm walked it, finding no setting and raising
+no complaint, so the compiled-in defaults stood, which is exactly what the
+all-commented legacy file produced. What is NOT exercised in the guest is a
+NON-EMPTY kernel.conf (the shipped dict is empty by design): the arm's scalar path
+is covered by the corpus on the host, and what the corpus covers is the SAME
+translation unit the kernel links. That split — corpus for the grammar, a boot for
+the integration — is the acceptance `kernel-conf-plan.md` M1 already used, so the
+plist spelling is held to the standard the line grammar always was.
 
 ### P3f — retire the legacy reader
 With every file converted and every reader on plists, `libconfig.c`'s legacy

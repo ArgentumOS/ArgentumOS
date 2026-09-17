@@ -19,11 +19,16 @@ trap 'rm -rf "$TMP"' EXIT
 
 cc -I"$ROOT/include" -o "$TMP/kconf_host" \
 	"$ROOT/kernel/kconf.c" "$ROOT/tools/kconf_host.c"
+# libconfig is the plist core plus its two skins (P3b): the reader and the writer
+# are separate translation units over userland/plist.c.
 cc -I"$ROOT/include" -I"$ROOT/userland" -o "$TMP/kconf_libc_host" \
-	"$ROOT/userland/libconfig.c" "$ROOT/tools/kconf_libconfig_host.c"
+	"$ROOT/userland/libconfig.c" "$ROOT/userland/libconfig_plist.c" \
+	"$ROOT/userland/plist.c" "$ROOT/tools/kconf_libconfig_host.c" -lm
 
 fails=0
-for f in "$CORPUS"/*.conf; do
+# The shipped ESP kernel.conf is a case too: whichever spelling it is in, both
+# parsers must read it the same way.
+for f in "$CORPUS"/*.conf "$ROOT/tools/esp-kernel.conf"; do
 	name="$(basename "$f" .conf)"
 	# kernel parser: raw file
 	"$TMP/kconf_host" "$f" > "$TMP/k.$name" 2>/dev/null
