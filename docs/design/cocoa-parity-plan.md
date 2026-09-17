@@ -776,6 +776,16 @@ as a compatibility path for un-migrated views, with a migration list.
   divider's arithmetic, the clamp, both axes; 22 cases) plus a REAL DRAG of the
   board's divider, logged at the END of the drag (an interaction in progress is
   not something to judge) and asserting where it came to rest: 147/147 -> 197/97.
+  MEASURED AFTERWARDS, with the toolkit's own instrument (`ARGENTUM_PAINT_MS=1`,
+  which `uikit_u5e` now exports the way `uikit_u5b` does): a drag step is 0–10ms
+  across 13 views, and the first version's blanket `setNeedsDisplay()` on the
+  whole split was MERGING the panes' own damage into one coarse rect — the view
+  now damages only the old and the new divider strip, so the panes' precise
+  rects survive (2 merged -> 4 correct). The board's panes hold a Button each,
+  because an empty-pane split is a drag with nothing in it to measure. COPYING
+  the moving pane's pixels — the `copiesOnScroll` idea, and the real lever if a
+  pane holds a rich hierarchy — is PARKED BY THE USER'S CHOICE
+  (dec-2ef665304e989ea2): revisit only if a drag is reported slow again.
   **U5f — `GridView`. DONE (2026-09); this closes U5.** Views in a grid of cells,
   each column as wide as its widest cell and each row as tall as its tallest —
   `NSGridView`. It is a LAYOUT and not a data view: the cells hold whatever views
