@@ -315,6 +315,16 @@ Context::fillRect(const Rect &rect, const Color &color)
 	pixman_image_unref(src);
 }
 
+/* THE TEXT PATH, in a frame's totals, split the way the shapes are: the
+ * PREPARE (shaping a run and composing its glyph coverage into a buffer) and
+ * the PAINT (the mask, the copy of that buffer into it, the composite). This
+ * is the last suspect standing for the ~100-150ms a frame does not account
+ * for, and it is INVISIBLE to the shape counters - a label builds its own
+ * mask, through its own path, below. */
+static double gTextPrepMs;
+static double gTextPaintMs;
+static long gTextPx;
+
 void
 Context::drawText(const char *family, double sizePt, const Point &at,
 		  const char *utf8, const Color &color, bool bold)
@@ -328,6 +338,7 @@ Context::drawText(const char *family, double sizePt, const Point &at,
 	if (pixelSize == 0) {
 		pixelSize = 1;
 	}
+	double tp0 = nowMs();
 	TextRun *t = textRunPrepare(family && family[0] ? family : nullptr,
 				    utf8, pixelSize, false, bold);
 	if (!t) {
@@ -347,6 +358,9 @@ Context::drawText(const char *family, double sizePt, const Point &at,
 		textRunFinish(t);
 		return;
 	}
+	gTextPrepMs += nowMs() - tp0;
+	gTextPx += (long) boxW * (long) boxH;
+	double tp1 = nowMs();
 	/* the run box, in px, at the requested point */
 	Rect run = { at, { (double) boxW / impl_->pxPerPt,
 			   (double) boxH / impl_->pxPerPt } };
@@ -389,6 +403,7 @@ Context::drawText(const char *family, double sizePt, const Point &at,
 		pixman_image_unref(src);
 	}
 	pixman_image_unref(mask);
+	gTextPaintMs += nowMs() - tp1;
 	textRunFinish(t);
 }
 
@@ -1987,16 +2002,21 @@ Window::displayIfNeeded()
 		 * per-shape cost is the mask BUILD or the per-pixel COMPOSITE. */
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
 			    "views=%d rects=%d masks=%d hits=%d maskpx=%ld "
-			    "build=%ld comp=%ld fill=%ld fillpx=%ld dmg=%dx%d\n",
+			    "build=%ld comp=%ld fill=%ld fillpx=%ld "
+			    "textprep=%ld textpaint=%ld textpx=%ld dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
 			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
 			    gMasks, gMaskHits, gMaskPx, (long) gBuildMs,
 			    (long) gCompMs, (long) gFillMs, gFillPx,
+			    (long) gTextPrepMs, (long) gTextPaintMs, gTextPx,
 			    ux1 - ux0, uy1 - uy0);
 		gBuildMs = 0.0;		/* per frame, not cumulative */
 		gCompMs = 0.0;
 		gFillMs = 0.0;
 		gFillPx = 0;
+		gTextPrepMs = 0.0;
+		gTextPaintMs = 0.0;
+		gTextPx = 0;
 		std::fflush(stdout);
 	}
 }
