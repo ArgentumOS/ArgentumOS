@@ -34,11 +34,11 @@
 	unsigned long _mutations;	/* bumped by every mutation, for fast enumeration */
 }
 
-+ (NSArray *)array;
-+ (NSArray *)arrayWithObject:(id)object;
-+ (NSArray *)arrayWithObjects:(const id *)objects count:(NSUInteger)count;
-+ (NSArray *)arrayWithArray:(NSArray *)other;
-+ (NSArray *)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
++ (instancetype)array;
++ (instancetype)arrayWithObject:(id)object;
++ (instancetype)arrayWithObjects:(const id *)objects count:(NSUInteger)count;
++ (instancetype)arrayWithArray:(NSArray *)other;
++ (instancetype)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)object;
 - (id)initWithObjects:(const id *)objects count:(NSUInteger)count;
@@ -74,8 +74,8 @@
 
 @interface NSMutableArray : NSArray <NSMutableCopying>
 
-+ (NSMutableArray *)array;
-+ (NSMutableArray *)arrayWithCapacity:(NSUInteger)capacity;
++ (instancetype)array;
++ (instancetype)arrayWithCapacity:(NSUInteger)capacity;
 - (id)initWithCapacity:(NSUInteger)capacity;
 
 - (void)addObject:(id)object;

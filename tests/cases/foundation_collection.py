@@ -32,7 +32,9 @@ PROBE = "/System/Shared/tests/foundation_collection"
 CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "dict-basic", "dict-key-copy", "dict-equality", "dict-enumerate",
           "ownership", "number-key", "cocoa-spellings",
-          "array-api-complete", "array-extras")
+          "array-api-complete", "array-varargs", "array-join", "array-subarray",
+          "array-sort", "array-search", "array-getobjects", "array-bulk",
+          "array-copy-and-grow", "array-identity")
 
 
 class Case(BaseCase):

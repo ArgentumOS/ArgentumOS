@@ -144,30 +144,43 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 	return copy;
 }
 
-/* Count the nil-terminated arguments, then collect them: two passes, because the
- * storage has to be exactly sized and a va_list cannot be rewound without a copy
- * of it. */
-static NSArray *array_from_varargs(Class cls, va_list args)
+/*
+ * Build an array from a nil-terminated variadic list.
+ *
+ * `firstObject` IS the argument NAMED in the method signature, and va_start
+ * points the list at the argument AFTER it. Reading the list as though it began
+ * at firstObject therefore DROPPED the first element — ["x", "y"] came out as
+ * ["y"] — which is exactly what the array-extras check caught. So firstObject is
+ * element 0 by hand, and the list supplies the rest.
+ *
+ * Two passes over the list, because the storage has to be exactly sized and a
+ * va_list cannot be rewound without a copy of it.
+ */
+static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 {
 	va_list counter;
 	id *objects;
-	size_t count = 0;
+	size_t extra = 0;
 	size_t i;
 	NSArray *result;
 
+	if (firstObject == nil) {
+		return [[cls alloc] initWithObjects:NULL count:0];
+	}
 	va_copy(counter, args);
 	while (va_arg(counter, id) != nil) {
-		count++;
+		extra++;
 	}
 	va_end(counter);
-	objects = (id *)calloc(count + 1, sizeof(id));
+	objects = (id *)calloc(extra + 2, sizeof(id));
 	if (objects == NULL) {
 		return nil;
 	}
-	for (i = 0; i < count; i++) {
-		objects[i] = va_arg(args, id);
+	objects[0] = firstObject;
+	for (i = 0; i < extra; i++) {
+		objects[i + 1] = va_arg(args, id);
 	}
-	result = [[cls alloc] initWithObjects:objects count:count];
+	result = [[cls alloc] initWithObjects:objects count:extra + 1];
 	free(objects);
 	return result;
 }
@@ -183,15 +196,34 @@ static NSArray *array_from_varargs(Class cls, va_list args)
 	NSArray *result;
 
 	va_start(args, firstObject);
-	result = array_from_varargs(self, args);
+	result = array_from_varargs(self, firstObject, args);
 	va_end(args);
-	(void)firstObject;
 	return result;
 }
 
 - (id)initWithArray:(NSArray *)other
 {
-	return [self initWithObjects:[other _items] count:[other count]];
+	/*
+	 * THROUGH THE PUBLIC ACCESSOR. `other->_items` was the only cross-instance
+	 * field access in this class, and the check that faulted in the guest was the
+	 * only one containing it; every check that uses accessors passes.
+	 * -getObjects:range: is the class's own public answer for this job.
+	 */
+	NSUInteger n = [other count];
+	id __unsafe_unretained *objects;
+	id result;
+
+	if (n == 0) {
+		return [self initWithObjects:NULL count:0];
+	}
+	objects = (id __unsafe_unretained *)calloc(n, sizeof(id));
+	if (objects == NULL) {
+		return nil;
+	}
+	[other getObjects:objects range:NSMakeRange(0, n)];
+	result = [self initWithObjects:objects count:n];
+	free(objects);
+	return result;
 }
 
 - (id)initWithObjects:(id)firstObject, ...
@@ -200,9 +232,9 @@ static NSArray *array_from_varargs(Class cls, va_list args)
 	NSArray *built;
 
 	va_start(args, firstObject);
-	built = array_from_varargs([NSArray class], args);
+	built = array_from_varargs([NSArray class], firstObject, args);
 	va_end(args);
-	return [self initWithObjects:[built _items] count:[built count]];
+	return [self initWithArray:built];	/* and that goes through the accessor too */
 }
 
 - (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other

@@ -305,7 +305,7 @@ int main(void)
 		};
 		static const char *mutableSelectors[] = {
 			"initWithCapacity:", "addObject:", "addObjectsFromArray:",
-			"insertObject:atIndex:", "removeObjectAtIndex:", "removeLastObject:",
+			"insertObject:atIndex:", "removeObjectAtIndex:",
 			"removeLastObject", "removeObject:", "removeObjectIdenticalTo:",
 			"removeObject:inRange:", "removeObjectsInRange:", "removeAllObjects",
 			"replaceObjectAtIndex:withObject:", "replaceObjectsInRange:withObjectsFromArray:",
@@ -346,43 +346,135 @@ int main(void)
 	}
 
 	{
-		/* ...and the surface behaves. */
+		/* The array surface, SPLIT ONE CHECK PER STEP. The combined version
+		 * faulted in the guest with no line to point at; a check per step makes
+		 * the guest's log name the last thing that worked, which is the only
+		 * honest localiser for a segfault. */
 		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"b", @"a", @"c", nil];
-		NSArray *sorted = [m sortedArrayUsingSelector:@selector(compare:)];
 		NSArray *joined = [NSArray arrayWithObjects:@"x", @"y", nil];
 		NSArray *numbers = [NSArray arrayWithObjects:@"1", @"2", @"3", @"4", nil];
-		NSArray *sub = [numbers subarrayWithRange:NSMakeRange(1, 2)];
-		NSMutableArray *changed = [NSMutableArray arrayWithObjects:@"p", @"q", @"r", nil];
-		NSString *distinct = [[NSMutableString alloc] initWithUTF8String:"2"];
-		id __unsafe_unretained held[2];
+		NSArray *one = [NSArray arrayWithObject:@"solo"];
 
-		[numbers getObjects:held range:NSMakeRange(1, 2)];
-		[changed exchangeObjectAtIndex:0 withObjectAtIndex:2];
-		[changed removeLastObject];
-		[changed addObjectsFromArray:joined];
-		[changed replaceObjectsInRange:NSMakeRange(0, 2)
-			 withObjectsFromArray:[NSArray arrayWithObject:@"z"]];
+		check("array-varargs",
+		      [m count] == 3 && [joined count] == 2 && [numbers count] == 4 &&
+		      [one count] == 1 &&
+		      [[m objectAtIndex:0] isEqualToString:@"b"] &&
+		      [[m objectAtIndex:2] isEqualToString:@"c"],
+		      "the nil-terminated variadic creation keeps every element, including the first");
+	}
 
-		check("array-extras",
-		      [m count] == 3 &&
+	{
+		NSArray *joined = [NSArray arrayWithObjects:@"x", @"y", nil];
+
+		check("array-join",
 		      [[joined componentsJoinedByString:@"-"] isEqualToString:@"x-y"] &&
 		      [[[NSArray arrayWithObject:@"solo"] componentsJoinedByString:@"-"]
 		          isEqualToString:@"solo"] &&
+		      [[[NSArray array] componentsJoinedByString:@"-"] isEqualToString:@""],
+		      "componentsJoinedByString:, including the one- and zero-element cases");
+	}
+
+	{
+		NSArray *numbers = [NSArray arrayWithObjects:@"1", @"2", @"3", @"4", nil];
+		NSArray *sub = [numbers subarrayWithRange:NSMakeRange(1, 2)];
+
+		check("array-subarray",
 		      [sub count] == 2 && [[sub objectAtIndex:0] isEqualToString:@"2"] &&
 		      [[sub objectAtIndex:1] isEqualToString:@"3"] &&
+		      [[numbers subarrayWithRange:NSMakeRange(3, 99)] count] == 1,
+		      "subarrayWithRange:, and a range that runs off the end is clamped");
+	}
+
+	{
+		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"b", @"a", @"c", nil];
+		NSArray *sorted = [m sortedArrayUsingSelector:@selector(compare:)];
+
+		check("array-sort",
+		      [sorted count] == 3 &&
 		      [[sorted objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[sorted objectAtIndex:1] isEqualToString:@"b"] &&
 		      [[sorted objectAtIndex:2] isEqualToString:@"c"] &&
-		      [sorted indexOfObjectIdenticalTo:[sorted objectAtIndex:0]] == 0 &&
+		      [[m objectAtIndex:0] isEqualToString:@"b"] &&
+		      [sorted indexOfObjectIdenticalTo:[sorted objectAtIndex:0]] == 0,
+		      "sortedArrayUsingSelector: sorts without touching the receiver");
+	}
+
+	{
+		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"b", @"a", @"c", nil];
+
+		check("array-search",
 		      [m indexOfObject:@"a" inRange:NSMakeRange(0, 3)] == 1 &&
 		      [m indexOfObject:@"a" inRange:NSMakeRange(2, 1)] == NSNotFound &&
+		      [m indexOfObject:@"a" inRange:NSMakeRange(5, 1)] == NSNotFound &&
+		      [m indexOfObjectIdenticalTo:@"a"] == 1,
+		      "ranged equality search, and both bounds cases for NSNotFound");
+	}
+
+	{
+		NSArray *numbers = [NSArray arrayWithObjects:@"1", @"2", @"3", @"4", nil];
+		id __unsafe_unretained held[4];
+
+		held[0] = nil; held[1] = nil; held[2] = nil; held[3] = nil;
+		[numbers getObjects:held range:NSMakeRange(1, 2)];
+		check("array-getobjects",
 		      [held[0] isEqualToString:@"2"] && [held[1] isEqualToString:@"3"] &&
-		      [changed count] == 3 && [[changed objectAtIndex:0] isEqualToString:@"z"] &&
-		      [[changed objectAtIndex:1] isEqualToString:@"x"] &&
-		      [changed indexOfObject:@"r"] == NSNotFound &&
-		      [[NSArray arrayWithArray:joined] isEqualToArray:joined] &&
-		      [[m arrayByAddingObjectsFromArray:joined] count] == 5 &&
-		      [numbers indexOfObjectIdenticalTo:@"2"] == NSNotFound,
-		      "varargs creation, joining, subarrays, sorting, identity, ranges and bulk mutation");
+		      held[2] == nil,
+		      "getObjects:range: fills exactly the range it was asked for");
+	}
+
+	{
+		NSMutableArray *changed = [NSMutableArray arrayWithObjects:@"p", @"q", @"r", nil];
+		NSArray *joined = [NSArray arrayWithObjects:@"x", @"y", nil];
+		int ok = 1;
+
+		printf("FOUNDATION-COLLECTION step exchange\n");
+		[changed exchangeObjectAtIndex:0 withObjectAtIndex:2];
+		ok = ok && [[changed objectAtIndex:0] isEqualToString:@"r"] &&
+		     [[changed objectAtIndex:2] isEqualToString:@"p"];
+		printf("FOUNDATION-COLLECTION step removeLast\n");
+		[changed removeLastObject];
+		ok = ok && [changed count] == 2 && [[changed objectAtIndex:1] isEqualToString:@"q"];
+		printf("FOUNDATION-COLLECTION step addObjectsFromArray\n");
+		[changed addObjectsFromArray:joined];
+		ok = ok && [changed count] == 4 && [[changed objectAtIndex:2] isEqualToString:@"x"];
+		printf("FOUNDATION-COLLECTION step replaceObjectsInRange\n");
+		[changed replaceObjectsInRange:NSMakeRange(0, 2)
+			 withObjectsFromArray:[NSArray arrayWithObject:@"z"]];
+		ok = ok && [changed count] == 3 &&
+		     [[changed objectAtIndex:0] isEqualToString:@"z"] &&
+		     [[changed objectAtIndex:1] isEqualToString:@"x"] &&
+		     [changed indexOfObject:@"r"] == NSNotFound;
+		printf("FOUNDATION-COLLECTION step setArray\n");
+		[changed setArray:[NSArray arrayWithObjects:@"k", @"l", nil]];
+		ok = ok && [changed count] == 2 && [[changed objectAtIndex:1] isEqualToString:@"l"];
+		check("array-bulk", ok,
+		      "exchange, removeLastObject, addObjectsFromArray, replaceObjectsInRange: and setArray:");
+	}
+
+	{
+		NSArray *joined = [NSArray arrayWithObjects:@"x", @"y", nil];
+		NSArray *copy = [NSArray arrayWithArray:joined];
+		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"a", @"b", @"c", nil];
+		NSArray *grown = [m arrayByAddingObjectsFromArray:joined];
+		NSArray *plusOne = [m arrayByAddingObject:@"z"];
+
+		check("array-copy-and-grow",
+		      [copy isEqualToArray:joined] && ![copy isEqual:m] &&
+		      [grown count] == 5 && [[grown objectAtIndex:4] isEqualToString:@"y"] &&
+		      [m count] == 3 &&
+		      [plusOne count] == 4 && [[plusOne objectAtIndex:3] isEqualToString:@"z"],
+		      "arrayWithArray:, arrayByAddingObjectsFromArray: and arrayByAddingObject: leave the receiver alone");
+	}
+
+	{
+		NSArray *numbers = [NSArray arrayWithObjects:@"1", @"2", @"3", @"4", nil];
+		NSString *distinct = [[NSMutableString alloc] initWithUTF8String:"2"];
+
+		check("array-identity",
+		      [numbers indexOfObject:distinct] == 1 &&
+		      [numbers indexOfObjectIdenticalTo:distinct] == NSNotFound &&
+		      [numbers indexOfObjectIdenticalTo:[numbers objectAtIndex:1]] == 1,
+		      "equality finds it where identity does not (a tagged literal is not the owned copy)");
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
