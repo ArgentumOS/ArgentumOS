@@ -437,8 +437,19 @@ static int gMaskHits;
  * HOW MANY IT HOLDS: the board's full frame is 103 masks, and the first
  * version held 24 - a round-robin that evicted every entry before its shape
  * came round again, so a cache that should have hit almost always hit never.
- * 512 is headroom rather than a measured working set: the entries are 32
- * points each and the masks they name are a few kilobytes. */
+ * 512 is headroom rather than a measured working set: the masks are a few
+ * kilobytes each, so the table is about two megabytes of BSS.
+ *
+ * AND THE KEY IS THE SHAPE'S WHOLE POINT LIST, which is why MASK_CACHE_PTS is
+ * what it is: at 32 points, only 17 of those 103 masks hit - the simple ones.
+ * A rounded rect arrives as a TRIANGLE FAN, so its list runs past 32 and it
+ * was never cached at all (the counter that showed this is printed on every
+ * timed frame, because "did it hit?" is not a question to answer by reading
+ * the code). A shape with more than MASK_CACHE_PTS points is still not
+ * cached; raising this again is the first thing to try if the numbers ever
+ * say the misses are back. */
+#define MASK_CACHE_N 512
+#define MASK_CACHE_PTS 256
 #define MASK_CACHE_N 512
 #define MASK_CACHE_PTS 32
 
@@ -1906,6 +1917,7 @@ Window::displayIfNeeded()
 		gViewsDrawn = 0;
 		gMasks = 0;
 		gMaskPx = 0;
+		gMaskHits = 0;
 		/* 1. the background over THIS rect, outward-rounded so no sliver
 		 * of the previous frame survives at the edges (the clip keeps it
 		 * in) */
@@ -1945,13 +1957,15 @@ Window::displayIfNeeded()
 		 * The split is what tells drawing apart from transport. views is
 		 * the sum over the rects and rects is how many passes they took -
 		 * that pair is what shows whether a change was damage-limited.
-		 * masks/maskpx are the SHAPE work: the pixels the coverage masks
-		 * covered, which is what the per-pixel cost is really over. */
+		 * masks/maskpx are the SHAPE work and hits is how much of it the
+		 * mask cache answered: that number is what says whether the
+		 * per-shape cost is the mask BUILD or the per-pixel COMPOSITE. */
 		std::printf("ARGENTUM-PAINT paint=%.1f flush=%.1f ms %ldx%ld "
-			    "views=%d rects=%d masks=%d maskpx=%ld dmg=%dx%d\n",
+			    "views=%d rects=%d masks=%d hits=%d maskpx=%ld "
+			    "dmg=%dx%d\n",
 			    tPaint1 - tPaint0, nowMs() - tPaint1,
 			    (long) impl_->wPx, (long) impl_->hPx, views, nrects,
-			    gMasks, gMaskPx, ux1 - ux0, uy1 - uy0);
+			    gMasks, gMaskHits, gMaskPx, ux1 - ux0, uy1 - uy0);
 		std::fflush(stdout);
 	}
 }
