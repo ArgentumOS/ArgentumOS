@@ -2788,3 +2788,36 @@ header that names it must import it (as `NSProcessInfo.h` learned before this).
 scheduler — and none of them is half-built here.
 
 Next: `NSRunLoop` and `NSTimer`, which are one design between them.
+
+### F13.18 landed (2026-09-18): NSRunLoop + NSTimer — and the kernel trait that reached into the test
+
+**`foundation_runloop` 7/7 on a guest boot.** A timer that fires once, a repeating timer that stops
+when invalidated, two timers that fire in DATE order although they were scheduled out of order, user
+info and interval, a timer never added to a loop being inert, a run loop per thread, and one pass
+through `-runMode:beforeDate:`. `NSTimer` and `NSRunLoop` live in ONE file because they are one design:
+a timer names a date and a loop is what waits for dates.
+
+**THE WAIT IS `select(2)`, AND F13.17 IS WHY.** That slice measured this kernel returning from
+`nanosleep(2)` early — against the same program's clock-driven deadline loop taking its full time — so
+the loop waits on select's timeout and RE-CHECKS THE CLOCK after every wait rather than trusting it. If
+select is early too the loop still fires on time; it only runs more often than it needs to.
+
+**AND THE TRAIT REACHED INTO THIS SLICE'S OWN TEST, twice, in one shape.** Two checks failed on the
+first run for the same reason: THE PROBE WAITED BY SLEEPING, and sleeping does not wait here. One had
+detached a thread and then "slept" 0.05s before reading what the thread had recorded; the other had
+scheduled a timer and "slept" before asking the loop to fire what was due. Both are now BOUNDED POLLS
+ON THE CLOCK, which does advance. **A test that waits by sleeping is a test that measures nothing on a
+kernel where sleeping is a no-op** — the lesson is worth more than the two lines it cost.
+
+**THE `NSTimeInterval` TRAP, FOURTH OCCURRENCE AND BY FAR THE WORST.** `NSTimer.h` names it without
+importing `NSDate.h`, and because a header that cannot spell a method's return type leaves the method
+UNTYPED, the damage was not one error but every parameter in the file: the compiler reported
+`'id' vs 'NSTimeInterval'` on six methods and `'id' vs 'NSTimeInterval'` on a return type, and the
+implementation's own calls went wrong with them. It is the same fact NSProcessInfo.h and NSThread.h
+each paid for — a type's home is the header that declares it, and a forward declaration cannot stand
+in for a typedef.
+
+**WHAT REMAINS OF §10'S LAST ROW:** `NSOperationQueue` and `NSProgress`. The queue is a scheduler over
+the thread family that now exists; `NSProgress` is a reporting tree. Neither is half-built here.
+
+Next: `NSOperationQueue` and `NSProgress` — the last two names in §10's table.

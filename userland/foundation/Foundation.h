@@ -63,5 +63,7 @@
 #import <foundation/NSRegularExpression.h>
 #import <foundation/NSLock.h>
 #import <foundation/NSThread.h>
+#import <foundation/NSTimer.h>
+#import <foundation/NSRunLoop.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
