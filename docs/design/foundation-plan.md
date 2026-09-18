@@ -2507,3 +2507,35 @@ its reason goes stale; debt recorded as a *claim* gets checked.
 
 Next: the expression family, then the coders, the services, `NSURLComponents` and
 `NSRegularExpression`.
+
+### F13.10 landed (2026-09-18): NSExpression — the other half of the predicate idea
+
+**`foundation_expression` 8/8 on a guest boot.** Every constructor whose evaluation this library can
+actually perform — constant, evaluated object, variable, key path, aggregate, the three SET
+operations and the fold functions — plus the doors that read a tree back, `-evaluateWithObject:`, the
+context-taking form that resolves VARIABLES, and equality that compares the tree.
+
+**WHY IT IS NOT `NSPredicate`'s BUSINESS, and how the two coexist.** F11 built a predicate as a tree
+of its own nodes, which is all a predicate needs; an expression is a STANDALONE value tree a caller
+can build, hand around and evaluate (`[expression evaluateWithObject:row]`). So this library keeps its
+predicate representation AND ships Cocoa's `NSExpression` API, which is the shape `NSComparisonPredicate`
+will need when it arrives.
+
+**THE RESULT'S KIND FOLLOWS THE OPERANDS**: two sets answer a SET, anything else answers an ARRAY —
+Cocoa's rule, and it matters, because a caller handed an array back from a union expects array order
+rather than set membership. The probe asserts the kinds, not just the contents.
+
+**THE FOLD FUNCTIONS ARE THE FIVE THAT CAN BE COMPUTED** (sum, count, min, max, average) over the
+collection the argument evaluates to, and anything else RAISES rather than answering nil: a silently
+wrong total is worse than a loud refusal. `@anyKey` exists as a TYPE but evaluates to nil, as Cocoa's
+own documentation says its value is undefined.
+
+**THE SAME SMALL TRAP, FOR THE THIRD TIME, now recorded as recurring:** this library has no
+`NSStringFromClass`, and I invented a helper for it in a probe's detail — the same mistake the KVC
+unions slice made. A probe's detail must be built from doors the library actually has (counts and
+`isKindOfClass:` answers, not class names). Also worth recording: an expression file depends on KVC
+itself, because `-valueForKeyPath:` is what a key path expression evaluates THROUGH — the import is a
+dependency, not a convenience.
+
+Next: `NSComparisonPredicate`, then the coders, the services, `NSURLComponents` and
+`NSRegularExpression`.
