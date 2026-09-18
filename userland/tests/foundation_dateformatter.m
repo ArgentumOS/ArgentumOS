@@ -255,6 +255,30 @@ int main(void)
 						before, after, [copy stringFromDate:when]]);
 	}
 
+	{
+		/* F13.7a: A NAMED ZONE CARRIES ITS OWN DST RULES, and that is the one thing a
+		 * fixed-offset zone could never do (F7 shipped the offset and refused the database). One
+		 * zone, two instants, TWO offsets: 00:00Z is 19:00 the previous day in March (EST, -5)
+		 * and 20:00 in July (EDT, -4). */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSTimeZone *newYork = [NSTimeZone timeZoneWithName:@"America/New_York"];
+		NSString *winter = nil;
+		NSString *summer = nil;
+
+		if (newYork != nil) {
+			[formatter setLocale:en];
+			[formatter setTimeZone:newYork];
+			[formatter setDateFormat:@"HH:mm"];
+			winter = [formatter stringFromDate:when];
+			summer = [formatter stringFromDate:
+				  [NSDate dateWithTimeIntervalSince1970:1625356800.0]];
+		}
+		check("df-named-zone-dst",
+		      winter != nil && summer != nil &&
+		      [winter isEqualToString:@"19:00"] && [summer isEqualToString:@"20:00"],
+		      [NSString stringWithFormat:@"winter=%@ summer=%@", winter, summer]);
+	}
+
 	printf("FOUNDATION-DATEFORMATTER RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-DATEFORMATTER DONE\n");
 	return failc ? 1 : 0;

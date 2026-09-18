@@ -201,7 +201,12 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/npropertylistserialization.m -o .build/foundation-npropertylistserialization.o
 	# F7: the calendar family. nscalendar.m and nstimezone.m are ARC; the
 	# components bag owns nothing but its fields.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+	#
+	# F13.7a: nstimezone.m NOW INCLUDES ICU (<unicode/ucal.h>, <unicode/uenum.h>), because the class
+	# reads the zone database instead of refusing it — so the ICU prefix is on ITS include path.
+	# nscalendar.m and ndatecomponents.m do not include ICU: their arithmetic stays on libc's
+	# struct tm and they reach the database only through NSTimeZone.
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
 		$(FOUNDATION_SRC)/nstimezone.m -o .build/foundation-nstimezone.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/ndatecomponents.m -o .build/foundation-ndatecomponents.o

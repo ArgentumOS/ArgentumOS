@@ -199,7 +199,11 @@ static int fn_week_of_year(int year, int month, int day, int firstWeekday, int m
 		return nil;
 	}
 	_identifier = [identifier copy];
-	_timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+	/* THE SYSTEM ZONE, not a hard-coded UTC: with F13.7a's database the honest default is the one
+	 * the system reports (ICU's default, which follows TZ). In this guest that is GMT, so the
+	 * arithmetic below is unchanged — but it is now a fact about the zone rather than a constant
+	 * that would quietly disagree with a configured one. */
+	_timeZone = [NSTimeZone systemTimeZone];
 	_firstWeekday = 1;			/* Sunday, Cocoa's Gregorian default */
 	_minimumDaysInFirstWeek = 1;
 	return self;
@@ -249,8 +253,10 @@ static int fn_week_of_year(int year, int month, int day, int firstWeekday, int m
 
 - (void)fnFieldsForDate:(NSDate *)date into:(struct tm *)out
 {
+	/* THE OFFSET IS THE ONE IN FORCE AT THAT INSTANT: for a named zone it is not a constant, and
+	 * asking for it is what makes a calendar agree with the wall clock across a DST change. */
 	double absolute = [date timeIntervalSince1970]
-			+ (double)[_timeZone secondsFromGMT];
+			+ (double)[_timeZone secondsFromGMTForDate:date];
 	time_t seconds = (time_t)floor(absolute);
 
 	gmtime_r(&seconds, out);
@@ -259,9 +265,17 @@ static int fn_week_of_year(int year, int month, int day, int firstWeekday, int m
 - (NSDate *)fnDateFromFields:(struct tm *)fields
 {
 	time_t seconds = timegm(fields);
+	NSDate *candidate;
+	NSInteger offset;
 
-	return [NSDate dateWithTimeIntervalSince1970:
-			(double)(seconds - [_timeZone secondsFromGMT])];
+	/* TWO PASSES, because the offset needed is the one in force AT THE ANSWER, and asking for it
+	 * needs an answer to ask about. The first pass is out by at most a DST hour; the second uses
+	 * the candidate instant's own offset. (While the offset was a constant, one pass was exact.) */
+	offset = [_timeZone secondsFromGMTForDate:
+			[NSDate dateWithTimeIntervalSince1970:(double)seconds]];
+	candidate = [NSDate dateWithTimeIntervalSince1970:(double)(seconds - offset)];
+	offset = [_timeZone secondsFromGMTForDate:candidate];
+	return [NSDate dateWithTimeIntervalSince1970:(double)(seconds - offset)];
 }
 
 /* --- conversion ----------------------------------------------------------- */

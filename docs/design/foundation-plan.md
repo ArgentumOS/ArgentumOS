@@ -2045,3 +2045,44 @@ lenient accepts it, and the base class REFUSES rather than inventing a format.
 **ICU 76 API facts this cost** (both fixed at the cause): `TRUE`/`FALSE` were REMOVED in ICU 76 —
 the `UBool` is spelled `(UBool)(flag ? 1 : 0)` now; and the pattern generator's C type is
 `UDateTimePatternGenerator`, not `UDatePatternGenerator`.
+
+### F13.7a landed (2026-09-18): the time-zone DATABASE, and the identity rule it exposed
+
+**`foundation_calendar` 12/12 and `foundation_dateformatter` 13/13 on a guest boot.** F7's most
+explicit refusal — "the IANA identifiers ARE the database" — is now the class reading that
+database: `+timeZoneWithName:` (validated against ICU, so an unknown name answers nil as in Cocoa),
+`+knownTimeZoneNames`, DATE-DEPENDENT `-secondsFromGMTForDate:`, real `-isDaylightSavingTimeForDate:`,
+and `-nextDaylightSavingTimeTransitionAfterDate:`. The measurement that could not exist before is a
+PAIR: one zone, two instants, two offsets — `America/New_York` is `19:00` for a March instant (EST,
+-5) and `20:00` for a July one (EDT, -4).
+
+**The un-refusal reached three other files, which is the point of doing it here:**
+
+* `nscalendar.m` now asks for the offset **at the instant** (`-secondsFromGMTForDate:`), and its
+  fields→date direction takes **two passes**, because the offset it needs is the one in force AT
+  the answer. While the offset was a constant, one pass was exact;
+* its default zone became `+systemTimeZone` instead of a hard-coded UTC — in this guest that is the
+  same instant, but it is now a fact rather than a constant;
+* `nsdateformatter.m` sends a NAMED zone to ICU **as its identifier**, so a formatter's zone
+  carries DST with it, while a fixed-offset zone still crosses as GMT±HH:MM.
+
+**THE IDENTITY RULE, which the gate taught and the probe now asserts.** A cross-unit check failed
+with `twinZone=UTC calZone=GMT`: one calendar sat in the named zone the system reports and the
+other in a FIXED-offset UTC zone, and `-isEqualToTimeZone:` compares zones BY NAME (Cocoa's rule,
+and Apple's tzdata also has `UTC` and `GMT` as different zones). So the probe was wrong, not the
+library — and the repair states the contract instead of hiding it: a calendar built in the other
+unit equals a locally-built TWIN, and DIFFERS from one whose zone carries a different name even
+though the offsets agree. That second clause is the one that would have caught a regression here.
+
+**Also learned, and worth knowing before the next system zone question:** ICU's
+default zone reads **`TZ` and `/etc/localtime`** (measured on the build host: with `TZ` unset it
+answered `America/Toronto`, the host's own zone). This system has no `/etc` at all, so the guest
+falls back to `UTC` — which is why the guest's system zone is a real named zone rather than
+`Etc/Unknown`.
+
+**What is still refused in this family** (named in the header, not left to be discovered):
+`+abbreviationDictionary` / `+timeZoneWithAbbreviation:` — Apple's is a CURATED map from an
+abbreviation to ONE chosen zone, and ICU has the abbreviations without the curation, so deriving
+one would be a guess dressed as data (its own sub-step); and the deprecated
+`+timeZoneWithName:data:` / `-data` pair, whose blob is a serialization format belonging to the
+coder family this library has not built.

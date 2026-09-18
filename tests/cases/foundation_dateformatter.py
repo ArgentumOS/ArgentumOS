@@ -34,7 +34,7 @@ PROBE = "/System/Shared/tests/foundation_dateformatter"
 CHECKS = ("df-style-medium-en", "df-style-long-locale", "df-pattern-format",
           "df-round-trip", "df-parse", "df-timezone-offset", "df-template-order",
           "df-no-fields", "df-parse-refusal", "df-strict-parse",
-          "df-base-raises", "df-copy-independent")
+          "df-base-raises", "df-copy-independent", "df-named-zone-dst")
 
 
 class Case(BaseCase):

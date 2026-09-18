@@ -57,10 +57,10 @@ static UDateFormatStyle fn_df_style(NSDateFormatterStyle style)
 	return UDAT_NONE;
 }
 
-/* THE ZONE CROSSES AS AN OFFSET, because that is all this Foundation's NSTimeZone can say: F7
- * refused the zone database and shipped a fixed offset. ICU accepts the GMT±HH:MM form, so the
- * offset survives the trip. When F13.7 un-refuses the name-based zones, THIS is the function that
- * grows a name branch — and nothing else has to move. */
+/* THE ZONE CROSSES BY NAME WHEN IT HAS ONE, and by OFFSET when it does not. F7's NSTimeZone could
+ * only say "an offset in seconds"; F13.7a gave it the IANA database, so a NAMED zone now reaches
+ * ICU as its identifier — which is what carries the daylight-saving rules with it. A fixed-offset
+ * zone still goes as GMT±HH:MM, which is the whole of what such a zone means. */
 static int32_t fn_df_zone(NSTimeZone *zone, UChar *dest, int32_t cap)
 {
 	UErrorCode status = U_ZERO_ERROR;
@@ -68,9 +68,21 @@ static int32_t fn_df_zone(NSTimeZone *zone, UChar *dest, int32_t cap)
 	NSInteger seconds;
 	int sign, hours, minutes;
 	char text[32];
+	NSString *name;
 
 	if (zone == nil) {
 		return 0;
+	}
+	name = [zone name];
+	if (name == nil) {
+		return 0;
+	}
+	/* A fixed-offset zone RENDERS its name as the offset ("GMT", "GMT+0530"), so the GMT test
+	 * separates the two kinds — and the colon form below is the one ICU was already measured to
+	 * accept (F13.6's smoke probe). */
+	if (![name hasPrefix:@"GMT"]) {
+		u_strFromUTF8(dest, cap, &used, [name UTF8String], -1, &status);
+		return U_FAILURE(status) ? 0 : used;
 	}
 	seconds = [zone secondsFromGMT];
 	sign = seconds < 0 ? '-' : '+';

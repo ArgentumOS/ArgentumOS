@@ -306,13 +306,36 @@ int main(void)
 		NSCalendar *gregorian = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
 
 		check("calendar-refusals",
-		      ![NSTimeZone respondsToSelector:nameSel] &&
-		      ![NSTimeZone respondsToSelector:knownSel] &&
 		      ![NSTimeZone respondsToSelector:abbrevSel] &&
 		      ![cal respondsToSelector:dateFromStringSel] &&
 		      hebrew == nil && iso == nil && gregorian != nil,
-		      "a refused identifier answers nil, a refused method is absent, and the "
-		      "Gregorian one still constructs");
+		      "the CURATED abbreviation map is still refused, the non-Gregorian identifiers "
+		      "still answer nil, and the Gregorian one still constructs");
+	}
+
+	{
+		/* F13.7a: THE ZONE DATABASE IS HERE, asserted POSITIVELY — the same pair rule the
+		 * formatter family got in F13.6. `+timeZoneWithName:` and `+knownTimeZoneNames` are no
+		 * longer refused (F13.7a read them out of ICU), and the DST PAIR below is the
+		 * measurement that could not exist before: ONE zone, TWO offsets. */
+		NSTimeZone *newYork = [NSTimeZone timeZoneWithName:@"America/New_York"];
+		NSArray *known = [NSTimeZone knownTimeZoneNames];
+		NSDate *winter = [NSDate dateWithTimeIntervalSince1970:1614816000.0];	/* 2021-03-04 */
+		NSDate *summer = [NSDate dateWithTimeIntervalSince1970:1625356800.0];	/* 2021-07-04 */
+		NSInteger winterOffset = newYork != nil ? [newYork secondsFromGMTForDate:winter] : 0;
+		NSInteger summerOffset = newYork != nil ? [newYork secondsFromGMTForDate:summer] : 0;
+
+		check("tz-names-present",
+		      newYork != nil && [[newYork name] isEqualToString:@"America/New_York"] &&
+		      known != nil && [known count] > 100 &&
+		      winterOffset == -(5 * 3600) && summerOffset == -(4 * 3600) &&
+		      [newYork isDaylightSavingTimeForDate:summer] &&
+		      ![newYork isDaylightSavingTimeForDate:winter],
+		      [[NSString stringWithFormat:@"est=%ld edt=%ld known=%lu dstSummer=%d",
+					(long)winterOffset, (long)summerOffset,
+					(unsigned long)(known != nil ? [known count] : 0),
+					(int)(newYork != nil &&
+					      [newYork isDaylightSavingTimeForDate:summer])] UTF8String]);
 	}
 
 	{
@@ -337,13 +360,33 @@ int main(void)
 		NSCalendar *theirCal = foundation_calendar_calendar();
 		NSTimeZone *theirZone = foundation_calendar_zone();
 		NSDateComponents *c = [theirCal components:all fromDate:theirs];
+		/* A LOCALLY-BUILT TWIN, so the comparison is about the UNIT and not about a zone — and
+		 * the difference from `cal` below is the other half of the claim. */
+		NSCalendar *twin = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
 
 		check("cross-tu",
-		      [theirCal isEqualToCalendar:cal] &&
+		      [theirCal isEqualToCalendar:twin] &&
+		      /* AND THE ZONE IS PART OF A CALENDAR'S IDENTITY: `cal` was set to the FIXED-offset
+		       * UTC zone (whose name is "GMT"), the twin sits in the NAMED zone the system
+		       * reports, and Cocoa compares zones by NAME — so these are two different
+		       * calendars even though the offsets agree. That was already Apple's rule; F13.7a
+		       * is what made it true here (before the database, both names were "GMT"). */
+		      ![theirCal isEqualToCalendar:cal] &&
 		      [theirZone secondsFromGMT] == 19800 &&
 		      [c year] == 2023 && [c month] == 11 && [c day] == 14 &&
 		      [c hour] == 22 && [c minute] == 13 && [c second] == 20,
-		      "1700000000 is 2023-11-14 22:13:20 UTC");
+		      /* THE DETAIL CARRIES THE MEASUREMENT, one number per clause: an assertion this
+		       * long is otherwise a single bit, and a bit is what cost a round trip here. The
+		       * ZONE NAMES are in it because the equality above turns on them. */
+		      [[NSString stringWithFormat:
+				@"twinEqual=%d calDiffers=%d twinZone=%@ calZone=%@ zoneOffset=%ld "
+				 "fields=%ld-%02ld-%02ld %02ld:%02ld:%02ld",
+				(int)[theirCal isEqualToCalendar:twin],
+				(int)![theirCal isEqualToCalendar:cal],
+				[[twin timeZone] name], [[cal timeZone] name],
+				(long)[theirZone secondsFromGMT],
+				(long)[c year], (long)[c month], (long)[c day],
+				(long)[c hour], (long)[c minute], (long)[c second]] UTF8String]);
 	}
 
 	printf("FOUNDATION-CALENDAR RESULT ok=%d fail=%d\n", okc, failc);

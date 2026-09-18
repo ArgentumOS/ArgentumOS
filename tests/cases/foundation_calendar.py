@@ -36,7 +36,7 @@ PROBE = "/System/Shared/tests/foundation_calendar"
 CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
           "calendar-add-months", "calendar-add-units", "calendar-ranges",
           "calendar-weeks", "calendar-timezone", "calendar-refusals",
-          "calendar-formatter-present", "cross-tu")
+          "tz-names-present", "calendar-formatter-present", "cross-tu")
 
 
 class Case(BaseCase):
