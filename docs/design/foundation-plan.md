@@ -20,6 +20,14 @@ whose probes carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 24 / 11** checks
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
+
+**THE REFUSALS ARE NOW A QUEUE, NOT A BOUNDARY (the user's direction, 2026-09-18):** every item
+§5 refused by name is a GAP, and the target is FULL FIDELITY to Apple's Foundation. §10 is the
+program, the three decisions it rests on, and the measured finding that most of the refused list
+never needed a data table at all. The rule/table line is NOT abandoned — from here it decides
+*how* a family ships (write the rule, or bind the library that already has the table) rather than
+*whether* it ships.
+
 Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md` §8–§9):
 
@@ -1872,3 +1880,84 @@ ONE SUPPRESSION WAS KEPT, and its justification is written into the mk rather th
 `-Wno-incomplete-implementation` on the core support unit, whose forwarding fixtures declare the
 methods they must NOT implement — the incompleteness IS the claim under test. Same shape, same
 reason, as `NSString`'s abstract primitives in `FOUNDATION_CFLAGS`.
+
+## 10. The un-refusal program (2026-09-18): full fidelity, and what each refusal actually cost
+
+**THE DECISION.** The user's direction: every item §5 "refused by name" is a GAP, not a boundary,
+and the target is FULL FIDELITY to Apple's Foundation. This reverses the plan's central stance —
+"a rule, not a table" was used to decide *whether* a family ships; from here it decides only
+*how*: write the rule, or BIND the library that already has the table. That second half is not new
+(F12 bound `libz`; the X11 stack binds pixman/freetype/fontconfig), which is why this is a queue
+and not a rewrite.
+
+**The three decisions the program rests on** (asked and answered as one unit, 2026-09-18):
+
+1. **ICU is vendored and bound** for every data-driven family — the same move as F12's `libz`.
+   Apple's own Foundation is built on ICU, which is exactly why binding it IS the fidelity answer
+   and a hand-written table would not be. `tools/fetch-icu.sh` pins ICU 76.1 (`release-76-1`,
+   commit `8eca245c7484ac6cc179e3e5f7c1ea7680810f39`) into `.build/`, following
+   `tools/fetch-libobjc2.sh`; nothing upstream is committed to this tree. **DONE: fetched and
+   verified (382 MB).**
+2. **Regex binds musl's engine** (`third_party/musl/src/regex/{regcomp,regexec,tre}.c`) rather
+   than waiting for ICU — the F12 precedent again, and no new artifact to stage.
+3. **The data track goes FIRST**, because it is the part that carries decisions; the mechanism
+   families then follow with nothing left to decide.
+
+**The measured finding that shapes the program.** Of everything §5 refused by name, only a
+MINORITY ever needed a table. The rest were refused as "a different KIND of thing" — a service, a
+registry, an evaluator, a format — and are rules (or syscall bindings) that ship with no new data
+at all:
+
+| refused as… | what it actually needed | track |
+|---|---|---|
+| `NSDateFormatter`, `NSNumberFormatter`, tz NAMES/abbreviations, DST transitions, non-Gregorian calendars, collation, the `[d]` fold | DATA — nothing of the kind exists anywhere in this tree | ICU |
+| `NSRegularExpression`, predicate `MATCHES` | an engine — musl already ships one | bind |
+| KVO, the mutable proxies | a registry of observers / proxy classes | mechanism |
+| `NSExpression`, `NSComparisonPredicate`, `IN`/`BETWEEN`, the quantifiers, the aggregate key paths | a parser and an evaluator | mechanism |
+| `NSCoder`, `NSKeyedArchiver`/`Unarchiver`, `NSSecureCoding`, the plist STREAM forms | a documented archive format | mechanism |
+| `NSFileManager` + filesystem queries, `NSProcessInfo`, `NSBundle`, `NSUserDefaults`, `NSFileHandle`, `NSPipe`, `NSStream` | syscalls this system already has | mechanism |
+| `NSThread`, `NSLock`, `NSRecursiveLock`, `NSCondition`, `NSRunLoop`, `NSTimer`, `NSOperationQueue`, `NSProgress` | pthreads (`third_party/musl/src/thread`) + the kernel's `clone` | mechanism |
+| `NSURLComponents`/`NSURLQueryItem`, relative resolution, the URL-taking file forms, `NSURLSession` | RFC 3986 §5 plus the socket surface that already runs DHCP and ping | mechanism |
+| `@unionOfSets` / `@distinctUnionOfSets` | `NSSet` — which does not exist yet, so it is its own first row | mechanism |
+| `NSDateComponents`'s `-components:fromDate:toDate:options:` | field-wise difference semantics | mechanism |
+
+**What the decision does NOT automatically reverse, stated so it is not discovered later:**
+"fidelity to Apple's Foundation" needs a REFERENCE SDK GENERATION, and three shapes have to be
+decided per class rather than by default:
+
+* **deprecated-but-PRESENT** API (e.g. the legacy `-takeValue:forKey:` pair, `-allowEvaluation`)
+  is IN SCOPE — Apple still declares it, so fidelity ships it, marked deprecated;
+* **removed** API is OUT — there is nothing to be faithful to;
+* **`NSZone`'s allocator API** (`NSAllocateObject`, `NSDeallocateObject`, `NSDefaultMallocZone`)
+  is real Apple API and stays out until `NSZone` gets a definition: there is one allocator in this
+  system and the runtime owns it, so un-refusing this one is its own slice with a runtime
+  conversation in it, not a line item.
+
+**The clean-room wall is UNCHANGED (§2), and it matters more now, not less.** ICU is a DEPENDENCY,
+bound as a library exactly like `libz`/pixman — never a source of class implementations. Apple's
+and GNUstep's sources stay unread. Fidelity is pursued through ICU's *data and behaviour*, not
+through anyone's code.
+
+**What "full fidelity" honestly means here.** For a data-driven family our behaviour is ICU
+76.1's data behaviour. Apple ships its OWN ICU-derived data at its own version, so byte-identical
+formatter output against a named macOS release is NOT claimed — the API surface, the semantics and
+the data model are. For a mechanism family, fidelity is the documented contract (§2), and the
+probes assert it as they always have.
+
+**Slice F13 — the ICU bring-up, in order:**
+
+1. `tools/fetch-icu.sh` — **DONE (2026-09-18)**: ICU 76.1 pinned by commit and fetched (382 MB in
+   `.build/`, verified);
+2. a **HOST** build of ICU, because ICU generates its own data with its own tools and a cross
+   build must be told where they are (`--with-cross-build`). That is why the bring-up is two
+   stages and not one — and why the first stage is not optional;
+3. the **GUEST** cross build (`CC=tools/musl-clang64.sh`, `CXX=tools/musl-clang++64.sh`, prefix
+   `.build/icu-prefix`, shared, with its data package), staged into the rootfs;
+4. the **binding layer** and its probes: `NSDateFormatter`, `NSNumberFormatter`, the time-zone
+   names and DST rules, the non-Gregorian calendars, collation, and the `[d]` fold — then the
+   mechanism track above, in the order its prerequisites allow.
+
+**Budget, checked rather than assumed:** the rootfs image is ALREADY 128 MiB
+(`mk/30-images.mk` → `python3 tools/mkagfs.py $(ROOTFS64) .build/rootagfs.img 128`) against a 58 MB
+staged tree, so ICU's shared libraries plus its data package fit without touching the image size.
+The guest's own data lookup and the loader path are F13's stage-3 business.
