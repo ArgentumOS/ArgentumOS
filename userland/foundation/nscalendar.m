@@ -472,6 +472,68 @@ static NSDate *fn_cal_date(UCalendar *calendar, UErrorCode *status)
 	return [self dateByAddingComponents:amount toDate:date options:options];
 }
 
+/* THE FIELD-WISE DIFFERENCE (F13.7e), and the method F7 refused because its option semantics are a
+ * table of cases. ICU IS that table: ucal_getFieldDifference walks the calendar forward by whole
+ * units and answers how many fit — and THE WALK IS WHY THE FIELDS MUST BE TAKEN LARGEST FIRST,
+ * because each call leaves the calendar where the last one stopped. That is what makes "1 month and
+ * 1 day" from 31 January to 1 March a measurement rather than a division: the month takes the walk
+ * to 28 February (the clamp), and the day is what is left. */
+- (NSDateComponents *)components:(NSCalendarUnit)units
+			fromDate:(NSDate *)startingDate
+			  toDate:(NSDate *)resultDate
+			 options:(NSCalendarOptions)options
+{
+	UErrorCode status = U_ZERO_ERROR;
+	UCalendar *calendar;
+	NSDateComponents *out;
+	UDate target;
+
+	if (options != NSCalendarOptionsNone) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-components:fromDate:toDate:options: takes NSCalendarOptionsNone "
+				   "here: wrapping the smaller units is a different question from how many "
+				   "whole units fit"];
+	}
+	calendar = fn_cal_open(_identifier, _timeZone, _firstWeekday, _minimumDaysInFirstWeek,
+			       &status);
+	if (calendar == NULL) {
+		return [[NSDateComponents alloc] init];
+	}
+	/* The walk starts at the EARLIER date and is driven toward the later one. */
+	ucal_setMillis(calendar, (UDate)([startingDate timeIntervalSince1970] * 1000.0), &status);
+	if (U_FAILURE(status)) {
+		ucal_close(calendar);
+		return [[NSDateComponents alloc] init];
+	}
+	target = (UDate)([resultDate timeIntervalSince1970] * 1000.0);
+	out = [[NSDateComponents alloc] init];
+
+	if (units & NSCalendarUnitYear) {
+		[out setYear:(NSInteger)ucal_getFieldDifference(calendar, target, UCAL_YEAR, &status)];
+	}
+	if (units & NSCalendarUnitMonth) {
+		[out setMonth:(NSInteger)ucal_getFieldDifference(calendar, target, UCAL_MONTH,
+								 &status)];
+	}
+	if (units & NSCalendarUnitDay) {
+		[out setDay:(NSInteger)ucal_getFieldDifference(calendar, target, UCAL_DATE, &status)];
+	}
+	if (units & NSCalendarUnitHour) {
+		[out setHour:(NSInteger)ucal_getFieldDifference(calendar, target, UCAL_HOUR_OF_DAY,
+								&status)];
+	}
+	if (units & NSCalendarUnitMinute) {
+		[out setMinute:(NSInteger)ucal_getFieldDifference(calendar, target, UCAL_MINUTE,
+								  &status)];
+	}
+	if (units & NSCalendarUnitSecond) {
+		[out setSecond:(NSInteger)ucal_getFieldDifference(calendar, target, UCAL_SECOND,
+								  &status)];
+	}
+	ucal_close(calendar);
+	return out;
+}
+
 /* --- ranges --------------------------------------------------------------- */
 
 - (NSRange)rangeOfUnit:(NSCalendarUnit)smaller

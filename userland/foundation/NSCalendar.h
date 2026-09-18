@@ -133,6 +133,18 @@ typedef enum {
  * and leaves the rest UNDEFINED; the week-based units are derived here (they are
  * answers, not inputs) using firstWeekday and minimumDaysInFirstWeek. */
 - (NSDateComponents *)components:(NSCalendarUnit)units fromDate:(NSDate *)date;
+/* THE FIELD-WISE DIFFERENCE — the method F7 refused BY NAME, because its option semantics are "a
+ * table of cases". ICU HAS that table (ucal_getFieldDifference), which is the whole reason §10
+ * exists. Each requested field is counted in turn, LARGEST FIRST, and the calendar is walked
+ * forward as they are taken, so "1 month and 1 day" is MEASURED rather than divided.
+ *
+ * `options` takes NSCalendarOptionsNone here: asking the smaller units to WRAP instead of borrow is
+ * a different question, and ICU's difference does not answer it — refused by name rather than
+ * approximated. */
+- (NSDateComponents *)components:(NSCalendarUnit)units
+			fromDate:(NSDate *)startingDate
+			  toDate:(NSDate *)resultDate
+			 options:(NSCalendarOptions)options;
 /* nil for a component that is not a date: one that sets only the WEEK fields
  * (they are answers, not a second way to say when) or no year at all. */
 - (nullable NSDate *)dateFromComponents:(NSDateComponents *)components;

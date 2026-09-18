@@ -2205,3 +2205,20 @@ option constant is `NSCalendarOptionsWrapComponents`, not `NSCalendarWrapCompone
 **Still open in this family** (recorded in the running list): `-components:fromDate:toDate:options:`
 — ICU has `ucal_getFieldDifference` for exactly that — and `NSDateFormatter`'s `-calendar:` and
 symbol arrays, which are the formatter's half of the same data.
+
+### F13.7e landed (2026-09-18): the field-wise difference — F7's last named refusal here
+
+**`foundation_calendar` 14/14.** `-components:fromDate:toDate:options:` was refused BY NAME because
+"its option semantics are a table of cases". ICU IS that table — `ucal_getFieldDifference` — and the
+interesting part is what the table says: **the answer is a WALK, not a division.** From 31 January
+to 1 March it is `{months 1, days 1}`: the month takes the walk to the CLAMPED 28 February and the
+day is what is left, where a subtraction would say `{0, 29}` and a division "1.03 months". Each call
+leaves the calendar where the last one stopped, which is why the requested fields must be taken
+LARGEST FIRST — and the probe asserts that pair, not a sum.
+
+`NSCalendarOptionsWrapComponents` is refused here by name: asking the smaller units to WRAP instead
+of borrow is a different question, and ICU's difference does not answer it.
+
+With this, **every refusal F7 made in the calendar family is closed**: the zone database (F13.7a),
+the non-Gregorian calendars (F13.7b) and the field-wise difference (F13.7e). What remains in the
+family is the formatter's half — `NSDateFormatter`'s `-calendar:` and symbol arrays.

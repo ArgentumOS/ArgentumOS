@@ -272,6 +272,39 @@ int main(void)
 	}
 
 	{
+		/* F13.7e: THE FIELD-WISE DIFFERENCE — the method F7 refused BY NAME, because its option
+		 * semantics are a table of cases. ICU has the table, and its answer is a WALK rather than
+		 * a division: from 31 January to 1 March the month takes the walk to the clamped 28
+		 * February, and the day is what is left. So the pair is {months 1, days 1}, not "1.03
+		 * months" — and not {0, 29} either, which is what a subtraction would give. */
+		NSDateComponents *start = [[NSDateComponents alloc] init];
+		NSDateComponents *end = [[NSDateComponents alloc] init];
+		NSDate *from;
+		NSDate *to;
+		NSDateComponents *difference = nil;
+
+		[start setYear:2026];
+		[start setMonth:1];
+		[start setDay:31];
+		[end setYear:2026];
+		[end setMonth:3];
+		[end setDay:1];
+		from = [cal dateFromComponents:start];
+		to = [cal dateFromComponents:end];
+		if (from != nil && to != nil) {
+			difference = [cal components:NSCalendarUnitMonth | NSCalendarUnitDay
+					    fromDate:from
+					      toDate:to
+					     options:NSCalendarOptionsNone];
+		}
+		check("calendar-difference",
+		      difference != nil && [difference month] == 1 && [difference day] == 1,
+		      [[NSString stringWithFormat:@"months=%ld days=%ld",
+				(long)(difference != nil ? [difference month] : -1),
+				(long)(difference != nil ? [difference day] : -1)] UTF8String]);
+	}
+
+	{
 		NSTimeZone *ist = [NSTimeZone timeZoneForSecondsFromGMT:19800];
 		NSDate *epoch = [NSDate dateWithTimeIntervalSince1970:0];
 		NSDateComponents *c;
