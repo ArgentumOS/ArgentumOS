@@ -1,6 +1,6 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4 and F6–F11 LANDED, the audited inventories CLOSED, and the
+Status: **DRAFT (2026-09). F0–F4 and F6–F12 LANDED, the audited inventories CLOSED, and the
 plist skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
@@ -10,13 +10,13 @@ object), `NSPropertyListSerialization`, `NSCalendar`/`NSTimeZone`/`NSDateCompone
 fixed-offset time zone and the Gregorian calendar AS RULES), `NSURL` (F8 — the URL as a
 VALUE), `NSKeyValueCoding` (F9 — the naming rules, on the runtime's ivar table) and
 `NSSortDescriptor` (F10 — a sort as a value), `NSPredicate` (F11 — the predicate object AND the
-format grammar that writes one, which parses a string into the very tree the object model
-builds) — with every staged public header
+format grammar that writes one) and `NSData`'s COMPRESSION CODECS (F12 — the one family that is
+a binding to `libz` rather than a rule) — with every staged public header
 annotated for nullability (F6, and enforced since as a standing rule). Gated on a
-guest boot by eleven cases (`foundation_core`, `foundation_string`, `foundation_value`,
+guest boot by twelve cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `foundation_calendar`, `foundation_url`,
-`foundation_kvc`, `foundation_sort`, `foundation_predicate`, `objc_smoke`), whose probes
-carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 24** checks. **F5 (self-hosting) is DEFERRED — the user's call,
+`foundation_kvc`, `foundation_sort`, `foundation_predicate`, `foundation_codecs`, `objc_smoke`),
+whose probes carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 24 / 11** checks. **F5 (self-hosting) is DEFERRED — the user's call,
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
@@ -463,12 +463,50 @@ status.
 
   Recorded BEFORE the code, because the boundary IS the design.
 
+- **F12 — the compression codecs. SHIPPED (2026-09-17).** The LAST row of the queue, and
+  the first family that is not a rule at all: it is a BINDING over an external codec. The
+  rule/table line still decides WHICH codec, and it decides it the way it decided the calendars
+  and the regexes — DEFLATE is a table of Huffman codes, so it is not written here; it is taken
+  from the library that already ships it.
+
+  **What ships** (one codec, and the four spellings of the API):
+  * `NSDataCompressionAlgorithm` with Cocoa's four names — `LZFSE`, `LZ4`, `LZMA`, `Zlib` — of
+    which exactly ONE is implemented;
+  * `-[NSData compressedDataUsingAlgorithm:error:]`,
+    `-[NSData decompressedDataUsingAlgorithm:error:]`, and the in-place
+    `-[NSMutableData compressUsingAlgorithm:error:]` / `decompressUsingAlgorithm:error:`;
+  * **zlib**, through `libz`. That library is ALREADY in the tree and ALREADY staged into the
+    guest for the X11 stack (`/System/Libraries/libz.so.1`), so this family adds a LINK
+    dependency to `libfoundation` and NO new artifact to ship. The zlib-wrapped stream
+    `compress2()` produces is what `Zlib` means, and the probe asserts it rather than assuming
+    it: the `0x78` header byte is MEASURED;
+  * a REFUSED algorithm is refused through the API's own channel: nil PLUS an `NSError` whose
+    message NAMES the algorithm. The three refusals are `LZFSE`, `LZ4` and `LZMA`, each for the
+    same reason — no codec for it exists in this system;
+  * decompression bounds itself: the output size is NOT in the stream, so the buffer doubles on
+    `Z_BUF_ERROR` and stops at a ceiling, because a small input claiming a huge output is the
+    shape of a bomb.
+
+  **Recorded BEFORE the code, because the boundary IS the design** — and this one is worth
+  stating plainly: **the library GAINS A DEPENDENCY here.** That is the honest cost of a
+  binding, and the plan's answer is the same as everywhere else: take the thing that already
+  exists rather than write out a table of Huffman codes.
+
 ## 6. Risks / gotchas
 
 - **The ARC/MRR seam is a rule, not a preference**: exactly the files that
   implement `-retain`/`-release` (the root class, and anything overriding them)
   are MRR; everything else is ARC. An ARC file that tries to implement them does
   not compile — a *good* failure mode, and this plan keeps it.
+- **THE LIBRARY NOW NEEDS A CODEC THAT IS NOT ITS OWN** (F12, 2026-09-17).
+  `libfoundation.so.1` carries a `NEEDED` on `libz.so.1`, because `ncodec.m` is the one file in
+  the library that includes `<zlib.h>`. That is a DELIBERATE dependency rather than an accident
+  of convenience: DEFLATE is a table of Huffman codes, and the plan's answer to a table is to
+  take the one that already ships. The cost is worth knowing before either side moves —
+  `userland64` now needs `$(X11PREFIX)/include` and `$(X11PREFIX)/lib` to BUILD the library, and
+  a guest rebuild of the Foundation would need ZLIB'S HEADERS, which are not staged (see §6 of
+  `docs/design/self-hosting-packages.md`). The GUEST side costs nothing: `libz.so.1` is already
+  staged for the X11 stack, so no new artifact ships.
 - **A CAPTURING BLOCK LITERAL BUILT IN AN MRR FILE FAULTS WHEN AN ARC FILE STORES IT**
   (measured in F11a, 2026-09-17). The two-unit probes are the shape that hits it: the
   support unit is `-fno-objc-arc` (it also carries the MRR lifetime exercises) and the
@@ -1038,7 +1076,7 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | KVC (`NSKeyValueCoding`) — **SHIPPED (F9)** | the NAMING RULES: the accessor forms (`-get<Key>`/`-<key>`/`-is<Key>` and `-set<Key>:`), the ivar fallback (`_<key>`/`_is<Key>`/`<key>`/`is<Key>`) through the RUNTIME, key paths, the operators that are folds (`@count`/`@sum`/`@avg`/`@max`/`@min`/`@unionOfObjects`/`@distinctUnionOfObjects`), the two collection MAP forms, and the failure hooks. Refused by name: KVO (a registry of observers, not a naming rule), the mutable proxies, the set-returning operators, and `-takeValue:forKey:` |
 | `NSSortDescriptor` (+ the descriptor and function sorts) — **SHIPPED (F10)** | a sort descriptor as a VALUE: (key, ascending, how to compare) with the three comparison kinds (`-compare:`, a `-selector`, a comparator block), `-reversedSortDescriptor`, and the collection forms `-sortedArrayUsingDescriptors:`, `-sortUsingDescriptors:`, `-sortedArrayUsingFunction:context:`, `-sortUsingFunction:context:`. A descriptor CHAIN is lexicographic and the sort is STABLE (ties keep input order). Refused by name: `-allowEvaluation` (a sandbox for untrusted archives, not a sorting rule) and the coder forms (NSCoding is not shipped) |
 | `NSPredicate` — **SHIPPED (F11)** | the predicate OBJECT MODEL: `NSPredicate` as an abstract base whose `-evaluateWithObject:` RAISES, `+predicateWithValue:`, `+predicateWithBlock:`, `NSCompoundPredicate` (AND/OR/NOT, short-circuiting, with the and/or-nothing identities), `-predicateFormat`, and `-[NSArray filteredArrayUsingPredicate:]` / `-[NSMutableArray filterUsingPredicate:]` — AND THE FORMAT GRAMMAR: `+predicateWithFormat:` (NOT variadic, deliberately), the recursive-descent parser and the comparison leaf it builds, with the comparisons, the string operators, `LIKE` (`*`/`?`/`\`), the connectives, the constants, key paths through KVC, `[c]`, and a renderer the round trip agrees with. Refused by name: `MATCHES` and `[d]` (no regex engine, no Unicode tables), `NSExpression`/`NSComparisonPredicate`, `IN`/`BETWEEN`, the quantifiers, and the `:arguments:` substitution forms |
-| compression codecs | their own family |
+| compression codecs (`NSData`'s compression API) — **SHIPPED (F12)** | the first family that is a BINDING rather than a rule: `NSDataCompressionAlgorithm` with Cocoa's four names, `-compressedDataUsingAlgorithm:error:` / `-decompressedDataUsingAlgorithm:error:` and the two in-place `NSMutableData` forms, with exactly ONE codec — ZLIB — through the `libz` that already ships and is already staged for the guest. The zlib-wrapped stream is asserted (its `0x78` header byte is MEASURED), and decompression doubles its buffer up to a ceiling. Refused by name, each as nil PLUS an `NSError` naming it: `LZFSE`, `LZ4` and `LZMA`, because no codec for them exists in this system |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
 `unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
@@ -1751,3 +1789,33 @@ a matcher that ignored a wildcard would pass any single-object check.
 
 `foundation_predicate` 24/24, and `make rootagfs` clean — the gate included, with no warnings from
 the new files.
+
+### F12 landed (2026-09-17): the compression codecs, and a line of Cocoa's the library got wrong
+
+`NSData`'s compression API — the LAST row of the queue, and the first family that is a BINDING
+rather than a rule — with `foundation_codecs` **11/11** on a guest boot. One codec ships (`Zlib`,
+through the `libz` this system already stages), three are refused BY NAME (`LZFSE`, `LZ4`, `LZMA`:
+no codec for them exists here), and a refusal uses the API's own channel — nil plus an `NSError`
+whose message names the algorithm. The probe measures what it claims: the compressed stream's
+FIRST BYTE is `0x78`, which is CMF packing "DEFLATE" into its low nibble and a 32 KiB window into
+its high one; and the 100 KB fixture exists so decompression has to grow its buffer many times
+(the doubling loop), because a codec that guessed one size would pass every small check.
+
+THE PROBE FOUND TWO THINGS, and both are the §9 rule again — a detail must carry its measurement.
+`codec-zlib-stream` failed with `first=0x789c` in its detail, which says outright that the stream
+WAS a zlib stream and that the CHECK was wrong: it had tested the low nibble of FLG (the second
+byte — the level and the check bits) instead of CMF (the first). And `codec-refusals` failed with
+"(no message)", which is a different kind of finding: the probe had looked the message up under
+the literal `@"NSLocalizedDescriptionKey"` and found nothing, because `nerror.m` defined that
+constant's VALUE as `@"NSLocalizedDescription"`.
+
+THAT WAS A REAL FIDELITY BUG, not a probe mistake, and the asymmetry is COCOA'S OWN:
+`NSLocalizedFailureReasonErrorKey` really is `@"NSLocalizedFailureReason"` and
+`NSLocalizedRecoverySuggestionErrorKey` really is `@"NSLocalizedRecoverySuggestion"`, but
+`NSLocalizedDescriptionKey` KEEPS its `Key`. The house had shortened all four. Three were right
+and one was wrong; a line was fixed, `foundation_error` was re-gated at 6/6, and the probe now
+asks `-localizedDescription` for the message instead of poking a userInfo with a literal — the
+key's value is NSError's business and not the probe's.
+
+`foundation_codecs` 11/11, `foundation_error` 6/6, and `make rootagfs` clean — the gate included,
+with no warnings from the new files.

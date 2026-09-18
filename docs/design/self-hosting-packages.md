@@ -257,12 +257,16 @@ enforced rather than promised: `tools/foundation-gate.py`, run by a
 `foundation-gate` target in `userland64`, fails the build on any GNUstep, ObjFW or
 Apple-Foundation header import and on the runtime's legacy `objc/Object.h`
 (`docs/design/foundation-plan.md` §2). The v1 class list, the phases (F0–F4 and
-F6–F11 landed; **F5 self-hosting is DEFERRED by the user's call**, which removes the
+F6–F12 landed; **F5 self-hosting is DEFERRED by the user's call**, which removes the
 gate and not the requirement) and the measured traps are in that plan; the
-acceptances are the eleven gated cases — `tests/cases/foundation_core.py`,
+acceptances are the twelve gated cases — `tests/cases/foundation_core.py`,
 `…_string.py`, `…_value.py`, `…_collection.py`, `…_error.py`, `…_calendar.py`,
-`…_url.py`, `…_kvc.py`, `…_sort.py`, `…_predicate.py`, plus the runtime's
-`tests/cases/objc_smoke.py`. **A new
+`…_url.py`, `…_kvc.py`, `…_sort.py`, `…_predicate.py`, `…_codecs.py`, plus the
+runtime's `tests/cases/objc_smoke.py`. **The library NOW NEEDS `libz`** (F12): `ncodec.m`
+is the one file that includes `<zlib.h>`, and `libfoundation.so.1` carries a `NEEDED`
+on `libz.so.1`. That library is staged for the guest already, so no new artifact has to
+ship — but a guest rebuild of the Foundation would need ZLIB'S HEADERS, which are not
+staged, so F12 added a row to §6's list rather than only a class. **A new
 class's header is staged by LANDING it**: the copy is a `$(FOUNDATION_SRC)/*.h`
 glob, so a rebuild on the guest sees it with no build-system change (F6's standing
 nullability rule is what keeps a new header usable there). **A runtime API the Foundation CALLS:**

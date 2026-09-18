@@ -69,6 +69,18 @@ typedef enum {
 	NSDataWritingAtomic = 1
 } NSDataWritingOptions;
 
+/*
+ * THE COMPRESSION CODECS (F12). Cocoa's four names, and ONE of them is implemented — an
+ * algorithm this library has no codec for is refused with an NSError that names it, rather than
+ * quietly doing something else.
+ */
+typedef enum {
+	NSDataCompressionAlgorithmLZFSE = 0,
+	NSDataCompressionAlgorithmLZ4,
+	NSDataCompressionAlgorithmLZMA,
+	NSDataCompressionAlgorithmZlib
+} NSDataCompressionAlgorithm;
+
 + (nullable NSData *)data;
 + (nullable NSData *)dataWithBytes:(const void *)bytes length:(size_t)length;
 + (nullable NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length;
@@ -104,6 +116,21 @@ typedef enum {
 - (BOOL)writeToFile:(NSString *)path options:(NSDataWritingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
 - (void)enumerateByteRangesUsingBlock:(void (^)(const void *bytes, NSRange byteRange, BOOL *stop))block;
 
+/*
+ * THE COMPRESSION FORMS (F12). This is a BINDING and not a rule: DEFLATE is a table of Huffman
+ * codes, so it comes from `libz` — which this system already ships for the X11 stack — instead
+ * of being written out here. `NSDataCompressionAlgorithmZlib` produces a ZLIB-WRAPPED stream
+ * (the one whose header byte is `0x78`), which is what Cocoa's `.zlib` means.
+ *
+ * A REFUSED algorithm answers nil and fills the error, naming the algorithm: that is the API's
+ * own way of saying no. The three refusals (`LZFSE`, `LZ4`, `LZMA`) each say which they are and
+ * that no codec for them exists in this system.
+ */
+- (nullable NSData *)compressedDataUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+					    error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable NSData *)decompressedDataUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+					      error:(NSError * _Nullable * _Nullable)errorPtr;
+
 - (BOOL)isEqualToData:(NSData *)other;
 
 @end
@@ -129,6 +156,14 @@ typedef enum {
 		     length:(size_t)replacementLength;
 - (void)resetBytesInRange:(NSRange)range;
 - (void)setData:(NSData *)other;
+
+/* In place, which is what MUTABLE means here: the receiver BECOMES the result. NO on a refusal
+ * or a codec failure, with the reason in the error — and the receiver is left ALONE either way,
+ * because a half-replaced buffer is worse than none. */
+- (BOOL)compressUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+			 error:(NSError * _Nullable * _Nullable)errorPtr;
+- (BOOL)decompressUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+			   error:(NSError * _Nullable * _Nullable)errorPtr;
 
 NS_ASSUME_NONNULL_END
 

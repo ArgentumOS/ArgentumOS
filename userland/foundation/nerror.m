@@ -13,7 +13,12 @@
 #import <foundation/NSDictionary.h>
 #include <stdio.h>
 
-NSString *const NSLocalizedDescriptionKey = @"NSLocalizedDescription";
+/* THE VALUES ARE COCOA'S, INCLUDING ITS ASYMMETRY: three of these drop the "Key"/"ErrorKey"
+ * suffix that their NAMES carry, and NSLocalizedDescriptionKey does NOT. F12's probe found the
+ * difference the hard way — it looked the message up under the literal "NSLocalizedDescriptionKey"
+ * and found nothing, because this line said "NSLocalizedDescription". A caller that serialises a
+ * userInfo dictionary is entitled to the same strings Cocoa uses. */
+NSString *const NSLocalizedDescriptionKey = @"NSLocalizedDescriptionKey";
 NSString *const NSLocalizedFailureReasonKey = @"NSLocalizedFailureReason";
 NSString *const NSLocalizedRecoverySuggestionErrorKey = @"NSLocalizedRecoverySuggestion";
 NSString *const NSUnderlyingErrorKey = @"NSUnderlyingError";

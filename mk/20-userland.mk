@@ -121,7 +121,9 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/nssortdescriptor.m \
 	$(FOUNDATION_SRC)/nspredicate.m \
 	$(FOUNDATION_SRC)/npredicateformat.m \
-	$(FOUNDATION_SRC)/fnpredicate.h
+	$(FOUNDATION_SRC)/fnpredicate.h \
+	$(FOUNDATION_SRC)/ncodec.m \
+	$(FOUNDATION_SRC)/fncodec.h
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
@@ -220,6 +222,12 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# model without either file owning the other.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/npredicateformat.m -o .build/foundation-npredicateformat.o
+	# F12: the compression binding. ncodec.m is the ONLY file that includes <zlib.h>, so the X11
+	# prefix is on ITS include path — and on the LINK line below, because libfoundation now needs
+	# libz.so.1. That library is already staged into the guest for the X11 stack, so this adds a
+	# dependency and no new artifact (docs/design/foundation-plan.md, F12).
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(X11PREFIX)/include \
+		$(FOUNDATION_SRC)/ncodec.m -o .build/foundation-ncodec.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
@@ -227,7 +235,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o \
 		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
-		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/plist.o -o $@
+		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/plist.o -L$(X11PREFIX)/lib -lz -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
@@ -440,6 +448,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/foundation-predicate-support.o .build/foundation-predicate-main.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_predicate"
+	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
+	# codec is exercised on data it did not create.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_codecs_support.m -o .build/foundation-codecs-support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_codecs.m -o .build/foundation-codecs-main.o
+	$(MUSL64_OBJC) .build/foundation-codecs-support.o .build/foundation-codecs-main.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

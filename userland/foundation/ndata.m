@@ -12,11 +12,27 @@
 #import <foundation/NSData.h>
 #import <foundation/NSString.h>
 #import <foundation/NSError.h>
+#import "fncodec.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 @implementation NSData
+
+/* THE COMPRESSION DOORS (F12). The codec itself lives in ncodec.m — the binding to the zlib this
+ * system already ships — and these two are the API's shape over it: nil plus an error on a
+ * refusal, exactly as the header says. */
+- (nullable NSData *)compressedDataUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+					    error:(NSError * _Nullable * _Nullable)errorPtr
+{
+	return fn_compressed_data(self, algorithm, errorPtr);
+}
+
+- (nullable NSData *)decompressedDataUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+					      error:(NSError * _Nullable * _Nullable)errorPtr
+{
+	return fn_decompressed_data(self, algorithm, errorPtr);
+}
 
 + (NSData *)dataWithBytes:(const void *)bytes length:(size_t)length
 {
@@ -571,6 +587,32 @@ static int base64Value(unsigned char c)
 @end
 
 @implementation NSMutableData
+
+/* IN PLACE, and ONLY on success: the receiver becomes the result, or it is left exactly as it
+ * was. A half-replaced buffer would be worse than a refusal, and the header promises this. */
+- (BOOL)compressUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+			 error:(NSError * _Nullable * _Nullable)errorPtr
+{
+	NSData *result = fn_compressed_data(self, algorithm, errorPtr);
+
+	if (result == nil) {
+		return NO;
+	}
+	[self setData:result];
+	return YES;
+}
+
+- (BOOL)decompressUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
+			   error:(NSError * _Nullable * _Nullable)errorPtr
+{
+	NSData *result = fn_decompressed_data(self, algorithm, errorPtr);
+
+	if (result == nil) {
+		return NO;
+	}
+	[self setData:result];
+	return YES;
+}
 
 + (NSMutableData *)dataWithCapacity:(size_t)capacity
 {
