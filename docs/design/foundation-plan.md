@@ -2271,3 +2271,42 @@ touch before building.
 **F7's family is now COMPLETE**: the parser and formatter, the time-zone database and its DST
 transitions, the non-Gregorian calendars, and the field-wise difference — every refusal that slice
 made, closed with a probe that asserts the data.
+
+### F13.8a landed (2026-09-18): NSSet — the first gap the boundary never explained
+
+**`foundation_set` 10/10 on a guest boot.** `NSSet` + `NSMutableSet`, with membership by hash and
+equality, the set algebra, the three "adding" forms, fast enumeration, and — measured across
+families — `-filteredSetUsingPredicate:` (F11) and `-sortedArrayUsingDescriptors:` (F10).
+
+**WHY THIS ONE IS DIFFERENT FROM EVERY OTHER ENTRY IN §10.** Every other item in this program's
+table was refused for a REASON: a table we would not vendor, a service we would not build, an
+evaluator we would not write. A SET was never refused at all — it was simply absent, and the plan's
+own KVC section says so in passing ("the set-returning operators need an NSSet that does not exist
+here"). So this is what the un-refusal program looks like when the boundary is not the point: a
+class with no design question behind it, only a missing one.
+
+**THE VALUE CONTRACT, WHICH IS THE WHOLE CLASS.** A member's place is decided by its own `-hash` and
+`-isEqual:`, so two DISTINCT `NSString` objects with the same characters are ONE member (no probe
+constant could produce that) and `-member:` returns the STORED object from a fresh equal one. Two
+sets built in different orders are equal AND hash alike, which is why the hash counts rather than
+walks.
+
+**TWO DESIGN FACTS, both of them refusals of a tempting shortcut:**
+* **THE STORAGE IS NOT A DICTIONARY.** `NSDictionary` is the obvious host for a set, and it is wrong:
+  its keys are COPIED (F3's audited rule), while a set RETAINS its members, and a dictionary would
+  additionally refuse a member that cannot be copied. So the members live in an array and lookup is
+  LINEAR by `-hash`/`-isEqual:` — honest at this scale, and a real hash table is a later optimisation
+  rather than a quiet change of contract;
+* **EVERY MUTATION REPLACES the member array instead of editing it**, so a running loop can never be
+  handed storage a later mutation frees. That is the same rule `NSDictionary`'s enumeration follows.
+
+**FAST ENUMERATION IS THE PROTOCOL'S**, done properly: each call fills the CALLER'S buffer and
+advances `state->state` by what it delivered, with `mutationsPtr` set once — the protocol's own
+answer to mutation during a loop. Nothing is allocated per loop. (The first attempt at this method
+was written from the wrong shape and had to be replaced; the working version is the one above.)
+
+**NAMED, NOT DONE:** `NSCountedSet` (counts are its own structure), `NSOrderedSet` (a different
+collection with its own ordering), and the variadic `+setWithObjects:…` spelling (the
+`objects:count:` form and `+setWithArray:` ship). With `NSSet` present, the two KVC operators that
+were refused for its absence — `@unionOfSets` and `@distinctUnionOfSets` — are the immediate
+follow-on, and `NSValue`/`NSNull` are next in this family.

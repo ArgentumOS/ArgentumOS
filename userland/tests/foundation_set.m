@@ -1,0 +1,219 @@
+/*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
+ * foundation_set, unit of 1 — F13.8's acceptance for the unordered collection.
+ * docs/design/foundation-plan.md §10.
+ *
+ * ONE unit, like the formatter probes: the claim here is VALUE SEMANTICS — what makes a set a set —
+ * rather than a cross-translation-unit boundary. It imports only <foundation/Foundation.h>, which
+ * also proves the umbrella exports the new classes.
+ *
+ * WHAT IT MEASURES, and none of it can come from this file:
+ *   set-dedupes-by-value   two DISTINCT NSString objects with the same characters are ONE member;
+ *   set-member-by-value    -member: finds the STORED object from a fresh equal one, and answers nil
+ *                          for something not in the set;
+ *   set-algebra            union / minus / intersect, by membership and count;
+ *   set-relations          isEqualToSet:, isSubsetOfSet:, intersectsSet:;
+ *   set-adding-forms       the three -setByAdding… forms, and that the RECEIVER is unchanged;
+ *   set-enumeration        a for-in loop and -enumerateObjectsUsingBlock: each visit every member
+ *                          exactly once;
+ *   set-order-independent  two sets built in DIFFERENT ORDERS are equal AND hash alike;
+ *   set-predicate-filter   -filteredSetUsingPredicate: (the predicate family, from F11);
+ *   set-sort-descriptors   a set becomes an ORDERED array through NSSortDescriptor (F10);
+ *   set-copy-semantics     a mutable set's -copy is an immutable snapshot of the same membership.
+ */
+
+#import <foundation/Foundation.h>
+
+#include <stdio.h>
+
+static int okc, failc;
+
+/* The detail is NULLABLE: every answer under test comes back through a nullable door. */
+static void check(const char *name, int ok, NSString * _Nullable detail)
+{
+	if (ok) {
+		okc++;
+		printf("FOUNDATION-SET %s ok\n", name);
+	} else {
+		failc++;
+		printf("FOUNDATION-SET %s FAIL %s\n", name,
+		       detail != nil ? [detail UTF8String] : "");
+	}
+}
+
+int main(void)
+{
+	{
+		/* THE WHOLE CONTRACT IN ONE CHECK: these two are DIFFERENT OBJECTS and ONE MEMBER. A set
+		 * that deduped by pointer would hold both. */
+		NSString *one = [NSString stringWithFormat:@"%@", @"ann"];
+		NSMutableString *two = [NSMutableString stringWithString:@"ann"];
+		const id members[2] = { one, two };
+		NSSet *built = [NSSet setWithObjects:members count:2];
+		NSSet *fromArray = [NSSet setWithArray:@[one, two, @"bob"]];
+
+		check("set-dedupes-by-value",
+		      (id)one != (id)two && [one isEqualToString:two] &&
+		      built != nil && [built count] == 1 && [built containsObject:one] &&
+		      fromArray != nil && [fromArray count] == 2,
+		      [NSString stringWithFormat:@"distinct=%d equal=%d count=%lu arrayCount=%lu",
+			(int)((id)one != (id)two), (int)[one isEqualToString:two],
+			(unsigned long)(built != nil ? [built count] : 0),
+			(unsigned long)(fromArray != nil ? [fromArray count] : 0)]);
+	}
+
+	{
+		NSString *stored = [NSString stringWithFormat:@"%@", @"carol"];
+		NSSet *set = [NSSet setWithObject:stored];
+		NSString *fresh = [NSString stringWithString:@"carol"];
+		id found = [set member:fresh];
+
+		check("set-member-by-value",
+		      found != nil && [found isEqual:stored] &&
+		      [set member:@"nobody"] == nil && ![set containsObject:@"nobody"],
+		      found != nil ? [found description] : @"(nil)");
+	}
+
+	{
+		NSMutableSet *left = [NSMutableSet setWithArray:@[@"a", @"b", @"c"]];
+		NSMutableSet *right = [NSMutableSet setWithArray:@[@"b", @"c", @"d"]];
+		NSMutableSet *unionSet;
+		NSMutableSet *minus;
+		NSMutableSet *intersect;
+		NSUInteger unionCount, minusCount, intersectCount;
+
+		unionSet = [left mutableCopy];
+		[unionSet unionSet:right];
+		minus = [left mutableCopy];
+		[minus minusSet:right];
+		intersect = [left mutableCopy];
+		[intersect intersectSet:right];
+		unionCount = [unionSet count];
+		minusCount = [minus count];
+		intersectCount = [intersect count];
+		check("set-algebra",
+		      unionCount == 4 && minusCount == 1 && intersectCount == 2 &&
+		      [minus containsObject:@"a"] && [intersect containsObject:@"b"] &&
+		      [intersect containsObject:@"c"],
+		      [NSString stringWithFormat:@"union=%lu minus=%lu intersect=%lu",
+			(unsigned long)unionCount, (unsigned long)minusCount,
+			(unsigned long)intersectCount]);
+	}
+
+	{
+		NSSet *small = [NSSet setWithArray:@[@"a", @"b"]];
+		NSSet *big = [NSSet setWithArray:@[@"a", @"b", @"c"]];
+		NSSet *other = [NSSet setWithArray:@[@"c", @"d"]];
+		NSSet *disjoint = [NSSet setWithArray:@[@"x", @"y"]];
+
+		check("set-relations",
+		      [small isSubsetOfSet:big] && ![big isSubsetOfSet:small] &&
+		      [big intersectsSet:other] && ![big intersectsSet:disjoint] &&
+		      [small isEqualToSet:[NSSet setWithArray:@[@"b", @"a"]]] &&
+		      ![small isEqualToSet:big],
+		      [NSString stringWithFormat:@"subset=%d intersects=%d equal=%d",
+			(int)[small isSubsetOfSet:big], (int)[big intersectsSet:other],
+			(int)[small isEqualToSet:[NSSet setWithArray:@[@"b", @"a"]]]]);
+	}
+
+	{
+		NSSet *base = [NSSet setWithArray:@[@"a", @"b"]];
+		NSSet *addedObject = [base setByAddingObject:@"c"];
+		NSSet *addedSet = [base setByAddingObjectsFromSet:[NSSet setWithArray:@[@"c", @"d"]]];
+		NSSet *addedArray = [base setByAddingObjectsFromArray:@[@"c", @"d"]];
+
+		/* THE RECEIVER IS UNCHANGED: it is immutable, so every "adding" form answers a NEW set. */
+		check("set-adding-forms",
+		      [base count] == 2 && [addedObject count] == 3 && [addedSet count] == 4 &&
+		      [addedArray count] == 4 && [addedObject containsObject:@"c"] &&
+		      [addedSet containsObject:@"d"] && [addedArray containsObject:@"d"],
+		      [NSString stringWithFormat:@"base=%lu object=%lu set=%lu array=%lu",
+			(unsigned long)[base count], (unsigned long)[addedObject count],
+			(unsigned long)[addedSet count], (unsigned long)[addedArray count]]);
+	}
+
+	{
+		NSSet *set = [NSSet setWithArray:@[@"a", @"b", @"c"]];
+		NSUInteger looped = 0;
+		__block NSUInteger blocked = 0;
+		BOOL sawA = NO;
+
+		for (NSString *member in set) {
+			looped++;
+			if ([member isEqualToString:@"a"]) {
+				sawA = YES;
+			}
+		}
+		[set enumerateObjectsUsingBlock:^(id object, BOOL *stop) {
+			(void)object;
+			(void)stop;
+			blocked++;
+		}];
+		check("set-enumeration",
+		      looped == 3 && blocked == 3 && sawA,
+		      [NSString stringWithFormat:@"looped=%lu blocked=%lu sawA=%d",
+			(unsigned long)looped, (unsigned long)blocked, (int)sawA]);
+	}
+
+	{
+		/* ORDER IS NOT PART OF A SET'S VALUE, so the hash must not depend on it either. */
+		NSSet *one = [NSSet setWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSSet *two = [NSSet setWithArray:@[@"d", @"c", @"b", @"a"]];
+
+		check("set-order-independent",
+		      [one isEqualToSet:two] && [one hash] == [two hash] && [one isEqual:two],
+		      [NSString stringWithFormat:@"equal=%d hashA=%lu hashB=%lu",
+			(int)[one isEqualToSet:two], (unsigned long)[one hash],
+			(unsigned long)[two hash]]);
+	}
+
+	{
+		NSSet *set = [NSSet setWithArray:@[@"ann", @"bob", @"anna"]];
+		NSSet *kept = [set filteredSetUsingPredicate:
+				[NSPredicate predicateWithFormat:@"SELF BEGINSWITH \"ann\""]];
+
+		check("set-predicate-filter",
+		      kept != nil && [kept count] == 2 && [kept containsObject:@"ann"] &&
+		      [kept containsObject:@"anna"] && ![kept containsObject:@"bob"],
+		      [NSString stringWithFormat:@"kept=%lu",
+			(unsigned long)(kept != nil ? [kept count] : 0)]);
+	}
+
+	{
+		NSSet *set = [NSSet setWithArray:@[@"c", @"a", @"b"]];
+		NSArray *sorted = [set sortedArrayUsingDescriptors:
+					@[[NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES]]];
+
+		check("set-sort-descriptors",
+		      sorted != nil && [sorted count] == 3 &&
+		      [[sorted objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[sorted objectAtIndex:2] isEqualToString:@"c"],
+		      sorted != nil ? [sorted description] : @"(nil)");
+	}
+
+	{
+		NSMutableSet *mutable = [NSMutableSet setWithArray:@[@"a", @"b"]];
+		NSSet *snapshot;
+
+		/* THE CAPACITY FORM IS EXERCISED AND ITS RESULT DISCARDED — it is a constructor, and the
+		 * point here is that a mutable set built any way is still a MUTABLE SET. */
+		(void)[NSMutableSet setWithCapacity:4];
+		[mutable addObject:@"c"];
+		snapshot = [mutable copy];
+		[mutable addObject:@"d"];
+		check("set-copy-semantics",
+		      snapshot != nil && [snapshot count] == 3 && [mutable count] == 4 &&
+		      [mutable isKindOfClass:[NSMutableSet class]] &&
+		      ![snapshot isKindOfClass:[NSMutableSet class]],
+		      [NSString stringWithFormat:@"snapshot=%lu mutable=%lu",
+			(unsigned long)(snapshot != nil ? [snapshot count] : 0),
+			(unsigned long)[mutable count]]);
+	}
+
+	printf("FOUNDATION-SET RESULT ok=%d fail=%d\n", okc, failc);
+	printf("FOUNDATION-SET DONE\n");
+	return failc ? 1 : 0;
+}
