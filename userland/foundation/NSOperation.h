@@ -1,0 +1,68 @@
+/*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
+ * NSOperation — a unit of work with STATE. F13.19, docs/design/foundation-plan.md §10.
+ *
+ * WHAT MAKES IT AN OBJECT RATHER THAN A FUNCTION CALL: it is executing, or finished, or cancelled, or
+ * waiting for something else to finish first — and those are questions a caller asks, not flags a
+ * caller maintains. `-isReady` is the one with the most content: an operation is ready when every
+ * operation it DEPENDS ON has finished, which is how a graph of work is expressed without a scheduler
+ * of your own.
+ *
+ * `-main` IS THE SUBCLASS HOOK, and the base class RAISES rather than doing nothing: a subclass that
+ * forgot to override it would otherwise "succeed" at doing nothing at all, which is the failure a
+ * caller cannot see.
+ *
+ * WHAT IS NOT HERE, named: `-completionBlock` and `-addOperationWithBlock:` (this library has no
+ * blocks in its public headers), `-queuePriority`/`-qualityOfService`, `-asynchronous` operations that
+ * manage their own completion, and `NSOperation`'s KVO announcements for its own state — the state is
+ * readable, but changing it does not notify (F13.9's registry exists; wiring it here is its own step).
+ */
+
+#ifndef FOUNDATION_NSOPERATION_H
+#define FOUNDATION_NSOPERATION_H
+
+#import <foundation/NSObject.h>
+
+@class NSArray;
+@class NSMutableArray;		/* the IVAR needs the name, and NSArray is not NSMutableArray */
+@class NSCondition;
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface NSOperation : NSObject
+{
+	NSMutableArray *_dependencies;
+	NSCondition *_condition;
+	BOOL _cancelled;
+	BOOL _executing;
+	BOOL _finished;
+	BOOL _started;
+}
+
+/* THE HOOK. The base class raises, on purpose. */
+- (void)main;
+/* START IT, whichever thread you are on — and for a NON-concurrent operation, which is the only kind
+ * here, this runs -main to completion before returning. */
+- (void)start;
+
+- (void)cancel;
+- (BOOL)isCancelled;
+- (BOOL)isExecuting;
+- (BOOL)isFinished;
+- (BOOL)isReady;
+
+- (void)addDependency:(NSOperation *)operation;
+- (void)removeDependency:(NSOperation *)operation;
+- (NSArray *)dependencies;
+- (void)waitUntilFinished;
+
+- (NSString *)description;
+
+@end
+
+NS_ASSUME_NONNULL_END
+
+#endif /* FOUNDATION_NSOPERATION_H */

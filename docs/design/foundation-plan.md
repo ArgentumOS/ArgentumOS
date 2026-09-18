@@ -2821,3 +2821,35 @@ in for a typedef.
 the thread family that now exists; `NSProgress` is a reporting tree. Neither is half-built here.
 
 Next: `NSOperationQueue` and `NSProgress` — the last two names in §10's table.
+
+### F13.19 landed (2026-09-18): NSOperation + NSOperationQueue — and §10's table has ONE name left
+
+**`foundation_operation` 9/9 on a guest boot, on the FIRST run.** The unit of work with state and the
+scheduler that decides when: a subclass's `-main` running with the state following it, a base-class
+`-main` RAISING rather than doing nothing, dependencies deciding the order, a serial queue whose start
+order is the addition order, suspend/resume, deterministic cancellation, and `+currentQueue` answering
+the queue an operation is running in.
+
+**THE SCHEDULER IS ONE LOOP CALLED FROM TWO PLACES**, and the second is the one a scheduler can get
+wrong: an operation is scheduled when it is ADDED, and again when one FINISHES — because finishing is
+what makes the next operation ready, and a queue that only examined its list on arrival would stall a
+dependency graph at its second step. That is why the completion path holds the same lock and calls the
+same `-fnSchedule`.
+
+**A CANCELLED OPERATION IS REMOVED, NOT STARTED**, so a queue waiting for everything to finish is never
+waiting on work that will not run — which is what makes `-waitUntilAllOperationsAreFinished` safe to
+call at all. The probe makes cancellation DETERMINISTIC rather than racy by suspending the queue first:
+nothing has begun, so "none of them ran" is a fact.
+
+**FIRST RUN, AND ONE OLD TRAP APPLIED RATHER THAN PAID FOR:** the `NSMutableArray` the ivars need is
+NOT `NSArray`, so the forward declaration was added while writing the header — the fourth-occurrence
+`NSTimeInterval` lesson, generalised to a second type.
+
+**WHAT IS NAMED ABSENT:** `-completionBlock`/`-addOperationWithBlock:`, priority and quality-of-service
+ordering, asynchronous operations that own their completion, and — a real difference from Cocoa — THE
+MAIN QUEUE RUNS ON WORKER THREADS, because this library's run loop has timers and no sources.
+
+**§10'S TABLE NOW HAS ONE NAME LEFT: `NSProgress`.** It is a reporting tree rather than a mechanism,
+and it is the only row item that neither the thread family nor the run loop needed.
+
+Next: `NSProgress`, the last name in §10's table.

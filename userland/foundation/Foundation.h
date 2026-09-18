@@ -65,5 +65,7 @@
 #import <foundation/NSThread.h>
 #import <foundation/NSTimer.h>
 #import <foundation/NSRunLoop.h>
+#import <foundation/NSOperation.h>
+#import <foundation/NSOperationQueue.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
