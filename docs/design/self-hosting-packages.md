@@ -256,9 +256,15 @@ headers (the runtime's own `objc/…` still need staging). Clean-room by decisio
 enforced rather than promised: `tools/foundation-gate.py`, run by a
 `foundation-gate` target in `userland64`, fails the build on any GNUstep, ObjFW or
 Apple-Foundation header import and on the runtime's legacy `objc/Object.h`
-(`docs/design/foundation-plan.md` §2). The v1 class list, the phases F0–F5 and the
-measured traps are in that plan; the acceptances are `tests/cases/foundation_core.py`
-`tests/cases/foundation_string.py`, `tests/cases/foundation_value.py` and `tests/cases/foundation_collection.py`. **A runtime API the Foundation CALLS:**
+(`docs/design/foundation-plan.md` §2). The v1 class list, the phases (F0–F4 and
+F6–F9 landed; **F5 self-hosting is DEFERRED by the user's call**, which removes the
+gate and not the requirement) and the measured traps are in that plan; the
+acceptances are the nine gated cases — `tests/cases/foundation_core.py`,
+`…_string.py`, `…_value.py`, `…_collection.py`, `…_error.py`, `…_calendar.py`,
+`…_url.py`, `…_kvc.py`, plus the runtime's `tests/cases/objc_smoke.py`. **A new
+class's header is staged by LANDING it**: the copy is a `$(FOUNDATION_SRC)/*.h`
+glob, so a rebuild on the guest sees it with no build-system change (F6's standing
+nullability rule is what keeps a new header usable there). **A runtime API the Foundation CALLS:**
 `objc_registerSmallObjectClass_np` (F1) — clang emits a `@"…"` literal of fewer
 than 9 ASCII characters as a *tagged pointer*, and the runtime dispatches tag 4
 through that table, so the Foundation registers a class there. That is a
