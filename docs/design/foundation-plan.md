@@ -2340,3 +2340,44 @@ probe's members elsewhere pass a helper's result instead.
 
 With this, **every operator the KVC section of §5 named is implemented**. Next in this family:
 `NSValue`/`NSNull`, then `NSCountedSet` and `NSOrderedSet`.
+
+### F13.8c landed (2026-09-18): NSValue + NSNull — and a CORE fidelity bug the probe measured
+
+**`foundation_nsvalue` 7/7 and `foundation_core` 15/15 on a guest boot.** `NSValue` (bytes with a
+type encoding, its own size walk over that encoding, pointers, `NSRange`, equality and hash on the
+bytes) and `NSNull` (the object that stands for nothing, so a collection can hold a hole).
+
+**THE CORE BUG, AND IT WAS NOT IN THE NEW CODE.** The house had the allocator relationship the WRONG
+WAY ROUND: `+alloc` was the primitive (`class_createInstance(self, 0)`) and `+allocWithZone:`
+forwarded to it, while Cocoa's documented contract is the reverse — `+alloc` invokes
+`+allocWithZone:`, which is exactly why Cocoa's own singleton examples tell you to override
+`allocWithZone:`. The consequence, measured: overriding it was **INERT**. Flipping the two (the
+creation moves into `+allocWithZone:`, `+alloc` calls it) makes the documented door real; the probe's
+`null-is-one-object` is the measurement, and `foundation_core` 15/15 is the evidence the reversal is
+safe for every other class.
+
+**AND A SECOND BUG FROM THE SAME PROBE RUN, in the new code:** `@encode(void *)` is `"^v"`, and the
+size walk had no case for `v` (void), so `+valueWithPointer:` RAISED and the probe ABORTED with
+SIGABRT. A `void` pointee contributes nothing to a pointer's size — but its encoding still has to be
+consumed. `v`, `j`, `J` and `D` are now handled, and `void` is a *legitimate* encoding, not a
+mistake to reject.
+
+**A THIRD FINDING, about the tree rather than the code: `foundation_value` WAS ALREADY TAKEN.** It is
+F2/F8's probe for NSNumber/NSData/NSDate, tracked with its own header and support unit, and the first
+attempt to write this slice's probe would have OVERWRITTEN 583 lines of it. The write-evidence gate
+refused, which is what it is for; the new probe is `foundation_nsvalue`. **Check a new probe's name
+against the suite before writing it.**
+
+**THE MEASUREMENT THAT MAKES `NSValue` REAL** is a canary rather than a round trip: a 64-byte source
+of 0xAA with a structure at the front, a 64-byte destination of 0x55, and the assertion that the
+structure arrives AND the tail is untouched. Too large a size smears 0xAA past the structure; too
+small a size leaves 0x55 inside it. A plain round trip cannot tell either apart, because `-getValue:`
+copies back whatever length it was told — and the padded `{double,int}` (16 bytes, not 12) is what
+makes the alignment-aware walk necessary rather than a sum of field widths.
+
+**ALSO MEASURED:** a re-declaration may not disagree with what it overrides — `allocWithZone:` takes a
+NONNULL zone and `isEqual:` a nonnull object in `NSObject`, so `nullable` there is a compile error
+(while `-copyWithZone:` KEEPS `nullable`, because `NSCopying` declares it that way). And
+`NSMallocException` was the one core exception name the house was missing; it is now defined.
+
+Next in this family: `NSCountedSet` and `NSOrderedSet`.

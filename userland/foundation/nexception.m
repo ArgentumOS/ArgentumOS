@@ -17,6 +17,9 @@ NSString *const NSGenericException = @"NSGenericException";
 NSString *const NSRangeException = @"NSRangeException";
 NSString *const NSInvalidArgumentException = @"NSInvalidArgumentException";
 NSString *const NSInternalInconsistencyException = @"NSInternalInconsistencyException";
+/* Cocoa raises this when an allocation fails. Nothing here allocates large enough to fail in
+ * practice; the name exists because a class that would raise it needs the spelling to match. */
+NSString *const NSMallocException = @"NSMallocException";
 
 @implementation NSException
 

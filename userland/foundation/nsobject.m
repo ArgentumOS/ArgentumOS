@@ -33,7 +33,12 @@ extern id object_dispose(id obj);
 
 + (id)alloc
 {
-	return class_createInstance(self, 0);
+	/* THE DOCUMENTED RELATIONSHIP, and the one Cocoa's own singleton pattern depends on: +alloc
+	 * invokes +allocWithZone: with a NULL zone. It used to be the other way round here — +alloc was
+	 * the primitive and +allocWithZone: forwarded to it — which made an override of +allocWithZone:
+	 * (the door the singleton examples tell you to override) INERT rather than wrong. Measured:
+	 * [[NSNull alloc] init] answered an object that was not +null. */
+	return [self allocWithZone:NULL];
 }
 
 + (id)new
@@ -382,7 +387,9 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
 + (id)allocWithZone:(NSZone *)zone
 {
 	(void)zone;
-	return [self alloc];
+	/* THE PRIMITIVE, which is where the one allocator lives. A subclass may override THIS to
+	 * answer a shared instance, and +alloc above will reach it. */
+	return class_createInstance(self, 0);
 }
 
 - (BOOL)isProxy

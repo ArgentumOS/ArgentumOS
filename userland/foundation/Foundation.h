@@ -47,5 +47,7 @@
 #import <foundation/NSDateFormatter.h>
 #import <foundation/NSNumberFormatter.h>
 #import <foundation/NSSet.h>
+#import <foundation/NSValue.h>
+#import <foundation/NSNull.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

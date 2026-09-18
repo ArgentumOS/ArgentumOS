@@ -41,6 +41,7 @@ extern NSString *const NSGenericException;
 extern NSString *const NSRangeException;
 extern NSString *const NSInvalidArgumentException;
 extern NSString *const NSInternalInconsistencyException;
+extern NSString *const NSMallocException;
 
 @interface NSException : NSObject <NSCopying>
 {
