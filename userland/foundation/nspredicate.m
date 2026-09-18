@@ -26,6 +26,11 @@
 #import "fnpredicate.h"
 
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <regex.h>		/* F13.7d: MATCHES, on the engine musl already ships inside libc */
+#include <unicode/ucol.h>	/* F13.7d: `[d]`, through ICU's collator */
+#include <unicode/ustring.h>	/* ... and its UTF-8 <-> UTF-16 conversions */
 
 /* --------------------------------------------------------------- the leaves */
 
@@ -365,6 +370,7 @@ static NSString *fn_operator_name(FNCompareOperator op)
 	if (op == FNCompareContains) return @"CONTAINS";
 	if (op == FNCompareBeginsWith) return @"BEGINSWITH";
 	if (op == FNCompareEndsWith) return @"ENDSWITH";
+	if (op == FNCompareMatches) return @"MATCHES";
 	return @"LIKE";
 }
 
@@ -381,6 +387,101 @@ static id fn_operand_value(id object, NSString *path, id literal)
 	return [object valueForKey:path];
 }
 
+/*
+ * THE TWO F13.7d HELPERS.
+ *
+ * fn_matches is musl's POSIX ERE engine, reached through <regex.h> — the engine lives INSIDE libc,
+ * so MATCHES costs no new artifact (F12's zlib lesson with a shorter walk). ONE RULE GOES IN ABOVE
+ * THE ENGINE: NSPredicate's MATCHES is a WHOLE-STRING match — "abc" MATCHES "b" is NO — while
+ * regexec is unanchored, so the pattern is anchored here, once, rather than left to a caller's
+ * memory of it.
+ *
+ * fn_collation is ICU's collator, and the STRENGTHS are exactly what the modifiers mean: SECONDARY
+ * ignores case, PRIMARY ignores case AND accents, and PRIMARY with the case level turned on ignores
+ * accents while KEEPING case — which is `[d]` on its own.
+ */
+static BOOL fn_matches(NSString *text, NSString *pattern, BOOL caseInsensitive)
+{
+	const char *patternText = [pattern UTF8String];
+	char *anchored;
+	size_t length;
+	regex_t regex;
+	int status;
+	BOOL matched;
+
+	/* THE ANCHOR IS A PLAIN GROUP, and that is a MEASURED constraint rather than a preference:
+	 * POSIX ERE has no NON-CAPTURING group, so "^(?:...)$" is an invalid expression and regcomp
+	 * refuses it — which is how this was found, as an abort in the probe rather than a wrong
+	 * answer. A capturing group is fine here because the captures are never read. */
+	length = strlen(patternText) + sizeof "^([])$";
+	anchored = (char *)malloc(length);
+	if (anchored == NULL) {
+		return NO;
+	}
+	snprintf(anchored, length, "^(%s)$", patternText);
+	status = regcomp(&regex, anchored, REG_EXTENDED | (caseInsensitive ? REG_ICASE : 0));
+	free(anchored);
+	if (status != 0) {
+		char why[160];
+
+		regerror(status, &regex, why, sizeof why);
+		[NSException raise:NSInvalidArgumentException
+			    format:@"MATCHES: \"%@\" is not a regular expression this engine accepts: %s",
+				   pattern, why];
+	}
+	/* The pattern's borrowed bytes are done with, so the text's may be taken now. */
+	matched = regexec(&regex, [text UTF8String], 0, NULL, 0) == 0;
+	regfree(&regex);
+	return matched;
+}
+
+static int fn_collation(NSString *left, NSString *right, BOOL caseInsensitive,
+			BOOL diacriticInsensitive)
+{
+	UErrorCode status = U_ZERO_ERROR;
+	UCollator *collator;
+	UChar *a;
+	UChar *b;
+	int32_t alen = 0;
+	int32_t blen = 0;
+	UCollationResult result;
+
+	collator = ucol_open("", &status);	/* the ROOT locale: a rule, not a taste */
+	if (U_FAILURE(status) || collator == NULL) {
+		return UCOL_EQUAL;
+	}
+	if (diacriticInsensitive && !caseInsensitive) {
+		ucol_setStrength(collator, UCOL_PRIMARY);
+		ucol_setAttribute(collator, UCOL_CASE_LEVEL, UCOL_ON, &status);
+	} else if (diacriticInsensitive) {
+		ucol_setStrength(collator, UCOL_PRIMARY);
+	} else if (caseInsensitive) {
+		ucol_setStrength(collator, UCOL_SECONDARY);
+	}
+	a = (UChar *)malloc(([left length] + 1) * sizeof(UChar));
+	b = (UChar *)malloc(([right length] + 1) * sizeof(UChar));
+	if (a == NULL || b == NULL) {
+		free(a);
+		free(b);
+		ucol_close(collator);
+		return UCOL_EQUAL;
+	}
+	status = U_ZERO_ERROR;
+	u_strFromUTF8(a, (int32_t)([left length] + 1), &alen, [left UTF8String], -1, &status);
+	u_strFromUTF8(b, (int32_t)([right length] + 1), &blen, [right UTF8String], -1, &status);
+	if (U_FAILURE(status)) {
+		free(a);
+		free(b);
+		ucol_close(collator);
+		return UCOL_EQUAL;
+	}
+	result = ucol_strcoll(collator, a, alen, b, blen);
+	free(a);
+	free(b);
+	ucol_close(collator);
+	return (int)result;
+}
+
 @implementation FNPredicateComparison
 
 - (instancetype)initWithLeftPath:(nullable NSString *)leftPath
@@ -389,6 +490,7 @@ static id fn_operand_value(id object, NSString *path, id literal)
 		       rightPath:(nullable NSString *)rightPath
 		    rightLiteral:(nullable id)rightLiteral
 		 caseInsensitive:(BOOL)caseInsensitive
+	   diacriticInsensitive:(BOOL)diacriticInsensitive
 {
 	if ((self = [super init]) != nil) {
 		_leftPath = leftPath;
@@ -397,6 +499,7 @@ static id fn_operand_value(id object, NSString *path, id literal)
 		_rightLiteral = rightLiteral;
 		_op = op;
 		_caseInsensitive = caseInsensitive;
+		_diacriticInsensitive = diacriticInsensitive;
 	}
 	return self;
 }
@@ -416,11 +519,33 @@ static id fn_operand_value(id object, NSString *path, id literal)
 			equal = (left == nil && right == nil);
 		} else if ([left isKindOfClass:[NSString class]] &&
 			   [right isKindOfClass:[NSString class]]) {
-			equal = fn_strings_equal(left, right, _caseInsensitive);
+			/* `[d]` GOES THROUGH ICU'S COLLATOR (F13.7d), and ONLY then: the byte-wise path
+			 * stays what a plain predicate uses, so adding the modifier cannot change any
+			 * predicate that does not ask for it. */
+			equal = _diacriticInsensitive
+				? (fn_collation(left, right, _caseInsensitive, YES) == UCOL_EQUAL)
+				: fn_strings_equal(left, right, _caseInsensitive);
 		} else {
 			equal = [left isEqual:right];
 		}
 		return _op == FNCompareEqual ? equal : !equal;
+	}
+	if (_op == FNCompareMatches) {
+		if (![left isKindOfClass:[NSString class]] ||
+		    ![right isKindOfClass:[NSString class]]) {
+			[NSException raise:NSInvalidArgumentException
+				    format:@"MATCHES needs two strings, and these are not: %@ and %@",
+					   [left class], [right class]];
+		}
+		if (_diacriticInsensitive) {
+			/* NAMED, and narrow: the POSIX engine is byte-oriented and has no diacritic
+			 * mode, so this COMBINATION is refused rather than answered approximately.
+			 * `[c]` works, and `[d]` works on the comparison operators. */
+			[NSException raise:NSInvalidArgumentException
+				    format:@"MATCHES with the [d] modifier is refused: the POSIX engine has "
+					   "no diacritic mode. Use [c], or [d] with =, !=, <, <=, > or >="];
+		}
+		return fn_matches((NSString *)left, (NSString *)right, _caseInsensitive);
 	}
 	if (_op == FNCompareContains || _op == FNCompareBeginsWith ||
 	    _op == FNCompareEndsWith || _op == FNCompareLike) {
@@ -465,7 +590,15 @@ static id fn_operand_value(id object, NSString *path, id literal)
 		[NSException raise:NSInvalidArgumentException
 			    format:@"%@ cannot be compared with <, <=, > or >=", [left class]];
 	}
-	order = [left compare:right];
+	if (_diacriticInsensitive && [left isKindOfClass:[NSString class]] &&
+	    [right isKindOfClass:[NSString class]]) {
+		int collated = fn_collation(left, right, NO, YES);
+
+		order = collated == UCOL_LESS ? NSOrderedAscending
+		      : (collated == UCOL_GREATER ? NSOrderedDescending : NSOrderedSame);
+	} else {
+		order = [left compare:right];
+	}
 	if (_op == FNCompareLess) {
 		return order == NSOrderedAscending;
 	}
@@ -487,8 +620,15 @@ static id fn_operand_value(id object, NSString *path, id literal)
 	[out appendString:fn_operator_name(_op)];
 	[out appendString:@" "];
 	[out appendString:_rightPath != nil ? _rightPath : fn_literal_format(_rightLiteral)];
-	if (_caseInsensitive) {
-		[out appendString:@"[c]"];
+	if (_caseInsensitive || _diacriticInsensitive) {
+		[out appendString:@"["];
+		if (_caseInsensitive) {
+			[out appendString:@"c"];
+		}
+		if (_diacriticInsensitive) {
+			[out appendString:@"d"];
+		}
+		[out appendString:@"]"];
 	}
 	return out;
 }

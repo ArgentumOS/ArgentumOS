@@ -2128,3 +2128,42 @@ smaller thing than a copy that cannot format.
 **ICU 76 API fact this cost:** the ATTRIBUTE doors (`unum_getAttribute`/`unum_setAttribute`) take NO
 `UErrorCode`, unlike the symbol and text-attribute doors — passing one is a compile error, "expected
 2, have 3". The contrast is real and recorded in the file.
+
+### F13.7d landed (2026-09-18): `MATCHES` and `[d]` — the predicate's two refused operators
+
+**`foundation_predicate` 27/27 on a guest boot** (24 before: two refusals flipped, three checks
+added, and the pair rule kept — what is still refused IS refused, and what came back is asserted
+POSITIVELY).
+
+**`MATCHES` is a binding, and a SHORTER one than F12's.** F11 refused it because "a regex engine is a
+table" — true of a hand-written one. musl ships a real POSIX ERE engine INSIDE libc, so there is
+nothing to link and no artifact to stage: `<regex.h>`, `regcomp`, `regexec`, and the guest's own
+`libc.so` already carries it.
+
+**`[d]` is ICU's collator, and the three modifier combinations are three ICU STRENGTHS** — which is
+the whole design rather than three special cases: SECONDARY ignores case, PRIMARY ignores case AND
+accents, and PRIMARY with the case level turned on ignores accents while KEEPING case, which is
+`[d]` on its own. The probe asserts exactly that difference: `"ann"[d]` matches "änn" and does NOT
+match "ANN", while `"ANN"[cd]` matches both.
+
+**Three things the probe MEASURED, each now a check rather than a belief:**
+
+1. **`MATCHES` is a WHOLE-STRING match.** Cocoa's operator is anchored; `regexec` is not, so
+   `"ann" MATCHES "n"` would have answered YES. The anchor is one line above the engine.
+2. **THE ANCHOR CANNOT USE `(?:...)`** — and this cost an ABORT rather than a wrong answer: POSIX ERE
+   has no non-capturing group, so `regcomp` refused the anchor, the raise became an uncaught
+   exception, and the probe died with STATUS=134. A plain capturing group is the fix, and the
+   captures are never read.
+3. **A BAD PATTERN IS REFUSED AT EVALUATION, NOT AT PARSE** — the grammar builds the comparison and
+   the regex is compiled when the predicate runs. The first version of that check expected the parse
+   to refuse and was wrong; it now asserts where the refusal actually happens.
+
+**One gap this slice did NOT close, recorded rather than papered over:** this grammar writes a
+modifier AFTER the right operand (`name = "ann"[d]`) while Cocoa writes it BETWEEN the operator and
+the operand (`name =[d] "ann"`). The probe uses this grammar's spelling and the header note says so;
+accepting Cocoa's ordering is a small change to the comparison rule, and it is its own step.
+
+**Still refused inside this family, named:** `MATCHES` with `[d]` — the POSIX engine is
+byte-oriented and has no diacritic mode, so the COMBINATION raises with a message saying so rather
+than answering approximately (`[c]` works, and `[d]` works on `=`, `!=`, `<`, `<=`, `>` and `>=`).
+And `[d]` on CONTAINS/BEGINSWITH/ENDSWITH/LIKE wants ICU's search iterator, which is its own step.

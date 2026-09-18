@@ -56,7 +56,8 @@ CHECKS = ("pred-value", "pred-block", "pred-and", "pred-or", "pred-not",
           "pred-abstract", "pred-nil-filter", "pred-refusals", "cross-tu",
           "format-compare", "format-string-ops", "format-like", "format-case",
           "format-connectives", "format-constants", "format-self", "format-numbers",
-          "format-round-trip", "format-refusals", "format-filter")
+          "format-round-trip", "format-refusals", "format-matches",
+          "format-diacritic", "format-regex-refusal", "format-filter")
 
 
 class Case(BaseCase):

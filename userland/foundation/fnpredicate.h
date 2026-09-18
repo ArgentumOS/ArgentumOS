@@ -37,7 +37,8 @@ typedef enum {
 	FNCompareContains,
 	FNCompareBeginsWith,
 	FNCompareEndsWith,
-	FNCompareLike
+	FNCompareLike,
+	FNCompareMatches	/* F13.7d: regex, on the engine musl already ships inside libc */
 } FNCompareOperator;
 
 /*
@@ -64,13 +65,15 @@ NSPredicate *FNPredicateParse(NSString *format);
 	id _rightLiteral;
 	FNCompareOperator _op;
 	BOOL _caseInsensitive;
+	BOOL _diacriticInsensitive;	/* F13.7d: the `[d]` modifier, through ICU's collator */
 }
 - (instancetype)initWithLeftPath:(nullable NSString *)leftPath
 		     leftLiteral:(nullable id)leftLiteral
 			operator:(FNCompareOperator)op
 		       rightPath:(nullable NSString *)rightPath
 		    rightLiteral:(nullable id)rightLiteral
-		 caseInsensitive:(BOOL)caseInsensitive;
+		 caseInsensitive:(BOOL)caseInsensitive
+	   diacriticInsensitive:(BOOL)diacriticInsensitive;
 @end
 
 NS_ASSUME_NONNULL_END

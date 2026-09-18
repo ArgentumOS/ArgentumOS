@@ -455,13 +455,23 @@ static char fn_fold(char c)
 	BOOL rightIsLiteral = NO;
 	FNCompareOperator op = FNCompareEqual;
 	BOOL caseInsensitive = NO;
+	BOOL diacriticInsensitive = NO;
+	BOOL matchedWord = NO;		/* MATCHES names its own operator: it is a word, not a symbol */
 	NSPredicate *leaf;
 
 	leftPath = [self parseOperandInto:&leftLiteral sawLiteral:&leftIsLiteral];
 	[self skipSpaces];
 	if ([self matchKeyword:@"MATCHES"]) {
-		[self raise:@"MATCHES is refused — a regex engine is a table and none ships here; "
-			   "LIKE (* and ? with \\\\ escapes) is the rule-based alternative" at:_at];
+		/* F13.7d: MATCHES SHIPS. F11 refused it because "a regex engine is a table" — true of
+		 * a hand-written one. musl ships a real POSIX ERE engine INSIDE libc, so this is a
+		 * BINDING, exactly like F12's zlib: no new artifact, and no table written here. */
+		matchedWord = YES;
+		op = FNCompareMatches;
+		/* The word ENDS the operator, so the space before the pattern is skipped HERE: the
+		 * symbol path skips it inside matchComparisonOperator:, and MATCHES never goes
+		 * through that. (Measured: without this, `name MATCHES "a.*"` failed with "an operand
+		 * is missing at character 12" — the space.) */
+		[self skipSpaces];
 	}
 	if ([self matchKeyword:@"IN"]) {
 		[self raise:@"IN is refused — it needs constant collections, which this grammar "
@@ -475,7 +485,7 @@ static char fn_fold(char c)
 	    [self matchKeyword:@"NONE"] || [self matchKeyword:@"SOME"]) {
 		[self raise:@"the ANY/ALL/NONE/SOME quantifiers are refused" at:_at];
 	}
-	if ([self matchComparisonOperator:&op] == nil) {
+	if (!matchedWord && [self matchComparisonOperator:&op] == nil) {
 		/* THE MESSAGE NAMES WHAT IT FOUND. "a comparison operator is missing" with no character
 		 * is the kind of refusal that costs a round trip — this one did — and the caller may not
 		 * be able to see the format at all. */
@@ -498,6 +508,7 @@ static char fn_fold(char c)
 	[self skipSpaces];
 	if ([self matchOperator:@"["]) {
 		BOOL sawC = NO;
+		BOOL sawD = NO;
 
 		for (;;) {
 			if ([self atEnd]) {
@@ -510,14 +521,18 @@ static char fn_fold(char c)
 			if (fn_fold(_text[_at]) == 'c') {
 				sawC = YES;
 			} else if (fn_fold(_text[_at]) == 'd') {
-				[self raise:@"the [d] modifier is refused — diacritic-insensitive matching "
-					   "needs Unicode decomposition, and that is a table" at:_at];
+				/* F13.7d: `[d]` SHIPS, through ICU's collator — the same binding that
+				 * answered the calendars. F11 refused it because diacritic folding is
+				 * Unicode decomposition; ICU HAS that table, so the modifier is a strength
+				 * setting here rather than a table to write. */
+				sawD = YES;
 			} else {
 				[self raise:@"an unknown modifier letter" at:_at];
 			}
 			_at++;
 		}
 		caseInsensitive = sawC;
+		diacriticInsensitive = sawD;
 	}
 	if (!leftIsLiteral && leftPath == nil) {
 		/* NULL on the left is a value, not a missing operand. */
@@ -532,7 +547,8 @@ static char fn_fold(char c)
 						      operator:op
 						     rightPath:rightPath
 						  rightLiteral:rightLiteral
-					       caseInsensitive:caseInsensitive];
+					       caseInsensitive:caseInsensitive
+					 diacriticInsensitive:diacriticInsensitive];
 	return leaf;
 }
 

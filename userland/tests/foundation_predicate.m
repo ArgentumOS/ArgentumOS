@@ -532,23 +532,94 @@ int main(void)
 	}
 
 	{
-		NSPredicate *matches = fn_parse(@"name MATCHES \"a.*\"");
-		BOOL namesMatches = strstr(fn_last_reason, "MATCHES") != NULL;
-		NSPredicate *diacritic = fn_parse(@"name = \"ann\"[d]");
-		BOOL namesDiacritic = strstr(fn_last_reason, "[d]") != NULL;
+		/* F13.7d: MATCHES AND [d] SHIP, so they are no longer in this list — and the checks
+		 * after it assert them POSITIVELY. That is the pair rule the calendars got too: a
+		 * refusal deleted without a presence check is indistinguishable from a probe that
+		 * stopped looking. */
 		NSPredicate *membership = fn_parse(@"name IN {\"ann\"}");
 		NSPredicate *quantifier = fn_parse(@"ANY children.age > 3");
 		NSPredicate *variable = fn_parse(@"name = $NAME");
 		NSPredicate *truncated = fn_parse(@"name =");
 
-		/* EVERY REFUSAL NAMES ITSELF. That is what refusing loudly MEANS, so the message is
-		 * part of the check rather than a nicety: a caller has to be able to see WHICH
-		 * construct was refused. */
+		/* EVERY REMAINING REFUSAL NAMES ITSELF. That is what refusing loudly MEANS, so the
+		 * message is part of the check rather than a nicety: a caller has to be able to see
+		 * WHICH construct was refused. */
 		check("format-refusals",
-		      matches == nil && diacritic == nil && membership == nil &&
-		      quantifier == nil && variable == nil && truncated == nil &&
-		      namesMatches && namesDiacritic,
+		      membership == nil && quantifier == nil && variable == nil &&
+		      truncated == nil &&
+		      strstr(fn_last_reason, "operand") != NULL,
 		      fn_last_reason);
+	}
+
+	{
+		/* MATCHES, on the engine musl ships inside libc. THE ANCHORING IS THE CLAIM: Cocoa's
+		 * MATCHES is a WHOLE-STRING match, so "ann" MATCHES "n" is NO while ".*n.*" is YES —
+		 * a bare regexec, which is unanchored, would say YES to both.
+		 *
+		 * THE MODIFIER GOES AFTER THE RIGHT OPERAND here, which is this grammar's spelling;
+		 * Cocoa writes it between the operator and the operand (`MATCHES[c] "ANN"`), and that
+		 * difference is recorded in the plan as the remaining fidelity gap rather than
+		 * papered over here. */
+		NSPredicate *whole = fn_parse(@"name MATCHES \"a.*\"");
+		NSPredicate *partial = fn_parse(@"name MATCHES \"n\"");
+		NSPredicate *wrapped = fn_parse(@"name MATCHES \".*n.*\"");
+		NSPredicate *folded = fn_parse(@"name MATCHES \"ANN\"[c]");
+		NSDictionary *person = @{ @"name": @"ann" };
+
+		check("format-matches",
+		      whole != nil && partial != nil && wrapped != nil && folded != nil &&
+		      [whole evaluateWithObject:person] &&
+		      ![partial evaluateWithObject:person] &&
+		      [wrapped evaluateWithObject:person] &&
+		      [folded evaluateWithObject:person],
+		      fn_last_reason);
+	}
+
+	{
+		/* `[d]`, through ICU's collator: ACCENTS STOP MATTERING WHILE CASE KEEPS MATTERING —
+		 * the difference between `[d]` and `[c]`, and the reason `[d]` alone is not "ignore
+		 * everything". (The fixture is "änn" against "ann": at primary strength the umlaut is
+		 * its base letter, so the two are three characters each and compare EQUAL.) */
+		NSPredicate *folding = fn_parse(@"name = \"ann\"[d]");
+		NSPredicate *strict = fn_parse(@"name = \"ann\"");
+		NSPredicate *caseStillMatters = fn_parse(@"name = \"ANN\"[d]");
+		NSPredicate *both = fn_parse(@"name = \"ANN\"[cd]");
+		NSDictionary *accented = @{ @"name": @"änn" };
+		NSDictionary *plain = @{ @"name": @"ann" };
+
+		check("format-diacritic",
+		      folding != nil && strict != nil && caseStillMatters != nil && both != nil &&
+		      [folding evaluateWithObject:accented] &&
+		      ![strict evaluateWithObject:accented] &&
+		      [folding evaluateWithObject:plain] &&
+		      ![caseStillMatters evaluateWithObject:plain] &&
+		      [both evaluateWithObject:plain],
+		      fn_last_reason);
+	}
+
+	{
+		/* A BAD PATTERN IS REFUSED, LOUDLY, and the message names the construct — the same
+		 * standard every other refusal here is held to. NOTE WHERE IT HAPPENS: the parse
+		 * SUCCEEDS (the grammar builds the comparison) and the REGEX IS COMPILED when the
+		 * predicate runs, so the raise comes from evaluation. Measured, not assumed — the
+		 * first version of this check expected the parse to refuse and was wrong. */
+		NSPredicate *broken = fn_parse(@"name MATCHES \"([\"");
+		BOOL raised = NO;
+		BOOL names = NO;
+
+		if (broken != nil) {
+			@try {
+				(void)[broken evaluateWithObject:@{ @"name": @"ann" }];
+			} @catch (NSException *exception) {
+				raised = YES;
+				names = [[exception reason] rangeOfString:@"MATCHES"].location
+					!= NSNotFound;
+			}
+		}
+		check("format-regex-refusal",
+		      broken != nil && raised && names,
+		      broken == nil ? "the parse refused it"
+				    : "it parsed, and then did not raise");
 	}
 
 	{

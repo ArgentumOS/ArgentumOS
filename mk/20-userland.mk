@@ -227,7 +227,12 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/nssortdescriptor.m -o .build/foundation-nssortdescriptor.o
 	# F11a: the predicate object model — an abstract base, two private leaves, the tree
 	# node, and the two collection filters. The block leaf is why this file stores a block.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+	#
+	# F13.7d: nspredicate.m NOW INCLUDES ICU (<unicode/ucol.h>, for the `[d]` collation) and
+	# <regex.h> (musl's POSIX engine, which is inside libc — so MATCHES adds no link and no
+	# artifact). The ICU include path is therefore on THIS rule; the link needed nothing new,
+	# because F13.6 already made libfoundation need libicui18n/libicuuc/libicudata.
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
 		$(FOUNDATION_SRC)/nspredicate.m -o .build/foundation-nspredicate.o
 	# F11b: the format grammar. A category on NSPredicate, so the parser lives beside the object
 	# model without either file owning the other.
