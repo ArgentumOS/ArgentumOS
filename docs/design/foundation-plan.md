@@ -1,6 +1,6 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4, F6, F7, F8 and F9 LANDED, the audited inventories CLOSED, and the
+Status: **DRAFT (2026-09). F0–F4 and F6–F10 LANDED, the audited inventories CLOSED, and the
 plist skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
@@ -8,13 +8,13 @@ not an array dependency: see the work queue), `NSLocale` (stage E — the locali
 rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, and a call as an
 object), `NSPropertyListSerialization`, `NSCalendar`/`NSTimeZone`/`NSDateComponents` (F7 — a
 fixed-offset time zone and the Gregorian calendar AS RULES), `NSURL` (F8 — the URL as a
-VALUE) and `NSKeyValueCoding` (F9 — the naming rules, on the runtime's ivar table) — with every
-staged public header
+VALUE), `NSKeyValueCoding` (F9 — the naming rules, on the runtime's ivar table) and
+`NSSortDescriptor` (F10 — a sort as a value) — with every staged public header
 annotated for nullability (F6, and enforced since as a standing rule). Gated on a
-guest boot by nine cases (`foundation_core`, `foundation_string`, `foundation_value`,
+guest boot by ten cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `foundation_calendar`, `foundation_url`,
-`foundation_kvc`, `objc_smoke`), whose probes
-carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12** checks. **F5 (self-hosting) is DEFERRED — the user's call,
+`foundation_kvc`, `foundation_sort`, `objc_smoke`), whose probes
+carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12** checks. **F5 (self-hosting) is DEFERRED — the user's call,
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
@@ -394,6 +394,50 @@ status.
     `@distinctUnionOfSets`: there is no NSSet here, and the arrays that do ship are not a set;
   * the legacy dictionary-era API — `-takeValue:forKey:`, `-takeValuesFromDictionary:`: Cocoa
     removed them, and so does this.
+
+  Recorded BEFORE the code, because the boundary IS the design.
+
+- **F10 — the sorting family (`NSSortDescriptor`, and the descriptor and function sorts).
+  SHIPPED (2026-09-17).** The queue's remaining row names TWO families; this is the first of
+  them, and it follows KVC for a reason that is not scheduling. A sort descriptor's whole
+  content is a KEY, so it is KVC (`-valueForKey:`, F9) that makes the key mean anything, and it
+  is the comparison methods the collections already ship that make the ORDER mean anything.
+
+  **What ships** (the descriptor as a VALUE, and the four collection forms):
+  * `NSSortDescriptor` carrying (key, ascending, HOW TO COMPARE) — the three comparison kinds
+    Cocoa has, and the three this library can already express: `-compare:` on the values the
+    key resolves to, a `-selector` those values answer, and a caller's comparator block. The
+    `selector:` and `comparator:` constructors exist so that "how" is never silently assumed;
+  * `-reversedSortDescriptor`, which flips `ascending` and nothing else;
+  * `-[NSArray sortedArrayUsingDescriptors:]`, `-[NSMutableArray sortUsingDescriptors:]`,
+    `-sortedArrayUsingFunction:context:` and `-sortUsingFunction:context:`. The C-function pair
+    takes `NSInteger (*)(id, id, void *)` and passes its `context` straight through — a function
+    POINTER is not a table, so it is a rule like the rest of them;
+  * **A CHAIN IS LEXICOGRAPHIC AND THE SORT IS STABLE**: descriptor one decides, a tie falls to
+    descriptor two, and a tie that reaches the end of the chain keeps the INPUT order. That
+    second half is the property the probe measures, because an unstable sort passes every
+    single-descriptor test ever written.
+
+  **What is REFUSED BY NAME**: `-allowEvaluation`/`-isEvaluationAllowed` (a sandbox for
+  untrusted archives, not a sorting rule) and the coder forms `-initWithCoder:` /
+  `-encodeWithCoder:` (they belong to an NSCoding family this library does not ship). Neither
+  is a gap in sorting; both are another family's nouns.
+
+- **F11 — `NSPredicate`. DESIGNED, NOT STARTED.** The second family the queue's row names, and
+  the largest single item left: a predicate is its own little LANGUAGE. The boundary will be
+  drawn the way F7, F8 and F9 drew theirs — a grammar is a rule, so the grammar ships:
+  * the comparisons (`=`, `==`, `!=`, `<`, `<=`, `>`, `>=`), the string operators (`CONTAINS`,
+    `BEGINSWITH`, `ENDSWITH`, and `LIKE` with its `*`/`?` wildcards and `\` escapes), the
+    connectives (`AND`/`&&`, `OR`/`||`, `NOT`/`!`), the constants (`YES`/`NO`/`TRUE`/`FALSE`/
+    `NULL`/`NIL`, numbers, quoted strings), key paths through KVC, and the `[c]` modifier;
+  * `NSCompoundPredicate` — which is the TREE the parser produces — `+predicateWithValue:`,
+    `+predicateWithBlock:`, `-evaluateWithObject:`, and the collection filters
+    (`-[NSArray filteredArrayUsingPredicate:]`, `-[NSMutableArray filterUsingPredicate:]`);
+  * REFUSED (provisional, to be settled when the family is taken): `MATCHES`, because a regex
+    engine is a table and none ships; the `[d]` diacritic modifier, for the same reason;
+    `NSExpression` and `NSComparisonPredicate`, which are their own evaluator family; the
+    `ANY`/`ALL`/`NONE`/`SOME` quantifiers and the aggregate key paths; and the
+    `+predicateWithFormat:arguments:` substitution forms.
 
   Recorded BEFORE the code, because the boundary IS the design.
 
@@ -947,7 +991,9 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSCalendar`/`NSTimeZone` (+ `NSDateComponents`) — **SHIPPED (F7)** | a fixed-offset time zone and the Gregorian calendar AS RULES: conversion both ways, field arithmetic with the clamp (31 Jan + 1 month is the last day of February), ranges, and the week rule — all on libc's `struct tm`. Refused by name and asserted ABSENT by the probe: the tz database, DST transitions, the non-Gregorian calendars, the date parser and the formatter |
 | `NSURL` — **SHIPPED (F8)** | the URL as a VALUE: the RFC 3986 parse (scheme/authority/path/query/fragment), the FSH's file-URL ↔ path rules — including the percent-encoded SPACE an FSH path may contain — and the path arithmetic. Refused by name and asserted ABSENT by the probe: the loading system (`NSURLSession`/`NSURLConnection`/`NSURLRequest`), `NSURLComponents`/`NSURLQueryItem`, `NSFileManager` and every filesystem query, and general relative resolution. The URL-taking forms of the file APIs would be built on it and remain absent |
 | KVC (`NSKeyValueCoding`) — **SHIPPED (F9)** | the NAMING RULES: the accessor forms (`-get<Key>`/`-<key>`/`-is<Key>` and `-set<Key>:`), the ivar fallback (`_<key>`/`_is<Key>`/`<key>`/`is<Key>`) through the RUNTIME, key paths, the operators that are folds (`@count`/`@sum`/`@avg`/`@max`/`@min`/`@unionOfObjects`/`@distinctUnionOfObjects`), the two collection MAP forms, and the failure hooks. Refused by name: KVO (a registry of observers, not a naming rule), the mutable proxies, the set-returning operators, and `-takeValue:forKey:` |
-| `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
+| `NSSortDescriptor` (+ the descriptor and function sorts) — **SHIPPED (F10)** | a sort descriptor as a VALUE: (key, ascending, how to compare) with the three comparison kinds (`-compare:`, a `-selector`, a comparator block), `-reversedSortDescriptor`, and the collection forms `-sortedArrayUsingDescriptors:`, `-sortUsingDescriptors:`, `-sortedArrayUsingFunction:context:`, `-sortUsingFunction:context:`. A descriptor CHAIN is lexicographic and the sort is STABLE (ties keep input order). Refused by name: `-allowEvaluation` (a sandbox for untrusted archives, not a sorting rule) and the coder forms (NSCoding is not shipped) |
+| `NSPredicate` — **DESIGNED, NOT STARTED (F11)** | its own little language: the comparison and string operators, `LIKE`, the connectives, constants, key paths through KVC, `[c]`, `NSCompoundPredicate`, the value/block forms and the collection filters. Refused by name: `MATCHES` and `[d]` (no regex engine, no Unicode tables), `NSExpression`/`NSComparisonPredicate`, the quantifiers, and the `:arguments:` substitution forms |
+| compression codecs | their own family |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
 `unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
@@ -1539,3 +1585,54 @@ rule applied in the direction it was written for: a name that ships belongs in t
 that must answer.
 
 `foundation_kvc` 12/12, and `make rootagfs` clean — the gate included.
+
+### F10 landed (2026-09-17): NSSortDescriptor, and the promise a sort breaks silently
+
+`NSSortDescriptor` — the first of the two families the queue's remaining row names — with
+`foundation_sort` **12/12** on the FIRST guest run and `foundation_collection` re-gated at
+**34/34**. The family follows KVC because a descriptor's whole content is a KEY: `-valueForKey:`
+is what makes `@"title"` mean anything, and the comparison methods the collections already had
+are what make the ORDER mean anything. Nothing new was needed to EVALUATE a descriptor — what was
+new is the CHAIN, the three comparison kinds, and one promise.
+
+THE PROMISE IS STABILITY, AND AN UNSTABLE SORT PASSES EVERY OTHER TEST. A chain is
+lexicographic — the first descriptor decides, a TIE falls to the second — and a tie that survives
+the whole chain keeps the INPUT order. The probe measures it directly: `sort-stable` sorts the
+fixture by name alone and requires ann(3) before ann(2), the input order; `sort-chain` adds the
+rank descriptor as a second link and requires exactly those two REVERSED. The pair is what makes
+the two checks say something rather than one check said twice. The implementation got it for
+free, and that was MEASURED rather than assumed: the array helper the comparator sorts already
+used turns out to be an INSERTION sort, which moves an element only while the comparison says
+`NSOrderedDescending`. A comparison sort in place would have broken the promise silently.
+
+THE SELECTOR FORM IS F9's LESSON APPLIED WITHOUT BEING TOLD TWICE. A comparison selector returns
+`NSComparisonResult` — a SCALAR — and `-performSelector:` is typed as returning `id`. F9's probe
+found that class of bug by SEGFAULTING on it; this file asks the runtime for the IMP and calls it
+as what it is, and `sort-selector` is the check that says the lesson took.
+
+TWO SMALLER THINGS THE BUILD AND THE PROBE SETTLED:
+
+  * the first build refused `- (id)copyWithZone:(nullable NSZone *)zone` — `NSCopying` declares it
+    NONNULL, so the specifier conflicted. That named the cause of two warnings F7 had carried
+    silently: `NSDateComponents.h` and `NSCalendar.h` both re-declared the INHERITED `-init` as
+    `nullable`. All three are fixed — a re-declaration cannot loosen a specifier it inherits;
+  * the nil rule is STATED rather than invented: a key whose value is nil raises, and
+    `sort-nil-value` asserts the PAIR that makes that meaningful — four objects with nil values
+    raise, while a ONE-element array, which has nothing to compare, does not. "It raised" alone
+    would pass for a throw from anywhere else.
+
+TWO REFUSALS, NEITHER A GAP IN SORTING: `-allowEvaluation`/`-isEvaluationAllowed` (a sandbox for
+UNTRUSTED archives — a security policy, not an ordering rule) and the coder forms (they belong to
+an NSCoding family this library does not ship). `sort-refusals` asserts both absent.
+
+`foundation_sort` 12/12, `foundation_collection` 34/34, and `make rootagfs` clean — the gate
+included.
+
+### F11 — `NSPredicate`: the boundary is recorded, the code is not
+
+`NSPredicate` is DESIGNED, NOT STARTED. §5 records the intent so that the next step is a
+decision rather than a blank page: the comparison and string operators, `LIKE` with its `*`/`?`
+wildcards, the connectives, constants, key paths through KVC, `[c]`, `NSCompoundPredicate` and the
+two collection filters ship; `MATCHES` and `[d]` do not, because a regex engine is a table and
+none ships here, and neither do `NSExpression`/`NSComparisonPredicate`, the quantifiers, or the
+`:arguments:` substitution forms.

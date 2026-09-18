@@ -13,6 +13,7 @@
 #import <foundation/NSString.h>
 #import <foundation/NSException.h>
 #import <foundation/NSIndexSet.h>
+#import <foundation/NSSortDescriptor.h>
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
@@ -325,6 +326,46 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 		return [[NSArray alloc] initWithArray:self];
 	}
 	return array_sorted_with_comparator(self, comparator);
+}
+
+/* THE DESCRIPTOR CHAIN, and the reason the helper above is an INSERTION sort: it moves an element
+ * only while the comparison says NSOrderedDescending, so two elements that compare EQUAL keep
+ * the order they arrived in. A chain PROMISES that (F10), and the probe measures the promise
+ * rather than assuming it. The chain itself is the other half of the rule: the first descriptor
+ * decides, and only a TIE falls through to the next. */
+- (NSArray *)sortedArrayUsingDescriptors:(NSArray *)sortDescriptors
+{
+	NSUInteger count = [sortDescriptors count];
+
+	if (count == 0) {
+		return [[NSArray alloc] initWithArray:self];
+	}
+	return array_sorted_with_comparator(self, ^NSComparisonResult(id left, id right) {
+		NSUInteger d;
+
+		for (d = 0; d < count; d++) {
+			NSSortDescriptor *descriptor = [sortDescriptors objectAtIndex:d];
+			NSComparisonResult order = [descriptor compareObject:left toObject:right];
+
+			if (order != NSOrderedSame) {
+				return order;
+			}
+		}
+		return NSOrderedSame;
+	});
+}
+
+/* A C FUNCTION COMPARATOR is a function POINTER, not a table — so it is a rule like the rest,
+ * and `context` is handed back to it untouched. */
+- (NSArray *)sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator
+			      context:(nullable void *)context
+{
+	if (comparator == NULL) {
+		return [[NSArray alloc] initWithArray:self];
+	}
+	return array_sorted_with_comparator(self, ^NSComparisonResult(id left, id right) {
+		return (NSComparisonResult)comparator(left, right, context);
+	});
 }
 
 - (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
@@ -797,6 +838,16 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 		return;
 	}
 	[self setArray:array_sorted_with_comparator(self, comparator)];
+}
+
+- (void)sortUsingDescriptors:(NSArray *)sortDescriptors
+{
+	[self setArray:[self sortedArrayUsingDescriptors:sortDescriptors]];
+}
+
+- (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context
+{
+	[self setArray:[self sortedArrayUsingFunction:comparator context:context]];
 }
 
 - (void)replaceObjectsInRange:(NSRange)range

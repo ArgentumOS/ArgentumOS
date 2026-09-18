@@ -307,6 +307,7 @@ int main(void)
 			"arrayByAddingObject:", "arrayByAddingObjectsFromArray:",
 			"subarrayWithRange:", "getObjects:range:", "componentsJoinedByString:",
 			"sortedArrayUsingSelector:", "sortedArrayUsingComparator:",
+			"sortedArrayUsingDescriptors:", "sortedArrayUsingFunction:context:",
 			"enumerateObjectsUsingBlock:",
 			"objectsAtIndexes:", "indexesOfObjectsPassingTest:",
 			"isEqualToArray:", "isEqual:", "hash", "description", "copy", "mutableCopy",
@@ -327,16 +328,16 @@ int main(void)
 			"replaceObjectsInRange:withObjectsFromArray:range:",
 			"setArray:", "exchangeObjectAtIndex:withObjectAtIndex:",
 			"sortUsingSelector:", "sortUsingComparator:",
+			"sortUsingDescriptors:", "sortUsingFunction:context:",
 			"insertObjects:atIndexes:", "removeObjectsAtIndexes:",
 			"replaceObjectsAtIndexes:withObjects:",
 			"setObject:atIndexedSubscript:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs predicates, descriptors or function pointers. */
-			"filteredArrayUsingPredicate:",		/* NSPredicate */
-			"sortedArrayUsingDescriptors:",		/* NSSortDescriptor */
-			"sortedArrayUsingFunction:context:",	/* C function comparators */
-			"sortUsingFunction:context:",		/* C function comparators */
+			/* NSPredicate is DESIGNED, NOT STARTED (F11) — the one name here that waits on a
+			 * family rather than on this one. The descriptor and function-POINTER sorts now
+			 * SHIP (F10, NSSortDescriptor.h), so they moved into the required lists above. */
+			"filteredArrayUsingPredicate:",		/* NSPredicate — F11 */
 			/* NOT absent for want of a class: NSURL SHIPS (F8). These are absent
 			 * because the URL-taking FORM is not written — the plist forms take paths. */
 			"arrayWithContentsOfURL:",		/* the URL-taking forms are not shipped */

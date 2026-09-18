@@ -78,6 +78,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)componentsJoinedByString:(NSString *)separator;
 - (NSArray *)sortedArrayUsingSelector:(SEL)comparator;
 - (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator;
+/* THE DESCRIPTOR FORMS (F10). `sortDescriptors` is an ARRAY because a sort is a CHAIN: the first
+ * descriptor decides, a tie falls to the second, and a tie that survives the whole chain keeps
+ * the INPUT order — the sort is STABLE, which the probe measures directly. The C-function form
+ * takes `NSInteger (*)(id, id, void *)` and passes `context` straight through. */
+- (NSArray *)sortedArrayUsingDescriptors:(NSArray *)sortDescriptors;
+- (NSArray *)sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator
+			      context:(nullable void *)context;
 - (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block;
 
 /* The NSIndexSet forms. -objectsAtIndexes: RAISES NSRangeException for an index
@@ -119,6 +126,8 @@ NS_ASSUME_NONNULL_BEGIN
 			  range:(NSRange)otherRange;
 - (void)sortUsingComparator:(NSComparator)comparator;
 - (void)sortUsingSelector:(SEL)comparator;
+- (void)sortUsingDescriptors:(NSArray *)sortDescriptors;
+- (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context;
 
 /* The NSIndexSet forms. The counts of objects and indexes must AGREE, and the
  * mismatches raise NSInvalidArgumentException because the message is the only

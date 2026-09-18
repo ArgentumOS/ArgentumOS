@@ -108,7 +108,9 @@ typedef enum {
 /* nil for an identifier this library does not implement — see the list above. */
 + (nullable NSCalendar *)calendarWithIdentifier:(NSString *)identifier;
 
-- (nullable id)init;
+/* -init is inherited from NSObject and is NOT re-declared: a nullable re-declaration
+ * of it conflicts with the inherited nonnull specifier (the warning F10's first build
+ * named, after F7 had carried it silently). */
 - (nullable id)initWithCalendarIdentifier:(NSString *)identifier;	/* nil for the refused ones */
 
 - (NSString *)identifier;

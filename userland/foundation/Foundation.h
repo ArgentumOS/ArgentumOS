@@ -41,5 +41,6 @@
 #import <foundation/NSPropertyListSerialization.h>
 #import <foundation/NSURL.h>
 #import <foundation/NSKeyValueCoding.h>
+#import <foundation/NSSortDescriptor.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

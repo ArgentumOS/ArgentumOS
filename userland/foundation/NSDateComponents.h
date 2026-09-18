@@ -57,9 +57,11 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 /* NSDateComponents is a mutable bag, so `+new` is the way to make one; there is
- * no factory because Cocoa has none either. -init starts every field UNDEFINED,
- * and is nullable like every constructor whose init checks [super init]. */
-- (nullable id)init;
+ * no factory because Cocoa has none either. -init starts every field UNDEFINED.
+ * It is NOT re-declared here: NSObject already declares -init, and a re-declaration
+ * carrying `nullable` conflicts with that inherited nonnull specifier (the F6
+ * region makes NSObject's -init nonnull). A failed [super init] still answers nil;
+ * what changed is that the header no longer says it twice. */
 
 - (NSInteger)era;
 - (void)setEra:(NSInteger)value;
