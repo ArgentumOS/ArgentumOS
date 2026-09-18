@@ -2086,3 +2086,45 @@ abbreviation to ONE chosen zone, and ICU has the abbreviations without the curat
 one would be a guess dressed as data (its own sub-step); and the deprecated
 `+timeZoneWithName:data:` / `-data` pair, whose blob is a serialization format belonging to the
 coder family this library has not built.
+
+### F13.7c landed (2026-09-18): `NSNumberFormatter`, the second un-refused data family
+
+**`foundation_numberformatter` 15/15 on a guest boot.** A whole class, and one whose absence was
+plain in §10's table. **No format is encoded in it either.**
+
+**Order note, stated because it was deliberate:** the plan's sub-step order put the non-Gregorian
+calendars first. `NSNumberFormatter` went first instead because it is SELF-CONTAINED — a new class
+with its own probe and no way to disturb an existing gate — while the calendars mean reworking
+`NSCalendar`, the most-tested class in the library. The calendars are still next.
+
+**The style enum maps onto ICU WHOLESALE**, which is the fidelity this binding buys: decimal,
+currency, percent, scientific, and then three the house could never have written from rules —
+SPELL-OUT (`42` is "forty-two"), ORDINAL (`3` is "3rd"), and the currency variants ISO-code,
+plural and accounting. Nothing in the class encodes a format.
+
+**One design rule worth keeping:** WHAT ICU CAN HOLD, ICU HOLDS. Only `-setNumberStyle:`,
+`-setLocale:` and `-setFormat:` rebuild the formatter; every other setting is an ICU attribute
+written straight through and read straight back — so `-minimumFractionDigits` and friends answer
+what the DATA says rather than what this file remembers saying. Only three things are the class's
+own, because ICU has no notion of them: `zeroSymbol` (ICU's `UNUM_ZERO_DIGIT_SYMBOL` is the digit
+used INSIDE a number, not the string for a zero VALUE), `nilSymbol`, and `allowsFloats`.
+
+**THE PROBE FOUND A REAL BUG, and it is the kind only a data-dependent check finds:**
+`nf-int64-exact` failed with `9,007,199,254,740,992` where the answer is `…993`. The cause was
+MINE: `-stringFromNumber:` read the value as a `double` BEFORE choosing the 64-bit door, and 2^53+1
+does not survive a double — so the door chosen "for large integers" was already too late. The fix
+is to let **the number's own `-objCType`** choose the door, which is Apple's rule too.
+
+**And one measured limitation, recorded rather than hidden:** `-copyWithZone:` writes back the core
+settings, and deliberately not the symbols or the affixes. Writing those back was tried, and the
+probe refused it twice in two different ways — with the symbols back the copy still formatted but a
+grouping separator set on it *afterwards* stopped taking effect; with the affixes back as well it
+formatted NOTHING. That fits ICU's shape: its AFFIXES ARE PATTERN COMPONENTS, so writing back the
+empty prefix and suffix a decimal style reports rebuilds the pattern into something degenerate. A
+copy is made from the same style and locale, so ICU's own defaults for it are the same symbols the
+original started with — what a copy does not carry is a symbol a CALLER changed, which is a
+smaller thing than a copy that cannot format.
+
+**ICU 76 API fact this cost:** the ATTRIBUTE doors (`unum_getAttribute`/`unum_setAttribute`) take NO
+`UErrorCode`, unlike the symbol and text-attribute doors — passing one is a compile error, "expected
+2, have 3". The contrast is real and recorded in the file.

@@ -45,5 +45,6 @@
 #import <foundation/NSPredicate.h>
 #import <foundation/NSFormatter.h>
 #import <foundation/NSDateFormatter.h>
+#import <foundation/NSNumberFormatter.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
