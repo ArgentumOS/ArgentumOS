@@ -1,0 +1,80 @@
+/*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
+ * NSThread — a thread as an object. F13.17, docs/design/foundation-plan.md §10.
+ *
+ * THE MECHANISM IS PTHREADS, as §10's table says, and THE IDENTITY IS A THREAD-LOCAL KEY: a thread's
+ * object is made the first time anything asks for it and then belongs to that thread, so
+ * `+currentThread` answers the same object for as long as the thread lives — through the key rather
+ * than through a table keyed by thread id, which would need locking to read.
+ *
+ * WHAT IS HERE is the part a program uses: identity (`+currentThread`, `+mainThread`, `-isMainThread`),
+ * a name, starting a thread by target and selector — the pre-blocks API, because this library has no
+ * blocks in its public headers — sleeping, and cancellation as a FLAG the thread may consult.
+ *
+ * WHAT IS NOT, named: `-threadDictionary`, which needs a per-thread associative store this library has
+ * no home for; `-stackSize`; the quality-of-service and priority doors; and `-main`, which is a
+ * run-loop concept. Cancellation is a flag and NOT a signal: nothing here interrupts a thread, so a
+ * thread that never asks is never cancelled — which is Cocoa's contract too, and worth stating
+ * because it is the one thing about cancellation that surprises people.
+ */
+
+#ifndef FOUNDATION_NSTHREAD_H
+#define FOUNDATION_NSTHREAD_H
+
+#import <foundation/NSObject.h>
+#import <foundation/NSObjCRuntime.h>
+/* NSTimeInterval IS DECLARED IN NSDate.h and this header names it — the same dependency NSProcessInfo
+ * had to declare, and the compiler says so rather than accepting an implicit int. */
+#import <foundation/NSDate.h>
+
+@class NSString;
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface NSThread : NSObject
+{
+	id _target;
+	SEL _selector;
+	id _argument;
+	NSString *_name;
+	unsigned long _threadID;	/* a pthread_t, kept as an integer so pthreads stays out of here */
+	BOOL _isMain;
+	BOOL _cancelled;
+	BOOL _executing;
+	BOOL _finished;
+}
+
++ (NSThread *)currentThread;
++ (NSThread *)mainThread;
++ (BOOL)isMainThread;
+- (BOOL)isMainThread;
+
+- (nullable NSString *)name;
+- (void)setName:(nullable NSString *)name;
+
+- (BOOL)isCancelled;
+- (void)cancel;
+- (BOOL)isExecuting;
+- (BOOL)isFinished;
+
++ (void)sleepForTimeInterval:(NSTimeInterval)interval;
++ (void)sleepUntilDate:(NSDate *)date;
+
+- (instancetype)initWithTarget:(id)target
+		      selector:(SEL)selector
+			object:(nullable id)argument;
++ (void)detachNewThreadSelector:(SEL)selector
+		       toTarget:(id)target
+		     withObject:(nullable id)argument;
+- (void)start;
+
+- (NSString *)description;
+
+@end
+
+NS_ASSUME_NONNULL_END
+
+#endif /* FOUNDATION_NSTHREAD_H */

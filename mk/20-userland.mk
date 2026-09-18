@@ -143,7 +143,9 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/nsfilemanager.m \
 	$(FOUNDATION_SRC)/fnurl.h \
 	$(FOUNDATION_SRC)/nsurlcomponents.m \
-	$(FOUNDATION_SRC)/nsregularexpression.m
+	$(FOUNDATION_SRC)/nsregularexpression.m \
+	$(FOUNDATION_SRC)/nslock.m \
+	$(FOUNDATION_SRC)/nsthread.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
@@ -154,6 +156,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSFileManager.h \
 	$(FOUNDATION_SRC)/NSURLComponents.h \
 	$(FOUNDATION_SRC)/NSRegularExpression.h \
+	$(FOUNDATION_SRC)/NSLock.h \
+	$(FOUNDATION_SRC)/NSThread.h \
 	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
 	$(FOUNDATION_SRC)/NSDictionary.h $(FOUNDATION_SRC)/NSError.h \
 	$(FOUNDATION_SRC)/NSException.h $(FOUNDATION_SRC)/NSCharacterSet.h \
@@ -350,12 +354,18 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# <regex.h> and nothing else new.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nsregularexpression.m -o .build/foundation-nsregularexpression.o
+	# F13.17: the locking classes and NSThread, over the pthreads musl already ships. These are the
+	# only two sources here that include <pthread.h>.
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nslock.m -o .build/foundation-nslock.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nsthread.m -o .build/foundation-nsthread.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
 		.build/foundation-ndata.o .build/foundation-ndate.o \
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
-		.build/foundation-nerror.o .build/foundation-nexception.o .build/foundation-nscoder.o .build/foundation-nskeyedarchiver.o .build/foundation-nsprocessinfo.o .build/foundation-nsfilemanager.o .build/foundation-nsurlcomponents.o .build/foundation-nsregularexpression.o \
+		.build/foundation-nerror.o .build/foundation-nexception.o .build/foundation-nscoder.o .build/foundation-nskeyedarchiver.o .build/foundation-nsprocessinfo.o .build/foundation-nsfilemanager.o .build/foundation-nsurlcomponents.o .build/foundation-nsregularexpression.o .build/foundation-nslock.o .build/foundation-nsthread.o \
 		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
 		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/foundation-nskeyvalueobserving.o .build/foundation-nsexpression.o .build/foundation-nscomparisonpredicate.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
@@ -687,6 +697,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/foundation-regex.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_regex"
+	# foundation_thread: F13.17 acceptance. ONE unit, only <foundation/Foundation.h> plus
+	# <sys/time.h> for the elapsed-time measurements.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_thread.m -o .build/foundation-thread.o
+	$(MUSL64_OBJC) .build/foundation-thread.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_thread"
 	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
 	# same shape as the date one: ONE unit (the claim is data), only <foundation/Foundation.h>, and
 	# it links the Foundation library, where ICU is bound.

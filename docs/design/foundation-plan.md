@@ -2757,3 +2757,34 @@ The cheapest complete piece of it is the LOCKS and `NSThread` over pthreads; `NS
 attempted in one breath with the locks.
 
 Next: `NSLock`/`NSRecursiveLock`/`NSCondition` and `NSThread`, over the pthreads musl already ships.
+
+### F13.17 landed (2026-09-18): the locks and NSThread — and TWO facts about this tree
+
+**`foundation_thread` 9/9 on a guest boot.** `NSLock`, `NSRecursiveLock`, `NSCondition` and `NSThread`
+over musl's pthreads, which is what §10's table named for them. The check that earns its place is
+`lock-serialises-two-threads`: two detached threads and the main thread each add 20000 times to one
+counter under an `NSLock`, and the total is asserted to be EXACTLY 60000 — **a lock that did nothing
+gives a smaller number and nothing else, which is what makes the number the check.**
+
+**FACT ONE, AND IT AFFECTS EVERY FILE IN THIS LIBRARY: THE SOURCES ARE COMPILED WITHOUT `-fobjc-arc`.**
+`FOUNDATION_CFLAGS` has no such flag; the ARC flag is on the PROBES (`-fobjc-arc` appears only in the
+test rules). So the "ARC file" comment at the top of file after file — mine, inherited in style from
+the ones already there — describes something that is not true of how they are built. It cost this
+slice a rewrite: `__bridge_transfer`/`__bridge_retained` are NO-OPS outside ARC, and the compiler said
+so in as many words. `nsthread.m` now holds no ownership at all, uses no bridge cast, and says why.
+
+**FACT TWO IS A KERNEL TRAIT, MEASURED BY CONTRAST:** `+sleepForTimeInterval:` reaches `nanosleep(2)`
+with the right `timespec` and returns IMMEDIATELY — while the lock's deadline loop, which waits on
+`clock_gettime` rather than sleeping, took its full 40ms. That contrast is the evidence, and it matches
+the "FNX timeout-sleep unreliable" trait already on record from the audio work. So the check asserts
+WHAT THE LIBRARY OWNS — a positive interval and an already-past deadline both RETURN, in bounded time —
+and PRINTS the elapsed time instead of asserting it.
+
+**AND THE RECURRING TRAP, for the third time:** `NSTimeInterval` is declared in `NSDate.h`, and a
+header that names it must import it (as `NSProcessInfo.h` learned before this).
+
+**WHAT REMAINS OF §10'S LAST ROW**, named so it is not mistaken for done: `NSRunLoop`, `NSTimer`,
+`NSOperationQueue` and `NSProgress`. Each is its own design — an event loop, a timer wheel, and a
+scheduler — and none of them is half-built here.
+
+Next: `NSRunLoop` and `NSTimer`, which are one design between them.
