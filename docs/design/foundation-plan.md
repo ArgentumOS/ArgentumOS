@@ -2407,3 +2407,37 @@ three are overridden. The counts are a second, index-aligned array beside the in
 **NAMED:** enumeration answers each distinct member once, matching `-allObjects` — the reading that
 agrees with `-count` rather than contradicting it. `NSOrderedSet` remains, and is the last of this
 family.
+
+### F13.8e landed (2026-09-18): NSOrderedSet — and the family is COMPLETE
+
+**`foundation_orderedset` 9/9 and `foundation_string` 27/27 on a guest boot.** `NSOrderedSet` and
+`NSMutableOrderedSet`: an ordered set that holds each value once AND makes the order part of the
+value. That is why it is a SEPARATE class rather than an `NSSet` subclass — an ordered set that
+inherited unordered equality would be lying about what it is.
+
+**THE CHECK THAT EARNS ITS PLACE IS TWO-SIDED:** the same members in a different order are NOT equal,
+while their `-set` views ARE equal to each other. One check therefore pins the difference from both
+directions at once, and it is a statement about ORDER rather than about contents.
+
+**A CORE GAP THE PROBE WALKED INTO, and the second time in this family that a probe found a bug in
+the code it was NOT testing.** `NSString`'s class constructors and `-initWithString:` construct an
+`NSOwnedString` **by name**, so `[NSMutableString stringWithString:@"x"]` answered an IMMUTABLE
+string — whose first mutator then aborted with `-[NSOwnedString appendString:] is not implemented`.
+The fix overrides the inherited constructors on `NSMutableString` so they build with `self` (the class
+the message was sent to), which is what Cocoa's own mutable class does; `-initWithFormat:arguments:`
+adopts the engine's bytes into `self` rather than answering the engine's object. `foundation_string`
+27/27 is the evidence the change is safe.
+
+**ALSO MEASURED:** the house's spelling for an out-parameter C array inside an
+`NS_ASSUME_NONNULL` region — `(id __unsafe_unretained _Nonnull * _Nonnull)` — because the bare form
+is a nullability-completeness ERROR, not a warning.
+
+**THE FAMILY IS COMPLETE:** `NSSet`/`NSMutableSet` (F13.8a), the four KVC collection unions (F13.8b),
+`NSValue`/`NSNull` (F13.8c, with the core allocator fix), `NSCountedSet` (F13.8d) and
+`NSOrderedSet`/`NSMutableOrderedSet` (F13.8e). What §10's table called the first gap in its own
+boundary is now four classes, one core bug in `NSObject` and one in `NSString`, and five probes.
+
+Next in §10's mechanism track: KVO, the expression family (`NSExpression`,
+`NSComparisonPredicate`, `IN`/`BETWEEN` and the quantifiers), `NSCoder`/`NSKeyedArchiver`, the
+FS/process/thread services, `NSURLComponents` and relative resolution, and `NSRegularExpression` on
+musl's engine.

@@ -1545,6 +1545,65 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return [[self alloc] initWithUTF8String:""];
 }
 
+/* ------------------------------------------------------------------ THE INHERITED CONSTRUCTORS
+ *
+ * NSString's class constructors and -initWithString: construct an NSOwnedString BY NAME, so
+ * `[NSMutableString stringWithString:@"x"]` used to answer an IMMUTABLE string — and its first
+ * mutator then aborted with "-[NSOwnedString appendString:] is not implemented". Measured by the
+ * ordered-set probe, which is how this was found. Each override below builds with `self` (the class
+ * the message was sent to) instead, which is what Cocoa's own mutable class does. */
+
++ (id)stringWithString:(NSString *)other
+{
+	return [[self alloc] initWithString:other];
+}
+
++ (id)stringWithUTF8String:(const char *)utf8
+{
+	return [[self alloc] initWithUTF8String:utf8];
+}
+
++ (id)stringWithFormat:(NSString *)format, ...
+{
+	va_list args;
+	id built;
+
+	va_start(args, format);
+	built = [[self alloc] initWithFormat:format arguments:args];
+	va_end(args);
+	return built;
+}
+
++ (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments
+{
+	return [[self alloc] initWithFormat:format arguments:arguments];
+}
+
+- (id)initWithString:(NSString *)other
+{
+	return [self initWithUTF8String:[other UTF8String]];
+}
+
+- (id)initWithFormat:(NSString *)format, ...
+{
+	va_list args;
+
+	va_start(args, format);
+	self = [self initWithFormat:format arguments:args];
+	va_end(args);
+	return self;
+}
+
+- (id)initWithFormat:(NSString *)format arguments:(va_list)arguments
+{
+	/* BUILD WITH THE SUPERCLASS'S ENGINE, THEN ADOPT THE BYTES: the engine answers an NSOwnedString,
+	 * and this object has to stay what it is. */
+	NSString *built = [[NSOwnedString alloc] initWithFormat:format arguments:arguments];
+
+	[self setString:built];
+	return self;
+}
+
 - (id)initWithCapacity:(NSUInteger)capacity
 {
 	(void)capacity;

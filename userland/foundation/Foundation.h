@@ -48,6 +48,8 @@
 #import <foundation/NSNumberFormatter.h>
 #import <foundation/NSSet.h>
 #import <foundation/NSCountedSet.h>
+#import <foundation/NSOrderedSet.h>
+#import <foundation/NSMutableOrderedSet.h>
 #import <foundation/NSValue.h>
 #import <foundation/NSNull.h>
 

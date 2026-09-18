@@ -132,7 +132,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/nsset.m \
 	$(FOUNDATION_SRC)/nsvalue.m \
 	$(FOUNDATION_SRC)/nsnull.m \
-	$(FOUNDATION_SRC)/nscountedset.m
+	$(FOUNDATION_SRC)/nscountedset.m \
+	$(FOUNDATION_SRC)/nsorderedset.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
@@ -151,6 +152,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSValue.h \
 	$(FOUNDATION_SRC)/NSNull.h \
 	$(FOUNDATION_SRC)/NSCountedSet.h \
+	$(FOUNDATION_SRC)/NSOrderedSet.h \
+	$(FOUNDATION_SRC)/NSMutableOrderedSet.h \
 	$(FOUNDATION_SRC)/NSEnumerator.h \
 	$(FOUNDATION_SRC)/NSPropertyListSerialization.h \
 	$(FOUNDATION_SRC)/NSDateComponents.h \
@@ -293,6 +296,10 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# counts — see the file's header for why the array form may not go through the superclass's.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nscountedset.m -o .build/foundation-nscountedset.o
+	# F13.8e: the ordered set and its mutable half, in ONE translation unit (they share no
+	# superclass relation, so there is no NSMutableSet-style reason to split them).
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nsorderedset.m -o .build/foundation-nsorderedset.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
@@ -300,7 +307,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o \
 		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
-		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
+		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
@@ -571,6 +578,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/foundation-nsvalue.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_nsvalue"
+	# foundation_orderedset: F13.8e acceptance. ONE unit, only <foundation/Foundation.h>. A separate
+	# probe from foundation_set because NSOrderedSet is NOT an NSSet subclass: order is its value.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_orderedset.m -o .build/foundation-orderedset.o
+	$(MUSL64_OBJC) .build/foundation-orderedset.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
 	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
 	# same shape as the date one: ONE unit (the claim is data), only <foundation/Foundation.h>, and
 	# it links the Foundation library, where ICU is bound.
