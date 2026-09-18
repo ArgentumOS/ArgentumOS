@@ -24,7 +24,10 @@
 #import <foundation/NSDate.h>
 #import <foundation/NSLocale.h>
 #import <foundation/NSTimeZone.h>
+#import <foundation/NSCalendar.h>
+#import <foundation/NSArray.h>
 #import <foundation/NSException.h>
+#import "fncalendar.h"		/* the shared identifier -> ICU calendar keyword map */
 
 #include <unicode/udat.h>
 #include <unicode/udatpg.h>
@@ -126,6 +129,7 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 		_pattern = nil;
 		_locale = nil;
 		_timeZone = nil;
+		_calendar = nil;
 		[self fnRebuild];
 	}
 	return self;
@@ -144,7 +148,7 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 {
 	UErrorCode status = U_ZERO_ERROR;
 	NSLocale *locale;
-	const char *localeText;
+	char localeText[128];
 	UChar zone[32];
 	int32_t zoneLen = 0;
 	UChar pattern[FN_DF_MAX];
@@ -169,8 +173,19 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	if (locale == nil) {
 		return;			/* nothing sensible to format with; the doors answer nil */
 	}
-	localeText = [[locale localeIdentifier] UTF8String];
-	if (localeText == NULL || localeText[0] == 0) {
+	/* THE CALENDAR IS PART OF THE LOCALE in ICU — `@calendar=<keyword>` — which is how ONE
+	 * formatter can render a Hebrew year or a Japanese era. The keyword comes from the shared map
+	 * (fncalendar.h); with no calendar set, the locale's own is used (Gregorian here). */
+	{
+		const char *keyword = _calendar != nil
+			? fn_calendar_keyword([_calendar identifier]) : NULL;
+
+		snprintf(localeText, sizeof localeText, "%s%s%s",
+			 [[locale localeIdentifier] UTF8String],
+			 keyword != NULL ? "@calendar=" : "",
+			 keyword != NULL ? keyword : "");
+	}
+	if (localeText[0] == 0) {
 		return;
 	}
 
@@ -186,10 +201,14 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 		_formatter = udat_open(fn_df_style(_timeStyle), fn_df_style(_dateStyle), localeText,
 				       zoneLen > 0 ? zone : NULL, zoneLen, NULL, 0, &status);
 	} else {
-		/* No pattern and no style: the formatter has been given nothing to say. It is NOT
-		 * broken — see -stringFromDate:, which answers the empty string for exactly this. */
-		_formatter = NULL;
-		return;
+		/* NO pattern and NO style: the formatter still EXISTS, with the locale's default styles —
+		*and it has to*, because the SYMBOL arrays and -setLocalizedDateFormatFromTemplate: ask the
+		 * DATA questions, and a formatter with no ICU handle behind it cannot answer them. (Measured:
+		 * the symbol checks came back empty until this branch stopped leaving the handle NULL.)
+		 * -stringFromDate: still answers the EMPTY string in this state, and that decision belongs
+		 * at that door, where it now lives. */
+		_formatter = udat_open(UDAT_DEFAULT, UDAT_DEFAULT, localeText,
+				       zoneLen > 0 ? zone : NULL, zoneLen, NULL, 0, &status);
 	}
 	if (U_FAILURE(status) || _formatter == NULL) {
 		_formatter = NULL;
@@ -209,11 +228,14 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	if (date == nil) {
 		return nil;
 	}
+	/* NOTHING REQUESTED IS DECIDED HERE, not by a missing handle: a formatter with no pattern and
+	 * no style has no field to render, so the answer is the empty string — Apple's behaviour — and
+	 * the ICU handle may well exist behind it, because the SYMBOL doors need one. */
+	if (_pattern == nil && _dateStyle == NSDateFormatterNoStyle
+	    && _timeStyle == NSDateFormatterNoStyle) {
+		return @"";
+	}
 	if (_formatter == NULL) {
-		if (_pattern == nil && _dateStyle == NSDateFormatterNoStyle
-		    && _timeStyle == NSDateFormatterNoStyle) {
-			return @"";	/* nothing was requested, so no field is formatted */
-		}
 		return nil;
 	}
 	length = udat_format((UDateFormat *)_formatter,
@@ -410,6 +432,7 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	copy->_pattern = _pattern;
 	copy->_locale = _locale;
 	copy->_timeZone = _timeZone;
+	copy->_calendar = _calendar;
 	copy->_dateStyle = _dateStyle;
 	copy->_timeStyle = _timeStyle;
 	copy->_lenient = _lenient;
@@ -426,6 +449,203 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 					  pattern != nil ? pattern : @"(from styles)",
 					  _locale != nil ? [_locale localeIdentifier] : @"(current)",
 					  _timeZone != nil ? [_timeZone name] : @"(system)"];
+}
+
+/* --- the calendar, the symbols, and the knobs (F13.7e) -------------------- */
+
+- (nullable NSCalendar *)calendar
+{
+	return _calendar;
+}
+
+- (void)setCalendar:(nullable NSCalendar *)calendar
+{
+	if (calendar == _calendar) {
+		return;
+	}
+	_calendar = calendar;
+	[self fnRebuild];
+}
+
+/* ONE HELPER FOR THE ARRAYS, because fourteen getters that each did the same loop would be
+ * fourteen chances to write the loop differently. `first`/`count` are ICU's index range for the
+ * symbol type: months from 0, weekdays from UCAL_SUNDAY (1), eras and AM/PM from 0. The array
+ * STOPS when the data does — which is how a thirteen-month Hebrew year yields thirteen month
+ * symbols without this file knowing anything about the Hebrew calendar. */
+- (nullable NSArray *)fnSymbols:(UDateFormatSymbolType)type
+			  first:(int32_t)first
+			  count:(int32_t)count
+{
+	NSMutableArray *out;
+	int32_t i;
+
+	if (_formatter == NULL) {
+		return nil;
+	}
+	out = [NSMutableArray array];
+	for (i = 0; i < count; i++) {
+		UChar symbol[64];
+		UErrorCode status = U_ZERO_ERROR;
+		int32_t length = udat_getSymbols((UDateFormat *)_formatter, type, first + i, symbol, 64,
+							 &status);
+		NSString *text;
+
+		if (U_FAILURE(status)) {
+			break;		/* no more symbols in the data */
+		}
+		text = fn_df_string(symbol, length);
+		[out addObject:text != nil ? text : @""];
+	}
+	return out;
+}
+
+- (nullable NSArray *)eraSymbols
+{
+	return [self fnSymbols:UDAT_ERAS first:0 count:2];
+}
+
+- (nullable NSArray *)monthSymbols
+{
+	return [self fnSymbols:UDAT_MONTHS first:0 count:13];
+}
+
+- (nullable NSArray *)shortMonthSymbols
+{
+	return [self fnSymbols:UDAT_SHORT_MONTHS first:0 count:13];
+}
+
+- (nullable NSArray *)veryShortMonthSymbols
+{
+	return [self fnSymbols:UDAT_NARROW_MONTHS first:0 count:13];
+}
+
+- (nullable NSArray *)standaloneMonthSymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_MONTHS first:0 count:13];
+}
+
+- (nullable NSArray *)weekdaySymbols
+{
+	return [self fnSymbols:UDAT_WEEKDAYS first:UCAL_SUNDAY count:7];
+}
+
+- (nullable NSArray *)shortWeekdaySymbols
+{
+	return [self fnSymbols:UDAT_SHORT_WEEKDAYS first:UCAL_SUNDAY count:7];
+}
+
+- (nullable NSArray *)veryShortWeekdaySymbols
+{
+	return [self fnSymbols:UDAT_NARROW_WEEKDAYS first:UCAL_SUNDAY count:7];
+}
+
+- (nullable NSArray *)standaloneWeekdaySymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_WEEKDAYS first:UCAL_SUNDAY count:7];
+}
+
+- (nullable NSArray *)quarterSymbols
+{
+	return [self fnSymbols:UDAT_QUARTERS first:0 count:4];
+}
+
+- (nullable NSArray *)shortQuarterSymbols
+{
+	return [self fnSymbols:UDAT_SHORT_QUARTERS first:0 count:4];
+}
+
+- (nullable NSString *)amSymbol
+{
+	UChar symbol[64];
+	UErrorCode status = U_ZERO_ERROR;
+	int32_t length;
+
+	if (_formatter == NULL) {
+		return nil;
+	}
+	length = udat_getSymbols((UDateFormat *)_formatter, UDAT_AM_PMS, 0, symbol, 64, &status);
+	if (U_FAILURE(status)) {
+		return nil;
+	}
+	return fn_df_string(symbol, length);
+}
+
+- (nullable NSString *)pmSymbol
+{
+	UChar symbol[64];
+	UErrorCode status = U_ZERO_ERROR;
+	int32_t length;
+
+	if (_formatter == NULL) {
+		return nil;
+	}
+	length = udat_getSymbols((UDateFormat *)_formatter, UDAT_AM_PMS, 1, symbol, 64, &status);
+	if (U_FAILURE(status)) {
+		return nil;
+	}
+	return fn_df_string(symbol, length);
+}
+
+- (void)setLocalizedDateFormatFromTemplate:(NSString *)template
+{
+	NSLocale *locale = _locale != nil ? _locale : [NSLocale currentLocale];
+	UDateTimePatternGenerator *generator;
+	UChar skeleton[FN_DF_MAX];
+	UChar pattern[FN_DF_MAX];
+	UErrorCode status = U_ZERO_ERROR;
+	int32_t skeletonLen = 0;
+	int32_t patternLen = 0;
+
+	if (template == nil || _formatter == NULL || locale == nil) {
+		return;
+	}
+	/* The locale's borrowed bytes are consumed by the open, and only then the template's. */
+	generator = udatpg_open([[locale localeIdentifier] UTF8String], &status);
+	if (U_FAILURE(status) || generator == NULL) {
+		return;
+	}
+	status = U_ZERO_ERROR;
+	u_strFromUTF8(skeleton, FN_DF_MAX, &skeletonLen, [template UTF8String], -1, &status);
+	if (U_SUCCESS(status)) {
+		status = U_ZERO_ERROR;
+		patternLen = udatpg_getBestPattern(generator, skeleton, skeletonLen, pattern, FN_DF_MAX,
+						   &status);
+	}
+	udatpg_close(generator);
+	if (U_FAILURE(status) || patternLen <= 0) {
+		return;
+	}
+	status = U_ZERO_ERROR;
+	/* NO STATUS HERE: udat_applyPattern is a 4-argument door (format, localized, pattern, length)
+	 * with no UErrorCode — the same shape as the number formatter's attribute doors, and the
+	 * second time this slice has paid for assuming otherwise (measured: "expected 4, have 5"). */
+	udat_applyPattern((UDateFormat *)_formatter, false, pattern, patternLen);
+	/* AND THE PATTERN IS REMEMBERED, because the formatter's own doors consult it: -stringFromDate:
+	 * decides "nothing was requested" from _pattern and the styles, so a formatter whose ICU handle
+	 * carries a template-derived pattern while _pattern stayed nil would answer the empty string.
+	 * (Measured: that is exactly what it did.) */
+	_pattern = fn_df_string(pattern, patternLen);
+}
+
+- (NSDateFormatterBehavior)formatterBehavior
+{
+	return NSDateFormatterBehavior10_4;
+}
+
+- (void)setFormatterBehavior:(NSDateFormatterBehavior)behavior
+{
+	if (behavior == NSDateFormatterBehavior10_0) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-setFormatterBehavior: takes the modern behaviour "
+				   "(NSDateFormatterBehavior10_4, which is what "
+				   "NSDateFormatterBehaviorDefault means here): the 10.0 formatter's "
+				   "rules are a different set and do not ship"];
+	}
+}
+
+- (BOOL)generatesCalendarDates
+{
+	return NO;
 }
 
 @end

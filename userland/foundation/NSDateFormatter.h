@@ -37,6 +37,8 @@
 @class NSDate;
 @class NSLocale;
 @class NSTimeZone;
+@class NSCalendar;
+@class NSArray;
 
 /* Apple's styles, and the raw values are APPLE'S so a stored integer still means the same thing. */
 typedef enum {
@@ -58,6 +60,7 @@ NS_ASSUME_NONNULL_BEGIN
 	NSString *_pattern;			/* nil = the styles decide */
 	NSLocale *_locale;			/* nil = +[NSLocale currentLocale] at build time */
 	NSTimeZone *_timeZone;			/* nil = the system zone */
+	NSCalendar *_calendar;			/* nil = the system calendar (Gregorian) */
 }
 
 - (instancetype)init;
@@ -100,6 +103,48 @@ NS_ASSUME_NONNULL_BEGIN
  * reading; a strict one (the default is LENIENT, as in Cocoa) refuses it. */
 - (BOOL)isLenient;
 - (void)setLenient:(BOOL)flag;
+
+/* THE CALENDAR, and the reason this class needed a shared keyword map (fncalendar.h): setting it
+ * puts `@calendar=<keyword>` into the formatter's locale, so every calendar NSCalendar supports is
+ * one a DATE FORMATTER can render — including the ones whose names are data (the Hebrew months, the
+ * Japanese eras). nil means the system's calendar. */
+- (nullable NSCalendar *)calendar;
+- (void)setCalendar:(nullable NSCalendar *)calendar;
+
+/* THE SYMBOL ARRAYS, read out of the formatter's own data: the month, weekday, era and quarter
+ * names and AM/PM, in the locale's spellings and its own COUNT — a thirteen-month Hebrew year has
+ * thirteen month symbols, which is the kind of thing a hand-written table gets wrong. */
+- (nullable NSArray *)eraSymbols;
+- (nullable NSArray *)monthSymbols;
+- (nullable NSArray *)shortMonthSymbols;
+- (nullable NSArray *)veryShortMonthSymbols;
+- (nullable NSArray *)standaloneMonthSymbols;
+- (nullable NSArray *)weekdaySymbols;
+- (nullable NSArray *)shortWeekdaySymbols;
+- (nullable NSArray *)veryShortWeekdaySymbols;
+- (nullable NSArray *)standaloneWeekdaySymbols;
+- (nullable NSArray *)quarterSymbols;
+- (nullable NSArray *)shortQuarterSymbols;
+- (nullable NSString *)amSymbol;
+- (nullable NSString *)pmSymbol;
+
+/* CLDR'S SKELETON, APPLIED: the same question +dateFormatFromTemplate:options:locale: answers, but
+ * asked of THIS formatter, so its locale, calendar and zone decide the pattern. */
+- (void)setLocalizedDateFormatFromTemplate:(NSString *)template;
+
+/* THE BEHAVIOUR KNOBS. Only ONE behaviour exists here and it is the modern one — Apple's
+ * NSDateFormatterBehavior10_4, which is what NSDateFormatterBehaviorDefault MEANS on any current
+ * system. The legacy behaviour is refused rather than accepted and ignored. */
+typedef enum {
+	NSDateFormatterBehaviorDefault = 0,
+	NSDateFormatterBehavior10_0 = 1000,
+	NSDateFormatterBehavior10_4 = 1040
+} NSDateFormatterBehavior;
+
+- (NSDateFormatterBehavior)formatterBehavior;
+- (void)setFormatterBehavior:(NSDateFormatterBehavior)behavior;
+/* NO, always: this class answers NSDate values and nothing else. */
+- (BOOL)generatesCalendarDates;
 
 @end
 

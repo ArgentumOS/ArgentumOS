@@ -279,6 +279,85 @@ int main(void)
 		      [NSString stringWithFormat:@"winter=%@ summer=%@", winter, summer]);
 	}
 
+	{
+		/* F13.7e: THE SYMBOL ARRAYS COME OUT OF THE DATA — the locale's own month and weekday
+		 * spellings, read from the formatter ICU built. Nothing in this probe encodes a name. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSArray *deMonths;
+		NSArray *deWeekdays;
+		NSArray *enMonths;
+
+		[formatter setLocale:de];
+		deMonths = [formatter monthSymbols];
+		deWeekdays = [formatter weekdaySymbols];
+		[formatter setLocale:en];
+		enMonths = [formatter monthSymbols];
+		/* THE COUNT IS "AS MANY AS THE DATA HAS", not exactly twelve: ICU answers a thirteenth
+		 * month slot with an empty string rather than an error, so a Gregorian formatter's month
+		 * array can carry thirteen entries with the last one blank. What matters — and what is
+		 * asserted — is that the NAMES are the locale's. */
+		check("df-symbols",
+		      deMonths != nil && [deMonths count] >= 12 &&
+		      [[deMonths objectAtIndex:0] isEqualToString:@"Januar"] &&
+		      [[deMonths objectAtIndex:11] isEqualToString:@"Dezember"] &&
+		      deWeekdays != nil && [deWeekdays count] >= 7 &&
+		      [[deWeekdays objectAtIndex:0] isEqualToString:@"Sonntag"] &&
+		      enMonths != nil && [[enMonths objectAtIndex:0] isEqualToString:@"January"],
+		      [NSString stringWithFormat:@"de[0]=%@ de[11]=%@ deWeekday[0]=%@ en[0]=%@",
+			deMonths != nil && [deMonths count] > 11
+				? [deMonths objectAtIndex:0] : @"?",
+			deMonths != nil && [deMonths count] > 11
+				? [deMonths objectAtIndex:11] : @"?",
+			deWeekdays != nil && [deWeekdays count] > 0
+				? [deWeekdays objectAtIndex:0] : @"?",
+			enMonths != nil && [enMonths count] > 0
+				? [enMonths objectAtIndex:0] : @"?"]);
+	}
+
+	{
+		/* THE CALENDAR REACHES THE FORMATTER (fncalendar.h's whole reason): with a Hebrew calendar
+		 * set, the same instant renders the HEBREW year — 5784 for 2023-11-14 — an answer only the
+		 * data can produce. And the month array grows with the calendar, because a Hebrew leap
+		 * year has thirteen of them. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSCalendar *hebrew = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierHebrew];
+		NSString *text = nil;
+		NSArray *months = nil;
+
+		if (hebrew != nil) {
+			[formatter setLocale:en];
+			[formatter setTimeZone:utc];
+			[formatter setCalendar:hebrew];
+			months = [formatter monthSymbols];
+			[formatter setDateFormat:@"yyyy"];
+			text = [formatter stringFromDate:
+					[NSDate dateWithTimeIntervalSince1970:1700000000.0]];
+		}
+		check("df-calendar-hebrew",
+		      text != nil && [text isEqualToString:@"5784"] &&
+		      months != nil && [months count] >= 12,
+		      [NSString stringWithFormat:@"year=%@ months=%lu", text,
+			(unsigned long)(months != nil ? [months count] : 0)]);
+	}
+
+	{
+		/* THE SKELETON SETTER, applied to THIS formatter: the locale's order, not ours. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSString *pattern;
+		NSString *rendered = nil;
+
+		[formatter setLocale:de];
+		[formatter setTimeZone:utc];
+		[formatter setLocalizedDateFormatFromTemplate:@"yMMMd"];
+		pattern = [formatter dateFormat];
+		rendered = [formatter stringFromDate:when];
+		check("df-template-set",
+		      pattern != nil && [pattern containsString:@"y"] &&
+		      [pattern containsString:@"M"] && [pattern containsString:@"d"] &&
+		      rendered != nil && [rendered containsString:@"2021"],
+		      [NSString stringWithFormat:@"pattern=%@ rendered=%@", pattern, rendered]);
+	}
+
 	printf("FOUNDATION-DATEFORMATTER RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-DATEFORMATTER DONE\n");
 	return failc ? 1 : 0;

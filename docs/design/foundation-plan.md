@@ -2222,3 +2222,52 @@ of borrow is a different question, and ICU's difference does not answer it.
 With this, **every refusal F7 made in the calendar family is closed**: the zone database (F13.7a),
 the non-Gregorian calendars (F13.7b) and the field-wise difference (F13.7e). What remains in the
 family is the formatter's half — `NSDateFormatter`'s `-calendar:` and symbol arrays.
+
+### F13.7f landed (2026-09-18): the formatter's half — and F7's family is COMPLETE
+
+**`foundation_dateformatter` 16/16 on a guest boot.** `-calendar:`/`-setCalendar:`, the SYMBOL
+arrays, `-setLocalizedDateFormatFromTemplate:`, and the behaviour knobs — the last items the
+calendar family was missing.
+
+**A SHARED BRIDGE, because two classes need the same answer.** `fncalendar.m`/`fncalendar.h` is a
+tiny private module holding the identifier → ICU keyword map, so NSCalendar and NSDateFormatter
+cannot disagree about what "hebrew" is. The mapping is mostly the IDENTITY (thirteen of the sixteen
+identifier constants ARE ICU's keywords; only `ethioaa`, `islamic-tbla` and `roc` differ), so what it
+really buys is VALIDATION — an unknown name answers NULL, and nil from the initialiser. NOTE: it
+carries a deliberate, visible duplication of nscalendar.m's static map, recorded in the header for
+whoever has that file open next.
+
+**THE CALENDAR REACHES THE FORMATTER, and the probe proves it the only way that cannot be faked:**
+with a Hebrew calendar set, the same instant renders the HEBREW year — **5784** for 2023-11-14 —
+which no constant in the probe could produce.
+
+**THE SYMBOLS COME OUT OF THE DATA**, through one helper rather than fourteen copies of a loop:
+`Januar`/`Dezember` and `Sonntag` in German, `January` in English, and an array whose LENGTH is the
+data's, not ours.
+
+**THREE THINGS THE PROBE TAUGHT, each fixed at the cause:**
+
+1. **THE ICU HANDLE CANNOT BE ABSENT WHEN THE SYMBOLS ARE ASKED FOR.** `fnRebuild` used to leave it
+   NULL for a formatter with no pattern and no style — which was fine while the only question was
+   "what does this render", and wrong as soon as the SYMBOL doors arrived: they ask the DATA, and a
+   formatter with no handle has no data to ask. The handle is now always built; "nothing was
+   requested" is decided at `-stringFromDate:`, which is where that rule belongs.
+2. **ICU'S MONTH ARRAY CAN CARRY THIRTEEN ENTRIES WITH THE LAST ONE BLANK** — it answers a
+   thirteenth slot with an empty string rather than an error — so the honest assertion is "as many
+   as the data has, and these are the NAMES", not "exactly twelve".
+3. **A TEMPLATE-DERIVED PATTERN MUST BE REMEMBERED**, not only applied: `-setLocalizedDateFormatFromTemplate:`
+   put the pattern into ICU while `_pattern` stayed nil, and the door then answered the empty
+   string. The setter records what it applied.
+
+Also measured: `udat_applyPattern` takes NO `UErrorCode` (4 arguments, not 5) — the second door in
+this program with that shape, after the number formatter's attribute doors.
+
+**THE BUILD TRAP, hit again and worth re-recording:** adding a source to `FOUNDATION_SRCS` gives it
+no compile rule, and `make rootagfs` did not rebuild the library from an edited source until the
+sources were TOUCHED. Both are the tree's recorded behaviour; the rule for a new foundation source
+is therefore: add it to the SRCS list, add its compile rule, add its object to the link line, and
+touch before building.
+
+**F7's family is now COMPLETE**: the parser and formatter, the time-zone database and its DST
+transitions, the non-Gregorian calendars, and the field-wise difference — every refusal that slice
+made, closed with a probe that asserts the data.
