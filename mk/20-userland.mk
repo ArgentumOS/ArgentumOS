@@ -664,6 +664,22 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		libXcursor.so libXfixes.so libXcomposite.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
+	# --- ICU4C (docs/design/foundation-plan.md §10, slice F13): the DATA backend
+	# the Foundation's data-driven families bind - the formatters, the time-zone
+	# names and DST rules, the non-Gregorian calendars, collation and the [d]
+	# fold. Three libraries plus their sonames: the common library, the i18n
+	# library, and the DATA PACKAGE, which --with-data-packaging=library makes a
+	# real shared library (the Debian arrangement). That is why the guest needs no
+	# data path and no ICU_DATA: musl's loader resolves libicudata.so.76 as an
+	# ordinary NEEDED entry, exactly like libz. ICU's own NEEDED closure is the
+	# C++ stack (libc++/libc++abi/libunwind/libc), staged above.
+	@if [ ! -d "$(ICUPREFIX)/lib" ]; then \
+		echo "ICU prefix missing - run tools/icu-build.sh first"; \
+		exit 1; \
+	fi
+	@for l in libicuuc.so libicui18n.so libicudata.so; do \
+		cp -a $(ICUPREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
+	done
 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"

@@ -220,6 +220,11 @@ MUSL64_CLANG_STATIC = $(CURDIR)/tools/musl-clang64-static.sh
 # X11 third-party dependency prefix (built by tools/x11-shared-build.sh;
 # shared .so + static .a coexist since the M2 conversion).
 X11PREFIX     = .build/x11-prefix
+# ICU4C third-party prefix (built by tools/icu-build.sh) - the DATA backend for
+# the Foundation's data-driven families (docs/design/foundation-plan.md §10,
+# slice F13). Same shape as X11PREFIX: a prefix on the build side, staged into
+# /System/Libraries on the guest side.
+ICUPREFIX     = .build/icu-prefix
 # First-party shared libraries (docs/shared-libraries-plan.md): FNX code
 # built as .so's into .build/fnxlib and staged into /System/Libraries.
 FNXLIB        = .build/fnxlib
