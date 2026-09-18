@@ -60,5 +60,6 @@
 #import <foundation/NSProcessInfo.h>
 #import <foundation/NSFileManager.h>
 #import <foundation/NSURLComponents.h>
+#import <foundation/NSRegularExpression.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

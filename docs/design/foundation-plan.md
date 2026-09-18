@@ -2718,3 +2718,42 @@ on `-setQueryItems:`.
 a build cycle, which is the argument for compiling after each file rather than after a batch.
 
 Next: `NSRegularExpression` on musl's engine — the last item named in §10's mechanism track.
+
+### F13.16 landed (2026-09-18): NSRegularExpression — and the track's ONE remaining row
+
+**`foundation_regex` 9/9 on a guest boot.** `NSRegularExpression` and `NSTextCheckingResult` over
+musl's POSIX ERE — the same `<regex.h>` the predicate family's MATCHES already binds, which is the
+decision §10 recorded before this slice existed: the engine lives inside libc, and a second engine
+would only be a second set of behaviours to be wrong about.
+
+**THE CONVERSION IS THE INTERESTING PART, and it is checked where it can be seen.** The engine counts
+BYTES and Cocoa's ranges are UTF-16 units, so every range crosses through one map built per call. An
+ASCII-only test would pass with no conversion at all — so the probe's `regex-utf16-ranges` check uses
+`"héllo wörld"` and asserts the SUBSTRING each range points at.
+
+**A LOOP THAT DID NOT ADVANCE WOULD HANG, NOT FAIL**, which is why `regex-empty-match-advances` exists
+and why its expected value is a count: `a*` on `"bab"` is FOUR matches, because the pattern matches
+nothing at every position. The advance is by one CHARACTER rather than one byte, so it cannot land
+inside a UTF-8 sequence.
+
+**A CALLER IS TOLD WHAT TOOK EFFECT, NOT WHAT WAS ASKED FOR:** four of the options
+(`AllowCommentsAndWhitespace`, `IgnoreMetacharacters`, `UseUnixLineSeparators`,
+`UseUnicodeWordBoundaries`) have no POSIX spelling, so `-options` reports them as absent rather than
+echoing the request back. `DotMatchesLineSeparators` is accepted and changes nothing, because POSIX's
+`.` already matches a newline unless `REG_NEWLINE` is what suppressed it — the header says both
+things.
+
+**A RECURRING TRAP, hit for the second time:** a DICTIONARY LITERAL needs `NSDictionary` DECLARED, and
+F12's codec file recorded the same thing. It cost one build cycle here, at the `regerror` door.
+
+**AND THE TRACK IS NOT QUITE DONE, which this slice's completion is the right moment to state
+exactly.** §10's own table (line 1919) has one row left:
+
+  | `NSThread`, `NSLock`, `NSRecursiveLock`, `NSCondition`, `NSRunLoop`, `NSTimer`,
+    `NSOperationQueue`, `NSProgress` | pthreads (`third_party/musl/src/thread`) + `clone` | mechanism |
+
+The cheapest complete piece of it is the LOCKS and `NSThread` over pthreads; `NSRunLoop`/`NSTimer` and
+`NSOperationQueue` are each their own design (an event loop and a scheduler), and they should not be
+attempted in one breath with the locks.
+
+Next: `NSLock`/`NSRecursiveLock`/`NSCondition` and `NSThread`, over the pthreads musl already ships.
