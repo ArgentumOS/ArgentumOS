@@ -213,6 +213,39 @@ int main(void)
 			(unsigned long)[mutable count]]);
 	}
 
+	{
+		/* NSCountedSet IS AN NSSet THAT REMEMBERS HOW MANY, and it is checked HERE because it IS a
+		 * set: the set semantics have to keep working underneath the counts. The fourth add is a
+		 * DISTINCT object that is merely EQUAL to the first, which is what makes the count a count
+		 * by VALUE rather than by pointer. */
+		NSCountedSet *counted = [NSCountedSet setWithCapacity:3];
+		NSCountedSet *fromArray = [NSCountedSet setWithArray:@[@"x", @"x", @"y"]];
+
+		[counted addObject:@"a"];
+		[counted addObject:@"b"];
+		[counted addObject:@"a"];
+		[counted addObject:[NSString stringWithFormat:@"%s", "a"]];
+		[counted removeObject:@"b"];
+		[counted removeObject:@"b"];	/* gone already: a no-op, and the count must stay 0 */
+		check("set-counted",
+		      counted != nil && [counted count] == 1 &&
+		      [counted countForObject:@"a"] == 3 &&
+		      [counted countForObject:@"b"] == 0 &&
+		      [counted countForObject:@"missing"] == 0 &&
+		      [counted containsObject:@"a"] &&
+		      [[counted allObjects] count] == 1 &&
+		      fromArray != nil && [fromArray count] == 2 &&
+		      [fromArray countForObject:@"x"] == 2 &&
+		      [fromArray countForObject:@"y"] == 1 &&
+		      [fromArray isKindOfClass:[NSSet class]],
+		      [NSString stringWithFormat:@"distinct=%lu a=%lu b=%lu x=%lu y=%lu fromArray=%lu",
+			(unsigned long)[counted count], (unsigned long)[counted countForObject:@"a"],
+			(unsigned long)[counted countForObject:@"b"],
+			(unsigned long)(fromArray != nil ? [fromArray countForObject:@"x"] : 0),
+			(unsigned long)(fromArray != nil ? [fromArray countForObject:@"y"] : 0),
+			(unsigned long)(fromArray != nil ? [fromArray count] : 0)]);
+	}
+
 	printf("FOUNDATION-SET RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-SET DONE\n");
 	return failc ? 1 : 0;

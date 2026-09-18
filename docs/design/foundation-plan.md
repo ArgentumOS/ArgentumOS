@@ -2381,3 +2381,29 @@ NONNULL zone and `isEqual:` a nonnull object in `NSObject`, so `nullable` there 
 `NSMallocException` was the one core exception name the house was missing; it is now defined.
 
 Next in this family: `NSCountedSet` and `NSOrderedSet`.
+
+### F13.8d landed (2026-09-18): NSCountedSet — the set that remembers how many
+
+**`foundation_set` 11/11 on a guest boot** (10 before, +`set-counted`). Checked in the SET's own
+probe because it *is* a set: the set semantics have to keep working underneath the counts.
+
+**THE ONE THING THAT MAKES IT A DIFFERENT COLLECTION:** `-count` is the number of DISTINCT members
+while `-countForObject:` is how many times one of them was added, and the counting is BY VALUE — the
+probe's fourth `-addObject:` is a *distinct* string merely equal to the first, and it increments the
+same count.
+
+**A DESIGN BUG CAUGHT WHILE WRITING THE CHECK, which is the reason the check exists.** The
+initialisers must NOT go through the superclass's array form: `NSSet`'s `-initWithArray:`
+DEDUPLICATES, so `@[@"x", @"x", @"y"]` arrives as two members and the multiplicity — the entire point
+of the class — is gone before the counts are built. They start from an EMPTY set and add one element
+at a time instead, which is why `setWithArray:@[@"x", @"x", @"y"]` answers x=2, y=1.
+
+**AND THE OVERRIDE SET IS DERIVED, NOT GUESSED.** `NSSet`'s `-addObjectsFromArray:`, `-unionSet:`
+and `-minusSet:` already route through `-addObject:`/`-removeObject:`, which land in this subclass, so
+they need no override — while `-intersectSet:`, `-filterUsingPredicate:` and `-removeAllObjects:`
+replace the member array directly (`-fnReplaceMembers:`) and WOULD desynchronise the counts, so those
+three are overridden. The counts are a second, index-aligned array beside the inherited members.
+
+**NAMED:** enumeration answers each distinct member once, matching `-allObjects` — the reading that
+agrees with `-count` rather than contradicting it. `NSOrderedSet` remains, and is the last of this
+family.
