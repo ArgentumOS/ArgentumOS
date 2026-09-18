@@ -319,12 +319,84 @@ int main(void)
 	}
 
 	{
-		/* THE REFUSALS ABSENT AND THE FORMS THAT SHIP PRESENT — the inventory rule in both
-		 * directions: +predicateWithFormat: used to sit on the ABSENT side (F11a) and is now
-		 * required, the same way the sort names moved when F10 landed. */
+		/* THE EXPRESSION DOOR: a comparison built from two NSExpressions instead of parsed — the
+		 * forms the GRAMMAR still refuses (IN, BETWEEN) and the quantifiers (ANY/ALL) included,
+		 * because a caller with expressions in hand never needed a parser. The last term is the
+		 * anti-drift check: the SAME comparison through both doors must answer the same. */
+		NSExpression *five = [NSExpression expressionForConstantValue:@5];
+		NSExpression *ten = [NSExpression expressionForConstantValue:@10];
+		NSExpression *bounds = [NSExpression expressionForConstantValue:@[@1, @7]];
+		NSExpression *list = [NSExpression expressionForConstantValue:@[@3, @5, @7]];
+		NSExpression *caps = [NSExpression expressionForConstantValue:@"ABC"];
+		NSExpression *lower = [NSExpression expressionForConstantValue:@"abc"];
+		NSComparisonPredicate *less =
+			[NSComparisonPredicate predicateWithLeftExpression:five
+						  rightExpression:ten
+							 modifier:NSDirectPredicateModifier
+							     type:NSLessThanPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *greater =
+			[NSComparisonPredicate predicateWithLeftExpression:ten
+						  rightExpression:five
+							 modifier:NSDirectPredicateModifier
+							     type:NSGreaterThanPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *between =
+			[NSComparisonPredicate predicateWithLeftExpression:five
+						  rightExpression:bounds
+							 modifier:NSDirectPredicateModifier
+							     type:NSBetweenPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *in =
+			[NSComparisonPredicate predicateWithLeftExpression:five
+						  rightExpression:list
+							 modifier:NSDirectPredicateModifier
+							     type:NSInPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *any =
+			[NSComparisonPredicate predicateWithLeftExpression:list
+						  rightExpression:five
+							 modifier:NSAnyPredicateModifier
+							     type:NSEqualToPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *all =
+			[NSComparisonPredicate predicateWithLeftExpression:list
+						  rightExpression:five
+							 modifier:NSAllPredicateModifier
+							     type:NSEqualToPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *folded =
+			[NSComparisonPredicate predicateWithLeftExpression:caps
+						  rightExpression:lower
+							 modifier:NSDirectPredicateModifier
+							     type:NSEqualToPredicateOperatorType
+							  options:NSCaseInsensitivePredicateOption];
+		NSPredicate *parsed = [NSPredicate predicateWithFormat:@"5 < 10"];
+
+		check("pred-comparison-expression",
+		      less != nil && [less evaluateWithObject:nil] &&
+		      greater != nil && [greater evaluateWithObject:nil] &&
+		      between != nil && [between evaluateWithObject:nil] &&
+		      in != nil && [in evaluateWithObject:nil] &&
+		      any != nil && [any evaluateWithObject:nil] &&
+		      all != nil && ![all evaluateWithObject:nil] &&
+		      folded != nil && [folded evaluateWithObject:nil] &&
+		      /* THE SAME ANSWER AS THE GRAMMAR'S OWN LEAF, which is what keeps the one rule one. */
+		      parsed != nil && [parsed evaluateWithObject:nil] == [less evaluateWithObject:nil] &&
+		      [[less predicateFormat] isEqualToString:@"5 < 10"],
+		      [[NSString stringWithFormat:@"less=%d all=%d format=%@",
+			(int)[less evaluateWithObject:nil], (int)[all evaluateWithObject:nil],
+			[less predicateFormat]] UTF8String]);
+	}
+
+	{
+		/* THE INVENTORY RULE IN BOTH DIRECTIONS, re-stated: F13.10 landed NSExpression and F13.11
+		 * lands NSComparisonPredicate, so the two names that USED to be required ABSENT are now
+		 * required PRESENT — while the format grammar's own refusals (IN, ANY, `$`) are still
+		 * checked, in format-refusals below. */
 		check("pred-refusals",
-		      objc_getClass("NSExpression") == NULL &&
-		      objc_getClass("NSComparisonPredicate") == NULL &&
+		      objc_getClass("NSExpression") != NULL &&
+		      objc_getClass("NSComparisonPredicate") != NULL &&
 		      ![NSPredicate instancesRespondToSelector:
 			sel_registerName("predicateWithSubstitutionVariables:")] &&
 		      ![NSPredicate instancesRespondToSelector:sel_registerName("allowEvaluation")] &&
@@ -332,8 +404,8 @@ int main(void)
 		      [NSPredicate respondsToSelector:sel_registerName("predicateWithBlock:")] &&
 		      [NSPredicate respondsToSelector:sel_registerName("predicateWithFormat:")] &&
 		      [NSPredicate instancesRespondToSelector:sel_registerName("initWithFormat:")],
-		      "NSExpression, NSComparisonPredicate and substitution are absent; the format "
-		      "grammar is present");
+		      "NSExpression and NSComparisonPredicate are present; substitution is absent; "
+		      "the format grammar is present");
 	}
 
 	{

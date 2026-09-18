@@ -38,7 +38,9 @@ typedef enum {
 	FNCompareBeginsWith,
 	FNCompareEndsWith,
 	FNCompareLike,
-	FNCompareMatches	/* F13.7d: regex, on the engine musl already ships inside libc */
+	FNCompareMatches,	/* F13.7d: regex, on the engine musl already ships inside libc */
+	FNCompareIn,		/* F13.11: membership — reached through NSComparisonPredicate */
+	FNCompareBetween	/* F13.11: an inclusive range, whose right side is two values */
 } FNCompareOperator;
 
 /*
@@ -51,6 +53,15 @@ typedef enum {
  * it never answers nil.
  */
 NSPredicate *FNPredicateParse(NSString *format);
+
+/*
+ * THE COMPARISON RULE ITSELF, shared so that the grammar's LEAF and NSComparisonPredicate cannot
+ * drift apart. NULL is a value here (nothing equals nothing), a string pair goes through the
+ * case/`[d]` rules, and anything else must be able to compare itself. It RAISES on a comparison
+ * that has no answer rather than guessing one.
+ */
+BOOL FNCompareValues(FNCompareOperator op, id _Nullable left, id _Nullable right,
+		     BOOL caseInsensitive, BOOL diacriticInsensitive);
 
 /*
  * One comparison. Each side is EITHER a key path (resolved through KVC, F9) OR a literal — a

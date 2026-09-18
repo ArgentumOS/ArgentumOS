@@ -135,7 +135,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/nscountedset.m \
 	$(FOUNDATION_SRC)/nsorderedset.m \
 	$(FOUNDATION_SRC)/nskeyvalueobserving.m \
-	$(FOUNDATION_SRC)/nsexpression.m
+	$(FOUNDATION_SRC)/nsexpression.m \
+	$(FOUNDATION_SRC)/nscomparisonpredicate.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
@@ -310,6 +311,10 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# header; no ICU and no zlib.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nsexpression.m -o .build/foundation-nsexpression.o
+	# F13.11: the expression-shaped comparison. It shares the comparison rule with the grammar's
+	# leaf through FNCompareValues, so this file states no rule of its own.
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nscomparisonpredicate.m -o .build/foundation-nscomparisonpredicate.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
@@ -317,7 +322,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o \
 		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
-		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/foundation-nskeyvalueobserving.o .build/foundation-nsexpression.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
+		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/foundation-nskeyvalueobserving.o .build/foundation-nsexpression.o .build/foundation-nscomparisonpredicate.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)

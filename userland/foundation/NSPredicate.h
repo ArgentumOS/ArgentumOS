@@ -86,8 +86,81 @@ typedef enum {
 
 @end
 
+/* THE OPERATOR AND MODIFIER TABLES, with Cocoa's names and values: a predicate serialized
+ * somewhere else has to mean the same thing here. */
+typedef NSUInteger NSPredicateOperatorType;
+enum {
+	NSLessThanPredicateOperatorType = 0,
+	NSLessThanOrEqualToPredicateOperatorType = 1,
+	NSGreaterThanPredicateOperatorType = 2,
+	NSGreaterThanOrEqualToPredicateOperatorType = 3,
+	NSEqualToPredicateOperatorType = 4,
+	NSNotEqualToPredicateOperatorType = 5,
+	NSMatchesPredicateOperatorType = 6,
+	NSLikePredicateOperatorType = 7,
+	NSBeginsWithPredicateOperatorType = 8,
+	NSEndsWithPredicateOperatorType = 9,
+	NSInPredicateOperatorType = 10,
+	NSCustomSelectorPredicateOperatorType = 11,
+	NSContainsPredicateOperatorType = 12,
+	NSBetweenPredicateOperatorType = 13
+};
+
+typedef NSUInteger NSComparisonPredicateModifier;
+enum {
+	NSDirectPredicateModifier = 0,
+	NSAllPredicateModifier = 1,
+	NSAnyPredicateModifier = 2
+};
+
+typedef NSUInteger NSPredicateOptions;
+enum {
+	NSCaseInsensitivePredicateOption = 0x01,
+	NSDiacriticInsensitivePredicateOption = 0x02,
+	NSNormalizedPredicateOption = 0x04,
+	NSLocaleSensitivePredicateOption = 0x08
+};
+
+@class NSExpression;
+
 /*
- * THE TREE NODE, and a rule in the plainest sense: ask the children, combine the booleans.
+ * TWO EXPRESSIONS AND AN OPERATOR — the leaf Cocoa's world is built from, and the door that brings
+ * `IN`, `BETWEEN` and the QUANTIFIERS (`ANY`/`ALL`) into this library, none of which the format
+ * GRAMMAR accepts (it still refuses them by name, and that has not changed).
+ *
+ * IT SHARES ITS COMPARISON RULE with the leaf the grammar produces rather than restating it, so the
+ * two cannot answer differently about the same pair of values.
+ */
+@interface NSComparisonPredicate : NSPredicate
+{
+	NSExpression *_left;
+	NSExpression *_right;
+	NSComparisonPredicateModifier _modifier;
+	NSPredicateOperatorType _operatorType;
+	NSPredicateOptions _options;
+}
+
++ (instancetype)predicateWithLeftExpression:(NSExpression *)leftExpression
+			     rightExpression:(NSExpression *)rightExpression
+				    modifier:(NSComparisonPredicateModifier)modifier
+					type:(NSPredicateOperatorType)type
+				     options:(NSPredicateOptions)options;
+- (instancetype)initWithLeftExpression:(NSExpression *)leftExpression
+		       rightExpression:(NSExpression *)rightExpression
+			      modifier:(NSComparisonPredicateModifier)modifier
+				  type:(NSPredicateOperatorType)type
+			       options:(NSPredicateOptions)options;
+
+- (NSExpression *)leftExpression;
+- (NSExpression *)rightExpression;
+- (NSComparisonPredicateModifier)comparisonPredicateModifier;
+- (NSPredicateOperatorType)predicateOperatorType;
+- (NSPredicateOptions)options;
+- (NSString *)predicateFormat;
+
+@end
+
+/* THE TREE NODE, and a rule in the plainest sense: ask the children, combine the booleans.
  * AND of nothing is YES and OR of nothing is NO — the identities, not special cases.
  */
 @interface NSCompoundPredicate : NSPredicate

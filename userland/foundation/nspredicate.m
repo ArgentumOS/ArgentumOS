@@ -20,6 +20,7 @@
 #import <foundation/NSPredicate.h>
 #import <foundation/NSString.h>
 #import <foundation/NSArray.h>
+#import <foundation/NSSet.h>	/* F13.11: IN takes a collection */
 #import <foundation/NSDictionary.h>
 #import <foundation/NSException.h>
 #import <foundation/NSKeyValueCoding.h>	/* the comparison leaf resolves key paths */
@@ -371,6 +372,8 @@ static NSString *fn_operator_name(FNCompareOperator op)
 	if (op == FNCompareBeginsWith) return @"BEGINSWITH";
 	if (op == FNCompareEndsWith) return @"ENDSWITH";
 	if (op == FNCompareMatches) return @"MATCHES";
+	if (op == FNCompareIn) return @"IN";
+	if (op == FNCompareBetween) return @"BETWEEN";
 	return @"LIKE";
 }
 
@@ -480,6 +483,67 @@ static int fn_collation(NSString *left, NSString *right, BOOL caseInsensitive,
 	free(b);
 	ucol_close(collator);
 	return (int)result;
+}
+
+/*
+ * THE ONE COMPARISON RULE, reached from TWO doors. The grammar's leaves ask it directly — they ARE
+ * its operands — and NSComparisonPredicate asks it with BOTH OPERANDS AS LITERALS, which
+ * `fn_operand_value` answers as itself, so the rule is stated once and cannot answer one way when a
+ * predicate was parsed and another when it was built from expressions.
+ *
+ * IN AND BETWEEN LIVE HERE rather than in the leaf's own switch because the GRAMMAR does not
+ * produce them (its header still refuses both by name) while the expression door does.
+ */
+BOOL FNCompareValues(FNCompareOperator op, id _Nullable left, id _Nullable right,
+		     BOOL caseInsensitive, BOOL diacriticInsensitive)
+{
+	if (op == FNCompareIn) {
+		NSArray *members = nil;
+		NSUInteger i;
+
+		if ([right isKindOfClass:[NSSet class]]) {
+			members = [(NSSet *)right allObjects];
+		} else if ([right isKindOfClass:[NSArray class]]) {
+			members = (NSArray *)right;
+		}
+		if (members == nil) {
+			[NSException raise:NSInvalidArgumentException
+				    format:@"IN needs a collection on the right, and this is %@", [right class]];
+		}
+		for (i = 0; i < [members count]; i++) {
+			if (FNCompareValues(FNCompareEqual, left, [members objectAtIndex:i],
+					    caseInsensitive, diacriticInsensitive)) {
+				return YES;
+			}
+		}
+		return NO;
+	}
+	if (op == FNCompareBetween) {
+		NSArray *bounds = [right isKindOfClass:[NSArray class]] ? (NSArray *)right : nil;
+
+		if (bounds == nil || [bounds count] != 2) {
+			[NSException raise:NSInvalidArgumentException
+				    format:@"BETWEEN needs TWO values on the right (low, high), and got %@",
+				   right];
+		}
+		/* INCLUSIVE AT BOTH ENDS: `low <= value && value <= high`. */
+		return FNCompareValues(FNCompareLessOrEqual, [bounds objectAtIndex:0], left,
+				       caseInsensitive, diacriticInsensitive) &&
+		       FNCompareValues(FNCompareLessOrEqual, left, [bounds objectAtIndex:1],
+				       caseInsensitive, diacriticInsensitive);
+	}
+	{
+		FNPredicateComparison *leaf = [[FNPredicateComparison alloc]
+			initWithLeftPath:nil
+			     leftLiteral:left
+				operator:op
+			       rightPath:nil
+			    rightLiteral:right
+			 caseInsensitive:caseInsensitive
+		   diacriticInsensitive:diacriticInsensitive];
+
+		return [leaf evaluateWithObject:nil];
+	}
 }
 
 @implementation FNPredicateComparison

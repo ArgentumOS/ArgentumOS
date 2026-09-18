@@ -43,7 +43,11 @@ THE GRAMMAR (F11b) — the objects are DICTIONARIES, so a key path exercises KVC
   * `format-round-trip`   — parse → render → parse, and the SAME answers from both trees;
   * `format-refusals`     — MATCHES, `[d]`, IN, ANY, `$` and a truncated format all RAISE, and the
                             messages NAME what was refused;
-  * `format-filter`       — a predicate WRITTEN as text, used to filter — the two halves joined.
+  * `format-filter`       — a predicate WRITTEN as text, used to filter — the two halves joined;
+  * `pred-comparison-expression` — NSComparisonPredicate: a comparison built from two NSExpressions
+                            INSTEAD of parsed, which is where IN, BETWEEN and the quantifiers
+                            (ANY/ALL) come from, since the format GRAMMAR still refuses all four —
+                            plus the anti-drift check that both doors answer the same.
 """
 
 import re
@@ -53,7 +57,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_predicate"
 CHECKS = ("pred-value", "pred-block", "pred-and", "pred-or", "pred-not",
           "pred-identities", "pred-nested", "pred-filter", "pred-filter-mutable",
-          "pred-abstract", "pred-nil-filter", "pred-refusals", "cross-tu",
+          "pred-abstract", "pred-nil-filter", "pred-comparison-expression", "pred-refusals",
+          "cross-tu",
           "format-compare", "format-string-ops", "format-like", "format-case",
           "format-connectives", "format-constants", "format-self", "format-numbers",
           "format-round-trip", "format-refusals", "format-matches",

@@ -2539,3 +2539,38 @@ dependency, not a convenience.
 
 Next: `NSComparisonPredicate`, then the coders, the services, `NSURLComponents` and
 `NSRegularExpression`.
+
+### F13.11 landed (2026-09-18): NSComparisonPredicate — and a REGRESSION I had caused and missed
+
+**`foundation_predicate` 28/28 on a guest boot** (27 before, +`pred-comparison-expression`), with the
+`pred-refusals` check repaired. `NSComparisonPredicate` brings the object model the grammar was never
+going to have: `IN`, `BETWEEN` and the QUANTIFIERS (`ANY`/`ALL`), all four of which the FORMAT
+GRAMMAR still refuses by name — its header says so, and that has not changed. A caller with
+expressions in hand never needed a parser.
+
+**ONE RULE, TWO DOORS.** The comparison rule is not restated: `FNCompareValues` is reached by the
+grammar's leaf (those ARE its operands) and by the new class, which asks for it with BOTH OPERANDS AS
+LITERALS — `fn_operand_value` answers a literal as itself — so no format string is involved and the
+rule cannot answer one way when a predicate was parsed and another when it was built. The probe pins
+that with a check that the SAME comparison through both doors answers the same, which is what makes
+the sharing real rather than declared.
+
+**THE QUANTIFIERS ARE THE MODIFIERS**, with the identities rather than special cases: ALL of nothing
+is YES and ANY of nothing is NO. BETWEEN is inclusive at both ends and expressed as two
+`FNCompareLessOrEqual` calls, which is why it needed no comparison logic of its own.
+
+**THE REGRESSION, which matters more than the feature.** F13.10 landed `NSExpression` and
+`foundation_predicate`'s `pred-refusals` check REQUIRED `NSExpression` to be ABSENT — an inventory
+check, in the direction the house's own rule calls "both directions". I gated only the new case and
+the other one went red without my knowing. **The lesson is exact: "gate the cases a change can
+affect" MUST include the cases that assert your absence**, because landing a refusal is landing a
+change to every probe that names it. The check is repaired (both names are now required PRESENT) and
+the reason is written into the probe, so the next slice that lands a named refusal knows where to
+look.
+
+**THREE SMALL TRAPS, two of them repeat offenders now recorded:** `isEqual:` takes a NONNULL object,
+so a subclass's re-declaration may not say `nullable` (the same rule that shaped `NSNull`); a probe's
+`check` detail is a `const char *`, so a formatted one needs `UTF8String` (the second time); and
+`NSSet` had to be imported by a file that had never mentioned a set.
+
+Next: the coders, the services, `NSURLComponents` and `NSRegularExpression`.
