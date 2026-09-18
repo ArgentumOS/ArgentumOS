@@ -54,5 +54,8 @@
 #import <foundation/NSValue.h>
 #import <foundation/NSNull.h>
 #import <foundation/NSKeyValueObserving.h>
+#import <foundation/NSCoding.h>
+#import <foundation/NSCoder.h>
+#import <foundation/NSKeyedArchiver.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

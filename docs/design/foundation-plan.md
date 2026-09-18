@@ -2574,3 +2574,44 @@ so a subclass's re-declaration may not say `nullable` (the same rule that shaped
 `NSSet` had to be imported by a file that had never mentioned a set.
 
 Next: the coders, the services, `NSURLComponents` and `NSRegularExpression`.
+
+### F13.12 landed (2026-09-18): the coder family — a graph that survives a round trip
+
+**`foundation_coder` 7/7 on a guest boot.** `NSCoding` (the two-method protocol), `NSCoder` (the
+abstract base whose every keyed door RAISES), and `NSKeyedArchiver`/`NSKeyedUnarchiver` over a
+property list. What the probe measures is what an archive is FOR: scalars, collections, **the same
+object referenced twice coming back as ONE object** (asserted by pointer), and **a cycle** — an
+object whose link points back at its parent.
+
+**TWO RULES MAKE A GRAPH SURVIVE, and the probe tests each separately:**
+1. **AN INDEX IS RESERVED BEFORE ITS CONTENTS ARE WRITTEN.** The entry enters the table and the memo
+   records its owner, and only THEN is the object asked to encode itself. That ordering is what makes
+   a cycle terminate; reverse the two lines and a self-referential object recurses until the stack
+   ends. The reader reserves symmetrically, for the same reason.
+2. **A SLOT IS EITHER A REFERENCE OR A VALUE.** `{"$ref": n}` means "the object at n"; anything else
+   in a slot IS the value. `NSNull` and nil are references to index 0, `$null`, which is Cocoa's own
+   trick.
+
+**ONE DEPARTURE FROM COCOA, named because it is the only one:** a reference is `{"$ref": n}` rather
+than Cocoa's `UID` property-list type, which this library's plist reader and writer cannot express.
+The TABLE structure is Cocoa's — `$objects`, `$null` at index 0, `$top`, and a class entry carrying
+its `$classes` chain — so the shape is the familiar one. An archive written here is readable here and
+is NOT byte-compatible with Cocoa's.
+
+**THE BUG THE PROBE FOUND, and it is a real distinction I had collapsed:** nil and `NSNull` were BOTH
+written as `$null`, so a nil link came back as an `NSNull` — "nothing was here" turned into "an empty
+place was here". `NSNull` now gets an OBJECT ENTRY of its own (its class is its entire state) and
+`$null` decodes to nil. Cocoa collapses the two; keeping them apart costs one table entry.
+
+**VALUE TYPES ARE WRITTEN INLINE** (strings, numbers, dates, data), so their identity is not part of
+the archive — the same promise Cocoa makes about them — while objects, including collections, go in
+the table and therefore keep theirs. NAMED ABSENT: `NSSecureCoding`, class-name substitution,
+delegates, and the codec's non-keyed doors.
+
+**A PROCESS NOTE, since it happened twice in one turn:** two edits of mine needed correcting before
+the build would take them — a stray line left in the probe and a comment claiming a type change I had
+not actually made. The compiler caught both, which is the reason to compile after every edit rather
+than after a batch of them.
+
+Next: the FS/process/thread services, `NSURLComponents` and relative resolution, and
+`NSRegularExpression` on musl's engine.
