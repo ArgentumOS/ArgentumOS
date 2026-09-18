@@ -67,5 +67,6 @@
 #import <foundation/NSRunLoop.h>
 #import <foundation/NSOperation.h>
 #import <foundation/NSOperationQueue.h>
+#import <foundation/NSProgress.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

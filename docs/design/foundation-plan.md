@@ -2853,3 +2853,44 @@ MAIN QUEUE RUNS ON WORKER THREADS, because this library's run loop has timers an
 and it is the only row item that neither the thread family nor the run loop needed.
 
 Next: `NSProgress`, the last name in §10's table.
+
+### F13.20 landed (2026-09-18): NSProgress — §10's mechanism track is COMPLETE
+
+**`foundation_progress` 10/10 on a guest boot**, and with it the mechanism table §10 set out is done
+from F13.1 to F13.20. The check that earns its place is the tree's ARITHMETIC: a parent with a total of
+100 is told a child stands for 50 of its units, the child is 2 of its own 4 done, and the PARENT
+reports 35 — its own 10 plus HALF of the 50. No constant in the probe could produce that number; it is
+the scaling, which is the whole reason a progress tree exists rather than a progress number. And a
+child that OVER-reports contributes its share and no more, so a parent cannot be pushed past what it
+was told to expect.
+
+**THE RUNTIME NAMED THE BUG EXACTLY, which is what a loud failure is for:** the current-progress stack
+holds PAIRS — progress and its pending count — and reading `lastObject` as the progress made a child
+try to attach itself to an `NSNumber`, producing `-[NSNumber fnCurrentPendingUnitCount] is not
+implemented`. The three readers now index the pair; the comment in the file says why.
+
+**AND THE `NSMutableArray`-IS-NOT-`NSArray` LESSON WAS APPLIED TWICE RATHER THAN PAID FOR:** once at
+F13.19 and again in `NSProgress.h`, both times while writing the header rather than after a build — the
+first time in this program that a recurring trap has been pre-empted instead of absorbed. The
+`NSTimeInterval` fact from F13.13-F13.18 is the same lesson from the other direction: a type's home is
+the header that declares it, and a forward declaration cannot stand in for a typedef.
+
+### §10's mechanism table is complete; what is still open in the program
+
+With `NSProgress` the mechanism track is done: the collections and values (F13.8), the registry and the
+evaluators (F13.9-F13.11), the coders (F13.12), the services (F13.13-F13.14), the structured URL and
+its resolution (F13.15), the regex engine (F13.16), and the thread family (F13.17-F13.20).
+
+Three things remain OPEN, and all three are recorded rather than pending quietly:
+
+1. **`rmdir(2)` CANNOT WORK ON THIS FILE SYSTEM** (F13.14): the kernel refuses with EPERM for every
+   directory on AGFS, so a recursive remove cannot finish. It is not this library's bug and nothing in
+   the track changed it;
+2. **THE ARC QUESTION** (F13.17): the library's sources are compiled WITHOUT `-objc-arc` while their own
+   comments say otherwise, and the ownership model is implicit. It needs a decision — add the flag and
+   sweep, or state the manual model once — and it touches every file;
+3. **A RE-READ OF §5 AND §10 IS THE NEXT HONEST STEP**: this track followed the table's rows, and the
+   table was written before the program's own findings. What is left should be inventoried from the
+   plan rather than assumed.
+
+Next: the re-read — an inventory of what §10 and §5 still refuse, against what now exists.
