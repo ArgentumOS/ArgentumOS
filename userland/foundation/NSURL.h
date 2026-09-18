@@ -63,6 +63,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* nil when the string is not an absolute URL with a valid scheme. */
 + (nullable NSURL *)URLWithString:(NSString *)string;
+/* THE RELATIVE DOOR, refused by name until RFC 3986 §5.2's resolution existed. `baseURL` is nullable
+ * because a reference resolved against nothing is still as far as the algorithm gets. */
++ (nullable NSURL *)URLWithString:(NSString *)string relativeToURL:(nullable NSURL *)baseURL;
 /* nil when the path is not slash-separated and absolute, which is what the FSH
  * has: there are no relative paths to resolve. */
 + (nullable NSURL *)fileURLWithPath:(NSString *)path;

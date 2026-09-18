@@ -59,5 +59,6 @@
 #import <foundation/NSKeyedArchiver.h>
 #import <foundation/NSProcessInfo.h>
 #import <foundation/NSFileManager.h>
+#import <foundation/NSURLComponents.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

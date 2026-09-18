@@ -2686,3 +2686,35 @@ precedence trap whose FIRST observable effect was `filesGone=0` in the probe out
 the argument for details that carry numbers: the expression looked right until it printed one.
 
 Next: `NSURLComponents` and relative resolution, then `NSRegularExpression` on musl's engine.
+
+### F13.15 landed (2026-09-18): NSURLComponents + relative resolution — and the RFC's own tables pass
+
+**`foundation_urlcomponents` 9/9 on a guest boot**, INCLUDING RFC 3986 §5.4.1's ten table rows and
+§5.4.2's eight. That is the check worth the most in this whole program: the expected values come from
+the DOCUMENT that defines the algorithm rather than from anything the probe or the library could have
+been written to match, so "it agrees with RFC 3986 on RFC 3986's examples" is a claim of a different
+kind from "it round-trips".
+
+**F8 REFUSED TWO THINGS TOGETHER, AND THIS IS WHY.** It refused `NSURLComponents`/`NSURLQueryItem` as
+a family of their own, and it refused `+[NSURL URLWithString:relativeToURL:]` by name — because the
+resolution that door exists FOR is the component-wise algorithm (§5.2), and a relative door with no
+resolution has nothing to do. Both arrive here, which is the honest way round: the algorithm belongs
+to the components object, and NSURL's door reaches it through `fnurl.h`, a two-line bridge header of
+the kind `fncalendar.h` and `fnpredicate.h` already are.
+
+**THE TWO ACCESSORS THAT DIFFER ARE THE POINT OF THE CLASS:** `-path` DECODES its percent escapes and
+`-percentEncodedPath` is what the URL actually carries, and the same pair exists for user, password,
+host, query and fragment. That is what an editor needs and what NSURL's value semantics cannot give —
+and it is why the decoder lives in this file, since F8's note that "NSString already has it" is not
+true in this tree.
+
+**THE RENDERER WRITES BACK WHAT IT WAS GIVEN** rather than re-encoding it, which is the safe
+direction: a caller who sets a path containing a "?" gets that "?" in the URL, and the header says so
+rather than leaving it to be discovered. NAMED ABSENT: no percent-ENCODER, and no query-item encoding
+on `-setQueryItems:`.
+
+**ONE SLIP, of the same shape as the last two slices':** `malloc`/`strlen`/`memcpy` needed
+`<stdlib.h>`/`<string.h>` and the file did not include them. It is a three-line fix whose only cost is
+a build cycle, which is the argument for compiling after each file rather than after a batch.
+
+Next: `NSRegularExpression` on musl's engine — the last item named in §10's mechanism track.

@@ -25,6 +25,7 @@
 #import <foundation/NSURL.h>
 #import <foundation/NSString.h>
 #import <foundation/NSNumber.h>
+#include "fnurl.h"		/* RFC 3986 §5.2: the resolution NSURL's relative door is FOR */
 #include <stdlib.h>
 #include <string.h>
 
@@ -275,6 +276,15 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 + (nullable NSURL *)URLWithString:(NSString *)string
 {
 	return [[self alloc] initWithString:string];
+}
+
+/* F8 REFUSED THIS DOOR BY NAME, and the reason was exact: without a resolution there is nothing for
+ * it to do. RFC 3986 §5.2 lives in NSURLComponents (it is the component-wise algorithm) and is
+ * reached through fnurl.h's function, so the two arrive together rather than one implying the
+ * other. A NULL base is accepted: the algorithm still normalises a reference on its own. */
++ (nullable NSURL *)URLWithString:(NSString *)string relativeToURL:(nullable NSURL *)baseURL
+{
+	return FNURLResolveRelative(string, baseURL != nil ? [baseURL absoluteString] : nil);
 }
 
 + (nullable NSURL *)fileURLWithPath:(NSString *)path
