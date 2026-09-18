@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nscomparisonpredicate.m — two expressions and an operator (F13.11). ARC file.
+ * nscomparisonpredicate.m — two expressions and an operator (F13.11). MANUAL OWNERSHIP.
  *
  * THE DOOR THIS OPENS, and why it is not the grammar's job: `NSPredicate`'s FORMAT GRAMMAR still
  * refuses `IN`, `BETWEEN` and the quantifiers by name — that has not changed, and its header says

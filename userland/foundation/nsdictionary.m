@@ -5,7 +5,7 @@
 /*
  * nsdictionary.m — the hash table. See NSDictionary.h for why keys are copied.
  *
- * ARC file: the entry slots are C storage, so they are retained and released by
+ * MANUAL OWNERSHIP: the entry slots are C storage, so they are retained and released by
  * hand with objc_retain/objc_release.
  *
  * STRUCTURE NOTE: the table's mutation (grow, insert, unlink) lives on the BASE

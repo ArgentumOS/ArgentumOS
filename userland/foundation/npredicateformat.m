@@ -5,7 +5,7 @@
 /*
  * npredicateformat.m — THE FORMAT GRAMMAR. docs/design/foundation-plan.md, F11b.
  *
- * ARC file.
+ * MANUAL OWNERSHIP.
  *
  * A recursive-descent parser over the UTF-8 bytes of the format string, and the class methods
  * that expose it. The tree it builds is the OBJECT MODEL from F11a — NSCompoundPredicate for the

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nslock.m — the locking classes over pthreads (F13.17). ARC file.
+ * nslock.m — the locking classes over pthreads (F13.17). MANUAL OWNERSHIP.
  *
  * TWO PLACES WHERE THE POSIX SHAPE IS NOT QUITE WHAT A CALLER EXPECTS, and both are answered here
  * rather than left to the caller to discover:

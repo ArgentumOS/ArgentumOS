@@ -5,7 +5,7 @@
 /*
  * nurl.m — NSURL: the parse, and the file-path rules. docs/design/foundation-plan.md, F8.
  *
- * ARC file: it owns six strings and a number, and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it owns six strings and a number, and implements no -retain/-release.
  *
  * THE PARSE IS HAND-WRITTEN AND SMALL, because RFC 3986's grammar is small. The
  * shape it accepts is

@@ -5,7 +5,7 @@
 /*
  * nspredicate.m — the predicate object model. docs/design/foundation-plan.md, F11a.
  *
- * ARC file. The block leaf is the one thing it stores that needs ARC's help.
+ * MANUAL OWNERSHIP. The block leaf is the one thing it stores that needs ARC's help.
  *
  * THE LEAVES ARE PRIVATE CLASSES, and they have to be classes rather than a kind tag on one:
  * `-evaluateWithObject:` is the whole of the protocol, so a leaf IS its answer, and the base's

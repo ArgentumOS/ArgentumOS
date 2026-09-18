@@ -5,7 +5,7 @@
 /*
  * nsarray.m — the ordered collection.
  *
- * ARC file: it owns its storage but implements no -retain/-release, so the
+ * MANUAL OWNERSHIP: it owns its storage but implements no -retain/-release, so the
  * slots are managed by hand with objc_retain/objc_release.
  */
 

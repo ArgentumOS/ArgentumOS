@@ -6,7 +6,7 @@
  * ninvocation.m — the invocation, the register classification, the forwarding
  * handler, and the runtime hooks that make forwarding happen at all.
  *
- * ARC file: it owns C buffers and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it owns C buffers and implements no -retain/-release.
  */
 
 #import <foundation/NSInvocation.h>

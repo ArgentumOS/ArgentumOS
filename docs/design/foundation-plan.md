@@ -2894,3 +2894,39 @@ Three things remain OPEN, and all three are recorded rather than pending quietly
    plan rather than assumed.
 
 Next: the re-read — an inventory of what §10 and §5 still refuse, against what now exists.
+
+### F13.21 landed (2026-09-18): the ownership question — ANSWERED BY THE COMPILER, not by preference
+
+**The decision was "add `-fobjc-arc` and sweep the library". The flag does not work, and clang said so
+in one line:**
+
+```
+error: -fobjc-arc is not supported on platforms using the legacy runtime
+```
+
+**This system's libobjc2 is built with the LEGACY ABI**, so ARC is unavailable to every file — a
+scratch pass over all 53 sources produced that SAME single error for each of them, which is what turned
+a suspected 50-file sweep into one runtime fact. Turning ARC on would mean changing the runtime's
+object layout for every class and every existing binary: a project, not a flag. The flag was reverted,
+and the measurement is recorded where the flags are (`mk/20-userland.mk`) so the next person who tries
+it does not have to rediscover it.
+
+**THE DECISION, TAKEN AGAIN WITH THE EVIDENCE IN HAND: manual ownership, DOCUMENTED.** Which produced
+two changes:
+
+1. **THE RULE IS NOW STATED ONCE, in the umbrella** (`Foundation.h`), because it is the one thing a
+   reader of any file here needs and no single file can say: the library is manual, a method STORES the
+   pointers it is given and owns NOTHING, an object handed in must outlive its use, a collection does
+   not keep its members alive, and the exceptions are the classes that own C storage — which free what
+   they allocated in `-dealloc` and say so in their own headers. The consequence is spelled out too:
+   a caller must not release a pointer it handed in until the library is done, and anything the library
+   holds past the caller's scope (a thread, a timer, a queue) is the caller's to keep alive.
+2. **40 FILES CARRIED "ARC file" IN THEIR HEADERS AND NOW CARRY "MANUAL OWNERSHIP"** — a token
+   replacement, deliberately mechanical, and every resulting sentence is TRUE rather than inverted. The
+   worst of them said "ARC file: it owns a C buffer and implements no -retain/-release", which is a
+   description of the manual model under the wrong name; it now reads correctly.
+
+**AND THE OTHER DECISION FROM THE SAME QUESTION STANDS:** `rmdir(2)` is to be investigated and fixed in
+the kernel (F13.14's open item), which is the next slice.
+
+Next: the `rmdir(2)` kernel investigation.

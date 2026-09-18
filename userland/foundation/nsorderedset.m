@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsorderedset.m — a set that remembers the order (F13.8e). ARC file.
+ * nsorderedset.m — a set that remembers the order (F13.8e). MANUAL OWNERSHIP.
  *
  * THE STORAGE IS AN IMMUTABLE ARRAY OF MEMBERS, exactly as NSSet's is, and every mutation REPLACES
  * it rather than editing it — so a loop that is running over an ordered set cannot be handed storage

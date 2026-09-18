@@ -5,7 +5,7 @@
 /*
  * nsset.m — the unordered collection with no duplicates (F13.8).
  *
- * ARC file. The two design facts from the header are what this file IS, so they bear repeating:
+ * MANUAL OWNERSHIP. The two design facts from the header are what this file IS, so they bear repeating:
  * members are RETAINED and lookup is LINEAR by -hash/-isEqual: (not a borrowed dictionary, which
  * would copy its keys), and every mutation REPLACES the member array rather than editing it.
  *

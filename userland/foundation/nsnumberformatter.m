@@ -5,7 +5,7 @@
 /*
  * nsnumberformatter.m — the number formatter, on ICU (F13.7c).
  *
- * ARC file. The second file of the value-to-text family, and the same two rules apply as in
+ * MANUAL OWNERSHIP. The second file of the value-to-text family, and the same two rules apply as in
  * nsdateformatter.m:
  *
  *   * WHAT ICU CAN HOLD, ICU HOLDS. Only -setNumberStyle:, -setLocale: and -setFormat: rebuild the

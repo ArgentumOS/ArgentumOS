@@ -6,7 +6,7 @@
  * nskeyvaluecoding.m — the naming rules, on the runtime's ivar table.
  * docs/design/foundation-plan.md, F9.
  *
- * ARC file. It owns the temporary strings it builds; nothing else.
+ * MANUAL OWNERSHIP. It owns the temporary strings it builds; nothing else.
  *
  * THE LOOKUP ORDER IS THE SPECIFICATION, so it is written once, in this order:
  *

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsvalue.m — bytes with a type encoding (F13.8c). ARC file.
+ * nsvalue.m — bytes with a type encoding (F13.8c). MANUAL OWNERSHIP.
  *
  * THE ONE PIECE OF REAL WORK IS THE SIZE. Cocoa's +valueWithBytes:objCType: takes a buffer and an
  * encoding and no length, because Foundation there can ask NSGetSizeAndAlignment. This library has

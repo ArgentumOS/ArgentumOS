@@ -5,7 +5,7 @@
 /*
  * nmethodsignature.m — the type-encoding parser.
  *
- * ARC file: it owns a C buffer and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it owns a C buffer and implements no -retain/-release.
  */
 
 #import <foundation/NSMethodSignature.h>

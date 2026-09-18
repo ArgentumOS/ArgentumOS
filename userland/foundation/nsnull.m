@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsnull.m — the object that stands for "nothing" (F13.8c). ARC file.
+ * nsnull.m — the object that stands for "nothing" (F13.8c). MANUAL OWNERSHIP.
  *
  * THE SINGLETON IS ENFORCED AT ALLOCATION, which is the part worth writing down: +null alone would
  * leave `[[NSNull alloc] init]` free to build a second one, and then two "the null object"s would

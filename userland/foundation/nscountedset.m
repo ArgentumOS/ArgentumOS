@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nscountedset.m — the set that remembers how many of each (F13.8d). ARC file.
+ * nscountedset.m — the set that remembers how many of each (F13.8d). MANUAL OWNERSHIP.
  *
  * The counts are INDEX-ALIGNED with the inherited member array: _counts[i] is how many times
  * _members[i] was added. Everything here keeps those two in step.

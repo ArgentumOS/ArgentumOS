@@ -5,7 +5,7 @@
 /*
  * ndata.m — the byte buffer.
  *
- * ARC file. -copy of a MUTABLE data is a snapshot, as with the strings; -copy of
+ * MANUAL OWNERSHIP. -copy of a MUTABLE data is a snapshot, as with the strings; -copy of
  * an immutable one is itself.
  */
 

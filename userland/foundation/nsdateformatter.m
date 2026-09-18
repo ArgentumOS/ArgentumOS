@@ -5,7 +5,7 @@
 /*
  * nsdateformatter.m — the date formatter, on ICU (F13.6).
  *
- * ARC file, and the only place in the Foundation that knows ICU exists for dates. Two things here
+ * MANUAL OWNERSHIP, and the only place in the Foundation that knows ICU exists for dates. Two things here
  * are worth knowing before reading it:
  *
  *   * EVERY SETTER REBUILDS the underlying formatter. ICU bakes the locale, the zone, the styles

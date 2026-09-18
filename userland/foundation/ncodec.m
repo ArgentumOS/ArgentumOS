@@ -5,7 +5,7 @@
 /*
  * ncodec.m — the compression binding. docs/design/foundation-plan.md, F12.
  *
- * ARC file. It is the ONLY file in the library that includes <zlib.h>.
+ * MANUAL OWNERSHIP. It is the ONLY file in the library that includes <zlib.h>.
  *
  * WHY ZLIB AND NOT A DEFLATE OF OUR OWN: DEFLATE is a table of Huffman codes and a matching
  * window, so writing it here would be exactly the table this plan keeps refusing. `libz` already

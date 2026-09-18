@@ -5,7 +5,7 @@
 /*
  * nenumerator.m — the cursor.
  *
- * ARC file: it owns no C storage and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it owns no C storage and implements no -retain/-release.
  */
 
 #import <foundation/NSEnumerator.h>

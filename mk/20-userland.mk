@@ -202,6 +202,12 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 # the sweep land one slice at a time.
 FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation \
 	-Werror=nullability-completeness
+# WHY -fobjc-arc IS NOT HERE, and it was MEASURED rather than assumed (F13.21): clang answers
+# "-fobjc-arc is not supported on platforms using the legacy runtime", because this system's libobjc2
+# is built with the LEGACY ABI. So ARC is not a per-file question with a sweep attached; it is a
+# RUNTIME-ABI question, and turning it on would mean changing the Objective-C runtime's object layout,
+# not adding a flag. The library's ownership is therefore MANUAL ON PURPOSE, and every file whose
+# header says "ARC file" is saying something untrue about how it is compiled.
 
 $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	@mkdir -p $(FNXLIB)

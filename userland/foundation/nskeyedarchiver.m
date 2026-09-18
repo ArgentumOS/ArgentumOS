@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nskeyedarchiver.m — the archive writer and reader (F13.12). ARC file.
+ * nskeyedarchiver.m — the archive writer and reader (F13.12). MANUAL OWNERSHIP.
  *
  * THE SHAPE IS IN THE HEADER. What this file is really about is TWO RULES that make a graph
  * survive a round trip:

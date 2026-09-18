@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsexpression.m — the expression tree (F13.10). ARC file.
+ * nsexpression.m — the expression tree (F13.10). MANUAL OWNERSHIP.
  *
  * ONE NODE HOLDS A TYPE AND THREE SLOTS, and each type uses a different subset: `_constant` is the
  * constant, the key path, the variable NAME, the left operand or the aggregate's members; `_operand`

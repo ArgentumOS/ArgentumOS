@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nskeyvalueobserving.m — the observer registry (F13.9). ARC file.
+ * nskeyvalueobserving.m — the observer registry (F13.9). MANUAL OWNERSHIP.
  *
  * THE REGISTRY IS TWO TABLES AND NO IVARS, because NSObject's category cannot grow an instance and
  * this library has no associated objects. That is also why Cocoa's `-observationInfo` exists as a

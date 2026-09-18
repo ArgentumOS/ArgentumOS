@@ -5,7 +5,7 @@
 /*
  * nlocale.m — the locale identifier, and the subtags it derives.
  *
- * ARC file: it owns an NSString and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it owns an NSString and implements no -retain/-release.
  */
 
 #import <foundation/NSLocale.h>

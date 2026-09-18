@@ -5,7 +5,7 @@
 /*
  * nindexset.m — the index set.
  *
- * ARC file: it owns a C buffer and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it owns a C buffer and implements no -retain/-release.
  */
 
 #import <foundation/NSIndexSet.h>

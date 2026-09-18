@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsregularexpression.m — regular expressions as objects (F13.16). ARC file.
+ * nsregularexpression.m — regular expressions as objects (F13.16). MANUAL OWNERSHIP.
  *
  * THE ONE PLACE THE TWO WORLDS MEET: Cocoa measures ranges in UTF-16 units and the engine counts
  * BYTES, so this file builds a map from UTF-16 indices to byte offsets once per call and converts

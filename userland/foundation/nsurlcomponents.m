@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsurlcomponents.m — a URL as eight fields (F13.15). ARC file.
+ * nsurlcomponents.m — a URL as eight fields (F13.15). MANUAL OWNERSHIP.
  *
  * THE PARSER WALKS BACKWARDS FROM THE END, which is the order RFC 3986's grammar allows: the
  * fragment is everything after the FIRST "#", the query everything after the first "?" in what is

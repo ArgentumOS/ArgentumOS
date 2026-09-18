@@ -5,7 +5,7 @@
 /*
  * nsformatter.m — the abstract base of the value-to-text family (F13).
  *
- * ARC file. It owns no storage: the base is behaviour and nothing else.
+ * MANUAL OWNERSHIP. It owns no storage: the base is behaviour and nothing else.
  */
 
 #import <foundation/NSFormatter.h>

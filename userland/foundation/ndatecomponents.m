@@ -5,7 +5,7 @@
 /*
  * ndatecomponents.m — the calendar's field bag.
  *
- * ARC file (no owned objects of its own beyond the copied description).
+ * MANUAL OWNERSHIP (no owned objects of its own beyond the copied description).
  *
  * -isValidDateInCalendar: IS A ROUND TRIP, and that is the whole trick: build the
  * date from the fields, read the fields back, and compare the ones that were SET.

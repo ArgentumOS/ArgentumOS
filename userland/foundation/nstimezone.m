@@ -5,7 +5,7 @@
 /*
  * nstimezone.m — a zone by name, or by offset (F13.7a).
  *
- * ARC file, and the second Foundation file that knows ICU exists (the first is nsdateformatter.m).
+ * MANUAL OWNERSHIP, and the second Foundation file that knows ICU exists (the first is nsdateformatter.m).
  * The class is IMMUTABLE, so every ICU lookup ends in a number or a string and no handle is kept:
  * holding a UCalendar open per zone would buy nothing but a lifetime to get wrong.
  *

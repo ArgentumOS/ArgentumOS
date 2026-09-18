@@ -5,7 +5,7 @@
 /*
  * nerror.m — the error value.
  *
- * ARC file: it stores three owned objects and implements no -retain/-release.
+ * MANUAL OWNERSHIP: it stores three owned objects and implements no -retain/-release.
  */
 
 #import <foundation/NSError.h>

@@ -5,7 +5,7 @@
 /*
  * ndate.m — a point in time.
  *
- * ARC file. `+date` reads the system clock through libc (the kernel provides
+ * MANUAL OWNERSHIP. `+date` reads the system clock through libc (the kernel provides
  * it); the sub-second part comes from gettimeofday.
  */
 

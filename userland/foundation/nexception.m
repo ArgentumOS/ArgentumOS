@@ -5,7 +5,7 @@
 /*
  * nexception.m — the throwable object.
  *
- * ARC file.
+ * MANUAL OWNERSHIP.
  */
 
 #import <foundation/NSException.h>

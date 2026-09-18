@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsfilemanager.m — the file system as a service (F13.14). ARC file.
+ * nsfilemanager.m — the file system as a service (F13.14). MANUAL OWNERSHIP.
  *
  * TWO OPERATIONS ARE SPELLED OUT HERE because POSIX does not have them, and they are the reason this
  * file is longer than a set of one-line wrappers:

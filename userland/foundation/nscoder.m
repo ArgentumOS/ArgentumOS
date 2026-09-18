@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nscoder.m — the abstract base (F13.12). ARC file.
+ * nscoder.m — the abstract base (F13.12). MANUAL OWNERSHIP.
  *
  * EVERY DOOR RAISES, and that is the class's whole content: a coder that cannot encode has no
  * sensible answer for any of them, and answering a zero would be indistinguishable from data. The

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * nsprocessinfo.m — the running program describing itself (F13.13). ARC file.
+ * nsprocessinfo.m — the running program describing itself (F13.13). MANUAL OWNERSHIP.
  *
  * WHERE THE PROCESS FILES ARE, and this is the whole of what this file gets wrong the first time:
  * FNX mounts procfs at /System/Processes — the FSH spelling — not at /proc, which is where a

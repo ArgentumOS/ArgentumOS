@@ -5,7 +5,7 @@
 /*
  * nssortdescriptor.m — how to order, as a value. docs/design/foundation-plan.md, F10.
  *
- * ARC file. The comparator block is the one thing it stores that needs ARC's help.
+ * MANUAL OWNERSHIP. The comparator block is the one thing it stores that needs ARC's help.
  *
  * THE ORDERING RULE IS IN ONE PLACE — `-compareObject:toObject:` — because a CHAIN and a single
  * descriptor must not be able to disagree about direction. It resolves the key on both objects
