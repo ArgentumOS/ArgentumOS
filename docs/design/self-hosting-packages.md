@@ -256,8 +256,8 @@ headers (the runtime's own `objc/…` still need staging). Clean-room by decisio
 enforced rather than promised: `tools/foundation-gate.py`, run by a
 `foundation-gate` target in `userland64`, fails the build on any GNUstep, ObjFW or
 Apple-Foundation header import and on the runtime's legacy `objc/Object.h`
-(`docs/design/foundation-plan.md` §2). The v1 class list, the phases (F0–F4, F6–F10 and
-F11a landed; **F5 self-hosting is DEFERRED by the user's call**, which removes the
+(`docs/design/foundation-plan.md` §2). The v1 class list, the phases (F0–F4 and
+F6–F11 landed; **F5 self-hosting is DEFERRED by the user's call**, which removes the
 gate and not the requirement) and the measured traps are in that plan; the
 acceptances are the eleven gated cases — `tests/cases/foundation_core.py`,
 `…_string.py`, `…_value.py`, `…_collection.py`, `…_error.py`, `…_calendar.py`,

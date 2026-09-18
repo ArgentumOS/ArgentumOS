@@ -68,10 +68,28 @@ static NSPredicate *fn_no_predicate(void)
 	return nil;
 }
 
+/* PARSE OR NIL, KEEPING WHY: a refusal is only useful if a caller can say what was refused, so
+ * the reason is kept for the checks that assert a refusal NAMES its construct. */
+static char fn_last_reason[200];
+
+static NSPredicate *fn_parse(NSString *format)
+{
+	fn_last_reason[0] = '\0';
+	@try {
+		return [NSPredicate predicateWithFormat:format];
+	} @catch (NSException *e) {
+		snprintf(fn_last_reason, sizeof fn_last_reason, "%s", [[e reason] UTF8String]);
+		return nil;
+	}
+}
+
 static const char *fn_format(id predicate)
 {
 	if (predicate == nil) {
-		return "(nil)";
+		/* THE REASON, not "(nil)": when a PARSE is what failed, the message IS the measurement
+		 * — and a detail that hides it sends the reader looking in the wrong place (the §9
+		 * lesson, one level down). */
+		return fn_last_reason[0] != '\0' ? fn_last_reason : "(nil)";
 	}
 	return [[(NSPredicate *)predicate predicateFormat] UTF8String];
 }
@@ -301,18 +319,21 @@ int main(void)
 	}
 
 	{
-		/* THE REFUSALS, asserted ABSENT. +predicateWithFormat: is F11b — it moves into the
-		 * REQUIRED set when the grammar lands, the same way the sort names did. */
+		/* THE REFUSALS ABSENT AND THE FORMS THAT SHIP PRESENT — the inventory rule in both
+		 * directions: +predicateWithFormat: used to sit on the ABSENT side (F11a) and is now
+		 * required, the same way the sort names moved when F10 landed. */
 		check("pred-refusals",
 		      objc_getClass("NSExpression") == NULL &&
 		      objc_getClass("NSComparisonPredicate") == NULL &&
-		      ![NSPredicate respondsToSelector:sel_registerName("predicateWithFormat:")] &&
 		      ![NSPredicate instancesRespondToSelector:
 			sel_registerName("predicateWithSubstitutionVariables:")] &&
 		      ![NSPredicate instancesRespondToSelector:sel_registerName("allowEvaluation")] &&
 		      [NSPredicate respondsToSelector:sel_registerName("predicateWithValue:")] &&
-		      [NSPredicate respondsToSelector:sel_registerName("predicateWithBlock:")],
-		      "NSExpression, NSComparisonPredicate and the format grammar are absent");
+		      [NSPredicate respondsToSelector:sel_registerName("predicateWithBlock:")] &&
+		      [NSPredicate respondsToSelector:sel_registerName("predicateWithFormat:")] &&
+		      [NSPredicate instancesRespondToSelector:sel_registerName("initWithFormat:")],
+		      "NSExpression, NSComparisonPredicate and substitution are absent; the format "
+		      "grammar is present");
 	}
 
 	{
@@ -326,6 +347,224 @@ int main(void)
 		check("cross-tu",
 		      kept != nil && [kept count] == 2 && [[kept objectAtIndex:1] intValue] == 4,
 		      fn_kept(kept));
+	}
+
+	/* --------------------------------------------------------------- F11b: the grammar */
+
+	{
+		/* EACH PARSE KEEPS ITS OWN REASON: a check that says only "the parse failed" costs a
+		 * round trip, and one that names WHICH string failed and why costs a snprintf. */
+		char equalReason[200];
+		char olderReason[200];
+		char detail[460];
+		NSPredicate *equal = fn_parse(@"name = \"ann\"");
+		NSPredicate *older;
+		NSDictionary *ann;
+		NSDictionary *kid;
+
+		snprintf(equalReason, sizeof equalReason, "%s", fn_last_reason);
+		older = fn_parse(@"age > 30");
+		snprintf(olderReason, sizeof olderReason, "%s", fn_last_reason);
+
+		ann = @{ @"name": @"ann", @"age": @40 };
+		/* THE OTHER OBJECT IS NOT AN ANN, and is younger than 30: ONE object separates both
+		 * halves of this check, so a predicate that ignored its comparison could not pass. */
+		kid = @{ @"name": @"bob", @"age": @10 };
+
+		snprintf(detail, sizeof detail, "equal=%s older=%s four-char-key=%s self-shape=%s",
+			 equal == nil ? equalReason : "(parsed)",
+			 older == nil ? olderReason : "(parsed)",
+			 /* CONTROLS for the one remaining difference: `SELF > 2` parses and `age > 30`
+			  * does not, and the same comparison INSIDE a compound parses. So the experiment
+			  * is that comparison with a four-character key, and with a keyword operator. */
+			 fn_parse(@"rank > 30") == nil ? "FAILED" : "parsed",
+			 fn_parse(@"age CONTAINS \"3\"") == nil ? "FAILED" : "parsed");
+		/* THE OBJECTS ARE DICTIONARIES on purpose: that makes the key path exercise KVC's
+		 * dictionary form (F9) rather than needing a new fixture class. */
+		check("format-compare",
+		      equal != nil && older != nil &&
+		      [equal evaluateWithObject:ann] && ![equal evaluateWithObject:kid] &&
+		      [older evaluateWithObject:ann] && ![older evaluateWithObject:kid],
+		      detail);
+	}
+
+	{
+		NSDictionary *ann = @{ @"name": @"annabel" };
+		NSPredicate *contains = fn_parse(@"name CONTAINS \"nna\"");
+		NSPredicate *begins = fn_parse(@"name BEGINSWITH \"anna\"");
+		NSPredicate *ends = fn_parse(@"name ENDSWITH \"bel\"");
+		NSPredicate *misses = fn_parse(@"name CONTAINS \"zzz\"");
+
+		check("format-string-ops",
+		      contains != nil && begins != nil && ends != nil && misses != nil &&
+		      [contains evaluateWithObject:ann] && [begins evaluateWithObject:ann] &&
+		      [ends evaluateWithObject:ann] && ![misses evaluateWithObject:ann],
+		      fn_format(contains));
+	}
+
+	{
+		NSDictionary *text = @{ @"name": @"a*b" };
+		NSDictionary *other = @{ @"name": @"axxb" };
+		NSPredicate *star = fn_parse(@"name LIKE \"a*b\"");
+		NSPredicate *one = fn_parse(@"name LIKE \"a?b\"");
+		/* THE ESCAPE, WRITTEN WITH A DOUBLED BACKSLASH: the string scanner unescapes the four
+		 * pairs it knows and "anything else is itself" (the same deliberate rule the house's
+		 * other parsers use), so `\\*` in the FORMAT is what leaves `\*` in the PATTERN — and a
+		 * `\*` in the pattern is what makes LIKE read a literal star. */
+		NSPredicate *literalStar = fn_parse(@"name LIKE \"a\\\\*b\"");
+		char detail[220];
+
+		/* EVERY MEASUREMENT, because this check has already cost three rounds by failing with
+		 * only a rendering to look at (the §9 lesson, learned again). */
+		snprintf(detail, sizeof detail,
+			 "star(al*)=%d/alxxb=%d one(a?b)=%d/alxxb=%d literal(a\\*b)=%d/axxb=%d",
+			 [star evaluateWithObject:text] ? 1 : 0,
+			 [star evaluateWithObject:other] ? 1 : 0,
+			 [one evaluateWithObject:text] ? 1 : 0,
+			 [one evaluateWithObject:other] ? 1 : 0,
+			 [literalStar evaluateWithObject:text] ? 1 : 0,
+			 [literalStar evaluateWithObject:other] ? 1 : 0);
+		check("format-like",
+		      star != nil && one != nil && literalStar != nil &&
+		      [star evaluateWithObject:text] && [star evaluateWithObject:other] &&
+		      /* `a?b` MATCHES `a*b` — three characters, and the middle one is whatever it is —
+		       * and does NOT match the four-character one. The pair is what makes the `?`
+		       * claim mean something: on its own, `[one evaluateWithObject:that]` would pass
+		       * for a matcher that ignored `?` entirely. */
+		      [one evaluateWithObject:text] && ![one evaluateWithObject:other] &&
+		      /* And a pattern WITH a `*` matches only a literal `*`. */
+		      [literalStar evaluateWithObject:text] &&
+		      ![literalStar evaluateWithObject:other],
+		      detail);
+	}
+
+	{
+		NSDictionary *shout = @{ @"name": @"ANN" };
+		NSPredicate *exact = fn_parse(@"name = \"ann\"");
+		NSPredicate *folded = fn_parse(@"name = \"ann\"[c]");
+		NSPredicate *prefix = fn_parse(@"name BEGINSWITH \"an\"[c]");
+
+		check("format-case",
+		      exact != nil && folded != nil && prefix != nil &&
+		      ![exact evaluateWithObject:shout] &&
+		      [folded evaluateWithObject:shout] &&
+		      [prefix evaluateWithObject:shout] &&
+		      [[folded predicateFormat] rangeOfString:@"[c]"].location != NSNotFound,
+		      fn_format(folded));
+	}
+
+	{
+		NSDictionary *ann = @{ @"name": @"ann", @"age": @40 };
+		NSDictionary *kid = @{ @"name": @"ann", @"age": @10 };
+		NSDictionary *bob = @{ @"name": @"bob", @"age": @40 };
+		/* PRECEDENCE: NOT binds tighter than AND, and AND tighter than OR — so this is
+		 * (`ann` AND `40`) OR `bob`, and the kid is the object that separates the two. */
+		NSPredicate *mixed = fn_parse(@"name = \"bob\" OR name = \"ann\" AND age > 30");
+		NSPredicate *negated = fn_parse(@"NOT name = \"ann\"");
+
+		check("format-connectives",
+		      mixed != nil && negated != nil &&
+		      [mixed evaluateWithObject:ann] &&
+		      [mixed evaluateWithObject:bob] &&
+		      ![mixed evaluateWithObject:kid] &&
+		      [negated evaluateWithObject:bob] && ![negated evaluateWithObject:ann],
+		      fn_format(mixed));
+	}
+
+	{
+		NSDictionary *bare = @{ @"name": @"ann" };
+		NSPredicate *always = fn_parse(@"TRUEPREDICATE");
+		NSPredicate *never = fn_parse(@"FALSEPREDICATE");
+		NSPredicate *isNothing = fn_parse(@"missing = NULL");
+		NSPredicate *isNotNothing = fn_parse(@"name != NULL");
+
+		check("format-constants",
+		      always != nil && never != nil && isNothing != nil && isNotNothing != nil &&
+		      [always evaluateWithObject:bare] && ![never evaluateWithObject:bare] &&
+		      /* A missing dictionary key answers nil through KVC, so this is a real NULL. */
+		      [isNothing evaluateWithObject:bare] && [isNotNothing evaluateWithObject:bare],
+		      fn_format(isNothing));
+	}
+
+	{
+		NSPredicate *three = fn_parse(@"SELF = 3");
+		NSPredicate *more = fn_parse(@"SELF > 2");
+		NSPredicate *less = fn_parse(@"SELF < 2");
+
+		check("format-self",
+		      three != nil && more != nil && less != nil &&
+		      [three evaluateWithObject:@3] && ![three evaluateWithObject:@4] &&
+		      [more evaluateWithObject:@3] && ![less evaluateWithObject:@3],
+		      fn_format(three));
+	}
+
+	{
+		NSPredicate *half = fn_parse(@"SELF = 2.5");
+		NSPredicate *atLeast = fn_parse(@"SELF >= 2.5");
+		NSPredicate *negative = fn_parse(@"SELF = -4");
+
+		check("format-numbers",
+		      half != nil && atLeast != nil && negative != nil &&
+		      [half evaluateWithObject:@2.5] && ![half evaluateWithObject:@2] &&
+		      [atLeast evaluateWithObject:@3] && [atLeast evaluateWithObject:@2.5] &&
+		      [negative evaluateWithObject:@(-4)],
+		      fn_format(atLeast));
+	}
+
+	{
+		/* THE ROUND TRIP, WITH CONTENT: a rendered predicate must parse back to something that
+		 * ANSWERS THE SAME. Idempotence alone would pass for a renderer that produced nothing
+		 * usable, so every object is asked of BOTH trees. */
+		NSPredicate *first = fn_parse(@"name BEGINSWITH \"a\" AND age > 30");
+		NSString *rendered = first != nil ? [first predicateFormat] : nil;
+		NSPredicate *second = rendered != nil ? fn_parse(rendered) : nil;
+		NSDictionary *ann = @{ @"name": @"ann", @"age": @40 };
+		NSDictionary *kid = @{ @"name": @"ann", @"age": @10 };
+		NSDictionary *bob = @{ @"name": @"bob", @"age": @40 };
+
+		check("format-round-trip",
+		      first != nil && second != nil && [rendered length] > 0 &&
+		      [first evaluateWithObject:ann] && [second evaluateWithObject:ann] &&
+		      ![first evaluateWithObject:bob] && ![second evaluateWithObject:bob] &&
+		      ![first evaluateWithObject:kid] && ![second evaluateWithObject:kid] &&
+		      [rendered isEqualToString:[second predicateFormat]],
+		      rendered == nil ? "(no rendering)" : [rendered UTF8String]);
+	}
+
+	{
+		NSPredicate *matches = fn_parse(@"name MATCHES \"a.*\"");
+		BOOL namesMatches = strstr(fn_last_reason, "MATCHES") != NULL;
+		NSPredicate *diacritic = fn_parse(@"name = \"ann\"[d]");
+		BOOL namesDiacritic = strstr(fn_last_reason, "[d]") != NULL;
+		NSPredicate *membership = fn_parse(@"name IN {\"ann\"}");
+		NSPredicate *quantifier = fn_parse(@"ANY children.age > 3");
+		NSPredicate *variable = fn_parse(@"name = $NAME");
+		NSPredicate *truncated = fn_parse(@"name =");
+
+		/* EVERY REFUSAL NAMES ITSELF. That is what refusing loudly MEANS, so the message is
+		 * part of the check rather than a nicety: a caller has to be able to see WHICH
+		 * construct was refused. */
+		check("format-refusals",
+		      matches == nil && diacritic == nil && membership == nil &&
+		      quantifier == nil && variable == nil && truncated == nil &&
+		      namesMatches && namesDiacritic,
+		      fn_last_reason);
+	}
+
+	{
+		NSArray *people = @[ @{ @"name": @"ann", @"age": @40 },
+				     @{ @"name": @"bob", @"age": @10 },
+				     @{ @"name": @"ann", @"age": @9 } ];
+		NSPredicate *parsed = fn_parse(@"name = \"ann\" AND age > 30");
+		NSArray *kept = parsed != nil ? [people filteredArrayUsingPredicate:parsed] : nil;
+
+		/* THE TWO HALVES JOINED: a predicate WRITTEN as text, used to filter — which is the
+		 * whole point of having a grammar at all. */
+		check("format-filter",
+		      kept != nil && [kept count] == 1 &&
+		      [[[kept objectAtIndex:0] valueForKey:@"age"] intValue] == 40 &&
+		      [people count] == 3,
+		      fn_format(parsed));
 	}
 
 	printf("FOUNDATION-PREDICATE RESULT ok=%d fail=%d\n", okc, failc);

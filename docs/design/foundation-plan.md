@@ -1,6 +1,6 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4, F6–F10 and F11a LANDED, the audited inventories CLOSED, and the
+Status: **DRAFT (2026-09). F0–F4 and F6–F11 LANDED, the audited inventories CLOSED, and the
 plist skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
@@ -9,13 +9,14 @@ rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, 
 object), `NSPropertyListSerialization`, `NSCalendar`/`NSTimeZone`/`NSDateComponents` (F7 — a
 fixed-offset time zone and the Gregorian calendar AS RULES), `NSURL` (F8 — the URL as a
 VALUE), `NSKeyValueCoding` (F9 — the naming rules, on the runtime's ivar table) and
-`NSSortDescriptor` (F10 — a sort as a value) and `NSPredicate` (F11a — the predicate object, a
-tree that needs no parser) — with every staged public header
+`NSSortDescriptor` (F10 — a sort as a value), `NSPredicate` (F11 — the predicate object AND the
+format grammar that writes one, which parses a string into the very tree the object model
+builds) — with every staged public header
 annotated for nullability (F6, and enforced since as a standing rule). Gated on a
 guest boot by eleven cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `foundation_calendar`, `foundation_url`,
 `foundation_kvc`, `foundation_sort`, `foundation_predicate`, `objc_smoke`), whose probes
-carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 13** checks. **F5 (self-hosting) is DEFERRED — the user's call,
+carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 24** checks. **F5 (self-hosting) is DEFERRED — the user's call,
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
@@ -424,14 +425,14 @@ status.
   `-encodeWithCoder:` (they belong to an NSCoding family this library does not ship). Neither
   is a gap in sorting; both are another family's nouns.
 
-- **F11 — `NSPredicate`. F11a SHIPPED, F11b NEXT (2026-09-17): it lands in TWO HALVES.** The second
+- **F11 — `NSPredicate`. SHIPPED (2026-09-17), in TWO HALVES.** The second
   family the queue's row names, and the largest single item left in the plan: a predicate is its
   own little LANGUAGE. The halves are separable, and that is a measurement rather than a
   convenience — the collection probe's `excluded[]` had exactly ONE predicate name left in it
   (`filteredArrayUsingPredicate:`), and what that name waits on is the predicate OBJECT, not the
   grammar:
 
-  * **F11a — the predicate OBJECT MODEL (this half).** `NSPredicate` as an abstract base whose
+  * **F11a — the predicate OBJECT MODEL.** `NSPredicate` as an abstract base whose
     `-evaluateWithObject:` RAISES (a default of NO would be a lie: the caller would read "this
     object does not match" where the truth is "nothing was asked"), the two leaves a caller can
     build with NO parser — `+predicateWithValue:` and `+predicateWithBlock:` —
@@ -441,7 +442,7 @@ status.
     `-[NSMutableArray filterUsingPredicate:]`. `NSCompoundPredicate` is PUBLIC because it is the
     tree the grammar will BUILD; the comparison leaf stays private for now, because its Cocoa
     API is expressed in `NSExpression`;
-  * **F11b — the FORMAT GRAMMAR (next).** `+predicateWithFormat:`, the lexer and the
+  * **F11b — the FORMAT GRAMMAR.** `+predicateWithFormat:`, the lexer and the
     recursive-descent parser, and the comparison leaf they produce: the comparisons (`=`, `==`,
     `!=`, `<>`, `<`, `<=`, `>`, `>=`), the string operators (`CONTAINS`, `BEGINSWITH`,
     `ENDSWITH`, and `LIKE` with its `*`/`?` wildcards and `\` escapes), the connectives
@@ -480,6 +481,17 @@ status.
   The MECHANISM IS NOT EXPLAINED, and nothing here claims one — what is recorded is the
   measurement, because the next person to put a capturing block in a support unit will
   meet it.
+- **`-UTF8String`'S BUFFER IS BORROWED — COPY IT IF YOU KEEP IT** (measured in F11b,
+  2026-09-17, and it cost three round trips). The grammar parser held
+  `_text = [format UTF8String]` and compared operator symbols through `[symbol UTF8String]`
+  as well. For a SHORT literal — F1's rule: fewer than 9 ASCII characters is a TAGGED
+  POINTER — that buffer is not the literal's own bytes but a decode scratch, and the next
+  `-UTF8String` on ANOTHER string overwrites it. The symptom was a refusal you could not
+  argue with: `age > 30` raised `a comparison operator is missing (found "" at 4 of 8)`
+  while `rank > 30` (nine characters, a real constant string) parsed, and `SELF > 2` did
+  too. The fix is one `strdup` in the constructor and a `free` in `-dealloc`. **Any code that
+  holds a `const char *` from `-UTF8String` across another `-UTF8String` call has this bug**
+  — and the class that owns what it parses is the one that should own the bytes.
 - **Nullability is a rule too, and it is CHECKED** (user, 2026-09-17): a new class
   is annotated WHILE it is written, so its header opens `NS_ASSUME_NONNULL_BEGIN`
   and closes it with `NS_ASSUME_NONNULL_END` in the same commit. Two mechanical
@@ -1025,7 +1037,7 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSURL` — **SHIPPED (F8)** | the URL as a VALUE: the RFC 3986 parse (scheme/authority/path/query/fragment), the FSH's file-URL ↔ path rules — including the percent-encoded SPACE an FSH path may contain — and the path arithmetic. Refused by name and asserted ABSENT by the probe: the loading system (`NSURLSession`/`NSURLConnection`/`NSURLRequest`), `NSURLComponents`/`NSURLQueryItem`, `NSFileManager` and every filesystem query, and general relative resolution. The URL-taking forms of the file APIs would be built on it and remain absent |
 | KVC (`NSKeyValueCoding`) — **SHIPPED (F9)** | the NAMING RULES: the accessor forms (`-get<Key>`/`-<key>`/`-is<Key>` and `-set<Key>:`), the ivar fallback (`_<key>`/`_is<Key>`/`<key>`/`is<Key>`) through the RUNTIME, key paths, the operators that are folds (`@count`/`@sum`/`@avg`/`@max`/`@min`/`@unionOfObjects`/`@distinctUnionOfObjects`), the two collection MAP forms, and the failure hooks. Refused by name: KVO (a registry of observers, not a naming rule), the mutable proxies, the set-returning operators, and `-takeValue:forKey:` |
 | `NSSortDescriptor` (+ the descriptor and function sorts) — **SHIPPED (F10)** | a sort descriptor as a VALUE: (key, ascending, how to compare) with the three comparison kinds (`-compare:`, a `-selector`, a comparator block), `-reversedSortDescriptor`, and the collection forms `-sortedArrayUsingDescriptors:`, `-sortUsingDescriptors:`, `-sortedArrayUsingFunction:context:`, `-sortUsingFunction:context:`. A descriptor CHAIN is lexicographic and the sort is STABLE (ties keep input order). Refused by name: `-allowEvaluation` (a sandbox for untrusted archives, not a sorting rule) and the coder forms (NSCoding is not shipped) |
-| `NSPredicate` — **F11a SHIPPED, F11b NEXT (F11)** | the predicate OBJECT MODEL ships: `NSPredicate` as an abstract base whose `-evaluateWithObject:` RAISES, `+predicateWithValue:`, `+predicateWithBlock:`, `NSCompoundPredicate` (AND/OR/NOT, short-circuiting, with the and/or-nothing identities), `-predicateFormat`, and `-[NSArray filteredArrayUsingPredicate:]` / `-[NSMutableArray filterUsingPredicate:]`. The FORMAT GRAMMAR (F11b) is next: the comparison and string operators, `LIKE`, the connectives, constants, key paths through KVC, `[c]`. Refused by name: `MATCHES` and `[d]` (no regex engine, no Unicode tables), `NSExpression`/`NSComparisonPredicate`, the quantifiers, and the `:arguments:` substitution forms |
+| `NSPredicate` — **SHIPPED (F11)** | the predicate OBJECT MODEL: `NSPredicate` as an abstract base whose `-evaluateWithObject:` RAISES, `+predicateWithValue:`, `+predicateWithBlock:`, `NSCompoundPredicate` (AND/OR/NOT, short-circuiting, with the and/or-nothing identities), `-predicateFormat`, and `-[NSArray filteredArrayUsingPredicate:]` / `-[NSMutableArray filterUsingPredicate:]` — AND THE FORMAT GRAMMAR: `+predicateWithFormat:` (NOT variadic, deliberately), the recursive-descent parser and the comparison leaf it builds, with the comparisons, the string operators, `LIKE` (`*`/`?`/`\`), the connectives, the constants, key paths through KVC, `[c]`, and a renderer the round trip agrees with. Refused by name: `MATCHES` and `[d]` (no regex engine, no Unicode tables), `NSExpression`/`NSComparisonPredicate`, `IN`/`BETWEEN`, the quantifiers, and the `:arguments:` substitution forms |
 | compression codecs | their own family |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
@@ -1705,3 +1717,37 @@ recorded as unexplained.
 
 `foundation_predicate` 13/13, `foundation_collection` 34/34, and `make rootagfs` clean — the gate
 included, with no warnings from the new files.
+
+### F11b landed (2026-09-17): the format grammar, and a borrowed buffer
+
+`+predicateWithFormat:` — the second half of the family — with `foundation_predicate` **24/24**
+(13 object checks plus 11 grammar ones) on a guest boot. The grammar is a recursive-descent parser
+over the format's UTF-8 bytes that builds EXACTLY the tree F11a defined: `NSCompoundPredicate`
+for the connectives, a PRIVATE comparison leaf for the comparisons. So the two halves cannot
+diverge, and `-predicateFormat` renders text the parser accepts — the round-trip check parses,
+renders, re-parses and requires the SAME answers from both trees, because idempotence alone would
+pass for a renderer that produced nothing usable.
+
+THE REFUSALS NAME THEMSELVES, and that is the design rather than a courtesy: `MATCHES`, `[d]`,
+`IN`, `BETWEEN`, `ANY` and `$variables` each raise a message saying WHICH construct was refused,
+so a caller who wrote the format once can see why. `format-refusals` asserts both that each raises
+and that the message names it.
+
+AND THE BUG THIS HALF PAID FOR IS THE BEST ARGUMENT YET FOR §9's OWN RULE — a detail must carry
+its measurement. Two checks failed; the first detail printed "(nil)" where it should have printed
+WHY the parse failed, and the second printed a rendering where it should have printed the booleans
+under test. Each fix cost a round trip and each bought the answer: with the reason printed,
+`age > 30` failed "at character 4"; with the position and length printed, "found \"\" at 4 of 8";
+and the EMPTY string is what finally pointed at `_text` itself. THE CAUSE: `-UTF8String`'s buffer
+is BORROWED, and for a SHORT literal it is a shared decode scratch — the operator symbols the
+parser compares against are exactly such strings, so they were overwriting the format under its
+own feet. `rank > 30` (nine characters, a real string) worked, which is what made the pattern look
+random. §6 has the entry; the fix is `strdup` in the constructor and `free` in `-dealloc`.
+
+THE LIKE ESCAPE is the other thing worth knowing: the string scanner unescapes the four pairs it
+knows and leaves anything else as itself, so a literal star in a LIKE pattern is written `\\*` in
+the FORMAT. `format-like` measures `*`, `?` and the escaped star against TWO objects each, because
+a matcher that ignored a wildcard would pass any single-object check.
+
+`foundation_predicate` 24/24, and `make rootagfs` clean — the gate included, with no warnings from
+the new files.

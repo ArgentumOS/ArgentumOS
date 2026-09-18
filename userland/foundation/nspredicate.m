@@ -22,6 +22,10 @@
 #import <foundation/NSArray.h>
 #import <foundation/NSDictionary.h>
 #import <foundation/NSException.h>
+#import <foundation/NSKeyValueCoding.h>	/* the comparison leaf resolves key paths */
+#import "fnpredicate.h"
+
+#include <string.h>
 
 /* --------------------------------------------------------------- the leaves */
 
@@ -60,6 +64,21 @@
 + (instancetype)predicateWithBlock:(BOOL (^)(id, NSDictionary *))block
 {
 	return [[FNPredicateBlock alloc] initWithBlock:block];
+}
+
+/* THE GRAMMAR'S TWO DOORS (F11b). The parser itself lives in npredicateformat.m and is reached
+ * through FNPredicateParse, so neither file owns the other: this one owns the CLASS, and that
+ * one owns the LANGUAGE. */
++ (instancetype)predicateWithFormat:(NSString *)format
+{
+	return FNPredicateParse(format);
+}
+
+- (instancetype)initWithFormat:(NSString *)format
+{
+	/* Cocoa's -initWithFormat: ANSWERS THE PARSED PREDICATE, whatever it was sent to: a predicate
+	 * is immutable, so there is nothing of the receiver to keep. */
+	return FNPredicateParse(format);
 }
 
 - (BOOL)evaluateWithObject:(nullable id)object
@@ -240,6 +259,237 @@
 		[out appendString:[[_subpredicates objectAtIndex:i] predicateFormat]];
 	}
 	[out appendString:@")"];
+	return out;
+}
+
+@end
+
+/* ------------------------------------------------------- the comparison leaf */
+
+/* ASCII case folding, which is what `[c]` means HERE: the library's case rules are its own (the
+ * locale family says so), and a predicate must not pretend to more than it does. */
+static char fn_fold_byte(char c)
+{
+	return (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+}
+
+/* LIKE: `*` is any run, `?` is any one byte, and `\` escapes the next byte — INCLUDING a `?` or
+ * a `*` meant literally, which is why the escape is remembered in `literal` instead of being
+ * applied and forgotten. Byte-wise on the UTF-8 spelling, which is exact for the patterns this
+ * grammar writes. */
+static BOOL fn_like_bytes(const char *text, const char *pattern, BOOL caseInsensitive)
+{
+	while (*pattern != '\0') {
+		BOOL literal = NO;
+
+		if (*pattern == '*') {
+			pattern++;
+			if (*pattern == '\0') {
+				return YES;	/* a trailing star takes the rest */
+			}
+			while (*text != '\0') {
+				if (fn_like_bytes(text, pattern, caseInsensitive)) {
+					return YES;
+				}
+				text++;
+			}
+			return NO;
+		}
+		if (*text == '\0') {
+			return NO;
+		}
+		if (*pattern == '\\' && *(pattern + 1) != '\0') {
+			pattern++;
+			literal = YES;
+		}
+		if (!literal && *pattern == '?') {
+			pattern++;
+			text++;
+			continue;
+		}
+		if (caseInsensitive ? (fn_fold_byte(*pattern) != fn_fold_byte(*text))
+				    : (*pattern != *text)) {
+			return NO;
+		}
+		pattern++;
+		text++;
+	}
+	return *text == '\0';
+}
+
+static BOOL fn_strings_equal(NSString *left, NSString *right, BOOL caseInsensitive)
+{
+	if (caseInsensitive) {
+		return [[left lowercaseString] isEqualToString:[right lowercaseString]];
+	}
+	return [left isEqualToString:right];
+}
+
+/* A literal, as the GRAMMAR would write it — so that parsing a rendered predicate gives the same
+ * tree back. A string is quoted (with the two escapes that would otherwise be ambiguous), a
+ * number is its own description, and nothing is NULL. */
+static NSString *fn_literal_format(id literal)
+{
+	if (literal == nil) {
+		return @"NULL";
+	}
+	if ([literal isKindOfClass:[NSString class]]) {
+		NSMutableString *out = [[NSMutableString alloc] initWithString:@"\""];
+		const char *bytes = [(NSString *)literal UTF8String];
+		size_t i;
+
+		for (i = 0; bytes[i] != '\0'; i++) {
+			char one[2];
+
+			if (bytes[i] == '"' || bytes[i] == '\\') {
+				[out appendString:@"\\"];
+			}
+			one[0] = bytes[i];
+			one[1] = '\0';
+			[out appendString:[NSString stringWithUTF8String:one]];
+		}
+		[out appendString:@"\""];
+		return out;
+	}
+	return [literal description];
+}
+
+static NSString *fn_operator_name(FNCompareOperator op)
+{
+	if (op == FNCompareEqual) return @"=";
+	if (op == FNCompareNotEqual) return @"!=";
+	if (op == FNCompareLess) return @"<";
+	if (op == FNCompareLessOrEqual) return @"<=";
+	if (op == FNCompareGreater) return @">";
+	if (op == FNCompareGreaterOrEqual) return @">=";
+	if (op == FNCompareContains) return @"CONTAINS";
+	if (op == FNCompareBeginsWith) return @"BEGINSWITH";
+	if (op == FNCompareEndsWith) return @"ENDSWITH";
+	return @"LIKE";
+}
+
+/* ONE PLACE RESOLVES AN OPERAND: a path goes through KVC (so `inner.name` works and a SCALAR
+ * comes back boxed, F9), a literal is itself, and SELF is the object. */
+static id fn_operand_value(id object, NSString *path, id literal)
+{
+	if (path == nil) {
+		return literal;
+	}
+	if ([path isEqualToString:@"SELF"]) {
+		return object;
+	}
+	return [object valueForKey:path];
+}
+
+@implementation FNPredicateComparison
+
+- (instancetype)initWithLeftPath:(nullable NSString *)leftPath
+		     leftLiteral:(nullable id)leftLiteral
+			operator:(FNCompareOperator)op
+		       rightPath:(nullable NSString *)rightPath
+		    rightLiteral:(nullable id)rightLiteral
+		 caseInsensitive:(BOOL)caseInsensitive
+{
+	if ((self = [super init]) != nil) {
+		_leftPath = leftPath;
+		_leftLiteral = leftLiteral;
+		_rightPath = rightPath;
+		_rightLiteral = rightLiteral;
+		_op = op;
+		_caseInsensitive = caseInsensitive;
+	}
+	return self;
+}
+
+- (BOOL)evaluateWithObject:(nullable id)object
+{
+	id left = fn_operand_value(object, _leftPath, _leftLiteral);
+	id right = fn_operand_value(object, _rightPath, _rightLiteral);
+	NSComparisonResult order;
+
+	if (_op == FNCompareEqual || _op == FNCompareNotEqual) {
+		BOOL equal;
+
+		if (left == nil || right == nil) {
+			/* Nothing equals anything except nothing: NULL = NULL is true, and NULL = 1
+			 * is false rather than an error. */
+			equal = (left == nil && right == nil);
+		} else if ([left isKindOfClass:[NSString class]] &&
+			   [right isKindOfClass:[NSString class]]) {
+			equal = fn_strings_equal(left, right, _caseInsensitive);
+		} else {
+			equal = [left isEqual:right];
+		}
+		return _op == FNCompareEqual ? equal : !equal;
+	}
+	if (_op == FNCompareContains || _op == FNCompareBeginsWith ||
+	    _op == FNCompareEndsWith || _op == FNCompareLike) {
+		if (![left isKindOfClass:[NSString class]] ||
+		    ![right isKindOfClass:[NSString class]]) {
+			[NSException raise:NSInvalidArgumentException
+				    format:@"%@ needs two strings, and these are not: %@ and %@",
+					   fn_operator_name(_op), [left class], [right class]];
+		}
+		/* A FOLDED pair when `[c]`, so the folding rule is stated once instead of being
+		 * trusted to a search option meaning the same thing a second time. */
+		if (_caseInsensitive) {
+			left = [left lowercaseString];
+			right = [right lowercaseString];
+		}
+		{
+			const char *haystack = [(NSString *)left UTF8String];
+			const char *needle = [(NSString *)right UTF8String];
+
+			if (_op == FNCompareLike) {
+				return fn_like_bytes(haystack, needle, NO);
+			}
+			if (_op == FNCompareBeginsWith) {
+				return strncmp(haystack, needle, strlen(needle)) == 0;
+			}
+			if (_op == FNCompareEndsWith) {
+				size_t h = strlen(haystack);
+				size_t n = strlen(needle);
+
+				return n <= h && strcmp(haystack + (h - n), needle) == 0;
+			}
+			return strstr(haystack, needle) != NULL;
+		}
+	}
+	/* THE ORDERING OPERATORS: both sides have to be able to compare themselves, and nothing
+	 * has a place in an order. */
+	if (left == nil || right == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"an ordering comparison cannot ask about nothing"];
+	}
+	if (![left respondsToSelector:@selector(compare:)]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"%@ cannot be compared with <, <=, > or >=", [left class]];
+	}
+	order = [left compare:right];
+	if (_op == FNCompareLess) {
+		return order == NSOrderedAscending;
+	}
+	if (_op == FNCompareLessOrEqual) {
+		return order != NSOrderedDescending;
+	}
+	if (_op == FNCompareGreater) {
+		return order == NSOrderedDescending;
+	}
+	return order != NSOrderedAscending;	/* FNCompareGreaterOrEqual */
+}
+
+- (NSString *)predicateFormat
+{
+	NSMutableString *out = [[NSMutableString alloc] init];
+
+	[out appendString:_leftPath != nil ? _leftPath : fn_literal_format(_leftLiteral)];
+	[out appendString:@" "];
+	[out appendString:fn_operator_name(_op)];
+	[out appendString:@" "];
+	[out appendString:_rightPath != nil ? _rightPath : fn_literal_format(_rightLiteral)];
+	if (_caseInsensitive) {
+		[out appendString:@"[c]"];
+	}
 	return out;
 }
 

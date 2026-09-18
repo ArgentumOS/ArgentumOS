@@ -9,8 +9,9 @@
  * answer about one object, and nodes that combine their children. That tree needs no parser at
  * all — `+predicateWithValue:` and `+predicateWithBlock:` build the leaves and
  * `NSCompoundPredicate` builds the nodes — and it is what `-filteredArrayUsingPredicate:` waits
- * on. The SECOND half is the FORMAT GRAMMAR (`+predicateWithFormat:`), which parses a string
- * into exactly this tree; until it lands, a predicate is BUILT rather than written.
+ * on. The SECOND half is the FORMAT GRAMMAR (`+predicateWithFormat:`, F11b), which parses a
+ * string into exactly this tree — so a predicate can be BUILT or written, and both roads end at
+ * the same nodes.
  *
  * THE BASE CLASS IS ABSTRACT, AND RAISES. A predicate with no rule of its own has no answer, and
  * a default of NO would be a LIE about what was asked: the caller would read "this object does
@@ -25,7 +26,9 @@
  *     `NSComparisonPredicate`'s whole API is expressed in one.
  *   - `IN`/`BETWEEN`, the `ANY`/`ALL`/`NONE`/`SOME` quantifiers and the aggregate key paths.
  *   - the `…WithFormat:arguments:` SUBSTITUTION forms: `%K` and `%@` are a second quoting rule
- *     laid over the grammar, and the grammar itself is not written yet.
+ *     laid over the grammar, and `+predicateWithFormat:` takes NO arguments because of it. A
+ *     caller with a value to splice writes it into the string, quotes and all: the grammar IS
+ *     the interface.
  */
 
 #ifndef FOUNDATION_NSPREDICATE_H
@@ -57,6 +60,21 @@ typedef enum {
  * discover it. */
 + (instancetype)predicateWithBlock:(BOOL (^)(id _Nullable evaluatedObject,
 					    NSDictionary * _Nullable bindings))block;
+
+/*
+ * THE GRAMMAR (F11b): the format string is parsed into exactly the tree these classes form —
+ * NSCompoundPredicate for the connectives, a comparison leaf for the comparisons.
+ *
+ * IT TAKES NO ARGUMENTS. Cocoa's is variadic; this one is not, so `…WithFormat:@"x = %@", value`
+ * is a COMPILE ERROR rather than a half-supported second quoting rule (the refusal list above).
+ * A caller with a value to splice writes it into the string, escapes and all.
+ *
+ * A BAD FORMAT RAISES rather than answering nil, and the message names the construct — including
+ * the ones this grammar REFUSES: `MATCHES`, `[d]`, `IN`, `BETWEEN`, the quantifiers and `$`
+ * substitution. A refusal a caller cannot see would be worse than no parser at all.
+ */
++ (instancetype)predicateWithFormat:(NSString *)format;
+- (instancetype)initWithFormat:(NSString *)format;
 
 /* THE ABSTRACT ONE. Raises in the base class (see the header note); every real predicate
  * answers. `object` is nullable because a predicate may legitimately be asked about nil. */
