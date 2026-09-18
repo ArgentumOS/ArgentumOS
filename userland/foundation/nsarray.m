@@ -14,6 +14,7 @@
 #import <foundation/NSException.h>
 #import <foundation/NSIndexSet.h>
 #import <foundation/NSSortDescriptor.h>
+#import <foundation/NSPredicate.h>
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
@@ -366,6 +367,27 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	return array_sorted_with_comparator(self, ^NSComparisonResult(id left, id right) {
 		return (NSComparisonResult)comparator(left, right, context);
 	});
+}
+
+/* THE PREDICATE FILTER (F11a): keep what the predicate answers YES for, in order. The receiver is
+ * untouched — this is the immutable form, and -filterUsingPredicate: is the mutable one. A NIL
+ * predicate raises rather than quietly answering an empty array, which is what a message to nil
+ * would have produced by accident. */
+- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate
+{
+	NSMutableArray *kept = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	if (predicate == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-filteredArrayUsingPredicate: needs a predicate"];
+	}
+	for (i = 0; i < _count; i++) {
+		if ([predicate evaluateWithObject:_items[i]]) {
+			[kept addObject:_items[i]];
+		}
+	}
+	return kept;
 }
 
 - (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
@@ -848,6 +870,12 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 - (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context
 {
 	[self setArray:[self sortedArrayUsingFunction:comparator context:context]];
+}
+
+/* In place, because that is what MUTABLE means: the kept elements stay in the receiver. */
+- (void)filterUsingPredicate:(NSPredicate *)predicate
+{
+	[self setArray:[self filteredArrayUsingPredicate:predicate]];
 }
 
 - (void)replaceObjectsInRange:(NSRange)range

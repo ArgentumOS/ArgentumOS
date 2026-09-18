@@ -310,6 +310,7 @@ int main(void)
 			"sortedArrayUsingDescriptors:", "sortedArrayUsingFunction:context:",
 			"enumerateObjectsUsingBlock:",
 			"objectsAtIndexes:", "indexesOfObjectsPassingTest:",
+			"filteredArrayUsingPredicate:",		/* NSPredicate — F11a */
 			"isEqualToArray:", "isEqual:", "hash", "description", "copy", "mutableCopy",
 			"countByEnumeratingWithState:objects:count:",
 			NULL
@@ -319,6 +320,7 @@ int main(void)
 		};
 		static const char *mutableSelectors[] = {
 			"initWithCapacity:", "addObject:", "addObjectsFromArray:",
+			"filterUsingPredicate:",		/* NSPredicate — F11a, the mutable form */
 			"insertObject:atIndex:", "removeObjectAtIndex:", "removeLastObject",
 			"removeObject:", "removeObject:inRange:",
 			"removeObjectIdenticalTo:", "removeObjectIdenticalTo:inRange:",
@@ -334,10 +336,10 @@ int main(void)
 			"setObject:atIndexedSubscript:", NULL
 		};
 		static const char *excluded[] = {
-			/* NSPredicate is DESIGNED, NOT STARTED (F11) — the one name here that waits on a
-			 * family rather than on this one. The descriptor and function-POINTER sorts now
-			 * SHIP (F10, NSSortDescriptor.h), so they moved into the required lists above. */
-			"filteredArrayUsingPredicate:",		/* NSPredicate — F11 */
+			/* NO predicate or descriptor name is left here: F10 moved the sort forms and F11a
+			 * moved the filter into the REQUIRED lists above, which is the inventory rule working
+			 * in the direction it was written for. What remains is not a class that is missing —
+			 * it is the URL-taking FORM. */
 			/* NOT absent for want of a class: NSURL SHIPS (F8). These are absent
 			 * because the URL-taking FORM is not written — the plist forms take paths. */
 			"arrayWithContentsOfURL:",		/* the URL-taking forms are not shipped */

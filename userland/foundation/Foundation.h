@@ -42,5 +42,6 @@
 #import <foundation/NSURL.h>
 #import <foundation/NSKeyValueCoding.h>
 #import <foundation/NSSortDescriptor.h>
+#import <foundation/NSPredicate.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
