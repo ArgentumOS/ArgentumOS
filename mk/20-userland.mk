@@ -212,7 +212,11 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/nstimezone.m -o .build/foundation-nstimezone.o
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/ndatecomponents.m -o .build/foundation-ndatecomponents.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+	# F13.7b: nscalendar.m NOW INCLUDES ICU (<unicode/ucal.h>), because the class reads every
+	# calendar out of it instead of refusing the ones whose tables it lacked. So the ICU prefix is
+	# on ITS include path too; the link needed nothing new (F13.6 already made libfoundation need
+	# libicui18n/libicuuc/libicudata).
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
 		$(FOUNDATION_SRC)/nscalendar.m -o .build/foundation-nscalendar.o
 	# F8: the URL value type.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \

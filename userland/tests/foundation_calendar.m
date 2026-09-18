@@ -255,10 +255,18 @@ int main(void)
 
 		check("calendar-weeks",
 		      [ca weekOfYear] == 1 && [ca yearForWeekOfYear] == 2026 &&
-		      [ca weekday] == 4 && [ca weekOfMonth] == 1 &&
+		      /* THURSDAY IS 5, and this expectation CHANGED when the calendars moved to ICU
+		       * (F13.7b). The libc path ROTATED weekday by firstWeekday — with a Monday-start
+		       * week it called Thursday 4 — and Cocoa numbers weekday ABSOLUTELY, 1 = Sunday,
+		       * which is what ICU's UCAL_DAY_OF_WEEK is. The old number was the bug. */
+		      [ca weekday] == 5 && [ca weekOfMonth] == 1 &&
 		      [cb weekOfYear] == 1 && [cb yearForWeekOfYear] == 2026 &&
 		      [cal firstWeekday] == 2 && [cal minimumDaysInFirstWeek] == 4,
-		      "the week rule, and the year that owns week 1");
+		      [[NSString stringWithFormat:
+				@"jan1 woy=%ld woyYear=%ld weekday=%ld wom=%ld | dec29 woy=%ld woyYear=%ld",
+				(long)[ca weekOfYear], (long)[ca yearForWeekOfYear],
+				(long)[ca weekday], (long)[ca weekOfMonth],
+				(long)[cb weekOfYear], (long)[cb yearForWeekOfYear]] UTF8String]);
 		[cal setFirstWeekday:1];
 		[cal setMinimumDaysInFirstWeek:1];
 	}
@@ -297,20 +305,40 @@ int main(void)
 		 * NAME and the non-Gregorian calendars, which are F13.7's own slice. (The
 		 * `-dateFromString:` assertion is on NSCalendar, which has no parser in Cocoa either
 		 * — it is a fact about NSCalendar, not about the formatter, and it stays.) */
-		SEL nameSel = sel_registerName("timeZoneWithName:");
-		SEL knownSel = sel_registerName("knownTimeZoneNames");
 		SEL abbrevSel = sel_registerName("abbreviationDictionary");
 		SEL dateFromStringSel = sel_registerName("dateFromString:");
-		NSCalendar *hebrew = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierHebrew];
-		NSCalendar *iso = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierISO8601];
 		NSCalendar *gregorian = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
 
 		check("calendar-refusals",
 		      ![NSTimeZone respondsToSelector:abbrevSel] &&
 		      ![cal respondsToSelector:dateFromStringSel] &&
-		      hebrew == nil && iso == nil && gregorian != nil,
-		      "the CURATED abbreviation map is still refused, the non-Gregorian identifiers "
-		      "still answer nil, and the Gregorian one still constructs");
+		      gregorian != nil,
+		      "the CURATED abbreviation map is still refused, NSCalendar still has no parser, "
+		      "and the Gregorian calendar constructs");
+	}
+
+	{
+		/* F13.7b: THE NON-GREGORIAN CALENDARS ARE HERE. The identifiers used to answer nil; now
+		 * they are ICU's, and each answers its OWN year for the same instant — which no constant
+		 * in this file could produce. 2023-11-14 (1700000000) falls in Hebrew 5784, Islamic 1445
+		 * and Buddhist 2566. */
+		NSCalendar *hebrew = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierHebrew];
+		NSCalendar *islamic = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierIslamic];
+		NSCalendar *buddhist = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierBuddhist];
+		NSCalendar *iso = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierISO8601];
+		NSDate *when = [NSDate dateWithTimeIntervalSince1970:1700000000.0];
+		NSInteger hebrewYear = hebrew != nil
+			? [[hebrew components:NSCalendarUnitYear fromDate:when] year] : 0;
+		NSInteger islamicYear = islamic != nil
+			? [[islamic components:NSCalendarUnitYear fromDate:when] year] : 0;
+		NSInteger buddhistYear = buddhist != nil
+			? [[buddhist components:NSCalendarUnitYear fromDate:when] year] : 0;
+
+		check("calendar-non-gregorian",
+		      hebrew != nil && islamic != nil && buddhist != nil && iso != nil &&
+		      hebrewYear == 5784 && islamicYear == 1445 && buddhistYear == 2566,
+		      [[NSString stringWithFormat:@"hebrew=%ld islamic=%ld buddhist=%ld",
+				(long)hebrewYear, (long)islamicYear, (long)buddhistYear] UTF8String]);
 	}
 
 	{

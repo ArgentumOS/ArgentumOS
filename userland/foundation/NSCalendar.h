@@ -3,27 +3,22 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * NSCalendar — the GREGORIAN calendar, as rules. docs/design/foundation-plan.md, F7.
+ * NSCalendar — every calendar ICU has, through ICU. docs/design/foundation-plan.md, F7 and §10.
  *
- * THE BOUNDARY IS A RULE, NOT A TABLE, and a calendar is the family where that
- * line costs the most. The Gregorian calendar's own arithmetic IS a rule — leap
- * years, month lengths, the day of the week — so all of it ships. What does not
- * ship is every calendar whose arithmetic needs a table (Hebrew's moladot,
- * Islamic's sighting convention, Japanese's era list) and every service that
- * needs a database (time-zone names, DST transitions, date formatting). Those
- * are REFUSED BY NAME below rather than half-answered.
+ * THIS CLASS WAS THE PLAN'S SECOND CLEAREST REFUSAL. F7 shipped the Gregorian calendar "as rules"
+ * on libc's field arithmetic and refused the rest BY NAME, with the reason written down: Hebrew's
+ * moladot, Islamic's sighting convention, Japanese's era list are TABLES, and this library had none
+ * of them. The reason was correct — and §10 is the answer to it, which F13.7b is where the answer
+ * landed: ICU HAS the tables, so the identifiers are read out of it.
  *
- * THE SUBSTRATE IS LIBC, and that is NSDate's own note applied: `gmtime_r` turns
- * an absolute time into fields, `timegm` turns fields back into an absolute time
- * AND NORMALISES them (tm_mday = 32 becomes the 1st of the next month), and the
- * month-length rule falls out of that normalisation rather than being written
- * twice. The one thing libc does not give us is the CALENDAR's semantics — what
- * "add one month" does to the 31st, which day starts a week — and that is what
- * this class adds.
+ * WHAT REMAINS A RULE is what was always a rule: the conversion, THE CLAMP (31 January + 1 month is
+ * the last day of February), the range questions (how many days does THIS month have, how many
+ * months does THIS year have), and the week rule. ICU answers each through one entry point — see
+ * nscalendar.m's own note — so this class is a BINDING now, and the arithmetic it used to do by
+ * hand is the part that was already provable.
  *
- * A FIXED-OFFSET TIME ZONE makes the arithmetic exact: with no DST there is no
- * transition to step over, so a day is 86400 seconds and a difference is
- * subtraction. `-timeZone` defaults to UTC.
+ * A NAMED TIME ZONE now carries its own offset rules with it, because F13.7a gave NSTimeZone the
+ * database; `-timeZone` defaults to whatever the system reports.
  */
 
 #ifndef FOUNDATION_NSCALENDAR_H
@@ -41,18 +36,27 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /*
- * Only the Gregorian one is honoured. The others are NAMED so that a call
- * compiles and is refused honestly — `+calendarWithIdentifier:` answers nil for
- * them — rather than silently behaving as if it had the table it lacks. The
- * spellings are Cocoa's.
+ * EVERY CALENDAR ICU HAS, BY NAME. This list was a list of REFUSALS when F7 wrote it — the era
+ * offsets, the molad, the sighting convention, the solstice table — and F13.7b is where those
+ * refusals were un-refused: the tables are ICU's now (§10), and `+calendarWithIdentifier:` answers
+ * nil only for a name this class does not know at all. The spellings are Cocoa's.
  */
 extern NSString *const NSCalendarIdentifierGregorian;
-extern NSString *const NSCalendarIdentifierISO8601;		/* refused: a rule SET, not this calendar */
-extern NSString *const NSCalendarIdentifierBuddhist;		/* refused: needs its era offset table */
-extern NSString *const NSCalendarIdentifierJapanese;		/* refused: needs the era list */
-extern NSString *const NSCalendarIdentifierHebrew;		/* refused: needs the molad table */
-extern NSString *const NSCalendarIdentifierIslamic;		/* refused: needs a sighting convention */
-extern NSString *const NSCalendarIdentifierChinese;		/* refused: needs the solstice table */
+extern NSString *const NSCalendarIdentifierISO8601;
+extern NSString *const NSCalendarIdentifierBuddhist;
+extern NSString *const NSCalendarIdentifierChinese;
+extern NSString *const NSCalendarIdentifierCoptic;
+extern NSString *const NSCalendarIdentifierEthiopicAmeteMihret;
+extern NSString *const NSCalendarIdentifierEthiopicAmeteAlem;
+extern NSString *const NSCalendarIdentifierHebrew;
+extern NSString *const NSCalendarIdentifierIndian;
+extern NSString *const NSCalendarIdentifierIslamic;
+extern NSString *const NSCalendarIdentifierIslamicCivil;
+extern NSString *const NSCalendarIdentifierIslamicTabular;
+extern NSString *const NSCalendarIdentifierIslamicUmmAlQura;
+extern NSString *const NSCalendarIdentifierJapanese;
+extern NSString *const NSCalendarIdentifierPersian;
+extern NSString *const NSCalendarIdentifierRepublicOfChina;
 
 /* Cocoa's unit bitmask, and the VALUES ARE COCOA'S so a numeric test in existing
  * code still means the same thing. Every unit below is derived from the date

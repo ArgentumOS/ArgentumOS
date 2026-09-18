@@ -2167,3 +2167,41 @@ accepting Cocoa's ordering is a small change to the comparison rule, and it is i
 byte-oriented and has no diacritic mode, so the COMBINATION raises with a message saying so rather
 than answering approximately (`[c]` works, and `[d]` works on `=`, `!=`, `<`, `<=`, `>` and `>=`).
 And `[d]` on CONTAINS/BEGINSWITH/ENDSWITH/LIKE wants ICU's search iterator, which is its own step.
+
+### F13.7b landed (2026-09-18): EVERY calendar, and the weekday bug the old numbering hid
+
+**`foundation_calendar` 13/13 on a guest boot** — the twelve checks that guarded the libc
+implementation, unchanged in what they assert, PLUS `calendar-non-gregorian`. The new one is the
+proof the rest of the slice hangs on: 2023-11-14 is Hebrew **5784**, Islamic **1445** and Buddhist
+**2566**, three of them from one instant, none of them a constant this file could produce.
+
+**`NSCalendar` is a BINDING now.** F7's Gregorian-on-libc implementation is gone — the hand-written
+month lengths, week rule and field arithmetic with it — because ICU answers each of them through one
+entry point: `ucal_get`/`ucal_set` for the conversion, `ucal_add` for THE CLAMP (31 January + 1
+month is the last day of February, now in EVERY calendar rather than only in Gregorian), `ucal_roll`
+for what `NSCalendarOptionsWrapComponents` means, `ucal_getLimit` for the range questions ("how many
+days does THIS month have", "how many months does THIS year have" — which is what makes a Hebrew leap
+year's thirteen months the same code path as a Gregorian month's 28-31 days), and
+`UCAL_FIRST_DAY_OF_WEEK`/`UCAL_MINIMAL_DAYS_IN_FIRST_WEEK` for the week rule.
+
+**ICU selects a calendar by LOCALE KEYWORD, not by a type** — `@calendar=hebrew` in the locale ID is
+the whole mechanism — so the identifier table in this class is a string function, and an unknown
+identifier answers nil from the initialiser, the way Cocoa treats a name it does not know. Sixteen
+identifiers, including the ones the header used to list as refusals with their reasons: the era
+offsets, the molad, the sighting convention, the solstice table.
+
+**AND THE REWRITE FIXED A REAL BUG, which is the reason `calendar-weeks`'s expectation CHANGED.**
+The libc path numbered `weekday` by ROTATING it through the calendar's `firstWeekday`, so with a
+Monday-start week it called Thursday 4. **Cocoa numbers `weekday` absolutely — 1 = Sunday — which is
+what ICU's `UCAL_DAY_OF_WEEK` is**, so Thursday is 5. The probe had encoded the old number, and the
+old number was the bug: a calendar's week rule decides which WEEK a day is in; it does not renumber
+the days of the week. The check's detail now prints the measured week fields rather than a sentence,
+so the next person sees the numbers that failed.
+
+**Two ICU facts this cost:** there is no `ucal_setLenient` — leniency is the `UCAL_LENIENT`
+ATTRIBUTE on the same door as the week rule (a compile error, caught immediately); and the house's
+option constant is `NSCalendarOptionsWrapComponents`, not `NSCalendarWrapComponents`.
+
+**Still open in this family** (recorded in the running list): `-components:fromDate:toDate:options:`
+— ICU has `ucal_getFieldDifference` for exactly that — and `NSDateFormatter`'s `-calendar:` and
+symbol arrays, which are the formatter's half of the same data.
