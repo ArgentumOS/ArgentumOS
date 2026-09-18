@@ -888,6 +888,13 @@ int main(void)
 			"keyEnumerator", "objectEnumerator",
 			"isEqualToDictionary:", "isEqual:", "hash", "description",
 			"copy", "mutableCopy",
+			/* KVC SHIPS (F9, NSKeyValueCoding.h): NSDictionary answers
+			 * -valueForKey: (a LOOKUP, or a fold on an @-led key) and inherits
+			 * -setValue:forKey: from NSObject's NSKeyValueCoding category — which
+			 * raises for a key it cannot reach, which is the right answer for an
+			 * immutable dictionary. Both sat in the excluded list below for as long
+			 * as KVC was a missing dependency. */
+			"valueForKey:", "setValue:forKey:",
 			"countByEnumeratingWithState:objects:count:", NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -900,8 +907,6 @@ int main(void)
 			"removeObjectsForKeys:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs KVC. */
-			"valueForKey:", "setValue:forKey:",
 			/* A strings-file form is NOT a property list: it needs its own
 			 * writer, so it stays excluded while the plist forms above ship. */
 			"descriptionInStringsFileFormat",

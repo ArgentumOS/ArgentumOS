@@ -40,5 +40,6 @@
 #import <foundation/NSEnumerator.h>
 #import <foundation/NSPropertyListSerialization.h>
 #import <foundation/NSURL.h>
+#import <foundation/NSKeyValueCoding.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

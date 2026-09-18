@@ -1,19 +1,20 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4, F6, F7 and F8 LANDED, the audited inventories CLOSED, and the
+Status: **DRAFT (2026-09). F0–F4, F6, F7, F8 and F9 LANDED, the audited inventories CLOSED, and the
 plist skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
 not an array dependency: see the work queue), `NSLocale` (stage E — the localised case
 rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, and a call as an
 object), `NSPropertyListSerialization`, `NSCalendar`/`NSTimeZone`/`NSDateComponents` (F7 — a
-fixed-offset time zone and the Gregorian calendar AS RULES) and `NSURL` (F8 — the URL as a
-VALUE) — with every staged public header
+fixed-offset time zone and the Gregorian calendar AS RULES), `NSURL` (F8 — the URL as a
+VALUE) and `NSKeyValueCoding` (F9 — the naming rules, on the runtime's ivar table) — with every
+staged public header
 annotated for nullability (F6, and enforced since as a standing rule). Gated on a
-guest boot by eight cases (`foundation_core`, `foundation_string`, `foundation_value`,
+guest boot by nine cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `foundation_calendar`, `foundation_url`,
-`objc_smoke`), whose probes
-carry **15 / 27 / 17 / 34 / 6 / 10 / 9** checks. **F5 (self-hosting) is DEFERRED — the user's call,
+`foundation_kvc`, `objc_smoke`), whose probes
+carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12** checks. **F5 (self-hosting) is DEFERRED — the user's call,
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
@@ -353,6 +354,46 @@ status.
     NAME, and the file APIs that DO exist take paths;
   * general RELATIVE RESOLUTION (`+URLWithString:relativeToURL:`) — RFC 3986 §5 is a merge
     algorithm with its own test vectors, and the two path-appending rules above are not it.
+
+  Recorded BEFORE the code, because the boundary IS the design.
+
+- **F9 — the Key-Value Coding family. SHIPPED (2026-09-17).** The third of the four
+  remaining families, and the first that is a PROTOCOL rather than a class: Cocoa's
+  `NSKeyValueCoding`, whose whole content is a set of NAMING RULES. That is what makes the
+  boundary easy here — a rule ships, a REGISTRY does not.
+
+  **What ships** (the rules, and the two collections that answer them):
+  * the ACCESSOR rule, in Cocoa's order: `-get<Key>` / `-<key>` / `-is<Key>` for reading and
+    `-set<Key>:` for writing, with the first letter's CASE folded — so a property spelled
+    `title` is reached through `-title`, `-setTitle:` and the key `@"title"`;
+  * the IVAR FALLBACK, in Cocoa's order: `_<key>`, `_is<Key>`, `<key>`, `is<Key>`, read and
+    written through the RUNTIME (`class_getInstanceVariable` + `ivar_getOffset` +
+    `ivar_getTypeEncoding`), so a class with NO accessors still answers — including an ivar
+    declared by a SUPERCLASS, which is the case that tells an absolute ivar offset from an
+    inherited-view one;
+  * `-valueForKeyPath:`/`-setValue:forKeyPath:` — a key path is a rule over the same lookup,
+    one dot at a time;
+  * the OPERATORS that are FOLDS: `@count`, `@sum`, `@avg`, `@max`, `@min`, `@unionOfObjects`
+    and `@distinctUnionOfObjects`;
+  * the collection rules: `-[NSArray valueForKey:]` and `-[NSDictionary valueForKey:]` MAP
+    (Cocoa's override), which is what lets `valueForKeyPath:@"@sum.x"` mean anything at all;
+  * the failure HOOKS, which RAISE by default and are the honest answers:
+    `-valueForUndefinedKey:`, `-setValue:forUndefinedKey:`, `-setNilValueForKey:` and
+    `-validateValue:forKey:error:` with its `-validate<Key>:error:` naming rule.
+
+  **What is REFUSED BY NAME, each needing something this library does not ship** (asserted
+  ABSENT by the probe):
+  * KEY-VALUE OBSERVING, the whole `NSKeyValueObserving` family — `-addObserver:forKeyPath:…`,
+    `-willChangeValueForKey:`, `-didChangeValueForKey:`, `-observeValueForKeyPath:…`: KVO is a
+    REGISTRY of observers with a dependency graph, which is a service, not a naming rule. The
+    two are different sizes of thing and are being kept different;
+  * the MUTABLE PROXIES — `-mutableArrayValueForKey:`, `-mutableSetValueForKey:`,
+    `-mutableOrderedSetValueForKey:` and their `…KeyPath:` forms: each returns a live proxy
+    CLASS, which is its own family;
+  * the SET-returning operators — `@unionOfArrays`, `@unionOfSets`, `@distinctUnionOfArrays`,
+    `@distinctUnionOfSets`: there is no NSSet here, and the arrays that do ship are not a set;
+  * the legacy dictionary-era API — `-takeValue:forKey:`, `-takeValuesFromDictionary:`: Cocoa
+    removed them, and so does this.
 
   Recorded BEFORE the code, because the boundary IS the design.
 
@@ -905,7 +946,8 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSInvocation` — **SHIPPED (stage F)** | the invocation, the register classification and the two x86-64 trampolines, with the runtime's hooks installed: forwarding works end to end along both paths (§9's stage F, second half) |
 | `NSCalendar`/`NSTimeZone` (+ `NSDateComponents`) — **SHIPPED (F7)** | a fixed-offset time zone and the Gregorian calendar AS RULES: conversion both ways, field arithmetic with the clamp (31 Jan + 1 month is the last day of February), ranges, and the week rule — all on libc's `struct tm`. Refused by name and asserted ABSENT by the probe: the tz database, DST transitions, the non-Gregorian calendars, the date parser and the formatter |
 | `NSURL` — **SHIPPED (F8)** | the URL as a VALUE: the RFC 3986 parse (scheme/authority/path/query/fragment), the FSH's file-URL ↔ path rules — including the percent-encoded SPACE an FSH path may contain — and the path arithmetic. Refused by name and asserted ABSENT by the probe: the loading system (`NSURLSession`/`NSURLConnection`/`NSURLRequest`), `NSURLComponents`/`NSURLQueryItem`, `NSFileManager` and every filesystem query, and general relative resolution. The URL-taking forms of the file APIs would be built on it and remain absent |
-| KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
+| KVC (`NSKeyValueCoding`) — **IN PROGRESS (F9)** | the NAMING RULES: the accessor forms (`-get<Key>`/`-<key>`/`-is<Key>` and `-set<Key>:`), the ivar fallback (`_<key>`/`_is<Key>`/`<key>`/`is<Key>`) through the RUNTIME, key paths, the operators that are folds (`@count`/`@sum`/`@avg`/`@max`/`@min`/`@unionOfObjects`/`@distinctUnionOfObjects`), the two collection MAP forms, and the failure hooks. Refused by name: KVO (a registry of observers, not a naming rule), the mutable proxies, the set-returning operators, and `-takeValue:forKey:` |
+| `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
 `unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
@@ -1454,3 +1496,46 @@ which had passed), which is the same lesson one level down: the detail should na
 likely to have given way.
 
 `foundation_url` 9/9, and `make rootagfs` clean — the gate included.
+
+### F9 landed (2026-09-17): NSKeyValueCoding, and the two bugs its probe found
+
+`NSKeyValueCoding` — the third of the four remaining families, and the first that is a
+PROTOCOL rather than a class — with `foundation_kvc` **12/12** on a guest boot. The boundary is
+the sharpest of the three: KVC's whole content is NAMING RULES, so the family ships whole, and
+what is refused is refused for being a different KIND of thing (KVO is a registry of observers;
+the mutable proxies are a proxy CLASS family; the set-returning operators need an NSSet that does
+not exist here).
+
+THE PROBE FOUND TWO REAL BUGS, both caught by construction rather than by inspection:
+
+  * `-valueForKey:` called an accessor through `-performSelector:`, which is typed as returning
+    `id` — so a getter returning a SCALAR (the support unit's `-code`, answering 20) handed that
+    number back as a POINTER and the probe SEGFAULTED on the first `@sum`. Cocoa boxes a scalar
+    accessor's result; the fix is `fn_call_accessor`, which reads the return type out of the
+    method signature and boxes it, with `fn_call_setter` as its mirror on the way in. NO CHECK
+    covered the write half when the crash was found — it was ADDED with the fix, because "the
+    read is boxed" and "the write is unboxed" are two different claims;
+  * `-validateValue:forKey:error:` looked for `-validate<Key>:` — ONE colon — where the rule is
+    `-validate<Key>:error:`, taking the value pointer AND the error pointer. Nothing implements
+    the one-colon selector, so EVERY value came back valid. The detail line read "accepted a
+    negative age": it names the clause that gave way rather than the mechanism, and that is what
+    a detail carrying its measurement is for.
+
+THE IVAR ARM IS THE RUNTIME'S, and the case worth naming is the one the probe tests on purpose:
+an ivar a SUPERCLASS declared. `class_getInstanceVariable` finds it and `ivar_getOffset` gives an
+ABSOLUTE offset, so an inherited-view (negative) offset would have been a silent misread —
+`kvc-ivar-super` is the check that tells those two apart. `kvc-nil-ivar` covers the other trap in
+the same arm: conflating "the ivar does not exist" with "the ivar holds nil" would walk past a
+found ivar and then raise.
+
+`-valueForKey:` also has to be a CATEGORY rather than a conformance: `@interface NSObject
+<NSKeyValueCoding>` needs the protocol's definition and `NSKeyValueCoding.h` needs NSObject's, so
+the protocol is declared for adopters and `respondsToSelector:` — not `conformsToProtocol:` — is
+the test, which the probe asserts.
+
+`foundation_collection`'s exclusion list had carried `valueForKey:` and `setValue:forKey:` under
+"Needs KVC" since F3. They are now in that probe's REQUIRED set instead, which is the inventory
+rule applied in the direction it was written for: a name that ships belongs in the list of names
+that must answer.
+
+`foundation_kvc` 12/12, and `make rootagfs` clean — the gate included.
