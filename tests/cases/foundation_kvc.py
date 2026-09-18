@@ -21,6 +21,9 @@ being checked.
                         raised on;
   * `kvc-keypath`     — a key path is the same lookup one dot at a time;
   * `kvc-operators`   — the operators that are folds;
+  * `kvc-collection-unions` — @unionOfArrays / @distinctUnionOfArrays and @unionOfSets /
+                        @distinctUnionOfSets: the operators whose VALUES are collections, and
+                        therefore the ones that needed an NSSet to exist at all;
   * `kvc-collections` — the array MAPS and the dictionary LOOKS UP (or folds on @);
   * `kvc-undefined`   — THE HONEST DEFAULTS: an undefined key raises, a nil
                         through a scalar raises, and an override is what answers;
@@ -36,8 +39,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_kvc"
 CHECKS = ("kvc-accessors", "kvc-ivar", "kvc-scalar-accessor", "kvc-ivar-super",
-          "kvc-nil-ivar", "kvc-keypath", "kvc-operators", "kvc-collections",
-          "kvc-undefined", "kvc-validate", "kvc-refusals", "cross-tu")
+          "kvc-nil-ivar", "kvc-keypath", "kvc-operators", "kvc-collection-unions",
+          "kvc-collections", "kvc-undefined", "kvc-validate", "kvc-refusals", "cross-tu")
 
 
 class Case(BaseCase):

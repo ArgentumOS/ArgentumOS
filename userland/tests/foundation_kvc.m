@@ -300,6 +300,39 @@ int main(void)
 	}
 
 	{
+		/* THE UNION FAMILY, which needed an NSSet to exist at all. The values are collections, so
+		 * the answer is one: arrays for the array pair, sets for the set pair. The fixture's tags
+		 * are a=[red,green], b=[green,blue], c=[blue,blue], d=[blue], which is what makes the two
+		 * array answers DIFFERENT SIZES (7 and 3) rather than accidentally equal. */
+		NSArray *items = foundation_kvc_items();
+		id unionArrays = items != nil ? [items valueForKeyPath:@"@unionOfArrays.tags"] : nil;
+		id distinctArrays = items != nil
+			? [items valueForKeyPath:@"@distinctUnionOfArrays.tags"] : nil;
+		id unionSets = items != nil ? [items valueForKeyPath:@"@unionOfSets.tagSet"] : nil;
+		id distinctSets = items != nil
+			? [items valueForKeyPath:@"@distinctUnionOfSets.tagSet"] : nil;
+
+		check("kvc-collection-unions",
+		      unionArrays != nil && distinctArrays != nil &&
+		      unionSets != nil && distinctSets != nil &&
+		      [unionArrays isKindOfClass:[NSArray class]] &&
+		      [distinctArrays isKindOfClass:[NSArray class]] &&
+		      [unionSets isKindOfClass:[NSSet class]] &&
+		      [distinctSets isKindOfClass:[NSSet class]] &&
+		      [unionArrays count] == 7 && [distinctArrays count] == 3 &&
+		      [unionSets count] == 3 && [distinctSets count] == 3 &&
+		      [unionSets containsObject:@"red"] && [unionSets containsObject:@"blue"] &&
+		      ![unionSets containsObject:@"purple"],
+		      [[NSString stringWithFormat:@"arrays=%lu/%lu sets=%lu/%lu isSet=%d isArray=%d",
+			(unsigned long)(unionArrays != nil ? [unionArrays count] : 0),
+			(unsigned long)(distinctArrays != nil ? [distinctArrays count] : 0),
+			(unsigned long)(unionSets != nil ? [unionSets count] : 0),
+			(unsigned long)(distinctSets != nil ? [distinctSets count] : 0),
+			(int)(unionSets != nil && [unionSets isKindOfClass:[NSSet class]]),
+			(int)(unionArrays != nil && [unionArrays isKindOfClass:[NSArray class]])] UTF8String]);
+	}
+
+	{
 		NSArray *items = foundation_kvc_items();
 		NSArray *titles = items != nil ? [items valueForKey:@"title"] : nil;
 		NSDictionary *dict = @{ @"k" : @"v", @"n" : @2 };

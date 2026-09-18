@@ -33,6 +33,7 @@
 #import <foundation/NSString.h>
 #import <foundation/NSNumber.h>
 #import <foundation/NSArray.h>
+#import <foundation/NSSet.h>
 #import <foundation/NSDictionary.h>
 #import <foundation/NSException.h>
 #import <foundation/NSError.h>
@@ -543,6 +544,55 @@ static id fn_fold(NSString *operator, NSArray *values)
 		}
 		return distinct;
 	}
+	/* THE FOUR COLLECTION UNIONS: unlike the folds above, the members' VALUES are themselves
+	 * collections, and the answer is one of them. The grouping is by the value's FAMILY — arrays for
+	 * @unionOfArrays/@distinctUnionOfArrays, sets for @unionOfSets/@distinctUnionOfSets — and the
+	 * only pair that can differ in SIZE is the array pair, because a union of sets is already
+	 * distinct. They are handled HERE, with @unionOfObjects, and NOT below the empty-collection
+	 * guard: an empty collection has an empty answer rather than no answer. */
+	if ([operator isEqualToString:@"unionOfArrays"] ||
+	    [operator isEqualToString:@"distinctUnionOfArrays"]) {
+		NSMutableArray *result = [NSMutableArray array];
+		BOOL distinct = [operator isEqualToString:@"distinctUnionOfArrays"];
+		NSInteger i;
+
+		for (i = 0; i < count; i++) {
+			NSArray *theirs = [values objectAtIndex:(NSUInteger)i];
+			NSUInteger j;
+
+			if (![theirs isKindOfClass:[NSArray class]]) {
+				[NSException raise:NSInvalidArgumentException
+					    format:@"@%@ expects every value to be an array, and found %@",
+					   operator, [theirs class]];
+			}
+			for (j = 0; j < [theirs count]; j++) {
+				id object = [theirs objectAtIndex:j];
+
+				if (distinct && [result containsObject:object]) {
+					continue;
+				}
+				[result addObject:object];
+			}
+		}
+		return result;
+	}
+	if ([operator isEqualToString:@"unionOfSets"] ||
+	    [operator isEqualToString:@"distinctUnionOfSets"]) {
+		NSMutableSet *result = [NSMutableSet set];
+		NSInteger i;
+
+		for (i = 0; i < count; i++) {
+			id theirs = [values objectAtIndex:(NSUInteger)i];
+
+			if (![theirs isKindOfClass:[NSSet class]]) {
+				[NSException raise:NSInvalidArgumentException
+					    format:@"@%@ expects every value to be a set, and found %@",
+					   operator, [theirs class]];
+			}
+			[result unionSet:theirs];
+		}
+		return result;
+	}
 	if (count == 0) {
 		/* There is nothing to fold: sum is 0, and the others have no answer. */
 		if ([operator isEqualToString:@"sum"]) {
@@ -581,7 +631,8 @@ static id fn_fold(NSString *operator, NSArray *values)
 	[NSException raise:NSInvalidArgumentException
 		    format:@"@%@ is not an operator this library implements "
 			   "(@count, @sum, @avg, @max, @min, @unionOfObjects, "
-			   "@distinctUnionOfObjects)", operator];
+			   "@distinctUnionOfObjects, @unionOfArrays, "
+			   "@distinctUnionOfArrays, @unionOfSets, @distinctUnionOfSets)", operator];
 	return nil;
 }
 

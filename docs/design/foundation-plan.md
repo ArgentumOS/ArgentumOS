@@ -2310,3 +2310,33 @@ collection with its own ordering), and the variadic `+setWithObjects:…` spelli
 `objects:count:` form and `+setWithArray:` ship). With `NSSet` present, the two KVC operators that
 were refused for its absence — `@unionOfSets` and `@distinctUnionOfSets` — are the immediate
 follow-on, and `NSValue`/`NSNull` are next in this family.
+
+### F13.8b landed (2026-09-18): the four collection unions — the refusal NSSet unblocked
+
+**`foundation_kvc` 13/13 on a guest boot** (12 before, +`kvc-collection-unions`). `@unionOfArrays`,
+`@distinctUnionOfArrays`, `@unionOfSets` and `@distinctUnionOfSets` are implemented; the operator
+table's own refusal message now names them, which is how a closed refusal stays closed — the raise
+that used to say "not an operator this library implements" was also the *list* of what did.
+
+**THE GROUPING IS BY THE VALUE'S FAMILY, not by the operator's name.** These four differ from the
+folds in the `fn_fold` they share: their members' values are THEMSELVES collections, and the answer
+is one of them — arrays for `@…UnionOfArrays`, sets for `@…UnionOfSets`. That also settles the
+apparent duplication: `@unionOfSets` and `@distinctUnionOfSets` answer the same SIZE because a union
+of sets is already distinct, while the array pair genuinely differs (the probe measures 7 against 3).
+
+**THEY ARE HANDLED ABOVE THE EMPTY-COLLECTION GUARD**, with `@unionOfObjects`, and that placement is
+the rule: an empty collection has an EMPTY ANSWER here, not no answer. The guard below it exists for
+`@max`/`@min`/`@avg`, which really do have no value over nothing.
+
+**A FIXTURE THAT CANNOT AGREE BY ACCIDENT.** The KVC support unit's items now carry a collection-
+valued key: `a`=[red,green], `b`=[green,blue], `c`=[blue,blue], `d`=[blue] — `a` and `b` SHARE a tag
+and `c` repeats one WITHIN itself, so the two array answers (7 and 3) are forced apart and every set
+built from them has exactly three members.
+
+**MEASURED ALONG THE WAY, and the second is the house's own shape rather than a bug:** this library
+has no `NSStringFromClass`, so the check's detail reports the `isKindOfClass:` answers directly; and
+the KVC probe's `check` takes a `const char *`, so a formatted detail needs `UTF8String` — the
+probe's members elsewhere pass a helper's result instead.
+
+With this, **every operator the KVC section of §5 named is implemented**. Next in this family:
+`NSValue`/`NSNull`, then `NSCountedSet` and `NSOrderedSet`.

@@ -18,11 +18,15 @@
 {
 	NSString *_title;
 	NSInteger _code;
+	NSArray *_tags;
+	NSSet *_tagSet;
 }
 - (instancetype)initWithTitle:(NSString *)title code:(NSInteger)code;
 - (NSString *)title;
 - (void)setTitle:(NSString *)title;
 - (NSInteger)code;
+- (NSArray *)tags;
+- (NSSet *)tagSet;
 @end
 
 @implementation KVCSupportAccessor
@@ -32,6 +36,19 @@
 	if ((self = [super init]) != nil) {
 		_title = title;
 		_code = code;
+		/* THE COLLECTION-VALUED KEYS the four union operators read. `a` and `b` SHARE a tag and `c`
+		 * repeats one WITHIN itself, so @unionOfArrays (7) and @distinctUnionOfArrays (3) cannot
+		 * agree by accident, and every set built from these has exactly three members. */
+		if ([title isEqualToString:@"a"]) {
+			_tags = @[@"red", @"green"];
+		} else if ([title isEqualToString:@"b"]) {
+			_tags = @[@"green", @"blue"];
+		} else if ([title isEqualToString:@"c"]) {
+			_tags = @[@"blue", @"blue"];
+		} else {
+			_tags = @[@"blue"];
+		}
+		_tagSet = [NSSet setWithArray:_tags];
 	}
 	return self;
 }
@@ -39,6 +56,8 @@
 - (NSString *)title { return _title; }
 - (void)setTitle:(NSString *)title { _title = title; }
 - (NSInteger)code { return _code; }
+- (NSArray *)tags { return _tags; }
+- (NSSet *)tagSet { return _tagSet; }
 
 @end
 
