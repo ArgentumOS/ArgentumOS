@@ -196,7 +196,10 @@ int main(void)
 		[formatter setZeroSymbol:@"none"];
 		[formatter setNilSymbol:@"no value"];
 		zero = [formatter stringFromNumber:[NSNumber numberWithInt:0]];
-		nothing = [formatter stringFromNumber:nil];
+		/* THROUGH -stringForObjectValue:, WHICH IS THE NULLABLE DOOR: -stringFromNumber: takes a
+		 * NONNULL number in Cocoa (and here), so passing nil to it is undefined and warns; the
+		 * documented way to reach nilSymbol is the NSFormatter door, which handles nil by design. */
+		nothing = [formatter stringForObjectValue:nil];
 		check("nf-zero-and-nil",
 		      zero != nil && nothing != nil && [zero isEqualToString:@"none"] &&
 		      [nothing isEqualToString:@"no value"],

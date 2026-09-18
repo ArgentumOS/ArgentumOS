@@ -2482,3 +2482,28 @@ in the set probe) are swept. The next step sweeps those three.
 Next in §10's mechanism track: the expression family (`NSExpression`, `NSComparisonPredicate`,
 `IN`/`BETWEEN` and the quantifiers), `NSCoder`/`NSKeyedArchiver`, the FS/process/thread services,
 `NSURLComponents` and relative resolution, and `NSRegularExpression` on musl's engine.
+
+### The carried warning debt is SWEPT — and it was hiding a real bug
+
+**`foundation_numberformatter` 15/15 on a guest boot, and ZERO warnings in this program's files**
+(the whole-build count outside them is the pre-existing `-nostdinc++` and `-Wdeprecated` noise). All
+three warnings recorded at F13.9 are gone, and one of them was never about types:
+
+**`-internationalCurrencySymbol` WAS ASKING ICU THE WRONG QUESTION.** The pair used the
+text-attribute door with `UNUM_INTL_CURRENCY_SYMBOL`, which is a `UNumberFormatSymbol` — the compiler
+warned about the conversion, and the warning was right for a better reason than it knew: the fix is
+not a cast but the DOOR. `unum_getSymbol`/`unum_setSymbol` are what that constant belongs to, and the
+file already had the helpers, so the pair now uses them. **A warning is worth reading as a claim
+about the code, not as something to silence.**
+
+**The third warning was the probe's fault, not the library's**: it reached `nilSymbol` by passing nil
+to `-stringFromNumber:`, whose parameter is NONNULL in Cocoa and here. The nullable door is
+`-stringForObjectValue:` (the `NSFormatter` half), which handles nil by design — so the probe goes
+through it and the library keeps the behaviour it already had.
+
+**The lesson to carry**, and it is the same one KVO's markers taught: the three items on this list
+were called "warnings to sweep", and one was a wrong question to a dependency. Debt recorded without
+its reason goes stale; debt recorded as a *claim* gets checked.
+
+Next: the expression family, then the coders, the services, `NSURLComponents` and
+`NSRegularExpression`.

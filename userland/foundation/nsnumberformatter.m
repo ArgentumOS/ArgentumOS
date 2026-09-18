@@ -659,14 +659,18 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	[self fnSetTextAttribute:UNUM_CURRENCY_CODE fromString:string];
 }
 
+/* THE INTERNATIONAL CURRENCY SYMBOL BELONGS TO THE SYMBOL DOOR, not the text-attribute one:
+ * UNUM_INTL_CURRENCY_SYMBOL is a UNumberFormatSymbol, and passing it to unum_getTextAttribute — the
+ * shape this pair had — is a type error the compiler warns about AND the wrong question to ask ICU.
+ * Measured while sweeping that warning: the fix is the door, not a cast. */
 - (nullable NSString *)internationalCurrencySymbol
 {
-	return [self fnTextAttribute:UNUM_INTL_CURRENCY_SYMBOL];
+	return [self fnSymbol:UNUM_INTL_CURRENCY_SYMBOL];
 }
 
 - (void)setInternationalCurrencySymbol:(nullable NSString *)string
 {
-	[self fnSetTextAttribute:UNUM_INTL_CURRENCY_SYMBOL fromString:string];
+	[self fnSetSymbol:UNUM_INTL_CURRENCY_SYMBOL fromString:string];
 }
 
 /* zeroSymbol and nilSymbol are OURS — see the file header for why ICU cannot hold them. */
