@@ -465,6 +465,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/foundation-codecs-support.o .build/foundation-codecs-main.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
+	# icu_smoke: F13's acceptance for the ICU bring-up (docs/design/foundation-plan.md §10). The
+	# SOURCE is C, because ICU is a C library and this exercises the DATA path rather than the
+	# object layer — but the LINK goes through the C++ driver: ICU's libraries are C++ underneath
+	# (libicui18n NEEDs libc++.so.1), and musl-clang++64.sh self-bootstraps the C++ runtime's
+	# link pieces (-L.build/llvm-cxx/lib -lc++ -lc++abi -lunwind), which the C driver does not add.
+	# Measured: with $(MUSL64_CC) the link fails on __cxa_* and std::__1::mutex from libicui18n.
+	# Every check asks for an answer that comes from libicudata — three locales' number
+	# formatting, a locale's own date pattern, the German vs Swedish collation rules, and the
+	# time-zone id set — so a pass cannot come from constants in the probe.
+	$(MUSL64_CXX) -I$(ICUPREFIX)/include userland/tests/icu_smoke.c \
+		-L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
+		-o "$(ROOTFS64)/System/Shared/tests/icu_smoke"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

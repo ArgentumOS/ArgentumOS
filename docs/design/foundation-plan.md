@@ -1961,3 +1961,40 @@ probes assert it as they always have.
 (`mk/30-images.mk` → `python3 tools/mkagfs.py $(ROOTFS64) .build/rootagfs.img 128`) against a 58 MB
 staged tree, so ICU's shared libraries plus its data package fit without touching the image size.
 The guest's own data lookup and the loader path are F13's stage-3 business.
+
+### F13, stages 1–3 landed (2026-09-18): ICU answers on the guest, and the two traps it cost
+
+**`icu_smoke` 9/9 on a guest boot.** The bring-up question was never "does ICU compile" — it was
+"does the guest LOAD it", and that is now measured end to end: the probe resolves
+libicuuc/libicui18n/libicudata out of `/System/Libraries`, and every check asks for an answer that
+comes from libicudata rather than from the probe:
+
+  * `de_DE` renders 1234567 as `1.234.567`, `en_US` as `1,234,567`, and `ar_EG` in NON-ASCII
+digits — three answers to one number, which is what data looks like;
+  * a `yyyy-MM-dd` pattern in UTC gives `2021-03-04`, and the locale's OWN medium-date pattern
+(CLDR's) names the month and the year;
+  * German collation puts `ö` with `o` at primary strength and SWEDISH does not — one collation
+rule cannot produce both, so the PAIR measures the data rather than our expectations;
+  * the time-zone ID set enumerates to more than a hundred ids: the IANA database F7 refused by
+name as "the identifiers ARE the database", arriving.
+
+**Two traps, both measured rather than reasoned, and both recorded where the next person hits
+them — the mk rule and the probe carry the comments:**
+
+1. **A C driver cannot link ICU.** `libicui18n.so` is C++ underneath (`NEEDED libc++.so.1`), so
+   linking with `$(MUSL64_CC)` fails on `__cxa_*` and `std::__1::mutex`. The SOURCE stays C — ICU's
+   API is C and this exercises the data path — but the LINK goes through `$(MUSL64_CXX)`, which
+   self-bootstraps `-L.build/llvm-cxx/lib -lc++ -lc++abi -lunwind`.
+2. **`udat_open` IGNORES its pattern unless `timeStyle == UDAT_PATTERN`.** The implementation's
+   first branch is `if (timeStyle != UDAT_PATTERN)`, which builds a STYLE formatter; with
+   `UDAT_NONE`, a `yyyy-MM-dd` pattern produced `20210304 12:00 AM`. `UDAT_PATTERN` is what selects
+   `SimpleDateFormat(pattern, locale)`. ICU's own header and implementation settled it — in bounds
+   under §2, since ICU is a dependency and not a source of class implementations.
+
+**Stage status:** (1) `tools/fetch-icu.sh`, pinned by commit — DONE; (2) the HOST tools, because
+ICU generates its own data with them — DONE (`.build/icu-host/bin`: genrb, gencmn, genbrk, icupkg,
+pkgdata); (3) the GUEST cross build, `tools/icu-build.sh`, with `--with-data-packaging=library` so
+the data IS a shared library and the guest needs no data path — DONE, staged, and ANSWERING
+(tree 58 MB → 95 MB of the 128 MiB image). Next is stage 4: the binding layer, starting with
+`NSDateFormatter`, where F7's "the parser and formatter family are a table" refusal is finally
+un-refused.
