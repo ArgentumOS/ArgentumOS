@@ -43,5 +43,7 @@
 #import <foundation/NSKeyValueCoding.h>
 #import <foundation/NSSortDescriptor.h>
 #import <foundation/NSPredicate.h>
+#import <foundation/NSFormatter.h>
+#import <foundation/NSDateFormatter.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

@@ -19,8 +19,12 @@ what is being checked.
   * `calendar-weeks`     — the week rule (firstWeekday + minimumDaysInFirstWeek)
                            and the year that owns week 1;
   * `calendar-timezone`  — the same instant is a different local date in +05:30;
-  * `calendar-refusals`  — what is ABSENT is absent: no tz database, no parser,
-                           no non-Gregorian calendar;
+  * `calendar-refusals`  — what is ABSENT is absent: no tz database by NAME, no
+                           non-Gregorian calendar (the `-dateFromString:` assertion is on
+                           NSCalendar, which has no parser in Cocoa either);
+  * `calendar-formatter-present` — and POSITIVELY: the parser/formatter family that this probe
+                           used to describe as refused came back in F13.6, so it is asserted
+                           present here. The pair is the point.
   * `cross-tu`           — objects built in the other unit behave locally.
 """
 
@@ -32,7 +36,7 @@ PROBE = "/System/Shared/tests/foundation_calendar"
 CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
           "calendar-add-months", "calendar-add-units", "calendar-ranges",
           "calendar-weeks", "calendar-timezone", "calendar-refusals",
-          "cross-tu")
+          "calendar-formatter-present", "cross-tu")
 
 
 class Case(BaseCase):

@@ -123,7 +123,9 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/npredicateformat.m \
 	$(FOUNDATION_SRC)/fnpredicate.h \
 	$(FOUNDATION_SRC)/ncodec.m \
-	$(FOUNDATION_SRC)/fncodec.h
+	$(FOUNDATION_SRC)/fncodec.h \
+	$(FOUNDATION_SRC)/nsformatter.m \
+	$(FOUNDATION_SRC)/nsdateformatter.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
@@ -135,6 +137,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSLocale.h \
 	$(FOUNDATION_SRC)/NSMethodSignature.h \
 	$(FOUNDATION_SRC)/NSInvocation.h \
+	$(FOUNDATION_SRC)/NSFormatter.h \
+	$(FOUNDATION_SRC)/NSDateFormatter.h \
 	$(FOUNDATION_SRC)/NSEnumerator.h \
 	$(FOUNDATION_SRC)/NSPropertyListSerialization.h \
 	$(FOUNDATION_SRC)/NSDateComponents.h \
@@ -228,6 +232,16 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# dependency and no new artifact (docs/design/foundation-plan.md, F12).
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(X11PREFIX)/include \
 		$(FOUNDATION_SRC)/ncodec.m -o .build/foundation-ncodec.o
+	# F13.6: the value-to-text family. nsformatter.m is the abstract base and needs nothing extra;
+	# nsdateformatter.m is the file that includes <unicode/udat.h> and <unicode/udatpg.h>, so the
+	# ICU prefix is on ITS include path — and on the LINK line below, because libfoundation now
+	# needs libicui18n/libicuuc/libicudata. Those libraries and their data package are already
+	# staged into the guest (docs/design/foundation-plan.md §10, F13), so this adds a dependency
+	# and no new artifact — the same shape as F12's libz.
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
+		$(FOUNDATION_SRC)/nsformatter.m -o .build/foundation-nsformatter.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
+		$(FOUNDATION_SRC)/nsdateformatter.m -o .build/foundation-nsdateformatter.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		.build/foundation-nsobject.o .build/foundation-nstring.o \
 		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
@@ -235,7 +249,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o \
 		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
-		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/plist.o -L$(X11PREFIX)/lib -lz -o $@
+		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
@@ -477,6 +491,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_CXX) -I$(ICUPREFIX)/include userland/tests/icu_smoke.c \
 		-L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
 		-o "$(ROOTFS64)/System/Shared/tests/icu_smoke"
+	# foundation_dateformatter: F13.6 acceptance - the first un-refused DATA family, exercised
+	# through FOUNDATION's own API rather than ICU's directly. ONE unit, deliberately: the other
+	# Foundation probes are two-unit because their claim is a cross-translation-unit boundary,
+	# while this family's claim is data, so the probe includes only <foundation/Foundation.h>
+	# (which also proves the umbrella exports the new headers). It links the Foundation library,
+	# which is where ICU is now bound.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_dateformatter.m -o .build/foundation-dateformatter.o
+	$(MUSL64_OBJC) .build/foundation-dateformatter.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_dateformatter"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

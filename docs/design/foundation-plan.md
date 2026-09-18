@@ -1995,6 +1995,53 @@ them — the mk rule and the probe carry the comments:**
 ICU generates its own data with them — DONE (`.build/icu-host/bin`: genrb, gencmn, genbrk, icupkg,
 pkgdata); (3) the GUEST cross build, `tools/icu-build.sh`, with `--with-data-packaging=library` so
 the data IS a shared library and the guest needs no data path — DONE, staged, and ANSWERING
-(tree 58 MB → 95 MB of the 128 MiB image). Next is stage 4: the binding layer, starting with
-`NSDateFormatter`, where F7's "the parser and formatter family are a table" refusal is finally
-un-refused.
+(tree 58 MB → 95 MB of the 128 MiB image); (4) the binding layer — STARTED, below.
+
+### F13.6 landed (2026-09-18): `NSDateFormatter`, and the FIRST un-refused family
+
+**`foundation_dateformatter` 12/12 and `foundation_calendar` 11/11 on a guest boot.** This is the
+slice where the un-refusal program stops being an argument and starts being a class: F7 refused
+"the parser and formatter family" because the formats ARE a table — and they are, which is why the
+table now arrives from ICU instead of being written here. **No format is encoded in the
+Foundation.**
+
+**What ships:** `NSFormatter` (the abstract base, whose two doors RAISE — the shape NSPredicate's
+base took) and `NSDateFormatter` with the style pair, locale, zone, patterns, BOTH directions,
+leniency, the `NSFormatter` door, `+localizedStringFromDate:dateStyle:timeStyle:`, and CLDR's
+SKELETON machinery (`+dateFormatFromTemplate:options:locale:` asks for the FIELDS and lets the
+locale order them). F13.7 adds `-calendar:`, the SYMBOL arrays and the formatter-behaviour knobs;
+the header names them so the gap is not discovered later.
+
+**THE PROBE MEASURES DATA, NOT API SHAPE**, and it is ONE unit deliberately — the other probes are
+two-unit because their claim is a cross-translation-unit boundary, while this family's claim is
+that a LOCALE comes back through Foundation's own API:
+
+  * the same instant is `März` in de_DE and `March` in en_US (which also exercises a non-ASCII
+literal, emitted as UTF-16);
+  * `+dateFormatFromTemplate:@"yMMMd"` returns a PATTERN whose ORDER is the locale's — en starts
+with `M`, German starts with `d`;
+  * the ZONE crosses as the only thing F7's `NSTimeZone` can say, an OFFSET — one instant is
+`00:00` at +00:00, `05:30` at +05:30 and `16:00` at -08:00;
+  * format→parse round-trips to the same instant, strict parsing refuses `2021-13-45` while
+lenient accepts it, and the base class REFUSES rather than inventing a format.
+
+**Three things this slice settled, recorded because they will recur:**
+
+1. **`libfoundation` gains three NEEDED entries** — `libicui18n.so.76`, `libicuuc.so.76`,
+   `libicudata.so.76` (readelf-verified). Same shape as F12's `libz`: the libraries and the data
+   package are already staged, so no new artifact ships, but the dependency is real and §6's
+   entry for it now covers both.
+2. **THE ICU HANDLE IS OPAQUE IN THE PUBLIC HEADER** (`void *_formatter`). The headers are staged
+   for an ON-GUEST Objective-C rebuild (§4.3), and a public header that included `<unicode/udat.h>`
+   would drag ICU's headers onto that guest. Only the .m knows ICU exists.
+3. **THE `calendar-refusals` ASSERTION NEEDED NO FLIP, and the reason is worth having:** it tests
+   `NSCalendar`'s lack of `-dateFromString:` — which is true in Cocoa too — so "no formatter" was
+   carried only by a COMMENT. The correct repair was to make the probe read as a PAIR: the
+   refusals that REMAIN (the zone database by name, the non-Gregorian calendars — F13.7) stay
+   asserted absent, and a new `calendar-formatter-present` asserts the returning family
+   positively. A refusal deleted without a presence check would be indistinguishable from a probe
+   that stopped looking.
+
+**ICU 76 API facts this cost** (both fixed at the cause): `TRUE`/`FALSE` were REMOVED in ICU 76 —
+the `UBool` is spelled `(UBool)(flag ? 1 : 0)` now; and the pattern generator's C type is
+`UDateTimePatternGenerator`, not `UDatePatternGenerator`.

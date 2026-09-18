@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #import <objc/runtime.h>
+#import <foundation/NSDateFormatter.h>	/* F13.6: the family this probe used to call refused */
 
 static int okc, failc;
 
@@ -288,8 +289,14 @@ int main(void)
 	}
 
 	{
-		/* THE REFUSALS, asserted rather than described: no tz database, no
-		 * parser, no formatter, and no non-Gregorian calendar. */
+		/* THE REFUSALS, asserted rather than described — and note what is NO LONGER here. This
+		 * block used to be described as "no tz database, no parser, no formatter"; the
+		 * parser/formatter family came back in F13.6 (it had been refused for the DATA it
+		 * needed, and ICU is now a dependency), so the check after this one asserts it
+		 * PRESENT. What this block still tests is what is still refused: the zone database by
+		 * NAME and the non-Gregorian calendars, which are F13.7's own slice. (The
+		 * `-dateFromString:` assertion is on NSCalendar, which has no parser in Cocoa either
+		 * — it is a fact about NSCalendar, not about the formatter, and it stays.) */
 		SEL nameSel = sel_registerName("timeZoneWithName:");
 		SEL knownSel = sel_registerName("knownTimeZoneNames");
 		SEL abbrevSel = sel_registerName("abbreviationDictionary");
@@ -306,6 +313,21 @@ int main(void)
 		      hebrew == nil && iso == nil && gregorian != nil,
 		      "a refused identifier answers nil, a refused method is absent, and the "
 		      "Gregorian one still constructs");
+	}
+
+	{
+		/* THE FAMILY THAT WAS REFUSED FOR DATA IS HERE (F13.6), asserted POSITIVELY so this
+		 * probe reads as a pair: what is still refused IS refused, and what came back is
+		 * back. The year is formatted through the locale's data, not through a constant. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSString *text;
+
+		[formatter setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
+		[formatter setDateFormat:@"yyyy"];
+		text = [formatter stringFromDate:[NSDate dateWithTimeIntervalSince1970:1614816000.0]];
+		check("calendar-formatter-present",
+		      text != nil && [text isEqualToString:@"2021"],
+		      text != nil ? [text UTF8String] : "(nil)");
 	}
 
 	{
