@@ -2615,3 +2615,39 @@ than after a batch of them.
 
 Next: the FS/process/thread services, `NSURLComponents` and relative resolution, and
 `NSRegularExpression` on musl's engine.
+
+### F13.13 landed (2026-09-18): NSProcessInfo — and TWO bugs outside the library
+
+**`foundation_processinfo` 8/8 on a guest boot.** The running program describing itself, with each
+answer pinned to a source rather than to a plausible value: the pid against `getpid(2)`, the name
+from the KERNEL's `comm`, argv from the KERNEL's `cmdline`, the environment from `environ`, the host
+name from `gethostname(2)`, and the counts from `sysconf(3)`/`sysinfo(2)`.
+
+**BUG ONE, AND IT WAS A PATH I DID NOT KNOW: FNX mounts procfs at `/System/Processes`.** `/proc` is
+the host's, not the guest's, and the first version of this file asked there — which is why
+`-processName` and `-arguments` came back empty while everything else worked. The file now asks
+`/System/Processes/self/<leaf>`, then `/System/Processes/<pid>/<leaf>`, then the Linux paths, because
+a library that only works when the mount point matches its author's memory breaks on the next
+machine. (The user supplied this; it was not discoverable from the guest's own output.)
+
+**BUG TWO IS A KERNEL BUG, AND A REAL 64-BIT ONE: `struct sysinfo` WAS THE 32-BIT FIWIX LAYOUT.**
+`int uptime`, `unsigned int totalram`, a 22-byte pad to 64 — while the CALLER (musl) lays out
+`unsigned long` fields with a 256-byte tail. On a 64-bit port that puts every field at the wrong
+offset: `-physicalMemory` answered **0 on a machine with RAM** because `totalram` was read out of the
+middle of `loads`. The syscall had been writing a correct number through a struct that was 32-bit
+baggage from a 32-bit kernel — the same class of bug the native port fixed elsewhere. And `mem_unit`
+was left at ZERO, so a reader following the convention multiplied by nothing and musl's
+`sysconf(_SC_PHYS_PAGES)` DIVIDED by nothing. Both are fixed in `include/fnx/system.h` and
+`kernel/syscalls/sysinfo.c`, and the probe now asserts musl's OWN door as well — because a fix that
+only makes this library work is not the fix.
+
+**A THIRD, SMALLER FINDING: `NSTimeInterval` DID NOT EXIST in this library at all.** A header that
+named it as a return type is what made the compiler ask; it is now declared in `NSDate.h`, which is
+where Cocoa declares it too, and the header that needs it imports it as the dependency it is.
+
+**AND ONE SLIP OF MINE, worth the line it takes:** the first rewrite of the service file carried
+MARKDOWN BOLD MARKERS inside a C comment, which the compiler read as code. The lesson is the same one
+the coder slice recorded: compile after each edit, and read what you are about to keep.
+
+Next: the FS service (NSFileManager), then `NSURLComponents` and relative resolution, and
+`NSRegularExpression` on musl's engine.

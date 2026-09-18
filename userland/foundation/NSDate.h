@@ -18,6 +18,11 @@
 
 #import <foundation/NSObject.h>
 
+/* COCOA'S TIME TYPE, and this is where Cocoa declares it too. It was MISSING until a header named it
+ * as a return type and the compiler asked what it was — a type the whole library is full of numbers
+ * for, with no name for it. */
+typedef double NSTimeInterval;
+
 /* NULLABILITY (F6, slice 3): NONNULL by default. A date is a number, so every
  * constructor is total (measured: ndate.m has no `return nil`/`return NULL`), and
  * the only exception is the locale parameter. -earlierDate:/-laterDate: always

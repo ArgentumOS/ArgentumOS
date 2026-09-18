@@ -41,6 +41,12 @@ int sys_sysinfo(struct sysinfo *info)
 	tmp_info.bufferram = kstat.buffers_size * 1024;
 	tmp_info.totalswap = 0;
 	tmp_info.freeswap = 0;
+	/* THE UNIT, WHICH WAS LEFT AT ZERO. `totalram` and `freeram` are reported in BYTES here, while
+	 * the field that says so — Linux's `mem_unit` — stayed 0 because nothing set it. That is not a
+	 * cosmetic omission: a reader following the documented convention multiplies by `mem_unit` and
+	 * gets ZERO, and musl's `sysconf(_SC_PHYS_PAGES)` DIVIDES by it. Measured: NSProcessInfo's
+	 * -physicalMemory answered 0 on a machine with RAM, which is how this was found. */
+	tmp_info.mem_unit = 1;
 	FOR_EACH_PROCESS(p) {
 		tmp_info.procs++;
 		p = p->next;
