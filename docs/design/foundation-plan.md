@@ -1,17 +1,19 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4, F6 and F7 LANDED, the audited inventories CLOSED, and the plist
-skin ships** — the root class, the strings, the value types, the collections,
+Status: **DRAFT (2026-09). F0–F4, F6, F7 and F8 LANDED, the audited inventories CLOSED, and the
+plist skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
 not an array dependency: see the work queue), `NSLocale` (stage E — the localised case
 rules), `NSMethodSignature` and `NSInvocation` (stage F — a selector's types, and a call as an
-object), `NSPropertyListSerialization`, and `NSCalendar`/`NSTimeZone`/`NSDateComponents` (F7 — a
-fixed-offset time zone and the Gregorian calendar AS RULES) — with every staged public header
+object), `NSPropertyListSerialization`, `NSCalendar`/`NSTimeZone`/`NSDateComponents` (F7 — a
+fixed-offset time zone and the Gregorian calendar AS RULES) and `NSURL` (F8 — the URL as a
+VALUE) — with every staged public header
 annotated for nullability (F6, and enforced since as a standing rule). Gated on a
-guest boot by seven cases (`foundation_core`, `foundation_string`, `foundation_value`,
-`foundation_collection`, `foundation_error`, `foundation_calendar`, `objc_smoke`), whose probes
-carry **15 / 27 / 17 / 34 / 6 / 10** checks. **F5 (self-hosting) is DEFERRED — the user's call,
+guest boot by eight cases (`foundation_core`, `foundation_string`, `foundation_value`,
+`foundation_collection`, `foundation_error`, `foundation_calendar`, `foundation_url`,
+`objc_smoke`), whose probes
+carry **15 / 27 / 17 / 34 / 6 / 10 / 9** checks. **F5 (self-hosting) is DEFERRED — the user's call,
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
@@ -313,6 +315,44 @@ status.
   `weekOfMonth`, `yearForWeekOfYear`) are ANSWERS — what a conversion fills in — not a second
   way to say a date, so a component that sets only those is invalid and
   `-isValidDateInCalendar:` says so.
+
+  Recorded BEFORE the code, because the boundary IS the design.
+
+- **F8 — `NSURL`. DONE (2026-09-17).** `foundation_url` 9/9 on a guest boot, and §9 records the
+  dot rule its probe found — plus what the probe's own first build caught, since the design came
+  first this time and the annotations were right. The next of the four
+  families the F2 note left out,
+  and the boundary is the same call one level up: a URL is a SYNTAX (RFC 3986 — scheme,
+  authority, path, query, fragment) plus two RULES this system already has (the FSH's
+  slash-separated absolute paths, and UTF-8), so all of that ships. What does not ship is
+  anything that would need a STACK: there is no URL loading system here, no protocol handler
+  and no NSFileManager.
+
+  **What ships** (the value type, and the string maths a URL is made of):
+  * the RFC 3986 parts: `+URLWithString:`, `-initWithString:`, `-scheme`, `-host`, `-port`,
+    `-path`, `-query`, `-fragment`, `-absoluteString`, `-relativeString`, `-isFileURL`,
+    `-absoluteURL`, `-isEqual:`/`-hash`, `-description`;
+  * `+URLWithString:` answers NIL for a string that is not a URL rather than silently
+    re-encoding it — the refusal IS the parse; the percent-ENCODING rules are already
+    NSString's (F1: `-stringByAddingPercentEncodingWithAllowedCharacters:`);
+  * the two FILE-URL rules, because those are FSH rules: `+fileURLWithPath:`,
+    `-initFileURLWithPath:` (a slash-separated absolute path in, `file:///System/...` out,
+    empty authority) and `-path`;
+  * the PATH arithmetic: `-URLByAppendingPathComponent:`, `-URLByAppendingPathExtension:`,
+    `-URLByDeletingLastPathComponent`, `-URLByDeletingPathExtension`.
+
+  **What is REFUSED BY NAME, each because it needs something this library does not ship**
+  (the shape F7's refusals already have, and asserted ABSENT by the probe):
+  * the LOADING system — `NSURLSession`, `NSURLConnection`, `NSURLRequest`,
+    `-startAccessingSecurityScopedResource`, `+URLByResolvingBookmarkData:…`: a URL here is a
+    VALUE, not a door to I/O;
+  * `NSURLComponents` and `NSURLQueryItem` — the STRUCTURED form is its own class family and a
+    later slice, not half of this one;
+  * `NSFileManager` and every filesystem QUERY — `-checkResourceIsReachableAndReturnError:`,
+    `-resourceValuesForKeys:error:`, `-getFileSystemRepresentation:maxLength:`: a URL is a
+    NAME, and the file APIs that DO exist take paths;
+  * general RELATIVE RESOLUTION (`+URLWithString:relativeToURL:`) — RFC 3986 §5 is a merge
+    algorithm with its own test vectors, and the two path-appending rules above are not it.
 
   Recorded BEFORE the code, because the boundary IS the design.
 
@@ -864,7 +904,8 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSMethodSignature` — **SHIPPED (stage F)** | a selector's types: the parser (primitives, qualifiers, pointers, arrays, structs/unions, bitfields, `@"Class"` names, and the older offset form) and `-methodSignatureForSelector:` on NSObject, both variants. The widths are OURS and stated |
 | `NSInvocation` — **SHIPPED (stage F)** | the invocation, the register classification and the two x86-64 trampolines, with the runtime's hooks installed: forwarding works end to end along both paths (§9's stage F, second half) |
 | `NSCalendar`/`NSTimeZone` (+ `NSDateComponents`) — **SHIPPED (F7)** | a fixed-offset time zone and the Gregorian calendar AS RULES: conversion both ways, field arithmetic with the clamp (31 Jan + 1 month is the last day of February), ranges, and the week rule — all on libc's `struct tm`. Refused by name and asserted ABSENT by the probe: the tz database, DST transitions, the non-Gregorian calendars, the date parser and the formatter |
-| `NSURL`, KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
+| `NSURL` — **SHIPPED (F8)** | the URL as a VALUE: the RFC 3986 parse (scheme/authority/path/query/fragment), the FSH's file-URL ↔ path rules — including the percent-encoded SPACE an FSH path may contain — and the path arithmetic. Refused by name and asserted ABSENT by the probe: the loading system (`NSURLSession`/`NSURLConnection`/`NSURLRequest`), `NSURLComponents`/`NSURLQueryItem`, `NSFileManager` and every filesystem query, and general relative resolution. The URL-taking forms of the file APIs would be built on it and remain absent |
+| KVC, `NSPredicate`/`NSSortDescriptor`, compression codecs | their own families |
 
 **NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
 `unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
@@ -1386,3 +1427,30 @@ rule being mechanical rather than a convention:
     half-answer this family refuses.
 
 `foundation_calendar` 10/10, and `make rootagfs` clean — the gate included.
+
+### F8 landed (2026-09-17): NSURL, and the dot rule its probe found
+
+`NSURL` — the second of the four remaining families — with `foundation_url` **9/9** on a guest
+boot and the gate reporting 23 of 27 public headers. The boundary is F7's call one level up: a
+URL is a SYNTAX, so the RFC 3986 parse, the percent-encoding uses and the FSH's file-URL rules
+ship; everything needing a STACK or a QUERY (the loading system, `NSURLComponents`,
+`NSFileManager`, general relative resolution) is refused by name and asserted ABSENT.
+
+THIS TIME THE DESIGN CAME FIRST AND THE ANNOTATIONS WERE RIGHT, so the gates had almost nothing
+to say: the header opened its region from the first line (F7's missing-BEGIN lesson) and every
+nullable return was annotated as written, so the library compiled on the FIRST build with no
+completeness and no conversion findings at all. What that build DID catch were two mistakes in
+the probe: `NSClassFromString` (a Foundation function this library does not claim, where the
+runtime's `objc_getClass` is the right call) and a triple-nested `-URLByDeletingPathExtension`
+expression whose bracket closed early. Both were fixed the established way — use the layer that
+owns the operation, or bind the value and guard it.
+
+AND THE PROBE FOUND A REAL BUG, the F7 story repeating: `-URLByDeletingPathExtension` on
+`/a/.hidden` answered `/a/` instead of `/a/.hidden`. The guard meant "the dot is not the
+component's FIRST character" but compared `<` where the rule needs `<=`, so a dot-led NAME was
+treated as a name with an extension. The failure was readable on the first run because the detail
+carried the measurement — and the FIRST version of that detail named the wrong clause (`parent`,
+which had passed), which is the same lesson one level down: the detail should name the thing most
+likely to have given way.
+
+`foundation_url` 9/9, and `make rootagfs` clean — the gate included.

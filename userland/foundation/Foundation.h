@@ -39,5 +39,6 @@
 #import <foundation/NSInvocation.h>
 #import <foundation/NSEnumerator.h>
 #import <foundation/NSPropertyListSerialization.h>
+#import <foundation/NSURL.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

@@ -291,13 +291,15 @@ int main(void)
 			"dataWithContentsOfMappedFile:",	/* superseded by the :options: form */
 			"initWithContentsOfMappedFile:",	/* superseded by the :options: form */
 			"getBytes:",				/* superseded by -getBytes:length: */
-			/* Needs classes or codecs this Foundation does not ship. */
-			"dataWithContentsOfURL:",		/* NSURL */
-			"dataWithContentsOfURL:options:error:",	/* NSURL */
-			"initWithContentsOfURL:",		/* NSURL */
-			"initWithContentsOfURL:options:error:",	/* NSURL */
-			"writeToURL:atomically:",		/* NSURL */
-			"writeToURL:options:error:",		/* NSURL */
+			/* Needs a codec this Foundation does not ship. The URL-taking forms are
+			 * absent for a different reason: NSURL itself SHIPS now (F8), but these
+			 * methods are not written. */
+			"dataWithContentsOfURL:",		/* the URL-taking forms are not shipped */
+			"dataWithContentsOfURL:options:error:",	/* the URL-taking forms are not shipped */
+			"initWithContentsOfURL:",		/* the URL-taking forms are not shipped */
+			"initWithContentsOfURL:options:error:",	/* the URL-taking forms are not shipped */
+			"writeToURL:atomically:",		/* the URL-taking forms are not shipped */
+			"writeToURL:options:error:",		/* the URL-taking forms are not shipped */
 			"compressedDataUsingAlgorithm:error:",	/* a compression codec */
 			"decompressedDataUsingAlgorithm:error:",	/* a compression codec */
 			NULL

@@ -337,10 +337,11 @@ int main(void)
 			"sortedArrayUsingDescriptors:",		/* NSSortDescriptor */
 			"sortedArrayUsingFunction:context:",	/* C function comparators */
 			"sortUsingFunction:context:",		/* C function comparators */
-			/* Needs NSURL. */
-			"arrayWithContentsOfURL:",		/* NSURL */
-			"initWithContentsOfURL:",		/* NSURL */
-			"writeToURL:atomically:",		/* NSURL */
+			/* NOT absent for want of a class: NSURL SHIPS (F8). These are absent
+			 * because the URL-taking FORM is not written — the plist forms take paths. */
+			"arrayWithContentsOfURL:",		/* the URL-taking forms are not shipped */
+			"initWithContentsOfURL:",		/* the URL-taking forms are not shipped */
+			"writeToURL:atomically:",		/* the URL-taking forms are not shipped */
 			NULL
 		};
 		NSArray *probe = [NSArray arrayWithObject:@"x"];
@@ -904,7 +905,8 @@ int main(void)
 			/* A strings-file form is NOT a property list: it needs its own
 			 * writer, so it stays excluded while the plist forms above ship. */
 			"descriptionInStringsFileFormat",
-			/* Needs NSURL. */
+			/* NSURL SHIPS (F8); the URL-taking FORM is what is absent, and the plist
+			 * forms above take paths. */
 			"dictionaryWithContentsOfURL:", "initWithContentsOfURL:",
 			"writeToURL:atomically:", NULL
 		};
