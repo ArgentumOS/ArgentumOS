@@ -30,6 +30,7 @@
  */
 
 #import <foundation/NSKeyValueCoding.h>
+#import <foundation/NSKeyValueObserving.h>
 #import <foundation/NSString.h>
 #import <foundation/NSNumber.h>
 #import <foundation/NSArray.h>
@@ -332,7 +333,18 @@ static BOOL fn_call_setter(id receiver, SEL sel, id value)
 	return [self valueForUndefinedKey:key];
 }
 
+/* THE OBSERVING WRAPPER: every KVC write goes through here, so a change made with
+ * -setValue:forKey: is announced to KVO automatically. The body is unchanged and now lives in
+ * -fnSetValue:forKey:, which is what makes "automatic" mean the same thing here as in Cocoa for
+ * this library's writers. */
 - (void)setValue:(nullable id)value forKey:(NSString *)key
+{
+	[self willChangeValueForKey:key];
+	[self fnSetValue:value forKey:key];
+	[self didChangeValueForKey:key];
+}
+
+- (void)fnSetValue:(nullable id)value forKey:(NSString *)key
 {
 	SEL sel;
 	Class cls;

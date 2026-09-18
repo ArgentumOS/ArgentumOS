@@ -384,7 +384,7 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
 	return class_respondsToSelector(self, aSelector);
 }
 
-+ (id)allocWithZone:(NSZone *)zone
++ (id)allocWithZone:(nullable NSZone *)zone
 {
 	(void)zone;
 	/* THE PRIMITIVE, which is where the one allocator lives. A subclass may override THIS to

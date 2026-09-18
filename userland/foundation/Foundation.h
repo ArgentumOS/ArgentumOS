@@ -52,5 +52,6 @@
 #import <foundation/NSMutableOrderedSet.h>
 #import <foundation/NSValue.h>
 #import <foundation/NSNull.h>
+#import <foundation/NSKeyValueObserving.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

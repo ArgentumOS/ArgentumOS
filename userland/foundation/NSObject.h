@@ -159,7 +159,8 @@ __attribute__((objc_root_class))
 + (BOOL)instancesRespondToSelector:(SEL)aSelector;
 + (void)load;			/* the runtime calls these; declared so overrides match */
 + (void)initialize;
-+ (id)allocWithZone:(NSZone *)zone;	/* NO ZONES: the argument is ignored */
++ (id)allocWithZone:(nullable NSZone *)zone;	/* NO ZONES: the argument is ignored, and NULL is the
+						 * norm — so the parameter is NULLABLE, as in Cocoa */
 
 - (BOOL)isProxy;
 - (nullable NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it */

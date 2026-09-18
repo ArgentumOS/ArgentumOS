@@ -2441,3 +2441,44 @@ Next in §10's mechanism track: KVO, the expression family (`NSExpression`,
 `NSComparisonPredicate`, `IN`/`BETWEEN` and the quantifiers), `NSCoder`/`NSKeyedArchiver`, the
 FS/process/thread services, `NSURLComponents` and relative resolution, and `NSRegularExpression` on
 musl's engine.
+
+### F13.9 landed (2026-09-18): KVO — the registry the KVC header refused by name
+
+**`foundation_kvo` 8/8 on a guest boot.** `-addObserver:forKeyPath:options:context:`,
+`-removeObserver:forKeyPath:` (both forms), the manual `willChange`/`didChange` pair, the change
+dictionary with New/Old/Prior, the Initial option, and `-observationInfo`/`-setObservationInfo:`.
+The KVC header had closed this door by name — "KVO is a REGISTRY of observers with a dependency
+graph. It is a service, not a rule" — and a registry is storage, which is the easy half.
+
+**THE DESIGN IS TWO TABLES AND NO IVARS**, because an `NSObject` category cannot grow an instance and
+this library has no associated objects. That is also why Cocoa's `-observationInfo` exists as a door,
+and this file implements it honestly over its own table, kept separate from the registry. Nothing is
+retained — neither the observed object nor the observer — which is Cocoa's rule and the reason its
+documentation tells you to remove observations before either dies.
+
+**"AUTOMATIC" MEANS THE KVC WRITER HERE**: `-setValue:forKey:` is now a wrapper that brackets
+`-fnSetValue:forKey:` with will/did, so a KVC write notifies with no extra work. NAMED LIMITS: a
+setter called DIRECTLY does not notify (that needs per-class interception, i.e. isa-swizzling), a
+DOTTED key path is registered as the literal string it was given rather than decomposed into
+segments, and nothing is retained. Each is stated rather than half-built.
+
+**THE BUG THE MARKERS FOUND, and the method lesson is the point.** A block appeared to fail with an
+abort and NO message. Rather than guess, three `printf` markers went in — and none of them printed
+at all, which proved the abort was in the block BEFORE the one that looked wrong: a two-argument
+`-removeObserver:forKeyPath:` that compared the CONTEXT and so raised on a removal Cocoa accepts.
+The two-argument form ignores the context; only the three-argument one compares it. **A marker can
+locate a failure that a check cannot, and "the failing check" is not where the bug is.**
+
+**ALSO MEASURED:** a change dictionary says "there was no old value" with NSNull rather than nil — the
+same rule the collections follow, and my first expectation in the probe was wrong, not the library.
+And the `NSZone` nullability from F13.8c's allocator fix: `+allocWithZone:` takes a NULLABLE zone, as
+in Cocoa, so passing NULL is right rather than a `-Wnonnull` warning.
+
+**WARNING DEBT, carried forward honestly:** three warnings remain in this program's files, all from
+F13.7c — two ICU enum-conversion warnings in `nsnumberformatter.m` and one `-Wnonnull` in the number
+formatter probe. This turn's own warnings (three from the new file, two from F13.8c's NULL zone, one
+in the set probe) are swept. The next step sweeps those three.
+
+Next in §10's mechanism track: the expression family (`NSExpression`, `NSComparisonPredicate`,
+`IN`/`BETWEEN` and the quantifiers), `NSCoder`/`NSKeyedArchiver`, the FS/process/thread services,
+`NSURLComponents` and relative resolution, and `NSRegularExpression` on musl's engine.

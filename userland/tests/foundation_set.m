@@ -68,7 +68,10 @@ int main(void)
 	{
 		NSString *stored = [NSString stringWithFormat:@"%@", @"carol"];
 		NSSet *set = [NSSet setWithObject:stored];
-		NSString *fresh = [NSString stringWithString:@"carol"];
+		/* A SECOND object with the same characters: `+stringWithFormat:` rather than
+		 * `+stringWithString:` with a literal, which the compiler rejects as redundant and which
+		 * would not have been a distinct object anyway. */
+		NSString *fresh = [NSString stringWithFormat:@"%@", @"carol"];
 		id found = [set member:fresh];
 
 		check("set-member-by-value",

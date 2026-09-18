@@ -31,10 +31,11 @@ static NSNull *fn_shared_null = nil;
 	return fn_shared_null;
 }
 
-/* THE SIGNATURES MATCH NSObject'S OWN: `allocWithZone:` takes a NONNULL zone and `isEqual:` a
- * nonnull object there, and a re-declaration may not disagree with what it overrides. `-copyWithZone:`
- * below KEEPS its nullable zone, because NSCopying declares that one nullable. */
-+ (instancetype)allocWithZone:(NSZone *)zone
+/* THE SIGNATURES MATCH NSObject'S OWN: `allocWithZone:` takes a NULLABLE zone (NULL is the norm)
+ * and `isEqual:` a nonnull object there, and a re-declaration may not disagree with what it
+ * overrides. `-copyWithZone:` below also keeps its nullable zone, because NSCopying declares that
+ * one nullable. */
++ (instancetype)allocWithZone:(nullable NSZone *)zone
 {
 	(void)zone;
 	return [self null];
