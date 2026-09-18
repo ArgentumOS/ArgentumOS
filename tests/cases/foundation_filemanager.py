@@ -1,0 +1,90 @@
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
+"""NSFileManager — F13.14's acceptance.
+
+docs/design/foundation-plan.md §10. The file system as a SERVICE rather than a set of wrappers: three
+things make it one — every failure answers NO and fills in an `NSError` whose code is the `errno`
+instead of leaving it in a global; attributes come back as a dictionary keyed by Cocoa's names rather
+than as a bitfield to decode; and COPY RECURSES, which POSIX cannot do at all.
+
+The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing only
+`<foundation/Foundation.h>` (plus `<unistd.h>` for the `symlink(2)` the link check needs).
+
+  * `fs-default-manager` — `+defaultManager` answers the same object twice;
+  * `fs-create-and-list` — a directory made WITH intermediates, files inside it, and the NAMES
+                          `-contentsOfDirectoryAtPath:error:` reports;
+  * `fs-write-and-size`  — a file written through `NSData`, whose `NSFileSize` is EXACTLY the byte
+                          count: the one attribute a caller can check without trusting us, plus the
+                          type and a modification date;
+  * `fs-move-and-copy`   — a move (source gone, destination the same size) and a copy of a whole
+                          DIRECTORY, whose members come back with their contents;
+  * `fs-error-channel`   — removing something absent answers NO and fills in an error with a
+                          non-empty description: the channel, not a silent zero;
+  * `fs-link-and-cwd`    — a symbolic link's target through the service, and a
+                          `-changeCurrentDirectoryPath:`/`-currentDirectoryPath` round trip;
+  * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
+
+IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
+spelled the FSH way — and removes the whole tree at the end AND at the start, because a probe that
+leaves litter behind changes the system it is measuring.
+"""
+
+import re
+
+from harness import BaseCase
+
+PROBE = "/System/Shared/tests/foundation_filemanager"
+CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-move-and-copy",
+          "fs-error-channel", "fs-link-and-cwd", "fs-cleanup")
+
+
+class Case(BaseCase):
+    title = "NSFileManager: the file system as a service"
+    tier = "fast"
+    timeout = 300
+
+    def run(self, ctx):
+        ctx.require_guest_file("foundation_filemanager")
+        session = ctx.boot()
+        ready = session.shell_ready(150)
+        self.check("shell-ready", ready,
+                   "the serial console has a shell" if ready
+                   else "no shell; guest tail: " + session.tail())
+        if not ready:
+            return
+
+        mark = len(session.log_text())
+        session.run("%s; echo FOUNDATION-FILEMANAGER-STATUS=$?" % PROBE)
+        out = session.output_since(mark)
+        for line in out.splitlines():
+            if line.startswith("FOUNDATION-FILEMANAGER "):
+                self.note(line)
+
+        done = "FOUNDATION-FILEMANAGER DONE" in out
+        self.check("probe-ran", done,
+                   "the probe reached its end marker" if done
+                   else "no FOUNDATION-FILEMANAGER DONE; output tail: " + out.strip()[-400:])
+        if not done:
+            return
+
+        missing = [c for c in CHECKS
+                   if not re.search(r"^FOUNDATION-FILEMANAGER %s ok$" % re.escape(c), out, re.M)]
+        self.check("every-check-passed", not missing,
+                   ("all %d checks reported ok" % len(CHECKS)) if not missing
+                   else "%d of %d ok; missing: %s"
+                        % (len(CHECKS) - len(missing), len(CHECKS), ", ".join(missing)))
+
+        fails = [l for l in out.splitlines()
+                 if l.endswith("FAIL") or " FAIL " in l]
+        self.check("no-fail-lines", not fails,
+                   "no check reported FAIL" if not fails else "; ".join(fails))
+
+        tally = re.search(r"FOUNDATION-FILEMANAGER RESULT ok=(\d+) fail=(\d+)", out)
+        self.check("result-line",
+                   bool(tally) and tally.group(1) == str(len(CHECKS))
+                   and tally.group(2) == "0",
+                   "the probe's own tally: %s"
+                   % (tally.group(0) if tally else "missing"))
+
+        self.check("exit-status", "FOUNDATION-FILEMANAGER-STATUS=0" in out,
+                   "the probe exited 0 (a non-zero status means a failed check)")

@@ -2651,3 +2651,38 @@ the coder slice recorded: compile after each edit, and read what you are about t
 
 Next: the FS service (NSFileManager), then `NSURLComponents` and relative resolution, and
 `NSRegularExpression` on musl's engine.
+
+### F13.14 landed (2026-09-18): NSFileManager — and an OPEN KERNEL ITEM: rmdir(2) cannot work
+
+**`foundation_filemanager` 7/7 on a guest boot.** The file system as a service, with the three things
+that make it one: an ERROR CHANNEL (every failure answers NO and fills in an `NSError` whose code is
+the `errno` and whose description is that errno's text, never a silent zero); ATTRIBUTES AS A
+DICTIONARY keyed by Cocoa's names, so a caller asks one question instead of calling `stat(2)` and
+decoding a bitfield; and a COPY THAT RECURSES, which POSIX does not have at all — and which is why
+this file contains a directory walk. The move, the copy of a whole tree, the symlink target, the
+cwd round trip, the intermediated mkdir and the exact-size attribute all pass.
+
+**THE FINDING, AND IT IS NOT THIS LIBRARY'S: `rmdir(2)` RETURNS EPERM FOR EVERY DIRECTORY ON THIS
+FILE SYSTEM.** Measured, from a probe detail that carried the error rather than a number:
+`removeItemAtPath:` answered NO with "Operation not permitted" for three directories in a row, while
+`unlink(2)` removed the FILES and even the SYMLINK without complaint — and once that was known, the
+kernel says why in two lines:
+
+  - `kernel/syscalls/rmdir.c` refuses with `-EPERM` when the target's inode compares EQUAL to its
+    parent's (`if(i == dir)`), and it is the ONLY one of the two callers that tests unconditionally;
+  - `kernel/syscalls/unlink.c` has the same test inside an `else`, which is why a file is unaffected.
+
+So on AGFS a directory's inode compares equal to its parent's, and **a recursive remove cannot
+finish** — my walk stops at its first refusal, which is why some files inside a tree may survive it.
+**THIS IS AN OPEN KERNEL ITEM**: nothing in this slice changed it, and neither the size nor the shape
+of the fix is known from here. What it forced is a better check, which is the one thing worth keeping
+from the detour: `fs-cleanup` now asserts THE CONTRACT THE LIBRARY OWNS — the answer matches the file
+system (a YES means the path is gone, a NO means it is still there) and every NO carries an error —
+which is a claim that can be wrong, unlike "the tree is gone", which on this kernel cannot be true.
+
+**TWO SLIPS OF MINE, both caught by running rather than by reading:** `remove(3)` and `rename(2)` are
+declared in `<stdio.h>` and my file had not included it; and a condition I wrote (`!x == NO`) was a
+precedence trap whose FIRST observable effect was `filesGone=0` in the probe output. The second one is
+the argument for details that carry numbers: the expression looked right until it printed one.
+
+Next: `NSURLComponents` and relative resolution, then `NSRegularExpression` on musl's engine.

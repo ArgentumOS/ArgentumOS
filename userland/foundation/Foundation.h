@@ -58,5 +58,6 @@
 #import <foundation/NSCoder.h>
 #import <foundation/NSKeyedArchiver.h>
 #import <foundation/NSProcessInfo.h>
+#import <foundation/NSFileManager.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
