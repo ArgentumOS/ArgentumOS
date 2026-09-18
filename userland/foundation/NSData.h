@@ -30,7 +30,13 @@
  *   3. the two buffer accessors, -bytes and -mutableBytes: the ivar's own comment
  *      is "NULL only while empty" — an empty buffer is not a usable pointer.
  * The :options:error: forms take the error out-parameter at BOTH levels, because a
- * caller may pass NULL for "no error report". */
+ * caller may pass NULL for "no error report".
+ *
+ * THE BYTE PARAMETERS OF THE CONSTRUCTORS ARE NULLABLE — a truth the 2026-09-18 sweep made
+ * explicit. `-initWithBytes:NULL length:0` is exactly how an EMPTY data is built, and -bytes
+ * answers NULL for that same object; the declaration said nonnull, so the library's own empty
+ * constructors were warnings against their own header. The MUTATORS (-appendBytes:length: and
+ * the -replaceBytesInRange: forms) stay NONNULL, because a NULL buffer there is meaningless. */
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSData : NSObject <NSCopying>
@@ -82,18 +88,18 @@ typedef enum {
 } NSDataCompressionAlgorithm;
 
 + (nullable NSData *)data;
-+ (nullable NSData *)dataWithBytes:(const void *)bytes length:(size_t)length;
-+ (nullable NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length;
-+ (nullable NSData *)dataWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
++ (nullable NSData *)dataWithBytes:(const void * _Nullable)bytes length:(size_t)length;
++ (nullable NSData *)dataWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length;
++ (nullable NSData *)dataWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
 + (NSData *)dataWithData:(NSData *)other;
 + (nullable NSData *)dataWithContentsOfFile:(NSString *)path;
 + (nullable NSData *)dataWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string;
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options;
 
-- (nullable id)initWithBytes:(const void *)bytes length:(size_t)length;
-- (nullable id)initWithBytesNoCopy:(void *)bytes length:(size_t)length;
-- (nullable id)initWithBytesNoCopy:(void *)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
+- (nullable id)initWithBytes:(const void * _Nullable)bytes length:(size_t)length;
+- (nullable id)initWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length;
+- (nullable id)initWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
 - (id)initWithData:(NSData *)other;
 - (nullable id)initWithContentsOfFile:(NSString *)path;
 - (nullable id)initWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;

@@ -33,6 +33,13 @@ static void check(const char *name, int ok, const char *detail)
 	}
 }
 
+/* A nil NEEDLE ON PURPOSE: the check below asks -rangeOfData: about one to see the answer.
+ * Fetching it says so; a literal at the call site would be a -Wnonnull finding of its own. */
+static NSData *fn_no_data(void)
+{
+	return nil;
+}
+
 int main(void)
 {
 	{
@@ -426,7 +433,7 @@ int main(void)
 		static const unsigned char bytes[] = { 0xde, 0xad, 0xbe, 0xef };
 		NSData *d = [NSData dataWithBytes:bytes length:4];
 		NSData *sub = [d subdataWithRange:NSMakeRange(1, 2)];
-		NSData *searched = [d rangeOfData:nil options:NSDataSearchDefault
+		NSData *searched = [d rangeOfData:fn_no_data() options:NSDataSearchDefault
 					    range:NSMakeRange(0, 4)].location == NSNotFound ? nil : d;
 		unsigned char held[3];
 		NSMutableData *m = [NSMutableData dataWithLength:4];

@@ -498,6 +498,26 @@ status.
   implement `-retain`/`-release` (the root class, and anything overriding them)
   are MRR; everything else is ARC. An ARC file that tries to implement them does
   not compile — a *good* failure mode, and this plan keeps it.
+- **A NULLABILITY RE-DECLARATION SHADOWS THE ONE IT INHERITS** (found by the 2026-09-18 sweep,
+  which removed the last 18 warnings from the library and its probes). Two lessons, both about
+  specifiers rather than about code:
+  * `NSObject`'s OWN interface re-declared `-copyWithZone:` with a NONNULL zone while `NSCopying`
+    declared it nullable — so the re-declaration SHADOWED the protocol and every
+    `[self copyWithZone:NULL]` in the implementation warned against its own class. SIX other
+    headers (`NSNumber`, `NSDate`, `NSTimeZone`, `NSDateComponents`, `NSCalendar`, `NSURL`) did
+    the same thing. A re-declaration must carry the INHERITED truth rather than a fresh one
+    (F10 met the same wall from the other side, where a `nullable` re-declaration conflicted with
+    an inherited nonnull);
+  * a DELIBERATE nil in a probe is FETCHED, not written: `-objectForKey:nil`, `-compare:nil`,
+    `-rangeOfData:nil options:…` and `-signatureWithObjCTypes:NULL` ARE the checks' subject, and a
+    literal at the call site is a `-Wnonnull` finding that has nothing to do with the claim. Each
+    probe now has a one-line helper returning the nil, and saying why.
+  The sweep also found a REAL bug that had been warning-as-noise since F1:
+  `[[NSMutableString alloc] initWithUTF8String:@""]` — an NSString where a `const char *`
+  belongs, the same class of mistake the F11b parser made. And ONE suppression was kept, with its
+  justification written down rather than assumed: `-Wno-incomplete-implementation` on the core
+  support unit, because its forwarding fixtures declare the methods they must NOT implement —
+  that incompleteness IS the claim under test.
 - **THE LIBRARY NOW NEEDS A CODEC THAT IS NOT ITS OWN** (F12, 2026-09-17).
   `libfoundation.so.1` carries a `NEEDED` on `libz.so.1`, because `ncodec.m` is the one file in
   the library that includes `<zlib.h>`. That is a DELIBERATE dependency rather than an accident
@@ -1819,3 +1839,36 @@ key's value is NSError's business and not the probe's.
 
 `foundation_codecs` 11/11, `foundation_error` 6/6, and `make rootagfs` clean — the gate included,
 with no warnings from the new files.
+
+### The warning sweep (2026-09-18): the Foundation builds silently, and what was hiding in the noise
+
+The last 18 warnings are gone from `userland/foundation` and `userland/tests/foundation*`, and the
+acceptance is EXACT: a build in which EVERY source and header was recompiled prints nothing for
+those paths (the first attempt looked clean because the LIBRARY had not recompiled — an
+incremental build only rechecks what changed). `foundation_string` 27/27 and `foundation_core`
+15/15 were re-gated: the two cases that can see the only change with runtime effect.
+
+WHAT THEY WERE, because "18 warnings" is not a finding — the CLASSES are:
+
+  * SIX headers, plus `NSObject` itself, re-declared `-copyWithZone:` with a NONNULL zone while
+    `NSCopying` declares it nullable — so the re-declaration SHADOWED the protocol and every
+    `[self copyWithZone:NULL]` warned against its own class. Ten lines in seven files, and the
+    same wall F10 hit from the other side. §6 has it;
+  * a deliberate nil in a probe — `-objectForKey:nil`, `-compare:nil`, `-rangeOfData:nil` and
+    `-signatureWithObjCTypes:NULL` — is the SUBJECT of a check, so each probe now FETCHES the nil
+    through a one-line helper that explains itself, rather than writing a literal whose finding
+    has nothing to do with the claim;
+  * `ndata.m` used `NSDictionary` through a `@class`: four warnings from a missing import;
+  * `-Wnonnull` on the library's OWN empty constructors — `-initWithBytes:NULL length:0` is how an
+    empty NSData is built, and the header said `bytes` was nonnull. The DECLARATION was the bug;
+    the constructors' byte parameters are now nullable and the MUTATORS stay nonnull, where a NULL
+    buffer is meaningless;
+  * AND ONE REAL BUG, hidden by the noise since F1:
+    `[[NSMutableString alloc] initWithUTF8String:@""]` — an NSString where a `const char *`
+    belongs. The same class of mistake the F11b parser made, and it had been printing a type
+    warning for months.
+
+ONE SUPPRESSION WAS KEPT, and its justification is written into the mk rather than assumed:
+`-Wno-incomplete-implementation` on the core support unit, whose forwarding fixtures declare the
+methods they must NOT implement — the incompleteness IS the claim under test. Same shape, same
+reason, as `NSString`'s abstract primitives in `FOUNDATION_CFLAGS`.

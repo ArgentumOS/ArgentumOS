@@ -12,6 +12,7 @@
 #import <foundation/NSData.h>
 #import <foundation/NSString.h>
 #import <foundation/NSError.h>
+#import <foundation/NSDictionary.h>	/* the userInfo dictionaries below need the CLASS, not a @class */
 #import "fncodec.h"
 #include <stdlib.h>
 #include <string.h>

@@ -23,6 +23,14 @@ static void check(const char *name, int ok, const char *detail)
 	}
 }
 
+/* A NULL ENCODING ON PURPOSE: -signatureWithObjCTypes: takes a nonnull one, and the check below
+ * hands it NULL to see the refusal. Fetching it says so; a literal at the call site would be a
+ * -Wnonnull finding of its own that had nothing to do with the claim. */
+static const char *fn_no_types(void)
+{
+	return NULL;
+}
+
 /*
  * THE RECORDING HOOK, for the one question the probe cannot answer any other way:
  * does the runtime REACH objc_proxy_lookup at all on this build's lookup path? It
@@ -211,7 +219,7 @@ int main(void)
 		      [[NSMethodSignature signatureWithObjCTypes:"d@:"] methodReturnLength] == 8 &&
 		      [[NSMethodSignature signatureWithObjCTypes:"v@:"] methodReturnLength] == 0 &&
 		      [[NSMethodSignature signatureWithObjCTypes:"v@:B"] frameLength] == 3 * sizeof(void *) &&
-		      [NSMethodSignature signatureWithObjCTypes:NULL] == nil,
+		      [NSMethodSignature signatureWithObjCTypes:fn_no_types()] == nil,
 		      "a struct's width is its fields with alignment, void is 0, and a NULL encoding is nil");
 	}
 

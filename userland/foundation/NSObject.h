@@ -43,14 +43,16 @@ NS_ASSUME_NONNULL_BEGIN
  * zone method is the protocol's member, and `-copy` / `-mutableCopy` are
  * declared on NSObject below, because every object can be *sent* them. The zone
  * argument is accepted, ignored and documented — there is one allocator here,
- * so `NSZone` is an incomplete type that nothing ever dereferences.
- */
+ * so `NSZone` is an incomplete type that nothing ever dereferences — and the pointer is
+ * NULLABLE, exactly as Cocoa declares it: `-copy` passes NULL and means it. (Before the
+ * 2026-09-18 sweep this said nonnull, which made every `-copyWithZone:NULL` in the library a
+ * warning against its own header.) */
 @protocol NSCopying
-- (id)copyWithZone:(NSZone *)zone;
+- (id)copyWithZone:(nullable NSZone *)zone;
 @end
 
 @protocol NSMutableCopying
-- (id)mutableCopyWithZone:(NSZone *)zone;
+- (id)mutableCopyWithZone:(nullable NSZone *)zone;
 @end
 
 /*
@@ -129,8 +131,13 @@ __attribute__((objc_root_class))
  */
 - (id)copy;			/* [self copyWithZone:NULL] */
 - (id)mutableCopy;		/* [self mutableCopyWithZone:NULL] */
-- (id)copyWithZone:(NSZone *)zone;	/* default: doesNotRecognizeSelector: */
-- (id)mutableCopyWithZone:(NSZone *)zone;
+/* BOTH ZONES ARE NULLABLE, and these two lines matter more than they look: NSObject's OWN
+ * interface re-declares what NSCopying already declares, so a nonnull here SHADOWS the
+ * protocol and turns every `[self copyWithZone:NULL]` in the implementation into a warning
+ * against its own class. The 2026-09-18 sweep found that pair, and the same misplaced
+ * specifier in six other headers. */
+- (id)copyWithZone:(nullable NSZone *)zone;	/* default: doesNotRecognizeSelector: */
+- (id)mutableCopyWithZone:(nullable NSZone *)zone;
 - (void)doesNotRecognizeSelector:(SEL)aSelector;
 
 /* Messaging, which is how Cocoa code calls a selector it only knows by name. */

@@ -43,12 +43,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)array;
 + (instancetype)arrayWithObject:(id)object;
-+ (instancetype)arrayWithObjects:(const id _Nonnull * _Nonnull)objects count:(NSUInteger)count;
++ (instancetype)arrayWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
 + (instancetype)arrayWithArray:(NSArray *)other;
 + (instancetype)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)object;
-- (id)initWithObjects:(const id _Nonnull * _Nonnull)objects count:(NSUInteger)count;
+- (id)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
 - (id)initWithArray:(NSArray *)other;
 - (id)initWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 

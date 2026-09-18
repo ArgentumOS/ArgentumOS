@@ -1270,7 +1270,11 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (NSString *)stringByReplacingCharactersInRange:(NSRange)range withString:(NSString *)replacement
 {
-	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:@""];
+	/* An EMPTY C STRING, not an EMPTY NSString: this is `initWithUTF8String:`, so a `@""` here
+	 * would pass a tagged-pointer OBJECT where a `const char *` is expected — the same class of bug
+	 * the predicate parser hit in F11b, and warning-as-noise was hiding this one since F1 (the
+	 * 2026-09-18 sweep gave it a voice). */
+	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t size = [self length];
 	size_t start = range.location;
 	size_t end;

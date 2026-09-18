@@ -330,7 +330,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# the support unit, the checks in the ARC unit. The ARC flag is EXPLICIT -
 	# the wrapper never adds it - and without it clang emits no release at all and
 	# the pool check fails (measured).
-	$(MUSL64_OBJC) -c -Wno-objc-root-class -fno-objc-arc -Iuserland -Iuserland/tests \
+	# THE FORWARDING FIXTURES DECLARE METHODS THEY MUST NOT IMPLEMENT: FastForwarder's -marker and
+	# SlowForwarder's -value/-setValue: are the CLAIM this probe tests (the runtime has to forward
+	# them to the backing object), so -Wincomplete-implementation is not noise here — it is the
+	# compiler correctly observing that the design is incomplete ON PURPOSE. The same shape, and the
+	# same justification, as NSString's abstract primitives in FOUNDATION_CFLAGS above.
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -Wno-incomplete-implementation -fno-objc-arc \
+		-Iuserland -Iuserland/tests \
 		userland/tests/foundation_core_support.m -o .build/foundation-core-support.o
 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \

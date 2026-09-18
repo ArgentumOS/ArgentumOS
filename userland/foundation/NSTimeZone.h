@@ -69,7 +69,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSUInteger)hash;
 - (NSString *)description;
 
-- (id)copyWithZone:(NSZone *)zone;
+- (id)copyWithZone:(nullable NSZone *)zone;
 
 @end
 

@@ -104,8 +104,8 @@ NS_ASSUME_NONNULL_BEGIN
 /* Immutable, so every one of these returns self — Cocoa's behaviour. */
 - (id)copy;
 - (id)mutableCopy;
-- (id)copyWithZone:(NSZone *)zone;
-- (id)mutableCopyWithZone:(NSZone *)zone;
+- (id)copyWithZone:(nullable NSZone *)zone;
+- (id)mutableCopyWithZone:(nullable NSZone *)zone;
 
 NS_ASSUME_NONNULL_END
 

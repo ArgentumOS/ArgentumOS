@@ -38,6 +38,15 @@ static void check(const char *name, int ok, const char *detail)
 	}
 }
 
+/* A nil WHERE A NIL IS THE POINT: -objectForKey: and -compare: take a nonnull argument, and the
+ * checks below hand them nil ON PURPOSE to see the refusal. Fetching it says so; writing the
+ * literal at the call site would be a -Wnonnull finding of its own that had nothing to do with the
+ * claim (the same shape as foundation_predicate's fn_no_predicate, and the same reason). */
+static id fn_no_object(void)
+{
+	return nil;
+}
+
 int main(void)
 {
 	{
@@ -134,7 +143,7 @@ int main(void)
 		      [[d objectForKey:@"1"] isEqualToString:@"uno"] &&
 		      [[d objectForKey:@"2"] isEqualToString:@"two"] &&
 		      [d objectForKey:@"nope"] == nil &&
-		      [d objectForKey:nil] == nil &&
+		      [d objectForKey:fn_no_object()] == nil &&
 		      [[NSDictionary dictionary] count] == 0,
 		      "set/get, overwrite replaces without growing the count, missing key is nil");
 	}
@@ -672,7 +681,7 @@ int main(void)
 			refusedTrim = [[e name] isEqualToString:NSRangeException];
 		}
 		@try {
-			(void)[path compare:nil];
+			(void)[path compare:fn_no_object()];
 		} @catch (NSException *e) {
 			refusedNil = [[e name] isEqualToString:NSInvalidArgumentException];
 		}
