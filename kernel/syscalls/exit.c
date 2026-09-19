@@ -53,6 +53,20 @@ void do_exit(int exit_code)
 				sys_close(n);
 			}
 		}
+		/* FNX: the LAST user of a shared address space frees it. A thread
+		 * that outlives its creator is the one that has to, or the tables
+		 * are never released (see pml4_has_other_user). */
+		{
+			extern int pml4_has_other_user(unsigned long);
+			extern void free_pml4_64(unsigned long);
+			extern unsigned long paging64_pml4_phys(void);
+			unsigned long cr3 = current->cr3_64;
+
+			current->cr3_64 = 0;
+			if(cr3 && cr3 != paging64_pml4_phys() && !pml4_has_other_user(cr3)) {
+				free_pml4_64(cr3);
+			}
+		}
 		current->exit_code = exit_code;
 		/* FNX: CLONE_THREAD threads are auto-reaped (Linux semantics):
 		 * no zombie, no SIGCHLD to the creating thread. Release the

@@ -126,6 +126,30 @@ struct proc *get_next_zombie(struct proc *parent)
 	return NULL;
 }
 
+/*
+ * FNX: free a process's 4-level tables only for the LAST user of that address
+ * space. A CLONE_VM thread shares its creator's pml4 (and tss.cr3), so a
+ * process that goes away while its threads are still running must NOT have
+ * them freed underneath those threads: a survivor then executes on recycled
+ * tables, where the kernel's own pages - its .text, its IDT - read
+ * not-present. The #PF for that cannot even be delivered (reading the IDT is
+ * what fails), so the #DF follows and the machine resets, silently.
+ */
+int pml4_has_other_user(unsigned long cr3)
+{
+	struct proc *p;
+
+	if(!cr3) {
+		return 0;
+	}
+	FOR_EACH_PROCESS(p) {
+		if(p->cr3_64 == cr3) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 __pid_t remove_zombie(struct proc *p)
 {
 	struct proc *pp;
@@ -134,19 +158,25 @@ __pid_t remove_zombie(struct proc *p)
 	pid = p->pid;
 	kfree(p->tss.esp0);
 	p->rss--;
-	kfree(P2V(p->tss.cr3));
 #ifdef __x86_64__
 	{
-		/* FNX (M6-next): release the process's own 4-level tables.
-		 * The reaper runs on its own CR3; the zombie's pml4 is not
-		 * active, so freeing it is safe. */
+		/* FNX: an address space can have SEVERAL users (a CLONE_VM thread
+		 * shares its creator's pml4 and tss.cr3), so free it only for the
+		 * LAST one - see pml4_has_other_user(). */
 		extern void free_pml4_64(unsigned long);
 		extern unsigned long paging64_pml4_phys(void);
-		if(p->cr3_64 && p->cr3_64 != paging64_pml4_phys()) {
-			free_pml4_64(p->cr3_64);
-		}
+		unsigned long cr3 = p->cr3_64;
+
+		/* zero the field first, so the scan cannot see this process */
 		p->cr3_64 = 0;
+		if(cr3 && cr3 != paging64_pml4_phys() && !pml4_has_other_user(cr3)) {
+			kfree(P2V(p->tss.cr3));
+			p->tss.cr3 = 0;
+			free_pml4_64(cr3);
+		}
 	}
+#else
+	kfree(P2V(p->tss.cr3));
 #endif /* __x86_64__ */
 	p->rss--;
 	pp = p->ppid;
@@ -301,7 +331,6 @@ struct proc *kernel_process(const char *name, int (*fn)(void))
 		release_proc(p);
 		return NULL;
 	}
-	p->entry_address = PAGE_OFFSET;
 	p->end_code = (addr_t)_end;
 #ifdef __x86_64__
 	/* 64-bit ABI: RSP must be 16-byte aligned at the function entry
