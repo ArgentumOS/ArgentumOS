@@ -10,6 +10,7 @@
 #include <stdio.h>
 #import <objc/runtime.h>
 #include <string.h>		/* memset/memcpy, for the page-function check */
+#include <math.h>		/* fabs, for the affine-transform checks */
 
 static int okc, failc;
 
@@ -589,6 +590,50 @@ int main(void)
 			(int)[NSObject conformsToProtocol:@protocol(NSObject)],
 			(int)[@"x" conformsToProtocol:@protocol(NSObject)],
 			(int)[NSObject instancesRespondToSelector:@selector(zone)]] UTF8String]);
+	}
+
+	{
+		/* NSAffineTransform (W2h): THE INDEX CONVENTION IS PINNED, because getting `m11·x + m21·y`
+		 * backwards gives a transform that looks plausible and is wrong. A 90-degree rotation sends
+		 * (1,0) to (0,1) - a case that passes under the other reading only by coincidence. */
+		NSAffineTransform *rotate = [NSAffineTransform transform];
+		NSPoint turned = [rotate transformPoint:NSMakePoint(1.0, 0.0)];
+
+		[rotate rotateByDegrees:90.0];
+		turned = [rotate transformPoint:NSMakePoint(1.0, 0.0)];
+		check("affine-rotation-and-indexing",
+		      fabs(turned.x) < 1e-9 && fabs(turned.y - 1.0) < 1e-9,
+		      "a 90-degree rotation sends (1,0) to (0,1)");
+	}
+
+	{
+		/* APPEND AND PREPEND ARE THE TWO PRODUCT ORDERS, so a translation and a scale give DIFFERENT
+		 * points through them: the check asserts both the difference and each value. A SIZE IS A
+		 * VECTOR, so translation does not apply to one - which is the difference between
+		 * -transformSize: and -transformPoint:. */
+		NSAffineTransform *translate = [NSAffineTransform transform];
+		NSAffineTransform *scale = [NSAffineTransform transform];
+		NSAffineTransform *appended = [NSAffineTransform transform];
+		NSAffineTransform *prepended = [NSAffineTransform transform];
+		NSPoint throughAppend;
+		NSPoint throughPrepend;
+		NSSize size;
+
+		[translate translateXBy:10.0 yBy:0.0];
+		[scale scaleBy:2.0];
+		[appended appendTransform:translate];
+		[appended appendTransform:scale];
+		[prepended prependTransform:translate];
+		[prepended prependTransform:scale];
+		throughAppend = [appended transformPoint:NSMakePoint(1.0, 1.0)];
+		throughPrepend = [prepended transformPoint:NSMakePoint(1.0, 1.0)];
+		size = [appended transformSize:NSMakeSize(1.0, 1.0)];
+
+		check("affine-append-versus-prepend",
+		      !(fabs(throughAppend.x - throughPrepend.x) < 1e-9) &&
+		      fabs(throughAppend.y - throughPrepend.y) < 1e-9 &&
+		      fabs(size.width - 2.0) < 1e-9 && fabs(size.height - 2.0) < 1e-9,
+		      "the two product orders disagree about x, and translation does not move a size");
 	}
 
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);

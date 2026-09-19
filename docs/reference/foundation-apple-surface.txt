@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   65   open  177   struck   31
+#   class      shipped   66   open  176   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
@@ -36,7 +36,7 @@
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
 #   typealias  shipped   19   open   54   struck    3
-#   struct     shipped    6   open    2   struck    5
+#   struct     shipped    7   open    1   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	open	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1339,7 +1339,7 @@ case	struck	NSYearForWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Cale
 case	shipped	NS_BigEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_LittleEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_UnknownByteOrder		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
-class	open	NSAffineTransform		Fundamentals / Geometry	-	objc
+class	shipped	NSAffineTransform		Fundamentals / Geometry	-	objc
 class	open	NSAppleEventDescriptor		App Support / Apple Event Handling	-	objc
 class	open	NSAppleEventManager		App Support / Apple Event Handling	-	objc
 class	open	NSAppleScript		App Support / Script Execution	-	objc
@@ -2259,7 +2259,7 @@ protocol	open	NSUserNotificationCenterDelegate		App Support / User Notifications
 protocol	open	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
 protocol	open	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	-	objc
 protocol	open	NSXPCProxyCreating		Low-Level Utilities / XPC Client	-	objc
-struct	open	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
+struct	shipped	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
 struct	open	NSDecimal		Fundamentals / Numbers	-	objc
 struct	shipped	NSEdgeInsets		Fundamentals / Geometry	-	objc
 struct	shipped	NSFastEnumerationState	NSFastEnumeration	Fundamentals / Iteration / Constants	-	objc
