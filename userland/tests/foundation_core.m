@@ -711,6 +711,190 @@ int main(void)
 		 * is what this half exists for - and it is recorded in §11.6.1 rather than asserted red here. */
 	}
 
+	{
+		/*
+		 * NSJSONSerialization. ONE LEAF OF EVERY KIND, so a failure names the part that broke rather than
+		 * just "JSON is broken". Three notes for anyone editing this: the probe is an ARC translation unit,
+		 * so there is no -autorelease here; every -objectForKey: answer goes through a LOCAL before it is
+		 * compared, because a lookup is nullable and -isEqual: takes a nonnull; and EVERY block catches,
+		 * because +dataWithJSONObject: THROWS for an object it judges invalid - uncaught, that aborts the
+		 * probe (SIGABRT, status 134) and takes every later check with it. Catching turns it into a failed
+		 * check that still PRINTS its reason.
+		 */
+		NSString *text = @"quote\" slash\\ newline\ntab\tacc\u00e9nt";
+		NSMutableArray *list = [NSMutableArray array];
+		NSMutableDictionary *source = [NSMutableDictionary dictionary];
+		NSData *encoded = nil;
+		id back = nil;
+		id backText = nil;
+		id backList = nil;
+		id backNested = nil;
+		id backNestedValue = nil;
+		BOOL failed = NO;
+
+		@try {
+			[list addObject:[NSNumber numberWithInt:1]];
+			[list addObject:[NSNumber numberWithBool:NO]];
+			[list addObject:[NSNull null]];
+			[source setObject:text forKey:@"text"];
+			[source setObject:[NSNumber numberWithInt:-42] forKey:@"int"];
+			[source setObject:[NSNumber numberWithDouble:0.5] forKey:@"real"];
+			[source setObject:[NSNumber numberWithBool:YES] forKey:@"yes"];
+			[source setObject:[NSNumber numberWithBool:NO] forKey:@"no"];
+			[source setObject:[NSNull null] forKey:@"nil"];
+			[source setObject:list forKey:@"list"];
+			[source setObject:[NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil] forKey:@"nested"];
+
+			printf("FNJSON valid=%d\n", (int)[NSJSONSerialization isValidJSONObject:source]);
+			encoded = [NSJSONSerialization dataWithJSONObject:source options:0 error:NULL];
+			printf("FNJSON encoded=%ld bytes\n", encoded != nil ? (long)[encoded length] : -1L);
+			back = encoded != nil
+				? [NSJSONSerialization JSONObjectWithData:encoded options:0 error:NULL] : nil;
+			printf("FNJSON decoded class=%s\n", back != nil ? [[back description] UTF8String] : "(nil)");
+			backText = back != nil ? [back objectForKey:@"text"] : nil;
+			backList = back != nil ? [back objectForKey:@"list"] : nil;
+			backNested = back != nil ? [back objectForKey:@"nested"] : nil;
+			backNestedValue = backNested != nil ? [backNested objectForKey:@"k"] : nil;
+		} @catch (NSException *e) {
+			failed = YES;
+			printf("FNJSON-ROUND-TRIP-CAUGHT %s: %s\n", [[e name] UTF8String], [[e reason] UTF8String]);
+		}
+
+		check("json-round-trip",
+		      !failed &&
+		      encoded != nil && back != nil && [back isKindOfClass:[NSDictionary class]] &&
+		      [backText isEqualToString:text] &&
+		      [[back objectForKey:@"int"] intValue] == -42 &&
+		      [[back objectForKey:@"real"] doubleValue] == 0.5 &&
+		      [[back objectForKey:@"yes"] boolValue] == YES &&
+		      [[back objectForKey:@"no"] boolValue] == NO &&
+		      [[back objectForKey:@"nil"] isEqual:[NSNull null]] &&
+		      [backList isKindOfClass:[NSArray class]] && [backList count] == 3 &&
+		      [[backList objectAtIndex:0] intValue] == 1 &&
+		      [[backList objectAtIndex:1] boolValue] == NO &&
+		      [[backList objectAtIndex:2] isEqual:[NSNull null]] &&
+		      [backNestedValue isEqualToString:@"v"],
+		      "every leaf kind survives a round trip: escaped text, int, double, both bools, null and nesting");
+	}
+	{
+		/* What is NOT a JSON object. The non-string key matters as much as the date: Apple rejects a key
+		 * that is not a string, and a top-level string or number only becomes legal with the fragment
+		 * options - which is why +isValidJSONObject: is a separate question from "can I encode this". */
+		id validObject = [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil];
+		id validArray = [NSArray arrayWithObject:validObject];
+		BOOL failed = NO;
+		BOOL plain = NO;
+		BOOL arrayOk = NO;
+		BOOL dateBad = NO;
+		BOOL stringBad = NO;
+		BOOL numberBad = NO;
+		BOOL dateInsideBad = NO;
+		BOOL keyBad = NO;
+
+		@try {
+			plain = [NSJSONSerialization isValidJSONObject:validObject];
+			arrayOk = [NSJSONSerialization isValidJSONObject:validArray];
+			dateBad = ![NSJSONSerialization isValidJSONObject:[NSDate date]];
+			stringBad = ![NSJSONSerialization isValidJSONObject:@"a bare string"];
+			numberBad = ![NSJSONSerialization isValidJSONObject:[NSNumber numberWithInt:1]];
+			dateInsideBad = ![NSJSONSerialization isValidJSONObject:
+			                   [NSDictionary dictionaryWithObjectsAndKeys:[NSDate date], @"d", nil]];
+			keyBad = ![NSJSONSerialization isValidJSONObject:
+			           [NSDictionary dictionaryWithObjectsAndKeys:@"v", [NSNumber numberWithInt:9], nil]];
+		} @catch (NSException *e) {
+			failed = YES;
+			printf("FNJSON-VALIDITY-CAUGHT %s: %s\n", [[e name] UTF8String], [[e reason] UTF8String]);
+		}
+
+		check("json-validity",
+		      !failed && plain && arrayOk && dateBad && stringBad && numberBad && dateInsideBad && keyBad,
+		      "containers of JSON values are valid; a date anywhere, a bare string, a bare number and a non-string key are not");
+	}
+	{
+		/* The writing options, MEASURED ON THE OUTPUT rather than assumed. The keys go in out of order, so
+		 * only sortedKeys can put "a" before "b". */
+		NSDictionary *twoKeys = [NSDictionary dictionaryWithObjectsAndKeys:@"b", @"b", @"a", @"a", nil];
+		NSString *prettyText = nil;
+		NSString *sortedText = nil;
+		NSString *plainText = nil;
+		NSUInteger aAt = NSNotFound;
+		NSUInteger bAt = NSNotFound;
+		BOOL failed = NO;
+
+		@try {
+			NSData *pretty = [NSJSONSerialization dataWithJSONObject:twoKeys
+			                                                 options:NSJSONWritingPrettyPrinted error:NULL];
+			NSData *sorted = [NSJSONSerialization dataWithJSONObject:twoKeys
+			                                                 options:NSJSONWritingSortedKeys error:NULL];
+			NSData *plain = [NSJSONSerialization dataWithJSONObject:twoKeys options:0 error:NULL];
+
+			prettyText = pretty != nil
+				? [[NSString alloc] initWithData:pretty encoding:NSUTF8StringEncoding] : nil;
+			sortedText = sorted != nil
+				? [[NSString alloc] initWithData:sorted encoding:NSUTF8StringEncoding] : nil;
+			plainText = plain != nil
+				? [[NSString alloc] initWithData:plain encoding:NSUTF8StringEncoding] : nil;
+			printf("FNJSON pretty=%s sorted=%s\n",
+			       prettyText != nil ? [prettyText UTF8String] : "(nil)",
+			       sortedText != nil ? [sortedText UTF8String] : "(nil)");
+			if (sortedText != nil) {
+				aAt = [sortedText rangeOfString:@"\"a\""].location;
+				bAt = [sortedText rangeOfString:@"\"b\""].location;
+			}
+		} @catch (NSException *e) {
+			failed = YES;
+			printf("FNJSON-OPTIONS-CAUGHT %s: %s\n", [[e name] UTF8String], [[e reason] UTF8String]);
+		}
+
+		check("json-options",
+		      !failed &&
+		      prettyText != nil && [prettyText rangeOfString:@"\n"].location != NSNotFound &&
+		      plainText != nil && [plainText rangeOfString:@"\n"].location == NSNotFound &&
+		      sortedText != nil && aAt != NSNotFound && bAt != NSNotFound && aAt < bAt,
+		      "prettyPrinted adds newlines and the plain form has none; sortedKeys puts \"a\" before \"b\"");
+	}
+	{
+		/* The reading options. MutableContainers must reach the NESTED container and leave the leaf alone:
+		 * that is the distinction between it and MutableLeaves. */
+		id asFragment = nil;
+		id asMutable = nil;
+		id inner = nil;
+		id leaf = nil;
+		BOOL failed = NO;
+
+		@try {
+			NSData *fragment = [@"7" dataUsingEncoding:NSUTF8StringEncoding];
+			NSData *nested = [NSJSONSerialization dataWithJSONObject:
+			                   [NSDictionary dictionaryWithObjectsAndKeys:
+			                     [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil], @"inner", nil]
+			                  options:0 error:NULL];
+
+			asFragment = fragment != nil
+				? [NSJSONSerialization JSONObjectWithData:fragment
+				                                  options:NSJSONReadingAllowFragments error:NULL] : nil;
+			asMutable = nested != nil
+				? [NSJSONSerialization JSONObjectWithData:nested
+				                                  options:NSJSONReadingMutableContainers error:NULL] : nil;
+			inner = asMutable != nil ? [asMutable objectForKey:@"inner"] : nil;
+			leaf = inner != nil ? [inner objectForKey:@"k"] : nil;
+			printf("FNJSON fragment=%s mutable=%s inner=%s leaf=%s\n",
+			       asFragment != nil ? [[asFragment description] UTF8String] : "(nil)",
+			       asMutable != nil ? [[asMutable description] UTF8String] : "(nil)",
+			       inner != nil ? [[inner description] UTF8String] : "(nil)",
+			       leaf != nil ? [[leaf description] UTF8String] : "(nil)");
+		} @catch (NSException *e) {
+			failed = YES;
+			printf("FNJSON-READING-CAUGHT %s: %s\n", [[e name] UTF8String], [[e reason] UTF8String]);
+		}
+
+		check("json-reading-options",
+		      !failed &&
+		      asFragment != nil && [asFragment intValue] == 7 &&
+		      [asMutable isKindOfClass:[NSMutableDictionary class]] &&
+		      [inner isKindOfClass:[NSMutableDictionary class]] &&
+		      [leaf isKindOfClass:[NSString class]] && ![leaf isKindOfClass:[NSMutableString class]],
+		      "allowFragments reads a bare number; mutableContainers makes the nested container mutable too and leaves the leaf immutable");
+	}
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CORE DONE\n");
 	return failc ? 1 : 0;

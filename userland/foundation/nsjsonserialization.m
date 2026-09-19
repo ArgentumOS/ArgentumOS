@@ -375,21 +375,24 @@ static void fn_json_write_object(fn_json_writer *writer, NSDictionary *dictionar
 	}
 	count = [keys count];
 	[writer->out appendString:@"{"];
+	writer->depth++;
 	for (unsigned long i = 0; i < count; i++) {
 		id key = [keys objectAtIndex:i];
 
 		if (i > 0) {
 			[writer->out appendString:@","];
 		}
-		if ((writer->options & NSJSONWritingPrettyPrinted) != 0) {
-			[writer->out appendString:@" "];
-		}
+		/* fn_json_indent IS THE PRETTY PATH AND IT WAS NEVER CALLED: a bare space stood in for it,
+		 * so PrettyPrinted produced { "a": "a"} with no newline anywhere. It no-ops when the option
+		 * is absent, which is what makes it safe to call unconditionally. */
+		fn_json_indent(writer);
 		fn_json_write_string(writer, key);
-		[writer->out appendString:@":"];
-		if ((writer->options & NSJSONWritingPrettyPrinted) != 0) {
-			[writer->out appendString:@" "];
-		}
+		[writer->out appendString:((writer->options & NSJSONWritingPrettyPrinted) != 0) ? @" : " : @":"];
 		fn_json_write(writer, [dictionary objectForKey:key]);
+	}
+	writer->depth--;
+	if (count > 0) {
+		fn_json_indent(writer);
 	}
 	[writer->out appendString:@"}"];
 }
@@ -399,14 +402,17 @@ static void fn_json_write_array(fn_json_writer *writer, NSArray *array)
 	unsigned long count = [array count];
 
 	[writer->out appendString:@"["];
+	writer->depth++;
 	for (unsigned long i = 0; i < count; i++) {
 		if (i > 0) {
 			[writer->out appendString:@","];
 		}
-		if ((writer->options & NSJSONWritingPrettyPrinted) != 0) {
-			[writer->out appendString:@" "];
-		}
+		fn_json_indent(writer);
 		fn_json_write(writer, [array objectAtIndex:i]);
+	}
+	writer->depth--;
+	if (count > 0) {
+		fn_json_indent(writer);
 	}
 	[writer->out appendString:@"]"];
 }
@@ -520,10 +526,19 @@ static void fn_json_write(fn_json_writer *writer, id object)
 
 /* THE SAME RULES THE WRITER RELIES ON, asked as a question: a collection at the top, leaves from the
  * five classes, keys all strings, and no NaN or infinity where a number appears. */
-+ (BOOL)isValidJSONObject:(id)object
+/*
+ * THE RULES FOR A NESTED VALUE, which are not the rules for the top level. JSON HAS A NULL, so
+ * [NSNull null] is a legal VALUE - the old single routine refused it and therefore called a dictionary
+ * full of perfectly ordinary JSON invalid, which made +dataWithJSONObject: throw. A date is still out:
+ * it is not a JSON type at all.
+ */
+static BOOL fn_json_value_is_valid(id object)
 {
-	if (object == nil || object == [NSNull null]) {
+	if (object == nil) {
 		return NO;
+	}
+	if ([object isKindOfClass:[NSNull class]]) {
+		return YES;
 	}
 	if ([object isKindOfClass:[NSString class]]) {
 		return YES;
@@ -537,7 +552,7 @@ static void fn_json_write(fn_json_writer *writer, id object)
 		unsigned long i;
 
 		for (i = 0; i < [object count]; i++) {
-			if (![self isValidJSONObject:[object objectAtIndex:i]]) {
+			if (!fn_json_value_is_valid([object objectAtIndex:i])) {
 				return NO;
 			}
 		}
@@ -553,13 +568,26 @@ static void fn_json_write(fn_json_writer *writer, id object)
 			if (![key isKindOfClass:[NSString class]]) {
 				return NO;
 			}
-			if (![self isValidJSONObject:[object objectForKey:key]]) {
+			if (!fn_json_value_is_valid([object objectForKey:key])) {
 				return NO;
 			}
 		}
 		return YES;
 	}
 	return NO;
+}
+
++ (BOOL)isValidJSONObject:(id)object
+{
+	/*
+	 * THE TOP LEVEL MUST BE AN ARRAY OR A DICTIONARY: a bare string, number or null only becomes legal
+	 * with the fragment options, which is exactly why this is a separate question from "can I encode
+	 * it". Everything below the top level is fn_json_value_is_valid's business.
+	 */
+	if (![object isKindOfClass:[NSArray class]] && ![object isKindOfClass:[NSDictionary class]]) {
+		return NO;
+	}
+	return fn_json_value_is_valid(object);
 }
 
 @end

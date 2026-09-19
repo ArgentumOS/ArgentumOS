@@ -174,6 +174,35 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 			string_append_double(out, spec, va_arg(args, double));
 			continue;
 		}
+		if (conv == 'C') {
+			/*
+			 * A unichar, which varargs promotes to int. APPLE DOCUMENTS %C AND THIS ENGINE DID NOT
+			 * IMPLEMENT IT, so the specifier was echoed LITERALLY - which corrupted every key and every
+			 * string the JSON writer produced ("%C": "%C"), and is how the gap was found. The bytes are
+			 * encoded here and rendered as %s, because string_append_rendered hands the spec straight
+			 * to vsnprintf, which has no portable %C.
+			 */
+			unichar c = (unichar)va_arg(args, int);
+			char utf8[4];
+			char asString[sizeof spec];
+			size_t n = 0;
+
+			if (c < 0x80) {
+				utf8[n++] = (char)c;
+			} else if (c < 0x800) {
+				utf8[n++] = (char)(0xC0 | (c >> 6));
+				utf8[n++] = (char)(0x80 | (c & 0x3F));
+			} else {
+				utf8[n++] = (char)(0xE0 | (c >> 12));
+				utf8[n++] = (char)(0x80 | ((c >> 6) & 0x3F));
+				utf8[n++] = (char)(0x80 | (c & 0x3F));
+			}
+			utf8[n] = '\0';
+			memcpy(asString, spec, (size_t)specLen + 1);
+			asString[specLen - 1] = 's';
+			string_append_rendered(out, asString, utf8);
+			continue;
+		}
 		if (conv == 's') {
 			const char *text = va_arg(args, const char *);
 
