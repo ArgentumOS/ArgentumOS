@@ -1,0 +1,25 @@
+/*
+ * reject/nonsense-in-switch-case.ag
+ *
+ * §7.24: a `case`'s body is a *statement list*. It is parsed rather than
+ * brace-scanned, and that is not a detail — a scan accepts any bytes at all and
+ * reports as passing, which is the one failure mode K1 has spent its whole
+ * length removing. Six §5 declaration kinds used to be scanned and read "9 of 9"
+ * while their contents went unread; a `switch` case was the last of them.
+ *
+ * What the body's statements *become* is still the emitter's step — the AST has
+ * no case node — so this file tests the *parse* only, which is the part that
+ * exists.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+class Reader: Object {
+    method classify(code: Int32) -> Int32 {
+        switch code {
+        case 200 { %%%% not a statement at all (( }
+        default { return 0 }
+        }
+    }
+}

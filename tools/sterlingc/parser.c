@@ -363,6 +363,15 @@ parse_type(st_parser *p, st_type *out)
 static int parse_expr(st_parser *p, st_expr **out);
 
 /*
+ * §7.33's closure body and §7.24's case body are both *statement lists*, and
+ * both are parsed from functions defined above this one — a closure inside a
+ * primary, a case inside parse_stmt. The declaration belongs here rather than
+ * the definition being moved: both callers are earlier in the file for good
+ * reason, since a closure *is* a primary and a case *is* a statement.
+ */
+static int parse_stmt_block(st_parser *p);
+
+/*
  * A call argument is `label: value`. The internal name follows the label
  * today — the two-name form arrives with the specimen that needs it.
  */
@@ -736,21 +745,15 @@ parse_primary(st_parser *p, st_expr **out)
 						bump(p);
 					}
 				}
-				if (at_punct(p, '{')) {
-					int depth = 1;
-
-					bump(p);
-					while (p->tok.kind != ST_EOF && depth > 0) {
-						if (at_punct(p, '{')) {
-							depth++;
-						} else if (at_punct(p, '}')) {
-							depth--;
-						}
-						bump(p);
-					}
-					if (depth != 0) {
-						return fail(p, "unclosed closure body");
-					}
+				/*
+				 * §7.33's closure body in trailing position — a statement
+				 * list, parsed rather than brace-scanned. The guard is
+				 * load-bearing, as its twin's comment records: this loop runs
+				 * after every *name*, and an unguarded call would demand a `{`
+				 * after each one.
+				 */
+				if (at_punct(p, '{') && !parse_stmt_block(p)) {
+					return 0;
 				}
 				continue;
 			}
@@ -932,21 +935,20 @@ parse_primary(st_parser *p, st_expr **out)
 					bump(p);
 				}
 			}
-			if (at_punct(p, '{')) {
-				int depth = 1;
-
-				bump(p);
-				while (p->tok.kind != ST_EOF && depth > 0) {
-					if (at_punct(p, '{')) {
-						depth++;
-					} else if (at_punct(p, '}')) {
-						depth--;
-					}
-					bump(p);
-				}
-				if (depth != 0) {
-					return fail(p, "unclosed closure body");
-				}
+			/*
+			 * §7.33's closure body in trailing position — a statement list,
+			 * parsed rather than brace-scanned, for the reason every other lid
+			 * in this file came off: a scan accepts anything at all and reports
+			 * as passing. Its twin lives in the loop under case ST_IDENT.
+			 *
+			 * The `at_punct` guard is **load-bearing and easy to lose**: this
+			 * loop runs after *every* primary, so an unguarded call would
+			 * demand a `{` after each one and break `self.g()`. That is exactly
+			 * what happened when this branch was converted and the guard went
+			 * with the scan it was guarding.
+			 */
+			if (at_punct(p, '{') && !parse_stmt_block(p)) {
+				return 0;
 			}
 			continue;
 		}
@@ -1296,7 +1298,6 @@ parse_stmt(st_parser *p, st_stmt **out)
 		 * writing the subject out as a stray expression statement.
 		 */
 		st_expr *subject;
-		int depth;
 
 		s->kind = ST_STMT_EXPR;
 		bump(p);
@@ -1326,21 +1327,16 @@ parse_stmt(st_parser *p, st_stmt **out)
 					return 0;
 				}
 			}
-			if (!at_punct(p, '{')) {
-				return fail(p, "expected a case body");
-			}
-			depth = 1;
-			bump(p);
-			while (p->tok.kind != ST_EOF && depth > 0) {
-				if (at_punct(p, '{')) {
-					depth++;
-				} else if (at_punct(p, '}')) {
-					depth--;
-				}
-				bump(p);
-			}
-			if (depth != 0) {
-				return fail(p, "unclosed case body");
+			/*
+			 * The case body is a *statement list*, parsed rather than
+			 * brace-scanned. It has to be: a scan accepts any bytes at all and
+			 * reports as passing, which is the one failure mode K1 has spent
+			 * its whole length removing. What the body's statements *become* is
+			 * still the emitter's step — the AST has no case node — but nothing
+			 * goes unread on the way there.
+			 */
+			if (!parse_stmt_block(p)) {
+				return 0;
 			}
 		}
 		if (!expect_punct(p, '}')) {
@@ -1349,32 +1345,19 @@ parse_stmt(st_parser *p, st_stmt **out)
 	} else if (at_keyword(p, "with")) {
 		/*
 		 * §7.70: `with target { … }` — a member rewrite, admissible because the
-		 * target is static. Same staging as a `switch` case: the body is
-		 * brace-scanned and `value` stays NULL so emit_body skips it.
+		 * target is static. The body is a statement list like a case's, and the
+		 * same reasoning applies: `value` stays NULL so emit_body skips the
+		 * statement, while the body itself is read.
 		 */
 		st_expr *target;
-		int depth;
 
 		s->kind = ST_STMT_EXPR;
 		bump(p);
 		if (!parse_expr(p, &target)) {
 			return 0;
 		}
-		if (!at_punct(p, '{')) {
-			return fail(p, "expected a `with` body");
-		}
-		depth = 1;
-		bump(p);
-		while (p->tok.kind != ST_EOF && depth > 0) {
-			if (at_punct(p, '{')) {
-				depth++;
-			} else if (at_punct(p, '}')) {
-				depth--;
-			}
-			bump(p);
-		}
-		if (depth != 0) {
-			return fail(p, "unclosed `with` body");
+		if (!parse_stmt_block(p)) {
+			return 0;
 		}
 	} else if (at_keyword(p, "var") || at_keyword(p, "let")) {
 		/*

@@ -1,0 +1,21 @@
+/*
+ * reject/nonsense-in-with-body.ag
+ *
+ * §7.70: `with target { … }` puts a static target's members in scope, and the
+ * body is a statement list like a `switch` case's — parsed, not scanned. The
+ * statement itself is still dropped (`value` stays NULL so emit_body skips it),
+ * but nothing inside it goes unread.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+class Rewriter: Object {
+    property point: Point?
+
+    method normalise() -> Void {
+        if let target = self.point {
+            with target { %%%% not a statement at all (( }
+        }
+    }
+}

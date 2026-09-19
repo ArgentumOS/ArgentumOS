@@ -1,0 +1,20 @@
+/*
+ * reject/nonsense-in-closure-body-self.ag
+ *
+ * The twin of nonsense-in-closure-body.ag: here the receiver is `self`, which is
+ * a *keyword*, so the postfix loop that runs after the switch is the one that
+ * sees the closure — not the loop under `case ST_IDENT`.
+ *
+ * That distinction is the whole reason for a second file. The two loops are
+ * copies, they have diverged three times, and each divergence was invisible
+ * until a file exercised the copy that had not been fixed.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+class Runner: Object {
+    method go() -> Void {
+        self.run (item: String) { %%%% not a statement (( }
+    }
+}

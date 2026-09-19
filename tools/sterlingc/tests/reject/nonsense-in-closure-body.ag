@@ -1,0 +1,23 @@
+/*
+ * reject/nonsense-in-closure-body.ag
+ *
+ * §7.33: a closure body is a statement list, and it is parsed. This file is the
+ * case where the *receiver is a name*, which reaches the postfix loop under
+ * `case ST_IDENT` — its twin in the loop after the switch is exercised by
+ * nonsense-in-closure-body-self.ag.
+ *
+ * Both files exist because those two loops are separate copies of one thing and
+ * have diverged three times: once for `[`, once for the closure body itself, and
+ * once when a conversion dropped the `at_punct(p, '{')` guard that makes a
+ * trailing closure *optional*. A single file would have missed the second copy.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+class Mapper: Object {
+    method names(items: Array<String>) -> Array<String> {
+        let kept = items.filter (item: String) { %%%% not a statement (( }
+        return kept
+    }
+}
