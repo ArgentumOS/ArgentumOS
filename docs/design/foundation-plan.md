@@ -23,24 +23,69 @@ is the exclusions table below, and §9 records what each audit found and what it
 
 **AND THE BAR IS NOW 100% FIDELITY (§11, 2026-09-18): every refusal this document records — the
 "refused by name" lists, the declared deviations, and every entry in the probes' `excluded` arrays — is
-a DEFECT with a work item, not a boundary. The inventories are closed AS DOCUMENTS and open as DEBT;
-§11.3 is the ledger.**
+a DEFECT with a work item, not a boundary — UNLESS it passes §11's deviation rule (necessary for
+function on Argentum, and registered in §11.6). The inventories are closed AS DOCUMENTS and open as
+DEBT; §11.3 is the ledger, §11.6 is what the rule tolerates.**
 
 **THE BAR IS 100% FIDELITY, AND A DIFFERENCE IS A FAILURE (the user's direction, 2026-09-18, and it
 REPLACES the softer wording this paragraph used to carry).** The goal is to implement EVERYTHING
 Apple's Foundation implements, with the same functionality and the same API. **A difference in
-functionality is a failure. A difference in API is a failure.** Not a boundary, not a deviation, not a
-documented limit — a defect with a work item. §11 is the ledger that enforces this.
+functionality is a failure. A difference in API is a failure** — UNLESS it passes §11's deviation rule
+below, in which case it is a DOCUMENTED DEVIATION and the documentation is part of the work. There is no
+third case: a difference that is neither necessary for function on Argentum nor registered in §11.6 is
+a defect with a work item. §11 is the ledger that enforces this.
 
 What that changes, stated so it can be enforced rather than admired:
 
-* **"REFUSED BY NAME" IS NOT A CATEGORY ANY MORE.** Every refusal §5 records, every "declared
-deviation", and every entry in the probes' own `excluded` arrays is a DEFECT. Those arrays exist so the
-distance is machine-readable: **the goal is that all of them are EMPTY**, and until then a probe that
-asserts an absence is asserting a defect.
+* **"REFUSED BY NAME" IS A CONDITIONAL CATEGORY (amended 2026-09-19 by the deviation rule, which
+the user chose to apply to deliberate refusals and omissions as well as to shipped behaviour).** Every
+refusal §5 records and every entry in the probes' own `excluded` arrays is a DEFECT **unless it passes
+the necessity test and is registered** (§11.6) — so the arrays stay the machine-readable distance to
+zero, and each entry now carries a verdict: necessary-and-registered, or a work item.
 * **THE API SURFACE IS A SPECIFICATION.** Selectors, classes, constants and error domains come from
 Apple's PUBLISHED DOCUMENTATION. §2's clean-room wall is untouched by this and still binds: no Apple or
 GNUstep IMPLEMENTATION source is ever read. The interface is published; the code is ours.
+### 11.6 THE DEVIATION RULE AND ITS REGISTER (the user's direction, 2026-09-19)
+
+**Deviation from Apple's contract for Foundation is tolerated only as far as it is necessary for
+function on Argentum, and any such deviation must be fully documented.** This SUPERSEDES the absolute
+wording §11 carried from 2026-09-18; it does not retire the goal.
+
+**THE THREE GATES.** A difference is a tolerated deviation only if all three hold, and §11.6.1's
+register is where they are recorded:
+
+1. **IT IS A DEVIATION.** Not a gap we simply have not filled (that is a work item), and not *permitted
+   variation* — where Apple leaves behaviour undefined, any choice conforms; where Apple publishes no
+   value, ours is not a difference. The register keeps these apart so the debt is not inflated.
+2. **IT IS NECESSARY — *Argentum cannot have Apple's behaviour at all*.** Three grounds, and only
+   these: (i) the API is excluded by §11.5 (32-bit-only, Swift-only, deprecated); (ii) the API needs a
+   **dependency this system does not have**; (iii) Apple publishes **no value** to match.
+3. **IT IS DOCUMENTED** where a reader meets it (the header) **and** in §11.6.1.
+
+**AN UNDOCUMENTED OR UNNECESSARY DIFFERENCE IS STILL A DEFECT WITH A WORK ITEM.** The rule narrows what
+is tolerated; it does not soften the bar.
+
+**THE MODEL CASE IS THE COPYING MODEL (§11.6.1 D1):** Apple states that zones are ignored on the 64-bit
+runtime and §11.5 excludes 32-bit-only API, so the protocol members *cannot* be Apple's — ground (i) —
+and both the header and this document carry it.
+
+#### 11.6.1 THE REGISTER
+
+| # | what deviates | necessity (which ground) | documented where | verdict |
+|---|---|---|---|---|
+| **D1** | `NSCopying`/`NSMutableCopying` members are `-copy`/`-mutableCopy`; `-copyWithZone:`/`-mutableCopyWithZone:` are removed, so the override point is the entry point | **(i) excluded API** — Apple: "Zones are ignored on iOS and 64-bit runtime in macOS"; this system is 64-bit only (§11.5) | `NSObject.h` (at the protocols), `nsobject.m`, plan §13.x | **TOLERATED** — the model case |
+| **D2** | every constant whose value we chose because Apple publishes the name and not the number: `NSAlignmentOptions` bit positions, the byte-order cases, `NSKeyValueSetMutationKind` (1-4), `NSFoundationVersionNumber`, `NSAssertionHandlerKey`'s value, the assertion message's shape, `-description`/`-hash` shapes | **(iii) no published value** | each header states it at the declaration; plan §14.2, §14.3, §14.4, §14.5 | **TOLERATED** |
+| **D3** | the string index boundary: `-length` and ranges in **UTF-16 units** while the storage is UTF-8 — historically a deviation, now the *implementation* of Apple's semantics | **none needed** — this was RESOLVED at W1 by making the API semantics Apple's; the storage is invisible | `nstring.m`, plan §13 | **NOT A DEVIATION ANY MORE** — recorded to show the category is not permanent |
+| **D4** | `+dataWithBytes:length:` is annotated NULLABLE here and nonnull in Cocoa (our writer answers nil when `malloc` fails) | **not established** — this is a writer's choice, not a dependency, an exclusion or an unpublished value | `ndata.m:36`, plan §11.3.1 | **DEFECT (open)** — either the annotation matches Apple's or the OOM behaviour is re-decided; a deviation claim is not a substitute for either |
+| **D5** | `NSIndexPath`'s notes: removal from an empty path raises, `-compare:` with nil raises, `-description` and `-hash` are ours | **ground (iii)/permitted variation** — Cocoa leaves the first two undefined and publishes neither of the last two | `NSIndexPath.h` | **RECLASSIFIED: PERMITTED VARIATION, not a deviation** — any conforming choice is allowed there, and calling it a deviation inflated the debt |
+| **D6** | `NSEnumerator` is a SNAPSHOT of its sequence; Cocoa's cursor is live and raises on mutation | **not established** — "no mutation detection is needed" is a simplification, not a necessity | `NSEnumerator.h` | **DEFECT (open)** — live cursor plus mutation detection, or a necessity ground; both are work items |
+| **D7** | the deliberate refusals and omissions: the probes' `excluded` arrays and §5's "refused by name" lists | **each must be tested against the three grounds, one entry at a time** — the classes that pass are clear (`MATCHES` needs a regex engine, the LZFSE/LZ4/LZMA codecs have no codec, zones are excluded by §11.5); the rest are unexamined | the probes' `excluded` arrays + §5 + §11.3's ledger | **IN PROGRESS** — the arrays are the enumeration and each entry needs a verdict |
+
+**HOW THIS REGISTER STAYS TRUE.** It is prose, not a gate: no tooling reads it. The standing rule is
+that **a deviation lands WITH its row** (the same rule nullability has, and that one has a gate); the
+cross-check that the rows correspond to real claims in the headers is a reading, done when the family is
+touched. Anything here marked DEFECT is a work item in §11.3's ledger, not a boundary.
+
 * **THE RULE/TABLE LINE SURVIVES ONLY AS A "HOW".** Whether a family ships is no longer in question —
 all of them do. The line decides only HOW: write the rule where a rule is exact, bind a library where a
 table is the only honest implementation (ICU is bound for the data-driven families; the regex engine is
