@@ -3811,89 +3811,97 @@ later units stand on.
 * **It does not re-decide the copying model.** That deviation is made and paid for (§11.3.1 note 1);
   nothing here depends on it.
 
-## 13. W1 IN DETAIL: the character-indexed string core (begun 2026-09-18)
+## 13. W1 IN DETAIL: UTF-16 STORAGE AND THE CHARACTER-INDEXED STRING CORE (2026-09-18)
 
-§12 puts W1 first because every string-shaped unit gets cheaper behind it. It is also the one unit
-that REVERSES a decision rather than filling a gap, so it is written out here in full before the code
-lands in slices.
+§12 puts W1 first because every string-shaped unit gets cheaper behind it. **`NSString.h`'s comment
+states the old decision — "UTF-8 IS THE STORAGE … and `-length` counts BYTES" — and it is now
+SUPERSEDED.** The user's words: *"If Apple is using UTF-16, so should we."* This section is the design
+that follows from them, and it replaces the earlier index-space-only version of W1, which changed the
+boundary and left the storage alone.
 
-### 13.1 The measured starting point
+### 13.1 The decision, and why it is better than the version it replaces
 
-`NSString.h`'s own comment states the deviation: *"UTF-8 IS THE STORAGE … and `-length` counts BYTES.
-`-characterCount` counts Unicode characters and `-characterAtIndex:` indexes THOSE — the honest reading
-of the name, and a DOCUMENTED deviation from Cocoa, whose `-length` counts UTF-16 code units."*
+**UTF-16 CODE UNITS ARE THE STORAGE.** Not the index space — the storage. Three things follow, and all
+three were measured rather than assumed:
 
-Read out of the implementation, the today's position is **two index spaces**:
+1. **`-length` AND `-characterAtIndex:` BECOME O(1) FIELD READS**, where the index-space-only design
+   made them O(n) scans of a UTF-8 buffer. That difference is INVISIBLE TO THE API AND VISIBLE TO A
+   PROFILER, which is the only place §11 lets it matter.
+2. **THE COMPILER AND THE RUNTIME ALREADY SPEAK UTF-16.** clang emits every non-ASCII `@"…"` literal as
+   UTF-16 (measured previously: `flags & 3`), and our `NSConstantString`'s ivars — `_rflags`, `_rlength`
+   (UTF-16 CODE UNITS), `_rsize` (bytes), `_rhash`, `_rstr` — are the runtime's `struct nsstr`, which
+   means **the unit count is already sitting in a field the runtime filled in.** Storing UTF-8 means
+   converting UTF-16 → UTF-8 on the way in, to convert back on the way out; the switch deletes both
+   directions for constants and stops the library disagreeing with its own compiler.
+3. **THE FOUR `…Characters:` FORMS BECOME DIRECT** rather than conversions, because they take and give
+   exactly the units the storage holds.
 
-| The API | Index space today |
-|---|---|
-| `-length`, `-substringWithRange:`, `-substringToIndex:`, `-substringFromIndex:`, `-rangeOfString:` (both forms), `-rangeOfCharacterFromSet:`, `-replaceCharactersInRange:`, `-deleteCharactersInRange:`, `-insertString:atIndex:`, `-stringByReplacingCharactersInRange:` | **BYTES** (internally consistent: `utf8_substring` and `utf8_find` are byte-indexed, and `[self length]` IS the byte size) |
-| `-characterCount`, `-characterAtIndex:` | **Unicode scalars** |
+### 13.2 What it costs, measured — and the byte door is the whole cost
 
-**INCONSISTENT BETWEEN THE TWO, AND THAT IS THE DEVIATION'S REAL COST:** `[s length]` answers bytes
-while `[s characterAtIndex:0]` answers a scalar, so an NSRange from one API cannot be handed to the
-other. Apple has ONE space — UTF-16 code units — for all of them.
+| Door | Sites | What it becomes |
+|---|---|---|
+| `-UTF8String` | **98 in the library, 72 in the probes, 170 in the rest of userland = 340** | a **CONVERSION**: materialise the UTF-8 form, hand out a buffer, and DOCUMENT ITS LIFETIME. Today it is the storage accessor; after the switch it is the interop boundary, and that is exactly where Apple's own `-UTF8String` sits |
+| `-byteAtIndex:` (house) | **44** | no longer the internal workhorse — the algorithms that loop it are rewritten in UNITS, and it survives as a byte-door accessor |
+| `[s length]` | **144 in the library, 55 in the probes, 201 elsewhere** | splits: the sites that meant BYTES go to `-lengthOfBytesUsingEncoding:` (O(1) for a materialised UTF-8 form), and the sites that meant UNITS are now `-length` |
 
-### 13.2 The decision
+**SO W1 IS A MIGRATION OF ~600 CALL SITES AND ONE STORAGE CLASS**, not a boundary tweak. That is the
+honest size, and it is why it is sliced.
 
-**ONE INDEX SPACE: UTF-16 CODE UNITS, EVERYWHERE.** `-length` counts them, `-characterAtIndex:`
-answers the unit at that index (including either half of a surrogate pair, which is what a `unichar`
-IS), and every NSRange in the string API is in those units.
+### 13.3 The representation
 
-**THE STORAGE DOES NOT CHANGE.** UTF-8 stays (§11: an invisible implementation choice is not a
-difference). What changes is the BOUNDARY: the byte-indexed internals stay byte-indexed and the public
-methods convert.
+| Class | Storage | `-length` |
+|---|---|---|
+| `NSOwnedString` (and `NSMutableString` on top of it) | `unichar *_units` + `size_t _length` (UNITS), plus a lazily materialised `char *_utf8` cache that MUTATION INVALIDATES | the field — O(1) |
+| `NSConstantString` | the runtime's own bytes: **ASCII/UTF8 constants are bytes and UTF-16 constants are the unit array**, and the runtime already counted the units in `_rlength` | `_rlength` — O(1), no conversion |
+| `NSTinyString` | unchanged: 7-bit ASCII, where bytes, units and characters coincide. It is ALREADY conformant and needs no work | the field |
 
-**AND THAT PRODUCES THE UNIT'S CENTRAL DISCIPLINE, WHICH IS ALSO ITS BIGGEST RISK:**
+### 13.4 The contract after the switch
 
-> **`-length` IS NO LONGER A BYTE SIZE, SO NOTHING INSIDE THE LIBRARY MAY USE IT AS ONE — AND THE
-> COUNT IS THE UNPLEASANT PART.** Measured (a message-send count, not an estimate):
-> **144 `[X length]` sends across `userland/foundation`** (65 of them in `nstring.m` alone, then
-> `nsurlcomponents.m` 13, `nurl.m` 12, `ndata.m` 9, `nsregularexpression.m` 8, and a long tail),
-> **55 in the probes**, and **201 in the rest of userland**. Nearly all of them mean *bytes* — a
-> `strlen`, a buffer size, a byte offset into `-UTF8String` — so nearly all of them must move.
->
-> **THEY HAVE SOMEWHERE TO MOVE TO, AND IT IS NOT NEW API:** `-lengthOfBytesUsingEncoding:` already
-> exists in our header and means exactly "bytes of this encoding"; for UTF-8 storage it is O(1). So the
-> migration is `[s length]` → `[s lengthOfBytesUsingEncoding:NSUTF8StringEncoding]` at every byte site,
-> and the sites that genuinely mean units (few: the range API itself) go to the new layer. **`-length`
-> itself is the ONLY method whose meaning changes** — which is what makes this a migration rather than a
-> rewrite, and why it is slice 2 rather than slice 1.
+* **`-length`** = UTF-16 code units. **`-characterAtIndex:`** = the unit at that index, including
+  either half of a surrogate pair — which is what a `unichar` IS, and what today's scalar helper gets
+  wrong (it answers `0xFFFD` for a character above U+FFFF).
+* **Every NSRange in the string API is in those units**: `-substringWithRange:`, `-substringFromIndex:`,
+  `-substringToIndex:`, both `-rangeOfString:` forms, `-rangeOfCharacterFromSet:`,
+  `-replaceCharactersInRange:`, `-deleteCharactersInRange:`, `-insertString:atIndex:`,
+  `-stringByReplacingCharactersInRange:`.
+* **CLOSES FOUR LEDGER ROWS** — the four `foundation_string`'s `excluded` array names today:
+  `+stringWithCharacters:length:`, `-initWithCharacters:length:`,
+  `-initWithCharactersNoCopy:length:freeWhenDone:`, `-getCharacters:range:`.
+* **`-UTF8String` / `-byteAtIndex:` become the CONVERSION doors**, with the lifetime rule written where
+  a caller meets it (Apple's documentation does the same, for the same reason: a UTF-16-native string
+  cannot hand out UTF-8 for free).
+* **`-lengthOfBytesUsingEncoding:`** answers the materialised form's size — O(1) — and is where every
+  byte-meaning site goes.
+* **`-characterCount` DOES NOT EXIST IN COCOA**, so it stays an ADDITION, documented as one alongside
+  `FNPredicateComparison`, `NSOwnedString` and `NSTinyString` (§11.3.1 note 4: the one direction a
+  documented-surface diff cannot classify).
 
-### 13.3 The layer to build
+### 13.5 What this changes about the two limits §13 used to carry
 
-| Piece | What it is |
-|---|---|
-| `fn_utf16_units(bytes, size)` | UTF-16 code units in a UTF-8 buffer (a scalar above U+FFFF counts 2) |
-| `fn_utf16_unit_to_byte(bytes, size, unit)` | the byte offset of a unit index, clamped — the mapping the range methods need |
-| `fn_byte_to_utf16_unit(bytes, size, byte)` | the inverse, for a match found in bytes reported as a range |
-| `fn_utf16_unit_at(bytes, size, unit)` | the unit at a unit index, SURROGATE HALVES INCLUDED (today's helper answers `0xFFFD` for a non-BMP character, which is the scalar space's artefact) |
-| `fn_utf8_size(NSString *)` | **the byte size**, replacing `[self length]` at all 20 internal sites: NSOwnedString answers `_length`, NSConstantString `_rsize`, and the base default measures `-UTF8String` |
-
-### 13.4 The API that moves, and the rows it closes
-
-* **Moves onto the unit space:** the ten methods in §13.1's first row, plus `-characterAtIndex:`.
-* **Stays as it is:** `-UTF8String`, `-byteAtIndex:` (`NSOwnedString`'s byte door), `-lengthOfBytesUsingEncoding:`, `-dataUsingEncoding:`, `-cStringUsingEncoding:`, and `-characterCount` — which **does not exist in Cocoa and is therefore an ADDITION, documented as one** (like `FNPredicateComparison`, `NSOwnedString` and `NSTinyString` in §11.3.1 note 4: the one direction a documented-surface diff cannot classify).
-* **CLOSES FOUR LEDGER ROWS**, and they are the four that `foundation_string`'s `excluded` array names today: `+stringWithCharacters:length:`, `-initWithCharacters:length:`, `-initWithCharactersNoCopy:length:freeWhenDone:`, `-getCharacters:range:`.
-* **`NSTinyString` IS ALREADY CONFORMANT** and that is not a coincidence: it is 7-bit ASCII, so bytes, units and characters coincide. It needs no change — which is exactly the kind of fact that stops a sweep from "fixing" it.
-
-### 13.5 Two limits this unit does NOT remove, recorded so they are not mistaken for done
-
-1. **AN EMBEDDED U+0000 IS NOT REPRESENTABLE.** The storage is NUL-terminated UTF-8, so
-   `-initWithCharacters:length:` with a NUL in the middle cannot round-trip. That is a real difference
-   from Cocoa and it is NOT W1's; it is the storage's, and it becomes its own row when the coder and
-   the plist families need it.
-2. **INDEX MAPPING IS O(n).** Every unit↔byte conversion scans. Apple's is O(1) because its storage is
-   UTF-16. This is invisible to the API and visible to a profiler, so: **measure before caching, and if
-   a cache is added it belongs to the concrete classes that own storage** (an `NSConstantString` has no
-   ivars to put one in — the compiler's layout is fixed, §F1).
+1. **AN EMBEDDED U+0000 BECOMES REPRESENTABLE** in the storage — a `unichar` array holds one — so the
+   switch REMOVES a limit rather than adding one. `-UTF8String` still cannot express it (a NUL-terminated
+   buffer cannot), which is also true of Apple's, so that is the byte door's documented property rather
+   than a deviation.
+2. **THE MEMORY PROFILE CHANGES, AND IT IS A TRADE.** ASCII text doubles (2 bytes per unit against 1
+   per byte); CJK roughly halves. This tree's strings are mostly paths, config and source, so the
+   honest thing is to MEASURE the corpus before claiming either way — and to say so in slice 5's report
+   rather than here.
+3. **THE O(1) CLAIM IS NOW THE POINT.** The earlier design's "measure before caching" note is what the
+   user's decision settles: no cache is needed for `-length` or indexing, and the only cache is the
+   materialised UTF-8 form.
 
 ### 13.6 The slices
 
 | Slice | Contents | State |
 |---|---|---|
-| **1** | the layer in §13.3 plus `fn_utf8_size` — **additive: no behaviour changes.** (Under the house flags this is clean; under `-Wall` the four functions read as UNUSED until slice 2, which is the honest measure of how much of the unit is done) | **landed** |
-| **2** | `-lengthOfBytesUsingEncoding:` onto `fn_utf8_size`, the **144 library sites** (65 of them in `nstring.m`) and the **55 probe sites** off `[s length]`, and `-length` itself onto `fn_utf16_units` — with the probe's length assertions rewritten, because today they assert the OLD deviation | next, and it is the big one |
-| **3** | the ten range/index methods onto `fn_utf16_unit_to_byte` / `fn_byte_to_utf16_unit`, and `-characterAtIndex:` onto `fn_utf16_unit_at` | |
+| **1** | **the storage**: `NSOwnedString`/`NSMutableString` onto `unichar *_units` + the invalidated-on-mutation UTF-8 cache; `-length`, `-characterAtIndex:`, `-UTF8String`, `-byteAtIndex:` and `-lengthOfBytesUsingEncoding:` onto it; **and `NSString.h`'s stored comment rewritten**, because it currently states the superseded decision | **next — the migration's centre** |
+| **2** | the internals: `-isEqual:`/`-compare:family`/`-hash`/`utf8_find`/`utf8_substring`/case mapping/the format parser onto units, and the ~150 library sites that read bytes for non-byte reasons | |
+| **3** | `NSConstantString` unified on the runtime's fields (`_rlength` for `-length`, the unit array for indexing) and the UTF-16 → UTF-8 conversion helpers deleted | |
 | **4** | the four `…Characters:` forms — the rows this unit closes | |
-| **5** | the probe: today it asserts the old contract, so its length/index checks are rewritten, its `excluded` array loses its four entries and gains them as DEMANDED, and the guest gate runs | |
+| **5** | the probe: its length/index assertions rewritten (they assert the OLD deviation today), its `excluded` array losing its four entries and gaining them as DEMANDED, and the guest gate | |
+
+**SLICE 1 IS PROVING ITSELF IN THE MEANTIME:** the UTF-16 helper layer landed under the earlier design
+(`fn_utf16_units`, `fn_utf16_unit_to_byte`, `fn_byte_to_utf16_unit`, `fn_utf16_unit_at`) is **not
+wasted**: `fn_utf16_unit_at` is the conversion-door accessor for `NSConstantString`'s ASCII/UTF8 forms
+and for `-byteAtIndex:`, and the other three are what `-UTF8String` needs in the reverse direction. What
+the storage switch removes is their use on the HOT path.
