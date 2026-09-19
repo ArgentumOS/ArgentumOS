@@ -10,6 +10,9 @@
  */
 
 #import <foundation/NSArray.h>
+#import <foundation/NSURL.h>
+#import <foundation/NSData.h>
+#import <foundation/NSPropertyListSerialization.h>
 #import <foundation/NSString.h>
 #import <foundation/NSException.h>
 #import <foundation/NSIndexSet.h>
@@ -635,6 +638,67 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	state->mutationsPtr = &_mutations;
 	state->state = 1;
 	return _count;
+}
+
+
+/*
+ * THE PLIST FILE AND URL FORMS (D7's kind (D)). A property list whose root is not an ARRAY is not
+ * an array plist, so the helper answers nil rather than coercing — Apple's rule, and the reason
+ * this is a helper rather than an inline cast. Reading and writing both go through
+ * NSPropertyListSerialization, which already ships, and the URL forms go through NSData's, which
+ * refuse a non-file scheme with a registered error (§11.6.1 D9).
+ */
+static id fn_array_from_plist_data(NSData *data)
+{
+	id root;
+
+	if (data == nil) {
+		return nil;
+	}
+	root = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:NULL];
+	return [root isKindOfClass:[NSArray class]] ? root : nil;
+}
+
+static NSData *fn_plist_data_from_array(NSArray *array)
+{
+	return [NSPropertyListSerialization dataWithPropertyList:array
+							  format:NSPropertyListXMLFormat_v1_0
+							 options:0
+							   error:NULL];
+}
+
++ (NSArray *)arrayWithContentsOfFile:(NSString *)path
+{
+	return [[self alloc] initWithContentsOfFile:path];
+}
+
++ (NSArray *)arrayWithContentsOfURL:(NSURL *)url
+{
+	return [[self alloc] initWithContentsOfURL:url];
+}
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+	return fn_array_from_plist_data([NSData dataWithContentsOfFile:path]);
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+{
+	return fn_array_from_plist_data([NSData dataWithContentsOfURL:url]);
+}
+
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile
+{
+	NSData *data = fn_plist_data_from_array(self);
+
+	return (data != nil) && [data writeToFile:path atomically:useAuxiliaryFile];
+}
+
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile
+{
+	NSData *data = fn_plist_data_from_array(self);
+
+	return (data != nil) && [data writeToURL:url atomically:useAuxiliaryFile];
 }
 
 @end

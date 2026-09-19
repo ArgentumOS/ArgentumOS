@@ -304,11 +304,15 @@ int main(void)
 		 */
 		static const char *classSelectors[] = {
 			"array", "arrayWithObject:", "arrayWithObjects:count:", "arrayWithArray:",
-			"arrayWithObjects:", NULL
+			"arrayWithObjects:",
+			/* D7's kind (D), plist half: these SHIPPED, so the inventory demands them. */
+			"arrayWithContentsOfFile:", "arrayWithContentsOfURL:", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithObject:", "initWithObjects:count:", "initWithArray:",
 			"initWithObjects:",
+			"initWithContentsOfFile:", "initWithContentsOfURL:",
+			"writeToFile:atomically:", "writeToURL:atomically:",
 			"count", "objectAtIndex:", "objectAtIndexedSubscript:",
 			"firstObject", "lastObject",
 			"indexOfObject:", "indexOfObject:inRange:", "indexOfObjectIdenticalTo:",
@@ -349,12 +353,10 @@ int main(void)
 			 * moved the filter into the REQUIRED lists above, which is the inventory rule working
 			 * in the direction it was written for. What remains is not a class that is missing —
 			 * it is the URL-taking FORM. */
-			/* NOT absent for want of a class: NSURL SHIPS (F8). These are absent
-			 * because the URL-taking FORM is not written — the plist forms take paths. */
-			"arrayWithContentsOfURL:",		/* the URL-taking forms are not shipped */
-			"initWithContentsOfURL:",		/* the URL-taking forms are not shipped */
-			"writeToURL:atomically:",		/* the URL-taking forms are not shipped */
-			NULL
+			/* THE THREE URL FORMS USED TO BE LISTED HERE as "not shipped". They are
+			 * IMPLEMENTED now (delegation to NSPropertyListSerialization with a root-class
+			 * check — §11.6.1 D7's plist half), so they moved to the required lists above in
+			 * the same change. */			NULL
 		};
 		NSArray *probe = [NSArray arrayWithObject:@"x"];
 		NSMutableArray *mutable = [[NSMutableArray alloc] init];
@@ -1220,6 +1222,53 @@ int main(void)
 		      caught ? [[NSString stringWithFormat:@"caught %@ after %lu round(s)",
 				name, (unsigned long)rounds] UTF8String]
 			: "NO exception: mutation during enumeration is not detected");
+	}
+
+	{
+		/* THE PLIST FILE FORM round-trips, and a plist whose ROOT IS NOT AN ARRAY is refused
+		 * rather than coerced (D7's kind (D), plist half). Split per call: printed checks survive
+		 * a fault, so the last name printed localizes it. */
+		NSArray *out = [NSArray arrayWithObjects:@"one", @"two", nil];
+		NSString *path = @"/System/Temporary Files/fnarray-plist";
+		BOOL wrote = [out writeToFile:path atomically:YES];
+		NSArray *back = wrote ? [NSArray arrayWithContentsOfFile:path] : nil;
+
+		check("array-plist-file",
+		      wrote && back != nil && [back isEqualToArray:out],
+		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
+			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		NSArray *out = [NSArray arrayWithObjects:@"one", @"two", nil];
+		NSString *path = @"/System/Temporary Files/fnarray-plist-url";
+		NSURL *url = [NSURL fileURLWithPath:path];
+		BOOL wrote = [out writeToURL:url atomically:YES];
+		NSArray *back = wrote ? [NSArray arrayWithContentsOfURL:url] : nil;
+
+		check("array-plist-url",
+		      wrote && back != nil && [back isEqualToArray:out],
+		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
+			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		/* A DICTIONARY PLIST READ AS AN ARRAY ANSWERS NIL: the root-class check is the point,
+		 * and it is measured through the FILE form rather than asserted in prose. */
+		NSString *path = @"/System/Temporary Files/fnarray-plist-wrong";
+		NSData *dictData = [NSPropertyListSerialization
+			dataWithPropertyList:[NSDictionary dictionaryWithObject:@"v" forKey:@"k"]
+				      format:NSPropertyListXMLFormat_v1_0 options:0 error:NULL];
+		BOOL wrote = [dictData writeToFile:path atomically:YES];
+		NSArray *wrong = [NSArray arrayWithContentsOfFile:path];
+
+		check("array-plist-wrong-root",
+		      wrote && wrong == nil,
+		      [[NSString stringWithFormat:@"wrote=%d wrongRoot=%d",
+			(int)wrote, (int)(wrong == nil)] UTF8String]);
+		remove([path UTF8String]);
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
