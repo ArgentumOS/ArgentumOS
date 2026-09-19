@@ -43,7 +43,18 @@
 #     referencing objc_msgSend only, identically on host and guest, and NO host object emits fpret.
 #     So the entry is reached THROUGH THE INVOCATION/TRAMPOLINE PATH, where the return type is
 #     derived from the method signature. THE NEXT STEP IS THAT MACHINERY, not the undo logic:
-#     the @encode-derived return type and ninvoke_amd64.S's choice of send entry. ALSO WORTH KNOWING:
+#     AND IT IS NOT THE TRAMPOLINE EITHER - the crash is NAMED now, from gdb:
+#         rdi (receiver) = nil        object_getClassName -> "nil"
+#         rsi (selector) = "invoke"
+#     So [[group objectAtIndex:i] invoke] IS SENT TO NIL: the undo group yielded a nil element, and
+#     libobjc2's nil-receiver path for an fp-returning send lands in objc_msgSend_fpret, which
+#     segfaults. -performSelector:withObject: is irrelevant here (it is a plain objc_msgSend cast),
+#     the library never references objc_msgSend_fpret at all (nm -u on every object and on the
+#     linked library), and the trampolines are not on this path.
+#     THE NEXT STEP IS THEREFORE THE UNDO GROUP ITSELF: why does the element come back nil - the
+#     guard `if ([from count] == 0) return;` believes the stack is non-empty, so compare what the
+#     guard counted with what the index walk reads, and print the count and the element.
+#     ALSO WORTH KNOWING:
 #     the two libobjc2 header installs (.build/objc-prefix vs .build/libobjc2-host-prefix) are
 #     BYTE-IDENTICAL, and compiling that file with three flag variants changes nothing.
 #   * REFUTED EARLIER AND STILL REFUTED: the runtime prefix (rebuilt with -DGNUSTEP and
