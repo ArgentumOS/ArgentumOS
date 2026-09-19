@@ -148,8 +148,14 @@ class Session:
         try:
             self.proc.stdin.write(data)
             self.proc.stdin.flush()
-        except (BrokenPipeError, ValueError, OSError):
-            pass
+        except (BrokenPipeError, ValueError, OSError) as exc:
+            # NOT SWALLOWED IN SILENCE: a stdin that has gone bad looked exactly like a healthy guest
+            # that simply did not answer, which cost a measurement to tell apart. It is counted and
+            # reported once, because the alternative is an instrument that reports nothing.
+            self.write_failures = getattr(self, "write_failures", 0) + 1
+            if self.write_failures == 1:
+                print("harness: cannot write to the guest (%s: %s) - the command did NOT reach it"
+                      % (type(exc).__name__, exc))
 
     # --- the host's view of the screen --------------------------------
     def monitor(self):
