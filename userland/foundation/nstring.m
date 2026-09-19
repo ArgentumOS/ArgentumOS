@@ -83,7 +83,7 @@ static void string_append_pointer(NSMutableString *out, const char *spec, void *
 
 static void string_append_format(NSMutableString *out, NSString *format, va_list args)
 {
-	size_t size = [format length];
+	size_t size = [format lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t i = 0;
 
 	while (i < size) {
@@ -426,7 +426,7 @@ static unsigned char utf8_upper(unsigned char c)
 /* A concrete string from a byte range of another string. */
 static NSString *utf8_substring(NSString *source, size_t start, size_t length)
 {
-	size_t size = [source length];
+	size_t size = [source lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	char *buffer;
 	NSString *result;
 
@@ -457,8 +457,8 @@ static NSString *utf8_substring(NSString *source, size_t start, size_t length)
 static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 			    NSStringCompareOptions options)
 {
-	size_t haySize = [haystack length];
-	size_t needleSize = [needle length];
+	size_t haySize = [haystack lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t needleSize = [needle lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t start = range.location;
 	size_t end;
 	size_t i;
@@ -524,13 +524,13 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	if (other == self) {
 		return YES;
 	}
-	if ([other length] != [self length]) {
+	if ([other lengthOfBytesUsingEncoding:NSUTF8StringEncoding] != [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
 		return NO;
 	}
 	{
 		size_t i;
 
-		for (i = 0; i < [self length]; i++) {
+		for (i = 0; i < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 			if ([self byteAtIndex:i] != [other byteAtIndex:i]) {
 				return NO;
 			}
@@ -559,7 +559,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	 * based here, unlike NSObject's identity defaults, because that is what a
 	 * string is for.
 	 */
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	unsigned long h = 2166136261UL;
 	size_t i;
 
@@ -708,21 +708,32 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	return result;
 }
 
+/* THE BYTE DOOR (W1 slice 2a). This is what every internal site that MEANS BYTES
+ * asks for, and it is deliberately not `-length`: after slice 2b the two mean
+ * different things (units vs bytes) and this one keeps them apart. The base
+ * answer measures the materialised form; NSOwnedString overrides it with an O(1)
+ * one. */
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
 {
-	size_t i;
+	const char *utf8;
 
 	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
 		return 0;
 	}
+	utf8 = [self UTF8String];
+	if (utf8 == NULL) {
+		return 0;
+	}
 	if (encoding == NSASCIIStringEncoding) {
-		for (i = 0; i < [self length]; i++) {
-			if ([self byteAtIndex:i] > 0x7F) {
+		size_t i;
+
+		for (i = 0; utf8[i] != '\0'; i++) {
+			if ((unsigned char)utf8[i] > 0x7F) {
 				return 0;
 			}
 		}
 	}
-	return [self length];
+	return strlen(utf8);
 }
 
 - (NSData *)dataUsingEncoding:(NSStringEncoding)encoding
@@ -730,7 +741,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
 		return nil;
 	}
-	return [[NSData alloc] initWithBytes:[self UTF8String] length:[self length]];
+	return [[NSData alloc] initWithBytes:[self UTF8String] length:[self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
 }
 
 /* ------------------------------------------------------------- value semantics */
@@ -746,8 +757,8 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (NSComparisonResult)compare:(NSString *)other options:(NSStringCompareOptions)options
 {
-	size_t a = [self length];
-	size_t b = [other length];
+	size_t a = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t b = [other lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t n = (a < b) ? a : b;
 	size_t i;
 
@@ -771,23 +782,23 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (BOOL)hasPrefix:(NSString *)prefix
 {
-	if ([prefix length] > [self length]) {
+	if ([prefix lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
 		return NO;
 	}
-	return utf8_find(self, prefix, NSMakeRange(0, [prefix length]),
+	return utf8_find(self, prefix, NSMakeRange(0, [prefix lengthOfBytesUsingEncoding:NSUTF8StringEncoding]),
 			 NSLiteralSearch) == 0;
 }
 
 - (BOOL)hasSuffix:(NSString *)suffix
 {
-	size_t n = [suffix length];
+	size_t n = [suffix lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
-	if (n > [self length]) {
+	if (n > [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
 		return NO;
 	}
 	return [self rangeOfString:suffix
 			   options:NSLiteralSearch
-			     range:NSMakeRange([self length] - n, n)].location != NSNotFound;
+			     range:NSMakeRange([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] - n, n)].location != NSNotFound;
 }
 
 - (BOOL)containsString:(NSString *)substring
@@ -798,13 +809,13 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 - (NSRange)rangeOfString:(NSString *)substring
 {
 	return [self rangeOfString:substring options:NSLiteralSearch
-			     range:NSMakeRange(0, [self length])];
+			     range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding])];
 }
 
 - (NSRange)rangeOfString:(NSString *)substring options:(NSStringCompareOptions)options
 {
 	return [self rangeOfString:substring options:options
-			     range:NSMakeRange(0, [self length])];
+			     range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding])];
 }
 
 - (NSRange)rangeOfString:(NSString *)substring
@@ -816,23 +827,23 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	if (found == NSNotFound) {
 		return NSMakeRange(NSNotFound, 0);
 	}
-	return NSMakeRange(found, [substring length]);
+	return NSMakeRange(found, [substring lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
 }
 
 /* ------------------------------------------------------------------- case */
 - (NSString *)uppercaseString
 {
 	size_t i;
-	char *buffer = (char *)malloc([self length] + 1);
+	char *buffer = (char *)malloc([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1);
 	NSString *result;
 
 	if (buffer == NULL) {
 		return [[NSOwnedString alloc] initWithUTF8String:""];
 	}
-	for (i = 0; i < [self length]; i++) {
+	for (i = 0; i < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 		buffer[i] = (char)utf8_upper([self byteAtIndex:i]);
 	}
-	buffer[[self length]] = '\0';
+	buffer[[self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]] = '\0';
 	result = [[NSOwnedString alloc] initWithUTF8String:buffer];
 	free(buffer);
 	return result;
@@ -841,16 +852,16 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 - (NSString *)lowercaseString
 {
 	size_t i;
-	char *buffer = (char *)malloc([self length] + 1);
+	char *buffer = (char *)malloc([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1);
 	NSString *result;
 
 	if (buffer == NULL) {
 		return [[NSOwnedString alloc] initWithUTF8String:""];
 	}
-	for (i = 0; i < [self length]; i++) {
+	for (i = 0; i < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 		buffer[i] = (char)utf8_lower([self byteAtIndex:i]);
 	}
-	buffer[[self length]] = '\0';
+	buffer[[self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]] = '\0';
 	result = [[NSOwnedString alloc] initWithUTF8String:buffer];
 	free(buffer);
 	return result;
@@ -860,13 +871,13 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 {
 	size_t i;
 	int start = 1;
-	char *buffer = (char *)malloc([self length] + 1);
+	char *buffer = (char *)malloc([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1);
 	NSString *result;
 
 	if (buffer == NULL) {
 		return [[NSOwnedString alloc] initWithUTF8String:""];
 	}
-	for (i = 0; i < [self length]; i++) {
+	for (i = 0; i < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 		unsigned char c = [self byteAtIndex:i];
 
 		if (c == ' ' || c == '\t' || c == '-' || c == '_') {
@@ -877,7 +888,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 		buffer[i] = (char)(start ? utf8_upper(c) : utf8_lower(c));
 		start = 0;
 	}
-	buffer[[self length]] = '\0';
+	buffer[[self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]] = '\0';
 	result = [[NSOwnedString alloc] initWithUTF8String:buffer];
 	free(buffer);
 	return result;
@@ -886,7 +897,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 /* ------------------------------------------------------------- substrings */
 - (NSString *)substringFromIndex:(NSUInteger)index
 {
-	size_t n = [self length];
+	size_t n = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
 	if (index > n) {
 		index = n;
@@ -932,7 +943,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	return [self stringByReplacingOccurrencesOfString:target
 					       withString:replacement
 						  options:NSLiteralSearch
-						    range:NSMakeRange(0, [self length])];
+						    range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding])];
 }
 
 - (NSString *)stringByReplacingOccurrencesOfString:(NSString *)target
@@ -941,8 +952,8 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 					      range:(NSRange)range
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = [self length];
-	size_t targetSize = [target length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t targetSize = [target lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t cursor = 0;
 
 	if (targetSize == 0) {
@@ -974,7 +985,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	size_t offset = 0;
 	size_t character = 0;
 
-	while (offset < [self length]) {
+	while (offset < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
 		size_t width = utf8_seq_length([self byteAtIndex:offset]);
 
 		if ([set characterIsMember:[self characterAtIndex:character]]) {
@@ -995,7 +1006,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	size_t offset = 0;
 	size_t character = 0;
 	size_t start = 0;
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
 	while (offset <= size) {
 		int breaking = 0;
@@ -1036,7 +1047,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	size_t end = 0;
 	int leading = 1;
 
-	while (offset < [self length]) {
+	while (offset < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
 		size_t width = utf8_seq_length([self byteAtIndex:offset]);
 		BOOL member = [set characterIsMember:[self characterAtIndex:character]];
 
@@ -1060,8 +1071,8 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 - (NSArray *)componentsSeparatedByString:(NSString *)separator
 {
 	NSMutableArray *parts = [[NSMutableArray alloc] init];
-	size_t size = [self length];
-	size_t separatorSize = [separator length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t separatorSize = [separator lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t cursor = 0;
 
 	if (separatorSize == 0) {
@@ -1113,7 +1124,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 {
 	/* Cocoa's documented rule: YES if it begins with Y, y, T, t, or a digit
 	 * 1-9. Everything else — including "0" and the empty string — is NO. */
-	unsigned char c = ([self length] > 0) ? [self byteAtIndex:0] : 0;
+	unsigned char c = ([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 0) ? [self byteAtIndex:0] : 0;
 
 	return (c == 'Y' || c == 'y' || c == 'T' || c == 't' ||
 		(c >= '1' && c <= '9')) ? YES : NO;
@@ -1122,7 +1133,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 /* -------------------------------------------------------------------- paths */
 - (NSString *)lastPathComponent
 {
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
 	while (size > 1 && [self byteAtIndex:size - 1] == '/') {
 		size--;
@@ -1146,7 +1157,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 - (NSString *)pathExtension
 {
 	NSString *last = [self lastPathComponent];
-	size_t size = [last length];
+	size_t size = [last lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t i;
 
 	for (i = size; i > 0; i--) {
@@ -1162,7 +1173,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (NSString *)stringByDeletingLastPathComponent
 {
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
 	while (size > 1 && [self byteAtIndex:size - 1] == '/') {
 		size--;
@@ -1181,7 +1192,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (NSString *)stringByDeletingPathExtension
 {
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t i;
 
 	for (i = size; i > 0; i--) {
@@ -1199,7 +1210,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (NSString *)stringByAppendingPathComponent:(NSString *)component
 {
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	int needsSlash = (size > 0 && [self byteAtIndex:size - 1] != '/');
 
 	if (size == 0) {
@@ -1258,7 +1269,7 @@ static int fn_language_is_turkic(NSString *language)
  * Every other byte passes through, so nothing outside the rule moves. */
 static NSString *fn_string_with_turkic_case(NSString *string, int upper)
 {
-	size_t len = [string length];
+	size_t len = [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	char *buffer = (char *)malloc(len * 2 + 1);
 	size_t i, n = 0;
 	NSString *result;
@@ -1383,7 +1394,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 		return [self UTF8String];
 	}
 	if (encoding == NSASCIIStringEncoding) {
-		for (i = 0; i < [self length]; i++) {
+		for (i = 0; i < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 			if ([self byteAtIndex:i] > 0x7F) {
 				return NULL;
 			}
@@ -1396,7 +1407,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 /* ------------------------------------------------------------------ composition */
 - (NSString *)stringByAppendingPathExtension:(NSString *)extension
 {
-	if ([extension length] == 0) {
+	if ([extension lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return [[NSOwnedString alloc] initWithUTF8String:[self UTF8String]];
 	}
 	return [self stringByAppendingFormat:@".%@", extension];
@@ -1407,18 +1418,18 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 		      startingAtIndex:(NSUInteger)index
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:[self UTF8String]];
-	NSUInteger padLength = [pad length];
+	NSUInteger padLength = [pad lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
-	if (newLength <= [self length] || padLength == 0) {
+	if (newLength <= [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] || padLength == 0) {
 		return built;
 	}
 	if (index >= padLength) {
 		index = 0;
 	}
-	while ([built length] < newLength) {
+	while ([built lengthOfBytesUsingEncoding:NSUTF8StringEncoding] < newLength) {
 		NSUInteger taken = 0;
 
-		while (taken < padLength && [built length] < newLength) {
+		while (taken < padLength && [built lengthOfBytesUsingEncoding:NSUTF8StringEncoding] < newLength) {
 			[built appendString:utf8_substring(pad, (index + taken) % padLength, 1)];
 			taken++;
 		}
@@ -1433,7 +1444,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	 * the predicate parser hit in F11b, and warning-as-noise was hiding this one since F1 (the
 	 * 2026-09-18 sweep gave it a voice). */
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = [self length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t start = range.location;
 	size_t end;
 
@@ -1453,7 +1464,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 /* ------------------------------------------------------------------------ paths */
 - (BOOL)isAbsolutePath
 {
-	return ([self length] > 0 && [self byteAtIndex:0] == '/') ? YES : NO;
+	return ([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 0 && [self byteAtIndex:0] == '/') ? YES : NO;
 }
 
 - (NSString *)stringByStandardizingPath
@@ -1473,7 +1484,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	for (i = 0; i < [parts count]; i++) {
 		NSString *part = [parts objectAtIndex:i];
 
-		if ([part length] == 0 || [part isEqualToString:@"."]) {
+		if ([part lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0 || [part isEqualToString:@"."]) {
 			continue;
 		}
 		if ([part isEqualToString:@".."]) {
@@ -1493,7 +1504,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 		}
 		[built appendString:[stack objectAtIndex:i]];
 	}
-	if ([built length] == 0) {
+	if ([built lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return absolute ? [[NSOwnedString alloc] initWithUTF8String:"/"]
 				: [[NSOwnedString alloc] initWithUTF8String:"."];
 	}
@@ -1632,12 +1643,32 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return self;
 }
 
-/* THE OLD CONTRACT FOR ONE MORE SLICE: bytes, so this MATERIALISES. Slice 2 makes
- * it `return _length;` and moves the byte callers to -lengthOfBytesUsingEncoding:
+/* THE OLD CONTRACT FOR ONE MORE SLICE: bytes, so this MATERIALISES. Slice 2b makes
+ * it `return _length;` — the unit count, O(1) — and by then NOTHING INTERNAL
+ * DEPENDS ON THIS MEANING, which is what slice 2a below is for
  * (docs/design/foundation-plan.md §13.6). */
 - (size_t)length
 {
 	(void)[self UTF8String];
+	return _utf8size;
+}
+
+/* THE BYTE DOOR, O(1): the materialised size, and the ASCII test walks it. */
+- (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
+{
+	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
+		return 0;
+	}
+	(void)[self UTF8String];
+	if (encoding == NSASCIIStringEncoding) {
+		size_t i;
+
+		for (i = 0; i < _utf8size; i++) {
+			if ((unsigned char)_utf8[i] > 0x7F) {
+				return 0;
+			}
+		}
+	}
 	return _utf8size;
 }
 
@@ -1840,7 +1871,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 
-	size_t size = [self length];	/* BYTES: what utf8_substring speaks */
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES: what utf8_substring speaks */
 
 	if (index > size) {
 		index = size;
@@ -1854,7 +1885,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 - (void)deleteCharactersInRange:(NSRange)range
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = [self length];	/* BYTES */
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES */
 	size_t start = range.location;
 	size_t end;
 
@@ -1873,7 +1904,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)string
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = [self length];	/* BYTES */
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES */
 	size_t start = range.location;
 	size_t end;
 
@@ -1896,8 +1927,8 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 				   range:(NSRange)range
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = [self length];	/* BYTES */
-	size_t targetSize = [target length];
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES */
+	size_t targetSize = [target lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t cursor = 0;
 	NSUInteger replaced = 0;
 
@@ -2071,12 +2102,12 @@ static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
 
 - (size_t)characterCount
 {
-	return utf8_count_characters([self UTF8String], [self length]);
+	return utf8_count_characters([self UTF8String], [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
 }
 
 - (unsigned short)characterAtIndex:(size_t)index
 {
-	return utf8_character_at([self UTF8String], [self length], index);
+	return utf8_character_at([self UTF8String], [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding], index);
 }
 
 - (void)dealloc
