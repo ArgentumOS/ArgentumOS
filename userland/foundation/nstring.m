@@ -411,6 +411,27 @@ static size_t fn_utf8_to_utf16(const char *bytes, size_t size, unsigned short *o
 static size_t fn_utf16_utf8_length(const unsigned char *data, size_t units);
 static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out);
 
+/* THE FLIP'S BOUNDARY ARITHMETIC (W1 slice 3). The public API indexes UTF-16 UNITS;
+ * every internal walker here indexes BYTES (`utf8_find`, `utf8_substring`, the
+ * character-set scan). Both conversions live in this pair, so the two spaces cannot
+ * drift apart one method at a time — which is what produced the two-index-space
+ * incoherence this unit exists to remove. */
+static NSUInteger fn_unit_to_byte(NSString *string, NSUInteger unit)
+{
+	const char *utf8 = [string UTF8String];
+	size_t bytes = (utf8 != NULL) ? [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding] : 0;
+
+	return (NSUInteger)fn_utf16_unit_to_byte(utf8 != NULL ? utf8 : "", bytes, (size_t)unit);
+}
+
+static NSUInteger fn_byte_to_unit(NSString *string, NSUInteger byte)
+{
+	const char *utf8 = [string UTF8String];
+	size_t bytes = (utf8 != NULL) ? [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding] : 0;
+
+	return (NSUInteger)fn_byte_to_utf16_unit(utf8 != NULL ? utf8 : "", bytes, (size_t)byte);
+}
+
 /* ASCII case mapping. This Foundation is UTF-8 and makes no Unicode case claims,
  * so case folding is the ASCII one and says so in the header. */
 static unsigned char utf8_lower(unsigned char c)
@@ -808,26 +829,30 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (NSRange)rangeOfString:(NSString *)substring
 {
-	return [self rangeOfString:substring options:NSLiteralSearch
-			     range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding])];
+	return [self rangeOfString:substring options:NSLiteralSearch range:NSMakeRange(0, [self length])];
 }
 
 - (NSRange)rangeOfString:(NSString *)substring options:(NSStringCompareOptions)options
 {
-	return [self rangeOfString:substring options:options
-			     range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding])];
+	return [self rangeOfString:substring options:options range:NSMakeRange(0, [self length])];
 }
 
 - (NSRange)rangeOfString:(NSString *)substring
 		 options:(NSStringCompareOptions)options
 		   range:(NSRange)range
 {
-	NSUInteger found = utf8_find(self, substring, range, options);
+	/* THE RANGE COMES IN UNITS, THE SEARCH WALKS BYTES, THE ANSWER GOES BACK IN
+	 * UNITS — so both edges of the range are mapped, and the length is the
+	 * SUBSTRING's unit length (never its byte length). */
+	NSUInteger byteStart = fn_unit_to_byte(self, range.location);
+	NSUInteger byteEnd = fn_unit_to_byte(self, range.location + range.length);
+	NSUInteger found = utf8_find(self, substring, NSMakeRange(byteStart, byteEnd - byteStart),
+				     options);
 
 	if (found == NSNotFound) {
 		return NSMakeRange(NSNotFound, 0);
 	}
-	return NSMakeRange(found, [substring lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
+	return NSMakeRange(fn_byte_to_unit(self, found), [substring length]);
 }
 
 /* ------------------------------------------------------------------- case */
@@ -897,22 +922,29 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 /* ------------------------------------------------------------- substrings */
 - (NSString *)substringFromIndex:(NSUInteger)index
 {
-	size_t n = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t bytes = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t from;
 
-	if (index > n) {
-		index = n;
+	if (index > [self length]) {
+		index = [self length];
 	}
-	return utf8_substring(self, index, n - index);
+	from = fn_unit_to_byte(self, index);
+	return utf8_substring(self, from, bytes - from);
 }
 
 - (NSString *)substringToIndex:(NSUInteger)index
 {
-	return utf8_substring(self, 0, index);
+	if (index > [self length]) {
+		index = [self length];
+	}
+	return utf8_substring(self, 0, fn_unit_to_byte(self, index));
 }
 
 - (NSString *)substringWithRange:(NSRange)range
 {
-	return utf8_substring(self, range.location, range.length);
+	NSUInteger from = fn_unit_to_byte(self, range.location);
+
+	return utf8_substring(self, from, fn_unit_to_byte(self, range.location + range.length) - from);
 }
 
 /* --------------------------------------------------- appending and replacing */
@@ -989,7 +1021,11 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 		size_t width = utf8_seq_length([self byteAtIndex:offset]);
 
 		if ([set characterIsMember:[self characterAtIndex:character]]) {
-			return NSMakeRange(offset, width);
+			/* THE SCAN WALKS BYTES AND COUNTS UNITS, so the answer is mapped
+			 * back: a match's unit range, which is what a caller indexes with. */
+			NSUInteger from = fn_byte_to_unit(self, offset);
+
+			return NSMakeRange(from, fn_byte_to_unit(self, offset + width) - from);
 		}
 		offset += width;
 		character++;
@@ -1643,14 +1679,12 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return self;
 }
 
-/* THE OLD CONTRACT FOR ONE MORE SLICE: bytes, so this MATERIALISES. Slice 2b makes
- * it `return _length;` — the unit count, O(1) — and by then NOTHING INTERNAL
- * DEPENDS ON THIS MEANING, which is what slice 2a below is for
- * (docs/design/foundation-plan.md §13.6). */
+/* THE FLIP (W1 slice 3): the UNIT count, and it is a field read. This is the one
+ * method whose MEANING changed, and slice 2a is why nothing internal depends on the
+ * old one (docs/design/foundation-plan.md §13.6). */
 - (size_t)length
 {
-	(void)[self UTF8String];
-	return _utf8size;
+	return _length;
 }
 
 /* THE BYTE DOOR, O(1): the materialised size, and the ASCII test walks it. */
@@ -1690,31 +1724,16 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return n;
 }
 
-/* SCALAR-indexed, the same contract as before, and a scalar above U+FFFF still
- * answers 0xFFFD because one unichar cannot say it: that is the SCALAR space's
- * limit, and slice 3 removes it by moving to the unit space. */
+/* THE UNIT AT A UNIT INDEX, O(1) — and SURROGATE HALVES ARE ANSWERED AS THEMSELVES,
+ * because that is what a unichar is and what Apple's contract says. The scalar space
+ * this used to speak answered 0xFFFD for a character above U+FFFF; that limit is gone
+ * with the space (docs/design/foundation-plan.md §13.4). */
 - (unsigned short)characterAtIndex:(size_t)index
 {
-	size_t i = 0, n = 0;
-
-	while (i < _length) {
-		unsigned short u = _units[i];
-
-		if (u >= 0xD800 && u <= 0xDBFF && i + 1 < _length &&
-		    _units[i + 1] >= 0xDC00 && _units[i + 1] <= 0xDFFF) {
-			if (n == index) {
-				return 0xFFFD;
-			}
-			i += 2;
-		} else {
-			if (n == index) {
-				return u;
-			}
-			i += 1;
-		}
-		n++;
+	if (index >= _length) {
+		return 0;
 	}
-	return 0;
+	return _units[index];
 }
 
 - (void)dealloc
@@ -2083,20 +2102,20 @@ static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
 	return fn_const_buffers[i];
 }
 
+/* THE FLIP, AND FOR A CONSTANT IT IS THE BEST CASE IN THE WHOLE UNIT: the runtime
+ * already counted the units in `_rlength`, so this is a FIELD READ with no conversion
+ * at all — where the old code converted a UTF-16 literal to UTF-8 just to measure it
+ * (§13.1's second reason for the switch). */
 - (size_t)length
 {
 	unsigned int encoding = _rflags & FN_CONST_ENCODING_MASK;
 
-	if (encoding == FN_CONST_ENCODING_ASCII || encoding == FN_CONST_ENCODING_UTF8) {
-		return _rsize;		/* the runtime's `size` is BYTES */
+	if (encoding == FN_CONST_ENCODING_ASCII || encoding == FN_CONST_ENCODING_UTF8 ||
+	    encoding == FN_CONST_ENCODING_UTF16) {
+		return _rlength;	/* UTF-16 CODE UNITS, per the runtime's struct */
 	}
-	if (encoding == FN_CONST_ENCODING_UTF16 && _rstr != NULL) {
-		return fn_utf16_utf8_length((const unsigned char *)_rstr, _rsize / 2);
-	}
-	if (encoding != FN_CONST_ENCODING_UTF16) {
-		[NSException raise:NSInvalidArgumentException
-			    format:@"NSConstantString: unsupported encoding %u", encoding];
-	}
+	[NSException raise:NSInvalidArgumentException
+		    format:@"NSConstantString: unsupported encoding %u", encoding];
 	return 0;
 }
 
@@ -2107,7 +2126,18 @@ static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
 
 - (unsigned short)characterAtIndex:(size_t)index
 {
-	return utf8_character_at([self UTF8String], [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding], index);
+	unsigned int encoding = _rflags & FN_CONST_ENCODING_MASK;
+
+	if (index >= [self length]) {
+		return 0;
+	}
+	if (encoding == FN_CONST_ENCODING_UTF16 && _rstr != NULL) {
+		const unsigned short *units = (const unsigned short *)(const void *)_rstr;
+
+		return units[index];	/* the units ARE the storage here too */
+	}
+	return fn_utf16_unit_at([self UTF8String],
+				[self lengthOfBytesUsingEncoding:NSUTF8StringEncoding], index);
 }
 
 - (void)dealloc

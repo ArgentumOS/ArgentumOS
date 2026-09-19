@@ -76,10 +76,17 @@ int main(void)
 		static const char bytes[] = { 'h', (char)0xC3, (char)0xA9, 'l', 'l', 'o', 0 };
 		NSString *u = [NSString stringWithUTF8String:bytes];
 
-		check("utf8", [u length] == 6 && [u characterCount] == 5 &&
+		/* -length IS UTF-16 CODE UNITS NOW (W1 slice 3, Apple's contract), and the
+		 * BYTE count has its own door. Both are asserted, because the difference
+		 * between them is the whole point of the unit. */
+		check("utf8", [u length] == 5 && [u characterCount] == 5 &&
+		      [u lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
 		      [u characterAtIndex:1] == 0xE9 &&
+		      [[u substringWithRange:NSMakeRange(1, 1)] isEqualToString:@"\xC3\xA9"] &&
+		      [[u substringFromIndex:1] isEqualToString:@"\xC3\xA9llo"] &&
+		      [u rangeOfString:@"llo"].location == 2 &&
 		      strcmp([u UTF8String], bytes) == 0,
-		      "-length 6 BYTES, -characterCount 5 CHARACTERS");
+		      "-length 5 UNITS (6 BYTES), -characterCount 5 CHARACTERS, and the ranges index units");
 	}
 
 	/* Mutation, and the snapshot rule for -copy of a mutable string. */
@@ -365,7 +372,8 @@ int main(void)
 		      [[@"MiXeD" uppercaseString] isEqualToString:@"MIXED"] &&
 		      [[@"MiXeD" lowercaseString] isEqualToString:@"mixed"] &&
 		      [[@"hello world" capitalizedString] isEqualToString:@"Hello World"] &&
-		      [accented length] == 6 && [accented characterCount] == 5 &&
+		      [accented length] == 5 && [accented characterCount] == 5 &&
+		      [accented lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
 		      [[@"abcdef" substringFromIndex:3] isEqualToString:@"def"] &&
 		      [[@"abcdef" substringToIndex:2] isEqualToString:@"ab"] &&
 		      [[@"abcdef" substringWithRange:NSMakeRange(1, 3)] isEqualToString:@"bcd"] &&
@@ -589,17 +597,23 @@ int main(void)
 					     uppercaseStringWithLocale:turkish];
 
 		check("locale-turkic-upper",
-		      [upper_i length] == 2 && [upper_i byteAtIndex:0] == 0xC4 &&
+		      [upper_i length] == 1 &&
+		      [upper_i lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 2 &&
+		      [upper_i byteAtIndex:0] == 0xC4 &&
 		      [upper_i byteAtIndex:1] == 0xB0 &&
 		      [upper_i isEqualToString:@"\xC4\xB0"] &&
 		      [[lower_I uppercaseStringWithLocale:turkish] isEqualToString:@"I"] &&
-		      [upper_istanbul length] == 9 && [upper_istanbul byteAtIndex:0] == 0xC4 &&
+		      [upper_istanbul length] == 8 &&
+		      [upper_istanbul lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 9 &&
+		      [upper_istanbul byteAtIndex:0] == 0xC4 &&
 		      [upper_istanbul byteAtIndex:1] == 0xB0 &&
 		      [upper_istanbul byteAtIndex:2] == 'S' && [upper_istanbul byteAtIndex:8] == 'L',
-		      "upper(i) must be the two bytes c4 b0 (İ), upper(ı) is I, and ASCII still upper-cases");
+		      "upper(i) must be ONE UNIT and two bytes c4 b0 (İ), upper(ı) is I, and ASCII still upper-cases");
 
 		check("locale-turkic-lower",
-		      [lower_I length] == 2 && [lower_I byteAtIndex:0] == 0xC4 &&
+		      [lower_I length] == 1 &&
+		      [lower_I lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 2 &&
+		      [lower_I byteAtIndex:0] == 0xC4 &&
 		      [lower_I byteAtIndex:1] == 0xB1 &&
 		      [[upper_i lowercaseStringWithLocale:turkish] isEqualToString:@"i"],
 		      "lower(I) must be the two bytes c4 b1 (ı), and lower(İ) is i");
@@ -611,21 +625,31 @@ int main(void)
 		      [[lower_I lowercaseStringWithLocale:neutral] isEqualToString:lower_I],
 		      "a neutral locale and a nil locale keep the plain mapping");
 
+		/* THE UNIT SPACE'S SHARPEST CASE IS THE LAST ONE: a 4-byte character is ONE
+		 * character, TWO UTF-16 units and FOUR bytes — and -characterAtIndex: must
+		 * answer the SURROGATE HALVES, which the old scalar space could not (it
+		 * answered 0xFFFD). Every literal here asserts all three numbers. */
 		check("locale-literal-high-byte",
-		      [@"\xC4\xB0" length] == 2 && [@"\xC4\xB0" byteAtIndex:0] == 0xC4 &&
-		      [@"\xC4\xB0" byteAtIndex:1] == 0xB0 &&
-		      [@"\xC4\xB0" characterCount] == 1 &&
+		      [@"\xC4\xB0" length] == 1 && [@"\xC4\xB0" characterCount] == 1 &&
+		      [@"\xC4\xB0" lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 2 &&
+		      [@"\xC4\xB0" byteAtIndex:0] == 0xC4 && [@"\xC4\xB0" byteAtIndex:1] == 0xB0 &&
+		      [@"\xC4\xB0" characterAtIndex:0] == 0x0130 &&
 		      strcmp([@"\xC4\xB0" UTF8String], "\xC4\xB0") == 0 &&
-		      [@"\xC4\xB1" length] == 2 && [@"\xC4\xB1" byteAtIndex:0] == 0xC4 &&
-		      [@"\xC4\xB1" byteAtIndex:1] == 0xB1 &&
-		      [@"\xE2\x82\xAC" length] == 3 && [@"\xE2\x82\xAC" byteAtIndex:0] == 0xE2 &&
-		      [@"\xE2\x82\xAC" byteAtIndex:1] == 0x82 &&
+		      [@"\xC4\xB1" length] == 1 &&
+		      [@"\xC4\xB1" lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 2 &&
+		      [@"\xC4\xB1" byteAtIndex:0] == 0xC4 && [@"\xC4\xB1" byteAtIndex:1] == 0xB1 &&
+		      [@"\xE2\x82\xAC" length] == 1 &&
+		      [@"\xE2\x82\xAC" lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 3 &&
+		      [@"\xE2\x82\xAC" byteAtIndex:0] == 0xE2 && [@"\xE2\x82\xAC" byteAtIndex:1] == 0x82 &&
 		      [@"\xE2\x82\xAC" byteAtIndex:2] == 0xAC &&
-		      [@"\xF0\x9F\x98\x80" length] == 4 &&
-		      [@"\xF0\x9F\x98\x80" byteAtIndex:0] == 0xF0 &&
-		      [@"\xF0\x9F\x98\x80" byteAtIndex:3] == 0x80 &&
-		      [@"\xF0\x9F\x98\x80" characterCount] == 1,
-		      "2-, 3- and 4-byte non-ASCII literals must decode to their own UTF-8 bytes (clang emits them as UTF-16)");
+		      [@"\xE2\x82\xAC" characterAtIndex:0] == 0x20AC &&
+		      [@"\xF0\x9F\x98\x80" length] == 2 &&
+		      [@"\xF0\x9F\x98\x80" characterCount] == 1 &&
+		      [@"\xF0\x9F\x98\x80" lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 4 &&
+		      [@"\xF0\x9F\x98\x80" byteAtIndex:0] == 0xF0 && [@"\xF0\x9F\x98\x80" byteAtIndex:3] == 0x80 &&
+		      [@"\xF0\x9F\x98\x80" characterAtIndex:0] == 0xD83D &&
+		      [@"\xF0\x9F\x98\x80" characterAtIndex:1] == 0xDE00,
+		      "2-, 3- and 4-byte literals: -length counts UNITS (the 4-byte one is 2), the bytes have their own door, and -characterAtIndex: answers the surrogate halves");
 	}
 
 	{

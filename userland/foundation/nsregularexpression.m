@@ -30,47 +30,64 @@
 /* THE BYTE LENGTH OF ONE UTF-16 INDEX, which is what makes the map possible at all: a character
  * outside the basic plane is two UTF-16 units and four bytes, and both facts live on one row. */
 /*
- * THIS ENGINE SPEAKS THE BYTE SPACE, AND THAT IS NOW SAID OUT LOUD (W1).
+ * THE MAP IS UTF-16 INDEX -> BYTE OFFSET, AND IT IS NOW EXACT (W1 slice 3).
  *
- * It hands POSIX regexec the UTF-8 BYTES, so every match offset it gets back is a
- * BYTE offset; and the pre-flip NSRange contract is bytes too (-substringWithRange:,
- * -length). So the map must be the BYTE SPACE'S IDENTITY, or the two disagree.
+ * This engine hands POSIX regexec the UTF-8 BYTES, so the match offsets it gets back
+ * are byte offsets; the NSRange contract it must answer in is UTF-16 UNITS. So the map
+ * has one entry PER UNIT (a character above U+FFFF is two), each the byte offset where
+ * that unit's character starts, plus an end entry.
  *
- * IT USED TO COMPUTE A UNIT->BYTE MAP BY SLICING ONE BYTE OUT AND MEASURING strlen,
- * which produced the identity only by ACCIDENT: the old storage copied invalid UTF-8
- * VERBATIM, so a lone continuation byte measured 1. When the storage became UTF-16
- * (docs/design/foundation-plan.md §13) that byte became U+FFFD — three bytes in UTF-8 —
- * so the map thickened and the ranges shifted by the UTF-8 expansion (measured:
- * `count=2 [hél] [o wö]` instead of `[héllo] [wörld]`). The accident is gone; the
- * identity is now written down.
- *
- * SLICE 3 (the flip) replaces this with the real UNIT->BYTE map, at which point the
- * engine returns UTF-16 ranges and -substringWithRange:/ -length live in the same
- * space as it does. §13.7 has the bisect that established all of this.
+ * IT USED TO BE THE IDENTITY BY ACCIDENT: the builder sliced single bytes and measured
+ * strlen, which gave 1 for any byte only because the old storage copied invalid UTF-8
+ * VERBATIM. When the storage became UTF-16 that byte became U+FFFD — three bytes — and
+ * the map thickened (measured: `count=2 [hél] [o wö]`). Writing the identity down kept
+ * the pre-flip contract green; SLICE 3 IS THE FLIP, so the exact map takes over here and
+ * the engine and -substringWithRange:/ -length finally inhabit the same space.
+ * §13.7 has the bisect that established all of this.
  */
-/* UTF-16 INDEX -> BYTE OFFSET, with one extra entry for the end of the string. */
 static NSUInteger *fn_build_map(NSString *string, NSUInteger *outLength)
 {
 	const char *utf8 = [string UTF8String];
 	size_t bytes = utf8 != NULL ? strlen(utf8) : 0;
-	NSUInteger *map = malloc((bytes + 1) * sizeof(NSUInteger));
-	size_t i;
+	NSUInteger *map = malloc((bytes + 2) * sizeof(NSUInteger));
+	size_t i = 0;
+	NSUInteger units = 0;
 
 	if (map == NULL) {
 		return NULL;
 	}
-	for (i = 0; i <= bytes; i++) {
-		map[i] = (NSUInteger)i;		/* byte i -> byte i */
+	while (i < bytes) {
+		unsigned char lead = (unsigned char)utf8[i];
+		size_t seq;
+
+		if (lead < 0x80) {
+			seq = 1;
+		} else if ((lead & 0xE0) == 0xC0) {
+			seq = 2;
+		} else if ((lead & 0xF0) == 0xE0) {
+			seq = 3;
+		} else if ((lead & 0xF8) == 0xF0) {
+			seq = 4;
+		} else {
+			seq = 1;	/* a stray continuation byte: one byte, one unit */
+		}
+		if (i + seq > bytes) {
+			seq = 1;
+		}
+		map[units++] = (NSUInteger)i;
+		if (seq == 4) {
+			/* a character above U+FFFF is TWO units, and the low surrogate
+			 * starts at the same byte offset as its high half */
+			map[units++] = (NSUInteger)i;
+		}
+		i += seq;
 	}
-	*outLength = (NSUInteger)bytes;
+	map[units] = (NSUInteger)bytes;
+	*outLength = units;
 	return map;
 }
 
 #if 0
-	/* THE UNIT->BYTE MAP SLICE 3 WILL USE, kept where the identity is written so the
-	 * two live together: one entry per UTF-16 UNIT (a character above U+FFFF is two),
-	 * each the byte offset where that unit's character starts, plus the end entry. */
-	NSUInteger offset = 0;
 
 	if (map == NULL) {
 		*outLength = 0;
