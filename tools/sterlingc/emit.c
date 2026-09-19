@@ -66,6 +66,109 @@ st_source_stem(const char *label, char *buf, size_t size)
 }
 
 /*
+ * The ObjC name of a Sterling TYPE. A nested type's Sterling name is qualified —
+ * `Bar` inside `Foo` is the type `Foo.Bar` — and the dot is the whole of the
+ * mangling: `Foo_Bar`.
+ *
+ * LEXICAL, deliberately: `map_type` stays a pure name-to-name function and no
+ * symbol table is consulted, so a type reference resolves the same way whether
+ * the type is in this file, another one, or imported.
+ *
+ * What that costs: a top-level class literally NAMED `Foo_Bar` collides with the
+ * nested `Bar` of `Foo`. Stated rather than discovered later; the alternatives
+ * (an escape scheme the reader cannot reverse) buy less than they cost.
+ */
+static void
+mangle_name(const char *name, char *buf, size_t size)
+{
+	size_t i;
+
+	if (size == 0) {
+		return;
+	}
+	if (name == NULL) {
+		buf[0] = '\0';
+		return;
+	}
+	for (i = 0; i + 1 < size && name[i] != '\0'; i++) {
+		buf[i] = (name[i] == '.') ? '_' : name[i];
+	}
+	buf[i] = '\0';
+}
+
+/*
+ * The class names THIS FILE declares, mangled — nested ones included. Populated
+ * before emission and consulted by `type_text` and the ownership inference,
+ * because a locally declared class is a type §4's table knows nothing about
+ * (that table's class rows are the prelude's) and its ObjC form needs its
+ * pointer: `Outer.Inner` is `Outer_Inner *`.
+ *
+ * A static for the same reason `refusal` is one: the driver emits one program at
+ * a time on one thread, and threading the program through every expression
+ * function to be read at exactly two places is worse.
+ *
+ * Only LOCALLY declared names resolve this way. An imported name — §3's
+ * `property x: Foo` — stays what it was, which emits a by-value `Foo item;` and
+ * fails at clang; that is loud, and §9.5's header importer is what will make it
+ * right rather than a guess here.
+ */
+#define EMIT_MAX_DECLARED 64
+
+typedef struct {
+	char names[EMIT_MAX_DECLARED][256];
+	size_t count;
+} name_set;
+
+static name_set declared_classes;
+
+static void
+name_set_add(name_set *set, const char *name)
+{
+	size_t i;
+
+	if (name == NULL) {
+		return;
+	}
+	for (i = 0; i < set->count; i++) {
+		if (strcmp(set->names[i], name) == 0) {
+			return;
+		}
+	}
+	if (set->count < EMIT_MAX_DECLARED) {
+		snprintf(set->names[set->count++], 256, "%s", name);
+	}
+}
+
+static int
+name_set_has(const name_set *set, const char *name)
+{
+	size_t i;
+
+	if (name == NULL) {
+		return 0;
+	}
+	for (i = 0; i < set->count; i++) {
+		if (strcmp(set->names[i], name) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void
+collect_declared_classes(const st_class *c, name_set *set)
+{
+	char mangled[256];
+	size_t i;
+
+	mangle_name(c->name.text, mangled, sizeof(mangled));
+	name_set_add(set, mangled);
+	for (i = 0; i < c->nested_count; i++) {
+		collect_declared_classes(c->nested[i], set);
+	}
+}
+
+/*
  * The refusal message. One program is emitted at a time by a single-threaded
  * driver, so the buffer is a static and the caller reads it once before
  * exiting — see st_emit_header's contract in ast.h.
@@ -203,28 +306,60 @@ type_is_emittable(const st_type *t, const char **error)
 static void
 type_text(const st_type *t, const char *fallback, char *buf, size_t size)
 {
-	const char *mapped = (t != NULL && t->name.text != NULL)
-				     ? map_type(t->name.text)
-				     : fallback;
+	const char *name = (t != NULL && t->name.text != NULL) ? t->name.text
+							       : fallback;
+	char plain[256];
+	const char *mapped;
 	size_t len;
 
+	if (name == NULL) {
+		snprintf(buf, size, "void");
+		return;
+	}
+	/*
+	 * The dot mangling happens before `map_type`, so a nested type's qualified
+	 * name (`Foo.Bar`) arrives at the table as the ObjC identifier it is
+	 * (`Foo_Bar`) and falls through it unchanged — while every name the table
+	 * DOES know has no dot and is untouched.
+	 */
+	mangle_name(name, plain, sizeof(plain));
+	mapped = map_type(plain);
 	if (mapped == NULL) {
 		snprintf(buf, size, "void");
 		return;
 	}
 	/*
-	 * `t == NULL` is the INFERRED local: its type came from the initializer,
-	 * which is a literal, so there is no flag to consult and nothing to add.
+	 * §4's reference/value rule for a class THIS FILE declares: §4's table's
+	 * class rows are the prelude's, so nothing in it maps `Outer_Inner` to
+	 * anything and the pointer has to be added here. Without it a nested
+	 * class-typed property was emitted by VALUE — `Outer.Inner item;`, which
+	 * does not compile.
 	 */
-	if (t == NULL || !t->nullable) {
-		snprintf(buf, size, "%s", mapped);
-		return;
-	}
-	len = strlen(mapped);
-	if (len > 0 && mapped[len - 1] == '*') {
-		snprintf(buf, size, "%.*s* _Nullable", (int)(len - 1), mapped);
-	} else {
-		snprintf(buf, size, "%s _Nullable", mapped);
+	{
+		char base[512];
+
+		if (name_set_has(&declared_classes, plain) &&
+		    !type_is_class(mapped)) {
+			snprintf(base, sizeof(base), "%s *", mapped);
+		} else {
+			snprintf(base, sizeof(base), "%s", mapped);
+		}
+		/*
+		 * `t == NULL` is the INFERRED local: its type came from the
+		 * initializer, which is a literal, so there is no flag to consult
+		 * and nothing to add.
+		 */
+		if (t == NULL || !t->nullable) {
+			snprintf(buf, size, "%s", base);
+			return;
+		}
+		len = strlen(base);
+		if (len >= 2 && base[len - 1] == '*' && base[len - 2] == ' ') {
+			snprintf(buf, size, "%.*s* _Nullable", (int)(len - 1),
+				 base);
+		} else {
+			snprintf(buf, size, "%s _Nullable", base);
+		}
 	}
 }
 
@@ -250,13 +385,42 @@ type_is_class(const char *mapped)
 	return len > 0 && mapped[len - 1] == '*';
 }
 
-static const char *
-map_superclass(const char *name)
+/*
+ * True when a Sterling type NAME is a class: one this file declares, or one
+ * §4's table maps to a pointer. The two are asked together everywhere the answer
+ * changes the emission — §5's `const` placement and §7.52's ownership inference —
+ * so this is one question rather than two call-site decisions.
+ */
+static int
+type_name_is_class(const char *name)
 {
-	if (name != NULL && strcmp(name, "Object") == 0) {
-		return "NSObject";
+	char plain[256];
+
+	if (name == NULL) {
+		return 0;
 	}
-	return name;
+	mangle_name(name, plain, sizeof(plain));
+	if (name_set_has(&declared_classes, plain)) {
+		return 1;
+	}
+	return type_is_class(map_type(plain));
+}
+
+/*
+ * The superclass as ObjC names it: `Object` is `NSObject` (§4's prelude rename),
+ * and a nested superclass is mangled like any other type reference.
+ */
+static void
+superclass_text(const char *name, char *buf, size_t size)
+{
+	char plain[256];
+
+	if (name != NULL && strcmp(name, "Object") == 0) {
+		snprintf(buf, size, "NSObject");
+		return;
+	}
+	mangle_name(name, plain, sizeof(plain));
+	snprintf(buf, size, "%s", plain);
 }
 
 /*
@@ -607,7 +771,15 @@ emit_local(FILE *out, const st_stmt *s, int depth, const char **error)
 		type_text(s->type.name.text != NULL ? &s->type : NULL, mapped,
 			  typebuf, sizeof(typebuf));
 		if (is_let) {
-			if (type_is_class(mapped)) {
+			/*
+			 * §5's class-type rule, asked of the NAME where there is one and
+			 * of the inferred type where there is not — a locally declared
+			 * class is a reference even though §4's table has never heard of
+			 * it, so `let item: Outer.Inner = …` is `Outer_Inner * const`.
+			 */
+			if (s->type.name.text != NULL
+				    ? type_name_is_class(s->type.name.text)
+				    : type_is_class(mapped)) {
 				fprintf(out, "%s const %s", typebuf,
 					s->name.text);
 			} else {
@@ -790,6 +962,13 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 {
 	const char *mapped = map_type(d->type.name.text);
 	const char *own = NULL;
+	/*
+	 * ONE question, asked twice below: §7.52's inference needs to know whether
+	 * the property is a reference, and so does the class-type requirement. A
+	 * class this FILE declares counts — which is what makes
+	 * `property item: Outer.Inner` infer `strong` rather than `assign`.
+	 */
+	int is_class = type_name_is_class(d->type.name.text);
 
 	if (!type_is_emittable(&d->type, error)) {
 		return 0;
@@ -818,7 +997,7 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 		case ST_OWN_COPY:	own = "copy";	break;
 		case ST_OWN_ASSIGN:	own = "assign";	break;
 		default:
-			own = type_is_class(mapped) ? "strong" : "assign";
+			own = is_class ? "strong" : "assign";
 			break;
 		}
 		/*
@@ -828,7 +1007,7 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 		 * -Wignored-attributes with exit 0), so a weak scalar would emit
 		 * and compile.
 		 */
-		if (strcmp(own, "assign") != 0 && !type_is_class(mapped)) {
+		if (strcmp(own, "assign") != 0 && !is_class) {
 			if (type_is_known_scalar(mapped)) {
 				/* §7.52: a scalar has nothing to weaken or to
 				 * copy, and clang only warns about it. */
@@ -863,13 +1042,22 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 		emit_type(out, &d->type);
 		fprintf(out, " %s;\n", d->name.text);
 	} else {
-		size_t len = strlen(mapped);
+		/*
+		 * `type_text`, not the raw `mapped`: this path prints the type
+		 * itself, so it is the one place the nested-type mangling would be
+		 * missed — `property item: Outer.Inner` came out as
+		 * `Outer.Inner item;`, which does not compile.
+		 */
+		char typebuf[256];
+		size_t len;
 
-		if (len >= 2 && mapped[len - 1] == '*' && mapped[len - 2] == ' ') {
-			fprintf(out, ") %.*s*%s;\n", (int)(len - 1), mapped,
+		type_text(&d->type, mapped, typebuf, sizeof(typebuf));
+		len = strlen(typebuf);
+		if (len >= 2 && typebuf[len - 1] == '*' && typebuf[len - 2] == ' ') {
+			fprintf(out, ") %.*s*%s;\n", (int)(len - 1), typebuf,
 				d->name.text);
 		} else {
-			fprintf(out, ") %s %s;\n", mapped, d->name.text);
+			fprintf(out, ") %s %s;\n", typebuf, d->name.text);
 		}
 	}
 	return 1;
@@ -947,6 +1135,167 @@ emit_protocol(FILE *out, const st_protocol *prot, const char **error)
 	return 1;
 }
 
+/*
+ * §3: "`@class X;` forward declaration — automatic — the emitter manages it".
+ * A class-typed property or parameter needs the name known before the
+ * `@interface` that uses it, and source order does not have to make that true —
+ * a nested type is emitted after the class it is nested in, and two classes may
+ * name each other.
+ *
+ * Only REFERENCED classes get a line, which is why §2's specimen is unchanged: it
+ * names no class type at all. `@class` is all a POINTER needs; a superclass needs
+ * the whole `@interface`, so a subclass still has to follow its superclass in the
+ * source — stated in the plan rather than pretended away.
+ */
+#define EMIT_MAX_REFS 64
+
+typedef struct {
+	char names[EMIT_MAX_REFS][256];
+	size_t count;
+} type_refs;
+
+static void
+add_type_ref(type_refs *refs, const st_type *t)
+{
+	char mangled[256];
+	size_t i;
+
+	if (t == NULL || t->name.text == NULL) {
+		return;
+	}
+	mangle_name(t->name.text, mangled, sizeof(mangled));
+	for (i = 0; i < refs->count; i++) {
+		if (strcmp(refs->names[i], mangled) == 0) {
+			return;
+		}
+	}
+	if (refs->count < EMIT_MAX_REFS) {
+		snprintf(refs->names[refs->count++], 256, "%s", mangled);
+	}
+}
+
+static void
+collect_class_type_refs(const st_class *c, type_refs *refs)
+{
+	const st_decl *d;
+	size_t i;
+
+	for (d = c->decls; d != NULL; d = d->next) {
+		add_type_ref(refs, &d->type);
+		for (i = 0; i < d->param_count; i++) {
+			add_type_ref(refs, &d->params[i].type);
+		}
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		collect_class_type_refs(c->nested[i], refs);
+	}
+}
+
+/* True when `mangled` names a class the program declares, at any depth. */
+static int
+declares_name(const st_class *c, const char *mangled)
+{
+	char buf[256];
+	size_t i;
+
+	mangle_name(c->name.text, buf, sizeof(buf));
+	if (strcmp(buf, mangled) == 0) {
+		return 1;
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		if (declares_name(c->nested[i], mangled)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * One class's `@interface`, preceded by the types declared inside it. Nested
+ * types come first so that a property OF a nested type is a complete type rather
+ * than a forward-declared pointer, and the `@class` lines above cover the other
+ * direction — a nested type naming the class it is nested in.
+ */
+static int
+emit_interface(FILE *out, const st_class *c, const char **error)
+{
+	char namebuf[256];
+	char superbuf[256];
+	const st_decl *d;
+	size_t i;
+
+	if (c->parameter_count > 0) {
+		return refuse("generic parameters", error);
+	}
+	if (c->struct_count > 0) {
+		return refuse("a nested struct", error);
+	}
+	if (c->enum_count > 0) {
+		return refuse("a nested enum", error);
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		if (!emit_interface(out, c->nested[i], error)) {
+			return 0;
+		}
+	}
+
+	mangle_name(c->name.text, namebuf, sizeof(namebuf));
+	superclass_text(c->superclass.text, superbuf, sizeof(superbuf));
+	fprintf(out, "@interface %s : %s", namebuf, superbuf);
+	if (c->conformance_count > 0) {
+		size_t j;
+
+		fprintf(out, " <");
+		for (j = 0; j < c->conformance_count; j++) {
+			fprintf(out, "%s%s", j > 0 ? ", " : "",
+				c->conformances[j].text);
+		}
+		fprintf(out, ">");
+	}
+	fprintf(out, "\n\n");
+
+	{
+		/*
+		 * The blank line after the interface is the gap; the blank line
+		 * BEFORE the methods separates the two groups and is owed only when
+		 * both exist. Emitting it unconditionally gave a properties-only
+		 * class two blanks before `@end`, and a methods-only one two after
+		 * `@interface` — §2's specimen has both, so neither shows there.
+		 */
+		const st_decl *m;
+		int any_property = 0;
+		int any_method = 0;
+
+		for (m = c->decls; m != NULL; m = m->next) {
+			if (m->kind == ST_DECL_PROPERTY) {
+				any_property = 1;
+			} else if (m->kind == ST_DECL_METHOD) {
+				any_method = 1;
+			}
+		}
+		for (d = c->decls; d != NULL; d = d->next) {
+			if (d->kind != ST_DECL_PROPERTY) {
+				continue;
+			}
+			if (!emit_property_line(out, d, d->body == NULL, error)) {
+				return 0;
+			}
+		}
+		if (any_property && any_method) {
+			fprintf(out, "\n");
+		}
+	}
+	for (d = c->decls; d != NULL; d = d->next) {
+		if (d->kind == ST_DECL_METHOD) {
+			if (!emit_signature(out, d, ";", error)) {
+				return 0;
+			}
+		}
+	}
+	fprintf(out, "\n@end\n\n");
+	return 1;
+}
+
 int
 st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	       const char **error)
@@ -964,6 +1313,18 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		return refuse("a category or extension (§7.4)", error);
 	}
 	/*
+	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
+	 * does not even hold one — the parse reads the declaration and keeps
+	 * nothing. Refused by name, so the file that comes out is never quietly
+	 * missing a type the source declared.
+	 */
+	if (program->struct_count > 0) {
+		return refuse("a struct", error);
+	}
+	if (program->enum_count > 0) {
+		return refuse("an enum", error);
+	}
+	/*
 	 * A file may declare several classes — ordinary Sterling, and ONE
 	 * translation unit — so they are all emitted into this pair. §7.9's
 	 * per-class/per-module/per-program question is about *modules*, which do
@@ -975,6 +1336,15 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	if (program->class_count == 0) {
 		return refuse("a program with no class (the header's name comes "
 			      "from one)", error);
+	}
+	/*
+	 * Which class names this file declares, before anything reads a type: a
+	 * nested class is a reference type §4's table does not know and whose
+	 * pointer `type_text` has to add.
+	 */
+	declared_classes.count = 0;
+	for (i = 0; i < program->class_count; i++) {
+		collect_declared_classes(program->classes[i], &declared_classes);
 	}
 
 	if (source_label != NULL) {
@@ -1050,69 +1420,42 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		}
 	}
 
+	/*
+	 * §3's `@class` lines: one for each class this file declares AND a
+	 * declaration here names as a type. Placed with the protocol forwards,
+	 * before anything that could use them.
+	 */
+	{
+		type_refs refs;
+		size_t r;
+		size_t printed = 0;
+
+		refs.count = 0;
+		for (i = 0; i < program->class_count; i++) {
+			collect_class_type_refs(program->classes[i], &refs);
+		}
+		for (r = 0; r < refs.count; r++) {
+			size_t ci;
+
+			for (ci = 0; ci < program->class_count; ci++) {
+				if (declares_name(program->classes[ci],
+						  refs.names[r])) {
+					fprintf(out, "@class %s;\n",
+						refs.names[r]);
+					printed++;
+					break;
+				}
+			}
+		}
+		if (printed > 0) {
+			fprintf(out, "\n");
+		}
+	}
+
 	for (i = 0; i < program->class_count; i++) {
-		const st_class *c = program->classes[i];
-		const st_decl *d;
-
-		if (c->parameter_count > 0) {
-			return refuse("generic parameters", error);
+		if (!emit_interface(out, program->classes[i], error)) {
+			return 0;
 		}
-		fprintf(out, "@interface %s : %s", c->name.text,
-			map_superclass(c->superclass.text));
-		if (c->conformance_count > 0) {
-			size_t j;
-
-			fprintf(out, " <");
-			for (j = 0; j < c->conformance_count; j++) {
-				fprintf(out, "%s%s", j > 0 ? ", " : "",
-					c->conformances[j].text);
-			}
-			fprintf(out, ">");
-		}
-		fprintf(out, "\n\n");
-
-		{
-			/*
-			 * The blank line after the interface is the gap; the blank line
-			 * BEFORE the methods separates the two groups and is owed only
-			 * when both exist. Emitting it unconditionally gave a
-			 * properties-only class two blanks before `@end`, and a
-			 * methods-only one two after `@interface` — §2's specimen has
-			 * both, which is why neither shows there.
-			 */
-			const st_decl *m;
-			int any_property = 0;
-			int any_method = 0;
-
-			for (m = c->decls; m != NULL; m = m->next) {
-				if (m->kind == ST_DECL_PROPERTY) {
-					any_property = 1;
-				} else if (m->kind == ST_DECL_METHOD) {
-					any_method = 1;
-				}
-			}
-
-			for (d = c->decls; d != NULL; d = d->next) {
-				if (d->kind != ST_DECL_PROPERTY) {
-					continue;
-				}
-				if (!emit_property_line(out, d, d->body == NULL,
-						       error)) {
-					return 0;
-				}
-			}
-			if (any_property && any_method) {
-				fprintf(out, "\n");
-			}
-		}
-		for (d = c->decls; d != NULL; d = d->next) {
-			if (d->kind == ST_DECL_METHOD) {
-				if (!emit_signature(out, d, ";", error)) {
-					return 0;
-				}
-			}
-		}
-		fprintf(out, "\n@end\n\n");
 	}
 	/*
 	 * §3.12's assumed-non-null region is the FILE's, not each class's: it is
@@ -1297,19 +1640,131 @@ emit_extern(FILE *out, const st_expr *call)
 	fprintf(out, ");\n\n");
 }
 
+/*
+ * One class's `@implementation`, preceded by the types declared inside it, for
+ * the same reason the interface does it that way: a nested type is a class of
+ * its own — Objective-C has no nesting — so it is emitted beside its outer class
+ * under its mangled name.
+ *
+ * `first` spans the whole FILE: the blank line between two classes is owed only
+ * BETWEEN them, so the flag is threaded rather than the separator being
+ * unconditional — §2's specimen is one class and its `.m` ends at `@end`.
+ */
+static int
+emit_implementation_of(FILE *out, const st_class *c, int *first,
+		       const char **error)
+{
+	char namebuf[256];
+	const st_decl *d;
+	extern_set set;
+	size_t i;
+
+	if (c->parameter_count > 0) {
+		return refuse("generic parameters", error);
+	}
+	if (c->struct_count > 0) {
+		return refuse("a nested struct", error);
+	}
+	if (c->enum_count > 0) {
+		return refuse("a nested enum", error);
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		if (!emit_implementation_of(out, c->nested[i], first, error)) {
+			return 0;
+		}
+	}
+	if (!*first) {
+		fprintf(out, "\n");
+	}
+	*first = 0;
+
+	/*
+	 * §7.42 first: a call naming this class's own method becomes a send on
+	 * `self`, so the `extern` collection below — which sees only what is left
+	 * as a CALL — does not declare a C function for it.
+	 */
+	for (d = c->decls; d != NULL; d = d->next) {
+		resolve_calls_in_stmts(c, d->body);
+	}
+	set.count = 0;
+	for (d = c->decls; d != NULL; d = d->next) {
+		collect_stmt_calls(d->body, c, &set);
+	}
+	for (i = 0; i < set.count; i++) {
+		emit_extern(out, set.calls[i]);
+	}
+
+	mangle_name(c->name.text, namebuf, sizeof(namebuf));
+	fprintf(out, "@implementation %s\n\n", namebuf);
+	for (d = c->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_METHOD) {
+			continue;
+		}
+		if (!emit_signature(out, d, "", error)) {
+			return 0;
+		}
+		fprintf(out, "{\n");
+		if (!emit_stmt_list(out, d->body, 1,
+				    map_type(d->type.name.text), error)) {
+			return 0;
+		}
+		fprintf(out, "}\n\n");
+	}
+	/* §7.54: a read-only property's block *is* its getter. */
+	for (d = c->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_PROPERTY || d->body == NULL) {
+			continue;
+		}
+		/*
+		 * The signature's shape rather than a hand-rolled `- (%s)%s`: a
+		 * getter's type goes through the same mangling and the same
+		 * `_Nullable` rule as every other type here.
+		 */
+		fprintf(out, "- (");
+		emit_type(out, &d->type);
+		fprintf(out, ")%s\n", d->name.text);
+		fprintf(out, "{\n");
+		if (!emit_stmt_list(out, d->body, 1,
+				    map_type(d->type.name.text), error)) {
+			return 0;
+		}
+		fprintf(out, "}\n\n");
+	}
+	fprintf(out, "@end\n");
+	return 1;
+}
+
 int
 st_emit_implementation(FILE *out, const st_program *program,
 		       const char *source_label, const char **error)
 {
 	size_t i;
+	int first = 1;
 	char stem[256];
 
 	if (program->extension_count > 0) {
 		return refuse("a category or extension (§7.4)", error);
 	}
+	/*
+	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
+	 * does not even hold one — the parse reads the declaration and keeps
+	 * nothing. Refused by name, so the file that comes out is never quietly
+	 * missing a type the source declared.
+	 */
+	if (program->struct_count > 0) {
+		return refuse("a struct", error);
+	}
+	if (program->enum_count > 0) {
+		return refuse("an enum", error);
+	}
 	if (program->class_count == 0) {
 		return refuse("a program with no class (the file's name comes from "
 			      "one)", error);
+	}
+	/* The declared-class set again: this function is called on its own. */
+	declared_classes.count = 0;
+	for (i = 0; i < program->class_count; i++) {
+		collect_declared_classes(program->classes[i], &declared_classes);
 	}
 	/*
 	 * ONE banner and ONE import, because this is one file: `#import
@@ -1331,73 +1786,10 @@ st_emit_implementation(FILE *out, const st_program *program,
 	fprintf(out, "#import \"%s.h\"\n\n", stem);
 
 	for (i = 0; i < program->class_count; i++) {
-		const st_class *c = program->classes[i];
-		const st_decl *d;
-		extern_set set;
-
-		if (c->parameter_count > 0) {
-			return refuse("generic parameters", error);
+		if (!emit_implementation_of(out, program->classes[i], &first,
+					    error)) {
+			return 0;
 		}
-		if (i > 0) {
-			/* One blank line between classes, and none after the
-			 * last: §2's specimen is one class and its `.m` ends at
-			 * `@end`. */
-			fprintf(out, "\n");
-		}
-
-		/*
-		 * §7.42 first: a call naming this class's own method becomes a
-		 * send on `self`, so the `extern` collection below — which sees
-		 * only what is left as a CALL — does not declare a C function for
-		 * it.
-		 */
-		for (d = c->decls; d != NULL; d = d->next) {
-			resolve_calls_in_stmts(c, d->body);
-		}
-		set.count = 0;
-		for (d = c->decls; d != NULL; d = d->next) {
-			collect_stmt_calls(d->body, c, &set);
-		}
-
-		{
-			/* `n`, not `i`: the class loop owns `i`. */
-			size_t n;
-
-			for (n = 0; n < set.count; n++) {
-				emit_extern(out, set.calls[n]);
-			}
-		}
-
-		fprintf(out, "@implementation %s\n\n", c->name.text);
-		for (d = c->decls; d != NULL; d = d->next) {
-			if (d->kind != ST_DECL_METHOD) {
-				continue;
-			}
-			if (!emit_signature(out, d, "", error)) {
-				return 0;
-			}
-			fprintf(out, "{\n");
-			if (!emit_stmt_list(out, d->body, 1,
-					    map_type(d->type.name.text), error)) {
-				return 0;
-			}
-			fprintf(out, "}\n\n");
-		}
-		/* §7.54: a read-only property's block *is* its getter. */
-		for (d = c->decls; d != NULL; d = d->next) {
-			if (d->kind != ST_DECL_PROPERTY || d->body == NULL) {
-				continue;
-			}
-			fprintf(out, "- (%s)%s\n", map_type(d->type.name.text),
-				d->name.text);
-			fprintf(out, "{\n");
-			if (!emit_stmt_list(out, d->body, 1,
-					    map_type(d->type.name.text), error)) {
-				return 0;
-			}
-			fprintf(out, "}\n\n");
-		}
-		fprintf(out, "@end\n");
 	}
 	return 1;
 }

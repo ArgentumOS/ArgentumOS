@@ -1,0 +1,11 @@
+/* An enum has no emission either — neither the plain kind nor the tagged union. */
+enum Direction {
+    case north
+    case south
+}
+
+class RefuseEnum: Object {
+    method m() -> Void {
+        return;
+    }
+}

@@ -1,0 +1,10 @@
+/* A nested struct is a struct: the outer class is refused BY NAME, not dropped. */
+class RefuseNestedStruct: Object {
+    struct Inner {
+        var x: Int32
+    }
+
+    method m() -> Void {
+        return;
+    }
+}

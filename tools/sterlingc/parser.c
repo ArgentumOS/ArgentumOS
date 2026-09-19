@@ -345,6 +345,38 @@ parse_type(st_parser *p, st_type *out)
 		return 0;
 	}
 	/*
+	 * A nested type is written dotted — `Foo.Bar` — and that name IS the type:
+	 * the qualification is the Sterling spelling, and the emitter mangles the
+	 * dot for ObjC. So the name is assembled here and nothing downstream has
+	 * to know a type was nested.
+	 *
+	 * The dot is ST_PUNCT here (the lexer keeps a lone `.` out of §7.72's
+	 * operator set), which is why this is a parse-level continuation rather
+	 * than an operator.
+	 */
+	while (at_punct(p, '.')) {
+		st_name part;
+
+		bump(p);
+		if (!take_name(p, &part)) {
+			return 0;
+		}
+		{
+			const char *outer = out->name.text;
+			size_t olen = strlen(outer);
+			size_t plen = strlen(part.text);
+			char *joined = st_arena_alloc(olen + plen + 2);
+
+			if (joined == NULL) {
+				return fail(p, "out of memory");
+			}
+			memcpy(joined, outer, olen);
+			joined[olen] = '.';
+			memcpy(joined + olen + 1, part.text, plen + 1);
+			out->name.text = joined;
+		}
+	}
+	/*
 	 * §7.26/§7.63's argument list — and what decides whether this declaration
 	 * erases or is instantiated, which is the emitter's business. The scan
 	 * itself is parse_generic_list's, shared with a class's parameter list;
@@ -383,6 +415,23 @@ static int parse_expr(st_parser *p, st_expr **out);
  * reason, since a closure *is* a primary and a case *is* a statement.
  */
 static int parse_stmt_block(st_parser *p, st_stmt **out);
+
+/*
+ * A type declared inside a class and the parse of a class are mutually
+ * recursive: parse_class's body loop hands a nested `class` to
+ * parse_nested_type, which parses it with parse_class again, qualified by the
+ * enclosing name.
+ */
+static int parse_class(st_parser *p, st_class **out, const char *prefix);
+static int parse_nested_type(st_parser *p, st_class *outer);
+
+/*
+ * The two type kinds a nested declaration can also be, and that parse_nested_type
+ * only CONSUMES: neither has an emission anywhere yet, so the declaration is read
+ * — nothing goes unchecked — and counted, for the emitter to refuse by name.
+ */
+static int parse_struct(st_parser *p);
+static int parse_enum(st_parser *p);
 
 /*
  * A call argument is `label: value`. The internal name follows the label
@@ -1972,8 +2021,28 @@ parse_decl(st_parser *p, st_decl **out)
 
 /* ---- the file ---------------------------------------------------------- */
 
+/*
+ * `class` begins a nested class (`class Inner { … }`) or a class METHOD
+ * (`class method foo()`), and only the next word tells them apart. One token of
+ * lookahead, saved and put back — the same mechanism `parse_args` uses to tell
+ * `label: value` from a positional argument.
+ */
 static int
-parse_class(st_parser *p, st_class **out)
+class_is_method(st_parser *p)
+{
+	st_lexer saved_lexer = p->lx;
+	st_token saved_token = p->tok;
+	int is_method;
+
+	bump(p);
+	is_method = at_keyword(p, "method");
+	p->lx = saved_lexer;
+	p->tok = saved_token;
+	return is_method;
+}
+
+static int
+parse_class(st_parser *p, st_class **out, const char *prefix)
 {
 	st_class *c = st_arena_alloc(sizeof(st_class));
 	st_decl *head = NULL;
@@ -1987,6 +2056,26 @@ parse_class(st_parser *p, st_class **out)
 	}
 	if (!take_name(p, &c->name)) {
 		return 0;
+	}
+	/*
+	 * A nested class carries its QUALIFIED name: `Bar` inside `Foo` is the
+	 * Sterling type `Foo.Bar`, and that is what a `.ag` file writes and what
+	 * the emitter mangles. Building it here means the rest of the compiler
+	 * never has to know a type was nested — `Foo.Bar` is a name, and the
+	 * mangling is lexical.
+	 */
+	if (prefix != NULL) {
+		size_t plen = strlen(prefix);
+		size_t nlen = strlen(c->name.text);
+		char *qualified = st_arena_alloc(plen + nlen + 2);
+
+		if (qualified == NULL) {
+			return fail(p, "out of memory");
+		}
+		memcpy(qualified, prefix, plen);
+		qualified[plen] = '.';
+		memcpy(qualified + plen + 1, c->name.text, nlen + 1);
+		c->name.text = qualified;
 	}
 	/*
 	 * §7.26/§7.63's parameter list, `class Box<T>`. The scan is
@@ -2046,6 +2135,25 @@ parse_class(st_parser *p, st_class **out)
 	while (!at_punct(p, '}') && p->tok.kind != ST_EOF) {
 		st_decl *d = NULL;
 
+		/*
+		 * A type declared inside a class. It is a declaration the body loop
+		 * would otherwise hand to parse_decl, which has no case for a nested
+		 * `class`/`struct`/`enum` and would fail at the keyword — which is
+		 * how `class Outer { struct Inner { … } }` came to be a parse error.
+		 *
+		 * `class` is ambiguous with a CLASS METHOD, and telling them apart
+		 * needs the next word: `class Inner { … }` is a nested type and
+		 * `class method foo()` is a declaration. Testing the keyword alone
+		 * sent `class method baz` to parse_nested_type, which then failed at
+		 * `baz` — a regression the golden's specimen caught on the first run.
+		 */
+		if (at_keyword(p, "struct") || at_keyword(p, "enum") ||
+		    (at_keyword(p, "class") && !class_is_method(p))) {
+			if (!parse_nested_type(p, c)) {
+				return 0;
+			}
+			continue;
+		}
 		if (!parse_decl(p, &d)) {
 			return 0;
 		}
@@ -2058,6 +2166,57 @@ parse_class(st_parser *p, st_class **out)
 	c->decls = head;
 	*out = c;
 	return 1;
+}
+
+/*
+ * A type declared inside another. `Bar` inside `Foo` is the type `Foo.Bar` —
+ * the qualified name is what a Sterling author writes, and the ObjC name is
+ * that name with the dot mangled to `_`, computed LEXICALLY at emission, so
+ * nothing here has to be resolved through a symbol table.
+ *
+ * A nested CLASS is recorded and emitted like any other class. A nested struct
+ * or enum is not emittable at all — neither kind has an emission anywhere yet —
+ * so it is counted on the outer class and the emitter refuses BY NAME, which is
+ * the same treatment a top-level one gets. Dropping it instead would be the bug
+ * this compiler has spent its whole length removing.
+ */
+static int
+parse_nested_type(st_parser *p, st_class *outer)
+{
+	if (at_keyword(p, "struct")) {
+		if (!parse_struct(p)) {
+			return 0;
+		}
+		outer->struct_count++;
+		return 1;
+	}
+	if (at_keyword(p, "enum")) {
+		if (!parse_enum(p)) {
+			return 0;
+		}
+		outer->enum_count++;
+		return 1;
+	}
+	{
+		st_class *inner = NULL;
+		st_class **grown;
+		size_t want = outer->nested_count + 1;
+
+		if (!parse_class(p, &inner, outer->name.text)) {
+			return 0;
+		}
+		grown = st_arena_alloc(want * sizeof(st_class *));
+		if (grown == NULL) {
+			return fail(p, "out of memory");
+		}
+		if (outer->nested_count > 0) {
+			memcpy(grown, outer->nested,
+			       outer->nested_count * sizeof(st_class *));
+		}
+		outer->nested = grown;
+		outer->nested[outer->nested_count++] = inner;
+		return 1;
+	}
 }
 
 /*
@@ -2484,6 +2643,12 @@ st_parse(const char *src, const char **error)
 				st_arena_free();
 				return NULL;
 			}
+			/*
+			 * COUNTED, not dropped: the tree holds no struct, so the
+			 * emitter has to be told one was here or it writes a file
+			 * missing it and says nothing.
+			 */
+			program->struct_count++;
 			continue;
 		}
 		if (at_keyword(&p, "enum")) {
@@ -2492,6 +2657,8 @@ st_parse(const char *src, const char **error)
 				st_arena_free();
 				return NULL;
 			}
+			/* Counted, for the same reason as `struct` above. */
+			program->enum_count++;
 			continue;
 		}
 		if (at_keyword(&p, "protocol")) {
@@ -2556,7 +2723,7 @@ st_parse(const char *src, const char **error)
 			st_arena_free();
 			return NULL;
 		}
-		if (!parse_class(&p, &c)) {
+		if (!parse_class(&p, &c, NULL)) {
 			*error = p.error != NULL ? p.error : "parse error";
 			st_arena_free();
 			return NULL;

@@ -343,10 +343,33 @@ bugs actually are.
   - Two of these still refuse, and the reason is the same §4 table: a nullable
     SCALAR is §7.62's pair-struct rather than a qualifier, and a name §4's table
     does not cover cannot be classified at all — `Owner?` could be either.
-  - **Nested type declarations are a parse error, and the language allows them.**
-    `class Outer { struct Inner { … } }` is rejected at the `struct` — loud, not a
-    silent loss, but it is a gap rather than a decision, and the emitted code
-    would need §9.x's name mangling.
+  - **Nested types: `Foo.Bar` in Sterling, `Foo_Bar` in Objective-C (2026-09, a
+    decision recorded here rather than in `sterling-syntax.md`, which is silent).**
+    A type declared inside another is *written* dotted — `class Inner` inside
+    `Outer` is the type `Outer.Inner` — and Objective-C has no nesting, so it is
+    emitted as a class of its own under a mangled name. **The dot is the whole of
+    the mangling**, which is why it can live in the emitter as a lexical rule:
+    `map_type` stays a pure name-to-name function with no symbol table behind it,
+    so a reference resolves the same whether the type is in this file, in another
+    one, or imported. The cost, stated rather than discovered: a top-level class
+    literally named `Outer_Inner` collides with `Inner` nested in `Outer`.
+    - Nested **classes** are emitted, before the class that contains them, so a
+      property of one is a complete type rather than a forward-declared pointer.
+    - Nested **structs and enums** are not emittable at all — neither kind has an
+      emission anywhere yet — so they are counted on the outer class and the
+      emitter refuses it BY NAME.
+    - **A locally declared class is a REFERENCE, and §4's table cannot say so**:
+      that table's class rows are the prelude's. So the set of names this file
+      declares is what answers "is this a class?", and it decides both the pointer
+      (`Outer_Inner *item`, not `Outer_Inner item`) and §5's `const` placement and
+      §7.52's ownership inference. An *imported* name still gets neither — §3's
+      `property x: Foo` emits a by-value `Foo item;` and therefore fails at clang,
+      which is loud, and §9.5's header importer is what will make it right.
+    - **§3's `@class` forward declarations are emitted** — one per class this file
+      declares that a declaration here names as a type — because a nested type is
+      emitted after its outer class and two classes may name each other. `@class`
+      is all a POINTER needs; a superclass needs the whole `@interface`, so a
+      subclass still has to follow its superclass in the source.
   - **`copy` is a reserved word**, being one of §5's attribute keywords, so a
     local or method cannot be *named* `copy`. That is the language's consequence
     and not a compiler bug, but it is worth knowing before reaching for the name.

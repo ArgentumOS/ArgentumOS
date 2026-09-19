@@ -249,7 +249,7 @@ typedef struct st_decl {
  * implement every required member is the first thing in this compiler that
  * cannot be decided from syntax, so the list has to survive the parse.
  */
-typedef struct {
+typedef struct st_class {
 	st_name name;
 	st_name superclass;
 	st_name *conformances;
@@ -263,6 +263,20 @@ typedef struct {
 	st_name *parameters;
 	size_t parameter_count;
 	st_decl *decls;
+	/*
+	 * A type declared INSIDE this one. `name` carries the QUALIFIED Sterling
+	 * name — a `Bar` inside `Foo` is the type `Foo.Bar` — and the ObjC name is
+	 * mangled from it lexically (`.` -> `_`), so nothing here needs a symbol
+	 * table read to emit it.
+	 *
+	 * Nested CLASSES are emitted; a nested struct or enum is not, because
+	 * neither kind has an emission at all yet, so those are counted and the
+	 * emitter refuses them by name rather than dropping them.
+	 */
+	struct st_class **nested;
+	size_t nested_count;
+	size_t struct_count;
+	size_t enum_count;
 } st_class;
 
 /*
@@ -292,6 +306,15 @@ typedef struct {
 	 * `@interface X (Name)` plus a second `@implementation`).
 	 */
 	size_t extension_count;
+	/*
+	 * The two types with no emission ANYWHERE yet: a top-level struct and a
+	 * top-level enum. Both were parsed and dropped with the parse reporting
+	 * success — `struct Point { … }` alone reported "a program with no class",
+	 * which names the wrong loss, and beside a class it reported nothing at
+	 * all. Counted so the emitter can name what it cannot write.
+	 */
+	size_t struct_count;
+	size_t enum_count;
 } st_program;
 
 /* ---- the arena --------------------------------------------------------- */

@@ -1,0 +1,6 @@
+/* A nested enum, same reason. */
+class RefuseNestedEnum: Object {
+    enum Kind {
+        case alpha
+    }
+}

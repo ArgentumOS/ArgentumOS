@@ -1,0 +1,44 @@
+/*
+ * EmitsNested.ag — types declared inside types.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * `Bar` declared inside `Foo` is the type `Foo.Bar` in Sterling, and Objective-C
+ * has no nesting, so it is emitted as a class of its own under a MANGLED name:
+ * the dot becomes an underscore, `Foo.Bar` -> `Foo_Bar`.
+ *
+ * The mangling is deliberately LEXICAL — the dot is the whole rule — which keeps
+ * `map_type` a pure name-to-name function with no symbol table behind it, so a
+ * reference resolves the same way whether the type is in this file, another one,
+ * or imported. What that costs is stated in the plan: a top-level class literally
+ * named `Outer_Inner` would collide with `Inner` nested in `Outer`.
+ *
+ * Three facts this file pins down, none of which a non-nested specimen can:
+ *
+ *   - `Outer.Inner` is a TYPE, so a property of it is a REFERENCE:
+ *     `Outer_Inner *item`, not `Outer_Inner item`. §4's table has never heard of
+ *     a locally declared class, so the pointer is added from what the file
+ *     declares.
+ *   - the nested class is emitted BEFORE the class it is nested in, so a property
+ *     of it is a complete type rather than a forward-declared pointer;
+ *   - and `@class` lines appear for both, because §3 makes the emitter manage
+ *     them — which is what lets `Standalone` name `Outer` and `Outer` name its
+ *     own nested type regardless of the order they are written in.
+ */
+class Outer: Object {
+    class Inner: Object {
+        property depth: Int32
+    }
+
+    property item: Outer.Inner
+    property label: String
+
+    method make() -> Outer.Inner {
+        return self.item;
+    }
+}
+
+class Standalone: Object {
+    property outer: Outer
+    property note: String
+}

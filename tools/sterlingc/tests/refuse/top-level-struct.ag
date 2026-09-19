@@ -1,0 +1,11 @@
+/* A struct has no emission at all, so it is refused rather than dropped. */
+struct Point {
+    var x: Float32 = 0
+    var y: Float32 = 0
+}
+
+class RefuseStruct: Object {
+    method m() -> Void {
+        return;
+    }
+}
