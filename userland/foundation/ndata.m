@@ -13,6 +13,7 @@
 #import <foundation/NSString.h>
 #import <foundation/NSError.h>
 #import <foundation/NSException.h>	/* the OOM path raises (D4, §11.6.1) */
+#import <foundation/NSURL.h>
 #import <foundation/NSDictionary.h>	/* the userInfo dictionaries below need the CLASS, not a @class */
 #import "fncodec.h"
 #include <stdlib.h>
@@ -804,4 +805,66 @@ static int base64Value(unsigned char c)
 	return [[NSData alloc] initWithBytes:[self bytes] length:[self length]];
 }
 
+
+/*
+ * THE URL FORMS ARE THE FILE FORMS ONCE THE URL IS A PATH (D7's kind (D), 2026-09-19). A FILE url
+ * maps through -path, which is the F8 rule for the FSH's paths; every OTHER scheme is REFUSED with
+ * an NSError rather than silently answering nil, because this Foundation has no fetching machinery
+ * at all — there is no NSURLSession anywhere in the library. That refusal is a DEVIATION and it is
+ * REGISTERED as D9 of §11.6.1 with ground (ii), which is what the policy requires of a refusal
+ * this library chooses rather than one it cannot avoid.
+ */
+static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
+{
+	if (url == nil) {
+		return nil;
+	}
+	if ([url isFileURL]) {
+		return [url path];
+	}
+	if (errorPtr != NULL) {
+		*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain"
+						code:262	/* NSFileReadUnsupportedSchemeError */
+					    userInfo:nil];
+	}
+	return nil;
+}
+
++ (NSData *)dataWithContentsOfURL:(NSURL *)url
+{
+	return [[self alloc] initWithContentsOfURL:url];
+}
+
++ (NSData *)dataWithContentsOfURL:(NSURL *)url options:(NSDataReadingOptions)options error:(NSError **)errorPtr
+{
+	return [[self alloc] initWithContentsOfURL:url options:options error:errorPtr];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+{
+	NSString *path = fn_path_for_url(url, NULL);
+
+	return (path == nil) ? nil : [self initWithContentsOfFile:path];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url options:(NSDataReadingOptions)options error:(NSError **)errorPtr
+{
+	NSString *path = fn_path_for_url(url, errorPtr);
+
+	return (path == nil) ? nil : [self initWithContentsOfFile:path options:options error:errorPtr];
+}
+
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile
+{
+	NSString *path = fn_path_for_url(url, NULL);
+
+	return (path == nil) ? NO : [self writeToFile:path atomically:useAuxiliaryFile];
+}
+
+- (BOOL)writeToURL:(NSURL *)url options:(NSDataWritingOptions)options error:(NSError **)errorPtr
+{
+	NSString *path = fn_path_for_url(url, errorPtr);
+
+	return (path == nil) ? NO : [self writeToFile:path options:options error:errorPtr];
+}
 @end

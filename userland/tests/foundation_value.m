@@ -273,6 +273,8 @@ int main(void)
 			"dataWithBytesNoCopy:length:freeWhenDone:", "dataWithData:",
 			"dataWithContentsOfFile:", "dataWithContentsOfFile:options:error:",
 			"dataWithBase64EncodedString:", "dataWithBase64EncodedString:options:",
+			/* D7's kind (D): these SHIPPED on 2026-09-19, so the inventory demands them. */
+			"dataWithContentsOfURL:", "dataWithContentsOfURL:options:error:",
 			NULL
 		};
 		static const char *instanceSelectors[] = {
@@ -286,6 +288,8 @@ int main(void)
 			"subdataWithRange:", "rangeOfData:options:range:",
 			"base64EncodedStringWithOptions:", "base64EncodedDataWithOptions:",
 			"writeToFile:atomically:", "writeToFile:options:error:",
+			"initWithContentsOfURL:", "initWithContentsOfURL:options:error:",
+			"writeToURL:atomically:", "writeToURL:options:error:",
 			"enumerateByteRangesUsingBlock:",
 			"isEqualToData:", "isEqual:", "hash", "description", "copy", "mutableCopy",
 			NULL
@@ -304,14 +308,12 @@ int main(void)
 			"dataWithContentsOfMappedFile:",	/* superseded by the :options: form */
 			"initWithContentsOfMappedFile:",	/* superseded by the :options: form */
 			"getBytes:",				/* superseded by -getBytes:length: */
-			/* The URL-taking forms: NSURL itself SHIPS now (F8), but these methods are not
-			 * written. */
-			"dataWithContentsOfURL:",		/* the URL-taking forms are not shipped */
-			"dataWithContentsOfURL:options:error:",	/* the URL-taking forms are not shipped */
-			"initWithContentsOfURL:",		/* the URL-taking forms are not shipped */
-			"initWithContentsOfURL:options:error:",	/* the URL-taking forms are not shipped */
-			"writeToURL:atomically:",		/* the URL-taking forms are not shipped */
-			"writeToURL:options:error:",		/* the URL-taking forms are not shipped */
+			/* THE SIX URL-TAKING FORMS USED TO BE LISTED HERE as "not shipped". They are
+			 * IMPLEMENTED now (delegation to the file forms once a file URL is a path, with
+			 * a REGISTERED refusal for every other scheme — §11.6.1 D9), so they moved to
+			 * the two required lists above IN THE SAME CHANGE. This is the retirement the
+			 * compression entries' note describes, done on purpose instead of being found
+			 * later by a probe going red. */
 			/* THE TWO COMPRESSION SELECTORS USED TO BE LISTED HERE as "a compression
 			 * codec" this Foundation does not ship. **F12 SHIPPED THEM AND THIS LIST WAS NOT
 			 * UPDATED WITH IT, SO THIS PROBE FAILED ITS OWN INVENTORY CHECK** — reporting them

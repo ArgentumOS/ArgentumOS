@@ -29,12 +29,9 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_value"
-CHECKS = ("number-convert", "number-value", "number-compare", "number-description",
-          "number-api-complete", "number-matrix",
-          "data-roundtrip", "data-mutable", "date", "cross-tu",
-          "data-api-complete", "date-api-complete", "data-extras",
-          "data-base64", "data-mutable-extras", "date-extras",
-          "data-block-enumeration")
+CHECKS = (
+          "number-convert", "number-value", "number-compare", "number-description", "number-api-complete", "number-matrix", "data-roundtrip", "data-mutable", "date", "cross-tu", "data-api-complete", "date-api-complete", "data-extras", "data-base64", "data-mutable-extras", "date-extras", "data-block-enumeration",
+          )
 
 
 class Case(BaseCase):

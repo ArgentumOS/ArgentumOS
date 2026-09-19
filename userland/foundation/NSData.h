@@ -41,6 +41,8 @@
  * answers NULL for that same object; the declaration said nonnull, so the library's own empty
  * constructors were warnings against their own header. The MUTATORS (-appendBytes:length: and
  * the -replaceBytesInRange: forms) stay NONNULL, because a NULL buffer there is meaningless. */
+@class NSURL;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSData : NSObject <NSCopying>
@@ -100,6 +102,15 @@ typedef enum {
 + (nullable NSData *)dataWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string;
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options;
+
+/* THE URL FORMS (D7's kind (D)). Apple's nullability: the READING forms are nullable (a URL can
+ * fail), the WRITING forms answer BOOL with an error out-parameter. */
++ (nullable NSData *)dataWithContentsOfURL:(NSURL *)url;
++ (nullable NSData *)dataWithContentsOfURL:(NSURL *)url options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable id)initWithContentsOfURL:(NSURL *)url;
+- (nullable id)initWithContentsOfURL:(NSURL *)url options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
+- (BOOL)writeToURL:(NSURL *)url options:(NSDataWritingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
 
 - (id)initWithBytes:(const void * _Nullable)bytes length:(size_t)length;
 - (nullable id)initWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length;
