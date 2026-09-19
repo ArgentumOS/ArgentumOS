@@ -2306,7 +2306,15 @@ NSString *NSStringFromSelector(SEL aSelector)
 SEL NSSelectorFromString(NSString *aSelectorName)
 {
 	if (aSelectorName == nil) {
+		/* APPLE'S DOCUMENTED BEHAVIOUR, AND APPLE'S HEADER SAYS NONNULL (D8, §11.6.1). The
+		 * declaration follows Apple's header because the API surface is the specification; the
+		 * writer follows Apple's documentation because that is the behaviour a program depends
+		 * on; and the build keeps its zero-warning rule here, which is a house rule about THIS
+		 * build and not a claim about the API. Apple's own build must do the same thing. */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
 		return (SEL)0;
+#pragma clang diagnostic pop
 	}
 	return sel_registerName([aSelectorName UTF8String]);
 }

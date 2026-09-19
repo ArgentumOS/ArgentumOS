@@ -195,11 +195,14 @@ __attribute__((objc_root_class))
 NSString * _Nullable NSStringFromClass(Class _Nullable aClass);
 Class _Nullable NSClassFromString(NSString *aClassName);
 NSString *NSStringFromSelector(SEL aSelector);
-/* THE ANNOTATION STATES WHAT THE WRITER DOES, and this one answers the NULL SELECTOR for a nil
- * name — so it is NULLABLE, and that is a DEVIATION from Apple's nonnull annotation (D8 of
- * §11.6.1). It is written down rather than papered over: the alternative is a louder writer or
- * Apple's contract, and that choice is not this comment's to make. */
-SEL _Nullable NSSelectorFromString(NSString *aSelectorName);
+/* APPLE'S HEADER IS THE SPECIFICATION, AND APPLE'S DOCUMENTATION IS THE BEHAVIOUR, and here the
+ * two disagree: the declaration is nonnull, while the documentation says "if aSelectorName is nil,
+ * or cannot be converted to UTF-8 ... it returns (SEL)0". D8 of §11.6.1 asked which one wins, and
+ * the answer is the API surface — so this is declared nonnull exactly as Apple's is, the writer
+ * keeps returning the null selector exactly as Apple documents, and the single building site
+ * silences -Wnonnull (which Apple's own build must do as well). A nullable here was NOT necessary,
+ * which is the only test the policy allows. */
+SEL NSSelectorFromString(NSString *aSelectorName);
 NSString *NSStringFromRange(NSRange range);
 
 /* THE PAGE FUNCTIONS (W2e): a region of the process's address space, named for pages. They live

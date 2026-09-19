@@ -187,8 +187,12 @@ int main(void)
 			"decimalValue",			/* the NSDecimal conversion */
 			"numberWithDecimal:",		/* the NSDecimal constructor */
 			"initWithDecimal:",		/* the NSDecimal initialiser */
-			/* NSValue is not shipped, so the API NSNumber inherits from it in
-			 * Cocoa has no home here. */
+			/* THE REASON THIS CARRIED WAS STALE: it said "NSValue is not shipped", and
+			 * NSValue HAS shipped (it has its own probe and case). The entries stay —
+			 * they are NSValue's methods in Cocoa, and what this inventory checks is
+			 * NSNumber's own surface, where they are correctly ABSENT — but a reason
+			 * that is false is a claim about the tree, which is the failure mode §11
+			 * exists to expose. */
 			"valueWithBytes:objCType:",	/* NSValue */
 			"initWithBytes:objCType:",	/* NSValue */
 			"getValue:",			/* NSValue */
