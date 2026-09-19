@@ -44,6 +44,7 @@
 #import <foundation/NSByteOrder.h>
 #import <foundation/NSUUID.h>
 #import <foundation/NSDateInterval.h>
+#import <foundation/NSValueTransformer.h>
 #import <foundation/NSObject.h>
 #import <foundation/NSGeometry.h>
 #import <foundation/NSString.h>

@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   64   open  178   struck   31
+#   class      shipped   65   open  177   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
 #   case       shipped  186   open 1023   struck   93
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
-#   typealias  shipped   18   open   55   struck    3
+#   typealias  shipped   19   open   54   struck    3
 #   struct     shipped    6   open    2   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1599,7 +1599,7 @@ class	struck	NSUserNotificationCenter		App Support / User Notifications	deprecat
 class	open	NSUserScriptTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	open	NSUserUnixTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	shipped	NSValue		Low-Level Utilities / Value Wrappers and Transformations	-	objc
-class	open	NSValueTransformer		Low-Level Utilities / Value Wrappers and Transformations	-	objc
+class	shipped	NSValueTransformer		Low-Level Utilities / Value Wrappers and Transformations	-	objc
 class	open	NSWhoseSpecifier		App Support / Object Specifiers	-	objc
 class	open	NSXMLDTD		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLDTDNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
@@ -2344,7 +2344,7 @@ typealias	open	NSUserAppleScriptTaskCompletionHandler	NSUserAppleScriptTask	Low-
 typealias	open	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
 typealias	open	NSUserScriptTaskCompletionHandler	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
 typealias	open	NSUserUnixTaskCompletionHandler	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
-typealias	open	NSValueTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
+typealias	shipped	NSValueTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
 typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc

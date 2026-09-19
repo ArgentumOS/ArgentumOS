@@ -20,6 +20,36 @@
 #import <objc/runtime.h>
 #include <string.h>
 
+/*
+ * A TRANSFORMER WHOSE NAME IS ITS CLASS NAME, so the fallback path is exercised by the same fixture
+ * as the registry path - and one that is REVERSIBLE, so both directions are real arithmetic rather
+ * than a pass-through.
+ */
+@interface FnDoubler : NSValueTransformer
+@end
+
+@implementation FnDoubler
++ (Class)transformedValueClass
+{
+	return [NSNumber class];
+}
+
++ (BOOL)allowsReverseTransformation
+{
+	return YES;
+}
+
+- (id)transformedValue:(id)value
+{
+	return @([value doubleValue] * 2);
+}
+
+- (id)reverseTransformedValue:(id)value
+{
+	return @([value doubleValue] / 2);
+}
+@end
+
 static int okc, failc;
 
 static void check(const char *name, int ok, const char *detail)
@@ -782,6 +812,28 @@ int main(void)
 		      [first containsDate:base] &&
 		      ![first containsDate:[NSDate dateWithTimeIntervalSinceReferenceDate:1101.0]],
 		      "the intersection's ends are neither input's, and a disjoint pair answers nil");
+	}
+
+	{
+		/* NSValueTransformer (W2h): the registry holds INSTANCES under names, and looking a name up
+		 * FALLS BACK to the class of that name - which is why a transformer whose name matches its
+		 * class needs no registration at all. The fixture's name IS its class name, so one fixture
+		 * exercises both paths. */
+		FnDoubler *doubler = [[FnDoubler alloc] init];
+
+		[NSValueTransformer setValueTransformer:doubler forName:@"FnDoublerByName"];
+		check("value-transformer-registry",
+		      [NSValueTransformer valueTransformerForName:@"FnDoublerByName"] == doubler &&
+		      [NSValueTransformer valueTransformerForName:@"FnDoubler"] != nil &&
+		      [NSValueTransformer valueTransformerForName:@"NoSuchTransformerAnywhere"] == nil,
+		      "an instance by name, a CLASS by its own name, and nil for a name that is neither");
+
+		check("value-transformer-transform",
+		      [[doubler transformedValue:@21] doubleValue] == 42.0 &&
+		      [FnDoubler allowsReverseTransformation] &&
+		      [[doubler reverseTransformedValue:@42] doubleValue] == 21.0 &&
+		      [FnDoubler transformedValueClass] == [NSNumber class],
+		      "forward, reverse, and the class it answers for");
 	}
 
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
