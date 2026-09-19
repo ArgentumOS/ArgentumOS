@@ -4154,13 +4154,36 @@ does NOT apply.
 exercises `NSCountKeyValueOperator` **through the API** — `[NSArray … valueForKeyPath:…]` answers 3 —
 which makes the constant more than a spelling.
 
-**AN OPEN QUESTION THIS PASS TURNED UP AND DID NOT RESOLVE:** the KVC implementation in this tree
-mentions four operator strings (`@count`, `@sum`, `@distinctUnionOfObjects`, `@distinctUnionOfArrays`)
-and its error message lists more, but **its dispatch is not a string comparison in that file**, so
-**how many of the eleven operators the BEHAVIOUR actually implements was not established.** The
-constants ship either way (their values are Apple's syntax and their rows are surface rows), and a
-partial operator set is a *method-level* gap the sweep cannot see — so it is recorded here as a
-question to answer, with `@count` known-good because the probe exercises it.
+**A RETRACTION, AND TWO REAL DEVIATIONS THE QUESTION LED TO.** The "open question" that stood here
+was **mine and it was wrong**: all eleven operators were *already demanded by the probe* —
+`kvc-operators` exercises the seven folds and `kvc-collection-unions` the four collection ones, both
+green. The code read misled me because `fn_fold` compares **bare names** after the caller strips the
+leading `@` (`[operator substringFromIndex:1]`), so searching the file for `"@avg"` finds nothing. It
+is the same lesson as §11.2's "declaration form is not the contract", one level down — and the useful
+half of the mistake is what it *did* turn up, because reading that function closely found two real
+deviations, both now fixed and both now asserted:
+
+1. **`NSArray -valueForKey:` dropped nils instead of substituting `NSNull`.** The code said so and
+   said why — *"There is no NSNull here, so the element is simply skipped"* — and that was true when
+   it was written. `NSNull` shipped at F13.8c and **the claim outlived its truth**. Cocoa's contract
+   is substitution so the mapping keeps its shape, which is observable: the mapped array's count
+   follows the RECEIVER's. Fixed, and `kvc-null-shape` asserts it (count preserved, the hole is the
+   singleton itself).
+2. **The operator arm accepted only `NSArray`.** Apple's collection operators apply to an array, a set
+   *and* a dictionary; our own `NSDictionary -valueForKey:` already folded an `@`-led key through
+   `allValues`, so **one spelling answered where the other raised, inside this same library.** Fixed,
+   and `kvc-operator-receivers` asserts it as a **pair** — the two dictionary spellings must agree —
+   which is the shape that would have caught it the first time.
+
+**THE LESSON IS ABOUT THE AUDIT'S COVERAGE SHAPE, not a missing mechanism:** `kvc-collections`
+exercised the family through ONE receiver kind (an array), so the receiver rule was untested while
+the operators themselves were fully covered. A family whose documented receivers are three types needs
+a check per receiver kind — the audit was present and honest, and simply aimed at one of the three.
+
+**STILL MEASURED-BUT-UNVERIFIED-AGAINST-APPLE (asserted as behaviour, not as Apple's wording):**
+`@sum`/`@avg` answer a double-typed `NSNumber` here, and the empty-collection guard is `@sum` → 0 with
+the others raising. Both are stated in the implementation; neither is claimed to match Apple's
+undocumented typing, and §11.5's measure exclusion is what that falls under.
 
 **THE ENUM'S VALUES *ARE* OURS, for the contrast:** `NSKeyValueSetMutationKind` is 1–4 in this tree,
 stated in the header, because Apple publishes the four case names and not their numbers — the same

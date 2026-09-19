@@ -348,6 +348,52 @@ int main(void)
 	}
 
 	{
+		/* THE MAPPING KEEPS ITS SHAPE: a nil answer becomes NSNull. This probe could not assert
+		 * it before NSNull existed (F13.8c) — the code skipped the element and said there was no
+		 * NSNull to substitute. Now the difference is observable, so it is asserted: the mapped
+		 * array's count follows the RECEIVER's, and the hole is the singleton itself. */
+		NSArray *mixed = [NSArray arrayWithObjects:
+			@{ @"a" : @7 },
+			@{},
+			@{ @"a" : @9 },
+			nil];
+		NSArray *mapped = [mixed valueForKey:@"a"];
+
+		check("kvc-null-shape",
+		      mapped != nil && [mapped count] == 3 &&
+		      [[mapped objectAtIndex:0] intValue] == 7 &&
+		      [mapped objectAtIndex:1] == [NSNull null] &&
+		      [[mapped objectAtIndex:2] intValue] == 9,
+		      mapped == nil ? "(no mapping)"
+		      : [[NSString stringWithFormat:@"mapped=%lu null=%d",
+			(unsigned long)[mapped count],
+			(int)([mapped objectAtIndex:1] == [NSNull null])] UTF8String]);
+	}
+
+	{
+		/* THE THREE SPELLINGS AGREE. Apple's collection operators apply to an array, a set AND a
+		 * dictionary; this arm used to accept only the array and RAISE for the other two, while
+		 * the -valueForKey: spelling beside it already folded a dictionary's values. One family
+		 * answering and raising depending on which spelling was typed is what this asserts
+		 * against — measured as a PAIR, the two spellings for the dictionary. */
+		NSDictionary *dict = @{ @"a" : @1, @"b" : @2 };
+		NSSet *set = [NSSet setWithArray:@[ @1, @2, @3 ]];
+
+		check("kvc-operator-receivers",
+		      dict != nil && set != nil &&
+		      [[dict valueForKey:@"@count"] intValue] == 2 &&
+		      [[dict valueForKeyPath:@"@count"] intValue] == 2 &&
+		      [[dict valueForKeyPath:@"@sum"] intValue] == 3 &&
+		      [[set valueForKeyPath:@"@count"] intValue] == 3 &&
+		      [[set valueForKeyPath:@"@min"] intValue] == 1 &&
+		      [[set valueForKeyPath:@"@max"] intValue] == 3,
+		      dict == nil ? "(no dict)"
+		      : [[NSString stringWithFormat:@"dict=%@/%@ set=%@",
+			[dict valueForKey:@"@count"], [dict valueForKeyPath:@"@count"],
+			[set valueForKeyPath:@"@count"]] UTF8String]);
+	}
+
+	{
 		KVCProbeIvars *o = [[KVCProbeIvars alloc] init];
 		KVCProbeHook *hook = [[KVCProbeHook alloc] init];
 		int undefinedRaised = 0;

@@ -36,6 +36,7 @@
 #import <foundation/NSArray.h>
 #import <foundation/NSSet.h>
 #import <foundation/NSDictionary.h>
+#import <foundation/NSNull.h>	/* the mapping keeps its SHAPE: nil becomes NSNull */
 #import <foundation/NSException.h>
 #import <foundation/NSError.h>
 #import <foundation/NSMethodSignature.h>
@@ -661,16 +662,31 @@ static id fn_fold(NSString *operator, NSArray *values)
 		? nil : [keyPath substringFromIndex:dot.location + 1];
 	NSArray *values;
 
-	if (![self isKindOfClass:[NSArray class]]) {
+	/*
+	 * THE RECEIVER IS ANY COLLECTION, which is Apple's rule for the collection operators and
+	 * what makes the three spellings of this family agree: an array folds over its ELEMENTS, a
+	 * set over its MEMBERS, a dictionary over its VALUES — the same answer the -valueForKey:
+	 * spelling next to it already gave for a dictionary, because that spelling routes an @-led
+	 * key through [allValues valueForKeyPath:]. Until this arm accepted all three, one spelling
+	 * raised where the other answered, inside this same library.
+	 */
+	if ([self isKindOfClass:[NSArray class]]) {
+		values = (NSArray *)self;
+	} else if ([self isKindOfClass:[NSSet class]]) {
+		values = [(NSSet *)self allObjects];
+	} else if ([self isKindOfClass:[NSDictionary class]]) {
+		values = [(NSDictionary *)self allValues];
+	} else {
 		[NSException raise:NSInvalidArgumentException
 			    format:@"the operator %@ needs a collection, and %@ is not one",
 				   operator, [self class]];
+		values = nil;	/* not reached: -raise: does not return */
 	}
 	if (rest == nil || [rest lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
-		/* `@count` and the unions apply to the receiver itself. */
-		values = (NSArray *)self;
+		/* `@count` and the unions apply to the collection itself. */
+		;
 	} else {
-		values = [(NSArray *)self valueForKey:rest];
+		values = [values valueForKey:rest];
 	}
 	return fn_fold([operator substringFromIndex:1], values);
 }
@@ -690,12 +706,12 @@ static id fn_fold(NSString *operator, NSArray *values)
 		id element = [self objectAtIndex:i];
 		id value = [element valueForKey:key];
 
-		/* Cocoa substitutes NSNull for a nil so the mapping keeps its shape.
-		 * There is no NSNull here, so the element is simply skipped — and that
-		 * is stated rather than left to be discovered. */
-		if (value != nil) {
-			[out addObject:value];
-		}
+		/* THE MAPPING KEEPS ITS SHAPE: a nil answer becomes NSNull. That is Cocoa's
+		 * contract, and the difference is observable — the mapped array's count follows
+		 * the RECEIVER's, so skipping the element changes the answer. The comment here
+		 * used to say there was no NSNull, and it was true when it was written; NSNull
+		 * shipped at F13.8c and the claim outlived its truth. */
+		[out addObject:(value != nil) ? value : (id)[NSNull null]];
 	}
 	return out;
 }

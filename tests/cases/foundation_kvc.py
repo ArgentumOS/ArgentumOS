@@ -25,6 +25,10 @@ being checked.
                         @distinctUnionOfSets: the operators whose VALUES are collections, and
                         therefore the ones that needed an NSSet to exist at all;
   * `kvc-collections` — the array MAPS and the dictionary LOOKS UP (or folds on @);
+  * `kvc-null-shape` — a nil answer in a mapped array becomes NSNull, so the mapping keeps its
+                        SHAPE (the count follows the receiver) and the hole is the singleton itself;
+  * `kvc-operator-receivers` — the three spellings of one family AGREE: an array, a set and a
+                        dictionary all fold, where the operator arm used to accept only an array;
   * `kvc-undefined`   — THE HONEST DEFAULTS: an undefined key raises, a nil
                         through a scalar raises, and an override is what answers;
   * `kvc-validate`    — the -validate<Key>:error: rule, present and absent;
@@ -47,7 +51,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_kvc"
 CHECKS = ("kvc-accessors", "kvc-ivar", "kvc-scalar-accessor", "kvc-ivar-super",
           "kvc-nil-ivar", "kvc-keypath", "kvc-operators", "kvc-collection-unions",
-          "kvc-collections", "kvc-undefined", "kvc-validate", "kvc-refusals",
+          "kvc-collections", "kvc-null-shape", "kvc-operator-receivers", "kvc-undefined", "kvc-validate", "kvc-refusals",
           "kvc-kvo-present", "cross-tu")
 
 
