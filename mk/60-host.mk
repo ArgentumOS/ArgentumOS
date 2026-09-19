@@ -30,33 +30,22 @@
 #     compiled pool path, the ARC marker), and the answer came from BISECTION - the probe's own
 #     support unit in a small ARC file deallocated correctly, the probe file did not, and an A/B of
 #     the build shapes named it in one step.
-#   * STILL OPEN, two checks, both in the REDO path: undo-redo-reapplies and (as a cascade)
-#     undo-remove-all-actions. NARROWED TO A CRASH AND A MECHANISM, in a five-line reproducer
-#     (/tmp scratch): an NSUndoManager, a box that registers its inverse, add two items, undo, redo.
-#     `-performSelector:withObject:` WORKS (measured), `-undo` works (items 0, canRedo 1), and then
-#     `[undo redo]` SEGFAULTS. Backtrace:
-#         #0 objc_msgSend_fpret            in libobjc.so
-#         #1 -[NSUndoManager performFromStack:toStack:]  nsundomanager.m:188
-#         #2 -[NSUndoManager redo]                       nsundomanager.m:225
-#     That send is `[[group objectAtIndex:i] invoke]`, which returns void - so the send was compiled
-#     for a LONG DOUBLE return. THE LIBRARY OBJECTS ARE EXONERATED: nm -u shows nsundomanager.o
-#     referencing objc_msgSend only, identically on host and guest, and NO host object emits fpret.
-#     So the entry is reached THROUGH THE INVOCATION/TRAMPOLINE PATH, where the return type is
-#     derived from the method signature. THE NEXT STEP IS THAT MACHINERY, not the undo logic:
-#     AND IT IS NOT THE TRAMPOLINE EITHER - the crash is NAMED now, from gdb:
-#         rdi (receiver) = nil        object_getClassName -> "nil"
-#         rsi (selector) = "invoke"
-#     So [[group objectAtIndex:i] invoke] IS SENT TO NIL: the undo group yielded a nil element, and
-#     libobjc2's nil-receiver path for an fp-returning send lands in objc_msgSend_fpret, which
-#     segfaults. -performSelector:withObject: is irrelevant here (it is a plain objc_msgSend cast),
-#     the library never references objc_msgSend_fpret at all (nm -u on every object and on the
-#     linked library), and the trampolines are not on this path.
-#     THE NEXT STEP IS THEREFORE THE UNDO GROUP ITSELF: why does the element come back nil - the
-#     guard `if ([from count] == 0) return;` believes the stack is non-empty, so compare what the
-#     guard counted with what the index walk reads, and print the count and the element.
-#     ALSO WORTH KNOWING:
-#     the two libobjc2 header installs (.build/objc-prefix vs .build/libobjc2-host-prefix) are
-#     BYTE-IDENTICAL, and compiling that file with three flag variants changes nothing.
+#   * RESOLVED - the redo pair, and THIS IS THE LOOP PAYING FOR ITSELF: a USE-AFTER-FREE in
+#     -[NSUndoManager performFromStack:toStack:], which the guest gate PASSED WITH and the host run
+#     caught. The method assigns `_group = inverse` (a BORROWED reference) and then released the
+#     array TWICE - once through `_group` and once as `inverse`, which it owns from its alloc. The
+#     array was therefore freed while `to` still held it, so the NEXT pass's group contained dangling
+#     actions: glibc reuses that memory and the class lookup answers nil, while musl leaves it intact
+#     and the redo merely APPEARS to work. Fixed by dropping the release through `_group`.
+#     HOW IT WAS FOUND, because the sequence is the point: the guest answered 50/50 and the host
+#     47/50, and every explanation I invented was wrong - runtime configuration, optimisation, the
+#     ARC flag, the forwarding path, a stale runtime, the trampoline. What worked was a FIVE-LINE
+#     REPRODUCER plus gdb: it printed the crashing receiver, which was NIL, and the selector, which
+#     was `invoke` - so the group had yielded a nil element. Instrumenting the library's own loop
+#     then showed the element's class lookup returning nil at i=2, i.e. freed memory.
+#     THE LESSON WORTH KEEPING: musl and glibc differ in what freed memory still looks like, so a
+#     use-after-free can be INVISIBLE on the guest and fatal on the host. A host run is not merely
+#     faster here - it can see a whole class of bug the guest hides.
 #   * REFUTED EARLIER AND STILL REFUTED: the runtime prefix (rebuilt with -DGNUSTEP and
 #     OLDABI_COMPAT=OFF to mirror the guest), -O (the guest carries none), <objc/runtime.h>, symbol
 #     interposition, and the ARC marker (present on both sides). Do not spend those builds again.
