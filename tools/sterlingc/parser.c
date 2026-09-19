@@ -446,6 +446,138 @@ parse_args(st_parser *p, st_expr *call)
  */
 static int parse_stmt(st_parser *p, st_stmt **out);
 
+/*
+ * Every postfix continuation a primary may carry. **One** implementation, called
+ * by both loops in parse_primary — the loop under `case ST_IDENT` and the loop
+ * after that function's switch — because two copies of this have diverged three
+ * times: once for `[`, once for the closure body, and once when a conversion
+ * dropped the `at_punct(p, '{')` guard that makes a *trailing* closure optional.
+ * Each divergence was invisible until a corpus file exercised the copy nobody
+ * had edited, which is the whole argument for there being one copy.
+ *
+ * Returns 1 when a continuation was consumed (the caller calls again), 0 when
+ * none applies (the caller breaks), and sets *ok to 0 on a malformed form so the
+ * caller can fail with the message fail() has already stored.
+ */
+static int
+parse_postfix(st_parser *p, st_expr *e, int *ok)
+{
+	/* §6's member access. The name is dropped: the AST has no member node. */
+	if (at_punct(p, '.')) {
+		st_name member;
+
+		bump(p);
+		if (!take_name(p, &member)) {
+			*ok = 0;
+			return 1;
+		}
+		return 1;
+	}
+	/*
+	 * §4's `x!`. A **postfix** form, not a prefix one — `!` is also
+	 * logical-not — and position is what tells them apart: this only runs once
+	 * a complete primary has been consumed.
+	 */
+	if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
+	    p->tok.start[0] == '!') {
+		bump(p);
+		return 1;
+	}
+	/*
+	 * §7.46: `x as? T` and `x as! T` — the only conversions, since `T(x)`
+	 * *constructs* rather than converts. `as` is a keyword and the `?` or `!`
+	 * after it decides whether a failure is a nil or a trap, so both are
+	 * written. It is the one postfix form followed by a **type** rather than an
+	 * expression.
+	 */
+	if (at_keyword(p, "as")) {
+		st_type target;
+
+		bump(p);
+		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
+		    (p->tok.start[0] == '?' || p->tok.start[0] == '!')) {
+			bump(p);
+		} else {
+			fail(p, "expected `?` or `!` after `as`");
+			*ok = 0;
+			return 1;
+		}
+		if (!parse_type(p, &target)) {
+			*ok = 0;
+			return 1;
+		}
+		return 1;
+	}
+	/*
+	 * §7.72's `[]` in a *read* position — `self.slots[i]`, or `name[i]`. The
+	 * declaration form belongs to parse_decl; this is the use.
+	 */
+	if (at_punct(p, '[')) {
+		st_expr *index;
+
+		bump(p);
+		if (!parse_expr(p, &index)) {
+			*ok = 0;
+			return 1;
+		}
+		if (!expect_punct(p, ']')) {
+			*ok = 0;
+			return 1;
+		}
+		return 1;
+	}
+	/*
+	 * §7.33's trailing closure. The parameter list *is* the call's parentheses,
+	 * so a `[` capture list or a `{` body after them continues the closure
+	 * rather than starting something new.
+	 */
+	if (at_punct(p, '(')) {
+		st_expr *callee = st_arena_alloc(sizeof(st_expr));
+
+		if (callee == NULL) {
+			fail(p, "out of memory");
+			*ok = 0;
+			return 1;
+		}
+		*callee = *e;
+		e->kind = ST_EXPR_CALL;
+		e->base = callee;
+		bump(p);
+		if (!parse_args(p, e)) {
+			*ok = 0;
+			return 1;
+		}
+		/*
+		 * §7.51's capture list, brace-scanned: which bindings it names changes
+		 * nothing the AST holds, so there is no node to fill.
+		 */
+		if (at_punct(p, '[')) {
+			int depth = 1;
+
+			bump(p);
+			while (p->tok.kind != ST_EOF && depth > 0) {
+				if (at_punct(p, '[')) {
+					depth++;
+				} else if (at_punct(p, ']')) {
+					depth--;
+				}
+				bump(p);
+			}
+		}
+		/*
+		 * The body is a statement list, and the guard is **load-bearing**: this
+		 * runs after every primary, so an unguarded call would demand a `{`
+		 * after each one and break `self.g()`.
+		 */
+		if (at_punct(p, '{') && !parse_stmt_block(p)) {
+			*ok = 0;
+			return 1;
+		}
+		return 1;
+	}
+	return 0;
+}
+
 static int
 parse_primary(st_parser *p, st_expr **out)
 {
@@ -631,133 +763,14 @@ parse_primary(st_parser *p, st_expr **out)
 		 * and closing it belongs to the emitter's step.
 		 */
 		for (;;) {
-			/*
-			 * There is deliberately **no** `?.` here. §9.6 confirms that sending
-			 * to an optional is allowed and yields a `T?` — ObjC's nil-receiver
-			 * rule already makes `[nil foo]` safe — so `x.foo` on a `Foo?` is
-			 * the spelling, and a chain marker would be a second way to write
-			 * the same thing. A branch accepting one used to live here; it was
-			 * added to satisfy a corpus file carrying Swift's spelling, which is
-			 * exactly the divergence this parser exists to make visible.
-			 */
-			if (at_punct(p, '.')) {
-				st_name member;
+			int ok = 1;
 
-				bump(p);
-				if (!take_name(p, &member)) {
-					return 0;
-				}
-				continue;
+			if (!parse_postfix(p, e, &ok)) {
+				break;
 			}
-			/*
-			 * §4's first way out of an optional: `x!`. It is a **postfix** form,
-			 * not a prefix one — `!` is also logical-not — and position is what
-			 * tells them apart: this loop only runs once a complete primary has
-			 * been consumed, which is the force-unwrap's position. Its twin
-			 * lives in the loop after this function's switch.
-			 */
-			if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
-			    p->tok.start[0] == '!') {
-				bump(p);
-				continue;
+			if (!ok) {
+				return 0;
 			}
-			/*
-			 * §7.46: `x as? T` and `x as! T` — the only conversions, since
-			 * `T(x)` *constructs* rather than converts. `as` is a keyword and
-			 * the `?` or `!` after it decides whether a failure is a nil or a
-			 * trap. It is the one postfix form followed by a **type** rather
-			 * than an expression, which is why it is not a variant of the
-			 * branches beside it.
-			 */
-			if (at_keyword(p, "as")) {
-				st_type target;
-
-				bump(p);
-				if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
-				    (p->tok.start[0] == '?' ||
-				     p->tok.start[0] == '!')) {
-					bump(p);
-				} else {
-					return fail(p,
-						    "expected `?` or `!` after `as`");
-				}
-				if (!parse_type(p, &target)) {
-					return 0;
-				}
-				continue;
-			}
-			/*
-			 * §7.72's `[]` in a *read* position. This branch was missing here
-			 * while the twin loop after the switch had it, so `name[i]` — a
-			 * subscript on an identifier rather than on `self` — did not parse.
-			 * The corpus never wrote one, which is why comparing the two copies
-			 * found it and running them did not.
-			 */
-			if (at_punct(p, '[')) {
-				st_expr *index;
-
-				bump(p);
-				if (!parse_expr(p, &index)) {
-					return 0;
-				}
-				if (!expect_punct(p, ']')) {
-					return 0;
-				}
-				continue;
-			}
-			/*
-			 * §7.33's closure notation in trailing position:
-			 * `items.filter (item: String) { … }`. The parameter list *is*
-			 * the call's parentheses, so a `[` or `{` after them continues
-			 * the closure rather than starting something new. The earlier
-			 * note here said a trailing closure was deliberately refused;
-			 * that was written when a bare `{` was thought to begin one, and
-			 * §7.33 has since settled that the parameter list is part of the
-			 * notation — so a bare brace is never a closure and the `for`'s
-			 * body can no longer be swallowed.
-			 *
-			 * The body is braces-scanned for now. Factoring the closure
-			 * parser into a helper this and the inline case both call is
-			 * queued work, not an assumption that it is done.
-			 */
-			if (at_punct(p, '(')) {
-				st_expr *callee = st_arena_alloc(sizeof(st_expr));
-				if (callee == NULL) {
-					return fail(p, "out of memory");
-				}
-				*callee = *e;
-				e->kind = ST_EXPR_CALL;
-				e->base = callee;
-				bump(p);
-				if (!parse_args(p, e)) {
-					return 0;
-				}
-				if (at_punct(p, '[')) {
-					int depth = 1;
-
-					bump(p);
-					while (p->tok.kind != ST_EOF && depth > 0) {
-						if (at_punct(p, '[')) {
-							depth++;
-						} else if (at_punct(p, ']')) {
-							depth--;
-						}
-						bump(p);
-					}
-				}
-				/*
-				 * §7.33's closure body in trailing position — a statement
-				 * list, parsed rather than brace-scanned. The guard is
-				 * load-bearing, as its twin's comment records: this loop runs
-				 * after every *name*, and an unguarded call would demand a `{`
-				 * after each one.
-				 */
-				if (at_punct(p, '{') && !parse_stmt_block(p)) {
-					return 0;
-				}
-				continue;
-			}
-			break;
 		}
 		break;
 	case ST_PUNCT:
@@ -838,121 +851,14 @@ parse_primary(st_parser *p, st_expr **out)
 	 * folding the two into one is tidy-up rather than a fix.
 	 */
 	for (;;) {
-		if (at_punct(p, '.')) {
-			st_name member;
+		int ok = 1;
 
-			bump(p);
-			if (!take_name(p, &member)) {
-				return 0;
-			}
-			continue;
+		if (!parse_postfix(p, e, &ok)) {
+			break;
 		}
-		/*
-		 * There is deliberately no `?.` in this loop either — §9.6 makes `x.foo`
-		 * on a `Foo?` an ordinary send. The twin comment above has the
-		 * reasoning; both branches went together, since they were added
-		 * together.
-		 */
-		/*
-		 * §4's `x!`, the force-unwrap — postfix, and the twin of the branch in
-		 * the loop above. It reaches this copy whenever the receiver is `self`
-		 * or a literal, since those leave the switch early.
-		 */
-		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
-		    p->tok.start[0] == '!') {
-			bump(p);
-			continue;
+		if (!ok) {
+			return 0;
 		}
-		/*
-		 * §7.72's `[]` in a *read* position — `self.slots[i]`. The
-		 * declaration form belongs to parse_decl; this is the use. It cannot
-		 * be confused with the closure continuation inside the `(` branch
-		 * below, which follows a call's parentheses rather than a complete
-		 * primary.
-		 */
-		if (at_punct(p, '[')) {
-			st_expr *index;
-
-			bump(p);
-			if (!parse_expr(p, &index)) {
-				return 0;
-			}
-			if (!expect_punct(p, ']')) {
-				return 0;
-			}
-			continue;
-		}
-		/*
-		 * §7.46's conversion form, the twin of the branch in the loop above.
-		 * `as` is a keyword, and what follows is a *type* — the only postfix
-		 * form here that is not followed by an expression.
-		 */
-		if (at_keyword(p, "as")) {
-			st_type target;
-
-			bump(p);
-			if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
-			    (p->tok.start[0] == '?' || p->tok.start[0] == '!')) {
-				bump(p);
-			} else {
-				return fail(p, "expected `?` or `!` after `as`");
-			}
-			if (!parse_type(p, &target)) {
-				return 0;
-			}
-			continue;
-		}
-		if (at_punct(p, '(')) {
-			st_expr *callee = st_arena_alloc(sizeof(st_expr));
-
-			if (callee == NULL) {
-				return fail(p, "out of memory");
-			}
-			*callee = *e;
-			e->kind = ST_EXPR_CALL;
-			e->base = callee;
-			bump(p);
-			if (!parse_args(p, e)) {
-				return 0;
-			}
-			/*
-			 * §7.33 in trailing position — the same continuation the loop in
-			 * case ST_IDENT carries. Two copies of one loop meant that fixing
-			 * one of them fixed half the sends: `self.run (…) { … }` reaches
-			 * *this* copy, because `self` is a keyword. Folding the two into
-			 * one remains the tidy-up; until then they must agree.
-			 */
-			if (at_punct(p, '[')) {
-				int depth = 1;
-
-				bump(p);
-				while (p->tok.kind != ST_EOF && depth > 0) {
-					if (at_punct(p, '[')) {
-						depth++;
-					} else if (at_punct(p, ']')) {
-						depth--;
-					}
-					bump(p);
-				}
-			}
-			/*
-			 * §7.33's closure body in trailing position — a statement list,
-			 * parsed rather than brace-scanned, for the reason every other lid
-			 * in this file came off: a scan accepts anything at all and reports
-			 * as passing. Its twin lives in the loop under case ST_IDENT.
-			 *
-			 * The `at_punct` guard is **load-bearing and easy to lose**: this
-			 * loop runs after *every* primary, so an unguarded call would
-			 * demand a `{` after each one and break `self.g()`. That is exactly
-			 * what happened when this branch was converted and the guard went
-			 * with the scan it was guarding.
-			 */
-			if (at_punct(p, '{') && !parse_stmt_block(p)) {
-				return 0;
-			}
-			continue;
-		}
-		break;
 	}
 
 	*out = e;
