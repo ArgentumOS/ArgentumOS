@@ -3554,12 +3554,15 @@ slice should be picked from.
    and therefore not ours since the amendment, and the tree has now stopped declaring it. That is what
    the strict mode was for — not to be satisfied, but to stop reporting.
 
-   **WHAT IS STILL OPEN, AND IT IS A GATE RATHER THAN A DOUBT:** `make .build/fnxlib/libfoundation.so.1
-   ` compiles the whole library clean and links (measured twice: after the argument-taking removal and
-   again after this one), but the three copying probes have NOT been run on the guest since the copying
-   model changed — that is the next verification, and it is the one that would catch a forgotten
-   override point (a class whose `-copy` was deleted as a "forwarder" while nothing else implemented
-   it). `-Wno-incomplete-implementation` means the compiler cannot catch that one.
+   **AND THE GATE RAN, AND IT IS GREEN (2026-09-18).** `make rootagfs` rebuilt the image with the new
+   library and probes, and the three probes a copying change can reach — `foundation_core`,
+   `foundation_string`, `foundation_collection` — ran on the guest: **`TESTS-OK 3/3 case(s), 18/18
+   check(s) in 35s`**, each probe also passing its own tally check (`ok=<n> fail=0`) and its exit
+   status. That is the gate that would have caught a class whose `-copy` was deleted as a forwarder
+   while nothing else implemented it — and **`-Wno-incomplete-implementation` means the COMPILER could
+   not have, which is exactly why it had to be a run rather than a build.** Nothing about this change
+   is left unverified: the library compiles (measured twice, once per scope) and copying works on the
+   guest with the protocols' members renamed.
 2. **`NSAutoreleasePool` IS NOT ABSENT THE WAY THE OTHER ROWS ARE.** The runtime registers a class of
    that name (§6), which is why this library ships no pool class; the work is making the name answer to
    `+addObject:`, `-drain` and `+showPools`. A mechanical diff cannot tell those two apart.
