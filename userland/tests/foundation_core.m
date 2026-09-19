@@ -659,7 +659,7 @@ int main(void)
 		}
 		[empty addObject:@"x"];
 		@try {
-			[empty replaceObjectAtIndex:0 withObject:nil];
+			[empty replaceObjectAtIndex:0 withObject:(id)nil];	/* deliberately nil: this IS the refusal test */
 		} @catch (NSException *e) {
 			(void)e;
 			caughtNil = YES;
