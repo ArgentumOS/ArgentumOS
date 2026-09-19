@@ -23,6 +23,13 @@ THE STATUS COLUMN IS THE LEDGER, AND IT HAS THREE VALUES:
            headers (`--strict` is what fails on those: what to do about one is a
            decision, and a decision is a ledger row).
 
+AND ONE NAMED EXCEPTION (user, 2026-09-18): NSZone is deprecated by Apple's
+filing and REQUIRED by its live, non-deprecated NSCopying methods, so it is ours
+to ship. It keeps the `shipped` status and carries `required-by-live-api` in the
+`why` column. The exception list is CHECKED, not trusted: if a name in it is not
+declared in our headers, the run fails — an exception is a claim about the tree,
+and a claim about the tree is verifiable.
+
 The three exclusions, each counted rather than silently dropped (the numbers
 are written into the surface file's header on every `--refresh`):
 
@@ -141,7 +148,7 @@ def is_objc_shaped(name):
 
 
 def struck_reason(row):
-    """Why this symbol is OUT, or None. Three exclusions, and the reason travels
+    """Why this symbol is OUT, or None. Two exclusions, and the reason travels
     with the row so a struck line can be argued with."""
     if SWIFT_INTEROP_RE.search(row["name"]):
         return "swift-only"
@@ -152,8 +159,34 @@ def struck_reason(row):
     return None
 
 
-def status_of(kind, name, reason, text):
-    if reason:
+# THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): "NSZone is the exception to
+# the rule, because it is required by non-deprecated code."
+#
+# Apple files `NSZone` under `Low-Level Utilities / Legacy`, so the group signal
+# strikes it — but the type is the PARAMETER of Apple's LIVE, non-deprecated
+# `NSCopying` and `NSMutableCopying` methods (`-copyWithZone:`), which 20-odd
+# headers here declare. Striking it would mean deleting those signatures or
+# leaving a type undeclared behind them, so it is ours to ship, and the `why`
+# column says why instead of the row silently changing side.
+#
+# AN EXCEPTION IS NOT A HOLE IN THE CHECK: every name here must be DECLARED in
+# our headers, and --check fails if one is not. An entry is a claim about the
+# tree, and a claim about the tree is verifiable — which is what makes this
+# different from a softened rule.
+REQUIRED_BY_LIVE_API = {
+    "NSZone": "the zone parameter of NSCopying/-copyWithZone:, which Apple does NOT deprecate",
+}
+
+
+def why_of(row):
+    """The `why` column: the reason this row is not simply shipped or open."""
+    if row["name"] in REQUIRED_BY_LIVE_API:
+        return "required-by-live-api"
+    return struck_reason(row) or "-"
+
+
+def status_of(kind, name, why, text):
+    if why in ("swift-only", "deprecated"):
         return STATUS_STRUCK
     return STATUS_SHIPPED if declared(kind, name, text) else STATUS_OPEN
 
@@ -260,13 +293,19 @@ def refresh():
     out = []
     counts = {}
     reasons = {}
+    excepted = 0
     for key in sorted(rows):
         r = rows[key]
-        why = struck_reason(r)
+        why = why_of(r)
         st = status_of(r["kind"], r["name"], why, text)
+        if why == "required-by-live-api" and not declared(r["kind"], r["name"], text):
+            raise SystemExit("sweep: REQUIRED_BY_LIVE_API names %r but our headers do not declare it — "
+                             "an exception is a claim, and this one is false" % r["name"])
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
         if st == STATUS_STRUCK:
             reasons[why] = reasons.get(why, 0) + 1
+        elif why == "required-by-live-api":
+            excepted = excepted + 1
         out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"], why or "-")))
     header = [
         "# Foundation's documented surface, against this tree.",
@@ -291,6 +330,10 @@ def refresh():
         "# on the path marker, which hid real ObjC constants from the ledger.",
         "#",
         "# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())),
+        "#",
+        "# THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): " + ", ".join(
+            "%s (%s)" % (k, v) for k, v in sorted(REQUIRED_BY_LIVE_API.items())),
+        "# it keeps its `shipped` status and says so in the `why` column.",
         "#",
         "# counts by kind:",
     ]
@@ -339,6 +382,10 @@ def check(strict=False):
     for kind, status, name, owner, family, why in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         found = bool(declared(kind, name, text))
+        if why == "required-by-live-api" and not found:
+            bad.append("FALSE EXCEPTION        %-9s %s — REQUIRED_BY_LIVE_API claims live API needs it and "
+                       "our headers do not declare it" % (kind, name))
+            continue
         if status == STATUS_SHIPPED and not found:
             bad.append("STALE SHIPPED CLAIM    %-9s %s — the surface file says we ship it and our headers do not declare it" % (kind, name))
         elif status == STATUS_OPEN and found:
@@ -346,7 +393,9 @@ def check(strict=False):
         elif status == STATUS_STRUCK and found:
             policy.append("%-9s %s%s [struck: %s]" % (kind, name, (" (member of %s)" % owner) if owner else "", why))
     kinds = sorted({k for k, _ in counts})
-    print("foundation-sweep: %d symbols in the ledger" % len(rows))
+    excepted = [r[2] for r in rows if r[5] == "required-by-live-api"]
+    print("foundation-sweep: %d symbols in the ledger%s" % (
+        len(rows), (" (%d named exception: %s)" % (len(excepted), ", ".join(excepted))) if excepted else ""))
     for kind in kinds:
         print("  %-10s shipped %4d   open %4d   struck %4d" % (
             kind, counts.get((kind, STATUS_SHIPPED), 0),
