@@ -220,46 +220,35 @@ FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplet
 # not adding a flag. The library's ownership is therefore MANUAL ON PURPOSE, and every file whose
 # header says "ARC file" is saying something untrue about how it is compiled.
 
-$(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
+# FOUNDATION COMPILE RULES, GENERATED. One rule per source from the directory listing, so a new .m file needs no
+# hand-written rule; and EACH OBJECT DEPENDS ON ITS .m, so editing a source rebuilds exactly its own object instead
+# of leaving a stale library that make never notices.
+# THE PER-FILE FLAGS WERE READ OFF the block this replaces: -fno-objc-arc for the MRC files (nsobject.m,
+# ntinystring.m, ndateinterval.m), the ICU prefix for the 5 files including <unicode/...>, the X11 prefix for
+# ncodec.m (the only file including <zlib.h>, hence -lz on the link), -Wno-objc-root-class for nsproxy.m.
+# $(FOUNDATION_CFLAGS) already selects ARC, so only the MRC files opt out.
+FN_FOUNDATION_SRCS  = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
+FN_FOUNDATION_NOARC = nsobject.m ntinystring.m ndateinterval.m
+FN_FOUNDATION_ICU   = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m
+FN_FOUNDATION_X11   = ncodec.m
+FN_FOUNDATION_ROOT  = nsproxy.m
+FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o
+
+define FN_FOUNDATION_rule
+.build/foundation-$(1:.m=.o): $(FOUNDATION_SRC)/$(1)
+	$$(MUSL64_OBJC) -c $$(FOUNDATION_CFLAGS) \
+		$(if $(filter $(1),$(FN_FOUNDATION_ROOT)),-Wno-objc-root-class) \
+		$(if $(filter $(1),$(FN_FOUNDATION_NOARC)),-fno-objc-arc) \
+		$(if $(filter $(1),$(FN_FOUNDATION_ICU)),-I$(ICUPREFIX)/include) \
+		$(if $(filter $(1),$(FN_FOUNDATION_X11)),-I$(X11PREFIX)/include) \
+		-Iuserland $$< -o $$@
+endef
+$(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
+.build/foundation-ninvoke-asm.o: $(FOUNDATION_SRC)/ninvoke_amd64.S
+	$(MUSL64_CC) -c -fPIC $< -o $@
+$(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUNDATION_OBJS)
 	@mkdir -p $(FNXLIB)
 	$(MUSL64_CC) -c -fPIC -Iinclude userland/plist.c -o .build/plist.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -fno-objc-arc -Iuserland \
-		$(FOUNDATION_SRC)/nsobject.m -o .build/foundation-nsobject.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nstring.m -o .build/foundation-nstring.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -fno-objc-arc -Iuserland \
-		$(FOUNDATION_SRC)/ntinystring.m -o .build/foundation-ntinystring.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nnumber.m -o .build/foundation-nnumber.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/ndata.m -o .build/foundation-ndata.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/ndate.m -o .build/foundation-ndate.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsarray.m -o .build/foundation-nsarray.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsdictionary.m -o .build/foundation-nsdictionary.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nerror.m -o .build/foundation-nerror.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nexception.m -o .build/foundation-nexception.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/ncharacterset.m -o .build/foundation-ncharacterset.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nindexset.m -o .build/foundation-nindexset.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nindexpath.m -o .build/foundation-nindexpath.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nlocale.m -o .build/foundation-nlocale.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nmethodsignature.m -o .build/foundation-nmethodsignature.o
-	$(MUSL64_CC) -c -fPIC $(FOUNDATION_SRC)/ninvoke_amd64.S -o .build/foundation-ninvoke-asm.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/ninvocation.m -o .build/foundation-ninvocation.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nenumerator.m -o .build/foundation-nenumerator.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/npropertylistserialization.m -o .build/foundation-npropertylistserialization.o
 	# F7: the calendar family. nscalendar.m and nstimezone.m are ARC; the
 	# components bag owns nothing but its fields.
 	#
@@ -267,27 +256,15 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# reads the zone database instead of refusing it — so the ICU prefix is on ITS include path.
 	# nscalendar.m and ndatecomponents.m do not include ICU: their arithmetic stays on libc's
 	# struct tm and they reach the database only through NSTimeZone.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
-		$(FOUNDATION_SRC)/nstimezone.m -o .build/foundation-nstimezone.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/ndatecomponents.m -o .build/foundation-ndatecomponents.o
 	# F13.7b: nscalendar.m NOW INCLUDES ICU (<unicode/ucal.h>), because the class reads every
 	# calendar out of it instead of refusing the ones whose tables it lacked. So the ICU prefix is
 	# on ITS include path too; the link needed nothing new (F13.6 already made libfoundation need
 	# libicui18n/libicuuc/libicudata).
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
-		$(FOUNDATION_SRC)/nscalendar.m -o .build/foundation-nscalendar.o
 	# F8: the URL value type.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nurl.m -o .build/foundation-nurl.o
 	# F9: the key-value coding family — a category on NSObject, so nothing here
 	# owns its storage; the lookup goes through the runtime's ivar table.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nskeyvaluecoding.m -o .build/foundation-nskeyvaluecoding.o
 	# F10: the sorting family. nssortdescriptor.m resolves its key through KVC and
 	# calls a comparison selector through its OWN return type (a scalar, not `id`).
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nssortdescriptor.m -o .build/foundation-nssortdescriptor.o
 	# F11a: the predicate object model — an abstract base, two private leaves, the tree
 	# node, and the two collection filters. The block leaf is why this file stores a block.
 	#
@@ -295,213 +272,75 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# <regex.h> (musl's POSIX engine, which is inside libc — so MATCHES adds no link and no
 	# artifact). The ICU include path is therefore on THIS rule; the link needed nothing new,
 	# because F13.6 already made libfoundation need libicui18n/libicuuc/libicudata.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
-		$(FOUNDATION_SRC)/nspredicate.m -o .build/foundation-nspredicate.o
 	# F11b: the format grammar. A category on NSPredicate, so the parser lives beside the object
 	# model without either file owning the other.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/npredicateformat.m -o .build/foundation-npredicateformat.o
 	# F12: the compression binding. ncodec.m is the ONLY file that includes <zlib.h>, so the X11
 	# prefix is on ITS include path — and on the LINK line below, because libfoundation now needs
 	# libz.so.1. That library is already staged into the guest for the X11 stack, so this adds a
 	# dependency and no new artifact (docs/design/foundation-plan.md, F12).
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(X11PREFIX)/include \
-		$(FOUNDATION_SRC)/ncodec.m -o .build/foundation-ncodec.o
 	# F13.6: the value-to-text family. nsformatter.m is the abstract base and needs nothing extra;
 	# nsdateformatter.m is the file that includes <unicode/udat.h> and <unicode/udatpg.h>, so the
 	# ICU prefix is on ITS include path — and on the LINK line below, because libfoundation now
 	# needs libicui18n/libicuuc/libicudata. Those libraries and their data package are already
 	# staged into the guest (docs/design/foundation-plan.md §10, F13), so this adds a dependency
 	# and no new artifact — the same shape as F12's libz.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsformatter.m -o .build/foundation-nsformatter.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
-		$(FOUNDATION_SRC)/nsdateformatter.m -o .build/foundation-nsdateformatter.o
 	# F13.7c: the number formatter. It includes <unicode/unum.h>, so the ICU prefix is on ITS
 	# include path; the LINK needs nothing new, because F13.6 already made libfoundation need
 	# libicui18n/libicuuc/libicudata.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(ICUPREFIX)/include \
-		$(FOUNDATION_SRC)/nsnumberformatter.m -o .build/foundation-nsnumberformatter.o
 	# F13.7e: the shared calendar-keyword bridge (fncalendar.m/.h). It is its OWN translation unit
 	# because TWO classes call it — NSCalendar and NSDateFormatter — and it includes only
 	# <foundation/...> headers, so it needs no ICU include path of its own.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/fncalendar.m -o .build/foundation-fncalendar.o
 	# F13.8: the unordered collection. It includes <foundation/...> headers only — no ICU, no zlib —
 	# because a set is RULES rather than data, which is why it was a gap in the plan's refusal table
 	# rather than an entry in it.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsset.m -o .build/foundation-nsset.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/npropertylistserialization.m -o .build/foundation-npropertylistserialization.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nstimezone.m -o .build/foundation-nstimezone.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/ndatecomponents.m -o .build/foundation-ndatecomponents.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nscalendar.m -o .build/foundation-nscalendar.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nurl.m -o .build/foundation-nurl.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nskeyvaluecoding.m -o .build/foundation-nskeyvaluecoding.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nssortdescriptor.m -o .build/foundation-nssortdescriptor.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nspredicate.m -o .build/foundation-nspredicate.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/npredicateformat.m -o .build/foundation-npredicateformat.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/ncodec.m -o .build/foundation-ncodec.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsformatter.m -o .build/foundation-nsformatter.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsdateformatter.m -o .build/foundation-nsdateformatter.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsnumberformatter.m -o .build/foundation-nsnumberformatter.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/fncalendar.m -o .build/foundation-fncalendar.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsset.m -o .build/foundation-nsset.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nuuid.m -o .build/foundation-nuuid.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/ndateinterval.m -o .build/foundation-ndateinterval.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsvaluetransformer.m -o .build/foundation-nsvaluetransformer.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsaffinetransform.m -o .build/foundation-nsaffinetransform.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsautoreleasepool.m -o .build/foundation-nsautoreleasepool.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsproxy.m -o .build/foundation-nsproxy.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsundomanager.m -o .build/foundation-nsundomanager.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsjsonserialization.m -o .build/foundation-nsjsonserialization.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsvalue.m -o .build/foundation-nsvalue.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsnull.m -o .build/foundation-nsnull.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nscountedset.m -o .build/foundation-nscountedset.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsorderedset.m -o .build/foundation-nsorderedset.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nskeyvalueobserving.m -o .build/foundation-nskeyvalueobserving.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nsexpression.m -o .build/foundation-nsexpression.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/nscomparisonpredicate.m -o .build/foundation-nscomparisonpredicate.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
-		$\(FOUNDATION_SRC)/ngeometry.m -o .build/foundation-ngeometry.o
 	# W2h: the 128-bit identifier. <foundation/...> headers only — the entropy comes from
 	# getentropy, so no ICU include path is needed.
 	# W2h: the autorelease pool boundary. It needs the RUNTIME's pool primitives, from
 	# W2h: JSON. Foundation headers plus string.h and math.h; no ICU, no zlib.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsjsonserialization.m -o .build/foundation-nsjsonserialization.o
 	# W2h: the undo manager's core. Foundation headers plus the runtime, for the selector send.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsundomanager.m -o .build/foundation-nsundomanager.o
 	# W2h: the second root class. It needs the runtime's own allocation and disposal.
 	# -Wno-protocol IS DELIBERATE AND NOT NOISE: a proxy FORWARDS -isKindOfClass: and -isMemberOfClass:
 	# rather than implementing them - that is Apple's documented behaviour and the reason -isProxy
 	# exists - so the compiler correctly observes that this class does not satisfy the whole NSObject
 	# protocol itself. The same shape, and the same justification, as the probe rules' 
 	# -Wno-incomplete-implementation beside them.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -Wno-objc-root-class -Wno-protocol \
-		$(FOUNDATION_SRC)/nsproxy.m -o .build/foundation-nsproxy.o
 	# <objc/objc-arc.h>, which is already on the include path.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsautoreleasepool.m -o .build/foundation-nsautoreleasepool.o
 	# W2h: the affine transform. <foundation/...> headers and libm, for sin/cos.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsaffinetransform.m -o .build/foundation-nsaffinetransform.o
 	# W2h: the value transformer. <foundation/...> headers plus the runtime, for NSClassFromString.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsvaluetransformer.m -o .build/foundation-nsvaluetransformer.o
 	# W2h: a span of time. <foundation/...> headers only - it is dates and arithmetic, no ICU.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/ndateinterval.m -o .build/foundation-ndateinterval.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nuuid.m -o .build/foundation-nuuid.o
 	# F13.8c: the box for everything that is not an object, and the object that stands for nothing.
 	# Same shape as the set: <foundation/...> headers only, no ICU and no zlib.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsvalue.m -o .build/foundation-nsvalue.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsnull.m -o .build/foundation-nsnull.o
 	# F13.8d: the counted set. A SUBCLASS of NSMutableSet, so its initialisers have to reach the
 	# counts — see the file's header for why the array form may not go through the superclass's.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nscountedset.m -o .build/foundation-nscountedset.o
 	# F13.8e: the ordered set and its mutable half, in ONE translation unit (they share no
 	# superclass relation, so there is no NSMutableSet-style reason to split them).
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsorderedset.m -o .build/foundation-nsorderedset.o
 	# F13.9: the observer registry. <foundation/...> headers only, like the collections.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nskeyvalueobserving.m -o .build/foundation-nskeyvalueobserving.o
 	# F13.10: the expression tree. It reads collections and key paths, so it includes the NSSet
 	# header; no ICU and no zlib.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsexpression.m -o .build/foundation-nsexpression.o
 	# F13.11: the expression-shaped comparison. It shares the comparison rule with the grammar's
 	# leaf through FNCompareValues, so this file states no rule of its own.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nscomparisonpredicate.m -o .build/foundation-nscomparisonpredicate.o
 	# F13.12: the coder family. nskeyedarchiver.m includes the plist serialisation and the runtime
 	# (it looks a class up BY NAME), so it is the one foundation source with those two dependencies.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nscoder.m -o .build/foundation-nscoder.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nskeyedarchiver.m -o .build/foundation-nskeyedarchiver.o
 	# F13.13: the process service. It reads /proc and the C library's environ, so it is the one
 	# source here that includes <unistd.h> and <stdio.h>.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsprocessinfo.m -o .build/foundation-nsprocessinfo.o
 	# F13.14: the file system service. It is the one source here that walks directories and calls
 	# open/read/write itself, because a recursive copy has no syscall to lean on.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsfilemanager.m -o .build/foundation-nsfilemanager.o
 	# F13.15: the structured URL and RFC 3986 §5.2's resolution. fnurl.h is the bridge NSURL's
 	# relative door reaches the algorithm through.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland -I$(FOUNDATION_SRC) \
-		$(FOUNDATION_SRC)/nsurlcomponents.m -o .build/foundation-nsurlcomponents.o
 	# F13.16: regular expressions, on the engine musl already ships inside libc. It includes
 	# <regex.h> and nothing else new.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsregularexpression.m -o .build/foundation-nsregularexpression.o
 	# F13.17: the locking classes and NSThread, over the pthreads musl already ships. These are the
 	# only two sources here that include <pthread.h>.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nslock.m -o .build/foundation-nslock.o
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsthread.m -o .build/foundation-nsthread.o
 	# F13.18: NSTimer and NSRunLoop in one unit, because they are one design — a timer names a date
 	# and the loop is what waits for dates. Its wait is select(2), not nanosleep(2): F13.17 measured
 	# that this kernel returns from nanosleep early.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsrunloop.m -o .build/foundation-nsrunloop.o
 	# F13.19: the operation and the queue that schedules it. The second source here that uses the
 	# thread family — NSThread for the workers, NSCondition for the drain.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsoperation.m -o .build/foundation-nsoperation.o
 	# F13.20: the progress tree. It includes <pthread.h> for its per-thread current stack, and
 	# nothing else new.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsprogress.m -o .build/foundation-nsprogress.o
-	$(MUSL64_OBJC) -c -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation \
-		-Werror=nullability-completeness -fno-objc-arc -Iuserland \
-		$(FOUNDATION_SRC)/ngeometry.m -o .build/foundation-ngeometry.o
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
-		.build/foundation-nsobject.o .build/foundation-nstring.o \
-		.build/foundation-ntinystring.o .build/foundation-nnumber.o \
-		.build/foundation-ndata.o .build/foundation-ndate.o \
-		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
-		.build/foundation-nerror.o .build/foundation-nexception.o .build/foundation-nscoder.o .build/foundation-nskeyedarchiver.o .build/foundation-nsprocessinfo.o .build/foundation-nsfilemanager.o .build/foundation-nsurlcomponents.o .build/foundation-nsregularexpression.o .build/foundation-nslock.o .build/foundation-nsthread.o .build/foundation-nsrunloop.o .build/foundation-nsoperation.o .build/foundation-nsprogress.o \
-		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
-		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nuuid.o .build/foundation-ndateinterval.o .build/foundation-nsvaluetransformer.o .build/foundation-nsaffinetransform.o .build/foundation-nsautoreleasepool.o .build/foundation-nsproxy.o .build/foundation-nsundomanager.o .build/foundation-nsjsonserialization.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/foundation-nskeyvalueobserving.o .build/foundation-nsexpression.o .build/foundation-nscomparisonpredicate.o .build/foundation-ngeometry.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
+		$(FN_FOUNDATION_OBJS) \
+		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
