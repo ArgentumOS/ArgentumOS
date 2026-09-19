@@ -37,9 +37,19 @@
 # @autoreleasepool really does compile to objc_autoreleasePoolPush/Pop, which the runtime provides; and
 # the library's NSAutoreleasePool carries its ARC marker in BOTH the guest and host objects (compared
 # with strings on the two .o files, because nm -D cannot see a method and I looked there first).
-# THE STATE OF THE DIAGNOSIS: six explanations tested, six wrong. The next step is not another theory
-# from this list - it is to make the pool itself observable (log what the runtime's pool holds), or to
-# build the guest's SAME probe sources against the host runtime differently until they disagree.
+# AND THEN IT WAS NARROWED TO ONE FILE, by bisection rather than theory:
+#   * THE SUPPORT UNIT AND Counter ARE EXONERATED. Building the probe's OWN support unit for the host
+#     and driving it from a tiny ARC main - same class, same library, same runtime - DEALLOCATES
+#     CORRECTLY (before=0 during=1). So it is not the class, not the ARC-to-MRC boundary, and not the
+#     pool: the identical sequence in a SMALL ARC file works.
+#   * THE PROBE FILE IS THE ONLY REMAINING VARIABLE. The same sequence placed at the very TOP of the
+#     probe's own main, before any other check runs, FAILS THE SAME WAY (retain count 1, delta 0). So
+#     it is not the file's history or accumulated state: it is the file's own compilation.
+#   * ALSO REFUTED ON THE WAY, so do not retest: <objc/runtime.h> (adding it to the small file changes
+#     nothing); symbol interposition (the probe defines no objc_* symbol and shares none with the
+#     runtime's exports); and the retain count is 1, so nothing extra retained it.
+# THE NEXT STEP IS NOW A BISECT WITHIN ONE FILE: strip foundation_core.m down until it deallocates, or
+# build it in two halves, and the construct that causes it will name itself.
 # UNTIL THAT IS UNDERSTOOD, THIS IS A FAST ITERATION LOOP AND NOT A SUBSTITUTE: a host pass is
 # evidence, and a host failure on one of those three proves nothing about the guest.
 
