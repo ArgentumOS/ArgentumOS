@@ -21,6 +21,24 @@
 
 #include <stdio.h>
 
+/*
+ * NSProgressReporting'S OWN FIXTURE: a class that ADOPTS the protocol, because its contract is
+ * one property and the honest test is a conforming class rather than the protocol's text.
+ */
+@interface FnReporter : NSObject <NSProgressReporting>
+{
+	NSProgress *_progress;
+}
+- (NSProgress *)progress;
+@end
+
+@implementation FnReporter
+- (NSProgress *)progress
+{
+	return _progress;
+}
+@end
+
 static int okc, failc;
 
 static void check(const char *name, int ok, NSString * _Nullable detail)
@@ -143,6 +161,20 @@ int main(void)
 		      empty != nil && ![empty isFinished] && [empty fractionCompleted] == 0.0,
 		      [NSString stringWithFormat:@"finished=%d fraction=%.4f", (int)[empty isFinished],
 			[empty fractionCompleted]]);
+	}
+
+	{
+		/* NSProgressReporting (W2h): ONE REQUIRED PROPERTY, and a class that adopts it conforms -
+		 * measured with a fixture rather than asserted about the protocol's text. It INHERITS the
+		 * NSObject protocol, which is why that one had to be written first, and this check proves
+		 * the inheritance works as well as the member. */
+		FnReporter *reporter = [[FnReporter alloc] init];
+
+		check("nsprogressreporting",
+		      [reporter conformsToProtocol:@protocol(NSProgressReporting)] &&
+		      [reporter respondsToSelector:@selector(progress)] &&
+		      [reporter conformsToProtocol:@protocol(NSObject)],
+		      @"the protocol, its one member, and the NSObject protocol it inherits");
 	}
 
 	printf("FOUNDATION-PROGRESS RESULT ok=%d fail=%d\n", okc, failc);
