@@ -20,6 +20,7 @@ import traceback
 
 from . import paths
 from .case import BaseCase, Context, Skip
+from .qemu import launch
 
 CASES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cases")
@@ -90,9 +91,69 @@ def summarize(cases):
           % (len(cases), len(cases) - slow, slow))
 
 
-def run_case(case, verbose, host=False):
+class GuestPool:
+    """One guest, reused by consecutive cases that say they can share it.
+
+    WHY THIS EXISTS: a case costs a full TCG boot, and most cases only run a probe and read its
+    output - the case contract already slices the log by an offset taken before it runs, so a
+    reused guest needs NO change in any case file.
+
+    WHY IT IS OPT-IN: the reasons to boot fresh are real - a different boot config, an assertion
+    about BOOT itself, a case that mutates the system - and a wrong answer from a shared guest is
+    worse than a slow one. A case sets `shared_session = True` only once it has been shown to
+    answer the same this way.
+
+    SAFETY: the session is dropped whenever a case does not pass, so a poisoned guest cannot reach
+    the next case, and whenever the boot arguments differ from the ones the guest was started with.
+    """
+
+    def __init__(self):
+        self.session = None
+        self.argv = None
+
+    def acquire(self, work_dir, **kw):
+        if self.session is not None and not self.session.alive():
+            self.drop()                     # it died on its own; start again
+        if self.session is None:
+            self.session = launch(work_dir, **kw)
+            self.argv = kw
+        elif kw != self.argv:
+            # A DIFFERENT BOOT CONFIG NEEDS A DIFFERENT GUEST. This is the rule that keeps a case
+            # asking for another RAM size or another machine from silently sharing this one.
+            self.drop()
+            self.session = launch(work_dir, **kw)
+            self.argv = kw
+        return self.session
+
+    def verify(self):
+        """Is the shared guest still ANSWERING? A case can leave the kernel damaged, and the next
+        case would then sit in its shell-wait for the whole timeout instead of failing fast - which
+        is exactly what foundation_expression did (151s) before this existed."""
+        if self.session is None:
+            return
+        mark = len(self.session.log_text())
+        try:
+            self.session.run("echo FNGUEST-ALIVE", secs=20)
+        except Exception:
+            self.drop()
+            return
+        if "FNGUEST-ALIVE" not in self.session.output_since(mark):
+            self.drop()
+
+    def drop(self):
+        if self.session is not None:
+            try:
+                self.session.stop()
+            except Exception:
+                pass
+            self.session = None
+            self.argv = None
+
+
+def run_case(case, verbose, host=False, pool=None):
     """Run one case with a wall-clock guard.  Returns (outcome, seconds)."""
-    ctx = Context(case.name, host=host)
+    ctx = Context(case.name, host=host, pool=pool,
+                  share=getattr(case, "shared_session", False))
     started = time.time()
 
     def _alarm(signum, frame):
@@ -200,16 +261,29 @@ def main(argv=None):
 
     results, elapsed = {}, {}
     checks_ok = checks_total = checks_xfail = 0
+    pool = None if args.host else GuestPool()
     for case in selected:
+        # DROP BEFORE, NOT ONLY AFTER: a case that needs its OWN guest cannot boot while the pool
+        # still holds one - it would hit the image lock and raise (foundation_collection and
+        # foundation_string did, in 0.0s, before this line existed).
+        if pool is not None and not getattr(case, "shared_session", False):
+            pool.drop()
         print("== %s [%s]%s" % (case.name, case.tier,
                                 (" - " + case.title) if case.title else ""))
-        outcome, secs = run_case(case, args.verbose, args.host)
+        outcome, secs = run_case(case, args.verbose, args.host, pool)
         results[case.name], elapsed[case.name] = outcome, secs
         checks_total += len(case.checks)
         checks_ok += sum(1 for c in case.checks if c.ok)
         checks_xfail += sum(1 for c in case.checks if c.expected_fail)
         if outcome != "pass":
             print("   -> %s in %.1fs" % (outcome.upper(), secs))
+        # A CASE THAT DID NOT PASS LEAVES AN UNKNOWN SYSTEM BEHIND: drop the shared guest so the
+        # next case starts clean, and drop it as well when this case never wanted to share.
+        if pool is not None:
+            if outcome != "pass":
+                pool.drop()
+            elif getattr(case, "shared_session", False):
+                pool.verify()       # a guest that no longer answers must not reach the next case
         print("")
 
     passed = [n for n, r in results.items() if r == "pass"]

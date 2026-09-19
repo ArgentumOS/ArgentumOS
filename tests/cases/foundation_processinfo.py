@@ -37,6 +37,8 @@ CHECKS = ("proc-shared-instance", "proc-identifier", "proc-name-and-arguments",
 class Case(BaseCase):
     title = "NSProcessInfo: the running program describing itself"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

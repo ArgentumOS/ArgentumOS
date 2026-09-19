@@ -44,6 +44,8 @@ CHECKS = ("regex-compiles-and-refuses", "regex-finds-all-matches", "regex-captur
 class Case(BaseCase):
     title = "NSRegularExpression: regular expressions as objects, on musl's engine"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

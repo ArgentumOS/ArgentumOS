@@ -41,6 +41,8 @@ CHECKS = ("df-style-medium-en", "df-style-long-locale", "df-pattern-format",
 class Case(BaseCase):
     title = "NSDateFormatter: the first un-refused data family, on ICU"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

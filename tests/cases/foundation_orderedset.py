@@ -39,6 +39,8 @@ CHECKS = ("ordered-keeps-the-order-it-was-given", "ordered-index-and-lookup",
 class Case(BaseCase):
     title = "NSOrderedSet: a set whose order is part of its value"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

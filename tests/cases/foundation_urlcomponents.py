@@ -40,6 +40,8 @@ CHECKS = ("components-parse-the-field", "components-decodes-and-keeps", "compone
 class Case(BaseCase):
     title = "NSURLComponents: a URL as eight fields, with RFC 3986's resolution"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

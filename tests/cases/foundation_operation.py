@@ -43,6 +43,8 @@ CHECKS = ("operation-subclass-runs", "operation-base-main-raises", "operation-de
 class Case(BaseCase):
     title = "NSOperation / NSOperationQueue: the unit of work and the scheduler"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

@@ -54,9 +54,11 @@ class Check:
 class Context:
     """What a case is handed: artifacts, boots, and a way to run a command."""
 
-    def __init__(self, case_name, host=False):
+    def __init__(self, case_name, host=False, pool=None, share=False):
         self.case_name = case_name
         self.host = host
+        self.pool = pool
+        self.share = share
         self.dir = os.path.join(paths.ARTIFACTS, case_name)
         os.makedirs(self.dir, exist_ok=True)
         self.sessions = []
@@ -66,8 +68,16 @@ class Context:
         # A HOST RUN IS THE SAME CASE: it has no machine, so it answers the same
         # session questions from a shell instead.  See harness/host.py for what a
         # host run is NOT, and for the list of cases that may run this way.
-        session = (HostSession(self.case_name) if self.host
-                   else launch(self.dir, name=name, **kw))
+        if self.host:
+            session = HostSession(self.case_name)
+        elif self.pool is not None and self.share:
+            # ONE GUEST FOR SEVERAL CASES. A case already slices the log by an offset it took
+            # before running, so nothing in a case has to change; the pool owns the session, so
+            # cleanup() must NOT stop it.
+            session = self.pool.acquire(self.dir, name=name, **kw)
+            return session
+        else:
+            session = launch(self.dir, name=name, **kw)
         self.sessions.append(session)
         return session
 
@@ -145,6 +155,12 @@ class BaseCase:
     tier = "fast"
     timeout = 300
     needs_boot = True
+    # CAN THIS CASE SHARE A GUEST? Sharing is OPT-IN and stays off until a case has been shown to
+    # answer the same with a reused guest: the reasons to boot fresh are real - a different boot
+    # config (RAM, pc,usb=off, desktop), an assertion about BOOT itself, or a case that mutates the
+    # system - and a wrong answer from a shared guest is worse than a slow one. The runner drops
+    # the session whenever a case fails, so a poisoned guest cannot reach the next case.
+    shared_session = False
 
     def __init__(self, name):
         self.name = name

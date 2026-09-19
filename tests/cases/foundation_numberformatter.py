@@ -41,6 +41,8 @@ CHECKS = ("nf-de", "nf-en", "nf-currency-locale", "nf-spellout", "nf-ordinal",
 class Case(BaseCase):
     title = "NSNumberFormatter: a locale's numbers, on ICU"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

@@ -41,6 +41,8 @@ CHECKS = (
 class Case(BaseCase):
     title = "NSProgress: how much of a job is done, and who is doing it"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

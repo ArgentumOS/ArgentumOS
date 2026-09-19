@@ -35,6 +35,8 @@ CHECKS = ("codec-round-trip", "codec-large", "codec-zlib-stream", "codec-empty",
 class Case(BaseCase):
     title = "The compression codecs: one binding, one codec, three refusals"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

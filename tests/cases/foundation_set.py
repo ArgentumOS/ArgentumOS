@@ -40,6 +40,8 @@ CHECKS = ("set-dedupes-by-value", "set-member-by-value", "set-algebra",
 class Case(BaseCase):
     title = "NSSet: the unordered collection the boundary never explained"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

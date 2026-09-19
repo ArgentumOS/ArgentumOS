@@ -68,6 +68,8 @@ CHECKS = ("pred-value", "pred-block", "pred-and", "pred-or", "pred-not",
 class Case(BaseCase):
     title = "NSPredicate: the predicate object, and the format grammar that writes one"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

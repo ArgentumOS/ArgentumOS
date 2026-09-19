@@ -40,6 +40,8 @@ CHECKS = ("kvo-notifies-on-a-kvc-write", "kvo-old-and-new-cross-the-change",
 class Case(BaseCase):
     title = "KVO: the registry the KVC header refused by name"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

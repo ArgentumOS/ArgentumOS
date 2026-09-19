@@ -58,6 +58,8 @@ CHECKS = ("kvc-accessors", "kvc-ivar", "kvc-scalar-accessor", "kvc-ivar-super",
 class Case(BaseCase):
     title = "NSKeyValueCoding: the naming rules, on the runtime's ivar table"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

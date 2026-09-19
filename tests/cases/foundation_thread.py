@@ -47,6 +47,8 @@ CHECKS = ("thread-current-and-main", "lock-serialises-two-threads", "lock-try-lo
 class Case(BaseCase):
     title = "NSLock / NSThread: the locking classes and threads, over musl's pthreads"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

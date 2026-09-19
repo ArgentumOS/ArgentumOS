@@ -38,6 +38,8 @@ CHECKS = ("expr-constant", "expr-keypath", "expr-evaluated-object", "expr-variab
 class Case(BaseCase):
     title = "NSExpression: a value described as a tree you can evaluate"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):

@@ -43,6 +43,8 @@ CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
 class Case(BaseCase):
     title = "the calendar family: NSCalendar, NSTimeZone, NSDateComponents"
     tier = "fast"
+    # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):
