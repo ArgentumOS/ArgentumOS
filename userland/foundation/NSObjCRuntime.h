@@ -122,4 +122,22 @@ typedef enum {
  */
 #define NS_REQUIRES_NIL_TERMINATION
 
+/*
+ * NSGetSizeAndAlignment (W2e): the size and alignment of a type ENCODING, and the pointer past
+ * what was consumed. Apple declares it here, and this file can hold it because it involves no
+ * Objective-C type — `const char *` in and `NSUInteger *` out, which is also why this header
+ * needs no nullability region (it is one of the four the gate exempts by name).
+ */
+const char *NSGetSizeAndAlignment(const char *typePtr, NSUInteger *sizep, NSUInteger *alignp);
+
+/* THE DEBUG SWITCHES (W2g): globals a program reads and sets. This library does not act on any
+ * of them yet — the allocation machinery that would consult them is not built — and
+ * NSFoundationVersionNumber is this library's OWN number, stated in its implementation rather
+ * than borrowed from a release it is not. */
+extern BOOL NSDebugEnabled;
+extern BOOL NSZombieEnabled;
+extern BOOL NSDeallocateZombies;
+extern BOOL NSKeepAllocationStatistics;
+extern double NSFoundationVersionNumber;
+
 #endif /* FOUNDATION_NSOBJCRUNTIME_H */

@@ -9,6 +9,7 @@
 #import "foundation_core.h"
 #include <stdio.h>
 #import <objc/runtime.h>
+#include <string.h>		/* memset/memcpy, for the page-function check */
 
 static int okc, failc;
 
@@ -285,6 +286,56 @@ int main(void)
 			      (NSAlignMinXInward & NSAlignMinXOutward) == 0 &&
 			      (NSAlignMinXInward & NSAlignMinXNearest) == 0,
 			      "inward/outward/nearest per edge, unspecified sides untouched, the flipped flag inverting Y, and composites that are ORs of disjoint bits");
+
+	/*
+	 * THE C LEVEL'S ODDS AND ENDS (W2c, W2e, W2g, docs/design/foundation-plan.md §14).
+	 */
+	check("c-byte-order",
+	      NSHostByteOrder() == NS_LittleEndian &&
+	      sizeof(NSSwappedFloat) == 8 && sizeof(NSSwappedDouble) == 8 &&
+	      NSConvertSwappedFloatToHost(NSConvertHostFloatToSwapped(1.5f)) == 1.5f &&
+	      NSConvertSwappedDoubleToHost(NSConvertHostDoubleToSwapped(-2.25)) == -2.25 &&
+	      NSConvertSwappedDoubleToHost(NSConvertHostDoubleToSwapped(0.0)) == 0.0,
+	      "the byte-order round trips both ways, and the host is little-endian");
+
+	{
+		char *p = (char *)NSAllocateMemoryPages(64);
+		char *q = (char *)NSAllocateMemoryPages(64);
+		BOOL ok = (p != NULL) && (q != NULL);
+
+		if (ok) {
+			memset(p, 0x5A, 64);
+			memset(q, 0, 64);
+			NSCopyMemoryPages(p, q, 64);
+			ok = ((unsigned char)q[0] == 0x5A) && ((unsigned char)q[63] == 0x5A);
+		}
+		check("c-memory-pages", ok,
+		      "the page functions allocate, copy and deallocate");
+		if (p != NULL) {
+			NSDeallocateMemoryPages(p, 64);
+		}
+		if (q != NULL) {
+			NSDeallocateMemoryPages(q, 64);
+		}
+	}
+
+	check("c-size-and-alignment",
+	      NSGetSizeAndAlignment("i", NULL, NULL) != NULL &&
+	      NSGetSizeAndAlignment("d", NULL, NULL) != NULL &&
+	      NSGetSizeAndAlignment("{_NSPoint=dd}", NULL, NULL) != NULL,
+	      "NSGetSizeAndAlignment walks the encodings this library's own value classes use");
+
+	{
+		BOOL was = NSZombieEnabled;
+
+		NSZombieEnabled = YES;
+		check("c-debug-switches",
+		      NSZombieEnabled == YES && NSDebugEnabled == NO &&
+		      NSKeepAllocationStatistics == NO && NSDeallocateZombies == NO &&
+		      NSFoundationVersionNumber == 0.0,
+		      "the debug switches are adjustable and read back, and the version number is this library's own");
+		NSZombieEnabled = was;
+	}
 		}
 	}
 	}

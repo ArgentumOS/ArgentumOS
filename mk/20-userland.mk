@@ -151,6 +151,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
 	$(FOUNDATION_SRC)/ngeometry.m \
 	$(FOUNDATION_SRC)/nsprogress.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
+	$(FOUNDATION_SRC)/NSByteOrder.h \
 	$(FOUNDATION_SRC)/NSGeometry.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \

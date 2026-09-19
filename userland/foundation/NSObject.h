@@ -198,6 +198,14 @@ NSString *NSStringFromSelector(SEL aSelector);
 SEL NSSelectorFromString(NSString *aSelectorName);
 NSString *NSStringFromRange(NSRange range);
 
+/* THE PAGE FUNCTIONS (W2e): a region of the process's address space, named for pages. They live
+ * here because Apple declares them with the object-allocation functions — a region to allocate
+ * an object in is the same layer. The pointers are NONNULL by contract: a caller checks the
+ * answer before using it, which is what the probe does. */
+void * _Nullable NSAllocateMemoryPages(NSUInteger numberOfBytes);
+void NSCopyMemoryPages(const void *source, void *dest, NSUInteger numberOfBytes);
+void NSDeallocateMemoryPages(void *ptr, NSUInteger numberOfBytes);
+
 NS_ASSUME_NONNULL_END
 
 @end

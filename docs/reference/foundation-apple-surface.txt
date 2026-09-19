@@ -32,11 +32,11 @@
 #   protocol   shipped    5   open   31   struck    9
 #   macro      shipped    4   open  223   struck   26
 #   enum       shipped   29   open  123   struck    8
-#   case       shipped  178   open 1031   struck   93
-#   func       shipped   49   open   86   struck   54
-#   var        shipped   50   open  717   struck  147
+#   case       shipped  181   open 1028   struck   93
+#   func       shipped   58   open   77   struck   54
+#   var        shipped   55   open  712   struck  147
 #   typealias  shipped   16   open   57   struck    3
-#   struct     shipped    4   open    4   struck    5
+#   struct     shipped    6   open    2   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	open	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1336,9 +1336,9 @@ case	struck	NSYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculation
 case	struck	NSYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSYearForWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSYearForWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NS_BigEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
-case	open	NS_LittleEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
-case	open	NS_UnknownByteOrder		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
+case	shipped	NS_BigEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
+case	shipped	NS_LittleEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
+case	shipped	NS_UnknownByteOrder		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 class	open	NSAffineTransform		Fundamentals / Geometry	-	objc
 class	open	NSAppleEventDescriptor		App Support / Apple Event Handling	-	objc
 class	open	NSAppleEventManager		App Support / Apple Event Handling	-	objc
@@ -1778,19 +1778,19 @@ func	struck	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections
 func	struck	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSAllocateCollectable		Low-Level Utilities / Legacy / Legacy	32-bit-only	objc
-func	open	NSAllocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSAllocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	shipped	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSContainsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSConvertHostDoubleToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSConvertHostFloatToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSConvertSwappedDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSConvertSwappedFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSConvertHostDoubleToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSConvertHostFloatToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSConvertSwappedDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSConvertSwappedFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	struck	NSCopyHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCopyMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCopyMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSCopyMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSCopyObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	deprecated	objc
 func	open	NSCountFrames		Reference / Debugging	-	objc
 func	struck	NSCountHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1800,7 +1800,7 @@ func	struck	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collect
 func	struck	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
-func	open	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSDeallocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	open	NSDecimalAdd		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	open	NSDecimalCompact		Fundamentals / Numbers / Performing arithmetic using references	-	objc
@@ -1834,7 +1834,7 @@ func	open	NSFrameAddress		Reference / Debugging	-	objc
 func	struck	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-func	open	NSGetSizeAndAlignment		Low-Level Utilities / Objective-C Runtime / Serialization	-	objc
+func	shipped	NSGetSizeAndAlignment		Low-Level Utilities / Objective-C Runtime / Serialization	-	objc
 func	open	NSGetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	open	NSHFSTypeCodeFromFileType	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	open	NSHFSTypeOfFile	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
@@ -1846,7 +1846,7 @@ func	struck	NSHashRemove	NSHashTable	Fundamentals / Pointer Collections / Deprec
 func	shipped	NSHeight		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSHomeDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	open	NSHomeDirectoryForUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-func	open	NSHostByteOrder		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSHostByteOrder		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSIncrementExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSInsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIntegralRect		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -2270,8 +2270,8 @@ struct	struck	NSMapTableKeyCallBacks	NSMapTable	Fundamentals / Pointer Collectio
 struct	struck	NSMapTableValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
 struct	shipped	NSOperatingSystemVersion	NSProcessInfo	App Support / System Interaction / Getting host information	-	objc
 struct	shipped	NSRange		Fundamentals / Ranges	-	objc
-struct	open	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
-struct	open	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-	objc
+struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
+struct	shipped	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-	objc
 typealias	open	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	-	objc
 typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
 typealias	open	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
@@ -2409,9 +2409,9 @@ var	struck	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-spec
 var	open	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
 var	struck	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
+var	shipped	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
 var	open	NSDebugDescriptionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSDebugEnabled		App Support / Diagnostics and Debugging	-	objc
+var	shipped	NSDebugEnabled		App Support / Diagnostics and Debugging	-	objc
 var	struck	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	open	NSDecimalNumberDivideByZeroException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
 var	open	NSDecimalNumberDivideByZeroException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
@@ -2502,7 +2502,7 @@ var	shipped	NSFileTypeRegular	NSFileManager	Files and Data Persistence / File sy
 var	open	NSFileTypeSocket	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFileTypeSymbolicLink	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFileTypeUnknown	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
-var	open	NSFoundationVersionNumber		Low-Level Utilities / Versions and API Availability / Current Version	-	objc
+var	shipped	NSFoundationVersionNumber		Low-Level Utilities / Versions and API Availability / Current Version	-	objc
 var	shipped	NSGenericException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSGlobalDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	open	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
@@ -2582,7 +2582,7 @@ var	struck	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting
 var	open	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
 var	open	NSItemProviderPreferredImageSizeKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	struck	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSKeepAllocationStatistics		App Support / Diagnostics and Debugging	-	objc
+var	shipped	NSKeepAllocationStatistics		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSKeyValueChangeIndexesKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeKindKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeNewKey		Reference / Type Aliases / Type Properties	-	objc
@@ -3261,4 +3261,4 @@ var	struck	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence
 var	shipped	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroRect		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroSize		Fundamentals / Geometry / Zero Constant	-	objc
-var	open	NSZombieEnabled		App Support / Diagnostics and Debugging	-	objc
+var	shipped	NSZombieEnabled		App Support / Diagnostics and Debugging	-	objc

@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #import <foundation/NSString.h>	/* -description has to return one */
+#import <foundation/NSByteOrder.h>	/* the byte-order family (W2c) */
+#include <sys/mman.h>		/* the page functions (W2e) */
+#include <string.h>		/* memcpy, for NSCopyMemoryPages */
 #import <foundation/NSMethodSignature.h>	/* stage F: the selector's types */
 #import <foundation/NSInvocation.h>	/* stage F: what forwarding is handed */
 #include <objc/objc-arc.h>
@@ -394,4 +397,123 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
 	return [self description];
 }
 
+
+/*
+ * THE C LEVEL'S ODDS AND ENDS (W2c, W2e and W2g, docs/design/foundation-plan.md §14). They are
+ * here because they are the root class's own layer: none of them is an object.
+ *
+ * TWO GROUPS ARE DELIBERATELY ABSENT OF IMPLEMENTATION, recorded rather than faked:
+ *
+ *   NSIncrementExtraRefCount / NSDecrementExtraRefCountWasZero / NSExtraRefCount
+ *       They read and write an object's EXTRA reference count, and this runtime exposes no such
+ *       API (measured: objc/runtime.h declares none). objc_retain/objc_release cannot ANSWER a
+ *       count, and a wrong answer is worse than a recorded gap: the dependency is the runtime's.
+ *
+ *   NSCountFrames / NSFrameAddress
+ *       A frame walker, and this tree does not build with a frame-pointer guarantee — walking the
+ *       chain would return POINTERS INTO NOTHING rather than fail. Recorded as a dependency on a
+ *       stack-walking facility (Apple marks both unavailable anyway).
+ */
+
+/* ---------------------------------------------------------------- byte order */
+
+NSSwappedFloat NSConvertHostFloatToSwapped(float x)
+{
+	NSSwappedFloat out;
+	union {
+		float f;
+		unsigned int u;
+	} in;
+
+	in.f = x;
+	out.v = (unsigned long)__builtin_bswap32(in.u);
+	return out;
+}
+
+float NSConvertSwappedFloatToHost(NSSwappedFloat x)
+{
+	union {
+		float f;
+		unsigned int u;
+	} out;
+
+	out.u = __builtin_bswap32((unsigned int)x.v);
+	return out.f;
+}
+
+NSSwappedDouble NSConvertHostDoubleToSwapped(double x)
+{
+	NSSwappedDouble out;
+	union {
+		double d;
+		unsigned long long u;
+	} in;
+
+	in.d = x;
+	out.v = __builtin_bswap64(in.u);
+	return out;
+}
+
+double NSConvertSwappedDoubleToHost(NSSwappedDouble x)
+{
+	union {
+		double d;
+		unsigned long long u;
+	} out;
+
+	out.u = __builtin_bswap64(x.v);
+	return out.d;
+}
+
+/* THE HOST IS LITTLE-ENDIAN HERE BY CONSTRUCTION: this system is x86-64 and nothing else. */
+NSByteOrder NSHostByteOrder(void)
+{
+	return NS_LittleEndian;
+}
+
+/* ------------------------------------------------------ the page functions */
+
+void *NSAllocateMemoryPages(NSUInteger numberOfBytes)
+{
+	void *p;
+
+	if (numberOfBytes == 0) {
+		return NULL;
+	}
+	p = mmap(NULL, numberOfBytes, PROT_READ | PROT_WRITE,
+		 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	return (p == MAP_FAILED) ? NULL : p;
+}
+
+void NSCopyMemoryPages(const void *source, void *dest, NSUInteger numberOfBytes)
+{
+	if (source == NULL || dest == NULL || numberOfBytes == 0) {
+		return;
+	}
+	memcpy(dest, source, numberOfBytes);
+}
+
+void NSDeallocateMemoryPages(void *ptr, NSUInteger numberOfBytes)
+{
+	if (ptr == NULL) {
+		return;
+	}
+	munmap(ptr, numberOfBytes);
+}
+
+/* ----------------------------------------------------------- debug switches */
+
+/*
+ * THE SWITCHES ARE ADJUSTABLE, which is their whole contract: a program sets one and reads it
+ * back. Their defaults are all off, and this library does not ACT on any of them yet — the
+ * allocation machinery that would consult them is not built.
+ */
+BOOL NSDebugEnabled = NO;
+BOOL NSZombieEnabled = NO;
+BOOL NSDeallocateZombies = NO;
+BOOL NSKeepAllocationStatistics = NO;
+
+/* THE VERSION NUMBER IS THIS LIBRARY'S OWN. Apple's value names a released Foundation, this
+ * library is not that release, and the number is readable — so it is stated once, here. */
+double NSFoundationVersionNumber = 0.0;
 @end

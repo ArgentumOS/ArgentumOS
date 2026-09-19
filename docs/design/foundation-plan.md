@@ -4017,11 +4017,11 @@ what the ledger actually holds.
 |---|---|---|
 | **W2a the C accessors** | `NSStringFromClass`, `NSClassFromString`, `NSStringFromSelector`, `NSSelectorFromString`, `NSStringFromRange` — the runtime↔string boundary | **LANDED and verified: `foundation_core` 18/18, and the five rows read `shipped` in the surface file** |
 | **W2b the geometry family** | `NSPoint`/`NSSize`/`NSRect` + their pointer/array aliases, `NSEdgeInsets`, `NSRectEdge`, the 34 geometry and range functions, and the four zero constants — `userland/foundation/NSGeometry.h` + `ngeometry.m` | **LANDED and verified: `foundation_core` 21/21 with `geometry-rects`, `geometry-edges` and `geometry-strings`, whole gate 4/4 cases and 24/24 checks.** It also closed the six **CoreGraphics interop** conversions and `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES`, because **the user decided to define CG's VALUE TYPES** (see §14.1). **COMPLETE**, including the residue that was parked for a measurement: `NSAlignmentOptions` (22 constants) and `NSIntegralRectWithOptions` — see §14.2 for what is Apple's in them and what is ours |
-| W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | |
+| W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | | **LANDED and verified (W2c 10 rows): `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and the three cases — `userland/foundation/NSByteOrder.h`, implemented in `nsobject.m`, asserted by `c-byte-order`** |
 | W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | |
-| W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | |
+| W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | | **PARTLY LANDED (4 of 9): the three page functions and `NSGetSizeAndAlignment` — which reuses `nsvalue.m`'s own encoder measurer so the two cannot disagree — asserted by `c-memory-pages` and `c-size-and-alignment`. THE OTHER FIVE STAY `open`, and they are DEPENDENCIES rather than gaps: the extra-refcount trio needs the RUNTIME to expose a refcount (objc/runtime.h declares none), and `NSCountFrames`/`NSFrameAddress` need a stack-walking facility, because a frame walk without a frame-pointer guarantee returns pointers into nothing rather than failing** |
 | W2f the KVC operator constants | the eleven `…KeyValueOperator` vars, `NSKeyValueOperator`/`NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` | |
-| W2g the debug switches | `NSDebugEnabled`, `NSZombieEnabled`, `NSDeallocateZombies`, `NSKeepAllocationStatistics`, `NSFoundationVersionNumber` | |
+| W2g the debug switches | `NSDebugEnabled`, `NSZombieEnabled`, `NSDeallocateZombies`, `NSKeepAllocationStatistics`, `NSFoundationVersionNumber` | | **LANDED and verified (5 rows): the four diagnostics switches and `NSFoundationVersionNumber`, asserted by `c-debug-switches` — the switches because ADJUSTABILITY is their contract, and the version number because it is this library's own (§14.3)** |
 | W2h the small classes | `NSUUID`, `NSAffineTransform`, `NSDateInterval`, `NSValueTransformer`, `NSProgressReporting`, `NSUndoManager`, `NSAssertionHandler`, `NSJSONSerialization`, and the object basics (`NSObject` **protocol**, `NSAutoreleasePool`, `NSProxy`) | |
 
 **W2a'S TWO PLACEMENT LESSONS, both from the compiler rather than from taste.** Apple declares these
@@ -4102,3 +4102,42 @@ the honest kind here.
 equal Apple's, and under §11.5's new ABI exclusion it is not a claim about layout either — it is a
 claim about the constants a program names and the behaviour it observes. If Apple's values are ever
 published, the values change and nothing above moves.
+
+### 14.3 THE VALUES THAT ARE OURS, COLLECTED (W2c, W2e, W2g, and §14.2 before them)
+
+Three more places this pass chose a value rather than reading one, all for the same reason — **Apple
+publishes the constant and not the number** — and all stated where a reader meets them:
+
+| What | Whose value | What a program observes |
+|---|---|---|
+| `NSSwappedFloat`/`NSSwappedDouble`'s packing | ours | the ROUND TRIP, which is what the conversions are for — the probe asserts it both ways, and the sizes (8 bytes each, as Apple's are on LP64) |
+| `NS_UnknownByteOrder`/`NS_LittleEndian`/`NS_BigEndian` | ours | `NSHostByteOrder() == NS_LittleEndian` — self-consistency, which is the documented usage |
+| `NSFoundationVersionNumber` | ours | a readable number; Apple's names a released Foundation and this library is not that release |
+| `NSAlignmentOptions`' bit positions (§14.2) | ours | by-name use and the behaviour; a hard-coded bit would differ |
+| the CG **value types** (§14.1) | defined here, Apple's arrangement | `NSPoint` IS `CGPoint`, so the six conversions are identities |
+
+**AND TWO THINGS THIS PASS DID NOT DO, recorded as DEPENDENCIES rather than gaps** — both because the
+honest implementation is unavailable, and a wrong answer is worse than a written-down reason:
+
+* **`NSIncrementExtraRefCount` / `NSDecrementExtraRefCountWasZero` / `NSExtraRefCount`** need the
+  runtime to expose an object's extra reference count. Measured: `objc/runtime.h` declares no such
+  API, and `objc_retain`/`objc_release` can change a count but cannot ANSWER one.
+* **`NSCountFrames` / `NSFrameAddress`** need a stack-walking facility. This tree does not build with
+  a frame-pointer guarantee, so walking the chain would hand back pointers into nothing — a silent
+  wrong answer where a recorded gap costs nothing. (Apple marks both unavailable anyway.)
+
+**THE GATE CAUGHT THIS PASS TWICE, both worth the record:**
+1. **A new public header must open a nullability region** — `NSByteOrder.h` did not, and the gate said
+   so by name. (It also confirms the earlier finding from the other side: **`NSObjCRuntime.h` CANNOT
+   open one**, because its `NSComparator` block typedef trips the completeness check — which is why it
+   is one of the four exemptions.)
+2. **THE SWEEP REFUSED A LEDGER THAT LAGGED THE TREE:** after the declarations landed, `--check`
+   answered *"PRESENT BUT LISTED OPEN var NSZombieEnabled — our headers now declare it; flip the row"*.
+   That is precisely the trap the check was built for (a stale absence claim), and this time it fired
+   on a change of mine rather than three milestones later.
+
+**AND ONE PROCESS LESSON, at my expense:** my first attempt at this patch died on a Python syntax error,
+and I reported that half of it had landed when none of it had — which produced a link failure
+(declarations with no implementations). The fix is in the practice, not the code: **the verification
+step now RE-READS the file for the symbols it claims to have written, instead of trusting the print
+that says it did.**

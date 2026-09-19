@@ -6,7 +6,8 @@
  * nsvalue.m — bytes with a type encoding (F13.8c). MANUAL OWNERSHIP.
  *
  * THE ONE PIECE OF REAL WORK IS THE SIZE. Cocoa's +valueWithBytes:objCType: takes a buffer and an
- * encoding and no length, because Foundation there can ask NSGetSizeAndAlignment. This library has
+ * encoding and no length, because Foundation there can ask NSGetSizeAndAlignment — which THIS
+ * library now answers too (the implementation is at the end of this file). This library has
  * no such function, so `fn_measure` WALKS the encoding — scalars, pointers, objects, C arrays and
  * structs/unions, RECURSIVELY, with C's own alignment rules — and raises on anything it cannot size
  * rather than guessing a length. Guessing a length is how a box silently reads past a caller's
@@ -39,6 +40,11 @@ static NSUInteger fn_round_up(NSUInteger offset, NSUInteger align)
 }
 
 static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger *outAlign);
+
+/* THE FUNCTION THIS FILE'S OWN COMMENT SAID WAS MISSING: Apple's Foundation can ask
+ * NSGetSizeAndAlignment, which is why its encodings carry no length. This library answers it
+ * now, on the SAME measurer the value classes use, so the two can never disagree. */
+const char *NSGetSizeAndAlignment(const char *typePtr, NSUInteger *sizep, NSUInteger *alignp);
 
 /* A field or struct NAME in an encoding is either absent or quoted — `{CGPoint="x"d"y"d}` — so the
  * quoted form has to be stepped over before the next type is measured. */
@@ -337,4 +343,34 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return self;
 }
 
+
+/*
+ * NSGetSizeAndAlignment (W2e): the encoder walker this file already had, under Apple's name.
+ * It answers the size and alignment of a type ENCODING — `@encode(...)`'s string — and returns
+ * the pointer past what it consumed, which is Apple's contract for qualifiers and unions.
+ */
+const char *NSGetSizeAndAlignment(const char *typePtr, NSUInteger *sizep, NSUInteger *alignp)
+{
+	NSUInteger size = 0;
+	NSUInteger align = 1;
+	const char *end;
+
+	if (typePtr == NULL) {
+		if (sizep != NULL) {
+			*sizep = 0;
+		}
+		if (alignp != NULL) {
+			*alignp = 1;
+		}
+		return NULL;
+	}
+	end = fn_measure(typePtr, &size, &align);
+	if (sizep != NULL) {
+		*sizep = size;
+	}
+	if (alignp != NULL) {
+		*alignp = align;
+	}
+	return end;
+}
 @end
