@@ -21,6 +21,7 @@
 #include <fnx/linker.h>
 #include <fnx/kernel.h>
 #include "serial64.h"
+#include <fnx/stdio.h>	/* printk, used by the split tracer */
 
 /* the stub's name for the kernel base (include/fnx/linker.h) */
 #define PAGE_OFFSET64	PAGE_OFFSET
@@ -370,9 +371,8 @@ int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 {
 	unsigned long *lvl, phys, *entry, *pt;
 	unsigned long base;
-	int i, split;
+	int i;
 
-	split = 0;
 	lvl = (unsigned long *)P2V64(pml4);
 	entry = &lvl[PML4_INDEX(vaddr)];
 	if(!(*entry & X86_PTE_P)) {
@@ -444,7 +444,6 @@ int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 			}
 		}
 		*entry = phys | X86_PTE_P | X86_PTE_RW;
-		split = 1;
 	}
 	lvl = (unsigned long *)P2V64(*entry & PAGE_MASK64);
 	lvl[PT_INDEX(vaddr)] = (paddr & PAGE_MASK64) | (flags & 0xFFFUL) | X86_PTE_P;
