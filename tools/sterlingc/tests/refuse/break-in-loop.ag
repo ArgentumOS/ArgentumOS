@@ -1,0 +1,8 @@
+/* No node for a jump statement, and dropping one changes the loop's meaning. */
+class RefuseBreak: Object {
+    method m() -> Void {
+        while true {
+            break;
+        }
+    }
+}

@@ -1,0 +1,6 @@
+/* A block's emission belongs to the closure slice; the node used to print `nil`. */
+class RefuseClosure: Object {
+    method m() -> Void {
+        let f: Void = { return; };
+    }
+}

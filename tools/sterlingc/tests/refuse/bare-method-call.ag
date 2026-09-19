@@ -1,0 +1,10 @@
+/* §7.42: a bare call that names a method is a message to `self`, not a C call. */
+class RefuseBareCall: Object {
+    method helper() -> Void {
+        return;
+    }
+
+    method m() -> Void {
+        helper();
+    }
+}

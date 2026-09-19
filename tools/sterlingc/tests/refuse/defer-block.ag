@@ -1,0 +1,7 @@
+/* `defer` duplicates its body on every exit path — code size, so a real lowering. */
+class RefuseDefer: Object {
+    method m() -> Void {
+        defer { return; }
+        return;
+    }
+}

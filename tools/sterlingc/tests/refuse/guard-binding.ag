@@ -1,0 +1,6 @@
+/* The front end accepts `guard`; the emitter has no lowering for it yet. */
+class RefuseGuard: Object {
+    method m() -> Void {
+        guard true else { return; }
+    }
+}

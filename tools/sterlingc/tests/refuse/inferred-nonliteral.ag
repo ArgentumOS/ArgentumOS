@@ -1,0 +1,6 @@
+/* §7.19's omitted type is only inferable from a LITERAL here; an expression is inference. */
+class RefuseInferred: Object {
+    method m(a: Int32, b: Int32) -> Void {
+        let sum = a + b;
+    }
+}

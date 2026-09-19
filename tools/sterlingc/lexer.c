@@ -62,6 +62,61 @@ st_is_keyword(const char *word, size_t len)
 	return 0;
 }
 
+/*
+ * §7.22's precedence table, by symbol.
+ *
+ * This lives here rather than in the parser because it is a property of the
+ * *symbol set* (§7.72), and because both the parser and the emitter need the
+ * same answer: the parser to build the tree, the emitter to know when a nested
+ * binary expression must keep its parentheses. It moved out of parser.c when
+ * the emitter became a tree walk — the second copy is exactly the divergence
+ * this table cannot survive.
+ *
+ * The distinction the length checks make: `==` and `!=` are not `=` and `!`,
+ * and `<=`/`>=` are not `<`/`>` — reading only the first character turned both
+ * into the wrong operator (and `!=` into a non-operator).
+ */
+int
+st_operator_precedence(const char *sym, size_t len)
+{
+	if (sym == NULL || len == 0) {
+		return 0;
+	}
+	if (len == 1) {
+		switch (sym[0]) {
+		case '=': case '?': case ':': case '.': case '!':
+			return 0;	/* structural, never binary */
+		}
+	}
+	if (len == 2) {
+		if (memcmp(sym, "==", 2) == 0 || memcmp(sym, "!=", 2) == 0) {
+			return 6;
+		}
+		if (memcmp(sym, "<=", 2) == 0 || memcmp(sym, ">=", 2) == 0) {
+			return 7;
+		}
+		if (memcmp(sym, "<<", 2) == 0 || memcmp(sym, ">>", 2) == 0) {
+			return 8;
+		}
+		if (memcmp(sym, "&&", 2) == 0) {
+			return 2;
+		}
+		if (memcmp(sym, "||", 2) == 0 || memcmp(sym, "??", 2) == 0) {
+			return 1;
+		}
+	}
+	switch (sym[0]) {
+	case '*': case '/': case '%':	return 10;
+	case '+': case '-':		return 9;
+	case '<': case '>':		return 7;
+	case '&':			return 5;
+	case '^':			return 4;
+	case '|':			return 3;
+	default:
+		return 1;		/* a symbol with no C meaning, loosest */
+	}
+}
+
 const char *
 st_token_kind_name(st_token_kind kind)
 {

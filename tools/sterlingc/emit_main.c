@@ -67,9 +67,26 @@ main(int argc, char **argv)
 	st_program *program;
 	char *source;
 	size_t i;
+	/*
+	 * `--parse` stops after the front end — lexer, parser, §7.48's check —
+	 * and emits nothing.
+	 *
+	 * It exists because two checks were quietly conflating "the front end
+	 * rejected this" with "the emitter refused this": the corpus reported
+	 * `parses` from the *emitting* driver's exit status, and `--reject`
+	 * counted any stderr line as a rejection. While the emitter accepted
+	 * everything those were the same thing. They are not any more — an
+	 * emitter refusal is a *supported* program and prints a message — so a
+	 * reject case that the front end accepted would have passed as
+	 * "rejected", which is exactly the false pass that leg exists to catch.
+	 */
+	int parse_only = 0;
+	int have_source = 0;
 
 	for (i = 1; i < (size_t)argc; i++) {
-		if (strcmp(argv[i], "-o") == 0 && i + 1 < (size_t)argc) {
+		if (strcmp(argv[i], "--parse") == 0) {
+			parse_only = 1;
+		} else if (strcmp(argv[i], "-o") == 0 && i + 1 < (size_t)argc) {
 			outdir = argv[++i];
 		} else {
 			source = slurp(argv[i]);
@@ -77,10 +94,11 @@ main(int argc, char **argv)
 				fprintf(stderr, "sterlingc: cannot read %s\n", argv[i]);
 				return 1;
 			}
+			have_source = 1;
 		}
 	}
 	/* No file named: use the specimen. */
-	if (argc == 1 || (argc == 3 && outdir != NULL)) {
+	if (!have_source) {
 		/*
 		 * The specimen is a string literal and must never be freed, so
 		 * it is copied: that keeps `source` uniformly owned here and
@@ -113,8 +131,19 @@ main(int argc, char **argv)
 		return 1;
 	}
 
+	/*
+	 * `--parse`: the front end accepted the program, which is all this mode
+	 * claims. Emission is a separate question and `--golden` is what asks it.
+	 */
+	if (parse_only) {
+		st_arena_free();
+		free(source);
+		return 0;
+	}
+
 	for (i = 0; i < program->class_count; i++) {
 		const st_class *c = program->classes[i];
+		const char *eerror = NULL;
 
 		if (outdir != NULL) {
 			char path[1024];
@@ -127,7 +156,17 @@ main(int argc, char **argv)
 				fprintf(stderr, "sterlingc: cannot write %s\n", path);
 				return 1;
 			}
-			st_emit_header(fp, program);
+			if (!st_emit_header(fp, program, &eerror)) {
+				/*
+				 * A refusal must not leave a partial file behind:
+				 * the next `make` would see a header that is
+				 * syntactically fine and silently incomplete.
+				 */
+				fclose(fp);
+				remove(path);
+				fprintf(stderr, "%s\n", eerror);
+				return 1;
+			}
 			fclose(fp);
 
 			snprintf(path, sizeof(path), "%s/%s.m", outdir,
@@ -137,15 +176,26 @@ main(int argc, char **argv)
 				fprintf(stderr, "sterlingc: cannot write %s\n", path);
 				return 1;
 			}
-			st_emit_implementation(fp, program);
+			if (!st_emit_implementation(fp, program, &eerror)) {
+				fclose(fp);
+				remove(path);
+				fprintf(stderr, "%s\n", eerror);
+				return 1;
+			}
 			fclose(fp);
 			continue;
 		}
 
 		printf("----- %s.h -----\n", c->name.text);
-		st_emit_header(stdout, program);
+		if (!st_emit_header(stdout, program, &eerror)) {
+			fprintf(stderr, "%s\n", eerror);
+			return 1;
+		}
 		printf("----- %s.m -----\n", c->name.text);
-		st_emit_implementation(stdout, program);
+		if (!st_emit_implementation(stdout, program, &eerror)) {
+			fprintf(stderr, "%s\n", eerror);
+			return 1;
+		}
 	}
 
 	st_arena_free();

@@ -378,7 +378,7 @@ static int parse_expr(st_parser *p, st_expr **out);
  * the definition being moved: both callers are earlier in the file for good
  * reason, since a closure *is* a primary and a case *is* a statement.
  */
-static int parse_stmt_block(st_parser *p);
+static int parse_stmt_block(st_parser *p, st_stmt **out);
 
 /*
  * A call argument is `label: value`. The internal name follows the label
@@ -471,25 +471,60 @@ static int parse_stmt(st_parser *p, st_stmt **out);
 static int
 parse_postfix(st_parser *p, st_expr *e, int *ok)
 {
-	/* §6's member access. The name is dropped: the AST has no member node. */
+	/*
+	 * §6's member access. It is NOT a message send: §7.60 **withdrew** the
+	 * parens-omission rule (2026-09), so `o.foo` is a member and only
+	 * `o.foo()` is a send.
+	 *
+	 * The name used to be dropped — the AST had no member node — so
+	 * `self.reset` parsed as `self` and the member was invisible to
+	 * everything downstream.
+	 */
 	if (at_punct(p, '.')) {
+		st_expr *receiver = st_arena_alloc(sizeof(st_expr));
 		st_name member;
 
+		if (receiver == NULL) {
+			fail(p, "out of memory");
+			*ok = 0;
+			return 1;
+		}
+		*receiver = *e;
 		bump(p);
 		if (!take_name(p, &member)) {
 			*ok = 0;
 			return 1;
 		}
+		e->kind = ST_EXPR_MEMBER;
+		e->base = receiver;
+		e->text = member;
+		e->arg_count = 0;
 		return 1;
 	}
 	/*
 	 * §4's `x!`. A **postfix** form, not a prefix one — `!` is also
 	 * logical-not — and position is what tells them apart: this only runs once
 	 * a complete primary has been consumed.
+	 *
+	 * §6's *trap* is what `!` means, and it belongs to the optional-flows
+	 * slice. Emitting the operand alone would drop the trap and the result
+	 * would still compile — a silent wrong answer — so the node is refused
+	 * instead.
 	 */
 	if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 	    p->tok.start[0] == '!') {
+		st_expr *operand = st_arena_alloc(sizeof(st_expr));
+
+		if (operand == NULL) {
+			fail(p, "out of memory");
+			*ok = 0;
+			return 1;
+		}
+		*operand = *e;
 		bump(p);
+		e->kind = ST_EXPR_UNSUPPORTED;
+		e->base = operand;
+		e->text.text = st_arena_strdup("x!", 2);
 		return 1;
 	}
 	/*
@@ -498,10 +533,21 @@ parse_postfix(st_parser *p, st_expr *e, int *ok)
 	 * after it decides whether a failure is a nil or a trap, so both are
 	 * written. It is the one postfix form followed by a **type** rather than an
 	 * expression.
+	 *
+	 * A conversion is `isKindOfClass:` plus a cast (§7.44) and has no emission
+	 * here yet; dropping it would emit the operand with the conversion gone,
+	 * so it is refused.
 	 */
 	if (at_keyword(p, "as")) {
 		st_type target;
+		st_expr *operand = st_arena_alloc(sizeof(st_expr));
 
+		if (operand == NULL) {
+			fail(p, "out of memory");
+			*ok = 0;
+			return 1;
+		}
+		*operand = *e;
 		bump(p);
 		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 		    (p->tok.start[0] == '?' || p->tok.start[0] == '!')) {
@@ -515,15 +561,28 @@ parse_postfix(st_parser *p, st_expr *e, int *ok)
 			*ok = 0;
 			return 1;
 		}
+		e->kind = ST_EXPR_UNSUPPORTED;
+		e->base = operand;
+		e->text.text = st_arena_strdup("x as", 4);
 		return 1;
 	}
 	/*
 	 * §7.72's `[]` in a *read* position — `self.slots[i]`, or `name[i]`. The
-	 * declaration form belongs to parse_decl; this is the use.
+	 * declaration form belongs to parse_decl; this is the use. The subscript is
+	 * the member-only operator pair `[]`/`[]=` and lowers to ObjC's
+	 * `objectAtIndexedSubscript:`, which is its own piece of work — so the
+	 * index is parsed (nothing goes unread) and the node refused.
 	 */
 	if (at_punct(p, '[')) {
 		st_expr *index;
+		st_expr *container = st_arena_alloc(sizeof(st_expr));
 
+		if (container == NULL) {
+			fail(p, "out of memory");
+			*ok = 0;
+			return 1;
+		}
+		*container = *e;
 		bump(p);
 		if (!parse_expr(p, &index)) {
 			*ok = 0;
@@ -533,24 +592,38 @@ parse_postfix(st_parser *p, st_expr *e, int *ok)
 			*ok = 0;
 			return 1;
 		}
+		e->kind = ST_EXPR_UNSUPPORTED;
+		e->base = container;
+		e->text.text = st_arena_strdup("subscript", 9);
 		return 1;
 	}
 	/*
-	 * §7.33's trailing closure. The parameter list *is* the call's parentheses,
-	 * so a `[` capture list or a `{` body after them continues the closure
-	 * rather than starting something new.
+	 * §6's message send, and §7.42's bare call. The distinction is exactly
+	 * whether a `.member` was just read: `receiver.sel(label: arg)` emits
+	 * `[receiver sel:arg]`, while a bare `name(...)` is a C function when no
+	 * method matches and a message to `self` when one does — §2's specimen is
+	 * the first, and it is why the two nodes are not one.
 	 */
 	if (at_punct(p, '(')) {
-		st_expr *callee = st_arena_alloc(sizeof(st_expr));
+		if (e->kind == ST_EXPR_MEMBER) {
+			/* `e` already holds the receiver and the method name. */
+			e->kind = ST_EXPR_SEND;
+			e->arg_count = 0;
+			e->args = NULL;
+		} else {
+			st_expr *callee = st_arena_alloc(sizeof(st_expr));
 
-		if (callee == NULL) {
-			fail(p, "out of memory");
-			*ok = 0;
-			return 1;
+			if (callee == NULL) {
+				fail(p, "out of memory");
+				*ok = 0;
+				return 1;
+			}
+			*callee = *e;
+			e->kind = ST_EXPR_CALL;
+			e->base = callee;
+			e->arg_count = 0;
+			e->args = NULL;
 		}
-		*callee = *e;
-		e->kind = ST_EXPR_CALL;
-		e->base = callee;
 		bump(p);
 		if (!parse_args(p, e)) {
 			*ok = 0;
@@ -574,13 +647,32 @@ parse_postfix(st_parser *p, st_expr *e, int *ok)
 			}
 		}
 		/*
-		 * The body is a statement list, and the guard is **load-bearing**: this
-		 * runs after every primary, so an unguarded call would demand a `{`
-		 * after each one and break `self.g()`.
+		 * §7.33's trailing closure: the parameter list IS the call's
+		 * parentheses, so a `{` here continues the same call. The body is a
+		 * statement list, and the guard is **load-bearing**: this runs after
+		 * every primary, so an unguarded call would demand a `{` after each
+		 * one and break `self.g()`.
+		 *
+		 * Blocks are the closure slice's, and the node that used to stand in
+		 * for one emitted `nil` — a wrong answer that compiled. It is refused
+		 * by name now.
 		 */
-		if (at_punct(p, '{') && !parse_stmt_block(p)) {
-			*ok = 0;
-			return 1;
+		if (at_punct(p, '{')) {
+			st_expr *closure = st_arena_alloc(sizeof(st_expr));
+
+			if (closure == NULL) {
+				fail(p, "out of memory");
+				*ok = 0;
+				return 1;
+			}
+			*closure = *e;
+			if (!parse_stmt_block(p, NULL)) {
+				*ok = 0;
+				return 1;
+			}
+			e->kind = ST_EXPR_UNSUPPORTED;
+			e->base = closure;
+			e->text.text = st_arena_strdup("closure", 7);
 		}
 		return 1;
 	}
@@ -625,12 +717,19 @@ parse_primary(st_parser *p, st_expr **out)
 		}
 		if (prefix) {
 			st_expr *operand = NULL;
+			st_token symbol = p->tok;
 
 			bump(p);
 			if (!parse_primary(p, &operand)) {
 				return 0;
 			}
-			e->kind = ST_EXPR_IDENT;
+			/*
+			 * The symbol is recorded: `-x` and `!x` are different
+			 * expressions, and the placeholder this replaces kept only
+			 * the operand, which made every prefix form the same node.
+			 */
+			e->kind = ST_EXPR_UNARY;
+			e->text.text = st_arena_strdup(symbol.start, symbol.len);
 			e->base = operand;
 			*out = e;
 			return 1;
@@ -645,12 +744,13 @@ parse_primary(st_parser *p, st_expr **out)
 	 * lookahead is needed after all, contrary to what I assumed when this
 	 * work was queued.
 	 *
-	 * ST_EXPR_NIL stands in as the node, like the other scanned forms: the
-	 * emitter would print `nil` for a closure, which is wrong but inert until
-	 * the emitter's step closes it. Recorded rather than hidden.
+	 * The node used to be ST_EXPR_NIL, which the emitter printed as `nil` — a
+	 * wrong answer that compiles. It is refused by name now: the closure slice
+	 * owns the emission, and until it lands a program using a block stops.
 	 */
 	if (at_punct(p, '{')) {
-		e->kind = ST_EXPR_NIL;
+		e->kind = ST_EXPR_UNSUPPORTED;
+		e->text.text = st_arena_strdup("closure", 7);
 		bump(p);
 
 		if (at_punct(p, '(')) {
@@ -783,17 +883,6 @@ parse_primary(st_parser *p, st_expr **out)
 		}
 		break;
 	case ST_PUNCT:
-		/*
-		 * §7.64's declaration initialiser arrives parenthesised:
-		 * `= ({1, 2, 3})`. A brace list has no expression form — §6 has
-		 * none — so the contents are scanned to the matching close and
-		 * dropped; the emitter is what gives them meaning. A plain
-		 * `(expr)` is not yet parsed as a grouping.
-		 *
-		 * ST_EXPR_NIL stands in as the placeholder node. That is a real
-		 * AST gap: a scanned initialiser wants its own kind, and it is
-		 * recorded here rather than hidden.
-		 */
 		if (at_punct(p, '.')) {
 			/*
 			 * §7.35's enum-case spelling: `.idle` and
@@ -801,15 +890,23 @@ parse_primary(st_parser *p, st_expr **out)
 			 * type in hand rather than a member of an expression, so the
 			 * name becomes the node's text and any argument list is
 			 * parsed as an ordinary call.
+			 *
+			 * Enums are not emitted at all yet — neither the plain kind
+			 * nor the tagged union — and §5 prefixes the qualified form
+			 * (`MyEnumType_valueOne`) in a way a bare name here cannot
+			 * know. Emitting `idle` would be a wrong answer that
+			 * compiles, so the node is refused.
 			 */
 			st_name case_name;
+			st_expr *inner = st_arena_alloc(sizeof(st_expr));
 
+			if (inner == NULL) {
+				return fail(p, "out of memory");
+			}
 			bump(p);
 			if (!take_name(p, &case_name)) {
 				return 0;
 			}
-			e->kind = ST_EXPR_IDENT;
-			e->text = case_name;
 			if (at_punct(p, '(')) {
 				st_expr *callee = st_arena_alloc(sizeof(st_expr));
 
@@ -824,25 +921,67 @@ parse_primary(st_parser *p, st_expr **out)
 					return 0;
 				}
 			}
+			*inner = *e;
+			e->kind = ST_EXPR_UNSUPPORTED;
+			e->base = inner;
+			e->text.text = st_arena_strdup("enum case", 9);
 			*out = e;
 			return 1;
 		}
 		if (at_punct(p, '(')) {
-			int depth = 1;
-
+			/*
+			 * The `(` goes FIRST, before the `{` test below — checking
+			 * for `{` while the current token is still `(` is what made
+			 * `= ({1, 2, 3})` parse as a grouping around a closure and
+			 * fail at the first comma.
+			 */
 			bump(p);
-			while (p->tok.kind != ST_EOF && depth > 0) {
-				if (at_punct(p, '(') || at_punct(p, '{')) {
-					depth++;
-				} else if (at_punct(p, ')') || at_punct(p, '}')) {
-					depth--;
-				}
+			/*
+			 * §7.64's brace list arrives parenthesised — `= ({1, 2, 3})`
+			 * — and a brace list has no expression form (§6 has none),
+			 * so it is scanned to its matching close and the node
+			 * refused rather than printed as `nil`.
+			 */
+			if (at_punct(p, '{')) {
+				int depth = 1;
+
 				bump(p);
+				while (p->tok.kind != ST_EOF && depth > 0) {
+					if (at_punct(p, '{')) {
+						depth++;
+					} else if (at_punct(p, '}')) {
+						depth--;
+					}
+					bump(p);
+				}
+				if (depth > 0) {
+					return fail(p, "unclosed `{` in an initialiser");
+				}
+				if (!expect_punct(p, ')')) {
+					return 0;
+				}
+				e->kind = ST_EXPR_UNSUPPORTED;
+				e->text.text = st_arena_strdup("brace initialiser", 17);
+				break;
 			}
-			if (depth > 0) {
-				return fail(p, "unclosed `(` in an initialiser");
+			/*
+			 * Anything else in parentheses is a plain grouping, and a
+			 * grouping needs NO node: §7.22's precedence is what puts
+			 * the parentheses back, so `a * (b + c)` emits with them
+			 * and `(a + b) * c` likewise. Replacing the node rather
+			 * than wrapping it is the whole implementation.
+			 */
+			{
+				st_expr *inner = NULL;
+
+				if (!parse_expr(p, &inner)) {
+					return 0;
+				}
+				if (!expect_punct(p, ')')) {
+					return 0;
+				}
+				*e = *inner;
 			}
-			e->kind = ST_EXPR_NIL;
 			break;
 		}
 		return fail(p, "expected an expression");
@@ -875,11 +1014,9 @@ parse_primary(st_parser *p, st_expr **out)
 }
 
 /*
- * §7.72's precedence rule, as a table: a symbol that already exists as a C
- * operator takes that operator's precedence, and any other symbol is new and
- * binds at the loosest level — which is what the fall-through to 1 says.
- *
- * Associativity is left to right, as in C for everything listed.
+ * §7.22's precedence rule, by token — the table itself is §7.72's symbol set's
+ * and lives in lexer.c (st_operator_precedence) so the emitter reads the same
+ * one. This wrapper is only the token-to-symbol step.
  */
 static int
 binary_precedence(const st_token *tok)
@@ -887,55 +1024,7 @@ binary_precedence(const st_token *tok)
 	if (tok->kind != ST_OPERATOR) {
 		return 0;
 	}
-	/*
-	 * §7.72's longest-run rule means a token may be one to three characters,
-	 * and that length is what separates a structural character from a custom
-	 * operator. A lone `.` is member access and a lone `?` an optional
-	 * suffix — never binary — while `.:.` is an operator an author declared
-	 * and binds at the loosest level.
-	 *
-	 * The same distinction separates `??` from `?` and `==` from `=`, so the
-	 * two-character forms are named before the fall-through. Reading only
-	 * start[0] was wrong for every one of them: `.:.` came back structural,
-	 * and `==` and `!=` came back as `=` and `!` — not binary at all.
-	 */
-	if (tok->len == 1) {
-		switch (tok->start[0]) {
-		case '=': case '?': case ':': case '.': case '!':
-			return 0;	/* structural, never binary */
-		}
-	}
-	if (tok->len == 2) {
-		if (memcmp(tok->start, "==", 2) == 0 ||
-		    memcmp(tok->start, "!=", 2) == 0) {
-			return 6;
-		}
-		if (memcmp(tok->start, "<=", 2) == 0 ||
-		    memcmp(tok->start, ">=", 2) == 0) {
-			return 7;
-		}
-		if (memcmp(tok->start, "<<", 2) == 0 ||
-		    memcmp(tok->start, ">>", 2) == 0) {
-			return 8;
-		}
-		if (memcmp(tok->start, "&&", 2) == 0) {
-			return 2;
-		}
-		if (memcmp(tok->start, "||", 2) == 0 ||
-		    memcmp(tok->start, "??", 2) == 0) {
-			return 1;
-		}
-	}
-	switch (tok->start[0]) {
-	case '*': case '/': case '%':	return 10;
-	case '+': case '-':		return 9;
-	case '<': case '>':		return 7;
-	case '&':			return 5;
-	case '^':			return 4;
-	case '|':			return 3;
-	default:
-		return 1;		/* a new symbol binds loosest */
-	}
+	return st_operator_precedence(tok->start, tok->len);
 }
 
 static int
@@ -951,6 +1040,7 @@ parse_binary(st_parser *p, st_expr **out, int min_precedence)
 		int precedence = binary_precedence(&p->tok);
 		int operator_line;
 		st_expr *node;
+		st_token op;
 
 		if (precedence == 0 || precedence < min_precedence) {
 			break;
@@ -971,6 +1061,14 @@ parse_binary(st_parser *p, st_expr **out, int min_precedence)
 			break;
 		}
 		operator_line = p->tok.line;
+		/*
+		 * The symbol is captured BEFORE the bump, because it is what the node
+		 * records: an operator node without its operator is not a node. The
+		 * placeholder this replaces held both operands but dropped the
+		 * symbol, so `a + b` and `a - b` were the *same tree* — and no
+		 * emitter could have told them apart even with a node to walk.
+		 */
+		op = p->tok;
 		bump(p);			/* the operator */
 		if (p->tok.line != operator_line) {
 			break;
@@ -978,18 +1076,13 @@ parse_binary(st_parser *p, st_expr **out, int min_precedence)
 		if (!parse_binary(p, &right, precedence + 1)) {
 			return 0;
 		}
-		/*
-		 * There is no operator node in the AST, so the symbol rides on a
-		 * call-shaped node holding both operands — the same placeholder
-		 * convention as the scanned initialiser, and the emitter's step is
-		 * what gives it meaning.
-		 */
 		node = st_arena_alloc(sizeof(st_expr));
 		if (node == NULL) {
 			return fail(p, "out of memory");
 		}
-		node->kind = ST_EXPR_CALL;
+		node->kind = ST_EXPR_BINARY;
 		node->base = left;
+		node->text.text = st_arena_strdup(op.start, op.len);
 		node->args = st_arena_alloc(sizeof(st_arg));
 		if (node->args == NULL) {
 			return fail(p, "out of memory");
@@ -1013,21 +1106,32 @@ parse_expr(st_parser *p, st_expr **out)
 static int parse_stmt(st_parser *p, st_stmt **out);
 
 /*
- * A condition list, as both `if` (§7.67) and `guard` (§7.68) take it. An item
- * is either a binding — §7.10's `let name = expr`, optionally with a type — or
- * a plain expression, and items are comma-separated. Scanned rather than
- * recorded: the emitter needs the conditions, and that is the same later
- * field as the other placeholders.
+ * §7.67/§7.68's condition list: comma-separated items, each a `let`/`var`
+ * binding (§6's nullable forms) or a plain expression.
+ *
+ * Returns the *shape*, because that is what the two callers need to know:
+ *
+ *   1  exactly one plain expression — the only shape this emitter can write
+ *   2  a binding, or more than one item — the optional-flows slice's, since a
+ *      binding needs §6's rename map and its numbered temps
+ *   0  a parse error
+ *
+ * `*out` holds the single expression on 1 and is untouched on 2; `out` may be
+ * NULL when only the parse matters.
  */
 static int
-parse_cond_list(st_parser *p)
+parse_cond_list(st_parser *p, st_expr **out)
 {
+	int shape = 1;
+
 	for (;;) {
 		if (at_keyword(p, "let") || at_keyword(p, "var")) {
 			st_name bound;
 			st_type bound_type;
 			st_expr *value;
 
+			/* A binding: §6's `if let x = y` family. */
+			shape = 2;
 			bump(p);
 			if (!take_name(p, &bound)) {
 				return 0;
@@ -1046,33 +1150,55 @@ parse_cond_list(st_parser *p)
 				}
 			}
 		} else {
-			st_expr *condition;
+			st_expr *condition = NULL;
 
 			if (!parse_expr(p, &condition)) {
 				return 0;
 			}
+			if (out != NULL) {
+				*out = condition;
+			}
 		}
 		if (at_punct(p, ',')) {
+			/* A second item is already one more than this emitter writes. */
+			shape = 2;
 			bump(p);
 			continue;
 		}
-		return 1;
+		return shape;
 	}
 }
 
-/* A braced statement body, which `if`, `guard` and `defer` all take. */
+/*
+ * A braced statement body — what `if` (§7.67), `while` (§7.69) and a closure
+ * (§7.33) all take. `out` receives the statement list; it may be NULL when only
+ * the parse matters, because a construct this emitter refuses BY NAME still has
+ * its body read on the way to the refusal.
+ *
+ * This absorbed parse_body, which was the same loop with a non-NULL `out`. Two
+ * copies of one statement loop is not a tidiness question here: it is how the
+ * closure body came to be brace-scanned while a method body was not.
+ */
 static int
-parse_stmt_block(st_parser *p)
+parse_stmt_block(st_parser *p, st_stmt **out)
 {
+	st_stmt *head = NULL;
+	st_stmt **tail = &head;
+
 	if (!expect_punct(p, '{')) {
 		return 0;
 	}
 	while (!at_punct(p, '}') && p->tok.kind != ST_EOF) {
-		st_stmt *inner;
+		st_stmt *inner = NULL;
 
 		if (!parse_stmt(p, &inner)) {
 			return 0;
 		}
+		*tail = inner;
+		tail = &inner->next;
+	}
+	if (out != NULL) {
+		*out = head;
 	}
 	return expect_punct(p, '}');
 }
@@ -1088,28 +1214,48 @@ parse_stmt(st_parser *p, st_stmt **out)
 	if (at_keyword(p, "if")) {
 		/*
 		 * §7.67: braces mandatory, parentheses not, `else if` written as
-		 * two words. The chain is scanned rather than recorded — the
-		 * emitter needs the conditions, which is the same later field.
+		 * two words.
+		 *
+		 * The condition must be ONE plain expression. §6's binding forms
+		 * (`if let x = y`) are items of the same list, and they need the
+		 * rename map and numbered temps the optional-flows slice owns — so
+		 * a list that used one is refused BY NAME rather than
+		 * half-emitted. The whole chain is still parsed either way.
 		 */
-		s->kind = ST_STMT_EXPR;
+		int shape;
+
+		s->kind = ST_STMT_IF;
 		bump(p);
-		if (!parse_cond_list(p)) {
+		shape = parse_cond_list(p, &s->value);
+		if (shape == 0) {
 			return 0;
 		}
-		if (!parse_stmt_block(p)) {
+		if (!parse_stmt_block(p, &s->body)) {
 			return 0;
 		}
 		while (at_keyword(p, "else")) {
 			bump(p);
+			s->has_else = 1;
 			if (at_keyword(p, "if")) {
-				bump(p);
-				if (!parse_cond_list(p)) {
+				/*
+				 * `else if` is two words, so the rest of the chain is
+				 * parsed as the else branch. That is what makes an
+				 * arbitrarily long chain one recursive call rather
+				 * than a second loop that has to keep in step with
+				 * the first.
+				 */
+				if (!parse_stmt(p, &s->else_body)) {
 					return 0;
 				}
+				break;
 			}
-			if (!parse_stmt_block(p)) {
+			if (!parse_stmt_block(p, &s->else_body)) {
 				return 0;
 			}
+		}
+		if (shape != 1) {
+			s->kind = ST_STMT_UNSUPPORTED;
+			s->text.text = st_arena_strdup("if-binding", 10);
 		}
 	} else if (at_keyword(p, "guard")) {
 		/*
@@ -1117,16 +1263,21 @@ parse_stmt(st_parser *p, st_stmt **out)
 		 * block. The language requires that block to `return` on every
 		 * path — §6 states the rule, and it is a diagnostic rather than an
 		 * emission rule, so nothing is enforced here yet.
+		 *
+		 * Refused by name: every `guard` worth writing is a binding form
+		 * (§6's `guard let x = y else { return }`), so there is no shape
+		 * left to emit before the rename map exists.
 		 */
-		s->kind = ST_STMT_EXPR;
+		s->kind = ST_STMT_UNSUPPORTED;
+		s->text.text = st_arena_strdup("guard", 5);
 		bump(p);
-		if (!parse_cond_list(p)) {
+		if (parse_cond_list(p, NULL) == 0) {
 			return 0;
 		}
 		if (!expect_keyword(p, "else")) {
 			return 0;
 		}
-		if (!parse_stmt_block(p)) {
+		if (!parse_stmt_block(p, NULL)) {
 			return 0;
 		}
 	} else if (at_keyword(p, "while")) {
@@ -1135,30 +1286,46 @@ parse_stmt(st_parser *p, st_stmt **out)
 		 * and no `do while`. `true` is a Bool, so a loop that must run its
 		 * body at least once is written `while true` with a `break`.
 		 */
-		s->kind = ST_STMT_EXPR;
+		int shape;
+
+		s->kind = ST_STMT_WHILE;
 		bump(p);
-		if (!parse_cond_list(p)) {
+		shape = parse_cond_list(p, &s->value);
+		if (shape == 0) {
 			return 0;
 		}
-		if (!parse_stmt_block(p)) {
+		if (!parse_stmt_block(p, &s->body)) {
 			return 0;
+		}
+		if (shape != 1) {
+			s->kind = ST_STMT_UNSUPPORTED;
+			s->text.text = st_arena_strdup("while-binding", 13);
 		}
 	} else if (at_keyword(p, "break") || at_keyword(p, "continue")) {
 		/*
-		 * §7.71 lists these among the ways a scope can be left. Scanned and
-		 * dropped: which loop they leave is the emitter's concern, since the
-		 * surface gives them no label.
+		 * §7.71 lists these among the ways a scope can be left. There is no
+		 * node for a jump statement, and dropping one changes a loop's
+		 * *meaning* with nothing in the output to show it, so it is refused
+		 * by name — the loop surfaces that own `break` must bring the node
+		 * with them.
 		 */
-		s->kind = ST_STMT_EXPR;
+		s->kind = ST_STMT_UNSUPPORTED;
+		if (at_keyword(p, "break")) {
+			s->text.text = st_arena_strdup("break", 5);
+		} else {
+			s->text.text = st_arena_strdup("continue", 8);
+		}
 		bump(p);
 	} else if (at_keyword(p, "for")) {
 		/*
 		 * §7.66: the only `for` form — `for [var|let] name in collection
-		 * [where condition] { }` — with §7.73's optional filter. Nothing is
-		 * recorded: the binding, the collection and the filter are fields the
-		 * emitter owns, as with the other scanned statements.
+		 * [where condition] { }` — with §7.73's optional filter. A `for-in`
+		 * is not a C statement: it lowers to a cursor or an index, and that
+		 * lowering (with the element's type) is its own piece of work, so the
+		 * statement is refused by name rather than approximated.
 		 */
-		s->kind = ST_STMT_EXPR;
+		s->kind = ST_STMT_UNSUPPORTED;
+		s->text.text = st_arena_strdup("for-in", 6);
 		bump(p);
 		if (at_keyword(p, "var") || at_keyword(p, "let")) {
 			bump(p);		/* the binding keyword */
@@ -1182,7 +1349,7 @@ parse_stmt(st_parser *p, st_stmt **out)
 				return 0;
 			}
 		}
-		if (!parse_stmt_block(p)) {
+		if (!parse_stmt_block(p, NULL)) {
 			return 0;
 		}
 	} else if (at_keyword(p, "return")) {
@@ -1203,18 +1370,21 @@ parse_stmt(st_parser *p, st_stmt **out)
 	} else if (at_keyword(p, "switch")) {
 		/*
 		 * §7.24/§7.65/§7.73: `switch subject { case pattern [where cond] { … }
-		 * … default { … } }`. Scanned rather than recorded — there is no case
-		 * or pattern node, so a pattern is a token run terminated by `where`
-		 * or the block, and the block is brace-scanned. That is the same
-		 * staging as `defer` and `guard` above: what the corpus measures now
-		 * is the parse, and emitting this form is a later step.
+		 * … default { … } }`. A plain enum's case is a C `case` label, but a
+		 * tagged union's is a tag test *with the payload hoisted into the
+		 * braced body*, and §7.24's no-fallthrough makes the lowering a
+		 * rewrite rather than a translation — its own piece of work, as is
+		 * the enum it matches. Refused by name.
 		 *
-		 * `value` is deliberately left NULL so emit_body skips it rather than
-		 * writing the subject out as a stray expression statement.
+		 * The case bodies are statement lists, parsed rather than
+		 * brace-scanned: a scan accepts any bytes at all and reports as
+		 * passing, which is the one failure mode K1 spent its whole length
+		 * removing.
 		 */
 		st_expr *subject;
 
-		s->kind = ST_STMT_EXPR;
+		s->kind = ST_STMT_UNSUPPORTED;
+		s->text.text = st_arena_strdup("switch", 6);
 		bump(p);
 		if (!parse_expr(p, &subject)) {
 			return 0;
@@ -1242,15 +1412,7 @@ parse_stmt(st_parser *p, st_stmt **out)
 					return 0;
 				}
 			}
-			/*
-			 * The case body is a *statement list*, parsed rather than
-			 * brace-scanned. It has to be: a scan accepts any bytes at all and
-			 * reports as passing, which is the one failure mode K1 has spent
-			 * its whole length removing. What the body's statements *become* is
-			 * still the emitter's step — the AST has no case node — but nothing
-			 * goes unread on the way there.
-			 */
-			if (!parse_stmt_block(p)) {
+			if (!parse_stmt_block(p, NULL)) {
 				return 0;
 			}
 		}
@@ -1259,72 +1421,61 @@ parse_stmt(st_parser *p, st_stmt **out)
 		}
 	} else if (at_keyword(p, "with")) {
 		/*
-		 * §7.70: `with target { … }` — a member rewrite, admissible because the
-		 * target is static. The body is a statement list like a case's, and the
-		 * same reasoning applies: `value` stays NULL so emit_body skips the
-		 * statement, while the body itself is read.
+		 * §7.70: `with target { … }` — inside the block a member name means
+		 * the target's member. It is admitted because the target's type is
+		 * static, so the rewrite is purely syntactic; that rewrite is name
+		 * resolution's, and this compiler has no name resolution pass yet.
+		 * Refused by name; the body is still a parsed statement list.
 		 */
 		st_expr *target;
 
-		s->kind = ST_STMT_EXPR;
+		s->kind = ST_STMT_UNSUPPORTED;
+		s->text.text = st_arena_strdup("with", 4);
 		bump(p);
 		if (!parse_expr(p, &target)) {
 			return 0;
 		}
-		if (!parse_stmt_block(p)) {
+		if (!parse_stmt_block(p, NULL)) {
 			return 0;
 		}
 	} else if (at_keyword(p, "var") || at_keyword(p, "let")) {
 		/*
-		 * §5's local: `var name: T = expr`, or the form with the type
-		 * omitted so §9.15's inference supplies it. Scanned rather than
-		 * recorded — the emitter needs the name, the type and the value,
-		 * and those AST fields are a later step. What the corpus measures
-		 * right now is the parse.
+		 * §5's Local. `let` emits `const` and `var` does not, and *where* the
+		 * `const` goes follows the type — a scalar is `const T name`, a class
+		 * type is `T * const name` — so the emitter needs the type; §7.19
+		 * lets it be omitted when the initializer carries it, which is why an
+		 * absent type is recorded as absent rather than guessed here.
 		 */
-		st_name local;
-		st_type local_type;
-		st_expr *initial;
-
-		s->kind = ST_STMT_EXPR;
+		s->kind = at_keyword(p, "let") ? ST_STMT_LET : ST_STMT_VAR;
 		bump(p);
-		if (!take_name(p, &local)) {
+		if (!take_name(p, &s->name)) {
 			return 0;
 		}
 		if (at_punct(p, ':')) {
 			bump(p);
-			if (!parse_type(p, &local_type)) {
+			if (!parse_type(p, &s->type)) {
 				return 0;
 			}
 		}
 		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 		    p->tok.start[0] == '=') {
 			bump(p);
-			if (!parse_expr(p, &initial)) {
+			if (!parse_expr(p, &s->value)) {
 				return 0;
 			}
 		}
 	} else if (at_keyword(p, "defer")) {
 		/*
 		 * §7.71: a deferred block belongs to its own block and runs at that
-		 * block's exit. The body is a plain braced statement list, parsed
-		 * here rather than through parse_body so that no forward
-		 * declaration is needed — defer is a statement, and statements
-		 * nest.
+		 * block's exit, so emitting it means carrying the enclosing scopes'
+		 * deferred calls onto every exit path, innermost first. That is a
+		 * real lowering, not a translation, and it is refused by name here —
+		 * the body is still parsed, so a mistake inside it is still caught.
 		 */
-		s->kind = ST_STMT_EXPR;
+		s->kind = ST_STMT_UNSUPPORTED;
+		s->text.text = st_arena_strdup("defer", 5);
 		bump(p);
-		if (!expect_punct(p, '{')) {
-			return 0;
-		}
-		while (!at_punct(p, '}') && p->tok.kind != ST_EOF) {
-			st_stmt *inner;
-
-			if (!parse_stmt(p, &inner)) {
-				return 0;
-			}
-		}
-		if (!expect_punct(p, '}')) {
+		if (!parse_stmt_block(p, NULL)) {
 			return 0;
 		}
 	} else {
@@ -1333,20 +1484,35 @@ parse_stmt(st_parser *p, st_stmt **out)
 			return 0;
 		}
 		/*
-		 * §7.21 makes assignment an expression, and `target = value` is
-		 * what that usually looks like at statement level. Parsed as a
-		 * continuation of the target: the AST records the target, and the
-		 * assigned value is a field the emitter's step adds. The `=` is an
-		 * OPERATOR rather than punctuation, being in §7.72's set.
+		 * §7.21 makes assignment an expression, and `target = value` is what
+		 * that usually looks like at statement level. The `=` is an OPERATOR
+		 * rather than punctuation, being in §7.72's set. The node is built
+		 * rather than left as the bare target — which is what makes `x = 1`
+		 * come out as `x = 1` and not as the statement `x;`, an assignment
+		 * that used to be scanned away at exactly this line.
 		 */
 		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 		    p->tok.start[0] == '=') {
-			st_expr *assigned;
+			st_expr *target = s->value;
+			st_expr *assigned = NULL;
+			st_expr *node = st_arena_alloc(sizeof(st_expr));
 
+			if (node == NULL) {
+				return fail(p, "out of memory");
+			}
 			bump(p);
 			if (!parse_expr(p, &assigned)) {
 				return 0;
 			}
+			node->kind = ST_EXPR_ASSIGN;
+			node->base = target;
+			node->args = st_arena_alloc(sizeof(st_arg));
+			if (node->args == NULL) {
+				return fail(p, "out of memory");
+			}
+			node->args[0].value = assigned;
+			node->arg_count = 1;
+			s->value = node;
 		}
 	}
 	if (at_punct(p, ';')) {
@@ -1365,28 +1531,6 @@ parse_stmt(st_parser *p, st_stmt **out)
 
 /* ---- declarations ------------------------------------------------------ */
 
-static int
-parse_body(st_parser *p, st_stmt **out)
-{
-	st_stmt *head = NULL;
-	st_stmt **tail = &head;
-
-	if (!expect_punct(p, '{')) {
-		return 0;
-	}
-	while (!at_punct(p, '}') && p->tok.kind != ST_EOF) {
-		st_stmt *s = NULL;
-
-		if (!parse_stmt(p, &s)) {
-			return 0;
-		}
-		*tail = s;
-		tail = &s->next;
-	}
-	*out = head;
-	return expect_punct(p, '}');
-}
-
 /*
  * §5 (2026-09): a protocol member is a *signature* — a body inside a protocol is
  * an error, not something ignored. That is the same reason §5's `case` is
@@ -1394,6 +1538,10 @@ parse_body(st_parser *p, st_stmt **out)
  * parser that quietly accepted a body would let the corpus look conformant while
  * carrying code that could never run. Everywhere else a method's body is
  * required, exactly as before.
+ *
+ * A body is the same braced statement list `if`/`while`/a closure take, so this
+ * calls parse_stmt_block. parse_body used to be its own copy of that loop; two
+ * copies of one statement loop is a statement loop that gets fixed once.
  */
 static int
 parse_member_body(st_parser *p, st_stmt **out)
@@ -1405,7 +1553,7 @@ parse_member_body(st_parser *p, st_stmt **out)
 		}
 		return 1;
 	}
-	return parse_body(p, out);
+	return parse_stmt_block(p, out);
 }
 
 /*
@@ -1564,7 +1712,7 @@ parse_decl(st_parser *p, st_decl **out)
 				return fail(p, "out of memory");
 			}
 		}
-		if (at_punct(p, '{') && !parse_body(p, &body)) {
+		if (at_punct(p, '{') && !parse_stmt_block(p, &body)) {
 			return 0;
 		}
 		*out = d;
@@ -1663,7 +1811,7 @@ parse_decl(st_parser *p, st_decl **out)
 			}
 		}
 		if (at_punct(p, '{')) {
-			if (!parse_body(p, &d->body)) {
+			if (!parse_stmt_block(p, &d->body)) {
 				return 0;
 			}
 		}
@@ -1953,7 +2101,7 @@ parse_func(st_parser *p)
 			return 0;
 		}
 	}
-	return parse_body(p, &body);
+	return parse_stmt_block(p, &body);
 }
 
 /*

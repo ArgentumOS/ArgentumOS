@@ -257,6 +257,33 @@ bugs actually are.
   unwraps a nil `T?` and the trap fires (§3.14 — the one piece of source-emitted
   runtime behaviour), and a `guard let` on a nil value leaves the scope without
   running the rest of the block.
+- **Landed so far (2026-09): the statement and expression core.** The emitter was
+  a specimen-shaped special case — it wrote `return` and one expression shape and
+  *skipped* every statement it could not represent, so a program compiled to
+  source with statements silently missing. It is a real tree walk now:
+  `let`/`var` locals with §5's type-dependent `const` (a scalar is
+  `const int32_t n`, a class type `NSString * const n`), assignment, message
+  sends (`o.sel(label: arg)` → `[o sel:arg]`), member access, the binary and
+  unary operators with §7.22's parentheses restored from the one precedence table
+  the parser also uses, and `if`/`else if`/`else`/`while`. §4's literal default
+  and expected type are honoured (`let n: Float32 = 0.1` → `0.1f`, `let d: Float64
+  = 0.1` → `0.1`). Everything else **stops, by name** — `tests/refuse/` is the
+  leg that holds that, and it exists because two of the old behaviours were worse
+  than omission: a closure emitted `nil` and `x!` emitted its operand with the
+  trap left out, and both compiled.
+  - Measured against the corpus: **13 of 13 parse, 2 of 13 emit.** The gap is the
+    map of what K2 has left, not a fault — the corpus's files are the surface's
+    constructs, and the emitter refuses the ones it has no rule for.
+  - **An unresolved document conflict is now load-bearing.** §2's specimen emits
+    `baz:(BOOL)arg1 arg2:(NSString *)arg2` from `baz(arg1: Bool, arg2: String)`,
+    and §3's map gives `o.foobar(argname: 1, arg2: true)` → `[o foobar:1 arg2:YES]`
+    — both say the FIRST selector piece is the method name. §5 says otherwise: it
+    gives `class method foo(bar baz: Type)` as emitting `+ (void)fooBar:(Type)baz`,
+    i.e. the first parameter's external name attached. The two cannot both hold.
+    §2 is the golden, so §2 wins and the emitter follows it for calls and
+    declarations alike; a two-name first parameter is therefore emitted the §2
+    way, and the disagreement is recorded here rather than resolved in code.
+    `sterling-syntax.md` §2 or §5 has to change before that form can be trusted.
 
 ### K3 — Types, structs, imports, and C interop
 
@@ -308,9 +335,30 @@ bugs actually are.
 
 ## 5. Verification and gates
 
-- **Host suite first.** `tools/sterlingc-tests`: a corpus of `.ag` inputs with
-  golden `.h`/`.m` outputs, host-run probes, and diagnostic checks. This is where
-  the compiler is tested; it needs no QEMU.
+- **Host suite first.** What exists is `make sterlingc-check`, five legs over
+  `tools/sterlingc.sh` (`tools/sterlingc-compile.sh` is the fifth). It needs no
+  QEMU, and the compiler's correctness lives here because that is also where the
+  bugs are.
+  - `--golden` — §2's specimen byte-for-byte, **and** every
+    `tools/sterlingc/tests/golden/<Class>.ag` against the `<Class>.h`/`.m`
+    checked in beside it. §2 covers no local, no assignment, no send and no
+    operator, so the specimens are what actually hold the emitter. A golden is an
+    ASSERTION and not a recording: when one changes, the diff is read and a
+    decision is made about which side is wrong.
+  - `--corpus` — every `tests/*.ag` lexes and parses, with the parse and emit
+    counts reported **separately**. One count standing for both is how the parse
+    number fell when only the emitter changed.
+  - `--reject` — every `tests/reject/*.ag` rejected **by the front end**.
+  - `--refuse` — every `tests/refuse/*.ag` *accepted* by the front end and
+    refused **by name** by the emitter, the message matched against the
+    `.expect` beside it. A refusal for the wrong reason is not a pass.
+  - `--compile` (`tools/sterlingc-compile.sh`) — the emitted code is fed to clang
+    under `-fobjc-arc` against libobjc2. A diff proves the text is what was
+    expected; it does not prove what was expected was C.
+  - Because emission can fail, the front end has `--parse`: without it a leg that
+    means "the parser rejected this" would also be satisfied by "the emitter has
+    no rule for this", and the `--reject` leg would pass a case the front end
+    accepted.
 - **Guest gates are integration only** — `tests/cases/sterling_*.py`, fast tier,
   asserting every probe check **by name**, the probe's own tally, absence of
   `FAIL` lines, and the exit status (`objc_smoke.py`'s contract verbatim).

@@ -1,0 +1,8 @@
+/* A `for-in` lowers to a cursor or an index; there is no C statement to map it to. */
+class RefuseForIn: Object {
+    method m(items: Array<String>) -> Void {
+        for item in items {
+            return;
+        }
+    }
+}

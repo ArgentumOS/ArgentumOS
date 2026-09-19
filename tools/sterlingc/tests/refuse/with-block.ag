@@ -1,0 +1,8 @@
+/* `with` is a name-resolution rewrite, and this compiler has no name resolution. */
+class RefuseWith: Object {
+    method m() -> Void {
+        with self {
+            return;
+        }
+    }
+}

@@ -1,0 +1,9 @@
+/* A tagged union's case is a tag test with its payload hoisted; not a translation. */
+class RefuseSwitch: Object {
+    method m(code: Int32) -> Void {
+        switch code {
+        case 1 { return; }
+        default { return; }
+        }
+    }
+}

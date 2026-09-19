@@ -1,0 +1,9 @@
+/* §6's trap is what `!` MEANS; emitting the operand alone drops it silently. */
+class RefuseUnwrap: Object {
+    property x: Int32
+
+    method m() -> Int32 {
+        let raw: Int32 = self.x;
+        return raw!;
+    }
+}

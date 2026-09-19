@@ -1,0 +1,10 @@
+/* §7.48 already CHECKS a conformance; nothing emits the protocol or the list. */
+protocol RefuseDrawable {
+    method draw() -> Void
+}
+
+class RefuseProtocol: Object, RefuseDrawable {
+    method draw() -> Void {
+        return;
+    }
+}

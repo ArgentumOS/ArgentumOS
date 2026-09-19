@@ -65,6 +65,17 @@ st_token st_lexer_next(st_lexer *lx);
 /* True when `word` is a reserved keyword. */
 int st_is_keyword(const char *word, size_t len);
 
+/*
+ * §7.22's precedence table, by symbol. ONE implementation, called by both the
+ * parser (building the tree) and the emitter (deciding where a nested binary
+ * expression needs parentheses) — two copies of a precedence table is how
+ * `(a + b) * c` comes back as `a + b * c`.
+ *
+ * Returns 0 for a symbol that is not an operator. §7.72's set is closed, so
+ * this is the whole table and a symbol outside it cannot reach here.
+ */
+int st_operator_precedence(const char *sym, size_t len);
+
 /* ---- helpers used by the tests and the driver -------------------------- */
 
 const char *st_token_kind_name(st_token_kind kind);

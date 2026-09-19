@@ -64,16 +64,48 @@ mkdir -p "$OUT"
 INC="$ROOT/.build/sterlingc/include"
 mkdir -p "$INC"
 ln -sfn "$ROOT/userland/foundation" "$INC/Foundation"
-set +e
-"$CLANG19" -fsyntax-only -fobjc-arc -fobjc-runtime=gnustep-2.0 -fblocks \
-	-x objective-c \
-	-I"$INC" \
-	-I"$ROOT/userland" \
-	-I"$ROOT/.build/objc-prefix/include" \
-	"$OUT/MyClass.m" > "$OUT/compile.log" 2>&1
+
+compile_one() {
+	set +e
+	"$CLANG19" -fsyntax-only -fobjc-arc -fobjc-runtime=gnustep-2.0 \
+		-fblocks -x objective-c \
+		-I"$INC" \
+		-I"$1" \
+		-I"$ROOT/userland" \
+		-I"$ROOT/.build/objc-prefix/include" \
+		"$2" > "$OUT/compile.log" 2>&1
+	rc=$?
+	set -e
+	head -20 "$OUT/compile.log"
+	return "$rc"
+}
+
+compile_one "$OUT" "$OUT/MyClass.m"
 rc=$?
-set -e
-head -20 "$OUT/compile.log"
+
+# The golden specimens, compiled too. A diff proves the emitted TEXT is what was
+# expected; it does not prove the expected text was C. The specimen above is
+# §2's and has no local, no send and no operator, so without this the whole of
+# the statement/expression core would go to clang untested.
+if [ "$rc" -eq 0 ]; then
+	rm -rf "$OUT/golden"
+	mkdir -p "$OUT/golden"
+	for f in "$ROOT"/tools/sterlingc/tests/golden/*.ag; do
+		base=$(basename "$f" .ag)
+		"$ROOT/.build/sterlingc/sterlingc" "$f" -o "$OUT/golden" \
+			>/dev/null 2>&1 || {
+			echo "COMPILE-FAIL $base: the emitter refused it"
+			rc=1
+			continue
+		}
+		if compile_one "$OUT/golden" "$OUT/golden/$base.m"; then
+			echo "COMPILE-OK $base"
+		else
+			echo "COMPILE-FAIL $base: clang exited $?"
+			rc=1
+		fi
+	done
+fi
 
 if [ "$rc" -eq 0 ]; then
 	echo "COMPILE-OK the emitted .m compiles under -fobjc-arc against libobjc2"
