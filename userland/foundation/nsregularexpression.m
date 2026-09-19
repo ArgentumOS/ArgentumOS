@@ -29,17 +29,44 @@
 
 /* THE BYTE LENGTH OF ONE UTF-16 INDEX, which is what makes the map possible at all: a character
  * outside the basic plane is two UTF-16 units and four bytes, and both facts live on one row. */
+/*
+ * THE UTF-8 LENGTH OF THE CHARACTER THAT STARTS AT BYTE `index`.
+ *
+ * THIS USED TO SLICE ONE BYTE OUT WITH -substringWithRange: AND MEASURE strlen,
+ * which worked only because the storage copied bytes VERBATIM: a lone
+ * continuation byte came back as itself and measured 1. When the storage became
+ * UTF-16 (docs/design/foundation-plan.md §13) that byte became U+FFFD, which
+ * re-encodes to THREE bytes — so every such step inflated the map and the
+ * reported ranges shifted by the UTF-8 expansion. Measured: the regex probe went
+ * from 9/9 to 8/9 with `count=2 [hél] [o wö]` instead of `[héllo] [wörld]`.
+ *
+ * The fix reads the LEAD BYTE and says how long that character is, which is what
+ * the old code's effect was and does not depend on invalid input surviving a
+ * round trip. (A continuation byte answers 1, exactly as before.)
+ */
 static NSUInteger fn_utf8_length_of(NSString *string, NSUInteger index)
 {
-	NSString *one;
-	const char *utf8;
+	const char *utf8 = [string UTF8String];
+	size_t bytes = utf8 != NULL ? strlen(utf8) : 0;
+	unsigned char lead;
 
-	if (index >= [string length]) {
+	if (index >= bytes) {
 		return 0;
 	}
-	one = [string substringWithRange:NSMakeRange(index, 1)];
-	utf8 = [one UTF8String];
-	return utf8 != NULL ? strlen(utf8) : 0;
+	lead = (unsigned char)utf8[index];
+	if (lead < 0x80) {
+		return 1;
+	}
+	if ((lead & 0xE0) == 0xC0) {
+		return 2;
+	}
+	if ((lead & 0xF0) == 0xE0) {
+		return 3;
+	}
+	if ((lead & 0xF8) == 0xF0) {
+		return 4;
+	}
+	return 1;			/* a continuation byte: one byte, as it always was */
 }
 
 /* UTF-16 INDEX -> BYTE OFFSET, with one extra entry for the end of the string. */

@@ -3919,3 +3919,42 @@ changed both at once would have had no such evidence.
 wasted**: `fn_utf16_unit_at` is the conversion-door accessor for `NSConstantString`'s ASCII/UTF8 forms
 and for `-byteAtIndex:`, and the other three are what `-UTF8String` needs in the reverse direction. What
 the storage switch removes is their use on the HOT path.
+
+### 13.7 TWO PROBE FAILURES FOUND BY THE BISECT, AND WHAT EACH ONE IS
+
+Slice 2b's gate came back **9/11 cases, 58/66 checks**, with `foundation_regex/regex-utf16-ranges` and
+`foundation_url/url-refusals` failing. Rather than guess, both were bisected by reverting
+`userland/foundation/` to the pre-W1 commit (`44d4221c`) and running the two cases: **`foundation_regex`
+went back to 9/9 GREEN, and `foundation_url` stayed RED.** That splits them cleanly.
+
+**1. `regex-utf16-ranges` IS W1'S REGRESSION, AND THE MECHANISM IS MEASURED.** The regex engine's map
+builder measured character widths like this:
+
+```c
+	one = [string substringWithRange:NSMakeRange(index, 1)];   /* ONE BYTE */
+	utf8 = [one UTF8String];
+	return utf8 != NULL ? strlen(utf8) : 0;
+```
+
+which worked **only because the old storage copied bytes VERBATIM**: a lone continuation byte came back
+as itself and measured 1. When the storage became UTF-16 (§13), that byte became **U+FFFD**, which
+re-encodes to **three** bytes — so every such step inflated the map and the reported ranges shifted by
+the UTF-8 expansion. That is the *class* of bug this migration was always going to produce: **a
+consumer that depended on the old representation's ability to hold invalid UTF-8.**
+
+A first fix replaced the substring round trip with a lead-byte read (no dependence on invalid input
+surviving), and it MOVED the symptom rather than removing it — `[hél] [o wö]` became `[héll] [ wör]` —
+so it is a step, not the fix. **WHAT REMAINS:** `fn_build_map`'s own comment says *"UTF-16 INDEX → BYTE
+OFFSET"*, and it is fed `[string length]`, which is a BYTE count; it must be rewritten to emit **one
+entry per UTF-16 UNIT** (a character above U+FFFF is two units) by walking the UTF-8 bytes with
+`fn_utf8_length_of`/a local decoder, and `fn_utf16_index`'s convention must be read first so the two
+agree. **This is the first consumer to be found that was written against the byte space**, and the flip
+(slice 3) will find the rest — which is an argument for making the byte/unit boundaries *explicit* in
+the code that consumes them rather than implicit in `-length`'s current meaning.
+
+**2. `url-refusals` IS PRE-EXISTING — it fails at the pre-W1 commit too.** Its message is
+*"a string that is not an absolute URL answers nil, and the loading system is absent"*, and the second
+half is an **ABSENCE assertion** — the exact class §11.2 warns about: *a probe asserting an absence is
+asserting a fact about the tree, and landing code invalidates it with nobody being told.* It is NOT a
+W1 regression, it is a separate item to diagnose (the check may be stale, or the refusal may have been
+lost), and it is recorded here so it is not mistaken for either.
