@@ -42,6 +42,7 @@
 
 #import <foundation/NSObjCRuntime.h>
 #import <foundation/NSObject.h>
+#import <foundation/NSGeometry.h>
 #import <foundation/NSString.h>
 #import <foundation/NSNumber.h>
 #import <foundation/NSData.h>

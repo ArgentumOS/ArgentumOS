@@ -31,12 +31,12 @@
 #   class      shipped   61   open  181   struck   31
 #   protocol   shipped    5   open   31   struck    9
 #   macro      shipped    3   open  224   struck   26
-#   enum       shipped   27   open  125   struck    8
-#   case       shipped  148   open 1061   struck   93
-#   func       shipped    8   open  127   struck   54
-#   var        shipped   46   open  721   struck  147
-#   typealias  shipped    7   open   66   struck    3
-#   struct     shipped    3   open    5   struck    5
+#   enum       shipped   28   open  124   struck    8
+#   case       shipped  156   open 1053   struck   93
+#   func       shipped   42   open   93   struck   54
+#   var        shipped   50   open  717   struck  147
+#   typealias  shipped   16   open   57   struck    3
+#   struct     shipped    4   open    4   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	open	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -627,14 +627,14 @@ case	shipped	NSMatchingReportProgress	NSRegularExpression	Fundamentals / Pattern
 case	shipped	NSMatchingRequiredEnd	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSMatchingWithTransparentBounds	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSMatchingWithoutAnchoringBounds	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSMaxXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
-case	open	NSMaxYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSMaxXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSMaxYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	open	NSMeasurementFormatterUnitOptionsNaturalScale	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format / Working with options	-	swift-page
 case	open	NSMeasurementFormatterUnitOptionsProvidedUnit	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format / Working with options	-	swift-page
 case	open	NSMeasurementFormatterUnitOptionsTemperatureWithoutUnit	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format / Working with options	-	swift-page
 case	open	NSMiddleSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
-case	open	NSMinXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
-case	open	NSMinYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSMinXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSMinYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSMinusSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
@@ -816,10 +816,10 @@ case	struck	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Ca
 case	open	NSRandomSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSReceiverEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSReceiversCantHandleCommandScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
-case	open	NSRectEdgeMaxX		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
-case	open	NSRectEdgeMaxY		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
-case	open	NSRectEdgeMinX		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
-case	open	NSRectEdgeMinY		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSRectEdgeMaxX		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSRectEdgeMaxY		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSRectEdgeMinX		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
+case	shipped	NSRectEdgeMinY		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSRegularExpressionAllowCommentsAndWhitespace	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	shipped	NSRegularExpressionAnchorsMatchLines	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	shipped	NSRegularExpressionCaseInsensitive	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
@@ -1718,7 +1718,7 @@ enum	open	NSQualityOfService	NSBackgroundActivityScheduler	App Support / System 
 enum	open	NSQualityOfService	NSOperation	App Support / Operations / Constants	-	objc
 enum	open	NSQualityOfService	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	objc
 enum	open	NSQualityOfService	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
-enum	open	NSRectEdge		Fundamentals / Geometry / Related Types	-	objc
+enum	shipped	NSRectEdge		Fundamentals / Geometry / Related Types	-	objc
 enum	shipped	NSRegularExpressionOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	swift-page
 enum	open	NSRelativeDateTimeFormatterStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
 enum	open	NSRelativeDateTimeFormatterUnitsStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
@@ -1783,7 +1783,7 @@ func	struck	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object
 func	shipped	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSContainsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSContainsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSConvertHostDoubleToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSConvertHostFloatToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSConvertSwappedDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
@@ -1817,17 +1817,17 @@ func	open	NSDecimalString		Fundamentals / Numbers / Converting between decimals 
 func	open	NSDecimalSubtract		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	open	NSDecrementExtraRefCountWasZero		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	struck	NSDefaultMallocZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
-func	open	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSEdgeInsetsEqual		Fundamentals / Geometry / Comparing edge insets	-	objc
-func	open	NSEdgeInsetsMake		Fundamentals / Geometry / Creating an edge insets structure	-	objc
+func	shipped	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSEdgeInsetsEqual		Fundamentals / Geometry / Comparing edge insets	-	objc
+func	shipped	NSEdgeInsetsMake		Fundamentals / Geometry / Creating an edge insets structure	-	objc
 func	struck	NSEndHashTableEnumeration	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSEndMapTableEnumeration	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSEnumerateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSEnumerateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSEqualPoints		Fundamentals / Geometry / Managing Points	-	objc
-func	open	NSEqualRanges		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSEqualRects		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSEqualSizes		Fundamentals / Geometry / Managing Sizes	-	objc
+func	shipped	NSEqualPoints		Fundamentals / Geometry / Managing Points	-	objc
+func	shipped	NSEqualRanges		Fundamentals / Ranges / Managing ranges	-	objc
+func	shipped	NSEqualRects		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSEqualSizes		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	open	NSFileTypeForHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	open	NSFrameAddress		Reference / Debugging	-	objc
@@ -1843,28 +1843,28 @@ func	struck	NSHashInsert	NSHashTable	Fundamentals / Pointer Collections / Deprec
 func	struck	NSHashInsertIfAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSHashInsertKnownAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSHashRemove	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSHeight		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSHeight		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSHomeDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	open	NSHomeDirectoryForUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	open	NSHostByteOrder		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSIncrementExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
-func	open	NSInsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSIntegralRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSInsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSIntegralRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSIntegralRectWithOptions		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSIntersectionRange		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSIntersectionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSIntersectionRange		Fundamentals / Ranges / Managing ranges	-	objc
+func	shipped	NSIntersectionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSIntersectsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSIsEmptyRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSIsEmptyRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSIsFreedObject		Reference / Debugging	-	objc
 func	shipped	NSLocationInRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	open	NSLog		App Support / Diagnostics and Debugging	-	objc
 func	open	NSLogPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSLogv		App Support / Diagnostics and Debugging	-	objc
 func	struck	NSMakeCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-func	open	NSMakePoint		Fundamentals / Geometry / Managing Points	-	objc
+func	shipped	NSMakePoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSMakeRange		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSMakeRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMakeSize		Fundamentals / Geometry / Managing Sizes	-	objc
+func	shipped	NSMakeRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMakeSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	struck	NSMapGet	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSMapInsert	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSMapInsertIfAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1872,21 +1872,21 @@ func	struck	NSMapInsertKnownAbsent	NSMapTable	Fundamentals / Pointer Collections
 func	struck	NSMapMember	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSMapRemove	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSMaxRange		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSMaxX		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMaxY		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMidX		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMidY		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMinX		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMinY		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMaxX		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMaxY		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMidX		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMidY		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMinX		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMinY		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSMouseInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSNextHashEnumeratorItem	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	open	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSPointFromCGPoint		Fundamentals / Geometry / Managing Points	-	objc
-func	open	NSPointFromString		Fundamentals / Geometry / Managing Points	-	objc
-func	open	NSPointInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSPointFromString		Fundamentals / Geometry / Managing Points	-	objc
+func	shipped	NSPointInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSPointToCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSProtocolFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSRangeFromString		Fundamentals / Ranges / Managing ranges	-	objc
@@ -1894,7 +1894,7 @@ func	struck	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Mem
 func	struck	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 func	open	NSRecordAllocationEvent		Reference / Debugging	-	objc
 func	open	NSRectFromCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1908,17 +1908,17 @@ func	open	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / F
 func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
 func	open	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	open	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
-func	open	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
+func	shipped	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSStringFromPoint		Fundamentals / Geometry / Managing Points	-	objc
+func	shipped	NSStringFromPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSStringFromProtocol		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSStringFromRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSStringFromRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSStringFromSelector		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
-func	open	NSStringFromSize		Fundamentals / Geometry / Managing Sizes	-	objc
+func	shipped	NSStringFromSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSSwapBigDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapBigFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapBigIntToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
@@ -1950,10 +1950,10 @@ func	open	NSSwapLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapLongLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapShort		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSTemporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-func	open	NSUnionRange		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSUnionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSUnionRange		Fundamentals / Ranges / Managing ranges	-	objc
+func	shipped	NSUnionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-func	open	NSWidth		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSWidth		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSZoneCalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneFree		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneFromPointer		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
@@ -2261,7 +2261,7 @@ protocol	open	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	-	objc
 protocol	open	NSXPCProxyCreating		Low-Level Utilities / XPC Client	-	objc
 struct	open	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
 struct	open	NSDecimal		Fundamentals / Numbers	-	objc
-struct	open	NSEdgeInsets		Fundamentals / Geometry	-	objc
+struct	shipped	NSEdgeInsets		Fundamentals / Geometry	-	objc
 struct	shipped	NSFastEnumerationState	NSFastEnumeration	Fundamentals / Iteration / Constants	-	objc
 struct	struck	NSHashEnumerator	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
 struct	struck	NSHashTableCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
@@ -2298,9 +2298,9 @@ typealias	struck	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Depreca
 typealias	open	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
 typealias	open	NSMapTableOptions	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
 typealias	open	NSNotificationName	NSNotification	App Support / Notifications / Creating Notifications	-	swift-page
-typealias	open	NSPoint		Fundamentals / Geometry	-	objc
-typealias	open	NSPointArray		Fundamentals / Geometry / Related Types	-	objc
-typealias	open	NSPointPointer		Fundamentals / Geometry / Related Types	-	objc
+typealias	shipped	NSPoint		Fundamentals / Geometry	-	objc
+typealias	shipped	NSPointArray		Fundamentals / Geometry / Related Types	-	objc
+typealias	shipped	NSPointPointer		Fundamentals / Geometry / Related Types	-	objc
 typealias	open	NSProgressFileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
 typealias	open	NSProgressKind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 typealias	open	NSProgressPublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
@@ -2309,13 +2309,13 @@ typealias	open	NSProgressUserInfoKey	NSProgress	App Support / Progress / Inspect
 typealias	shipped	NSPropertyListReadOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 typealias	shipped	NSPropertyListWriteOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
 typealias	open	NSRangePointer		Fundamentals / Ranges / Related types	-	objc
-typealias	open	NSRect		Fundamentals / Geometry	-	objc
-typealias	open	NSRectArray		Fundamentals / Geometry / Related Types	-	objc
-typealias	open	NSRectPointer		Fundamentals / Geometry / Related Types	-	objc
+typealias	shipped	NSRect		Fundamentals / Geometry	-	objc
+typealias	shipped	NSRectArray		Fundamentals / Geometry / Related Types	-	objc
+typealias	shipped	NSRectPointer		Fundamentals / Geometry / Related Types	-	objc
 typealias	open	NSRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
-typealias	open	NSSize		Fundamentals / Geometry	-	objc
-typealias	open	NSSizeArray		Fundamentals / Geometry / Related Types	-	objc
-typealias	open	NSSizePointer		Fundamentals / Geometry / Related Types	-	objc
+typealias	shipped	NSSize		Fundamentals / Geometry	-	objc
+typealias	shipped	NSSizeArray		Fundamentals / Geometry / Related Types	-	objc
+typealias	shipped	NSSizePointer		Fundamentals / Geometry / Related Types	-	objc
 typealias	open	NSSocketNativeHandle	NSPort	Low-Level Utilities / Sockets / Data Types	-	objc
 typealias	open	NSStreamNetworkServiceTypeValue	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 typealias	open	NSStreamPropertyKey	NSStream	Low-Level Utilities / Streams / Constants	-	objc
@@ -2430,7 +2430,7 @@ var	open	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	open	NSDistinctUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	open	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
+var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
 var	struck	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
 var	open	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
 var	open	NSExtensionHostDidBecomeActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
@@ -3258,7 +3258,7 @@ var	struck	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / No
 var	struck	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	open	NSXMLParserErrorDomain	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
 var	struck	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
-var	open	NSZeroRect		Fundamentals / Geometry / Zero Constant	-	objc
-var	open	NSZeroSize		Fundamentals / Geometry / Zero Constant	-	objc
+var	shipped	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
+var	shipped	NSZeroRect		Fundamentals / Geometry / Zero Constant	-	objc
+var	shipped	NSZeroSize		Fundamentals / Geometry / Zero Constant	-	objc
 var	open	NSZombieEnabled		App Support / Diagnostics and Debugging	-	objc

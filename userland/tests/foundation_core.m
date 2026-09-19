@@ -185,6 +185,53 @@ int main(void)
 	check("runtime-range-string",
 	      [NSStringFromRange(NSMakeRange(1, 3)) isEqualToString:@"{1, 3}"],
 	      "NSStringFromRange spells Apple's {location, length}");
+
+	/*
+	 * THE GEOMETRY FAMILY (W2b, docs/design/foundation-plan.md §14): the C level's structs
+	 * and functions, asserted on the answers that are easy to get WRONG — the half-open
+	 * edge rule, an empty intersection being the ZERO rect, a negative size being empty,
+	 * and the string forms round-tripping.
+	 */
+	{
+		NSRect r = NSMakeRect(10.0, 20.0, 100.0, 40.0);
+		NSRect slice, rest;
+		NSPoint p = NSMakePoint(10.0, 20.0);
+
+		NSDivideRect(r, &slice, &rest, 30.0, NSRectEdgeMinX);
+		check("geometry-rects",
+		      NSWidth(r) == 100.0 && NSHeight(r) == 40.0 &&
+		      NSMinX(r) == 10.0 && NSMaxX(r) == 110.0 &&
+		      NSMidX(r) == 60.0 && NSMidY(r) == 40.0 &&
+		      NSEqualRects(NSInsetRect(r, 5.0, 5.0), NSMakeRect(15.0, 25.0, 90.0, 30.0)) &&
+		      NSEqualRects(NSOffsetRect(r, 1.0, 2.0), NSMakeRect(11.0, 22.0, 100.0, 40.0)) &&
+		      NSContainsRect(r, NSMakeRect(20.0, 30.0, 10.0, 10.0)) &&
+		      NSWidth(slice) == 30.0 && NSWidth(rest) == 70.0 &&
+		      !NSContainsRect(r, NSMakeRect(0.0, 0.0, 10.0, 10.0)),
+		      "the rect accessors, the inset/offset/contain answers and a divide");
+		check("geometry-edges",
+		      NSPointInRect(p, r) &&
+		      !NSPointInRect(NSMakePoint(110.0, 30.0), r) &&
+		      NSPointInRect(NSMakePoint(109.99, 30.0), r) &&
+		      NSIsEmptyRect(NSMakeRect(0.0, 0.0, -5.0, 10.0)) &&
+		      NSIsEmptyRect(NSZeroRect) &&
+		      NSEqualRects(NSIntersectionRect(NSMakeRect(0.0, 0.0, 10.0, 10.0),
+						      NSMakeRect(50.0, 50.0, 10.0, 10.0)),
+				   NSZeroRect) &&
+		      NSEqualRects(NSUnionRect(NSZeroRect, r), r) &&
+		      NSEqualRects(NSIntegralRect(NSMakeRect(1.5, 2.2, 3.1, 4.4)),
+				   NSMakeRect(1.0, 2.0, 4.0, 5.0)),
+		      "the half-open edge rule, an empty intersection, a negative size, and integration");
+		check("geometry-strings",
+		      [NSStringFromPoint(NSMakePoint(1.0, 2.0)) isEqualToString:@"{1, 2}"] &&
+		      [NSStringFromSize(NSMakeSize(3.0, 4.0)) isEqualToString:@"{3, 4}"] &&
+		      [NSStringFromRect(r) isEqualToString:@"{{10, 20}, {100, 40}}"] &&
+		      NSEqualPoints(NSPointFromString(@"{1, 2}"), NSMakePoint(1.0, 2.0)) &&
+		      NSEqualSizes(NSSizeFromString(@"{3, 4}"), NSMakeSize(3.0, 4.0)) &&
+		      NSEqualRects(NSRectFromString(@"{{10, 20}, {100, 40}}"), r) &&
+		      NSEqualPoints(NSPointFromString(@"not a point"), NSZeroPoint) &&
+		      NSEdgeInsetsEqual(NSEdgeInsetsZero, NSEdgeInsetsMake(0.0, 0.0, 0.0, 0.0)),
+		      "the string forms round trip, %g is the spelling, and a bad string answers the zero value");
+	}
 	}
 
 	{
