@@ -529,13 +529,15 @@ double NSFoundationVersionNumber = 0.0;
  * (`_mutations` is bumped by every mutator of NSMutableArray/NSMutableDictionary/NSMutableSet/
  * NSMutableOrderedSet), so detection only needed the handler to do what Cocoa does.
  *
- * WHAT IS MEASURED AND WHAT IS NOT, because a comment that overstates is the thing this whole
- * audit exists to remove: the runtime's ABORT is NOT what runs any more (mutating during
- * enumeration produces a SEGFAULT in the probe, with none of the stub's "Mutation occurred"
- * output), so this definition is reached — but the probe CANNOT yet turn that into a caught
- * exception, and the check that tried was removed rather than left red. The finding and the next
- * measurement are in §11.6.1 D6; the leading suspect is that the loop reads a buffer whose
- * storage a reallocating mutation moved, before any counter check can fire.
+ * MEASURED, and the probe DEMANDS it in two checks: `mutation-handler-direct` calls this function
+ * directly inside @try and catches NSGenericException, and `fast-enum-mutation-raises` mutates an
+ * array inside a `for (x in …)` loop and catches the same thing. So this definition is the one
+ * that runs (the runtime's aborting default is NOT), and the loop path raises rather than dying —
+ * which it did NOT do before NSMutableArray got its own copying enumeration (D6, §11.6.1).
+ *
+ * ONE ANOMALY IS RECORDED RATHER THAN EXPLAINED AWAY: a build in between crashed with STATUS=139
+ * with this same code in place, and it has not reproduced in four runs since. The register carries
+ * both facts.
  */
 void objc_enumerationMutation(id object)
 {

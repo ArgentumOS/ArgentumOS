@@ -45,7 +45,7 @@ CHECKS = ("array-basic", "array-equality", "array-mutable", "array-enumerate",
           "dict-getobjects",
           "array-blocks", "dict-blocks", "indexset-api-complete",
           "indexpath-basics", "indexpath-refusals", "indexpath-api-complete",
-          "enumerator-api-complete", "plist-serialization",)
+          "enumerator-api-complete", "plist-serialization", "mutation-handler-direct", "fast-enum-mutation-raises",)
 
 
 class Case(BaseCase):

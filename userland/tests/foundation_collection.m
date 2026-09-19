@@ -1174,6 +1174,54 @@ int main(void)
 		      "enumerateKeysAndObjectsUsingBlock: pairs each key with its own value, and both keys-sorted-by-value forms order by the VALUES");
 	}
 
+	{
+		/* EXPERIMENT (a) OF §11.6.1 D6: CALL THE HOOK DIRECTLY, which isolates the handler and the
+		 * raise from clang's loop entirely. Two outcomes and both are informative: if it raises
+		 * and is caught, this library's definition is the one that runs and the crash lives in the
+		 * loop; if the process instead prints "Mutation occurred during enumeration." and aborts,
+		 * the RUNTIME'S default is still in force and that abort IS the crash. */
+		NSMutableArray *items = [NSMutableArray arrayWithObjects:@"a", @"b", nil];
+		BOOL caught = NO;
+		NSString *name = nil;
+
+		@try {
+			objc_enumerationMutation(items);
+		} @catch (NSException *e) {
+			caught = YES;
+			name = [e name];
+		}
+		check("mutation-handler-direct",
+		      caught && name != nil && [name isEqualToString:NSGenericException],
+		      caught ? [name UTF8String]
+			: "objc_enumerationMutation returned instead of raising");
+	}
+
+	{
+		/* EXPERIMENT (b): the same hook through clang's fast-enumeration check, which is where the
+		 * crash was. The two checks in one run are the point: printed checks SURVIVE a crash, so
+		 * whatever this run prints is the answer either way. */
+		NSMutableArray *items = [NSMutableArray arrayWithObjects:@"a", @"b", @"c", nil];
+		BOOL caught = NO;
+		NSString *name = nil;
+		NSUInteger rounds = 0;
+
+		@try {
+			for (NSString *item in items) {
+				(void)item;
+				rounds++;
+				[items addObject:@"d"];
+			}
+		} @catch (NSException *e) {
+			caught = YES;
+			name = [e name];
+		}
+		check("fast-enum-mutation-raises",
+		      caught && name != nil && [name isEqualToString:NSGenericException] && rounds >= 1,
+		      caught ? [[NSString stringWithFormat:@"caught %@ after %lu round(s)",
+				name, (unsigned long)rounds] UTF8String]
+			: "NO exception: mutation during enumeration is not detected");
+	}
+
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-COLLECTION DONE\n");
 	return failc ? 1 : 0;
