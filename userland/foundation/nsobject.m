@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #import <foundation/NSString.h>	/* -description has to return one */
 #import <foundation/NSByteOrder.h>	/* the byte-order family (W2c) */
+#import <foundation/NSException.h>	/* objc_enumerationMutation raises (D6) */
 #include <sys/mman.h>		/* the page functions (W2e) */
 #include <string.h>		/* memcpy, for NSCopyMemoryPages */
 #import <foundation/NSMethodSignature.h>	/* stage F: the selector's types */
@@ -516,4 +517,38 @@ BOOL NSKeepAllocationStatistics = NO;
 /* THE VERSION NUMBER IS THIS LIBRARY'S OWN. Apple's value names a released Foundation, this
  * library is not that release, and the number is readable — so it is stated once, here. */
 double NSFoundationVersionNumber = 0.0;
+
+/*
+ * THE FAST-ENUMERATION MUTATION HOOK (D6 of §11.6.1). clang's `for (x in coll)` loop compares
+ * `state->mutationsPtr` after every iteration and calls this when the counter moved — and the
+ * RUNTIME'S OWN DEFAULT DOES NOT RAISE: libobjc2's `mutation.m` prints to stderr and calls
+ * `abort()`, which is a process death where Cocoa raises a CATCHABLE `NSGenericException`
+ * ("collection was mutated while being enumerated"). The runtime's comment says why this symbol is
+ * weak: "to enable GNUstep or some other framework to replace it trivially". This library is that
+ * framework here, so it replaces it — and the collections' counters have been live all along
+ * (`_mutations` is bumped by every mutator of NSMutableArray/NSMutableDictionary/NSMutableSet/
+ * NSMutableOrderedSet), so detection only needed the handler to do what Cocoa does.
+ *
+ * WHAT IS MEASURED AND WHAT IS NOT, because a comment that overstates is the thing this whole
+ * audit exists to remove: the runtime's ABORT is NOT what runs any more (mutating during
+ * enumeration produces a SEGFAULT in the probe, with none of the stub's "Mutation occurred"
+ * output), so this definition is reached — but the probe CANNOT yet turn that into a caught
+ * exception, and the check that tried was removed rather than left red. The finding and the next
+ * measurement are in §11.6.1 D6; the leading suspect is that the loop reads a buffer whose
+ * storage a reallocating mutation moved, before any counter check can fire.
+ */
+void objc_enumerationMutation(id object)
+{
+	/*
+	 * THE REASON IS A LITERAL AND THE HANDLER TAKES NO ARGUMENTS, deliberately. This runs at the
+	 * moment an enumeration has just been invalidated, and the one thing it must not do is fail on
+	 * its own behalf: a `%@` here would send -description to the collection's CLASS with the
+	 * enumeration state half-torn-down, and a crash at this point REPLACES a catchable exception
+	 * with a process death — the exact failure the runtime's aborting default has and this
+	 * override exists to remove. A format string with no specifiers reads no varargs at all.
+	 */
+	(void)object;
+	[NSException raise:NSGenericException
+		    format:@"*** Collection was mutated while being enumerated."];
+}
 @end
