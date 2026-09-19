@@ -275,8 +275,9 @@ def main(argv=None):
         checks_total += len(case.checks)
         checks_ok += sum(1 for c in case.checks if c.ok)
         checks_xfail += sum(1 for c in case.checks if c.expected_fail)
-        if outcome != "pass":
-            print("   -> %s in %.1fs" % (outcome.upper(), secs))
+        # ALWAYS, not only on failure: the point of a shared guest is that the LATER cases should
+        # cost almost nothing, and that is only checkable if every case reports its own seconds.
+        print("   -> %s in %.1fs" % (outcome.upper(), secs))
         # A CASE THAT DID NOT PASS LEAVES AN UNKNOWN SYSTEM BEHIND: drop the shared guest so the
         # next case starts clean, and drop it as well when this case never wanted to share.
         if pool is not None:

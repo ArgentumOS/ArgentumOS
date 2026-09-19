@@ -42,6 +42,9 @@ CHECKS = (
 class Case(BaseCase):
     title = "the Foundation's strings: tagged literals, owned strings, UTF-8"
     tier = "fast"
+    # Its filesystem reads are read-only FIXTURES in the image; the host-clean list is a different
+    # question (a HOST build has no /System), so it can share a guest like the rest.
+    shared_session = True
     timeout = 300
 
     def run(self, ctx):
