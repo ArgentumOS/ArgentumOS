@@ -658,8 +658,14 @@ int main(void)
 			caughtReplace = YES;
 		}
 		[empty addObject:@"x"];
+		/*
+		 * A LOCAL HOLDS THE NIL, and that is not a dodge: a cast to `id` is STILL nonnull inside an
+		 * NS_ASSUME_NONNULL region, so the warning survives the cast. A local makes no nullability
+		 * claim at all, which is exactly what "deliberately nil" needs here.
+		 */
+		id nothing = nil;
 		@try {
-			[empty replaceObjectAtIndex:0 withObject:(id)nil];	/* deliberately nil: this IS the refusal test */
+			[empty replaceObjectAtIndex:0 withObject:nothing];
 		} @catch (NSException *e) {
 			(void)e;
 			caughtNil = YES;
