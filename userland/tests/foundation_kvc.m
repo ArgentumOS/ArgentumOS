@@ -400,25 +400,52 @@ int main(void)
 	}
 
 	{
-		/* The refusals, asserted ABSENT — and the informal-protocol shape with them:
-		 * KVC is answered by respondsToSelector:, NOT by conformsToProtocol:. */
+		/* WHERE THIS STOOD, AND WHY IT MOVED (2026-09-18, §11): this check used to assert that KVO,
+		 * the mutable proxies and -takeValue:forKey: were ALL ABSENT. **F13.9 SHIPPED KVO, SO THE
+		 * CLAIM BECAME FALSE AND THE CHECK WENT RED** — and it stayed red until someone looked,
+		 * which is the exact failure mode §11's ledger exists to expose: a probe asserting an
+		 * absence is asserting a fact about the TREE, and landing the code invalidates it.
+		 *
+		 * SO IT IS SPLIT INTO THE TWO THINGS IT WAS CONFLATING: what KVC's own surface now HAS
+		 * (which the inventory must DEMAND), and what it still LACKS (which the inventory may still
+		 * assert absent, and which §11.3 carries as defects). The absent half is verified against
+		 * the tree by grep, not by hope. */
+		check("kvc-kvo-present",
+		      [NSObject instancesRespondToSelector:sel_registerName(
+			  "addObserver:forKeyPath:options:context:")] &&
+		      [NSObject instancesRespondToSelector:sel_registerName(
+			  "removeObserver:forKeyPath:")] &&
+		      [NSObject instancesRespondToSelector:sel_registerName(
+			  "willChangeValueForKey:")] &&
+		      [NSObject instancesRespondToSelector:sel_registerName(
+			  "didChangeValueForKey:")] &&
+		      [NSObject instancesRespondToSelector:sel_registerName("valueForKey:")] &&
+		      [NSObject instancesRespondToSelector:sel_registerName("setValue:forKey:")],
+		      "KVO ships since F13.9, so its surface is demanded here rather than denied");
+
 		check("kvc-refusals",
 		      objc_getClass("NSKeyValueObservationInfo") == NULL &&
 		      ![NSObject instancesRespondToSelector:sel_registerName(
-			  "addObserver:forKeyPath:options:context:")] &&
-		      ![NSObject instancesRespondToSelector:sel_registerName(
-			  "willChangeValueForKey:")] &&
-		      ![NSObject instancesRespondToSelector:sel_registerName(
-			  "observeValueForKeyPath:ofObject:change:context:")] &&
-		      ![NSObject instancesRespondToSelector:sel_registerName(
-			  "mutableArrayValueForKey:")] &&
-		      ![NSObject instancesRespondToSelector:sel_registerName(
-			  "mutableSetValueForKey:")] &&
-		      ![NSObject instancesRespondToSelector:sel_registerName(
-			  "takeValue:forKey:")] &&
-		      [NSObject instancesRespondToSelector:sel_registerName("valueForKey:")] &&
-		      [NSObject instancesRespondToSelector:sel_registerName("setValue:forKey:")],
-		      "KVO, the mutable proxies and -takeValue:forKey: are absent");
+			  "observeValueForKeyPath:ofObject:change:context:")],
+		      "the KVO OBSERVER protocol callback and Apple's private observation-info class are absent");
+
+		{
+			/* PRINTED RATHER THAN ASSERTED, because it is the honest state of this row and the
+			 * ledger must be able to read it: -mutableArrayValueForKey: is DECLARED in the
+			 * header while the MUTABLE PROXIES are not implemented, so whether an instance
+			 * RESPONDS to it is a fact worth recording rather than a claim worth making. */
+			int i;
+			static const char *proxies[] = {
+				"mutableArrayValueForKey:", "mutableSetValueForKey:",
+				"mutableOrderedSetValueForKey:", "takeValue:forKey:", NULL
+			};
+
+			for (i = 0; proxies[i] != NULL; i++) {
+				printf("FOUNDATION-KVC proxy-state: %s %s\n", proxies[i],
+				       [NSObject instancesRespondToSelector:sel_registerName(proxies[i])]
+				       ? "PRESENT" : "absent");
+			}
+		}
 	}
 
 	{

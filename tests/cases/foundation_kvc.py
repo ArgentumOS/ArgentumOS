@@ -28,8 +28,15 @@ being checked.
   * `kvc-undefined`   — THE HONEST DEFAULTS: an undefined key raises, a nil
                         through a scalar raises, and an override is what answers;
   * `kvc-validate`    — the -validate<Key>:error: rule, present and absent;
-  * `kvc-refusals`    — KVO, the mutable proxies and -takeValue:forKey: are
-                        ABSENT rather than half-built;
+  * `kvc-refusals`    — WHAT IS STILL ABSENT, and it is a shorter list than it used to be: the
+                        KVO observer protocol's callback and Apple's private observation-info
+                        class. The mutable proxies' reachability is PRINTED (`proxy-state`) rather
+                        than asserted, because -mutableArrayValueForKey: is declared while the
+                        proxies are not implemented;
+  * `kvc-kvo-present`  — the surface KVO SHIPPED with at F13.9 is DEMANDED. This check exists
+                        because its absence-asserting predecessor went red the moment KVO landed
+                        and nobody looked: a probe asserting an absence is asserting a fact about
+                        the tree (§11);
   * `cross-tu`        — an object built in the other unit answers here, by name.
 """
 
@@ -40,7 +47,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_kvc"
 CHECKS = ("kvc-accessors", "kvc-ivar", "kvc-scalar-accessor", "kvc-ivar-super",
           "kvc-nil-ivar", "kvc-keypath", "kvc-operators", "kvc-collection-unions",
-          "kvc-collections", "kvc-undefined", "kvc-validate", "kvc-refusals", "cross-tu")
+          "kvc-collections", "kvc-undefined", "kvc-validate", "kvc-refusals",
+          "kvc-kvo-present", "cross-tu")
 
 
 class Case(BaseCase):

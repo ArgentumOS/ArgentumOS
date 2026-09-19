@@ -275,6 +275,8 @@ int main(void)
 			"initWithBytes:length:", "initWithBytesNoCopy:length:",
 			"initWithBytesNoCopy:length:freeWhenDone:", "initWithData:",
 			"initWithContentsOfFile:", "initWithContentsOfFile:options:error:",
+			/* F12's codecs: they SHIPPED, so the inventory must demand them. */
+			"compressedDataUsingAlgorithm:error:", "decompressedDataUsingAlgorithm:error:",
 			"initWithBase64EncodedString:options:", "initWithBase64EncodedData:options:",
 			"length", "bytes", "getBytes:length:", "getBytes:range:",
 			"subdataWithRange:", "rangeOfData:options:range:",
@@ -298,17 +300,23 @@ int main(void)
 			"dataWithContentsOfMappedFile:",	/* superseded by the :options: form */
 			"initWithContentsOfMappedFile:",	/* superseded by the :options: form */
 			"getBytes:",				/* superseded by -getBytes:length: */
-			/* Needs a codec this Foundation does not ship. The URL-taking forms are
-			 * absent for a different reason: NSURL itself SHIPS now (F8), but these
-			 * methods are not written. */
+			/* The URL-taking forms: NSURL itself SHIPS now (F8), but these methods are not
+			 * written. */
 			"dataWithContentsOfURL:",		/* the URL-taking forms are not shipped */
 			"dataWithContentsOfURL:options:error:",	/* the URL-taking forms are not shipped */
 			"initWithContentsOfURL:",		/* the URL-taking forms are not shipped */
 			"initWithContentsOfURL:options:error:",	/* the URL-taking forms are not shipped */
 			"writeToURL:atomically:",		/* the URL-taking forms are not shipped */
 			"writeToURL:options:error:",		/* the URL-taking forms are not shipped */
-			"compressedDataUsingAlgorithm:error:",	/* a compression codec */
-			"decompressedDataUsingAlgorithm:error:",	/* a compression codec */
+			/* THE TWO COMPRESSION SELECTORS USED TO BE LISTED HERE as "a compression
+			 * codec" this Foundation does not ship. **F12 SHIPPED THEM AND THIS LIST WAS NOT
+			 * UPDATED WITH IT, SO THIS PROBE FAILED ITS OWN INVENTORY CHECK** — reporting them
+			 * as "present but EXCLUDED", which is the check working correctly against a STALE
+			 * CLAIM. That is precisely the failure mode §11's ledger exists to expose: an
+			 * `excluded` entry is a claim about the tree, and shipping the selector makes the
+			 * claim false. They are ASSERTED PRESENT in `instanceSelectors` above instead, in the
+			 * same change, because the inventory runs BOTH ways: what ships must be demanded, and
+			 * what is not shipped must be absent. */
 			NULL
 		};
 		NSData *probe = [NSData data];
