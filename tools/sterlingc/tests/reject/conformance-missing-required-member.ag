@@ -1,0 +1,28 @@
+/*
+ * reject/conformance-missing-required-member.ag
+ *
+ * §7.48: a type that claims conformance to a protocol and does not implement
+ * every required member is a **compile-time error**. This is the compiler's
+ * first *semantic* rule — §7.26's two type-argument rules are the others — and
+ * it is checked by check.c *after* the parse, because a protocol may be
+ * declared after the type that conforms to it.
+ *
+ * Two things are deliberate here:
+ *   - `draw` is required and missing, which is the rejection;
+ *   - `label` is optional and also missing, which is **fine** — §7.48 exempts an
+ *     optional member, since ObjC's runtime asks before sending to one. So the
+ *     message must name `drawInto:` and not the property, and if this file ever
+ *     fails on `label` the exemption has regressed.
+ *
+ * Rejected by the check, with the type, the protocol and the selector named.
+ */
+import Foundation
+
+protocol Drawable {
+    method draw(into ctx: Canvas) -> Void
+    optional property label: String
+}
+
+class Owner: Object, Drawable {
+    method describe() -> String { return "owner" }
+}

@@ -1,0 +1,24 @@
+/*
+ * reject/optional-chain.ag
+ *
+ * §9.6 (confirmed 2026-09): sending to an optional is **allowed**, yielding a
+ * `T?`, because ObjC's nil-receiver rule already makes `[nil foo]` safe —
+ * "which is why Swift needs a `?.` and Sterling does not". So `x.foo` on a
+ * `Foo?` is the spelling and a chain marker is a second way to write the same
+ * thing.
+ *
+ * This file exists because the parser *had* a `?.` branch — added to satisfy a
+ * corpus file carrying Swift's spelling — and a rule that is enforced in the
+ * negative direction needs a test in the negative direction.
+ *
+ * Rejected at the `?`.
+ */
+import Foundation
+
+class Node: Object {
+    property label: String?
+
+    method describe(other: Node?) -> String? {
+        return other?.label
+    }
+}

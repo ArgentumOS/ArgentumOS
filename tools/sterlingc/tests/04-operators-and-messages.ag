@@ -1,0 +1,92 @@
+/*
+ * 04-operators-and-messages.ag — the expression surface.
+ *
+ * Sections: §7.1/§7.50 selector composition and label suppression, §6's
+ * message sends and trailing blocks, §7.72's operators defined for a type and
+ * the `[]`/`[]=` pair, §7.33's closure shape, §7.51's capture lists, §7.59's
+ * `nil`, §7.42's C-function fallback.
+ */
+import Foundation
+
+/* §7.72 (amended 2026-09): an author defines an operator the language already
+ * has for a type that does not yet support it. The symbol set is closed, so `+`
+ * for a `Point` is definable and `.:.` is not. */
+operator + (lhs: Point, rhs: Point) -> Point {
+    return Point(x: lhs.x + rhs.x, y: lhs.y + rhs.y)
+}
+
+/* §7.72: `rhs:` alone is a prefix operator, `lhs:` alone a postfix one. `-` and
+ * `~` are both in the closed set. An earlier draft of this file used `@` and
+ * `#`, which the old arbitrary-symbol rule allowed and this one does not. */
+operator - (rhs: Point) -> Point { return rhs }
+operator ~ (rhs: Point) -> Point { return rhs }
+
+class Bag: Object, Drawable {
+    private property slots[8]: Array<Float32?>
+
+    /* §7.72: `[]` is declared with one argument and is a member, so `self` is
+     * the container; the name of the index is the author's. It and `[]=` are
+     * the one exception to the closed symbol set. */
+    operator [](i: Int32) -> Float32? { return self.slots[i] }
+
+    /* ...and writing through it is the separate `[]=` operator. */
+    operator []= (i: Int32, value: Float32) -> Void { self.slots[i] = value }
+
+    method draw(into ctx: Canvas) -> Void { }
+
+    /* §7.1/§7.50: a two-name parameter and a suppressed first label. */
+    method store(item at: Int32, named: String, _ extra: Bool) -> Void { }
+
+    /* §7.42: an unqualified call that is not a method is a C function, and the
+     * emitted `.m` declares it. */
+    method callOut(flag: Bool) -> Void {
+        callSomeCFunction(flag: flag)
+    }
+
+    /* §6/§7.33: a trailing block whose parameter type comes from the
+     * parameter's function type; §7.51 adds the capture list.
+     *
+     * §7.33: a closure is `(params) [captures] { body }` — the parameter list is
+     * part of the notation and is always written, and there is no bare `{ … }`
+     * form. Earlier drafts of this file used `{ (item: String) in … }`, which is
+     * Swift's notation, not this language's. */
+    method filter(items: Array<String>) -> Array<String> {
+        let kept = items.filter (item: String) {
+            return item.count > 0
+        }
+        let counting = items.map (item: String) [weak self] {
+            _ = self
+            return item
+        }
+        _ = counting
+        return kept
+    }
+
+    /* §7.38: `T(x)` is a constructor call. §7.59: `nil` converts by context. */
+    method expressions(other: Bag?) -> Void {
+        var p: Point = Point.origin()
+        p = p + p
+        p = -p
+        p = ~p
+        p = Point.origin()
+
+        let value: Float32? = self.slots[0]
+        self.slots[1] = 2.5
+        let backup: Bag? = other
+        /* §9.6: sending to an optional is *allowed* and yields a `T?`, because
+         * ObjC's nil-receiver rule already makes `[nil foo]` safe — "which is why
+         * Swift needs a `?.` and Sterling does not". The `backup?.index` this
+         * line used to carry was a Swift spelling, and the parser had been
+         * taught to accept it; it is an ordinary send. */
+        let fromOptional: Int32? = backup.index
+        _ = value
+        _ = fromOptional
+
+        let sent: Void = self.store(item: 1, named: "x", true)
+        _ = sent
+    }
+}
+
+/* §7.56: a func is not bound to a type, and a class method is called on the
+ * type itself (§7.58). */
+func makeBag() -> Bag { return Bag() }

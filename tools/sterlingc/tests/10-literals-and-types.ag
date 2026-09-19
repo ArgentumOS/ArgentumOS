@@ -1,0 +1,89 @@
+/*
+ * 10-literals-and-types.ag — §4's literals, their types, and `nil`.
+ *
+ * Sections: §4's Literal spelling, the literal-type rule at §7.38, the `nil`
+ * table at §7.59, and §4's Bool/YES/NO note.
+ *
+ * The rules the document states, all of which appear below:
+ *   - digits may be grouped with underscores, which are elided, and an
+ *     underscore may only sit between two digits;
+ *   - the radix prefixes are `0x`, `0b` and `0o`, and C's bare-leading-zero
+ *     octal is not writable;
+ *   - a literal's type is written on the literal when nothing else supplies it,
+ *     and a value that cannot survive that type is an error rather than a
+ *     truncation — there are no width suffixes;
+ *   - there is one null, spelled `nil`, and `NULL` is an ordinary identifier
+ *     rather than a token.
+ */
+import Foundation
+
+/* §4: the digit grouping and the three radix prefixes. `0o755` is the
+ * interesting one — C has no `0o` at all, so it emits as a bare leading zero. */
+func literalSpelling() -> Int32 {
+    let plain: Int32 = 1234
+    let grouped: Int32 = 1_234
+    let hex: Int32 = 0xFF
+    let binary: Int32 = 0b1010
+    let octal: Int32 = 0o755
+    _ = grouped
+    _ = hex
+    _ = binary
+    _ = octal
+    return plain
+}
+
+/* §7.38: the type is written on the literal. Each of these has a type that
+ * nothing else in the declaration could have supplied. */
+func typedLiterals() -> Void {
+    let narrow: Int8 = Int8(12)
+    let wide: Int64 = Int64(47528946234536)
+    let fraction: Float32 = Float32(0.5)
+    let double: Float64 = Float64(0.5)
+    let truth: Bool = Bool(1)
+    _ = narrow
+    _ = wide
+    _ = fraction
+    _ = double
+    _ = truth
+}
+
+/* §4/§7.59: one `nil`, in the contexts its table names. A class-typed property
+ * takes `nil` directly; a scalar optional takes it too, and the emission is what
+ * differs — `nil` for a class, `false` for a Bool, which is the row the
+ * document measured as a hard error without the conversion. */
+class Holder: Object {
+    property name: String?
+    property count: Int32?
+    readonly property flag: Bool?
+
+    method setAll() -> Void {
+        self.name = nil
+        self.count = nil
+    }
+
+    /* §7.59: `NULL` is not a Sterling token — it is an ordinary identifier,
+     * valid only where someone has defined it. This one is a *variable*, which
+     * is the point: the lexer does not reserve the spelling. */
+    method shadow(name: String?) -> Void {
+        let NULL: String? = nil
+        _ = NULL
+        _ = name
+    }
+}
+
+/* §4: `Bool` stays distinct from the integer types in the source, even though
+ * its C is `BOOL`, and `YES`/`NO` are `Bool`-typed rather than integers. */
+func booleans() -> Bool {
+    let yes: Bool = YES
+    let no: Bool = NO
+    _ = no
+    return yes
+}
+
+/* §4: `Character` is C's `char` and emits as `char`. */
+func characters() -> Character {
+    let letter: Character = 'A'
+    let newline: Character = '\n'
+    _ = newline
+    return letter
+}

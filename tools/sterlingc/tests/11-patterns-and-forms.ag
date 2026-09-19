@@ -1,0 +1,90 @@
+/*
+ * 11-patterns-and-forms.ag — the statement forms beyond the basics.
+ *
+ * Sections: §7.65's range patterns, §7.73's `where` on both of its sites,
+ * §7.66's sole `for` form, §7.69's `while` (there is no `do while`), §7.70's
+ * `with`, §7.71's `defer`, and §7.4's two extension forms.
+ *
+ * Note what this file can and cannot check. Every form below is *parsed*; the
+ * ones whose bodies are statement blocks are read statement by statement, while
+ * `switch` cases and `with` bodies are still brace-scanned, because the AST has
+ * no node for either. The comments say which is which rather than leaving a
+ * reader to guess.
+ */
+import Foundation
+
+enum Level: Int32 {
+    case low = 1
+    case medium
+    case high
+}
+
+class Forms: Object {
+    property retries: Int32 = 0
+    property point: Point?
+
+    /* §7.65: both range spellings, in a scalar switch. §7.73's `where` attaches
+     * a condition evaluated *after* the pattern matches, so a payload is bound
+     * before it runs. */
+    method band(code: Int32) -> Int32 {
+        switch code {
+        case 1...45 { return 1 }
+        case 46..<90 { return 2 }
+        default { return 0 }
+        }
+    }
+
+    /* §7.73's other site — `where` on an iteration — and §7.66's sole `for`
+     * form. */
+    method sumPositive(values: Array<Int32>) -> Int32 {
+        var total: Int32 = 0
+        for value in values where value > 0 {
+            total = total + value
+        }
+        return total
+    }
+
+    /* §7.69: `while` is the only loop of its kind. There is no `do while`, and
+     * a boolean condition is the whole grammar. */
+    method countdown(from start: Int32) -> Int32 {
+        var n: Int32 = start
+        while n > 0 {
+            n = n - 1
+        }
+        return n
+    }
+
+    /* §7.71: `defer` runs at scope exit, in reverse order, on every path out.
+     * §7.70: `with` puts the target's members in scope — admissible because the
+     * target is static. The `with` body is brace-scanned; the method body
+     * around it is not. */
+    method rewrite() -> Void {
+        defer { self.retries = self.retries + 1 }
+        if let target = self.point {
+            with target {
+                x = x + 1
+                y = y + 1
+            }
+        }
+    }
+
+    /* §7.68: a `guard` condition list, and the `else` must return. §7.71's
+     * `defer` above it still runs on that path. */
+    method require(flag: Bool) -> Int32 {
+        guard flag else { return 0 }
+        return self.retries
+    }
+}
+
+/* §7.4: an extension is ObjC's class extension — unnamed, storage allowed, and
+ * only where the unit also defines the class. It may carry a conformance list,
+ * which is what makes the class claim `Drawable` here. */
+extension Forms: Drawable {
+    method draw(into ctx: Canvas) -> Void { }
+}
+
+/* …and a category is named, for a class the unit does not own. The name in
+ * parentheses is the category's, not the class's. */
+category Forms (Extra) {
+    method extra() -> Int32 { return 1 }
+}

@@ -1,0 +1,20 @@
+/*
+ * reject/protocol-type-parameter.ag
+ *
+ * §7.26: **a protocol declaration takes no type parameters.** A *class* may —
+ * `class Box<T>: Object` is legal and parsed — but the parameter is
+ * a class feature, so `@protocol P<T>` is read as a *conformance list* and clang
+ * answers `cannot find protocol declaration for 'T'` (verified, in the section).
+ * `id<P>` therefore stays unparameterized.
+ *
+ * This is one of the two §7.26 sub-rules that survived the amendment that
+ * removed the type-argument bullet, and it is the one that is *syntactic*: a
+ * `<` after a protocol's name is wrong regardless of what anything else means.
+ *
+ * Rejected at the `<`.
+ */
+import Foundation
+
+protocol P<T> {
+    method go(a: T) -> Void
+}

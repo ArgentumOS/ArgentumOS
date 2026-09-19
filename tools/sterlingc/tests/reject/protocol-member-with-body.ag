@@ -1,0 +1,16 @@
+/*
+ * reject/protocol-member-with-body.ag
+ *
+ * §5, Protocol (2026-09): a protocol carries requirements and no
+ * implementations. Every member is a *signature*, and a body written there is
+ * an error rather than something ignored — the same reason `case` is required
+ * in an enum, since a parser that quietly accepted a body would let the corpus
+ * look conformant while carrying code that could never run.
+ *
+ * Rejected at the `{` of the member's body.
+ */
+import Foundation
+
+protocol Drawable {
+    method draw(into ctx: Canvas) -> Void { }
+}

@@ -1,0 +1,15 @@
+/*
+ * reject/enum-member-without-case.ag
+ *
+ * §5 (amended 2026-09): an enum member is written `case name` — Swift's
+ * spelling — and the keyword is **required**. A bare name is an error, not an
+ * alternative spelling, which is what keeps the corpus honest about the rule.
+ *
+ * Rejected at the bare `north`.
+ */
+import Foundation
+
+enum Direction {
+    case north
+    south
+}

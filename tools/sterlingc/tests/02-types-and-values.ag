@@ -1,0 +1,57 @@
+/*
+ * 02-types-and-values.ag — the type table, nullability, arrays, conversions.
+ *
+ * Sections: §4's type table and nullability, §7.59's `nil`, §7.62's scalar
+ * optionals, §7.63's generics decision, §7.64's array declaration forms,
+ * §7.38/§7.47's conversions, §7.40's arithmetic.
+ */
+import Foundation
+
+class Values: Object {
+    /* §4: every declaration is non-null by default; `?` is the nullable form. */
+    property name: String
+    property nickname: String?
+    property count: Int32 = 0
+    property big: Int64 = 0
+    property ratio: Float32 = 0.1
+    property precise: Float64 = 0.1
+    property flag: Bool = false
+    property letter: Character = 'a'
+
+    /* §7.62: a scalar or struct may be optional, represented by a
+     * synthesised pair-struct. `nil` in that context emits its zeroed form. */
+    property maybeCount: Int32?
+    property maybePoint: Point?
+
+    /* §7.64: the declaration carries the size; a bare one is all-zero. */
+    property widths[4]: Array<Int32>
+    property grid[2][3]: Array<Int32>
+    property seeded[3]: Array<Int32> = ({1, 2, 3})
+
+    /* §7.63: an object argument erases, so this is an NSArray. */
+    property items: Array<String>
+
+    method numeric() -> Void {
+        /* §7.40: arithmetic traps; `&+` and friends are the wrapping forms. */
+        var total: Int32 = 1
+        total = total + 1
+        total = total &+ 1
+
+        /* §7.38/§7.47: `T(x)` is a constructor call, and the conversion table
+         * is up-only in representability — Int16 to Float32 is valid, UInt32
+         * to Float32 is a compile error. */
+        let widened: Float32 = Float32(Int16(3))
+        let narrowed: Int8 = Int8(1)
+        _ = widened
+        _ = narrowed
+    }
+
+    method optionals() -> Void {
+        /* §7.10: the four ways out — `!`, the binding forms, `??`. */
+        if let n = self.maybeCount { _ = n }
+        guard let p = self.maybePoint else { return }
+        let fallback: Int32 = self.maybeCount ?? -1
+        _ = p
+        _ = fallback
+    }
+}

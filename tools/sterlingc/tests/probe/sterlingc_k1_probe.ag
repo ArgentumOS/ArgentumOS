@@ -1,0 +1,30 @@
+/*
+ * sterlingc_k1_probe.ag — the guest half of K1.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * K1's host half is `sterlingc.sh --golden`: the specimen must emit §2
+ * byte-for-byte. This is the other half, and it cannot be checked on the host
+ * — `-fobjc-arc` needs libobjc2, which lives on the guest.
+ *
+ * The shape follows the plan: one `STERLING <name> ok|FAIL <detail>` line per
+ * check, then a `STERLING RESULT ok=N fail=M` tally, exiting non-zero on
+ * failure. That is the `objc_smoke` pattern (tests/cases/objc_smoke.py).
+ *
+ * NOTE: this file is a *target*, not a passing test. The emitter currently
+ * handles §1's specimen and nothing else — it does not yet emit message sends
+ * or calls — so the probe cannot run until K2 widens it. It is written now so
+ * the guest gate has its instrument the moment the emitter can produce it.
+ */
+import Foundation
+
+func check(name: String, condition: Bool) -> Void { }
+
+class Probe: Object {
+    property myValue: Int64 = 0
+    readonly property dynamicValue: Float32 { return 0.1 }
+
+    class method baz(arg1: Bool, arg2: String) -> Void { }
+
+    method foobar(argname: Int32, arg2: Bool) -> Bool { return false }
+}

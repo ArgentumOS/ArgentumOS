@@ -1,0 +1,63 @@
+/*
+ * 05-arc-and-closures.ag — memory qualifiers, captures, and closure shapes.
+ *
+ * Sections: §5's memory qualifiers (and their inference), §7.51's capture
+ * list, §7.52's `weak`/`unowned` declarations, §7.33's single closure shape,
+ * §9.4's `var` capture and its `__block` emission.
+ */
+import Foundation
+
+class Owner: Object {
+    /* §5: the qualifier is inferred from the type — a class type is `strong`,
+     * a scalar or struct is `assign` — and may be written. */
+    strong property held: Owner?
+    assign property ticks: Int32 = 0
+    weak property parent: Owner?
+    unowned property root: Owner?
+
+    /* §7.52 with §5: a named weak reference is a *property* — a class has no
+     * `var`, which is the struct form. An earlier draft of this file wrote
+     * `weak var` and the parser refused it at the keyword, which is how the
+     * mistake surfaced. */
+    weak property scratch: Owner?
+
+    method captures(source: Owner?) -> Void {
+        /* §7.51: ARC's default is a strong capture of `self`; the capture list
+         * is the cycle breaker. */
+        let a = self.run (value: Int32) {
+            return value
+        }
+        let b = self.run (value: Int32) [weak self] {
+            if let live = self { _ = live }
+            return value
+        }
+        let c = self.run (value: Int32) [unowned self] {
+            _ = self
+            return value
+        }
+        _ = a
+        _ = b
+        _ = c
+    }
+
+    /* §9.4: a `var` entry in a capture list emits `__block`, so the closure
+     * shares the variable instead of copying it — which is what an accumulator
+     * needs, and what an assignment to a captured local requires.
+     *
+     * §7.33: the closure shape is a parameter list, then the optional capture
+     * list, then the body — `(value: Int32) [weak self] { … }` — and the list is
+     * always written. Earlier drafts of this file wrote `{ (value: Int32) in … }`,
+     * which is Swift's notation: this language has no bare `{ }` closure and no
+     * `in`. */
+    method accumulate(items: Array<Int32>) -> Int32 {
+        var count: Int32 = 0
+        let keep = items.filter (item: Int32) [var count] {
+            count = count &+ 1
+            return item > 0
+        }
+        _ = keep
+        return count
+    }
+
+    method run(body: (Int32) -> Int32) -> Int32 { return body(1) }
+}

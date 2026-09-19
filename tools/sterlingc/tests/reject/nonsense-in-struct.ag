@@ -1,0 +1,14 @@
+/*
+ * reject/nonsense-in-struct.ag
+ *
+ * §5's Struct kind: a body of `var` fields and declarations. Rejected once the
+ * struct was parsed for real rather than scanned — which is also the change
+ * that revealed three latent `var` fields the corpus already carried.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+struct Bad {
+    %%%% not a declaration at all ((
+}

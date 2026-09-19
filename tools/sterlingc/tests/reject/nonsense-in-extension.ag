@@ -1,0 +1,14 @@
+/*
+ * reject/nonsense-in-extension.ag
+ *
+ * §7.4's two forms — `extension X { … }` and `category X (Name) { … }` — hold
+ * real declarations, unlike a protocol's requirements. Both are asserted in
+ * this one file's sibling cases by the same mechanism; this is the extension.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+extension Bad {
+    %%%% not a declaration at all ((
+}

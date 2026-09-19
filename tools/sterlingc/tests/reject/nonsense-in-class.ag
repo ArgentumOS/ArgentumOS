@@ -1,0 +1,17 @@
+/*
+ * reject/nonsense-in-class.ag
+ *
+ * §5: a class body holds declarations. This asserts that the parser *reads*
+ * inside one — the property every scanner-removal in this session was for.
+ *
+ * Each declaration kind gets its own file here, because until the scanner was
+ * deleted six of the eleven kinds in §5 accepted any bytes at all while the
+ * corpus reported them as passing.
+ *
+ * Rejected at the `%`.
+ */
+import Foundation
+
+class Bad: Object {
+    %%%% not a declaration at all ((
+}

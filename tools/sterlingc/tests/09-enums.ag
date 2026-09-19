@@ -1,0 +1,78 @@
+/*
+ * 09-enums.ag — §5's Enum kind.
+ *
+ * Sections: §5 line 519 (two kinds, and which one you get is decided by the
+ * members), §7.35 (the tagged union), §7.18/§7.36 (qualified access, and a
+ * `default` case bringing no associated value into scope).
+ *
+ * The rules the document states, all of which appear below:
+ *   - members are written `case name`, Swift's spelling (amended 2026-09) — the
+ *     keyword is a marker that emits nothing;
+ *   - an enum whose members carry NO associated values is a plain C enum;
+ *   - one member with an associated value makes the whole enum a tagged union;
+ *   - members are one per line with no separators — the line ends the member,
+ *     and the emitter supplies the commas;
+ *   - a member may pre-set its value, and C's seeding rule is inherited whole;
+ *   - either kind may declare an underlying type with `: T`.
+ */
+import Foundation
+
+/* §5: plain, because nothing here carries a value. */
+enum Direction {
+    case north
+    case south
+    case east
+    case west
+}
+
+/* §5: an explicit value seeds the ones after it, and the values need not
+ * ascend — so this gives `a` 4, `b` 2, `c` 3 (measured in the document). */
+enum Seeded {
+    case a = 4
+    case b = 2
+    case c
+}
+
+/* §5: the `: T` C++ and C23 already have, so no `NS_ENUM` is needed. Any
+ * integer type in §4's table may serve. */
+enum Flags: UInt8 {
+    case none
+    case readable
+    case writable
+}
+
+/* §5's tagged union: one member with an associated value is enough to make the
+ * whole enum one, and the emission is a tag plus a union of payload structs.
+ * `valueOne` pre-sets its tag value. */
+enum Outcome {
+    case valueOne(associateValue: Int32) = 4
+    case valueTwo(associatedValue: Float64)
+    case valueThree(associatedValueOne: Bool, associatedValueTwo: Int64)
+}
+
+class EnumUsers: Object {
+    /* §7.35: access is qualified — `.north` where the type is known, and
+     * `Direction.north` where it is not. */
+    method describe(direction: Direction) -> Void {
+        let short: Direction = .north
+        let long: Direction = Direction.west
+        _ = short
+        _ = long
+    }
+
+    /* §7.36: a `default` case brings no associated value into scope, so this
+     * one takes the enum rather than a payload. */
+    method classify(outcome: Outcome) -> Int32 {
+        switch outcome {
+        case .valueOne(let code) { return code }
+        case .valueTwo { return 0 }
+        case .valueThree(let a, let b) { return 1 }
+        }
+    }
+
+    /* §5: either kind may declare an underlying type, and for a tagged union it
+     * is the tag's width rather than the union's. */
+    method flags(raw: UInt8) -> Flags {
+        return Flags.none
+    }
+}

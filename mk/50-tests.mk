@@ -28,3 +28,40 @@ test-all: .build/ovmf/OVMF.fd
 
 test-list:
 	@python3 tests/run.py --list
+
+# ---- Sterling's compiler (K1) -------------------------------------------
+#
+# K1's gate, runnable on the host because libobjc2 is now built here too — see
+# tools/sterlingc-compile.sh's header for how. What remains for the guest is
+# *running* what was compiled: the probe's checks are calls, and the emitter
+# cannot emit calls yet.
+.PHONY: sterlingc-check sterlingc-golden sterlingc-corpus sterlingc-reject \
+	sterlingc-compile
+
+sterlingc-check: sterlingc-golden sterlingc-corpus sterlingc-reject \
+	sterlingc-compile
+
+# The §1 specimen must emit sterling-syntax.md §2 byte-for-byte.
+sterlingc-golden:
+	@tools/sterlingc.sh --golden
+
+# Every corpus file must lex. A lex error is not a cosmetic failure: it ends
+# the token stream, so everything after it goes unchecked.
+sterlingc-corpus:
+	@tools/sterlingc.sh --corpus
+
+# The negative half, and the one that keeps the others honest: every file in
+# tests/reject/ must be *rejected*, and each is named for the rule it breaks.
+# A rule the parser enforces needs a test in both directions — without this a
+# permissive parser is indistinguishable from a correct one, which is exactly
+# how six scanned declaration forms reported "9 of 9" while accepting any bytes
+# at all, and how a `?.` branch came to exist for a construct §9.6 forbids.
+sterlingc-reject:
+	@tools/sterlingc.sh --reject
+
+# The emitted .m must *compile* under -fobjc-arc against libobjc2. This is the
+# gate that catches a wrong emission the byte comparison cannot see: §2's own
+# specimen emitted `return false;`, which does not compile, and only this check
+# found it.
+sterlingc-compile:
+	@tools/sterlingc-compile.sh

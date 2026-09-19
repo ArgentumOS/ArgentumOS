@@ -1,0 +1,78 @@
+/*
+ * 13-generics-and-c.ag — §5's generic classes, §7.26/§7.63's rules, and
+ * §7.42's C-function fallback.
+ *
+ * Sections: §5's "a class may be generic" (line 393) with its four sub-rules
+ * (a protocol takes no parameters, a category cannot use its class's, a type
+ * argument must be an object type, a C type is out entirely), §7.62's scalar
+ * optionals, §7.42's unqualified-call rule, and §5's Function.
+ *
+ * The rules the document states, all of which appear below:
+ *   - the mechanism is ObjC's lightweight generics — compile-time only, no
+ *     runtime and no ABI — and the parameter is not erased in the *source*;
+ *   - `Array<String>` is a legal type argument and `Array<Int32>` is an error;
+ *   - a protocol declaration takes no type parameters;
+ *   - a category cannot use its class's parameter;
+ *   - an unqualified call that is not a method is a C function.
+ */
+import Foundation
+
+/* §5: a class may be generic. `Box<T>` emits `@interface Box<T> : NSObject` and
+ * `Box<String>` emits `Box<NSString *>`; clang erases the parameter at codegen. */
+class Box<T>: Object {
+    /* §7.62's scalar optionals and §4's object optionals are the same spelling;
+     * which representation is used is the emission's business. */
+    property inner: T?
+    property count: Int32?
+
+    method take(value: T?) -> Void {
+        self.inner = value
+    }
+}
+
+/* §7.63: which argument is present decides whether the declaration erases or is
+ * instantiated, and that is decided **per instantiation** rather than by the
+ * declaration. So a container of a container is a legal type argument list, and
+ * the nested `>>` is a single token by §7.72's longest-run rule. */
+class Shelf: Object {
+    property names: Array<String>
+    property boxes: Array<Box<String>>
+
+    /* §5: a protocol declaration does **not** take type parameters, so a
+     * protocol name is written bare — `id<P>` stays unparameterized. */
+    method show(drawable: Drawable) -> Void { }
+}
+
+/* §5: a category cannot use its class's parameter — `@interface Bag (Extra)`
+ * with a `- (T)last;` fails with `expected a type`, because the parameter
+ * belongs to the class and not beyond it. So this category's members are
+ * unparameterized even though `Shelf` itself is not generic here; the rule is
+ * what the form may *reference*. */
+category Shelf (Extra) {
+    method extra() -> Int32 { return 1 }
+
+    /* A category on a generic class would be the failing case, and it is
+     * deliberately not written here: the document records it as verified
+     * impossible, so a corpus file asserting it would be asserting an error. */
+}
+
+/* §7.42: an unqualified call that is not a method is a C function, and the
+ * emitted `.m` declares it. This is the second outcome of that rule. */
+func callOut(flag: Bool) -> Void {
+    callSomeCFunction(flag: flag)
+}
+
+/* §5's Function: a bare function — callable, not bound to a type, and with
+ * **no implied `self`**. Its argument syntax is a method's. */
+func makeBox(name: String, count: Int32) -> Box<String> {
+    let box: Box<String> = Box()
+    _ = name
+    _ = count
+    return box
+}
+
+/* §7.42's other outcome, for contrast: a *qualified* call is a method, and a
+ * `ClassName.method()` is §7.58's class method on the type itself. */
+func qualified() -> Int32 {
+    return Shelf.countOf()
+}

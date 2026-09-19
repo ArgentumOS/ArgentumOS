@@ -1,0 +1,69 @@
+/*
+ * 12-optionals.ag — §4's nullability, and §9.6's optional rules.
+ *
+ * Sections: §4's "four ways out of an optional, and no others" (line 380),
+ * §9.6's optional sends (line 2931), §9.7's comma-separated bindings, §7.46's
+ * `as?`/`as!`, and §7.59's `nil`.
+ *
+ * What the document states, and what this file therefore exercises:
+ *   - the four ways out are `x!`, `if let`/`if var`, `guard let`/`guard var`,
+ *     and `x ?? y` — and a bare `T?` is not usable where `T` is wanted;
+ *   - sending to an optional is **allowed**, yielding a `T?`, because ObjC's
+ *     nil-receiver rule already makes it safe — "which is why Swift needs a
+ *     `?.` and Sterling does not";
+ *   - a binding list is comma-separated: `if let a = x, let b = y`;
+ *   - `as?` and `as!` are the only conversions, because `T(x)` *constructs*.
+ */
+import Foundation
+
+class Node: Object {
+    property next: Node?
+    property label: String?
+    readonly property count: Int32?
+
+    /* §4: the four ways out, and no others. Each appears once, in order. */
+    method fourWays(other: Node?) -> Int32 {
+        /* 1 — `x!` asserts and traps if the value is null. */
+        let forced: Int32 = self.count!
+
+        /* 2 — `if let` branches. §9.7: the binding list is comma-separated, so
+         * two bindings are one condition rather than a nested `if`. */
+        if let first = self.count, let second = other.count {
+            _ = first
+            _ = second
+        }
+
+        /* 3 — `guard let` exits early, and §7.68 requires its `else` to return. */
+        guard let value = self.count else { return 0 }
+
+        /* 4 — `x ?? y` substitutes, and is the only one of the four that
+         * *produces* a plain `T` rather than stepping around the optional. */
+        let substituted: Int32 = self.count ?? 0
+        _ = substituted
+        return forced + value
+    }
+
+    /* §9.6: an ordinary send to an optional. The result is a `T?`, and there is
+     * no chain marker — the emitted ObjC is the send itself. */
+    method optionalSend(other: Node?) -> String? {
+        return other.label
+    }
+
+    /* §7.46: `as?` and `as!` are the only conversions. `T(x)` is a constructor,
+     * valid only where `T` declares an initializer, so it never converts an
+     * object that already exists. */
+    method conversions(any: AnyObject) -> Void {
+        let maybe: Node? = any as? Node
+        let sure: Node = any as! Node
+        _ = maybe
+        _ = sure
+    }
+
+    /* §4: `if var` is the branch form that binds writable, and §7.59's `nil` is
+     * the only visible null value. */
+    method writableBinding(other: Node?) -> Void {
+        if var current = other {
+            current.label = nil
+        }
+    }
+}

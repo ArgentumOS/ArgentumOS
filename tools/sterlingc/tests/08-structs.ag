@@ -1,0 +1,63 @@
+/*
+ * 08-structs.ag — §5's Struct kind, and §4's value semantics.
+ *
+ * Sections: §5's `struct Name: Base { … }` and the rules that make a struct
+ * different from a class (line 420), §7.25's lowering, §7.34's `==` on a
+ * struct being an error, and §7.16's `-fms-extensions` requirement for a
+ * derived struct.
+ *
+ * The differences the document states, each of which appears below:
+ *   - state is written `var`, because a struct has no `@property` machinery
+ *     to synthesise storage with;
+ *   - the accessor forms are written out, over the fields beside them;
+ *   - methods are C functions taking the receiver as their first parameter;
+ *   - the base is an anonymous member at offset 0, so its fields are promoted
+ *     and a derived method it does not declare is reached through a cast.
+ */
+import Foundation
+
+struct Point {
+    var x: Float32
+    var y: Float32
+
+    /* §5: a readonly computed property, over the `var` fields beside it. */
+    readonly property isOrigin: Bool { return x == 0 && y == 0 }
+
+    /* §7.25: a struct method emits as `float Point_length(const Point *self)`. */
+    method length() -> Float32 { return x + y }
+
+    /* §5's own example writes a method with no `-> Void`; §7.25 allows it. */
+    method moveTo(x: Float32, y: Float32) { self.x = x; self.y = y }
+}
+
+/* §7.16: derived structs need `-fms-extensions`, and the base is an anonymous
+ * tagged member — `struct Point;` inside the definition, at offset 0. The
+ * base's fields are promoted, so `p3.x` reaches `Point`'s field directly. */
+struct Point3: Point {
+    var z: Float32
+
+    method moveTo(x: Float32, y: Float32, z: Float32) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+}
+
+/* A struct with an initializer, and a call to a promoted base method. Only the
+ * three declared fields move through C: the emission passes `self` by value. */
+struct Counter {
+    var count: Int32
+
+    init(start: Int32) { self.count = start }
+
+    method increment(by amount: Int32) { self.count = self.count + amount }
+
+    method value() -> Int32 { return self.count }
+}
+
+/* §7.56: a func is not bound to a type — and struct methods are C functions,
+ * so calling one from a free function is an ordinary call with the receiver
+ * passed explicitly. */
+func total(a: Point, b: Point) -> Float32 {
+    return a.length() + b.length()
+}

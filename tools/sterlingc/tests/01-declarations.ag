@@ -1,0 +1,93 @@
+/*
+ * 01-declarations.ag — classes, structs, enums, protocols, extensions, funcs.
+ *
+ * Every construct here is drawn from docs/design/sterling-syntax.md, with the
+ * §-number beside it. This file is part of the K1..K5 corpus: it is a target,
+ * not a currently-passing test, and a phase is not done until its constructs
+ * here compile and run.
+ */
+import Foundation
+
+/* ---- protocol (§7.45): class syntax, `required` default --------------- */
+protocol Drawable {
+    method draw(into ctx: Canvas) -> Void
+    optional method describe() -> String
+}
+
+/* ---- struct (§5): var fields, accessor properties, no synthesis ------- */
+struct Point {
+    var x: Float32 = 0
+    var y: Float32 = 0
+
+    /* §7.54: a read-only property's block *is* its getter. */
+    readonly property magnitude: Float32 {
+        return Float32(Int16(x + y))
+    }
+
+    /* §7.56/§7.58: a class method on a struct is a `func` in disguise. */
+    class method origin() -> Point {
+        return Point(x: 0, y: 0)
+    }
+}
+
+/* ---- enum (§7.35): tagged-union payloads, methods (§7.25) ------------- */
+/* §5 (amended 2026-09): members are written `case name` — Swift's spelling.
+ * This file had it right; an edit earlier in this session removed the keywords
+ * after reading §5's bare-name examples as the authority. They are restored. */
+enum Shape {
+    case empty
+    case circle(radius: Float32)
+    case rect(width: Float32, height: Float32)
+
+    method area() -> Float32 {
+        switch self {
+        case .empty { return 0 }
+        case .circle(let r) { return r * r }
+        case .rect(let w, let h) { return w * h }
+        }
+    }
+}
+
+/* ---- class (§5): inheritance, conformance, visibility (§7.57) --------- */
+class Node: Object, Drawable {
+    private property label: String = "node"
+    internal property index: Int32 = 0
+    weak property parent: Node?
+
+    /* §7.49: a subclass initializer chains with `self = Superclass()`. */
+    init(name: String) {
+        self = Object()
+        self.label = name
+    }
+
+    /* §7.1: the first parameter's external name attaches to the method name,
+     * and the specimen's bare `which:` contributes none. */
+    method add(item which: Int32, scale: Float32 = 1.0) -> Bool {
+        self.index = which
+        return true
+    }
+
+    /* §7.50: `_` in the label position writes the argument with no label. */
+    method insertAt(_ position: Int32) -> Void { }
+
+    class method make() -> Node { return Node(name: "made") }
+
+    private method drain() -> Void { }
+    method draw(into ctx: Canvas) -> Void { }
+}
+
+/* ---- extension and category (§7.4): two forms, deliberately ---------- */
+extension Node {
+    method bumpBy(amount: Int32) -> Void { }
+}
+
+category Node (Display) {
+    method summary() -> String { return self.label }
+}
+
+/* ---- functions (§7.56): free, not bound to a type -------------------- */
+func distance(from a: Point, to b: Point) -> Float32 {
+    return Float32(Int16(a.x + b.y))
+}
+
+func announce(label: String = "none") -> Void { }

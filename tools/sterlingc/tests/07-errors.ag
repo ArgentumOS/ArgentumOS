@@ -1,0 +1,45 @@
+/*
+ * 07-errors.ag — §7.6's error convention.
+ *
+ * `throws` is **not an unwinding mechanism**: the selector gains `…error:` and
+ * the caller reads the NSError. That is why §7.71 can say errors are not a
+ * scope-exit path for `defer`, and why the statement form has no `throw` —
+ * there is nothing to raise, only a failure to report.
+ *
+ * The declaration side is settled below. The *call* side — what a `throws`
+ * method looks like when called — is not yet written down anywhere, and this
+ * file deliberately leaves it as the open question rather than inventing a
+ * spelling: TBD, and the one thing this file cannot yet show.
+ */
+import Foundation
+
+class Loader: Object {
+    /* The selector for this is `openPath:error:`, and the call passes an
+     * NSError out-parameter that the emitter supplies. */
+    method open(path: String) throws -> Bool {
+        return false
+    }
+
+    /* A method that does not fail carries no `throws`, and its selector is
+     * unchanged: `close`. */
+    method close() -> Void { }
+
+    /* `throws` composes with the rest of the declaration surface — a default
+     * argument, an external label, and a class method. */
+    class method read(path: String, limit: Int32 = 0) throws -> Int32 {
+        return limit
+    }
+}
+
+/* §7.71: because a throws is an out-parameter rather than an unwind, the only
+ * exits `defer` has to handle are `return`, `break`, `continue` and falling
+ * off the end — this method exists to hold that fact in the corpus. */
+class Cleanup: Object {
+    method alwaysClean(flag: Bool) -> Bool {
+        defer { self.reset() }
+        guard flag else { return false }
+        return true
+    }
+
+    method reset() -> Void { }
+}

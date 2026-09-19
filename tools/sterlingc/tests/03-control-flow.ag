@@ -1,0 +1,102 @@
+/*
+ * 03-control-flow.ag — every statement form the language has.
+ *
+ * Sections: §7.67 `if`, §7.68 `guard`, §7.69 `while`, §7.66 `for`-in,
+ * §7.24 `switch`, §7.65 range patterns, §7.73 `where`, §7.71 `defer`,
+ * §7.70 `with`, §7.75 semicolons.
+ */
+import Foundation
+
+enum State {
+    case idle
+    case busy(percent: Int32)
+    case failed(code: Int32, retryable: Bool)
+}
+
+class Control: Object {
+    property state: State = .idle
+    property retries: Int32 = 0
+    property point: Point?
+
+    /* §7.67: braces mandatory, parentheses not, `else if` in two words. */
+    method classify(limit: Int32) -> Int32 {
+        var total: Int32 = 0
+        if limit > 100 { total = 100 }
+        else if limit < 0 { total = 0 }
+        else { total = limit }
+        return total
+    }
+
+    /* §7.68: a plain Bool condition, and the else must return. */
+    method requireReady(ready: Bool) -> Bool {
+        guard ready else { return false }
+        guard let p = self.point, self.retries > 0 else { return false }
+        _ = p
+        return true
+    }
+
+    /* §7.69: no `do while`; a body that runs once is a `while` with a break. */
+    method countdown(from start: Int32) -> Int32 {
+        var n: Int32 = start
+        while n > 0 { n = n - 1 }
+        while true {
+            if n > 10 { break }
+            n = n &+ 1
+        }
+        return n
+    }
+
+    /* §7.66 + §7.73: the only `for` form, with its optional filter. */
+    method walk(items: Array<State>, threshold: Int32) -> Int32 {
+        var seen: Int32 = 0
+        for item in items { _ = item; seen = seen &+ 1 }
+        for item in items where seen > threshold { _ = item }
+        for var probe in items { _ = probe }
+        return seen
+    }
+
+    /* §7.24 + §7.65 + §7.73: single values, ranges, payloads, guards. */
+    method describe(state: State) -> Int32 {
+        switch state {
+        case .idle { return 0 }
+        case .busy(let percent) where percent > 50 { return percent }
+        case .busy(let percent) { return percent }
+        case .failed(let code, let retryable) where retryable { return code }
+        case .failed(let code, _) { return code }
+        }
+    }
+
+    /* §7.65: both range spellings, only in a scalar switch. */
+    method band(code: Int32) -> Int32 {
+        switch code {
+        case 1...45 { return 1 }
+        case 46..<90 { return 2 }
+        default { return 0 }
+        }
+    }
+
+    /* §7.71: defers run in reverse at scope exit, on every path out. */
+    method withDefer(flag: Bool) -> Bool {
+        defer { self.retries = self.retries &+ 1 }
+        defer { self.retries = self.retries + 1 }
+        guard flag else { return false }
+        return true
+    }
+
+    /* §7.70: a member rewrite, admissible because the target is static. */
+    method moveBy(dx: Float32, dy: Float32) -> Void {
+        if let origin = self.point {
+            with origin {
+                x = x + dx
+                y = y + dy
+            }
+        }
+    }
+
+    /* §7.75: one statement per line needs no separator; two share one line. */
+    method semicolons() -> Void {
+        self.retries = 1
+        self.retries = 2
+        self.retries = 3; self.retries = 4
+    }
+}

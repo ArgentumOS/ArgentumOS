@@ -1,0 +1,44 @@
+/*
+ * 06-generics.ag — the §7.63 decision: erase where the runtime can hold the
+ * argument, instantiate where it cannot.
+ *
+ * A class takes type parameters as lightweight generics, and an object
+ * argument erases — so `Box<String>` is one class for the whole program. An
+ * argument the runtime cannot hold is monomorphised instead, which is what
+ * makes a scalar optional (§7.62) and a scalar array (§7.64) expressible.
+ */
+import Foundation
+
+/* Erased: the argument is an object, so `Box` is one ObjC class. */
+class Box<T>: Object {
+    property inner: T?
+
+    method unwrap() -> T? { return self.inner }
+}
+
+/* A struct cannot be a lightweight generic argument, so these are the cases
+ * monomorphisation serves (§7.63, §9.18). */
+struct Cell {
+    var value: Int32 = 0
+}
+
+class Holder: Object {
+    /* Erased: Array<String> *is* an NSArray. */
+    property names: Array<String>
+
+    /* Monomorphised: Array<Int32> is a C pointer, and a sized declaration
+     * allocates the storage (§7.64). */
+    property counts[8]: Array<Int32>
+    property table[4][4]: Array<Int32>
+
+    /* Monomorphised: the pair-struct of §7.62. */
+    property maybe: Cell?
+    property maybeCount: Int32?
+
+    method use(box: Box<String>, cellBox: Box<Cell>) -> Void {
+        _ = box.unwrap()
+        _ = cellBox.unwrap()
+    }
+
+    class method make() -> Holder { return Holder() }
+}
