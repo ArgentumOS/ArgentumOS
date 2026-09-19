@@ -34,7 +34,25 @@ HOST_BIN_DIR = os.path.join(paths.ROOT, ".build", "host", "bin")
 # and the two undo checks - which is why the fragment's header records that this
 # is an iteration loop and not yet a substitute.
 HOST_CLEAN = {
+    "foundation_codecs",
+    "foundation_coder",
     "foundation_core",
+    "foundation_dateformatter",
+    "foundation_error",
+    "foundation_expression",
+    "foundation_kvc",
+    "foundation_kvo",
+    "foundation_numberformatter",
+    "foundation_orderedset",
+    "foundation_predicate",
+    "foundation_processinfo",
+    "foundation_progress",
+    "foundation_regex",
+    "foundation_runloop",
+    "foundation_set",
+    "foundation_sort",
+    "foundation_thread",
+    "foundation_urlcomponents",
 }
 
 

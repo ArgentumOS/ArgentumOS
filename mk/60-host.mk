@@ -122,16 +122,39 @@ $(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
 # is MRC - the same two-file split the guest rules use, and ARC is a per-file choice here exactly as
 # it is there. A probe is listed ONLY once it has been shown to pass on the host; anything reading
 # the guest's filesystem stays out.
-HOST_PROBES ?= foundation_core
+# WHAT THE FIRST FULL RUN FOUND (2026-09-19): 22 probes built, and NINETEEN answered completely -
+# including core 50/50, predicate 28/28, kvc 16/16, dateformatter 16/16, codecs 11/11. THREE did not,
+# and they are the next work rather than hidden:
+#   * foundation_calendar 11 ok, 3 FAIL - the most likely host-clean violation of the two, because a
+#     calendar reads a ZONE DATABASE and the host's is ICU's rather than the guest's. Decide whether
+#     it is a data path (exclude it) or a bug (fix it).
+#   * foundation_nsvalue and foundation_operation PRINT NO RESULT LINE AT ALL, i.e. they CRASH. A
+#     crash is a strong signal - the use-after-free above was found exactly this way - so these are
+#     the first thing to reproduce in a small file.
+# NONE OF THE THREE IS IN HOST_CLEAN until it is understood, so the runner cannot claim them.
+#
+# THE HOST-CLEAN PROBES: every one EXCEPT the five that read the guest's filesystem or an FSH path
+# (foundation_collection, foundation_filemanager, foundation_string, foundation_url, foundation_value -
+# they would fail here for a reason that is not a bug). Those five stay guest-only.
+HOST_PROBES ?= foundation_calendar foundation_codecs foundation_coder foundation_core foundation_dateformatter foundation_error foundation_expression foundation_kvc foundation_kvo foundation_numberformatter foundation_nsvalue foundation_operation foundation_orderedset foundation_predicate foundation_processinfo foundation_progress foundation_regex foundation_runloop foundation_set foundation_sort foundation_thread foundation_urlcomponents
 define FN_HOST_PROBE_rule
 $(HOST_BINDIR)/$(1): $(HOST_FOUNDATION_LIB) $(wildcard userland/tests/$(1).m) $(wildcard userland/tests/$(1)_support.m)
 	@mkdir -p $(HOST_BINDIR) $(HOST_OBJDIR)
 # PER-UNIT COMPILES, WHICH IS NOT COSMETIC: one driver invocation with both sources does NOT
 # apply -fobjc-arc and -fno-objc-arc per file, so the probe main came out MRC and `c = nil`
-# released nothing. That was the whole arc-pool divergence. The guest mk compiles per file too.
+# released nothing. The guest mk compiles per file too. THE SUPPORT HALF IS OPTIONAL: 12 of
+# the 27 probes are a single translation unit.
 	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fobjc-arc -c $$(wildcard userland/tests/$(1).m) -o $(HOST_OBJDIR)/probe-$(1).o
-	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fno-objc-arc -c $$(wildcard userland/tests/$(1)_support.m) -o $(HOST_OBJDIR)/probe-$(1)-support.o
-	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_LDFLAGS) -o $$@ $(HOST_OBJDIR)/probe-$(1).o $(HOST_OBJDIR)/probe-$(1)-support.o -lfoundation $$(HOST_ICU_LIBS) -lz
+	@if [ -f userland/tests/$(1)_support.m ]; then \
+		$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fno-objc-arc -c userland/tests/$(1)_support.m \
+			-o $(HOST_OBJDIR)/probe-$(1)-support.o; \
+	fi
+# WHETHER THERE IS A SUPPORT OBJECT IS DECIDED AT PARSE TIME, on the SOURCE (which exists by then),
+# not on the object (which does not) and not by a shell variable: `$$support` reaches make as
+# `$support`, whose `$s` is an empty make variable, leaving the literal `upport` as an argument.
+	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_LDFLAGS) -o $$@ $(HOST_OBJDIR)/probe-$(1).o \
+		$(if $(wildcard userland/tests/$(1)_support.m),$(HOST_OBJDIR)/probe-$(1)-support.o) \
+		-lfoundation $$(HOST_ICU_LIBS) -lz
 endef
 $(foreach p,$(HOST_PROBES),$(eval $(call FN_HOST_PROBE_rule,$(p))))
 
