@@ -1,6 +1,6 @@
 # The Foundation (Argentum Foundation) — plan for the core class library
 
-Status: **DRAFT (2026-09). F0–F4 and F6–F12 LANDED, the audited inventories CLOSED, and the
+Status: **DRAFT (2026-09). F0–F4 and F6–F12 LANDED, the audited inventories CLOSED AS DOCUMENTS, and the
 plist skin ships** — the root class, the strings, the value types, the collections,
 `NSError`/`NSException`, the three dependency classes the audits named (`NSCharacterSet`,
 `NSIndexSet`, `NSEnumerator`), `NSIndexPath` (stage D — the toolkit's addressing type,
@@ -21,12 +21,33 @@ whose probes carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 24 / 11** checks
 than a gap). The work queue
 is the exclusions table below, and §9 records what each audit found and what it cost.
 
-**THE REFUSALS ARE NOW A QUEUE, NOT A BOUNDARY (the user's direction, 2026-09-18):** every item
-§5 refused by name is a GAP, and the target is FULL FIDELITY to Apple's Foundation. §10 is the
-program, the three decisions it rests on, and the measured finding that most of the refused list
-never needed a data table at all. The rule/table line is NOT abandoned — from here it decides
-*how* a family ships (write the rule, or bind the library that already has the table) rather than
-*whether* it ships.
+**AND THE BAR IS NOW 100% FIDELITY (§11, 2026-09-18): every refusal this document records — the
+"refused by name" lists, the declared deviations, and every entry in the probes' `excluded` arrays — is
+a DEFECT with a work item, not a boundary. The inventories are closed AS DOCUMENTS and open as DEBT;
+§11.3 is the ledger.**
+
+**THE BAR IS 100% FIDELITY, AND A DIFFERENCE IS A FAILURE (the user's direction, 2026-09-18, and it
+REPLACES the softer wording this paragraph used to carry).** The goal is to implement EVERYTHING
+Apple's Foundation implements, with the same functionality and the same API. **A difference in
+functionality is a failure. A difference in API is a failure.** Not a boundary, not a deviation, not a
+documented limit — a defect with a work item. §11 is the ledger that enforces this.
+
+What that changes, stated so it can be enforced rather than admired:
+
+* **"REFUSED BY NAME" IS NOT A CATEGORY ANY MORE.** Every refusal §5 records, every "declared
+deviation", and every entry in the probes' own `excluded` arrays is a DEFECT. Those arrays exist so the
+distance is machine-readable: **the goal is that all of them are EMPTY**, and until then a probe that
+asserts an absence is asserting a defect.
+* **THE API SURFACE IS A SPECIFICATION.** Selectors, classes, constants and error domains come from
+Apple's PUBLISHED DOCUMENTATION. §2's clean-room wall is untouched by this and still binds: no Apple or
+GNUstep IMPLEMENTATION source is ever read. The interface is published; the code is ours.
+* **THE RULE/TABLE LINE SURVIVES ONLY AS A "HOW".** Whether a family ships is no longer in question —
+all of them do. The line decides only HOW: write the rule where a rule is exact, bind a library where a
+table is the only honest implementation (ICU is bound for the data-driven families; the regex engine is
+musl's). **A table we do not have is a DEPENDENCY TO ADD, never a reason to refuse.**
+* **AN INVISIBLE IMPLEMENTATION CHOICE IS NOT A DIFFERENCE.** UTF-8 storage instead of UTF-16 is not
+itself a failure — but an API that COUNTS UTF-16 units when Apple's does, or a behaviour that depends
+on the encoding, MUST match, because THAT is the visible part. This plan is about the visible part.
 
 Every open question is answered (§7). Direction, decided by the user (2026-09-17), after
 the Objective-C runtime passed its gate (`docs/design/objc-toolchain-plan.md` §8–§9):
@@ -1106,10 +1127,15 @@ sat in exactly that position. Three checks now exercise them: `data-block-enumer
 | `NSPredicate` — **SHIPPED (F11)** | the predicate OBJECT MODEL: `NSPredicate` as an abstract base whose `-evaluateWithObject:` RAISES, `+predicateWithValue:`, `+predicateWithBlock:`, `NSCompoundPredicate` (AND/OR/NOT, short-circuiting, with the and/or-nothing identities), `-predicateFormat`, and `-[NSArray filteredArrayUsingPredicate:]` / `-[NSMutableArray filterUsingPredicate:]` — AND THE FORMAT GRAMMAR: `+predicateWithFormat:` (NOT variadic, deliberately), the recursive-descent parser and the comparison leaf it builds, with the comparisons, the string operators, `LIKE` (`*`/`?`/`\`), the connectives, the constants, key paths through KVC, `[c]`, and a renderer the round trip agrees with. Refused by name: `MATCHES` and `[d]` (no regex engine, no Unicode tables), `NSExpression`/`NSComparisonPredicate`, `IN`/`BETWEEN`, the quantifiers, and the `:arguments:` substitution forms |
 | compression codecs (`NSData`'s compression API) — **SHIPPED (F12)** | the first family that is a BINDING rather than a rule: `NSDataCompressionAlgorithm` with Cocoa's four names, `-compressedDataUsingAlgorithm:error:` / `-decompressedDataUsingAlgorithm:error:` and the two in-place `NSMutableData` forms, with exactly ONE codec — ZLIB — through the `libz` that already ships and is already staged for the guest. The zlib-wrapped stream is asserted (its `0x78` header byte is MEASURED), and decompression doubles its buffer up to a ceiling. Refused by name, each as nil PLUS an `NSError` naming it: `LZFSE`, `LZ4` and `LZMA`, because no codec for them exists in this system |
 
-**NOT on this list, because it is a DECLARED DEVIATION rather than debt:** the UTF-16
-`unichar` boundary. `-length` counts BYTES and character access is by CHARACTER because
-the storage is UTF-8 (the user's decision), so the `…Characters:` forms are absent by
-design.
+**RECLASSIFIED 2026-09-18 (§11): THIS IS A DEFECT, NOT A DEVIATION.** Under the 100%-fidelity bar
+there is no such thing as a declared deviation. The UTF-16 `unichar` boundary — `-length` counting
+BYTES and a `…Characters:` family that does not exist — is a difference in API *and* in functionality
+from Apple's Foundation, and is therefore a FAILURE with a work item, not a design choice. It is the
+largest single item of API surface in the library, because it touches every string and every
+character-level call site at once. **THE RESOLUTION IS NEITHER THE STORAGE NOR A REFUSAL:** the storage
+stays UTF-8 (the user's decision, and an invisible choice), and the API SEMANTICS become Apple's —
+`-length` in UTF-16 units, `-characterAtIndex:` in units, the `…Characters:` family real. That is a
+cost, not a difference, and cost is not failure.
 
 ### F4 landed (2026-09-17), with one thing left open
 
@@ -3137,3 +3163,89 @@ its question — the file system was exonerated — and now reports "stat failed
 removed the directory it measures), and the comment block above `fs-cleanup` that still says the
 directories "are refused by THIS KERNEL". Both are harmless litter from the hunt; both should go when
 that probe is next touched.
+
+## 11. THE FIDELITY BAR (2026-09-18): 100%, and a difference is a failure
+
+**THE DIRECTIVE, WHICH OVERRIDES EVERY OTHER FRAMING IN THIS DOCUMENT:** implement EVERYTHING Apple's
+Foundation implements, with the same functionality and the same API. Any difference in functionality,
+and any difference in API, is a **FAILURE**. The word "boundary" appears throughout the older sections
+of this plan; where it does, it records history rather than a decision, and history is not an excuse.
+
+### 11.1 The ledger, and why it is a table
+
+A gap written down as a LIST gets fixed; a gap written down as a PRINCIPLE gets admired. So every known
+difference lives in one table, one row per item, and a row is deleted only when the difference is gone
+AND a probe says so. A row does not close by being explained: **explaining a difference is what the
+older sections did.**
+
+Each row carries: the ITEM (class, selector, constant or family), the EVIDENCE that it is missing (the
+section, the probe's `excluded` entry, or the absent header), the DEPENDENCY the fix needs if it needs
+one, and a STATUS — `open`, `in progress`, `shipped`. Only `shipped` closes a row.
+
+### 11.2 How the ledger is kept COMPLETE — the two mechanical sources
+
+The ledger must not depend on anyone remembering. Two greppable sources make it exhaustive:
+
+1. **THE PROBES' OWN `excluded` ARRAYS.** Every shipped class carries an audited Cocoa inventory in its
+   probe, and `excluded` is exactly the list of selectors we chose not to implement. **Under this bar,
+   every entry is a defect.** `grep -rn 'excluded' userland/tests/foundation_*.m` is the work list — and
+   the day those arrays are empty (or hold only names Apple has REMOVED, §11.5) is the day half this
+   ledger is done.
+2. **THE SHIPPED HEADERS VERSUS APPLE'S DOCUMENTED CLASS INDEX.** `ls userland/foundation/*.h` is our
+   surface; Apple's public documentation is the target surface. Every name in the second and absent from
+   the first is a row. **THIS SWEEP HAS NOT BEEN DONE — it is §11's first work item, and the ledger's
+   family-level row below is deliberately unfinished because of it.** Removing that sentence requires
+   doing the sweep.
+
+### 11.3 The seeded ledger (2026-09-18) — what the plan had already written down
+
+Quoted from this plan's own refusals, which is why it can be seeded before the sweep. It is NOT the
+whole ledger; it is what §5 and §10 already admitted.
+
+| Item | Evidence | Dependency | Status |
+|---|---|---|---|
+| The `unichar` boundary: `-length` in bytes, no `…Characters:` family | this document, line 1109's predecessor | none | **open** — the largest; touches every string call site |
+| `NSTimeZone` names/abbreviations/`+knownTimeZoneNames`, DST transitions, the IANA database | §5 F7 | ICU 76.1 (bound, ships in the image) | **open** |
+| Non-Gregorian calendars (Buddhist/Japanese/Hebrew/Islamic/ISO8601) | §5 F7 | ICU | **open** |
+| `-components:fromDate:toDate:options:`; week-based input to `-dateFromComponents:` | §5 F7 | none | **open** |
+| The `NSDateFormatter`/parser family | §5 F7 refused these, but `NSDateFormatter.h` NOW SHIPS | ICU | **shipped — fidelity NOT audited** (the row stays until the audit) |
+| `MATCHES` and `[d]` in the PREDICATE GRAMMAR | §5 F11 | none — the engine shipped at F13.16 | **open** (engine exists; the grammar still refuses) |
+| `IN`/`BETWEEN`, the quantifiers, the `:arguments:` substitution | §5 F11 | none | **open** |
+| KVC mutable proxies, set-returning operators, `-takeValue:forKey:` | §5 F9 | none | **open** |
+| `NSSortDescriptor -allowEvaluation`, the coder forms | §5 F10 | NSCoding (shipped) | **open** |
+| LZFSE, LZ4, LZMA compression | §5 F12 | a vendored codec per algorithm | **open** |
+| `NSURLQueryItem`; `NSURLSession`/`NSURLRequest`/`NSURLConnection`; the URL-taking file APIs | §5 F8 | a transport for the first two; none for the third | **open** |
+| `NSSecureCoding`, class-name substitution | §10, F13.12 | none | **open** |
+| `-completionBlock`/`-addOperationWithBlock:`, QoS, priority | §10, F13.19 | blocks in the library's public headers | **open** |
+| `-publish`/`-unpublish`, subscribers, `-cancellationHandler`, `-estimatedTimeRemaining` | §10, F13.20 | none | **open** |
+| Percent-encoding and query-item ENCODING in `NSURLComponents` | §10, F13.15 | none | **open** |
+| **Whole families with no header at all** — `NSNotificationCenter`, `NSBundle`, `NSUserDefaults`, `NSJSONSerialization`, `NSScanner`, `NSFileHandle`, `NSTask`/`NSPipe`, `NSStream`, `NSUUID`, `NSProxy`, `NSValueTransformer`, `NSDecimalNumber`, the formatter variants, the networking stack, … | the shipped-header list | case by case | **open — and this row is exactly the sweep of §11.2, deliberately unfinished** |
+
+### 11.4 The order of work
+
+The rows are not equal in cost, and two of them gate many others:
+
+1. **The sweep (§11.2)** — it is what turns the last row into rows, and it costs one pass over two
+   lists: our headers, and Apple's documented class index.
+2. **The `unichar` boundary** — every other string-shaped item gets cheaper after it, and it is the one
+   difference a Cocoa program notices on its FIRST LINE of code.
+3. **The ICU-backed data families** (time zones, non-Gregorian calendars, the parser family) — ICU is
+   already bound and already in the image, which makes these the highest fidelity-per-unit-of-work rows
+   in the table.
+4. **Everything else**, family by family, each landing with its probe and its guest gate as always.
+
+### 11.5 What 100% does NOT mean
+
+Two exclusions, and both are about the MEASURE rather than about the API — which is why they are named
+here rather than discovered later:
+
+* **BYTE-IDENTICAL OUTPUT TO macOS IS NOT CLAIMED.** `-description` text, hash values and the internal
+  encoding are not part of Apple's published contract, and matching them byte-for-byte is not testable
+  from this side of the clean-room wall. Where a program can observe a difference it was written
+  against — the API's shape, its semantics, its errors — this plan treats it as a failure. Where the
+  difference is visible only by reading a hash value Apple never promised, it is not.
+* **API APPLE HAS REMOVED IS OUT.** Removed API is not "what Apple's Foundation implements"; it is what
+  it used to implement. Deprecated-but-PRESENT API IS IN SCOPE — it still ships in Apple's headers —
+  and that distinction is the whole of this exclusion.
+
+Everything else is a defect, and §11.3 is where it lives.
