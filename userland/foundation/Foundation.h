@@ -46,6 +46,7 @@
 #import <foundation/NSDateInterval.h>
 #import <foundation/NSValueTransformer.h>
 #import <foundation/NSAffineTransform.h>
+#import <foundation/NSAutoreleasePool.h>
 #import <foundation/NSObject.h>
 #import <foundation/NSGeometry.h>
 #import <foundation/NSString.h>
