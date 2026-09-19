@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   69   open  173   struck   31
+#   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   18   open  209   struck   26
-#   enum       shipped   30   open  122   struck    8
-#   case       shipped  186   open 1023   struck   93
+#   enum       shipped   32   open  120   struck    8
+#   case       shipped  190   open 1019   struck   93
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
 #   typealias  shipped   19   open   54   struck    3
@@ -552,12 +552,12 @@ case	open	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / 
 case	struck	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
 case	open	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONReadingJSON5Allowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
-case	open	NSJSONReadingMutableContainers	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
-case	open	NSJSONReadingMutableLeaves	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
+case	shipped	NSJSONReadingMutableContainers	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
+case	shipped	NSJSONReadingMutableLeaves	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONReadingTopLevelDictionaryAssumed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONWritingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
-case	open	NSJSONWritingPrettyPrinted	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
-case	open	NSJSONWritingSortedKeys	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
+case	shipped	NSJSONWritingPrettyPrinted	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
+case	shipped	NSJSONWritingSortedKeys	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	open	NSJSONWritingWithoutEscapingSlashes	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	open	NSJapaneseEUCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSKeyPathExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
@@ -1425,7 +1425,7 @@ class	open	NSInputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	open	NSInvocationOperation		App Support / Operations	-	objc
 class	open	NSItemProvider		App Support / Attachments	-	objc
-class	open	NSJSONSerialization		Files and Data Persistence / JSON	-	objc
+class	shipped	NSJSONSerialization		Files and Data Persistence / JSON	-	objc
 class	open	NSKeyValueSharedObservers		Reference / Classes	-	objc
 class	open	NSKeyValueSharedObserversSnapshot		Reference / Classes	-	objc
 class	shipped	NSKeyedArchiver		Files and Data Persistence / Keyed Archivers	-	objc
@@ -1680,8 +1680,8 @@ enum	open	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifi
 enum	open	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
 enum	open	NSItemProviderFileOptions	NSItemProvider	App Support / Attachments / Constants	-	objc
 enum	open	NSItemProviderRepresentationVisibility	NSItemProvider	App Support / Attachments / Constants	-	objc
-enum	open	NSJSONReadingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object	-	objc
-enum	open	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
+enum	shipped	NSJSONReadingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object	-	objc
+enum	shipped	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
 enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueObservingOptions		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc

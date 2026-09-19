@@ -7,6 +7,7 @@
  * object owes is either here or in the runtime, and everything else is forwarded.
  */
 #import <foundation/NSProxy.h>
+#import <foundation/NSString.h>	/* -description builds one */
 #import <foundation/NSException.h>
 #import <foundation/NSMethodSignature.h>
 #import <foundation/NSInvocation.h>
