@@ -27,6 +27,14 @@ _Pragma("clang assume_nonnull begin")
 - (NSString *)describe:(NSString *)name;
 - (void)print;
 - (void)draw;
+- (NSString * _Nullable)nullable:(NSString * _Nullable)name;
+- (instancetype)shared;
+
+@end
+
+@interface EmitsSurfaceChild : EmitsSurface
+
+- (void)preview;
 
 @end
 

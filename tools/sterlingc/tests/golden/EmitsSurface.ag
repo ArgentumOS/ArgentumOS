@@ -47,6 +47,48 @@ class EmitsSurface: Object, Printable {
     method draw() -> Void {
         return;
     }
+
+    /*
+     * §4's `T?` on a class type — `_Nullable` after the pointer, which the
+     * header's `assume_nonnull begin` region is why it has to be written at all.
+     * It covers the three positions a nullable type can appear in: a parameter,
+     * a return, and a local (whose `const` follows the qualifier).
+     *
+     * And §7.42: `print()` here names one of THIS class's methods, so it emits
+     * `[self print]` — the other half of the rule is a C function, which
+     * EmitsCore's `callSomeFunc` is.
+     */
+    method nullable(name: String?) -> String? {
+        /* `saved`, not `copy`: §5's attribute list makes `copy` reserved. */
+        let saved: String? = name;
+        print();
+        return saved;
+    }
+
+    /*
+     * §4's `Self` is `instancetype` — the return type that says "whatever class
+     * this was sent to", which is what makes an inherited method's return type
+     * follow the subclass.
+     */
+    method shared() -> Self {
+        return self;
+    }
+}
+
+/*
+ * And §3's `super`: a receiver like `self`, emitted as it is written. It is a
+ * KEYWORD rather than an identifier, which is why it needed a node of its own —
+ * before this it was not merely unemitted but unspellable, a parse error.
+ *
+ * The subclass also holds EmitsSurface's `super.` calls to a method the
+ * superclass DECLARES (`print`), so the emitted `[super print]` is checkable by
+ * clang rather than being an unknown selector.
+ */
+class EmitsSurfaceChild: EmitsSurface {
+    method preview() -> Void {
+        super.print();
+        return;
+    }
 }
 
 protocol Printable: Drawable {

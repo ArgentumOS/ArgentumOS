@@ -69,6 +69,13 @@ typedef enum {
 	ST_EXPR_IDENT,		/* a name in scope */
 	ST_EXPR_SELF,
 	/*
+	 * §3's map: `super` is written as it is emitted — `[super init]` and
+	 * friends — so it is a receiver like `self` and not a name. It was not a
+	 * node at all, and `super` being a KEYWORD rather than an identifier made
+	 * `super.foo()` a parse error with no way to spell it.
+	 */
+	ST_EXPR_SUPER,
+	/*
 	 * A bare `name(args)` — §7.42: a C function when no method matches and a
 	 * message to `self` when one does. It is NOT the message-send node; the
 	 * two are separate because the emission differs (a call needs no

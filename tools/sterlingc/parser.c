@@ -851,6 +851,17 @@ parse_primary(st_parser *p, st_expr **out)
 			bump(p);
 			break;
 		}
+		/*
+		 * §3's map: `super` is a receiver like `self` — `super.foo()` emits
+		 * `[super foo]`. It is a KEYWORD, not an identifier, so without
+		 * this branch it fell through to "expected an expression" and the
+		 * spelling simply did not exist.
+		 */
+		if (at_keyword(p, "super")) {
+			e->kind = ST_EXPR_SUPER;
+			bump(p);
+			break;
+		}
 		if (p->tok.kind != ST_IDENT) {
 			return fail(p, "expected an expression");
 		}

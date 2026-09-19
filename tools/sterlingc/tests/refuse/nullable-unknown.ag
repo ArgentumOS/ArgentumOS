@@ -1,0 +1,5 @@
+/* `Owner?` is `_Nullable` for a class and §7.62's pair-struct for a scalar, and
+ * §4's table is what decides — §9.5's header importer has it. */
+class RefuseNullableUnknown: Object {
+    property held: Owner?
+}

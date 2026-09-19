@@ -98,6 +98,7 @@ map_type(const char *name)
 	 */
 	if (strcmp(name, "Object") == 0)	return "NSObject *";
 	if (strcmp(name, "AnyObject") == 0)	return "id";
+	if (strcmp(name, "Self") == 0)		return "instancetype";
 	if (strcmp(name, "Int") == 0)		return "NSInteger";
 	if (strcmp(name, "UInt") == 0)		return "NSUInteger";
 	if (strcmp(name, "Int8") == 0)		return "int8_t";
@@ -136,6 +137,8 @@ map_type(const char *name)
  * does not cover — §9.5's header importer is what would say which it is — and
  * §5's reference/value rule cannot be applied to it.
  */
+static int type_is_class(const char *mapped);
+
 static int
 type_is_known_scalar(const char *mapped)
 {
@@ -156,21 +159,82 @@ type_is_known_scalar(const char *mapped)
 }
 
 /*
- * §4's `T?` cannot be emitted yet, and refusing it is not the cautious choice —
- * it is the only correct one. The header is wrapped in
- * `_Pragma("clang assume_nonnull begin")`, so emitting `String?` as
- * `NSString *` inside that region declares it NON-null: the generated code
- * would assert the opposite of the source.
+ * §4's `T?` on a CLASS type is `_Nullable` after the pointer, and the header's
+ * `assume_nonnull begin` region is exactly why it must be written: without it
+ * the declaration asserts non-null, the opposite of the source.
+ *
+ * The other two cases still refuse, for different reasons. A scalar's `?` is
+ * §7.62's pair-struct — a value type carrying a has-value flag — which is a
+ * different mechanism and not a qualifier. And a name §4's table does not cover
+ * cannot be classified at all, so which of the two it needs is unknown.
  */
 static int
 type_is_emittable(const st_type *t, const char **error)
 {
-	if (t != NULL && t->nullable) {
-		return refuse("a nullable type (§4's `T?`) — the header's "
-			      "`assume_nonnull` region would assert the "
-			      "opposite", error);
+	const char *mapped;
+
+	if (t == NULL || !t->nullable) {
+		return 1;
 	}
-	return 1;
+	mapped = map_type(t->name.text);
+	if (type_is_class(mapped)) {
+		return 1;
+	}
+	if (type_is_known_scalar(mapped)) {
+		return refuse("a nullable scalar (§7.62's pair-struct)", error);
+	}
+	return refuse("a nullable type on a name §4's table does not cover "
+		      "(`T?` is `_Nullable` for a class and §7.62's pair-struct "
+		      "for a scalar)", error);
+}
+
+/*
+ * The type as written, `_Nullable` included. ONE implementation, because the
+ * qualifier has to land after the pointer (`NSString * _Nullable`, not
+ * `NSString _Nullable *`) and every position that prints a type would otherwise
+ * have to know that.
+ *
+ * `fallback` is the type for a local whose declaration had none and whose
+ * initializer supplied it — a literal, so never nullable — and it is why the
+ * text is built separately from being printed: that position has to combine an
+ * INFERRED type with the same `_Nullable` rule, and only one of the two sources
+ * can ever carry the flag.
+ */
+static void
+type_text(const st_type *t, const char *fallback, char *buf, size_t size)
+{
+	const char *mapped = (t != NULL && t->name.text != NULL)
+				     ? map_type(t->name.text)
+				     : fallback;
+	size_t len;
+
+	if (mapped == NULL) {
+		snprintf(buf, size, "void");
+		return;
+	}
+	/*
+	 * `t == NULL` is the INFERRED local: its type came from the initializer,
+	 * which is a literal, so there is no flag to consult and nothing to add.
+	 */
+	if (t == NULL || !t->nullable) {
+		snprintf(buf, size, "%s", mapped);
+		return;
+	}
+	len = strlen(mapped);
+	if (len > 0 && mapped[len - 1] == '*') {
+		snprintf(buf, size, "%.*s* _Nullable", (int)(len - 1), mapped);
+	} else {
+		snprintf(buf, size, "%s _Nullable", mapped);
+	}
+}
+
+static void
+emit_type(FILE *out, const st_type *t)
+{
+	char buf[256];
+
+	type_text(t, "void", buf, sizeof(buf));
+	fprintf(out, "%s", buf);
 }
 
 /* §5's Local: which constness the type takes, and whether a float literal
@@ -221,8 +285,9 @@ emit_signature(FILE *out, const st_decl *d, const char *terminator,
 			return 0;
 		}
 	}
-	fprintf(out, "%s (%s)%s", d->is_class_method ? "+" : "-",
-		map_type(d->type.name.text), d->name.text);
+	fprintf(out, "%s (", d->is_class_method ? "+" : "-");
+	emit_type(out, &d->type);
+	fprintf(out, ")%s", d->name.text);
 	for (i = 0; i < d->param_count; i++) {
 		const st_param *p = &d->params[i];
 
@@ -237,14 +302,17 @@ emit_signature(FILE *out, const st_decl *d, const char *terminator,
 		}
 		if (p->external.text != NULL && p->internal.text != NULL &&
 		    strcmp(p->external.text, p->internal.text) != 0) {
-			fprintf(out, "%s:(%s)%s", p->external.text,
-				map_type(p->type.name.text), p->internal.text);
+			fprintf(out, "%s:(", p->external.text);
+			emit_type(out, &p->type);
+			fprintf(out, ")%s", p->internal.text);
 		} else if (i > 0) {
-			fprintf(out, "%s:(%s)%s", p->internal.text,
-				map_type(p->type.name.text), p->internal.text);
+			fprintf(out, "%s:(", p->internal.text);
+			emit_type(out, &p->type);
+			fprintf(out, ")%s", p->internal.text);
 		} else {
-			fprintf(out, ":(%s)%s", map_type(p->type.name.text),
-				p->internal.text);
+			fprintf(out, ":(");
+			emit_type(out, &p->type);
+			fprintf(out, ")%s", p->internal.text);
 		}
 	}
 	fprintf(out, "%s\n", terminator);
@@ -366,6 +434,7 @@ emit_expr(FILE *out, const st_expr *e, const char *expected,
 	case ST_EXPR_FALSE:	fprintf(out, "NO");	return 1;
 	case ST_EXPR_NIL:	fprintf(out, "nil");	return 1;
 	case ST_EXPR_SELF:	fprintf(out, "self");	return 1;
+	case ST_EXPR_SUPER:	fprintf(out, "super");	return 1;
 	case ST_EXPR_IDENT:
 		fprintf(out, "%s", e->text.text);
 		return 1;
@@ -524,17 +593,30 @@ emit_local(FILE *out, const st_stmt *s, int depth, const char **error)
 	emit_indent(out, depth);
 	/*
 	 * §5's three cases, in one test: a class type is `T * const name` and
-	 * everything else is `const T name`. `mapped` already carries the `*`, so
-	 * the difference is only which side of it the `const` goes.
+	 * everything else is `const T name`. The type text already carries the
+	 * `*` — and `_Nullable`, where it applies — so the difference is only
+	 * which side of it the `const` goes.
+	 *
+	 * `type_text`, not `emit_type`: an INFERRED local has no `st_type` to
+	 * read, its type is the `mapped` this function computed from the
+	 * initializer.
 	 */
-	if (is_let) {
-		if (type_is_class(mapped)) {
-			fprintf(out, "%s const %s", mapped, s->name.text);
+	{
+		char typebuf[256];
+
+		type_text(s->type.name.text != NULL ? &s->type : NULL, mapped,
+			  typebuf, sizeof(typebuf));
+		if (is_let) {
+			if (type_is_class(mapped)) {
+				fprintf(out, "%s const %s", typebuf,
+					s->name.text);
+			} else {
+				fprintf(out, "const %s %s", typebuf,
+					s->name.text);
+			}
 		} else {
-			fprintf(out, "const %s %s", mapped, s->name.text);
+			fprintf(out, "%s %s", typebuf, s->name.text);
 		}
-	} else {
-		fprintf(out, "%s %s", mapped, s->name.text);
 	}
 	if (s->value != NULL) {
 		fprintf(out, " = ");
@@ -772,8 +854,15 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 	 * `@property (nonatomic) Foo *x;` — while a cast-shaped position keeps it
 	 * on the type (`(NSString *)name`). `mapped` already ends in ` *`, so the
 	 * space before the name is what has to go.
+	 *
+	 * A NULLABLE type is the exception: `_Nullable` is a qualifier that has to
+	 * sit between the `*` and the declarator, so the name cannot be glued.
 	 */
-	{
+	if (d->type.nullable) {
+		fprintf(out, ") ");
+		emit_type(out, &d->type);
+		fprintf(out, " %s;\n", d->name.text);
+	} else {
 		size_t len = strlen(mapped);
 
 		if (len >= 2 && mapped[len - 1] == '*' && mapped[len - 2] == ' ') {
@@ -982,31 +1071,37 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		}
 		fprintf(out, "\n\n");
 
-		for (d = c->decls; d != NULL; d = d->next) {
-			if (d->kind != ST_DECL_PROPERTY) {
-				continue;
-			}
-			if (!emit_property_line(out, d, d->body == NULL, error)) {
-				return 0;
-			}
-		}
-		/*
-		 * The blank line separates the properties from the methods, so a
-		 * class with no methods must not get one — that produced two
-		 * consecutive blank lines before `@end`, which §2's specimen
-		 * cannot show because it has both.
-		 */
 		{
+			/*
+			 * The blank line after the interface is the gap; the blank line
+			 * BEFORE the methods separates the two groups and is owed only
+			 * when both exist. Emitting it unconditionally gave a
+			 * properties-only class two blanks before `@end`, and a
+			 * methods-only one two after `@interface` — §2's specimen has
+			 * both, which is why neither shows there.
+			 */
 			const st_decl *m;
+			int any_property = 0;
 			int any_method = 0;
 
 			for (m = c->decls; m != NULL; m = m->next) {
-				if (m->kind == ST_DECL_METHOD) {
+				if (m->kind == ST_DECL_PROPERTY) {
+					any_property = 1;
+				} else if (m->kind == ST_DECL_METHOD) {
 					any_method = 1;
-					break;
 				}
 			}
-			if (any_method) {
+
+			for (d = c->decls; d != NULL; d = d->next) {
+				if (d->kind != ST_DECL_PROPERTY) {
+					continue;
+				}
+				if (!emit_property_line(out, d, d->body == NULL,
+						       error)) {
+					return 0;
+				}
+			}
+			if (any_property && any_method) {
 				fprintf(out, "\n");
 			}
 		}
@@ -1045,7 +1140,6 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 typedef struct {
 	const st_expr *calls[EMIT_MAX_EXTERNS];
 	size_t count;
-	int saw_method_call;	/* §7.42: an unqualified call naming a method */
 } extern_set;
 
 static int
@@ -1062,6 +1156,74 @@ name_is_method(const st_class *c, const char *name)
 	return 0;
 }
 
+/*
+ * §7.42: "an unqualified call in a method body is a message send when the name
+ * resolves to a method — this class's or an inherited one — and falls back to a
+ * global C function otherwise."
+ *
+ * The tree is REWRITTEN in place for the resolvable half: a call naming one of
+ * THIS class's methods becomes a send on `self`, which is what the rest of the
+ * emitter already walks. A rewrite rather than a rule inside emit_expr because
+ * the resolution needs the enclosing CLASS, and threading it through every
+ * expression function to be consulted at exactly one node is worse than
+ * resolving once.
+ *
+ * ONLY this class's own methods resolve. An inherited one needs the superclass's
+ * declarations, which for a Foundation superclass means §9.5's header importer,
+ * so it falls through to the C-call path — which emits no `extern` for a name it
+ * cannot see and therefore fails at clang, loudly, rather than quietly calling
+ * something that does not exist. That is the honest half of a rule whose other
+ * half is not available yet.
+ */
+static void
+resolve_calls_in_expr(const st_class *c, st_expr *e)
+{
+	size_t i;
+
+	if (e == NULL) {
+		return;
+	}
+	if (e->kind == ST_EXPR_CALL && e->base != NULL &&
+	    e->base->kind == ST_EXPR_IDENT && e->base->text.text != NULL &&
+	    name_is_method(c, e->base->text.text)) {
+		st_expr *receiver = st_arena_alloc(sizeof(st_expr));
+
+		if (receiver != NULL) {
+			receiver->kind = ST_EXPR_SELF;
+			/* The callee's name becomes the selector's first piece. */
+			e->text = e->base->text;
+			e->base = receiver;
+			e->kind = ST_EXPR_SEND;
+		}
+		/*
+		 * On an allocation failure the node is left as a CALL, which is
+		 * the pre-§7.42 behaviour and fails at clang rather than
+		 * silently.
+		 */
+	}
+	resolve_calls_in_expr(c, e->base);
+	for (i = 0; i < e->arg_count; i++) {
+		resolve_calls_in_expr(c, e->args[i].value);
+	}
+}
+
+static void
+resolve_calls_in_stmts(const st_class *c, st_stmt *list)
+{
+	st_stmt *s;
+
+	for (s = list; s != NULL; s = s->next) {
+		/*
+		 * `s->value` is the initializer for a LET/VAR as well as the
+		 * expression for an EXPR and the value for a RETURN — the one
+		 * field, per `kind`.
+		 */
+		resolve_calls_in_expr(c, s->value);
+		resolve_calls_in_stmts(c, s->body);
+		resolve_calls_in_stmts(c, s->else_body);
+	}
+}
+
 static void
 collect_calls(const st_expr *e, const st_class *c, extern_set *set)
 {
@@ -1072,17 +1234,6 @@ collect_calls(const st_expr *e, const st_class *c, extern_set *set)
 	}
 	if (e->kind == ST_EXPR_CALL && e->base != NULL &&
 	    e->base->kind == ST_EXPR_IDENT && e->base->text.text != NULL) {
-		if (name_is_method(c, e->base->text.text)) {
-			/*
-			 * §7.42: an unqualified call resolves to a method when one
-			 * matches. That lowering is a message to `self`, and it is
-			 * part of the class surface — emitting it as a C call would
-			 * produce a call to an undeclared function. Recorded, so the
-			 * class stops before anything is written.
-			 */
-			set->saw_method_call = 1;
-			return;
-		}
 		for (i = 0; i < set->count; i++) {
 			/* One `extern` per callee, however many times it is used. */
 			if (strcmp(set->calls[i]->base->text.text,
@@ -1194,19 +1345,18 @@ st_emit_implementation(FILE *out, const st_program *program,
 			fprintf(out, "\n");
 		}
 
+		/*
+		 * §7.42 first: a call naming this class's own method becomes a
+		 * send on `self`, so the `extern` collection below — which sees
+		 * only what is left as a CALL — does not declare a C function for
+		 * it.
+		 */
+		for (d = c->decls; d != NULL; d = d->next) {
+			resolve_calls_in_stmts(c, d->body);
+		}
 		set.count = 0;
-		set.saw_method_call = 0;
 		for (d = c->decls; d != NULL; d = d->next) {
 			collect_stmt_calls(d->body, c, &set);
-		}
-		/*
-		 * §7.42's method half. Refused BEFORE any output, for the same
-		 * reason the other refusals are: the class is a supported program,
-		 * and what it needs is a lowering this emitter does not have.
-		 */
-		if (set.saw_method_call) {
-			return refuse("an unqualified call to a method (§7.42)",
-				      error);
 		}
 
 		{

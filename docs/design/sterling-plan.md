@@ -324,12 +324,32 @@ bugs actually are.
   - Still owed here: `get`/`set` blocks (§7.54/§7.55, so a `set` block and its
     implicit writable `newValue`), §9.16's synthesised *defaults* method (which is
     what a property initializer needs — neither an ivar nor a C struct member may
-    carry one), `unowned` (§7.53), categories/extensions (§7.4), `Self`/`super`,
-    §4's `T?`, and generic parameters (§7.63).
+    carry one), `unowned` (§7.53), categories/extensions (§7.4), and generic
+    parameters (§7.63).
+  - **Landed next (2026-09): the spellings a class body needs.** §4's `T?` on a
+    class type is `_Nullable` after the pointer — which the header's
+    `assume_nonnull begin` region is exactly why it has to be written at all —
+    built by one `type_text` so the qualifier lands in the right place in a
+    property, a parameter, a return and a local (where the `const` follows it).
+    §4's `Self` is `instancetype`. §3's `super` is a receiver like `self` and
+    needed a node of its own: it is a KEYWORD, so `super.foo()` was not merely
+    unemitted but unspellable — a parse error. And **§7.42's call resolution**:
+    an unqualified call naming one of *this* class's methods becomes a message to
+    `self` (`print()` → `[self print]`); the resolvable half only, because an
+    inherited one needs the superclass's declarations, and that is §9.5's header
+    importer. An inherited method called this way still falls through to the
+    C-call path, which declares no `extern` for a name it cannot see and
+    therefore fails at clang rather than quietly calling something else.
+  - Two of these still refuse, and the reason is the same §4 table: a nullable
+    SCALAR is §7.62's pair-struct rather than a qualifier, and a name §4's table
+    does not cover cannot be classified at all — `Owner?` could be either.
   - **Nested type declarations are a parse error, and the language allows them.**
     `class Outer { struct Inner { … } }` is rejected at the `struct` — loud, not a
     silent loss, but it is a gap rather than a decision, and the emitted code
     would need §9.x's name mangling.
+  - **`copy` is a reserved word**, being one of §5's attribute keywords, so a
+    local or method cannot be *named* `copy`. That is the language's consequence
+    and not a compiler bug, but it is worth knowing before reaching for the name.
 
 ### K3 — Types, structs, imports, and C interop
 

@@ -1,0 +1,4 @@
+/* §7.62: a scalar's `?` is the pair-struct, not a `_Nullable` qualifier. */
+class RefuseNullableScalar: Object {
+    property count: Int32?
+}

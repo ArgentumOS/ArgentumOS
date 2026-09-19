@@ -21,9 +21,31 @@
 	return;
 }
 
+- (NSString * _Nullable)nullable:(NSString * _Nullable)name
+{
+	NSString * _Nullable const saved = name;
+	[self print];
+	return saved;
+}
+
+- (instancetype)shared
+{
+	return self;
+}
+
 - (int32_t)weight
 {
 	return 2;
+}
+
+@end
+
+@implementation EmitsSurfaceChild
+
+- (void)preview
+{
+	[super print];
+	return;
 }
 
 @end
