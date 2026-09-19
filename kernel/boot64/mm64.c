@@ -21,7 +21,6 @@
 #include <fnx/linker.h>
 #include <fnx/kernel.h>
 #include "serial64.h"
-#include <fnx/stdio.h>	/* printk, used by the split tracer */
 
 /* the stub's name for the kernel base (include/fnx/linker.h) */
 #define PAGE_OFFSET64	PAGE_OFFSET
