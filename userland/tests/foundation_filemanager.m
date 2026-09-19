@@ -33,6 +33,7 @@
 
 #include <stdio.h>
 #include <unistd.h>		/* symlink(2): the LINK is made here, not by the service */
+#include <sys/stat.h>		/* stat(2): the inode numbers of a directory and its parent (F13.22) */
 
 #define PROBE_ROOT "/System/Temporary Files/nsfilemanager-probe"
 
@@ -233,6 +234,27 @@ int main(void)
 			printf("FOUNDATION-FILEMANAGER fs-rmdir-discriminator: EMPTY removed=%d '%s' | "
 			       "NON-EMPTY removed=%d '%s'\n", (int)emptyGone, [emptyWhy UTF8String],
 			       (int)fullGone, [fullWhy UTF8String]);
+
+			/* AND THE SECOND MEASUREMENT: does the FILE SYSTEM ITSELF think a directory has its
+			 * parent's inode number? `empty/..` resolves to the parent, so the comparison needs no
+			 * knowledge of the parent's name. If these are EQUAL then the aliasing is in the
+			 * file system and `rmdir` is innocent; if they DIFFER then the file system is right
+			 * and the alias is being created inside namei's own pointers. Two different bugs, and
+			 * nothing else in userland tells them apart. */
+			{
+				struct stat st_child, st_parent;
+
+				if(stat([emptyDir UTF8String], &st_child) == 0 &&
+				   stat([[emptyDir stringByAppendingPathComponent:@".."] UTF8String],
+					&st_parent) == 0) {
+					printf("FOUNDATION-FILEMANAGER fs-ino: dir=%llu parent=%llu %s\n",
+					       (unsigned long long)st_child.st_ino,
+					       (unsigned long long)st_parent.st_ino,
+					       st_child.st_ino == st_parent.st_ino ? "ALIASED" : "distinct");
+				} else {
+					printf("FOUNDATION-FILEMANAGER fs-ino: stat failed\n");
+				}
+			}
 
 			check("fs-cleanup",
 			      truthful,

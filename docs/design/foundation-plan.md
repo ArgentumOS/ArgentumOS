@@ -2983,3 +2983,34 @@ why the instrument above lives in the probe's own stdout instead: in this harnes
 only channel a kernel fact has.**
 
 Next: `do_namei`'s continuation and the inode cache's recycling, to test the freed-parent hypothesis.
+
+#### F13.22 continued: the file system is EXONERATED, and the alias is inside namei's pointers
+
+**A second measurement, and it halves the search space:**
+
+```
+FOUNDATION-FILEMANAGER fs-ino: dir=103665 parent=102375 distinct
+```
+
+**A DIRECTORY DOES NOT HAVE ITS PARENT'S INODE NUMBER.** The instrument is `stat(2)` on a directory and
+on `that-directory/..` — which resolves to the parent, so the comparison needs no knowledge of the
+parent's name — and the two numbers differ. So AGFS is RIGHT: its btree, its `lookup` and its `iget`
+all give a child its own inode. **THE ALIASING IS CREATED INSIDE `namei`, BETWEEN POINTERS, not by the
+file system** — which is the `struct inode` being released and recycled: `sys_rmdir` receives a child
+and a parent that are the SAME `struct inode`, whose `i->inode` is the child's (which is why one struct
+can carry both roles while the two INODE NUMBERS stay distinct).
+
+**THE REFERENCE ACCOUNTING WAS THEN READ AND LOOKS BALANCED — AND THAT IS THE PROBLEM, because the
+behaviour says otherwise.** The facts on the table: `lookup` CONSUMES the directory reference (every
+filesystem's implementation does `iput(dir)` — ext2, minix, procfs, and AGFS at `fs/agfs/dir.c:169`),
+`do_namei` takes one with `dir->count++` before calling it, hands `*d_res = dir` to the caller WITHOUT
+taking a reference of its own in the loop, and — notably — the EXIT path DOES take one
+(`*d_res = dir; dir->count++;`, `fs/namei.c` around line 146). A loop that omits what its own exit path
+performs is exactly the shape of this bug. **But reading has not proven it, and this record does not
+claim it.**
+
+**THE NEXT EXPERIMENT IS THE ONE THAT WILL PROVE IT, AND IT IS CHEAP BECAUSE IT IS BEHAVIOURAL:** if the
+alias comes from `do_namei`'s *handoff between components*, then a path with ONE component should be
+unaffected — so `chdir` into the parent and then `removeItemAtPath:@"x"` (a RELATIVE, single-component
+path) ought to SUCCEED where `removeItemAtPath:@"/…/x"` fails. That one comparison separates "the loop's
+`*d_res = dir` is uncounted" from everything else, and it needs no kernel console.
