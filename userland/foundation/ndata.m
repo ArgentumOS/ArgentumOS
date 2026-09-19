@@ -12,6 +12,7 @@
 #import <foundation/NSData.h>
 #import <foundation/NSString.h>
 #import <foundation/NSError.h>
+#import <foundation/NSException.h>	/* the OOM path raises (D4, §11.6.1) */
 #import <foundation/NSDictionary.h>	/* the userInfo dictionaries below need the CLASS, not a @class */
 #import "fncodec.h"
 #include <stdlib.h>
@@ -51,7 +52,17 @@
 	if (length > 0) {
 		_bytes = (unsigned char *)malloc(length);
 		if (_bytes == NULL) {
-			return nil;
+			/* THE WRITER CANNOT ANSWER NIL (D4 of §11.6.1, fixed 2026-09-19). Apple declares
+			 * +dataWithBytes:length: NONNULL, and a nullable here is a difference a CONSUMER
+			 * sees: code written against Apple's contract — `NSData *d = [NSData
+			 * dataWithBytes:…];`, no check — warns against this header. The only nil path this
+			 * method had was an unsatisfiable allocation, and that is what NSMallocException is
+			 * for. The OTHER nullable constructors of this class are Apple's own (a missing
+			 * file, a bad base64 string) and are untouched. */
+			[NSException raise:NSMallocException
+				    format:@"-initWithBytes:length: could not allocate %lu byte(s)",
+					   (unsigned long)length];
+			return nil;	/* -raise: does not return */
 		}
 		if (bytes != NULL) {
 			memcpy(_bytes, bytes, length);

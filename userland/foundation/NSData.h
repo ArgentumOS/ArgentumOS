@@ -22,11 +22,15 @@
 
 /* NULLABILITY (F6, slice 3): NONNULL by default, and the exceptions are MEASURED
  * at the writer, in three classes:
- *   1. ndata.m's `return nil;` sites — eight constructors (the byte/no-copy forms,
- *      the file and base64 forms, and the mutable capacity/length ones);
+ *   1. ndata.m's `return nil;` sites — SEVEN constructors, after D4 of §11.6.1 removed the
+ *      eighth (the byte/no-copy forms, the file and base64 forms, and the mutable
+ *      capacity/length ones) — and every one of those seven is Apple's OWN nullability
+ *      (a missing file, an undecodable base64 string, an exhaustive no-copy form);
  *   2. PROPAGATION — every factory is `return [[self alloc] initWith...]` for one
- *      of those, so it inherits the same nullability (that is why +data: is
- *      nullable too: it goes through -initWithBytes:NULL length:0);
+ *      of those, so it inherits the same nullability. +data: and +dataWithBytes:length:
+ *      are NOT nullable: the first mallocs nothing, and the second now RAISES on an
+ *      unsatisfiable allocation rather than answering nil, because Apple declares both
+ *      NONNULL and a nullable here is a difference a consumer sees;
  *   3. the two buffer accessors, -bytes and -mutableBytes: the ivar's own comment
  *      is "NULL only while empty" — an empty buffer is not a usable pointer.
  * The :options:error: forms take the error out-parameter at BOTH levels, because a
@@ -87,8 +91,8 @@ typedef enum {
 	NSDataCompressionAlgorithmZlib
 } NSDataCompressionAlgorithm;
 
-+ (nullable NSData *)data;
-+ (nullable NSData *)dataWithBytes:(const void * _Nullable)bytes length:(size_t)length;
++ (NSData *)data;
++ (NSData *)dataWithBytes:(const void * _Nullable)bytes length:(size_t)length;
 + (nullable NSData *)dataWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length;
 + (nullable NSData *)dataWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
 + (NSData *)dataWithData:(NSData *)other;
@@ -97,7 +101,7 @@ typedef enum {
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string;
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options;
 
-- (nullable id)initWithBytes:(const void * _Nullable)bytes length:(size_t)length;
+- (id)initWithBytes:(const void * _Nullable)bytes length:(size_t)length;
 - (nullable id)initWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length;
 - (nullable id)initWithBytesNoCopy:(void * _Nullable)bytes length:(size_t)length freeWhenDone:(BOOL)freeWhenDone;
 - (id)initWithData:(NSData *)other;

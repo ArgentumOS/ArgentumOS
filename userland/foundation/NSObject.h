@@ -195,7 +195,11 @@ __attribute__((objc_root_class))
 NSString * _Nullable NSStringFromClass(Class _Nullable aClass);
 Class _Nullable NSClassFromString(NSString *aClassName);
 NSString *NSStringFromSelector(SEL aSelector);
-SEL NSSelectorFromString(NSString *aSelectorName);
+/* THE ANNOTATION STATES WHAT THE WRITER DOES, and this one answers the NULL SELECTOR for a nil
+ * name — so it is NULLABLE, and that is a DEVIATION from Apple's nonnull annotation (D8 of
+ * §11.6.1). It is written down rather than papered over: the alternative is a louder writer or
+ * Apple's contract, and that choice is not this comment's to make. */
+SEL _Nullable NSSelectorFromString(NSString *aSelectorName);
 NSString *NSStringFromRange(NSRange range);
 
 /* THE PAGE FUNCTIONS (W2e): a region of the process's address space, named for pages. They live

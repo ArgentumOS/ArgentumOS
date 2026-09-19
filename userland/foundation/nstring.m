@@ -2284,7 +2284,23 @@ NSString *NSStringFromSelector(SEL aSelector)
 {
 	const char *name = sel_getName(aSelector);
 
-	return (name != NULL) ? [[NSOwnedString alloc] initWithUTF8String:name] : nil;
+	/*
+	 * THE NONNULL CONTRACT IS APPLE'S, AND THIS USED TO ANSWER NIL (D4's sibling, found by the
+	 * zero-warning rule the moment NSData's pair became nonnull — see §11.6.1). A nil from a
+	 * function declared nonnull is a difference a CONSUMER sees: `NSString *n =
+	 * NSStringFromSelector(sel);` warns against this header, and Apple's own header does not
+	 * declare it nullable. Apple leaves the unnameable-selector case UNDEFINED, so the choice
+	 * here is in permitted space, and it is the LOUD one this library uses wherever a value
+	 * would otherwise lie: name the problem rather than return something that means nothing.
+	 * The fallback assignment keeps the call below well-typed, because -raise: does not return.
+	 */
+	if (name == NULL) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSStringFromSelector: the runtime cannot name the selector %p",
+				   (const void *)aSelector];
+		name = "";
+	}
+	return [[NSOwnedString alloc] initWithUTF8String:name];
 }
 
 SEL NSSelectorFromString(NSString *aSelectorName)

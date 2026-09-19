@@ -76,9 +76,10 @@ and both the header and this document carry it.
 | **D1** | `NSCopying`/`NSMutableCopying` members are `-copy`/`-mutableCopy`; `-copyWithZone:`/`-mutableCopyWithZone:` are removed, so the override point is the entry point | **(i) excluded API** — Apple: "Zones are ignored on iOS and 64-bit runtime in macOS"; this system is 64-bit only (§11.5) | `NSObject.h` (at the protocols), `nsobject.m`, plan §13.x | **TOLERATED** — the model case |
 | **D2** | every constant whose value we chose because Apple publishes the name and not the number: `NSAlignmentOptions` bit positions, the byte-order cases, `NSKeyValueSetMutationKind` (1-4), `NSFoundationVersionNumber`, `NSAssertionHandlerKey`'s value, the assertion message's shape, `-description`/`-hash` shapes | **(iii) no published value** | each header states it at the declaration; plan §14.2, §14.3, §14.4, §14.5 | **TOLERATED** |
 | **D3** | the string index boundary: `-length` and ranges in **UTF-16 units** while the storage is UTF-8 — historically a deviation, now the *implementation* of Apple's semantics | **none needed** — this was RESOLVED at W1 by making the API semantics Apple's; the storage is invisible | `nstring.m`, plan §13 | **NOT A DEVIATION ANY MORE** — recorded to show the category is not permanent |
-| **D4** | `+dataWithBytes:length:` is annotated NULLABLE here and nonnull in Cocoa (our writer answers nil when `malloc` fails) | **not established** — this is a writer's choice, not a dependency, an exclusion or an unpublished value | `ndata.m:36`, plan §11.3.1 | **DEFECT (open)** — either the annotation matches Apple's or the OOM behaviour is re-decided; a deviation claim is not a substitute for either |
+| **D4** | `+dataWithBytes:length:` / `-initWithBytes:length:` / `+data` were annotated NULLABLE here and are nonnull in Cocoa (the writer answered nil when `malloc` failed); `NSStringFromSelector` answered nil too | **NOT NECESSARY — and now REMOVED** | `ndata.m` (the raise), `NSData.h`, `nstring.m`, plan §11.3.1 | **RESOLVED 2026-09-19** — the writer RAISES `NSMallocException` instead of answering nil, so the contract is Apple's; the sibling instance in `NSStringFromSelector` was found by the zero-warning rule and fixed the same way. The class's OTHER seven nil returns stay: they are Apple's own nullability (a missing file, a bad base64 string) |
 | **D5** | `NSIndexPath`'s notes: removal from an empty path raises, `-compare:` with nil raises, `-description` and `-hash` are ours | **ground (iii)/permitted variation** — Cocoa leaves the first two undefined and publishes neither of the last two | `NSIndexPath.h` | **RECLASSIFIED: PERMITTED VARIATION, not a deviation** — any conforming choice is allowed there, and calling it a deviation inflated the debt |
 | **D6** | `NSEnumerator` is a SNAPSHOT of its sequence; Cocoa's cursor is live and raises on mutation | **not established** — "no mutation detection is needed" is a simplification, not a necessity | `NSEnumerator.h` | **DEFECT (open)** — live cursor plus mutation detection, or a necessity ground; both are work items |
+| **D8** | `NSSelectorFromString` is annotated NULLABLE here and nonnull in Cocoa (our writer answers the NULL SELECTOR for a nil name - it always has) | **not established** — no exclusion, no missing dependency, no unpublished value; this is the writer's behaviour being stated | `NSObject.h` (at the declaration) | **DEFECT (open)** — the ruling is the same shape as D4: make the writer louder, or match Apple's contract. It is annotated truthfully in the meantime, which is the tree's own principle and what restored the zero-warning build |
 | **D7** | the deliberate refusals and omissions: the probes' `excluded` arrays and §5's "refused by name" lists | **each must be tested against the three grounds, one entry at a time** — the classes that pass are clear (`MATCHES` needs a regex engine, the LZFSE/LZ4/LZMA codecs have no codec, zones are excluded by §11.5); the rest are unexamined | the probes' `excluded` arrays + §5 + §11.3's ledger | **IN PROGRESS** — the arrays are the enumeration and each entry needs a verdict |
 
 **HOW THIS REGISTER STAYS TRUE.** It is prose, not a gate: no tooling reads it. The standing rule is
@@ -1553,10 +1554,16 @@ warned even though the type is nullable, while the same call written inline did.
 catches exactly the INLINE nullable flows — the ones a consumer cannot inspect — which is the
 right place for it to be strict.
 
-A DOCUMENTED DEVIATION falls out of this: Cocoa declares `+dataWithBytes:length:` nonnull, but
-ours answers nil when `malloc` fails (ndata.m:36), so the annotation says nullable. The
-annotation states what the WRITER does; where that differs from Cocoa, the difference is the
-point rather than an accident.
+**A DEVIATION THAT USED TO FALL OUT OF THIS, AND IS NOW REMOVED (D4 of §11.6.1, 2026-09-19).** This
+paragraph used to end by recording that Cocoa declares `+dataWithBytes:length:` nonnull while ours
+answered nil when `malloc` failed, so the annotation said nullable. That was a deviation a **consumer**
+sees — code written against Apple's contract, with no nil check, warns against this header — and the
+policy tolerates a deviation only where it is necessary. It was not: the writer now **raises
+`NSMallocException`**, so the contract is Apple's, and the same defect next door
+(`NSStringFromSelector` answering nil from a nonnull function) was found by the zero-warning rule the
+moment the pair became nonnull, and fixed the same way. The annotation states what the WRITER does —
+and where the writer can be made to do what Apple's contract says, that is the fix rather than a
+footnote.
 
 `foundation_value` 17/17, `foundation_error` 6/6, and `make rootagfs` clean.
 
