@@ -105,7 +105,7 @@ static NSString *fn_canonical(NSString *identifier)
 /* The canonical identifier's subtags. An empty identifier has none. */
 static NSArray *fn_parts(NSString *canonical)
 {
-	if ([canonical length] == 0) {
+	if ([canonical lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return [[NSArray alloc] init];
 	}
 	return [canonical componentsSeparatedByString:@"_"];
@@ -119,10 +119,10 @@ static NSString *fn_subtag(NSArray *parts, size_t index, size_t length)
 		return nil;
 	}
 	part = [parts objectAtIndex:index];
-	if (length != 0 && [part length] != length) {
+	if (length != 0 && [part lengthOfBytesUsingEncoding:NSUTF8StringEncoding] != length) {
 		return nil;
 	}
-	if ([part length] == 0) {
+	if ([part lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return nil;
 	}
 	return part;
@@ -148,7 +148,7 @@ static NSString *fn_region(NSArray *parts)
 	for (k = 1; k < [parts count]; k++) {
 		NSString *part = [parts objectAtIndex:k];
 
-		if ([part length] == 2 || [part length] == 3) {
+		if ([part lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 2 || [part lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 3) {
 			return part;
 		}
 	}

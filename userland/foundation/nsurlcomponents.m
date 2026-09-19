@@ -57,7 +57,7 @@ static NSString *fn_percent_decode(NSString *text)
 	if (text == nil) {
 		return nil;
 	}
-	length = [text length];
+	length = [text lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	bytes = malloc(length * 3 + 1);	/* worst case: every character is multi-byte */
 	if (bytes == NULL) {
 		return text;
@@ -100,10 +100,10 @@ static BOOL fn_is_valid_scheme(NSString *candidate)
 {
 	NSUInteger i;
 
-	if ([candidate length] == 0) {
+	if ([candidate lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return NO;
 	}
-	for (i = 0; i < [candidate length]; i++) {
+	for (i = 0; i < [candidate lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 		unichar c = [candidate characterAtIndex:i];
 		BOOL letter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 
@@ -122,7 +122,7 @@ static NSInteger fn_last_at(NSString *text)
 {
 	NSInteger i;
 
-	for (i = (NSInteger)[text length] - 1; i >= 0; i--) {
+	for (i = (NSInteger)[text lengthOfBytesUsingEncoding:NSUTF8StringEncoding] - 1; i >= 0; i--) {
 		if ([text characterAtIndex:(NSUInteger)i] == '@') {
 			return i;
 		}
@@ -155,7 +155,7 @@ static NSString *fn_remove_dot_segments(NSString *path)
 			}
 			continue;
 		}
-		if ([segment length] == 0) {
+		if ([segment lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 			continue;
 		}
 		[output addObject:segment];
@@ -173,7 +173,7 @@ static NSString *fn_remove_dot_segments(NSString *path)
 	if (trailingSlash && [output count] > 0) {
 		[result appendString:@"/"];
 	}
-	if ([result length] == 0 && absolute) {
+	if ([result lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0 && absolute) {
 		return @"/";
 	}
 	return result;
@@ -184,7 +184,7 @@ static NSString *fn_merge_paths(NSString *basePath, NSString *referencePath)
 {
 	NSRange lastSlash;
 
-	if ([basePath length] == 0) {
+	if ([basePath lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return [NSString stringWithFormat:@"/%@", referencePath];
 	}
 	lastSlash = [basePath rangeOfString:@"/" options:0];
@@ -194,7 +194,7 @@ static NSString *fn_merge_paths(NSString *basePath, NSString *referencePath)
 		 * search has no options door to ask for a backwards one. */
 		NSInteger i;
 
-		for (i = (NSInteger)[basePath length] - 1; i >= 0; i--) {
+		for (i = (NSInteger)[basePath lengthOfBytesUsingEncoding:NSUTF8StringEncoding] - 1; i >= 0; i--) {
 			if ([basePath characterAtIndex:(NSUInteger)i] == '/') {
 				return [NSString stringWithFormat:@"%@%@",
 					[basePath substringToIndex:(NSUInteger)i + 1], referencePath];
@@ -385,12 +385,12 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 			 * brackets is not a port separator. */
 			NSInteger i;
 
-			for (i = 1; i < (NSInteger)[hostPort length]; i++) {
+			for (i = 1; i < (NSInteger)[hostPort lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 				unichar c = [hostPort characterAtIndex:(NSUInteger)i];
 
 				if (c == ']') {
 					_host = [hostPort substringToIndex:(NSUInteger)i + 1];
-					if (i + 1 < (NSInteger)[hostPort length] &&
+					if (i + 1 < (NSInteger)[hostPort lengthOfBytesUsingEncoding:NSUTF8StringEncoding] &&
 					    [hostPort characterAtIndex:(NSUInteger)i + 1] == ':') {
 						_port = [hostPort substringFromIndex:(NSUInteger)i + 2];
 					}
@@ -448,7 +448,7 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 		[out appendString:@"#"];
 		[out appendString:_fragment];
 	}
-	return [out length] > 0 ? out : nil;
+	return [out lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 0 ? out : nil;
 }
 
 - (nullable NSURL *)URL
@@ -509,7 +509,7 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 		NSString *pair = [pairs objectAtIndex:i];
 		NSRange equals = [pair rangeOfString:@"="];
 
-		if ([pair length] == 0) {
+		if ([pair lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 			continue;
 		}
 		if (equals.location == NSNotFound) {
@@ -574,7 +574,7 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 		target->_port = _port;
 		target->_path = fn_remove_dot_segments(_path != nil ? _path : @"");
 		target->_query = _query;
-	} else if (_path == nil || [_path length] == 0) {
+	} else if (_path == nil || [_path lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		target->_scheme = base->_scheme;
 		target->_user = base->_user;
 		target->_password = base->_password;

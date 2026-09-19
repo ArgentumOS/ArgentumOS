@@ -460,8 +460,8 @@ static int fn_collation(NSString *left, NSString *right, BOOL caseInsensitive,
 	} else if (caseInsensitive) {
 		ucol_setStrength(collator, UCOL_SECONDARY);
 	}
-	a = (UChar *)malloc(([left length] + 1) * sizeof(UChar));
-	b = (UChar *)malloc(([right length] + 1) * sizeof(UChar));
+	a = (UChar *)malloc(([left lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1) * sizeof(UChar));
+	b = (UChar *)malloc(([right lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1) * sizeof(UChar));
 	if (a == NULL || b == NULL) {
 		free(a);
 		free(b);
@@ -469,8 +469,8 @@ static int fn_collation(NSString *left, NSString *right, BOOL caseInsensitive,
 		return UCOL_EQUAL;
 	}
 	status = U_ZERO_ERROR;
-	u_strFromUTF8(a, (int32_t)([left length] + 1), &alen, [left UTF8String], -1, &status);
-	u_strFromUTF8(b, (int32_t)([right length] + 1), &blen, [right UTF8String], -1, &status);
+	u_strFromUTF8(a, (int32_t)([left lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1), &alen, [left UTF8String], -1, &status);
+	u_strFromUTF8(b, (int32_t)([right lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1), &blen, [right UTF8String], -1, &status);
 	if (U_FAILURE(status)) {
 		free(a);
 		free(b);

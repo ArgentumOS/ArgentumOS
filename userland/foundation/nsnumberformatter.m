@@ -356,7 +356,7 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 		/* Refuse a fraction rather than round it away. The separator is the LOCALE'S, which is
 		 * why it is asked for instead of assuming a full stop. */
 		separator = [self decimalSeparator];
-		if (separator != nil && [separator length] > 0
+		if (separator != nil && [separator lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 0
 		    && [string rangeOfString:separator].location != NSNotFound) {
 			return nil;
 		}

@@ -179,7 +179,7 @@ static NSInteger fn_tz_offset(NSString *name, double secondsSince1970, BOOL *isD
 	int32_t length = 0;
 	UCalendar *probe;
 
-	if (name == nil || [name length] == 0) {
+	if (name == nil || [name lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return nil;
 	}
 	u_strFromUTF8(identifier, FN_TZ_ID_MAX, &length, [name UTF8String], -1, &status);

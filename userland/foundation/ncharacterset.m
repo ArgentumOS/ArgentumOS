@@ -73,7 +73,7 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	{
 		size_t i;
 
-		for (i = 0; i < [string length]; i++) {
+		for (i = 0; i < [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 			unichar c = [string characterAtIndex:i];
 
 			fn_add_range(self, c, 1);
@@ -355,7 +355,7 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 {
 	size_t i;
 
-	for (i = 0; i < [string length]; i++) {
+	for (i = 0; i < [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 		fn_add_range(self, [string characterAtIndex:i], 1);
 	}
 }
@@ -371,7 +371,7 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 {
 	size_t i;
 
-	for (i = 0; i < [string length]; i++) {
+	for (i = 0; i < [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding]; i++) {
 		NSCharacterSet *removed = [[NSCharacterSet alloc]
 			initWithRange:NSMakeRange([string characterAtIndex:i], 1)];
 		NSMutableCharacterSet *kept = [[NSMutableCharacterSet alloc] init];

@@ -315,7 +315,7 @@ static int base64Value(unsigned char c)
 
 - (id)initWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options
 {
-	size_t n = [string length];
+	size_t n = [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	unsigned char *out = (unsigned char *)malloc(n + 1);
 	size_t o = 0;
 	size_t i;

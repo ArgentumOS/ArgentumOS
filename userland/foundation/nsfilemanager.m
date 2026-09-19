@@ -292,7 +292,7 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 		return NO;
 	}
 	parent = [path stringByDeletingLastPathComponent];
-	if ([parent length] == 0) {
+	if ([parent lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		parent = @"/";
 	}
 	return access([parent UTF8String], W_OK | X_OK) == 0;
@@ -333,14 +333,14 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 		for (i = 0; i < [parts count]; i++) {
 			NSString *part = [parts objectAtIndex:i];
 
-			if ([part length] == 0) {
+			if ([part lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 				/* THE LEADING SLASH of an absolute path, or a doubled one. */
 				if (i == 0) {
 					[prefix appendString:@"/"];
 				}
 				continue;
 			}
-			if ([prefix length] > 1 || ([prefix length] == 1 && [prefix isEqualToString:@"/"])) {
+			if ([prefix lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 1 || ([prefix lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 1 && [prefix isEqualToString:@"/"])) {
 				[prefix appendString:@"/"];
 			}
 			[prefix appendString:part];

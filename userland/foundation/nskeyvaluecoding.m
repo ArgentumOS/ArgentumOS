@@ -56,7 +56,7 @@ static NSString *fn_capitalise(NSString *key)
 	NSMutableString *out;
 	NSString *head;
 
-	if ([key length] == 0) {
+	if ([key lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		return key;
 	}
 	head = [[key substringToIndex:1] uppercaseString];
@@ -666,7 +666,7 @@ static id fn_fold(NSString *operator, NSArray *values)
 			    format:@"the operator %@ needs a collection, and %@ is not one",
 				   operator, [self class]];
 	}
-	if (rest == nil || [rest length] == 0) {
+	if (rest == nil || [rest lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
 		/* `@count` and the unions apply to the receiver itself. */
 		values = (NSArray *)self;
 	} else {
