@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   67   open  175   struck   31
+#   class      shipped   68   open  174   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
@@ -1498,7 +1498,7 @@ class	shipped	NSProgress		App Support / Progress	-	objc
 class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property Lists	-	objc
 class	open	NSPropertySpecifier		App Support / Object Specifiers	-	objc
 class	struck	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSProxy		Low-Level Utilities / Remote Objects	-	objc
+class	shipped	NSProxy		Low-Level Utilities / Remote Objects	-	objc
 class	open	NSPurgeableData		Fundamentals / Purgeable Collections	-	objc
 class	open	NSQuitCommand		App Support / Script Commands	-	objc
 class	open	NSRandomSpecifier		App Support / Object Specifiers	-	objc

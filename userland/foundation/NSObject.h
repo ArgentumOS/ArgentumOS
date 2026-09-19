@@ -95,7 +95,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly, copy) NSString *debugDescription;
 
 - (BOOL)isEqual:(id)object;
-- (Class)superclass;
+- (nullable Class)superclass;	/* a ROOT class's superclass IS nil */
 - (Class)class;
 - (instancetype)self;
 - (BOOL)isProxy;
@@ -107,7 +107,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (oneway void)release;
 - (instancetype)autorelease;
 - (NSUInteger)retainCount;
-- (id)performSelector:(SEL)aSelector;
+- (nullable id)performSelector:(SEL)aSelector;
 - (nullable id)performSelector:(SEL)aSelector withObject:(id)object;
 - (nullable id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
 
