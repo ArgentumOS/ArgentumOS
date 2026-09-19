@@ -107,13 +107,13 @@ int main(void)
 		 * no api-complete check at all.
 		 */
 		static const char *classSelectors[] = {
-			"alloc", "allocWithZone:", "new", "class", "superclass",
+			"alloc", "new", "class", "superclass",
 			"conformsToProtocol:", "respondsToSelector:",
 			"instancesRespondToSelector:", "load", "initialize",
 			"methodSignatureForSelector:", NULL
 		};
 		static const char *instanceSelectors[] = {
-			"init", "copy", "mutableCopy", "copyWithZone:", "mutableCopyWithZone:",
+			"init", "copy", "mutableCopy",
 			"retain", "release", "autorelease", "retainCount", "dealloc",
 			"class", "superclass", "isKindOfClass:", "isMemberOfClass:",
 			"respondsToSelector:", "conformsToProtocol:",

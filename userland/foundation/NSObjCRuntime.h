@@ -13,7 +13,12 @@
  * `NSComparisonResult`, `NSRange` or `NSNotFound`. Where Cocoa has a type, the
  * type is Cocoa's — there is nothing to gain by inventing one.
  *
- * NO ZONES. `NSZone` is an INCOMPLETE type whose only purpose is to let Cocoa's
+ * NO ZONES, AND (2026-09-18) NO ZONE-TAKING API. `NSZone` is an INCOMPLETE type
+ * whose only REMAINING purpose is the return of `-zone` — every method that took
+ * one as an ARGUMENT is removed, because zones are 32-bit API and this system is
+ * 64-bit only. Apple's own words, on the `NSZone` page: "Zones are ignored on
+ * iOS and 64-bit runtime in macOS. You should not use zones in current
+ * development." (It used to be here to let Cocoa's
  * `-copyWithZone:` / `-mutableCopyWithZone:` SHAPE be reproduced (the plan's §7
  * decision, and the audit's B4). The argument is accepted, ignored and
  * documented: there is one allocator and no zone API, so an NSZone * is never

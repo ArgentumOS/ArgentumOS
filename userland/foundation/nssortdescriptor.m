@@ -161,9 +161,8 @@
 	return order;
 }
 
-- (id)copyWithZone:(NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;			/* immutable */
 }
 

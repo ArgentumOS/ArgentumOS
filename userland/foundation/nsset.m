@@ -306,15 +306,13 @@
 }
 
 /* Immutable, so copying is itself and a mutable copy is a real one. */
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;
 }
 
-- (id)mutableCopyWithZone:(nullable NSZone *)zone
+- (id)mutableCopy
 {
-	(void)zone;
 	return [[NSMutableSet alloc] initWithSet:self];
 }
 
@@ -464,18 +462,16 @@
 
 /* A MUTABLE SET COPIES BY VALUE — the members, not a shared reference — and a copy of one is the
  * immutable snapshot the house's rule asks for. */
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
 	NSSet *snapshot;
 
-	(void)zone;
 	snapshot = [[NSSet alloc] initWithArray:_members];
 	return snapshot;
 }
 
-- (id)mutableCopyWithZone:(nullable NSZone *)zone
+- (id)mutableCopy
 {
-	(void)zone;
 	return [[NSMutableSet alloc] initWithArray:_members];
 }
 

@@ -203,18 +203,6 @@
 	return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
 - (NSString *)description
 {
 	time_t seconds = (time_t)_timeIntervalSince1970;

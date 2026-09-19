@@ -628,12 +628,6 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	return [[NSMutableDictionary alloc] initAsCopyOf:self];
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self copy];
-}
-
 - (id __unsafe_unretained *)keySnapshot
 {
 	unsigned long i;

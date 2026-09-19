@@ -259,16 +259,4 @@ FN_NUMBER_GET(double, double)
 	return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
 @end

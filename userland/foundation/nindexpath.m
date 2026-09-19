@@ -216,10 +216,4 @@ static void fn_hold(NSIndexPath *path, const NSUInteger *indexes, NSUInteger len
 	return self;		/* immutable */
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
 @end

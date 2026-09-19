@@ -111,16 +111,4 @@ NSString *const NSMallocException = @"NSMallocException";
 	return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
 @end

@@ -432,9 +432,8 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 	}
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	/* IMMUTABLE, so a copy is itself — the same rule the collections follow. */
 	return self;
 }

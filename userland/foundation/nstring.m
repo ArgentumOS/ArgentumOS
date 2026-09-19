@@ -416,17 +416,6 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
  * each delegates to -copy / -mutableCopy, and DYNAMIC DISPATCH picks the right
  * one for a mutable subclass (whose -copy is the snapshot).
  */
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self copy];
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self mutableCopy];
-}
 
 - (NSString *)description
 {

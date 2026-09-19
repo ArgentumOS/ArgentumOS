@@ -534,17 +534,6 @@ static int base64Value(unsigned char c)
  * each delegates to -copy / -mutableCopy, and DYNAMIC DISPATCH picks the right
  * one for a mutable subclass (whose -copy is the snapshot).
  */
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self copy];
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self mutableCopy];
-}
 
 - (id)mutableCopy
 {

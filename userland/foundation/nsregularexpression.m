@@ -154,9 +154,8 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 	return out;
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return [NSTextCheckingResult resultWithRanges:_ranges count:_count];
 }
 
@@ -454,11 +453,10 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 				  (unsigned long)_captures];
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
 	NSRegularExpression *copy;
 
-	(void)zone;
 	copy = [[NSRegularExpression alloc] initWithPattern:_pattern options:_options error:NULL];
 	return copy != nil ? copy : self;
 }

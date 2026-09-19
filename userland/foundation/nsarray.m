@@ -614,11 +614,6 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 /* NSCopying keeps Cocoa's SHAPE with the zone accepted and ignored (the plan's
  * §7 decision): there are no zones, but the selector stays for compatibility. */
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self copy];
-}
 
 - (unsigned long)countByEnumeratingWithState:(NSFastEnumerationState *)state
                                      objects:(id __unsafe_unretained *)buffer

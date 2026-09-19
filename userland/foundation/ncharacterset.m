@@ -209,18 +209,6 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	return copy;
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self mutableCopy];
-}
-
 /* ---- the built-ins, each one a range list ---------------------------------- */
 
 + (NSCharacterSet *)whitespaceCharacterSet

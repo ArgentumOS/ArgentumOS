@@ -24,20 +24,19 @@ static NSNull *fn_shared_null = nil;
 	 * allocWithZone:]`, NOT `[NSObject allocWithZone:]`: the former keeps `self` (so the instance is
 	 * an NSNull) and skips this class's override, while the latter INSTANTIATES NSObject and answers
 	 * something that is not an NSNull at all. Measured the hard way: the wrong spelling made +null
-	 * hand back a plain NSObject, which then aborted on -copyWithZone:. */
+	 * hand back a plain NSObject, which then aborted on -copy. */
 	if (fn_shared_null == nil) {
-		fn_shared_null = [super allocWithZone:NULL];
+		fn_shared_null = [super alloc];
 	}
 	return fn_shared_null;
 }
 
-/* THE SIGNATURES MATCH NSObject'S OWN: `allocWithZone:` takes a NULLABLE zone (NULL is the norm)
- * and `isEqual:` a nonnull object there, and a re-declaration may not disagree with what it
- * overrides. `-copyWithZone:` below also keeps its nullable zone, because NSCopying declares that
- * one nullable. */
-+ (instancetype)allocWithZone:(nullable NSZone *)zone
+/* THE SINGLETON DOOR IS +alloc (2026-09-18). It used to be +allocWithZone:, which took an
+ * `NSZone`; that method is removed with the rest of the zone API, so the door moved to the method
+ * that remains. `isEqual:`'s signature still matches NSObject's own, because a re-declaration may
+ * not disagree with what it overrides. */
++ (instancetype)alloc
 {
-	(void)zone;
 	return [self null];
 }
 
@@ -63,9 +62,8 @@ static NSNull *fn_shared_null = nil;
 	return @"<null>";
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;
 }
 

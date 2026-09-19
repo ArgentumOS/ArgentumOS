@@ -330,9 +330,8 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return out;
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	/* COCOA'S RULE FOR AN IMMUTABLE BOX: a copy is itself. The bytes cannot be reached from outside,
 	 * so a second box would protect nothing. */
 	return self;

@@ -33,12 +33,13 @@ extern id object_dispose(id obj);
 
 + (id)alloc
 {
-	/* THE DOCUMENTED RELATIONSHIP, and the one Cocoa's own singleton pattern depends on: +alloc
-	 * invokes +allocWithZone: with a NULL zone. It used to be the other way round here — +alloc was
-	 * the primitive and +allocWithZone: forwarded to it — which made an override of +allocWithZone:
-	 * (the door the singleton examples tell you to override) INERT rather than wrong. Measured:
-	 * [[NSNull alloc] init] answered an object that was not +null. */
-	return [self allocWithZone:NULL];
+	/* THE PRIMITIVE, AND THE SINGLETON DOOR (2026-09-18). Cocoa makes +allocWithZone: the override
+	 * point and +alloc its caller; +allocWithZone: takes an `NSZone` and zones are 32-bit API this
+	 * system has none of, so THE DOOR MOVED TO +alloc — override THIS to answer a shared instance.
+	 * Measured both ways, which is why the direction matters: when +alloc merely called an override
+	 * that no longer exists, a singleton answered a freshly allocated object instead of itself
+	 * ([[NSNull alloc] init] was not +null). */
+	return class_createInstance(self, 0);
 }
 
 + (id)new
@@ -191,8 +192,14 @@ extern id object_dispose(id obj);
 
 
 /*
- * THE COPYING FAMILY (the public-API audit, A). -copy and -mutableCopy delegate
- * to the ZONE methods, and the zone methods' default here is a LOUD failure.
+ * THE COPYING FAMILY (the public-API audit, A) — AND THE OVERRIDE POINT MOVED
+ * HERE (2026-09-18). `-copy` and `-mutableCopy` used to delegate to the ZONE
+ * methods, in Cocoa's shape. Those took an `NSZone`, and zones are 32-bit API
+ * that this 64-bit system has none of, so the zone-taking methods are gone:
+ * **the ENTRY POINT is now the OVERRIDE POINT** — a class that can be copied
+ * implements `-copy` (and `-mutableCopy`), and the default here is a LOUD
+ * failure. The cost is a deliberate deviation from Cocoa's NSCopying, recorded
+ * in docs/design/foundation-plan.md.
  *
  * The loudness is the fix, not the boilerplate: before this existed, sending
  * -copy to a class that did not implement it was answered NIL by the runtime's
@@ -203,24 +210,12 @@ extern id object_dispose(id obj);
  */
 - (id)copy
 {
-	return [self copyWithZone:NULL];
-}
-
-- (id)mutableCopy
-{
-	return [self mutableCopyWithZone:NULL];
-}
-
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
 	[self doesNotRecognizeSelector:_cmd];
 	return nil;		/* unreachable: doesNotRecognizeSelector does not return */
 }
 
-- (id)mutableCopyWithZone:(NSZone *)zone
+- (id)mutableCopy
 {
-	(void)zone;
 	[self doesNotRecognizeSelector:_cmd];
 	return nil;
 }
@@ -350,10 +345,11 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
  * THE REST OF THE PUBLIC ROOT-CLASS API (the hard rule: a class passes only when
  * its public API is complete).
  *
- *   -zone / +allocWithZone:   NO ZONES: one allocator, so the argument is
- *                             accepted, ignored and documented. -zone answers
- *                             NULL rather than a fake zone, so nothing can be
- *                             handed to an allocator that does not exist.
+ *   -zone                     NO ZONES, AND NO ZONE API: it answers NULL rather
+ *                             than a fake zone, so nothing can be handed to an
+ *                             allocator that does not exist. Everything that
+ *                             TOOK an `NSZone` is removed (2026-09-18) — zones
+ *                             are 32-bit API and this system is 64-bit only.
  *   -isProxy                  the root class is not a proxy.
  *   -debugDescription         the same text as -description.
  *   -methodForSelector:       the runtime's own answer.
@@ -382,14 +378,6 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
 + (BOOL)instancesRespondToSelector:(SEL)aSelector
 {
 	return class_respondsToSelector(self, aSelector);
-}
-
-+ (id)allocWithZone:(nullable NSZone *)zone
-{
-	(void)zone;
-	/* THE PRIMITIVE, which is where the one allocator lives. A subclass may override THIS to
-	 * answer a shared instance, and +alloc above will reach it. */
-	return class_createInstance(self, 0);
 }
 
 - (BOOL)isProxy

@@ -704,7 +704,7 @@ int main(void)
 			"getIndexes:", "getIndexes:range:",
 			"indexPathByAddingIndex:", "indexPathByRemovingLastIndex",
 			"compare:", "isEqual:", "hash", "description",
-			"copy", "copyWithZone:", NULL
+			"copy", NULL
 		};
 		static const char *excluded[] = {
 			"indexPathForRow:inSection:", "indexPathForItem:inSection:",

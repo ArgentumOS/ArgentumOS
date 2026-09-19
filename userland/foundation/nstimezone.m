@@ -335,9 +335,8 @@ static NSInteger fn_tz_offset(NSString *name, double secondsSince1970, BOOL *isD
 }
 
 /* Immutable: the name or the offset is set once. */
-- (id)copyWithZone:(NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;
 }
 

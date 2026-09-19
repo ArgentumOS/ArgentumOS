@@ -724,11 +724,10 @@ static NSDate *fn_cal_date(UCalendar *calendar, UErrorCode *status)
 }
 
 /* Mutable (its time zone and week rules), so a copy is a real one. */
-- (id)copyWithZone:(NSZone *)zone
+- (id)copy
 {
 	NSCalendar *copy;
 
-	(void)zone;
 	copy = [[NSCalendar alloc] initWithCalendarIdentifier:_identifier];
 	[copy setTimeZone:_timeZone];
 	[copy setFirstWeekday:_firstWeekday];

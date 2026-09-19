@@ -289,12 +289,6 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 	return self;		/* immutable */
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
 - (id)mutableCopy
 {
 	NSMutableIndexSet *copy = [[NSMutableIndexSet alloc] init];
@@ -304,12 +298,6 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 		fn_append(copy, _ranges[i * 2], _ranges[i * 2 + 1]);
 	}
 	return copy;
-}
-
-- (id)mutableCopyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return [self mutableCopy];
 }
 
 @end

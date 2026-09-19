@@ -39,20 +39,22 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /*
- * The copying protocols, in COCOA'S SHAPE (the public-API audit, item B4): the
- * zone method is the protocol's member, and `-copy` / `-mutableCopy` are
- * declared on NSObject below, because every object can be *sent* them. The zone
- * argument is accepted, ignored and documented — there is one allocator here,
- * so `NSZone` is an incomplete type that nothing ever dereferences — and the pointer is
- * NULLABLE, exactly as Cocoa declares it: `-copy` passes NULL and means it. (Before the
- * 2026-09-18 sweep this said nonnull, which made every `-copyWithZone:NULL` in the library a
- * warning against its own header.) */
+ * The copying protocols — AND THIS IS A DELIBERATE DEVIATION FROM COCOA
+ * (2026-09-18). Cocoa's members are `-copyWithZone:` / `-mutableCopyWithZone:`,
+ * whose argument is an `NSZone`; Apple states on the `NSZone` page that "Zones
+ * are ignored on iOS and 64-bit runtime in macOS. You should not use zones in
+ * current development", and this system is 64-bit only, so every method that
+ * TAKES an NSZone has been REMOVED — the protocols' members are `-copy` and
+ * `-mutableCopy`, and the override point is the entry point. The consequence,
+ * stated where the change is: a Cocoa class that implements `-copyWithZone:`
+ * will not conform to these protocols, and `[obj copyWithZone:nil]` will not
+ * compile. docs/design/foundation-plan.md carries the decision and its cost. */
 @protocol NSCopying
-- (id)copyWithZone:(nullable NSZone *)zone;
+- (id)copy;
 @end
 
 @protocol NSMutableCopying
-- (id)mutableCopyWithZone:(nullable NSZone *)zone;
+- (id)mutableCopy;
 @end
 
 /*
@@ -121,23 +123,20 @@ __attribute__((objc_root_class))
 
 /*
  * THE COPYING FAMILY, declared here because every object can be sent it (Cocoa
- * declares them on NSObject too). `-copy` and `-mutableCopy` delegate to the
- * zone methods, and the zone methods' DEFAULT IS A LOUD FAILURE — which is the
- * whole point of the audit's fix A: before this existed, sending `-copy` to a
- * class that did not implement it did not raise, it returned NIL (the runtime's
- * forwarding path), so a dictionary handed an NSNumber key filed a phantom entry
- * under a nil key and the value became unreachable — silently, with a count that
- * said otherwise.
+ * declares them on NSObject too) — and THE ENTRY POINT IS THE OVERRIDE POINT
+ * (2026-09-18): a class that can be copied implements `-copy` (and
+ * `-mutableCopy`), and the default on NSObject is A LOUD FAILURE. In Cocoa the
+ * default lives on `-copyWithZone:` instead and `-copy` merely calls it; that
+ * method took an `NSZone` and is removed with the rest of the zone API.
+ *
+ * The loudness is the whole point of the audit's fix A: before it existed,
+ * sending `-copy` to a class that did not implement it did not raise, it
+ * returned NIL (the runtime's forwarding path), so a dictionary handed an
+ * NSNumber key filed a phantom entry under a nil key and the value became
+ * unreachable — silently, with a count that said otherwise.
  */
-- (id)copy;			/* [self copyWithZone:NULL] */
-- (id)mutableCopy;		/* [self mutableCopyWithZone:NULL] */
-/* BOTH ZONES ARE NULLABLE, and these two lines matter more than they look: NSObject's OWN
- * interface re-declares what NSCopying already declares, so a nonnull here SHADOWS the
- * protocol and turns every `[self copyWithZone:NULL]` in the implementation into a warning
- * against its own class. The 2026-09-18 sweep found that pair, and the same misplaced
- * specifier in six other headers. */
-- (id)copyWithZone:(nullable NSZone *)zone;	/* default: doesNotRecognizeSelector: */
-- (id)mutableCopyWithZone:(nullable NSZone *)zone;
+- (id)copy;		/* default: doesNotRecognizeSelector: */
+- (id)mutableCopy;	/* default: doesNotRecognizeSelector: */
 - (void)doesNotRecognizeSelector:(SEL)aSelector;
 
 /* Messaging, which is how Cocoa code calls a selector it only knows by name. */
@@ -159,11 +158,15 @@ __attribute__((objc_root_class))
 + (BOOL)instancesRespondToSelector:(SEL)aSelector;
 + (void)load;			/* the runtime calls these; declared so overrides match */
 + (void)initialize;
-+ (id)allocWithZone:(nullable NSZone *)zone;	/* NO ZONES: the argument is ignored, and NULL is the
-						 * norm — so the parameter is NULLABLE, as in Cocoa */
+/* NO +allocWithZone: (2026-09-18): it takes an `NSZone`, and every zone-taking
+ * method is removed. THE SINGLETON DOOR IS +alloc — override THAT to answer a
+ * shared instance (see nsobject.m for the measurement that makes the direction
+ * matter). */
 
 - (BOOL)isProxy;
-- (nullable NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it */
+- (nullable NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it. THIS IS THE
+					 * ONLY REASON `NSZone` IS STILL DECLARED: it is a RETURN
+					 * here, never an argument. */
 - (NSString *)debugDescription;
 
 /*

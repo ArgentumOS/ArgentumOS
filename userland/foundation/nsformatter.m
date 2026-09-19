@@ -55,9 +55,8 @@
 	return NO;
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	/* The base has no state, so it is its own copy. A subclass with settings overrides this —
 	 * NSDateFormatter does, because a formatter is MUTABLE and a shared copy would be a trap. */
 	return self;

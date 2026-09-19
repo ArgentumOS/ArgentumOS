@@ -491,9 +491,8 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 	return [NSString stringWithFormat:@"<%@: %@>", [self class], _absoluteString];
 }
 
-- (id)copyWithZone:(NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;
 }
 

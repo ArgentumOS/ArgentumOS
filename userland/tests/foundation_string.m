@@ -714,7 +714,7 @@ int main(void)
 		};
 		static const char *instanceSelectors[] = {
 			"initWithLocaleIdentifier:", "localeIdentifier", "objectForKey:",
-			"isEqual:", "hash", "description", "copy", "copyWithZone:", NULL
+			"isEqual:", "hash", "description", "copy", NULL
 		};
 		static const char *excluded[] = {
 			/* Needs the locale's name tables. */

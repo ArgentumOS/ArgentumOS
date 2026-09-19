@@ -63,8 +63,8 @@ NS_ASSUME_NONNULL_BEGIN
 /* Immutable, so copying returns self. */
 - (id)copy;
 - (id)mutableCopy;
-- (id)copyWithZone:(nullable NSZone *)zone;
-- (id)mutableCopyWithZone:(nullable NSZone *)zone;
+- (id)copy;
+- (id)mutableCopy;
 
 NS_ASSUME_NONNULL_END
 

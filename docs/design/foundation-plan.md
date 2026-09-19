@@ -3533,11 +3533,26 @@ slice should be picked from.
    deprecated API, Swift-only API, and now 32-bit-only API — and each trade is written down here rather
    than discovered by the next reader.
 
-   **THE TREE SIDE IS NOT DONE, AND IT IS THE NEXT LANDING, NOT A LEDGER EDIT:** 8 header
-   declarations, 29 implementations, the probes' copying checks, and `-copy`'s
-   `[self copyWithZone:NULL]` body in `NSObject` — which is the one that cannot simply be deleted,
-   because it is what makes `-copy` work at all. Until it lands, `make foundation-sweep --strict`
-   reports `typealias NSZone [struck: 32-bit-only]` and is RIGHT to.
+   **AND THE TREE SIDE IS DONE (2026-09-18), for the scope the user set — "any method with an
+   argument which takes an NSZone":**
+
+   | Removed (argument is an `NSZone`) | Disposition |
+   |---|---|
+   | `-copyWithZone:` / `-mutableCopyWithZone:` | **removed**. 20 of the 29 implementations were pure FORWARDERS to `-copy`/`-mutableCopy` (or duplicates of an identical existing `-copy`) and were DELETED; 26 were real bodies and were RENAMED to `-copy`/`-mutableCopy`, dropping `(void)zone;`. Measured: no `@implementation` ends with two methods of one selector, and the two files that had several classes in them (`nsset.m`, `nsorderedset.m`, `nsregularexpression.m`, `nsurlcomponents.m`) were checked class by class. |
+   | `+allocWithZone:` | **removed**, and this one MOVED A SEMANTIC**: `+alloc` was its caller and is now the primitive, so **the singleton door is `+alloc`** — a subclass overrides THAT. `NSNull`'s override moved with it. The direction matters and was measured before (the same code once made `[[NSNull alloc] init]` answer a fresh object instead of `+null`). |
+   | `NSZone` (the type) | **kept**, and this is the one thing the scope leaves: `-zone` RETURNS it and takes no argument, so the type is still declared (incomplete) for that return alone. It stays struck in the ledger, and the difference between "declared" and "shipped" is exactly why `--strict` still reports it. |
+   | the probes | the removed selectors were in three probes' REQUIRED inventories (`foundation_core`, `foundation_string`, `foundation_collection`) and were taken out — the inventory rule, which demands what ships and forbids what does not, is what made them visible. |
+
+   **THE COPYING MODEL IS NOW A STATED DEVIATION, NOT AN ACCIDENT:** our `NSCopying`/`NSMutableCopying`
+   declare `-copy`/`-mutableCopy`, the ENTRY POINT is the OVERRIDE POINT, and a Cocoa class that
+   implements `-copyWithZone:` will not conform (nor will `[obj copyWithZone:nil]` compile). That is
+   what the amendment buys, and the headers say so where a reader meets it.
+
+   **WHAT IS STILL OPEN, AND IT IS A GATE RATHER THAN A DOUBT:** `make .build/fnxlib/libfoundation.so.1
+   ` compiles the whole library clean, but the three copying probes have NOT been run on the guest
+   since the model changed — that is the next verification, and it is the one that would catch a
+   forgotten override point (a class whose `-copy` was deleted as a "forwarder" while nothing else
+   implemented it).
 2. **`NSAutoreleasePool` IS NOT ABSENT THE WAY THE OTHER ROWS ARE.** The runtime registers a class of
    that name (§6), which is why this library ships no pool class; the work is making the name answer to
    `+addObject:`, `-drain` and `+showPools`. A mechanical diff cannot tell those two apart.

@@ -307,10 +307,4 @@ static NSString *fn_region(NSArray *parts)
 	return self;		/* immutable */
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
-	(void)zone;
-	return self;
-}
-
 @end

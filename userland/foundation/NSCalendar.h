@@ -184,7 +184,7 @@ typedef enum {
 
 /* A calendar is MUTABLE (its time zone and week rules), so a copy is a real one
  * rather than `self`. */
-- (id)copyWithZone:(nullable NSZone *)zone;
+- (id)copy;
 
 @end
 

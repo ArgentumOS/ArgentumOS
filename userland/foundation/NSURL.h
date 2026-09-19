@@ -107,7 +107,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)description;
 
 /* Immutable, so copying returns self. */
-- (id)copyWithZone:(nullable NSZone *)zone;
+- (id)copy;
 
 @end
 

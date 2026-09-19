@@ -341,15 +341,13 @@
 	return out;
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;
 }
 
-- (id)mutableCopyWithZone:(nullable NSZone *)zone
+- (id)mutableCopy
 {
-	(void)zone;
 	return [[NSMutableOrderedSet alloc] initWithOrderedSet:self];
 }
 
@@ -626,15 +624,13 @@
 
 /* A MUTABLE ORDERED SET COPIES BY VALUE, and a copy of one is the immutable snapshot the house's
  * rule asks for. */
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return [[NSOrderedSet alloc] initWithArray:_members];
 }
 
-- (id)mutableCopyWithZone:(nullable NSZone *)zone
+- (id)mutableCopy
 {
-	(void)zone;
 	return [[NSMutableOrderedSet alloc] initWithArray:_members];
 }
 

@@ -278,9 +278,8 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 	return [NSString stringWithFormat:@"%@=%@", _name, _value];
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
-	(void)zone;
 	return self;
 }
 
@@ -633,11 +632,10 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 	return [self string];
 }
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
 	NSURLComponents *copy;
 
-	(void)zone;
 	copy = [[NSURLComponents alloc] init];
 	copy->_scheme = _scheme;
 	copy->_user = _user;

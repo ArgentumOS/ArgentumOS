@@ -754,7 +754,7 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 
 /* --- identity ------------------------------------------------------------- */
 
-- (id)copyWithZone:(nullable NSZone *)zone
+- (id)copy
 {
 	/* `alloc` rather than `allocWithZone:`: this library has ONE allocator, and the zone-taking
 	 * door is the stub NSObject documents ("a zone is accepted, ignored and documented"). Measured
