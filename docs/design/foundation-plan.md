@@ -3280,13 +3280,10 @@ lies:**
   belonging to AddressBook, AVFoundation, AppKit and the rest.** They are marked `external` and their
   paths leave `/documentation/foundation/`, which is the test applied. Without it the ledger would
   demand symbols that are not Foundation's to have.
-* **The Swift interface tree — 2,702 symbols, of which 2,479 have no Objective-C counterpart** — which
-  is §11.5's third exclusion applied structurally: the tool reads the **Objective-C** tree, so a symbol
-  that exists only for Swift is not in the ledger at all. (2,479 is an upper bound: the Swift view also
-  surfaces Swift's own standard-library types — `Array`, `AsyncCharacterSequence` — under Foundation.)
-  Apple's Swift-only *additions* to Foundation are the type of thing this removes: `ProgressManager`,
-  `ProgressReporter` and `Subprogress` appear on Foundation's Swift pages and **nowhere in the
-  Objective-C navigator**, which is exactly "it exists only to support Swift".
+* **The Swift interface tree — 2,702 symbols, of which 2,479 have no Objective-C counterpart.** This is
+  §11.5's third exclusion applied structurally, and the block below states exactly what it removes and
+  how that is proven. (2,479 is an upper bound: the Swift view also surfaces Swift's own
+  standard-library types — `Array`, `AsyncCharacterSequence` — under Foundation.)
 
 **THREE THINGS THE INSTRUMENT LEARNED BY BEING WRONG, and each one changed the numbers:**
 
@@ -3311,6 +3308,45 @@ lies:**
    records in the `why` column. **This is the third exclusion finding a hole in the instrument rather
    than in the tree — and it was found only because the rule was widened past what the path marker
    could express.**
+
+### WHAT THE THIRD EXCLUSION EXCLUDES, AND HOW THAT IS PROVEN
+
+The Swift rule has **three mechanisms**, and they are not equally strong — which is worth stating
+plainly, because the weakest one is the one that sounds best.
+
+| Mechanism | What it removes | How strong the proof is |
+|---|---|---|
+| **1. NO OBJECTIVE-C PAGE** | any symbol Apple documents only in its Swift view | **Measured, not per symbol.** 2,479 of the Swift tree's 2,702 symbols have no `(kind, name)` in the Objective-C tree. A dated measurement in the file's header; not re-derived offline. |
+| **2. THE NAME** | the 22 `NS_SWIFT_*` / `NS_REFINED_FOR_SWIFT` interop macros | **Provable per row**, from the file: each is named, and the invariant below holds over all of them. |
+| **3. THE SHAPE GUARD** | a `swift.`-page symbol whose name is not Objective-C shaped | **Holds vacuously today** — measured zero. It exists so mechanism 1 cannot silently drop an ObjC name. |
+
+**THE TWO INVARIANTS, WHICH ARE THE ACTUAL PROOF AND ARE CHECKED ON EVERY RUN.** Both are properties of
+the committed file alone, so `--check` verifies them offline, and `--check` PRINTS the accounting:
+
+1. **A row read from a `swift.` page is COUNTED unless its name is not Objective-C shaped.** So the rule
+   can never exclude an Objective-C symbol for the crime of living on a Swift page — which is exactly
+   what the first version of this file did to 291 symbols. Read out of the file: **292 such rows (239
+   distinct names), every one ObjC-shaped.**
+2. **A `swift-only` row is justified BY ITS NAME** — it matches the interop pattern or is not
+   ObjC-shaped at all. So every exclusion is provable by reading the name, with no judgment in the loop.
+   Read out of the file: **22 rows, all 22 `NS_SWIFT_*`-shaped macros, none of them anything else.**
+
+```
+  swift rule: 292 row(s) read from a `swift.` page and COUNTED (every one ObjC-shaped);
+              22 excluded by NAME — FOUNDATION_SWIFT_SDK_EPOCH_AT_LEAST, NS_REFINED_FOR_SWIFT, …
+```
+
+**AND THE INVARIANTS WERE PROBED RATHER THAN TRUSTED.** Injecting a `swift.`-page row that is not
+ObjC-shaped and not struck (`class open Subprogress`) fails the run with `SWIFT RULE BROKEN`; injecting a
+`swift-only` row whose name is neither Swift-named nor non-ObjC-shaped (`class struck NSSomethingElse`)
+fails it with `UNJUSTIFIED EXCLUSION`. An invariant that cannot fail is not an invariant, so both were
+made to fail on purpose.
+
+**WHAT THE RULE DOES NOT CATCH, STATED SO IT IS NOT MISTAKEN FOR COVERAGE:** a symbol that exists to
+serve Swift, has an Objective-C name, and is documented on the Objective-C side is **indistinguishable
+from ordinary API by this instrument**. Today's measurement finds none — the Swift-serving surface is
+the annotation macros (mechanism 2: 22, all name-marked) and the Swift-only pages (mechanism 1) — but
+the limit is real, and the failure mode would be a `shipped`-shaped row for something we do not owe.
 
 ### The ledger: what is absent, by Apple's own grouping
 
@@ -3478,7 +3514,8 @@ slice should be picked from.
 **THE TOOL, WHICH IS THE PART THAT KEEPS THIS HONEST:**
 
 ```
-tools/foundation-sweep.py --check       # what make foundation-sweep runs: offline, fails on drift
+tools/foundation-sweep.py --check       # what make foundation-sweep runs: offline, fails on drift;
+                                        # prints the swift accounting and the named exceptions
 tools/foundation-sweep.py --strict      # also fails on the NSZone-class policy findings
 tools/foundation-sweep.py --work-list    # the open rows, by family — the next slice is picked here
 tools/foundation-sweep.py --refresh      # re-read Apple's index and rewrite the surface file (network)

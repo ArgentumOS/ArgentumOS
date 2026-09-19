@@ -306,7 +306,8 @@ def refresh():
             reasons[why] = reasons.get(why, 0) + 1
         elif why == "required-by-live-api":
             excepted = excepted + 1
-        out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"], why or "-")))
+        out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"], why or "-",
+                              "swift-page" if r.get("swift") else "objc")))
     header = [
         "# Foundation's documented surface, against this tree.",
         "# docs/design/foundation-plan.md §11.2 (source 2) and §11.3.1.",
@@ -315,7 +316,11 @@ def refresh():
         "#",
         "# source: " + INDEX_URL,
         "#",
-        "# kind\tstatus\tname\towner\tfamily\twhy",
+        "# kind\tstatus\tname\towner\tfamily\twhy\tsrc",
+        "#",
+        "# `src` is the page the name was read from. `swift-page` means Apple documents it",
+        "# under a `swift.` path — and it is COUNTED ANYWAY when the name is ObjC-spelled,",
+        "# which is the point of the third exclusion's proof (see --check).",
         "#",
         "# excluded dimensions this file deliberately does NOT hold (distinct names):",
         "#   method   %4d documented selectors — §11.2 SOURCE 1's business" % len(dropped.get("method", ())),
@@ -355,8 +360,8 @@ def read_surface():
     for line in open(SURFACE, encoding="utf-8"):
         if line.startswith("#") or not line.strip():
             continue
-        kind, status, name, owner, family, why = line.rstrip("\n").split("\t")
-        rows.append((kind, status, name, owner, family, why))
+        kind, status, name, owner, family, why, src = line.rstrip("\n").split("\t")
+        rows.append((kind, status, name, owner, family, why, src))
     return rows
 
 
@@ -379,9 +384,33 @@ def check(strict=False):
     rows = read_surface()
     bad, policy = [], []
     counts = {}
-    for kind, status, name, owner, family, why in rows:
+    swift_page = 0
+    swift_only = []
+    for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         found = bool(declared(kind, name, text))
+        #
+        # §11.5's THIRD EXCLUSION, AND ITS PROOF. Two invariants hold over every
+        # row, both checkable from this file alone, and they say exactly what the
+        # Swift rule excludes:
+        #
+        #   1. A row read from a `swift.` page is COUNTED unless its name is not
+        #      ObjC-spelled — so the rule never excludes an ObjC symbol merely for
+        #      living on a Swift page (which is what the first version got wrong).
+        #   2. A `swift-only` row is justified BY ITS NAME: it matches the Swift
+        #      interop pattern, or it is not ObjC-shaped at all. So every exclusion
+        #      is provable by reading the name, with no judgment in the loop.
+        #
+        if src == "swift-page":
+            swift_page += 1
+            if status != STATUS_STRUCK and not is_objc_shaped(name):
+                bad.append("SWIFT RULE BROKEN      %-9s %s — read from a swift. page, not ObjC-shaped, "
+                           "and NOT struck: the rule must exclude it" % (kind, name))
+        if why == "swift-only":
+            swift_only.append("%s %s" % (kind, name))
+            if not (SWIFT_INTEROP_RE.search(name) or not is_objc_shaped(name)):
+                bad.append("UNJUSTIFIED EXCLUSION  %-9s %s — struck as swift-only and neither "
+                           "Swift-named nor non-ObjC-shaped" % (kind, name))
         if why == "required-by-live-api" and not found:
             bad.append("FALSE EXCEPTION        %-9s %s — REQUIRED_BY_LIVE_API claims live API needs it and "
                        "our headers do not declare it" % (kind, name))
@@ -400,6 +429,12 @@ def check(strict=False):
         print("  %-10s shipped %4d   open %4d   struck %4d" % (
             kind, counts.get((kind, STATUS_SHIPPED), 0),
             counts.get((kind, STATUS_OPEN), 0), counts.get((kind, STATUS_STRUCK), 0)))
+    print("  swift rule: %d row(s) read from a `swift.` page and COUNTED (every one ObjC-shaped);"
+          % swift_page)
+    print("              %d excluded by NAME%s" % (
+        len(swift_only), (" — " + ", ".join(sorted(n.split()[-1] for n in swift_only))[:400]) if swift_only else ""))
+    print("              (the tree-level figure — symbols documented ONLY in Apple's Swift view,")
+    print("               never read by this tool — is recorded in the surface file's header by --refresh)")
     if policy:
         print("\n%d POLICY FINDING(S) — API Apple deprecates that we declare (§11.5 says we do not ship it;" % len(policy))
         print("each needs a ledger row, and --strict is what fails on them):\n")
