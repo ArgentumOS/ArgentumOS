@@ -20,6 +20,7 @@
 #include <string.h>
 #import <objc/runtime.h>
 #include <string.h>
+#include <stdlib.h>		/* malloc, for the ...Characters: ownership check below */
 
 static int okc, failc;
 
@@ -143,7 +144,7 @@ int main(void)
 		static const char *classSelectors[] = {
 			"string",
 			"stringWithString:",
-			"stringWithUTF8String:",
+			"stringWithCharacters:length:", "stringWithUTF8String:",
 			"stringWithFormat:",
 			"stringWithFormat:arguments:",
 			"stringWithContentsOfFile:encoding:error:",
@@ -153,7 +154,8 @@ int main(void)
 		static const char *instanceSelectors[] = {
 			"init",
 			"initWithString:",
-			"initWithUTF8String:",
+			"initWithCharacters:length:", "initWithCharactersNoCopy:length:freeWhenDone:",
+			"getCharacters:range:", "initWithUTF8String:",
 			"initWithFormat:",
 			"initWithFormat:arguments:",
 			"initWithData:encoding:",
@@ -239,13 +241,11 @@ int main(void)
 		 * fails the check, so the inventory cannot drift away from the code.
 		 */
 		static const char *excluded[] = {
-			/* THE UTF-16 BOUNDARY: a DELIBERATE deviation rather than debt.
-			 * -length counts bytes and character access is by character, so these
-			 * forms have no honest UTF-8 implementation here. */
-			"stringWithCharacters:length:",
-			"initWithCharacters:length:",
-			"initWithCharactersNoCopy:length:freeWhenDone:",
-			"getCharacters:range:",
+			/* EMPTY, and that is the point: THE FOUR ...Characters: FORMS WERE THE
+			 * LAST THING THIS CLASS WAS MISSING. The unit shipped them (W1 slice 4),
+			 * so they moved UP into the required lists above — which is the inventory
+			 * rule working in the direction it was written for: what ships must be
+			 * DEMANDED, and what does not must be ABSENT. */
 			NULL
 		};
 		NSString *probe = @"x";
@@ -442,6 +442,45 @@ int main(void)
 		      [@"abc" lengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 3 &&
 		      [@"x" dataUsingEncoding:NSUnicodeStringEncoding] == nil,
 		      "the UTF-8 round trip, and honest answers for the encodings we do not store");
+	}
+
+	{
+		/* THE UNIT'S OWN FAMILY (W1 slice 4), and it carries the sharpest case in the
+		 * whole class: a SURROGATE PAIR — one character, two units, four bytes. */
+		static const unichar units[] = { 'h', 0xD83D, 0xDE00, 'i' };
+		NSString *s = [NSString stringWithCharacters:units length:4];
+		unichar readBack[4];
+		NSMutableString *borrowed;
+		static unichar pool[2] = { 'O', 'K' };
+
+		[s getCharacters:readBack range:NSMakeRange(0, 4)];
+		/* A BORROWED BUFFER: freeWhenDone:NO means the receiver never frees it and
+		 * never writes it — and a MUTATION still must not write it. */
+		borrowed = [[NSMutableString alloc] initWithCharactersNoCopy:pool length:2
+							     freeWhenDone:NO];
+		[borrowed appendString:@"!"];
+		check("characters-family",
+		      s != nil && [s length] == 4 && [s characterCount] == 3 &&
+		      [s characterAtIndex:1] == 0xD83D && [s characterAtIndex:2] == 0xDE00 &&
+		      [s lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
+		      strcmp([s UTF8String], "h\xF0\x9F\x98\x80i") == 0 &&
+		      readBack[0] == 'h' && readBack[1] == 0xD83D &&
+		      readBack[2] == 0xDE00 && readBack[3] == 'i' &&
+		      [[[NSString alloc] initWithCharactersNoCopy:(unichar *)pool length:2
+						     freeWhenDone:NO] isEqualToString:@"OK"] &&
+		      [borrowed isEqualToString:@"OK!"] && pool[0] == 'O' && pool[1] == 'K',
+		      "a surrogate pair is 1 character / 2 units / 4 bytes; -getCharacters:range: reads units back; and a borrowed buffer is never written");
+		{
+			/* freeWhenDone:YES hands ownership over, so this one is freed by the string. */
+			unichar *owned = (unichar *)malloc(2 * sizeof(unichar));
+
+			owned[0] = 'y';
+			owned[1] = 'y';
+			check("characters-family-ownership",
+			      [[[NSString alloc] initWithCharactersNoCopy:owned length:2
+							     freeWhenDone:YES] isEqualToString:@"yy"],
+			      "freeWhenDone:YES transfers the buffer to the receiver");
+		}
 	}
 
 	{

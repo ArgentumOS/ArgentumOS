@@ -3213,7 +3213,7 @@ whole ledger; it is what §5 and §10 already admitted.
 
 | Item | Evidence | Dependency | Status |
 |---|---|---|---|
-| The `unichar` boundary: `-length` in bytes, no `…Characters:` family | this document, line 1109's predecessor | none | **open** — the largest; touches every string call site |
+| The `unichar` boundary: `-length` in bytes, no `…Characters:` family | this document, line 1109's predecessor | none | **SHIPPED (W1, 2026-09-18): `-length` is UTF-16 code units, the ranges index units, and the four `…Characters:` forms are DEMANDED by `foundation_string` — §13 is the design, §13.6 the slices** |
 | `NSTimeZone` names/abbreviations/`+knownTimeZoneNames`, DST transitions, the IANA database | §5 F7 | ICU 76.1 (bound, ships in the image) | **open** |
 | Non-Gregorian calendars (Buddhist/Japanese/Hebrew/Islamic/ISO8601) | §5 F7 | ICU | **open** |
 | `-components:fromDate:toDate:options:`; week-based input to `-dateFromComponents:` | §5 F7 | none | **open** |

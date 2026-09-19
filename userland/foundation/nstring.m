@@ -667,6 +667,39 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	return [self initWithUTF8String:[other UTF8String]];
 }
 
+/* THE FOUR ...Characters: FORMS, declared and delegated the way the UTF-8 ones are:
+ * the abstract class has no storage, a concrete subclass overrides them, and
+ * -getCharacters:range: is written once here on -characterAtIndex: so EVERY concrete
+ * class answers it correctly (NSOwnedString overrides it with a memcpy). */
++ (id)stringWithCharacters:(const unichar *)characters length:(NSUInteger)length
+{
+	return [[NSOwnedString alloc] initWithCharacters:characters length:length];
+}
+
+- (id)initWithCharacters:(const unichar *)characters length:(NSUInteger)length
+{
+	return [[NSOwnedString alloc] initWithCharacters:characters length:length];
+}
+
+- (id)initWithCharactersNoCopy:(unichar *)characters length:(NSUInteger)length
+	  freeWhenDone:(BOOL)freeBuffer
+{
+	return [[NSOwnedString alloc] initWithCharactersNoCopy:characters length:length
+					 freeWhenDone:freeBuffer];
+}
+
+- (void)getCharacters:(unichar *)buffer range:(NSRange)range
+{
+	NSUInteger i;
+
+	if (buffer == NULL) {
+		return;
+	}
+	for (i = 0; i < range.length; i++) {
+		buffer[i] = [self characterAtIndex:range.location + i];
+	}
+}
+
 - (id)initWithFormat:(NSString *)format, ...
 {
 	va_list args;
@@ -1642,6 +1675,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	}
 	_length = fn_utf8_to_utf16(utf8 != NULL ? utf8 : "", n, _units);
 	_units[_length] = 0;		/* for a debugger's benefit, not a contract */
+	_ownsUnits = 1;
 	return self;
 }
 
@@ -1676,6 +1710,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	}
 	_length = fn_utf8_to_utf16(bytes != NULL ? bytes : "", length, _units);
 	_units[_length] = 0;
+	_ownsUnits = 1;
 	return self;
 }
 
@@ -1708,6 +1743,62 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 /* Scalars, counted from the UNITS — a surrogate pair is one character, which is
  * what this method has always meant. */
+/* A COPY IN, and `_ownsUnits` is set because this class allocated the buffer. */
+- (id)initWithCharacters:(const unichar *)characters length:(NSUInteger)length
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_units = (unsigned short *)malloc((length + 1) * sizeof(unsigned short));
+	if (_units == NULL) {
+		return nil;
+	}
+	if (length > 0 && characters != NULL) {
+		memcpy(_units, characters, length * sizeof(unsigned short));
+	}
+	_length = length;
+	_units[_length] = 0;
+	_ownsUnits = 1;
+	return self;
+}
+
+/* APPLE'S OWNERSHIP CONTRACT, and the only place `_ownsUnits` is 0: with freeWhenDone
+ * the receiver frees the buffer in -dealloc; without it the receiver NEVER writes and
+ * NEVER frees it, and a later mutation takes a copy first (see -appendUTF8String:). */
+- (id)initWithCharactersNoCopy:(unichar *)characters length:(NSUInteger)length
+	  freeWhenDone:(BOOL)freeBuffer
+{
+	if (characters == NULL) {
+		return [self initWithCharacters:NULL length:0];
+	}
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_units = characters;
+	_length = length;
+	_ownsUnits = freeBuffer ? 1 : 0;
+	return self;
+}
+
+/* A memcpy, because the argument IS the storage's type — the whole point of the unit:
+ * no conversion appears in this method at all (W1 slice 4). */
+- (void)getCharacters:(unichar *)buffer range:(NSRange)range
+{
+	NSUInteger i;
+
+	if (buffer == NULL) {
+		return;
+	}
+	for (i = 0; i < range.length; i++) {
+		NSUInteger at = range.location + i;
+
+		buffer[i] = (at < _length) ? (unichar)_units[at] : (unichar)0;
+	}
+}
+
+
 - (size_t)characterCount
 {
 	size_t i = 0, n = 0;
@@ -1738,7 +1829,9 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (void)dealloc
 {
-	free(_units);
+	if (_ownsUnits) {
+		free(_units);
+	}
 	free(_utf8);
 }
 
@@ -1773,6 +1866,18 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	if (utf8 == NULL || *utf8 == '\0') {
 		return;
 	}
+	if (!_ownsUnits) {
+		/* A BORROWED BUFFER IS NEVER WRITTEN TO (the no-copy contract): take a copy
+		 * before anything can touch it. */
+		unsigned short *mine = (unsigned short *)malloc((_length + 1) * sizeof(unsigned short));
+
+		if (mine == NULL) {
+			return;
+		}
+		memcpy(mine, _units, _length * sizeof(unsigned short));
+		_units = mine;
+		_ownsUnits = 1;
+	}
 	n = strlen(utf8);
 	add = fn_utf8_to_utf16(utf8, n, NULL);
 	total = _length + add;
@@ -1784,6 +1889,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	_units = buf;
 	_length = total;
 	_units[_length] = 0;
+	_ownsUnits = 1;		/* realloc gave us the buffer, so we own it now */
 	free(_utf8);			/* the materialised form is stale now */
 	_utf8 = NULL;
 	_utf8size = 0;

@@ -114,10 +114,26 @@ typedef enum {
 
 /* The primitives every concrete subclass implements. */
 - (const char *)UTF8String;
-- (size_t)length;		/* BYTES, until slice 2 flips it to UTF-16 code units (§13) */
+- (size_t)length;		/* UTF-16 CODE UNITS — Apple's contract (W1 slice 3) */
 - (size_t)characterCount;	/* Unicode characters — an ADDITION: Cocoa has no such method */
-- (unsigned char)byteAtIndex:(size_t)index;
-- (unsigned short)characterAtIndex:(size_t)index;	/* by CHARACTER */
+- (unsigned char)byteAtIndex:(size_t)index;		/* a UTF-8 BYTE — the house door */
+- (unsigned short)characterAtIndex:(size_t)index;	/* the UNIT at a unit index */
+
+/*
+ * THE four `…Characters:` FORMS (W1 slice 4) — the rows the unit CLOSES. They take
+ * and give exactly the units the storage holds, so none of them converts anything:
+ * a copy in, a copy out, and (in the no-copy form) ownership handed over.
+ *
+ * `-initWithCharactersNoCopy:length:freeWhenDone:` is Apple's ownership contract:
+ * with YES the receiver owns the buffer and frees it; with NO it borrows it, never
+ * writes it, and never frees it — and a MUTATION on such a string takes a copy
+ * first, so a borrowed buffer is never written even through NSMutableString.
+ */
++ (id)stringWithCharacters:(const unichar * _Nullable)characters length:(NSUInteger)length;
+- (id)initWithCharacters:(const unichar * _Nullable)characters length:(NSUInteger)length;
+- (id)initWithCharactersNoCopy:(unichar * _Nullable)characters length:(NSUInteger)length
+		  freeWhenDone:(BOOL)freeBuffer;
+- (void)getCharacters:(unichar *)buffer range:(NSRange)range;
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
 - (nullable NSData *)dataUsingEncoding:(NSStringEncoding)encoding;
 - (nullable const char *)cStringUsingEncoding:(NSStringEncoding)encoding;
@@ -214,14 +230,18 @@ typedef enum {
 
 @interface NSOwnedString : NSString
 {
-	unsigned short *_units;	/* owned, NOT NUL-terminated: UTF-16 CODE UNITS */
+	unsigned short *_units;	/* NOT NUL-terminated: UTF-16 CODE UNITS */
 	size_t _length;		/* UNITS — the storage's own count */
 	char *_utf8;		/* LAZY: the materialised UTF-8 form, owned, NUL-terminated */
 	size_t _utf8size;	/* its byte count, excluding the terminating NUL */
+	unsigned char _ownsUnits;	/* 0 only for -initWithCharactersNoCopy:…:freeWhenDone:NO */
 }
 + (nullable id)stringWithUTF8String:(const char * _Nullable)utf8;
 - (nullable id)initWithUTF8String:(const char * _Nullable)utf8;
 - (nullable id)initWithBytes:(const char *)bytes length:(size_t)length;
+- (id)initWithCharacters:(const unichar * _Nullable)characters length:(NSUInteger)length;
+- (id)initWithCharactersNoCopy:(unichar * _Nullable)characters length:(NSUInteger)length
+		  freeWhenDone:(BOOL)freeBuffer;
 @end
 
 @interface NSMutableString : NSOwnedString <NSMutableCopying>
