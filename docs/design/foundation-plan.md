@@ -2930,3 +2930,56 @@ two changes:
 the kernel (F13.14's open item), which is the next slice.
 
 Next: the `rmdir(2)` kernel investigation.
+
+### F13.22 (2026-09-18): the `rmdir(2)` investigation, and the instrument that settled half of it
+
+**The symptom first, because a fix without it is a guess: `removeItemAtPath:` on a DIRECTORY answers NO
+with EPERM on this kernel, and a recursive remove therefore cannot finish (F13.14).**
+
+**WHAT WAS ELIMINATED, BY READING AND BY MEASUREMENT — three candidates, none of them left:**
+
+1. **"AGFS never implemented `rmdir`."** WRONG. `agfs_fsop` DOES register `agfs_rmdir`
+   (`fs/agfs/super.c:87`), and `fs/agfs/namei.c:425` implements it: it checks the directory is empty
+   (`-ENOTEMPTY`), deletes the btree entry, clears the name from the index, zeroes `i_nlink`, and
+   deliberately does NOT decrement the parent (`agfs_read_inode` reconstructs a directory's nlink as 2
+   regardless of its subdirectories — the comment records that decrementing used to free `/tmp`).
+2. **"The operation table's POSITIONAL initializer is misaligned, so `rmdir` is a NULL slot and
+   `sys_rmdir` falls into its `else errno = -EPERM`."** WRONG, and checked mechanically: the fields of
+   `struct fs_operations` (`include/fnx/fs.h:146`) and the table's own `/* … */` labels were extracted
+   and compared pairwise — **aligned**, `lookup, rmdir, link, unlink, symlink, mkdir` in order. (Worth
+   checking: a 40-entry positional initializer is exactly the shape that breaks silently.)
+3. **"AGFS's `rmdir` returns EPERM from somewhere inside."** WRONG: `grep -n EPERM fs/agfs/*.c` gives
+   `namei.c:170` (inside `agfs_mknod_impl`) and `namei.c:365` (inside `agfs_link`) and nothing else.
+
+**SO THE REFUSAL IS `sys_rmdir`'s OWN GUARD — `if(i == dir) return -EPERM;` — WITH `i` EQUAL TO THE
+PARENT. And that is now MEASURED rather than argued, by the discriminator this slice added:**
+
+```
+FOUNDATION-FILEMANAGER fs-rmdir-discriminator: EMPTY removed=0 'Operation not permitted' |
+NON-EMPTY removed=0 'Operation not permitted'
+```
+
+**THE INSTRUMENT IS THE POINT, AND IT IS TWO DIRECTORIES RATHER THAN ONE.** An EMPTY directory is
+refused with EPERM and a NON-EMPTY one ought to be refused with "not empty" — `agfs_rmdir` says
+`-ENOTEMPTY` before it does anything else. TWO EPERMS SEPARATE NOTHING; the PAIR separates "rmdir(2)'s
+guard fired" from "the file system answered". Both read EPERM, so **`agfs_rmdir` was never reached**,
+which is what pins the guard. It is printed UNCONDITIONALLY rather than as a check's detail, because
+this house only shows a detail when a check FAILS and this is a measurement, not a verdict — and it
+lives in `foundation_filemanager`'s existing `fs-cleanup` block, so the case's check count is unchanged.
+
+**WHERE THE SEARCH GOES NEXT, and it is narrowed to one function:** `namei`'s own semantics were read
+and look CORRECT — `do_namei` sets `*d_res = dir` (the directory that CONTAINED the name) and
+`*i_res = i` (the name's own inode, from `dir->fsop->lookup`). For `i == dir` to be true with those
+roles, the parent's inode struct must be being **freed and recycled underneath the caller**:
+`do_namei`'s handoff is literally `*d_res = dir; iput(dir);`, and if that `iput` drops the last
+reference, the next component's `lookup`/`iget` can hand back **the same `struct inode`**, making a
+child and its parent the same pointer. That is the hypothesis to test next, in `do_namei`'s
+continuation (`fs/namei.c`, the `dir = i` step and its exit paths) together with `iput`/`iget`
+recycling in the inode cache. **It is a hypothesis, not a finding, and this record says so.**
+
+**Also reverted in this slice:** a temporary `printk` in `sys_rmdir` was added to print the two inode
+numbers and then removed — IT WAS INVISIBLE, because the test harness keeps no kernel console. That is
+why the instrument above lives in the probe's own stdout instead: in this harness **the probe is the
+only channel a kernel fact has.**
+
+Next: `do_namei`'s continuation and the inode cache's recycling, to test the freed-parent hypothesis.

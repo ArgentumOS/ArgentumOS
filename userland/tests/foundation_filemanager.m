@@ -182,42 +182,67 @@ int main(void)
 		BOOL innerGone = [manager removeItemAtPath:fn_path(@"inner") error:&innerError];
 		BOOL rootGone = [manager removeItemAtPath:root error:&rootError];
 		/* THE FILES INSIDE THE TREE ARE GONE — the walk reached them and unlink(2) works — while
-		 * the DIRECTORIES themselves are refused by THIS KERNEL with EPERM. That is a finding
-		 * about the file system and not about this library: kernel/syscalls/rmdir.c refuses when
-		 * the target's inode compares EQUAL to its parent's, and it is the only one of the two
-		 * callers that checks unconditionally (unlink.c puts the same test in an `else`). On AGFS a
-		 * directory's inode and its parent's therefore compare equal. Recorded in
-		 * docs/design/foundation-plan.md, F13.14.
+		 * the DIRECTORIES themselves are refused by THIS KERNEL. That is a finding about the file
+		 * system and not about this library: kernel/syscalls/rmdir.c refuses with EPERM when the
+		 * target's inode compares EQUAL to its parent's, and it is the only one of the two callers
+		 * that checks unconditionally (unlink.c puts the same test in an `else`). Recorded in
+		 * docs/design/foundation-plan.md, F13.14 and F13.22.
 		 *
 		 * WHAT IS ASSERTED HERE IS THE PART THIS LIBRARY OWNS: an attempt that fails answers NO and
 		 * fills in an ERROR, never a silent zero — the same contract the rest of this file is
-		 * built on. And the files really are gone, which the first two terms check. */
-		/* WHAT IS ASSERTED IS THE CONTRACT THIS LIBRARY OWNS, and it is a claim that can be wrong:
-		 * THE ANSWER MATCHES THE FILE SYSTEM (a YES means the path is gone, a NO means it is still
-		 * there) AND EVERY NO CARRIES AN ERROR. That is what a service's remove promises, and it
-		 * does not depend on the kernel agreeing to do the removal.
+		 * built on. And the files really are gone, which the first two terms check.
 		 *
-		 * THE DIRECTORIES ARE NOT REMOVED ON THIS KERNEL, and that is a finding about the file
-		 * system rather than about this library: kernel/syscalls/rmdir.c refuses with EPERM when
-		 * the target's inode compares EQUAL to its parent's, and it is the only one of the two
-		 * callers that tests unconditionally (unlink.c puts the same test in an `else`). On AGFS a
-		 * directory's inode and its parent's therefore compare equal, so rmdir(2) cannot succeed at
-		 * all — which means a RECURSIVE remove cannot finish, whichever order the walk takes. The
-		 * walk stops at its first refusal, which is why some files inside the tree may survive it.
-		 * Recorded in docs/design/foundation-plan.md, F13.14. */
+		 * THE DETAIL ALSO CARRIES THE DISCRIMINATOR (F13.22), because it is the only instrument
+		 * userland has for the question "which EPERM is it?": an EMPTY directory is refused with
+		 * EPERM, and so is a NON-EMPTY one — but a file system that answers for itself must say
+		 * "not empty" for the second, never a permission refusal. TWO EPERMS SEPARATE NOTHING; the
+		 * PAIR separates "rmdir(2)'s own guard fired" from "the file system answered". */
 		BOOL truthful = (copyGone == ![manager fileExistsAtPath:fn_path(@"copy")]) &&
 				(innerGone == ![manager fileExistsAtPath:fn_path(@"inner")]) &&
 				(rootGone == ![manager fileExistsAtPath:root]) &&
 				((copyGone && copyError == nil) || (!copyGone && copyError != nil)) &&
 				((rootGone && rootError == nil) || (!rootGone && rootError != nil));
 
-		check("fs-cleanup",
-		      truthful,
-		      [NSString stringWithFormat:@"copy=%d(%@) inner=%d(%@) root=%d(%@)",
-			(int)copyGone,
-			copyError != nil ? [copyError localizedDescription] : @"ok", (int)innerGone,
-			innerError != nil ? [innerError localizedDescription] : @"ok", (int)rootGone,
-			rootError != nil ? [rootError localizedDescription] : @"ok"]);
+		{
+			NSString *emptyDir = fn_path(@"empty");
+			NSString *fullDir = fn_path(@"full");
+			NSError *emptyError = nil;
+			NSError *fullError = nil;
+			BOOL emptyGone, fullGone;
+			NSString *emptyWhy, *fullWhy;
+
+			[manager createDirectoryAtPath:emptyDir
+				       withIntermediateDirectories:NO
+						    attributes:nil
+							 error:NULL];
+			[manager createDirectoryAtPath:fullDir
+				       withIntermediateDirectories:NO
+						    attributes:nil
+							 error:NULL];
+			[manager createFileAtPath:[fullDir stringByAppendingPathComponent:@"occupant"]
+					 contents:nil attributes:nil];
+			emptyGone = [manager removeItemAtPath:emptyDir error:&emptyError];
+			fullGone = [manager removeItemAtPath:fullDir error:&fullError];
+			emptyWhy = emptyError != nil ? [emptyError localizedDescription] : @"no-error";
+			fullWhy = fullError != nil ? [fullError localizedDescription] : @"no-error";
+			truthful = truthful && (emptyGone || emptyError != nil) &&
+					(fullGone || fullError != nil) && !fullGone;
+
+			/* PRINTED UNCONDITIONALLY, because a check's detail is only shown when it FAILS and
+			 * this pair is the measurement rather than a verdict (F13.22). */
+			printf("FOUNDATION-FILEMANAGER fs-rmdir-discriminator: EMPTY removed=%d '%s' | "
+			       "NON-EMPTY removed=%d '%s'\n", (int)emptyGone, [emptyWhy UTF8String],
+			       (int)fullGone, [fullWhy UTF8String]);
+
+			check("fs-cleanup",
+			      truthful,
+			      [NSString stringWithFormat:@"copy=%d(%@) inner=%d(%@) root=%d(%@) | EMPTY dir: removed=%d '%@' | NON-EMPTY dir: removed=%d '%@'",
+				(int)copyGone,
+				copyError != nil ? [copyError localizedDescription] : @"ok", (int)innerGone,
+				innerError != nil ? [innerError localizedDescription] : @"ok", (int)rootGone,
+				rootError != nil ? [rootError localizedDescription] : @"ok",
+				(int)emptyGone, emptyWhy, (int)fullGone, fullWhy]);
+		}
 	}
 
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
