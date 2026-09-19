@@ -412,6 +412,26 @@ int map_page64_in(unsigned long pml4, unsigned long vaddr, unsigned long paddr,
 		 * entries stay NOT-PRESENT (the PT was zeroed by
 		 * alloc_table_page). */
 		base = *entry & ~0x1FFFFFUL;
+		/* FNX DIAGNOSTIC: splitting a 2MB page is rare and structurally
+		 * dangerous - for a LOW-half vaddr the other 511 leaves stay
+		 * NOT-PRESENT, so every other address in that 2MB vanishes; and
+		 * if the walk is going through the KERNEL pml4, the identity map
+		 * and the direct map (which SHARE pd_page for the low 1GB) both
+		 * lose that 2MB at once. Name the caller: pml4, vaddr, PD index /
+		 * base, and whether the pml4 is the kernel's own. Bounded to the
+		 * first 8 splits so the serial log stays readable. */
+		{
+			extern unsigned long paging64_pml4_phys(void);
+			static int split_reports;
+
+			if(split_reports < 8) {
+				split_reports++;
+				printk("SPLIT pml4=%lx vaddr=%lx pd=%u base=%lx kernel=%d low=%d\n",
+				       pml4, vaddr, (unsigned)PD_INDEX(vaddr), base,
+				       (int)(pml4 == paging64_pml4_phys()),
+				       (int)(vaddr < PAGE_OFFSET64));
+			}
+		}
 		phys = alloc_table_page();
 		if(!phys) {
 			return 1;
