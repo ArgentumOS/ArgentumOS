@@ -292,19 +292,49 @@ typedef struct {
 	st_decl *requirements;
 } st_protocol;
 
+/*
+ * §7.4's two forms, `extension X { … }` and `category X (Name) { … }` — §5's two
+ * words for what ObjC calls a class extension (`@interface X ()`) and a category
+ * (`@interface X (Name)`). They are kept apart because their difference is
+ * OBSERVABLE, which is §7.4's whole argument for two words rather than one:
+ *
+ *   - `extension X` is unnamed, may hold STORAGE, and is legal only where the
+ *     unit also defines `X`;
+ *   - `category X (Name)` is named, may NOT add an ivar (measured: clang refuses
+ *     one outright — "instance variables may not be placed in categories"), and
+ *     is the only form usable on a class the unit does not own.
+ *
+ * Both may declare conformance: `extension X: P` and `category X (Name): P`.
+ *
+ * MEASURED, and it decides the emission: `@implementation X ()` is NOT legal —
+ * clang says `expected identifier` at the `)` — so a class extension emits only
+ * its `@interface X ()` DECLARATIONS, and its method DEFINITIONS are merged into
+ * the class's own `@implementation X`. A category's `@implementation X (Name)`
+ * is legal and real: clang turns it into a `.objc_category_X_Name` object, which
+ * is exactly the trace that makes a category a different construct.
+ */
+typedef struct {
+	st_name target;		/* the class being extended */
+	st_name name;		/* the category's name; empty for an extension */
+	int is_category;	/* `category X (Name)` — named, and no storage */
+	st_name *conformances;
+	size_t conformance_count;
+	st_decl *decls;
+} st_extension;
+
 typedef struct {
 	st_class **classes;
 	size_t class_count;
 	st_protocol **protocols;
 	size_t protocol_count;
 	/*
-	 * §7.4's categories and extensions. `parse_extension` reads them and the
-	 * result went nowhere — an entire declaration block, dropped with the
-	 * parse reporting success. The count is kept so the emitter can REFUSE
-	 * by name; the blocks themselves are the emitter's later step, and a
-	 * category is not a translation of anything (it is a second
-	 * `@interface X (Name)` plus a second `@implementation`).
+	 * §7.4's categories and extensions, RECORDED. `parse_extension` read the
+	 * target, the category's name, the conformance list and every member into
+	 * local variables that died at the closing brace — a whole declaration
+	 * list dropped with the parse reporting success — and a count was all the
+	 * emitter kept, so refusing was the only thing it could do.
 	 */
+	st_extension **extensions;
 	size_t extension_count;
 	/*
 	 * The two types with no emission ANYWHERE yet: a top-level struct and a

@@ -300,9 +300,31 @@ bugs actually are.
     property came out `assign`; and a property's `= value` parsed into a variable
     named `discard`. A fourth: `map_type("Object")` returned `NSObject` with no
     pointer, so a property of type `Object` was declared by value.
-  - Categories and extensions are worse than those four and are now REFUSED
-    rather than dropped: `parse_extension` read a whole declaration block and the
-    result went nowhere.
+  - **Categories and extensions are EMITTED (2026-09), and §7.4's two words are
+    two constructs as it argued.** `extension X { … }` is the class extension
+    (`@interface X ()`: unnamed, storage allowed, only where the unit defines
+    `X`); `category X (Name) { … }` is the category (`@interface X (Name)`:
+    named, no storage, the one usable on a class the unit does not own). The
+    emission is decided by measurement, not by symmetry:
+    **`@implementation X ()` is not legal ObjC** — clang says `expected
+    identifier` at the `)` — so a class extension emits its declarations into
+    `@interface X ()` and its **bodies into the class's own
+    `@implementation X`**. Proven by symbol: the extension's method comes out
+    `_i_X__method` (in `X`) where a category's is `_i_X_Name_method`, and the
+    extension's *stored* property gets a real ivar and accessors
+    (`_i_X__spare`, `_i_X__setSpare_`) — which is exactly the storage a category
+    may not have. Two refusals come with it, both because clang either refuses
+    for a reason of its own or does not check at all: a **stored property in a
+    category** (clang: "instance variables may not be placed in categories") and
+    an **extension for a class this unit does not define** (measured: the same
+    ivar in a unit that does not implement the class compiles *clean* in clang,
+    so nothing checks it — and the consequence is an ABI one). The bodies also
+    have to join the class's §7.42 call resolution and its `extern` collection,
+    or a call of the class's own method written in an extension would be emitted
+    as a C function that does not exist.
+  - `parse_extension` read that whole declaration block — the target, the
+    category's name, the conformance list, every member — into locals that died
+    at the closing brace, and kept a count.
   - **One `.h`/`.m` pair per source FILE, holding everything that file declares.**
     A `.ag` file may declare several classes — ordinary Sterling, and one
     translation unit — so the pair is named after the input file the way a C
@@ -324,8 +346,7 @@ bugs actually are.
   - Still owed here: `get`/`set` blocks (§7.54/§7.55, so a `set` block and its
     implicit writable `newValue`), §9.16's synthesised *defaults* method (which is
     what a property initializer needs — neither an ivar nor a C struct member may
-    carry one), `unowned` (§7.53), categories/extensions (§7.4), and generic
-    parameters (§7.63).
+    carry one), `unowned` (§7.53), and generic parameters (§7.63).
   - **Landed next (2026-09): the spellings a class body needs.** §4's `T?` on a
     class type is `_Nullable` after the pointer — which the header's
     `assume_nonnull begin` region is exactly why it has to be written at all —

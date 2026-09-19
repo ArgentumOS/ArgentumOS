@@ -1211,6 +1211,57 @@ declares_name(const st_class *c, const char *mangled)
 }
 
 /*
+ * The members of an `@interface` — properties, then methods — written once and
+ * called from both a class's interface and §7.4's extension interfaces, so the
+ * two cannot drift into two dialects.
+ *
+ * The blank line after the `@interface` is the CALLER's gap. The blank line
+ * before the methods separates the two groups and is owed only when both exist:
+ * emitting it unconditionally gave a properties-only class two blanks before
+ * `@end`, and a methods-only one two after `@interface` — §2's specimen has
+ * both, so neither shows there.
+ */
+static int
+emit_member_decls(FILE *out, const st_decl *decls, const char **error)
+{
+	const st_decl *d;
+	int any_property = 0;
+	int any_method = 0;
+
+	for (d = decls; d != NULL; d = d->next) {
+		if (d->kind == ST_DECL_PROPERTY) {
+			any_property = 1;
+		} else if (d->kind == ST_DECL_METHOD) {
+			any_method = 1;
+		}
+	}
+	for (d = decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_PROPERTY) {
+			continue;
+		}
+		/*
+		 * The third argument is `is_stored`: §7.54's computed form (a
+		 * property carrying a block) is a getter, not an ivar, and that
+		 * is what makes it legal in a category.
+		 */
+		if (!emit_property_line(out, d, d->body == NULL, error)) {
+			return 0;
+		}
+	}
+	if (any_property && any_method) {
+		fprintf(out, "\n");
+	}
+	for (d = decls; d != NULL; d = d->next) {
+		if (d->kind == ST_DECL_METHOD) {
+			if (!emit_signature(out, d, ";", error)) {
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+/*
  * One class's `@interface`, preceded by the types declared inside it. Nested
  * types come first so that a property OF a nested type is a complete type rather
  * than a forward-declared pointer, and the `@class` lines above cover the other
@@ -1221,7 +1272,6 @@ emit_interface(FILE *out, const st_class *c, const char **error)
 {
 	char namebuf[256];
 	char superbuf[256];
-	const st_decl *d;
 	size_t i;
 
 	if (c->parameter_count > 0) {
@@ -1254,43 +1304,87 @@ emit_interface(FILE *out, const st_class *c, const char **error)
 	}
 	fprintf(out, "\n\n");
 
-	{
-		/*
-		 * The blank line after the interface is the gap; the blank line
-		 * BEFORE the methods separates the two groups and is owed only when
-		 * both exist. Emitting it unconditionally gave a properties-only
-		 * class two blanks before `@end`, and a methods-only one two after
-		 * `@interface` — §2's specimen has both, so neither shows there.
-		 */
-		const st_decl *m;
-		int any_property = 0;
-		int any_method = 0;
+	if (!emit_member_decls(out, c->decls, error)) {
+		return 0;
+	}
+	fprintf(out, "\n@end\n\n");
+	return 1;
+}
 
-		for (m = c->decls; m != NULL; m = m->next) {
-			if (m->kind == ST_DECL_PROPERTY) {
-				any_property = 1;
-			} else if (m->kind == ST_DECL_METHOD) {
-				any_method = 1;
+/*
+ * §7.4: one `extension X { … }` or `category X (Name) { … }` as an
+ * `@interface`, emitted after every class. The whole difference between the two
+ * forms in what is written here is the name — `@interface X ()` against
+ * `@interface X (Name)` — and the rest is the rule that goes with it.
+ *
+ * Two refusals, both because the language knows something clang either cannot
+ * say or says without checking:
+ *
+ *   - A STORED property in a CATEGORY. Measured: clang rejects the ivar outright
+ *     ("instance variables may not be placed in categories"), and §7.4's whole
+ *     argument for two words rather than one was that the storage rule becomes
+ *     statable against a NAMED intent — so the language states it.
+ *   - An EXTENSION for a class this unit does not define. §5 says `extension X`
+ *     is legal "only where the unit also defines X", and — measured — a class
+ *     extension carrying an ivar in a unit that does not implement the class
+ *     compiles CLEAN in clang. Nothing checks it, and the consequence is an ABI
+ *     one, because that unit's view of the class's layout is not the class's. A
+ *     category on a class the unit does not own is the point of a category, and
+ *     is emitted as one.
+ */
+static int
+emit_extension_interface(FILE *out, const st_extension *e,
+			 const st_program *program, const char **error)
+{
+	char targetbuf[256];
+	const st_decl *d;
+	size_t i;
+
+	mangle_name(e->target.text, targetbuf, sizeof(targetbuf));
+	if (!e->is_category) {
+		int declared = 0;
+
+		for (i = 0; i < program->class_count; i++) {
+			if (declares_name(program->classes[i], targetbuf)) {
+				declared = 1;
+				break;
 			}
 		}
-		for (d = c->decls; d != NULL; d = d->next) {
-			if (d->kind != ST_DECL_PROPERTY) {
-				continue;
-			}
-			if (!emit_property_line(out, d, d->body == NULL, error)) {
-				return 0;
-			}
+		if (!declared) {
+			return refuse("an extension for a class this unit does "
+				      "not define", error);
 		}
-		if (any_property && any_method) {
-			fprintf(out, "\n");
+	} else {
+		/*
+		 * §7.54's computed form — a property carrying a block — is a
+		 * getter rather than an ivar, and is legal here; the stored one is
+		 * what a category may not have.
+		 */
+		for (d = e->decls; d != NULL; d = d->next) {
+			if (d->kind == ST_DECL_PROPERTY && d->body == NULL) {
+				return refuse("a stored property in a category",
+					      error);
+			}
 		}
 	}
-	for (d = c->decls; d != NULL; d = d->next) {
-		if (d->kind == ST_DECL_METHOD) {
-			if (!emit_signature(out, d, ";", error)) {
-				return 0;
-			}
+
+	if (e->is_category) {
+		fprintf(out, "@interface %s (%s)", targetbuf, e->name.text);
+	} else {
+		fprintf(out, "@interface %s ()", targetbuf);
+	}
+	if (e->conformance_count > 0) {
+		fprintf(out, " <");
+		for (i = 0; i < e->conformance_count; i++) {
+			fprintf(out, "%s%s", i > 0 ? ", " : "",
+				e->conformances[i].text);
 		}
+		fprintf(out, ">");
+	}
+	fprintf(out, "\n\n");
+
+	if (!emit_member_decls(out, e->decls, error)) {
+		return 0;
 	}
 	fprintf(out, "\n@end\n\n");
 	return 1;
@@ -1304,14 +1398,11 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	char stem[256];
 
 	/*
-	 * §7.4's categories and extensions are parsed and this emitter has no
-	 * second `@interface X (Name)`. Refused rather than dropped: the block is
-	 * a whole declaration list, and the parser used to read it and keep
-	 * nothing at all.
+	 * §7.4's categories and extensions are EMITTED now, so there is nothing to
+	 * refuse here; what the header refuses for them is a stored property in a
+	 * category and an extension for a class this unit does not define, both
+	 * named at `emit_extension_interface` below.
 	 */
-	if (program->extension_count > 0) {
-		return refuse("a category or extension (§7.4)", error);
-	}
 	/*
 	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
 	 * does not even hold one — the parse reads the declaration and keeps
@@ -1454,6 +1545,21 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 
 	for (i = 0; i < program->class_count; i++) {
 		if (!emit_interface(out, program->classes[i], error)) {
+			return 0;
+		}
+	}
+	/*
+	 * §7.4: the extensions' own interfaces, AFTER every class. An extension
+	 * needs its class's `@interface` visible — measured, `@class X;` followed
+	 * by `@interface X ()` is "cannot define class extension for undefined
+	 * class 'X'" — and emitting them here rather than in source order is what
+	 * makes `extension X` work whichever order the file wrote `X` in. A
+	 * category on a class this unit does not own gets the same placement, and
+	 * needs only the import that carries the class to be visible.
+	 */
+	for (i = 0; i < program->extension_count; i++) {
+		if (!emit_extension_interface(out, program->extensions[i],
+					      program, error)) {
 			return 0;
 		}
 	}
@@ -1641,62 +1747,21 @@ emit_extern(FILE *out, const st_expr *call)
 }
 
 /*
- * One class's `@implementation`, preceded by the types declared inside it, for
- * the same reason the interface does it that way: a nested type is a class of
- * its own — Objective-C has no nesting — so it is emitted beside its outer class
- * under its mangled name.
+ * §7.4: one declaration list's DEFINITIONS — the method bodies, and the computed
+ * property whose block IS its getter (§7.54). Shared by a class's own
+ * `@implementation` and a category's, which is where a category's bodies go.
  *
- * `first` spans the whole FILE: the blank line between two classes is owed only
- * BETWEEN them, so the flag is threaded rather than the separator being
- * unconditional — §2's specimen is one class and its `.m` ends at `@end`.
+ * A class EXTENSION's bodies come through here too, but from the CLASS's
+ * `@implementation`: measured, `@implementation X ()` is not legal ObjC — clang
+ * says `expected identifier` at the `)` — so an extension contributes
+ * declarations to `@interface X ()` and definitions to `@implementation X`.
  */
 static int
-emit_implementation_of(FILE *out, const st_class *c, int *first,
-		       const char **error)
+emit_definitions(FILE *out, const st_decl *decls, const char **error)
 {
-	char namebuf[256];
 	const st_decl *d;
-	extern_set set;
-	size_t i;
 
-	if (c->parameter_count > 0) {
-		return refuse("generic parameters", error);
-	}
-	if (c->struct_count > 0) {
-		return refuse("a nested struct", error);
-	}
-	if (c->enum_count > 0) {
-		return refuse("a nested enum", error);
-	}
-	for (i = 0; i < c->nested_count; i++) {
-		if (!emit_implementation_of(out, c->nested[i], first, error)) {
-			return 0;
-		}
-	}
-	if (!*first) {
-		fprintf(out, "\n");
-	}
-	*first = 0;
-
-	/*
-	 * §7.42 first: a call naming this class's own method becomes a send on
-	 * `self`, so the `extern` collection below — which sees only what is left
-	 * as a CALL — does not declare a C function for it.
-	 */
-	for (d = c->decls; d != NULL; d = d->next) {
-		resolve_calls_in_stmts(c, d->body);
-	}
-	set.count = 0;
-	for (d = c->decls; d != NULL; d = d->next) {
-		collect_stmt_calls(d->body, c, &set);
-	}
-	for (i = 0; i < set.count; i++) {
-		emit_extern(out, set.calls[i]);
-	}
-
-	mangle_name(c->name.text, namebuf, sizeof(namebuf));
-	fprintf(out, "@implementation %s\n\n", namebuf);
-	for (d = c->decls; d != NULL; d = d->next) {
+	for (d = decls; d != NULL; d = d->next) {
 		if (d->kind != ST_DECL_METHOD) {
 			continue;
 		}
@@ -1711,7 +1776,7 @@ emit_implementation_of(FILE *out, const st_class *c, int *first,
 		fprintf(out, "}\n\n");
 	}
 	/* §7.54: a read-only property's block *is* its getter. */
-	for (d = c->decls; d != NULL; d = d->next) {
+	for (d = decls; d != NULL; d = d->next) {
 		if (d->kind != ST_DECL_PROPERTY || d->body == NULL) {
 			continue;
 		}
@@ -1730,6 +1795,114 @@ emit_implementation_of(FILE *out, const st_class *c, int *first,
 		}
 		fprintf(out, "}\n\n");
 	}
+	return 1;
+}
+
+/*
+ * One class's `@implementation`, preceded by the types declared inside it, for
+ * the same reason the interface does it that way: a nested type is a class of
+ * its own — Objective-C has no nesting — so it is emitted beside its outer class
+ * under its mangled name.
+ *
+ * `first` spans the whole FILE: the blank line between two classes is owed only
+ * BETWEEN them, so the flag is threaded rather than the separator being
+ * unconditional — §2's specimen is one class and its `.m` ends at `@end`.
+ */
+static int
+emit_implementation_of(FILE *out, const st_class *c,
+		       const st_program *program, int *first,
+		       const char **error)
+{
+	char namebuf[256];
+	const st_decl *d;
+	extern_set set;
+	size_t i;
+
+	if (c->parameter_count > 0) {
+		return refuse("generic parameters", error);
+	}
+	if (c->struct_count > 0) {
+		return refuse("a nested struct", error);
+	}
+	if (c->enum_count > 0) {
+		return refuse("a nested enum", error);
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		if (!emit_implementation_of(out, c->nested[i], program, first,
+					    error)) {
+			return 0;
+		}
+	}
+	if (!*first) {
+		fprintf(out, "\n");
+	}
+	*first = 0;
+
+	/*
+	 * §7.42 first: a call naming this class's own method becomes a send on
+	 * `self`, so the `extern` collection below — which sees only what is left
+	 * as a CALL — does not declare a C function for it.
+	 *
+	 * §7.4's class extensions resolve here TOO, and this is the place the
+	 * feature was most likely to go quietly wrong: an extension's bodies are
+	 * part of THIS class's implementation, so a call of the class's own method
+	 * written inside one has to resolve exactly as a call written in the class
+	 * body does. Resolving the extension's bodies later — or not at all —
+	 * would leave the call a CALL, and the collection below would then give it
+	 * an `extern` declaring a C function that does not exist.
+	 */
+	for (d = c->decls; d != NULL; d = d->next) {
+		resolve_calls_in_stmts(c, d->body);
+	}
+	for (i = 0; i < program->extension_count; i++) {
+		const st_extension *e = program->extensions[i];
+
+		if (e->is_category || strcmp(e->target.text, c->name.text) != 0) {
+			continue;
+		}
+		for (d = e->decls; d != NULL; d = d->next) {
+			resolve_calls_in_stmts(c, d->body);
+		}
+	}
+	set.count = 0;
+	for (d = c->decls; d != NULL; d = d->next) {
+		collect_stmt_calls(d->body, c, &set);
+	}
+	for (i = 0; i < program->extension_count; i++) {
+		const st_extension *e = program->extensions[i];
+
+		if (e->is_category || strcmp(e->target.text, c->name.text) != 0) {
+			continue;
+		}
+		for (d = e->decls; d != NULL; d = d->next) {
+			collect_stmt_calls(d->body, c, &set);
+		}
+	}
+	for (i = 0; i < set.count; i++) {
+		emit_extern(out, set.calls[i]);
+	}
+
+	mangle_name(c->name.text, namebuf, sizeof(namebuf));
+	fprintf(out, "@implementation %s\n\n", namebuf);
+	if (!emit_definitions(out, c->decls, error)) {
+		return 0;
+	}
+	/*
+	 * §7.4: a class extension's DEFINITIONS land here, inside the class's own
+	 * `@implementation` — the declarations went into `@interface X ()` above,
+	 * and this is the other half the measurement forces. A category's bodies
+	 * go in its own `@implementation X (Name)`, emitted after the classes.
+	 */
+	for (i = 0; i < program->extension_count; i++) {
+		const st_extension *e = program->extensions[i];
+
+		if (e->is_category || strcmp(e->target.text, c->name.text) != 0) {
+			continue;
+		}
+		if (!emit_definitions(out, e->decls, error)) {
+			return 0;
+		}
+	}
 	fprintf(out, "@end\n");
 	return 1;
 }
@@ -1742,9 +1915,6 @@ st_emit_implementation(FILE *out, const st_program *program,
 	int first = 1;
 	char stem[256];
 
-	if (program->extension_count > 0) {
-		return refuse("a category or extension (§7.4)", error);
-	}
 	/*
 	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
 	 * does not even hold one — the parse reads the declaration and keeps
@@ -1786,10 +1956,71 @@ st_emit_implementation(FILE *out, const st_program *program,
 	fprintf(out, "#import \"%s.h\"\n\n", stem);
 
 	for (i = 0; i < program->class_count; i++) {
-		if (!emit_implementation_of(out, program->classes[i], &first,
-					    error)) {
+		if (!emit_implementation_of(out, program->classes[i], program,
+					    &first, error)) {
 			return 0;
 		}
+	}
+	/*
+	 * §7.4: the CATEGORIES' implementations, after every class. A category's
+	 * bodies have nowhere else to go — `@implementation X (Name)` IS the
+	 * category, and clang turns it into a real `.objc_category_X_Name`
+	 * object. A class extension does NOT come through here: it has no
+	 * implementation of its own, which is what the measurement above settles.
+	 */
+	for (i = 0; i < program->extension_count; i++) {
+		const st_extension *e = program->extensions[i];
+		const st_class *owner = NULL;
+		const st_decl *d;
+		extern_set set;
+		char namebuf[256];
+		size_t k;
+
+		if (!e->is_category) {
+			continue;
+		}
+		/*
+		 * §7.42 resolves against the TARGET class's methods, so the class is
+		 * looked up by its Sterling name. A category on a class this unit
+		 * does not own has no class to look up, and its unqualified calls
+		 * fall back to the C-call path — collected below only when there is
+		 * a class to decide against, which is the honest half of a rule
+		 * whose other half is §9.5's header importer.
+		 */
+		for (k = 0; k < program->class_count; k++) {
+			if (strcmp(program->classes[k]->name.text,
+				   e->target.text) == 0) {
+				owner = program->classes[k];
+				break;
+			}
+		}
+		if (owner != NULL) {
+			for (d = e->decls; d != NULL; d = d->next) {
+				resolve_calls_in_stmts(owner, d->body);
+			}
+			set.count = 0;
+			for (d = e->decls; d != NULL; d = d->next) {
+				collect_stmt_calls(d->body, owner, &set);
+			}
+			for (k = 0; k < set.count; k++) {
+				emit_extern(out, set.calls[k]);
+			}
+		}
+
+		/*
+		 * The blank line before `@implementation` matches the one between
+		 * two classes, which `first` threads for the class path: here every
+		 * category is separate from whatever preceded it, so it is
+		 * unconditional rather than a flag.
+		 */
+		fprintf(out, "\n");
+		mangle_name(e->target.text, namebuf, sizeof(namebuf));
+		fprintf(out, "@implementation %s (%s)\n\n", namebuf,
+			e->name.text);
+		if (!emit_definitions(out, e->decls, error)) {
+			return 0;
+		}
+		fprintf(out, "@end\n");
 	}
 	return 1;
 }

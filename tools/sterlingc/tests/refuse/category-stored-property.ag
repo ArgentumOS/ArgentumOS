@@ -1,0 +1,12 @@
+/* §7.4: a category may not add an ivar — measured, clang refuses one outright
+   ("instance variables may not be placed in categories"), and §7.4's rule is
+   statable against the name the author wrote, so the language says it first. */
+class RefuseCategoryStorage: Object {
+    method m() -> Void {
+        return;
+    }
+}
+
+category RefuseCategoryStorage (Extra) {
+    property stored: Int32
+}

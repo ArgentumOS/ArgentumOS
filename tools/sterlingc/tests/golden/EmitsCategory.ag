@@ -1,0 +1,54 @@
+/*
+ * EmitsCategory.ag — §7.4's two forms.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * §5 has two words here and they are two different Objective-C constructs, so
+ * this file exercises both and a third case beside them:
+ *
+ *   - `extension Gauge { … }` is the CLASS EXTENSION (`@interface Gauge ()`):
+ *     unnamed, MAY hold storage, and legal only where the unit also defines
+ *     the class. Its `spare` property is stored, so it gets an ivar — which is
+ *     exactly what a category may not have, and the reason §7.4 kept two words.
+ *   - `category Gauge (Extra) { … }` is the CATEGORY: named, no storage, and
+ *     the emitted ObjC carries the name the author wrote.
+ *   - `category NSString (Shout) { … }` is a category on a class this unit does
+ *     NOT own — the form's whole purpose, and the one that needs only the
+ *     import to be visible rather than a definition here.
+ *
+ * What the emitter has to get right is not visible in either interface line.
+ * MEASURED: `@implementation Gauge ()` is not legal ObjC (`expected
+ * identifier` at the `)`), so the extension's method DEFINITION has to land
+ * inside `@implementation Gauge`. A category's `@implementation Gauge (Extra)`
+ * IS legal, and clang turns it into a real `.objc_category_Gauge_Extra` object
+ * — the trace that makes a category a different construct rather than a
+ * spelling of one.
+ */
+class Gauge: Object {
+    property level: Int32
+    property label: String
+
+    method zero() -> Void {
+        return;
+    }
+}
+
+extension Gauge {
+    property spare: Int32
+
+    method boost() -> Void {
+        return;
+    }
+}
+
+category Gauge (Extra) {
+    method describe() -> String {
+        return self.label;
+    }
+}
+
+category NSString (Shout) {
+    method shout() -> String {
+        return self;
+    }
+}

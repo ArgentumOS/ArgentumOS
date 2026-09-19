@@ -2515,41 +2515,83 @@ parse_protocol(st_parser *p, st_protocol **out)
  * `@interface X (Name)`; either may carry a conformance list. The body holds
  * real declarations rather than requirements, so parse_decl reads it.
  *
- * The class name, the category name and the conformance list are read and
- * dropped for now: the emitter writes them, and recording the list is step one
- * of the conformance checker the plan carries as a milestone.
+ * RECORDED, all of it. The target, the category's name, the conformance list
+ * and every member were read into locals that died at the closing brace — a
+ * whole declaration list, dropped with the parse reporting success — which left
+ * the emitter nothing to do but refuse the file. §7.4's argument for two words
+ * is that the difference is OBSERVABLE, so `is_category` is part of the record:
+ * a category may not add an ivar and a class extension may.
  */
 static int
-parse_extension(st_parser *p)
+parse_extension(st_parser *p, st_extension **out)
 {
-	st_name name;
+	st_extension *e = st_arena_alloc(sizeof(*e));
+	st_decl *head = NULL;
+	st_decl **tail = &head;
+	size_t cap = 0;
 
+	if (e == NULL) {
+		return fail(p, "out of memory");
+	}
+	e->is_category = at_keyword(p, "category");
 	bump(p);				/* `extension` or `category` */
-	if (!take_name(p, &name)) {
+	if (!take_name(p, &e->target)) {
 		return 0;
 	}
-	/* A category names itself: `category X (Name)`. */
+	/*
+	 * A category names itself: `category X (Name)`. That name is the
+	 * identifier the emitted ObjC carries, and which word the author wrote
+	 * is what decides which construct this is — §7.4 chose (b) precisely so
+	 * the storage rule is statable against a NAMED intent rather than an
+	 * inferred one.
+	 */
 	if (at_punct(p, '(')) {
-		st_name category;
-
+		if (!e->is_category) {
+			return fail(p, "`extension` takes no name — that form "
+					"is `category X (Name)`");
+		}
 		bump(p);
-		if (!take_name(p, &category)) {
+		if (!take_name(p, &e->name)) {
 			return 0;
 		}
 		if (!expect_punct(p, ')')) {
 			return 0;
 		}
 	}
+	if (e->is_category && e->name.text[0] == '\0') {
+		return fail(p, "a category needs a name: `category X (Name)`");
+	}
+	/*
+	 * §7.45's conformance list, grown the way every other list here is — a
+	 * fresh arena block and a copy, because the count is not known until it
+	 * ends.
+	 */
 	if (at_punct(p, ':')) {
 		bump(p);
-		if (!take_name(p, &name)) {
-			return 0;
-		}
-		while (at_punct(p, ',')) {
-			bump(p);
-			if (!take_name(p, &name)) {
+		for (;;) {
+			st_name conformance;
+
+			if (!take_name(p, &conformance)) {
 				return 0;
 			}
+			if (e->conformance_count == cap) {
+				size_t want = cap == 0 ? 4 : cap * 2;
+				st_name *grown = st_arena_alloc(
+					want * sizeof(st_name));
+
+				if (grown == NULL) {
+					return fail(p, "out of memory");
+				}
+				memcpy(grown, e->conformances,
+				       e->conformance_count * sizeof(st_name));
+				e->conformances = grown;
+				cap = want;
+			}
+			e->conformances[e->conformance_count++] = conformance;
+			if (!at_punct(p, ',')) {
+				break;
+			}
+			bump(p);
 		}
 	}
 	if (!expect_punct(p, '{')) {
@@ -2561,10 +2603,14 @@ parse_extension(st_parser *p)
 		if (!parse_decl(p, &d)) {
 			return 0;
 		}
+		*tail = d;
+		tail = &d->next;
 	}
 	if (!expect_punct(p, '}')) {
 		return 0;
 	}
+	e->decls = head;
+	*out = e;
 	return 1;
 }
 
@@ -2575,6 +2621,12 @@ st_parse(const char *src, const char **error)
 	st_program *program;
 	size_t capacity = 4;
 	size_t proto_capacity = 4;
+	/*
+	 * §7.4's extensions grow lazily from zero rather than being allocated at
+	 * capacity 4 the way classes and protocols are: most units declare none,
+	 * and an arena block nothing reads is still a block.
+	 */
+	size_t ext_capacity = 0;
 
 	memset(&p, 0, sizeof(p));
 	st_lexer_init(&p.lx, src);
@@ -2689,17 +2741,30 @@ st_parse(const char *src, const char **error)
 			continue;
 		}
 		if (at_keyword(&p, "extension") || at_keyword(&p, "category")) {
-			if (!parse_extension(&p)) {
+			st_extension *ext = NULL;
+
+			if (!parse_extension(&p, &ext)) {
 				*error = p.error != NULL ? p.error : "parse error";
 				st_arena_free();
 				return NULL;
 			}
-			/*
-			 * Counted, not just consumed. The block itself went nowhere —
-			 * a whole declaration list, read and dropped, with the parse
-			 * reporting success — and the emitter refuses on the count.
-			 */
-			program->extension_count++;
+			if (program->extension_count == ext_capacity) {
+				size_t want = ext_capacity == 0 ? 4 : ext_capacity * 2;
+				st_extension **grown = st_arena_alloc(
+					want * sizeof(st_extension *));
+
+				if (grown == NULL) {
+					*error = "out of memory";
+					st_arena_free();
+					return NULL;
+				}
+				memcpy(grown, program->extensions,
+				       program->extension_count *
+					       sizeof(st_extension *));
+				program->extensions = grown;
+				ext_capacity = want;
+			}
+			program->extensions[program->extension_count++] = ext;
 			continue;
 		}
 		/*

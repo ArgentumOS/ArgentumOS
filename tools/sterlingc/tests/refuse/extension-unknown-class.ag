@@ -1,0 +1,15 @@
+/* §7.4/§5: an extension is a class extension and is legal only where the unit
+   also defines the class — "only where the unit also defines X". A CATEGORY on
+   a class the unit does not own is fine (that is what it is for), so this is
+   the extension form specifically. */
+class RefuseExtensionTarget: Object {
+    method m() -> Void {
+        return;
+    }
+}
+
+extension SomebodyElses {
+    method nope() -> Void {
+        return;
+    }
+}
