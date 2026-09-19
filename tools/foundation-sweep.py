@@ -23,12 +23,17 @@ THE STATUS COLUMN IS THE LEDGER, AND IT HAS THREE VALUES:
            headers (`--strict` is what fails on those: what to do about one is a
            decision, and a decision is a ledger row).
 
-AND ONE NAMED EXCEPTION (user, 2026-09-18): NSZone is deprecated by Apple's
-filing and REQUIRED by its live, non-deprecated NSCopying methods, so it is ours
-to ship. It keeps the `shipped` status and carries `required-by-live-api` in the
-`why` column. The exception list is CHECKED, not trusted: if a name in it is not
-declared in our headers, the run fails — an exception is a claim about the tree,
-and a claim about the tree is verifiable.
+AND A FOURTH EXCLUSION (user, 2026-09-18, amending an earlier exception): API that
+exists only for 32-BIT COMPATIBILITY. Zones are the case — the 64-bit runtime
+ignores them and this system has no 32-bit compatibility at all — so NSZone and
+anything that needs it is removed, and `32-bit-only` is that reason. It is OURS
+rather than Apple's: measured, Apple's pages for the zone API report no
+deprecation and no unavailability.
+
+AN EXCEPTION MECHANISM EXISTS AND IS EMPTY: REQUIRED_BY_LIVE_API held NSZone until
+the amendment revoked it. An entry there is a CHECKED claim (the run fails if our
+headers do not declare the name), which is what makes an exception different from
+a softened rule.
 
 The three exclusions, each counted rather than silently dropped (the numbers
 are written into the surface file's header on every `--refresh`):
@@ -147,9 +152,38 @@ def is_objc_shaped(name):
     return name.startswith("NS") or (name.isupper() and len(name) > 3)
 
 
+# §11.5's FOURTH EXCLUSION (user, 2026-09-18, amending the NSZone decision):
+# "zones are unsupported on 64-bit Apple, and are kept only for 32-bit
+# compatibility, which we don't have to worry about. Amendment: NSZone and
+# anything that needs it is removed."
+#
+# SO THE ZONE API IS OUT, AND THIS REASON IS OURS RATHER THAN APPLE'S — which is
+# why it is a separate reason and not folded into `deprecated`: MEASURED, Apple's
+# pages for NSZone, NSZoneMalloc, NSCreateZone, NSRecycleZone and
+# NSAllocateObject all read `introducedAt 10.0, deprecated: false,
+# unavailable: false`. Nothing in the documentation flags them. What makes them
+# out is that the 64-bit runtime ignores zones and this system has NO 32-BIT
+# COMPATIBILITY AT ALL (the standing doctrine), so their only remaining purpose
+# is compatibility this tree will never need.
+#
+# THE LIST IS NAMED, NOT INFERRED, because Apple's own filing is inconsistent:
+# most of the family sits under `Low-Level Utilities / Legacy / Managing Zones`,
+# but NSAllocateObject and NSDeallocateObject sit under `Objective-C Runtime /
+# Object Allocation and Deallocation` and read OPEN — so the group signal alone
+# would have left two zone-taking functions in the work list.
+ZONE_API_RE = re.compile(
+    r"^NS(Zone\w*|CreateZone|RecycleZone|DefaultMallocZone|AllocateObject|DeallocateObject|AllocateCollectable)$")
+
+
+def is_32bit_only(row):
+    return bool(ZONE_API_RE.match(row["name"]))
+
+
 def struck_reason(row):
-    """Why this symbol is OUT, or None. Two exclusions, and the reason travels
+    """Why this symbol is OUT, or None. Three exclusions, and the reason travels
     with the row so a struck line can be argued with."""
+    if is_32bit_only(row):
+        return "32-bit-only"
     if SWIFT_INTEROP_RE.search(row["name"]):
         return "swift-only"
     if row.get("swift") and not is_objc_shaped(row["name"]):
@@ -173,20 +207,33 @@ def struck_reason(row):
 # our headers, and --check fails if one is not. An entry is a claim about the
 # tree, and a claim about the tree is verifiable — which is what makes this
 # different from a softened rule.
-REQUIRED_BY_LIVE_API = {
-    "NSZone": "the zone parameter of NSCopying/-copyWithZone:, which Apple does NOT deprecate",
-}
+# EMPTY BY DECISION (2026-09-18, later). `NSZone` was the one entry here, on the
+# argument that Apple's live NSCopying methods take it as a parameter. The user
+# amended that: zones are 32-bit API and this system has no 32-bit
+# compatibility, so NSZone and anything that needs it is REMOVED — including the
+# exception. The mechanism is kept because an exception has to be a checked claim
+# about the tree (see the verification in refresh() and check()), and the next
+# person to want one should find it working rather than reinvent it.
+REQUIRED_BY_LIVE_API = {}
 
 
 def why_of(row):
     """The `why` column: the reason this row is not simply shipped or open."""
-    if row["name"] in REQUIRED_BY_LIVE_API:
+    if row["name"] in REQUIRED_BY_LIVE_API:      # empty today; see above
         return "required-by-live-api"
     return struck_reason(row) or "-"
 
 
+# EVERY strike reason, in one place. The first version of the fourth exclusion
+# added a reason without adding it here, and the ledger said so: `func struck`
+# fell from 52 to 42 while `func open` rose by the same 10, because ten zone
+# functions were carrying a reason the status test did not recognise. A reason
+# that does not strike is a row that lies about where it stands.
+STRIKE_REASONS = ("32-bit-only", "swift-only", "deprecated")
+
+
 def status_of(kind, name, why, text):
-    if why in ("swift-only", "deprecated"):
+    if why in STRIKE_REASONS:
         return STATUS_STRUCK
     return STATUS_SHIPPED if declared(kind, name, text) else STATUS_OPEN
 

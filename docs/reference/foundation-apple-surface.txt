@@ -22,9 +22,9 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: deprecated 351, swift-only 22
+# why the struck rows are struck: 32-bit-only 13, deprecated 341, swift-only 22
 #
-# THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): NSZone (the zone parameter of NSCopying/-copyWithZone:, which Apple does NOT deprecate)
+# THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): 
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
@@ -33,9 +33,9 @@
 #   macro      shipped    3   open  224   struck   26
 #   enum       shipped   27   open  125   struck    8
 #   case       shipped  148   open 1061   struck   93
-#   func       shipped    3   open  134   struck   52
+#   func       shipped    3   open  132   struck   54
 #   var        shipped   46   open  721   struck  147
-#   typealias  shipped    8   open   66   struck    2
+#   typealias  shipped    7   open   66   struck    3
 #   struct     shipped    3   open    5   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1777,9 +1777,9 @@ func	open	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Found
 func	struck	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSAllocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+func	struck	NSAllocateCollectable		Low-Level Utilities / Legacy / Legacy	32-bit-only	objc
 func	open	NSAllocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
+func	struck	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	open	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1799,9 +1799,9 @@ func	struck	NSCreateHashTable	NSHashTable	Fundamentals / Pointer Collections / D
 func	struck	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
+func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	open	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSDeallocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
+func	struck	NSDeallocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	open	NSDecimalAdd		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	open	NSDecimalCompact		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	open	NSDecimalCompare		Fundamentals / Numbers / Comparing decimals	-	objc
@@ -1816,7 +1816,7 @@ func	open	NSDecimalRound		Fundamentals / Numbers / Performing arithmetic using r
 func	open	NSDecimalString		Fundamentals / Numbers / Converting between decimals and strings	-	objc
 func	open	NSDecimalSubtract		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	open	NSDecrementExtraRefCountWasZero		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
-func	struck	NSDefaultMallocZone		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
+func	struck	NSDefaultMallocZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	open	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSEdgeInsetsEqual		Fundamentals / Geometry / Comparing edge insets	-	objc
 func	open	NSEdgeInsetsMake		Fundamentals / Geometry / Creating an edge insets structure	-	objc
@@ -1896,7 +1896,7 @@ func	open	NSRecordAllocationEvent		Reference / Debugging	-	objc
 func	open	NSRectFromCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
+func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSReturnAddress		Reference / Debugging	-	objc
@@ -1954,12 +1954,12 @@ func	open	NSUnionRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	open	NSUnionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	open	NSWidth		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	struck	NSZoneCalloc		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
-func	struck	NSZoneFree		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
-func	struck	NSZoneFromPointer		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
-func	struck	NSZoneMalloc		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
-func	struck	NSZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
-func	struck	NSZoneRealloc		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
+func	struck	NSZoneCalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
+func	struck	NSZoneFree		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
+func	struck	NSZoneFromPointer		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
+func	struck	NSZoneMalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
+func	struck	NSZoneName		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
+func	struck	NSZoneRealloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NXReadNSObjectFromCoder		Files and Data Persistence / Deprecated	deprecated	objc
 macro	open	ABS		Reference / Macros	-	objc
 macro	open	FOUNDATION_EXPORT		Reference / Macros	-	objc
@@ -2345,7 +2345,7 @@ typealias	open	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Leve
 typealias	open	NSUserScriptTaskCompletionHandler	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
 typealias	open	NSUserUnixTaskCompletionHandler	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
 typealias	open	NSValueTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
-typealias	shipped	NSZone		Low-Level Utilities / Legacy	required-by-live-api	objc
+typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 var	struck	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
