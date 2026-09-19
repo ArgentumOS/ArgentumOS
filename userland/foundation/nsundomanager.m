@@ -189,7 +189,14 @@
 	}
 	_groupingLevel = 0;
 	[group release];
-	[_group release];
+	/*
+	 * NO RELEASE OF _group HERE. _group is a BORROWED reference to `inverse` - assigned without a
+	 * retain two screens up - and `inverse` already owns itself from its alloc and is released once
+	 * at the end of this method. Releasing it through _group as well was ONE RELEASE TOO MANY: the
+	 * array was freed while `to` still held it, so the next pass's group contained dangling actions.
+	 * THAT IS THE HOST SEgfault, AND IT WAS FOUND BY THE HOST LOOP: glibc reuses the freed memory
+	 * and the class lookup returns nil, while musl leaves it intact and the redo APPEARS to work.
+	 */
 	_group = nil;
 	if ([inverse count] > 0) {
 		[to addObject:inverse];
