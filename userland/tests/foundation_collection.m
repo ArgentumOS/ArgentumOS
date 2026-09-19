@@ -890,11 +890,15 @@ int main(void)
 			"dictionary", "dictionaryWithObject:forKey:", "dictionaryWithDictionary:",
 			"dictionaryWithObjects:forKeys:count:", "dictionaryWithObjectsAndKeys:",
 			"dictionaryWithObjects:forKeys:",
-			"dictionaryWithObjects:forKeys:", NULL
+			"dictionaryWithObjects:forKeys:",
+			/* D7's kind (D), plist half: implemented in the SKIN, so DEMANDED here. */
+			"dictionaryWithContentsOfFile:", "dictionaryWithContentsOfURL:", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithObject:forKey:", "initWithDictionary:",
 			"initWithObjects:forKeys:count:", "initWithObjectsAndKeys:",
+			"initWithContentsOfFile:", "initWithContentsOfURL:",
+			"writeToFile:atomically:", "writeToURL:atomically:",
 			"count", "objectForKey:", "objectForKeyedSubscript:",
 			"allKeys", "allValues", "allKeysForObject:",
 			"objectsForKeys:notFoundMarker:", "getObjects:andKeys:",
@@ -1268,6 +1272,51 @@ int main(void)
 		NSArray *wrong = [NSArray arrayWithContentsOfFile:path];
 
 		check("array-plist-wrong-root",
+		      wrote && wrong == nil,
+		      [[NSString stringWithFormat:@"wrote=%d wrongRoot=%d",
+			(int)wrote, (int)(wrong == nil)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		/* NSDictionary'S PLIST FORMS, mirroring NSArray's: a file round trip, a URL round trip, and
+		 * a plist whose ROOT IS AN ARRAY refused rather than coerced (D7's kind (D), plist half).
+		 * One call per check, because printed checks survive a fault. */
+		NSDictionary *out = [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil];
+		NSString *path = @"/System/Temporary Files/fndict-plist";
+		BOOL wrote = [out writeToFile:path atomically:YES];
+		NSDictionary *back = wrote ? [NSDictionary dictionaryWithContentsOfFile:path] : nil;
+
+		check("dictionary-plist-file",
+		      wrote && back != nil && [back isEqualToDictionary:out],
+		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
+			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		NSDictionary *out = [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil];
+		NSString *path = @"/System/Temporary Files/fndict-plist-url";
+		NSURL *url = [NSURL fileURLWithPath:path];
+		BOOL wrote = [out writeToURL:url atomically:YES];
+		NSDictionary *back = wrote ? [NSDictionary dictionaryWithContentsOfURL:url] : nil;
+
+		check("dictionary-plist-url",
+		      wrote && back != nil && [back isEqualToDictionary:out],
+		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
+			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		NSString *path = @"/System/Temporary Files/fndict-plist-wrong";
+		NSData *arrayData = [NSPropertyListSerialization
+			dataWithPropertyList:[NSArray arrayWithObject:@"x"]
+				      format:NSPropertyListXMLFormat_v1_0 options:0 error:NULL];
+		BOOL wrote = [arrayData writeToFile:path atomically:YES];
+		NSDictionary *wrong = [NSDictionary dictionaryWithContentsOfFile:path];
+
+		check("dictionary-plist-wrong-root",
 		      wrote && wrong == nil,
 		      [[NSString stringWithFormat:@"wrote=%d wrongRoot=%d",
 			(int)wrote, (int)(wrong == nil)] UTF8String]);
