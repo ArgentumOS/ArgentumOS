@@ -424,12 +424,110 @@ static unsigned long get_cr2(void)
 	return cr2;
 }
 
+/*
+ * FNX: THE REPORT THAT CANNOT BE SILENCED.
+ *
+ * When the pages that go missing are the kernel's OWN image pages, panic()'s
+ * report never reaches the serial port: every string it prints must be FETCHED
+ * from .rodata, so if that fetch is itself what faults, the report dies inside
+ * itself and the #DF merely repeats - the failure goes silent again, which is
+ * exactly the trap this kernel keeps falling into. These routines therefore
+ * LOAD NO MEMORY AND READ NO GLOBAL: the digits are computed arithmetically
+ * (no lookup table) and every byte goes straight to the UART with outb. Only
+ * registers and port I/O are touched, so they still work when .rodata/.data
+ * are the very thing that is unreadable.
+ *
+ * The LAST value printed is the decisive one: CR3. The boot log records that
+ * the kernel installed its own tables with CR3=0x000000000db68000, so a fault
+ * whose CR3 is still that value means the kernel's static tables were
+ * scribbled, while any other value means the CPU was running on a PROCESS's
+ * pml4. The report is one line, so it fits a serial log:
+ *
+ *	R<vec>:<err>:<rip>:<rsp>:<cr2>:<cr3>
+ */
+static void raw_putc(int c)
+{
+	unsigned char lsr = 0;
+	int i;
+
+	/* the tree's own memory-free port helpers (serial64.h); bounded so a
+	 * dead UART cannot hang the report forever */
+	for(i = 0; i < 100000; i++) {
+		lsr = inb(COM1_LSR);
+		if(lsr & LSR_THRE) {
+			break;
+		}
+	}
+	outb(COM1_THR, (unsigned char)c);
+}
+
+static void raw_hex(unsigned long v)
+{
+	int i, nib, c;
+
+	for(i = 15; i >= 0; i--) {
+		nib = (int)((v >> (i * 4)) & 0xFUL);
+		c = nib < 10 ? ('0' + nib) : ('a' + nib - 10);
+		raw_putc(c);
+	}
+}
+
+static void raw_report(const struct x86_frame64 *f)
+{
+	unsigned long cr2, cr3;
+
+	cr2 = get_cr2();
+	__asm__ __volatile__("mov %%cr3, %0" : "=r"(cr3));
+	raw_putc('R');
+	raw_putc('\n');
+	raw_hex((unsigned long)f->vector);
+	raw_putc(':');
+	raw_hex((unsigned long)f->error);
+	raw_putc(':');
+	raw_hex((unsigned long)f->rip);
+	raw_putc(':');
+	raw_hex((unsigned long)f->rsp);
+	raw_putc(':');
+	raw_hex(cr2);
+	raw_putc(':');
+	raw_hex(cr3);
+	raw_putc('\n');
+}
+
+/*
+ * Each path reports ONCE per boot. A fault storm would otherwise bury the
+ * serial log, and more importantly SILENCE then becomes unambiguous: a slot
+ * that never appears means that path was never entered, which is the only way
+ * to tell "the handler never ran" from "the report could not print".
+ */
+static int diag_seen[4];
+
+static void diag_once(int slot, const struct x86_frame64 *f)
+{
+	/*
+	 * One line per path per boot, deliberately: a fault storm outruns the
+	 * UART and the transmitter then DROPS the bytes that carry the answer
+	 * (measured - 5976 reports in, about 40 complete lines out), so the
+	 * report must be rare to be readable.
+	 */
+	if(diag_seen[slot]) {
+		return;
+	}
+	diag_seen[slot] = 1;
+	raw_putc('0' + slot);
+	raw_report(f);
+}
+
 extern unsigned long fnx_load_base;
 
 static void panic(const struct x86_frame64 *f)
 {
 	unsigned long a, b, c, d, si, di, r8, r9, r10, r11, r12, r13, r14, r15;
 
+	/* FIRST, before anything that could load a string and fault: the
+	 * register-only report (see the note above). Once per boot, so that a
+	 * storm cannot bury the log. */
+	diag_once(2, f);
 	serial_puts("\n!!! KERNEL EXCEPTION vector 0x");
 	puthex32((unsigned int)f->vector);
 	serial_puts(" error=0x");
@@ -512,6 +610,21 @@ static void handle_page_fault(const struct x86_frame64 *f)
 {
 	unsigned long cr2;
 
+	/*
+	 * FNX diagnostics: ONE raw, register-only line per path, taken BEFORE
+	 * any handler runs. Slot 0 = user-mode fault (the storm), 1 = kernel
+	 * fault on a not-present page (K1/K2), 3 = kernel fault on a present
+	 * page. This is deliberately in the #PF path rather than only in
+	 * panic(): it is the path the storm actually goes through, so it
+	 * reports even when the double-fault machinery cannot.
+	 */
+	if(f->error & 0x04) {
+		diag_once(0, f);
+	} else if(!(f->error & 0x1)) {
+		diag_once(1, f);
+	} else {
+		diag_once(3, f);
+	}
 	cr2 = get_cr2();
 	if(f->error & 0x04) {
 		/* fault in USER mode: let the real kernel's do_page_fault() handle
