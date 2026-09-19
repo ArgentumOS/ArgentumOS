@@ -332,6 +332,68 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 	# rather than an entry in it.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nsset.m -o .build/foundation-nsset.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/npropertylistserialization.m -o .build/foundation-npropertylistserialization.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nstimezone.m -o .build/foundation-nstimezone.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/ndatecomponents.m -o .build/foundation-ndatecomponents.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nscalendar.m -o .build/foundation-nscalendar.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nurl.m -o .build/foundation-nurl.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nskeyvaluecoding.m -o .build/foundation-nskeyvaluecoding.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nssortdescriptor.m -o .build/foundation-nssortdescriptor.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nspredicate.m -o .build/foundation-nspredicate.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/npredicateformat.m -o .build/foundation-npredicateformat.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/ncodec.m -o .build/foundation-ncodec.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsformatter.m -o .build/foundation-nsformatter.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsdateformatter.m -o .build/foundation-nsdateformatter.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsnumberformatter.m -o .build/foundation-nsnumberformatter.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/fncalendar.m -o .build/foundation-fncalendar.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsset.m -o .build/foundation-nsset.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nuuid.m -o .build/foundation-nuuid.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/ndateinterval.m -o .build/foundation-ndateinterval.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsvaluetransformer.m -o .build/foundation-nsvaluetransformer.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsaffinetransform.m -o .build/foundation-nsaffinetransform.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsautoreleasepool.m -o .build/foundation-nsautoreleasepool.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsproxy.m -o .build/foundation-nsproxy.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsundomanager.m -o .build/foundation-nsundomanager.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsjsonserialization.m -o .build/foundation-nsjsonserialization.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsvalue.m -o .build/foundation-nsvalue.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsnull.m -o .build/foundation-nsnull.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nscountedset.m -o .build/foundation-nscountedset.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsorderedset.m -o .build/foundation-nsorderedset.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nskeyvalueobserving.m -o .build/foundation-nskeyvalueobserving.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nsexpression.m -o .build/foundation-nsexpression.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/nscomparisonpredicate.m -o .build/foundation-nscomparisonpredicate.o
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \\
+		$\(FOUNDATION_SRC)/ngeometry.m -o .build/foundation-ngeometry.o
 	# W2h: the 128-bit identifier. <foundation/...> headers only — the entropy comes from
 	# getentropy, so no ICU include path is needed.
 	# W2h: the autorelease pool boundary. It needs the RUNTIME's pool primitives, from
