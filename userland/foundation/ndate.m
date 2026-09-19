@@ -10,6 +10,7 @@
  */
 
 #import <foundation/NSDate.h>
+#import <foundation/NSCoder.h>	/* the coder forms below */
 #import <foundation/NSString.h>
 #include <stdio.h>
 #include <time.h>
@@ -217,4 +218,22 @@
 	return [NSString stringWithUTF8String:buffer];
 }
 
+
+/*
+ * NSCoding FOR A DATE (D7's kind (D): NSCoding conformance). This is the FIRST class in this
+ * library to implement the protocol — the archiver, the coder and the protocol all ship, and until
+ * now NOTHING OF OURS COULD BE ARCHIVED, which is a gap worth naming rather than a detail. A date is
+ * one double, so the pair is one key each way; the key's SPELLING is this library's, because it is
+ * internal to our own archive format and a program never sees it (Apple's date key is not published
+ * and not a contract).
+ */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeDouble:_timeIntervalSince1970 forKey:@"NS.time"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [self initWithTimeIntervalSince1970:[coder decodeDoubleForKey:@"NS.time"]];
+}
 @end

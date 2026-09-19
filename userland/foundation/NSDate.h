@@ -27,9 +27,11 @@ typedef double NSTimeInterval;
  * constructor is total (measured: ndate.m has no `return nil`/`return NULL`), and
  * the only exception is the locale parameter. -earlierDate:/-laterDate: always
  * answer one of their two operands, which is why neither is nullable. */
+#import <foundation/NSCoding.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSDate : NSObject <NSCopying>
+@interface NSDate : NSObject <NSCopying, NSCoding>
 {
 	double _timeIntervalSince1970;
 }

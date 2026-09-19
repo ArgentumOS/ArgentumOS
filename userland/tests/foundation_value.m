@@ -394,7 +394,8 @@ int main(void)
 			"compare:", "isEqualToDate:",
 			"isEqual:", "hash", "description", "descriptionWithLocale:",
 			"copy", "mutableCopy",
-			NULL
+						"initWithCoder:", "encodeWithCoder:",
+NULL
 		};
 		static const char *excluded[] = {
 			/* Deprecated by Cocoa itself. */
@@ -411,8 +412,9 @@ int main(void)
 			"descriptionWithCalendarFormat:timeZone:locale:",	/* deprecated, and the calendar's */
 			"dateByAddingComponents:toDate:options:",		/* NSCalendar's method, not NSDate's */
 			"dateByAddingUnit:value:toDate:options:",		/* NSCalendar's method, not NSDate's */
-			"initWithCoder:",					/* NSCoding */
-			"encodeWithCoder:",					/* NSCoding */
+			/* THE TWO NSCoding ENTRIES USED TO BE LISTED HERE. NSDate implements them now
+			 * (the first class in this library to conform - §11.6.1 D7's kind (D)), so they
+			 * are DEMANDED in the required lists above instead. */
 			NULL
 		};
 		NSDate *probe = [NSDate dateWithTimeIntervalSince1970:0];
@@ -654,6 +656,22 @@ int main(void)
 		      refused == nil && error != nil,
 		      [[NSString stringWithFormat:@"refused=%d error=%d",
 			(int)(refused == nil), (int)(error != nil)] UTF8String]);
+	}
+
+	{
+		/* THE FIRST NSCoding CLASS IN THE LIBRARY (D7's kind (D)): the protocol, the coder and the
+		 * archiver all shipped, and NOTHING OF OURS COULD BE ARCHIVED until NSDate conformed. A
+		 * date goes through our own archiver and comes back equal. */
+		NSDate *out = [NSDate dateWithTimeIntervalSince1970:1234567890.5];
+		NSData *archive = [NSKeyedArchiver archivedDataWithRootObject:out];
+		NSDate *back = archive != nil ? [NSKeyedUnarchiver unarchiveObjectWithData:archive] : nil;
+
+		check("date-nscoding-round-trip",
+		      archive != nil && back != nil && [back isEqualToDate:out] &&
+		      [back timeIntervalSince1970] == [out timeIntervalSince1970],
+		      [[NSString stringWithFormat:@"archive=%lu back=%d equal=%d",
+			(unsigned long)(archive != nil ? [archive length] : 0), (int)(back != nil),
+			(int)(back != nil && [back isEqualToDate:out])] UTF8String]);
 	}
 
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
