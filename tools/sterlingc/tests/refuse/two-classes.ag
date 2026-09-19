@@ -1,0 +1,12 @@
+/* §7.9 leaves the header granularity open, so the emitter does not choose. */
+class RefuseOne: Object {
+    method m() -> Void {
+        return;
+    }
+}
+
+class RefuseTwo: Object {
+    method n() -> Void {
+        return;
+    }
+}

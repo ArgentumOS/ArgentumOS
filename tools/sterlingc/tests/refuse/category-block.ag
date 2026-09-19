@@ -1,0 +1,12 @@
+/* §7.4: a category is a second @interface and a second @implementation — not a translation. */
+class RefuseCategory: Object {
+    method m() -> Void {
+        return;
+    }
+}
+
+category RefuseCategory (Extra) {
+    method extra() -> Void {
+        return;
+    }
+}

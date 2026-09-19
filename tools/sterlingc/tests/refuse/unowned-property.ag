@@ -1,0 +1,4 @@
+/* §7.53's `unowned` emission is its own decision and not written yet. */
+class RefuseUnowned: Object {
+    unowned property owner: Object
+}

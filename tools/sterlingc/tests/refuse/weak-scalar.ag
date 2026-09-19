@@ -1,0 +1,4 @@
+/* §7.52: a scalar has nothing to weaken. clang only warns, so the check is ours. */
+class RefuseWeakScalar: Object {
+    weak property count: Int32
+}

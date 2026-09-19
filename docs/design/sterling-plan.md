@@ -284,6 +284,33 @@ bugs actually are.
     declarations alike; a two-name first parameter is therefore emitted the §2
     way, and the disagreement is recorded here rather than resolved in code.
     `sterling-syntax.md` §2 or §5 has to change before that form can be trusted.
+- **Landed next (2026-09): the class surface's declarations.** Protocols
+  (`@protocol P <A, B>`, with §7.48's members sorted into a required run and an
+  `@optional` one — an all-required protocol, most of them, gets no marker at
+  all), conformance lists (`@interface X : Y <P, Q>`), and §7.52's ownership
+  attribute: one per property, written (`copy`, `weak`) or inferred (§5: a class
+  type is `strong`, a scalar is `assign`), with a *computed* property carrying
+  none at all. §7.45's forward declarations are emitted for every protocol name
+  the program *references*, so the source order of a protocol and its inheritors
+  stops mattering.
+  - Three silent losses came out with it, all of the same kind: the parser's
+    modifier loop consumed `strong`/`weak`/`unowned`/`assign`/`copy` and kept
+    only `optional`, so `weak property x: Foo` emitted `(nonatomic, assign)`;
+    the property emission hardcoded `(nonatomic, assign)`, so every *class-typed*
+    property came out `assign`; and a property's `= value` parsed into a variable
+    named `discard`. A fourth: `map_type("Object")` returned `NSObject` with no
+    pointer, so a property of type `Object` was declared by value.
+  - Categories and extensions are worse than those four and are now REFUSED
+    rather than dropped: `parse_extension` read a whole declaration block and the
+    result went nowhere. §7.9's header granularity is an open question — one
+    header per class, per module, or per program — so a program with more than
+    one class is refused too, rather than written into N files each containing
+    every class.
+  - Still owed here: `get`/`set` blocks (§7.54/§7.55, so a `set` block and its
+    implicit writable `newValue`), §9.16's synthesised *defaults* method (which is
+    what a property initializer needs — neither an ivar nor a C struct member may
+    carry one), `unowned` (§7.53), categories/extensions (§7.4), `Self`/`super`,
+    and generic parameters (§7.63).
 
 ### K3 — Types, structs, imports, and C interop
 

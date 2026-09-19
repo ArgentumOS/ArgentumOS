@@ -1,0 +1,60 @@
+/*
+ * EmitsSurface.ag — the class surface: protocols, a conformance list, and the
+ * property attributes.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * The third golden specimen. It covers what the first two cannot: a protocol
+ * with required and optional members, a protocol that inherits, a class that
+ * conforms, and the ownership attribute of §7.52 — written (`copy`, `weak`) and
+ * inferred (`strong` for a class type, `assign` for a scalar).
+ *
+ * Two ORDERING facts are deliberately tested here by writing the source the
+ * wrong way round:
+ *
+ *   - the class conforming to `Printable` appears BEFORE `Printable` is
+ *     declared, and
+ *   - `Printable` inherits `Drawable` before `Drawable` is declared.
+ *
+ * Neither may matter: §7.45 makes a protocol name a type, and §5's forward
+ * declaration rule covers it, so the emitter writes `@protocol Name;` lines and
+ * the source order stops being load-bearing. A golden written in dependency
+ * order would never have shown that.
+ *
+ * The class implements BOTH required members, including the one it inherits
+ * through `Printable`, because §7.48's check requires it — a class missing one
+ * is a compile-time error and this file would not parse.
+ */
+class EmitsSurface: Object, Printable {
+    property title: String
+    copy property label: String
+    weak property owner: Object
+    readonly property weight: Int32 {
+        return 2;
+    }
+
+    method describe(name: String) -> String {
+        self.title = name;
+        self.label = name;
+        self.owner = nil;
+        return self.title;
+    }
+
+    method print() -> Void {
+        return;
+    }
+
+    method draw() -> Void {
+        return;
+    }
+}
+
+protocol Printable: Drawable {
+    method print() -> Void
+    optional method preview() -> Void
+    optional property tag: String
+}
+
+protocol Drawable {
+    method draw() -> Void
+}

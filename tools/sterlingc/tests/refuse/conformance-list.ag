@@ -1,6 +1,0 @@
-/* Printing the class without its `<P>` list would quietly weaken the interface. */
-class RefuseList: Object, SomeProtocol {
-    method m() -> Void {
-        return;
-    }
-}

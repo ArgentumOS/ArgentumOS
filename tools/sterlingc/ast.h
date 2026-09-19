@@ -173,6 +173,29 @@ typedef struct st_param {
 	st_type type;
 } st_param;
 
+/*
+ * §7.52: **exactly one ownership attribute per property** — ObjC's `weak`,
+ * `copy`, `strong` and `assign` are mutually exclusive, so `weak copy property
+ * x: T` is an error. `strong` and `assign` are the *inferred* pair (§5: a class
+ * type is `strong`, a scalar or struct is `assign`) which §7.15 lets an author
+ * write out loud.
+ *
+ * ST_OWN_INFER is "nothing was written", which is NOT the same as
+ * ST_OWN_ASSIGN: the emitter still has to infer, and for a class-typed property
+ * the answer is `strong`. The emitter's predecessor hardcoded `(nonatomic,
+ * assign)` for every non-readonly property, so `property x: Foo` — a class
+ * type — emitted `assign`, which is the wrong ownership and a real memory bug in
+ * the output.
+ */
+typedef enum {
+	ST_OWN_INFER = 0,	/* nothing written; infer from the type */
+	ST_OWN_STRONG,
+	ST_OWN_WEAK,
+	ST_OWN_COPY,
+	ST_OWN_ASSIGN,
+	ST_OWN_UNOWNED,		/* §7.53 — parsed, and refused by the emitter */
+} st_ownership;
+
 typedef struct st_decl {
 	st_decl_kind kind;
 	st_name name;
@@ -184,6 +207,16 @@ typedef struct st_decl {
 	 * because ObjC's runtime asks before sending to it.
 	 */
 	int is_optional;
+	st_ownership ownership;	/* ST_DECL_PROPERTY (§7.52) */
+	/*
+	 * §9.16's stored-property default. RECORDED rather than dropped — the
+	 * parser used to parse it into a variable named `discard` — because its
+	 * emission is a synthesised *defaults* method rather than an initializer
+	 * (neither an ivar nor a C struct member may carry one), so the value has a
+	 * reader coming and the emitter refuses the form until that lands.
+	 */
+	st_expr *initial;
+	int has_initial;
 	st_type type;		/* both */
 	st_param *params;	/* ST_DECL_METHOD */
 	size_t param_count;
@@ -231,6 +264,15 @@ typedef struct {
 	size_t class_count;
 	st_protocol **protocols;
 	size_t protocol_count;
+	/*
+	 * §7.4's categories and extensions. `parse_extension` reads them and the
+	 * result went nowhere — an entire declaration block, dropped with the
+	 * parse reporting success. The count is kept so the emitter can REFUSE
+	 * by name; the blocks themselves are the emitter's later step, and a
+	 * category is not a translation of anything (it is a second
+	 * `@interface X (Name)` plus a second `@implementation`).
+	 */
+	size_t extension_count;
 } st_program;
 
 /* ---- the arena --------------------------------------------------------- */

@@ -1659,8 +1659,34 @@ parse_decl(st_parser *p, st_decl **out)
 	       at_keyword(p, "weak") || at_keyword(p, "unowned") ||
 	       at_keyword(p, "assign") || at_keyword(p, "copy") ||
 	       at_keyword(p, "optional") || at_keyword(p, "required")) {
+		st_ownership written = ST_OWN_INFER;
+
 		if (at_keyword(p, "optional")) {
 			d->is_optional = 1;
+		}
+		/*
+		 * §7.52's ownership attribute is now RECORDED, not consumed and
+		 * dropped. It used to be dropped, which meant `weak property x:
+		 * Foo` parsed and emitted `(nonatomic, assign)` — the `weak` gone,
+		 * and the output still compiles, so nothing said so.
+		 */
+		if (at_keyword(p, "strong"))	written = ST_OWN_STRONG;
+		if (at_keyword(p, "weak"))	written = ST_OWN_WEAK;
+		if (at_keyword(p, "unowned"))	written = ST_OWN_UNOWNED;
+		if (at_keyword(p, "assign"))	written = ST_OWN_ASSIGN;
+		if (at_keyword(p, "copy"))	written = ST_OWN_COPY;
+		if (written != ST_OWN_INFER) {
+			/*
+			 * §7.52: **exactly one** ownership attribute. Two written
+			 * is an error rather than last-one-wins: `weak copy` is
+			 * not a refinement, it is two different ownership rules
+			 * at once.
+			 */
+			if (d->ownership != ST_OWN_INFER) {
+				return fail(p, "exactly one ownership attribute "
+						"per property (§7.52)");
+			}
+			d->ownership = written;
 		}
 		bump(p);
 	}
@@ -1740,19 +1766,19 @@ parse_decl(st_parser *p, st_decl **out)
 		}
 		/*
 		 * §9.16: a stored property's default goes in the declaration, so a
-		 * field may carry `= expression` — `var count: Int32 = 0`. Scanned
-		 * rather than recorded: the emitter needs the initial value and the
-		 * AST has no slot for it yet, which is the same staging as the other
-		 * scanned forms.
+		 * field may carry `= expression` — `var count: Int32 = 0`.
+		 * RECORDED rather than scanned: the emission is a synthesised
+		 * *defaults* method (neither an ivar nor a C struct member may
+		 * carry an initializer), which is not written yet — and the
+		 * emitter refuses the form rather than losing the value.
 		 */
 		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 		    p->tok.start[0] == '=') {
-			st_expr *initial;
-
 			bump(p);
-			if (!parse_expr(p, &initial)) {
+			if (!parse_expr(p, &d->initial)) {
 				return 0;
 			}
+			d->has_initial = 1;
 		}
 		d->kind = ST_DECL_PROPERTY;
 		*out = d;
@@ -1798,17 +1824,21 @@ parse_decl(st_parser *p, st_decl **out)
 		/*
 		 * §5's stored-property form is `property x: T = expression`. The
 		 * test is not at_punct: `=` lexes as an OPERATOR (§7.72), not
-		 * punctuation. Accepted and not yet recorded — the emitter is what
-		 * acts on the value, via §9.16's defaults method.
+		 * punctuation.
+		 *
+		 * RECORDED rather than dropped — this parsed into a variable named
+		 * `discard`, so `readonly property x: Int32 = 3` emitted no value
+		 * at all and nothing said so. §9.16 puts the emission in a
+		 * synthesised defaults method, so the emitter refuses the form
+		 * until that lands.
 		 */
 		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 		    p->tok.start[0] == '=') {
-			st_expr *discard;
-
 			bump(p);
-			if (!parse_expr(p, &discard)) {
+			if (!parse_expr(p, &d->initial)) {
 				return 0;
 			}
+			d->has_initial = 1;
 		}
 		if (at_punct(p, '{')) {
 			if (!parse_stmt_block(p, &d->body)) {
@@ -2482,6 +2512,12 @@ st_parse(const char *src, const char **error)
 				st_arena_free();
 				return NULL;
 			}
+			/*
+			 * Counted, not just consumed. The block itself went nowhere —
+			 * a whole declaration list, read and dropped, with the parse
+			 * reporting success — and the emitter refuses on the count.
+			 */
+			program->extension_count++;
 			continue;
 		}
 		/*

@@ -58,7 +58,13 @@ map_type(const char *name)
 	if (strcmp(name, "Void") == 0)		return "void";
 	if (strcmp(name, "Bool") == 0)		return "BOOL";
 	if (strcmp(name, "String") == 0)	return "NSString *";
-	if (strcmp(name, "Object") == 0)	return "NSObject";
+	/*
+	 * `NSObject *`, not `NSObject`: this is the TYPE table, and a class type
+	 * is written with its pointer. The superclass position is the one place
+	 * the bare name is wanted (`@interface X : NSObject`), and that is
+	 * map_superclass's, which is why the two are separate functions.
+	 */
+	if (strcmp(name, "Object") == 0)	return "NSObject *";
 	if (strcmp(name, "AnyObject") == 0)	return "id";
 	if (strcmp(name, "Int") == 0)		return "NSInteger";
 	if (strcmp(name, "UInt") == 0)		return "NSUInteger";
@@ -567,52 +573,301 @@ emit_stmt_list(FILE *out, const st_stmt *list, int depth, const char *expected,
 
 /* ---- the .h ------------------------------------------------------------ */
 
+/*
+ * §7.45's forward declarations — one line per distinct referenced protocol
+ * name, so the list is linear in the names a program *mentions* rather than in
+ * the types it declares.
+ */
+#define EMIT_MAX_FORWARDS 32
+
+/*
+ * The "have I written this name already" test for the forward declarations. It
+ * keeps the FIRST occurrence's order, which is what makes the emitted block
+ * stable across runs — a hash set would not.
+ */
+static int
+name_seen(const char *seen[], size_t *count, const char *name)
+{
+	size_t i;
+
+	if (name == NULL) {
+		return 1;
+	}
+	for (i = 0; i < *count; i++) {
+		if (strcmp(seen[i], name) == 0) {
+			return 1;
+		}
+	}
+	if (*count < EMIT_MAX_FORWARDS) {
+		seen[(*count)++] = name;
+	}
+	return 0;
+}
+
+/*
+ * §7.52: one ownership attribute per property, and *which* one is either written
+ * or inferred — §5's rule is a class type is `strong` and a scalar or struct is
+ * `assign`. §2's note settles the third case: a COMPUTED property declares no
+ * storage, so it carries no ownership qualifier at all.
+ *
+ * The predecessor emitted `(nonatomic, assign)` for every non-readonly property,
+ * so `property x: Foo` — a class type — came out `assign`. That compiles and is
+ * the wrong ownership rule, which is the kind of wrong answer this emitter is
+ * not allowed to produce quietly.
+ */
+static int
+emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
+{
+	const char *mapped = map_type(d->type.name.text);
+	const char *own = NULL;
+
+	if (d->has_initial) {
+		/*
+		 * §9.16: a stored property's default is emitted as a synthesised
+		 * *defaults* method, because neither an ivar nor a C struct member
+		 * may carry an initializer (measured). Refused, so the value is
+		 * never silently lost — which is what happened while this parsed
+		 * into a variable called `discard`.
+		 */
+		return refuse("a stored property's default (§9.16)", error);
+	}
+	if (d->ownership == ST_OWN_UNOWNED) {
+		return refuse("`unowned` (§7.53)", error);
+	}
+	fprintf(out, "@property (nonatomic");
+	if (d->is_readonly) {
+		fprintf(out, ", readonly");
+	}
+	if (stored) {
+		switch (d->ownership) {
+		case ST_OWN_STRONG:	own = "strong";	break;
+		case ST_OWN_WEAK:	own = "weak";	break;
+		case ST_OWN_COPY:	own = "copy";	break;
+		case ST_OWN_ASSIGN:	own = "assign";	break;
+		default:
+			own = type_is_class(mapped) ? "strong" : "assign";
+			break;
+		}
+		/*
+		 * §7.52: `weak` (and `copy`) require a CLASS type — a scalar has
+		 * nothing to weaken or to copy. It is a language rule rather than
+		 * an emitter detail because clang only *warns* (`__weak int` is
+		 * -Wignored-attributes with exit 0), so a weak scalar would emit
+		 * and compile.
+		 */
+		if (!type_is_class(mapped) && strcmp(own, "assign") != 0) {
+			return refuse("an ownership attribute other than `assign` "
+				      "on a non-class type (§7.52)", error);
+		}
+		fprintf(out, ", %s", own);
+	}
+	/*
+	 * §3's map attaches the pointer to the NAME in a declaration —
+	 * `@property (nonatomic) Foo *x;` — while a cast-shaped position keeps it
+	 * on the type (`(NSString *)name`). `mapped` already ends in ` *`, so the
+	 * space before the name is what has to go.
+	 */
+	{
+		size_t len = strlen(mapped);
+
+		if (len >= 2 && mapped[len - 1] == '*' && mapped[len - 2] == ' ') {
+			fprintf(out, ") %.*s*%s;\n", (int)(len - 1), mapped,
+				d->name.text);
+		} else {
+			fprintf(out, ") %s %s;\n", mapped, d->name.text);
+		}
+	}
+	return 1;
+}
+
+/*
+ * §7.45: `protocol C: A, B { … }` emits ObjC's other bracket — `@protocol C <A,
+ * B>` — and the colon is the surface's while the angle brackets are the
+ * emission's, so nothing new is emitted.
+ *
+ * §7.48: `@required` and `@optional` are *sections*, not per-member markers, and
+ * required is the default. So the members are sorted into runs — a protocol
+ * declares no layout, so reordering is free — and an all-required protocol, most
+ * of them, gets no marker at all.
+ *
+ * The sort is a run of two passes rather than an array: the list is short and the
+ * pass number is the only state either branch needs.
+ */
+static int
+emit_protocol(FILE *out, const st_protocol *prot, const char **error)
+{
+	const st_decl *d;
+	int has_optional = 0;
+	int pass;
+
+	for (d = prot->requirements; d != NULL; d = d->next) {
+		if (d->is_optional) {
+			has_optional = 1;
+		}
+	}
+	fprintf(out, "@protocol %s", prot->name.text);
+	if (prot->inherit_count > 0) {
+		size_t i;
+
+		fprintf(out, " <");
+		for (i = 0; i < prot->inherit_count; i++) {
+			fprintf(out, "%s%s", i > 0 ? ", " : "",
+				prot->inherits[i].text);
+		}
+		fprintf(out, ">");
+	}
+	fprintf(out, "\n");
+	for (pass = 0; pass < 2; pass++) {
+		if (pass == 1) {
+			if (!has_optional) {
+				break;
+			}
+			fprintf(out, "@optional\n");
+		}
+		for (d = prot->requirements; d != NULL; d = d->next) {
+			if ((d->is_optional != 0) != (pass == 1)) {
+				continue;
+			}
+			if (d->kind == ST_DECL_METHOD) {
+				emit_signature(out, d, ";");
+				continue;
+			}
+			/*
+			 * A protocol property is a REQUIREMENT, so it declares no
+			 * storage — but ObjC still wants an ownership attribute on
+			 * the declaration, and clang warns when it has none
+			 * ("no 'assign', 'retain', or 'copy' attribute is
+			 * specified — 'assign' is assumed", which is the
+			 * dangerous default for an object type). So it takes the
+			 * inferred or written one like any other property.
+			 */
+			if (!emit_property_line(out, d, d->body == NULL, error)) {
+				return 0;
+			}
+		}
+	}
+	fprintf(out, "@end\n\n");
+	return 1;
+}
+
 int
 st_emit_header(FILE *out, const st_program *program, const char **error)
 {
 	size_t i;
 
 	/*
-	 * A protocol declaration and a class's conformance list are parsed,
-	 * §7.48 already CHECKS them, and neither has an emission here. Printing a
-	 * class without its `<Protocol>` list would quietly weaken the interface
-	 * the source declares, so both refuse.
+	 * §7.4's categories and extensions are parsed and this emitter has no
+	 * second `@interface X (Name)`. Refused rather than dropped: the block is
+	 * a whole declaration list, and the parser used to read it and keep
+	 * nothing at all.
 	 */
-	if (program->protocol_count > 0) {
-		return refuse("protocol", error);
+	if (program->extension_count > 0) {
+		return refuse("a category or extension (§7.4)", error);
 	}
+	/*
+	 * §7.9's module/header granularity is an OPEN QUESTION — one header per
+	 * class, per module, or per program. The emitter writes one file per
+	 * class and puts every class in each of them, which is incoherent past
+	 * the first class and is not a choice this code gets to make.
+	 */
+	if (program->class_count == 0) {
+		return refuse("a program with no class (the header's name comes "
+			      "from one)", error);
+	}
+	if (program->class_count > 1) {
+		return refuse("more than one class (§7.9 leaves the header "
+			      "granularity open)", error);
+	}
+
+	fprintf(out, "/* %s.h — generated by sterlingc from %s.ag. Do not edit. */\n",
+		program->classes[0]->name.text, program->classes[0]->name.text);
+	fprintf(out, "#import <Foundation/Foundation.h>\n\n");
+	fprintf(out, "_Pragma(\"clang assume_nonnull begin\")\n\n");
+
+	/*
+	 * §7.45: a protocol name is a TYPE, and one may be named before clang has
+	 * seen its declaration — an imported protocol, or an inheritance between
+	 * the program's own protocols written in either order (`protocol P: Q`
+	 * does not require `Q` to come first in the source). §5's forward
+	 * declaration rule covers it the way §3's `@class X;` covers a class, so
+	 * every REFERENCED name gets `@protocol Name;` ahead of the definitions,
+	 * and the source order stops mattering.
+	 *
+	 * A name that is declared and referenced gets one too. That is not noise
+	 * to be optimised away: `@protocol P;` followed by `@protocol P … @end`
+	 * is legal, and knowing which references come *before* the definition
+	 * would mean ordering the definitions, which is a different feature.
+	 */
+	{
+		const char *seen[EMIT_MAX_FORWARDS];
+		size_t seen_count = 0;
+		size_t k;
+
+		for (i = 0; i < program->protocol_count; i++) {
+			const st_protocol *prot = program->protocols[i];
+
+			for (k = 0; k < prot->inherit_count; k++) {
+				if (!name_seen(seen, &seen_count,
+					       prot->inherits[k].text)) {
+					fprintf(out, "@protocol %s;\n",
+						prot->inherits[k].text);
+				}
+			}
+		}
+		for (i = 0; i < program->class_count; i++) {
+			const st_class *c = program->classes[i];
+
+			for (k = 0; k < c->conformance_count; k++) {
+				if (!name_seen(seen, &seen_count,
+					       c->conformances[k].text)) {
+					fprintf(out, "@protocol %s;\n",
+						c->conformances[k].text);
+				}
+			}
+		}
+		if (seen_count > 0) {
+			fprintf(out, "\n");
+		}
+	}
+
+	/*
+	 * §7.45: the protocol DECLARATIONS come before the class, because a
+	 * conformance list naming a protocol clang has not seen yet is an error
+	 * rather than a forward reference.
+	 */
+	for (i = 0; i < program->protocol_count; i++) {
+		if (!emit_protocol(out, program->protocols[i], error)) {
+			return 0;
+		}
+	}
+
 	for (i = 0; i < program->class_count; i++) {
 		const st_class *c = program->classes[i];
 		const st_decl *d;
 
-		if (c->conformance_count > 0) {
-			return refuse("a conformance list", error);
-		}
 		if (c->parameter_count > 0) {
 			return refuse("generic parameters", error);
 		}
-		fprintf(out, "/* %s.h — generated by sterlingc from %s.ag. Do not edit. */\n",
-			c->name.text, c->name.text);
-		fprintf(out, "#import <Foundation/Foundation.h>\n\n");
-		fprintf(out, "_Pragma(\"clang assume_nonnull begin\")\n\n");
-		fprintf(out, "@interface %s : %s\n\n", c->name.text,
+		fprintf(out, "@interface %s : %s", c->name.text,
 			map_superclass(c->superclass.text));
+		if (c->conformance_count > 0) {
+			size_t j;
+
+			fprintf(out, " <");
+			for (j = 0; j < c->conformance_count; j++) {
+				fprintf(out, "%s%s", j > 0 ? ", " : "",
+					c->conformances[j].text);
+			}
+			fprintf(out, ">");
+		}
+		fprintf(out, "\n\n");
 
 		for (d = c->decls; d != NULL; d = d->next) {
 			if (d->kind != ST_DECL_PROPERTY) {
 				continue;
 			}
-			/*
-			 * §2's notes: a computed read-only property declares no
-			 * storage, so it carries no ownership qualifier; a stored
-			 * scalar does, and it is `assign`.
-			 */
-			if (d->is_readonly) {
-				fprintf(out, "@property (nonatomic, readonly) %s %s;\n",
-					map_type(d->type.name.text), d->name.text);
-			} else {
-				fprintf(out, "@property (nonatomic, assign) %s %s;\n",
-					map_type(d->type.name.text), d->name.text);
+			if (!emit_property_line(out, d, d->body == NULL, error)) {
+				return 0;
 			}
 		}
 		fprintf(out, "\n");
@@ -750,17 +1005,22 @@ st_emit_implementation(FILE *out, const st_program *program,
 {
 	size_t i;
 
-	if (program->protocol_count > 0) {
-		return refuse("protocol", error);
+	if (program->extension_count > 0) {
+		return refuse("a category or extension (§7.4)", error);
+	}
+	if (program->class_count == 0) {
+		return refuse("a program with no class (the file's name comes from "
+			      "one)", error);
+	}
+	if (program->class_count > 1) {
+		return refuse("more than one class (§7.9 leaves the file "
+			      "granularity open)", error);
 	}
 	for (i = 0; i < program->class_count; i++) {
 		const st_class *c = program->classes[i];
 		const st_decl *d;
 		extern_set set;
 
-		if (c->conformance_count > 0) {
-			return refuse("a conformance list", error);
-		}
 		if (c->parameter_count > 0) {
 			return refuse("generic parameters", error);
 		}

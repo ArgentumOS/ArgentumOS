@@ -1,0 +1,4 @@
+/* §7.52: exactly one ownership attribute, and two is an error rather than last-one-wins. */
+class Bad: Object {
+    weak copy property x: String
+}
