@@ -23,6 +23,7 @@
 #import <foundation/NSObject.h>
 
 @class NSString;
+@class NSData;	/* the bitmap representation's type */
 
 /* NULLABILITY (F6, the last slice): NONNULL by default, and the exceptions are
  * MEASURED or inherited by PROPAGATION:
@@ -36,6 +37,12 @@
  *     thing it caches is a constructor's result, so a failed build answers nil; the
  *     same reading that made +data: nullable in slice 3;
  *   - -invertedSet is NOT nullable: it builds from the receiver's own ranges. */
+/* Apple spells the 32-bit code point type UTF32Char, and this library had no such name: the API
+ * surface is the specification (§11), so the type is defined rather than approximated with
+ * `unsigned int`, which would be a difference a consumer could see. */
+#include <stdint.h>	/* uint8_t, for -hasMemberInPlane: */
+typedef unsigned int UTF32Char;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSCharacterSet : NSObject <NSCopying>
@@ -68,6 +75,17 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isSupersetOfSet:(NSCharacterSet *)other;
 - (BOOL)isEqualToCharacterSet:(NSCharacterSet *)other;
 
+
+/* FIVE MORE (D7's kind (D), the table group's non-table half). The class stores a BMP range list, so
+ * membership ABOVE the BMP is exactly NO rather than unknown, and plane 0 is exactly "non-empty".
+ * The bitmap representation's BYTE LAYOUT IS THIS LIBRARY'S - Apple documents what it is FOR, not
+ * what is in it - and the ROUND TRIP is the contract, exactly as it is for the byte-order family
+ * (§14.3): a header naming the library and the range count, then the 8192-byte BMP map. */
+- (BOOL)longCharacterIsMember:(UTF32Char)character;
+- (BOOL)hasMemberInPlane:(uint8_t)plane;
+- (NSData *)bitmapRepresentation;
++ (nullable NSCharacterSet *)characterSetWithBitmapRepresentation:(NSData *)data;
++ (nullable NSCharacterSet *)characterSetWithContentsOfFile:(NSString *)path;
 @end
 
 @interface NSMutableCharacterSet : NSCharacterSet

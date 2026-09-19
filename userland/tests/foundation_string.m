@@ -519,7 +519,8 @@ int main(void)
 			"newlineCharacterSet", "decimalDigitCharacterSet", "letterCharacterSet",
 			"alphanumericCharacterSet", "punctuationCharacterSet", "controlCharacterSet",
 			"lowercaseLetterCharacterSet", "uppercaseLetterCharacterSet",
-			NULL
+						"characterSetWithBitmapRepresentation:", "characterSetWithContentsOfFile:",
+NULL
 		};
 		static const char *mutableClassSelectors[] = {
 			"characterSet", NULL
@@ -527,7 +528,8 @@ int main(void)
 		static const char *instanceSelectors[] = {
 			"initWithCharactersInString:", "initWithRange:", "characterIsMember:",
 			"invertedSet", "isSupersetOfSet:", "isEqualToCharacterSet:",
-			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+			"isEqual:", "hash", "description", "copy", "mutableCopy", 			"longCharacterIsMember:", "hasMemberInPlane:", "bitmapRepresentation",
+NULL
 		};
 		static const char *mutableSelectors[] = {
 			"addCharactersInString:", "addCharactersInRange:",
@@ -536,13 +538,16 @@ int main(void)
 			"formIntersectionWithCharacterSet:", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs the Unicode character tables. */
+			/* STILL NEEDS THE UNICODE TABLES - data, not machinery, which is why these stay
+			 * refused and are DEFECTS rather than necessities (§11.6.1 D7). */
 			"symbolCharacterSet", "capitalizedLetterCharacterSet",
 			"nonBaseCharacterSet", "decomposableCharacterSet",
-			"illegalCharacterSet", "longCharacterIsMember:", "hasMemberInPlane:",
-			/* Needs a bitmap representation or a file to read one from. */
-			"bitmapRepresentation", "characterSetWithBitmapRepresentation:",
-			"characterSetWithContentsOfFile:", NULL
+			"illegalCharacterSet",
+			/* FIVE USED TO BE NAMED HERE as needing "the Unicode character tables" or "a bitmap
+			 * representation". They needed NEITHER: the class is BMP-only, so an astral code
+			 * point is exactly a non-member, and the bitmap layout is this library's with the
+			 * round trip as the contract. They are DEMANDED above in the same change. */
+			NULL
 		};
 		NSCharacterSet *probe = [NSCharacterSet whitespaceCharacterSet];
 		NSMutableCharacterSet *mutable = [[NSMutableCharacterSet alloc] init];
@@ -815,6 +820,32 @@ int main(void)
 		}
 		check("locale-api-complete", complete,
 		      "the audited Cocoa inventory for NSLocale");
+	}
+
+	{
+		/* FIVE REFUSALS THAT NEEDED NO DATA AT ALL (D7's kind (D)): the class is BMP-only, so an
+		 * ASTRAL code point is exactly a non-member and plane 0 is exactly non-empty; the bitmap's
+		 * byte layout is this library's and the ROUND TRIP is the contract. */
+		NSString *path = @"/System/Temporary Files/fncharset-bits";
+		NSCharacterSet *set = [NSCharacterSet characterSetWithCharactersInString:@"abc"];
+		NSData *bits = [set bitmapRepresentation];
+		NSCharacterSet *back = bits != nil ? [NSCharacterSet characterSetWithBitmapRepresentation:bits] : nil;
+		BOOL wrote = [bits writeToFile:path atomically:YES];
+		NSCharacterSet *fromFile = wrote ? [NSCharacterSet characterSetWithContentsOfFile:path] : nil;
+
+		check("charset-bitmap-and-planes",
+		      bits != nil && [bits length] == 8 + 8192 &&
+		      back != nil && [back characterIsMember:(unichar)'a'] &&
+		      ![back characterIsMember:(unichar)'z'] &&
+		      fromFile != nil && [fromFile characterIsMember:(unichar)'b'] &&
+		      [set longCharacterIsMember:(UTF32Char)'a'] &&
+		      ![set longCharacterIsMember:0x1F600] &&
+		      [set hasMemberInPlane:0] && ![set hasMemberInPlane:1],
+		      [[NSString stringWithFormat:@"bits=%lu back=%d file=%d astral=%d planes=%d/%d",
+			(unsigned long)(bits != nil ? [bits length] : 0), (int)(back != nil),
+			(int)(fromFile != nil), (int)[set longCharacterIsMember:0x1F600],
+			(int)[set hasMemberInPlane:0], (int)[set hasMemberInPlane:1]] UTF8String]);
+		remove([path UTF8String]);
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

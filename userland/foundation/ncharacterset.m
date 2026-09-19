@@ -9,6 +9,7 @@
  */
 
 #import <foundation/NSCharacterSet.h>
+#import <foundation/NSData.h>
 #import <foundation/NSString.h>
 #include <stdlib.h>
 #include <string.h>
@@ -342,6 +343,108 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	return set;
 }
 
+
+/*
+ * THE NON-TABLE HALF OF THE TABLE GROUP (D7's kind (D)). This class stores a BMP range list, so
+ * these are EXACT rather than approximate: a code point above the BMP is genuinely a non-member,
+ * plane 0 is genuinely non-empty exactly when the set is, and any other plane is genuinely empty.
+ *
+ * THE BITMAP'S BYTE LAYOUT IS THIS LIBRARY'S and the ROUND TRIP is the contract - Apple documents
+ * what the representation is for, not what is in it, which is the same standing as the byte-order
+ * family and the alignment bits. A header holding a magic and the range count, then 8192 bytes of
+ * BMP membership, which is what makes the file form meaningful: a file in this format is a character
+ * set, and its representation is itself.
+ */
+#define FN_CHARSET_MAGIC 0x534e4346	/* 'FNCS', little-endian on disk */
+#define FN_CHARSET_BITMAP_BYTES 8192	/* 65536 bits, the BMP */
+
+- (BOOL)longCharacterIsMember:(UTF32Char)character
+{
+	if (character > 0xFFFF) {
+		return NO;
+	}
+	return [self characterIsMember:(unichar)character];
+}
+
+- (BOOL)hasMemberInPlane:(uint8_t)plane
+{
+	return (plane == 0) && (_rangeCount > 0);
+}
+
+- (NSData *)bitmapRepresentation
+{
+	unsigned char *bytes = (unsigned char *)calloc(1, 8 + FN_CHARSET_BITMAP_BYTES);
+	unsigned int header[2];
+	NSData *result;
+	unsigned long i;
+	unsigned long offset;
+
+	if (bytes == NULL) {
+		return [NSData data];
+	}
+	header[0] = FN_CHARSET_MAGIC;
+	header[1] = (unsigned int)_rangeCount;
+	memcpy(bytes, header, 8);
+	for (i = 0; i < _rangeCount; i++) {
+		unsigned long loc = _ranges[i * 2];
+		unsigned long len = _ranges[i * 2 + 1];
+		unsigned long c;
+
+		for (c = loc; c < loc + len && c <= 0xFFFF; c++) {
+			bytes[8 + (c / 8)] |= (unsigned char)(1u << (c % 8));
+		}
+	}
+	(void)offset;
+	result = [NSData dataWithBytes:bytes length:8 + FN_CHARSET_BITMAP_BYTES];
+	free(bytes);
+	return result;
+}
+
++ (NSCharacterSet *)characterSetWithBitmapRepresentation:(NSData *)data
+{
+	NSCharacterSet *set;
+	unsigned int header[2];
+	const unsigned char *bytes;
+	unsigned long c;
+	unsigned long start = 0;
+	BOOL inRange = NO;
+
+	if ([data length] < 8 + FN_CHARSET_BITMAP_BYTES) {
+		return nil;
+	}
+	bytes = (const unsigned char *)[data bytes];
+	memcpy(header, bytes, 8);
+	if (header[0] != FN_CHARSET_MAGIC) {
+		return nil;
+	}
+	/* A MUTABLE SET IS BUILT AND RETURNED: this method assembles ranges, and the immutable
+	 * class has no -addCharactersInRange: — sending it one is an unrecognized selector, which is
+	 * exactly the abort this probe caught. The answer is still an NSCharacterSet: the mutable
+	 * class is its subclass. */
+	set = [[NSMutableCharacterSet alloc] init];
+	for (c = 0; c <= 0xFFFF; c++) {
+		BOOL member = (bytes[8 + (c / 8)] & (1u << (c % 8))) != 0;
+
+		if (member && !inRange) {
+			start = c;
+			inRange = YES;
+		} else if (!member && inRange) {
+			[set addCharactersInRange:NSMakeRange((NSUInteger)start, (NSUInteger)(c - start))];
+			inRange = NO;
+		}
+	}
+	if (inRange) {
+		[set addCharactersInRange:NSMakeRange((NSUInteger)start, 0x10000 - (NSUInteger)start)];
+	}
+	return set;
+}
+
++ (NSCharacterSet *)characterSetWithContentsOfFile:(NSString *)path
+{
+	NSData *data = [NSData dataWithContentsOfFile:path];
+
+	return (data == nil) ? nil : [self characterSetWithBitmapRepresentation:data];
+}
 @end
 
 @implementation NSMutableCharacterSet
