@@ -242,6 +242,131 @@ static unsigned short utf8_character_at(const char *bytes, size_t size, size_t i
 	return (cp > 0xFFFF) ? (unsigned short)0xFFFD : (unsigned short)cp;
 }
 
+/*
+ * THE UTF-16 INDEX SPACE (W1, docs/design/foundation-plan.md §13).
+ *
+ * APPLE'S NSString INDEXES UTF-16 CODE UNITS, and this library used to index
+ * bytes (-length, the ranges) and scalars (-characterCount, -characterAtIndex:)
+ * in the SAME CLASS — two spaces, so an NSRange from one API could not be handed
+ * to the other. These four functions are the unit space's whole arithmetic: what
+ * a unit count is, which byte a unit starts at, which unit a byte falls in, and
+ * what the unit AT an index is. Every public method in slice 3 is a call into
+ * one of them, and the byte-indexed internals never learn about units at all.
+ *
+ * A UNIT IS NOT A SCALAR: a character above U+FFFF is TWO units, a surrogate
+ * pair, and -characterAtIndex: must answer either half on request (it is a
+ * `unichar`, and that is what a unichar is). The old scalar helper answered
+ * 0xFFFD for such a character, which is the SCALAR space's artefact and is why
+ * this layer exists rather than a rename.
+ */
+static unsigned long fn_utf8_codepoint(const unsigned char *p, size_t seq)
+{
+	switch (seq) {
+	case 1:  return p[0];
+	case 2:  return ((unsigned long)(p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+	case 3:  return ((unsigned long)(p[0] & 0x0F) << 12) |
+			((unsigned long)(p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+	default: return ((unsigned long)(p[0] & 0x07) << 18) |
+			((unsigned long)(p[1] & 0x3F) << 12) |
+			((unsigned long)(p[2] & 0x3F) << 6) | (p[3] & 0x3F);
+	}
+}
+
+/* How many UTF-16 code units `size` bytes of UTF-8 are worth. */
+static size_t fn_utf16_units(const char *bytes, size_t size)
+{
+	size_t i = 0, n = 0;
+
+	while (i < size) {
+		size_t seq = utf8_seq_length((unsigned char)bytes[i]);
+
+		if (i + seq > size) {
+			seq = 1;		/* a truncated tail is one unit, not none */
+		}
+		n += (fn_utf8_codepoint((const unsigned char *)bytes + i, seq) > 0xFFFF) ? 2 : 1;
+		i += seq;
+	}
+	return n;
+}
+
+/* The byte offset a unit index starts at. Clamps past the end, like a byte
+ * index into the buffer would. */
+static size_t fn_utf16_unit_to_byte(const char *bytes, size_t size, size_t unit)
+{
+	size_t i = 0, n = 0;
+
+	while (i < size && n < unit) {
+		size_t seq = utf8_seq_length((unsigned char)bytes[i]);
+		size_t width;
+
+		if (i + seq > size) {
+			seq = 1;
+		}
+		width = (fn_utf8_codepoint((const unsigned char *)bytes + i, seq) > 0xFFFF) ? 2 : 1;
+		if (n + width > unit) {
+			break;			/* mid-surrogate: the unit starts at this byte */
+		}
+		n += width;
+		i += seq;
+	}
+	return i;
+}
+
+/* Which unit a byte offset falls in — the inverse, for a match found in bytes. */
+static size_t fn_byte_to_utf16_unit(const char *bytes, size_t size, size_t byte)
+{
+	size_t i = 0, n = 0;
+
+	if (byte > size) {
+		byte = size;
+	}
+	while (i < byte) {
+		size_t seq = utf8_seq_length((unsigned char)bytes[i]);
+
+		if (i + seq > size) {
+			seq = 1;
+		}
+		n += (fn_utf8_codepoint((const unsigned char *)bytes + i, seq) > 0xFFFF) ? 2 : 1;
+		i += seq;
+	}
+	return n;
+}
+
+/* The UTF-16 code unit AT a unit index, surrogate halves included. Answers 0
+ * past the end, which is what an out-of-range index deserves. */
+static unsigned short fn_utf16_unit_at(const char *bytes, size_t size, size_t unit)
+{
+	size_t i = 0, n = 0;
+
+	while (i < size) {
+		size_t seq = utf8_seq_length((unsigned char)bytes[i]);
+		unsigned long cp;
+
+		if (i + seq > size) {
+			seq = 1;
+		}
+		cp = fn_utf8_codepoint((const unsigned char *)bytes + i, seq);
+		if (cp > 0xFFFF) {
+			unsigned long v = cp - 0x10000;
+
+			if (n == unit) {
+				return (unsigned short)(0xD800 + (v >> 10));
+			}
+			if (n + 1 == unit) {
+				return (unsigned short)(0xDC00 + (v & 0x3FF));
+			}
+			n += 2;
+		} else {
+			if (n == unit) {
+				return (unsigned short)cp;
+			}
+			n += 1;
+		}
+		i += seq;
+	}
+	return 0;
+}
+
 /* ASCII case mapping. This Foundation is UTF-8 and makes no Unicode case claims,
  * so case folding is the ASCII one and says so in the header. */
 static unsigned char utf8_lower(unsigned char c)
