@@ -3099,3 +3099,41 @@ that comment shows the choice was made on purpose.
 
 Next: the probe's own tidy-up — its measurement blocks must run BEFORE the now-working cleanup, which
 currently deletes the directories they measure — and the open question of `unlink(2)`'s errno.
+
+#### F13.24 LANDED: the kernel answers EISDIR, the probe asserts ENOTEMPTY, and the record is clean
+
+**THE DECISION WAS TAKEN AND CARRIED OUT: `unlink(2)` on a directory answers `-EISDIR`, as Linux does.**
+Two sites in `kernel/syscalls/unlink.c` — `sys_unlinkat`'s `AT_REMOVEDIR`-absent branch and `sys_unlink`
+itself — both carried `return -EPERM; /* Linux returns -EISDIR */`, a comment naming the difference and
+leaving it. `-EPERM` is what silently broke `remove(3)` for every program on the system, because musl
+retries as `AT_REMOVEDIR` only on `EISDIR`; the comment is now the reason for the value rather than an
+apology for it. **So the kernel fix the item was opened for is a one-word fix — in a file nobody
+suspected, because the file system's `rmdir` path was never the problem.**
+
+**THE PROBE NOW MEASURES A LIVE TREE AND ASSERTS THE SPECIFIC PROPERTY.** Re-measured after the fix,
+with the working tree re-created first (the recursive remove now succeeds, so the earlier readings were
+describing a deletion rather than a refusal):
+
+```
+fs-rmdir-nonempty-enotempty: errno=39 survived=1
+fs-rmdir-discriminator: EMPTY removed=1 'no-error' | NON-EMPTY removed=1 'no-error'
+fs-relative:   removed=1 'no-error' (cwd-restored=1)
+fs-unlinkat-removedir: rc=0 errno=0 (removed) still-there=0
+fs-syscalls:   rmdir(2) rc=0 errno=0 | unlink(2) rc=-1 errno=2 | still-there=0
+```
+
+`errno=39` IS `ENOTEMPTY` and the directory SURVIVED: the kernel refuses a non-empty directory with the
+RIGHT answer instead of a permission refusal, which is the specific property F13.14 recorded as
+impossible. The service removes both, recursively, with no error at all.
+
+**AND ONE CHECK WAS INVERTED BY THE BUG AND HAD TO BE REPAIRED WITH IT.** `fs-cleanup` carried
+`&& !fullGone` from the era when directories could not be removed at all — so it asserted that a
+NON-EMPTY directory SURVIVES the service, and it failed the moment the bug was fixed. **A check inverted
+by a bug is still a bug.** The assertion is now the service's real contract — both trees removed, no
+errors — plus the kernel's `ENOTEMPTY` for the direct call.
+
+**TWO THINGS ARE NOW STALE, AND ARE RECORDED RATHER THAN LEFT TO ROT:** the `fs-ino` line (it answered
+its question — the file system was exonerated — and now reports "stat failed" because the service
+removed the directory it measures), and the comment block above `fs-cleanup` that still says the
+directories "are refused by THIS KERNEL". Both are harmless litter from the hunt; both should go when
+that probe is next touched.

@@ -73,7 +73,9 @@ int sys_unlinkat(int dirfd, const char *filename, int flags)
 			iput(i);
 			iput(dir);
 			free_name(tmp_name);
-			return -EPERM;	/* Linux returns -EISDIR; sys_rmdir is the dir path */
+			return -EISDIR;	/* Linux's answer for unlink(2) on a directory (was -EPERM, which
+					 * silently broke remove(3): musl retries as AT_REMOVEDIR only on
+					 * EISDIR, so the retry never happened anywhere on the system) */
 		}
 		/* AT_REMOVEDIR: rm -rf removes directories through
 		 * unlinkat(AT_REMOVEDIR); do the sys_rmdir checks here with
@@ -174,7 +176,7 @@ int sys_unlink(const char *filename)
 		iput(i);
 		iput(dir);
 		free_name(tmp_name);
-		return -EPERM;	/* Linux returns -EISDIR */
+		return -EISDIR;	/* Linux's answer, for the same reason as sys_unlinkat above */
 	}
 	if(IS_RDONLY_FS(i)) {
 		iput(i);

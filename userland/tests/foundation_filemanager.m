@@ -214,6 +214,16 @@ int main(void)
 			BOOL emptyGone, fullGone;
 			NSString *emptyWhy, *fullWhy;
 
+			/* THE TREE IS RE-CREATED BEFORE THESE MEASUREMENTS, and that is not tidiness: the
+			 * recursive remove above NOW SUCCEEDS (F13.23), so `root` and everything in it is gone
+			 * by this point and every path below would answer "No such file or directory" —
+			 * measurements describing a deletion instead of a refusal. These four blocks are about
+			 * what the kernel and the service DO, so they need something to do it to. */
+			[manager createDirectoryAtPath:root
+				       withIntermediateDirectories:YES
+						    attributes:nil
+							 error:NULL];
+
 			[manager createDirectoryAtPath:emptyDir
 				       withIntermediateDirectories:NO
 						    attributes:nil
@@ -224,12 +234,42 @@ int main(void)
 							 error:NULL];
 			[manager createFileAtPath:[fullDir stringByAppendingPathComponent:@"occupant"]
 					 contents:nil attributes:nil];
+
+			/* THE KERNEL'S OWN ANSWER FOR A NON-EMPTY DIRECTORY, TAKEN DIRECTLY (F13.23): the
+			 * service recurses, so it can never show this, and it is the specific property F13.14
+			 * recorded as impossible. rmdir(2) must refuse with ENOTEMPTY and the directory must
+			 * SURVIVE. */
+			{
+				NSString *occupied = fn_path(@"occupied");
+				int notEmptyErr = 0;
+				BOOL survived;
+
+				[manager createDirectoryAtPath:occupied
+					       withIntermediateDirectories:NO
+							    attributes:nil
+								 error:NULL];
+				[manager createFileAtPath:[occupied stringByAppendingPathComponent:@"occupant"]
+						 contents:nil attributes:nil];
+				errno = 0;
+				if(rmdir([occupied UTF8String]) != 0) {
+					notEmptyErr = errno;
+				}
+				survived = [manager fileExistsAtPath:occupied];
+				printf("FOUNDATION-FILEMANAGER fs-rmdir-nonempty-enotempty: errno=%d survived=%d\n",
+				       notEmptyErr, (int)survived);
+				truthful = truthful && notEmptyErr == ENOTEMPTY && survived;
+			}
+
 			emptyGone = [manager removeItemAtPath:emptyDir error:&emptyError];
 			fullGone = [manager removeItemAtPath:fullDir error:&fullError];
 			emptyWhy = emptyError != nil ? [emptyError localizedDescription] : @"no-error";
 			fullWhy = fullError != nil ? [fullError localizedDescription] : @"no-error";
-			truthful = truthful && (emptyGone || emptyError != nil) &&
-					(fullGone || fullError != nil) && !fullGone;
+			/* THE SERVICE REMOVES BOTH, RECURSIVELY — that is what -removeItemAtPath: IS — and
+			 * neither attempt may carry an error. `!fullGone` stood here before, and it was true
+			 * ONLY while directories could not be removed at all: a check inverted by a bug is
+			 * still a bug, and it failed the moment the bug was fixed. */
+			truthful = truthful && emptyGone && fullGone && emptyError == nil &&
+					fullError == nil;
 
 			/* PRINTED UNCONDITIONALLY, because a check's detail is only shown when it FAILS and
 			 * this pair is the measurement rather than a verdict (F13.22). */
