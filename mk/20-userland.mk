@@ -213,12 +213,14 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 # the sweep land one slice at a time.
 FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation \
 	-Werror=nullability-completeness
-# WHY -fobjc-arc IS NOT HERE, and it was MEASURED rather than assumed (F13.21): clang answers
-# "-fobjc-arc is not supported on platforms using the legacy runtime", because this system's libobjc2
-# is built with the LEGACY ABI. So ARC is not a per-file question with a sweep attached; it is a
-# RUNTIME-ABI question, and turning it on would mean changing the Objective-C runtime's object layout,
-# not adding a flag. The library's ownership is therefore MANUAL ON PURPOSE, and every file whose
-# header says "ARC file" is saying something untrue about how it is compiled.
+# WHY THE LIBRARY HAS NO -fobjc-arc, stated as the POLICY it is (user, 2026-09-19): ARC is for
+# everything that USES the Foundation; the Foundation's own ownership is a free choice as long as it
+# works, and it is MANUAL here. This replaces a note claiming clang refuses -fobjc-arc on this
+# platform, which the build contradicts: EVERY PROBE IS COMPILED -fobjc-arc, one file per command so
+# the flag applies, and foundation_core's arc-pool check - whose semantics depend on ARC being real -
+# PASSES on the guest. The old note was a mis-scoped measurement (F13.21) that stood for several
+# milestones with a sweep-style conclusion drawn from it. WHAT IT MEANT TO SAY: the LIBRARY's
+# ownership is manual, not that ARC is unavailable here.
 
 # FOUNDATION COMPILE RULES, GENERATED. One rule per source from the directory listing, so a new .m file needs no
 # hand-written rule; and EACH OBJECT DEPENDS ON ITS .m, so editing a source rebuilds exactly its own object instead
@@ -226,7 +228,10 @@ FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplet
 # THE PER-FILE FLAGS WERE READ OFF the block this replaces: -fno-objc-arc for the MRC files (nsobject.m,
 # ntinystring.m, ndateinterval.m), the ICU prefix for the 5 files including <unicode/...>, the X11 prefix for
 # ncodec.m (the only file including <zlib.h>, hence -lz on the link), -Wno-objc-root-class for nsproxy.m.
-# $(FOUNDATION_CFLAGS) already selects ARC, so only the MRC files opt out.
+# AND A CORRECTION TO THIS BLOCK'S OWN COMMENT: $(FOUNDATION_CFLAGS) selects NO ARC AT ALL - the whole
+# library is MRC - so the three-entry MRC list below is REDUNDANT. It is kept because it was read off
+# the block this replaced, and because a redundant flag costs nothing; the sentence it replaces
+# ("$(FOUNDATION_CFLAGS) already selects ARC") was simply wrong.
 FN_FOUNDATION_SRCS  = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
 FN_FOUNDATION_NOARC = nsobject.m ntinystring.m ndateinterval.m
 FN_FOUNDATION_ICU   = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m
