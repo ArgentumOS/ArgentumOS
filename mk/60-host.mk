@@ -19,15 +19,23 @@
 # reads the guest's filesystem or an FSH path is deliberately absent, because it would fail here
 # for a reason that is not a bug.
 #
-# WHAT IS KNOWN TO DIVERGE, measured and not yet explained (2026-09-19): the host run of
-# foundation_core answers 47 of 50 checks where the guest answers 50. `arc-pool` fails on the host
-# alone, which is a RUNTIME difference rather than a library one - the host runtime prefix may
-# predate third_party/libobjc2-fnx.patch - and `undo-redo-reapplies` and `undo-remove-all-actions`
-# fail with it. UNTIL THAT IS UNDERSTOOD, THIS IS A FAST ITERATION LOOP AND NOT A SUBSTITUTE: a
-# host pass is evidence, a host FAILURE on one of those three proves nothing about the guest.
+# WHAT IS KNOWN TO DIVERGE, and WHAT IT IS NOT (2026-09-19). The host run of foundation_core answers
+# 47 of 50 checks where the guest answers 50: `arc-pool` FAILS, and `undo-redo-reapplies` with
+# `undo-remove-all-actions` fail after it. TWO EXPLANATIONS WERE TESTED AND BOTH ARE WRONG, so do not
+# spend the builds again:
+#   * NOT the runtime configuration. `make host-libobjc` rebuilds the runtime with -DGNUSTEP and
+#     OLDABI_COMPAT=OFF to mirror the guest, and the prefix really was built without them - and the
+#     same three checks still fail. (`host-libobjc` is kept: matching the guest is right regardless.)
+#   * NOT optimisation. The guest's FOUNDATION_CFLAGS carries no -O, and -O0 here changes nothing.
+# The next diagnostic is the arc-pool check ITSELF: read it and make it print the intermediate state,
+# because the message it emits ("the runtime's pool released an ARC-managed object") names a RUNTIME
+# interaction and nothing yet says which half is wrong.
+# UNTIL THAT IS UNDERSTOOD, THIS IS A FAST ITERATION LOOP AND NOT A SUBSTITUTE: a host pass is
+# evidence, and a host failure on one of those three proves nothing about the guest.
 
 HOST_LLVM       ?= /usr/lib/llvm-19/bin
 HOST_CC         ?= $(HOST_LLVM)/clang
+HOST_CXX        ?= $(HOST_LLVM)/clang++
 HOST_OBJCPFX     = .build/libobjc2-host-prefix
 HOST_BUILD       = .build/host
 HOST_LIBDIR      = $(HOST_BUILD)/lib
@@ -44,7 +52,10 @@ HOST_ICU_LIBS    = $(shell pkg-config --libs icu-i18n 2>/dev/null)
 # -fobjc-arc (measured at F13.21 - clang refuses it against this system's runtime), so a library file
 # using -release compiles there and must compile here. The per-file -fno-objc-arc entries the guest
 # block carries are therefore redundant, and this fragment does not repeat them.
-HOST_CFLAGS      = -fPIC -O1 -g -Iinclude -Iuserland -fno-objc-arc $(HOST_OBJCFLAGS)
+# NO -O FLAG, DELIBERATELY: the guest's FOUNDATION_CFLAGS carries none either, and this project has
+# a documented history of optimisation-dependent miscompiles. Matching the guest's flags exactly is
+# the difference between a host run that predicts the guest and one that invents failures.
+HOST_CFLAGS      = -fPIC -g -Iinclude -Iuserland -fno-objc-arc $(HOST_OBJCFLAGS)
 HOST_RPATH       = -Wl,-rpath,$(CURDIR)/$(HOST_LIBDIR) -Wl,-rpath,$(CURDIR)/$(HOST_OBJCPFX)/lib
 HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc
 
@@ -108,3 +119,25 @@ host-foundation-run: host-foundation
 		echo "== $$p =="; \
 		$(HOST_BINDIR)/$$p || echo "   ($$p exited $$?)"; \
 	done
+
+# THE HOST RUNTIME ITSELF, and why this target exists. The prefix that was here had been configured
+# WITHOUT -DGNUSTEP and WITH OLDABI_COMPAT=ON, while the guest runtime is built with BOTH THE OTHER
+# WAY. Those are BEHAVIOURAL switches inside libobjc2, and the host run diverged on exactly the checks
+# that would show a runtime difference (arc-pool is a runtime test; the redo path goes through
+# NSInvocation). The options below MIRROR the guest's configure line - including that the FNX patch is
+# NOT applied here: it exists to make the musl C wrapper link the runtime with the C++ driver, which
+# the host's glibc link does not need.
+.PHONY: host-libobjc
+host-libobjc:
+	cmake -G "Unix Makefiles" -S $(OBJC_SRC) -B .build/libobjc2-host \
+	  -DCMAKE_C_COMPILER=$(HOST_CC) -DCMAKE_CXX_COMPILER=$(HOST_CXX) \
+	  -DCMAKE_OBJC_COMPILER=$(HOST_CC) -DCMAKE_OBJCXX_COMPILER=$(HOST_CXX) \
+	  -DCMAKE_INSTALL_PREFIX=$(CURDIR)/$(HOST_OBJCPFX) \
+	  -DCMAKE_BUILD_TYPE=Release \
+	  -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+	  -DGNUSTEP_INSTALL_TYPE=NONE -DCMAKE_INSTALL_LIBDIR=lib \
+	  -DTESTS=OFF -DOLDABI_COMPAT=OFF -DLLVM_OPTS=OFF \
+	  -DBUILD_STATIC_LIBOBJC=OFF \
+	  -DCMAKE_C_FLAGS="-DGNUSTEP" -DCMAKE_OBJC_FLAGS="-DGNUSTEP"
+	cmake --build .build/libobjc2-host -j$$(nproc)
+	cmake --install .build/libobjc2-host
