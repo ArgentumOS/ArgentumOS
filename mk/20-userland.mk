@@ -476,11 +476,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# same justification, as NSString's abstract primitives in FOUNDATION_CFLAGS above.
 	$(MUSL64_OBJC) -c -Wno-objc-root-class -Wno-incomplete-implementation -fno-objc-arc \
 		-Iuserland -Iuserland/tests \
-		userland/tests/foundation_core_support.m -o .build/foundation-core-support.o
+		userland/tests/foundation_core_support.m -o .build/probe-foundation_core_support.o
 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_core.m -o .build/foundation-core-main.o
-	$(MUSL64_OBJC) .build/foundation-core-support.o .build/foundation-core-main.o \
+		userland/tests/foundation_core.m -o .build/probe-foundation_core.o
+	$(MUSL64_OBJC) .build/foundation-core-support.o .build/probe-foundation_core.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
 	# foundation_string: F1 acceptance (docs/design/foundation-plan.md). Two
@@ -489,11 +489,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# is an object - both paths have to work).
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_string_support.m -o .build/foundation-string-support.o
+		userland/tests/foundation_string_support.m -o .build/probe-foundation_string_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_string.m -o .build/foundation-string-main.o
-	$(MUSL64_OBJC) .build/foundation-string-support.o .build/foundation-string-main.o \
+		userland/tests/foundation_string.m -o .build/probe-foundation_string.o
+	$(MUSL64_OBJC) .build/foundation-string-support.o .build/probe-foundation_string.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
 	# foundation_value: F2 acceptance. The support unit imports ONLY the
@@ -501,11 +501,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# acceptance too.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_value_support.m -o .build/foundation-value-support.o
+		userland/tests/foundation_value_support.m -o .build/probe-foundation_value_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_value.m -o .build/foundation-value-main.o
-	$(MUSL64_OBJC) .build/foundation-value-support.o .build/foundation-value-main.o \
+		userland/tests/foundation_value.m -o .build/probe-foundation_value.o
+	$(MUSL64_OBJC) .build/foundation-value-support.o .build/probe-foundation_value.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_value"
 	# foundation_collection: F3 acceptance. The support unit builds a NESTED
@@ -513,11 +513,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# objects; the main unit exercises clang's for-in lowering.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_collection_support.m -o .build/foundation-collection-support.o
+		userland/tests/foundation_collection_support.m -o .build/probe-foundation_collection_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_collection.m -o .build/foundation-collection-main.o
-	$(MUSL64_OBJC) .build/foundation-collection-support.o .build/foundation-collection-main.o \
+		userland/tests/foundation_collection.m -o .build/probe-foundation_collection.o
+	$(MUSL64_OBJC) .build/foundation-collection-support.o .build/probe-foundation_collection.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_collection"
 	# foundation_error: F4 acceptance. The support unit builds values from
@@ -525,11 +525,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# path is part of the check.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_error_support.m -o .build/foundation-error-support.o
+		userland/tests/foundation_error_support.m -o .build/probe-foundation_error_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_error.m -o .build/foundation-error-main.o
-	$(MUSL64_OBJC) .build/foundation-error-support.o .build/foundation-error-main.o \
+		userland/tests/foundation_error.m -o .build/probe-foundation_error.o
+	$(MUSL64_OBJC) .build/foundation-error-support.o .build/probe-foundation_error.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_error"
 	# foundation_calendar: F7 acceptance. The same two-unit shape, and the support
@@ -537,11 +537,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# proved to have reached <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_calendar_support.m -o .build/foundation-calendar-support.o
+		userland/tests/foundation_calendar_support.m -o .build/probe-foundation_calendar_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_calendar.m -o .build/foundation-calendar-main.o
-	$(MUSL64_OBJC) .build/foundation-calendar-support.o .build/foundation-calendar-main.o \
+		userland/tests/foundation_calendar.m -o .build/probe-foundation_calendar.o
+	$(MUSL64_OBJC) .build/foundation-calendar-support.o .build/probe-foundation_calendar.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar"
 	# foundation_url: F8 acceptance. Two units again, and the support unit imports
@@ -549,11 +549,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_url_support.m -o .build/foundation-url-support.o
+		userland/tests/foundation_url_support.m -o .build/probe-foundation_url_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_url.m -o .build/foundation-url-main.o
-	$(MUSL64_OBJC) .build/foundation-url-support.o .build/foundation-url-main.o \
+		userland/tests/foundation_url.m -o .build/probe-foundation_url.o
+	$(MUSL64_OBJC) .build/foundation-url-support.o .build/probe-foundation_url.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_url"
 	# foundation_kvc: F9 acceptance. Two units again — and here the split is the
@@ -562,11 +562,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# runtime's.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_kvc_support.m -o .build/foundation-kvc-support.o
+		userland/tests/foundation_kvc_support.m -o .build/probe-foundation_kvc_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_kvc.m -o .build/foundation-kvc-main.o
-	$(MUSL64_OBJC) .build/foundation-kvc-support.o .build/foundation-kvc-main.o \
+		userland/tests/foundation_kvc.m -o .build/probe-foundation_kvc.o
+	$(MUSL64_OBJC) .build/foundation-kvc-support.o .build/probe-foundation_kvc.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvc"
 	# foundation_sort: F10 acceptance. Two units, and the split carries the claim again:
@@ -574,11 +574,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# whose key was resolved by name can only have gone through KVC.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_sort_support.m -o .build/foundation-sort-support.o
+		userland/tests/foundation_sort_support.m -o .build/probe-foundation_sort_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_sort.m -o .build/foundation-sort-main.o
-	$(MUSL64_OBJC) .build/foundation-sort-support.o .build/foundation-sort-main.o \
+		userland/tests/foundation_sort.m -o .build/probe-foundation_sort.o
+	$(MUSL64_OBJC) .build/foundation-sort-support.o .build/probe-foundation_sort.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_sort"
 	# foundation_predicate: F11a acceptance. Two units again: the support unit builds a
@@ -586,22 +586,22 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# translation unit can only have gone through the object model.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_predicate_support.m -o .build/foundation-predicate-support.o
+		userland/tests/foundation_predicate_support.m -o .build/probe-foundation_predicate_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_predicate.m -o .build/foundation-predicate-main.o
-	$(MUSL64_OBJC) .build/foundation-predicate-support.o .build/foundation-predicate-main.o \
+		userland/tests/foundation_predicate.m -o .build/probe-foundation_predicate.o
+	$(MUSL64_OBJC) .build/foundation-predicate-support.o .build/probe-foundation_predicate.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_predicate"
 	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
 	# codec is exercised on data it did not create.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_codecs_support.m -o .build/foundation-codecs-support.o
+		userland/tests/foundation_codecs_support.m -o .build/probe-foundation_codecs_support.o
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_codecs.m -o .build/foundation-codecs-main.o
-	$(MUSL64_OBJC) .build/foundation-codecs-support.o .build/foundation-codecs-main.o \
+		userland/tests/foundation_codecs.m -o .build/probe-foundation_codecs.o
+	$(MUSL64_OBJC) .build/foundation-codecs-support.o .build/probe-foundation_codecs.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
 	# icu_smoke: F13's acceptance for the ICU bring-up (docs/design/foundation-plan.md §10). The
@@ -624,8 +624,8 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# which is where ICU is now bound.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_dateformatter.m -o .build/foundation-dateformatter.o
-	$(MUSL64_OBJC) .build/foundation-dateformatter.o \
+		userland/tests/foundation_dateformatter.m -o .build/probe-foundation_dateformatter.o
+	$(MUSL64_OBJC) .build/probe-foundation_dateformatter.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dateformatter"
 	# foundation_set: F13.8 acceptance - the first family the boundary never justified. ONE unit (the
@@ -633,104 +633,104 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# Foundation library.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_set.m -o .build/foundation-set.o
-	$(MUSL64_OBJC) .build/foundation-set.o \
+		userland/tests/foundation_set.m -o .build/probe-foundation_set.o
+	$(MUSL64_OBJC) .build/probe-foundation_set.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_set"
 	# foundation_nsvalue: F13.8c acceptance. ONE unit, only <foundation/Foundation.h>. Named nsvalue
 	# and NOT value, because foundation_value is F2/F8's probe for NSNumber/NSData/NSDate.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_nsvalue.m -o .build/foundation-nsvalue.o
-	$(MUSL64_OBJC) .build/foundation-nsvalue.o \
+		userland/tests/foundation_nsvalue.m -o .build/probe-foundation_nsvalue.o
+	$(MUSL64_OBJC) .build/probe-foundation_nsvalue.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_nsvalue"
 	# foundation_orderedset: F13.8e acceptance. ONE unit, only <foundation/Foundation.h>. A separate
 	# probe from foundation_set because NSOrderedSet is NOT an NSSet subclass: order is its value.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_orderedset.m -o .build/foundation-orderedset.o
-	$(MUSL64_OBJC) .build/foundation-orderedset.o \
+		userland/tests/foundation_orderedset.m -o .build/probe-foundation_orderedset.o
+	$(MUSL64_OBJC) .build/probe-foundation_orderedset.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
 	# foundation_kvo: F13.9 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_kvo.m -o .build/foundation-kvo.o
-	$(MUSL64_OBJC) .build/foundation-kvo.o \
+		userland/tests/foundation_kvo.m -o .build/probe-foundation_kvo.o
+	$(MUSL64_OBJC) .build/probe-foundation_kvo.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvo"
 	# foundation_expression: F13.10 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_expression.m -o .build/foundation-expression.o
-	$(MUSL64_OBJC) .build/foundation-expression.o \
+		userland/tests/foundation_expression.m -o .build/probe-foundation_expression.o
+	$(MUSL64_OBJC) .build/probe-foundation_expression.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_expression"
 	# foundation_coder: F13.12 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_coder.m -o .build/foundation-coder.o
-	$(MUSL64_OBJC) .build/foundation-coder.o \
+		userland/tests/foundation_coder.m -o .build/probe-foundation_coder.o
+	$(MUSL64_OBJC) .build/probe-foundation_coder.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_coder"
 	# foundation_processinfo: F13.13 acceptance. ONE unit, only <foundation/Foundation.h> plus
 	# <unistd.h> for the getpid cross-check.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_processinfo.m -o .build/foundation-processinfo.o
-	$(MUSL64_OBJC) .build/foundation-processinfo.o \
+		userland/tests/foundation_processinfo.m -o .build/probe-foundation_processinfo.o
+	$(MUSL64_OBJC) .build/probe-foundation_processinfo.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_processinfo"
 	# foundation_filemanager: F13.14 acceptance. ONE unit, only <foundation/Foundation.h> plus
 	# <unistd.h> for the symlink(2) its link check makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_filemanager.m -o .build/foundation-filemanager.o
-	$(MUSL64_OBJC) .build/foundation-filemanager.o \
+		userland/tests/foundation_filemanager.m -o .build/probe-foundation_filemanager.o
+	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
 	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_urlcomponents.m -o .build/foundation-urlcomponents.o
-	$(MUSL64_OBJC) .build/foundation-urlcomponents.o \
+		userland/tests/foundation_urlcomponents.m -o .build/probe-foundation_urlcomponents.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlcomponents.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcomponents"
 	# foundation_regex: F13.16 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_regex.m -o .build/foundation-regex.o
-	$(MUSL64_OBJC) .build/foundation-regex.o \
+		userland/tests/foundation_regex.m -o .build/probe-foundation_regex.o
+	$(MUSL64_OBJC) .build/probe-foundation_regex.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_regex"
 	# foundation_thread: F13.17 acceptance. ONE unit, only <foundation/Foundation.h> plus
 	# <sys/time.h> for the elapsed-time measurements.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_thread.m -o .build/foundation-thread.o
-	$(MUSL64_OBJC) .build/foundation-thread.o \
+		userland/tests/foundation_thread.m -o .build/probe-foundation_thread.o
+	$(MUSL64_OBJC) .build/probe-foundation_thread.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_thread"
 	# foundation_runloop: F13.18 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_runloop.m -o .build/foundation-runloop.o
-	$(MUSL64_OBJC) .build/foundation-runloop.o \
+		userland/tests/foundation_runloop.m -o .build/probe-foundation_runloop.o
+	$(MUSL64_OBJC) .build/probe-foundation_runloop.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_runloop"
 	# foundation_operation: F13.19 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_operation.m -o .build/foundation-operation.o
-	$(MUSL64_OBJC) .build/foundation-operation.o \
+		userland/tests/foundation_operation.m -o .build/probe-foundation_operation.o
+	$(MUSL64_OBJC) .build/probe-foundation_operation.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation"
 	# foundation_progress: F13.20 acceptance. ONE unit, only <foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_progress.m -o .build/foundation-progress.o
-	$(MUSL64_OBJC) .build/foundation-progress.o \
+		userland/tests/foundation_progress.m -o .build/probe-foundation_progress.o
+	$(MUSL64_OBJC) .build/probe-foundation_progress.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_progress"
 	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
@@ -738,8 +738,8 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# it links the Foundation library, where ICU is bound.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_numberformatter.m -o .build/foundation-numberformatter.o
-	$(MUSL64_OBJC) .build/foundation-numberformatter.o \
+		userland/tests/foundation_numberformatter.m -o .build/probe-foundation_numberformatter.o
+	$(MUSL64_OBJC) .build/probe-foundation_numberformatter.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_numberformatter"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
