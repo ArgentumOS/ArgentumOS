@@ -231,6 +231,24 @@ int main(void)
 		      NSEqualPoints(NSPointFromString(@"not a point"), NSZeroPoint) &&
 		      NSEdgeInsetsEqual(NSEdgeInsetsZero, NSEdgeInsetsMake(0.0, 0.0, 0.0, 0.0)),
 		      "the string forms round trip, %g is the spelling, and a bad string answers the zero value");
+
+		/* THE NS TYPES ARE THE CG TYPES, and one of these claims is a COMPILE-TIME
+		 * fact that no runtime check could make honestly. */
+#ifndef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
+#error "the NS geometry types must BE the CG types (NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)"
+#endif
+		check("geometry-cg-types",
+		      sizeof(CGFloat) == sizeof(double) &&
+		      sizeof(CGPoint) == sizeof(NSPoint) && sizeof(CGRect) == sizeof(NSRect) &&
+		      NSEqualPoints(NSPointFromCGPoint(NSMakePoint(3.0, 4.0)), NSMakePoint(3.0, 4.0)) &&
+		      NSEqualPoints(NSPointToCGPoint(NSMakePoint(3.0, 4.0)), NSMakePoint(3.0, 4.0)) &&
+		      NSEqualSizes(NSSizeFromCGSize(NSMakeSize(5.0, 6.0)), NSMakeSize(5.0, 6.0)) &&
+		      NSEqualSizes(NSSizeToCGSize(NSMakeSize(5.0, 6.0)), NSMakeSize(5.0, 6.0)) &&
+		      NSEqualRects(NSRectFromCGRect(NSMakeRect(1.0, 2.0, 3.0, 4.0)),
+				   NSMakeRect(1.0, 2.0, 3.0, 4.0)) &&
+		      NSEqualRects(NSRectToCGRect(NSMakeRect(1.0, 2.0, 3.0, 4.0)),
+				   NSMakeRect(1.0, 2.0, 3.0, 4.0)),
+		      "the NS geometry types ARE the CG types: CGFloat is double, the layouts match, and the six conversions are identities");
 	}
 	}
 

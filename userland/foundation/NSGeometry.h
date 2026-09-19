@@ -6,52 +6,50 @@
  * NSGeometry.h — the geometry the C level of Foundation defines (W2b,
  * docs/design/foundation-plan.md §14).
  *
- * WHY `double` AND NOT `CGFloat`: Apple's NSPoint IS a CGPoint whose fields are CGFloat,
- * which is a CoreGraphics type — a DIFFERENT framework's — and this tree has no
- * CoreGraphics. On 64-bit Apple both are `double` with the same layout, so a program that
- * uses these types observes nothing different.
+ * THE NS GEOMETRY TYPES *ARE* THE CG TYPES, which is Apple's arrangement: `typedef CGPoint
+ * NSPoint` and its two siblings, with `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES` defined,
+ * and the six NS<->CG conversions therefore identities. The VALUE TYPES live in
+ * `userland/CoreGraphics/` — first-party, because they are published interface with no
+ * implementation to take (user's decision, 2026-09-18) — and CG's own function surface and
+ * drawing half stay out of it, which is a separate decision.
  *
- * WHAT IS DELIBERATELY NOT HERE, and it is a recorded dependency rather than an oversight:
- * the six CoreGraphics interop functions Apple's NSGeometry.h declares
- * (NSPointFromCGPoint/NSPointToCGPoint, NSSizeFromCGSize/NSSizeToCGSize,
- * NSRectFromCGRect/NSRectToCGRect). They take or answer CG types, and those do not exist
- * here — §12.6's rule is that a dependency we do not have is ADDED rather than refused, so
- * they wait on a CoreGraphics decision, and their ledger rows stay `open` until then.
- *
- * NSAlignmentOptions IS ALSO NOT HERE YET, for a different reason: its constants are
- * defined by BIT POSITION (inward 0-5, outward 8-13, nearest 16-21, plus the composites and
- * NSAlignRectFlipped), and a wrong bit position is a difference that is invisible until
- * someone compares numbers. It lands as its own slice once each published value has been
- * checked — and `NSIntegralRectWithOptions`, which takes one, lands with it.
+ * These types were `double` structs of this file's own for one commit, between W2b and that
+ * decision: the same layout on 64-bit, and NOT the same type NAME. A program writing
+ * `CGFloat h = insets.top;` compiles on Apple and did not here, which is exactly the kind of
+ * difference this plan treats as a failure.
  */
 #ifndef FOUNDATION_NSGEOMETRY_H
 #define FOUNDATION_NSGEOMETRY_H
 
 #import <foundation/NSObjCRuntime.h>
+#import <CoreGraphics/CGGeometry.h>	/* our own CoreGraphics value types */
 #import <foundation/NSString.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef struct _NSPoint {
-	double x;
-	double y;
-} NSPoint;
+/*
+ * THE NS TYPES *ARE* THE CG TYPES, which is Apple's arrangement and the reason
+ * NSPointFromCGPoint and its five siblings are one-liners: they exist so code can SAY which
+ * it means. `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES` is Apple's own marker for exactly
+ * that, and it is defined here.
+ *
+ * The value types live in `userland/CoreGraphics/` (first-party, Apple's published
+ * interface); what is NOT there is CG's function surface and its drawing half, which is a
+ * separate decision — see CGBase.h.
+ */
+typedef CGPoint NSPoint;
+typedef CGSize NSSize;
+typedef CGRect NSRect;
 
-typedef struct _NSSize {
-	double width;
-	double height;
-} NSSize;
+#define NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES 1
 
-typedef struct _NSRect {
-	NSPoint origin;
-	NSSize size;
-} NSRect;
-
+/* The insets' fields are CGFloat, as Apple's are — which is the type NAME being right and
+ * not only the layout. */
 typedef struct _NSEdgeInsets {
-	double top;
-	double left;
-	double bottom;
-	double right;
+	CGFloat top;
+	CGFloat left;
+	CGFloat bottom;
+	CGFloat right;
 } NSEdgeInsets;
 
 typedef NSPoint *NSPointPointer;
@@ -77,6 +75,15 @@ extern const NSPoint NSZeroPoint;
 extern const NSSize NSZeroSize;
 extern const NSRect NSZeroRect;
 extern const NSEdgeInsets NSEdgeInsetsZero;
+
+/* THE SIX CONVERSIONS Apple declares, and here they are total identities: the types are the
+ * same, so each one is a return of its argument. That is what the macro above means. */
+CGPoint NSPointToCGPoint(NSPoint aPoint);
+NSPoint NSPointFromCGPoint(CGPoint aPoint);
+CGSize NSSizeToCGSize(NSSize aSize);
+NSSize NSSizeFromCGSize(CGSize aSize);
+CGRect NSRectToCGRect(NSRect aRect);
+NSRect NSRectFromCGRect(CGRect aRect);
 
 /* Making and comparing. */
 NSPoint NSMakePoint(double x, double y);

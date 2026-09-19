@@ -17,6 +17,16 @@ const NSSize NSZeroSize = { 0.0, 0.0 };
 const NSRect NSZeroRect = { { 0.0, 0.0 }, { 0.0, 0.0 } };
 const NSEdgeInsets NSEdgeInsetsZero = { 0.0, 0.0, 0.0, 0.0 };
 
+/* THE SIX CONVERSIONS: identities, because NSPoint IS CGPoint here (this file's header
+ * defines NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES). A caller still says which it means,
+ * which is the whole reason Apple declares them. */
+CGPoint NSPointToCGPoint(NSPoint aPoint) { return aPoint; }
+NSPoint NSPointFromCGPoint(CGPoint aPoint) { return aPoint; }
+CGSize NSSizeToCGSize(NSSize aSize) { return aSize; }
+NSSize NSSizeFromCGSize(CGSize aSize) { return aSize; }
+CGRect NSRectToCGRect(NSRect aRect) { return aRect; }
+NSRect NSRectFromCGRect(CGRect aRect) { return aRect; }
+
 NSPoint NSMakePoint(double x, double y)
 {
 	NSPoint p;

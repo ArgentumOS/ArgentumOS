@@ -3986,7 +3986,7 @@ what the ledger actually holds.
 | Slice | Contents | State |
 |---|---|---|
 | **W2a the C accessors** | `NSStringFromClass`, `NSClassFromString`, `NSStringFromSelector`, `NSSelectorFromString`, `NSStringFromRange` — the runtime↔string boundary | **LANDED and verified: `foundation_core` 18/18, and the five rows read `shipped` in the surface file** |
-| **W2b the geometry family** | `NSPoint`/`NSSize`/`NSRect` + their pointer/array aliases, `NSEdgeInsets`, `NSRectEdge`, the 34 geometry and range functions, and the four zero constants — `userland/foundation/NSGeometry.h` + `ngeometry.m` | **LANDED and verified: `foundation_core` 21/21 with `geometry-rects`, `geometry-edges` and `geometry-strings`, whole gate 4/4 cases and 24/24 checks.** Two things are deliberately NOT in it, and the header says why: the six **CoreGraphics interop** functions (they take or answer CG types, which this tree has no CoreGraphics to provide — a DEPENDENCY per §12.6, so their rows stay `open`), and `NSAlignmentOptions` (+`NSIntegralRectWithOptions`) because its constants are defined by BIT POSITION and a wrong bit is invisible until someone compares numbers — it lands once each published value is checked |
+| **W2b the geometry family** | `NSPoint`/`NSSize`/`NSRect` + their pointer/array aliases, `NSEdgeInsets`, `NSRectEdge`, the 34 geometry and range functions, and the four zero constants — `userland/foundation/NSGeometry.h` + `ngeometry.m` | **LANDED and verified: `foundation_core` 21/21 with `geometry-rects`, `geometry-edges` and `geometry-strings`, whole gate 4/4 cases and 24/24 checks.** It also closed the six **CoreGraphics interop** conversions and `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES`, because **the user decided to define CG's VALUE TYPES** (see §14.1). One thing remains out of it: `NSAlignmentOptions` (+`NSIntegralRectWithOptions`), whose constants are defined by BIT POSITION and a wrong bit is invisible until someone compares numbers — it lands once each published value is checked |
 | W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | |
 | W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | |
 | W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | |
@@ -4012,3 +4012,34 @@ explained its use of `objc_getClass` with *"NSClassFromString is a Foundation fu
 does not claim"* — true when written, false now. It still asks the runtime directly, for a reason that
 survives the change: the claim is about the RUNTIME, and it should not depend on a Foundation function
 being right.
+
+### 14.1 THE CG VALUE TYPES (user's decision, 2026-09-18): first-party, and only the values
+
+**`userland/CoreGraphics/CGBase.h` + `CGGeometry.h` now define `CGFloat`, `CGPoint`, `CGSize` and
+`CGRect`, under Apple's spelling, as first-party types** — structs and a typedef, which is published
+interface with no implementation to take.
+
+**AND THE ARRANGEMENT IS APPLE'S, WHICH IS THE POINT:** `NSGeometry.h` now says `typedef CGPoint
+NSPoint;` with `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES` defined, so the six NS↔CG conversions are
+**identities** (`NSPointFromCGPoint(p)` returns `p`) — which is exactly why Apple declares them, and
+exactly what that macro means. `NSEdgeInsets`'s fields are `CGFloat` now too, so the type NAME is right
+and not only the layout.
+
+**WHERE IT LIVES, AND WHY THERE:** `userland/CoreGraphics/`, because `-Iuserland` is already on every
+userland compile, so `<CoreGraphics/CGGeometry.h>` resolves for the library, the probes and any future
+consumer — **and the kernel, which compiles with `-Iinclude` only, never sees it.**
+
+**THE LINE THE DECISION DRAWS, stated where the code is:** these are the VALUE TYPES ONLY. CG's
+function surface (`CGPointMake`, `CGRectGetMinX`, `CGAffineTransform` and its maths, `CGColor`) and its
+drawing half (contexts, paths, images, compositing) are **not** here — the second is already answered
+differently in this tree (X11/Xfb as the display, GOP-only kernel display, GPU work deferred), and the
+first is §12.6's rule applied separately: a dependency is added rather than refused, and *this* one was
+a dependency of seven rows rather than of a framework.
+
+**THE GATE KNOWS THE DIFFERENCE, in writing:** `CoreGraphics/` is deliberately NOT in
+`tools/foundation-gate.py`'s forbidden-spelling list, and its docstring now says why — the list is
+APPLE'S spellings, and this one is ours. A reader who notices the omission is told not to "fix" it.
+
+**AND ONE STALE CLAIM WENT WITH IT:** `NSGeometry.h`'s comment block still said this tree has no
+CoreGraphics and that the six conversions "wait on a CoreGraphics decision" — true for one commit and
+false the moment the types landed, so it was rewritten in the same change.

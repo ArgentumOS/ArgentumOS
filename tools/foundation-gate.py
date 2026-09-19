@@ -11,6 +11,11 @@ gate rather than a promise:
   * no first-party file imports a GNUstep, ObjFW, AppKit or Apple-Foundation
     header (Apple's path is `<Foundation/...>` with a capital F; ours is
     `<foundation/...>`);
+  * ...and `<CoreGraphics/...>` is NOT on that list, deliberately: this tree defines its
+    own CoreGraphics VALUE TYPES (userland/CoreGraphics/, the user's decision 2026-09-18)
+    because Apple's Foundation declares six NS<->CG conversions plus the macro that says
+    the two type sets are identical. It is our spelling, not Apple's — and the distinction
+    is written here so a reader does not "fix" the omission.
   * no first-party file imports `<objc/Object.h>` — the runtime we ship declares
     a legacy class of that name, and it is declared off-limits so that our root
     class can be called Object (the user's decision, 2026-09-17);

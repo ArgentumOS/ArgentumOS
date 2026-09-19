@@ -30,10 +30,10 @@
 # counts by kind:
 #   class      shipped   61   open  181   struck   31
 #   protocol   shipped    5   open   31   struck    9
-#   macro      shipped    3   open  224   struck   26
+#   macro      shipped    4   open  223   struck   26
 #   enum       shipped   28   open  124   struck    8
 #   case       shipped  156   open 1053   struck   93
-#   func       shipped   42   open   93   struck   54
+#   func       shipped   48   open   87   struck   54
 #   var        shipped   50   open  717   struck  147
 #   typealias  shipped   16   open   57   struck    3
 #   struct     shipped    4   open    4   struck    5
@@ -1884,18 +1884,18 @@ func	struck	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collection
 func	shipped	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	open	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSPointFromCGPoint		Fundamentals / Geometry / Managing Points	-	objc
+func	shipped	NSPointFromCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSPointFromString		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSPointInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSPointToCGPoint		Fundamentals / Geometry / Managing Points	-	objc
+func	shipped	NSPointToCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSProtocolFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSRangeFromString		Fundamentals / Ranges / Managing ranges	-	objc
 func	struck	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Memory Management	deprecated	objc
 func	struck	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 func	open	NSRecordAllocationEvent		Reference / Debugging	-	objc
-func	open	NSRectFromCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSRectFromCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1907,9 +1907,9 @@ func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / T
 func	open	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
 func	open	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
-func	open	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
+func	shipped	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
-func	open	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
+func	shipped	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -2097,7 +2097,7 @@ macro	open	NSFoundationVersionNumber_iPhoneOS_3_0		Low-Level Utilities / Version
 macro	open	NSFoundationVersionNumber_iPhoneOS_3_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
 macro	open	NSFoundationVersionNumber_iPhoneOS_3_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
 macro	open	NSFoundationVersionWithFileManagerResourceForkSupport	NSFileManager	Files and Data Persistence / File system operations / Determining resource fork support	-	objc
-macro	open	NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES		Reference / Macros	-	objc
+macro	shipped	NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedString		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedStringFromTable		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedStringFromTableInBundle		Reference / Macros	-	objc
