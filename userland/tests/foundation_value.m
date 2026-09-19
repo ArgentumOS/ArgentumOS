@@ -731,6 +731,59 @@ int main(void)
 			(unsigned long)[text length], version, variant] UTF8String]);
 	}
 
+	{
+		/* NSDateInterval (W2h): the two constructors agree because they are ONE subtraction read in
+		 * two directions, and an interval that cannot exist is REFUSED rather than stored - which is
+		 * the invariant every other method reads without checking. */
+		NSDate *start = [NSDate dateWithTimeIntervalSinceReferenceDate:1000.0];
+		NSDate *end = [NSDate dateWithTimeIntervalSinceReferenceDate:1060.0];
+		NSDateInterval *byDuration = [[NSDateInterval alloc] initWithStartDate:start duration:60.0];
+		NSDateInterval *byEnd = [[NSDateInterval alloc] initWithStartDate:start endDate:end];
+		BOOL refusedNegative = NO;
+		BOOL refusedReversed = NO;
+
+		@try {
+			(void)[[NSDateInterval alloc] initWithStartDate:start duration:-1.0];
+		} @catch (NSException *e) {
+			(void)e;
+			refusedNegative = YES;
+		}
+		@try {
+			(void)[[NSDateInterval alloc] initWithStartDate:end endDate:start];
+		} @catch (NSException *e) {
+			(void)e;
+			refusedReversed = YES;
+		}
+		check("date-interval",
+		      byDuration != nil && byEnd != nil && [byDuration duration] == 60.0 &&
+		      [[byDuration endDate] isEqualToDate:[byEnd endDate]] &&
+		      [byDuration isEqualToDateInterval:byEnd] &&
+		      refusedNegative && refusedReversed,
+		      "the two constructors, and the invariants they refuse to break");
+	}
+
+	{
+		/* INTERSECTION AND CONTAINMENT, with values that DISTINGUISH: a partial overlap, so the
+		 * intersection's ends are neither input's, plus a disjoint pair answering nil. */
+		NSDate *base = [NSDate dateWithTimeIntervalSinceReferenceDate:1000.0];
+		NSDateInterval *first = [[NSDateInterval alloc] initWithStartDate:base duration:100.0];
+		NSDateInterval *second = [[NSDateInterval alloc]
+			initWithStartDate:[NSDate dateWithTimeIntervalSinceReferenceDate:1050.0] duration:100.0];
+		NSDateInterval *third = [[NSDateInterval alloc]
+			initWithStartDate:[NSDate dateWithTimeIntervalSinceReferenceDate:2000.0] duration:10.0];
+		NSDateInterval *overlap = [first intersectionWithDateInterval:second];
+
+		check("date-interval-intersections",
+		      [first intersectsDateInterval:second] && ![first intersectsDateInterval:third] &&
+		      overlap != nil && [overlap duration] == 50.0 &&
+		      [[overlap startDate] isEqualToDate:[second startDate]] &&
+		      [[overlap endDate] isEqualToDate:[first endDate]] &&
+		      [first intersectionWithDateInterval:third] == nil &&
+		      [first containsDate:base] &&
+		      ![first containsDate:[NSDate dateWithTimeIntervalSinceReferenceDate:1101.0]],
+		      "the intersection's ends are neither input's, and a disjoint pair answers nil");
+	}
+
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-VALUE DONE\n");
 	return failc ? 1 : 0;

@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   63   open  179   struck   31
+#   class      shipped   64   open  178   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
@@ -1379,7 +1379,7 @@ class	shipped	NSDate		Fundamentals / Date Representations	-	objc
 class	shipped	NSDateComponents		Fundamentals / Calendrical Calculations	-	objc
 class	open	NSDateComponentsFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDateFormatter		Fundamentals / Date Formatting	-	objc
-class	open	NSDateInterval		Fundamentals / Date Representations	-	objc
+class	shipped	NSDateInterval		Fundamentals / Date Representations	-	objc
 class	open	NSDateIntervalFormatter		Fundamentals / Date Formatting	-	objc
 class	open	NSDecimalNumber		Fundamentals / Numbers / Using reference types	-	objc
 class	open	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
