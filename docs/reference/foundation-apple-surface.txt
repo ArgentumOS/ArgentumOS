@@ -33,7 +33,7 @@
 #   macro      shipped    3   open  224   struck   26
 #   enum       shipped   27   open  125   struck    8
 #   case       shipped  148   open 1061   struck   93
-#   func       shipped    3   open  132   struck   54
+#   func       shipped    8   open  127   struck   54
 #   var        shipped   46   open  721   struck  147
 #   typealias  shipped    7   open   66   struck    3
 #   struct     shipped    3   open    5   struck    5
@@ -1780,7 +1780,7 @@ func	struck	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / 
 func	struck	NSAllocateCollectable		Low-Level Utilities / Legacy / Legacy	32-bit-only	objc
 func	open	NSAllocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
-func	open	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
+func	shipped	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSContainsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1903,21 +1903,21 @@ func	open	NSReturnAddress		Reference / Debugging	-	objc
 func	open	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
-func	open	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
+func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
 func	open	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	open	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
-func	open	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
+func	shipped	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	struck	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSStringFromPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSStringFromProtocol		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
-func	open	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
+func	shipped	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	open	NSStringFromRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSStringFromSelector		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
+func	shipped	NSStringFromSelector		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSStringFromSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSSwapBigDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapBigFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc

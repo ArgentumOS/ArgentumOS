@@ -154,6 +154,37 @@ int main(void)
 		}
 		check("nsobject-api-complete", complete,
 		      "the audited Cocoa inventory for NSObject");
+
+	/*
+	 * THE C ACCESSORS (W2a): the runtime's names, and a range's spelling. They are the
+	 * boundary between objc/runtime.h and this library's strings, and the cases worth
+	 * asserting are the ANSWERS for what is not there (Nil, nil, nil).
+	 */
+	/* SPLIT, because one conjunction cannot say which claim is false (the lesson
+	 * url-refusals taught at the cost of a stale check read as a lost refusal). */
+	check("runtime-class-names",
+	      NSClassFromString(@"NSObject") == [NSObject class] &&
+	      NSClassFromString(@"NoSuchClassInThisTree") == Nil &&
+	      NSStringFromClass([NSObject class]) != nil &&
+	      [NSStringFromClass([NSObject class]) isEqualToString:@"NSObject"] &&
+	      NSStringFromClass(Nil) == nil,
+	      "the class name round trips, and a name nothing registers answers Nil");
+
+	/* SEL POINTER IDENTITY IS NOT A CONTRACT IN THIS RUNTIME, and this tree found that
+	 * once already (the F-stage forwarding work needed sel_isEqual). NSSelectorFromString
+	 * registers a name and answers a SELECTOR; whether it is the same POINTER as a
+	 * compiled @selector(...) is the runtime's business, so the check asks the runtime's
+	 * own comparison. */
+	check("runtime-selector-names",
+	      [NSStringFromSelector(@selector(description)) isEqualToString:@"description"] &&
+	      sel_isEqual(NSSelectorFromString(@"description"), @selector(description)) &&
+	      sel_isEqual(NSSelectorFromString(@"noSuchMethodCompiledAnywhere"), 
+			  sel_registerName("noSuchMethodCompiledAnywhere")),
+	      "the selector name round trips both ways, compared with sel_isEqual");
+
+	check("runtime-range-string",
+	      [NSStringFromRange(NSMakeRange(1, 3)) isEqualToString:@"{1, 3}"],
+	      "NSStringFromRange spells Apple's {location, length}");
 	}
 
 	{

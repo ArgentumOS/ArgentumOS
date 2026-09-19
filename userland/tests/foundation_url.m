@@ -91,8 +91,10 @@ int main(void)
 		 * lesson twice over: an absence assertion is a fact about the TREE, and a
 		 * conjunction of them is a fact nobody can localise.
 		 *
-		 * objc_getClass is the RUNTIME's lookup, which is what a probe should use:
-		 * NSClassFromString is a Foundation function this library does not claim.
+		 * objc_getClass is the RUNTIME's lookup, which is what a probe should use even
+		 * now that NSClassFromString SHIPS (W2a put the C accessors in): asking the
+		 * runtime directly is the claim about the RUNTIME, and it does not depend on a
+		 * Foundation function being right.
 		 */
 		check("url-absent",
 		      objc_getClass("NSURLSession") == NULL &&

@@ -3976,3 +3976,39 @@ half is an **ABSENCE assertion** — the exact class §11.2 warns about: *a prob
 asserting a fact about the tree, and landing code invalidates it with nobody being told.* It is NOT a
 W1 regression, it is a separate item to diagnose (the check may be stale, or the refusal may have been
 lost), and it is recorded here so it is not mistaken for either.
+
+## 14. W2 IN PROGRESS: the dependency-free API, sliced into families
+
+§12.3's W2 is a **cluster rather than a family** — ~360 free-standing rows whose only common property
+is having no dependencies — so it is cut into families that each get one verification. The cuts follow
+what the ledger actually holds.
+
+| Slice | Contents | State |
+|---|---|---|
+| **W2a the C accessors** | `NSStringFromClass`, `NSClassFromString`, `NSStringFromSelector`, `NSSelectorFromString`, `NSStringFromRange` — the runtime↔string boundary | **LANDED and verified: `foundation_core` 18/18, and the five rows read `shipped` in the surface file** |
+| W2b the geometry family | `NSPoint`/`NSSize`/`NSRect` and their pointer/array aliases, `NSEdgeInsets`, the ~20 geometry functions, `NSZeroPoint`/`NSZeroRect`/`NSZeroSize`/`NSEdgeInsetsZero`, `NSAlignmentOptions` and `NSRectEdge` with their cases | next |
+| W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | |
+| W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | |
+| W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | |
+| W2f the KVC operator constants | the eleven `…KeyValueOperator` vars, `NSKeyValueOperator`/`NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` | |
+| W2g the debug switches | `NSDebugEnabled`, `NSZombieEnabled`, `NSDeallocateZombies`, `NSKeepAllocationStatistics`, `NSFoundationVersionNumber` | |
+| W2h the small classes | `NSUUID`, `NSAffineTransform`, `NSDateInterval`, `NSValueTransformer`, `NSProgressReporting`, `NSUndoManager`, `NSAssertionHandler`, `NSJSONSerialization`, and the object basics (`NSObject` **protocol**, `NSAutoreleasePool`, `NSProxy`) | |
+
+**W2a'S TWO PLACEMENT LESSONS, both from the compiler rather than from taste.** Apple declares these
+functions in `NSObjCRuntime.h`, and **in this tree that header cannot hold them**: it is the lowest
+level and has no `NSString` in scope, and opening a nullability region in it subjects its existing
+`NSComparator` block typedef to the completeness check — **which is exactly why the gate exempts it.**
+They are declared in `NSObject.h` inside its region instead, where the class they answer with is
+already forward-declared, and the header says so, so the next reader does not try the move again.
+
+**AND THE CHECK FOUND A RUNTIME CONTRACT WORTH THE WORDS:** `NSSelectorFromString(x) == @selector(x)`
+is **not** a promise in this runtime — SEL pointer identity is the runtime's business, and this tree
+learned that once already (the F-stage forwarding work needed `sel_isEqual`). The check compares with
+`sel_isEqual`, and it also asks that a name NOTHING compiled still answers a registered selector, which
+is what `NSSelectorFromString` means.
+
+**ONE STALE COMMENT WAS CORRECTED IN PASSING, in the same spirit as `url-refusals`:** the URL probe
+explained its use of `objc_getClass` with *"NSClassFromString is a Foundation function this library
+does not claim"* — true when written, false now. It still asks the runtime directly, for a reason that
+survives the change: the claim is about the RUNTIME, and it should not depend on a Foundation function
+being right.

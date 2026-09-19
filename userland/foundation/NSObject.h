@@ -180,6 +180,24 @@ __attribute__((objc_root_class))
 /* Every object describes itself: this names the class (docs, F1). */
 - (NSString *)description;
 
+/*
+ * THE C ACCESSORS (W2a, docs/design/foundation-plan.md §12.3): the boundary between the
+ * runtime's names and this library's strings. Apple declares them in NSObjCRuntime.h, and
+ * they CANNOT live there in this tree: that header is the lowest level and has no
+ * `NSString` in scope, and opening a nullability region in it would subject its C block
+ * typedef to the completeness check the gate exempts it from. So they are declared here,
+ * where the class they answer with is already forward-declared.
+ *
+ * The contracts worth stating: `NSClassFromString` answers Nil for a name nothing
+ * registers and `NSStringFromClass(nil)` answers nil; `NSSelectorFromString` REGISTERS a
+ * name that was never compiled (the runtime's behaviour, not a lookup failure).
+ */
+NSString * _Nullable NSStringFromClass(Class _Nullable aClass);
+Class _Nullable NSClassFromString(NSString *aClassName);
+NSString *NSStringFromSelector(SEL aSelector);
+SEL NSSelectorFromString(NSString *aSelectorName);
+NSString *NSStringFromRange(NSRange range);
+
 NS_ASSUME_NONNULL_END
 
 @end

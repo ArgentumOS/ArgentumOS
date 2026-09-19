@@ -22,6 +22,7 @@
 #import <foundation/NSString.h>
 #include <stdlib.h>
 #include <string.h>
+#include <objc/runtime.h>	/* class_getName, sel_getName, objc_getClass (W2a) */
 #include <stdarg.h>
 #include <stdio.h>
 #import <foundation/NSArray.h>
@@ -2251,4 +2252,57 @@ static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
 	/* The characters are the compiler's, not ours: free nothing. */
 }
 
+
+/*
+ * THE C ACCESSORS (W2a): the runtime's names, and a range's spelling.
+ *
+ * They live here rather than in a C file because each one BUILDS a string, and this is
+ * where the string class is implemented; the runtime calls go through objc/runtime.h.
+ * `NSSelectorFromString` on a name nothing registered ANSWERS a selector (the runtime
+ * registers it), which is Apple's behaviour and worth asserting rather than assuming.
+ */
+NSString *NSStringFromClass(Class aClass)
+{
+	const char *name;
+
+	if (aClass == Nil) {
+		return nil;		/* Apple: nil in, nil out */
+	}
+	name = class_getName(aClass);
+	return (name != NULL) ? [[NSOwnedString alloc] initWithUTF8String:name] : nil;
+}
+
+Class NSClassFromString(NSString *aClassName)
+{
+	if (aClassName == nil) {
+		return Nil;
+	}
+	return objc_getClass([aClassName UTF8String]);
+}
+
+NSString *NSStringFromSelector(SEL aSelector)
+{
+	const char *name = sel_getName(aSelector);
+
+	return (name != NULL) ? [[NSOwnedString alloc] initWithUTF8String:name] : nil;
+}
+
+SEL NSSelectorFromString(NSString *aSelectorName)
+{
+	if (aSelectorName == nil) {
+		return (SEL)0;
+	}
+	return sel_registerName([aSelectorName UTF8String]);
+}
+
+/* APPLE'S SPELLING EXACTLY: "{location, length}" — a space after the comma and none
+ * before it. */
+NSString *NSStringFromRange(NSRange range)
+{
+	char buffer[64];
+
+	snprintf(buffer, sizeof buffer, "{%lu, %lu}", (unsigned long)range.location,
+		 (unsigned long)range.length);
+	return [[NSOwnedString alloc] initWithUTF8String:buffer];
+}
 @end
