@@ -641,6 +641,31 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 @implementation NSMutableArray
 
+/*
+ * A MUTABLE ARRAY ENUMERATES BY COPYING, and that is the difference between an exception and a
+ * CRASH (D6 of §11.6.1, measured: STATUS=139). NSArray's implementation hands out `itemsPtr =
+ * _items` — its OWN storage — and that is safe there because an immutable array's elements are
+ * stable for its lifetime. A mutable array's are not: a mutation during the loop grows the
+ * storage, and a loop reading the old pointer is reading freed memory. The mutation word CANNOT
+ * save that, because it is only consulted when the loop comes back — after the read. Copying the
+ * batch into the caller's buffer makes the batch the loop's own, and the mutation is then what the
+ * word says it is: detected at the next check, and raised as NSGenericException.
+ */
+- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state
+				  objects:(id __unsafe_unretained *)buffer
+				    count:(NSUInteger)len
+{
+	unsigned long done = 0;
+
+	state->itemsPtr = buffer;
+	state->mutationsPtr = &_mutations;
+	while (state->state < _count && done < len) {
+		buffer[done++] = _items[state->state];
+		state->state++;
+	}
+	return done;
+}
+
 + (NSMutableArray *)array
 {
 	return [[self alloc] init];
