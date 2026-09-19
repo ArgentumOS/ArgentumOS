@@ -32,9 +32,9 @@
  * NULLABILITY (F6). The sweep's rules, in one place: everything below is NONNULL
  * by default, and the handful of declarations that can legitimately answer nil say
  * so — a class with no superclass, a selector the runtime cannot find, a
- * -performSelector: whose method answers nil, a -forwardingTargetForSelector:
- * meaning "no fast forwarding", and -zone, which answers NULL because there is one
- * allocator here and nothing dereferences a zone.
+ * -performSelector: whose method answers nil, and a -forwardingTargetForSelector:
+ * meaning "no fast forwarding". (The list used to include -zone, which answered
+ * NULL; it is removed with the rest of the zone API.)
  */
 NS_ASSUME_NONNULL_BEGIN
 
@@ -164,9 +164,10 @@ __attribute__((objc_root_class))
  * matter). */
 
 - (BOOL)isProxy;
-- (nullable NSZone *)zone;		/* NULL — one allocator, and nothing dereferences it. THIS IS THE
-					 * ONLY REASON `NSZone` IS STILL DECLARED: it is a RETURN
-					 * here, never an argument. */
+/* NO -zone EITHER (2026-09-18, the user closing the last gap: "any method which
+ * returns an NSZone is removed"). With it gone, NOTHING in this library names
+ * `NSZone`, so the TYPE is gone from NSObjCRuntime.h as well — there is no
+ * allocator to ask about and no zone to hand anyone. */
 - (NSString *)debugDescription;
 
 /*

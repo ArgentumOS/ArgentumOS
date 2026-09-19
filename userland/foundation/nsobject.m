@@ -345,11 +345,10 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
  * THE REST OF THE PUBLIC ROOT-CLASS API (the hard rule: a class passes only when
  * its public API is complete).
  *
- *   -zone                     NO ZONES, AND NO ZONE API: it answers NULL rather
- *                             than a fake zone, so nothing can be handed to an
- *                             allocator that does not exist. Everything that
- *                             TOOK an `NSZone` is removed (2026-09-18) — zones
- *                             are 32-bit API and this system is 64-bit only.
+ *   (no zone API)             NO ZONES AT ALL (2026-09-18). Everything that TOOK an
+ *                             `NSZone` is removed, `-zone` (which RETURNED one) is
+ *                             removed, and `NSZone` itself is no longer declared:
+ *                             zones are 32-bit API and this system is 64-bit only.
  *   -isProxy                  the root class is not a proxy.
  *   -debugDescription         the same text as -description.
  *   -methodForSelector:       the runtime's own answer.
@@ -383,11 +382,6 @@ static NSMethodSignature *fn_signature_for(id receiver, SEL aSelector)
 - (BOOL)isProxy
 {
 	return NO;
-}
-
-- (NSZone *)zone
-{
-	return NULL;
 }
 
 - (IMP)methodForSelector:(SEL)aSelector

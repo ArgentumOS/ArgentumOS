@@ -120,7 +120,7 @@ int main(void)
 			"performSelector:", "performSelector:withObject:",
 			"performSelector:withObject:withObject:", "methodForSelector:",
 			"doesNotRecognizeSelector:", "isEqual:", "hash", "description",
-			"debugDescription", "self", "zone", "isProxy",
+			"debugDescription", "self", "isProxy",
 			"methodSignatureForSelector:",
 			"forwardingTargetForSelector:", "forwardInvocation:", NULL
 		};

@@ -13,16 +13,15 @@
  * `NSComparisonResult`, `NSRange` or `NSNotFound`. Where Cocoa has a type, the
  * type is Cocoa's — there is nothing to gain by inventing one.
  *
- * NO ZONES, AND (2026-09-18) NO ZONE-TAKING API. `NSZone` is an INCOMPLETE type
- * whose only REMAINING purpose is the return of `-zone` — every method that took
- * one as an ARGUMENT is removed, because zones are 32-bit API and this system is
- * 64-bit only. Apple's own words, on the `NSZone` page: "Zones are ignored on
- * iOS and 64-bit runtime in macOS. You should not use zones in current
- * development." (It used to be here to let Cocoa's
- * `-copyWithZone:` / `-mutableCopyWithZone:` SHAPE be reproduced (the plan's §7
- * decision, and the audit's B4). The argument is accepted, ignored and
- * documented: there is one allocator and no zone API, so an NSZone * is never
- * dereferenced, and no function here takes one.
+ * NO ZONES AT ALL (2026-09-18). `NSZone` IS NO LONGER DECLARED HERE, and that is
+ * the end of a sequence the user drove: first every method that TOOK an `NSZone`
+ * was removed, then every method that RETURNED one (`-zone`), and with nothing
+ * left able to name it the TYPE went too. Zones are 32-bit API and this system is
+ * 64-bit only; Apple's own words, on the `NSZone` page: "Zones are ignored on iOS
+ * and 64-bit runtime in macOS. You should not use zones in current development."
+ * (It was declared here, incomplete, from F0 until 2026-09-18 so that Cocoa's
+ * `-copyWithZone:` / `-mutableCopyWithZone:` SHAPE could be reproduced — the
+ * plan's §7 decision, and the audit's B4.)
  */
 
 #ifndef FOUNDATION_NSOBJCRUNTIME_H
@@ -73,7 +72,6 @@ typedef struct {
 	NSUInteger length;
 } NSRange;
 
-typedef struct _NSZone NSZone;		/* incomplete on purpose — see "NO ZONES" */
 
 /*
  * RANGES ARE FUNCTIONS HERE, NOT COCOA'S MACROS, and the reason is MEASURED: as
