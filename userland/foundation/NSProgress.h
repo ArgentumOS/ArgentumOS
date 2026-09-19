@@ -39,6 +39,8 @@
 @class NSDictionary;
 @class NSString;
 
+@class NSProgress;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSProgress : NSObject
@@ -98,6 +100,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSString *)description;
 
+@end
+
+
+/*
+ * NSProgressReporting (W2h) - the protocol an object adopts to PUBLISH its progress: one required
+ * property, and nothing else. It is a protocol rather than a class, so a consumer declares
+ * conformance and this library needs no storage for it.
+ *
+ * IT INHERITS THE NSObject PROTOCOL, which is why it is here second rather than first: that
+ * protocol was the missing dependency when this row was opened (§12: a dependency is ADDED, not
+ * refused), and a protocol that inherited an undeclared one could not be written at all.
+ */
+@protocol NSProgressReporting <NSObject>
+@property (readonly) NSProgress *progress;
 @end
 
 NS_ASSUME_NONNULL_END

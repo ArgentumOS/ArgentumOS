@@ -29,7 +29,7 @@
 #
 # counts by kind:
 #   class      shipped   63   open  179   struck   31
-#   protocol   shipped    6   open   30   struck    9
+#   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
 #   case       shipped  186   open 1023   struck   93
@@ -2237,7 +2237,7 @@ protocol	open	NSNetServiceDelegate		Networking / Local Network Services	-	objc
 protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
 protocol	struck	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	open	NSPredicateValidating		Protocols	-	objc
-protocol	open	NSProgressReporting		App Support / Progress	-	objc
+protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	open	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	open	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
 protocol	open	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
