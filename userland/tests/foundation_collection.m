@@ -575,7 +575,9 @@ int main(void)
 			"firstIndex", "lastIndex",
 			"indexGreaterThanIndex:", "indexLessThanIndex:",
 			"enumerateIndexesUsingBlock:", "isEqualToIndexSet:",
-			"isEqual:", "hash", "description", "copy", "mutableCopy", NULL
+			"isEqual:", "hash", "description", "copy", "mutableCopy", 			"countOfIndexesInRange:",
+			"indexGreaterThanOrEqualToIndex:", "indexLessThanOrEqualToIndex:",
+NULL
 		};
 		static const char *mutableSelectors[] = {
 			"addIndex:", "addIndexesInRange:", "removeIndex:",
@@ -584,8 +586,10 @@ int main(void)
 		static const char *excluded[] = {
 			/* The range- and buffer-based queries: a caller walks the set with
 			 * -enumerateIndexesUsingBlock: instead. */
-			"countOfIndexesInRange:", "getIndexes:maxCount:inIndexRange:",
-			"indexGreaterThanOrEqualToIndex:", "indexLessThanOrEqualToIndex:",
+			/* THREE OF THESE SHIP AS OF 2026-09-19 (countOfIndexesInRange: and the two
+			 * neighbours), so they are DEMANDED in the list above; what stays here is what
+			 * is still absent. */
+			"getIndexes:maxCount:inIndexRange:",
 			"firstIndexInRange:", "lastIndexInRange:",
 			"enumerateRangesUsingBlock:",
 			"enumerateRangesInRange:options:usingBlock:",
@@ -1342,6 +1346,36 @@ int main(void)
 			(unsigned long)(archive != nil ? [archive length] : 0),
 			(unsigned long)(back != nil ? [back length] : 0),
 			(int)(back != nil && [back isEqual:out])] UTF8String]);
+	}
+
+	{
+		/* THE RANGE-BASED QUERIES (D7's kind (D)). Two ranges - 10..14 and 30..31 - so a count
+		 * over a range that STRADDLES both is not accidentally equal to either, and each
+		 * neighbour has an answer inside a range, between ranges, and off the end. */
+		NSMutableIndexSet *set = [NSMutableIndexSet indexSet];
+
+		[set addIndexesInRange:NSMakeRange(10, 5)];
+		[set addIndexesInRange:NSMakeRange(30, 2)];
+		check("indexset-range-queries",
+		      [set countOfIndexesInRange:NSMakeRange(12, 20)] == 5 &&
+		      [set countOfIndexesInRange:NSMakeRange(100, 5)] == 0 &&
+		      [set countOfIndexesInRange:NSMakeRange(0, 11)] == 1 &&
+		      [set indexGreaterThanOrEqualToIndex:12] == 12 &&
+		      [set indexGreaterThanOrEqualToIndex:15] == 30 &&
+		      [set indexGreaterThanOrEqualToIndex:32] == NSNotFound &&
+		      [set indexLessThanOrEqualToIndex:29] == 14 &&
+		      [set indexLessThanOrEqualToIndex:31] == 31 &&
+		      [set indexLessThanOrEqualToIndex:9] == NSNotFound,
+		      [[NSString stringWithFormat:@"count=%lu/%lu/%lu ge=%lu/%lu/%lu le=%lu/%lu/%lu",
+			(unsigned long)[set countOfIndexesInRange:NSMakeRange(12, 20)],
+			(unsigned long)[set countOfIndexesInRange:NSMakeRange(100, 5)],
+			(unsigned long)[set countOfIndexesInRange:NSMakeRange(0, 11)],
+			(unsigned long)[set indexGreaterThanOrEqualToIndex:12],
+			(unsigned long)[set indexGreaterThanOrEqualToIndex:15],
+			(unsigned long)[set indexGreaterThanOrEqualToIndex:32],
+			(unsigned long)[set indexLessThanOrEqualToIndex:29],
+			(unsigned long)[set indexLessThanOrEqualToIndex:31],
+			(unsigned long)[set indexLessThanOrEqualToIndex:9]] UTF8String]);
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);

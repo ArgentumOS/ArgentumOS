@@ -51,6 +51,16 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)enumerateIndexesUsingBlock:(void (^)(NSUInteger index, BOOL *stop))block;
 - (BOOL)isEqualToIndexSet:(NSIndexSet *)other;
 
+
+/* THE RANGE-BASED QUERIES (D7's kind (D)). This class's representation IS a range list, so a query
+ * over a range of indexes is a walk over ranges rather than a bitmask.
+ * NOT here, and named rather than forgotten: -getIndexes:maxCount:inIndexRange: (whose in/out
+ * indexRange contract I will not guess), the two block-based -enumerateRanges… forms, and
+ * -firstIndexInRange:/-lastIndexInRange:, which the probe's list claims and I could not verify as
+ * Apple's API - inventing an API is worse than leaving one refused. */
+- (NSUInteger)countOfIndexesInRange:(NSRange)range;
+- (NSUInteger)indexGreaterThanOrEqualToIndex:(NSUInteger)index;
+- (NSUInteger)indexLessThanOrEqualToIndex:(NSUInteger)index;
 @end
 
 @interface NSMutableIndexSet : NSIndexSet

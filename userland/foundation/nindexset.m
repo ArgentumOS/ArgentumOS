@@ -300,6 +300,67 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 	return copy;
 }
 
+
+/*
+ * THE THREE RANGE-BASED QUERIES (D7's kind (D)). The representation IS a range list - (location,
+ * length) pairs, sorted and merged by fn_normalise - so each of these walks ranges and is exact
+ * rather than approximate. A range that does not intersect contributes nothing, and an empty set
+ * answers NSNotFound, which is what the header says -firstIndex and -lastIndex answer too.
+ */
+- (NSUInteger)countOfIndexesInRange:(NSRange)range
+{
+	unsigned long total = 0;
+	unsigned long otherEnd = range.location + range.length;
+	unsigned long i;
+
+	for (i = 0; i < _rangeCount; i++) {
+		unsigned long loc = _ranges[i * 2];
+		unsigned long end = loc + _ranges[i * 2 + 1];
+		unsigned long from = (loc > range.location) ? loc : range.location;
+		unsigned long to = (end < otherEnd) ? end : otherEnd;
+
+		if (to > from) {
+			total += (to - from);
+		}
+	}
+	return (NSUInteger)total;
+}
+
+- (NSUInteger)indexGreaterThanOrEqualToIndex:(NSUInteger)index
+{
+	unsigned long i;
+
+	for (i = 0; i < _rangeCount; i++) {
+		unsigned long loc = _ranges[i * 2];
+		unsigned long len = _ranges[i * 2 + 1];
+
+		if (index < loc) {
+			return (NSUInteger)loc;
+		}
+		if (index < loc + len) {
+			return index;
+		}
+	}
+	return NSNotFound;
+}
+
+- (NSUInteger)indexLessThanOrEqualToIndex:(NSUInteger)index
+{
+	unsigned long i;
+
+	for (i = _rangeCount; i > 0; i--) {
+		unsigned long loc = _ranges[(i - 1) * 2];
+		unsigned long len = _ranges[(i - 1) * 2 + 1];
+
+		if (index >= loc + len) {
+			return (NSUInteger)(loc + len - 1);
+		}
+		if (index >= loc) {
+			return index;
+		}
+	}
+	return NSNotFound;
+}
 @end
 
 @implementation NSMutableIndexSet
