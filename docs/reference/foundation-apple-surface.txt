@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   62   open  180   struck   31
+#   class      shipped   63   open  179   struck   31
 #   protocol   shipped    5   open   31   struck    9
 #   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
@@ -1559,7 +1559,7 @@ class	open	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working
 class	open	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
 class	open	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	open	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-class	open	NSUUID		Fundamentals / Unique Identifiers	-	objc
+class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
 class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
 class	struck	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	open	NSUndoManager		App Support / Undo	-	objc

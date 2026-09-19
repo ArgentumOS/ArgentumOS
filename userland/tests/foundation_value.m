@@ -691,6 +691,46 @@ int main(void)
 			(int)(back != nil && [back isEqualToData:out])] UTF8String]);
 	}
 
+	{
+		/* NSUUID (W2h): the string form round-trips through the parser, the byte form round-trips
+		 * through the reader, and TWO IDENTIFIERS DIFFER - an identifier that can repeat is not
+		 * one, which is the whole reason +UUID reads the kernel's entropy pool. */
+		NSUUID *first = [NSUUID UUID];
+		NSUUID *second = [NSUUID UUID];
+		NSUUID *parsed = first != nil ? [[NSUUID alloc] initWithUUIDString:[first UUIDString]] : nil;
+		unsigned char bytes[16];
+		NSUUID *fromBytes = nil;
+
+		first != nil ? (void)[first getUUIDBytes:bytes] : (void)0;
+		fromBytes = first != nil ? [[NSUUID alloc] initWithUUIDBytes:bytes] : nil;
+		check("uuid-round-trip",
+		      first != nil && second != nil && parsed != nil && fromBytes != nil &&
+		      [parsed isEqual:first] && [fromBytes isEqual:first] &&
+		      ![first isEqual:second] && [first hash] == [parsed hash] &&
+		      [[first UUIDString] length] == 36 &&
+		      [[NSUUID alloc] initWithUUIDString:@"not-a-uuid"] == nil,
+		      first == nil ? "no UUID" : [[first UUIDString] UTF8String]);
+	}
+
+	{
+		/* THE VERSION AND VARIANT ARE A RULE, NOT RANDOM, and this measures it where a program sees
+		 * it: the string's THIRD group leads with 4 (version 4, random) and its FOURTH with 8, 9, A
+		 * or B (the 10xx variant), in a 36-character dash-separated form. */
+		NSUUID *uuid = [NSUUID UUID];
+		NSString *text = [uuid UUIDString];
+		unichar version = (text != nil && [text length] == 36) ? [text characterAtIndex:14] : 0;
+		unichar variant = (text != nil && [text length] == 36) ? [text characterAtIndex:19] : 0;
+
+		check("uuid-version-and-variant",
+		      version == '4' &&
+		      (variant == '8' || variant == '9' || variant == 'A' || variant == 'B') &&
+		      [text characterAtIndex:8] == '-' && [text characterAtIndex:13] == '-' &&
+		      [text characterAtIndex:18] == '-' && [text characterAtIndex:23] == '-',
+		      text == nil ? "no string"
+		      : [[NSString stringWithFormat:@"len=%lu version=%C variant=%C",
+			(unsigned long)[text length], version, variant] UTF8String]);
+	}
+
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-VALUE DONE\n");
 	return failc ? 1 : 0;
