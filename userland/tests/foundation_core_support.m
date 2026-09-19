@@ -1,3 +1,5 @@
+#include <objc/runtime.h>
+#include <stdio.h>
 /*
  * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
  * SPDX-License-Identifier: MIT
@@ -211,19 +213,38 @@ BOOL foundation_mrr_pool_releases_on_drain(void)
 	return [_target methodSignatureForSelector:selector];
 }
 
+static int fn_mrr_forwarded = 0;
+
 - (void)forwardInvocation:(NSInvocation *)invocation
 {
+	fn_mrr_forwarded++;
 	[invocation setTarget:_target];
 	[invocation invoke];
 }
 @end
 
-BOOL foundation_mrr_proxy_forwards(void)
+/*
+ * THREE ANSWERS RATHER THAN A BOOLEAN, because a boolean cannot say WHICH half failed: 1 is correct,
+ * 0 means the runtime never forwarded at all (the class's shape is wrong), and 2 means forwarding RAN
+ * and the invocation path produced the wrong result. A DIAGNOSTIC THAT PRINTS ITS CODE beats a
+ * boolean that hides it - the same reasoning as the printed proxy-state in the KVC probe.
+ */
+int foundation_mrr_proxy_forwards_code(void)
 {
 	NSString *real = @"forwarded";
 	FnMrrProxy *proxy = [[FnMrrProxy alloc] initWithTarget:real];
 	NSUInteger length = [(id)proxy length];
 	BOOL same = [(id)proxy isEqualToString:@"forwarded"];
 
-	return (length == 10) && same;
+	printf("FOUNDATION-MRR proxy forwarded=%d length=%lu same=%d isProxy=%d class=%s\n",
+	       fn_mrr_forwarded, (unsigned long)length, (int)same, (int)[proxy isProxy],
+	       class_getName(object_getClass(proxy)));
+	/* NINE, NOT TEN: @"forwarded" is nine characters long, and my first version asserted ten - so the
+	 * failure that opened D11 was MY ARITHMETIC, not the proxy's forwarding. The diagnostic above is
+	 * what said so: forwarding ran, the argument and the return value both came through, and only the
+	 * length disagreed with the constant I had written down by hand. */
+	if ((length == 9) && same) {
+		return 1;
+	}
+	return (fn_mrr_forwarded > 0) ? 2 : 0;
 }

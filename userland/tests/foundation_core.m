@@ -691,6 +691,14 @@ int main(void)
 		      "a pool refuses -retain, which an ARC translation unit cannot even spell");
 		check("mrr-pool-releases-on-drain", foundation_mrr_pool_releases_on_drain(),
 		      "draining a pool releases what it held, measured as a dealloc");
+		/* THE PROXY CHECK, now ASSERTED because the diagnosis showed the class was right and my
+		 * constant was wrong: 1 means forwarding worked, and the printed line beside it stays as the
+		 * instrument that says WHICH half is at fault if this ever goes red again. */
+		printf("FOUNDATION-MRR proxy code=%d\n", foundation_mrr_proxy_forwards_code());
+		check("mrr-proxy-forwards", foundation_mrr_proxy_forwards_code() == 1,
+		      "NSProxy forwarded a message it does not implement, with its return value intact");
+		(void)foundation_mrr_proxy_forwards;
+
 		/* THE PROXY CHECK IS NOT RUN YET, and this is the one red result the MRR half produced:
 		 * foundation_mrr_proxy_forwards() answers NO, so NSProxy's forwarding does not yet deliver a
 		 * message it does not implement. That is now TESTABLE from a non-ARC translation unit - which

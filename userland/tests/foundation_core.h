@@ -85,3 +85,4 @@ int foundation_core_equality(void);
 BOOL foundation_mrr_pool_refuses_retain(void);
 BOOL foundation_mrr_pool_releases_on_drain(void);
 BOOL foundation_mrr_proxy_forwards(void);
+int foundation_mrr_proxy_forwards_code(void);	/* 1 ok, 0 never forwarded, 2 wrong result */
