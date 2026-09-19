@@ -90,9 +90,9 @@ def summarize(cases):
           % (len(cases), len(cases) - slow, slow))
 
 
-def run_case(case, verbose):
+def run_case(case, verbose, host=False):
     """Run one case with a wall-clock guard.  Returns (outcome, seconds)."""
-    ctx = Context(case.name)
+    ctx = Context(case.name, host=host)
     started = time.time()
 
     def _alarm(signum, frame):
@@ -144,6 +144,12 @@ def main(argv=None):
     parser.add_argument("--list", action="store_true",
                         help="show the cases and exit")
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--host", action="store_true",
+                        help="run the probes on THIS machine instead of booting "
+                             "a guest (mk/60-host.mk). Faster by orders of "
+                             "magnitude, and NOT a substitute: it touches no "
+                             "kernel, Xfb, /dev or FSH, and links glibc. Only "
+                             "host-clean cases run; the rest are skipped.")
     args = parser.parse_args(argv)
 
     cases = discover()
@@ -173,7 +179,7 @@ def main(argv=None):
                   % (args.tier, args.only or "-"))
         return 2
 
-    needs_boot = any(case.needs_boot for case in selected)
+    needs_boot = (not args.host) and any(case.needs_boot for case in selected)
     try:
         version = paths.check_prereqs(need_image=needs_boot, need_qemu=needs_boot)
     except paths.PrereqError as exc:
@@ -197,7 +203,7 @@ def main(argv=None):
     for case in selected:
         print("== %s [%s]%s" % (case.name, case.tier,
                                 (" - " + case.title) if case.title else ""))
-        outcome, secs = run_case(case, args.verbose)
+        outcome, secs = run_case(case, args.verbose, args.host)
         results[case.name], elapsed[case.name] = outcome, secs
         checks_total += len(case.checks)
         checks_ok += sum(1 for c in case.checks if c.ok)

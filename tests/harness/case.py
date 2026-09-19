@@ -19,6 +19,7 @@ import subprocess
 
 from . import paths
 from .qemu import launch
+from .host import HOST_CLEAN, HostSession, binary_path
 
 
 class Skip(Exception):
@@ -53,15 +54,20 @@ class Check:
 class Context:
     """What a case is handed: artifacts, boots, and a way to run a command."""
 
-    def __init__(self, case_name):
+    def __init__(self, case_name, host=False):
         self.case_name = case_name
+        self.host = host
         self.dir = os.path.join(paths.ARTIFACTS, case_name)
         os.makedirs(self.dir, exist_ok=True)
         self.sessions = []
 
     # --- booting ------------------------------------------------------
     def boot(self, name="guest", **kw):
-        session = launch(self.dir, name=name, **kw)
+        # A HOST RUN IS THE SAME CASE: it has no machine, so it answers the same
+        # session questions from a shell instead.  See harness/host.py for what a
+        # host run is NOT, and for the list of cases that may run this way.
+        session = (HostSession(self.case_name) if self.host
+                   else launch(self.dir, name=name, **kw))
         self.sessions.append(session)
         return session
 
@@ -82,7 +88,20 @@ class Context:
 
     # --- prerequisites ------------------------------------------------
     def require_guest_file(self, name):
-        """Skip unless `name` is inside the packed root image."""
+        """Skip unless `name` is inside the packed root image.
+
+        In host mode the same question is asked of the host build, and a case that
+        is not on the host-clean list is skipped rather than run: its probe wants
+        the guest's filesystem, and failing for that reason is not evidence.
+        """
+        if self.host:
+            if name not in HOST_CLEAN:
+                raise Skip("`%s` is not on the host-clean list (see "
+                           "tests/harness/host.py) - run it as a guest" % name)
+            if not os.path.exists(binary_path(name)):
+                raise Skip("`%s` is not built - make host-foundation"
+                           % paths.rel(binary_path(name)))
+            return
         if not paths.guest_file_in_image(name):
             raise Skip("`%s` is not in %s - build it first (make rootagfs)"
                        % (name, paths.rel(paths.root_image())))
