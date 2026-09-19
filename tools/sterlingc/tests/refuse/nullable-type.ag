@@ -1,0 +1,5 @@
+/* §4's `T?` has no `_Nullable` emission yet, and the header's assume_nonnull
+ * region would make the un-annotated pointer assert the OPPOSITE. */
+class RefuseNullable: Object {
+    property title: String?
+}

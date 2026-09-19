@@ -1,0 +1,55 @@
+/*
+ * EmitsPair.ag — two classes in one file, which is ordinary Sterling.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * The fourth golden specimen, and the one that decides the OUTPUT GRANULARITY:
+ * a `.ag` file is one translation unit, so it produces one `.h`/`.m` pair
+ * containing everything it declares, named after its first class.
+ *
+ * The emitter's predecessor got this wrong in two ways at once — it wrote one
+ * pair per class AND put every class in each of them, so two classes produced
+ * two identical headers that cannot both be imported — and its `.h`/`.m`
+ * preamble (the banner, the `#import`, §3.12's assumed-non-null region) was
+ * emitted per class rather than per file. Both are exactly the kind of thing
+ * only a two-class golden can see, which is why this file exists.
+ *
+ * The protocol is declared AFTER both classes that name it, so it also holds the
+ * forward declarations to the same promise EmitsSurface.ag checks.
+ */
+class EmitsPairFirst: Object, Sink {
+    property label: String
+
+    readonly property size: Int32 {
+        return 1;
+    }
+
+    method receive(value: Int32) -> Void {
+        self.label = "first";
+        return;
+    }
+}
+
+class EmitsPairSecond: Object {
+    property count: Int32
+
+    method bump(step: Int32) -> Int32 {
+        self.count = self.count + step;
+        return self.count;
+    }
+}
+
+/*
+ * A third class, and a PROPERTIES-ONLY one on purpose: the header separates the
+ * properties from the methods with a blank line, and a class with no methods
+ * used to get two blank lines in a row before `@end`. §2's specimen has both
+ * kinds, so no single-class golden can see it.
+ */
+class EmitsPairValues: Object {
+    property first: Int32
+    property second: Int32
+}
+
+protocol Sink {
+    method receive(value: Int32) -> Void
+}

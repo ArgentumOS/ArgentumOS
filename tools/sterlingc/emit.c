@@ -34,6 +34,38 @@
 #include <string.h>
 
 /*
+ * The output stem: `label`'s basename with its extension removed. The driver
+ * uses it for the `.h`/`.m` file names and the emitter for the banner that names
+ * them, so it is ONE implementation — the two disagreeing would put a header
+ * called `X.h` under a banner saying `Y.h`.
+ */
+void
+st_source_stem(const char *label, char *buf, size_t size)
+{
+	const char *base;
+	const char *dot;
+	size_t len;
+
+	if (size == 0) {
+		return;
+	}
+	if (label == NULL) {
+		buf[0] = '\0';
+		return;
+	}
+	base = strrchr(label, '/');
+	base = (base != NULL) ? base + 1 : label;
+	dot = strrchr(base, '.');
+	len = (dot != NULL && dot != base) ? (size_t)(dot - base)
+					   : strlen(base);
+	if (len >= size) {
+		len = size - 1;
+	}
+	memcpy(buf, base, len);
+	buf[len] = '\0';
+}
+
+/*
  * The refusal message. One program is emitted at a time by a single-threaded
  * driver, so the buffer is a static and the caller reads it once before
  * exiting — see st_emit_header's contract in ast.h.
@@ -98,6 +130,49 @@ map_type(const char *name)
 	return name;
 }
 
+/*
+ * §4's types that are NOT references: the scalars, the two void pointers, and
+ * `char`. A name outside this set and outside the class set is one §4's table
+ * does not cover — §9.5's header importer is what would say which it is — and
+ * §5's reference/value rule cannot be applied to it.
+ */
+static int
+type_is_known_scalar(const char *mapped)
+{
+	static const char *const scalars[] = {
+		"void", "BOOL", "char", "int8_t", "int16_t", "int32_t",
+		"int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+		"float", "double", "NSInteger", "NSUInteger",
+		"void *", "void const *", "const char *", "char *",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(scalars) / sizeof(scalars[0]); i++) {
+		if (strcmp(mapped, scalars[i]) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * §4's `T?` cannot be emitted yet, and refusing it is not the cautious choice —
+ * it is the only correct one. The header is wrapped in
+ * `_Pragma("clang assume_nonnull begin")`, so emitting `String?` as
+ * `NSString *` inside that region declares it NON-null: the generated code
+ * would assert the opposite of the source.
+ */
+static int
+type_is_emittable(const st_type *t, const char **error)
+{
+	if (t != NULL && t->nullable) {
+		return refuse("a nullable type (§4's `T?`) — the header's "
+			      "`assume_nonnull` region would assert the "
+			      "opposite", error);
+	}
+	return 1;
+}
+
 /* §5's Local: which constness the type takes, and whether a float literal
  * under it is a `float` (with the `f` suffix) or a `double` (§2 shows `0.1f`). */
 static int
@@ -132,11 +207,20 @@ map_superclass(const char *name)
  * golden and it is the specimen's own declaration this function has to match,
  * so §2 wins and the disagreement is recorded rather than papered over.
  */
-static void
-emit_signature(FILE *out, const st_decl *d, const char *terminator)
+static int
+emit_signature(FILE *out, const st_decl *d, const char *terminator,
+	       const char **error)
 {
 	size_t i;
 
+	if (!type_is_emittable(&d->type, error)) {
+		return 0;
+	}
+	for (i = 0; i < d->param_count; i++) {
+		if (!type_is_emittable(&d->params[i].type, error)) {
+			return 0;
+		}
+	}
 	fprintf(out, "%s (%s)%s", d->is_class_method ? "+" : "-",
 		map_type(d->type.name.text), d->name.text);
 	for (i = 0; i < d->param_count; i++) {
@@ -164,6 +248,7 @@ emit_signature(FILE *out, const st_decl *d, const char *terminator)
 		}
 	}
 	fprintf(out, "%s\n", terminator);
+	return 1;
 }
 
 /* ---- expressions ------------------------------------------------------- */
@@ -416,6 +501,9 @@ emit_local(FILE *out, const st_stmt *s, int depth, const char **error)
 	int is_let = (s->kind == ST_STMT_LET);
 
 	if (s->type.name.text != NULL) {
+		if (!type_is_emittable(&s->type, error)) {
+			return 0;
+		}
 		mapped = map_type(s->type.name.text);
 	} else if (s->value != NULL) {
 		mapped = infer_local_type(s->value);
@@ -621,6 +709,9 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 	const char *mapped = map_type(d->type.name.text);
 	const char *own = NULL;
 
+	if (!type_is_emittable(&d->type, error)) {
+		return 0;
+	}
 	if (d->has_initial) {
 		/*
 		 * §9.16: a stored property's default is emitted as a synthesised
@@ -655,9 +746,24 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 		 * -Wignored-attributes with exit 0), so a weak scalar would emit
 		 * and compile.
 		 */
-		if (!type_is_class(mapped) && strcmp(own, "assign") != 0) {
-			return refuse("an ownership attribute other than `assign` "
-				      "on a non-class type (§7.52)", error);
+		if (strcmp(own, "assign") != 0 && !type_is_class(mapped)) {
+			if (type_is_known_scalar(mapped)) {
+				/* §7.52: a scalar has nothing to weaken or to
+				 * copy, and clang only warns about it. */
+				return refuse("`weak`/`copy`/`strong` on a scalar "
+					      "(§7.52)", error);
+			}
+			/*
+			 * A name §4's table does not cover could be a class or a
+			 * struct, and only the class takes these — §9.5's header
+			 * importer is what would say which. Refused rather than
+			 * guessed, and the message says which of the two
+			 * situation it is, because "not a class" would be a
+			 * claim this compiler cannot make.
+			 */
+			return refuse("an ownership attribute that needs a class "
+				      "type, on a name §4's type table does not "
+				      "cover (§7.52)", error);
 		}
 		fprintf(out, ", %s", own);
 	}
@@ -729,7 +835,9 @@ emit_protocol(FILE *out, const st_protocol *prot, const char **error)
 				continue;
 			}
 			if (d->kind == ST_DECL_METHOD) {
-				emit_signature(out, d, ";");
+				if (!emit_signature(out, d, ";", error)) {
+					return 0;
+				}
 				continue;
 			}
 			/*
@@ -751,9 +859,11 @@ emit_protocol(FILE *out, const st_protocol *prot, const char **error)
 }
 
 int
-st_emit_header(FILE *out, const st_program *program, const char **error)
+st_emit_header(FILE *out, const st_program *program, const char *source_label,
+	       const char **error)
 {
 	size_t i;
+	char stem[256];
 
 	/*
 	 * §7.4's categories and extensions are parsed and this emitter has no
@@ -765,22 +875,32 @@ st_emit_header(FILE *out, const st_program *program, const char **error)
 		return refuse("a category or extension (§7.4)", error);
 	}
 	/*
-	 * §7.9's module/header granularity is an OPEN QUESTION — one header per
-	 * class, per module, or per program. The emitter writes one file per
-	 * class and puts every class in each of them, which is incoherent past
-	 * the first class and is not a choice this code gets to make.
+	 * A file may declare several classes — ordinary Sterling, and ONE
+	 * translation unit — so they are all emitted into this pair. §7.9's
+	 * per-class/per-module/per-program question is about *modules*, which do
+	 * not exist yet; inside one file there is no choice to make.
+	 *
+	 * What is refused is a program with no class at all: the pair is named
+	 * after one, and there is nothing to name it after.
 	 */
 	if (program->class_count == 0) {
 		return refuse("a program with no class (the header's name comes "
 			      "from one)", error);
 	}
-	if (program->class_count > 1) {
-		return refuse("more than one class (§7.9 leaves the header "
-			      "granularity open)", error);
-	}
 
-	fprintf(out, "/* %s.h — generated by sterlingc from %s.ag. Do not edit. */\n",
-		program->classes[0]->name.text, program->classes[0]->name.text);
+	if (source_label != NULL) {
+		st_source_stem(source_label, stem, sizeof(stem));
+		fprintf(out, "/* %s.h — generated by sterlingc from %s. Do not edit. */\n",
+			stem, source_label);
+	} else {
+		/*
+		 * The built-in specimen has no file, so §2's own pairing names
+		 * it: `MyClass.h` from `MyClass.ag`.
+		 */
+		fprintf(out, "/* %s.h — generated by sterlingc from %s.ag. Do not edit. */\n",
+			program->classes[0]->name.text,
+			program->classes[0]->name.text);
+	}
 	fprintf(out, "#import <Foundation/Foundation.h>\n\n");
 	fprintf(out, "_Pragma(\"clang assume_nonnull begin\")\n\n");
 
@@ -870,15 +990,42 @@ st_emit_header(FILE *out, const st_program *program, const char **error)
 				return 0;
 			}
 		}
-		fprintf(out, "\n");
+		/*
+		 * The blank line separates the properties from the methods, so a
+		 * class with no methods must not get one — that produced two
+		 * consecutive blank lines before `@end`, which §2's specimen
+		 * cannot show because it has both.
+		 */
+		{
+			const st_decl *m;
+			int any_method = 0;
+
+			for (m = c->decls; m != NULL; m = m->next) {
+				if (m->kind == ST_DECL_METHOD) {
+					any_method = 1;
+					break;
+				}
+			}
+			if (any_method) {
+				fprintf(out, "\n");
+			}
+		}
 		for (d = c->decls; d != NULL; d = d->next) {
 			if (d->kind == ST_DECL_METHOD) {
-				emit_signature(out, d, ";");
+				if (!emit_signature(out, d, ";", error)) {
+					return 0;
+				}
 			}
 		}
 		fprintf(out, "\n@end\n\n");
-		fprintf(out, "_Pragma(\"clang assume_nonnull end\")\n");
 	}
+	/*
+	 * §3.12's assumed-non-null region is the FILE's, not each class's: it is
+	 * `_Pragma("clang assume_nonnull begin")` near the top and the matching
+	 * `end` once, after everything. Emitting the `end` inside the loop closed
+	 * the region before the second class and left it open again.
+	 */
+	fprintf(out, "_Pragma(\"clang assume_nonnull end\")\n");
 	return 1;
 }
 
@@ -1001,9 +1148,10 @@ emit_extern(FILE *out, const st_expr *call)
 
 int
 st_emit_implementation(FILE *out, const st_program *program,
-		       const char **error)
+		       const char *source_label, const char **error)
 {
 	size_t i;
+	char stem[256];
 
 	if (program->extension_count > 0) {
 		return refuse("a category or extension (§7.4)", error);
@@ -1012,10 +1160,25 @@ st_emit_implementation(FILE *out, const st_program *program,
 		return refuse("a program with no class (the file's name comes from "
 			      "one)", error);
 	}
-	if (program->class_count > 1) {
-		return refuse("more than one class (§7.9 leaves the file "
-			      "granularity open)", error);
+	/*
+	 * ONE banner and ONE import, because this is one file: `#import
+	 * "Alpha.h"` already carries every class the header declares. Emitting
+	 * them per class inside the loop produced an `.m` with a second
+	 * "generated from Beta.ag" banner and an `#import "Beta.h"` that does not
+	 * exist.
+	 */
+	if (source_label != NULL) {
+		st_source_stem(source_label, stem, sizeof(stem));
+		fprintf(out, "/* %s.m — generated by sterlingc from %s. Do not edit. */\n",
+			stem, source_label);
+	} else {
+		snprintf(stem, sizeof(stem), "%s",
+			 program->classes[0]->name.text);
+		fprintf(out, "/* %s.m — generated by sterlingc from %s.ag. Do not edit. */\n",
+			stem, stem);
 	}
+	fprintf(out, "#import \"%s.h\"\n\n", stem);
+
 	for (i = 0; i < program->class_count; i++) {
 		const st_class *c = program->classes[i];
 		const st_decl *d;
@@ -1023,6 +1186,12 @@ st_emit_implementation(FILE *out, const st_program *program,
 
 		if (c->parameter_count > 0) {
 			return refuse("generic parameters", error);
+		}
+		if (i > 0) {
+			/* One blank line between classes, and none after the
+			 * last: §2's specimen is one class and its `.m` ends at
+			 * `@end`. */
+			fprintf(out, "\n");
 		}
 
 		set.count = 0;
@@ -1040,9 +1209,6 @@ st_emit_implementation(FILE *out, const st_program *program,
 				      error);
 		}
 
-		fprintf(out, "/* %s.m — generated by sterlingc from %s.ag. Do not edit. */\n",
-			c->name.text, c->name.text);
-		fprintf(out, "#import \"%s.h\"\n\n", c->name.text);
 		{
 			/* `n`, not `i`: the class loop owns `i`. */
 			size_t n;
@@ -1057,7 +1223,9 @@ st_emit_implementation(FILE *out, const st_program *program,
 			if (d->kind != ST_DECL_METHOD) {
 				continue;
 			}
-			emit_signature(out, d, "");
+			if (!emit_signature(out, d, "", error)) {
+				return 0;
+			}
 			fprintf(out, "{\n");
 			if (!emit_stmt_list(out, d->body, 1,
 					    map_type(d->type.name.text), error)) {

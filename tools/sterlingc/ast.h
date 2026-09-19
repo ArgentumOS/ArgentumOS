@@ -43,6 +43,18 @@ typedef struct st_type {
 	 */
 	st_name *arguments;
 	size_t argument_count;
+	/*
+	 * §4's `T?`. RECORDED because dropping it is not neutral: the generated
+	 * header opens with `_Pragma("clang assume_nonnull begin")`, so a `.ag`
+	 * that says `String?` and emits `NSString *` inside that region asserts
+	 * the *opposite* of what was written — non-null. The emitter refuses a
+	 * nullable type until the `_Nullable` emission exists, which is §4's own
+	 * table's (`String?` → `NSString * _Nullable`) and arrives with the
+	 * header importer's nullability rules (§9.5).
+	 *
+	 * A scalar's `?` is §7.62's pair-struct, a different mechanism entirely.
+	 */
+	int nullable;
 } st_type;
 
 /* ---- expressions ------------------------------------------------------- */
@@ -312,14 +324,30 @@ const char *st_check(const st_program *program);
  * implementation carries the extern declarations of any C function a body
  * calls (§7.42) and the getters of read-only properties (§7.54).
  *
+ * ONE `.h`/`.m` pair per PROGRAM. A `.ag` file may declare several classes —
+ * ordinary Sterling, and one translation unit — so the pair holds all of them,
+ * and it is named after `source_label`, the input file, the way a C compiler
+ * names its output. `source_label` is the file's basename; NULL means the
+ * built-in specimen, which falls back to its single class's name (§2's
+ * `MyClass.h` from `MyClass.ag`).
+ *
  * Both return 0 and set *error when the program uses a construct this emitter
  * cannot write. That is a refusal, not a warning: the emitter's predecessor
  * skipped anything it could not represent, so a program could compile to
  * source that had silently lost statements. A construct with no emission
  * stops the compile and says which one it was.
  */
-int st_emit_header(FILE *out, const st_program *program, const char **error);
+int st_emit_header(FILE *out, const st_program *program,
+		   const char *source_label, const char **error);
 int st_emit_implementation(FILE *out, const st_program *program,
-			   const char **error);
+			   const char *source_label, const char **error);
+
+/*
+ * The output stem for a source label: its basename with the extension removed.
+ * `label` is the path as given; NULL is the specimen's case and writes nothing.
+ * One implementation, because the file names and the banner's "generated from"
+ * clause have to agree.
+ */
+void st_source_stem(const char *label, char *buf, size_t size);
 
 #endif /* STERLING_AST_H */

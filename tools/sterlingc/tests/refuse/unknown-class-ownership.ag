@@ -1,0 +1,4 @@
+/* §4's table does not cover `Owner`, so §7.52's class-type rule cannot be checked. */
+class RefuseUnknownOwner: Object {
+    weak property held: Owner
+}

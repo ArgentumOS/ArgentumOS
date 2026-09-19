@@ -5,7 +5,9 @@
 # Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
 #
 #   sterlingc.sh --build           build the compiler itself
-#   sterlingc.sh <file.ag> [-o D]  compile one file to <Class>.h and <Class>.m
+#   sterlingc.sh <file.ag> [-o D]  compile ONE file to ONE <file>.h/<file>.m
+#                                  pair holding everything it declares, since a
+#                                  file may hold several classes
 #   sterlingc.sh --parse <file.ag> stop after the front end; emit nothing
 #   sterlingc.sh --golden          K1's gate: the §1 specimen must emit exactly
 #                                  what sterling-syntax.md §2 shows, AND every

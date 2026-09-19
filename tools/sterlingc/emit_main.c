@@ -64,6 +64,7 @@ main(int argc, char **argv)
 {
 	const char *error = NULL;
 	const char *outdir = NULL;
+	const char *source_label = NULL;	/* the input file's basename */
 	st_program *program;
 	char *source;
 	size_t i;
@@ -89,6 +90,14 @@ main(int argc, char **argv)
 		} else if (strcmp(argv[i], "-o") == 0 && i + 1 < (size_t)argc) {
 			outdir = argv[++i];
 		} else {
+			/*
+			 * The file's BASENAME is kept, not its path: it names the
+			 * output pair and the banner's "generated from" clause,
+			 * and a banner naming a directory would be noise.
+			 */
+			const char *slash = strrchr(argv[i], '/');
+
+			source_label = (slash != NULL) ? slash + 1 : argv[i];
 			source = slurp(argv[i]);
 			if (source == NULL) {
 				fprintf(stderr, "sterlingc: cannot read %s\n", argv[i]);
@@ -141,22 +150,59 @@ main(int argc, char **argv)
 		return 0;
 	}
 
-	for (i = 0; i < program->class_count; i++) {
-		const st_class *c = program->classes[i];
+	/*
+	 * ONE `.h`/`.m` pair per PROGRAM, not per class.
+	 *
+	 * A file may declare several classes — that is ordinary Sterling, and it is
+	 * one translation unit — so the loop this replaces was wrong twice over: it
+	 * wrote N files, and `st_emit_header` writes *every* class, so each of the
+	 * N held the whole program. Two classes gave two identical headers that
+	 * cannot both be imported.
+	 *
+	 * The pair is named after the INPUT FILE, the way a C compiler names its
+	 * output, with the built-in specimen falling back to its single class's
+	 * name (§2's `MyClass.h` from `MyClass.ag`).
+	 *
+	 * A program with no class at all has no name to be filed under, and the
+	 * emitter is the thing that refuses it — so it is asked, with stdout, for
+	 * the message. It refuses before writing anything.
+	 */
+	if (program->class_count == 0) {
 		const char *eerror = NULL;
+
+		if (!st_emit_header(stdout, program, source_label, &eerror)) {
+			fprintf(stderr, "%s\n", eerror);
+			return 1;
+		}
+		return 0;
+	}
+
+	{
+		char base[256];
+		const char *eerror = NULL;
+
+		/*
+		 * `st_source_stem`, not a second copy of the basename logic: the
+		 * same answer here and in the banner, or the file and its own
+		 * banner disagree about what the file is called.
+		 */
+		st_source_stem(source_label, base, sizeof(base));
+		if (base[0] == '\0') {
+			snprintf(base, sizeof(base), "%s",
+				 program->classes[0]->name.text);
+		}
 
 		if (outdir != NULL) {
 			char path[1024];
 			FILE *fp;
 
-			snprintf(path, sizeof(path), "%s/%s.h", outdir,
-				 c->name.text);
+			snprintf(path, sizeof(path), "%s/%s.h", outdir, base);
 			fp = fopen(path, "wb");
 			if (fp == NULL) {
 				fprintf(stderr, "sterlingc: cannot write %s\n", path);
 				return 1;
 			}
-			if (!st_emit_header(fp, program, &eerror)) {
+			if (!st_emit_header(fp, program, source_label, &eerror)) {
 				/*
 				 * A refusal must not leave a partial file behind:
 				 * the next `make` would see a header that is
@@ -169,32 +215,30 @@ main(int argc, char **argv)
 			}
 			fclose(fp);
 
-			snprintf(path, sizeof(path), "%s/%s.m", outdir,
-				 c->name.text);
+			snprintf(path, sizeof(path), "%s/%s.m", outdir, base);
 			fp = fopen(path, "wb");
 			if (fp == NULL) {
 				fprintf(stderr, "sterlingc: cannot write %s\n", path);
 				return 1;
 			}
-			if (!st_emit_implementation(fp, program, &eerror)) {
+			if (!st_emit_implementation(fp, program, source_label, &eerror)) {
 				fclose(fp);
 				remove(path);
 				fprintf(stderr, "%s\n", eerror);
 				return 1;
 			}
 			fclose(fp);
-			continue;
-		}
-
-		printf("----- %s.h -----\n", c->name.text);
-		if (!st_emit_header(stdout, program, &eerror)) {
-			fprintf(stderr, "%s\n", eerror);
-			return 1;
-		}
-		printf("----- %s.m -----\n", c->name.text);
-		if (!st_emit_implementation(stdout, program, &eerror)) {
-			fprintf(stderr, "%s\n", eerror);
-			return 1;
+		} else {
+			printf("----- %s.h -----\n", base);
+			if (!st_emit_header(stdout, program, source_label, &eerror)) {
+				fprintf(stderr, "%s\n", eerror);
+				return 1;
+			}
+			printf("----- %s.m -----\n", base);
+			if (!st_emit_implementation(stdout, program, source_label, &eerror)) {
+				fprintf(stderr, "%s\n", eerror);
+				return 1;
+			}
 		}
 	}
 

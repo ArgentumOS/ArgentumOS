@@ -302,15 +302,34 @@ bugs actually are.
     pointer, so a property of type `Object` was declared by value.
   - Categories and extensions are worse than those four and are now REFUSED
     rather than dropped: `parse_extension` read a whole declaration block and the
-    result went nowhere. §7.9's header granularity is an open question — one
-    header per class, per module, or per program — so a program with more than
-    one class is refused too, rather than written into N files each containing
-    every class.
+    result went nowhere.
+  - **One `.h`/`.m` pair per source FILE, holding everything that file declares.**
+    A `.ag` file may declare several classes — ordinary Sterling, and one
+    translation unit — so the pair is named after the input file the way a C
+    compiler names its output, and the built-in specimen falls back to its single
+    class's name (§2's `MyClass.h` from `MyClass.ag`). §7.9's
+    per-class/per-module/per-program question is about *modules*, which do not
+    exist; inside one file there is nothing to decide. The emitter's predecessor
+    wrote one pair per class AND put every class in each of them, so two classes
+    produced two identical headers that cannot both be imported — and its banner,
+    `#import` and §3.12 assumed-non-null region were per class rather than per
+    file. A file with no class at all is refused: there is nothing to name the
+    pair after.
+  - **§4's `T?` is REFUSED, and that is the only correct option today.** The `?`
+    was consumed and dropped, and dropping it was not neutral: the header is
+    wrapped in `_Pragma("clang assume_nonnull begin")`, so `String?` emitted
+    `NSString *` *inside* that region — asserting non-null, the opposite of what
+    was written. Recorded on the type (§7.62's scalar `?` is a different
+    mechanism, the pair-struct) and refused until §4's table emits `_Nullable`.
   - Still owed here: `get`/`set` blocks (§7.54/§7.55, so a `set` block and its
     implicit writable `newValue`), §9.16's synthesised *defaults* method (which is
     what a property initializer needs — neither an ivar nor a C struct member may
     carry one), `unowned` (§7.53), categories/extensions (§7.4), `Self`/`super`,
-    and generic parameters (§7.63).
+    §4's `T?`, and generic parameters (§7.63).
+  - **Nested type declarations are a parse error, and the language allows them.**
+    `class Outer { struct Inner { … } }` is rejected at the `struct` — loud, not a
+    silent loss, but it is a gap rather than a decision, and the emitted code
+    would need §9.x's name mangling.
 
 ### K3 — Types, structs, imports, and C interop
 

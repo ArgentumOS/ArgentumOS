@@ -356,12 +356,16 @@ parse_type(st_parser *p, st_type *out)
 	}
 	/*
 	 * §4/§7.62: `?` makes the type nullable — a class becomes a nullable
-	 * pointer, and a scalar or struct takes §7.62's pair-struct. Accepted
-	 * here and not yet recorded; the AST field the emitter needs belongs
-	 * to the same later step as `throws`.
+	 * pointer, and a scalar or struct takes §7.62's pair-struct.
+	 *
+	 * RECORDED now, not consumed and dropped. Dropping it was not neutral:
+	 * the generated header is wrapped in `_Pragma("clang assume_nonnull
+	 * begin")`, so `String?` emitted `NSString *` *inside* that region —
+	 * which asserts non-null, the opposite of what was written.
 	 */
 	if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 	    p->tok.start[0] == '?') {
+		out->nullable = 1;
 		bump(p);
 	}
 	return 1;
