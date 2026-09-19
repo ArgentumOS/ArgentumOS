@@ -292,6 +292,9 @@ int main(void)
 			"writeToURL:atomically:", "writeToURL:options:error:",
 			"enumerateByteRangesUsingBlock:",
 			"isEqualToData:", "isEqual:", "hash", "description", "copy", "mutableCopy",
+			/* NSCoding: implemented, and DEMANDED - the inventory had been silent about these,
+			 * which is the gap class worth naming (§11.6.1 D7). */
+			"initWithCoder:", "encodeWithCoder:",
 			NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -394,8 +397,8 @@ int main(void)
 			"compare:", "isEqualToDate:",
 			"isEqual:", "hash", "description", "descriptionWithLocale:",
 			"copy", "mutableCopy",
-						"initWithCoder:", "encodeWithCoder:",
-NULL
+			"initWithCoder:", "encodeWithCoder:",
+			NULL
 		};
 		static const char *excluded[] = {
 			/* Deprecated by Cocoa itself. */
@@ -672,6 +675,20 @@ NULL
 		      [[NSString stringWithFormat:@"archive=%lu back=%d equal=%d",
 			(unsigned long)(archive != nil ? [archive length] : 0), (int)(back != nil),
 			(int)(back != nil && [back isEqualToDate:out])] UTF8String]);
+	}
+
+	{
+		/* NSData'S NSCoding PAIR, through our own archiver (D7's kind (D)). */
+		NSData *out = [NSData dataWithBytes:"archived-bytes" length:14];
+		NSData *archive = [NSKeyedArchiver archivedDataWithRootObject:out];
+		NSData *back = archive != nil ? [NSKeyedUnarchiver unarchiveObjectWithData:archive] : nil;
+
+		check("data-nscoding-round-trip",
+		      archive != nil && back != nil && [back isEqualToData:out] && [back length] == 14,
+		      [[NSString stringWithFormat:@"archive=%lu back=%lu equal=%d",
+			(unsigned long)(archive != nil ? [archive length] : 0),
+			(unsigned long)(back != nil ? [back length] : 0),
+			(int)(back != nil && [back isEqualToData:out])] UTF8String]);
 	}
 
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);

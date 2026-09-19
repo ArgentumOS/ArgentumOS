@@ -695,8 +695,9 @@ int main(void)
 	{
 		/* The audited Cocoa inventory for NSIndexPath. The exclusions are the
 		 * toolkit's additions (row/section/item are a UIKit-side category here, not
-		 * Foundation) and the CODING protocols, which this library does not ship —
-		 * the plist codec is its serialization surface. */
+		 * Foundation). THE CODING PROTOCOLS USED TO BE NAMED HERE AS UNSHIPPED, and that
+		 * claim went stale twice over: NSCoding, NSCoder and NSKeyedArchiver all ship, and
+		 * NSIndexPath now CONFORMS (D7's kind (D)). */
 		static const char *classSelectors[] = {
 			"indexPathWithIndex:", "indexPathWithIndexes:length:", NULL
 		};
@@ -706,12 +707,15 @@ int main(void)
 			"getIndexes:", "getIndexes:range:",
 			"indexPathByAddingIndex:", "indexPathByRemovingLastIndex",
 			"compare:", "isEqual:", "hash", "description",
-			"copy", NULL
+			"copy",
+			"initWithCoder:", "encodeWithCoder:",
+			NULL
 		};
 		static const char *excluded[] = {
 			"indexPathForRow:inSection:", "indexPathForItem:inSection:",
 			"section", "row", "item",
-			"encodeWithCoder:", "initWithCoder:",
+			/* THE TWO NSCoding ENTRIES USED TO BE LISTED HERE. NSIndexPath implements them
+			 * now, so they are DEMANDED above in the same change. */
 			NULL
 		};
 		NSIndexPath *probe = [NSIndexPath indexPathWithIndex:1];
@@ -1321,6 +1325,23 @@ int main(void)
 		      [[NSString stringWithFormat:@"wrote=%d wrongRoot=%d",
 			(int)wrote, (int)(wrong == nil)] UTF8String]);
 		remove([path UTF8String]);
+	}
+
+	{
+		/* NSIndexPath'S NSCoding PAIR, through our own archiver (D7's kind (D)): the positions go
+		 * out as ONE BYTE BLOB, which is Apple's own trick for this class and also what keeps it
+		 * from depending on NSArray conforming first. */
+		NSUInteger positions[3] = { 3, 1, 4 };
+		NSIndexPath *out = [NSIndexPath indexPathWithIndexes:positions length:3];
+		NSData *archive = [NSKeyedArchiver archivedDataWithRootObject:out];
+		NSIndexPath *back = archive != nil ? [NSKeyedUnarchiver unarchiveObjectWithData:archive] : nil;
+
+		check("indexpath-nscoding-round-trip",
+		      archive != nil && back != nil && [back length] == 3 && [back isEqual:out],
+		      [[NSString stringWithFormat:@"archive=%lu back=%lu equal=%d",
+			(unsigned long)(archive != nil ? [archive length] : 0),
+			(unsigned long)(back != nil ? [back length] : 0),
+			(int)(back != nil && [back isEqual:out])] UTF8String]);
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);

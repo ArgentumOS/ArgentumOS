@@ -41,9 +41,11 @@
 /* NULLABILITY (F6): NONNULL throughout — an index path is a value, and the
  * operations that could not answer (a position past -length, trimming an empty
  * path) RAISE rather than returning an absent thing. */
+#import <foundation/NSCoding.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSIndexPath : NSObject <NSCopying>
+@interface NSIndexPath : NSObject <NSCopying, NSCoding>
 {
 	NSUInteger *_indexes;	/* _length positions, kept in order */
 	NSUInteger _length;

@@ -43,9 +43,11 @@
  * the -replaceBytesInRange: forms) stay NONNULL, because a NULL buffer there is meaningless. */
 @class NSURL;
 
+#import <foundation/NSCoding.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSData : NSObject <NSCopying>
+@interface NSData : NSObject <NSCopying, NSCoding>
 {
 	unsigned char *_bytes;		/* owned; NULL only while empty */
 	size_t _length;

@@ -648,6 +648,27 @@ static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
 	return (path == nil) ? NO : [self writeToFile:path options:options error:errorPtr];
 }
 
+/*
+ * NSCoding FOR DATA (D7's kind (D)): the bytes go out as one blob, which is what the byte form of
+ * the coder is for. The key is spelled by this library (internal to our archive format). An EMPTY
+ * data encodes no blob at all, so the decode path hands -initWithBytes:NULL length:0 the empty
+ * constructor the header documents.
+ */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	if (_length > 0) {
+		[coder encodeBytes:(const void *)_bytes length:_length forKey:@"NS.data"];
+	}
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSUInteger length = 0;
+	const void *bytes = [coder decodeBytesForKey:@"NS.data" returnedLength:&length];
+
+	return [self initWithBytes:bytes length:length];
+}
+
 @end
 
 @implementation NSMutableData
@@ -866,6 +887,7 @@ static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
 	/* A snapshot, like every other mutable type here. */
 	return [[NSData alloc] initWithBytes:[self bytes] length:[self length]];
 }
+
 
 
 @end

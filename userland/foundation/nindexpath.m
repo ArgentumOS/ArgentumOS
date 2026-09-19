@@ -9,6 +9,7 @@
  */
 
 #import <foundation/NSIndexPath.h>
+#import <foundation/NSCoder.h>	/* the coder forms below */
 #import <foundation/NSException.h>
 #import <foundation/NSString.h>
 #include <stdlib.h>
@@ -216,4 +217,33 @@ static void fn_hold(NSIndexPath *path, const NSUInteger *indexes, NSUInteger len
 	return self;		/* immutable */
 }
 
+
+/*
+ * NSCoding FOR AN INDEX PATH (D7's kind (D)): the positions go out as ONE BYTE BLOB rather than as
+ * an array of objects, which is Apple's own trick for this class and also what keeps it from
+ * depending on NSArray conforming first. The two keys are spelled by this library - they are
+ * internal to our own archive format and a program never sees them.
+ */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeInteger:(NSInteger)_length forKey:@"NS.length"];
+	if (_length > 0) {
+		[coder encodeBytes:(const void *)_indexes
+			    length:_length * sizeof(NSUInteger)
+			    forKey:@"NS.indexes"];
+	}
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSUInteger length = (NSUInteger)[coder decodeIntegerForKey:@"NS.length"];
+	NSUInteger stored = 0;
+	const void *bytes = NULL;
+
+	if (length > 0) {
+		bytes = [coder decodeBytesForKey:@"NS.indexes" returnedLength:&stored];
+		length = stored / sizeof(NSUInteger);
+	}
+	return [self initWithIndexes:(const NSUInteger *)bytes length:length];
+}
 @end
