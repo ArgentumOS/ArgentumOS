@@ -3191,13 +3191,20 @@ The ledger must not depend on anyone remembering. Two greppable sources make it 
    every entry is a defect.** `grep -rn 'excluded' userland/tests/foundation_*.m` is the work list — and
    the day those arrays are empty (or hold only names Apple has REMOVED, §11.5) is the day half this
    ledger is done.
-2. **THE SHIPPED HEADERS VERSUS APPLE'S DOCUMENTED CLASS INDEX.** `ls userland/foundation/*.h` is our
-   surface; Apple's public documentation is the target surface. Every name in the second and absent from
-   the first is a row. **THE SWEEP WAS RUN ON 2026-09-18 — §11.3.1 is its result: 212 classes and 40
-   protocols absent, in 40 families, each with the dependency it needs.** The sentence that stood here
-   said the sweep had not been done, and §11.4 said that removing it required doing the sweep; this is
-   that sentence removed. It is a dated MEASUREMENT rather than a constant, because Apple's index
-   grows — so the recipe at the end of §11.3.1 is part of the source, not a footnote to it.
+2. **THE SHIPPED HEADERS VERSUS APPLE'S DOCUMENTED SURFACE — A FILE AND A GATE, NOT A PARAGRAPH.**
+   `ls userland/foundation/*.h` is our surface; Apple's published documentation is the target surface,
+   read from the documentation index's own JSON. The diff is committed:
+   **`docs/reference/foundation-apple-surface.txt`, one line per symbol** (kind, status, name, owner,
+   Apple's family), and **`tools/foundation-sweep.py`** holds it to this tree as `make foundation-sweep`
+   — a prerequisite of `foundation-gate`, so neither can rot.
+
+   **IT COVERS EVERY KIND THE CLASS INDEX LEFT OUT** (user, 2026-09-18): classes, protocols, **macros,
+   enums, cases, functions, variables, type aliases and structs** — **2,934 documented symbols, of which
+   270 ship, 2,337 are open and 327 are struck** by §11.5. §11.3.1 is its record and the file is the
+   ledger. The sentence that stood here said the sweep had not been done, and §11.4 said removing it
+   required doing the sweep; this is that sentence removed — and replaced by the thing it was waiting
+   for. Its `--refresh` mode is the only one that touches the network, and the data is a DATED
+   MEASUREMENT, so the date travels with it.
 
 ### 11.3 The seeded ledger (2026-09-18) — what the plan had already written down
 
@@ -3221,132 +3228,248 @@ whole ledger; it is what §5 and §10 already admitted.
 | `-completionBlock`/`-addOperationWithBlock:`, QoS, priority | §10, F13.19 | blocks in the library's public headers | **open** |
 | `-publish`/`-unpublish`, subscribers, `-cancellationHandler`, `-estimatedTimeRemaining` | §10, F13.20 | none | **open** |
 | Percent-encoding and query-item ENCODING in `NSURLComponents` | §10, F13.15 | none | **open** |
-| **Whole families with no header at all** — `NSNotificationCenter`, `NSBundle`, `NSUserDefaults`, `NSJSONSerialization`, `NSScanner`, `NSFileHandle`, `NSTask`/`NSPipe`, `NSStream`, `NSUUID`, `NSProxy`, `NSValueTransformer`, `NSDecimalNumber`, the formatter variants, the networking stack, … | the shipped-header list | case by case | **EXPANDED, not closed — §11.3.1 replaced this row with 40 family rows; it goes away when the names in THEM all ship and a probe says so** |
+| **Whole families with no header at all** — `NSNotificationCenter`, `NSBundle`, `NSUserDefaults`, `NSJSONSerialization`, `NSScanner`, `NSFileHandle`, `NSTask`/`NSPipe`, `NSStream`, `NSUUID`, `NSProxy`, `NSValueTransformer`, `NSDecimalNumber`, the formatter variants, the networking stack, … | the shipped-header list | case by case | **EXPANDED, not closed — §11.3.1 replaced this row with the committed surface (`docs/reference/foundation-apple-surface.txt`): 101 family rows and 2,337 open symbols, of which 212 are classes/protocols. It goes away when the file's `open` column is empty and `make foundation-sweep` says so** |
 
-### 11.3.1 THE SWEEP, RUN (2026-09-18): our headers against Apple's documented class index
+### 11.3.1 THE SWEEP: the whole documented surface, against this tree (run 2026-09-18)
 
-§11.2 named two mechanical sources and only one of them had been read. **This is the second source,
-run and recorded, and it is the last thing in this plan that was waiting on a measurement rather than
-a decision.** The distance is now a number instead of a sentence: **212 documented classes and 40
-documented protocols are absent, and the families they fall into are named below with the dependency
-each one needs.**
+**THE DISTANCE IS NO LONGER A SENTENCE, AND NOT A PROSE LIST EITHER.** §11.2's second source is now a
+COMMITTED ARTIFACT and a GATE: `docs/reference/foundation-apple-surface.txt` holds every documented
+symbol on one line (kind, status, name, owner, Apple's family), `tools/foundation-sweep.py` holds that
+line to this tree, and `make foundation-sweep` — a prerequisite of `foundation-gate` — is what makes
+"the ledger is complete" a fact rather than a claim. **This section is its record; the file is the
+ledger.**
 
-**WHAT WAS COMPARED, AND HOW (so it can be run again — Apple's index grows):**
+**WHAT ONE LINE PER SYMBOL MEANS, AND WHY THE FILE EXISTS AT ALL.** §11.1 asks for one row per item. At
+274 classes and protocols that fits in a table; at **2,934 documented symbols** it does not, and a
+ledger that cannot be read is a ledger nobody keeps. So the ROW is the file's line and the TABLE below
+is the FAMILY, which is the same deviation §11.3.1 made before, at a scale that forces it. The counts in
+both are generated by the tool, not typed.
 
-* **Our surface**: every `@interface` and `@protocol` in `userland/foundation/*.h`. That is 64 classes
-  and 6 protocols. (The header list is the surface; no other directory declares a Foundation name.)
-* **Apple's surface**: the documentation navigator's own index —
-  `https://developer.apple.com/tutorials/data/index/foundation`. It is a JSON tree; a node's `type` is
-  `class`, `protocol`, `func`, `enum`, `var`, … and `"deprecated": true` marks a deprecated symbol.
-  Read: 337 class nodes under **273 distinct class titles**, and 57 protocol nodes under **45 distinct
-  protocol titles** (a title repeats when Apple lists it in two groups).
-* **The diff**: 61 of Apple's 273 classes ship here (the 64 in our headers, less the 3 house-only names
-  below); **212 are absent**. 6 of Apple's 45 protocols ship — `NSCoding`, `NSCopying`,
-  `NSFastEnumeration`, `NSKeyValueCoding`, `NSLocking`, `NSMutableCopying` — and **40 are absent**,
-  among them `NSObject`, which is a *protocol* Apple documents in addition to the root class, and which
-  is why `id<NSObject>` does not exist here.
-* **The distinction the diff does NOT make, and §11.5 does**: Apple's index is the **current published
-  surface**, so every name in it counts as PRESENT under §11.5's first exclusion and there is no
-  removed API to strike. 23 of the 252 carry Apple's own `deprecated` flag, and Apple's
-  grouping files 32 of them under `Deprecated` / `Legacy` — **and every one of them is IN SCOPE**, by
-  §11.5's second clause ("deprecated-but-PRESENT is in scope"). A family filed under `Legacy` is a
-  defect with a work item, not a documented deviation.
-
-**THE ROWS.** One row per family, with every name in it, and the DEPENDENCY the plan already knows it
-needs. Every row is `open`; a row closes when the last name in it ships and a probe says so. **The
-families are Apple's own, taken from the index's grouping**, because a taxonomy of our own invention is
-one more thing that can be wrong.
-
-| Family | The names it holds (all ABSENT today) | Dependency | Status |
+| | shipped | open | struck (§11.5) |
 |---|---|---|---|
-| **Scripting and Apple events** (34) | `NSAppleEventDescriptor`, `NSAppleEventManager`, `NSAppleScript`, `NSClassDescription`, `NSScriptClassDescription`, `NSScriptCommand`, `NSScriptCommandDescription`, `NSScriptCoercionHandler`, `NSScriptExecutionContext`, `NSScriptObjectSpecifier`, `NSScriptSuiteRegistry`, `NSScriptWhoseTest`, `NSCloneCommand`, `NSCloseCommand`, `NSCountCommand`, `NSCreateCommand`, `NSDeleteCommand`, `NSExistsCommand`, `NSGetCommand`, `NSMoveCommand`, `NSQuitCommand`, `NSSetCommand`, `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier`, `NSLogicalTest`, `NSSpecifierTest` | an event/script bridge, and `NSAppleEventDescriptor` is the whole of its wire type — **the largest single family in the table** | **open** |
-| **Units and measurement** (28) | `NSMeasurement`, `NSMeasurementFormatter`, `NSUnit`, `NSDimension`, `NSUnitConverter`, `NSUnitConverterLinear`, `NSUnitAcceleration`, `NSUnitAngle`, `NSUnitArea`, `NSUnitConcentrationMass`, `NSUnitDispersion`, `NSUnitDuration`, `NSUnitElectricCharge`, `NSUnitElectricCurrent`, `NSUnitElectricPotentialDifference`, `NSUnitElectricResistance`, `NSUnitEnergy`, `NSUnitFrequency`, `NSUnitFuelEfficiency`, `NSUnitIlluminance`, `NSUnitInformationStorage`, `NSUnitLength`, `NSUnitMass`, `NSUnitPower`, `NSUnitPressure`, `NSUnitSpeed`, `NSUnitTemperature`, `NSUnitVolume` | none — the units are Apple's own published conversion tables, and **a table we do not have is a dependency to ADD** (§11's rule/table line): a data table, not a library | **open** |
-| **Ports and remote objects** (18) | `NSPort`, `NSSocketPort`, `NSMachPort`, `NSMessagePort`, `NSPortMessage`, `NSPortCoder`, `NSPortNameServer`, `NSMachBootstrapServer`, `NSMessagePortNameServer`, `NSSocketPortNameServer`, `NSConnection`, `NSDistantObject`, `NSDistantObjectRequest`, `NSProtocolChecker`, `NSConnectionDelegate`, `NSPortDelegate`, `NSMachPortDelegate`, `NSGarbageCollector` | a port/connection layer; Apple groups the whole family under `Low-Level Utilities / Legacy` — **in scope (§11.5)**, and `NSGarbageCollector` is flagged deprecated at the class level | **open** |
-| **URL loading: sessions, tasks and configuration** (17) | `NSURLSession`, `NSURLSessionConfiguration`, `NSURLSessionTask`, `NSURLSessionDataTask`, `NSURLSessionDownloadTask`, `NSURLSessionUploadTask`, `NSURLSessionStreamTask`, `NSURLSessionWebSocketTask`, `NSURLSessionWebSocketMessage`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionDelegate`, `NSURLSessionTaskDelegate`, `NSURLSessionDataDelegate`, `NSURLSessionDownloadDelegate`, `NSURLSessionStreamDelegate`, `NSURLSessionWebSocketDelegate` | a transport (sockets, then HTTP) — **the second-largest family**, and it is the family the run loop (F13.18) was landed early for | **open** |
-| **File system: handles, wrappers, enumerators and coordination** (10) | `NSFileHandle`, `NSFileWrapper`, `NSFileSecurity`, `NSDirectoryEnumerator`, `NSFileCoordinator`, `NSFileAccessIntent`, `NSFileVersion`, `NSFileProviderService`, `NSFileManagerDelegate`, `NSFilePresenter` | none beyond file descriptors and the coder core; `NSFileManager` (F13.14) is already the door | **open** |
-| **Collections: the pointer, purgeable and difference types** (10) | `NSHashTable`, `NSMapTable`, `NSPointerArray`, `NSPointerFunctions`, `NSCache`, `NSDiscardableContent`, `NSCacheDelegate`, `NSPurgeableData`, `NSOrderedCollectionDifference`, `NSOrderedCollectionChange` | none — `NSHashTable`/`NSMapTable`/`NSPointerArray` are the three collections whose membership is by pointer or by weak reference, which is the one thing the shipped four refuse by construction | **open** |
-| **Streams, pipes and external tasks** (10) | `NSStream`, `NSInputStream`, `NSOutputStream`, `NSStreamDelegate`, `NSPipe`, `NSTask`, `NSUserScriptTask`, `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserUnixTask` | file descriptors plus fork/exec; the run loop for the delegate forms | **open** |
-| **URL loading: requests, responses, cookies and cache** (10) | `NSURLRequest`, `NSMutableURLRequest`, `NSURLResponse`, `NSHTTPURLResponse`, `NSHTTPCookie`, `NSHTTPCookieStorage`, `NSCachedURLResponse`, `NSURLCache`, `NSURLProtocol`, `NSURLProtocolClient` | the same transport as the session family | **open** |
-| **Formatting: the data formatters** (9) | `NSByteCountFormatter`, `NSDateComponentsFormatter`, `NSDateIntervalFormatter`, `NSISO8601DateFormatter`, `NSRelativeDateTimeFormatter`, `NSListFormatter`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSMassFormatter` | **ICU — already bound and already in the image** (§11.4 item 3, the highest fidelity-per-unit-of-work rows in the table) | **open** |
-| **Resources, extensions and item providers** (8) | `NSBundle`, `NSBundleResourceRequest`, `NSExtensionContext`, `NSExtensionItem`, `NSItemProvider`, `NSItemProviderReading`, `NSItemProviderWriting`, `NSExtensionRequestHandling` | an XPC-style host for the extension half; `NSBundle` itself needs none | **open** |
-| **URL loading: the deprecated connection, download and handle families** (8) | `NSURLConnection`, `NSURLConnectionDelegate`, `NSURLConnectionDataDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | the transport; **Apple files all three under `Networking / Legacy`, and §11.5 keeps them in scope** | **open** |
-| **XML** (7) | `NSXMLParser`, `NSXMLParserDelegate`, `NSXMLNode`, `NSXMLElement`, `NSXMLDocument`, `NSXMLDTD`, `NSXMLDTDNode` | an XML parser (expat-class) for the event half; the tree/DTD layer is ours | **open** |
-| **XPC** (7) | `NSXPCConnection`, `NSXPCInterface`, `NSXPCListener`, `NSXPCListenerEndpoint`, `NSXPCListenerDelegate`, `NSXPCProxyCreating`, `NSXPCCoder` | the XPC transport and its service manager — **a kernel/service dependency, not a library one**, and the one family here that a single process cannot demonstrate alone | **open** |
-| **Archiving: the deprecated pair, the secure coder and its delegates** (6) | `NSArchiver`, `NSUnarchiver`, `NSSecureCoding`, `NSSecureUnarchiveFromDataTransformer`, `NSKeyedArchiverDelegate`, `NSKeyedUnarchiverDelegate` | `NSSecureCoding` first (already a §11.3 row), then the delegate hooks; `NSKeyedArchiver`/`NSKeyedUnarchiver` (F13.12) are the base | **open** |
-| **Automatic grammar agreement** (6) | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyPronoun`, `NSMorphologyCustomPronoun`, `NSTermOfAddress` | ICU (morphology + inflection), the same binding as the formatters | **open** |
-| **Attributed strings** (5) | `NSAttributedString`, `NSMutableAttributedString`, `NSPresentationIntent`, `NSAttributedStringMarkdownParsingOptions`, `NSAttributedStringMarkdownSourcePosition` | none of its own — **it needs §11.4 item 2 first**, because an attribute range is an `NSRange` in `unichar` units and that is exactly the boundary this library does not have | **open** |
-| **Metadata (Spotlight)** (5) | `NSMetadataItem`, `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryResultGroup`, `NSMetadataQueryDelegate` | a metadata index — a service, and the API is a query language over it | **open** |
-| **Network services: Bonjour and host lookup** (5) | `NSNetService`, `NSNetServiceDelegate`, `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate`, `NSHost` | DNS-SD/mDNS and a resolver; both are deprecated-flagged, both in scope | **open** |
-| **URL loading: authentication and credentials** (5) | `NSURLAuthenticationChallenge`, `NSURLAuthenticationChallengeSender`, `NSURLCredential`, `NSURLCredentialStorage`, `NSURLProtectionSpace` | the transport plus a credential store — and the store is a place a Keychain decision lands | **open** |
-| **Activity: handoff, background scheduling and assertions** (4) | `NSUserActivity`, `NSUserActivityDelegate`, `NSBackgroundActivityScheduler`, `NSAssertionHandler` | none for three of them; the scheduler needs a scheduler | **open** |
-| **Intervals, names and locale data** (4) | `NSDateInterval`, `NSPersonNameComponents`, `NSOrthography`, `NSLocalizedNumberFormatRule` | none for the interval; ICU for the other three | **open** |
-| **Notifications** (4) | `NSNotification`, `NSNotificationCenter`, `NSNotificationQueue`, `NSDistributedNotificationCenter` | none — and the distributed one is the port layer again | **open** |
-| **User notifications** (4) | `NSUserNotification`, `NSUserNotificationAction`, `NSUserNotificationCenter`, `NSUserNotificationCenterDelegate` | a notification service; **deprecated by Apple in favour of `UserNotifications.framework`, which is NOT Foundation** — in scope for Foundation, and the boundary between the two is a decision, not an omission | **open** |
-| **Decimal numbers** (3) | `NSDecimalNumber`, `NSDecimalNumberHandler`, `NSDecimalNumberBehaviors` | the `NSDecimal` arithmetic core (the C functions), then the class — and note the F13.8c finding: `NSNumber`'s two conversion selectors are already in a probe's `excluded` list for want of it | **open** |
-| **Object basics: the pool, the proxy and the `NSObject` PROTOCOL** (3) | `NSAutoreleasePool`, `NSProxy`, `NSObject` (the protocol) | none — but read the three notes below this table before starting any of the three | **open** |
-| **Key-value observing: the shared-observer types** (3) | `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSPredicateValidating` | none | **open** |
-| **Operations: the subclasses** (2) | `NSBlockOperation`, `NSInvocationOperation` | **blocks in a public header** — F13.19's recorded blocker, and the reason only the base class ships | **open** |
-| **Searches and scanning** (2) | `NSScanner`, `NSDataDetector` | none for the scanner (the string core); a detector for the other | **open** |
-| **Threads and locking: the remaining two** (2) | `NSConditionLock`, `NSDistributedLock` | none for the first; the port layer for the second | **open** |
-| **User defaults and ubiquitous storage** (2) | `NSUserDefaults`, `NSUbiquitousKeyValueStore` | none for the first (and it is a config-domain consumer — the plist tree is the natural backing); an iCloud side for the second | **open** |
-| **Spelling server** (2) | `NSSpellServer`, `NSSpellServerDelegate` | none for the API; a dictionary/data source for the behaviour | **open** |
-| **Geometry** (1) | `NSAffineTransform` | none — it is one 3×3 matrix, and the drawing side already has the vocabulary | **open** |
-| **Unique identifiers** (1) | `NSUUID` | none | **open** |
-| **JSON** (1) | `NSJSONSerialization` | none — a recursive-descent reader over the string core | **open** |
-| **Calendar dates (deprecated)** (1) | `NSCalendarDate` | none; Apple deprecated it in favour of `NSCalendar`/`NSDateFormatter`, both of which ship | **open** |
-| **Linguistic tagging (deprecated)** (1) | `NSLinguisticTagger` | ICU/natural-language data | **open** |
-| **Progress: the reporting protocol** (1) | `NSProgressReporting` | none — `NSProgress` (F13.20) ships, and this is the three-line protocol `NSProgress` is reported through | **open** |
-| **Undo** (1) | `NSUndoManager` | none | **open** |
-| **Value transformers** (1) | `NSValueTransformer` | none — it is `NSCoding` plus a registry | **open** |
-| **The C-visible string type** (1) | `NSSimpleCString` | none — and see the third note below | **open** |
+| **class** | 61 | 181 | 31 |
+| **protocol** | 5 | 31 | 9 |
+| **macro** | 3 | 246 | 4 |
+| **enum** | 24 | 99 | 6 |
+| **case** | 118 | 916 | 82 |
+| **func** | 3 | 134 | 52 |
+| **var** | 46 | 661 | 135 |
+| **typealias** | 7 | 64 | 3 |
+| **struct** | 3 | 5 | 5 |
+| **TOTAL** | **270** | **2,337** | **327** |
 
-**THREE NOTES THE TABLE CANNOT CARRY, AND EACH ONE IS A TRAP:**
+**THE SURFACE, AND HOW IT IS READ — so that it can be read again.** Ours is every `@interface`,
+`@protocol` and declaration in `userland/foundation/*.h`, comments stripped. Apple's is the
+documentation navigator's own index (`https://developer.apple.com/tutorials/data/index/foundation`), a
+JSON tree whose node `type` is `class`, `protocol`, `macro`, `enum`, `case`, `func`, `var`, `typealias`
+or `struct`, and whose `deprecated` flag and enclosing group markers are §11.5's two signals.
+`tools/foundation-sweep.py --refresh` re-reads it and rewrites the file; that is the only mode that
+touches the network, and it is not part of a build. **The file is a DATED MEASUREMENT** — Apple's index
+grows — so the date is in this heading and in the file's own header.
 
-1. **`NSAutoreleasePool` IS NOT ABSENT IN THE WAY THE OTHER ROWS ARE.** The runtime registers a class of
-   that name at startup and adopts it as its own pool object (§6), which is why this library ships no
-   pool class. So the row is **the API of a class that already exists by name**, and the work is to
-   make the name answer to `+addObject:`, `-drain` and `+showPools` — not to write a pool. The sweep's
-   mechanical diff cannot tell those two apart, which is why it is written down here rather than left
-   as a row that looks like the others.
-2. **`NSGarbageCollector` CARRIES APPLE'S `deprecated` FLAG, AND §11.5's CLAUSE TURNS ON ITS HEADER.**
-   §11.5 puts deprecated-but-PRESENT API in scope and REMOVED API out. Whether this class is still in
-   Apple's SDK headers or only in its documentation is **one lookup when the row is reached** — it is
-   the only row in the table whose SCOPE is undecided, and it is recorded as undecided rather than
-   guessed.
-3. **THREE NAMES IN OUR HEADERS ARE NOT IN APPLE'S INDEX AT ALL**: `FNPredicateComparison` (the
-   predicate engine's comparison enum), `NSOwnedString` and `NSTinyString` (the string core's two
-   implementations). They are house types that are public because C code in the tree names them.
-   `NSConstantString`, which one might expect on that list, is **in** Apple's index and therefore a
-   class we ship rather than an addition. Under a bar that calls every difference a failure, an
-   ADDITION is the one direction this sweep cannot classify — so they are recorded here, and the
-   question of whether they should be public is a separate item rather than a swept one.
+**WHAT IS DELIBERATELY NOT IN THE FILE, EACH WITH ITS COUNT, because a silent exclusion is how a
+ledger lies:**
 
-**WHAT THIS SWEEP DOES NOT COVER, STATED SO IT IS NOT MISTAKEN FOR COMPLETENESS.** §11.2 named "Apple's
-documented class index", and a class index is exactly what this is. The same index carries **1,749
-cases, 255 macros, 220 functions, 1,581 variables, 113 type aliases and 17 structs**; none of them is
-in this diff, and none of them is claimed. The two dimensions that matter next are **the constants of
-the classes we already ship** (the `NSNotification` names, the error domains, the `NSUndoManager`
-notification names) and **the protocols**, which the table above does include but which are the half a
-`respondsToSelector:` probe can never reach.
+* **`method` (2,500) and `property` (1,603)** — the SELECTOR surface. It is §11.2 SOURCE 1's business,
+  and the two halves are the same surface seen from two sides.
+* **`symbol` (61)** — Apple's instance-variable documentation (`NSSimpleCString`'s `bytes`, `numBytes`).
+  A class library does not mirror another implementation's ivars.
+* **Swift-overlay spellings (238)** — a node whose path says `swift.` is either the Swift view of an
+  Objective-C symbol already counted, or a Swift-only type with no Objective-C spelling at all.
+* **Other frameworks' symbols (306)** — and this one was found by MEASURING, not by reading: Apple's
+  Foundation pages carry a cross-framework index, and **`NSNotification`'s page alone lists 183
+  notification names belonging to AddressBook, AVFoundation, AppKit and the rest.** They are marked
+  `external` and their paths leave `/documentation/foundation/`, which is the test applied. Without it
+  the ledger would demand symbols that are not Foundation's to have.
 
-**THE RECIPE, SO THIS IS A MEASUREMENT AND NOT A MEMORY:**
+**TWO RULES THE INSTRUMENT LEARNED BY BEING WRONG, both worth more than the numbers they produced:**
+
+1. **THE DECLARATION FORM IS NOT THE CONTRACT.** The first run demanded Apple's own form per kind and
+   read `NSNotFound` as ABSENT — Apple documents it as a VARIABLE and this library declares it as a
+   `#define`. *A caller cannot tell the two apart*, and §11 already says an invisible implementation
+   choice is not a difference. Classes and protocols keep an exact test (an `@interface` IS the API);
+   every other kind shares one "declared as anything" test. Re-running with it flipped exactly eight
+   rows — `NSNotFound`, `NSRange`, `NSFastEnumerationState`, `NSOperatingSystemVersion`,
+   `NSDateComponentUndefined`, `NSMakeRange`, `NSMaxRange`, `NSLocationInRange` — **and every one of the
+   eight was a name we really do declare, checked by hand.** Zero rows flipped the other way.
+2. **A NAME IN A MARKER'S GROUP IS AS DEPRECATED AS A FLAG** — that is §11.5's second signal, and it is
+   worth 118 rows on its own (the old `NSHashTable`/`NSMapTable` C API, the formatter units, the
+   Mach port family, `NSURLConnection`/`NSURLDownload`/`NSURLHandle`).
+
+### The ledger: what is absent, by Apple's own grouping
+
+**FAMILY, THEN NAMES, AND THE STRUCK ONES ARE SHOWN RATHER THAN DROPPED** — a row that leaves the
+ledger leaves it with its reason on the record. Where a family is entirely struck (the Legacy families,
+the deprecated formatters) the row says so instead of vanishing; that is what §11.5's change did to
+§11.3's old table, and hiding it would be the same failure the old table made about refusals.
+
+| Family (Apple's grouping) | Status | The names |
+|---|---|---|
+| **App Support / Activity Sharing** | 2 open | `NSUserActivity`, `NSUserActivityDelegate` |
+| **App Support / Apple Event Handling** | 2 open | `NSAppleEventDescriptor`, `NSAppleEventManager` |
+| **App Support / Assertions** | 1 open | `NSAssertionHandler` |
+| **App Support / Attachments** | 4 open | `NSExtensionItem`, `NSItemProvider`, `NSItemProviderReading`, `NSItemProviderWriting` |
+| **App Support / Bundle Resources** | 1 open | `NSBundle` |
+| **App Support / Cross-Process Notifications** | 1 open | `NSDistributedNotificationCenter` |
+| **App Support / Extension Support** | 2 open | `NSExtensionContext`, `NSExtensionRequestHandling` |
+| **App Support / NSObject Script Support** | 2 open | `NSScriptCoercionHandler`, `NSScriptExecutionContext` |
+| **App Support / Notifications** | 3 open | `NSNotification`, `NSNotificationCenter`, `NSNotificationQueue` |
+| **App Support / Object Matching Tests** | 3 open | `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` |
+| **App Support / Object Specifiers** | 11 open | `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` |
+| **App Support / On-Demand Resources** | ALL STRUCK: `NSBundleResourceRequest` | — |
+| **App Support / Operations** | 2 open | `NSBlockOperation`, `NSInvocationOperation` |
+| **App Support / Progress** | 1 open | `NSProgressReporting` |
+| **App Support / Script Commands** | 11 open | `NSCloneCommand`, `NSCloseCommand`, `NSCountCommand`, `NSCreateCommand`, `NSDeleteCommand`, `NSExistsCommand`, `NSGetCommand`, `NSMoveCommand`, `NSQuitCommand`, `NSScriptCommand`, `NSSetCommand` |
+| **App Support / Script Dictionary Description** | 4 open | `NSClassDescription`, `NSScriptClassDescription`, `NSScriptCommandDescription`, `NSScriptSuiteRegistry` |
+| **App Support / Script Execution** | 1 open | `NSAppleScript` |
+| **App Support / System Interaction** | 1 open | `NSBackgroundActivityScheduler` |
+| **App Support / Undo** | 1 open | `NSUndoManager` |
+| **App Support / User Notifications** | 1 open; 3 STRUCK: `NSUserNotification`, `NSUserNotificationAction`, `NSUserNotificationCenter` | `NSUserNotificationCenterDelegate` |
+| **Files and Data Persistence / Adopting Codability** | 1 open | `NSSecureCoding` |
+| **Files and Data Persistence / App-specific settings** | 1 open | `NSUserDefaults` |
+| **Files and Data Persistence / Coordinated file access** | 3 open | `NSFileAccessIntent`, `NSFileCoordinator`, `NSFilePresenter` |
+| **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
+| **Files and Data Persistence / File system operations** | 4 open | `NSDirectoryEnumerator`, `NSFileManagerDelegate`, `NSFileProviderService`, `NSFileVersion` |
+| **Files and Data Persistence / Items** | 1 open | `NSMetadataItem` |
+| **Files and Data Persistence / JSON** | 1 open | `NSJSONSerialization` |
+| **Files and Data Persistence / Keyed Archivers** | 3 open | `NSKeyedArchiverDelegate`, `NSKeyedUnarchiverDelegate`, `NSSecureUnarchiveFromDataTransformer` |
+| **Files and Data Persistence / Managed file access** | 3 open | `NSFileHandle`, `NSFileSecurity`, `NSFileWrapper` |
+| **Files and Data Persistence / Queries** | 4 open | `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` |
+| **Files and Data Persistence / XML** | 7 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument`, `NSXMLElement`, `NSXMLNode`, `NSXMLParser`, `NSXMLParserDelegate` |
+| **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
+| **Fundamentals / Automatic grammar agreement** | 5 open; 1 STRUCK: `NSMorphologyCustomPronoun` | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyPronoun`, `NSTermOfAddress` |
+| **Fundamentals / Basic Collections** | 2 open | `NSOrderedCollectionChange`, `NSOrderedCollectionDifference` |
+| **Fundamentals / Concentration and Dispersion** | 2 open | `NSUnitConcentrationMass`, `NSUnitDispersion` |
+| **Fundamentals / Conversion** | 2 open | `NSUnitConverter`, `NSUnitConverterLinear` |
+| **Fundamentals / Data Storage** | 1 open | `NSUnitInformationStorage` |
+| **Fundamentals / Data sizes** | 1 open | `NSByteCountFormatter` |
+| **Fundamentals / Date Formatting** | 3 open | `NSDateComponentsFormatter`, `NSDateIntervalFormatter`, `NSISO8601DateFormatter` |
+| **Fundamentals / Date Representations** | 1 open | `NSDateInterval` |
+| **Fundamentals / Dates and times** | 1 open | `NSRelativeDateTimeFormatter` |
+| **Fundamentals / Deprecated** | ALL STRUCK: `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSLinguisticTagger`, `NSMassFormatter` | — |
+| **Fundamentals / Electricity** | 4 open | `NSUnitElectricCharge`, `NSUnitElectricCurrent`, `NSUnitElectricPotentialDifference`, `NSUnitElectricResistance` |
+| **Fundamentals / Energy, Heat, and Light** | 4 open | `NSUnitEnergy`, `NSUnitIlluminance`, `NSUnitPower`, `NSUnitTemperature` |
+| **Fundamentals / Essentials** | 3 open | `NSDimension`, `NSMeasurement`, `NSUnit` |
+| **Fundamentals / Fuel Efficiency** | 1 open | `NSUnitFuelEfficiency` |
+| **Fundamentals / Geometry** | 1 open | `NSAffineTransform` |
+| **Fundamentals / Lists** | 1 open | `NSListFormatter` |
+| **Fundamentals / Localization** | 1 open | `NSOrthography` |
+| **Fundamentals / Mass, Weight, and Force** | 2 open | `NSUnitMass`, `NSUnitPressure` |
+| **Fundamentals / Measurements** | 1 open | `NSMeasurementFormatter` |
+| **Fundamentals / Names** | 1 open | `NSPersonNameComponents` |
+| **Fundamentals / Numbers** | 3 open | `NSDecimalNumber`, `NSDecimalNumberBehaviors`, `NSDecimalNumberHandler` |
+| **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
+| **Fundamentals / Physical Dimension** | 4 open | `NSUnitAngle`, `NSUnitArea`, `NSUnitLength`, `NSUnitVolume` |
+| **Fundamentals / Pointer Collections** | 4 open | `NSHashTable`, `NSMapTable`, `NSPointerArray`, `NSPointerFunctions` |
+| **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
+| **Fundamentals / Spelling and Grammar** | 2 open | `NSSpellServer`, `NSSpellServerDelegate` |
+| **Fundamentals / Strings with Metadata** | 5 open | `NSAttributedString`, `NSAttributedStringMarkdownParsingOptions`, `NSAttributedStringMarkdownSourcePosition`, `NSMutableAttributedString`, `NSPresentationIntent` |
+| **Fundamentals / Time and Motion** | 4 open | `NSUnitAcceleration`, `NSUnitDuration`, `NSUnitFrequency`, `NSUnitSpeed` |
+| **Fundamentals / Unique Identifiers** | 1 open | `NSUUID` |
+| **Low-Level Utilities / Legacy** | ALL STRUCK: `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSMachBootstrapServer`, `NSMachPort`, `NSMachPortDelegate`, `NSMessagePort`, `NSMessagePortNameServer`, `NSPortCoder`, `NSPortDelegate`, `NSPortMessage`, `NSPortNameServer`, `NSProtocolChecker`, `NSSocketPortNameServer` | — |
+| **Low-Level Utilities / Memory Management** | 1 open | `NSAutoreleasePool` |
+| **Low-Level Utilities / Object Basics** | 1 open | `NSObject` |
+| **Low-Level Utilities / Remote Objects** | 1 open | `NSProxy` |
+| **Low-Level Utilities / Scripts and External Tasks** | 5 open | `NSTask`, `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask`, `NSUserUnixTask` |
+| **Low-Level Utilities / Sockets** | 2 open; 1 STRUCK: `NSHost` | `NSPort`, `NSSocketPort` |
+| **Low-Level Utilities / Streams** | 4 open | `NSInputStream`, `NSOutputStream`, `NSStream`, `NSStreamDelegate` |
+| **Low-Level Utilities / Tasks and Pipes** | 1 open | `NSPipe` |
+| **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
+| **Low-Level Utilities / Value Wrappers and Transformations** | 1 open | `NSValueTransformer` |
+| **Low-Level Utilities / XPC Client** | 4 open | `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` |
+| **Low-Level Utilities / XPC Services** | 3 open | `NSXPCListener`, `NSXPCListenerDelegate`, `NSXPCListenerEndpoint` |
+| **Networking / Authentication and credentials** | 4 open | `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`, `NSURLProtectionSpace` |
+| **Networking / Cache behavior** | 2 open | `NSCachedURLResponse`, `NSURLCache` |
+| **Networking / Cookies** | 1 open | `NSHTTPCookieStorage` |
+| **Networking / Essentials** | 20 open | `NSHTTPCookie`, `NSURLProtocol`, `NSURLProtocolClient`, `NSURLSession`, `NSURLSessionConfiguration`, `NSURLSessionDataDelegate`, `NSURLSessionDataTask`, `NSURLSessionDelegate`, `NSURLSessionDownloadDelegate`, `NSURLSessionDownloadTask`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTask`, `NSURLSessionTaskDelegate`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionUploadTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
+| **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
+| **Networking / Local Network Services** | 1 open; 1 STRUCK: `NSNetService` | `NSNetServiceDelegate` |
+| **Networking / Requests and responses** | 4 open | `NSHTTPURLResponse`, `NSMutableURLRequest`, `NSURLRequest`, `NSURLResponse` |
+| **Networking / Service Discovery** | 1 open; 1 STRUCK: `NSNetServiceBrowser` | `NSNetServiceBrowserDelegate` |
+| **Protocols** | 1 open | `NSPredicateValidating` |
+| **Reference / Classes** | 4 open | `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSLocalizedNumberFormatRule`, `NSSimpleCString` |
+
+### What the class index never covered: the C surface
+
+**THE KINDS THE USER NAMED, AND WHERE THEY ACTUALLY LIVE.** Of the 2,337 open symbols, **212 are
+classes and protocols** (the table above) and **2,125 are not**: 552 are FREE-STANDING C surface and
+1,573 are MEMBERS of a class page — a constant, an enum or a type alias that belongs to a class. That
+split is the one that matters, because the two halves are worked differently:
+
+* **A MEMBER of an ABSENT class arrives with its class.** `NSMetadataItem`'s 180 keys, `NSURL`'s 161 and
+  `NSError`'s 146 are rows inside those classes' rows, not 487 separate work items.
+* **A MEMBER of a class we ALREADY SHIP is a real gap that no one had inventoried**, and this is the
+  sweep's most useful finding: **`NSFileManager` (110), `NSString` (68), `NSException` (31),
+  `NSTextCheckingResult` (30)** — the constants, options and error keys of classes that ship today.
+  §11.2 SOURCE 1 was the intended home for these (the probes' `excluded` arrays), and **measured, those
+  arrays exist in FIVE probe files** — `foundation_core`, `foundation_string`, `foundation_collection`,
+  `foundation_value` and `foundation_error` — which is a fraction of the 61 shipped classes. So
+  **"every shipped class carries an audited Cocoa inventory in its probe" was an aspiration, not a
+  fact**, and the shipped-classes-without-one are exactly where the file's 1,573 member rows are.
+
+| Kind | open, free-standing | open, member of a class | struck | shipped |
+|---|---|---|---|---|
+| **macro** | 238 | 8 | 4 | 3 |
+| **func** | 121 | 13 | 52 | 3 |
+| **var** | 28 | 633 | 135 | 46 |
+| **typealias** | 13 | 51 | 3 | 7 |
+| **enum** | 14 | 85 | 6 | 24 |
+| **case** | 134 | 782 | 82 | 118 |
+| **struct** | 4 | 1 | 5 | 3 |
+| **TOTAL** | **552** | **1,573** | **327** | **270** |
+
+**THE FREE-STANDING 552, BY APPLE'S OWN AREAS** — the shape of what is left when the classes are
+removed from the question: `Reference` (181 — the macro index: `NSAssert`/`NSCAssert` and their
+numbered forms, the availability and nullability macros), `Low-Level Utilities` (173), `Fundamentals`
+(128), `Files and Data Persistence` (36), `App Support` (20), `Networking` (12). `--work-list` prints
+them by family, which is what the next slice should be picked from.
+
+### Notes the tables cannot carry
+
+1. **`NSZone` IS THE ONE POLICY FINDING, AND IT IS A DECISION, NOT A BUILD FAILURE.** §11.5 now strikes
+   deprecated-by-Apple API, and the Legacy-group signal sweeps up `NSZone` — the TYPE. But Apple's own
+   **non-deprecated** `NSCopying` methods take `NSZone *` as their parameter, and this library declares
+   `-copyWithZone:` in 20-odd headers. So the tool REPORTS it and `--strict` is what fails on it: what
+   to do about `NSZone` (strike the type with the zone functions, or keep it as the vestigial parameter
+   Apple's live protocols still take) is a decision with an API consequence, and it is recorded here as
+   the row it is. **It is the only one.**
+2. **`NSAutoreleasePool` IS NOT ABSENT THE WAY THE OTHER ROWS ARE.** The runtime registers a class of
+   that name (§6), which is why this library ships no pool class; the work is making the name answer to
+   `+addObject:`, `-drain` and `+showPools`. A mechanical diff cannot tell those two apart.
+3. **`NSObject` APPEARS TWICE AND MEANS TWO THINGS** — the root class (shipped, and documented with the
+   Objective-C runtime rather than with Foundation, which is why the tool carries it as a named
+   exception to the path rule) and the `NSObject` PROTOCOL (open), which is why `id<NSObject>` does not
+   exist here.
+4. **THREE NAMES IN OUR HEADERS ARE IN NO INDEX**: `FNPredicateComparison`, `NSOwnedString`,
+   `NSTinyString` — house types that are public because C code in the tree names them. An ADDITION is
+   the one direction a documented-surface diff cannot classify, so it is recorded rather than swept.
+   (`NSConstantString`, which one might expect here, IS documented and IS a class we ship.)
+5. **`NSGarbageCollector`'s QUESTION IS ANSWERED, AND BY MEASUREMENT.** §11.3.1 left its scope
+   undecided (`unavailable` vs `deprecatedAt` in Apple's per-symbol availability). It reads
+   `introducedAt 10.5, deprecatedAt 10.10, unavailable: false` — still shipped, deprecated — so under
+   the EXPANDED §11.5 it is OUT, along with the rest of the Legacy port family.
+
+**THE TOOL, WHICH IS THE PART THAT KEEPS THIS HONEST:**
 
 ```
-curl -sS -o /tmp/fnindex.json https://developer.apple.com/tutorials/data/index/foundation
-# walk interfaceLanguages.occ depth-first, keeping a stack of groupMarker titles as the family path;
-# a node whose type is "class" or "protocol" is a row; "deprecated": true marks it for §11.5.
-# ours: rg -o '@interface\s+(\w+)' userland/foundation/*.h  (the same for @protocol)
+tools/foundation-sweep.py --check       # what make foundation-sweep runs: offline, fails on drift
+tools/foundation-sweep.py --strict      # also fails on the NSZone-class policy findings
+tools/foundation-sweep.py --work-list    # the open rows, by family — the next slice is picked here
+tools/foundation-sweep.py --refresh      # re-read Apple's index and rewrite the surface file (network)
 ```
 
 ### 11.4 The order of work
 
 The rows are not equal in cost, and two of them gate many others:
 
-1. **The sweep (§11.2) — DONE, and it is §11.3.1 above**: 212 classes and 40 protocols, in 40 families,
-   with each family's dependency named. What it changes about the order is only the middle: **the
+1. **The sweep (§11.2) — DONE, KEPT AS A GATE, and it is §11.3.1**: the whole documented surface, 2,934
+   symbols in one committed file, 2,337 open and 327 struck, with `make foundation-sweep` failing when
+   it drifts from this tree. What it changes about the order is in the middle of the list: **the
    Swift-overlay families Apple added in the last few years (units and measurement, the grammar-agreement
-   types) are the cheapest rows in the table and were never visible as work before**, because the older
-   sections had refused them as "not Foundation" rather than as absent.
+   types) are the cheapest rows and were never visible as work before**, because the older sections had
+   refused them as "not Foundation" rather than as absent — and **the C surface the class index never
+   covered (552 free-standing macros, functions, variables, type aliases, enums and structs) is now an
+   enumerated list rather than an unasked question**.
 2. **The `unichar` boundary** — every other string-shaped item gets cheaper after it, and it is the one
    difference a Cocoa program notices on its FIRST LINE of code.
 3. **The ICU-backed data families** (time zones, non-Gregorian calendars, the parser family) — ICU is
@@ -3356,16 +3479,35 @@ The rows are not equal in cost, and two of them gate many others:
 
 ### 11.5 What 100% does NOT mean
 
-Two exclusions, and both are about the MEASURE rather than about the API — which is why they are named
-here rather than discovered later:
+One exclusion is about the MEASURE and one is about the API — which is why they are named here rather
+than discovered later:
 
 * **BYTE-IDENTICAL OUTPUT TO macOS IS NOT CLAIMED.** `-description` text, hash values and the internal
   encoding are not part of Apple's published contract, and matching them byte-for-byte is not testable
   from this side of the clean-room wall. Where a program can observe a difference it was written
   against — the API's shape, its semantics, its errors — this plan treats it as a failure. Where the
   difference is visible only by reading a hash value Apple never promised, it is not.
-* **API APPLE HAS REMOVED IS OUT.** Removed API is not "what Apple's Foundation implements"; it is what
-  it used to implement. Deprecated-but-PRESENT API IS IN SCOPE — it still ships in Apple's headers —
-  and that distinction is the whole of this exclusion.
+* **API APPLE DEPRECATES OR REMOVES IS OUT — THE SECOND EXCLUSION, EXPANDED (user, 2026-09-18).** The
+  rule used to be "removed is out, deprecated-but-present is IN SCOPE". **It is now: deprecated is out.**
+  Removed API is not "what Apple's Foundation implements"; and deprecated API is API Apple has already
+  told the world to stop using, so implementing it here would be work whose only outcome is to delete it
+  again. The old sentence is **DELETED, not softened** — it and this one cannot both be true.
+
+  **THE MARKER IS APPLE'S OWN, AND IT HAS TWO SOURCES because Apple's documentation is inconsistent
+  about one of them.** Both are read by `tools/foundation-sweep.py`:
+  1. **the symbol's `deprecated` flag** in the documentation index — the direct signal; and
+  2. **the group Apple FILES the symbol under.** Some of Foundation's oldest API carries no flag at all:
+     `NSURLConnection`'s class node has none, and its page reports no `deprecatedAt` either, while every
+     method beneath it is flagged — and Apple puts the whole thing under `Networking / Legacy`. A group
+     named `Deprecated` or `Legacy` is Apple saying the same thing in the other place it has to say it.
+
+  **MEASURED ON THE DAY THE RULE CHANGED: 327 of the 2,934 documented symbols are struck by it, and 118
+  of those only by source 2** — which is the measurement that makes the group signal not optional. The
+  families this empties out of the ledger are named with their strike counts in §11.3.1, not dropped
+  silently: the `Legacy` port/remote-object family, the deprecated URL loading stack, the old
+  `NSHashTable`/`NSMapTable` C API, the deprecated formatters and the deprecated user notifications.
+  **AND ONE ROW COMES OUT THE OTHER WAY**: `NSZone`, struck by the group signal while Apple's own
+  live `NSCopying` methods take it as a parameter — the one policy finding that is a DECISION rather
+  than a defect, recorded as a row in §11.3.1.
 
 Everything else is a defect, and §11.3 is where it lives.

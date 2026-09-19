@@ -265,13 +265,25 @@ ROOTFS64      = .build/rootfs64
 DASH64_BIN    = third_party/dash/src/dash64
 TOYBOX64_BIN  = third_party/toybox/toybox64
 
-.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint toolchain-gate foundation-gate
+.PHONY: userland64 musl64 dash64 toybox64 llvm-cxx compiler-rt m0clang fshlint toolchain-gate foundation-gate foundation-sweep
 
 # The clean-room wall's mechanical half (docs/design/foundation-plan.md §2): no
 # GNUstep/ObjFW/Apple-Foundation header import by first-party code, and never the
 # runtime's legacy <objc/Object.h>.
-foundation-gate:
+foundation-gate: foundation-sweep
 	@python3 tools/foundation-gate.py
+
+# The ledger's mechanical half (docs/design/foundation-plan.md §11.2, source 2,
+# and §11.3.1): the whole documented Foundation surface — every class, protocol,
+# macro, enum, function, variable, type alias and struct — held against this
+# tree, offline. It fails when a `shipped` row stops being declared, when an
+# `open` row STARTS being declared (the stale-absence trap that hid two red
+# probes for months), and when a `struck` row — API Apple deprecates, which
+# §11.5 makes ours to leave — turns up in our headers. Refresh the surface with
+# tools/foundation-sweep.py --refresh (the only networked mode; the data is a
+# dated measurement, so record the date where the ledger is discussed).
+foundation-sweep:
+	@python3 tools/foundation-sweep.py --check
 
 # FSH porting linter gate (proposal 6.1/Q1): zero-allow on System/Tools.
 fshlint:
