@@ -3942,15 +3942,24 @@ re-encodes to **three** bytes — so every such step inflated the map and the re
 the UTF-8 expansion. That is the *class* of bug this migration was always going to produce: **a
 consumer that depended on the old representation's ability to hold invalid UTF-8.**
 
-A first fix replaced the substring round trip with a lead-byte read (no dependence on invalid input
-surviving), and it MOVED the symptom rather than removing it — `[hél] [o wö]` became `[héll] [ wör]` —
-so it is a step, not the fix. **WHAT REMAINS:** `fn_build_map`'s own comment says *"UTF-16 INDEX → BYTE
-OFFSET"*, and it is fed `[string length]`, which is a BYTE count; it must be rewritten to emit **one
-entry per UTF-16 UNIT** (a character above U+FFFF is two units) by walking the UTF-8 bytes with
-`fn_utf8_length_of`/a local decoder, and `fn_utf16_index`'s convention must be read first so the two
-agree. **This is the first consumer to be found that was written against the byte space**, and the flip
-(slice 3) will find the rest — which is an argument for making the byte/unit boundaries *explicit* in
-the code that consumes them rather than implicit in `-length`'s current meaning.
+**AND THE RESOLUTION IS BETTER THAN A FIX, BECAUSE THE BUG WAS AN ACCIDENT THAT HAD BEEN DOING WORK.**
+Reading how the map is used shows what the engine actually is: it hands POSIX `regexec` the UTF-8
+**bytes** (`regexec(..., text + start, ...)`), so every match offset it gets back is a **byte** offset —
+and the pre-flip NSRange contract is bytes too. So the map has to be the **byte space's identity**, and
+pre-flip it was, *by accident*: slicing one byte and measuring `strlen` gives 1 for any byte when the
+storage copies invalid UTF-8 verbatim. The storage change took the accident away, and the map thickened.
+
+The first fix replaced the round trip with a lead-byte read — which produces the **true unit→byte map**,
+i.e. it makes the engine **correct for the post-flip contract while everything around it still speaks
+bytes**. That is why the symptom moved rather than vanished: `[hél] [o wö]` became `[héll] [ wör]`,
+which is a *unit* answer where a byte answer was expected. **The engine was ahead of the contract.**
+
+**SO THE FIX IS TO WRITE THE IDENTITY DOWN**, which removes the dependence on invalid bytes surviving
+without pretending the engine is something it is not — and the unit map is kept in the file under
+`#if 0`, next to the identity, waiting for slice 3, because it is exactly what slice 3 needs.
+`foundation_regex` is GREEN again (9/9), and the engine's byte-space-ness is now stated rather than
+accidental. §13.6 slice 3 replaces the identity with it, and at that point the engine and the
+substring/length API inhabit the same space for the first time.
 
 **2. `url-refusals` IS PRE-EXISTING — it fails at the pre-W1 commit too.** Its message is
 *"a string that is not an absolute URL answers nil, and the loading system is absent"*, and the second

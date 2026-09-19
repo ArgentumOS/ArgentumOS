@@ -30,51 +30,46 @@
 /* THE BYTE LENGTH OF ONE UTF-16 INDEX, which is what makes the map possible at all: a character
  * outside the basic plane is two UTF-16 units and four bytes, and both facts live on one row. */
 /*
- * THE UTF-8 LENGTH OF THE CHARACTER THAT STARTS AT BYTE `index`.
+ * THIS ENGINE SPEAKS THE BYTE SPACE, AND THAT IS NOW SAID OUT LOUD (W1).
  *
- * THIS USED TO SLICE ONE BYTE OUT WITH -substringWithRange: AND MEASURE strlen,
- * which worked only because the storage copied bytes VERBATIM: a lone
- * continuation byte came back as itself and measured 1. When the storage became
- * UTF-16 (docs/design/foundation-plan.md §13) that byte became U+FFFD, which
- * re-encodes to THREE bytes — so every such step inflated the map and the
- * reported ranges shifted by the UTF-8 expansion. Measured: the regex probe went
- * from 9/9 to 8/9 with `count=2 [hél] [o wö]` instead of `[héllo] [wörld]`.
+ * It hands POSIX regexec the UTF-8 BYTES, so every match offset it gets back is a
+ * BYTE offset; and the pre-flip NSRange contract is bytes too (-substringWithRange:,
+ * -length). So the map must be the BYTE SPACE'S IDENTITY, or the two disagree.
  *
- * The fix reads the LEAD BYTE and says how long that character is, which is what
- * the old code's effect was and does not depend on invalid input surviving a
- * round trip. (A continuation byte answers 1, exactly as before.)
+ * IT USED TO COMPUTE A UNIT->BYTE MAP BY SLICING ONE BYTE OUT AND MEASURING strlen,
+ * which produced the identity only by ACCIDENT: the old storage copied invalid UTF-8
+ * VERBATIM, so a lone continuation byte measured 1. When the storage became UTF-16
+ * (docs/design/foundation-plan.md §13) that byte became U+FFFD — three bytes in UTF-8 —
+ * so the map thickened and the ranges shifted by the UTF-8 expansion (measured:
+ * `count=2 [hél] [o wö]` instead of `[héllo] [wörld]`). The accident is gone; the
+ * identity is now written down.
+ *
+ * SLICE 3 (the flip) replaces this with the real UNIT->BYTE map, at which point the
+ * engine returns UTF-16 ranges and -substringWithRange:/ -length live in the same
+ * space as it does. §13.7 has the bisect that established all of this.
  */
-static NSUInteger fn_utf8_length_of(NSString *string, NSUInteger index)
-{
-	const char *utf8 = [string UTF8String];
-	size_t bytes = utf8 != NULL ? strlen(utf8) : 0;
-	unsigned char lead;
-
-	if (index >= bytes) {
-		return 0;
-	}
-	lead = (unsigned char)utf8[index];
-	if (lead < 0x80) {
-		return 1;
-	}
-	if ((lead & 0xE0) == 0xC0) {
-		return 2;
-	}
-	if ((lead & 0xF0) == 0xE0) {
-		return 3;
-	}
-	if ((lead & 0xF8) == 0xF0) {
-		return 4;
-	}
-	return 1;			/* a continuation byte: one byte, as it always was */
-}
-
 /* UTF-16 INDEX -> BYTE OFFSET, with one extra entry for the end of the string. */
 static NSUInteger *fn_build_map(NSString *string, NSUInteger *outLength)
 {
-	NSUInteger count = [string length];
-	NSUInteger *map = malloc((count + 1) * sizeof(NSUInteger));
-	NSUInteger i;
+	const char *utf8 = [string UTF8String];
+	size_t bytes = utf8 != NULL ? strlen(utf8) : 0;
+	NSUInteger *map = malloc((bytes + 1) * sizeof(NSUInteger));
+	size_t i;
+
+	if (map == NULL) {
+		return NULL;
+	}
+	for (i = 0; i <= bytes; i++) {
+		map[i] = (NSUInteger)i;		/* byte i -> byte i */
+	}
+	*outLength = (NSUInteger)bytes;
+	return map;
+}
+
+#if 0
+	/* THE UNIT->BYTE MAP SLICE 3 WILL USE, kept where the identity is written so the
+	 * two live together: one entry per UTF-16 UNIT (a character above U+FFFF is two),
+	 * each the byte offset where that unit's character starts, plus the end entry. */
 	NSUInteger offset = 0;
 
 	if (map == NULL) {
@@ -88,7 +83,7 @@ static NSUInteger *fn_build_map(NSString *string, NSUInteger *outLength)
 	map[count] = offset;
 	*outLength = count;
 	return map;
-}
+#endif
 
 /* BYTE OFFSET -> UTF-16 INDEX: the last entry that starts at or before `byteOffset`. */
 static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUInteger byteOffset)
