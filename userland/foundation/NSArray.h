@@ -104,18 +104,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)isEqualToArray:(NSArray *)other;
 
-/* THE PLIST FILE AND URL FORMS (D7's kind (D), the other half). Apple reads a property list whose
- * ROOT IS AN ARRAY, answers nil when the root is something else, and writes with
- * NSPropertyListSerialization — so these are delegation to that pair plus a root-class check, not
- * a second parser. The URL forms go through NSData's, which refuse a non-file scheme with a
- * registered error (§11.6.1 D9). */
-+ (nullable NSArray *)arrayWithContentsOfFile:(NSString *)path;
-+ (nullable NSArray *)arrayWithContentsOfURL:(NSURL *)url;
-- (nullable id)initWithContentsOfFile:(NSString *)path;
-- (nullable id)initWithContentsOfURL:(NSURL *)url;
-- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
-- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
-
 @end
 
 @interface NSMutableArray : NSArray <NSMutableCopying>

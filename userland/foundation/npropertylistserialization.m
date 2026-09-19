@@ -11,6 +11,7 @@
  */
 
 #import <foundation/NSPropertyListSerialization.h>
+#import <foundation/NSURL.h>
 #import <foundation/NSString.h>
 #import <foundation/NSNumber.h>
 #import <foundation/NSData.h>
@@ -231,6 +232,39 @@ static plist_value_t *fn_plist_from_object(id object)
 
 /* ---- the public API ------------------------------------------------------ */
 
+/* A PROPERTY LIST WHOSE ROOT IS NOT THE RIGHT KIND IS NOT THAT KIND OF PLIST: Apple answers nil
+ * rather than coercing. The URL forms added on 2026-09-19 (D7's kind (D)) share these, so the rule
+ * lives once per class. */
+static id fn_array_from_plist_data(NSData *data)
+{
+	id root;
+
+	if (data == nil) {
+		return nil;
+	}
+	root = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:NULL];
+	return [root isKindOfClass:[NSArray class]] ? root : nil;
+}
+
+static id fn_dictionary_from_plist_data(NSData *data)
+{
+	id root;
+
+	if (data == nil) {
+		return nil;
+	}
+	root = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:NULL];
+	return [root isKindOfClass:[NSDictionary class]] ? root : nil;
+}
+
+static NSData *fn_plist_data_from_object(id object)
+{
+	return [NSPropertyListSerialization dataWithPropertyList:object
+							  format:NSPropertyListXMLFormat_v1_0
+							 options:0
+							   error:NULL];
+}
+
 @implementation NSPropertyListSerialization
 
 + (id)propertyListWithData:(NSData *)data
@@ -394,6 +428,24 @@ static plist_value_t *fn_plist_from_object(id object)
 	return [data writeToFile:path atomically:useAuxiliaryFile];
 }
 
+
++ (instancetype)arrayWithContentsOfURL:(NSURL *)url
+{
+	return [[self alloc] initWithContentsOfURL:url];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+{
+	return fn_array_from_plist_data([NSData dataWithContentsOfURL:url]);
+}
+
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile
+{
+	NSData *data = fn_plist_data_from_object(self);
+
+	return (data != nil) && [data writeToURL:url atomically:useAuxiliaryFile];
+}
+
 @end
 
 @implementation NSDictionary (NSPropertyListAdditions)
@@ -432,6 +484,24 @@ static plist_value_t *fn_plist_from_object(id object)
 		return NO;
 	}
 	return [data writeToFile:path atomically:useAuxiliaryFile];
+}
+
+
++ (NSDictionary *)dictionaryWithContentsOfURL:(NSURL *)url
+{
+	return [[self alloc] initWithContentsOfURL:url];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+{
+	return fn_dictionary_from_plist_data([NSData dataWithContentsOfURL:url]);
+}
+
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile
+{
+	NSData *data = fn_plist_data_from_object(self);
+
+	return (data != nil) && [data writeToURL:url atomically:useAuxiliaryFile];
 }
 
 @end

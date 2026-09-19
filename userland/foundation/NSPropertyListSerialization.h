@@ -47,6 +47,8 @@
  *   - the format out-parameter of +propertyListWithData: is nullable because Cocoa
  *     lets a caller pass NULL for "I do not care which format it was";
  *   - the NSError out-parameters are nullable at BOTH levels, as everywhere else. */
+@class NSURL;
+
 NS_ASSUME_NONNULL_BEGIN
 
 /* Apple's raw values, so a numeric comparison in existing code still holds. */
@@ -109,14 +111,20 @@ typedef NSUInteger NSPropertyListWriteOptions;
 
 @interface NSArray (NSPropertyListAdditions)
 + (nullable instancetype)arrayWithContentsOfFile:(NSString *)path;
++ (nullable instancetype)arrayWithContentsOfURL:(NSURL *)url;
 - (nullable id)initWithContentsOfFile:(NSString *)path;
+- (nullable id)initWithContentsOfURL:(NSURL *)url;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
 @end
 
 @interface NSDictionary (NSPropertyListAdditions)
 + (nullable NSDictionary *)dictionaryWithContentsOfFile:(NSString *)path;
++ (nullable NSDictionary *)dictionaryWithContentsOfURL:(NSURL *)url;
 - (nullable id)initWithContentsOfFile:(NSString *)path;
+- (nullable id)initWithContentsOfURL:(NSURL *)url;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
 @end
 
 NS_ASSUME_NONNULL_END
