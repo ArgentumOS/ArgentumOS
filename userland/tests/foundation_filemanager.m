@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <unistd.h>		/* symlink(2): the LINK is made here, not by the service */
 #include <sys/stat.h>		/* stat(2): the inode numbers of a directory and its parent (F13.22) */
+#include <fcntl.h>		/* AT_FDCWD / AT_REMOVEDIR: the OTHER door onto rmdir (F13.22) */
+#include <errno.h>
 
 #define PROBE_ROOT "/System/Temporary Files/nsfilemanager-probe"
 
@@ -291,6 +293,52 @@ int main(void)
 				rootError != nil ? [rootError localizedDescription] : @"ok",
 				(int)emptyGone, emptyWhy, (int)fullGone, fullWhy]);
 		}
+	}
+
+	{
+		/* THE FOURTH MEASUREMENT (F13.22): THE *OTHER* CALLER OF THE SAME BLOCK. `rm -rf` removes
+		 * directories through unlinkat(AT_REMOVEDIR), and unlink.c runs the SAME rmdir checks in
+		 * its own copy — `i == dir` there is an `else if`. If THAT succeeds while rmdir(2) fails,
+		 * the difference is inside sys_rmdir; if it fails the same way, the two callers agree and
+		 * the alias is being seen by the block they share. Called directly, because this is the
+		 * only place in userland where the two doors can be compared. */
+		NSString *viaDir = fn_path(@"viadir");
+		int rc;
+
+		[manager createDirectoryAtPath:viaDir
+			       withIntermediateDirectories:NO
+					    attributes:nil
+						 error:NULL];
+		errno = 0;
+		rc = unlinkat(AT_FDCWD, [viaDir UTF8String], AT_REMOVEDIR);
+		printf("FOUNDATION-FILEMANAGER fs-unlinkat-removedir: rc=%d errno=%d (%s) still-there=%d\n",
+		       rc, errno, rc == 0 ? "removed" : "refused",
+		       (int)[manager fileExistsAtPath:viaDir]);
+	}
+
+	{
+		/* THE FIFTH MEASUREMENT (F13.22), AND THE ONE THAT SHOULD HAVE COME FIRST: the SYSCALLS
+		 * THEMSELVES, called directly rather than through the service. Every measurement before
+		 * this one went through NSFileManager, and if the service is what refuses — not the
+		 * kernel — then the whole chain above has been describing the LIBRARY's behaviour and
+		 * calling it the file system's. `rmdir(2)` and `unlink(2)` on a directory side by side is
+		 * the comparison that says which. */
+		NSString *syscallDir = fn_path(@"scdir");
+		int rmdirRc, unlinkRc, rmdirErr, unlinkErr;
+
+		[manager createDirectoryAtPath:syscallDir
+			       withIntermediateDirectories:NO
+					    attributes:nil
+						 error:NULL];
+		errno = 0;
+		rmdirRc = rmdir([syscallDir UTF8String]);
+		rmdirErr = errno;
+		errno = 0;
+		unlinkRc = unlink([syscallDir UTF8String]);
+		unlinkErr = errno;
+		printf("FOUNDATION-FILEMANAGER fs-syscalls: rmdir(2) rc=%d errno=%d | unlink(2) rc=%d errno=%d | still-there=%d\n",
+		       rmdirRc, rmdirErr, unlinkRc, unlinkErr,
+		       (int)[manager fileExistsAtPath:syscallDir]);
 	}
 
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);

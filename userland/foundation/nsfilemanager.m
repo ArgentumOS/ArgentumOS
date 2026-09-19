@@ -143,7 +143,18 @@ static BOOL fn_remove_tree(const char *path, int *outErrno)
 			}
 		}
 	}
-	if (remove(path) != 0) {
+	/*
+	 * THE DOOR DEPENDS ON WHAT IT IS: rmdir(2) for a directory, unlink(2) for everything else — and
+	 * NOT remove(3), which is what this used to call (F13.23, and it cost a whole investigation to
+	 * find). musl's remove(3) is `unlink(path)` and, only when that fails with EISDIR, a retry as
+	 * `unlinkat(AT_FDCWD, path, AT_REMOVEDIR)`. THIS KERNEL'S unlink(2) ANSWERS -EPERM FOR A
+	 * DIRECTORY, NOT -EISDIR — deliberately, and its own comment says so ("Linux returns -EISDIR;
+	 * sys_rmdir is the dir path") — so the retry NEVER HAPPENS and remove(3) can never remove a
+	 * directory here. rmdir(2) itself is fine, and always was: called directly it removes a
+	 * directory and the empty/non-empty distinction works. The file's own `S_ISDIR` above is what
+	 * makes the right choice possible; the bug was not using it at the end.
+	 */
+	if (S_ISDIR(st.st_mode) ? (rmdir(path) != 0) : (unlink(path) != 0)) {
 		*outErrno = errno;
 		return NO;
 	}

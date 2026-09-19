@@ -3045,3 +3045,57 @@ with the type-dependence as the thing to explain rather than the path length.**
 
 Next: `parse_namei` read whole and `iget`/`iput`, explaining why FILES are unaffected while DIRECTORIES
 fail at every path length.
+
+#### F13.23 THE BUG FOUND AND FIXED: the instrument was one layer too high, and `remove(3)` is the culprit
+
+**THE KERNEL WAS NEVER BROKEN.** The measurement that ended the hunt, taken with the syscalls called
+DIRECTLY rather than through the service:
+
+```
+FOUNDATION-FILEMANAGER fs-syscalls: rmdir(2) rc=0 errno=0 | unlink(2) rc=-1 errno=2 | still-there=0
+```
+
+`rmdir(2)` REMOVES A DIRECTORY AND ANSWERS SUCCESS. It always could. **Every measurement in F13.22 — the
+emptiness discriminator, the inode comparison, the relative path — went through
+`NSFileManager -removeItemAtPath:` and so was describing THE LIBRARY, while three records called it the
+file system's behaviour.** That is the lesson of this slice, and it is the one to keep: measuring at the
+WRITER is not enough if the writer you measure is not the one you blame. The probe now calls the
+syscalls themselves, and it should have from the start.
+
+**WHAT THE LIBRARY WAS DOING WRONG, and it is one line in `nsfilemanager.m`:** `fn_remove_tree` ends
+with `remove(path)`. musl's `remove(3)` is `unlink(path)`, and **only when that fails with `EISDIR`** does
+it retry as `unlinkat(AT_FDCWD, path, AT_REMOVEDIR)`. **This kernel's `unlink(2)` answers `-EPERM` for a
+directory, not `-EISDIR`** — deliberately, and its own source says so in as many words:
+
+```c
+	if(S_ISDIR(i->i_mode)) {
+		...
+		return -EPERM;	/* Linux returns -EISDIR; sys_rmdir is the dir path */
+```
+
+So the retry never happened, `remove(3)` could never remove a directory on this system, and `-EPERM`
+surfaced to the caller as "Operation not permitted" — for every directory, empty or not, absolute or
+relative, which is exactly the symptom F13.14 recorded. **THE TYPE-DEPENDENCE IS EXPLAINED AT LAST:**
+files go through `unlink(2)` and work; directories needed the door `remove(3)` never opened.
+
+**THE FIX:** `fn_remove_tree` already knows what it is looking at — it has just `lstat`ed the path and
+branched on `S_ISDIR` — so the last step now chooses its door:
+
+```c
+	if (S_ISDIR(st.st_mode) ? (rmdir(path) != 0) : (unlink(path) != 0)) {
+```
+
+**VERIFIED BY THE STRONGEST SIGNAL AVAILABLE:** `fs-cleanup` passes, and every measurement AFTER it in
+the probe now reports "No such file or directory" or "stat failed" — because the probe's own root
+directory and everything under it has already been successfully removed. The probe deleted its own
+working tree for the first time; a recursive remove now finishes.
+
+**AND ONE THING IS LEFT AS A QUESTION RATHER THAN CHANGED, BECAUSE IT IS THE KERNEL'S CALL:**
+`unlink(2)` returning `-EPERM` where Linux returns `-EISDIR` is what breaks `remove(3)` FOR EVERY PROGRAM
+ON THE SYSTEM, not just this library — `rm` and anything else built on the C library inherit it. Changing
+it is a one-word change in `kernel/syscalls/unlink.c` and it would fix the whole system; this record
+leaves it visible rather than doing it unasked, because errno semantics are the kernel's contract and
+that comment shows the choice was made on purpose.
+
+Next: the probe's own tidy-up — its measurement blocks must run BEFORE the now-working cleanup, which
+currently deletes the directories they measure — and the open question of `unlink(2)`'s errno.
