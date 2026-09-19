@@ -304,6 +304,7 @@ static void spawn_gui(const char *path, char *const argv[], char *const envp[])
  * is now also the DEFAULT: a missing file, or a value this build has no client
  * for, must not try to launch a binary that is not there. */
 enum session_kind {
+	SESSION_SHELL,
 	SESSION_XFB,
 	SESSION_UITEST,
 	SESSION_ZOO,
@@ -326,6 +327,8 @@ static enum session_kind read_session(void)
 			kind = SESSION_ZOO;
 		else if (!strcmp(v.v.string, "kestrel"))
 			kind = SESSION_KESTREL;
+		else if (!strcmp(v.v.string, "shell"))
+			kind = SESSION_SHELL;
 	}
 	config_value_free(&v);
 	return kind;
@@ -340,6 +343,16 @@ static enum session_kind read_session(void)
  * bundle (S2.2+S2.3's control catalog; desktop = "zoo"). */
 static void start_xfb(void)
 {
+	/* FNX: `desktop = "shell"` is the HEADLESS session - no X server and no
+	 * clients, just the console shell main() runs below. It exists because a
+	 * TEST GUEST MUST BE ABLE TO RUN COMMANDS: with Xfb up, the server and
+	 * its retry loops starve the console, so the shell's prompt appears but
+	 * scripted input is never answered and every gate times out. */
+	if(read_session() == SESSION_SHELL) {
+		puts("INIT: shell-only session (desktop = \"shell\")");
+		fflush(stdout);
+		return;
+	}
 	/* the server execs xkbcomp to compile the keymap at startup, so its
 	 * PATH must reach System/Shared/X11/bin */
 	char *xpath = "PATH=" PATH_DEFAULT ":/System/Shared/X11/bin";

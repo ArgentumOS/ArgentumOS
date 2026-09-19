@@ -30,7 +30,7 @@ class Case(BaseCase):
         sizes = os.environ.get("FNX_TEST_MEM_LIST", DEFAULT_SIZES).split()
         for size in sizes:
             session = ctx.boot(name="mem-%s" % size, mem=size)
-            up = session.wait_for(r"KESTREL-READY", 150)
+            up = session.wait_for(r"INIT: FNX userland alive", 150)
             log = session.log_text()
             faults = len(re.findall(FATAL, log))
 

@@ -7,12 +7,14 @@ rootdisk64: userland64
 # double-indirect streams, symlinks). AGFS is the DEFAULT root device
 # (make run / run-uefi); 64MB leaves headroom for the X11 userland (Xfb
 # is a ~16MB static binary).
+SESSION ?= xfb
+
 rootagfs: userland64 m0clang
 	# The session boots Xfb + a console shell and nothing else: the class
 	# layer and its apps were removed in the 2026-09 UIKit restart, and the
 	# toolkit itself is parked (docs/design/argentum-uikit-plan.md, DEFERRED).
 	# `make run-xfb` still reaches the demo desktop by name.
-	printf 'desktop = "xfb"\n' > $(ROOTFS64)/System/Configuration/session.conf
+	printf 'desktop = "$(SESSION)"\n' > $(ROOTFS64)/System/Configuration/session.conf
 	# 64MB stopped being enough when the tree reached ~60MB: the session
 	# then failed to start (WORKSPACE "init failed", KESTREL "no display")
 	# with an image that mkagfs and agfscheck both called good - the volume

@@ -88,7 +88,7 @@ class Context:
         which is why the old gates' prompt-based sync was unreliable.
         """
         session = self.boot(name=name, **kw)
-        if not session.wait_for(r"KESTREL-READY", secs):
+        if not session.wait_for(r"INIT: FNX userland alive", secs):
             session.stop()
         return session
 
