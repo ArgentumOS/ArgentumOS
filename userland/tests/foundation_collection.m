@@ -65,10 +65,9 @@ int main(void)
 		      [[a lastObject] isEqualToString:@"three"] &&
 		      [a indexOfObject:@"two"] == 1 &&
 		      [a containsObject:@"three"] && ![a containsObject:@"four"] &&
-		      [a objectAtIndex:9] == nil &&
 		      [[NSArray array] count] == 0 &&
 		      [[NSArray arrayWithObject:@"solo"] count] == 1,
-		      "count/index/first/last/contains; out of range is nil");
+		      "count/index/first/last/contains - the out-of-range case has ONE home, in foundation_core, where D10 asserts that it RAISES");
 	}
 
 	{

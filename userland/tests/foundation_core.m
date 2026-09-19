@@ -725,16 +725,39 @@ int main(void)
 	}
 
 	{
-		/* THE READ ACCESSOR IS A RECORDED DEVIATION, and this check PINS it so that changing it has
-		 * to be deliberate: -objectAtIndex: answers nil for an out-of-range index where Cocoa raises
-		 * NSRangeException. Its comment justified that with a reason that went stale at F4, and when
-		 * the raise was tried, the library's OWN 154 call sites relied on the nil - so it is a unit
-		 * of its own (?11.6.1 D10) rather than a one-line fix, and the behaviour is asserted here. */
+		/*
+		 * D10 FIXED: THE READ ACCESSOR RAISES. It answered nil for an out-of-range index, justified by
+		 * "v1 has no exception objects yet (F4)" - a reason that expired at F4 and stood for several
+		 * milestones afterwards, so the deviation outlived its own justification. Both doors are
+		 * checked, because the subscript lowers to the accessor and a caller could reach either.
+		 */
 		NSArray *emptyArray = [NSArray array];
+		NSArray *twoItems = [NSArray arrayWithObjects:@"a", @"b", nil];
+		BOOL indexRaised = NO;
+		BOOL subscriptRaised = NO;
+		BOOL pastEndRaised = NO;
 
-		check("objectAtIndex-nil-is-recorded",
-		      [emptyArray objectAtIndex:0] == nil,
-		      "the documented deviation: nil rather than a range error, pending D10");
+		@try {
+			(void)[emptyArray objectAtIndex:0];
+		} @catch (NSException *e) {
+			indexRaised = [[e name] isEqualToString:NSRangeException];
+		}
+		@try {
+			(void)emptyArray[0];
+		} @catch (NSException *e) {
+			subscriptRaised = [[e name] isEqualToString:NSRangeException];
+		}
+		@try {
+			(void)[twoItems objectAtIndex:2];
+		} @catch (NSException *e) {
+			pastEndRaised = [[e name] isEqualToString:NSRangeException];
+		}
+
+		check("objectAtIndex-raises-out-of-range",
+		      indexRaised && subscriptRaised && pastEndRaised &&
+		      [twoItems count] == 2 && [[twoItems objectAtIndex:1] isEqualToString:@"b"] &&
+		      [emptyArray firstObject] == nil && [twoItems lastObject] != nil,
+		      "an out-of-range read raises NSRangeException, past the end as well as on an empty array, and the subscript lowers to it - while firstObject/lastObject still answer nil, which is what Cocoa does for those");
 	}
 
 	{

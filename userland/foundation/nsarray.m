@@ -102,10 +102,22 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 
 - (id)objectAtIndex:(unsigned long)index
 {
-	/* Out of range is nil rather than an exception: v1 has no exception
-	 * objects yet (F4), and a silent nil is checkable where a crash is not. */
+	/*
+	 * D10, AND COCOA RAISES HERE. The comment this replaces said "out of range is nil rather than an
+	 * exception: v1 has no exception objects yet (F4)" - a reason that EXPIRED AT F4 and was left
+	 * standing for several milestones, so a programming error travelled as a wrong answer instead of
+	 * stopping at the line that made it. The behaviour was pinned by a check precisely so that
+	 * changing it had to be deliberate; the check now asserts the raise.
+	 */
 	if (index >= _count) {
-		return nil;
+		if (_count == 0) {
+			[NSException raise:NSRangeException
+			            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds for empty array",
+			                   index];
+		}
+		[NSException raise:NSRangeException
+		            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds [0 .. %lu]",
+		                   index, _count - 1];
 	}
 	return _items[index];
 }
