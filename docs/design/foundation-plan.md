@@ -3481,12 +3481,23 @@ slice should be picked from.
 1. **`NSZone` WAS THE EXCEPTION, AND THE USER REVOKED IT (2026-09-18) WITH A BETTER REASON — SO IT IS
    OUT, AND "ANYTHING THAT NEEDS IT" WITH IT:** *"zones are unsupported on 64-bit Apple, and are kept
    only for 32-bit compatibility, which we don't have to worry about. Amendment: NSZone and anything
-   that needs it is removed."* That is §11.5's FOURTH exclusion, and it is **ours rather than Apple's**,
-   which is why `32-bit-only` is its own reason and not folded into `deprecated`: measured, Apple's
-   pages for `NSZone`, `NSZoneMalloc`, `NSCreateZone`, `NSRecycleZone` and `NSAllocateObject` all read
-   `introducedAt 10.0, deprecated: false, unavailable: false`. Nothing in the documentation flags them;
-   what puts them out is the 64-bit runtime ignoring zones plus **this system having no 32-bit
-   compatibility at all**.
+   that needs it is removed."* That is §11.5's FOURTH exclusion.
+
+   **AND APPLE STATES IT IN PROSE, WHICH IS WHY THE REASON IS `32-bit-only` AND NOT `deprecated`:** the
+   zone pages carry **no deprecation flag** — `NSZone`, `NSZoneMalloc`, `NSCreateZone`, `NSRecycleZone`
+   and `NSAllocateObject` all read `introducedAt 10.0, deprecated: false, unavailable: false` — but the
+   `NSZone` page's own discussion says it in words:
+
+   > Zones are ignored on iOS and 64-bit runtime in macOS. You should not use zones in current
+   > development.
+
+   (`developer.apple.com/documentation/foundation/nszone`.) **So `32-bit-only` is APPLE'S description of
+   the family, quoted rather than invented**, and the exclusion is grounded in their documentation the
+   same way the Swift and deprecated ones are — just in prose instead of metadata. What completes it is
+   this side of the wall: **this system has no 32-bit compatibility at all**, so the family's only
+   remaining purpose is compatibility this tree will never need. *A first draft of this note said "the
+   documentation flags none of them", which was wrong about the prose and right about the flags; the
+   quote above came from the user, and reading the raw page JSON confirmed it verbatim.*
 
    **THE FAMILY IS NAMED, NOT INFERRED, BECAUSE APPLE'S FILING IS INCONSISTENT** — and that is the part
    the group signal could not do: most of it sits under `Low-Level Utilities / Legacy / Managing Zones`,
@@ -3608,9 +3619,10 @@ rather than discovered later:
   **AND IT IS AMENDED THE OTHER WAY (user, 2026-09-18, later), BECAUSE THE FIRST REASON WAS WORSE THAN THE
   SECOND: "zones are unsupported on 64-bit Apple, and are kept only for 32-bit compatibility, which we
   don't have to worry about. Amendment: NSZone and anything that needs it is removed."** So `NSZone` and
-  the twelve zone functions are OUT as `32-bit-only` — a reason that is **ours rather than Apple's**,
-  since the documentation flags none of them (measured: `introducedAt 10.0, deprecated: false,
-  unavailable: false`) — and the exception that briefly kept `NSZone` is revoked. §11.3.1 note 1 has the
+  the twelve zone functions are OUT as `32-bit-only` — a reason **Apple states in its own words**: no
+  deprecation flag exists on any of them (`deprecated: false, unavailable: false`), but the `NSZone`
+  page says *"Zones are ignored on iOS and 64-bit runtime in macOS. You should not use zones in current
+  development."* — and the exception that briefly kept `NSZone` is revoked. §11.3.1 note 1 has the
   list, the inconsistency in Apple's filing that made the family NAMED rather than inferred, and the
   blast radius of "anything that needs it" in this tree — **where the user has since taken the tree-side
   decision too: the copying selectors that need `NSZone` go with it** (§11.3.1 note 1).
@@ -3619,9 +3631,11 @@ rather than discovered later:
   This system is 64-bit-only and has no 32-bit compatibility layer, so API whose only remaining purpose
   is 32-bit clients is neither shipped nor owed. **Its one family today is the zone API (13 rows,
   struck `32-bit-only`), and the reason is kept separate from `deprecated` on purpose:** Apple's
-  documentation does not flag the zone API at all, so calling those rows "deprecated" would have been
-  this project claiming an Apple fact that is not there. What makes them out is a decision about THIS
-  system, and the file says so per row.
+  availability METADATA carries no deprecation on any of them, so `deprecated` would be this project
+  inventing an Apple fact — while Apple's PROSE states the case plainly (*"Zones are ignored on iOS and
+  64-bit runtime in macOS. You should not use zones in current development."*, the `NSZone` page).
+  **`32-bit-only` is therefore Apple's own description of the family, and what completes it is this
+  side of the wall: this system has no 32-bit compatibility to preserve.**
 
 * **API THAT EXISTS ONLY TO SUPPORT SWIFT IS OUT — THE THIRD EXCLUSION (user, 2026-09-18).** A symbol
   whose only consumer is the Swift importer is not part of an Objective-C library's surface, so it is

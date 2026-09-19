@@ -157,14 +157,18 @@ def is_objc_shaped(name):
 # compatibility, which we don't have to worry about. Amendment: NSZone and
 # anything that needs it is removed."
 #
-# SO THE ZONE API IS OUT, AND THIS REASON IS OURS RATHER THAN APPLE'S — which is
-# why it is a separate reason and not folded into `deprecated`: MEASURED, Apple's
-# pages for NSZone, NSZoneMalloc, NSCreateZone, NSRecycleZone and
-# NSAllocateObject all read `introducedAt 10.0, deprecated: false,
-# unavailable: false`. Nothing in the documentation flags them. What makes them
-# out is that the 64-bit runtime ignores zones and this system has NO 32-BIT
-# COMPATIBILITY AT ALL (the standing doctrine), so their only remaining purpose
-# is compatibility this tree will never need.
+# APPLE SAYS THIS IN PROSE RATHER THAN IN METADATA, which is why the reason is its
+# own and not `deprecated`. The zone pages all read `introducedAt 10.0,
+# deprecated: false, unavailable: false` — there is NO deprecation flag to key
+# on, so `deprecated` would be this project inventing an Apple fact. But the
+# NSZone page's own discussion states the rule in words:
+#
+#   "Zones are ignored on iOS and 64-bit runtime in macOS. You should not use zones in current development."
+#        (developer.apple.com/documentation/foundation/nszone)
+#
+# THAT is Apple saying the family is 32-bit-only functionality, and this system
+# has NO 32-BIT COMPATIBILITY AT ALL (the standing doctrine), so its only
+# remaining purpose is compatibility this tree will never need.
 #
 # THE LIST IS NAMED, NOT INFERRED, because Apple's own filing is inconsistent:
 # most of the family sits under `Low-Level Utilities / Legacy / Managing Zones`,
