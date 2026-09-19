@@ -31,8 +31,21 @@
 #     support unit in a small ARC file deallocated correctly, the probe file did not, and an A/B of
 #     the build shapes named it in one step.
 #   * STILL OPEN, two checks, both in the REDO path: undo-redo-reapplies and (as a cascade)
-#     undo-remove-all-actions. `-undo` and the LIFO order pass, so the inverse registration happens;
-#     what differs is `-redo` itself. The same lesson applies before theorising: A/B the build.
+#     undo-remove-all-actions. NARROWED TO A CRASH AND A MECHANISM, in a five-line reproducer
+#     (/tmp scratch): an NSUndoManager, a box that registers its inverse, add two items, undo, redo.
+#     `-performSelector:withObject:` WORKS (measured), `-undo` works (items 0, canRedo 1), and then
+#     `[undo redo]` SEGFAULTS. Backtrace:
+#         #0 objc_msgSend_fpret            in libobjc.so
+#         #1 -[NSUndoManager performFromStack:toStack:]  nsundomanager.m:188
+#         #2 -[NSUndoManager redo]                       nsundomanager.m:225
+#     That send is `[[group objectAtIndex:i] invoke]`, which returns void - so the send was compiled
+#     for a LONG DOUBLE return. THE LIBRARY OBJECTS ARE EXONERATED: nm -u shows nsundomanager.o
+#     referencing objc_msgSend only, identically on host and guest, and NO host object emits fpret.
+#     So the entry is reached THROUGH THE INVOCATION/TRAMPOLINE PATH, where the return type is
+#     derived from the method signature. THE NEXT STEP IS THAT MACHINERY, not the undo logic:
+#     the @encode-derived return type and ninvoke_amd64.S's choice of send entry. ALSO WORTH KNOWING:
+#     the two libobjc2 header installs (.build/objc-prefix vs .build/libobjc2-host-prefix) are
+#     BYTE-IDENTICAL, and compiling that file with three flag variants changes nothing.
 #   * REFUTED EARLIER AND STILL REFUTED: the runtime prefix (rebuilt with -DGNUSTEP and
 #     OLDABI_COMPAT=OFF to mirror the guest), -O (the guest carries none), <objc/runtime.h>, symbol
 #     interposition, and the ARC marker (present on both sides). Do not spend those builds again.
