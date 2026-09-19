@@ -98,6 +98,20 @@ void gdt64_set_rsp0(unsigned long rsp0)
 	fnx_rsp0 = rsp0;
 }
 
+/*
+ * FNX: THE DOUBLE-FAULT STACK (IST1). A double fault often MEANS the current stack is the
+ * problem, so delivering it on that same stack can fault again - which is a triple fault, and
+ * the CPU resets. A reset cannot report anything, so every such bug in the system presents as a
+ * silent reboot. This stack exists so the #DF path can RUN at all, and therefore can SAY what
+ * happened. The CPU requires an IST pointer to be 16-byte aligned and to point at the TOP.
+ */
+static unsigned char df_ist_stack[4096] __attribute__((aligned(16)));
+
+void gdt64_init_df_ist(void)
+{
+	tss64.ist[0] = ((unsigned long)(df_ist_stack + sizeof(df_ist_stack))) & ~0xFUL;
+}
+
 /* build an 8-byte segment descriptor (base, limit, access, flags) */
 static unsigned long make_desc64(unsigned long base, unsigned int limit,
 				 unsigned char access, unsigned char flags)

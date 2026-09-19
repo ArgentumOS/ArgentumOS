@@ -357,6 +357,18 @@ void idt64_init(void)
 		dpl = (n == 3 || n == 4 || n == 17) ? 3 : 0;
 		set_gate(n, stub_addr[n], cs, dpl);
 	}
+	/*
+	 * FNX: #DF GETS ITS OWN STACK.  set_gate() leaves ist = 0 for every vector, which is correct
+	 * for the rest and wrong for this one: a double fault frequently means the CURRENT stack is
+	 * the fault, so delivering it there faults a second time and the CPU resets rather than
+	 * reporting.  IST1 is that stack, and it is used for vector 8 ONLY.
+	 */
+	{
+		extern void gdt64_init_df_ist(void);
+
+		gdt64_init_df_ist();
+		idt[8].ist = 1;
+	}
 	/* M4: int 0x80 (compat syscall entry) as a DPL3 interrupt gate */
 	set_gate(0x80, (unsigned long)&isr_stub_128, cs, 3);
 
