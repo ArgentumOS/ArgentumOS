@@ -14,7 +14,12 @@ rootagfs: userland64 m0clang
 	# layer and its apps were removed in the 2026-09 UIKit restart, and the
 	# toolkit itself is parked (docs/design/argentum-uikit-plan.md, DEFERRED).
 	# `make run-xfb` still reaches the demo desktop by name.
-	printf 'desktop = "$(SESSION)"\n' > $(ROOTFS64)/System/Configuration/session.conf
+	# session.conf must be a PLIST like every other domain: the legacy
+	# `desktop = "x"` one-liner was never parsed (config_read_file returned 3
+	# and init silently fell back to its XFB default - which is why the
+	# shipped desktop looked like it came from this file when it did not, and
+	# why SESSION had no effect).
+	printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>desktop</key>\n\t<string>%s</string>\n</dict>\n</plist>\n' "$(SESSION)" > $(ROOTFS64)/System/Configuration/session.conf
 	# 64MB stopped being enough when the tree reached ~60MB: the session
 	# then failed to start (WORKSPACE "init failed", KESTREL "no display")
 	# with an image that mkagfs and agfscheck both called good - the volume

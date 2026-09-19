@@ -314,11 +314,24 @@ enum session_kind {
 static enum session_kind read_session(void)
 {
 	config_value_t v;
+	int rc;
 	/* The parked clients are still recognised by name, so an old
 	 * session.conf reads as written; only Xfb has a client. DEFAULT. */
 	enum session_kind kind = SESSION_XFB;
 
-	if (config_read_file(SESSION_PATH, "desktop", &v) != CONFIG_OK)
+	/* FNX DIAGNOSTIC: name the file this consults and what came back. The
+	 * image provably carries `desktop = "shell"` at this path, yet the session
+	 * still came up as XFB - so either the read fails (and the default below
+	 * takes over) or the path resolves elsewhere. One line of evidence either
+	 * way, printed before anything else runs. */
+	rc = config_read_file(SESSION_PATH, "desktop", &v);
+	printf("SESSION: path=%s read=%d type=%d val=%s -> kind=%d\n",
+	       SESSION_PATH, rc,
+	       (rc == CONFIG_OK) ? v.type : -1,
+	       (rc == CONFIG_OK && v.v.string) ? v.v.string : "(none)",
+	       (int)kind);
+	fflush(stdout);
+	if (rc != CONFIG_OK)
 		return kind;
 	if (v.type == CONFIG_TYPE_STRING && v.v.string) {
 		if (!strcmp(v.v.string, "uitest"))
