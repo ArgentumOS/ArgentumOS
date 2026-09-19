@@ -520,6 +520,7 @@ int main(void)
 			"alphanumericCharacterSet", "punctuationCharacterSet", "controlCharacterSet",
 			"lowercaseLetterCharacterSet", "uppercaseLetterCharacterSet",
 						"characterSetWithBitmapRepresentation:", "characterSetWithContentsOfFile:",
+			"illegalCharacterSet",
 NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -542,7 +543,8 @@ NULL
 			 * refused and are DEFECTS rather than necessities (§11.6.1 D7). */
 			"symbolCharacterSet", "capitalizedLetterCharacterSet",
 			"nonBaseCharacterSet", "decomposableCharacterSet",
-			"illegalCharacterSet",
+			/* illegalCharacterSet USED TO BE LISTED HERE. It is a RULE rather than a table - the
+			 * surrogates plus the noncharacters - so it SHIPS, and it is DEMANDED above. */
 			/* FIVE USED TO BE NAMED HERE as needing "the Unicode character tables" or "a bitmap
 			 * representation". They needed NEITHER: the class is BMP-only, so an astral code
 			 * point is exactly a non-member, and the bitmap layout is this library's with the
@@ -846,6 +848,32 @@ NULL
 			(int)(fromFile != nil), (int)[set longCharacterIsMember:0x1F600],
 			(int)[set hasMemberInPlane:0], (int)[set hasMemberInPlane:1]] UTF8String]);
 		remove([path UTF8String]);
+	}
+
+	{
+		/* illegalCharacterSet IS A RULE, NOT A TABLE (D7's kind (D)). The negatives matter as much
+		 * as the positives: a set built from the wrong ranges would still contain 0xD800. */
+		NSCharacterSet *illegal = [NSCharacterSet illegalCharacterSet];
+
+		check("charset-illegal",
+		      illegal != nil &&
+		      [illegal characterIsMember:(unichar)0xD800] &&
+		      [illegal characterIsMember:(unichar)0xDFFF] &&
+		      [illegal characterIsMember:(unichar)0xFDD0] &&
+		      [illegal characterIsMember:(unichar)0xFDEF] &&
+		      [illegal characterIsMember:(unichar)0xFFFE] &&
+		      [illegal characterIsMember:(unichar)0xFFFF] &&
+		      ![illegal characterIsMember:(unichar)0xD7FF] &&
+		      ![illegal characterIsMember:(unichar)0xFDCF] &&
+		      ![illegal characterIsMember:(unichar)0xFDF0] &&
+		      ![illegal characterIsMember:(unichar)'a'],
+		      [[NSString stringWithFormat:@"d800=%d dfff=%d fdd0=%d ffef=%d d7ff=%d fdf0=%d",
+			(int)[illegal characterIsMember:(unichar)0xD800],
+			(int)[illegal characterIsMember:(unichar)0xDFFF],
+			(int)[illegal characterIsMember:(unichar)0xFDD0],
+			(int)[illegal characterIsMember:(unichar)0xFDEF],
+			(int)[illegal characterIsMember:(unichar)0xD7FF],
+			(int)[illegal characterIsMember:(unichar)0xFDF0]] UTF8String]);
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

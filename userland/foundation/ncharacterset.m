@@ -445,6 +445,32 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 
 	return (data == nil) ? nil : [self characterSetWithBitmapRepresentation:data];
 }
+
+/*
+ * illegalCharacterSet (D7's kind (D), the table group's rule-shaped member). The Unicode standard
+ * DEFINES the noncharacters - FDD0..FDEF and the last two code points of each plane - and the
+ * surrogates are not characters at all. On this BMP-only class that is four ranges, exactly, and no
+ * table: the other four of the group need general-category data and stay refused as DEFECTS.
+ *
+ * ONE BOUNDARY IS STATED RATHER THAN HIDDEN: the noncharacters at the end of the ASTRAL planes
+ * (1FFFE/1FFFF and up) cannot be in a set that has no astral storage, and -longCharacterIsMember:
+ * answers NO for everything above the BMP by construction. That is a property of the representation,
+ * recorded in §11.6.1, not an omission here.
+ */
++ (NSCharacterSet *)illegalCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	if (set == nil) {
+		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
+
+		[built addCharactersInRange:NSMakeRange(0xD800, 0x800)];	/* the surrogates */
+		[built addCharactersInRange:NSMakeRange(0xFDD0, 0x20)];		/* the noncharacters */
+		[built addCharactersInRange:NSMakeRange(0xFFFE, 2)];		/* plane 0's last two */
+		set = built;
+	}
+	return set;
+}
 @end
 
 @implementation NSMutableCharacterSet

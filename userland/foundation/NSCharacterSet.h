@@ -61,6 +61,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSCharacterSet *)newlineCharacterSet;
 + (nullable NSCharacterSet *)decimalDigitCharacterSet;
 + (nullable NSCharacterSet *)letterCharacterSet;
+/* THE RULE-SHAPED ONE OF THE FIVE (D7's kind (D)). The other four need Unicode general-category
+ * TABLES, which this library has no source for; this one is a DEFINITION from the standard - the
+ * surrogates plus the noncharacters - so it is a rule, not a table. */
++ (nullable NSCharacterSet *)illegalCharacterSet;
 + (nullable NSCharacterSet *)alphanumericCharacterSet;
 + (nullable NSCharacterSet *)punctuationCharacterSet;
 + (nullable NSCharacterSet *)controlCharacterSet;
