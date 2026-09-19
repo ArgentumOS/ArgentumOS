@@ -3510,8 +3510,23 @@ slice should be picked from.
    working. **The tree side of the amendment is `-copyWithZone:` / `-mutableCopyWithZone:`** — `NSZone`
    is an incomplete type in `NSObjCRuntime.h` that exists ONLY so Cocoa's copying signatures can be
    spelled: **8 header declarations and 29 implementations**, with `-copy` defined as
-   `[self copyWithZone:NULL]`. That is the amendment's real blast radius and it is an open decision
-   (§5's zone note records the same finding from the other end).
+   `[self copyWithZone:NULL]` (§5's zone note records the same finding from the other end).
+
+   **AND THE DECISION IS TAKEN (user, 2026-09-18): THE SELECTORS GO TOO.** `NSZone` leaves
+   `NSObjCRuntime.h`, `-copyWithZone:` and `-mutableCopyWithZone:` leave every header and every
+   implementation, and copying's entry point becomes **`-copy` / `-mutableCopy` — subclasses override
+   THOSE.** The cost, recorded because it is real and because it is what the decision buys: our
+   `NSCopying`/`NSMutableCopying` will no longer match Apple's documented protocol (`copy(with:)`,
+   whose parameter IS the zone), and Cocoa-shaped code that implements `-copyWithZone:` will not
+   conform to them. That is the third time this project has traded a difference for a scope decision —
+   deprecated API, Swift-only API, and now 32-bit-only API — and each trade is written down here rather
+   than discovered by the next reader.
+
+   **THE TREE SIDE IS NOT DONE, AND IT IS THE NEXT LANDING, NOT A LEDGER EDIT:** 8 header
+   declarations, 29 implementations, the probes' copying checks, and `-copy`'s
+   `[self copyWithZone:NULL]` body in `NSObject` — which is the one that cannot simply be deleted,
+   because it is what makes `-copy` work at all. Until it lands, `make foundation-sweep --strict`
+   reports `typealias NSZone [struck: 32-bit-only]` and is RIGHT to.
 2. **`NSAutoreleasePool` IS NOT ABSENT THE WAY THE OTHER ROWS ARE.** The runtime registers a class of
    that name (§6), which is why this library ships no pool class; the work is making the name answer to
    `+addObject:`, `-drain` and `+showPools`. A mechanical diff cannot tell those two apart.
@@ -3597,7 +3612,8 @@ rather than discovered later:
   since the documentation flags none of them (measured: `introducedAt 10.0, deprecated: false,
   unavailable: false`) — and the exception that briefly kept `NSZone` is revoked. §11.3.1 note 1 has the
   list, the inconsistency in Apple's filing that made the family NAMED rather than inferred, and the
-  blast radius of "anything that needs it" in this tree.
+  blast radius of "anything that needs it" in this tree — **where the user has since taken the tree-side
+  decision too: the copying selectors that need `NSZone` go with it** (§11.3.1 note 1).
 
 * **API THAT EXISTS ONLY FOR 32-BIT COMPATIBILITY IS OUT — THE FOURTH EXCLUSION (user, 2026-09-18).**
   This system is 64-bit-only and has no 32-bit compatibility layer, so API whose only remaining purpose
