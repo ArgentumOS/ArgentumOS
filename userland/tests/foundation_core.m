@@ -50,6 +50,55 @@ static id probe_recording_hook(id receiver, SEL op)
 	return nil;
 }
 
+/*
+ * THE UNDO TARGET. A helper class is needed for one reason: after an undo, a REDO only works if the
+ * action that ran registered its own inverse - that is how Cocoa's undo is meant to be used, and a
+ * check that skips it proves only half the mechanism. It lives in THIS file rather than in the MRR
+ * support half because it needs nothing MRR-specific: the support half exists for retain counts and
+ * forwarding, and this is an ordinary ARC-managed object.
+ *
+ * THE LOG IS THE POINT: the end state of a set of removals is the same whatever order they ran in, so
+ * the ORDER of undo and redo can only be asserted by recording each action as it happens.
+ */
+@interface FNUndoBox : NSObject
+{
+	NSMutableArray *_items;
+	NSMutableArray *_log;
+	NSUndoManager *_manager;
+}
+- (id)initWithManager:(NSUndoManager *)aManager;
+- (NSArray *)items;
+- (NSArray *)log;
+- (void)addItem:(NSString *)item;
+- (void)removeItem:(NSString *)item;
+@end
+
+@implementation FNUndoBox
+- (id)initWithManager:(NSUndoManager *)aManager
+{
+	if ((self = [super init]) != nil) {
+		_items = [[NSMutableArray alloc] init];
+		_log = [[NSMutableArray alloc] init];
+		_manager = aManager;
+	}
+	return self;
+}
+- (NSArray *)items { return _items; }
+- (NSArray *)log { return _log; }
+- (void)addItem:(NSString *)item
+{
+	[_manager registerUndoWithTarget:self selector:@selector(removeItem:) object:item];
+	[_items addObject:item];
+	[_log addObject:[NSString stringWithFormat:@"add:%@", item]];
+}
+- (void)removeItem:(NSString *)item
+{
+	[_manager registerUndoWithTarget:self selector:@selector(addItem:) object:item];
+	[_items removeObject:item];
+	[_log addObject:[NSString stringWithFormat:@"remove:%@", item]];
+}
+@end
+
 int main(void)
 {
 	/* MRR side: the lifetimes and the equality defaults. */
@@ -895,6 +944,106 @@ int main(void)
 		      [leaf isKindOfClass:[NSString class]] && ![leaf isKindOfClass:[NSMutableString class]],
 		      "allowFragments reads a bare number; mutableContainers makes the nested container mutable too and leaves the leaf immutable");
 	}
+	{
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		NSArray *log;
+		BOOL order;
+
+		check("undo-initial-state",
+		      undo != nil && ![undo canUndo] && ![undo canRedo] && [undo groupingLevel] == 0 &&
+		      ![undo isUndoing] && ![undo isRedoing] && [undo isUndoRegistrationEnabled] &&
+		      [undo undoActionName] == nil && [undo redoActionName] == nil,
+		      "a fresh manager can undo nothing, redo nothing, sits at grouping level 0, honours registration and has no action names");
+
+		[box addItem:@"a"];
+		[box addItem:@"b"];
+		check("undo-registers",
+		      [undo canUndo] && ![undo canRedo] && [[box items] count] == 2,
+		      "each add registers an undo operation, so the manager can undo and cannot yet redo");
+
+		[undo undo];
+		log = [box log];
+		order = [log count] == 4 &&
+		        [[log objectAtIndex:0] isEqualToString:@"add:a"] &&
+		        [[log objectAtIndex:1] isEqualToString:@"add:b"] &&
+		        [[log objectAtIndex:2] isEqualToString:@"remove:b"] &&
+		        [[log objectAtIndex:3] isEqualToString:@"remove:a"];
+		check("undo-reverses-newest-first",
+		      order && [[box items] count] == 0 && ![undo canUndo] && [undo canRedo],
+		      "ONE -undo reverses everything registered outside an explicit group (it closes the implicit group and undoes it), NEWEST FIRST, and leaves it redoable");
+
+		[undo redo];
+		log = [box log];
+		order = [log count] == 6 &&
+		        [[log objectAtIndex:4] isEqualToString:@"add:a"] &&
+		        [[log objectAtIndex:5] isEqualToString:@"add:b"];
+		check("undo-redo-reapplies",
+		      order && [[box items] count] == 2 && [undo canUndo] && ![undo canRedo] &&
+		      [[[box items] objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[[box items] objectAtIndex:1] isEqualToString:@"b"],
+		      "redo re-applies the group in its original order and makes it undoable again - which only works because each action registered its inverse");
+
+		[undo removeAllActions];
+		check("undo-remove-all-actions",
+		      ![undo canUndo] && ![undo canRedo] && [[box items] count] == 2,
+		      "-removeAllActions empties both stacks and touches the model not at all");
+	}
+	{
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		NSArray *log;
+		BOOL order;
+
+		[undo beginUndoGrouping];
+		[undo beginUndoGrouping];
+		check("undo-grouping-level",
+		      [undo groupingLevel] == 2,
+		      "beginUndoGrouping nests, so groupingLevel counts the groups that are open");
+		[undo endUndoGrouping];
+		[undo endUndoGrouping];
+		check("undo-grouping-unwinds",
+		      [undo groupingLevel] == 0,
+		      "endUndoGrouping unwinds to 0, where a registration forms its own group");
+
+		[undo beginUndoGrouping];
+		[box addItem:@"x"];
+		[box addItem:@"y"];
+		[undo endUndoGrouping];
+		[box addItem:@"z"];
+		[undo undo];
+		log = [box log];
+		order = [log count] == 4 &&
+		        [[log objectAtIndex:3] isEqualToString:@"remove:z"];
+		check("undo-explicit-group-is-bounded",
+		      order && [[box items] count] == 2 && [undo canUndo] &&
+		      [[[box items] objectAtIndex:0] isEqualToString:@"x"] &&
+		      [[[box items] objectAtIndex:1] isEqualToString:@"y"],
+		      "an explicit group is ONE undo: the trailing ungrouped registration is undone first and the grouped pair is left intact");
+	}
+	{
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL held;
+
+		[undo setActionName:@"Typing"];
+		[box addItem:@"q"];
+		[undo undo];
+		check("undo-action-name-reaches-redo",
+		      [[undo redoActionName] isEqualToString:@"Typing"],
+		      "the name set for an action follows it onto the redo stack, which is what a Redo menu item shows");
+
+		[undo removeAllActions];
+		[undo disableUndoRegistration];
+		[box addItem:@"n"];
+		held = ![undo isUndoRegistrationEnabled] && ![undo canUndo] && [[box items] count] == 1 &&
+		       [[[box items] objectAtIndex:0] isEqualToString:@"n"];
+		[undo enableUndoRegistration];
+		check("undo-registration-can-be-disabled",
+		      held && [undo isUndoRegistrationEnabled] && [[box items] count] == 1,
+		      "a disabled manager still performs the action but records nothing, and enabling it again restores recording");
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CORE DONE\n");
 	return failc ? 1 : 0;
