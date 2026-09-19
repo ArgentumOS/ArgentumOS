@@ -729,7 +729,8 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	unsigned long i;
 
 	if (index >= _count) {
-		return;
+		[NSException raise:NSRangeException
+				format:@"-[NSMutableArray removeObjectAtIndex:]: index %lu beyond bounds", index];
 	}
 	objc_release(_items[index]);
 	for (i = index; i + 1 < _count; i++) {
@@ -754,8 +755,13 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 - (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object
 {
-	if (index >= _count || object == nil) {
-		return;
+	if (index >= _count) {
+		[NSException raise:NSRangeException
+				format:@"-[NSMutableArray replaceObjectAtIndex:withObject:]: index %lu beyond bounds", index];
+	}
+	if (object == nil) {
+		[NSException raise:NSInvalidArgumentException
+				format:@"-[NSMutableArray replaceObjectAtIndex:withObject:]: object cannot be nil"];
 	}
 	objc_retain(object);
 	objc_release(_items[index]);

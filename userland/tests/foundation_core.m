@@ -636,6 +636,52 @@ int main(void)
 		      "the two product orders disagree about x, and translation does not move a size");
 	}
 
+	{
+		/* WHAT FOUND THE DEFECT WAS A DIAGNOSTIC ABOUT EXCEPTIONS, and this is the check it left
+		 * behind: two MUTATORS that used to return quietly for an index out of range now raise, which
+		 * is Apple's contract, and -replaceObjectAtIndex:withObject: raises for a nil object too. */
+		NSMutableArray *empty = [NSMutableArray array];
+		BOOL caughtRemove = NO;
+		BOOL caughtReplace = NO;
+		BOOL caughtNil = NO;
+
+		@try {
+			[empty removeObjectAtIndex:0];
+		} @catch (NSException *e) {
+			(void)e;
+			caughtRemove = YES;
+		}
+		@try {
+			[empty replaceObjectAtIndex:0 withObject:@"x"];
+		} @catch (NSException *e) {
+			(void)e;
+			caughtReplace = YES;
+		}
+		[empty addObject:@"x"];
+		@try {
+			[empty replaceObjectAtIndex:0 withObject:nil];
+		} @catch (NSException *e) {
+			(void)e;
+			caughtNil = YES;
+		}
+		check("mutators-raise-out-of-range",
+		      caughtRemove && caughtReplace && caughtNil,
+		      "removeObjectAtIndex:, replaceObjectAtIndex: and a nil object all raise");
+	}
+
+	{
+		/* THE READ ACCESSOR IS A RECORDED DEVIATION, and this check PINS it so that changing it has
+		 * to be deliberate: -objectAtIndex: answers nil for an out-of-range index where Cocoa raises
+		 * NSRangeException. Its comment justified that with a reason that went stale at F4, and when
+		 * the raise was tried, the library's OWN 154 call sites relied on the nil - so it is a unit
+		 * of its own (?11.6.1 D10) rather than a one-line fix, and the behaviour is asserted here. */
+		NSArray *emptyArray = [NSArray array];
+
+		check("objectAtIndex-nil-is-recorded",
+		      [emptyArray objectAtIndex:0] == nil,
+		      "the documented deviation: nil rather than a range error, pending D10");
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CORE DONE\n");
 	return failc ? 1 : 0;
