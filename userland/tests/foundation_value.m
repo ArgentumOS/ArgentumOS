@@ -591,6 +591,71 @@ int main(void)
 		      "enumerateByteRangesUsingBlock: hands over the real bytes and honours stop");
 	}
 
+	{
+		/* D9's SPLIT EXPERIMENT, one call per check because printed checks survive an abort: the
+		 * last name printed is the step that died. The round trip aborted inside the middle step
+		 * of the previous attempt, and the leading suspect is the PATH itself — the FSH's temp
+		 * directory contains a SPACE. */
+		NSString *path = @"/System/Temporary Files/fndata-url-probe";
+		NSURL *fileURL = [NSURL fileURLWithPath:path];
+
+		check("data-url-url",
+		      fileURL != nil && [fileURL isFileURL] &&
+		      [[fileURL path] isEqualToString:path],
+		      fileURL == nil ? "fileURLWithPath: answered nil"
+		      : [[NSString stringWithFormat:@"isFile=%d path=%@",
+			(int)[fileURL isFileURL], [fileURL path]] UTF8String]);
+
+		(void)path;
+	}
+
+	{
+		NSString *path = @"/System/Temporary Files/fndata-url-probe";
+		NSURL *fileURL = [NSURL fileURLWithPath:path];
+		NSData *written = [NSData dataWithBytes:"url-form" length:8];
+		BOOL wrote = [written writeToURL:fileURL atomically:YES];
+
+		check("data-url-write", wrote,
+		      [[NSString stringWithFormat:@"writeToURL: answered %d", (int)wrote] UTF8String]);
+	}
+
+	{
+		NSString *path = @"/System/Temporary Files/fndata-url-probe";
+		NSURL *fileURL = [NSURL fileURLWithPath:path];
+		NSData *back = [NSData dataWithContentsOfURL:fileURL];
+		NSData *expect = [NSData dataWithBytes:"url-form" length:8];
+
+		check("data-url-read",
+		      back != nil && [back isEqualToData:expect],
+		      [[NSString stringWithFormat:@"read back %lu byte(s)",
+			(unsigned long)(back != nil ? [back length] : 0)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		/* THE REFUSAL, SPLIT THE SAME WAY — the abort was NOT in the round trip (all three steps
+		 * pass), so it is here: building the non-file URL, or the refusal itself (§11.6.1 D9). */
+		NSURL *webURL = [NSURL URLWithString:@"http://example.com/x"];
+
+		check("data-url-nonfile-url",
+		      webURL != nil && ![webURL isFileURL],
+		      webURL == nil ? "URLWithString: answered nil"
+		      : [[NSString stringWithFormat:@"isFile=%d", (int)[webURL isFileURL]] UTF8String]);
+
+		(void)webURL;
+	}
+
+	{
+		NSURL *webURL = [NSURL URLWithString:@"http://example.com/x"];
+		NSError *error = nil;
+		NSData *refused = [NSData dataWithContentsOfURL:webURL options:0 error:&error];
+
+		check("data-url-nonfile-refuse",
+		      refused == nil && error != nil,
+		      [[NSString stringWithFormat:@"refused=%d error=%d",
+			(int)(refused == nil), (int)(error != nil)] UTF8String]);
+	}
+
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-VALUE DONE\n");
 	return failc ? 1 : 0;
