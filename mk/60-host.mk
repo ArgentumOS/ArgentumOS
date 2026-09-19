@@ -19,37 +19,23 @@
 # reads the guest's filesystem or an FSH path is deliberately absent, because it would fail here
 # for a reason that is not a bug.
 #
-# WHAT IS KNOWN TO DIVERGE, and WHAT IT IS NOT (2026-09-19). The host run of foundation_core answers
-# 47 of 50 checks where the guest answers 50: `arc-pool` FAILS, and `undo-redo-reapplies` with
-# `undo-remove-all-actions` fail after it. TWO EXPLANATIONS WERE TESTED AND BOTH ARE WRONG, so do not
-# spend the builds again:
-#   * NOT the runtime configuration. `make host-libobjc` rebuilds the runtime with -DGNUSTEP and
-#     OLDABI_COMPAT=OFF to mirror the guest, and the prefix really was built without them - and the
-#     same three checks still fail. (`host-libobjc` is kept: matching the guest is right regardless.)
-#   * NOT optimisation. The guest's FOUNDATION_CFLAGS carries no -O, and -O0 here changes nothing.
-# WHAT THE MEASUREMENT SAYS, from printing foundation_core_deallocs() before, DURING (inside the pool,
-# after the ARC assignment) and after: before=during=after. THE OBJECT NEVER DIES AT ALL - not at the
-# assignment, not at the drain. And a second, identical lifetime WITHOUT the forwarded [c setValue:9]
-# call behaves the same way, so the forwarding path is not the cause either. The same class deallocates
-# correctly in the `lifecycle` check minutes earlier, which is what makes this specific to a pool.
-# ALSO REFUTED, so do not spend these either: the runtime the probe actually LOADS is the rebuilt one
-# (checked with ldd, after the earlier mistake of assuming an artifact had been replaced); the probe's
-# @autoreleasepool really does compile to objc_autoreleasePoolPush/Pop, which the runtime provides; and
-# the library's NSAutoreleasePool carries its ARC marker in BOTH the guest and host objects (compared
-# with strings on the two .o files, because nm -D cannot see a method and I looked there first).
-# AND THEN IT WAS NARROWED TO ONE FILE, by bisection rather than theory:
-#   * THE SUPPORT UNIT AND Counter ARE EXONERATED. Building the probe's OWN support unit for the host
-#     and driving it from a tiny ARC main - same class, same library, same runtime - DEALLOCATES
-#     CORRECTLY (before=0 during=1). So it is not the class, not the ARC-to-MRC boundary, and not the
-#     pool: the identical sequence in a SMALL ARC file works.
-#   * THE PROBE FILE IS THE ONLY REMAINING VARIABLE. The same sequence placed at the very TOP of the
-#     probe's own main, before any other check runs, FAILS THE SAME WAY (retain count 1, delta 0). So
-#     it is not the file's history or accumulated state: it is the file's own compilation.
-#   * ALSO REFUTED ON THE WAY, so do not retest: <objc/runtime.h> (adding it to the small file changes
-#     nothing); symbol interposition (the probe defines no objc_* symbol and shares none with the
-#     runtime's exports); and the retain count is 1, so nothing extra retained it.
-# THE NEXT STEP IS NOW A BISECT WITHIN ONE FILE: strip foundation_core.m down until it deallocates, or
-# build it in two halves, and the construct that causes it will name itself.
+# WHAT DIVERGED, WHY, AND THE TRAP WORTH KEEPING (2026-09-19).
+#   * RESOLVED - arc-pool. THE TRAP: ONE CLANG INVOCATION WITH TWO SOURCES DOES NOT APPLY
+#     -fobjc-arc AND -fno-objc-arc PER FILE. The probe rule passed both sources in a single command,
+#     so the PROBE MAIN WAS COMPILED MRC - and in MRC `c = nil` releases nothing, so the object was
+#     never freed and arc-pool failed in a probe that was supposed to be ARC. Compiling each unit
+#     separately (which is what the guest mk does, per file) fixed it: 47 -> 48 checks.
+#     The long hunt for this is worth reading as a warning: SIX other explanations were tested and
+#     all were wrong (runtime configuration, optimisation, the forwarding path, a stale runtime, the
+#     compiled pool path, the ARC marker), and the answer came from BISECTION - the probe's own
+#     support unit in a small ARC file deallocated correctly, the probe file did not, and an A/B of
+#     the build shapes named it in one step.
+#   * STILL OPEN, two checks, both in the REDO path: undo-redo-reapplies and (as a cascade)
+#     undo-remove-all-actions. `-undo` and the LIFO order pass, so the inverse registration happens;
+#     what differs is `-redo` itself. The same lesson applies before theorising: A/B the build.
+#   * REFUTED EARLIER AND STILL REFUTED: the runtime prefix (rebuilt with -DGNUSTEP and
+#     OLDABI_COMPAT=OFF to mirror the guest), -O (the guest carries none), <objc/runtime.h>, symbol
+#     interposition, and the ARC marker (present on both sides). Do not spend those builds again.
 # UNTIL THAT IS UNDERSTOOD, THIS IS A FAST ITERATION LOOP AND NOT A SUBSTITUTE: a host pass is
 # evidence, and a host failure on one of those three proves nothing about the guest.
 
@@ -75,7 +61,13 @@ HOST_ICU_LIBS    = $(shell pkg-config --libs icu-i18n 2>/dev/null)
 # NO -O FLAG, DELIBERATELY: the guest's FOUNDATION_CFLAGS carries none either, and this project has
 # a documented history of optimisation-dependent miscompiles. Matching the guest's flags exactly is
 # the difference between a host run that predicts the guest and one that invents failures.
-HOST_CFLAGS      = -fPIC -g -Iinclude -Iuserland -fno-objc-arc $(HOST_OBJCFLAGS)
+# NO ARC FLAG HERE, AND THAT IS LOAD-BEARING. The library is MRC (the guest's FOUNDATION_CFLAGS
+# carries no -fobjc-arc either), so -fno-objc-arc belongs on the LIBRARY rule - not here. It was here
+# first, and the probe rule then appended -fobjc-arc after it; clang takes the FIRST of a conflicting
+# pair, so THE PROBES WERE COMPILED MRC ALL ALONG. That is what the arc-pool "leak" was: compiled MRC,
+# `c = nil` releases nothing, so the object was never freed - and the same sequence in a hand-built
+# test file deallocated correctly every time, because that file had no such flag.
+HOST_CFLAGS      = -fPIC -g -Iinclude -Iuserland $(HOST_OBJCFLAGS)
 HOST_RPATH       = -Wl,-rpath,$(CURDIR)/$(HOST_LIBDIR) -Wl,-rpath,$(CURDIR)/$(HOST_OBJCPFX)/lib
 HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc
 
@@ -92,7 +84,7 @@ FN_HOST_OBJS     = $(addprefix $(HOST_OBJDIR)/,$(FN_HOST_SRCS:.m=.o)) $(HOST_OBJ
 define FN_HOST_rule
 $(HOST_OBJDIR)/$(1:.m=.o): $(FOUNDATION_SRC)/$(1)
 	@mkdir -p $(HOST_OBJDIR)
-	$$(HOST_CC) -c $$(HOST_CFLAGS) $$(HOST_ICU_CFLAGS) \
+	$$(HOST_CC) -c $$(HOST_CFLAGS) -fno-objc-arc $$(HOST_ICU_CFLAGS) \
 		$(if $(filter $(1),$(FN_HOST_ROOT)),-Wno-objc-root-class) \
 		$$< -o $$@
 endef
@@ -120,11 +112,13 @@ $(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
 HOST_PROBES ?= foundation_core
 define FN_HOST_PROBE_rule
 $(HOST_BINDIR)/$(1): $(HOST_FOUNDATION_LIB) $(wildcard userland/tests/$(1).m) $(wildcard userland/tests/$(1)_support.m)
-	@mkdir -p $(HOST_BINDIR)
-	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests $$(HOST_RPATH) \
-		$$(wildcard userland/tests/$(1).m) -fobjc-arc \
-		$$(wildcard userland/tests/$(1)_support.m) -fno-objc-arc \
-		$$(HOST_LDFLAGS) -lfoundation $$(HOST_ICU_LIBS) -lz -o $$@
+	@mkdir -p $(HOST_BINDIR) $(HOST_OBJDIR)
+# PER-UNIT COMPILES, WHICH IS NOT COSMETIC: one driver invocation with both sources does NOT
+# apply -fobjc-arc and -fno-objc-arc per file, so the probe main came out MRC and `c = nil`
+# released nothing. That was the whole arc-pool divergence. The guest mk compiles per file too.
+	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fobjc-arc -c $$(wildcard userland/tests/$(1).m) -o $(HOST_OBJDIR)/probe-$(1).o
+	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fno-objc-arc -c $$(wildcard userland/tests/$(1)_support.m) -o $(HOST_OBJDIR)/probe-$(1)-support.o
+	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_LDFLAGS) -o $$@ $(HOST_OBJDIR)/probe-$(1).o $(HOST_OBJDIR)/probe-$(1)-support.o -lfoundation $$(HOST_ICU_LIBS) -lz
 endef
 $(foreach p,$(HOST_PROBES),$(eval $(call FN_HOST_PROBE_rule,$(p))))
 
