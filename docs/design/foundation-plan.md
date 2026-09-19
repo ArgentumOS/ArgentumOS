@@ -3895,10 +3895,18 @@ honest size, and it is why it is sliced.
 | Slice | Contents | State |
 |---|---|---|
 | **1** | **the storage**: `NSOwnedString`/`NSMutableString` onto `unichar *_units` + the invalidated-on-mutation UTF-8 cache; `-UTF8String` becomes the materialisation; the decoder (`fn_utf8_to_utf16`) and the encoder's forward declarations; **and `NSString.h`'s stored comment rewritten**, because it stated the superseded decision. **The CONTRACT IS DELIBERATELY UNCHANGED** — `-length` still answers bytes and `-characterAtIndex:` still indexes scalars — so the representation could land and be verified on its own | **LANDED, and verified on the guest: `foundation_string` 27/27, `foundation_core` 12/12 checks, 2/2 cases** |
-| **2** | the internals: `-isEqual:`/`-compare:family`/`-hash`/`utf8_find`/`utf8_substring`/case mapping/the format parser onto units, and the ~150 library sites that read bytes for non-byte reasons | |
-| **3** | `NSConstantString` unified on the runtime's fields (`_rlength` for `-length`, the unit array for indexing) and the UTF-16 → UTF-8 conversion helpers deleted | |
-| **4** | the four `…Characters:` forms — the rows this unit closes | |
-| **5** | the probe: its length/index assertions rewritten (they assert the OLD deviation today), its `excluded` array losing its four entries and gaining them as DEMANDED, and the guest gate | |
+| **2a** | **THE PREP, in `nstring.m`**: the byte door (`-lengthOfBytesUsingEncoding:`) rewritten to answer the materialised size without recursing through `-length`, NSOwnedString's O(1) override for it, and **62 internal string byte sites moved onto it**. The one site that stays is `[data length]` — NSData's own — which is why this was a receiver-aware migration and not a blind rename | **LANDED, and verified: 3/3 cases, 18/18 checks on the guest** |
+| **2b** | the same migration in the REST of `userland/foundation`, per file and measured (`nsurlcomponents` 13, `nurl` 12, `ndata` 9, `nsregularexpression` 8, `nsfilemanager` 6, `npropertylistserialization` 5, `nlocale` 5, `ncodec` 5, then the tail), and after that the **55 probe sites** and the **201** in the rest of userland | next |
+| **3** | **THE FLIP, AND IT IS ONE SLICE RATHER THAN TWO.** `-length` onto the unit count (O(1): `return _length;`), `-characterAtIndex:` onto the unit space (`fn_utf16_unit_at`, surrogate halves — replacing today's `0xFFFD`), **the ten range/index methods onto `fn_utf16_unit_to_byte` / `fn_byte_to_utf16_unit`**, the sites that read bytes FOR NON-BYTE REASONS now reading units (`-isEqual:`/`-compare:` family/`-hash`/`utf8_find`/`utf8_substring`/case mapping/the format parser), and **the probe's assertions rewritten in the same step** — they assert the OLD deviation today, so they move with it or the gate goes red, correctly, and stays red | |
+| **4** | `NSConstantString` unified on the runtime's fields — `_rlength` for `-length`, the unit array for indexing — and the now-unused UTF-16 → UTF-8 conversion helpers deleted | |
+| **5** | the four `…Characters:` forms — the rows this unit closes — with their probe checks, and the `excluded` array losing its four entries and gaining them as DEMANDED | |
+
+**AND THAT TABLE IS A CORRECTION, which is why it is written out rather than renumbered.** An earlier
+version of this section put the byte-site migration and `-length`'s flip in one slice with the ten range
+methods in the NEXT one. That order cannot work: flipping `-length` alone leaves every NSRange
+byte-indexed while the length that BUILDS those ranges counts units — an inconsistent API, which is the
+thing W1 exists to remove. **So 2a exists as PREP: after it, nothing in `nstring.m` depends on `-length`
+meaning bytes, and the flip becomes safe by construction instead of by vigilance.**
 
 **WHY SLICE 1 KEPT THE OLD CONTRACT, AND WHAT THAT BOUGHT:** the storage could change on its own, so
 the guest run isolates it — every string check passed with a completely different representation, which
