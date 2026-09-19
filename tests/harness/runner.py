@@ -126,9 +126,19 @@ class GuestPool:
         return self.session
 
     def verify(self):
-        """Is the shared guest still ANSWERING? A case can leave the kernel damaged, and the next
-        case would then sit in its shell-wait for the whole timeout instead of failing fast - which
-        is exactly what foundation_expression did (151s) before this existed."""
+        """Is the shared guest still ANSWERING? A next case must not sit in its shell-wait for the
+        whole timeout - which is exactly what foundation_expression did (151s) before this existed.
+
+        MEASURED AFTER foundation_error AND foundation_operation, where this currently FAILS and the
+        pool re-boots (12s each): THE GUEST IS HEALTHY. Its log ends at a clean prompt with
+        FOUNDATION-ERROR-STATUS=0, and the giveaway is that this method's own `echo FNGUEST-ALIVE`
+        NEVER APPEARS in that log at all - so the command did not reach the guest. THE HARNESS IS
+        WHAT FAILS HERE, not the guest: Session.write() writes to the QEMU process's stdin and
+        SWALLOWS BrokenPipe/OSError, so a stdin that has gone bad looks exactly like a silent guest.
+        THE NEXT DIAGNOSTIC IS THEREFORE TWO LINES: stop swallowing that exception (or count it) and
+        re-run foundation_error followed by any other case - 20 seconds - and it will say whether the
+        pipe is closed or merely wedged.
+        """
         if self.session is None:
             return
         mark = len(self.session.log_text())
