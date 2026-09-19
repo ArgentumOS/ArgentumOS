@@ -3014,3 +3014,34 @@ alias comes from `do_namei`'s *handoff between components*, then a path with ONE
 unaffected — so `chdir` into the parent and then `removeItemAtPath:@"x"` (a RELATIVE, single-component
 path) ought to SUCCEED where `removeItemAtPath:@"/…/x"` fails. That one comparison separates "the loop's
 `*d_res = dir` is uncounted" from everything else, and it needs no kernel console.
+
+#### F13.22 continued: the experiment ran, and it KILLED the loop hypothesis
+
+```
+FOUNDATION-FILEMANAGER fs-relative: removed=0 'Operation not permitted' (cwd-restored=1)
+```
+
+**A ONE-COMPONENT RELATIVE PATH FAILS TOO.** That is the whole result: after `chdir(PROBE_ROOT)`, a bare
+`removeItemAtPath:@"rel"` — ONE component, so `do_namei`'s loop runs exactly once and its
+between-components handoff never happens — is refused with the same EPERM as the absolute path.
+**So the loop's `*d_res = dir` is NOT the cause.** The hypothesis the last record wrote down is now
+measured and dead, and writing it down precisely is what made it this cheap to kill.
+
+**WHAT THE THREE MEASUREMENTS TOGETHER NOW SAY, and the search is much smaller:**
+
+1. the FILE SYSTEM is right — a directory's inode number differs from its parent's (`fs-ino`);
+2. the refusal is `sys_rmdir`'s `i == dir` guard, because a NON-EMPTY directory is refused with EPERM
+   instead of `agfs_rmdir`'s "not empty" (`fs-rmdir-discriminator`);
+3. the alias exists after a SINGLE component (`fs-relative`) — so it is created by ONE `do_namei`
+   iteration, or by the state `parse_namei` hands it.
+
+**AND ONE FACT THAT WAS SITTING IN THE OPEN BECOMES LOAD-BEARING: FILES ARE UNAFFECTED AT ANY DEPTH;
+ONLY DIRECTORIES FAIL.** `unlink(2)` removes a file through the same `namei`, with the same guard in an
+`else` branch, and it works for multi-component paths — while `rmdir(2)` fails even for one-component
+ones. A difference that tracks the TARGET'S TYPE rather than the PATH'S SHAPE points at what the walk
+does with a directory specifically: the `if(*path == '/')` branch, the `follow_links` decision, or the
+inode's own `fsop`. **Next: read `parse_namei` whole (`fs/namei.c:162-243`) together with `iget`/`iput`,
+with the type-dependence as the thing to explain rather than the path length.**
+
+Next: `parse_namei` read whole and `iget`/`iput`, explaining why FILES are unaffected while DIRECTORIES
+fail at every path length.

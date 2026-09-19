@@ -256,6 +256,32 @@ int main(void)
 				}
 			}
 
+			/* AND THE THIRD MEASUREMENT (F13.22), which is the experiment rather than a probe of
+			 * one: a RELATIVE, SINGLE-COMPONENT path. `PROBE_ROOT/rel` walks several components
+			 * and `do_namei`'s handoff between them runs at least twice; a bare `rel` from inside
+			 * PROBE_ROOT is ONE component and crosses that boundary once. If the alias comes from
+			 * the handoff, the one-component path should SUCCEED where the multi-component one
+			 * fails — and nothing else in userland tells those two apart. */
+			{
+				char cwd[1024];
+				NSError *relError = nil;
+				BOOL relGone = NO;
+				BOOL stayed = NO;
+
+				[manager createDirectoryAtPath:fn_path(@"rel")
+					       withIntermediateDirectories:NO
+							    attributes:nil
+								 error:NULL];
+				if(getcwd(cwd, sizeof(cwd)) != NULL && chdir(PROBE_ROOT) == 0) {
+					relGone = [manager removeItemAtPath:@"rel" error:&relError];
+					stayed = (chdir(cwd) == 0);
+				}
+				printf("FOUNDATION-FILEMANAGER fs-relative: removed=%d '%s' (cwd-restored=%d)\n",
+				       (int)relGone,
+				       relError != nil ? [[relError localizedDescription] UTF8String]
+						       : "no-error", (int)stayed);
+			}
+
 			check("fs-cleanup",
 			      truthful,
 			      [NSString stringWithFormat:@"copy=%d(%@) inner=%d(%@) root=%d(%@) | EMPTY dir: removed=%d '%@' | NON-EMPTY dir: removed=%d '%@'",
