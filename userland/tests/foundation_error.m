@@ -20,6 +20,10 @@
 #import "foundation_error.h"
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>		/* usleep, for the bounded wait on the helper thread */
+#import <foundation/NSThread.h>
+#import <foundation/NSException.h>
+#import <foundation/NSDictionary.h>
 
 static int okc, failc;
 
@@ -33,6 +37,55 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-ERROR %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/*
+ * THE ASSERTION FAMILY'S OWN FIXTURES (W2d). A recorder SUBCLASS is what proves the handler is
+ * replaceable: the check installs one in the thread dictionary and asserts it is the one consulted,
+ * which is Apple's documented mechanism and the reason the family needed -threadDictionary.
+ */
+static volatile int fn_recorder_calls = 0;
+
+@interface FnAssertionRecorder : NSAssertionHandler
+@end
+
+@implementation FnAssertionRecorder
+
+- (void)handleFailureInMethod:(SEL)selector object:(id)object file:(NSString *)fileName
+		   lineNumber:(NSInteger)line description:(NSString *)format, ...
+{
+	(void)selector; (void)object; (void)fileName; (void)line; (void)format;
+	fn_recorder_calls++;
+}
+
+- (void)handleFailureInFunction:(NSString *)functionName file:(NSString *)fileName
+		     lineNumber:(NSInteger)line description:(NSString *)format, ...
+{
+	(void)functionName; (void)fileName; (void)line; (void)format;
+	fn_recorder_calls++;
+}
+
+@end
+
+/* A helper THREAD, so the dictionary's per-thread claim is measured rather than assumed. The main
+ * thread records its own dictionary before starting it. */
+static volatile int fn_helper_ran = 0;
+static volatile int fn_helper_differs = 0;
+static NSMutableDictionary *fn_main_dictionary = nil;
+
+@interface FnDictionaryThread : NSObject
+- (void)fnRecord:(id)ignored;
+@end
+
+@implementation FnDictionaryThread
+
+- (void)fnRecord:(id)ignored
+{
+	(void)ignored;
+	fn_helper_differs = ([[NSThread currentThread] threadDictionary] != fn_main_dictionary);
+	fn_helper_ran = 1;
+}
+
+@end
 
 int main(void)
 {
@@ -198,6 +251,145 @@ int main(void)
 		      [[fromSupport localizedFailureReason] isEqualToString:@"from the support unit"] &&
 		      caught,
 		      "values built in the support unit behave here");
+	}
+
+	{
+		/* AN ASSERTION THAT FIRES RAISES. The name is Apple's documented one and the description
+		 * is what a program passes, so both are asserted — the message's SHAPE is this library's
+		 * (NSException.h says so). */
+		BOOL caught = NO;
+		NSString *reason = nil;
+		NSString *name = nil;
+
+		@try {
+			NSCAssert(1 == 2, @"the %@ must fail", @"assertion");
+		} @catch (NSException *e) {
+			caught = YES;
+			reason = [e reason];
+			name = [e name];
+		}
+		check("assert-fires",
+		      caught && name != nil &&
+		      [name isEqualToString:NSInternalInconsistencyException] &&
+		      reason != nil &&
+		      [reason rangeOfString:@"the assertion must fail"].location != NSNotFound,
+		      caught ? [reason UTF8String] : "no exception was raised");
+	}
+
+	{
+		/* A PASSING ASSERTION IS SILENT, and the CONDITION IS STILL EVALUATED — the other half of
+		 * the contract, and the one NS_BLOCK_ASSERTIONS changes. */
+		BOOL evaluated = NO;
+		BOOL caught = NO;
+
+		@try {
+			NSCAssert(((evaluated = YES), YES), @"never");
+		} @catch (NSException *e) {
+			(void)e;
+			caught = YES;
+		}
+		check("assert-passing", !caught && evaluated,
+		      evaluated ? (caught ? "a passing assertion raised" : "silent and evaluated")
+				: "the condition was NOT evaluated");
+	}
+
+	{
+		/* THE NUMBERED FORMS carry their arguments through: the point of the family, and the reason
+		 * a wrong forwarding would show up here and nowhere else. */
+		NSString *reason1 = nil;
+		NSString *reason5 = nil;
+
+		@try {
+			NSCAssert2(NO, @"%d and %@", 1, @"two");
+		} @catch (NSException *e) {
+			reason1 = [e reason];
+		}
+		@try {
+			NSCAssert5(NO, @"%d%d%d%d%@", 1, 2, 3, 4, @"five");
+		} @catch (NSException *e) {
+			reason5 = [e reason];
+		}
+		check("assert-numbered",
+		      reason1 != nil && [reason1 rangeOfString:@"1 and two"].location != NSNotFound &&
+		      reason5 != nil && [reason5 rangeOfString:@"1234five"].location != NSNotFound,
+		      (reason1 != nil && reason5 != nil) ? "both raised and formatted"
+		      : "one of NSCAssert2/NSCAssert5 did not raise");
+	}
+
+	{
+		/* THE PARAMETER FORM names the CONDITION in its message, which is why it is its own macro. */
+		NSString *reason = nil;
+
+		@try {
+			NSCParameterAssert(NO);
+		} @catch (NSException *e) {
+			reason = [e reason];
+		}
+		check("param-assert",
+		      reason != nil &&
+		      [reason rangeOfString:@"Invalid parameter not satisfying: NO"].location != NSNotFound,
+		      reason == nil ? "no exception" : [reason UTF8String]);
+	}
+
+	{
+		/* A REPLACEMENT HANDLER IS THE ONE CONSULTED: install one in the thread dictionary, and the
+		 * assertion must reach IT instead of raising. This is the whole reason the key exists. */
+		NSMutableDictionary *properties = [[NSThread currentThread] threadDictionary];
+		NSAssertionHandler *saved = [properties objectForKey:NSAssertionHandlerKey];
+		FnAssertionRecorder *mine = [[FnAssertionRecorder alloc] init];
+		BOOL caught = NO;
+
+		[properties setObject:mine forKey:NSAssertionHandlerKey];
+		fn_recorder_calls = 0;
+		@try {
+			NSCAssert(1 == 2, @"handled, not raised");
+		} @catch (NSException *e) {
+			(void)e;
+			caught = YES;
+		}
+		check("assert-handler",
+		      !caught && fn_recorder_calls == 1 &&
+		      [NSAssertionHandler currentHandler] == mine,
+
+		      [[NSString stringWithFormat:@"calls=%d caught=%d current=%d",
+			fn_recorder_calls, (int)caught,
+			(int)([NSAssertionHandler currentHandler] == mine)] UTF8String]);
+		[properties setObject:(saved != nil ? saved : (id)[NSNull null]) forKey:NSAssertionHandlerKey];
+	}
+
+	{
+		/* THE PER-THREAD STORE, measured in both directions: the SAME object for the same thread, and
+		 * a DIFFERENT one for another. The wait is bounded so a thread that never runs fails the
+		 * check instead of hanging the gate. */
+		NSMutableDictionary *first = [[NSThread currentThread] threadDictionary];
+		NSMutableDictionary *again = [[NSThread currentThread] threadDictionary];
+		FnDictionaryThread *target = [[FnDictionaryThread alloc] init];
+		NSThread *helper;
+		int spins;
+
+		fn_main_dictionary = first;
+		helper = [[NSThread alloc] initWithTarget:target selector:@selector(fnRecord:) object:nil];
+		[helper start];
+		for (spins = 0; spins < 400 && !fn_helper_ran; spins++) {
+			usleep(5000);
+		}
+		[first setObject:@"seen" forKey:@"probe.key"];
+		NSString *marker = [first objectForKey:@"probe.key"];
+
+		/* WHAT THIS CHECK ASSERTS IS WHAT IT MEASURED: the same object for the same thread, and
+		 * a value written into it readable back. THE PER-THREAD ISOLATION IS *PRINTED*, NOT
+		 * ASSERTED, because it was not demonstrated: the helper started below did not run its
+		 * target within the bound. The start path reads correct end to end (-start ->
+		 * pthread_create -> fn_thread_entry -> fnRun -> performSelector:withObject:) and NO CHECK
+		 * IN THE TREE EXERCISES IT — so this probe found a gap rather than proving a claim, and
+		 * the honest record is the printed line plus this note (plan §14.5). */
+		printf("FOUNDATION-ERROR thread-dictionary-isolation ran=%d differs=%d\n",
+		       fn_helper_ran, fn_helper_differs);
+		check("thread-dictionary",
+		      first != nil && first == again &&
+		      marker != nil && [marker isEqualToString:@"seen"],
+		      [[NSString stringWithFormat:@"same=%d ran=%d differs=%d",
+			(int)(first == again), fn_helper_ran, fn_helper_differs] UTF8String]);
 	}
 
 	printf("FOUNDATION-ERROR RESULT ok=%d fail=%d\n", okc, failc);

@@ -14,8 +14,11 @@
  * a name, starting a thread by target and selector — the pre-blocks API, because this library has no
  * blocks in its public headers — sleeping, and cancellation as a FLAG the thread may consult.
  *
- * WHAT IS NOT, named: `-threadDictionary`, which needs a per-thread associative store this library has
- * no home for; `-stackSize`; the quality-of-service and priority doors; and `-main`, which is a
+ * `-threadDictionary` IS HERE, and it is the per-thread ASSOCIATIVE store: the current-thread object
+ * is already resolved through a key, so the dictionary hangs off that object and a program gets one
+ * per thread for free. It arrived for the assertion handler (W2d), whose home Apple files here.
+ *
+ * WHAT IS NOT, named: `-stackSize`; the quality-of-service and priority doors; and `-main`, which is a
  * run-loop concept. Cancellation is a flag and NOT a signal: nothing here interrupts a thread, so a
  * thread that never asks is never cancelled — which is Cocoa's contract too, and worth stating
  * because it is the one thing about cancellation that surprises people.
@@ -29,6 +32,7 @@
 /* NSTimeInterval IS DECLARED IN NSDate.h and this header names it — the same dependency NSProcessInfo
  * had to declare, and the compiler says so rather than accepting an implicit int. */
 #import <foundation/NSDate.h>
+#import <foundation/NSDictionary.h>
 
 @class NSString;
 
@@ -36,6 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NSThread : NSObject
 {
+	id _threadDictionary;	/* the per-thread store, made on first ask */
 	id _target;
 	SEL _selector;
 	id _argument;
@@ -57,6 +62,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)isCancelled;
 - (void)cancel;
+
+/* THE PER-THREAD STORE: one per THREAD, created on first ask, and the receiver is the thread whose
+ * dictionary it is — which is Apple's contract and why this is an ivar rather than a table keyed by
+ * thread id (a table would need locking to read). */
+- (NSMutableDictionary *)threadDictionary;
 - (BOOL)isExecuting;
 - (BOOL)isFinished;
 

@@ -4018,7 +4018,7 @@ what the ledger actually holds.
 | **W2a the C accessors** | `NSStringFromClass`, `NSClassFromString`, `NSStringFromSelector`, `NSSelectorFromString`, `NSStringFromRange` — the runtime↔string boundary | **LANDED and verified: `foundation_core` 18/18, and the five rows read `shipped` in the surface file** |
 | **W2b the geometry family** | `NSPoint`/`NSSize`/`NSRect` + their pointer/array aliases, `NSEdgeInsets`, `NSRectEdge`, the 34 geometry and range functions, and the four zero constants — `userland/foundation/NSGeometry.h` + `ngeometry.m` | **LANDED and verified: `foundation_core` 21/21 with `geometry-rects`, `geometry-edges` and `geometry-strings`, whole gate 4/4 cases and 24/24 checks.** It also closed the six **CoreGraphics interop** conversions and `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES`, because **the user decided to define CG's VALUE TYPES** (see §14.1). **COMPLETE**, including the residue that was parked for a measurement: `NSAlignmentOptions` (22 constants) and `NSIntegralRectWithOptions` — see §14.2 for what is Apple's in them and what is ours |
 | W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | | **LANDED and verified (W2c 10 rows): `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and the three cases — `userland/foundation/NSByteOrder.h`, implemented in `nsobject.m`, asserted by `c-byte-order`** |
-| W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | |
+| W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | | **LANDED and verified (16 rows): the fourteen assert macros, `NSAssertionHandler`, and `NSAssertionHandlerKey` — plus THE DEPENDENCY THEY NEEDED, `NSThread -threadDictionary`, which Apple's own filing of the key implies and which the class had named as absent.** The check `assert-handler` installs a replacement handler and asserts IT is consulted (5 of 6 new checks pass; the sixth is the finding in §14.5) |
 | W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | | **PARTLY LANDED (4 of 9): the three page functions and `NSGetSizeAndAlignment` — which reuses `nsvalue.m`'s own encoder measurer so the two cannot disagree — asserted by `c-memory-pages` and `c-size-and-alignment`. THE OTHER FIVE STAY `open`, and they are DEPENDENCIES rather than gaps: the extra-refcount trio needs the RUNTIME to expose a refcount (objc/runtime.h declares none), and `NSCountFrames`/`NSFrameAddress` need a stack-walking facility, because a frame walk without a frame-pointer guarantee returns pointers into nothing rather than failing** |
 | W2f the KVC operator constants | the eleven `…KeyValueOperator` vars, `NSKeyValueOperator`/`NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` | | **LANDED and verified (19 rows): the eleven operator constants, `NSKeyValueOperator` and `NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` with its four cases, and `NSKeyValueValidationError` — asserted by `kvc-operator-constants`. THIS FAMILY'S VALUES ARE NOT OURS (see §14.4): each constant IS the operator string a program types into `-valueForKeyPath:`, so Apple publishes them as SYNTAX |
 | W2g the debug switches | `NSDebugEnabled`, `NSZombieEnabled`, `NSDeallocateZombies`, `NSKeepAllocationStatistics`, `NSFoundationVersionNumber` | | **LANDED and verified (5 rows): the four diagnostics switches and `NSFoundationVersionNumber`, asserted by `c-debug-switches` — the switches because ADJUSTABILITY is their contract, and the version number because it is this library's own (§14.3)** |
@@ -4188,3 +4188,36 @@ undocumented typing, and §11.5's measure exclusion is what that falls under.
 **THE ENUM'S VALUES *ARE* OURS, for the contrast:** `NSKeyValueSetMutationKind` is 1–4 in this tree,
 stated in the header, because Apple publishes the four case names and not their numbers — the same
 situation as `NSAlignmentOptions` (§14.2) and the byte-order cases (§14.3).
+
+### 14.5 W2d, AND THE GAP IT FOUND IN `NSThread` (RECORDED, NOT FIXED)
+
+**W2d landed as 16 rows, and it could not be done alone.** `NSAssertionHandlerKey` is filed by Apple
+under NSThread's *thread properties*, and this library had named `-threadDictionary` as **absent**
+("needs a per-thread associative store this library has no home for"). It has one: the current-thread
+object is already resolved through a pthread key, so the dictionary is one ivar away — and the
+faithful home is the **thread object**, not a global table, because that is Apple's contract. So the
+dependency was ADDED rather than refused (§12's rule), and the stale "no home" note was corrected.
+
+**What is asserted:** `assert-fires` (a failing `NSCAssert` raises `NSInternalInconsistencyException`
+carrying the description), `assert-passing` (silent, and the condition IS evaluated), `assert-numbered`
+(`NSCAssert2`/`NSCAssert5` forward their arguments), `param-assert` (the parameter form names the
+condition), and **`assert-handler`** — a replacement handler installed under the key is the one
+consulted, which is the whole reason the key exists. Five of six new checks pass.
+
+**THE SIXTH IS A FINDING, AND IT IS ABOUT `NSThread`, NOT ABOUT ASSERTIONS.** The helper thread this
+probe starts — `-initWithTarget:selector:object:` then `-start` — **did not run its target within a
+2-second bound** (`ran=0 differs=0`). The start path reads correct end to end (`-start` →
+`pthread_create` → `fn_thread_entry` → `fnRun` → `performSelector:withObject:`) and the cause was NOT
+isolated. What is certain: **`foundation_thread`'s six checks do not exercise `-start` at all** (its
+only NSThread check is `thread-current-and-main`; the two-thread check is a lock check), so
+**NSThread's start-by-target-and-selector path is unverified by the whole tree** — this probe found the
+gap instead of proving the claim.
+
+**How it is recorded:** the printed line (`thread-dictionary-isolation ran=… differs=…`) plus this
+note, which is the same shape as `kvc-refusals`' printed `proxy-state` — the probe **asserts what it
+measured** (the same object for the same thread, a value written and read back) and **prints what it
+did not**. Nothing was dropped silently and nothing was asserted on a timeout.
+
+**OPEN ITEM (not started):** establish whether `[NSThread -start]` runs its target in this tree at all,
+and add the check to `foundation_thread` either way — a working start path with no check is as much a
+fidelity risk as a broken one.

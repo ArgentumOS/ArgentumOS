@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   61   open  181   struck   31
+#   class      shipped   62   open  180   struck   31
 #   protocol   shipped    5   open   31   struck    9
-#   macro      shipped    4   open  223   struck   26
+#   macro      shipped   18   open  209   struck   26
 #   enum       shipped   30   open  122   struck    8
 #   case       shipped  186   open 1023   struck   93
 #   func       shipped   58   open   77   struck   54
-#   var        shipped   66   open  701   struck  147
+#   var        shipped   67   open  700   struck  147
 #   typealias  shipped   18   open   55   struck    3
 #   struct     shipped    6   open    2   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1345,7 +1345,7 @@ class	open	NSAppleEventManager		App Support / Apple Event Handling	-	objc
 class	open	NSAppleScript		App Support / Script Execution	-	objc
 class	struck	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
-class	open	NSAssertionHandler		App Support / Assertions	-	objc
+class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
 class	open	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
 class	open	NSAttributedStringMarkdownParsingOptions		Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 class	open	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
@@ -1970,19 +1970,19 @@ macro	open	FOUNDATION_STATIC_INLINE		Reference / Macros	-	objc
 macro	struck	FOUNDATION_SWIFT_SDK_EPOCH_AT_LEAST		Reference / Macros	swift-only	objc
 macro	open	MAX		Reference / Macros	-	objc
 macro	open	MIN		Reference / Macros	-	objc
-macro	open	NSAssert		App Support / Assertions	-	objc
-macro	open	NSAssert1		App Support / Assertions	-	objc
-macro	open	NSAssert2		App Support / Assertions	-	objc
-macro	open	NSAssert3		App Support / Assertions	-	objc
-macro	open	NSAssert4		App Support / Assertions	-	objc
-macro	open	NSAssert5		App Support / Assertions	-	objc
-macro	open	NSCAssert		App Support / Assertions	-	objc
-macro	open	NSCAssert1		App Support / Assertions	-	objc
-macro	open	NSCAssert2		App Support / Assertions	-	objc
-macro	open	NSCAssert3		App Support / Assertions	-	objc
-macro	open	NSCAssert4		App Support / Assertions	-	objc
-macro	open	NSCAssert5		App Support / Assertions	-	objc
-macro	open	NSCParameterAssert		App Support / Assertions	-	objc
+macro	shipped	NSAssert		App Support / Assertions	-	objc
+macro	shipped	NSAssert1		App Support / Assertions	-	objc
+macro	shipped	NSAssert2		App Support / Assertions	-	objc
+macro	shipped	NSAssert3		App Support / Assertions	-	objc
+macro	shipped	NSAssert4		App Support / Assertions	-	objc
+macro	shipped	NSAssert5		App Support / Assertions	-	objc
+macro	shipped	NSCAssert		App Support / Assertions	-	objc
+macro	shipped	NSCAssert1		App Support / Assertions	-	objc
+macro	shipped	NSCAssert2		App Support / Assertions	-	objc
+macro	shipped	NSCAssert3		App Support / Assertions	-	objc
+macro	shipped	NSCAssert4		App Support / Assertions	-	objc
+macro	shipped	NSCAssert5		App Support / Assertions	-	objc
+macro	shipped	NSCParameterAssert		App Support / Assertions	-	objc
 macro	open	NSDecimalMaxSize		Fundamentals / Numbers / Getting particular decimals	-	objc
 macro	open	NSDecimalNoScale		Fundamentals / Numbers / Getting particular decimals	-	objc
 macro	open	NSEDGEINSETS_DEFINED		Reference / Macros	-	objc
@@ -2120,7 +2120,7 @@ macro	open	NSOperationQualityOfServiceBackground		Reference / Macros	-	objc
 macro	open	NSOperationQualityOfServiceUserInitiated		Reference / Macros	-	objc
 macro	open	NSOperationQualityOfServiceUserInteractive		Reference / Macros	-	objc
 macro	open	NSOperationQualityOfServiceUtility		Reference / Macros	-	objc
-macro	open	NSParameterAssert		App Support / Assertions	-	objc
+macro	shipped	NSParameterAssert		App Support / Assertions	-	objc
 macro	open	NSTimeIntervalSince1970	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
 macro	open	NSURLResponseUnknownLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 macro	open	NSURLSESSION_AVAILABLE		Reference / Macros	-	objc
@@ -2359,7 +2359,7 @@ var	open	NSAppleScriptErrorMessage	NSAppleScript	App Support / Script Execution 
 var	open	NSAppleScriptErrorNumber	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
 var	open	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
 var	open	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
-var	open	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
+var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	open	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc

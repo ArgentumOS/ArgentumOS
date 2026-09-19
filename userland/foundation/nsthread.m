@@ -17,6 +17,7 @@
  */
 
 #import <foundation/NSThread.h>
+#import <foundation/NSDictionary.h>
 #import <foundation/NSString.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -227,4 +228,16 @@ static void *fn_thread_entry(void *context)
 				  _isMain ? @" main" : @""];
 }
 
+
+/* THE PER-THREAD STORE (W2d's dependency). `+currentThread` already resolves THIS thread's object
+ * through a pthread key, so the dictionary is one ivar away — and that is the faithful home, because
+ * Apple's contract is that the dictionary belongs to the thread OBJECT, not to a global table. The
+ * main thread gets one the same way every other thread does. */
+- (NSMutableDictionary *)threadDictionary
+{
+	if (_threadDictionary == nil) {
+		_threadDictionary = [[NSMutableDictionary alloc] init];
+	}
+	return (NSMutableDictionary *)_threadDictionary;
+}
 @end
