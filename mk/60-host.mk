@@ -27,9 +27,19 @@
 #     OLDABI_COMPAT=OFF to mirror the guest, and the prefix really was built without them - and the
 #     same three checks still fail. (`host-libobjc` is kept: matching the guest is right regardless.)
 #   * NOT optimisation. The guest's FOUNDATION_CFLAGS carries no -O, and -O0 here changes nothing.
-# The next diagnostic is the arc-pool check ITSELF: read it and make it print the intermediate state,
-# because the message it emits ("the runtime's pool released an ARC-managed object") names a RUNTIME
-# interaction and nothing yet says which half is wrong.
+# WHAT THE MEASUREMENT SAYS, from printing foundation_core_deallocs() before, DURING (inside the pool,
+# after the ARC assignment) and after: before=during=after. THE OBJECT NEVER DIES AT ALL - not at the
+# assignment, not at the drain. And a second, identical lifetime WITHOUT the forwarded [c setValue:9]
+# call behaves the same way, so the forwarding path is not the cause either. The same class deallocates
+# correctly in the `lifecycle` check minutes earlier, which is what makes this specific to a pool.
+# ALSO REFUTED, so do not spend these either: the runtime the probe actually LOADS is the rebuilt one
+# (checked with ldd, after the earlier mistake of assuming an artifact had been replaced); the probe's
+# @autoreleasepool really does compile to objc_autoreleasePoolPush/Pop, which the runtime provides; and
+# the library's NSAutoreleasePool carries its ARC marker in BOTH the guest and host objects (compared
+# with strings on the two .o files, because nm -D cannot see a method and I looked there first).
+# THE STATE OF THE DIAGNOSIS: six explanations tested, six wrong. The next step is not another theory
+# from this list - it is to make the pool itself observable (log what the runtime's pool holds), or to
+# build the guest's SAME probe sources against the host runtime differently until they disagree.
 # UNTIL THAT IS UNDERSTOOD, THIS IS A FAST ITERATION LOOP AND NOT A SUBSTITUTE: a host pass is
 # evidence, and a host failure on one of those three proves nothing about the guest.
 
