@@ -4016,7 +4016,7 @@ what the ledger actually holds.
 | Slice | Contents | State |
 |---|---|---|
 | **W2a the C accessors** | `NSStringFromClass`, `NSClassFromString`, `NSStringFromSelector`, `NSSelectorFromString`, `NSStringFromRange` — the runtime↔string boundary | **LANDED and verified: `foundation_core` 18/18, and the five rows read `shipped` in the surface file** |
-| **W2b the geometry family** | `NSPoint`/`NSSize`/`NSRect` + their pointer/array aliases, `NSEdgeInsets`, `NSRectEdge`, the 34 geometry and range functions, and the four zero constants — `userland/foundation/NSGeometry.h` + `ngeometry.m` | **LANDED and verified: `foundation_core` 21/21 with `geometry-rects`, `geometry-edges` and `geometry-strings`, whole gate 4/4 cases and 24/24 checks.** It also closed the six **CoreGraphics interop** conversions and `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES`, because **the user decided to define CG's VALUE TYPES** (see §14.1). One thing remains out of it: `NSAlignmentOptions` (+`NSIntegralRectWithOptions`), whose constants are defined by BIT POSITION and a wrong bit is invisible until someone compares numbers — it lands once each published value is checked |
+| **W2b the geometry family** | `NSPoint`/`NSSize`/`NSRect` + their pointer/array aliases, `NSEdgeInsets`, `NSRectEdge`, the 34 geometry and range functions, and the four zero constants — `userland/foundation/NSGeometry.h` + `ngeometry.m` | **LANDED and verified: `foundation_core` 21/21 with `geometry-rects`, `geometry-edges` and `geometry-strings`, whole gate 4/4 cases and 24/24 checks.** It also closed the six **CoreGraphics interop** conversions and `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES`, because **the user decided to define CG's VALUE TYPES** (see §14.1). **COMPLETE**, including the residue that was parked for a measurement: `NSAlignmentOptions` (22 constants) and `NSIntegralRectWithOptions` — see §14.2 for what is Apple's in them and what is ours |
 | W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | |
 | W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | |
 | W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | |
@@ -4073,3 +4073,32 @@ APPLE'S spellings, and this one is ours. A reader who notices the omission is to
 **AND ONE STALE CLAIM WENT WITH IT:** `NSGeometry.h`'s comment block still said this tree has no
 CoreGraphics and that the six conversions "wait on a CoreGraphics decision" — true for one commit and
 false the moment the types landed, so it was rewritten in the same change.
+
+### 14.2 `NSAlignmentOptions` LANDED, AND THE PART THAT IS OURS (measured first)
+
+**The parked question was "are Apple's bit positions published?" — they are not.** Measured: the
+per-constant documentation pages carry **no prose and no value** (`alignMinXInward` is a `property`
+page whose body is empty), and `NSIntegralRectWithOptions`' page is two sentences — *"adjusts the sides
+of a rectangle to integral values using the specified options"* / *"a copy of rect, modified based on
+the options"*. What Apple publishes is the constants' **meanings**, which is why the algorithm is not
+on the page either.
+
+**So the BIT POSITIONS ARE THIS TREE'S** — disjoint, one bit per constant, the three composites as ORs
+of their members — and `NSGeometry.h` says so where a reader meets them. **The cost is bounded and
+stated:** a program that uses these constants **by name** (the documented usage; they are opaque flags)
+observes nothing different, and a program that hard-codes a bit position or bit-tests with a literal
+would.
+
+**THE BEHAVIOUR IS DERIVED FROM THE NAMES, which is what Apple does publish:** each edge's *inward*
+option makes the result CONTAINED in the argument, *outward* makes it CONTAIN the argument, *nearest*
+rounds it; a side with **no option is left alone** (the reading of "using the specified options"); the
+**width/height** forms are the same decision expressed as a size, and apply only when the max edge
+itself was not given; and **`NSAlignRectFlipped` inverts the two Y sides**, because in a flipped
+coordinate system the min Y edge is the TOP one. The probe asserts every one of those, plus that the
+composites are ORs of bits that are **disjoint** — a property test rather than a value test, which is
+the honest kind here.
+
+**WHAT THIS DOES *NOT* CLAIM**, so the boundary is not mistaken: this is not a claim that our values
+equal Apple's, and under §11.5's new ABI exclusion it is not a claim about layout either — it is a
+claim about the constants a program names and the behaviour it observes. If Apple's values are ever
+published, the values change and nothing above moves.

@@ -31,9 +31,9 @@
 #   class      shipped   61   open  181   struck   31
 #   protocol   shipped    5   open   31   struck    9
 #   macro      shipped    4   open  223   struck   26
-#   enum       shipped   28   open  124   struck    8
-#   case       shipped  156   open 1053   struck   93
-#   func       shipped   48   open   87   struck   54
+#   enum       shipped   29   open  123   struck    8
+#   case       shipped  178   open 1031   struck   93
+#   func       shipped   49   open   86   struck   54
 #   var        shipped   50   open  717   struck  147
 #   typealias  shipped   16   open   57   struck    3
 #   struct     shipped    4   open    4   struck    5
@@ -51,28 +51,28 @@ case	open	NSActivityUserInitiatedAllowingIdleSystemSleep	NSProcessInfo	App Suppo
 case	open	NSActivityUserInteractive	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	open	NSAdminApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSAggregateExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSAlignAllEdgesInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignAllEdgesNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignAllEdgesOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignHeightInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignHeightNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignHeightOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMaxXInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMaxXNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMaxXOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMaxYInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMaxYNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMaxYOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMinXInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMinXNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMinXOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMinYInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMinYNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignMinYOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignRectFlipped		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignWidthInward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignWidthNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAlignWidthOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignAllEdgesInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignAllEdgesNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignAllEdgesOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignHeightInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignHeightNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignHeightOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMaxXInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMaxXNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMaxXOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMaxYInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMaxYNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMaxYOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMinXInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMinXNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMinXOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMinYInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMinYNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignMinYOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignRectFlipped		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignWidthInward		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignWidthNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
+case	shipped	NSAlignWidthOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
 case	open	NSAllApplicationsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSAllDomainsMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	open	NSAllLibrariesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
@@ -1613,7 +1613,7 @@ class	open	NSXPCInterface		Low-Level Utilities / XPC Client	-	objc
 class	open	NSXPCListener		Low-Level Utilities / XPC Services	-	objc
 class	open	NSXPCListenerEndpoint		Low-Level Utilities / XPC Services	-	objc
 enum	open	NSActivityOptions	NSProcessInfo	App Support / System Interaction / Managing activities	-	objc
-enum	open	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
+enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
 enum	open	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	-	objc
 enum	open	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 enum	open	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
@@ -1850,7 +1850,7 @@ func	open	NSHostByteOrder		Low-Level Utilities / Byte Ordering / Functions	-	obj
 func	open	NSIncrementExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSInsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIntegralRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSIntegralRectWithOptions		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSIntegralRectWithOptions		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIntersectionRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSIntersectionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSIntersectsRect		Fundamentals / Geometry / Managing Rectangles	-	objc

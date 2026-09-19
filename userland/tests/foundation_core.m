@@ -249,6 +249,43 @@ int main(void)
 		      NSEqualRects(NSRectToCGRect(NSMakeRect(1.0, 2.0, 3.0, 4.0)),
 				   NSMakeRect(1.0, 2.0, 3.0, 4.0)),
 		      "the NS geometry types ARE the CG types: CGFloat is double, the layouts match, and the six conversions are identities");
+
+		/*
+		 * THE OPTION-DRIVEN INTEGRATION (W2b's residue). The BIT POSITIONS are this
+		 * tree's (Apple publishes the constants' meanings and not their values — see
+		 * NSGeometry.h), so what is asserted here is the BEHAVIOUR the names promise:
+		 * inward contains, outward contains the argument, nearest rounds, an
+		 * unspecified side is left alone, and the flipped flag swaps the Y sense.
+		 */
+		{
+			NSRect r = NSMakeRect(1.4, 2.6, 3.4, 4.6);	/* 1.4, 2.6 -> 4.8, 7.2 */
+
+			check("geometry-alignment",
+			      NSEqualRects(NSIntegralRectWithOptions(r, NSAlignAllEdgesOutward),
+					   NSMakeRect(1.0, 2.0, 4.0, 6.0)) &&
+			      NSEqualRects(NSIntegralRectWithOptions(r, NSAlignAllEdgesInward),
+					   NSMakeRect(2.0, 3.0, 2.0, 4.0)) &&
+			      NSEqualRects(NSIntegralRectWithOptions(r, NSAlignAllEdgesNearest),
+					   NSMakeRect(1.0, 3.0, 4.0, 4.0)) &&
+			      NSEqualRects(NSIntegralRectWithOptions(r, NSAlignRectFlipped |
+								     NSAlignAllEdgesInward),
+					   NSMakeRect(2.0, 2.0, 2.0, 6.0)) &&
+			      /* AN UNSPECIFIED SIDE IS UNTOUCHED, and no option at all changes nothing. */
+			      NSEqualRects(NSIntegralRectWithOptions(r, NSAlignMinXInward),
+					   NSMakeRect(2.0, 2.6, 2.8, 4.6)) &&
+			      NSEqualRects(NSIntegralRectWithOptions(r, 0), r) &&
+			      /* THE WIDTH FORM IS THE SAME DECISION AS THE MAX EDGE. */
+			      NSEqualRects(NSIntegralRectWithOptions(r, NSAlignMinXInward |
+								     NSAlignWidthInward),
+					   NSMakeRect(2.0, 2.6, 2.0, 4.6)) &&
+			      /* THE COMPOSITES ARE ORs OF THEIR MEMBERS, and the bits are disjoint. */
+			      NSAlignAllEdgesInward == (NSAlignMinXInward | NSAlignMinYInward |
+							NSAlignMaxXInward | NSAlignMaxYInward) &&
+			      (NSAlignMinXInward & NSAlignMinYInward) == 0 &&
+			      (NSAlignMinXInward & NSAlignMinXOutward) == 0 &&
+			      (NSAlignMinXInward & NSAlignMinXNearest) == 0,
+			      "inward/outward/nearest per edge, unspecified sides untouched, the flipped flag inverting Y, and composites that are ORs of disjoint bits");
+		}
 	}
 	}
 

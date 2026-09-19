@@ -128,6 +128,100 @@ NSRect NSIntegralRect(NSRect aRect)
 	return NSMakeRect(minX, minY, maxX - minX, maxY - minY);
 }
 
+/* THE OPTION-DRIVEN INTEGRATION (see the header for what is OURS here and what is Apple's).
+ *
+ * EACH SIDE IS INDEPENDENT: a side with no option keeps its value. INWARD means the result is
+ * CONTAINED in the argument (the min edge moves up, the max edge moves down); OUTWARD means it
+ * CONTAINS it; NEAREST rounds each. NSAlignRectFlipped inverts the two Y sides, because in a
+ * flipped system the min edge is the TOP one. A WIDTH/HEIGHT option is the same decision
+ * expressed as a size, and applies only when the max edge itself was not given. */
+NSRect NSIntegralRectWithOptions(NSRect aRect, NSAlignmentOptions options)
+{
+	double minX, minY, maxX, maxY;
+	BOOL flipped = (options & NSAlignRectFlipped) ? YES : NO;
+	BOOL touched = NO;
+
+	if (NSIsEmptyRect(aRect)) {
+		return NSZeroRect;
+	}
+	minX = NSMinX(aRect);
+	minY = NSMinY(aRect);
+	maxX = NSMaxX(aRect);
+	maxY = NSMaxY(aRect);
+
+	if (options & NSAlignMinXInward) {
+		minX = __builtin_ceil(minX);
+		touched = YES;
+	} else if (options & NSAlignMinXOutward) {
+		minX = __builtin_floor(minX);
+		touched = YES;
+	} else if (options & NSAlignMinXNearest) {
+		minX = __builtin_round(minX);
+		touched = YES;
+	}
+	if (options & NSAlignMaxXInward) {
+		maxX = __builtin_floor(maxX);
+		touched = YES;
+	} else if (options & NSAlignMaxXOutward) {
+		maxX = __builtin_ceil(maxX);
+		touched = YES;
+	} else if (options & NSAlignMaxXNearest) {
+		maxX = __builtin_round(maxX);
+		touched = YES;
+	} else if (options & (NSAlignWidthInward | NSAlignWidthOutward | NSAlignWidthNearest)) {
+		double width = maxX - minX;
+
+		if (options & NSAlignWidthInward) {
+			width = __builtin_floor(width);
+		} else if (options & NSAlignWidthOutward) {
+			width = __builtin_ceil(width);
+		} else {
+			width = __builtin_round(width);
+		}
+		maxX = minX + width;
+		touched = YES;
+	}
+
+	/* THE Y SIDES, WITH `flipped` SWAPPING WHICH DIRECTION IS "IN". */
+	if (options & NSAlignMinYInward) {
+		minY = flipped ? __builtin_floor(minY) : __builtin_ceil(minY);
+		touched = YES;
+	} else if (options & NSAlignMinYOutward) {
+		minY = flipped ? __builtin_ceil(minY) : __builtin_floor(minY);
+		touched = YES;
+	} else if (options & NSAlignMinYNearest) {
+		minY = __builtin_round(minY);
+		touched = YES;
+	}
+	if (options & NSAlignMaxYInward) {
+		maxY = flipped ? __builtin_ceil(maxY) : __builtin_floor(maxY);
+		touched = YES;
+	} else if (options & NSAlignMaxYOutward) {
+		maxY = flipped ? __builtin_floor(maxY) : __builtin_ceil(maxY);
+		touched = YES;
+	} else if (options & NSAlignMaxYNearest) {
+		maxY = __builtin_round(maxY);
+		touched = YES;
+	} else if (options & (NSAlignHeightInward | NSAlignHeightOutward | NSAlignHeightNearest)) {
+		double height = maxY - minY;
+
+		if (options & NSAlignHeightInward) {
+			height = __builtin_floor(height);
+		} else if (options & NSAlignHeightOutward) {
+			height = __builtin_ceil(height);
+		} else {
+			height = __builtin_round(height);
+		}
+		maxY = minY + height;
+		touched = YES;
+	}
+
+	if (!touched) {
+		return aRect;		/* nothing specified: the rect is left alone */
+	}
+	return NSMakeRect(minX, minY, maxX - minX, maxY - minY);
+}
+
 BOOL NSContainsRect(NSRect aRect, NSRect bRect)
 {
 	if (NSIsEmptyRect(bRect)) {

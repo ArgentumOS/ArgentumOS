@@ -59,6 +59,53 @@ typedef NSSize *NSSizeArray;
 typedef NSRect *NSRectPointer;
 typedef NSRect *NSRectArray;
 
+/*
+ * NSAlignmentOptions, AND THE ONE PLACE IN THIS HEADER WHERE THE VALUES ARE OURS.
+ *
+ * MEASURED BEFORE IMPLEMENTING: Apple publishes each constant's MEANING and not its bit
+ * position — the per-constant docs pages carry no prose and no value, and
+ * NSIntegralRectWithOptions' page is two sentences long ("adjusts the sides of a rectangle to
+ * integral values using the specified options" / "a copy of rect, modified based on the
+ * options"). So the bit positions below are THIS TREE'S: disjoint, one bit per constant, and
+ * the three composites are ORs of their members. The BEHAVIOUR follows from the constants'
+ * names, which is what Apple does publish.
+ *
+ * WHAT THAT COSTS, stated rather than discovered: a program that uses these constants BY NAME
+ * (the documented usage — they are opaque flags) observes nothing different. A program that
+ * hard-codes a bit position, or bit-tests with a literal, would.
+ */
+typedef unsigned long NSAlignmentOptions;
+
+#define NSAlignMinXInward	(1UL << 0)
+#define NSAlignMinYInward	(1UL << 1)
+#define NSAlignMaxXInward	(1UL << 2)
+#define NSAlignMaxYInward	(1UL << 3)
+#define NSAlignWidthInward	(1UL << 4)
+#define NSAlignHeightInward	(1UL << 5)
+#define NSAlignMinXOutward	(1UL << 8)
+#define NSAlignMinYOutward	(1UL << 9)
+#define NSAlignMaxXOutward	(1UL << 10)
+#define NSAlignMaxYOutward	(1UL << 11)
+#define NSAlignWidthOutward	(1UL << 12)
+#define NSAlignHeightOutward	(1UL << 13)
+#define NSAlignMinXNearest	(1UL << 16)
+#define NSAlignMinYNearest	(1UL << 17)
+#define NSAlignMaxXNearest	(1UL << 18)
+#define NSAlignMaxYNearest	(1UL << 19)
+#define NSAlignWidthNearest	(1UL << 20)
+#define NSAlignHeightNearest	(1UL << 21)
+
+/* "The rect is in a FLIPPED coordinate system (y grows downward)", which inverts which
+ * direction is inward for the two Y sides. */
+#define NSAlignRectFlipped	(1UL << 63)
+
+#define NSAlignAllEdgesInward	(NSAlignMinXInward | NSAlignMinYInward | \
+				 NSAlignMaxXInward | NSAlignMaxYInward)
+#define NSAlignAllEdgesOutward	(NSAlignMinXOutward | NSAlignMinYOutward | \
+				 NSAlignMaxXOutward | NSAlignMaxYOutward)
+#define NSAlignAllEdgesNearest	(NSAlignMinXNearest | NSAlignMinYNearest | \
+				 NSAlignMaxXNearest | NSAlignMaxYNearest)
+
 typedef enum {
 	NSRectEdgeMinX = 0,
 	NSRectEdgeMinY = 1,
@@ -104,6 +151,11 @@ double NSMaxY(NSRect aRect);
 double NSMidX(NSRect aRect);
 double NSMidY(NSRect aRect);
 BOOL NSIsEmptyRect(NSRect aRect);
+
+/* Rounds a rect's sides to integral values BY THE OPTIONS. A side with no option is LEFT
+ * ALONE — which is the reading of "using the specified options" — and a rect that is empty
+ * answers the zero rect, as -NSIntegralRect does. */
+NSRect NSIntegralRectWithOptions(NSRect aRect, NSAlignmentOptions options);
 
 /* Making new rects from old ones. */
 NSRect NSInsetRect(NSRect aRect, double dX, double dY);
