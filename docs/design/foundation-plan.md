@@ -3684,3 +3684,129 @@ rather than discovered later:
   decides by NAME and records the reason per row.
 
 Everything else is a defect, and §11.3 is where it lives.
+
+## 12. THE BUILD-OUT, IN DEPENDENCY ORDER (2026-09-18)
+
+§11 says what is missing. §11.3.1 counts it and the surface file enumerates it. **This section is the
+ORDER** — and it is derived from the ledger rather than from taste: every unit names the rows it closes,
+the unit it needs first, and the gate that says it is done.
+
+### 12.1 The rules of the order
+
+1. **A UNIT IS A FAMILY WITH ONE VERIFICATION** — not a file, not a class, and not an Apple group. It
+   lands with its probe and its guest gate, exactly as every F-numbered stage before it did.
+2. **ORDER BY DEPENDENCY, THEN BY COST.** A unit that unblocks others goes first even when it is
+   expensive; a cheap unit that unblocks nothing waits behind whatever it needs.
+3. **A UNIT IS DONE ON THREE SIGNALS, ALWAYS:** its rows flip to `shipped` in
+   `docs/reference/foundation-apple-surface.txt`, `tools/foundation-sweep.py --check` is green, and its
+   probe runs on the guest. §11.2's mechanical source is what keeps the ledger honest about the first
+   two; the probe is what keeps it honest about the third.
+4. **A DEPENDENCY WE DO NOT HAVE IS ADDED, NEVER REFUSED** (§11's rule/table line). §12.6 is the list
+   of those — a parser, a transport, a diff, an mDNS responder — and it is the only part of this
+   program that is not code.
+5. **THE 1,805 MEMBER ROWS RIDE WITH THEIR OWNER'S UNIT.** A constant, an enum or a type alias belongs
+   to the class that documents it, so it lands when that class does. That is the whole reason the
+   ledger was built with an `owner` column.
+
+### 12.2 The graph, in one picture
+
+```
+ W1 character-indexed strings ──► W10 attributed strings (markdown)
+   │                            └► W15 scanning (NSScanner)
+   └────────────────────────────► (every string-shaped unit gets cheaper)
+
+ W2 dependency-free API      (no edges: the C accessors, the macro index, the small value types)
+ W3 NSDecimal ──► NSDecimalNumber family
+ W4 notifications ──► (W19, W7, W22 reuse the registry)
+ W5 NSUserDefaults           (rides the config domains that already ship)
+
+ W6 process & I/O ──┬──► W7 URL loading (32 classes) ──► (NSURLError*/HTTP constant masses)
+   (run-loop SOURCES)└──► W22 XPC            │
+                                            └──► credentials ──► keychain decision
+
+ W8 file system deepened ──► W21 content services (metadata index, spell server)
+ W9 coders' second half      (rides the shipped coder family)
+ W11 ICU formatters ──┐
+ W12 units (28)       ├──► (data-driven; W11 needs ICU, W12 needs nothing)
+ W14 morphology    ───┘
+ W13 pointer/purgeable/difference collections
+ W16 XML ──► (a parser to add: §12.6)
+ W17 operations' block forms ──► (stored blocks; the main queue)
+ W18 NSBundle ──► (the bundle mechanism: a DIFFERENT project)
+ W20 network services ──► (mDNS/DNS-SD to add)
+ W23 scripting & Apple events ──► (an AppleScript engine: the deepest dependency in the ledger)
+```
+
+### 12.3 The units, in order
+
+| # | Unit | Closes (rows) | Needs first | Why here |
+|---|---|---|---|---|
+| **W1** | **the character-indexed string core** — `-length` in UTF-16 units, `-characterAtIndex:`, the `…Characters:` / `getCharacters:range:` family, and every NSRange-taking string API | the 5 string rows in probes' `excluded` arrays + the whole class of range-shaped API | nothing | **§11.4 item 2, and first for its own reason:** it is the difference a Cocoa program notices on its FIRST LINE, and it makes W10 and W15 possible instead of awkward |
+| **W2** | **the dependency-free API** — the **macro index** (196 free-standing macros: the `NSAssert`/`NSCAssert` family, the availability and nullability macros, and `MIN`/`MAX`/`ABS`/`FOUNDATION_EXPORT`/`NSGEOMETRY_TYPES_*`), the 13 type aliases, 4 structs and 14 enums **with their 131 free-standing cases**, the ~105 cheap C functions (`NSStringFromClass`/`Selector`, `NSClassFromString`/`SelectorFromString`, `NSStringFromRange`, `NSUnionRange`/`NSIntersectionRange`/`NSContainsRect`, `NSClassFromString`, the byte-order swaps, `NSAllocateMemoryPages` …), `NSUUID`, `NSAffineTransform`, `NSDateInterval`, `NSValueTransformer`, `NSProgressReporting`, `NSUndoManager`, `NSAssertionHandler`, `NSJSONSerialization`, and the object basics (`NSObject` **protocol**, `NSAutoreleasePool`, `NSProxy`) | ~360 free-standing rows + 9 classes + 3 object-basics rows | nothing | the highest fidelity per line in the entire ledger, and it clears `Reference` (162 rows) which otherwise dominates the free-standing count. **The `NSObject` protocol is here because it is cross-cutting** — `id<NSObject>` appears in headers we have not written yet |
+| **W3** | **`NSDecimal` → the `NSDecimalNumber` family** — the decimal C functions (`NSDecimalAdd`/`Subtract`/`Multiply`/`Divide`/`Round`/`Compact`/`Copy`/`MultiplyByPowerOf10` and the accessors), the `NSDecimal` struct, `NSCalculationError`, then `NSDecimalNumber`, `NSDecimalNumberHandler`, `NSDecimalNumberBehaviors` | 3 classes + the decimal funcs + 2 structs/enums + **two rows currently in `foundation_value`'s `excluded` list** (`decimalValue`, `numberWithDecimal:`) | nothing | self-contained arithmetic, and it is the cheapest way to close a SEEDED ledger row and two probe exclusions at once |
+| **W4** | **notifications** — `NSNotification` (+28 constants), `NSNotificationCenter`, `NSNotificationQueue` | 3 classes + the notification-name constants | `NSRunLoop` ✓ (shipped) | small, and it is the substrate W7, W19 and W22 reuse |
+| **W5** | **`NSUserDefaults`** | 1 class | the plist/libconfig core ✓ and the `system.*.conf` domains ✓ (M7 shipped) | the one unit whose STORAGE already exists in this tree, which makes it cheap here and valuable everywhere (every app's settings) |
+| **W6** | **process and I/O** — `NSFileHandle` (a descriptor wrapper, so it lives here rather than with the file-system unit), `NSPipe`, `NSTask`, `NSStream`, `NSInputStream`, `NSOutputStream`, `NSStreamDelegate` (+`NSStream`'s 44 member constants) | **6 classes** — and the four `NSUser*Task` classes (`NSUserScriptTask`, `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserUnixTask`) are NOT here: they run scripts, so they belong with W23's engine | file descriptors ✓, fork/exec ✓, `NSRunLoop` ✓ — **and this unit must ADD run-loop SOURCES**, because the shipped run loop has timers and no sources | it is where that gap is paid, and W7 and W22 both stand on it |
+| **W7** | **the URL loading system** — `NSURLRequest`/`Mutable`/`Response`/`HTTPURLResponse`, `NSHTTPCookie`/`Storage`, `NSCachedURLResponse`/`URLCache`, `NSURLProtocol`/`Client`, `NSURLSession` + its task subclasses/delegates/config/metrics, `NSURLAuthenticationChallenge`/`Credential`/`CredentialStorage`/`ProtectionSpace` (+ `NSURL`'s 161 and `NSError`'s 146 constant rows) | **24 classes** (the measured count of open `Networking` classes, and every one of them is URL loading) **+ two constant masses** | W6, a transport (HTTP over the shipped socket layer), and a credential store whose decision is the Keychain question (`keychain-plan.md`) | the largest family in the ledger, and the one the run loop was landed early for (§10, F13.18) |
+| **W8** | **the file system deepened** — `NSDirectoryEnumerator`, `NSFileWrapper`, `NSFileSecurity`, `NSFileManagerDelegate` (+ `NSFileManager`'s 111 constants), then the coordinator family `NSFileCoordinator`/`NSFilePresenter`/`NSFileAccessIntent`/`NSFileVersion`/`NSFileProviderService` | **9 classes + 111 member rows** | `NSFileManager` ✓ (F13.14); the coordinator half needs a presenter registry, which is INSIDE the unit | the cheap half rides a shipped class; the coordinator half is self-contained and is what makes the file APIs safe under concurrency |
+| **W9** | **the coders' second half** — `NSSecureCoding`, class-name substitution, `NSKeyedArchiverDelegate`, `NSKeyedUnarchiverDelegate`, `NSSecureUnarchiveFromDataTransformer` | 6 rows (+2 seeded) | the shipped coder family (F13.12) | small, and it closes two seeded ledger rows |
+| **W10** | **attributed strings** — `NSAttributedString`, `NSMutableAttributedString`, `NSPresentationIntent`, the markdown options and source position (+ `NSAttributedString`'s 48 constants) | 5 classes + 48 rows | **W1** (an attribute range IS an NSRange in UTF-16 units) and a markdown parser (§12.6) | it cannot precede W1, and it is the biggest Fundamental left in strings |
+| **W11** | **the data formatters (ICU)** — `NSByteCountFormatter`, `NSDateComponentsFormatter`, `NSDateIntervalFormatter`, `NSISO8601DateFormatter`, `NSRelativeDateTimeFormatter`, `NSListFormatter` (+ `NSPersonNameComponents`) | 6 classes | ICU ✓ already bound and already in the image | **§11.4 item 3: the highest fidelity per unit of work in the table** |
+| **W12** | **units and measurement** — `NSMeasurement`, `NSUnit`, `NSDimension`, `NSUnitConverter`/`Linear`, the 24 `NSUnit*` subclasses, `NSMeasurementFormatter` | **28 classes** | nothing but published conversion tables (ICU for the formatter) | the largest count with the fewest unknowns: a data table, and §11's rule/table line says a table to add is a dependency, not a refusal |
+| **W13** | **the collections completed** — `NSPointerFunctions` FIRST (it is the other three's core), then `NSPointerArray`, `NSHashTable`, `NSMapTable`, `NSCache`/`NSCacheDelegate`, `NSDiscardableContent`/`NSPurgeableData`, and `NSOrderedCollectionDifference`/`Change` (needs a diff algorithm, §12.6) | 10 classes | nothing (and the diff) | it completes the collection layer, which is the layer the rest of the library is written against |
+| **W14** | **grammar agreement** — `NSInflectionRule`/`Explicit`, `NSMorphology` (+29 rows), `NSMorphologyPronoun`, `NSTermOfAddress` | **5 classes** (`NSMorphologyCustomPronoun` is STRUCK, so it is not in this unit or any other) | ICU (morphology + inflection) | same binding as W11, so it is cheap wherever it lands |
+| **W15** | **scanning and detection** — `NSScanner`, `NSDataDetector` | 2 classes | W1 (character-based scanning); a detector to add | after W1, not before |
+| **W16** | **XML** — `NSXMLParser` (+100 rows), `NSXMLNode`/`Element`/`Document`/`DTD`/`DTDNode` (+43 rows) | 7 classes + 143 member rows | **a parser to add** (expat is MIT-viable; §12.6) | a parser family, so it follows the cheap string work rather than leading it |
+| **W17** | **the operations' second half** — `NSBlockOperation`, `NSInvocationOperation`, `-addOperationWithBlock:`, `-completionBlock`, QoS/priority, and `NSProgress`'s `-publish`/`-unpublish`/subscribers/`-cancellationHandler`/`-estimatedTimeRemaining` | 2 classes + **2 seeded rows** (§11.3's F13.19 and F13.20 rows, each holding several selectors) | **blocks that must be STORED AND COPIED** (`-completionBlock` holds one), and a main queue that runs on the MAIN THREAD — today it runs on worker threads, which §10 records as a real difference | the dependency is ownership, not syntax: blocks already appear in shipped headers (`sortUsingComparator:`, `enumerateObjectsUsingBlock:`) |
+| **W18** | **`NSBundle`** (+ `NSBundleResourceRequest` is STRUCK, so not this) | 1 class | **the bundle mechanism** — `bundle-launch-plan.md`'s launch helper and the kernel's bundle identity check, which are DECIDED and NOT BUILT | it is gated by a different project, so it moves when that one does |
+| **W19** | **app support, remainder** — `NSUserActivity`/`Delegate`, `NSBackgroundActivityScheduler`, `NSItemProvider`/`Reading`/`Writing`, `NSExtensionContext`/`Item`/`RequestHandling`, `NSDistributedNotificationCenter`, `NSOrthography` | **11 classes** (`NSPersonNameComponents` is W11's, because a formatter needs it) | W4; the extension half needs an XPC-style host (W22) | the split is deliberate: the cheap half lands here, the host-dependent half waits |
+| **W20** | **network services** — `NSNetServiceDelegate` and `NSNetServiceBrowserDelegate` | **2 protocols, not 5 classes**, and this is a LEDGER QUESTION rather than a unit as written: **`NSHost`, `NSNetService` and `NSNetServiceBrowser` are STRUCK (deprecated) while their two delegate protocols are not** — so the ledger says "do not ship the class, do ship its delegate". Either §11.5's deprecated rule must reach a protocol that exists only to serve a deprecated class, or the protocols stay and land here. **Measured, recorded, and decided when this unit is reached** | if the protocols stay: an mDNS/DNS-SD responder to add |
+| **W21** | **content services** — `NSMetadataItem` (+180 rows), `NSMetadataQuery`/`Delegate`/`ResultGroup`/`AttributeValueTuple`, `NSSpellServer`/`Delegate` | 7 classes + ~190 rows | an index over something: for this OS the honest backing is **FSH metadata / the config tree**, not Spotlight's | the largest single member mass in the ledger, and the reason it is late: it is a SERVICE, and a service needs a substrate this tree has not chosen yet |
+| **W22** | **XPC** — `NSXPCConnection`/`Interface`/`Listener`/`ListenerEndpoint`/`Delegate`/`ProxyCreating`/`XPCCoder` | 7 classes | a transport and a service manager (mach messages + launchd in Cocoa; here it would be AF_UNIX/SysV IPC + init) and W6 | **the family a single process cannot demonstrate**, which is why it needs its own hosting story before its API |
+| **W23** | **scripting and Apple events** — the scripting family plus the four `NSUser*Task` classes that run scripts | **38 classes — the largest family in the ledger** | an AppleScript **engine** | LAST, and honestly: the dependency is a language implementation. §11's rule (a table we do not have is a dependency to ADD) applies at its extreme, and this row is where "100%" meets a wall that is not this library's |
+
+### 12.4 The critical path
+
+**W1 → W10/W15**, **W6 → W7**, **W6 → W22 → W19's extension half**, and **W21 → nothing but its own
+substrate**. Everything else is either dependency-free (W2, W3, W5, W12, W13) or waits on one edge. The
+longest chain in the ledger is **W1 → W10 → (markdown)**, and the widest fan-out is **W6**, which three
+later units stand on.
+
+### 12.5 What is deliberately LAST, and why
+
+| Unit | The reason, stated rather than implied |
+|---|---|
+| **W23 scripting** | it needs an AppleScript engine. Not a library to bind — a language. |
+| **W22 XPC** | it needs a host and a service manager, so its API cannot be demonstrated by its own probe. |
+| **W21 metadata/spelling** | both are services over a substrate (an index; a word list) that this OS has not chosen. |
+| **W18 `NSBundle`** | it is gated by the bundle mechanism, which is a separate DECIDED-not-built project. |
+| **W20 Bonjour** | needs an mDNS responder; `NSHost` alone would have been W2. |
+
+### 12.6 The dependencies to ADD (this is the non-code list)
+
+| What | For | Why it is the plan's business |
+|---|---|---|
+| a **markdown parser** | W10 | `NSAttributedString`'s markdown initialisers are Apple API with a grammar behind them |
+| an **XML parser** (expat is MIT-viable) | W16 | §11's rule/table line: a table we do not have is a dependency to add |
+| a **diff algorithm** | W13 (`NSOrderedCollectionDifference`) | Apple's `differenceFromArray:` has a published contract and no table |
+| an **HTTP transport** | W7 | the socket layer ships; the protocol layer is ours to write |
+| a **credential store** decision (`keychain-plan.md`) | W7 | the store is where the Keychain decision lands |
+| **run-loop SOURCES** | W6 | the shipped run loop has timers only, and streams, tasks and XPC all need sources |
+| **stored blocks** (copy/own semantics under manual ownership) | W17 | `-completionBlock` holds a block past the call that made it |
+| the **main queue on the main thread** | W17 | today it runs on worker threads — a recorded difference, not an oversight |
+| the **bundle mechanism** (`bundle-launch-plan.md`) | W18 | DECIDED, not built |
+| an **mDNS/DNS-SD responder** | W20 | `NSNetService` is a protocol, not a table |
+| an **AppleScript engine** | W23 | see 12.5 |
+
+### 12.7 What this order does NOT claim
+
+* **It does not re-open §11.5.** The 376 struck rows — `deprecated`, `swift-only`, `32-bit-only` — are
+  not in this program at all, by the user's decisions, and the `why` column is where each one's reason
+  lives.
+* **It does not promise the order survives contact.** W5, W12 and W13 have no dependencies and could be
+  taken in any sequence; the order above is the DEPENDENCY order, not a schedule.
+* **It does not make W23 disappear.** The ledger says 100% and the ledger includes the scripting
+  family; this section records that its dependency is a language rather than pretending it is another
+  family.
+* **It does not re-decide the copying model.** That deviation is made and paid for (§11.3.1 note 1);
+  nothing here depends on it.
