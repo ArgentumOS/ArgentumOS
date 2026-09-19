@@ -3614,7 +3614,7 @@ The rows are not equal in cost, and two of them gate many others:
 
 ### 11.5 What 100% does NOT mean
 
-Three exclusions are about the API and one is about the MEASURE — which is why they are named here
+Four exclusions are about the API and one is about the MEASURE — which is why they are named here
 rather than discovered later:
 
 * **BYTE-IDENTICAL OUTPUT TO macOS IS NOT CLAIMED.** `-description` text, hash values and the internal
@@ -3622,6 +3622,36 @@ rather than discovered later:
   from this side of the clean-room wall. Where a program can observe a difference it was written
   against — the API's shape, its semantics, its errors — this plan treats it as a failure. Where the
   difference is visible only by reading a hash value Apple never promised, it is not.
+* **BINARY (ABI) COMPATIBILITY IS NOT A GOAL (user, 2026-09-18) — AND API COMPATIBILITY IS NOT BINARY
+  COMPATIBILITY.** The bar is about the **API**: the source-level contract a program is written
+  against. It is not about the **binary**: the layout facts that only matter when linking against
+  Apple-built binaries or feeding Apple's runtime, and that cannot be exercised here at all — this
+  system ships every library and every binary, and promises no third-party binary support
+  (`docs/design/shared-libraries-plan.md`: *"no ABI-compat layer"*, *"no ABI-compat or third-party
+  binary support promises"*). **This bullet exists so that general policy and §11 cannot drift apart**:
+  the rule was already the system's; it is now the bar's too.
+
+  **WHAT THAT MEANS IN PRACTICE, and it is deliberately a short list:** struct padding, alignment and
+  size *beyond* the fields a program names; object memory layout and ivar offsets; tagged-pointer
+  encodings; the class, method and selector tables; symbol names and mangling; calling conventions.
+  None of those is API, and a difference in one of them is not a failure.
+
+  **AND THE BOUNDARY, because a boundary is what keeps an exclusion from becoming a licence:** a
+  difference a program can observe **at source** is still a failure. Still in scope, therefore: names
+  and types, the **field names and their ORDER** in a struct a program can initialise or index, the
+  documented **values** of constants (`NSNotFound == NSIntegerMax` is API, not layout), type encodings
+  *as strings* (`@encode`/`-objCType` are readable), protocol conformance, semantics and errors.
+  **API compatibility is a promise about programs; binary compatibility would be a promise about
+  artefacts — and this project makes the first one, completely, and not the second.**
+
+```
+NOT A GOAL:  padding · struct size beyond its fields · ivar offsets · object layout
+             tagged pointers · class/method/selector tables · symbol mangling · calling convention
+
+STILL A FAILURE: names · types · field names AND their order · documented constant values
+             encodings as strings · protocol conformance · semantics · errors
+```
+
 * **API APPLE DEPRECATES OR REMOVES IS OUT — THE SECOND EXCLUSION, EXPANDED (user, 2026-09-18).** The
   rule used to be "removed is out, deprecated-but-present is IN SCOPE". **It is now: deprecated is out.**
   Removed API is not "what Apple's Foundation implements"; and deprecated API is API Apple has already
