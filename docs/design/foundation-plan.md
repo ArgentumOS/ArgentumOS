@@ -3894,11 +3894,17 @@ honest size, and it is why it is sliced.
 
 | Slice | Contents | State |
 |---|---|---|
-| **1** | **the storage**: `NSOwnedString`/`NSMutableString` onto `unichar *_units` + the invalidated-on-mutation UTF-8 cache; `-length`, `-characterAtIndex:`, `-UTF8String`, `-byteAtIndex:` and `-lengthOfBytesUsingEncoding:` onto it; **and `NSString.h`'s stored comment rewritten**, because it currently states the superseded decision | **next — the migration's centre** |
+| **1** | **the storage**: `NSOwnedString`/`NSMutableString` onto `unichar *_units` + the invalidated-on-mutation UTF-8 cache; `-UTF8String` becomes the materialisation; the decoder (`fn_utf8_to_utf16`) and the encoder's forward declarations; **and `NSString.h`'s stored comment rewritten**, because it stated the superseded decision. **The CONTRACT IS DELIBERATELY UNCHANGED** — `-length` still answers bytes and `-characterAtIndex:` still indexes scalars — so the representation could land and be verified on its own | **LANDED, and verified on the guest: `foundation_string` 27/27, `foundation_core` 12/12 checks, 2/2 cases** |
 | **2** | the internals: `-isEqual:`/`-compare:family`/`-hash`/`utf8_find`/`utf8_substring`/case mapping/the format parser onto units, and the ~150 library sites that read bytes for non-byte reasons | |
 | **3** | `NSConstantString` unified on the runtime's fields (`_rlength` for `-length`, the unit array for indexing) and the UTF-16 → UTF-8 conversion helpers deleted | |
 | **4** | the four `…Characters:` forms — the rows this unit closes | |
 | **5** | the probe: its length/index assertions rewritten (they assert the OLD deviation today), its `excluded` array losing its four entries and gaining them as DEMANDED, and the guest gate | |
+
+**WHY SLICE 1 KEPT THE OLD CONTRACT, AND WHAT THAT BOUGHT:** the storage could change on its own, so
+the guest run isolates it — every string check passed with a completely different representation, which
+is the strongest available evidence that the representation is behaviour-preserving and that the
+migration risk is all in slice 2 (where `-length`'s MEANING changes for ~600 call sites). A slice that
+changed both at once would have had no such evidence.
 
 **SLICE 1 IS PROVING ITSELF IN THE MEANTIME:** the UTF-16 helper layer landed under the earlier design
 (`fn_utf16_units`, `fn_utf16_unit_to_byte`, `fn_byte_to_utf16_unit`, `fn_utf16_unit_at`) is **not

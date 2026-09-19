@@ -367,6 +367,50 @@ static unsigned short fn_utf16_unit_at(const char *bytes, size_t size, size_t un
 	return 0;
 }
 
+/* THE DECODER: UTF-8 bytes -> UTF-16 units (W1 slice 1). `out` may be NULL, in
+ * which case only the unit count is computed. Malformed sequences, and lone
+ * surrogates decoded from CESU-ish input, become U+FFFD — the same substitute
+ * the encoder uses, so a round trip through bad input is lossy in the direction
+ * Apple's is. */
+static size_t fn_utf8_to_utf16(const char *bytes, size_t size, unsigned short *out)
+{
+	size_t i = 0, n = 0;
+
+	while (i < size) {
+		size_t seq = utf8_seq_length((unsigned char)bytes[i]);
+		unsigned long cp;
+
+		if (i + seq > size) {
+			seq = 1;
+		}
+		cp = fn_utf8_codepoint((const unsigned char *)bytes + i, seq);
+		if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
+			cp = 0xFFFD;
+		}
+		if (cp > 0xFFFF) {
+			unsigned long v = cp - 0x10000;
+
+			if (out != NULL) {
+				out[n] = (unsigned short)(0xD800 + (v >> 10));
+				out[n + 1] = (unsigned short)(0xDC00 + (v & 0x3FF));
+			}
+			n += 2;
+		} else {
+			if (out != NULL) {
+				out[n] = (unsigned short)cp;
+			}
+			n += 1;
+		}
+		i += seq;
+	}
+	return n;
+}
+
+/* The ENCODER lives with the constant-string code below; these two are what
+ * NSOwnedString's materialisation needs, and it is defined before them. */
+static size_t fn_utf16_utf8_length(const unsigned char *data, size_t units);
+static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out);
+
 /* ASCII case mapping. This Foundation is UTF-8 and makes no Unicode case claims,
  * so case folding is the ASCII one and says so in the header. */
 static unsigned char utf8_lower(unsigned char c)
@@ -1533,67 +1577,119 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return [[self alloc] initWithUTF8String:utf8];
 }
 
+/* THE STORAGE IS UNITS (W1 slice 1): a UTF-8 argument is DECODED once, here, and
+ * the UTF-8 form is materialised lazily on the way out. */
 - (id)initWithUTF8String:(const char *)utf8
 {
 	size_t n = (utf8 != NULL) ? strlen(utf8) : 0;
+	size_t units;
 
 	self = [super init];
 	if (self == nil) {
 		return nil;
 	}
-	_bytes = (char *)malloc(n + 1);
-	if (_bytes == NULL) {
+	units = fn_utf8_to_utf16(utf8 != NULL ? utf8 : "", n, NULL);
+	_units = (unsigned short *)malloc((units + 1) * sizeof(unsigned short));
+	if (_units == NULL) {
 		return nil;
 	}
-	if (n > 0) {
-		memcpy(_bytes, utf8, n);
-	}
-	_bytes[n] = '\0';
-	_length = n;
+	_length = fn_utf8_to_utf16(utf8 != NULL ? utf8 : "", n, _units);
+	_units[_length] = 0;		/* for a debugger's benefit, not a contract */
 	return self;
 }
 
+/* THE MATERIALISATION, and this class's one cache. Mutation invalidates it (see
+ * -setString: and -appendUTF8String:), which is what makes caching safe here. */
 - (const char *)UTF8String
 {
-	return (_bytes != NULL) ? _bytes : "";
+	if (_utf8 == NULL) {
+		_utf8size = fn_utf16_utf8_length((const unsigned char *)_units, _length);
+		_utf8 = (char *)malloc(_utf8size + 1);
+		if (_utf8 == NULL) {
+			return "";
+		}
+		fn_utf16_to_utf8((const unsigned char *)_units, _length, _utf8);
+		_utf8[_utf8size] = '\0';
+	}
+	return _utf8;
 }
 
 - (id)initWithBytes:(const char *)bytes length:(size_t)length
 {
+	size_t units;
+
 	self = [super init];
 	if (self == nil) {
 		return nil;
 	}
-	_bytes = (char *)malloc(length + 1);
-	if (_bytes == NULL) {
+	units = fn_utf8_to_utf16(bytes != NULL ? bytes : "", length, NULL);
+	_units = (unsigned short *)malloc((units + 1) * sizeof(unsigned short));
+	if (_units == NULL) {
 		return nil;
 	}
-	if (length > 0) {
-		memcpy(_bytes, bytes, length);
-	}
-	_bytes[length] = '\0';
-	_length = length;
+	_length = fn_utf8_to_utf16(bytes != NULL ? bytes : "", length, _units);
+	_units[_length] = 0;
 	return self;
 }
 
+/* THE OLD CONTRACT FOR ONE MORE SLICE: bytes, so this MATERIALISES. Slice 2 makes
+ * it `return _length;` and moves the byte callers to -lengthOfBytesUsingEncoding:
+ * (docs/design/foundation-plan.md §13.6). */
 - (size_t)length
 {
-	return _length;
+	(void)[self UTF8String];
+	return _utf8size;
 }
 
+/* Scalars, counted from the UNITS — a surrogate pair is one character, which is
+ * what this method has always meant. */
 - (size_t)characterCount
 {
-	return utf8_count_characters([self UTF8String], [self length]);
+	size_t i = 0, n = 0;
+
+	while (i < _length) {
+		if (_units[i] >= 0xD800 && _units[i] <= 0xDBFF && i + 1 < _length &&
+		    _units[i + 1] >= 0xDC00 && _units[i + 1] <= 0xDFFF) {
+			i += 2;
+		} else {
+			i += 1;
+		}
+		n++;
+	}
+	return n;
 }
 
+/* SCALAR-indexed, the same contract as before, and a scalar above U+FFFF still
+ * answers 0xFFFD because one unichar cannot say it: that is the SCALAR space's
+ * limit, and slice 3 removes it by moving to the unit space. */
 - (unsigned short)characterAtIndex:(size_t)index
 {
-	return utf8_character_at([self UTF8String], [self length], index);
+	size_t i = 0, n = 0;
+
+	while (i < _length) {
+		unsigned short u = _units[i];
+
+		if (u >= 0xD800 && u <= 0xDBFF && i + 1 < _length &&
+		    _units[i + 1] >= 0xDC00 && _units[i + 1] <= 0xDFFF) {
+			if (n == index) {
+				return 0xFFFD;
+			}
+			i += 2;
+		} else {
+			if (n == index) {
+				return u;
+			}
+			i += 1;
+		}
+		n++;
+	}
+	return 0;
 }
 
 - (void)dealloc
 {
-	free(_bytes);
+	free(_units);
+	free(_utf8);
 }
 
 @end
@@ -1604,36 +1700,43 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 {
 	const char *utf8 = [other UTF8String];
 	size_t n = strlen(utf8);
-	char *buf = (char *)malloc(n + 1);
+	size_t units = fn_utf8_to_utf16(utf8, n, NULL);
+	unsigned short *buf = (unsigned short *)malloc((units + 1) * sizeof(unsigned short));
 
 	if (buf == NULL) {
 		return;
 	}
-	memcpy(buf, utf8, n);
-	buf[n] = '\0';
-	free(_bytes);
-	_bytes = buf;
-	_length = n;
+	_length = fn_utf8_to_utf16(utf8, n, buf);
+	buf[_length] = 0;
+	free(_units);
+	free(_utf8);
+	_units = buf;
+	_utf8 = NULL;			/* THE INVALIDATION: every mutation ends here */
+	_utf8size = 0;
 }
 
 - (void)appendUTF8String:(const char *)utf8
 {
-	size_t n, total;
-	char *buf;
+	size_t n, add, total;
+	unsigned short *buf;
 
 	if (utf8 == NULL || *utf8 == '\0') {
 		return;
 	}
 	n = strlen(utf8);
-	total = _length + n;
-	buf = (char *)realloc(_bytes, total + 1);
+	add = fn_utf8_to_utf16(utf8, n, NULL);
+	total = _length + add;
+	buf = (unsigned short *)realloc(_units, (total + 1) * sizeof(unsigned short));
 	if (buf == NULL) {
 		return;
 	}
-	memcpy(buf + _length, utf8, n);
-	buf[total] = '\0';
-	_bytes = buf;
+	(void)fn_utf8_to_utf16(utf8, n, buf + _length);
+	_units = buf;
 	_length = total;
+	_units[_length] = 0;
+	free(_utf8);			/* the materialised form is stale now */
+	_utf8 = NULL;
+	_utf8size = 0;
 }
 
 - (void)appendString:(NSString *)other
@@ -1737,19 +1840,21 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 
-	if (index > _length) {
-		index = _length;
+	size_t size = [self length];	/* BYTES: what utf8_substring speaks */
+
+	if (index > size) {
+		index = size;
 	}
 	[built appendString:utf8_substring(self, 0, index)];
 	[built appendString:string];
-	[built appendString:utf8_substring(self, index, _length - index)];
+	[built appendString:utf8_substring(self, index, size - index)];
 	[self setString:built];
 }
 
 - (void)deleteCharactersInRange:(NSRange)range
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = _length;
+	size_t size = [self length];	/* BYTES */
 	size_t start = range.location;
 	size_t end;
 
@@ -1768,7 +1873,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)string
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = _length;
+	size_t size = [self length];	/* BYTES */
 	size_t start = range.location;
 	size_t end;
 
@@ -1791,7 +1896,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 				   range:(NSRange)range
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
-	size_t size = _length;
+	size_t size = [self length];	/* BYTES */
 	size_t targetSize = [target length];
 	size_t cursor = 0;
 	NSUInteger replaced = 0;

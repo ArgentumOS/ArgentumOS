@@ -6,12 +6,18 @@
  * NSString — the immutable string, with its concrete and constant subclasses.
  * docs/design/foundation-plan.md, F1 + the hard rule.
  *
- * UTF-8 IS THE STORAGE (the user's decision, 2026-09-17) and `-length` counts
- * BYTES. `-characterCount` counts Unicode characters and `-characterAtIndex:`
- * indexes THOSE — the honest reading of the name, and a DOCUMENTED deviation
- * from Cocoa, whose `-length` counts UTF-16 code units. Everything that follows
- * from the UTF-16 boundary (-initWithCharacters:length:, -getCharacters:range:)
- * is therefore absent, deliberately, and recorded as such.
+ * UTF-16 IS THE STORAGE (the user's decision, 2026-09-18, later): "If Apple is
+ * using UTF-16, so should we." NSOwnedString holds UTF-16 code units, the
+ * runtime's constant strings already ARE UTF-16 (the compiler emits every
+ * non-ASCII literal that way, and `_rlength` is a unit count), and `-UTF8String`
+ * is now a CONVERSION with a materialised cache rather than the storage door.
+ * docs/design/foundation-plan.md §13 is the design, its measured cost (340
+ * `-UTF8String` sites), and its slices.
+ *
+ * THE CONTRACT IS STILL THE OLD ONE FOR ONE MORE SLICE — `-length` answers BYTES
+ * and `-characterAtIndex:` indexes Unicode scalars — because flipping it moves
+ * ~600 call sites and the storage had to land first. §13.6 slice 2 flips it to
+ * UTF-16 code units, which is Apple's contract and where this ends up.
  *
  * NSString HAS NO INSTANCE VARIABLES, AND THAT IS NOT AN OVERSIGHT. The
  * compiler emits `@"..."` as an object whose fields sit at FIXED offsets from
@@ -108,8 +114,8 @@ typedef enum {
 
 /* The primitives every concrete subclass implements. */
 - (const char *)UTF8String;
-- (size_t)length;		/* BYTES — the documented deviation */
-- (size_t)characterCount;	/* Unicode characters */
+- (size_t)length;		/* BYTES, until slice 2 flips it to UTF-16 code units (§13) */
+- (size_t)characterCount;	/* Unicode characters — an ADDITION: Cocoa has no such method */
 - (unsigned char)byteAtIndex:(size_t)index;
 - (unsigned short)characterAtIndex:(size_t)index;	/* by CHARACTER */
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
@@ -208,8 +214,10 @@ typedef enum {
 
 @interface NSOwnedString : NSString
 {
-	char *_bytes;		/* owned, NUL-terminated, UTF-8 */
-	size_t _length;		/* bytes, excluding the terminating NUL */
+	unsigned short *_units;	/* owned, NOT NUL-terminated: UTF-16 CODE UNITS */
+	size_t _length;		/* UNITS — the storage's own count */
+	char *_utf8;		/* LAZY: the materialised UTF-8 form, owned, NUL-terminated */
+	size_t _utf8size;	/* its byte count, excluding the terminating NUL */
 }
 + (nullable id)stringWithUTF8String:(const char * _Nullable)utf8;
 - (nullable id)initWithUTF8String:(const char * _Nullable)utf8;
