@@ -571,6 +571,26 @@ int main(void)
 		      "the signature, target and selector are kept; an argument and a return value round-trip; -invoke ran the method");
 	}
 
+	{
+		/* THE NSObject PROTOCOL (W2h): the group of methods that make an object first-class, and the
+		 * dependency NSProgressReporting needs. The class conforms and everything inheriting from it
+		 * conforms, which is what makes `id<NSObject>` a usable type. AND ONE MEMBER IS DELIBERATELY
+		 * ABSENT: -zone, removed with the rest of the zone API as 32-bit-only (§11.5) - asserted
+		 * here rather than merely commented, because a promised member this system cannot have would
+		 * be worse than an omission. */
+		id<NSObject> boxed = @"";
+
+		check("nsobject-protocol",
+		      [NSObject conformsToProtocol:@protocol(NSObject)] &&
+		      [@"x" conformsToProtocol:@protocol(NSObject)] &&
+		      [boxed isEqual:@""] && [boxed respondsToSelector:@selector(hash)] &&
+		      ![NSObject instancesRespondToSelector:@selector(zone)],
+		      [[NSString stringWithFormat:@"class=%d string=%d zone=%d",
+			(int)[NSObject conformsToProtocol:@protocol(NSObject)],
+			(int)[@"x" conformsToProtocol:@protocol(NSObject)],
+			(int)[NSObject instancesRespondToSelector:@selector(zone)]] UTF8String]);
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CORE DONE\n");
 	return failc ? 1 : 0;

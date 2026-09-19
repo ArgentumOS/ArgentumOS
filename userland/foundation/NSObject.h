@@ -69,10 +69,55 @@ NS_ASSUME_NONNULL_BEGIN
  * Our runtime's own tests mark their root class exactly this way (Test/Test.h),
  * which is how the difference was found.
  */
+/*
+ * THE NSObject PROTOCOL (W2h) - the group of methods that make an object a first-class object. It
+ * is the dependency NSProgressReporting needs and the reason it is here first (§12: a missing
+ * dependency is ADDED, not refused).
+ *
+ * THE MEMBER LIST IS APPLE'S PUBLISHED ONE, checked against the documentation rather than recalled
+ * (this library's ledger is symbol-level, so it could not supply it): isEqual:, hash, superclass,
+ * class, self, isProxy, isKindOfClass:, isMemberOfClass:, conformsToProtocol:, respondsToSelector:,
+ * description, debugDescription, retain, release, autorelease, retainCount, and the three
+ * performSelector: forms. `-methodForSelector:` and `-doesNotRecognizeSelector:` are NOT in it -
+ * they belong to the NSObject CLASS - which is a distinction the documentation settled.
+ *
+ * ONE MEMBER IS DELIBERATELY ABSENT, and it is the only one: `-zone`. Apple's protocol declares it;
+ * this library REMOVED the entire zone API as 32-bit-only (§11.5), and a protocol cannot promise
+ * what the system does not have. That is ground (i) of §11.6.1's necessity test, and it is
+ * registered there rather than left for a reader to notice. The parameter nullability follows THIS library's
+ * class declaration rather than Apple's published spelling, so the header does not argue with itself; where the
+ * class and the protocol could differ, the class is the one the compiler has to accept.
+ */
+@protocol NSObject
+
+@property (readonly) NSUInteger hash;
+@property (readonly, copy) NSString *description;
+@property (readonly, copy) NSString *debugDescription;
+
+- (BOOL)isEqual:(id)object;
+- (Class)superclass;
+- (Class)class;
+- (instancetype)self;
+- (BOOL)isProxy;
+- (BOOL)isKindOfClass:(Class)aClass;
+- (BOOL)isMemberOfClass:(Class)aClass;
+- (BOOL)conformsToProtocol:(Protocol *)aProtocol;
+- (BOOL)respondsToSelector:(SEL)aSelector;
+- (instancetype)retain;
+- (oneway void)release;
+- (instancetype)autorelease;
+- (NSUInteger)retainCount;
+- (id)performSelector:(SEL)aSelector;
+- (nullable id)performSelector:(SEL)aSelector withObject:(id)object;
+- (nullable id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2;
+
+@end
+
 #if __has_attribute(objc_root_class)
 __attribute__((objc_root_class))
 #endif
-@interface NSObject
+
+@interface NSObject <NSObject>
 {
 	/*
 	 * THE STORAGE RULE. class_createInstance() returns nil when
