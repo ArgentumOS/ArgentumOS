@@ -156,7 +156,6 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSDateInterval.h \
 	$(FOUNDATION_SRC)/NSValueTransformer.h \
 	$(FOUNDATION_SRC)/NSAffineTransform.h \
-	$(FOUNDATION_SRC)/NSAutoreleasePool.h \
 	$(FOUNDATION_SRC)/NSGeometry.h \
 	$(FOUNDATION_SRC)/NSString.h \
 	$(FOUNDATION_SRC)/NSTinyString.h $(FOUNDATION_SRC)/NSNumber.h \
@@ -331,10 +330,6 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		$(FOUNDATION_SRC)/nsset.m -o .build/foundation-nsset.o
 	# W2h: the 128-bit identifier. <foundation/...> headers only — the entropy comes from
 	# getentropy, so no ICU include path is needed.
-	# W2h: the autorelease pool boundary. It needs the RUNTIME's pool primitives, from
-	# <objc/objc-arc.h>, which is already on the include path.
-	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
-		$(FOUNDATION_SRC)/nsautoreleasepool.m -o .build/foundation-nsautoreleasepool.o
 	# W2h: the affine transform. <foundation/...> headers and libm, for sin/cos.
 	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) -Iuserland \
 		$(FOUNDATION_SRC)/nsaffinetransform.m -o .build/foundation-nsaffinetransform.o
@@ -422,7 +417,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP)
 		.build/foundation-nsarray.o .build/foundation-nsdictionary.o \
 		.build/foundation-nerror.o .build/foundation-nexception.o .build/foundation-nscoder.o .build/foundation-nskeyedarchiver.o .build/foundation-nsprocessinfo.o .build/foundation-nsfilemanager.o .build/foundation-nsurlcomponents.o .build/foundation-nsregularexpression.o .build/foundation-nslock.o .build/foundation-nsthread.o .build/foundation-nsrunloop.o .build/foundation-nsoperation.o .build/foundation-nsprogress.o \
 		.build/foundation-ncharacterset.o .build/foundation-nindexset.o .build/foundation-nindexpath.o .build/foundation-nlocale.o .build/foundation-nmethodsignature.o .build/foundation-ninvocation.o .build/foundation-ninvoke-asm.o .build/foundation-nenumerator.o \
-		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nuuid.o .build/foundation-ndateinterval.o .build/foundation-nsvaluetransformer.o .build/foundation-nsaffinetransform.o .build/foundation-nsautoreleasepool.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/foundation-nskeyvalueobserving.o .build/foundation-nsexpression.o .build/foundation-nscomparisonpredicate.o .build/foundation-ngeometry.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
+		.build/foundation-npropertylistserialization.o .build/foundation-nstimezone.o .build/foundation-ndatecomponents.o .build/foundation-nscalendar.o .build/foundation-nurl.o .build/foundation-nskeyvaluecoding.o .build/foundation-nssortdescriptor.o .build/foundation-nspredicate.o .build/foundation-npredicateformat.o .build/foundation-ncodec.o .build/foundation-nsformatter.o .build/foundation-nsdateformatter.o .build/foundation-nsnumberformatter.o .build/foundation-fncalendar.o .build/foundation-nsset.o .build/foundation-nuuid.o .build/foundation-ndateinterval.o .build/foundation-nsvaluetransformer.o .build/foundation-nsaffinetransform.o .build/foundation-nsvalue.o .build/foundation-nsnull.o .build/foundation-nscountedset.o .build/foundation-nsorderedset.o .build/foundation-nskeyvalueobserving.o .build/foundation-nsexpression.o .build/foundation-nscomparisonpredicate.o .build/foundation-ngeometry.o .build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
