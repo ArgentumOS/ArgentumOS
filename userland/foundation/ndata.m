@@ -10,6 +10,7 @@
  */
 
 #import <foundation/NSData.h>
+#import <foundation/NSCoder.h>	/* the coder forms take NSCoder */
 #import <foundation/NSString.h>
 #import <foundation/NSError.h>
 #import <foundation/NSException.h>	/* the OOM path raises (D4, §11.6.1) */

@@ -429,12 +429,12 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 			start = c;
 			inRange = YES;
 		} else if (!member && inRange) {
-			[set addCharactersInRange:NSMakeRange((NSUInteger)start, (NSUInteger)(c - start))];
+			[(NSMutableCharacterSet *)set addCharactersInRange:NSMakeRange((NSUInteger)start, (NSUInteger)(c - start))];
 			inRange = NO;
 		}
 	}
 	if (inRange) {
-		[set addCharactersInRange:NSMakeRange((NSUInteger)start, 0x10000 - (NSUInteger)start)];
+		[(NSMutableCharacterSet *)set addCharactersInRange:NSMakeRange((NSUInteger)start, 0x10000 - (NSUInteger)start)];
 	}
 	return set;
 }

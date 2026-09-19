@@ -11,6 +11,7 @@
 #import <foundation/NSMethodSignature.h>
 #import <foundation/NSInvocation.h>
 #import <objc/runtime.h>
+#include <objc/objc-arc.h>	/* objc_retain/objc_release/objc_autorelease */
 
 @implementation NSProxy
 
@@ -56,7 +57,10 @@
 
 - (NSUInteger)retainCount
 {
-	return objc_retainCount(self);
+	/* MIRRORED FROM NSObject, including the runtime's `_np` accessor: the suffix is the
+	 * runtime's note that it is non-portable across runtimes, which is fine where the
+	 * Foundation and the runtime are one thing. */
+	return (NSUInteger)object_getRetainCount_np(self);
 }
 
 - (id)self
