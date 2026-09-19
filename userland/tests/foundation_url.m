@@ -78,19 +78,38 @@ int main(void)
 		      [NSURL URLWithString:@"1http://x"] == nil &&
 		      [NSURL URLWithString:@"ht tp://x"] == nil &&
 		      [NSURL URLWithString:@""] == nil &&
-		      [NSURL URLWithString:@":"] == nil &&
-		      /* And the parts that need things this library does not ship are
-		       * ABSENT, not merely unimplemented. objc_getClass is the RUNTIME's
-		       * lookup, which is what a probe should use: NSClassFromString is a
-		       * Foundation function this library does not claim. */
+		      [NSURL URLWithString:@":"] == nil,
+		      "a string that is not an absolute URL answers nil");
+
+		/*
+		 * WHAT IS ABSENT AND WHAT IS SHIPPED, SPLIT FROM THE REFUSALS (2026-09-18).
+		 *
+		 * THIS CHECK USED TO ASSERT BOTH IN ONE CONJUNCTION, AND TWO OF ITS ABSENCE
+		 * CLAIMS HAD GONE STALE: `NSURLComponents` and `+URLWithString:relativeToURL:`
+		 * both ship (F13.15), and nothing told the probe — it had been failing ever
+		 * since, and the failure could not say WHICH claim was false. That is §11.2's
+		 * lesson twice over: an absence assertion is a fact about the TREE, and a
+		 * conjunction of them is a fact nobody can localise.
+		 *
+		 * objc_getClass is the RUNTIME's lookup, which is what a probe should use:
+		 * NSClassFromString is a Foundation function this library does not claim.
+		 */
+		check("url-absent",
 		      objc_getClass("NSURLSession") == NULL &&
-		      objc_getClass("NSURLComponents") == NULL &&
+		      objc_getClass("NSURLRequest") == NULL &&
+		      objc_getClass("NSURLConnection") == NULL &&
 		      ![NSURL respondsToSelector:sel_registerName(
 			  "URLByResolvingBookmarkData:options:relativeToURL:"
-			  "bookmarkDataIsStale:error:")] &&
-		      ![NSURL respondsToSelector:sel_registerName("URLWithString:relativeToURL:")],
-		      "a string that is not an absolute URL answers nil, and the loading "
-		      "system is absent");
+			  "bookmarkDataIsStale:error:")],
+		      "the URL LOADING system is absent: no session, request or connection class");
+
+		check("url-shipped",
+		      objc_getClass("NSURLComponents") != NULL &&
+		      [NSURL respondsToSelector:sel_registerName("URLWithString:relativeToURL:")] &&
+		      [[[NSURL URLWithString:@"b"
+			      relativeToURL:[NSURL URLWithString:@"http://h/a/"]]
+			  absoluteString] isEqualToString:@"http://h/a/b"],
+		      "NSURLComponents and relative resolution SHIP (F13.15), demanded rather than merely not-denied");
 	}
 
 	{

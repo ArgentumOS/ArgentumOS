@@ -28,7 +28,7 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_url"
-CHECKS = ("url-parse", "url-refusals", "url-file", "url-file-refusals",
+CHECKS = ("url-parse", "url-refusals", "url-absent", "url-shipped", "url-file", "url-file-refusals",
           "url-append-path", "url-delete-path", "url-equality", "url-identity",
           "cross-tu")
 

@@ -3961,7 +3961,16 @@ without pretending the engine is something it is not — and the unit map is kep
 accidental. §13.6 slice 3 replaces the identity with it, and at that point the engine and the
 substring/length API inhabit the same space for the first time.
 
-**2. `url-refusals` IS PRE-EXISTING — it fails at the pre-W1 commit too.** Its message is
+**2. `url-refusals` WAS PRE-EXISTING — it failed at the pre-W1 commit too — AND IT IS NOW RESOLVED, and
+the resolution is a CORRECTION rather than a library change.** Splitting the conjunction found TWO STALE
+ABSENCE CLAIMS in one check: `objc_getClass("NSURLComponents") == NULL` and
+`![NSURL respondsToSelector:@selector(URLWithString:relativeToURL:)]` — both of which **ship, and have
+since F13.15**, so the check had been failing since that landing and its message could not say which
+claim was false. It is now three named checks: `url-refusals` (the six refusal shapes),
+`url-absent` (`NSURLSession`/`NSURLRequest`/`NSURLConnection` + the bookmark selector), and
+`url-shipped` (**`NSURLComponents` present and relative resolution resolving**, demanded rather than
+merely not-denied — `"b"` against `"http://h/a/"` answers `"http://h/a/b"`). **A conjunction of absence
+claims cannot be localised when one goes stale; three named claims can.** Its message is
 *"a string that is not an absolute URL answers nil, and the loading system is absent"*, and the second
 half is an **ABSENCE assertion** — the exact class §11.2 warns about: *a probe asserting an absence is
 asserting a fact about the tree, and landing code invalidates it with nobody being told.* It is NOT a
