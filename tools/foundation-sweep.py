@@ -17,10 +17,11 @@ THE STATUS COLUMN IS THE LEDGER, AND IT HAS THREE VALUES:
            row being flipped — which is the bug class §11.2's source 1 hid for
            months (a probe asserting an ABSENCE asserts a fact about the tree,
            and landing the code does not update it).
-  struck   Apple deprecates it, so by §11.5 it is REMOVED: we neither ship it
-           nor owe it. `--check` fails if a `struck` name appears in our
-           headers, because shipping deprecated API is the one direction this
-           project has decided against.
+  struck   Apple deprecates it (or it exists ONLY to support Swift), so by §11.5
+           it is REMOVED: we neither ship it nor owe it. The `why` column says
+           which, and `--check` REPORTS any struck name that appears in our
+           headers (`--strict` is what fails on those: what to do about one is a
+           decision, and a decision is a ledger row).
 
 The three exclusions, each counted rather than silently dropped (the numbers
 are written into the surface file's header on every `--refresh`):
@@ -124,8 +125,35 @@ def declared(kind, name, text):
     return re.search(any_form, text, re.M | re.S)
 
 
-def status_of(kind, name, deprecated, text):
-    if deprecated:
+# A name Apple gives a Swift-interop annotation. These EXIST ONLY TO SUPPORT
+# SWIFT: they are read by the Swift importer and mean nothing to an Objective-C
+# caller. §11.5's third exclusion (user, 2026-09-18): out, like deprecated API.
+SWIFT_INTEROP_RE = re.compile(r"(^|_)SWIFT(_|$)")
+
+# ...and what an Objective-C name looks like, which is how a Swift-only TYPE is
+# told from an ObjC one. Foundation's Objective-C surface is NS-prefixed or an
+# upper-case C name; the Swift-only additions to the framework do not bother
+# (ProgressManager, ProgressReporter, Subprogress). MEASURED ON 2026-09-18: the
+# ObjC navigator carries ZERO symbols of the second kind — every `swift.` page in
+# it names an ObjC symbol — so this test is a guard rather than a filter today.
+def is_objc_shaped(name):
+    return name.startswith("NS") or (name.isupper() and len(name) > 3)
+
+
+def struck_reason(row):
+    """Why this symbol is OUT, or None. Three exclusions, and the reason travels
+    with the row so a struck line can be argued with."""
+    if SWIFT_INTEROP_RE.search(row["name"]):
+        return "swift-only"
+    if row.get("swift") and not is_objc_shaped(row["name"]):
+        return "swift-only"
+    if apple_says_deprecated(row):
+        return "deprecated"
+    return None
+
+
+def status_of(kind, name, reason, text):
+    if reason:
         return STATUS_STRUCK
     return STATUS_SHIPPED if declared(kind, name, text) else STATUS_OPEN
 
@@ -159,14 +187,14 @@ def collect(index):
     """Walk the ObjC navigator tree. A groupMarker among a node's children sets
     the FAMILY for the siblings that FOLLOW it — Apple's own taxonomy — and a
     class or protocol becomes the OWNER of the members beneath it. Returns
-    (rows, dropped), where rows is keyed by (kind, name, owner)."""
-    rows, dropped = {}, {}
+    (rows, dropped, swift_seen), where rows is keyed by (kind, name, owner)."""
+    rows, dropped, swift_seen = {}, {}, set()
     for root in index["interfaceLanguages"]["occ"]:
-        walk(root, [], None, rows, dropped)
-    return rows, dropped
+        walk(root, [], None, rows, dropped, swift_seen)
+    return rows, dropped, swift_seen
 
 
-def walk(node, trail, owner, rows, dropped):
+def walk(node, trail, owner, rows, dropped, swift_seen):
     """The children of `node`, with the family trail and owner in force when the
     walk arrives here. One function, not two: the top level and a class page
     nest the same way, and this file's first version proved that a duplicated
@@ -194,9 +222,17 @@ def walk(node, trail, owner, rows, dropped):
             # AVFoundation — and those nodes are `external` with a path outside
             # this framework. NSNotification's page alone lists 183 of them.
             dropped.setdefault("other-framework", set()).add(child.get("title", ""))
-        elif swift and kind != "class":     # `-swift.class` IS the class's page
-            dropped.setdefault("swift", set()).add(child.get("title", ""))
         elif kind in KINDS:
+            # A `swift.` path is NOT "a Swift-only symbol" — MEASURED, AND THE
+            # FIRST VERSION OF THIS FILE GOT IT WRONG: an ObjC enum declared with
+            # NS_ENUM has its page under `...-swift.enum`, and its members carry
+            # their ObjC names (NSByteCountFormatterCountStyleBinary,
+            # NSCaseInsensitivePredicateOption, NSConstantValueExpressionType).
+            # Dropping them on the path marker hid 363 REAL ObjC symbols from
+            # the ledger. Swift-only-ness is decided by the NAME (see
+            # struck_reason), and the page-marker count is reported instead.
+            if swift:
+                swift_seen.add(child.get("title", ""))
             # a class or protocol is not a MEMBER of its enclosing class, so it
             # carries no owner even when Apple nests its page under one
             is_page = kind in ("class", "protocol")
@@ -206,25 +242,32 @@ def walk(node, trail, owner, rows, dropped):
                 rows[key] = {
                     "kind": kind, "name": child.get("title", ""),
                     "owner": "" if is_page else (owner or ""),
-                    "deprecated": bool(child.get("deprecated")), "family": " / ".join(trail),
+                    "deprecated": bool(child.get("deprecated")), "swift": swift,
+                    "family": " / ".join(trail),
                 }
+            elif swift and not row["swift"]:
+                row["swift"] = True
         if child.get("children"):
             walk(child, trail,
                  child.get("title", "") if kind in ("class", "protocol") else owner,
-                 rows, dropped)
+                 rows, dropped, swift_seen)
 
 
 def refresh():
     index = fetch_index()
-    rows, dropped = collect(index)
+    rows, dropped, swift_seen = collect(index)
     text = public_header_text()
     out = []
     counts = {}
+    reasons = {}
     for key in sorted(rows):
         r = rows[key]
-        st = status_of(r["kind"], r["name"], apple_says_deprecated(r), text)
+        why = struck_reason(r)
+        st = status_of(r["kind"], r["name"], why, text)
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
-        out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"])))
+        if st == STATUS_STRUCK:
+            reasons[why] = reasons.get(why, 0) + 1
+        out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"], why or "-")))
     header = [
         "# Foundation's documented surface, against this tree.",
         "# docs/design/foundation-plan.md §11.2 (source 2) and §11.3.1.",
@@ -233,14 +276,21 @@ def refresh():
         "#",
         "# source: " + INDEX_URL,
         "#",
-        "# kind\tstatus\tname\towner\tfamily",
+        "# kind\tstatus\tname\towner\tfamily\twhy",
         "#",
         "# excluded dimensions this file deliberately does NOT hold (distinct names):",
         "#   method   %4d documented selectors — §11.2 SOURCE 1's business" % len(dropped.get("method", ())),
         "#   property %4d — likewise" % len(dropped.get("property", ())),
         "#   symbol   %4d — Apple's instance-variable documentation" % len(dropped.get("symbol", ())),
-        "#   swift    %4d — Swift-only overlay spellings (not an ObjC surface)" % len(dropped.get("swift", ())),
         "#   other    %4d — other frameworks' symbols Apple indexes on a Foundation page" % len(dropped.get("other-framework", ())),
+        "#",
+        "# counted, NOT excluded: %d distinct names Apple documents on a `swift.` page"
+        % len(swift_seen),
+        "# but which carry the ObjC spelling. An NS_ENUM's page lives under `-swift.enum`",
+        "# and its members keep their ObjC names; this file's first version excluded them",
+        "# on the path marker, which hid real ObjC constants from the ledger.",
+        "#",
+        "# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())),
         "#",
         "# counts by kind:",
     ]
@@ -262,8 +312,8 @@ def read_surface():
     for line in open(SURFACE, encoding="utf-8"):
         if line.startswith("#") or not line.strip():
             continue
-        kind, status, name, owner, family = line.rstrip("\n").split("\t")
-        rows.append((kind, status, name, owner, family))
+        kind, status, name, owner, family, why = line.rstrip("\n").split("\t")
+        rows.append((kind, status, name, owner, family, why))
     return rows
 
 
@@ -286,7 +336,7 @@ def check(strict=False):
     rows = read_surface()
     bad, policy = [], []
     counts = {}
-    for kind, status, name, owner, family in rows:
+    for kind, status, name, owner, family, why in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         found = bool(declared(kind, name, text))
         if status == STATUS_SHIPPED and not found:
@@ -294,7 +344,7 @@ def check(strict=False):
         elif status == STATUS_OPEN and found:
             bad.append("PRESENT BUT LISTED OPEN %-8s %s%s — our headers now declare it; flip the row" % (kind, name, (" (member of %s)" % owner) if owner else ""))
         elif status == STATUS_STRUCK and found:
-            policy.append("%-9s %s%s" % (kind, name, (" (member of %s)" % owner) if owner else ""))
+            policy.append("%-9s %s%s [struck: %s]" % (kind, name, (" (member of %s)" % owner) if owner else "", why))
     kinds = sorted({k for k, _ in counts})
     print("foundation-sweep: %d symbols in the ledger" % len(rows))
     for kind in kinds:
@@ -320,7 +370,7 @@ def check(strict=False):
 def work_list(want=None):
     rows = [r for r in read_surface() if r[1] == STATUS_OPEN and (want is None or r[0] == want)]
     by_family = {}
-    for kind, status, name, owner, family in rows:
+    for kind, status, name, owner, family, why in rows:
         by_family.setdefault(family, []).append((kind, name, owner))
     for family in sorted(by_family):
         members = by_family[family]
