@@ -29,7 +29,7 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_core"
 CHECKS = (
-          "lifecycle", "equality", "identity", "arc-pool", "cross-tu", "nsobject-api-complete", "runtime-class-names", "runtime-selector-names", "runtime-range-string", "geometry-rects", "geometry-edges", "geometry-strings", "geometry-cg-types", "geometry-alignment", "c-byte-order", "kvc-operator-constants", "c-memory-pages", "c-size-and-alignment", "c-debug-switches", "methodsignature-parses", "methodsignature-grammar", "methodsignature-offsets", "methodsignature-sizes", "methodsignature-lookup", "invocation-api", "forwarding-hook", "forwarding-invocation", "forwarding-target", "nsobject-protocol", "affine-rotation-and-indexing", "affine-append-versus-prepend", "mutators-raise-out-of-range", "objectAtIndex-nil-is-recorded",
+          "lifecycle", "equality", "identity", "arc-pool", "cross-tu", "nsobject-api-complete", "runtime-class-names", "runtime-selector-names", "runtime-range-string", "geometry-rects", "geometry-edges", "geometry-strings", "geometry-cg-types", "geometry-alignment", "c-byte-order", "kvc-operator-constants", "c-memory-pages", "c-size-and-alignment", "c-debug-switches", "methodsignature-parses", "methodsignature-grammar", "methodsignature-offsets", "methodsignature-sizes", "methodsignature-lookup", "invocation-api", "forwarding-hook", "forwarding-invocation", "forwarding-target", "nsobject-protocol", "affine-rotation-and-indexing", "affine-append-versus-prepend", "mutators-raise-out-of-range", "objectAtIndex-nil-is-recorded", "mrr-pool-refuses-retain", "mrr-pool-releases-on-drain",
           )
 
 

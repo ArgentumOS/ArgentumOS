@@ -77,3 +77,11 @@ int foundation_core_equality(void);
 @end
 
 #endif /* FOUNDATION_CORE_H */
+
+/*
+ * THE MRR SIDE: three questions the ARC half CANNOT ask, because ARC forbids the spelling of
+ * -retain, -release and -autorelease. They live in unit 1, which is compiled without -fobjc-arc.
+ */
+BOOL foundation_mrr_pool_refuses_retain(void);
+BOOL foundation_mrr_pool_releases_on_drain(void);
+BOOL foundation_mrr_proxy_forwards(void);

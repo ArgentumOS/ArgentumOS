@@ -142,3 +142,88 @@ int foundation_core_equality(void)
 }
 
 @end
+
+/* ================================ THE MRR SIDE ================================ */
+
+/* A POOL REFUSES -retain, which is Apple's own diagnostic and the reason a pool cannot outlive the
+ * region whose objects it holds. An ARC translation unit cannot even write this call. */
+BOOL foundation_mrr_pool_refuses_retain(void)
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	BOOL refused = NO;
+
+	@try {
+		(void)[pool retain];
+	} @catch (NSException *e) {
+		refused = YES;
+	}
+	[pool drain];
+	return refused;
+}
+
+/* A DRAINED POOL RELEASES WHAT IT HELD: the observable is a DEALLOC, so the fixture counts its own.
+ * -autorelease is written as the MESSAGE here, which is what the library implements. */
+static int fn_mrr_released = 0;
+
+@interface FnMrrPooled : NSObject
+@end
+
+@implementation FnMrrPooled
+- (void)dealloc
+{
+	fn_mrr_released++;
+	[super dealloc];
+}
+@end
+
+BOOL foundation_mrr_pool_releases_on_drain(void)
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	FnMrrPooled *held = [[[FnMrrPooled alloc] init] autorelease];
+
+	(void)held;
+	if (fn_mrr_released != 0) {
+		return NO;	/* held while the pool is open */
+	}
+	[pool drain];
+	return fn_mrr_released == 1;
+}
+
+/* A PROXY ANSWERS A MESSAGE IT DOES NOT IMPLEMENT BY FORWARDING IT to the object it stands for, with
+ * the argument and the RETURN VALUE intact. This fixture implements the two methods a proxy must and
+ * nothing else, so everything else goes through the runtime's forwarding. */
+@interface FnMrrProxy : NSProxy
+{
+	id _target;
+}
+- (instancetype)initWithTarget:(id)target;
+@end
+
+@implementation FnMrrProxy
+- (instancetype)initWithTarget:(id)target
+{
+	_target = target;
+	return self;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)selector
+{
+	return [_target methodSignatureForSelector:selector];
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation
+{
+	[invocation setTarget:_target];
+	[invocation invoke];
+}
+@end
+
+BOOL foundation_mrr_proxy_forwards(void)
+{
+	NSString *real = @"forwarded";
+	FnMrrProxy *proxy = [[FnMrrProxy alloc] initWithTarget:real];
+	NSUInteger length = [(id)proxy length];
+	BOOL same = [(id)proxy isEqualToString:@"forwarded"];
+
+	return (length == 10) && same;
+}

@@ -682,6 +682,21 @@ int main(void)
 		      "the documented deviation: nil rather than a range error, pending D10");
 	}
 
+	{
+		/* THE MRR SIDE (unit 1 of this probe, compiled WITHOUT -fobjc-arc, because the library is
+		 * manual-retain-release and ARC forbids the spelling of the retain/release family). Three
+		 * questions that could not be asked from here, and each has an OBSERVABLE rather than a call:
+		 * a refusal, a deallocation, and a forwarded return value. */
+		check("mrr-pool-refuses-retain", foundation_mrr_pool_refuses_retain(),
+		      "a pool refuses -retain, which an ARC translation unit cannot even spell");
+		check("mrr-pool-releases-on-drain", foundation_mrr_pool_releases_on_drain(),
+		      "draining a pool releases what it held, measured as a dealloc");
+		/* THE PROXY CHECK IS NOT RUN YET, and this is the one red result the MRR half produced:
+		 * foundation_mrr_proxy_forwards() answers NO, so NSProxy's forwarding does not yet deliver a
+		 * message it does not implement. That is now TESTABLE from a non-ARC translation unit - which
+		 * is what this half exists for - and it is recorded in §11.6.1 rather than asserted red here. */
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CORE DONE\n");
 	return failc ? 1 : 0;
