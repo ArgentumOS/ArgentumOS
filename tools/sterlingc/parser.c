@@ -210,21 +210,100 @@ name_clear(st_name *n)
 
 /* ---- types ------------------------------------------------------------- */
 
+/*
+ * §7.26/§7.63's `<…>` list — the same syntax whether it is a *type's* argument
+ * list (`Array<String>`) or a *class's* parameter list (`class Box<T>`). One
+ * implementation, because the two callers had copies of it and those copies had
+ * already diverged in purpose: parse_type recorded the names while parse_class
+ * only counted them, behind a comment claiming the two were duplicates.
+ *
+ * The counting is **character-wise, not token-wise**. §7.72's longest-run rule
+ * makes `>>` a single token and `?>` a single token too, since `?` sits in the
+ * same operator set — so testing a token's *first* character missed `Int32?>`'s
+ * closing bracket and reported the list unclosed.
+ *
+ * Only the **outermost** name per position is recorded: §7.26's rules are about
+ * what an argument *is*, and `Array<Box<String>>`'s argument is `Box` either way.
+ *
+ * The outputs are initialised **here** rather than at the call sites, because a
+ * caller passing an uninitialised struct and having its garbage count read is a
+ * segfault with no message — which is exactly what happened once already.
+ *
+ * Returns 1 on success, with *count left at 0 when there is no list at all.
+ */
+static int
+parse_generic_list(st_parser *p, st_name **out, size_t *count)
+{
+	int depth = 1;
+	int want_name = 1;
+	size_t cap = 0;
+
+	*out = NULL;
+	*count = 0;
+	if (p->tok.kind != ST_OPERATOR || p->tok.len != 1 ||
+	    p->tok.start[0] != '<') {
+		return 1;		/* no list, which is not an error */
+	}
+	bump(p);
+	while (p->tok.kind != ST_EOF && depth > 0) {
+		if (p->tok.kind == ST_OPERATOR) {
+			size_t k;
+
+			for (k = 0; k < p->tok.len; k++) {
+				if (p->tok.start[k] == '<') {
+					depth++;
+				} else if (p->tok.start[k] == '>') {
+					depth--;
+				}
+			}
+			/* Past the first `<` we are inside a nested argument. */
+			want_name = 0;
+		} else if (depth == 1 && want_name && p->tok.kind == ST_IDENT) {
+			st_name name;
+
+			if (!take_name(p, &name)) {
+				return 0;
+			}
+			if (*count == cap) {
+				size_t want = cap == 0 ? 4 : cap * 2;
+				st_name *grown =
+					st_arena_alloc(want * sizeof(st_name));
+
+				if (grown == NULL) {
+					return fail(p, "out of memory");
+				}
+				memcpy(grown, *out, *count * sizeof(st_name));
+				*out = grown;
+				cap = want;
+			}
+			(*out)[(*count)++] = name;
+			want_name = 0;
+			continue;	/* take_name bumped already */
+		}
+		/* At the outer level a comma begins the next argument. */
+		if (depth == 1 && at_punct(p, ',')) {
+			want_name = 1;
+		}
+		bump(p);
+	}
+	if (depth > 0) {
+		return fail(p, "unclosed `<` in a type argument");
+	}
+	return 1;
+}
+
 static int
 parse_type(st_parser *p, st_type *out)
 {
 	/*
-	 * Every field this function may append to is initialised here, because
-	 * callers pass an uninitialised `st_type`. That has been true since long
-	 * before the argument list existed and was harmless while the struct was
-	 * only ever *written* — but the generic scan now *reads* `argument_count`,
-	 * and a garbage count with a garbage pointer is a segfault with no message,
-	 * which is the worst way for a compiler to fail. Owning the initialisation
-	 * here rather than at every call site is what keeps that from recurring.
+	 * Callers pass an uninitialised `st_type` — true since long before the
+	 * argument list existed, and harmless while this struct was only ever
+	 * *written*. `arguments` and `argument_count` are therefore initialised by
+	 * parse_generic_list, which owns them and is the only thing that appends:
+	 * a caller handing a garbage count across to be *read* is a segfault with
+	 * no message, which is the worst way for a compiler to fail.
 	 */
 	out->kind = ST_TYPE_NAMED;
-	out->arguments = NULL;
-	out->argument_count = 0;
 	/*
 	 * §3's block type — `(Int32) -> Int32`, and the empty form
 	 * `() -> Void`. Scanned to the closing parenthesis and, when `->`
@@ -266,84 +345,14 @@ parse_type(st_parser *p, st_type *out)
 		return 0;
 	}
 	/*
-	 * §7.26/§7.63: a type may carry lightweight-generic arguments —
-	 * `Array<Int32>`, `Box<String>`, and nested forms. Which argument is
-	 * present is what decides whether the declaration erases or is
-	 * instantiated, so the emitter acts on it; here it is balanced-scanned
-	 * and dropped.
-	 *
-	 * `>>` closes two levels at once, because §7.72's longest-run rule
-	 * makes it a single two-character operator token.
+	 * §7.26/§7.63's argument list — and what decides whether this declaration
+	 * erases or is instantiated, which is the emitter's business. The scan
+	 * itself is parse_generic_list's, shared with a class's parameter list;
+	 * see its comment for the character-wise counting and for why it owns the
+	 * initialisation of these two fields.
 	 */
-	if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
-	    p->tok.start[0] == '<') {
-		int depth = 1;
-		int want_name = 1;
-		size_t cap = 0;
-
-		bump(p);
-		while (p->tok.kind != ST_EOF && depth > 0) {
-			/*
-			 * Count every `<` and `>` *character* in the token, not just
-			 * its first. §7.72's longest-run rule makes `>>` a single
-			 * token, and — the bug this replaces — `?>`, because `?` sits
-			 * in the same operator set. Testing start[0] alone therefore
-			 * missed `Int32?>`'s closing bracket and reported the type
-			 * argument unclosed.
-			 */
-			if (p->tok.kind == ST_OPERATOR) {
-				size_t k;
-
-				for (k = 0; k < p->tok.len; k++) {
-					if (p->tok.start[k] == '<') {
-						depth++;
-					} else if (p->tok.start[k] == '>') {
-						depth--;
-					}
-				}
-				/* Past the first `<` we are inside a nested argument,
-				 * and only the outermost name is recorded. */
-				want_name = 0;
-			} else if (depth == 1 && want_name &&
-				   p->tok.kind == ST_IDENT) {
-				/*
-				 * §7.26's two rules are about what an argument *is* —
-				 * an object type, never a C type — so one name per
-				 * argument answers them. `Array<Box<String>>` records
-				 * `Box`, which is the type the argument names.
-				 */
-				st_name argument;
-
-				if (!take_name(p, &argument)) {
-					return 0;
-				}
-				if (out->argument_count == cap) {
-					size_t want = cap == 0 ? 4 : cap * 2;
-					st_name *grown =
-						st_arena_alloc(want * sizeof(st_name));
-
-					if (grown == NULL) {
-						return fail(p, "out of memory");
-					}
-					memcpy(grown, out->arguments,
-					       out->argument_count *
-						       sizeof(st_name));
-					out->arguments = grown;
-					cap = want;
-				}
-				out->arguments[out->argument_count++] = argument;
-				want_name = 0;
-				continue;	/* take_name bumped already */
-			}
-			/* At the outer level a comma begins the next argument. */
-			if (depth == 1 && at_punct(p, ',')) {
-				want_name = 1;
-			}
-			bump(p);
-		}
-		if (depth > 0) {
-			return fail(p, "unclosed `<` in a type argument");
-		}
+	if (!parse_generic_list(p, &out->arguments, &out->argument_count)) {
+		return 0;
 	}
 	/*
 	 * §4/§7.62: `?` makes the type nullable — a class becomes a nullable
@@ -1787,35 +1796,15 @@ parse_class(st_parser *p, st_class **out)
 		return 0;
 	}
 	/*
-	 * §7.26/§7.63: a class may declare lightweight-generic parameters —
-	 * `class Box<T>: Object`. Scanned and dropped exactly as parse_type scans
-	 * a type's arguments, including the character-wise count of `<` and `>`
-	 * that §7.72's longest-run rule makes necessary (`T?>` is one token). The
-	 * two scans are duplicates; the shared helper is a tidy waiting for a
-	 * session with room for it.
+	 * §7.26/§7.63's parameter list, `class Box<T>`. The scan is
+	 * parse_generic_list's, shared with a type's argument list. This comment
+	 * used to read that the two scans "are duplicates; the shared helper is a
+	 * tidy waiting for a session with room for it" — true of their *shape* and
+	 * false of their *purpose*: this one only counted brackets while
+	 * parse_type's recorded names. Both record now, from one implementation.
 	 */
-	if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
-	    p->tok.start[0] == '<') {
-		int depth = 1;
-
-		bump(p);
-		while (p->tok.kind != ST_EOF && depth > 0) {
-			if (p->tok.kind == ST_OPERATOR) {
-				size_t k;
-
-				for (k = 0; k < p->tok.len; k++) {
-					if (p->tok.start[k] == '<') {
-						depth++;
-					} else if (p->tok.start[k] == '>') {
-						depth--;
-					}
-				}
-			}
-			bump(p);
-		}
-		if (depth > 0) {
-			return fail(p, "unclosed `<` in a type argument");
-		}
+	if (!parse_generic_list(p, &c->parameters, &c->parameter_count)) {
+		return 0;
 	}
 	if (!expect_punct(p, ':')) {
 		return 0;

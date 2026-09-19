@@ -133,6 +133,14 @@ typedef struct {
 	st_name superclass;
 	st_name *conformances;
 	size_t conformance_count;
+	/*
+	 * §7.26/§7.63: a class may declare lightweight-generic *parameters* —
+	 * `class Box<T>: Object`, which emits `@interface Box<T> : NSObject`. They
+	 * are parameters here and *arguments* on a type, which is why the two fields
+	 * are named differently despite sharing one scan.
+	 */
+	st_name *parameters;
+	size_t parameter_count;
 	st_decl *decls;
 } st_class;
 
