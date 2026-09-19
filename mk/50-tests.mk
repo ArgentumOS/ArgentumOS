@@ -31,10 +31,15 @@ test-list:
 
 # ---- Sterling's compiler (K1) -------------------------------------------
 #
-# K1's gate, runnable on the host because libobjc2 is now built here too — see
-# tools/sterlingc-compile.sh's header for how. What remains for the guest is
-# *running* what was compiled: the probe's checks are calls, and the emitter
-# cannot emit calls yet.
+# K1's gate. Its four host legs run here because libobjc2 is now built on the
+# host too — see tools/sterlingc-compile.sh's header for how. They prove the
+# emitted TEXT: the golden diff, the corpus, the rejects, and that it compiles.
+#
+# The guest half is `make test TESTS=sterlingc_k1`: the compiler's output linked
+# with a hand-written driver and run on a guest boot, which is the only leg that
+# exercises the *chain* (`docs/design/sterling-plan.md` §4). The driver is ObjC
+# rather than Sterling because the emitter cannot emit calls yet — that is K2's
+# widening, and the plan says K1's job is the chain, not the coverage.
 .PHONY: sterlingc-check sterlingc-golden sterlingc-corpus sterlingc-reject \
 	sterlingc-compile
 

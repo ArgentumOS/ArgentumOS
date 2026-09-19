@@ -225,6 +225,15 @@ bugs actually are.
   `STERLING <name> ok|FAIL <detail>` line per check plus a `STERLING RESULT ok=N
   fail=M` tally, and exits non-zero on failure — the `objc_smoke` pattern
   (`tests/cases/objc_smoke.py`).
+- **Status (2026-09): both halves are in.** The host legs are `make
+  sterlingc-check` (golden, corpus, reject, compile). The guest half is
+  `userland/tests/sterlingc_k1.m` linked with the compiler's own output at build
+  time and run by `tests/cases/sterlingc_k1.py`. The driver is hand-written ObjC,
+  not Sterling, because the specimen is a class with no top-level statements and
+  the emitter cannot yet emit calls or statement bodies — that widening is K2's.
+  K1's claim is the *chain*, and this is the leg that exercises it;
+  `tools/sterlingc/tests/probe/sterlingc_k1_probe.ag` remains the Sterling
+  version, to be swapped in when the emitter can produce it.
 - **Green here proves the chain: `.ag` → ObjC → clang → libobjc2 → the
   Foundation, on a guest boot. Do not plan past K1 until it passes.**
 - **The specimen is narrower than the language now is (2026-09).** It exercises no subscript, no custom

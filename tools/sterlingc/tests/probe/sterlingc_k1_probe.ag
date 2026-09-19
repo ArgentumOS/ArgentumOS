@@ -3,18 +3,16 @@
  *
  * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
  *
- * K1's host half is `sterlingc.sh --golden`: the specimen must emit §2
- * byte-for-byte. This is the other half, and it cannot be checked on the host
- * — `-fobjc-arc` needs libobjc2, which lives on the guest.
+ * K1's guest half is now a hand-written ObjC driver, `userland/tests/sterlingc_k1.m`,
+ * which links against the compiler's own emitted class and runs on a guest boot
+ * (`tests/cases/sterlingc_k1.py`). It is ObjC rather than this file because
+ * §1's specimen is a class with no top-level statements, so something has to
+ * call it and the emitter cannot emit calls yet.
  *
- * The shape follows the plan: one `STERLING <name> ok|FAIL <detail>` line per
- * check, then a `STERLING RESULT ok=N fail=M` tally, exiting non-zero on
- * failure. That is the `objc_smoke` pattern (tests/cases/objc_smoke.py).
- *
- * NOTE: this file is a *target*, not a passing test. The emitter currently
- * handles §1's specimen and nothing else — it does not yet emit message sends
- * or calls — so the probe cannot run until K2 widens it. It is written now so
- * the guest gate has its instrument the moment the emitter can produce it.
+ * So THIS file is the K2 target: the same chain, but written in Sterling, once
+ * the emitter can produce message sends and statement bodies. It is kept so the
+ * guest gate has its Sterling instrument the moment that lands — the shape and
+ * the `STERLING <name> ok|FAIL` line protocol are already fixed here.
  */
 import Foundation
 

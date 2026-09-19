@@ -490,6 +490,40 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/objc_smoke.m -o .build/objc-smoke-main.o
 	$(MUSL64_OBJC) .build/objc-smoke-support.o .build/objc-smoke-main.o \
 		-o "$(ROOTFS64)/System/Shared/tests/objc_smoke"
+	# sterlingc K1, the guest half (docs/design/sterling-plan.md §4). The four
+	# host legs (make sterlingc-check) prove the emitted TEXT - the golden diff,
+	# the corpus, the rejects, and that it compiles. None of them RUNS anything,
+	# and "do not plan past K1 until it passes" is about the chain, so the
+	# emitted class is linked with a hand-written driver here and executed on a
+	# guest boot:
+	#
+	#     MyClass.ag -> sterlingc -> MyClass.h/.m -> clang -> libobjc2 -> Foundation
+	#
+	# The compiler itself runs on the HOST (it is a host tool; the guest only
+	# runs what it produced), so this rule invokes it - and `--build` is first
+	# because a stale .build/sterlingc would silently emit yesterday's output.
+	#
+	# THE INCLUDE BRIDGE IS LOAD-BEARING. §2 emits `#import <Foundation/Foundation.h>`,
+	# Cocoa's capitalisation, and this tree's directory is `userland/foundation`.
+	# On a case-sensitive filesystem that import cannot resolve without a bridge
+	# - the same one tools/sterlingc-compile.sh builds for the host, and clang's
+	# -Wnonportable-include-path warning is how you can tell it is what resolved
+	# it. The bridge is built beside the emitted headers so the generated include
+	# search is self-contained and cannot be satisfied by a stale one elsewhere.
+	tools/sterlingc.sh --build
+	rm -rf .build/sterlingc/guest
+	mkdir -p .build/sterlingc/guest/include
+	ln -sfn "$(CURDIR)/userland/foundation" .build/sterlingc/guest/include/Foundation
+	.build/sterlingc/sterlingc -o .build/sterlingc/guest
+	$(MUSL64_OBJC) -c -fobjc-arc \
+		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
+		userland/tests/sterlingc_k1.m -o .build/sterlingc-k1-main.o
+	$(MUSL64_OBJC) -c -fobjc-arc \
+		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
+		.build/sterlingc/guest/MyClass.m -o .build/sterlingc-k1-myclass.o
+	$(MUSL64_OBJC) .build/sterlingc-k1-main.o .build/sterlingc-k1-myclass.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/sterlingc_k1"
 	# foundation_core: F0 acceptance (docs/design/foundation-plan.md). Two units
 	# AND two ownership regimes: the subclass and the MRR lifetime exercises in
 	# the support unit, the checks in the ARC unit. The ARC flag is EXPLICIT -
