@@ -64,6 +64,19 @@ extern NSString *const NSKeyValueChangeOldKey;
 extern NSString *const NSKeyValueChangeIndexesKey;
 extern NSString *const NSKeyValueChangeNotificationIsPriorKey;
 
+/* THE KEY TYPE, and the set-mutation KIND (W2f). The kind's VALUES are this tree's (Apple
+ * publishes the case names and not their numbers — the same situation as NSAlignmentOptions,
+ * §14.2): 1 through 4, in the order the operations read. Nothing here consumes the enum yet —
+ * the KVO set-mutation method that takes one is a separate row. */
+typedef NSString *NSKeyValueChangeKey;
+
+typedef NSUInteger NSKeyValueSetMutationKind;
+
+#define NSKeyValueUnionSetMutation	1
+#define NSKeyValueMinusSetMutation	2
+#define NSKeyValueIntersectSetMutation	3
+#define NSKeyValueSetSetMutation	4
+
 @interface NSObject (NSKeyValueObserving)
 
 - (void)addObserver:(NSObject *)observer

@@ -4020,7 +4020,7 @@ what the ledger actually holds.
 | W2c the byte-order family | `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and `NS_BigEndian`/`NS_LittleEndian`/`NS_UnknownByteOrder` | | **LANDED and verified (W2c 10 rows): `NSSwappedFloat`/`NSSwappedDouble`, the four conversions, `NSHostByteOrder`, and the three cases — `userland/foundation/NSByteOrder.h`, implemented in `nsobject.m`, asserted by `c-byte-order`** |
 | W2d the assertion macros | the `NSAssert`/`NSCAssert` family (13) — a safety API, and its failure path RAISES, which is worth a probe that catches it | |
 | W2e the runtime's refcount and page functions | `NSIncrementExtraRefCount`, `NSDecrementExtraRefCountWasZero`, `NSExtraRefCount`, `NSAllocateMemoryPages`, `NSCopyMemoryPages`, `NSDeallocateMemoryPages` | | **PARTLY LANDED (4 of 9): the three page functions and `NSGetSizeAndAlignment` — which reuses `nsvalue.m`'s own encoder measurer so the two cannot disagree — asserted by `c-memory-pages` and `c-size-and-alignment`. THE OTHER FIVE STAY `open`, and they are DEPENDENCIES rather than gaps: the extra-refcount trio needs the RUNTIME to expose a refcount (objc/runtime.h declares none), and `NSCountFrames`/`NSFrameAddress` need a stack-walking facility, because a frame walk without a frame-pointer guarantee returns pointers into nothing rather than failing** |
-| W2f the KVC operator constants | the eleven `…KeyValueOperator` vars, `NSKeyValueOperator`/`NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` | |
+| W2f the KVC operator constants | the eleven `…KeyValueOperator` vars, `NSKeyValueOperator`/`NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` | | **LANDED and verified (19 rows): the eleven operator constants, `NSKeyValueOperator` and `NSKeyValueChangeKey`, `NSKeyValueSetMutationKind` with its four cases, and `NSKeyValueValidationError` — asserted by `kvc-operator-constants`. THIS FAMILY'S VALUES ARE NOT OURS (see §14.4): each constant IS the operator string a program types into `-valueForKeyPath:`, so Apple publishes them as SYNTAX |
 | W2g the debug switches | `NSDebugEnabled`, `NSZombieEnabled`, `NSDeallocateZombies`, `NSKeepAllocationStatistics`, `NSFoundationVersionNumber` | | **LANDED and verified (5 rows): the four diagnostics switches and `NSFoundationVersionNumber`, asserted by `c-debug-switches` — the switches because ADJUSTABILITY is their contract, and the version number because it is this library's own (§14.3)** |
 | W2h the small classes | `NSUUID`, `NSAffineTransform`, `NSDateInterval`, `NSValueTransformer`, `NSProgressReporting`, `NSUndoManager`, `NSAssertionHandler`, `NSJSONSerialization`, and the object basics (`NSObject` **protocol**, `NSAutoreleasePool`, `NSProxy`) | |
 
@@ -4141,3 +4141,27 @@ and I reported that half of it had landed when none of it had — which produced
 (declarations with no implementations). The fix is in the practice, not the code: **the verification
 step now RE-READS the file for the symbols it claims to have written, instead of trusting the print
 that says it did.**
+
+### 14.4 THE ONE FAMILY WHOSE VALUES ARE NOT OURS (W2f), AND AN OPEN QUESTION IT TURNED UP
+
+**The eleven `…KeyValueOperator` constants are a different kind of case from §14.2/§14.3.** Each one's
+VALUE is the operator string a program also types by hand — `@"@count"`, `@"@sum"` — so Apple publishes
+them as **syntax**, not as an unpublished number. A value that did not match would break the documented
+usage rather than merely differ, which is why this family is the one place the "values are ours" clause
+does NOT apply.
+
+**And the probe says so in the strongest available way:** besides asserting the eleven strings, it
+exercises `NSCountKeyValueOperator` **through the API** — `[NSArray … valueForKeyPath:…]` answers 3 —
+which makes the constant more than a spelling.
+
+**AN OPEN QUESTION THIS PASS TURNED UP AND DID NOT RESOLVE:** the KVC implementation in this tree
+mentions four operator strings (`@count`, `@sum`, `@distinctUnionOfObjects`, `@distinctUnionOfArrays`)
+and its error message lists more, but **its dispatch is not a string comparison in that file**, so
+**how many of the eleven operators the BEHAVIOUR actually implements was not established.** The
+constants ship either way (their values are Apple's syntax and their rows are surface rows), and a
+partial operator set is a *method-level* gap the sweep cannot see — so it is recorded here as a
+question to answer, with `@count` known-good because the probe exercises it.
+
+**THE ENUM'S VALUES *ARE* OURS, for the contrast:** `NSKeyValueSetMutationKind` is 1–4 in this tree,
+stated in the header, because Apple publishes the four case names and not their numbers — the same
+situation as `NSAlignmentOptions` (§14.2) and the byte-order cases (§14.3).

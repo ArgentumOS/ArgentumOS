@@ -123,6 +123,33 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable id)valueForKey:(NSString *)key;
 @end
 
+
+/*
+ * THE COLLECTION OPERATORS (W2f), and these are the one family in W2 whose VALUES ARE NOT OURS:
+ * each constant is the OPERATOR STRING a program also types into `-valueForKeyPath:`
+ * ("@avg", "@count", …), so Apple publishes them as SYNTAX, and a value that did not match
+ * would break the documented usage rather than merely differ from an unpublished number.
+ * `@count` is the one this library's KVC is measured to implement, and the probe exercises it
+ * THROUGH the API as well as asserting the string.
+ */
+typedef NSString *NSKeyValueOperator;
+
+extern NSString *const NSAverageKeyValueOperator;
+extern NSString *const NSCountKeyValueOperator;
+extern NSString *const NSDistinctUnionOfArraysKeyValueOperator;
+extern NSString *const NSDistinctUnionOfObjectsKeyValueOperator;
+extern NSString *const NSDistinctUnionOfSetsKeyValueOperator;
+extern NSString *const NSMaximumKeyValueOperator;
+extern NSString *const NSMinimumKeyValueOperator;
+extern NSString *const NSSumKeyValueOperator;
+extern NSString *const NSUnionOfArraysKeyValueOperator;
+extern NSString *const NSUnionOfObjectsKeyValueOperator;
+extern NSString *const NSUnionOfSetsKeyValueOperator;
+
+/* THE KVC ERROR CODE (W2f). Apple's number names a KVC validation failure; this library's own
+ * `-validateValue:forKey:error:` is where such an error would be built, and the number is stated
+ * once, here, so the two cannot disagree. */
+extern NSInteger NSKeyValueValidationError;
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSKEYVALUECODING_H */

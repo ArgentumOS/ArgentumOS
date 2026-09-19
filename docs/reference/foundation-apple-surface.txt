@@ -31,11 +31,11 @@
 #   class      shipped   61   open  181   struck   31
 #   protocol   shipped    5   open   31   struck    9
 #   macro      shipped    4   open  223   struck   26
-#   enum       shipped   29   open  123   struck    8
-#   case       shipped  181   open 1028   struck   93
+#   enum       shipped   30   open  122   struck    8
+#   case       shipped  186   open 1023   struck   93
 #   func       shipped   58   open   77   struck   54
-#   var        shipped   55   open  712   struck  147
-#   typealias  shipped   16   open   57   struck    3
+#   var        shipped   66   open  701   struck  147
+#   typealias  shipped   18   open   55   struck    3
 #   struct     shipped    6   open    2   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -566,15 +566,15 @@ case	shipped	NSKeyValueChangeInsertion		Reference / Enumerations / Constants	-	o
 case	shipped	NSKeyValueChangeRemoval		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueChangeReplacement		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueChangeSetting		Reference / Enumerations / Constants	-	objc
-case	open	NSKeyValueIntersectSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSKeyValueMinusSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSKeyValueIntersectSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSKeyValueMinusSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSKeyValueObservingOptionInitial		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueObservingOptionNew		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueObservingOptionOld		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueObservingOptionPrior		Reference / Enumerations / Constants	-	objc
-case	open	NSKeyValueSetSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSKeyValueUnionSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSKeyValueValidationError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
+case	shipped	NSKeyValueSetSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSKeyValueUnionSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSKeyValueValidationError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
 case	struck	NSLengthFormatterUnitCentimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSLengthFormatterUnitFoot	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSLengthFormatterUnitInch	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
@@ -1684,7 +1684,7 @@ enum	open	NSJSONReadingOptions	NSJSONSerialization	Files and Data Persistence / 
 enum	open	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
 enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueObservingOptions		Reference / Enumerations	-	objc
-enum	open	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc
+enum	shipped	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc
 enum	struck	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	struck	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
 enum	struck	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
@@ -2291,8 +2291,8 @@ typealias	open	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / C
 typealias	open	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
 typealias	open	NSItemProviderCompletionHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	open	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
-typealias	open	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
-typealias	open	NSKeyValueOperator		Reference / Type Aliases	-	objc
+typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
+typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
 typealias	struck	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	struck	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	open	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
@@ -2360,7 +2360,7 @@ var	open	NSAppleScriptErrorNumber	NSAppleScript	App Support / Script Execution /
 var	open	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
 var	open	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	open	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
-var	open	NSAverageKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	open	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	struck	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
@@ -2404,7 +2404,7 @@ var	open	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error D
 var	struck	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	struck	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	struck	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-var	open	NSCountKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSCountKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	open	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
 var	struck	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
@@ -2426,9 +2426,9 @@ var	shipped	NSDefaultRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Schedu
 var	open	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	struck	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
-var	open	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
-var	open	NSDistinctUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
-var	open	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSDistinctUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
 var	struck	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
@@ -2666,7 +2666,7 @@ var	open	NSMapTableStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collec
 var	open	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 var	struck	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 var	open	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
-var	open	NSMaximumKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSMaximumKeyValueOperator		Reference / Constants	-	objc
 var	open	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
 var	open	NSMetadataItemAcquisitionModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
 var	open	NSMetadataItemAlbumKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
@@ -2868,7 +2868,7 @@ var	open	NSMetadataUbiquitousSharedItemPermissionsReadOnly	NSMetadataItem	Files 
 var	open	NSMetadataUbiquitousSharedItemPermissionsReadWrite	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Permissions Values	-	objc
 var	open	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	-	objc
 var	open	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	-	objc
-var	open	NSMinimumKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	open	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
@@ -3008,7 +3008,7 @@ var	open	NSStringTransformToUnicodeName	NSMutableString	Fundamentals / Strings /
 var	open	NSStringTransformToUnicodeName	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
 var	open	NSStringTransformToXMLHex	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
 var	open	NSStringTransformToXMLHex	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
-var	open	NSSumKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSSumKeyValueOperator		Reference / Constants	-	objc
 var	open	NSSystemClockDidChangeNotification	NSDate	Fundamentals / Date Representations / Recognizing Notifications	-	swift-page
 var	open	NSSystemClockDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSSystemTimeZoneDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
@@ -3246,9 +3246,9 @@ var	open	NSUndoManagerWillRedoChangeNotification	NSNotification	App Support / No
 var	open	NSUndoManagerWillRedoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
 var	open	NSUndoManagerWillUndoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSUndoManagerWillUndoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
-var	open	NSUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
-var	open	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
+var	shipped	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	open	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
 var	open	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	open	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc

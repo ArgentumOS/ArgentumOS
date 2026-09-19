@@ -298,6 +298,30 @@ int main(void)
 	      NSConvertSwappedDoubleToHost(NSConvertHostDoubleToSwapped(0.0)) == 0.0,
 	      "the byte-order round trips both ways, and the host is little-endian");
 
+	/*
+	 * THE COLLECTION OPERATORS (W2f). Their VALUES are API — each is the operator string a
+	 * program also types into -valueForKeyPath: — so the check asserts the strings, and then
+	 * exercises the one this library's KVC is measured to implement THROUGH the API, which is
+	 * what makes the constant more than a spelling.
+	 */
+	check("kvc-operator-constants",
+	      [NSAverageKeyValueOperator isEqualToString:@"@avg"] &&
+	      [NSCountKeyValueOperator isEqualToString:@"@count"] &&
+	      [NSDistinctUnionOfArraysKeyValueOperator isEqualToString:@"@distinctUnionOfArrays"] &&
+	      [NSDistinctUnionOfObjectsKeyValueOperator isEqualToString:@"@distinctUnionOfObjects"] &&
+	      [NSDistinctUnionOfSetsKeyValueOperator isEqualToString:@"@distinctUnionOfSets"] &&
+	      [NSMaximumKeyValueOperator isEqualToString:@"@max"] &&
+	      [NSMinimumKeyValueOperator isEqualToString:@"@min"] &&
+	      [NSSumKeyValueOperator isEqualToString:@"@sum"] &&
+	      [NSUnionOfArraysKeyValueOperator isEqualToString:@"@unionOfArrays"] &&
+	      [NSUnionOfObjectsKeyValueOperator isEqualToString:@"@unionOfObjects"] &&
+	      [NSUnionOfSetsKeyValueOperator isEqualToString:@"@unionOfSets"] &&
+	      [[[NSArray arrayWithObjects:@1, @2, @3, nil] valueForKeyPath:NSCountKeyValueOperator]
+	          intValue] == 3 &&
+	      NSKeyValueValidationError == 1020 &&
+	      NSKeyValueUnionSetMutation == 1 && NSKeyValueSetSetMutation == 4,
+	      "the eleven operator strings (API: they are also the key paths), with @count exercised through -valueForKeyPath:, plus the error code and the set-mutation kinds");
+
 	{
 		char *p = (char *)NSAllocateMemoryPages(64);
 		char *q = (char *)NSAllocateMemoryPages(64);

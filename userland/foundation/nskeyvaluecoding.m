@@ -716,4 +716,25 @@ static id fn_fold(NSString *operator, NSArray *values)
 	return [self objectForKey:key];
 }
 
+
+/*
+ * THE COLLECTION OPERATORS (W2f). The strings are Apple's published operator syntax, and they are
+ * what `-valueForKeyPath:` is handed — see NSKeyValueCoding.h for why this family's values are
+ * NOT ours to choose.
+ */
+NSString *const NSAverageKeyValueOperator = @"@avg";
+NSString *const NSCountKeyValueOperator = @"@count";
+NSString *const NSDistinctUnionOfArraysKeyValueOperator = @"@distinctUnionOfArrays";
+NSString *const NSDistinctUnionOfObjectsKeyValueOperator = @"@distinctUnionOfObjects";
+NSString *const NSDistinctUnionOfSetsKeyValueOperator = @"@distinctUnionOfSets";
+NSString *const NSMaximumKeyValueOperator = @"@max";
+NSString *const NSMinimumKeyValueOperator = @"@min";
+NSString *const NSSumKeyValueOperator = @"@sum";
+NSString *const NSUnionOfArraysKeyValueOperator = @"@unionOfArrays";
+NSString *const NSUnionOfObjectsKeyValueOperator = @"@unionOfObjects";
+NSString *const NSUnionOfSetsKeyValueOperator = @"@unionOfSets";
+
+/* THE KVC ERROR CODE (W2f): a number whose only requirement is that the code RAISING it and the
+ * code READING it agree, and both are in this library. */
+NSInteger NSKeyValueValidationError = 1020;
 @end
