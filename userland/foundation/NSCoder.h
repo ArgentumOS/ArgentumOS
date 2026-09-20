@@ -52,6 +52,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* How a decoder answers a failure it cannot report as a value (2026-09-20): raise,
+ * or hand the caller an NSError. Names from Apple's documentation index; values are
+ * ours — §11.6.1 D2, see the note in NSFileManager.h. */
+typedef enum {
+	NSDecodingFailurePolicyRaiseException = 0,
+	NSDecodingFailurePolicySetErrorAndReturn = 1
+} NSDecodingFailurePolicy;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSCODER_H */

@@ -31,25 +31,25 @@
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   98   open   19   struck  136
-#   enum       shipped   33   open  119   struck    8
-#   case       shipped  190   open 1019   struck   93
+#   enum       shipped   48   open  104   struck    8
+#   case       shipped  269   open  940   struck   93
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
 #   typealias  shipped   19   open   54   struck    3
 #   struct     shipped    7   open    1   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityBackground	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityIdleDisplaySleepDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityIdleSystemSleepDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityLatencyCritical	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivitySuddenTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityUserInitiated	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityUserInitiatedAllowingIdleSystemSleep	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSActivityUserInteractive	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
-case	open	NSAdminApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityBackground	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityIdleDisplaySleepDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityIdleSystemSleepDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityLatencyCritical	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivitySuddenTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityUserInitiated	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityUserInitiatedAllowingIdleSystemSleep	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSActivityUserInteractive	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
+case	shipped	NSAdminApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSAggregateExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSAlignAllEdgesInward		Fundamentals / Geometry / Related Types / Constants	-	objc
 case	shipped	NSAlignAllEdgesNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
@@ -73,9 +73,9 @@ case	shipped	NSAlignRectFlipped		Fundamentals / Geometry / Related Types / Const
 case	shipped	NSAlignWidthInward		Fundamentals / Geometry / Related Types / Constants	-	objc
 case	shipped	NSAlignWidthNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
 case	shipped	NSAlignWidthOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
-case	open	NSAllApplicationsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSAllDomainsMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
-case	open	NSAllLibrariesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSAllApplicationsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSAllDomainsMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
+case	shipped	NSAllLibrariesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSAllPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	open	NSAnchoredSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSAndPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
@@ -92,9 +92,9 @@ case	open	NSAppleEventSendNeverInteract	NSAppleEventDescriptor	App Support / App
 case	open	NSAppleEventSendNoReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
 case	open	NSAppleEventSendQueueReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
 case	open	NSAppleEventSendWaitForReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSApplicationScriptsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSApplicationSupportDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSApplicationScriptsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSApplicationSupportDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSArgumentEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	struck	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
@@ -107,7 +107,7 @@ case	open	NSAttributedStringMarkdownInterpretedSyntaxInlineOnly	NSAttributedStri
 case	open	NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhitespace	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
 case	open	NSAttributedStringMarkdownParsingFailureReturnError	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
 case	open	NSAttributedStringMarkdownParsingFailureReturnPartiallyParsedIfPossible	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
-case	open	NSAutosavedInformationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSAutosavedInformationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	open	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	open	NSBackwardsSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
@@ -148,7 +148,7 @@ case	open	NSByteCountFormatterUsePB	NSByteCountFormatter	Fundamentals / Data siz
 case	open	NSByteCountFormatterUseTB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
 case	open	NSByteCountFormatterUseYBOrHigher	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
 case	open	NSByteCountFormatterUseZB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSCachesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSCachesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSCalculationDivideByZero		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	open	NSCalculationDivideByZero	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	open	NSCalculationLossOfPrecision		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
@@ -246,7 +246,7 @@ case	shipped	NSConstantValueExpressionType	NSExpression	Fundamentals / Fillterin
 case	open	NSContainerSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSContainsComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	-	objc
 case	shipped	NSContainsPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSCoreServiceDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSCoreServiceDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSCustomSelectorPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSDataBase64DecodingIgnoreUnknownCharacters	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
 case	shipped	NSDataBase64Encoding64CharacterLineLength	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
@@ -304,26 +304,26 @@ case	open	NSDateIntervalFormatterNoStyle	NSDateIntervalFormatter	Fundamentals / 
 case	open	NSDateIntervalFormatterShortStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	struck	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSDecodingFailurePolicyRaiseException	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
-case	open	NSDecodingFailurePolicySetErrorAndReturn	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
+case	shipped	NSDecodingFailurePolicyRaiseException	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
+case	shipped	NSDecodingFailurePolicySetErrorAndReturn	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
 case	open	NSDecompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
-case	open	NSDemoApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSDesktopDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSDeveloperApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSDeveloperDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDemoApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDesktopDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDeveloperApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDeveloperDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDiacriticInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	open	NSDiacriticInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSDirectPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSDirectoryEnumerationIncludesDirectoriesPostOrder	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
-case	open	NSDirectoryEnumerationProducesRelativePathURLs	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
-case	open	NSDirectoryEnumerationSkipsHiddenFiles	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
-case	open	NSDirectoryEnumerationSkipsPackageDescendants	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
-case	open	NSDirectoryEnumerationSkipsSubdirectoryDescendants	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
+case	shipped	NSDirectoryEnumerationIncludesDirectoriesPostOrder	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
+case	shipped	NSDirectoryEnumerationProducesRelativePathURLs	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
+case	shipped	NSDirectoryEnumerationSkipsHiddenFiles	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
+case	shipped	NSDirectoryEnumerationSkipsPackageDescendants	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
+case	shipped	NSDirectoryEnumerationSkipsSubdirectoryDescendants	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
 case	open	NSDistributedNotificationDeliverImmediately	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 case	open	NSDistributedNotificationPostToAllSessions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
-case	open	NSDocumentDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSDocumentationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSDownloadsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDocumentDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDocumentationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSDownloadsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSEndsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	-	objc
 case	shipped	NSEndsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
@@ -368,21 +368,21 @@ case	open	NSFileErrorMinimum		Files and Data Persistence / Errors / Error Codes	
 case	open	NSFileErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
 case	open	NSFileLockingError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileLockingError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
-case	open	NSFileManagerItemReplacementUsingNewMetadataOnly	NSFileManager	Files and Data Persistence / File system operations / Replacing items / Using File Replacement Options	-	objc
-case	open	NSFileManagerItemReplacementWithoutDeletingBackupItem	NSFileManager	Files and Data Persistence / File system operations / Replacing items / Using File Replacement Options	-	objc
-case	open	NSFileManagerResumeSyncBehaviorAfterUploadWithFailOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
-case	open	NSFileManagerResumeSyncBehaviorDropLocalChanges	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
-case	open	NSFileManagerResumeSyncBehaviorPreserveLocalChanges	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
-case	open	NSFileManagerSupportedSyncControlsFailUploadOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Inspecting supported sync controls	-	objc
-case	open	NSFileManagerSupportedSyncControlsPauseSync	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Inspecting supported sync controls	-	objc
-case	open	NSFileManagerUnmountAllPartitionsAndEjectDisk	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes / Unmount Behavior	-	objc
+case	shipped	NSFileManagerItemReplacementUsingNewMetadataOnly	NSFileManager	Files and Data Persistence / File system operations / Replacing items / Using File Replacement Options	-	objc
+case	shipped	NSFileManagerItemReplacementWithoutDeletingBackupItem	NSFileManager	Files and Data Persistence / File system operations / Replacing items / Using File Replacement Options	-	objc
+case	shipped	NSFileManagerResumeSyncBehaviorAfterUploadWithFailOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
+case	shipped	NSFileManagerResumeSyncBehaviorDropLocalChanges	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
+case	shipped	NSFileManagerResumeSyncBehaviorPreserveLocalChanges	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
+case	shipped	NSFileManagerSupportedSyncControlsFailUploadOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Inspecting supported sync controls	-	objc
+case	shipped	NSFileManagerSupportedSyncControlsPauseSync	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Inspecting supported sync controls	-	objc
+case	shipped	NSFileManagerUnmountAllPartitionsAndEjectDisk	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes / Unmount Behavior	-	objc
 case	open	NSFileManagerUnmountBusyError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileManagerUnmountBusyError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
 case	open	NSFileManagerUnmountUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileManagerUnmountUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
-case	open	NSFileManagerUnmountWithoutUI	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes / Unmount Behavior	-	objc
-case	open	NSFileManagerUploadConflictPolicyDefault	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Working with conflict policies	-	objc
-case	open	NSFileManagerUploadConflictPolicyFailOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Working with conflict policies	-	objc
+case	shipped	NSFileManagerUnmountWithoutUI	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes / Unmount Behavior	-	objc
+case	shipped	NSFileManagerUploadConflictPolicyDefault	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Working with conflict policies	-	objc
+case	shipped	NSFileManagerUploadConflictPolicyFailOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Working with conflict policies	-	objc
 case	open	NSFileNoSuchFileError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileNoSuchFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
 case	open	NSFileReadCorruptFileError		Files and Data Persistence / Errors / Error Codes	-	objc
@@ -426,18 +426,18 @@ case	open	NSFileWriteUnsupportedSchemeError	NSError	App Support / User-Relevant 
 case	open	NSFileWriteVolumeReadOnlyError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileWriteVolumeReadOnlyError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
 case	open	NSForcedOrderingSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSFormattingContextBeginningOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingContextDynamic	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingContextListItem	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingContextMiddleOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingContextStandalone	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingContextUnknown	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingContextBeginningOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingContextDynamic	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingContextListItem	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingContextMiddleOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingContextStandalone	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingContextUnknown	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	open	NSFormattingError	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
 case	open	NSFormattingErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
 case	open	NSFormattingErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
-case	open	NSFormattingUnitStyleLong	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingUnitStyleMedium	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingUnitStyleShort	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingUnitStyleLong	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingUnitStyleMedium	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
+case	shipped	NSFormattingUnitStyleShort	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFunctionExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	open	NSGrammaticalCaseAblative		Reference / Enumerations / Enumeration Cases	-	objc
 case	open	NSGrammaticalCaseAccusative		Reference / Enumerations / Enumeration Cases	-	objc
@@ -534,7 +534,7 @@ case	open	NSInlinePresentationIntentLineBreak	NSAttributedString	Fundamentals / 
 case	open	NSInlinePresentationIntentSoftBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	open	NSInlinePresentationIntentStrikethrough	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	open	NSInlinePresentationIntentStronglyEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	shipped	NSIntersectSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
@@ -548,7 +548,7 @@ case	open	NSItemProviderRepresentationVisibilityTeam	NSItemProvider	App Support 
 case	open	NSItemProviderUnavailableCoercionError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	open	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	open	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	open	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
 case	open	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONReadingJSON5Allowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
@@ -587,7 +587,7 @@ case	open	NSLessThanComparison	NSSpecifierTest	App Support / Object Matching Tes
 case	open	NSLessThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	-	objc
 case	shipped	NSLessThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSLessThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSLibraryDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSLibraryDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSLikePredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSLinguisticTaggerJoinNames	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
 case	struck	NSLinguisticTaggerOmitOther	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
@@ -599,7 +599,7 @@ case	struck	NSLinguisticTaggerUnitParagraph	NSLinguisticTagger	Fundamentals / De
 case	struck	NSLinguisticTaggerUnitSentence	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
 case	struck	NSLinguisticTaggerUnitWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
 case	shipped	NSLiteralSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSLocalDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
+case	shipped	NSLocalDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	open	NSLocaleLanguageDirectionBottomToTop	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	open	NSLocaleLanguageDirectionLeftToRight	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	open	NSLocaleLanguageDirectionRightToLeft	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
@@ -640,8 +640,8 @@ case	struck	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculati
 case	struck	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSMoviesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSMusicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSMoviesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSMusicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSNEXTSTEPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSNetServiceListenForConnections	NSNetService	Networking / Local Network Services / Constants / Constants	-	objc
 case	open	NSNetServiceNoAutoRename	NSNetService	Networking / Local Network Services / Constants / Constants	-	objc
@@ -654,7 +654,7 @@ case	open	NSNetServicesMissingRequiredConfigurationError	NSNetService	Networking
 case	open	NSNetServicesNotFoundError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
 case	open	NSNetServicesTimeoutError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
 case	open	NSNetServicesUnknownError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetworkDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
+case	shipped	NSNetworkDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	open	NSNoScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSNoSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSNoSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
@@ -714,7 +714,7 @@ case	open	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects	NSArray	Fun
 case	open	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set / Difference Calculation Options	-	objc
 case	shipped	NSOrderedDescending		Fundamentals / Sorting / Constants	-	objc
 case	shipped	NSOrderedSame		Fundamentals / Sorting / Constants	-	objc
-case	open	NSPicturesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSPicturesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSPointerFunctionsCStringPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
 case	open	NSPointerFunctionsCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Copy Option	-	objc
 case	open	NSPointerFunctionsIntegerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
@@ -736,7 +736,7 @@ case	open	NSPositionReplace	NSPositionalSpecifier	App Support / Object Specifier
 case	open	NSPostASAP	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	open	NSPostNow	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	open	NSPostWhenIdle	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
-case	open	NSPreferencePanesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSPreferencePanesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSPresentationIntentKindBlockQuote		Reference / Enumerations / Getting the presentation types	-	objc
 case	open	NSPresentationIntentKindBlockQuote	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
 case	open	NSPresentationIntentKindCodeBlock		Reference / Enumerations / Getting the presentation types	-	objc
@@ -764,11 +764,11 @@ case	open	NSPresentationIntentKindUnorderedList	NSAttributedString	Fundamentals 
 case	open	NSPresentationIntentTableColumnAlignmentCenter	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
 case	open	NSPresentationIntentTableColumnAlignmentLeft	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
 case	open	NSPresentationIntentTableColumnAlignmentRight	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
-case	open	NSPrinterDescriptionDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSProcessInfoThermalStateCritical	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
-case	open	NSProcessInfoThermalStateFair	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
-case	open	NSProcessInfoThermalStateNominal	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
-case	open	NSProcessInfoThermalStateSerious	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
+case	shipped	NSPrinterDescriptionDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSProcessInfoThermalStateCritical	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
+case	shipped	NSProcessInfoThermalStateFair	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
+case	shipped	NSProcessInfoThermalStateNominal	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
+case	shipped	NSProcessInfoThermalStateSerious	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
 case	shipped	NSPropertyListBinaryFormat_v1_0	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
 case	open	NSPropertyListErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
 case	open	NSPropertyListErrorMaximum	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
@@ -851,7 +851,7 @@ case	open	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Consta
 case	struck	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 case	struck	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
@@ -885,7 +885,7 @@ case	open	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / String
 case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
+case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	open	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
 case	open	NSTaskTerminationReasonUncaughtSignal	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
 case	open	NSTextCheckingAllCustomTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
@@ -912,7 +912,7 @@ case	open	NSTimeZoneNameStyleShortDaylightSaving	NSTimeZone	Fundamentals / Calen
 case	open	NSTimeZoneNameStyleShortGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	open	NSTimeZoneNameStyleShortStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	open	NSTimeZoneNameStyleStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
-case	open	NSTrashDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSTrashDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSURLBookmarkCreationMinimalBookmark	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
 case	struck	NSURLBookmarkCreationPreferFileIDResolution	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	deprecated	objc
 case	open	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
@@ -1014,9 +1014,9 @@ case	struck	NSURLNetworkServiceTypeVoIP	NSMutableURLRequest	Networking / Request
 case	struck	NSURLNetworkServiceTypeVoIP	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
 case	open	NSURLNetworkServiceTypeVoice	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	open	NSURLNetworkServiceTypeVoice	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLRelationshipContains	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
-case	open	NSURLRelationshipOther	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
-case	open	NSURLRelationshipSame	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
+case	shipped	NSURLRelationshipContains	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
+case	shipped	NSURLRelationshipOther	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
+case	shipped	NSURLRelationshipSame	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
 case	open	NSURLRequestAttributionDeveloper	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
 case	open	NSURLRequestAttributionDeveloper	NSURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
 case	open	NSURLRequestAttributionUser	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
@@ -1122,8 +1122,8 @@ case	open	NSUserActivityHandoffUserInfoTooLargeError	NSUserActivity	App Support 
 case	open	NSUserActivityRemoteApplicationTimedOutError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
 case	open	NSUserActivityRemoteApplicationTimedOutError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
 case	open	NSUserCancelledError	NSError	App Support / User-Relevant Errors / Error Codes / Cancellation	-	objc
-case	open	NSUserDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSUserDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
+case	shipped	NSUserDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
+case	shipped	NSUserDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	struck	NSUserNotificationActivationTypeActionButtonClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	struck	NSUserNotificationActivationTypeAdditionalActionClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	struck	NSUserNotificationActivationTypeContentsClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
@@ -1132,8 +1132,8 @@ case	struck	NSUserNotificationActivationTypeReplied	NSUserNotification	App Suppo
 case	open	NSValidationErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	open	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSVariableExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
-case	open	NSVolumeEnumerationSkipHiddenVolumes	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
+case	shipped	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
+case	shipped	NSVolumeEnumerationSkipHiddenVolumes	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
 case	struck	NSWeekCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSWeekCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSWeekOfMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
@@ -1612,7 +1612,7 @@ class	open	NSXPCConnection		Low-Level Utilities / XPC Client	-	objc
 class	open	NSXPCInterface		Low-Level Utilities / XPC Client	-	objc
 class	open	NSXPCListener		Low-Level Utilities / XPC Services	-	objc
 class	open	NSXPCListenerEndpoint		Low-Level Utilities / XPC Services	-	objc
-enum	open	NSActivityOptions	NSProcessInfo	App Support / System Interaction / Managing activities	-	objc
+enum	shipped	NSActivityOptions	NSProcessInfo	App Support / System Interaction / Managing activities	-	objc
 enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
 enum	open	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	-	objc
 enum	open	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
@@ -1645,25 +1645,25 @@ enum	open	NSDateComponentsFormatterZeroFormattingBehavior	NSDateComponentsFormat
 enum	shipped	NSDateFormatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	shipped	NSDateFormatterStyle	NSDateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	open	NSDateIntervalFormatterStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants	-	objc
-enum	open	NSDecodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
-enum	open	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
+enum	shipped	NSDecodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
+enum	shipped	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	open	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 enum	struck	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	open	NSEnumerationOptions		Fundamentals / Iteration	-	objc
 enum	shipped	NSExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
 enum	open	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
 enum	open	NSFileCoordinatorWritingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
-enum	open	NSFileManagerItemReplacementOptions	NSFileManager	Files and Data Persistence / File system operations / Replacing items	-	objc
-enum	open	NSFileManagerResumeSyncBehavior	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
-enum	open	NSFileManagerSupportedSyncControls	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
-enum	open	NSFileManagerUnmountOptions	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
-enum	open	NSFileManagerUploadLocalVersionConflictPolicy	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+enum	shipped	NSFileManagerItemReplacementOptions	NSFileManager	Files and Data Persistence / File system operations / Replacing items	-	objc
+enum	shipped	NSFileManagerResumeSyncBehavior	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+enum	shipped	NSFileManagerSupportedSyncControls	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+enum	shipped	NSFileManagerUnmountOptions	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
+enum	shipped	NSFileManagerUploadLocalVersionConflictPolicy	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 enum	open	NSFileVersionAddingOptions	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants	-	objc
 enum	open	NSFileVersionReplacingOptions	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants	-	objc
 enum	open	NSFileWrapperReadingOptions	NSFileWrapper	Files and Data Persistence / Managed file access / Constants	-	objc
 enum	open	NSFileWrapperWritingOptions	NSFileWrapper	Files and Data Persistence / Managed file access / Constants	-	objc
-enum	open	NSFormattingContext	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
-enum	open	NSFormattingUnitStyle	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
+enum	shipped	NSFormattingContext	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
+enum	shipped	NSFormattingUnitStyle	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
 enum	open	NSGrammaticalCase		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalDefiniteness		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalDetermination		Reference / Enumerations	-	objc
@@ -1711,7 +1711,7 @@ enum	shipped	NSPredicateOperatorType	NSComparisonPredicate	Fundamentals / Fillte
 enum	open	NSPresentationIntentKind		Reference / Enumerations	-	objc
 enum	open	NSPresentationIntentKind	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	open	NSPresentationIntentTableColumnAlignment	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
-enum	open	NSProcessInfoThermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
+enum	shipped	NSProcessInfoThermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 enum	shipped	NSPropertyListFormat	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 enum	shipped	NSPropertyListMutabilityOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 enum	open	NSQualityOfService	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
@@ -1726,8 +1726,8 @@ enum	open	NSRelativePosition	NSRelativeSpecifier	App Support / Object Specifiers
 enum	open	NSRoundingMode		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 enum	open	NSRoundingMode	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
 enum	open	NSSaveOptions	NSCloseCommand	App Support / Script Commands / Constants	-	objc
-enum	open	NSSearchPathDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
-enum	open	NSSearchPathDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
+enum	shipped	NSSearchPathDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
+enum	shipped	NSSearchPathDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	open	NSSortOptions		Fundamentals / Iteration	-	objc
 enum	open	NSStreamEvent	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 enum	open	NSStreamStatus	NSStream	Low-Level Utilities / Streams / Constants	-	objc
@@ -1745,7 +1745,7 @@ enum	open	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache
 enum	open	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
 enum	open	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
 enum	struck	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
-enum	open	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
+enum	shipped	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
 enum	open	NSURLRequestAttribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
 enum	open	NSURLRequestAttribution	NSURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
 enum	open	NSURLRequestCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
@@ -1763,7 +1763,7 @@ enum	open	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Contr
 enum	open	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
 enum	open	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 enum	struck	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
-enum	open	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
+enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 enum	open	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	-	objc
 enum	open	NSXMLDTDNodeKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
 enum	open	NSXMLDocumentContentKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc

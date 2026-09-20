@@ -95,6 +95,117 @@ extern NSString *const NSFileTypeUnknown;
 
 @end
 
+/*
+ * THE ENUMERATION AND SEARCH TYPES (2026-09-20). Cocoa declares these here, and a
+ * program that includes NSFileManager.h expects to find them here, so this is where
+ * they live.
+ *
+ * THE CASE NAMES ARE APPLE'S, LOOKED UP RATHER THAN REMEMBERED: they come from the
+ * documentation index's own nesting of each enumerator under its type (107 of
+ * Foundation's 120 open enums resolve that way in one pass), and they match the
+ * ledger's `case` rows name for name — a cross-check, not an assumption.
+ *
+ * THE VALUES ARE OURS, and that is §11.6.1 D2 rather than laziness: Apple publishes
+ * these case NAMES and no numbers, GNUstep's reference documents the types as
+ * `typedef NSInteger X;` with "Description forthcoming", and the ledger has no value
+ * column at all. The choices follow one rule — a type whose name says Options,
+ * Controls or Mask is a BIT SET (1 << n), anything else counts up from zero — which
+ * is why the same names mean the same thing here as there.
+ */
+
+typedef enum {
+	NSDirectoryEnumerationSkipsSubdirectoryDescendants = 1 << 0,
+	NSDirectoryEnumerationSkipsPackageDescendants = 1 << 1,
+	NSDirectoryEnumerationSkipsHiddenFiles = 1 << 2,
+	NSDirectoryEnumerationIncludesDirectoriesPostOrder = 1 << 3,
+	NSDirectoryEnumerationProducesRelativePathURLs = 1 << 4
+} NSDirectoryEnumerationOptions;
+
+typedef enum {
+	NSVolumeEnumerationSkipHiddenVolumes = 1 << 0,
+	NSVolumeEnumerationProduceFileReferenceURLs = 1 << 1
+} NSVolumeEnumerationOptions;
+
+/* What -replaceItemAtURL:...: may do with the item it replaces. */
+typedef enum {
+	NSFileManagerItemReplacementUsingNewMetadataOnly = 1 << 0,
+	NSFileManagerItemReplacementWithoutDeletingBackupItem = 1 << 1
+} NSFileManagerItemReplacementOptions;
+
+/* What happens to LOCAL changes when a synced item is resumed — a choice, not a set. */
+typedef enum {
+	NSFileManagerResumeSyncBehaviorPreserveLocalChanges = 0,
+	NSFileManagerResumeSyncBehaviorAfterUploadWithFailOnConflict = 1,
+	NSFileManagerResumeSyncBehaviorDropLocalChanges = 2
+} NSFileManagerResumeSyncBehavior;
+
+typedef enum {
+	NSFileManagerSupportedSyncControlsPauseSync = 1 << 0,
+	NSFileManagerSupportedSyncControlsFailUploadOnConflict = 1 << 1
+} NSFileManagerSupportedSyncControls;
+
+typedef enum {
+	NSFileManagerUploadConflictPolicyDefault = 0,
+	NSFileManagerUploadConflictPolicyFailOnConflict = 1
+} NSFileManagerUploadLocalVersionConflictPolicy;
+
+/* Unmounting: eject everything, or leave the user interface alone. */
+typedef enum {
+	NSFileManagerUnmountAllPartitionsAndEjectDisk = 1 << 0,
+	NSFileManagerUnmountWithoutUI = 1 << 1
+} NSFileManagerUnmountOptions;
+
+/*
+ * THE SEARCH PATH TYPES, and the one place where Apple's own value choices are
+ * visible in the API's shape rather than in a header: -URLsForDirectory:inDomains:
+ * takes the domain mask and ORs the bits together, so NSSearchPathDomainMask is a
+ * bit set even though its cases do not say "Options".
+ */
+typedef enum {
+	NSApplicationDirectory = 0,
+	NSDemoApplicationDirectory,
+	NSDeveloperApplicationDirectory,
+	NSAdminApplicationDirectory,
+	NSLibraryDirectory,
+	NSDeveloperDirectory,
+	NSUserDirectory,
+	NSDocumentationDirectory,
+	NSDocumentDirectory,
+	NSCoreServiceDirectory,
+	NSAutosavedInformationDirectory,
+	NSDesktopDirectory,
+	NSCachesDirectory,
+	NSApplicationSupportDirectory,
+	NSDownloadsDirectory,
+	NSInputMethodsDirectory,
+	NSMoviesDirectory,
+	NSMusicDirectory,
+	NSPicturesDirectory,
+	NSPrinterDescriptionDirectory,
+	NSSharedPublicDirectory,
+	NSPreferencePanesDirectory,
+	NSApplicationScriptsDirectory,
+	NSItemReplacementDirectory,
+	NSAllApplicationsDirectory,
+	NSAllLibrariesDirectory,
+	NSTrashDirectory
+} NSSearchPathDirectory;
+
+typedef enum {
+	NSUserDomainMask = 1 << 0,
+	NSLocalDomainMask = 1 << 1,
+	NSNetworkDomainMask = 1 << 2,
+	NSSystemDomainMask = 1 << 3,
+	NSAllDomainsMask = 0xFFFF	/* every bit, as its name says */
+} NSSearchPathDomainMask;
+
+/* How one item relates to another: is it inside, is it the same, or neither. */
+typedef enum {
+	NSURLRelationshipContains = 0,
+	NSURLRelationshipSame = 1,
+	NSURLRelationshipOther = 2
+} NSURLRelationship;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSFILEMANAGER_H */

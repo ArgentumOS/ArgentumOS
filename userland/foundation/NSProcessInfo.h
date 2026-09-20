@@ -72,6 +72,31 @@ typedef struct {
 
 @end
 
+/* How much a long-running activity is allowed to disturb the machine, and how hot the
+ * process is (2026-09-20). NSActivityOptions is a bit set — thirteen bits of "do not
+ * sleep", "do not terminate", and what kind of work this is. Names from Apple's
+ * documentation index; values are ours (§11.6.1 D2, see NSFileManager.h). */
+typedef enum {
+	NSActivityIdleDisplaySleepDisabled = 1 << 0,
+	NSActivityIdleSystemSleepDisabled = 1 << 1,
+	NSActivitySuddenTerminationDisabled = 1 << 2,
+	NSActivityAutomaticTerminationDisabled = 1 << 3,
+	NSActivityUserInitiated = 1 << 4,
+	NSActivityUserInteractive = 1 << 5,
+	NSActivityUserInitiatedAllowingIdleSystemSleep = 1 << 6,
+	NSActivityBackground = 1 << 7,
+	NSActivityLatencyCritical = 1 << 8,
+	NSActivityAnimationTrackingEnabled = 1 << 9,
+	NSActivityTrackingEnabled = 1 << 10
+} NSActivityOptions;
+
+typedef enum {
+	NSProcessInfoThermalStateNominal = 0,
+	NSProcessInfoThermalStateFair = 1,
+	NSProcessInfoThermalStateSerious = 2,
+	NSProcessInfoThermalStateCritical = 3
+} NSProcessInfoThermalState;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSPROCESSINFO_H */

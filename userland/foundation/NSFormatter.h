@@ -37,6 +37,24 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* The house styles a formatter may render in (2026-09-20): where in a sentence the
+ * text will appear, and how long-winded to be. Names from Apple's documentation
+ * index; values are ours (§11.6.1 D2, see NSFileManager.h). */
+typedef enum {
+	NSFormattingContextUnknown = 0,
+	NSFormattingContextDynamic = 1,
+	NSFormattingContextStandalone = 2,
+	NSFormattingContextListItem = 3,
+	NSFormattingContextBeginningOfSentence = 4,
+	NSFormattingContextMiddleOfSentence = 5
+} NSFormattingContext;
+
+typedef enum {
+	NSFormattingUnitStyleShort = 0,
+	NSFormattingUnitStyleMedium = 1,
+	NSFormattingUnitStyleLong = 2
+} NSFormattingUnitStyle;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSFORMATTER_H */
