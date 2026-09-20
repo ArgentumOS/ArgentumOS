@@ -4623,3 +4623,41 @@ cases, 212/213 checks — the one failure being the recorded `host_fshlint` time
 centre (W4 is not built — that is a DEPENDENCY, and §12's rule is that a missing dependency is added
 rather than refused), and the block form and the menu titles remain unwritten.
 
+## 20. `-registerUndoWithTarget:handler:` — AND THE TREE'S FIRST STORED BLOCK (2026-09-20)
+
+**WHAT SHIPPED: the third registration door.** `-registerUndoWithTarget:handler:` records a block, and THE
+SHAPE OF THE BLOCK IS THE DESIGN rather than a detail — it RECEIVES THE TARGET AS ITS SINGLE ARGUMENT,
+exactly so that a caller uses the argument instead of capturing the target, which is the retain cycle the
+other two forms warn about, avoided by construction. The target stays unowned, and the three doors (the
+triple, the proxy, the block) now share one registration rule (`fnRegisterAction:`).
+
+**AND IT IS THE FIRST BLOCK THIS TREE EVER STORED, so the ownership rule had to be settled rather than
+assumed.** The rule is one line — a block literal is a STACK object, so a stored block must be COPIED —
+but the parts around it were not obvious and both were measured:
+
+* **`<Block.h>` IS STAGED NOWHERE.** Not in the host's `/usr/include`, not in the compiler's resource
+  directory, not in the guest's prefix (the only copy on this machine is inside the unbuilt LLVM source
+  tree). So the two prototypes are declared at the top of `NSUndoManager.m` with the reason written there.
+* **THE SYMBOLS ARE THERE ANYWAY**, which is what makes that declaration honest rather than hopeful:
+  `_Block_copy` and `_Block_release` are dynamic exports of `libobjc.so` — the runtime links
+  BlocksRuntime — so both host and guest resolve them.
+
+**AND THE CHECK IS BUILT SO THE COPY IS LOAD-BEARING RATHER THAN INCIDENTAL.** The block is registered from
+a helper function THAT HAS ALREADY RETURNED, and it captures a string built in that frame, which ARC
+releases as the function exits. A block that captured nothing would be a GLOBAL block (the compiler hoists
+it) and would survive an implementation that never copied anything — so that shape of check would have
+proved nothing about the copy. This one fails on an uncopied stack block, which is the point.
+
+**THIS IS ALSO §12.6's "STORED BLOCKS" DEPENDENCY, NOW PAID RATHER THAN PENDING:** that row was written for
+the operations family (`-completionBlock` holding a block past the call that made it), and the rule, the
+prototype declaration and the check pattern are here for those rows to reuse.
+
+**VERIFIED.** Host: 290/290 with no crashed probe. Guest: `foundation_core` is `ok=53 fail=0`
+(`undo-block-handler` asserts the replay THROUGH THE BLOCK'S ARGUMENT and the redo that follows). The full
+fast tier stays 33/34 cases, 212/213 checks — the one failure being the recorded `host_fshlint` timeout.
+
+**W2h's LAST TWO, both with reasons rather than excuses:** the five NOTIFICATIONS need a notification
+centre (W4 unbuilt), and `-undoMenuTitleForUndoActionName:`'s titles are per-locale TEMPLATES — data this
+library does not have, the same category as §11.6.1's "no published value" rows rather than a missing
+mechanism.
+

@@ -14,9 +14,10 @@
  * NOTIFICATIONS (five of them) cannot be posted because THIS LIBRARY HAS NO NOTIFICATION CENTRE -
  * the notifications family is §12's W4 and is not built - so their absence is a DEPENDENCY rather
  * than an omission, which is the opposite of what this line used to claim ("this library has the
- * notification centre to carry them"). `-registerUndoWithTarget:handler:` (the block form) and
- * `-undoMenuTitleForUndoActionName:` (menu strings) remain named. What is here is the stack, its
- * grouping, its names, its switch, and `-prepareWithInvocationTarget:` with its proxy.
+ * notification centre to carry them"). `-undoMenuTitleForUndoActionName:` (menu strings) remains
+ * named - its titles are per-locale TEMPLATES, which is data this library does not have - and what is
+ * here is the stack, its grouping, its names, its switch, all three registration doors (the triple,
+ * the proxy and the BLOCK) and the redo path.
  */
 #ifndef FOUNDATION_NSUNDOMANAGER_H
 #define FOUNDATION_NSUNDOMANAGER_H
@@ -42,6 +43,15 @@ NS_ASSUME_NONNULL_BEGIN
 /* TARGET IS HELD WEAKLY and the object STRONGLY, which is Apple's contract and the reason an undo
  * cannot keep its own target alive: the pair would then never go away. */
 - (void)registerUndoWithTarget:(id)target selector:(SEL)selector object:(nullable id)object;
+
+/*
+ * THE BLOCK FORM, and the shape of the block is the design rather than a detail: IT RECEIVES THE TARGET
+ * AS ITS SINGLE ARGUMENT, precisely so that a caller uses the argument instead of capturing the target
+ * — which is the cycle the two forms above warn about, avoided by construction. The block is COPIED
+ * when it is registered (a block literal is a STACK object, and this one outlives the call), and the
+ * target is held unowned, as always.
+ */
+- (void)registerUndoWithTarget:(id)target handler:(void (^)(id target))handler;
 
 /*
  * THE PROXY FORM: the message sent to the returned object BECOMES the undo action, captured with the

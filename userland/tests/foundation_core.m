@@ -100,6 +100,23 @@ static id probe_recording_hook(id receiver, SEL op)
 }
 @end
 
+/*
+ * THE BLOCK IS REGISTERED FROM A FRAME THAT HAS ALREADY RETURNED, and it captures `item`, which ARC
+ * releases as this function exits: that is what makes the COPY load-bearing rather than incidental. A
+ * block capturing nothing would be a GLOBAL block (the compiler hoists it) and would survive an
+ * implementation that never copied anything, so the check would prove nothing.
+ */
+static void fn_register_block_undo(NSUndoManager *undo, FNUndoBox *box)
+{
+	NSString *item = [NSString stringWithFormat:@"%@", @"z"];
+
+	[undo registerUndoWithTarget:box handler:^(id target) {
+		/* THE TARGET ARGUMENT, not a capture of `box`: the reason Apple gives this block its
+		 * argument is that a caller who uses it creates no cycle. */
+		[target removeItem:item];
+	}];
+}
+
 int main(void)
 {
 	/* MRR side: the lifetimes and the equality defaults. */
@@ -1148,6 +1165,34 @@ int main(void)
 		      quiet && registered && ran && redone,
 		      [[NSString stringWithFormat:@"quiet=%d registered=%d ran=%d redone=%d entries=%lu first=%@",
 			(int)quiet, (int)registered, (int)ran, (int)redone, (unsigned long)[[box log] count],
+			[[box log] count] > 0 ? [[box log] objectAtIndex:0] : @"(none)"] UTF8String]);
+	}
+
+	{
+		/* THE BLOCK FORM (W2h's last registration door). The block is registered from a frame that has
+		 * RETURNED, so an implementation that stored the block without copying it would be reading
+		 * freed stack here; it takes the TARGET as its argument; and the redo at the end shows this
+		 * form joins the same group/inverse machinery as the other two. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL ran, redone;
+
+		fn_register_block_undo(undo, box);
+
+		[undo undo];
+		ran = [[box log] count] == 1 &&
+		      [[[box log] objectAtIndex:0] isEqualToString:@"remove:z"];
+
+		[undo redo];
+		redone = [[box log] count] == 2 &&
+			 [[[box log] objectAtIndex:1] isEqualToString:@"add:z"] &&
+			 [[box items] count] == 1 &&
+			 [[[box items] objectAtIndex:0] isEqualToString:@"z"];
+
+		check("undo-block-handler",
+		      ran && redone,
+		      [[NSString stringWithFormat:@"ran=%d redone=%d entries=%lu first=%@",
+			(int)ran, (int)redone, (unsigned long)[[box log] count],
 			[[box log] count] > 0 ? [[box log] objectAtIndex:0] : @"(none)"] UTF8String]);
 	}
 

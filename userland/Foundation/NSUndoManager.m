@@ -12,6 +12,17 @@
 #import <Foundation/NSProxy.h>
 #import <objc/runtime.h>
 
+/*
+ * THE BLOCKS RUNTIME'S TWO FUNCTIONS, DECLARED HERE BECAUSE THE HEADER IS STAGED NOWHERE: libobjc2 links
+ * BlocksRuntime (measured: both symbols are dynamic exports of libobjc.so), while <Block.h> exists in
+ * neither the host's /usr/include nor the compiler's resource directory nor the guest's prefix. THE COPY
+ * IS THE POINT OF THEM: a block literal is a STACK object and dies with the frame that made it, so
+ * storing one without copying it stores garbage the moment the caller returns - which is exactly the
+ * "stored blocks" dependency §12.6 names for the operations family.
+ */
+extern void *_Block_copy(const void *aBlock);
+extern void _Block_release(const void *aBlock);
+
 /* THE INVOCATION FORM OF A REGISTERED UNDO (W2h's `-prepareWithInvocationTarget:`), and the private
  * door the proxy below reaches the manager through. */
 @interface NSUndoManager (FNPrivate)
@@ -119,6 +130,58 @@
 @end
 
 /*
+ * THE BLOCK FORM (W2h's `-registerUndoWithTarget:handler:`): the action holds a COPY of the handler and
+ * hands it the target at replay time. The handler's argument IS the target for the reason the header
+ * gives - a caller that uses it captures nothing.
+ */
+@interface FnUndoBlock : NSObject
+{
+	id _target;		/* NOT retained, deliberately */
+	void (^_handler)(id);	/* COPIED to the heap: this object outlives the caller's frame */
+}
+- (instancetype)initWithTarget:(id)target handler:(void (^)(id))handler;
+- (void)invoke;
+- (id)target;
+@end
+
+@implementation FnUndoBlock
+
+- (instancetype)initWithTarget:(id)target handler:(void (^)(id))handler
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_target = target;
+	_handler = handler != nil ? _Block_copy(handler) : nil;
+	return self;
+}
+
+- (id)target
+{
+	return _target;
+}
+
+- (void)invoke
+{
+	/* THE TARGET IS THE ARGUMENT, which is the whole of Apple's contract for this form. A handler that
+	 * has gone (a nil one) is skipped rather than called, the same way a NULL selector is. */
+	if (_handler != nil) {
+		_handler(_target);
+	}
+}
+
+- (void)dealloc
+{
+	if (_handler != nil) {
+		_Block_release(_handler);
+	}
+	[super dealloc];
+}
+
+@end
+
+/*
  * THE PROXY `-prepareWithInvocationTarget:` HANDS BACK. It stands for the target: the signature it
  * answers with is the TARGET's, and the message sent to it is registered as that target's undo action
  * instead of being performed. NOTHING RETAINS IT - it exists for the one message - which is why it
@@ -220,6 +283,14 @@
 - (void)registerUndoWithTarget:(id)target invocation:(NSInvocation *)invocation
 {
 	FnUndoInvocation *action = [[FnUndoInvocation alloc] initWithTarget:target invocation:invocation];
+
+	[self fnRegisterAction:action];
+	[action release];
+}
+
+- (void)registerUndoWithTarget:(id)target handler:(void (^)(id target))handler
+{
+	FnUndoBlock *action = [[FnUndoBlock alloc] initWithTarget:target handler:handler];
 
 	[self fnRegisterAction:action];
 	[action release];
