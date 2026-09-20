@@ -164,6 +164,48 @@ questions are licence, build and whether a second rasterizer is wanted:
 primitive at all** — which is the measured statement of exactly what is
 missing here.
 
+### The chain, stated once (user's question, 2026-09)
+
+*"So AppKit classes will draw via CoreGraphics, which itself ultimately rasterizes
+through Pixman?"* **Yes for the vector path — and it is worth being exact about the
+whole of it, because two thirds of CG is not pixman-shaped:**
+
+    AppKit class -> -drawRect: -> CGContext -> path/stroke -> TRAPEZOIDS
+                 -> pixman -> a SURFACE -> Xfb (a window) | offscreen | PDF (libharu)
+
+- **pixman is ALREADY the rasterizer in this tree, server-side.** Measured: it
+  appears in `userland/xfb/{render,dix,fb,miext/damage,randr}` — Xfb's own
+  **RENDER** extension rasterizes with it. So "through pixman" holds *whichever
+  side resolves the request*, and the open question is *whose* pixman (§4). **And
+  RENDER has no path primitive** (it takes trapezoids), so even on the server route
+  the path→trapezoid step is this layer's work — the same missing piece either way.
+- **WHERE RASTERIZATION HAPPENS IS A CHOICE, AND THE REASON THE TREE ONCE RECORDED
+  FOR IT IS STALE.** The parked toolkit rasterized client-side with pixman and
+  blitted over the core protocol *because "the client stack lacks libXrender"* — and
+  `libXrender` is now vendored (0.9.12) with RENDER **measured working**
+  (`kestrel-compositor-plan.md` §1). **Recommendation: keep it client-side**, and
+  not for the old reason: one rasterizer then serves **every** destination — a
+  window, an offscreen bitmap and a PDF page — which is the "one draw path"
+  property that made Quartz worth copying. RENDER would split the rasterizer *by
+  destination* (protocol for the screen, pixman/libharu for the rest) and leave two
+  paths to keep pixel-identical. **This is the plan's one undecided rasterization
+  question, and it is named rather than assumed.**
+- **THE OTHER TWO THIRDS, so "through pixman" is not overstated:** text glyph
+  coverage comes from **FreeType** and is composited by pixman; images are decoded
+  once (`libpng`/`zlib` today) and composited by pixman; and **PDF content must
+  arrive as a BITMAP** — PDFium renders a page, then pixman composites it like any
+  other `CGImage`. That last one is a commitment rather than a detail: PDFium
+  carries its own AGG-derived rasterizer, so letting it draw *into* a CG context
+  would put a second rasterizer on the screen path. Render-to-bitmap keeps pixman
+  the single compositor.
+- **AND THE ONE GAP WITH NOTHING UNDER IT, MEASURED: this tree has no
+  colour-management library at all.** `grep` finds no lcms, no qcms and no ICC
+  tooling anywhere in `third_party/` or `userland/`. So §6's colour-management
+  deviation is not a simplification to be chosen at the margin — CG's
+  colour-managed-by-default behaviour has **no substrate here**, and either one is
+  admitted as a new dependency or the deviation is a real capability loss,
+  documented as one.
+
 ## 6. What is actually hard (the semantics, not the spelling)
 
 - **Stroke** — joins, caps, miter limit, dashes; and
