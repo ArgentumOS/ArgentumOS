@@ -713,9 +713,12 @@ typedef struct {
 	cg_edge *edges;
 	int count;
 	int cap;
-	CGPoint last;
-	CGPoint start;
-	int have_subpath;
+	/* THE CURRENT SUBPATH, IN DEVICE SPACE, BEFORE CLIPPING — and this field exists
+	 * because an EDGE AT A TIME CANNOT BE CLIPPED CORRECTLY. See cg_close_subpath: the
+	 * bug it fixes was a fill that encloses the surface painting nothing. */
+	double *pts;   /* x0, y0, x1, y1, … */
+	int npts;
+	int pts_cap;
 } cg_flatten;
 
 static int cg_edge_reserve(cg_flatten *fl)
@@ -733,85 +736,172 @@ static int cg_edge_reserve(cg_flatten *fl)
 	return 1;
 }
 
-/* Clip one edge to the surface, in device space, by parameter. An edge entirely
- * outside contributes nothing, and clipping is what keeps the fixed-point values that
- * follow inside 16.16's ±32768 range — the geometry is unchanged by it because pixman
- * would clip the same pixels anyway. */
-static int cg_clip_edge(cg_flatten *fl, double x0, double y0, double x1, double y1)
+static int cg_push_vertex(cg_flatten *fl, double x, double y)
 {
-	double dx = x1 - x0;
-	double dy = y1 - y0;
-	double t0 = 0.0;
-	double t1 = 1.0;
-	int i;
+	if (fl->npts == fl->pts_cap) {
+		int want = fl->pts_cap ? fl->pts_cap * 2 : 32;
+		double *grown = realloc(fl->pts, (size_t)want * 2 * sizeof(double));
 
-	for (i = 0; i < 4; i++) {
-		double p, q;
-		double r;
-
-		switch (i) {
-		case 0: p = -dx; q = x0 - 0.0; break;
-		case 1: p = dx;  q = fl->width - x0; break;
-		case 2: p = -dy; q = y0 - 0.0; break;
-		default: p = dy; q = fl->height - y0; break;
-		}
-		if (p == 0.0) {
-			if (q < 0.0) {
-				return 0;
-			}
-			continue;
-		}
-		r = q / p;
-		if (p < 0.0) {
-			if (r > t1) {
-				return 0;
-			}
-			if (r > t0) {
-				t0 = r;
-			}
-		} else {
-			if (r < t0) {
-				return 0;
-			}
-			if (r < t1) {
-				t1 = r;
-			}
-		}
-	}
-	{
-		double cx0 = x0 + t0 * dx;
-		double cy0 = y0 + t0 * dy;
-		double cx1 = x0 + t1 * dx;
-		double cy1 = y0 + t1 * dy;
-
-		/* A HORIZONTAL EDGE IS NEVER ACTIVE in a band with height > 0, and a
-		 * degenerate one is nothing at all; both are dropped here so the sweep below
-		 * never has to ask. */
-		if (cy0 == cy1 || (cx0 == cx1 && cy0 == cy1)) {
-			return 1;
-		}
-		if (!cg_edge_reserve(fl)) {
+		if (grown == NULL) {
 			return 0;
 		}
-		fl->edges[fl->count].x0 = cx0;
-		fl->edges[fl->count].y0 = cy0;
-		fl->edges[fl->count].x1 = cx1;
-		fl->edges[fl->count].y1 = cy1;
-		fl->edges[fl->count].dir = (cy1 > cy0) ? 1 : -1;
-		fl->count++;
+		fl->pts = grown;
+		fl->pts_cap = want;
+	}
+	fl->pts[fl->npts * 2] = x;
+	fl->pts[fl->npts * 2 + 1] = y;
+	fl->npts++;
+	return 1;
+}
+
+/* ONE EDGE OF THE CLIPPED OUTLINE. A HORIZONTAL EDGE IS NEVER ACTIVE in a band with
+ * height > 0, so it is dropped here and the sweep never has to ask. */
+static int cg_emit_edge(cg_flatten *fl, double x0, double y0, double x1, double y1)
+{
+	if (y0 == y1) {
+		return 1;
+	}
+	if (!cg_edge_reserve(fl)) {
+		return 0;
+	}
+	fl->edges[fl->count].x0 = x0;
+	fl->edges[fl->count].y0 = y0;
+	fl->edges[fl->count].x1 = x1;
+	fl->edges[fl->count].y1 = y1;
+	/* THE SIGN IS THE WINDING CONTRIBUTION, and Sutherland–Hodgman PRESERVES the
+	 * outline's orientation, so the signs stay consistent through the four passes. */
+	fl->edges[fl->count].dir = (y1 > y0) ? 1 : -1;
+	fl->count++;
+	return 1;
+}
+
+/* ONE SIDE OF SUTHERLAND–HODGMAN, WITH A CAPACITY RATHER THAN A PROMISE. The input is
+ * treated as a CLOSED loop — the last vertex joins the first — which is what makes the
+ * output a closed outline: the segments this pass adds are the ones ALONG the clipping
+ * boundary. Clipping an n-gon against one half-plane yields at most n + 1 vertices, so
+ * the capacity only has to be generous; it is checked anyway, because a silent write
+ * past the end of a buffer is the failure mode that costs a week. */
+static int cg_clip_side(const double *in, int nin, double *out, int nout_cap, int *nout,
+			int axis, double bound, int keep_ge)
+{
+	int i;
+
+	*nout = 0;
+	for (i = 0; i < nin; i++) {
+		int j = (i + 1) % nin;
+		double ax = in[i * 2];
+		double ay = in[i * 2 + 1];
+		double bx = in[j * 2];
+		double by = in[j * 2 + 1];
+		double ca = axis ? ay : ax;
+		double cb = axis ? by : bx;
+		int ina = keep_ge ? (ca >= bound) : (ca <= bound);
+		int inb = keep_ge ? (cb >= bound) : (cb <= bound);
+
+		if (*nout + 2 > nout_cap) {
+			return 0;
+		}
+		if (ina) {
+			out[*nout * 2] = ax;
+			out[*nout * 2 + 1] = ay;
+			(*nout)++;
+		}
+		if (ina != inb && cb != ca) {
+			double t = (bound - ca) / (cb - ca);
+
+			out[*nout * 2] = ax + t * (bx - ax);
+			out[*nout * 2 + 1] = ay + t * (by - ay);
+			(*nout)++;
+		}
 	}
 	return 1;
 }
 
+/*
+ * CLOSE THE CURRENT SUBPATH: clip its OUTLINE to the surface and emit the clipped
+ * edges. Every subpath is implicitly closed for a fill, which is why this runs for an
+ * explicitly closed subpath as well — and why a subpath of fewer than three vertices
+ * contributes nothing (a lone move, or a move and a line, has no area: its loop is the
+ * same edge in both directions, which is a winding of zero).
+ *
+ * THIS REPLACED AN EDGE-AT-A-TIME CLIPPER, AND THE MEASUREMENT THAT KILLED IT IS: **A
+ * FILL THAT ENCLOSES THE SURFACE PAINTED NOTHING.** Every edge of such a polygon lies
+ * OUTSIDE the surface, so clipping each edge to the surface kept NONE of them and the
+ * sweep was left with no edges to pair — while every polygon whose boundary crosses the
+ * surface was correct. Clipping the OUTLINE answers both cases at once: a polygon that
+ * contains the surface clips down to the SURFACE ITSELF — four edges enclosing every
+ * pixel — and a polygon that crosses it clips to exactly the intersection.
+ *
+ * Found by a probe check that failed for the "wrong" reason; it is now the check that
+ * pins this behaviour, in userland/tests/coregraphics_context.c.
+ */
 static void cg_close_subpath(cg_flatten *fl)
 {
-	if (fl->have_subpath) {
-		/* EVERY SUBPATH IS IMPLICITLY CLOSED FOR A FILL, which is why this runs for
-		 * an explicitly closed subpath too: the second edge is then from the start to
-		 * the start, and the degenerate-edge test above drops it. */
-		cg_clip_edge(fl, fl->last.x, fl->last.y, fl->start.x, fl->start.y);
-		fl->last = fl->start;
+	int n = fl->npts;
+	int cap = 2 * n + 8;
+	double *a;
+	double *b;
+	int na = n;
+	int nb = 0;
+	int i;
+
+	if (n < 3) {
+		fl->npts = 0;
+		return;
 	}
+	a = malloc((size_t)cap * 2 * sizeof(double));
+	b = malloc((size_t)cap * 2 * sizeof(double));
+	if (a == NULL || b == NULL) {
+		free(a);
+		free(b);
+		fl->npts = 0;
+		return;
+	}
+	for (i = 0; i < n * 2; i++) {
+		a[i] = fl->pts[i];
+	}
+	fl->npts = 0;
+
+	/* FOUR PASSES, ONE PER SIDE OF THE SURFACE, alternating buffers; the result ends in
+	 * `a` and its length in `na`. */
+	if (!cg_clip_side(a, na, b, cap, &nb, 0, 0.0, 1)) {
+		nb = 0;
+	}
+	if (nb >= 3) {
+		if (!cg_clip_side(b, nb, a, cap, &na, 0, fl->width, 0)) {
+			na = 0;
+		}
+	} else {
+		na = 0;
+	}
+	if (na >= 3) {
+		if (!cg_clip_side(a, na, b, cap, &nb, 1, 0.0, 1)) {
+			nb = 0;
+		}
+	} else {
+		nb = 0;
+	}
+	if (nb >= 3) {
+		if (!cg_clip_side(b, nb, a, cap, &na, 1, fl->height, 0)) {
+			na = 0;
+		}
+	} else {
+		na = 0;
+	}
+	if (na < 3) {
+		fprintf(stderr, "CG-REFUSE: a subpath's clipped outline did not survive the "
+				"surface clip\n");
+		free(a);
+		free(b);
+		return;
+	}
+	for (i = 0; i < na; i++) {
+		int j = (i + 1) % na;
+
+		cg_emit_edge(fl, a[i * 2], a[i * 2 + 1], a[j * 2], a[j * 2 + 1]);
+	}
+	free(a);
+	free(b);
 }
 
 static void cg_flatten_element(void *info, const CGPathElement *element)
@@ -823,23 +913,28 @@ static void cg_flatten_element(void *info, const CGPathElement *element)
 	case kCGPathElementMoveToPoint:
 		cg_close_subpath(fl);
 		p = CGPointApplyAffineTransform(element->points[0], fl->ctm);
-		fl->start = p;
-		fl->last = p;
-		fl->have_subpath = 1;
+		cg_push_vertex(fl, p.x, p.y);
 		break;
 	case kCGPathElementAddLineToPoint:
 		p = CGPointApplyAffineTransform(element->points[0], fl->ctm);
-		if (!fl->have_subpath) {
-			fl->start = p;
-			fl->last = p;
-			fl->have_subpath = 1;
-			break;
+		/* A LINE WITH NO PRECEDING MOVE STARTS AT THE ORIGIN, which is what
+		 * `CGPathGetCurrentPoint` states the current point of an empty path is. */
+		if (fl->npts == 0) {
+			cg_push_vertex(fl, 0.0, 0.0);
 		}
-		cg_clip_edge(fl, fl->last.x, fl->last.y, p.x, p.y);
-		fl->last = p;
+		cg_push_vertex(fl, p.x, p.y);
 		break;
 	case kCGPathElementCloseSubpath:
-		cg_close_subpath(fl);
+		/* CLOSING RETURNS THE CURRENT POINT TO THE SUBPATH'S START, so a line AFTER the
+		 * close continues from there: save the start, clip the outline, and re-seed the
+		 * subpath with that single vertex — which emits nothing on its own. */
+		if (fl->npts > 0) {
+			double sx = fl->pts[0];
+			double sy = fl->pts[1];
+
+			cg_close_subpath(fl);
+			cg_push_vertex(fl, sx, sy);
+		}
 		break;
 	default:
 		break;

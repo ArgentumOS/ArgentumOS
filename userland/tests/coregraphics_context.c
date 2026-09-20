@@ -333,27 +333,26 @@ int main(void)
 		  (double)count_nonzero(c), 4.0 * 4, 0);
 	CGContextRelease(c);
 
-	/* A CHECK THAT PINS A KNOWN FAILURE, WHICH IS WHY IT READS BACKWARDS: it asserts that
-	 * AN ENCLOSING FILL PAINTS NOTHING — today's behaviour, recorded so that the day
-	 * someone fixes it this line fails and points at the fix.
+	/* A FILL THAT ENCLOSES THE SURFACE — every one of its edges outside it — MUST PAINT
+	 * THE WHOLE SURFACE, and this check exists because it did not.
 	 *
 	 * HOW IT WAS FOUND: by accident, when this section's fill was a 64×64 rectangle
-	 * rotated around a 4×4 surface. The geometry says the whole clip lies inside that
-	 * rectangle, and NOTHING was painted. THE CAUSE IS THE EDGE CLIPPER: every edge of a
-	 * polygon that CONTAINS the surface lies OUTSIDE the surface, so clipping each edge
-	 * to the surface keeps none of them and the sweep is left with no edges to pair.
-	 * Per-edge clipping is exact for a polygon whose boundary crosses the surface, and
-	 * wrong for one that encloses it.
+	 * rotated around a 4×4 surface. The geometry said the entire surface lay inside the
+	 * rectangle, and NOTHING was painted. The cause was the clipper, not the sweep:
+	 * clipping each EDGE to the surface kept no edges at all, because every edge of a
+	 * polygon that contains the surface lies outside it — an outline crossing the
+	 * surface was fine, an outline containing it produced no geometry. `cg_close_subpath`
+	 * in CGContext.c now clips the OUTLINE (Sutherland–Hodgman), which turns this case
+	 * into the surface itself.
 	 *
-	 * THE FIX IS THE CLIPPER, NOT THE SWEEP: clip the outline as a POLYGON
-	 * (Sutherland–Hodgman, which closes it along the surface boundary) instead of edge by
-	 * edge. It is the first thing C3 takes, because filling the whole surface — a
-	 * background, a cleared window — IS that case. */
+	 * IT IS A CHECK RATHER THAN A NOTE because it is the case a background fill is, and
+	 * because the version of it that was here before — asserting that NOTHING was painted
+	 * — is exactly the kind of check that quietly becomes permanent. */
 	c = fresh();
 	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
 	CGContextFillRect(c, CGRectMake(-16.0, -16.0, 32.0, 32.0));
-	check("an enclosing fill paints NOTHING today (KNOWN; C3 fixes the clipper)",
-	      count_nonzero(c) == 0);
+	check_num("an enclosing fill paints the whole surface",
+		  (double)count_nonzero(c), W * H * 4, 0);
 	CGContextRelease(c);
 
 	/* --- the state stack ----------------------------------------------------- */
