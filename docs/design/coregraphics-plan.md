@@ -183,6 +183,40 @@ missing here.
   opaque types. Measured: `grep` finds **no `CFRetain`/`CFRelease`
   anywhere in the tree**, and probes are ARC while parts of the library are
   MRR. This layer forces that decision to be made and written down.
+- **COREFOUNDATION IS A PRECONDITION OF THIS LAYER, NOT A SEPARATE PROJECT —
+  and its scope is MEASURED rather than assumed** (user's question, 2026-09:
+  *"I guess we need CoreFoundation too, don't we?"*). Yes — and only this much:
+  - **CG's own declarations name CF types.** On a 36-page sample of the surface,
+    **8 declarations (~1 in 5) reference one**, and the set that appears is
+    narrow: `CFStringRef` (`CGColorSpaceCreateWithName`, the `kCGColorSpace*`
+    constants), `CFDictionaryRef` (options), `CFDataRef` (providers), plus
+    `CFRelease` — *ownership, not containers*. **A surface that renamed these
+    would fail the only oracle there is** (unmodified modern Apple-source
+    compiles), for exactly the code that touches gradients, options, images and
+    PDF — which is most of the interesting code.
+  - **But CF-the-framework is 3328 documented nodes — as large as Foundation.**
+    So the commitment is *not* "implement CoreFoundation". It is a **thin,
+    toll-free-bridged CF**: the type identities (`CFStringRef`, `CFArrayRef`,
+    `CFDictionaryRef`, `CFDataRef`, `CFNumberRef`, `CFURLRef`, `CFTypeRef`,
+    `CFAllocatorRef`, `CFErrorRef`), the ownership functions, and the
+    constructors/accessors CG calls — with the CONTAINERS already written here as
+    Foundation classes, which is Apple's own arrangement.
+  - **That is also what settles the open ownership question above**:
+    `CFRetain`/`CFRelease` need a defined relation to this library's
+    `-retain`/`-release`, and toll-free bridging (`CFStringRef` IS `NSString *`)
+    makes that relation one line instead of a parallel type system.
+  - **Two things fall away with it.** `CGEvent` / `CGDirectDisplay` /
+    `CGWindowList` — the input and display-observation half, which is what drags
+    in `CFMachPortRef` and `CFRunLoopAddSource` — are **out of scope for a
+    DRAWING duplication**, and the macOS 14 vintage strikes most of the window and
+    capture half anyway. And `CFAllocatorRef`, if it ever needs more than
+    accepted-and-ignored, is a documented deviation under the standing policy.
+  - **The value-type gap is now closed mechanically:** `--refresh` fetches CF's
+    index as well and keeps the names beginning `CG`/`kCG`, so `CGPoint`,
+    `CGSize`, `CGRect` and `CGFloat` are ROWS with their real `shipped` status
+    instead of being filed as another framework's. A full
+    `corefoundation-apple-surface.txt` remains a **separate decision** — a second
+    framework's ledger wants its own plan, and nothing in this one needs it.
 - **PDF is the payoff, and it unifies two decisions already taken.**
   `CGPDFContext` writes (→ **libharu**, `pdf-generation-plan.md`),
   `CGPDFDocument`/`CGPDFScanner` reads content streams (→ **PDFium**,
