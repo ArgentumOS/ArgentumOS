@@ -27,7 +27,17 @@
 #ifndef CORE_GRAPHICS_CGPATH_H
 #define CORE_GRAPHICS_CGPATH_H
 
+/*
+ * SELF-CONTAINED, WHICH IT WAS NOT: `CGAffineTransform` appears in five of the
+ * declarations below — `CGPathCreateWithRect`'s and the stroker's transform parameters —
+ * and this header used to rely on its INCLUDERS including CGAffineTransform.h first.
+ * CGPath.c and CGContext.h both happened to, so nothing failed until a new translation
+ * unit (CGPathStroke.c) included CGPath.h alone and the compiler answered `unknown type
+ * name 'CGAffineTransform'` in nine places at once. A header that names a type includes
+ * the header that defines it.
+ */
 #include <CoreGraphics/CGBase.h>
+#include <CoreGraphics/CGAffineTransform.h>
 #include <CoreGraphics/CGGeometry.h>
 
 #ifdef __cplusplus
@@ -59,6 +69,61 @@ int CGPathIsEmpty(CGPathRef path);
 CGPoint CGPathGetCurrentPoint(CGPathRef path);
 CGRect CGPathGetBoundingBox(CGPathRef path);
 CGRect CGPathGetPathBoundingBox(CGPathRef path);
+
+/*
+ * THE LINE STATE'S TYPES AND THE DRAWING MODE LIVE HERE, IN THE PATH'S HEADER, and that
+ * is not an accident of convenience: the C0 ledger's own family column files all three
+ * under "Opaque Types", which is CGPath's family, and `CGPathCreateCopyByStrokingPath`
+ * below is the function that takes a cap and a join as parameters. Putting them here is
+ * also what makes the includes work: CGContext.h includes CGPath.h (a context has a
+ * path), so a caller including EITHER header sees all three types, and a cycle is
+ * avoided. The case VALUES are this tree's, as everywhere Apple publishes names.
+ */
+typedef enum {
+	kCGLineCapButt = 0,
+	kCGLineCapRound = 1,
+	kCGLineCapSquare = 2
+} CGLineCap;
+
+typedef enum {
+	kCGLineJoinMiter = 0,
+	kCGLineJoinRound = 1,
+	kCGLineJoinBevel = 2
+} CGLineJoin;
+
+typedef enum {
+	kCGPathFill = 0,
+	kCGPathEOFill = 1,
+	kCGPathStroke = 2,
+	kCGPathFillStroke = 3,
+	kCGPathEOFillStroke = 4
+} CGPathDrawingMode;
+
+/*
+ * STROKING: THE OUTLINE OF A STROKE, AS A PATH.
+ *
+ * THE PATH THAT COMES BACK IS A SET OF ORIENTED PIECES — one quadrilateral per segment,
+ * one wedge per join, one disc-fan per round cap — and ITS NON-ZERO FILL IS THE STROKE.
+ * That is the whole design, and it is why there is no boolean union in this tree: every
+ * piece is emitted with the SAME ORIENTATION, so wherever two pieces overlap the winding
+ * number is 2 rather than 0, and the non-zero rule takes exactly their union.
+ *
+ * THE CONSEQUENCE A CALLER MUST KNOW: this path is for a NON-ZERO fill. Filling it
+ * with the EVEN-ODD rule counts the overlaps as crossings and leaves HOLES where the
+ * pieces cross — the corners of a closed subpath, the caps of a thick line. Apple's
+ * returned path is an outline in the boolean sense and would tolerate either rule; this
+ * one is a documented deviation (the plan's §9 records it), and `CGContextStrokePath`
+ * and friends fill it the way it must be filled.
+ *
+ * `transform`, when not NULL, is applied to the path BEFORE stroking — so the line width
+ * is in the TRANSFORMED space. That reading of Apple's parameter is this tree's
+ * statement rather than a transcription: the SDK's headers are not readable here, and
+ * the alternative (stroke first, transform the result) differs for any transform that
+ * is not a similarity.
+ */
+CGPathRef CGPathCreateCopyByStrokingPath(CGPathRef path, const CGAffineTransform *transform,
+					CGFloat lineWidth, CGLineCap lineCap, CGLineJoin lineJoin,
+					CGFloat miterLimit);
 
 /* Walking. THE TWO BOXES DIFFER FOR CURVES ONLY — `CGPathGetBoundingBox` includes a
  * curve's control points and `CGPathGetPathBoundingBox` is the tight box of the path
