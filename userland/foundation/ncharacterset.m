@@ -214,14 +214,29 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	return copy;
 }
 
-/* ---- the built-ins, each one a range list ---------------------------------- */
+/*
+ * ---- the built-ins, each one a PUBLISHED DEFINITION --------------------------
+ *
+ * THESE TEN USED TO BE ASCII OR LATIN-1 APPROXIMATIONS, and measured they were wrong in every case
+ * that mattered: +uppercaseLetterCharacterSet was `NSMakeRange('A', 26)` - 26 members where Apple
+ * specifies Lu AND Lt - +whitespaceCharacterSet was the space alone, and +letterCharacterSet stopped
+ * at LATIN-1. The api-complete inventory could not catch it: it asserts that a documented set EXISTS,
+ * and nothing asserted what was IN one. §16 records the measurement; these are the same category
+ * tables the four sets added in §15.5 use.
+ */
 
 + (NSCharacterSet *)whitespaceCharacterSet
 {
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		set = [[NSCharacterSet alloc] initWithRange:NSMakeRange(' ', 1)];
+		/* Zs PLUS TAB (U+0009) - the tab is added explicitly BECAUSE IT IS NOT IN Zs, which is why
+		 * Apple's definition names it separately. */
+		static const int categories[] = { U_SPACE_SEPARATOR };
+		NSMutableCharacterSet *built = fn_set_by_property(categories, 1, UCHAR_GENERAL_CATEGORY);
+
+		[built addCharactersInRange:NSMakeRange(0x09, 1)];
+		set = built;
 	}
 	return set;
 }
@@ -231,11 +246,16 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
+		/* Z*, U+000A-U+000D, AND U+0085 - Apple's current definition, WHICH DOES NOT INCLUDE TAB.
+		 * THAT IS A REAL BOUNDARY AND NOT AN OVERSIGHT: the tab is in +whitespaceCharacterSet and
+		 * NOT here, and the probe asserts both halves. The older OpenStep/GNUstep documentation
+		 * (which this library's sets were built from) lists space, tab and the newlines instead, so
+		 * this is a place where the two admissible sources disagree and the modern Apple page wins;
+		 * it is recorded here rather than silently chosen. */
+		NSMutableCharacterSet *built = fn_set_by_property(fn_cat_z, 3, UCHAR_GENERAL_CATEGORY);
 
-		/* The C0 space controls plus the space itself: 0x09-0x0D and 0x20. */
-		[built addCharactersInRange:NSMakeRange(0x09, 5)];
-		[built addCharactersInRange:NSMakeRange(0x20, 1)];
+		[built addCharactersInRange:NSMakeRange(0x0A, 4)];	/* LF, VT, FF, CR */
+		[built addCharactersInRange:NSMakeRange(0x85, 1)];	/* NEL */
 		set = built;
 	}
 	return set;
@@ -246,12 +266,13 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
+		/* THE LITERAL CODE POINTS, because this set is a LIST and not a category: U+000A-U+000D,
+		 * U+0085, U+2028 and U+2029. */
 		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
 
-		/* LF, CR, and the Unicode line/paragraph separators. */
-		[built addCharactersInRange:NSMakeRange(0x0A, 1)];
-		[built addCharactersInRange:NSMakeRange(0x0D, 1)];
-		[built addCharactersInRange:NSMakeRange(0x2028, 2)];
+		[built addCharactersInRange:NSMakeRange(0x0A, 4)];	/* LF, VT, FF, CR */
+		[built addCharactersInRange:NSMakeRange(0x85, 1)];	/* NEL */
+		[built addCharactersInRange:NSMakeRange(0x2028, 2)];	/* LINE and PARAGRAPH SEPARATOR */
 		set = built;
 	}
 	return set;
@@ -262,7 +283,11 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		set = [[NSCharacterSet alloc] initWithRange:NSMakeRange('0', 10)];
+		/* Nd, WHICH IS NOT '0'-'9': the Arabic-Indic and other decimal digits are members, and the
+		 * OTHER numbers (Nl, No - Roman numerals, superscripts) are not. */
+		static const int categories[] = { U_DECIMAL_DIGIT_NUMBER };
+
+		set = fn_set_by_property(categories, 1, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -272,13 +297,9 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
-
-		/* ASCII letters, and LATIN-1 letters, which is as far as this goes. */
-		[built addCharactersInRange:NSMakeRange('A', 26)];
-		[built addCharactersInRange:NSMakeRange('a', 26)];
-		[built addCharactersInRange:NSMakeRange(0xC0, 0x100 - 0xC0 + 1)];
-		set = built;
+		/* L* AND M*, which is Apple's definition: the marks are letters here because they combine
+		 * with one. */
+		set = fn_set_by_property(fn_cat_lm, 8, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -288,11 +309,10 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
-
-		[built formUnionWithCharacterSet:[NSCharacterSet letterCharacterSet]];
-		[built formUnionWithCharacterSet:[NSCharacterSet decimalDigitCharacterSet]];
-		set = built;
+		/* L*, M* AND N* - ALL THREE NUMBER CATEGORIES, which is why this is its own rule rather
+		 * than the union of the two sets above: +decimalDigitCharacterSet is Nd alone, so that
+		 * union would LOSE Nl and No (the Roman numerals among them). */
+		set = fn_set_by_property(fn_cat_lmn, 11, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -302,13 +322,9 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
-
-		[built addCharactersInRange:NSMakeRange('!', 15)];	/* ! " # $ % & ' ( ) * + , - . / */
-		[built addCharactersInRange:NSMakeRange(':', 7)];	/* : ; < = > ? @ */
-		[built addCharactersInRange:NSMakeRange('[', 6)];	/* [ \ ] ^ _ ` */
-		[built addCharactersInRange:NSMakeRange('{', 4)];	/* { | } ~ */
-		set = built;
+		/* P*: the seven punctuation categories.  28 is over the ASCII range, because that is the
+		 * point - the em dash and the curly quotes are punctuation too. */
+		set = fn_set_by_property(fn_cat_p, 7, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -318,11 +334,9 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
-
-		[built addCharactersInRange:NSMakeRange(0x00, 0x20)];	/* the C0 controls */
-		[built addCharactersInRange:NSMakeRange(0x7F, 1)];	/* and DELETE */
-		set = built;
+		/* Cc AND Cf: the C0/C1 controls AND the format characters, which is where the soft hyphen
+		 * (U+00AD), the byte-order mark and the joiners live. */
+		set = fn_set_by_property(fn_cat_c, 2, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -332,7 +346,9 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		set = [[NSCharacterSet alloc] initWithRange:NSMakeRange('a', 26)];
+		static const int categories[] = { U_LOWERCASE_LETTER };
+
+		set = fn_set_by_property(categories, 1, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -342,7 +358,11 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		set = [[NSCharacterSet alloc] initWithRange:NSMakeRange('A', 26)];
+		/* Lu AND Lt, which is what makes +capitalizedLetterCharacterSet a SUBSET of this set -
+		 * the relation the Latin-only version failed. */
+		static const int categories[] = { U_UPPERCASE_LETTER, U_TITLECASE_LETTER };
+
+		set = fn_set_by_property(categories, 2, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -478,7 +498,45 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 }
 
 /*
- * THE ICU-BACKED RULE SETS (§15.5). APPLE DEFINES THESE FOUR BY PUBLISHED PROPERTIES, not by tables:
+ * THE CATEGORY GROUPS THE PUBLISHED DEFINITIONS NAME, spelled once. Every built-in below is one of
+ * these (or one of them plus a literal code point), so two sets cannot drift apart about what L* is.
+ * The names are ICU's: U_OPEN_PUNCTUATION/U_CLOSE_PUNCTUATION are the parentheses/brackets.
+ */
+static const int fn_cat_l[] = {
+	U_UPPERCASE_LETTER, U_LOWERCASE_LETTER, U_TITLECASE_LETTER, U_MODIFIER_LETTER, U_OTHER_LETTER
+};
+static const int fn_cat_m[] = {
+	U_NON_SPACING_MARK, U_ENCLOSING_MARK, U_COMBINING_SPACING_MARK
+};
+static const int fn_cat_n[] = {
+	U_DECIMAL_DIGIT_NUMBER, U_LETTER_NUMBER, U_OTHER_NUMBER
+};
+static const int fn_cat_s[] = {
+	U_MATH_SYMBOL, U_CURRENCY_SYMBOL, U_MODIFIER_SYMBOL, U_OTHER_SYMBOL
+};
+static const int fn_cat_p[] = {
+	U_CONNECTOR_PUNCTUATION, U_DASH_PUNCTUATION, U_START_PUNCTUATION, U_END_PUNCTUATION,
+	U_INITIAL_PUNCTUATION, U_FINAL_PUNCTUATION, U_OTHER_PUNCTUATION
+};
+static const int fn_cat_z[] = {
+	U_SPACE_SEPARATOR, U_LINE_SEPARATOR, U_PARAGRAPH_SEPARATOR
+};
+static const int fn_cat_c[] = {
+	U_CONTROL_CHAR, U_FORMAT_CHAR
+};
+/* L* AND M*, and L*, M* AND N*: the two unions two published definitions name. */
+static const int fn_cat_lm[] = {
+	U_UPPERCASE_LETTER, U_LOWERCASE_LETTER, U_TITLECASE_LETTER, U_MODIFIER_LETTER, U_OTHER_LETTER,
+	U_NON_SPACING_MARK, U_ENCLOSING_MARK, U_COMBINING_SPACING_MARK
+};
+static const int fn_cat_lmn[] = {
+	U_UPPERCASE_LETTER, U_LOWERCASE_LETTER, U_TITLECASE_LETTER, U_MODIFIER_LETTER, U_OTHER_LETTER,
+	U_NON_SPACING_MARK, U_ENCLOSING_MARK, U_COMBINING_SPACING_MARK,
+	U_DECIMAL_DIGIT_NUMBER, U_LETTER_NUMBER, U_OTHER_NUMBER
+};
+
+/*
+ * THE ICU-BACKED RULE SETS (§15.5, §16). APPLE DEFINES THESE FOUR BY PUBLISHED PROPERTIES, not by tables:
  *
  *   symbolCharacterSet           the characters in Unicode General Category S*
  *   capitalizedLetterCharacterSet the characters in Unicode General Category Lt
@@ -503,7 +561,7 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
  * `values` is a value set of `property`; the scan coalesces runs, so each set is a handful of ranges
  * and not one range per character.
  */
-static NSCharacterSet *fn_set_by_property(const int *values, unsigned int count, UProperty property)
+static NSMutableCharacterSet *fn_set_by_property(const int *values, unsigned int count, UProperty property)
 {
 	NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
 	unsigned int character;
@@ -540,11 +598,7 @@ static NSCharacterSet *fn_set_by_property(const int *values, unsigned int count,
 	static NSCharacterSet *set = nil;
 
 	if (set == nil) {
-		static const int categories[] = {
-			U_MATH_SYMBOL, U_CURRENCY_SYMBOL, U_MODIFIER_SYMBOL, U_OTHER_SYMBOL
-		};
-
-		set = fn_set_by_property(categories, 4, UCHAR_GENERAL_CATEGORY);
+		set = fn_set_by_property(fn_cat_s, 4, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }
@@ -570,11 +624,7 @@ static NSCharacterSet *fn_set_by_property(const int *values, unsigned int count,
 
 	if (set == nil) {
 		/* M*: non-spacing, enclosing and combining-spacing marks. */
-		static const int categories[] = {
-			U_NON_SPACING_MARK, U_ENCLOSING_MARK, U_COMBINING_SPACING_MARK
-		};
-
-		set = fn_set_by_property(categories, 3, UCHAR_GENERAL_CATEGORY);
+		set = fn_set_by_property(fn_cat_m, 3, UCHAR_GENERAL_CATEGORY);
 	}
 	return set;
 }

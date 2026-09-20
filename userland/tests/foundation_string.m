@@ -936,6 +936,86 @@ NULL
 		      "STANDARD decomposition only: A-grave in, the ff ligature and noBreak space out");
 	}
 
+	{
+		/* THE SETS THAT ALREADY SHIPPED ARE CATEGORIES NOW (§16) - the same rule machinery the four
+		 * above use. Each of these was an ASCII or Latin-1 APPROXIMATION: +whitespaceCharacterSet
+		 * was the space alone, +uppercaseLetterCharacterSet was 'A'-'Z' (26 members where Apple
+		 * specifies Lu AND Lt), +letterCharacterSet stopped at LATIN-1. Nothing caught that, because
+		 * the api-complete inventory asserts a documented set EXISTS and never asserted what is IN
+		 * one - which is exactly what these three checks do. */
+		NSCharacterSet *ws = [NSCharacterSet whitespaceCharacterSet];
+		NSCharacterSet *wsp = [NSCharacterSet whitespaceAndNewlineCharacterSet];
+		NSCharacterSet *nl = [NSCharacterSet newlineCharacterSet];
+		NSCharacterSet *up = [NSCharacterSet uppercaseLetterCharacterSet];
+		NSCharacterSet *lo = [NSCharacterSet lowercaseLetterCharacterSet];
+		NSCharacterSet *letters = [NSCharacterSet letterCharacterSet];
+		NSCharacterSet *alnum = [NSCharacterSet alphanumericCharacterSet];
+		NSCharacterSet *punct = [NSCharacterSet punctuationCharacterSet];
+		NSCharacterSet *ctrl = [NSCharacterSet controlCharacterSet];
+		/* ITS OWN LOCAL because the class methods are declared NULLABLE (the F6 sweep's truthful
+		 * constructors): passing one straight into -isSupersetOfSet:'s nonnull parameter is
+		 * -Wnullable-to-nonnull-conversion, which this build makes an ERROR. */
+		NSCharacterSet *titlecase = [NSCharacterSet capitalizedLetterCharacterSet];
+
+		check("charset-whitespace-family",
+		      ws != nil && wsp != nil && nl != nil &&
+		      [ws characterIsMember:(unichar)0x09] &&		/* TAB, named separately by Apple */
+		      [ws characterIsMember:(unichar)0x00A0] &&		/* NBSP, Zs */
+		      [ws characterIsMember:(unichar)0x2003] &&		/* EM SPACE, Zs */
+		      ![ws characterIsMember:(unichar)0x0A] &&		/* LF is not Zs */
+		      ![ws characterIsMember:(unichar)'a'] &&
+		      [wsp characterIsMember:(unichar)0x20] &&
+		      [wsp characterIsMember:(unichar)0x00A0] &&
+		      [wsp characterIsMember:(unichar)0x2028] &&		/* Zl */
+		      [wsp characterIsMember:(unichar)0x0A] &&
+		      [wsp characterIsMember:(unichar)0x85] &&
+		      /* THE TAB IS NOT HERE, and that is Apple's CURRENT definition (Z*, U+000A-U+000D,
+		       * U+0085) against the older OpenStep/GNUstep text that includes it. Asserted on both
+		       * sides - in +whitespaceCharacterSet above, out of this one - rather than left to a
+		       * comment, because the two sources genuinely disagree. */
+		      ![wsp characterIsMember:(unichar)0x09] &&
+		      [nl characterIsMember:(unichar)0x0B] &&		/* the U+000A-U+000D span */
+		      [nl characterIsMember:(unichar)0x0C] &&
+		      [nl characterIsMember:(unichar)0x85] &&
+		      [nl characterIsMember:(unichar)0x2029] &&
+		      ![nl characterIsMember:(unichar)0x20] &&
+		      ![nl characterIsMember:(unichar)'a'],
+		      "Zs+TAB, Z*+the newlines (no tab), and the literal newline list");
+
+		check("charset-letter-family",
+		      up != nil && lo != nil && letters != nil && alnum != nil &&
+		      [up characterIsMember:(unichar)'A'] &&
+		      [up characterIsMember:(unichar)0x00C0] &&		/* A-grave, Lu */
+		      [up characterIsMember:(unichar)0x01C5] &&		/* Dz, Lt - Lu AND Lt */
+		      ![up characterIsMember:(unichar)'a'] &&
+		      [lo characterIsMember:(unichar)0x00E9] &&		/* e-acute, Ll */
+		      ![lo characterIsMember:(unichar)'A'] &&
+		      [letters characterIsMember:(unichar)0x4E00] &&	/* Lo: CJK */
+		      [letters characterIsMember:(unichar)0x0301] &&	/* M* counts as a letter here */
+		      ![letters characterIsMember:(unichar)'0'] &&
+		      [alnum characterIsMember:(unichar)0x2160] &&	/* Nl: Roman numeral one */
+		      [alnum characterIsMember:(unichar)0x0660] &&	/* Nd: Arabic-Indic zero */
+		      ![alnum characterIsMember:(unichar)'!'] &&
+		      /* THE RELATION THE LATIN-ONLY SETS FAILED: Apple specifies uppercase as Lu AND Lt, so
+		       * the titlecase letters must be a SUBSET of it. Measured 0 before §16. */
+		      [up isSupersetOfSet:titlecase],
+		      "Lu+Lt (with Lt inside), Ll, L*&M*, and L*,M*,N* with Nl and Nd");
+
+		check("charset-punct-and-control",
+		      punct != nil && ctrl != nil &&
+		      [punct characterIsMember:(unichar)'!'] &&
+		      [punct characterIsMember:(unichar)0x2014] &&	/* em dash, Pd */
+		      [punct characterIsMember:(unichar)0x201C] &&	/* left double quote, Pi */
+		      ![punct characterIsMember:(unichar)'A'] &&
+		      ![punct characterIsMember:(unichar)'$'] &&		/* Sc is a SYMBOL, not punctuation */
+		      [ctrl characterIsMember:(unichar)0x1F] &&
+		      [ctrl characterIsMember:(unichar)0x7F] &&
+		      [ctrl characterIsMember:(unichar)0x00AD] &&	/* soft hyphen, Cf */
+		      [ctrl characterIsMember:(unichar)0x200B] &&	/* zero-width space, Cf */
+		      ![ctrl characterIsMember:(unichar)' '],
+		      "P* (including the em dash and the curly quote) and Cc+Cf (including the Cf joiners)");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

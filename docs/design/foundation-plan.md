@@ -4501,3 +4501,53 @@ content of sets that already ship, and it is recorded here rather than done in p
    because that table is what puts `-I$(ICUPREFIX)/include` on the rule. The host table (`FN_HOST_ICU`)
    got the same entry for the record, and the "five sources" comment became six.
 
+## 17. THE SHIPPED SETS ARE CATEGORIES NOW — THE LATIN-ONLY DEFECT RETIRED (2026-09-20)
+
+§16 ended by recording a finding instead of fixing it in passing: this class's letter sets were
+`NSMakeRange('A', 26)`. THIS IS THAT UNIT. **TEN sets that already shipped are now rules over the same
+two ICU properties §15.5 used**, and every one of them was an ASCII or Latin-1 approximation. Measured
+in the BMP, before and after, with the definition looked up rather than recalled:
+
+```
+                        before   after   the published definition
+  whitespace                 1      18   Zs + TAB (U+0009) — the tab named separately because it is not Zs
+  whitespaceAndNewline       6      24   Z*, U+000A-U+000D, U+0085
+  newline                    4       7   U+000A-U+000D, U+0085, U+2028, U+2029
+  decimalDigit              10     370   Nd
+  letter                   117   50312   L* and M*
+  alphanumeric             127   51047   L*, M*, N* — its OWN rule, not the union of the two above
+  uppercase                 26    1163   Lu AND Lt
+  lowercase                 26    1448   Ll
+  punctuation               32     628   P*
+  control                   33     108   Cc and Cf
+```
+
+**AND THE RELATION THAT FAILED IS NOW TRUE:** `[uppercaseLetterCharacterSet isSupersetOfSet:
+capitalizedLetterCharacterSet]` was **0** before this unit (§16's measurement) and is **1** now — which
+is what Apple's definition of uppercase as Lu *and* Lt requires, and the probe asserts it.
+
+**WHERE THE ADMISSIBLE SOURCES DISAGREE, AND WHICH ONE WON.** Apple's current page defines
+`whitespaceAndNewlineCharacterSet` as Z*, U+000A–U+000D and U+0085 — **without TAB** — while the older
+OpenStep/GNUstep text (which this class's sets were built from) lists space, tab and the newlines. The
+modern Apple page is the spec and this follows it; the tab boundary is asserted **on both sides** (in
+`+whitespaceCharacterSet` and out of `+whitespaceAndNewlineCharacterSet`), and the disagreement is
+written at the implementation so the next reader meets it rather than rediscovering it.
+
+**TWO TRAPS, BOTH THE BUILD'S OWN:**
+
+1. **ICU SPELLS THE PUNCTUATION CATEGORIES `U_START_PUNCTUATION`/`U_END_PUNCTUATION`**, not
+   `U_OPEN_`/`U_CLOSE_` — the build named the undeclared identifiers outright (`did you mean
+   'U_LB_CLOSE_PUNCTUATION'`, a LINE-BREAK property, which is the useful part of the warning: a
+   plausible-looking ICU name can belong to a different property).
+2. **A NULLABLE-RETURNING SET PASSED INTO A NONNULL PARAMETER IS AN ERROR**, not a warning:
+   `-Werror=nullable-to-nonnull-conversion` fired on `[up isSupersetOfSet:[NSCharacterSet
+   capitalizedLetterCharacterSet]]`, because the F6 sweep declared these constructors **nullable** —
+   truthfully. The fix is the probe's own and it is a local: hoist the set into a variable and pass it.
+
+**VERIFIED.** `foundation_string` is `ok=38 fail=0` on the guest (three new checks assert the content of
+the ten sets), and the **FULL fast tier — not only the Foundation cases — is 33/34 cases, 212/213
+checks in 128s**, which matters here because these sets are what `NSString`'s trimming, scanning and
+case operations are specified in terms of. THE ONE FAILURE IS `host_fshlint`: a HOST case running
+`make fshlint` that exceeded its 420-second budget, failing identically BEFORE this change and
+unrelated to it (recorded rather than attributed, and not fixed here).
+
