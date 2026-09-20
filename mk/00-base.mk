@@ -257,10 +257,12 @@ MUSL64_OBJC   = $(CURDIR)/tools/musl-clang-objc64.sh
 # a shared object cannot take the ABI's PC-relative ivar-offset relocations.
 FOUNDATION_SRC = userland/Foundation
 FOUNDATION_LIB = $(FNXLIB)/libfoundation.so.1
-# CoreGraphics (docs/design/coregraphics-plan.md, milestone C1): the geometry and
-# affine arithmetic, built as a shared library beside libconfig and libfoundation.
-# A C library with NO dependencies — the rasterizer arrives with C3, and pixman is
-# already vendored and staged for it (mk/20-userland.mk stages libpixman-1.so).
+# CoreGraphics (docs/design/coregraphics-plan.md, milestones C1 and C2): the geometry,
+# the affine arithmetic, and — from C2 — the context whose fills are rasterized by the
+# VENDORED PIXMAN. That is now this library's only dependency: the include path and the
+# link come from the X11 prefix the rest of the userland already builds against, and
+# mk/20-userland.mk stages libpixman-1.so into the image. The engine is not a new one —
+# userland/xfb/fb/fbtrap.c feeds pixman the same trapezoids.
 #
 # A GENERATED SOURCE LIST, like the Foundation's block in mk/20-userland.mk, and for
 # the reason that block exists: this library gains a translation unit per header, and
@@ -273,20 +275,25 @@ CG_SRC  = userland/CoreGraphics
 CG_LIB  = $(FNXLIB)/libcoregraphics.so.1
 CG_SRCS = $(notdir $(wildcard $(CG_SRC)/*.c))
 CG_OBJS = $(addprefix $(FNXLIB)/coregraphics-,$(CG_SRCS:.c=.o))
+# TWO DIRECTORIES, BECAUSE PIXMAN'S HEADER IS NOT SELF-CONTAINED: `pixman.h` includes
+# `<pixman-version.h>`, which sits beside it rather than on a bare include path. These
+# are the same two flags `pkg-config --cflags pixman-1` emits.
+CG_CFLAGS = -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
+CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1
 
 define CG_rule
 $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)
 	@mkdir -p $(FNXLIB)
-	$$(MUSL64_CC) -fPIC -Iinclude -Iuserland -c $$< -o $$@
+	$$(MUSL64_CC) -fPIC -Iinclude -Iuserland $$(CG_CFLAGS) -c $$< -o $$@
 endef
 $(foreach f,$(CG_SRCS),$(eval $(call CG_rule,$(f))))
 
 # No -lm: musl folds the math functions into libc, and a shared object is linked
-# with unresolved symbols allowed anyway. The HOST probe needs -lm, because the host
-# is glibc, and that is on mk/60-host.mk's line rather than here.
+# with unresolved symbols allowed anyway. The HOST probe needs -lm and the host's
+# own pixman, and those are on mk/60-host.mk's line rather than here.
 $(CG_LIB): $(CG_OBJS)
 	@mkdir -p $(FNXLIB)
-	$(MUSL64_CC) -fPIC -shared -Wl,-soname,libcoregraphics.so.1 $(CG_OBJS) -o $@
+	$(MUSL64_CC) -fPIC -shared -Wl,-soname,libcoregraphics.so.1 $(CG_OBJS) $(CG_LDFLAGS) -o $@
 	ln -sf libcoregraphics.so.1 $(FNXLIB)/libcoregraphics.so
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile

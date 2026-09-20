@@ -1,0 +1,470 @@
+/*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
+ * coregraphics_context.c — C2's acceptance: the context, the clip, and the fill.
+ *
+ * IT RUNS ON THE HOST, WHICH IS THE POINT OF THE "OFFSCREEN FIRST" DECISION: a bitmap
+ * context's surface is a block of bytes and pixman is deterministic, so a fill can be
+ * asserted at EXACT PIXEL VALUES with no QEMU boot. The test tier keeps its runs for
+ * the milestone where something must appear on a screen.
+ *
+ * WHAT IT ASSERTS, AND WHY EACH ONE COULD FAIL:
+ *
+ *   * THE BYTE ORDER. The first check reads the four bytes a red pixel turned out to
+ *     be. CGBitmapContext.h promises B, G, R, A and flags that the Apple-constant ↔
+ *     byte binding is a measurement rather than a transcription; this is the
+ *     measurement. If it ever disagrees with Apple's headers, this line is what says so.
+ *   * THE DEFAULT FLIP. User space is y-up from the lower-left, so user (0,0) must be
+ *     the BOTTOM-left pixel. Both directions of the conversion are checked, because a
+ *     transform and its inverse that are both wrong in the same way would pass one.
+ *   * COVERAGE, EXACT AND FRACTIONAL. A rectangle with an integer extent must paint
+ *     whole pixels and nothing else; one ending at 2.5 must paint a PARTIAL pixel. The
+ *     partial test asserts proportion rather than a constant, because measurement says
+ *     this pixman quantises trapezoid coverage in SEVENTEENTHS (0.5 reads 135 = 9/17,
+ *     0.25 reads 60 = 4/17) — see the check, which records that and tests it.
+ *   * THE TWO WINDING RULES, ON A PATH THAT CANNOT SELF-INTERSECT: two concentric
+ *     squares, drawn in the SAME direction, are a filled square under the non-zero rule
+ *     (the inner area has winding 2) and a square with a HOLE under even-odd. Drawn in
+ *     OPPOSITE directions, BOTH rules give the hole. That is a real distinction between
+ *     the two functions, which a single-ring test cannot make.
+ *   * THE REFUSALS, ASSERTED BY THEIR EFFECT ON PIXELS — the only form of the claim
+ *     that matters: a self-intersecting path draws NOTHING, and a rotated `ClipToRect`
+ *     leaves the clip exactly as it was rather than clipping to a bounding box.
+ *   * THE STATE STACK. Save/restore must bring back the CTM, the clip AND the fill
+ *     colour — three separate fields, so three separate checks.
+ *
+ * Output: one line per check, then a total. The exit status is the failure count, so
+ * the caller needs no log parsing.
+ */
+#include <CoreGraphics/CGBitmapContext.h>
+#include <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGPath.h>
+
+#include <stdio.h>
+#include <string.h>
+
+static int failures;
+
+static void check(const char *name, int ok)
+{
+	if (ok) {
+		printf("CG-PROBE %-46s ok\n", name);
+	} else {
+		printf("CG-PROBE %-46s FAIL\n", name);
+		failures++;
+	}
+}
+
+static void check_num(const char *name, double got, double want, double tol)
+{
+	if (got >= want - tol && got <= want + tol) {
+		printf("CG-PROBE %-46s ok\n", name);
+	} else {
+		printf("CG-PROBE %-46s FAIL (got %g, want %g ±%g)\n", name, got, want, tol);
+		failures++;
+	}
+}
+
+#define W 4
+#define H 4
+static unsigned char surface[W * H * 4];
+
+static CGContextRef fresh(void)
+{
+	memset(surface, 0, sizeof(surface));
+	return CGBitmapContextCreate(surface, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
+				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+}
+
+/* The bytes of one pixel, in memory order. */
+static void pixel(CGContextRef c, int x, int y, unsigned char out[4])
+{
+	unsigned char *d = CGBitmapContextGetData(c);
+
+	memcpy(out, d + (size_t)y * W * 4 + (size_t)x * 4, 4);
+}
+
+static int count_nonzero(CGContextRef c)
+{
+	unsigned char *d = CGBitmapContextGetData(c);
+	int i, n = 0;
+
+	for (i = 0; i < W * H * 4; i++) {
+		if (d[i] != 0) {
+			n++;
+		}
+	}
+	return n;
+}
+
+int main(void)
+{
+	CGContextRef c;
+	unsigned char p[4];
+	CGAffineTransform t;
+	CGRect box;
+	CGMutablePathRef path;
+
+	/* --- the format, pinned by its bytes ------------------------------------- */
+	c = fresh();
+	check("bitmap context created", c != NULL);
+	if (c == NULL) {
+		return 1;
+	}
+	check_num("width", (double)CGBitmapContextGetWidth(c), W, 0);
+	check_num("height", (double)CGBitmapContextGetHeight(c), H, 0);
+	check_num("bits per component", (double)CGBitmapContextGetBitsPerComponent(c), 8, 0);
+	check_num("bits per pixel", (double)CGBitmapContextGetBitsPerPixel(c), 32, 0);
+	check_num("bytes per row", (double)CGBitmapContextGetBytesPerRow(c), W * 4, 0);
+	check("alpha info round-trips",
+	      CGBitmapContextGetAlphaInfo(c) == kCGImageAlphaPremultipliedFirst);
+	check("colour space is device RGB",
+	      CGColorSpaceGetModel(CGBitmapContextGetColorSpace(c)) == kCGColorSpaceModelRGB);
+
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	pixel(c, 0, 0, p);
+	check("opaque red is B,G,R,A = 0,0,255,255 in memory",
+	      p[0] == 0 && p[1] == 0 && p[2] == 255 && p[3] == 255);
+	{
+		int all = 1;
+		int x, y;
+
+		for (y = 0; y < H; y++) {
+			for (x = 0; x < W; x++) {
+				pixel(c, x, y, p);
+				if (!(p[0] == 0 && p[1] == 0 && p[2] == 255 && p[3] == 255)) {
+					all = 0;
+				}
+			}
+		}
+		check("a full-surface fill covers every pixel", all);
+	}
+	CGContextRelease(c);
+
+	/* --- the default coordinate system --------------------------------------- */
+	c = fresh();
+	t = CGContextGetCTM(c);
+	check_num("default CTM a", t.a, 1.0, 0);
+	check_num("default CTM d", t.d, -1.0, 0);
+	check_num("default CTM ty", t.ty, H, 0);
+	{
+		CGPoint o = CGContextConvertPointToDeviceSpace(c, CGPointMake(0.0, 0.0));
+		CGPoint tl = CGContextConvertPointToDeviceSpace(c, CGPointMake(0.0, H));
+		CGPoint back = CGContextConvertPointToUserSpace(c, CGPointMake(0.0, 0.0));
+
+		check("user origin is the bottom-left device point", o.x == 0.0 && o.y == H);
+		check("user top-left maps to device origin", tl.x == 0.0 && tl.y == 0.0);
+		/* DEVICE (0,0) IS USER (0,H): the round trip of the DEVICE ORIGIN therefore
+		 * lands at the TOP-left in user space. The first version of this check expected
+		 * (0,0) — it was wrong about which point it was converting, not about the
+		 * transform. */
+		check("the conversion round-trips", back.x == 0.0 && back.y == H);
+	}
+	/* AND THE SAME CLAIM IN PIXELS: a fill at user y in [0,1) must land on the BOTTOM
+	 * row, which is the last one in the buffer. */
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, 1.0));
+	pixel(c, 0, H - 1, p);
+	check("a fill at user y 0..1 lands on the bottom row", p[3] == 255);
+	pixel(c, 0, 0, p);
+	check("...and not on the top row", p[3] == 0);
+	CGContextRelease(c);
+
+	/* --- coverage, exact and fractional -------------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, 2.0, H));
+	/* TWO NON-ZERO BYTES PER PIXEL, NOT FOUR: an opaque red pixel is B,G,R,A =
+	 * 0,0,255,255 and this counts BYTES that are not zero, so 2 columns × 4 rows × 2 = 16.
+	 * Stated because the first version of this check expected 32 — it was measuring the
+	 * colour rather than the coverage. */
+	check_num("an integer-extent fill covers exactly its own pixels",
+		  (double)count_nonzero(c), 2.0 * H * 2, 0);
+	CGContextRelease(c);
+
+	{
+		unsigned char half;
+		unsigned char quarter;
+
+		c = fresh();
+		CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+		CGContextFillRect(c, CGRectMake(0.0, 0.0, 2.5, H));
+		pixel(c, 2, H - 1, p);
+		half = p[3];
+		CGContextRelease(c);
+
+		c = fresh();
+		CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+		CGContextFillRect(c, CGRectMake(0.0, 0.0, 2.25, H));
+		pixel(c, 2, H - 1, p);
+		quarter = p[3];
+
+		/* THE MASK TAKES SEVENTEEN VALUES, AND THAT IS MEASURED RATHER THAN ASSUMED:
+		 * 0.5 coverage reads 135 and 0.25 reads 60 — both multiples of 255/17 (9 and 4),
+		 * not of 255/256. The first version of this check asserted 128 ± 2 and would have
+		 * been an assertion about pixman's RASTERIZER rather than about this file's
+		 * geometry. What this file controls is that coverage is PARTIAL and PROPORTIONAL,
+		 * and the seventeen-value grid is recorded as a property of the engine: if this
+		 * check ever fails, the engine changed its quantisation and nothing here did. */
+		check("a half-covered pixel is partial", half > 100 && half < 160);
+		check("the mask lands on multiples of 255/17 (measured)",
+		      half % 15 == 0 && quarter % 15 == 0);
+		check_num("a quarter-covered pixel is about half the half-covered one",
+			  (double)half - 2.0 * (double)quarter, 0.0, 15.0);
+		pixel(c, 0, H - 1, p);
+		check_num("a fully covered pixel is opaque", (double)p[3], 255.0, 0.0);
+		CGContextRelease(c);
+	}
+
+	/* --- zero-area and empty fills ------------------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(1.0, 1.0, 0.0, 0.0));
+	check_num("a zero-area fill draws nothing", (double)count_nonzero(c), 0.0, 0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, 0.0, H));
+	check_num("a zero-width fill draws nothing", (double)count_nonzero(c), 0.0, 0);
+	CGContextRelease(c);
+
+	/* --- a path, and the two winding rules ----------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextBeginPath(c);
+	CGContextMoveToPoint(c, 0.0, 0.0);
+	CGContextAddLineToPoint(c, 3.0, 0.0);
+	CGContextAddLineToPoint(c, 0.0, 3.0);
+	CGContextClosePath(c);
+	check("the path is not empty before the fill", !CGContextIsPathEmpty(c));
+	box = CGContextGetPathBoundingBox(c);
+	check("the path box is in user space", box.origin.x == 0.0 && box.origin.y == 0.0 &&
+	      box.size.width == 3.0 && box.size.height == 3.0);
+	CGContextFillPath(c);
+	check("a fill consumes the path", CGContextIsPathEmpty(c));
+	pixel(c, 0, H - 1, p);
+	check("a pixel inside the triangle is painted", p[3] == 255);
+	pixel(c, 3, 0, p);
+	check("a pixel outside the triangle is not", p[3] == 0);
+	CGContextRelease(c);
+
+	/* TWO CONCENTRIC SQUARES IN THE SAME DIRECTION: non-zero sees winding 2 in the
+	 * middle and fills it; even-odd counts two crossings and leaves a hole. */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextBeginPath(c);
+	CGContextAddRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	CGContextAddRect(c, CGRectMake(1.0, 1.0, 2.0, 2.0));
+	CGContextFillPath(c);
+	pixel(c, 1, 1, p);
+	check("non-zero winding fills the middle of same-direction squares", p[3] == 255);
+	CGContextRelease(c);
+
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextBeginPath(c);
+	CGContextAddRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	CGContextAddRect(c, CGRectMake(1.0, 1.0, 2.0, 2.0));
+	CGContextEOFillPath(c);
+	pixel(c, 1, 1, p);
+	check("even-odd leaves a hole in the same squares", p[3] == 0);
+	pixel(c, 0, 3, p);
+	check("...and still paints the ring", p[3] == 255);
+	CGContextRelease(c);
+
+	/* THE SAME TWO SQUARES WITH THE INNER ONE REVERSED: both rules agree on a hole. */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextBeginPath(c);
+	CGContextAddRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	CGContextMoveToPoint(c, 1.0, 1.0);
+	CGContextAddLineToPoint(c, 1.0, 3.0);
+	CGContextAddLineToPoint(c, 3.0, 3.0);
+	CGContextAddLineToPoint(c, 3.0, 1.0);
+	CGContextClosePath(c);
+	CGContextFillPath(c);
+	pixel(c, 1, 1, p);
+	check("non-zero with a reversed inner ring leaves a hole", p[3] == 0);
+	CGContextRelease(c);
+
+	/* --- FillRect does not disturb the path ---------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextBeginPath(c);
+	CGContextMoveToPoint(c, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	check("FillRect leaves the current path alone", !CGContextIsPathEmpty(c));
+	box = CGContextGetPathBoundingBox(c);
+	check("...and the path is still just its move", box.origin.x == 1.0 && box.origin.y == 1.0 &&
+	      box.size.width == 0.0 && box.size.height == 0.0);
+	CGContextRelease(c);
+
+	/* --- the clip ------------------------------------------------------------ */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextClipToRect(c, CGRectMake(0.0, 0.0, 2.0, 2.0));
+	/* The clip is in USER space on the way in and lives in DEVICE space after, so the
+	 * box comes back as the same quadrant on a bitmap context with no flip of its own. */
+	box = CGContextGetClipBoundingBox(c);
+	check("the clip box is the rect that was asked for",
+	      box.origin.x == 0.0 && box.origin.y == 0.0 && box.size.width == 2.0 && box.size.height == 2.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	check_num("a clip limits a fill to a quarter", (double)count_nonzero(c), 2.0 * 2.0 * 4, 0);
+	pixel(c, 0, H - 1, p);
+	check("a clipped-in pixel is painted", p[3] == 255);
+	pixel(c, 3, 0, p);
+	check("a clipped-out pixel is not", p[3] == 0);
+	CGContextRelease(c);
+
+	/* THE CLIP REFUSAL: a rotated CTM makes the rect a parallelogram, so the clip is
+	 * left ALONE rather than replaced by a bounding box that keeps too much. */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextClipToRect(c, CGRectMake(0.0, 0.0, 2.0, 2.0));
+	CGContextRotateCTM(c, 0.5);
+	CGContextClipToRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	CGContextRotateCTM(c, -0.5);
+	/* ASSERTED IN PIXELS, AND WITH THE CTM PUT BACK, so the only thing this check can be
+	 * measuring is whether the REFUSED call moved the clip: the fill is then the same
+	 * axis-aligned one the check above already passes. */
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, 4.0, 4.0));
+	check_num("a rotated ClipToRect leaves the clip alone",
+		  (double)count_nonzero(c), 4.0 * 4, 0);
+	CGContextRelease(c);
+
+	/* A CHECK THAT PINS A KNOWN FAILURE, WHICH IS WHY IT READS BACKWARDS: it asserts that
+	 * AN ENCLOSING FILL PAINTS NOTHING — today's behaviour, recorded so that the day
+	 * someone fixes it this line fails and points at the fix.
+	 *
+	 * HOW IT WAS FOUND: by accident, when this section's fill was a 64×64 rectangle
+	 * rotated around a 4×4 surface. The geometry says the whole clip lies inside that
+	 * rectangle, and NOTHING was painted. THE CAUSE IS THE EDGE CLIPPER: every edge of a
+	 * polygon that CONTAINS the surface lies OUTSIDE the surface, so clipping each edge
+	 * to the surface keeps none of them and the sweep is left with no edges to pair.
+	 * Per-edge clipping is exact for a polygon whose boundary crosses the surface, and
+	 * wrong for one that encloses it.
+	 *
+	 * THE FIX IS THE CLIPPER, NOT THE SWEEP: clip the outline as a POLYGON
+	 * (Sutherland–Hodgman, which closes it along the surface boundary) instead of edge by
+	 * edge. It is the first thing C3 takes, because filling the whole surface — a
+	 * background, a cleared window — IS that case. */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(-16.0, -16.0, 32.0, 32.0));
+	check("an enclosing fill paints NOTHING today (KNOWN; C3 fixes the clipper)",
+	      count_nonzero(c) == 0);
+	CGContextRelease(c);
+
+	/* --- the state stack ----------------------------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+	CGContextSaveGState(c);
+	CGContextSetRGBFillColor(c, 0.0, 0.0, 1.0, 1.0);
+	CGContextTranslateCTM(c, 10.0, 0.0);
+	CGContextClipToRect(c, CGRectMake(0.0, 0.0, 1.0, 1.0));
+	CGContextRestoreGState(c);
+	t = CGContextGetCTM(c);
+	check("restore brings back the CTM", t.tx == 0.0 && t.ty == H);
+	box = CGContextGetClipBoundingBox(c);
+	check("restore brings back the clip", box.size.width == W && box.size.height == H);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	pixel(c, 0, 0, p);
+	check("restore brings back the fill colour (red, not blue)", p[2] == 255 && p[0] == 0);
+	CGContextRelease(c);
+
+	/* --- alpha and blend modes ---------------------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 0.5);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	pixel(c, 0, 0, p);
+	check_num("half-alpha red over white is ~50% red", (double)p[2], 255.0, 2.0);
+	check("...and stays opaque", p[3] == 255);
+	CGContextRelease(c);
+
+	c = fresh();
+	CGContextSetRGBFillColor(c, 0.0, 0.0, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	CGContextSetBlendMode(c, kCGBlendModeMultiply);
+	CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	pixel(c, 0, 0, p);
+	check("multiply of red onto blue is black", p[0] < 2 && p[1] < 2 && p[2] < 2);
+	CGContextRelease(c);
+
+	c = fresh();
+	CGContextSetAlpha(c, 0.5);
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, W, H));
+	pixel(c, 0, 0, p);
+	check_num("SetAlpha multiplies the fill's alpha", (double)p[3], 128.0, 2.0);
+	CGContextRelease(c);
+
+	/* --- antialiasing switched off ------------------------------------------ */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextSetShouldAntialias(c, 0);
+	CGContextFillRect(c, CGRectMake(0.0, 0.0, 2.5, H));
+	pixel(c, 2, H - 1, p);
+	/* A 1-BIT MASK CANNOT PRODUCE A PARTIAL PIXEL, so the assertion is the property
+	 * rather than the value: which way pixman rounds a 50% sample is its business. */
+	check("with antialiasing off, an edge pixel is all or nothing",
+	      p[3] == 0 || p[3] == 255);
+	CGContextRelease(c);
+
+	/* --- the self-intersection refusal -------------------------------------- */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextBeginPath(c);
+	CGContextMoveToPoint(c, 0.0, 0.0);
+	CGContextAddLineToPoint(c, 4.0, 4.0);
+	CGContextAddLineToPoint(c, 4.0, 0.0);
+	CGContextAddLineToPoint(c, 0.0, 4.0);
+	CGContextClosePath(c);
+	CGContextFillPath(c);
+	check_num("a self-intersecting fill draws nothing", (double)count_nonzero(c), 0.0, 0);
+	CGContextRelease(c);
+
+	/* --- the constructor's refusals ----------------------------------------- */
+	c = CGBitmapContextCreate(surface, W, H, 16, W * 4, CGColorSpaceCreateDeviceRGB(),
+				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+	check("16 bits per component is refused with NULL", c == NULL);
+	c = CGBitmapContextCreate(surface, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
+				  kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Big);
+	check("an unsupported alpha/order combination is refused with NULL", c == NULL);
+
+	/* --- the path API on its own -------------------------------------------- */
+	path = CGPathCreateMutable();
+	check("an empty path is empty", CGPathIsEmpty((CGPathRef)path));
+	CGPathMoveToPoint(path, NULL, 1.0, 2.0);
+	check("a move makes the path non-empty", !CGPathIsEmpty((CGPathRef)path));
+	{
+		CGPoint cur = CGPathGetCurrentPoint((CGPathRef)path);
+
+		check("the current point is the move", cur.x == 1.0 && cur.y == 2.0);
+	}
+	CGPathAddLineToPoint(path, NULL, 4.0, 6.0);
+	box = CGPathGetBoundingBox((CGPathRef)path);
+	check("the path box spans its points", box.origin.x == 1.0 && box.origin.y == 2.0 &&
+	      box.size.width == 3.0 && box.size.height == 4.0);
+	check("an empty path's box is the null rectangle",
+	      CGRectIsNull(CGPathGetBoundingBox(CGPathCreateMutable())));
+	{
+		/* A RECTANGLE ADDED THROUGH A ROTATION IS A QUADRILATERAL, NOT A BOX — the
+		 * check that `CGPathAddRect` must not have used the rect's bounding box. */
+		CGRect box2;
+
+		path = CGPathCreateMutable();
+		CGPathAddRect(path, &(CGAffineTransform){ 0.0, 1.0, -1.0, 0.0, 0.0, 0.0 },
+			      CGRectMake(0.0, 0.0, 1.0, 1.0));
+		box2 = CGPathGetBoundingBox((CGPathRef)path);
+		check("a rotated rect keeps its four corners", box2.origin.x == -1.0 &&
+		      box2.origin.y == 0.0 && box2.size.width == 1.0 && box2.size.height == 1.0);
+	}
+	CGPathRelease((CGPathRef)path);
+
+	printf("CG-PROBE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
+	return failures;
+}

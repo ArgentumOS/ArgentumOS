@@ -36,13 +36,13 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped   39   open  648   struck   48
+#   func       shipped  102   open  585   struck   48
 #   macro      shipped    7   open   98   struck    2
-#   enum       shipped    1   open   55   struck    1
-#   case       shipped    4   open  426   struck   14
+#   enum       shipped    6   open   50   struck    1
+#   case       shipped   54   open  376   struck   14
 #   var        shipped    6   open  120   struck    9
-#   typealias  shipped    1   open   97   struck    2
-#   struct     shipped    5   open   15   struck    0
+#   typealias  shipped    4   open   94   struck    2
+#   struct     shipped    6   open   14   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	struck	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -110,13 +110,13 @@ case	open	kCGBackingStoreNonretained	-	Services / Data Types / Constants	-	objc
 case	open	kCGBackingStoreRetained	-	Services / Data Types / Constants	-	objc
 case	open	kCGBackstopMenuLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGBaseWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGBitmapAlphaInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
+case	shipped	kCGBitmapAlphaInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
 case	struck	kCGBitmapByteOrder16Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	struck	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	struck	kCGBitmapByteOrder32Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	struck	kCGBitmapByteOrder32Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	struck	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	open	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
+case	shipped	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
 case	struck	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
 case	open	kCGBitmapComponentInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
 case	struck	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	deprecated	objc
@@ -134,34 +134,34 @@ case	open	kCGBitmapLayoutRGBX	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGBitmapLayoutXBGR	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGBitmapLayoutXRGB	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGBitmapPixelFormatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
-case	open	kCGBlendModeClear	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeColor	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeColorBurn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeColorDodge	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeCopy	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeDarken	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeDestinationAtop	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeDestinationIn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeDestinationOut	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeDestinationOver	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeDifference	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeExclusion	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeHardLight	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeHue	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeLighten	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeLuminosity	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeMultiply	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeNormal	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeOverlay	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeClear	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeColor	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeColorBurn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeColorDodge	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeCopy	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeDarken	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeDestinationAtop	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeDestinationIn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeDestinationOut	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeDestinationOver	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeDifference	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeExclusion	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeHardLight	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeHue	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeLighten	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeLuminosity	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeMultiply	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeNormal	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeOverlay	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	open	kCGBlendModePlusDarker	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModePlusLighter	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeSaturation	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeScreen	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeSoftLight	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeSourceAtop	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeSourceIn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeSourceOut	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGBlendModeXOR	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModePlusLighter	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeSaturation	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeScreen	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeSoftLight	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeSourceAtop	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeSourceIn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeSourceOut	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
+case	shipped	kCGBlendModeXOR	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	open	kCGCaptureNoFill	-	Services / Constants / Constants	-	objc
 case	open	kCGCaptureNoOptions	-	Services / Constants / Constants	-	objc
 case	open	kCGColorConversionTransformApplySpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	-	objc
@@ -173,15 +173,15 @@ case	open	kCGColorModelGray	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGColorModelLab	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGColorModelNoColorant	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGColorModelRGB	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGColorSpaceModelCMYK	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelDeviceN	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelIndexed	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelLab	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelMonochrome	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelPattern	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelRGB	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelUnknown	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGColorSpaceModelXYZ	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelCMYK	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelDeviceN	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelIndexed	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelLab	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelMonochrome	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelPattern	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelRGB	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelUnknown	-	Opaque Types / Examining a Color Space / Constants	-	objc
+case	shipped	kCGColorSpaceModelXYZ	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	open	kCGComponentFloat16Bit	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGComponentFloat32Bit	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGComponentInteger10Bit	-	Enumerations / Enumeration Cases	-	objc
@@ -297,18 +297,18 @@ case	open	kCGHelpWindowLevelKey	-	Services / Data Types / Window levels / Consta
 case	open	kCGImageAlphaFirst	-	Opaque Types / Examining an image / Constants	-	objc
 case	open	kCGImageAlphaLast	-	Opaque Types / Examining an image / Constants	-	objc
 case	open	kCGImageAlphaNone	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaNoneSkipFirst	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaNoneSkipLast	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaNoneSkipFirst	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaNoneSkipLast	-	Opaque Types / Examining an image / Constants	-	objc
 case	open	kCGImageAlphaOnly	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaPremultipliedFirst	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaPremultipliedLast	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaPremultipliedFirst	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaPremultipliedLast	-	Opaque Types / Examining an image / Constants	-	objc
 case	open	kCGImageByteOrder16Big	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGImageByteOrder16Host	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	kCGImageByteOrder16Little	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	-	objc
+case	shipped	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGImageByteOrder32Host	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	-	objc
+case	shipped	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	-	objc
+case	shipped	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	-	objc
 case	struck	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	deprecated	objc
 case	open	kCGImageComponentFloat	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGImageComponentInteger	-	Enumerations / Enumeration Cases	-	objc
@@ -381,11 +381,11 @@ case	open	kCGPDFObjectTypeString	-	Opaque Types / Abstract Types for PDF Documen
 case	open	kCGPDFTrimBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	kCGPathEOFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	open	kCGPathEOFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
-case	open	kCGPathElementAddCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
-case	open	kCGPathElementAddLineToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
-case	open	kCGPathElementAddQuadCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
-case	open	kCGPathElementCloseSubpath	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
-case	open	kCGPathElementMoveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
+case	shipped	kCGPathElementAddCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
+case	shipped	kCGPathElementAddLineToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
+case	shipped	kCGPathElementAddQuadCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
+case	shipped	kCGPathElementCloseSubpath	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
+case	shipped	kCGPathElementMoveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
 case	open	kCGPathFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	open	kCGPathFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	open	kCGPathStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
@@ -489,12 +489,12 @@ case	open	kCGWindowSharingReadOnly	-	Services / Data Types / Constants	-	objc
 case	open	kCGWindowSharingReadWrite	-	Services / Data Types / Constants	-	objc
 enum	open	CGBitmapInfo	-	Opaque Types / Examining an image	-	objc
 enum	open	CGBitmapLayout	-	Enumerations	-	objc
-enum	open	CGBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
+enum	shipped	CGBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
 enum	open	CGCaptureOptions	-	Services / Constants	-	objc
 enum	open	CGColorConversionInfoTransformType	-	Opaque Types / Creating a Color Conversion	-	objc
 enum	open	CGColorModel	-	Enumerations	-	objc
 enum	open	CGColorRenderingIntent	-	Opaque Types / Data Types	-	objc
-enum	open	CGColorSpaceModel	-	Opaque Types / Examining a Color Space	-	objc
+enum	shipped	CGColorSpaceModel	-	Opaque Types / Examining a Color Space	-	objc
 enum	open	CGComponent	-	Enumerations	-	objc
 enum	open	CGConfigureOption	-	Services / Constants	-	objc
 enum	open	CGDisplayChangeSummaryFlags	-	Services / Constants	-	objc
@@ -515,8 +515,8 @@ enum	open	CGFontPostScriptFormat	-	Opaque Types / Working with PostScript Fonts	
 enum	open	CGGesturePhase	-	Reference / Enumerations	-	objc
 enum	open	CGGlyphDeprecatedEnum	-	Reference / Enumerations	-	objc
 enum	open	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Shadings	-	objc
-enum	open	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
-enum	open	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
+enum	shipped	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
+enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
 enum	open	CGImageComponentInfo	-	Enumerations	-	objc
 enum	open	CGImagePixelFormatInfo	-	Reference / Enumerations	-	objc
 enum	open	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
@@ -530,7 +530,7 @@ enum	open	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Conte
 enum	open	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFTagType	-	Reference / Enumerations	-	objc
 enum	open	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
-enum	open	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
+enum	shipped	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 enum	open	CGPatternTiling	-	Opaque Types / Constants	-	objc
 enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
 enum	open	CGScreenUpdateOperation	-	Services / Constants	-	objc
@@ -560,19 +560,19 @@ func	shipped	CGAffineTransformScale	-	Reference / Modifying Affine Transformatio
 func	shipped	CGAffineTransformTranslate	-	Reference / Modifying Affine Transformations	-	objc
 func	open	CGAssociateMouseAndMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGBeginDisplayConfiguration	-	Services / Configuring Displays	-	objc
-func	open	CGBitmapContextCreate	-	Functions	-	objc
+func	shipped	CGBitmapContextCreate	-	Functions	-	objc
 func	open	CGBitmapContextCreateAdaptive	-	Functions	-	objc
 func	open	CGBitmapContextCreateImage	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	open	CGBitmapContextCreateWithData	-	Functions	-	objc
-func	open	CGBitmapContextGetAlphaInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetBitmapInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetBitsPerComponent	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetBitsPerPixel	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetBytesPerRow	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetColorSpace	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetData	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetHeight	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextGetWidth	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetAlphaInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetBitmapInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetBitsPerComponent	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetBitsPerPixel	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetBytesPerRow	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetColorSpace	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetData	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetHeight	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
+func	shipped	CGBitmapContextGetWidth	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	open	CGBitmapInfoMake	-	Functions	-	objc
 func	open	CGCancelDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGCaptureAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
@@ -615,8 +615,8 @@ func	open	CGColorSpaceCreateCalibratedGray	-	Opaque Types / Creating Color Space
 func	open	CGColorSpaceCreateCalibratedRGB	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateCopyWithStandardRange	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateDeviceCMYK	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateDeviceGray	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateDeviceRGB	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateDeviceGray	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateDeviceRGB	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateExtended	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateExtendedLinearized	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-	objc
@@ -633,16 +633,16 @@ func	open	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spa
 func	open	CGColorSpaceGetBaseColorSpace	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetColorTable	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetColorTableCount	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceGetModel	-	Opaque Types / Examining a Color Space	-	objc
+func	shipped	CGColorSpaceGetModel	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetName	-	Reference / Functions	-	objc
-func	open	CGColorSpaceGetNumberOfComponents	-	Opaque Types / Examining a Color Space	-	objc
+func	shipped	CGColorSpaceGetNumberOfComponents	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGColorSpaceIsHDR	-	Reference / Functions	-	objc
 func	open	CGColorSpaceIsHLGBased	-	Reference / Functions	-	objc
 func	open	CGColorSpaceIsPQBased	-	Reference / Functions	-	objc
 func	open	CGColorSpaceIsWideGamutRGB	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceRelease	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
-func	open	CGColorSpaceRetain	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
+func	shipped	CGColorSpaceRelease	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
+func	shipped	CGColorSpaceRetain	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
 func	open	CGColorSpaceSupportsOutput	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceUsesExtendedRange	-	Reference / Functions	-	objc
 func	open	CGColorSpaceUsesITUR_2100TF	-	Reference / Functions	-	objc
@@ -657,29 +657,29 @@ func	open	CGContextAddArc	-	Opaque Types / Constructing a Current Graphics Path	
 func	open	CGContextAddArcToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddEllipseInRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddLineToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddLineToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddLines	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddQuadCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddRects	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextBeginPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
-func	open	CGContextBeginPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextBeginPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
 func	open	CGContextBeginTransparencyLayerWithRect	-	Opaque Types / Working with Transparency Layers	-	objc
-func	open	CGContextClearRect	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextClearRect	-	Opaque Types / Drawing Shapes	-	objc
 func	open	CGContextClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextClipToMask	-	Opaque Types / Working with the Current Clipping Path	-	objc
-func	open	CGContextClipToRect	-	Opaque Types / Working with the Current Clipping Path	-	objc
+func	shipped	CGContextClipToRect	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextClipToRects	-	Opaque Types / Working with the Current Clipping Path	-	objc
-func	open	CGContextClosePath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextConcatCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
-func	open	CGContextConvertPointToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextConvertPointToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextConvertRectToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextConvertRectToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextConvertSizeToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextClosePath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextConcatCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
+func	shipped	CGContextConvertPointToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextConvertPointToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextConvertRectToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextConvertRectToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextConvertSizeToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextDrawConicGradient	-	Reference / Functions	-	objc
 func	open	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
@@ -694,43 +694,43 @@ func	open	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Sha
 func	open	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	open	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
-func	open	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
+func	shipped	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	open	CGContextEndPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
 func	open	CGContextEndTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
 func	open	CGContextFillEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
-func	open	CGContextFillRect	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
+func	shipped	CGContextFillRect	-	Opaque Types / Drawing Shapes	-	objc
 func	open	CGContextFillRects	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextFlush	-	Opaque Types / Managing a Graphics Context	-	objc
-func	open	CGContextGetCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
-func	open	CGContextGetClipBoundingBox	-	Opaque Types / Working with the Current Clipping Path	-	objc
+func	shipped	CGContextFlush	-	Opaque Types / Managing a Graphics Context	-	objc
+func	shipped	CGContextGetCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
+func	shipped	CGContextGetClipBoundingBox	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextGetContentToneMappingInfo	-	Functions	-	objc
 func	open	CGContextGetEDRTargetHeadroom	-	Reference / Functions	-	objc
 func	open	CGContextGetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
-func	open	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current Graphics Path	-	objc
+func	shipped	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	open	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	open	CGContextGetTextMatrix	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextGetTextPosition	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGContextGetUserSpaceToDeviceSpaceTransform	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextIsPathEmpty	-	Opaque Types / Examining the Current Graphics Path	-	objc
-func	open	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextGetUserSpaceToDeviceSpaceTransform	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
+func	shipped	CGContextIsPathEmpty	-	Opaque Types / Examining the Current Graphics Path	-	objc
+func	shipped	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextPathContainsPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
-func	open	CGContextRelease	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
+func	shipped	CGContextRelease	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
 func	open	CGContextReplacePathWithStrokedPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextResetClip	-	Reference / Functions	-	objc
-func	open	CGContextRestoreGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
-func	open	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
-func	open	CGContextRotateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
-func	open	CGContextSaveGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
-func	open	CGContextScaleCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
+func	shipped	CGContextResetClip	-	Reference / Functions	-	objc
+func	shipped	CGContextRestoreGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
+func	shipped	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
+func	shipped	CGContextRotateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
+func	shipped	CGContextSaveGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
+func	shipped	CGContextScaleCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	struck	CGContextSelectFont	-	Opaque Types / Drawing Text	deprecated	objc
-func	open	CGContextSetAllowsAntialiasing	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetAllowsAntialiasing	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetAllowsFontSmoothing	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetAllowsFontSubpixelPositioning	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetAllowsFontSubpixelQuantization	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetAlpha	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
+func	shipped	CGContextSetAlpha	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
 func	open	CGContextSetCMYKFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetCMYKStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetCharacterSpacing	-	Opaque Types / Drawing Text	-	objc
@@ -743,7 +743,7 @@ func	open	CGContextSetFillPattern	-	Opaque Types / Setting Path Drawing Options	
 func	open	CGContextSetFlatness	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetFontSize	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetGrayFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetGrayFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetGrayStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	open	CGContextSetLineCap	-	Opaque Types / Setting Path Drawing Options	-	objc
@@ -752,12 +752,12 @@ func	open	CGContextSetLineJoin	-	Opaque Types / Setting Path Drawing Options	-	o
 func	open	CGContextSetLineWidth	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetMiterLimit	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetPatternPhase	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetRGBFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetRGBFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetRGBStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetRenderingIntent	-	Opaque Types / Managing a Graphics Context	-	objc
 func	open	CGContextSetShadow	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetShadowWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetShouldAntialias	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetShouldAntialias	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetShouldSmoothFonts	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetShouldSubpixelPositionFonts	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetShouldSubpixelQuantizeFonts	-	Opaque Types / Drawing Text	-	objc
@@ -779,9 +779,9 @@ func	open	CGContextStrokeLineSegments	-	Opaque Types / Drawing Shapes	-	objc
 func	open	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	open	CGContextStrokeRect	-	Opaque Types / Drawing Shapes	-	objc
 func	open	CGContextStrokeRectWithWidth	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-	objc
+func	shipped	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-	objc
 func	open	CGContextSynchronizeAttributes	-	Functions	-	objc
-func	open	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
+func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	open	CGConvertColorDataWithFormat	-	Reference / Functions	-	objc
 func	struck	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	deprecated	objc
 func	struck	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	deprecated	objc
@@ -1157,7 +1157,7 @@ func	open	CGPSConverterConvert	-	Opaque Types / Miscellaneous Functions	-	objc
 func	open	CGPSConverterCreate	-	Opaque Types / Initializers	-	objc
 func	open	CGPSConverterGetTypeID	-	Opaque Types / Type Properties	-	objc
 func	open	CGPSConverterIsConverting	-	Opaque Types / Miscellaneous Functions	-	objc
-func	open	CGPathApply	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
+func	shipped	CGPathApply	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 func	open	CGPathApplyWithBlock	-	Reference / Functions	-	objc
 func	open	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathCreateCopy	-	Opaque Types / Copying a Graphics Path	-	objc
@@ -1176,18 +1176,18 @@ func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	obj
 func	open	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	-	objc
 func	open	CGPathCreateSeparateComponents	-	Reference / Functions	-	objc
 func	open	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	-	objc
-func	open	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	-	objc
+func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	-	objc
 func	open	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	-	objc
 func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathGetPathBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
+func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
+func	shipped	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc
+func	shipped	CGPathGetPathBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGPathIntersectsPath	-	Reference / Functions	-	objc
-func	open	CGPathIsEmpty	-	Opaque Types / Examining a Graphics Path	-	objc
+func	shipped	CGPathIsEmpty	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathIsRect	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathRelease	-	Opaque Types / Retaining and Releasing a Path	-	objc
-func	open	CGPathRetain	-	Opaque Types / Retaining and Releasing a Path	-	objc
+func	shipped	CGPathRelease	-	Opaque Types / Retaining and Releasing a Path	-	objc
+func	shipped	CGPathRetain	-	Opaque Types / Retaining and Releasing a Path	-	objc
 func	open	CGPatternCreate	-	Opaque Types / Creating a Pattern	-	objc
 func	open	CGPatternGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
@@ -1399,7 +1399,7 @@ struct	open	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequenti
 struct	open	CGDeviceColor	-	Reference / Structures	-	objc
 struct	open	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	open	CGPSConverterCallbacks	-	Opaque Types / Callbacks	-	objc
-struct	open	CGPathElement	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
+struct	shipped	CGPathElement	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 struct	open	CGPatternCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
@@ -1411,8 +1411,8 @@ typealias	open	CGButtonCount	-	Services / Data Types	-	objc
 typealias	open	CGCharCode	-	Services / Data Types	-	objc
 typealias	open	CGColorConversionInfoRef	-	Opaque Types	-	objc
 typealias	open	CGColorRef	-	Opaque Types	-	objc
-typealias	open	CGColorSpaceRef	-	Opaque Types	-	objc
-typealias	open	CGContextRef	-	Opaque Types	-	objc
+typealias	shipped	CGColorSpaceRef	-	Opaque Types	-	objc
+typealias	shipped	CGContextRef	-	Opaque Types	-	objc
 typealias	open	CGDataConsumerPutBytesCallback	-	Opaque Types / Creating Data Consumers	-	objc
 typealias	open	CGDataConsumerRef	-	Opaque Types	-	objc
 typealias	open	CGDataConsumerReleaseInfoCallback	-	Opaque Types / Creating Data Consumers	-	objc
@@ -1491,7 +1491,7 @@ typealias	open	CGPSConverterRef	-	Opaque Types	-	objc
 typealias	open	CGPSConverterReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPathApplierFunction	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 typealias	open	CGPathApplyBlock	-	Reference / Data Types	-	objc
-typealias	open	CGPathRef	-	Opaque Types	-	objc
+typealias	shipped	CGPathRef	-	Opaque Types	-	objc
 typealias	open	CGPatternDrawPatternCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPatternRef	-	Opaque Types	-	objc
 typealias	open	CGPatternReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc

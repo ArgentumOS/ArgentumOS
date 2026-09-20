@@ -34,6 +34,18 @@
 #define CORE_GRAPHICS_CGBASE_H
 
 /*
+ * `<stddef.h>` FOR `size_t`, WHICH SEVERAL CG HEADERS TAKE — `CGBitmapContextCreate`'s
+ * width, height and strides, `CGColorSpaceGetNumberOfComponents`. Apple's headers get
+ * it transitively from CoreFoundation's; this tree has no CoreFoundation (the plan
+ * retracted that, §1), so the header that IS the base states it instead of leaving
+ * every other header to rediscover it — which is exactly what happened when C2's first
+ * build failed on `unknown type name 'size_t'` in two headers at once, and then again on
+ * `uint32_t` in `CGBitmapContextCreate`'s `bitmapInfo`. Both are stated here.
+ */
+#include <stddef.h>
+#include <stdint.h>
+
+/*
  * CGFloat IS DOUBLE ON 64-BIT, which is what Apple's is under __LP64__, and this tree is
  * 64-bit only (no 32-bit compatibility exists here at all).
  */
