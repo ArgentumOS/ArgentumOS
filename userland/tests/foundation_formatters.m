@@ -108,6 +108,10 @@
  *   unit-duration           powers of ten against the second
  *   unit-length             the coefficients are definitions: an inch, a foot as TWELVE INCHES, a mile, a
  *                           nautical mile as 1852, and a light-year as c times a Julian year
+ *   unit-mass               the kilogram base, with an ounce as a SIXTEENTH OF THE POUND the table carries
+ *   unit-area               THE CROSS-FAMILY CHECK: a square foot IS a foot by a foot, asserted against
+ *                           NSUnitLength's coefficient rather than against a second literal
+ *   unit-angle              asserted AT THE API: 360 degrees and 400 gradians are each one revolution
  */
 
 #import <Foundation/Foundation.h>
@@ -1702,6 +1706,85 @@ int main(void)
 		      [NSString stringWithFormat:@"in=%g ft=%g mi=%g nmi=%g ly=%g baseIsMeters=%d",
 			 [inchConverter coefficient], [footConverter coefficient], [mileConverter coefficient],
 			 [nauticalConverter coefficient], [lightyearConverter coefficient], baseIsMeters]);
+	}
+
+	{
+		/*
+		 * MASS (batch 2): the kilogram is the SI base, and the customary ratios are BOTH definitions and
+		 * relations — so an ounce is asserted as a SIXTEENTH OF THE POUND the table already carries, not as
+		 * a second literal that could disagree with it.
+		 */
+		NSUnitConverterLinear *pound = (NSUnitConverterLinear *)[[NSUnitMass pounds] converter];
+		NSUnitConverterLinear *ounce = (NSUnitConverterLinear *)[[NSUnitMass ounces] converter];
+		NSUnitConverterLinear *stone = (NSUnitConverterLinear *)[[NSUnitMass stones] converter];
+		NSUnitConverterLinear *shortTon = (NSUnitConverterLinear *)[[NSUnitMass shortTons] converter];
+		NSUnitConverterLinear *carat = (NSUnitConverterLinear *)[[NSUnitMass carats] converter];
+		double poundInKg = [pound coefficient];
+		BOOL baseIsKilograms = ([NSUnitMass baseUnit] == [NSUnitMass kilograms]);
+
+		check("unit-mass",
+		      poundInKg == 0.45359237 &&
+		      fn_close([ounce coefficient], poundInKg / 16.0) &&
+		      fn_close([stone coefficient], 14.0 * poundInKg) &&
+		      fn_close([shortTon coefficient], 2000.0 * poundInKg) &&
+		      [carat coefficient] == 0.0002 &&
+		      baseIsKilograms,
+		      [NSString stringWithFormat:@"lb=%g oz=%g st=%g ton=%g ct=%g baseIsKg=%d",
+			 poundInKg, [ounce coefficient], [stone coefficient], [shortTon coefficient],
+			 [carat coefficient], baseIsKilograms]);
+	}
+
+	{
+		/*
+		 * AREA (batch 2) — AND THE CHECK WORTH HAVING IS THE CROSS-FAMILY ONE: a square foot IS the area of
+		 * a foot by a foot, so this asserts it against NSUnitLENGTH's coefficient rather than against a
+		 * number in this file. A hand-typed table of squares is a table that agrees with nothing.
+		 */
+		NSUnitConverterLinear *feet = (NSUnitConverterLinear *)[[NSUnitLength feet] converter];
+		NSUnitConverterLinear *miles = (NSUnitConverterLinear *)[[NSUnitLength miles] converter];
+		NSUnitConverterLinear *squareFeet = (NSUnitConverterLinear *)[[NSUnitArea squareFeet] converter];
+		NSUnitConverterLinear *squareMiles = (NSUnitConverterLinear *)[[NSUnitArea squareMiles] converter];
+		NSUnitConverterLinear *acre = (NSUnitConverterLinear *)[[NSUnitArea acres] converter];
+		NSUnitConverterLinear *are = (NSUnitConverterLinear *)[[NSUnitArea ares] converter];
+		NSUnitConverterLinear *hectare = (NSUnitConverterLinear *)[[NSUnitArea hectares] converter];
+
+		check("unit-area",
+		      fn_close([squareFeet coefficient], [feet coefficient] * [feet coefficient]) &&
+		      fn_close([squareMiles coefficient], [miles coefficient] * [miles coefficient]) &&
+		      [acre coefficient] == 4046.8564224 &&
+		      fn_close([hectare coefficient], 100.0 * [are coefficient]) &&
+		      [NSUnitArea baseUnit] == [NSUnitArea squareMeters],
+		      [NSString stringWithFormat:@"ft2=%g (ft=%g) mi2=%g acre=%g ha/are=%g",
+			 [squareFeet coefficient], [feet coefficient], [squareMiles coefficient],
+			 [acre coefficient], [hectare coefficient] / [are coefficient]]);
+	}
+
+	{
+		/*
+		 * ANGLE (batch 2): EVERY COEFFICIENT IS π OVER SOMETHING, and the assertions are made AT THE API
+		 * LEVEL — 360 degrees IS a revolution, 400 gradians IS a revolution, 60 arc minutes IS a degree —
+		 * rather than against a value of π this probe would have to spell out. A ring of relations is a
+		 * stronger claim than a ladder of decimals.
+		 */
+		NSMeasurement *fullCircle = [[NSMeasurement alloc] initWithDoubleValue:360.0
+										unit:[NSUnitAngle degrees]];
+		NSMeasurement *fourHundredGradians = [[NSMeasurement alloc] initWithDoubleValue:400.0
+										      unit:[NSUnitAngle gradians]];
+		NSMeasurement *sixtyArcMinutes = [[NSMeasurement alloc] initWithDoubleValue:60.0
+										     unit:[NSUnitAngle arcMinutes]];
+		NSMeasurement *rightAngle = [[NSMeasurement alloc] initWithDoubleValue:90.0
+									      unit:[NSUnitAngle degrees]];
+		double turns = [[fullCircle measurementByConvertingToUnit:[NSUnitAngle revolutions]] doubleValue];
+		double gradianTurns = [[fourHundredGradians measurementByConvertingToUnit:[NSUnitAngle revolutions]] doubleValue];
+		double arcMinuteDegrees = [[sixtyArcMinutes measurementByConvertingToUnit:[NSUnitAngle degrees]] doubleValue];
+		double quarterTurns = [[rightAngle measurementByConvertingToUnit:[NSUnitAngle revolutions]] doubleValue];
+
+		check("unit-angle",
+		      fn_close(turns, 1.0) && fn_close(gradianTurns, 1.0) &&
+		      fn_close(arcMinuteDegrees, 1.0) && fn_close(quarterTurns, 0.25) &&
+		      [NSUnitAngle baseUnit] == [NSUnitAngle radians],
+		      [NSString stringWithFormat:@"360deg=%g rev, 400grad=%g rev, 60arcmin=%g deg, "
+			 "90deg=%g rev", turns, gradianTurns, arcMinuteDegrees, quarterTurns]);
 	}
 
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);

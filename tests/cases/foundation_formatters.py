@@ -59,8 +59,9 @@ CHECKS = (
     "unit-identity", "unit-linear-converter", "unit-converter-raises",
     "unit-information-storage", "unit-conversion", "unit-measurement-arithmetic",
     "unit-measurement-value",
-    # W12's dimensional families (the offset one first, then two ratio families)
+    # W12's dimensional families (the offset one first, then the ratio families)
     "unit-temperature-offset", "unit-duration", "unit-length",
+    "unit-mass", "unit-area", "unit-angle",
 )
 
 

@@ -3495,12 +3495,12 @@ vanishing.
 | **Fundamentals / Iteration** | all classes shipped | — |
 | **Fundamentals / Lists** | all classes shipped | — |
 | **Fundamentals / Localization** | 1 open | `NSOrthography` |
-| **Fundamentals / Mass, Weight, and Force** | 2 open | `NSUnitMass`, `NSUnitPressure` |
+| **Fundamentals / Mass, Weight, and Force** | 1 open | `NSUnitPressure` |
 | **Fundamentals / Measurements** | 1 open | `NSMeasurementFormatter` |
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
-| **Fundamentals / Physical Dimension** | 3 open | `NSUnitAngle`, `NSUnitArea`, `NSUnitVolume` |
+| **Fundamentals / Physical Dimension** | 1 open | `NSUnitVolume` |
 | **Fundamentals / Pointer Collections** | 4 open | `NSHashTable`, `NSMapTable`, `NSPointerArray`, `NSPointerFunctions` |
 | **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
 | **Fundamentals / Sorting** | all classes shipped | — |

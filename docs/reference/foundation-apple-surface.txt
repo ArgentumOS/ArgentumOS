@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   90   open  152   struck   31
+#   class      shipped   93   open  149   struck   31
 #   protocol   shipped    9   open   27   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   76   open   76   struck    8
@@ -1566,8 +1566,8 @@ class	shipped	NSUndoManager		App Support / Undo	-	objc
 class	open	NSUniqueIDSpecifier		App Support / Object Specifiers	-	objc
 class	shipped	NSUnit		Fundamentals / Essentials	-	objc
 class	open	NSUnitAcceleration		Fundamentals / Time and Motion	-	objc
-class	open	NSUnitAngle		Fundamentals / Physical Dimension	-	objc
-class	open	NSUnitArea		Fundamentals / Physical Dimension	-	objc
+class	shipped	NSUnitAngle		Fundamentals / Physical Dimension	-	objc
+class	shipped	NSUnitArea		Fundamentals / Physical Dimension	-	objc
 class	open	NSUnitConcentrationMass		Fundamentals / Concentration and Dispersion	-	objc
 class	shipped	NSUnitConverter		Fundamentals / Conversion	-	objc
 class	shipped	NSUnitConverterLinear		Fundamentals / Conversion	-	objc
@@ -1583,7 +1583,7 @@ class	open	NSUnitFuelEfficiency		Fundamentals / Fuel Efficiency	-	objc
 class	open	NSUnitIlluminance		Fundamentals / Energy, Heat, and Light	-	objc
 class	shipped	NSUnitInformationStorage		Fundamentals / Data Storage	-	objc
 class	shipped	NSUnitLength		Fundamentals / Physical Dimension	-	objc
-class	open	NSUnitMass		Fundamentals / Mass, Weight, and Force	-	objc
+class	shipped	NSUnitMass		Fundamentals / Mass, Weight, and Force	-	objc
 class	open	NSUnitPower		Fundamentals / Energy, Heat, and Light	-	objc
 class	open	NSUnitPressure		Fundamentals / Mass, Weight, and Force	-	objc
 class	open	NSUnitSpeed		Fundamentals / Time and Motion	-	objc

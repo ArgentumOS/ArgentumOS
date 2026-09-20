@@ -100,6 +100,9 @@
 #import <Foundation/NSUnitTemperature.h>
 #import <Foundation/NSUnitDuration.h>
 #import <Foundation/NSUnitLength.h>
+#import <Foundation/NSUnitMass.h>
+#import <Foundation/NSUnitArea.h>
+#import <Foundation/NSUnitAngle.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>
