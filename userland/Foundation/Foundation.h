@@ -81,6 +81,13 @@
 #import <Foundation/NSFormatter.h>
 #import <Foundation/NSDateFormatter.h>
 #import <Foundation/NSNumberFormatter.h>
+#import <Foundation/NSListFormatter.h>
+#import <Foundation/NSPersonNameComponents.h>
+#import <Foundation/NSISO8601DateFormatter.h>
+#import <Foundation/NSDateIntervalFormatter.h>
+#import <Foundation/NSByteCountFormatter.h>
+#import <Foundation/NSRelativeDateTimeFormatter.h>
+#import <Foundation/NSDateComponentsFormatter.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

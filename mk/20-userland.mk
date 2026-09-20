@@ -240,7 +240,9 @@ FN_FOUNDATION_NOARC = NSObject.m NSTinyString.m NSDateInterval.m
 # (the host has ICU's headers on its default include path). NSDecimalNumber.m asks ICU for the locale's
 # decimal separator, so it belongs in this list - which the guest build is what proved.
 FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
-                      NSCharacterSet.m NSLocale.m NSDecimalNumber.m
+                      NSCharacterSet.m NSLocale.m NSDecimalNumber.m NSListFormatter.m \
+                      NSISO8601DateFormatter.m NSDateIntervalFormatter.m NSByteCountFormatter.m \
+                      NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m
 FN_FOUNDATION_X11   = NSDataCodec.m
 FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o
@@ -664,6 +666,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_orderedset.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
+	# foundation_formatters: W11 acceptance. ONE unit, only <Foundation/Foundation.h> (which also
+	# proves the umbrella exports all six new formatter headers). The claim is DATA coming back
+	# through Foundation's own API — CLDR list/interval/relative patterns and the ISO 8601 grammar —
+	# plus NSByteCountFormatter's arithmetic, which is the ONE thing in this family that is ours.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_formatters.m -o .build/probe-foundation_formatters.o
+	$(MUSL64_OBJC) .build/probe-foundation_formatters.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_formatters"
 	# foundation_kvo: F13.9 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \

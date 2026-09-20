@@ -3289,7 +3289,25 @@ whole ledger; it is what §5 and §10 already admitted.
 | Percent-encoding and query-item ENCODING in `NSURLComponents` | §10, F13.15 | none | **open** |
 | **Whole families with no header at all** — `NSNotificationCenter`, `NSBundle`, `NSUserDefaults`, `NSJSONSerialization`, `NSScanner`, `NSFileHandle`, `NSTask`/`NSPipe`, `NSStream`, `NSUUID`, `NSProxy`, `NSValueTransformer`, `NSDecimalNumber`, the formatter variants, the networking stack, … | the shipped-header list | case by case | **EXPANDED, not closed — §11.3.1 replaced this row with the committed surface (`docs/reference/foundation-apple-surface.txt`): 83 family rows and 2,546 open symbols, of which 212 are classes/protocols. It goes away when the file's `open` column is empty and `make foundation-sweep` says so** |
 
-### 11.3.1 THE SWEEP: the whole documented surface, against this tree (run 2026-09-18)
+### 11.3.1 THE SWEEP: the whole documented surface, against this tree (run 2026-09-18, RE-RUN 2026-09-20)
+
+**THE DATE MOVED BECAUSE THE FILE MOVED (2026-09-20, W11).** The re-run flipped 44 rows for this unit —
+5 classes (`NSByteCountFormatter`, `NSISO8601DateFormatter`, `NSDateIntervalFormatter`, `NSListFormatter`,
+`NSPersonNameComponents`), 1 protocol (`NSSecureCoding`), 3 enums and 35 cases — taking the ledger to
+**class 79/163/31, protocol 9/27/9, enum 72/80/8, case 394/815/93, func 71/64/54, var 91/676/147,
+typealias 20/53/3, struct 8/0/5** (shipped/open/struck). Each row was checked: the diff is ONLY those
+flips, so no row moved because Apple's index had changed under us.
+
+**AND THE RE-RUN FOUND A DEFECT IN THE INSTRUMENT, WHICH IS WHY THE COUNTS ABOVE CAN BE TRUSTED.** Those
+counts jumped by more than the 44 rows this unit flipped, and the reason was that they were ALREADY
+STALE: at `HEAD` the file's rows said `case shipped 360` and its own header block said **340** — the
+difference being exactly the rows §25 flipped by hand. `--refresh` derives that block from the rows, and
+`--check` verified every ROW but never re-derived the BLOCK, so a hand-flip left a derived measurement
+reporting an older tree. That is §27's defect class one level down: the table drifted, and the drift was
+inside the file the table is generated from. **The fix is the mechanism again** — `check()` now re-derives
+the block from the rows and fails with `STALE COUNT BLOCK` when they disagree, and the negative test is
+the one this plan demands of every invariant: falsifying one line (`struct shipped 8` → `9`) takes
+`--check` from exit 0 to exit 1, naming both the claim and the rows, and restoring it returns to green.
 
 **THE DISTANCE IS NO LONGER A SENTENCE, AND NOT A PROSE LIST EITHER.** §11.2's second source is a
 COMMITTED ARTIFACT and a GATE: `docs/reference/foundation-apple-surface.txt` holds every documented
@@ -3440,7 +3458,7 @@ vanishing.
 | **App Support / Undo** | all classes shipped | — |
 | **App Support / User Notifications** | 1 open; 3 STRUCK: `NSUserNotification`, `NSUserNotificationAction`, `NSUserNotificationCenter` | `NSUserNotificationCenterDelegate` |
 | **App Support / User-Relevant Errors** | all classes shipped | — |
-| **Files and Data Persistence / Adopting Codability** | 1 open | `NSSecureCoding` |
+| **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | 1 open | `NSUserDefaults` |
 | **Files and Data Persistence / Coordinated file access** | 3 open | `NSFileAccessIntent`, `NSFileCoordinator`, `NSFilePresenter` |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
@@ -3462,10 +3480,10 @@ vanishing.
 | **Fundamentals / Conversion** | 2 open | `NSUnitConverter`, `NSUnitConverterLinear` |
 | **Fundamentals / Custom formatters** | all classes shipped | — |
 | **Fundamentals / Data Storage** | 1 open | `NSUnitInformationStorage` |
-| **Fundamentals / Data sizes** | 1 open | `NSByteCountFormatter` |
-| **Fundamentals / Date Formatting** | 3 open | `NSDateComponentsFormatter`, `NSDateIntervalFormatter`, `NSISO8601DateFormatter` |
+| **Fundamentals / Data sizes** | all classes shipped | — |
+| **Fundamentals / Date Formatting** | all classes shipped | — |
 | **Fundamentals / Date Representations** | all classes shipped | — |
-| **Fundamentals / Dates and times** | 1 open | `NSRelativeDateTimeFormatter` |
+| **Fundamentals / Dates and times** | all classes shipped | — |
 | **Fundamentals / Deprecated** | ALL STRUCK: `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSLinguisticTagger`, `NSMassFormatter` | — |
 | **Fundamentals / Electricity** | 4 open | `NSUnitElectricCharge`, `NSUnitElectricCurrent`, `NSUnitElectricPotentialDifference`, `NSUnitElectricResistance` |
 | **Fundamentals / Energy, Heat, and Light** | 4 open | `NSUnitEnergy`, `NSUnitIlluminance`, `NSUnitPower`, `NSUnitTemperature` |
@@ -3475,11 +3493,11 @@ vanishing.
 | **Fundamentals / Geometry** | all classes shipped | — |
 | **Fundamentals / Indexes** | all classes shipped | — |
 | **Fundamentals / Iteration** | all classes shipped | — |
-| **Fundamentals / Lists** | 1 open | `NSListFormatter` |
+| **Fundamentals / Lists** | all classes shipped | — |
 | **Fundamentals / Localization** | 1 open | `NSOrthography` |
 | **Fundamentals / Mass, Weight, and Force** | 2 open | `NSUnitMass`, `NSUnitPressure` |
 | **Fundamentals / Measurements** | 1 open | `NSMeasurementFormatter` |
-| **Fundamentals / Names** | 1 open | `NSPersonNameComponents` |
+| **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
 | **Fundamentals / Physical Dimension** | 4 open | `NSUnitAngle`, `NSUnitArea`, `NSUnitLength`, `NSUnitVolume` |
@@ -5013,3 +5031,269 @@ and the tool names the row it disagrees about.
 **AND IT FOUND 19 FAMILIES THE HAND-WRITTEN TABLE HAD NEVER LISTED AT ALL** — 102 rows where there were 83.
 A snapshot taken once cannot grow either, which is the second half of why it read as stuck: the table could
 only ever lose information.
+
+## 28. W11: SIX OF THE SEVEN ICU-BACKED FORMATTERS, AND A SPLIT (2026-09-20)
+
+**WHAT SHIPPED.** `userland/Foundation/`, twelve new files — six `.h`/`.m` pairs: `NSPersonNameComponents`
+(the name bag), `NSListFormatter` (CLDR list patterns), `NSISO8601DateFormatter`, `NSDateIntervalFormatter`,
+`NSByteCountFormatter` and `NSRelativeDateTimeFormatter` — with `NSFormattingContext` reaching the
+subclasses Apple declares it on — gated by one new probe, `userland/tests/foundation_formatters.m`,
+**49 checks**. **53 ledger rows flipped**: 7 classes, `NSSecureCoding`, 6 enums and 39 cases, taking the
+ledger to **class 80/162/31, protocol 9/27/9, enum 74/78/8, case 400/809/93** (shipped/open/struck).
+
+**AND THE FOLDED-IN DEBT, which is what made two of those rows possible.** `NSSecureCoding` now SHIPS, and
+`NSCoding.h`'s "what is not here" comment was REWRITTEN rather than left standing — the decision it
+recorded had changed, and three classes Apple documents as `NSSecureCoding` needed it, so leaving it out
+had stopped being a tidy absence and become a wrong answer to `-conformsToProtocol:`. `NSFormatter` also
+gained the three members Apple declares and we did not (`-attributedStringForObjectValue:
+withDefaultAttributes:`, `-editingStringForObjectValue:`, and the proposed-selected-range validation
+door) plus the `NSCoding` conformance, each with Apple's own documented default QUOTED — and the one door
+Apple publishes NO default for now says so in its header rather than being guessed.
+
+**A SPLIT, BY THE USER'S DECISION (2026-09-20), AND THE REASON IS THE OPTION MATRIX.**
+`NSDateComponentsFormatter` is ELEVEN options over a duration, and Apple publishes one sentence per
+property and no defaults. Two of them — `includesApproximationPhrase` ("about 1 hour") and
+`includesTimeRemainingPhrase` ("1 hour left") — need localized CLDR duration STRINGS, not a rule; the rest
+(`collapseLargestUnit`, `maximumUnitCount`, the `Positional` style) would be substantially this tree's
+invention. So it is **its own unit**, with a design pass that names which of its rules are ours, rather
+than a tail-end of this one. **ITS LEDGER ROWS REMAIN OPEN: 1 class, 2 enums, 13 cases.**
+
+**THE DEBT THIS UNIT LEAVES, NAMED RATHER THAN IMPLIED.** (a) `NSByteCountFormatter`'s two
+`NSMeasurement`-taking members (`-stringFromMeasurement:`, `+stringFromMeasurement:countStyle:`) belong to
+**W12**, and the probe asserts their absence by name — `bcf-measurement-deferred` — so the exclusion is a
+to-do with a check on it, not a boundary. (b) `NSDateComponentsFormatter`, as above.
+
+**TWO REAL BUGS, AND THE CHECK THAT CAUGHT EACH.**
+1. **A skeleton asked ICU for `H`, forcing a 24-hour clock on every locale.** `NSDateIntervalFormatter`
+rendered en_US as `"1/16/2015, 12:00 – 13:00"` where the locale's own convention is `"12:00 PM – 1:00
+PM"`. The fix is `j`, ICU's LOCALE-PREFERRED hour field — choosing the field is this library's business,
+choosing the clock is the locale's — and the check now asserts `PM` appears, so the bug cannot return
+silently.
+2. **`NSDateComponents`' "unset" sentinel is `NSDateComponentUndefined` (NSIntegerMax), NOT zero**, and
+the relative formatter read the fields as plain integers: a bag holding only `day = -3` answered **"in
+9,223,372,036,854,776,000 years"**. Caught because the check asserted the EXACT string; fixed by mapping
+the sentinel to zero where the fields are read, with that number recorded in the comment.
+
+**AND THE INSTRUMENT HAD A DEFECT TOO, ONE LEVEL DOWN FROM §27.** `--refresh` derives the surface file's
+counts block FROM the rows, and `--check` verified every ROW but never re-derived the BLOCK — so a row
+flipped by hand left the block reporting an older tree, which is exactly what §25's "36 rows flipped,
+`--check` consistent" did. Measured at `HEAD`: the rows said `case shipped 360`, the block claimed **340**.
+`check()` now re-derives the block and fails with `STALE COUNT BLOCK`, and the negative test is the one
+this plan demands of every invariant: falsifying one line (`struct shipped 8` → `9`) takes `--check` from
+exit 0 to exit 1 naming both the claim and the rows, and restoring it returns to green. **§11.3.1 carries
+the re-run's date and numbers.**
+
+**THE SPEC DOOR, RECORDED BECAUSE IT IS THE UNIT'S REUSABLE RESULT.** An Objective-C API surface comes out
+of Apple's PUBLISHED documentation mechanically: a page's `variantOverrides` is an RFC-6902 patch whose
+target is `interfaceLanguage: occ`, and applying it turns the Swift-spelled page into the Objective-C one,
+where each member's `navigatorTitle` IS the selector. §2's clean-room wall is untouched — no Apple or
+GNUstep header is read — and the pitfalls (the index path drops the `NS` prefix unpredictably;
+`?language=objc` does NOT work; one Apple page carries a wrong declaration) are recorded with the tooling.
+
+**VERIFIED.** Host: `make host-foundation-run` — **26 probes, 364/364 checks, 0 fail**, the new probe at
+49/49 with no warnings. `make foundation-gate`: 194 files, **69 of 73 public headers** open a nullability
+region. `foundation-sweep --check`: **consistent**.
+
+**AND THE GUEST GATE RAN: `make testimg` then `make test TESTS='foundation_formatters'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 13s`**, the probe's own tally `ok=49 fail=0` and exit 0 on the real
+image, where the library AND the probe are both built for the target. **The guest found two things the
+host could not**, which is why this run is not a formality:
+
+1. **THE GUEST IS THE STRICTER COMPILER, MET AGAIN (§26's lesson, third time in three units).** It
+   compiles with `-Werror=nullable-to-nonnull-conversion`, and the probe fed a `nullable` return
+   (`-stringFromItems:`, `-stringFromDate:`, `-stringFromByteCount:`) straight into `-isEqualToString:`'s
+   NONNULL parameter at three sites. The host has no such flag, so the host probe had been green all
+   along. The fix is the one this tree's own url probe records — **bind the nullable to a local and guard
+   it in the conjunction** rather than passing it inline.
+2. **A DUPLICATED CHECK NAME, caught by the case's own tally comparison.** The probe reported 49 checks
+   with only **48 distinct names** (`pnc-bag` was used twice, for the fresh-object claim and the
+   round-trip claim), so `result-line` failed against the probe's `ok=49`. Renamed to `pnc-absent`; that
+   is the plan's "one name per check" lesson, enforced by a comparison rather than by care.
+
+## 29. W11b DESIGN PASS: `NSDateComponentsFormatter`, AND THE MEASURED BOUNDARY (2026-09-20)
+
+**THE SIZE.** One class, **eleven options**, two enums (13 cases), five conversion doors plus
+`-getObjectValue:forString:errorDescription:`. The ledger rows are open: 1 class, 2 enums, 13 cases.
+
+**TWO OF APPLE'S ANSWERS ARE FREE FIDELITY, AND BOTH CAME OFF THE PROPERTY PAGES RATHER THAN A GUESS:**
+* **`formattingContext`** — Apple's abstract is literally **"Not yet supported."** So the property ships
+  and does nothing, and the header can QUOTE Apple instead of inventing a reason. (This is the one member
+  of the family where "we do not implement it" is Apple's own statement rather than ours.)
+* **`-getObjectValue:forString:errorDescription:`** — *"currently only implements formatting, not parsing.
+  Until it implements parsing, this will always return NO."* So it answers **NO**; it does NOT raise. (A
+  first read of this member page said "the default implementation raises an exception" — that was
+  NSFormatter's text, reused through a cache-collision bug in the plan's own scratch tooling. The
+  instrument lied once; the class's own page says the opposite.)
+
+**THE OPTION MATRIX IS BETTER SPECIFIED THAN §28 ASSUMED, SO §28's SPLIT REASON IS CORRECTED HERE.**
+§28 says Apple "publishes one sentence per property and no defaults" — true of the BOOLEANS, and not true
+of the two enums, which are the parts that matter most:
+
+| `UnitsStyle` case | Apple's own words |
+|---|---|
+| `Positional` | "uses the **POSITION** of a unit of time to identify its value" (a clock form: `1:03:37`) |
+| `Abbreviated` | "the most abbreviated spelling for units of time" |
+| `Brief` | "a shortened spelling … that is **shorter than** `Short`" |
+| `Short` | "a shortened spelling for units" |
+| `Full` | "spells out the **UNITS but not the quantities**" |
+| `SpellOut` | "spells out the units **and quantities**" |
+
+and every `ZeroFormattingBehavior` case carries a worked example — *"when days, hours, minutes, and
+seconds are allowed, the abbreviated version of one hour is displayed as '1h'"* (`DropAll`). **So the
+styles and the zero rules are RULES with published definitions, not data. The split was still right — the
+phrase options below are why — but for a narrower reason than §28 recorded.**
+
+**WHAT IS GENUINELY UNPUBLISHED: THREE THINGS, AND ONLY THREE.**
+1. **`collapsesLargestUnit`'s THRESHOLD** — Apple: *"whether to collapse the largest unit into smaller
+   units when a certain threshold is met"*. Which threshold is never said.
+2. **The two PHRASE options' strings.** `includesApproximationPhrase` and `includesTimeRemainingPhrase`
+   publish their EFFECT ("reflect an inexact time value", "reflect the amount of time remaining") and not
+   their WORDS ("about", "left") — and the words are per-locale data.
+3. **The properties' DEFAULTS.** Published for `allowedUnits` and `referenceDate`; not for the rest.
+
+**AND THE HARD BOUNDARY, MEASURED RATHER THAN ASSUMED: ICU's DURATION DATA IS C++-ONLY IN THIS BUILD.**
+The thing that would make this class nearly free is ICU's `MeasureFormat` — it produces "1 hour, 2
+minutes" with the unit names, the plurals and the joining. **It has no C surface here:**
+* `unicode/measfmt.h` and `unicode/measure.h`: **0 `U_CAPI` declarations**; the API is a C++ class.
+* `unicode/measunit.h`: **2** C functions, both prefix ARITHMETIC (`umeas_getPrefixBase`,
+  `umeas_getPrefixPower`) — no unit display names.
+* **WHAT THE C SURFACE DOES OFFER** (each measured present): `unumf_*` — NumberFormatter by skeleton, so
+  numbers and single-unit measures; `uplrules_*` — the plural CATEGORY for a value (which "1 hour" needs
+  and "2 hours" needs differently); `UNUM_SPELLOUT` — spelled-out numbers, which W11's relative formatter
+  already uses; and `ulistfmt_*`, the locale's LIST patterns, which W11 already binds. **A duration IS a
+  list of units**, so the JOINING is data this library can already reach.
+
+**THE TWO ROUTES, AND THE DECISION THEY REQUIRE.**
+* **(A) ALL-C COMPOSITION.** Unit selection and the zero rules are ours (rules, per the table above); each
+  unit's name and plural come from ICU via `unumf` skeletons and `uplrules`; the units are joined with the
+  locale's list pattern through the `ulistfmt` binding W11 already has; `Positional` is arithmetic. Cost:
+  whatever CLDR exposes only through `MeasureFormat` must be approximated, and every such gap is NAMED in
+  §11.6 rather than smoothed over.
+* **(B) A C++ SHIM.** One `.cpp` translation unit in the Foundation library calling `MeasureFormat`.
+  Apple's behaviour nearly for free. **The cost is the whole decision: Foundation's link line would gain
+  the C++ runtime (libc++/libc++abi), which every Objective-C program in this system links.** The tree
+  already ships C++ libraries (the Argentum UIKit and Kestrel are C++), so this is not unprecedented in
+  the TREE — it is new for THIS library, whose consumers are ObjC programs and sterlingc's emitted code.
+* **(C) REFUSE THE CLASS — not available.** §11 makes a difference a defect with a work item, and "ICU
+  puts this behind C++" is not one of §11.6's three grounds: the dependency is present, built and linked.
+  So the choice is A or B, not A or nothing.
+
+**RECOMMENDATION: (A)**, because the parts ICU withholds are mostly the parts that are RULES rather than
+data, and because it keeps Foundation's link line exactly what it is. **(B) is the user's decision and not
+this plan's**, since it changes what every program in the system links — and the design pass exists
+precisely so that is settled BEFORE the class is written instead of discovered inside it.
+
+**WHAT THE UNIT LOOKS LIKE WHEN IT IS TAKEN.** Its probe cannot assert ICU's composition the way W11's
+probes assert CLDR patterns, because the composition is OURS: the checks will be the six unit styles
+against the published semantics above, the seven zero behaviours against Apple's worked examples, the
+`Positional` clock form, the unit-selection and `maximumUnitCount` rules, the two phrase options against
+whatever the decision above makes them, and `-getObjectValue:` answering NO. **The unpublished three get
+checks too** — a rule this plan cannot source is still a rule the probe pins down, with its reasoning in
+the header.
+
+### 29.1 THE MEASUREMENT THAT SETTLES IT: ICU'S SKELETON GRAMMAR, CORRECTED (2026-09-20)
+
+**THE ROUTE WAS DECIDED ON A BOUNDARY, AND THE BOUNDARY NEEDED A SECOND PASS — the first probe
+contradicted itself.** `measure-unit/duration-hour` opened and produced `"2 hr"`, while every attempt to
+add a WIDTH failed with `U_NUMBER_SKELETON_SYNTAX_ERROR`. The cause was the probe's own grammar, not ICU's
+capability: **named options are written BARE and precision stems are DOT-PREFIXED.** Measured, with ICU's
+own documented example as the control:
+
+| skeleton | result |
+|---|---|
+| `measure-unit/duration-hour` | `"0.5 hr"` |
+| `measure-unit/duration-hour .unit-width-narrow` | **SYNTAX ERROR** (the dot is the mistake) |
+| `unit-width-narrow measure-unit/duration-hour` | `"0.5h"` |
+| `measure-unit/duration-hour unit-width-narrow` | `"0.5h"` |
+| `percent .00` (the documented control) | `"0.50%"` |
+| `precision-integer .00` | SYNTAX ERROR |
+
+and **the forms that do NOT exist here**: `unit/duration-hour` (syntax error — the `unit/` stem is not
+this build's spelling), `duration`, and `duration .unit-width-numeric`. So Apple's `Positional` form is
+NOT reachable from ICU and is **our arithmetic**, as the design pass assumed.
+
+**EVERYTHING APPLE'S SIX STYLES NEED IS REACHABLE, MEASURED ACROSS ALL SEVEN UNITS** at value 2:
+`full-name` → "2 hours" / "2 minutes" / "2 days" / "2 weeks" / "2 months" / "2 years"; `short` → "2 hr" /
+"2 min" / "2 sec" / "2 days" / "2 wks" / "2 mths" / "2 yrs"; `narrow` → "2h" / "2m" / "2s" / "2d" / "2w" /
+"2m" / "2y". **And the PLURAL COMES WITH THE DATA** — `full-name` at 1 and 2 answers **"1 hour"** and
+**"2 hours"**, and `0.5` answers "0.5 hours" — so `uplrules` does NOT have to be called by hand for the
+unit form. It is measured present for anything that does need it (`uplrules_select(1) -> one`,
+`(2) -> other`), and `unum_open(UNUM_SPELLOUT)` spells `2` as **"two"**, which is the route the relative
+formatter already ships.
+
+**THE MAPPING, therefore:** `Full` → full-name; `Short` → short; `Brief` → narrow; `Abbreviated` → narrow
+(Apple's own examples for the two are the same shape, exactly as W11 found for the relative formatter);
+`SpellOut` → the SPELLED number joined to the unit name taken from the full-name form of the SAME value,
+so "two hours" and "one hour" both come out right; `Positional` → ours.
+
+**AND THE DESIGN PASS'S OWN SUGGESTION FOR THE JOINING WAS WRONG — corrected here rather than copied into
+the code.** §29 proposes joining the units with "the locale's list pattern through the `ulistfmt` binding
+W11 already has". That would produce **"1 hour AND 2 minutes"**, because `ulistfmt` is the CONJUNCTION
+formatter. A duration's parts are separated by a COMMA ("1 hour, 2 minutes" — Apple's own examples), and a
+comma is punctuation rather than a locale's list data. So the joiner is **a rule of ours**: ", " between
+units, and a colon for `Positional`. The `ulistfmt` binding is not used by this class at all.
+
+## 30. W11b LANDED: `NSDateComponentsFormatter`, AND A BUILD DEFECT IT UNCOVERED (2026-09-20)
+
+**WHAT SHIPPED.** `userland/Foundation/NSDateComponentsFormatter.{h,m}` — the family's **one composition**
+rather than a binding: OUR RULES over ICU'S DATA. **16 ledger rows flipped** (1 class, 2 enums, 13 cases).
+The probe grew from 49 to **59 checks**, and its case from 49 to 59 names.
+
+**THE COMPOSITION, AS BUILT.** Unit names and plurality come from `unumf` with a unit skeleton; the spelled
+form from `unum_open(UNUM_SPELLOUT)`; `Positional` is arithmetic (ICU's numeric duration skeleton is a
+syntax error here); the joiner, the unit selection, `maximumUnitCount`, the seven zero behaviours and the
+collapse threshold are ours. **The abbreviated styles join with a SPACE, which the probe measured rather
+than assumed** — Apple's own worked examples give "1h 0m 30s", where §29's proposed comma would have been
+wrong twice over.
+
+**THREE REAL DEFECTS, AND EACH ONE'S CHECK.**
+
+1. **THE `DropAll`-MASK BUG — in this file, caught by the zero-behaviour check.** `DropAll` is DEFINED as
+   the OR of `DropLeading|DropMiddle|DropTrailing`, so a dispatch that tests "is DropAll set"
+   (`behavior & DropAll`) is TRUE FOR ANY ONE OF THEM. The first version tested it FIRST, so all four
+   behaviours dropped every zero and the probe measured `1h 30s` from leading, middle, trailing AND all,
+   where leading had to keep the middle zero. **A bitmask whose members include an alias of other members
+   cannot be dispatched in that order** — testing the flags individually needs no `DropAll` case at all.
+   The same check pinned the OTHER `Default`: Apple's sentence for it describes the positional case
+   ("drops leading zeroes but pads middle and trailing values"), so a clock prints one hour as `1:00:00`,
+   while for the other styles the reading is drop-leading-and-trailing — stated as ours in the header,
+   because Apple's words cover only one of the two.
+2. **A BUILD DEFECT THE HOST TIER FOUND, AND IT WAS THE BUILD'S, NOT THIS FILE'S.** `mk/00-base.mk:11`
+   declares **`LANG = -std=c89`** — a COMPILER FLAG under the name of the LOCALE variable. Because a
+   variable that came from the environment is re-exported by GNU make with the makefile's value,
+   **every child process of this build had been running with `LANG="-std=c89"`, an invalid locale.** It
+   was found because the SAME probe binary answered `"2 hours, 3 minutes"` from a shell and `"2 h, 3
+   min"` under `make`: this class honours the ambient locale (Apple gives it no locale property, so the
+   ambient one IS its input), and under `make` that locale was nonsense, so ICU answered from root-locale
+   data. **The fix is `unexport LANG`** — the flag keeps its name for the recipes that use it, and the
+   ENVIRONMENT copy is withdrawn. This is worth more than the class: any locale-sensitive tool in this
+   build — ICU, `setlocale`, a Python recipe — has been reading a language called `-std=c89`.
+   **AND THE PROBE NOW STATES ITS OWN PREMISE**: since this class can only be pinned at the environment,
+   the probe sets `LC_ALL=en_US.UTF-8` itself, so a developer's own `LANG` cannot decide whether the
+   checks read "2 hours" or "2 Stunden".
+3. **THE DESIGN PASS'S OWN JOINER SUGGESTION WAS WRONG**, corrected in §29.1 before any code: `ulistfmt`
+   is the CONJUNCTION formatter, so joining a duration with it would say "1 hour AND 2 minutes". The comma
+   is ours; `ulistfmt` is not used by this class at all.
+
+**AND THE HOST AND THE GUEST LINK DIFFERENT ICU BUILDS** — the host tier through the system ICU
+(`pkg-config`), the guest against the pinned 76.1 in `.build/icu-prefix`. Measured consequence: a FULL unit
+name and a spelled quantity are stable across both ("2 hours", "two"), while a SHORT or NARROW spelling is
+ICU's data and differs ("2 hr" vs "2 hrs"). **So the checks assert EXACTLY where the data is stable and
+STRUCTURALLY where it is not** — including the one thing about the abbreviated styles that is ours and
+therefore stable: the space joiner. The guest run confirmed the split was the right one.
+
+**WHAT THE UNIT LEAVES, NAMED.** (a) The two PHRASE options are implemented with ENGLISH affixes
+("about ", " left") and are a **REGISTERED DEVIATION**: Apple publishes each option's EFFECT and not its
+words, and the words are Apple's own localized resources rather than CLDR data this build can reach.
+(b) `collapsesLargestUnit`'s **threshold is ours** — Apple says "a certain threshold" and no more — and it
+folds only the fields whose conversion is an exact fixed factor (week→day→hour→minute→second), NOT year or
+month, whose lengths depend on the calendar. (c) `formattingContext` is stored and does nothing, which is
+Apple's own "Not yet supported."
+
+**VERIFIED.** Host: `make host-foundation-run` — **26 probes, 374/374 checks, 0 fail**. Guest:
+`make testimg` then `make test TESTS='foundation_formatters'` → **TESTS-OK 1/1 case(s), 6/6 check(s) in
+13s**, the probe's own tally `ok=59 fail=0` and exit 0. `make foundation-gate`: OK, **70 of 74 public
+headers** open a nullability region. `foundation-sweep --check`: consistent.
+
+**AND W11 IS NOW COMPLETE**: the six ICU-backed formatters of §28 plus this one — seven classes — with
+`NSSecureCoding` and the three `NSFormatter` doors folded in from §11's debt.

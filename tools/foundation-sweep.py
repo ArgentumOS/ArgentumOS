@@ -452,6 +452,22 @@ def read_surface():
     return rows
 
 
+# THE HEADER'S COUNTS BLOCK, AS A CLAIM (added 2026-09-20, W11). `--refresh` WRITES these lines from the
+# rows; `--check` used to verify only the ROWS, so a row flipped by hand left the block reporting an
+# older tree — measured at HEAD: the rows said `case shipped 360` and the block said 340, which is
+# exactly the rows §25 flipped by hand. It is §27's defect class one level down: a derived measurement
+# that nothing re-derives, reading as a measurement while the thing it measures has moved.
+HEADER_COUNT_RE = re.compile(
+    r"^#\s+(\w+)\s+shipped\s+(\d+)\s+open\s+(\d+)\s+struck\s+(\d+)\s*$", re.M)
+
+
+def header_counts():
+    """{kind: (shipped, open, struck)} as the file's own header claims them."""
+    text = open(SURFACE, encoding="utf-8").read()
+    return {m.group(1): (int(m.group(2)), int(m.group(3)), int(m.group(4)))
+            for m in HEADER_COUNT_RE.finditer(text)}
+
+
 def check(strict=False):
     """Two kinds of finding, and they are not the same kind of thing.
 
@@ -512,6 +528,15 @@ def check(strict=False):
         plan_text = open(PLAN, encoding="utf-8").read()
     except OSError:
         plan_text = ""
+    # THE COUNTS BLOCK, RE-DERIVED. The rows above are the truth; the header is a claim about them, and
+    # this is the check that makes it one (see header_counts()).
+    for hkind, claimed in sorted(header_counts().items()):
+        got = (counts.get((hkind, STATUS_SHIPPED), 0),
+               counts.get((hkind, STATUS_OPEN), 0),
+               counts.get((hkind, STATUS_STRUCK), 0))
+        if claimed != got:
+            bad.append("STALE COUNT BLOCK     %-9s the header claims shipped/open/struck %s and the rows "
+                       "are %s — fix: tools/foundation-sweep.py --refresh" % (hkind, claimed, got))
     span = _family_span(plan_text)
     if span is None:
         bad.append("PLAN FAMILY TABLE has no GENERATED markers — see tools/foundation-sweep.py --families")

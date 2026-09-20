@@ -8,7 +8,14 @@ TOPDIR := $(shell if [ "$$PWD" != "" ] ; then echo $$PWD ; else pwd ; fi)
 INCLUDE = $(TOPDIR)/include
 TMPFILE := $(shell mktemp)
 
+# A COMPILER FLAG WITH THE ENVIRONMENT'S NAME, AND THE COLLISION WAS REAL (found 2026-09-20, W11b).
+# `LANG` is the LOCALE variable everywhere else in the world, but here it is `-std=c89` — and because a
+# variable that came from the ENVIRONMENT is re-exported by GNU make with whatever value the makefile
+# gives it, EVERY CHILD PROCESS OF THIS BUILD has been running with `LANG="-std=c89"`: an invalid locale.
+# A locale-sensitive probe read root-locale data under `make` and English from a shell, which is how this
+# was found. The flag keeps its name for the recipes that use it; the ENVIRONMENT copy is withdrawn here.
 LANG = -std=c89
+unexport LANG
 
 # The 32-bit i386 build was REMOVED in the FNX pivot: this tree builds
 # only the 64-bit long-mode kernel (PE32+ UEFI application via buildfnx).

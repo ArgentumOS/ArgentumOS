@@ -28,15 +28,15 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   70   open  172   struck   31
-#   protocol   shipped    7   open   29   struck    9
+#   class      shipped   81   open  161   struck   31
+#   protocol   shipped    9   open   27   struck    9
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   63   open   89   struck    8
-#   case       shipped  340   open  869   struck   93
-#   func       shipped   58   open   77   struck   54
-#   var        shipped   67   open  700   struck  147
-#   typealias  shipped   19   open   54   struck    3
-#   struct     shipped    7   open    1   struck    5
+#   enum       shipped   76   open   76   struck    8
+#   case       shipped  413   open  796   struck   93
+#   func       shipped   71   open   64   struck   54
+#   var        shipped   91   open  676   struck  147
+#   typealias  shipped   20   open   53   struck    3
+#   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	shipped	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -133,21 +133,21 @@ case	open	NSBundleOnDemandResourceInvalidTagError	NSBundleResourceRequest	App Su
 case	open	NSBundleOnDemandResourceInvalidTagError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	open	NSBundleOnDemandResourceOutOfSpaceError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	open	NSBundleOnDemandResourceOutOfSpaceError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	open	NSByteCountFormatterCountStyleBinary	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
-case	open	NSByteCountFormatterCountStyleDecimal	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
-case	open	NSByteCountFormatterCountStyleFile	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
-case	open	NSByteCountFormatterCountStyleMemory	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
-case	open	NSByteCountFormatterUseAll	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseBytes	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseDefault	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseEB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseGB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseKB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseMB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUsePB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseTB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseYBOrHigher	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
-case	open	NSByteCountFormatterUseZB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterCountStyleBinary	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
+case	shipped	NSByteCountFormatterCountStyleDecimal	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
+case	shipped	NSByteCountFormatterCountStyleFile	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
+case	shipped	NSByteCountFormatterCountStyleMemory	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
+case	shipped	NSByteCountFormatterUseAll	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseBytes	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseDefault	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseEB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseGB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseKB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseMB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUsePB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseTB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseYBOrHigher	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
+case	shipped	NSByteCountFormatterUseZB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
 case	shipped	NSCachesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSCalculationDivideByZero		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	shipped	NSCalculationDivideByZero	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
@@ -276,19 +276,19 @@ case	open	NSDataWritingFileProtectionMask	NSData	Fundamentals / Binary Data / Wr
 case	open	NSDataWritingFileProtectionNone	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
 case	open	NSDataWritingWithoutOverwriting	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
 case	shipped	NSDateComponentUndefined	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	-	objc
-case	open	NSDateComponentsFormatterUnitsStyleAbbreviated	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
-case	open	NSDateComponentsFormatterUnitsStyleBrief	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
-case	open	NSDateComponentsFormatterUnitsStyleFull	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
-case	open	NSDateComponentsFormatterUnitsStylePositional	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
-case	open	NSDateComponentsFormatterUnitsStyleShort	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
-case	open	NSDateComponentsFormatterUnitsStyleSpellOut	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorDefault	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorDropAll	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorDropLeading	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorDropMiddle	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorDropTrailing	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorNone	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDateComponentsFormatterZeroFormattingBehaviorPad	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
+case	shipped	NSDateComponentsFormatterUnitsStyleAbbreviated	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
+case	shipped	NSDateComponentsFormatterUnitsStyleBrief	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
+case	shipped	NSDateComponentsFormatterUnitsStyleFull	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
+case	shipped	NSDateComponentsFormatterUnitsStylePositional	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
+case	shipped	NSDateComponentsFormatterUnitsStyleShort	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
+case	shipped	NSDateComponentsFormatterUnitsStyleSpellOut	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorDefault	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorDropAll	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorDropLeading	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorDropMiddle	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorDropTrailing	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorNone	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSDateComponentsFormatterZeroFormattingBehaviorPad	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Constants	-	swift-page
 case	shipped	NSDateFormatterBehavior10_0	NSDateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateFormatterBehavior10_4	NSDateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateFormatterBehaviorDefault	NSDateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
@@ -297,11 +297,11 @@ case	shipped	NSDateFormatterLongStyle	NSDateFormatter	Fundamentals / Date Format
 case	shipped	NSDateFormatterMediumStyle	NSDateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateFormatterNoStyle	NSDateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateFormatterShortStyle	NSDateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDateIntervalFormatterFullStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDateIntervalFormatterLongStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDateIntervalFormatterMediumStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDateIntervalFormatterNoStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDateIntervalFormatterShortStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSDateIntervalFormatterFullStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSDateIntervalFormatterLongStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSDateIntervalFormatterMediumStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSDateIntervalFormatterNoStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSDateIntervalFormatterShortStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	struck	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSDecodingFailurePolicyRaiseException	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
@@ -508,20 +508,20 @@ case	open	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookieStorage
 case	struck	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	open	NSISO2022JPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSISO8601DateFormatWithColonSeparatorInTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithColonSeparatorInTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithDashSeparatorInDate	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithDay	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithFractionalSeconds	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Enumeration Cases	-	objc
-case	open	NSISO8601DateFormatWithFullDate	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithFullTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithInternetDateTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithMonth	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithSpaceBetweenDateAndTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithWeekOfYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISO8601DateFormatWithYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithColonSeparatorInTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithColonSeparatorInTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithDashSeparatorInDate	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithDay	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithFractionalSeconds	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Enumeration Cases	-	objc
+case	shipped	NSISO8601DateFormatWithFullDate	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithFullTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithInternetDateTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithMonth	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithSpaceBetweenDateAndTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithWeekOfYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
+case	shipped	NSISO8601DateFormatWithYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	open	NSISOLatin1StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSISOLatin2StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSInPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
@@ -830,12 +830,12 @@ case	shipped	NSRegularExpressionUseUnicodeWordBoundaries	NSRegularExpression	Fun
 case	shipped	NSRegularExpressionUseUnixLineSeparators	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	open	NSRelativeAfter	NSRelativeSpecifier	App Support / Object Specifiers / Constants / Constants	-	swift-page
 case	open	NSRelativeBefore	NSRelativeSpecifier	App Support / Object Specifiers / Constants / Constants	-	swift-page
-case	open	NSRelativeDateTimeFormatterStyleNamed	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Dates and Times	-	swift-page
-case	open	NSRelativeDateTimeFormatterStyleNumeric	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Dates and Times	-	swift-page
-case	open	NSRelativeDateTimeFormatterUnitsStyleAbbreviated	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
-case	open	NSRelativeDateTimeFormatterUnitsStyleFull	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
-case	open	NSRelativeDateTimeFormatterUnitsStyleShort	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
-case	open	NSRelativeDateTimeFormatterUnitsStyleSpellOut	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
+case	shipped	NSRelativeDateTimeFormatterStyleNamed	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Dates and Times	-	swift-page
+case	shipped	NSRelativeDateTimeFormatterStyleNumeric	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Dates and Times	-	swift-page
+case	shipped	NSRelativeDateTimeFormatterUnitsStyleAbbreviated	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
+case	shipped	NSRelativeDateTimeFormatterUnitsStyleFull	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
+case	shipped	NSRelativeDateTimeFormatterUnitsStyleShort	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
+case	shipped	NSRelativeDateTimeFormatterUnitsStyleSpellOut	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
 case	open	NSRequiredArgumentsMissingScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	shipped	NSRoundBankers		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	shipped	NSRoundBankers	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
@@ -1354,7 +1354,7 @@ class	open	NSBackgroundActivityScheduler		App Support / System Interaction	-	obj
 class	open	NSBlockOperation		App Support / Operations	-	objc
 class	open	NSBundle		App Support / Bundle Resources	-	objc
 class	struck	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
-class	open	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
+class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
 class	open	NSCache		Fundamentals / Purgeable Collections	-	objc
 class	open	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
@@ -1377,10 +1377,10 @@ class	shipped	NSData		Fundamentals / Binary Data	-	objc
 class	open	NSDataDetector		Fundamentals / Pattern Matching	-	objc
 class	shipped	NSDate		Fundamentals / Date Representations	-	objc
 class	shipped	NSDateComponents		Fundamentals / Calendrical Calculations	-	objc
-class	open	NSDateComponentsFormatter		Fundamentals / Date Formatting	-	objc
+class	shipped	NSDateComponentsFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDateInterval		Fundamentals / Date Representations	-	objc
-class	open	NSDateIntervalFormatter		Fundamentals / Date Formatting	-	objc
+class	shipped	NSDateIntervalFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDecimalNumber		Fundamentals / Numbers / Using reference types	-	objc
 class	shipped	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 class	open	NSDeleteCommand		App Support / Script Commands	-	objc
@@ -1415,7 +1415,7 @@ class	open	NSHTTPCookieStorage		Networking / Cookies	-	objc
 class	open	NSHTTPURLResponse		Networking / Requests and responses	-	objc
 class	open	NSHashTable		Fundamentals / Pointer Collections	-	objc
 class	struck	NSHost		Low-Level Utilities / Sockets	deprecated	objc
-class	open	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
+class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSIndexPath		Fundamentals / Indexes	-	objc
 class	shipped	NSIndexSet		Fundamentals / Indexes	-	objc
 class	open	NSIndexSpecifier		App Support / Object Specifiers	-	objc
@@ -1432,7 +1432,7 @@ class	shipped	NSKeyedArchiver		Files and Data Persistence / Keyed Archivers	-	ob
 class	shipped	NSKeyedUnarchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	struck	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
 class	struck	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
-class	open	NSListFormatter		Fundamentals / Lists	-	objc
+class	shipped	NSListFormatter		Fundamentals / Lists	-	objc
 class	shipped	NSLocale		Fundamentals / Localization	-	objc
 class	open	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
 class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
@@ -1482,7 +1482,7 @@ class	open	NSOrderedCollectionDifference		Fundamentals / Basic Collections / Com
 class	shipped	NSOrderedSet		Fundamentals / Specialized Sets	-	objc
 class	open	NSOrthography		Fundamentals / Localization	-	objc
 class	open	NSOutputStream		Low-Level Utilities / Streams	-	objc
-class	open	NSPersonNameComponents		Fundamentals / Names	-	objc
+class	shipped	NSPersonNameComponents		Fundamentals / Names	-	objc
 class	open	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
 class	open	NSPointerArray		Fundamentals / Pointer Collections	-	objc
 class	open	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
@@ -1505,7 +1505,7 @@ class	open	NSRandomSpecifier		App Support / Object Specifiers	-	objc
 class	open	NSRangeSpecifier		App Support / Object Specifiers	-	objc
 class	shipped	NSRecursiveLock		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSRegularExpression		Fundamentals / Pattern Matching	-	objc
-class	open	NSRelativeDateTimeFormatter		Fundamentals / Dates and times	-	objc
+class	shipped	NSRelativeDateTimeFormatter		Fundamentals / Dates and times	-	objc
 class	open	NSRelativeSpecifier		App Support / Object Specifiers	-	objc
 class	shipped	NSRunLoop		Low-Level Utilities / Run Loop Scheduling	-	objc
 class	open	NSScanner		Fundamentals / Pattern Matching	-	objc
@@ -1621,8 +1621,8 @@ enum	open	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdown
 enum	open	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	open	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
 enum	shipped	NSBinarySearchingOptions	NSArray	Fundamentals / Basic Collections / Constants	-	objc
-enum	open	NSByteCountFormatterCountStyle	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	swift-page
-enum	open	NSByteCountFormatterUnits	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	objc
+enum	shipped	NSByteCountFormatterCountStyle	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	swift-page
+enum	shipped	NSByteCountFormatterUnits	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	objc
 enum	shipped	NSCalculationError		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 enum	shipped	NSCalculationError	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
 enum	shipped	NSCalendarOptions	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
@@ -1640,11 +1640,11 @@ enum	shipped	NSDataCompressionAlgorithm	NSMutableData	Fundamentals / Binary Data
 enum	shipped	NSDataReadingOptions	NSData	Fundamentals / Binary Data / Reading Data from a File	-	objc
 enum	shipped	NSDataSearchOptions	NSData	Fundamentals / Binary Data / Finding Data	-	objc
 enum	shipped	NSDataWritingOptions	NSData	Fundamentals / Binary Data / Writing Data to a File	-	objc
-enum	open	NSDateComponentsFormatterUnitsStyle	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants	-	swift-page
-enum	open	NSDateComponentsFormatterZeroFormattingBehavior	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants	-	swift-page
+enum	shipped	NSDateComponentsFormatterUnitsStyle	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants	-	swift-page
+enum	shipped	NSDateComponentsFormatterZeroFormattingBehavior	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants	-	swift-page
 enum	shipped	NSDateFormatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	shipped	NSDateFormatterStyle	NSDateFormatter	Fundamentals / Date Formatting / Constants	-	objc
-enum	open	NSDateIntervalFormatterStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants	-	objc
+enum	shipped	NSDateIntervalFormatterStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	shipped	NSDecodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
 enum	shipped	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	open	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
@@ -1674,7 +1674,7 @@ enum	open	NSGrammaticalPerson		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalPronounType		Reference / Enumerations	-	objc
 enum	open	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc
 enum	open	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
-enum	open	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
+enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	open	NSInlinePresentationIntent	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	open	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifiers / Constants	-	objc
 enum	open	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
@@ -1720,8 +1720,8 @@ enum	shipped	NSQualityOfService	NSTask	Low-Level Utilities / Scripts and Externa
 enum	shipped	NSQualityOfService	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
 enum	shipped	NSRectEdge		Fundamentals / Geometry / Related Types	-	objc
 enum	shipped	NSRegularExpressionOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	swift-page
-enum	open	NSRelativeDateTimeFormatterStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
-enum	open	NSRelativeDateTimeFormatterUnitsStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
+enum	shipped	NSRelativeDateTimeFormatterStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
+enum	shipped	NSRelativeDateTimeFormatterUnitsStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
 enum	open	NSRelativePosition	NSRelativeSpecifier	App Support / Object Specifiers / Constants	-	swift-page
 enum	shipped	NSRoundingMode		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 enum	shipped	NSRoundingMode	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
@@ -2238,7 +2238,7 @@ protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
 protocol	struck	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	open	NSPredicateValidating		Protocols	-	objc
 protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
-protocol	open	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
+protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	open	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
 protocol	open	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
 protocol	struck	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
