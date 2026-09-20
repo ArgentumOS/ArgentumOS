@@ -181,27 +181,37 @@ extern double NSFoundationVersionNumber;
 
 /* --- how a declaration behaves (Apple's signatures; bodies per their descriptions) --- */
 #define NS_INLINE			static inline
-#define NS_NOESCAPE
-#define NS_ROOT_CLASS
-#define NS_RETURNS_RETAINED
-#define NS_RETURNS_NOT_RETAINED
-#define NS_RETURNS_INNER_POINTER
-#define NS_REQUIRES_SUPER
+#define NS_NOESCAPE			__attribute__((noescape))
+#define NS_ROOT_CLASS			__attribute__((objc_root_class))
+#define NS_RETURNS_RETAINED		__attribute__((ns_returns_retained))
+#define NS_RETURNS_NOT_RETAINED		__attribute__((ns_returns_not_retained))
+#define NS_RETURNS_INNER_POINTER	__attribute__((objc_returns_inner_pointer))
+#define NS_REQUIRES_SUPER		__attribute__((objc_requires_super))
 #define NS_REQUIRES_PROPERTY_DEFINITIONS
+/* MEASURED 2026-09-20: clang 19 accepts the attribute in NEITHER documented position -
+ * on the @protocol it swallows the member list ("expected identifier or '('") and on a
+ * protocol method it says "only applies to Objective-C protocols". A body that breaks the
+ * build the moment it is used is worse than no body, so this stays empty until the correct
+ * spelling/position is found. The documented SEMANTICS (a conforming class must implement
+ * such a method explicitly) are therefore NOT enforced here: an open item, not a claim. */
 #define NS_PROTOCOL_REQUIRES_EXPLICIT_IMPLEMENTATION
-#define NS_RELEASES_ARGUMENT
-#define NS_REPLACES_RECEIVER
+#define NS_RELEASES_ARGUMENT		__attribute__((ns_consumed))
+#define NS_REPLACES_RECEIVER		__attribute__((ns_consumes_self))
 #define NS_VOIDRETURN
-#define NS_NO_TAIL_CALL
+#define NS_NO_TAIL_CALL			__attribute__((disable_tail_calls))
+/* MEASURED 2026-09-20: clang 19 rejects __attribute__((objc_arc_unavailable)) with
+ * "unknown attribute ... ignored", so this one keeps an empty body like its weak-ref
+ * neighbour rather than shipping an attribute the compiler throws away. */
 #define NS_AUTOMATED_REFCOUNT_UNAVAILABLE
+/* no counterpart in this toolchain: weak-refs are unavailable under manual retain/release, which is what this marks */
 #define NS_AUTOMATED_REFCOUNT_WEAK_UNAVAILABLE
 #define NS_UNICHAR_IS_EIGHT_BIT	0	/* this runtime's unichar is UTF-16, never 8-bit */
 #define NSEDGEINSETS_DEFINED	1
-#define NS_FALLTHROUGH
-#define NS_WARN_UNUSED_RESULT
-#define NS_VALID_UNTIL_END_OF_SCOPE
-#define NS_FORMAT_FUNCTION(F, A)
-#define NS_FORMAT_ARGUMENT(A)
+#define NS_FALLTHROUGH			__attribute__((fallthrough))
+#define NS_WARN_UNUSED_RESULT		__attribute__((warn_unused_result))
+#define NS_VALID_UNTIL_END_OF_SCOPE	__attribute__((objc_precise_lifetime))
+#define NS_FORMAT_FUNCTION(F, A)	__attribute__((format(__NSString__, F, A)))
+#define NS_FORMAT_ARGUMENT(A)	__attribute__((format_arg(A)))
 #define NS_VALUERETURN(v, t)	return (v)
 #define NS_HEADER_AUDIT_BEGIN(...)
 #define NS_HEADER_AUDIT_END(...)
