@@ -9,17 +9,25 @@ rootdisk64: userland64
 # is a ~16MB static binary).
 SESSION ?= xfb
 
+# ONE WRITER FOR session.conf, used by BOTH images below (the shipped one and the tester's), so the
+# two cannot drift apart. $(1) is the `desktop` value.
+#
+# It MUST be a PLIST like every other domain: the legacy `desktop = "x"` one-liner was never parsed
+# (config_read_file returned 3 and init silently fell back to its XFB default - which is why the
+# shipped desktop looked like it came from this file when it did not, and why SESSION had no effect).
+define fn_write_session_conf
+printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>desktop</key>\n\t<string>%s</string>\n</dict>\n</plist>\n' "$(1)" > $(ROOTFS64)/System/Configuration/session.conf
+endef
+
 rootagfs: userland64 m0clang
 	# The session boots Xfb + a console shell and nothing else: the class
 	# layer and its apps were removed in the 2026-09 UIKit restart, and the
 	# toolkit itself is parked (docs/design/argentum-uikit-plan.md, DEFERRED).
 	# `make run-xfb` still reaches the demo desktop by name.
-	# session.conf must be a PLIST like every other domain: the legacy
-	# `desktop = "x"` one-liner was never parsed (config_read_file returned 3
-	# and init silently fell back to its XFB default - which is why the
-	# shipped desktop looked like it came from this file when it did not, and
-	# why SESSION had no effect).
-	printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>desktop</key>\n\t<string>%s</string>\n</dict>\n</plist>\n' "$(SESSION)" > $(ROOTFS64)/System/Configuration/session.conf
+	# (session.conf is written through fn_write_session_conf above, which carries the plist-was-
+	# never-parsed history. THE TESTER'S IMAGE - `make testimg`, in mk/50-tests.mk - USES THE SAME
+	# WRITER and puts the shipped value back when it is done, so the two cannot drift.)
+	@$(call fn_write_session_conf,$(SESSION))
 	# 64MB stopped being enough when the tree reached ~60MB: the session
 	# then failed to start (WORKSPACE "init failed", KESTREL "no display")
 	# with an image that mkagfs and agfscheck both called good - the volume

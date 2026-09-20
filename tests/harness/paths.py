@@ -163,7 +163,12 @@ def check_prereqs(need_image=True, need_qemu=True):
             "  it, and the toolkit side rebuilds itself but the kernel does\n"
             "  not)                -> make buildfnx && ./tools/mkesp.sh")
     if need_image and not os.path.exists(root_image()):
-        missing.append("  %s -> make rootagfs" % rel(root_image()))
+        # THE HINT NAMES THE TARGET THAT BUILDS *THIS* IMAGE. FNX_TEST_ROOTIMG points the tier at the
+        # tester's console-session image (mk/50-tests.mk `make testimg`), which is a different file
+        # from the shipped one, so `make rootagfs` is the wrong answer when it is set - and this is
+        # the message a first-time failure prints, so it is the place to be exact.
+        hint = "make testimg" if os.environ.get("FNX_TEST_ROOTIMG") else "make rootagfs"
+        missing.append("  %s -> %s" % (rel(root_image()), hint))
     if need_qemu and not os.path.exists(OVMF_FD):
         missing.append("  .build/ovmf/OVMF.fd  -> make ovmf")
     if missing:

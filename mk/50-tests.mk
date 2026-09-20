@@ -2,32 +2,65 @@
 #
 # `make test` boots the assembled OS under QEMU and asserts on what it does:
 # what the guest logs, what it draws, and how it answers input.  It tests the
-# images that are ON DISK (the runner warns when .build/rootagfs.img is older
-# than the sources it was built from); it does not rebuild them, because a
-# `rootagfs` dependency would re-run the whole userland build on every check.
+# images that are ON DISK (the runner warns when the image is older than the
+# sources it was built from); it does not rebuild them, because a `rootagfs`
+# dependency would re-run the whole userland build on every check.
 #
 #   make test                 the fast tier (a few minutes)
 #   make test-all             fast + slow (boots one guest per case; ~20 min)
 #   make test TESTS=audio     one case, or a glob: TESTS='wm_*'
 #   make test-list            the cases, their tiers and their timeouts
+#   make testimg              build the tester's root image (see below), then stop
 #
 # FNX_TEST_TIER=slow turns `make test` into the slow tier; see tests/README.md
 # for the other environment knobs (RAM size, root image, audio backend).
+#
+# ---- THE TIER BOOTS ITS OWN IMAGE, NOT THE SHIPPED ONE (2026-09-20) -------
+#
+# WHY: every case's FIRST assertion is `shell-ready`, and the shipped image boots the Xfb DESKTOP.
+# That session does start a console, but it never ANSWERS a command typed at it (guest tail: "XDESK:
+# Xfb desktop launching (xdraw + xkey retry until :0 is up) | # "), so a tier run against the shipped
+# image failed every case at that assertion after 154s each - and, because the runner drops a shared
+# guest whenever a case does not pass, it ALSO booted a fresh guest per case: the Foundation tier cost
+# ~35 minutes instead of 59 seconds. `desktop = shell` is the whole difference (measured: 27/27 cases,
+# 162/162 checks in 59s). NO CASE WANTS THE DESKTOP - the only mention of it in the case list is a
+# stale comment in audio.py, which has no KESTREL-READY wait at all.
+#
+# WHY A SEPARATE FILE: the tests must not require, or leave behind, a modified shipped image. The
+# image is built by `testimg` (mk/30-images.mk owns the one session.conf writer, and restores the
+# shipped value before it exits), and FNX_TEST_ROOTIMG is what points the runner at it. The runner
+# reports the missing image as `make testimg`, so the failure names its own fix.
+TESTIMG ?= .build/rootagfs-test.img
 
 TESTS ?=
 
 .PHONY: test test-all test-list
 
 # OVMF is the one input that is safe to fetch here: it is a single download and
-# it cannot make the images stale.  Everything else is checked, not rebuilt.
+# it cannot make the images stale.  Everything else is checked, not rebuilt -
+# INCLUDING the root image, deliberately: building it is `make testimg`, and a
+# prerequisite here would put the userland build on the path of every check.
 test: .build/ovmf/OVMF.fd
-	@python3 tests/run.py --only '$(TESTS)'
+	@FNX_TEST_ROOTIMG=$(TESTIMG) python3 tests/run.py --only '$(TESTS)'
 
 test-all: .build/ovmf/OVMF.fd
-	@python3 tests/run.py --tier all --only '$(TESTS)'
+	@FNX_TEST_ROOTIMG=$(TESTIMG) python3 tests/run.py --tier all --only '$(TESTS)'
 
 test-list:
 	@python3 tests/run.py --list
+
+# THE BUILD HALF OF THE TESTER'S IMAGE. The why is in the header above; what this rule owes is
+# DISCIPLINE ABOUT THE STAGING TREE: it writes `desktop = shell` through mk/30-images.mk's one
+# session.conf writer, packs, checks, and then puts the SHIPPED value back - so `make testimg` is
+# idempotent, it never changes what `make run-uefi` boots, and it can run before or after
+# `make rootagfs` in either order. The pack is the same call `rootagfs` makes, one path apart.
+.PHONY: testimg
+testimg: userland64 m0clang
+	@$(call fn_write_session_conf,shell)
+	python3 tools/mkagfs.py $(ROOTFS64) $(TESTIMG) 128
+	python3 tools/agfscheck.py $(TESTIMG) $(ROOTFS64)
+	@$(call fn_write_session_conf,$(SESSION))
+	@echo "testimg: $(TESTIMG) ready (AGFS, 128MB, desktop=shell — the test tier's image)"
 
 # ---- Sterling's compiler (K2) -------------------------------------------
 #
