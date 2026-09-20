@@ -704,6 +704,22 @@ emit_expr(FILE *out, const st_expr *e, const char *expected,
 		}
 		fprintf(out, " = ");
 		return emit_expr(out, e->args[0].value, NULL, error);
+	case ST_EXPR_UNWRAP:
+		/*
+		 * §6: `x!` is the one postfix form that carries behaviour — "the raw
+		 * value, trapped if it is nil" — and the macro is where that lives
+		 * (see emit_trap_support; it is emitted into the header only when
+		 * this case is reachable). The operand goes through emit_expr whole,
+		 * so §6's "binding tighter than the message send, `x!.foo` is
+		 * `[(x!) foo]`" falls out of the SEND's receiver emitter rather than
+		 * being arranged here.
+		 */
+		fprintf(out, "STERLING_UNWRAP(");
+		if (!emit_expr(out, e->base, NULL, error)) {
+			return 0;
+		}
+		fprintf(out, ")");
+		return 1;
 	case ST_EXPR_UNSUPPORTED:
 		return refuse(e->text.text != NULL ? e->text.text : "expression",
 			      error);
@@ -1415,6 +1431,130 @@ emit_extension_interface(FILE *out, const st_extension *e,
 	return 1;
 }
 
+/* ---- §6/§3.14: `x!` and its trap --------------------------------------- */
+
+/*
+ * §6, quoted because every decision here is already in it: "`x!` on a `T?` yields
+ * the raw value and **traps if it is `nil`**. It is the first of the language's
+ * three *trapping* operations … which are collectively §0's exception: ObjC has
+ * no 'crash if null', so `x!` is compiled to a null check that aborts." And the
+ * emitted shape is "a **header-only** macro rather than a library function, so the
+ * plan's 'no runtime library to stage' still holds".
+ *
+ * Two things this settles, because the macro is where the language's only runtime
+ * behaviour lives:
+ *
+ *   - The trap is **`__builtin_trap()`** — one instruction, unconditional, and it
+ *     needs no header at all, which is what "header-only" has to mean when the
+ *     generated header is the only thing a hand-written `.m` may include. §6
+ *     forbids the tempting alternative by name: an `NDEBUG`-stripped assert
+ *     "would silently make `!` non-trapping in an optimised build".
+ *   - It is emitted **only when the unit unwraps something**. A macro block in
+ *     every generated header would be dead text in the many units that never
+ *     write `x!` — and §2's specimen is a byte-for-byte golden, so emitting it
+ *     unconditionally would change the one output the language is specified by.
+ *
+ * The statement expression carrying `__typeof__(v)` is a clang/GNU extension and
+ * is used deliberately: it evaluates the operand ONCE, which a macro that pasted
+ * `(v)` into a null test and then returned it could not promise.
+ */
+static int
+expr_uses_unwrap(const st_expr *e)
+{
+	size_t i;
+
+	if (e == NULL) {
+		return 0;
+	}
+	if (e->kind == ST_EXPR_UNWRAP) {
+		return 1;
+	}
+	if (expr_uses_unwrap(e->base)) {
+		return 1;
+	}
+	for (i = 0; i < e->arg_count; i++) {
+		if (expr_uses_unwrap(e->args[i].value)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+stmts_use_unwrap(const st_stmt *list)
+{
+	const st_stmt *s;
+
+	for (s = list; s != NULL; s = s->next) {
+		if (expr_uses_unwrap(s->value) || stmts_use_unwrap(s->body) ||
+		    stmts_use_unwrap(s->else_body)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+decls_use_unwrap(const st_decl *decls)
+{
+	const st_decl *d;
+
+	for (d = decls; d != NULL; d = d->next) {
+		if (stmts_use_unwrap(d->body)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+class_uses_unwrap(const st_class *c)
+{
+	size_t i;
+
+	if (decls_use_unwrap(c->decls)) {
+		return 1;
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		if (class_uses_unwrap(c->nested[i])) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* §7.4's extensions carry bodies too, so they can unwrap as well. */
+static int
+program_uses_unwrap(const st_program *program)
+{
+	size_t i;
+
+	for (i = 0; i < program->class_count; i++) {
+		if (class_uses_unwrap(program->classes[i])) {
+			return 1;
+		}
+	}
+	for (i = 0; i < program->extension_count; i++) {
+		if (decls_use_unwrap(program->extensions[i]->decls)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void
+emit_trap_support(FILE *out)
+{
+	fprintf(out,
+		"/* §6/§3.14: `x!` — the language's one piece of runtime behaviour. The\n"
+		"   trap is a BUILTIN rather than an assert, because an NDEBUG-stripped\n"
+		"   assert would silently make `!` non-trapping in an optimised build. */\n");
+	fprintf(out, "#define sterlingc_trap_null() __builtin_trap()\n");
+	fprintf(out, "#define STERLING_UNWRAP(v) \\\n"
+		     "\t({ __typeof__(v) __sterling_v = (v); \\\n"
+		     "\tif (!__sterling_v) sterlingc_trap_null(); __sterling_v; })\n\n");
+}
+
 int
 st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	       const char **error)
@@ -1422,12 +1562,6 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	size_t i;
 	char stem[256];
 
-	/*
-	 * §7.4's categories and extensions are EMITTED now, so there is nothing to
-	 * refuse here; what the header refuses for them is a stored property in a
-	 * category and an extension for a class this unit does not define, both
-	 * named at `emit_extension_interface` below.
-	 */
 	/*
 	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
 	 * does not even hold one — the parse reads the declaration and keeps
@@ -1477,6 +1611,14 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 			program->classes[0]->name.text);
 	}
 	fprintf(out, "#import <Foundation/Foundation.h>\n\n");
+	/*
+	 * §6's `x!` support, only where the unit unwraps something. Placed after
+	 * the import and BEFORE the assumed-non-null region: a macro is not a
+	 * declaration, so it has no nullability to be inside one for.
+	 */
+	if (program_uses_unwrap(program)) {
+		emit_trap_support(out);
+	}
 	fprintf(out, "_Pragma(\"clang assume_nonnull begin\")\n\n");
 
 	/*

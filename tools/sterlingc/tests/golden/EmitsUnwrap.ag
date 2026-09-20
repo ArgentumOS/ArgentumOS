@@ -1,0 +1,42 @@
+/*
+ * EmitsUnwrap.ag — §6's `x!` and the trap it means, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * `x!` is the ONE place the language has runtime behaviour, and §6 says so
+ * outright: "the raw value, trapped if it is nil … §0's exception: ObjC has no
+ * 'crash if null', so `x!` is compiled to a null check that aborts."
+ *
+ * This specimen pins both halves, because either alone is a silent wrong answer:
+ *
+ *   - the emitted HEADER carries the macro — and, as the other specimens show by
+ *     NOT carrying it, only when the unit unwraps something. §2's specimen is a
+ *     byte-for-byte golden, so a macro block in every header would have changed
+ *     the one output the language is specified by.
+ *   - the emitted BODY actually calls it: `return STERLING_UNWRAP(self.name);`.
+ *     The predecessor printed the operand alone — `self.name` — which COMPILES
+ *     and drops the trap, which is why it was refused by name until there was
+ *     somewhere to emit the trap to.
+ *
+ * The trap itself is a builtin and not an assert, for the reason §6 gives: an
+ * `NDEBUG`-stripped `NSAssert` "would silently make `!` non-trapping in an
+ * optimised build". That is measurable and was measured — the emitted macro, cut
+ * out of the generated header and compiled on its own, survives a non-nil operand
+ * and dies with SIGILL on a nil one, at every optimisation level.
+ *
+ * `shoutTwice` is here for §6's precedence rule: "postfix, binding tighter than
+ * the message send, so `x!.foo` is `[(x!) foo]`". Nothing in the emitter arranges
+ * that — the send's receiver goes through the unwrap case and comes out wrapped —
+ * and a golden is the only place the arrangement is visible.
+ */
+class Holder: Object {
+    property name: String?
+
+    method shout() -> String {
+        return self.name!;
+    }
+
+    method shoutTwice() -> String {
+        return self.name!.uppercaseString();
+    }
+}

@@ -257,6 +257,28 @@ bugs actually are.
   unwraps a nil `T?` and the trap fires (§3.14 — the one piece of source-emitted
   runtime behaviour), and a `guard let` on a nil value leaves the scope without
   running the rest of the block.
+- **Landed (2026-09): `x!` and its trap — the language's only runtime behaviour.**
+  §6 leaves the emitted shape "provisional; K1/K2 settles it", and this settles
+  it: the trap is **`__builtin_trap()`** — one instruction, unconditional, and it
+  needs no header at all, which is what "header-only" has to mean when the
+  generated header is the only thing a hand-written `.m` may include. §6 forbids
+  the alternative by name — an `NDEBUG`-stripped assert "would silently make `!`
+  non-trapping in an optimised build" — and the firing is MEASURED rather than
+  assumed: the emitted macro, cut out of a generated header and compiled on its
+  own, survives a non-nil operand and dies with **SIGILL** on a nil one.
+  - Emitted **only where the unit unwraps something**, and the specimens pin that
+    from both sides: `EmitsUnwrap` carries the macro block and the other eight do
+    not. That is not tidiness — §2's specimen is a byte-for-byte golden, so a
+    macro block in every header would change the one output the language is
+    specified by.
+  - §6's precedence falls out rather than being arranged: the send's receiver goes
+    through the unwrap case, so `x!.foo` emits `[STERLING_UNWRAP(x) foo]`, the
+    macro being a parenthesised statement expression that needs no extra parens.
+  - Still owed from §6: the four binding forms and the emitter's rename map, the
+    `guard`-else-must-exit diagnostic, and **`x!` on a non-optional being an
+    error** — which needs the operand's type, the same wall the nullable-scalar
+    refusals sit behind. `tests/refuse/force-unwrap.ag` is retired rather than
+    repaired: its expectation is now the thing that is emitted.
 - **Landed so far (2026-09): the statement and expression core.** The emitter was
   a specimen-shaped special case — it wrote `return` and one expression shape and
   *skipped* every statement it could not represent, so a program compiled to
@@ -271,9 +293,17 @@ bugs actually are.
   leg that holds that, and it exists because two of the old behaviours were worse
   than omission: a closure emitted `nil` and `x!` emitted its operand with the
   trap left out, and both compiled.
-  - Measured against the corpus: **13 of 13 parse, 2 of 13 emit.** The gap is the
+  - Measured against the corpus: **13 of 13 parse, 0 of 13 emit.** The gap is the
     map of what K2 has left, not a fault — the corpus's files are the surface's
-    constructs, and the emitter refuses the ones it has no rule for.
+    constructs, and the emitter refuses the ones it has no rule for. The count was
+    2 when this was written and is 0 now, and the two that went are worth knowing
+    because one of them was a FALSE PASS: a 0-class program emitted nothing and
+    exited 0, and `10-literals-and-types.ag` was emitting an inverted-nullability
+    header. The corpus's current blockers, in its own words: **a struct (3 files),
+    an enum (3), a nullable scalar or an unknown nullable name (§7.62/§4, 4), a
+    stored property's default (§9.16, 1), `defer` (1), generic parameters (1)** —
+    which is the priority order for what K2 and K3 have left, read off the corpus
+    rather than guessed.
   - **An unresolved document conflict is now load-bearing.** §2's specimen emits
     `baz:(BOOL)arg1 arg2:(NSString *)arg2` from `baz(arg1: Bool, arg2: String)`,
     and §3's map gives `o.foobar(argname: 1, arg2: true)` → `[o foobar:1 arg2:YES]`

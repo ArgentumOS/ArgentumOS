@@ -575,7 +575,7 @@ parse_postfix(st_parser *p, st_expr *e, int *ok)
 		}
 		*operand = *e;
 		bump(p);
-		e->kind = ST_EXPR_UNSUPPORTED;
+		e->kind = ST_EXPR_UNWRAP;
 		e->base = operand;
 		e->text.text = st_arena_strdup("x!", 2);
 		return 1;

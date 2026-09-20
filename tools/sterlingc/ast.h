@@ -88,6 +88,14 @@ typedef enum {
 	ST_EXPR_UNARY,		/* <text> base, prefix */
 	ST_EXPR_ASSIGN,		/* base = args[0].value — §7.21 makes it an expression */
 	/*
+	 * §6/§4's `x!` — the ONE postfix form that carries runtime behaviour: it
+	 * yields the raw value and **traps if it is null**, which is §0's stated
+	 * exception (ObC has no "crash if null"). It was ST_EXPR_UNSUPPORTED until
+	 * the trap had somewhere to be emitted, because printing the operand alone
+	 * drops the trap AND still compiles.
+	 */
+	ST_EXPR_UNWRAP,
+	/*
 	 * An expression form the surface has and this emitter does not. Like
 	 * ST_STMT_UNSUPPORTED, it exists so the emitter can refuse it BY NAME:
 	 * the nodes these replace printed something *wrong* — a closure emitted
