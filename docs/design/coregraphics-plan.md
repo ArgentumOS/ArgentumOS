@@ -295,10 +295,15 @@ one cannot be**: there is no Quartz here to diff behaviour against. So the
 oracle is assembled deliberately, and its weakness is recorded rather than
 hidden:
 
-1. **Modern Apple-source compiles unmodified** against our headers. The
-   word *modern* is load-bearing: a program calling
-   `CGContextShowTextAtPoint` will **not** compile, and that is policy 4
-   working. **The sample chosen is part of the test's definition**, so it
+1. **Ported Apple-source compiles** against our headers — **"ported", not
+   "unmodified", since 2026-09.** This plan first asked for *unmodified* Apple
+   source, which is a goal the project never set (§6 records the retraction), and
+   it became unavailable when this layer chose FOUNDATION types over CF anyway.
+   The port is mechanical: drop a `(__bridge CFXRef)` cast, take a CF-typed return
+   as its Foundation counterpart, write `CG…Release(x)` where a sample writes
+   `CFRelease(x)`. The word *modern* stays load-bearing — a program calling
+   `CGContextShowTextAtPoint` will not compile, and that is the no-deprecated-API
+   policy working. **The sample chosen is part of the test's definition**, so it
    is chosen deliberately and named in the gate.
 2. **Emitted PDF is structurally comparable** to Apple's for the
    primitives — the one place a machine-checkable artefact exists.
@@ -325,25 +330,30 @@ later reader is told not to "fix" it.
   a post-14 deprecation strikes a row macOS 14 would keep in scope — and pinning
   the vintage still needs the SDK headers (names + three versions + replacement +
   source; **ship the LIST, never the header text; keep the generator**).
-- **AND THE CG-NAMED VALUE TYPES ARE NOT IN THAT LEDGER, measured rather than
-  overlooked:** `CGPoint` documents under `/documentation/corefoundation/cgpoint`
-  (verified), so a walk of the CoreGraphics index files
-  `CGPoint`/`CGSize`/`CGRect`/`CGFloat` under `other-framework`. They are this
-  tree's already (§3 counts them), so folding CoreFoundation's index in while
-  keeping only the CG-shaped names is a **named missing pass**.
+- **The CG-named value types ARE in the ledger now.** This was a named missing pass
+  and it is DONE: `CGPoint` documents under
+  `/documentation/corefoundation/cgpoint` (verified), so the sweep fetches
+  CoreFoundation's index as well and keeps the `CG`/`kCG`-named rows — 19 of them
+  — and the four value types carry their real `shipped` status (family
+  `CoreFoundation, CG-named`) instead of being filed as another framework's.
+  **That is documentation NAVIGATION, not a dependency**: the CoreFoundation
+  *plan* is retracted (§6), and this fetch stays because the rows are CG's.
 - Do not reason from documentation *prose or blog posts*: `CGDisplayCreateImageForRect`
   is the cautionary case — reported as not deprecated at one point, since caught
   up in the wave.
 - **`legacy-but-live` is undecided** (§2): the `NSRectFill` family and the
   bezel helpers need an explicit in-or-out call on obsolescence grounds.
-- **The CF-style ownership convention** (§6) has to be chosen.
+- **The ownership convention is ANSWERED, and it is not CF's.** With CoreFoundation
+  retracted (§6), `CGColorRetain`/`CGColorRelease` and their siblings are this
+  layer's OWN API — **43 of them, measured** — and there is no `CFRetain`/`CFRelease`
+  to relate to anything.
 - **The colour-management deviation** (§6) has to be written, not implied.
-- **The consumer's home.** `docs/design/argentum-uikit-plan.md` names
-  `userland/argentum/` and `userland/apps/widgetzoo.cpp` as the toolkit's
-  location, and **neither exists in this checkout** (`pixman` appears
-  under `userland/` only inside `userland/xfb/`, and no file under
-  `userland/` mentions `NSBezierPath`/`NSColor`/`drawRect`). Settle whether
-  the first consumer is in this tree before building a substrate for it.
+- **The consumer's home is ANSWERED, and it was never missing.**
+  `userland/argentum/` is absent because the **C++ UIKit was PARKED** on
+  2026-09-17 (`16692d55`; tag `park/argentum-uikit-u6a`, branch
+  `park/argentum-uikit` at `1fdf92f4` — 59 files, ~19.4k lines, recoverable in
+  full) in the same session that added Objective-C. So the Application Kit is *to
+  be built in this tree*, not somewhere else — see §11.
 
 ## 10. What this changes elsewhere
 
@@ -355,6 +365,73 @@ later reader is told not to "fix" it.
   the forbidden-spelling list because those spellings were *ours*. Once CG
   is an Apple-API duplication, the exemption's **reason** must be
   restated, not deleted.
-- **`cocoa-parity-plan.md`** — the naming convention boundary in §3: CG and
-  Core Text keep Apple's spelling; AppKit-spelled *classes* remain that
-  plan's decision.
+- **`cocoa-parity-plan.md`** — two things: the naming boundary in §3 (CG and
+  Core Text keep Apple's spelling; AppKit-spelled *classes* remain that plan's
+  decision), and its STATUS, which now says its premise moved — the plan
+  describes the C++ UIKit, that UIKit was parked on 2026-09-17 (`16692d55`), and
+  §1's "there is no Objective-C runtime" is no longer true of this tree. The
+  AppKit's language is marked there as OPEN, which is the one decision §11 waits
+  on.
+
+## 11. How the three layers sequence (user's question, 2026-09)
+
+The question was: *"the plan goes, finish Foundation, then build our
+CoreGraphics-shaped API whatever it's called by us, then build our Application Kit
+on top of both?"* Yes — with two corrections to the shape, both measured, and one
+thing to settle first.
+
+| Layer | State, measured 2026-09 |
+|---|---|
+| **Foundation** | **~70 classes shipped**, and every class THIS layer needs is among them (`NSString`, `NSArray`, `NSDictionary`, `NSData`, `NSNumber`, `NSURL`, `NSError`, `NSSet` and their mutable forms) |
+| **CoreGraphics** | does NOT exist: the ledger's `shipped` rows are `CGFloat`, `CGPoint`, `CGSize`, `CGRect`, `CG_INLINE`, `CG_EXTERN` and nothing else |
+| **Application Kit** | does NOT exist. `NSObject` is the only shipped class; the previous toolkit is **PARKED**, not abandoned (tag `park/argentum-uikit-u6a`) |
+
+**CORRECTION 1 — "finish Foundation" IS NOT A GATE.** Every class this layer needs
+is already shipped and CG needs nothing else from Foundation, while Foundation's
+own ledger shows what is left: **~2,000 open rows** (172 classes, 869 cases, 700
+vars, 89 enums, 77 funcs…). Gating CG on "Foundation finished" delays it
+indefinitely, for no dependency reason. **Sequence by DEPENDENCY, not by framework
+completion:** CG starts now on the classes that exist, and Foundation grows on its
+ledger the whole time.
+
+**CORRECTION 2 — THE APPLICATION KIT IS NOT THE THIRD PHASE; IT IS THIS LAYER'S
+ORACLE.** §8's honest gap is that there is no live reference to diff CG against —
+and the criterion this plan first reached for (*unmodified Apple source*) was
+retracted, because it was a goal the project never set (§6). A client DRAWING
+THROUGH this layer, checked in the guest, puts a real oracle back, and this tree
+already knows the pattern from the parked toolkit's gates (board-logs-from-draw,
+ink-versus-`light_frac`, "never judge an in-progress interaction — assert on the
+last event"). So the order wants the AppKit **early** — as CG's first client and
+pixel check — rather than last.
+
+**AND ONE THING TO SETTLE FIRST, WHICH IS NOT A DEPENDENCY: what language is the
+Application Kit?** `16692d55` parked a **C++** toolkit and added **Objective-C**;
+`cocoa-parity-plan.md` still describes the C++ world, so its status now says its
+premise moved and marks the language OPEN. **If the AppKit is Objective-C its
+classes are NS-prefixed like the rest of this tree's ObjC; if it stayed C++ they
+are unprefixed. Either way THIS layer keeps `CG`** — for the reason below.
+
+**WHY `CG` STAYS, "whatever it's called by us".** Not for Apple's sake: because the
+prefix is already load-bearing in this tree's OWN shipped public API. The four
+value types are `shipped` rows here, and the six `NSPointFromCGPoint`-family
+conversions with `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES` are **landed**
+Foundation rows (`foundation-plan.md` W2b, COMPLETE). Renaming this layer means
+renaming those six declared functions and their aliases — a break to Foundation's
+public surface, for aesthetic distance, at the cost of the 1:1 map onto the
+documentation being duplicated. Deviations are documented instead
+(`CGDataProviderCreateWithCFData` taking an `NSData *` is the model case), which is
+the same sound the tree already makes with `NS` in an Objective-C Foundation.
+
+**AND THE PARKED TOOLKIT'S MEASUREMENTS TRANSFER EVEN THOUGH ITS CODE IS ANOTHER
+LANGUAGE.** `argentum-uikit-plan.md` §0a records what it cost, and three findings
+are about THIS layer and the text path rather than about a toolkit: a drag's real
+cost was **event intake** (2.71s → 0.20s catch-up) and the paint was never coarse
+(~3 views/10ms against a 1060ms full frame); the guest's monitor Y is **mirrored**;
+and a font face belongs per **style**, not per size. They will bite CG's text and
+damage paths the same way.
+
+**THE SEQUENCE, as this plan would record it:** Foundation grows on its ledger —
+**not as a gate** → **CG starts now** on the classes that exist, with the AppKit
+drawing through it as the acceptance → **the AppKit is built in this tree on both**
+(its language settled first), carrying the parked toolkit's measurements forward
+and leaving its recoverable C++ code parked unless that is revisited.

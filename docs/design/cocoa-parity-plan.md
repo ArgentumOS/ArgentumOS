@@ -1,9 +1,40 @@
 # Cocoa parity for the Argentum UIKit — plan
 
-Status: **DRAFT (2026-09), for review.** The direction: the library grows
-until every Cocoa **view and control** class has a faithful clone in C++,
-using Cocoa's design patterns in the same places. Applications come
-after, one at a time.
+Status: **DRAFT (2026-09), for review — AND ONE OF ITS PREMISES HAS MOVED. Read
+this line before the rest.** This plan describes the **C++** UIKit, and that UIKit
+was **PARKED** on 2026-09-17 (`16692d55`; recoverable in full as tag
+`park/argentum-uikit-u6a` and branch `park/argentum-uikit`, both at `1fdf92f4`) in
+the same session that added **Objective-C** — libobjc2 pinned by commit,
+`tools/musl-clang-objc64.sh`, the `objc_smoke` case verified on a guest — and the
+Foundation's root class.
+
+**WHAT HAS MOVED:** §1's fourth clause says *"there is no Objective-C runtime, no
+GNUstep, no KVC-by-string-runtime"*, and this tree now HAS an Objective-C runtime.
+The naming rule that clause carries (`View`, `Button`, `TableView`, unprefixed)
+follows from the language that was parked with it.
+
+**WHAT STILL HOLDS, and it is most of the plan:** the definition of "faithful" —
+same class inventory, same patterns in the same places, and importantly **not
+"identical source"** (this is the house's ruling that `coregraphics-plan.md` §11
+cites when it explains why the drawing layer does not chase Apple's spelling) —
+plus the catalogue's coverage discipline, and every clause whose content is about
+SEMANTICS rather than language.
+
+**WHAT IS OPEN: the language of the Application Kit** — Objective-C
+(NS-prefixed, matching this tree's Foundation) or C++ (unprefixed, as this plan
+assumes). It is the one decision the layer sequence waits on, and it is named in
+`docs/design/coregraphics-plan.md` §11.
+
+**AND THE PARKED CODE IS NOT LOST WORK.** `argentum-uikit-plan.md` is the
+DEFERRED record — the parked inventory, the recovery commands, and §0a's
+measurements, three of which are about the *drawing and text layers* rather than
+about a toolkit: a drag's real cost was event intake (2.71s → 0.20s catch-up) with
+the paint never coarse (~3 views/10ms against a 1060ms full frame), the guest's
+monitor Y is mirrored, and a font face belongs per STYLE rather than per size.
+
+The direction this plan records: the library grows until every Cocoa **view and
+control** class has a faithful clone, using Cocoa's design patterns in the same
+places. Applications come after, one at a time.
 
 ## 1. What "faithful clone" means here
 
