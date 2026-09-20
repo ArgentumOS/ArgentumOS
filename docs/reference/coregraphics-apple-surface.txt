@@ -36,10 +36,10 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  102   open  585   struck   48
+#   func       shipped  103   open  584   struck   48
 #   macro      shipped    7   open   98   struck    2
-#   enum       shipped    6   open   50   struck    1
-#   case       shipped   54   open  376   struck   14
+#   enum       shipped    9   open   47   struck    1
+#   case       shipped   65   open  365   struck   14
 #   var        shipped    6   open  120   struck    9
 #   typealias  shipped    4   open   94   struck    2
 #   struct     shipped    6   open   14   struck    0
@@ -326,12 +326,12 @@ case	open	kCGInterpolationNone	-	Opaque Types / Drawing Images and PDF Content /
 case	open	kCGKeyboardEventAutorepeat	-	Services / Constants / Constants	-	objc
 case	open	kCGKeyboardEventKeyboardType	-	Services / Constants / Constants	-	objc
 case	open	kCGKeyboardEventKeycode	-	Services / Constants / Constants	-	objc
-case	open	kCGLineCapButt	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGLineCapRound	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGLineCapSquare	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGLineJoinBevel	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGLineJoinMiter	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGLineJoinRound	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGLineCapButt	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGLineCapRound	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGLineCapSquare	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGLineJoinBevel	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGLineJoinMiter	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGLineJoinRound	-	Opaque Types / Constants / Constants	-	objc
 case	open	kCGMainMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGMaximumWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGMinimumWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
@@ -379,16 +379,16 @@ case	open	kCGPDFObjectTypeReal	-	Opaque Types / Abstract Types for PDF Document 
 case	open	kCGPDFObjectTypeStream	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	kCGPDFObjectTypeString	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	kCGPDFTrimBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPathEOFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
-case	open	kCGPathEOFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
+case	shipped	kCGPathEOFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
+case	shipped	kCGPathEOFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	shipped	kCGPathElementAddCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
 case	shipped	kCGPathElementAddLineToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
 case	shipped	kCGPathElementAddQuadCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
 case	shipped	kCGPathElementCloseSubpath	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
 case	shipped	kCGPathElementMoveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
-case	open	kCGPathFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
-case	open	kCGPathFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
-case	open	kCGPathStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
+case	shipped	kCGPathFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
+case	shipped	kCGPathFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
+case	shipped	kCGPathStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	open	kCGPatternTilingConstantSpacing	-	Opaque Types / Constants / Constants	-	objc
 case	open	kCGPatternTilingConstantSpacingMinimalDistortion	-	Opaque Types / Constants / Constants	-	objc
 case	open	kCGPatternTilingNoDistortion	-	Opaque Types / Constants / Constants	-	objc
@@ -520,8 +520,8 @@ enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
 enum	open	CGImageComponentInfo	-	Enumerations	-	objc
 enum	open	CGImagePixelFormatInfo	-	Reference / Enumerations	-	objc
 enum	open	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
-enum	open	CGLineCap	-	Opaque Types / Constants	-	objc
-enum	open	CGLineJoin	-	Opaque Types / Constants	-	objc
+enum	shipped	CGLineCap	-	Opaque Types / Constants	-	objc
+enum	shipped	CGLineJoin	-	Opaque Types / Constants	-	objc
 enum	open	CGMomentumScrollPhase	-	Reference / Enumerations	-	objc
 enum	open	CGMouseButton	-	Services / Constants	-	objc
 enum	open	CGPDFAccessPermissions	-	Reference / Structures	-	objc
@@ -529,7 +529,7 @@ enum	open	CGPDFBox	-	Opaque Types / Abstract Types for PDF Document Content / Co
 enum	open	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFTagType	-	Reference / Enumerations	-	objc
-enum	open	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
+enum	shipped	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 enum	shipped	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 enum	open	CGPatternTiling	-	Opaque Types / Constants	-	objc
 enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
@@ -1165,7 +1165,7 @@ func	open	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path
 func	open	CGPathCreateCopyByFlattening	-	Reference / Functions	-	objc
 func	open	CGPathCreateCopyByIntersectingPath	-	Reference / Functions	-	objc
 func	open	CGPathCreateCopyByNormalizing	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyByStrokingPath	-	Opaque Types / Copying a Graphics Path	-	objc
+func	shipped	CGPathCreateCopyByStrokingPath	-	Opaque Types / Copying a Graphics Path	-	objc
 func	open	CGPathCreateCopyBySubtractingPath	-	Reference / Functions	-	objc
 func	open	CGPathCreateCopyBySymmetricDifferenceOfPath	-	Reference / Functions	-	objc
 func	open	CGPathCreateCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	-	objc
