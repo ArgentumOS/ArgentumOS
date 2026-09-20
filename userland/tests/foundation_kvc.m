@@ -509,6 +509,11 @@ int main(void)
 	}
 
 	printf("FOUNDATION-KVC RESULT ok=%d fail=%d\n", okc, failc);
+	/* The exit status, in the probe's OWN output. After a probe the console can stop
+	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
+	 * types may never run. The probe knows exactly what it returns, so it says so - and
+	 * this is the same value: failc ? 1 : 0 is the return statement below. */
+	printf("FOUNDATION-KVC-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-KVC DONE\n");
 	return failc ? 1 : 0;
 }
