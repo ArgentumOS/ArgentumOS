@@ -205,6 +205,10 @@ missing here.
     `CFRetain`/`CFRelease` need a defined relation to this library's
     `-retain`/`-release`, and toll-free bridging (`CFStringRef` IS `NSString *`)
     makes that relation one line instead of a parallel type system.
+    **`docs/design/corefoundation-plan.md` now exists and answers it**: CFRetain
+    and CFRelease ARE `-retain` and `-release`, one implementation with two
+    spellings, and the Create/Copy/Get ownership convention is part of the
+    contract rather than a style choice.
   - **Two things fall away with it.** `CGEvent` / `CGDirectDisplay` /
     `CGWindowList` — the input and display-observation half, which is what drags
     in `CFMachPortRef` and `CFRunLoopAddSource` — are **out of scope for a
