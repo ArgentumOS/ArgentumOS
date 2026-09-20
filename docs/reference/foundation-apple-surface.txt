@@ -31,7 +31,7 @@
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   98   open   19   struck  136
-#   enum       shipped   32   open  120   struck    8
+#   enum       shipped   33   open  119   struck    8
 #   case       shipped  190   open 1019   struck   93
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
@@ -1633,7 +1633,7 @@ enum	shipped	NSComparisonPredicateModifier	NSComparisonPredicate	Fundamentals / 
 enum	open	NSComparisonPredicateOptions	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	swift-page
 enum	shipped	NSComparisonResult		Fundamentals / Sorting	-	objc
 enum	shipped	NSCompoundPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate	-	objc
-enum	open	NSDataBase64DecodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
+enum	shipped	NSDataBase64DecodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
 enum	shipped	NSDataBase64EncodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
 enum	shipped	NSDataCompressionAlgorithm	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 enum	shipped	NSDataCompressionAlgorithm	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc

@@ -53,13 +53,24 @@ NS_ASSUME_NONNULL_BEGIN
 	size_t _length;
 }
 
-/* Cocoa's option set for the base64 methods; both flags are honoured. */
+/* Cocoa's option set for the ENCODING methods. It is one of TWO types, and that is
+ * a correction (2026-09-20): the DECODING flag used to live here, which meant this
+ * header had one option set where Cocoa has two, and the two decoding methods
+ * below took the encoding type. Both are Apple's; the split is the fidelity. */
 typedef enum {
 	NSDataBase64EncodingDefault = 0,
 	NSDataBase64Encoding64CharacterLineLength = 1,
-	NSDataBase64EncodingEndLineWithLineFeed = 2,
-	NSDataBase64DecodingIgnoreUnknownCharacters = 4
+	NSDataBase64EncodingEndLineWithLineFeed = 2
 } NSDataBase64EncodingOptions;
+
+/* The DECODING option set, which is where NSDataBase64DecodingIgnoreUnknownCharacters
+ * belongs. The VALUE is ours (§11.6.1 D2 — Apple publishes the name and not the
+ * number) and it keeps the 4 this library already used, so nothing behavioural
+ * moves: only the type the flag is declared under. */
+typedef enum {
+	NSDataBase64DecodingDefault = 0,
+	NSDataBase64DecodingIgnoreUnknownCharacters = 4
+} NSDataBase64DecodingOptions;
 
 /* A DIFFERENT option set: -rangeOfData:options:range: searches, it does not
  * decode. Only the plain forward, unanchored search is implemented, and the
@@ -103,7 +114,7 @@ typedef enum {
 + (nullable NSData *)dataWithContentsOfFile:(NSString *)path;
 + (nullable NSData *)dataWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
 + (nullable NSData *)dataWithBase64EncodedString:(NSString *)string;
-+ (nullable NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options;
++ (nullable NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64DecodingOptions)options;
 
 /* THE URL FORMS (D7's kind (D)). Apple's nullability: the READING forms are nullable (a URL can
  * fail), the WRITING forms answer BOOL with an error out-parameter. */
@@ -121,8 +132,8 @@ typedef enum {
 - (nullable id)initWithContentsOfFile:(NSString *)path;
 - (nullable id)initWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)options error:(NSError * _Nullable * _Nullable)errorPtr;
 - (nullable id)initWithBase64EncodedString:(NSString *)string
-			  options:(NSDataBase64EncodingOptions)options;
-- (nullable id)initWithBase64EncodedData:(NSData *)base64Data options:(NSDataBase64EncodingOptions)options;
+			  options:(NSDataBase64DecodingOptions)options;
+- (nullable id)initWithBase64EncodedData:(NSData *)base64Data options:(NSDataBase64DecodingOptions)options;
 
 - (size_t)length;
 - (nullable const void *)bytes;

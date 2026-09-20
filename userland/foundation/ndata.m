@@ -326,7 +326,7 @@ static int base64Value(unsigned char c)
 	return -1;
 }
 
-- (id)initWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options
+- (id)initWithBase64EncodedString:(NSString *)string options:(NSDataBase64DecodingOptions)options
 {
 	size_t n = [string lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	unsigned char *out = (unsigned char *)malloc(n + 1);
@@ -421,7 +421,7 @@ static int base64Value(unsigned char c)
 	return [[self alloc] initWithContentsOfFile:path options:options error:errorPtr];
 }
 
-+ (NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64EncodingOptions)options
++ (NSData *)dataWithBase64EncodedString:(NSString *)string options:(NSDataBase64DecodingOptions)options
 {
 	return [[self alloc] initWithBase64EncodedString:string options:options];
 }
@@ -447,7 +447,7 @@ static int base64Value(unsigned char c)
 	return result;
 }
 
-- (id)initWithBase64EncodedData:(NSData *)base64Data options:(NSDataBase64EncodingOptions)options
+- (id)initWithBase64EncodedData:(NSData *)base64Data options:(NSDataBase64DecodingOptions)options
 {
 	NSString *asText = [[NSString alloc] initWithData:base64Data
 						  encoding:NSASCIIStringEncoding];
