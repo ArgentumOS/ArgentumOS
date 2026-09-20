@@ -102,6 +102,12 @@
  *   unit-measurement-arithmetic  adding happens IN THE RECEIVER'S unit, and a plain NSUnit is not
  *                           convertible at all (a dimensionless unit has no converter)
  *   unit-measurement-value  equality is by VALUE AND UNIT, -copy is the same object, NSSecureCoding
+ *   unit-temperature-offset  THE OFFSET FAMILY: 0 C = 32 F = 273.15 K, 100 C = 212 F = 373.15 K, and the
+ *                           two scales CROSS at -40. Every one of these is COMPUTED, which is why this
+ *                           check taught the probe that a computed double is asserted with a TOLERANCE
+ *   unit-duration           powers of ten against the second
+ *   unit-length             the coefficients are definitions: an inch, a foot as TWELVE INCHES, a mile, a
+ *                           nautical mile as 1852, and a light-year as c times a Julian year
  */
 
 #import <Foundation/Foundation.h>
@@ -173,6 +179,22 @@ static NSString *fn_pair(NSString *a, NSString *b)
 }
 
 @end
+
+/*
+ * A COMPUTED DOUBLE IS NOT ASSERTED WITH `==`, AND THIS IS A LESSON THE W12 FAMILIES TAUGHT (2026-09-20).
+ *
+ * The coefficients in a dimension's table ARE definitions and are asserted exactly. A CONVERSION is
+ * arithmetic: 212 °F -> K is `212 * (5/9) + 255.37222222222223`, which lands one ulp away from 373.15 while
+ * PRINTING as "373.15" — so the first version of these checks failed with a detail line that showed every
+ * value correct. A tolerance is the honest assertion for a computed quantity, and the relative form below
+ * is what "the same value" means for doubles.
+ */
+static int fn_close(double a, double b)
+{
+	double scale = (a < 0 ? -a : a) + (b < 0 ? -b : b) + 1.0;
+
+	return ((a - b) < 0 ? (b - a) : (a - b)) <= 1e-9 * scale;
+}
 
 /* HOW MANY TIMES a substring occurs — the measurement the interval checks need, because "the date
  * appears ONCE" is the whole difference between an interval formatter and two joined dates. */
@@ -1592,6 +1614,94 @@ int main(void)
 		      [NSString stringWithFormat:@"value=%g symbol=[%@] copySame=%d equal=%d secure=%d",
 			 [oneKB doubleValue], [[oneKB unit] symbol], [oneKB copy] == oneKB,
 			 [oneKB isEqual:sameKB], adopts && answers]);
+	}
+
+	/* ---- W12's dimensional families: the OFFSET one first, then two ratio families ---- */
+	{
+		/*
+		 * TEMPERATURE IS THE FAMILY THAT MADE THE CONVERTER'S `constant` NECESSARY, so it is asserted at
+		 * its DEFINING POINTS rather than at convenient round numbers: 0 °C and 32 °F are the same
+		 * temperature (273.15 K), 100 °C and 212 °F are the same one (373.15 K), and the two scales CROSS at
+		 * -40 — which is the pair that would catch a converter that scaled without shifting.
+		 */
+		NSMeasurement *zeroC = [[NSMeasurement alloc] initWithDoubleValue:0.0
+									    unit:[NSUnitTemperature celsius]];
+		NSMeasurement *hundredC = [[NSMeasurement alloc] initWithDoubleValue:100.0
+									       unit:[NSUnitTemperature celsius]];
+		NSMeasurement *thirtyTwoF = [[NSMeasurement alloc] initWithDoubleValue:32.0
+										  unit:[NSUnitTemperature fahrenheit]];
+		NSMeasurement *twoTwelveF = [[NSMeasurement alloc] initWithDoubleValue:212.0
+										  unit:[NSUnitTemperature fahrenheit]];
+		NSMeasurement *minusFortyC = [[NSMeasurement alloc] initWithDoubleValue:-40.0
+										   unit:[NSUnitTemperature celsius]];
+		NSMeasurement *minusFortyF = [[NSMeasurement alloc] initWithDoubleValue:-40.0
+										   unit:[NSUnitTemperature fahrenheit]];
+		double zeroK = [[zeroC measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
+		double hundredK = [[hundredC measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
+		double thirtyTwoK = [[thirtyTwoF measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
+		double twoTwelveK = [[twoTwelveF measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
+		double crossC = [[minusFortyC measurementByConvertingToUnit:[NSUnitTemperature fahrenheit]] doubleValue];
+		double crossF = [[minusFortyF measurementByConvertingToUnit:[NSUnitTemperature celsius]] doubleValue];
+		BOOL baseIsKelvin = ([NSUnitTemperature baseUnit] == [NSUnitTemperature kelvin]);
+
+		check("unit-temperature-offset",
+		      /* COMPUTED conversions, so the tolerance a double needs — see fn_close's note: the first
+		       * version of this check used `==` and FAILED while printing every value correctly. */
+		      fn_close(zeroK, 273.15) && fn_close(hundredK, 373.15) &&
+		      fn_close(thirtyTwoK, 273.15) && fn_close(twoTwelveK, 373.15) &&
+		      /* AND THE TWO SCALES CROSS AT -40: each converts to the other's -40, which is the pair that
+		       * would catch a converter that scaled without shifting. A TOLERANCE AGAIN — the crossing is
+		       * computed too (1.8 has no exact binary form), and `==` failed here the same way it failed on
+		       * the kelvin values above. */
+		      fn_close(crossC, -40.0) && fn_close(crossF, -40.0) && baseIsKelvin,
+		      [NSString stringWithFormat:@"0C=%g K 100C=%g K 32F=%g K 212F=%g K -40C=%g F -40F=%g C "
+			 "baseIsKelvin=%d",
+			 zeroK, hundredK, thirtyTwoK, twoTwelveK, crossC, crossF, baseIsKelvin]);
+	}
+
+	{
+		/* DURATION: every coefficient an exact power of ten against the second. */
+		NSMeasurement *oneHour = [[NSMeasurement alloc] initWithDoubleValue:1.0
+									      unit:[NSUnitDuration hours]];
+		NSMeasurement *oneMillisecond = [[NSMeasurement alloc] initWithDoubleValue:1.0
+										     unit:[NSUnitDuration milliseconds]];
+		double seconds = [[oneHour measurementByConvertingToUnit:[NSUnitDuration seconds]] doubleValue];
+		double milliSeconds = [[oneMillisecond measurementByConvertingToUnit:[NSUnitDuration seconds]] doubleValue];
+		BOOL baseIsSeconds = ([NSUnitDuration baseUnit] == [NSUnitDuration seconds]);
+
+		check("unit-duration",
+		      seconds == 3600.0 && milliSeconds == 1e-3 && baseIsSeconds,
+		      [NSString stringWithFormat:@"1 hr = %g s, 1 ms = %g s, baseIsSeconds=%d",
+			 seconds, milliSeconds, baseIsSeconds]);
+	}
+
+	{
+		/*
+		 * LENGTH: the coefficients are DEFINITIONS, so the exact ones are asserted EXACTLY — an inch, a foot
+		 * (twelve of them), a mile and a nautical mile (1852 by definition) — while the LIGHT-YEAR is a
+		 * COMPUTATION (the speed of light times a Julian year), so it is asserted with the tolerance a
+		 * computed double needs. That split is the lesson the temperature check taught in the same run.
+		 */
+		NSUnitConverterLinear *inchConverter = (NSUnitConverterLinear *)[[NSUnitLength inches] converter];
+		NSUnitConverterLinear *footConverter = (NSUnitConverterLinear *)[[NSUnitLength feet] converter];
+		NSUnitConverterLinear *mileConverter = (NSUnitConverterLinear *)[[NSUnitLength miles] converter];
+		NSUnitConverterLinear *nauticalConverter = (NSUnitConverterLinear *)[[NSUnitLength nauticalMiles] converter];
+		NSUnitConverterLinear *lightyearConverter = (NSUnitConverterLinear *)[[NSUnitLength lightyears] converter];
+		BOOL baseIsMeters = ([NSUnitLength baseUnit] == [NSUnitLength meters]);
+
+		check("unit-length",
+		      [inchConverter coefficient] == 0.0254 &&
+		      /* A FOOT IS TWELVE INCHES — a RELATION, and the right-hand side is therefore COMPUTED:
+		       * 12 * 0.0254 is not the double nearest to 0.3048, so this needs the tolerance too. */
+		      fn_close([footConverter coefficient], 12.0 * 0.0254) &&
+		      [mileConverter coefficient] == 1609.344 &&
+		      [nauticalConverter coefficient] == 1852.0 &&
+		      /* A LIGHT-YEAR IS THE SPEED OF LIGHT TIMES A JULIAN YEAR — a computation, so a tolerance. */
+		      fn_close([lightyearConverter coefficient], 365.25 * 86400.0 * 299792458.0) &&
+		      baseIsMeters,
+		      [NSString stringWithFormat:@"in=%g ft=%g mi=%g nmi=%g ly=%g baseIsMeters=%d",
+			 [inchConverter coefficient], [footConverter coefficient], [mileConverter coefficient],
+			 [nauticalConverter coefficient], [lightyearConverter coefficient], baseIsMeters]);
 	}
 
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);

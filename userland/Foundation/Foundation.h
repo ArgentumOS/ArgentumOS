@@ -95,6 +95,11 @@
 #import <Foundation/NSDimension.h>
 #import <Foundation/NSUnitInformationStorage.h>
 #import <Foundation/NSMeasurement.h>
+/* W12's dimensional families. Each is a table and a set of class methods — and none needs ICU, for the same
+ * reason the machinery above needs none: the arithmetic is the converters'. */
+#import <Foundation/NSUnitTemperature.h>
+#import <Foundation/NSUnitDuration.h>
+#import <Foundation/NSUnitLength.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

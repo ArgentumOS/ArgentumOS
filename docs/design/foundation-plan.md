@@ -3486,7 +3486,7 @@ vanishing.
 | **Fundamentals / Dates and times** | all classes shipped | — |
 | **Fundamentals / Deprecated** | ALL STRUCK: `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSLinguisticTagger`, `NSMassFormatter` | — |
 | **Fundamentals / Electricity** | 4 open | `NSUnitElectricCharge`, `NSUnitElectricCurrent`, `NSUnitElectricPotentialDifference`, `NSUnitElectricResistance` |
-| **Fundamentals / Energy, Heat, and Light** | 4 open | `NSUnitEnergy`, `NSUnitIlluminance`, `NSUnitPower`, `NSUnitTemperature` |
+| **Fundamentals / Energy, Heat, and Light** | 3 open | `NSUnitEnergy`, `NSUnitIlluminance`, `NSUnitPower` |
 | **Fundamentals / Essentials** | all classes shipped | — |
 | **Fundamentals / Filltering** | all classes shipped | — |
 | **Fundamentals / Fuel Efficiency** | 1 open | `NSUnitFuelEfficiency` |
@@ -3500,7 +3500,7 @@ vanishing.
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
-| **Fundamentals / Physical Dimension** | 4 open | `NSUnitAngle`, `NSUnitArea`, `NSUnitLength`, `NSUnitVolume` |
+| **Fundamentals / Physical Dimension** | 3 open | `NSUnitAngle`, `NSUnitArea`, `NSUnitVolume` |
 | **Fundamentals / Pointer Collections** | 4 open | `NSHashTable`, `NSMapTable`, `NSPointerArray`, `NSPointerFunctions` |
 | **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
 | **Fundamentals / Sorting** | all classes shipped | — |
@@ -3509,7 +3509,7 @@ vanishing.
 | **Fundamentals / Spelling and Grammar** | 2 open | `NSSpellServer`, `NSSpellServerDelegate` |
 | **Fundamentals / Strings** | all classes shipped | — |
 | **Fundamentals / Strings with Metadata** | 5 open | `NSAttributedString`, `NSAttributedStringMarkdownParsingOptions`, `NSAttributedStringMarkdownSourcePosition`, `NSMutableAttributedString`, `NSPresentationIntent` |
-| **Fundamentals / Time and Motion** | 4 open | `NSUnitAcceleration`, `NSUnitDuration`, `NSUnitFrequency`, `NSUnitSpeed` |
+| **Fundamentals / Time and Motion** | 3 open | `NSUnitAcceleration`, `NSUnitFrequency`, `NSUnitSpeed` |
 | **Fundamentals / URLs** | all classes shipped | — |
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |

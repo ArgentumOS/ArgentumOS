@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   87   open  155   struck   31
+#   class      shipped   90   open  152   struck   31
 #   protocol   shipped    9   open   27   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   76   open   76   struck    8
@@ -1572,7 +1572,7 @@ class	open	NSUnitConcentrationMass		Fundamentals / Concentration and Dispersion	
 class	shipped	NSUnitConverter		Fundamentals / Conversion	-	objc
 class	shipped	NSUnitConverterLinear		Fundamentals / Conversion	-	objc
 class	open	NSUnitDispersion		Fundamentals / Concentration and Dispersion	-	objc
-class	open	NSUnitDuration		Fundamentals / Time and Motion	-	objc
+class	shipped	NSUnitDuration		Fundamentals / Time and Motion	-	objc
 class	open	NSUnitElectricCharge		Fundamentals / Electricity	-	objc
 class	open	NSUnitElectricCurrent		Fundamentals / Electricity	-	objc
 class	open	NSUnitElectricPotentialDifference		Fundamentals / Electricity	-	objc
@@ -1582,12 +1582,12 @@ class	open	NSUnitFrequency		Fundamentals / Time and Motion	-	objc
 class	open	NSUnitFuelEfficiency		Fundamentals / Fuel Efficiency	-	objc
 class	open	NSUnitIlluminance		Fundamentals / Energy, Heat, and Light	-	objc
 class	shipped	NSUnitInformationStorage		Fundamentals / Data Storage	-	objc
-class	open	NSUnitLength		Fundamentals / Physical Dimension	-	objc
+class	shipped	NSUnitLength		Fundamentals / Physical Dimension	-	objc
 class	open	NSUnitMass		Fundamentals / Mass, Weight, and Force	-	objc
 class	open	NSUnitPower		Fundamentals / Energy, Heat, and Light	-	objc
 class	open	NSUnitPressure		Fundamentals / Mass, Weight, and Force	-	objc
 class	open	NSUnitSpeed		Fundamentals / Time and Motion	-	objc
-class	open	NSUnitTemperature		Fundamentals / Energy, Heat, and Light	-	objc
+class	shipped	NSUnitTemperature		Fundamentals / Energy, Heat, and Light	-	objc
 class	open	NSUnitVolume		Fundamentals / Physical Dimension	-	objc
 class	open	NSUserActivity		App Support / Activity Sharing	-	objc
 class	open	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	-	objc
