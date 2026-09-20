@@ -4144,6 +4144,17 @@ differently in this tree (X11/Xfb as the display, GOP-only kernel display, GPU w
 first is §12.6's rule applied separately: a dependency is added rather than refused, and *this* one was
 a dependency of seven rows rather than of a framework.
 
+**SUPERSEDED (2026-09, user's decision), and the supersession is ANNOTATED rather than rewritten,
+because the paragraph above is the reasoning trail that led to it.** The user's direction:
+*"What I want is to duplicate Apple's drawing API as used in macOS"* — so **CG's function surface and
+its drawing half ARE to be built**, with the policy that **no Apple-deprecated API is implemented or
+exposed** (mirroring Foundation's) and the deprecation vintage pinned at **the macOS 14 SDK**. The plan
+is `docs/design/coregraphics-plan.md`. **WHAT THE PARAGRAPH ABOVE STILL GOVERNS, and it is not
+nothing: the SUBSTRATE.** The display stays **X11/Xfb**; CG's drawing is built **on top of** it, not
+instead of it, because drawing and compositing are separable and the seam between them is a bitmap.
+"Already answered differently in this tree" was therefore right about the DISPLAY and wrong about the
+DRAWING, and the value types here were step one of CG rather than the whole of it.
+
 **THE GATE KNOWS THE DIFFERENCE, in writing:** `CoreGraphics/` is deliberately NOT in
 `tools/foundation-gate.py`'s forbidden-spelling list, and its docstring now says why — the list is
 APPLE'S spellings, and this one is ours. A reader who notices the omission is told not to "fix" it.
@@ -4323,7 +4334,7 @@ its `isa` — glibc's tcache safe-linking word in the freed chunk's first slot. 
 by design because the object is a singleton. **`foundation_nsvalue` 7/7, exit 0** (it printed nothing
 before, only `Segmentation fault`), and the host tier went **270 -> 277 checks**, no failures.
 
-### 15.2 THE SAME VIOLATION IS FAMILY-WIDE, AND IT IS MEASURED — THE `-copy` DEFECT (OPEN, WORK ITEM)
+### 15.2 THE SAME VIOLATION IS FAMILY-WIDE — THE `-copy` DEFECT, MEASURED AND FIXED (2026-09-20)
 
 `-copy` is also an owned family, so a class that answers `return self` for an immutable receiver
 over-releases it under ARC. **This is not inferred, it is measured** (a four-line ARC probe against the
@@ -4335,19 +4346,26 @@ after copy:  string rc=0 array rc=0      <- the ORIGINAL was destroyed by the co
 still readable? string="밐炐邂苩"         <- freed memory, contents now garbage
 ```
 
-So **`[obj copy]` destroys `obj`** for every immutable class that spells it that way — the reader is
-then holding freed memory that reads correctly on the guest and is garbage on the host. The affected
-set, counted in the headers rather than guessed: **26 sites across 24 files**, every one with the same
-`return self;` — `NSString`, `NSArray`, `NSDictionary`, `NSSet`, `NSOrderedSet`, `NSData`, `NSNumber`,
-`NSDate`, `NSDateInterval`, `NSError`, `NSException`, `NSIndexPath`, `NSIndexSet`, `NSLocale`,
-`NSCharacterSet`, `NSPredicate`, `NSExpression`, `NSSortDescriptor`, `NSTimeZone`, `NSURL`,
-`NSURLComponents`, `NSUUID`, `NSValue`, `NSFormatter`. **The fix is mechanical — `return [self
-retain];`, which is what Cocoa's own immutable classes do — but it is a SEMANTIC change to the library's
-most-used protocol, so it is taken as its own unit with the guest tier re-run, not folded into a
-diagnostic turn.** One secondary question belongs with it: an internal MRR call site that copies and
-never releases was *accidentally* correct under the broken convention, so the fix can turn such a site
-into a leak (of a reference, not of correctness) — the sweep must read the call sites, not only the
-implementations.
+**WHAT LANDED. `return self;` -> `return [self retain];` at 28 sites in 24 files** — counted by a parser
+over `userland/foundation/*.m` rather than by eye (an earlier hand count in this same section said 26 and
+was WRONG; the parser is the instrument, and it found the two a `grep`-shaped reading missed:
+`nsformatter.m`'s `-copy` and `NSUUID`'s). The classes: `NSString`, `NSArray`, `NSDictionary`, `NSSet`,
+`NSOrderedSet`, `NSData`, `NSNumber`, `NSDate`, `NSDateInterval`, `NSError`, `NSException`, `NSIndexPath`,
+`NSIndexSet`, `NSLocale`, `NSCharacterSet`, `NSPredicate`, `NSExpression`, `NSSortDescriptor`,
+`NSTimeZone`, `NSURL`, `NSURLComponents`, `NSUUID`, `NSValue`, `NSFormatter`. Each site's own comment is
+kept and the reason prefixed to it. **AND THE SAME DEFECT WAS ON THE OTHER SIDE OF THE BOUNDARY TOO:**
+the library's 27 internal `_ivar = [x copy];` / `return [x copy];` sites were relying on the broken
+convention, so they held a *borrowed* reference and their `-dealloc` release over-released the SOURCE —
+the fix repairs those rather than breaking them.
+
+**THE CHECK THAT CAN SEE IT NOW EXISTS, AND IT IS PROVEN NON-VACUOUS.** `copy-family-keeps-the-original`
+in `foundation_core` reads the count of the ORIGINAL, through `object_getRetainCount_np`, after the
+copies' scope has ended — plus the copies' identity and the originals' contents, because a reused chunk
+is how the corruption presents. Two instrument findings came with it: **ARC FORBIDS `-retainCount`** (12
+errors, so the runtime accessor and its `#include <objc/objc-arc.h>` are the only way to ask), and the
+check's value is DEMONSTRATED rather than asserted — reverting ONE site (`nstring.m`) makes it FAIL
+(`ok=50 fail=1`) and restoring it makes it pass (`ok=51`). `foundation_core` 50 -> 51 checks; the host
+tier 277 -> 287 with no failures.
 
 **WHY EVERY GUEST GATE PASSED WITH THIS IN THE TREE, stated once:** a probe that copies and then reads
 the original still reads *plausible* values, because musl does not reuse or poison the freed chunk — and

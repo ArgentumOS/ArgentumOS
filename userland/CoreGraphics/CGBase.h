@@ -13,11 +13,22 @@
  * `userland/CoreGraphics/` — which `-Iuserland` makes visible to every userland compile and
  * the kernel (which uses `-Iinclude` only) never sees.
  *
- * WHAT IS *NOT* HERE, and the line is deliberate: this is the VALUE TYPES only. CG's
+ * WHAT IS *NOT* HERE: this header is the VALUE TYPES only, and that was the right first step —
+ * those seven ledger rows needed the types and nothing else, and CG's structs and a typedef are
+ * published interface with no implementation to take.
+ *
+ * SUPERSEDED (2026-09, user's decision): CG's function surface and its DRAWING HALF are now to
+ * be built, as a duplication of Apple's drawing API — docs/design/coregraphics-plan.md. The
+ * earlier reasoning that "the drawing half is already answered elsewhere in this tree by
+ * X11/Xfb" is what the plan KEEPS and what it changes: the display stays X11/Xfb, and CG's
+ * drawing sits on top of it instead of replacing it. Do not read the paragraph below as the
+ * current decision; it is this file's history.
+ *
+ * WHAT THE FIRST VERSION SAID, kept because its reasoning still binds the substrate: CG's
  * function surface (CGPointMake, CGRectGetMinX, the affine transforms, CGColor, the drawing
- * contexts and everything they imply) is CG's own API and stays out — §12.6's rule that a
- * dependency is added rather than refused applies to it separately, and much of the drawing
- * half is already answered elsewhere in this tree by X11/Xfb.
+ * contexts and everything they imply) is CG's own API and stays out of THIS HEADER — §12.6's
+ * rule that a dependency is added rather than refused applies to it separately, in the plan
+ * named above.
  */
 #ifndef CORE_GRAPHICS_CGBASE_H
 #define CORE_GRAPHICS_CGBASE_H
