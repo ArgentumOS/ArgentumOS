@@ -183,11 +183,37 @@ def is_32bit_only(row):
     return bool(ZONE_API_RE.match(row["name"]))
 
 
+# §11.5's SIXTH EXCLUSION (user, 2026-09-19): the PER-RELEASE version constants.
+#
+# Apple publishes the NAME of each one and not the NUMBER: the page says only
+# "Foundation version released in macOS 10.x" (or the iOS equivalent), and its
+# meaning is "which Foundation shipped in that Apple OS release" - not a fact
+# this system has. They are NOT deprecated: verified against Apple's pages on
+# 2026-09-19, where NSFoundationVersionNumber10_0 reads availability
+# iOS 2.0+/macOS 10.0+ with no deprecation badge, and the "Foundation Framework
+# Version Numbers" page calls the family legacy rather than deprecated. So the
+# `deprecated` reason would be this project inventing an Apple fact - the same
+# trap the zone rule avoids.
+#
+# NAMED, NOT INFERRED, and here that is load-bearing: the bare
+# `NSFoundationVersionNumber` is the LIVE current-version constant and IS ours
+# (declared `extern double`), so a group signal over "Versions and API
+# Availability" would have struck it too. The pattern keeps the current version
+# and takes only the per-release ones.
+VERSION_CONST_RE = re.compile(r"^NSFoundationVersionNumber(10_|iOS_|iPhoneOS_)")
+
+
+def is_per_release_version_constant(row):
+    return bool(VERSION_CONST_RE.match(row["name"]))
+
+
 def struck_reason(row):
     """Why this symbol is OUT, or None. Three exclusions, and the reason travels
     with the row so a struck line can be argued with."""
     if is_32bit_only(row):
         return "32-bit-only"
+    if is_per_release_version_constant(row):
+        return "os-version-constant"
     if SWIFT_INTEROP_RE.search(row["name"]):
         return "swift-only"
     if row.get("swift") and not is_objc_shaped(row["name"]):
@@ -233,7 +259,7 @@ def why_of(row):
 # fell from 52 to 42 while `func open` rose by the same 10, because ten zone
 # functions were carrying a reason the status test did not recognise. A reason
 # that does not strike is a row that lies about where it stands.
-STRIKE_REASONS = ("32-bit-only", "swift-only", "deprecated")
+STRIKE_REASONS = ("32-bit-only", "swift-only", "deprecated", "os-version-constant")
 
 
 def status_of(kind, name, why, text):

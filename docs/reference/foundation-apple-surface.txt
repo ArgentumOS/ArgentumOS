@@ -22,7 +22,7 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 13, deprecated 341, swift-only 22
+# why the struck rows are struck: 32-bit-only 13, deprecated 341, os-version-constant 82, swift-only 22
 #
 # THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): 
 # it keeps its `shipped` status and says so in the `why` column.
@@ -30,7 +30,7 @@
 # counts by kind:
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
-#   macro      shipped   18   open  209   struck   26
+#   macro      shipped   18   open  127   struck  108
 #   enum       shipped   32   open  120   struck    8
 #   case       shipped  190   open 1019   struck   93
 #   func       shipped   58   open   77   struck   54
@@ -1986,88 +1986,88 @@ macro	shipped	NSCParameterAssert		App Support / Assertions	-	objc
 macro	open	NSDecimalMaxSize		Fundamentals / Numbers / Getting particular decimals	-	objc
 macro	open	NSDecimalNoScale		Fundamentals / Numbers / Getting particular decimals	-	objc
 macro	open	NSEDGEINSETS_DEFINED		Reference / Macros	-	objc
-macro	open	NSFoundationVersionNumber10_0		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_10_Max		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_11		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_11_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_11_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_11_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_11_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_11_Max		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_1_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_1_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_1_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_1_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_2_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_3_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_10		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_11		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_4_Intel		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_4_PowerPC		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_4_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_5_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_6_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_7_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_7_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_7_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_7_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_8_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_8_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_8_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_8_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_9_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber10_9_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	-	objc
+macro	struck	NSFoundationVersionNumber10_0		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_10_Max		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_11		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_11_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_11_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_11_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_11_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_11_Max		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_1_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_1_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_1_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_1_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_2_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_3_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_10		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_11		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_4_Intel		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_4_PowerPC		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_4_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_5_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_5		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_6		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_6_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_7		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_7_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_7_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_7_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_7_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_8		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_8_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_8_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_8_3		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_8_4		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_9_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber10_9_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
 macro	open	NSFoundationVersionNumber_iOS_4_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
 macro	open	NSFoundationVersionNumber_iOS_4_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
 macro	open	NSFoundationVersionNumber_iOS_4_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc

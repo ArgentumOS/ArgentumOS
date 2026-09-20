@@ -3670,8 +3670,29 @@ The rows are not equal in cost, and two of them gate many others:
 
 ### 11.5 What 100% does NOT mean
 
-Four exclusions are about the API and one is about the MEASURE — which is why they are named here
+Five exclusions are about the API and one is about the MEASURE — which is why they are named here
 rather than discovered later:
+
+* **PER-RELEASE VERSION CONSTANTS ARE OUT — THE SIXTH EXCLUSION (user, 2026-09-19).** The family is
+  `NSFoundationVersionNumber10_*`, `_iOS_*`, `_iPhoneOS_*` (111 names). **Apple publishes the NAME and
+  not the NUMBER**: each page says only "Foundation version released in macOS 10.x" (or the iOS
+  equivalent), and what the symbol *means* is "which Foundation shipped in that Apple OS release" —
+  a fact about Apple's releases, which is not a fact this system has. A row whose value cannot be
+  stated and whose referent does not exist is not API this tree can ship: the surface would be
+  satisfied by a number invented here.
+
+  **NOT THE SECOND EXCLUSION, AND THAT WAS CHECKED RATHER THAN ASSUMED (2026-09-19).** They are not
+  deprecated: Apple's page for `NSFoundationVersionNumber10_0` reads availability iOS 2.0+/macOS 10.0+
+  with no deprecation badge, and the "Foundation Framework Version Numbers" page calls the family
+  legacy, not deprecated. Calling them `deprecated` would be this project inventing an Apple fact —
+  the same trap the zone rule avoids by quoting Apple's own prose instead.
+
+  **THE MARKER IS THE NAME, AND HERE THAT IS LOAD-BEARING.** Bare `NSFoundationVersionNumber` is the
+  LIVE current-version constant and IS ours (already declared `extern double`), so a group signal over
+  "Versions and API Availability" would have struck it too. `tools/foundation-sweep.py` therefore
+  matches `NSFoundationVersionNumber(10_|iOS_|iPhoneOS_)` and carries the reason
+  `os-version-constant`, so a struck line can be argued with — the same rule every other exclusion
+  follows.
 
 * **BYTE-IDENTICAL OUTPUT TO macOS IS NOT CLAIMED.** `-description` text, hash values and the internal
   encoding are not part of Apple's published contract, and matching them byte-for-byte is not testable
