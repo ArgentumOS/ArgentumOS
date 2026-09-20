@@ -505,7 +505,7 @@ def check(strict=False):
 def work_list(want=None):
     rows = [r for r in read_surface() if r[1] == STATUS_OPEN and (want is None or r[0] == want)]
     by_family = {}
-    for kind, status, name, owner, family, why in rows:
+    for kind, status, name, owner, family, why, src in rows:
         by_family.setdefault(family, []).append((kind, name, owner))
     for family in sorted(by_family):
         members = by_family[family]
