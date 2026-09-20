@@ -4813,3 +4813,93 @@ HERE rather than each in place, and this paragraph is the correction of record.
 **TESTS-OK 35/35 case(s), 219/219 check(s) in 131s**. THE TIER IS ENTIRELY GREEN, with `host_fshlint` among
 the passes.
 
+
+## 25. W3: `NSDecimal` AND THE DECIMAL ARITHMETIC — WHERE SIX BUGS WERE WAITING, ONE OF THEM INSIDE A CONSTANT (2026-09-20)
+
+**WHAT SHIPPED.** `userland/Foundation/NSDecimal.{h,m}`: the thirteen C functions (`Add`, `Subtract`,
+`Multiply`, `Divide`, `Power`, `MultiplyByPowerOf10`, `Round`, `Compact`, `Copy`, `Normalize`, `Compare`,
+`IsNotANumber`, `String`), the `NSDecimal` struct, `NSRoundingMode`, `NSCalculationError`, and the two
+constants `NSDecimalMax`/`NSDecimalMin`. **36 LEDGER ROWS FLIPPED** in one pass — 13 `func`, the `struct`,
+2 `enum`, 9 `case` (each round mode and each error code, in both of the places Apple lists them). The
+ledger is consistent: `foundation-sweep --check` says *every shipped name is declared and every open name
+is absent*.
+
+**THE BOUNDARY, STATED PLAINLY.** `NSDecimalNumber`, `NSDecimalNumberHandler`, `NSDecimalNumberBehaviors`,
+the four `NSDecimalNumber*Exception` names, and the three entries in `foundation_value`'s exclusion list
+(`decimalValue`, `numberWithDecimal:`, `initWithDecimal:`) are **NOT** shipped — they are the rest of W3, and
+the exclusion list stays until they are, because that list is a statement about `NSNumber`'s surface, not
+about this type's.
+
+**THE LAYOUT IS OURS (§11.6.1 D2), AND SAYING SO IS THE POINT.** The value model is Apple's and is
+published: `mantissa × 10^exponent`, at most 38 significant digits, exponent −128 through 127, functions
+that take a result pointer and return an error code instead of raising, four rounding modes, five codes.
+The LAYOUT is not in any documentation — it is in Apple's header, and Apple's headers are off-limits here —
+so this implementation chose one that makes the arithmetic readable: **digits least-significant first, one
+decimal digit per byte, plus one spare digit so a rounding carry has somewhere to go.** Two consequences
+are visible to a caller and are therefore documented as contract, not accident: **a value outside the
+exponent's range is both REPORTED and SATURATED** (overflow → `NSDecimalMax`/`NSDecimalMin` by sign,
+underflow → a signed zero), and **an arithmetic result is COMPACTED** (no trailing zeros, so 2.5 + 2.5 is
+"5" and 2/4 is "0.5"). The third is a clarification worth writing down: **the exponent bounds apply to the
+LOWEST digit**, which is why `NSDecimalMax` is 38 nines with an exponent of 90 rather than 127.
+
+**SIX BUGS, FOUND BY THE PROBE, IN THE ORDER THEY SURFACED.** This is the reason the probe exists and the
+reason it is worth reading as a list:
+
+1. **THE SCALE ROUNDING HAD THE SIGN OF ITS INDEX WRONG**, and the decision digit off by one behind that:
+   `keep = scale + exponent` should have been "how many low digits to drop" = `−scale − exponent`. The
+   table check caught it immediately — Apple's four modes over 1.24, 1.26, 1.25, 1.35 and −1.35 at scale 1
+   — which is the single most valuable check in the probe, because it is a table Apple publishes and the
+   modes' own definitions derive.
+2. **RESULTS WERE NOT COMPACTED**, so a division that produced exactly one half returned a 38-digit
+   mantissa of `5000…0`, and the checks compared rendered strings. The fix is a documented rule (above),
+   not a probe change.
+3. **A DIVISOR OF ZERO WAS NOT REFUSED** when its mantissa was all zeros but its length was 1 — which the
+   model permits and the probe builds directly. `0 ÷ 0`'s neighbour `1 ÷ 0` returned *loss of precision*
+   and a long-division quotient instead of `NSCalculationDivideByZero`. The lesson is one line: **ask "is it
+   zero" of the DIGITS, not of the length** (`fn_is_zero`), and ask it in every place the question is asked
+   (the divisor, the span check, the printed sign, the comparison shortcut).
+4. **`NSDecimalMultiplyByPowerOf10` CAST THE EXPONENT TO `signed char` BEFORE CHECKING IT**, so 90 + 100
+   became −66 and 0 − 200 became +56: no error code, and a plausible-looking wrong number. Measuring this
+   is what turned "check the range" into "compute it in an `int`, look, and only then cast".
+5. **`NSDecimalString`'S BUFFER WAS SIZED FOR THE MANTISSA, NOT FOR THE PRINTED FORM** — and the first
+   `NSDecimalMax` check in the probe crashed on it. The printed form is longer than the number: the highest
+   place a 38-digit decimal can reach is `NSDecimalMaxExponent + 38 − 1` = 164 and the lowest is −128, so
+   it needs 164 + 1 + 128 + 2 bytes. A crash in a formatting function is a real bug, and it was found by
+   asking the type to print the largest value it can hold.
+6. **`NSDecimalMax` HELD THIRTY-SEVEN NINES WHILE CLAIMING A LENGTH OF 38.** This is the one worth the
+   most: the top digit was zero, so the constant WAS NOT THE MAXIMUM — and every value-based check still
+   passed, because `max + max` then produced a 38-digit mantissa that never needed rounding, so it returned
+   *no error* while a correct maximum returns *loss of precision*. It fell to a trace at the WRITER
+   (`LIBDEBUG add_digits na=38 nb=38 -> n=38 top=1` — a carry that never fired because the operands were
+   thirty-seven nines wide), and the probe now **asserts the SHAPE** of the constants (38 digits, top digit
+   9, exponent 90) and of their sum, because a value-based assertion cannot see a lie told about a
+   representation.
+
+**THE INSTRUMENT LESSON, AND IT COST THREE ROUNDS.** The first run reported `2.5+2.5=2000 2^10=2000
+2e3=2000` — three different values printed identically. That was the PROBE's bug: one `static char` buffer
+behind `fn_show` made every argument of a formatted message the same string, since arguments are all
+evaluated before the format runs. Two more probe-side mistakes cost the same amount: the `1/3` check
+asserted a 38-digit prefix when the quotient can only carry what the integer part leaves it (the leading
+zero of `0.333…` is not a significant digit), and the limits check expected `NSDecimalMax + itself` to
+overflow when the bounds are the exponent's and max's exponent is 90 — what that sum costs is precision.
+
+**AND ONE TRAP THAT IS ALREADY IN THIS PROJECT'S MEMORY, MET AGAIN:** a change to `NSDecimal.h` does not
+relink a host probe, so a probe built against the previous struct layout read the library's fields one byte
+off (`digits[37]` = 1 where 9 was right, `digits[38]` = uninitialised garbage) and crashed. Both sides
+reported `sizeof(NSDecimal) = 44` and a digits offset of 5 only after the probe was rebuilt by hand. It is
+the same shape as *"`make rootagfs` does not rebuild userland apps on an argentum.h change"*, and it is now
+recorded here for the same reason.
+
+**VERIFIED.**
+- Host: `TZ=UTC .build/host/bin/foundation_decimal` → **8/8 checks, 0 fail**, no scaffolding in the source.
+- The full host tier: **`make host-foundation-run`, every probe green** (this probe included).
+- Guest: `make testimg` then `make test TESTS='foundation_decimal'` → **TESTS-OK 1/1 case(s), 6/6 check(s) in
+  12s**, the probe's own tally `ok=8 fail=0` and exit status 0 — on the real image, where the library and
+  the probe are both built for the target.
+- The ledger: 36 rows flipped, `foundation-sweep --check` consistent.
+
+**THE APPARENT TRAP ON THE WAY, RECORDED SO IT IS NOT RE-DIAGNOSED.** The first `make testimg` after this
+work failed inside `foundation-sweep` with 36 *"PRESENT BUT LISTED OPEN — flip the row"* findings, which
+looked like the flip had not landed. It had: that image build had started BEFORE the flip and its sweep
+step ran while the ledger was still open. **A gate that runs as a prerequisite reads the tree at the moment
+it runs** — the second build, after the flip, was clean.

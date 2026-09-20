@@ -149,16 +149,16 @@ case	open	NSByteCountFormatterUseTB	NSByteCountFormatter	Fundamentals / Data siz
 case	open	NSByteCountFormatterUseYBOrHigher	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
 case	open	NSByteCountFormatterUseZB	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	objc
 case	shipped	NSCachesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSCalculationDivideByZero		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSCalculationDivideByZero	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSCalculationLossOfPrecision		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSCalculationLossOfPrecision	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSCalculationNoError		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSCalculationNoError	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSCalculationOverflow		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSCalculationOverflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSCalculationUnderflow		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSCalculationUnderflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSCalculationDivideByZero		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSCalculationDivideByZero	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSCalculationLossOfPrecision		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSCalculationLossOfPrecision	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSCalculationNoError		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSCalculationNoError	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSCalculationOverflow		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSCalculationOverflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSCalculationUnderflow		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSCalculationUnderflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	struck	NSCalendarCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSCalendarCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	open	NSCalendarMatchFirst	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
@@ -837,14 +837,14 @@ case	open	NSRelativeDateTimeFormatterUnitsStyleFull	NSRelativeDateTimeFormatter	
 case	open	NSRelativeDateTimeFormatterUnitsStyleShort	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
 case	open	NSRelativeDateTimeFormatterUnitsStyleSpellOut	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
 case	open	NSRequiredArgumentsMissingScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
-case	open	NSRoundBankers		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSRoundBankers	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSRoundDown		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSRoundDown	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSRoundPlain		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSRoundPlain	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSRoundUp		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
-case	open	NSRoundUp	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSRoundBankers		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSRoundBankers	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSRoundDown		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSRoundDown	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSRoundPlain		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSRoundPlain	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
+case	shipped	NSRoundUp		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
+case	shipped	NSRoundUp	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	open	NSSaveOptionsAsk	NSCloseCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSSaveOptionsNo	NSCloseCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Constants / Constants	-	objc
@@ -1623,8 +1623,8 @@ enum	open	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support /
 enum	shipped	NSBinarySearchingOptions	NSArray	Fundamentals / Basic Collections / Constants	-	objc
 enum	open	NSByteCountFormatterCountStyle	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	swift-page
 enum	open	NSByteCountFormatterUnits	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	objc
-enum	open	NSCalculationError		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-enum	open	NSCalculationError	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
+enum	shipped	NSCalculationError		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+enum	shipped	NSCalculationError	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
 enum	shipped	NSCalendarOptions	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 enum	shipped	NSCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 enum	shipped	NSCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
@@ -1723,8 +1723,8 @@ enum	shipped	NSRegularExpressionOptions	NSRegularExpression	Fundamentals / Patte
 enum	open	NSRelativeDateTimeFormatterStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
 enum	open	NSRelativeDateTimeFormatterUnitsStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
 enum	open	NSRelativePosition	NSRelativeSpecifier	App Support / Object Specifiers / Constants	-	swift-page
-enum	open	NSRoundingMode		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-enum	open	NSRoundingMode	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
+enum	shipped	NSRoundingMode		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+enum	shipped	NSRoundingMode	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
 enum	open	NSSaveOptions	NSCloseCommand	App Support / Script Commands / Constants	-	objc
 enum	shipped	NSSearchPathDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	shipped	NSSearchPathDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
@@ -1802,19 +1802,19 @@ func	struck	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collectio
 func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSDeallocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
-func	open	NSDecimalAdd		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalCompact		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalCompare		Fundamentals / Numbers / Comparing decimals	-	objc
-func	open	NSDecimalCopy		Fundamentals / Numbers / Creating a decimal from another decimal	-	objc
-func	open	NSDecimalDivide		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalIsNotANumber	NSNumber	Fundamentals / Numbers / Number Validation	-	objc
-func	open	NSDecimalMultiply		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalMultiplyByPowerOf10		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalNormalize		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalPower		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalRound		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecimalString		Fundamentals / Numbers / Converting between decimals and strings	-	objc
-func	open	NSDecimalSubtract		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalAdd		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalCompact		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalCompare		Fundamentals / Numbers / Comparing decimals	-	objc
+func	shipped	NSDecimalCopy		Fundamentals / Numbers / Creating a decimal from another decimal	-	objc
+func	shipped	NSDecimalDivide		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalIsNotANumber	NSNumber	Fundamentals / Numbers / Number Validation	-	objc
+func	shipped	NSDecimalMultiply		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalMultiplyByPowerOf10		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalNormalize		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalPower		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalRound		Fundamentals / Numbers / Performing arithmetic using references	-	objc
+func	shipped	NSDecimalString		Fundamentals / Numbers / Converting between decimals and strings	-	objc
+func	shipped	NSDecimalSubtract		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	open	NSDecrementExtraRefCountWasZero		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	struck	NSDefaultMallocZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -2260,7 +2260,7 @@ protocol	open	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Base
 protocol	open	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	-	objc
 protocol	open	NSXPCProxyCreating		Low-Level Utilities / XPC Client	-	objc
 struct	shipped	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
-struct	open	NSDecimal		Fundamentals / Numbers	-	objc
+struct	shipped	NSDecimal		Fundamentals / Numbers	-	objc
 struct	shipped	NSEdgeInsets		Fundamentals / Geometry	-	objc
 struct	shipped	NSFastEnumerationState	NSFastEnumeration	Fundamentals / Iteration / Constants	-	objc
 struct	struck	NSHashEnumerator	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc

@@ -35,6 +35,7 @@ HOST_BIN_DIR = os.path.join(paths.ROOT, ".build", "host", "bin")
 # is an iteration loop and not yet a substitute.
 HOST_CLEAN = {
     "foundation_codecs",
+    "foundation_decimal",
     "foundation_coder",
     "foundation_core",
     "foundation_dateformatter",

@@ -43,6 +43,7 @@
 #import <Foundation/NSObjCRuntime.h>
 #import <Foundation/NSByteOrder.h>
 #import <Foundation/NSUUID.h>
+#import <Foundation/NSDecimal.h>
 #import <Foundation/NSDateInterval.h>
 #import <Foundation/NSValueTransformer.h>
 #import <Foundation/NSAffineTransform.h>
