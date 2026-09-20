@@ -140,4 +140,141 @@ extern BOOL NSDeallocateZombies;
 extern BOOL NSKeepAllocationStatistics;
 extern double NSFoundationVersionNumber;
 
+/*
+ * THE MACRO SURFACE (2026-09-19). Apple's documentation declares this family and
+ * WE DID NOT, so ~80 names a Cocoa-shaped program spells were simply absent —
+ * `NS_ENUM`, `NS_OPTIONS`, `FOUNDATION_EXPORT`, the availability spellings, and
+ * the handful of real constants.
+ *
+ * WHAT APPLE PUBLISHES, MEASURED RATHER THAN ASSUMED: each page gives the
+ * macro's SIGNATURE (`#define NS_OPTIONS(_type, _name)`, `#define
+ * FOUNDATION_EXPORT`, `#define NS_AVAILABLE(_mac, _ios)`) and its description —
+ * and NOT the expansion body. So the signatures below are Apple's, transcribed,
+ * while the bodies are ours and chosen to do what the description says. By
+ * §11.5's own test that is not a difference: a body is not observable to a
+ * program that writes the macro's name.
+ *
+ * THE AVAILABILITY SPELLINGS ARE INERT HERE, which is a documented deviation
+ * (§11.6.1 D12): no compiler this system ships has a notion of macOS or iOS
+ * availability, so a body using `__attribute__((availability(...)))` would warn
+ * on every use — and the house build is warning-free. The parameter lists are
+ * Apple's; the bodies do nothing.
+ */
+
+/* --- declaring an enum (Apple's signatures) --- */
+#define NS_ENUM(_type, _name)		enum _name : _type _name; enum _name : _type
+#define NS_OPTIONS(_type, _name)	enum _name : _type _name; enum _name : _type
+#define NS_CLOSED_ENUM(_type, _name)	enum _name : _type _name; enum _name : _type
+#define NS_ERROR_ENUM(_type, _name)	enum _name : _type _name; enum _name : _type
+/* typed/extensible string enums: documented bare names */
+#define NS_TYPED_ENUM
+#define NS_STRING_ENUM
+#define NS_EXTENSIBLE_STRING_ENUM
+#define NS_TYPED_EXTENSIBLE_ENUM
+
+/* --- the symbols a shared library exports --- */
+#define FOUNDATION_EXPORT		extern
+#define FOUNDATION_IMPORT		extern
+#define FOUNDATION_EXTERN		extern
+#define FOUNDATION_STATIC_INLINE	static inline
+#define FOUNDATION_EXTERN_INLINE	extern inline
+
+/* --- how a declaration behaves (Apple's signatures; bodies per their descriptions) --- */
+#define NS_INLINE			static inline
+#define NS_NOESCAPE
+#define NS_ROOT_CLASS
+#define NS_RETURNS_RETAINED
+#define NS_RETURNS_NOT_RETAINED
+#define NS_RETURNS_INNER_POINTER
+#define NS_REQUIRES_SUPER
+#define NS_REQUIRES_PROPERTY_DEFINITIONS
+#define NS_PROTOCOL_REQUIRES_EXPLICIT_IMPLEMENTATION
+#define NS_RELEASES_ARGUMENT
+#define NS_REPLACES_RECEIVER
+#define NS_VOIDRETURN
+#define NS_NO_TAIL_CALL
+#define NS_AUTOMATED_REFCOUNT_UNAVAILABLE
+#define NS_AUTOMATED_REFCOUNT_WEAK_UNAVAILABLE
+#define NS_UNICHAR_IS_EIGHT_BIT	0	/* this runtime's unichar is UTF-16, never 8-bit */
+#define NSEDGEINSETS_DEFINED	1
+#define NS_FALLTHROUGH
+#define NS_WARN_UNUSED_RESULT
+#define NS_VALID_UNTIL_END_OF_SCOPE
+#define NS_FORMAT_FUNCTION(F, A)
+#define NS_FORMAT_ARGUMENT(A)
+#define NS_VALUERETURN(v, t)	return (v)
+#define NS_HEADER_AUDIT_BEGIN(...)
+#define NS_HEADER_AUDIT_END(...)
+
+/* --- the availability and deprecation spellings (INERT here: D12) --- */
+#define NS_AVAILABLE(_mac, _ios)
+#define NS_AVAILABLE_MAC(_mac)
+#define NS_AVAILABLE_IOS(_ios)
+#define NS_AVAILABLE_IPHONE(_ios)
+#define NS_CLASS_AVAILABLE(_mac, _ios)
+#define NS_CLASS_AVAILABLE_MAC(_mac)
+#define NS_CLASS_AVAILABLE_IOS(_ios)
+#define NS_ENUM_AVAILABLE(_mac, _ios)
+#define NS_ENUM_AVAILABLE_MAC(_mac)
+#define NS_ENUM_AVAILABLE_IOS(_ios)
+#define NS_BLOCKS_AVAILABLE
+#define NS_NONATOMIC_IOSONLY		nonatomic
+#define NS_NONATOMIC_IPHONEONLY		nonatomic
+#define NSURLSESSION_AVAILABLE
+#define NS_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...)
+#define NS_DEPRECATED_MAC(_macIntro, _macDep, ...)
+#define NS_DEPRECATED_IOS(_iosIntro, _iosDep, ...)
+#define NS_DEPRECATED_IPHONE(_iosIntro, _iosDep)
+#define NS_DEPRECATED_WITH_REPLACEMENT_MAC(_rep, _macIntroduced, _macDeprecated)
+#define NS_CLASS_DEPRECATED(_mac, _macDep, _ios, _iosDep, ...)
+#define NS_CLASS_DEPRECATED_MAC(_macIntro, _macDep, ...)
+#define NS_CLASS_DEPRECATED_IOS(_iosIntro, _iosDep, ...)
+#define NS_ENUM_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...)
+#define NS_ENUM_DEPRECATED_MAC(_macIntro, _macDep, ...)
+#define NS_ENUM_DEPRECATED_IOS(_iosIntro, _iosDep, ...)
+#define NS_EXTENSION_UNAVAILABLE(_msg)
+#define NS_EXTENSION_UNAVAILABLE_MAC(_msg)
+#define NS_EXTENSION_UNAVAILABLE_IOS(_msg)
+#define NS_CALENDAR_DEPRECATED(A, B, C, D, ...)
+#define NS_CALENDAR_DEPRECATED_MAC(A, B, ...)
+#define NS_CALENDAR_ENUM_DEPRECATED(A, B, C, D, ...)
+
+/*
+ * --- the real constants ---
+ *
+ * ONE HAS A VALUE APPLE DOCUMENTS AS A DATE, so it is arithmetic rather than a
+ * lookup: NSTimeIntervalSince1970 is "the interval between 1 January 1970 and
+ * 1 January 2001" — 31 years, 8 of them leap (1972..2000), is 11,323 days.
+ * NSDecimalMaxSize and NSDecimalNoScale publish a name and no number (their
+ * pages show a getter and prose), so those values are ours, as §11.6.1 D2 is
+ * that register row by construction.
+ */
+/* MIN and MAX are GUARDED, and that is a measured necessity rather than taste:
+ * this system's own headers already define both (include/fnx/string.h and musl's
+ * sys/param.h), so Apple's unguarded spelling would warn on every translation
+ * unit that includes a system header. The macro is Apple's; the guard is ours. */
+#ifndef MIN
+#define MIN(A, B)	((A) < (B) ? (A) : (B))
+#endif
+#ifndef MAX
+#define MAX(A, B)	((A) > (B) ? (A) : (B))
+#endif
+#define ABS(A)		((A) < 0 ? -(A) : (A))
+
+#define NSDecimalMaxSize	8
+#define NSDecimalNoScale	((short)0x7FFF)
+#define NSTimeIntervalSince1970	978307200.0	/* 11,323 days x 86,400 s */
+#define NSURLResponseUnknownLength	(-1)
+
+/* The localized-string family: Apple's signatures, bodies that read the string
+ * from a bundle. They are macros, so they are not compiled until used. */
+#define NSLocalizedString(key, comment) \
+	[[NSBundle mainBundle] localizedStringForKey:(key) value:@"" table:nil]
+#define NSLocalizedStringFromTable(key, tbl, comment) \
+	[[NSBundle mainBundle] localizedStringForKey:(key) value:@"" table:(tbl)]
+#define NSLocalizedStringFromTableInBundle(key, tbl, bundle, comment) \
+	[(bundle) localizedStringForKey:(key) value:@"" table:(tbl)]
+#define NSLocalizedStringWithDefaultValue(key, tbl, bundle, val, comment) \
+	[(bundle) localizedStringForKey:(key) value:(val) table:(tbl)]
+
 #endif /* FOUNDATION_NSOBJCRUNTIME_H */

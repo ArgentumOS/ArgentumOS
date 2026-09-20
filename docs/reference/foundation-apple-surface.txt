@@ -30,7 +30,7 @@
 # counts by kind:
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
-#   macro      shipped   18   open   99   struck  136
+#   macro      shipped   98   open   19   struck  136
 #   enum       shipped   32   open  120   struck    8
 #   case       shipped  190   open 1019   struck   93
 #   func       shipped   58   open   77   struck   54
@@ -1961,15 +1961,15 @@ func	struck	NSZoneMalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-o
 func	struck	NSZoneName		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneRealloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NXReadNSObjectFromCoder		Files and Data Persistence / Deprecated	deprecated	objc
-macro	open	ABS		Reference / Macros	-	objc
-macro	open	FOUNDATION_EXPORT		Reference / Macros	-	objc
-macro	open	FOUNDATION_EXTERN		Reference / Macros	-	objc
-macro	open	FOUNDATION_EXTERN_INLINE		Reference / Macros	-	objc
-macro	open	FOUNDATION_IMPORT		Reference / Macros	-	objc
-macro	open	FOUNDATION_STATIC_INLINE		Reference / Macros	-	objc
+macro	shipped	ABS		Reference / Macros	-	objc
+macro	shipped	FOUNDATION_EXPORT		Reference / Macros	-	objc
+macro	shipped	FOUNDATION_EXTERN		Reference / Macros	-	objc
+macro	shipped	FOUNDATION_EXTERN_INLINE		Reference / Macros	-	objc
+macro	shipped	FOUNDATION_IMPORT		Reference / Macros	-	objc
+macro	shipped	FOUNDATION_STATIC_INLINE		Reference / Macros	-	objc
 macro	struck	FOUNDATION_SWIFT_SDK_EPOCH_AT_LEAST		Reference / Macros	swift-only	objc
-macro	open	MAX		Reference / Macros	-	objc
-macro	open	MIN		Reference / Macros	-	objc
+macro	shipped	MAX		Reference / Macros	-	objc
+macro	shipped	MIN		Reference / Macros	-	objc
 macro	shipped	NSAssert		App Support / Assertions	-	objc
 macro	shipped	NSAssert1		App Support / Assertions	-	objc
 macro	shipped	NSAssert2		App Support / Assertions	-	objc
@@ -1983,9 +1983,9 @@ macro	shipped	NSCAssert3		App Support / Assertions	-	objc
 macro	shipped	NSCAssert4		App Support / Assertions	-	objc
 macro	shipped	NSCAssert5		App Support / Assertions	-	objc
 macro	shipped	NSCParameterAssert		App Support / Assertions	-	objc
-macro	open	NSDecimalMaxSize		Fundamentals / Numbers / Getting particular decimals	-	objc
-macro	open	NSDecimalNoScale		Fundamentals / Numbers / Getting particular decimals	-	objc
-macro	open	NSEDGEINSETS_DEFINED		Reference / Macros	-	objc
+macro	shipped	NSDecimalMaxSize		Fundamentals / Numbers / Getting particular decimals	-	objc
+macro	shipped	NSDecimalNoScale		Fundamentals / Numbers / Getting particular decimals	-	objc
+macro	shipped	NSEDGEINSETS_DEFINED		Reference / Macros	-	objc
 macro	struck	NSFoundationVersionNumber10_0		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
 macro	struck	NSFoundationVersionNumber10_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
 macro	struck	NSFoundationVersionNumber10_10		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
@@ -2102,10 +2102,10 @@ macro	open	NSLocalizedAttributedString		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedStringFromTable		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedStringFromTableInBundle		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedStringWithDefaultValue		Reference / Macros	-	objc
-macro	open	NSLocalizedString		Fundamentals / Localization	-	objc
-macro	open	NSLocalizedStringFromTable		Fundamentals / Localization	-	objc
-macro	open	NSLocalizedStringFromTableInBundle		Fundamentals / Localization	-	objc
-macro	open	NSLocalizedStringWithDefaultValue		Fundamentals / Localization	-	objc
+macro	shipped	NSLocalizedString		Fundamentals / Localization	-	objc
+macro	shipped	NSLocalizedStringFromTable		Fundamentals / Localization	-	objc
+macro	shipped	NSLocalizedStringFromTableInBundle		Fundamentals / Localization	-	objc
+macro	shipped	NSLocalizedStringWithDefaultValue		Fundamentals / Localization	-	objc
 macro	struck	NSMaximumStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 macro	struck	NSNotAPointerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 macro	struck	NSNotAnIntMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2121,72 +2121,72 @@ macro	open	NSOperationQualityOfServiceUserInitiated		Reference / Macros	-	objc
 macro	open	NSOperationQualityOfServiceUserInteractive		Reference / Macros	-	objc
 macro	open	NSOperationQualityOfServiceUtility		Reference / Macros	-	objc
 macro	shipped	NSParameterAssert		App Support / Assertions	-	objc
-macro	open	NSTimeIntervalSince1970	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
-macro	open	NSURLResponseUnknownLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
-macro	open	NSURLSESSION_AVAILABLE		Reference / Macros	-	objc
+macro	shipped	NSTimeIntervalSince1970	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
+macro	shipped	NSURLResponseUnknownLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
+macro	shipped	NSURLSESSION_AVAILABLE		Reference / Macros	-	objc
 macro	shipped	NS_ASSUME_NONNULL_BEGIN		Reference / Macros	-	objc
 macro	shipped	NS_ASSUME_NONNULL_END		Reference / Macros	-	objc
-macro	open	NS_AUTOMATED_REFCOUNT_UNAVAILABLE		Reference / Macros	-	objc
-macro	open	NS_AUTOMATED_REFCOUNT_WEAK_UNAVAILABLE		Reference / Macros	-	objc
-macro	open	NS_AVAILABLE		Reference / Macros	-	objc
-macro	open	NS_AVAILABLE_IOS		Reference / Macros	-	objc
-macro	open	NS_AVAILABLE_IPHONE		Reference / Macros	-	objc
-macro	open	NS_AVAILABLE_MAC		Reference / Macros	-	objc
-macro	open	NS_BLOCKS_AVAILABLE		Reference / Macros	-	objc
-macro	open	NS_CALENDAR_DEPRECATED		Reference / Macros	-	objc
-macro	open	NS_CALENDAR_DEPRECATED_MAC		Reference / Macros	-	objc
-macro	open	NS_CALENDAR_ENUM_DEPRECATED		Reference / Macros	-	objc
-macro	open	NS_CLASS_AVAILABLE		Reference / Macros	-	objc
-macro	open	NS_CLASS_AVAILABLE_IOS		Reference / Macros	-	objc
-macro	open	NS_CLASS_AVAILABLE_MAC		Reference / Macros	-	objc
-macro	open	NS_CLASS_DEPRECATED		Reference / Macros	-	objc
-macro	open	NS_CLASS_DEPRECATED_IOS		Reference / Macros	-	objc
-macro	open	NS_CLASS_DEPRECATED_MAC		Reference / Macros	-	objc
-macro	open	NS_CLOSED_ENUM		Reference / Macros	-	objc
-macro	open	NS_DEPRECATED		Reference / Macros	-	objc
-macro	open	NS_DEPRECATED_IOS		Reference / Macros	-	objc
-macro	open	NS_DEPRECATED_IPHONE		Reference / Macros	-	objc
-macro	open	NS_DEPRECATED_MAC		Reference / Macros	-	objc
-macro	open	NS_DEPRECATED_WITH_REPLACEMENT_MAC		Reference / Macros	-	objc
+macro	shipped	NS_AUTOMATED_REFCOUNT_UNAVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_AUTOMATED_REFCOUNT_WEAK_UNAVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_AVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_AVAILABLE_IOS		Reference / Macros	-	objc
+macro	shipped	NS_AVAILABLE_IPHONE		Reference / Macros	-	objc
+macro	shipped	NS_AVAILABLE_MAC		Reference / Macros	-	objc
+macro	shipped	NS_BLOCKS_AVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_CALENDAR_DEPRECATED		Reference / Macros	-	objc
+macro	shipped	NS_CALENDAR_DEPRECATED_MAC		Reference / Macros	-	objc
+macro	shipped	NS_CALENDAR_ENUM_DEPRECATED		Reference / Macros	-	objc
+macro	shipped	NS_CLASS_AVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_CLASS_AVAILABLE_IOS		Reference / Macros	-	objc
+macro	shipped	NS_CLASS_AVAILABLE_MAC		Reference / Macros	-	objc
+macro	shipped	NS_CLASS_DEPRECATED		Reference / Macros	-	objc
+macro	shipped	NS_CLASS_DEPRECATED_IOS		Reference / Macros	-	objc
+macro	shipped	NS_CLASS_DEPRECATED_MAC		Reference / Macros	-	objc
+macro	shipped	NS_CLOSED_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_DEPRECATED		Reference / Macros	-	objc
+macro	shipped	NS_DEPRECATED_IOS		Reference / Macros	-	objc
+macro	shipped	NS_DEPRECATED_IPHONE		Reference / Macros	-	objc
+macro	shipped	NS_DEPRECATED_MAC		Reference / Macros	-	objc
+macro	shipped	NS_DEPRECATED_WITH_REPLACEMENT_MAC		Reference / Macros	-	objc
 macro	open	NS_DURING	NSException	App Support / Exceptions / Legacy Macros	-	objc
 macro	open	NS_ENDHANDLER	NSException	App Support / Exceptions / Legacy Macros	-	objc
-macro	open	NS_ENUM		Reference / Macros	-	objc
-macro	open	NS_ENUM_AVAILABLE		Reference / Macros	-	objc
-macro	open	NS_ENUM_AVAILABLE_IOS		Reference / Macros	-	objc
-macro	open	NS_ENUM_AVAILABLE_MAC		Reference / Macros	-	objc
-macro	open	NS_ENUM_DEPRECATED		Reference / Macros	-	objc
-macro	open	NS_ENUM_DEPRECATED_IOS		Reference / Macros	-	objc
-macro	open	NS_ENUM_DEPRECATED_MAC		Reference / Macros	-	objc
-macro	open	NS_ERROR_ENUM		Reference / Macros	-	objc
-macro	open	NS_EXTENSIBLE_STRING_ENUM		Reference / Macros	-	objc
-macro	open	NS_EXTENSION_UNAVAILABLE		Reference / Macros	-	objc
-macro	open	NS_EXTENSION_UNAVAILABLE_IOS		Reference / Macros	-	objc
-macro	open	NS_EXTENSION_UNAVAILABLE_MAC		Reference / Macros	-	objc
-macro	open	NS_FALLTHROUGH		Reference / Macros	-	objc
-macro	open	NS_FORMAT_ARGUMENT		Reference / Macros	-	objc
-macro	open	NS_FORMAT_FUNCTION		Reference / Macros	-	objc
+macro	shipped	NS_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_ENUM_AVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_ENUM_AVAILABLE_IOS		Reference / Macros	-	objc
+macro	shipped	NS_ENUM_AVAILABLE_MAC		Reference / Macros	-	objc
+macro	shipped	NS_ENUM_DEPRECATED		Reference / Macros	-	objc
+macro	shipped	NS_ENUM_DEPRECATED_IOS		Reference / Macros	-	objc
+macro	shipped	NS_ENUM_DEPRECATED_MAC		Reference / Macros	-	objc
+macro	shipped	NS_ERROR_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_EXTENSIBLE_STRING_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_EXTENSION_UNAVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_EXTENSION_UNAVAILABLE_IOS		Reference / Macros	-	objc
+macro	shipped	NS_EXTENSION_UNAVAILABLE_MAC		Reference / Macros	-	objc
+macro	shipped	NS_FALLTHROUGH		Reference / Macros	-	objc
+macro	shipped	NS_FORMAT_ARGUMENT		Reference / Macros	-	objc
+macro	shipped	NS_FORMAT_FUNCTION		Reference / Macros	-	objc
 macro	open	NS_HANDLER	NSException	App Support / Exceptions / Legacy Macros	-	objc
-macro	open	NS_HEADER_AUDIT_BEGIN		Reference / Macros	-	objc
-macro	open	NS_HEADER_AUDIT_END		Reference / Macros	-	objc
-macro	open	NS_INLINE		Reference / Macros	-	objc
-macro	open	NS_NOESCAPE		Reference / Macros	-	objc
-macro	open	NS_NONATOMIC_IOSONLY		Reference / Macros	-	objc
-macro	open	NS_NONATOMIC_IPHONEONLY		Reference / Macros	-	objc
-macro	open	NS_NO_TAIL_CALL		Reference / Macros	-	objc
-macro	open	NS_OPTIONS		Reference / Macros	-	objc
-macro	open	NS_PROTOCOL_REQUIRES_EXPLICIT_IMPLEMENTATION		Reference / Macros	-	objc
+macro	shipped	NS_HEADER_AUDIT_BEGIN		Reference / Macros	-	objc
+macro	shipped	NS_HEADER_AUDIT_END		Reference / Macros	-	objc
+macro	shipped	NS_INLINE		Reference / Macros	-	objc
+macro	shipped	NS_NOESCAPE		Reference / Macros	-	objc
+macro	shipped	NS_NONATOMIC_IOSONLY		Reference / Macros	-	objc
+macro	shipped	NS_NONATOMIC_IPHONEONLY		Reference / Macros	-	objc
+macro	shipped	NS_NO_TAIL_CALL		Reference / Macros	-	objc
+macro	shipped	NS_OPTIONS		Reference / Macros	-	objc
+macro	shipped	NS_PROTOCOL_REQUIRES_EXPLICIT_IMPLEMENTATION		Reference / Macros	-	objc
 macro	struck	NS_REFINED_FOR_SWIFT		Reference / Macros	swift-only	objc
 macro	struck	NS_REFINED_FOR_SWIFT_ASYNC		Reference / Macros	swift-only	objc
-macro	open	NS_RELEASES_ARGUMENT		Reference / Macros	-	objc
-macro	open	NS_REPLACES_RECEIVER		Reference / Macros	-	objc
+macro	shipped	NS_RELEASES_ARGUMENT		Reference / Macros	-	objc
+macro	shipped	NS_REPLACES_RECEIVER		Reference / Macros	-	objc
 macro	shipped	NS_REQUIRES_NIL_TERMINATION		Reference / Macros	-	objc
-macro	open	NS_REQUIRES_PROPERTY_DEFINITIONS		Reference / Macros	-	objc
-macro	open	NS_REQUIRES_SUPER		Reference / Macros	-	objc
-macro	open	NS_RETURNS_INNER_POINTER		Reference / Macros	-	objc
-macro	open	NS_RETURNS_NOT_RETAINED		Reference / Macros	-	objc
-macro	open	NS_RETURNS_RETAINED		Reference / Macros	-	objc
-macro	open	NS_ROOT_CLASS		Reference / Macros	-	objc
-macro	open	NS_STRING_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_REQUIRES_PROPERTY_DEFINITIONS		Reference / Macros	-	objc
+macro	shipped	NS_REQUIRES_SUPER		Reference / Macros	-	objc
+macro	shipped	NS_RETURNS_INNER_POINTER		Reference / Macros	-	objc
+macro	shipped	NS_RETURNS_NOT_RETAINED		Reference / Macros	-	objc
+macro	shipped	NS_RETURNS_RETAINED		Reference / Macros	-	objc
+macro	shipped	NS_ROOT_CLASS		Reference / Macros	-	objc
+macro	shipped	NS_STRING_ENUM		Reference / Macros	-	objc
 macro	struck	NS_SWIFT_ASYNC		Reference / Macros	swift-only	objc
 macro	struck	NS_SWIFT_ASYNC_NAME		Reference / Macros	swift-only	objc
 macro	struck	NS_SWIFT_ASYNC_NOTHROW		Reference / Macros	swift-only	objc
@@ -2206,14 +2206,14 @@ macro	struck	NS_SWIFT_SUPPRESS_SENDABLE		Macros	swift-only	objc
 macro	struck	NS_SWIFT_UI_ACTOR		Reference / Macros	swift-only	objc
 macro	struck	NS_SWIFT_UNAVAILABLE		Reference / Macros	swift-only	objc
 macro	struck	NS_SWIFT_UNAVAILABLE_FROM_ASYNC		Reference / Macros	swift-only	objc
-macro	open	NS_TYPED_ENUM		Reference / Macros	-	objc
-macro	open	NS_TYPED_EXTENSIBLE_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_TYPED_ENUM		Reference / Macros	-	objc
+macro	shipped	NS_TYPED_EXTENSIBLE_ENUM		Reference / Macros	-	objc
 macro	open	NS_UNAVAILABLE		Reference / Macros	-	objc
-macro	open	NS_UNICHAR_IS_EIGHT_BIT		Reference / Macros	-	objc
-macro	open	NS_VALID_UNTIL_END_OF_SCOPE		Reference / Macros	-	objc
-macro	open	NS_VALUERETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
-macro	open	NS_VOIDRETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
-macro	open	NS_WARN_UNUSED_RESULT		Reference / Macros	-	objc
+macro	shipped	NS_UNICHAR_IS_EIGHT_BIT		Reference / Macros	-	objc
+macro	shipped	NS_VALID_UNTIL_END_OF_SCOPE		Reference / Macros	-	objc
+macro	shipped	NS_VALUERETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
+macro	shipped	NS_VOIDRETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
+macro	shipped	NS_WARN_UNUSED_RESULT		Reference / Macros	-	objc
 protocol	open	NSCacheDelegate		Fundamentals / Purgeable Collections / Managing the Delegate	-	objc
 protocol	shipped	NSCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	struck	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
