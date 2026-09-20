@@ -4452,3 +4452,52 @@ CONCATENATE the two literals into one name — a silently wrong expectation, ins
 purpose is to catch a probe whose tally moved. The names are now parsed and asserted distinct, which
 is the check that list should have had from the start.
 
+## 16. THE ICU-BACKED RULE SETS, AND THE REGISTER'S REASON WAS WRONG (2026-09-20)
+
+**WHAT SHIPPED.** `symbolCharacterSet` (S*), `capitalizedLetterCharacterSet` (Lt), `nonBaseCharacterSet`
+(M*) and `decomposableCharacterSet` (Unicode 3.2's STANDARD decomposition) — the four §11.6.1 D7 listed
+as kind (D) defects. Each is a ONE-PASS RULE over a property ICU already answers:
+`u_getIntPropertyValue(c, UCHAR_GENERAL_CATEGORY)` for the first three and
+`u_getIntPropertyValue(c, UCHAR_DECOMPOSITION_TYPE) == U_DT_CANONICAL` for the fourth, with one helper
+that coalesces runs. **THE DEFINITIONS WERE LOOKED UP, NOT RECALLED** — Apple's pages give the category
+letters and, for the fourth, "by the definition of STANDARD decomposition in version 3.2" — which is
+what makes the COMPATIBILITY line assertable: U+00C0 (canonical) is a member, U+FB00 (the ff ligature)
+and U+00A0 (noBreak space) are NOT, and the probe asserts both directions.
+
+**AND THE REASON THEY HAD BEEN REFUSED WAS WRONG, IN TWO PLACES.** The header said "the other four need
+Unicode general-category TABLES, which this library has no source for" and the register agreed that
+their "fix is a table". ICU IS ALREADY LINKED for five files of this library, and it answers exactly
+the two properties the definitions name — so the missing piece was never data, it was a RULE over a
+library we already bind. Both texts are corrected where they stood, and the probe's `excluded` list now
+says so too.
+
+**MEASURED, and two numbers corroborate the rules rather than merely passing them:** in the BMP,
+`capitalized = 31` (the documentation's readers independently report "about thirty obscure titlecase
+digraphs"), `symbols = 3854`, `marks = 1339`, `decomposable = 12665`.
+
+**VERIFIED.** The four checks are green on the guest (`FOUNDATION-STRING RESULT ok=35 fail=0`) with the
+probe's inventory DEMANDING them, and the whole Foundation tier stays 27/27 cases, 162/162 checks in
+48s.
+
+**A NEW FINDING, MEASURED WHILE MEASURING: THE LETTER SETS ARE LATIN, AND THIS LIBRARY SAID OTHERWISE
+BY SHIPPING THEM.** `+uppercaseLetterCharacterSet` is `NSMakeRange('A', 26)` and the lowercase one is
+`NSMakeRange('a', 26)`: in the BMP that is 26 members each, U+00C0 (À) is NOT a member, and
+`[uppercase isSupersetOfSet:capitalized]` is 0 — where Apple specifies uppercase as Lu **and** Lt, so
+the titlecase letters must be a SUBSET of it. The reason nothing caught this is worth stating: the
+class's api-complete check asserts that these sets EXIST (Apple documents them, so the inventory
+demands them), and nothing asserts what is IN them. The same machinery added here makes the letter,
+digit, whitespace and punctuation sets exact rules too; that is a SEPARATE unit because it changes the
+content of sets that already ship, and it is recorded here rather than done in passing.
+
+**TWO TRAPS THIS UNIT PAID FOR, both about the guest being a different build:**
+
+1. **A MISSING HEADER DECLARATION PASSES THE HOST.** The four methods were implemented but not declared
+   in `NSCharacterSet.h`, and the host build said nothing — because the probe that uses them
+   (`foundation_string`) is GUEST-ONLY, so the host never compiles it. The image build then failed with
+   `no known class method for selector 'symbolCharacterSet'`. The declarations now sit in the header's
+   nullability region, next to `illegalCharacterSet`'s.
+2. **A FILE INCLUDING A NEW SYSTEM HEADER NEEDS ITS PER-FILE INCLUDE FLAG.** `ncharacterset.m` joined
+   `FN_FOUNDATION_ICU`; without it the guest compile died with `'unicode/uchar.h' file not found`,
+   because that table is what puts `-I$(ICUPREFIX)/include` on the rule. The host table (`FN_HOST_ICU`)
+   got the same entry for the record, and the "five sources" comment became six.
+

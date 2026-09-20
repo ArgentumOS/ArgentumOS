@@ -13,6 +13,10 @@
 #import <foundation/NSString.h>
 #include <stdlib.h>
 #include <string.h>
+/* ICU ANSWERS THE TWO PROPERTIES THE RULE SETS BELOW ARE DEFINED BY (see §15.5). This library
+ * already links icuuc - five of its files use ICU for calendars and formatters - so this is a
+ * header, not a dependency. */
+#include <unicode/uchar.h>
 
 #define FN_MAX_CHARACTER	0xFFFF
 
@@ -450,7 +454,8 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
  * illegalCharacterSet (D7's kind (D), the table group's rule-shaped member). The Unicode standard
  * DEFINES the noncharacters - FDD0..FDEF and the last two code points of each plane - and the
  * surrogates are not characters at all. On this BMP-only class that is four ranges, exactly, and no
- * table: the other four of the group need general-category data and stay refused as DEFECTS.
+ * table: the group's OTHER FOUR are the ICU-backed rules below (§15.5), and the "need general-category
+ * data" reason this comment used to give was wrong - the data is already linked in.
  *
  * ONE BOUNDARY IS STATED RATHER THAN HIDDEN: the noncharacters at the end of the ASTRAL planes
  * (1FFFE/1FFFF and up) cannot be in a set that has no astral storage, and -longCharacterIsMember:
@@ -468,6 +473,124 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 		[built addCharactersInRange:NSMakeRange(0xFDD0, 0x20)];		/* the noncharacters */
 		[built addCharactersInRange:NSMakeRange(0xFFFE, 2)];		/* plane 0's last two */
 		set = built;
+	}
+	return set;
+}
+
+/*
+ * THE ICU-BACKED RULE SETS (§15.5). APPLE DEFINES THESE FOUR BY PUBLISHED PROPERTIES, not by tables:
+ *
+ *   symbolCharacterSet           the characters in Unicode General Category S*
+ *   capitalizedLetterCharacterSet the characters in Unicode General Category Lt
+ *   nonBaseCharacterSet          the characters in Unicode General Category M*
+ *   decomposableCharacterSet     characters representable as a composed sequence "by the definition of
+ *                                STANDARD decomposition in version 3.2" of Unicode
+ *
+ * and ICU answers exactly those two things - the general category and the decomposition type - which
+ * is why the register's claim that these needed DATA was wrong (§11.6.1 D7, corrected in §15.5): the
+ * data was already linked into this library. ONE SCAN, TWO PROPERTIES: u_getIntPropertyValue() reads
+ * the category for the first three and the decomposition type for the fourth, so the body below is
+ * the same code with a different property and a different value set.
+ *
+ * BMP ONLY, THE SAME BOUNDARY illegalCharacterSet STATES: this class stores a BMP range list, so
+ * 0..0xFFFF is the representation's whole domain and -longCharacterIsMember: answers NO above it. A
+ * character whose membership is astral is therefore genuinely absent rather than wrongly so.
+ *
+ * AND THE MEMBERSHIP MOVES WITH UNICODE'S VERSION, which Apple's own guide says of the whole family:
+ * the categories and the decomposition data are ICU's, so a code point whose property changes changes
+ * its membership here. That is a property of the rule rather than a gap in it.
+ *
+ * `values` is a value set of `property`; the scan coalesces runs, so each set is a handful of ranges
+ * and not one range per character.
+ */
+static NSCharacterSet *fn_set_by_property(const int *values, unsigned int count, UProperty property)
+{
+	NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
+	unsigned int character;
+	unsigned int runStart = 0;
+	BOOL inRun = NO;
+
+	for (character = 0; character <= FN_MAX_CHARACTER; character++) {
+		int value = u_getIntPropertyValue((UChar32)character, property);
+		BOOL member = NO;
+		unsigned int i;
+
+		for (i = 0; i < count; i++) {
+			if (values[i] == value) {
+				member = YES;
+				break;
+			}
+		}
+		if (member && !inRun) {
+			runStart = character;
+			inRun = YES;
+		} else if (!member && inRun) {
+			[built addCharactersInRange:NSMakeRange(runStart, character - runStart)];
+			inRun = NO;
+		}
+	}
+	if (inRun) {
+		[built addCharactersInRange:NSMakeRange(runStart, FN_MAX_CHARACTER + 1 - runStart)];
+	}
+	return built;
+}
+
++ (NSCharacterSet *)symbolCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	if (set == nil) {
+		static const int categories[] = {
+			U_MATH_SYMBOL, U_CURRENCY_SYMBOL, U_MODIFIER_SYMBOL, U_OTHER_SYMBOL
+		};
+
+		set = fn_set_by_property(categories, 4, UCHAR_GENERAL_CATEGORY);
+	}
+	return set;
+}
+
++ (NSCharacterSet *)capitalizedLetterCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	if (set == nil) {
+		/* Lt ALONE, which is what Apple says: NOT the uppercase letters. This set is small (about
+		 * thirty titlecase digraphs) and it is a SUBSET of the Lu+Lt that
+		 * +uppercaseLetterCharacterSet is specified to be. */
+		static const int categories[] = { U_TITLECASE_LETTER };
+
+		set = fn_set_by_property(categories, 1, UCHAR_GENERAL_CATEGORY);
+	}
+	return set;
+}
+
++ (NSCharacterSet *)nonBaseCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	if (set == nil) {
+		/* M*: non-spacing, enclosing and combining-spacing marks. */
+		static const int categories[] = {
+			U_NON_SPACING_MARK, U_ENCLOSING_MARK, U_COMBINING_SPACING_MARK
+		};
+
+		set = fn_set_by_property(categories, 3, UCHAR_GENERAL_CATEGORY);
+	}
+	return set;
+}
+
++ (NSCharacterSet *)decomposableCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	if (set == nil) {
+		/* U_DT_CANONICAL ALONE, which is the "standard decomposition" Apple's page names. A
+		 * COMPATIBILITY or noBreak decomposition does NOT qualify - so U+00C0 (À, canonical) is a
+		 * member and U+FB00 (the ff ligature) and U+00A0 (noBreak space) are not. That line is
+		 * asserted in the probe rather than left to this comment. */
+		static const int types[] = { U_DT_CANONICAL };
+
+		set = fn_set_by_property(types, 1, UCHAR_DECOMPOSITION_TYPE);
 	}
 	return set;
 }

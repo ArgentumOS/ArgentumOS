@@ -234,7 +234,11 @@ FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplet
 # ("$(FOUNDATION_CFLAGS) already selects ARC") was simply wrong.
 FN_FOUNDATION_SRCS  = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
 FN_FOUNDATION_NOARC = nsobject.m ntinystring.m ndateinterval.m
-FN_FOUNDATION_ICU   = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m
+# ncharacterset.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
+# category and the decomposition type, so <unicode/uchar.h> is on its include path. The link needed
+# nothing new - libfoundation has needed libicui18n/libicuuc/libicudata since F13.6.
+FN_FOUNDATION_ICU   = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m \
+                      ncharacterset.m
 FN_FOUNDATION_X11   = ncodec.m
 FN_FOUNDATION_ROOT  = nsproxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o

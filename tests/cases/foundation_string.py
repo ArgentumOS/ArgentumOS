@@ -36,6 +36,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_string"
 CHECKS = (
           "tiny", "owned", "mixed", "utf8", "mutable", "description", "characters-family", "characters-family-ownership", "cross-tu", "string-api-complete", "string-format", "string-format-tagged-object", "class-format-arguments", "string-compare", "string-transform", "string-convert", "string-path", "string-encoding", "string-mutable", "characterset-api-complete", "locale-basics", "locale-turkic-upper", "locale-turkic-lower", "locale-turkic-neutral", "locale-literal-high-byte", "locale-turkic-compare", "locale-boundaries", "locale-current", "locale-api-complete", "charset-bitmap-and-planes", "charset-illegal",
+          "charset-symbols", "charset-titled", "charset-non-base", "charset-decomposable",
           )
 
 

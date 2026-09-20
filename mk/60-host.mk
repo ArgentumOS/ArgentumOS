@@ -84,10 +84,11 @@ HOST_CFLAGS      = -fPIC -g -Iinclude -Iuserland $(HOST_OBJCFLAGS)
 HOST_RPATH       = -Wl,-rpath,$(CURDIR)/$(HOST_LIBDIR) -Wl,-rpath,$(CURDIR)/$(HOST_OBJCPFX)/lib
 HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc
 
-# THE PER-FILE TABLES THAT STILL MATTER: five sources include <unicode/...>, one includes <zlib.h>,
+# THE PER-FILE TABLES THAT STILL MATTER: six sources include <unicode/...>, one includes <zlib.h>,
 # and one is a root class. (The guest block's MRC list is NOT repeated - the whole library is MRC.)
 FN_HOST_SRCS     = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
-FN_HOST_ICU      = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m
+FN_HOST_ICU      = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m \
+                   ncharacterset.m
 FN_HOST_X11      = ncodec.m
 FN_HOST_ROOT     = nsproxy.m
 FN_HOST_OBJS     = $(addprefix $(HOST_OBJDIR)/,$(FN_HOST_SRCS:.m=.o)) $(HOST_OBJDIR)/plist.o \

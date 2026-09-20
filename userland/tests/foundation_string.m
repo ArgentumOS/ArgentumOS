@@ -521,6 +521,8 @@ int main(void)
 			"lowercaseLetterCharacterSet", "uppercaseLetterCharacterSet",
 						"characterSetWithBitmapRepresentation:", "characterSetWithContentsOfFile:",
 			"illegalCharacterSet",
+			"symbolCharacterSet", "capitalizedLetterCharacterSet",
+			"nonBaseCharacterSet", "decomposableCharacterSet",
 NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -539,10 +541,11 @@ NULL
 			"formIntersectionWithCharacterSet:", NULL
 		};
 		static const char *excluded[] = {
-			/* STILL NEEDS THE UNICODE TABLES - data, not machinery, which is why these stay
-			 * refused and are DEFECTS rather than necessities (§11.6.1 D7). */
-			"symbolCharacterSet", "capitalizedLetterCharacterSet",
-			"nonBaseCharacterSet", "decomposableCharacterSet",
+			/* THE FOUR THAT USED TO BE LISTED HERE NOW SHIP, and they are DEMANDED above: Apple
+			 * defines three of them by Unicode GENERAL CATEGORY (S*, Lt, M*) and the fourth by
+			 * Unicode 3.2's STANDARD DECOMPOSITION, and ICU - already linked into this library for
+			 * five of its files - answers both. "Needs the Unicode tables" was the wrong reason
+			 * (§15.5), which is why they were DEFECTS rather than necessities. */
 			/* illegalCharacterSet USED TO BE LISTED HERE. It is a RULE rather than a table - the
 			 * surrogates plus the noncharacters - so it SHIPS, and it is DEMANDED above. */
 			/* FIVE USED TO BE NAMED HERE as needing "the Unicode character tables" or "a bitmap
@@ -874,6 +877,63 @@ NULL
 			(int)[illegal characterIsMember:(unichar)0xFDEF],
 			(int)[illegal characterIsMember:(unichar)0xD7FF],
 			(int)[illegal characterIsMember:(unichar)0xFDF0]] UTF8String]);
+	}
+
+	{
+		/* THE ICU-BACKED RULE SETS (§15.5). The NEGATIVES carry as much of the claim as the
+		 * positives - a set built from the wrong categories would still contain '$' - and each
+		 * negative below is the category NEXT TO the one claimed, so the check fails for a set
+		 * built from L*, N*, P* or Zs rather than only for an empty one. */
+		NSCharacterSet *symbols = [NSCharacterSet symbolCharacterSet];
+		NSCharacterSet *titled = [NSCharacterSet capitalizedLetterCharacterSet];
+		NSCharacterSet *marks = [NSCharacterSet nonBaseCharacterSet];
+		NSCharacterSet *decomposable = [NSCharacterSet decomposableCharacterSet];
+
+		check("charset-symbols",
+		      symbols != nil &&
+		      [symbols characterIsMember:(unichar)'$'] &&		/* U+0024, Sc */
+		      [symbols characterIsMember:(unichar)'+'] &&		/* U+002B, Sm */
+		      [symbols characterIsMember:(unichar)'^'] &&		/* U+005E, Sk */
+		      [symbols characterIsMember:(unichar)0x00A9] &&	/* U+00A9 (c), So */
+		      ![symbols characterIsMember:(unichar)'A'] &&
+		      ![symbols characterIsMember:(unichar)'1'] &&
+		      ![symbols characterIsMember:(unichar)' '] &&
+		      ![symbols characterIsMember:(unichar)0x0301],
+		      "S*: $ + ^ (c) in; a letter, a digit, a space and a mark out");
+
+		check("charset-titled",
+		      titled != nil &&
+		      [titled characterIsMember:(unichar)0x01C5] &&	/* Dz with caron, the Lt letter */
+		      ![titled characterIsMember:(unichar)0x01C4] &&	/* its UPPERCASE twin, Lu */
+		      ![titled characterIsMember:(unichar)'A'] &&
+		      ![titled characterIsMember:(unichar)'a'],
+		      /* PRINTED RATHER THAN ASSERTED: Apple specifies +uppercaseLetterCharacterSet as Lu
+		       * AND Lt, so it must be a superset of this set. This library's is `NSMakeRange('A',
+		       * 26)` - Latin capitals only - so the relation reads 0 here and is recorded as an open
+		       * item (§15.5) rather than asserted into a red check for a reason this probe did not
+		       * measure. */
+		      [[NSString stringWithFormat:@"01c5=%d 01c4=%d A=%d | inUppercase=%d",
+			(int)[titled characterIsMember:(unichar)0x01C5],
+			(int)[titled characterIsMember:(unichar)0x01C4],
+			(int)[titled characterIsMember:(unichar)'A'],
+			(int)[[NSCharacterSet uppercaseLetterCharacterSet] isSupersetOfSet:titled]] UTF8String]);
+
+		check("charset-non-base",
+		      marks != nil &&
+		      [marks characterIsMember:(unichar)0x0301] &&	/* Mn: combining acute */
+		      [marks characterIsMember:(unichar)0x20DD] &&	/* Me: combining enclosing circle */
+		      [marks characterIsMember:(unichar)0x0903] &&	/* Mc: devanagari sign visarga */
+		      ![marks characterIsMember:(unichar)'a'] &&
+		      ![marks characterIsMember:(unichar)0x00C0],
+		      "M*: Mn, Me and Mc in; a letter and the PRECOMPOSED A-grave out");
+
+		check("charset-decomposable",
+		      decomposable != nil &&
+		      [decomposable characterIsMember:(unichar)0x00C0] &&	/* A-grave: canonical */
+		      ![decomposable characterIsMember:(unichar)0xFB00] &&	/* ff ligature: COMPATIBILITY */
+		      ![decomposable characterIsMember:(unichar)0x00A0] &&	/* noBreak space: noBreak */
+		      ![decomposable characterIsMember:(unichar)'A'],
+		      "STANDARD decomposition only: A-grave in, the ff ligature and noBreak space out");
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

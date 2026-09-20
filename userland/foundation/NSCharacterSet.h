@@ -61,10 +61,18 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSCharacterSet *)newlineCharacterSet;
 + (nullable NSCharacterSet *)decimalDigitCharacterSet;
 + (nullable NSCharacterSet *)letterCharacterSet;
-/* THE RULE-SHAPED ONE OF THE FIVE (D7's kind (D)). The other four need Unicode general-category
- * TABLES, which this library has no source for; this one is a DEFINITION from the standard - the
- * surrogates plus the noncharacters - so it is a rule, not a table. */
+/* THE RULE-SHAPED ONE OF THE FIVE (D7's kind (D)), and the first to land: a DEFINITION from the
+ * standard - the surrogates plus the noncharacters - so it is a rule, not a table. */
 + (nullable NSCharacterSet *)illegalCharacterSet;
+/* THE OTHER FOUR, WHICH LANDED IN §15.5 - AND THE "NEEDS TABLES" CLAIM WAS WRONG, which is why they
+ * waited: Apple defines three of them by Unicode GENERAL CATEGORY (S*, Lt, M*) and the fourth by
+ * Unicode 3.2's STANDARD DECOMPOSITION, and ICU - already linked into this library for five of its
+ * files, before this one - answers exactly those properties. So each is a ONE-PASS RULE over data
+ * that was already in the image, and the register's correction is recorded at the implementations. */
++ (nullable NSCharacterSet *)symbolCharacterSet;
++ (nullable NSCharacterSet *)capitalizedLetterCharacterSet;
++ (nullable NSCharacterSet *)nonBaseCharacterSet;
++ (nullable NSCharacterSet *)decomposableCharacterSet;
 + (nullable NSCharacterSet *)alphanumericCharacterSet;
 + (nullable NSCharacterSet *)punctuationCharacterSet;
 + (nullable NSCharacterSet *)controlCharacterSet;
