@@ -355,6 +355,19 @@ int main(void)
 		  (double)count_nonzero(c), W * H * 4, 0);
 	CGContextRelease(c);
 
+	/* AND THE SAME CASE WITH THE OUTLINE ROTATED — which is how the bug was found, and
+	 * which is a DIFFERENT PATH through the clipper rather than a re-run of the same one:
+	 * a rotated quad's sides meet the surface's four sides at non-integral parameters, so
+	 * each of the four Sutherland–Hodgman passes INTERPOLATES a new vertex instead of
+	 * reusing a corner. The surface must still come out fully painted. */
+	c = fresh();
+	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+	CGContextRotateCTM(c, 0.7);
+	CGContextFillRect(c, CGRectMake(-16.0, -16.0, 32.0, 32.0));
+	check_num("a ROTATED enclosing fill paints the whole surface",
+		  (double)count_nonzero(c), W * H * 4, 0);
+	CGContextRelease(c);
+
 	/* --- the state stack ----------------------------------------------------- */
 	c = fresh();
 	CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
