@@ -1,0 +1,39 @@
+/*
+ * EmitsInit.ag — §7.49's initializer, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * §7.49 gives `init` its own rules, and every one of them is the EMITTER's
+ * rather than the language's: the `method` keyword and the `-> Self` return are
+ * implied and unwritten, and the body writes no `return` at all. So an
+ * initializer is the one declaration whose emitted form carries content the
+ * author never wrote, which is exactly what a golden has to pin.
+ *
+ * Both rules were missing, and the result was a silent wrong answer rather than
+ * a loud one: `init(n: Int32) { … }` emitted
+ *
+ *     - (void)init:(int32_t)n { … }
+ *
+ * — a method in the `init` family, so clang accepted it and only warned — and
+ * the `- (instancetype)init(n:)` that every `Class(n: 3)` call is a send to did
+ * not exist at all. Nothing but looking at the emitted text could have caught
+ * it, which is what this file is for.
+ *
+ * `Point2` is a ROOT class on purpose. §7.49's subclass chain
+ * (`self = Superclass()`, emitting `self = [super init]`) is a separate rule with
+ * its own emission, and a specimen that needed it would assert two things at
+ * once.
+ */
+class Point2: Object {
+    property x: Int32
+    property y: Int32
+
+    init(x: Int32, y: Int32) {
+        self.x = x;
+        self.y = y;
+    }
+
+    method sum() -> Int32 {
+        return self.x + self.y;
+    }
+}

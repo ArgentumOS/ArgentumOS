@@ -435,6 +435,19 @@ superclass_text(const char *name, char *buf, size_t size)
  * golden and it is the specimen's own declaration this function has to match,
  * so §2 wins and the disagreement is recorded rather than papered over.
  */
+/*
+ * §7.49: `init` is the whole convention for an initializer. The `method` keyword
+ * and the `-> Self` return are implied, and §5 says each is "accepted and
+ * ignored" when spelled out — so a METHOD named `init` is an initializer
+ * whatever else its declaration says, and the name is the only test there is.
+ */
+static int
+is_initializer(const st_decl *d)
+{
+	return d->kind == ST_DECL_METHOD && d->name.text != NULL &&
+	       strcmp(d->name.text, "init") == 0;
+}
+
 static int
 emit_signature(FILE *out, const st_decl *d, const char *terminator,
 	       const char **error)
@@ -450,7 +463,19 @@ emit_signature(FILE *out, const st_decl *d, const char *terminator,
 		}
 	}
 	fprintf(out, "%s (", d->is_class_method ? "+" : "-");
-	emit_type(out, &d->type);
+	/*
+	 * §7.49: an initializer's return is `instancetype` — the `-> Self` it is
+	 * written without — and the override is UNCONDITIONAL, which is what
+	 * "accepted and ignored" means for a spelled-out `-> Self`. Without this
+	 * an initializer emitted `- (void)init(n:)` and the published
+	 * `- (instancetype)init` — the one every `T(value: 3)` call is a send to
+	 * — did not exist, so the call form could not compile against it.
+	 */
+	if (is_initializer(d)) {
+		fprintf(out, "instancetype");
+	} else {
+		emit_type(out, &d->type);
+	}
 	fprintf(out, ")%s", d->name.text);
 	for (i = 0; i < d->param_count; i++) {
 		const st_param *p = &d->params[i];
@@ -1772,6 +1797,21 @@ emit_definitions(FILE *out, const st_decl *decls, const char **error)
 		if (!emit_stmt_list(out, d->body, 1,
 				    map_type(d->type.name.text), error)) {
 			return 0;
+		}
+		/*
+		 * §7.49: an initializer's body ENDS in `return self;` whatever the
+		 * author wrote. It is the EMITTER that needs the statement, not the
+		 * language: ObjC's `- (instancetype)init` has to return the object,
+		 * and a Sterling initializer writes no `return` at all.
+		 *
+		 * Appended unconditionally, which is what makes a spelled-out
+		 * `return self` "accepted and ignored" rather than a special case —
+		 * the author's own return becomes a redundant statement in front of
+		 * the one the language always writes, and the last word is the
+		 * emitter's.
+		 */
+		if (is_initializer(d)) {
+			fprintf(out, "\treturn self;\n");
 		}
 		fprintf(out, "}\n\n");
 	}

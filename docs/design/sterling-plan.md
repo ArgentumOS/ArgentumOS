@@ -343,6 +343,29 @@ bugs actually are.
     `NSString *` *inside* that region — asserting non-null, the opposite of what
     was written. Recorded on the type (§7.62's scalar `?` is a different
     mechanism, the pair-struct) and refused until §4's table emits `_Nullable`.
+  - **§7.49's initializer, DECLARATION side (2026-09).** A method named `init` is
+    an initializer — the name is the whole convention — so its emitted return is
+    `instancetype`, and the override is UNCONDITIONAL because §5 says a
+    spelled-out `method` and `-> Self` are "accepted and ignored". Its body ends
+    in `return self;` whatever the author wrote, also appended unconditionally,
+    which is what makes an explicit `return self` the same statement rather than
+    a special case. **Both rules were missing and both failed SILENTLY**: the
+    emitted `- (void)init:(int32_t)n` is in the `init` family, so clang accepted
+    it with only a warning, and the `- (instancetype)init(n:)` that every
+    `Class(n: 3)` call is a send to did not exist at all. Reading the emitted text
+    was the only thing that could have found it, which is what the `EmitsInit`
+    specimen is for.
+  - Still owed from that section, and it is the half that makes an initializer
+    usable: **the construction call `T(value: 3)`** (`[[T alloc] initValue:3]`,
+    §7.8/§7.49 — today it emits a C call AND a bogus `extern void T(BOOL)`) and
+    **§7.49's chain `self = Superclass()`** (`self = [super init]`, never a fresh
+    `alloc` — a fresh object would discard the one being initialized). Both are
+    one tree REWRITE placed where the enclosing class is known, the shape §7.42's
+    resolution already uses, and that is also what removes the bogus `extern`: the
+    collection consults node KIND, so a construction that is no longer a CALL is
+    not collected as one. The predicate is already there (`type_name_is_class`),
+    `st_name` is `{ char *text; }` so a piece name is assignable, and the chain is
+    the one place the receiver can be checked against the class's superclass.
   - Still owed here: `get`/`set` blocks (§7.54/§7.55, so a `set` block and its
     implicit writable `newValue`), §9.16's synthesised *defaults* method (which is
     what a property initializer needs — neither an ivar nor a C struct member may
