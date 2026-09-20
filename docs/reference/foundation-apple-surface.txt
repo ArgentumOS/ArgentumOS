@@ -3229,23 +3229,23 @@ var	struck	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utili
 var	open	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSUnderlyingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSUndoCloseGroupingRunLoopOrdering	NSUndoManager	App Support / Undo / Working with run loops	-	objc
-var	open	NSUndoManagerCheckpointNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerCheckpointNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerDidCloseUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerDidCloseUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerDidOpenUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerDidOpenUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerDidRedoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerDidRedoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerDidUndoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerDidUndoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerCheckpointNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerCheckpointNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerDidCloseUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerDidCloseUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerDidOpenUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerDidOpenUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerDidRedoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerDidRedoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerDidUndoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerDidUndoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
 var	open	NSUndoManagerGroupIsDiscardableKey	NSUndoManager	App Support / Undo / Working with notifications	-	objc
-var	open	NSUndoManagerWillCloseUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerWillCloseUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerWillRedoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerWillRedoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerWillUndoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUndoManagerWillUndoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerWillCloseUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerWillCloseUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerWillRedoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerWillRedoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
+var	shipped	NSUndoManagerWillUndoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUndoManagerWillUndoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
 var	shipped	NSUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc

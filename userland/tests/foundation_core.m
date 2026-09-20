@@ -1196,6 +1196,67 @@ int main(void)
 			[[box log] count] > 0 ? [[box log] objectAtIndex:0] : @"(none)"] UTF8String]);
 	}
 
+	{
+		/* THE EIGHT NOTIFICATIONS (W4's centre, §22): they go to the DEFAULT centre with the MANAGER as
+		 * their object, and what is asserted is the ORDER (a will before its did) plus presence, not an
+		 * exact list — the close paths legitimately add checkpoints, and pinning the whole sequence
+		 * would pin this implementation's internals rather than the documented contract. THE LOG IS
+		 * PRINTED on failure, because a sequence is the evidence here. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+		NSMutableArray *log = [[NSMutableArray alloc] init];
+		NSArray *names = [NSArray arrayWithObjects:
+					NSUndoManagerCheckpointNotification,
+					NSUndoManagerDidCloseUndoGroupNotification,
+					NSUndoManagerDidOpenUndoGroupNotification,
+					NSUndoManagerDidRedoChangeNotification,
+					NSUndoManagerDidUndoChangeNotification,
+					NSUndoManagerWillCloseUndoGroupNotification,
+					NSUndoManagerWillRedoChangeNotification,
+					NSUndoManagerWillUndoChangeNotification, nil];
+		NSUInteger i;
+		NSInteger indexOf;
+		BOOL observed, ordered, objectIsManager;
+
+		for (i = 0; i < [names count]; i++) {
+			[center addObserverForName:[names objectAtIndex:i] object:nil queue:nil
+					usingBlock:^(NSNotification *note) {
+				[log addObject:[NSString stringWithFormat:@"%@%@", [note name],
+						([note object] == undo ? @"" : @"(WRONG OBJECT)")]];
+			}];
+		}
+
+		/* ONE registration opens the implicit group; then an undo and a redo. */
+		[box addItem:@"n"];
+		observed = [log count] > 0 &&
+			   [log containsObject:NSUndoManagerDidOpenUndoGroupNotification];
+		objectIsManager = ![log containsObject:[NSString stringWithFormat:@"%@(WRONG OBJECT)",
+						NSUndoManagerDidOpenUndoGroupNotification]];
+
+		[undo undo];
+		indexOf = (NSInteger)[log indexOfObject:NSUndoManagerWillUndoChangeNotification];
+		{
+			NSInteger after = (NSInteger)[log indexOfObject:NSUndoManagerDidUndoChangeNotification];
+
+			ordered = indexOf >= 0 && after > indexOf;
+		}
+		[undo redo];
+		indexOf = (NSInteger)[log indexOfObject:NSUndoManagerWillRedoChangeNotification];
+		{
+			NSInteger after = (NSInteger)[log indexOfObject:NSUndoManagerDidRedoChangeNotification];
+
+			ordered = ordered && indexOf >= 0 && after > indexOf;
+		}
+
+		check("undo-notifications",
+		      observed && objectIsManager && ordered &&
+		      [log containsObject:NSUndoManagerCheckpointNotification],
+		      [[NSString stringWithFormat:@"objectIsManager=%d ordered=%d log=%@",
+			(int)objectIsManager, (int)ordered,
+			[log componentsJoinedByString:@" "]] UTF8String]);
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -4707,3 +4707,40 @@ timeout.
 the `NSNotificationName` typedef, and the per-class notification NAME constants, which belong with their
 owner classes rather than here.
 
+## 22. NSUndoManager'S EIGHT NOTIFICATIONS — THE FOLLOW-ON §21 UNBLOCKED (2026-09-20)
+
+**THE HEADER SAID THIS COULD NOT BE DONE FOR THE WRONG REASON, and §21 made it possible.** The undo
+class's notifications were named as impossible because "this library has no notification centre"; the
+centre now exists, so the eight names are DECLARED (in `NSUndoManager.h`) and POSTED at the points Apple
+documents. Each goes to the DEFAULT centre, **its object is the manager**, and none carries a userInfo —
+the one documented key, `NSUndoManagerGroupIsDiscardableKey`, belongs to the DISCARDABLE-ACTIONS surface
+(`-setActionIsDiscardable:`, the two `…ActionIsDiscardable` questions), which this class does not have and
+which is named as missing rather than quietly faked with an empty userInfo.
+
+**THE POSTING POINTS FOLLOW APPLE'S WORDING, WHICH IS NARROWER THAN IT IS USUALLY TAKEN FOR:**
+
+* `DidOpenUndoGroup` is the OPEN. `Checkpoint` is posted when a group is DEFERRED — a nested open — and
+  NOT when a top-level one is opened, which is the "except when it opens a top-level group" in Apple's own
+  sentence; it is also posted when a group closes and **when the redo stack is CHECKED**, which is why a
+  checkpoint observer that calls `-canRedo` loops forever (Apple documents the hazard; the header comment
+  is where a reader meets it).
+* `WillClose`/`DidClose` surround a CLOSE, and the pair is complete on the far side of the work — the did
+  followed by a checkpoint, because that is where the manager's state is settled.
+* An undo is `WillUndoChange`, then `Checkpoint`, then the work, then `DidUndoChange`; a redo is the same
+  with its own two names. The probe asserts that ORDER plus presence rather than an exact sequence: the
+  close paths legitimately add checkpoints, and pinning the whole list would pin this implementation's
+  internals instead of the documented contract. The log is PRINTED on failure, because a sequence is the
+  evidence.
+
+**THE LEDGER: SIXTEEN ROWS MOVE** — each of the eight names is documented twice, once owned by
+`NSNotification` and once by `NSUndoManager`, and all sixteen go `open` -> `shipped`;
+`foundation-sweep --check` is consistent.
+
+**VERIFIED.** Host: 298/298 with no crashed probe. Guest: `foundation_core` is `ok=54 fail=0`
+(`undo-notifications` asserts the object is the manager, the will-before-did ordering in both directions,
+and that a checkpoint is among what arrives).
+
+**AND THE CLASS IS NOW COMPLETE APART FROM TWO NAMED THINGS:** `-undoMenuTitleForUndoActionName:` (whose
+titles are per-locale TEMPLATES — data this library does not have) and the discardable-actions surface
+plus its one userInfo key (a surface, not a mechanism).
+

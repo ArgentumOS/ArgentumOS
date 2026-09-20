@@ -10,6 +10,8 @@
 #import <Foundation/NSInvocation.h>
 #import <Foundation/NSMethodSignature.h>
 #import <Foundation/NSProxy.h>
+#import <Foundation/NSNotification.h>
+#import <Foundation/NSNotificationCenter.h>
 #import <objc/runtime.h>
 
 /*
@@ -28,6 +30,16 @@ extern void _Block_release(const void *aBlock);
 @interface NSUndoManager (FNPrivate)
 - (void)registerUndoWithTarget:(id)target invocation:(NSInvocation *)invocation;
 @end
+
+/* THE EIGHT NAMES, defined here and declared in the header (W4's centre carries them, §22). */
+NSString *const NSUndoManagerCheckpointNotification = @"NSUndoManagerCheckpointNotification";
+NSString *const NSUndoManagerDidCloseUndoGroupNotification = @"NSUndoManagerDidCloseUndoGroupNotification";
+NSString *const NSUndoManagerDidOpenUndoGroupNotification = @"NSUndoManagerDidOpenUndoGroupNotification";
+NSString *const NSUndoManagerDidRedoChangeNotification = @"NSUndoManagerDidRedoChangeNotification";
+NSString *const NSUndoManagerDidUndoChangeNotification = @"NSUndoManagerDidUndoChangeNotification";
+NSString *const NSUndoManagerWillCloseUndoGroupNotification = @"NSUndoManagerWillCloseUndoGroupNotification";
+NSString *const NSUndoManagerWillRedoChangeNotification = @"NSUndoManagerWillRedoChangeNotification";
+NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUndoChangeNotification";
 
 /* ONE REGISTERED UNDO, as an object rather than a dictionary: the TARGET IS NOT RETAINED - an undo
  * that kept its own target alive could never be collected - while the argument IS, because a caller
@@ -309,14 +321,25 @@ extern void _Block_release(const void *aBlock);
 	return [proxy autorelease];
 }
 
+/* THE ONE PLACE A NOTIFICATION IS POSTED FROM: the default centre, with the manager as the object and
+ * no userInfo. */
+- (void)fnPost:(NSString *)name
+{
+	[[NSNotificationCenter defaultCenter] postNotificationName:name object:self];
+}
+
 - (void)beginUndoGrouping
 {
 	if (_group != nil) {
 		_groupingLevel++;
+		/* A NESTED OPEN IS A CHECKPOINT; A TOP-LEVEL ONE IS NOT, which is the "except when it opens a
+		 * top-level group" in Apple's sentence about this notification. */
+		[self fnPost:NSUndoManagerCheckpointNotification];
 		return;
 	}
 	_group = [[NSMutableArray alloc] init];
 	_groupingLevel = 1;
+	[self fnPost:NSUndoManagerDidOpenUndoGroupNotification];
 }
 
 - (void)endUndoGrouping
@@ -328,8 +351,10 @@ extern void _Block_release(const void *aBlock);
 	}
 	if (_groupingLevel > 1) {
 		_groupingLevel--;
+		[self fnPost:NSUndoManagerCheckpointNotification];
 		return;
 	}
+	[self fnPost:NSUndoManagerWillCloseUndoGroupNotification];
 	if ([_group count] > 0) {
 		[_undoStack addObject:_group];
 		[_group release];
@@ -339,6 +364,10 @@ extern void _Block_release(const void *aBlock);
 		_group = nil;
 	}
 	_groupingLevel = 0;
+	/* THE PAIR IS COMPLETE ON THE FAR SIDE OF THE CLOSE: the did follows the work, and the checkpoint
+	 * follows both, because that is the moment the manager's state is settled. */
+	[self fnPost:NSUndoManagerDidCloseUndoGroupNotification];
+	[self fnPost:NSUndoManagerCheckpointNotification];
 }
 
 - (NSInteger)groupingLevel
@@ -353,6 +382,9 @@ extern void _Block_release(const void *aBlock);
 
 - (BOOL)canRedo
 {
+	/* CHECKING THE REDO STACK IS ITSELF A CHECKPOINT, because it is the question whose answer changes
+	 * when the stacks move: Apple's page lists this call among the three things that post it. */
+	[self fnPost:NSUndoManagerCheckpointNotification];
 	return [_redoStack count] > 0;
 }
 
@@ -417,9 +449,14 @@ extern void _Block_release(const void *aBlock);
 	if ([_undoStack count] == 0) {
 		return;
 	}
+	/* WILL, THEN CHECKPOINT, THEN THE WORK — Apple's documented order for an undo — and the DID after
+	 * it, once the manager's state has settled. */
+	[self fnPost:NSUndoManagerWillUndoChangeNotification];
+	[self fnPost:NSUndoManagerCheckpointNotification];
 	_undoing = YES;
 	[self performFromStack:_undoStack toStack:_redoStack];
 	_undoing = NO;
+	[self fnPost:NSUndoManagerDidUndoChangeNotification];
 }
 
 - (void)redo
@@ -430,9 +467,12 @@ extern void _Block_release(const void *aBlock);
 	if ([_redoStack count] == 0) {
 		return;
 	}
+	[self fnPost:NSUndoManagerWillRedoChangeNotification];
+	[self fnPost:NSUndoManagerCheckpointNotification];
 	_redoing = YES;
 	[self performFromStack:_redoStack toStack:_undoStack];
 	_redoing = NO;
+	[self fnPost:NSUndoManagerDidRedoChangeNotification];
 }
 
 - (void)setActionName:(NSString *)actionName

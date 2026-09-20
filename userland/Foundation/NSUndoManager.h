@@ -14,10 +14,12 @@
  * NOTIFICATIONS (five of them) cannot be posted because THIS LIBRARY HAS NO NOTIFICATION CENTRE -
  * the notifications family is §12's W4 and is not built - so their absence is a DEPENDENCY rather
  * than an omission, which is the opposite of what this line used to claim ("this library has the
- * notification centre to carry them"). `-undoMenuTitleForUndoActionName:` (menu strings) remains
- * named - its titles are per-locale TEMPLATES, which is data this library does not have - and what is
- * here is the stack, its grouping, its names, its switch, all three registration doors (the triple,
- * the proxy and the BLOCK) and the redo path.
+ * notification centre to carry them") SHIP NOW that the centre exists (§21): the eight names are
+ * declared below and posted at the points Apple documents. `-undoMenuTitleForUndoActionName:` (menu
+ * strings) remains named - its titles are per-locale TEMPLATES, which is data this library does not
+ * have - and so does the DISCARDABLE-ACTIONS half (the `NSUndoManagerGroupIsDiscardableKey` userInfo
+ * and the two `-undo/redoActionIsDiscardable` questions behind it), which is a surface this class does
+ * not have rather than a notification it cannot post.
  */
 #ifndef FOUNDATION_NSUNDOMANAGER_H
 #define FOUNDATION_NSUNDOMANAGER_H
@@ -81,6 +83,24 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly) NSInteger groupingLevel;
 
 - (void)removeAllActions;
+
+/*
+ * THE EIGHT NOTIFICATIONS (W4's centre, §22). THEY GO TO THE DEFAULT CENTRE, their OBJECT IS THE
+ * MANAGER, and none carries a userInfo — the one documented key belongs to the discardable-actions
+ * surface named above, which this class does not have. WHERE EACH IS POSTED is Apple's own wording,
+ * and the wording is narrower than it is usually taken for: DidOpenUndoGroup is the OPEN, WillClose/
+ * DidClose surround a CLOSE, and CHECKPOINT is posted when a group is deferred (a nested open), when a
+ * group closes, and when the REDO STACK IS CHECKED — which is why a checkpoint observer that calls
+ * -canRedo loops forever (Apple documents the hazard; this comment is where a reader meets it).
+ */
+extern NSString *const NSUndoManagerCheckpointNotification;
+extern NSString *const NSUndoManagerDidCloseUndoGroupNotification;
+extern NSString *const NSUndoManagerDidOpenUndoGroupNotification;
+extern NSString *const NSUndoManagerDidRedoChangeNotification;
+extern NSString *const NSUndoManagerDidUndoChangeNotification;
+extern NSString *const NSUndoManagerWillCloseUndoGroupNotification;
+extern NSString *const NSUndoManagerWillRedoChangeNotification;
+extern NSString *const NSUndoManagerWillUndoChangeNotification;
 
 - (void)disableUndoRegistration;
 - (void)enableUndoRegistration;
