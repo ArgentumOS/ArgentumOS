@@ -62,6 +62,7 @@ CHECKS = (
     # W12's dimensional families (the offset one first, then the ratio families)
     "unit-temperature-offset", "unit-duration", "unit-length",
     "unit-mass", "unit-area", "unit-angle",
+    "unit-speed", "unit-acceleration", "unit-frequency", "unit-energy", "unit-power",
 )
 
 

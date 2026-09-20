@@ -103,6 +103,11 @@
 #import <Foundation/NSUnitMass.h>
 #import <Foundation/NSUnitArea.h>
 #import <Foundation/NSUnitAngle.h>
+#import <Foundation/NSUnitSpeed.h>
+#import <Foundation/NSUnitAcceleration.h>
+#import <Foundation/NSUnitFrequency.h>
+#import <Foundation/NSUnitEnergy.h>
+#import <Foundation/NSUnitPower.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

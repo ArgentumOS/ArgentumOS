@@ -112,6 +112,11 @@
  *   unit-area               THE CROSS-FAMILY CHECK: a square foot IS a foot by a foot, asserted against
  *                           NSUnitLength's coefficient rather than against a second literal
  *   unit-angle              asserted AT THE API: 360 degrees and 400 gradians are each one revolution
+ *   unit-speed              CROSS-FAMILY: a mile per hour IS NSUnitLength's mile over NSUnitDuration's hour
+ *   unit-acceleration       standard gravity is a definition (CGPM 1901), so it is asserted exactly
+ *   unit-frequency          framesPerSecond IS the hertz — the alias a hand-written table gets wrong
+ *   unit-energy             the kilowatt-hour as a derived definition, and the THERMOCHEMICAL calorie
+ *   unit-power              horsepower recomputed as 550 ft.lbf/s rather than quoted
  */
 
 #import <Foundation/Foundation.h>
@@ -1785,6 +1790,86 @@ int main(void)
 		      [NSUnitAngle baseUnit] == [NSUnitAngle radians],
 		      [NSString stringWithFormat:@"360deg=%g rev, 400grad=%g rev, 60arcmin=%g deg, "
 			 "90deg=%g rev", turns, gradianTurns, arcMinuteDegrees, quarterTurns]);
+	}
+
+	/* ---- W12 batch 3: five more ratio families, each asserted against a relation ---- */
+	{
+		/*
+		 * SPEED: the coefficients are OTHER FAMILIES' DEFINITIONS DIVIDED, so the check is CROSS-FAMILY —
+		 * a mile per hour IS NSUnitLength's mile over an hour, and a knot IS the nautical mile over one.
+		 */
+		NSUnitConverterLinear *miles = (NSUnitConverterLinear *)[[NSUnitLength miles] converter];
+		NSUnitConverterLinear *nautical = (NSUnitConverterLinear *)[[NSUnitLength nauticalMiles] converter];
+		NSUnitConverterLinear *kilometers = (NSUnitConverterLinear *)[[NSUnitLength kilometers] converter];
+		NSUnitConverterLinear *mph = (NSUnitConverterLinear *)[[NSUnitSpeed milesPerHour] converter];
+		NSUnitConverterLinear *knots = (NSUnitConverterLinear *)[[NSUnitSpeed knots] converter];
+		NSUnitConverterLinear *kph = (NSUnitConverterLinear *)[[NSUnitSpeed kilometersPerHour] converter];
+
+		check("unit-speed",
+		      fn_close([mph coefficient], [miles coefficient] / 3600.0) &&
+		      fn_close([knots coefficient], [nautical coefficient] / 3600.0) &&
+		      fn_close([kph coefficient], [kilometers coefficient] / 3600.0) &&
+		      [NSUnitSpeed baseUnit] == [NSUnitSpeed metersPerSecond],
+		      [NSString stringWithFormat:@"mph=%g (mi/3600=%g) kn=%g (nmi/3600=%g)",
+			 [mph coefficient], [miles coefficient] / 3600.0,
+			 [knots coefficient], [nautical coefficient] / 3600.0]);
+	}
+
+	{
+		/* ACCELERATION: standard gravity is a DEFINITION (CGPM 1901), so it is asserted exactly. */
+		NSUnitConverterLinear *gravity = (NSUnitConverterLinear *)[[NSUnitAcceleration gravity] converter];
+
+		check("unit-acceleration",
+		      [gravity coefficient] == 9.80665 &&
+		      [NSUnitAcceleration baseUnit] == [NSUnitAcceleration metersPerSecondSquared],
+		      [NSString stringWithFormat:@"g=%g", [gravity coefficient]]);
+	}
+
+	{
+		/* FREQUENCY: framesPerSecond IS the hertz — the alias a hand-written table gives its own
+		 * coefficient to, and then gets slightly wrong. */
+		NSUnitConverterLinear *fps = (NSUnitConverterLinear *)[[NSUnitFrequency framesPerSecond] converter];
+		NSUnitConverterLinear *hertz = (NSUnitConverterLinear *)[[NSUnitFrequency hertz] converter];
+		NSUnitConverterLinear *kilohertz = (NSUnitConverterLinear *)[[NSUnitFrequency kilohertz] converter];
+
+		check("unit-frequency",
+		      fps != nil && hertz != nil &&
+		      [fps coefficient] == [hertz coefficient] &&
+		      [kilohertz coefficient] == 1000.0 &&
+		      [NSUnitFrequency baseUnit] == [NSUnitFrequency hertz],
+		      [NSString stringWithFormat:@"fps=%g Hz=%g kHz=%g",
+			 [fps coefficient], [hertz coefficient], [kilohertz coefficient]]);
+	}
+
+	{
+		/* ENERGY: the kilowatt-hour is a DERIVED definition (a thousand watts for 3600 seconds) and the
+		 * kilocalorie is a thousand thermochemical calories — the one COEFFICIENT HERE THAT IS A CHOICE. */
+		NSUnitConverterLinear *joules = (NSUnitConverterLinear *)[[NSUnitEnergy joules] converter];
+		NSUnitConverterLinear *kwh = (NSUnitConverterLinear *)[[NSUnitEnergy kilowattHours] converter];
+		NSUnitConverterLinear *calories = (NSUnitConverterLinear *)[[NSUnitEnergy calories] converter];
+		NSUnitConverterLinear *kilocalories = (NSUnitConverterLinear *)[[NSUnitEnergy kilocalories] converter];
+
+		check("unit-energy",
+		      [kwh coefficient] == 3600.0 * 1000.0 &&
+		      [calories coefficient] == 4.184 &&
+		      fn_close([kilocalories coefficient], 1000.0 * [calories coefficient]) &&
+		      [NSUnitEnergy baseUnit] == [NSUnitEnergy joules],
+		      [NSString stringWithFormat:@"kWh=%g cal=%g kcal=%g",
+			 [kwh coefficient], [calories coefficient], [kilocalories coefficient]]);
+	}
+
+	{
+		/* POWER: horsepower is written as its definition (550 foot-pounds-force per second), so the check
+		 * recomputes that product rather than quoting 745.6998715822702. */
+		NSUnitConverterLinear *horsepower = (NSUnitConverterLinear *)[[NSUnitPower horsepower] converter];
+		NSUnitConverterLinear *kilowatts = (NSUnitConverterLinear *)[[NSUnitPower kilowatts] converter];
+		NSUnitConverterLinear *watts = (NSUnitConverterLinear *)[[NSUnitPower watts] converter];
+
+		check("unit-power",
+		      fn_close([horsepower coefficient], 550.0 * 0.3048 * 4.4482216152605) &&
+		      [kilowatts coefficient] == 1000.0 &&
+		      [NSUnitPower baseUnit] == [NSUnitPower watts],
+		      [NSString stringWithFormat:@"hp=%g kW=%g", [horsepower coefficient], [kilowatts coefficient]]);
 	}
 
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);
