@@ -30,8 +30,22 @@
 @class NSMutableArray;		/* the IVAR needs the name, and NSArray is not NSMutableArray */
 @class NSCondition;
 
-NS_ASSUME_NONNULL_BEGIN
+/* THE LEGACY QUALITY-OF-SERVICE SPELLINGS (2026-09-20). Apple declares these as plain
+ * macros that ALIAS the modern NSQualityOfService names - the older spelling kept
+ * working alongside the newer one, which is the whole reason the family exists - and
+ * the whole family is five names, so this is the entire set rather than a selection.
+ *
+ * A MACRO IS THE API HERE, not an implementation choice: these are #defines by
+ * declaration, so a program that spells the old name gets the new one, and our values
+ * for NSQualityOfService (§11.6.1 D2) are what they resolve to.
+ */
+#define NSOperationQualityOfService		NSQualityOfService
+#define NSOperationQualityOfServiceUserInteractive	NSQualityOfServiceUserInteractive
+#define NSOperationQualityOfServiceUserInitiated	NSQualityOfServiceUserInitiated
+#define NSOperationQualityOfServiceUtility		NSQualityOfServiceUtility
+#define NSOperationQualityOfServiceBackground		NSQualityOfServiceBackground
 
+NS_ASSUME_NONNULL_BEGIN
 @interface NSOperation : NSObject
 {
 	NSMutableArray *_dependencies;

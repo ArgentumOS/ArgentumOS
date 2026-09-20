@@ -85,19 +85,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-/* HOW MUCH THIS THREAD MATTERS TO THE USER (2026-09-20). The quality-of-service doors
- * are in this header's refusal list above, so the type ships ahead of its user — as in
- * Cocoa's own header. Names from Apple's documentation index; values are ours (§11.6.1
- * D2, see NSFileManager.h). The ORDER carries the meaning — Background < Utility <
- * UserInitiated < UserInteractive — and Default is 0 because it says "unspecified"
- * rather than "lowest". */
-typedef enum {
-	NSQualityOfServiceDefault = 0,
-	NSQualityOfServiceBackground = 1,
-	NSQualityOfServiceUtility = 2,
-	NSQualityOfServiceUserInitiated = 3,
-	NSQualityOfServiceUserInteractive = 4
-} NSQualityOfService;
+/* NSQualityOfService LIVES IN NSObjCRuntime.h, and this header includes that one, so a
+ * program that used it by way of this header still compiles. It moved on 2026-09-20:
+ * Apple declares the type in the runtime header, and NSOperation.h's legacy aliases
+ * (see there) depend on that being where a name-only include finds it. */
 
 NS_ASSUME_NONNULL_END
 

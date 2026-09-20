@@ -141,6 +141,27 @@ extern BOOL NSKeepAllocationStatistics;
 extern double NSFoundationVersionNumber;
 
 /*
+ * HOW MUCH A THREAD OR OPERATION MATTERS TO THE USER (2026-09-20), and it is declared
+ * HERE because Apple declares it here - the type is not NSOperation's or NSThread's,
+ * both of which name it. The ORDER carries the meaning (Background < Utility <
+ * UserInitiated < UserInteractive) and Default is 0 because it says "unspecified"
+ * rather than "lowest".
+ *
+ * THE VALUES ARE OURS (§11.6.1 D2). Apple's happen to be 0x21/0x19/0x11/0x09/-1, and
+ * the names are the API there rather than the numbers: a program compares against the
+ * constants, not the literals. Third-party BINDING documentation publishes those
+ * numbers (Microsoft's .NET binding, the Dart objective_c package), which is how we
+ * know they exist at all - and they are still not Apple's to copy, so ours stand.
+ */
+typedef enum {
+	NSQualityOfServiceDefault = 0,
+	NSQualityOfServiceBackground = 1,
+	NSQualityOfServiceUtility = 2,
+	NSQualityOfServiceUserInitiated = 3,
+	NSQualityOfServiceUserInteractive = 4
+} NSQualityOfService;
+
+/*
  * THE MACRO SURFACE (2026-09-19). Apple's documentation declares this family and
  * WE DID NOT, so ~80 names a Cocoa-shaped program spells were simply absent —
  * `NS_ENUM`, `NS_OPTIONS`, `FOUNDATION_EXPORT`, the availability spellings, and

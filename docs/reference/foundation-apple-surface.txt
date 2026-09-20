@@ -30,7 +30,7 @@
 # counts by kind:
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
-#   macro      shipped  102   open   15   struck  136
+#   macro      shipped  107   open   10   struck  136
 #   enum       shipped   61   open   91   struck    8
 #   case       shipped  333   open  876   struck   93
 #   func       shipped   58   open   77   struck   54
@@ -2115,11 +2115,11 @@ macro	open	NSObjectExtraRefDecrementedEvent		Reference / Macros	-	objc
 macro	open	NSObjectExtraRefIncrementedEvent		Reference / Macros	-	objc
 macro	open	NSObjectInternalRefDecrementedEvent		Reference / Macros	-	objc
 macro	open	NSObjectInternalRefIncrementedEvent		Reference / Macros	-	objc
-macro	open	NSOperationQualityOfService		Reference / Macros	-	objc
-macro	open	NSOperationQualityOfServiceBackground		Reference / Macros	-	objc
-macro	open	NSOperationQualityOfServiceUserInitiated		Reference / Macros	-	objc
-macro	open	NSOperationQualityOfServiceUserInteractive		Reference / Macros	-	objc
-macro	open	NSOperationQualityOfServiceUtility		Reference / Macros	-	objc
+macro	shipped	NSOperationQualityOfService		Reference / Macros	-	objc
+macro	shipped	NSOperationQualityOfServiceBackground		Reference / Macros	-	objc
+macro	shipped	NSOperationQualityOfServiceUserInitiated		Reference / Macros	-	objc
+macro	shipped	NSOperationQualityOfServiceUserInteractive		Reference / Macros	-	objc
+macro	shipped	NSOperationQualityOfServiceUtility		Reference / Macros	-	objc
 macro	shipped	NSParameterAssert		App Support / Assertions	-	objc
 macro	shipped	NSTimeIntervalSince1970	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
 macro	shipped	NSURLResponseUnknownLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
