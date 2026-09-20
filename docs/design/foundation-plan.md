@@ -4299,3 +4299,90 @@ did not**. Nothing was dropped silently and nothing was asserted on a timeout.
 **OPEN ITEM (not started):** establish whether `[NSThread -start]` runs its target in this tree at all,
 and add the check to `foundation_thread` either way — a working start path with no check is as much a
 fidelity risk as a broken one.
+
+## 15. THE HOST RUN WAS RIGHT: AN OWNERSHIP-CONTRACT DEFECT ACROSS THE COPY FAMILY (2026-09-20)
+
+**How this began is the point.** The session resumed on a *time-zone* question — `make
+host-foundation-run` answered 267/270, and the three `foundation_calendar` failures were the host's
+`/etc/localtime` leaking into a probe whose own comment says this OS has no `/etc` at all. Fixing that
+(`TZ=UTC` in the runner; the probe's claim about the OS stays untouched) removed the noise and left the
+real signal visible: **`foundation_nsvalue` and `foundation_operation` crash with `SIGSEGV` and print
+no `RESULT` line.** Both are green on the guest. This is the asymmetry `mk/60-host.mk` had already
+written down — musl leaves a freed chunk intact and glibc poisons it — and the loop caught it again.
+
+### 15.1 `NSNull`'s `+alloc`/`-copy` did not answer +1 — LANDED AND VERIFIED
+
+`+ [NSNull alloc]` returned the shared instance **without retaining it**, so under any ARC caller the
+singleton was over-released: `alloc`/`new`/`copy` are the "owned" families, and ARC releases what they
+return. Measured in one scope — `one = [NSNull null]; two = [NSNull null]; made = [[NSNull alloc]
+init];` leaves the count at **3** (a base 1 plus one retain per `+null`; the `alloc` line adds none)
+while ARC emits **three** releases, so the count reached 0 and the singleton was freed. The next
+`[NSNull null]` then returned a dangling pointer and `objc_retainAutoreleasedReturnValue` died reading
+its `isa` — glibc's tcache safe-linking word in the freed chunk's first slot. Fixed: both doors
+(`+alloc`, and `-copy`, which had the identical violation) now answer +1, and the retain is permanent
+by design because the object is a singleton. **`foundation_nsvalue` 7/7, exit 0** (it printed nothing
+before, only `Segmentation fault`), and the host tier went **270 -> 277 checks**, no failures.
+
+### 15.2 THE SAME VIOLATION IS FAMILY-WIDE, AND IT IS MEASURED — THE `-copy` DEFECT (OPEN, WORK ITEM)
+
+`-copy` is also an owned family, so a class that answers `return self` for an immutable receiver
+over-releases it under ARC. **This is not inferred, it is measured** (a four-line ARC probe against the
+host library):
+
+```
+before:      string rc=1 array rc=1
+after copy:  string rc=0 array rc=0      <- the ORIGINAL was destroyed by the copy's release
+still readable? string="밐炐邂苩"         <- freed memory, contents now garbage
+```
+
+So **`[obj copy]` destroys `obj`** for every immutable class that spells it that way — the reader is
+then holding freed memory that reads correctly on the guest and is garbage on the host. The affected
+set, counted in the headers rather than guessed: **26 sites across 24 files**, every one with the same
+`return self;` — `NSString`, `NSArray`, `NSDictionary`, `NSSet`, `NSOrderedSet`, `NSData`, `NSNumber`,
+`NSDate`, `NSDateInterval`, `NSError`, `NSException`, `NSIndexPath`, `NSIndexSet`, `NSLocale`,
+`NSCharacterSet`, `NSPredicate`, `NSExpression`, `NSSortDescriptor`, `NSTimeZone`, `NSURL`,
+`NSURLComponents`, `NSUUID`, `NSValue`, `NSFormatter`. **The fix is mechanical — `return [self
+retain];`, which is what Cocoa's own immutable classes do — but it is a SEMANTIC change to the library's
+most-used protocol, so it is taken as its own unit with the guest tier re-run, not folded into a
+diagnostic turn.** One secondary question belongs with it: an internal MRR call site that copies and
+never releases was *accidentally* correct under the broken convention, so the fix can turn such a site
+into a leak (of a reference, not of correctness) — the sweep must read the call sites, not only the
+implementations.
+
+**WHY EVERY GUEST GATE PASSED WITH THIS IN THE TREE, stated once:** a probe that copies and then reads
+the original still reads *plausible* values, because musl does not reuse or poison the freed chunk — and
+`[x copy] == x` is TRUE either way, so the obvious assertion cannot see it. The check that can see it is
+a RETAIN COUNT read after the copy's scope, or the host run.
+
+### 15.3 `foundation_operation`: A FREED OPERATION HANDED TO `-start` (OPEN, ROOT-CAUSED, NOT FIXED)
+
+`foundation_operation` segfaults ~9 runs in 10 on the host (and passes on the guest). A core dump
+confirms a **type confusion**, not a crash in queue logic:
+
+```
+Foundation: -[NSArray start] is not implemented        <- SIGABRT variant
+#7 -[NSOperationQueue fnRunOnQueue:] (nsoperation.m:265) sending `start` to operation=0x...
+```
+
+The operation pointer's memory is now an `NSArray`: it was freed and its chunk reused. Two mechanisms
+are visible in the source and **both need the measurement the next session must take** (the crash does
+not reproduce under gdb, so instrumentation, not breakpoints, is the instrument):
+
+1. **`NSThread` does not retain what it is given.** `-initWithTarget:selector:object:` assigns
+   `_target = target; _argument = argument;` (nsthread.m:182,184) with no retain, and
+   `fn_thread_entry`/`fnRun` read them later on the new thread. Cocoa's contract is that a thread owns
+   its target and argument until it finishes. The queue hands `next` to
+   `+detachNewThreadSelector:toTarget:withObject:` — so the operation's survival currently depends on
+   the queue's `_operations` array, not on the thread.
+2. **`fnSchedule` can hand the SAME operation to more than one worker.** It scans `_operations`,
+   breaks on the first ready candidate, `_running++`, detaches — and then loops and rescans. Nothing
+   marks the operation as already scheduled, and the default `_maxConcurrent` is `-1` (unlimited), so
+   the `_running >= _maxConcurrent` guard never trips. A worker that finishes runs
+   `[_operations removeObjectIdenticalTo:operation]` (line 268) — releasing the array's reference —
+   while a second, already-detached worker may still be about to `[operation start]`.
+
+The two compose into exactly the observed fault, and that composition is the thing to prove:
+instrument `fnRunOnQueue:` to print the operation's pointer per call (duplicate pointers = mechanism 2
+is live) and check the retain count at that moment (1 = mechanism 1 is what lets it die).
+**`[NSThread -start]`'s open item in §14.5 sits one layer down from this and should be taken with it.**
+
