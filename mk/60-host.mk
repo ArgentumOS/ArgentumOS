@@ -87,10 +87,10 @@ HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc
 # THE PER-FILE TABLES THAT STILL MATTER: six sources include <unicode/...>, one includes <zlib.h>,
 # and one is a root class. (The guest block's MRC list is NOT repeated - the whole library is MRC.)
 FN_HOST_SRCS     = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
-FN_HOST_ICU      = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m \
-                   ncharacterset.m
-FN_HOST_X11      = ncodec.m
-FN_HOST_ROOT     = nsproxy.m
+FN_HOST_ICU      = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
+                   NSCharacterSet.m
+FN_HOST_X11      = NSDataCodec.m
+FN_HOST_ROOT     = NSProxy.m
 FN_HOST_OBJS     = $(addprefix $(HOST_OBJDIR)/,$(FN_HOST_SRCS:.m=.o)) $(HOST_OBJDIR)/plist.o \
                    $(HOST_OBJDIR)/ninvoke-asm.o
 
@@ -110,7 +110,7 @@ $(HOST_OBJDIR)/plist.o: userland/plist.c
 	@mkdir -p $(HOST_OBJDIR)
 	$(HOST_CC) -c $(HOST_CFLAGS) $< -o $@
 
-$(HOST_OBJDIR)/ninvoke-asm.o: $(FOUNDATION_SRC)/ninvoke_amd64.S
+$(HOST_OBJDIR)/ninvoke-asm.o: $(FOUNDATION_SRC)/NSInvocation_amd64.S
 	@mkdir -p $(HOST_OBJDIR)
 	$(HOST_CC) -c -fPIC $< -o $@
 
@@ -173,7 +173,7 @@ host-foundation: $(HOST_FOUNDATION_LIB) $(HOST_PROBE_BINS)
 
 # TZ=UTC IS PART OF MIRRORING THE GUEST, NOT A CONVENIENCE (2026-09-20). `foundation_calendar`
 # asserts `[[NSTimeZone systemTimeZone] secondsFromGMT] == 0`, and that claim is TRUE ABOUT THIS OS:
-# `+systemTimeZone` delegates to ICU's default zone (nstimezone.m:95), which on the guest answers GMT
+# `+systemTimeZone` delegates to ICU's default zone (NSTimeZone.m:95), which on the guest answers GMT
 # because there is no `TZ` and no `/etc/localtime` (this system has no `/etc`). A host run inherits
 # the HOST's zone instead, so on a machine set to America/Toronto the same probe answers 11 ok / 3
 # FAIL - `tz-offset`, `calendar-convert` (the epoch renders 1969-12-31 19:00:00) and `cross-tu` - and

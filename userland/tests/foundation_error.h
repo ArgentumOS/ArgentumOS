@@ -13,7 +13,7 @@
 #ifndef FOUNDATION_ERROR_H
 #define FOUNDATION_ERROR_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NSError *foundation_error_built(void);
 NSException *foundation_error_exception(void);

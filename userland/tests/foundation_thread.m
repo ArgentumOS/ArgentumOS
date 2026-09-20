@@ -6,7 +6,7 @@
  * foundation_thread, unit of 1 — F13.17's acceptance for the locking classes and NSThread.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h> plus <sys/time.h> for the elapsed-time
+ * ONE unit, importing only <Foundation/Foundation.h> plus <sys/time.h> for the elapsed-time
  * measurements.
  *
  * EVERY WAIT IN THIS FILE IS BOUNDED. A lock or condition test that could wait forever would turn a
@@ -18,7 +18,7 @@
  * nothing would give a smaller number and nothing else, which is what makes the number the check.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 #include <sys/time.h>

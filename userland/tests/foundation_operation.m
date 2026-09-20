@@ -6,7 +6,7 @@
  * foundation_operation, unit of 1 — F13.19's acceptance for NSOperation and NSOperationQueue.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>.
+ * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * THE MEASUREMENTS THAT EARN THEIR PLACE:
  *   operation-dependency-order  an operation that DEPENDS on another runs AFTER it although both were
@@ -20,7 +20,7 @@
  * because a subclass that forgot to override it would otherwise succeed at doing nothing.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

@@ -7,7 +7,7 @@ ARE a table; ICU is a dependency now, so the table ships and this class reads it
 class encodes a format.
 
 The probe is `/System/Shared/tests/foundation_numberformatter`, ONE unit (the claim is data, not a
-cross-translation-unit boundary), importing only `<foundation/Foundation.h>`.
+cross-translation-unit boundary), importing only `<Foundation/Foundation.h>`.
 
   * `nf-de` / `nf-en`     — THE SAME NUMBER IN TWO LOCALES: 1234567.89 is "1.234.567,89" in de_DE
                             and "1,234,567.89" in en_US;

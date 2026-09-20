@@ -5,7 +5,7 @@
 /*
  * foundation_codecs — the two units' shared surface. docs/design/foundation-plan.md, F12.
  *
- * The support unit imports ONLY <foundation/Foundation.h>, so this probe is also what proves the
+ * The support unit imports ONLY <Foundation/Foundation.h>, so this probe is also what proves the
  * compression API reached the umbrella. And the bytes are built on the OTHER side, which is the
  * claim worth testing here: a binding is exercised by data that did not come from the same file
  * as the code doing the work.
@@ -14,7 +14,7 @@
 #ifndef FOUNDATION_CODECS_H
 #define FOUNDATION_CODECS_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

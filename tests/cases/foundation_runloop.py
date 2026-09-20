@@ -8,7 +8,7 @@ waits. What ships here is the TIMER half of the run loop; run-loop sources, obse
 are their own designs and are named absent in the header.
 
 The probe is `/System/Shared/tests/foundation_runloop`, ONE unit, importing only
-`<foundation/Foundation.h>`.
+`<Foundation/Foundation.h>`.
 
   * `timer-fires-once`              — a non-repeating timer fires once and is then invalid;
   * `timer-repeats-until-invalidated` — THE FIRST CHECK THAT EARNS ITS PLACE: a repeating timer's

@@ -8,7 +8,7 @@ what decides WHEN; the scheduler's core is that it re-examines what is READY eve
 FINISHES, because finishing is what makes the next one ready.
 
 The probe is `/System/Shared/tests/foundation_operation`, ONE unit, importing only
-`<foundation/Foundation.h>`.
+`<Foundation/Foundation.h>`.
 
   * `operation-subclass-runs`       — a subclass's `-main` runs, and the state follows it;
   * `operation-base-main-raises`    — THE REFUSAL THAT MUST BE LOUD: a subclass that forgot to

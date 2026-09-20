@@ -7,7 +7,7 @@
  * docs/design/foundation-plan.md §10.
  *
  * ONE unit, like the set probe: the claim is what an ORDERED collection does, not a
- * cross-translation-unit boundary. It imports only <foundation/Foundation.h>, which also proves the
+ * cross-translation-unit boundary. It imports only <Foundation/Foundation.h>, which also proves the
  * umbrella exports both headers.
  *
  * THE MEASUREMENT THAT EARNS ITS PLACE IS `ordered-equality-is-order-sensitive`: two ordered sets
@@ -16,7 +16,7 @@
  * between this class and NSSet from both sides, and no constant in this file could produce it.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

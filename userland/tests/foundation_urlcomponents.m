@@ -6,7 +6,7 @@
  * foundation_urlcomponents, unit of 1 — F13.15's acceptance for NSURLComponents.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>.
+ * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * THE CHECKS THAT EARN THEIR PLACE ARE THE LAST THREE, because their expected values come from
  * RFC 3986 ITSELF — §5.4's table of reference resolutions — and not from anything this file could
@@ -26,7 +26,7 @@
  *                               it is here because the resolution it needs now exists.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

@@ -69,7 +69,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SURFACE = os.path.join(ROOT, "docs/reference/foundation-apple-surface.txt")
-HEADERS = os.path.join(ROOT, "userland/foundation/*.h")
+HEADERS = os.path.join(ROOT, "userland/Foundation/*.h")
 INDEX_URL = "https://developer.apple.com/tutorials/data/index/foundation"
 
 # Kinds this file holds, and the kinds it deliberately does not (see the

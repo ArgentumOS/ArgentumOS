@@ -133,7 +133,7 @@ int foundation_core_equality(void)
 
 /*
  * THE SLOW PATH, the one that has to MARSHAL. The call arrives as an NSInvocation
- * whose arguments were captured from the register file by ninvoke_amd64.S; calling
+ * whose arguments were captured from the register file by NSInvocation_amd64.S; calling
  * the method for real — here, on the backing object — is what -invokeWithTarget:
  * does, and it is the whole point of the mechanism.
  */

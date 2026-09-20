@@ -6,7 +6,7 @@
  * foundation_expression, unit of 1 — F13.10's acceptance for NSExpression.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>. The objects it evaluates against are private
+ * ONE unit, importing only <Foundation/Foundation.h>. The objects it evaluates against are private
  * to this file.
  *
  * WHAT IT MEASURES, with the numbers in every detail:
@@ -22,7 +22,7 @@
  *   expr-equality          two separately-built trees that are equal, and their descriptions.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

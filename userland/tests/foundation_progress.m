@@ -6,7 +6,7 @@
  * foundation_progress, unit of 1 — F13.20's acceptance for NSProgress.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>.
+ * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * THE CHECK THAT EARNS ITS PLACE IS THE TREE'S ARITHMETIC: a parent with a total of 100 is told that a
  * child stands for 50 of its units; the child is 2 of its own 4 done; and the PARENT must therefore
@@ -17,7 +17,7 @@
  * parent cannot be pushed past what it was told to expect.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

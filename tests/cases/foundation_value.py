@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §5 (F2). The probe is
 `/System/Shared/tests/foundation_value`, built from two translation units; the
 support unit imports ONLY the umbrella header, so a complete
-`<foundation/Foundation.h>` is part of what is being checked.
+`<Foundation/Foundation.h>` is part of what is being checked.
 
   * `number-convert`     — every boxed scalar conversion agrees;
   * `number-value`       — the decision that matters: VALUE semantics ACROSS

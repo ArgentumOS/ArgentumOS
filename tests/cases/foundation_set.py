@@ -8,7 +8,7 @@ plan's own KVC section says so in passing ("the set-returning operators need an 
 exist here").
 
 The probe is `/System/Shared/tests/foundation_set`, ONE unit (the claim is VALUE SEMANTICS rather
-than a cross-translation-unit boundary), importing only `<foundation/Foundation.h>`.
+than a cross-translation-unit boundary), importing only `<Foundation/Foundation.h>`.
 
   * `set-dedupes-by-value`  — two DISTINCT NSString objects with the same characters are ONE member;
   * `set-member-by-value`   — `-member:` finds the stored object from a fresh equal one;

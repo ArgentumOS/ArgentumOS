@@ -5,7 +5,7 @@
 /*
  * foundation_value, unit 1 of 2 — the support unit (MRR).
  *
- * It imports ONLY <foundation/Foundation.h>, which is also what proves the
+ * It imports ONLY <Foundation/Foundation.h>, which is also what proves the
  * umbrella header is complete: if a type were missing from it, this unit would
  * not compile.
  */

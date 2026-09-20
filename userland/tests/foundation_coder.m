@@ -6,7 +6,7 @@
  * foundation_coder, unit of 1 — F13.12's acceptance for the coder family.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>. The archivable class is private to this file.
+ * ONE unit, importing only <Foundation/Foundation.h>. The archivable class is private to this file.
  *
  * WHAT IT MEASURES, with the numbers in the details:
  *   coder-round-trip-scalars    a name, an integer, a double and a bool across one archive;
@@ -22,7 +22,7 @@
  *                               that looks like data.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

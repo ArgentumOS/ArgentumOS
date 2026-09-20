@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §10. `NSValue` is the box for things that are not objects (a boxed
 `NSNumber` is for NUMBERS, which is a different job), and `NSNull` is the object that stands for
 nothing so a collection can hold a hole. The probe is `/System/Shared/tests/foundation_nsvalue`, ONE
-unit, importing only `<foundation/Foundation.h>`.
+unit, importing only `<Foundation/Foundation.h>`.
 
 The case is named `foundation_nsvalue` because `foundation_value` was ALREADY TAKEN: it is F2/F8's
 probe for NSNumber/NSData/NSDate, tracked with its own header and support unit. A new probe's name

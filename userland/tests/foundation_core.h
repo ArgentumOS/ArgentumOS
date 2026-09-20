@@ -20,7 +20,7 @@
 #ifndef FOUNDATION_CORE_H
 #define FOUNDATION_CORE_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 @interface Counter : NSObject
 {
@@ -52,7 +52,7 @@ int foundation_core_equality(void);
  *
  *   SlowForwarder overrides -forwardInvocation:, so the call arrives as an
  *   NSInvocation whose arguments were captured from the register file (that is
- *   what ninvoke_amd64.S is for). It re-invokes on a real Counter, which is what
+ *   what NSInvocation_amd64.S is for). It re-invokes on a real Counter, which is what
  *   "-forwardInvocation: with arguments" has to mean.
  *
  * The forwarded methods are DECLARED here and NOT implemented: that is the point

@@ -592,7 +592,7 @@ bugs actually are.
   annotated yet.** The surface makes every reference type non-nullable by default
   (`sterling-syntax.md` §4), but a default is a *declaration* promise: an imported
   declaration is known non-null only if its header says so. Measured:
-  `userland/foundation/` contains **no** `_Nonnull`/`_Nullable`/
+  `userland/Foundation/` contains **no** `_Nonnull`/`_Nullable`/
   `NS_ASSUME_NONNULL`, and neither do libobjc2's headers — so today the rule
   holds inside Sterling-written code and has a hole at every import. Annotating the
   Foundation is a `foundation-plan.md` item and the honest fix
@@ -713,7 +713,7 @@ The K-series above is already sequenced correctly; this adds what it costs and w
      rests on it — §4's nullability, §7.31's name-is-the-class, struct field access — and it has never
      been measured. Cheapest route is clang's own AST (dump or libclang), which the doctrine permits.
   2. **The build wiring for modules — diagnosed, and no longer a risk (2026-09).** §7.9's *"could not
-     build module"* was never about modules: `Foundation.h` imports its siblings as `<foundation/…>`,
+     build module"* was never about modules: `Foundation.h` imports its siblings as `<Foundation/…>`,
      so a modular build of it needs the same `-I` its importers need. With `-Iuserland` the map builds
      and the probe exits 0. What is left is wiring the map, `-fmodules` and that `-I` into the build —
      small, and no longer an unknown.

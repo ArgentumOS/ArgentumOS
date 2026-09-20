@@ -119,7 +119,7 @@ def declared(kind, name, text):
     NOT "the name appears somewhere": comments are stripped first, and each
     alternative is a declaration form.
 
-    AND THE FALSE POSITIVE THIS AVOIDS, MEASURED: `userland/foundation/NSGeometry.h`
+    AND THE FALSE POSITIVE THIS AVOIDS, MEASURED: `userland/Foundation/NSGeometry.h`
     says `typedef CGPoint NSPoint;` — a USE of our type, not a declaration of it.
     None of the alternatives match that line (`CGPoint` is not followed by `;`),
     which is why CGPoint's row is credited to CoreGraphics/CGGeometry.h alone.

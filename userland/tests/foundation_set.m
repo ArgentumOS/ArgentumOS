@@ -7,7 +7,7 @@
  * docs/design/foundation-plan.md §10.
  *
  * ONE unit, like the formatter probes: the claim here is VALUE SEMANTICS — what makes a set a set —
- * rather than a cross-translation-unit boundary. It imports only <foundation/Foundation.h>, which
+ * rather than a cross-translation-unit boundary. It imports only <Foundation/Foundation.h>, which
  * also proves the umbrella exports the new classes.
  *
  * WHAT IT MEASURES, and none of it can come from this file:
@@ -25,7 +25,7 @@
  *   set-copy-semantics     a mutable set's -copy is an immutable snapshot of the same membership.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

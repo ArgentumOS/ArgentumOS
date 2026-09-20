@@ -21,9 +21,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>		/* usleep, for the bounded wait on the helper thread */
-#import <foundation/NSThread.h>
-#import <foundation/NSException.h>
-#import <foundation/NSDictionary.h>
+#import <Foundation/NSThread.h>
+#import <Foundation/NSException.h>
+#import <Foundation/NSDictionary.h>
 
 static int okc, failc;
 

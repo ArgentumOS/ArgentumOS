@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #import <objc/runtime.h>
-#import <foundation/NSDateFormatter.h>	/* F13.6: the family this probe used to call refused */
+#import <Foundation/NSDateFormatter.h>	/* F13.6: the family this probe used to call refused */
 
 static int okc, failc;
 

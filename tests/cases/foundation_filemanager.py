@@ -8,7 +8,7 @@ instead of leaving it in a global; attributes come back as a dictionary keyed by
 than as a bitfield to decode; and COPY RECURSES, which POSIX cannot do at all.
 
 The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing only
-`<foundation/Foundation.h>` (plus `<unistd.h>` for the `symlink(2)` the link check needs).
+`<Foundation/Foundation.h>` (plus `<unistd.h>` for the `symlink(2)` the link check needs).
 
   * `fs-default-manager` — `+defaultManager` answers the same object twice;
   * `fs-create-and-list` — a directory made WITH intermediates, files inside it, and the NAMES

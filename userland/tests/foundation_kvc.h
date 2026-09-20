@@ -5,7 +5,7 @@
 /*
  * foundation_kvc — the two units' shared surface. docs/design/foundation-plan.md, F9.
  *
- * The support unit imports ONLY <foundation/Foundation.h>, so this probe is also
+ * The support unit imports ONLY <Foundation/Foundation.h>, so this probe is also
  * what proves NSKeyValueCoding reached the umbrella — and that KVC reaches an
  * object defined in ANOTHER translation unit, which is the whole point of the
  * family: the lookup goes through the RUNTIME, not through a compile-time list.
@@ -14,7 +14,7 @@
 #ifndef FOUNDATION_KVC_H
 #define FOUNDATION_KVC_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

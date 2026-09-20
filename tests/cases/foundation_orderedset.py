@@ -4,7 +4,7 @@
 
 docs/design/foundation-plan.md §10. An ordered set is neither an `NSSet` nor an `NSArray`: it holds
 each value once AND the order is part of the value. The probe is
-`/System/Shared/tests/foundation_orderedset`, ONE unit, importing only `<foundation/Foundation.h>`.
+`/System/Shared/tests/foundation_orderedset`, ONE unit, importing only `<Foundation/Foundation.h>`.
 
   * `ordered-keeps-the-order-it-was-given` — the duplicate is in the MIDDLE, so a build keeping the
                                     last occurrence instead of the first lands in the wrong position;

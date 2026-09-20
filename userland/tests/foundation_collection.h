@@ -13,7 +13,7 @@
 #ifndef FOUNDATION_COLLECTION_H
 #define FOUNDATION_COLLECTION_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NSDictionary *foundation_collection_nested(void);
 

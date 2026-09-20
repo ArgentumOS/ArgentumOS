@@ -6,7 +6,7 @@
  * foundation_runloop, unit of 1 — F13.18's acceptance for NSRunLoop and NSTimer.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>.
+ * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * EVERY RUN IN THIS FILE IS BOUNDED BY A DEADLINE. `-run` never returns while a repeating timer is
  * live, so a probe that called it would hang rather than fail — the same rule the thread probe
@@ -21,7 +21,7 @@
  *                                    thread's, which is what makes +currentRunLoop per-thread at all.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

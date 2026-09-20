@@ -6,7 +6,7 @@
  * foundation_filemanager, unit of 1 — F13.14's acceptance for NSFileManager.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>.
+ * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * IT WORKS IN A TREE OF ITS OWN MAKING under /System/Temporary Files — this system's temp directory,
  * spelled the way the FSH spells it — and it REMOVES THE WHOLE TREE AT THE END, including on the way
@@ -29,7 +29,7 @@
  *   fs-cleanup           the tree is gone, which is also the last exercise of the recursive remove.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 #include <unistd.h>		/* symlink(2): the LINK is made here, not by the service */

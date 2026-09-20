@@ -47,14 +47,16 @@ mkdir -p "$OUT"
 "$ROOT/.build/sterlingc/sterlingc" -o "$OUT" >/dev/null
 
 # Why each flag below is here:
-#   * §2 emits `#import <Foundation/Foundation.h>` — Cocoa's capitalisation.
-#     This tree's directory is `userland/foundation`, lower case, and on a
+#   * §2 emits `#import <Foundation/Foundation.h>` — the capitalisation THIS tree uses too, now
+#     that its Foundation lives in `userland/Foundation/` (it used to be the tell that the import
+#     was somebody else's; §2 of the Foundation plan records the change).
+#     This tree's directory is `userland/Foundation`, lower case, and on a
 #     case-sensitive filesystem that import cannot resolve. On macOS the
 #     difference is invisible because the filesystem is case-insensitive;
 #     here it is fatal, so a case bridge is built beside the includes.
 #     clang's -Wnonportable-include-path warning confirms the bridge is what
 #     is doing the work.
-#   * the header's own siblings are `<foundation/...>`, lower case, which
+#   * the header's own siblings are `<Foundation/...>`, lower case, which
 #     -Iuserland satisfies directly.
 # -fblocks because the Foundation's headers declare block typedefs.
 # -fobjc-runtime=gnustep-2.0 selects libobjc2; without it clang takes the
@@ -63,7 +65,7 @@ mkdir -p "$OUT"
 # was head's rather than clang's. Hence: no pipeline, capture clang's status.
 INC="$ROOT/.build/sterlingc/include"
 mkdir -p "$INC"
-ln -sfn "$ROOT/userland/foundation" "$INC/Foundation"
+ln -sfn "$ROOT/userland/Foundation" "$INC/Foundation"
 
 compile_one() {
 	set +e

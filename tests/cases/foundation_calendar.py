@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §5 (F7). The probe is
 `/System/Shared/tests/foundation_calendar`, built from two translation units; the
 support unit imports ONLY the umbrella header, so a complete
-`<foundation/Foundation.h>` — including the three headers F7 adds — is part of
+`<Foundation/Foundation.h>` — including the three headers F7 adds — is part of
 what is being checked.
 
   * `tz-offset`          — a fixed offset: its seconds, its rendered name, that

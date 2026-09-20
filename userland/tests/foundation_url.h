@@ -5,14 +5,14 @@
 /*
  * foundation_url — the two units' shared surface.
  *
- * The support unit imports ONLY <foundation/Foundation.h>, so this probe is also
+ * The support unit imports ONLY <Foundation/Foundation.h>, so this probe is also
  * what proves NSURL reached the umbrella.
  */
 
 #ifndef FOUNDATION_URL_H
 #define FOUNDATION_URL_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

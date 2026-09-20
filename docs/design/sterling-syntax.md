@@ -1268,7 +1268,7 @@ that detail rather than leaving it to a reader to find.
        not build module 'Foundation'"*. **That failure is diagnosed now (2026-09) and it was never
        about modules**: beneath the summary line the real error is
        `Foundation.h:21:9: fatal error: 'foundation/NSObjCRuntime.h' file not found` — the header
-       imports its siblings as `<foundation/…>`, so *any* modular build of it needs the same include
+       imports its siblings as `<Foundation/…>`, so *any* modular build of it needs the same include
        path its importers need. Add `-Iuserland` and the module builds and the probe exits 0. Nothing
        inside the headers had to change.
      - **And the file form is not as available as it sounds either.** Measured: `#import
@@ -2922,7 +2922,7 @@ declarations are imported from headers (the plan's open item).
    now tracks in `docs/design/foundation-plan.md` §5.
    The investigation, kept because the measurements are the useful part:
    The rule (§4) holds only where a declaration carries the annotation, and **nothing this
-   language imports carries one**: re-measured, `userland/foundation/` has **0** nullability
+   language imports carries one**: re-measured, `userland/Foundation/` has **0** nullability
    annotations across **19 headers, 434 methods, 1716 lines** — and no `@property` at all, so
    it is a methods-only pass — and the vendored libobjc2 headers have 0 as well.
    - **No emitter trick can close the hole, and that is the new finding.** The obvious move —

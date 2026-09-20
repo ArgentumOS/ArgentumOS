@@ -8,7 +8,7 @@ so the table ships — it is just not ours to write — and this case is what sa
 
 The probe is `/System/Shared/tests/foundation_dateformatter`, ONE unit (unlike the other Foundation
 probes): their claim is a cross-translation-unit boundary, while this family's claim is DATA coming
-back through Foundation's own API. It imports only `<foundation/Foundation.h>`.
+back through Foundation's own API. It imports only `<Foundation/Foundation.h>`.
 
   * `df-style-medium-en`   — a locale's MEDIUM date names the month in that locale;
   * `df-style-long-locale` — the same instant is "März" in de_DE and "March" in en_US;

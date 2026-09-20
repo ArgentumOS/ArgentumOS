@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §5 (F8). The probe is
 `/System/Shared/tests/foundation_url`, built from two translation units; the
 support unit imports ONLY the umbrella header, so a complete
-`<foundation/Foundation.h>` — NSURL included — is part of what is being checked.
+`<Foundation/Foundation.h>` — NSURL included — is part of what is being checked.
 
   * `url-parse`          — the RFC 3986 parts, and the spelling round trip;
   * `url-refusals`       — THE PARSE IS THE REFUSAL: a relative reference, an

@@ -4,7 +4,7 @@
 
 docs/design/foundation-plan.md §10. The running program describing itself, with each answer pinned to
 a source rather than to a plausible value. The probe is
-`/System/Shared/tests/foundation_processinfo`, ONE unit, importing only `<foundation/Foundation.h>`
+`/System/Shared/tests/foundation_processinfo`, ONE unit, importing only `<Foundation/Foundation.h>`
 plus `<unistd.h>` for the one cross-check that matters.
 
   * `proc-shared-instance`    — `+processInfo` answers the same object twice;

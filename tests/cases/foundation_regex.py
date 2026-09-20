@@ -6,7 +6,7 @@ docs/design/foundation-plan.md §10, and the LAST item that track names. The eng
 is the decision §10 recorded before the slice existed: the predicate family's `MATCHES` already binds
 POSIX ERE through `<regex.h>`, the engine lives inside libc, and a second engine would be a second
 set of behaviours to be wrong about. The probe is `/System/Shared/tests/foundation_regex`, ONE unit,
-importing only `<foundation/Foundation.h>`.
+importing only `<Foundation/Foundation.h>`.
 
   * `regex-compiles-and-refuses`         — a pattern with two groups, and a BROKEN one refused at
                                            construction with the engine's own message;

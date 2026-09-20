@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §10. It is a TREE, and the tree is the point: a parent reports its own
 work plus a SHARE of each child's, where the share is what the child was given with
 `-becomeCurrentWithPendingUnitCount:` or `-addChild:withPendingUnitCount:`. The probe is
-`/System/Shared/tests/foundation_progress`, ONE unit, importing only `<foundation/Foundation.h>`.
+`/System/Shared/tests/foundation_progress`, ONE unit, importing only `<Foundation/Foundation.h>`.
 
   * `progress-fraction`                  — the count, the fraction and `-isFinished`;
   * `progress-finished`                  — reaching the total finishes it;

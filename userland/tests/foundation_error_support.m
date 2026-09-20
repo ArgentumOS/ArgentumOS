@@ -5,7 +5,7 @@
 /*
  * foundation_error, unit 1 of 2 — the support unit (MRR).
  *
- * It imports ONLY <foundation/Foundation.h>, so the umbrella's completeness is
+ * It imports ONLY <Foundation/Foundation.h>, so the umbrella's completeness is
  * part of the check, and it hands back values built in another unit.
  */
 

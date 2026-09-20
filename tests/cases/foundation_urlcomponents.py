@@ -8,7 +8,7 @@ by name, and refused `+[NSURL URLWithString:relativeToURL:]` in the same breath 
 resolution that door exists FOR is the component-wise algorithm, so the two arrive together.
 
 The probe is `/System/Shared/tests/foundation_urlcomponents`, ONE unit, importing only
-`<foundation/Foundation.h>`.
+`<Foundation/Foundation.h>`.
 
   * `components-parse-the-field`  — one URL into its eight fields;
   * `components-decodes-and-keeps` — the two accessors that DIFFER: `-path` decodes percent escapes

@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §10. The KVC header closed this door by name ("KVO is a REGISTRY of
 observers with a dependency graph. It is a service, not a rule"); a registry is storage, and this is
 the door being opened. The probe is `/System/Shared/tests/foundation_kvo`, ONE unit, importing only
-`<foundation/Foundation.h>`.
+`<Foundation/Foundation.h>`.
 
   * `kvo-notifies-on-a-kvc-write`        — `-setValue:forKey:` reaches the observer with the key
                                     path, the object and the NEW value;

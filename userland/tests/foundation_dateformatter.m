@@ -9,7 +9,7 @@
  * ONE UNIT, deliberately: the other Foundation probes are two-unit because their claim is a
  * cross-translation-unit BOUNDARY (data built in one unit, consumed in another). This family's
  * claim is different in kind — it is DATA, and the question is whether a locale's conventions come
- * back through Foundation's own API. The probe imports ONLY <foundation/Foundation.h>, which also
+ * back through Foundation's own API. The probe imports ONLY <Foundation/Foundation.h>, which also
  * proves the umbrella exports the new headers.
  *
  * WHAT IT MEASURES, and why none of it can come from this file:
@@ -32,7 +32,7 @@
  *   df-copy-independent  a copy is independent: mutating it leaves the original alone
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 
@@ -315,7 +315,7 @@ int main(void)
 	}
 
 	{
-		/* THE CALENDAR REACHES THE FORMATTER (fncalendar.h's whole reason): with a Hebrew calendar
+		/* THE CALENDAR REACHES THE FORMATTER (NSCalendar.h's whole reason): with a Hebrew calendar
 		 * set, the same instant renders the HEBREW year — 5784 for 2023-11-14 — an answer only the
 		 * data can produce. And the month array grows with the calendar, because a Hebrew leap
 		 * year has thirteen of them. */

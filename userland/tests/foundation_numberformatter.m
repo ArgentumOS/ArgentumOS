@@ -7,7 +7,7 @@
  * docs/design/foundation-plan.md §10 (the un-refusal program).
  *
  * ONE unit, for the same reason foundation_dateformatter is: this family's claim is DATA, not a
- * cross-translation-unit boundary. It imports only <foundation/Foundation.h>, which also proves the
+ * cross-translation-unit boundary. It imports only <Foundation/Foundation.h>, which also proves the
  * umbrella exports the new class.
  *
  * WHAT IT MEASURES, and why none of it can come from this file:
@@ -31,7 +31,7 @@
  *   nf-copy-independent  a copy is independent of its original.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

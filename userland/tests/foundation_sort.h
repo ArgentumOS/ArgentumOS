@@ -5,7 +5,7 @@
 /*
  * foundation_sort — the two units' shared surface. docs/design/foundation-plan.md, F10.
  *
- * The support unit imports ONLY <foundation/Foundation.h>, so this probe is also what proves
+ * The support unit imports ONLY <Foundation/Foundation.h>, so this probe is also what proves
  * NSSortDescriptor reached the umbrella. And the split carries the family's claim: the OBJECTS
  * and one of the DESCRIPTORS are built on the other side, so a sort whose key was resolved by
  * name can only have gone through KVC.
@@ -14,7 +14,7 @@
 #ifndef FOUNDATION_SORT_H
 #define FOUNDATION_SORT_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

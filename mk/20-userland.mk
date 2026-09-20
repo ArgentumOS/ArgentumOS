@@ -95,61 +95,60 @@ TOYBOX64_STAGE = .build/toybox-root
 # $(OBJC_STAMP) only exists once mk/10-toolchain.mk has been included.
 # The string family (F1) and the tagged-string class (F2 of the build, F1 of the
 # plan). The compile flags are per file and each for a measured reason:
-#   -fno-objc-arc   nsobject.m and ntinystring.m IMPLEMENT -retain/-release,
+#   -fno-objc-arc   NSObject.m and NSTinyString.m IMPLEMENT -retain/-release,
 #                   which ARC forbids (they are the MRR files);
 #   -Wno-objc-missing-super-calls  every ARC -dealloc: clang emits the super
 #                   chain itself, so the warning is unactionable noise;
 #   -Wno-incomplete-implementation  NSString is ABSTRACT: its primitives are
 #                   implemented by the concrete subclasses.
-FOUNDATION_SRCS = $(FOUNDATION_SRC)/nsobject.m $(FOUNDATION_SRC)/nstring.m \
-	$(FOUNDATION_SRC)/ntinystring.m $(FOUNDATION_SRC)/nnumber.m \
-	$(FOUNDATION_SRC)/ndata.m $(FOUNDATION_SRC)/ndate.m \
-	$(FOUNDATION_SRC)/nsarray.m $(FOUNDATION_SRC)/nsdictionary.m \
-	$(FOUNDATION_SRC)/nerror.m $(FOUNDATION_SRC)/nexception.m \
-	$(FOUNDATION_SRC)/ncharacterset.m $(FOUNDATION_SRC)/nindexset.m \
-	$(FOUNDATION_SRC)/nindexpath.m \
-	$(FOUNDATION_SRC)/nlocale.m \
-	$(FOUNDATION_SRC)/nmethodsignature.m \
-	$(FOUNDATION_SRC)/ninvocation.m \
-	$(FOUNDATION_SRC)/ninvoke_amd64.S \
-	$(FOUNDATION_SRC)/fninvoke.h $(FOUNDATION_SRC)/fnmethodsignature.h \
-	$(FOUNDATION_SRC)/nenumerator.m $(FOUNDATION_SRC)/npropertylistserialization.m \
-	$(FOUNDATION_SRC)/nstimezone.m $(FOUNDATION_SRC)/ndatecomponents.m \
-	$(FOUNDATION_SRC)/nscalendar.m \
-	$(FOUNDATION_SRC)/nurl.m \
-	$(FOUNDATION_SRC)/nskeyvaluecoding.m \
-	$(FOUNDATION_SRC)/nssortdescriptor.m \
-	$(FOUNDATION_SRC)/nspredicate.m \
-	$(FOUNDATION_SRC)/npredicateformat.m \
-	$(FOUNDATION_SRC)/fnpredicate.h \
-	$(FOUNDATION_SRC)/ncodec.m \
-	$(FOUNDATION_SRC)/fncodec.h \
-	$(FOUNDATION_SRC)/fncalendar.m \
-	$(FOUNDATION_SRC)/fncalendar.h \
-	$(FOUNDATION_SRC)/nsformatter.m \
-	$(FOUNDATION_SRC)/nsdateformatter.m \
-	$(FOUNDATION_SRC)/nsnumberformatter.m \
-	$(FOUNDATION_SRC)/nsset.m \
-	$(FOUNDATION_SRC)/nsvalue.m \
-	$(FOUNDATION_SRC)/nsnull.m \
-	$(FOUNDATION_SRC)/nscountedset.m \
-	$(FOUNDATION_SRC)/nsorderedset.m \
-	$(FOUNDATION_SRC)/nskeyvalueobserving.m \
-	$(FOUNDATION_SRC)/nsexpression.m \
-	$(FOUNDATION_SRC)/nscomparisonpredicate.m \
-	$(FOUNDATION_SRC)/nscoder.m \
-	$(FOUNDATION_SRC)/nskeyedarchiver.m \
-	$(FOUNDATION_SRC)/nsprocessinfo.m \
-	$(FOUNDATION_SRC)/nsfilemanager.m \
-	$(FOUNDATION_SRC)/fnurl.h \
-	$(FOUNDATION_SRC)/nsurlcomponents.m \
-	$(FOUNDATION_SRC)/nsregularexpression.m \
-	$(FOUNDATION_SRC)/nslock.m \
-	$(FOUNDATION_SRC)/nsthread.m \
-	$(FOUNDATION_SRC)/nsrunloop.m \
-	$(FOUNDATION_SRC)/nsoperation.m \
-	$(FOUNDATION_SRC)/ngeometry.m \
-	$(FOUNDATION_SRC)/nsprogress.m
+FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
+	$(FOUNDATION_SRC)/NSTinyString.m $(FOUNDATION_SRC)/NSNumber.m \
+	$(FOUNDATION_SRC)/NSData.m $(FOUNDATION_SRC)/NSDate.m \
+	$(FOUNDATION_SRC)/NSArray.m $(FOUNDATION_SRC)/NSDictionary.m \
+	$(FOUNDATION_SRC)/NSError.m $(FOUNDATION_SRC)/NSException.m \
+	$(FOUNDATION_SRC)/NSCharacterSet.m $(FOUNDATION_SRC)/NSIndexSet.m \
+	$(FOUNDATION_SRC)/NSIndexPath.m \
+	$(FOUNDATION_SRC)/NSLocale.m \
+	$(FOUNDATION_SRC)/NSMethodSignature.m \
+	$(FOUNDATION_SRC)/NSInvocation.m \
+	$(FOUNDATION_SRC)/NSInvocation_amd64.S \
+	$(FOUNDATION_SRC)/NSInvocation.h $(FOUNDATION_SRC)/NSMethodSignature.h \
+	$(FOUNDATION_SRC)/NSEnumerator.m $(FOUNDATION_SRC)/NSPropertyListSerialization.m \
+	$(FOUNDATION_SRC)/NSTimeZone.m $(FOUNDATION_SRC)/NSDateComponents.m \
+	$(FOUNDATION_SRC)/NSCalendar.m \
+	$(FOUNDATION_SRC)/NSURL.m \
+	$(FOUNDATION_SRC)/NSKeyValueCoding.m \
+	$(FOUNDATION_SRC)/NSSortDescriptor.m \
+	$(FOUNDATION_SRC)/NSPredicate.m \
+	$(FOUNDATION_SRC)/NSPredicateFormat.m \
+	$(FOUNDATION_SRC)/NSPredicate.h \
+	$(FOUNDATION_SRC)/NSDataCodec.m \
+	$(FOUNDATION_SRC)/NSData.h \
+		$(FOUNDATION_SRC)/NSCalendar.h \
+	$(FOUNDATION_SRC)/NSFormatter.m \
+	$(FOUNDATION_SRC)/NSDateFormatter.m \
+	$(FOUNDATION_SRC)/NSNumberFormatter.m \
+	$(FOUNDATION_SRC)/NSSet.m \
+	$(FOUNDATION_SRC)/NSValue.m \
+	$(FOUNDATION_SRC)/NSNull.m \
+	$(FOUNDATION_SRC)/NSCountedSet.m \
+	$(FOUNDATION_SRC)/NSOrderedSet.m \
+	$(FOUNDATION_SRC)/NSKeyValueObserving.m \
+	$(FOUNDATION_SRC)/NSExpression.m \
+	$(FOUNDATION_SRC)/NSComparisonPredicate.m \
+	$(FOUNDATION_SRC)/NSCoder.m \
+	$(FOUNDATION_SRC)/NSKeyedArchiver.m \
+	$(FOUNDATION_SRC)/NSProcessInfo.m \
+	$(FOUNDATION_SRC)/NSFileManager.m \
+	$(FOUNDATION_SRC)/NSURL.h \
+	$(FOUNDATION_SRC)/NSURLComponents.m \
+	$(FOUNDATION_SRC)/NSRegularExpression.m \
+	$(FOUNDATION_SRC)/NSLock.m \
+	$(FOUNDATION_SRC)/NSThread.m \
+	$(FOUNDATION_SRC)/NSRunLoop.m \
+	$(FOUNDATION_SRC)/NSOperation.m \
+	$(FOUNDATION_SRC)/NSGeometry.m \
+	$(FOUNDATION_SRC)/NSProgress.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSByteOrder.h \
 	$(FOUNDATION_SRC)/NSUUID.h \
@@ -225,22 +224,22 @@ FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplet
 # FOUNDATION COMPILE RULES, GENERATED. One rule per source from the directory listing, so a new .m file needs no
 # hand-written rule; and EACH OBJECT DEPENDS ON ITS .m, so editing a source rebuilds exactly its own object instead
 # of leaving a stale library that make never notices.
-# THE PER-FILE FLAGS WERE READ OFF the block this replaces: -fno-objc-arc for the MRC files (nsobject.m,
-# ntinystring.m, ndateinterval.m), the ICU prefix for the 5 files including <unicode/...>, the X11 prefix for
-# ncodec.m (the only file including <zlib.h>, hence -lz on the link), -Wno-objc-root-class for nsproxy.m.
+# THE PER-FILE FLAGS WERE READ OFF the block this replaces: -fno-objc-arc for the MRC files (NSObject.m,
+# NSTinyString.m, NSDateInterval.m), the ICU prefix for the 5 files including <unicode/...>, the X11 prefix for
+# NSDataCodec.m (the only file including <zlib.h>, hence -lz on the link), -Wno-objc-root-class for NSProxy.m.
 # AND A CORRECTION TO THIS BLOCK'S OWN COMMENT: $(FOUNDATION_CFLAGS) selects NO ARC AT ALL - the whole
 # library is MRC - so the three-entry MRC list below is REDUNDANT. It is kept because it was read off
 # the block this replaced, and because a redundant flag costs nothing; the sentence it replaces
 # ("$(FOUNDATION_CFLAGS) already selects ARC") was simply wrong.
 FN_FOUNDATION_SRCS  = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
-FN_FOUNDATION_NOARC = nsobject.m ntinystring.m ndateinterval.m
-# ncharacterset.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
+FN_FOUNDATION_NOARC = NSObject.m NSTinyString.m NSDateInterval.m
+# NSCharacterSet.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
 # category and the decomposition type, so <unicode/uchar.h> is on its include path. The link needed
 # nothing new - libfoundation has needed libicui18n/libicuuc/libicudata since F13.6.
-FN_FOUNDATION_ICU   = nscalendar.m nsdateformatter.m nsnumberformatter.m nspredicate.m nstimezone.m \
-                      ncharacterset.m
-FN_FOUNDATION_X11   = ncodec.m
-FN_FOUNDATION_ROOT  = nsproxy.m
+FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
+                      NSCharacterSet.m
+FN_FOUNDATION_X11   = NSDataCodec.m
+FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o
 
 define FN_FOUNDATION_rule
@@ -253,42 +252,42 @@ define FN_FOUNDATION_rule
 		-Iuserland $$< -o $$@
 endef
 $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
-.build/foundation-ninvoke-asm.o: $(FOUNDATION_SRC)/ninvoke_amd64.S
+.build/foundation-ninvoke-asm.o: $(FOUNDATION_SRC)/NSInvocation_amd64.S
 	$(MUSL64_CC) -c -fPIC $< -o $@
 $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUNDATION_OBJS)
 	@mkdir -p $(FNXLIB)
 	$(MUSL64_CC) -c -fPIC -Iinclude userland/plist.c -o .build/plist.o
-	# F7: the calendar family. nscalendar.m and nstimezone.m are ARC; the
+	# F7: the calendar family. NSCalendar.m and NSTimeZone.m are ARC; the
 	# components bag owns nothing but its fields.
 	#
-	# F13.7a: nstimezone.m NOW INCLUDES ICU (<unicode/ucal.h>, <unicode/uenum.h>), because the class
+	# F13.7a: NSTimeZone.m NOW INCLUDES ICU (<unicode/ucal.h>, <unicode/uenum.h>), because the class
 	# reads the zone database instead of refusing it — so the ICU prefix is on ITS include path.
-	# nscalendar.m and ndatecomponents.m do not include ICU: their arithmetic stays on libc's
+	# NSCalendar.m and NSDateComponents.m do not include ICU: their arithmetic stays on libc's
 	# struct tm and they reach the database only through NSTimeZone.
-	# F13.7b: nscalendar.m NOW INCLUDES ICU (<unicode/ucal.h>), because the class reads every
+	# F13.7b: NSCalendar.m NOW INCLUDES ICU (<unicode/ucal.h>), because the class reads every
 	# calendar out of it instead of refusing the ones whose tables it lacked. So the ICU prefix is
 	# on ITS include path too; the link needed nothing new (F13.6 already made libfoundation need
 	# libicui18n/libicuuc/libicudata).
 	# F8: the URL value type.
 	# F9: the key-value coding family — a category on NSObject, so nothing here
 	# owns its storage; the lookup goes through the runtime's ivar table.
-	# F10: the sorting family. nssortdescriptor.m resolves its key through KVC and
+	# F10: the sorting family. NSSortDescriptor.m resolves its key through KVC and
 	# calls a comparison selector through its OWN return type (a scalar, not `id`).
 	# F11a: the predicate object model — an abstract base, two private leaves, the tree
 	# node, and the two collection filters. The block leaf is why this file stores a block.
 	#
-	# F13.7d: nspredicate.m NOW INCLUDES ICU (<unicode/ucol.h>, for the `[d]` collation) and
+	# F13.7d: NSPredicate.m NOW INCLUDES ICU (<unicode/ucol.h>, for the `[d]` collation) and
 	# <regex.h> (musl's POSIX engine, which is inside libc — so MATCHES adds no link and no
 	# artifact). The ICU include path is therefore on THIS rule; the link needed nothing new,
 	# because F13.6 already made libfoundation need libicui18n/libicuuc/libicudata.
 	# F11b: the format grammar. A category on NSPredicate, so the parser lives beside the object
 	# model without either file owning the other.
-	# F12: the compression binding. ncodec.m is the ONLY file that includes <zlib.h>, so the X11
+	# F12: the compression binding. NSDataCodec.m is the ONLY file that includes <zlib.h>, so the X11
 	# prefix is on ITS include path — and on the LINK line below, because libfoundation now needs
 	# libz.so.1. That library is already staged into the guest for the X11 stack, so this adds a
 	# dependency and no new artifact (docs/design/foundation-plan.md, F12).
-	# F13.6: the value-to-text family. nsformatter.m is the abstract base and needs nothing extra;
-	# nsdateformatter.m is the file that includes <unicode/udat.h> and <unicode/udatpg.h>, so the
+	# F13.6: the value-to-text family. NSFormatter.m is the abstract base and needs nothing extra;
+	# NSDateFormatter.m is the file that includes <unicode/udat.h> and <unicode/udatpg.h>, so the
 	# ICU prefix is on ITS include path — and on the LINK line below, because libfoundation now
 	# needs libicui18n/libicuuc/libicudata. Those libraries and their data package are already
 	# staged into the guest (docs/design/foundation-plan.md §10, F13), so this adds a dependency
@@ -296,13 +295,13 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUN
 	# F13.7c: the number formatter. It includes <unicode/unum.h>, so the ICU prefix is on ITS
 	# include path; the LINK needs nothing new, because F13.6 already made libfoundation need
 	# libicui18n/libicuuc/libicudata.
-	# F13.7e: the shared calendar-keyword bridge (fncalendar.m/.h). It is its OWN translation unit
+	# F13.7e: the shared calendar-keyword bridge (NSCalendar.m/.h). It is its OWN translation unit
 	# because TWO classes call it — NSCalendar and NSDateFormatter — and it includes only
-	# <foundation/...> headers, so it needs no ICU include path of its own.
-	# F13.8: the unordered collection. It includes <foundation/...> headers only — no ICU, no zlib —
+	# <Foundation/...> headers, so it needs no ICU include path of its own.
+	# F13.8: the unordered collection. It includes <Foundation/...> headers only — no ICU, no zlib —
 	# because a set is RULES rather than data, which is why it was a gap in the plan's refusal table
 	# rather than an entry in it.
-	# W2h: the 128-bit identifier. <foundation/...> headers only — the entropy comes from
+	# W2h: the 128-bit identifier. <Foundation/...> headers only — the entropy comes from
 	# getentropy, so no ICU include path is needed.
 	# W2h: the autorelease pool boundary. It needs the RUNTIME's pool primitives, from
 	# W2h: JSON. Foundation headers plus string.h and math.h; no ICU, no zlib.
@@ -314,27 +313,27 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUN
 	# protocol itself. The same shape, and the same justification, as the probe rules' 
 	# -Wno-incomplete-implementation beside them.
 	# <objc/objc-arc.h>, which is already on the include path.
-	# W2h: the affine transform. <foundation/...> headers and libm, for sin/cos.
-	# W2h: the value transformer. <foundation/...> headers plus the runtime, for NSClassFromString.
-	# W2h: a span of time. <foundation/...> headers only - it is dates and arithmetic, no ICU.
+	# W2h: the affine transform. <Foundation/...> headers and libm, for sin/cos.
+	# W2h: the value transformer. <Foundation/...> headers plus the runtime, for NSClassFromString.
+	# W2h: a span of time. <Foundation/...> headers only - it is dates and arithmetic, no ICU.
 	# F13.8c: the box for everything that is not an object, and the object that stands for nothing.
-	# Same shape as the set: <foundation/...> headers only, no ICU and no zlib.
+	# Same shape as the set: <Foundation/...> headers only, no ICU and no zlib.
 	# F13.8d: the counted set. A SUBCLASS of NSMutableSet, so its initialisers have to reach the
 	# counts — see the file's header for why the array form may not go through the superclass's.
 	# F13.8e: the ordered set and its mutable half, in ONE translation unit (they share no
 	# superclass relation, so there is no NSMutableSet-style reason to split them).
-	# F13.9: the observer registry. <foundation/...> headers only, like the collections.
+	# F13.9: the observer registry. <Foundation/...> headers only, like the collections.
 	# F13.10: the expression tree. It reads collections and key paths, so it includes the NSSet
 	# header; no ICU and no zlib.
 	# F13.11: the expression-shaped comparison. It shares the comparison rule with the grammar's
 	# leaf through FNCompareValues, so this file states no rule of its own.
-	# F13.12: the coder family. nskeyedarchiver.m includes the plist serialisation and the runtime
+	# F13.12: the coder family. NSKeyedArchiver.m includes the plist serialisation and the runtime
 	# (it looks a class up BY NAME), so it is the one foundation source with those two dependencies.
 	# F13.13: the process service. It reads /proc and the C library's environ, so it is the one
 	# source here that includes <unistd.h> and <stdio.h>.
 	# F13.14: the file system service. It is the one source here that walks directories and calls
 	# open/read/write itself, because a recursive copy has no syscall to lean on.
-	# F13.15: the structured URL and RFC 3986 §5.2's resolution. fnurl.h is the bridge NSURL's
+	# F13.15: the structured URL and RFC 3986 §5.2's resolution. NSURL.h is the bridge NSURL's
 	# relative door reaches the algorithm through.
 	# F13.16: regular expressions, on the engine musl already ships inside libc. It includes
 	# <regex.h> and nothing else new.
@@ -453,7 +452,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# because a stale .build/sterlingc would silently emit yesterday's output.
 	#
 	# THE INCLUDE BRIDGE IS LOAD-BEARING. §2 emits `#import <Foundation/Foundation.h>`,
-	# Cocoa's capitalisation, and this tree's directory is `userland/foundation`.
+	# Cocoa's capitalisation, and this tree's directory is `userland/Foundation`.
 	# On a case-sensitive filesystem that import cannot resolve without a bridge
 	# - the same one tools/sterlingc-compile.sh builds for the host, and clang's
 	# -Wnonportable-include-path warning is how you can tell it is what resolved
@@ -462,7 +461,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	tools/sterlingc.sh --build
 	rm -rf .build/sterlingc/guest
 	mkdir -p .build/sterlingc/guest/include
-	ln -sfn "$(CURDIR)/userland/foundation" .build/sterlingc/guest/include/Foundation
+	ln -sfn "$(CURDIR)/userland/Foundation" .build/sterlingc/guest/include/Foundation
 	.build/sterlingc/sterlingc -o .build/sterlingc/guest
 	$(MUSL64_OBJC) -c -fobjc-arc \
 		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
@@ -506,7 +505,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
 	# foundation_value: F2 acceptance. The support unit imports ONLY the
-	# umbrella header, so a complete <foundation/Foundation.h> is part of the
+	# umbrella header, so a complete <Foundation/Foundation.h> is part of the
 	# acceptance too.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -543,7 +542,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_error"
 	# foundation_calendar: F7 acceptance. The same two-unit shape, and the support
 	# unit imports ONLY the umbrella — which is how the three new headers are
-	# proved to have reached <foundation/Foundation.h>.
+	# proved to have reached <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_calendar_support.m -o .build/probe-foundation_calendar_support.o
@@ -555,7 +554,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar"
 	# foundation_url: F8 acceptance. Two units again, and the support unit imports
 	# ONLY the umbrella — so this is also the proof that NSURL reached
-	# <foundation/Foundation.h>.
+	# <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_url_support.m -o .build/probe-foundation_url_support.o
@@ -628,7 +627,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# foundation_dateformatter: F13.6 acceptance - the first un-refused DATA family, exercised
 	# through FOUNDATION's own API rather than ICU's directly. ONE unit, deliberately: the other
 	# Foundation probes are two-unit because their claim is a cross-translation-unit boundary,
-	# while this family's claim is data, so the probe includes only <foundation/Foundation.h>
+	# while this family's claim is data, so the probe includes only <Foundation/Foundation.h>
 	# (which also proves the umbrella exports the new headers). It links the Foundation library,
 	# which is where ICU is now bound.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
@@ -638,7 +637,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dateformatter"
 	# foundation_set: F13.8 acceptance - the first family the boundary never justified. ONE unit (the
-	# claim is VALUE SEMANTICS, not a cross-TU boundary), only <foundation/Foundation.h>, linking the
+	# claim is VALUE SEMANTICS, not a cross-TU boundary), only <Foundation/Foundation.h>, linking the
 	# Foundation library.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -646,7 +645,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_set.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_set"
-	# foundation_nsvalue: F13.8c acceptance. ONE unit, only <foundation/Foundation.h>. Named nsvalue
+	# foundation_nsvalue: F13.8c acceptance. ONE unit, only <Foundation/Foundation.h>. Named nsvalue
 	# and NOT value, because foundation_value is F2/F8's probe for NSNumber/NSData/NSDate.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -654,7 +653,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_nsvalue.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_nsvalue"
-	# foundation_orderedset: F13.8e acceptance. ONE unit, only <foundation/Foundation.h>. A separate
+	# foundation_orderedset: F13.8e acceptance. ONE unit, only <Foundation/Foundation.h>. A separate
 	# probe from foundation_set because NSOrderedSet is NOT an NSSet subclass: order is its value.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -662,28 +661,28 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_orderedset.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
-	# foundation_kvo: F13.9 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_kvo: F13.9 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_kvo.m -o .build/probe-foundation_kvo.o
 	$(MUSL64_OBJC) .build/probe-foundation_kvo.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvo"
-	# foundation_expression: F13.10 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_expression: F13.10 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_expression.m -o .build/probe-foundation_expression.o
 	$(MUSL64_OBJC) .build/probe-foundation_expression.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_expression"
-	# foundation_coder: F13.12 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_coder: F13.12 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_coder.m -o .build/probe-foundation_coder.o
 	$(MUSL64_OBJC) .build/probe-foundation_coder.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_coder"
-	# foundation_processinfo: F13.13 acceptance. ONE unit, only <foundation/Foundation.h> plus
+	# foundation_processinfo: F13.13 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <unistd.h> for the getpid cross-check.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -691,7 +690,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_processinfo.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_processinfo"
-	# foundation_filemanager: F13.14 acceptance. ONE unit, only <foundation/Foundation.h> plus
+	# foundation_filemanager: F13.14 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <unistd.h> for the symlink(2) its link check makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -699,21 +698,21 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
-	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_urlcomponents.m -o .build/probe-foundation_urlcomponents.o
 	$(MUSL64_OBJC) .build/probe-foundation_urlcomponents.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcomponents"
-	# foundation_regex: F13.16 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_regex: F13.16 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_regex.m -o .build/probe-foundation_regex.o
 	$(MUSL64_OBJC) .build/probe-foundation_regex.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_regex"
-	# foundation_thread: F13.17 acceptance. ONE unit, only <foundation/Foundation.h> plus
+	# foundation_thread: F13.17 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <sys/time.h> for the elapsed-time measurements.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -721,21 +720,21 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_thread.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_thread"
-	# foundation_runloop: F13.18 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_runloop: F13.18 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_runloop.m -o .build/probe-foundation_runloop.o
 	$(MUSL64_OBJC) .build/probe-foundation_runloop.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_runloop"
-	# foundation_operation: F13.19 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_operation: F13.19 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_operation.m -o .build/probe-foundation_operation.o
 	$(MUSL64_OBJC) .build/probe-foundation_operation.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation"
-	# foundation_progress: F13.20 acceptance. ONE unit, only <foundation/Foundation.h>.
+	# foundation_progress: F13.20 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_progress.m -o .build/probe-foundation_progress.o
@@ -743,7 +742,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_progress"
 	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
-	# same shape as the date one: ONE unit (the claim is data), only <foundation/Foundation.h>, and
+	# same shape as the date one: ONE unit (the claim is data), only <Foundation/Foundation.h>, and
 	# it links the Foundation library, where ICU is bound.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -978,9 +977,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@cp $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
 	# Its PUBLIC HEADERS, which is what makes an on-guest Objective-C rebuild
 	# possible - the gap docs/design/self-hosting-packages.md §6 records for the
-	# runtime. Lower-case directory on purpose: <foundation/...>, never Apple's.
-	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/foundation"
-	@cp $(FOUNDATION_SRC)/*.h "$(ROOTFS64)/System/Shared/Headers/foundation/"
+	# runtime. Lower-case directory on purpose: <Foundation/...>, never Apple's.
+	# THE GUEST'S OWN COPY IS `Headers/Foundation` NOW: with the library's directory renamed, the
+	# import spelling `<Foundation/...>` must name the STAGED tree too, or a guest build would be
+	# told our own headers do not exist (user's cleanup, 2026-09-20).
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/Foundation"
+	@cp $(FOUNDATION_SRC)/*.h "$(ROOTFS64)/System/Shared/Headers/Foundation/"
 
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the

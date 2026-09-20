@@ -6,7 +6,7 @@
  * foundation_regex, unit of 1 — F13.16's acceptance for NSRegularExpression.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>.
+ * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * THE THREE CHECKS THAT EARN THEIR PLACE:
  *   regex-utf16-ranges        the engine counts BYTES and Cocoa counts UTF-16 units, so the ranges
@@ -19,7 +19,7 @@
  *                             told, by -options, that it is not in force.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

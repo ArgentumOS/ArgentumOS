@@ -13,7 +13,7 @@
 #ifndef FOUNDATION_VALUE_H
 #define FOUNDATION_VALUE_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NSNumber *foundation_value_number(void);
 NSData *foundation_value_data(void);

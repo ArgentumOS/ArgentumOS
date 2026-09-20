@@ -5,7 +5,7 @@
 /*
  * foundation_predicate — the two units' shared surface. docs/design/foundation-plan.md, F11a.
  *
- * The support unit imports ONLY <foundation/Foundation.h>, so this probe is also what proves
+ * The support unit imports ONLY <Foundation/Foundation.h>, so this probe is also what proves
  * NSPredicate reached the umbrella. And it builds one of the predicates itself, which is the
  * family's claim under test: a predicate is a VALUE, so one made over there answers over here.
  */
@@ -13,7 +13,7 @@
 #ifndef FOUNDATION_PREDICATE_H
 #define FOUNDATION_PREDICATE_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

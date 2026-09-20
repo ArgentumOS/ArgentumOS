@@ -6,7 +6,7 @@
  * foundation_kvo, unit of 1 — F13.9's acceptance for the observer registry.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h> (which proves the umbrella exports the new
+ * ONE unit, importing only <Foundation/Foundation.h> (which proves the umbrella exports the new
  * header). The observer and the observed object are both private to this file.
  *
  * WHAT IT MEASURES, and every detail carries its numbers rather than a description:
@@ -24,7 +24,7 @@
  *   kvo-observation-info-round-trips  Cocoa's own per-object storage doors.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 

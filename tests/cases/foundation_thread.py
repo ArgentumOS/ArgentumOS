@@ -8,7 +8,7 @@ NSRecursiveLock, NSCondition, NSRunLoop, NSTimer, NSOperationQueue, NSProgress â
 `NSRunLoop`/`NSTimer` and `NSOperationQueue` are their own designs and are named absent.
 
 The probe is `/System/Shared/tests/foundation_thread`, ONE unit, importing only
-`<foundation/Foundation.h>` plus `<sys/time.h>` for the elapsed-time measurements.
+`<Foundation/Foundation.h>` plus `<sys/time.h>` for the elapsed-time measurements.
 
   * `thread-current-and-main`      â€” `+currentThread` is one object per thread, and the main thread
                                      knows it is the main thread;

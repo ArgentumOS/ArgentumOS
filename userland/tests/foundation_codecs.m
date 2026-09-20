@@ -60,7 +60,7 @@ static const char *fn_why(NSData *data)
  * userInfo with a literal key: the key's VALUE is NSError's business, not the probe's. That is
  * not theoretical. This probe first looked up the literal "NSLocalizedDescriptionKey" and found
  * nothing, because the constant's value was "NSLocalizedDescription" — a fidelity bug in
- * nerror.m, found by this check and fixed there. */
+ * NSError.m, found by this check and fixed there. */
 static int fn_names(NSError *error, const char *what)
 {
 	NSString *message = error != nil ? [error localizedDescription] : nil;

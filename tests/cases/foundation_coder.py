@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §10. `NSCoding` is the protocol a class adopts to be archivable,
 `NSCoder` is the abstract base, and `NSKeyedArchiver`/`NSKeyedUnarchiver` are what an object is
 archived INTO and back out of. The probe is `/System/Shared/tests/foundation_coder`, ONE unit,
-importing only `<foundation/Foundation.h>`.
+importing only `<Foundation/Foundation.h>`.
 
   * `coder-round-trip-scalars`     — a name, an integer, a double and a bool across one archive;
   * `coder-round-trip-collections` — an array of strings and a dictionary of mixed values;

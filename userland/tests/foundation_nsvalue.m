@@ -12,7 +12,7 @@
  * written, which is cheap here and would not have been cheap in the tree.
  *
  * ONE unit, like the set probe: the claim is not a cross-translation-unit boundary but what a BOX
- * does with bytes, and it imports only <foundation/Foundation.h> (which also proves the umbrella
+ * does with bytes, and it imports only <Foundation/Foundation.h> (which also proves the umbrella
  * exports both headers).
  *
  * THE MEASUREMENT THAT MATTERS IS `value-copies-exactly-its-size`, and it is a CANARY rather than a
@@ -23,7 +23,7 @@
  * because `-getValue:` copies back whatever length it was told.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 #include <string.h>

@@ -5,7 +5,7 @@
 /*
  * foundation_calendar — the two units' shared surface.
  *
- * The support unit imports ONLY <foundation/Foundation.h>, so this probe is also
+ * The support unit imports ONLY <Foundation/Foundation.h>, so this probe is also
  * what proves the three new F7 headers are IN the umbrella: without them, the
  * support unit would not compile.
  */
@@ -13,7 +13,7 @@
 #ifndef FOUNDATION_CALENDAR_H
 #define FOUNDATION_CALENDAR_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

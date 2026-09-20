@@ -15,7 +15,7 @@
 #ifndef FOUNDATION_STRING_H
 #define FOUNDATION_STRING_H
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 /* A class that overrides the root class's -description. */
 @interface NamedThing : NSObject

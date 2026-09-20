@@ -255,7 +255,7 @@ MUSL64_OBJC   = $(CURDIR)/tools/musl-clang-objc64.sh
 # shared library beside libconfig. The MRR and ARC files are compiled with their
 # OWN flags (ARC is a per-file choice, never a wrapper default) and -fPIC, because
 # a shared object cannot take the ABI's PC-relative ivar-offset relocations.
-FOUNDATION_SRC = userland/foundation
+FOUNDATION_SRC = userland/Foundation
 FOUNDATION_LIB = $(FNXLIB)/libfoundation.so.1
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile

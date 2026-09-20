@@ -245,7 +245,7 @@ sources (`arc.mm`), so ARC code can only be linked against the shared library �
 the artefact we ship.
 
 **The Foundation (2026-09)**: the first-party class library on libobjc2 — F0 is
-`NSObject`, in `userland/foundation/`, built as **`libfoundation.so.1`** by the
+`NSObject`, in `userland/Foundation/`, built as **`libfoundation.so.1`** by the
 `$(FOUNDATION_LIB)` rule (make + the clang wrappers; **no scripting dependency**)
 and staged into `/System/Libraries/` (F1 added the string family: `NSString`,
 `NSOwnedString`, `NSMutableString`, `NSConstantString`, `NSTinyString`) and F2 the value types (`NSNumber`, `NSData`, `NSMutableData`, `NSDate`), and F3 the collections (`NSArray`, `NSMutableArray`, `NSDictionary`, `NSMutableDictionary`, with the `NSFastEnumeration` protocol).
@@ -262,7 +262,7 @@ gate and not the requirement) and the measured traps are in that plan; the
 acceptances are the twelve gated cases — `tests/cases/foundation_core.py`,
 `…_string.py`, `…_value.py`, `…_collection.py`, `…_error.py`, `…_calendar.py`,
 `…_url.py`, `…_kvc.py`, `…_sort.py`, `…_predicate.py`, `…_codecs.py`, plus the
-runtime's `tests/cases/objc_smoke.py`. **The library NOW NEEDS `libz`** (F12): `ncodec.m`
+runtime's `tests/cases/objc_smoke.py`. **The library NOW NEEDS `libz`** (F12): `NSDataCodec.m`
 is the one file that includes `<zlib.h>`, and `libfoundation.so.1` carries a `NEEDED`
 on `libz.so.1`. That library is staged for the guest already, so no new artifact has to
 ship — but a guest rebuild of the Foundation would need ZLIB'S HEADERS, which are not

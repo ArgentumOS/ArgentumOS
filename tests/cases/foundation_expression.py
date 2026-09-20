@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §10. F11 built `NSPredicate` as a tree of its own nodes; an expression
 is the OTHER public half of that idea — a standalone value tree a caller can build, hand around,
 compare and evaluate — and `NSComparisonPredicate` is what puts two of them together. The probe is
-`/System/Shared/tests/foundation_expression`, ONE unit, importing only `<foundation/Foundation.h>`.
+`/System/Shared/tests/foundation_expression`, ONE unit, importing only `<Foundation/Foundation.h>`.
 
   * `expr-constant`         — the type, the value and the evaluation of a constant;
   * `expr-keypath`          — an accessor reached BY NAME, the same through a DOTTED path, and nil

@@ -6,7 +6,7 @@
  * foundation_processinfo, unit of 1 — F13.13's acceptance.
  * docs/design/foundation-plan.md §10.
  *
- * ONE unit, importing only <foundation/Foundation.h>, plus <unistd.h> for the CROSS-CHECK that
+ * ONE unit, importing only <Foundation/Foundation.h>, plus <unistd.h> for the CROSS-CHECK that
  * matters: `-processIdentifier` is asserted against `getpid()` rather than merely against "greater
  * than zero", so the answer is pinned to the system's rather than to a plausible number.
  *
@@ -24,7 +24,7 @@
  *                           including the case that must answer NO.
  */
 
-#import <foundation/Foundation.h>
+#import <Foundation/Foundation.h>
 
 #include <stdio.h>
 #include <unistd.h>
