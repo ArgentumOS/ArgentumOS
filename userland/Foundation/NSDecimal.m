@@ -10,6 +10,11 @@
 
 
 #define FN_DIGITS	NSDecimalMaxDigits
+/* THE WIDEST MANTISSA ALIGNING CAN PRODUCE: a 38-digit mantissa shifted to meet another operand's exponent
+ * can reach 38 + 255 digits, because the model's exponent spans −128..127. The first version of
+ * NSDecimalNormalize used `FN_DIGITS * 2` for this and a `max + 1` would have written 250 bytes past the
+ * end of a stack buffer — a check in the OBJECT probe found it, not the arithmetic probe. */
+#define FN_WIDE		(NSDecimalMaxDigits + (NSDecimalMaxExponent - NSDecimalMinExponent) + 2)
 
 /* ---- digit helpers, LSD-first ------------------------------------------------------------------- */
 
@@ -171,6 +176,14 @@ static void fn_from_digits(NSDecimal *r, const unsigned char *d, int n, int expo
 	int i;
 
 	n = fn_strip(d, n);
+	if (n > FN_DIGITS) {
+		/* THE STORE HAS ONE SPARE DIGIT AND NOT TWO. A wider value is the caller's to round (see
+		 * fn_keep_top_digits); this guard exists so that a caller who forgets takes the TOP digits rather
+		 * than writing 250 bytes past the array. It cannot round, and it does not pretend to. */
+		d += (n - FN_DIGITS);
+		exponent += (n - FN_DIGITS);
+		n = FN_DIGITS;
+	}
 	r->_length = (unsigned char)n;
 	r->_isNegative = (n > 0 && negative) ? 1 : 0;
 	r->_isCompact = 0;
@@ -290,6 +303,65 @@ static NSCalculationError fn_round38(NSDecimal *r, NSRoundingMode mode)
 	return NSCalculationLossOfPrecision;
 }
 
+/* KEEP THE TOP 38 DIGITS OF A WIDE, LSD-FIRST ARRAY — ROUNDING BY THE MODE — AND ANSWER HOW MANY WERE
+ * DROPPED (the caller's exponent rises by exactly that count).
+ *
+ * This is the ONE place a mantissa wider than the store is reduced, and it lives at the ARRAY level because
+ * the decision needs the digits that are about to be lost: the highest dropped digit decides and anything
+ * non-zero below it is the tail. It is also the fix for a real bug found by the object probe: products and
+ * alignments were writing up to 250 bytes past a 39-digit store, and the sum of the two largest decimals
+ * was reported as half its true value because the HIGH end was being dropped instead of the LOW one.
+ * `fn_round38` is its mirror image: a product needs the top kept, and the two are not interchangeable. */
+static int fn_keep_top_digits(unsigned char *d, int *n, NSRoundingMode mode)
+{
+	int length = *n;
+	int drop;
+
+	if (length <= FN_DIGITS) {
+		return 0;
+	}
+	drop = length - FN_DIGITS;
+	{
+		int decide = d[drop - 1];
+		int tail = 0;
+		int up;
+		int i;
+		int carry = 1;
+
+		for (i = 0; i < drop - 1; i++) {
+			if (d[i] != 0) {
+				tail = 1;
+				break;
+			}
+		}
+		up = fn_round_up(mode, decide, tail, d[drop] % 2);
+		for (i = 0; i + drop < length; i++) {
+			d[i] = d[drop + i];
+		}
+		length -= drop;
+		if (up) {
+			for (i = 0; carry && i < length; i++) {
+				int cell = d[i] + carry;
+
+				d[i] = (unsigned char)(cell % 10);
+				carry = cell / 10;
+			}
+			if (carry) {
+				/* 99…9 + 1: the kept digits grow a place, which costs one fewer dropped digit (the
+				 * caller's exponent adjustment comes from the return value, so it stays exact). */
+				for (i = length; i > 0; i--) {
+					d[i] = d[i - 1];
+				}
+				d[0] = 1;
+				length++;
+				drop--;
+			}
+		}
+	}
+	*n = length;
+	return drop;
+}
+
 /* TO A SCALE — `scale` digits AFTER THE POINT, so what is dropped is every digit below place −scale. A
  * digit at index i has place exponent+i, so the digits to drop are indices 0..k−1 with k = −scale −
  * exponent, the DECISION digit is the first dropped one (index k−1, place −scale−1), and dropping k
@@ -382,9 +454,7 @@ NSCalculationError NSDecimalNormalize(NSDecimal *number1, NSDecimal *number2, NS
 {
 	NSDecimal *big;
 	NSDecimal *small;
-	unsigned char shifted[FN_DIGITS];
 	int shift;
-	int n;
 	int negative;
 
 	if (number1->_isNaN || number2->_isNaN) {
@@ -404,20 +474,24 @@ NSCalculationError NSDecimalNormalize(NSDecimal *number1, NSDecimal *number2, NS
 	if (shift == 0) {
 		return NSCalculationNoError;
 	}
-	n = fn_shift_digits(big->_digits, big->_length, shift, shifted, FN_DIGITS);
-	if (n >= 0) {
-		negative = big->_isNegative;
-		fn_from_digits(big, shifted, n, small->_exponent, negative);
-		return NSCalculationNoError;
-	}
-	/* IT DOES NOT FIT: the overflow is rounded away and the caller is TOLD. */
+	/* THE WIDE BUFFER IS NOT OPTIONAL, and it is the size the MODEL allows rather than the size the common
+	 * case needs: aligning `max` with `1` shifts the mantissa by 90 digits, and the first version of this
+	 * function used a buffer half that size. */
 	{
-		unsigned char wide[FN_DIGITS * 2];
-		int wideLength = fn_shift_digits(big->_digits, big->_length, shift, wide, FN_DIGITS * 2);
+		unsigned char wide[FN_WIDE];
+		int wideLength = fn_shift_digits(big->_digits, big->_length, shift, wide, FN_WIDE);
+		int drop;
 
+		if (wideLength < 0) {
+			wideLength = 0;		/* unreachable with FN_WIDE, and a clamp is not a lie */
+		}
+		drop = fn_keep_top_digits(wide, &wideLength, mode);
 		negative = big->_isNegative;
-		fn_from_digits(big, wide, wideLength, small->_exponent, negative);
-		return fn_round38(big, mode);
+		fn_from_digits(big, wide, wideLength, small->_exponent + drop, negative);
+		/* WHEN DIGITS WERE DROPPED THE TWO EXPONENTS ARE NO LONGER EQUAL, and that is the honest outcome:
+		 * exact alignment is impossible in a 38-digit mantissa. The caller is told, and the arithmetic
+		 * above uses the dominance that this establishes (see fn_add_or_subtract). */
+		return (drop > 0) ? NSCalculationLossOfPrecision : NSCalculationNoError;
 	}
 }
 
@@ -429,26 +503,43 @@ static NSCalculationError fn_add_or_subtract(NSDecimal *result, const NSDecimal 
 	unsigned char out[FN_DIGITS * 2];
 	int n;
 	int negative;
-	NSCalculationError rounding;
+	NSCalculationError alignment;
 
 	if (a._isNaN || b._isNaN) {
 		fn_make_nan(result);
 		return NSCalculationNoError;
 	}
-	(void)NSDecimalNormalize(&a, &b, mode);
+	alignment = NSDecimalNormalize(&a, &b, mode);
 	/* THE SIGNS DECIDE WHICH OPERATION THIS IS: a − b is a + (−b). */
 	if (subtract) {
 		b._isNegative = !b._isNegative;
 	}
+	if (alignment == NSCalculationLossOfPrecision) {
+		/* TOO FAR APART TO SHARE A MANTISSA — and the alignment has just established that the operand with
+		 * the LARGER EXPONENT DOMINATES: a drop happens only when `big->_length + shift > 38`, which is
+		 * exactly the condition for big's value to exceed 10^38 times the smaller one's. Nothing the
+		 * smaller operand contributes can reach the result's digits, so the answer is the rounded
+		 * dominant operand. Adding the digit arrays here instead would silently misalign them. */
+		*result = (a._exponent >= b._exponent) ? a : b;
+		NSDecimalCompact(result);
+		return NSCalculationLossOfPrecision;
+	}
 	if (a._length == 0) {
+		/* A ZERO OPERAND IS A COMPLETE ANSWER, and it RETURNS: falling through to the digit reduction
+		 * below would read an `out` array that was never written — which is exactly how a segfault inside
+		 * `2.345 + 0` was born. */
 		*result = b;
+		NSDecimalCompact(result);
+		return fn_range(result);
 	}
 	else if (b._length == 0) {
 		*result = a;
+		NSDecimalCompact(result);
+		return fn_range(result);
 	}
 	else if (a._isNegative == b._isNegative) {
 		n = fn_add_digits(a._digits, a._length, b._digits, b._length, out);
-		fn_from_digits(result, out, n, a._exponent, a._isNegative);
+		negative = a._isNegative;
 	} else {
 		int cmp = fn_cmp_digits(a._digits, a._length, b._digits, b._length);
 
@@ -463,14 +554,27 @@ static NSCalculationError fn_add_or_subtract(NSDecimal *result, const NSDecimal 
 			n = fn_sub_digits(b._digits, b._length, a._digits, a._length, out);
 			negative = b._isNegative;
 		}
-		fn_from_digits(result, out, n, a._exponent, negative);
 	}
-	rounding = fn_round38(result, mode);
-	if (rounding != NSCalculationNoError) {
-		return rounding;
+	/* AND THE SUM IS REDUCED IN THE ARRAY, ROUNDING AS IT GOES. The digits that cannot be kept are the
+	 * LEAST significant ones, so the exponent rises by what was dropped and the answer is the correctly
+	 * rounded sum. (Two earlier versions were wrong here in two different ways: dropping the HIGH end,
+	 * which reported 2 × NSDecimalMax as 1 × NSDecimalMax, and then passing a STALE length into the
+	 * reduction, which reported the right error code over a corrupted mantissa.) */
+	{
+		int drop = fn_keep_top_digits(out, &n, mode);
+		int negativeResult = negative;
+
+		fn_from_digits(result, out, n, a._exponent + drop, negativeResult);
+		if (drop > 0 && alignment == NSCalculationNoError) {
+			alignment = NSCalculationLossOfPrecision;
+		}
 	}
 	NSDecimalCompact(result);
-	return fn_range(result);
+	{
+		NSCalculationError range = fn_range(result);
+
+		return (range != NSCalculationNoError) ? range : alignment;
+	}
 }
 
 NSCalculationError NSDecimalAdd(NSDecimal *result, const NSDecimal *left, const NSDecimal *right, NSRoundingMode mode)
@@ -507,15 +611,20 @@ NSCalculationError NSDecimalMultiply(NSDecimal *result, const NSDecimal *left, c
 		return NSCalculationNoError;
 	}
 	n = fn_mul_digits(left->_digits, left->_length, right->_digits, right->_length, out);
-	fn_from_digits(&local, out, n, left->_exponent + right->_exponent,
-		       left->_isNegative != right->_isNegative);
-	rounding = fn_round38(&local, mode);
-	*result = local;
-	if (rounding != NSCalculationNoError) {
-		return rounding;
+	{
+		int drop = fn_keep_top_digits(out, &n, mode);
+
+		fn_from_digits(&local, out, n, left->_exponent + right->_exponent + drop,
+			       left->_isNegative != right->_isNegative);
+		rounding = (drop > 0) ? NSCalculationLossOfPrecision : NSCalculationNoError;
 	}
+	*result = local;
 	NSDecimalCompact(result);
-	return fn_range(result);
+	{
+		NSCalculationError range = fn_range(result);
+
+		return (range != NSCalculationNoError) ? range : rounding;	/* the range error is the severer */
+	}
 }
 
 /* LONG DIVISION. THE DIGIT COUNT IS THE ONE CHOICE HERE: 39 quotient digits are computed and the LAST
@@ -584,10 +693,14 @@ NSCalculationError NSDecimalDivide(NSDecimal *result, const NSDecimal *left, con
 	}
 	result->_length = (unsigned char)fn_strip(result->_digits, result->_length);
 	NSDecimalCompact(result);
-	if (decide != 0 || rLength > 0) {
-		return NSCalculationLossOfPrecision;
+	{
+		NSCalculationError range = fn_range(result);
+
+		if (range != NSCalculationNoError) {
+			return range;
+		}
 	}
-	return fn_range(result);
+	return (decide != 0 || rLength > 0) ? NSCalculationLossOfPrecision : NSCalculationNoError;
 }
 
 NSCalculationError NSDecimalPower(NSDecimal *result, const NSDecimal *number, NSUInteger power, NSRoundingMode mode)

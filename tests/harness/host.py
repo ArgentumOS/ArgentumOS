@@ -36,6 +36,7 @@ HOST_BIN_DIR = os.path.join(paths.ROOT, ".build", "host", "bin")
 HOST_CLEAN = {
     "foundation_codecs",
     "foundation_decimal",
+    "foundation_decimalnumber",
     "foundation_coder",
     "foundation_core",
     "foundation_dateformatter",

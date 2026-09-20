@@ -4903,3 +4903,62 @@ work failed inside `foundation-sweep` with 36 *"PRESENT BUT LISTED OPEN — flip
 looked like the flip had not landed. It had: that image build had started BEFORE the flip and its sweep
 step ran while the ledger was still open. **A gate that runs as a prerequisite reads the tree at the moment
 it runs** — the second build, after the flip, was clean.
+
+## 26. W3b: `NSDecimalNumber`, ITS BEHAVIOURS, AND THE `NSNumber` BRIDGE — WHICH FOUND FOUR BUGS IN §25's ARITHMETIC (2026-09-20)
+
+**WHAT SHIPPED.** `userland/Foundation/NSDecimalNumber.{h,m}`: `NSDecimalNumber` (an immutable `NSNumber`
+subclass over the `NSDecimal` from §25), `NSDecimalNumberHandler`, the `NSDecimalNumberBehaviors` protocol,
+and the four exception names — plus `NSNumber`'s three decimal methods (`+numberWithDecimal:`,
+`-initWithDecimal:`, `-decimalValue`), which is what finally REMOVES the three exclusions §25 left standing
+in `foundation_value`'s inventory. **11 LEDGER ROWS** flipped: two classes, the protocol, and the four
+exception names in both of the places Apple lists them. The ledger is consistent.
+
+**THE DESIGN IS ALL IN WHERE THE ARITHMETIC ISN'T.** Every operation calls §25's C functions and then does
+exactly two things: ask the BEHAVIOUR what to do about the error code, and apply the behaviour's SCALE. That
+is Apple's design and the reason each method has a plain and a `withBehavior:` form. `-initWithDecimal:` on
+`NSNumber` RETURNS AN `NSDecimalNumber` (a 44-byte decimal does not fit the 8-byte scalar union, which is
+also what Cocoa does), and the decimal's `-hash` is `NSNumber`'s own canonicalisation of the value — taken
+from the EXACT INTEGER when the decimal holds one, because a plain `NSNumber` holding 2^53 + 1 hashes as
+that integer and equality crosses the class boundary, so the hash has to as well.
+
+**THE ONE ASYMMETRY THE DOCUMENTATION STATES IN WORDS, and the probe asserts as a PAIR:**
+`+defaultDecimalNumberHandler` raises on overflow, underflow and divide-by-zero but NOT on loss of
+precision. So `1 ÷ 0` throws `NSDecimalNumberDivideByZeroException` while `NSDecimalMax + 1` quietly returns
+the rounded maximum. Only the pair is the rule; either half alone is a different behaviour.
+
+**FOUR BUGS IN §25's ARITHMETIC, FOUND BY THE OBJECT LAYER — the point of writing the second half:**
+
+1. **`NSDecimalNormalize` ALIGNED INTO A BUFFER HALF THE SIZE THE MODEL ALLOWS.** Aligning `1` with
+   `NSDecimalMax` shifts a mantissa by 90 digits; the buffer was sized for two mantissas (76 bytes) and the
+   widest alignment is 38 + 255. A stack write 250 bytes past the end, reachable from `max + 1`.
+2. **THE SUM DROPPED THE HIGH END INSTEAD OF THE LOW ONE.** `fn_round38` — right for a PRODUCT, whose high
+   digits are the ones being kept — was being used on an ALIGNED SUM, where the high digits are the answer.
+   `NSDecimalMax + NSDecimalMax` was reported as `999…98 × 10^90`: HALF its true value, and it passed §25's
+   shape check because that check had been written from the implementation's output instead of from
+   arithmetic. THE LESSON IS THE ONE THIS FILE KEEPS LEARNING: **an expectation derived from the code under
+   test is not a check.** The sum is now asserted against `2 × 10^128`, which is the correct rounding, and
+   the reduction is a new `fn_keep_top_digits` that rounds as it drops (and knows the difference between the
+   two ends — the two functions are mirrors and are not interchangeable).
+3. **A ZERO OPERAND FELL THROUGH INTO THAT REDUCTION** with an `out` array that had never been written —
+   a segfault inside `2.345 + 0`, with uninitialised memory on both the read and the write. Zero operands
+   now RETURN, which is what "a zero operand is a complete answer" means.
+4. **THE ALIGNMENT'S LOSS WAS DISCARDED** (`(void)NSDecimalNormalize(...)`), so a sum that could not be
+   aligned exactly reported no error. It is propagated now — and the alignment's failure mode is stated
+   where it is used: when digits must be dropped, the operand with the larger exponent DOMINATES (a drop
+   happens only when `length + shift > 38`, which is exactly the condition for its value to exceed 10^38 of
+   the other's), so the answer is that operand as the alignment rounded it. Adding the digit arrays in that
+   state would silently misalign them.
+
+**VERIFIED.** Host: the two decimal probes **8/8 and 9/9**, and the full host tier green (25 probes).
+Guest: `make testimg` then `make test TESTS='foundation_*'` — **TESTS-OK 30/30 case(s), 180/180 check(s) in
+52s**, the two decimal cases at 8/8 and 9/9, and `foundation_value` among the passes precisely because its
+inventory now REQUIRES the three decimal methods instead of excluding them. Ledger: 11 rows,
+`--check` consistent. Gate and linter as in §25.
+
+**AND THE GUEST COMPILER EARNED ITS REPUTATION AGAIN.** The probe compiled under the host's flags and FAILED
+under the guest's, on `+stringWithUTF8String:` — declared `id _Nullable` in this tree — being passed into a
+non-nullable parameter. The same class of failure as §25's stale-header trap and the same lesson: **the
+guest is the stricter compiler here, so a probe is not verified until the GUEST has compiled it.** The two
+files that need ICU's headers are also per-file in `mk/20-userland.mk` (`FN_FOUNDATION_ICU`), which the
+guest build was what revealed: `NSDecimalNumber.m` asks ICU for the locale's decimal separator and was not
+on the list, so it compiled on the host (ICU's headers are on the default path there) and not in the image.

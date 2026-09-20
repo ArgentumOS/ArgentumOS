@@ -19,6 +19,9 @@
  */
 
 #import <Foundation/NSNumber.h>
+#import <Foundation/NSDecimalNumber.h>
+#include <string.h>
+#include <stdlib.h>
 #import <Foundation/NSString.h>
 #include <stdio.h>
 
@@ -161,6 +164,77 @@ FN_NUMBER_GET(double, double)
 		return [self longLongValue] == [other longLongValue];
 	}
 	return [self doubleValue] == [other doubleValue];
+}
+
+/* THE DECIMAL BRIDGE (W3). Appledocuments THAT a conversion happens and nothing about how, so this is the
+ * rule: an integer converts EXACTLY (its digits are built from the stored scalar), and a DOUBLE converts
+ * through its SHORTEST ROUND-TRIPPING decimal form — the notation a reader of that double would write.
+ * The loop is that definition, spelled out: the first precision whose decimal text reads back as the same
+ * double, which is at most 17 and is what makes 1.5 become 1.5 rather than 1.4999999999999999. */
+- (NSDecimal)decimalValue
+{
+	NSDecimal result;
+	char text[64];
+	int i;
+
+	if (_kind == 'f' || _kind == 'd') {
+		int precision;
+
+		for (precision = 1; precision <= 17; precision++) {
+			snprintf(text, sizeof text, "%.*g", precision, _value._doubleValue);
+			if (strtod(text, NULL) == _value._doubleValue) {
+				break;
+			}
+		}
+		return [[NSDecimalNumber decimalNumberWithString:[NSString stringWithUTF8String:text]]
+			decimalValue];
+	}
+	result._isNaN = 0;
+	result._isCompact = 0;
+	{
+		unsigned long long magnitude;
+		int negative = 0;
+		unsigned char digits[24];
+		int n = 0;
+
+		if ([self isUnsigned]) {
+			magnitude = _value._unsignedValue;
+		} else {
+			long long signedValue = _value._signedValue;
+
+			negative = (signedValue < 0);
+			magnitude = negative ? (unsigned long long)(-(signedValue + 1)) + 1ULL
+					     : (unsigned long long)signedValue;
+		}
+		while (magnitude > 0) {
+			digits[n++] = (unsigned char)(magnitude % 10);
+			magnitude /= 10;
+		}
+		for (i = 0; i < n; i++) {
+			result._digits[i] = digits[i];
+		}
+		for (; i < NSDecimalMaxDigits + 1; i++) {
+			result._digits[i] = 0;
+		}
+		result._length = (unsigned char)n;
+		result._exponent = 0;
+		result._isNegative = (unsigned char)(n > 0 && negative);
+	}
+	return result;
+}
+
+/* THE DECIMAL CASE IS SERVED BY THE SUBCLASS, and the alloc'd receiver is released here: a 44-byte decimal
+ * does not fit the scalar union above, and the documented surface is NSNumber's own. Replacing the receiver
+ * inside -init is what makes `[[NSNumber alloc] initWithDecimal:d]` and `+numberWithDecimal:` agree. */
+- (id)initWithDecimal:(NSDecimal)decimal
+{
+	[self release];
+	return [[NSDecimalNumber alloc] initWithDecimal:decimal];
+}
+
++ (NSNumber *)numberWithDecimal:(NSDecimal)decimal
+{
+	return [[NSDecimalNumber alloc] initWithDecimal:decimal];
 }
 
 - (int)isFloating

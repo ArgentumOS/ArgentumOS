@@ -220,19 +220,22 @@ int main(void)
 		 * out of range, which is what the two calls below drive. */
 		NSCalculationError sumOfMax = NSDecimalAdd(&out, &big, &big, NSRoundPlain);
 
-		/* THE SHAPE OF THE CONSTANTS AND OF THEIR SUM IS WORTH ASSERTING, and here is why: the first
-		 * version of NSDecimalMax held THIRTY-SEVEN nines while claiming a length of 38, so its top
-		 * digit was zero, it was not the maximum, and max + max produced a 38-digit mantissa that never
-		 * needed rounding — an arithmetic error hidden inside a constant, invisible to every value-based
-		 * check. A correct maximum has 38 nines, and its sum with itself needs 39 digits, of which 38
-		 * survive (top 9) and the exponent stays 90. */
-		check("decimal-limits-shape",
-		      big._length == 38 && big._digits[0] == 9 && big._digits[37] == 9 &&
-		      (int)big._exponent == NSDecimalMaxExponent - (NSDecimalMaxDigits - 1) &&
-		      out._length == 38 && out._digits[37] == 9 && (int)out._exponent == 90,
-		      [[NSString stringWithFormat:@"max len=%d top=%d exp=%d; sum len=%d top=%d exp=%d",
-			(int)big._length, (int)big._digits[37], (int)big._exponent,
-			(int)out._length, (int)out._digits[37], (int)out._exponent] UTF8String]);
+		/* THE SHAPE OF THE CONSTANTS AND OF THEIR SUM. The constants' shape is asserted because the first
+		 * version of NSDecimalMax held THIRTY-SEVEN nines while claiming a length of 38 — an arithmetic
+		 * error that every value-based check had passed. The SUM is asserted against ARITHMETIC and not
+		 * against a shape read off the implementation: 2 × NSDecimalMax rounds to 38 significant digits as
+		 * exactly 2 × 10^128, and the first version of this check blessed a sum that was half of that
+		 * (because the arithmetic was dropping the HIGH end of the mantissa instead of the low one). */
+		{
+			NSDecimal expected = fn_dec("2", 128, 0);
+
+			check("decimal-limits-shape",
+			      big._length == 38 && big._digits[0] == 9 && big._digits[37] == 9 &&
+			      (int)big._exponent == NSDecimalMaxExponent - (NSDecimalMaxDigits - 1) &&
+			      NSDecimalCompare(&out, &expected) == NSOrderedSame,
+			      [[NSString stringWithFormat:@"max len=%d top=%d exp=%d; sum=%.140s",
+				(int)big._length, (int)big._digits[37], (int)big._exponent, fn_show(out)] UTF8String]);
+		}
 		NSCalculationError overflow = NSDecimalMultiplyByPowerOf10(&out, &big, 100, NSRoundPlain);
 		NSDecimal one = fn_dec("1", 0, 0);
 		NSCalculationError under = NSDecimalMultiplyByPowerOf10(&out, &one, -200, NSRoundPlain);

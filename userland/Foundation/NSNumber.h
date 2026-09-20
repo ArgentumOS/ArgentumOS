@@ -27,6 +27,7 @@
 #define FOUNDATION_NSNUMBER_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSDecimal.h>
 
 /* NULLABILITY (F6, slice 3): NONNULL by default, and the ONE exception is a
  * locale parameter — the same rule as the strings: a nil locale means no
@@ -97,6 +98,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)stringValue;			/* == -description */
 - (NSString *)descriptionWithLocale:(nullable id)locale;
 - (const char *)objCType;
+
+/* THE DECIMAL CASE (W3). NSDecimal is 44 bytes and this class's store is an 8-byte scalar union, so the
+ * CREATION side is served by NSDecimalNumber — which is what Cocoa does, and what -initWithDecimal: says
+ * in the implementation. -decimalValue converts from whatever scalar was stored; the rule is documented
+ * there too. */
++ (NSNumber *)numberWithDecimal:(NSDecimal)decimal;
+- (id)initWithDecimal:(NSDecimal)decimal;
+- (NSDecimal)decimalValue;
 
 - (BOOL)isEqualToNumber:(NSNumber *)other;
 - (NSComparisonResult)compare:(NSNumber *)other;

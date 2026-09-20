@@ -236,8 +236,11 @@ FN_FOUNDATION_NOARC = NSObject.m NSTinyString.m NSDateInterval.m
 # NSCharacterSet.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
 # category and the decomposition type, so <unicode/uchar.h> is on its include path. The link needed
 # nothing new - libfoundation has needed libicui18n/libicuuc/libicudata since F13.6.
+# THE ICU-HEADER LIST IS PER FILE, and a file that needs it and is not here fails on the GUEST ONLY
+# (the host has ICU's headers on its default include path). NSDecimalNumber.m asks ICU for the locale's
+# decimal separator, so it belongs in this list - which the guest build is what proved.
 FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
-                      NSCharacterSet.m NSLocale.m
+                      NSCharacterSet.m NSLocale.m NSDecimalNumber.m
 FN_FOUNDATION_X11   = NSDataCodec.m
 FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o
@@ -705,6 +708,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlcomponents.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcomponents"
+	# foundation_decimalnumber: W3b acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_decimalnumber.m -o .build/probe-foundation_decimalnumber.o
+	$(MUSL64_OBJC) .build/probe-foundation_decimalnumber.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimalnumber"
 	# foundation_decimal: W3 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \

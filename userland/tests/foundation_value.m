@@ -213,10 +213,10 @@ int main(void)
 			NULL
 		};
 		static const char *excluded[] = {
-			/* NSDecimalNumber / NSDecimal are not shipped. */
-			"decimalValue",			/* the NSDecimal conversion */
-			"numberWithDecimal:",		/* the NSDecimal constructor */
-			"initWithDecimal:",		/* the NSDecimal initialiser */
+			/* THE THREE DECIMAL ENTRIES THAT STOOD HERE ARE GONE (W3b): decimalValue,
+			 * numberWithDecimal: and initWithDecimal: are implemented on NSNumber now, and
+			 * NSDecimalNumber carries the type — so the inventory below REQUIRES them, which is the
+			 * point of removing an exclusion rather than decorating it. */
 			/* THE REASON THIS CARRIED WAS STALE: it said "NSValue is not shipped", and
 			 * NSValue HAS shipped (it has its own probe and case). The entries stay —
 			 * they are NSValue's methods in Cocoa, and what this inventory checks is

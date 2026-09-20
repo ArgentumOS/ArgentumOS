@@ -1381,8 +1381,8 @@ class	open	NSDateComponentsFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDateInterval		Fundamentals / Date Representations	-	objc
 class	open	NSDateIntervalFormatter		Fundamentals / Date Formatting	-	objc
-class	open	NSDecimalNumber		Fundamentals / Numbers / Using reference types	-	objc
-class	open	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
+class	shipped	NSDecimalNumber		Fundamentals / Numbers / Using reference types	-	objc
+class	shipped	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 class	open	NSDeleteCommand		App Support / Script Commands	-	objc
 class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
 class	open	NSDimension		Fundamentals / Essentials	-	objc
@@ -2218,7 +2218,7 @@ protocol	open	NSCacheDelegate		Fundamentals / Purgeable Collections / Managing t
 protocol	shipped	NSCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	struck	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	shipped	NSCopying		Low-Level Utilities / Copying	-	objc
-protocol	open	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
+protocol	shipped	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 protocol	open	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
 protocol	open	NSExtensionRequestHandling		App Support / Extension Support	-	objc
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
@@ -2413,14 +2413,14 @@ var	shipped	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
 var	open	NSDebugDescriptionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSDebugEnabled		App Support / Diagnostics and Debugging	-	objc
 var	struck	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	open	NSDecimalNumberDivideByZeroException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
-var	open	NSDecimalNumberDivideByZeroException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSDecimalNumberExactnessException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
-var	open	NSDecimalNumberExactnessException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSDecimalNumberOverflowException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
-var	open	NSDecimalNumberOverflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSDecimalNumberUnderflowException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
-var	open	NSDecimalNumberUnderflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSDecimalNumberDivideByZeroException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
+var	shipped	NSDecimalNumberDivideByZeroException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSDecimalNumberExactnessException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
+var	shipped	NSDecimalNumberExactnessException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSDecimalNumberOverflowException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
+var	shipped	NSDecimalNumberOverflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSDecimalNumberUnderflowException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
+var	shipped	NSDecimalNumberUnderflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDefaultRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	open	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc

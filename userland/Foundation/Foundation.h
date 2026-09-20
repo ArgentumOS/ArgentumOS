@@ -44,6 +44,7 @@
 #import <Foundation/NSByteOrder.h>
 #import <Foundation/NSUUID.h>
 #import <Foundation/NSDecimal.h>
+#import <Foundation/NSDecimalNumber.h>
 #import <Foundation/NSDateInterval.h>
 #import <Foundation/NSValueTransformer.h>
 #import <Foundation/NSAffineTransform.h>
