@@ -45,9 +45,9 @@ CHECKS = (
     # NSDateIntervalFormatter
     "dif-range", "dif-collapse", "dif-template-locale", "dif-no-style",
     "dif-interval-object", "dif-resettable", "dif-template-copies",
-    # NSByteCountFormatter (the arithmetic that is ours) + the W12 absence
+    # NSByteCountFormatter (the arithmetic that is ours) + the measurement doors W12 landed
     "bcf-count-styles", "bcf-magnitude", "bcf-units-mask", "bcf-zeropad",
-    "bcf-nonnumeric", "bcf-adaptive", "bcf-object-value", "bcf-measurement-deferred",
+    "bcf-nonnumeric", "bcf-adaptive", "bcf-object-value", "bcf-measurement-landed",
     # NSRelativeDateTimeFormatter
     "rdf-numeric", "rdf-named", "rdf-spellout", "rdf-interval-and-components",
     "rdf-capitalization", "rdf-locale", "rdf-object-value",
@@ -55,6 +55,10 @@ CHECKS = (
     "dcf-styles", "dcf-plural", "dcf-zero-behaviours", "dcf-positional-default",
     "dcf-positional-clock", "dcf-unit-rules", "dcf-phrases", "dcf-date-doors",
     "dcf-object-and-parse", "dcf-class-method",
+    # W12's first slice: the unit machinery and the value that carries a unit
+    "unit-identity", "unit-linear-converter", "unit-converter-raises",
+    "unit-information-storage", "unit-conversion", "unit-measurement-arithmetic",
+    "unit-measurement-value",
 )
 
 

@@ -3477,9 +3477,9 @@ vanishing.
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
 | **Fundamentals / Characters** | all classes shipped | — |
 | **Fundamentals / Concentration and Dispersion** | 2 open | `NSUnitConcentrationMass`, `NSUnitDispersion` |
-| **Fundamentals / Conversion** | 2 open | `NSUnitConverter`, `NSUnitConverterLinear` |
+| **Fundamentals / Conversion** | all classes shipped | — |
 | **Fundamentals / Custom formatters** | all classes shipped | — |
-| **Fundamentals / Data Storage** | 1 open | `NSUnitInformationStorage` |
+| **Fundamentals / Data Storage** | all classes shipped | — |
 | **Fundamentals / Data sizes** | all classes shipped | — |
 | **Fundamentals / Date Formatting** | all classes shipped | — |
 | **Fundamentals / Date Representations** | all classes shipped | — |
@@ -3487,7 +3487,7 @@ vanishing.
 | **Fundamentals / Deprecated** | ALL STRUCK: `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSLinguisticTagger`, `NSMassFormatter` | — |
 | **Fundamentals / Electricity** | 4 open | `NSUnitElectricCharge`, `NSUnitElectricCurrent`, `NSUnitElectricPotentialDifference`, `NSUnitElectricResistance` |
 | **Fundamentals / Energy, Heat, and Light** | 4 open | `NSUnitEnergy`, `NSUnitIlluminance`, `NSUnitPower`, `NSUnitTemperature` |
-| **Fundamentals / Essentials** | 3 open | `NSDimension`, `NSMeasurement`, `NSUnit` |
+| **Fundamentals / Essentials** | all classes shipped | — |
 | **Fundamentals / Filltering** | all classes shipped | — |
 | **Fundamentals / Fuel Efficiency** | 1 open | `NSUnitFuelEfficiency` |
 | **Fundamentals / Geometry** | all classes shipped | — |
@@ -5297,3 +5297,50 @@ headers** open a nullability region. `foundation-sweep --check`: consistent.
 
 **AND W11 IS NOW COMPLETE**: the six ICU-backed formatters of §28 plus this one — seven classes — with
 `NSSecureCoding` and the three `NSFormatter` doors folded in from §11's debt.
+
+## 31. W12's FIRST SLICE: THE UNIT MACHINERY, AND THE DEBT PAID (2026-09-20)
+
+**WHAT SHIPPED.** Five headers, five implementations: `NSUnit`, `NSUnitConverter` (whose header also
+declares `NSUnitConverterLinear` — the abstract pair and its only concrete member are one subject),
+`NSDimension`, `NSUnitInformationStorage` and `NSMeasurement`. **Six ledger class rows flipped.**
+
+**THE SLICE IS BIGGER THAN "NSMeasurement + NSUnit" SOUNDS, AND THE REASON IS THE INHERITANCE CHAIN.**
+`NSUnitInformationStorage` inherits **NSDimension**, not NSUnit, and NSDimension is what carries the
+converter — so the machinery is not furniture around the units: it IS the units. Five classes rather than
+two, and the probe grew from 59 to **66 checks**.
+
+**THREE THINGS APPLE DOES NOT PUBLISH, NAMED RATHER THAN GUESSED SILENTLY.**
+
+1. **THE BASE UNIT OF THE INFORMATION FAMILY IS BITS, AND THAT IS THIS TREE'S CHOICE.** `+baseUnit` is
+   declared on NSDimension and each concrete family answers its own; Apple's page for
+   NSUnitInformationStorage does not say which. The reason bits is arithmetic rather than taste: with bits
+   as the base EVERY coefficient in the family is an integer (1 nibble = 4, 1 B = 8, 1 kB = 8000,
+   1 KiB = 8192), where with bytes as the base a kilobit is 125 bytes and the SI prefix stops being round.
+   **Nothing a caller can observe changes** — a conversion is a ratio either way — so this is a choice and
+   not a deviation, and the probe pins it (`unit-information-storage`).
+2. **THE SYMBOLS ARE OURS** ("B", "kB", "KiB", "kbit", "Kibit"): Apple publishes the units and their
+   ratios, and not the string a `+bytes` carries. Pinned by the same check.
+3. **THE UNITS ARE CACHED, AND THAT IS LOAD-BEARING RATHER THAN AN OPTIMISATION.** `NSUnit`'s equality is
+   IDENTITY — a unit is what a measurement's arithmetic is defined against, so two units that merely spell
+   a symbol alike are different units — which means the thirty-five constants must answer the SAME OBJECT
+   every time, or a conversion between two measurements built from "the same" unit would be a conversion
+   between different ones. The probe asserts the cache for that reason.
+
+**AND THE DEBT §30 RECORDED IS PAID.** `NSByteCountFormatter`'s two `NSMeasurement` members landed, and
+**the check that had asserted their ABSENCE was FLIPPED rather than deleted** — §11.2's rule is that an
+absence assertion is a fact about the tree, and the way to retire one is to assert the presence and the
+behaviour. **FLIPPING IT EXPOSED A LATENT PROBE DEFECT, WHICH IS THE ARGUMENT FOR FLIPPING RATHER THAN
+DELETING**: the check had asked the **CLASS** whether it responded to `-stringFromMeasurement:` — an
+INSTANCE selector — which answers NO, so the old "these doors are absent" claim had been satisfied by a
+test that could not have distinguished absent from present, and it would have passed forever. The new
+check asks an instance, and asserts that a 1 MiB measurement formats as the same string a 1048576-byte
+count does — the whole point of converting through the unit's own converter before formatting.
+
+**VERIFIED.** Host: `make host-foundation-run` — **26 probes, 381/381 checks, 0 fail**. Guest:
+`make testimg` then `make test TESTS='foundation_formatters'` → **TESTS-OK 1/1 case(s), 6/6 check(s) in
+13s**, the probe's own tally `ok=66 fail=0` and exit 0. `make foundation-gate`: OK, **75 of 79 public
+headers** open a nullability region. `foundation-sweep --check`: consistent.
+
+**WHAT THE REST OF W12 STILL OWES**: the other twenty-two `NSUnit*` families (length, mass, temperature —
+where the linear converter's `constant` finally earns its place, since a temperature scale is an OFFSET
+one — and the rest), plus `NSMeasurementFormatter` and its three option cases.

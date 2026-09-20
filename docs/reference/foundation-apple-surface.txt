@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   81   open  161   struck   31
+#   class      shipped   87   open  155   struck   31
 #   protocol   shipped    9   open   27   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   76   open   76   struck    8
@@ -1385,7 +1385,7 @@ class	shipped	NSDecimalNumber		Fundamentals / Numbers / Using reference types	-	
 class	shipped	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 class	open	NSDeleteCommand		App Support / Script Commands	-	objc
 class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
-class	open	NSDimension		Fundamentals / Essentials	-	objc
+class	shipped	NSDimension		Fundamentals / Essentials	-	objc
 class	open	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 class	struck	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1441,7 +1441,7 @@ class	struck	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprec
 class	struck	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSMapTable		Fundamentals / Pointer Collections	-	objc
 class	struck	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
-class	open	NSMeasurement		Fundamentals / Essentials	-	objc
+class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
 class	open	NSMeasurementFormatter		Fundamentals / Measurements	-	objc
 class	struck	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSMessagePortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1564,13 +1564,13 @@ class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key an
 class	struck	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSUndoManager		App Support / Undo	-	objc
 class	open	NSUniqueIDSpecifier		App Support / Object Specifiers	-	objc
-class	open	NSUnit		Fundamentals / Essentials	-	objc
+class	shipped	NSUnit		Fundamentals / Essentials	-	objc
 class	open	NSUnitAcceleration		Fundamentals / Time and Motion	-	objc
 class	open	NSUnitAngle		Fundamentals / Physical Dimension	-	objc
 class	open	NSUnitArea		Fundamentals / Physical Dimension	-	objc
 class	open	NSUnitConcentrationMass		Fundamentals / Concentration and Dispersion	-	objc
-class	open	NSUnitConverter		Fundamentals / Conversion	-	objc
-class	open	NSUnitConverterLinear		Fundamentals / Conversion	-	objc
+class	shipped	NSUnitConverter		Fundamentals / Conversion	-	objc
+class	shipped	NSUnitConverterLinear		Fundamentals / Conversion	-	objc
 class	open	NSUnitDispersion		Fundamentals / Concentration and Dispersion	-	objc
 class	open	NSUnitDuration		Fundamentals / Time and Motion	-	objc
 class	open	NSUnitElectricCharge		Fundamentals / Electricity	-	objc
@@ -1581,7 +1581,7 @@ class	open	NSUnitEnergy		Fundamentals / Energy, Heat, and Light	-	objc
 class	open	NSUnitFrequency		Fundamentals / Time and Motion	-	objc
 class	open	NSUnitFuelEfficiency		Fundamentals / Fuel Efficiency	-	objc
 class	open	NSUnitIlluminance		Fundamentals / Energy, Heat, and Light	-	objc
-class	open	NSUnitInformationStorage		Fundamentals / Data Storage	-	objc
+class	shipped	NSUnitInformationStorage		Fundamentals / Data Storage	-	objc
 class	open	NSUnitLength		Fundamentals / Physical Dimension	-	objc
 class	open	NSUnitMass		Fundamentals / Mass, Weight, and Force	-	objc
 class	open	NSUnitPower		Fundamentals / Energy, Heat, and Light	-	objc

@@ -33,10 +33,12 @@
  * 0: Apple's page says so ("This causes default units appropriate for the platform to be used. This is
  * the default."), and a mask of zero cannot be a bit in the same mask as UseBytes.
  *
- * NOT HERE, NAMED: the two NSMeasurement-taking members (`-stringFromMeasurement:` and
- * `+stringFromMeasurement:countStyle:`). `NSMeasurement` and the `NSUnit*` family are W12's, so those
- * two rows stay open on the ledger and the probe asserts their absence as a WORK ITEM rather than
- * describing them as a boundary (§11's rule).
+ * THE TWO NSMeasurement MEMBERS ARE HERE NOW (2026-09-20, W12's first slice), so the "NOT HERE, NAMED"
+ * paragraph this comment used to carry is gone — the debt §30 recorded is paid rather than described.
+ * They convert the measurement to BYTES through its own unit's converter and then format the count with
+ * the receiver's settings, which is what Apple's "Formats the value of the given measurement using the
+ * receiver's settings" says; a measurement whose unit is not an information-storage unit answers NIL,
+ * the same "not my kind of value" the object door uses.
  */
 
 #ifndef FOUNDATION_NSBYTECOUNTFORMATTER_H
@@ -45,6 +47,9 @@
 #import <Foundation/NSFormatter.h>
 
 @class NSString;
+/* W12's measurement doors take one, and the class is declared in its own header: forward-declared here so
+ * this header does not pull the whole unit family in. */
+@class NSMeasurement;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -92,9 +97,15 @@ typedef enum {
 /* The same, using the receiver's settings. */
 - (nullable NSString *)stringFromByteCount:(long long)byteCount;
 
-/* NSFormatter's door: an NSNumber is a byte count and is formatted with the receiver's settings. An
- * object of any other class answers nil — "not my kind of value", the same convention
- * NSListFormatter's door uses. (The NSMeasurement branch Apple's page mentions rides W12.) */
+/* W12: the measurement doors. The measurement is converted to BYTES through its own unit's converter and
+ * then formatted with the receiver's settings; a measurement of another dimension answers nil. */
+- (nullable NSString *)stringFromMeasurement:(NSMeasurement *)measurement;
++ (nullable NSString *)stringFromMeasurement:(NSMeasurement *)measurement
+				  countStyle:(NSByteCountFormatterCountStyle)countStyle;
+
+/* NSFormatter's door: an NSNumber is a byte count and is formatted with the receiver's settings, and so IS
+ * an NSMeasurement (Apple's own page for this door says both). An object of any other class answers nil —
+ * "not my kind of value", the same convention NSListFormatter's door uses. */
 - (nullable NSString *)stringForObjectValue:(nullable id)object;
 
 /* Where the text will appear in a sentence. Declared on the SUBCLASSES, not on NSFormatter — Apple's

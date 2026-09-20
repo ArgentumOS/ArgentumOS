@@ -21,6 +21,10 @@
 #import <Foundation/NSByteCountFormatter.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSString.h>
+/* THE MEASUREMENT DOORS' TWO CLASSES (W12): the value, and the unit it is converted to before the count
+ * is formatted. */
+#import <Foundation/NSMeasurement.h>
+#import <Foundation/NSUnitInformationStorage.h>
 /* NSLocale, for the -localeIdentifier send below: a forward-declared or untyped receiver makes that
  * send a warning (-Wobjc-method-access), which is exactly the same class of mistake NSCoder made in
  * NSISO8601DateFormatter.m one class ago. */
@@ -297,8 +301,42 @@ static int fn_bcf_magnitude_exponent(long long count, int divisor)
 	return [formatter stringFromByteCount:byteCount];
 }
 
+/* THE MEASUREMENT DOORS (W12): the measurement arrives in ITS OWN unit, so it is converted to BYTES
+ * through its unit's converter before the count is formatted — which is the only way a "1 MiB" measurement
+ * and a "1048576 bytes" count can produce the same string. A measurement of another dimension answers nil
+ * ("not my kind of value"), rather than raising out of a door whose sibling doors answer nil. */
+- (nullable NSString *)stringFromMeasurement:(NSMeasurement *)measurement
+{
+	NSMeasurement *inBytes;
+	long long bytes;
+
+	if (measurement == nil) {
+		return nil;
+	}
+	if (![measurement canBeConvertedToUnit:[NSUnitInformationStorage bytes]]) {
+		return nil;
+	}
+	inBytes = [measurement measurementByConvertingToUnit:[NSUnitInformationStorage bytes]];
+	bytes = (long long)[inBytes doubleValue];
+	return [self stringFromByteCount:bytes];
+}
+
++ (nullable NSString *)stringFromMeasurement:(NSMeasurement *)measurement
+				 countStyle:(NSByteCountFormatterCountStyle)countStyle
+{
+	NSByteCountFormatter *formatter = [[[self alloc] init] autorelease];
+
+	[formatter setCountStyle:countStyle];
+	return [formatter stringFromMeasurement:measurement];
+}
+
 - (nullable NSString *)stringForObjectValue:(nullable id)object
 {
+	/* Apple's page for THIS door says both kinds: "Formats … as a byte count (if … is an NSNumber) or
+	 * specific byte measurement (if … is an NSMeasurement)". */
+	if ([object isKindOfClass:[NSMeasurement class]]) {
+		return [self stringFromMeasurement:(NSMeasurement *)object];
+	}
 	if (![object isKindOfClass:[NSNumber class]]) {
 		return nil;
 	}

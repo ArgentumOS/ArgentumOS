@@ -57,7 +57,10 @@
  *   bcf-nonnumeric          zero prints as "Zero KB" (Apple's phrase) or "0 bytes"
  *   bcf-adaptive            the one property Apple publishes no behaviour for: our reading, in the header
  *   bcf-object-value        an NSNumber IS a byte count; anything else answers nil
- *   bcf-measurement-deferred the W12 WORK ITEM as an absence: no NSMeasurement doors, no NSMeasurement
+ *   bcf-measurement-landed   THE PAID DEBT: this check used to assert the two NSMeasurement doors and the
+ *                           class itself were ABSENT; it now asserts they are there AND behave (a 1 MiB
+ *                           measurement formats as the same string a 1048576-byte count does). Flipping it
+ *                           exposed a latent probe defect: the instance door was being asked of the CLASS
  *   rdf-numeric             the unit choice is OURS: a one-day span is a DAY, not 24 hours
  *   rdf-named               the two styles: "1 day ago" versus "yesterday"
  *   rdf-spellout            SpellOut is what ICU's adopt parameter is for: "two months ago"
@@ -88,6 +91,17 @@
  *   dcf-object-and-parse    -stringForObjectValue: takes date information, and -getObjectValue: ANSWERS
  *                           NO because Apple's own page says this class "only implements formatting"
  *   dcf-class-method        +localizedStringFromDateComponents:unitsStyle: is the instance path
+ *
+ * W12's FIRST SLICE — the unit machinery, and the value that carries a unit.
+ *   unit-identity           two units with the same symbol are NOT equal: a unit's identity is its value
+ *   unit-linear-converter   base = value*coefficient + constant, both directions, ratio and offset
+ *   unit-converter-raises   the abstract converter answers by REFUSING, like NSFormatter's doors
+ *   unit-information-storage  1 B = 8 bits, 1 kB = 8000, 1 KiB = 8192 — against the base unit THIS TREE
+ *                           chose, because Apple publishes no base unit for this dimension
+ *   unit-conversion         1 MiB = 1024 KiB = 1048.576 kB, through the base unit, never unit-to-unit
+ *   unit-measurement-arithmetic  adding happens IN THE RECEIVER'S unit, and a plain NSUnit is not
+ *                           convertible at all (a dimensionless unit has no converter)
+ *   unit-measurement-value  equality is by VALUE AND UNIT, -copy is the same object, NSSecureCoding
  */
 
 #import <Foundation/Foundation.h>
@@ -930,23 +944,48 @@ int main(void)
 
 	{
 		/*
-		 * THE W12 WORK ITEM, ASSERTED AS AN ABSENCE rather than described as a boundary (§11's rule, and
-		 * §11.2's lesson that an absence assertion is a fact about the TREE). The two
-		 * NSMeasurement-taking members are the only W11 surface this unit does not land: NSMeasurement
-		 * and the NSUnit* family are W12's, so those rows stay ledger-open and this check names them —
-		 * which is what keeps the excluded list a to-do instead of a claim.
+		 * THE DEBT §30 NAMED IS PAID, so this check is FLIPPED rather than deleted: until W12's first
+		 * slice it asserted that the two NSMeasurement doors and the class itself were ABSENT (a
+		 * work item with a check on it, per §11.2's lesson that an absence assertion is a fact about the
+		 * tree). Now it asserts they are THERE and that they BEHAVE — 1000 bytes as a measurement formats
+		 * as "1 KB", and 1 MiB formats as the same string a 1048576-byte count does, which is the whole
+		 * point of converting through the unit's own converter first.
 		 */
+		NSByteCountFormatter *doorProbe = [[NSByteCountFormatter alloc] init];
 		BOOL classLevel = [NSByteCountFormatter
 			respondsToSelector:sel_registerName("stringFromMeasurement:countStyle:")];
-		BOOL instanceLevel = [NSByteCountFormatter
-			respondsToSelector:sel_registerName("stringFromMeasurement:")];
-		BOOL measurementAbsent = objc_getClass("NSMeasurement") == NULL;
+		/* THE INSTANCE DOOR IS ASKED OF AN INSTANCE, and that is not a formality: this check's previous
+		 * form asked the CLASS about `stringFromMeasurement:` — an INSTANCE selector — which answers NO,
+		 * so the old "these doors are absent" assertion was satisfied by a test that could not have told
+		 * absent from present. Flipping the check to demand their presence is what exposed it. */
+		BOOL instanceLevel = [doorProbe respondsToSelector:sel_registerName("stringFromMeasurement:")];
+		NSMeasurement *thousand = [[NSMeasurement alloc]
+					    initWithDoubleValue:1000.0
+							   unit:[NSUnitInformationStorage bytes]];
+		NSMeasurement *mebibyte = [[NSMeasurement alloc]
+					    initWithDoubleValue:1.0
+							   unit:[NSUnitInformationStorage mebibytes]];
+		NSString *viaMeasurement = classLevel
+			? [NSByteCountFormatter stringFromMeasurement:thousand
+							  countStyle:NSByteCountFormatterCountStyleFile]
+			: nil;
+		NSString *viaMebibyte = instanceLevel
+			? [[[NSByteCountFormatter alloc] init] stringFromMeasurement:mebibyte]
+			: nil;
+		NSString *viaCount = [NSByteCountFormatter stringFromByteCount:1048576
+								   countStyle:NSByteCountFormatterCountStyleFile];
 
-		check("bcf-measurement-deferred",
-		      !classLevel && !instanceLevel && measurementAbsent,
-		      [NSString stringWithFormat:@"+stringFromMeasurement:countStyle:=%d "
-			 "-stringFromMeasurement:=%d NSMeasurement absent=%d (want 0/0/1 until W12)",
-			 classLevel, instanceLevel, measurementAbsent]);
+		check("bcf-measurement-landed",
+		      classLevel && instanceLevel &&
+		      viaMeasurement != nil && [viaMeasurement isEqualToString:@"1 KB"] &&
+		      viaMebibyte != nil && viaCount != nil &&
+		      [viaMebibyte isEqualToString:viaCount],
+		      [NSString stringWithFormat:@"doors=%d/%d 1000B measurement=[%@] "
+			 "1 MiB measurement=[%@] vs 1048576-byte count=[%@]",
+			 classLevel, instanceLevel,
+			 viaMeasurement == nil ? @"(nil)" : viaMeasurement,
+			 viaMebibyte == nil ? @"(nil)" : viaMebibyte,
+			 viaCount == nil ? @"(nil)" : viaCount]);
 	}
 
 	/* ---- NSRelativeDateTimeFormatter: ICU names the span, we choose WHICH span ---- */
@@ -1399,6 +1438,160 @@ int main(void)
 		      [viaClass isEqualToString:@"two hours"],
 		      [NSString stringWithFormat:@"viaClass=[%@] viaInstance=[%@]",
 			 viaClass == nil ? @"(nil)" : viaClass, viaInstance == nil ? @"(nil)" : viaInstance]);
+	}
+
+	/* ---- W12's first slice: the unit machinery, and the value that carries a unit ---- */
+	{
+		/* A UNIT IS A SYMBOL AND AN IDENTITY, and the identity half is the interesting one: two units that
+		 * spell their symbol the same are NOT the same unit, because a unit is what a measurement's
+		 * arithmetic is defined against. -copy answers the same object, a unit being immutable. */
+		NSUnit *one = [[NSUnit alloc] initWithSymbol:@"m"];
+		NSUnit *two = [[NSUnit alloc] initWithSymbol:@"m"];
+
+		check("unit-identity",
+		      one != nil && two != nil &&
+		      [[one symbol] isEqualToString:@"m"] &&
+		      ![one isEqual:two] &&
+		      [one isEqual:one] &&
+		      [one copy] == one,
+		      [NSString stringWithFormat:@"symbol=[%@] equal=%d copySame=%d",
+			 [one symbol], [one isEqual:two], [one copy] == one]);
+	}
+
+	{
+		/* THE LINEAR CONVERTER, both directions, with a ZERO constant (a ratio scale, the shape every
+		 * information unit uses) and with an OFFSET one (the shape a temperature scale needs later). */
+		NSUnitConverterLinear *ratio = [[NSUnitConverterLinear alloc] initWithCoefficient:1000.0];
+		NSUnitConverterLinear *offset = [[NSUnitConverterLinear alloc]
+						  initWithCoefficient:1.8 constant:32.0];
+
+		check("unit-linear-converter",
+		      ratio != nil && [ratio coefficient] == 1000.0 && [ratio constant] == 0.0 &&
+		      [ratio baseUnitValueFromValue:2.0] == 2000.0 &&
+		      [ratio valueFromBaseUnitValue:2000.0] == 2.0 &&
+		      offset != nil && [offset baseUnitValueFromValue:100.0] == 212.0 &&
+		      [offset valueFromBaseUnitValue:212.0] == 100.0,
+		      [NSString stringWithFormat:@"ratio(2)=%g offset(100)=%g offset^-1(212)=%g",
+			 [ratio baseUnitValueFromValue:2.0],
+			 [offset baseUnitValueFromValue:100.0],
+			 [offset valueFromBaseUnitValue:212.0]]);
+	}
+
+	{
+		/* THE ABSTRACT CONVERTER HAS NO ARITHMETIC, so it answers by refusing — the same shape
+		 * NSFormatter's doors have, and the reason the two doors are the protocol's whole content. */
+		NSUnitConverter *bare = [[NSUnitConverter alloc] init];
+		BOOL forwardRaised = NO;
+		BOOL reverseRaised = NO;
+
+		@try {
+			(void)[bare baseUnitValueFromValue:1.0];
+		} @catch (NSException *e) {
+			(void)e;
+			forwardRaised = YES;
+		}
+		@try {
+			(void)[bare valueFromBaseUnitValue:1.0];
+		} @catch (NSException *e) {
+			(void)e;
+			reverseRaised = YES;
+		}
+		check("unit-converter-raises", forwardRaised && reverseRaised,
+		      [NSString stringWithFormat:@"forward=%d reverse=%d (both want 1)",
+			 forwardRaised, reverseRaised]);
+	}
+
+	{
+		/* THE INFORMATION UNITS, against the BASE UNIT THIS FILE CHOSE (bits — Apple publishes none, and
+		 * bits makes every coefficient an integer). 1 B = 8 bits, 1 kB = 8000 bits, 1 KiB = 8192 bits.
+		 * THE CONVERTERS ARE BOUND AS NSUnitConverterLinear because `-converter` is declared on NSDimension
+		 * as the ABSTRACT converter — which is the honest type there and the wrong one here. */
+		NSUnitConverterLinear *byteConverter = (NSUnitConverterLinear *)
+			[[NSUnitInformationStorage bytes] converter];
+		NSUnitConverterLinear *kilobyteConverter = (NSUnitConverterLinear *)
+			[[NSUnitInformationStorage kilobytes] converter];
+		NSUnitConverterLinear *kibibyteConverter = (NSUnitConverterLinear *)
+			[[NSUnitInformationStorage kibibytes] converter];
+		NSUnitConverterLinear *bitConverter = (NSUnitConverterLinear *)
+			[[NSUnitInformationStorage bits] converter];
+		double bitsPerByte = [byteConverter coefficient];
+		double bitsPerKilobyte = [kilobyteConverter coefficient];
+		double bitsPerKibibyte = [kibibyteConverter coefficient];
+		double bitsPerBit = [bitConverter coefficient];
+		BOOL cached = ([NSUnitInformationStorage bytes] == [NSUnitInformationStorage bytes]);
+		BOOL baseIsBits = ([NSUnitInformationStorage baseUnit] == [NSUnitInformationStorage bits]);
+
+		check("unit-information-storage",
+		      bitsPerBit == 1.0 && bitsPerByte == 8.0 &&
+		      bitsPerKilobyte == 8000.0 && bitsPerKibibyte == 8192.0 &&
+		      /* CACHED, and that is load-bearing rather than an optimisation: NSUnit's equality is
+		       * IDENTITY, so the constants must answer the same object. */
+		      cached && baseIsBits,
+		      [NSString stringWithFormat:@"bit=%g B=%g kB=%g KiB=%g cached=%d baseIsBits=%d",
+			 bitsPerBit, bitsPerByte, bitsPerKilobyte, bitsPerKibibyte, cached, baseIsBits]);
+	}
+
+	{
+		/* THE CONVERSIONS, which are the reason the class exists: 1 MiB is 1024 KiB and 1048.576 kB,
+		 * and the two decimal/binary spellings of a kilobyte differ by exactly that ratio. */
+		NSMeasurement *mib = [[NSMeasurement alloc] initWithDoubleValue:1.0
+								   unit:[NSUnitInformationStorage mebibytes]];
+		NSMeasurement *inKiB = [mib measurementByConvertingToUnit:[NSUnitInformationStorage kibibytes]];
+		NSMeasurement *inKB = [mib measurementByConvertingToUnit:[NSUnitInformationStorage kilobytes]];
+		NSMeasurement *oneKiB = [[NSMeasurement alloc] initWithDoubleValue:1.0
+									      unit:[NSUnitInformationStorage kibibytes]];
+		NSMeasurement *inBytes = [oneKiB measurementByConvertingToUnit:[NSUnitInformationStorage bytes]];
+
+		check("unit-conversion",
+		      mib != nil && inKiB != nil && [inKiB doubleValue] == 1024.0 &&
+		      inKB != nil && [inKB doubleValue] == 1048.576 &&
+		      inBytes != nil && [inBytes doubleValue] == 1024.0 &&
+		      [[inKiB unit] symbol] != nil,
+		      [NSString stringWithFormat:@"1 MiB = %g KiB, %g kB; 1 KiB = %g B",
+			 [inKiB doubleValue], [inKB doubleValue], [inBytes doubleValue]]);
+	}
+
+	{
+		/* ADDING AND SUBTRACTING happen IN THE RECEIVER'S UNIT: 1 KiB + 1 kB is 1.9765625 KiB, because
+		 * the kilobyte is converted into the kibibyte first. */
+		NSMeasurement *oneKiB = [[NSMeasurement alloc] initWithDoubleValue:1.0
+									      unit:[NSUnitInformationStorage kibibytes]];
+		NSMeasurement *oneKB = [[NSMeasurement alloc] initWithDoubleValue:1.0
+									     unit:[NSUnitInformationStorage kilobytes]];
+		NSMeasurement *sum = [oneKiB measurementByAddingMeasurement:oneKB];
+		NSMeasurement *difference = [oneKiB measurementBySubtractingMeasurement:oneKB];
+		BOOL convertible = [oneKiB canBeConvertedToUnit:[NSUnitInformationStorage bytes]];
+		BOOL crossDimension = [oneKiB canBeConvertedToUnit:[[NSUnit alloc] initWithSymbol:@"m"]];
+
+		check("unit-measurement-arithmetic",
+		      sum != nil && [sum doubleValue] == (1.0 + 8000.0 / 8192.0) &&
+		      [[sum unit] isEqual:[oneKiB unit]] &&
+		      difference != nil && [difference doubleValue] == (1.0 - 8000.0 / 8192.0) &&
+		      convertible && !crossDimension,
+		      [NSString stringWithFormat:@"1 KiB + 1 kB = %g KiB, difference = %g, "
+			 "convertible=%d crossDimension=%d",
+			 [sum doubleValue], [difference doubleValue], convertible, crossDimension]);
+	}
+
+	{
+		/* THE VALUE DOORS: a measurement copies as itself (it is immutable), it adopts NSSecureCoding, and
+		 * equality is BY VALUE **AND** UNIT — 1 kB and 1 KiB are different measurements even though both
+		 * are "1", which is the argument this class exists to end. */
+		NSMeasurement *oneKB = [[NSMeasurement alloc] initWithDoubleValue:1.0
+									     unit:[NSUnitInformationStorage kilobytes]];
+		NSMeasurement *sameKB = [[NSMeasurement alloc] initWithDoubleValue:1.0
+									      unit:[NSUnitInformationStorage kilobytes]];
+		BOOL adopts = [NSMeasurement conformsToProtocol:@protocol(NSSecureCoding)];
+		BOOL answers = [NSMeasurement supportsSecureCoding];
+
+		check("unit-measurement-value",
+		      oneKB != nil && [oneKB doubleValue] == 1.0 &&
+		      [[[oneKB unit] symbol] isEqualToString:@"kB"] &&
+		      [oneKB copy] == oneKB &&
+		      [oneKB isEqual:sameKB] && adopts && answers,
+		      [NSString stringWithFormat:@"value=%g symbol=[%@] copySame=%d equal=%d secure=%d",
+			 [oneKB doubleValue], [[oneKB unit] symbol], [oneKB copy] == oneKB,
+			 [oneKB isEqual:sameKB], adopts && answers]);
 	}
 
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);

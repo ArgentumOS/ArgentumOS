@@ -88,6 +88,13 @@
 #import <Foundation/NSByteCountFormatter.h>
 #import <Foundation/NSRelativeDateTimeFormatter.h>
 #import <Foundation/NSDateComponentsFormatter.h>
+/* W12's first slice: the unit machinery and the value that carries one. None of these four needs ICU —
+ * the arithmetic is the converters' — which is why they are not in FN_FOUNDATION_ICU. */
+#import <Foundation/NSUnit.h>
+#import <Foundation/NSUnitConverter.h>
+#import <Foundation/NSDimension.h>
+#import <Foundation/NSUnitInformationStorage.h>
+#import <Foundation/NSMeasurement.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>
