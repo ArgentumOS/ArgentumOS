@@ -111,6 +111,26 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* THE BOOKMARK TYPES (2026-09-20). The METHODS that take them are in this header's
+ * refusal list above — +URLByResolvingBookmarkData: and its creation counterpart need
+ * the security-scope machinery this system does not have — but the TYPES are Apple's
+ * API and cost nothing to declare, so a program that names them compiles. Names from
+ * Apple's documentation index; values are ours (§11.6.1 D2, see NSFileManager.h). */
+typedef enum {
+	NSURLBookmarkCreationMinimalBookmark = 1 << 0,
+	NSURLBookmarkCreationSuitableForBookmarkFile = 1 << 1,
+	NSURLBookmarkCreationWithSecurityScope = 1 << 2,
+	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess = 1 << 3,
+	NSURLBookmarkCreationWithoutImplicitSecurityScope = 1 << 4,
+} NSURLBookmarkCreationOptions;
+
+typedef enum {
+	NSURLBookmarkResolutionWithoutUI = 1 << 0,
+	NSURLBookmarkResolutionWithoutMounting = 1 << 1,
+	NSURLBookmarkResolutionWithSecurityScope = 1 << 2,
+	NSURLBookmarkResolutionWithoutImplicitStartAccessing = 1 << 3
+} NSURLBookmarkResolutionOptions;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSURL_H */

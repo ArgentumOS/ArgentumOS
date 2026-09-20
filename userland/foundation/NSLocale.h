@@ -81,6 +81,18 @@ extern NSString *const NSLocaleCountryCode;
 - (NSString *)localeIdentifier;
 - (nullable id)objectForKey:(NSString *)key;	/* nil for a key that needs the database */
 
+/* The direction a locale's script runs in (2026-09-20). The RIGHT-TO-LEFT answers
+ * here are about the SCRIPT's own direction and need no database, which is why this
+ * type ships while the locale's data-driven half does not. Names from Apple's
+ * documentation index; values are ours (§11.6.1 D2, see NSFileManager.h). */
+typedef enum {
+	NSLocaleLanguageDirectionUnknown = 0,
+	NSLocaleLanguageDirectionLeftToRight = 1,
+	NSLocaleLanguageDirectionRightToLeft = 2,
+	NSLocaleLanguageDirectionTopToBottom = 3,
+	NSLocaleLanguageDirectionBottomToTop = 4
+} NSLocaleLanguageDirection;
+
 NS_ASSUME_NONNULL_END
 
 @end

@@ -90,6 +90,29 @@ typedef enum {
 	NSUnicodeStringEncoding = 10
 } NSStringEncoding;
 
+/* THE TWO OPTION SETS THE WINDOWS TAKE (2026-09-20). The doors that use them — a
+ * lossy encoding conversion, and -enumerateSubstringsInRange:options:usingBlock: —
+ * are not in this header, so the types ship ahead of their users, as in Cocoa's own
+ * header. Names from Apple's documentation index; values are ours (§11.6.1 D2, see
+ * NSFileManager.h), and both are bit sets as their names say. */
+typedef enum {
+	NSStringEncodingConversionAllowLossy = 1 << 0,
+	NSStringEncodingConversionExternalRepresentation = 1 << 1
+} NSStringEncodingConversionOptions;
+
+typedef enum {
+	NSStringEnumerationByLines = 1 << 0,
+	NSStringEnumerationByParagraphs = 1 << 1,
+	NSStringEnumerationByComposedCharacterSequences = 1 << 2,
+	NSStringEnumerationByWords = 1 << 3,
+	NSStringEnumerationBySentences = 1 << 4,
+	NSStringEnumerationReverse = 1 << 5,
+	NSStringEnumerationSubstringNotRequired = 1 << 6,
+	NSStringEnumerationLocalized = 1 << 7,
+	NSStringEnumerationByCaretPositions = 1 << 8,
+	NSStringEnumerationByDeletionClusters = 1 << 9
+} NSStringEnumerationOptions;
+
 @interface NSString : NSObject <NSCopying>
 
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */

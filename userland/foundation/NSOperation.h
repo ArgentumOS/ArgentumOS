@@ -63,6 +63,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* HOW URGENT THIS OPERATION IS (2026-09-20). -queuePriority is in this header's
+ * refusal list above, so the type is here ahead of its user — as it is in Cocoa's
+ * own header. Names from Apple's documentation index; values are ours (§11.6.1 D2,
+ * see NSFileManager.h), and what is NOT ours is the ORDER: VeryLow < Low < Normal <
+ * High < VeryHigh is the semantic the enum exists to express, and it is preserved. */
+typedef enum {
+	NSOperationQueuePriorityVeryLow = 0,
+	NSOperationQueuePriorityLow = 1,
+	NSOperationQueuePriorityNormal = 2,
+	NSOperationQueuePriorityHigh = 3,
+	NSOperationQueuePriorityVeryHigh = 4
+} NSOperationQueuePriority;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSOPERATION_H */

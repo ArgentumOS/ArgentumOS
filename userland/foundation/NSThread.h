@@ -85,6 +85,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* HOW MUCH THIS THREAD MATTERS TO THE USER (2026-09-20). The quality-of-service doors
+ * are in this header's refusal list above, so the type ships ahead of its user — as in
+ * Cocoa's own header. Names from Apple's documentation index; values are ours (§11.6.1
+ * D2, see NSFileManager.h). The ORDER carries the meaning — Background < Utility <
+ * UserInitiated < UserInteractive — and Default is 0 because it says "unspecified"
+ * rather than "lowest". */
+typedef enum {
+	NSQualityOfServiceDefault = 0,
+	NSQualityOfServiceBackground = 1,
+	NSQualityOfServiceUtility = 2,
+	NSQualityOfServiceUserInitiated = 3,
+	NSQualityOfServiceUserInteractive = 4
+} NSQualityOfService;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSTHREAD_H */

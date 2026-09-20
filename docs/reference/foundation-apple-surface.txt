@@ -31,8 +31,8 @@
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped   98   open   19   struck  136
-#   enum       shipped   48   open  104   struck    8
-#   case       shipped  269   open  940   struck   93
+#   enum       shipped   61   open   91   struck    8
+#   case       shipped  333   open  876   struck   93
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
 #   typealias  shipped   19   open   54   struck    3
@@ -600,11 +600,11 @@ case	struck	NSLinguisticTaggerUnitSentence	NSLinguisticTagger	Fundamentals / Dep
 case	struck	NSLinguisticTaggerUnitWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
 case	shipped	NSLiteralSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSLocalDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
-case	open	NSLocaleLanguageDirectionBottomToTop	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
-case	open	NSLocaleLanguageDirectionLeftToRight	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
-case	open	NSLocaleLanguageDirectionRightToLeft	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
-case	open	NSLocaleLanguageDirectionTopToBottom	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
-case	open	NSLocaleLanguageDirectionUnknown	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
+case	shipped	NSLocaleLanguageDirectionBottomToTop	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
+case	shipped	NSLocaleLanguageDirectionLeftToRight	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
+case	shipped	NSLocaleLanguageDirectionRightToLeft	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
+case	shipped	NSLocaleLanguageDirectionTopToBottom	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
+case	shipped	NSLocaleLanguageDirectionUnknown	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	struck	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSMacOSRomanStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
@@ -670,9 +670,9 @@ case	open	NSNotificationSuspensionBehaviorCoalesce	NSDistributedNotificationCent
 case	open	NSNotificationSuspensionBehaviorDeliverImmediately	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 case	open	NSNotificationSuspensionBehaviorDrop	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 case	open	NSNotificationSuspensionBehaviorHold	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
-case	open	NSNumberFormatterBehavior10_0	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
-case	open	NSNumberFormatterBehavior10_4	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
-case	open	NSNumberFormatterBehaviorDefault	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterBehavior10_0	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterBehavior10_4	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterBehaviorDefault	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
 case	shipped	NSNumberFormatterCurrencyAccountingStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterCurrencyISOCodeStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterCurrencyPluralStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
@@ -680,10 +680,10 @@ case	shipped	NSNumberFormatterCurrencyStyle	NSNumberFormatter	Fundamentals / Num
 case	shipped	NSNumberFormatterDecimalStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterNoStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterOrdinalStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
-case	open	NSNumberFormatterPadAfterPrefix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
-case	open	NSNumberFormatterPadAfterSuffix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
-case	open	NSNumberFormatterPadBeforePrefix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
-case	open	NSNumberFormatterPadBeforeSuffix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterPadAfterPrefix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterPadAfterSuffix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterPadBeforePrefix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
+case	shipped	NSNumberFormatterPadBeforeSuffix	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	objc
 case	shipped	NSNumberFormatterPercentStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterRoundCeiling	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	swift-page
 case	shipped	NSNumberFormatterRoundDown	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	swift-page
@@ -699,11 +699,11 @@ case	struck	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction
 case	open	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
 case	open	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
 case	open	NSOperationNotSupportedForKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
-case	open	NSOperationQueuePriorityHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
-case	open	NSOperationQueuePriorityLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
-case	open	NSOperationQueuePriorityNormal	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
-case	open	NSOperationQueuePriorityVeryHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
-case	open	NSOperationQueuePriorityVeryLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
+case	shipped	NSOperationQueuePriorityHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
+case	shipped	NSOperationQueuePriorityLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
+case	shipped	NSOperationQueuePriorityNormal	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
+case	shipped	NSOperationQueuePriorityVeryHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
+case	shipped	NSOperationQueuePriorityVeryLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
 case	shipped	NSOrPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
 case	shipped	NSOrderedAscending		Fundamentals / Sorting / Constants	-	objc
 case	open	NSOrderedCollectionDifferenceCalculationInferMoves	NSArray	Fundamentals / Basic Collections / Comparing with Another Array / Difference Calculation Options	-	objc
@@ -791,26 +791,26 @@ case	open	NSPropertyListWriteStreamError	NSPropertyListSerialization	Files and D
 case	shipped	NSPropertyListXMLFormat_v1_0	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
 case	struck	NSProprietaryStringEncoding		Fundamentals / Deprecated / Constants	deprecated	objc
 case	struck	NSProprietaryStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	deprecated	objc
-case	open	NSQualityOfServiceBackground	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSQualityOfServiceBackground	NSOperation	App Support / Operations / Constants / Constants	-	objc
-case	open	NSQualityOfServiceBackground	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
-case	open	NSQualityOfServiceBackground	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
-case	open	NSQualityOfServiceDefault	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSQualityOfServiceDefault	NSOperation	App Support / Operations / Constants / Constants	-	objc
-case	open	NSQualityOfServiceDefault	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
-case	open	NSQualityOfServiceDefault	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
-case	open	NSQualityOfServiceUserInitiated	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSQualityOfServiceUserInitiated	NSOperation	App Support / Operations / Constants / Constants	-	objc
-case	open	NSQualityOfServiceUserInitiated	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
-case	open	NSQualityOfServiceUserInitiated	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
-case	open	NSQualityOfServiceUserInteractive	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSQualityOfServiceUserInteractive	NSOperation	App Support / Operations / Constants / Constants	-	objc
-case	open	NSQualityOfServiceUserInteractive	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
-case	open	NSQualityOfServiceUserInteractive	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
-case	open	NSQualityOfServiceUtility	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSQualityOfServiceUtility	NSOperation	App Support / Operations / Constants / Constants	-	objc
-case	open	NSQualityOfServiceUtility	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
-case	open	NSQualityOfServiceUtility	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
+case	shipped	NSQualityOfServiceBackground	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceBackground	NSOperation	App Support / Operations / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceBackground	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
+case	shipped	NSQualityOfServiceBackground	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
+case	shipped	NSQualityOfServiceDefault	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceDefault	NSOperation	App Support / Operations / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceDefault	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
+case	shipped	NSQualityOfServiceDefault	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInitiated	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInitiated	NSOperation	App Support / Operations / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInitiated	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInitiated	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInteractive	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInteractive	NSOperation	App Support / Operations / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInteractive	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUserInteractive	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
+case	shipped	NSQualityOfServiceUtility	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUtility	NSOperation	App Support / Operations / Constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUtility	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
+case	shipped	NSQualityOfServiceUtility	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
 case	struck	NSQuarterCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	open	NSRandomSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
@@ -870,18 +870,18 @@ case	open	NSStreamStatusOpen	NSStream	Low-Level Utilities / Streams / Constants 
 case	open	NSStreamStatusOpening	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
 case	open	NSStreamStatusReading	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
 case	open	NSStreamStatusWriting	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStringEncodingConversionAllowLossy	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSStringEncodingConversionExternalRepresentation	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSStringEnumerationByCaretPositions	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Enumeration Cases	-	objc
-case	open	NSStringEnumerationByComposedCharacterSequences	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationByDeletionClusters	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Enumeration Cases	-	objc
-case	open	NSStringEnumerationByLines	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationByParagraphs	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationBySentences	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationByWords	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationLocalized	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationReverse	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	open	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEncodingConversionAllowLossy	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSStringEncodingConversionExternalRepresentation	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSStringEnumerationByCaretPositions	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Enumeration Cases	-	objc
+case	shipped	NSStringEnumerationByComposedCharacterSequences	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationByDeletionClusters	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Enumeration Cases	-	objc
+case	shipped	NSStringEnumerationByLines	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationByParagraphs	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationBySentences	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationByWords	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationLocalized	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationReverse	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
+case	shipped	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -906,23 +906,23 @@ case	open	NSTextCheckingTypeSpelling	NSTextCheckingResult	Fundamentals / Pattern
 case	open	NSTextCheckingTypeTransitInformation	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	struck	NSTimeZoneCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSTimeZoneCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSTimeZoneNameStyleDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
-case	open	NSTimeZoneNameStyleGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
-case	open	NSTimeZoneNameStyleShortDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
-case	open	NSTimeZoneNameStyleShortGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
-case	open	NSTimeZoneNameStyleShortStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
-case	open	NSTimeZoneNameStyleStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
+case	shipped	NSTimeZoneNameStyleDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
+case	shipped	NSTimeZoneNameStyleGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
+case	shipped	NSTimeZoneNameStyleShortDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
+case	shipped	NSTimeZoneNameStyleShortGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
+case	shipped	NSTimeZoneNameStyleShortStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
+case	shipped	NSTimeZoneNameStyleStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTrashDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSURLBookmarkCreationMinimalBookmark	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
+case	shipped	NSURLBookmarkCreationMinimalBookmark	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
 case	struck	NSURLBookmarkCreationPreferFileIDResolution	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	deprecated	objc
-case	open	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
-case	open	NSURLBookmarkCreationSuitableForBookmarkFile	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
-case	open	NSURLBookmarkCreationWithSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
-case	open	NSURLBookmarkCreationWithoutImplicitSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
-case	open	NSURLBookmarkResolutionWithSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
-case	open	NSURLBookmarkResolutionWithoutImplicitStartAccessing	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
-case	open	NSURLBookmarkResolutionWithoutMounting	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
-case	open	NSURLBookmarkResolutionWithoutUI	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
+case	shipped	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
+case	shipped	NSURLBookmarkCreationSuitableForBookmarkFile	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
+case	shipped	NSURLBookmarkCreationWithSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
+case	shipped	NSURLBookmarkCreationWithoutImplicitSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
+case	shipped	NSURLBookmarkResolutionWithSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
+case	shipped	NSURLBookmarkResolutionWithoutImplicitStartAccessing	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
+case	shipped	NSURLBookmarkResolutionWithoutMounting	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
+case	shipped	NSURLBookmarkResolutionWithoutUI	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
 case	open	NSURLCacheStorageAllowed	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
 case	open	NSURLCacheStorageAllowed	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
 case	open	NSURLCacheStorageAllowedInMemoryOnly	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
@@ -1688,7 +1688,7 @@ enum	shipped	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc
 enum	struck	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	struck	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
 enum	struck	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
-enum	open	NSLocaleLanguageDirection	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
+enum	shipped	NSLocaleLanguageDirection	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 enum	struck	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 enum	struck	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSMatchingFlags	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
@@ -1698,11 +1698,11 @@ enum	open	NSNetServiceOptions	NSNetService	Networking / Local Network Services /
 enum	open	NSNetServicesError	NSNetService	Networking / Local Network Services / Constants	-	swift-page
 enum	open	NSNotificationCoalescing	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	open	NSNotificationSuspensionBehavior	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
-enum	open	NSNumberFormatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
-enum	open	NSNumberFormatterPadPosition	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
+enum	shipped	NSNumberFormatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
+enum	shipped	NSNumberFormatterPadPosition	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
 enum	shipped	NSNumberFormatterRoundingMode	NSNumberFormatter	Fundamentals / Numbers / Constants	-	swift-page
 enum	shipped	NSNumberFormatterStyle	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
-enum	open	NSOperationQueuePriority	NSOperation	App Support / Operations / Constants	-	swift-page
+enum	shipped	NSOperationQueuePriority	NSOperation	App Support / Operations / Constants	-	swift-page
 enum	open	NSOrderedCollectionDifferenceCalculationOptions	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 enum	open	NSOrderedCollectionDifferenceCalculationOptions	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
 enum	open	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
@@ -1714,10 +1714,10 @@ enum	open	NSPresentationIntentTableColumnAlignment	NSAttributedString	Fundamenta
 enum	shipped	NSProcessInfoThermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 enum	shipped	NSPropertyListFormat	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 enum	shipped	NSPropertyListMutabilityOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
-enum	open	NSQualityOfService	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
-enum	open	NSQualityOfService	NSOperation	App Support / Operations / Constants	-	objc
-enum	open	NSQualityOfService	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	objc
-enum	open	NSQualityOfService	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
+enum	shipped	NSQualityOfService	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
+enum	shipped	NSQualityOfService	NSOperation	App Support / Operations / Constants	-	objc
+enum	shipped	NSQualityOfService	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	objc
+enum	shipped	NSQualityOfService	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
 enum	shipped	NSRectEdge		Fundamentals / Geometry / Related Types	-	objc
 enum	shipped	NSRegularExpressionOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	swift-page
 enum	open	NSRelativeDateTimeFormatterStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
@@ -1732,14 +1732,14 @@ enum	open	NSSortOptions		Fundamentals / Iteration	-	objc
 enum	open	NSStreamEvent	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 enum	open	NSStreamStatus	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 enum	shipped	NSStringCompareOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
-enum	open	NSStringEncodingConversionOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
-enum	open	NSStringEnumerationOptions	NSString	Fundamentals / Strings / Performing Linguistic Analysis	-	objc
+enum	shipped	NSStringEncodingConversionOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
+enum	shipped	NSStringEnumerationOptions	NSString	Fundamentals / Strings / Performing Linguistic Analysis	-	objc
 enum	open	NSTaskTerminationReason	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	swift-page
 enum	open	NSTestComparisonOperation	NSSpecifierTest	App Support / Object Matching Tests / Constants	-	objc
 enum	open	NSTextCheckingType	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
-enum	open	NSTimeZoneNameStyle	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
-enum	open	NSURLBookmarkCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-enum	open	NSURLBookmarkResolutionOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+enum	shipped	NSTimeZoneNameStyle	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
+enum	shipped	NSURLBookmarkCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+enum	shipped	NSURLBookmarkResolutionOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 enum	open	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies	-	objc
 enum	open	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
 enum	open	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page

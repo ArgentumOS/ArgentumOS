@@ -64,6 +64,23 @@ typedef enum {
 	NSNumberFormatterRoundHalfUp = 6
 } NSNumberFormatterRoundingMode;
 
+/* WHERE A PADDED NUMBER GOES (2026-09-20). Names from Apple's documentation index;
+ * values are ours (§11.6.1 D2, see NSFileManager.h). The padding trio that uses this
+ * is still deferred — see the note at the top of this file — so the type is here
+ * ahead of its user, which is the same order Cocoa declares them in. */
+typedef enum {
+	NSNumberFormatterPadBeforePrefix = 0,
+	NSNumberFormatterPadAfterPrefix = 1,
+	NSNumberFormatterPadBeforeSuffix = 2,
+	NSNumberFormatterPadAfterSuffix = 3
+} NSNumberFormatterPadPosition;
+
+typedef enum {
+	NSNumberFormatterBehaviorDefault = 0,
+	NSNumberFormatterBehavior10_0 = 1,
+	NSNumberFormatterBehavior10_4 = 2
+} NSNumberFormatterBehavior;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSNumberFormatter : NSFormatter
