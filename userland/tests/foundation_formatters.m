@@ -1947,6 +1947,85 @@ int main(void)
 			 "true %g — THE REGISTERED DEVIATION", anchor, sameNumber, linear, truthful]);
 	}
 
+	/* ---- W12 batch 5: volume, pressure, concentration — the last three families ---- */
+	{
+		/*
+		 * VOLUME: thirty-one units, and the checks are the DERIVATIONS the file is written from — a quart is
+		 * a quarter of a gallon, a pint an eighth, a cup eight fluid ounces, a litre IS a cubic decimetre,
+		 * and the imperial gallon exceeds the US one by the ratio of two volumes.
+		 */
+		NSUnitConverterLinear *gallon = (NSUnitConverterLinear *)[[NSUnitVolume gallons] converter];
+		NSUnitConverterLinear *quart = (NSUnitConverterLinear *)[[NSUnitVolume quarts] converter];
+		NSUnitConverterLinear *pint = (NSUnitConverterLinear *)[[NSUnitVolume pints] converter];
+		NSUnitConverterLinear *cup = (NSUnitConverterLinear *)[[NSUnitVolume cups] converter];
+		NSUnitConverterLinear *fluidOunce = (NSUnitConverterLinear *)[[NSUnitVolume fluidOunces] converter];
+		NSUnitConverterLinear *liter = (NSUnitConverterLinear *)[[NSUnitVolume liters] converter];
+		NSUnitConverterLinear *cubicDecimeter = (NSUnitConverterLinear *)[[NSUnitVolume cubicDecimeters] converter];
+		NSUnitConverterLinear *imperialGallon = (NSUnitConverterLinear *)[[NSUnitVolume imperialGallons] converter];
+		NSUnitConverterLinear *cubicFoot = (NSUnitConverterLinear *)[[NSUnitVolume cubicFeet] converter];
+
+		check("unit-volume",
+		      fn_close([quart coefficient], [gallon coefficient] / 4.0) &&
+		      fn_close([pint coefficient], [gallon coefficient] / 8.0) &&
+		      fn_close([cup coefficient], 8.0 * [fluidOunce coefficient]) &&
+		      /* A LITRE IS A CUBIC DECIMETRE — the same volume under two names. */
+		      [liter coefficient] == [cubicDecimeter coefficient] &&
+		      fn_close([cubicFoot coefficient], 0.3048 * 0.3048 * 0.3048) &&
+		      fn_close([imperialGallon coefficient] / [gallon coefficient], 4.54609 / 3.785411784) &&
+		      [NSUnitVolume baseUnit] == [NSUnitVolume cubicMeters],
+		      [NSString stringWithFormat:@"gal=%g qt=%g pt=%g cup=%g floz=%g L=%g dm3=%g impGal/USgal=%g",
+			 [gallon coefficient], [quart coefficient], [pint coefficient], [cup coefficient],
+			 [fluidOunce coefficient], [liter coefficient], [cubicDecimeter coefficient],
+			 [imperialGallon coefficient] / [gallon coefficient]]);
+	}
+
+	{
+		/* PRESSURE: newtonsPerMetersSquared IS the base under its other name (coefficient exactly 1), the
+		 * mercury column is the inch over the millimetre, and psi is a pound-force over a square inch. */
+		NSUnitConverterLinear *pascal = (NSUnitConverterLinear *)[[NSUnitPressure newtonsPerMetersSquared] converter];
+		NSUnitConverterLinear *bar = (NSUnitConverterLinear *)[[NSUnitPressure bars] converter];
+		NSUnitConverterLinear *mmhg = (NSUnitConverterLinear *)[[NSUnitPressure millimetersOfMercury] converter];
+		NSUnitConverterLinear *inhg = (NSUnitConverterLinear *)[[NSUnitPressure inchesOfMercury] converter];
+		NSUnitConverterLinear *psi = (NSUnitConverterLinear *)[[NSUnitPressure poundsForcePerSquareInch] converter];
+
+		check("unit-pressure",
+		      [pascal coefficient] == 1.0 &&
+		      [bar coefficient] == 1e5 &&
+		      fn_close([inhg coefficient], 25.4 * [mmhg coefficient]) &&
+		      fn_close([psi coefficient], 4.4482216152605 / (0.0254 * 0.0254)) &&
+		      [NSUnitPressure baseUnit] == [NSUnitPressure newtonsPerMetersSquared],
+		      [NSString stringWithFormat:@"Pa=%g bar=%g mmHg=%g inHg=%g psi=%g",
+			 [pascal coefficient], [bar coefficient], [mmhg coefficient], [inhg coefficient],
+			 [psi coefficient]]);
+	}
+
+	{
+		/*
+		 * CONCENTRATION: the two constants, and THE FACTORY THAT MUST NOT CACHE — a millimole per litre OF A
+		 * SUBSTANCE carries that substance's molar mass, so two calls with different masses are DIFFERENT
+		 * UNITS, which is what NSUnit's identity equality is for.
+		 */
+		NSUnitConverterLinear *gramsPerLiter = (NSUnitConverterLinear *)[[NSUnitConcentrationMass gramsPerLiter] converter];
+		NSUnitConverterLinear *mgPerDeciliter = (NSUnitConverterLinear *)[[NSUnitConcentrationMass milligramsPerDeciliter] converter];
+		NSUnitConcentrationMass *glucose = [NSUnitConcentrationMass millimolesPerLiterWithGramsPerMole:180.156];
+		NSUnitConcentrationMass *salt = [NSUnitConcentrationMass millimolesPerLiterWithGramsPerMole:58.44];
+		NSUnitConverterLinear *glucoseConverter = (NSUnitConverterLinear *)[glucose converter];
+		NSUnitConverterLinear *saltConverter = (NSUnitConverterLinear *)[salt converter];
+
+		check("unit-concentration",
+		      [gramsPerLiter coefficient] == 1.0 &&
+		      fn_close([mgPerDeciliter coefficient], 1e-3 / 1e-1) &&
+		      /* 1 mmol/L of glucose (180.156 g/mol) IS 0.180156 g/L. */
+		      fn_close([glucoseConverter coefficient], 180.156 / 1000.0) &&
+		      fn_close([saltConverter coefficient], 58.44 / 1000.0) &&
+		      /* TWO DIFFERENT SUBSTANCES ARE TWO DIFFERENT UNITS. */
+		      ![glucose isEqual:salt] &&
+		      [NSUnitConcentrationMass baseUnit] == [NSUnitConcentrationMass gramsPerLiter],
+		      [NSString stringWithFormat:@"g/L=%g mg/dL=%g glucose=%g salt=%g sameUnit=%d",
+			 [gramsPerLiter coefficient], [mgPerDeciliter coefficient],
+			 [glucoseConverter coefficient], [saltConverter coefficient], [glucose isEqual:salt]]);
+	}
+
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-FORMATTERS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-FORMATTERS DONE\n");

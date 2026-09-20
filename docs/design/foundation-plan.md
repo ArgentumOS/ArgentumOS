@@ -3476,7 +3476,7 @@ vanishing.
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
 | **Fundamentals / Characters** | all classes shipped | — |
-| **Fundamentals / Concentration and Dispersion** | 1 open | `NSUnitConcentrationMass` |
+| **Fundamentals / Concentration and Dispersion** | all classes shipped | — |
 | **Fundamentals / Conversion** | all classes shipped | — |
 | **Fundamentals / Custom formatters** | all classes shipped | — |
 | **Fundamentals / Data Storage** | all classes shipped | — |
@@ -3495,12 +3495,12 @@ vanishing.
 | **Fundamentals / Iteration** | all classes shipped | — |
 | **Fundamentals / Lists** | all classes shipped | — |
 | **Fundamentals / Localization** | 1 open | `NSOrthography` |
-| **Fundamentals / Mass, Weight, and Force** | 1 open | `NSUnitPressure` |
+| **Fundamentals / Mass, Weight, and Force** | all classes shipped | — |
 | **Fundamentals / Measurements** | 1 open | `NSMeasurementFormatter` |
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
-| **Fundamentals / Physical Dimension** | 1 open | `NSUnitVolume` |
+| **Fundamentals / Physical Dimension** | all classes shipped | — |
 | **Fundamentals / Pointer Collections** | 4 open | `NSHashTable`, `NSMapTable`, `NSPointerArray`, `NSPointerFunctions` |
 | **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
 | **Fundamentals / Sorting** | all classes shipped | — |
@@ -5344,3 +5344,64 @@ headers** open a nullability region. `foundation-sweep --check`: consistent.
 **WHAT THE REST OF W12 STILL OWES**: the other twenty-two `NSUnit*` families (length, mass, temperature —
 where the linear converter's `constant` finally earns its place, since a temperature scale is an OFFSET
 one — and the rest), plus `NSMeasurementFormatter` and its three option cases.
+
+## 32. W12'S TWENTY-ONE FAMILIES, GUEST-VERIFIED (2026-09-20)
+
+**WHAT SHIPPED.** Every `NSUnit*` family Apple documents except `NSMeasurementFormatter`: **21 classes and
+173 unit constants**, in five batches (`1887b03d`, `40a14414`, `6ef87c2d`, `bb703b53`, and the last one this
+commit). The probe grew from 66 checks to **83**, one per family, and the families were read from Apple's
+pages BEFORE any coefficient was written (the page path drops the `NS` prefix unpredictably, so each is
+resolved from the index rather than guessed).
+
+**THE COEFFICIENTS ARE OURS AND THAT IS A MEASURED FACT, NOT A CONVENIENCE**: Apple publishes each family's
+units and their NAMES, and not their ratios — the same finding §31 recorded for information storage. So every
+coefficient comes from the unit's own definition, and **wherever a relation exists it is written as that
+relation** rather than as a decimal:
+
+* `NSUnitArea`'s squares are squares of `NSUnitLength`'s `#define`d definitions — a hand-typed table of
+  squares is a table that agrees with nothing, and it fails in exactly one row;
+* `NSUnitSpeed`'s coefficients are other families' definitions DIVIDED (a knot is the nautical mile over an
+  hour); `NSUnitVolume`'s customary measures are DIVISIONS OF THE GALLON; `NSUnitPressure`'s inch of mercury
+  is 25.4 millimetres of it and its psi is a pound-force over a square inch;
+* and every `baseUnit` is the SI base, which is stated as the rule it is (volume's cubic metre is the one
+  place that rule chose against Apple's own ordering, and the file says so).
+
+**THE SEVEN LITERAL DEFECTS AND DECISIONS THIS BATCH FOUND, EACH WITH THE CHECK THAT CAUGHT IT.**
+
+1. **A COMPUTED DOUBLE IS NOT ASSERTED WITH `==`, AND THE FAMILIES TAUGHT IT.** The temperature check failed
+   while PRINTING every value correctly: `212 °F → K` is arithmetic that lands one ulp from 373.15. So
+   coefficients (literals) are asserted exactly and conversions are asserted with a tolerance, and the probe
+   carries a `fn_close` whose note explains why. The same mistake then had to be fixed TWICE MORE in the same
+   run — a `12 × 0.0254` relation and the `−40` crossing — which is why the note is in the file rather than
+   in a commit message.
+2. **`NSUnitMass`'s ounce is a SIXTEENTH OF THE POUND the table already carries**, not a second literal.
+3. **`NSUnitVolume` is the largest family (31) and the volume checks are its divisions** — a quart is a
+   quarter of a gallon, a litre IS a cubic decimetre, and the imperial gallon exceeds the US one by a ratio of
+   two volumes.
+4. **`NSUnitConcentrationMass` HAS A FACTORY THAT MUST NOT CACHE**: a millimole per litre of a substance
+   carries its molar mass, so two calls are two DIFFERENT units — and NSUnit's identity equality is what makes
+   that true. The symbol carries the mass, because otherwise a reader cannot see which substance it is for.
+5. **`NSUnitFuelEfficiency` IS THE INVERSE FAMILY** (§32's flagged item, decided by the user): litres per
+   100 km is `F/mpg`, which a linear converter cannot express, so the family ships with the approximation
+   DOCUMENTED and the probe asserts BOTH the crossing (exact) and the divergence (named). **The algebra was
+   the second thing it took to get right: the coefficient at the crossing is 1, not the crossing value.**
+6. **A TYPO IN AN INCLUDE GUARD** (`NSUNITE LECTRIC_H`) — caught by the grep immediately after, and worth
+   recording only because the guard is what makes a header work twice.
+7. **`-lm` ON THE HOST PROBE LINK LINE**, because a probe that computes a root relation needs glibc's separate
+   libm while musl carries the maths in libc. The alternative was to quote the anchor and weaken the check
+   from a relation to a number.
+
+**AND THE TWO GROUPING DECISIONS, EACH STATED WHERE IT HAPPENS.** The four electrical families share one
+header (charge is current times time; a caller who wants one wants the others) and that is the only place this
+unit departs from one class per file. Everything else follows the one-class-per-file rule.
+
+**VERIFIED.** Host: `make host-foundation-run` — **26 probes, 398/398 checks, 0 fail**. Guest: `make testimg`
+then `make test TESTS='foundation_formatters'` → **TESTS-OK 1/1 case(s), 6/6 check(s) in 13s**, the probe's own
+tally `ok=83 fail=0` and exit 0 — **the single deferred run, covering every batch at once**, which is why the
+batches were host-verified and the guest run was held to the end (QEMU gates run sparingly). `foundation-gate`:
+**93 of 97 public headers** open a nullability region. `foundation-sweep --check`: consistent.
+
+**WHAT W12 STILL OWES: `NSMeasurementFormatter` ALONE** — `unitOptions`/`unitStyle`/`locale`/`numberFormatter`,
+the two doors, and the three `NSMeasurementFormatterUnitOptions` cases. It is not a table but a MAPPING: every
+unit this tree ships needs its CLDR unit identifier (`length-meter`, `digital-kilobyte`, …) before ICU can
+name it, and that mapping plus the three options is its own unit rather than a tail of this one.

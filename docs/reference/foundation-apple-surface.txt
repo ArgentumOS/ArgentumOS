@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  105   open  137   struck   31
+#   class      shipped  108   open  134   struck   31
 #   protocol   shipped    9   open   27   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   76   open   76   struck    8
@@ -1568,7 +1568,7 @@ class	shipped	NSUnit		Fundamentals / Essentials	-	objc
 class	shipped	NSUnitAcceleration		Fundamentals / Time and Motion	-	objc
 class	shipped	NSUnitAngle		Fundamentals / Physical Dimension	-	objc
 class	shipped	NSUnitArea		Fundamentals / Physical Dimension	-	objc
-class	open	NSUnitConcentrationMass		Fundamentals / Concentration and Dispersion	-	objc
+class	shipped	NSUnitConcentrationMass		Fundamentals / Concentration and Dispersion	-	objc
 class	shipped	NSUnitConverter		Fundamentals / Conversion	-	objc
 class	shipped	NSUnitConverterLinear		Fundamentals / Conversion	-	objc
 class	shipped	NSUnitDispersion		Fundamentals / Concentration and Dispersion	-	objc
@@ -1585,10 +1585,10 @@ class	shipped	NSUnitInformationStorage		Fundamentals / Data Storage	-	objc
 class	shipped	NSUnitLength		Fundamentals / Physical Dimension	-	objc
 class	shipped	NSUnitMass		Fundamentals / Mass, Weight, and Force	-	objc
 class	shipped	NSUnitPower		Fundamentals / Energy, Heat, and Light	-	objc
-class	open	NSUnitPressure		Fundamentals / Mass, Weight, and Force	-	objc
+class	shipped	NSUnitPressure		Fundamentals / Mass, Weight, and Force	-	objc
 class	shipped	NSUnitSpeed		Fundamentals / Time and Motion	-	objc
 class	shipped	NSUnitTemperature		Fundamentals / Energy, Heat, and Light	-	objc
-class	open	NSUnitVolume		Fundamentals / Physical Dimension	-	objc
+class	shipped	NSUnitVolume		Fundamentals / Physical Dimension	-	objc
 class	open	NSUserActivity		App Support / Activity Sharing	-	objc
 class	open	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	open	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	-	objc

@@ -64,6 +64,7 @@ CHECKS = (
     "unit-mass", "unit-area", "unit-angle",
     "unit-speed", "unit-acceleration", "unit-frequency", "unit-energy", "unit-power",
     "unit-electric", "unit-single-unit-families", "unit-fuel-efficiency",
+    "unit-volume", "unit-pressure", "unit-concentration",
 )
 
 

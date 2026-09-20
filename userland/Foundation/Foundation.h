@@ -112,6 +112,9 @@
 #import <Foundation/NSUnitIlluminance.h>
 #import <Foundation/NSUnitDispersion.h>
 #import <Foundation/NSUnitFuelEfficiency.h>
+#import <Foundation/NSUnitVolume.h>
+#import <Foundation/NSUnitPressure.h>
+#import <Foundation/NSUnitConcentrationMass.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>
