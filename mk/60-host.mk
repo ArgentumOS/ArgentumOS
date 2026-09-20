@@ -125,9 +125,15 @@ $(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
 # WHAT THE FIRST FULL RUN FOUND (2026-09-19): 22 probes built, and NINETEEN answered completely -
 # including core 50/50, predicate 28/28, kvc 16/16, dateformatter 16/16, codecs 11/11. THREE did not,
 # and they are the next work rather than hidden:
-#   * foundation_calendar 11 ok, 3 FAIL - the most likely host-clean violation of the two, because a
-#     calendar reads a ZONE DATABASE and the host's is ICU's rather than the guest's. Decide whether
-#     it is a data path (exclude it) or a bug (fix it).
+#   * foundation_calendar 11 ok, 3 FAIL - RESOLVED 2026-09-20: A DATA PATH, and the fix is the
+#     RUNNER, not the probe. All three failures are the HOST'S LOCAL TIME ZONE leaking in - the same
+#     probe answers 14/14 under `TZ=UTC` with no source change - so `host-foundation-run` now sets
+#     `TZ=UTC` and the whole suite answers 270/270. The mechanism and the three printed failures are
+#     written out at that recipe. THE OLD GUESS WAS HALF RIGHT AND NAMED THE WRONG SIDE: it said the
+#     host's zone DATABASE is ICU's rather than the guest's, and the guest has no zone data to differ
+#     over at all - it has no `TZ` and no `/etc/localtime` (this system has no `/etc`), so ICU's
+#     default zone answers GMT, while the HOST inherits `/etc/localtime`. Nothing was excluded and no
+#     assertion was weakened.
 #   * foundation_nsvalue and foundation_operation PRINT NO RESULT LINE AT ALL, i.e. they CRASH. A
 #     crash is a strong signal - the use-after-free above was found exactly this way - so these are
 #     the first thing to reproduce in a small file.
@@ -164,10 +170,19 @@ HOST_PROBE_BINS = $(addprefix $(HOST_BINDIR)/,$(HOST_PROBES))
 host-foundation: $(HOST_FOUNDATION_LIB) $(HOST_PROBE_BINS)
 	@echo "host-foundation: $(words $(FN_HOST_SRCS)) library source(s), $(words $(HOST_PROBES)) probe(s) in $(HOST_BINDIR)"
 
+# TZ=UTC IS PART OF MIRRORING THE GUEST, NOT A CONVENIENCE (2026-09-20). `foundation_calendar`
+# asserts `[[NSTimeZone systemTimeZone] secondsFromGMT] == 0`, and that claim is TRUE ABOUT THIS OS:
+# `+systemTimeZone` delegates to ICU's default zone (nstimezone.m:95), which on the guest answers GMT
+# because there is no `TZ` and no `/etc/localtime` (this system has no `/etc`). A host run inherits
+# the HOST's zone instead, so on a machine set to America/Toronto the same probe answers 11 ok / 3
+# FAIL - `tz-offset`, `calendar-convert` (the epoch renders 1969-12-31 19:00:00) and `cross-tu` - and
+# `TZ=UTC` answers 270/270 with NO source change, which is how the three were attributed to the
+# environment rather than to the library. So the probe keeps its claim about the OS and the runner
+# reproduces the OS it is standing in; nothing is excluded and no assertion is weakened.
 host-foundation-run: host-foundation
 	@for p in $(HOST_PROBES); do \
 		echo "== $$p =="; \
-		$(HOST_BINDIR)/$$p || echo "   ($$p exited $$?)"; \
+		TZ=UTC $(HOST_BINDIR)/$$p || echo "   ($$p exited $$?)"; \
 	done
 
 # THE HOST RUNTIME ITSELF, and why this target exists. The prefix that was here had been configured
