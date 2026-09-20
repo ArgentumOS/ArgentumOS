@@ -4586,3 +4586,40 @@ rather than the symptom, which is the difference that matters.
 now demands the selector), and the full fast tier is 33/34 cases, 208/213 checks — the one failure
 being the recorded `host_fshlint` timeout.
 
+## 19. `-prepareWithInvocationTarget:` — AND A REAL `NSProxy` BUG ITS CHECK FOUND (2026-09-20)
+
+**W2h WAS MEASURED BEFORE ANYTHING WAS WRITTEN, and the plan's own note was stale in two places.** The
+`NSObject` PROTOCOL ships and is audited (with `zone`'s omission registered), and `NSProgressReporting`
+ships, is ADOPTED by a probe fixture and is checked — so the note saying the protocol "is the dependency
+`NSProgressReporting` needs" and that its members "are not in the ledger" described work that had already
+landed. What actually remained of W2h's named omissions: the FIVE NOTIFICATIONS (blocked — there is no
+notification centre anywhere in this tree, and the header said the OPPOSITE, *"this library has the
+notification centre to carry them"*, now corrected where it stood), the block form, the menu titles, and
+`-prepareWithInvocationTarget:` — the one that was unblocked.
+
+**WHAT SHIPPED: the proxy form.** `-prepareWithInvocationTarget:` returns an `NSProxy` subclass that
+answers with the TARGET's method signature and, in `-forwardInvocation:`, registers the captured message
+as that target's undo action instead of performing it. The action is a second kind of record
+(`FnUndoInvocation`) holding the `NSInvocation`, with the target unowned exactly as the triple form holds
+it; the two registration paths now share ONE rule (`fnRegisterAction:`), so "disabled means disabled" and
+"registering clears redo unless undoing/redoing" are written once.
+
+**AND THE CHECK FOUND A REAL BUG IN THE CLASS BENEATH IT: A PROXY COULD NOT BE RELEASED AT ALL.**
+`-[NSProxy release]` called `objc_release()`, which — without the runtime's marker — MESSAGES `-release`
+back, so the two recursed until the stack blew: measured as a SIGSEGV in `-[NSProxy release]` with a
+backtrace of nothing but that method. `libobjc2` decides whether a class may use its word-based count by
+looking for `_ARCCompliantRetainRelease`; **`NSObject` has carried that marker since it was measured there
+(its own comment records the identical loop), and `NSProxy` never did — because NOTHING IN THIS TREE HAD
+EVER RELEASED A PROXY.** The probe's MRR proxy fixture leaks, so the two cases had never met until a
+proxy was autoreleased. One marker fixes it — and it is the CHECK that demanded it: writing the feature
+found the defect underneath, which is the pattern this plan keeps recording.
+
+**VERIFIED.** Host: 289/289 with no crashed probe. Guest: `foundation_core` is `ok=52 fail=0`
+(`undo-prepare-with-invocation-target` asserts capture-not-perform, registration, the replay, and the
+REDO that proves the proxy form joins the same group/inverse machinery). The full fast tier stays 33/34
+cases, 212/213 checks — the one failure being the recorded `host_fshlint` timeout.
+
+**STILL NAMED, with the reason now the right way round:** the five notifications need a notification
+centre (W4 is not built — that is a DEPENDENCY, and §12's rule is that a missing dependency is added
+rather than refused), and the block form and the menu titles remain unwritten.
+

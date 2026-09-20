@@ -10,10 +10,13 @@
  * The redo stack is not a second mechanism: undoing an action registers the action that undoes IT, so
  * redo is the same machinery run the other way, which is why registering anything clears redo.
  *
- * WHAT IS NOT, named rather than discovered: the NOTIFICATIONS (five of them, and this library has the
- * notification centre to carry them), `-prepareWithInvocationTarget:` and its forwarding proxy,
- * `-registerUndoWithTarget:handler:` (the block form) and `-undoMenuTitleForUndoActionName:` (menu
- * strings). What is here is the stack, its grouping, its names and its switch.
+ * WHAT IS NOT, named rather than discovered, AND ONE OF THESE REASONS WAS WRONG HERE: the
+ * NOTIFICATIONS (five of them) cannot be posted because THIS LIBRARY HAS NO NOTIFICATION CENTRE -
+ * the notifications family is §12's W4 and is not built - so their absence is a DEPENDENCY rather
+ * than an omission, which is the opposite of what this line used to claim ("this library has the
+ * notification centre to carry them"). `-registerUndoWithTarget:handler:` (the block form) and
+ * `-undoMenuTitleForUndoActionName:` (menu strings) remain named. What is here is the stack, its
+ * grouping, its names, its switch, and `-prepareWithInvocationTarget:` with its proxy.
  */
 #ifndef FOUNDATION_NSUNDOMANAGER_H
 #define FOUNDATION_NSUNDOMANAGER_H
@@ -39,6 +42,15 @@ NS_ASSUME_NONNULL_BEGIN
 /* TARGET IS HELD WEAKLY and the object STRONGLY, which is Apple's contract and the reason an undo
  * cannot keep its own target alive: the pair would then never go away. */
 - (void)registerUndoWithTarget:(id)target selector:(SEL)selector object:(nullable id)object;
+
+/*
+ * THE PROXY FORM: the message sent to the returned object BECOMES the undo action, captured with the
+ * TARGET's own METHOD SIGNATURE - which is what makes it usable when the inverse is more than a
+ * target/selector/argument triple can carry. Allocation failure RAISES NSMallocException rather than
+ * answering nil, so the contract is Apple's; that is the same choice the register records for
+ * NSData's writers (D4).
+ */
+- (id)prepareWithInvocationTarget:(id)target;
 
 - (void)undo;
 - (void)redo;

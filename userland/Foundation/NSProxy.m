@@ -41,6 +41,21 @@
  * -isMemberOfClass: and the rest of the introspection surface are deliberately NOT here: forwarding
  * those to the real object is the documented behaviour, which is exactly why -isProxy exists.
  */
+/*
+ * THE MARKER, AND IT WAS MISSING HERE - measured, not reasoned: a proxy that is RELEASED recursed until
+ * the stack blew (a SIGSEGV in -[NSProxy release] with a backtrace of nothing but that method). The
+ * runtime decides whether a class may use its fast, word-based reference count by looking for exactly
+ * this selector (dtable.c, checkARCAccessorsSlow); without it objc_release() does not touch the count
+ * word but MESSAGES -release, and -release here calls objc_release(), which is the loop. The root class
+ * has carried this marker since it was measured there (NSObject.m says so at length); NSProxy did not,
+ * and nothing released a proxy in this tree until -prepareWithInvocationTarget:'s proxy was, so the two
+ * cases had never met. The body is empty for the reason NSObject's is: the marker means "my hand-written
+ * lifetime methods are ARC-correct", and this one delegates to the runtime's own count.
+ */
+- (void)_ARCCompliantRetainRelease
+{
+}
+
 - (id)retain
 {
 	return objc_retain(self);

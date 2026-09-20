@@ -1118,6 +1118,39 @@ int main(void)
 		      "an immutable copy IS the receiver and it answers +1: the original's count and contents must survive the copy's scope (plan §15.2)");
 	}
 
+	{
+		/* -prepareWithInvocationTarget: (W2h's last UNBLOCKED undo item - the notifications stay
+		 * blocked on a notification centre this library does not have). THE PROXY CAPTURES THE MESSAGE
+		 * INSTEAD OF PERFORMING IT, which is the half a forwarding implementation would get wrong, and
+		 * the fixture's log makes both halves observable: nothing is logged by the send itself, and
+		 * the undo logs exactly the message that was captured. The REDO at the end is the proof that
+		 * the proxy form joins the SAME group/inverse machinery the triple form uses - replaying the
+		 * captured -removeItem: registers its own inverse, which becomes the redo. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL quiet, registered, ran, redone;
+
+		[[undo prepareWithInvocationTarget:box] removeItem:@"q"];
+		quiet = [[box log] count] == 0;
+		registered = [undo canUndo];
+
+		[undo undo];
+		ran = [[box log] count] == 1 &&
+		      [[[box log] objectAtIndex:0] isEqualToString:@"remove:q"];
+
+		[undo redo];
+		redone = [[box log] count] == 2 &&
+			 [[[box log] objectAtIndex:1] isEqualToString:@"add:q"] &&
+			 [[box items] count] == 1 &&
+			 [[[box items] objectAtIndex:0] isEqualToString:@"q"];
+
+		check("undo-prepare-with-invocation-target",
+		      quiet && registered && ran && redone,
+		      [[NSString stringWithFormat:@"quiet=%d registered=%d ran=%d redone=%d entries=%lu first=%@",
+			(int)quiet, (int)registered, (int)ran, (int)redone, (unsigned long)[[box log] count],
+			[[box log] count] > 0 ? [[box log] objectAtIndex:0] : @"(none)"] UTF8String]);
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

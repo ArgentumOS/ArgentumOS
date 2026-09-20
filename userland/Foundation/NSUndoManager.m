@@ -7,7 +7,16 @@
  */
 #import <Foundation/NSUndoManager.h>
 #import <Foundation/NSException.h>
+#import <Foundation/NSInvocation.h>
+#import <Foundation/NSMethodSignature.h>
+#import <Foundation/NSProxy.h>
 #import <objc/runtime.h>
+
+/* THE INVOCATION FORM OF A REGISTERED UNDO (W2h's `-prepareWithInvocationTarget:`), and the private
+ * door the proxy below reaches the manager through. */
+@interface NSUndoManager (FNPrivate)
+- (void)registerUndoWithTarget:(id)target invocation:(NSInvocation *)invocation;
+@end
 
 /* ONE REGISTERED UNDO, as an object rather than a dictionary: the TARGET IS NOT RETAINED - an undo
  * that kept its own target alive could never be collected - while the argument IS, because a caller
@@ -57,6 +66,101 @@
 
 @end
 
+/*
+ * THE SAME THING, FOR A CAPTURED MESSAGE. The triple form says the inverse in three pieces; this one
+ * holds the CALL, so an argument the caller built (and a return type the caller reads) survives.
+ * THE TARGET IS STILL UNOWNED, for the reason the triple form gives.
+ */
+@interface FnUndoInvocation : NSObject
+{
+	id _target;			/* NOT retained, deliberately */
+	NSInvocation *_invocation;	/* retained */
+}
+- (instancetype)initWithTarget:(id)target invocation:(NSInvocation *)invocation;
+- (void)invoke;
+- (id)target;
+@end
+
+@implementation FnUndoInvocation
+
+- (instancetype)initWithTarget:(id)target invocation:(NSInvocation *)invocation
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_target = target;
+	_invocation = [invocation retain];
+	return self;
+}
+
+- (id)target
+{
+	return _target;
+}
+
+- (void)invoke
+{
+	/* THE TARGET IS SET AT REPLAY TIME, not at capture: the invocation was captured with the PROXY as
+	 * its target (that is what the runtime delivers to -forwardInvocation:), and the caller meant the
+	 * object the proxy stood for. A target that has gone away is skipped, as above. */
+	if (_target != nil && _invocation != nil) {
+		[_invocation setTarget:_target];
+		[_invocation invoke];
+	}
+}
+
+- (void)dealloc
+{
+	[_invocation release];
+	[super dealloc];
+}
+
+@end
+
+/*
+ * THE PROXY `-prepareWithInvocationTarget:` HANDS BACK. It stands for the target: the signature it
+ * answers with is the TARGET's, and the message sent to it is registered as that target's undo action
+ * instead of being performed. NOTHING RETAINS IT - it exists for the one message - which is why it
+ * holds the manager and the target unowned, exactly as the action it creates will.
+ */
+@interface FnUndoProxy : NSProxy
+{
+	NSUndoManager *_manager;	/* NOT retained */
+	id _target;			/* NOT retained */
+}
+- (instancetype)initWithUndoManager:(NSUndoManager *)manager target:(id)target;
+@end
+
+@implementation FnUndoProxy
+
+/* NO [super init]: NSProxy is a ROOT class and declares no -init at all - measured, because NSObject's
+ * is NOT inherited here (NSProxy does not inherit from NSObject). */
+- (instancetype)initWithUndoManager:(NSUndoManager *)manager target:(id)target
+{
+	_manager = manager;
+	_target = target;
+	return self;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)selector
+{
+	/* THE TARGET'S SIGNATURE, which is the whole reason this is a proxy: the caller is writing a real
+	 * message of the target, and the capture has to agree with it type for type. A selector the target
+	 * does not implement falls through to NSProxy's own answer, which RAISES. */
+	if (_target != nil && [_target respondsToSelector:selector]) {
+		return [_target methodSignatureForSelector:selector];
+	}
+	return [super methodSignatureForSelector:selector];
+}
+
+- (void)forwardInvocation:(NSInvocation *)invocation
+{
+	[_manager registerUndoWithTarget:_target invocation:invocation];
+}
+
+@end
+
 @implementation NSUndoManager
 
 - (instancetype)init
@@ -83,10 +187,8 @@
 
 /* REGISTRATION OPENS A GROUP IF NONE IS OPEN, which is what makes the simple case simple, and CLEARS
  * THE REDO STACK, which is what makes redo mean "the future of the change you just made". */
-- (void)registerUndoWithTarget:(id)target selector:(SEL)selector object:(id)argument
+- (void)fnRegisterAction:(id)action
 {
-	FnUndoAction *action;
-
 	if (_registrationDisabled) {
 		/* DISABLED MEANS DISABLED, and THAT IS THE ONLY REASON TO DROP A REGISTRATION: a registration
 		 * made WHILE AN UNDO RUNS is the redo, and it lands in the inverse group this manager opened
@@ -97,14 +199,43 @@
 	if (_group == nil) {
 		[self beginUndoGrouping];
 	}
-	action = [[FnUndoAction alloc] initWithTarget:target selector:selector object:argument];
 	[_group addObject:action];
-	[action release];
 	/* CLEARING THE REDO STACK IS WHAT MAKES REDO MEAN THE FUTURE OF THE CHANGE JUST MADE, and it must
 	 * not happen while an undo or a redo is itself registering: those registrations ARE that stack. */
 	if (!_redoing && !_undoing) {
 		[_redoStack removeAllObjects];
 	}
+}
+
+- (void)registerUndoWithTarget:(id)target selector:(SEL)selector object:(id)argument
+{
+	FnUndoAction *action = [[FnUndoAction alloc] initWithTarget:target selector:selector object:argument];
+
+	[self fnRegisterAction:action];
+	[action release];
+}
+
+/* REACHED ONLY THROUGH THE PROXY. The two forms differ in WHAT the action holds, not in when it is
+ * recorded or which stack it lands on: the same rule, in one place. */
+- (void)registerUndoWithTarget:(id)target invocation:(NSInvocation *)invocation
+{
+	FnUndoInvocation *action = [[FnUndoInvocation alloc] initWithTarget:target invocation:invocation];
+
+	[self fnRegisterAction:action];
+	[action release];
+}
+
+- (id)prepareWithInvocationTarget:(id)target
+{
+	FnUndoProxy *proxy = [[FnUndoProxy alloc] initWithUndoManager:self target:target];
+
+	if (proxy == nil) {
+		/* THE DECLARED RETURN IS NONNULL, so allocation failure is an exception rather than a nil
+		 * every caller would have to test for. */
+		[NSException raise:NSMallocException
+			    format:@"-[NSUndoManager prepareWithInvocationTarget:] out of memory"];
+	}
+	return [proxy autorelease];
 }
 
 - (void)beginUndoGrouping
