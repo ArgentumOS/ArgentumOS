@@ -205,6 +205,7 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 		return nil;
 	}
 	_operations = [[NSMutableArray alloc] init];
+	_pending = [[NSMutableArray alloc] init];
 	_condition = [[NSCondition alloc] init];
 	/* NEGATIVE MEANS UNLIMITED, which is Cocoa's spelling of "no limit" and therefore the default. */
 	_maxConcurrent = -1;
@@ -239,6 +240,12 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 			NSOperation *candidate = [_operations objectAtIndex:i];
 
 			if ([candidate isCancelled]) {
+				/* A PENDING OPERATION IS ITS WORKER'S TO REMOVE: dropping it from _operations here
+				 * releases this array's reference while that worker is about to send it `-start`,
+				 * which is the freed-operation fault this set exists to prevent. */
+				if ([_pending indexOfObjectIdenticalTo:candidate] != NSNotFound) {
+					continue;
+				}
 				/* REMOVED RATHER THAN STARTED, so that a queue waiting for everything to finish
 				 * is not waiting on work that will never run. */
 				[_operations removeObjectAtIndex:i];
@@ -246,7 +253,11 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 				i--;
 				continue;
 			}
-			if (![candidate isExecuting] && ![candidate isFinished] && [candidate isReady]) {
+			/* AND NOT ALREADY HANDED TO A WORKER: see _pending. Without this test the same
+			 * operation is dispatched once per pass of this loop, because nothing has started it
+			 * yet on the worker side. */
+			if (![candidate isExecuting] && ![candidate isFinished] && [candidate isReady] &&
+			    [_pending indexOfObjectIdenticalTo:candidate] == NSNotFound) {
 				next = candidate;
 				break;
 			}
@@ -255,6 +266,10 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 			return;
 		}
 		_running++;
+		/* BEFORE THE DETACH, NOT AFTER: the worker marks the operation started only when its
+		 * thread runs, so the next iteration of this loop - and the next caller - must not still
+		 * see it as ready. */
+		[_pending addObject:next];
 		[NSThread detachNewThreadSelector:@selector(fnRunOnQueue:) toTarget:self withObject:next];
 	}
 }
@@ -265,6 +280,7 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 	[operation start];
 	[_condition lock];
 	_running--;
+	[_pending removeObjectIdenticalTo:operation];
 	[_operations removeObjectIdenticalTo:operation];
 	[_condition broadcast];
 	/* THE COMPLETION PATH RE-SCHEDULES: finishing is what makes the next one ready. */

@@ -36,6 +36,12 @@ NS_ASSUME_NONNULL_BEGIN
 @interface NSOperationQueue : NSObject
 {
 	NSMutableArray *_operations;
+	/* OPERATIONS HANDED TO A WORKER THAT HAS NOT STARTED THEM YET. A worker marks an operation
+	 * started only when its thread RUNS, so before this existed the scheduler still saw a
+	 * dispatched operation as "ready" and handed it to a SECOND worker: measured, the same pointer
+	 * detached twice and `-start` then sent to a chunk whose memory had already been freed and
+	 * reused (plan §15.3). */
+	NSMutableArray *_pending;
 	NSCondition *_condition;
 	NSInteger _maxConcurrent;
 	NSUInteger _running;

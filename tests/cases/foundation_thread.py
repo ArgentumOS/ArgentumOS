@@ -41,7 +41,9 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_thread"
 CHECKS = ("thread-current-and-main", "lock-serialises-two-threads", "lock-try-lock",
           "lock-recursive-reenters", "lock-before-date", "condition-signals",
-          "thread-detached-runs", "thread-sleep-returns", "thread-cancel-is-a-flag")
+          "thread-detached-runs", "thread-sleep-returns", "thread-cancel-is-a-flag",
+          "thread-start-runs-its-target",
+          )
 
 
 class Case(BaseCase):

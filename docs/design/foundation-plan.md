@@ -4307,9 +4307,13 @@ note, which is the same shape as `kvc-refusals`' printed `proxy-state` — the p
 measured** (the same object for the same thread, a value written and read back) and **prints what it
 did not**. Nothing was dropped silently and nothing was asserted on a timeout.
 
-**OPEN ITEM (not started):** establish whether `[NSThread -start]` runs its target in this tree at all,
-and add the check to `foundation_thread` either way — a working start path with no check is as much a
-fidelity risk as a broken one.
+**CLOSED (2026-09-20), and the answer was that it DID NOT RUN — the start-by-target door had no check
+because the door was broken.** `[NSThread -start]` ran its target only if nothing let go of the target
+first: `-initWithTarget:selector:object:` stored `_target` and `_argument` WITHOUT retaining them, so
+the thread held borrowed references and an ARC caller's scope ending (or an operation queue's removal)
+freed them before the new thread's first instruction. §14.5's measurement — `ran=0` inside a 2-second
+bound — was that, not a scheduling quirk. Fixed in §15.4, and the check it asked for now exists:
+`thread-start-runs-its-target` in `foundation_thread`, green on the host and in the guest.
 
 ## 15. THE HOST RUN WAS RIGHT: AN OWNERSHIP-CONTRACT DEFECT ACROSS THE COPY FAMILY (2026-09-20)
 
@@ -4372,7 +4376,7 @@ the original still reads *plausible* values, because musl does not reuse or pois
 `[x copy] == x` is TRUE either way, so the obvious assertion cannot see it. The check that can see it is
 a RETAIN COUNT read after the copy's scope, or the host run.
 
-### 15.3 `foundation_operation`: A FREED OPERATION HANDED TO `-start` (OPEN, ROOT-CAUSED, NOT FIXED)
+### 15.3 `foundation_operation`: A FREED OPERATION HANDED TO `-start` (ROOT-CAUSED HERE, FIXED IN §15.4)
 
 `foundation_operation` segfaults ~9 runs in 10 on the host (and passes on the guest). A core dump
 confirms a **type confusion**, not a crash in queue logic:
@@ -4403,4 +4407,48 @@ The two compose into exactly the observed fault, and that composition is the thi
 instrument `fnRunOnQueue:` to print the operation's pointer per call (duplicate pointers = mechanism 2
 is live) and check the retain count at that moment (1 = mechanism 1 is what lets it die).
 **`[NSThread -start]`'s open item in §14.5 sits one layer down from this and should be taken with it.**
+
+### 15.4 THE FIX: THE THREAD OWNS WHAT IT USES, AND A DISPATCHED OPERATION IS MARKED (2026-09-20)
+
+**BOTH MECHANISMS WERE MEASURED, exactly as §15.3 said to.** A temporary instrument printed the
+operation's pointer at the detach site and at the worker's entry (pointer only — dereferencing the
+suspect is what crashes), and the SAME pointer appears twice:
+
+```
+FN-INSTR detach op=0x5584f23cac78 rc=2 running=2
+FN-INSTR detach op=0x5584f23cac78 rc=2 running=3      <- one operation, two workers
+FN-INSTR start   op=0x5584f23cab58                    <- and started 3 times
+```
+
+So mechanism 2 was live, and the fault it produces is the type confusion §15.3 recorded
+(`-[NSArray start] is not implemented`) — this time with the sequence visible in one log.
+
+**WHAT CHANGED — two ownership rules, one per mechanism:**
+
+* **`NSOperationQueue` keeps a `_pending` list** (NSOperationQueue.h): operations handed to a worker
+  that has not STARTED them yet. `fnSchedule` adds to it BEFORE the detach (a worker cannot mark
+  itself in time, which is the whole bug) and skips candidates already in it; `fnRunOnQueue:` removes
+  it under the lock once `-start` has returned. THE CANCELLATION PATH HAD THE SAME HOLE and is fixed
+  with it: it dropped an operation from `_operations` — releasing the array's reference — while a
+  pending worker was about to send it `-start`; a pending operation is now its worker's to remove.
+* **`NSThread` owns what `-initWithTarget:selector:object:` is given**, releasing both when the thread
+  finishes (Cocoa's contract, and the reason §14.5's target "did not run": it had been freed). AND IT
+  OWNS ITSELF FROM `-start` — retained there, released at the end of `fn_thread_entry` — because the
+  new pthread's only handle IS that object and a detached thread has no caller to hold it. That pair
+  is also what makes `+detachNewThreadSelector:`'s `[thread release]` correct, and it ends a
+  per-detach LEAK the class had been carrying.
+
+**THE CHECK §14.5 ASKED FOR NOW EXISTS:** `thread-start-runs-its-target` in `foundation_thread` starts
+a thread by target and selector and asserts the target RAN and RECEIVED its argument — green on the
+host and in the guest.
+
+**VERIFIED.** Host: `foundation_operation` 10/10 runs clean (it crashed 2 runs in 3 before) and
+`make host-foundation-run` is 288/288 with no crash. Guest: `make test TESTS='foundation_*'` is 27/27
+cases, 162/162 checks in 48s, with `FOUNDATION-THREAD thread-start-runs-its-target ok` in its log.
+
+**ONE TRAP, THIS TIME IN THE TEST LIST:** `tests/cases/foundation_thread.py`'s `CHECKS` tuple ended
+with a name that had NO trailing comma, so inserting a new name on the next line made Python
+CONCATENATE the two literals into one name — a silently wrong expectation, inside the list whose whole
+purpose is to catch a probe whose tally moved. The names are now parsed and asserted distinct, which
+is the check that list should have had from the start.
 

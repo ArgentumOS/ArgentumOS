@@ -270,6 +270,29 @@ int main(void)
 	}
 
 	{
+		/* THE START-BY-TARGET DOOR (plan §14.5's open item, and §15.3's mechanism 1). The class had
+		 * NO check on this path: §14.5 measured `ran=0` here - a thread built with
+		 * -initWithTarget:selector:object: and then started did NOT run its target within 2s - and
+		 * left it open rather than asserting on a timeout. THE CAUSE WAS OWNERSHIP: the thread
+		 * stored its target and its argument WITHOUT retaining them, so anything that let go of
+		 * them between -start and the new thread's first instruction (an ARC scope ending, an
+		 * operation queue's removal) left the thread running on freed memory. Both are retained
+		 * now, and this asserts the behaviour that was missing. */
+		ThreadWork *work = [[ThreadWork alloc] init];
+		NSString *argument = @"started by target";
+		NSThread *worker = [[NSThread alloc] initWithTarget:work
+							   selector:@selector(record:)
+							     object:argument];
+		BOOL ran;
+
+		[worker start];
+		ran = fn_wait_for(work, @selector(ran), 3.0);
+		check("thread-start-runs-its-target",
+		      ran && [work argument] == argument,
+		      [NSString stringWithFormat:@"ran=%d argument=%@", (int)ran, [work argument]]);
+	}
+
+	{
 		/* WHAT THE LIBRARY OWNS IS THAT THESE CALLS RETURN, in bounded time, for a positive interval
 		 * AND for a deadline already past — not that the machine slept. `+sleepForTimeInterval:` reaches
 		 * nanosleep(2) with the right timespec, and THIS KERNEL RETURNS FROM IT EARLY: measured, and

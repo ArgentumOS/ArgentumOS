@@ -61,6 +61,9 @@ static void *fn_thread_entry(void *context)
 		pthread_setspecific(fn_thread_key, (void *)thread);
 	}
 	[thread fnRun];
+	/* THE OTHER HALF OF -start'S RETAIN: the thread owns itself once it is running, and this is
+	 * where that reference goes. `thread` is not touched after this line. */
+	[thread release];
 	return NULL;
 }
 
@@ -179,9 +182,12 @@ static void *fn_thread_entry(void *context)
 	if (self == nil) {
 		return nil;
 	}
-	_target = target;
+	/* THE THREAD OWNS WHAT IT WILL USE (Cocoa's contract, and the reason a target could vanish
+	 * between `-start` and the new thread actually running). Cocoa retains both until the thread
+	 * finishes; fnRun releases them at the end, which the self-owning rule in -start makes real. */
+	_target = [target retain];
 	_selector = selector;
-	_argument = argument;
+	_argument = [argument retain];
 	return self;
 }
 
@@ -194,6 +200,9 @@ static void *fn_thread_entry(void *context)
 						     object:argument];
 
 	[thread start];
+	/* WE OWN THE ALLOC AND THE THREAD OWNS ITSELF FROM HERE (see -start), so this is the other
+	 * half of that pair - a detached thread nobody can release must not be a permanent leak. */
+	[thread release];
 }
 
 - (void)start
@@ -204,8 +213,14 @@ static void *fn_thread_entry(void *context)
 		return;
 	}
 	_executing = YES;
+	/* THE THREAD KEEPS ITSELF ALIVE WHILE IT RUNS. The new pthread's only handle IS this object,
+	 * and no caller can be relied on to hold it (a detached thread has no caller at all), so a
+	 * caller releasing it as its scope ends would free the table the thread is about to run on.
+	 * The pair is the release at the end of fn_thread_entry. */
+	[self retain];
 	if (pthread_create(&id, NULL, fn_thread_entry, (void *)self) != 0) {
 		_executing = NO;
+		[self release];
 		return;
 	}
 	_threadID = (unsigned long)id;
@@ -217,6 +232,11 @@ static void *fn_thread_entry(void *context)
 	if (_target != nil && _selector != NULL) {
 		[_target performSelector:_selector withObject:_argument];
 	}
+	/* WHAT -initWithTarget:... TOOK, RELEASED WHERE COCOA RELEASES IT: when the thread finishes. */
+	[_target release];
+	_target = nil;
+	[_argument release];
+	_argument = nil;
 	_executing = NO;
 	_finished = YES;
 }
