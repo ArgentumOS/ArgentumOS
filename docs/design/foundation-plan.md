@@ -4780,3 +4780,36 @@ wrong.**
 **VERIFIED.** `foundation_collection` is `ok=46 fail=0` on the guest with the two new checks green, and
 `foundation-sweep --check` is consistent after the four flips.
 
+## 24. `host_fshlint` HAD NEVER RUN — AN ATTRIBUTE SHADOWED A METHOD, AND THIS PLAN'S WORD FOR IT WAS WRONG (2026-09-20)
+
+**THE LAST RED CASE IN THE TIER WAS NOT A TIMEOUT, AND §16 THROUGH §23 SAY IT WAS.** Each of those
+sections ends with *"the single failure being the recorded host_fshlint timeout"*. That attribution came
+from the FIRST lines of a traceback, and it was wrong — wrong in a way worth naming, because the case's own
+budget (420 seconds) made "too slow" a coherent story. The traceback's LAST line, which a truncated view
+does not show, was:
+
+```
+TypeError: 'bool' object is not callable
+```
+
+**THE CAUSE IS ONE LINE OF THE HARNESS.** `Context.__init__` did `self.host = host` — the same name as the
+class's `host()` METHOD — so the boolean flag SHADOWED the method, and every `ctx.host(["make","fshlint"])`
+call raised instantly (measured: `-> FAIL in 0.0s`). **`host_fshlint` had never once run.** The flag is now
+`host_mode` (read at two places in the same file) and the method keeps its name, which is what its only
+caller uses.
+
+**AND THE LINTER WAS NEVER BROKEN EITHER.** Measured: `make fshlint` takes **1.9 seconds** and exits **0** —
+`scan: 69 ELFs, 0 errors, 0 buildpath warnings, 8 legacy in carve-out trees`. So a case whose entire purpose
+was to run that linter reported THE OPPOSITE OF THE TRUTH for its whole existence, and the standing caveat
+in eight sections of this plan was a mis-reading of an instrument.
+
+**WHY THE MIS-READING WAS POSSIBLE, stated because this plan keeps paying for the same shape:** the
+traceback was read from the TOP (where the frames are) instead of the LAST line (where the exception is),
+and a case named for a build lint with a 420-second budget made "too slow" fit. THE LESSON IS ONE THIS FILE
+HAS ALREADY RECORDED TWICE: **a plausible story is not a measurement.** Those eight sections are corrected
+HERE rather than each in place, and this paragraph is the correction of record.
+
+**VERIFIED — and it is the first time in this stretch that it can be said:** `make test` is
+**TESTS-OK 35/35 case(s), 219/219 check(s) in 131s**. THE TIER IS ENTIRELY GREEN, with `host_fshlint` among
+the passes.
+

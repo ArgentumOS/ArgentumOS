@@ -56,7 +56,13 @@ class Context:
 
     def __init__(self, case_name, host=False, pool=None, share=False):
         self.case_name = case_name
-        self.host = host
+        # THE FLAG IS NOT CALLED `host`: that name belongs to this class's METHOD (below), and an
+        # attribute of the same name SHADOWED it — so every `ctx.host([...])` call raised `TypeError:
+        # 'bool' object is not callable` in 0.0s. host_fshlint had NEVER run: it reported the linter
+        # as broken for as long as it existed, and the failure read like a timeout to anyone who saw
+        # only the first lines of the traceback (measured 2026-09-20: the linter itself takes 1.9s
+        # and exits 0).
+        self.host_mode = host
         self.pool = pool
         self.share = share
         self.dir = os.path.join(paths.ARTIFACTS, case_name)
@@ -68,7 +74,7 @@ class Context:
         # A HOST RUN IS THE SAME CASE: it has no machine, so it answers the same
         # session questions from a shell instead.  See harness/host.py for what a
         # host run is NOT, and for the list of cases that may run this way.
-        if self.host:
+        if self.host_mode:
             session = HostSession(self.case_name)
         elif self.pool is not None and self.share:
             # ONE GUEST FOR SEVERAL CASES. A case already slices the log by an offset it took
@@ -104,7 +110,7 @@ class Context:
         is not on the host-clean list is skipped rather than run: its probe wants
         the guest's filesystem, and failing for that reason is not evidence.
         """
-        if self.host:
+        if self.host_mode:
             if name not in HOST_CLEAN:
                 raise Skip("`%s` is not on the host-clean list (see "
                            "tests/harness/host.py) - run it as a guest" % name)
