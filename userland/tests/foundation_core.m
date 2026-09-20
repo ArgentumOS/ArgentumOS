@@ -943,7 +943,7 @@ int main(void)
 
 			asFragment = fragment != nil
 				? [NSJSONSerialization JSONObjectWithData:fragment
-				                                  options:NSJSONReadingAllowFragments error:NULL] : nil;
+				                                  options:NSJSONReadingFragmentsAllowed error:NULL] : nil;
 			asMutable = nested != nil
 				? [NSJSONSerialization JSONObjectWithData:nested
 				                                  options:NSJSONReadingMutableContainers error:NULL] : nil;

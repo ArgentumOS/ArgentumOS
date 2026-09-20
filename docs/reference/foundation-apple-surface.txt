@@ -32,7 +32,7 @@
 #   protocol   shipped    7   open   29   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   63   open   89   struck    8
-#   case       shipped  339   open  870   struck   93
+#   case       shipped  340   open  869   struck   93
 #   func       shipped   58   open   77   struck   54
 #   var        shipped   67   open  700   struck  147
 #   typealias  shipped   19   open   54   struck    3
@@ -550,7 +550,7 @@ case	open	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / A
 case	open	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
-case	open	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
+case	shipped	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONReadingJSON5Allowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	shipped	NSJSONReadingMutableContainers	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	shipped	NSJSONReadingMutableLeaves	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc

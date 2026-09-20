@@ -494,7 +494,7 @@ static void fn_json_write(fn_json_writer *writer, id object)
 	}
 	/* THE TOP LEVEL MUST BE A COLLECTION unless the fragments option allows otherwise, and that rule
 	 * is the caller's to relax rather than ours to assume. */
-	if ((options & NSJSONReadingAllowFragments) == 0 &&
+	if ((options & NSJSONReadingFragmentsAllowed) == 0 &&
 	    ![result isKindOfClass:[NSArray class]] && ![result isKindOfClass:[NSDictionary class]]) {
 		if (errorPtr != NULL) {
 			*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain" code:3840 userInfo:nil];
