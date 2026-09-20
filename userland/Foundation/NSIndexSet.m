@@ -307,6 +307,107 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
  * rather than approximate. A range that does not intersect contributes nothing, and an empty set
  * answers NSNotFound, which is what the header says -firstIndex and -lastIndex answer too.
  */
+/* THE BUFFER FORM (Apple's page, with its own worked example: for the contiguous indexes 1-100, asking
+ * with range (1,100) and a buffer of 20 copies 1-20 and leaves the range as (21,80)). THE REMAINDER IS
+ * COMPUTED FROM THE LAST INDEX COPIED rather than from the count: with a sparse set those differ, and
+ * the page's wording is "the range is updated to the indexes NOT COPIED". */
+- (NSUInteger)getIndexes:(NSUInteger *)indexBuffer
+		maxCount:(NSUInteger)bufferSize
+	    inIndexRange:(NSRangePointer)range
+{
+	NSUInteger written = 0;
+	NSUInteger low = 0;
+	NSUInteger high = NSUIntegerMax;
+	unsigned long i;
+
+	if (indexBuffer == NULL || bufferSize == 0) {
+		return 0;
+	}
+	if (range != NULL) {
+		low = range->location;
+		high = (range->length > NSUIntegerMax - low) ? NSUIntegerMax : low + range->length;
+	}
+	for (i = 0; i < _rangeCount && written < bufferSize; i++) {
+		NSUInteger location = (NSUInteger)_ranges[i * 2];
+		NSUInteger length = (NSUInteger)_ranges[i * 2 + 1];
+		NSUInteger j;
+
+		for (j = 0; j < length && written < bufferSize; j++) {
+			NSUInteger index = location + j;
+
+			if (index < low || index >= high) {
+				continue;
+			}
+			indexBuffer[written++] = index;
+		}
+	}
+	if (range != NULL) {
+		if (written == 0) {
+			/* NOTHING WAS COPIED, so nothing was consumed and the range stands as asked. */
+			range->length = (high == NSUIntegerMax) ? 0 : (high - low);
+		} else {
+			NSUInteger next = indexBuffer[written - 1] + 1;
+
+			range->location = next;
+			range->length = (high > next) ? (high - next) : 0;
+		}
+	}
+	return written;
+}
+
+/* ONE WALK OF THE RANGE LIST, which is what this class IS: the enumerators differ only in direction and
+ * in whether the block sees the range or its intersection with one. */
+- (void)fnEnumerateRanges:(NSRange *)clip reverse:(BOOL)reverse usingBlock:(void (^)(NSRange, BOOL *))block
+{
+	BOOL stop = NO;
+	NSInteger count = (NSInteger)_rangeCount;
+	NSInteger i;
+
+	if (block == nil) {
+		return;
+	}
+	for (i = reverse ? count - 1 : 0; reverse ? (i >= 0) : (i < count); i += reverse ? -1 : 1) {
+		NSRange mine = NSMakeRange((NSUInteger)_ranges[i * 2], (NSUInteger)_ranges[i * 2 + 1]);
+		NSRange out = mine;
+
+		if (clip != NULL) {
+			NSUInteger low = clip->location;
+			NSUInteger high = clip->location + clip->length;
+			NSUInteger end = mine.location + mine.length;
+			NSUInteger start = mine.location > low ? mine.location : low;
+
+			if (end > high) {
+				end = high;
+			}
+			if (start >= end) {
+				continue;		/* no overlap, and Apple says the block sees INTERSECTIONS */
+			}
+			out = NSMakeRange(start, end - start);
+		}
+		block(out, &stop);
+		if (stop) {
+			return;
+		}
+	}
+}
+
+- (void)enumerateRangesUsingBlock:(void (^)(NSRange range, BOOL *stop))block
+{
+	[self fnEnumerateRanges:NULL reverse:NO usingBlock:block];
+}
+
+- (void)enumerateRangesWithOptions:(NSEnumerationOptions)options usingBlock:(void (^)(NSRange range, BOOL *stop))block
+{
+	[self fnEnumerateRanges:NULL reverse:(options & NSEnumerationReverse) != 0 usingBlock:block];
+}
+
+- (void)enumerateRangesInRange:(NSRange)range options:(NSEnumerationOptions)options usingBlock:(void (^)(NSRange range, BOOL *stop))block
+{
+	NSRange clip = range;
+
+	[self fnEnumerateRanges:&clip reverse:(options & NSEnumerationReverse) != 0 usingBlock:block];
+}
+
 - (NSUInteger)countOfIndexesInRange:(NSRange)range
 {
 	unsigned long total = 0;

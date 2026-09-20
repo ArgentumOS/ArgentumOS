@@ -54,13 +54,42 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* THE RANGE-BASED QUERIES (D7's kind (D)). This class's representation IS a range list, so a query
  * over a range of indexes is a walk over ranges rather than a bitmask.
- * NOT here, and named rather than forgotten: -getIndexes:maxCount:inIndexRange: (whose in/out
- * indexRange contract I will not guess), the two block-based -enumerateRanges… forms, and
- * -firstIndexInRange:/-lastIndexInRange:, which the probe's list claims and I could not verify as
- * Apple's API - inventing an API is worse than leaving one refused. */
+ *
+ * WHAT IS NO LONGER ABSENT (§23): -getIndexes:maxCount:inIndexRange: - whose in/out contract turned out
+ * to be documented, with a worked example - and the three block-based -enumerateRanges… forms.
+ * AND THE TWO THE PROBE'S LIST USED TO CLAIM ARE NOT APPLE'S API AT ALL: -firstIndexInRange: and
+ * -lastIndexInRange: appear on no documented NSIndexSet page; the documented neighbours are -firstIndex
+ * / -lastIndex and -indexInRange:options:passingTest:. Refusing to invent them was right — the CLAIM was
+ * what was wrong, and it has been removed from the probe's list. */
 - (NSUInteger)countOfIndexesInRange:(NSRange)range;
 - (NSUInteger)indexGreaterThanOrEqualToIndex:(NSUInteger)index;
 - (NSUInteger)indexLessThanOrEqualToIndex:(NSUInteger)index;
+
+/* THE OPTIONS THE ENUMERATORS TAKE, WITH APPLE'S OWN PUBLISHED VALUES (1 and 2 — unlike the opaque bit
+ * positions elsewhere in this library). NSEnumerationConcurrent is a HINT Apple's page says a caller
+ * must not rely on and an implementation may ignore; this one ignores it, so an enumeration is always
+ * serial and synchronous, which is what the docs promise for these methods anyway. */
+typedef enum {
+	NSEnumerationConcurrent = 1,
+	NSEnumerationReverse = 2
+} NSEnumerationOptions;
+
+/* THE BUFFER FORM AND ITS IN/OUT RANGE: the buffer receives at most `maxCount` of the receiver's indexes
+ * that lie in *range, the return value is how many were written, and *range is UPDATED to the indexes
+ * NOT COPIED. `range` may be NULL, which means every index. */
+- (NSUInteger)getIndexes:(NSUInteger *)indexBuffer
+		maxCount:(NSUInteger)bufferSize
+	    inIndexRange:(nullable NSRangePointer)range;
+
+/* THE RANGE ENUMERATORS: the block receives each of the receiver's ranges — the INTERSECTION with
+ * `range` for the third form — ascending unless NSEnumerationReverse, and may stop by writing YES
+ * through `stop`. */
+- (void)enumerateRangesUsingBlock:(void (^)(NSRange range, BOOL *stop))block;
+- (void)enumerateRangesWithOptions:(NSEnumerationOptions)options
+			usingBlock:(void (^)(NSRange range, BOOL *stop))block;
+- (void)enumerateRangesInRange:(NSRange)range
+		       options:(NSEnumerationOptions)options
+		    usingBlock:(void (^)(NSRange range, BOOL *stop))block;
 @end
 
 @interface NSMutableIndexSet : NSIndexSet

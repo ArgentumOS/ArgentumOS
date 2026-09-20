@@ -330,8 +330,8 @@ case	struck	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprec
 case	struck	NSEnergyFormatterUnitJoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSEnergyFormatterUnitKilocalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSEnergyFormatterUnitKilojoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSEnumerationConcurrent		Fundamentals / Iteration / Constants	-	objc
-case	open	NSEnumerationReverse		Fundamentals / Iteration / Constants	-	objc
+case	shipped	NSEnumerationConcurrent		Fundamentals / Iteration / Constants	-	objc
+case	shipped	NSEnumerationReverse		Fundamentals / Iteration / Constants	-	objc
 case	open	NSEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	-	objc
 case	shipped	NSEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
@@ -1649,7 +1649,7 @@ enum	shipped	NSDecodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed 
 enum	shipped	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	open	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 enum	struck	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
-enum	open	NSEnumerationOptions		Fundamentals / Iteration	-	objc
+enum	shipped	NSEnumerationOptions		Fundamentals / Iteration	-	objc
 enum	shipped	NSExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
 enum	open	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
 enum	open	NSFileCoordinatorWritingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
@@ -2308,7 +2308,7 @@ typealias	open	NSProgressUnpublishingHandler	NSProgress	App Support / Progress /
 typealias	open	NSProgressUserInfoKey	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 typealias	shipped	NSPropertyListReadOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 typealias	shipped	NSPropertyListWriteOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
-typealias	open	NSRangePointer		Fundamentals / Ranges / Related types	-	objc
+typealias	shipped	NSRangePointer		Fundamentals / Ranges / Related types	-	objc
 typealias	shipped	NSRect		Fundamentals / Geometry	-	objc
 typealias	shipped	NSRectArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSRectPointer		Fundamentals / Geometry / Related Types	-	objc

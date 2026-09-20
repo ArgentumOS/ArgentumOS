@@ -4744,3 +4744,39 @@ and that a checkpoint is among what arrives).
 titles are per-locale TEMPLATES — data this library does not have) and the discardable-actions surface
 plus its one userInfo key (a surface, not a mechanism).
 
+## 23. NSIndexSet'S REMAINING QUERIES — AND TWO ITS PROBE CLAIMED THAT ARE NOT APPLE'S API (2026-09-20)
+
+**FOUR MORE LEFT THE REFUSAL LIST, AND THE REASON THE FIRST ONE WAS REFUSED WAS WRONG.** The header said
+`-getIndexes:maxCount:inIndexRange:`'s *"in/out indexRange contract I will not guess"* — and the contract
+turned out to be **documented, with a worked example**: for the contiguous indexes 1–100, asking with
+range (1,100) and a buffer of 20 copies 1–20 and leaves the range as **(21,80)**. So it is implemented
+from Apple's own numbers, and the PROBE ASSERTS THOSE NUMBERS — the strongest kind of check available
+here, because the arithmetic was not mine to choose. The remainder comes from the **last index copied**
+rather than from the count, which is what a sparse set distinguishes, and the probe checks a sparse case
+for exactly that reason.
+
+**AND THE THREE RANGE ENUMERATORS** (`UsingBlock:`, `WithOptions:usingBlock:`,
+`InRange:options:usingBlock:`) come almost free in this class: **the receiver IS a range list**, so an
+enumeration is a walk of its own ranges. The in-range form reports the **INTERSECTION** (Apple: *"that
+intersection will be passed to the block"*), a non-overlapping range is not reported at all, `stop` ends
+the walk, `NSEnumerationReverse` walks backwards, and **`NSEnumerationConcurrent` is IGNORED** — which is
+not a shortcut but the documented licence: Apple calls it *"a hint"* a caller must not rely on.
+
+**TWO LEDGER-LEVEL ADDITIONS CAME WITH IT, both rows of their own:** `NSEnumerationOptions` with its two
+cases — **and here the values ARE Apple's published 1 and 2**, unlike the opaque bit positions this
+library invents elsewhere — and `NSRangePointer`, which Apple declares beside `NSRange` and this tree had
+never declared. `NSRange` lives in `NSObjCRuntime.h` here, so its pointer spelling went there too.
+FOUR ROWS FLIP: the enum, both cases, and the typealias.
+
+**AND THE FINDING THAT WAS NOT A FEATURE: TWO OF THE PROBE'S CLAIMS ARE NOT APPLE'S API AT ALL.**
+`-firstIndexInRange:` and `-lastIndexInRange:` appear on **no documented NSIndexSet page** — the
+documented neighbours are `-firstIndex`/`-lastIndex` and `-indexInRange:options:passingTest:`. The
+register's earlier refusal to invent them was **right**, and the thing that was wrong was the PROBE'S
+CLAIM: it listed two selectors no program could ever call, and a probe that claims an API which does not
+exist cannot be satisfied by any amount of work. They are removed from the inventory with that reason
+written where the claim used to be. **A refusal that turns out to be correct is not the part that was
+wrong.**
+
+**VERIFIED.** `foundation_collection` is `ok=46 fail=0` on the guest with the two new checks green, and
+`foundation-sweep --check` is consistent after the four flips.
+

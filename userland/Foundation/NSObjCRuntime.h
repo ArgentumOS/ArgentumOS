@@ -72,6 +72,10 @@ typedef struct {
 	NSUInteger length;
 } NSRange;
 
+/* APPLE'S POINTER SPELLING FOR A RANGE, declared beside the range itself (it was a ledger row on its
+ * own: §23's NSIndexSet unit is what needed it). */
+typedef NSRange *NSRangePointer;
+
 
 /*
  * RANGES ARE FUNCTIONS HERE, NOT COCOA'S MACROS, and the reason is MEASURED: as

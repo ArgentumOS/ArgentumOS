@@ -576,6 +576,9 @@ int main(void)
 			"enumerateIndexesUsingBlock:", "isEqualToIndexSet:",
 			"isEqual:", "hash", "description", "copy", "mutableCopy", 			"countOfIndexesInRange:",
 			"indexGreaterThanOrEqualToIndex:", "indexLessThanOrEqualToIndex:",
+			"getIndexes:maxCount:inIndexRange:",
+			"enumerateRangesUsingBlock:", "enumerateRangesWithOptions:usingBlock:",
+			"enumerateRangesInRange:options:usingBlock:",
 NULL
 		};
 		static const char *mutableSelectors[] = {
@@ -585,13 +588,15 @@ NULL
 		static const char *excluded[] = {
 			/* The range- and buffer-based queries: a caller walks the set with
 			 * -enumerateIndexesUsingBlock: instead. */
-			/* THREE OF THESE SHIP AS OF 2026-09-19 (countOfIndexesInRange: and the two
-			 * neighbours), so they are DEMANDED in the list above; what stays here is what
-			 * is still absent. */
-			"getIndexes:maxCount:inIndexRange:",
-			"firstIndexInRange:", "lastIndexInRange:",
-			"enumerateRangesUsingBlock:",
-			"enumerateRangesInRange:options:usingBlock:",
+			/* FOUR MORE LEFT THIS LIST IN §23 and are DEMANDED above: the buffer form (whose
+			 * in/out range contract turned out to be DOCUMENTED, with a worked example) and the
+			 * three range enumerators.
+			 *
+			 * AND TWO WERE NEVER APPLE'S API AT ALL: -firstIndexInRange: and -lastIndexInRange:
+			 * appear on no documented NSIndexSet page — the neighbours are -firstIndex/-lastIndex
+			 * and -indexInRange:options:passingTest: — so they are REMOVED rather than left
+			 * standing as a claim this probe could never honour. A REFUSAL THAT TURNS OUT TO BE
+			 * CORRECT IS NOT THE PART THAT WAS WRONG; THE CLAIM WAS. */
 			"shiftIndexesStartingAtIndex:by:",
 			"addIndexes:", "removeIndexes:", "containsIndexes:",
 			NULL
@@ -1355,6 +1360,85 @@ NULL
 
 		[set addIndexesInRange:NSMakeRange(10, 5)];
 		[set addIndexesInRange:NSMakeRange(30, 2)];
+	{
+		/* THE BUFFER FORM (§23): APPLE'S OWN WORKED EXAMPLE IS THE ASSERTION — for the contiguous
+		 * indexes 1-100, asking with range (1,100) and a buffer of 20 copies 1-20 and leaves the
+		 * range as (21,80) — plus the NULL range (every index) and a SPARSE set, where the remainder
+		 * comes from the LAST INDEX COPIED rather than from the count, which is where a count-based
+		 * implementation would differ. */
+		NSMutableIndexSet *set = [NSMutableIndexSet indexSet];
+		NSUInteger buffer[20];
+		NSUInteger written;
+		NSUInteger small[2];
+		NSRange rest = NSMakeRange(1, 100);
+		NSRange all = NSMakeRange(0, 0);
+		NSRange sparse = NSMakeRange(0, 50);
+		NSUInteger sparseWritten;
+
+		[set addIndexesInRange:NSMakeRange(1, 100)];
+		written = [set getIndexes:buffer maxCount:20 inIndexRange:&rest];
+		all.length = 0;
+		(void)[set getIndexes:small maxCount:0 inIndexRange:&all];
+		[set removeAllIndexes];
+		[set addIndex:5];
+		[set addIndex:40];
+		[set addIndex:41];
+		sparseWritten = [set getIndexes:small maxCount:2 inIndexRange:&sparse];
+
+		check("indexset-buffer-form",
+		      written == 20 && buffer[0] == 1 && buffer[19] == 20 &&
+		      rest.location == 21 && rest.length == 80 &&
+		      sparseWritten == 2 && small[0] == 5 && small[1] == 40 &&
+		      sparse.location == 41 && sparse.length == 9,
+		      [[NSString stringWithFormat:@"written=%lu first=%lu last=%lu rest=(%lu,%lu) sparse=(%lu,%lu)",
+			(unsigned long)written, (unsigned long)buffer[0], (unsigned long)buffer[19],
+			(unsigned long)rest.location, (unsigned long)rest.length,
+			(unsigned long)sparse.location, (unsigned long)sparse.length] UTF8String]);
+	}
+
+	{
+		/* THE RANGE ENUMERATORS: the block sees the receiver's OWN ranges — this class IS a range
+		 * list — ascending, or descending under NSEnumerationReverse, and it may STOP the walk. The
+		 * in-range form sees the INTERSECTION, and a range that does not overlap is not reported at
+		 * all. */
+		NSMutableIndexSet *set = [NSMutableIndexSet indexSet];
+		NSMutableArray *forward = [[NSMutableArray alloc] init];
+		NSMutableArray *backward = [[NSMutableArray alloc] init];
+		NSMutableArray *clipped = [[NSMutableArray alloc] init];
+		__block NSUInteger stopped = 0;
+
+		[set addIndexesInRange:NSMakeRange(2, 3)];	/* 2-4 */
+		[set addIndexesInRange:NSMakeRange(10, 2)];	/* 10-11 */
+		[set enumerateRangesUsingBlock:^(NSRange range, BOOL *stop) {
+			[forward addObject:[NSValue valueWithRange:range]];
+		}];
+		[set enumerateRangesWithOptions:NSEnumerationReverse usingBlock:^(NSRange range, BOOL *stop) {
+			[backward addObject:[NSValue valueWithRange:range]];
+		}];
+		[set enumerateRangesInRange:NSMakeRange(3, 6) options:0 usingBlock:^(NSRange range, BOOL *stop) {
+			[clipped addObject:[NSValue valueWithRange:range]];
+		}];
+		[set enumerateRangesUsingBlock:^(NSRange range, BOOL *stop) {
+			stopped++;
+			*stop = YES;
+		}];
+
+		check("indexset-enumerate-ranges",
+		      [forward count] == 2 &&
+		      [[forward objectAtIndex:0] rangeValue].location == 2 &&
+		      [[forward objectAtIndex:1] rangeValue].location == 10 &&
+		      [backward count] == 2 &&
+		      [[backward objectAtIndex:0] rangeValue].location == 10 &&
+		      [[backward objectAtIndex:1] rangeValue].location == 2 &&
+		      [clipped count] == 1 &&
+		      [[clipped objectAtIndex:0] rangeValue].location == 3 &&
+		      [[clipped objectAtIndex:0] rangeValue].length == 2 &&
+		      stopped == 1,
+		      [[NSString stringWithFormat:@"forward=%lu backward=%lu clipped=%lu stopped=%lu",
+			(unsigned long)[forward count], (unsigned long)[backward count],
+			(unsigned long)[clipped count], (unsigned long)stopped] UTF8String]);
+	}
+
 		check("indexset-range-queries",
 		      [set countOfIndexesInRange:NSMakeRange(12, 20)] == 5 &&
 		      [set countOfIndexesInRange:NSMakeRange(100, 5)] == 0 &&
