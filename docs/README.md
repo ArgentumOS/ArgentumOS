@@ -1,8 +1,21 @@
 # docs — design, evaluation, reference, archive
 
 Documentation for FNX is split by purpose. Every document records its own
-status in its header (`DECIDED`, `PLAN`, `EVALUATION`, `DONE`, ...); the
-directories below are only the first cut.
+status in its header, and **the vocabulary is finite — five classes**, so the
+set stays readable:
+
+| class | words | meaning |
+|---|---|---|
+| **settled** | `DECIDED` `CHOSEN` `APPROVED` | a decision, and the decision is the record |
+| **open** | `PLAN` `PROPOSED` `DRAFT` | a live intention, not yet built |
+| **shipped** | `DONE` `COMPLETE` | built, and recorded as such |
+| **not-now** | `DEFERRED` `PARKED` `STOWED` | not abandoned, not being worked on |
+| **not-happening** | `RETRACTED` `REJECTED` `DISCARDED` | reversed, with the cause recorded |
+
+**`design/STATUS.md` is the index**: one row per plan, with what it says about
+itself, whether the paths it names still exist, whether its work is parked under
+a tag, and how many other documents cite it. A reader who wants to know whether
+a plan is real should start there rather than opening 83 files.
 
 - `design/` — chosen directions, design records, and active plans
   (including the milestone-tracking plans for the toolchain, shared
