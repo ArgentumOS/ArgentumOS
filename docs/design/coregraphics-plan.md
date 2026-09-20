@@ -179,17 +179,17 @@ whole of it, because two thirds of CG is not pixman-shaped:**
   side resolves the request*, and the open question is *whose* pixman (§4). **And
   RENDER has no path primitive** (it takes trapezoids), so even on the server route
   the path→trapezoid step is this layer's work — the same missing piece either way.
-- **WHERE RASTERIZATION HAPPENS IS A CHOICE, AND THE REASON THE TREE ONCE RECORDED
-  FOR IT IS STALE.** The parked toolkit rasterized client-side with pixman and
-  blitted over the core protocol *because "the client stack lacks libXrender"* — and
+- **WHERE RASTERIZATION HAPPENS: CLIENT-SIDE, DECIDED (user, 2026-09).** The parked
+  toolkit rasterized client-side with pixman and blitted over the core protocol
+  *because "the client stack lacks libXrender"* — and that reason is **STALE**:
   `libXrender` is now vendored (0.9.12) with RENDER **measured working**
-  (`kestrel-compositor-plan.md` §1). **Recommendation: keep it client-side**, and
-  not for the old reason: one rasterizer then serves **every** destination — a
-  window, an offscreen bitmap and a PDF page — which is the "one draw path"
-  property that made Quartz worth copying. RENDER would split the rasterizer *by
-  destination* (protocol for the screen, pixman/libharu for the rest) and leave two
-  paths to keep pixel-identical. **This is the plan's one undecided rasterization
-  question, and it is named rather than assumed.**
+  (`kestrel-compositor-plan.md` §1), so the choice is free and was made on its
+  merits. **The merit is the whole point of this layer:** one rasterizer serves
+  **every** destination — a window, an offscreen bitmap and a PDF page — which is
+  the "one draw path" property that made Quartz worth copying. RENDER would split
+  the rasterizer *by destination* and leave two paths to keep pixel-identical,
+  and it buys nothing here, because **RENDER has no path primitive anyway** — the
+  path→trapezoid work is client-side on either route.
 - **THE OTHER TWO THIRDS, so "through pixman" is not overstated:** text glyph
   coverage comes from **FreeType** and is composited by pixman; images are decoded
   once (`libpng`/`zlib` today) and composited by pixman; and **PDF content must
@@ -198,13 +198,46 @@ whole of it, because two thirds of CG is not pixman-shaped:**
   carries its own AGG-derived rasterizer, so letting it draw *into* a CG context
   would put a second rasterizer on the screen path. Render-to-bitmap keeps pixman
   the single compositor.
-- **AND THE ONE GAP WITH NOTHING UNDER IT, MEASURED: this tree has no
-  colour-management library at all.** `grep` finds no lcms, no qcms and no ICC
-  tooling anywhere in `third_party/` or `userland/`. So §6's colour-management
-  deviation is not a simplification to be chosen at the margin — CG's
-  colour-managed-by-default behaviour has **no substrate here**, and either one is
-  admitted as a new dependency or the deviation is a real capability loss,
-  documented as one.
+- **THE COLOUR GAP IS CLOSED BY A NAMED DEPENDENCY: Little CMS 2 (`lcms2`) —
+  DECIDED (user, 2026-09).** Measured while the tree had nothing: `grep` found no
+  lcms, no qcms and no ICC tooling anywhere in `third_party/` or `userland/`, so
+  colour-managed-by-default had **no substrate at all**. `lcms2` is the answer
+  because it is the *reference* implementation — GIMP, Krita, Scribus,
+  ImageMagick, poppler, Ghostscript's colour, OpenJDK all use it — and because its
+  terms fit this tree:
+  - **Licence: MIT for the core** (© 1998–2022 Marti Maria Saguer), admissible on
+    this tree's existing record (MIT/zlib/BSD-3/FTL). **AND ONE NAMED EXCLUSION:
+    the bundled `plugins/fast_float/` and `plugins/threaded/` are GPL-3** and are
+    *optional* switches (`--with-fastfloat`, `--with-threaded`). **They are not
+    admitted** — both are configured off, recorded here rather than discovered at
+    pin time.
+  - **No required dependencies.** The optional libjpeg/libtiff/zlib are for its own
+    CLI utilities, which the same configuration disables.
+  - **Build: CMake — and only from 2.19.** 2.15+ carries Meson, which the
+    no-Python doctrine rules out, and autotools is the older road. So **the pin
+    must be ≥ 2.19**, built as the tree's other libraries are: a house generator
+    with `BUILD_UTILS=FALSE` / `BUILD_TESTS=FALSE`, the flags Krita's own
+    integration uses. **No build-time interpreter.**
+  - **What it buys, concretely:** real transforms between `CGColorSpace`s instead
+    of a documented lie — and it **synthesises** the common spaces (sRGB, XYZ, a
+    gamma ramp) rather than needing ICC files shipped, so
+    `CGColorSpaceCreateWithName(kCGColorSpaceSRGB)` does not depend on profile data
+    in the image. *(Confirm those constructors at pin time; they are the reason no
+    ICC data files enter the tree.)*
+  - **Admission row lands at PIN time**, per the standing policy — as
+    `pdf-generation-plan.md` does for libharu, not at decision time.
+- **ALTERNATIVES CONSIDERED, so this is not relitigated:**
+  - **`qcms`** (Firefox's) — MIT in its C form, but it is now **Rust**, which this
+    tree's toolchain doctrine excludes, and its C lineage carries an
+    MPL-1.1/GPL-2/LGPL-2.1 tri-licence history. It also has **no grayscale
+    transforms** (it panics on Gray8).
+  - **`skcms`** (Google's) — **BSD** and genuinely tempting: standalone, two files,
+    fuzzing-hardened. It loses on **behaviour**: its CMYK convention is inverted
+    relative to everyone else's (a measured 255-point maximum difference against
+    lcms2 on a CMYK grid), and this layer's job is to be *unsurprising* — an image
+    tagged and transformed by common tooling has to match.
+  - **`moxcms`/`oxcms`** — Rust. **`jsColorEngine`** — JavaScript. Both out on
+    language, not on licence.
 
 ## 6. What is actually hard (the semantics, not the spelling)
 
