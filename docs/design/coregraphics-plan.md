@@ -183,9 +183,41 @@ missing here.
   opaque types. Measured: `grep` finds **no `CFRetain`/`CFRelease`
   anywhere in the tree**, and probes are ARC while parts of the library are
   MRR. This layer forces that decision to be made and written down.
-- **COREFOUNDATION IS A PRECONDITION OF THIS LAYER, NOT A SEPARATE PROJECT —
-  and its scope is MEASURED rather than assumed** (user's question, 2026-09:
-  *"I guess we need CoreFoundation too, don't we?"*). Yes — and only this much:
+- **DECISION (2026-09, superseding every sub-bullet below it in this item): there
+  is NO CoreFoundation here; CoreGraphics declares its signatures with FOUNDATION
+  types** — `NSArray *`, `NSData *`, `NSDictionary *`, `NSNumber *`, `NSURL *`,
+  `NSString *` — and `docs/design/corefoundation-plan.md` is **RETRACTED**. The
+  user's direction, and it is right: *"why do we need CoreFoundation at all, if
+  everything is meant to be ObjC anyway? We aren't Apple, we don't have the same
+  pressures and needs as Apple. What we need is a CoreGraphics-shaped API that
+  uses Foundation objects."*
+  - **THE SUB-BULLETS BELOW ARE THE RETRACTED ARGUMENT**, kept because retracting
+    a plan is not the same as forgetting it. They reason from "unmodified modern
+    Apple-source compiles" — **a goal this project never set**, imported by me
+    from Apple's situation, where CF exists because Foundation is built on it and
+    the OS ships it. Restated as the real goal, the ~1-in-5 measurement is the
+    size of the **PORT** for Apple code brought across, not a dependency owed.
+  - **Three facts close it, all measured:** CoreGraphics carries **43 of its own
+    `CG…Retain`/`CG…Release` functions**, so no caller needs `CFRelease`; the
+    objects were always going to be Foundation's; and nothing else in this tree
+    wants CF — the plist core, `libconfig` and the Foundation ledger already
+    answer property lists, configuration, locales, calendars and formatters. `CF`
+    would have existed *solely* to serve CG's spellings.
+  - **AND §8's ORACLE CHANGES WITH IT.** The acceptance is no longer "unmodified
+    Apple source compiles" but "**ported** Apple source compiles", the port being
+    mechanical: drop the `(__bridge CFXRef)` casts, take a CF-typed return as its
+    Foundation counterpart, and write `CG…Release(x)` where Apple's sample writes
+    `CFRelease(x)`.
+  - **THE FUNCTION NAMES STAY APPLE'S**, `…CreateWithCFData` included: the names
+    are the shape being duplicated — they are how a reader finds the function in
+    Apple's documentation — and a signature taking `NSData *` under that name is a
+    **documented deviation** like any other, which is the standing policy's
+    mechanism.
+  - **WHAT THIS DOES NOT AFFECT:** C0's ledger. `tools/coregraphics-sweep.py`
+    enumerates **names and states**, not types, so its 1579 rows stand.
+
+- **THE RETRACTED ARGUMENT** (it was *"I guess we need CoreFoundation too, don't
+  we?"* → yes, thinly, toll-free bridged):
   - **CG's own declarations name CF types.** On a 36-page sample of the surface,
     **8 declarations (~1 in 5) reference one**, and the set that appears is
     narrow: `CFStringRef` (`CGColorSpaceCreateWithName`, the `kCGColorSpace*`

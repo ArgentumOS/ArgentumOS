@@ -1,17 +1,65 @@
-# CoreFoundation — the thin bridged subset CoreGraphics needs
+# CoreFoundation — RETRACTED (2026-09): this tree does not need it
 
-Status: **PLAN (2026-09) — decided in direction; not scheduled.** The
-direction: this tree gains **the CF type identities and ownership functions
-that CoreGraphics' own signatures require**, toll-free bridged onto the
-Foundation classes it already has — and **not** the rest of CoreFoundation.
-Depends on `docs/design/coregraphics-plan.md`, where it is named as a
-precondition of C2 rather than a separate project.
+Status: **RETRACTED, by the user's direction. Do not start this plan.** The body
+below is kept as the **record of a wrong argument**, because the argument is the
+useful part: it is what a later reader would otherwise reconstruct and act on.
 
-## 1. Why this exists, in one measurement
+**THE DECISION (user, 2026-09):** *"why do we need CoreFoundation at all, if
+everything is meant to be ObjC anyway? We aren't Apple, we don't have the same
+pressures and needs as Apple. What we need is a CoreGraphics-shaped API that uses
+Foundation objects."* That is right, and CoreGraphics here declares its signatures
+with **Foundation types** — `NSArray *`, `NSData *`, `NSDictionary *`,
+`NSNumber *`, `NSURL *`, `NSString *`. No CF layer, no CF type identities, no
+`CFRetain`/`CFRelease`.
 
-The question was the user's, 2026-09: *"I guess we need CoreFoundation too,
-don't we?"* — and the answer is yes, because **CG's own declarations stand on
-CF types**. Measured on the C0 ledger's pages:
+**WHAT THIS PLAN GOT WRONG, in one sentence:** every argument below rests on
+*source compatibility with Apple* — "unmodified modern Apple-source compiles" —
+which is a goal **this project never set**. It was imported, by me, from Apple's
+situation, where CF exists because Foundation is built on it and the OS ships it.
+Restated as the actual goal — a **CoreGraphics-shaped API using Foundation
+objects** — the same measurement reads differently: the ~1-in-5 figure is the size
+of the **port** for anyone bringing Apple code across, not the size of a
+dependency this tree owes.
+
+**AND THE HOUSE HAD ALREADY DECIDED THIS, ONE LAYER UP.** `cocoa-parity-plan.md`
+defines faithful cloning as the same class inventory, patterns and semantics, and
+**"NOT 'identical source'"**. So dropping CF is the *consistent* choice; this plan
+was the inconsistent one.
+
+## Why the argument below fails, so it is not made again
+
+1. **"CG's declarations name CF types, so the names must exist"** — true of
+   *Apple's headers*, and irrelevant: we are not compiling them. We declare the
+   same functions with Foundation types.
+2. **"Then Apple's `__bridge` casts will not compile"** — also true, and also
+   irrelevant for the same reason. It is a porting step (`(__bridge
+   CFArrayRef)@[…]` becomes `@[…]`), not a defect.
+3. **"`CFRelease` is needed"** — MEASURED FALSE. CoreGraphics carries **43 of its
+   own `CG…Retain`/`CG…Release` functions** (`CGColorRelease`,
+   `CGDataProviderRelease`, `CGContextRelease`, `CGGradientRelease`,
+   `CGColorSpaceRelease`, …), so a caller releasing a CG object never needs CF.
+4. **The objects were never going to be CF objects.** This plan's own §3 said so:
+   every value would have been an `NSString`/`NSArray`/`NSData`/`NSDictionary`.
+   CF's only role was the *spelling* of parameter and return types.
+5. **Nothing else in this tree wants CF.** No run-loop, port, socket, bundle or
+   preferences consumer; the plist core answers property lists, `libconfig`
+   answers configuration, and the Foundation ledger already ships the locales,
+   calendars, time zones and formatters. CF would have existed **solely** to serve
+   CG's spellings.
+
+**THE FUNCTION NAMES STAY APPLE'S.** `CGDataProviderCreateWithCFData` takes an
+`NSData *`; `CGColorSpaceCreateWithName` takes an `NSString *`. The names are the
+shape being duplicated — they are how a reader finds the function in Apple's
+documentation — and a signature taking Foundation types under a `…WithCFData` name
+is a **documented deviation** like any other, which is the standing policy's whole
+mechanism.
+
+**WHAT IS NOT AFFECTED:** the C0 ledger. `tools/coregraphics-sweep.py` enumerates
+**names and states** from Apple's documentation, not types, so every row stands —
+1579 symbols, 76 struck, the CG-named value types included.
+
+## RETRACTED ARGUMENT — what follows is the wrong reasoning, kept as a record
+
 
 - a **72-page sample of the CG surface** found **~1 declaration in 5** naming a
   CF type;
