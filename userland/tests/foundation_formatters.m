@@ -123,6 +123,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>		/* setenv: the probe's own locale premise — see main()'s note */
+#include <math.h>		/* sqrt, for the fuel-efficiency crossing the family is anchored at */
 
 static int okc, failc;
 
@@ -1870,6 +1871,80 @@ int main(void)
 		      [kilowatts coefficient] == 1000.0 &&
 		      [NSUnitPower baseUnit] == [NSUnitPower watts],
 		      [NSString stringWithFormat:@"hp=%g kW=%g", [horsepower coefficient], [kilowatts coefficient]]);
+	}
+
+	/* ---- W12 batch 4: the electrical four, the two single-unit families, and the approximation ---- */
+	{
+		/* THE ELECTRICAL FAMILIES INTERLOCK, and their one derivation is the amp-hour: a charge is a current
+		 * for a time, so an ampere-hour IS 3600 coulombs and a kiloampere-hour 3.6e6. */
+		NSUnitConverterLinear *ampereHours = (NSUnitConverterLinear *)[[NSUnitElectricCharge ampereHours] converter];
+		NSUnitConverterLinear *kiloAmpereHours = (NSUnitConverterLinear *)[[NSUnitElectricCharge kiloampereHours] converter];
+		NSUnitConverterLinear *amperes = (NSUnitConverterLinear *)[[NSUnitElectricCurrent amperes] converter];
+		NSUnitConverterLinear *volts = (NSUnitConverterLinear *)[[NSUnitElectricPotentialDifference volts] converter];
+		NSUnitConverterLinear *ohms = (NSUnitConverterLinear *)[[NSUnitElectricResistance ohms] converter];
+
+		check("unit-electric",
+		      [ampereHours coefficient] == 3600.0 &&
+		      fn_close([kiloAmpereHours coefficient], 1000.0 * 3600.0) &&
+		      [amperes coefficient] == 1.0 && [volts coefficient] == 1.0 && [ohms coefficient] == 1.0 &&
+		      [NSUnitElectricCharge baseUnit] == [NSUnitElectricCharge coulombs] &&
+		      [NSUnitElectricCurrent baseUnit] == [NSUnitElectricCurrent amperes] &&
+		      [NSUnitElectricPotentialDifference baseUnit] == [NSUnitElectricPotentialDifference volts] &&
+		      [NSUnitElectricResistance baseUnit] == [NSUnitElectricResistance ohms],
+		      [NSString stringWithFormat:@"Ah=%g kAh=%g A=%g V=%g ohm=%g",
+			 [ampereHours coefficient], [kiloAmpereHours coefficient],
+			 [amperes coefficient], [volts coefficient], [ohms coefficient]]);
+	}
+
+	{
+		/* THE TWO ONE-UNIT FAMILIES: the base IS the only unit, and the coefficient is 1 because there is
+		 * nothing to convert to. A one-unit family still has to exist — a measurement needs a unit, and
+		 * NSMeasurementFormatter takes any dimension. */
+		NSUnitConverterLinear *lux = (NSUnitConverterLinear *)[[NSUnitIlluminance lux] converter];
+		NSUnitConverterLinear *ppm = (NSUnitConverterLinear *)[[NSUnitDispersion partsPerMillion] converter];
+
+		check("unit-single-unit-families",
+		      [lux coefficient] == 1.0 && [ppm coefficient] == 1.0 &&
+		      [NSUnitIlluminance baseUnit] == [NSUnitIlluminance lux] &&
+		      [NSUnitDispersion baseUnit] == [NSUnitDispersion partsPerMillion],
+		      [NSString stringWithFormat:@"lux=%g ppm=%g", [lux coefficient], [ppm coefficient]]);
+	}
+
+	{
+		/*
+		 * THE DOCUMENTED APPROXIMATION, ASSERTED AS BOTH HALVES — AND THE SECOND HALF IS THE POINT.
+		 *
+		 * Litres/100 km is INVERSE to mpg, which NSUnitConverterLinear cannot express, so the family is
+		 * anchored at the value where the two scales read the SAME NUMBER (√235.214583 ≈ 15.3362, the fixed
+		 * point of v = 235.214583/v — the same shape as the temperature family's -40). This asserts that
+		 * the crossing IS exact AND that the conversion DIVERGES away from it, quoting both the linear
+		 * answer and the true one: the limitation is recorded in the instrument rather than hidden in the
+		 * table, which is what §11.6's register requires of a documented deviation.
+		 */
+		double anchor = sqrt(100.0 * 3.785411784 / 1.609344);
+		NSMeasurement *atAnchor = [[NSMeasurement alloc] initWithDoubleValue:anchor
+									      unit:[NSUnitFuelEfficiency milesPerGallon]];
+		double sameNumber = [[atAnchor measurementByConvertingToUnit:
+					[NSUnitFuelEfficiency litersPer100Kilometers]] doubleValue];
+		NSMeasurement *thirty = [[NSMeasurement alloc] initWithDoubleValue:30.0
+									    unit:[NSUnitFuelEfficiency milesPerGallon]];
+		double linear = [[thirty measurementByConvertingToUnit:
+				  [NSUnitFuelEfficiency litersPer100Kilometers]] doubleValue];
+		double truthful = (100.0 * 3.785411784 / 1.609344) / 30.0;
+		NSUnitConverterLinear *imperial = (NSUnitConverterLinear *)[[NSUnitFuelEfficiency milesPerImperialGallon] converter];
+		NSUnitConverterLinear *us = (NSUnitConverterLinear *)[[NSUnitFuelEfficiency milesPerGallon] converter];
+
+		check("unit-fuel-efficiency",
+		      /* EXACT AT THE CROSSING, where the two scales read the same number... */
+		      fn_close(sameNumber, anchor) &&
+		      /* ...AND THE IMPERIAL RATIO IS EXACT EVERYWHERE, being a ratio of two GALLON volumes... */
+		      fn_close([imperial coefficient] / [us coefficient], 4.54609 / 3.785411784) &&
+		      /* ...AND AWAY FROM IT THE ANSWER IS THE LINEAR APPROXIMATION, asserted so the deviation is a
+		       * RECORDED fact: 30 mpg is about 7.84 L/100km in truth, and this family answers the LINEAR
+		       * value because at the crossing the coefficient is 1 (see NSUnitFuelEfficiency.m's note). */
+		      fn_close(linear, 30.0) && !fn_close(linear, truthful),
+		      [NSString stringWithFormat:@"anchor=%g (converts to itself=%g); 30 mpg -> linear %g, "
+			 "true %g — THE REGISTERED DEVIATION", anchor, sameNumber, linear, truthful]);
 	}
 
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);

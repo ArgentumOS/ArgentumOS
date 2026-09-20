@@ -108,6 +108,10 @@
 #import <Foundation/NSUnitFrequency.h>
 #import <Foundation/NSUnitEnergy.h>
 #import <Foundation/NSUnitPower.h>
+#import <Foundation/NSUnitElectric.h>
+#import <Foundation/NSUnitIlluminance.h>
+#import <Foundation/NSUnitDispersion.h>
+#import <Foundation/NSUnitFuelEfficiency.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

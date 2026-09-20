@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped   98   open  144   struck   31
+#   class      shipped  105   open  137   struck   31
 #   protocol   shipped    9   open   27   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   76   open   76   struck    8
@@ -1571,16 +1571,16 @@ class	shipped	NSUnitArea		Fundamentals / Physical Dimension	-	objc
 class	open	NSUnitConcentrationMass		Fundamentals / Concentration and Dispersion	-	objc
 class	shipped	NSUnitConverter		Fundamentals / Conversion	-	objc
 class	shipped	NSUnitConverterLinear		Fundamentals / Conversion	-	objc
-class	open	NSUnitDispersion		Fundamentals / Concentration and Dispersion	-	objc
+class	shipped	NSUnitDispersion		Fundamentals / Concentration and Dispersion	-	objc
 class	shipped	NSUnitDuration		Fundamentals / Time and Motion	-	objc
-class	open	NSUnitElectricCharge		Fundamentals / Electricity	-	objc
-class	open	NSUnitElectricCurrent		Fundamentals / Electricity	-	objc
-class	open	NSUnitElectricPotentialDifference		Fundamentals / Electricity	-	objc
-class	open	NSUnitElectricResistance		Fundamentals / Electricity	-	objc
+class	shipped	NSUnitElectricCharge		Fundamentals / Electricity	-	objc
+class	shipped	NSUnitElectricCurrent		Fundamentals / Electricity	-	objc
+class	shipped	NSUnitElectricPotentialDifference		Fundamentals / Electricity	-	objc
+class	shipped	NSUnitElectricResistance		Fundamentals / Electricity	-	objc
 class	shipped	NSUnitEnergy		Fundamentals / Energy, Heat, and Light	-	objc
 class	shipped	NSUnitFrequency		Fundamentals / Time and Motion	-	objc
-class	open	NSUnitFuelEfficiency		Fundamentals / Fuel Efficiency	-	objc
-class	open	NSUnitIlluminance		Fundamentals / Energy, Heat, and Light	-	objc
+class	shipped	NSUnitFuelEfficiency		Fundamentals / Fuel Efficiency	-	objc
+class	shipped	NSUnitIlluminance		Fundamentals / Energy, Heat, and Light	-	objc
 class	shipped	NSUnitInformationStorage		Fundamentals / Data Storage	-	objc
 class	shipped	NSUnitLength		Fundamentals / Physical Dimension	-	objc
 class	shipped	NSUnitMass		Fundamentals / Mass, Weight, and Force	-	objc

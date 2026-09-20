@@ -3476,7 +3476,7 @@ vanishing.
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
 | **Fundamentals / Characters** | all classes shipped | — |
-| **Fundamentals / Concentration and Dispersion** | 2 open | `NSUnitConcentrationMass`, `NSUnitDispersion` |
+| **Fundamentals / Concentration and Dispersion** | 1 open | `NSUnitConcentrationMass` |
 | **Fundamentals / Conversion** | all classes shipped | — |
 | **Fundamentals / Custom formatters** | all classes shipped | — |
 | **Fundamentals / Data Storage** | all classes shipped | — |
@@ -3485,11 +3485,11 @@ vanishing.
 | **Fundamentals / Date Representations** | all classes shipped | — |
 | **Fundamentals / Dates and times** | all classes shipped | — |
 | **Fundamentals / Deprecated** | ALL STRUCK: `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSLinguisticTagger`, `NSMassFormatter` | — |
-| **Fundamentals / Electricity** | 4 open | `NSUnitElectricCharge`, `NSUnitElectricCurrent`, `NSUnitElectricPotentialDifference`, `NSUnitElectricResistance` |
-| **Fundamentals / Energy, Heat, and Light** | 1 open | `NSUnitIlluminance` |
+| **Fundamentals / Electricity** | all classes shipped | — |
+| **Fundamentals / Energy, Heat, and Light** | all classes shipped | — |
 | **Fundamentals / Essentials** | all classes shipped | — |
 | **Fundamentals / Filltering** | all classes shipped | — |
-| **Fundamentals / Fuel Efficiency** | 1 open | `NSUnitFuelEfficiency` |
+| **Fundamentals / Fuel Efficiency** | all classes shipped | — |
 | **Fundamentals / Geometry** | all classes shipped | — |
 | **Fundamentals / Indexes** | all classes shipped | — |
 | **Fundamentals / Iteration** | all classes shipped | — |
