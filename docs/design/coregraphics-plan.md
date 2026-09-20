@@ -239,13 +239,28 @@ later reader is told not to "fix" it.
 
 ## 9. Open, and blocked
 
-- **The exclusion list must be DERIVED, not recalled.** Apple's SDK headers
-  are not in this tree and are not redistributable. Derive the list by
-  scanning a macOS 14 SDK for the deprecation macros; **ship the list**
-  (names + three versions + replacement + source), **never the header
-  text**; **keep the generator** so re-pinning is cheap. Do not reason from
-  documentation or blog posts: `CGDisplayCreateImageForRect` is the
-  cautionary case — reported as not deprecated at one point, since caught
+- **The exclusion list must be DERIVED, not recalled — and it is now HALF DONE,
+  in `docs/reference/coregraphics-apple-surface.txt` + `tools/coregraphics-sweep.py`.**
+  Measured (2026-09): Apple's public documentation **does** carry the deprecation
+  BOOLEAN — 137 of CoreGraphics' 3064 index nodes are flagged, and the set is
+  coherent (`CGContextSelectFont`, `CGContextShowText*`, `CGContextShowGlyphs*`,
+  `CGTextEncoding`, the `kCGEncoding*` cases,
+  `CGColorSpaceCreateWithPlatformColorSpace`), which independently reproduces the
+  boundary read out of Apple's prose. **What it does NOT carry is the VERSION:** a
+  symbol page's `metadata.platforms` reads
+  `{"name": "macOS", "deprecated": false}` with no `deprecatedAt`. So the ledger's
+  `deprecated` rows are a **conservative superset** of the contract's exclusions —
+  a post-14 deprecation strikes a row macOS 14 would keep in scope — and pinning
+  the vintage still needs the SDK headers (names + three versions + replacement +
+  source; **ship the LIST, never the header text; keep the generator**).
+- **AND THE CG-NAMED VALUE TYPES ARE NOT IN THAT LEDGER, measured rather than
+  overlooked:** `CGPoint` documents under `/documentation/corefoundation/cgpoint`
+  (verified), so a walk of the CoreGraphics index files
+  `CGPoint`/`CGSize`/`CGRect`/`CGFloat` under `other-framework`. They are this
+  tree's already (§3 counts them), so folding CoreFoundation's index in while
+  keeping only the CG-shaped names is a **named missing pass**.
+- Do not reason from documentation *prose or blog posts*: `CGDisplayCreateImageForRect`
+  is the cautionary case — reported as not deprecated at one point, since caught
   up in the wave.
 - **`legacy-but-live` is undecided** (§2): the `NSRectFill` family and the
   bezel helpers need an explicit in-or-out call on obsolescence grounds.
