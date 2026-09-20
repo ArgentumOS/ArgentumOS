@@ -126,7 +126,7 @@
 
 - (id)copy
 {
-	return self;	/* immutable: the copy IS the receiver */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable: the copy IS the receiver */
 }
 
 @end

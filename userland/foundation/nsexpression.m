@@ -435,7 +435,7 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 - (id)copy
 {
 	/* IMMUTABLE, so a copy is itself — the same rule the collections follow. */
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 @end

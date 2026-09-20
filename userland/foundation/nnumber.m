@@ -251,12 +251,12 @@ FN_NUMBER_GET(double, double)
  */
 - (id)copy
 {
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 - (id)mutableCopy
 {
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 @end

@@ -304,7 +304,7 @@ static NSString *fn_region(NSArray *parts)
 
 - (id)copy
 {
-	return self;		/* immutable */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
 @end

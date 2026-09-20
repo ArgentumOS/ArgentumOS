@@ -623,7 +623,7 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 - (id)copy
 {
-	return self;		/* immutable */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
 - (id)mutableCopy

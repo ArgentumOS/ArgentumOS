@@ -337,7 +337,7 @@ static NSInteger fn_tz_offset(NSString *name, double secondsSince1970, BOOL *isD
 /* Immutable: the name or the offset is set once. */
 - (id)copy
 {
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 @end

@@ -280,7 +280,7 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 
 - (id)copy
 {
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 @end

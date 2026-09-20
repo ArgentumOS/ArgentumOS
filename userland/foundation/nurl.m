@@ -493,7 +493,7 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 
 - (id)copy
 {
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 @end

@@ -9,6 +9,7 @@
 #import "foundation_core.h"
 #include <stdio.h>
 #import <objc/runtime.h>
+#include <objc/objc-arc.h>	/* object_getRetainCount_np, for copy-family-keeps-the-original */
 #include <string.h>		/* memset/memcpy, for the page-function check */
 #include <math.h>		/* fabs, for the affine-transform checks */
 
@@ -1065,6 +1066,56 @@ int main(void)
 		check("undo-registration-can-be-disabled",
 		      held && [undo isUndoRegistrationEnabled] && [[box items] count] == 1,
 		      "a disabled manager still performs the action but records nothing, and enabling it again restores recording");
+	}
+
+	{
+		/* THE COPY FAMILY'S +1 CONTRACT, ASSERTED AS A COUNT (plan §15.2). `copy` and `mutableCopy`
+		 * are OWNED families: the caller owns the result, and ARC releases it. A class whose
+		 * immutable receiver answers `return self` therefore over-releases the ORIGINAL — `[obj
+		 * copy]` DESTROYING obj — and NO behavioural assertion can see it: the copy IS the same
+		 * pointer either way, and the freed chunk still reads plausibly on musl, which is why every
+		 * guest gate passed with the bug in the tree. So this check reads the count of the ORIGINAL
+		 * after the copies' scope has ended, which is the one place the difference shows, and it
+		 * rereads the CONTENTS too, because a reused chunk is how the corruption presents.
+		 * Measured before the fix: every count below fell to 0 and the string came back as garbage.
+		 */
+		NSString *s = [[NSString alloc] initWithUTF8String:"keep me"];
+		NSArray *a = [[NSArray alloc] initWithObjects:@"x", @"y", nil];
+		NSDictionary *d = [[NSDictionary alloc] initWithObjectsAndKeys:@"v", @"k", nil];
+		id member = @"m";
+		NSSet *set = [[NSSet alloc] initWithObjects:&member count:1];
+		NSNumber *n = [[NSNumber alloc] initWithInt:7];
+		NSDate *date = [[NSDate alloc] initWithTimeIntervalSince1970:0];
+		/* THE RUNTIME ACCESSOR, not `-retainCount`: ARC FORBIDS an explicit message send of
+		 * `retainCount` (measured: 12 errors), which is why foundation_collection reads the count
+		 * the same way. */
+		unsigned long s0 = object_getRetainCount_np(s), a0 = object_getRetainCount_np(a);
+		unsigned long d0 = object_getRetainCount_np(d), set0 = object_getRetainCount_np(set);
+		unsigned long n0 = object_getRetainCount_np(n), date0 = object_getRetainCount_np(date);
+		int copiesAreTheReceiver = 0;
+
+		{
+			/* HELD AND DROPPED, which is the shape ARC compiles: each copy is an owned local,
+			 * released at the end of THIS scope. */
+			NSString *cs = [s copy];
+			NSArray *ca = [a copy];
+			NSDictionary *cd = [d copy];
+			NSSet *cset = [set copy];
+			NSNumber *cn = [n copy];
+			NSDate *cdate = [date copy];
+
+			copiesAreTheReceiver = cs == s && ca == a && cd == d &&
+					       cset == set && cn == n && cdate == date;
+		}
+
+		check("copy-family-keeps-the-original",
+		      copiesAreTheReceiver &&
+		      object_getRetainCount_np(s) == s0 && object_getRetainCount_np(a) == a0 &&
+		      object_getRetainCount_np(d) == d0 && object_getRetainCount_np(set) == set0 &&
+		      object_getRetainCount_np(n) == n0 && object_getRetainCount_np(date) == date0 &&
+		      [s isEqualToString:@"keep me"] && [a count] == 2 && [d count] == 1 &&
+		      [set count] == 1,
+		      "an immutable copy IS the receiver and it answers +1: the original's count and contents must survive the copy's scope (plan §15.2)");
 	}
 
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);

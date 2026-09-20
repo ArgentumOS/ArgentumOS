@@ -214,7 +214,7 @@ static void fn_hold(NSIndexPath *path, const NSUInteger *indexes, NSUInteger len
 
 - (id)copy
 {
-	return self;		/* immutable */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
 

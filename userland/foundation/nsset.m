@@ -308,7 +308,7 @@
 /* Immutable, so copying is itself and a mutable copy is a real one. */
 - (id)copy
 {
-	return self;
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
 - (id)mutableCopy

@@ -619,7 +619,7 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 - (id)copy
 {
-	return self;		/* immutable */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
 - (id)mutableCopy

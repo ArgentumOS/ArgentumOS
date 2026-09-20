@@ -286,7 +286,7 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (id)copy
 {
-	return self;		/* immutable */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
 - (id)mutableCopy

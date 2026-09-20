@@ -196,7 +196,7 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 
 - (id)copy
 {
-	return self;		/* immutable */
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
 - (id)mutableCopy
