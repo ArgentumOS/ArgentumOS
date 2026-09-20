@@ -231,6 +231,7 @@ extern double NSFoundationVersionNumber;
 #define NS_NONATOMIC_IOSONLY		nonatomic
 #define NS_NONATOMIC_IPHONEONLY		nonatomic
 #define NSURLSESSION_AVAILABLE
+#define NS_UNAVAILABLE
 #define NS_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...)
 #define NS_DEPRECATED_MAC(_macIntro, _macDep, ...)
 #define NS_DEPRECATED_IOS(_iosIntro, _iosDep, ...)
@@ -248,6 +249,26 @@ extern double NSFoundationVersionNumber;
 #define NS_CALENDAR_DEPRECATED(A, B, C, D, ...)
 #define NS_CALENDAR_DEPRECATED_MAC(A, B, ...)
 #define NS_CALENDAR_ENUM_DEPRECATED(A, B, C, D, ...)
+
+/*
+ * --- THE LEGACY EXCEPTION MACROS (2026-09-20) ---
+ *
+ * THE ONE PLACE A BODY CAME FROM SOMETHING OTHER THAN APPLE'S SIGNATURE. Apple renders a
+ * parameterless macro as a bare `#define NAME`, publishing no body at all, which is why these
+ * were left undeclared rather than guessed. GNUstep's documentation supplies the contract in
+ * PROSE - its NSException page describes the macros as enclosing "a sensitive section of
+ * code", states that "the local variable localException is the name of the exception object",
+ * and shows it re-raised with `[localException raise]`. What they expand to below is that
+ * contract and nothing more. That the handler binds that name is API, because code written
+ * against the documentation refers to it.
+ *
+ * A PROGRAM THAT SPELLS THESE MUST HAVE NSException DECLARED, which is why such a program
+ * includes <foundation/NSException.h>: a macro is not expanded until it is used, so this
+ * header needs no import for it.
+ */
+#define NS_DURING		@try {
+#define NS_HANDLER		} @catch (NSException *localException) {
+#define NS_ENDHANDLER		}
 
 /*
  * --- the real constants ---

@@ -30,7 +30,7 @@
 # counts by kind:
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
-#   macro      shipped   98   open   19   struck  136
+#   macro      shipped  102   open   15   struck  136
 #   enum       shipped   61   open   91   struck    8
 #   case       shipped  333   open  876   struck   93
 #   func       shipped   58   open   77   struck   54
@@ -2148,8 +2148,8 @@ macro	shipped	NS_DEPRECATED_IOS		Reference / Macros	-	objc
 macro	shipped	NS_DEPRECATED_IPHONE		Reference / Macros	-	objc
 macro	shipped	NS_DEPRECATED_MAC		Reference / Macros	-	objc
 macro	shipped	NS_DEPRECATED_WITH_REPLACEMENT_MAC		Reference / Macros	-	objc
-macro	open	NS_DURING	NSException	App Support / Exceptions / Legacy Macros	-	objc
-macro	open	NS_ENDHANDLER	NSException	App Support / Exceptions / Legacy Macros	-	objc
+macro	shipped	NS_DURING	NSException	App Support / Exceptions / Legacy Macros	-	objc
+macro	shipped	NS_ENDHANDLER	NSException	App Support / Exceptions / Legacy Macros	-	objc
 macro	shipped	NS_ENUM		Reference / Macros	-	objc
 macro	shipped	NS_ENUM_AVAILABLE		Reference / Macros	-	objc
 macro	shipped	NS_ENUM_AVAILABLE_IOS		Reference / Macros	-	objc
@@ -2165,7 +2165,7 @@ macro	shipped	NS_EXTENSION_UNAVAILABLE_MAC		Reference / Macros	-	objc
 macro	shipped	NS_FALLTHROUGH		Reference / Macros	-	objc
 macro	shipped	NS_FORMAT_ARGUMENT		Reference / Macros	-	objc
 macro	shipped	NS_FORMAT_FUNCTION		Reference / Macros	-	objc
-macro	open	NS_HANDLER	NSException	App Support / Exceptions / Legacy Macros	-	objc
+macro	shipped	NS_HANDLER	NSException	App Support / Exceptions / Legacy Macros	-	objc
 macro	shipped	NS_HEADER_AUDIT_BEGIN		Reference / Macros	-	objc
 macro	shipped	NS_HEADER_AUDIT_END		Reference / Macros	-	objc
 macro	shipped	NS_INLINE		Reference / Macros	-	objc
@@ -2208,7 +2208,7 @@ macro	struck	NS_SWIFT_UNAVAILABLE		Reference / Macros	swift-only	objc
 macro	struck	NS_SWIFT_UNAVAILABLE_FROM_ASYNC		Reference / Macros	swift-only	objc
 macro	shipped	NS_TYPED_ENUM		Reference / Macros	-	objc
 macro	shipped	NS_TYPED_EXTENSIBLE_ENUM		Reference / Macros	-	objc
-macro	open	NS_UNAVAILABLE		Reference / Macros	-	objc
+macro	shipped	NS_UNAVAILABLE		Reference / Macros	-	objc
 macro	shipped	NS_UNICHAR_IS_EIGHT_BIT		Reference / Macros	-	objc
 macro	shipped	NS_VALID_UNTIL_END_OF_SCOPE		Reference / Macros	-	objc
 macro	shipped	NS_VALUERETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
