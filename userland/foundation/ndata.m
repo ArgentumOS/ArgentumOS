@@ -113,7 +113,7 @@
 + (NSData *)dataWithBase64EncodedString:(NSString *)string
 {
 	return [[self alloc] initWithBase64EncodedString:string
-						options:NSDataBase64EncodingDefault];
+						options:NSDataBase64DecodingDefault];
 }
 
 - (id)initWithData:(NSData *)other
