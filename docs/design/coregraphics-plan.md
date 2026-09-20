@@ -289,7 +289,8 @@ whole of it, because two thirds of CG is not pixman-shaped:**
     **documented deviation** like any other, which is the standing policy's
     mechanism.
   - **WHAT THIS DOES NOT AFFECT:** C0's ledger. `tools/coregraphics-sweep.py`
-    enumerates **names and states**, not types, so its 1579 rows stand.
+    enumerates **names and states**, not types, so its 1598 rows stand (measured
+    2026-09-20, the day C1 landed).
 
 - **THE RETRACTED ARGUMENT** (it was *"I guess we need CoreFoundation too, don't
   we?"* → yes, thinly, toll-free bridged):
@@ -458,7 +459,7 @@ thing to settle first.
 | Layer | State, measured 2026-09 |
 |---|---|
 | **Foundation** | **~70 classes shipped**, and every class THIS layer needs is among them (`NSString`, `NSArray`, `NSDictionary`, `NSData`, `NSNumber`, `NSURL`, `NSError`, `NSSet` and their mutable forms) |
-| **CoreGraphics** | does NOT exist: the ledger's `shipped` rows are `CGFloat`, `CGPoint`, `CGSize`, `CGRect`, `CG_INLINE`, `CG_EXTERN` and nothing else |
+| **CoreGraphics** | **C1 SHIPPED (2026-09-20)**: `libcoregraphics.so.1` — the geometry and affine arithmetic, host-verified end to end (70 of 70 checks, no QEMU run needed). The ledger's `shipped` count went 6 → **63 rows** (39 funcs, 7 macros, 6 vars, 5 structs, 4 cases, 1 enum, 1 typealias), now including `CGPoint`, `CGSize`, `CGRect`, `CGVector`, `CGAffineTransform` and the `CGRectEdge` cases. Two names Apple's index carries TWICE — `CGPointEqualToPoint`, `CGSizeEqualToSize` — ship as the **macro** (the live "Comparing Values" row) and NOT as the retired exported function, which the ledger strikes as deprecated |
 | **Application Kit** | does NOT exist. `NSObject` is the only shipped class; the previous toolkit is **PARKED**, not abandoned (tag `park/argentum-uikit-u6a`) |
 
 **CORRECTION 1 — "finish Foundation" IS NOT A GATE.** Every class this layer needs

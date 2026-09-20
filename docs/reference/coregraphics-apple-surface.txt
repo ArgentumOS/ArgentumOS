@@ -36,13 +36,13 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped    0   open  687   struck   48
-#   macro      shipped    2   open  103   struck    2
-#   enum       shipped    0   open   56   struck    1
-#   case       shipped    0   open  430   struck   14
-#   var        shipped    0   open  126   struck    9
+#   func       shipped   39   open  648   struck   48
+#   macro      shipped    7   open   98   struck    2
+#   enum       shipped    1   open   55   struck    1
+#   case       shipped    4   open  426   struck   14
+#   var        shipped    6   open  120   struck    9
 #   typealias  shipped    1   open   97   struck    2
-#   struct     shipped    3   open   17   struck    0
+#   struct     shipped    5   open   15   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	struck	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -99,10 +99,10 @@ case	open	CGPDFTagTypeTableRow	-	Reference / Enumerations / Enumeration Cases	-	
 case	open	CGPDFTagTypeWarichu	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	CGPDFTagTypeWarichuPunctiation	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	CGPDFTagTypeWarichuText	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGRectMaxXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGRectMaxYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGRectMinXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGRectMinYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	CGRectMaxXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	CGRectMaxYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	CGRectMinXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	CGRectMinYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
 case	open	kCGAnnotatedSessionEventTap	-	Services / Constants / Constants	-	objc
 case	open	kCGAssistiveTechHighWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGBackingStoreBuffered	-	Services / Data Types / Constants	-	objc
@@ -532,7 +532,7 @@ enum	open	CGPDFTagType	-	Reference / Enumerations	-	objc
 enum	open	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 enum	open	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 enum	open	CGPatternTiling	-	Opaque Types / Constants	-	objc
-enum	open	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
+enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
 enum	open	CGScreenUpdateOperation	-	Services / Constants	-	objc
 enum	open	CGScrollEventUnit	-	Services / Constants	-	objc
 enum	open	CGScrollPhase	-	Reference / Enumerations	-	objc
@@ -545,19 +545,19 @@ enum	open	CGWindowLevelKey	-	Services / Data Types / Window levels	-	objc
 enum	open	CGWindowListOption	-	Services / Data Types	-	objc
 enum	open	CGWindowSharingType	-	Services / Data Types	-	objc
 func	open	CGAcquireDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
-func	open	CGAffineTransformConcat	-	Reference / Modifying Affine Transformations	-	objc
+func	shipped	CGAffineTransformConcat	-	Reference / Modifying Affine Transformations	-	objc
 func	open	CGAffineTransformDecompose	-	Reference / Functions	-	objc
-func	open	CGAffineTransformEqualToTransform	-	Reference / Evaluating Affine Transforms	-	objc
-func	open	CGAffineTransformInvert	-	Reference / Modifying Affine Transformations	-	objc
-func	open	CGAffineTransformIsIdentity	-	Reference / Evaluating Affine Transforms	-	objc
-func	open	CGAffineTransformMake	-	Reference / Creating an Affine Transformation Matrix	-	objc
-func	open	CGAffineTransformMakeRotation	-	Reference / Creating an Affine Transformation Matrix	-	objc
-func	open	CGAffineTransformMakeScale	-	Reference / Creating an Affine Transformation Matrix	-	objc
-func	open	CGAffineTransformMakeTranslation	-	Reference / Creating an Affine Transformation Matrix	-	objc
+func	shipped	CGAffineTransformEqualToTransform	-	Reference / Evaluating Affine Transforms	-	objc
+func	shipped	CGAffineTransformInvert	-	Reference / Modifying Affine Transformations	-	objc
+func	shipped	CGAffineTransformIsIdentity	-	Reference / Evaluating Affine Transforms	-	objc
+func	shipped	CGAffineTransformMake	-	Reference / Creating an Affine Transformation Matrix	-	objc
+func	shipped	CGAffineTransformMakeRotation	-	Reference / Creating an Affine Transformation Matrix	-	objc
+func	shipped	CGAffineTransformMakeScale	-	Reference / Creating an Affine Transformation Matrix	-	objc
+func	shipped	CGAffineTransformMakeTranslation	-	Reference / Creating an Affine Transformation Matrix	-	objc
 func	open	CGAffineTransformMakeWithComponents	-	Reference / Functions	-	objc
-func	open	CGAffineTransformRotate	-	Reference / Modifying Affine Transformations	-	objc
-func	open	CGAffineTransformScale	-	Reference / Modifying Affine Transformations	-	objc
-func	open	CGAffineTransformTranslate	-	Reference / Modifying Affine Transformations	-	objc
+func	shipped	CGAffineTransformRotate	-	Reference / Modifying Affine Transformations	-	objc
+func	shipped	CGAffineTransformScale	-	Reference / Modifying Affine Transformations	-	objc
+func	shipped	CGAffineTransformTranslate	-	Reference / Modifying Affine Transformations	-	objc
 func	open	CGAssociateMouseAndMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGBeginDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGBitmapContextCreate	-	Functions	-	objc
@@ -1192,10 +1192,10 @@ func	open	CGPatternCreate	-	Opaque Types / Creating a Pattern	-	objc
 func	open	CGPatternGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	open	CGPatternRetain	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
-func	open	CGPointApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
+func	shipped	CGPointApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	open	CGPointCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
 func	struck	CGPointEqualToPoint	-	Reference / Functions	deprecated	objc
-func	open	CGPointMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
+func	shipped	CGPointMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGPointMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
 func	struck	CGPostKeyboardEvent	-	Services / Deprecated Functions	deprecated	objc
 func	struck	CGPostMouseEvent	-	Services / Deprecated Functions	deprecated	objc
@@ -1203,32 +1203,32 @@ func	struck	CGPostScrollWheelEvent	-	Services / Deprecated Functions	deprecated	
 func	open	CGPreflightListenEventAccess	-	Reference / Functions	-	objc
 func	open	CGPreflightPostEventAccess	-	Reference / Functions	-	objc
 func	open	CGPreflightScreenCaptureAccess	-	Reference / Functions	-	objc
-func	open	CGRectApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
-func	open	CGRectContainsPoint	-	Reference / Checking for Membership	-	objc
-func	open	CGRectContainsRect	-	Reference / Checking for Membership	-	objc
+func	shipped	CGRectApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
+func	shipped	CGRectContainsPoint	-	Reference / Checking for Membership	-	objc
+func	shipped	CGRectContainsRect	-	Reference / Checking for Membership	-	objc
 func	open	CGRectCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
-func	open	CGRectDivide	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectDivide	-	Reference / Modifying Rectangles	-	objc
 func	struck	CGRectEqualToRect	-	Reference / Comparing Values	deprecated	objc
-func	open	CGRectGetHeight	-	Reference / Getting Height and Width	-	objc
-func	open	CGRectGetMaxX	-	Reference / Getting Min, Mid, and Max Values	-	objc
-func	open	CGRectGetMaxY	-	Reference / Getting Min, Mid, and Max Values	-	objc
-func	open	CGRectGetMidX	-	Reference / Getting Min, Mid, and Max Values	-	objc
-func	open	CGRectGetMidY	-	Reference / Getting Min, Mid, and Max Values	-	objc
-func	open	CGRectGetMinX	-	Reference / Getting Min, Mid, and Max Values	-	objc
-func	open	CGRectGetMinY	-	Reference / Getting Min, Mid, and Max Values	-	objc
-func	open	CGRectGetWidth	-	Reference / Getting Height and Width	-	objc
-func	open	CGRectInset	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRectIntegral	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRectIntersection	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRectIntersectsRect	-	Reference / Comparing Values	-	objc
-func	open	CGRectIsEmpty	-	Reference / Checking Rectangle Characteristics	-	objc
-func	open	CGRectIsInfinite	-	Reference / Checking Rectangle Characteristics	-	objc
-func	open	CGRectIsNull	-	Reference / Checking Rectangle Characteristics	-	objc
-func	open	CGRectMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
+func	shipped	CGRectGetHeight	-	Reference / Getting Height and Width	-	objc
+func	shipped	CGRectGetMaxX	-	Reference / Getting Min, Mid, and Max Values	-	objc
+func	shipped	CGRectGetMaxY	-	Reference / Getting Min, Mid, and Max Values	-	objc
+func	shipped	CGRectGetMidX	-	Reference / Getting Min, Mid, and Max Values	-	objc
+func	shipped	CGRectGetMidY	-	Reference / Getting Min, Mid, and Max Values	-	objc
+func	shipped	CGRectGetMinX	-	Reference / Getting Min, Mid, and Max Values	-	objc
+func	shipped	CGRectGetMinY	-	Reference / Getting Min, Mid, and Max Values	-	objc
+func	shipped	CGRectGetWidth	-	Reference / Getting Height and Width	-	objc
+func	shipped	CGRectInset	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectIntegral	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectIntersection	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectIntersectsRect	-	Reference / Comparing Values	-	objc
+func	shipped	CGRectIsEmpty	-	Reference / Checking Rectangle Characteristics	-	objc
+func	shipped	CGRectIsInfinite	-	Reference / Checking Rectangle Characteristics	-	objc
+func	shipped	CGRectIsNull	-	Reference / Checking Rectangle Characteristics	-	objc
+func	shipped	CGRectMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGRectMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
-func	open	CGRectOffset	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRectStandardize	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRectUnion	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectOffset	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectStandardize	-	Reference / Modifying Rectangles	-	objc
+func	shipped	CGRectUnion	-	Reference / Modifying Rectangles	-	objc
 func	struck	CGRegisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGReleaseAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGReleaseDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
@@ -1261,13 +1261,13 @@ func	open	CGShadingRelease	-	Opaque Types / Retaining and Releasing Shading Obje
 func	open	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
 func	open	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGShieldingWindowLevel	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGSizeApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
+func	shipped	CGSizeApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	open	CGSizeCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
 func	struck	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
-func	open	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
+func	shipped	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
 func	struck	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
+func	shipped	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	struck	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	struck	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGWarpMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
@@ -1279,7 +1279,7 @@ func	open	CGWindowListCreateImage	-	Functions	-	objc
 func	open	CGWindowListCreateImageFromArray	-	Functions	-	objc
 func	struck	CGWindowServerCFMachPort	-	Services / Getting Window Server Information	deprecated	objc
 func	open	CGWindowServerCreateServerPort	-	Reference / Functions	-	objc
-macro	open	CGAffineTransformMake	-	Reference / Macros	-	objc
+macro	shipped	CGAffineTransformMake	-	Reference / Macros	-	objc
 macro	open	CGDisplayNoErr	-	Reference / Constants	-	objc
 macro	open	CGEventMaskBit	-	Services / Working With Event Taps	-	objc
 macro	open	CGEventNoErr	-	Reference / Constants	-	objc
@@ -1290,11 +1290,11 @@ macro	open	CGFLOAT_IS_DOUBLE	-	CoreFoundation, CG-named / Reference / Constants	
 macro	open	CGFLOAT_MAX	-	CoreFoundation, CG-named / Reference / Constants	-	objc
 macro	open	CGFLOAT_MIN	-	CoreFoundation, CG-named / Reference / Constants	-	objc
 macro	open	CGFLOAT_TYPE	-	CoreFoundation, CG-named / Reference / Macros	-	objc
-macro	open	CGPointApplyAffineTransform	-	Reference / Macros	-	objc
-macro	open	CGPointEqualToPoint	-	Reference / Comparing Values	-	objc
+macro	shipped	CGPointApplyAffineTransform	-	Reference / Macros	-	objc
+macro	shipped	CGPointEqualToPoint	-	Reference / Comparing Values	-	objc
 macro	open	CGSetLocalEventsFilterDuringSupressionState	-	Services / Deprecated Functions	-	objc
-macro	open	CGSizeApplyAffineTransform	-	Reference / Macros	-	objc
-macro	open	CGSizeEqualToSize	-	Reference / Comparing Values	-	objc
+macro	shipped	CGSizeApplyAffineTransform	-	Reference / Macros	-	objc
+macro	shipped	CGSizeEqualToSize	-	Reference / Comparing Values	-	objc
 macro	open	CGVECTOR_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	-	objc
 macro	open	CG_BOXABLE	-	Reference / Macros	-	objc
 macro	open	CG_BRIDGE_VERSION	-	Reference / Macros	-	objc
@@ -1386,7 +1386,7 @@ macro	open	kCGUtilityWindowLevel	-	Reference / Constants	-	objc
 macro	open	kCGWindowBackingCFNumberType	-	Services / Constants / Constants	-	objc
 macro	open	kCGWindowIDCFNumberType	-	Services / Constants / Constants	-	objc
 macro	open	kCGWindowSharingCFNumberType	-	Services / Constants / Constants	-	objc
-struct	open	CGAffineTransform	-	CoreFoundation, CG-named / Reference / Structures	-	objc
+struct	shipped	CGAffineTransform	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	open	CGAffineTransformComponents	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	open	CGBitmapParameters	-	Structures	-	objc
 struct	open	CGColorBufferFormat	-	Reference / Structures	-	objc
@@ -1405,7 +1405,7 @@ struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	obj
 struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	open	CGScreenUpdateMoveDelta	-	Services / Data Types	-	objc
 struct	shipped	CGSize	-	CoreFoundation, CG-named / Reference / Structures	-	objc
-struct	open	CGVector	-	CoreFoundation, CG-named / Reference / Structures	-	objc
+struct	shipped	CGVector	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 typealias	open	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitmap Graphics Contexts	-	objc
 typealias	open	CGButtonCount	-	Services / Data Types	-	objc
 typealias	open	CGCharCode	-	Services / Data Types	-	objc
@@ -1506,12 +1506,12 @@ typealias	open	CGWindowID	-	Services / Data Types	-	objc
 typealias	open	CGWindowLevel	-	Services / Data Types	-	objc
 typealias	open	ColorSyncProfileRef	-	Reference / Structures	-	objc
 typealias	open	IOSurfaceRef	-	Reference / Structures	-	objc
-var	open	CGAffineTransformIdentity	-	Reference / Constants	-	objc
-var	open	CGPointZero	-	Reference / Constants / Constants	-	objc
-var	open	CGRectInfinite	-	Reference / Constants	-	objc
-var	open	CGRectNull	-	Reference / Constants	-	objc
-var	open	CGRectZero	-	Reference / Constants / Constants	-	objc
-var	open	CGSizeZero	-	Reference / Constants / Constants	-	objc
+var	shipped	CGAffineTransformIdentity	-	Reference / Constants	-	objc
+var	shipped	CGPointZero	-	Reference / Constants / Constants	-	objc
+var	shipped	CGRectInfinite	-	Reference / Constants	-	objc
+var	shipped	CGRectNull	-	Reference / Constants	-	objc
+var	shipped	CGRectZero	-	Reference / Constants / Constants	-	objc
+var	shipped	CGSizeZero	-	Reference / Constants / Constants	-	objc
 var	open	kCGAdaptiveMaximumBitDepth	-	Variables	-	objc
 var	struck	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
 var	struck	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc

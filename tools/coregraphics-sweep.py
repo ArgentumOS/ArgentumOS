@@ -359,7 +359,17 @@ def check(strict=False):
     """
     text = public_header_text()
     rows = read_surface()
-    bad, policy, counts = [], [], {}
+    bad, policy, twin, counts = [], [], [], {}
+    # A NAME CAN BE IN THIS LEDGER TWICE WITH OPPOSITE VERDICTS, and CoreGraphics has
+    # two of those: `CGPointEqualToPoint` and `CGSizeEqualToSize` are a `macro` row
+    # (live — Apple files it under "Reference / Comparing Values") AND a `func` row
+    # that Apple struck as deprecated, which is the exported symbol it retired.
+    # `declared()` tests a NAME in any form, so shipping the live macro lights the
+    # struck twin as well. That is NOT a policy violation — we ship the live form,
+    # never the retired symbol, which is Apple's own arrangement — so those go in
+    # `twin`: still visible, and not a `--strict` failure. A struck name with NO live
+    # row is a genuine finding and still fails.
+    live_names = {r[2] for r in rows if r[1] != STATUS_STRUCK}
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         found = bool(declared(kind, name, text))
@@ -368,7 +378,10 @@ def check(strict=False):
         elif status == STATUS_OPEN and found:
             bad.append("PRESENT BUT LISTED OPEN %-8s %s — our headers now declare it; flip the row" % (kind, name))
         elif status == STATUS_STRUCK and found:
-            policy.append("%-9s %s [struck: %s]" % (kind, name, why))
+            if name in live_names:
+                twin.append("%-9s %s — struck as %s, and the same NAME has a live row (we declare the live form)" % (kind, name, why))
+            else:
+                policy.append("%-9s %s [struck: %s]" % (kind, name, why))
     kinds = sorted({k for k, _ in counts})
     print("coregraphics-sweep: %d symbols in the ledger" % len(rows))
     for kind in kinds:
@@ -376,6 +389,10 @@ def check(strict=False):
             kind, counts.get((kind, STATUS_SHIPPED), 0),
             counts.get((kind, STATUS_OPEN), 0),
             counts.get((kind, STATUS_STRUCK), 0)))
+    if twin:
+        print("\n%d STRUCK NAME(S) WE SHIP IN THEIR LIVE FORM:\n" % len(twin))
+        for line in twin:
+            print("  " + line)
     if policy:
         print("\n%d POLICY FINDING(S) — API Apple deprecates that we declare:\n" % len(policy))
         for line in policy:

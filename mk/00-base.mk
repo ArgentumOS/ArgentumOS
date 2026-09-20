@@ -257,6 +257,37 @@ MUSL64_OBJC   = $(CURDIR)/tools/musl-clang-objc64.sh
 # a shared object cannot take the ABI's PC-relative ivar-offset relocations.
 FOUNDATION_SRC = userland/Foundation
 FOUNDATION_LIB = $(FNXLIB)/libfoundation.so.1
+# CoreGraphics (docs/design/coregraphics-plan.md, milestone C1): the geometry and
+# affine arithmetic, built as a shared library beside libconfig and libfoundation.
+# A C library with NO dependencies — the rasterizer arrives with C3, and pixman is
+# already vendored and staged for it (mk/20-userland.mk stages libpixman-1.so).
+#
+# A GENERATED SOURCE LIST, like the Foundation's block in mk/20-userland.mk, and for
+# the reason that block exists: this library gains a translation unit per header, and
+# hand-listed sources are how these files were damaged once. THE OBJECT PREFIX IS
+# `coregraphics-` AND IS NOBODY ELSE'S: a probe and a library source that share a
+# basename must not share an object path, which is a collision the Foundation's
+# history records (userland/tests/foundation_nsvalue.m once overwrote
+# userland/foundation/nsvalue.m's object).
+CG_SRC  = userland/CoreGraphics
+CG_LIB  = $(FNXLIB)/libcoregraphics.so.1
+CG_SRCS = $(notdir $(wildcard $(CG_SRC)/*.c))
+CG_OBJS = $(addprefix $(FNXLIB)/coregraphics-,$(CG_SRCS:.c=.o))
+
+define CG_rule
+$(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)
+	@mkdir -p $(FNXLIB)
+	$$(MUSL64_CC) -fPIC -Iinclude -Iuserland -c $$< -o $$@
+endef
+$(foreach f,$(CG_SRCS),$(eval $(call CG_rule,$(f))))
+
+# No -lm: musl folds the math functions into libc, and a shared object is linked
+# with unresolved symbols allowed anyway. The HOST probe needs -lm, because the host
+# is glibc, and that is on mk/60-host.mk's line rather than here.
+$(CG_LIB): $(CG_OBJS)
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_CC) -fPIC -shared -Wl,-soname,libcoregraphics.so.1 $(CG_OBJS) -o $@
+	ln -sf libcoregraphics.so.1 $(FNXLIB)/libcoregraphics.so
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile
 LLVM_CXX_PREFIX = .build/llvm-cxx-prefix
