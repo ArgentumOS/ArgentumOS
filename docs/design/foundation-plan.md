@@ -4661,3 +4661,49 @@ centre (W4 unbuilt), and `-undoMenuTitleForUndoActionName:`'s titles are per-loc
 library does not have, the same category as §11.6.1's "no published value" rows rather than a missing
 mechanism.
 
+## 21. W4 SLICE 1: `NSNotification` AND `NSNotificationCenter` (2026-09-20)
+
+**A REGISTRATION IS A FILTER PAIR, and that is the whole model this slice implements.** `name` and
+`object` may each be nil, and nil means "this criterion is not used" — name-only receives every
+notification of that name from anyone, object-only every notification from that sender, both-nil
+everything. THE POSTER DOES NOT CHOOSE ITS AUDIENCE; the filters do, which is why `-postNotification:`
+takes a whole notification. Delivery is SYNCHRONOUS on the posting thread (Apple's contract, and the
+reason the block form takes a `queue:` — a queue is how a caller asks for *elsewhere*). Both removal
+doors exist, the specific one filtering by the same pair it registered with.
+
+**THE OBSERVER CONTRACT IS THE PART WORTH THE MEASUREMENT, AND IT IS ZEROING WEAK.** The centre stores
+each observer through `objc_storeWeak`/`objc_loadWeak` — the runtime's own entries, documented in
+`objc-arc.h` as *"if obj has begun deallocation, then this stores nil"* — so the centre never keeps an
+observer alive and **an observer deallocated without removing itself is SKIPPED rather than messaged**.
+`center-dead-observer` is the check that demands it; without the weak pair it would be a use-after-free.
+The OBJECT FILTER is weak for the same reason: a sender that is gone cannot post again.
+
+**AND THE QUEUE FORM NEEDED AN ADAPTER, WHICH IS A BOUNDARY RATHER THAN A SHORTCUT:**
+`-addOperationWithBlock:` IS NOT SHIPPED (named as missing in `NSOperation.h`, where it belongs with the
+block operations, W17), so the centre carries a PRIVATE block operation instead of widening this family
+into that one. `center-block-queue` proves the block ran on the QUEUE's thread — compared by POINTER
+IDENTITY, see below.
+
+**ONE INSTRUMENT LESSON, and it cost a round.** That check's first version compared thread
+DESCRIPTION STRINGS (`[NSThread -description]`) and was FLAKY: one failure in eleven runs, its detail
+showing `ranOn=<NSThread: 0x…>`. The behaviour was never wrong — THE INSTRUMENT WAS. Comparing the thread
+OBJECTS is exact and has been stable across twenty consecutive runs. The plan has recorded this shape
+before and it keeps being right: assert the property itself, never a rendering of it.
+
+**AND THE UMBRELLA CHECK PAID FOR ITSELF IMMEDIATELY:** the probe imports ONLY
+`<Foundation/Foundation.h>`, and the compiler refused the file because `Foundation.h` did not carry the
+new headers. The check's own comment did that work on its first run.
+
+**THE LEDGER MOVED WITH IT:** `class NSNotification` and `class NSNotificationCenter` go `open` ->
+`shipped`, and `foundation-sweep --check` is consistent.
+
+**VERIFIED.** Host: 297/297 with no crashed probe, the new probe's seven checks included. Guest: the new
+case passes all six of its checks (the probe's `ok=7 fail=0`). The full fast tier is **34/35 cases,
+218/219 checks in 129s** — the new case added, the single failure still the recorded `host_fshlint`
+timeout.
+
+**WHAT REMAINS IN W4, named:** `NSNotificationQueue` (coalescing, and the posting styles
+`NSPostASAP`/`NSPostWhenIdle`/`NSPostNow` with the `NSNotificationCoalescing` cases — ledger rows all),
+the `NSNotificationName` typedef, and the per-class notification NAME constants, which belong with their
+owner classes rather than here.
+

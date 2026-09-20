@@ -1,0 +1,77 @@
+/*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
+ * NSNotification.m — the implementation (W4). MANUAL OWNERSHIP.
+ */
+
+#import <Foundation/NSNotification.h>
+#import <Foundation/NSString.h>
+#import <Foundation/NSDictionary.h>
+
+@implementation NSNotification
+
++ (instancetype)notificationWithName:(NSString *)name object:(nullable id)object
+{
+	return [[[self alloc] initWithName:name object:object userInfo:nil] autorelease];
+}
+
++ (instancetype)notificationWithName:(NSString *)name
+			      object:(nullable id)object
+			    userInfo:(nullable NSDictionary *)userInfo
+{
+	return [[[self alloc] initWithName:name object:object userInfo:userInfo] autorelease];
+}
+
+- (instancetype)initWithName:(NSString *)name
+		      object:(nullable id)object
+		    userInfo:(nullable NSDictionary *)userInfo
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_name = [name copy];
+	_object = [object retain];
+	_userInfo = [userInfo copy];
+	return self;
+}
+
+- (NSString *)name
+{
+	return _name;
+}
+
+- (id)object
+{
+	return _object;
+}
+
+- (NSDictionary *)userInfo
+{
+	return _userInfo;
+}
+
+/* IMMUTABLE, SO +1 AND THE SAME OBJECT: the copy of a value that cannot change IS the value, and the
+ * caller owns what it is handed (§15.2's rule for the copy family). */
+- (id)copy
+{
+	return [self retain];
+}
+
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<NSNotification: %p name=%@ object=%@ userInfo=%@>",
+				  self, _name, _object, _userInfo];
+}
+
+- (void)dealloc
+{
+	[_name release];
+	[_object release];
+	[_userInfo release];
+	[super dealloc];
+}
+
+@end

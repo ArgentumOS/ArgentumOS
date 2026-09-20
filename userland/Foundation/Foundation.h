@@ -84,6 +84,8 @@
 #import <Foundation/NSOrderedSet.h>
 #import <Foundation/NSMutableOrderedSet.h>
 #import <Foundation/NSValue.h>
+#import <Foundation/NSNotification.h>
+#import <Foundation/NSNotificationCenter.h>
 #import <Foundation/NSNull.h>
 #import <Foundation/NSKeyValueObserving.h>
 #import <Foundation/NSCoding.h>

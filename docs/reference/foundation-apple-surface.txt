@@ -1468,8 +1468,8 @@ class	open	NSMutableURLRequest		Networking / Requests and responses	-	objc
 class	open	NSNameSpecifier		App Support / Object Specifiers	-	objc
 class	struck	NSNetService		Networking / Local Network Services	deprecated	objc
 class	struck	NSNetServiceBrowser		Networking / Service Discovery	deprecated	objc
-class	open	NSNotification		App Support / Notifications	-	objc
-class	open	NSNotificationCenter		App Support / Notifications	-	objc
+class	shipped	NSNotification		App Support / Notifications	-	objc
+class	shipped	NSNotificationCenter		App Support / Notifications	-	objc
 class	open	NSNotificationQueue		App Support / Notifications	-	objc
 class	shipped	NSNull		Fundamentals / Special Semantic Values	-	objc
 class	shipped	NSNumber		Fundamentals / Numbers	-	objc
