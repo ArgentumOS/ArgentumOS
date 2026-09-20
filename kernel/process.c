@@ -146,6 +146,16 @@ int pml4_has_other_user(unsigned long cr3)
 		if(p->cr3_64 == cr3) {
 			return 1;
 		}
+		/* THE ADVANCE IS NOT OPTIONAL. FOR_EACH_PROCESS expands to
+		 * `p = proc_table_head->next ; while(p)`, so every user of this
+		 * macro advances the cursor in its own body. Leaving it out is an
+		 * INFINITE LOOP whenever the first slot does not match - which is
+		 * the normal case - and it runs in the reaper path with interrupts
+		 * off, so the machine freezes on the spot: measured as a fixed RIP
+		 * with IF=0 and HLT=0, reached after ANY userland binary exits
+		 * (`ls` reproduces it), which is what stopped the test tier's
+		 * shared guest from ever being reused. */
+		p = p->next;
 	}
 	return 0;
 }
