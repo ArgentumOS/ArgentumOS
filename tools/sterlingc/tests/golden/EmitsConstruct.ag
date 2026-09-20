@@ -1,0 +1,59 @@
+/*
+ * EmitsConstruct.ag — §7.49's construction call and chain, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * `EmitsInit.ag` pins what an initializer DECLARES. This one pins what it is
+ * CALLED with, which §7.49 gives as `[[T alloc] initValue:3]` — a class-receiver
+ * send, not a C call — and how one initializer chains to another.
+ *
+ * Both were wrong before, and the chain was wrong in a way worth keeping: the
+ * emitter left `self = Shape(3)` a CALL, so it emitted
+ *
+ *     self = Shape(3);
+ *     extern void Shape(BOOL arg);
+ *
+ * — an assignment from a C function that does not exist, plus a declaration
+ * invented for it. The `extern` is the part that makes this a tree REWRITE
+ * rather than a rule inside the expression printer: the collection consults node
+ * KIND, so a construction that stops being a CALL stops being collected.
+ *
+ * Three cases, one per class:
+ *
+ *   - `Shape(sides)` — a construction from a method, so `[[Shape alloc] init:sides]`;
+ *   - `self = Shape(3)` inside `Triangle`'s initializer — the CHAIN, which is the
+ *     one place `self` is writable and which emits `self = [super init:3]`, never
+ *     a fresh `alloc`: a fresh object would discard the one being initialized;
+ *   - and `Shape`'s own initializer, which is what the two calls are sends to.
+ *
+ * The selector pieces agree with the declaration BY CONSTRUCTION, not by
+ * coincidence — both are built from a send node — and the compile leg is what
+ * proves the pair fits: `init(sides: Int32)` declares `init:(int32_t)sides`, so
+ * the calls have to write `init:` and not something the declaration never had.
+ */
+class Shape: Object {
+    property sides: Int32
+
+    init(sides: Int32) {
+        self.sides = sides;
+    }
+
+    method describe() -> Int32 {
+        return self.sides;
+    }
+}
+
+class Triangle: Shape {
+    property base: Int32
+
+    init(base: Int32) {
+        self = Shape(3);
+        self.base = base;
+    }
+}
+
+class Factory: Object {
+    method make(sides: Int32) -> Shape {
+        return Shape(sides);
+    }
+}

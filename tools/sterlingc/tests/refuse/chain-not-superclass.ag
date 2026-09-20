@@ -1,0 +1,14 @@
+/* §7.49: an initializer's chain "names the superclass" — the emitted form is
+   `self = [super init]`, a send to whatever `super` is — so a receiver naming
+   some other class would quietly call a different initializer than the one that
+   was written. Checked rather than assumed. */
+class ChainBase: Object {
+    init(n: Int32) {
+        self = SomethingElse(0);
+    }
+}
+
+class SomethingElse: Object {
+    init(n: Int32) {
+    }
+}

@@ -1698,6 +1698,204 @@ resolve_calls_in_stmts(const st_class *c, st_stmt *list)
 	}
 }
 
+/*
+ * §7.49/§7.8: `T(value: 3)` is a CLASS-RECEIVER send and not a C call — the
+ * initializer named `init` is what it calls — and §7.49 gives the emitted form as
+ * `[[T alloc] initValue:3]`, `alloc` and `instancetype` included.
+ *
+ * A REWRITE, for the same reason §7.42's resolution is one, and with a second
+ * consequence that matters as much: the `extern` collection below walks the tree
+ * afterwards and consults node KIND, so a construction left as a CALL was handed
+ * `extern void T(BOOL)` — a declaration for a C function named after the class,
+ * which is what `self = Base(0)` used to emit.
+ *
+ * The selector pieces are a SEND's rather than a CALL's, and that is not a
+ * detail: `init(x: Int32, y: Int32)` DECLARES `init:(int32_t)x y:(int32_t)y` (the
+ * first piece is the method's name and later pieces are the labels), so a call
+ * built by any other rule disagrees with it by a piece — and clang then rejects a
+ * send to a method that is right there in the same file. An ST_EXPR_SEND node
+ * makes the agreement structural, and the compile leg is what proves it.
+ *
+ * Only a class THIS UNIT declares constructs. An imported name keeps the old
+ * behaviour — a C call, and an `extern` — which fails at clang loudly rather than
+ * inventing an `alloc` for a class the emitter cannot see.
+ */
+static int
+is_construction_call(const st_expr *e)
+{
+	return e != NULL && e->kind == ST_EXPR_CALL && e->base != NULL &&
+	       e->base->kind == ST_EXPR_IDENT && e->base->text.text != NULL &&
+	       type_name_is_class(e->base->text.text);
+}
+
+/*
+ * A send node the arena owns. NULL leaves the caller's node alone, which keeps
+ * that case LOUD — a C call that will not compile — rather than silent.
+ */
+static st_expr *
+new_message(st_expr *receiver, const char *piece)
+{
+	st_expr *s = st_arena_alloc(sizeof(st_expr));
+
+	if (s == NULL) {
+		return NULL;
+	}
+	s->kind = ST_EXPR_SEND;
+	/* `piece` is a literal; nothing writes through it. */
+	s->text.text = (char *)piece;
+	s->base = receiver;
+	return s;
+}
+
+static int
+resolve_constructions_in_expr(st_expr *e, const st_class *c, int in_init,
+			      const char **error)
+{
+	size_t i;
+
+	if (e == NULL) {
+		return 1;
+	}
+	/*
+	 * §7.49's CHAIN first: `self = Superclass()` inside an initializer is the
+	 * one place `self` is writable, and the emitted receiver is `super` rather
+	 * than a fresh object — `[[Superclass alloc] init]` would discard the
+	 * object being initialized, which is the opposite of chaining.
+	 */
+	if (in_init && e->kind == ST_EXPR_ASSIGN && e->base != NULL &&
+	    e->base->kind == ST_EXPR_SELF && e->arg_count == 1 &&
+	    is_construction_call(e->args[0].value)) {
+		st_expr *chain = e->args[0].value;
+		st_expr *super = st_arena_alloc(sizeof(st_expr));
+
+		/*
+		 * §7.49: "the receiver names the superclass". CHECKED rather than
+		 * assumed — the emitted `[super init]` is a send to whatever
+		 * `super` is, so a receiver naming some other class would quietly
+		 * call a different initializer than the one that was written.
+		 */
+		if (strcmp(chain->base->text.text, c->superclass.text) != 0) {
+			return refuse("an initializer chaining to a class that is "
+				      "not its superclass", error);
+		}
+		if (super != NULL) {
+			super->kind = ST_EXPR_SUPER;
+			chain->base = super;
+			chain->kind = ST_EXPR_SEND;
+			chain->text.text = (char *)"init";
+		}
+	}
+	if (is_construction_call(e)) {
+		st_expr *alloc = new_message(e->base, "alloc");
+
+		if (alloc != NULL) {
+			e->base = alloc;
+			e->kind = ST_EXPR_SEND;
+			e->text.text = (char *)"init";
+		}
+	}
+	if (!resolve_constructions_in_expr(e->base, c, in_init, error)) {
+		return 0;
+	}
+	for (i = 0; i < e->arg_count; i++) {
+		if (!resolve_constructions_in_expr(e->args[i].value, c, in_init,
+						   error)) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int
+resolve_constructions_in_stmts(const st_class *c, st_stmt *list, int in_init,
+			       const char **error)
+{
+	st_stmt *s;
+
+	for (s = list; s != NULL; s = s->next) {
+		if (!resolve_constructions_in_expr(s->value, c, in_init, error)) {
+			return 0;
+		}
+		if (!resolve_constructions_in_stmts(c, s->body, in_init, error)) {
+			return 0;
+		}
+		if (!resolve_constructions_in_stmts(c, s->else_body, in_init,
+						    error)) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int
+resolve_constructions_in_class(const st_class *c, const char **error)
+{
+	const st_decl *d;
+	size_t i;
+
+	for (d = c->decls; d != NULL; d = d->next) {
+		if (!resolve_constructions_in_stmts(c, d->body, is_initializer(d),
+						    error)) {
+			return 0;
+		}
+	}
+	for (i = 0; i < c->nested_count; i++) {
+		if (!resolve_constructions_in_class(c->nested[i], error)) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/*
+ * The whole program, once, before anything is emitted. A construction is a CLASS
+ * question — which class, and is it one of ours — and the chain is an
+ * initializer question — which method is it in — so both are answered here, per
+ * decl, rather than threaded through every expression function to be consulted at
+ * one node each.
+ */
+static int
+resolve_constructions_in_program(const st_program *program, const char **error)
+{
+	size_t i;
+
+	for (i = 0; i < program->class_count; i++) {
+		if (!resolve_constructions_in_class(program->classes[i], error)) {
+			return 0;
+		}
+	}
+	/*
+	 * §7.4's extensions carry bodies too, and an extension's bodies belong to
+	 * the class it extends — the class §7.42 resolves against, and the class
+	 * whose superclass a chain inside one must name.
+	 */
+	for (i = 0; i < program->extension_count; i++) {
+		const st_extension *e = program->extensions[i];
+		const st_class *owner = NULL;
+		const st_decl *d;
+		size_t k;
+
+		for (k = 0; k < program->class_count; k++) {
+			if (strcmp(program->classes[k]->name.text,
+				   e->target.text) == 0) {
+				owner = program->classes[k];
+				break;
+			}
+		}
+		if (owner == NULL) {
+			continue;	/* imported: the CALLs stay loud */
+		}
+		for (d = e->decls; d != NULL; d = d->next) {
+			if (!resolve_constructions_in_stmts(owner, d->body,
+							    is_initializer(d),
+							    error)) {
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
 static void
 collect_calls(const st_expr *e, const st_class *c, extern_set *set)
 {
@@ -1975,6 +2173,16 @@ st_emit_implementation(FILE *out, const st_program *program,
 	declared_classes.count = 0;
 	for (i = 0; i < program->class_count; i++) {
 		collect_declared_classes(program->classes[i], &declared_classes);
+	}
+	/*
+	 * §7.49's construction calls and chains, rewritten before a single line is
+	 * emitted — and specifically before `emit_implementation_of`, because that
+	 * is where the `extern` collection runs. It consults node KIND, so a
+	 * `T(value: 3)` that is still a CALL gets `extern void T(BOOL)`, a
+	 * declaration for a C function named after a class.
+	 */
+	if (!resolve_constructions_in_program(program, error)) {
+		return 0;
 	}
 	/*
 	 * ONE banner and ONE import, because this is one file: `#import

@@ -355,17 +355,33 @@ bugs actually are.
     `Class(n: 3)` call is a send to did not exist at all. Reading the emitted text
     was the only thing that could have found it, which is what the `EmitsInit`
     specimen is for.
-  - Still owed from that section, and it is the half that makes an initializer
-    usable: **the construction call `T(value: 3)`** (`[[T alloc] initValue:3]`,
-    §7.8/§7.49 — today it emits a C call AND a bogus `extern void T(BOOL)`) and
-    **§7.49's chain `self = Superclass()`** (`self = [super init]`, never a fresh
-    `alloc` — a fresh object would discard the one being initialized). Both are
-    one tree REWRITE placed where the enclosing class is known, the shape §7.42's
-    resolution already uses, and that is also what removes the bogus `extern`: the
-    collection consults node KIND, so a construction that is no longer a CALL is
-    not collected as one. The predicate is already there (`type_name_is_class`),
-    `st_name` is `{ char *text; }` so a piece name is assignable, and the chain is
-    the one place the receiver can be checked against the class's superclass.
+  - **§7.49's initializer, CALL side (2026-09): the construction and the chain.**
+    `T(value: 3)` is a CLASS-receiver send and not a C call, so it emits
+    `[[T alloc] init:3]`; and an initializer's chain `self = Superclass()` emits
+    `self = [super init:3]` — never a fresh `alloc`, which would discard the object
+    being initialized. One tree REWRITE over the whole program, run before the
+    `extern` collection, and that placement is what fixes the second wrong answer
+    at the same time: `self = Shape(3)` used to emit `self = Shape(3);` **and**
+    `extern void Shape(BOOL arg);` — an assignment from a C function that does not
+    exist, with a declaration the compiler invented for it — because the
+    collection consults node KIND, and it stopped doing that the moment the node
+    was no longer a CALL.
+    - The pieces are a SEND's, so the call and the declaration agree **by
+      construction** rather than by coincidence: `init(sides: Int32)` declares
+      `init:(int32_t)sides`, so the call has to write `init:` and not a piece the
+      declaration never had. `sterlingc-compile.sh` proves the pair fits — which
+      is the check that matters while the §2-vs-§5 selector-piece question above
+      is still open.
+    - The chain's receiver is CHECKED against the class's superclass rather than
+      assumed: the emitted `[super init]` is a send to whatever `super` is, so a
+      receiver naming some other class would quietly call a different initializer
+      than the one written. It is also the one place `self` is writable, and the
+      rewrite only applies inside an initializer.
+    - Still owed from the section: a subclass initializer that does NOT chain,
+      which §7.49 calls "the thing the rule exists to catch", is not yet a
+      diagnostic; and neither is "a declared initializer is required — `Sub()`
+      resolves no initializer and is an error". Both need the named class's own
+      decls, which the pass already has in hand.
   - Still owed here: `get`/`set` blocks (§7.54/§7.55, so a `set` block and its
     implicit writable `newValue`), §9.16's synthesised *defaults* method (which is
     what a property initializer needs — neither an ivar nor a C struct member may
