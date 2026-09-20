@@ -147,6 +147,17 @@ NS_ASSUME_NONNULL_BEGIN
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
 - (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
 
+/* HOW A DIFFERENCE WAS CALCULATED (2026-09-20), declared here because the difference class's
+ * own header does not exist yet and Apple files the type under this one. It is a bit set:
+ * inferMoves asks the differ to work out what moved rather than reporting a removal plus an
+ * insertion, and the other two suppress a side. Names from Apple's documentation index;
+ * values are ours (§11.6.1 D2, see NSFileManager.h). */
+typedef enum {
+	NSOrderedCollectionDifferenceCalculationInferMoves = 1 << 0,
+	NSOrderedCollectionDifferenceCalculationOmitInsertedObjects = 1 << 1,
+	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects = 1 << 2
+} NSOrderedCollectionDifferenceCalculationOptions;
+
 NS_ASSUME_NONNULL_END
 
 

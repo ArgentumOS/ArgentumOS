@@ -318,6 +318,31 @@ typedef enum {
 #define NSTimeIntervalSince1970	978307200.0	/* 11,323 days x 86,400 s */
 #define NSURLResponseUnknownLength	(-1)
 
+/*
+ * THE OBJECT-LIFETIME DEBUG EVENTS (2026-09-20). These are the identifiers the debug
+ * machinery reports when an object's reference state changes, and they belong with the
+ * switches above: NSDebugEnabled, NSKeepAllocationStatistics and these are one facility.
+ * Apple documents each name's EXISTENCE - there is a page per name, rendered as a bare
+ * `#define`, which is that renderer's way of showing a macro with no published body -
+ * and the shared group is what identifies their meaning: autorelease, an extra retain
+ * recorded and undone, and the same for the internal count.
+ *
+ * THE VALUES ARE OURS (§11.6.1 D2). These are codes a caller compares against rather
+ * than numbers a contract fixes, so only their distinctness and order matter.
+ */
+#define NSObjectAutoreleasedEvent		1
+#define NSObjectExtraRefIncrementedEvent	2
+#define NSObjectExtraRefDecrementedEvent	3
+#define NSObjectInternalRefIncrementedEvent	4
+#define NSObjectInternalRefDecrementedEvent	5
+
+/* THE LAST VERSION CONSTANT (2026-09-20), and it is NOT one the sixth exclusion struck:
+ * that rule matches the per-release NSFoundationVersionNumber* names, while this one asks
+ * which release first had NSFileManager resource-fork support. On this system that release
+ * is this one, so it answers this library's own version rather than borrowing a number
+ * from a release it is not (§11.6.1 D2, the reasoning NSFoundationVersionNumber carries). */
+#define NSFoundationVersionWithFileManagerResourceForkSupport	NSFoundationVersionNumber
+
 /* The localized-string family: Apple's signatures, bodies that read the string
  * from a bundle. They are macros, so they are not compiled until used. */
 #define NSLocalizedString(key, comment) \
