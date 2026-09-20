@@ -64,34 +64,59 @@ a drawing duplication.
 **CF here is a set of type identities and ownership functions over the objects
 this tree already has.** That is Apple's own arrangement — Foundation *is* built
 on CF on Apple's platforms, with `NSString` and `CFString` the same object — and
-it is the reason the work is small rather than a second class library:
+it is the reason the work is small rather than a second class library.
 
-| CF spelling | This tree |
+**THE TYPES ARE DISTINCT AND THE OBJECTS ARE FOUNDATION'S, AND THAT SPLIT IS
+MEASURED RATHER THAN CHOSEN.** The obvious spelling — a plain alias to the class —
+**does not work, and it fails with an ERROR, not a warning**, which is why this
+paragraph exists rather than a comment in the header:
+
+| CF spelling | Apple's `(__bridge CFArrayRef)@[…]` under ARC |
 |---|---|
-| `CFStringRef` | `typedef NSString *CFStringRef;` (with Apple's `CF_BRIDGED_TYPE` spelling so an Apple header compiles against it) |
-| `CFArrayRef` / `CFMutableArrayRef` | `NSArray` / `NSMutableArray` |
-| `CFDictionaryRef` / `CFMutableDictionaryRef` | `NSDictionary` / `NSMutableDictionary` |
-| `CFDataRef` / `CFMutableDataRef` | `NSData` / `NSMutableData` |
-| `CFNumberRef` / `CFBooleanRef` | `NSNumber` |
-| `CFURLRef` | `NSURL` |
-| `CFTypeRef` | `id` (or `NSObject *` where a header needs it) |
-| `CFAllocatorRef` | a type the API accepts; see §6 |
-| `CFErrorRef` | `NSError` |
+| `typedef NSArray *CFArrayRef;` (a plain alias) | **error:** *incompatible types casting 'NSArray *' to 'CFArrayRef' (aka 'NSArray *') with a __bridge cast* |
+| `typedef const struct CF_BRIDGED_TYPE(NSArray) __CFArray *CFArrayRef;` (distinct) | **compiles, rc=0** — and `(__bridge NSData *)d` works on the implementation side |
+
+So the CF names are **distinct opaque types**, Apple's own shape, and every value
+flowing through them IS a Foundation object: the implementation casts at the
+boundary with `(__bridge NSArray *)a` and never allocates anything CF-shaped.
+
+| CF spelling | Declaration, and what the object is |
+|---|---|
+| `CFStringRef` | `typedef const struct CF_BRIDGED_TYPE(NSString) __CFString *CFStringRef;` — **an `NSString`** |
+| `CFArrayRef` / `CFMutableArrayRef` | `…CF_BRIDGED_TYPE(NSArray) __CFArray…` — **an `NSArray` / `NSMutableArray`** |
+| `CFDictionaryRef` / `CFMutableDictionaryRef` | **an `NSDictionary` / `NSMutableDictionary`** |
+| `CFDataRef` / `CFMutableDataRef` | **an `NSData` / `NSMutableData`** |
+| `CFNumberRef` / `CFBooleanRef` | **an `NSNumber`** |
+| `CFURLRef` | **an `NSURL`** |
+| `CFTypeRef` | `typedef const void *CFTypeRef;` (Apple's own, so `CFRelease((CFTypeRef)d)` is the caller's spelling and compiles) |
+| `CFAllocatorRef` | a pointer type the API accepts and ignores; see §6 |
+| `CFErrorRef` | **an `NSError`** |
 
 **The classes all exist already** — measured from the Foundation ledger's
 `shipped` rows: `NSString`, `NSArray`/`NSMutableArray`, `NSDictionary`/
 `NSMutableDictionary`, `NSData`/`NSMutableData`, `NSNumber`, `NSURL`, `NSError`,
-and their `NSLocale`/`NSDate` neighbours. So §3 is a *typing* exercise, and the
-implementation work is the handful of `CF…Create`/`CF…Get` functions CG's callers
-actually use (§7).
+and their `NSLocale`/`NSDate` neighbours. So §3 is a *typing* exercise plus one
+cast per function body, and the implementation work is the handful of
+`CF…Create`/`CF…Get` functions CG's callers actually use (§7).
 
-**One consequence worth stating before anyone inherits it:** the bridge makes
-`CFStringRef` and `NSString *` interchangeable *in this tree*, which is a
-stronger promise than Apple's (Apple's bridging is real at the runtime level for
-the toll-free classes, but not every CF type is toll-free). Where a CF type here
-is a *plain* `typedef` to a class with no CF-type identity behind it, an Apple
-sample that does `CFGetTypeID(x)` or compares type IDs is relying on API this plan
-does not provide — named in §5, not silently missing.
+**WHY THE TYPES CANNOT BE STEPPED OVER — the whole answer to *"why not just use
+Foundation objects?"*: they can be, and they are; the NAMES have to exist because
+Apple's source names them.** Measured, both halves:
+
+- with the CG parameters declared `NSArray *` and no `CFArrayRef` anywhere, a
+  caller writing `takeArray((__bridge CFArrayRef)@[@1])` fails with
+  **`unknown type name 'CFArrayRef'`**;
+- declaring that name as an *alias* then fails the cast instead (row 1 above).
+
+Only a **distinct** type satisfies both, so a distinct type is what this plan
+provides — with Foundation objects inside. Renaming the parameters is not a
+simplification; it is the loss of the acceptance test on the 1-in-5 declarations
+that name a CF type, which are the gradient, image, PDF and colour-space paths.
+
+**One consequence worth stating before anyone inherits it:** an Apple sample that
+calls `CFGetTypeID(x)`, `CFStringGetTypeID` or compares type IDs is relying on API
+this plan does not provide — named in §5, not silently missing. The *types* are
+distinct for the compiler's benefit; the *type-identity machinery* is out.
 
 ## 4. Ownership — and this answers the CG plan's open item
 

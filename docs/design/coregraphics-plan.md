@@ -203,8 +203,10 @@ missing here.
     Foundation classes, which is Apple's own arrangement.
   - **That is also what settles the open ownership question above**:
     `CFRetain`/`CFRelease` need a defined relation to this library's
-    `-retain`/`-release`, and toll-free bridging (`CFStringRef` IS `NSString *`)
-    makes that relation one line instead of a parallel type system.
+    `-retain`/`-release`, and toll-free bridging — a `CFStringRef` *holds* an
+    `NSString`, the type being kept distinct because Apple's own source casts
+    between the two — makes that relation one cast and one forward rather than a
+    parallel type system.
     **`docs/design/corefoundation-plan.md` now exists and answers it**: CFRetain
     and CFRelease ARE `-retain` and `-release`, one implementation with two
     spellings, and the Create/Copy/Get ownership convention is part of the
