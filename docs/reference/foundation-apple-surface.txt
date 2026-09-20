@@ -22,7 +22,7 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 13, deprecated 341, os-version-constant 82, swift-only 22
+# why the struck rows are struck: 32-bit-only 13, deprecated 341, os-version-constant 110, swift-only 22
 #
 # THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): 
 # it keeps its `shipped` status and says so in the `why` column.
@@ -30,7 +30,7 @@
 # counts by kind:
 #   class      shipped   70   open  172   struck   31
 #   protocol   shipped    7   open   29   struck    9
-#   macro      shipped   18   open  127   struck  108
+#   macro      shipped   18   open   99   struck  136
 #   enum       shipped   32   open  120   struck    8
 #   case       shipped  190   open 1019   struck   93
 #   func       shipped   58   open   77   struck   54
@@ -2068,34 +2068,34 @@ macro	struck	NSFoundationVersionNumber10_8_4		Low-Level Utilities / Versions and
 macro	struck	NSFoundationVersionNumber10_9		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
 macro	struck	NSFoundationVersionNumber10_9_1		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
 macro	struck	NSFoundationVersionNumber10_9_2		Low-Level Utilities / Versions and API Availability / macOS Version Numbers	os-version-constant	objc
-macro	open	NSFoundationVersionNumber_iOS_4_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_4_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_4_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_4_3		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_5_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_5_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_6_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_6_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_7_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_7_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_8_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_8_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_8_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_8_3		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_8_4		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_8_x_Max		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_9_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_9_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_9_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_9_3		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_9_4		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iOS_9_x_Max		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iPhoneOS_2_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iPhoneOS_2_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iPhoneOS_2_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iPhoneOS_3_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iPhoneOS_3_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
-macro	open	NSFoundationVersionNumber_iPhoneOS_3_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	-	objc
+macro	struck	NSFoundationVersionNumber_iOS_4_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_4_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_4_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_4_3		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_5_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_5_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_6_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_6_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_7_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_7_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_8_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_8_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_8_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_8_3		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_8_4		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_8_x_Max		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_9_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_9_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_9_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_9_3		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_9_4		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iOS_9_x_Max		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iPhoneOS_2_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iPhoneOS_2_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iPhoneOS_2_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iPhoneOS_3_0		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iPhoneOS_3_1		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
+macro	struck	NSFoundationVersionNumber_iPhoneOS_3_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
 macro	open	NSFoundationVersionWithFileManagerResourceForkSupport	NSFileManager	Files and Data Persistence / File system operations / Determining resource fork support	-	objc
 macro	shipped	NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES		Reference / Macros	-	objc
 macro	open	NSLocalizedAttributedString		Reference / Macros	-	objc

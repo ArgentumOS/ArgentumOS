@@ -200,7 +200,7 @@ def is_32bit_only(row):
 # (declared `extern double`), so a group signal over "Versions and API
 # Availability" would have struck it too. The pattern keeps the current version
 # and takes only the per-release ones.
-VERSION_CONST_RE = re.compile(r"^NSFoundationVersionNumber(10_|iOS_|iPhoneOS_)")
+VERSION_CONST_RE = re.compile(r"^NSFoundationVersionNumber(10_|_iOS_|_iPhoneOS_)")
 
 
 def is_per_release_version_constant(row):
